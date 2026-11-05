@@ -91,6 +91,8 @@ void gmb_gfx_map(int* x, int* y);
 /* Coordinata LOGICA → NATIVA (renderScale): da usare nelle primitive dopo gmb_gfx_map,
  * perché le pagine sono allocate a logico*scale. */
 void gmb_gfx_scale_pt(int* x, int* y);
+/* Scala effettiva del target: 1.0 quando è attivo un canvas (coordinate 1:1). */
+float gmb_gfx_scale_eff(void);
 gmb_gfx_page_t* active_page(void);
 unsigned char* read_whole_file(const char* path, size_t* len);
 /* F3 multimodale (2026-09-11): codec PNG condiviso col dominio immagini (gmb_image.c).

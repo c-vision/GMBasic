@@ -7,6 +7,7 @@
 #include <math.h>
 #include <ctype.h>
 extern float g_gfx_scale;
+extern float gmb_gfx_scale_eff(void);
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
 #endif
@@ -95,7 +96,8 @@ void gmb_gfx_circle(int x, int y, int radius, int color, int fill, double start,
     if (!p) return;
     gmb_gfx_map(&x, &y);
     gmb_gfx_scale_pt(&x, &y);
-    if (g_gfx_scale > 0.0f && g_gfx_scale != 1.0f) radius = (int)lround((double)radius * g_gfx_scale);
+    { float _sc = gmb_gfx_scale_eff();
+      if (_sc != 1.0f) radius = (int)lround((double)radius * _sc); }
     uint32_t c = resolve_color(color < 0 ? g_gfx.fg : color);
     double asp = (aspect > 0.001) ? aspect : 1.0;
     if (radius <= 0) { put_pixel(p, x, y, c); return; }
@@ -325,7 +327,7 @@ void gmb_gfx_view_style(int bg, int border)
 {
     gmb_gfx_page_t* p = active_page();
     if (!p || !g_gfx.view_set) return;
-    float s = g_gfx_scale > 0.0f ? g_gfx_scale : 1.0f;
+    float s = gmb_gfx_scale_eff();
     int x1 = (int)lround((double)g_gfx.vx1 * s);
     int y1 = (int)lround((double)g_gfx.vy1 * s);
     int x2 = (int)lround((double)(g_gfx.vx2 + 1) * s) - 1;
@@ -413,7 +415,7 @@ void gmb_gfx_polygon_fill(const float* points, int count, int color)
 
 void gmb_gfx_clear_rect(int x1, int y1, int x2, int y2, int color)
 {
-    { float _S=g_gfx_scale; if(_S!=1.0f){x1=(int)lround((x1)*_S);y1=(int)lround((y1)*_S);x2=(int)lround((x2)*_S);y2=(int)lround((y2)*_S);} }
+    { float _S=gmb_gfx_scale_eff(); if(_S!=1.0f){x1=(int)lround((x1)*_S);y1=(int)lround((y1)*_S);x2=(int)lround((x2)*_S);y2=(int)lround((y2)*_S);} }
     gmb_gfx_page_t* p = active_page();
     uint32_t c;
     if (!p) return;
@@ -482,7 +484,7 @@ void gmb_gfx_blend_pixel(int x, int y, unsigned int rgba, double coverage)
 
 void gmb_gfx_fill_rounded_rect(int x, int y, int w, int h, int radius, unsigned int rgba)
 {
-    { float _S=g_gfx_scale; if(_S!=1.0f){x=(int)lround((x)*_S);y=(int)lround((y)*_S);w=(int)lround((w)*_S);h=(int)lround((h)*_S);radius=(int)lround((radius)*_S);} }
+    { float _S=gmb_gfx_scale_eff(); if(_S!=1.0f){x=(int)lround((x)*_S);y=(int)lround((y)*_S);w=(int)lround((w)*_S);h=(int)lround((h)*_S);radius=(int)lround((radius)*_S);} }
     gmb_gfx_page_t* p = active_page();
     if (!p || w <= 0 || h <= 0) return;
     if (radius <= 0) { gmb_gfx_fill_rgb(p, x, y, x + w - 1, y + h - 1, rgba); return; }
@@ -515,7 +517,7 @@ void gmb_gfx_fill_rounded_rect(int x, int y, int w, int h, int radius, unsigned 
  * neon/glass). Alpha rispettata (blend). */
 void gmb_gfx_fill_rounded_gradient(int x, int y, int w, int h, int radius, unsigned int c1, unsigned int c2)
 {
-    { float _S=g_gfx_scale; if(_S!=1.0f){x=(int)lround((x)*_S);y=(int)lround((y)*_S);w=(int)lround((w)*_S);h=(int)lround((h)*_S);radius=(int)lround((radius)*_S);} }
+    { float _S=gmb_gfx_scale_eff(); if(_S!=1.0f){x=(int)lround((x)*_S);y=(int)lround((y)*_S);w=(int)lround((w)*_S);h=(int)lround((h)*_S);radius=(int)lround((radius)*_S);} }
     gmb_gfx_page_t* p = active_page();
     if (!p || w <= 0 || h <= 0) return;
     int r = radius; if (r > w / 2) r = w / 2; if (r > h / 2) r = h / 2; if (r < 0) r = 0;
@@ -540,7 +542,7 @@ void gmb_gfx_fill_rounded_gradient(int x, int y, int w, int h, int radius, unsig
 
 void gmb_gfx_stroke_rounded_rect(int x, int y, int w, int h, int radius, unsigned int rgba)
 {
-    { float _S=g_gfx_scale; if(_S!=1.0f){x=(int)lround((x)*_S);y=(int)lround((y)*_S);w=(int)lround((w)*_S);h=(int)lround((h)*_S);radius=(int)lround((radius)*_S);} }
+    { float _S=gmb_gfx_scale_eff(); if(_S!=1.0f){x=(int)lround((x)*_S);y=(int)lround((y)*_S);w=(int)lround((w)*_S);h=(int)lround((h)*_S);radius=(int)lround((radius)*_S);} }
     gmb_gfx_page_t* p = active_page();
     if (!p || w <= 0 || h <= 0) return;
     if (radius <= 0)
@@ -586,7 +588,7 @@ static unsigned int gmb_gfx_blend_rgb(unsigned int a, unsigned int b, double t)
 
 void gmb_gfx_gradient_rect(int x, int y, int w, int h, unsigned int cstart, unsigned int cend, int vertical)
 {
-    { float _S=g_gfx_scale; if(_S!=1.0f){x=(int)lround((x)*_S);y=(int)lround((y)*_S);w=(int)lround((w)*_S);h=(int)lround((h)*_S);} }
+    { float _S=gmb_gfx_scale_eff(); if(_S!=1.0f){x=(int)lround((x)*_S);y=(int)lround((y)*_S);w=(int)lround((w)*_S);h=(int)lround((h)*_S);} }
     gmb_gfx_page_t* p = active_page();
     if (!p || w <= 0 || h <= 0) return;
     int steps = vertical ? h : w;
@@ -615,7 +617,7 @@ void gmb_gfx_gradient_rect(int x, int y, int w, int h, unsigned int cstart, unsi
 void gmb_gfx_drop_shadow_rounded(int x, int y, int w, int h, int offset,
                                  unsigned int shadow_rgba, int corner, int blur)
 {
-    { float _S=g_gfx_scale; if(_S!=1.0f){x=(int)lround((x)*_S);y=(int)lround((y)*_S);w=(int)lround((w)*_S);h=(int)lround((h)*_S);offset=(int)lround((offset)*_S);corner=(int)lround((corner)*_S);blur=(int)lround((blur)*_S);} }
+    { float _S=gmb_gfx_scale_eff(); if(_S!=1.0f){x=(int)lround((x)*_S);y=(int)lround((y)*_S);w=(int)lround((w)*_S);h=(int)lround((h)*_S);offset=(int)lround((offset)*_S);corner=(int)lround((corner)*_S);blur=(int)lround((blur)*_S);} }
     gmb_gfx_page_t* p = active_page();
     if (!p || w <= 0 || h <= 0) return;
     if (blur < 1) blur = 1;
@@ -646,7 +648,7 @@ void gmb_gfx_drop_shadow_rounded(int x, int y, int w, int h, int offset,
 
 void gmb_gfx_drop_shadow(int x, int y, int w, int h, int offset, unsigned int shadow_rgba, int radius)
 {
-    { float _S=g_gfx_scale; if(_S!=1.0f){x=(int)lround((x)*_S);y=(int)lround((y)*_S);w=(int)lround((w)*_S);h=(int)lround((h)*_S);offset=(int)lround((offset)*_S);radius=(int)lround((radius)*_S);} }
+    { float _S=gmb_gfx_scale_eff(); if(_S!=1.0f){x=(int)lround((x)*_S);y=(int)lround((y)*_S);w=(int)lround((w)*_S);h=(int)lround((h)*_S);offset=(int)lround((offset)*_S);radius=(int)lround((radius)*_S);} }
     gmb_gfx_page_t* p = active_page();
     if (!p || w <= 0 || h <= 0) return;
     if (offset < 1) offset = 1;
@@ -675,7 +677,7 @@ void gmb_gfx_drop_shadow(int x, int y, int w, int h, int offset, unsigned int sh
 /* Cerchio pieno anti-aliasing (porting GfxFilledCircle). cx,cy=centro, d=diametro, rgba=0xAARRGGBB. */
 void gmb_gfx_fill_circle(int cx, int cy, int d, unsigned int rgba)
 {
-    { float _S=g_gfx_scale; if(_S!=1.0f){cx=(int)lround((cx)*_S);cy=(int)lround((cy)*_S);d=(int)lround((d)*_S);} }
+    { float _S=gmb_gfx_scale_eff(); if(_S!=1.0f){cx=(int)lround((cx)*_S);cy=(int)lround((cy)*_S);d=(int)lround((d)*_S);} }
     gmb_gfx_page_t* p = active_page();
     if (!p || d <= 0) return;
     double rN = d / 2.0;

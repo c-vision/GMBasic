@@ -51,16 +51,24 @@ FILE=""
 TIMEOUT=180
 LEGS="il,pcode,vmc,c99n"
 KEEP=0
+GFX=0
 while [ $# -gt 0 ]; do
   case "$1" in
     --timeout) TIMEOUT="$2"; shift 2;;
     --legs)    LEGS="$2"; shift 2;;
     --keep)    KEEP=1; shift;;
+    --gfx)     GFX=1; shift;;
     -*)        echo "opzione ignota: $1"; exit 2;;
     *)         FILE="$1"; shift;;
   esac
 done
-[ -n "$FILE" ] || { echo "uso: tools/sh/parity4 <sample.bas> [--timeout N] [--legs il,pcode,vmc,c99n]"; exit 2; }
+[ -n "$FILE" ] || { echo "uso: tools/sh/parity4 <sample.bas> [--timeout N] [--legs il,pcode,vmc,c99n] [--gfx]"; exit 2; }
+# --gfx: gamba IL/PCode con il motore grafico NATIVO (CGfx, esecuzione in linea) invece del
+# NullGraphicsService. Serve per confrontare programmi che DISEGNANO: con Null le primitive
+# sono no-op sul backend IL e il confronto è falso. Non usarlo con i test "parked"/modali
+# (SYNC, SCREEN con pump): senza main thread il park non si completa (timeout).
+GFX_ARG=""
+[ "$GFX" = 1 ] && GFX_ARG="--gfx" 
 # INTERATTIVO (marker header `' TAG: interactive`): salta salvo GMB_RUN_INTERACTIVE=1.
 if [ "${GMB_RUN_INTERACTIVE:-0}" != "1" ] && grep -q "^' TAG: interactive" "$FILE" 2>/dev/null; then
   echo "SKIP (interattivo): $FILE — usa GMB_RUN_INTERACTIVE=1"; exit 0; fi
@@ -175,8 +183,8 @@ run_leg() {  # nome, comando...
 }
 
 echo "== parity4 $FILE =="
-if has_leg il;   then run_leg il   dotnet run --project "$HARNESS_DIR/test_ilrun" -- --engine=il    "$FILE"; fi
-if has_leg pcode;then run_leg pcode    dotnet run --project "$HARNESS_DIR/test_ilrun" -- --engine=pcode "$FILE"; fi
+if has_leg il;   then run_leg il   dotnet run --project "$HARNESS_DIR/test_ilrun" -- --engine=il    $GFX_ARG "$FILE"; fi
+if has_leg pcode;then run_leg pcode    dotnet run --project "$HARNESS_DIR/test_ilrun" -- --engine=pcode $GFX_ARG "$FILE"; fi
 if has_leg vmc;  then run_leg vmc  dotnet run --project "$HARNESS_DIR/test_vmrun" --               "$FILE" "$TIMEOUT"; fi
 if has_leg c99n; then
   # gmb_c99native_run.sh sceglie il driver PIÙ RECENTE fra tools/ e il build del

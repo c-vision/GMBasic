@@ -1,5 +1,6 @@
 /* gmb_graphics_image.c — image/bload (estratto da gmb_graphics.c per evitare monolite) */
 #include "gmb_graphics.h"
+extern float gmb_gfx_scale_eff(void);
 #include "gmb_graphics_internal.h"
 #include <stdlib.h>
 #include <string.h>
@@ -14,7 +15,7 @@ int gmb_gfx_image_get(int x1, int y1, int x2, int y2, int* out, int max)
     /* Coordinate BASIC = LOGICHE → NATIVE (renderScale). La pagina è nativa: senza
      * questa conversione su Retina si catturava solo il quarto in alto a sinistra
      * (IMAGEGET 11x10 logico → 11x10 nativo = mezzo sprite). */
-    { float sc = g_gfx_scale > 0.0f ? g_gfx_scale : 1.0f;
+    { float sc = gmb_gfx_scale_eff();
       if (sc != 1.0f) {
           x1 = (int)lround((double)x1 * sc);
           y1 = (int)lround((double)y1 * sc);
@@ -144,7 +145,7 @@ void gmb_gfx_bsave(int x1, int y1, int x2, int y2)
     gmb_gfx_page_t* p = active_page();
     if (!p) return;
     /* Coordinate LOGICHE → NATIVE (renderScale), come IMAGEGET: la pagina è nativa. */
-    { float s = g_gfx_scale > 0.0f ? g_gfx_scale : 1.0f;
+    { float s = gmb_gfx_scale_eff();
       if (s != 1.0f) {
           x1 = (int)lround((double)x1 * s);
           y1 = (int)lround((double)y1 * s);
@@ -176,7 +177,7 @@ void gmb_gfx_bload(int x, int y)
 {
     gmb_gfx_page_t* p = active_page();
     if (!p || !g_gfx.bsave_pixels) return;
-    { float s = g_gfx_scale > 0.0f ? g_gfx_scale : 1.0f;
+    { float s = gmb_gfx_scale_eff();
       if (s != 1.0f) { x = (int)lround((double)x * s); y = (int)lround((double)y * s); } }
     for (int yy = 0; yy < g_gfx.bsave_h; yy++)
         for (int xx = 0; xx < g_gfx.bsave_w; xx++)
