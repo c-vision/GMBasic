@@ -2794,9 +2794,17 @@ typedef enum gmb_tokenkind {
     GMB_TOK_MvBoostFit,
     GMB_TOK_MvBoostPredict,
     GMB_TOK_MvBoostScore,
+    GMB_TOK_MvBoei,
+    GMB_TOK_MvBopi,
+    GMB_TOK_MvBoucb,
+    GMB_TOK_MvBonext,
+    GMB_TOK_MvGamblerProb,
+    GMB_TOK_MvGamblerDur,
+    GMB_TOK_MvAteIpw,
+    GMB_TOK_MvAteMatching,
 } gmb_tokenkind_t;
 
-#define GMB_TOK_COUNT 2771
+#define GMB_TOK_COUNT 2779
 
 /* 2026-09-09 (direttiva 2026-09-08): gmb_tokenkind_name()/gmb_tokenkind_from_name() e la
  * tabella gmb_token_names[] sono state RIMOSSE — dispatch solo per TokenKind; la risoluzione

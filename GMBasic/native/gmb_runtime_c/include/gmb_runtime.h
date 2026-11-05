@@ -1170,6 +1170,14 @@ gmb_val_t gmb_sim_particle_filter(const double* obs, int T, double a, double q, 
 double* gmb_mv_boost_fit_alloc(const double* X, int n, int p, const double* y, int engine, int n_est, double lr, int max_depth, int* outn);
 double gmb_mv_boost_predict(const double* model, int mlen, const double* x);
 double gmb_mv_boost_score(const double* model, int mlen, const double* X, int n, int p, const double* y);
+double gmb_mv_bo_ei(double mu, double sd, double best, double xi);
+double gmb_mv_bo_pi(double mu, double sd, double best, double xi);
+double gmb_mv_bo_ucb(double mu, double sd, double kappa);
+gmb_val_t gmb_mv_bo_next(const double* x, const double* y, int n, const double* cand, int m, double l2, double noise, double kappa);
+double gmb_mv_gambler_prob(double i, double N, double p);
+double gmb_mv_gambler_duration(double i, double N, double p);
+double gmb_mv_ate_ipw(const double* t, const double* y, const double* ps, int n);
+double gmb_mv_ate_matching(const double* t, const double* y, const double* ps, int n);
 double gmb_special_zeta(double s);
 double gmb_special_zeta_hurwitz(double s, double a);
 double gmb_special_polygamma(double n, double x);

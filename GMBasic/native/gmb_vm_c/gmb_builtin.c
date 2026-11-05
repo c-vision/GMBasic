@@ -719,6 +719,44 @@ static void gmb_bf_1090(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int fun
                       : func_code == 1091 ? gmb_dist_nc_t_cdf(df, nc, args[0].num)
                       : gmb_dist_nc_t_sf(df, nc, args[0].num);
 }
+static void gmb_bf_3876(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
+{
+        (void)vm; (void)task;
+        double a0 = argc > 0 ? args[0].num : 0, a1 = argc > 1 ? args[1].num : 0;
+        double a2 = argc > 2 ? args[2].num : 0, a3 = argc > 3 ? args[3].num : 0;
+        switch (func_code) {
+        case 3876: bout->result = gmb_mv_bo_ei(a0, a1, a2, a3); break;
+        case 3877: bout->result = gmb_mv_bo_pi(a0, a1, a2, a3); break;
+        case 3878: bout->result = gmb_mv_bo_ucb(a0, a1, a2); break;
+        case 3880: bout->result = gmb_mv_gambler_prob(a0, a1, a2); break;
+        case 3881: bout->result = gmb_mv_gambler_duration(a0, a1, a2); break;
+        default:   bout->result = 0.0; break;
+        }
+}
+static void gmb_bf_3879(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
+{
+        (void)vm; (void)task; (void)func_code;
+        int nx = 0, ny = 0, nc = 0;
+        double* x = gmb_vm_list_to_dbl(&args[0], &nx);
+        double* y = gmb_vm_list_to_dbl(&args[1], &ny);
+        double* cd = gmb_vm_list_to_dbl(&args[2], &nc);
+        gmb_val_t r = gmb_mv_bo_next(x, y, nx, cd, nc,
+                argc >= 4 ? args[3].num : 1.0, argc >= 5 ? args[4].num : 0.01,
+                argc >= 6 ? args[5].num : 2.0);
+        free(x); free(y); free(cd);
+        bout->result = 0;
+        gmb_vm_set_dict_result_owned(r, &bout->is_num, &bout->result_ref, &bout->result_ref_bt);
+}
+static void gmb_bf_3883(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
+{
+        (void)vm; (void)task; (void)func_code;
+        int nt = 0, ny = 0, np = 0;
+        double* t = gmb_vm_list_to_dbl(&args[0], &nt);
+        double* y = gmb_vm_list_to_dbl(&args[1], &ny);
+        double* ps = gmb_vm_list_to_dbl(&args[2], &np);
+        bout->result = (func_code == 3882) ? gmb_mv_ate_ipw(t, y, ps, nt) : gmb_mv_ate_matching(t, y, ps, nt);
+        free(t); free(y); free(ps);
+}
 static void gmb_bf_3873(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
 {
         (void)vm; (void)task; (void)func_code;
@@ -18279,6 +18317,14 @@ static const gmb_bf_impl_t gmb_bf_impl_core[] = {
     { 3871, gmb_bf_3866 },
     { 3872, gmb_bf_3872 },
     { 3873, gmb_bf_3873 },
+    { 3876, gmb_bf_3876 },
+    { 3877, gmb_bf_3876 },
+    { 3878, gmb_bf_3876 },
+    { 3879, gmb_bf_3879 },
+    { 3880, gmb_bf_3876 },
+    { 3881, gmb_bf_3876 },
+    { 3882, gmb_bf_3883 },
+    { 3883, gmb_bf_3883 },
     { 3874, gmb_bf_3874 },
     { 3875, gmb_bf_3875 },
     { 3858, gmb_bf_3858 },

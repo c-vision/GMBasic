@@ -2229,6 +2229,18 @@ public static partial class IlRuntime
             ["LogLikelihood"] = r.LogLikelihood
         };
     }
+    public static double BoEi(double mu, double sd, double best, double xi) => CommonLib.Numerics.BoEi(mu, sd, best, xi);
+    public static double BoPi(double mu, double sd, double best, double xi) => CommonLib.Numerics.BoPi(mu, sd, best, xi);
+    public static double BoUcb(double mu, double sd, double kappa) => CommonLib.Numerics.BoUcb(mu, sd, kappa);
+    public static Dictionary<string, object?> BoNext(double[] x, double[] y, double[] cand, double l2, double noise, double kappa)
+    {
+        var r = CommonLib.Numerics.BoNext(x, y, cand, l2, noise, kappa);
+        return new Dictionary<string, object?> { ["Index"] = r.Index, ["Value"] = r.Value };
+    }
+    public static double GamblerRuinProb(double i, double N, double p) => CommonLib.Numerics.GamblerRuinProb(i, N, p);
+    public static double GamblerRuinDuration(double i, double N, double p) => CommonLib.Numerics.GamblerRuinDuration(i, N, p);
+    public static double AteIpw(double[] t, double[] y, double[] ps) => CommonLib.Numerics.AteIpw(t, y, ps);
+    public static double AteMatching(double[] t, double[] y, double[] ps) => CommonLib.Numerics.AteMatching(t, y, ps);
     public static double[] BoostFit(double[][] X, double[] y, long engine, long nEst, double lr, long maxDepth)
         => CommonLib.Numerics.BoostFit(X, y, (int)engine, (int)nEst, lr, (int)maxDepth);
     public static double BoostPredict(double[] model, double[] x) => CommonLib.Numerics.BoostPredict(model, x);

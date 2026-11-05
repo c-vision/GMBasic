@@ -868,6 +868,7 @@ public enum TokenKind
     MvGaussPdf, MvStudentPdf, CopulaClaytonCdf, CopulaGumbelCdf, CopulaFrankCdf,
     RmtLambdaPlus, RmtLambdaMinus, RmtCoherence, RmtSpectralNorm, RmtDavisKahan, RmtPrincipalAngle, RmtTightness,
     MvGpr, MvSvmFit, MvSvmPredict, MvGmm, MvBoostFit, MvBoostPredict, MvBoostScore,
+    MvBoei, MvBopi, MvBoucb, MvBonext, MvGamblerProb, MvGamblerDur, MvAteIpw, MvAteMatching,
     FittingPolyFit, FittingPolyEval, FittingChebEval, FittingPadeEval, FittingRSquared, FittingRSquaredTest,
     SimSeed, SimUniform, SimNormal, SimExponential, SimBernoulli, SimBinomial, SimParticle,
     KMeans,               // Clustering K-means
