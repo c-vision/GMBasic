@@ -695,6 +695,15 @@ static void gmb_bf_1064(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int fun
         (void)vm; (void)task; (void)func_code;
         bout->result = gmb_dist_chi_isf(argc >= 2 ? args[1].num : 1, args[0].num);
 }
+static void gmb_bf_1078(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
+{
+        (void)vm; (void)task;
+        double df = argc >= 2 ? args[1].num : 1, nc = argc >= 3 ? args[2].num : 0;
+        double v = func_code == 1078 ? gmb_dist_nc_chi2_pdf(df, nc, args[0].num)
+                 : func_code == 1079 ? gmb_dist_nc_chi2_cdf(df, nc, args[0].num)
+                 : gmb_dist_nc_chi2_sf(df, nc, args[0].num);
+        bout->result = v;
+}
 static void gmb_bf_1077(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
 {
         (void)vm; (void)task; (void)func_code;
@@ -17737,6 +17746,9 @@ static const gmb_bf_impl_t gmb_bf_impl_core[] = {
     { 1075, gmb_bf_1075 },
     { 1076, gmb_bf_1076 },
     { 1077, gmb_bf_1077 },
+    { 1078, gmb_bf_1078 },
+    { 1079, gmb_bf_1078 },
+    { 1080, gmb_bf_1078 },
     { 1015, gmb_bf_1013 },
     { 1017, gmb_bf_1017 },
     { 1018, gmb_bf_1018 },

@@ -73,6 +73,9 @@ internal sealed partial class PCodeProcessor
         BuiltInFunction.STATSANOVA,
         BuiltInFunction.STATS_KRUSKAL,
         BuiltInFunction.STATS_CHIISF,
+        BuiltInFunction.STATS_NCCHI2PDF,
+        BuiltInFunction.STATS_NCCHI2CDF,
+        BuiltInFunction.STATS_NCCHI2SF,
         BuiltInFunction.CHI2TEST,
         BuiltInFunction.FISHEREXACT,
         BuiltInFunction.SHAPIROWILK,
@@ -318,6 +321,18 @@ internal sealed partial class PCodeProcessor
         [BuiltInFunction.TTESTONESAMPLE] = (task, args) =>
         {
                 return HypothesisResult(CommonLib.Numerics.TTestOneSample(ToDoubleArr(ArgOr(args, 0)), SafeDouble(ArgOr(args, 1))));
+        },
+        [BuiltInFunction.STATS_NCCHI2PDF] = (task, args) =>
+        {
+                return CommonLib.Numerics.NcChi2Pdf(SafeDouble(ArgOr(args, 1, 1.0)), SafeDouble(ArgOr(args, 2, 0.0)), SafeDouble(ArgOr(args, 0)));
+        },
+        [BuiltInFunction.STATS_NCCHI2CDF] = (task, args) =>
+        {
+                return CommonLib.Numerics.NcChi2Cdf(SafeDouble(ArgOr(args, 1, 1.0)), SafeDouble(ArgOr(args, 2, 0.0)), SafeDouble(ArgOr(args, 0)));
+        },
+        [BuiltInFunction.STATS_NCCHI2SF] = (task, args) =>
+        {
+                return CommonLib.Numerics.NcChi2Sf(SafeDouble(ArgOr(args, 1, 1.0)), SafeDouble(ArgOr(args, 2, 0.0)), SafeDouble(ArgOr(args, 0)));
         },
         [BuiltInFunction.STATS_CHIISF] = (task, args) =>
         {

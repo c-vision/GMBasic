@@ -5457,6 +5457,9 @@ static int ds_chi_ppf(ctx_t* c, gmb_expr_t** a, int n) { return ds_sh2(c, a, n, 
 static int ds_chi_cdf(ctx_t* c, gmb_expr_t** a, int n) { return ds_sh2(c, a, n, "gmb_dist_chi_cdf"); }
 static int ds_chi_pdf(ctx_t* c, gmb_expr_t** a, int n) { return ds_sh2(c, a, n, "gmb_dist_chi_pdf"); }
 static int ds_chisq_cdf(ctx_t* c, gmb_expr_t** a, int n) { return ds_sh2(c, a, n, "gmb_dist_chi2_cdf"); }
+static int ds_ncchi2_pdf(ctx_t* c, gmb_expr_t** a, int n) { return ds_sh3(c, a, n, "gmb_dist_nc_chi2_pdf"); }
+static int ds_ncchi2_cdf(ctx_t* c, gmb_expr_t** a, int n) { return ds_sh3(c, a, n, "gmb_dist_nc_chi2_cdf"); }
+static int ds_ncchi2_sf(ctx_t* c, gmb_expr_t** a, int n) { return ds_sh3(c, a, n, "gmb_dist_nc_chi2_sf"); }
 static int ds_chisq_isf(ctx_t* c, gmb_expr_t** a, int n) { return ds_sh2(c, a, n, "gmb_dist_chi2_isf"); }
 static int ds_chisq_pdf(ctx_t* c, gmb_expr_t** a, int n) { return ds_sh2(c, a, n, "gmb_dist_chi2_pdf"); }
 static int ds_chisq_ppf(ctx_t* c, gmb_expr_t** a, int n) { return ds_sh2(c, a, n, "gmb_dist_chi2_ppf"); }
@@ -5507,6 +5510,9 @@ static const ds_row DS_TBL[] = {
     { GMB_TOK_StatsChiSf, ds_chi_sf },
     { GMB_TOK_ChiPdf, ds_chi_pdf },
     { GMB_TOK_ChiSquaredCdf, ds_chisq_cdf },
+    { GMB_TOK_StatsNcChi2Pdf, ds_ncchi2_pdf },
+    { GMB_TOK_StatsNcChi2Cdf, ds_ncchi2_cdf },
+    { GMB_TOK_StatsNcChi2Sf, ds_ncchi2_sf },
     { GMB_TOK_StatsChiSquaredSf, ds_chisq_sf }, 
     { GMB_TOK_ChiSquaredIsf, ds_chisq_isf },
     { GMB_TOK_ChiSquaredPdf, ds_chisq_pdf },

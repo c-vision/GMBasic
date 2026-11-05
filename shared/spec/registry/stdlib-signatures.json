@@ -22038,6 +22038,93 @@
     },
     {
       "ns": "STATS",
+      "name": "NcChi2Cdf",
+      "fn": true,
+      "return": "double",
+      "params": [
+        {
+          "name": "x",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        },
+        {
+          "name": "df",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        },
+        {
+          "name": "nc",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        }
+      ]
+    },
+    {
+      "ns": "STATS",
+      "name": "NcChi2Pdf",
+      "fn": true,
+      "return": "double",
+      "params": [
+        {
+          "name": "x",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        },
+        {
+          "name": "df",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        },
+        {
+          "name": "nc",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        }
+      ]
+    },
+    {
+      "ns": "STATS",
+      "name": "NcChi2Sf",
+      "fn": true,
+      "return": "double",
+      "params": [
+        {
+          "name": "x",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        },
+        {
+          "name": "df",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        },
+        {
+          "name": "nc",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        }
+      ]
+    },
+    {
+      "ns": "STATS",
       "name": "NegativeBinomialPmf",
       "fn": true,
       "return": "double",
