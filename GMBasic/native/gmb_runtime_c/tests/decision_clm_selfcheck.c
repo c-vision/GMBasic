@@ -167,6 +167,53 @@ int main(void)
     CHECK(gmb_clm_parse_response("{\"detail\":\"unauthorized\"}", GMB_DECISION_CHOICE, ch, 2, &r, err, sizeof err) == -1
           && strstr(err, "type"), "errore: corpo senza risposta");
 
+    /* ── testi dei candidati (upstream) ── */
+    {
+        char** ct = gmb_clm_candidate_texts(GMB_DECISION_NOUL, gmb_decision_slots_noul, 2, "  E' urgente? ");
+        CHECK(ct != NULL, "candidate_texts noul");
+        if (ct) {
+            check_str(ct[0], "false: No. This is false: E' urgente?", "noul: candidato false con istruzioni");
+            check_str(ct[1], "true: Yes. This is true: E' urgente?", "noul: candidato true con istruzioni");
+            gmb_clm_free_texts(ct, 2);
+        }
+        ct = gmb_clm_candidate_texts(GMB_DECISION_NOUL, gmb_decision_slots_noul, 2, "");
+        if (ct) { check_str(ct[0], "false: false", "noul senza istruzioni = chiave"); check_str(ct[1], "true: true", "noul true senza istruzioni"); gmb_clm_free_texts(ct, 2); }
+        ct = gmb_clm_candidate_texts(GMB_DECISION_CHOICE, ch, 2, "x");
+        if (ct) { check_str(ct[0], "Authentication", "choice: descrizione"); check_str(ct[1], "b", "choice: label=id"); gmb_clm_free_texts(ct, 2); }
+    }
+
+    /* ── RANK: richiesta, risposta, scoring su 20 candidati liberi ── */
+    {
+        const char* cands[3] = { "The Moon's pull.", "Photosynthesis.", "Round Earth." };
+        char* rr = gmb_clm_build_rank_request("What causes tides?", "", cands, 3);
+        check_str(rr, "{\"state\":\"What causes tides?\",\"questions\":{\"rank\":{\"type\":\"choice\",\"instructions\":\"\","
+                      "\"criteria\":{\"0\":\"The Moon's pull.\",\"1\":\"Photosynthesis.\",\"2\":\"Round Earth.\"}}}}", "richiesta rank");
+        free(rr);
+        float rp[3];
+        CHECK(gmb_clm_parse_rank_response("{\"model\":\"m\",\"answers\":{\"rank\":{\"type\":\"choice\",\"choice\":\"0\",\"confidence\":0.9,"
+              "\"probabilities\":{\"0\":0.9,\"1\":0.06,\"2\":0.04}}}}", 3, rp, err, sizeof err) == 0
+              && NEAR(rp[0], 0.9, 1e-6) && NEAR(rp[2], 0.04, 1e-6), "risposta rank");
+        CHECK(gmb_clm_parse_rank_response("{\"type\":\"choice\",\"choice\":\"0\",\"probabilities\":{\"0\":1}}", 3, rp, err, sizeof err) == -1
+              && strstr(err, "candidato 1"), "rank: probabilita' mancante = errore esplicito");
+    }
+    snprintf(hp, sizeof hp, "%s/h4.safetensors", dir);
+    write_head(hp, 0, (float)log(2.0));
+    write_text((snprintf(hj, sizeof hj, "%s/h4.json", dir), hj), "{\"activation\":\"relu\"}");
+    h = gmb_clm_head_load(hp, err, sizeof err);
+    if (h) {
+        const char* many[20]; float pr20[20]; gmb_clm_stats_t stt;
+        for (int i = 0; i < 20; i++) many[i] = (i == 7) ? "auth" : "billing";
+        CHECK(gmb_clm_score_texts(h, fake_embed, NULL, "Login fails", "", many, 20, pr20, &stt, err, sizeof err) == 0, "score_texts 20 candidati");
+        double sum = 0; for (int i = 0; i < 20; i++) sum += pr20[i];
+        /* fake_embed: "auth"/"Login" -> (1,0), altro -> (0,1); scala 2: i=7 ha logit 2, gli altri 19 hanno 0. */
+        double e2 = exp(2.0);
+        CHECK(NEAR(sum, 1.0, 1e-5) && NEAR(pr20[7], e2 / (e2 + 19.0), 1e-5) && NEAR(pr20[0], 1.0 / (e2 + 19.0), 1e-5),
+              "softmax su 20 candidati (oltre il limite di 16 opzioni)");
+        CHECK(stt.local == 1 && stt.embeddings == 21 && stt.ms_total >= 0 && NEAR(stt.margin, pr20[7] - pr20[0], 1e-5),
+              "statistiche: embeddings=21, margine=p1-p2");
+        gmb_clm_head_free(h);
+    }
+
     /* ── confidence ── */
     float p3[3] = { 0.5f, 0.3f, 0.2f };
     CHECK(NEAR(gmb_clm_confidence(p3, 3), 0.25, 1e-6), "confidence 0.5-0.25");

@@ -25,6 +25,31 @@ public static class NativeClm
     [DllImport(Lib, EntryPoint = "gmb_ai_decide_free_json", CallingConvention = CallingConvention.Cdecl)]
     private static extern void FreeNative(IntPtr p);
 
+    [DllImport(Lib, EntryPoint = "gmb_ai_decide_clm_stats_reset", CallingConvention = CallingConvention.Cdecl)]
+    private static extern void StatsResetNative();
+
+    [DllImport(Lib, EntryPoint = "gmb_ai_decide_clm_stats_json", CallingConvention = CallingConvention.Cdecl)]
+    private static extern IntPtr StatsJsonNative();
+
+    /// <summary>Azzera le misure clm del thread (da chiamare prima di una decisione da misurare).</summary>
+    public static void StatsReset()
+    {
+        try { StatsResetNative(); } catch (Exception ex) when (ex is DllNotFoundException or EntryPointNotFoundException) { }
+    }
+
+    /// <summary>Misure dell'ultima decisione clm su questo thread dopo <see cref="StatsReset"/>
+    /// ({"mode","ms","encoderMs","headMs","netMs","embeddings","margin","cache"}), o null se non ce n'è stata.</summary>
+    public static string? StatsJson()
+    {
+        try
+        {
+            var p = StatsJsonNative();
+            if (p == IntPtr.Zero) return null;
+            try { return Marshal.PtrToStringUTF8(p); } finally { FreeNative(p); }
+        }
+        catch (Exception ex) when (ex is DllNotFoundException or EntryPointNotFoundException) { return null; }
+    }
+
     /// <summary>Esegue AI DECIDE col provider clm. <paramref name="config"/> = config del provider %DECIDE.
     /// Ritorna il JSON del risultato o <c>{"error":"…"}</c> (anche se la libreria non è caricabile).</summary>
     public static string Run(string state, string kind, IReadOnlyDictionary<string, string> config)

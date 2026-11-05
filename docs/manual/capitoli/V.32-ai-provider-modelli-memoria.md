@@ -189,13 +189,26 @@ AI DECIDE "{""ticket"":""Login fallito dopo il reset""}", "CHOICE:auth|billing",
 - **Dalle altre gambe**: l'implementazione è una sola, nel runtime C (VM/C e C99Native la usano
   direttamente; IL e PCode la chiamano via P/Invoke dalla libreria condivisa `libgmb_clm`). Le quattro
   gambe danno lo stesso risultato.
-- **Quanto è sensibile**: la scala della head è 100, quindi differenze minime negli embedding (diverso
-  hardware o precisione) spostano molto le probabilità. Sull'esempio di ranking del README di CLM si
-  ottiene 0,9935 contro 0,993 dichiarato; sull'esempio dello smistamento del ticket 0,988 contro
-  0,939 dichiarato (stessa scelta, `billing`, ma probabilità diversa). Trattale come stime, non come
-  valori da confrontare al decimale con un'altra installazione.
-- I benchmark pubblicati dall'autore di CLM (GPU, vLLM) sono **dichiarazioni del produttore**, non
-  previsioni per questo runtime.
+- **`RANK`: scegliere fra candidati liberi.** È un *tipo* di `AI DECIDE`, non una sintassi nuova:
+  `"RANK:cand1|cand2|…"` (almeno due candidati, senza il limite di 16 opzioni di `CHOICE`) e restituisce i
+  candidati **ordinati per probabilità**. Vale solo col provider `clm`; con gli altri dà un errore esplicito.
+
+  ```basic
+  AI DECIDE "What causes tides on Earth?", "RANK:Because the Earth is round.|Photosynthesis in plants.|The Moon's gravitational pull.", "clm" INTO r
+  ' {"kind":"RANK","ranked":[{"rank":1,"candidate":"The Moon's gravitational pull.","probability":0.993527},…],"confidence":0.990290}
+  ```
+
+  Come i candidati non possono contenere `|`. In locale ogni candidato costa un passaggio dell'encoder.
+- **`AI DECIDE VERIFY` con `clm`.** Confronta provider diversi sulla stessa richiesta (accordo, deriva,
+  scarto di probabilità); per ogni provider `clm` aggiunge le **misure** dell'esecuzione: `mode`
+  (`local`/`remote`), `ms` totali, `encoderMs`, `headMs`, `netMs`, `embeddings` (quanti testi sono passati
+  dall'encoder: non c'è cache, `"cache":"off"`) e `margin` (probabilità del primo meno quella del secondo).
+- **Quanto è sensibile**: la scala della head è 100, quindi differenze minime nel coseno spostano molto le
+  probabilità. L'esempio di ranking del README di CLM si riproduce (0,9935 contro 0,993 dichiarato). Sull'esempio
+  del ticket otteniamo 0,988 contro 0,939 dichiarato (stessa scelta, `billing`): la precisione di calcolo
+  **non** è la causa (fp32 e bf16 danno 0,98792 e 0,98788), il testo dell'input coincide con il sorgente del
+  server, e il valore 0,939 compare solo nel README, non nel codice o nei suoi test. Trattale come stime, non
+  come valori da confrontare al decimale con un'altra installazione.
 
 Il ruolo di decisione si registra con la costante `%DECIDE`:
 

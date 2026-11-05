@@ -141,21 +141,37 @@ const char* gmb_ai_decide_active_model_path(void);
  * Ritorna il JSON del risultato o `{"error":"…"}` (heap: libera con gmb_ai_decide_free_json). */
 char* gmb_ai_decide_clm_run_json(const char* state, const char* kind, const char* config_json);
 void gmb_ai_decide_free_json(char* p);
+/* Misure dell'ultima decisione clm su questo thread (VERIFY e P/Invoke): reset + JSON
+ * {"mode","ms","encoderMs","headMs","netMs","embeddings","margin","cache"} o NULL se non c'è stata
+ * una decisione clm dopo il reset (libera con gmb_ai_decide_free_json). */
+void gmb_ai_decide_clm_stats_reset(void);
+char* gmb_ai_decide_clm_stats_json(void);
 
 /* 1 se la decisione in corso usa un provider `%DECIDE` di kind `verbalizer` (profilo da applicare). */
 int gmb_ai_decide_profile_active(void);
 
-/* Provider `clm` LOCALE (JEV/SystemOne): encoder MLX con pooling sull'ULTIMO token (mai la media)
- * + head di proiezione in C (`gmb_decision_clm.c`). Implementato in `gmb_ai_decide_local.c`
- * (dylib AI, dove vive il motore MLX; errore esplicito su Windows). `encoder_dir` = Qwen3-8B
- * (HF), `head_path` = safetensors prodotto da tools/c/clm_head_convert. I testi oltre 2048 token
- * sono troncati TENENDO GLI ULTIMI 2048 (come `truncate_prompt_tokens` di vLLM). `instructions`
- * può essere NULL. `out->option_id/value` puntano a `options[i]`. 1 = ok, -1 = errore in `err`. */
-int gmb_ai_decide_clm_local_run(const char* state, const char* instructions,
-                                gmb_decision_kind_t kind,
-                                const gmb_decision_option_t* options, int n_options,
-                                const char* encoder_dir, const char* head_path,
-                                gmb_decision_result_t* out, char* err, size_t errcap);
+/* Misure di UNA decisione clm (AI DECIDE VERIFY): nessuna stima, solo ciò che è stato misurato. */
+typedef struct {
+    int local;            /* 1 = encoder+head locali, 0 = server remoto */
+    int embeddings;       /* testi passati all'encoder (non c'è cache: ogni testo è un forward) */
+    double ms_total;
+    double ms_encoder;    /* locale: somma dei forward dell'encoder */
+    double ms_head;       /* locale: proiezioni + softmax */
+    double ms_net;        /* remoto: tempo della richiesta HTTP */
+    double margin;        /* p_top − p_secondo (0 con una sola opzione) */
+} gmb_clm_stats_t;
+
+/* Provider `clm` LOCALE (JEV/SystemOne): encoder MLX con pooling sull'ULTIMO token (dopo la RMSNorm
+ * finale; mai la media) + head di proiezione in C (`gmb_decision_clm.c`). Implementato in
+ * `gmb_ai_decide_local.c` (dylib AI, dove vive il motore MLX; errore esplicito su Windows).
+ * Punteggio di `texts[0..n)` (anche > 16: RANK) contro `state`+`instructions`: `probs[n]` =
+ * softmax(scala·coseno). `encoder_dir` = Qwen3-8B (HF, bf16), `head_path` = safetensors prodotto da
+ * tools/c/clm_head_convert. Testi oltre 2048 token: si tengono gli ULTIMI 2048 (come vLLM).
+ * `st` può essere NULL. 0 = ok, -1 = errore in `err`. */
+int gmb_ai_decide_clm_local_scores(const char* state, const char* instructions,
+                                   const char* const* texts, int n,
+                                   const char* encoder_dir, const char* head_path,
+                                   float* probs, gmb_clm_stats_t* st, char* err, size_t errcap);
 
 #ifdef __cplusplus
 }

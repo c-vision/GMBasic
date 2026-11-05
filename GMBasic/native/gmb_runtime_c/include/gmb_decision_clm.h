@@ -71,6 +71,26 @@ int gmb_clm_head_projection_dim(const gmb_clm_head_t* head);
 /* Embedding di un testo (pooling last-token dell'encoder). Scrive `dim` float; 0 = ok. */
 typedef int (*gmb_clm_embed_fn)(const char* text, float* out, int dim, void* ctx);
 
+/* Testi dei candidati come li vede l'action head: choice = label (o id); score = testo del livello;
+ * noul = "<k>: <d>" con d = "Yes. This is true: <istr>" / "No. This is false: <istr>" (o la chiave
+ * stessa senza istruzioni). Array heap di n stringhe: libera con gmb_clm_free_texts. */
+char** gmb_clm_candidate_texts(gmb_decision_kind_t kind, const gmb_decision_option_t* options,
+                               int n, const char* instructions);
+void gmb_clm_free_texts(char** texts, int n);
+
+/* Punteggio locale generico su testi LIBERI (anche > 16): embedding di (stato+domanda) e dei candidati,
+ * L2, proiezioni, softmax(scala·coseno) → probs[n]. `st` può essere NULL. 0 = ok, -1 = errore in `err`. */
+int gmb_clm_score_texts(const gmb_clm_head_t* head, gmb_clm_embed_fn embed, void* ctx,
+                        const char* state, const char* instructions,
+                        const char* const* texts, int n, float* probs,
+                        gmb_clm_stats_t* st, char* err, size_t errcap);
+
+/* RANK (best-of-N su candidati liberi, forma `rank` upstream = choice con chiavi "0".."n-1" e il
+ * testo del candidato come descrizione). Richiesta + risposta: `probs[i]` = probabilità del candidato i. */
+char* gmb_clm_build_rank_request(const char* state, const char* instructions,
+                                 const char* const* cands, int n);
+int gmb_clm_parse_rank_response(const char* body, int n, float* probs, char* err, size_t errcap);
+
 /* Punteggio locale: embedding di (stato+domanda) e dei candidati → proiezioni L2-normalizzate →
  * softmax(scale·cos). Candidati: choice = label (o id); score = testo del livello; noul =
  * "false: <istruzioni>" / "true: <istruzioni>". `out->option_id/value` puntano a `options[i]`.

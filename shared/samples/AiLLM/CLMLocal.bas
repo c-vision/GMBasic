@@ -25,4 +25,17 @@ SUB Main()
     AI REGISTER "team", %DECIDE, "clm", "{""head"":""~/ai/Models/CLM-v0.1-8B/clm_head.safetensors"",""encoder"":""~/ai/Models/Qwen3-8B"",""instructions"":""Which team should handle this?""}"
     AI DECIDE "Customer: my invoice was charged twice and nobody answers the phone!", "CHOICE:Charges, invoices, refunds|Bugs and outages", "team" INTO r
     PRINT "team:  "; r
+
+    ' 3) RANK: best-of-N su candidati liberi, ordinati per probabilita' (senza limite di 16 opzioni).
+    '    Nessuna sintassi nuova: e' un "kind" di AI DECIDE, valido solo col provider clm.
+    AI DECIDE "What causes tides on Earth?", "RANK:Because the Earth is round.|Photosynthesis in plants.|The Moon's gravitational pull.", "clm" INTO r
+    PRINT "rank3: "; r
+
+    ' 4) VERIFY con le misure del provider: modo, tempi, numero di forward dell'encoder, margine.
+    '    I millisecondi dipendono dalla macchina: qui si stampa solo la presenza delle misure.
+    AI DECIDE VERIFY "What causes tides on Earth?", "CHOICE:The Moon's gravitational pull.|Photosynthesis in plants.", "clm|rules" INTO r
+    ' (-1 = vero in BASIC)
+    PRINT "verify-clm-local:  "; INSTR(r, "mode"":""local") > 0
+    PRINT "verify-embeddings: "; INSTR(r, "embeddings"":3") > 0
+    PRINT "verify-agreement:  "; INSTR(r, "agreement"":true") > 0
 END SUB
