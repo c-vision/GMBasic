@@ -794,3 +794,20 @@ gmb_val_t gmb_ts_garch11_flat(const double* r, int n)
         return gmb_make_val_dict_take(&d);
     }
 }
+
+/* Kalman 1D (gmbstats gs_kalman1d), x0=z[0], p0=1. */
+double* gmb_ts_kalman1d(const double* z, int n, double a, double h, double q, double r, int* out_len)
+{
+    if (!z || n <= 0) { *out_len = 0; return NULL; }
+    double* out = (double*)malloc((size_t)n * sizeof(double));
+    if (!out) { *out_len = 0; return NULL; }
+    double x = z[0], P = 1.0;
+    for (int k = 0; k < n; k++) {
+        double xp = a * x, Pp = a * P * a + q;
+        double K = Pp * h / (h * Pp * h + r);
+        x = xp + K * (z[k] - h * xp);
+        P = (1.0 - K * h) * Pp;
+        out[k] = x;
+    }
+    *out_len = n; return out;
+}

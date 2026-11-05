@@ -602,6 +602,7 @@ public sealed partial class IlProgramCompiler
             case TokenKind.TsFracDiff: EmitTsFilterCall(expr, nameof(IlRuntime.FracDiff), 2); break;
             case TokenKind.TsGranger: EmitTimeSeriesTwoArrayLongCall(expr, nameof(IlRuntime.TsGranger)); break;
             case TokenKind.TsGarch11: EmitAnalysisArrayCall(expr, nameof(IlRuntime.TsGarch11)); break;
+            case TokenKind.TsKalman1D: EmitTimeSeriesArrayFourDoubleCall(expr, nameof(IlRuntime.Kalman1D)); break;
             case TokenKind.Autocorrelation: EmitTimeSeriesArrayLongCall(expr, nameof(IlRuntime.Autocorrelation)); break;
             case TokenKind.Deseasonalize: EmitTimeSeriesArrayLongCall(expr, nameof(IlRuntime.Deseasonalize)); break;
             case TokenKind.Decompose: EmitTimeSeriesArrayLongCall(expr, nameof(IlRuntime.Decompose)); break;

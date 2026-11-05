@@ -2148,6 +2148,7 @@ double gmb_hurst_dfa(const double* x, int n, int min_box);
 double* gmb_ts_fracdiff(const double* x, int n, double d, int* out_len);
 gmb_val_t gmb_ts_granger_flat(const double* x, int nx, const double* y, int ny, int p);
 gmb_val_t gmb_ts_garch11_flat(const double* r, int n);
+double* gmb_ts_kalman1d(const double* z, int n, double a, double h, double q, double r, int* out_len);
 gmb_double_t** gmb_ts_covariance_obs(const double* const* obs, int n_obs, int n_vars);
 /* MOUSE getters (MOUSE.BUTTON/WHEEL/DBLCLICK/PRESENT/MIDDLE): stato mouse TUI corrente
  * (0 in headless). Implementati in gmb_tui_clipper.c, condivisi da VM/C,
