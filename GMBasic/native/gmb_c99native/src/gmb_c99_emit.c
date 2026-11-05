@@ -7595,6 +7595,7 @@ static const gmb_bf_row_t gmb_bf_composite[] = {
     { NULL, GMB_TOK_TsFracDiff, emit_bf_ts },
     { NULL, GMB_TOK_TsKalman1D, emit_bf_ts },
     { NULL, GMB_TOK_TsStationaryBootstrap, emit_bf_ts },
+    { NULL, GMB_TOK_TsSampleEntropy, emit_bf_ts },
     { NULL, GMB_TOK_Base58Encode, emit_bf_encoding },
     { NULL, GMB_TOK_Base32Encode, emit_bf_encoding },
     { NULL, GMB_TOK_ToBase64, emit_bf_encoding },

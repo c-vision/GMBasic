@@ -2356,6 +2356,8 @@ static const gmb_fn_lookup_row_t gmb_fn_lookup[] = {
     { "TSROLLSORTINO", GMB_TOK_RollingSortino },
     { "TSROLLSTDDEV", GMB_TOK_RollingStdDev },
     { "TSROLLZSCORE", GMB_TOK_RollingZScore },
+    { "TSSAMPEN", GMB_TOK_TsSampleEntropy },
+    { "TsSampleEntropy", GMB_TOK_TsSampleEntropy },
     { "TsStationaryBootstrap", GMB_TOK_TsStationaryBootstrap },
     { "TSSTATIONARYBOOTSTRAP", GMB_TOK_TsStationaryBootstrap },
     { "TSVOLATILITY", GMB_TOK_Volatility },

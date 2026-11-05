@@ -881,6 +881,27 @@ public static partial class Numerics
     }
 
     /// <summary>Hurst exponent via DFA (gmbstats gs_hurst_dfa).</summary>
+    public static double SampleEntropy(double[] x, int m, double r)
+    {
+        var n = x.Length;
+        if (n < m + 1 || m < 1 || r <= 0) return double.NaN;
+        double Dist(int i, int j, int mm)
+        {
+            double d = 0;
+            for (var k = 0; k < mm; k++) d = Math.Max(d, Math.Abs(x[i + k] - x[j + k]));
+            return d;
+        }
+        double b = 0, a = 0;
+        for (var i = 0; i < n - m; i++)
+            for (var j = 0; j < n - m; j++)
+                if (i != j && Dist(i, j, m) <= r) b++;
+        for (var i = 0; i < n - m - 1; i++)
+            for (var j = 0; j < n - m - 1; j++)
+                if (i != j && Dist(i, j, m + 1) <= r) a++;
+        if (b == 0 || a == 0) return double.NaN;
+        return -Math.Log(a / b);
+    }
+
     public static double[] StationaryBootstrap(double[] x, int window, int seed)
     {
         var n = x.Length;
