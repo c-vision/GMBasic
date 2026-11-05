@@ -21503,6 +21503,21 @@
     },
     {
       "ns": "STATS",
+      "name": "Kruskal",
+      "fn": true,
+      "return": "ANY",
+      "params": [
+        {
+          "name": "groups",
+          "type": "double[][]",
+          "optional": false,
+          "byRef": false,
+          "array": true
+        }
+      ]
+    },
+    {
+      "ns": "STATS",
       "name": "Ks",
       "fn": true,
       "return": "ANY",

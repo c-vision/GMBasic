@@ -1127,6 +1127,7 @@ static const gmb_ns_lookup_row_t gmb_ns_lookup[] = {
     { "STATS", "Iqr", GMB_TOK_StatsIqr },
     { "STATS", "JarqueBera", GMB_TOK_StatsJarqueBera },
     { "STATS", "KendallTau", GMB_TOK_StatsKendallTau },
+    { "STATS", "Kruskal", GMB_TOK_StatsKruskal },
     { "STATS", "Ks", GMB_TOK_KolmogorovSmirnov },
     { "STATS", "Kurtosis", GMB_TOK_Kurtosis },
     { "STATS", "KurtosisTest", GMB_TOK_StatsKurtosisTest },

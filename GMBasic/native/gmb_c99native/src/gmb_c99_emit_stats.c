@@ -53,6 +53,7 @@ static const sd_row SD_TBL[] = {
     { GMB_TOK_StatsSpearmanR, SD_TWO_FLAT, "gmb_spearmanr_flat" },
     { GMB_TOK_StatsKendallTau, SD_TWO_FLAT, "gmb_kendalltau_flat" },
     { GMB_TOK_StatsFTest, SD_TWO_FLAT, "gmb_ftest_flat" },
+    { GMB_TOK_StatsKruskal, SD_ONE_VAL, "gmb_kruskal" },
     { GMB_TOK_StatsLinRegress, SD_TWO_FLAT, "gmb_linregress_flat" },
     { GMB_TOK_StatsMannWhitney, SD_TWO_FLAT, "gmb_mannwhitney_flat" },
     { GMB_TOK_StatsWilcoxon, SD_TWO_FLAT, "gmb_wilcoxon_flat" },
@@ -81,13 +82,13 @@ int emit_bf_stats_dict(ctx_t* c, const char* name, const char* ns, gmb_tokenkind
         if (n != 1) return 0;
         /* ANOVA su matrice jagged (DIM groups(k) AS ARRAY OF DOUBLE): righe uniformi →
          * sizes tutte uguali a groups__cols (stesso schema del ramo STATS.Anova). */
-        if (tk == GMB_TOK_StatsAnova && a[0] && a[0]->kind == GMB_EXPR_VAR && a[0]->var) {
+        if ((tk == GMB_TOK_StatsAnova || tk == GMB_TOK_StatsKruskal) && a[0] && a[0]->kind == GMB_EXPR_VAR && a[0]->var) {
             var_t* jv = lookup_var(c, a[0]->var);
             if (jv && jv->jagged) {
                 sb_put(&c->out, "({ int __asz[256]; int __an = (int)(");
                 sb_bound_var(&c->out, jv, 0);
                 sb_put(&c->out, " + 1); for (int __ai = 0; __ai < __an && __ai < 256; __ai++) __asz[__ai] = (int)(");
-                emit_ident(c, jv->name); sb_put(&c->out, "__cols); gmb_anova_jagged((const double* const*)");
+                emit_ident(c, jv->name); sb_put(&c->out, "__cols); "); sb_put(&c->out, tk == GMB_TOK_StatsKruskal ? "gmb_kruskal_jagged" : "gmb_anova_jagged"); sb_put(&c->out, "((const double* const*)");
                 emit_var_ref(c, jv);
                 sb_put(&c->out, ", __asz, __an); })");
                 return 1;

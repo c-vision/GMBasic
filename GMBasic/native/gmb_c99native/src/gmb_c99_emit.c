@@ -1516,7 +1516,8 @@ static int dim_val_init_kind(const gmb_expr_t* e) {
         || e->tk == GMB_TOK_StatsWilcoxon || e->tk == GMB_TOK_StatsSkewTest
         || e->tk == GMB_TOK_StatsKurtosisTest || e->tk == GMB_TOK_StatsJarqueBera
         || e->tk == GMB_TOK_StatsDescribe || e->tk == GMB_TOK_StatsChi2Contingency
-        || e->tk == GMB_TOK_StatsKendallTau || e->tk == GMB_TOK_StatsFTest) return 2;
+        || e->tk == GMB_TOK_StatsKendallTau || e->tk == GMB_TOK_StatsFTest
+        || e->tk == GMB_TOK_StatsKruskal) return 2;
     /* letterale tupla (a, b, ...) → gmb_val_tuple, gmb_val_t boxed (vedi emit_tuple_lit). */
     if (strcmp(e->var, "_tuple_lit_") == 0) return 1;
     /* Costruttori COLLEZIONE/oggetto che emettono GIÀ un gmb_val_t: NEW LIST/DICT/SET/…
@@ -7012,6 +7013,7 @@ static const gmb_bf_row_t gmb_bf_composite[] = {
     { NULL, GMB_TOK_NormalTest, emit_bf_stats_dict },
     { NULL, GMB_TOK_StatsPearsonR, emit_bf_stats_dict },
     { NULL, GMB_TOK_StatsKendallTau, emit_bf_stats_dict }, { NULL, GMB_TOK_StatsFTest, emit_bf_stats_dict },
+    { NULL, GMB_TOK_StatsKruskal, emit_bf_stats_dict },
     { NULL, GMB_TOK_StatsSpearmanR, emit_bf_stats_dict },
     { NULL, GMB_TOK_StatsLinRegress, emit_bf_stats_dict },
     { NULL, GMB_TOK_StatsMannWhitney, emit_bf_stats_dict },

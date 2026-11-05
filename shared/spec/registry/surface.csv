@@ -1159,6 +1159,7 @@ procedure,STATS,HypergeometricPmf,HypergeometricPmf
 procedure,STATS,Iqr,StatsIqr
 procedure,STATS,JarqueBera,StatsJarqueBera
 procedure,STATS,KendallTau,StatsKendallTau
+procedure,STATS,Kruskal,StatsKruskal
 procedure,STATS,Ks,KolmogorovSmirnov
 procedure,STATS,Kurtosis,Kurtosis
 procedure,STATS,KurtosisTest,StatsKurtosisTest

@@ -2111,6 +2111,9 @@ double* gmb_find_peaks_alloc(const double* x, int n, double distance, gmb_int_t*
 gmb_int_t gmb_solve_ivp_c99(gmb_fn_t fn, double* y0, int n, double t0, double t1);
 gmb_val_t gmb_anova_flat(const double* data, const int* sizes, int k);
 gmb_val_t gmb_anova_jagged(const double* const* rows, const int* sizes, int k);
+gmb_val_t gmb_kruskal_flat(const double* data, const int* sizes, int k);
+gmb_val_t gmb_kruskal_jagged(const double* const* rows, const int* sizes, int k);
+gmb_val_t gmb_kruskal(gmb_val_t groups_val);
 /* Argomenti da riga di comando (salvati da main via gmb_set_command_args). */
 void gmb_set_command_args(int argc, char** argv);
 /* ENV$(nome) / ENV.HAS(nome) — lettura esplicita dell'ambiente (sola lettura). */

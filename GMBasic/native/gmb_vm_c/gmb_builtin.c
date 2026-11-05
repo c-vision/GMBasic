@@ -690,6 +690,14 @@ static void gmb_bf_1000_c1000(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, i
     gmb_val_t r = gmb_pearsonr(xv, yv);
     gmb_vm_set_dict_result_owned(r, &bout->is_num, &bout->result_ref, &bout->result_ref_bt);
 }
+static void gmb_bf_1063(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
+{
+    (void)vm; (void)task; (void)func_code;
+    gmb_val_t groups = gmb_vm_arg_list(argc >= 1 ? &args[0] : NULL);
+    gmb_val_t r = gmb_kruskal(groups);
+    bout->result = 0;
+    gmb_vm_set_dict_result_owned(r, &bout->is_num, &bout->result_ref, &bout->result_ref_bt);
+}
 static void gmb_bf_1059(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
 {
         (void)vm; (void)task; (void)func_code;
@@ -17589,6 +17597,7 @@ static const gmb_bf_impl_t gmb_bf_impl_core[] = {
     { 1060, gmb_bf_1060 },
     { 1061, gmb_bf_1061 },
     { 1062, gmb_bf_1062 },
+    { 1063, gmb_bf_1063 },
     { 1015, gmb_bf_1013 },
     { 1017, gmb_bf_1017 },
     { 1018, gmb_bf_1018 },

@@ -64,6 +64,36 @@ public static partial class Numerics
         return PearsonR(rx, ry);
     }
 
+    public static StatisticalTestResult Kruskal(double[][] groups)
+    {
+        var k = groups.Length;
+        if (k < 2) return new StatisticalTestResult(double.NaN, double.NaN, double.NaN);
+        var total = groups.Sum(g => g.Length);
+        if (total == 0) return new StatisticalTestResult(double.NaN, double.NaN, double.NaN);
+        var flat = new double[total];
+        var sizes = new int[k];
+        var pos = 0;
+        for (var i = 0; i < k; i++)
+        {
+            sizes[i] = groups[i].Length;
+            Array.Copy(groups[i], 0, flat, pos, sizes[i]);
+            pos += sizes[i];
+        }
+        var ranks = RankData(flat, total);
+        double h = 0;
+        var off = 0;
+        for (var g = 0; g < k; g++)
+        {
+            double rsum = 0;
+            for (var i = 0; i < sizes[g]; i++) rsum += ranks[off++];
+            if (sizes[g] > 0) h += rsum * rsum / sizes[g];
+        }
+        h = 12.0 / (total * (double)(total + 1)) * h - 3.0 * (total + 1);
+        var df = k - 1d;
+        var p = 1.0 - ChiSquaredCdf(df, h);
+        return new StatisticalTestResult(h, p, df);
+    }
+
     public static StatisticalTestResult KendallTau(double[] x, double[] y)
     {
         var n = Math.Min(x.Length, y.Length);

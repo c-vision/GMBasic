@@ -8198,6 +8198,8 @@ public static double TextWidth(string s)
     public static Dictionary<string, object?> TTest(double[] first, double[] second) => HypothesisResult(CommonLib.Numerics.TTestIndependent(first, second));
     public static Dictionary<string, object?> TTestPaired(double[] first, double[] second) => HypothesisResult(CommonLib.Numerics.TTestPaired(first, second));
     public static Dictionary<string, object?> TTestOneSample(double[] sample, double populationMean) => HypothesisResult(CommonLib.Numerics.TTestOneSample(sample, populationMean));
+    public static Dictionary<string, object?> StatsKruskal(double[][] groups) => HypothesisResult(CommonLib.Numerics.Kruskal(groups));
+
     public static Dictionary<string, object?> StatsAnova(double[][] groups)
     {
         var (statistic, pValue, _, _) = CommonLib.Numerics.Anova(groups);

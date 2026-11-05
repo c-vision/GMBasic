@@ -1,18 +1,18 @@
 {
   "canonical": {
-    "count": 1579,
+    "count": 1580,
     "namespaces": 74
   },
   "enum_cs": {
-    "tokenkind_members": 2536,
+    "tokenkind_members": 2537,
     "builtinfunction_members": 0,
-    "builtinfunction_explicit_values": 1252,
+    "builtinfunction_explicit_values": 1253,
     "builtinfunction_dup_code_groups": 0,
     "builtinfunction_dup_members": 0
   },
   "builtinfunction_dup_codes_sample": [],
   "enum_c": {
-    "tokenkind_header_members": 2678
+    "tokenkind_header_members": 2679
   },
   "c_from_name_uses_excl_impl": 4,
   "canonical_kindNames_not_in_cs_tokenkind": 0,

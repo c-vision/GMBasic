@@ -71,6 +71,7 @@ internal sealed partial class PCodeProcessor
         BuiltInFunction.TTESTPAIRED,
         BuiltInFunction.TTESTONESAMPLE,
         BuiltInFunction.STATSANOVA,
+        BuiltInFunction.STATS_KRUSKAL,
         BuiltInFunction.CHI2TEST,
         BuiltInFunction.FISHEREXACT,
         BuiltInFunction.SHAPIROWILK,
@@ -316,6 +317,10 @@ internal sealed partial class PCodeProcessor
         [BuiltInFunction.TTESTONESAMPLE] = (task, args) =>
         {
                 return HypothesisResult(CommonLib.Numerics.TTestOneSample(ToDoubleArr(ArgOr(args, 0)), SafeDouble(ArgOr(args, 1))));
+        },
+        [BuiltInFunction.STATS_KRUSKAL] = (task, args) =>
+        {
+                return HypothesisResult(CommonLib.Numerics.Kruskal(ToJaggedArr(ArgOr(args, 0))));
         },
         [BuiltInFunction.STATSANOVA] = (task, args) =>
         {
