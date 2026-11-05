@@ -240,6 +240,10 @@ typedef struct {
     int    quiet;
 } DpCtx;
 
+/* Definita sotto (usa dp_copy/dp_each_dep, che stanno piu' in basso): dp_visit la chiama per
+ * ogni file copiato, così SDL3 segue SDL2 in OGNI contesto di deploy, non solo in dp_closure. */
+static void dp_ensure_sdl3(DpCtx* c);
+
 static void dp_visit(const char* dep, void* vctx)
 {
     DpCtx* c = (DpCtx*)vctx;
@@ -263,7 +267,43 @@ static void dp_visit(const char* dep, void* vctx)
         if (!dp_copy(src, dst)) return;
         if (!c->quiet) fprintf(stderr, "gmb: lib -> %s\n", dst);
     }
+    /* QUI e non solo in dp_closure: `libSDL2` viene copiata da `dp_closure_file`
+     * (contesto DpCtx separato, es. come dipendenza di `libgmb_gfx`), dove il set di
+     * `dp_closure` non la vede — cosi' SDL3 mancava nel bundle e l'eseguibile abortiva.
+     * Idempotente: se SDL2 non è nel set, non fa nulla. */
+    dp_ensure_sdl3(c);
     dp_each_dep(src, dp_visit, c);
+}
+
+/* SDL2 e SDL3 sono un'UNITÀ INDIVISIBILE.
+ *
+ * La `libSDL2` distribuita è sdl2-compat: carica `libSDL3` con `dlopen` a RUNTIME, quindi
+ * `otool -L`/`readelf -d` NON la elencano e la chiusura automatica la ignora. Risultato reale
+ * (2026-11-04): bundle con `libSDL2.dylib` + `libSDL2_ttf.dylib` e senza `libSDL3.dylib` →
+ * l'eseguibile partiva e moriva con "Failed loading SDL3 library" su ogni macchina dove la
+ * cache `~/.gmbasic/libs/<rid>` non c'era. Se SDL2 sta nel bundle, SDL3 ci sta sempre. */
+static void dp_ensure_sdl3(DpCtx* c)
+{
+    int need = 0;
+    for (int i = 0; i < c->nseen; i++)
+        if (strncmp(c->seen[i], "libSDL2", 7) == 0 || strncmp(c->seen[i], "SDL2", 4) == 0) { need = 1; break; }
+    if (!need) return;
+    static const char* cand[] = { "libSDL3.dylib", "libSDL3.so.0", "libSDL3.so", "SDL3.dll" };
+    for (size_t k = 0; k < sizeof cand / sizeof cand[0]; k++) {
+        if (dp_is_seen(c->seen, c->nseen, cand[k])) continue;
+        char dst[CLI_PATH];
+        snprintf(dst, sizeof dst, "%s/%s", c->dst, cand[k]);
+        if (is_file(dst)) { snprintf(c->seen[c->nseen++], sizeof c->seen[0], "%s", cand[k]); continue; }
+        for (int i = 0; i < c->ndirs; i++) {
+            char p[CLI_PATH];
+            snprintf(p, sizeof p, "%s/%s", c->dirs[i], cand[k]);
+            if (!is_file(p)) continue;
+            if (dp_copy(p, dst) && !c->quiet) fprintf(stderr, "gmb: lib -> %s (compagna di SDL2)\n", dst);
+            if (c->nseen < DP_MAX_SEEN) snprintf(c->seen[c->nseen++], sizeof c->seen[0], "%s", cand[k]);
+            dp_each_dep(p, dp_visit, c);   /* le dipendenze di SDL3 (di sistema) */
+            break;
+        }
+    }
 }
 
 /* Cartelle in cui risolvere le dipendenze: output, cache del RID, build del checkout. */
@@ -306,6 +346,7 @@ static void dp_closure(const char* exe, const char* install, const char* dst, in
     dp_mkdir_p(dst);
     dp_add_shadow_dirs(&c, exe, install);
     dp_each_dep(exe, dp_visit, &c);
+    dp_ensure_sdl3(&c);   /* sdl2-compat → libSDL3 non compare in otool: va aggiunta a mano */
 }
 
 static const char* dp_rid(void) { return GMB_RID_STR; }
