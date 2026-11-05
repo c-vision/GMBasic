@@ -1300,6 +1300,7 @@ static const gmb_ns_lookup_row_t gmb_ns_lookup[] = {
     { "TIMESERIES", "TSLOWPASS", GMB_TOK_TsLowPass },
     { "TIMESERIES", "TSMA", GMB_TOK_MovingAverage },
     { "TIMESERIES", "TSMINMAX", GMB_TOK_TimeSeriesMinMax },
+    { "TIMESERIES", "TSOUFIT", GMB_TOK_TsOuFit },
     { "TIMESERIES", "TSOUTLIERS", GMB_TOK_Outliers },
     { "TIMESERIES", "TSRETURNS", GMB_TOK_Returns },
     { "TIMESERIES", "TSROLLAUTOCORR", GMB_TOK_RollingAutocorrelation },

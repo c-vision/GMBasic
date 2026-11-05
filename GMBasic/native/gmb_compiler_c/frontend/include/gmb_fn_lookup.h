@@ -2340,6 +2340,8 @@ static const gmb_fn_lookup_row_t gmb_fn_lookup[] = {
     { "TSLOWPASS", GMB_TOK_TsLowPass },
     { "TSMA", GMB_TOK_MovingAverage },
     { "TSMINMAX", GMB_TOK_TimeSeriesMinMax },
+    { "TsOuFit", GMB_TOK_TsOuFit },
+    { "TSOUFIT", GMB_TOK_TsOuFit },
     { "TSOUTLIERS", GMB_TOK_Outliers },
     { "TsPermEntropy", GMB_TOK_TsPermEntropy },
     { "TSRETURNS", GMB_TOK_Returns },
