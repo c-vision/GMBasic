@@ -2311,6 +2311,8 @@ static const gmb_fn_lookup_row_t gmb_fn_lookup[] = {
     { "Trim", GMB_TOK_Trim },
     { "Trunc", GMB_TOK_Trunc },
     { "TRYLOCK", GMB_TOK_MutexTryLock },
+    { "TsApproxEntropy", GMB_TOK_TsApproxEntropy },
+    { "TSAPPROXENTROPY", GMB_TOK_TsApproxEntropy },
     { "TSAUTOCORR", GMB_TOK_Autocorrelation },
     { "TsBandPass", GMB_TOK_TsBandPass },
     { "TSBANDPASS", GMB_TOK_TsBandPass },

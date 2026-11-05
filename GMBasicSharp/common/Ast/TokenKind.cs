@@ -2024,6 +2024,7 @@ public enum TokenKind
     TsKalman1D,
     TsStationaryBootstrap,
     TsSampleEntropy,
+    TsApproxEntropy,
     StatsChi2Contingency, StatsMannWhitney, StatsWilcoxon,
     StatsGammaPdf, StatsGammaCdf, StatsGammaPpf, StatsGammaIsf,
     StatsSkewTest, StatsKurtosisTest, StatsJarqueBera,

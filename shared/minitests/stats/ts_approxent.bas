@@ -1,0 +1,8 @@
+' EXPECT: apen= 0.231113
+SUB Main()
+  DIM x(59) AS DOUBLE
+  FOR i = 0 TO 59
+    x(i) = SIN(i * 0.2)
+  NEXT i
+  PRINT "apen="; MATH.ROUND(TIMESERIES.TSAPPROXENTROPY(x, 2, 0.2), 6)
+END SUB

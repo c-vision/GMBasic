@@ -2149,6 +2149,7 @@ public static partial class IlRuntime
     public static double[] Kalman1D(double[] z, double a, double h, double q, double r) => CommonLib.Numerics.Kalman1D(z, a, h, q, r);
     public static double[] StationaryBootstrap(double[] x, long window, long seed) => CommonLib.Numerics.StationaryBootstrap(x, (int)window, (int)seed);
     public static double SampleEntropy(double[] x, long m, double r) => CommonLib.Numerics.SampleEntropy(x, (int)m, r);
+    public static double ApproxEntropy(double[] x, long m, double r) => CommonLib.Numerics.ApproxEntropy(x, (int)m, r);
 
     public static Dictionary<string, object?> TsGarch11(double[] r)
     {

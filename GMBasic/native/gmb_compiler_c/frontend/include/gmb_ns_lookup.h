@@ -1281,6 +1281,7 @@ static const gmb_ns_lookup_row_t gmb_ns_lookup[] = {
     { "TIMESERIES", "Arima", GMB_TOK_Arima },
     { "TIMESERIES", "HoltWinters", GMB_TOK_HoltWinters },
     { "TIMESERIES", "MaCoefficients", GMB_TOK_MaCoefficients },
+    { "TIMESERIES", "TSAPPROXENTROPY", GMB_TOK_TsApproxEntropy },
     { "TIMESERIES", "TSAUTOCORR", GMB_TOK_Autocorrelation },
     { "TIMESERIES", "TSBANDPASS", GMB_TOK_TsBandPass },
     { "TIMESERIES", "TSBANDSTOP", GMB_TOK_TsBandStop },
