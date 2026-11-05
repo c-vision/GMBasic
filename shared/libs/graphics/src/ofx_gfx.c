@@ -381,3 +381,208 @@ int ofx_gfx_img_poisson(const double* target, const double* source, const double
     free(m);
     return rc;
 }
+
+/* ── geometria 2D completa (gfxshape.inc) ─────────────────────────────────── */
+
+static gm_aabb2 box2_in(const double* b)
+{
+    gm_aabb2 a;
+    a.min.x = b[0]; a.min.y = b[1];
+    a.max.x = b[2]; a.max.y = b[3];
+    return a;
+}
+static void box2_out(gm_aabb2 a, double* out)
+{
+    out[0] = a.min.x; out[1] = a.min.y; out[2] = a.max.x; out[3] = a.max.y;
+}
+static gm_vec2 v2(const double* p) { gm_vec2 v; v.x = p[0]; v.y = p[1]; return v; }
+static void v2_out(gm_vec2 v, double* out) { out[0] = v.x; out[1] = v.y; }
+static gm_ray2 ray2_in(const double* r)
+{
+    gm_ray2 x;
+    x.origin.x = r[0]; x.origin.y = r[1];
+    x.dir.x = r[2]; x.dir.y = r[3];
+    return x;
+}
+
+double ofx_gfx_shape_dist(const double* a, const double* b)
+{
+    if (!a || !b) return 0.0;
+    return gm_shape_distance(v2(a), v2(b));
+}
+
+int ofx_gfx_shape_aabb_from_points(const double* pts, int nvalues, double* out)
+{
+    if (!pts || !out || nvalues < 2) return -1;
+    int n = nvalues / 2;
+    gm_vec2* v = (gm_vec2*)malloc(sizeof(gm_vec2) * (size_t)n);
+    if (!v) return -1;
+    for (int i = 0; i < n; i++) v[i] = v2(pts + 2 * i);
+    gm_aabb2 b = gm_aabb2_from_points(v, n);
+    free(v);
+    box2_out(b, out);
+    return 0;
+}
+
+int ofx_gfx_shape_aabb_merge(const double* a, const double* b, double* out)
+{ if (!a || !b || !out) return -1; box2_out(gm_aabb2_merge(box2_in(a), box2_in(b)), out); return 0; }
+int ofx_gfx_shape_aabb_center(const double* a, double* out)
+{ if (!a || !out) return -1; v2_out(gm_aabb2_center(box2_in(a)), out); return 0; }
+int ofx_gfx_shape_aabb_extents(const double* a, double* out)
+{ if (!a || !out) return -1; v2_out(gm_aabb2_extents(box2_in(a)), out); return 0; }
+int ofx_gfx_shape_aabb_valid(const double* a)
+{ if (!a) return 0; return gm_aabb2_valid(box2_in(a)); }
+
+int ofx_gfx_shape_closest_ray(const double* ray, const double* p, double* out)
+{ if (!ray || !p || !out) return -1; v2_out(gm_shape_closest_point_ray(ray2_in(ray), v2(p)), out); return 0; }
+int ofx_gfx_shape_closest_aabb(const double* box, const double* p, double* out)
+{ if (!box || !p || !out) return -1; v2_out(gm_shape_closest_point_aabb2(box2_in(box), v2(p)), out); return 0; }
+int ofx_gfx_shape_closest_circle(double cx, double cy, double r, const double* p, double* out)
+{
+    if (!p || !out) return -1;
+    gm_vec2 c = { cx, cy };
+    gm_circle cir = gm_circle_make(c, r);
+    v2_out(gm_shape_closest_point_circle(cir, v2(p)), out);
+    return 0;
+}
+int ofx_gfx_shape_closest_aabb_aabb(const double* a, const double* b, double* out)
+{ if (!a || !b || !out) return -1; v2_out(gm_shape_closest_point_aabb2_aabb2(box2_in(a), box2_in(b)), out); return 0; }
+
+int ofx_gfx_shape_circle_circle(const double* c1, double r1, const double* c2, double r2)
+{
+    if (!c1 || !c2) return 0;
+    gm_vec2 a = { c1[0], c1[1] }, b = { c2[0], c2[1] };
+    return gm_shape_circle_circle(gm_circle_make(a, r1), gm_circle_make(b, r2));
+}
+int ofx_gfx_shape_aabb_aabb(const double* a, const double* b)
+{ if (!a || !b) return 0; return gm_shape_aabb2_aabb2(box2_in(a), box2_in(b)); }
+int ofx_gfx_shape_aabb_circle(const double* a, double cx, double cy, double r)
+{
+    if (!a) return 0;
+    gm_vec2 c = { cx, cy };
+    return gm_shape_aabb2_circle(box2_in(a), gm_circle_make(c, r));
+}
+
+int ofx_gfx_shape_ray2_circle(const double* ray, double cx, double cy, double r, double* t)
+{
+    if (!ray || !t) return -1;
+    gm_vec2 c = { cx, cy };
+    gm_circle cir = gm_circle_make(c, r);
+    gm_real tt = 0;
+    int hit = gm_shape_ray2_circle(ray2_in(ray), cir, &tt);
+    t[0] = tt;
+    return hit;
+}
+int ofx_gfx_shape_ray2_aabb(const double* ray, const double* box, double* t)
+{
+    if (!ray || !box || !t) return -1;
+    gm_real tmin = 0, tmax = 0;
+    int hit = gm_shape_ray2_aabb2(ray2_in(ray), box2_in(box), &tmin, &tmax);
+    t[0] = tmin; t[1] = tmax;
+    return hit;
+}
+int ofx_gfx_shape_ray2_segment(const double* ray, const double* a, const double* b, double* t)
+{
+    if (!ray || !a || !b || !t) return -1;
+    gm_real tt = 0;
+    int hit = gm_shape_ray2_segment(ray2_in(ray), v2(a), v2(b), &tt);
+    t[0] = tt;
+    return hit;
+}
+
+int ofx_gfx_shape_barycentric(const double* a, const double* b, const double* c,
+                              const double* p, double* out)
+{
+    if (!a || !b || !c || !p || !out) return -1;
+    gm_real wa = 0, wb = 0, wc = 0;
+    int rc = gm_shape_barycentric(v2(a), v2(b), v2(c), v2(p), &wa, &wb, &wc);
+    out[0] = wa; out[1] = wb; out[2] = wc;
+    return rc;
+}
+
+int ofx_gfx_shape_point_in_oriented_rect(const double* center, const double* u, const double* v,
+                                         double half_u, double half_v, const double* p)
+{
+    if (!center || !u || !v || !p) return 0;
+    return gm_shape_point_in_oriented_rect(v2(center), v2(u), v2(v), half_u, half_v, v2(p));
+}
+
+int ofx_gfx_shape_point_in_quad(const double* a, const double* b, const double* c,
+                                const double* d, const double* p)
+{
+    if (!a || !b || !c || !d || !p) return 0;
+    return gm_shape_point_in_quad(v2(a), v2(b), v2(c), v2(d), v2(p));
+}
+
+double ofx_gfx_shape_hex_area(double side) { return gm_hex_area(side); }
+double ofx_gfx_shape_hex_long(double side) { return gm_hex_long_diagonal(side); }
+double ofx_gfx_shape_hex_short(double side) { return gm_hex_short_diagonal(side); }
+double ofx_gfx_shape_hex_inner(double side) { return gm_hex_inner_radius(side); }
+
+double ofx_gfx_shape_polygon_signed_area(const double* pts, int nvalues)
+{
+    int n = 0;
+    gm_vec2* v = pts_from(pts, nvalues, &n);
+    if (!v || n < 3) { free(v); return 0.0; }
+    double a = gm_shape_polygon_signed_area(v, n);
+    free(v);
+    return a;
+}
+
+double ofx_gfx_shape_chamfer(const double* A, int nvalues_a, const double* B, int nvalues_b)
+{
+    if (!A || !B || nvalues_a < 3 || nvalues_b < 3) return 0.0;
+    return gm_shape_chamfer(A, nvalues_a / 3, B, nvalues_b / 3);
+}
+double ofx_gfx_shape_hausdorff(const double* A, int nvalues_a, const double* B, int nvalues_b)
+{
+    if (!A || !B || nvalues_a < 3 || nvalues_b < 3) return 0.0;
+    return gm_shape_hausdorff(A, nvalues_a / 3, B, nvalues_b / 3);
+}
+
+/* ── superficie: colormap e heatmap (gfxcolor.inc / gfx2d.inc) ───────────── */
+
+#include "gm_gfx_bitmap.h"
+#include "gm_gfx_surface.h"
+
+int ofx_gfx_colormap(double t, double* out)
+{
+    unsigned char r = 0, g = 0, b = 0;
+    if (!out) return -1;
+    gm_gfx_colormap(t, &r, &g, &b);
+    out[0] = r; out[1] = g; out[2] = b;
+    return 0;
+}
+
+/* Heatmap: z[nx*ny] -> out() = nx*ny colori impacchettati (0x40000000|RGB), pronti per
+ * CANVAS SET (stesso formato di GRAPHICS.RGB dopo il packing). */
+int ofx_gfx_heatmap(const double* z, int nx, int ny, double zmin, double zmax, double* out)
+{
+    if (!z || !out || nx <= 0 || ny <= 0) return -1;
+    /* gm_gfx_heatmap libera out->data se non-NULL: il bitmap va azzerato (stack garbage
+     * causava free() su un puntatore casuale -> SIGABRT). */
+    gm_bitmap bm = { 0, 0, NULL };
+    if (gm_gfx_heatmap(z, nx, ny, zmin, zmax, &bm) != 0) return -1;
+    for (int i = 0; i < bm.w * bm.h; i++)
+    {
+        unsigned char r = bm.data[3 * i + 0];
+        unsigned char g = bm.data[3 * i + 1];
+        unsigned char b = bm.data[3 * i + 2];
+        out[i] = (double)(0x40000000u | ((uint32_t)r << 16) | ((uint32_t)g << 8) | (uint32_t)b);
+    }
+    gm_bitmap_free(&bm);
+    return 0;
+}
+
+/* Volume 3D: convoluzione separabile con lo stesso kernel 1D sui tre assi. */
+#include "gm_gfx_image.h"
+int ofx_gfx_img3_convolve_sep(const double* in, int w, int h, int d,
+                              const double* k, int n, double* out)
+{
+    if (!in || !k || !out || w <= 0 || h <= 0 || d <= 0 || n <= 0) return -1;
+    gm_image3 a, b;
+    a.w = w; a.h = h; a.d = d; a.data = (gm_real*)in;
+    b.w = w; b.h = h; b.d = d; b.data = (gm_real*)out;
+    gm_image3_convolve_sep(a, k, n, b);
+    return 0;
+}

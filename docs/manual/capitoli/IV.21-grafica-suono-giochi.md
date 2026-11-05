@@ -197,6 +197,7 @@ sinusoidale, PNG, rilettura e blit). MiniTest: `graphics/canvas_core.bas`.
 
 
 
+
 <!-- BEGIN SURFACE (generato da tools/sh/manual_surface.sh — non modificare a mano) -->
 
 ## Riferimento completo: comandi, funzioni, parametri
@@ -371,6 +372,7 @@ IMPORT GFXSHAPE
 | `MIX` | `(r1,g1,b1, r2,g2,b2, t, out())` | interpolazione lineare, `t` clampato |
 | `LIGHTEN` / `DARKEN` | `(r, g, b, amt, out())` | luminosità HSL ±amt |
 | `SATURATE` | `(r, g, b, amt, out())` | saturazione HSL +amt |
+| `COLORMAP` | `(t, out())` | colormap jet-like `t`→RGB `0..255` |
 
 ### `GFXSHAPE` — geometria 2D e hit-test
 | Funzione | Firma | Risultato |
@@ -382,6 +384,16 @@ IMPORT GFXSHAPE
 | `POLYGONAREA` | `(pts(), n)` | area (shoelace, ≥ 0) |
 | `POLYGONCENTROID` | `(pts(), n, out())` | baricentro d'area in `out(0..1)` |
 | `CLOSESTPOINTSEG` | `(px, py, ax, ay, bx, by, out())` | punto più vicino sul segmento |
+| `DIST` | `(a(), b())` | distanza euclidea |
+| `AABBFROMPOINTS2D` / `AABBMERGE2D` / `AABBCENTER2D` / `AABBEXTENTS2D` / `AABBVALID` | AABB 2D `[minx,miny,maxx,maxy]` | |
+| `CLOSESTRAY` / `CLOSESTAABB` / `CLOSESTCIRCLE` / `CLOSESTAABBAABB` | punto più vicino | |
+| `CIRCLECIRCLE` / `AABBAABB` / `AABBCIRCLE` | intersezioni 2D | |
+| `RAY2CIRCLE` / `RAY2AABB` / `RAY2SEGMENT` | raggio 2D `[ox,oy,dx,dy]` | |
+| `BARYCENTRIC` | `(a(), b(), c(), p(), out())` | pesi baricentrici |
+| `POINTINORIENTEDRECT` / `POINTINQUAD` | rettangolo orientato / quadrilatero | |
+| `POLYGONSIGNEDAREA` | area con segno (shoelace) | |
+| `HEXAREA` / `HEXLONG` / `HEXSHORT` / `HEXINNER` | esagono regolare | |
+| `CHAMFER` / `HAUSDORFF` | `(A(), n, B(), m)` | point cloud xyz (n,m = valori) |
 
 DIM o(5) AS DOUBLE
 ok = GFXCOLOR.MIX(0, 0, 255, 255, 255, 255, 0.5, o)   ' grigio 128,128,128
@@ -402,6 +414,7 @@ PRINT GFXSHAPE.POLYGONAREA(p(), 8)                    ' 100
 | punti | `THRESHOLD`, `NORMALIZE`, `HISTOGRAM`, `HISTEQUALIZE` |
 | disegno in-place | `DRAWLINE`, `DRAWRECT`, `DRAWRECTF`, `DRAWCIRCLE` |
 | avanzate | `WARP` (CHW + flow), `POISSON` (seamless clone) |
+| volumi/superfici | `IMG3CONVOLVE` (volume `w*h*d`), `HEATMAP` (griglia → colori impacchettati) |
 
 IMPORT GFX2D
 DIM a(15) AS DOUBLE, o(15) AS DOUBLE
@@ -422,6 +435,7 @@ ok = GFX2D.DRAWLINE(d(), 4, 4, 0, 0, 3, 3, 2.5)  ' disegno su array
 | intersezioni | `SPHERESPHERE`, `SPHEREBOX`, `SPHEREPLANE`, `SEGMENTPLANE`, `SEGMENTSPHERE`, `SEGMENTTRIANGLE`, `TRIANGLETRIANGLE`, `VOLUMERENDER` |
 | mesh (handle) | `MESHSPHERE`, `MESHBOX`, `MESHPLANE`, `MESHCYLINDER`, `MESHNV`, `MESHNT`, `MESHPOS`, `MESHTRI`, `MESHFREE` |
 | raster (handle) | `RASTERNEW`, `RASTERFREE`, `RASTERCLEAR`, `RASTERGET`, `RASTERTRI`, `RASTERCLIPNEAR` |
+| superfici/griglie | `MESHSURFACE` (campo di altezza → handle), `RAYCASTDDA` (griglia, max 256 passi) |
 
 IMPORT GFX3D
 DIM m(15) AS DOUBLE

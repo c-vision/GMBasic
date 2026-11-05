@@ -24,3 +24,6 @@ DECLARE FUNCTION LIGHTEN LIB "gmbgraphics" ALIAS "ofx_gfx_lighten" (r AS DOUBLE,
 DECLARE FUNCTION DARKEN LIB "gmbgraphics" ALIAS "ofx_gfx_darken" (r AS DOUBLE, g AS DOUBLE, b AS DOUBLE, amt AS DOUBLE, out() AS DOUBLE) AS LONG
 ' Saturazione HSL +amt; out() = RGB 0..255.
 DECLARE FUNCTION SATURATE LIB "gmbgraphics" ALIAS "ofx_gfx_saturate" (r AS DOUBLE, g AS DOUBLE, b AS DOUBLE, amt AS DOUBLE, out() AS DOUBLE) AS LONG
+
+' Colormap jet-like: t in [0,1] -> out() = RGB 0..255 (blu -> ciano -> verde -> giallo -> rosso).
+DECLARE FUNCTION COLORMAP LIB "gmbgraphics" ALIAS "ofx_gfx_colormap" (t AS DOUBLE, out() AS DOUBLE) AS LONG

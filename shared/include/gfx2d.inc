@@ -49,3 +49,9 @@ DECLARE FUNCTION DRAWCIRCLE LIB "gmbgraphics" ALIAS "ofx_gfx_img_draw_circle" (d
 DECLARE FUNCTION WARP LIB "gmbgraphics" ALIAS "ofx_gfx_img_warp" (in() AS DOUBLE, c AS LONG, h AS LONG, w AS LONG, fx() AS DOUBLE, fy() AS DOUBLE, out() AS DOUBLE) AS LONG
 ' Poisson/seamless clone: mask() = double 0/1 (nx*ny), out() = nx*ny.
 DECLARE FUNCTION POISSON LIB "gmbgraphics" ALIAS "ofx_gfx_img_poisson" (target() AS DOUBLE, source() AS DOUBLE, mask() AS DOUBLE, nx AS LONG, ny AS LONG, out() AS DOUBLE, maxit AS LONG) AS LONG
+
+' --- volume 3D e superfici ---
+' Convoluzione separabile su volume w*h*d (stesso kernel 1D sui tre assi).
+DECLARE FUNCTION IMG3CONVOLVE LIB "gmbgraphics" ALIAS "ofx_gfx_img3_convolve_sep" (in() AS DOUBLE, w AS LONG, h AS LONG, d AS LONG, k() AS DOUBLE, n AS LONG, out() AS DOUBLE) AS LONG
+' Heatmap da griglia z(nx*ny): out() = nx*ny colori impacchettati (0x40000000|RGB), pronti per CANVAS SET.
+DECLARE FUNCTION HEATMAP LIB "gmbgraphics" ALIAS "ofx_gfx_heatmap" (z() AS DOUBLE, nx AS LONG, ny AS LONG, zmin AS DOUBLE, zmax AS DOUBLE, out() AS DOUBLE) AS LONG

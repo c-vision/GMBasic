@@ -1,4 +1,4 @@
-' EXPECT: gauss= 0 : 1.36726787450996 , 13.63273212549|sobel= 0 : 8 , 32|transp= 0 : 4 , 1|rot90= 0 : 12 , 3|fliph= 0 : 3 , 0|thr= 0 : 0 , 1|norm= 0 : 0 , 1|hist= 0 : 4 , 4 , 4 , 4|eq= 0 : 0 , 11.25|line= 0 : 2.5 , 2.5 , 2.5|med= 0 : 5|res= 0 : 0 , 15
+' EXPECT: gauss= 0 : 1.36726787450996 , 13.63273212549|sobel= 0 : 8 , 32|transp= 0 : 4 , 1|rot90= 0 : 12 , 3|fliph= 0 : 3 , 0|thr= 0 : 0 , 1|norm= 0 : 0 , 1|hist= 0 : 4 , 4 , 4 , 4|eq= 0 : 0 , 11.25|line= 0 : 2.5 , 2.5 , 2.5|med= 0 : 5|heat= 0 : 1073742079 , 1090453504|img3= 0 : 1.75 , 5.25|res= 0 : 0 , 15
 ' FFI gmbgraphics: GFX2D — immagini float (filtri, trasformazioni, istogrammi, disegno).
 ' Solo calcolo: nessun display, parità 4 backend.
 IMPORT GFX2D
@@ -33,6 +33,17 @@ SUB Main()
   PRINT d(0); ","; d(5); ","; d(15)
   PRINT "med="; GFX2D.MEDIAN3(a(), 4, 4, o); ":";
   PRINT o(5)
+
+  DIM z(3) AS DOUBLE, hm(3) AS DOUBLE
+  z(0) = 0 : z(1) = 1 : z(2) = 2 : z(3) = 3
+  PRINT "heat="; GFX2D.HEATMAP(z(), 2, 2, 0, 3, hm()); ":";
+  PRINT hm(0); ","; hm(3)
+
+  DIM vol(7) AS DOUBLE, vk(2) AS DOUBLE, vo(7) AS DOUBLE
+  FOR i = 0 TO 7 : vol(i) = i : NEXT i
+  vk(0) = 0.25 : vk(1) = 0.5 : vk(2) = 0.25
+  PRINT "img3="; GFX2D.IMG3CONVOLVE(vol(), 2, 2, 2, vk(), 3, vo()); ":";
+  PRINT vo(0); ","; vo(7)
 
   DIM r(3) AS DOUBLE
   PRINT "res="; GFX2D.RESAMPLE(a(), 4, 4, 2, 2, r()); ":";
