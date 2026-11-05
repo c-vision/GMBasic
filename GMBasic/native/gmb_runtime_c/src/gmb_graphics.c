@@ -330,7 +330,7 @@ void gmb_gfx_screen(int mode, int width, int height, int bpp)
     g_gfx.canvas_active = 0;
     {   /* Override scala per i test headless (es. GMB_GFX_SCALE=2 per confrontare col
          * riferimento nativo del motore C#): altrimenti resta la scala del display. */
-        const char* ov = getenv("GMB_GFX_SCALE");
+        const char* ov = gmb_opt_env("GMB_GFX_SCALE");
         if (ov && *ov) { float sc = (float)atof(ov); if (sc >= 1.0f) gmb_gfx_set_render_scale(sc); }
     }
     if (gmb_gfx_null_mode()) { g_gfx.mode = mode; g_gfx.screen_on = 0; sync_base_window(0); return; }
@@ -886,6 +886,119 @@ double gmb_gfx_canvas_op(const char* op, const double* a, int nargs, const char*
     if (gmb_streq_ci(op, "WIDTH")) return (nargs >= 1) ? gmb_gfx_canvas_w((int)a[0]) : -1;
     if (gmb_streq_ci(op, "HEIGHT")) return (nargs >= 1) ? gmb_gfx_canvas_h((int)a[0]) : -1;
     return -1;
+}
+
+
+/* ============================ Colore e hit-test ============================
+ * Primitive della stdlib GRAPHICS. Implementazione UNICA qui (C): IL/PCode ci arrivano via
+ * P/Invoke, VM/C e C99 la linkano direttamente → stessi risultati bit-per-bit. */
+
+static double cl01(double v) { return v < 0.0 ? 0.0 : (v > 1.0 ? 1.0 : v); }
+
+static void rgb_to_hsl(double r, double g, double b, double* h, double* s, double* l)
+{
+    double mx = r > g ? (r > b ? r : b) : (g > b ? g : b);
+    double mn = r < g ? (r < b ? r : b) : (g < b ? g : b);
+    double d = mx - mn;
+    *l = (mx + mn) * 0.5;
+    if (d <= 0.0) { *h = 0.0; *s = 0.0; return; }
+    *s = (*l > 0.5) ? d / (2.0 - mx - mn) : d / (mx + mn);
+    if (mx == r) *h = (g - b) / d + (g < b ? 6.0 : 0.0);
+    else if (mx == g) *h = (b - r) / d + 2.0;
+    else *h = (r - g) / d + 4.0;
+    *h *= 60.0;
+}
+
+static double hsl_chan(double p, double q, double t)
+{
+    if (t < 0.0) t += 1.0;
+    if (t > 1.0) t -= 1.0;
+    if (t < 1.0 / 6.0) return p + (q - p) * 6.0 * t;
+    if (t < 0.5) return q;
+    if (t < 2.0 / 3.0) return p + (q - p) * (2.0 / 3.0 - t) * 6.0;
+    return p;
+}
+
+static void hsl_to_rgb(double h, double s, double l, double* r, double* g, double* b)
+{
+    h = fmod(h, 360.0); if (h < 0.0) h += 360.0;
+    h /= 360.0;
+    if (s <= 0.0) { *r = *g = *b = l; return; }
+    double q = (l < 0.5) ? l * (1.0 + s) : l + s - l * s;
+    double p = 2.0 * l - q;
+    *r = hsl_chan(p, q, h + 1.0 / 3.0);
+    *g = hsl_chan(p, q, h);
+    *b = hsl_chan(p, q, h - 1.0 / 3.0);
+}
+
+static double pack_rgb(double r, double g, double b)
+{
+    int ri = (int)lround(cl01(r) * 255.0);
+    int gi = (int)lround(cl01(g) * 255.0);
+    int bi = (int)lround(cl01(b) * 255.0);
+    return (double)((uint32_t)GMB_GFX_RGB_FLAG | ((uint32_t)ri << 16) | ((uint32_t)gi << 8) | (uint32_t)bi);
+}
+
+static void unpack_color(double c, double* r, double* g, double* b)
+{
+    uint32_t v = resolve_color((int)c);
+    *r = (double)((v >> 16) & 0xFF) / 255.0;
+    *g = (double)((v >> 8) & 0xFF) / 255.0;
+    *b = (double)(v & 0xFF) / 255.0;
+}
+
+double gmb_gfx_colormix(double c1, double c2, double t)
+{
+    double r1, g1, b1, r2, g2, b2;
+    unpack_color(c1, &r1, &g1, &b1);
+    unpack_color(c2, &r2, &g2, &b2);
+    t = cl01(t);
+    return pack_rgb(r1 + (r2 - r1) * t, g1 + (g2 - g1) * t, b1 + (b2 - b1) * t);
+}
+
+static double color_hsl_adjust(double c, double amt, int mode)  /* 0=lighten 1=darken 2=saturate */
+{
+    double r, g, b, h, s, l;
+    unpack_color(c, &r, &g, &b);
+    rgb_to_hsl(r, g, b, &h, &s, &l);
+    if (mode == 0) l = cl01(l + amt);
+    else if (mode == 1) l = cl01(l - amt);
+    else s = cl01(s + amt);
+    hsl_to_rgb(h, s, l, &r, &g, &b);
+    return pack_rgb(r, g, b);
+}
+
+double gmb_gfx_colorlighten(double c, double amt) { return color_hsl_adjust(c, amt, 0); }
+double gmb_gfx_colordarken(double c, double amt)  { return color_hsl_adjust(c, amt, 1); }
+double gmb_gfx_colorsaturate(double c, double amt){ return color_hsl_adjust(c, amt, 2); }
+
+int gmb_gfx_pointinpolygon(double x, double y, const double* pts, int npoints)
+{
+    if (!pts || npoints < 3) return 0;
+    int inside = 0;
+    for (int i = 0, j = npoints - 1; i < npoints; j = i++)
+    {
+        double xi = pts[2 * i], yi = pts[2 * i + 1];
+        double xj = pts[2 * j], yj = pts[2 * j + 1];
+        /* even-odd ray casting: il punto è sul bordo se attraversa con yi > y != yj > y */
+        if (((yi > y) != (yj > y)) &&
+            (x < (xj - xi) * (y - yi) / (yj - yi) + xi))
+            inside = !inside;
+    }
+    return inside;
+}
+
+int gmb_gfx_pointincircle(double x, double y, double cx, double cy, double r)
+{
+    double dx = x - cx, dy = y - cy;
+    return (dx * dx + dy * dy <= r * r) ? 1 : 0;
+}
+
+int gmb_gfx_pointinrect(double x, double y, double x1, double y1, double x2, double y2)
+{
+    if (x1 > x2) { double t = x1; x1 = x2; x2 = t; }
+    if (y1 > y2) { double t = y1; y1 = y2; y2 = t; }
+    return (x >= x1 && x <= x2 && y >= y1 && y <= y2) ? 1 : 0;
 }
 
 /* Primitive spostate in gmb_graphics_primitive.c per evitare monolite */

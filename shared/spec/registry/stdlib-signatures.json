@@ -12463,6 +12463,101 @@
     },
     {
       "ns": "GRAPHICS",
+      "name": "COLORDARKEN",
+      "fn": true,
+      "return": "double",
+      "params": [
+        {
+          "name": "c",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        },
+        {
+          "name": "amt",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        }
+      ]
+    },
+    {
+      "ns": "GRAPHICS",
+      "name": "COLORLIGHTEN",
+      "fn": true,
+      "return": "double",
+      "params": [
+        {
+          "name": "c",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        },
+        {
+          "name": "amt",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        }
+      ]
+    },
+    {
+      "ns": "GRAPHICS",
+      "name": "COLORMIX",
+      "fn": true,
+      "return": "double",
+      "params": [
+        {
+          "name": "c1",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        },
+        {
+          "name": "c2",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        },
+        {
+          "name": "t",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        }
+      ]
+    },
+    {
+      "ns": "GRAPHICS",
+      "name": "COLORSATURATE",
+      "fn": true,
+      "return": "double",
+      "params": [
+        {
+          "name": "c",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        },
+        {
+          "name": "amt",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        }
+      ]
+    },
+    {
+      "ns": "GRAPHICS",
       "name": "P2CX",
       "fn": true,
       "return": "double",
@@ -12500,6 +12595,128 @@
           "name": "size",
           "type": "double",
           "optional": true,
+          "byRef": false,
+          "array": false
+        }
+      ]
+    },
+    {
+      "ns": "GRAPHICS",
+      "name": "POINTINCIRCLE",
+      "fn": true,
+      "return": "long",
+      "params": [
+        {
+          "name": "x",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        },
+        {
+          "name": "y",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        },
+        {
+          "name": "cx",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        },
+        {
+          "name": "cy",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        },
+        {
+          "name": "r",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        }
+      ]
+    },
+    {
+      "ns": "GRAPHICS",
+      "name": "POINTINPOLYGON",
+      "fn": true,
+      "return": "long",
+      "params": [
+        {
+          "name": "x",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        },
+        {
+          "name": "y",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        },
+        {
+          "name": "pts",
+          "type": "double[]",
+          "optional": false,
+          "byRef": false,
+          "array": true
+        }
+      ]
+    },
+    {
+      "ns": "GRAPHICS",
+      "name": "POINTINRECT",
+      "fn": true,
+      "return": "long",
+      "params": [
+        {
+          "name": "x",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        },
+        {
+          "name": "y",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        },
+        {
+          "name": "x1",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        },
+        {
+          "name": "y1",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        },
+        {
+          "name": "x2",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        },
+        {
+          "name": "y2",
+          "type": "double",
+          "optional": false,
           "byRef": false,
           "array": false
         }
@@ -26198,100 +26415,6 @@
     },
     {
       "ns": "TIMESERIES",
-      "name": "TSAUTOCORR",
-      "fn": true,
-      "return": "double",
-      "params": [
-        {
-          "name": "series",
-          "type": "double",
-          "optional": false,
-          "byRef": false,
-          "array": true
-        },
-        {
-          "name": "lag",
-          "type": "long",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        }
-      ]
-    },
-    {
-      "ns": "TIMESERIES",
-      "name": "TSBANDPASS",
-      "fn": true,
-      "return": "double[]",
-      "params": [
-        {
-          "name": "series",
-          "type": "double",
-          "optional": false,
-          "byRef": false,
-          "array": true
-        },
-        {
-          "name": "wn1",
-          "type": "double",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        },
-        {
-          "name": "wn2",
-          "type": "double",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        },
-        {
-          "name": "order",
-          "type": "long",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        }
-      ]
-    },
-    {
-      "ns": "TIMESERIES",
-      "name": "TSBANDSTOP",
-      "fn": true,
-      "return": "double[]",
-      "params": [
-        {
-          "name": "series",
-          "type": "double",
-          "optional": false,
-          "byRef": false,
-          "array": true
-        },
-        {
-          "name": "wn1",
-          "type": "double",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        },
-        {
-          "name": "wn2",
-          "type": "double",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        },
-        {
-          "name": "order",
-          "type": "long",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        }
-      ]
-    },
-    {
-      "ns": "TIMESERIES",
       "name": "TSBMAWEIGHTS",
       "fn": true,
       "return": "double[]",
@@ -26302,109 +26425,6 @@
           "optional": false,
           "byRef": false,
           "array": true
-        }
-      ]
-    },
-    {
-      "ns": "TIMESERIES",
-      "name": "TSCOVARIANCEMATRIX",
-      "fn": true,
-      "return": "double[][]",
-      "params": [
-        {
-          "name": "data",
-          "type": "double[]",
-          "optional": false,
-          "byRef": false,
-          "array": true
-        }
-      ]
-    },
-    {
-      "ns": "TIMESERIES",
-      "name": "TSDECOMPOSE",
-      "fn": true,
-      "return": "double[][]",
-      "params": [
-        {
-          "name": "series",
-          "type": "double",
-          "optional": false,
-          "byRef": false,
-          "array": true
-        },
-        {
-          "name": "period",
-          "type": "long",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        }
-      ]
-    },
-    {
-      "ns": "TIMESERIES",
-      "name": "TSDESEASONALIZE",
-      "fn": true,
-      "return": "double[]",
-      "params": [
-        {
-          "name": "series",
-          "type": "double",
-          "optional": false,
-          "byRef": false,
-          "array": true
-        },
-        {
-          "name": "period",
-          "type": "long",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        }
-      ]
-    },
-    {
-      "ns": "TIMESERIES",
-      "name": "TSDIFFERENCE",
-      "fn": true,
-      "return": "double[]",
-      "params": [
-        {
-          "name": "series",
-          "type": "double",
-          "optional": false,
-          "byRef": false,
-          "array": true
-        },
-        {
-          "name": "lag",
-          "type": "long",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        }
-      ]
-    },
-    {
-      "ns": "TIMESERIES",
-      "name": "TSEMA",
-      "fn": true,
-      "return": "double[]",
-      "params": [
-        {
-          "name": "series",
-          "type": "double",
-          "optional": false,
-          "byRef": false,
-          "array": true
-        },
-        {
-          "name": "period",
-          "type": "long",
-          "optional": false,
-          "byRef": false,
-          "array": false
         }
       ]
     },
@@ -26520,35 +26540,6 @@
     },
     {
       "ns": "TIMESERIES",
-      "name": "TSHIGHPASS",
-      "fn": true,
-      "return": "double[]",
-      "params": [
-        {
-          "name": "series",
-          "type": "double",
-          "optional": false,
-          "byRef": false,
-          "array": true
-        },
-        {
-          "name": "wn",
-          "type": "double",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        },
-        {
-          "name": "order",
-          "type": "long",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        }
-      ]
-    },
-    {
-      "ns": "TIMESERIES",
       "name": "TSHURST",
       "fn": true,
       "return": "double",
@@ -26607,35 +26598,6 @@
     },
     {
       "ns": "TIMESERIES",
-      "name": "TSLOWPASS",
-      "fn": true,
-      "return": "double[]",
-      "params": [
-        {
-          "name": "series",
-          "type": "double",
-          "optional": false,
-          "byRef": false,
-          "array": true
-        },
-        {
-          "name": "wn",
-          "type": "double",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        },
-        {
-          "name": "order",
-          "type": "long",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        }
-      ]
-    },
-    {
-      "ns": "TIMESERIES",
       "name": "TSLYAPUNOV",
       "fn": true,
       "return": "double",
@@ -26665,43 +26627,6 @@
     },
     {
       "ns": "TIMESERIES",
-      "name": "TSMA",
-      "fn": true,
-      "return": "double[]",
-      "params": [
-        {
-          "name": "series",
-          "type": "double",
-          "optional": false,
-          "byRef": false,
-          "array": true
-        },
-        {
-          "name": "period",
-          "type": "long",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        }
-      ]
-    },
-    {
-      "ns": "TIMESERIES",
-      "name": "TSMINMAX",
-      "fn": true,
-      "return": "double[]",
-      "params": [
-        {
-          "name": "series",
-          "type": "double",
-          "optional": false,
-          "byRef": false,
-          "array": true
-        }
-      ]
-    },
-    {
-      "ns": "TIMESERIES",
       "name": "TSOUFIT",
       "fn": true,
       "return": "ANY",
@@ -26716,473 +26641,6 @@
         {
           "name": "dt",
           "type": "double",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        }
-      ]
-    },
-    {
-      "ns": "TIMESERIES",
-      "name": "TSOUTLIERS",
-      "fn": true,
-      "return": "long[]",
-      "params": [
-        {
-          "name": "series",
-          "type": "double",
-          "optional": false,
-          "byRef": false,
-          "array": true
-        },
-        {
-          "name": "threshold",
-          "type": "double",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        }
-      ]
-    },
-    {
-      "ns": "TIMESERIES",
-      "name": "TSRETURNS",
-      "fn": true,
-      "return": "double[]",
-      "params": [
-        {
-          "name": "series",
-          "type": "double",
-          "optional": false,
-          "byRef": false,
-          "array": true
-        }
-      ]
-    },
-    {
-      "ns": "TIMESERIES",
-      "name": "TSROLLAUTOCORR",
-      "fn": true,
-      "return": "double[]",
-      "params": [
-        {
-          "name": "series",
-          "type": "double",
-          "optional": false,
-          "byRef": false,
-          "array": true
-        },
-        {
-          "name": "period",
-          "type": "long",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        },
-        {
-          "name": "lag",
-          "type": "long",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        }
-      ]
-    },
-    {
-      "ns": "TIMESERIES",
-      "name": "TSROLLCORR",
-      "fn": true,
-      "return": "double[]",
-      "params": [
-        {
-          "name": "series",
-          "type": "double",
-          "optional": false,
-          "byRef": false,
-          "array": true
-        },
-        {
-          "name": "series2",
-          "type": "double",
-          "optional": false,
-          "byRef": false,
-          "array": true
-        },
-        {
-          "name": "period",
-          "type": "long",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        }
-      ]
-    },
-    {
-      "ns": "TIMESERIES",
-      "name": "TSROLLCOVARIANCE",
-      "fn": true,
-      "return": "double[]",
-      "params": [
-        {
-          "name": "series",
-          "type": "double",
-          "optional": false,
-          "byRef": false,
-          "array": true
-        },
-        {
-          "name": "series2",
-          "type": "double",
-          "optional": false,
-          "byRef": false,
-          "array": true
-        },
-        {
-          "name": "period",
-          "type": "long",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        }
-      ]
-    },
-    {
-      "ns": "TIMESERIES",
-      "name": "TSROLLDELTA",
-      "fn": true,
-      "return": "double[]",
-      "params": [
-        {
-          "name": "series",
-          "type": "double",
-          "optional": false,
-          "byRef": false,
-          "array": true
-        },
-        {
-          "name": "period",
-          "type": "long",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        }
-      ]
-    },
-    {
-      "ns": "TIMESERIES",
-      "name": "TSROLLKURTOSIS",
-      "fn": true,
-      "return": "double[]",
-      "params": [
-        {
-          "name": "series",
-          "type": "double",
-          "optional": false,
-          "byRef": false,
-          "array": true
-        },
-        {
-          "name": "period",
-          "type": "long",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        }
-      ]
-    },
-    {
-      "ns": "TIMESERIES",
-      "name": "TSROLLMAD",
-      "fn": true,
-      "return": "double[]",
-      "params": [
-        {
-          "name": "series",
-          "type": "double",
-          "optional": false,
-          "byRef": false,
-          "array": true
-        },
-        {
-          "name": "period",
-          "type": "long",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        }
-      ]
-    },
-    {
-      "ns": "TIMESERIES",
-      "name": "TSROLLMEAN",
-      "fn": true,
-      "return": "double[]",
-      "params": [
-        {
-          "name": "series",
-          "type": "double",
-          "optional": false,
-          "byRef": false,
-          "array": true
-        },
-        {
-          "name": "period",
-          "type": "long",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        }
-      ]
-    },
-    {
-      "ns": "TIMESERIES",
-      "name": "TSROLLMEDIAN",
-      "fn": true,
-      "return": "double[]",
-      "params": [
-        {
-          "name": "series",
-          "type": "double",
-          "optional": false,
-          "byRef": false,
-          "array": true
-        },
-        {
-          "name": "period",
-          "type": "long",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        }
-      ]
-    },
-    {
-      "ns": "TIMESERIES",
-      "name": "TSROLLMINMAX",
-      "fn": true,
-      "return": "double[][]",
-      "params": [
-        {
-          "name": "series",
-          "type": "double",
-          "optional": false,
-          "byRef": false,
-          "array": true
-        },
-        {
-          "name": "period",
-          "type": "long",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        }
-      ]
-    },
-    {
-      "ns": "TIMESERIES",
-      "name": "TSROLLQUANTILE",
-      "fn": true,
-      "return": "double[]",
-      "params": [
-        {
-          "name": "series",
-          "type": "double",
-          "optional": false,
-          "byRef": false,
-          "array": true
-        },
-        {
-          "name": "period",
-          "type": "long",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        },
-        {
-          "name": "quantile",
-          "type": "double",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        }
-      ]
-    },
-    {
-      "ns": "TIMESERIES",
-      "name": "TSROLLREGRESSION",
-      "fn": true,
-      "return": "double[][]",
-      "params": [
-        {
-          "name": "series",
-          "type": "double",
-          "optional": false,
-          "byRef": false,
-          "array": true
-        },
-        {
-          "name": "series2",
-          "type": "double",
-          "optional": false,
-          "byRef": false,
-          "array": true
-        },
-        {
-          "name": "period",
-          "type": "long",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        }
-      ]
-    },
-    {
-      "ns": "TIMESERIES",
-      "name": "TSROLLREGRESSIONSINGLE",
-      "fn": true,
-      "return": "double[][]",
-      "params": [
-        {
-          "name": "series",
-          "type": "double",
-          "optional": false,
-          "byRef": false,
-          "array": true
-        },
-        {
-          "name": "period",
-          "type": "long",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        }
-      ]
-    },
-    {
-      "ns": "TIMESERIES",
-      "name": "TSROLLSHARPE",
-      "fn": true,
-      "return": "double[]",
-      "params": [
-        {
-          "name": "series",
-          "type": "double",
-          "optional": false,
-          "byRef": false,
-          "array": true
-        },
-        {
-          "name": "period",
-          "type": "long",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        },
-        {
-          "name": "riskFreeRate",
-          "type": "double",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        }
-      ]
-    },
-    {
-      "ns": "TIMESERIES",
-      "name": "TSROLLSKEWNESS",
-      "fn": true,
-      "return": "double[]",
-      "params": [
-        {
-          "name": "series",
-          "type": "double",
-          "optional": false,
-          "byRef": false,
-          "array": true
-        },
-        {
-          "name": "period",
-          "type": "long",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        }
-      ]
-    },
-    {
-      "ns": "TIMESERIES",
-      "name": "TSROLLSORTINO",
-      "fn": true,
-      "return": "double[]",
-      "params": [
-        {
-          "name": "series",
-          "type": "double",
-          "optional": false,
-          "byRef": false,
-          "array": true
-        },
-        {
-          "name": "period",
-          "type": "long",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        },
-        {
-          "name": "riskFreeRate",
-          "type": "double",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        },
-        {
-          "name": "targetReturn",
-          "type": "double",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        }
-      ]
-    },
-    {
-      "ns": "TIMESERIES",
-      "name": "TSROLLSTDDEV",
-      "fn": true,
-      "return": "double[]",
-      "params": [
-        {
-          "name": "series",
-          "type": "double",
-          "optional": false,
-          "byRef": false,
-          "array": true
-        },
-        {
-          "name": "period",
-          "type": "long",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        }
-      ]
-    },
-    {
-      "ns": "TIMESERIES",
-      "name": "TSROLLZSCORE",
-      "fn": true,
-      "return": "double[]",
-      "params": [
-        {
-          "name": "series",
-          "type": "double",
-          "optional": false,
-          "byRef": false,
-          "array": true
-        },
-        {
-          "name": "period",
-          "type": "long",
           "optional": false,
           "byRef": false,
           "array": false
@@ -27244,21 +26702,6 @@
           "optional": false,
           "byRef": false,
           "array": false
-        }
-      ]
-    },
-    {
-      "ns": "TIMESERIES",
-      "name": "TSVOLATILITY",
-      "fn": true,
-      "return": "double",
-      "params": [
-        {
-          "name": "series",
-          "type": "double",
-          "optional": false,
-          "byRef": false,
-          "array": true
         }
       ]
     },

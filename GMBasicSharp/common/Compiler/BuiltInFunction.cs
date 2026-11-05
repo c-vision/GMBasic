@@ -1770,4 +1770,13 @@ MCPSERVERMARKETPLACELIST = 730, MCPSERVERMARKETPLACEGET = 731, MCPLISTTOOLSSERVE
     // ENV (2026-11-03): ENV$(nome) e ENV.HAS(nome). In coda: mirror in gmb_builtin.c.
     ENVGET = 3818,
     ENVHAS = 3819,
+    // GRAPHICS (2026-11-05): colore e hit-test (primitive stdlib). Coda: mirror in
+    // gmb_builtin.c / gmb_builtin_registry (id numerici emessi come ushort).
+    COLORMIX = 3900,
+    COLORLIGHTEN = 3901,
+    COLORDARKEN = 3902,
+    COLORSATURATE = 3903,
+    POINTINPOLYGON = 3904,
+    POINTINCIRCLE = 3905,
+    POINTINRECT = 3906,
 }
