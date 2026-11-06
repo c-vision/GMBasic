@@ -1018,6 +1018,13 @@ add_executable(gmb_rdd_db_selfcheck tests/rdd_db_selfcheck.c)
 target_link_libraries(gmb_rdd_db_selfcheck PRIVATE gmb_runtime)
 target_include_directories(gmb_rdd_db_selfcheck PRIVATE include)
 
+# Controlli TUI in headless, dentro una WINDOW, su SDLConsole (dummy) e StandardConsole:
+# iniezione tasti/mouse, verifica dello stato e parità del buffer fra le due console.
+add_executable(gmb_tui_controls_headless_check tests/gmb_tui_controls_headless_check.c)
+target_link_libraries(gmb_tui_controls_headless_check PRIVATE gmb_runtime)
+target_include_directories(gmb_tui_controls_headless_check PRIVATE include)
+add_test(NAME gmb_tui_controls_headless_check COMMAND gmb_tui_controls_headless_check)
+
 add_executable(gmb_grep_selfcheck tests/gmb_grep_selfcheck.c)
 target_link_libraries(gmb_grep_selfcheck PRIVATE gmb_runtime)
 target_include_directories(gmb_grep_selfcheck PRIVATE include)
