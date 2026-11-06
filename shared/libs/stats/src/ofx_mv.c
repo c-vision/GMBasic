@@ -103,3 +103,13 @@ double ofx_mv_student_pdf(const double *x, const double *loc, const double *cov,
 double ofx_copula_clayton(double u, double v, double theta) { return gs_copula_clayton_cdf(u, v, theta); }
 double ofx_copula_gumbel(double u, double v, double theta) { return gs_copula_gumbel_cdf(u, v, theta); }
 double ofx_copula_frank(double u, double v, double theta) { return gs_copula_frank_cdf(u, v, theta); }
+
+#include <stdint.h>
+/* Shim FFI (estensioni automatiche degli array, ffi_ext_shim.pl): firma con int64_t dopo ogni array. */
+double ofx_ate_ipw__ffi(const double *t, int64_t t_ext, const double *y, int64_t y_ext, const double *ps, int64_t ps_ext, int n) { return ofx_ate_ipw(t, y, ps, n); }
+double ofx_ate_matching__ffi(const double *t, int64_t t_ext, const double *y, int64_t y_ext, const double *ps, int64_t ps_ext, int n) { return ofx_ate_matching(t, y, ps, n); }
+double ofx_mv_gauss_pdf__ffi(const double *x, int64_t x_ext, const double *loc, int64_t loc_ext, const double *cov, int64_t cov_ext, int d) { return ofx_mv_gauss_pdf(x, loc, cov, d); }
+double ofx_mv_student_pdf__ffi(const double *x, int64_t x_ext, const double *loc, int64_t loc_ext, const double *cov, int64_t cov_ext, double nu, int d) { return ofx_mv_student_pdf(x, loc, cov, nu, d); }
+double ofx_rmt_coherence__ffi(const double *v, int64_t v_ext, int n) { return ofx_rmt_coherence(v, n); }
+double ofx_rmt_principal_angle__ffi(const double *u, int64_t u_ext, const double *v, int64_t v_ext, int n) { return ofx_rmt_principal_angle(u, v, n); }
+double ofx_rmt_spectral_norm__ffi(const double *A, int64_t A_ext, int n) { return ofx_rmt_spectral_norm(A, n); }

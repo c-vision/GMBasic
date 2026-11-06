@@ -44,7 +44,7 @@ SUB Main()
     ' 1) Array BYREF OUTPUT (CopyBuffer-style): il nativo riempie il buffer del chiamante.
     ' Nessun bound auto-iniettato — n e' un parametro AS LONG separato passato esplicitamente.
     DIM raw(5) AS DOUBLE
-    k_fill(raw, 5)                              ' raw = 0, 10, 20, 30, 40
+    k_fill(raw)                              ' raw = 0, 10, 20, 30, 40
 
     ' 2) Costruisce due buffer derivati chiamando una FUNCTION scalare elemento-per-elemento
     ' (combina il contratto scalare gia' esistente con l'array appena riempito).
@@ -59,7 +59,7 @@ SUB Main()
     ' 3) Array BYREF MULTIPLO: 3 buffer nella stessa chiamata (n e' il primo parametro,
     ' scalare) — combined(i) = scaledA(i) + scaledB(i).
     DIM combined(5) AS DOUBLE
-    k_combine(5, scaledA, scaledB, combined)
+    k_combine(scaledA, scaledB, combined)
 
     PRINT "raw       = "; raw(0); raw(1); raw(2); raw(3); raw(4)           ' 0 10 20 30 40
     PRINT "scaledA   = "; scaledA(0); scaledA(1); scaledA(2); scaledA(3); scaledA(4) ' 0 1 2 3 4
@@ -73,7 +73,7 @@ SUB Main()
         totals(i) = CLNG(combined(i))
     NEXT i
     DIM total AS LONG
-    total = k_isum(totals, 5)
+    total = k_isum(totals)
     PRINT "k_isum(totals)  = "; total          ' 122 (CLNG half-to-even: 2+14+24+36+46)
 
     PRINT

@@ -335,3 +335,26 @@ i64 ofx_geo_grid_free(i64 h)
     e->used = 0;
     return 0;
 }
+
+#include <stdint.h>
+/* Shim FFI (estensioni automatiche degli array, ffi_ext_shim.pl): firma con int64_t dopo ogni array. */
+geo_box4 ofx_geo_bbox__ffi(const geo_pt *p, int64_t p_ext, i64 n) { return ofx_geo_bbox(p, n); }
+geo_pt ofx_geo_centroid__ffi(const geo_pt *p, int64_t p_ext, i64 n) { return ofx_geo_centroid(p, n); }
+i64 ofx_geo_clip__ffi(const geo_pt *subj, int64_t subj_ext, i64 ns, const geo_pt *clip, int64_t clip_ext, i64 nc, geo_pt *out, int64_t out_ext, i64 cap) { return ofx_geo_clip(subj, ns, clip, nc, out, cap); }
+i64 ofx_geo_convex_hull__ffi(const geo_pt *p, int64_t p_ext, i64 n, geo_pt *out, int64_t out_ext, i64 cap) { return ofx_geo_convex_hull(p, n, out, cap); }
+i64 ofx_geo_geojson_parse__ffi(const char *json, geo_pt *out, int64_t out_ext, i64 cap, i64 *info, int64_t info_ext) { return ofx_geo_geojson_parse(json, out, cap, info); }
+const char * ofx_geo_geojson_write__ffi(const geo_pt *p, int64_t p_ext, i64 n, i64 closed) { return ofx_geo_geojson_write(p, n, closed); }
+i64 ofx_geo_grid_new__ffi(const geo_pt *p, int64_t p_ext, i64 n, double cell) { return ofx_geo_grid_new(p, n, cell); }
+i64 ofx_geo_grid_query__ffi(i64 h, geo_box4 box, i64 *idx, int64_t idx_ext, i64 cap) { return ofx_geo_grid_query(h, box, idx, cap); }
+i64 ofx_geo_overlay__ffi(const geo_pt *a, int64_t a_ext, i64 na, const geo_pt *b, int64_t b_ext, i64 nb, geo_pt *out, int64_t out_ext, i64 cap, i64 op) { return ofx_geo_overlay(a, na, b, nb, out, cap, op); }
+double ofx_geo_perimeter__ffi(const geo_pt *p, int64_t p_ext, i64 n, i64 closed) { return ofx_geo_perimeter(p, n, closed); }
+i64 ofx_geo_point_in_poly__ffi(geo_pt q, const geo_pt *p, int64_t p_ext, i64 n) { return ofx_geo_point_in_poly(q, p, n); }
+double ofx_geo_poly_area__ffi(const geo_pt *p, int64_t p_ext, i64 n) { return ofx_geo_poly_area(p, n); }
+i64 ofx_geo_rotate__ffi(const geo_pt *p, int64_t p_ext, i64 n, double deg, geo_pt *out, int64_t out_ext) { return ofx_geo_rotate(p, n, deg, out); }
+i64 ofx_geo_scale__ffi(const geo_pt *p, int64_t p_ext, i64 n, double sx, double sy, geo_pt *out, int64_t out_ext) { return ofx_geo_scale(p, n, sx, sy, out); }
+i64 ofx_geo_seg_intersection__ffi(geo_pt a, geo_pt b, geo_pt c, geo_pt d, geo_pt *out, int64_t out_ext) { return ofx_geo_seg_intersection(a, b, c, d, out); }
+i64 ofx_geo_simplify__ffi(const geo_pt *p, int64_t p_ext, i64 n, double tol, geo_pt *out, int64_t out_ext, i64 cap) { return ofx_geo_simplify(p, n, tol, out, cap); }
+i64 ofx_geo_spatial_join__ffi(const geo_pt *a, int64_t a_ext, const i64 *aoff, int64_t aoff_ext, i64 na, const geo_pt *b, int64_t b_ext, const i64 *boff, int64_t boff_ext, i64 nb, i64 *pairs, int64_t pairs_ext, i64 cap) { return ofx_geo_spatial_join(a, aoff, na, b, boff, nb, pairs, cap); }
+i64 ofx_geo_translate__ffi(const geo_pt *p, int64_t p_ext, i64 n, double dx, double dy, geo_pt *out, int64_t out_ext) { return ofx_geo_translate(p, n, dx, dy, out); }
+i64 ofx_geo_wkt_parse__ffi(const char *wkt, geo_pt *out, int64_t out_ext, i64 cap, i64 *info, int64_t info_ext) { return ofx_geo_wkt_parse(wkt, out, cap, info); }
+const char * ofx_geo_wkt_write__ffi(const geo_pt *p, int64_t p_ext, i64 n, i64 closed) { return ofx_geo_wkt_write(p, n, closed); }

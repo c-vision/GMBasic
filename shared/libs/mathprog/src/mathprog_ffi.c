@@ -230,3 +230,19 @@ char *ofx_model_to_json(i64 h)
     buf = js;
     return buf;
 }
+
+#include <stdint.h>
+/* Shim FFI (estensioni automatiche degli array, ffi_ext_shim.pl): firma con int64_t dopo ogni array. */
+i64 ofx_gomory_cut__ffi(const double *tabrow, int64_t tabrow_ext, i64 ncols, i64 rhs_col, double *cut, int64_t cut_ext) { return ofx_gomory_cut(tabrow, ncols, rhs_col, cut); }
+i64 ofx_lp_alternate__ffi(const double *A, int64_t A_ext, const double *b, int64_t b_ext, const double *c, int64_t c_ext, double *x2, int64_t x2_ext, i64 m, i64 n, double *z2, int64_t z2_ext) { return ofx_lp_alternate(A, b, c, x2, m, n, z2); }
+i64 ofx_lp_bounds__ffi(const double *A, int64_t A_ext, const double *bounds, int64_t bounds_ext, const double *c, int64_t c_ext, double *x, int64_t x_ext, i64 m, i64 n) { return ofx_lp_bounds(A, bounds, c, x, m, n); }
+i64 ofx_lp_dual__ffi(const double *A, int64_t A_ext, const double *b, int64_t b_ext, const double *c, int64_t c_ext, const i64 *basis, int64_t basis_ext, double *x, int64_t x_ext, i64 m, i64 n) { return ofx_lp_dual(A, b, c, basis, x, m, n); }
+i64 ofx_lp_reduced_costs__ffi(const double *A, int64_t A_ext, const double *c, int64_t c_ext, const double *y, int64_t y_ext, double *red, int64_t red_ext, i64 m, i64 n) { return ofx_lp_reduced_costs(A, c, y, red, m, n); }
+i64 ofx_lp_revised__ffi(const double *A, int64_t A_ext, const double *b, int64_t b_ext, const double *c, int64_t c_ext, const i64 *basis, int64_t basis_ext, double *x, int64_t x_ext, i64 m, i64 n) { return ofx_lp_revised(A, b, c, basis, x, m, n); }
+i64 ofx_lp_solve__ffi(const double *A, int64_t A_ext, const double *b, int64_t b_ext, const double *c, int64_t c_ext, i64 m, i64 n, double *x, int64_t x_ext, double *y, int64_t y_ext, double *info, int64_t info_ext) { return ofx_lp_solve(A, b, c, m, n, x, y, info); }
+i64 ofx_matheuristic_hard_fixing__ffi(const double *A, int64_t A_ext, const double *b, int64_t b_ext, const double *c, int64_t c_ext, const i64 *intIdx, int64_t intIdx_ext, double *x, int64_t x_ext, double *info, int64_t info_ext, i64 m, i64 n) { return ofx_matheuristic_hard_fixing(A, b, c, intIdx, x, info, m, n); }
+i64 ofx_matheuristic_local_branching__ffi(const double *A, int64_t A_ext, const double *b, int64_t b_ext, const double *c, int64_t c_ext, const i64 *intIdx, int64_t intIdx_ext, double *x, int64_t x_ext, double *info, int64_t info_ext, i64 m, i64 n) { return ofx_matheuristic_local_branching(A, b, c, intIdx, x, info, m, n); }
+i64 ofx_milp_bb__ffi(const double *A, int64_t A_ext, const double *b, int64_t b_ext, const double *c, int64_t c_ext, const i64 *intIdx, int64_t intIdx_ext, double *x, int64_t x_ext, double *info, int64_t info_ext, i64 m, i64 n) { return ofx_milp_bb(A, b, c, intIdx, x, info, m, n); }
+i64 ofx_model_add_constr__ffi(i64 h, const i64 *vars, int64_t vars_ext, const double *coef, int64_t coef_ext, i64 ncoef, i64 cmp, double rhs) { return ofx_model_add_constr(h, vars, coef, ncoef, cmp, rhs); }
+void ofx_model_set_obj__ffi(i64 h, const i64 *vars, int64_t vars_ext, const double *coef, int64_t coef_ext, i64 ncoef, i64 sense) { ofx_model_set_obj(h, vars, coef, ncoef, sense); }
+i64 ofx_model_solve__ffi(i64 h, double *obj, int64_t obj_ext) { return ofx_model_solve(h, obj); }

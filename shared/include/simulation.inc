@@ -10,8 +10,8 @@ DECLARE FUNCTION SIMEXP LIB "gmbstats" ALIAS "ofx_sim_exponential" (rate AS DOUB
 DECLARE FUNCTION SIMBERNOULLI LIB "gmbstats" ALIAS "ofx_sim_bernoulli" (p AS DOUBLE) AS DOUBLE
 DECLARE FUNCTION SIMBINOMIAL LIB "gmbstats" ALIAS "ofx_sim_binomial" (n AS DOUBLE, p AS DOUBLE) AS DOUBLE
 
-DECLARE SUB SXF_PARTICLEFILTER LIB "gmbstats" ALIAS "ofx_sim_particle_filter" (obs() AS DOUBLE, T AS LONG, a AS DOUBLE, q AS DOUBLE, r AS DOUBLE, N AS LONG, seed AS DOUBLE, out() AS DOUBLE)
-DECLARE FUNCTION SXF_TPE LIB "gmbstats" ALIAS "ofx_sim_tpe" (f AS FUNCTION(x() AS DOUBLE) AS DOUBLE, lo() AS DOUBLE, hi() AS DOUBLE, d AS LONG, nIter AS LONG, nInit AS LONG, seed AS DOUBLE, out() AS DOUBLE) AS DOUBLE
+DECLARE SUB SXF_PARTICLEFILTER LIB "gmbstats" ALIAS "ofx_sim_particle_filter__ffi" (obs() AS DOUBLE, T AS LONG, a AS DOUBLE, q AS DOUBLE, r AS DOUBLE, N AS LONG, seed AS DOUBLE, out() AS DOUBLE)
+DECLARE FUNCTION SXF_TPE LIB "gmbstats" ALIAS "ofx_sim_tpe__ffi" (f AS FUNCTION(x() AS DOUBLE) AS DOUBLE, lo() AS DOUBLE, hi() AS DOUBLE, d AS LONG, nIter AS LONG, nInit AS LONG, seed AS DOUBLE, out() AS DOUBLE) AS DOUBLE
 
 ' out(2*T): prima meta' media filtrata, seconda meta' varianza. T = dimensione di obs.
 PUBLIC SUB PARTICLEFILTER(obs() AS DOUBLE, a AS DOUBLE, q AS DOUBLE, r AS DOUBLE, N AS LONG, seed AS DOUBLE, out() AS DOUBLE)

@@ -10020,6 +10020,69 @@ static int dim_arr_timeseries1d(ctx_t* c, gmb_stmt_t* s, gmb_expr_t* init) {
 }
 
 
+/* ---- FFI array con estensioni automatiche (a() invariata, 2026-11-06) --------------------------
+ * Ogni parametro array di una DECLARE FFI emette verso il nativo d0..dN-1 (int64) SUBITO DOPO il
+ * puntatore, per ogni rango. Il rango di una variabile array e' statico (DIM a(i,j) → 2); il
+ * wrapper ha arita' nativa fissa, quindi se ne emette una VARIANTE per ogni vettore di ranghi
+ * usato dai call-site (nome `gmb_user_<f>__R<cifre>`; tutti 1 = wrapper base, senza suffisso).
+ * LIMITE C99: un parametro `m()` di una SUB riceve solo `__b0` (ABI dei parametri array):
+ * un array N-D passato attraverso una SUB `a()` perde le estensioni oltre la prima; per portarle
+ * serve dichiarare il parametro con le virgole, come per UBOUND(a,2) (limite del linguaggio,
+ * non solo della FFI). Sempre attivo, salvo DECLARE NATIVE. */
+#define C99_FFI_MAXRANK 4
+static int ffi_fn_has_arrays(const fn_info_t* fn) {
+    if (!fn || !fn->stmt || !fn->stmt->is_ffi || fn->stmt->ffi_native) return 0;   /* NATIVE: ABI esatta */
+    for (int i = 0; i < fn->stmt->n_params; i++) if (p_arraylike(fn->stmt, i)) return 1;
+    return 0;
+}
+static int ffi_arg_rank(ctx_t* c, gmb_expr_t* arg) {
+    const char* vname = NULL;
+    if (arg && arg->kind == GMB_EXPR_VAR) vname = arg->var;
+    else if (arg && arg->kind == GMB_EXPR_CALL && arg->var && arg->nargs == 0) vname = arg->var;
+    var_t* tv = vname ? lookup_var(c, vname) : NULL;
+    int r = (tv && tv->is_array && !tv->matrix && !tv->jagged && !tv->dyn_len && tv->ndims > 0) ? tv->ndims : 1;
+    return r > C99_FFI_MAXRANK ? C99_FFI_MAXRANK : r;
+}
+/* Chiave dei ranghi per la chiamata (una cifra per parametro, '0' = non array); registra la
+ * variante se non e' quella base. Ritorna 1 se la variante e' non-base. */
+static int ffi_variant_key(ctx_t* c, fn_info_t* fn, gmb_expr_t** args, int nargs, char* key) {
+    gmb_stmt_t* s = fn->stmt;
+    int np = s->n_params < 64 ? s->n_params : 64, nonbase = 0;
+    for (int i = 0; i < np; i++) {
+        if (!p_arraylike(s, i)) { key[i] = '0'; continue; }
+        gmb_expr_t* a = (i < nargs) ? args[i] : (s->param_defaults ? s->param_defaults[i] : NULL);
+        int r = ffi_arg_rank(c, a);
+        key[i] = (char)('0' + r);
+        if (r > 1) nonbase = 1;
+    }
+    key[np] = 0;
+    if (nonbase) {
+        int fi = (int)(fn - c->fns), found = 0;
+        for (int k = 0; k < c->ffi_var_n; k++)
+            if (c->ffi_var_fn[k] == fi && strcmp(c->ffi_var_key[k], key) == 0) { found = 1; break; }
+        if (!found && c->ffi_var_n < 128) {
+            c->ffi_var_fn[c->ffi_var_n] = fi;
+            snprintf(c->ffi_var_key[c->ffi_var_n], sizeof(c->ffi_var_key[0]), "%s", key);
+            c->ffi_var_n++;
+        }
+    }
+    return nonbase;
+}
+static void ffi_put_variant_suffix(sb_t* b, const fn_info_t* fn, const char* key) {
+    sb_put(b, "__R");
+    for (int i = 0; i < fn->stmt->n_params && i < 64 && key[i]; i++)
+        if (key[i] != '0') { char d[2] = { key[i], 0 }; sb_put(b, d); }
+}
+/* Nome C della chiamata a una funzione utente; per un wrapper FFI con array + estensioni
+ * automatiche aggiunge il suffisso della variante di rango. */
+static void emit_fn_cname_call(ctx_t* c, fn_info_t* fn, gmb_expr_t** args, int nargs) {
+    emit_fn_cname(c, fn);
+    if (ffi_fn_has_arrays(fn)) {
+        char key[72];
+        if (ffi_variant_key(c, fn, args, nargs, key)) ffi_put_variant_suffix(&c->out, fn, key);
+    }
+}
+
 /* 2.8: argomento array di una chiamata a funzione utente: coppia puntatore+bound
  * (parity EmitArrayArg oracolo, Collections.cs:506); se il parametro callee è
  * REDIMmato nel body (arr_byref) passa gli indirizzi (&arr, &arr__b0). */
@@ -10180,6 +10243,11 @@ static void emit_arr_call_arg(ctx_t* c, fn_info_t* fn, int i, gmb_expr_t* arg, i
         sb_put(&c->out, ", ");
         if (want_ref) sb_put(&c->out, "&");
         sb_bound_ident(&c->out, tv->name, _j);
+    }
+    /* FFI con estensioni automatiche: il wrapper-variante di rango R riceve anche __b1..__b(R-1). */
+    if (fn->stmt->is_ffi && !fn->stmt->ffi_native) {
+        int _R = ffi_arg_rank(c, arg);
+        for (int _j = 1; _j < _R; _j++) { sb_put(&c->out, ", "); sb_bound_ident(&c->out, tv->name, _j); }
     }
     emit_arr_arg_lowers(c, fn, i, tv);
 }
@@ -13959,7 +14027,7 @@ static void emit_call(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_
          * dopo con gmb_lambda_ret_len_get(). */
         int ret_arr_call = fn_ret_is_arr(fn);
         if (ret_arr_call) sb_put(&c->out, "({ ");
-        emit_fn_cname(c, fn);
+        emit_fn_cname_call(c, fn, args, nargs);
         sb_put(&c->out, "(");
             for (int i = 0; i < fixed_count && !c->error[0]; i++) {
                 if (i) sb_put(&c->out, ", ");
@@ -14044,8 +14112,8 @@ static void emit_call(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_
             sb_put(&c->out, "; ");
         }
         CHK();
-        sb_printf(&c->out, "%s __brr = gmb_user_", fn_ret_ctype(c, fn));
-        emit_ident(c, fn->stmt->func_name);
+        sb_printf(&c->out, "%s __brr = ", fn_ret_ctype(c, fn));
+        emit_fn_cname_call(c, fn, args, nargs);
         sb_put(&c->out, "(");
         for (int i = 0; i < fixed_count && !c->error[0]; i++) {
             if (i) sb_put(&c->out, ", ");
@@ -31223,8 +31291,12 @@ static void emit_ffi_callback_pool(ctx_t* c) {
     sb_put(&c->out, "\n");
 }
 
-static void emit_ffi_wrapper(ctx_t* c, fn_info_t* fn) {
+static void emit_ffi_wrapper(ctx_t* c, fn_info_t* fn, const char* vkey) {
     gmb_stmt_t* s = fn->stmt;
+    /* Estensioni automatiche degli array (vedi ffi_variant_key): rango per parametro array
+     * (vkey NULL = variante base, tutti rango 1); 0 per DECLARE NATIVE. */
+    const int ext_on = !s->ffi_native;
+    #define FFI_RANK(i) ((ext_on && (i) < C99_FFI_MAX_ARGS && is_arr_param[(i)]) ? ((vkey && vkey[(i)] >= '1') ? (vkey[(i)] - '0') : 1) : 0)
     const char* retC = fn_ret_ctype(c, fn);
     const char* sym = s->ffi_symbol ? s->ffi_symbol : s->func_name;
     const char* lib = s->ffi_lib ? s->ffi_lib : "";
@@ -31589,6 +31661,7 @@ static void emit_ffi_wrapper(ctx_t* c, fn_info_t* fn) {
     sb_printf(&c->out, "static %s gmb_user_", retC);
     emit_ident(c, s->func_name);
     if (fn->ovl_idx > 0) sb_printf(&c->out, "__%d", fn->ovl_idx);
+    if (vkey) ffi_put_variant_suffix(&c->out, fn, vkey);
     sb_put(&c->out, "(");
     if (s->n_params == 0) sb_put(&c->out, "void");
     for (int i = 0; i < s->n_params; i++) {
@@ -31622,6 +31695,11 @@ static void emit_ffi_wrapper(ctx_t* c, fn_info_t* fn) {
             emit_ident(c, s->func_params[i]);
             sb_put(&c->out, ", gmb_int_t ");
             sb_bound_ident(&c->out, s->func_params[i], 0);
+            /* estensioni automatiche: bound delle dimensioni successive (rango R → __b1..__b(R-1)) */
+            for (int _x = 1; _x < FFI_RANK(i); _x++) {
+                sb_put(&c->out, ", gmb_int_t ");
+                sb_bound_ident(&c->out, s->func_params[i], _x);
+            }
             continue;
         }
         if (i < C99_FFI_MAX_ARGS && byref_udt_ci[i]) {
@@ -31656,6 +31734,23 @@ static void emit_ffi_wrapper(ctx_t* c, fn_info_t* fn) {
     }
     sb_put(&c->out, ") {\n");
     c->indent = 1;
+    /* `<array>__bT` = ULTIMO indice del buffer piatto (totale elementi - 1): per rango 1 coincide
+     * con __b0; per rango R e' il prodotto delle estensioni - 1 (copy-in/copy-back degli array
+     * a elemento intero e degli array di UDT). */
+    for (int i = 0; i < s->n_params && i < C99_FFI_MAX_ARGS; i++) {
+        if (!is_arr_param[i]) continue;
+        ind(c);
+        sb_put(&c->out, "gmb_int_t "); sb_ident(&c->out, s->func_params[i]); sb_put(&c->out, "__bT = ");
+        if (FFI_RANK(i) > 1) {
+            sb_put(&c->out, "(");
+            for (int _x = 0; _x < FFI_RANK(i); _x++) {
+                if (_x) sb_put(&c->out, " * ");
+                sb_put(&c->out, "("); sb_bound_ident(&c->out, s->func_params[i], _x); sb_put(&c->out, " + 1)");
+            }
+            sb_put(&c->out, ") - 1");
+        } else sb_bound_ident(&c->out, s->func_params[i], 0);
+        sb_put(&c->out, "; (void)"); sb_ident(&c->out, s->func_params[i]); sb_put(&c->out, "__bT;\n");
+    }
     ind(c);
     sb_put(&c->out, "static void* __ffi_lib_h = NULL;\n");
     ind(c);
@@ -31666,11 +31761,11 @@ static void emit_ffi_wrapper(ctx_t* c, fn_info_t* fn) {
     ind(c);
     sb_put(&c->out, inner_ret);
     sb_put(&c->out, " (*__ffi_fn)(");
-    for (int i = 0; i < s->n_params; i++) { if (i) sb_put(&c->out, ", "); sb_put(&c->out, FFI_INNER(i)); }
+    for (int i = 0; i < s->n_params; i++) { if (i) sb_put(&c->out, ", "); sb_put(&c->out, FFI_INNER(i)); for (int _x = 0; _x < FFI_RANK(i); _x++) sb_put(&c->out, ", gmb_int_t"); }
     sb_put(&c->out, ") = (");
     sb_put(&c->out, inner_ret);
     sb_put(&c->out, " (*)(");
-    for (int i = 0; i < s->n_params; i++) { if (i) sb_put(&c->out, ", "); sb_put(&c->out, FFI_INNER(i)); }
+    for (int i = 0; i < s->n_params; i++) { if (i) sb_put(&c->out, ", "); sb_put(&c->out, FFI_INNER(i)); for (int _x = 0; _x < FFI_RANK(i); _x++) sb_put(&c->out, ", gmb_int_t"); }
     sb_printf(&c->out, "))gmb_ffi_dl_sym(__ffi_lib_h, \"%s\");\n", sym);
     ind(c);
     sb_put(&c->out, "if (__ffi_fn) {\n");
@@ -31680,9 +31775,9 @@ static void emit_ffi_wrapper(ctx_t* c, fn_info_t* fn) {
         if (!is_arr_param[i] || strcmp(ffi_param_ctype(s, i), "gmb_int_t") != 0) continue;
         ind(c);
         sb_put(&c->out, "gmb_int_t* __ci_"); emit_ident(c, s->func_params[i]);
-        sb_put(&c->out, " = (gmb_int_t*)malloc(sizeof(gmb_int_t)*((size_t)"); emit_ident(c, s->func_params[i]); sb_put(&c->out, "__b0 + 1));\n");
+        sb_put(&c->out, " = (gmb_int_t*)malloc(sizeof(gmb_int_t)*((size_t)"); emit_ident(c, s->func_params[i]); sb_put(&c->out, "__bT + 1));\n");
         ind(c);
-        sb_put(&c->out, "for (gmb_int_t __k = 0; __k <= "); emit_ident(c, s->func_params[i]); sb_put(&c->out, "__b0; __k++) __ci_");
+        sb_put(&c->out, "for (gmb_int_t __k = 0; __k <= "); emit_ident(c, s->func_params[i]); sb_put(&c->out, "__bT; __k++) __ci_");
         emit_ident(c, s->func_params[i]); sb_put(&c->out, "[__k] = (gmb_int_t)"); emit_ident(c, s->func_params[i]); sb_put(&c->out, "[__k];\n");
     }
     /* Array di UDT (S3, 2026-11-06): buffer contiguo di struct nel layout C, riempito dagli
@@ -31694,10 +31789,10 @@ static void emit_ffi_wrapper(ctx_t* c, fn_info_t* fn) {
         int nlv = collect_ffi_leaves_silent(c, uci, "", lv, 64);
         ind(c);
         sb_printf(&c->out, "gmb_ffi_udt_%s_t __ua_", uci->name); emit_ident(c, s->func_params[i]);
-        sb_put(&c->out, "["); emit_ident(c, s->func_params[i]); sb_put(&c->out, "__b0 + 1];\n");
+        sb_put(&c->out, "["); emit_ident(c, s->func_params[i]); sb_put(&c->out, "__bT + 1];\n");
         ind(c);
         sb_put(&c->out, "for (gmb_int_t __k = 0; __k <= "); emit_ident(c, s->func_params[i]);
-        sb_put(&c->out, "__b0; __k++) { gmb_obj_"); sb_printf(&c->out, "%s* __e = (gmb_obj_%s*)(((gmb_obj_t*)", uci->name, uci->name);
+        sb_put(&c->out, "__bT; __k++) { gmb_obj_"); sb_printf(&c->out, "%s* __e = (gmb_obj_%s*)(((gmb_obj_t*)", uci->name, uci->name);
         emit_ident(c, s->func_params[i]); sb_put(&c->out, "[__k].v_ptr)->data); __ua_");
         emit_ident(c, s->func_params[i]); sb_printf(&c->out, "[__k] = (gmb_ffi_udt_%s_t){", uci->name);
         for (int f = 0; f < nlv; f++) {
@@ -31832,13 +31927,13 @@ static void emit_ffi_wrapper(ctx_t* c, fn_info_t* fn) {
         if (strcmp(retC, "void") == 0) sb_put(&c->out, "__ffi_fn(");
         else if (ret_is_str) sb_put(&c->out, "return gmb_string_alloc(__ffi_fn(");
         else sb_put(&c->out, cast_ret ? "return (gmb_double_t)__ffi_fn(" : "return __ffi_fn(");
-        for (int i = 0; i < s->n_params; i++) { if (i) sb_put(&c->out, ", "); FFI_EMIT_ARG(i); }
+        for (int i = 0; i < s->n_params; i++) { if (i) sb_put(&c->out, ", "); FFI_EMIT_ARG(i); for (int _x = 0; _x < FFI_RANK(i); _x++) { sb_put(&c->out, ", (gmb_int_t)("); sb_bound_ident(&c->out, s->func_params[i], _x); sb_put(&c->out, " + 1)"); } }
         sb_put(&c->out, ret_is_str && strcmp(retC, "void") != 0 ? "));\n" : ");\n");
     } else {
         ind(c);
         if (strcmp(retC, "void") == 0) sb_put(&c->out, "__ffi_fn(");
         else sb_printf(&c->out, "%s __rr = __ffi_fn(", inner_ret);
-        for (int i = 0; i < s->n_params; i++) { if (i) sb_put(&c->out, ", "); FFI_EMIT_ARG(i); }
+        for (int i = 0; i < s->n_params; i++) { if (i) sb_put(&c->out, ", "); FFI_EMIT_ARG(i); for (int _x = 0; _x < FFI_RANK(i); _x++) { sb_put(&c->out, ", (gmb_int_t)("); sb_bound_ident(&c->out, s->func_params[i], _x); sb_put(&c->out, " + 1)"); } }
         sb_put(&c->out, ");\n");
         for (int i = 0; i < s->n_params && i < C99_FFI_MAX_ARGS; i++) {
             if (!is_cb_param[i]) continue;
@@ -31850,7 +31945,7 @@ static void emit_ffi_wrapper(ctx_t* c, fn_info_t* fn) {
         for (int i = 0; i < s->n_params && i < C99_FFI_MAX_ARGS; i++) {
             if (!is_arr_param[i] || strcmp(ffi_param_ctype(s, i), "gmb_int_t") != 0) continue;
             ind(c);
-            sb_put(&c->out, "for (gmb_int_t __k = 0; __k <= "); emit_ident(c, s->func_params[i]); sb_put(&c->out, "__b0; __k++) ");
+            sb_put(&c->out, "for (gmb_int_t __k = 0; __k <= "); emit_ident(c, s->func_params[i]); sb_put(&c->out, "__bT; __k++) ");
             emit_ident(c, s->func_params[i]); sb_put(&c->out, "[__k] = (gmb_double_t)__ci_"); emit_ident(c, s->func_params[i]); sb_put(&c->out, "[__k];\n");
             ind(c);
             sb_put(&c->out, "free(__ci_"); emit_ident(c, s->func_params[i]); sb_put(&c->out, ");\n");
@@ -31894,7 +31989,7 @@ static void emit_ffi_wrapper(ctx_t* c, fn_info_t* fn) {
             int nlv = collect_ffi_leaves_silent(c, uci, "", lv, 64);
             ind(c);
             sb_put(&c->out, "for (gmb_int_t __k = 0; __k <= "); emit_ident(c, s->func_params[i]);
-            sb_printf(&c->out, "__b0; __k++) { gmb_obj_%s* __e = (gmb_obj_%s*)(((gmb_obj_t*)", uci->name, uci->name);
+            sb_printf(&c->out, "__bT; __k++) { gmb_obj_%s* __e = (gmb_obj_%s*)(((gmb_obj_t*)", uci->name, uci->name);
             emit_ident(c, s->func_params[i]);
             sb_put(&c->out, "[__k].v_ptr)->data); if (__e) { ");
             for (int f = 0; f < nlv; f++) {
@@ -31985,6 +32080,7 @@ static void emit_ffi_wrapper(ctx_t* c, fn_info_t* fn) {
     ind(c);
     sb_put(&c->out, "}\n\n");
     #undef FFI_INNER
+    #undef FFI_RANK
 }
 
 static void emit_function(ctx_t* c, fn_info_t* fn) {
@@ -31992,7 +32088,7 @@ static void emit_function(ctx_t* c, fn_info_t* fn) {
     gmb_stmt_t* s = fn->stmt;
     /* DECLARE ... LIB (FFI): emette il wrapper dlopen/dlsym/invocazione (parity
      * emitter C# EmitFfiWrapper) al posto del corpo (n_funcbody=0). */
-    if (s->is_ffi) { emit_ffi_wrapper(c, fn); return; }
+    if (s->is_ffi) { emit_ffi_wrapper(c, fn, NULL); return; }
     c->cur_fn = fn;
     /* Array passati a una procedura nominale: il lower bound viaggia nella firma
      * (`<param>__bloK`), quindi il corpo del callee usa __bloK anche per gli
@@ -35058,6 +35154,18 @@ int gmb_c99_emit(const gmb_program_t* prog, char** out_src, char** error) {
     if (c->n_handles) sb_put(&fin, "\n");
     if (c->http_srv_started || c->n_http_routes || c->n_http_mws)
         sb_put(&fin, "static int64_t __gmb_http_srv = -1;\n\n");
+    /* Varianti dei wrapper FFI per vettore di ranghi (estensioni automatiche degli array): scoperte
+     * dai call-site durante l'emissione dei corpi, quindi emesse qui in coda al buffer principale;
+     * il prototipo (la firma, fino a `) {`) va nel buffer dei prototipi che precede i corpi. */
+    for (int k = 0; k < c->ffi_var_n && !c->error[0]; k++) {
+        fn_info_t* vf = &c->fns[c->ffi_var_fn[k]];
+        size_t off = c->out.len;
+        emit_ffi_wrapper(c, vf, c->ffi_var_key[k]);
+        if (c->error[0] || !c->out.s) break;
+        char* st = strstr(c->out.s + off, "static ");
+        char* en = st ? strstr(st, ") {\n") : NULL;
+        if (st && en) { sb_putn(&proto, st, (size_t)(en - st) + 1); sb_put(&proto, ";\n"); }
+    }
     if (proto.s) sb_put(&fin, proto.s);
     free(proto.s);
     if (c->uses_eval) emit_host_env(c, &fin);

@@ -76,3 +76,8 @@ double ofx_sim_tpe(ofx_sim_fv f, const double* lo, const double* hi, int d,
     free(bestx);
     return bestf;
 }
+
+#include <stdint.h>
+/* Shim FFI (estensioni automatiche degli array, ffi_ext_shim.pl): firma con int64_t dopo ogni array. */
+void ofx_sim_particle_filter__ffi(const double* obs, int64_t obs_ext, int T, double a, double q, double r, int N, double seed, double* out, int64_t out_ext) { ofx_sim_particle_filter(obs, T, a, q, r, N, seed, out); }
+double ofx_sim_tpe__ffi(ofx_sim_fv f, const double* lo, int64_t lo_ext, const double* hi, int64_t hi_ext, int d, int n_iter, int n_init, double seed, double* out, int64_t out_ext) { return ofx_sim_tpe(f, lo, hi, d, n_iter, n_init, seed, out); }

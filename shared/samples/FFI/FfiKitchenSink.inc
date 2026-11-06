@@ -17,9 +17,9 @@ PUBLIC DECLARE FUNCTION k_sum8 LIB "libvec_module" ALIAS "vec_sum8" (a AS LONG, 
 ' --- Array BYREF (2026-09-28): il parametro array viaggia come puntatore nativo, nessun
 ' bound auto-iniettato (il chiamante passa la lunghezza come parametro AS LONG separato,
 ' come farebbe con l'API C reale) — vedi Guide/FFI-Guida-Utente.md §4bis.
-PUBLIC DECLARE SUB k_fill LIB "libvec_module" ALIAS "vec_fill" (buf() AS DOUBLE, n AS LONG)
-PUBLIC DECLARE FUNCTION k_isum LIB "libvec_module" ALIAS "vec_isum" (buf() AS LONG, n AS LONG) AS LONG
-PUBLIC DECLARE SUB k_combine LIB "libvec_module" ALIAS "vec_combine" (n AS LONG, a() AS DOUBLE, b() AS DOUBLE, c() AS DOUBLE)
+PUBLIC DECLARE SUB k_fill LIB "libvec_module" ALIAS "vec_fill" (buf() AS DOUBLE)
+PUBLIC DECLARE FUNCTION k_isum LIB "libvec_module" ALIAS "vec_isum" (buf() AS LONG) AS LONG
+PUBLIC DECLARE SUB k_combine LIB "libvec_module" ALIAS "vec_combine" (a() AS DOUBLE, b() AS DOUBLE, c() AS DOUBLE)
 
 ' --- STRING (2026-09-28): parametro + ritorno, entrambi puntatori (const char*) — firma
 ' INT64 come gli array. Vedi Guide/FFI-Guida-Utente.md §4bis.

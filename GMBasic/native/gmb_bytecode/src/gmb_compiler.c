@@ -2771,7 +2771,7 @@ static void cc_emit_ffi_call(gmb_cc_t* c, const gmb_expr_t* e, const gmb_stmt_t*
      * struct (u16) e per ogni foglia (u8 tipo, u16 offset). Il formato vecchio (bit7=0:
      * aux1=campi, aux2=maschera kind a 8 bit) resta leggibile per i chunk esistenti. */
     cc_u16(c, (uint16_t)argc);
-    cc_byte(c, (uint8_t)(kind | (ret_udt_idx >= 0 ? 0x80 : 0)));
+    cc_byte(c, (uint8_t)(kind | (ret_udt_idx >= 0 ? 0x80 : 0) | (pd->ffi_native ? 0x20 : 0)));   /* 0x20 = DECLARE NATIVE */
     cc_byte(c, (uint8_t)ret_is_string);
     /* Ritorno UDT (formato nuovo): il bit7 di `kind` lo segnala e questi due byte diventano
      * il conteggio foglie (u16) al posto di count+mask. */

@@ -2529,6 +2529,25 @@ static gmb_val_t vm_ffi_load_field(const unsigned char* buf, int off, int code)
  * viaggiano come buffer di byte nel LORO layout C reale: `udtType[i][f]`/`udtOff[i][f]` sono
  * tipo e offset della foglia f, `udtSize[i]` la size dello struct. Il ritorno UDT è
  * decodificato in `out_fields` (gmb_val_t, così un campo STRING resta una stringa). */
+/* FFI array con sintassi a() invariata (2026-11-06): ogni parametro array emette verso il
+ * nativo le sue estensioni d0..dN-1 (int64) SUBITO DOPO il puntatore, per ogni rango. Il
+ * valore array VM/C porta gia' rango ed estensioni (ndims/dim_upper/dim_lower, popolati da
+ * CREATE_ARRAY e REDIM); una lista semplice (ndims==0) e' 1-D con count elementi.
+ * Sempre attivo, salvo DECLARE NATIVE (bit 0x20 del kind). */
+static int vm_array_extents(const gmb_obj_shared_val_t* sv, int64_t* out, int cap)
+{
+    if (sv && sv->ndims > 0)
+    {
+        int n = sv->ndims < 8 ? sv->ndims : 8;
+        if (n > cap) n = cap;
+        for (int k = 0; k < n; k++) out[k] = (int64_t)sv->dim_upper[k] - (int64_t)sv->dim_lower[k] + 1;
+        return n;
+    }
+    if (cap < 1) return 0;
+    out[0] = (sv && sv->list) ? (int64_t)sv->list->count : 0;
+    return 1;
+}
+
 static int vm_ffi_call_slots(void* fn, int argc,
                              const int* udtCount, const unsigned char (*udtType)[64],
                              const int (*udtOff)[64], const int* udtSize,
@@ -2542,7 +2561,7 @@ static int vm_ffi_call_slots(void* fn, int argc,
                              gmb_val_t* out_fields,
                              const int* uaCount, const unsigned char (*uaType)[64],
                              const int (*uaOff)[64], const int* uaSize, const char* (*uaNames)[64],
-                             uint64_t byrefUdtMask)
+                             uint64_t byrefUdtMask, int nativeAbi)
 {
     if (!fn || argc < 0 || argc > GMB_FFI_MAX_ARGS) return -1;
     if (!gmb_call_enabled()) return -1;
@@ -2627,6 +2646,27 @@ static int vm_ffi_call_slots(void* fn, int argc,
         else { dv[i] = args[i]; vals[i] = &dv[i]; }
         slots[i].kind = isInt;
     }
+    /* Estensioni degli array (estensioni automatiche): nuova arita' nativa ns >= argc. */
+    gmb_call_slot slots2[GMB_FFI_MAX_ARGS];
+    void* vals2[GMB_FFI_MAX_ARGS];
+    int64_t exv[GMB_FFI_MAX_ARGS];
+    int ns = 0, nex = 0;
+    for (int i = 0; i < argc; i++)
+    {
+        slots2[ns] = slots[i]; vals2[ns] = vals[i]; ns++;
+        if (nativeAbi) continue;   // DECLARE NATIVE: ABI esatta, nessuna estensione
+        if (!(((arrayMask >> i) & 1ull) || (uaCount && uaCount[i] > 0)) || !arrRefs[i]) continue;
+        int64_t e[8];
+        int ne = vm_array_extents((const gmb_obj_shared_val_t*)arrRefs[i], e, 8);
+        for (int k = 0; k < ne; k++)
+        {
+            if (ns >= GMB_FFI_MAX_ARGS || nex >= GMB_FFI_MAX_ARGS) goto fail;
+            exv[nex] = e[k];
+            slots2[ns].kind = 1; slots2[ns].nfields = 0; slots2[ns].field_type = NULL; slots2[ns].field_off = NULL;
+            vals2[ns] = &exv[nex];
+            nex++; ns++;
+        }
+    }
     {
         unsigned char* rbuf = NULL;
         int64_t rint = 0; double rdbl = 0.0;
@@ -2638,7 +2678,7 @@ static int vm_ffi_call_slots(void* fn, int argc,
             retp = rbuf;
         }
         else retp = out_int ? (void*)&rint : (void*)&rdbl;
-        int rc = gmb_call_invoke_slots(fn, argc, slots, vals, retCount > 0 ? 2 : (out_int ? 1 : 0),
+        int rc = gmb_call_invoke_slots(fn, ns, slots2, vals2, retCount > 0 ? 2 : (out_int ? 1 : 0),
                                        retCount, retType, retOff, retSize, retp);
         if (rc != 0) { free(rbuf); goto fail; }
         if (retCount > 0)
@@ -14995,7 +15035,8 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                  * storico (conteggio u8 + maschera kind u8), quindi i chunk vecchi continuano
                  * a funzionare. */
                 int retUdtNew = (kindByte & 0x80) != 0;
-                int kind = kindByte & 0x7F;
+                int nativeAbi = (kindByte & 0x20) != 0;   /* 0x20 = DECLARE NATIVE: niente estensioni array */
+                int kind = kindByte & 0x5F;
                 int retUdtFieldCount = retUdtNew ? (retUdtLo | (retUdtHi << 8)) : retUdtLo;
                 int retUdtFieldKindMask = retUdtNew ? 0 : retUdtHi;
                 if (argc > GMB_FFI_MAX_ARGS)
@@ -15405,7 +15446,10 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                             int hasAnyUdt = (retUdtFieldCount > 0);
                             for (int i = 0; i < argc; i++)
                                 if (udtParamFieldCount[i] > 0 || udtArrCount[i] > 0) { hasAnyUdt = 1; break; }
-                            if (!hasAnyUdt && retUdtFieldCount == 0 && !retIsString &&
+                            /* Estensioni array automatiche: serve il percorso a slot (arita' nativa
+                             * variabile con il rango dell'array). */
+                            const int extSlots = arrayMask != 0 && !nativeAbi;
+                            if (!hasAnyUdt && !extSlots && retUdtFieldCount == 0 && !retIsString &&
                                 (unsigned)scalarKindMask != (unsigned)(kind == 1 ? fullMaskForArgc : 0))
                             {
                                 /* 2026-11-02: firma mista anche con slot puntatore. Gli
@@ -15425,7 +15469,7 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                                                                scalarKindMask & fullMaskForArgc,
                                                                kind == 1 ? 1 : 0, args);
                             }
-                            else if (!hasAnyUdt && retUdtFieldCount == 0)
+                            else if (!hasAnyUdt && !extSlots && retUdtFieldCount == 0)
                             {
                                 /* Nessun UDT in uscita: se non ci sono UDT in ingresso la firma
                                  * è un vettore uniforme di slot int64 → libffi (regge N>8). */
@@ -15453,7 +15497,7 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                             gmb_val_t retVals[64]; memset(retVals, 0, sizeof(retVals));
                             /* S1 (2026-11-06): UDT → slot tipizzati con layout C reale. */
                             int udtSlotsDone = 0;
-                            if (hasAnyUdt &&
+                            if ((hasAnyUdt || extSlots) &&
                                 vm_ffi_call_slots(p, argc, udtParamFieldCount, (const unsigned char (*)[64])udtParamType,
                                                   (const int (*)[64])udtParamOff, udtParamSize,
                                                   udtFieldNames, args, scratch, arrRefs,
@@ -15462,7 +15506,7 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                                                   kind == 1 ? &r : NULL, kind == 1 ? NULL : &result, retVals,
                                                   udtArrCount, (const unsigned char (*)[64])udtArrType,
                                                   (const int (*)[64])udtArrOff, udtArrSize, udtArrNames,
-                                                  byrefUdtMask) == 0)
+                                                  byrefUdtMask, nativeAbi) == 0)
                                 udtSlotsDone = 1;
                             /* Kind misto (2026-09-29): retUdtFieldKindMask sceglie la forma
                              * ESATTA indipendentemente dal ramo kind=1/kind=0 in cui ci troviamo
@@ -15587,7 +15631,7 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                                                       NULL, &result, retValsD,
                                                       udtArrCount, (const unsigned char (*)[64])udtArrType,
                                                       (const int (*)[64])udtArrOff, udtArrSize, udtArrNames,
-                                                      byrefUdtMask) == 0)
+                                                      byrefUdtMask, nativeAbi) == 0)
                                     udtSlotsDoneD = 1;
                                 /* Kind misto (2026-09-29): stessa selezione via
                                  * retUdtFieldKindMask del ramo kind=1 — vedi commento gemello. */

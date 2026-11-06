@@ -864,7 +864,93 @@ public class FfiService : IFfiService
         }
     }
 
+    /// <summary>Estensioni (lunghezze per dimensione) di un valore array BASIC: matrice
+    /// rettangolare → GetLength(k) per ogni rango; jagged / object[] annidati (PCode) → lunghezza
+    /// esterna + lunghezza della prima riga non nulla, ricorsivamente; 1-D → [Length].</summary>
+    internal static long[] ArrayExtents(object? a)
+    {
+        if (a is not Array arr) return new long[] { 0 };
+        if (arr.Rank >= 2)
+        {
+            var ex = new long[arr.Rank];
+            for (var k = 0; k < arr.Rank; k++) ex[k] = arr.GetLength(k);
+            return ex;
+        }
+        var list = new List<long> { arr.Length };
+        object? cur = arr;
+        while (cur is Array ca && ca.Rank == 1)
+        {
+            Array? child = null;
+            foreach (var e in ca) { if (e is Array ch) { child = ch; break; } }
+            if (child is null) break;
+            if (child.Rank >= 2) { for (var k = 0; k < child.Rank; k++) list.Add(child.GetLength(k)); break; }
+            list.Add(child.Length);
+            cur = child;
+        }
+        return list.ToArray();
+    }
+
+    /// <summary>FFI array con sintassi <c>a()</c> invariata (2026-11-06): ogni parametro array
+    /// emette verso il nativo le sue estensioni d0..dN-1 (int64) SUBITO DOPO il puntatore, per
+    /// ogni rango. Rango ed estensioni si leggono dal valore array a runtime, quindi funzionano
+    /// anche passando l'array attraverso funzioni intermedie. Tutte le maschere/array per
+    /// posizione vengono rimappati sulla nuova arita' nativa; i valori OUT (byref scalare)
+    /// tornano agli slot originali del chiamante.</summary>
     public object? CallFunctionTypedArr(IntPtr function, object?[] args, int kind, long arrayMask, long arrayElemIntMask,
+        long stringMask, bool retIsString, long byrefScalarMask = 0, long byrefScalarElemIntMask = 0,
+        FfiUdtShape?[]? udtParams = null, FfiUdtShape? udtReturn = null,
+        Type?[]? udtParamClrTypes = null, Type? udtReturnClrType = null, long scalarKindMask = 0,
+        string[]? udtShapeStrs = null, string? udtReturnShapeStr = null, long byrefUdtMask = 0)
+    {
+        if (function == IntPtr.Zero) return null;
+        // DECLARE NATIVE: il chiamante marca il kind con 0x100 = ABI esatta, nessuna estensione degli array.
+        var nativeAbi = (kind & 0x100) != 0;
+        kind &= ~0x100;
+        // Le estensioni sono SEMPRE emesse per i parametri array, salvo DECLARE NATIVE (ABI esatta).
+        if (arrayMask == 0 || nativeAbi)
+            return CallFunctionTypedArrCore(function, args, kind, arrayMask, arrayElemIntMask, stringMask, retIsString,
+                byrefScalarMask, byrefScalarElemIntMask, udtParams, udtReturn, udtParamClrTypes, udtReturnClrType,
+                scalarKindMask, udtShapeStrs, udtReturnShapeStr, byrefUdtMask);
+        var n = args.Length;
+        var extents = new long[n][];
+        var newN = n;
+        for (var i = 0; i < n; i++)
+        {
+            if ((arrayMask & (1L << i)) == 0) continue;
+            extents[i] = ArrayExtents(args[i]);
+            newN += extents[i].Length;
+        }
+        if (newN > 63)
+            throw new InvalidOperationException($"FFI: {newN} argomenti nativi dopo l'espansione delle estensioni degli array (max 63).");
+        var map = new int[n];
+        var nargs = new object?[newN];
+        long nArr = 0, nArrInt = 0, nStr = 0, nByS = 0, nByI = 0, nKind = 0, nByU = 0;
+        var nUdt = udtParams == null ? null : new FfiUdtShape?[newN];
+        var nClr = udtParamClrTypes == null ? null : new Type?[newN];
+        var nShape = udtShapeStrs == null ? null : new string[newN];
+        long Bit(long m, int i, int j) => (m & (1L << i)) != 0 ? 1L << j : 0L;
+        var j = 0;
+        for (var i = 0; i < n; i++)
+        {
+            map[i] = j;
+            nargs[j] = args[i];
+            nArr |= Bit(arrayMask, i, j); nArrInt |= Bit(arrayElemIntMask, i, j); nStr |= Bit(stringMask, i, j);
+            nByS |= Bit(byrefScalarMask, i, j); nByI |= Bit(byrefScalarElemIntMask, i, j);
+            nKind |= Bit(scalarKindMask, i, j); nByU |= Bit(byrefUdtMask, i, j);
+            if (nUdt != null && udtParams != null && i < udtParams.Length) nUdt[j] = udtParams[i];
+            if (nClr != null && udtParamClrTypes != null && i < udtParamClrTypes.Length) nClr[j] = udtParamClrTypes[i];
+            if (nShape != null && udtShapeStrs != null && i < udtShapeStrs.Length) nShape[j] = udtShapeStrs[i];
+            j++;
+            if (extents[i] != null)
+                foreach (var e in extents[i]) { nargs[j] = e; nKind |= 1L << j; j++; }
+        }
+        var res = CallFunctionTypedArrCore(function, nargs, kind, nArr, nArrInt, nStr, retIsString,
+            nByS, nByI, nUdt, udtReturn, nClr, udtReturnClrType, nKind, nShape, udtReturnShapeStr, nByU);
+        for (var i = 0; i < n; i++) args[i] = nargs[map[i]];   // valori OUT (byref) tornano al chiamante
+        return res;
+    }
+
+    private object? CallFunctionTypedArrCore(IntPtr function, object?[] args, int kind, long arrayMask, long arrayElemIntMask,
         long stringMask, bool retIsString, long byrefScalarMask = 0, long byrefScalarElemIntMask = 0,
         FfiUdtShape?[]? udtParams = null, FfiUdtShape? udtReturn = null,
         Type?[]? udtParamClrTypes = null, Type? udtReturnClrType = null, long scalarKindMask = 0,

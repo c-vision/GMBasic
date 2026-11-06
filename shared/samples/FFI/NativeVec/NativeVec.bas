@@ -57,7 +57,7 @@ DECLARE FUNCTION vec_make_labeled_dn LIB "./libvec_module" (v AS DOUBLE, n AS DO
 ' della dichiarazione (e' un puntatore) — indipendentemente dal kind INTERNO del callback.
 DECLARE FUNCTION vec_cb_apply LIB "./libvec_module" (cb AS FUNCTION(x AS LONG) AS LONG, x AS LONG) AS LONG
 DECLARE FUNCTION vec_cb_combine2 LIB "./libvec_module" (cb AS FUNCTION(a AS LONG, b AS LONG) AS LONG, a AS LONG, b AS LONG) AS LONG
-DECLARE FUNCTION vec_cb_sum_transformed LIB "./libvec_module" (buf() AS LONG, n AS LONG, cb AS FUNCTION(x AS LONG) AS LONG) AS LONG
+DECLARE FUNCTION vec_cb_sum_transformed LIB "./libvec_module" (buf() AS LONG, cb AS FUNCTION(x AS LONG) AS LONG) AS LONG
 DECLARE FUNCTION vec_cb_apply_i2d LIB "./libvec_module" (cb AS FUNCTION(x AS DOUBLE) AS DOUBLE, unused AS LONG) AS LONG
 SUB Main()
     PRINT "╔══════════════════════════════════════════════════════════╗"
@@ -136,7 +136,7 @@ SUB Main()
     DIM cbbuf(3) AS LONG
     cbbuf(0) = 1 : cbbuf(1) = 2 : cbbuf(2) = 3 : cbbuf(3) = 4
     DIM cbr3 AS LONG
-    cbr3 = vec_cb_sum_transformed(cbbuf, 4, FN(x AS LONG) AS LONG => x * x)
+    cbr3 = vec_cb_sum_transformed(cbbuf, FN(x AS LONG) AS LONG => x * x)
     PRINT "vec_cb_sum_transformed({1,2,3,4}, FN x=>x*x) = "; cbr3  ' 30 (1+4+9+16)
 
     ' Il kind INTERNO del callback (qui DOUBLE) e' indipendente dal kind ESTERNO forzato

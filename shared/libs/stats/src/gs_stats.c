@@ -352,7 +352,9 @@ double gs_entropy_perm(const double *x, int n, int m, int lag)
     (void)n; (void)m;
     if (!x || m < 2 || lag < 1) return 0.0 / 0.0;
     order = (int *)malloc((size_t)m * sizeof(int));
-    seen = (int *)malloc((size_t)n * sizeof(int));
+    /* `seen` e' indicizzato [q * n + j] con q < m: servono m*n interi (prima n: overflow di heap,
+     * crash dipendente dal layout, emerso col gate FFI estensioni 2026-11-06). */
+    seen = (int *)malloc((size_t)m * (size_t)n * sizeof(int));
     if (!order || !seen) { free(order); free(seen); return 0.0 / 0.0; }
     for (i = 0; i < n; i++) seen[i] = 0;
     cnt = 0;
@@ -623,3 +625,19 @@ double gs_fc_combine(const double *fc, const double *w, int m)
     for (i = 0; i < m; i++) s += fc[i] * w[i];
     return s;
 }
+
+#include <stdint.h>
+/* Shim FFI (estensioni automatiche degli array, ffi_ext_shim.pl): firma con int64_t dopo ogni array. */
+gc_real gs_stats_correlation__ffi(const gc_real *a, int64_t a_ext, const gc_real *b, int64_t b_ext, int n) { return gs_stats_correlation(a, b, n); }
+gc_real gs_stats_covariance__ffi(const gc_real *a, int64_t a_ext, const gc_real *b, int64_t b_ext, int n, int sample) { return gs_stats_covariance(a, b, n, sample); }
+gc_real gs_stats_kurtosis__ffi(const gc_real *a, int64_t a_ext, int n) { return gs_stats_kurtosis(a, n); }
+gc_real gs_stats_mad__ffi(const gc_real *a, int64_t a_ext, int n) { return gs_stats_mad(a, n); }
+gc_real gs_stats_max__ffi(const gc_real *a, int64_t a_ext, int n) { return gs_stats_max(a, n); }
+gc_real gs_stats_mean__ffi(const gc_real *a, int64_t a_ext, int n) { return gs_stats_mean(a, n); }
+gc_real gs_stats_median__ffi(const gc_real *a, int64_t a_ext, int n) { return gs_stats_median(a, n); }
+gc_real gs_stats_min__ffi(const gc_real *a, int64_t a_ext, int n) { return gs_stats_min(a, n); }
+gc_real gs_stats_percentile__ffi(const gc_real *a, int64_t a_ext, int n, gc_real p) { return gs_stats_percentile(a, n, p); }
+gc_real gs_stats_range__ffi(const gc_real *a, int64_t a_ext, int n) { return gs_stats_range(a, n); }
+gc_real gs_stats_skewness__ffi(const gc_real *a, int64_t a_ext, int n) { return gs_stats_skewness(a, n); }
+gc_real gs_stats_stddev__ffi(const gc_real *a, int64_t a_ext, int n, int sample) { return gs_stats_stddev(a, n, sample); }
+gc_real gs_stats_variance__ffi(const gc_real *a, int64_t a_ext, int n, int sample) { return gs_stats_variance(a, n, sample); }

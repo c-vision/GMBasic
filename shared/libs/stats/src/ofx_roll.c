@@ -516,3 +516,37 @@ int ofx_ts_bandstop(const double *x, int n, double w1, double w2, int order, dou
     h = gm_signal_butter(order, wn, 2, "bandstop");
     return apply_filter(h, x, n, out);
 }
+
+#include <stdint.h>
+/* Shim FFI (estensioni automatiche degli array, ffi_ext_shim.pl): firma con int64_t dopo ogni array. */
+void ofx_roll_autocorr__ffi(const double *x, int64_t x_ext, int n, int w, int lag, double *out, int64_t out_ext) { ofx_roll_autocorr(x, n, w, lag, out); }
+void ofx_roll_corr__ffi(const double *x, int64_t x_ext, const double *y, int64_t y_ext, int n, int w, double *out, int64_t out_ext) { ofx_roll_corr(x, y, n, w, out); }
+void ofx_roll_cov__ffi(const double *x, int64_t x_ext, const double *y, int64_t y_ext, int n, int w, double *out, int64_t out_ext) { ofx_roll_cov(x, y, n, w, out); }
+void ofx_roll_delta__ffi(const double *x, int64_t x_ext, int n, int w, double *out, int64_t out_ext) { ofx_roll_delta(x, n, w, out); }
+void ofx_roll_kurt__ffi(const double *x, int64_t x_ext, int n, int w, double *out, int64_t out_ext) { ofx_roll_kurt(x, n, w, out); }
+void ofx_roll_mad__ffi(const double *x, int64_t x_ext, int n, int w, double *out, int64_t out_ext) { ofx_roll_mad(x, n, w, out); }
+void ofx_roll_mean__ffi(const double *x, int64_t x_ext, int n, int w, double *out, int64_t out_ext) { ofx_roll_mean(x, n, w, out); }
+void ofx_roll_median__ffi(const double *x, int64_t x_ext, int n, int w, double *out, int64_t out_ext) { ofx_roll_median(x, n, w, out); }
+void ofx_roll_minmax__ffi(const double *x, int64_t x_ext, int n, int w, double *mn, int64_t mn_ext, double *mx, int64_t mx_ext) { ofx_roll_minmax(x, n, w, mn, mx); }
+void ofx_roll_quantile__ffi(const double *x, int64_t x_ext, int n, int w, double q, double *out, int64_t out_ext) { ofx_roll_quantile(x, n, w, q, out); }
+void ofx_roll_regression__ffi(const double *x, int64_t x_ext, const double *y, int64_t y_ext, int n, int w, double *slope, int64_t slope_ext, double *intercept, int64_t intercept_ext) { ofx_roll_regression(x, y, n, w, slope, intercept); }
+void ofx_roll_regression_single__ffi(const double *y, int64_t y_ext, int n, int w, double *slope, int64_t slope_ext, double *intercept, int64_t intercept_ext) { ofx_roll_regression_single(y, n, w, slope, intercept); }
+void ofx_roll_sharpe__ffi(const double *x, int64_t x_ext, int n, int w, double rf, double *out, int64_t out_ext) { ofx_roll_sharpe(x, n, w, rf, out); }
+void ofx_roll_skew__ffi(const double *x, int64_t x_ext, int n, int w, double *out, int64_t out_ext) { ofx_roll_skew(x, n, w, out); }
+void ofx_roll_sortino__ffi(const double *x, int64_t x_ext, int n, int w, double rf, double target, double *out, int64_t out_ext) { ofx_roll_sortino(x, n, w, rf, target, out); }
+void ofx_roll_std__ffi(const double *x, int64_t x_ext, int n, int w, double *out, int64_t out_ext) { ofx_roll_std(x, n, w, out); }
+void ofx_roll_zscore__ffi(const double *x, int64_t x_ext, int n, int w, double *out, int64_t out_ext) { ofx_roll_zscore(x, n, w, out); }
+double ofx_ts_autocorr__ffi(const double *x, int64_t x_ext, int n, int lag) { return ofx_ts_autocorr(x, n, lag); }
+int ofx_ts_bandpass__ffi(const double *x, int64_t x_ext, int n, double w1, double w2, int order, double *out, int64_t out_ext) { return ofx_ts_bandpass(x, n, w1, w2, order, out); }
+int ofx_ts_bandstop__ffi(const double *x, int64_t x_ext, int n, double w1, double w2, int order, double *out, int64_t out_ext) { return ofx_ts_bandstop(x, n, w1, w2, order, out); }
+void ofx_ts_covmatrix__ffi(const double *data, int64_t data_ext, int nobs, int m, double *out, int64_t out_ext) { ofx_ts_covmatrix(data, nobs, m, out); }
+void ofx_ts_decompose__ffi(const double *x, int64_t x_ext, int n, int period, double *trend, int64_t trend_ext, double *seasonal, int64_t seasonal_ext, double *resid, int64_t resid_ext) { ofx_ts_decompose(x, n, period, trend, seasonal, resid); }
+void ofx_ts_deseasonalize__ffi(const double *x, int64_t x_ext, int n, int period, double *out, int64_t out_ext) { ofx_ts_deseasonalize(x, n, period, out); }
+int ofx_ts_difference__ffi(const double *x, int64_t x_ext, int n, int order, double *out, int64_t out_ext) { return ofx_ts_difference(x, n, order, out); }
+void ofx_ts_ema__ffi(const double *x, int64_t x_ext, int n, int period, double *out, int64_t out_ext) { ofx_ts_ema(x, n, period, out); }
+int ofx_ts_highpass__ffi(const double *x, int64_t x_ext, int n, double wn, int order, double *out, int64_t out_ext) { return ofx_ts_highpass(x, n, wn, order, out); }
+int ofx_ts_lowpass__ffi(const double *x, int64_t x_ext, int n, double wn, int order, double *out, int64_t out_ext) { return ofx_ts_lowpass(x, n, wn, order, out); }
+void ofx_ts_minmax__ffi(const double *x, int64_t x_ext, int n, double *out, int64_t out_ext) { ofx_ts_minmax(x, n, out); }
+int ofx_ts_outliers__ffi(const double *x, int64_t x_ext, int n, double threshold, long long *out, int64_t out_ext) { return ofx_ts_outliers(x, n, threshold, out); }
+void ofx_ts_returns__ffi(const double *x, int64_t x_ext, int n, double *out, int64_t out_ext) { ofx_ts_returns(x, n, out); }
+double ofx_ts_volatility__ffi(const double *x, int64_t x_ext, int n) { return ofx_ts_volatility(x, n); }

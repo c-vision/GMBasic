@@ -243,3 +243,10 @@ gc_real gs_rsquared_test(const gc_real *data, int n)
     if (angle < 0) return -fabs((double)r2) * weight;
     return r2 * weight;
 }
+
+#include <stdint.h>
+/* Shim FFI (estensioni automatiche degli array, ffi_ext_shim.pl): firma con int64_t dopo ogni array. */
+gc_real gs_fit_cheb_eval__ffi(gc_real x, const gc_real *coef, int64_t coef_ext, int m) { return gs_fit_cheb_eval(x, coef, m); }
+gc_real gs_fit_pade_eval__ffi(gc_real x, const gc_real *a, int64_t a_ext, int na, const gc_real *b, int64_t b_ext, int nb) { return gs_fit_pade_eval(x, a, na, b, nb); }
+gc_real gs_fit_poly_eval__ffi(gc_real x, const gc_real *coef, int64_t coef_ext, int m) { return gs_fit_poly_eval(x, coef, m); }
+gc_real gs_rsquared_test__ffi(const gc_real *data, int64_t data_ext, int n) { return gs_rsquared_test(data, n); }

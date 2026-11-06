@@ -1346,7 +1346,7 @@ public sealed partial class Compiler
                 EmitShort((ushort)expr.Args.Length);
                 /* S1 (2026-11-06): bit7 di `kind` = ritorno UDT con LAYOUT ESPLICITO; i due byte
                  * successivi diventano il conteggio foglie u16 (al posto di count u8 + mask u8). */
-                EmitByte((byte)(emittedKind | (udtReturnLeaves != null ? 0x80 : 0)));
+                EmitByte((byte)(emittedKind | (udtReturnLeaves != null ? 0x80 : 0) | (ffiProc.IsNativeAbi ? 0x20 : 0)));   // 0x20 = DECLARE NATIVE (ABI esatta, niente estensioni array)
                 EmitByte((byte)(retIsString ? 1 : 0));
                 var retLeafCount = (ushort)(udtReturnLeaves?.Count ?? 0);
                 EmitByte((byte)(retLeafCount & 0xFF));

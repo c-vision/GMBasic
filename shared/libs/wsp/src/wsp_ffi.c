@@ -318,3 +318,17 @@ i64 wsp_removeoutput(const char *dir) {
     rmdir(dir);                                         /* fallisce (e va bene) se contiene altro */
     return n;
 }
+
+#include <stdint.h>
+/* Shim FFI (estensioni automatiche degli array, ffi_ext_shim.pl): firma con int64_t dopo ogni array. */
+i64 wsp_adddelta__ffi(i64 h, const char *addr, const double *v, int64_t v_ext, i64 n) { return wsp_adddelta(h, addr, v, n); }
+i64 wsp_copyscore__ffi(i64 h, i64 layer, i64 head, const char *circuit, double *out, int64_t out_ext) { return wsp_copyscore(h, layer, head, circuit, out); }
+i64 wsp_derive__ffi(i64 h, const char *outdir, const i64 *layer_map, int64_t layer_map_ext, i64 nl, const i64 *kv_keep, int64_t kv_keep_ext, i64 kvm, const i64 *neuron_keep, int64_t neuron_keep_ext, i64 neuk) { return wsp_derive(h, outdir, layer_map, nl, kv_keep, kvm, neuron_keep, neuk); }
+i64 wsp_kvimportance__ffi(i64 h, i64 layer, double *out, int64_t out_ext, i64 cap) { return wsp_kvimportance(h, layer, out, cap); }
+i64 wsp_mlpimportance__ffi(i64 h, i64 layer, double *out, int64_t out_ext, i64 cap) { return wsp_mlpimportance(h, layer, out, cap); }
+i64 wsp_norms__ffi(i64 h, i64 layer, const char *kind, double *out, int64_t out_ext, i64 cap) { return wsp_norms(h, layer, kind, out, cap); }
+i64 wsp_projectout__ffi(i64 h, const char *addr, const double *dirs, int64_t dirs_ext, i64 ndirs, i64 len, i64 vec_axis, i64 flags) { return wsp_projectout(h, addr, dirs, ndirs, len, vec_axis, flags); }
+i64 wsp_readslice__ffi(i64 h, const char *addr, double *out, int64_t out_ext, i64 cap) { return wsp_readslice(h, addr, out, cap); }
+i64 wsp_setvalues__ffi(i64 h, const char *addr, const double *v, int64_t v_ext, i64 n) { return wsp_setvalues(h, addr, v, n); }
+i64 wsp_spectrum__ffi(i64 h, i64 layer, i64 head, const char *circuit, double *wr, int64_t wr_ext, double *wi, int64_t wi_ext, i64 cap) { return wsp_spectrum(h, layer, head, circuit, wr, wi, cap); }
+i64 wsp_topk__ffi(const double *score, int64_t score_ext, i64 n, i64 k, i64 *out, int64_t out_ext) { return wsp_topk(score, n, k, out); }

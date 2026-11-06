@@ -303,6 +303,7 @@ struct gmb_stmt {
     /* FFI (DECLARE ... LIB): wrapper dlopen/dlsym emesso dall'emitter invece del corpo.
      * is_ffi=1 → func_name/func_params/func_ret_type hanno la firma dichiarata. */
     int is_ffi;             /* 1 = statement DECLARE ... LIB ... */
+    int ffi_native;         /* 1 = DECLARE NATIVE: ABI esatta, nessuna estensione automatica degli array */
     int is_public;          /* dichiarazione con prefisso PUBLIC (export .gmblib) */
     int is_sub;             /* SUB/FUN (ritorno void) invece di FUNCTION (parità ABI .gmblib) */
     char* ffi_lib;          /* nome libreria (senza virgolette) */

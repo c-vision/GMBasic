@@ -149,3 +149,10 @@ i64 ofx_ls_cheapest(const double *dist, i64 n, i64 *perm)
 }
 
 double ofx_ls_now_ms(void) { return (double)gor_ls_now_ms(); }
+
+#include <stdint.h>
+/* Shim FFI (estensioni automatiche degli array, ffi_ext_shim.pl): firma con int64_t dopo ogni array. */
+i64 ofx_ls_cheapest__ffi(const double *dist, int64_t dist_ext, i64 n, i64 *perm, int64_t perm_ext) { return ofx_ls_cheapest(dist, n, perm); }
+i64 ofx_ls_nearest__ffi(const double *dist, int64_t dist_ext, i64 n, i64 start, i64 *perm, int64_t perm_ext) { return ofx_ls_nearest(dist, n, start, perm); }
+i64 ofx_ls_solve__ffi(ffx_ls_cb f, i64 *initial, int64_t initial_ext, i64 n, i64 shape, i64 max_steps, double *out, int64_t out_ext) { return ofx_ls_solve(f, initial, n, shape, max_steps, out); }
+i64 ofx_ls_solve_cfg__ffi(ffx_ls_cb f, i64 *initial, int64_t initial_ext, i64 n, i64 shape, i64 max_steps, i64 starts, i64 acceptor, double *out, int64_t out_ext) { return ofx_ls_solve_cfg(f, initial, n, shape, max_steps, starts, acceptor, out); }

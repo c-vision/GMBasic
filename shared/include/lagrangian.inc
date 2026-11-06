@@ -18,4 +18,4 @@
 NAMESPACE OPTIMIZE
 
 ' LAGRANGIANSUBGRADIENT: maxit iterazioni (<=0 -> 100). Ritorna il miglior lower bound.
-DECLARE FUNCTION LAGRANGIANSUBGRADIENT LIB "gmblagrangian" ALIAS "ofx_lagr_subgradient" (sub AS FUNCTION(lam() AS DOUBLE) AS ARRAY, A() AS DOUBLE, b() AS DOUBLE, m AS LONG, nx AS LONG, maxit AS LONG, out() AS DOUBLE) AS DOUBLE
+DECLARE FUNCTION LAGRANGIANSUBGRADIENT LIB "gmblagrangian" ALIAS "ofx_lagr_subgradient__ffi" (sub AS FUNCTION(lam() AS DOUBLE) AS ARRAY, A() AS DOUBLE, b() AS DOUBLE, m AS LONG, nx AS LONG, maxit AS LONG, out() AS DOUBLE) AS DOUBLE
