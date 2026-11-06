@@ -31152,8 +31152,8 @@ static void emit_ffi_wrapper(ctx_t* c, fn_info_t* fn) {
     }
     /* Limite arità (parità 4 backend: la VM/C usa libffi con maschere a 16 bit; C#/IL e
      * PCode hanno lo stesso limite, vedi FfiMaxArgs). */
-    if (s->n_params > 16) {
-        c99_fail(c, s->line, "FFI '%s': massimo 16 argomenti supportati dal marshalling FFI.", sym);
+    if (s->n_params > 32) {
+        c99_fail(c, s->line, "FFI '%s': massimo 32 argomenti supportati dal marshalling FFI.", sym);
         return;
     }
     int ret_is_udt = ret_udt_ci != NULL;

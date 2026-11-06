@@ -33,7 +33,7 @@ internal sealed partial class PCodeProcessor
 {
     /// <summary>Massimo numero di argomenti/slot FFI (2026-11: era 8). Specchio di
     /// GMB_FFI_MAX_ARGS in gmb_bytecode/include/gmb_compiler.h.</summary>
-    internal const int PCodeFfiMaxArgs = 16;
+    internal const int PCodeFfiMaxArgs = 32;
 
     private readonly IRuntimeHost _runtime;
 
@@ -5318,70 +5318,40 @@ internal sealed partial class PCodeProcessor
             {
                 var libIdx = ReadU16(task);
                 var nameIdx = ReadU16(task);
-                var argCount = ReadU8(task);
+                var argCount = ReadU16(task);
                 var kind = ReadU8(task);
-                // scalar_kind_mask (2026-10, firma mista LONG/DOUBLE fra scalari semplici): bit
-                // i = il parametro SCALARE SEMPLICE alla posizione i è Int64 (0=Double) —
-                // significativo solo per le posizioni non-array/STRING/BYREF/callback/UDT (per
-                // quelle il bit è irrilevante, ignorato — restano classificate dalle rispettive
-                // maschere dedicate sotto). Nel caso omogeneo legacy coincide con 'kind' per
-                // ogni bit. Vedi OpCode.cs OP_CALL_FFI_T e Compiler.Expressions.cs.
-                var scalarKindMask = ReadU16(task);
-                // array_mask (2026-09-28): bit i settato se l'argomento logico i è un array
-                // BYREF (double[]/long[] CLR, non uno scalare) — vedi OpCode.cs OP_CALL_FFI_T.
-                var arrayMask = ReadU16(task);
-                // array_elem_int_mask (2026-09-28, fix parità): tipo elemento dichiarato per
-                // ogni array — PCodeVM non lo preserva a runtime (object[] boxati), vedi
-                // OpCode.cs OP_CALL_FFI_T e Compiler.Expressions.cs per il dettaglio del bug.
-                var arrayElemIntMask = ReadU16(task);
-                // string_mask/ret_is_string (2026-09-28, supporto STRING): vedi OpCode.cs
-                // OP_CALL_FFI_T. Il risultato, quando ret_is_string, è una string CLR (non un
-                // double) — task.PushRef è già generico, nessun trattamento speciale qui.
-                var stringMask = ReadU16(task);
                 var retIsString = ReadU8(task) != 0;
-                // byref_scalar_mask/byref_scalar_elem_int_mask (2026-09-28, BYREF scalare): vedi
-                // OpCode.cs OP_CALL_FFI_T. Il compilatore ha emesso OP_MAKE_BYREF/_GLOBAL/_ELEMENT
-                // per questi argomenti (Compiler.Expressions.cs) invece del valore semplice — lo
-                // stack contiene quindi una ByRefBox generica per questi slot. Si estrae
-                // box.Value come valore "in" (args[i], normale per FfiService), si tiene il box
-                // da parte, e DOPO la chiamata si riscrive box.Value col valore "out" che
-                // FfiService lascia in args[i] (mutato in place, stesso contratto della copy-out
-                // degli array).
-                var byrefScalarMask = ReadU16(task);
-                var byrefScalarElemIntMask = ReadU16(task);
-                // udt_param_field_count[8]/ret_udt_field_count (2026-09-28, struct/UDT per
-                // valore): a differenza di array/STRING/BYREF (un bit, sempre puntatore) un
-                // parametro UDT si "espande" in N campi — un byte PER POSIZIONE (0 = non è un
-                // UDT). Coda a lunghezza variabile: due u16 PER CAMPO (indice costante del nome,
-                // poi SymbolId) — vedi OpCode.cs/Disassembler.cs OP_CALL_FFI_T e
-                // Compiler.Expressions.cs. Il nome legge un'istanza UDT PCodeVM in ingresso
-                // (Dictionary&lt;string,object&gt; chiavato per nome); il SymbolId serve a
-                // costruire un'istanza in uscita leggibile da OP_LOAD_MEMBER (offset=SymbolId
-                // contro __class__/FieldNames).
-                var udtParamFieldCount = new int[PCodeFfiMaxArgs];
-                for (var pi = 0; pi < PCodeFfiMaxArgs; pi++) udtParamFieldCount[pi] = ReadU8(task);
-                // udtParamFieldKindMask[8] (2026-09-29, kind misto come parametro): bit i =
-                // campo i del parametro UDT alla posizione pi è INTERO (0=DOUBLE) — un UDT-
-                // PARAMETRO uniforme ha tutti i bit uguali (equivalente al vecchio 'kind'
-                // esterno), un UDT-PARAMETRO a kind misto (al massimo uno per dichiarazione,
-                // guard compile-time) usa questa maschera per sapere come leggere ogni campo.
-                var udtParamFieldKindMask = new int[PCodeFfiMaxArgs];
-                for (var pi = 0; pi < PCodeFfiMaxArgs; pi++) udtParamFieldKindMask[pi] = ReadU8(task);
                 var retUdtFieldCount = ReadU8(task);
-                // retUdtFieldKindMask (2026-09-29, kind misto sul ritorno): bit i = campo i del
-                // ritorno UDT è INTERO (0=DOUBLE) — a differenza dei parametri (kind uniforme
-                // garantito dal guard, sempre 'kind'), il RITORNO può avere campi di kind
-                // diverso tra loro. Vedi Compiler.Expressions.cs/Disassembler.cs.
                 var retUdtFieldKindMask = ReadU8(task);
-                // callbackParamArity[8]/callbackParamKindMask/callbackParamHasRetMask
-                // (2026-09-29, callback come parametro FFI): un byte PER POSIZIONE parametro
-                // (255 = non è un callback, altrimenti l'arità 0-4), poi kind-mask/has-ret-mask
-                // del trampolino nativo — vedi la costruzione del trampolino più sotto
-                // (BuildFfiCallbackTrampoline) dove vengono effettivamente usati.
+                // Descrittore PER ARGOMENTO (2026-11-06, niente maschere nel formato):
+                // 3 byte per argomento (flags, aux1, aux2). Le maschere sotto sono una
+                // rappresentazione interna per il dispatch <= 32; non fanno parte del bytecode.
+                if (argCount > PCodeFfiMaxArgs)
+                    throw new InvalidOperationException($"FFI: troppi argomenti ({argCount}, max {PCodeFfiMaxArgs})");
+                int scalarKindMask = 0, arrayMask = 0, arrayElemIntMask = 0, stringMask = 0;
+                int byrefScalarMask = 0, byrefScalarElemIntMask = 0;
+                int callbackParamKindMask = 0, callbackParamHasRetMask = 0;
+                var udtParamFieldCount = new int[PCodeFfiMaxArgs];
+                var udtParamFieldKindMask = new int[PCodeFfiMaxArgs];
                 var callbackParamArity = new int[PCodeFfiMaxArgs];
-                for (var pi = 0; pi < PCodeFfiMaxArgs; pi++) callbackParamArity[pi] = ReadU8(task);
-                var callbackParamKindMask = ReadU16(task);
-                var callbackParamHasRetMask = ReadU16(task);
+                for (var pi = 0; pi < PCodeFfiMaxArgs; pi++) callbackParamArity[pi] = 255;
+                for (var pi = 0; pi < argCount; pi++)
+                {
+                    int f = ReadU8(task), a1 = ReadU8(task), a2 = ReadU8(task);
+                    if ((f & 1) != 0) scalarKindMask |= 1 << pi;
+                    if ((f & 2) != 0) arrayMask |= 1 << pi;
+                    if ((f & 0x40) != 0) arrayElemIntMask |= 1 << pi;
+                    if ((f & 4) != 0) stringMask |= 1 << pi;
+                    if ((f & 8) != 0) byrefScalarMask |= 1 << pi;
+                    if ((f & 0x80) != 0) byrefScalarElemIntMask |= 1 << pi;
+                    if ((f & 0x10) != 0)
+                    {
+                        callbackParamArity[pi] = a1;
+                        callbackParamKindMask |= (a2 & 1) << pi;
+                        callbackParamHasRetMask |= ((a2 >> 1) & 1) << pi;
+                    }
+                    if ((f & 0x20) != 0) { udtParamFieldCount[pi] = a1; udtParamFieldKindMask[pi] = a2; }
+                }
                 Basic.Runtime.FfiUdtShape? ReadUdtShape(int fieldCount, byte kindMask)
                 {
                     var names = new string[fieldCount];

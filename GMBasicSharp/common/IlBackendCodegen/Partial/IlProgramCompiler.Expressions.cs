@@ -1507,7 +1507,7 @@ public sealed partial class IlProgramCompiler
         // cross-backend richiede lo STESSO limite/messaggio qui, anche se IL stesso non
         // "espande" nulla (passa lo struct vero).
         var flattenedSlotCount = epd.Parameters.Sum(p => IsUdtParam(p) ? LeafKinds((UserDefinedType)p.DataType!).Count() : 1);
-        if (flattenedSlotCount > 16)
+        if (flattenedSlotCount > 32)
             throw new NotSupportedException(
                 $"FFI '{symbolName}': troppi slot nativi risultanti dall'espansione degli UDT per valore ({flattenedSlotCount}, massimo 8 — ogni campo UDT conta come uno slot).");
         if (anyStringByRef)
@@ -1543,9 +1543,9 @@ public sealed partial class IlProgramCompiler
                     $"FFI '{symbolName}': tipo non supportato per il parametro BYREF '{p.Name.Lexeme}' (solo AS DOUBLE o LONG/QUAD, non INTEGER/BYTE/SINGLE — larghezza nativa a 8 byte).");
         }
         // Limite arità (parità 4 backend: la VM/C chiama al massimo 8 argomenti).
-        if (epd.Parameters.Length > 16)
+        if (epd.Parameters.Length > 32)
             throw new NotSupportedException(
-                $"FFI '{symbolName}': massimo 16 argomenti supportati dal marshalling FFI.");
+                $"FFI '{symbolName}': massimo 32 argomenti supportati dal marshalling FFI.");
         // Firma OMOGENEA: parametri E ritorno dello stesso kind. Il ritorno va incluso
         // (solo per FUNCTION) — altrimenti `(LONG) AS DOUBLE` passava come all-double
         // (divergenza vs le gambe C, che mappano i tipi per-parametro). Fix parità 2026-09-22.
