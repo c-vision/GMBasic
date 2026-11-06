@@ -1141,7 +1141,7 @@ void gmb_winstmt_mouse_script_pump(void)
 {
 #ifdef GMB_GFX_SDL_PRESENT
     static int init = 0; static char buf[1024]; static char* p = NULL;
-    if (!init) { init = 1; const char* s = getenv("GMB_MOUSE_SCRIPT"); if (s && *s) { snprintf(buf, sizeof(buf), "%s", s); p = buf; } }
+    if (!init) { init = 1; const char* s = gmb_opt_env("GMB_MOUSE_SCRIPT"); if (s && *s) { snprintf(buf, sizeof(buf), "%s", s); p = buf; } }
     if (!p || !*p) return;
     char* semi = strchr(p, ';');
     if (semi) *semi = '\0';

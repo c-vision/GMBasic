@@ -816,7 +816,6 @@ int gmb_sdl_console_pump(gmb_sdl_console_t* c)
             continue;
         }
         if (e.type == SDL_KEYDOWN) {
-            if (getenv("GMB_KEY_DBG")) fprintf(stderr, "[key] sym=%d winID=%u wid=%u\n", (int)e.key.keysym.sym, (unsigned)e.key.windowID, (unsigned)wid);
             /* SOLO KEYDOWN (parità KeyboardServiceSdl: char dal keysym, shift-aware; repeat scartato).
              * NIENTE SDL_TEXTINPUT: gestire entrambi raddoppiava ogni tasto ("abc" → "aabbcc"). */
             if (e.key.windowID == wid) {   /* include i repeat (auto-ripetizione tenendo premuto) */
