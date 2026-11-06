@@ -1,4 +1,4 @@
-' EXPECT: bas 0 =  0  :4.0,0.0|bas 1 =  0  :0.0,4.0|bas 2 =  0  :4.0,0.0|bas 3 =  4  :111.0,222.0
+' EXPECT: bas 0 =  0  :4.0,0.0 bas 1 =  0  :0.0,4.0 bas 2 =  0  :4.0,0.0 bas 3 =  4  :111.0,222.0
 ' Base iniziale con colonne di SLACK (2026-11-04): `basis()` accetta indici in [0, n+m):
 ' 0..n-1 = colonne di A, n..n+m-1 = slack (unitario, costo 0). Un indice fuori range e'
 ' RIFIUTATO (ritorno 4) invece di leggere fuori da A (UB: risultati diversi fra backend).
