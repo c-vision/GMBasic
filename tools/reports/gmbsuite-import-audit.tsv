@@ -11,6 +11,7 @@ migrated_pair	redis	summary	h=90/36 def=0/0	OK	header_mancanti=0 alias_mancanti=
 ffi_internal	amqp	/Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/libs/amqp	alias=9	OK	alias_senza_def=0 alias_non_esportati=0 header_senza_def=0 (WARN)
 ffi_internal	aviation	/Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/libs/aviation	alias=15	OK	alias_senza_def=0 alias_non_esportati=0 header_senza_def=0 (WARN)
 ffi_internal	conic	/Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/libs/conic	alias=7	OK	alias_senza_def=0 alias_non_esportati=0 header_senza_def=0 (WARN)
+ffi_internal	ffitest	/Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/libs/ffitest	alias=0	OK	alias_senza_def=0 alias_non_esportati=0 header_senza_def=0 (WARN)
 ffi_internal	flow	/Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/libs/flow	alias=10	OK	alias_senza_def=0 alias_non_esportati=0 header_senza_def=0 (WARN)
 ffi_internal	gametheory	/Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/libs/gametheory	alias=5	OK	alias_senza_def=0 alias_non_esportati=0 header_senza_def=0 (WARN)
 ffi_internal	graph	/Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/libs/graph	alias=39	OK	alias_senza_def=0 alias_non_esportati=0 header_senza_def=0 (WARN)
@@ -24,13 +25,16 @@ ffi_internal	mathprog	/Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/l
 ffi_internal	media	/Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/libs/media	alias=54	OK	alias_senza_def=0 alias_non_esportati=0 header_senza_def=0 (WARN)
 ffi_internal	mqtt	/Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/libs/mqtt	alias=8	OK	alias_senza_def=0 alias_non_esportati=0 header_senza_def=0 (WARN)
 ffi_internal	nats	/Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/libs/nats	alias=8	OK	alias_senza_def=0 alias_non_esportati=0 header_senza_def=0 (WARN)
+ffi_internal	neural	/Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/libs/neural	alias=118	OK	alias_senza_def=0 alias_non_esportati=0 header_senza_def=7 (WARN)
 ffi_internal	opt	/Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/libs/opt	alias=12	OK	alias_senza_def=0 alias_non_esportati=0 header_senza_def=15 (WARN)
 ffi_internal	or	/Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/libs/or	alias=106	OK	alias_senza_def=0 alias_non_esportati=0 header_senza_def=0 (WARN)
 ffi_internal	pgm	/Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/libs/pgm	alias=4	OK	alias_senza_def=0 alias_non_esportati=0 header_senza_def=0 (WARN)
 ffi_internal	protobuf	/Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/libs/protobuf	alias=10	OK	alias_senza_def=0 alias_non_esportati=0 header_senza_def=0 (WARN)
 ffi_internal	scheduling	/Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/libs/scheduling	alias=1	OK	alias_senza_def=0 alias_non_esportati=0 header_senza_def=0 (WARN)
 ffi_internal	stats	/Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/libs/stats	alias=0	OK	alias_senza_def=0 alias_non_esportati=0 header_senza_def=3 (WARN)
+ffi_internal	wsp	/Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/libs/wsp	alias=57	OK	alias_senza_def=0 alias_non_esportati=0 header_senza_def=13 (WARN)
 package_internal	avif	/Users/gaetano/Documents/Projects/GMBasicMonoRepo/packages/avif	alias=5	OK	alias_senza_def=0 alias_non_esportati=0 header_senza_def=0 (WARN)
+package_internal	blockchain	/Users/gaetano/Documents/Projects/GMBasicMonoRepo/packages/blockchain	alias=18	OK	alias_senza_def=0 alias_non_esportati=0 header_senza_def=0 (WARN)
 package_internal	dom	/Users/gaetano/Documents/Projects/GMBasicMonoRepo/packages/dom	alias=8	OK	alias_senza_def=0 alias_non_esportati=0 header_senza_def=0 (WARN)
 package_internal	duckdb	/Users/gaetano/Documents/Projects/GMBasicMonoRepo/packages/duckdb	alias=11	INFO-REMOTE	nessun sorgente locale: pacchetto scaricato dal registry; ABI verificata sul binario
 package_internal	duckdb	/Users/gaetano/Documents/Projects/GMBasicMonoRepo/packages/duckdb	alias=11	OK	alias_senza_def=0 alias_non_esportati=0 header_senza_def=15 (WARN)
@@ -42,6 +46,7 @@ package_internal	redis	/Users/gaetano/Documents/Projects/GMBasicMonoRepo/package
 package_internal	redis	/Users/gaetano/Documents/Projects/GMBasicMonoRepo/packages/redis	alias=36	OK	alias_senza_def=0 alias_non_esportati=0 header_senza_def=36 (WARN)
 package_internal	video	/Users/gaetano/Documents/Projects/GMBasicMonoRepo/packages/video	alias=4	OK	alias_senza_def=0 alias_non_esportati=0 header_senza_def=0 (WARN)
 package_internal	webp	/Users/gaetano/Documents/Projects/GMBasicMonoRepo/packages/webp	alias=5	OK	alias_senza_def=0 alias_non_esportati=0 header_senza_def=0 (WARN)
+project_inventory	gmbblockchain	/Users/gaetano/Documents/Projects/GMBSuite/gmbblockchain	h=60 def=124 match=60 non_match=0	INFO	
 project_inventory	gmbcompute	/Users/gaetano/Documents/Projects/GMBSuite/gmbcompute	h=212 def=282 match=212 non_match=0	INFO	
 project_inventory	gmbgeo	header	geo_dist	UNMATCHED	norm=geo_dist
 project_inventory	gmbgeo	header	geo_poly_area	UNMATCHED	norm=geo_poly_area
@@ -73,11 +78,12 @@ project_inventory	gmbgeo	header	geo_grid_new	UNMATCHED	norm=geo_grid_new
 project_inventory	gmbgeo	header	geo_grid_query_bbox	UNMATCHED	norm=geo_grid_query_bbox
 project_inventory	gmbgeo	header	geo_grid_free	UNMATCHED	norm=geo_grid_free
 project_inventory	gmbgeo	/Users/gaetano/Documents/Projects/GMBSuite/gmbgeo	h=29 def=46 match=0 non_match=29	INFO	
-project_inventory	gmbgraphics	header	gm_bc1_encode_block	UNMATCHED	norm=bc1_encode_block
-project_inventory	gmbgraphics	header	gm_bc1_decode_block	UNMATCHED	norm=bc1_decode_block
-project_inventory	gmbgraphics	header	gm_bc1_encode	UNMATCHED	norm=bc1_encode
-project_inventory	gmbgraphics	header	gm_bc1_decode	UNMATCHED	norm=bc1_decode
-project_inventory	gmbgraphics	/Users/gaetano/Documents/Projects/GMBSuite/gmbgraphics	h=165 def=193 match=161 non_match=4	INFO	
+project_inventory	gmbgfx-2d	/Users/gaetano/Documents/Projects/GMBSuite/gmbgfx-2d	h=88 def=91 match=88 non_match=0	INFO	
+project_inventory	gmbgfx-3d	/Users/gaetano/Documents/Projects/GMBSuite/gmbgfx-3d	h=60 def=63 match=60 non_match=0	INFO	
+project_inventory	gmbgfx-codec	/Users/gaetano/Documents/Projects/GMBSuite/gmbgfx-codec	h=4 def=6 match=4 non_match=0	INFO	
+project_inventory	gmbgfx-color	/Users/gaetano/Documents/Projects/GMBSuite/gmbgfx-color	h=10 def=10 match=10 non_match=0	INFO	
+project_inventory	gmbgfx-surface	/Users/gaetano/Documents/Projects/GMBSuite/gmbgfx-surface	h=3 def=3 match=3 non_match=0	INFO	
+project_inventory	gmbgraphics	/Users/gaetano/Documents/Projects/GMBSuite/gmbgraphics	h=0 def=20 match=0 non_match=0	INFO	
 project_inventory	gmbhdf5	/Users/gaetano/Documents/Projects/GMBSuite/gmbhdf5	h=17 def=22 match=17 non_match=0	INFO	
 project_inventory	gmbmath	/Users/gaetano/Documents/Projects/GMBSuite/gmbmath	h=319 def=690 match=319 non_match=0	INFO	
 project_inventory	gmbmath-core	/Users/gaetano/Documents/Projects/GMBSuite/gmbmath-core	h=38 def=38 match=38 non_match=0	INFO	
@@ -95,28 +101,6 @@ project_inventory	gmbneural	header	gn_layernorm_free	UNMATCHED	norm=gn_layernorm
 project_inventory	gmbneural	header	gn_layernorm_forward	UNMATCHED	norm=gn_layernorm_forward
 project_inventory	gmbneural	header	gn_layernorm_backward	UNMATCHED	norm=gn_layernorm_backward
 project_inventory	gmbneural	header	gn_layernorm_zero_grad	UNMATCHED	norm=gn_layernorm_zero_grad
-project_inventory	gmbneural	header	gn_im2col	UNMATCHED	norm=gn_im2col
-project_inventory	gmbneural	header	gn_col2im	UNMATCHED	norm=gn_col2im
-project_inventory	gmbneural	header	gn_conv2d	UNMATCHED	norm=gn_conv2d
-project_inventory	gmbneural	header	gn_winograd_conv2d	UNMATCHED	norm=gn_winograd_conv2d
-project_inventory	gmbneural	header	gn_lrn	UNMATCHED	norm=gn_lrn
-project_inventory	gmbneural	header	gn_resize_nearest	UNMATCHED	norm=gn_resize_nearest
-project_inventory	gmbneural	header	gn_resize_bilinear	UNMATCHED	norm=gn_resize_bilinear
-project_inventory	gmbneural	header	gn_conv2d_dilated	UNMATCHED	norm=gn_conv2d_dilated
-project_inventory	gmbneural	header	gn_deconv2d	UNMATCHED	norm=gn_deconv2d
-project_inventory	gmbneural	header	gn_maxpool2d	UNMATCHED	norm=gn_maxpool2d
-project_inventory	gmbneural	header	gn_maxunpool2d	UNMATCHED	norm=gn_maxunpool2d
-project_inventory	gmbneural	header	gn_avgpool2d	UNMATCHED	norm=gn_avgpool2d
-project_inventory	gmbneural	header	gn_quant_i8	UNMATCHED	norm=gn_quant_i8
-project_inventory	gmbneural	header	gn_dequant_i8	UNMATCHED	norm=gn_dequant_i8
-project_inventory	gmbneural	header	gn_requant_i8	UNMATCHED	norm=gn_requant_i8
-project_inventory	gmbneural	header	gn_quant_params	UNMATCHED	norm=gn_quant_params
-project_inventory	gmbneural	header	gn_quant_gemm_u8	UNMATCHED	norm=gn_quant_gemm_u8
-project_inventory	gmbneural	header	gn_quant_requant_shift_i8	UNMATCHED	norm=gn_quant_requant_shift_i8
-project_inventory	gmbneural	header	gn_quant_conv2d_i8	UNMATCHED	norm=gn_quant_conv2d_i8
-project_inventory	gmbneural	header	gn_quant_clamp_u8	UNMATCHED	norm=gn_quant_clamp_u8
-project_inventory	gmbneural	header	gn_quant_params_channel	UNMATCHED	norm=gn_quant_params_channel
-project_inventory	gmbneural	header	gn_quant_conv2d_i8_channel	UNMATCHED	norm=gn_quant_conv2d_i8_channel
 project_inventory	gmbneural	header	gn_loss_mse	UNMATCHED	norm=gn_loss_mse
 project_inventory	gmbneural	header	gn_loss_mae	UNMATCHED	norm=gn_loss_mae
 project_inventory	gmbneural	header	gn_loss_cross_entropy	UNMATCHED	norm=gn_loss_cross_entropy
@@ -126,13 +110,10 @@ project_inventory	gmbneural	header	gn_gp_rand_int	UNMATCHED	norm=gn_gp_rand_int
 project_inventory	gmbneural	header	gn_gp_rand_uniform	UNMATCHED	norm=gn_gp_rand_uniform
 project_inventory	gmbneural	header	gn_gp_evolve	UNMATCHED	norm=gn_gp_evolve
 project_inventory	gmbneural	header	gn_gp_eval	UNMATCHED	norm=gn_gp_eval
-project_inventory	gmbneural	header	gn_mem_plan	UNMATCHED	norm=gn_mem_plan
 project_inventory	gmbneural	header	gn_gather_rows	UNMATCHED	norm=gn_gather_rows
 project_inventory	gmbneural	header	gn_slice_rows	UNMATCHED	norm=gn_slice_rows
 project_inventory	gmbneural	header	gn_concat_rows	UNMATCHED	norm=gn_concat_rows
 project_inventory	gmbneural	header	gn_copy_block	UNMATCHED	norm=gn_copy_block
-project_inventory	gmbneural	header	gn_knn_classify	UNMATCHED	norm=gn_knn_classify
-project_inventory	gmbneural	header	gn_knn_accuracy	UNMATCHED	norm=gn_knn_accuracy
 project_inventory	gmbneural	header	gn_norm_init	UNMATCHED	norm=gn_norm_init
 project_inventory	gmbneural	header	gn_norm_free	UNMATCHED	norm=gn_norm_free
 project_inventory	gmbneural	header	gn_norm_observe	UNMATCHED	norm=gn_norm_observe
@@ -140,42 +121,9 @@ project_inventory	gmbneural	header	gn_norm_finalize	UNMATCHED	norm=gn_norm_final
 project_inventory	gmbneural	header	gn_norm_apply	UNMATCHED	norm=gn_norm_apply
 project_inventory	gmbneural	header	gn_norm_denormalize	UNMATCHED	norm=gn_norm_denormalize
 project_inventory	gmbneural	header	gn_norm_zscore	UNMATCHED	norm=gn_norm_zscore
-project_inventory	gmbneural	header	gn_fusedmm_csr	UNMATCHED	norm=gn_fusedmm_csr
-project_inventory	gmbneural	header	gn_aggregate_csr	UNMATCHED	norm=gn_aggregate_csr
-project_inventory	gmbneural	header	gn_sparsify_2_4	UNMATCHED	norm=gn_sparsify_2_4
-project_inventory	gmbneural	header	gn_prune_channels_mask	UNMATCHED	norm=gn_prune_channels_mask
-project_inventory	gmbneural	header	gn_prune_channel_l1	UNMATCHED	norm=gn_prune_channel_l1
-project_inventory	gmbneural	header	gn_pinn_heat	UNMATCHED	norm=gn_pinn_heat
-project_inventory	gmbneural	header	gn_pinn_wave	UNMATCHED	norm=gn_pinn_wave
-project_inventory	gmbneural	header	gn_pinn_laplace	UNMATCHED	norm=gn_pinn_laplace
-project_inventory	gmbneural	header	gn_pinn_advection	UNMATCHED	norm=gn_pinn_advection
-project_inventory	gmbneural	header	gn_pinn_burgers	UNMATCHED	norm=gn_pinn_burgers
-project_inventory	gmbneural	header	gn_pinn_boundary	UNMATCHED	norm=gn_pinn_boundary
-project_inventory	gmbneural	header	gn_pinn_initial	UNMATCHED	norm=gn_pinn_initial
-project_inventory	gmbneural	header	gn_pinn_adaptive_norm	UNMATCHED	norm=gn_pinn_adaptive_norm
-project_inventory	gmbneural	header	gn_opt_make	UNMATCHED	norm=gn_opt_make
-project_inventory	gmbneural	header	gn_opt_apply	UNMATCHED	norm=gn_opt_apply
-project_inventory	gmbneural	header	gn_opt_set_epoch	UNMATCHED	norm=gn_opt_set_epoch
-project_inventory	gmbneural	header	gn_opt_clip_value	UNMATCHED	norm=gn_opt_clip_value
-project_inventory	gmbneural	header	gn_opt_clip_norm	UNMATCHED	norm=gn_opt_clip_norm
-project_inventory	gmbneural	header	gn_opt_clip_global_norm	UNMATCHED	norm=gn_opt_clip_global_norm
-project_inventory	gmbneural	header	gn_opt_set_l2	UNMATCHED	norm=gn_opt_set_l2
-project_inventory	gmbneural	header	gn_tree_fit_reg	UNMATCHED	norm=gn_tree_fit_reg
-project_inventory	gmbneural	header	gn_tree_fit_cls	UNMATCHED	norm=gn_tree_fit_cls
-project_inventory	gmbneural	header	gn_tree_predict	UNMATCHED	norm=gn_tree_predict
-project_inventory	gmbneural	header	gn_tree_free	UNMATCHED	norm=gn_tree_free
 project_inventory	gmbneural	header	gn_standardize	UNMATCHED	norm=gn_standardize
 project_inventory	gmbneural	header	gn_minmax_scale	UNMATCHED	norm=gn_minmax_scale
 project_inventory	gmbneural	header	gn_onehot_encode	UNMATCHED	norm=gn_onehot_encode
-project_inventory	gmbneural	header	gn_lstm_init	UNMATCHED	norm=gn_lstm_init
-project_inventory	gmbneural	header	gn_lstm_free	UNMATCHED	norm=gn_lstm_free
-project_inventory	gmbneural	header	gn_lstm_forward	UNMATCHED	norm=gn_lstm_forward
-project_inventory	gmbneural	header	gn_lstm_backward	UNMATCHED	norm=gn_lstm_backward
-project_inventory	gmbneural	header	gn_lstm_zero_grad	UNMATCHED	norm=gn_lstm_zero_grad
-project_inventory	gmbneural	header	gn_iou	UNMATCHED	norm=gn_iou
-project_inventory	gmbneural	header	gn_nms	UNMATCHED	norm=gn_nms
-project_inventory	gmbneural	header	gn_yolo_decode_box	UNMATCHED	norm=gn_yolo_decode_box
-project_inventory	gmbneural	header	gn_nms_multiclass	UNMATCHED	norm=gn_nms_multiclass
 project_inventory	gmbneural	header	gn_svm_train	UNMATCHED	norm=gn_svm_train
 project_inventory	gmbneural	header	gn_svm_predict	UNMATCHED	norm=gn_svm_predict
 project_inventory	gmbneural	header	gn_value_new	UNMATCHED	norm=gn_value_new
@@ -190,11 +138,6 @@ project_inventory	gmbneural	header	gn_value_relu	UNMATCHED	norm=gn_value_relu
 project_inventory	gmbneural	header	gn_value_tanh	UNMATCHED	norm=gn_value_tanh
 project_inventory	gmbneural	header	gn_value_exp	UNMATCHED	norm=gn_value_exp
 project_inventory	gmbneural	header	gn_value_backward	UNMATCHED	norm=gn_value_backward
-project_inventory	gmbneural	header	gn_forest_fit_reg	UNMATCHED	norm=gn_forest_fit_reg
-project_inventory	gmbneural	header	gn_forest_fit_cls	UNMATCHED	norm=gn_forest_fit_cls
-project_inventory	gmbneural	header	gn_forest_predict	UNMATCHED	norm=gn_forest_predict
-project_inventory	gmbneural	header	gn_auc	UNMATCHED	norm=gn_auc
-project_inventory	gmbneural	header	gn_forest_free	UNMATCHED	norm=gn_forest_free
 project_inventory	gmbneural	header	gn_pca	UNMATCHED	norm=gn_pca
 project_inventory	gmbneural	header	gn_pca_transform	UNMATCHED	norm=gn_pca_transform
 project_inventory	gmbneural	header	gn_kmeans	UNMATCHED	norm=gn_kmeans
@@ -203,11 +146,6 @@ project_inventory	gmbneural	header	gn_dropout_init	UNMATCHED	norm=gn_dropout_ini
 project_inventory	gmbneural	header	gn_dropout_free	UNMATCHED	norm=gn_dropout_free
 project_inventory	gmbneural	header	gn_dropout_forward	UNMATCHED	norm=gn_dropout_forward
 project_inventory	gmbneural	header	gn_dropout_backward	UNMATCHED	norm=gn_dropout_backward
-project_inventory	gmbneural	header	gn_gru_init	UNMATCHED	norm=gn_gru_init
-project_inventory	gmbneural	header	gn_gru_free	UNMATCHED	norm=gn_gru_free
-project_inventory	gmbneural	header	gn_gru_forward	UNMATCHED	norm=gn_gru_forward
-project_inventory	gmbneural	header	gn_gru_backward	UNMATCHED	norm=gn_gru_backward
-project_inventory	gmbneural	header	gn_gru_zero_grad	UNMATCHED	norm=gn_gru_zero_grad
 project_inventory	gmbneural	header	gn_net_init	UNMATCHED	norm=gn_net_init
 project_inventory	gmbneural	header	gn_net_free	UNMATCHED	norm=gn_net_free
 project_inventory	gmbneural	header	gn_net_forward	UNMATCHED	norm=gn_net_forward
@@ -218,120 +156,16 @@ project_inventory	gmbneural	header	gn_net_copy	UNMATCHED	norm=gn_net_copy
 project_inventory	gmbneural	header	gn_net_merge	UNMATCHED	norm=gn_net_merge
 project_inventory	gmbneural	header	gn_net_zero_grad	UNMATCHED	norm=gn_net_zero_grad
 project_inventory	gmbneural	header	gn_net_step	UNMATCHED	norm=gn_net_step
-project_inventory	gmbneural	header	gn_snn_surrogate	UNMATCHED	norm=gn_snn_surrogate
-project_inventory	gmbneural	header	gn_snn_surrogate_grad	UNMATCHED	norm=gn_snn_surrogate_grad
-project_inventory	gmbneural	header	gn_snn_lut_index	UNMATCHED	norm=gn_snn_lut_index
-project_inventory	gmbneural	header	gn_snn_lut_forward	UNMATCHED	norm=gn_snn_lut_forward
-project_inventory	gmbneural	header	gn_adaboost_fit	UNMATCHED	norm=gn_adaboost_fit
-project_inventory	gmbneural	header	gn_adaboost_predict	UNMATCHED	norm=gn_adaboost_predict
-project_inventory	gmbneural	header	gn_adaboost_free	UNMATCHED	norm=gn_adaboost_free
-project_inventory	gmbneural	header	gn_rnn_init	UNMATCHED	norm=gn_rnn_init
-project_inventory	gmbneural	header	gn_rnn_free	UNMATCHED	norm=gn_rnn_free
-project_inventory	gmbneural	header	gn_rnn_forward	UNMATCHED	norm=gn_rnn_forward
-project_inventory	gmbneural	header	gn_rnn_backward	UNMATCHED	norm=gn_rnn_backward
-project_inventory	gmbneural	header	gn_rnn_zero_grad	UNMATCHED	norm=gn_rnn_zero_grad
 project_inventory	gmbneural	header	gn_chuck_init	UNMATCHED	norm=gn_chuck_init
 project_inventory	gmbneural	header	gn_chuck_pstate_init	UNMATCHED	norm=gn_chuck_pstate_init
 project_inventory	gmbneural	header	gn_chuck_observe_loss	UNMATCHED	norm=gn_chuck_observe_loss
 project_inventory	gmbneural	header	gn_chuck_step	UNMATCHED	norm=gn_chuck_step
-project_inventory	gmbneural	header	gn_metrics_confusion	UNMATCHED	norm=gn_metrics_confusion
-project_inventory	gmbneural	header	gn_metrics_accuracy	UNMATCHED	norm=gn_metrics_accuracy
-project_inventory	gmbneural	header	gn_metrics_precision	UNMATCHED	norm=gn_metrics_precision
-project_inventory	gmbneural	header	gn_metrics_recall	UNMATCHED	norm=gn_metrics_recall
-project_inventory	gmbneural	header	gn_metrics_f1	UNMATCHED	norm=gn_metrics_f1
-project_inventory	gmbneural	header	gn_metrics_accuracy_cm	UNMATCHED	norm=gn_metrics_accuracy_cm
-project_inventory	gmbneural	header	gn_metrics_mse	UNMATCHED	norm=gn_metrics_mse
-project_inventory	gmbneural	header	gn_metrics_mae	UNMATCHED	norm=gn_metrics_mae
-project_inventory	gmbneural	header	gn_metrics_r2	UNMATCHED	norm=gn_metrics_r2
-project_inventory	gmbneural	header	gn_sigmoid	UNMATCHED	norm=gn_sigmoid
-project_inventory	gmbneural	header	gn_sigmoid_grad	UNMATCHED	norm=gn_sigmoid_grad
-project_inventory	gmbneural	header	gn_tanh	UNMATCHED	norm=gn_tanh
-project_inventory	gmbneural	header	gn_tanh_grad	UNMATCHED	norm=gn_tanh_grad
-project_inventory	gmbneural	header	gn_relu	UNMATCHED	norm=gn_relu
-project_inventory	gmbneural	header	gn_relu_grad	UNMATCHED	norm=gn_relu_grad
-project_inventory	gmbneural	header	gn_leaky_relu	UNMATCHED	norm=gn_leaky_relu
-project_inventory	gmbneural	header	gn_leaky_relu_grad	UNMATCHED	norm=gn_leaky_relu_grad
-project_inventory	gmbneural	header	gn_elu	UNMATCHED	norm=gn_elu
-project_inventory	gmbneural	header	gn_elu_grad	UNMATCHED	norm=gn_elu_grad
-project_inventory	gmbneural	header	gn_identity	UNMATCHED	norm=gn_identity
-project_inventory	gmbneural	header	gn_identity_grad	UNMATCHED	norm=gn_identity_grad
-project_inventory	gmbneural	header	gn_threshold	UNMATCHED	norm=gn_threshold
-project_inventory	gmbneural	header	gn_threshold_grad	UNMATCHED	norm=gn_threshold_grad
-project_inventory	gmbneural	header	gn_hardsigmoid	UNMATCHED	norm=gn_hardsigmoid
-project_inventory	gmbneural	header	gn_hardsigmoid_grad	UNMATCHED	norm=gn_hardsigmoid_grad
-project_inventory	gmbneural	header	gn_hardswish	UNMATCHED	norm=gn_hardswish
-project_inventory	gmbneural	header	gn_hardswish_grad	UNMATCHED	norm=gn_hardswish_grad
-project_inventory	gmbneural	header	gn_silu	UNMATCHED	norm=gn_silu
-project_inventory	gmbneural	header	gn_silu_grad	UNMATCHED	norm=gn_silu_grad
-project_inventory	gmbneural	header	gn_gelu	UNMATCHED	norm=gn_gelu
-project_inventory	gmbneural	header	gn_gelu_grad	UNMATCHED	norm=gn_gelu_grad
-project_inventory	gmbneural	header	gn_mish	UNMATCHED	norm=gn_mish
-project_inventory	gmbneural	header	gn_mish_grad	UNMATCHED	norm=gn_mish_grad
-project_inventory	gmbneural	header	gn_celu	UNMATCHED	norm=gn_celu
-project_inventory	gmbneural	header	gn_celu_grad	UNMATCHED	norm=gn_celu_grad
-project_inventory	gmbneural	header	gn_prelu	UNMATCHED	norm=gn_prelu
-project_inventory	gmbneural	header	gn_prelu_grad	UNMATCHED	norm=gn_prelu_grad
-project_inventory	gmbneural	header	gn_crelu	UNMATCHED	norm=gn_crelu
-project_inventory	gmbneural	header	gn_crelu_grad	UNMATCHED	norm=gn_crelu_grad
-project_inventory	gmbneural	header	gn_selu	UNMATCHED	norm=gn_selu
-project_inventory	gmbneural	header	gn_selu_grad	UNMATCHED	norm=gn_selu_grad
-project_inventory	gmbneural	header	gn_plse	UNMATCHED	norm=gn_plse
-project_inventory	gmbneural	header	gn_plse_grad	UNMATCHED	norm=gn_plse_grad
-project_inventory	gmbneural	header	gn_loggy	UNMATCHED	norm=gn_loggy
-project_inventory	gmbneural	header	gn_loggy_grad	UNMATCHED	norm=gn_loggy_grad
-project_inventory	gmbneural	header	gn_hardtan	UNMATCHED	norm=gn_hardtan
-project_inventory	gmbneural	header	gn_hardtan_grad	UNMATCHED	norm=gn_hardtan_grad
-project_inventory	gmbneural	header	gn_lhtan	UNMATCHED	norm=gn_lhtan
-project_inventory	gmbneural	header	gn_lhtan_grad	UNMATCHED	norm=gn_lhtan_grad
-project_inventory	gmbneural	header	gn_relie	UNMATCHED	norm=gn_relie
-project_inventory	gmbneural	header	gn_relie_grad	UNMATCHED	norm=gn_relie_grad
-project_inventory	gmbneural	header	gn_ramp	UNMATCHED	norm=gn_ramp
-project_inventory	gmbneural	header	gn_ramp_grad	UNMATCHED	norm=gn_ramp_grad
-project_inventory	gmbneural	header	gn_stair	UNMATCHED	norm=gn_stair
-project_inventory	gmbneural	header	gn_stair_grad	UNMATCHED	norm=gn_stair_grad
-project_inventory	gmbneural	header	gn_softmax_temp	UNMATCHED	norm=gn_softmax_temp
-project_inventory	gmbneural	header	gn_softmax	UNMATCHED	norm=gn_softmax
 project_inventory	gmbneural	header	gn_dense_init	UNMATCHED	norm=gn_dense_init
 project_inventory	gmbneural	header	gn_dense_free	UNMATCHED	norm=gn_dense_free
 project_inventory	gmbneural	header	gn_dense_forward	UNMATCHED	norm=gn_dense_forward
 project_inventory	gmbneural	header	gn_dense_backward	UNMATCHED	norm=gn_dense_backward
 project_inventory	gmbneural	header	gn_dense_zero_grad	UNMATCHED	norm=gn_dense_zero_grad
-project_inventory	gmbneural	header	gn_bnn_bytes	UNMATCHED	norm=gn_bnn_bytes
-project_inventory	gmbneural	header	gn_bnn_words	UNMATCHED	norm=gn_bnn_words
-project_inventory	gmbneural	header	gn_bnn_pack	UNMATCHED	norm=gn_bnn_pack
-project_inventory	gmbneural	header	gn_bnn_thresh	UNMATCHED	norm=gn_bnn_thresh
-project_inventory	gmbneural	header	gn_bnn_xnor_popcount	UNMATCHED	norm=gn_bnn_xnor_popcount
-project_inventory	gmbneural	header	gn_bnn_dot	UNMATCHED	norm=gn_bnn_dot
-project_inventory	gmbneural	header	gn_birnn_init	UNMATCHED	norm=gn_birnn_init
-project_inventory	gmbneural	header	gn_birnn_free	UNMATCHED	norm=gn_birnn_free
-project_inventory	gmbneural	header	gn_birnn_forward	UNMATCHED	norm=gn_birnn_forward
-project_inventory	gmbneural	header	gn_birnn_backward	UNMATCHED	norm=gn_birnn_backward
-project_inventory	gmbneural	header	gn_birnn_zero_grad	UNMATCHED	norm=gn_birnn_zero_grad
-project_inventory	gmbneural	header	gn_ternary_from_mat	UNMATCHED	norm=gn_ternary_from_mat
-project_inventory	gmbneural	header	gn_ternary_free	UNMATCHED	norm=gn_ternary_free
-project_inventory	gmbneural	header	gn_ternary_act_bytes	UNMATCHED	norm=gn_ternary_act_bytes
-project_inventory	gmbneural	header	gn_ternary_dot	UNMATCHED	norm=gn_ternary_dot
-project_inventory	gmbneural	header	gn_ternary_forward	UNMATCHED	norm=gn_ternary_forward
-project_inventory	gmbneural	header	gn_ternary_to_mat	UNMATCHED	norm=gn_ternary_to_mat
-project_inventory	gmbneural	header	gn_mat_alloc	UNMATCHED	norm=gn_mat_alloc
-project_inventory	gmbneural	header	gn_mat_free	UNMATCHED	norm=gn_mat_free
-project_inventory	gmbneural	header	gn_mat_zero	UNMATCHED	norm=gn_mat_zero
-project_inventory	gmbneural	header	gn_mat_fill	UNMATCHED	norm=gn_mat_fill
-project_inventory	gmbneural	header	gn_mat_copy	UNMATCHED	norm=gn_mat_copy
-project_inventory	gmbneural	header	gn_mat_mul	UNMATCHED	norm=gn_mat_mul
-project_inventory	gmbneural	header	gn_mat_mul_nt	UNMATCHED	norm=gn_mat_mul_nt
-project_inventory	gmbneural	header	gn_mat_mul_tn	UNMATCHED	norm=gn_mat_mul_tn
-project_inventory	gmbneural	header	gn_mat_mul_tt	UNMATCHED	norm=gn_mat_mul_tt
-project_inventory	gmbneural	header	gn_mat_add	UNMATCHED	norm=gn_mat_add
-project_inventory	gmbneural	header	gn_mat_add_scaled	UNMATCHED	norm=gn_mat_add_scaled
-project_inventory	gmbneural	header	gn_mat_scale	UNMATCHED	norm=gn_mat_scale
-project_inventory	gmbneural	header	gn_mat_add_inplace	UNMATCHED	norm=gn_mat_add_inplace
-project_inventory	gmbneural	header	gn_mat_apply	UNMATCHED	norm=gn_mat_apply
-project_inventory	gmbneural	header	gn_mat_max	UNMATCHED	norm=gn_mat_max
-project_inventory	gmbneural	header	gn_mat_absmax	UNMATCHED	norm=gn_mat_absmax
-project_inventory	gmbneural	header	gn_pbp_relu_moments	UNMATCHED	norm=gn_pbp_relu_moments
-project_inventory	gmbneural	header	gn_pbp_layer_forward	UNMATCHED	norm=gn_pbp_layer_forward
-project_inventory	gmbneural	/Users/gaetano/Documents/Projects/GMBSuite/gmbneural	h=246 def=359 match=0 non_match=246	INFO	
+project_inventory	gmbneural	/Users/gaetano/Documents/Projects/GMBSuite/gmbneural	h=246 def=359 match=172 non_match=74	INFO	
 project_inventory	gmbortools	header	ipm_solve_std	UNMATCHED	norm=ipm_solve_std
 project_inventory	gmbortools	header	ipm_solve_std_csc	UNMATCHED	norm=ipm_solve_std_csc
 project_inventory	gmbortools	header	ipm_solve_qp_csc	UNMATCHED	norm=ipm_solve_qp_csc
