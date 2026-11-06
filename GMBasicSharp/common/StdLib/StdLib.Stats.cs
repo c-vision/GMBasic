@@ -121,26 +121,6 @@ public sealed partial class StdLib
         var procedures = new ProcedureDefinition[]
         {
             // Descrittive
-            new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.Mean, "Mean"), [dataArrayParam], new DoubleType(), TokenKind.Mean),
-            new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.Median, "Median"), [dataArrayParam], new DoubleType(), TokenKind.Median),
-            new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.Variance, "Variance"), [dataArrayParam], new DoubleType(), TokenKind.Variance),
-            new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.StdDev, "StdDev"), [dataArrayParam], new DoubleType(), TokenKind.StdDev),
-            new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.Skewness, "Skewness"), [dataArrayParam], new DoubleType(), TokenKind.Skewness),
-            new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.Kurtosis, "Kurtosis"), [dataArrayParam], new DoubleType(), TokenKind.Kurtosis),
-            new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.Correlation, "Correlation"), [dataArrayParam, dataArray2Param], new DoubleType(), TokenKind.Correlation),
-            new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.StatsCovariance, "Covariance"),
-                [dataArrayParam, dataArray2Param], new DoubleType(), TokenKind.StatsCovariance),
-            new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.StatsRange, "RANGE"),
-                [dataArrayParam], new DoubleType(), TokenKind.StatsRange),
-            new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.StatsMax, "MAX"),
-                [dataArrayParam], new DoubleType(), TokenKind.StatsMax),
-            new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.StatsMin, "MIN"),
-                [dataArrayParam], new DoubleType(), TokenKind.StatsMin),
-            new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.Percentile, "Percentile"),
-            [
-                dataArrayParam, new Parameter(-1, T(TokenKind.Identifier, "p"), new DoubleType(), noFlags, null, false)
-            ], new DoubleType(), TokenKind.Percentile),
-            new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.Mad, "Mad"), [dataArrayParam], new DoubleType(), TokenKind.Mad),
 
             // Distribuzioni Continue
             new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.NormalPdf, "NormalPdf"),

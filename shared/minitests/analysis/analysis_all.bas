@@ -6,6 +6,7 @@
 ' Derivato dai MiniTest per-funzione (stessi input e oracoli).
 ' Scopo: verificare la STESSA versione del namespace sui 4 backend, non un'applicazione.
 ' EXPECT: interp:  3 , 3 , 2|interp2:  3 , 3 , 5|euclid:  30|yw:  1.33333333333333 , 0.333333333333333|ma:  0.5 , 0.057143|4.8|5|3.3466401061363|11.2|0.088041393098|-1.975446428571|3|-0.058600903867|9.5|2.25|6.5|4|6.25|6.21875|9|6.5|40|0.5  3  9.5|0  0.166666666666667  0.333333333333333 -0.5 -0.333333333333333 -0.166666666666667|2  3  0  1|2  3  0  1|4  1|0.25 -0.3|1.96|0.2|0.999375650364|1|10.5|-4.220358|0.792388|0.024221|-0.792388|9.16044|11.023513|F= 4.8|adf_stat= 0  adf_p= 0.75|pca= ok|0.333333333333333|0.333333333333333|0.367879774412498|rows= 2|cols= 2|yend= 0|splev= 12.25|splrep_ok= 1|f00= 3|y00= 0|0  0  1  0|0  1  0  1|rfft_ok= 1|irfft0= 0.25|d= 6
+IMPORT STATSX
 IMPORT MULTIVARIATE
 
 
@@ -29,15 +30,15 @@ END SUB
 
 SUB A_desc()
   DIM d(4) AS DOUBLE = {5, 2, 9, 1, 7}
-  PRINT STATS.Mean(d)
-  PRINT STATS.Median(d)
-  PRINT STATS.StdDev(d)
-  PRINT STATS.Variance(d)
-  PRINT ROUND(STATS.Skewness(d), 12)
-  PRINT ROUND(STATS.Kurtosis(d), 12)
-  PRINT ROUND(STATS.Mad(d), 12)
+  PRINT STATSX.MEAN(d)
+  PRINT STATSX.MEDIAN(d)
+  PRINT STATSX.STDDEV(d, 1)
+  PRINT STATSX.VARIANCE(d, 1)
+  PRINT ROUND(STATSX.SKEWNESS(d), 12)
+  PRINT ROUND(STATSX.KURTOSIS(d), 12)
+  PRINT ROUND(STATSX.MAD(d), 12)
   DIM e(4) AS DOUBLE = {9, 4, 3, 6, 8}
-  PRINT ROUND(STATS.Correlation(d, e), 12)
+  PRINT ROUND(STATSX.CORRELATION(d, e), 12)
 END SUB
 
 

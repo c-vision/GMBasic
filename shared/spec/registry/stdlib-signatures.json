@@ -20048,50 +20048,6 @@
     },
     {
       "ns": "STATS",
-      "name": "Correlation",
-      "fn": true,
-      "return": "double",
-      "params": [
-        {
-          "name": "data",
-          "type": "double[]",
-          "optional": false,
-          "byRef": false,
-          "array": true
-        },
-        {
-          "name": "data2",
-          "type": "double[]",
-          "optional": false,
-          "byRef": false,
-          "array": true
-        }
-      ]
-    },
-    {
-      "ns": "STATS",
-      "name": "Covariance",
-      "fn": true,
-      "return": "double",
-      "params": [
-        {
-          "name": "data",
-          "type": "double[]",
-          "optional": false,
-          "byRef": false,
-          "array": true
-        },
-        {
-          "name": "data2",
-          "type": "double[]",
-          "optional": false,
-          "byRef": false,
-          "array": true
-        }
-      ]
-    },
-    {
-      "ns": "STATS",
       "name": "Describe",
       "fn": true,
       "return": "ANY",
@@ -20712,21 +20668,6 @@
     },
     {
       "ns": "STATS",
-      "name": "Kurtosis",
-      "fn": true,
-      "return": "double",
-      "params": [
-        {
-          "name": "data",
-          "type": "double[]",
-          "optional": false,
-          "byRef": false,
-          "array": true
-        }
-      ]
-    },
-    {
-      "ns": "STATS",
       "name": "KurtosisTest",
       "fn": true,
       "return": "ANY",
@@ -21054,51 +20995,6 @@
     },
     {
       "ns": "STATS",
-      "name": "MAX",
-      "fn": true,
-      "return": "double",
-      "params": [
-        {
-          "name": "data",
-          "type": "double[]",
-          "optional": false,
-          "byRef": false,
-          "array": true
-        }
-      ]
-    },
-    {
-      "ns": "STATS",
-      "name": "MIN",
-      "fn": true,
-      "return": "double",
-      "params": [
-        {
-          "name": "data",
-          "type": "double[]",
-          "optional": false,
-          "byRef": false,
-          "array": true
-        }
-      ]
-    },
-    {
-      "ns": "STATS",
-      "name": "Mad",
-      "fn": true,
-      "return": "double",
-      "params": [
-        {
-          "name": "data",
-          "type": "double[]",
-          "optional": false,
-          "byRef": false,
-          "array": true
-        }
-      ]
-    },
-    {
-      "ns": "STATS",
       "name": "MannWhitney",
       "fn": true,
       "return": "ANY",
@@ -21112,36 +21008,6 @@
         },
         {
           "name": "data2",
-          "type": "double[]",
-          "optional": false,
-          "byRef": false,
-          "array": true
-        }
-      ]
-    },
-    {
-      "ns": "STATS",
-      "name": "Mean",
-      "fn": true,
-      "return": "double",
-      "params": [
-        {
-          "name": "data",
-          "type": "double[]",
-          "optional": false,
-          "byRef": false,
-          "array": true
-        }
-      ]
-    },
-    {
-      "ns": "STATS",
-      "name": "Median",
-      "fn": true,
-      "return": "double",
-      "params": [
-        {
-          "name": "data",
           "type": "double[]",
           "optional": false,
           "byRef": false,
@@ -22339,28 +22205,6 @@
     },
     {
       "ns": "STATS",
-      "name": "Percentile",
-      "fn": true,
-      "return": "double",
-      "params": [
-        {
-          "name": "data",
-          "type": "double[]",
-          "optional": false,
-          "byRef": false,
-          "array": true
-        },
-        {
-          "name": "p",
-          "type": "double",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        }
-      ]
-    },
-    {
-      "ns": "STATS",
       "name": "PoissonPmf",
       "fn": true,
       "return": "double",
@@ -22378,21 +22222,6 @@
           "optional": false,
           "byRef": false,
           "array": false
-        }
-      ]
-    },
-    {
-      "ns": "STATS",
-      "name": "RANGE",
-      "fn": true,
-      "return": "double",
-      "params": [
-        {
-          "name": "data",
-          "type": "double[]",
-          "optional": false,
-          "byRef": false,
-          "array": true
         }
       ]
     },
@@ -22464,21 +22293,6 @@
     },
     {
       "ns": "STATS",
-      "name": "Skewness",
-      "fn": true,
-      "return": "double",
-      "params": [
-        {
-          "name": "data",
-          "type": "double[]",
-          "optional": false,
-          "byRef": false,
-          "array": true
-        }
-      ]
-    },
-    {
-      "ns": "STATS",
       "name": "SpearmanR",
       "fn": true,
       "return": "ANY",
@@ -22492,21 +22306,6 @@
         },
         {
           "name": "data2",
-          "type": "double[]",
-          "optional": false,
-          "byRef": false,
-          "array": true
-        }
-      ]
-    },
-    {
-      "ns": "STATS",
-      "name": "StdDev",
-      "fn": true,
-      "return": "double",
-      "params": [
-        {
-          "name": "data",
           "type": "double[]",
           "optional": false,
           "byRef": false,
@@ -23012,21 +22811,6 @@
           "optional": false,
           "byRef": false,
           "array": false
-        }
-      ]
-    },
-    {
-      "ns": "STATS",
-      "name": "Variance",
-      "fn": true,
-      "return": "double",
-      "params": [
-        {
-          "name": "data",
-          "type": "double[]",
-          "optional": false,
-          "byRef": false,
-          "array": true
         }
       ]
     },
