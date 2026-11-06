@@ -392,6 +392,15 @@ void gmb_speed_sortable_double_bytes(gmb_double_t d, uint8_t* out);
 gmb_string_t gmb_string_alloc(const char* str);
 gmb_string_t gmb_string_from_bytes(const char* data, gmb_int_t len);
 
+/* Ponte BYTE ↔ ARRAY (C99Native, §0bis: implementazione unica nel runtime condiviso).
+ * gmb_bytes_as_doubles: i byte di una stringa binaria come array numerico 0..255, in un
+ * buffer a ROTAZIONE (8 slot, riallocati al bisogno; il chiamante non libera e non deve
+ * conservare il puntatore oltre l'espressione corrente). len_out opzionale.
+ * gmb_hex_from_doubles: hex minuscolo malloc'd/NUL-terminato dei primi n elementi di un
+ * array numerico (elementi clampati a 0..255). */
+const gmb_double_t* gmb_bytes_as_doubles(gmb_string_t s, gmb_int_t* len_out);
+char* gmb_hex_from_doubles(const gmb_double_t* a, gmb_int_t n);
+
 /* SYSTEM.SYS(proprietà) per i backend C: OS/ARCH/UI/VERSION/RUNTIME/CPUCOUNT/MACHINE/USER/CWD +
  * memoria (MEMAVAILABLE/MEMFREE/MEMRECLAIMABLE/MEMTOTAL/MEMUSED, e …MB). Ritorna un buffer statico
  * (da copiare subito in una stringa BASIC). Parità con IlRuntime.Sys (IL/PCode). */
@@ -510,8 +519,21 @@ int gmb_val_is_class(gmb_val_t v, const char* name);
 /* Controllo indice per un array DIMensionato: se `idx` è fuori da [lo, hi] solleva
  * ERR 9 ("Subscript out of range") alla riga indicata; altrimenti restituisce `idx`.
  * Usato dall'emissione C99 degli accessi indicizzati (parità IL/PCode/VM-C: prima
- * C99 leggeva/sciveva fuori dall'allocazione). */
-gmb_int_t gmb_arr_check(gmb_int_t idx, gmb_int_t lo, gmb_int_t hi, long line);
+ * C99 leggeva/sciveva fuori dall'allocazione).
+ * IN LINEA (2026-11-06): il confronto sta nell'header, il solo ramo d'errore (freddo) è una chiamata al
+ * runtime. Misurato: la chiamata fuori linea a ogni accesso costava ~1,6× su un ciclo di array
+ * (492 ms → 307 ms su 600M accessi, vs 320 ms del C senza controlli). Il comportamento è identico:
+ * stesso codice d'errore, stessa riga, e con RESUME NEXT si prosegue restituendo l'indice originale. */
+#if defined(__GNUC__) || defined(__clang__)
+#  define GMB_UNLIKELY(x) __builtin_expect(!!(x), 0)
+#else
+#  define GMB_UNLIKELY(x) (x)
+#endif
+void gmb_arr_check_fail(gmb_int_t idx, gmb_int_t lo, gmb_int_t hi, long line);   /* ramo freddo, in gmb_core.c */
+static inline gmb_int_t gmb_arr_check(gmb_int_t idx, gmb_int_t lo, gmb_int_t hi, long line) {
+    if (GMB_UNLIKELY(idx < lo || idx > hi)) gmb_arr_check_fail(idx, lo, hi, line);
+    return idx;
+}
 /* Descrizione canonica di un codice d'errore ("" se sconosciuto). Usata da gmb_raise_error
  * quando la descrizione è vuota e dai backend (VM/C) per popolare ERR.Description. */
 const char* gmb_err_default_message(int code);
