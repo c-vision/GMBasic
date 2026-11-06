@@ -24,6 +24,9 @@
 #include "gn_prune.h"
 #include "gn_quant.h"
 #include "gn_ternary.h"
+#include "gn_tree.h"
+#include "gn_forest.h"
+#include "gn_adaboost.h"
 #include "gn_opt.h"
 
 #include <stdlib.h>
@@ -1169,4 +1172,204 @@ i64 ofx_nn_ternary_tomat(i64 h, double *w)
     W.rows = t->rows; W.cols = t->cols; W.data = (gn_real *)w;
     rc = gn_ternary_to_mat(t, &W);
     return (i64)rc;
+}
+
+/* ── Alberi CART / Random Forest / AdaBoost — handle 3001+/3101+/3201+ ─────
+ * Le struct C hanno stato: tabelle di handle separate per tipo (uso sequenziale,
+ * non thread-safe come il resto del pacchetto). */
+
+#define NN_TREE_MAX 32
+#define NN_TREE_BASE 3000
+#define NN_FOR_MAX 16
+#define NN_FOR_BASE 3100
+#define NN_ADA_MAX 16
+#define NN_ADA_BASE 3200
+
+static gn_tree g_tree_tab[NN_TREE_MAX];
+static unsigned char g_tree_used[NN_TREE_MAX];
+static gn_forest g_for_tab[NN_FOR_MAX];
+static unsigned char g_for_used[NN_FOR_MAX];
+static gn_adaboost g_ada_tab[NN_ADA_MAX];
+static unsigned char g_ada_used[NN_ADA_MAX];
+
+static gn_tree *tree_get(i64 h)
+{
+    if (h <= NN_TREE_BASE || h > NN_TREE_BASE + NN_TREE_MAX) return NULL;
+    if (!g_tree_used[h - NN_TREE_BASE - 1]) return NULL;
+    return &g_tree_tab[h - NN_TREE_BASE - 1];
+}
+
+static gn_forest *for_get(i64 h)
+{
+    if (h <= NN_FOR_BASE || h > NN_FOR_BASE + NN_FOR_MAX) return NULL;
+    if (!g_for_used[h - NN_FOR_BASE - 1]) return NULL;
+    return &g_for_tab[h - NN_FOR_BASE - 1];
+}
+
+static gn_adaboost *ada_get(i64 h)
+{
+    if (h <= NN_ADA_BASE || h > NN_ADA_BASE + NN_ADA_MAX) return NULL;
+    if (!g_ada_used[h - NN_ADA_BASE - 1]) return NULL;
+    return &g_ada_tab[h - NN_ADA_BASE - 1];
+}
+
+/* Albero CART: 0 = default (depth 32, split 2, leaf 1). */
+i64 ofx_nn_tree_init(i64 max_depth, i64 min_split, i64 min_leaf)
+{
+    int i;
+    for (i = 0; i < NN_TREE_MAX; i++) {
+        if (g_tree_used[i]) continue;
+        memset(&g_tree_tab[i], 0, sizeof(g_tree_tab[i]));
+        g_tree_tab[i].max_depth = (int)max_depth;
+        g_tree_tab[i].min_samples_split = (int)min_split;
+        g_tree_tab[i].min_samples_leaf = (int)min_leaf;
+        g_tree_used[i] = 1;
+        return (i64)(NN_TREE_BASE + i + 1);
+    }
+    return -1;
+}
+
+i64 ofx_nn_tree_fit_reg(i64 h, const double *X, const double *y, i64 n, i64 d)
+{
+    gn_tree *t = tree_get(h);
+    if (!t || !X || !y || n <= 0 || d <= 0) return -1;
+    return (i64)gn_tree_fit_reg(t, X, y, (int)n, (int)d);
+}
+
+i64 ofx_nn_tree_fit_cls(i64 h, const double *X, const i64 *y, i64 n, i64 d, i64 n_classes)
+{
+    gn_tree *t = tree_get(h);
+    int *yc;
+    i64 rc;
+    if (!t || !X || !y || n <= 0 || d <= 0 || n_classes <= 0) return -1;
+    yc = i32_from_longs(y, (int)n);
+    if (!yc) return -1;
+    rc = (i64)gn_tree_fit_cls(t, X, yc, (int)n, (int)d, (int)n_classes);
+    free(yc);
+    return rc;
+}
+
+double ofx_nn_tree_predict(i64 h, const double *x)
+{
+    gn_tree *t = tree_get(h);
+    if (!t || !x) return 0.0;
+    return gn_tree_predict(t, x);
+}
+
+i64 ofx_nn_tree_free(i64 h)
+{
+    gn_tree *t = tree_get(h);
+    if (!t) return -1;
+    gn_tree_free(t);
+    memset(t, 0, sizeof(*t));
+    g_tree_used[h - NN_TREE_BASE - 1] = 0;
+    return 0;
+}
+
+/* Random Forest: max_features 0 = sqrt(d) (classif.) / d/3+1 (regr.), seed 0 = 12345. */
+i64 ofx_nn_forest_init(i64 n_estimators, i64 max_depth, i64 min_split,
+                       i64 max_features, i64 seed)
+{
+    int i;
+    for (i = 0; i < NN_FOR_MAX; i++) {
+        if (g_for_used[i]) continue;
+        memset(&g_for_tab[i], 0, sizeof(g_for_tab[i]));
+        g_for_tab[i].n_estimators = (int)n_estimators;
+        g_for_tab[i].max_depth = (int)max_depth;
+        g_for_tab[i].min_samples_split = (int)min_split;
+        g_for_tab[i].max_features = (int)max_features;
+        g_for_tab[i].seed = (unsigned)seed;
+        g_for_used[i] = 1;
+        return (i64)(NN_FOR_BASE + i + 1);
+    }
+    return -1;
+}
+
+i64 ofx_nn_forest_fit_reg(i64 h, const double *X, const double *y, i64 n, i64 d)
+{
+    gn_forest *f = for_get(h);
+    if (!f || !X || !y || n <= 0 || d <= 0) return -1;
+    return (i64)gn_forest_fit_reg(f, X, y, (int)n, (int)d);
+}
+
+i64 ofx_nn_forest_fit_cls(i64 h, const double *X, const i64 *y, i64 n, i64 d, i64 n_classes)
+{
+    gn_forest *f = for_get(h);
+    int *yc;
+    i64 rc;
+    if (!f || !X || !y || n <= 0 || d <= 0 || n_classes <= 0) return -1;
+    yc = i32_from_longs(y, (int)n);
+    if (!yc) return -1;
+    rc = (i64)gn_forest_fit_cls(f, X, yc, (int)n, (int)d, (int)n_classes);
+    free(yc);
+    return rc;
+}
+
+double ofx_nn_forest_predict(i64 h, const double *x)
+{
+    gn_forest *f = for_get(h);
+    if (!f || !x) return 0.0;
+    return gn_forest_predict(f, x);
+}
+
+/* AUC di Mann-Whitney (actual: 0/1 o valori continui, score: punteggio). */
+double ofx_nn_auc(const double *actual, const double *score, i64 n)
+{
+    if (!actual || !score || n <= 0) return 0.0;
+    return gn_auc(actual, score, (int)n);
+}
+
+i64 ofx_nn_forest_free(i64 h)
+{
+    gn_forest *f = for_get(h);
+    if (!f) return -1;
+    gn_forest_free(f);
+    memset(f, 0, sizeof(*f));
+    g_for_used[h - NN_FOR_BASE - 1] = 0;
+    return 0;
+}
+
+/* AdaBoost (SAMME) binario: y in {0,1}; 0 = default (50 stump, lr 1.0). */
+i64 ofx_nn_adaboost_init(i64 n_estimators, double learning_rate)
+{
+    int i;
+    for (i = 0; i < NN_ADA_MAX; i++) {
+        if (g_ada_used[i]) continue;
+        memset(&g_ada_tab[i], 0, sizeof(g_ada_tab[i]));
+        g_ada_tab[i].n_estimators = (int)n_estimators;
+        g_ada_tab[i].learning_rate = learning_rate;
+        g_ada_used[i] = 1;
+        return (i64)(NN_ADA_BASE + i + 1);
+    }
+    return -1;
+}
+
+i64 ofx_nn_adaboost_fit(i64 h, const double *X, const i64 *y, i64 n, i64 d)
+{
+    gn_adaboost *b = ada_get(h);
+    int *yc;
+    i64 rc;
+    if (!b || !X || !y || n <= 0 || d <= 0) return -1;
+    yc = i32_from_longs(y, (int)n);
+    if (!yc) return -1;
+    rc = (i64)gn_adaboost_fit(b, X, yc, (int)n, (int)d);
+    free(yc);
+    return rc;
+}
+
+i64 ofx_nn_adaboost_predict(i64 h, const double *x)
+{
+    gn_adaboost *b = ada_get(h);
+    if (!b || !x) return 0;
+    return (i64)gn_adaboost_predict(b, x);
+}
+
+i64 ofx_nn_adaboost_free(i64 h)
+{
+    gn_adaboost *b = ada_get(h);
+    if (!b) return -1;
+    gn_adaboost_free(b);
+    memset(b, 0, sizeof(*b));
+    g_ada_used[h - NN_ADA_BASE - 1] = 0;
+    return 0;
 }
