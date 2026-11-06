@@ -47,7 +47,7 @@ public static partial class IlRuntime
         var ffi = Current.Ffi;
         var handle = ffi.LoadLibrary(lib);
         var fnPtr = ffi.GetFunction(handle, symbol);
-        var result = ffi.CallFunctionTypedArr(fnPtr, args, (byte)kind, (byte)arrayMask, (byte)arrayElemIntMask, (byte)stringMask, retIsString: false, (byte)byrefScalarMask, (byte)byrefScalarElemIntMask, scalarKindMask: (byte)scalarKindMask);
+        var result = ffi.CallFunctionTypedArr(fnPtr, args, kind, arrayMask, arrayElemIntMask, stringMask, retIsString: false, byrefScalarMask, byrefScalarElemIntMask, scalarKindMask: scalarKindMask);
         return Convert.ToDouble(result ?? 0.0);
     }
 
@@ -62,7 +62,7 @@ public static partial class IlRuntime
         var ffi = Current.Ffi;
         var handle = ffi.LoadLibrary(lib);
         var fnPtr = ffi.GetFunction(handle, symbol);
-        var result = ffi.CallFunctionTypedArr(fnPtr, args, (byte)kind, (byte)arrayMask, (byte)arrayElemIntMask, (byte)stringMask, retIsString: true, (byte)byrefScalarMask, (byte)byrefScalarElemIntMask, scalarKindMask: (byte)(kind == 1 ? 0xFF : 0));
+        var result = ffi.CallFunctionTypedArr(fnPtr, args, kind, arrayMask, arrayElemIntMask, stringMask, retIsString: true, byrefScalarMask, byrefScalarElemIntMask, scalarKindMask: (kind == 1 ? 0xFFFF : 0));
         return result as string ?? "";
     }
 
@@ -77,7 +77,7 @@ public static partial class IlRuntime
         var ffi = Current.Ffi;
         var handle = ffi.LoadLibrary(lib);
         var fnPtr = ffi.GetFunction(handle, symbol);
-        var result = ffi.CallFunctionTypedArr(fnPtr, args, (byte)kind, (byte)arrayMask, (byte)arrayElemIntMask, (byte)stringMask, retIsString: false, (byte)byrefScalarMask, (byte)byrefScalarElemIntMask, udtParamClrTypes: udtParamTypes, scalarKindMask: (byte)(kind == 1 ? 0xFF : 0));
+        var result = ffi.CallFunctionTypedArr(fnPtr, args, kind, arrayMask, arrayElemIntMask, stringMask, retIsString: false, byrefScalarMask, byrefScalarElemIntMask, udtParamClrTypes: udtParamTypes, scalarKindMask: (kind == 1 ? 0xFFFF : 0));
         return Convert.ToDouble(result ?? 0.0);
     }
 
@@ -88,7 +88,7 @@ public static partial class IlRuntime
         var ffi = Current.Ffi;
         var handle = ffi.LoadLibrary(lib);
         var fnPtr = ffi.GetFunction(handle, symbol);
-        var result = ffi.CallFunctionTypedArr(fnPtr, args, (byte)kind, (byte)arrayMask, (byte)arrayElemIntMask, (byte)stringMask, retIsString: true, (byte)byrefScalarMask, (byte)byrefScalarElemIntMask, udtParamClrTypes: udtParamTypes, scalarKindMask: (byte)(kind == 1 ? 0xFF : 0));
+        var result = ffi.CallFunctionTypedArr(fnPtr, args, kind, arrayMask, arrayElemIntMask, stringMask, retIsString: true, byrefScalarMask, byrefScalarElemIntMask, udtParamClrTypes: udtParamTypes, scalarKindMask: (kind == 1 ? 0xFFFF : 0));
         return result as string ?? "";
     }
 
@@ -102,7 +102,7 @@ public static partial class IlRuntime
         var ffi = Current.Ffi;
         var handle = ffi.LoadLibrary(lib);
         var fnPtr = ffi.GetFunction(handle, symbol);
-        var result = ffi.CallFunctionTypedArr(fnPtr, args, (byte)kind, (byte)arrayMask, (byte)arrayElemIntMask, (byte)stringMask, retIsString: false, (byte)byrefScalarMask, (byte)byrefScalarElemIntMask, udtParamClrTypes: udtParamTypes, udtReturnClrType: udtReturnType, scalarKindMask: (byte)(kind == 1 ? 0xFF : 0));
+        var result = ffi.CallFunctionTypedArr(fnPtr, args, kind, arrayMask, arrayElemIntMask, stringMask, retIsString: false, byrefScalarMask, byrefScalarElemIntMask, udtParamClrTypes: udtParamTypes, udtReturnClrType: udtReturnType, scalarKindMask: (kind == 1 ? 0xFFFF : 0));
         return result!;
     }
 }

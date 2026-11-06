@@ -1507,7 +1507,7 @@ public sealed partial class IlProgramCompiler
         // cross-backend richiede lo STESSO limite/messaggio qui, anche se IL stesso non
         // "espande" nulla (passa lo struct vero).
         var flattenedSlotCount = epd.Parameters.Sum(p => IsUdtParam(p) ? LeafKinds((UserDefinedType)p.DataType!).Count() : 1);
-        if (flattenedSlotCount > 8)
+        if (flattenedSlotCount > 16)
             throw new NotSupportedException(
                 $"FFI '{symbolName}': troppi slot nativi risultanti dall'espansione degli UDT per valore ({flattenedSlotCount}, massimo 8 — ogni campo UDT conta come uno slot).");
         if (anyStringByRef)
@@ -1523,23 +1523,29 @@ public sealed partial class IlProgramCompiler
         // passo 8 byte). Per gli scalari BYVAL non è un problema (marshallano sempre a
         // int64_t), ma un array o un BYREF sono un indirizzo condiviso: la larghezza reale conta.
         bool IsI64ArrayElem(DataType? t) => t is LongType or QuadType or ULongType or UQuadType;
+        /* BYTE/SBYTE (2026-11-06, parità Compiler.Expressions.cs IsFfiArrayElemType): ammessi come
+         * elemento-array. Il byte[] CLR NON viene mai pinnato (elemento largo 1 byte, il puntatore
+         * FFI viaggia a 8): FfiService.CallFunctionTypedArr costruisce uno scratch long[] con i
+         * valori 0..255 e fa copy-back dopo la chiamata. Senza questa ammissione la gamba IL
+         * rifiutava in compilazione le firme `arr() AS BYTE` che C99Native/VM-C accettano. */
+        bool IsFfiArrayElem(DataType? t) => t is DoubleType || IsI64ArrayElem(t) || t is ByteType || t is SByteType;
         foreach (var p in epd.Parameters)
         {
             if (IsArrayParam(p))
             {
                 var elem = (p.DataType as ArrayType)?.ElementType;
-                if (elem is not DoubleType && !IsI64ArrayElem(elem))
+                if (!IsFfiArrayElem(elem))
                     throw new NotSupportedException(
-                        $"FFI '{symbolName}': tipo elemento non supportato per il parametro array '{p.Name.Lexeme}' (solo AS DOUBLE o LONG/QUAD, non INTEGER/BYTE/SINGLE — larghezza nativa a 8 byte).");
+                        $"FFI '{symbolName}': tipo elemento non supportato per il parametro array '{p.Name.Lexeme}' (solo AS DOUBLE, LONG/QUAD o BYTE — l'elemento viaggia comunque a 8 byte, non INTEGER/SINGLE).");
             }
             else if (IsByRefScalarParam(p) && p.DataType is not DoubleType && !IsI64ArrayElem(p.DataType))
                 throw new NotSupportedException(
                     $"FFI '{symbolName}': tipo non supportato per il parametro BYREF '{p.Name.Lexeme}' (solo AS DOUBLE o LONG/QUAD, non INTEGER/BYTE/SINGLE — larghezza nativa a 8 byte).");
         }
         // Limite arità (parità 4 backend: la VM/C chiama al massimo 8 argomenti).
-        if (epd.Parameters.Length > 8)
+        if (epd.Parameters.Length > 16)
             throw new NotSupportedException(
-                $"FFI '{symbolName}': massimo 8 argomenti supportati dal marshalling FFI.");
+                $"FFI '{symbolName}': massimo 16 argomenti supportati dal marshalling FFI.");
         // Firma OMOGENEA: parametri E ritorno dello stesso kind. Il ritorno va incluso
         // (solo per FUNCTION) — altrimenti `(LONG) AS DOUBLE` passava come all-double
         // (divergenza vs le gambe C, che mappano i tipi per-parametro). Fix parità 2026-09-22.
@@ -1598,7 +1604,7 @@ public sealed partial class IlProgramCompiler
         // callback/UDT (altrove il bit non è consultato dal runtime, lasciato a 'kind' per
         // leggibilità). Nel caso omogeneo legacy coincide sempre con 'kind'.
         var scalarKindMask = 0;
-        for (var pi = 0; pi < epd.Parameters.Length && pi < 8; pi++)
+        for (var pi = 0; pi < epd.Parameters.Length && pi < 16; pi++)
         {
             var p = epd.Parameters[pi];
             var isPlainScalar = !IsArrayParam(p) && !IsStringParam(p) && !IsByRefScalarParam(p) && !IsCallbackParam(p) && !IsUdtParam(p);
@@ -1689,7 +1695,7 @@ public sealed partial class IlProgramCompiler
             _il.Emit(OpCodes.Newarr, typeof(int));
             var cbArityLocal = _il.DeclareLocal(typeof(int[]));
             _il.Emit(OpCodes.Stloc, cbArityLocal);
-            for (var pi = 0; pi < 8; pi++)
+            for (var pi = 0; pi < 16; pi++)
             {
                 _il.Emit(OpCodes.Ldloc, cbArityLocal);
                 _il.Emit(OpCodes.Ldc_I4, pi);

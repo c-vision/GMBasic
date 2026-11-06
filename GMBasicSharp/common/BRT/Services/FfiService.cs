@@ -408,7 +408,7 @@ public class FfiService : IFfiService
         return kind == 1 ? Convert.ToDouble(result ?? 0L) : result;
     }
 
-    private readonly Dictionary<(IntPtr, int, byte, byte, byte, byte, byte, string), Delegate> _typedArrDelegateCache = new();
+    private readonly Dictionary<(IntPtr, int, int, int, int, int, int, string), Delegate> _typedArrDelegateCache = new();
     // Struct/UDT (2026-09-28): cache dei VALUE TYPE CLR costruiti a runtime per una "forma"
     // UDT (kind + numero di campi) — riusata sia per parametri sia per ritorni, e tra chiamate
     // diverse con la stessa forma (es. due UDT distinti con lo stesso numero di campi/kind
@@ -469,10 +469,10 @@ public class FfiService : IFfiService
     /// puntatore nativo (spesso un buffer statico/riusato) — copiato IMMEDIATAMENTE in una nuova
     /// <c>string</c> CLR (<see cref="Marshal.PtrToStringUTF8(IntPtr)"/>) e ritornato come tale
     /// (non convertito a double) — mai tenuto vivo oltre la chiamata.</para></summary>
-    public object? CallFunctionTypedArr(IntPtr function, object?[] args, byte kind, byte arrayMask, byte arrayElemIntMask,
-        byte stringMask, bool retIsString, byte byrefScalarMask = 0, byte byrefScalarElemIntMask = 0,
+    public object? CallFunctionTypedArr(IntPtr function, object?[] args, int kind, int arrayMask, int arrayElemIntMask,
+        int stringMask, bool retIsString, int byrefScalarMask = 0, int byrefScalarElemIntMask = 0,
         FfiUdtShape?[]? udtParams = null, FfiUdtShape? udtReturn = null,
-        Type?[]? udtParamClrTypes = null, Type? udtReturnClrType = null, byte scalarKindMask = 0)
+        Type?[]? udtParamClrTypes = null, Type? udtReturnClrType = null, int scalarKindMask = 0)
     {
         if (function == IntPtr.Zero) return null;
         var n = args.Length;
@@ -535,6 +535,13 @@ public class FfiService : IFfiService
         // Bugs/(solved) - FFI-Array-Tipizzato-LONG-IL.md).
         var typedScratch = new Array?[n];
         var typedOrig = new Array?[n];
+        // Array BYTE/SBYTE (2026-11-06): il puntatore FFI viaggia a 8 byte per elemento, quindi
+        // un byte[] CLR NON puo' essere pinnato direttamente (l'elemento e' largo 1). Si usa uno
+        // scratch long[] con i valori 0..255 e il copy-back dopo la chiamata.
+        // BYTE/SBYTE: elemento largo 1 byte nella VM ma 8 byte nello scratch FFI
+        // (il nativo riceve `int64_t*` con valori 0..255); copy-in/copy-back qui.
+        var byteScratch = new long[]?[n];
+        var byteOrig = new Array?[n];
         try
         {
             for (var i = 0; i < n; i++)
@@ -633,6 +640,18 @@ public class FfiService : IFfiService
                         dArgs[i] = handles[i].AddrOfPinnedObject();
                         break;
                     }
+                    case byte[] or sbyte[]:
+                    {
+                        var srcArr = (Array)args[i]!;
+                        var buf = new long[srcArr.Length];
+                        for (var j = 0; j < srcArr.Length; j++)
+                            buf[j] = Convert.ToInt64(srcArr.GetValue(j) ?? 0L);
+                        byteScratch[i] = buf;
+                        byteOrig[i] = srcArr;
+                        handles[i] = GCHandle.Alloc(buf, GCHandleType.Pinned);
+                        dArgs[i] = handles[i].AddrOfPinnedObject();
+                        break;
+                    }
                     case object[] boxed:
                     {
                         var isInt = (arrayElemIntMask & (1 << i)) != 0;
@@ -668,6 +687,21 @@ public class FfiService : IFfiService
                 /* Copy-out degli array CLR tipizzati passati via scratch convertito: il nativo
                  * può aver scritto (array BYREF di output) — riporta i valori nell'array del
                  * chiamante, che è lo stesso oggetto visto da BASIC. */
+                if (byteScratch[i] is { } bbuf)
+                {
+                    // Copy-back con saturazione a BYTE/SBYTE (il nativo puo' aver scritto 0..255).
+                    switch (byteOrig[i])
+                    {
+                        case byte[] bdst:
+                            for (var j = 0; j < bdst.Length; j++)
+                                bdst[j] = (byte)Math.Clamp(bbuf[j], 0L, 255L);
+                            break;
+                        case sbyte[] sdest:
+                            for (var j = 0; j < sdest.Length; j++)
+                                sdest[j] = (sbyte)Math.Clamp(bbuf[j], -128L, 127L);
+                            break;
+                    }
+                }
                 if (typedScratch[i] is { } tbuf)
                 {
                     switch (typedOrig[i])
