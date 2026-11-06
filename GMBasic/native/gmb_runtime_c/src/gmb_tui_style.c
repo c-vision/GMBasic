@@ -74,6 +74,11 @@ gmb_control_style_t gmb_control_style_from_theme(const gmb_theme_t* t)
     s.has_bg_error = true; s.bg_error = GMB_CELLCOLOR_RED;
     s.has_sel_fg = true; s.sel_fg = t->window_bg;
     s.has_sel_bg = true; s.sel_bg = t->active_bg;
+    /* Se il tema ha window_bg == active_bg (es. Turbo Vision: blu su blu), il testo
+     * "selezionato" sarebbe INVISIBILE (tab attiva, riga cursore grid/propertygrid).
+     * In quel caso si usa il colore titolo (bianco su blu in TV). */
+    if (s.sel_fg.r == s.sel_bg.r && s.sel_fg.g == s.sel_bg.g && s.sel_fg.b == s.sel_bg.b)
+        s.sel_fg = t->title_fg;
     s.fill_char = ' ';
     return s;
 }
@@ -145,5 +150,70 @@ void gmb_control_style_effective(const gmb_control_style_t* s, bool focused, boo
     {
         *fg = base_fg;
         *bg = base_bg;
+    }
+}
+
+/* ===================== Palette CONTROLLI Turbo Vision =====================
+ * Valori RISOLTI dal sorgente ufficiale (magiblot/tvision) con la catena di palette reale
+ * (cpGrayDialog → cpAppColor), non "a occhio":
+ *   TDialog     indice 1 → 0x70  nero su grigio chiaro
+ *   TInputLine  0x13     → 0x1F  bianco su blu
+ *   TButton     0x0A     → 0x20  nero su VERDE (focus 0x2B = ciano chiaro su verde)
+ *   TCluster    0x10     → 0x30  nero su CIANO (selezionato 0x2F = bianco su verde)
+ *   TListBox    0x10     → 0x30  nero su ciano (selezionato 0x2F = bianco su verde)
+ *   TScrollBar  0x13     → 0x13  ciano su blu
+ * Si applica al DISEGNO (non alla creazione) così il cambio tema a runtime è rispettato.
+ * Per gli altri temi non fa nulla: restano i colori derivati dal tema. */
+static int tv_is_turbovision(void)
+{
+    const char* n = gmb_ui_theme_name();
+    return n && strcmp(n, "turbovision") == 0;
+}
+
+void gmb_tui_apply_tv_style(gmb_control_t* c)
+{
+    if (!c || !tv_is_turbovision()) return;
+    gmb_cell_color_t black = crgb(0, 0, 0);
+    gmb_cell_color_t white = crgb(255, 255, 255);
+    gmb_cell_color_t blue  = crgb(0, 0, 170);
+    gmb_cell_color_t green = crgb(0, 170, 0);
+    gmb_cell_color_t cyan  = crgb(0, 170, 170);
+    gmb_cell_color_t lcyan = crgb(85, 255, 255);
+    switch (c->ctrl_kind)
+    {
+    case GMB_CK_BUTTON:
+        gmb_control_style_with_colors(&c->style, black, green);
+        gmb_control_style_with_focus_colors(&c->style, lcyan, green);
+        gmb_control_style_with_selected_colors(&c->style, white, green);
+        break;
+    case GMB_CK_TEXTBOX:
+        gmb_control_style_with_colors(&c->style, white, blue);
+        gmb_control_style_with_focus_colors(&c->style, white, blue);
+        gmb_control_style_with_selected_colors(&c->style, black, cyan);
+        break;
+    case GMB_CK_CHECKBOX:
+    case GMB_CK_TOGGLE:
+    case GMB_CK_RADIO:
+        gmb_control_style_with_colors(&c->style, black, cyan);
+        gmb_control_style_with_focus_colors(&c->style, white, cyan);
+        gmb_control_style_with_selected_colors(&c->style, white, green);
+        break;
+    case GMB_CK_LISTBOX:
+    case GMB_CK_COMBOBOX:
+    case GMB_CK_DATALIST:
+    case GMB_CK_REORDERLISTBOX:
+        gmb_control_style_with_colors(&c->style, black, cyan);
+        gmb_control_style_with_focus_colors(&c->style, black, cyan);
+        gmb_control_style_with_selected_colors(&c->style, white, green);
+        break;
+    case GMB_CK_SCROLLBAR:
+    case GMB_CK_SLIDER:
+    case GMB_CK_SPINNER:
+    case GMB_CK_NUMERICUPDOWN:
+        gmb_control_style_with_colors(&c->style, cyan, blue);
+        gmb_control_style_with_focus_colors(&c->style, cyan, blue);
+        break;
+    default:
+        break;
     }
 }

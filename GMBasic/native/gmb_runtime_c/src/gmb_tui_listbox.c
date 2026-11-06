@@ -144,7 +144,11 @@ int gmb_listbox_render_line(gmb_listbox_t* l, int idx, char* out, int cap)
     int n = (int)strlen(v);
     if (n > w - 1) n = w - 1 > 0 ? w - 1 : 0;
     for (int i = 0; i < n && o < cap - 1; i++) out[o++] = v[i];
-    for (; o < w && o < cap - 1; o++) out[o++] = ' ';
+    /* Padding a TUTTE le celle rimanenti: `o` avanza UNA volta per carattere.
+     * Prima c'era `for (; o < w; o++) out[o++] = ' ';` → doppio incremento: venivano
+     * scritte solo le colonne pari e le dispari restavano col contenuto VECCHIO dello
+     * stack (righe tipo `alpha s o` nella listbox). */
+    for (; o < w && o < cap - 1; o++) out[o] = ' ';
     out[o] = '\0';
     return o;
 }

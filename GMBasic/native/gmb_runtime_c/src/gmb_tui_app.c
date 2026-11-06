@@ -1098,6 +1098,16 @@ void gmb_tui_process_pending_keys(void)
 {
     s_px_dirty = 1;
     while (g_gfxq_h != g_gfxq_t) { int k = g_gfxq[g_gfxq_h]; g_gfxq_h = (g_gfxq_h + 1) % 128; tui_process_key(k); }
+    /* Tasti arrivati dalla finestra SDL (gmb_tui_sdl_pump li mette nella TYPEAHEAD del clipper):
+     * qui vengono consumati dai controlli. Serve alle app che compongono finestre WINDOW +
+     * controlli e quindi NON chiamano gmb_tui_controls_frame (che ripulirebbe il desktop). */
+    { gmb_clipper_state_t* st = gmb_tui_global_state();
+      while (st && st->typeahead_count > 0)
+      {
+          int k = gmb_clipper_input_inkey(st);
+          if (k == 0) break;
+          tui_process_key(k);
+      } }
 }
 void gmb_tui_push_gfx_key(int k)
 {
@@ -1105,6 +1115,36 @@ void gmb_tui_push_gfx_key(int k)
     if (n == g_gfxq_h) return;
     g_gfxq[g_gfxq_t] = k; g_gfxq_t = n;
 }
+/* Disegna TUTTI i controlli rispettando lo Z-ORDER di Turbo Vision: i MENU APERTI vanno
+ * per ULTIMI, così la dropdown sta sopra gli altri controlli. Prima si disegnava in ordine
+ * di registrazione: il menu (indice 0) finiva SOTTO i controlli disegnati dopo. */
+void gmb_tui_draw_controls(gmb_screen_buffer_t* buf)
+{
+    if (!buf) return;
+    /* Questi controlli sono a CELLE: va disattivato l'auto-attach e va RIMOSSO un
+     * eventuale sink già agganciato al buffer (gmb_screen_setchar, con sink, dirotta le
+     * scritture sulla pagina gfx e le celle restano STANTIE → righe con caratteri
+     * vecchi/casuali, es. listbox). Il sink viene ripristinato dopo. */
+    gmb_surface_set_autoattach(0);
+    gmb_screen_sink_t* saved_sink = gmb_screen_get_sink(buf);
+    if (saved_sink) gmb_screen_set_sink(buf, NULL);
+    for (int i = 0; i < g_reg_n; i++)
+    {
+        gmb_control_t* c = g_reg_ctrl[i];
+        if (!c) continue;
+        if (c->ctrl_kind == GMB_CK_MENU && ((gmb_menu_t*)c)->is_open) continue;
+        gmb_control_draw(c, buf);
+    }
+    for (int i = 0; i < g_reg_n; i++)
+    {
+        gmb_control_t* c = g_reg_ctrl[i];
+        if (!c) continue;
+        if (c->ctrl_kind == GMB_CK_MENU && ((gmb_menu_t*)c)->is_open) gmb_control_draw(c, buf);
+    }
+    if (saved_sink) gmb_screen_set_sink(buf, saved_sink);
+    gmb_surface_set_autoattach(1);
+}
+
 int gmb_tui_controls_frame(int frame_ms)
 {
     int had_input = 0;
@@ -1158,17 +1198,11 @@ int gmb_tui_controls_frame(int frame_ms)
         }
     gmb_screen_buffer_t* buf = modal_target_buffer();
     gmb_surface_set_autoattach(0);
-    /* Desktop TV: pulisci il buffer col pattern (blu + '░') ad OGNI frame, altrimenti restano
-     * le celle vecchie (es. la dropdown di un menu appena chiuso). */
-    { gmb_theme_t th = gmb_ui_theme();
-      int bw = gmb_screen_width(buf), bh = gmb_screen_height(buf);
-      uint32_t pat = 0x2591u; /* '░' */
-      if (th.desktop_pattern && (unsigned char)th.desktop_pattern[0] == 0xE2) pat = 0x2591u;
-      else if (th.desktop_pattern && th.desktop_pattern[0] == ' ') pat = ' ';
-      for (int yy = 0; yy < bh; yy++)
-          for (int xx = 0; xx < bw; xx++)
-              gmb_screen_setchar(buf, xx, yy, pat, th.desktop_bg, th.desktop_bg); }
-    for (int i = 0; i < g_reg_n; i++) gmb_control_draw(g_reg_ctrl[i], buf);
+    /* Desktop ad OGNI frame (prima restavano le celle vecchie, es. la dropdown di un menu
+     * appena chiuso). UNICA implementazione: gmb_theme_paint_desktop -> desktop + retino
+     * dal TEMA (prima fg e bg erano lo stesso colore: retino invisibile). */
+    gmb_theme_paint_desktop(buf);
+    gmb_tui_draw_controls(buf);
     gmb_surface_set_autoattach(1);
     if (gmb_base_window_kind() == GMB_WIN_GRAPHICS) gmb_tui_screen_flush();
     else if (gmb_base_window_kind() == GMB_WIN_SDL || g_app_sdl)
@@ -1373,6 +1407,14 @@ void gmb_tui_sdl_cursor_solid(void)
 void gmb_tui_sdl_stop(void) { if (g_app_sdl) { gmb_sdl_console_free(g_app_sdl); g_app_sdl = NULL; } }
 
 int gmb_tui_sdl_active(void) { return g_app_sdl ? 1 : 0; }
+
+/* Screenshot PNG della SDLConsole dell'app (verifica visiva/demo). 0 = scritto. */
+int gmb_tui_sdl_snapshot(const char* path)
+{
+    if (!g_app_sdl || !path) return -1;
+    extern int gmb_sdl_console_save_png(gmb_sdl_console_t*, const char*);
+    return gmb_sdl_console_save_png(g_app_sdl, path);
+}
 
 /* Stato del cursore nativo della console (per test/selfcheck headless). */
 int gmb_tui_sdl_cursor_visible(void) { return g_app_sdl ? gmb_sdl_console_cursor_visible(g_app_sdl) : 0; }

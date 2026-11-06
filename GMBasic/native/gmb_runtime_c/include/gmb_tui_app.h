@@ -189,6 +189,8 @@ gmb_control_t* gmb_tui_control_find_by_name(const char* name);
  * suo contenitore (window per nome, oppure un altro controllo/UserControl per nome). */
 int  gmb_tui_control_content_origin(const char* name, int* out_x, int* out_y);
 int  gmb_tui_controls_frame(int frame_ms);
+/* Disegna i controlli con lo z-order TV: i menu aperti per ultimi (dropdown sopra tutto). */
+void gmb_tui_draw_controls(gmb_screen_buffer_t* buf);
 /* Tasto dalla finestra grafica (SDL) → i controlli TUI lo consumano nel frame. */
 void gmb_tui_push_gfx_key(int k);
 /* Drain dei tasti della finestra grafica nel dispatch controlli (senza disegnare). */
@@ -211,6 +213,8 @@ void gmb_tui_sdl_present(void);
 void gmb_tui_sdl_cursor_solid(void);   /* cursore solido (alla pressione di un tasto) */
 void gmb_tui_sdl_stop(void);
 int  gmb_tui_sdl_active(void);
+/* Screenshot PNG della SDLConsole a celle (verifica visiva/demo). 0 = scritto. */
+int  gmb_tui_sdl_snapshot(const char* path);
 long long gmb_tui_now_ms(void);   /* tempo corrente ms (monotono) per time-out nel BASIC */
 /* Coda eventi MOUSE verso l'host: pop() ritorna il kind (0=move,1=down,2=up) o -1; poi x/y/ctrl. */
 void gmb_tui_host_mouse_push(int kind, int x, int y, int ctrl);

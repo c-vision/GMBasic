@@ -208,13 +208,13 @@ static void ws_draw_core(gmb_winstmt_t* w)
         gmb_screen_setchar(st->buffer, right - 3, top, w->maximized ? 0x2195 : 0x2191, frame_fg, body_bg); /* ↕ / ↑ */
         gmb_screen_setchar(st->buffer, right - 2, top, ']', frame_fg, body_bg);
     }
-    /* angoli drag (TV: `└─` e `─┘` sulla finestra attiva) */
-    if (focused_ && wcols >= 6) {
-        gmb_screen_setchar(st->buffer, left, bottom, 0x2514, frame_fg, body_bg);
-        gmb_screen_setchar(st->buffer, left + 1, bottom, 0x2500, frame_fg, body_bg);
-        gmb_screen_setchar(st->buffer, right - 1, bottom, 0x2500, frame_fg, body_bg);
-        gmb_screen_setchar(st->buffer, right, bottom, 0x2518, frame_fg, body_bg);
-    }
+    /* NIENTE drag icons `└─` / `─┘` sulla cornice inferiore.
+     * TFrame::draw (tvision) li sovrascrive sulla riga `╚══╝` quando la finestra è growable,
+     * ma il risultato mescola linee SINGOLE (└ ─ ┘) con le DOPPIE (═ ║): l'angolo resta
+     * aperto e la verticale non si unisce alla cornice. Qui la cornice resta COERENTE:
+     * attiva ╔═╗ / ║ / ╚═╝, inattiva ┌─┐ / │ / └─┘, rounded ╭─╮ / │ / ╰─╯. */
+
+
     /* ombra TV: 2 colonne a destra + 1 riga sotto, come attributo SCURITO del contenuto
      * (shadowAttr), non come blocco nero. */
     if (w->shadow) {

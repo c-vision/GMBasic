@@ -558,6 +558,9 @@ gmb_widget_style_t gmb_widget_style_from_theme(const gmb_theme_t* t)
     }
     s.shadow_dx = 2; s.shadow_dy = 2; s.shadow_soft = 0;
     s.skin = soft ? 0 : (neon ? 1 : 2);
+    /* GLOSS: riflesso sul terzo alto (superfici "lucide"). Stile di default dei temi
+     * moderni (glass/neon/soft) e attivabile con `STYLE "gloss"` su un singolo widget. */
+    s.gloss = (soft || neon || glass) ? 1 : 0;
     if (neon) {   /* NEON: card bianche, ombre soft, accento viola->magenta */
         s.shape = 1; s.radius = 16;
         s.shadow_on = 1; s.shadow_soft = 1; s.shadow_dx = 0; s.shadow_dy = 6;

@@ -30,7 +30,6 @@ static void button_draw(void* u, gmb_control_t* c, gmb_screen_buffer_t* buf)
         return;
     }
     gmb_theme_t th = gmb_ui_theme();
-    gmb_cell_color_t sh = th.shadow;
     int h = c->height > 1 ? c->height : 1;
     int title_row = c->y + (h > 1 ? h / 2 - 1 : 0);
     /* riga titolo (+ eventuali righe di riempimento) */
@@ -50,10 +49,17 @@ static void button_draw(void* u, gmb_control_t* c, gmb_screen_buffer_t* buf)
         }
     }
     if (h == 1) return;
-    /* bordo destro `▄` e riga di ombra `▀` (TV shadows = "\xDC\xDB\xDF") */
-    gmb_screen_setchar(buf, c->x + c->width - 1, title_row, 0x2584, sh, bg);
-    for (int i = 0; i < c->width - 2; i++)
-        gmb_screen_setchar(buf, c->x + 2 + i, c->y + h - 1, 0x2580, sh, bg);
+    /* cShadow: SFUMATURA dello sfondo (stessa famiglia di colore, più scura), non un
+     * grigio estraneo. Su finestra blu → blu scuro; su dialog grigio → grigio scuro. */
+    gmb_cell_color_t shbg = th.window_bg;
+    gmb_cell_color_t sh = { (uint8_t)(shbg.r * 55 / 100), (uint8_t)(shbg.g * 55 / 100),
+                            (uint8_t)(shbg.b * 55 / 100), 0 };
+    gmb_screen_setchar(buf, c->x, title_row, ' ', sh, shbg);
+    gmb_screen_setchar(buf, c->x + c->width - 1, title_row, 0x2584, sh, shbg);   /* ▄ */
+    for (int i = 0; i < 2 && i < c->width; i++)
+        gmb_screen_setchar(buf, c->x + i, c->y + h - 1, ' ', sh, shbg);
+    for (int i = 2; i < c->width; i++)
+        gmb_screen_setchar(buf, c->x + i, c->y + h - 1, 0x2580, sh, shbg);      /* ▀ */
 }
 static bool button_key(void* u, gmb_control_t* c, int key)
 {
