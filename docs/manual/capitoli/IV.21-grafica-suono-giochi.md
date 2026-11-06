@@ -202,6 +202,7 @@ sinusoidale, PNG, rilettura e blit). MiniTest: `graphics/canvas_core.bas`.
 
 
 
+
 <!-- BEGIN SURFACE (generato da tools/sh/manual_surface.sh — non modificare a mano) -->
 
 ## Riferimento completo: comandi, funzioni, parametri
@@ -421,7 +422,9 @@ PRINT GFXSHAPE.POLYGONAREA(p(), 8)                    ' 100
 | avanzate | `WARP` (CHW + flow), `POISSON` (seamless clone) |
 | volumi/superfici | `IMG3CONVOLVE` (volume `w*h*d`), `HEATMAP` (griglia → colori impacchettati) |
 | statistiche | `IMGMIN`, `IMGMAX`, `IMGABSMAX`, `IMGSCALE` (in-place), `IMGSUB` (`a-b`) |
-| bitmap RGB8 | `GRAYNAIVE`, `GRAYLUM`, `CONVOLVE3`, `BRIGHTNESS`, `TOIMAGE` (pixel = colori `0xRRGGBB`) |
+| helper puntuali | `IMGGET` (valore del pixel; fuori range → `0`), `IMGSET`, `IMGFILL`, `IMGCLONE` |
+| volumi 3D | `IMG3GET`, `IMG3SET`, `IMG3FILL` (layout `x + w*(y + h*z)`) |
+| bitmap RGB8 | `GRAYNAIVE`, `GRAYLUM`, `CONVOLVE3`, `BRIGHTNESS`, `TOIMAGE`, `BMPGET`, `BMPSET`, `BMPFILL` (pixel = colori `0xRRGGBB`) |
 
 IMPORT GFX2D
 DIM a(15) AS DOUBLE, o(15) AS DOUBLE
@@ -431,6 +434,9 @@ ok = GFX2D.TRANSPOSE(a(), 4, 4, o)
 ok = GFX2D.THRESHOLD(a(), 4, 4, 7.5, 0, 1, o)
 DIM d(15) AS DOUBLE
 ok = GFX2D.DRAWLINE(d(), 4, 4, 0, 0, 3, 3, 2.5)  ' disegno su array
+ok = GFX2D.IMGSET(d(), 4, 4, 1, 1, 9)            ' pixel singolo
+PRINT GFX2D.IMGGET(d(), 4, 4, 1, 1)              ' 9
+ok = GFX2D.IMGCLONE(d(), 4, 4, o)                ' copia indipendente
 
 
 ## 4quinquies. Geometria 3D via FFI (`GFX3D`)
@@ -442,7 +448,7 @@ ok = GFX2D.DRAWLINE(d(), 4, 4, 0, 0, 3, 3, 2.5)  ' disegno su array
 | intersezioni | `SPHERESPHERE`, `SPHEREBOX`, `SPHEREPLANE`, `SEGMENTPLANE`, `SEGMENTSPHERE`, `SEGMENTTRIANGLE`, `TRIANGLETRIANGLE`, `VOLUMERENDER` |
 | mesh (handle) | `MESHSPHERE`, `MESHBOX`, `MESHPLANE`, `MESHCYLINDER`, `MESHNV`, `MESHNT`, `MESHPOS`, `MESHTRI`, `MESHFREE` |
 | raster (handle) | `RASTERNEW`, `RASTERFREE`, `RASTERCLEAR`, `RASTERGET`, `RASTERTRI`, `RASTERCLIPNEAR` |
-| superfici/griglie | `MESHSURFACE` (campo di altezza → handle), `RAYCASTDDA` (griglia, max 256 passi) |
+| superfici/griglie | `MESHSURFACE` (campo di altezza → handle), `RAYCASTDDA` (griglia, max 256 passi), `RAYCASTDDAEX` (limite di passi configurabile) |
 | altro | `RAYCYLINDER`, `RAYCONE`, `CYLINDERNORMAL`, `CONENORMAL`, `AABBTRANSFORM`, `AABBMAKE`, `RAYAT`, `CAMERAORBIT`, `CAMERATRANSLATE`, `CAMERANDCRAY` |
 
 IMPORT GFX3D

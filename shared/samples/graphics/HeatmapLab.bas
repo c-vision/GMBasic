@@ -36,4 +36,18 @@ SUB Main()
   DIM o(2) AS DOUBLE
   PRINT "cmap="; GFXCOLOR.COLORMAP(0, o()); ":";
   PRINT o(0); ","; o(1); ","; o(2)
+
+  ' helper immagine: normalizzazione, lettura pixel, clone e riempimento
+  DIM zn(63) AS DOUBLE, zc(63) AS DOUBLE
+  PRINT "norm="; GFX2D.NORMALIZE(z(), 8, 8, 0, 255, zn()); ":";
+  PRINT GFX2D.IMGGET(zn(), 8, 8, 3, 3); ","; GFX2D.IMGGET(zn(), 8, 8, 9, 9)
+  PRINT "clone="; GFX2D.IMGCLONE(zn(), 8, 8, zc()); ":";
+  PRINT GFX2D.IMGGET(zc(), 8, 8, 0, 0)
+  PRINT "fill="; GFX2D.IMGFILL(zc(), 8, 8, 7); ":"; zc(0); ","; zc(63)
+
+  ' bitmap RGB8: scrittura e rilettura di un pixel
+  DIM px(63) AS DOUBLE
+  PRINT "bset="; GFX2D.BMPFILL(px(), 8, 8, 0); ":"; GFX2D.BMPGET(px(), 8, 8, 5, 5)
+  PRINT "bput="; GFX2D.BMPSET(px(), 8, 8, 5, 5, 16711680); ":";
+  PRINT GFX2D.BMPGET(px(), 8, 8, 5, 5)
 END SUB

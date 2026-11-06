@@ -15,6 +15,7 @@
 #include "gm_gfx_shape.h"
 
 #include <math.h>
+#include <stdint.h>
 #include <stdlib.h>
 
 static double c8(double v) { return v / 255.0; }
@@ -706,6 +707,106 @@ int ofx_gfx_img_sub(const double* a, const double* b, int w, int h, double* out)
 {
     if (!a || !b || !out || w <= 0 || h <= 0) return -1;
     gm_image_sub(img_wrap(a, w, h), img_wrap(b, w, h), img_wrap(out, w, h));
+    return 0;
+}
+
+/* ── helper puntuali (gfx2d.inc): pixel, fill, clone, volumi e bitmap ────── */
+
+/* Lettura di un pixel: fuori range -> 0 (nessun clamp silenzioso come gm_image_get). */
+double ofx_gfx_img_get(const double* in, int w, int h, int x, int y)
+{
+    if (!in || w <= 0 || h <= 0) return 0.0;
+    if (x < 0 || y < 0 || x >= w || y >= h) return 0.0;
+    return gm_image_get(img_wrap(in, w, h), x, y);
+}
+
+/* Scrittura di un pixel (fuori range = no-op, come gm_image_set). */
+int ofx_gfx_img_set(double* d, int w, int h, int x, int y, double v)
+{
+    if (!d || w <= 0 || h <= 0) return -1;
+    gm_image_set(img_wrap(d, w, h), x, y, v);
+    return 0;
+}
+
+int ofx_gfx_img_fill(double* d, int w, int h, double v)
+{
+    if (!d || w <= 0 || h <= 0) return -1;
+    gm_image_fill(img_wrap(d, w, h), v);
+    return 0;
+}
+
+/* Copia (gm_image_clone): out() = copia indipendente di in(). */
+int ofx_gfx_img_clone(const double* in, int w, int h, double* out)
+{
+    if (!in || !out || w <= 0 || h <= 0) return -1;
+    gm_image c = gm_image_clone(img_wrap(in, w, h));
+    if (!c.data) return -1;
+    for (int i = 0; i < w * h; i++) out[i] = c.data[i];
+    gm_image_free(&c);
+    return 0;
+}
+
+/* Volume 3D w*h*d (stesso layout row-major x + w*(y + h*z)). */
+static gm_image3 img3_wrap(const double* data, int w, int h, int d)
+{
+    gm_image3 v; v.w = w; v.h = h; v.d = d; v.data = (gm_real*)data;
+    return v;
+}
+
+double ofx_gfx_img3_get(const double* in, int w, int h, int d, int x, int y, int z)
+{
+    if (!in || w <= 0 || h <= 0 || d <= 0) return 0.0;
+    if (x < 0 || y < 0 || z < 0 || x >= w || y >= h || z >= d) return 0.0;
+    return gm_image3_get(img3_wrap(in, w, h, d), x, y, z);
+}
+
+int ofx_gfx_img3_set(double* v, int w, int h, int d, int x, int y, int z, double val)
+{
+    if (!v || w <= 0 || h <= 0 || d <= 0) return -1;
+    gm_image3_set(img3_wrap(v, w, h, d), x, y, z, val);
+    return 0;
+}
+
+int ofx_gfx_img3_fill(double* v, int w, int h, int d, double val)
+{
+    if (!v || w <= 0 || h <= 0 || d <= 0) return -1;
+    gm_image3_fill(img3_wrap(v, w, h, d), val);
+    return 0;
+}
+
+/* Bitmap RGB8 packed 0xRRGGBB (stesse semantiche di gm_bitmap_get/set/fill). */
+double ofx_gfx_bmp_get(const double* px, int w, int h, int x, int y)
+{
+    if (!px || w <= 0 || h <= 0) return 0.0;
+    if (x < 0 || y < 0 || x >= w || y >= h) return 0.0;
+    return (double)((uint32_t)px[(size_t)y * (size_t)w + (size_t)x] & 0xFFFFFFu);
+}
+
+int ofx_gfx_bmp_set(double* px, int w, int h, int x, int y, double color)
+{
+    if (!px || w <= 0 || h <= 0) return -1;
+    if (x < 0 || y < 0 || x >= w || y >= h) return -1;
+    px[(size_t)y * (size_t)w + (size_t)x] = (double)((uint32_t)color & 0xFFFFFFu);
+    return 0;
+}
+
+int ofx_gfx_bmp_fill(double* px, int w, int h, double color)
+{
+    if (!px || w <= 0 || h <= 0) return -1;
+    uint32_t c = (uint32_t)color & 0xFFFFFFu;
+    for (int i = 0; i < w * h; i++) px[i] = (double)c;
+    return 0;
+}
+
+/* Triangolo pieno/vuoto su immagine (in-place). I vertici viaggiano in array [x,y] perché
+ * l'FFI ammette al massimo 8 slot nativi per chiamata (3 punti + immagine + v + fill = 8). */
+int ofx_gfx_img_draw_triangle(double* d, int w, int h, const double* a, const double* b,
+                              const double* c, double v, int fill)
+{
+    if (!d || !a || !b || !c || w <= 0 || h <= 0) return -1;
+    gm_image_draw_triangle(img_wrap(d, w, h),
+                           (int)a[0], (int)a[1], (int)b[0], (int)b[1], (int)c[0], (int)c[1],
+                           v, fill);
     return 0;
 }
 

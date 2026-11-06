@@ -409,20 +409,39 @@ int ofx_gfx_mesh_surface(const double* z, int nx, int ny, double sx, double sy, 
     return mesh_store(m);
 }
 
-/* Raycasting su griglia: max 256 passi (fisso). hit() = [hit,map_x,map_y,side,perp_dist,wall_x]. */
-int ofx_gfx_raycast_dda(const double* grid, int rows, int cols, double px, double py,
-                        double dx, double dy, double* out)
+/* Raycasting su griglia: hit() = [hit,map_x,map_y,side,perp_dist,wall_x].
+ * `steps` <= 0 -> 256 (default storico); oltre il limite la cella non e' colpita. */
+static int raycast_dda_steps(const double* grid, int rows, int cols, double px, double py,
+                             double dx, double dy, int steps, double* out)
 {
     if (!grid || !out || rows <= 0 || cols <= 0) return -1;
+    if (steps <= 0) steps = 256;
     int* g = (int*)malloc(sizeof(int) * (size_t)rows * (size_t)cols);
     if (!g) return -1;
     for (int i = 0; i < rows * cols; i++) g[i] = (grid[i] != 0.0) ? 1 : 0;
-    gm_raycast_hit h;
-    int rc = gm_raycast_dda(g, rows, cols, px, py, dx, dy, 256, &h);
+    gm_raycast_hit h = { 0, 0, 0, 0, 0.0, 0.0 };
+    int rc = gm_raycast_dda(g, rows, cols, px, py, dx, dy, steps, &h);
     free(g);
     out[0] = h.hit; out[1] = h.map_x; out[2] = h.map_y;
     out[3] = h.side; out[4] = h.perp_dist; out[5] = h.wall_x;
     return rc;
+}
+
+/* Compat: 256 passi (massimo storico). */
+int ofx_gfx_raycast_dda(const double* grid, int rows, int cols, double px, double py,
+                        double dx, double dy, double* out)
+{
+    return raycast_dda_steps(grid, rows, cols, px, py, dx, dy, 256, out);
+}
+
+/* Variante con limite di passi configurabile (gfx3d.inc: RAYCASTDDAEX).
+ * ray() = [px, py, dx, dy, maxsteps]: con 9 parametri scalari si supererebbero gli 8 slot
+ * nativi ammessi dall'FFI, quindi gli argomenti del raggio viaggiano in un array. */
+int ofx_gfx_raycast_dda_ex(const double* grid, int rows, int cols, const double* ray, double* out)
+{
+    if (!ray) return -1;
+    int steps = (int)ray[4];
+    return raycast_dda_steps(grid, rows, cols, ray[0], ray[1], ray[2], ray[3], steps, out);
 }
 
 /* ── cilindro/cono + AABB transform (gfx3d.inc) ──────────────────────────── */

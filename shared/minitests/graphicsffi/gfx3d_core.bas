@@ -1,4 +1,4 @@
-' EXPECT: persp= 0 : 0.666666666666667 , 1 ,-1 , 0|look= 0 : 1 , 1 ,-5|aabb= 0 :-1 ,-1 , 0 , 1 , 2 , 2|center= 0 : 0 , 0.5 , 1|raysph= 1 : 4|raypl= 1 : 5|raytri= 1 : 5|reflect= 0 : 0 , 0 , 1|phong= 0 : 0.5 , 0.5 , 0.5|decomp= 1 : 1 , 1 , 1 : 1 : 0|mesh= 1 : 8 : 12 : 0 :-0.5 ,-0.5 ,-0.5 : 0 : 0 , 1 , 2|mfree= 0|raster= 1 : 0|rtri= 0|rget= 0 : 0.285714285714286 , 0.214285714285714 , 0.5|rfree= 0|surf= 1 : 4 : 2|sfree= 0|dda= 1 : 2 , 0 , 0 , 1.5|cyl= 1 : 4|cone= 1 : 4.2|cyln= 0 : 1 , 0 , 0|conen= 0 : 0.992876838486922 , 0.119145220618431 , 0|abtr= 0 :-1 , 1|orbit= 0 : 0 , 2.87655323162522 , 5.26549537134224|camtr= 0 : 1|ndc= 0 : 0 , 0 ,-1|rayat= 0 : 0 , 0 , 1|aabbmk= 0 :-1 ,-1
+' EXPECT: persp= 0 : 0.666666666666667 , 1 ,-1 , 0|look= 0 : 1 , 1 ,-5|aabb= 0 :-1 ,-1 , 0 , 1 , 2 , 2|center= 0 : 0 , 0.5 , 1|raysph= 1 : 4|raypl= 1 : 5|raytri= 1 : 5|reflect= 0 : 0 , 0 , 1|phong= 0 : 0.5 , 0.5 , 0.5|decomp= 1 : 1 , 1 , 1 : 1 : 0|mesh= 1 : 8 : 12 : 0 :-0.5 ,-0.5 ,-0.5 : 0 : 0 , 1 , 2|mfree= 0|raster= 1 : 0|rtri= 0|rget= 0 : 0.285714285714286 , 0.214285714285714 , 0.5|rfree= 0|surf= 1 : 4 : 2|sfree= 0|dda= 1 : 2 , 0 , 0 , 1.5|ddaex3= 0 : 0 , 0|ddaex10= 1 : 1 , 6 , 4 , 5.5|cyl= 1 : 4|cone= 1 : 4.2|cyln= 0 : 1 , 0 , 0|conen= 0 : 0.992876838486922 , 0.119145220618431 , 0|abtr= 0 :-1 , 1|orbit= 0 : 0 , 2.87655323162522 , 5.26549537134224|camtr= 0 : 1|ndc= 0 : 0 , 0 ,-1|rayat= 0 : 0 , 0 , 1|aabbmk= 0 :-1 ,-1
 ' FFI gmbgraphics: GFX3D — geometria, raggi/intersezioni, mesh, raster software.
 ' Solo calcolo: nessun display, parità 4 backend.
 IMPORT GFX3D
@@ -96,6 +96,14 @@ SUB Main()
   gmap(2) = 1 : gmap(6) = 1 : gmap(10) = 1 : gmap(14) = 1
   PRINT "dda="; GFX3D.RAYCASTDDA(gmap(), 4, 4, 0.5, 0.5, 1, 0, hit); ":";
   PRINT hit(1); ","; hit(2); ","; hit(3); ","; hit(4)
+
+  ' DDA con limite di passi: il muro è a 6 celle, 3 passi non bastano
+  DIM dg(63) AS DOUBLE, dh(5) AS DOUBLE, dray(4) AS DOUBLE
+  dg(38) = 1
+  dray(0) = 0.5 : dray(1) = 4.5 : dray(2) = 1 : dray(3) = 0 : dray(4) = 3
+  PRINT "ddaex3="; GFX3D.RAYCASTDDAEX(dg(), 8, 8, dray(), dh()); ":"; dh(0); ","; dh(1)
+  dray(4) = 10
+  PRINT "ddaex10="; GFX3D.RAYCASTDDAEX(dg(), 8, 8, dray(), dh()); ":"; dh(0); ","; dh(1); ","; dh(2); ","; dh(4)
   DIM cbase(2) AS DOUBLE, axis(2) AS DOUBLE, ryv(5) AS DOUBLE, t2(1) AS DOUBLE, nrm2(2) AS DOUBLE
   axis(0) = 0 : axis(1) = 1 : axis(2) = 0
   ryv(0) = 5 : ryv(1) = 1 : ryv(2) = 0 : ryv(3) = -1 : ryv(4) = 0 : ryv(5) = 0
