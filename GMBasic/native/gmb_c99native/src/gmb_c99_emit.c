@@ -3095,8 +3095,6 @@ int etype(ctx_t* c, gmb_expr_t* e) {
         if (e->tk == GMB_TOK_FromHex || e->tk == GMB_TOK_ToHex || e->tk == GMB_TOK_FromBase64
             || e->tk == GMB_TOK_ToBase64 || e->tk == GMB_TOK_Md5 || e->tk == GMB_TOK_Sha1
             || e->tk == GMB_TOK_Sha256 || e->tk == GMB_TOK_Sha512
-            || e->tk == GMB_TOK_Base58Encode || e->tk == GMB_TOK_Base58Decode
-            || e->tk == GMB_TOK_Base32Encode || e->tk == GMB_TOK_Base32Decode
             || e->tk == GMB_TOK_FromBase64Url || e->tk == GMB_TOK_ToBase64Url
             || e->tk == GMB_TOK_HmacSha256 || e->tk == GMB_TOK_HmacSha384 || e->tk == GMB_TOK_HmacSha512
             || e->tk == GMB_TOK_StrMd5 || e->tk == GMB_TOK_StrSha1 || e->tk == GMB_TOK_StrSha256
@@ -7736,11 +7734,7 @@ static const gmb_bf_row_t gmb_bf_composite[] = {
     { NULL, GMB_TOK_MvGamblerDur, emit_bf_mv },
     { NULL, GMB_TOK_MvAteIpw, emit_bf_mv },
     { NULL, GMB_TOK_MvAteMatching, emit_bf_mv },
-    { NULL, GMB_TOK_Base58Encode, emit_bf_encoding },
-    { NULL, GMB_TOK_Base32Encode, emit_bf_encoding },
     { NULL, GMB_TOK_ToBase64, emit_bf_encoding },
-    { NULL, GMB_TOK_Base58Decode, emit_bf_encoding },
-    { NULL, GMB_TOK_Base32Decode, emit_bf_encoding },
     { NULL, GMB_TOK_FromBase64, emit_bf_encoding },
     { NULL, GMB_TOK_FromBase64Url, emit_bf_encoding },
     { NULL, GMB_TOK_FromHex, emit_bf_encoding },
@@ -20696,6 +20690,15 @@ static void st_error(ctx_t* c, gmb_stmt_t* s) {
  * C99Native mentre su IL/PCode/VM-C lo era, e `ERR.Number` restava inutilizzabile →
  * divergenza su tutti i sample Exceptions/Clipper. Stesso pattern già in produzione per i
  * comandi LLM (vedi emit_llm_call_close e il commento sopra). */
+        /* RESUME NEXT dopo ERROR n: stesso guard setjmp per-istruzione dei LET (res_guard_end);
+         * senza, il resume-jmp resta NULL e il programma non riprende dopo ERROR. */
+        int res_guard = 0;
+        if (c->uses_onerror) {
+            res_guard = ++c->res_uid;
+            ind(c); sb_printf(&c->out, "jmp_buf __res%d;\n", res_guard);
+            ind(c); sb_printf(&c->out, "gmb_err_set_resume(&__res%d);\n", res_guard);
+            ind(c); sb_printf(&c->out, "if (setjmp(__res%d) != 0) goto __resume_end_%d;\n", res_guard, res_guard);
+        }
         ind(c); sb_put(&c->out, "gmb_raise_error((int)(");
         emit_expr(c, s->error_code);
         sb_put(&c->out, "), ");
@@ -20707,6 +20710,7 @@ static void st_error(ctx_t* c, gmb_stmt_t* s) {
             sb_put(&c->out, "\"\"");
         }
         sb_printf(&c->out, ", %d);\n", s->line);
+        res_guard_end(c, res_guard);
         return;
 }
 
@@ -30656,17 +30660,18 @@ static int ffi_udt_is_mixed(ctx_t* c, struct cls_info* ci) {
     for (int i = 0; i < n; i++) { if (leaves[i].is_int) sawI = 1; else sawD = 1; }
     return sawD && sawI;
 }
-/* Kind misto (2026-09-29): a differenza dei PARAMETRI (sempre kind uniforme, garantito da
- * ffi_validate_udt), un UDT-RITORNO può avere campi di kind diverso tra loro — sceglie tra
- * le 6 forme in base al pattern ESATTO delle FOGLIE (non solo la prima). */
+/* Nome del TIPO C usato per un UDT a frontiera FFI (2026-11-06, S0): un typedef PER UDT
+ * (`gmb_ffi_udt_<Nome>_t`), emesso da emit_proto con una foglia per campo. Prima erano 6 forme
+ * fisse a 1-2 campi (2^2 combinazioni di kind), che non reggevano né 3+ campi né kind misti
+ * arbitrari. Ring di buffer: i chiamanti tengono il puntatore (es. inner_ret) mentre altri
+ * nomi vengono risolti per gli altri parametri. */
 static const char* ffi_udt_shape_name(ctx_t* c, struct cls_info* ci) {
-    ffi_leaf_t leaves[8];
-    int n = collect_ffi_leaves_silent(c, ci, "", leaves, 8);
-    if (n <= 1) return (n > 0 && leaves[0].is_int) ? "gmb_ffi_udti1_t" : "gmb_ffi_udtd1_t";
-    int i0 = leaves[0].is_int, i1 = leaves[1].is_int;
-    if (!i0 && !i1) return "gmb_ffi_udtd2_t";
-    if (i0 && i1) return "gmb_ffi_udti2_t";
-    return !i0 && i1 ? "gmb_ffi_udtdi2_t" : "gmb_ffi_udtid2_t";
+    (void)c;
+    static char ring[16][64];
+    static int rr = 0;
+    rr = (rr + 1) % 16;
+    snprintf(ring[rr], sizeof(ring[rr]), "gmb_ffi_udt_%s_t", ci->name);
+    return ring[rr];
 }
 /* Valida un UDT usato per parametro/ritorno FFI, incluse STRUTTURE ANNIDATE (2026-09-29) —
  * messaggi IDENTICI alle altre gambe (Compiler.Expressions.cs/IlProgramCompiler.Expressions.cs),
@@ -30707,9 +30712,9 @@ static int ffi_validate_udt(ctx_t* c, struct cls_info* ci, const char* sym, cons
         n = (n + sub > 8) ? 9 : n + sub;
         if (n > 8) break;
     }
-    if (n == 0 || n > 2) {
-        c99_fail(c, line, "FFI '%s': lo UDT '%s' usato per %s ha %d campi/campi-foglia (ammessi 1 o 2 — "
-                 "oltre i 16 byte totali lo struct non è più passabile in registri su tutte le architetture).",
+    if (n == 0 || n > 8) {
+        c99_fail(c, line, "FFI '%s': lo UDT '%s' usato per %s ha %d campi/campi-foglia (ammessi da 1 a 8 — "
+                 "ogni foglia occupa 8 byte; oltre 8 campi serve il layout C completo, stadio S1).",
                  sym, ci->name, what, n);
         return 0;
     }
@@ -31126,15 +31131,10 @@ static void emit_ffi_wrapper(ctx_t* c, fn_info_t* fn) {
     /* Kind misto come PARAMETRO (2026-09-29, era vietato): al massimo UNO per dichiarazione
      * (limite del dispatch VM/C — la parità cross-backend richiede lo stesso limite anche qui,
      * pur non essendo un bisogno reale di questo backend). */
-    int mixed_udt_param_count = 0;
-    for (int i = 0; i < 8; i++)
-        if (udt_param_ci[i] && ffi_udt_is_mixed(c, udt_param_ci[i]))
-            mixed_udt_param_count++;
-    if (mixed_udt_param_count > 1) {
-        c99_fail(c, s->line, "FFI '%s': al massimo UN parametro UDT a kind misto per dichiarazione "
-                 "(trovati %d) — limite del dispatch nativo VM/C.", sym, mixed_udt_param_count);
-        return;
-    }
+    /* S0 (2026-11-06): il limite "al massimo UN parametro UDT a kind misto" era imposto dal
+     * dispatch per-cast della VM/C (un solo tipo scalare uniforme per la lista argomenti).
+     * Con libffi ogni argomento ha il proprio slot tipizzato, quindi il limite non esiste più:
+     * N parametri a kind misto sono ammessi (nessuna guardia). */
     int nint = 0, ndbl = 0, nany_arr = 0, nany_str = 0, nany_byref = 0;
     for (int i = 0; i < s->n_params; i++) {
         if (i < 8 && is_arr_param[i]) { nint++; nany_arr++; continue; }
@@ -33737,6 +33737,21 @@ int gmb_c99_emit(const gmb_program_t* prog, char** out_src, char** error) {
      * C che compila questo output gestisce l'ABI di un ritorno struct misto da solo). */
     sb_put(&proto, "typedef struct { gmb_double_t f0; gmb_int_t f1; } gmb_ffi_udtdi2_t;\n");
     sb_put(&proto, "typedef struct { gmb_int_t f0; gmb_double_t f1; } gmb_ffi_udtid2_t;\n");
+    /* S0 (2026-11-06): un typedef PER UDT dichiarato (fino a 8 foglie, kind per campo) — è il
+     * tipo C reale con cui il wrapper passa/riceve lo struct per valore; il compilatore C che
+     * compila questo output classifica da solo registri/memoria. Sostituisce le 6 forme fisse
+     * a 1-2 campi, che coprivano solo quel caso. */
+    for (int __ci = 0; __ci < c->n_classes; __ci++) {
+        struct cls_info* __cu = &c->classes[__ci];
+        if (!__cu->is_udt) continue;
+        ffi_leaf_t __lv[8];
+        int __n = collect_ffi_leaves_silent(c, __cu, "", __lv, 8);
+        if (__n <= 0 || __n > 8) continue;
+        sb_printf(&proto, "typedef struct { ");
+        for (int __f = 0; __f < __n; __f++)
+            sb_printf(&proto, "%s f%d; ", __lv[__f].is_int ? "gmb_int_t" : "gmb_double_t", __f);
+        sb_printf(&proto, "} gmb_ffi_udt_%s_t;\n", __cu->name);
+    }
     if (c->n_classes) sb_put(&proto, "\n");
     for (int i = 0; i < c->nfn; i++) {
         gmb_stmt_t* s = c->fns[i].stmt;

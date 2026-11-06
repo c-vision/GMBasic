@@ -1314,7 +1314,11 @@ gmb_sel_state_t* gmb_select_park(gmb_chan_t** chans, int* dir, gmb_val_t* send_v
        controparte ha parcheggiato col valore/con out, il transfer avviene qui
        sotto lock e il case è servito direttamente (sel->winner/winner_val). */
     gmb_sel_state_t* sel = (gmb_sel_state_t*)malloc(sizeof(gmb_sel_state_t));
-    sel->settled = 0; sel->winner = -1; sel->winner_ok = 1; sel->refcnt = 0;
+    /* refcnt parte da 1 = ref del chiamante (UNA gmb_sel_deref: dispatch o retry), presa
+       PRIMA della prima registrazione: un sender su un altro worker può claimare+deref il
+       beacon appena sbloccato il lock del canale; se il ref del chiamante venisse preso dopo,
+       la deref porterebbe refcnt a 0 → free(sel) e use-after-free (valore 0 / heap corrotto). */
+    sel->settled = 0; sel->winner = -1; sel->winner_ok = 1; sel->refcnt = 1;
     memset(&sel->winner_val, 0, sizeof(sel->winner_val));
     int registered = 0;
     for (int i = 0; i < n; i++) {
@@ -1326,11 +1330,10 @@ gmb_sel_state_t* gmb_select_park(gmb_chan_t** chans, int* dir, gmb_val_t* send_v
             gmb_wpush(&chans[i]->sw, &chans[i]->sw_cap, &chans[i]->sw_head, &chans[i]->sw_tail, &chans[i]->sw_count, g_current, __zv, 0, NULL, NULL, sel);
         else
             gmb_wpush(&chans[i]->rw, &chans[i]->rw_cap, &chans[i]->rw_head, &chans[i]->rw_tail, &chans[i]->rw_count, g_current, __zv, 0, NULL, NULL, sel);
-        sel->refcnt++;   /* sotto chans[i]->lock: visibile ai pop nei lock successivi */
+        __sync_add_and_fetch(&sel->refcnt, 1);   /* sotto chans[i]->lock: visibile ai pop nei lock successivi */
         gmb_unlock(&chans[i]->lock);
         registered++;
     }
-    sel->refcnt++;   /* ref del chiamante: farà UNA gmb_sel_deref (dispatch o retry) */
     g_current->state = GMB_TS_BLOCKED;
     g_current->sleep_until_ms = 0;
     if (deadline_ms > 0) g_current->sleep_until_ms = deadline_ms;

@@ -238,6 +238,7 @@ public sealed partial class Parser
             var originalNameToken = ConsumeProcedureName();
             var (baseName, _) = SplitNameAndSuffix(originalNameToken.Lexeme);
             var normalizedNameToken = originalNameToken with { Lexeme = baseName };
+            _declaredParameterNames.Add(baseName);   // vedi ParsePrimaryAtom: shadowing delle keyword a 0 argomenti
 
             // 4. Controllo per array (parentesi vuote '()').
             var isArray = false;

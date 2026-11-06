@@ -1310,6 +1310,11 @@ internal sealed partial class PCodeProcessor
                     return true;
                 }
                 (task.PendingPrints ??= new()).Add((1, fullLine, Basic.IlBackend.IlRuntime.Current.Graphics.ClipperPrinterOnly(), Basic.IlBackend.IlRuntime.Current.Graphics.ClipperPrinterRouting()));
+                // Flush IMMEDIATO a istruzione PRINT completa (non a fine tick): con piu' worker un task
+                // svegliato da questo (SEND/DONE/UNLOCK...) puo' stampare PRIMA che il tick del
+                // produttore termini, invertendo l'ordine causale delle righe (GoRoutinesMinimal).
+                // L'atomicita' della riga resta garantita (commit solo a istruzione completa).
+                FlushPrintBuffer(task);
                 lock (_consoleLock) _printColumn = 0;
                 return true;
             }
@@ -1323,6 +1328,7 @@ internal sealed partial class PCodeProcessor
                 {
                     (task.PendingPrints ??= new()).Add((2, null, Basic.IlBackend.IlRuntime.Current.Graphics.ClipperPrinterOnly(), Basic.IlBackend.IlRuntime.Current.Graphics.ClipperPrinterRouting()));
                 }
+                FlushPrintBuffer(task);   // vedi OP_PRINT_LINE: ordine causale fra task
                 lock (_consoleLock) _printColumn = 0;
                 return true;
             case OpCode.OP_PRINT_TAB_ZONE:
