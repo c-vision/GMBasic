@@ -1,5 +1,5 @@
 ' NEURAL (FFI) — slice ricorrente: RNN, LSTM, GRU, BiRNN (BPTT + ottimizzatore) e PBP.
-' EXPECT: rnn= 1 |f= 0 |y=0.2515,0.2417,0.4177|b= 0 |s= 0 |f2= 0 |y2=0.1060|z= 0 |lstm= 0 |gru= 0 |birnn= 0 |pbp= 0 ,0.3989,0.3408|pl= 0 |mz=0.1000,0.2000|vz=0.0250,0.1000|fz= 0
+' EXPECT: rnn= 1 |f= 0 |y=0.2515,0.2417,0.4177|b= 0 |s= 0 |zg= 0 |f2= 0 |y2=0.1060|z= 0 |lstm= 0 |gru= 0 |birnn= 0 |pbp= 0 ,0.3989,0.3408|pl= 0 |mz=0.1000,0.2000|vz=0.0250,0.1000|fz= 0
 ' IMPORTA NEURAL (pacchetto gmbneural): solo ciò che non esiste in GMBasic (TORCH copre MLP).
 IMPORT NEURAL
 
@@ -16,6 +16,7 @@ SUB Main()
   PRINT "|y="; FORMAT(y(0), "#.0000"); ","; FORMAT(y(1), "#.0000"); ","; FORMAT(y(2), "#.0000");
   PRINT "|b="; NEURAL.RNNBACKWARD(h, gy, 3);
   PRINT "|s="; NEURAL.STEP(h, 0, 0.1);
+  PRINT "|zg="; NEURAL.ZEROGRAD(h);
   PRINT "|f2="; NEURAL.RNNFORWARD(h, x, 3, y);
   PRINT "|y2="; FORMAT(y(0), "#.0000");
   PRINT "|z="; NEURAL.FREE(h);

@@ -1,5 +1,5 @@
 ' NEURAL (FFI) — attivazioni/gradienti (gn_act), strato denso addestrabile, perdite.
-' EXPECT: g=0.25,1.0,0.0|silu=0.7311,0.9277|elu=-0.6321,0.3679,-0.02,0.50|crelu= 0 :0.0,2.0,1.0,0.0|d= 5001 : 0 , 0 =1.0,2.0,4.0,3.0,4.0,8.0|b= 0 =1.0,0.0,0.0,1.0|s= 0 : 0 =0.90,-0.20,-0.30,0.60,1.00,1.00:-0.10,-0.10,1.00|zf= 0 |df= 0 |mse= 0 :0.0400,0.20,-0.20|mae= 0 :0.2000,0.50,-0.50|ce= 0 :0.2231,0.20,-0.20|bce= 0 :0.2231,0.6250,-0.6250|f=0
+' EXPECT: g=0.25,1.0,0.0|silu=0.7311,0.9277|elu=-0.6321,0.3679,-0.02,0.50|crelu= 0 :0.0,2.0,1.0,0.0|d= 5001 : 0 , 0 =1.0,2.0,4.0,3.0,4.0,8.0|b= 0 =1.0,0.0,0.0,1.0|s= 0 : 0 =0.90,-0.20,-0.30,0.60,1.00,1.00:-0.10,-0.10,1.00|zf= 0 |df= 0 |mse= 0 :0.0400,0.20,-0.20|mae= 0 :0.2000,0.50,-0.50|ce= 0 :0.2231,0.20,-0.20|bce= 0 :0.2231,0.6250,-0.6250||cg= 0 =1.0000,-2.0000|x1=1.0000,1.0000,1.0833,0.1667,0.6667,0.8333,1.0000,0.0000,3.0000,1.0000,0.0100,1.0010,0.0010,0.4621,0.3932,0.8651,1.0490,0.6250,0.1250,-0.1000,0.1000,1.1000,1.1000,1.0000,1.0000,1.0507,1.0507,0.0000,0.0000,1.0000,0.0000|f=0
 IMPORT NEURAL
 
 SUB Main()
@@ -44,5 +44,26 @@ SUB Main()
   PRINT ","; FORMAT(lg(0), "#.00"); ","; FORMAT(lg(1), "#.00"); "|";
   PRINT "bce="; NEURAL.LOSSBINARYCROSSENTROPY(ly, lt, 1, 2, lg, lv); ":"; FORMAT(lv(0), "#.0000");
   PRINT ","; FORMAT(lg(0), "#.0000"); ","; FORMAT(lg(1), "#.0000"); "|";
+  ' ── attivazioni/gradienti non ancora toccati (copertura di superficie) ──
+  DIM cgi(1) AS DOUBLE, cgo(3) AS DOUBLE, cgin(1) AS DOUBLE
+  cgi(0)=2 : cgi(1)=-1 : cgo(0)=1 : cgo(1)=3 : cgo(2)=0.5 : cgo(3)=2
+  cgin(0)=2 : cgin(1)=-1
+  PRINT "|cg="; NEURAL.CRELUGRAD(cgin, cgo, cgi, 2); "="; FORMAT(cgin(0), "#.0000"); ","; FORMAT(cgin(1), "#.0000");
+  PRINT "|x1="; FORMAT(NEURAL.CELU(1, 1), "#.0000"); ","; FORMAT(NEURAL.CELUGRAD(1, 1), "#.0000");
+  PRINT ","; FORMAT(NEURAL.GELUGRAD(1), "#.0000"); ","; FORMAT(NEURAL.HARDSIGMOIDGRAD(0), "#.0000");
+  PRINT ","; FORMAT(NEURAL.HARDSWISH(1), "#.0000"); ","; FORMAT(NEURAL.HARDSWISHGRAD(1), "#.0000");
+  PRINT ","; FORMAT(NEURAL.HARDTAN(2), "#.0000"); ","; FORMAT(NEURAL.HARDTANGRAD(2), "#.0000");
+  PRINT ","; FORMAT(NEURAL.IDENTITY(3), "#.0000"); ","; FORMAT(NEURAL.IDENTITYGRAD(3), "#.0000");
+  PRINT ","; FORMAT(NEURAL.LEAKYRELUGRAD(-1), "#.0000"); ","; FORMAT(NEURAL.LHTAN(2), "#.0000");
+  PRINT ","; FORMAT(NEURAL.LHTANGRAD(2), "#.0000"); ","; FORMAT(NEURAL.LOGGY(1), "#.0000");
+  PRINT ","; FORMAT(NEURAL.LOGGYGRAD(1), "#.0000"); ","; FORMAT(NEURAL.MISH(1), "#.0000");
+  PRINT ","; FORMAT(NEURAL.MISHGRAD(1), "#.0000"); ","; FORMAT(NEURAL.PLSE(1), "#.0000");
+  PRINT ","; FORMAT(NEURAL.PLSEGRAD(1), "#.0000"); ","; FORMAT(NEURAL.PRELU(-1, 0.1), "#.0000");
+  PRINT ","; FORMAT(NEURAL.PRELUGRAD(-1, 0.1), "#.0000"); ","; FORMAT(NEURAL.RAMP(1), "#.0000");
+  PRINT ","; FORMAT(NEURAL.RAMPGRAD(1), "#.0000"); ","; FORMAT(NEURAL.RELIE(1), "#.0000");
+  PRINT ","; FORMAT(NEURAL.RELIEGRAD(1), "#.0000"); ","; FORMAT(NEURAL.SELU(1), "#.0000");
+  PRINT ","; FORMAT(NEURAL.SELUGRAD(1), "#.0000"); ","; FORMAT(NEURAL.STAIR(1), "#.0000");
+  PRINT ","; FORMAT(NEURAL.STAIRGRAD(1), "#.0000"); ","; FORMAT(NEURAL.THRESHOLD(0.5), "#.0000");
+  PRINT ","; FORMAT(NEURAL.THRESHOLDGRAD(0.5), "#.0000"); "|";
   PRINT "f=0"
 END SUB

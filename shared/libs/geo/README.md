@@ -47,6 +47,13 @@ vertici in ordine, senza ripetere il primo; area/perimetro assumono il verso
 | `src/gmbgeo.c`, `src/gmbgeo_ops.c`, `include/gmbgeo.h` | `gmbsuite/gmbgeo` (copia identica) |
 | `src/geo_ffi.c` | shim ABI di questo pacchetto (array paralleli, handle griglia) |
 
+## Guida, sample e prove
+
+- Guida utente (vault): `Guide/utente/GEO-Guida-Utente.md` (riferimento completo).
+- Sample: `shared/samples/Geo/GeoWorkbench.bas` (pratica edilizia che usa tutte le 30 funzioni).
+- Manuale: `docs/manual/capitoli/V.31c-geo.md`.
+- Parit00e0: `zsh tools/sh/parity4 ../shared/samples/Geo/GeoWorkbench.bas`.
+
 ## Build e test
 
 ```sh
