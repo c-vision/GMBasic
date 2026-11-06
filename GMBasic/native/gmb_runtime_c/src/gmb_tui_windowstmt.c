@@ -133,14 +133,19 @@ static void ws_draw_core(gmb_winstmt_t* w)
     if (right >= bw) right = bw - 1;
     if (bottom <= top || right <= left) return;
     (void)st;
+    /* Tema unico del runtime: finestre TUI e controlli condividono gli stessi colori. */
+    gmb_theme_t th = gmb_ui_theme();
+    int focused_ = (gmb_window_manager_focused(m) == w->id);
     /* Title bar stile Turbo Vision (come la TUI di IL):
      *   ┌─[■]────────╡ T ╞────────[▼][▲]─┐
-     * ■ chiudi (verde), titolo nero tra ╡ ╞, ▼▲ zoom. Bordi grigi (doppio di default). */
+     * ■ chiudi, titolo tra ╡ ╞, [_][▲] zoom. I colori vengono dal TEMA attivo
+     * (gmb_ui_theme) — unica famiglia di finestre/controlli: nessun colore
+     * hardcoded. Attiva = title_focus/border, inattiva = title_blur/dim. */
     {
-        gmb_cell_color_t frame = { 170, 170, 170, 0 };   /* grigio chiaro (Turbo Vision) */
-        gmb_cell_color_t bfg   = { 0, 0, 0, 0 };         /* frame NERO su grigio (TV gray scheme) */
-        gmb_cell_color_t tfg   = { 0, 0, 0, 0 };         /* testo nero */
-        gmb_cell_color_t cls   = { 0, 170, 0, 0 };       /* close/zoom verde */
+        gmb_cell_color_t frame = focused_ ? th.title_focus : th.title_blur;  /* sfondo cornice/titlebar */
+        gmb_cell_color_t bfg   = th.title_fg;                                 /* glifi della cornice */
+        gmb_cell_color_t tfg   = th.title_fg;                                 /* testo del titolo */
+        gmb_cell_color_t cls   = th.close_fg;                                 /* close/zoom */
         int dbl = (w->frame == GMB_WM_BORDER_DOUBLE);
         uint32_t Btl = dbl ? 0x2554 : 0x250C, Bh = dbl ? 0x2550 : 0x2500, Bv = dbl ? 0x2551 : 0x2502;
         uint32_t Btr = dbl ? 0x2557 : 0x2510, Bbl = dbl ? 0x255A : 0x2514, Bbr = dbl ? 0x255D : 0x2518;
@@ -149,9 +154,9 @@ static void ws_draw_core(gmb_winstmt_t* w)
         /* Close [■] sempre, salvo esclusione esplicita (GMB_WINSTMT_NOBUTTONS) */
         if (!w->nobuttons) {
             gmb_screen_setchar(st->buffer, x++, top, Bh, bfg, frame);
-            gmb_screen_setchar(st->buffer, x++, top, '[', frame, frame);
+            gmb_screen_setchar(st->buffer, x++, top, '[', bfg, frame);
             gmb_screen_setchar(st->buffer, x++, top, 0x25A0, cls, frame);
-            gmb_screen_setchar(st->buffer, x++, top, ']', frame, frame);
+            gmb_screen_setchar(st->buffer, x++, top, ']', bfg, frame);
         }
         int zoomStart = w->nobuttons ? right : right - 6;
         /* Titolo (OPZIONALE) centrato tra x e zoomStart, se c'e' spazio */
@@ -190,22 +195,21 @@ static void ws_draw_core(gmb_winstmt_t* w)
         gmb_screen_setchar(st->buffer, left, bottom, Bbl, bfg, frame);    /* └ */
         gmb_screen_setchar(st->buffer, right, bottom, Bbr, bfg, frame);   /* ┘ */
     }
-    /* interno: grigio chiaro + testo nero (Turbo Vision). */
+    /* interno: corpo finestra dal TEMA (text su window_bg). */
     {
-        gmb_cell_color_t iw_fg = { 0, 0, 0, 0 };
-        gmb_cell_color_t iw_bg = { 170, 170, 170, 0 };
+        gmb_cell_color_t iw_fg = th.text;
+        gmb_cell_color_t iw_bg = th.window_bg;
         for (int yy = top + 1; yy < bottom; yy++)
             for (int xx = left + 1; xx < right; xx++)
                 gmb_screen_setchar(st->buffer, xx, yy, ' ', iw_fg, iw_bg);
     }
-    /* ombra Borland: 1 cella a destra + in basso, sfondo nero. */
+    /* ombra: colore ombra del tema (default nero), 1 cella a destra + in basso. */
     if (w->shadow) {
-        gmb_cell_color_t sh_bg = { 0, 0, 0, 0 };
-        gmb_cell_color_t fr = { 170, 170, 170, 0 };
+        gmb_cell_color_t sh_bg = th.shadow;
         for (int y = top + 1; y <= bottom + 1 && y < bh; y++)
-            if (right + 1 < bw) gmb_screen_setchar(st->buffer, right + 1, y, ' ', fr, sh_bg);
+            if (right + 1 < bw) gmb_screen_setchar(st->buffer, right + 1, y, ' ', sh_bg, sh_bg);
         for (int x = left + 2; x <= right + 1 && x < bw; x++)
-            if (bottom + 1 < bh) gmb_screen_setchar(st->buffer, x, bottom + 1, ' ', fr, sh_bg);
+            if (bottom + 1 < bh) gmb_screen_setchar(st->buffer, x, bottom + 1, ' ', sh_bg, sh_bg);
     }
     /* contenuto (rispetta scroll_top) */
     int inner_h = bottom - top - 1;
@@ -213,7 +217,7 @@ static void ws_draw_core(gmb_winstmt_t* w)
         int li = w->scroll_top + i;
         if (li >= w->line_count) break;
         gmb_screen_setstring_n(st->buffer, left + 1, top + 1 + i, w->lines[li],
-                               right - left - 1, (gmb_cell_color_t){0,0,0,0}, (gmb_cell_color_t){170,170,170,0});
+                               right - left - 1, th.text, th.window_bg);
     }
 }
 
@@ -243,14 +247,29 @@ static void ws_repaint_desktop(void)
 {
     gmb_clipper_state_t* st = gmb_clipper_global_state();
     if (!st || !st->buffer) return;
-    int bw = gmb_screen_width(st->buffer);
-    int bh = gmb_screen_height(st->buffer);
-    gmb_cell_color_t dfg = { 0, 0, 255, 0 };
-    gmb_cell_color_t dbg = { 0, 0, 170, 0 };
-    for (int y = 0; y < bh; y++)
-        for (int x = 0; x < bw; x++)
-            gmb_screen_setchar(st->buffer, x, y, 0x2591, dfg, dbg);
+    /* Colore e retino del desktop = tema attivo (implementazione unica nel tema). */
+    gmb_theme_paint_desktop(st->buffer);
 }
+
+/* La UI registra qui il proprio refresh: quando il tema cambia (WINDOW THEME o
+ * SET THEME, stessa palette e stesso percorso) si ridisegnano desktop e finestre. */
+static void ws_on_theme_changed(const char* name)
+{
+    (void)name;
+    gmb_theme_t th = gmb_ui_theme();
+    { extern void gmb_gfx_page_bg(unsigned); gmb_gfx_page_bg(((unsigned)th.desktop_bg.r << 16) | ((unsigned)th.desktop_bg.g << 8) | th.desktop_bg.b); }
+    ws_repaint_desktop();
+    gmb_winstmt_render_all();
+}
+static void ws_ensure_theme_hook(void)
+{
+    static int done = 0;
+    if (!done) { done = 1; gmb_ui_theme_on_change(ws_on_theme_changed); }
+}
+/* Registrazione al CARICAMENTO del layer UI: anche un SET THEME eseguito prima del primo
+ * WINDOW deve ridisegnare desktop/finestre con il tema nuovo (stesso percorso di
+ * WINDOW THEME). Se il layer UI non è linkato, nessuna registrazione (hook NULL). */
+__attribute__((constructor)) static void ws_theme_hook_init(void) { gmb_ui_theme_on_change(ws_on_theme_changed); }
 
 /* ---- operazioni ---- */
 int gmb_winstmt_define(const char* name, const char* title,
@@ -462,17 +481,17 @@ void gmb_winstmt_show(int on) {
     (void)on;   /* senza SDL non c'e' finestra da mostrare/nascondere (gmb_gfx_present_sdl.c non compilato) */
 #endif
 }
-void gmb_winstmt_theme(int theme)      { g_ws_theme = theme; gmb_winstmt_render_all(); }
+void gmb_winstmt_theme(int theme)      { g_ws_theme = theme; ws_ensure_theme_hook(); ws_repaint_desktop(); gmb_winstmt_render_all(); }
 void gmb_winstmt_theme_name(const char* name)
 {
-    /* Tema per nome (Turbo/Classic/…): id numerico stabile = hash semplice del nome
-     * (il runtime C non ha ancora una palette per-tema; lo stato resta coerente). */
+    /* Tema per nome (Turbo/Nord/…): id numerico stabile = hash semplice del nome;
+     * il tema VERO (palette) vive nel registro unico gmb_ui_*, che notifica la UI
+     * (hook) e fa ridisegnare desktop e finestre. */
     unsigned h = 0;
     if (name) for (const char* p = name; *p; ++p) h = h * 131u + (unsigned char)*p;
     g_ws_theme = (int)(h & 0x7fffffff);
-    gmb_ui_set_theme_name(name);   /* completa il tema (palette reale) per widget/button pixel */
-    { extern void gmb_gfx_page_bg(unsigned); gmb_theme_t th = gmb_ui_theme(); gmb_gfx_page_bg(((unsigned)th.desktop_bg.r << 16) | ((unsigned)th.desktop_bg.g << 8) | th.desktop_bg.b); }
-    gmb_winstmt_render_all();
+    ws_ensure_theme_hook();
+    gmb_ui_set_theme_name(name);   /* palette reale: finestre, controlli, widget pixel */
 }
 void gmb_winstmt_desktop(int desktop)  { g_ws_desktop = desktop;
                                          gmb_window_manager_switch_desktop(gmb_window_manager_static(), desktop);
@@ -569,6 +588,7 @@ void gmb_winstmt_render(const char* name)
 
 void gmb_winstmt_render_all(void)
 {
+    ws_ensure_theme_hook();
     /* Composizione in ordine di z crescente (stile WindowManager): la finestra
      * focalizzata/elevata (z piu' alto) viene disegnata per ultima, quindi SOPRA.
      * Senza questo, l'ordine era quello di creazione e SELECT non riportava in

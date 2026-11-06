@@ -2028,10 +2028,16 @@ static int gf_collide(ctx_t* c, gmb_expr_t** a, int n) {
 }
 static int gf_screeninfo(ctx_t* c, gmb_expr_t** a, int n);
 static int gf_collidebatch(ctx_t* c, gmb_expr_t** a, int n);
-/* WINDOWS.WIDTH/HEIGHT: headless → -1 (parità IL IlRuntime.WindowWidth/Height). */
-static int gf_window_size(ctx_t* c, gmb_expr_t** a, int n) {
+/* WINDOWS.WIDTH()/HEIGHT(): dimensioni della finestra attiva dal runtime condiviso
+ * (celle, come X/Y); -1 se non c'è finestra. Prima erano stub (-1.0). */
+static int gf_window_width(ctx_t* c, gmb_expr_t** a, int n) {
     (void)a; (void)n;
-    sb_put(&c->out, "(-1.0)");
+    sb_put(&c->out, "gmb_window_width()");
+    return 1;
+}
+static int gf_window_height(ctx_t* c, gmb_expr_t** a, int n) {
+    (void)a; (void)n;
+    sb_put(&c->out, "gmb_window_height()");
     return 1;
 }
 /* KEY.MAKE(key, mod) → intero (parità IL IlRuntime.KeyMake / StdLib LongType). */
@@ -2042,7 +2048,7 @@ static int gf_key_make(ctx_t* c, gmb_expr_t** a, int n) {
 }
 static const gf_row GF_TBL[] = {
     { GMB_TOK_TextWidth, gf_textwidth }, { GMB_TOK_TextHeight, gf_textheight },
-    { GMB_TOK_WindowWidth, gf_window_size }, { GMB_TOK_WindowHeight, gf_window_size },
+    { GMB_TOK_WindowWidth, gf_window_width }, { GMB_TOK_WindowHeight, gf_window_height },
     { GMB_TOK_Make, gf_key_make },
     { GMB_TOK_WIDTH, gf_width }, { GMB_TOK_HEIGHT, gf_height }, { GMB_TOK_Screens, gf_screens },
     { GMB_TOK_C2PX, gf_c2px }, { GMB_TOK_C2PY, gf_c2py },

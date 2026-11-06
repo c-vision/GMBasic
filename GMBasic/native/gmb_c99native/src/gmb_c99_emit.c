@@ -23467,6 +23467,21 @@ static void st_set(ctx_t* c, gmb_stmt_t* s) {
             sb_printf(&c->out, "%*sgmb_shell_set_enabled(%d);\n", c->indent, "", on);
             return;
         }
+        /* SET THEME [TO] "nome": applica il tema (runtime unico gmb_ui_*). Prima era
+         * no-op sui backend C: il nome veniva scartato già dal parser. */
+        if (s->set_attr && s->n_set_attr > 0 && s->set_attr[0]
+            && strcasecmp(s->set_attr[0], "THEME") == 0) {
+            c->uses_tui = 1;
+            ind(c);
+            if (s->col && etype(c, s->col) == TY_STR) {
+                sb_put(&c->out, "gmb_console_set_clipper(4, 0.0, ");
+                emit_str_operand(c, s->col);
+                sb_put(&c->out, ".data);\n");
+            } else {
+                sb_put(&c->out, "gmb_console_set_clipper(4, 0.0, \"turbo\");\n");
+            }
+            return;
+        }
         /* SET ATTR attr, state (BELL/CONFIRM/CURSOR/CENTURY/THEME/DATEFORMAT/WRAP/BOLD/…):
          * no-op (parità C99CodeEmitter.cs:5463 "SET ATTR: no-op" — tranne SET SHELL sopra).
          * Prima errore esplicito → i sample ConsoleSetAndGet/GraphicsPlanesExplode/TmpSet

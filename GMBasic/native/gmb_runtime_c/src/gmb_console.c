@@ -113,18 +113,15 @@ void gmb_tui_screen_enable(void)
     { void gmb_console_apply_env_once(void); gmb_console_apply_env_once(); }
     if (!s_tui_on) {
         fputs("\x1b[2J\x1b[H\x1b[?25l", stdout); fflush(stdout);
-        /* Sfondo blu Clipper (W+/B) su tutto lo screen, come la TUI di IL. */
+        /* Desktop dal TEMA (default Turbo = blu Borland + ░): un'unica famiglia di
+         * finestre/controlli, nessuna palette "Clipper" separata. */
         gmb_clipper_state_t* st = gmb_clipper_global_state();
-        gmb_cell_color_t blue = { 0, 0, 170, 0 };
-        gmb_cell_color_t cyan = { 0, 170, 170, 0 };
+        gmb_theme_t th0 = gmb_ui_theme();
+        gmb_cell_color_t dfg = (th0.head_fg.r || th0.head_fg.g || th0.head_fg.b) ? th0.head_fg : th0.text;
         if (st && st->buffer) {
-            st->fg = GMB_CELLCOLOR_WHITE;
-            st->bg = blue;
-            /* Desktop stile IL: blu pieno con trama '░' ciano. */
-            int bw = gmb_screen_width(st->buffer), bh = gmb_screen_height(st->buffer);
-            for (int y = 0; y < bh; y++)
-                for (int x = 0; x < bw; x++)
-                    gmb_screen_setchar(st->buffer, x, y, 0x2591, crgb(0,0,255), crgb(0,0,170));
+            st->fg = dfg;
+            st->bg = th0.desktop_bg;
+            gmb_theme_paint_desktop(st->buffer);
         }
     }
     s_tui_on = 1; s_tui_row = 1; s_tui_col = 1;
@@ -928,7 +925,12 @@ void gmb_console_set_clipper(int subCode, double value, const char* sval)
         case 1: g_clipper_opt_confirm = v; break;
         case 2: g_clipper_opt_cursor = v; break;
         case 3: g_clipper_opt_century = v; break;
-        case 4: g_clipper_theme = sval ? sval : ""; break;
+        case 4:
+            /* SET THEME TO "nome": il tema è UNO (registro gmb_ui_*); lo applica qui il
+             * runtime condiviso. Prima il nome finiva in una variabile mai letta. */
+            if (sval && *sval) gmb_ui_set_theme_name(sval);
+            g_clipper_theme = sval ? sval : "";
+            break;
         case 5: g_clipper_dateformat = sval ? sval : ""; break;
         case 6: g_clipper_opt_wrap = v; break;
         case 7: g_clipper_opt_escape = v; break;
@@ -1476,13 +1478,10 @@ void gmb_console_redraw(void)
 {
     gmb_clipper_state_t* st = gmb_clipper_global_state();
     if (st && st->buffer) {
-        gmb_cell_color_t blue = { 0, 0, 170, 0 };
-        gmb_cell_color_t cyan = { 0, 170, 170, 0 };
-        st->fg = GMB_CELLCOLOR_WHITE; st->bg = blue;
-        int bw = gmb_screen_width(st->buffer), bh = gmb_screen_height(st->buffer);
-        for (int y = 0; y < bh; y++)
-            for (int x = 0; x < bw; x++)
-                gmb_screen_setchar(st->buffer, x, y, 0x2591, crgb(0,0,255), crgb(0,0,170));
+        gmb_theme_t th = gmb_ui_theme();
+        gmb_cell_color_t dfg = (th.head_fg.r || th.head_fg.g || th.head_fg.b) ? th.head_fg : th.text;
+        st->fg = dfg; st->bg = th.desktop_bg;
+        gmb_theme_paint_desktop(st->buffer);
     }
     { extern void gmb_winstmt_render_all(void); GMB_GFX_WINSTM_RENDER_ALL(); }
     gmb_tui_screen_flush();
