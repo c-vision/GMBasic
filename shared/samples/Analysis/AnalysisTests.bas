@@ -15,6 +15,7 @@
 ' - Interpolazione: Linear, Spline, Polynomial.
 ' - Calcolo: Integrate, Differentiate.
 ' =================================================================================================
+IMPORT TIMESERIES
 IMPORT REGRESSION
 IMPORT STATS
 IMPORT JSON
@@ -53,19 +54,22 @@ SUB Main()
     PRINT "--- 2. Analisi Serie Temporali ---"
     
     ' Test di stazionarietà (Augmented Dickey-Fuller)
-    DIM AdfRes = TIMESERIES.AdfTest(SerieTemporale)
-    PRINT "ADF Statistic:       "; FORMAT(AdfRes.Statistic, "0.00")
-    PRINT "ADF p-value:         "; FORMAT(AdfRes.PValue, "0.0000")
+    DIM AdfRes() AS DOUBLE = TIMESERIES.ADFTEST(SerieTemporale)
+    PRINT "ADF Statistic:       "; FORMAT(AdfRes(0), "0.00")
+    PRINT "ADF p-value:         "; FORMAT(AdfRes(1), "0.0000")
     
     ' Previsione Holt-Winters (Exponential Smoothing)
     ' Alpha=0.2, Beta=0.1, Gamma=0.1, Periodo=10
-    DIM HwRes = TIMESERIES.HoltWinters(SerieTemporale, 0.2, 0.1, 0.1, 10)
-    PRINT "Forecast (primo val):"; FORMAT(HwRes.Forecast(0), "0.00")
+    DIM HwFc(UBOUND(SerieTemporale)) AS DOUBLE
+    DIM HwMse = TIMESERIES.HOLTWINTERS(SerieTemporale, 0.2, 0.1, 0.1, 10, HwFc)
+    PRINT "Forecast (primo val):"; FORMAT(HwFc(0), "0.00")
     
     ' ARIMA (AutoRegressive Integrated Moving Average)
     ' Modello (1, 1, 1)
-    DIM ArimaRes = TIMESERIES.Arima(SerieTemporale, 1, 1, 1)
-    PRINT "ARIMA AIC:           "; FORMAT(ArimaRes.AIC, "0.00")
+    DIM ArimaN = LEN(SerieTemporale)
+    DIM ArimaO(1 + 1 + 1 + (ArimaN - 1) - 1) AS DOUBLE
+    CALL TIMESERIES.ARIMA(SerieTemporale, 1, 1, 1, ArimaO)
+    PRINT "ARIMA AIC:           "; FORMAT(ArimaO(0), "0.00")
     PRINT
     
     ' --- 3. CLUSTERING (K-MEANS) ---

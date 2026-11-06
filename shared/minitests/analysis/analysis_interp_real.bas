@@ -6,6 +6,7 @@
 ' MaCoefficients diverge di 1 ULP fra matematica C# e C (stessa classe dei residui
 ' GAMMAPPF/SHAPIRO): arrotondato a 6 decimali come negli altri minitest (anova.bas).
 ' EXPECT: interp:  3 , 3 , 2|interp2:  3 , 3 , 5|euclid:  30|yw:  1.33333333333333 , 0.333333333333333|ma:  0.5 , 0.057143
+IMPORT TIMESERIES
 
 SUB Main()
     DIM x() = {0, 1, 2, 3, 4}

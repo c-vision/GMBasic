@@ -3,7 +3,7 @@
 '   e poi azzerava comunque il risultato; ora il risultato e' una lista valida.
 ' - MAD mobile = MEDIANA delle deviazioni assolute dalla mediana (Numerics.RollingMad), non la loro media.
 ' EXPECT: n=8|mad=1,1,1,0,1,1,1,0|ac=8
-IMPORT TIMESERIESX AS TS
+IMPORT TIMESERIES AS TS
 
 SUB Main()
     DIM s(9) AS DOUBLE

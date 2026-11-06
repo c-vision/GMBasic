@@ -1,6 +1,6 @@
 ' EXPECT: fwd= -4.723182|vll= -3.247275|p0= 0 p1= 1 p2= 1|pi0= 0|a00= 0.893468|m00= 0.940789|c00= 0.087935
 ' HMM: forward/Viterbi/fit tutti via TIMESERIES (FFI, libgmbstats).
-IMPORT TIMESERIESX
+IMPORT TIMESERIES
 SUB Main()
   DIM lp(1) AS DOUBLE
   DIM la(3) AS DOUBLE
@@ -11,9 +11,9 @@ SUB Main()
   le(0) = -0.1053605156578263: le(1) = -1.6094379124341003
   le(2) = -2.302585092994046: le(3) = -0.2231435513142097
   le(4) = -0.6931471805599453: le(5) = -0.6931471805599453
-  PRINT "fwd="; MATH.ROUND(TIMESERIESX.HMMFORWARD(lp, la, le), 6)
+  PRINT "fwd="; MATH.ROUND(TIMESERIES.HMMFORWARD(lp, la, le), 6)
   DIM path(2) AS LONG
-  PRINT "vll="; MATH.ROUND(TIMESERIESX.HMMVITERBI(lp, la, le, path), 6)
+  PRINT "vll="; MATH.ROUND(TIMESERIES.HMMVITERBI(lp, la, le, path), 6)
   PRINT "p0="; path(0); "p1="; path(1); "p2="; path(2)
   DIM x(19) AS ARRAY OF DOUBLE
   FOR i = 0 TO 19
@@ -21,7 +21,7 @@ SUB Main()
   NEXT i
   ' out: pi(2), A(4), means(4), covs(8)
   DIM o(17) AS DOUBLE
-  CALL TIMESERIESX.HMMFIT(x, 2, 8, o)
+  CALL TIMESERIES.HMMFIT(x, 2, 8, o)
   PRINT "pi0="; MATH.ROUND(o(0), 6)
   PRINT "a00="; MATH.ROUND(o(2), 6)
   PRINT "m00="; MATH.ROUND(o(6), 6)

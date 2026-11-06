@@ -1,3 +1,4 @@
+IMPORT TIMESERIES
 SUB Main()
   DIM y(3) AS DOUBLE = {0, 1, 4, 9}
   DIM x(3) AS DOUBLE = {0, 1, 2, 3}

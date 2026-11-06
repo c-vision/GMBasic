@@ -11,7 +11,7 @@
 ' - Decomposizione: TSDECOMPOSE (scompone una serie in trend, stagionalità e residuo).
 ' =================================================================================================
 
-IMPORT TIMESERIESX AS TS
+IMPORT TIMESERIES AS TS
 IMPORT JSON
 
 SUB Main()

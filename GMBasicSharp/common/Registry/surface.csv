@@ -1345,11 +1345,6 @@ procedure,SYSTEM,UDTALIGNED,UdtAligned
 procedure,SYSTEM,UDTPACKED,UdtPacked
 procedure,SYSTEM,VALTYPE,ValType
 procedure,SYSTEM,VARPTR,VarPtr
-procedure,TIMESERIES,AdfTest,AdfTest
-procedure,TIMESERIES,Arima,Arima
-procedure,TIMESERIES,HoltWinters,HoltWinters
-procedure,TIMESERIES,MaCoefficients,MaCoefficients
-procedure,TIMESERIES,YuleWalker,YuleWalker
 procedure,TOOL,Register,ToolRegister
 procedure,TOOL,Search,ToolSearch
 procedure,TORCH,ABS,TorchAbs

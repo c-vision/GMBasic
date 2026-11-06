@@ -2814,12 +2814,12 @@ typedef enum gmb_tokenkind {
     GMB_TOK_VLerp,
     GMB_TOK_VCross,
     GMB_TOK_VAngle,
-    GMB_TOK_VDist,
-    GMB_TOK_VMin,
+    GMB_TOK_VDist,    GMB_TOK_VMin,
     GMB_TOK_VMax,
-} gmb_tokenkind_t;
-
-#define GMB_TOK_COUNT 2794
+    GMB_TOK_AiListOptions,   /* AI LIST OPTIONS — stampa le voci dichiarate del registro */
+  } gmb_tokenkind_t;
+  
+  #define GMB_TOK_COUNT 2795
 
 /* 2026-09-09 (direttiva 2026-09-08): gmb_tokenkind_name()/gmb_tokenkind_from_name() e la
  * tabella gmb_token_names[] sono state RIMOSSE — dispatch solo per TokenKind; la risoluzione

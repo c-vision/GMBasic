@@ -1,6 +1,7 @@
 ' Sample ANALYSIS — interpolazioni e stime spettrali con dati veri.
 ' Dati lineari y=2x (i metodi che preservano le rette danno valori esatti) + serie
 ' per YuleWalker/MaCoefficients. Compagno del MiniTest analysis_interp_real.bas.
+IMPORT TIMESERIES
 
 SUB Main()
     DIM x() = {0, 1, 2, 3, 4}

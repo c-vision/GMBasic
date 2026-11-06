@@ -1,7 +1,7 @@
 REM FILE: TimeSeriesCommonLibNumerics.bas
 REM Espone le funzioni CommonLib.Numerics per serie temporali prima non disponibili in BASIC.
 
-IMPORT TIMESERIESX AS TS
+IMPORT TIMESERIES AS TS
 
 SUB Main()
     DIM values() = {1.0, 2.0, 4.0, 3.0, 5.0, 7.0}
