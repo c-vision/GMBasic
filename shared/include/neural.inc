@@ -405,3 +405,10 @@ DECLARE FUNCTION COPYBLOCK LIB "gmbneural" ALIAS "ofx_nn_copy_block" (out_() AS 
 ' Applica una funzione BASIC a ogni elemento; ABSMAX = max(|x|).
 DECLARE FUNCTION MATAPPLY LIB "gmbneural" ALIAS "ofx_nn_mat_apply" (out_() AS DOUBLE, in_() AS DOUBLE, n AS LONG, f AS FUNCTION(x AS DOUBLE) AS DOUBLE) AS LONG
 DECLARE FUNCTION MATABSMAX LIB "gmbneural" ALIAS "ofx_nn_mat_absmax" (in_() AS DOUBLE, n AS LONG) AS DOUBLE
+
+' ── Complementi: softmax con temperatura e LUT SNN ────────────────────────
+' TORCH.SOFTMAX copre la temperatura 1; qui la variante con temperatura.
+DECLARE FUNCTION SOFTMAXTEMP LIB "gmbneural" ALIAS "ofx_nn_softmax_temp" (out_() AS DOUBLE, z() AS DOUBLE, rows AS LONG, cols AS LONG, temp AS DOUBLE) AS LONG
+' LUT SNN: s() = stack contiguo dei tempi (n_t blocchi di n_tab tabelle da y_dim);
+' per ogni t somma la tabella j(t) in y() (accumula, y va azzerato dal chiamante).
+DECLARE FUNCTION SNNLUTFORWARD LIB "gmbneural" ALIAS "ofx_nn_snn_lut_forward" (s() AS DOUBLE, n_tab AS LONG, j() AS LONG, n_t AS LONG, y_dim AS LONG, y() AS DOUBLE) AS LONG
