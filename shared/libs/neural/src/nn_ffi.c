@@ -42,10 +42,13 @@
 #include "gn_chuck.h"
 #include "gn_autograd.h"
 #include "gn_gp.h"
+#include "gn_norm.h"
+#include "gn_ops.h"
 #include "gn_opt.h"
 
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
 
 typedef long long i64;
 
@@ -2503,4 +2506,154 @@ i64 ofx_nn_gp_free(i64 h)
     if (!e) return -1;
     memset(e, 0, sizeof(*e));
     return 0;
+}
+
+/* ══ Normalizzazione online (gn_norm) — handle 7201+ ════════════════════════
+ * Osserva i campioni (max-abs + Welford), poi applica/denormalizza/z-score con
+ * le statistiche addestrate: e' il pezzo che TORCH (una-shot) non copre. */
+#define NN_NORM_MAX 16
+#define NN_NORM_BASE 7200
+
+typedef struct { int used; gn_norm n; } nn_norm_e;
+static nn_norm_e g_norm[NN_NORM_MAX];
+
+static nn_norm_e *norm_get(i64 h)
+{
+    if (h <= NN_NORM_BASE || h > NN_NORM_BASE + NN_NORM_MAX) return NULL;
+    if (!g_norm[h - NN_NORM_BASE - 1].used) return NULL;
+    return &g_norm[h - NN_NORM_BASE - 1];
+}
+
+i64 ofx_nn_norm_init(i64 dim)
+{
+    int i;
+    if (dim <= 0) return -1;
+    for (i = 0; i < NN_NORM_MAX; i++) {
+        if (g_norm[i].used) continue;
+        memset(&g_norm[i], 0, sizeof(g_norm[i]));
+        if (gn_norm_init(&g_norm[i].n, (int)dim) != GN_OK) return -1;
+        g_norm[i].used = 1;
+        return (i64)(NN_NORM_BASE + i + 1);
+    }
+    return -1;
+}
+
+i64 ofx_nn_norm_observe(i64 h, const double *x)
+{
+    nn_norm_e *e = norm_get(h);
+    if (!e || !x) return -1;
+    return (i64)gn_norm_observe(&e->n, (const gn_real *)x);
+}
+
+/* margin <= 0 -> 1.0; allarga il fattore max-abs (es. 1.1 per un margine). */
+i64 ofx_nn_norm_finalize(i64 h, double margin)
+{
+    nn_norm_e *e = norm_get(h);
+    if (!e) return -1;
+    gn_norm_finalize(&e->n, (gn_real)margin);
+    return 0;
+}
+
+i64 ofx_nn_norm_apply(i64 h, const double *x, double *out)
+{
+    nn_norm_e *e = norm_get(h);
+    if (!e || !x || !out) return -1;
+    return (i64)gn_norm_apply(&e->n, (const gn_real *)x, (gn_real *)out);
+}
+
+i64 ofx_nn_norm_denormalize(i64 h, const double *x, double *out)
+{
+    nn_norm_e *e = norm_get(h);
+    if (!e || !x || !out) return -1;
+    return (i64)gn_norm_denormalize(&e->n, (const gn_real *)x, (gn_real *)out);
+}
+
+i64 ofx_nn_norm_zscore(i64 h, const double *x, double *out)
+{
+    nn_norm_e *e = norm_get(h);
+    if (!e || !x || !out) return -1;
+    return (i64)gn_norm_zscore(&e->n, (const gn_real *)x, (gn_real *)out);
+}
+
+/* out: dim scalari, poi dim medie, poi dim deviazioni standard. */
+i64 ofx_nn_norm_stats(i64 h, double *out)
+{
+    nn_norm_e *e = norm_get(h);
+    int i, dim;
+    if (!e || !out) return -1;
+    dim = e->n.dim;
+    for (i = 0; i < dim; i++) out[i] = (double)e->n.scale[i];
+    for (i = 0; i < dim; i++) out[dim + i] = (double)e->n.mean[i];
+    for (i = 0; i < dim; i++) {
+        double var = (e->n.count > 1) ? (double)e->n.m2[i] / (double)(e->n.count - 1) : 0.0;
+        out[2 * dim + i] = var > 0.0 ? (double)sqrt(var) : 0.0;
+    }
+    return 0;
+}
+
+i64 ofx_nn_norm_count(i64 h)
+{
+    nn_norm_e *e = norm_get(h);
+    if (!e) return -1;
+    return (i64)e->n.count;
+}
+
+i64 ofx_nn_norm_free(i64 h)
+{
+    nn_norm_e *e = norm_get(h);
+    if (!e) return -1;
+    gn_norm_free(&e->n);
+    memset(e, 0, sizeof(*e));
+    return 0;
+}
+
+/* ══ Operazioni su righe/matrici (gn_ops, gn_core) ══════════════════════════
+ * GATHERROWS/COPYBLOCK non hanno equivalente in TORCH (SLICE e' contiguo);
+ * SLICEROWS e' l'equivalente diretto di gn_slice_rows. */
+
+i64 ofx_nn_gather_rows(double *out, const double *data, i64 rows, i64 cols,
+                       const i64 *indices, i64 n_idx)
+{
+    int *idx;
+    i64 rc;
+    if (!out || !data || !indices || rows <= 0 || cols <= 0 || n_idx <= 0) return -1;
+    idx = i32_from_longs(indices, (int)n_idx);
+    if (!idx) return -1;
+    rc = (i64)gn_gather_rows((gn_real *)out, (const gn_real *)data, (int)rows, (int)cols,
+                             idx, (int)n_idx);
+    free(idx);
+    return rc;
+}
+
+i64 ofx_nn_slice_rows(double *out, const double *data, i64 rows, i64 cols, i64 start, i64 count)
+{
+    if (!out || !data || rows <= 0 || cols <= 0) return -1;
+    return (i64)gn_slice_rows((gn_real *)out, (const gn_real *)data, (int)rows, (int)cols,
+                              (int)start, (int)count);
+}
+
+i64 ofx_nn_copy_block(double *out, const double *data, i64 rows, i64 cols,
+                      i64 r0, i64 c0, i64 nr, i64 nc)
+{
+    if (!out || !data || rows <= 0 || cols <= 0) return -1;
+    return (i64)gn_copy_block((gn_real *)out, (const gn_real *)data, (int)rows, (int)cols,
+                              (int)r0, (int)c0, (int)nr, (int)nc);
+}
+
+/* f applicata a ogni elemento (stessa ABI del callback vettoriale: double(*)(double)). */
+i64 ofx_nn_mat_apply(double *out, const double *in, i64 n, double (*f)(double))
+{
+    gn_mat O, I;
+    if (!out || !in || n <= 0 || !f) return -1;
+    O.rows = 1; O.cols = (int)n; O.data = (gn_real *)out;
+    I.rows = 1; I.cols = (int)n; I.data = (gn_real *)in;
+    return (i64)gn_mat_apply(&O, &I, (gn_unary)f);
+}
+
+double ofx_nn_mat_absmax(const double *in, i64 n)
+{
+    gn_mat I;
+    if (!in || n <= 0) return 0.0;
+    I.rows = 1; I.cols = (int)n; I.data = (gn_real *)in;
+    return (double)gn_mat_absmax(&I);
 }
