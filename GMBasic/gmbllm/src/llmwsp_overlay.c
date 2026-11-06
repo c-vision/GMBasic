@@ -86,6 +86,7 @@ struct llmwsp_overlay {
     size_t nt;
     unsigned char **buf;      /* per tensore: copia modificabile o NULL */
     entry *j; size_t n, cap, pos;
+    char **cpn; size_t *cpp; size_t ncp;       /* checkpoint nominati */
 };
 
 static void E(char *err, size_t ec, const char *m, const char *a) { if (err && ec) snprintf(err, ec, "%s%s%s", m, a ? ": " : "", a ? a : ""); }
@@ -104,6 +105,8 @@ void llmwsp_ov_free(llmwsp_overlay *o) {
     for (size_t i = 0; i < o->n; i++) entry_free(&o->j[i]);
     free(o->j);
     for (size_t i = 0; i < o->nt; i++) free(o->buf ? o->buf[i] : NULL);
+    for (size_t i = 0; i < o->ncp; i++) free(o->cpn[i]);
+    free(o->cpn); free(o->cpp);
     free(o->buf); free(o->srcdir); free(o);
 }
 
@@ -346,6 +349,40 @@ int llmwsp_ov_diff(const llmwsp_overlay *o, llmwsp_ov_diffent *out, size_t cap, 
     return 0;
 }
 
+int llmwsp_ov_checkpoint(llmwsp_overlay *o, const char *name) {
+    for (size_t i = 0; i < o->ncp; i++) if (!strcmp(o->cpn[i], name)) { o->cpp[i] = o->pos; return 0; }
+    char **nn = (char **)realloc(o->cpn, (o->ncp + 1) * sizeof(char *)); if (!nn) return -1; o->cpn = nn;
+    size_t *np = (size_t *)realloc(o->cpp, (o->ncp + 1) * sizeof(size_t)); if (!np) return -1; o->cpp = np;
+    o->cpn[o->ncp] = strdup(name); o->cpp[o->ncp] = o->pos; o->ncp++;
+    return 0;
+}
+int llmwsp_ov_rollback(llmwsp_overlay *o, const char *name) {
+    for (size_t i = 0; i < o->ncp; i++) if (!strcmp(o->cpn[i], name)) {
+        if (o->cpp[i] > o->pos) return -1;
+        while (o->pos > o->cpp[i]) llmwsp_ov_undo(o);
+        return 0;
+    }
+    return -1;
+}
+
+char *llmwsp_ov_summary(const llmwsp_overlay *o) {
+    size_t cap = 4096, n = 0; char *b = (char *)malloc(cap);
+    if (!b) return NULL;
+    n += (size_t)snprintf(b + n, cap - n, "WSP: riepilogo delle differenze rispetto alla base (edit applicate: %zu)\n", o->pos);
+    size_t cnt = 0; double tot_changed = 0, tot_elems = 0;
+    for (size_t ti = 0; ti < o->nt; ti++) {
+        if (!o->buf[ti]) continue;
+        llmwsp_ov_diffent d;
+        if (cmp_base(o, ti, &d) < 0 || d.changed == 0) continue;
+        if (n + 600 > cap) { cap *= 2; b = (char *)realloc(b, cap); if (!b) return NULL; }
+        n += (size_t)snprintf(b + n, cap - n, "  %s: %lld/%lld pesi cambiati (%.4f%%), variazione relativa di norma %.5f\n", d.tensor, (long long)d.changed, (long long)d.total, 100.0 * (double)d.changed / (double)d.total, d.rel_norm);
+        cnt++; tot_changed += (double)d.changed; tot_elems += (double)d.total;
+    }
+    if (n + 300 > cap) { cap += 512; b = (char *)realloc(b, cap); if (!b) return NULL; }
+    snprintf(b + n, cap - n, "TOTALE: %zu tensori modificati, %.0f pesi cambiati (%.5f%% dei pesi dei soli tensori toccati)\n", cnt, tot_changed, tot_elems > 0 ? 100.0 * tot_changed / tot_elems : 0.0);
+    return b;
+}
+
 int llmwsp_ov_materialize(const llmwsp_overlay *o, const char *outdir, llmwsp_mat_stats *st, char *err, size_t ec) {
     llmwsp_edit *ed = (llmwsp_edit *)calloc(o->nt ? o->nt : 1, sizeof *ed);
     size_t ne = 0;
@@ -360,6 +397,12 @@ int llmwsp_ov_materialize(const llmwsp_overlay *o, const char *outdir, llmwsp_ma
     }
     int rc = llmwsp_materialize(o->s, o->srcdir, ed, ne, outdir, st, err, ec);
     free(ed);
+    if (rc == 0) {                                   /* nessuna scrittura silenziosa: il riepilogo accompagna il checkpoint */
+        char *sm = llmwsp_ov_summary(o); char p[1100]; snprintf(p, sizeof p, "%s/wsp_summary.txt", outdir);
+        FILE *f = sm ? fopen(p, "wb") : NULL;
+        if (f) { fputs(sm, f); fclose(f); }
+        free(sm);
+    }
     return rc;
 }
 
