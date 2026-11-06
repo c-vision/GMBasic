@@ -651,6 +651,9 @@ internal sealed partial class PCodeProcessor
             case OpCode.OP_LOAD_ELEMENT_REF:
             {
                 var numIndices = ReadU8(task);
+                // PERCORSO RAPIDO (2026-11-06): un solo indice numerico su un array 1D noto, in limiti: niente
+                // array di chiavi, niente LINQ, niente GetValue(int[]). Fuori limiti/altri tipi: percorso generale.
+                if (numIndices == 1 && task.Sp >= 2 && TryFastElementLoad(task)) return true;
                 // implicit-await inline: la base è sotto gli indici (es. FETCH(url).Headers["x"])
                 if (AwaitInlineFutureAt(task, 2, task.Sp - numIndices)) return false;
                 var keys = new object?[numIndices];
@@ -756,6 +759,8 @@ internal sealed partial class PCodeProcessor
             case OpCode.OP_STORE_ELEMENT:
             {
                 var numIndices = ReadU8(task);
+                // PERCORSO RAPIDO (2026-11-06): vedi OP_LOAD_ELEMENT; il valore deve essere già del tipo dell'array.
+                if (numIndices == 1 && task.Sp >= 3 && TryFastElementStore(task)) return true;
                 var keys = new object?[numIndices];
                 for (var i = numIndices - 1; i >= 0; i--)
                     keys[i] = task.Sp > 0 ? task.PopRef() : null;
@@ -844,5 +849,87 @@ internal sealed partial class PCodeProcessor
                 handled = false;
                 return false;
         }
+    }
+
+    // ------------------------------------------------------------------------------------------------
+    // Percorso rapido per gli elementi di array (indice singolo). NON cambia la semantica: se una
+    // condizione non e' soddisfatta (tipo dell'array/dell'indice/valore, indice fuori limiti) restituisce
+    // false SENZA toccare lo stack e il chiamante esegue il percorso generale (che solleva ERR 9, ecc.).
+    // ------------------------------------------------------------------------------------------------
+
+    /// <summary>Indice intero di una entry di stack: stesso arrotondamento di Convert.ToInt32(object).</summary>
+    private static bool TryFastIndex(in StackEntry e, out int idx)
+    {
+        if (e.Type == 1) { idx = Convert.ToInt32(e.Num); return true; }
+        if (e.Type == 2)
+        {
+            if (e.Ref is double d) { idx = Convert.ToInt32(d); return true; }
+            if (e.Ref is int i) { idx = i; return true; }
+        }
+        idx = 0;
+        return false;
+    }
+
+    /// <summary>Stack: [..., array, indice]. Array 1D con indice in [0, Length): push dell'elemento.</summary>
+    private static bool TryFastElementLoad(PCodeTask task)
+    {
+        var st = task.Stack;
+        var sp = task.Sp;
+        if (st[sp - 2].Type != 2 || !TryFastIndex(in st[sp - 1], out var idx)) return false;
+        var arrObj = st[sp - 2].Ref;
+        switch (arrObj)
+        {
+            case double[] da:
+                if ((uint)idx >= (uint)da.Length) return false;
+                st[sp - 1] = default; st[sp - 2] = default; task.Sp = sp - 2;
+                task.PushNum(da[idx]);
+                return true;
+            case long[] la:
+                if ((uint)idx >= (uint)la.Length) return false;
+                st[sp - 1] = default; st[sp - 2] = default; task.Sp = sp - 2;
+                task.PushRef(la[idx]);
+                return true;
+            case int[] ia:
+                if ((uint)idx >= (uint)ia.Length) return false;
+                st[sp - 1] = default; st[sp - 2] = default; task.Sp = sp - 2;
+                task.PushRef(ia[idx]);
+                return true;
+            case object?[] oa:   // include string[] e array di riferimenti (covarianza)
+                if ((uint)idx >= (uint)oa.Length) return false;
+                st[sp - 1] = default; st[sp - 2] = default; task.Sp = sp - 2;
+                task.PushRef(oa[idx]);
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    /// <summary>Stack: [..., valore, array, indice]. Solo double[] con valore numerico e object[] esatto
+    /// (nessuna conversione implicita: gli altri casi restano al percorso generale).</summary>
+    private static bool TryFastElementStore(PCodeTask task)
+    {
+        var st = task.Stack;
+        var sp = task.Sp;
+        if (st[sp - 2].Type != 2 || !TryFastIndex(in st[sp - 1], out var idx)) return false;
+        var arrObj = st[sp - 2].Ref;
+        if (arrObj is double[] da)
+        {
+            if ((uint)idx >= (uint)da.Length) return false;
+            double v;
+            if (st[sp - 3].Type == 1) v = st[sp - 3].Num;
+            else if (st[sp - 3].Type == 2 && st[sp - 3].Ref is double dv) v = dv;
+            else return false;
+            da[idx] = v;
+        }
+        else if (arrObj != null && arrObj.GetType() == typeof(object[]))
+        {
+            var oa = (object?[])arrObj;
+            if ((uint)idx >= (uint)oa.Length) return false;
+            oa[idx] = st[sp - 3].Type == 1 ? (object)st[sp - 3].Num : st[sp - 3].Ref;
+        }
+        else return false;
+        st[sp - 1] = default; st[sp - 2] = default; st[sp - 3] = default;
+        task.Sp = sp - 3;
+        return true;
     }
 }

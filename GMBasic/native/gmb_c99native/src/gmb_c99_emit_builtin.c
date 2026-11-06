@@ -6312,7 +6312,10 @@ static int en_tohex(ctx_t* c, gmb_expr_t** a, int n) {
      * l'operando finiva in gmb_double_to_string(puntatore) => C non compilabile. */
     if (a[0] && a[0]->kind == GMB_EXPR_VAR) {
         var_t* tv = lookup_var(c, a[0]->var);
-        if (tv && tv->is_array && !tv->matrix && !tv->jagged && !tv->is_bytes && tv->elem_byte) {
+        /* Array numerico/BYTE (DIM o PARAMETRO `a() AS BYTE`): la var e' `gmb_double_t*`
+         * + bound `<nome>__b0` (o `_len` per gli array dinamici). Un array di STRINGHE
+         * (type TY_STR, `gmb_string_t*`) non c'entra: si esclude esplicitamente. */
+        if (tv && tv->is_array && !tv->matrix && !tv->jagged && !tv->is_bytes && tv->type != TY_STR) {
             sb_put(&c->out, "gmb_string_alloc(gmb_hex_from_doubles(");
             emit_ident(c, tv->name);
             sb_put(&c->out, ", (gmb_int_t)(");
