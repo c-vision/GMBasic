@@ -56,6 +56,15 @@ size_t llmwsp_ov_journal_pos(const llmwsp_overlay *o);   /* edit attualmente app
 int    llmwsp_ov_undo(llmwsp_overlay *o);                /* 0 = ok, -1 = niente da annullare */
 int    llmwsp_ov_redo(llmwsp_overlay *o);
 
+/* CHECKPOINT/ROLLBACK (W8): segna la posizione del journal con un nome; il rollback annulla le edit successive.
+ * Un nome già usato viene sovrascritto. Rollback verso un punto oltre la posizione corrente: errore (-1). */
+int llmwsp_ov_checkpoint(llmwsp_overlay *o, const char *name);
+int llmwsp_ov_rollback(llmwsp_overlay *o, const char *name);
+
+/* Riepilogo testuale (malloc, da liberare) di cosa differisce dalla base: tensori toccati, frazione di pesi cambiati,
+ * variazione relativa di norma. llmwsp_ov_materialize lo scrive anche in <outdir>/wsp_summary.txt: nessuna scrittura silenziosa. */
+char *llmwsp_ov_summary(const llmwsp_overlay *o);
+
 /* sha256 del contenuto CORRENTE di un tensore (overlay se modificato, altrimenti base). */
 int llmwsp_ov_tensor_sha256(const llmwsp_overlay *o, const char *tensor, char hex[65]);
 
