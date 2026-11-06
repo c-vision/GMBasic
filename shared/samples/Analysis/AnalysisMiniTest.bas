@@ -2,7 +2,7 @@
 ' Dimostra ANALYSIS functions coperte dai MiniTest: AdfTest, Irfft, Pca,
 ' Rfft, SolveIvp, Splev, Splrep. Output in work/.
 
-IMPORT MULTIVARIATEX
+IMPORT MULTIVARIATE
 IMPORT TIMESERIES
 SUB Main()
   ' AdfTest su trend lineare (non stazionario)
@@ -23,7 +23,7 @@ SUB Main()
   DIM data(3) AS ARRAY OF DOUBLE
   FOR i = 0 TO 3: data(i) = {i + 1, (i + 1) * 2}: NEXT
   DIM po(5) AS DOUBLE
-  CALL MULTIVARIATEX.PCA(data, po)
+  CALL MULTIVARIATE.PCA(data, po)
   PRINT "pca_ev="; ROUND(po(0), 4); ","; ROUND(po(1), 4)
   ' Splrep/Splev: (x+1)^2
   DIM xs(4) AS DOUBLE = {0, 1, 2, 3, 4}

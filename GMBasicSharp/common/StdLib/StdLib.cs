@@ -183,7 +183,6 @@ public sealed partial class StdLib : IParserRegistry
         // CreateMcpNamespace();   // fusa nel namespace AI (2026-08-19): non esiste un namespace MCP
         CreateStatsNamespace();
         CreateNumericalNamespace();
-        CreateMultivariateNamespace();
         // FITTING: namespace LIBERATO — ri-esposto via FFI (shared/include/fitting.inc, libgmbstats).
         // CreateFittingNamespace();
         // SIMULATION: namespace LIBERATO — ri-esposto via FFI (shared/include/simulation.inc, libgmbstats).
@@ -215,7 +214,6 @@ public sealed partial class StdLib : IParserRegistry
         CreatePolymorphicCommands();
         CreateCryptographyNamespace();
         CreateAuthNamespace();
-        CreateBlockchainNamespace();
         CreateMouseNamespace();
         CreateControlsNamespace();
         

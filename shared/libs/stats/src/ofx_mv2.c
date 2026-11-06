@@ -4,10 +4,12 @@
  */
 #include <math.h>
 #include <stdlib.h>
+#include <stdint.h>
 
 #include "gs_sim.h"
 #include "gs_num.h"
 #include "gs_pca.h"
+#include "gs_boost.h"
 
 /* KMeans 1D: out = centri(k) seguiti dalle assegnazioni(n). */
 int ofx_kmeans(const double *x, int n, int k, int max_iter, double *out)
@@ -94,4 +96,33 @@ int ofx_svm_predict(const double *W, const double *x, int d, int k)
     if (!W || !x || d < 1 || k < 1) return 0;
     gs_svm_predict(W, x, d, k, &label);
     return label;
+}
+
+/* ── gradient boosting: modello opaco (handle LONG) ─────────────────────── */
+long long ofx_boost_fit(const double *X, const double *y, int n, int d,
+                        int engine, int n_estimators, double lr, int max_depth)
+{
+    gs_boost_model *m;
+    if (!X || !y || n < 1 || d < 1) return 0;
+    m = gs_boost_new((gs_boost_engine)engine, n_estimators, lr, max_depth);
+    if (!m) return 0;
+    if (gs_boost_fit(m, X, y, n, d) != 0) { gs_boost_free(m); return 0; }
+    return (long long)(intptr_t)m;
+}
+
+double ofx_boost_predict(long long handle, const double *x, int d)
+{
+    if (!handle || !x || d < 1) return 0.0 / 0.0;
+    return gs_boost_predict((const gs_boost_model *)(intptr_t)handle, x);
+}
+
+double ofx_boost_score(long long handle, const double *X, const double *y, int n, int d)
+{
+    if (!handle || !X || !y || n < 1 || d < 1) return 0.0 / 0.0;
+    return gs_boost_score((const gs_boost_model *)(intptr_t)handle, X, y, n, d);
+}
+
+void ofx_boost_free(long long handle)
+{
+    if (handle) gs_boost_free((gs_boost_model *)(intptr_t)handle);
 }
