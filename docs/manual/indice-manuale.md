@@ -360,6 +360,14 @@ assorbita (non si stampa due volte).
 - `Torch-Manual` — capitolo
 - `Torch-Guida-Utente` — fuso
 
+### V.31b — NEURAL: reti, alberi e quantizzazione
+
+- `NEURAL-Guida-Utente` — capitolo
+
+### V.31c — GEO: geometria piana e GIS
+
+- `GEO-Guida-Utente` — capitolo
+
 ### V.32 — AI: provider, modelli e memoria
 
 - `AI-Namespace-Manual` — capitolo

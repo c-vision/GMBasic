@@ -61,6 +61,15 @@ vettori di stato del passo: i buffer non si ricreano a ogni forward.
 | `src/gc_{gemm,array}.c` + header | `shared/libs/math` (gmbcompute) |
 | `src/nn_ffi.c` | shim ABI di questo pacchetto (handle, array piatti, STEP) |
 
+## Guida, sample e prove
+
+- Guida utente (vault): `Guide/utente/NEURAL-Guida-Utente.md` (riferimento completo,
+  parametri di ogni funzione).
+- Sample: `shared/samples/Neural/NeuralWorkbench.bas` (ciclo di lavoro reale) e
+  `shared/samples/Neural/NeuralCoverage.bas` (tutte le 230 funzioni).
+- Manuale: `docs/manual/capitoli/V.31b-neural.md`.
+- Parit00e0: `zsh tools/sh/parity4 ../shared/samples/Neural/NeuralWorkbench.bas`.
+
 ## Build e test
 
 ```sh

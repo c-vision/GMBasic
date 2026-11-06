@@ -1,5 +1,5 @@
 ' NEURAL (FFI) — CNN: conv, pooling, im2col, resize, winograd, deconv, LRN + FusedMM CSR.
-' EXPECT: conv= 0  , 3 , 5 , 7 , 9  |mp= 0  , 4 , 3  |ap= 0  , 2.5  |i2c= 0  , 1 , 2 , 3 , 4  |rs= 0  , 1 , 1 , 4  |w= 0  , 1 , 6 , 16  |d= 0  , 2 , 2 , 2 , 2  |l= 0 |0.9998,1.9997|fm= 0  , 4 , 9  |ag= 0  , 2 , 3  |f= 0
+' EXPECT: conv= 0  , 3 , 5 , 7 , 9  |mp= 0  , 4 , 3  |ap= 0  , 2.5  |i2c= 0  , 1 , 2 , 3 , 4  |rs= 0  , 1 , 1 , 4  |w= 0  , 1 , 6 , 16  |d= 0  , 2 , 2 , 2 , 2  |l= 0 |0.9998,1.9997|fm= 0  , 4 , 9  |ag= 0  , 2 , 3  ||osz= 3 |cr= 0 =2.0,8.0|dd= 0 : 0 =20.0|c2i= 0 =4.0|db= 0 =3.0,3.0|up= 0 =0.0,4.0|wb= 0 =2.0,7.0|f= 0
 ' IMPORTA NEURAL (pacchetto gmbneural): layout CHW, handle per la configurazione.
 IMPORT NEURAL
 
@@ -69,5 +69,48 @@ SUB Main()
   PRINT "ag="; NEURAL.AGGRUN(lh, rp, ci, vv, Y, Z2); " ,"; Z2(0); ","; Z2(1); " |";
   NEURAL.FREE(lh)
 
+  ' ── complementi CNN: OUTSIZE, CONVRUN senza bias, dilatazione, col2im,
+  '    deconv con bias, unpool, winograd con bias ──
+  PRINT "|osz="; NEURAL.OUTSIZE(5, 3, 2, 1);
+  DIM c2w(0) AS DOUBLE, c2o(3) AS DOUBLE
+  c2w(0)=2
+  lh = NEURAL.CONVINIT(1, 2, 2, 1, 1, 1, 1, 0)
+  PRINT "|cr="; NEURAL.CONVRUN(lh, in4, c2w, c2o); "="; FORMAT(c2o(0), "#.0"); ","; FORMAT(c2o(3), "#.0");
+  NEURAL.FREE(lh)
+
+  DIM din(8) AS DOUBLE, dw2(3) AS DOUBLE, dout1(0) AS DOUBLE
+  DIM dbi(0) AS DOUBLE, doutb(3) AS DOUBLE, k2 AS LONG
+  FOR k2 = 0 TO 8
+    din(k2) = k2 + 1
+  NEXT k2
+  dw2(0)=1 : dw2(1)=1 : dw2(2)=1 : dw2(3)=1
+  lh = NEURAL.CONVINIT(1, 3, 3, 1, 2, 2, 1, 0)
+  PRINT "|dd="; NEURAL.CONVSETDIL(lh, 2); ":"; NEURAL.CONVRUN(lh, din, dw2, dout1); "="; FORMAT(dout1(0), "#.0");
+  NEURAL.FREE(lh)
+
+  DIM ccol(3) AS DOUBLE, cback(3) AS DOUBLE
+  lh = NEURAL.IM2COLINIT(1, 2, 2, 1, 1, 1, 0)
+  NEURAL.IM2COLRUN(lh, in4, ccol)
+  NEURAL.FREE(lh)
+  lh = NEURAL.COL2IMINIT(1, 2, 2, 1, 1, 1, 0)
+  PRINT "|c2i="; NEURAL.COL2IMRUN(lh, ccol, cback); "="; FORMAT(cback(3), "#.0");
+  NEURAL.FREE(lh)
+
+  dbi(0)=1
+  lh = NEURAL.DECONVINIT(1, 1, 1, 1, 2, 2, 2, 0)
+  PRINT "|db="; NEURAL.DECONVRUNB(lh, d1, dw2, dbi, doutb); "="; FORMAT(doutb(0), "#.0"); ","; FORMAT(doutb(3), "#.0");
+  NEURAL.FREE(lh)
+
+  DIM upin(0) AS DOUBLE, upam(0) AS LONG, upout(3) AS DOUBLE
+  upin(0)=4 : upam(0)=3
+  lh = NEURAL.UNPOOLINIT(1, 2, 2, 2, 2)
+  PRINT "|up="; NEURAL.UNPOOLRUN(lh, upin, upam, 0.0, upout); "="; FORMAT(upout(0), "#.0"); ","; FORMAT(upout(3), "#.0");
+  NEURAL.FREE(lh)
+
+  DIM wb(0) AS DOUBLE, wbo(15) AS DOUBLE
+  wb(0)=1
+  lh = NEURAL.WINOINIT(1, 4, 4, 1, 2)
+  PRINT "|wb="; NEURAL.WINORUNB(lh, i16, w9, wb, wbo); "="; FORMAT(wbo(0), "#.0"); ","; FORMAT(wbo(5), "#.0"); "|";
+  NEURAL.FREE(lh)
   PRINT "f="; NEURAL.FREE(9999)
 END SUB
