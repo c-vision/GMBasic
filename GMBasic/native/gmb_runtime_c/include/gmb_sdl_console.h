@@ -99,7 +99,9 @@ void gmb_sdl_console_set_font(gmb_sdl_console_t* c, const char* path, int size);
  * mouse -> handler celle (finestre/controlli rispondono). Ritorna 1 se quit richiesto.
  * Ridisegna le finestre TUI nel buffer della console. */
 int  gmb_sdl_console_pump(gmb_sdl_console_t* c);
-
+/* Screenshot PNG della finestra console (render corrente letto dal renderer SDL).
+ * Ritorna 0 se scritto, -1 se non disponibile (build senza SDL / finestra non aperta). */
+int  gmb_sdl_console_save_png(gmb_sdl_console_t* c, const char* path);
 /* Status bar riusabile (SDL e console ANSI): disegna testo status + chip/raggruppamento
  * delle finestre minimizzate; hit-test del chip. */
 void gmb_console_statusbar_draw(gmb_sdl_console_t* c);

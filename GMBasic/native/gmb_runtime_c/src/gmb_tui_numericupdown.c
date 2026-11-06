@@ -121,17 +121,18 @@ int gmb_numeric_updown_render_line(gmb_numeric_updown_t* n, char* out, int cap)
 {
     char s[32];
     snprintf(s, sizeof(s), "%d", n->value);
-    int pad_w = n->ctrl.width - 4;
-    if (pad_w < 1) pad_w = 1;
-    int sl = (int)strlen(s);
+    int numlen = (int)strlen(s);
+    /* Celle: 1 spazio + padding + cifre + 2 frecce = Width. Si costruisce a CARATTERI,
+     * non a byte: prima il troncamento a Width tagliava a metà `▴`/`▼` (byte UTF-8). */
+    int pad = n->ctrl.width - 1 - numlen - 2;
+    if (pad < 0) pad = 0;
     int o = 0;
-    out[o++] = ' ';
-    for (int i = sl; i < pad_w; i++) out[o++] = ' ';
-    for (int i = 0; i < sl; i++) out[o++] = s[i];
-    const char* arrows = " ▴▼";
-    for (const char* p = arrows; *p && o < cap - 1; p++) out[o++] = *p;
-    if (o > n->ctrl.width) o = n->ctrl.width;
-    else for (int i = o; i < n->ctrl.width && i < cap - 1; i++) out[o++] = ' ';
+    if (o < cap - 1) out[o++] = ' ';
+    for (int i = 0; i < pad && o < cap - 1; i++) out[o++] = ' ';
+    for (int i = 0; i < numlen && o < cap - 1; i++) out[o++] = s[i];
+    { const char* arrows = "\xE2\x96\xB4\xE2\x96\xBC";   /* ▴▼ */
+      while (*arrows && o + 2 < cap - 1) out[o++] = *arrows++; }
+    while (o < n->ctrl.width && o < cap - 1) out[o++] = ' ';
     out[o] = '\0';
     return o;
 }

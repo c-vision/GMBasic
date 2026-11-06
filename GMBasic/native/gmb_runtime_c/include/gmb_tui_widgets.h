@@ -92,6 +92,7 @@ typedef struct gmb_widget_style {
     int bevel_depth;           /* spessore bordo 3D (px) */
     unsigned int bevel_light, bevel_dark;
     int emboss;                /* testo embossed/inciso */
+    int gloss;                 /* riflesso lucido sul terzo alto (stile "gloss") */
     int gradient_on; unsigned int grad_top, grad_bottom;
     int glow_on; unsigned int glow;
     /* cornice finestra (per dialog/alert box) */
@@ -181,7 +182,9 @@ enum { GMB_CK_NONE=0, GMB_CK_CHECKBOX, GMB_CK_TOGGLE, GMB_CK_RADIO, GMB_CK_SLIDE
        GMB_CK_CANVAS, GMB_CK_IMAGE, GMB_CK_IMAGEBUTTON, GMB_CK_QR,
        GMB_CK_RICHTEXT, GMB_CK_HALFBLOCK, GMB_CK_TILING, GMB_CK_USERCONTROL,
        GMB_CK_FKEYBAR, GMB_CK_CANDLESTICK, GMB_CK_CHART,
-       GMB_CK_SPLITTER, GMB_CK_CONTEXTMENU };
+       GMB_CK_SPLITTER, GMB_CK_CONTEXTMENU,
+       /* Pulsante (prima restava GMB_CK_NONE: serviva per la palette TV per-tipo). */
+       GMB_CK_BUTTON };
 
 /* ---- Control (specchio Control.cs, base) ---- */
 #define GMB_CTRL_MAX_CONTROLS 64
@@ -231,6 +234,10 @@ void gmb_control_init(gmb_control_t* c, const char* id, int x, int y, int w, int
                       bool (*key)(void*, gmb_control_t*, int));
 gmb_rect_t gmb_control_rect(const gmb_control_t* c);
 void gmb_control_draw(gmb_control_t* c, gmb_screen_buffer_t* buf);
+/* Applica (solo con tema `turbovision`) la palette CONTROLLI di Turbo Vision risolta dal
+ * sorgente ufficiale: input bianco/blu, button nero/verde, cluster e listbox nero/ciano,
+ * scrollbar ciano/blu. Chiamata da gmb_control_draw attorno al draw del tipo. */
+void gmb_tui_apply_tv_style(gmb_control_t* c);
 /* Disegna una stringa con evidenziazione Borland: lettera tra ~X~ oppure token di tasto
  * (F1..F12 / Alt-X / Ctrl-X / Shift-X) in `hk` (rosso). maxw = larghezza max. */
 void gmb_draw_string_keys(gmb_screen_buffer_t* buf, int x, int y, const char* s, int maxw,

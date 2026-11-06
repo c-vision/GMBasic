@@ -370,11 +370,13 @@ static void sdlcon_select_monospace(gmb_sdl_console_t* c)
     if (sdlcon_resolve_font(c->config.font_path, c->font_path, sizeof(c->font_path))) return;
     /* Stesso ordine della REPL C# (FontManager.SelectMonospaceFont): prima il font del
      * progetto (Resources/font.ttf = Cascadia, OFL), poi i monospace con path assoluto.
-     * Serve a rendere identico l'aspetto fra SDLConsole C e C#. */
+     * Serve a rendere identico l'aspetto fra SDLConsole C e C#.
+     * IMPORTANTE: Menlo PRIMA di Monaco — Monaco non ha i glifi box-drawing (┌─┐║ ecc.)
+     * e le cornici TUI sparivano (tofu/vuoto). */
     { extern int access(const char*, int);
-      const char* direct[] = { "Resources/font.ttf", "/System/Library/Fonts/Monaco.ttf",
-                               "/System/Library/Fonts/Menlo.ttc",
-                               "/System/Library/Fonts/Supplemental/Andale Mono.ttf", NULL };
+      const char* direct[] = { "Resources/font.ttf", "/System/Library/Fonts/Menlo.ttc",
+                               "/System/Library/Fonts/Supplemental/Andale Mono.ttf",
+                               "/System/Library/Fonts/Monaco.ttf", NULL };
       for (int i = 0; direct[i]; i++)
           if (access(direct[i], 4) == 0) { snprintf(c->font_path, sizeof(c->font_path), "%s", direct[i]); return; } }
     /* Preferisci un font con i glifi box-drawing (Menlo); Monaco non li ha (tofu). */
@@ -471,8 +473,109 @@ int gmb_sdl_console_open(gmb_sdl_console_t* c)
     return 1;
 }
 
-void gmb_sdl_console_render(gmb_sdl_console_t* c)
+#ifdef GMB_GFX_SDL_PRESENT
+extern int gmb_gfx_box_mask(uint32_t cp, int* dbl);                            /* gmb_gfx_cellfont.c */
+extern int gmb_gfx_box_segments(uint32_t cp, int cw, int ch, int seg[8][4]);  /* gmb_gfx_cellfont.c */
+/* Box-drawing PROCEDURALE anche nella SDLConsole: STESSA geometria del renderer a pixel
+ * (gmb_gfx_box_segments, unica fonte). I glifi dei font hanno side-bearing/metriche proprie
+ * e le cornici risultavano spezzate ("═" che non si unisce a "╔"/"╗"); qui i segmenti si
+ * disegnano dalla geometria della cella, con gli angoli annidati come nei glifi CP437. */
+static void sdlcon_box_cell(void* rh, int x0, int y0, int cw, int ch, uint32_t cp,
+                            int r, int g, int b)
 {
+    int seg[8][4];
+    int n = gmb_gfx_box_segments(cp, cw, ch, seg);
+    for (int i = 0; i < n; i++)
+        gmb_sdl_render_fill(rh, x0 + seg[i][0], y0 + seg[i][1], seg[i][2], seg[i][3], r, g, b);
+}
+
+/* Block elements procedurati (come cf_box): i glifi ▀▄█▌▐ del font hanno side-bearing e a
+ * queste dimensioni lasciavano righe "tratteggiate" (bottoni TV e progress bar). */
+static int sdlcon_block_cell(void* rh, int x0, int y0, int cw, int ch, uint32_t cp,
+                             int r, int g, int b)
+{
+    int hw = cw / 2, hh = ch / 2;
+    switch (cp)
+    {
+    case 0x2588: gmb_sdl_render_fill(rh, x0, y0, cw, ch, r, g, b); return 1;      /* █ */
+    case 0x2580: gmb_sdl_render_fill(rh, x0, y0, cw, hh, r, g, b); return 1;      /* ▀ */
+    case 0x2584: gmb_sdl_render_fill(rh, x0, y0 + hh, cw, ch - hh, r, g, b); return 1; /* ▄ */
+    case 0x258C: gmb_sdl_render_fill(rh, x0, y0, hw, ch, r, g, b); return 1;      /* ▌ */
+    case 0x2590: gmb_sdl_render_fill(rh, x0 + hw, y0, cw - hw, ch, r, g, b); return 1; /* ▐ */
+    case 0x2581: gmb_sdl_render_fill(rh, x0, y0 + ch - ch / 8, cw, ch / 8, r, g, b); return 1;
+    case 0x2582: gmb_sdl_render_fill(rh, x0, y0 + ch - ch / 4, cw, ch / 4, r, g, b); return 1;
+    case 0x2583: gmb_sdl_render_fill(rh, x0, y0 + ch - ch / 3, cw, ch / 3, r, g, b); return 1;
+    case 0x2585: gmb_sdl_render_fill(rh, x0, y0 + ch - (ch * 5) / 8, cw, (ch * 5) / 8, r, g, b); return 1;
+    case 0x2586: gmb_sdl_render_fill(rh, x0, y0 + ch - (ch * 3) / 4, cw, (ch * 3) / 4, r, g, b); return 1;
+    case 0x2587: gmb_sdl_render_fill(rh, x0, y0 + ch - (ch * 7) / 8, cw, (ch * 7) / 8, r, g, b); return 1;
+    default: return 0;
+    }
+}
+
+/* Frecce e triangoli procedurali (non alterano il buffer: cambia solo il disegno della
+ * stessa cella). Servono a scrollbar ▲▼, combo ▾, spin ▴▾, menu ▸, calendario ◄►. */
+static int sdlcon_symbol_cell(void* rh, int x0, int y0, int cw, int ch, uint32_t cp,
+                              int r, int g, int b)
+{
+    int cx = x0 + cw / 2, cy = y0 + ch / 2;
+    int hh = (ch * 3) / 4; if (hh < 3) hh = ch;
+    int ww = (cw * 3) / 4; if (ww < 3) ww = cw;
+    switch (cp)
+    {
+    case 0x25B2: /* ▲ */
+        for (int i = 0; i < hh; i++) { int w = (i + 1) * cw / hh; if (w < 1) w = 1;
+            gmb_sdl_render_fill(rh, cx - w / 2, y0 + (ch - hh) / 2 + i, w, 1, r, g, b); }
+        return 1;
+    case 0x25BC: /* ▼ */
+        for (int i = 0; i < hh; i++) { int w = (hh - i) * cw / hh; if (w < 1) w = 1;
+            gmb_sdl_render_fill(rh, cx - w / 2, y0 + (ch - hh) / 2 + i, w, 1, r, g, b); }
+        return 1;
+    case 0x25C0: /* ◄ */
+        for (int i = 0; i < ww; i++) { int h = (i + 1) * ch / ww; if (h < 1) h = 1;
+            gmb_sdl_render_fill(rh, x0 + (cw - ww) / 2 + i, cy - h / 2, 1, h, r, g, b); }
+        return 1;
+    case 0x25B6: /* ► */
+        for (int i = 0; i < ww; i++) { int h = (ww - i) * ch / ww; if (h < 1) h = 1;
+            gmb_sdl_render_fill(rh, x0 + (cw - ww) / 2 + i, cy - h / 2, 1, h, r, g, b); }
+        return 1;
+    case 0x2191: case 0x2193: /* ↑ ↓ */
+    {
+        int sw = cw / 8; if (sw < 1) sw = 1;
+        int head = hh / 3; if (head < 2) head = 2;
+        int top = y0 + (ch - hh) / 2;
+        int up = (cp == 0x2191);
+        gmb_sdl_render_fill(rh, cx - sw / 2, up ? top + head : top, sw, hh - head, r, g, b);
+        for (int i = 0; i < head; i++) { int w = (i + 1) * cw / head; if (w < 1) w = 1;
+            gmb_sdl_render_fill(rh, cx - w / 2, up ? top + i : top + hh - 1 - i, w, 1, r, g, b); }
+        return 1;
+    }
+    case 0x2190: case 0x2192: /* ← → */
+    {
+        int sh = ch / 8; if (sh < 1) sh = 1;
+        int head = ww / 3; if (head < 2) head = 2;
+        int left = x0 + (cw - ww) / 2;
+        int right = (cp == 0x2192);
+        gmb_sdl_render_fill(rh, right ? left : left + head, cy - sh / 2, ww - head, sh, r, g, b);
+        for (int i = 0; i < head; i++) { int h2 = (i + 1) * ch / head; if (h2 < 1) h2 = 1;
+            gmb_sdl_render_fill(rh, right ? left + head - 1 - i : left + i, cy - h2 / 2, 1, h2, r, g, b); }
+        return 1;
+    }
+    case 0x2195: /* ↕ */
+    {
+        int sw = cw / 8; if (sw < 1) sw = 1;
+        int head = ch / 5; if (head < 2) head = 2;
+        gmb_sdl_render_fill(rh, cx - sw / 2, y0 + head, sw, ch - 2 * head, r, g, b);
+        for (int i = 0; i < head; i++) { int w = (i + 1) * cw / head; if (w < 1) w = 1;
+            gmb_sdl_render_fill(rh, cx - w / 2, y0 + i, w, 1, r, g, b);
+            gmb_sdl_render_fill(rh, cx - w / 2, y0 + ch - 1 - i, w, 1, r, g, b); }
+        return 1;
+    }
+    default: return 0;
+    }
+}
+#endif /* GMB_GFX_SDL_PRESENT */
+
+void gmb_sdl_console_render(gmb_sdl_console_t* c){
     if (!c) return;
 #ifdef GMB_GFX_SDL_PRESENT
     if (!c->opened) gmb_sdl_console_open(c);
@@ -505,8 +608,16 @@ void gmb_sdl_console_render(gmb_sdl_console_t* c)
             int x0 = x * cw, y0 = y * ch;
             gmb_sdl_render_fill(ctx->renderer_handle, x0, y0, cw, ch, br, bg, bb);
             if (cell.character > 0x20u)
-                gmb_font_atlas_draw_glyph((gmb_font_atlas_t*)c->font_atlas, ctx->renderer_handle,
-                                          (int)cell.character, x0, y0, cw, ch, fr, fg, fb);
+            {
+                int bdbl = 0;
+                if (sdlcon_symbol_cell(ctx->renderer_handle, x0, y0, cw, ch, cell.character, fr, fg, fb)) { }
+                else if (sdlcon_block_cell(ctx->renderer_handle, x0, y0, cw, ch, cell.character, fr, fg, fb)) { }
+                else if (gmb_gfx_box_mask(cell.character, &bdbl))
+                    sdlcon_box_cell(ctx->renderer_handle, x0, y0, cw, ch, cell.character, fr, fg, fb);
+                else
+                    gmb_font_atlas_draw_glyph((gmb_font_atlas_t*)c->font_atlas, ctx->renderer_handle,
+                                              (int)cell.character, x0, y0, cw, ch, fr, fg, fb);
+            }
         }
     }
     gmb_sdl_render_present(ctx->renderer_handle, c->texture);
@@ -684,8 +795,16 @@ int gmb_sdl_console_pump(gmb_sdl_console_t* c)
     /* Niente SDL_StartTextInput: l'input viene da SDL_KEYDOWN (parità KeyboardServiceSdl). */
     SDL_Window* win = (SDL_Window*)ctx->window_handle;
     Uint32 wid = SDL_GetWindowID(win);
-    int gw = gmb_screen_width(c->buffer) * c->char_width;
-    int gh = gmb_screen_height(c->buffer) * c->char_height;
+    /* CONVENZIONE UNICA: gli eventi mouse SDL sono in PUNTI-finestra (logici); la cella
+     * del font è in PIXEL nativi => larghezza cella in punti = char_width / render_scale.
+     * Verificato: warp(100,100) -> motion(100,100) con output 800x400 su finestra 400x200
+     * (scale 2). Prima il path WINDOW divideva per i PIXEL e quello dei controlli
+     * moltiplicava per lo scale: su Retina i click cadevano a metà cella (mouse "morto"). */
+    int sc = c->render_scale > 0 ? c->render_scale : 1;
+    int cwp = c->char_width / sc;  if (cwp < 1) cwp = 1;
+    int chp = c->char_height / sc; if (chp < 1) chp = 1;
+    int gw = gmb_screen_width(c->buffer) * cwp;      /* griglia in PUNTI */
+    int gh = gmb_screen_height(c->buffer) * chp;
     int winW = 0, winH = 0;
     SDL_GetWindowSize(win, &winW, &winH);
     int quit = 0; SDL_Event e;
@@ -714,57 +833,84 @@ int gmb_sdl_console_pump(gmb_sdl_console_t* c)
         }
         if (e.type == SDL_TEXTINPUT) continue;   /* ignorato: i char arrivano da KEYDOWN */
         if (c->char_width <= 0 || c->char_height <= 0) continue;
-        /* Gli eventi mouse di SDL sono in PIXEL NATIVI (verificato: warp(100,100)->motion(200,200)
-         * con window 850x660 pt e output 1700x1320 px). char_width/Height sono px nativi →
-         * cella = evento / char. Nessuna conversione punti/pixel necessaria. */
-        int ex = (e.type == SDL_MOUSEMOTION) ? e.motion.x : e.button.x;
-        int ey = (e.type == SDL_MOUSEMOTION) ? e.motion.y : e.button.y;
-        /* SDL (ALLOW_HIGHDPI) riporta i mouse in PUNTI-finestra (logici); char_width/Height
-         * sono in PIXEL nativi => x pixel = punto * render_scale. Il path GFX lavora in logico
-         * dividendo per sc (stessa equivalenza). Sintomo senza scala: i click cadono a meta'
-         * cella -> pulsanti mancati, drag sul titolo, finestre "che non si muovono". */
-        /* Eventi in PIXEL nativi (verificato dai click reali: 1102/17=64 cella valida;
-         * con *rs si uscirebbe dalla griglia). Mappatura DIRETTA, cella = evento/char. */
-        int lx = ex, ly = ey;
+        int lx = (e.type == SDL_MOUSEMOTION) ? e.motion.x : e.button.x;   /* PUNTI */
+        int ly = (e.type == SDL_MOUSEMOTION) ? e.motion.y : e.button.y;
         if (e.type == SDL_MOUSEBUTTONDOWN && e.button.windowID == wid) {
-            if (gmb_console_statusbar_click(c, lx / c->char_width, ly / c->char_height)) continue;
+            if (gmb_console_statusbar_click(c, lx / cwp, ly / chp)) continue;
         }
         if (e.type == SDL_MOUSEMOTION && e.motion.windowID == wid) {
             /* Nessun bottone premuto -> nessun drag/resize pendente: azzera eventuali stati
              * rimasti agganciati (UP perso fuori finestra), altrimenti i movimenti restano
              * assorbiti e le altre finestre non ricevono piu' eventi. */
             if (!(e.motion.state & SDL_BUTTON_LMASK))
-                gmb_winstmt_handle_mouse_px(lx, ly, GMB_GFX_MOUSE_UP, 0, c->char_width, c->char_height, gw, gh);
-            gmb_winstmt_handle_mouse_px(lx, ly, GMB_GFX_MOUSE_MOVE, 0, c->char_width, c->char_height, gw, gh);
+                gmb_winstmt_handle_mouse_px(lx, ly, GMB_GFX_MOUSE_UP, 0, cwp, chp, gw, gh);
+            gmb_winstmt_handle_mouse_px(lx, ly, GMB_GFX_MOUSE_MOVE, 0, cwp, chp, gw, gh);
         } else if ((e.type == SDL_MOUSEBUTTONDOWN || e.type == SDL_MOUSEBUTTONUP) && e.button.windowID == wid) {
             int down = (e.type == SDL_MOUSEBUTTONDOWN);
             SDL_CaptureMouse(down ? SDL_TRUE : SDL_FALSE);   /* l'UP arriva anche col cursore fuori finestra */
-            gmb_winstmt_handle_mouse_px(lx, ly, down ? GMB_GFX_MOUSE_DOWN : GMB_GFX_MOUSE_UP, e.button.button, c->char_width, c->char_height, gw, gh);
+            gmb_winstmt_handle_mouse_px(lx, ly, down ? GMB_GFX_MOUSE_DOWN : GMB_GFX_MOUSE_UP, e.button.button, cwp, chp, gw, gh);
         }
         /* Oltre al sistema WINDOW, porta ai controlli TUI a celle SOLO i click (down/up):
          * il motion continuo riempirebbe la coda eventi e terrebbe l'app in un drain perenne. */
         { extern void gmb_tui_handle_mouse_cell(int, int, int);
           extern int gmb_tui_menu_any_open(void);
-          /* char_width/Height sono in PIXEL NATIVI, il mouse SDL in PUNTI (ALLOW_HIGHDPI):
-           * cella = punto * render_scale / char. Senza lo scale i click cadono a meta' cella. */
-          int _sc = c->render_scale > 0 ? c->render_scale : 1;
-          int tcx = (lx * _sc) / (c->char_width > 0 ? c->char_width : 1);
-          int tcy = (ly * _sc) / (c->char_height > 0 ? c->char_height : 1);
+          int tcx = lx / cwp;
+          int tcy = ly / chp;
           if (e.type == SDL_MOUSEBUTTONDOWN && e.button.windowID == wid) gmb_tui_handle_mouse_cell(tcx, tcy, 1);
           else if (e.type == SDL_MOUSEBUTTONUP && e.button.windowID == wid) gmb_tui_handle_mouse_cell(tcx, tcy, 2);
           else if (e.type == SDL_MOUSEMOTION && e.motion.windowID == wid && gmb_tui_menu_any_open()) gmb_tui_handle_mouse_cell(tcx, tcy, 0); }
     }
     if (gmb_winstmt_count() > 0) {
-        /* ripulisci il desktop (blu ░) prima di ridisegnare: niente scie nel drag/move. */
-        int bw = gmb_screen_width(c->buffer), bh = gmb_screen_height(c->buffer);
-        gmb_cell_color_t dfg = { 0, 0, 255, 0 }, dbg = { 0, 0, 170, 0 };
-        for (int y = 0; y < bh; y++) for (int x = 0; x < bw; x++)
-            gmb_screen_setchar(c->buffer, x, y, 0x2591, dfg, dbg);
+        /* ripulisci il desktop prima di ridisegnare (niente scie nel drag/move).
+         * UNICA implementazione (gmb_theme_paint_desktop): desktop + retino dal TEMA;
+         * prima erano fissi blu/▒, quindi il tema non arrivava alla SDLConsole. */
+        gmb_theme_paint_desktop(c->buffer);
         gmb_winstmt_render_all();
         gmb_console_statusbar_draw(c);
     }
     return quit;
 #else
     (void)c; return 0;
+#endif
+}
+
+/* Screenshot PNG della finestra console: renderizza lo stato corrente e legge i pixel
+ * dal renderer SDL (indipendente dallo z-order: funziona anche se la finestra è coperta).
+ * Usato dagli harness/demo per la verifica visiva; -1 se non disponibile. */
+int gmb_sdl_console_save_png(gmb_sdl_console_t* c, const char* path)
+{
+#ifdef GMB_GFX_SDL_PRESENT
+    extern int save_png_rgb24(const char* path, const uint32_t* px, int w, int h);
+    if (!c || !path) return -1;
+    if (!c->opened) gmb_sdl_console_open(c);
+    gmb_sdl_context_t* ctx = (gmb_sdl_context_t*)c->context;
+    if (!ctx || !ctx->ok || !ctx->renderer_handle) return -1;
+    gmb_sdl_console_render(c);
+    SDL_Renderer* r = (SDL_Renderer*)ctx->renderer_handle;
+    if (!c->texture) return -1;
+    /* Legge dalla TEXTURE della console (dopo il present il backbuffer è indefinito:
+     * leggere da lì dava un PNG completamente nero). */
+    if (SDL_SetRenderTarget(r, (SDL_Texture*)c->texture) != 0) return -1;
+    int w = 0, h = 0;
+    if (SDL_GetRendererOutputSize(r, &w, &h) != 0 || w <= 0 || h <= 0) { SDL_SetRenderTarget(r, NULL); return -1; }
+    unsigned char* rgba = (unsigned char*)malloc((size_t)w * (size_t)h * 4);
+    if (!rgba) { SDL_SetRenderTarget(r, NULL); return -1; }
+    if (SDL_RenderReadPixels(r, NULL, SDL_PIXELFORMAT_ARGB8888, rgba, w * 4) != 0)
+    { free(rgba); SDL_SetRenderTarget(r, NULL); return -1; }
+    SDL_SetRenderTarget(r, NULL);
+    uint32_t* px = (uint32_t*)malloc((size_t)w * (size_t)h * sizeof(uint32_t));
+    if (!px) { free(rgba); return -1; }
+    for (int i = 0; i < w * h; i++)
+    {
+        unsigned char b = rgba[(size_t)i * 4 + 0];
+        unsigned char g = rgba[(size_t)i * 4 + 1];
+        unsigned char rr = rgba[(size_t)i * 4 + 2];
+        px[i] = ((uint32_t)rr << 16) | ((uint32_t)g << 8) | (uint32_t)b;
+    }
+    int rc = save_png_rgb24(path, px, w, h);
+    free(px); free(rgba);
+    return rc;
+#else
+    (void)c; (void)path; return -1;
 #endif
 }

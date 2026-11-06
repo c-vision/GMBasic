@@ -121,10 +121,10 @@ int gmb_slider_render_line(gmb_slider_t* s, char* out, int cap)
     if (o < cap - 1) out[o++] = '[';
     for (int i = 0; i < pos && o + 3 <= cap - 1; i++) { out[o++] = (char)0xE2; out[o++] = (char)0x94; out[o++] = (char)0x80; }
     if (o + 3 <= cap - 1) { out[o++] = (char)0xE2; out[o++] = (char)0x96; out[o++] = (char)0x88; }
-    for (int i = 0; i < inner - pos && o + 3 <= cap - 1; i++) { out[o++] = (char)0xE2; out[o++] = (char)0x94; out[o++] = (char)0x80; }
-    /* C#: lunghezza = inner+3 = Width+1 -> troncata a Width (perde ']'). */
-    int chcount = 1 + pos + 1 + (inner - pos);
-    if (chcount < width && o < cap - 1) out[o++] = ']';
+    /* Traccia destra: inner-pos-1 segmenti, così `[`+pos+`█`+resto+`]` = Width esatto.
+     * Prima si perdeva la `]` (lunghezza Width+1 troncata: artefatto ereditato dal C#). */
+    for (int i = 0; i < inner - pos - 1 && o + 3 <= cap - 1; i++) { out[o++] = (char)0xE2; out[o++] = (char)0x94; out[o++] = (char)0x80; }
+    if (o < cap - 1) out[o++] = ']';
     out[o] = '\0';
     return o;
 }

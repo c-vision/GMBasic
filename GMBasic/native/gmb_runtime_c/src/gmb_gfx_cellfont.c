@@ -35,7 +35,7 @@ void gmb_gfx_cell_bg(int x, int y, int cw, int ch, uint32_t bg)
  * con qualunque font, a qualunque dimensione.
  *
  * Maschera: 1=su, 2=giu', 4=sinistra, 8=destra; il bit 16 chiede la linea DOPPIA. */
-static int cf_box_mask(uint32_t cp, int* dbl)
+int gmb_gfx_box_mask(uint32_t cp, int* dbl)
 {
     *dbl = 0;
     switch (cp) {
@@ -98,36 +98,56 @@ static int cf_box_mask(uint32_t cp, int* dbl)
     }
 }
 
-static void cf_box(int x, int y, int cw, int ch, int mask, int dbl, uint32_t fg)
+/* Segmenti del box-drawing in coordinate RELATIVE alla cella (0,0)-(cw,ch).
+ * geometria UNICA condivisa da renderer a pixel (cf_box) e SDLConsole (gmb_sdl_console.c).
+ * Le braccia si sovrappongono al centro e gli angoli "annidano" le due linee come nei
+ * glifi CP437 (╔: orizzontale alta -> verticale sinistra, orizzontale bassa -> verticale
+ * destra). Senza l'annidamento gli angoli doppi restavano APERTI (linea che non si unisce).
+ * Ritorna il numero di rettangoli (max 8); seg[] = {x,y,w,h}. */
+int gmb_gfx_box_segments(uint32_t cp, int cw, int ch, int seg[8][4])
+{
+    int dbl = 0, mask = gmb_gfx_box_mask(cp, &dbl);
+    if (!mask || cw <= 0 || ch <= 0) return 0;
+    int t  = (cw >= 12 || ch >= 20) ? 2 : 1;      /* spessore della linea */
+    int cx = cw / 2;                              /* centro orizzontale */
+    int cy = ch / 2;                              /* centro verticale */
+    int d  = dbl ? t + 1 : 0;                     /* distanza fra le due linee */
+    int o  = t / 2;                               /* centratura dello spessore */
+    int U  = cy - d - o, L = cy + d - o;          /* righe delle due orizzontali */
+    int LV = cx - d - o, RV = cx + d - o;         /* colonne delle due verticali */
+    int n = 0;
+
+    if (mask & (4 | 8))
+    {
+        int xU0, xU1, xL0, xL1;
+        if (mask & 4) { xU0 = 0; xL0 = 0; }
+        else { xU0 = (mask & 2) ? LV : RV; xL0 = (mask & 2) ? RV : LV; }
+        if (mask & 8) { xU1 = cw; xL1 = cw; }
+        else { xU1 = (mask & 2) ? RV + t : LV + t; xL1 = (mask & 2) ? LV + t : RV + t; }
+        if (xU1 > xU0 && n < 8) { seg[n][0] = xU0; seg[n][1] = U; seg[n][2] = xU1 - xU0; seg[n][3] = t; n++; }
+        if (dbl && xL1 > xL0 && n < 8) { seg[n][0] = xL0; seg[n][1] = L; seg[n][2] = xL1 - xL0; seg[n][3] = t; n++; }
+    }
+    if (mask & (1 | 2))
+    {
+        int yU0, yU1, yL0, yL1;
+        if (mask & 1) { yU0 = 0; yL0 = 0; }
+        else { yU0 = (mask & 8) ? U : L; yL0 = (mask & 8) ? L : U; }
+        if (mask & 2) { yU1 = ch; yL1 = ch; }
+        else { yU1 = (mask & 8) ? L + t : U + t; yL1 = (mask & 8) ? U + t : L + t; }
+        if (yU1 > yU0 && n < 8) { seg[n][0] = LV; seg[n][1] = yU0; seg[n][2] = t; seg[n][3] = yU1 - yU0; n++; }
+        if (dbl && yL1 > yL0 && n < 8) { seg[n][0] = RV; seg[n][1] = yL0; seg[n][2] = t; seg[n][3] = yL1 - yL0; n++; }
+    }
+    return n;
+}
+
+static void cf_box(int x, int y, int cw, int ch, uint32_t cp, uint32_t fg)
 {
     gmb_gfx_page_t* p = active_page();
     if (!p || cw <= 0 || ch <= 0) return;
-    int t  = (cw >= 12 || ch >= 20) ? 2 : 1;      /* spessore della linea */
-    int cx = x + cw / 2;                          /* centro orizzontale della cella */
-    int cy = y + ch / 2;                          /* centro verticale della cella */
-    int d  = dbl ? t + 1 : 0;                     /* distanza fra le due linee del "doppio" */
-    int o  = t / 2;                               /* centratura dello spessore */
-
-    if (mask & 4) {                               /* verso sinistra */
-        int w = cx - x;
-        if (!dbl) cf_rect(p, x, cy - o, w, t, fg);
-        else { cf_rect(p, x, cy - d - o, w, t, fg); cf_rect(p, x, cy + d - o, w, t, fg); }
-    }
-    if (mask & 8) {                               /* verso destra */
-        int w = (x + cw) - cx;
-        if (!dbl) cf_rect(p, cx, cy - o, w, t, fg);
-        else { cf_rect(p, cx, cy - d - o, w, t, fg); cf_rect(p, cx, cy + d - o, w, t, fg); }
-    }
-    if (mask & 1) {                               /* verso l'alto */
-        int h = cy - y;
-        if (!dbl) cf_rect(p, cx - o, y, t, h, fg);
-        else { cf_rect(p, cx - d - o, y, t, h, fg); cf_rect(p, cx + d - o, y, t, h, fg); }
-    }
-    if (mask & 2) {                               /* verso il basso */
-        int h = (y + ch) - cy;
-        if (!dbl) cf_rect(p, cx - o, cy, t, h, fg);
-        else { cf_rect(p, cx - d - o, cy, t, h, fg); cf_rect(p, cx + d - o, cy, t, h, fg); }
-    }
+    int seg[8][4];
+    int n = gmb_gfx_box_segments(cp, cw, ch, seg);
+    for (int i = 0; i < n; i++)
+        cf_rect(p, x + seg[i][0], y + seg[i][1], seg[i][2], seg[i][3], fg);
 }
 
 /* Disegna SOLO il glifo (sfondo gia' riempito). */
@@ -136,8 +156,8 @@ void gmb_gfx_cell_glyph(int x, int y, int cw, int ch, uint32_t cp, uint32_t fg)
     if (cp == 0 || cp == ' ') return;
 
     /* 1. box-drawing: SEMPRE procedurale (nessuna dipendenza dalla copertura del font). */
-    { int dbl = 0, mask = cf_box_mask(cp, &dbl);
-      if (mask) { cf_box(x, y, cw, ch, mask, dbl, fg); return; } }
+    { int dbl = 0, mask = gmb_gfx_box_mask(cp, &dbl);
+      if (mask) { cf_box(x, y, cw, ch, cp, fg); return; } }
 
     extern int gmb_console_mode_get(void);
     if (gmb_console_mode_get() == 1) {   /* %C64: PETSCII + vertical-fill */

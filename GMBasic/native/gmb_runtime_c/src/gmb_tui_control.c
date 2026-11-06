@@ -55,7 +55,12 @@ void gmb_control_draw(gmb_control_t* c, gmb_screen_buffer_t* buf)
     /* Il render e' deciso dal kind cachato alla creazione (nessuna risalita del parent). */
     if (c->draw_px_fn && c->window_kind == GMB_WIN_GRAPHICS) { c->draw_px_fn(c->user, c); return; }
     GMB_GFX_SURFACE_AUTOATTACH(buf);
+    /* Palette TV per-tipo (no-op sugli altri temi): si applica al disegno e si ripristina,
+     * così lo stile esplicito del controllo non viene perso. */
+    gmb_control_style_t saved = c->style;
+    gmb_tui_apply_tv_style(c);
     if (c->draw_fn) c->draw_fn(c->user, c, buf);
+    c->style = saved;
 }
 
 bool gmb_control_handle_key(gmb_control_t* c, int key)

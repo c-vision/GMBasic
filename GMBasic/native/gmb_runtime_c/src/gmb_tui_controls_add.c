@@ -49,7 +49,7 @@ static void tui_set_arr(const char (*tmp)[64], int n, const char* arr[64])
 { for (int i = 0; i < n && i < 64; i++) arr[i] = tmp[i]; }
 
 gmb_control_t* gmb_tui_add_button(int x, int y, int w, const char* label)
-{ gmb_button_t* c = (gmb_button_t*)calloc(1, sizeof(*c)); if (!c) return NULL; gmb_button_init(c, x, y, w, label); c->ctrl.ctrl_kind = GMB_CK_NONE; gmb_tui_control_add(&c->ctrl); return &c->ctrl; }
+{ gmb_button_t* c = (gmb_button_t*)calloc(1, sizeof(*c)); if (!c) return NULL; gmb_button_init(c, x, y, w, label); c->ctrl.ctrl_kind = GMB_CK_BUTTON; gmb_tui_control_add(&c->ctrl); return &c->ctrl; }
 
 gmb_control_t* gmb_tui_add_checkbox(int x, int y, int w, const char* label)
 { gmb_checkbox_t* c = (gmb_checkbox_t*)calloc(1, sizeof(*c)); if (!c) return NULL; gmb_checkbox_init(c, x, y, w, label); c->ctrl.ctrl_kind = GMB_CK_CHECKBOX; gmb_tui_control_add(&c->ctrl); return &c->ctrl; }
