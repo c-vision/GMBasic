@@ -48,6 +48,7 @@ static void toggle_draw_px(void* u, gmb_control_t* c)
 }
 void gmb_toggle_button_init(gmb_toggle_button_t* t, int x, int y, int w, const char* caption)
 {
+    memset(t, 0, sizeof(*t));
     gmb_control_init(&t->ctrl, "", x, y, w, 1, toggle_draw, toggle_key);
     t->ctrl.draw_px_fn = toggle_draw_px;
     t->ctrl.ctrl_kind = GMB_CK_TOGGLE;

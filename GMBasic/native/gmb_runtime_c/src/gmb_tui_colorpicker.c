@@ -95,6 +95,7 @@ static void colorpicker_draw_px(void* u, gmb_control_t* c)
 }
 void gmb_color_picker_init(gmb_color_picker_t* p, int x, int y, int w, int h)
 {
+    memset(p, 0, sizeof(*p));
     gmb_control_init(&p->ctrl, "", x, y, w, h, colorpicker_draw, colorpicker_key);
     p->ctrl.draw_px_fn = colorpicker_draw_px;
     p->ctrl.ctrl_kind = GMB_CK_COLORPICKER;

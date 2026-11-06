@@ -43,6 +43,7 @@ static bool spinner_click(void* u, gmb_control_t* c, int x, int y)
 void gmb_spinner_init(gmb_spinner_t* s, int x, int y, int w)
 {
     memset(s, 0, sizeof(*s));
+    memset(s, 0, sizeof(*s));
     gmb_control_init(&s->ctrl, "", x, y, w, 1, spinner_draw, NULL);
     s->ctrl.draw_px_fn = gmb_px_renderer_get(GMB_CK_SPINNER);
     s->ctrl.handle_click_fn = spinner_click;

@@ -95,6 +95,7 @@ static bool alertbox_mouse(void* u, gmb_control_t* c, const gmb_mouse_action_t* 
 }
 void gmb_alert_box_init(gmb_alert_box_t* a, int x, int y, int w, int h)
 {
+    memset(a, 0, sizeof(*a));
     gmb_control_init(&a->ctrl, "", x, y, w, h, alertbox_draw, alertbox_key);
     a->ctrl.handle_mouse_fn = alertbox_mouse;
     a->ctrl.draw_px_fn = gmb_px_renderer_get(GMB_CK_ALERTBOX);

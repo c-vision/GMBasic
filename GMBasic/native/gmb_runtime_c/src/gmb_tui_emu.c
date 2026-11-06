@@ -21,6 +21,7 @@ static gmb_emu_cell_t emu_blank(gmb_emu_grid_t* g)
 void gmb_emu_grid_init(gmb_emu_grid_t* g, int cols, int rows)
 {
     memset(g, 0, sizeof(*g));
+    memset(g, 0, sizeof(*g));
     if (cols > GMB_EMU_MAX_COLS) cols = GMB_EMU_MAX_COLS;
     if (rows > GMB_EMU_MAX_ROWS) rows = GMB_EMU_MAX_ROWS;
     if (cols < 1) cols = 1;
@@ -193,6 +194,7 @@ void gmb_emu_grid_swap_alt_screen(gmb_emu_grid_t* g, bool on)
 
 void gmb_emulator_init(gmb_emulator_t* e, int cols, int rows)
 {
+    memset(e, 0, sizeof(*e));
     memset(e, 0, sizeof(*e));
     gmb_emu_grid_init(&e->grid, cols, rows);
     memset(&e->cur_style, 0, sizeof(e->cur_style));

@@ -34,13 +34,14 @@ static void textinput_draw(void* u, gmb_control_t* c, gmb_screen_buffer_t* buf)
     gmb_screen_setstring(buf, c->x, c->y, fill, fg, bg);
     char shown[512];
     gmb_text_input_render_line(t, shown, (int)sizeof(shown));
-    for (int i = 0; i < c->width && i < (int)strlen(shown); i++)
-        gmb_screen_setchar(buf, c->x + i, c->y, (unsigned char)shown[i], fg, bg);
-    if (c->focused && t->cursor < c->width && t->blink_on)
+    /* TV TInputLine: il testo inizia a col 1 (una cella di margine). */
+    for (int i = 0; i < c->width - 1 && i < (int)strlen(shown); i++)
+        gmb_screen_setchar(buf, c->x + 1 + i, c->y, (unsigned char)shown[i], fg, bg);
+    if (c->focused && t->cursor < c->width - 1 && t->blink_on)
     {
         int sl = (int)strlen(shown);
         uint32_t ch = t->cursor < sl ? (unsigned char)shown[t->cursor] : (unsigned char)c->style.fill_char;
-        gmb_screen_setchar(buf, c->x + t->cursor, c->y, ch, bg, fg);
+        gmb_screen_setchar(buf, c->x + 1 + t->cursor, c->y, ch, bg, fg);
     }
 }
 static bool textinput_key(void* u, gmb_control_t* c, int key)
@@ -141,6 +142,7 @@ static void textinput_draw_px(void* u, gmb_control_t* c)
 
 void gmb_text_input_init(gmb_text_input_t* t, int x, int y, int w)
 {
+    memset(t, 0, sizeof(*t));
     gmb_control_init(&t->ctrl, "", x, y, w, 1, textinput_draw, textinput_key);
     t->ctrl.handle_click_fn = textinput_click;
     t->ctrl.draw_px_fn = textinput_draw_px;

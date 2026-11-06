@@ -77,6 +77,7 @@ static void progress_draw_px(void* u, gmb_control_t* c)
 }
 void gmb_progress_bar_init(gmb_progress_bar_t* p, int x, int y, int w)
 {
+    memset(p, 0, sizeof(*p));
     gmb_control_init(&p->ctrl, "", x, y, w, 1, progress_draw, NULL);
     p->ctrl.draw_px_fn = progress_draw_px;
     p->ctrl.user = p;

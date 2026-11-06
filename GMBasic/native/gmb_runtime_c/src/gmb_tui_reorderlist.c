@@ -159,6 +159,7 @@ static void reorderlistbox_draw_px(void* u, gmb_control_t* c)
 }
 void gmb_reorder_listbox_init(gmb_reorder_listbox_t* r, int x, int y, int w, int h)
 {
+    memset(r, 0, sizeof(*r));
     gmb_control_init(&r->ctrl, "", x, y, w, h, reorderlistbox_draw, reorderlistbox_key);
     r->ctrl.draw_px_fn = reorderlistbox_draw_px;
     r->ctrl.handle_click_fn = reorderlistbox_click;

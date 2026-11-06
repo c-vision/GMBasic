@@ -11,6 +11,7 @@
 void gmb_question_init(gmb_question_t* q, const char* name, int kind)
 {
     memset(q, 0, sizeof(*q));
+    memset(q, 0, sizeof(*q));
     if (name) snprintf(q->name, sizeof(q->name), "%s", name);
     q->kind = kind;
     snprintf(q->message, sizeof(q->message), "%s: ", name ? name : "");

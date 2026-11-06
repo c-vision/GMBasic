@@ -155,6 +155,7 @@ static bool textarea_click(void* u, gmb_control_t* c, int x, int y)
 }
 void gmb_text_area_init(gmb_text_area_t* t, int x, int y, int w, int h)
 {
+    memset(t, 0, sizeof(*t));
     gmb_control_init(&t->ctrl, "", x, y, w, h, textarea_draw, textarea_key);
     t->ctrl.handle_click_fn = textarea_click;
     t->ctrl.user = t;

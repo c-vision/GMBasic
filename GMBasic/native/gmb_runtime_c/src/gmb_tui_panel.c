@@ -56,6 +56,7 @@ static void panel_draw(void* u, gmb_control_t* c, gmb_screen_buffer_t* buf)
 }
 void gmb_panel_init(gmb_panel_t* p, int x, int y, int w, int h, const char* title)
 {
+    memset(p, 0, sizeof(*p));
     gmb_control_init(&p->ctrl, "", x, y, w, h, panel_draw, NULL);
     p->ctrl.user = p;
     snprintf(p->title, sizeof(p->title), "%s", title ? title : "");

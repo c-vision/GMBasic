@@ -30,6 +30,7 @@ void gmb_control_init(gmb_control_t* c, const char* id, int x, int y, int w, int
                       bool (*key)(void*, gmb_control_t*, int))
 {
     memset(c, 0, sizeof(*c));
+    memset(c, 0, sizeof(*c));
     if (id) snprintf(c->id, sizeof(c->id), "%s", id);
     c->x = x; c->y = y; c->width = w; c->height = h;
     c->visible = true;
@@ -142,6 +143,7 @@ void gmb_delta_set_all(gmb_delta_t* d, int len) { d->start = 0; d->end = len; }
 
 void gmb_damage_tracker_init(gmb_damage_tracker_t* t, int height)
 {
+    memset(t, 0, sizeof(*t));
     t->height = height;
     t->start = 0;
     t->end = 0;

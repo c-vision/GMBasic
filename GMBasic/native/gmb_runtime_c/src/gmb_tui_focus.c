@@ -13,6 +13,7 @@
 void gmb_focus_manager_init(gmb_focus_manager_t* f)
 {
     memset(f, 0, sizeof(*f));
+    memset(f, 0, sizeof(*f));
     f->current = -1;
 }
 

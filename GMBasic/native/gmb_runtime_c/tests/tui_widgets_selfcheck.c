@@ -53,7 +53,13 @@ int main(void)
     gmb_screen_buffer_t* buf = gmb_screen_new(20, 4);
     gmb_screen_clear(buf, (gmb_cell_color_t){0, 0, 0}, (gmb_cell_color_t){0, 0, 0});
     gmb_control_draw(&btn.ctrl, buf);
-    CHECK(cell_ch(buf, 0, 0) == '[', "button draw '['");
+    CHECK(cell_ch(buf, 0, 0) == ' ', "button draw: riga titolo TV (markers off)");
+    /* TV: marker `[ ]` solo con showMarkers (default false) */
+    gmb_tui_show_markers = 1;
+    gmb_screen_clear(buf, (gmb_cell_color_t){0, 0, 0}, (gmb_cell_color_t){0, 0, 0});
+    gmb_control_draw(&btn.ctrl, buf);
+    CHECK(cell_ch(buf, 1, 0) == '[', "button draw '[' (markers on)");
+    gmb_tui_show_markers = 0;
     /* "ok" centrato in width 10 -> uppercase "OK" */
     char line[32];
     gmb_button_render_line(&btn, line, (int)sizeof(line));
@@ -66,7 +72,7 @@ int main(void)
     gmb_text_input_set_text(&ti, "ab");
     gmb_screen_clear(buf, (gmb_cell_color_t){0, 0, 0}, (gmb_cell_color_t){0, 0, 0});
     gmb_control_draw(&ti.ctrl, buf);
-    CHECK(cell_ch(buf, 0, 1) == 'A' && cell_ch(buf, 1, 1) == 'B', "textinput uppercase shown");
+    CHECK(cell_ch(buf, 1, 1) == 'A' && cell_ch(buf, 2, 1) == 'B', "textinput uppercase shown");
 
     /* 4) ComboBox: box, popup, tasti, click */
     gmb_combobox_t cb; memset(&cb, 0, sizeof(cb));
@@ -77,7 +83,7 @@ int main(void)
     gmb_screen_clear(buf, (gmb_cell_color_t){0, 0, 0}, (gmb_cell_color_t){0, 0, 0});
     gmb_control_draw(&cb.ctrl, buf);
     CHECK(cell_ch(buf, 0, 0) == 'a', "combobox box shows selected");
-    CHECK(cell_ch(buf, 9, 0) == 0x25BC, "combobox arrow at X+Width-1");
+    CHECK(cell_ch(buf, 8, 0) == 0x2193 && cell_ch(buf, 9, 0) == 0x258C, "combobox icon ▐↓▌ (TV THistory)");
     /* Apre con ENTER; highlight = Selected */
     CHECK(gmb_control_handle_key(&cb.ctrl, GMB_K_ENTER), "combobox ENTER opens");
     CHECK(cb.open && cb.highlight == 0, "combobox open+highlight=0");
@@ -272,7 +278,7 @@ int main(void)
     gmb_screen_set_sink(buf, &rs);
     CHECK(gmb_screen_has_sink(buf), "surface: sink attached");
     gmb_control_draw(&sb.ctrl, buf);
-    CHECK(rec.puts > 0 && rec.x == 0 && rec.y == 0 && rec.ch == '[', "surface: widget drawn via sink");
+    CHECK(rec.puts > 0 && rec.x == 0 && rec.y == 0 && rec.ch == ' ', "surface: widget drawn via sink");
     gmb_screen_detach_sink(buf);
     CHECK(!gmb_screen_has_sink(buf), "surface: sink detached");
     gmb_screen_attach_gfx(buf, 0, 0, 8, 16);

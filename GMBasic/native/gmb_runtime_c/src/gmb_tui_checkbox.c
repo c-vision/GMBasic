@@ -44,6 +44,7 @@ static void checkbox_draw_px(void* u, gmb_control_t* c)
 }
 void gmb_checkbox_init(gmb_checkbox_t* c, int x, int y, int w, const char* label)
 {
+    memset(c, 0, sizeof(*c));
     gmb_control_init(&c->ctrl, "", x, y, w, 1, checkbox_draw, checkbox_key);
     c->ctrl.handle_click_fn = checkbox_click;
     c->ctrl.user = c;
@@ -54,7 +55,8 @@ void gmb_checkbox_init(gmb_checkbox_t* c, int x, int y, int w, const char* label
 void gmb_checkbox_set_checked(gmb_checkbox_t* c, bool v) { c->checked = v; }
 int gmb_checkbox_render_line(gmb_checkbox_t* c, char* out, int cap)
 {
-    int o = snprintf(out, cap, "%s %s", c->checked ? "[X]" : "[ ]", c->label);
+    /* TV TCheckBoxes: icona " [ ] " — testo a col 5, spazio iniziale compreso. */
+    int o = snprintf(out, cap, " %s %s", c->checked ? "[X]" : "[ ]", c->label);
     if (o > c->ctrl.width) o = c->ctrl.width;
     else for (int i = o; i < c->ctrl.width && i < cap - 1; i++) out[o++] = ' ';
     out[o] = '\0';

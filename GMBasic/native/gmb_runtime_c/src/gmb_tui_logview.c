@@ -130,6 +130,7 @@ static void logview_draw_px(void* u, gmb_control_t* c)
 }
 void gmb_log_view_init(gmb_log_view_t* l, int x, int y, int w, int h)
 {
+    memset(l, 0, sizeof(*l));
     gmb_control_init(&l->ctrl, "", x, y, w, h, logview_draw, logview_key);
     l->ctrl.ctrl_kind = GMB_CK_LOGVIEW;
     l->ctrl.draw_px_fn = logview_draw_px;

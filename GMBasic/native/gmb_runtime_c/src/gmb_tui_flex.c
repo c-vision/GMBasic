@@ -11,6 +11,7 @@
 void gmb_flex_item_init(gmb_flex_item_t* it)
 {
     memset(it, 0, sizeof(*it));
+    memset(it, 0, sizeof(*it));
     it->shrink = 1.0f;
     it->max = 2147483647;
 }

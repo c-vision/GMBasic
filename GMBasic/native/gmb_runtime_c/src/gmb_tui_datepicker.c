@@ -165,6 +165,7 @@ static void datepicker_draw_px(void* u, gmb_control_t* c)
 }
 void gmb_date_picker_init(gmb_date_picker_t* d, int x, int y, int w)
 {
+    memset(d, 0, sizeof(*d));
     gmb_control_init(&d->ctrl, "", x, y, w, 1, datepicker_draw, datepicker_key);
     d->ctrl.draw_px_fn = datepicker_draw_px;
     d->ctrl.ctrl_kind = GMB_CK_DATEPICKER;
@@ -299,6 +300,7 @@ static bool panel_mouse_w(void* u, gmb_control_t* c, const gmb_mouse_action_t* a
 }
 void gmb_panel_w_init(gmb_panel_w_t* p, int x, int y, int w, int h)
 {
+    memset(p, 0, sizeof(*p));
     gmb_control_init(&p->ctrl, "", x, y, w, h, panel_draw_w, NULL);
     p->ctrl.handle_mouse_fn = panel_mouse_w;
     p->ctrl.user = p;
@@ -370,6 +372,7 @@ static bool window_mouse(void* u, gmb_control_t* c, const gmb_mouse_action_t* a)
 }
 void gmb_window_init(gmb_window_t* w, int x, int y, int ww, int h)
 {
+    memset(w, 0, sizeof(*w));
     gmb_control_init(&w->ctrl, "", x, y, ww, h, window_draw, NULL);
     w->ctrl.handle_mouse_fn = window_mouse;
     w->ctrl.user = w;

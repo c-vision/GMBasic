@@ -71,6 +71,7 @@ static void dashboard_draw_px(void* u, gmb_control_t* c)
 void gmb_dashboard_init(gmb_dashboard_t* d, int x, int y, int w, int h)
 {
     memset(d, 0, sizeof(*d));
+    memset(d, 0, sizeof(*d));
     gmb_control_init(&d->ctrl, "", x, y, w, h, dashboard_draw, dashboard_key);
     d->ctrl.draw_px_fn = dashboard_draw_px;
     d->ctrl.user = d;

@@ -13,6 +13,7 @@
 void gmb_repl_init(gmb_repl_t* r, const char* prompt)
 {
     memset(r, 0, sizeof(*r));
+    memset(r, 0, sizeof(*r));
     snprintf(r->prompt, sizeof(r->prompt), "%s", prompt ? prompt : "> ");
     r->history_count = 0;
 }

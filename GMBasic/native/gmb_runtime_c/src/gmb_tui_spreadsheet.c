@@ -35,6 +35,7 @@ int gmb_column_width_resolve(gmb_column_width_t cw, int max_width)
 }
 void gmb_column_def_init(gmb_column_def_t* c, const char* title, gmb_column_width_t width)
 {
+    memset(c, 0, sizeof(*c));
     snprintf(c->title, sizeof(c->title), "%s", title ? title : "");
     c->width = width;
     c->alignment = GMB_HALIGN_LEFT;
@@ -43,6 +44,7 @@ int gmb_column_def_resolved_width(gmb_column_def_t* c, int max_width) { return g
 
 void gmb_cell_cursor_init(gmb_cell_cursor_t* c)
 {
+    memset(c, 0, sizeof(*c));
     memset(c, 0, sizeof(*c));
 }
 void gmb_cell_cursor_move_left(gmb_cell_cursor_t* c, int n, int rows, int cols)

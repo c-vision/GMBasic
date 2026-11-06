@@ -172,6 +172,7 @@ static bool contextmenu_click_px(void* u, gmb_control_t* c, int x, int y)
 
 void gmb_context_menu_init(gmb_context_menu_t* m, int x, int y, int w, int h)
 {
+    memset(m, 0, sizeof(*m));
     (void)h;
     gmb_control_init(&m->ctrl, "", x, y, w, h, contextmenu_draw, contextmenu_key);
     m->ctrl.user = m;

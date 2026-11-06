@@ -14,8 +14,10 @@
 gmb_theme_t gmb_theme_turbo(void)
 {
     gmb_theme_t t;
+    memset(&t, 0, sizeof t);
     /* SPECCHIO ESATTO di common/ClipperLib/Controls/Theme.cs -> Turbo(). */
     t.desktop_bg = crgb(0, 0, 170);      /* DesktopBg: blu Borland */
+    t.desktop_fg = crgb(255, 255, 255);  /* retino ░ bianco sul blu (TV 1.0/TP7) */
     t.window_bg = crgb(170, 170, 170);   /* WindowBg: grigio chiaro (finestre/controlli) */
     t.title_focus = crgb(170, 170, 170); /* TitleFocus */
     t.title_blur = crgb(85, 85, 85);     /* TitleBlur */
@@ -41,6 +43,38 @@ gmb_theme_t gmb_theme_turbo(void)
     return t;
 }
 
+/* Turbo Vision 2.0 (magiblot) — palette "Borland" di default: desktop GRIGIO con retino
+ * blu, finestre BLU con testo grigio chiaro e cornice bianca, dialog GRIGI con testo nero.
+ * (turbo = look TV 1.0/TP7: desktop blu, finestre grigie.) */
+gmb_theme_t gmb_theme_borland(void)
+{
+    gmb_theme_t t;
+    memset(&t, 0, sizeof t);
+    t.desktop_bg = crgb(170, 170, 170);  /* cpAppColor[1] = 0x71: bg 7, retino fg 1 */
+    t.desktop_fg = crgb(0, 0, 170);
+    t.window_bg = crgb(0, 0, 170);       /* cpBlueWindow[1] -> 0x17: bg blu */
+    t.text = crgb(170, 170, 170);        /* testo finestra: grigio chiaro (fg 7) */
+    t.title_focus = crgb(0, 0, 170);     /* titolo sulla finestra blu */
+    t.title_blur = crgb(0, 0, 170);
+    t.title_fg = crgb(255, 255, 255);
+    t.border = crgb(255, 255, 255);      /* cornice bianca su blu */
+    t.dim = crgb(85, 85, 85);
+    t.ctrl_fg = crgb(0, 0, 0);
+    t.close_fg = crgb(255, 255, 255);    /* icone col colore della cornice (TV) */
+    t.accent = crgb(0, 0, 170);
+    t.active_bg = crgb(0, 0, 170);
+    t.shadow = crgb(85, 85, 85);
+    t.desktop_pattern = "\xE2\x96\x91";  /* ░ */
+    t.head_bg = crgb(0, 0, 170); t.head_fg = crgb(255, 255, 255);
+    t.editor_bg = crgb(0, 0, 170); t.editor_fg = crgb(255, 255, 255); t.editor_frame = crgb(0, 170, 170);
+    t.menu_bg = crgb(170, 170, 170); t.menu_fg = crgb(0, 0, 0);
+    t.dlg_bg = crgb(170, 170, 170); t.dlg_fg = crgb(0, 0, 0);   /* cpGrayDialog: grigio/nero */
+    t.stat_bg = crgb(170, 170, 170); t.stat_fg = crgb(0, 0, 0);
+    t.cal_sel_bg = crgb(0, 0, 170); t.cal_sel_fg = crgb(255, 255, 255);
+    t.cal_today_bg = crgb(255, 255, 85); t.cal_today_fg = crgb(0, 0, 170);
+    return t;
+}
+
 /* Colori per-vista dal tema. kind: 0=editor, 1=menu, 2=dialog, 3=status. */
 void gmb_theme_kind(const gmb_theme_t* t, int kind, gmb_cell_color_t* fg, gmb_cell_color_t* bg)
 {
@@ -54,13 +88,14 @@ void gmb_theme_kind(const gmb_theme_t* t, int kind, gmb_cell_color_t* fg, gmb_ce
         case 2: kf = t->dlg_fg;    kb = t->dlg_bg;    break;
         case 3: kf = t->stat_fg;   kb = t->stat_bg;   break;
     }
-    *fg = (kf.r || kf.g || kf.b) ? kf : t->text;
+    *fg = (kf.r || kf.g || kf.b) ? kf : ((kb.r || kb.g || kb.b) ? kf : t->text);
     *bg = (kb.r || kb.g || kb.b) ? kb : t->window_bg;
 }
 
 gmb_theme_t gmb_theme_qbasic(void)
 {
     gmb_theme_t t;
+    memset(&t, 0, sizeof t);
     t.desktop_bg = crgb(0, 0, 128);
     t.window_bg = crgb(0, 0, 128);
     t.title_focus = crgb(0, 128, 128);
@@ -81,6 +116,7 @@ gmb_theme_t gmb_theme_qbasic(void)
 gmb_theme_t gmb_theme_midnight(void)
 {
     gmb_theme_t t;
+    memset(&t, 0, sizeof t);
     t.desktop_bg = crgb(44, 46, 50);
     t.window_bg = crgb(17, 20, 29);
     t.title_focus = crgb(29, 36, 51);
@@ -101,6 +137,7 @@ gmb_theme_t gmb_theme_midnight(void)
 gmb_theme_t gmb_theme_nord(void)
 {
     gmb_theme_t t;
+    memset(&t, 0, sizeof t);
     t.desktop_bg = crgb(46, 52, 64);
     t.window_bg = crgb(36, 41, 51);
     t.title_focus = crgb(59, 66, 82);
@@ -122,6 +159,7 @@ gmb_theme_t gmb_theme_nord(void)
 gmb_theme_t gmb_theme_light(void)
 {
     gmb_theme_t t;
+    memset(&t, 0, sizeof t);
     t.desktop_bg   = crgb(219, 234, 254);
     t.window_bg    = crgb(255, 255, 255);
     t.title_focus  = crgb(30, 58, 138);
@@ -145,6 +183,7 @@ gmb_theme_t gmb_theme_light(void)
 gmb_theme_t gmb_theme_soft(void)
 {
     gmb_theme_t t;
+    memset(&t, 0, sizeof t);
     t.desktop_bg   = crgb(233, 237, 241);   /* pagina */
     t.window_bg    = crgb(244, 246, 248);   /* superficie */
     t.title_focus  = crgb(246, 168, 0);     /* ambra */
@@ -167,6 +206,7 @@ gmb_theme_t gmb_theme_soft(void)
 gmb_theme_t gmb_theme_dracula(void)
 {
     gmb_theme_t t;
+    memset(&t, 0, sizeof t);
     t.desktop_bg = crgb(54, 57, 76);
     t.window_bg = crgb(40, 42, 54);
     t.title_focus = crgb(68, 71, 90);
@@ -187,6 +227,7 @@ gmb_theme_t gmb_theme_dracula(void)
 gmb_theme_t gmb_theme_monokai(void)
 {
     gmb_theme_t t;
+    memset(&t, 0, sizeof t);
     t.desktop_bg = crgb(39, 40, 34);
     t.window_bg = crgb(46, 47, 41);
     t.title_focus = crgb(62, 61, 50);
@@ -207,6 +248,7 @@ gmb_theme_t gmb_theme_monokai(void)
 gmb_theme_t gmb_theme_solarized_dark(void)
 {
     gmb_theme_t t;
+    memset(&t, 0, sizeof t);
     t.desktop_bg = crgb(0, 43, 54);
     t.window_bg = crgb(7, 54, 66);
     t.title_focus = crgb(38, 139, 210);
@@ -227,6 +269,7 @@ gmb_theme_t gmb_theme_solarized_dark(void)
 gmb_theme_t gmb_theme_retro_green(void)
 {
     gmb_theme_t t;
+    memset(&t, 0, sizeof t);
     t.desktop_bg = crgb(0, 20, 0);
     t.window_bg = crgb(0, 30, 0);
     t.title_focus = crgb(0, 80, 0);
@@ -247,6 +290,7 @@ gmb_theme_t gmb_theme_retro_green(void)
 gmb_theme_t gmb_theme_amber(void)
 {
     gmb_theme_t t;
+    memset(&t, 0, sizeof t);
     t.desktop_bg = crgb(20, 10, 0);
     t.window_bg = crgb(35, 18, 0);
     t.title_focus = crgb(80, 40, 0);
@@ -269,6 +313,7 @@ gmb_theme_t gmb_theme_amber(void)
 gmb_theme_t gmb_theme_neon(void)
 {
     gmb_theme_t t;
+    memset(&t, 0, sizeof t);
     t.desktop_bg   = crgb(243, 240, 255);
     t.window_bg    = crgb(255, 255, 255);
     t.title_focus  = crgb(139, 92, 246);
@@ -292,6 +337,7 @@ gmb_theme_t gmb_theme_neon(void)
 gmb_theme_t gmb_theme_glass(void)
 {
     gmb_theme_t t;
+    memset(&t, 0, sizeof t);
     t.desktop_bg   = crgb(14, 34, 64);
     t.window_bg    = crgb(20, 51, 95);
     t.title_focus  = crgb(79, 195, 247);
@@ -362,6 +408,7 @@ gmb_theme_t gmb_theme_named(const char* name)
     if (strcmp(n, "amber") == 0) return gmb_theme_amber();
     if (strcmp(n, "vb6") == 0 || strcmp(n, "visualbasic") == 0) return gmb_theme_vb6();
     if (strcmp(n, "turbo") == 0) return gmb_theme_turbo();
+    if (strcmp(n, "borland") == 0 || strcmp(n, "tv2") == 0 || strcmp(n, "turbo2") == 0) return gmb_theme_borland();
     if (strcmp(n, "light") == 0 || strcmp(n, "win") == 0 || strcmp(n, "windows") == 0) return gmb_theme_light();
     if (strcmp(n, "soft") == 0 || strcmp(n, "neumorph") == 0 || strcmp(n, "neumorphic") == 0) return gmb_theme_soft();
     if (strcmp(n, "neon") == 0 || strcmp(n, "violet") == 0) return gmb_theme_neon();
@@ -379,6 +426,8 @@ static char g_ui_theme_name[48] = "turbo";
 static void (*g_ui_theme_hook)(const char* name) = NULL;
 
 void gmb_ui_theme_on_change(void (*fn)(const char* name)) { g_ui_theme_hook = fn; }
+/* TV: TView::showMarkers è False di default (marker `[ ]` opzionali). */
+int gmb_tui_show_markers = 0;
 static void ui_theme_notify(void) { if (g_ui_theme_hook) g_ui_theme_hook(g_ui_theme_name); }
 
 static unsigned int ps_rgba(gmb_cell_color_t c, unsigned int a)
@@ -388,7 +437,9 @@ static unsigned int ps_rgba(gmb_cell_color_t c, unsigned int a)
 
 static int theme_is_classic(const char* n)
 {
-    return strcasecmp(n, "turbo") == 0 || strcasecmp(n, "qbasic") == 0
+    return strcasecmp(n, "turbo") == 0 || strcasecmp(n, "borland") == 0
+        || strcasecmp(n, "tv2") == 0 || strcasecmp(n, "turbo2") == 0
+        || strcasecmp(n, "qbasic") == 0
         || strcasecmp(n, "dos") == 0 || strcasecmp(n, "retrogreen") == 0
         || strcasecmp(n, "green") == 0 || strcasecmp(n, "matrix") == 0
         || strcasecmp(n, "amber") == 0 || strcasecmp(n, "vb6") == 0
@@ -397,7 +448,7 @@ static int theme_is_classic(const char* n)
 
 void gmb_ui_set_theme(const gmb_theme_t* t)
 {
-    if (t) { g_ui_theme = *t; g_ui_theme_set = 1; ui_theme_notify(); }
+    if (t) { g_ui_theme = *t; g_ui_theme_set = 1; gmb_control_style_set_theme(&g_ui_theme); ui_theme_notify(); }
 }
 
 void gmb_ui_set_theme_name(const char* name)
@@ -413,12 +464,13 @@ void gmb_ui_set_theme_name(const char* name)
     g_ui_theme = gmb_theme_named(name);
     g_ui_theme_set = 1;
     snprintf(g_ui_theme_name, sizeof(g_ui_theme_name), "%s", n[0] ? n : "turbo");
+    gmb_control_style_set_theme(&g_ui_theme);
     ui_theme_notify();
 }
 
 gmb_theme_t gmb_ui_theme(void)
 {
-    if (!g_ui_theme_set) { g_ui_theme = gmb_theme_default(); g_ui_theme_set = 1; }
+    if (!g_ui_theme_set) { g_ui_theme = gmb_theme_default(); g_ui_theme_set = 1; gmb_control_style_set_theme(&g_ui_theme); }
     return g_ui_theme;
 }
 
@@ -431,7 +483,8 @@ void gmb_theme_paint_desktop(gmb_screen_buffer_t* buf)
 {
     if (!buf) return;
     gmb_theme_t th = gmb_ui_theme();
-    gmb_cell_color_t fg = (th.head_fg.r || th.head_fg.g || th.head_fg.b) ? th.head_fg : th.text;
+    gmb_cell_color_t fg = (th.desktop_fg.r || th.desktop_fg.g || th.desktop_fg.b) ? th.desktop_fg
+                        : ((th.head_fg.r || th.head_fg.g || th.head_fg.b) ? th.head_fg : th.text);
     uint32_t pat = 0x2591;   /* ░ */
     const char* p = th.desktop_pattern;
     if (p && p[0] == ' ') pat = ' ';

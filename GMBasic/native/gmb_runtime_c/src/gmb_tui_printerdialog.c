@@ -193,6 +193,7 @@ static bool pd_click(void* u, gmb_control_t* c, int x, int y)
 void gmb_printer_dialog_init(gmb_printer_dialog_t* d)
 {
     memset(d, 0, sizeof(*d));
+    memset(d, 0, sizeof(*d));
     gmb_control_init(&d->ctrl, "", 0, 0, 40, 8, pd_draw, pd_key);
     d->ctrl.user = d;
     d->ctrl.handle_click_fn = pd_click;

@@ -114,6 +114,27 @@ static void ws_put_line(gmb_winstmt_t* w, const char* text)
 }
 
 /* ---- render sul buffer TUI globale (se presente) ---- */
+/* Tabella BIOS: serve per scurire le celle sotto l'ombra (TV usa l'attributo, non un blocco). */
+static const unsigned char WS_BIOS_RGB[16][3] = {
+    {0,0,0},{0,0,170},{0,170,0},{0,170,170},{170,0,0},{170,0,170},{170,85,0},{170,170,170},
+    {85,85,85},{85,85,255},{85,255,85},{85,255,255},{255,85,85},{255,85,255},{255,255,85},{255,255,255}
+};
+static void ws_shadow_cell(gmb_screen_buffer_t* buf, int x, int y)
+{
+    int bw = gmb_screen_width(buf), bh = gmb_screen_height(buf);
+    if (x < 0 || y < 0 || x >= bw || y >= bh) return;
+    gmb_screen_cell_t* c = &gmb_screen_cells(buf)[y * bw + x];
+    unsigned fr, fg, fb, br, bg, bb;
+    if (c->fg_palette >= 0 && c->fg_palette < 16) { fr = WS_BIOS_RGB[c->fg_palette][0]; fg = WS_BIOS_RGB[c->fg_palette][1]; fb = WS_BIOS_RGB[c->fg_palette][2]; }
+    else { fr = c->fg_rgb.r; fg = c->fg_rgb.g; fb = c->fg_rgb.b; }
+    if (c->bg_palette >= 0 && c->bg_palette < 16) { br = WS_BIOS_RGB[c->bg_palette][0]; bg = WS_BIOS_RGB[c->bg_palette][1]; bb = WS_BIOS_RGB[c->bg_palette][2]; }
+    else { br = c->bg_rgb.r; bg = c->bg_rgb.g; bb = c->bg_rgb.b; }
+    c->fg_rgb = (gmb_cell_color_t){ fr * 55 / 100, fg * 55 / 100, fb * 55 / 100, 0 };
+    c->bg_rgb = (gmb_cell_color_t){ br * 55 / 100, bg * 55 / 100, bb * 55 / 100, 0 };
+    c->fg_palette = -1;
+    c->bg_palette = -1;
+}
+
 static void ws_draw_core(gmb_winstmt_t* w)
 {
     gmb_clipper_state_t* st = gmb_clipper_global_state();
@@ -136,80 +157,72 @@ static void ws_draw_core(gmb_winstmt_t* w)
     /* Tema unico del runtime: finestre TUI e controlli condividono gli stessi colori. */
     gmb_theme_t th = gmb_ui_theme();
     int focused_ = (gmb_window_manager_focused(m) == w->id);
-    /* Title bar stile Turbo Vision (come la TUI di IL):
-     *   ┌─[■]────────╡ T ╞────────[▼][▲]─┐
-     * ■ chiudi, titolo tra ╡ ╞, [_][▲] zoom. I colori vengono dal TEMA attivo
-     * (gmb_ui_theme) — unica famiglia di finestre/controlli: nessun colore
-     * hardcoded. Attiva = title_focus/border, inattiva = title_blur/dim. */
-    {
-        gmb_cell_color_t frame = focused_ ? th.title_focus : th.title_blur;  /* sfondo cornice/titlebar */
-        gmb_cell_color_t bfg   = th.title_fg;                                 /* glifi della cornice */
-        gmb_cell_color_t tfg   = th.title_fg;                                 /* testo del titolo */
-        gmb_cell_color_t cls   = th.close_fg;                                 /* close/zoom */
-        int dbl = (w->frame == GMB_WM_BORDER_DOUBLE);
-        uint32_t Btl = dbl ? 0x2554 : 0x250C, Bh = dbl ? 0x2550 : 0x2500, Bv = dbl ? 0x2551 : 0x2502;
-        uint32_t Btr = dbl ? 0x2557 : 0x2510, Bbl = dbl ? 0x255A : 0x2514, Bbr = dbl ? 0x255D : 0x2518;
-        int x = left;
-        gmb_screen_setchar(st->buffer, x++, top, Btl, bfg, frame);       /* ┌ */
-        /* Close [■] sempre, salvo esclusione esplicita (GMB_WINSTMT_NOBUTTONS) */
-        if (!w->nobuttons) {
-            gmb_screen_setchar(st->buffer, x++, top, Bh, bfg, frame);
-            gmb_screen_setchar(st->buffer, x++, top, '[', bfg, frame);
-            gmb_screen_setchar(st->buffer, x++, top, 0x25A0, cls, frame);
-            gmb_screen_setchar(st->buffer, x++, top, ']', bfg, frame);
-        }
-        int zoomStart = w->nobuttons ? right : right - 6;
-        /* Titolo (OPZIONALE) centrato tra x e zoomStart, se c'e' spazio */
-        {
-            int tlen = (int)strlen(mw->title);
-            if (mw->title[0] && tlen > 0) {
-                int seg = tlen + 4;
-                if (zoomStart - x >= seg) {
-                    int tstart = x + ((zoomStart - x) - seg) / 2;
-                    while (x < tstart) gmb_screen_setchar(st->buffer, x++, top, Bh, bfg, frame);
-                    gmb_screen_setchar(st->buffer, x++, top, 0x2561, bfg, frame);
-                    gmb_screen_setchar(st->buffer, x++, top, ' ', tfg, frame);
-                    gmb_screen_setstring_n(st->buffer, x, top, mw->title, tlen, tfg, frame); x += tlen;
-                    gmb_screen_setchar(st->buffer, x++, top, ' ', tfg, frame);
-                    gmb_screen_setchar(st->buffer, x++, top, 0x255E, bfg, frame);
-                }
-            }
-        }
-        while (x < zoomStart) gmb_screen_setchar(st->buffer, x++, top, Bh, bfg, frame);
-        /* Zoom [_][▲/▼] sempre, salvo esclusione esplicita */
-        if (!w->nobuttons) {
-            gmb_screen_setchar(st->buffer, x++, top, '[', bfg, frame);
-            gmb_screen_setchar(st->buffer, x++, top, '_', tfg, frame);
-            gmb_screen_setchar(st->buffer, x++, top, ']', bfg, frame);
-            gmb_screen_setchar(st->buffer, x++, top, '[', bfg, frame);
-            gmb_screen_setchar(st->buffer, x++, top, w->maximized ? 0x25BC : 0x25B2, tfg, frame);
-            gmb_screen_setchar(st->buffer, x++, top, ']', bfg, frame);
-        }
-        while (x < right) gmb_screen_setchar(st->buffer, x++, top, Bh, bfg, frame);
-        gmb_screen_setchar(st->buffer, right, top, Btr, bfg, frame);      /* ┐ */
-        for (int y = top + 1; y < bottom; y++) {
-            gmb_screen_setchar(st->buffer, left, y, Bv, bfg, frame);     /* │ */
-            gmb_screen_setchar(st->buffer, right, y, Bv, bfg, frame);
-        }
-        for (int x2 = left + 1; x2 < right; x2++) gmb_screen_setchar(st->buffer, x2, bottom, Bh, bfg, frame);
-        gmb_screen_setchar(st->buffer, left, bottom, Bbl, bfg, frame);    /* └ */
-        gmb_screen_setchar(st->buffer, right, bottom, Bbr, bfg, frame);   /* ┘ */
+    int wcols = right - left + 1;
+    /* Turbo Vision 2.0 (TFrame::draw): cornice DOPPIA solo quando la finestra è attiva,
+     * SINGOLA quando non lo è; titolo ` Title ` centrato sulla linea (niente ╡ ╞);
+     * icone `[■]` a x=2 e zoom `[↑]` (o `[↕]` se massimizzata) a width-5, solo se attiva;
+     * angoli inferiori `└─` / `─┘` (drag icons) quando attiva. */
+    int rounded = (w->frame == GMB_WM_BORDER_ROUNDED);
+    int dbl = (!rounded && w->frame == GMB_WM_BORDER_DOUBLE && focused_);
+    gmb_cell_color_t frame_fg = focused_ ? th.border : th.dim;
+    gmb_cell_color_t body_fg = th.text;
+    gmb_cell_color_t body_bg = th.window_bg;
+    gmb_cell_color_t title_bg = focused_ ? th.title_focus : th.title_blur;
+    uint32_t Btl, Bh, Bv, Btr, Bbl, Bbr;
+    if (rounded) { Btl = 0x256D; Bh = 0x2500; Bv = 0x2502; Btr = 0x256E; Bbl = 0x2570; Bbr = 0x256F; }
+    else if (dbl) { Btl = 0x2554; Bh = 0x2550; Bv = 0x2551; Btr = 0x2557; Bbl = 0x255A; Bbr = 0x255D; }
+    else { Btl = 0x250C; Bh = 0x2500; Bv = 0x2502; Btr = 0x2510; Bbl = 0x2514; Bbr = 0x2518; }
+    /* corpo */
+    for (int yy = top + 1; yy < bottom; yy++)
+        for (int xx = left + 1; xx < right; xx++)
+            gmb_screen_setchar(st->buffer, xx, yy, ' ', body_fg, body_bg);
+    /* cornice */
+    gmb_screen_setchar(st->buffer, left, top, Btl, frame_fg, body_bg);
+    for (int x = left + 1; x < right; x++) gmb_screen_setchar(st->buffer, x, top, Bh, frame_fg, body_bg);
+    gmb_screen_setchar(st->buffer, right, top, Btr, frame_fg, body_bg);
+    for (int y = top + 1; y < bottom; y++) {
+        gmb_screen_setchar(st->buffer, left, y, Bv, frame_fg, body_bg);
+        gmb_screen_setchar(st->buffer, right, y, Bv, frame_fg, body_bg);
     }
-    /* interno: corpo finestra dal TEMA (text su window_bg). */
+    for (int x = left + 1; x < right; x++) gmb_screen_setchar(st->buffer, x, bottom, Bh, frame_fg, body_bg);
+    gmb_screen_setchar(st->buffer, left, bottom, Bbl, frame_fg, body_bg);
+    gmb_screen_setchar(st->buffer, right, bottom, Bbr, frame_fg, body_bg);
+    /* titolo centrato sulla larghezza (TV: cTitle), poi le icone lo possono coprire */
     {
-        gmb_cell_color_t iw_fg = th.text;
-        gmb_cell_color_t iw_bg = th.window_bg;
-        for (int yy = top + 1; yy < bottom; yy++)
-            for (int xx = left + 1; xx < right; xx++)
-                gmb_screen_setchar(st->buffer, xx, yy, ' ', iw_fg, iw_bg);
+        int tlen = (int)strlen(mw->title);
+        int maxl = wcols - 10;
+        if (tlen > maxl) tlen = maxl;
+        if (tlen > 0 && maxl > 0) {
+            int start = left + (wcols - tlen) / 2;
+            gmb_screen_setchar(st->buffer, start - 1, top, ' ', th.title_fg, title_bg);
+            gmb_screen_setstring_n(st->buffer, start, top, mw->title, tlen, th.title_fg, title_bg);
+            gmb_screen_setchar(st->buffer, start + tlen, top, ' ', th.title_fg, title_bg);
+        }
     }
-    /* ombra: colore ombra del tema (default nero), 1 cella a destra + in basso. */
+    /* icone TV: solo finestra ATTIVA */
+    if (focused_ && !w->nobuttons && wcols >= 10) {
+        gmb_screen_setchar(st->buffer, left + 2, top, '[', frame_fg, body_bg);
+        gmb_screen_setchar(st->buffer, left + 3, top, 0x25A0, frame_fg, body_bg);       /* ■ */
+        gmb_screen_setchar(st->buffer, left + 4, top, ']', frame_fg, body_bg);
+        gmb_screen_setchar(st->buffer, right - 4, top, '[', frame_fg, body_bg);
+        gmb_screen_setchar(st->buffer, right - 3, top, w->maximized ? 0x2195 : 0x2191, frame_fg, body_bg); /* ↕ / ↑ */
+        gmb_screen_setchar(st->buffer, right - 2, top, ']', frame_fg, body_bg);
+    }
+    /* angoli drag (TV: `└─` e `─┘` sulla finestra attiva) */
+    if (focused_ && wcols >= 6) {
+        gmb_screen_setchar(st->buffer, left, bottom, 0x2514, frame_fg, body_bg);
+        gmb_screen_setchar(st->buffer, left + 1, bottom, 0x2500, frame_fg, body_bg);
+        gmb_screen_setchar(st->buffer, right - 1, bottom, 0x2500, frame_fg, body_bg);
+        gmb_screen_setchar(st->buffer, right, bottom, 0x2518, frame_fg, body_bg);
+    }
+    /* ombra TV: 2 colonne a destra + 1 riga sotto, come attributo SCURITO del contenuto
+     * (shadowAttr), non come blocco nero. */
     if (w->shadow) {
-        gmb_cell_color_t sh_bg = th.shadow;
-        for (int y = top + 1; y <= bottom + 1 && y < bh; y++)
-            if (right + 1 < bw) gmb_screen_setchar(st->buffer, right + 1, y, ' ', sh_bg, sh_bg);
-        for (int x = left + 2; x <= right + 1 && x < bw; x++)
-            if (bottom + 1 < bh) gmb_screen_setchar(st->buffer, x, bottom + 1, ' ', sh_bg, sh_bg);
+        for (int y = top + 1; y <= bottom + 1; y++) {
+            ws_shadow_cell(st->buffer, right + 1, y);
+            ws_shadow_cell(st->buffer, right + 2, y);
+        }
+        for (int x = left + 2; x <= right + 2; x++) ws_shadow_cell(st->buffer, x, bottom + 1);
     }
     /* contenuto (rispetta scroll_top) */
     int inner_h = bottom - top - 1;

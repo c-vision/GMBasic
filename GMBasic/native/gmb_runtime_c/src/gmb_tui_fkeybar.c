@@ -17,6 +17,7 @@
 void gmb_function_key_bar_init(gmb_function_key_bar_t* b, int x, int y, int width)
 {
     memset(b, 0, sizeof(*b));
+    memset(b, 0, sizeof(*b));
     b->last_key = -1;
     b->x = x; b->y = y; b->width = width;
     static const char* def[10] = {"1Help","2Save","3Load","4Find","5Run","6Edit","7List","8Auto","9Del","10Quit"};

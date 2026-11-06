@@ -142,6 +142,7 @@ void gmb_usercontrol_init(gmb_usercontrol_t* u, int x, int y, int w, int h,
                           const char* container, const char* name)
 {
     memset(u, 0, sizeof(*u));
+    memset(u, 0, sizeof(*u));
     gmb_control_init(&u->ctrl, "", x, y, w, h, usercontrol_draw_txt, NULL);
     u->ctrl.user = u;
     u->ctrl.draw_px_fn = usercontrol_draw_px;

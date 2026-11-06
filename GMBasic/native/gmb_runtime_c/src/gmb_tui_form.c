@@ -103,6 +103,7 @@ static bool formw_click(void* u, gmb_control_t* c, int x, int y)
 }
 void gmb_form_widget_init(gmb_form_widget_t* f, int x, int y, int w, int h)
 {
+    memset(f, 0, sizeof(*f));
     gmb_control_init(&f->ctrl, "", x, y, w, h, formw_draw, formw_key);
     f->ctrl.handle_click_fn = formw_click;
     f->ctrl.user = f;

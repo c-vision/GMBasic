@@ -180,6 +180,7 @@ static void datalist_draw_px(void* u, gmb_control_t* c)
 }
 void gmb_data_list_init(gmb_data_list_t* d, int x, int y, int w, int h)
 {
+    memset(d, 0, sizeof(*d));
     gmb_control_init(&d->ctrl, "", x, y, w, h, datalist_draw, datalist_key);
     d->ctrl.ctrl_kind = GMB_CK_DATALIST;
     d->ctrl.handle_click_fn = datalist_click;

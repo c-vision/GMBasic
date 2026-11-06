@@ -26,6 +26,7 @@ int gmb_tiling_direction_opposite(int d)
 void gmb_tiling_stack_init(gmb_tiling_stack_t* s)
 {
     memset(s, 0, sizeof(*s));
+    memset(s, 0, sizeof(*s));
     s->focused = -1;
 }
 int gmb_tiling_stack_add_window(gmb_tiling_stack_t* s, gmb_window_id_t w, bool focus)
@@ -114,6 +115,7 @@ void gmb_tiling_split_rect(gmb_rect_t rect, int orientation, float ratio, gmb_re
 
 void gmb_tiler_init(gmb_tiler_t* t)
 {
+    memset(t, 0, sizeof(*t));
     memset(t, 0, sizeof(*t));
 }
 void gmb_tiler_set_work_area(gmb_tiler_t* t, gmb_rect_t r) { t->work_area = r; }

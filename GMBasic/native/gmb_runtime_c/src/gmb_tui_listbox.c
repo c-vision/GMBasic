@@ -24,6 +24,13 @@ static void listbox_draw(void* u, gmb_control_t* c, gmb_screen_buffer_t* buf)
         char cased[160];
         gmb_control_apply_case(c, line, cased, (int)sizeof(cased));
         gmb_screen_setstring(buf, c->x, c->y + i, cased, fg, bg);
+        /* TV TListViewer: barra verticale `│` sull'ultima colonna. */
+        if (c->width > 1)
+        {
+            gmb_theme_t th = gmb_ui_theme();
+            gmb_screen_setchar(buf, c->x + c->width - 1, c->y + i, 0x2502,
+                               th.dim, th.window_bg);
+        }
     }
 }
 static bool listbox_key(void* u, gmb_control_t* c, int key)
@@ -108,6 +115,7 @@ static void listbox_draw_px(void* u, gmb_control_t* c)
 }
 void gmb_listbox_init(gmb_listbox_t* l, int x, int y, int w, int h)
 {
+    memset(l, 0, sizeof(*l));
     gmb_control_init(&l->ctrl, "", x, y, w, h, listbox_draw, listbox_key);
     l->ctrl.draw_px_fn = listbox_draw_px;
     l->ctrl.ctrl_kind = GMB_CK_LISTBOX;
@@ -128,10 +136,15 @@ const char* gmb_listbox_selected_value(gmb_listbox_t* l)
 }
 int gmb_listbox_render_line(gmb_listbox_t* l, int idx, char* out, int cap)
 {
+    /* TV TListViewer: item a col 1, ultima colonna riservata alla barra `│`. */
     const char* v = idx < l->items_count ? l->items[idx] : "";
-    int o = snprintf(out, cap, "%s", v);
-    if (o > l->ctrl.width) o = l->ctrl.width;
-    else for (int i = o; i < l->ctrl.width && i < cap - 1; i++) out[o++] = ' ';
+    int w = l->ctrl.width > 1 ? l->ctrl.width - 1 : l->ctrl.width;
+    int o = 0;
+    out[o++] = ' ';
+    int n = (int)strlen(v);
+    if (n > w - 1) n = w - 1 > 0 ? w - 1 : 0;
+    for (int i = 0; i < n && o < cap - 1; i++) out[o++] = v[i];
+    for (; o < w && o < cap - 1; o++) out[o++] = ' ';
     out[o] = '\0';
     return o;
 }

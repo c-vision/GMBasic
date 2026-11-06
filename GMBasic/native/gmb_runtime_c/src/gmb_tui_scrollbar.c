@@ -35,9 +35,9 @@ static void scrollbar_draw(void* u, gmb_control_t* c, gmb_screen_buffer_t* buf)
     {
         gmb_scrollbar_render_line(s, i, line, (int)sizeof(line));
         if (s->orientation == 0)
-            gmb_screen_setchar(buf, c->x + i, c->y, (unsigned char)line[0], fg, bg);
+            gmb_screen_setstring_n(buf, c->x + i, c->y, line, 1, fg, bg);
         else
-            gmb_screen_setchar(buf, c->x, c->y + i, (unsigned char)line[0], fg, bg);
+            gmb_screen_setstring_n(buf, c->x, c->y + i, line, 1, fg, bg);
     }
 }
 static void scrollbar_draw_px(void* u, gmb_control_t* c)
@@ -71,6 +71,7 @@ static bool scrollbar_click(void* u, gmb_control_t* c, int x, int y)
 }
 void gmb_scrollbar_init(gmb_scrollbar_t* s, int x, int y, int len, int orientation)
 {
+    memset(s, 0, sizeof(*s));
     if (orientation == 0) gmb_control_init(&s->ctrl, "", x, y, len, 1, scrollbar_draw, NULL);
     else gmb_control_init(&s->ctrl, "", x, y, 1, len, scrollbar_draw, NULL);
     s->ctrl.draw_px_fn = scrollbar_draw_px;
@@ -86,19 +87,25 @@ void gmb_scrollbar_set(gmb_scrollbar_t* s, int value, int min, int max)
 }
 int gmb_scrollbar_render_line(gmb_scrollbar_t* s, int index, char* out, int cap)
 {
+    /* TV TScrollBar: vChars = {▲ 0x1E, ▼ 0x1F, ▒ 0xB1, ■ 0xFE, ▓ 0xB2}. */
     int range = s->max - s->min;
-    if (range <= 0) { out[0] = '|'; out[1] = '\0'; return 1; }
     int len = s->orientation == 0 ? s->ctrl.width : s->ctrl.height;
-    int thumb = len > 4 ? len / 4 : 1;
-    int pos = (s->value - s->min) * (len - thumb) / range;
-    char ch;
-    if (index >= pos && index < pos + thumb) ch = '#';
-    else if (index == 0 && s->show_arrows) ch = '^';
-    else if (index == len - 1 && s->show_arrows) ch = 'v';
-    else ch = '|';
-    out[0] = ch;
-    out[1] = '\0';
-    return 1;
+    uint32_t ch;
+    if (range <= 0) ch = 0x2593;                                  /* ▓ "no range" */
+    else {
+        int thumb = len > 4 ? len / 4 : 1;
+        int pos = (s->value - s->min) * (len - thumb) / range;
+        if (index >= pos && index < pos + thumb) ch = 0x25A0;     /* ■ thumb */
+        else if (index == 0 && s->show_arrows) ch = 0x25B2;       /* ▲ */
+        else if (index == len - 1 && s->show_arrows) ch = 0x25BC; /* ▼ */
+        else ch = 0x2592;                                         /* ▒ track */
+    }
+    int o = 0;
+    if (ch < 0x80) out[o++] = (char)ch;
+    else if (ch < 0x800) { out[o++] = (char)(0xC0 | (ch >> 6)); out[o++] = (char)(0x80 | (ch & 0x3F)); }
+    else { out[o++] = (char)(0xE0 | (ch >> 12)); out[o++] = (char)(0x80 | ((ch >> 6) & 0x3F)); out[o++] = (char)(0x80 | (ch & 0x3F)); }
+    out[o < cap ? o : cap - 1] = '\0';
+    return o;
 }
 
 /* ---- Tab ---- */

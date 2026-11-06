@@ -132,6 +132,7 @@ static void hexview_draw_px(void* u, gmb_control_t* c)
 }
 void gmb_hex_view_init(gmb_hex_view_t* h, int x, int y, int w, int hgt)
 {
+    memset(h, 0, sizeof(*h));
     gmb_control_init(&h->ctrl, "", x, y, w, hgt, hexview_draw, hexview_key);
     h->ctrl.ctrl_kind = GMB_CK_HEXVIEW;
     h->ctrl.draw_px_fn = hexview_draw_px;

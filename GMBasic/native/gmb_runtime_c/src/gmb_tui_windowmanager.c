@@ -10,6 +10,7 @@
 
 void gmb_tile_grid_init(gmb_tile_grid_t* g, int rows, int cols)
 {
+    memset(g, 0, sizeof(*g));
     g->rows = rows < 1 ? 1 : rows;
     g->cols = cols < 1 ? 1 : cols;
 }
@@ -30,6 +31,7 @@ gmb_rect_t gmb_managed_window_content_rect(const gmb_managed_window_t* w)
 
 void gmb_window_manager_init(gmb_window_manager_t* m, gmb_rect_t work)
 {
+    memset(m, 0, sizeof(*m));
     memset(m, 0, sizeof(*m));
     m->work_area = work;
     m->focus = -1;

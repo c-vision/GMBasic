@@ -88,6 +88,7 @@ static void slider_draw_px(void* u, gmb_control_t* c)
 void gmb_slider_init(gmb_slider_t* s, int x, int y, int w)
 {
     memset(s, 0, sizeof(*s));
+    memset(s, 0, sizeof(*s));
     gmb_control_init(&s->ctrl, "", x, y, w, 1, slider_draw, slider_key);
     s->ctrl.draw_px_fn = slider_draw_px;
     s->ctrl.ctrl_kind = GMB_CK_SLIDER;

@@ -125,6 +125,7 @@ void gmb_sparkline_render_to_buffer(gmb_screen_buffer_t* buf, int x, int y, cons
 void gmb_bar_chart_init(gmb_bar_chart_t* c)
 {
     memset(c, 0, sizeof(*c));
+    memset(c, 0, sizeof(*c));
     c->orientation = GMB_ORIENT_HORIZONTAL;
     c->width = 20;
     c->height = 10;
@@ -244,6 +245,7 @@ void gmb_bar_chart_render(gmb_bar_chart_t* c, gmb_screen_buffer_t* buf, int x, i
 void gmb_gauge_init(gmb_gauge_t* g, double percent)
 {
     memset(g, 0, sizeof(*g));
+    memset(g, 0, sizeof(*g));
     g->percent = percent < 0.0 ? 0.0 : (percent > 100.0 ? 100.0 : percent);
     g->width = 20;
 }
@@ -279,6 +281,7 @@ void gmb_gauge_render(gmb_gauge_t* g, gmb_screen_buffer_t* buf, int x, int y)
 
 void gmb_line_chart_init(gmb_line_chart_t* l)
 {
+    memset(l, 0, sizeof(*l));
     memset(l, 0, sizeof(*l));
     l->width = 20;
     l->height = 10;
@@ -394,6 +397,7 @@ void gmb_line_chart_render(gmb_line_chart_t* l, gmb_screen_buffer_t* buf, int x,
 
 void gmb_histogram_init(gmb_histogram_t* h)
 {
+    memset(h, 0, sizeof(*h));
     memset(h, 0, sizeof(*h));
     h->width = 20;
     h->height = 10;

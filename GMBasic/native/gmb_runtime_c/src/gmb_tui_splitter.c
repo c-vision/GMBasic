@@ -130,6 +130,7 @@ static bool splitter_mouse_px(void* u, gmb_control_t* c, const gmb_mouse_action_
 
 void gmb_splitter_init(gmb_splitter_t* s, int x, int y, int w, int h, int orient)
 {
+    memset(s, 0, sizeof(*s));
     (void)w; (void)h;
     gmb_control_init(&s->ctrl, "", x, y, w, h, splitter_draw, splitter_key);
     s->ctrl.user = s;

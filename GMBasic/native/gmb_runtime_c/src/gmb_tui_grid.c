@@ -75,6 +75,7 @@ static void grid_draw_px(void* u, gmb_control_t* c)
 }
 void gmb_grid_init(gmb_grid_t* g, int x, int y, int w, int h)
 {
+    memset(g, 0, sizeof(*g));
     gmb_control_init(&g->ctrl, "", x, y, w, h, grid_draw, grid_key);
     g->ctrl.draw_px_fn = grid_draw_px;
     g->ctrl.ctrl_kind = GMB_CK_GRID;
