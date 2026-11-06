@@ -138,6 +138,7 @@ static int resolve(const llmwsp_overlay *o, const char *addr, const llmwsp_tenso
         *t = tt; *axis = ax; *a = x; *b = y;
         return 0;
     }
+    if (!o->d) return -1;                    /* modello senza documento (famiglia non supportata): solo indirizzi "@asse:da:a:tensore" */
     return llmwsp_doc_resolve(o->d, addr, t, axis, a, b);
 }
 
@@ -531,4 +532,24 @@ int llmwsp_ov_apply_patch(llmwsp_overlay *o, const char *path, char *err, size_t
     fclose(f);
     if (rc < 0 && err && ec && !err[0]) E(err, ec, "patch corrotta", path);
     return rc;
+}
+
+int llmwsp_ov_read_f64(const llmwsp_overlay *o, const char *addr, double *out, size_t cap, size_t *n) {
+    const llmwsp_tensor *t; int axis; int64_t a, b;
+    if (resolve(o, addr, &t, &axis, &a, &b) < 0 || dkind(t->dtype) < 0) return -1;
+    int64_t R, C; dims(t, &R, &C);
+    size_t cnt = (size_t)(axis == 0 ? (b - a) * C : R * (b - a));
+    if (cnt > cap) return -1;
+    size_t ti = (size_t)(t - llmwsp_store_at(o->s, 0));
+    if (!o->buf[ti]) {
+        if (llmwsp_load_f64(o->s, t, axis, a, b, out, cnt) < 0) return -1;
+    } else {
+        unsigned char *raw = (unsigned char *)malloc(rect_bytes(t, axis, a, b) + 1);
+        if (!raw) return -1;
+        rect_get(o->buf[ti], t, axis, a, b, raw);
+        llmwsp_decode_f64(t->dtype, raw, cnt, out);
+        free(raw);
+    }
+    if (n) *n = cnt;
+    return 0;
 }

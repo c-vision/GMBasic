@@ -42,6 +42,7 @@ int  llmwsp_doc_build(const llmwsp_store *s, const char *config_json, llmwsp_doc
 void llmwsp_doc_free(llmwsp_doc *d);
 
 void               llmwsp_doc_dims(const llmwsp_doc *d, llmwsp_dims *out);
+const char        *llmwsp_doc_model_type(const llmwsp_doc *d);
 size_t             llmwsp_doc_leaf_count(const llmwsp_doc *d);
 const llmwsp_leaf *llmwsp_doc_leaf(const llmwsp_doc *d, size_t i);
 const llmwsp_leaf *llmwsp_doc_find(const llmwsp_doc *d, const char *addr);
