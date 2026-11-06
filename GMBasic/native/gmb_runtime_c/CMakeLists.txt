@@ -1025,6 +1025,13 @@ target_link_libraries(gmb_tui_controls_headless_check PRIVATE gmb_runtime)
 target_include_directories(gmb_tui_controls_headless_check PRIVATE include)
 add_test(NAME gmb_tui_controls_headless_check COMMAND gmb_tui_controls_headless_check)
 
+# Sweep di RENDERING dei controlli (headless, buffer a celle): caratteri ammessi e
+# testo non invisibile (fg==bg) per ognuno dei 33 controlli del registry.
+add_executable(gmb_tui_controls_render_check tests/gmb_tui_controls_render_check.c)
+target_link_libraries(gmb_tui_controls_render_check PRIVATE gmb_runtime)
+target_include_directories(gmb_tui_controls_render_check PRIVATE include)
+add_test(NAME gmb_tui_controls_render_check COMMAND gmb_tui_controls_render_check)
+
 add_executable(gmb_grep_selfcheck tests/gmb_grep_selfcheck.c)
 target_link_libraries(gmb_grep_selfcheck PRIVATE gmb_runtime)
 target_include_directories(gmb_grep_selfcheck PRIVATE include)
