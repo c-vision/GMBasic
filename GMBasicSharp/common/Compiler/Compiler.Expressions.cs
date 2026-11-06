@@ -1016,6 +1016,9 @@ public sealed partial class Compiler
             // dichiarazione. Vedi AiWiki Bugs/(open) - FFI-Estensioni-Possibili-BYREF-Struct-
             // Callback.md §2.
             bool IsUdtParam(Parameter p) => !IsArrayParam(p) && !IsStringParam(p) && !IsByRefScalarParam(p) && p.DataType is UserDefinedType;
+            // Array di UDT (S3, 2026-11-06): elemento = TYPE semplice; il layout dell elemento
+            // viaggia nello stesso modo del parametro UDT singolo (conteggio + size + tipo/offset).
+            UserDefinedType? UdtArrayElem(Parameter p) => IsArrayParam(p) && (p.DataType as ArrayType)?.ElementType is UserDefinedType u ? u : null;
             bool IsSimpleUdt(UserDefinedType udt) => udt.TypeParameters.IsDefaultOrEmpty
                 && udt.Operators.IsDefaultOrEmpty && udt.Constructors.IsDefaultOrEmpty && udt.Methods.IsDefaultOrEmpty;
             // Struct annidate (2026-09-29): un campo il cui tipo è A SUA VOLTA un TYPE semplice
@@ -1205,9 +1208,16 @@ public sealed partial class Compiler
                 if (IsArrayParam(p))
                 {
                     var elem = (p.DataType as ArrayType)?.ElementType;
-                    if (!IsFfiArrayElemType(elem))
+                    if (UdtArrayElem(p) is { } ue)
+                    {
+                        var lvTmp = new List<(string Path, string SymbolIdPath, int Code, int Off, bool IsInt)>();
+                        LayoutUdt(ue, $"il parametro '{p.Name.Lexeme}'", "", "", lvTmp);
+                        if (lvTmp.Count is 0 or > 64)
+                            throw new BasicException(expr.OriginalToken, $"FFI '{symbolName}': array di UDT '{ue.Name.Lexeme}' con {lvTmp.Count} campi (ammessi 1..64).");
+                    }
+                    else if (!IsFfiArrayElemType(elem))
                         throw new BasicException(expr.OriginalToken,
-                            $"FFI '{symbolName}': tipo elemento non supportato per il parametro array '{p.Name.Lexeme}' (solo AS DOUBLE, LONG/QUAD o BYTE — l'elemento viaggia comunque a 8 byte, non INTEGER/SINGLE).");
+                            $"FFI '{symbolName}': tipo elemento non supportato per il parametro array '{p.Name.Lexeme}' (solo AS DOUBLE, LONG/QUAD, BYTE o un TYPE).");
                 }
                 else if (IsByRefScalarParam(p) && !IsFfiArrayElemType(p.DataType))
                     throw new BasicException(expr.OriginalToken,
@@ -1222,7 +1232,7 @@ public sealed partial class Compiler
             // (solo per FUNCTION: per SUB non esiste) — altrimenti `(LONG) AS DOUBLE` passava
             // come all-double e il marshalling leggeva registri sbagliati (divergenza vs le
             // gambe C, che mappano i tipi per-parametro). Fix parità 2026-09-22.
-            var anyUdt = anyUdtParam || udtReturn != null;
+            var anyUdt = anyUdtParam || udtReturn != null || ffiProc.Parameters.Any(p => UdtArrayElem(p) != null);
             var kindList = ffiProc.IsFunction && !udtReturnMixed ? paramKinds.Append(retKind) : paramKinds;
             // Firma mista LONG/DOUBLE fra SCALARI SEMPLICI (2026-10, v1): ammessa SOLO quando
             // non c'è nessun array/STRING/BYREF/callback/UDT nella firma — quelli continuano a
@@ -1322,7 +1332,13 @@ public sealed partial class Compiler
                         ? true
                         : isUd ? emittedKind == FfiInt64 : ClassifyFfiType(p.DataType, $"il parametro '{p.Name.Lexeme}'") == FfiInt64;
                     if (intClass) flags |= 1;
-                    if (isArr) { flags |= 2; if (IsFfiInt64Type((p.DataType as ArrayType)?.ElementType)) flags |= 0x40; }
+                    if (isArr)
+                    {
+                        flags |= 2;
+                        var elemT = (p.DataType as ArrayType)?.ElementType;
+                        if (elemT is UserDefinedType) flags |= 0x80;      /* array di struct */
+                        else if (IsFfiInt64Type(elemT)) flags |= 0x40;
+                    }
                     else if (isStr) flags |= 4;
                     else if (isBr) { flags |= 8; if (IsFfiInt64Type(p.DataType)) flags |= 0x80; }
                     else if (isUd) flags |= 0x20 | 0x80;   /* 0x80 = formato layout nuovo */
@@ -1333,6 +1349,14 @@ public sealed partial class Compiler
                     {
                         var leaves = udtParamLeaves[pi];
                         var cnt = (ushort)(leaves?.Count ?? 0);
+                        a1 = (byte)(cnt & 0xFF);
+                        a2 = (byte)((cnt >> 8) & 0xFF);
+                    }
+                    else if (isArr && UdtArrayElem(p) is { } aeCnt)
+                    {
+                        var lvC = new List<(string Path, string SymbolIdPath, int Code, int Off, bool IsInt)>();
+                        LayoutUdt(aeCnt, $"il parametro '{p.Name.Lexeme}'", "", "", lvC);
+                        var cnt = (ushort)lvC.Count;
                         a1 = (byte)(cnt & 0xFF);
                         a2 = (byte)((cnt >> 8) & 0xFF);
                     }
@@ -1362,18 +1386,39 @@ public sealed partial class Compiler
                 // <string,object> chiavato per nome, navigato ricorsivamente splittando su '.').
                 for (var pi = 0; pi < ffiProc.Parameters.Length && pi < FfiMaxArgs; pi++)
                 {
-                    if (udtParamLeaves[pi] is not { } leaves) continue;
-                    foreach (var leaf in leaves)
+                    if (udtParamLeaves[pi] is { } leaves)
                     {
-                        EmitShort(AddConstant(leaf.Path));
-                        EmitShort(AddConstant(leaf.SymbolIdPath));
+                        foreach (var leaf in leaves)
+                        {
+                            EmitShort(AddConstant(leaf.Path));
+                            EmitShort(AddConstant(leaf.SymbolIdPath));
+                        }
+                        CollectFfiLeaves((UserDefinedType)ffiProc.Parameters[pi].DataType, "il parametro", "", "", out var psz);
+                        EmitShort((ushort)psz);
+                        foreach (var leaf in leaves)
+                        {
+                            EmitByte((byte)leaf.Code);
+                            EmitShort((ushort)leaf.Off);
+                        }
+                        continue;
                     }
-                    CollectFfiLeaves((UserDefinedType)ffiProc.Parameters[pi].DataType, "il parametro", "", "", out var psz);
-                    EmitShort((ushort)psz);
-                    foreach (var leaf in leaves)
+                    // Array di UDT (S3, 2026-11-06): stesso blocco del parametro UDT, riferito
+                    // al TIPO DELL'ELEMENTO (il puntatore punta a N struct contigue).
+                    if (UdtArrayElem(ffiProc.Parameters[pi]) is { } ae)
                     {
-                        EmitByte((byte)leaf.Code);
-                        EmitShort((ushort)leaf.Off);
+                        var alv = new List<(string Path, string SymbolIdPath, int Code, int Off, bool IsInt)>();
+                        var asz = LayoutUdt(ae, $"il parametro '{ffiProc.Parameters[pi].Name.Lexeme}'", "", "", alv);
+                        foreach (var leaf in alv)
+                        {
+                            EmitShort(AddConstant(leaf.Path));
+                            EmitShort(AddConstant(leaf.SymbolIdPath));
+                        }
+                        EmitShort((ushort)asz);
+                        foreach (var leaf in alv)
+                        {
+                            EmitByte((byte)leaf.Code);
+                            EmitShort((ushort)leaf.Off);
+                        }
                     }
                 }
                 if (udtReturnLeaves != null)

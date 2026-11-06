@@ -1567,7 +1567,9 @@ public sealed partial class IlProgramCompiler
                     $"FFI '{symbolName}': lo UDT '{udt.Name.Lexeme}' usato per {what} ha campi di kind misto (DOUBLE e intero) — ammesso solo come TIPO DI RITORNO, non come parametro (limite del dispatch nativo VM/C).");
         }
         bool UdtIsInt64(UserDefinedType udt) => LeafKinds(udt).First();
-        var anyUdtParam = epd.Parameters.Any(IsUdtParam);
+        // Include anche gli ARRAY di UDT (S3): la forma dell elemento viaggia come per il
+        // parametro UDT, e la chiamata deve instradare sugli helper *Udt*.
+        var anyUdtParam = epd.Parameters.Any(p => IsUdtParam(p) || p.DataType is ArrayType { ElementType: UserDefinedType });
         var udtReturn = epd.IsFunction && epd.ReturnType is UserDefinedType ? (UserDefinedType)epd.ReturnType : null;
         // Kind misto come PARAMETRO (2026-09-29, era vietato — parità Compiler.Expressions.cs):
         // ammesso, ma AL MASSIMO UNO per dichiarazione (limite del dispatch VM/C, non di IL —
@@ -1620,9 +1622,11 @@ public sealed partial class IlProgramCompiler
             if (IsArrayParam(p))
             {
                 var elem = (p.DataType as ArrayType)?.ElementType;
-                if (!IsFfiArrayElem(elem))
+                if (elem is UserDefinedType ueA)
+                    UdtShapeString(ueA, $"il parametro '{p.Name.Lexeme}'");   // valida il layout
+                else if (!IsFfiArrayElem(elem))
                     throw new NotSupportedException(
-                        $"FFI '{symbolName}': tipo elemento non supportato per il parametro array '{p.Name.Lexeme}' (solo AS DOUBLE, LONG/QUAD o BYTE — l'elemento viaggia comunque a 8 byte, non INTEGER/SINGLE).");
+                        $"FFI '{symbolName}': tipo elemento non supportato per il parametro array '{p.Name.Lexeme}' (solo AS DOUBLE, LONG/QUAD, BYTE o un TYPE).");
             }
             else if (IsByRefScalarParam(p) && p.DataType is not DoubleType && !IsI64ArrayElem(p.DataType))
                 throw new NotSupportedException(
@@ -1852,10 +1856,14 @@ public sealed partial class IlProgramCompiler
             _il.Emit(OpCodes.Stloc, udtShapesLocal);
             for (var pi = 0; pi < epd.Parameters.Length; pi++)
             {
-                if (!IsUdtParam(epd.Parameters[pi])) continue;
+                var prm = epd.Parameters[pi];
+                string? shp = null;
+                if (IsUdtParam(prm)) shp = UdtShapeString((UserDefinedType)prm.DataType!, $"il parametro '{prm.Name.Lexeme}'");
+                else if (prm.DataType is ArrayType { ElementType: UserDefinedType ue }) shp = UdtShapeString(ue, $"il parametro '{prm.Name.Lexeme}'");
+                if (shp == null) continue;
                 _il.Emit(OpCodes.Ldloc, udtShapesLocal);
                 _il.Emit(OpCodes.Ldc_I4, pi);
-                _il.Emit(OpCodes.Ldstr, UdtShapeString((UserDefinedType)epd.Parameters[pi].DataType!, $"il parametro '{epd.Parameters[pi].Name.Lexeme}'"));
+                _il.Emit(OpCodes.Ldstr, shp);
                 _il.Emit(OpCodes.Stelem_Ref);
             }
             _il.Emit(OpCodes.Ldloc, udtShapesLocal);

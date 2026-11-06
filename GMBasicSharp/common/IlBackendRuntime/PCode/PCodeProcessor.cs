@@ -4562,6 +4562,7 @@ internal sealed partial class PCodeProcessor
                 var udtParamFieldCount = new int[PCodeFfiMaxArgs];
                 var udtParamFieldKindMask = new int[PCodeFfiMaxArgs];
                 var udtParamNew = new bool[PCodeFfiMaxArgs];
+                var udtArrCount = new int[PCodeFfiMaxArgs];
                 var callbackParamArity = new int[PCodeFfiMaxArgs];
                 for (var pi = 0; pi < PCodeFfiMaxArgs; pi++) callbackParamArity[pi] = 255;
                 for (var pi = 0; pi < argCount; pi++)
@@ -4581,6 +4582,11 @@ internal sealed partial class PCodeProcessor
                         callbackParamArity[pi] = a1;
                         callbackParamKindMask |= (a2 & 1) << pi;
                         callbackParamHasRetMask |= ((a2 >> 1) & 1) << pi;
+                    }
+                    if ((f & 2) != 0 && (f & 0x80) != 0)
+                    {
+                        // Array di UDT (S3): aux = conteggio foglie dell elemento
+                        udtArrCount[pi] = a1 | (a2 << 8);
                     }
                     if ((f & 0x20) != 0)
                     {
@@ -4631,8 +4637,13 @@ internal sealed partial class PCodeProcessor
                 }
                 var udtParamShapes = new Basic.Runtime.FfiUdtShape?[PCodeFfiMaxArgs];
                 for (var pi = 0; pi < PCodeFfiMaxArgs; pi++)
+                {
                     if (udtParamFieldCount[pi] > 0)
                         udtParamShapes[pi] = ReadUdtShape(udtParamFieldCount[pi], (byte)udtParamFieldKindMask[pi], udtParamNew[pi]);
+                    else if (udtArrCount[pi] > 0)
+                        // Array di UDT: shape dell ELEMENTO (formato nuovo, con size+tipo+offset).
+                        udtParamShapes[pi] = ReadUdtShape(udtArrCount[pi], 0, true);
+                }
                 var retUdtShape = retUdtFieldCount > 0 ? ReadUdtShape(retUdtFieldCount, (byte)retUdtFieldKindMask, retUdtNew) : null;
                 var args = new object?[argCount];
                 var byrefBoxes = new Basic.Runtime.Gpm.ByRefBox?[argCount];
