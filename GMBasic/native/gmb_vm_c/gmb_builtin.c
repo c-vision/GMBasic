@@ -14037,19 +14037,20 @@ static void gmb_bf_768_c769(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int
 }
 static void gmb_bf_768_c770(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
 {
-    (void)vm; (void)task; (void)func_code;
-    /* WINDOWS.WIDTH(): headless → -1 (parità IL IlRuntime.WindowWidth). */
-    bout->result = -1.0;
+    (void)vm; (void)args; (void)argc; (void)func_code; (void)task;
+    /* WINDOWS.WIDTH(): larghezza finestra attiva (runtime condiviso). */
+    bout->result = gmb_window_width();
 }
 static void gmb_bf_768_c771(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
 {
-    (void)vm; (void)task; (void)func_code;
-    /* WINDOW.X()/Y()/WIDTH()/HEIGHT() */ bout->result = -1.0;
+    (void)vm; (void)args; (void)argc; (void)func_code; (void)task;
+    /* WINDOWS.HEIGHT(): altezza finestra attiva (runtime condiviso). Prima era uno stub -1. */
+    bout->result = gmb_window_height();
 }
 static void gmb_bf_768_c830(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
 {
     (void)vm; (void)args; (void)argc; (void)func_code; (void)task;
-    /* WINDOWS.THEME(): tema corrente (default "Turbo"). */
+    /* WINDOWS.THEME(): tema corrente — nome canonico dal registro tema del runtime. */
     gmb_obj_string_t* s = gmb_str_cstr(gmb_window_theme());
     bout->is_num = 0; bout->result_ref = (gmb_obj_t*)s; bout->result_ref_bt = GMB_BT_STRING;
 }

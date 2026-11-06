@@ -2279,6 +2279,8 @@ gmb_double_t gmb_mouse_y(void);
  * Implementati in gmb_tui_windowmanager.c, condivisi da VM/C, C99Native. */
 gmb_double_t gmb_window_x(void);
 gmb_double_t gmb_window_y(void);
+gmb_double_t gmb_window_width(void);
+gmb_double_t gmb_window_height(void);
 gmb_double_t gmb_window_desktop(void);
 const char* gmb_window_theme(void);
 double gmb_tm_ulcer_index(const double* r, int n);

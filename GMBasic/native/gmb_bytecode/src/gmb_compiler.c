@@ -6339,6 +6339,19 @@ static void cc_stmt(gmb_cc_t* c, const gmb_stmt_t* s)
     }
     /* console/finestra/mouse: nessuna semantica headless — no-op */
     case GMB_STMT_SET:
+    {
+        /* SET THEME [TO] "nome" → SET_CLIPPER (297) con sub 4 e valore stringa, come il
+         * Compiler C# (Compiler.Tui.VisitSetThemeStmt). Prima era no-op: il tema non
+         * veniva mai applicato dai backend C. Gli altri attributi SET restano no-op. */
+        if (s->set_attr && s->n_set_attr > 0 && s->set_attr[0]
+            && strcasecmp(s->set_attr[0], "THEME") == 0) {
+            if (s->col) cc_expr(c, s->col); else cc_push_str_const(c, "turbo");
+            if (c->error) return;
+            { int z = cc_add_const(c, GMB_CCONST_DOUBLE, 4.0, NULL); cc_byte(c, GMB_OP_PUSH_CONST); cc_u16(c, z); }
+            cc_syscall(c, 297, 2);
+        }
+        break;
+    }
     case GMB_STMT_SHELL:
     case GMB_STMT_WINDOW_DESKTOP:
     case GMB_STMT_WINDOW_FRAME:
