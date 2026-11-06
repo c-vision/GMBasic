@@ -243,3 +243,71 @@ DECLARE FUNCTION R2 LIB "gmbneural" ALIAS "ofx_nn_r2" (y_true() AS DOUBLE, y_pre
 ' ── Pianificazione di memoria (lifetime dei buffer) ───────────────────────
 ' offsets(n) riceve l'offset di ogni tensore; ritorna la dimensione totale.
 DECLARE FUNCTION MEMPLAN LIB "gmbneural" ALIAS "ofx_nn_memplan" (size() AS DOUBLE, birth() AS LONG, death() AS LONG, n AS LONG, offsets() AS DOUBLE) AS DOUBLE
+
+' ── Attivazioni e gradienti (gn_act) ──────────────────────────────────────
+' I valori di RELU/SIGMOID/TANH/GELU sono gia' in TORCH: qui stanno i gradienti
+' (argomento y = attivazione gia' calcolata dove previsto) e le attivazioni non
+' coperte (silu, mish, selu, elu, prelu, celu, hard*, crelu, ...).
+DECLARE FUNCTION SIGMOIDGRAD LIB "gmbneural" ALIAS "ofx_nn_act_sigmoid_grad" (x AS DOUBLE) AS DOUBLE
+DECLARE FUNCTION TANHGRAD LIB "gmbneural" ALIAS "ofx_nn_act_tanh_grad" (x AS DOUBLE) AS DOUBLE
+DECLARE FUNCTION RELUGRAD LIB "gmbneural" ALIAS "ofx_nn_act_relu_grad" (x AS DOUBLE) AS DOUBLE
+DECLARE FUNCTION GELUGRAD LIB "gmbneural" ALIAS "ofx_nn_act_gelu_grad" (x AS DOUBLE) AS DOUBLE
+DECLARE FUNCTION LEAKYRELU LIB "gmbneural" ALIAS "ofx_nn_act_leaky_relu" (x AS DOUBLE) AS DOUBLE
+DECLARE FUNCTION LEAKYRELUGRAD LIB "gmbneural" ALIAS "ofx_nn_act_leaky_relu_grad" (x AS DOUBLE) AS DOUBLE
+DECLARE FUNCTION ELU LIB "gmbneural" ALIAS "ofx_nn_act_elu" (x AS DOUBLE) AS DOUBLE
+DECLARE FUNCTION ELUGRAD LIB "gmbneural" ALIAS "ofx_nn_act_elu_grad" (x AS DOUBLE) AS DOUBLE
+DECLARE FUNCTION IDENTITY LIB "gmbneural" ALIAS "ofx_nn_act_identity" (x AS DOUBLE) AS DOUBLE
+DECLARE FUNCTION IDENTITYGRAD LIB "gmbneural" ALIAS "ofx_nn_act_identity_grad" (x AS DOUBLE) AS DOUBLE
+DECLARE FUNCTION THRESHOLD LIB "gmbneural" ALIAS "ofx_nn_act_threshold" (x AS DOUBLE) AS DOUBLE
+DECLARE FUNCTION THRESHOLDGRAD LIB "gmbneural" ALIAS "ofx_nn_act_threshold_grad" (x AS DOUBLE) AS DOUBLE
+DECLARE FUNCTION HARDSIGMOID LIB "gmbneural" ALIAS "ofx_nn_act_hardsigmoid" (x AS DOUBLE) AS DOUBLE
+DECLARE FUNCTION HARDSIGMOIDGRAD LIB "gmbneural" ALIAS "ofx_nn_act_hardsigmoid_grad" (x AS DOUBLE) AS DOUBLE
+DECLARE FUNCTION HARDSWISH LIB "gmbneural" ALIAS "ofx_nn_act_hardswish" (x AS DOUBLE) AS DOUBLE
+DECLARE FUNCTION HARDSWISHGRAD LIB "gmbneural" ALIAS "ofx_nn_act_hardswish_grad" (x AS DOUBLE) AS DOUBLE
+DECLARE FUNCTION SILU LIB "gmbneural" ALIAS "ofx_nn_act_silu" (x AS DOUBLE) AS DOUBLE
+DECLARE FUNCTION SILUGRAD LIB "gmbneural" ALIAS "ofx_nn_act_silu_grad" (x AS DOUBLE) AS DOUBLE
+DECLARE FUNCTION MISH LIB "gmbneural" ALIAS "ofx_nn_act_mish" (x AS DOUBLE) AS DOUBLE
+DECLARE FUNCTION MISHGRAD LIB "gmbneural" ALIAS "ofx_nn_act_mish_grad" (x AS DOUBLE) AS DOUBLE
+DECLARE FUNCTION SELU LIB "gmbneural" ALIAS "ofx_nn_act_selu" (x AS DOUBLE) AS DOUBLE
+DECLARE FUNCTION SELUGRAD LIB "gmbneural" ALIAS "ofx_nn_act_selu_grad" (x AS DOUBLE) AS DOUBLE
+DECLARE FUNCTION PLSE LIB "gmbneural" ALIAS "ofx_nn_act_plse" (x AS DOUBLE) AS DOUBLE
+DECLARE FUNCTION PLSEGRAD LIB "gmbneural" ALIAS "ofx_nn_act_plse_grad" (x AS DOUBLE) AS DOUBLE
+DECLARE FUNCTION LOGGY LIB "gmbneural" ALIAS "ofx_nn_act_loggy" (x AS DOUBLE) AS DOUBLE
+DECLARE FUNCTION LOGGYGRAD LIB "gmbneural" ALIAS "ofx_nn_act_loggy_grad" (x AS DOUBLE) AS DOUBLE
+DECLARE FUNCTION HARDTAN LIB "gmbneural" ALIAS "ofx_nn_act_hardtan" (x AS DOUBLE) AS DOUBLE
+DECLARE FUNCTION HARDTANGRAD LIB "gmbneural" ALIAS "ofx_nn_act_hardtan_grad" (x AS DOUBLE) AS DOUBLE
+DECLARE FUNCTION LHTAN LIB "gmbneural" ALIAS "ofx_nn_act_lhtan" (x AS DOUBLE) AS DOUBLE
+DECLARE FUNCTION LHTANGRAD LIB "gmbneural" ALIAS "ofx_nn_act_lhtan_grad" (x AS DOUBLE) AS DOUBLE
+DECLARE FUNCTION RELIE LIB "gmbneural" ALIAS "ofx_nn_act_relie" (x AS DOUBLE) AS DOUBLE
+DECLARE FUNCTION RELIEGRAD LIB "gmbneural" ALIAS "ofx_nn_act_relie_grad" (x AS DOUBLE) AS DOUBLE
+DECLARE FUNCTION RAMP LIB "gmbneural" ALIAS "ofx_nn_act_ramp" (x AS DOUBLE) AS DOUBLE
+DECLARE FUNCTION RAMPGRAD LIB "gmbneural" ALIAS "ofx_nn_act_ramp_grad" (x AS DOUBLE) AS DOUBLE
+DECLARE FUNCTION STAIR LIB "gmbneural" ALIAS "ofx_nn_act_stair" (x AS DOUBLE) AS DOUBLE
+DECLARE FUNCTION STAIRGRAD LIB "gmbneural" ALIAS "ofx_nn_act_stair_grad" (x AS DOUBLE) AS DOUBLE
+DECLARE FUNCTION CELU LIB "gmbneural" ALIAS "ofx_nn_act_celu" (x AS DOUBLE, alpha AS DOUBLE) AS DOUBLE
+DECLARE FUNCTION CELUGRAD LIB "gmbneural" ALIAS "ofx_nn_act_celu_grad" (x AS DOUBLE, alpha AS DOUBLE) AS DOUBLE
+DECLARE FUNCTION PRELU LIB "gmbneural" ALIAS "ofx_nn_act_prelu" (x AS DOUBLE, alpha AS DOUBLE) AS DOUBLE
+DECLARE FUNCTION PRELUGRAD LIB "gmbneural" ALIAS "ofx_nn_act_prelu_grad" (x AS DOUBLE, alpha AS DOUBLE) AS DOUBLE
+' CReLU: out(0..n-1) = max(in,0), out(n..2n-1) = max(-in,0).
+DECLARE FUNCTION CRELU LIB "gmbneural" ALIAS "ofx_nn_act_crelu" (out_() AS DOUBLE, in_() AS DOUBLE, n AS LONG) AS LONG
+DECLARE FUNCTION CRELUGRAD LIB "gmbneural" ALIAS "ofx_nn_act_crelu_grad" (grad_in() AS DOUBLE, grad_out() AS DOUBLE, in_() AS DOUBLE, n AS LONG) AS LONG
+
+' ── Strato denso addestrabile (gn_dense) — handle 5001+ ──────────────────
+' W: out×in, b: out. FORWARD memorizza x per il BACKWARD; ZEROGRAD/STEP come le RNN.
+DECLARE FUNCTION DENSEINIT LIB "gmbneural" ALIAS "ofx_nn_dense_init" (in_ AS LONG, out_ AS LONG, seed AS LONG) AS LONG
+DECLARE FUNCTION DENSEFORWARD LIB "gmbneural" ALIAS "ofx_nn_dense_forward" (h AS LONG, x() AS DOUBLE, batch AS LONG, y() AS DOUBLE) AS LONG
+DECLARE FUNCTION DENSEBACKWARD LIB "gmbneural" ALIAS "ofx_nn_dense_backward" (h AS LONG, grad_y() AS DOUBLE, batch AS LONG, grad_x() AS DOUBLE) AS LONG
+' Lettura/scrittura dei parametri (W out×in, b out).
+DECLARE FUNCTION DENSEPARAMS LIB "gmbneural" ALIAS "ofx_nn_dense_params" (h AS LONG, W() AS DOUBLE, b() AS DOUBLE) AS LONG
+DECLARE FUNCTION DENSESETPARAMS LIB "gmbneural" ALIAS "ofx_nn_dense_setparams" (h AS LONG, W() AS DOUBLE, b() AS DOUBLE) AS LONG
+DECLARE FUNCTION DENSEZEROGRAD LIB "gmbneural" ALIAS "ofx_nn_dense_zerograd" (h AS LONG) AS LONG
+' kind: 0 SGD, 1 momentum, 2 Adam.
+DECLARE FUNCTION DENSESTEP LIB "gmbneural" ALIAS "ofx_nn_dense_step" (h AS LONG, kind AS LONG, lr AS DOUBLE) AS LONG
+DECLARE FUNCTION DENSEFREE LIB "gmbneural" ALIAS "ofx_nn_dense_free" (h AS LONG) AS LONG
+
+' ── Perdite con gradiente (gn_loss): y, t, grad sono rows×cols ────────────
+' LOSS* scrive il gradiente in grad() e il valore della perdita in loss() (indice 0).
+DECLARE FUNCTION LOSSMSE LIB "gmbneural" ALIAS "ofx_nn_loss_mse" (y() AS DOUBLE, t() AS DOUBLE, rows AS LONG, cols AS LONG, grad() AS DOUBLE, loss() AS DOUBLE) AS LONG
+DECLARE FUNCTION LOSSMAE LIB "gmbneural" ALIAS "ofx_nn_loss_mae" (y() AS DOUBLE, t() AS DOUBLE, rows AS LONG, cols AS LONG, grad() AS DOUBLE, loss() AS DOUBLE) AS LONG
+DECLARE FUNCTION LOSSCROSSENTROPY LIB "gmbneural" ALIAS "ofx_nn_loss_cross_entropy" (y() AS DOUBLE, t() AS DOUBLE, rows AS LONG, cols AS LONG, grad() AS DOUBLE, loss() AS DOUBLE) AS LONG
+DECLARE FUNCTION LOSSBINARYCROSSENTROPY LIB "gmbneural" ALIAS "ofx_nn_loss_binary_cross_entropy" (y() AS DOUBLE, t() AS DOUBLE, rows AS LONG, cols AS LONG, grad() AS DOUBLE, loss() AS DOUBLE) AS LONG

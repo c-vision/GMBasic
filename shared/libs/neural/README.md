@@ -33,6 +33,9 @@ Questi moduli restano fuori dal pacchetto per non duplicare la superficie BASIC.
 | KNN | `KNNINIT/KNNCLASSIFY/KNNACCURACY/KNNFREE` | handle 4101+, copia il training set |
 | Metriche | `CONFUSION`, `ACCURACY[CM]`, `PRECISION/RECALL/F1`, `MSE/MAE/R2` | macro come ritorno, per-classe in `out()` |
 | Memplan | `MEMPLAN` | offset per lifetime, ritorna la dimensione totale |
+| Attivazioni | `*GRAD` (sigmoid/tanh/relu/gelu), `LEAKYRELU`, `ELU`, `SELU`, `SILU`, `MISH`, `PLSE`, `LOGGY`, `HARDTAN`, `LHTAN`, `RELIE`, `RAMP`, `STAIR`, `IDENTITY`, `THRESHOLD`, `HARD*`, `CELU`, `PRELU`, `CRELU` (+ `*GRAD`) | valori RELU/SIGMOID/TANH/GELU già in TORCH: qui solo i gradienti |
+| Strato denso | `DENSEINIT/FORWARD/BACKWARD/PARAMS/SETPARAMS/ZEROGRAD/STEP/FREE` | handle 5001+; SGD/momentum/Adam |
+| Perdite | `LOSSMSE/LOSSMAE/LOSSCROSSENTROPY/LOSSBINARYCROSSENTROPY` | valore in `loss(0)`, gradiente in `grad()` |
 
 Convenzioni: `x()` = T×in, `y()`/`gy()` = T×out, DOUBLE row-major; handle LONG > 0;
 `STEP` usa i gradienti accumulati da `BACKWARD` (buffer m/v allocati al primo passo,
