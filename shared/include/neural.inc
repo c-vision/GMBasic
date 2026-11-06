@@ -154,3 +154,33 @@ DECLARE FUNCTION TERNARYDOTROW LIB "gmbneural" ALIAS "ofx_nn_ternary_dotrow" (h 
 DECLARE FUNCTION TERNARYFORWARD LIB "gmbneural" ALIAS "ofx_nn_ternary_forward" (h AS LONG, x() AS DOUBLE, batch AS LONG, out() AS DOUBLE) AS LONG
 ' Dequantizza W in DOUBLE row-major (rows×cols).
 DECLARE FUNCTION TERNARYTOMAT LIB "gmbneural" ALIAS "ofx_nn_ternary_tomat" (h AS LONG, w() AS DOUBLE) AS LONG
+
+' ── Alberi CART, Random Forest, AdaBoost — handle 3001+/3101+/3201+ ─────────
+' Albero di regressione/classificazione (split su feature/soglia). I parametri 0
+' prendono il default C: depth 32, min_split 2, min_leaf 1.
+DECLARE FUNCTION TREEINIT LIB "gmbneural" ALIAS "ofx_nn_tree_init" (max_depth AS LONG, min_split AS LONG, min_leaf AS LONG) AS LONG
+' Fit regressione: X n×d row-major, y (n). Ritorna 0/-1.
+DECLARE FUNCTION TREEFITREG LIB "gmbneural" ALIAS "ofx_nn_tree_fit_reg" (h AS LONG, X() AS DOUBLE, y() AS DOUBLE, n AS LONG, d AS LONG) AS LONG
+' Fit classificazione: y in 0..n_classes-1 (array LONG).
+DECLARE FUNCTION TREEFITCLS LIB "gmbneural" ALIAS "ofx_nn_tree_fit_cls" (h AS LONG, X() AS DOUBLE, y() AS LONG, n AS LONG, d AS LONG, n_classes AS LONG) AS LONG
+' Predizione su una riga: regressione = valore, classificazione = classe argmax.
+DECLARE FUNCTION TREEPREDICT LIB "gmbneural" ALIAS "ofx_nn_tree_predict" (h AS LONG, x() AS DOUBLE) AS DOUBLE
+DECLARE FUNCTION TREEFREE LIB "gmbneural" ALIAS "ofx_nn_tree_free" (h AS LONG) AS LONG
+
+' Random Forest: max_features 0 = sqrt(d) in classificazione / d/3+1 in regressione;
+' seed 0 = 12345. Bootstrap deterministico.
+DECLARE FUNCTION FORESTINIT LIB "gmbneural" ALIAS "ofx_nn_forest_init" (n_estimators AS LONG, max_depth AS LONG, min_split AS LONG, max_features AS LONG, seed AS LONG) AS LONG
+DECLARE FUNCTION FORESTFITREG LIB "gmbneural" ALIAS "ofx_nn_forest_fit_reg" (h AS LONG, X() AS DOUBLE, y() AS DOUBLE, n AS LONG, d AS LONG) AS LONG
+DECLARE FUNCTION FORESTFITCLS LIB "gmbneural" ALIAS "ofx_nn_forest_fit_cls" (h AS LONG, X() AS DOUBLE, y() AS LONG, n AS LONG, d AS LONG, n_classes AS LONG) AS LONG
+' Regressione: media dei tree; classificazione: voto di maggioranza.
+DECLARE FUNCTION FORESTPREDICT LIB "gmbneural" ALIAS "ofx_nn_forest_predict" (h AS LONG, x() AS DOUBLE) AS DOUBLE
+DECLARE FUNCTION FORESTFREE LIB "gmbneural" ALIAS "ofx_nn_forest_free" (h AS LONG) AS LONG
+' AUC di Mann-Whitney U (rank con pareggi): actual 0/1, score continuo.
+DECLARE FUNCTION AUC LIB "gmbneural" ALIAS "ofx_nn_auc" (actual() AS DOUBLE, score() AS DOUBLE, n AS LONG) AS DOUBLE
+
+' AdaBoost SAMME binario (stump): y in {0,1}; 0 = default (50 stimatori, lr 1.0).
+DECLARE FUNCTION ADABOOSTINIT LIB "gmbneural" ALIAS "ofx_nn_adaboost_init" (n_estimators AS LONG, learning_rate AS DOUBLE) AS LONG
+DECLARE FUNCTION ADABOOSTFIT LIB "gmbneural" ALIAS "ofx_nn_adaboost_fit" (h AS LONG, X() AS DOUBLE, y() AS LONG, n AS LONG, d AS LONG) AS LONG
+' Predizione: +1 / -1 (classe 1 / classe 0).
+DECLARE FUNCTION ADABOOSTPREDICT LIB "gmbneural" ALIAS "ofx_nn_adaboost_predict" (h AS LONG, x() AS DOUBLE) AS LONG
+DECLARE FUNCTION ADABOOSTFREE LIB "gmbneural" ALIAS "ofx_nn_adaboost_free" (h AS LONG) AS LONG
