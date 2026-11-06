@@ -944,6 +944,8 @@ static void sb_var_ctype(sb_t* b, var_t* v) {
  * parametro ARRAY (puntatore + bound compagno) per ogni scopo di emissione — stesso
  * trattamento di param_is_array, così l'intera macchina esistente per gli array-parametro
  * (lettura nel body, firma, prototipo) si applica senza duplicazione. */
+static void emit_arr_call_arg(ctx_t* c, fn_info_t* fn, int i, gmb_expr_t* arg, int line);
+
 static int p_arraylike(const gmb_stmt_t* s, int i) {
     if (!s || i < 0 || i >= s->n_params) return 0;
     if (s->param_is_array && s->param_is_array[i]) return 1;
@@ -954,10 +956,9 @@ static int p_arraylike(const gmb_stmt_t* s, int i) {
  * top-level, non lambda/metodi/FFI): la firma C porta `<param>__bloK` dopo `<param>__bK`.
  * Lambda e metodi hanno ABI a function-pointer fisso e restano 0-based. */
 static int fn_array_lower_abi(const fn_info_t* fn) {
-    /* Solo SUB/FUNCTION top-level: metodi di classe e lambda usano ABI a
-     * function-pointer/delegate fisso. Le lambda ricevono i lower dal canale
-     * gmb_lambda_lower; i metodi con parametri array restano un limite noto C99. */
-    return fn && !fn->is_lambda && !fn->is_lambda_cap && !fn->cls_owner[0]
+    /* SUB/FUNCTION top-level e METODI/COSTRUTTORI di classe (C99 li chiama
+     * direttamente, senza vtable). Le lambda usano il canale gmb_lambda_lower. */
+    return fn && !fn->is_lambda && !fn->is_lambda_cap
            && !(fn->stmt && fn->stmt->is_ffi);
 }
 
@@ -2187,7 +2188,11 @@ static void emit_virt_call(ctx_t* c, fn_info_t** defs, int ndefs, void (*emit_in
         sb_put(&c->out, "(&(");
         emit_inst(c, ud);
             sb_put(&c->out, ")");
-        for (int i = 0; i < nmargs; i++) { sb_put(&c->out, ", "); emit_expr(c, margs[i]); }
+        for (int i = 0; i < nmargs; i++) {
+            sb_put(&c->out, ", ");
+            if (p_arraylike(mf->stmt, i)) emit_arr_call_arg(c, mf, i, margs[i], 0);
+            else emit_expr(c, margs[i]);
+        }
             sb_put(&c->out, ")");
         return;
     }
@@ -2203,7 +2208,11 @@ static void emit_virt_call(ctx_t* c, fn_info_t** defs, int ndefs, void (*emit_in
         sb_put(&c->out, "(&(");
         emit_inst(c, ud);
             sb_put(&c->out, ")");
-        for (int i = 0; i < nmargs; i++) { sb_put(&c->out, ", "); emit_expr(c, margs[i]); }
+        for (int i = 0; i < nmargs; i++) {
+            sb_put(&c->out, ", ");
+            if (p_arraylike(defs[k]->stmt, i)) emit_arr_call_arg(c, defs[k], i, margs[i], 0);
+            else emit_expr(c, margs[i]);
+        }
         sb_put(&c->out, ") : ");
     }
     {
@@ -2215,7 +2224,11 @@ static void emit_virt_call(ctx_t* c, fn_info_t** defs, int ndefs, void (*emit_in
         sb_put(&c->out, "(&(");
         emit_inst(c, ud);
             sb_put(&c->out, ")");
-        for (int i = 0; i < nmargs; i++) { sb_put(&c->out, ", "); emit_expr(c, margs[i]); }
+        for (int i = 0; i < nmargs; i++) {
+            sb_put(&c->out, ", ");
+            if (p_arraylike(mf->stmt, i)) emit_arr_call_arg(c, mf, i, margs[i], 0);
+            else emit_expr(c, margs[i]);
+        }
             sb_put(&c->out, ")");
     }
     for (int k = 0; k < ndefs - 1; k++) sb_put(&c->out, ")");
@@ -10224,6 +10237,21 @@ static void emit_param_arg(ctx_t* c, fn_info_t* f, int pi, gmb_expr_t* a) {
     emit_expr(c, a);
 }
 
+/* Argomenti di un METODO/COSTRUTTORE: per i parametri array usa la stessa coppia
+ * ptr+bound(+lower) delle SUB/FUNCTION, così anche i metodi di classe ricevono i
+ * limiti (prima si passava solo il puntatore e la firma non combaciava). */
+static void emit_method_arr_args(ctx_t* c, fn_info_t* mf, int base,
+                                 gmb_expr_t** args, int start, int nargs, int line) {
+    for (int i = start; i < nargs; i++) {
+        sb_put(&c->out, ", ");
+        int pi = base + (i - start);
+        if (pi >= 0 && p_arraylike(mf->stmt, pi))
+            emit_arr_call_arg(c, mf, pi, args[i], line);
+        else
+            emit_param_arg(c, mf, pi, args[i]);
+    }
+}
+
 static void emit_eff_arg(ctx_t* c, gmb_stmt_t* fs, fn_info_t* f, gmb_expr_t** args, int nargs, int i) {
     gmb_expr_t* a = (i < nargs) ? args[i] : (fs->param_defaults ? fs->param_defaults[i] : NULL);
     if (a) {
@@ -12742,7 +12770,7 @@ static void emit_call(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_
                                 return;
                             }
                             sb_put(&c->out, "gmb_user_"); sb_ident(&c->out, bc->name); sb_put(&c->out, "_init(self");
-                            for (int i = 0; i < nargs; i++) { sb_put(&c->out, ", "); emit_param_arg(c, bctor, i, args[i]); }
+                            emit_method_arr_args(c, bctor, 0, args, 0, nargs, line);
             sb_put(&c->out, ")");
                             return;
                         }
@@ -12755,7 +12783,7 @@ static void emit_call(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_
                         sb_put(&c->out, "gmb_user_"); sb_ident(&c->out, bc->name); sb_put(&c->out, "_");
                         sb_ident(&c->out, bm->stmt->func_name);
                         sb_put(&c->out, "(self");
-                        for (int i = 0; i < nargs; i++) { sb_put(&c->out, ", "); emit_param_arg(c, bm, i, args[i]); }
+                        emit_method_arr_args(c, bm, 0, args, 0, nargs, line);
             sb_put(&c->out, ")");
                         return;
                     }
@@ -12798,7 +12826,7 @@ static void emit_call(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_
                             else sb_ident(&c->out, mf->stmt->func_name);
                             sb_put(&c->out, "(&");
                             emit_flat_index(c, bv, args, nd);
-                            for (int i = nd; i < nargs; i++) { sb_put(&c->out, ", "); emit_param_arg(c, mf, i - nd, args[i]); }
+                            emit_method_arr_args(c, mf, 0, args, nd, nargs, line);
             sb_put(&c->out, ")");
                             return;
                         }
@@ -13130,7 +13158,7 @@ static void emit_call(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_
                         sb_put(&c->out, "_init(");
                         if (bv) { sb_put(&c->out, "&"); emit_ident(c, bv->name); }
                         else sb_put(&c->out, "self");
-                        for (int i = 0; i < nargs; i++) { sb_put(&c->out, ", "); emit_param_arg(c, mf, i, args[i]); }
+                        emit_method_arr_args(c, mf, 0, args, 0, nargs, line);
             sb_put(&c->out, ")");
                         return;
                     }
@@ -13149,7 +13177,7 @@ static void emit_call(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_
                     sb_put(&c->out, "(");
                     if (bv) { sb_put(&c->out, "&"); emit_ident(c, bv->name); }
                     else sb_put(&c->out, "self");
-                    for (int i = 0; i < nargs; i++) { sb_put(&c->out, ", "); emit_param_arg(c, mf, i, args[i]); }
+                    emit_method_arr_args(c, mf, 0, args, 0, nargs, line);
             sb_put(&c->out, ")");
                     return;
                 }
@@ -13171,7 +13199,11 @@ static void emit_call(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_
                     sb_put(&c->out, "gmb_user_");
                     sb_ident(&c->out, ci->name);
                     sb_put(&c->out, "_NEW(");
-                    for (int i = 0; i < nargs; i++) { if (i) sb_put(&c->out, ", "); emit_expr(c, args[i]); }
+                    for (int i = 0; i < nargs; i++) {
+                        if (i) sb_put(&c->out, ", ");
+                        if (p_arraylike(ctor->stmt, i)) emit_arr_call_arg(c, ctor, i, args[i], line);
+                        else emit_expr(c, args[i]);
+                    }
             sb_put(&c->out, ")");
                 } else {
                     if (nargs > 0) {
@@ -32076,12 +32108,24 @@ static void emit_function(ctx_t* c, fn_info_t* fn) {
             else sb_put(&c->out, ctype_name(TY_NUM));
             sb_put(&c->out, " ");
             sb_ident(&c->out, s->func_params[i]);
+            if (p_arraylike(s, i)) {
+                int nd = (s->param_ndims && s->param_ndims[i] >= 2) ? s->param_ndims[i] : 1;
+                for (int j = 0; j < nd; j++) { sb_put(&c->out, ", gmb_int_t "); sb_bound_ident(&c->out, s->func_params[i], j); }
+                for (int j = 0; j < nd; j++) { sb_put(&c->out, ", gmb_int_t "); sb_lo_ident(&c->out, s->func_params[i], j); }
+            }
         }
         sb_put(&c->out, ") {\n");
         sb_printf(&c->out, "    gmb_val_t __inst = gmb_make_val_obj(gmb_obj_new_typed((gmb_obj_%s*)calloc(1, sizeof(gmb_obj_%s)), \"%s\"));\n",
                   fn->cls_owner, fn->cls_owner, fn->cls_owner);
         sb_printf(&c->out, "    gmb_user_%s_init(&__inst", fn->cls_owner);
-        for (int i = 0; i < s->n_params; i++) { sb_put(&c->out, ", "); sb_ident(&c->out, s->func_params[i]); }
+        for (int i = 0; i < s->n_params; i++) {
+            sb_put(&c->out, ", "); sb_ident(&c->out, s->func_params[i]);
+            if (p_arraylike(s, i)) {
+                int nd = (s->param_ndims && s->param_ndims[i] >= 2) ? s->param_ndims[i] : 1;
+                for (int j = 0; j < nd; j++) { sb_put(&c->out, ", "); sb_bound_ident(&c->out, s->func_params[i], j); }
+                for (int j = 0; j < nd; j++) { sb_put(&c->out, ", "); sb_lo_ident(&c->out, s->func_params[i], j); }
+            }
+        }
         sb_put(&c->out, ");\n");
         /* 2026-09-03: registra il DESTRUCTOR BASIC sulla istanza (chiamato da
          * gmb_obj_run_dtor ai punti di fine vita: fine scope, riassegnazione, USING,
@@ -33934,6 +33978,11 @@ int gmb_c99_emit(const gmb_program_t* prog, char** out_src, char** error) {
                 else sb_put(&proto, ctype_name(TY_NUM));
                 sb_put(&proto, " ");
                 sb_ident(&proto, s->func_params[k]);
+                if (p_arraylike(s, k)) {
+                    int nd = (s->param_ndims && s->param_ndims[k] >= 2) ? s->param_ndims[k] : 1;
+                    for (int j = 0; j < nd; j++) { sb_put(&proto, ", gmb_int_t "); sb_bound_ident(&proto, s->func_params[k], j); }
+                    for (int j = 0; j < nd; j++) { sb_put(&proto, ", gmb_int_t "); sb_lo_ident(&proto, s->func_params[k], j); }
+                }
             }
             sb_put(&proto, ");\n");
         }
