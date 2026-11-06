@@ -26,6 +26,10 @@ extern "C" {
  * Il valore di ritorno e' ignorato al fire (come ON KEY). */
 typedef gmb_double_t (*gmb_form_cb)(void);
 
+/* INTO stringa dei controlli TUI (COMBOBOX/LISTBOX/RADIO/MENU): lega il testo selezionato.
+ * Usata dal codice generato quando l'INTO del BASIC è una variabile stringa. */
+void gmb_tui_bind_str(int handle, gmb_string_t* out);
+
 /* Kind pubblici dei widget pixel (stesso ordine dell'enum interna W_* in gmb_form.c). */
 enum { GMB_PX_CHECK = 1, GMB_PX_RADIO, GMB_PX_TRACK, GMB_PX_DROPDOWN, GMB_PX_PROGRESS,
        GMB_PX_TOGGLE, GMB_PX_SPINNER, GMB_PX_STATUSBAR, GMB_PX_TABS, GMB_PX_LISTBOX,
