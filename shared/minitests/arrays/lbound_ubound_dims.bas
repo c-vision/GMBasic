@@ -1,6 +1,6 @@
 ' LBOUND/UBOUND per asse con lower bound espliciti (1-D/2-D/3-D/4-D), lower misti e
 ' negativi, array STRING e array di UDT. Verifica anche gli indici utente.
-' EXPECT: a= 1 , 3 , 1 , 3 , 60|m= 0 , 1 , 1 , 2 , 1 , 4|n=-1 , 1 ,-2 , 0 , 7 , 9|c= 1 , 2 , 1 , 24|h= 2 , 1 , 16|s=abcd|p= 5 ,ok, 1 , 2
+' EXPECT: a= 1 , 3 , 1 , 3 , 60|m= 0 , 1 , 1 , 2 , 1 , 4|n=-1 , 1 ,-2 , 0 , 7 , 9|c= 1 , 2 , 1 , 24|h= 2 , 1 , 16|s=abcd|p= 5 ,ok, 1 , 2|dyn= 1 , 2 , 1 , 2
 TYPE Cell
   V AS DOUBLE
   Tag AS STRING
@@ -26,4 +26,7 @@ SUB Main()
   DIM p(1 TO 2, 1 TO 2) AS Cell
   p(1,1).V = 5 : p(2,2).Tag = "ok"
   PRINT "p="; p(1,1).V; ","; p(2,2).Tag; ","; LBOUND(p,2); ","; UBOUND(p,2)
+  ' asse scelto a runtime (parametro dim = variabile)
+  DIM d AS LONG = 2
+  PRINT "dyn="; LBOUND(m,d); ","; UBOUND(m,d); ","; LBOUND(p,d); ","; UBOUND(p,d)
 END SUB
