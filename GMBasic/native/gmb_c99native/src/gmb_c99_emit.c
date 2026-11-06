@@ -19275,6 +19275,27 @@ static void st_dim(ctx_t* c, gmb_stmt_t* s) {
                     }
                     sb_printf(&c->out, "] = gmb_make_val_obj(gmb_obj_new_typed(calloc(1, sizeof(gmb_obj_%s)), \"%s\"));\n",
                               dci_a->name, dci_a->name);
+                    /* Campi ARRAY di uno UDT (S3b, 2026-11-06): ogni elemento è un'istanza a
+                     * sé e i suoi campi-array sono PUNTATORI da allocare (senza, il primo
+                     * `v(i).A(k)` — o il marshalling FFI di un array di UDT con campi array —
+                     * dereferenzia NULL: SIGSEGV). */
+                    for (int fi = 0; fi < dci_a->nfields; fi++) {
+                        int asz = cls_field_arr_size(dci_a->ftype[fi]);
+                        if (asz < 0) continue;
+                        ind(c);
+                        sb_printf(&c->out, "((gmb_obj_%s*)(((gmb_obj_t*)", dci_a->name);
+                        emit_ident(c, v->name);
+                        sb_put(&c->out, "[");
+                        for (int d = 0; d < v->ndims; d++) {
+                            if (d) sb_put(&c->out, " + ");
+                            sb_printf(&c->out, "__d%d_%d", id, d);
+                            for (int e = d + 1; e < v->ndims; e++)
+                                sb_printf(&c->out, " * (__dim%d_%d + 1)", id, e);
+                        }
+                        sb_put(&c->out, "].v_ptr)->data))->");
+                        sb_ident(&c->out, dci_a->fname[fi]);
+                        sb_printf(&c->out, " = (gmb_double_t*)calloc(%d, sizeof(gmb_double_t));\n", asz);
+                    }
                     for (int d = 0; d < v->ndims; d++) { c->indent--; ind(c); sb_put(&c->out, "}\n"); }
                 }
             }
