@@ -66,6 +66,8 @@ void gmb_form_set_event_id(int handle, int ev, gmb_form_cb cb);
 int gmb_form_poll_mouse(int* type, int* x, int* y, int* button, int* wheel);
 void gmb_form_dispatch_mouse_px(int type, int x, int y, int button, int wheel);
 void gmb_form_dispatch_key(const char* key);
+void gmb_form_focus_widget(int i);
+int  gmb_form_focused_widget(void);
 
 /* ---- WindowBase (come la Form di VB): base di TUTTE le finestre/dialog ---- */
 typedef struct gmb_form_win {
@@ -119,6 +121,10 @@ int  gmb_control_add_tab(int x, int y, int w, const char* items, double* var);
 int  gmb_form_add_radio(int x, int y, const char* items, double* var);       /* items "a|b|c" */
 int  gmb_form_add_track(int x, int y, int w, double vmin, double vmax, double* var);
 int  gmb_form_add_dropdown(int x, int y, int w, const char* items, double* var);
+/* Factory PIXEL senza dispatch polimorfico (test headless) + caption del widget. */
+int  gmb_form_add_widget_px(int kind, int x, int y, int w, int h, const char* items, double* var);
+int  gmb_form_add_checkbox_px(int x, int y, const char* label, double* var);
+const char* gmb_form_widget_caption(int i);
 int  gmb_form_add_progress(int x, int y, int w, const double* var);          /* display 0..100 */
 int  gmb_form_add_progress_v(int x, int y, int w, double value);            /* idem, con valore iniziale */
 int  gmb_form_add_canvas(int x, int y, int w, int h);                        /* superficie disegno */

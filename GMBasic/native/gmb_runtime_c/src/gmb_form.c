@@ -1,3 +1,4 @@
+#include "gmb_runtime.h"
 /* gmb_form.c — vedi gmb_form.h per il contratto GPM. */
 #include "gmb_form.h"
 #include "gmb_graphics.h"
@@ -551,6 +552,8 @@ static void style_apply(gmb_widget_style_t* s, const char* spec)
         else if (!strcasecmp(key,"bevel"))     { s->bevel = 1; if (*val) s->bevel_depth = atoi(val); }
         else if (!strcasecmp(key,"emboss") || !strcasecmp(key,"embossed")) { s->emboss = 1; }
         else if (!strcasecmp(key,"noemboss"))  { s->emboss = 0; }
+        else if (!strcasecmp(key,"gloss") || !strcasecmp(key,"glossy")) { s->gloss = 1; }
+        else if (!strcasecmp(key,"nogloss"))   { s->gloss = 0; }
         else if (!strcasecmp(key,"gradient"))  { s->gradient_on = 1; if (*val) { char a[32]="",b[32]=""; if (sscanf(val,"%31[^,],%31s",a,b)==2){s->grad_top=parse_color(a);s->grad_bottom=parse_color(b);} } }
         else if (!strcasecmp(key,"nogradient")){ s->gradient_on = 0; }
         else if (!strcasecmp(key,"head"))      { s->head_bg = parse_color(val); }
@@ -631,6 +634,15 @@ static void draw_button_body(gmb_form_btn_t* b, float sc)
         else if (rounded)               GMB_GFX_FILL_RRECT(x, y, w, h, rad, s->gradient_on ? s->grad_top : fill);
         else                            fill_rect_style(x, y, w, h, fill);
 
+        /* 3b) GLOSS (stile "lucido"): riflesso sui ~40% alti, colore derivato dal fill. */
+        if (s->gloss) {
+            int gh = (h * 2) / 5; if (gh < 2) gh = 2;
+            int r = (fill >> 16) & 0xFF, g = (fill >> 8) & 0xFF, bl = fill & 0xFF;
+            r += (255 - r) * 24 / 100; g += (255 - g) * 24 / 100; bl += (255 - bl) * 24 / 100;
+            unsigned int hl = 0xFF000000u | ((unsigned)r << 16) | ((unsigned)g << 8) | (unsigned)bl;
+            if (rounded) GMB_GFX_FILL_RRECT(x + 1, y + 1, w - 2, gh, rad > 2 ? rad / 2 : 1, hl);
+            else         GMB_GFX_LINE(x + 1, y + 1, x + w - 2, y + gh, GFX_RGB(hl), "BF");
+        }
         /* 4) bevel 3D (raised/sunken): luci/ombre sui bordi. */
         if (s->bevel != 0) {
             int d = s->bevel_depth > 0 ? s->bevel_depth : 1;
@@ -672,6 +684,45 @@ static void grid_sort(gmb_pix_widget_t* wd, int col)
         if (wd->gsort_dir ? cmp < 0 : cmp > 0) { int t = wd->gorder[i]; wd->gorder[i] = wd->gorder[j]; wd->gorder[j] = t; }
     }
     g_dirty = 1;
+}
+
+/* Larghezza della fascia frecce: BLOCCO SEPARATO ATTACCATO al campo.
+ * Regola (2026-11-06): fra il campo di input e il blocco frecce non ci sono spazi;
+ * il blocco finisce sul bordo destro del controllo. La larghezza e' una cella di
+ * testo + respiro, cosi' la freccia resta centrata e leggibile con ogni font. */
+static int px_arrow_band_w(int cwl)
+{
+    int aw;
+    if (cwl <= 0) cwl = 8;
+    aw = cwl + 10;
+    if (aw < 16) aw = 16;
+    if (aw > 30) aw = 30;
+    return aw;
+}
+
+/* Disegna la fascia frecce a filo del bordo destro.
+ * arrows: 1 = singola (select), 2 = due frecce impilate (datetime).
+ * Nessun margine fra il campo e la fascia: il bordo sinistro della fascia e' il
+ * confine del campo (linea condivisa), e la fascia termina sul bordo del controllo. */
+static void px_draw_arrow_band(int x, int y, int w, int h, int tl,
+                               gmb_widget_style_t* s, int arrows, int open)
+{
+    int aw = px_arrow_band_w((int)(GMB_GFX_TEXT_END_X("M", 0, 0)));
+    int bx, rr;
+    if (aw > w / 2) aw = w / 2;
+    bx = x + w - aw;
+    rr = ui_soft(s) ? 12 : 6;
+    GMB_GFX_FILL_RRECT(bx, y, aw, h, rr, s->fill_hover);
+    GMB_GFX_STROKE_RRECT(bx, y, aw, h, rr, s->border);
+    GMB_GFX_LINE(bx, y + 1, bx, y + h - 2, GFX_RGB(s->border), "");   /* attacco campo|blocco */
+    if (arrows >= 2) {
+        int hh = h / 2;
+        GMB_GFX_LINE(bx + 1, y + hh, bx + aw - 1, y + hh, GFX_RGB(s->border), "");
+        GMB_GFX_DRAW_TEXT("^", bx + aw / 2, y + (hh - tl) / 2, 1, GFX_RGB(s->text));
+        GMB_GFX_DRAW_TEXT("v", bx + aw / 2, y + hh + (hh - tl) / 2, 1, GFX_RGB(s->text));
+    } else {
+        GMB_GFX_DRAW_TEXT(open ? "^" : "v", bx + aw / 2, y + (h - tl) / 2, 1, GFX_RGB(s->text));
+    }
 }
 
 /* Disegna i widget pixel (checkbox/radio/track/dropdown/progress). */
@@ -757,7 +808,8 @@ static void draw_one_widget(gmb_pix_widget_t* wd, float sc)
             GMB_GFX_STROKE_RRECT(x, y, w, h, rr, s->border);
             int sel = (int)(wd_num(wd) + 0.5); if (sel < 0) sel = 0; if (sel >= wd->nitems) sel = wd->nitems ? wd->nitems - 1 : 0;
             if (wd->nitems) GMB_GFX_DRAW_TEXT(wd->items[sel], x + (soft ? 14 : 8), y + (h - tl) / 2, 0, GFX_RGB(s->text));
-            GMB_GFX_DRAW_TEXT(wd->open ? "^" : "v", x + w - 18, y + (h - tl) / 2, 0, GFX_RGB(soft ? s->text_disabled : s->text));
+            /* Fascia frecce attaccata al campo (nessuno spazio fra input e freccia). */
+            px_draw_arrow_band(x, y, w, h, tl, s, 1, wd->open);
         } else if (wd->kind == W_PROGRESS) {
             /* Barra OS-style guidata dal tema: pill (shape/radius), traccia fill, riempimento
              * accent (fallback head_bg/title_bg quando coincide con la traccia, es. Turbo),
@@ -947,9 +999,11 @@ static void draw_one_widget(gmb_pix_widget_t* wd, float sc)
             }
             GMB_GFX_LINE(x, y, x + w - 1, y + h - 1, GFX_RGB(s->border), "B");
         } else if (wd->kind == W_DATE) {
-            {   /* larghezza adattata al contenuto (testo + freccia + padding) */
+            {   /* larghezza: testo + FASCIA FRECCE + padding, nessuno spazio interno */
+                int aw = px_arrow_band_w(cwl);
+                int padl = (ui_soft(s) ? 14 : 8);
                 char mv[32]; if (wd->sd > 0) date_format(wd->dfmt, wd->sy, wd->sm, wd->sd, mv, sizeof(mv)); else date_mask(wd->dfmt, mv, sizeof(mv));
-                w = GMB_GFX_TEXT_END_X(mv, 0, 0) + cwl * 2 + 12; wd->base.width = w;
+                w = GMB_GFX_TEXT_END_X(mv, 0, 0) + aw + padl + 4; wd->base.width = w;
             }
             GMB_GFX_FILL_RRECT(x, y, w, h, 6, s->fill);
             GMB_GFX_STROKE_RRECT(x, y, w, h, 6, s->border);
@@ -958,9 +1012,13 @@ static void draw_one_widget(gmb_pix_widget_t* wd, float sc)
             const char* shown = fld_focused ? wd->dmask : dbuf;
             unsigned int tcol = s->text;
             if (fld_focused && !date_mask_valid(wd)) tcol = 0xFFFF3B30u;   /* rosso finche' invalida */
-            GMB_GFX_DRAW_TEXT(shown, x + w / 2 - 3, y + (h - tl) / 2, 1, GFX_RGB(tcol));
-            if (fld_focused) { char pre[16]; int dc = wd->dcur; if (dc < 0) dc = 0; if (dc > (int)strlen(shown)) dc = (int)strlen(shown); memcpy(pre, shown, (size_t)dc); pre[dc] = 0; int wf = GMB_GFX_TEXT_END_X(shown, 0, 0), wp = GMB_GFX_TEXT_END_X(pre, 0, 0); int cx = x + w / 2 - 3 - wf / 2 + wp; GMB_GFX_LINE(cx, y + 3, cx, y + h - 3, GFX_RGB(s->text), ""); }
-            GMB_GFX_DRAW_TEXT(wd->open ? "^" : "v", x + w - 16, y + (h - tl) / 2, 0, GFX_RGB(s->text));
+            {   int padl = (ui_soft(s) ? 14 : 8);
+                /* testo a sinistra: il campo termina esattamente dove inizia la fascia */
+                GMB_GFX_DRAW_TEXT(shown, x + padl, y + (h - tl) / 2, 0, GFX_RGB(tcol));
+                if (fld_focused) { char pre[16]; int dc = wd->dcur; if (dc < 0) dc = 0; if (dc > (int)strlen(shown)) dc = (int)strlen(shown); memcpy(pre, shown, (size_t)dc); pre[dc] = 0; int wp = GMB_GFX_TEXT_END_X(pre, 0, 0); int cx = x + padl + wp; GMB_GFX_LINE(cx, y + 3, cx, y + h - 3, GFX_RGB(s->text), ""); }
+            }
+            /* Fascia frecce attaccata al campo (apre/chiude il calendario). */
+            px_draw_arrow_band(x, y, w, h, tl, s, 1, wd->open);
         } else if (wd->kind == W_CANVAS) {
             GMB_GFX_FILL_RRECT(x, y, w, h, 6, s->fill);
             GMB_GFX_STROKE_RRECT(x, y, w, h, 6, s->border);
@@ -1846,6 +1904,28 @@ int gmb_form_add_dropdown(int x, int y, int w, const char* items, double* var)
     return form_add_widget(W_DROPDOWN, x, y, w, 28, items, var);
 }
 
+/* Factory PIXEL esplicita (senza dispatch polimorfico TUI/GRAPHICS): serve ai test
+ * headless e a chi vuole il widget pixel anche senza screen attivo. kind = GMB_PX_*. */
+int gmb_form_add_widget_px(int kind, int x, int y, int w, int h, const char* items, double* var)
+{
+    return form_add_widget(kind, x, y, w, h, items, var);
+}
+
+/* Factory PIXEL del checkbox: imposta il caption (test: il testo accanto al quadratino). */
+int gmb_form_add_checkbox_px(int x, int y, const char* label, double* var)
+{
+    int i = form_add_widget(W_CHECK, x, y, 200, 22, NULL, var);
+    if (i >= 0) snprintf(g_wid[i].label, sizeof(g_wid[i].label), "%s", label ? label : "");
+    return i;
+}
+
+/* Caption corrente di un widget pixel (per i test: il testo deve essere quello
+ * dichiarato, non la larghezza o una stringa vuota). */
+const char* gmb_form_widget_caption(int i)
+{
+    return (i >= 0 && i < g_nwid) ? g_wid[i].label : "";
+}
+
 /* PANEL: card di sezione (sfondo) con titolo opzionale. Va creato PRIMA dei
  * controlli che ospita, cosi' resta dietro (ordine di registrazione). */
 int gmb_form_add_panel(int x, int y, int w, int h, const char* title)
@@ -2274,7 +2354,7 @@ int gmb_form_printerdialog(void* pstr, double* copies, double* duplex)
     const char* lab[2] = { "Stampa", "Annulla" };
     int bw = 120, bh = 34, bx = c.px + c.pw - 18 - (2 * bw + 12), by = c.py + c.ph - 18 - bh;
     for (int i = 0; i < 2; i++) { c.bt[i].base.x = bx + i * (bw + 12); c.bt[i].base.y = by; c.bt[i].base.width = bw; c.bt[i].base.height = bh; c.bt[i].base.enabled = 1; c.bt[i].style = c.st; snprintf(c.bt[i].label, sizeof(c.bt[i].label), "%s", lab[i]); }
-    c.pshot = getenv("GMB_FORM_SHOT"); { const char* psf = getenv("GMB_FORM_SHOT_FRAME"); c.pshot_at = (psf && *psf) ? atoi(psf) : 0; }
+    c.pshot = gmb_opt_env("GMB_FORM_SHOT"); { const char* psf = gmb_opt_env("GMB_FORM_SHOT_FRAME"); c.pshot_at = (psf && *psf) ? atoi(psf) : 0; }
     c.hover_i = -1; c.press_i = -1;
 
     gmb_form_set_exclusive(1);
@@ -2542,11 +2622,10 @@ static void widget_mouse(int type, int x, int y, float sc)
                             wd->open = 0; g_dirty = 1;
                         }
                     } else { wd->open = 0; g_dirty = 1; }
-                } else if (x >= X && x < X + W && y >= Y && y < Y + H) { if (x >= X + W - (int)(GMB_GFX_TEXT_END_X("M",0,0) + 8)) { wd->open = 1; wd->hover = 0; } else { set_focus_wid(i); date_mask_fill(wd); } g_dirty = 1; }
+                } else if (x >= X && x < X + W && y >= Y && y < Y + H) { if (x >= X + W - px_arrow_band_w((int)GMB_GFX_TEXT_END_X("M",0,0))) { wd->open = 1; wd->hover = 0; } else { set_focus_wid(i); date_mask_fill(wd); } g_dirty = 1; }
             }
         } else if (wd->kind == W_DROPDOWN) {
             int listY = Y + H, listH = H * wd->nitems;
-            if (getenv("GMB_WID_DEBUG")) fprintf(stderr, "[WID] type=%d x=%d y=%d open=%d rect=(%d,%d,%d,%d) listY=%d listH=%d\n", type, x, y, wd->open, X, Y, W, H, listY, listH);
             if (type == GMB_GFX_MOUSE_DOWN) {
                 if (wd->open) {   /* qualunque click chiude; se su una voce, la seleziona */
                     if (wd->nitems && x >= X && x < X + W && y >= listY && y < listY + listH) {
@@ -2660,6 +2739,40 @@ void gmb_form_dispatch_key(const char* key)
             g_dirty = 1;
         } else if (wd->kind == W_CHECK || wd->kind == W_TOGGLE) {
             if (c == ' ') { wd_set_num(wd, wd_num(wd) != 0 ? 0 : 1); g_dirty = 1; }
+        } else if (wd->kind == W_DROPDOWN) {
+            /* SELECT da tastiera (prima non gestito: la freccia giu' non faceva nulla).
+             * Chiuso: Giu'/Invio/Spazio aprono. Aperto: Su/Giu' spostano l'evidenziazione,
+             * Invio conferma e chiude, Esc chiude senza cambiare. */
+            int j;
+            if (!wd->open) {
+                if (!wd->nitems) return;
+                if (c == 0x1f || c == '\r' || c == '\n' || c == ' ') {
+                    wd->open = 1;
+                    j = (int)(wd_num(wd) + 0.5);
+                    if (j < 0) j = 0; if (j >= wd->nitems) j = wd->nitems - 1;
+                    wd->hover = j;
+                    fire_ev(g_focus_wid, GMB_EV_DROPDOWN);
+                    g_dirty = 1;
+                }
+                return;
+            }
+            j = wd->hover;
+            if (j < 0) j = (int)(wd_num(wd) + 0.5);
+            if (c == 0x1e) { if (j > 0) j--; }
+            else if (c == 0x1f) { if (j < wd->nitems - 1) j++; }
+            else if (c == '\r' || c == '\n') {
+                wd_set_num(wd, j);
+                wd->open = 0;
+                fire_ev(g_focus_wid, GMB_EV_CHANGE);
+                g_dirty = 1;
+                return;
+            } else if (c == 0x1b) {
+                wd->open = 0; g_dirty = 1;
+                return;   /* Esc chiude il popup, non la finestra */
+            } else return;
+            wd->hover = j;
+            g_dirty = 1;
+            return;
         } else if (wd->kind == W_LISTBOX) {
             int j = (int)(wd_num(wd) + 0.5);
             if (c == 0x1e) j--; else if (c == 0x1f) j++; else return;
@@ -2747,8 +2860,8 @@ void gmb_form_render_if_dirty(void)
     if (g_form_exclusive) return;   /* READ (form Clipper) disegna da sé: non cancellare */
     /* Contatore frame di present (per lo shot di verifica), indipendente dal dirty. */
     static int sframes = 0;
-    const char* sp = getenv("GMB_FORM_SHOT");
-    const char* fr = getenv("GMB_FORM_SHOT_FRAME");
+    const char* sp = gmb_opt_env("GMB_FORM_SHOT");
+    const char* fr = gmb_opt_env("GMB_FORM_SHOT_FRAME");
     int want = (fr && *fr) ? atoi(fr) : 20;
     sframes++;
 
@@ -2789,7 +2902,7 @@ static void form_park(int ms)
 void gmb_form_autokey_tick(void)
 {
     static long k_frame = 0;
-    const char* ak = getenv("GMB_FORM_AUTOKEY");
+    const char* ak = gmb_opt_env("GMB_FORM_AUTOKEY");
     if (ak && *ak)
     {
         char buf[256]; snprintf(buf, sizeof(buf), "%s", ak);
