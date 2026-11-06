@@ -1,18 +1,15 @@
 # Sorgenti venduti (ricompilabile stand-alone)
 
-La libreria è **self-contained**: `build.sh` compila solo i file in `src/` con gli header in
-`include/`, senza dipendenze esterne (solo `libm`). Nessun path verso `gmbsuite` a build time.
+La libreria è **self-contained**: `build.sh` compila i file in `src/` (domini `gmbgfx-*`) più i
+sorgenti condivisi elencati in `shared-src.txt` (`shared/libs/compute` e il nucleo vettoriale di
+`shared/libs/math`), con gli header in `include/`. Nessun path verso `gmbsuite` a build time e
+nessuna copia dei sorgenti comuni: esiste una sola copia in `shared/libs/`.
 
 | File | Origine |
 |---|---|
-| `src/gc_core.c`, `include/gc_core.h` | `gmbsuite/gmbcompute` |
-| `src/gm_core.c`, `include/gm_core.h` | `gmbsuite/gmbmath-core` |
-| `src/gm_vec.c`, `include/gm_vec.h` | `gmbsuite/gmbmath-vector` |
 | `src/gm_color.c`, `include/gm_color.h` | `gmbsuite/gmbgfx-color` |
 | `src/gm_gfx_shape.c`, `include/gm_gfx_shape.h` | `gmbsuite/gmbgfx-2d` |
 | `src/gm_gfx_image.c`, `include/gm_gfx_image.h` | `gmbsuite/gmbgfx-2d` |
-| `src/gm_mat.c`, `include/gm_mat.h` | `gmbsuite/gmbmath-vector` |
-| `src/gm_quat.c`, `include/gm_quat.h` | `gmbsuite/gmbmath-vector` |
 | `src/gm_gfx_geom.c`, `include/gm_gfx_geom.h` | `gmbsuite/gmbgfx-3d` |
 | `src/gm_gfx_intersect.c`, `include/gm_gfx_intersect.h` | `gmbsuite/gmbgfx-3d` |
 | `src/gm_gfx_ray.c`, `include/gm_gfx_ray.h` | `gmbsuite/gmbgfx-3d` |
@@ -22,6 +19,10 @@ La libreria è **self-contained**: `build.sh` compila solo i file in `src/` con 
 | `src/gm_gfx_surface.c`, `include/gm_gfx_surface.h` | `gmbsuite/gmbgfx-surface` |
 | `src/gm_bc1.c`, `include/gm_bc1.h` | `gmbsuite/gmbgfx-codec` |
 | `src/ofx_gfx.c`, `src/ofx_gfx_3d.c` | shim FFI di questo pacchetto |
+
+I file `gc_core`, `gm_core`, `gm_vec`, `gm_mat`, `gm_quat` **non** sono copiati qui: sono
+sorgenti condivisi e vengono compilati da `shared/libs/compute/src` e `shared/libs/math/src`
+tramite `shared-src.txt` (una sola copia nel monorepo).
 
 
 Aggiornare i file qui sopra quando si ri-vendono i sorgenti dai domini `gmbsuite/gmbgfx-*`, poi ricompilare con

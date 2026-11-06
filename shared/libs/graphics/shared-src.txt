@@ -1,0 +1,9 @@
+# Sorgenti condivisi compilati dentro libgmbgraphics.
+# Solo i file davvero usati dai domini grafici: gmbcompute/gc_core + il nucleo
+# vettoriale di gmbmath (gm_core/gm_vec/gm_mat/gm_quat). Il resto di gmbmath NON
+# entra qui: la libreria resta piccola e con la sola superficie GFX*.
+compute/src/gc_core.c
+math/src/gm_core.c
+math/src/gm_vec.c
+math/src/gm_mat.c
+math/src/gm_quat.c

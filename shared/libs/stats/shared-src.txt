@@ -1,0 +1,5 @@
+# Sorgenti condivisi compilati dentro libgmbstats.
+# `compute` = gmbcompute (gc_*), `math` = gmbmath (gm_*, gmi_*): entrambi vivono
+# una volta sola in shared/libs, non sono piu' copiati in questa libreria.
+compute
+math

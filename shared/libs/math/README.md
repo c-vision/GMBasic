@@ -2,10 +2,13 @@
 
 Sorgenti venduti da `gmbsuite` per ricompilare la libreria senza dipendenze esterne:
 
-- `gmbcompute` (superficie `gc_*`)
 - `gmbmath-core`, `gmbmath-special` (+ AMOS), `gmbmath-linalg`,
   `gmbmath-numerical`, `gmbmath-vector`
 - `gmbmath/src` legacy (`gmi_*`, `gm_*` residui: ellittiche, combinatoria, ecc.)
+
+Il layer `gmbcompute` (superficie `gc_*`) **non** è più copiato qui: vive una volta sola in
+`shared/libs/compute` ed è compilato dentro questa dylib tramite `shared-src.txt`
+(`compute`). La dylib resta self-contained, ma il sorgente esiste in un posto solo.
 
 Build:
 
