@@ -3300,6 +3300,15 @@ static void gmb_bf_1194(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int fun
             bout->result = (double)gmb_ml_model_reset((int64_t)args[0].num);
         }
 }
+/* TORCH.MODELLOAD(h, path): ricarica i pesi (formato flat di MODELSAVE). */
+static void gmb_bf_3898(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
+{
+        {
+            if (gmb_ml_load_lib() != 0) { vm_error(task, "TORCH non caricato: esegui 'gmb ml setup' o 'ML SETUP'"); }
+            const char* path = (argc >= 2 && args[1].type == 2 && args[1].ref) ? ((gmb_obj_string_t*)args[1].ref)->data : "";
+            bout->result = (double)gmb_ml_model_load((int64_t)args[0].num, path);
+        }
+}
 static void gmb_bf_1154(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
 {
         {
@@ -4728,46 +4737,6 @@ static void gmb_bf_336(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func
                 }
                 else { bout->is_num = 0; bout->result_ref = NULL; }
             }
-        }
-}
-static void gmb_bf_376(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
-{
-        {
-            const uint8_t* data = NULL; size_t len = 0;
-            static uint8_t bin[8192];
-            if (argc >= 1 && args[0].type == 2 && args[0].ref)
-            {
-                if (args[0].ref->kind == GMB_OBJ_LIST)
-                {
-                    gmb_obj_shared_val_t* sv = (gmb_obj_shared_val_t*)args[0].ref;
-                    len = sv->list->count < sizeof(bin) ? sv->list->count : sizeof(bin);
-                    for (size_t i = 0; i < len; i++) { gmb_val_t v = sv->list->items[i]; bin[i] = (uint8_t)(v.kind == GMB_TYPE_DOUBLE ? v.v_double : (double)v.v_int); }
-                    data = bin;
-                }
-                else { gmb_obj_string_t* s = (gmb_obj_string_t*)args[0].ref; data = (const uint8_t*)s->data; len = s->length; }
-            }
-            char* enc = func_code == 376
-                ? gmb_base58_encode(data ? data : (const uint8_t*)"", len)
-                : gmb_base32_encode(data ? data : (const uint8_t*)"", len);
-            if (enc) { gmb_obj_string_t* r = gmb_str_cstr(enc); free(enc); bout->is_num = 0; bout->result_ref = (gmb_obj_t*)r; bout->result_ref_bt = GMB_BT_STRING; }
-            else { bout->is_num = 0; bout->result_ref = NULL; }
-        }
-}
-static void gmb_bf_377(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
-{
-        {
-            const char* s = (argc >= 1 && args[0].type == 2 && args[0].ref && args[0].ref->kind == GMB_OBJ_STRING)
-                ? ((gmb_obj_string_t*)args[0].ref)->data : "";
-            size_t olen = 0;
-            uint8_t* dec = func_code == 377 ? gmb_base58_decode(s, &olen) : gmb_base32_decode(s, &olen);
-            gmb_obj_shared_val_t* res = gmb_shared_list_new();
-            if (res && dec)
-            {
-                for (size_t i = 0; i < olen; i++) gmb_list_add(res->list, gmb_make_val_double(dec[i]));
-                free(dec);
-                bout->is_num = 0; bout->result_ref = (gmb_obj_t*)res; bout->result_ref_bt = GMB_BT_OBJECT;
-            }
-            else { free(dec); if (res) gmb_obj_release((gmb_obj_t*)res); bout->is_num = 0; bout->result_ref = NULL; }
         }
 }
 static void gmb_bf_356(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
@@ -14046,30 +14015,6 @@ static void gmb_bf_secondbrain_c1290(gmb_vm_t* vm, gmb_stack_entry_t* args, int 
         bout->is_num = 0; bout->result_ref = (gmb_obj_t*)gmb_str_cstr(r ? r : ""); bout->result_ref_bt = GMB_BT_STRING;
         if (r) free(r);
 }
-static void gmb_bf_secondbrain_c1291(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
-{
-    (void)vm; (void)task; (void)func_code;
-    const char* brain = vm_builtin_sarg(args, argc, 0);
-        if (!brain) { vm_error(task, "GRAPH richiede brain"); return; }
-        const char* a1 = argc > 1 ? vm_builtin_sarg(args, argc, 1) : NULL;
-        const char* a2 = argc > 2 ? vm_builtin_sarg(args, argc, 2) : NULL;
-        int k = argc > 1 ? (int)args[1].num : 0;
-        char* r = gmb_graph_brain_query(brain, "PAGERANK", a1, a2, k);
-        bout->is_num = 0; bout->result_ref = (gmb_obj_t*)gmb_str_cstr(r ? r : ""); bout->result_ref_bt = GMB_BT_STRING;
-        if (r) free(r);
-}
-static void gmb_bf_secondbrain_c1292(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
-{
-    (void)vm; (void)task; (void)func_code;
-    const char* brain = vm_builtin_sarg(args, argc, 0);
-        if (!brain) { vm_error(task, "GRAPH richiede brain"); return; }
-        const char* a1 = argc > 1 ? vm_builtin_sarg(args, argc, 1) : NULL;
-        const char* a2 = argc > 2 ? vm_builtin_sarg(args, argc, 2) : NULL;
-        int k = argc > 3 ? (int)args[3].num : 0;
-        char* r = gmb_graph_brain_query(brain, "CONNECTED", a1, a2, k);
-        bout->is_num = 0; bout->result_ref = (gmb_obj_t*)gmb_str_cstr(r ? r : ""); bout->result_ref_bt = GMB_BT_STRING;
-        if (r) free(r);
-}
 static void gmb_bf_secondbrain_c1293(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
 {
     (void)vm; (void)task; (void)func_code;
@@ -14082,113 +14027,17 @@ static void gmb_bf_secondbrain_c1293(gmb_vm_t* vm, gmb_stack_entry_t* args, int 
         bout->is_num = 0; bout->result_ref = (gmb_obj_t*)gmb_str_cstr(r ? r : ""); bout->result_ref_bt = GMB_BT_STRING;
         if (r) free(r);
 }
-static void gmb_bf_secondbrain_c1294(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
+/* BRAINS.ADJACENCY (3899): nodi + archi pesati del cervello — ponte verso GRAPH/FLOW.
+ * Il JSON lo costruisce gmb_graph_brain_query (op "ADJACENCY"), ordine canonico condiviso
+ * con il mondo C# (GraphMultiQuery.Adjacency). */
+static void gmb_bf_secondbrain_c3899(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
 {
-    (void)vm; (void)task; (void)func_code;
+    (void)vm; (void)func_code;
     const char* brain = vm_builtin_sarg(args, argc, 0);
-        if (!brain) { vm_error(task, "GRAPH richiede brain"); return; }
-        const char* a1 = argc > 1 ? vm_builtin_sarg(args, argc, 1) : NULL;
-        const char* a2 = argc > 2 ? vm_builtin_sarg(args, argc, 2) : NULL;
-        int k = argc > 3 ? (int)args[3].num : 0;
-        char* r = gmb_graph_brain_query(brain, "SCC", a1, a2, k);
-        bout->is_num = 0; bout->result_ref = (gmb_obj_t*)gmb_str_cstr(r ? r : ""); bout->result_ref_bt = GMB_BT_STRING;
-        if (r) free(r);
-}
-static void gmb_bf_secondbrain_c1295(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
-{
-    (void)vm; (void)task; (void)func_code;
-    const char* brain = vm_builtin_sarg(args, argc, 0);
-        if (!brain) { vm_error(task, "GRAPH richiede brain"); return; }
-        const char* a1 = argc > 1 ? vm_builtin_sarg(args, argc, 1) : NULL;
-        const char* a2 = argc > 2 ? vm_builtin_sarg(args, argc, 2) : NULL;
-        int k = argc > 3 ? (int)args[3].num : 0;
-        char* r = gmb_graph_brain_query(brain, "TOPOSORT", a1, a2, k);
-        bout->is_num = 0; bout->result_ref = (gmb_obj_t*)gmb_str_cstr(r ? r : ""); bout->result_ref_bt = GMB_BT_STRING;
-        if (r) free(r);
-}
-static void gmb_bf_secondbrain_c1296(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
-{
-    (void)vm; (void)task; (void)func_code;
-    const char* brain = vm_builtin_sarg(args, argc, 0);
-        if (!brain) { vm_error(task, "GRAPH richiede brain"); return; }
-        const char* a1 = argc > 1 ? vm_builtin_sarg(args, argc, 1) : NULL;
-        const char* a2 = argc > 2 ? vm_builtin_sarg(args, argc, 2) : NULL;
-        int k = argc > 3 ? (int)args[3].num : 0;
-        char* r = gmb_graph_brain_query(brain, "BIPARTITE", a1, a2, k);
-        bout->is_num = 0; bout->result_ref = (gmb_obj_t*)gmb_str_cstr(r ? r : ""); bout->result_ref_bt = GMB_BT_STRING;
-        if (r) free(r);
-}
-static void gmb_bf_secondbrain_c1297(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
-{
-    (void)vm; (void)task; (void)func_code;
-    const char* brain = vm_builtin_sarg(args, argc, 0);
-        if (!brain) { vm_error(task, "GRAPH richiede brain"); return; }
-        const char* a1 = argc > 1 ? vm_builtin_sarg(args, argc, 1) : NULL;
-        const char* a2 = argc > 2 ? vm_builtin_sarg(args, argc, 2) : NULL;
-        int k = argc > 3 ? (int)args[3].num : 0;
-        char* r = gmb_graph_brain_query(brain, "BETWEENNESS", a1, a2, k);
-        bout->is_num = 0; bout->result_ref = (gmb_obj_t*)gmb_str_cstr(r ? r : ""); bout->result_ref_bt = GMB_BT_STRING;
-        if (r) free(r);
-}
-static void gmb_bf_secondbrain_c1298(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
-{
-    (void)vm; (void)task; (void)func_code;
-    const char* brain = vm_builtin_sarg(args, argc, 0);
-        if (!brain) { vm_error(task, "GRAPH richiede brain"); return; }
-        const char* a1 = argc > 1 ? vm_builtin_sarg(args, argc, 1) : NULL;
-        const char* a2 = argc > 2 ? vm_builtin_sarg(args, argc, 2) : NULL;
-        int k = argc > 3 ? (int)args[3].num : 0;
-        char* r = gmb_graph_brain_query(brain, "CLUSTERING", a1, a2, k);
-        bout->is_num = 0; bout->result_ref = (gmb_obj_t*)gmb_str_cstr(r ? r : ""); bout->result_ref_bt = GMB_BT_STRING;
-        if (r) free(r);
-}
-static void gmb_bf_secondbrain_c1299(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
-{
-    (void)vm; (void)task; (void)func_code;
-    const char* brain = vm_builtin_sarg(args, argc, 0);
-        if (!brain) { vm_error(task, "GRAPH richiede brain"); return; }
-        const char* a1 = argc > 1 ? vm_builtin_sarg(args, argc, 1) : NULL;
-        const char* a2 = argc > 2 ? vm_builtin_sarg(args, argc, 2) : NULL;
-        int k = argc > 3 ? (int)args[3].num : 0;
-        char* r = gmb_graph_brain_query(brain, "DIAMETER", a1, a2, k);
-        bout->is_num = 0; bout->result_ref = (gmb_obj_t*)gmb_str_cstr(r ? r : ""); bout->result_ref_bt = GMB_BT_STRING;
-        if (r) free(r);
-}
-static void gmb_bf_secondbrain_c1300(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
-{
-    (void)vm; (void)task; (void)func_code;
-    const char* brain = vm_builtin_sarg(args, argc, 0);
-        if (!brain) { vm_error(task, "GRAPH richiede brain"); return; }
-        const char* a1 = argc > 1 ? vm_builtin_sarg(args, argc, 1) : NULL;
-        const char* a2 = argc > 2 ? vm_builtin_sarg(args, argc, 2) : NULL;
-        int k = argc > 3 ? (int)args[3].num : 0;
-        char* r = gmb_graph_brain_query(brain, "MST", a1, a2, k);
-        bout->is_num = 0; bout->result_ref = (gmb_obj_t*)gmb_str_cstr(r ? r : ""); bout->result_ref_bt = GMB_BT_STRING;
-        if (r) free(r);
-}
-static void gmb_bf_secondbrain_c3790(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
-{
-    (void)vm; (void)task; (void)func_code;
-    const char* brain = vm_builtin_sarg(args, argc, 0);
-        if (!brain) { vm_error(task, "GRAPH richiede brain"); return; }
-        const char* a1 = argc > 1 ? vm_builtin_sarg(args, argc, 1) : NULL;
-        const char* a2 = argc > 2 ? vm_builtin_sarg(args, argc, 2) : NULL;
-        int k = argc > 3 ? (int)args[3].num : 0;
-        char* r = gmb_graph_brain_query(brain, "LOUVAIN", a1, a2, k);
-        bout->is_num = 0; bout->result_ref = (gmb_obj_t*)gmb_str_cstr(r ? r : ""); bout->result_ref_bt = GMB_BT_STRING;
-        if (r) free(r);
-}
-static void gmb_bf_secondbrain_c3791(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
-{
-    (void)vm; (void)task; (void)func_code;
-    const char* brain = vm_builtin_sarg(args, argc, 0);
-        if (!brain) { vm_error(task, "GRAPH richiede brain"); return; }
-        const char* a1 = argc > 1 ? vm_builtin_sarg(args, argc, 1) : NULL;
-        const char* a2 = argc > 2 ? vm_builtin_sarg(args, argc, 2) : NULL;
-        int k = argc > 3 ? (int)args[3].num : 0;
-        char* r = gmb_graph_brain_query(brain, "MAXFLOW", a1, a2, k);
-        bout->is_num = 0; bout->result_ref = (gmb_obj_t*)gmb_str_cstr(r ? r : ""); bout->result_ref_bt = GMB_BT_STRING;
-        if (r) free(r);
+    if (!brain) { vm_error(task, "BRAINS.ADJACENCY richiede il nome del cervello"); return; }
+    char* r = gmb_graph_brain_query(brain, "ADJACENCY", NULL, NULL, 0);
+    bout->is_num = 0; bout->result_ref = (gmb_obj_t*)gmb_str_cstr(r ? r : ""); bout->result_ref_bt = GMB_BT_STRING;
+    if (r) free(r);
 }
 static void gmb_bf_secondbrain_c1332(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
 {
@@ -14199,19 +14048,6 @@ static void gmb_bf_secondbrain_c1332(gmb_vm_t* vm, gmb_stack_entry_t* args, int 
         const char* a2 = argc > 2 ? vm_builtin_sarg(args, argc, 2) : NULL;
         int k = argc > 3 ? (int)args[3].num : 0;
         char* r = gmb_graph_brain_query(brain, "DOT", a1, a2, k);
-        bout->is_num = 0; bout->result_ref = (gmb_obj_t*)gmb_str_cstr(r ? r : ""); bout->result_ref_bt = GMB_BT_STRING;
-        if (r) free(r);
-}
-static void gmb_bf_secondbrain_c1333(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
-{
-    (void)vm; (void)task; (void)func_code;
-    const char* brain = vm_builtin_sarg(args, argc, 0);
-        if (!brain) { vm_error(task, "GRAPH richiede brain"); return; }
-        const char* a1 = argc > 1 ? vm_builtin_sarg(args, argc, 1) : NULL;
-        const char* a2 = argc > 2 ? vm_builtin_sarg(args, argc, 2) : NULL;
-        char dstr[32]; if (!a2 || !a2[0]) { snprintf(dstr, sizeof(dstr), "%d", argc > 2 ? (int)args[2].num : 1); a2 = dstr; }
-        int k = argc > 3 ? (int)args[3].num : 0;
-        char* r = gmb_graph_brain_query(brain, "SUBGRAPH", a1, a2, k);
         bout->is_num = 0; bout->result_ref = (gmb_obj_t*)gmb_str_cstr(r ? r : ""); bout->result_ref_bt = GMB_BT_STRING;
         if (r) free(r);
 }
@@ -18246,6 +18082,7 @@ static const gmb_bf_impl_t gmb_bf_impl_core[] = {
     { 1192, gmb_bf_1192 },
     { 1193, gmb_bf_1193 },
     { 1194, gmb_bf_1194 },
+    { 3898, gmb_bf_3898 },
     { 1195, gmb_bf_1195 },
     { 1196, gmb_bf_1196 },
     { 1197, gmb_bf_1197 },
@@ -18328,10 +18165,6 @@ static const gmb_bf_impl_t gmb_bf_impl_core[] = {
     { 343, gmb_bf_336 },
     { 344, gmb_bf_336 },
     { 346, gmb_bf_336 },
-    { 376, gmb_bf_376 },
-    { 378, gmb_bf_376 },
-    { 377, gmb_bf_377 },
-    { 379, gmb_bf_377 },
     { 356, gmb_bf_356 },
     { 357, gmb_bf_357 },
     { 342, gmb_bf_342 },
@@ -19003,20 +18836,9 @@ static const gmb_bf_impl_t gmb_bf_impl_core[] = {
     { 1288, gmb_bf_secondbrain_c1288 },
     { 1289, gmb_bf_secondbrain_c1289 },
     { 1290, gmb_bf_secondbrain_c1290 },
-    { 1291, gmb_bf_secondbrain_c1291 },
-    { 1292, gmb_bf_secondbrain_c1292 },
     { 1293, gmb_bf_secondbrain_c1293 },
-    { 1294, gmb_bf_secondbrain_c1294 },
-    { 1295, gmb_bf_secondbrain_c1295 },
-    { 1296, gmb_bf_secondbrain_c1296 },
-    { 1297, gmb_bf_secondbrain_c1297 },
-    { 1298, gmb_bf_secondbrain_c1298 },
-    { 1299, gmb_bf_secondbrain_c1299 },
-    { 1300, gmb_bf_secondbrain_c1300 },
-    { 3790, gmb_bf_secondbrain_c3790 },
-    { 3791, gmb_bf_secondbrain_c3791 },
+    { 3899, gmb_bf_secondbrain_c3899 },
     { 1332, gmb_bf_secondbrain_c1332 },
-    { 1333, gmb_bf_secondbrain_c1333 },
     { 1334, gmb_bf_secondbrain_c1334 },
     { 1335, gmb_bf_secondbrain_c1335 },
     { 1336, gmb_bf_secondbrain_c1336 },

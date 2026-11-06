@@ -1271,6 +1271,7 @@ static const gmb_ns_lookup_row_t gmb_ns_lookup[] = {
     { "TORCH", "MODELFORWARD", GMB_TOK_TorchModelForward },
     { "TORCH", "MODELFREE", GMB_TOK_TorchModelFree },
     { "TORCH", "MODELINPUT", GMB_TOK_TorchModelInput },
+    { "TORCH", "MODELLOAD", GMB_TOK_TorchModelLoad },
     { "TORCH", "MODELLOSS", GMB_TOK_TorchModelLoss },
     { "TORCH", "MODELOUTPUT", GMB_TOK_TorchModelOutput },
     { "TORCH", "MODELPARAMETERS", GMB_TOK_TorchModelParameters },

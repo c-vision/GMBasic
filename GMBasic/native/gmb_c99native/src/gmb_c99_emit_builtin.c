@@ -3093,6 +3093,7 @@ static int tg_modelcreate(ctx_t* c, gmb_expr_t** a, int n){ if(n<2)return 0; sb_
 static int tg_modelfree(ctx_t* c, gmb_expr_t** a, int n){ if(n<1)return 0; sb_put(&c->out,"(gmb_ml_model_free("); emit_expr(c,a[0]); sb_put(&c->out,"), 0)"); return 1; }
 static int tg_modelreset(ctx_t* c, gmb_expr_t** a, int n){ if(n<1)return 0; sb_put(&c->out,"((gmb_double_t)gmb_ml_model_reset("); emit_expr(c,a[0]); sb_put(&c->out,"))"); return 1; }
 static int tg_modelsave(ctx_t* c, gmb_expr_t** a, int n){ if(n<2)return 0; sb_put(&c->out,"((gmb_double_t)gmb_ml_model_save("); emit_expr(c,a[0]); sb_put(&c->out,", "); emit_str_operand(c,a[1]); sb_put(&c->out,".data))"); return 1; }
+static int tg_modelload(ctx_t* c, gmb_expr_t** a, int n){ if(n<2)return 0; sb_put(&c->out,"((gmb_double_t)gmb_ml_model_load("); emit_expr(c,a[0]); sb_put(&c->out,", "); emit_str_operand(c,a[1]); sb_put(&c->out,".data))"); return 1; }
 static int tg_modelinput(ctx_t* c, gmb_expr_t** a, int n){ if(n<1)return 0; sb_put(&c->out,"gmb_ml_model_input("); emit_expr(c,a[0]); sb_put(&c->out,")"); return 1; }
 static int tg_modeloutput(ctx_t* c, gmb_expr_t** a, int n){ if(n<1)return 0; sb_put(&c->out,"gmb_ml_model_output("); emit_expr(c,a[0]); sb_put(&c->out,")"); return 1; }
 static int tg_modelforward(ctx_t* c, gmb_expr_t** a, int n){ if(n<2)return 0; sb_put(&c->out,"gmb_ml_model_forward("); emit_expr(c,a[0]); sb_put(&c->out,", "); emit_expr(c,a[1]); sb_put(&c->out,")"); return 1; }
@@ -3118,7 +3119,7 @@ static const tg_row TORCH_TBL[] = {
     { GMB_TOK_TorchArgmax, tg_argmax },
     { GMB_TOK_TorchLossMse, tg_lossmse }, { GMB_TOK_TorchLossCrossEntropy, tg_lossce }, { GMB_TOK_TorchLossBinary, tg_lossbin },
     { GMB_TOK_TorchAccuracy, tg_accuracy }, { GMB_TOK_TorchModelCreate, tg_modelcreate }, { GMB_TOK_TorchModelFree, tg_modelfree },
-    { GMB_TOK_TorchModelReset, tg_modelreset }, { GMB_TOK_TorchModelSave, tg_modelsave }, { GMB_TOK_TorchModelInput, tg_modelinput },
+    { GMB_TOK_TorchModelReset, tg_modelreset }, { GMB_TOK_TorchModelSave, tg_modelsave }, { GMB_TOK_TorchModelLoad, tg_modelload }, { GMB_TOK_TorchModelInput, tg_modelinput },
     { GMB_TOK_TorchModelOutput, tg_modeloutput }, { GMB_TOK_TorchModelForward, tg_modelforward },
     { GMB_TOK_TorchModelParameters, tg_modelparams }, { GMB_TOK_TorchModelLoss, tg_modelloss },
     { GMB_TOK_TorchModelState, tg_modelstate }, { GMB_TOK_TorchModelTrainStep, tg_modeltrainstep },
@@ -6287,6 +6288,27 @@ typedef struct { gmb_tokenkind_t tk; ma_sp sp; } en_row;
  * generico produce hex-text; qui va consumato come BYTE GREZZI (parity IL/PCodeVM/VM-C:
  * MD5 ritorna byte[], quindi TOHEX(MD5(x)) = hex del digest, non doppio hex). */
 static void emit_bytes_operand(ctx_t* c, gmb_expr_t* a) {
+    /* Array numerico/BYTE (`DIM x(n) AS BYTE` o PARAMETRO `a() AS BYTE`): in C è un
+     * `gmb_double_t*` con bound `<nome>__b0` (o `_len` se dinamico), quindi NON ha
+     * `.data`/`.length`. Va convertito in stringa binaria col ponte del runtime
+     * condiviso; senza, il puntatore finiva in `gmb_double_to_string`. */
+    if (a && a->kind == GMB_EXPR_VAR) {
+        var_t* tv = lookup_var(c, a->var);
+        if (tv && tv->is_array && !tv->matrix && !tv->jagged && !tv->is_bytes && tv->type != TY_STR) {
+            sb_put(&c->out, "gmb_bytes_from_doubles(");
+            emit_ident(c, tv->name);
+            sb_put(&c->out, ", (gmb_int_t)(");
+            if (tv->dyn_len) {
+                emit_ident(c, tv->name);
+                sb_put(&c->out, "_len)");
+            } else {
+                emit_ident(c, tv->name);
+                sb_put(&c->out, "__b0) + 1");
+            }
+            sb_put(&c->out, ")");
+            return;
+        }
+    }
     if (a && a->kind == GMB_EXPR_CALL && a->var) {
         /* RANDOMBYTES/RANDOMCRYPTOBYTES ritornano già gmb_string_t binaria: emetti la
          * chiamata così com'è (il chiamante appende .data/.length). */
@@ -6309,16 +6331,17 @@ static void emit_bytes_operand(ctx_t* c, gmb_expr_t* a) {
 }
 static int en_encode(ctx_t* c, gmb_expr_t** a, int n, const char* fn) {
     if (n < 1) return 0;
-    sb_printf(&c->out, "gmb_string_alloc(%s((const uint8_t*)", fn);
+    /* UNA sola conversione dell'operando (`_b`) riusata per `.data` e `.length`: con
+     * `emit_bytes_operand` chiamato due volte il ponte bytes↔array allocava due volte
+     * e un digest veniva calcolato due volte. */
+    sb_put(&c->out, "({ gmb_string_t _b = ");
     emit_bytes_operand(c, a[0]);
-    sb_put(&c->out, ".data, (size_t)");
-    emit_bytes_operand(c, a[0]);
-    sb_put(&c->out, ".length))");
+    sb_printf(&c->out, "; gmb_string_alloc(%s((const uint8_t*)_b.data, (size_t)_b.length)); })", fn);
     return 1;
 }
 static int en_decode(ctx_t* c, gmb_expr_t** a, int n, const char* fn) {
     if (n < 1) return 0;
-    /* FROMBASE64/BASE58/BASE32: il risultato è BINARIO. Costruire la stringa con
+    /* FROMBASE64: il risultato è BINARIO. Costruire la stringa con
      * gmb_string_alloc((char*)_dec) la tronca al primo NUL (decodifica di dati binari
      * ⇒ stringa vuota/zeri: bug C99-FROMBASE64-Payload-Grandi). Serve la variante
      * consapevole della lunghezza; _dec è nostro e va liberato dopo la copia. */
@@ -6327,11 +6350,7 @@ static int en_decode(ctx_t* c, gmb_expr_t** a, int n, const char* fn) {
     sb_put(&c->out, ".data, &_dec_n); gmb_string_t _ds = gmb_string_from_bytes(_dec ? (char*)_dec : \"\", (gmb_int_t)(_dec ? _dec_n : 0)); if (_dec) free(_dec); _ds; })");
     return 1;
 }
-static int en_base58encode(ctx_t* c, gmb_expr_t** a, int n) { return en_encode(c, a, n, "gmb_base58_encode"); }
-static int en_base32encode(ctx_t* c, gmb_expr_t** a, int n) { return en_encode(c, a, n, "gmb_base32_encode"); }
 static int en_tobase64(ctx_t* c, gmb_expr_t** a, int n) { return en_encode(c, a, n, "gmb_base64_encode"); }
-static int en_base58decode(ctx_t* c, gmb_expr_t** a, int n) { return en_decode(c, a, n, "gmb_base58_decode"); }
-static int en_base32decode(ctx_t* c, gmb_expr_t** a, int n) { return en_decode(c, a, n, "gmb_base32_decode"); }
 static int en_frombase64(ctx_t* c, gmb_expr_t** a, int n) { return en_decode(c, a, n, "gmb_base64_decode"); }
 static int en_frombase64url(ctx_t* c, gmb_expr_t** a, int n) { return en_decode(c, a, n, "gmb_base64url_decode"); }
 static int en_tohex(ctx_t* c, gmb_expr_t** a, int n) {
@@ -6369,9 +6388,7 @@ static int en_tohex(ctx_t* c, gmb_expr_t** a, int n) {
 }
 static int en_fromhex(ctx_t* c, gmb_expr_t** a, int n) { if (n < 1) return 0; sb_put(&c->out, "gmb_bytes_fromhex("); emit_str_operand(c, a[0]); sb_put(&c->out, ")"); return 1; }
 static const en_row EN_TBL[] = {
-    { GMB_TOK_Base58Encode, en_base58encode }, { GMB_TOK_Base32Encode, en_base32encode },
     { GMB_TOK_ToBase64, en_tobase64 },
-    { GMB_TOK_Base58Decode, en_base58decode }, { GMB_TOK_Base32Decode, en_base32decode },
     { GMB_TOK_FromBase64, en_frombase64 }, { GMB_TOK_ToHex, en_tohex }, { GMB_TOK_FromHex, en_fromhex },
     { GMB_TOK_FromBase64Url, en_frombase64url },
 };

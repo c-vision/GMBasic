@@ -2276,6 +2276,7 @@ case TokenKind.MemoryWatch: EmitStringUnaryBuiltinCall(expr, RuntimeMethod(nameo
              case TokenKind.TorchModelForward: EmitTypedRuntimeCall(expr, RuntimeMethod(nameof(IlRuntime.TorchModelForward), typeof(long), typeof(long))); break;
              case TokenKind.TorchModelParameters: EmitTypedRuntimeCall(expr, RuntimeMethod(nameof(IlRuntime.TorchModelParameters), typeof(long))); break;
              case TokenKind.TorchModelSave: EmitTypedRuntimeCall(expr, RuntimeMethod(nameof(IlRuntime.TorchModelSave), typeof(long), typeof(string))); break;
+            case TokenKind.TorchModelLoad: EmitTypedRuntimeCall(expr, RuntimeMethod(nameof(IlRuntime.TorchModelLoad), typeof(long), typeof(string))); break;
              case TokenKind.TorchModelReset: EmitTypedRuntimeCall(expr, RuntimeMethod(nameof(IlRuntime.TorchModelReset), typeof(long))); break;
              case TokenKind.TorchModelInput: EmitTypedRuntimeCall(expr, RuntimeMethod(nameof(IlRuntime.TorchModelInput), typeof(long))); break;
              case TokenKind.TorchModelOutput: EmitTypedRuntimeCall(expr, RuntimeMethod(nameof(IlRuntime.TorchModelOutput), typeof(long))); break;
