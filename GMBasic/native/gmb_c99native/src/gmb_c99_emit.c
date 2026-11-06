@@ -30745,54 +30745,127 @@ static const char* ffi_param_ctype(gmb_stmt_t* s, int i) {
 /* Struct annidate (2026-09-29): una FOGLIA scalare FFI dopo flattening ricorsivo — path
  * punteggiato ("I.X" per un campo annidato, "Y" per un campo diretto) + kind. Il limite resta
  * 2 foglie TOTALI (non più 2 campi diretti) — vedi ffi_validate_udt. */
-typedef struct { char path[128]; int is_int; } ffi_leaf_t;
+typedef struct { char path[128]; int is_int; int code; int off; int size; } ffi_leaf_t;
 
-/* Raccoglie le foglie di ci in out (max maxOut), "silenziosa" (nessun controllo/c99_fail —
- * usata SOLO dopo che ffi_validate_udt ha già garantito la struttura valida per lo stesso ci).
- * Un campo il cui ftype risolve a un altro TYPE (is_udt) ricorre sui suoi campi, prefissando
- * il path; un campo scalare valido è una foglia diretta. Ritorna il conteggio. */
-static int collect_ffi_leaves_silent(ctx_t* c, struct cls_info* ci, const char* prefix, ffi_leaf_t* out, int maxOut) {
-    int n = 0;
-    for (int fi = 0; fi < ci->nfields && n < maxOut; fi++) {
+/* Codici tipo CONDIVISI con il bytecode e la VM/C (0=double 1=int64 2=int8 3=uint8 4=int16
+ * 5=uint16 6=int32 7=uint32 8=float32 9=pointer/char* 10=uint64). -1 = tipo non FFI. */
+static int ffi_code_of_type(const char* ft) {
+    switch (gmb_keyword_tok(ft)) {
+        case GMB_TOK_Double:     return 0;
+        case GMB_TOK_Single:     return 8;   /* float32 */
+        case GMB_TOK_SByte:      return 2;
+        case GMB_TOK_Byte:       return 3;
+        /* Larghezze CLASSICHE per i campi struct FFI: INTEGER=16, LONG=32, QUAD=64. */
+        case GMB_TOK_Integer:
+        case GMB_TOK_Short:      return 4;
+        case GMB_TOK_UInteger:
+        case GMB_TOK_UShort:     return 5;
+        case GMB_TOK_Long:       return 6;
+        case GMB_TOK_ULong:      return 7;
+        case GMB_TOK_Quad:       return 1;
+        case GMB_TOK_UQuad:      return 10;
+        case GMB_TOK_StringType: return -1;  /* campo STRING non supportato (S1b) */
+        default:                 return -1;
+    }
+}
+static int ffi_code_size(int code) {
+    switch (code) {
+        case 0: case 1: case 9: case 10: return 8;
+        case 6: case 7: case 8:          return 4;
+        case 4: case 5:                  return 2;
+        default:                         return 1;   /* 2=int8, 3=uint8 */
+    }
+}
+static const char* ffi_code_ctype(int code) {
+    switch (code) {
+        case 0:  return "double";
+        case 1:  return "int64_t";
+        case 2:  return "int8_t";
+        case 3:  return "uint8_t";
+        case 4:  return "int16_t";
+        case 5:  return "uint16_t";
+        case 6:  return "int32_t";
+        case 7:  return "uint32_t";
+        case 8:  return "float";
+        case 9:  return "char*";
+        default: return "uint64_t";
+    }
+}
+
+/* Layout C reale di un UDT: cammina i campi (ricorsivo sui nidificati) e riempie le foglie con
+ * tipo, offset e size. Ritorna la size del (sotto)struct, -1 = campo non rappresentabile
+ * (array o tipo sconosciuto), -2 = struct ANNIDATA con padding (il flattening non sarebbe
+ * ABI-identico al layout C: la struttura va appiattita). */
+static int ffi_layout_rec(ctx_t* c, struct cls_info* ci, const char* prefix, ffi_leaf_t* out,
+                          int* n, int max, int* max_align, int depth) {
+    if (depth > 8) return -1;
+    int off = 0, al = 1;
+    for (int fi = 0; fi < ci->nfields; fi++) {
         char path[128];
         if (prefix[0]) snprintf(path, sizeof(path), "%s.%s", prefix, ci->fname[fi]);
         else snprintf(path, sizeof(path), "%s", ci->fname[fi]);
-        gmb_tokenkind_t ft = gmb_keyword_tok(ci->ftype[fi]);
-        if (ft == GMB_TOK_Double || ft == GMB_TOK_Long || ft == GMB_TOK_Quad || ft == GMB_TOK_UQuad || ft == GMB_TOK_ULong) {
-            snprintf(out[n].path, sizeof(out[n].path), "%s", path);
-            out[n].is_int = (ft != GMB_TOK_Double);
-            n++;
+        if (cls_field_arr_size(ci->ftype[fi]) >= 0) return -1;
+        int code = ffi_code_of_type(ci->ftype[fi]);
+        if (code >= 0) {
+            if (*n >= max) return -1;
+            int sz = ffi_code_size(code);
+            off = (off + sz - 1) / sz * sz;
+            snprintf(out[*n].path, sizeof(out[*n].path), "%s", path);
+            out[*n].is_int = (code != 0 && code != 8);
+            out[*n].code = code;
+            out[*n].off = off;
+            out[*n].size = sz;
+            (*n)++;
+            off += sz;
+            if (sz > al) al = sz;
         } else {
-            struct cls_info* nested = cls_find(c, ci->ftype[fi]);
-            if (nested && nested->is_udt) n += collect_ffi_leaves_silent(c, nested, path, out + n, maxOut - n);
+            struct cls_info* ne = cls_find(c, ci->ftype[fi]);
+            if (!ne || !ne->is_udt) return -1;
+            int sub_al = 1;
+            int start = *n;
+            int sub_size = ffi_layout_rec(c, ne, path, out, n, max, &sub_al, depth + 1);
+            if (sub_size < 0) return sub_size;
+            int end = (start < *n) ? out[*n - 1].off + out[*n - 1].size : 0;
+            if (sub_size != end) return -2;   /* padding interno: flattening non ABI-safe */
+            off = (off + sub_al - 1) / sub_al * sub_al;
+            for (int k = start; k < *n; k++) out[k].off += off;
+            off += sub_size;
+            if (sub_al > al) al = sub_al;
         }
     }
+    if (al > *max_align) *max_align = al;
+    return (off + al - 1) / al * al;
+}
+
+/* Raccoglie le foglie di ci in out (max maxOut), "silenziosa" (nessun c99_fail): usata SOLO
+ * dopo che ffi_validate_udt ha già garantito la struttura. */
+static int collect_ffi_leaves_silent(ctx_t* c, struct cls_info* ci, const char* prefix, ffi_leaf_t* out, int maxOut) {
+    int n = 0, al = 1;
+    if (ffi_layout_rec(c, ci, prefix, out, &n, maxOut, &al, 0) < 0) return 0;
     return n;
 }
 static int ffi_udt_leaf_count(ctx_t* c, struct cls_info* ci) {
-    ffi_leaf_t leaves[8];
-    return collect_ffi_leaves_silent(c, ci, "", leaves, 8);
+    ffi_leaf_t leaves[64];
+    return collect_ffi_leaves_silent(c, ci, "", leaves, 64);
 }
 static int ffi_udt_kind_is_int(ctx_t* c, struct cls_info* ci) {
-    ffi_leaf_t leaves[8];
-    int n = collect_ffi_leaves_silent(c, ci, "", leaves, 8);
+    ffi_leaf_t leaves[64];
+    int n = collect_ffi_leaves_silent(c, ci, "", leaves, 64);
     return n > 0 && leaves[0].is_int;
 }
-/* Kind misto (2026-09-29): true se le FOGLIE di ci (dopo flattening ricorsivo) contengono
- * SIA DOUBLE SIA intero — sostituisce il vecchio confronto diretto ci->fname[0]/[1]. */
+/* Kind misto: true se le foglie contengono SIA double SIA intero (nessun limite: parametri
+ * misti ammessi su tutte le gambe dal 2026-11-06). */
 static int ffi_udt_is_mixed(ctx_t* c, struct cls_info* ci) {
-    ffi_leaf_t leaves[8];
-    int n = collect_ffi_leaves_silent(c, ci, "", leaves, 8);
+    ffi_leaf_t leaves[64];
+    int n = collect_ffi_leaves_silent(c, ci, "", leaves, 64);
     if (n < 2) return 0;
     int sawD = 0, sawI = 0;
     for (int i = 0; i < n; i++) { if (leaves[i].is_int) sawI = 1; else sawD = 1; }
     return sawD && sawI;
 }
-/* Nome del TIPO C usato per un UDT a frontiera FFI (2026-11-06, S0): un typedef PER UDT
- * (`gmb_ffi_udt_<Nome>_t`), emesso da emit_proto con una foglia per campo. Prima erano 6 forme
- * fisse a 1-2 campi (2^2 combinazioni di kind), che non reggevano né 3+ campi né kind misti
- * arbitrari. Ring di buffer: i chiamanti tengono il puntatore (es. inner_ret) mentre altri
- * nomi vengono risolti per gli altri parametri. */
+/* Nome del TIPO C usato per un UDT a frontiera FFI: un typedef PER UDT
+ * (`gmb_ffi_udt_<Nome>_t`), emesso da emit_proto con una foglia per campo. Ring di buffer: i
+ * chiamanti tengono il puntatore (es. inner_ret) mentre altri nomi vengono risolti. */
 static const char* ffi_udt_shape_name(ctx_t* c, struct cls_info* ci) {
     (void)c;
     static char ring[16][64];
@@ -30801,62 +30874,31 @@ static const char* ffi_udt_shape_name(ctx_t* c, struct cls_info* ci) {
     snprintf(ring[rr], sizeof(ring[rr]), "gmb_ffi_udt_%s_t", ci->name);
     return ring[rr];
 }
-/* Valida un UDT usato per parametro/ritorno FFI, incluse STRUTTURE ANNIDATE (2026-09-29) —
- * messaggi IDENTICI alle altre gambe (Compiler.Expressions.cs/IlProgramCompiler.Expressions.cs),
- * stesso limite 1-2 FOGLIE dopo flattening ricorsivo (bug reale SIGSEGV VM/C su 3 campi diretti
- * — un nesting con 2 foglie totali è ABI-identico a un UDT piatto con 2 campi) e stessa
- * whitelist di tipo foglia (DOUBLE o famiglia intera a 8 byte). Un campo il cui tipo è un altro
- * TYPE (is_udt) è ammesso e ricorre sui suoi campi. <paramref name="allow_mixed_kind"/>: un
- * DOUBLE e un intero nello STESSO UDT non è un limite ABI reale (SysV/AAPCS64 classificano ogni
- * eightbyte indipendentemente) — vietato solo come PARAMETRO su VM/C (dispatch a cast uniforme,
- * vedi gmb_vm_core.c), ammesso come RITORNO su tutti i backend. Ritorna 1 se valido, 0
- * (con c99_fail già invocata) se no. */
+/* Valida un UDT usato per parametro/ritorno FFI: tipo di ogni campo (anche nidificato),
+ * niente campi array, niente struct annidate con padding, 1..64 foglie. */
 static int ffi_validate_udt(ctx_t* c, struct cls_info* ci, const char* sym, const char* what, int line, int allow_mixed_kind) {
-    ffi_leaf_t leaves[8];
-    int n = 0;
-    for (int fi = 0; fi < ci->nfields; fi++) {
-        char path[128];
-        snprintf(path, sizeof(path), "%s", ci->fname[fi]);
-        gmb_tokenkind_t ft = gmb_keyword_tok(ci->ftype[fi]);
-        int ok = ft == GMB_TOK_Double || ft == GMB_TOK_Long || ft == GMB_TOK_Quad
-            || ft == GMB_TOK_UQuad || ft == GMB_TOK_ULong;
-        if (ok) {
-            if (n >= 8) { n = 9; break; }
-            snprintf(leaves[n].path, sizeof(leaves[n].path), "%s", path);
-            leaves[n].is_int = (ft != GMB_TOK_Double);
-            n++;
-            continue;
-        }
-        struct cls_info* nested = cls_find(c, ci->ftype[fi]);
-        if (!nested || !nested->is_udt) {
-            c99_fail(c, line, "FFI '%s': tipo del campo '%s' non supportato per %s (UDT '%s', "
-                     "solo AS DOUBLE o LONG/QUAD, non INTEGER/BYTE/SINGLE — larghezza nativa a 8 byte).",
-                     sym, path, what, ci->name);
-            return 0;
-        }
-        if (!ffi_validate_udt(c, nested, sym, what, line, 1 /* il kind-misto sulle foglie annidate è comunque ricontrollato sotto */))
-            return 0;
-        int sub = collect_ffi_leaves_silent(c, nested, path, leaves + n, 8 - n);
-        n = (n + sub > 8) ? 9 : n + sub;
-        if (n > 8) break;
-    }
-    if (n == 0 || n > 8) {
-        c99_fail(c, line, "FFI '%s': lo UDT '%s' usato per %s ha %d campi/campi-foglia (ammessi da 1 a 8 — "
-                 "ogni foglia occupa 8 byte; oltre 8 campi serve il layout C completo, stadio S1).",
-                 sym, ci->name, what, n);
+    (void)allow_mixed_kind;
+    ffi_leaf_t leaves[64];
+    int n = 0, al = 1;
+    int rc = ffi_layout_rec(c, ci, "", leaves, &n, 64, &al, 0);
+    if (rc == -2) {
+        c99_fail(c, line, "FFI '%s': lo UDT '%s' usato per %s contiene una struttura ANNIDATA con "
+                 "padding: il layout non è riproducibile per appiattimento — dichiara i campi "
+                 "direttamente nell'UDT esterno.", sym, ci->name, what);
         return 0;
     }
-    int sawDouble = 0, sawInt = 0;
-    for (int fi = 0; fi < n; fi++) { if (leaves[fi].is_int) sawInt = 1; else sawDouble = 1; }
-    if (sawDouble && sawInt && !allow_mixed_kind) {
-        c99_fail(c, line, "FFI '%s': lo UDT '%s' usato per %s ha campi di kind misto (DOUBLE e "
-                 "intero) — ammesso solo come TIPO DI RITORNO, non come parametro (limite del dispatch nativo VM/C).",
-                 sym, ci->name, what);
+    if (rc < 0) {
+        c99_fail(c, line, "FFI '%s': lo UDT '%s' usato per %s ha un campo non rappresentabile "
+                 "(campo array o tipo non scalare).", sym, ci->name, what);
+        return 0;
+    }
+    if (n == 0 || n > 64) {
+        c99_fail(c, line, "FFI '%s': lo UDT '%s' usato per %s ha %d campi-foglia (ammessi da 1 a 64).",
+                 sym, ci->name, what, n);
         return 0;
     }
     return 1;
 }
-
 /* Tipo C del trampolino nativo per un parametro Callback FFI (2026-09-29): `RET (*)(P...)`
  * con RET/P... = gmb_int_t o gmb_double_t in base a isInt, RET = void se !hasRet (callback
  * SUB). Buffer round-robin (4 slot): ogni chiamata è sempre immediatamente consumata da
@@ -31309,7 +31351,9 @@ static void emit_ffi_wrapper(ctx_t* c, fn_info_t* fn) {
      * → per i callback resta l'errore di compilazione esplicito. */
     int any_cb_sig = 0;
     for (int i = 0; i < 8; i++) if (is_cb_param[i]) { any_cb_sig = 1; break; }
-    int mixed_allowed = !any_udt_sig;
+    /* S1 (2026-11-06): con il layout esplicito ogni slot ha il proprio tipo C reale, quindi
+     * una firma mista (anche con UDT) e ammessa: il wrapper emette il tipo vero per slot. */
+    int mixed_allowed = 1;
     (void)any_cb_sig;
     if (mixed && !mixed_allowed) {
         c99_fail(c, s->line, any_ptr
@@ -31463,12 +31507,12 @@ static void emit_ffi_wrapper(ctx_t* c, fn_info_t* fn) {
              * reinterpretati. Kind PER CAMPO (2026-09-29, kind misto come parametro ammesso, \
              * al massimo un parametro per dichiarazione — vedi mixed_udt_param_count sopra). */ \
             struct cls_info* __uci = udt_param_ci[i]; \
-            ffi_leaf_t __leaves[8]; \
-            int __nleaf = collect_ffi_leaves_silent(c, __uci, "", __leaves, 8); \
+            ffi_leaf_t __leaves[64]; \
+            int __nleaf = collect_ffi_leaves_silent(c, __uci, "", __leaves, 64); \
             sb_printf(&c->out, "(%s){", ffi_udt_shape_name(c, __uci)); \
             for (int __fi = 0; __fi < __nleaf; __fi++) { \
                 if (__fi) sb_put(&c->out, ", "); \
-                sb_printf(&c->out, "(%s)((gmb_obj_%s*)(((gmb_obj_t*)", __leaves[__fi].is_int ? "gmb_int_t" : "gmb_double_t", __uci->name); \
+                sb_printf(&c->out, "(%s)((gmb_obj_%s*)(((gmb_obj_t*)", ffi_code_ctype(__leaves[__fi].code), __uci->name); \
                 emit_ident(c, s->func_params[i]); \
                 sb_put(&c->out, ".v_ptr)->data))->"); \
                 { \
@@ -31486,6 +31530,7 @@ static void emit_ffi_wrapper(ctx_t* c, fn_info_t* fn) {
                         sb_put(&c->out, "."); \
                         __seg = __dot + 1; \
                     } \
+                    if (__leaves[__fi].code == 9) sb_put(&c->out, ".data"); \
                 } \
             } \
             sb_put(&c->out, "}"); \
@@ -31548,11 +31593,15 @@ static void emit_ffi_wrapper(ctx_t* c, fn_info_t* fn) {
                 // Struct annidate (2026-09-29): itera le FOGLIE (non i campi diretti) — un path
                 // "I.X" e' un lvalue C valido, "__ru->I.X", perche' il campo "I" e' ora
                 // EMBEDDED per valore (struct-in-struct, vedi cls_field_ctype).
-                ffi_leaf_t leaves[8];
-                int nleaf = collect_ffi_leaves_silent(c, ret_udt_ci, "", leaves, 8);
+                ffi_leaf_t leaves[64];
+                int nleaf = collect_ffi_leaves_silent(c, ret_udt_ci, "", leaves, 64);
                 for (int fi = 0; fi < nleaf; fi++) {
                     ind(c);
-                    sb_printf(&c->out, "if (__ru) __ru->%s = (gmb_double_t)__rr.f%d;\n", leaves[fi].path, fi);
+                    if (leaves[fi].code == 9)
+                        sb_printf(&c->out, "if (__ru) __ru->%s = gmb_string_alloc(__rr.f%d ? __rr.f%d : \"\");\n",
+                                  leaves[fi].path, fi, fi);
+                    else
+                        sb_printf(&c->out, "if (__ru) __ru->%s = (gmb_double_t)__rr.f%d;\n", leaves[fi].path, fi);
                 }
             }
             ind(c);
@@ -33921,12 +33970,12 @@ int gmb_c99_emit(const gmb_program_t* prog, char** out_src, char** error) {
     for (int __ci = 0; __ci < c->n_classes; __ci++) {
         struct cls_info* __cu = &c->classes[__ci];
         if (!__cu->is_udt) continue;
-        ffi_leaf_t __lv[8];
-        int __n = collect_ffi_leaves_silent(c, __cu, "", __lv, 8);
-        if (__n <= 0 || __n > 8) continue;
+        ffi_leaf_t __lv[64];
+        int __n = collect_ffi_leaves_silent(c, __cu, "", __lv, 64);
+        if (__n <= 0 || __n > 64) continue;
         sb_printf(&proto, "typedef struct { ");
         for (int __f = 0; __f < __n; __f++)
-            sb_printf(&proto, "%s f%d; ", __lv[__f].is_int ? "gmb_int_t" : "gmb_double_t", __f);
+            sb_printf(&proto, "%s f%d; ", ffi_code_ctype(__lv[__f].code), __f);
         sb_printf(&proto, "} gmb_ffi_udt_%s_t;\n", __cu->name);
     }
     if (c->n_classes) sb_put(&proto, "\n");

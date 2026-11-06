@@ -4541,10 +4541,16 @@ internal sealed partial class PCodeProcessor
                 var libIdx = ReadU16(task);
                 var nameIdx = ReadU16(task);
                 var argCount = ReadU16(task);
-                var kind = ReadU8(task);
+                var kindByte = ReadU8(task);
                 var retIsString = ReadU8(task) != 0;
-                var retUdtFieldCount = ReadU8(task);
-                var retUdtFieldKindMask = ReadU8(task);
+                var retLo = ReadU8(task);
+                var retHi = ReadU8(task);
+                // S1 (2026-11-06): bit7 di `kind` = ritorno UDT con layout esplicito (i due byte
+                // successivi sono il conteggio foglie u16). Senza il bit resta il formato storico.
+                var retUdtNew = (kindByte & 0x80) != 0;
+                var kind = kindByte & 0x7F;
+                var retUdtFieldCount = retUdtNew ? (retLo | (retHi << 8)) : retLo;
+                var retUdtFieldKindMask = retUdtNew ? 0 : retHi;
                 // Descrittore PER ARGOMENTO (2026-11-06, niente maschere nel formato):
                 // 3 byte per argomento (flags, aux1, aux2). Le maschere sotto sono una
                 // rappresentazione interna per il dispatch <= 32; non fanno parte del bytecode.
@@ -4555,6 +4561,7 @@ internal sealed partial class PCodeProcessor
                 int callbackParamKindMask = 0, callbackParamHasRetMask = 0;
                 var udtParamFieldCount = new int[PCodeFfiMaxArgs];
                 var udtParamFieldKindMask = new int[PCodeFfiMaxArgs];
+                var udtParamNew = new bool[PCodeFfiMaxArgs];
                 var callbackParamArity = new int[PCodeFfiMaxArgs];
                 for (var pi = 0; pi < PCodeFfiMaxArgs; pi++) callbackParamArity[pi] = 255;
                 for (var pi = 0; pi < argCount; pi++)
@@ -4564,21 +4571,30 @@ internal sealed partial class PCodeProcessor
                     if ((f & 2) != 0) arrayMask |= 1 << pi;
                     if ((f & 0x40) != 0) arrayElemIntMask |= 1 << pi;
                     if ((f & 4) != 0) stringMask |= 1 << pi;
-                    if ((f & 8) != 0) byrefScalarMask |= 1 << pi;
-                    if ((f & 0x80) != 0) byrefScalarElemIntMask |= 1 << pi;
+                    if ((f & 8) != 0)
+                    {
+                        byrefScalarMask |= 1 << pi;
+                        if ((f & 0x80) != 0) byrefScalarElemIntMask |= 1 << pi;
+                    }
                     if ((f & 0x10) != 0)
                     {
                         callbackParamArity[pi] = a1;
                         callbackParamKindMask |= (a2 & 1) << pi;
                         callbackParamHasRetMask |= ((a2 >> 1) & 1) << pi;
                     }
-                    if ((f & 0x20) != 0) { udtParamFieldCount[pi] = a1; udtParamFieldKindMask[pi] = a2; }
+                    if ((f & 0x20) != 0)
+                    {
+                        if ((f & 0x80) != 0) { udtParamNew[pi] = true; udtParamFieldCount[pi] = a1 | (a2 << 8); }
+                        else { udtParamFieldCount[pi] = a1; udtParamFieldKindMask[pi] = a2; }
+                    }
                 }
-                Basic.Runtime.FfiUdtShape? ReadUdtShape(int fieldCount, byte kindMask)
+                Basic.Runtime.FfiUdtShape? ReadUdtShape(int fieldCount, byte kindMask, bool newLayout)
                 {
                     var names = new string[fieldCount];
                     var symbolIdPaths = new int[fieldCount][];
                     var fieldIsInt = new bool[fieldCount];
+                    var types = new byte[fieldCount];
+                    var offsets = new int[fieldCount];
                     for (var fi = 0; fi < fieldCount; fi++)
                     {
                         var nameIdxF = ReadU16(task);
@@ -4588,14 +4604,36 @@ internal sealed partial class PCodeProcessor
                         // uno per segmento del path (non solo la foglia) — vedi FfiUdtShape.
                         var symCsv = symIdxF >= 0 && symIdxF < _constants.Count ? _constants[symIdxF] as string ?? "" : "";
                         symbolIdPaths[fi] = symCsv.Length == 0 ? Array.Empty<int>() : Array.ConvertAll(symCsv.Split(','), int.Parse);
-                        fieldIsInt[fi] = (kindMask & (1 << fi)) != 0;
+                        fieldIsInt[fi] = !newLayout && (kindMask & (1 << fi)) != 0;
                     }
-                    return new Basic.Runtime.FfiUdtShape(names, symbolIdPaths, fieldIsInt);
+                    int size;
+                    if (newLayout)
+                    {
+                        size = ReadU16(task);
+                        for (var fi = 0; fi < fieldCount; fi++)
+                        {
+                            types[fi] = (byte)ReadU8(task);
+                            offsets[fi] = ReadU16(task);
+                            fieldIsInt[fi] = types[fi] != 0 && types[fi] != 8;
+                        }
+                    }
+                    else
+                    {
+                        // Formato storico: campi consecutivi da 8 byte, kind dalla maschera.
+                        size = fieldCount * 8;
+                        for (var fi = 0; fi < fieldCount; fi++)
+                        {
+                            types[fi] = (byte)(fieldIsInt[fi] ? 1 : 0);
+                            offsets[fi] = fi * 8;
+                        }
+                    }
+                    return new Basic.Runtime.FfiUdtShape(names, symbolIdPaths, fieldIsInt, types, offsets, size);
                 }
                 var udtParamShapes = new Basic.Runtime.FfiUdtShape?[PCodeFfiMaxArgs];
                 for (var pi = 0; pi < PCodeFfiMaxArgs; pi++)
-                    if (udtParamFieldCount[pi] > 0) udtParamShapes[pi] = ReadUdtShape(udtParamFieldCount[pi], (byte)udtParamFieldKindMask[pi]);
-                var retUdtShape = retUdtFieldCount > 0 ? ReadUdtShape(retUdtFieldCount, retUdtFieldKindMask) : null;
+                    if (udtParamFieldCount[pi] > 0)
+                        udtParamShapes[pi] = ReadUdtShape(udtParamFieldCount[pi], (byte)udtParamFieldKindMask[pi], udtParamNew[pi]);
+                var retUdtShape = retUdtFieldCount > 0 ? ReadUdtShape(retUdtFieldCount, (byte)retUdtFieldKindMask, retUdtNew) : null;
                 var args = new object?[argCount];
                 var byrefBoxes = new Basic.Runtime.Gpm.ByRefBox?[argCount];
                 for (var i = argCount - 1; i >= 0; i--)
@@ -4651,7 +4689,7 @@ internal sealed partial class PCodeProcessor
                         var uniformScalarKind = scalarKindMask == (kind == 1 ? fullMaskForArgc : 0);
                         var result = arrayMask != 0 || stringMask != 0 || retIsString || byrefScalarMask != 0 || anyUdt || !uniformScalarKind
                             ? _runtime.Ffi.CallFunctionTypedArr(funcPtr, args, kind, arrayMask, arrayElemIntMask, stringMask, retIsString, byrefScalarMask, byrefScalarElemIntMask, udtParamShapes, retUdtShape, scalarKindMask: scalarKindMask)
-                            : _runtime.Ffi.CallFunctionTyped(funcPtr, args, kind);
+                            : _runtime.Ffi.CallFunctionTyped(funcPtr, args, (byte)kind);
                         GC.KeepAlive(callbackKeepAlive);
                         for (var i = 0; i < argCount; i++)
                             if (byrefBoxes[i] is { } b) b.Value = args[i];

@@ -5,13 +5,13 @@
 
 /* 3 campi, kind misto: non è un HFA (c'è un intero) e supera i 16 byte → la ABI la
  * classifica in memoria. È il caso che il vecchio limite "1-2 foglie" rifiutava. */
-typedef struct { double a; int64_t b; double c; } Mixed3;
+typedef struct { double a; int32_t b; double c; } Mixed3;
 
 /* 8 campi tutti double: 64 byte, sempre in memoria. */
 typedef struct { double f0, f1, f2, f3, f4, f5, f6, f7; } Oct8;
 
 /* 3 campi interi (kind uniforme ma oltre le 2 foglie). */
-typedef struct { int64_t a, b, c; } Int3;
+typedef struct { int32_t a, b, c; } Int3;
 
 Mixed3 mix3_add(Mixed3 x, Mixed3 y)
 {

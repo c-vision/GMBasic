@@ -1031,66 +1031,96 @@ public sealed partial class Compiler
             // usato altrove nel motore, vedi PCodeProcessor.Builtins.cs) ad OGNI livello del
             // path, non solo sulla foglia, altrimenti `r.I` (il livello intermedio) non
             // risolverebbe prima di arrivare a `.X`.
-            List<(string Path, string SymbolIdPath, bool IsInt)> CollectFfiLeaves(UserDefinedType udt, string what, string pathPrefix, string symbolIdPrefix)
+            // ── FFI: tipi scalari e layout C reale degli UDT (S1, 2026-11-06) ──────────────
+            // Codici tipo CONDIVISI col bytecode e la VM/C: 0=double 1=int64 2=int8 3=uint8
+            // 4=int16 5=uint16 6=int32 7=uint32 8=float32 9=pointer/char* 10=uint64.
+            // Larghezze CLASSICHE per i campi di uno struct FFI: INTEGER=16, LONG=32, QUAD=64,
+            // BYTE=8, SINGLE=float32, DOUBLE=double64. È la larghezza DICHIARATA che conta per
+            // rispecchiare un `struct` C (la rappresentazione interna del dialetto è 64-bit).
+            static int FfiCode(DataType t) => t switch
             {
-                var result = new List<(string, string, bool)>();
+                DoubleType => 0, SingleType => 8, SByteType => 2, ByteType => 3,
+                IntegerType => 4, UIntegerType => 5, LongType => 6, ULongType => 7,
+                QuadType => 1, UQuadType => 10,
+                _ => -1,
+            };
+            static int FfiSz(int code) => code switch
+            {
+                0 or 1 or 9 or 10 => 8, 6 or 7 or 8 => 4, 4 or 5 => 2, _ => 1,
+            };
+            List<(string Path, string SymbolIdPath, int Code, int Off, bool IsInt)> CollectFfiLeaves(
+                UserDefinedType udt, string what, string pathPrefix, string symbolIdPrefix, out int size)
+            {
+                var leaves = new List<(string, string, int, int, bool)>();
+                size = LayoutUdt(udt, what, pathPrefix, symbolIdPrefix, leaves);
+                return leaves;
+            }
+            int LayoutUdt(UserDefinedType udt, string what, string pathPrefix, string symPrefix,
+                          List<(string Path, string SymbolIdPath, int Code, int Off, bool IsInt)> outLeaves)
+            {
+                var off = 0; var align = 1;
                 foreach (var f in udt.Fields)
                 {
                     var path = pathPrefix.Length == 0 ? f.Name.Lexeme : $"{pathPrefix}.{f.Name.Lexeme}";
-                    var symbolIdPath = symbolIdPrefix.Length == 0 ? f.SymbolId.ToString() : $"{symbolIdPrefix},{f.SymbolId}";
-                    if (f.DataType is UserDefinedType nested)
-                    {
-                        if (!IsSimpleUdt(nested))
-                            throw new BasicException(expr.OriginalToken,
-                                $"FFI '{symbolName}': lo UDT '{nested.Name.Lexeme}' (campo '{path}') usato per {what} non è ammesso dal marshalling FFI (solo TYPE semplici, senza operatori/costruttori/metodi/generici).");
-                        result.AddRange(CollectFfiLeaves(nested, what, path, symbolIdPath));
-                    }
-                    else if (f.DataType is DoubleType or LongType or QuadType or ULongType or UQuadType)
-                        result.Add((path, symbolIdPath, f.DataType is not DoubleType));
-                    else
+                    var symPath = symPrefix.Length == 0 ? f.SymbolId.ToString() : $"{symPrefix},{f.SymbolId}";
+                    if (f.DataType is ArrayType)
                         throw new BasicException(expr.OriginalToken,
-                            $"FFI '{symbolName}': tipo del campo '{path}' non supportato per {what} (UDT '{udt.Name.Lexeme}', solo AS DOUBLE o LONG/QUAD, non INTEGER/BYTE/SINGLE — larghezza nativa a 8 byte).");
+                            $"FFI '{symbolName}': il campo ARRAY '{path}' non è supportato in un UDT passato per valore ({what}).");
+                    if (f.DataType is StringType)
+                        throw new BasicException(expr.OriginalToken,
+                            $"FFI '{symbolName}': il campo STRING '{path}' non è ancora supportato in un UDT per valore ({what}).");
+                    if (f.DataType is UserDefinedType sub)
+                    {
+                        if (!IsSimpleUdt(sub))
+                            throw new BasicException(expr.OriginalToken,
+                                $"FFI '{symbolName}': lo UDT '{sub.Name.Lexeme}' (campo '{path}') usato per {what} non è ammesso dal marshalling FFI (solo TYPE semplici).");
+                        var start = outLeaves.Count;
+                        var subSize = LayoutUdt(sub, what, path, symPath, outLeaves);
+                        var end = outLeaves.Count > start
+                            ? outLeaves[^1].Off + FfiSz(outLeaves[^1].Code) : 0;
+                        if (subSize != end)
+                            throw new BasicException(expr.OriginalToken,
+                                $"FFI '{symbolName}': lo UDT '{udt.Name.Lexeme}' usato per {what} contiene la struttura annidata '{sub.Name.Lexeme}' con PADDING (size {subSize} vs {end}): il layout non è riproducibile — dichiara i campi nell'UDT esterno.");
+                        var subAlign = 1;
+                        foreach (var l in outLeaves.GetRange(start, outLeaves.Count - start))
+                            subAlign = Math.Max(subAlign, FfiSz(l.Code));
+                        off = (off + subAlign - 1) / subAlign * subAlign;
+                        for (var k = start; k < outLeaves.Count; k++)
+                        {
+                            var l = outLeaves[k];
+                            outLeaves[k] = (l.Path, l.SymbolIdPath, l.Code, l.Off + off, l.IsInt);
+                        }
+                        off += subSize;
+                        align = Math.Max(align, subAlign);
+                    }
+                    else
+                    {
+                        var code = FfiCode(f.DataType);
+                        if (code < 0)
+                            throw new BasicException(expr.OriginalToken,
+                                $"FFI '{symbolName}': tipo del campo '{path}' non supportato per {what} (UDT '{udt.Name.Lexeme}'; ammessi DOUBLE/SINGLE, interi a 1/2/4/8 byte, STRING).");
+                        var sz = FfiSz(code);
+                        off = (off + sz - 1) / sz * sz;
+                        outLeaves.Add((path, symPath, code, off, code != 0 && code != 8));
+                        off += sz;
+                        align = Math.Max(align, sz);
+                    }
                 }
-                return result;
+                return (off + align - 1) / align * align;
             }
-            // IsMixedKindUdt/UdtKind sono chiamate SOLO dopo ValidateUdtForFfi per lo stesso UDT
-            // (già garantito struct-valido) — flattening ricorsivo "silenzioso" (nessun controllo
-            // qui, la validazione vera è in CollectFfiLeaves/ValidateUdtForFfi).
+            // IsMixedKindUdt/UdtKind sono chiamate SOLO dopo la validazione per lo stesso UDT.
             IEnumerable<bool> LeafKinds(UserDefinedType udt) => udt.Fields.SelectMany(f =>
                 f.DataType is UserDefinedType nested ? LeafKinds(nested) : new[] { f.DataType is not DoubleType });
             bool IsMixedKindUdt(UserDefinedType udt) => LeafKinds(udt).Distinct().Count() > 1;
-            List<(string Path, string SymbolIdPath, bool IsInt)> ValidateUdtForFfi(UserDefinedType udt, string what, bool allowMixedKind)
+            List<(string Path, string SymbolIdPath, int Code, int Off, bool IsInt)> ValidateUdtForFfi(UserDefinedType udt, string what)
             {
                 if (!IsSimpleUdt(udt))
                     throw new BasicException(expr.OriginalToken,
                         $"FFI '{symbolName}': lo UDT '{udt.Name.Lexeme}' usato per {what} non è ammesso dal marshalling FFI (solo TYPE semplici, senza operatori/costruttori/metodi/generici).");
-                var leaves = CollectFfiLeaves(udt, what, "", "");
-                // Limite a 8 campi FOGLIA dopo flattening ricorsivo (S0, 2026-11-06). Il vecchio
-                // limite a 1-2 foglie (16 byte) esisteva perché la VM/C chiamava attraverso un
-                // CAST di funzione scritto a mano: oltre i 2 eightbyte lo struct passa in memoria
-                // e serviva un meccanismo dedicato per ogni forma. Ora la VM/C usa libffi
-                // (gmb_call_invoke_slots: ffi_type struct costruito a runtime), che classifica
-                // registri/memoria da solo; IL/PCode costruiscono un value type CLR per forma e
-                // C99 emette un typedef per UDT, con il VERO compilatore C a fare l'ABI. Restano
-                // fuori 9+ campi e i tipi di campo non a 8 byte: richiedono il layout C completo
-                // (stadio S1, descrittore v3).
-                if (leaves.Count is 0 or > 8)
+                var leaves = CollectFfiLeaves(udt, what, "", "", out _);
+                if (leaves.Count is 0 or > 64)
                     throw new BasicException(expr.OriginalToken,
-                        $"FFI '{symbolName}': lo UDT '{udt.Name.Lexeme}' usato per {what} ha {leaves.Count} campi/campi-foglia (ammessi da 1 a 8 — ogni foglia occupa 8 byte; oltre 8 campi serve il layout C completo, stadio S1).");
-                // Kind misto (2026-09-29): un DOUBLE e un intero nello STESSO UDT NON è un
-                // limite ABI reale (SysV x86-64/AAPCS64 classificano ogni eightbyte dello
-                // struct indipendentemente — un campo DOUBLE e uno intero convivono benissimo
-                // in registri XMM/GPR separati). È però vietato come PARAMETRO su VM/C: il
-                // meccanismo di dispatch (GMB_FFI_DISPATCH) chiama attraverso un cast di
-                // funzione con UN SOLO tipo scalare uniforme per l'intera lista argomenti — un
-                // parametro a kind misto richiederebbe un cast dedicato per ogni combinazione
-                // posizione+ordine (fuori scope, vedi commento in gmb_vm_core.c). Come RITORNO
-                // invece è ammesso ovunque: il dispatch del ritorno seleziona già una forma
-                // dedicata per numero di campi (nessuna ambiguità di posizione). Vedi AiWiki
-                // Bugs/(open) - FFI-Estensioni-Possibili-BYREF-Struct-Callback.md §2.
-                if (!allowMixedKind && leaves.Select(l => l.IsInt).Distinct().Count() > 1)
-                    throw new BasicException(expr.OriginalToken,
-                        $"FFI '{symbolName}': lo UDT '{udt.Name.Lexeme}' usato per {what} ha campi di kind misto (DOUBLE e intero) — ammesso solo come TIPO DI RITORNO, non come parametro (limite del dispatch nativo VM/C).");
+                        $"FFI '{symbolName}': lo UDT '{udt.Name.Lexeme}' usato per {what} ha {leaves.Count} campi-foglia (ammessi da 1 a 64).");
                 return leaves;
             }
             byte UdtKind(UserDefinedType udt) => LeafKinds(udt).First() ? FfiInt64 : FfiDouble;
@@ -1107,14 +1137,14 @@ public sealed partial class Compiler
             // udtParamLeaves[pi] (2026-09-29, struct annidate): le foglie del parametro UDT alla
             // posizione pi, calcolate UNA VOLTA dalla validazione e riusate per l'emissione
             // bytecode sotto (evita ricalcolare/ridivergere la stessa enumerazione due volte).
-            var udtParamLeaves = new List<(string Path, string SymbolIdPath, bool IsInt)>?[FfiMaxArgs];
+            var udtParamLeaves = new List<(string Path, string SymbolIdPath, int Code, int Off, bool IsInt)>?[FfiMaxArgs];
             for (var pi = 0; pi < ffiProc.Parameters.Length; pi++)
                 if (IsUdtParam(ffiProc.Parameters[pi]))
                 {
-                    var leaves = ValidateUdtForFfi((UserDefinedType)ffiProc.Parameters[pi].DataType, $"il parametro '{ffiProc.Parameters[pi].Name.Lexeme}'", allowMixedKind: true);
+                    var leaves = ValidateUdtForFfi((UserDefinedType)ffiProc.Parameters[pi].DataType, $"il parametro '{ffiProc.Parameters[pi].Name.Lexeme}'");
                     if (pi < FfiMaxArgs) udtParamLeaves[pi] = leaves;
                 }
-            var udtReturnLeaves = udtReturn != null ? ValidateUdtForFfi(udtReturn, "il ritorno", allowMixedKind: true) : null;
+            var udtReturnLeaves = udtReturn != null ? ValidateUdtForFfi(udtReturn, "il ritorno") : null;
             // S0 (2026-11-06): il limite "un solo parametro UDT a kind misto" era del dispatch
             // per-cast della VM/C; con libffi (slot per argomento) non serve più.
             // Kind misto sul RITORNO o su un PARAMETRO (2026-09-29): un UDT a kind misto non ha
@@ -1212,7 +1242,9 @@ public sealed partial class Compiler
             // di compilazione esplicito invece di un crash.
             var mixedKinds = kindList.Distinct().Count() > 1;
             var mixedWithPointers = anyHardPtr && !anyUdt && mixedKinds;
-            if (!mixedScalarsOnly && !mixedWithPointers && mixedKinds)
+            // UDT (2026-11-06, S1): con il layout esplicito ogni argomento ha il proprio tipo,
+            // quindi la firma puo essere "mista" anche con UDT (prima era vietato).
+            if (!mixedScalarsOnly && !mixedWithPointers && !anyUdt && mixedKinds)
                 throw new BasicException(expr.OriginalToken,
                     anyPtr
                         ? $"FFI '{symbolName}': un parametro array, STRING o BYREF richiede firma INT64 (dichiarare gli altri parametri/il ritorno AS LONG — il puntatore viaggia come intero)."
@@ -1271,14 +1303,13 @@ public sealed partial class Compiler
                 EmitShort(libIndex);
                 EmitShort(nameIndex);
                 EmitShort((ushort)expr.Args.Length);
-                EmitByte(emittedKind);
+                /* S1 (2026-11-06): bit7 di `kind` = ritorno UDT con LAYOUT ESPLICITO; i due byte
+                 * successivi diventano il conteggio foglie u16 (al posto di count u8 + mask u8). */
+                EmitByte((byte)(emittedKind | (udtReturnLeaves != null ? 0x80 : 0)));
                 EmitByte((byte)(retIsString ? 1 : 0));
-                EmitByte((byte)(udtReturnLeaves?.Count ?? 0));
-                byte retUdtFieldKindMask = 0;
-                if (udtReturnLeaves != null)
-                    for (var fi = 0; fi < udtReturnLeaves.Count; fi++)
-                        if (udtReturnLeaves[fi].IsInt) retUdtFieldKindMask |= (byte)(1 << fi);
-                EmitByte(retUdtFieldKindMask);
+                var retLeafCount = (ushort)(udtReturnLeaves?.Count ?? 0);
+                EmitByte((byte)(retLeafCount & 0xFF));
+                EmitByte((byte)((retLeafCount >> 8) & 0xFF));
                 // Descrittore PER ARGOMENTO (2026-11-06): niente maschere a bit; 3 byte per
                 // argomento (flags, aux1, aux2) — vedi cc_emit_ffi_call in gmb_compiler.c.
                 for (var pi = 0; pi < expr.Args.Length; pi++)
@@ -1297,17 +1328,16 @@ public sealed partial class Compiler
                     if (isArr) { flags |= 2; if (IsFfiInt64Type((p.DataType as ArrayType)?.ElementType)) flags |= 0x40; }
                     else if (isStr) flags |= 4;
                     else if (isBr) { flags |= 8; if (IsFfiInt64Type(p.DataType)) flags |= 0x80; }
-                    else if (isUd) flags |= 0x20;
+                    else if (isUd) flags |= 0x20 | 0x80;   /* 0x80 = formato layout nuovo */
                     else if (isCb) flags |= 0x10;
                     EmitByte((byte)flags);
                     byte a1 = 0, a2 = 0;
                     if (isUd)
                     {
                         var leaves = udtParamLeaves[pi];
-                        a1 = (byte)(leaves?.Count ?? 0);
-                        if (leaves != null)
-                            for (var fi = 0; fi < leaves.Count && fi < 8; fi++)
-                                if (leaves[fi].IsInt) a2 |= (byte)(1 << fi);
+                        var cnt = (ushort)(leaves?.Count ?? 0);
+                        a1 = (byte)(cnt & 0xFF);
+                        a2 = (byte)((cnt >> 8) & 0xFF);
                     }
                     else if (isCb)
                     {
@@ -1334,18 +1364,36 @@ public sealed partial class Compiler
                 // serve invece a LEGGERE un'istanza UDT PCodeVM in ingresso (Dictionary
                 // <string,object> chiavato per nome, navigato ricorsivamente splittando su '.').
                 for (var pi = 0; pi < ffiProc.Parameters.Length && pi < FfiMaxArgs; pi++)
-                    if (udtParamLeaves[pi] is { } leaves)
-                        foreach (var leaf in leaves)
-                        {
-                            EmitShort(AddConstant(leaf.Path));
-                            EmitShort(AddConstant(leaf.SymbolIdPath));
-                        }
+                {
+                    if (udtParamLeaves[pi] is not { } leaves) continue;
+                    foreach (var leaf in leaves)
+                    {
+                        EmitShort(AddConstant(leaf.Path));
+                        EmitShort(AddConstant(leaf.SymbolIdPath));
+                    }
+                    CollectFfiLeaves((UserDefinedType)ffiProc.Parameters[pi].DataType, "il parametro", "", "", out var psz);
+                    EmitShort((ushort)psz);
+                    foreach (var leaf in leaves)
+                    {
+                        EmitByte((byte)leaf.Code);
+                        EmitShort((ushort)leaf.Off);
+                    }
+                }
                 if (udtReturnLeaves != null)
+                {
                     foreach (var leaf in udtReturnLeaves)
                     {
                         EmitShort(AddConstant(leaf.Path));
                         EmitShort(AddConstant(leaf.SymbolIdPath));
                     }
+                    CollectFfiLeaves(udtReturn!, "il ritorno", "", "", out var rsz);
+                    EmitShort((ushort)rsz);
+                    foreach (var leaf in udtReturnLeaves)
+                    {
+                        EmitByte((byte)leaf.Code);
+                        EmitShort((ushort)leaf.Off);
+                    }
+                }
             }
             else
             {

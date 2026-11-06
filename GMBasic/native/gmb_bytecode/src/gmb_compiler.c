@@ -2535,9 +2535,88 @@ static void cc_udt_leaves_rec(gmb_cc_t* c, const char* udt_name, const char* pre
         else if (*n < max) { snprintf(out[*n].path, sizeof out[*n].path, "%s", np); out[*n].is_int = cc_ffi_is_int_type(u->field_types[i]); (*n)++; }
     }
 }
-/* CSV di SymbolId-path per una foglia (un id per SEGMENTO del path). Il compilatore C non
- * ha SymbolId stabili per i campi: si emettono zeri (la VM li usa solo per il fallback
- * "__m<id>"); l'accesso ai campi avviene per NOME, scritto da vm_ffi_set_leaf. */
+/* ── Layout C reale per gli UDT a frontiera FFI (2026-11-06, S1) ─────────────────────────
+ * Codici tipo CONDIVISI con VM/C, C# (PCode/IL) e C99:
+ *   0 = double      1 = int64      2 = int8       3 = uint8      4 = int16
+ *   5 = uint16      6 = int32      7 = uint32     8 = float32    9 = pointer/char*
+ *  10 = uint64
+ * Il layout segue le regole C (align di un campo = size del tipo, align dello struct = max,
+ * size finale arrotondata all'align): è lo stesso che calcolano libffi e il compilatore C,
+ * quindi gli offset emessi nel bytecode valgono per tutte le gambe senza ricalcoli. */
+#define CC_FFI_MAX_LEAVES 64
+typedef struct { int code; int off; } cc_ffi_field_t;
+
+static int cc_ffi_scalar_code(const char* t)
+{
+    if (!t) return -1;
+    switch (gmb_keyword_tok(t)) {
+        /* SINGLE = float32 nella struct C (larghezza dichiarata). */
+        case GMB_TOK_Double:    return 0;
+        case GMB_TOK_Single:    return 8;
+        case GMB_TOK_SByte:     return 2;
+        case GMB_TOK_Byte:      return 3;
+        /* Larghezze CLASSICHE per i campi di uno struct FFI (2026-11-06): INTEGER=16,
+         * LONG=32, QUAD=64, BYTE=8. È la larghezza dichiarata che conta per rispecchiare
+         * un `struct` C, non la rappresentazione interna del dialetto (64-bit ovunque). */
+        case GMB_TOK_Integer:
+        case GMB_TOK_Short:     return 4;
+        case GMB_TOK_UInteger:
+        case GMB_TOK_UShort:    return 5;
+        case GMB_TOK_Long:      return 6;
+        case GMB_TOK_ULong:     return 7;
+        case GMB_TOK_Quad:      return 1;
+        case GMB_TOK_UQuad:     return 10;
+        case GMB_TOK_StringType:return -1;   /* campo STRING: non ancora supportato in uno struct */
+        default:                return -1;
+    }
+}
+static int cc_ffi_code_size(int code)
+{
+    switch (code) {
+        case 0: case 1: case 9: case 10: return 8;
+        case 8: case 6: case 7:         return 4;
+        case 4: case 5:                 return 2;
+        default:                        return 1;   /* 2=int8, 3=uint8 */
+    }
+}
+/* Cammina un UDT (ricorsivamente sui campi che sono a loro volta TYPE) e produce le foglie
+ * scalari con l'offset C. Ritorna la size del (sotto)struct, -1 se un campo non è
+ * rappresentabile (campo array o tipo sconosciuto). `max_align` è IN/OUT: il chiamante la
+ * inizializza a 1 e riceve l'allineamento massimo. */
+static int cc_ffi_layout_rec(gmb_cc_t* c, const char* name, cc_ffi_field_t* out, int* n,
+                             int max, int* max_align, int depth)
+{
+    int ui = cc_udt_find(c, name);
+    if (ui < 0 || depth > 6) return -1;
+    const struct cc_udt* u = &c->udts[ui];
+    int off = 0, al = 1;
+    for (int i = 0; i < u->n_fields; i++) {
+        int nested = cc_udt_find(c, u->field_types[i]);
+        if (nested >= 0) {
+            int sub_al = 1;
+            int start = *n;
+            int sub_size = cc_ffi_layout_rec(c, u->field_types[i], out, n, max, &sub_al, depth + 1);
+            if (sub_size < 0) return -1;
+            off = (off + sub_al - 1) / sub_al * sub_al;
+            for (int k = start; k < *n; k++) out[k].off += off;
+            off += sub_size;
+            if (sub_al > al) al = sub_al;
+        } else {
+            int code = cc_ffi_scalar_code(u->field_types[i]);
+            if (code < 0 || *n >= max) return -1;
+            int sz = cc_ffi_code_size(code);
+            off = (off + sz - 1) / sz * sz;
+            out[*n].code = code;
+            out[*n].off = off;
+            (*n)++;
+            off += sz;
+            if (sz > al) al = sz;
+        }
+    }
+    if (al > *max_align) *max_align = al;
+    return (off + al - 1) / al * al;
+}
+
 static void cc_ffi_symid_csv(const char* path, char* out, size_t cap)
 {
     int segs = 1; for (const char* q = path; *q; q++) if (*q == '.') segs++;
@@ -2557,7 +2636,11 @@ static void cc_emit_ffi_call(gmb_cc_t* c, const gmb_expr_t* e, const gmb_stmt_t*
     int ret_udt_idx = (is_func && rt) ? cc_udt_find(c, rt) : -1;
 
     unsigned char is_array[GMB_FFI_MAX_ARGS] = {0}, is_string[GMB_FFI_MAX_ARGS] = {0}, is_byref[GMB_FFI_MAX_ARGS] = {0}, is_plain[GMB_FFI_MAX_ARGS] = {0}, is_udt[GMB_FFI_MAX_ARGS] = {0}, is_cb[GMB_FFI_MAX_ARGS] = {0}, p_int[GMB_FFI_MAX_ARGS] = {0};
-    cc_ffi_leaf_t param_leaves[GMB_FFI_MAX_ARGS][8]; int n_param_leaves[GMB_FFI_MAX_ARGS] = {0};
+    cc_ffi_leaf_t param_leaves[GMB_FFI_MAX_ARGS][CC_FFI_MAX_LEAVES]; int n_param_leaves[GMB_FFI_MAX_ARGS] = {0};
+    /* Layout C per UDT (2026-11-06, S1): offset/tipo di ogni foglia + size totale, calcolati
+     * qui una volta e trasmessi nel bytecode — la VM/C e PCode li usano senza ricalcolare. */
+    cc_ffi_field_t param_layout[GMB_FFI_MAX_ARGS][CC_FFI_MAX_LEAVES];
+    int param_size[GMB_FFI_MAX_ARGS] = {0};
     for (int i = 0; i < argc && i < GMB_FFI_MAX_ARGS; i++) {
         const char* pt = (pd->param_types && i < nparams) ? pd->param_types[i] : NULL;
         is_array[i] = (pd->param_is_array && pd->param_is_array[i]) ? 1 : 0;
@@ -2567,10 +2650,27 @@ static void cc_emit_ffi_call(gmb_cc_t* c, const gmb_expr_t* e, const gmb_stmt_t*
         is_udt[i] = (!is_array[i] && !is_string[i] && !is_cb[i] && !is_byref[i] && pt && cc_udt_find(c, pt) >= 0) ? 1 : 0;
         is_plain[i] = (!is_array[i] && !is_string[i] && !is_byref[i] && !is_udt[i] && !is_cb[i]) ? 1 : 0;
         p_int[i] = cc_ffi_is_int_type(pt) ? 1 : 0;
-        if (is_udt[i]) cc_udt_leaves_rec(c, pt, "", param_leaves[i], &n_param_leaves[i], 8, 0);
+        if (is_udt[i]) {
+            cc_udt_leaves_rec(c, pt, "", param_leaves[i], &n_param_leaves[i], CC_FFI_MAX_LEAVES, 0);
+            int al = 1, nl = 0;
+            param_size[i] = cc_ffi_layout_rec(c, pt, param_layout[i], &nl, CC_FFI_MAX_LEAVES, &al, 0);
+            if (param_size[i] < 0 || nl != n_param_leaves[i]) {
+                cc_err(c, "FFI: UDT con campo non rappresentabile (array o tipo non scalare)");
+                return;
+            }
+        }
     }
-    cc_ffi_leaf_t ret_leaves[8]; int n_ret_leaves = 0;
-    if (ret_udt_idx >= 0) cc_udt_leaves_rec(c, rt, "", ret_leaves, &n_ret_leaves, 8, 0);
+    cc_ffi_leaf_t ret_leaves[CC_FFI_MAX_LEAVES]; int n_ret_leaves = 0;
+    cc_ffi_field_t ret_layout[CC_FFI_MAX_LEAVES]; int ret_size = 0;
+    if (ret_udt_idx >= 0) {
+        cc_udt_leaves_rec(c, rt, "", ret_leaves, &n_ret_leaves, CC_FFI_MAX_LEAVES, 0);
+        int al = 1, nl = 0;
+        ret_size = cc_ffi_layout_rec(c, rt, ret_layout, &nl, CC_FFI_MAX_LEAVES, &al, 0);
+        if (ret_size < 0 || nl != n_ret_leaves) {
+            cc_err(c, "FFI: UDT di ritorno con campo non rappresentabile (array o tipo non scalare)");
+            return;
+        }
+    }
     int ret_udt_mixed = 0;
     if (n_ret_leaves > 1) { int f0 = ret_leaves[0].is_int; for (int i = 1; i < n_ret_leaves; i++) if (ret_leaves[i].is_int != f0) ret_udt_mixed = 1; }
     int ret_udt_kind = (n_ret_leaves > 0) ? ret_leaves[0].is_int : 0;
@@ -2601,18 +2701,13 @@ static void cc_emit_ffi_call(gmb_cc_t* c, const gmb_expr_t* e, const gmb_stmt_t*
 
     unsigned int scalarKindMask = 0, arrayMask = 0, arrayElemIntMask = 0, stringMask = 0;
     unsigned int byrefScalarMask = 0, byrefScalarElemIntMask = 0;
-    unsigned char udtParamFieldCount[GMB_FFI_MAX_ARGS] = {0}, udtParamFieldKindMask[GMB_FFI_MAX_ARGS] = {0};
-    unsigned char retUdtFieldCount = (unsigned char)n_ret_leaves, retUdtFieldKindMask = 0;
     unsigned char cbArity[GMB_FFI_MAX_ARGS]; unsigned int cbKindMask = 0, cbHasRetMask = 0;
     for (int i = 0; i < GMB_FFI_MAX_ARGS; i++) cbArity[i] = 255;
     for (int i = 0; i < argc && i < GMB_FFI_MAX_ARGS; i++) {
         if (is_array[i]) { arrayMask |= (unsigned)(1u << i); if (p_int[i]) arrayElemIntMask |= (unsigned)(1u << i); }
         else if (is_string[i]) { stringMask |= (unsigned)(1u << i); }
         else if (is_byref[i]) { byrefScalarMask |= (unsigned)(1u << i); if (p_int[i]) byrefScalarElemIntMask |= (unsigned)(1u << i); }
-        else if (is_udt[i]) {
-            udtParamFieldCount[i] = (unsigned char)n_param_leaves[i];
-            for (int f = 0; f < n_param_leaves[i]; f++) if (param_leaves[i][f].is_int) udtParamFieldKindMask[i] |= (unsigned char)(1 << f);
-        } else if (is_cb[i]) {
+        else if (is_cb[i]) {
             int ar = pd->param_fn_arity[i];
             cbArity[i] = (unsigned char)(ar > 4 ? 4 : ar);
             int cb_int = (ar > 0) ? ((pd->param_fn_kind_mask && (pd->param_fn_kind_mask[i] & 1)) ? 1 : 0)
@@ -2626,7 +2721,6 @@ static void cc_emit_ffi_call(gmb_cc_t* c, const gmb_expr_t* e, const gmb_stmt_t*
         int bit = is_plain[i] ? p_int[i] : (is_string[i] ? 1 : (kind == 1));
         if (bit) scalarKindMask |= (unsigned)(1u << i);
     }
-    for (int f = 0; f < n_ret_leaves; f++) if (ret_leaves[f].is_int) retUdtFieldKindMask |= (unsigned char)(1 << f);
 
     /* Argomenti: i BYREF scalari viaggiano come puntatore (OP_MAKE_BYREF) — come una CALL
      * normale (cc_call_arg), altrimenti il copy-out della VM non ha dove scrivere. */
@@ -2654,17 +2748,24 @@ static void cc_emit_ffi_call(gmb_cc_t* c, const gmb_expr_t* e, const gmb_stmt_t*
     cc_byte(c, GMB_OP_CALL_FFI_T);
     cc_u16(c, (uint16_t)libIdx);
     cc_u16(c, (uint16_t)nameIdx);
-    /* DESCRITTORE PER ARGOMENTO (2026-11-06): niente maschere a bit. Il limite non è più la
-     * larghezza di una maschera: vale argc (u16). Per ogni argomento 3 byte:
+    /* DESCRITTORE PER ARGOMENTO (2026-11-06, S1). Per ogni argomento 3 byte:
      *   flags bit0 int64/puntatore, bit1 array, bit2 string, bit3 byref,
      *         bit4 callback, bit5 UDT, bit6 array elem int, bit7 byref elem int
-     *   aux1  UDT: numero campi;  callback: arità (0-4);  altrimenti 0
-     *   aux2  UDT: mask kind dei campi;  callback: bit0 kind int, bit1 ha ritorno */
+     *   aux1  UDT (formato nuovo): byte basso del conteggio foglie;
+     *         callback: arità (0-4);  altrimenti 0
+     *   aux2  UDT (formato nuovo): byte alto del conteggio foglie;
+     *         callback: bit0 kind int, bit1 ha ritorno
+     * Per un UDT il bit7 di flags (mai usato: un UDT non è BYREF) segnala il formato nuovo:
+     * conteggio foglie in aux1|aux2<<8, e in coda, dopo le coppie path/SymbolId, la size del
+     * struct (u16) e per ogni foglia (u8 tipo, u16 offset). Il formato vecchio (bit7=0:
+     * aux1=campi, aux2=maschera kind a 8 bit) resta leggibile per i chunk esistenti. */
     cc_u16(c, (uint16_t)argc);
-    cc_byte(c, (uint8_t)kind);
+    cc_byte(c, (uint8_t)(kind | (ret_udt_idx >= 0 ? 0x80 : 0)));
     cc_byte(c, (uint8_t)ret_is_string);
-    cc_byte(c, retUdtFieldCount);
-    cc_byte(c, retUdtFieldKindMask);
+    /* Ritorno UDT (formato nuovo): il bit7 di `kind` lo segnala e questi due byte diventano
+     * il conteggio foglie (u16) al posto di count+mask. */
+    cc_byte(c, (uint8_t)((n_ret_leaves >> 0) & 0xFF));
+    cc_byte(c, (uint8_t)((n_ret_leaves >> 8) & 0xFF));
     for (int i = 0; i < argc; i++) {
         unsigned f = 0;
         int ptr = is_array[i] || is_string[i] || is_byref[i] || is_cb[i];
@@ -2672,10 +2773,13 @@ static void cc_emit_ffi_call(gmb_cc_t* c, const gmb_expr_t* e, const gmb_stmt_t*
         if (is_array[i]) { f |= 2u; if (p_int[i]) f |= 0x40u; }
         else if (is_string[i]) f |= 4u;
         else if (is_byref[i]) { f |= 8u; if (p_int[i]) f |= 0x80u; }
-        else if (is_udt[i]) f |= 0x20u;
+        else if (is_udt[i]) f |= 0x20u | 0x80u;   /* 0x80 = formato layout nuovo */
         else if (is_cb[i]) f |= 0x10u;
         cc_byte(c, (uint8_t)f);
-        if (is_udt[i]) { cc_byte(c, (uint8_t)n_param_leaves[i]); cc_byte(c, (uint8_t)udtParamFieldKindMask[i]); }
+        if (is_udt[i]) {
+            cc_byte(c, (uint8_t)(n_param_leaves[i] & 0xFF));
+            cc_byte(c, (uint8_t)((n_param_leaves[i] >> 8) & 0xFF));
+        }
         else if (is_cb[i]) {
             int cbk = (cbKindMask >> i) & 1;
             int cbr = (cbHasRetMask >> i) & 1;
@@ -2684,7 +2788,8 @@ static void cc_emit_ffi_call(gmb_cc_t* c, const gmb_expr_t* e, const gmb_stmt_t*
         } else { cc_byte(c, 0); cc_byte(c, 0); }
     }
     /* Coda: per ogni foglia UDT (prima i parametri, poi il ritorno), DUE u16 (path-nomi,
-     * SymbolId-path CSV). */
+     * SymbolId-path CSV); per il formato nuovo, subito dopo le coppie dell'argomento,
+     * la size dello struct (u16) e per ogni foglia tipo (u8) + offset (u16). */
     char csv[64];
     for (int i = 0; i < argc && i < GMB_FFI_MAX_ARGS; i++) {
         if (!is_udt[i]) continue;
@@ -2696,6 +2801,11 @@ static void cc_emit_ffi_call(gmb_cc_t* c, const gmb_expr_t* e, const gmb_stmt_t*
             cc_u16(c, (uint16_t)pi);
             cc_u16(c, (uint16_t)si);
         }
+        cc_u16(c, (uint16_t)param_size[i]);
+        for (int f = 0; f < n_param_leaves[i]; f++) {
+            cc_byte(c, (uint8_t)param_layout[i][f].code);
+            cc_u16(c, (uint16_t)param_layout[i][f].off);
+        }
     }
     if (ret_udt_idx >= 0) {
         for (int f = 0; f < n_ret_leaves; f++) {
@@ -2705,6 +2815,11 @@ static void cc_emit_ffi_call(gmb_cc_t* c, const gmb_expr_t* e, const gmb_stmt_t*
             if (c->error) return;
             cc_u16(c, (uint16_t)pi);
             cc_u16(c, (uint16_t)si);
+        }
+        cc_u16(c, (uint16_t)ret_size);
+        for (int f = 0; f < n_ret_leaves; f++) {
+            cc_byte(c, (uint8_t)ret_layout[f].code);
+            cc_u16(c, (uint16_t)ret_layout[f].off);
         }
     }
 }

@@ -20,7 +20,13 @@ namespace Basic.Runtime;
 /// dichiarazione, garantito dal guard di compilazione), per un RITORNO può variare campo per
 /// campo (un UDT-ritorno a kind misto è ammesso, vedi Compiler.Expressions.cs
 /// ValidateUdtForFfi).</summary>
-public sealed record FfiUdtShape(string[] FieldNames, int[][] FieldSymbolIdPaths, bool[] FieldIsInt);
+public sealed record FfiUdtShape(
+    string[] FieldNames,
+    int[][] FieldSymbolIdPaths,
+    bool[] FieldIsInt,
+    byte[] FieldTypes = null!,
+    int[] FieldOffsets = null!,
+    int Size = 0);
 
 /// <summary>Servizio FFI (Foreign Function Interface) per il BASIC Runtime.</summary>
 public interface IFfiService
@@ -88,5 +94,6 @@ public interface IFfiService
     object? CallFunctionTypedArr(IntPtr function, object?[] args, int kind, long arrayMask, long arrayElemIntMask,
         long stringMask, bool retIsString, long byrefScalarMask = 0, long byrefScalarElemIntMask = 0,
         FfiUdtShape?[]? udtParams = null, FfiUdtShape? udtReturn = null,
-        Type?[]? udtParamClrTypes = null, Type? udtReturnClrType = null, long scalarKindMask = 0);
+        Type?[]? udtParamClrTypes = null, Type? udtReturnClrType = null, long scalarKindMask = 0,
+        string[]? udtShapeStrs = null, string? udtReturnShapeStr = null);
 }
