@@ -1075,6 +1075,12 @@ public sealed partial class Compiler
                     if (!f.Dimensions.IsEmpty)
                     {
                         var codeArr = FfiCode(f.DataType);
+                        // Solo elementi SCALARI numerici: un array di STRING sarebbe
+                        // `char*[N]` nel layout C ma `gmb_string_t*` in BASIC (elemento non
+                        // contiguo/per valore) — non riproducibile, meglio un errore esplicito.
+                        if (codeArr == 9)
+                            throw new BasicException(expr.OriginalToken,
+                                $"FFI '{symbolName}': il campo array '{path}' ha elementi STRING: non supportato ({what}).");
                         if (codeArr < 0)
                             throw new BasicException(expr.OriginalToken,
                                 $"FFI '{symbolName}': tipo del campo array '{path}' non supportato ({what}).");

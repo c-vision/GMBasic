@@ -30836,6 +30836,10 @@ static int ffi_layout_rec(ctx_t* c, struct cls_info* ci, const char* prefix, ffi
             char* brk = strchr(base, '['); if (brk) *brk = 0;
             int code = ffi_code_of_type(base);
             if (code < 0) return -1;
+            /* Elementi STRING (`char*[N]`) o UDT: non riproducibili (in BASIC l'elemento e'
+             * gmb_string_t / struct, non un puntatore contiguo). Errore esplicito. */
+            if (code == 9) return -1;
+            if (cls_find(c, base)) return -1;
             int sz = ffi_code_size(code);
             off = (off + sz - 1) / sz * sz;
             for (int k = 0; k < arrn; k++) {
