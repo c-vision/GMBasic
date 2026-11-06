@@ -1,4 +1,4 @@
-' MiniTest TIMESERIES.TSDESEASONALIZE — copertura con input VALIDO (serie di 10 punti).
+' MiniTest TIMESERIESX.TSDESEASONALIZE — copertura con input VALIDO (serie di 10 punti).
 ' Gli stub gen_* passavano 0 al posto della serie: nessun backend poteva calcolare.
 ' EXPECT: 10 | 0.5
 IMPORT TIMESERIESX AS TS

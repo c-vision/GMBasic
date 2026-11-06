@@ -1,4 +1,4 @@
-' MiniTest TIMESERIES.TSRETURNS — copertura con input VALIDO (serie di 10 punti).
+' MiniTest TIMESERIESX.TSRETURNS — copertura con input VALIDO (serie di 10 punti).
 ' Gli stub gen_* passavano 0 al posto della serie: nessun backend poteva calcolare.
 ' EXPECT: 9 | 0.111111
 IMPORT TIMESERIESX AS TS

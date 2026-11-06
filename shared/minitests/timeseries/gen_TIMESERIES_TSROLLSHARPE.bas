@@ -1,4 +1,4 @@
-' MiniTest TIMESERIES.TSROLLSHARPE — copertura con input VALIDO (serie di 10 punti).
+' MiniTest TIMESERIESX.TSROLLSHARPE — copertura con input VALIDO (serie di 10 punti).
 ' Gli stub gen_* passavano 0 al posto della serie: nessun backend poteva calcolare.
 ' EXPECT: 8 | 11.022704
 IMPORT TIMESERIESX AS TS

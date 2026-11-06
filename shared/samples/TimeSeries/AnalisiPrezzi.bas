@@ -1,5 +1,5 @@
 ' FILE: TimeSeries/AnalisiPrezzi.bas
-' SCENARIO DIDATTICO — andamento di un prezzo con TIMESERIES.
+' SCENARIO DIDATTICO — andamento di un prezzo con TIMESERIESX.
 '
 ' Un analista ha una serie di prezzi giornalieri e vuole due indicatori rapidi:
 ' la VARIAZIONE mobile (TSROLLDELTA) e l'AUTOCORRELAZIONE mobile (TSROLLAUTOCORR),
@@ -21,13 +21,13 @@ SUB Main()
 
     ' Variazione mobile su una finestra di 5 giorni.
     DIM delta() AS DOUBLE
-    delta() = TIMESERIES.TSROLLDELTA(prezzi, 5)
+    delta() = TIMESERIESX.TSROLLDELTA(prezzi, 5)
     PRINT "variazioni calcolate: "; UBOUND(delta) + 1
     PRINT "ultima variazione:    "; MATH.ROUND(delta(UBOUND(delta)), 4)
 
     ' Autocorrelazione mobile (lag 1): quanto il movimento di oggi ricorda ieri.
     DIM ac() AS DOUBLE
-    ac() = TIMESERIES.TSROLLAUTOCORR(prezzi, 10, 1)
+    ac() = TIMESERIESX.TSROLLAUTOCORR(prezzi, 10, 1)
     PRINT "autocorrelazioni:     "; UBOUND(ac) + 1
     PRINT "ultima autocorrelazione: "; MATH.ROUND(ac(UBOUND(ac)), 4)
 END SUB

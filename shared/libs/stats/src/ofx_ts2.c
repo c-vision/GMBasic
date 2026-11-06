@@ -11,6 +11,8 @@
 #include "gs_stats.h"
 #include "gs_stats2.h"
 #include "gs_kalman.h"
+#include "gs_hmm.h"
+#include "gs_mvdist.h"
 
 #define TS2_NAN (0.0 / 0.0)
 
@@ -169,4 +171,57 @@ int ofx_ts_bma(const double *ic, int m, double *out)
 {
     if (!ic || !out || m < 1) return 0;
     return gs_bma_weights(ic, m, out) == 0 ? 1 : 0;
+}
+
+/* HMM fit (Baum-Welch gaussiano): inizializzazione identica a Numerics.HmmFit.
+ * X = n×d row-major. out piatto: pi(K), A(K*K), means(K*d), covs(K*d*d).
+ * Il log-likelihood non e' esposto: HmmForward storico somma i fattori di scala in
+ * log-space (non logsumexp) e il valore e' troppo sensibile alle differenze
+ * dell'EM per essere un contratto stabile fra implementazioni. */
+int ofx_ts_hmmfit(const double *X, int n, int d, int K, int nIter, double *out)
+{
+    double *gmean, *gcov;
+    double *pi, *A, *means, *covs;
+    int t, i, j, k;
+    if (!X || !out || n < K || d < 1 || K < 1 || K > 32 || d > 32)
+        return -1;
+    pi = out;
+    A = pi + K;
+    means = A + K * K;
+    covs = means + K * d;
+    if (nIter < 1) nIter = 100;
+    gmean = (double *)calloc((size_t)d, sizeof(double));
+    gcov = (double *)calloc((size_t)d * d, sizeof(double));
+    if (!gmean || !gcov) { free(gmean); free(gcov); return -1; }
+    for (i = 0; i < K; i++) {
+        pi[i] = 1.0 / K;
+        for (j = 0; j < K; j++) A[i * K + j] = 1.0 / K;
+    }
+    for (k = 0; k < d; k++) {
+        double s = 0.0;
+        for (t = 0; t < n; t++) s += X[t * d + k];
+        gmean[k] = s / n;
+    }
+    for (k = 0; k < d; k++)
+        for (j = 0; j < d; j++) {
+            double s = 0.0;
+            for (t = 0; t < n; t++) s += (X[t * d + k] - gmean[k]) * (X[t * d + j] - gmean[j]);
+            gcov[k * d + j] = s / n;
+        }
+    for (i = 0; i < K; i++) {
+        int t0 = (int)((long long)i * n / K);
+        int t1 = (int)((long long)(i + 1) * n / K);
+        if (t1 <= t0) t1 = t0 + 1;
+        if (t1 > n) t1 = n;
+        for (k = 0; k < d; k++) {
+            double s = 0.0;
+            for (t = t0; t < t1; t++) s += X[t * d + k];
+            means[i * d + k] = s / (t1 - t0);
+        }
+        for (k = 0; k < d * d; k++) covs[i * d * d + k] = gcov[k];
+        for (k = 0; k < d; k++) covs[i * d * d + k * d + k] += 1e-6;
+    }
+    i = gs_hmm_fit(X, n, d, K, nIter, pi, A, means, covs);
+    free(gmean); free(gcov);
+    return i < 0 ? -1 : 0;
 }

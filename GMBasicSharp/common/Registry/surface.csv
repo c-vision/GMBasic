@@ -1347,7 +1347,6 @@ procedure,SYSTEM,VALTYPE,ValType
 procedure,SYSTEM,VARPTR,VarPtr
 procedure,TIMESERIES,AdfTest,AdfTest
 procedure,TIMESERIES,Arima,Arima
-procedure,TIMESERIES,HMMFIT,TsHmmFit
 procedure,TIMESERIES,HoltWinters,HoltWinters
 procedure,TIMESERIES,MaCoefficients,MaCoefficients
 procedure,TIMESERIES,YuleWalker,YuleWalker
