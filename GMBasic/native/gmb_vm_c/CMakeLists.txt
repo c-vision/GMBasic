@@ -95,11 +95,20 @@ else()
     gmb_syscall_sql.c gmb_vm_tui.c gmb_vm_tui_controls.c gmb_vm_console.c)
 endif()
 
-# libffi: motore unico delle chiamate FFI (vedi gmb_call.h). Vendorizzata in futuro in
-# shared/libs/ffi; per ora si usa quella di sistema (macOS SDK, libffi-dev su Linux).
-find_library(GMB_FFI_LIBRARY NAMES ffi ffi-8)
-if(NOT GMB_FFI_LIBRARY)
-    message(FATAL_ERROR "libffi non trovata (installare libffi / libffi-dev)")
+# libffi: motore unico delle chiamate FFI (vedi gmb_call.h).
+# Preferisce la copia VENDORIZZATA in shared/libs/ffi (build.sh), altrimenti la lib di sistema.
+set(GMB_FFI_VENDORED_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../../shared/libs/ffi")
+if(EXISTS "${GMB_FFI_VENDORED_DIR}/out/lib/libffi.a")
+    set(GMB_FFI_LIBRARY "${GMB_FFI_VENDORED_DIR}/out/lib/libffi.a")
+    set(GMB_FFI_INCLUDE_DIR "${GMB_FFI_VENDORED_DIR}/out/include")
+    add_compile_definitions(GMB_FFI_VENDORED)
+    message(STATUS "libffi: vendorizzata (${GMB_FFI_LIBRARY})")
+else()
+    find_library(GMB_FFI_LIBRARY NAMES ffi ffi-8)
+    if(NOT GMB_FFI_LIBRARY)
+        message(FATAL_ERROR "libffi non trovata: eseguire shared/libs/ffi/build.sh o installare libffi")
+    endif()
+    message(STATUS "libffi: di sistema (${GMB_FFI_LIBRARY})")
 endif()
 
 add_library(gmb_vm STATIC
@@ -126,6 +135,7 @@ add_library(gmb_vm STATIC
 # SPLIT 2026-11-02: il runtime non propaga più gmbllm/LLMEnv. La VM dispatcha i comandi
 # LLM (LLM TENSOR/ARCH/KERNEL…) e usa direttamente llmmodelio_* → linka gmbllm_core (che a sua
 # volta porta llmcodec/llmtoken/llmdesc in PUBLIC). ASR/DISTILL/modelio passano dal gateway.
+target_include_directories(gmb_vm PUBLIC ${GMB_FFI_INCLUDE_DIR})
 target_link_libraries(gmb_vm PUBLIC pthread gmb_runtime gmb_doc gmb_agent_runtime gmbllm_core ${GMB_FFI_LIBRARY} ${CMAKE_DL_LIBS})
 target_include_directories(gmb_vm PUBLIC ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/../gmb_runtime_c/include ${CMAKE_CURRENT_SOURCE_DIR}/../gmb_bytecode/include ${CMAKE_CURRENT_SOURCE_DIR}/../gmb_compiler_c/include ${CMAKE_CURRENT_SOURCE_DIR}/../gmb_compiler_c/frontend/include ${CMAKE_CURRENT_SOURCE_DIR}/../gmb_runtime_c/src ${CMAKE_CURRENT_SOURCE_DIR}/../gmb_doc_c/include ${CMAKE_CURRENT_SOURCE_DIR}/../gmb_torch/include ${LLMENV}/LLMEngine/include ${LLMENV}/LLMEngine/mlx ${LLMENV}/LLMEngine/Options ${LLMENV}/LLMEngine/plugin ${LLMENV}/LLMEngine/moe/include ${CMAKE_CURRENT_SOURCE_DIR}/../../gmbllm/include ${CMAKE_CURRENT_SOURCE_DIR}/../../gmbllm/include/quant ${LLMENV}/LLMToken/include ${LLMENV}/LLMCodec/include ${LLMENV}/LLMDesc)
 

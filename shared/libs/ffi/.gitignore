@@ -1,0 +1,14 @@
+out/
+Makefile
+config.status
+config.log
+libtool
+stamp-h1
+fficonfig.h
+libffi.pc
+aarch64-apple-darwin*/
+x86_64-apple-darwin*/
+*-apple-darwin*/
+include/Makefile
+include/ffi.h
+include/ffitarget.h
