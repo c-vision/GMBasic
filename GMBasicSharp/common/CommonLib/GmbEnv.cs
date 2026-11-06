@@ -37,6 +37,29 @@ public static class GmbEnv
         return Environment.GetEnvironmentVariable(name);
     }
 
+    // Lettura del SOLO registro (`gmb_opt_get`), senza la ricaduta sull'ambiente: la usa
+    // `AI LIST OPTIONS`, che elenca le OPZIONI impostate (`AI SET OPTION` o sezione `engine`)
+    // e non i valori che l'harness esporta nel processo. Se la lib nativa non è caricata,
+    // ritorna null (il chiamante stampa `(vuoto)`).
+    [DllImport(LibName, CharSet = CharSet.Ansi)]
+    private static extern int gmb_opt_get(string name, byte[] outBuf, int cap);
+
+    public static string? GetRegistry(string name)
+    {
+        try
+        {
+            var buf = new byte[512];
+            if (gmb_opt_get(name ?? "", buf, buf.Length) != 0) return null;
+            int n = 0; while (n < buf.Length && buf[n] != 0) n++;
+            return System.Text.Encoding.UTF8.GetString(buf, 0, n);
+        }
+        catch
+        {
+            /* lib non caricata: nessun valore */
+            return null;
+        }
+    }
+
     /* Lettura INDIPENDENTE dei settings condivisi (stessa gerarchia del C, senza dipendere
      * dalla lib nativa): sezione `engine` di system.settings.json (dir eseguibile) poi
      * app.settings.json (CWD), con l'app che sovrascrive. Cache al primo accesso. */

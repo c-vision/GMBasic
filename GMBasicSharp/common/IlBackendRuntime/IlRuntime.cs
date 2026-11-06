@@ -18321,6 +18321,58 @@ public static double TextWidth(string s)
     public static string AiSetOption(string name, string value)
         => Basic.Providers.MlxOptions.Set(name, value) == 0 ? value : "";
     public static string AiOption(string name) => Basic.Providers.MlxOptions.Get(name);
+
+    /// <summary>Voci DICHIARATE del registro opzioni — MIRROR di `g_opt_core[]` in
+    /// native/gmb_runtime_c/src/gmb_opts.c, che è la fonte canonica: nomi, ordine e
+    /// descrizioni devono restare identici (il MiniTest shared/minitests/ai/ai_list_options.bas
+    /// confronta il testo sulle 4 gambe e segnala il drift).</summary>
+    private static readonly (string Name, string Desc)[] OptionCoreTable =
+    [
+        ("moe_swap_dir",   "dir modello per lo streaming esperti MoE (vuoto = off)"),
+        ("GMB_TUI_SCRIPT", "typeahead scriptato per TUI/CI: tasti iniettati nell'input (vuoto = input reale)"),
+        ("GMB_PKG_CACHE",  "dir cache dei pacchetti per REQUIRE (vuoto = <progetto>/packages)"),
+        ("GMB_TORCH_PATH", "dir dei runtime ML (torch/mlx) quando i settings non la indicano"),
+        // Grafica e console: stessi nomi/descrizioni/orientamento di g_opt_core[] (canonico).
+        ("GMB_CONSOLE",        "modo della console testuale (0/assente = auto; valore = modo forzato)"),
+        ("GMB_CONSOLE_SIZE",   "griglia della console in colonne,righe (sovrascrive i settings)"),
+        ("GMB_CONSOLE_FONT",   "font della console: nome[,dimensione] (sovrascrive i settings)"),
+        ("GMB_SDLCONSOLE",     "console TUI su superficie SDL ('0' = disattivata)"),
+        ("GMB_FONT_PATH",      "file del font usato da grafica e console"),
+        ("GMB_UI_FONT_SIZE",   "dimensione in px del font UI (6..48, default 16)"),
+        ("GMB_GFX_BACKEND",    "backend grafico: 'vulkan' o 'auto' (dove compilato)"),
+        ("GMB_GFX_NULL",       "grafica headless senza finestra ('0' = disattivata)"),
+        ("GMB_GFX_SCALE",      "scala di render forzata (rapporto drawable/logico)"),
+        ("GMB_GFX_SHOT",       "file PNG della cattura della superficie grafica"),
+        ("GMB_MOUSE_SCRIPT",   "sequenza di movimenti/click del mouse iniettati (test TUI)"),
+        ("GMB_FORM_AUTOKEY",   "tasti automatici sui form (sequenza, test)"),
+        ("GMB_FORM_AUTOCLICK", "click automatici sui form (sequenza, test)"),
+        ("GMB_FORM_SHOT",      "file PNG della cattura del form (test)"),
+        ("GMB_FORM_SHOT_FRAME","frame in cui scattare GMB_FORM_SHOT (default 20)"),
+        ("MAXXLIB_GRAPHICS",   "protocollo grafico del terminale: kitty o sixel (assente = dedotto da TERM)"),
+    ];
+
+    /// <summary>AI LIST OPTIONS — comando-query (§1): stampa nome, descrizione e valore
+    /// corrente delle voci dichiarate del registro e ne ritorna il testo. I VALORI vengono dal
+    /// registro del backend in esecuzione (qui LLMEnv via `MlxOptions.Get`, la stessa porta che
+    /// usa `AI SET OPTION` in IL/PCodeVM); le gambe C leggono `gmb_opt_get` dallo stesso nome.</summary>
+    public static string AiListOptions()
+    {
+        var sb = new System.Text.StringBuilder();
+        foreach (var (name, desc) in OptionCoreTable)
+        {
+            // Catena di lettura del REGISTRO, identica alle gambe C (`gmb_opt_get`): prima il
+            // registro dell'engine (la stessa porta che scrive `AI SET OPTION`), poi il registro
+            // condiviso (sezione `engine` dei settings). NIENTE ricaduta sull'ambiente: le voci
+            // elencate sono OPZIONI, non i valori che l'harness esporta nel processo.
+            var v = Basic.Providers.MlxOptions.Get(name);
+            if (string.IsNullOrEmpty(v)) v = Basic.Providers.GmbEnv.GetRegistry(name) ?? "";
+            sb.Append(name).Append(" | ").Append(desc).Append(" | = ")
+              .Append(string.IsNullOrEmpty(v) ? "(vuoto)" : v).Append('\n');
+        }
+        // Il comando è compilato come PRINT del risultato (Parser.Stmt.Ai.cs): qui si
+        // FORMATTA soltanto, così IL/PCodeVM e i comandi-query TRAIN seguono lo stesso canale.
+        return sb.ToString().TrimEnd('\n');
+    }
     public static string AiSetHfRepo(string value) { Basic.AI.AiConfig.HfRepo = value; return value; }
     public static string AiHfRepo() => Basic.AI.AiConfig.HfRepo ?? "";
     public static void TeamTrainInner(string team, string agent, string dataset) { Basic.Agents.Recursive.RecursiveTrainer.TrainInner(team, agent, dataset); }

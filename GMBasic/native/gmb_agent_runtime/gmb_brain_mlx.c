@@ -214,6 +214,16 @@ int gmb_brain_mlx_start(const char* model_dir, char* err, size_t errcap) {
         if (!b->tok) { snprintf(b->err, sizeof(b->err), "tokenizer.json non caricato: %s", tj); if (err) snprintf(err, errcap, "%s", b->err); goto fail; }
     }
     if (!b->tok) { snprintf(b->err, sizeof(b->err), "tokenizer non caricato: %s", model_dir); if (err) snprintf(err, errcap, "%s", b->err); goto fail; }
+    /* Streaming esperti MoE: la cartella arriva dal REGISTRO (`moe_swap_dir`, impostata con
+     * `AI SET OPTION` o dalla sezione `engine` dei settings) e non dall'ambiente. Si legge QUI,
+     * prima di aprire i pesi, invece di contare sul simbolo esportato dall'eseguibile: così vale
+     * anche per i binari che ospitano il cervello e non lo esportano. Una scelta già presa dal
+     * consumer resta la sua; la voce del registro è il default. */
+    if (b->eng->set_expert_swap) {
+        char swap_dir[1024];
+        if (gmb_opt_moe_swap_dir(swap_dir, (int)sizeof swap_dir) == 0 && swap_dir[0] != '\0')
+            b->eng->set_expert_swap(swap_dir);
+    }
     b->model = b->eng->load_model(model_dir);
     if (!b->model) { snprintf(b->err, sizeof(b->err), "modello non caricato: %s", model_dir); if (err) snprintf(err, errcap, "%s", b->err); goto fail; }
     b->sess = b->eng->create_session(b->model);

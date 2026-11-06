@@ -1045,6 +1045,13 @@ target_link_libraries(gmb_decision_clm_selfcheck PRIVATE gmb_runtime)
 target_include_directories(gmb_decision_clm_selfcheck PRIVATE include)
 add_test(NAME gmb_decision_clm_selfcheck COMMAND gmb_decision_clm_selfcheck)
 
+# Registro opzioni: lettore `moe_swap_dir` (vuoto -> impostato -> svuotato, troncamento,
+# argomenti non validi, indipendenza dall'ambiente). Model-free: nessun motore/modello.
+add_executable(gmb_opt_moe_swap_selfcheck tests/gmb_opt_moe_swap_selfcheck.c)
+target_link_libraries(gmb_opt_moe_swap_selfcheck PRIVATE gmb_runtime)
+target_include_directories(gmb_opt_moe_swap_selfcheck PRIVATE include)
+add_test(NAME gmb_opt_moe_swap_selfcheck COMMAND gmb_opt_moe_swap_selfcheck)
+
 # ── Second Brain (registry/manifest/toolchain) e pack firmato: selfcheck dedicati ──────────
 # Isolati con gmb_paths_test_override (nessuna scrittura nella config dell'utente).
 add_executable(gmb_brain_registry_selfcheck tests/brain_registry_selfcheck.c)

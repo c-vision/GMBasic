@@ -2374,6 +2374,13 @@ int gmb_opt_set(const char* name, const char* value);
 int gmb_opt_get(const char* name, char* out, int cap);
 int gmb_opt_count(void);
 int gmb_opt_at(int i, const char** name, const char** desc, char* val, int cap);
+/* Testo delle voci DICHIARATE del registro (`nome | descrizione | = valore`, una per riga).
+ * Formattazione unica del comando BASIC `AI LIST OPTIONS` per le gambe C. */
+const char* gmb_opt_list_text(void);
+/* Opzione `moe_swap_dir` (dir del modello per lo streaming esperti MoE), dal REGISTRO.
+ * La usa `gmb_moestream_stmt_load` quando `AI MODEL LOAD` non riceve un percorso, ed e' il
+ * punto di lettura unico per il motore dei modelli. Vuoto = streaming spento. */
+int gmb_opt_moe_swap_dir(char* out, int cap);
 char* gmb_opt_get_str(const char* name);
 /* Helper di timing condiviso (tempo monotono in millisecondi). */
 double gmb_dbg_now_ms(void);

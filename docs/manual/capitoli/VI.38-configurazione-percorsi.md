@@ -458,6 +458,157 @@ SETUP OCR                 ' (incluso nel bundle LIBS → ~/.gmbasic/libs/<rid>/)
 SETUP status              ' mostra cosa è già scaricato e dove
 
 
+## 7bis. Le opzioni del registro
+
+Il registro delle opzioni è l'unico posto dove si regola il comportamento del runtime: `AI SET
+OPTION` scrive una chiave, `AI LIST OPTIONS` le elenca. L'elenco stampa una riga per voce
+**dichiarata**, nel formato `nome | descrizione | = valore`, con `(vuoto)` quando la voce non è mai
+stata impostata.
+
+```basic
+AI SET OPTION "GMB_GFX_SCALE", "2"   ' scrive nel registro
+AI LIST OPTIONS                      ' nome, descrizione e valore corrente di ogni voce
+```
+
+I valori vengono dal **registro** (sezione `engine` delle impostazioni, più ciò che hai scritto con
+`AI SET OPTION`), non dall'ambiente del processo: due esecuzioni con lo stesso registro stampano lo
+stesso elenco. La chiave ha lo stesso nome su tutte e quattro le gambe (IL, PCodeVM, VM/C,
+C99Native), quindi l'elenco è confrontabile; **l'effetto** invece dipende dal modulo che legge la
+chiave, ed è la colonna «Ambito» qui sotto.
+
+| Chiave | Descrizione | Ambito di applicazione |
+|---|---|---|
+| `moe_swap_dir` | cartella del modello per lo streaming degli esperti MoE; vuoto = streaming spento | modelli locali: `AI MODEL LOAD` senza percorso e streaming esperti, tutte e quattro le gambe |
+| `GMB_TUI_SCRIPT` | typeahead per TUI e CI: sequenza di tasti iniettata nell'input; vuoto = input reale | console e TUI, stack nativo e host VM/C |
+| `GMB_TORCH_PATH` | cartella della libreria host TORCH quando le impostazioni non la indicano | TORCH e `SETUP TORCH`, stack nativo |
+| `GMB_CONSOLE` | modalità console: `1` = C64, `2` = console di sistema, `3` = console SDL; assente o `0` = automatica | console; la imposta anche il REPL con i flag `-c`, `-s`, `-c64` |
+| `GMB_CONSOLE_SIZE` | griglia della console in `colonne,righe`; sovrascrive le impostazioni | console a griglia di caratteri, stack nativo |
+| `GMB_CONSOLE_FONT` | font della console: `nome` oppure `nome,dimensione` | console a griglia di caratteri, stack nativo |
+| `GMB_SDLCONSOLE` | `0` disattiva la console TUI disegnata sulla superficie SDL | console TUI, stack nativo |
+| `GMB_FONT_PATH` | file del font usato da grafica e console, se il percorso delle impostazioni non basta | grafica e console, stack nativo |
+| `GMB_UI_FONT_SIZE` | dimensione in pixel del font dell'interfaccia, da 6 a 48 (default 16) | grafica SDL, stack nativo |
+| `GMB_GFX_BACKEND` | backend grafico: `vulkan` oppure `auto`, dove la build include Vulkan | presentazione grafica, stack nativo |
+| `GMB_GFX_NULL` | valore diverso da `0` = grafica senza finestra (headless) | grafica, stack nativo |
+| `GMB_GFX_SCALE` | scala di render forzata, cioè il rapporto fra area disegnata e area logica | presentazione grafica, stack nativo |
+| `GMB_GFX_SHOT` | file PNG in cui salvare la cattura della superficie grafica | grafica TUI e SDL, stack nativo (diagnostica) |
+| `GMB_MOUSE_SCRIPT` | sequenza di movimenti e click del mouse iniettata nel ciclo eventi | finestre TUI, stack nativo (diagnostica) |
+| `GMB_FORM_AUTOKEY` | sequenza di tasti inviata automaticamente ai form | form, stack nativo (diagnostica) |
+| `GMB_FORM_AUTOCLICK` | sequenza di click inviata automaticamente ai form | form su SDL, stack nativo (diagnostica) |
+| `GMB_FORM_SHOT` | file PNG della cattura del form | form, stack nativo (diagnostica) |
+| `GMB_FORM_SHOT_FRAME` | numero di frame dopo cui scattare `GMB_FORM_SHOT` (default 20) | form, stack nativo (diagnostica) |
+| `MAXXLIB_GRAPHICS` | protocollo grafico del terminale: `kitty` o `sixel`; assente = dedotto da `TERM` | rilevamento del terminale, stack nativo |
+
+### 7bis.1 Le impostazioni che sostituiscono una chiave
+
+Quasi ogni chiave del registro ha un equivalente nei file di impostazioni: il registro è la
+regolazione a caldo, le impostazioni sono il valore con cui il programma parte. La tabella dice
+quale delle due vince, quando non coincidono.
+
+| Chiave del registro | Sezione delle impostazioni | Chiave delle impostazioni | Chi vince |
+|---|---|---|---|
+| `moe_swap_dir` | `engine` | `moe_swap_dir` | stesso nome: le impostazioni riempiono il registro all'avvio, `AI SET OPTION` lo cambia a caldo |
+| `GMB_TORCH_PATH` | `paths` | `libsCacheDir` (sottocartella `ml/<rid>`) e `libsDir` | vincono le impostazioni: la chiave si usa solo come ripiego, se il file non è nel percorso già risolto |
+| `GMB_CONSOLE` | `consoleConfiguration` | l'indice della voce, da 0 a 3 | la chiave sceglie quale voce dell'array descrive la console; senza di essa vale la voce 0 |
+| `GMB_CONSOLE_SIZE` | `consoleConfiguration` | `charGridWidth`, `charGridHeight` (oppure `logicalWidth`, `logicalHeight`) | la chiave vince, perché è applicata dopo le impostazioni |
+| `GMB_CONSOLE_FONT` | `consoleConfiguration` | `fontPath`, `fontSize` | la chiave vince, con la stessa precedenza |
+| `GMB_FONT_PATH` | `consoleConfiguration` | `fontPath` | la chiave vince: è il percorso esplicito del file, `fontPath` può essere un nome di famiglia |
+| `GMB_UI_FONT_SIZE` | `consoleConfiguration` | `fontSize` | la chiave, se presente, vince ed è forzata nell'intervallo 6-48; se manca, il percorso SDL parte da 16 e `fontSize` vale solo nel caricamento predefinito del font |
+| `GMB_GFX_BACKEND`, `GMB_GFX_NULL`, `GMB_GFX_SCALE`, `GMB_GFX_SHOT` | — | nessuna | solo registro: sono regolazioni di presentazione e diagnostica, non hanno un equivalente nei file |
+| `GMB_TUI_SCRIPT`, `GMB_MOUSE_SCRIPT`, `GMB_FORM_AUTOKEY`, `GMB_FORM_AUTOCLICK`, `GMB_FORM_SHOT`, `GMB_FORM_SHOT_FRAME` | — | nessuna | solo registro: automazione di test, non configurazione di un programma |
+| `MAXXLIB_GRAPHICS` | — | nessuna | solo registro; se la chiave manca, il protocollo si deduce dal terminale |
+| cache dei pacchetti | `paths` | `packagesDir` | vince `packagesDir`; la chiave storica nata per la stessa funzione vale solo se le impostazioni non danno una cartella, cioè praticamente mai (§7bis.3) |
+
+Un controllo sul codice dice quali righe della tabella sono verificabili dentro il monorepo: tutte
+le chiavi hanno almeno un lettore (l'elenco dei file è nel report `tools/reports/gmb_env_audit.tsv`),
+con una sola eccezione che riguarda la compilazione. `moe_swap_dir` ha il suo lettore nel runtime:
+quando `AI MODEL LOAD` non riceve un percorso, `gmb_moestream_stmt_load` lo prende dal registro con
+`gmb_opt_moe_swap_dir` e lo passa al motore che streamma gli esperti; lo stesso lettore serve al
+caricamento dei modelli MLX, che all'apertura dei pesi chiede la cartella al registro (se il
+programma che ospita il motore lo espone) e la applica prima di materializzare gli esperti, così
+non serve nessuna variabile d'ambiente e la scelta fatta con `AI SET OPTION` o nei settings vale
+anche lì. Nel mondo nativo il cervello MLX legge la voce prima di aprire il modello, quindi non
+dipende da cosa l'eseguibile esporta. `GMB_GFX_BACKEND` invece ha un
+lettore compilato solo quando la build include Vulkan: in una build senza Vulkan la chiave resta
+senza effetto anche se compare nell'elenco.
+
+Due conseguenze pratiche. La prima: un valore scritto in `app.settings.json` e uno scritto con
+`AI SET OPTION` possono convivere, e la tabella dice quale dei due il modulo leggerà davvero — è il
+motivo per cui `AI LIST OPTIONS` stampa il registro e non le impostazioni. La seconda: per le voci
+che non hanno equivalente nei file, il registro è l'unico posto dove metterle, e una voce vuota
+significa «comportamento predefinito».
+
+### 7bis.2 Perché una chiave vale su alcune gambe e non su altre
+
+Le voci marcate «stack nativo» sono lette dai moduli C di console, grafica e form: hanno effetto su
+VM/C, su C99Native e sul REPL. IL e PCodeVM non leggono queste chiavi, perché disegnano tramite le
+impostazioni `consoleConfiguration` (capitolo IV.17); il registro resta comunque lo stesso, quindi la
+voce compare nell'elenco anche lì e il valore stampato è identico. Le voci che agiscono sul motore
+dei modelli e sui percorsi (`moe_swap_dir`, `GMB_TORCH_PATH`) non dipendono dal backend: le legge il
+modulo che apre il modello o la libreria.
+
+### 7bis.3 La cache dei pacchetti
+
+La cartella dei pacchetti installati si configura con `paths.packagesDir` (§3) e `packagesDir`
+vince sempre sugli altri percorsi. La vecchia chiave del registro nata per la stessa funzione sopravvive nel codice di migrazione
+(§ stile, regola 5): non è la via da usare, non si documenta qui e non va scritta in nuovi programmi.
+Nel percorso FFI la precedenza è quella documentata: vince `packagesDir`, e la chiave storica vale
+solo se le impostazioni non danno alcuna cartella.
+
+### 7bis.4 Cosa elenca e cosa no
+
+`AI LIST OPTIONS` stampa solo le voci **dichiarate** con una descrizione: è un elenco stabile, uguale
+su tutte e quattro le gambe e indipendente dai motori caricati. Se scrivi con `AI SET OPTION` un nome
+mai dichiarato, il registro lo accetta (le voci dichiarate sono quelle con descrizione, non un
+elenco chiuso) ma l'elenco non lo mostra: serve al modulo che lo legge, non alla consultazione.
+
+Esempi eseguibili: `shared/samples/Ai/AiListOptions.bas` (uso completo) e
+`shared/minitests/ai/ai_list_options.bas` (oracolo di parità sulle quattro gambe).
+
+### 7bis.5 Un esempio eseguito: due opzioni di console
+
+Il programma seguente scrive due chiavi di console, le rilegge come valori e mostra che una chiave
+mai impostata resta vuota. È il file `shared/samples/Ai/AiConsoleOptions.bas`, e ha il suo oracolo
+di parità in `shared/minitests/ai/ai_console_options.bas`: le tre righe qui sotto sono l'`EXPECT`
+del test, verificate su IL, PCodeVM, VM/C e C99Native.
+
+```basic
+' Registro delle opzioni: scrivere due chiavi di console e rileggerle come valori.
+' Eseguibile su tutte e quattro le gambe (IL, PCodeVM, VM/C, C99Native).
+IMPORT AI WITH ALIAS
+
+SUB Main()
+  ' 1. scrittura nel registro: queste due chiavi vincono sulle impostazioni
+  '    consoleConfiguration (capitolo VI.38, §7bis.1).
+  AI SET OPTION "GMB_CONSOLE_SIZE", "80,25"
+  AI SET OPTION "GMB_CONSOLE_FONT", "Monaco,14"
+
+  ' 2. lettura delle stesse chiavi come valori.
+  PRINT "GMB_CONSOLE_SIZE = "; AI.OPTION("GMB_CONSOLE_SIZE")
+  PRINT "GMB_CONSOLE_FONT = "; AI.OPTION("GMB_CONSOLE_FONT")
+  PRINT "GMB_GFX_SCALE    = ["; AI.OPTION("GMB_GFX_SCALE"); "]"
+
+  ' 3. le due chiavi scritte compaiono anche in AI LIST OPTIONS con questo valore;
+  '    GMB_GFX_SCALE resta (vuoto) perche' nessuno l'ha impostata.
+END SUB
+```
+
+Output reale, identico sulle quattro gambe (IL, PCodeVM, VM/C, C99Native):
+
+```
+GMB_CONSOLE_SIZE = 80,25
+GMB_CONSOLE_FONT = Monaco,14
+GMB_GFX_SCALE    = []
+```
+
+`AI.OPTION(nome)` legge il registro, non le impostazioni: restituisce la stringa vuota quando la
+chiave non è mai stata scritta — per questo la terza riga stampa `[]` e la stessa voce compare come
+`(vuoto)` in `AI LIST OPTIONS`. Le due chiavi scritte, invece, compaiono nell'elenco con `80,25` e
+`Monaco,14`.
+
+Il valore scritto così vale per il processo in corso e non viene salvato: alla chiusura del
+programma il registro riparte dalle impostazioni `consoleConfiguration` (§7bis.1). Per una
+regolazione permanente si scrive nei file di impostazioni, non con `AI SET OPTION`.
+
 ## 8. Domande frequenti
 
 ## 9. Riferimenti

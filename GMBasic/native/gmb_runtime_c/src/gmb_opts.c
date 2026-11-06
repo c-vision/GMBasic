@@ -28,6 +28,33 @@ static int     g_init  = 0;
 /* Voci disponibili in ogni backend C (host-agnostiche). */
 static const struct { const char* name; const char* desc; } g_opt_core[] = {
     { "moe_swap_dir", "dir modello per lo streaming esperti MoE (vuoto = off)" },
+    /* Nomi di origine env, dichiarati qui perche' compaiano nell'elenco del registro
+     * (`gmb_opt_at`) e siano impostabili con `AI SET OPTION`. La CHIAVE e' la stessa che
+     * usa il ponte `gmb_opt_env` (registro se impostato, altrimenti la variabile d'ambiente),
+     * quindi la dichiarazione non cambia il comportamento finche' la voce resta vuota. */
+    { "GMB_TUI_SCRIPT", "typeahead scriptato per TUI/CI: tasti iniettati nell'input (vuoto = input reale)" },
+    { "GMB_PKG_CACHE",  "dir cache dei pacchetti per REQUIRE (vuoto = <progetto>/packages)" },
+    { "GMB_TORCH_PATH", "dir dei runtime ML (torch/mlx) quando i settings non la indicano" },
+    /* ── GRAFICA e CONSOLE (2026-11-06): nomi che i moduli C leggono dal ponte
+     * `gmb_opt_env` (gmb_console.c, gmb_iconsole.c, gmb_tui_*.c, gmb_gfx_present_sdl.c,
+     * gmb_form.c, gmb_graphics.c). Dichiararli qui li rende visibili a `AI LIST OPTIONS`
+     * e impostabili con `AI SET OPTION`; da vuoti non cambiano il comportamento. */
+    { "GMB_CONSOLE",       "modo della console testuale (0/assente = auto; valore = modo forzato)" },
+    { "GMB_CONSOLE_SIZE",  "griglia della console in colonne,righe (sovrascrive i settings)" },
+    { "GMB_CONSOLE_FONT",  "font della console: nome[,dimensione] (sovrascrive i settings)" },
+    { "GMB_SDLCONSOLE",    "console TUI su superficie SDL ('0' = disattivata)" },
+    { "GMB_FONT_PATH",     "file del font usato da grafica e console" },
+    { "GMB_UI_FONT_SIZE",  "dimensione in px del font UI (6..48, default 16)" },
+    { "GMB_GFX_BACKEND",   "backend grafico: 'vulkan' o 'auto' (dove compilato)" },
+    { "GMB_GFX_NULL",      "grafica headless senza finestra ('0' = disattivata)" },
+    { "GMB_GFX_SCALE",     "scala di render forzata (rapporto drawable/logico)" },
+    { "GMB_GFX_SHOT",      "file PNG della cattura della superficie grafica" },
+    { "GMB_MOUSE_SCRIPT",  "sequenza di movimenti/click del mouse iniettati (test TUI)" },
+    { "GMB_FORM_AUTOKEY",  "tasti automatici sui form (sequenza, test)" },
+    { "GMB_FORM_AUTOCLICK","click automatici sui form (sequenza, test)" },
+    { "GMB_FORM_SHOT",     "file PNG della cattura del form (test)" },
+    { "GMB_FORM_SHOT_FRAME","frame in cui scattare GMB_FORM_SHOT (default 20)" },
+    { "MAXXLIB_GRAPHICS",  "protocollo grafico del terminale: kitty o sixel (assente = dedotto da TERM)" },
 };
 #define GMB_OPT_CORE_N ((int)(sizeof g_opt_core / sizeof g_opt_core[0]))
 
@@ -94,7 +121,45 @@ int gmb_opt_get(const char* name, char* out, int cap) {
     return 0;
 }
 
+/* Opzione `moe_swap_dir`: directory del modello per lo streaming degli esperti MoE.
+ * Legge il REGISTRO (non l'ambiente): la usano il runtime — `gmb_moestream_stmt_load` quando
+ * `AI MODEL LOAD` non riceve un percorso — e il motore dei modelli, che riceve cosi' il valore
+ * impostato con `AI SET OPTION` o dalla sezione `engine` dei settings. Vuoto = streaming spento. */
+int gmb_opt_moe_swap_dir(char* out, int cap) {
+    if (!out || cap <= 0) return -1;
+    ensure_init();
+    GmbOpt* o = gmb_opt_find("moe_swap_dir");
+    snprintf(out, (size_t)cap, "%s", (o && o->set) ? o->val : "");
+    return 0;
+}
+
 int gmb_opt_count(void) { ensure_init(); return g_nopts; }
+
+/* Testo delle voci DICHIARATE del registro: una riga per voce, `nome | descrizione | = valore`.
+ * Buffer statico interno e formattazione UNICA: la usano entrambe le gambe C (VM/C e
+ * C99Native) per il comando BASIC `AI LIST OPTIONS`, cosi' il testo non puo' divergere.
+ * Si elencano SOLO le voci del core (= quelle dichiarate in `g_opt_core[]`, con descrizione);
+ * le voci registrate a runtime dagli host non hanno descrizione e renderebbero l'output
+ * dipendente dall'engine caricato. */
+const char* gmb_opt_list_text(void) {
+    ensure_init();
+    static char buf[4096];
+    int o = 0;
+    buf[0] = '\0';
+    for (int i = 0; i < GMB_OPT_CORE_N && i < g_nopts; i++) {
+        /* Righe separate da '\n' ma SENZA newline finale: chi stampa aggiunge il proprio
+         * a-capo (gmb_print_newline / PRINT_LINE), altrimenti resterebbe una riga vuota. */
+        if (i) { o += snprintf(buf + o, sizeof buf - (size_t)o, "\n"); }
+        /* SOLO registro (niente ricaduta sull'ambiente): il comando elenca le OPZIONI, quindi
+         * mostra cio' che e' stato impostato (`AI SET OPTION` o sezione `engine` dei settings),
+         * non i valori che un harness esporta nel processo. Le gambe leggono lo stesso registro. */
+        const char* cur = (g_opts[i].set && g_opts[i].val[0]) ? g_opts[i].val : "(vuoto)";
+        o += snprintf(buf + o, sizeof buf - (size_t)o, "%s | %s | = %s",
+                      g_opts[i].name, g_opts[i].desc, cur);
+        if (o >= (int)sizeof buf) { buf[sizeof buf - 1] = '\0'; break; }
+    }
+    return buf;
+}
 
 int gmb_opt_at(int i, const char** name, const char** desc, char* val, int cap) {
     ensure_init();
@@ -228,11 +293,16 @@ int gmb_opts_save(const char* path) {
     FILE* f = fopen(file, "r");
     if (f) { size_t n = fread(buf, 1, sizeof buf - 1, f); fclose(f); buf[n] = '\0'; }
 
-    char eng[16384]; int e = 0;
+    char eng[16384]; int e = 0; int written = 0;
     e += snprintf(eng + e, sizeof eng - e, "{");
-    for (int i = 0; i < g_nopts; i++)
+    for (int i = 0; i < g_nopts; i++) {
+        /* NON materializzare le voci non impostate o vuote: un "" esplicito nel file le
+         * renderebbe "impostate" al ricaricamento, e per i nomi di origine env questo
+         * cambia il comportamento (per GMB_TUI_SCRIPT "" != NULL = modo CI sempre attivo). */
+        if (!g_opts[i].set || !g_opts[i].val[0]) continue;
         e += snprintf(eng + e, sizeof eng - e, "%s\"%s\": \"%s\"",
-                      (i == 0 ? "" : ", "), g_opts[i].name, g_opts[i].val);
+                      (written++ ? ", " : ""), g_opts[i].name, g_opts[i].val);
+    }
     e += snprintf(eng + e, sizeof eng - e, "}");
 
     static char out[147456]; size_t o = 0;

@@ -218,6 +218,13 @@ int gmb_moestream_stmt_inspect(const char* dir) {
 int gmb_moestream_stmt_load(const char* name, const char* path, int resident) {
     void* p = ms_provider();
     if (p == NULL) { return -1; }
+    /* Percorso omesso (`AI MODEL LOAD "m"`): si usa la voce del registro `moe_swap_dir`, che
+     * arriva da `AI SET OPTION` o dalla sezione `engine` dei settings. Il percorso esplicito
+     * vince sempre; se anche il registro e' vuoto il load resta senza directory (come prima). */
+    char optdir[2048];
+    if (path == NULL || *path == '\0') {
+        if (gmb_opt_moe_swap_dir(optdir, (int)sizeof optdir) == 0 && optdir[0]) path = optdir;
+    }
     /* Se `path` è una cartella HF/MLX, convertila una volta in <path>/<nome>.gmoe (artefatto
      * automatico): l'utente passa il modello, non il container. */
     char resolved[1200], rmodel[2048];
