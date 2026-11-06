@@ -19,7 +19,8 @@ build() { # $1 = sorgente, $2 = nome senza estensione
     cc -shared -fPIC -O2 -o "$out$ext" "$src"
 }
 
-build udt_ext.c   libudt_ext
-build dims_ext.c  libdims_ext
+build udt_ext.c    libudt_ext
+build dims_ext.c   libdims_ext
+build layout_ext.c liblayout_ext
 
 echo "ok: librerie di test FFI pronte in $(pwd)"

@@ -39,6 +39,9 @@ public class FfiService : IFfiService
     /// questo fallback per offset — <paramref name="symbolIdPath"/> porta il SymbolId di OGNI
     /// segmento, stesso ordine/lunghezza di <paramref name="namePath"/>.Split('.').</summary>
     private static void SetFfiLeafValue(Dictionary<string, object?> root, string namePath, int[] symbolIdPath, double value)
+        => SetFfiLeafValue(root, namePath, symbolIdPath, (object?)value);
+
+    private static void SetFfiLeafValue(Dictionary<string, object?> root, string namePath, int[] symbolIdPath, object? value)
     {
         var names = namePath.Split('.');
         var cur = root;
@@ -421,21 +424,180 @@ public class FfiService : IFfiService
     /// conteggio — due forme con lo stesso numero di campi ma ordine diverso sono TIPI CLR
     /// diversi (il .NET marshaler li tratta diversamente in fase di P/Invoke).</summary>
     private Type GetOrBuildUdtShapeType(bool[] fieldIsInt)
+        => GetOrBuildUdtShapeType(null, fieldIsInt, null);
+
+    /// <summary>Costruisce il VALUE TYPE CLR che rappresenta uno struct C per libffi/P-Invoke:
+    /// layout ESPLICITO con gli offset calcolati dal compilatore (parità col layout C) e tipi
+    /// reali per campo (2026-11-06, S1). Senza <paramref name="types"/> ricade sulla forma
+    /// storica a 8 byte (tutti double/int64 consecutivi), usata dai chiamanti vecchi.</summary>
+    private Type GetOrBuildUdtShapeType(byte[]? types, bool[] fieldIsInt, int[]? offsets)
     {
-        var shapeKey = string.Concat(fieldIsInt.Select(b => b ? 'I' : 'D'));
+        var shapeKey = types != null
+            ? "T" + string.Join(",", types) + "|O" + (offsets != null ? string.Join(",", offsets) : "")
+            : "K" + string.Concat(fieldIsInt.Select(b => b ? 'I' : 'D'));
         if (_udtShapeTypeCache.TryGetValue(shapeKey, out var cached)) return cached;
         var asmName = new AssemblyName("FfiUdtShapes");
         var asmBuilder = AssemblyBuilder.DefineDynamicAssembly(asmName, AssemblyBuilderAccess.Run);
         var modBuilder = asmBuilder.DefineDynamicModule("Main");
         var typeBuilder = modBuilder.DefineType(
-            $"FfiUdtShape_{shapeKey}",
-            TypeAttributes.Public | TypeAttributes.SequentialLayout | TypeAttributes.Sealed, typeof(ValueType));
-        for (var i = 0; i < fieldIsInt.Length; i++)
-            typeBuilder.DefineField($"F{i}", fieldIsInt[i] ? typeof(long) : typeof(double), FieldAttributes.Public);
+            $"FfiUdtShape_{(types != null ? "L" : "K")}{Math.Abs(shapeKey.GetHashCode())}",
+            TypeAttributes.Public | TypeAttributes.ExplicitLayout | TypeAttributes.Sealed, typeof(ValueType));
+        var n = types?.Length ?? fieldIsInt.Length;
+        for (var i = 0; i < n; i++)
+        {
+            var clr = types != null ? ClrTypeOfFfiCode(types[i]) : (fieldIsInt[i] ? typeof(long) : typeof(double));
+            var fb = typeBuilder.DefineField($"F{i}", clr, FieldAttributes.Public);
+            if (types != null && offsets != null && i < offsets.Length)
+                fb.SetCustomAttribute(new CustomAttributeBuilder(
+                    typeof(System.Runtime.InteropServices.FieldOffsetAttribute).GetConstructor([typeof(int)])!,
+                    new object[] { offsets[i] }));
+        }
         var built = typeBuilder.CreateType()!;
         _udtShapeTypeCache[shapeKey] = built;
         return built;
     }
+
+    /// <summary>Converte un valore grezzo (double/long/string) nel tipo CLR del campo struct C
+    /// indicato dal codice tipo FFI.</summary>
+    private static object ConvertFfiValue(object? raw, byte code)
+    {
+        switch (code)
+        {
+            case 1:  return Convert.ToInt64(raw ?? 0L);
+            case 2:  return Convert.ToSByte(raw ?? 0);
+            case 3:  return Convert.ToByte(raw ?? 0);
+            case 4:  return Convert.ToInt16(raw ?? 0);
+            case 5:  return Convert.ToUInt16(raw ?? 0);
+            case 6:  return Convert.ToInt32(raw ?? 0);
+            case 7:  return Convert.ToUInt32(raw ?? 0);
+            case 8:  return Convert.ToSingle(raw ?? 0.0);
+            case 9:  return IntPtr.Zero;
+            case 10: return Convert.ToUInt64(raw ?? 0UL);
+            default: return Convert.ToDouble(raw ?? 0.0);
+        }
+    }
+
+    /// <summary>Forma di uno struct UDT serializzata dal compilatore IL:
+    /// <c>size|nome:tipo:offset;nome:tipo:offset;…</c> (nome = path punteggiato per i campi
+    /// annidati). Serve al backend IL, dove il tipo CLR del dialetto (INTEGER/LONG a 64 bit)
+    /// non coincide col layout C: il runtime costruisce un tipo-ombra col layout giusto e
+    /// converte campo per campo (2026-11-06, S1).</summary>
+    private static (int Size, (string Path, byte Code, int Off)[] Fields) ParseUdtShape(string s)
+    {
+        var bar = s.IndexOf('|');
+        var size = int.Parse(bar < 0 ? s : s[..bar]);
+        var rest = bar < 0 ? "" : s[(bar + 1)..];
+        if (rest.Length == 0) return (size, Array.Empty<(string, byte, int)>());
+        var parts = rest.Split(';', StringSplitOptions.RemoveEmptyEntries);
+        var fields = new (string, byte, int)[parts.Length];
+        for (var i = 0; i < parts.Length; i++)
+        {
+            var c = parts[i].Split(':');
+            fields[i] = (c[0], byte.Parse(c[1]), int.Parse(c[2]));
+        }
+        return (size, fields);
+    }
+
+    private static Type BuildFfiTypeFromShape((string Path, byte Code, int Off)[] fields)
+    {
+        var types = new byte[fields.Length];
+        var offs = new int[fields.Length];
+        for (var i = 0; i < fields.Length; i++) { types[i] = fields[i].Code; offs[i] = fields[i].Off; }
+        var isInt = new bool[fields.Length];
+        for (var i = 0; i < fields.Length; i++) isInt[i] = types[i] != 0 && types[i] != 8;
+        return GetOrBuildUdtShapeTypeStatic(types, isInt, offs);
+    }
+
+    private static readonly Dictionary<string, Type> _staticShapeCache = new();
+    private static Type GetOrBuildUdtShapeTypeStatic(byte[] types, bool[] fieldIsInt, int[] offsets)
+    {
+        var key = "T" + string.Join(",", types) + "|O" + string.Join(",", offsets);
+        if (_staticShapeCache.TryGetValue(key, out var cached)) return cached;
+        var asmBuilder = AssemblyBuilder.DefineDynamicAssembly(new AssemblyName("FfiUdtShapesS"), AssemblyBuilderAccess.Run);
+        var modBuilder = asmBuilder.DefineDynamicModule("M");
+        var tb = modBuilder.DefineType("FfiUdtShape_" + Math.Abs(key.GetHashCode()),
+            TypeAttributes.Public | TypeAttributes.ExplicitLayout | TypeAttributes.Sealed, typeof(ValueType));
+        for (var i = 0; i < types.Length; i++)
+        {
+            var fb = tb.DefineField($"F{i}", ClrTypeOfFfiCode(types[i]), FieldAttributes.Public);
+            fb.SetCustomAttribute(new CustomAttributeBuilder(
+                typeof(System.Runtime.InteropServices.FieldOffsetAttribute).GetConstructor([typeof(int)])!,
+                new object[] { offsets[i] }));
+        }
+        var built = tb.CreateType()!;
+        _staticShapeCache[key] = built;
+        return built;
+    }
+
+    private static object? GetPathValue(object? src, string path)
+    {
+        foreach (var seg in path.Split('.'))
+        {
+            if (src is null) return null;
+            var f = src.GetType().GetField(seg, System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
+            if (f is null) return null;
+            src = f.GetValue(src);
+        }
+        return src;
+    }
+
+    private static void SetPathValue(object root, string[] segs, int idx, object? value)
+    {
+        var f = root.GetType().GetField(segs[idx], System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance)!;
+        if (idx == segs.Length - 1)
+        {
+            var ft = f.FieldType;
+            object? v = ft == typeof(string) ? (value as string ?? Convert.ToString(value)) : Convert.ChangeType(value ?? 0, ft);
+            f.SetValue(root, v);
+            return;
+        }
+        var child = f.GetValue(root)!;
+        SetPathValue(child, segs, idx + 1, value);
+        f.SetValue(root, child);
+    }
+
+    private static object ConvertToFfiStruct(object src, (string Path, byte Code, int Off)[] fields, Type ffiType, List<IntPtr> strPtrs)
+    {
+        var dst = Activator.CreateInstance(ffiType)!;
+        for (var i = 0; i < fields.Length; i++)
+        {
+            var raw = GetPathValue(src, fields[i].Path);
+            object? val;
+            if (fields[i].Code == 9)
+            {
+                var sp = Marshal.StringToCoTaskMemUTF8(Convert.ToString(raw) ?? "");
+                strPtrs.Add(sp);
+                val = sp;
+            }
+            else val = ConvertFfiValue(raw, fields[i].Code);
+            ffiType.GetField($"F{i}")!.SetValue(dst, val);
+        }
+        return dst;
+    }
+
+    private static object ConvertFromFfiStruct(object ffi, (string Path, byte Code, int Off)[] fields, Type basicType)
+    {
+        var dst = Activator.CreateInstance(basicType)!;
+        for (var i = 0; i < fields.Length; i++)
+        {
+            var raw = ffi.GetType().GetField($"F{i}")!.GetValue(ffi);
+            object? val = fields[i].Code == 9
+                ? (raw is IntPtr ip ? (Marshal.PtrToStringUTF8(ip) ?? "") : (raw as string ?? ""))
+                : Convert.ToDouble(raw ?? 0.0);
+            SetPathValue(dst, fields[i].Path.Split('.'), 0, val);
+        }
+        return dst;
+    }
+
+    /// <summary>Tipo CLR che rappresenta un campo struct C con lo stesso layout (codici tipo
+    /// condivisi col bytecode: 0=double 1=int64 2=int8 3=uint8 4=int16 5=uint16 6=int32
+    /// 7=uint32 8=float 9=pointer 10=uint64).</summary>
+    private static Type ClrTypeOfFfiCode(byte code) => code switch
+    {
+        1 => typeof(long), 2 => typeof(sbyte), 3 => typeof(byte),
+        4 => typeof(short), 5 => typeof(ushort), 6 => typeof(int), 7 => typeof(uint),
+        8 => typeof(float), 9 => typeof(IntPtr), 10 => typeof(ulong), _ => typeof(double),
+    };
 
     /// <summary>Come <see cref="CallFunctionTyped"/>, per firme FFI con almeno un parametro
     /// array BYREF (2026-09-28, AiWiki Bugs/(open) - FFI-Marshalling-Limitato...md punto 1):
@@ -516,7 +678,8 @@ public class FfiService : IFfiService
     public object? CallFunctionTypedArr(IntPtr function, object?[] args, int kind, long arrayMask, long arrayElemIntMask,
         long stringMask, bool retIsString, long byrefScalarMask = 0, long byrefScalarElemIntMask = 0,
         FfiUdtShape?[]? udtParams = null, FfiUdtShape? udtReturn = null,
-        Type?[]? udtParamClrTypes = null, Type? udtReturnClrType = null, long scalarKindMask = 0)
+        Type?[]? udtParamClrTypes = null, Type? udtReturnClrType = null, long scalarKindMask = 0,
+        string[]? udtShapeStrs = null, string? udtReturnShapeStr = null)
     {
         if (function == IntPtr.Zero) return null;
         var n = args.Length;
@@ -526,16 +689,25 @@ public class FfiService : IFfiService
         // Kind misto (2026-09-29): la chiave include il PATTERN di kind per campo (es. "DI"),
         // non solo il conteggio — "DI" e "ID" hanno lo stesso numero di campi ma sono TIPI CLR
         // diversi (vedi GetOrBuildUdtShapeType).
-        static string ShapeSig(FfiUdtShape? s) => s == null ? "" : string.Concat(s.FieldIsInt.Select(b => b ? 'I' : 'D'));
-        var udtShapeKey = udtParams == null && udtReturn == null && udtParamClrTypes == null && udtReturnClrType == null ? "" :
+        static string ShapeSig(FfiUdtShape? s) => s == null ? "" :
+            (s.FieldTypes != null
+                ? string.Join(",", s.FieldTypes) + "#" + string.Join(",", s.FieldOffsets ?? Array.Empty<int>()) + "#" + s.Size
+                : string.Concat(s.FieldIsInt.Select(b => b ? 'I' : 'D')));
+        var udtShapeKey = udtParams == null && udtReturn == null && udtParamClrTypes == null && udtReturnClrType == null
+            && udtShapeStrs == null && udtReturnShapeStr == null ? "" :
             string.Join(",", (udtParams ?? Array.Empty<FfiUdtShape?>()).Select(ShapeSig)) + "|" + ShapeSig(udtReturn) +
-            "|" + string.Join(",", (udtParamClrTypes ?? Array.Empty<Type?>()).Select(t => t?.FullName ?? "")) + "|" + (udtReturnClrType?.FullName ?? "");
+            "|" + string.Join(",", (udtParamClrTypes ?? Array.Empty<Type?>()).Select(t => t?.FullName ?? "")) + "|" + (udtReturnClrType?.FullName ?? "") +
+            "|" + string.Join(",", udtShapeStrs ?? Array.Empty<string>()) + "|" + (udtReturnShapeStr ?? "");
         var key = (function, n, kind, arrayMask, stringMask, byrefScalarMask, scalarKindMask, udtShapeKey);
         if (!_typedArrDelegateCache.TryGetValue(key, out var del))
         {
             var paramTypes = new Type[n];
             for (var i = 0; i < n; i++)
-                paramTypes[i] = udtParamClrTypes != null && i < udtParamClrTypes.Length && udtParamClrTypes[i] is { } clrT
+                paramTypes[i] = udtShapeStrs != null && i < udtShapeStrs.Length && udtShapeStrs[i] != null
+                    // Backend IL con layout C reale (S1, 2026-11-06): tipo-ombra costruito dalla
+                    // forma (larghezze C vere) — args[i] viene convertito campo per campo sotto.
+                    ? BuildFfiTypeFromShape(ParseUdtShape(udtShapeStrs[i]).Fields)
+                    : udtParamClrTypes != null && i < udtParamClrTypes.Length && udtParamClrTypes[i] is { } clrT
                     // Struct/UDT per valore, backend IL (2026-09-29): il tipo CLR REALE del
                     // UDT, già costruito a compile-time (TypeBuilder) — nessuna forma-ombra da
                     // costruire, args[i] è già un'istanza boxed di ESATTAMENTE questo tipo.
@@ -546,7 +718,7 @@ public class FfiService : IFfiService
                     // marshalla il passaggio per valore da solo (stessa ABI di un parametro
                     // struct P/Invoke nativo, nessuna classificazione manuale dei registri).
                     // Vedi AiWiki Bugs/(open) - FFI-Estensioni-Possibili-BYREF-Struct-Callback.md §2.
-                    ? GetOrBuildUdtShapeType(udtP.FieldIsInt)
+                    ? GetOrBuildUdtShapeType(udtP.FieldTypes, udtP.FieldIsInt, udtP.FieldOffsets)
                     : (byrefScalarMask & (1L << i)) != 0
                     // BYREF scalare (2026-09-28): un parametro CLR ref BLITTABLE — .NET
                     // marshalla un ref double/ref long verso P/Invoke passando direttamente
@@ -560,15 +732,20 @@ public class FfiService : IFfiService
                         // posizione), non più il 'kind' uniforme — nel caso omogeneo legacy
                         // coincide sempre con 'kind' (il chiamante lo garantisce), zero cambio.
                         : ((scalarKindMask & (1L << i)) != 0 ? typeof(long) : typeof(double));
-            var returnType = udtReturnClrType ?? (udtReturn != null
-                ? GetOrBuildUdtShapeType(udtReturn.FieldIsInt)
-                : kind == 1 ? typeof(long) : typeof(double));
+            var returnType = udtReturnShapeStr != null
+                ? BuildFfiTypeFromShape(ParseUdtShape(udtReturnShapeStr).Fields)
+                : udtReturnClrType ?? (udtReturn != null
+                    ? GetOrBuildUdtShapeType(udtReturn.FieldTypes, udtReturn.FieldIsInt, udtReturn.FieldOffsets)
+                    : kind == 1 ? typeof(long) : typeof(double));
             del = CreateDelegate(function, returnType, paramTypes);
             _typedArrDelegateCache[key] = del;
         }
         var dArgs = new object?[n];
         var handles = new GCHandle[n];
         var stringPtrs = new IntPtr[n];
+        // Campi STRING di uno struct FFI (2026-11-06, S1): buffer UTF-8 da liberare a fine
+        // chiamata (il nativo non li trattiene).
+        List<IntPtr>? udtStrPtrs = null;
         // Per gli slot object[] (PCodeVM): scratch buffer copy-in + riferimento all'array
         // originale per il copy-out dopo la chiamata.
         var scratchIsInt = new bool[n];
@@ -590,6 +767,16 @@ public class FfiService : IFfiService
         {
             for (var i = 0; i < n; i++)
             {
+                if (udtShapeStrs != null && i < udtShapeStrs.Length && udtShapeStrs[i] != null)
+                {
+                    // Backend IL con layout C reale (S1, 2026-11-06): args[i] è la struct del
+                    // dialetto (64-bit ovunque); si converte campo per campo nel tipo-ombra col
+                    // layout C e si passa quello.
+                    var shapeIn = ParseUdtShape(udtShapeStrs[i]);
+                    var ffiTypeIn = BuildFfiTypeFromShape(shapeIn.Fields);
+                    dArgs[i] = ConvertToFfiStruct(args[i]!, shapeIn.Fields, ffiTypeIn, udtStrPtrs ??= new List<IntPtr>());
+                    continue;
+                }
                 if (udtParamClrTypes != null && i < udtParamClrTypes.Length && udtParamClrTypes[i] != null)
                 {
                     // Struct/UDT per valore, IN, backend IL (2026-09-29): args[i] è GIA'
@@ -605,13 +792,25 @@ public class FfiService : IFfiService
                     // OP_NEW_UDT_INSTANCE). Si costruisce un'istanza BOXED del value type CLR
                     // dinamico e la si popola campo per campo — .NET marshalla il passaggio per
                     // valore da qui in poi, nessuno scratch/pin servito.
-                    var structTypeIn = GetOrBuildUdtShapeType(udtShapeIn.FieldIsInt);
+                    var structTypeIn = GetOrBuildUdtShapeType(udtShapeIn.FieldTypes, udtShapeIn.FieldIsInt, udtShapeIn.FieldOffsets);
                     var boxedIn = Activator.CreateInstance(structTypeIn)!;
                     var srcDict = args[i] as System.Collections.IDictionary;
                     for (var fi = 0; fi < udtShapeIn.FieldNames.Length; fi++)
                     {
                         var raw = GetFfiLeafValue(srcDict, udtShapeIn.FieldNames[fi]);
-                        var fieldVal = udtShapeIn.FieldIsInt[fi] ? (object)Convert.ToInt64(raw ?? 0L) : Convert.ToDouble(raw ?? 0.0);
+                        object fieldVal;
+                        if (udtShapeIn.FieldTypes != null)
+                        {
+                            var code = udtShapeIn.FieldTypes[fi];
+                            if (code == 9)
+                            {
+                                var sp = Marshal.StringToCoTaskMemUTF8(Convert.ToString(raw) ?? "");
+                                (udtStrPtrs ??= new List<IntPtr>()).Add(sp);
+                                fieldVal = sp;
+                            }
+                            else fieldVal = ConvertFfiValue(raw, code);
+                        }
+                        else fieldVal = udtShapeIn.FieldIsInt[fi] ? (object)Convert.ToInt64(raw ?? 0L) : Convert.ToDouble(raw ?? 0.0);
                         structTypeIn.GetField($"F{fi}")!.SetValue(boxedIn, fieldVal);
                     }
                     dArgs[i] = boxedIn;
@@ -949,6 +1148,16 @@ public class FfiService : IFfiService
                 var ptr = (IntPtr)Convert.ToInt64(result ?? 0L);
                 return ptr == IntPtr.Zero ? "" : (Marshal.PtrToStringUTF8(ptr) ?? "");
             }
+            if (udtReturnShapeStr != null)
+            {
+                // Ritorno UDT con layout C (S1): il delegate ritorna la struct-ombra, si
+                // riconverte nella struct del dialetto (tipo noto al chiamante IL).
+                var retShape = ParseUdtShape(udtReturnShapeStr);
+                if (result == null) return null;
+                return udtReturnClrType != null
+                    ? ConvertFromFfiStruct(result, retShape.Fields, udtReturnClrType)
+                    : result;
+            }
             if (udtReturnClrType != null)
             {
                 // Struct/UDT per valore, OUT, backend IL (2026-09-29): 'result' è già
@@ -967,7 +1176,7 @@ public class FfiService : IFfiService
                 // qualunque altra istanza UDT. Valori numerici SEMPRE come double (convenzione
                 // PCodeVM: un campo AS LONG è comunque boxato come double, come per gli array —
                 // vedi DefaultValueForFieldType).
-                var structTypeOut = GetOrBuildUdtShapeType(udtReturn.FieldIsInt);
+                var structTypeOut = GetOrBuildUdtShapeType(udtReturn.FieldTypes, udtReturn.FieldIsInt, udtReturn.FieldOffsets);
                 var instance = new Dictionary<string, object?>();
                 // __class__.FieldNames sul livello RADICE (2026-09-29, struct annidate): mappa
                 // il SymbolId del PRIMO segmento di ogni foglia al suo nome — sufficiente per
@@ -981,7 +1190,12 @@ public class FfiService : IFfiService
                 {
                     var raw = structTypeOut.GetField($"F{fi}")!.GetValue(result);
                     var symbolIdPath = udtReturn.FieldSymbolIdPaths[fi];
-                    SetFfiLeafValue(instance, udtReturn.FieldNames[fi], symbolIdPath, Convert.ToDouble(raw));
+                    object? value;
+                    if (udtReturn.FieldTypes != null && udtReturn.FieldTypes[fi] == 9)
+                        value = raw is IntPtr ip ? (Marshal.PtrToStringUTF8(ip) ?? "") : (raw as string ?? "");
+                    else
+                        value = Convert.ToDouble(raw ?? 0.0);
+                    SetFfiLeafValue(instance, udtReturn.FieldNames[fi], symbolIdPath, value);
                     if (symbolIdPath.Length > 0) fieldNamesBySymbolId[symbolIdPath[0]] = udtReturn.FieldNames[fi].Split('.')[0];
                 }
                 instance["__class__"] = new Dictionary<string, object?> { ["FieldNames"] = fieldNamesBySymbolId };
@@ -995,6 +1209,10 @@ public class FfiService : IFfiService
             {
                 if (handles[i].IsAllocated) handles[i].Free();
                 if (stringPtrs[i] != IntPtr.Zero) Marshal.FreeCoTaskMem(stringPtrs[i]);
+            }
+            if (udtStrPtrs != null)
+            {
+                foreach (var sp in udtStrPtrs) Marshal.FreeCoTaskMem(sp);
             }
         }
     }

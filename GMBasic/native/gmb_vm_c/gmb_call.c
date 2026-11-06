@@ -48,29 +48,60 @@ int gmb_call_invoke(void* fn, int n, const unsigned char* is_int,
     return rc == FFI_OK ? 0 : -1;
 }
 
+/* Mappa un codice tipo del descrittore FFI (condiviso con il bytecode e il C#) su un
+ * ffi_type di libffi. 0=double 1=int64 2=int8 3=uint8 4=int16 5=uint16 6=int32 7=uint32
+ * 8=float32 9=pointer 10=uint64. */
+static ffi_type* ffi_type_of_code(unsigned char code)
+{
+    switch (code)
+    {
+        case 0:  return &ffi_type_double;
+        case 1:  return &ffi_type_sint64;
+        case 2:  return &ffi_type_sint8;
+        case 3:  return &ffi_type_uint8;
+        case 4:  return &ffi_type_sint16;
+        case 5:  return &ffi_type_uint16;
+        case 6:  return &ffi_type_sint32;
+        case 7:  return &ffi_type_uint32;
+        case 8:  return &ffi_type_float;
+        case 9:  return &ffi_type_pointer;
+        case 10: return &ffi_type_uint64;
+        default: return &ffi_type_double;
+    }
+}
+
 int gmb_call_invoke_slots(void* fn, int n, const gmb_call_slot* slots,
                           void* const* vals, int ret_kind,
-                          int ret_nfields, const unsigned char* ret_field_is_int,
+                          int ret_nfields, const unsigned char* ret_field_type,
+                          const int* ret_field_off, int ret_struct_size,
                           void* ret)
 {
+    (void)ret_field_off;   /* gli offset servono al chiamante per riempire/leggere il buffer;
+                            * libffi ricostruisce la stessa classificazione ABI dai tipi. */
+    (void)ret_struct_size;
     if (!fn || !ret || n < 0) return -1;
     ffi_cif cif;
     ffi_type* local_types[64];
     ffi_type** types = local_types;
     if (n > 64) { types = (ffi_type**)malloc((size_t)n * sizeof(ffi_type*)); if (!types) return -1; }
-    /* Ogni slot struct ha bisogno di un ffi_type e di un array di elementi vivi fino a ffi_call. */
     ffi_type* structs = (ffi_type*)calloc((size_t)(n > 0 ? n : 1), sizeof(ffi_type));
     ffi_type*** elems = (ffi_type***)calloc((size_t)(n > 0 ? n : 1), sizeof(ffi_type**));
+    if (!structs || !elems)
+    {
+        free(structs); free(elems);
+        if (types != local_types) free(types);
+        return -1;
+    }
     int rc = FFI_OK;
     for (int i = 0; i < n && rc == FFI_OK; i++)
     {
         if (slots[i].kind != 2) { types[i] = slots[i].kind == 1 ? &ffi_type_sint64 : &ffi_type_double; continue; }
         int nf = slots[i].nfields;
-        if (nf < 1) { rc = FFI_BAD_ARGTYPE; break; }
+        if (nf < 1 || !slots[i].field_type) { rc = FFI_BAD_ARGTYPE; break; }
         elems[i] = (ffi_type**)malloc((size_t)(nf + 1) * sizeof(ffi_type*));
         if (!elems[i]) { rc = FFI_BAD_ARGTYPE; break; }
         for (int f = 0; f < nf; f++)
-            elems[i][f] = (slots[i].field_is_int && slots[i].field_is_int[f]) ? &ffi_type_sint64 : &ffi_type_double;
+            elems[i][f] = ffi_type_of_code(slots[i].field_type[f]);
         elems[i][nf] = NULL;
         structs[i].size = 0; structs[i].alignment = 0;
         structs[i].type = FFI_TYPE_STRUCT; structs[i].elements = elems[i];
@@ -86,7 +117,7 @@ int gmb_call_invoke_slots(void* fn, int n, const gmb_call_slot* slots,
         else
         {
             for (int f = 0; f < ret_nfields; f++)
-                ret_elems[f] = (ret_field_is_int && ret_field_is_int[f]) ? &ffi_type_sint64 : &ffi_type_double;
+                ret_elems[f] = ffi_type_of_code(ret_field_type ? ret_field_type[f] : 0);
             ret_elems[ret_nfields] = NULL;
             ret_struct.size = 0; ret_struct.alignment = 0;
             ret_struct.type = FFI_TYPE_STRUCT; ret_struct.elements = ret_elems;

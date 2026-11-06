@@ -2474,15 +2474,66 @@ static double vm_ffi_get_leaf(gmb_dict_t* d, const char* namePath)
  * Uscita: *out_int/*out_double per il ritorno scalare, out_fields[] (double per foglia) per
  * il ritorno UDT. Ritorna 0 se la chiamata è stata eseguita, -1 se la firma non è
  * preparabile (il chiamante ricade sul dispatch storico). */
+/* Forward: definita più sotto (legge una foglia come valore, non solo come double). */
+static gmb_val_t vm_ffi_get_leaf_val(gmb_dict_t* d, const char* namePath);
+
+/* Scrive un campo scalare nel buffer di uno struct secondo il codice tipo FFI
+ * (0=double 1=int64 2=int8 3=uint8 4=int16 5=uint16 6=int32 7=uint32 8=float 9=ptr 10=uint64). */
+static void vm_ffi_store_field(unsigned char* buf, int off, int code, gmb_val_t v)
+{
+    double d = (v.kind == GMB_TYPE_INT) ? (double)v.v_int : v.v_double;
+    int64_t iv = (v.kind == GMB_TYPE_INT) ? v.v_int : (int64_t)v.v_double;
+    switch (code)
+    {
+        case 0:  { double x = d;    memcpy(buf + off, &x, 8); break; }
+        case 1:  { int64_t x = iv;  memcpy(buf + off, &x, 8); break; }
+        case 2:  { int8_t x = (int8_t)iv;   memcpy(buf + off, &x, 1); break; }
+        case 3:  { uint8_t x = (uint8_t)iv; memcpy(buf + off, &x, 1); break; }
+        case 4:  { int16_t x = (int16_t)iv;   memcpy(buf + off, &x, 2); break; }
+        case 5:  { uint16_t x = (uint16_t)iv; memcpy(buf + off, &x, 2); break; }
+        case 6:  { int32_t x = (int32_t)iv;   memcpy(buf + off, &x, 4); break; }
+        case 7:  { uint32_t x = (uint32_t)iv; memcpy(buf + off, &x, 4); break; }
+        case 8:  { float x = (float)d; memcpy(buf + off, &x, 4); break; }
+        case 9:  { int64_t p = (v.kind == GMB_TYPE_STRING && v.v_ptr)
+                       ? (int64_t)(intptr_t)((gmb_obj_string_t*)v.v_ptr)->data : 0;
+                   memcpy(buf + off, &p, 8); break; }
+        default: { uint64_t x = (uint64_t)iv; memcpy(buf + off, &x, 8); break; }
+    }
+}
+static gmb_val_t vm_ffi_load_field(const unsigned char* buf, int off, int code)
+{
+    switch (code)
+    {
+        case 0:  { double x;   memcpy(&x, buf + off, 8); return gmb_make_val_double(x); }
+        case 1:  { int64_t x;  memcpy(&x, buf + off, 8); return gmb_make_val_int(x); }
+        case 2:  { int8_t x;   memcpy(&x, buf + off, 1); return gmb_make_val_int((int64_t)x); }
+        case 3:  { uint8_t x;  memcpy(&x, buf + off, 1); return gmb_make_val_int((int64_t)x); }
+        case 4:  { int16_t x;  memcpy(&x, buf + off, 2); return gmb_make_val_int((int64_t)x); }
+        case 5:  { uint16_t x; memcpy(&x, buf + off, 2); return gmb_make_val_int((int64_t)x); }
+        case 6:  { int32_t x;  memcpy(&x, buf + off, 4); return gmb_make_val_int((int64_t)x); }
+        case 7:  { uint32_t x; memcpy(&x, buf + off, 4); return gmb_make_val_int((int64_t)x); }
+        case 8:  { float x;    memcpy(&x, buf + off, 4); return gmb_make_val_double((double)x); }
+        case 9:  { int64_t p;  memcpy(&p, buf + off, 8);
+                   return gmb_make_val_string(p ? (const char*)(intptr_t)p : ""); }
+        default: { uint64_t x; memcpy(&x, buf + off, 8); return gmb_make_val_int((int64_t)x); }
+    }
+}
+
+/* FFI con UDT (2026-11-06, S1): chiamata su libffi con uno slot per argomento. Gli UDT
+ * viaggiano come buffer di byte nel LORO layout C reale: `udtType[i][f]`/`udtOff[i][f]` sono
+ * tipo e offset della foglia f, `udtSize[i]` la size dello struct. Il ritorno UDT è
+ * decodificato in `out_fields` (gmb_val_t, così un campo STRING resta una stringa). */
 static int vm_ffi_call_slots(void* fn, int argc,
-                             const int* udtCount, const int* udtKindMask,
-                             const char* (*udtNames)[8],
+                             const int* udtCount, const unsigned char (*udtType)[64],
+                             const int (*udtOff)[64], const int* udtSize,
+                             const char* (*udtNames)[64],
                              const double* args,
                              void* const* scratch, gmb_obj_t* const* arrRefs,
                              uint64_t arrayMask, uint64_t byrefMask, uint64_t stringMask,
                              uint64_t scalarKindMask,
-                             int retCount, int retKindMask,
-                             int64_t* out_int, double* out_double, double* out_fields)
+                             int retCount, const unsigned char* retType, const int* retOff,
+                             int retSize, int64_t* out_int, double* out_double,
+                             gmb_val_t* out_fields)
 {
     if (!fn || argc < 0 || argc > GMB_FFI_MAX_ARGS) return -1;
     if (!gmb_call_enabled()) return -1;
@@ -2490,35 +2541,33 @@ static int vm_ffi_call_slots(void* fn, int argc,
     void* vals[GMB_FFI_MAX_ARGS];
     int64_t iv[GMB_FFI_MAX_ARGS];
     double dv[GMB_FFI_MAX_ARGS];
-    unsigned char fieldIsInt[GMB_FFI_MAX_ARGS][8];
-    uint64_t sbuf[GMB_FFI_MAX_ARGS][8];
-    uint64_t rbuf[8];
-    memset(fieldIsInt, 0, sizeof(fieldIsInt));
-    memset(sbuf, 0, sizeof(sbuf));
-    memset(rbuf, 0, sizeof(rbuf));
+    unsigned char* ubuf[GMB_FFI_MAX_ARGS];
+    memset(ubuf, 0, sizeof(ubuf));
     for (int i = 0; i < argc; i++)
     {
         if (udtCount[i] > 0)
         {
-            int nf = udtCount[i] > 8 ? 8 : udtCount[i];
+            int sz = udtSize[i] > 0 ? udtSize[i] : 1;
+            unsigned char* b = (unsigned char*)calloc(1, (size_t)sz);
+            if (!b) goto fail;
             gmb_obj_shared_val_t* ud = (gmb_obj_shared_val_t*)arrRefs[i];
-            slots[i].kind = 2;
-            slots[i].nfields = nf;
-            slots[i].field_is_int = fieldIsInt[i];
-            for (int f = 0; f < nf; f++)
+            for (int f = 0; f < udtCount[i] && f < 64; f++)
             {
-                int isInt = (udtKindMask[i] >> f) & 1;
-                fieldIsInt[i][f] = (unsigned char)isInt;
-                double v = (ud && ud->dict) ? vm_ffi_get_leaf(ud->dict, udtNames[i][f]) : 0.0;
-                if (isInt) sbuf[i][f] = (uint64_t)(int64_t)v;
-                else { double d = v; memcpy(&sbuf[i][f], &d, sizeof(double)); }
+                gmb_val_t v = (ud && ud->dict) ? vm_ffi_get_leaf_val(ud->dict, udtNames[i][f]) : (gmb_val_t){0};
+                vm_ffi_store_field(b, udtOff[i][f], udtType[i][f], v);
             }
-            vals[i] = sbuf[i];
+            ubuf[i] = b;
+            slots[i].kind = 2;
+            slots[i].nfields = udtCount[i];
+            slots[i].field_type = udtType[i];
+            slots[i].field_off = udtOff[i];
+            vals[i] = b;
             continue;
         }
         int isInt = (int)((scalarKindMask >> i) & 1ull);
         slots[i].nfields = 0;
-        slots[i].field_is_int = NULL;
+        slots[i].field_type = NULL;
+        slots[i].field_off = NULL;
         if (arrayMask & (1ull << i)) { isInt = 1; iv[i] = (int64_t)(intptr_t)scratch[i]; vals[i] = &iv[i]; }
         else if (byrefMask & (1ull << i)) { isInt = 1; iv[i] = (int64_t)(intptr_t)scratch[i]; vals[i] = &iv[i]; }
         else if (stringMask & (1ull << i)) { isInt = 1; iv[i] = arrRefs[i] ? (int64_t)(intptr_t)((gmb_obj_string_t*)arrRefs[i])->data : 0; vals[i] = &iv[i]; }
@@ -2526,25 +2575,34 @@ static int vm_ffi_call_slots(void* fn, int argc,
         else { dv[i] = args[i]; vals[i] = &dv[i]; }
         slots[i].kind = isInt;
     }
-    unsigned char retFieldIsInt[8] = {0};
-    for (int f = 0; f < retCount && f < 8; f++) retFieldIsInt[f] = (unsigned char)((retKindMask >> f) & 1);
-    int ret_kind = retCount > 0 ? 2 : (out_int ? 1 : 0);
-    if (gmb_call_invoke_slots(fn, argc, slots, vals, ret_kind, retCount, retFieldIsInt, rbuf) != 0)
-        return -1;
-    if (retCount > 0)
     {
-        for (int f = 0; f < retCount && f < 8; f++)
+        unsigned char* rbuf = NULL;
+        int64_t rint = 0; double rdbl = 0.0;
+        void* retp;
+        if (retCount > 0)
         {
-            if (retFieldIsInt[f]) out_fields[f] = (double)(int64_t)rbuf[f];
-            else { double d; memcpy(&d, &rbuf[f], sizeof(double)); out_fields[f] = d; }
+            rbuf = (unsigned char*)calloc(1, (size_t)(retSize > 0 ? retSize : 1));
+            if (!rbuf) goto fail;
+            retp = rbuf;
         }
-        if (out_int) *out_int = 0;
-        if (out_double) *out_double = 0.0;
-        return 0;
+        else retp = out_int ? (void*)&rint : (void*)&rdbl;
+        int rc = gmb_call_invoke_slots(fn, argc, slots, vals, retCount > 0 ? 2 : (out_int ? 1 : 0),
+                                       retCount, retType, retOff, retSize, retp);
+        if (rc != 0) { free(rbuf); goto fail; }
+        if (retCount > 0)
+        {
+            for (int f = 0; f < retCount && f < 64; f++)
+                out_fields[f] = vm_ffi_load_field(rbuf, retOff[f], retType[f]);
+            free(rbuf);
+        }
+        else if (out_int) *out_int = rint;
+        else if (out_double) *out_double = rdbl;
     }
-    if (out_int) memcpy(out_int, &rbuf[0], sizeof(int64_t));
-    else if (out_double) memcpy(out_double, &rbuf[0], sizeof(double));
+    for (int i = 0; i < argc; i++) free(ubuf[i]);
     return 0;
+fail:
+    for (int i = 0; i < argc; i++) free(ubuf[i]);
+    return -1;
 }
 
 /* Struct annidate FFI (2026-09-29): scrive la FOGLIA scalare indicata da un path punteggiato
@@ -2554,7 +2612,30 @@ static int vm_ffi_call_slots(void* fn, int argc,
  * l'offset — un livello intermedio ricostruito qui non ha un vero descriptor di classe, vedi
  * il commento gemello sopra al ritorno UDT piatto). symbolIdPath/depth = SymbolId di OGNI
  * segmento del path, stesso ordine/lunghezza dei segmenti di namePath. */
-static void vm_ffi_set_leaf(gmb_obj_shared_val_t* root, const char* namePath, const int* symbolIdPath, int depth, double value)
+/* Variante di vm_ffi_get_leaf che restituisce il VALORE (non solo il double): serve ai campi
+ * STRING di uno struct FFI (un char* non è un numero). */
+static gmb_val_t vm_ffi_get_leaf_val(gmb_dict_t* d, const char* namePath)
+{
+    const char* p = namePath;
+    gmb_dict_t* cur = d;
+    for (;;)
+    {
+        const char* dot = strchr(p, '.');
+        size_t seglen = dot ? (size_t)(dot - p) : strlen(p);
+        char seg[64];
+        if (seglen >= sizeof(seg)) seglen = sizeof(seg) - 1;
+        memcpy(seg, p, seglen); seg[seglen] = 0;
+        if (!cur) return (gmb_val_t){0};
+        gmb_val_t v = vm_dict_get_ci(cur, seg);
+        if (!dot) return v;
+        if (v.kind != GMB_TYPE_OBJECT || !v.v_ptr || ((gmb_obj_t*)v.v_ptr)->kind != GMB_OBJ_DICT) return (gmb_val_t){0};
+        cur = ((gmb_obj_shared_val_t*)v.v_ptr)->dict;
+        p = dot + 1;
+    }
+}
+
+/* Variante di vm_ffi_set_leaf che accetta un gmb_val_t (per i campi STRING del ritorno). */
+static void vm_ffi_set_leaf_val(gmb_obj_shared_val_t* root, const char* namePath, const int* symbolIdPath, int depth, gmb_val_t value)
 {
     gmb_obj_shared_val_t* cur = root;
     const char* p = namePath;
@@ -2568,12 +2649,12 @@ static void vm_ffi_set_leaf(gmb_obj_shared_val_t* root, const char* namePath, co
         memcpy(seg, p, seglen); seg[seglen] = 0;
         if (!dot)
         {
-            gmb_dict_set(cur->dict, seg, gmb_make_val_double(value));
+            gmb_dict_set(cur->dict, seg, value);
             if (li < depth)
             {
                 char mkey[32];
                 snprintf(mkey, sizeof(mkey), "__m%d", symbolIdPath[li]);
-                gmb_dict_set(cur->dict, mkey, gmb_make_val_double(value));
+                gmb_dict_set(cur->dict, mkey, value);
             }
             return;
         }
@@ -2598,6 +2679,10 @@ static void vm_ffi_set_leaf(gmb_obj_shared_val_t* root, const char* namePath, co
     }
 }
 
+static void vm_ffi_set_leaf(gmb_obj_shared_val_t* root, const char* namePath, const int* symbolIdPath, int depth, double value)
+{
+    vm_ffi_set_leaf_val(root, namePath, symbolIdPath, depth, gmb_make_val_double(value));
+}
 /* Frame per metodo/costruttore/getter/setter di classe utente: istanza e argomenti
  * vanno DIRETTAMENTE nei locals del frame (il corpo non li poppa dallo stack —
  * specchio degli array fl[] di OP_CALL_MEMBER/OP_CALL_CTOR/OP_STORE_FIELD).
@@ -14752,10 +14837,19 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                 int libIdx = gmb_vm_read_u16(vm, task);
                 int nameIdx = gmb_vm_read_u16(vm, task);
                 int argc = gmb_vm_read_u16(vm, task);
-                int kind = gmb_vm_read_u8(vm, task);
+                int kindByte = gmb_vm_read_u8(vm, task);
                 int retIsString = gmb_vm_read_u8(vm, task);
-                int retUdtFieldCount = gmb_vm_read_u8(vm, task);
-                int retUdtFieldKindMask = gmb_vm_read_u8(vm, task);
+                int retUdtLo = gmb_vm_read_u8(vm, task);
+                int retUdtHi = gmb_vm_read_u8(vm, task);
+                /* S1 (2026-11-06): bit7 di `kind` = il ritorno UDT usa il formato con LAYOUT
+                 * ESPLICITO (i due byte successivi sono il conteggio foglie u16, e in coda
+                 * arrivano size + tipo/offset per foglia). Senza il bit resta il formato
+                 * storico (conteggio u8 + maschera kind u8), quindi i chunk vecchi continuano
+                 * a funzionare. */
+                int retUdtNew = (kindByte & 0x80) != 0;
+                int kind = kindByte & 0x7F;
+                int retUdtFieldCount = retUdtNew ? (retUdtLo | (retUdtHi << 8)) : retUdtLo;
+                int retUdtFieldKindMask = retUdtNew ? 0 : retUdtHi;
                 if (argc > GMB_FFI_MAX_ARGS)
                 {
                     vm_error(task, "[FFI] troppi argomenti");
@@ -14768,10 +14862,18 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                 uint64_t byrefScalarMask = 0, byrefScalarElemIntMask = 0;
                 int udtParamFieldCount[narg];
                 int udtParamFieldKindMask[narg];
+                int udtParamNew[narg];
+                int udtParamSize[narg];
+                unsigned char udtParamType[narg][64];
+                int udtParamOff[narg][64];
                 int callbackParamArity[narg];
                 uint64_t callbackParamKindMask = 0, callbackParamHasRetMask = 0;
                 memset(udtParamFieldCount, 0, sizeof(int) * (size_t)narg);
                 memset(udtParamFieldKindMask, 0, sizeof(int) * (size_t)narg);
+                memset(udtParamNew, 0, sizeof(int) * (size_t)narg);
+                memset(udtParamSize, 0, sizeof(int) * (size_t)narg);
+                memset(udtParamType, 0, sizeof(udtParamType));
+                memset(udtParamOff, 0, sizeof(udtParamOff));
                 for (int i = 0; i < narg; i++) callbackParamArity[i] = 255;
                 for (int i = 0; i < argc; i++)
                 {
@@ -14782,15 +14884,22 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                     if (f & 2u) arrayMask |= (1ull << i);
                     if (f & 0x40u) arrayElemIntMask |= (1ull << i);
                     if (f & 4u) stringMask |= (1ull << i);
-                    if (f & 8u) byrefScalarMask |= (1ull << i);
-                    if (f & 0x80u) byrefScalarElemIntMask |= (1ull << i);
+                    if (f & 8u)
+                    {
+                        byrefScalarMask |= (1ull << i);
+                        if (f & 0x80u) byrefScalarElemIntMask |= (1ull << i);
+                    }
                     if (f & 0x10u)
                     {
                         callbackParamKindMask |= (uint64_t)((a2 & 1u) << i);
                         callbackParamHasRetMask |= (uint64_t)(((a2 >> 1) & 1u) << i);
                         callbackParamArity[i] = (int)a1;
                     }
-                    if (f & 0x20u) { udtParamFieldCount[i] = (int)a1; udtParamFieldKindMask[i] = (int)a2; }
+                    if (f & 0x20u)
+                    {
+                        if (f & 0x80u) { udtParamNew[i] = 1; udtParamFieldCount[i] = (int)a1 | ((int)a2 << 8); }
+                        else { udtParamFieldCount[i] = (int)a1; udtParamFieldKindMask[i] = (int)a2; }
+                    }
                 }
                 // Struct annidate (2026-09-29): la seconda costante per foglia è un CSV di
                 // SymbolId (uno PER SEGMENTO del path, non solo la foglia finale — vedi
@@ -14799,19 +14908,43 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                 // dict per nome, mai per offset) — il path-SymbolId è comunque consumato dal
                 // bytecode per restare allineati, anche se qui non viene usato. Per il RITORNO
                 // (ricostruzione istanza OUT) serve invece entrambi — vedi vm_ffi_set_leaf.
-                const char* udtFieldNames[narg][8]; memset(udtFieldNames, 0, sizeof(udtFieldNames));
+                const char* udtFieldNames[narg][64]; memset(udtFieldNames, 0, sizeof(udtFieldNames));
                 const char* retUdtFieldNames[GMB_FFI_MAX_ARGS] = {0};
                 int retUdtFieldSymbolIdPath[GMB_FFI_MAX_ARGS][4] = {{0}};
                 int retUdtFieldSymbolIdDepth[GMB_FFI_MAX_ARGS] = {0};
                 for (int pi = 0; pi < argc; pi++)
-                    for (int fi = 0; fi < udtParamFieldCount[pi]; fi++)
+                {
+                    for (int fi = 0; fi < udtParamFieldCount[pi] && fi < 64; fi++)
                     {
                         int nameIdxF = gmb_vm_read_u16(vm, task);
                         (void)gmb_vm_read_u16(vm, task);   /* symIdxF: non usato per la lettura IN */
                         udtFieldNames[pi][fi] = (nameIdxF >= 0 && nameIdxF < (int)vm->chunk->consts_len
                             && vm->chunk->constants[nameIdxF].type == GMB_CONST_STRING) ? vm->chunk->constants[nameIdxF].s : "";
                     }
-                for (int fi = 0; fi < retUdtFieldCount; fi++)
+                    if (udtParamNew[pi])
+                    {
+                        udtParamSize[pi] = gmb_vm_read_u16(vm, task);
+                        for (int fi = 0; fi < udtParamFieldCount[pi] && fi < 64; fi++)
+                        {
+                            udtParamType[pi][fi] = (unsigned char)gmb_vm_read_u8(vm, task);
+                            udtParamOff[pi][fi] = gmb_vm_read_u16(vm, task);
+                        }
+                    }
+                    else if (udtParamFieldCount[pi] > 0)
+                    {
+                        /* Formato storico: campi consecutivi da 8 byte, kind da maschera. */
+                        udtParamSize[pi] = udtParamFieldCount[pi] * 8;
+                        for (int fi = 0; fi < udtParamFieldCount[pi] && fi < 64; fi++)
+                        {
+                            udtParamType[pi][fi] = (unsigned char)((udtParamFieldKindMask[pi] >> fi) & 1);
+                            udtParamOff[pi][fi] = fi * 8;
+                        }
+                    }
+                }
+                unsigned char retTypeArr[64]; int retOffArr[64]; int retSizeCalc = 0;
+                memset(retTypeArr, 0, sizeof(retTypeArr));
+                memset(retOffArr, 0, sizeof(retOffArr));
+                for (int fi = 0; fi < retUdtFieldCount && fi < 64; fi++)
                 {
                     int nameIdxF = gmb_vm_read_u16(vm, task);
                     int symIdxF = gmb_vm_read_u16(vm, task);
@@ -14820,6 +14953,27 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                     const char* symCsv = (symIdxF >= 0 && symIdxF < (int)vm->chunk->consts_len
                         && vm->chunk->constants[symIdxF].type == GMB_CONST_STRING) ? vm->chunk->constants[symIdxF].s : "";
                     retUdtFieldSymbolIdDepth[fi] = vm_parse_symbolid_csv(symCsv, retUdtFieldSymbolIdPath[fi], 4);
+                }
+                if (retUdtFieldCount > 0)
+                {
+                    if (retUdtNew)
+                    {
+                        retSizeCalc = gmb_vm_read_u16(vm, task);
+                        for (int fi = 0; fi < retUdtFieldCount && fi < 64; fi++)
+                        {
+                            retTypeArr[fi] = (unsigned char)gmb_vm_read_u8(vm, task);
+                            retOffArr[fi] = gmb_vm_read_u16(vm, task);
+                        }
+                    }
+                    else
+                    {
+                        retSizeCalc = retUdtFieldCount * 8;
+                        for (int fi = 0; fi < retUdtFieldCount && fi < 64; fi++)
+                        {
+                            retTypeArr[fi] = (unsigned char)((retUdtFieldKindMask >> fi) & 1);
+                            retOffArr[fi] = fi * 8;
+                        }
+                    }
                 }
                 double args[narg];
                 gmb_obj_t* arrRefs[narg]; memset(arrRefs, 0, sizeof(gmb_obj_t*) * (size_t)narg);
@@ -15028,7 +15182,11 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                              * slot calcolato da nativeSlotOf[]. Gli altri slot (scalare/array/
                              * STRING/BYREF) restano GMB_FFI_A(i) invariato, solo spostato nello
                              * slot nativo giusto (== i se nessun UDT precede). */
-                            double nativeArgs[narg]; memset(nativeArgs, 0, sizeof(double) * (size_t)narg);
+                            /* Buffer degli slot nativi: un UDT occupa N slot (uno per campo), quindi la
+                             * dimensione e nativeSlotCount, non argc (2026-11-06, S1: con 12 campi
+                             * e 1 argomento il vecchio narg=1 andava in overflow). */
+                            int nslots = nativeSlotCount > narg ? nativeSlotCount : narg;
+                            double nativeArgs[nslots]; memset(nativeArgs, 0, sizeof(double) * (size_t)nslots);
                             for (int i = 0; i < argc; i++)
                             {
                                 if (udtParamFieldCount[i] > 0)
@@ -15098,15 +15256,16 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                              * comune, indipendente dalla forma) per il resto della gestione.
                              */
                             double retFieldsD[8] = {0};
-                            /* S0 (2026-11-06): UDT → slot tipizzati (N campi, kind misto) al posto
-                             * dello switch per-cast 1-2 campi. */
+                            gmb_val_t retVals[64]; memset(retVals, 0, sizeof(retVals));
+                            /* S1 (2026-11-06): UDT → slot tipizzati con layout C reale. */
                             int udtSlotsDone = 0;
                             if (hasAnyUdt &&
-                                vm_ffi_call_slots(p, argc, udtParamFieldCount, udtParamFieldKindMask,
+                                vm_ffi_call_slots(p, argc, udtParamFieldCount, (const unsigned char (*)[64])udtParamType,
+                                                  (const int (*)[64])udtParamOff, udtParamSize,
                                                   udtFieldNames, args, scratch, arrRefs,
                                                   arrayMask, byrefScalarMask, stringMask, scalarKindMask,
-                                                  retUdtFieldCount, retUdtFieldKindMask,
-                                                  &r, NULL, retFieldsD) == 0)
+                                                  retUdtFieldCount, retTypeArr, retOffArr, retSizeCalc,
+                                                  &r, NULL, retVals) == 0)
                                 udtSlotsDone = 1;
                             /* Kind misto (2026-09-29): retUdtFieldKindMask sceglie la forma
                              * ESATTA indipendentemente dal ramo kind=1/kind=0 in cui ci troviamo
@@ -15138,7 +15297,10 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                                         // Struct annidate (2026-09-29): scrive SIA il nome-piano
                                         // SIA "__m<SymbolId>" ad OGNI livello del path (non solo
                                         // sulla foglia finale) — vedi vm_ffi_set_leaf.
-                                        vm_ffi_set_leaf(retUdtInst, retUdtFieldNames[fi], retUdtFieldSymbolIdPath[fi], retUdtFieldSymbolIdDepth[fi], retFieldsD[fi]);
+                                        if (udtSlotsDone)
+                                            vm_ffi_set_leaf_val(retUdtInst, retUdtFieldNames[fi], retUdtFieldSymbolIdPath[fi], retUdtFieldSymbolIdDepth[fi], retVals[fi]);
+                                        else
+                                            vm_ffi_set_leaf(retUdtInst, retUdtFieldNames[fi], retUdtFieldSymbolIdPath[fi], retUdtFieldSymbolIdDepth[fi], retFieldsD[fi]);
                             }
                             if (retIsString)
                             {
@@ -15183,7 +15345,8 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                             /* kind 0 = double: firma ESATTA per argc (mai il variadico). Nessun
                              * array/STRING/BYREF possibile qui (forzano sempre kind=1) — solo
                              * eventuali parametri/ritorno UDT tutto-DOUBLE (2026-09-28). */
-                            double nativeArgsD[narg]; memset(nativeArgsD, 0, sizeof(double) * (size_t)narg);
+                            int nslotsD = nativeSlotCount > narg ? nativeSlotCount : narg;
+                            double nativeArgsD[nslotsD]; memset(nativeArgsD, 0, sizeof(double) * (size_t)nslotsD);
                             /* S0: firma con UDT → slot tipizzati (vedi vm_ffi_call_slots). */
                             int hasUdtD = (retUdtFieldCount > 0);
                             for (int i = 0; i < argc && !hasUdtD; i++)
@@ -15213,13 +15376,15 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                                 /* Struct/UDT per valore, RITORNO, kind DOUBLE — stesso principio
                                  * del ramo kind=1 sopra ma con le forme gmb_ffi_udtd<N>_t. */
                                 double retFieldsD2[8] = {0};
-                                /* S0 (2026-11-06): UDT → slot tipizzati (vedi ramo kind=1). */
+                                gmb_val_t retValsD[64]; memset(retValsD, 0, sizeof(retValsD));
+                                /* S1 (2026-11-06): UDT → slot tipizzati con layout C reale. */
                                 int udtSlotsDoneD = 0;
-                                if (vm_ffi_call_slots(p, argc, udtParamFieldCount, udtParamFieldKindMask,
+                                if (vm_ffi_call_slots(p, argc, udtParamFieldCount, (const unsigned char (*)[64])udtParamType,
+                                                      (const int (*)[64])udtParamOff, udtParamSize,
                                                       udtFieldNames, args, NULL, arrRefs,
                                                       0, 0, 0, scalarKindMask,
-                                                      retUdtFieldCount, retUdtFieldKindMask,
-                                                      NULL, &result, retFieldsD2) == 0)
+                                                      retUdtFieldCount, retTypeArr, retOffArr, retSizeCalc,
+                                                      NULL, &result, retValsD) == 0)
                                     udtSlotsDoneD = 1;
                                 /* Kind misto (2026-09-29): stessa selezione via
                                  * retUdtFieldKindMask del ramo kind=1 — vedi commento gemello. */
@@ -15241,7 +15406,10 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                                         for (int fi = 0; fi < retUdtFieldCount; fi++)
                                             // Struct annidate (2026-09-29) — vedi vm_ffi_set_leaf e
                                             // il commento gemello nel ramo kind=1 sopra.
-                                            vm_ffi_set_leaf(retUdtInst, retUdtFieldNames[fi], retUdtFieldSymbolIdPath[fi], retUdtFieldSymbolIdDepth[fi], retFieldsD2[fi]);
+                                            if (udtSlotsDoneD)
+                                                vm_ffi_set_leaf_val(retUdtInst, retUdtFieldNames[fi], retUdtFieldSymbolIdPath[fi], retUdtFieldSymbolIdDepth[fi], retValsD[fi]);
+                                            else
+                                                vm_ffi_set_leaf(retUdtInst, retUdtFieldNames[fi], retUdtFieldSymbolIdPath[fi], retUdtFieldSymbolIdDepth[fi], retFieldsD2[fi]);
                                 }
                             }
                         }

@@ -33,18 +33,24 @@ int gmb_call_enabled(void);
 
 
 /* Slot tipizzato per chiamate con struct/UDT per valore (2026-11-06).
- * kind: 0 = double, 1 = int64/puntatore, 2 = struct (nfields campi da 8 byte).
- * Per le struct il valore in vals[i] punta a un buffer di nfields*8 byte con i campi
- * consecutivi (il layout ABI di campi tutti a 8 byte è sequenziale). */
+ * kind: 0 = double, 1 = int64/puntatore, 2 = struct (nfields campi).
+ * Per le struct, `vals[i]` punta a un buffer di `nfields` campi POSIZIONATI secondo il
+ * layout C reale: `field_type[f]` è il codice del campo f (0=double 1=int64 2=int8 3=uint8
+ * 4=int16 5=uint16 6=int32 7=uint32 8=float32 9=pointer 10=uint64) e `field_off[f]` il suo
+ * offset in byte nel buffer. Il chiamante riempie il buffer; libffi ricostruisce la stessa
+ * classificazione ABI dai tipi (gli offset coincidono perché entrambi seguono le regole C).
+ * `struct_size` è la size totale (per il return, dove il buffer è scritto da libffi). */
 typedef struct gmb_call_slot {
     int kind;
     int nfields;
-    const unsigned char* field_is_int;   /* nfields: 1 = int64, 0 = double */
+    const unsigned char* field_type;   /* codici 0..10, nfields elementi */
+    const int* field_off;              /* offset in byte, nfields elementi */
 } gmb_call_slot;
 
 int gmb_call_invoke_slots(void* fn, int n, const gmb_call_slot* slots,
                           void* const* vals, int ret_kind,
-                          int ret_nfields, const unsigned char* ret_field_is_int,
+                          int ret_nfields, const unsigned char* ret_field_type,
+                          const int* ret_field_off, int ret_struct_size,
                           void* ret);
 
 #endif /* GMB_CALL_H */

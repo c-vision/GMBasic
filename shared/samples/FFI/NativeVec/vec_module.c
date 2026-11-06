@@ -16,6 +16,7 @@
 
 #include "gmb_ffi.h"
 
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -232,18 +233,18 @@ static gmb_ffi_module_t g_vec_module = {
 
 gmb_ffi_module_t* gmb_ffi_module_entry(void) { return &g_vec_module; }
 
-typedef struct { long a, b; } vec_int2_t;
+typedef struct { int32_t a, b; } vec_int2_t;
 vec_int2_t vec_int2_sum(vec_int2_t a, vec_int2_t b) { vec_int2_t r; r.a=a.a+b.a; r.b=a.b+b.b; return r; }
 
 /* Kind misto (2026-09-29): un ritorno con un campo DOUBLE e uno intero — ammesso solo come
  * TIPO DI RITORNO (mai come parametro) dal marshalling FFI. */
-typedef struct { double v; long n; } vec_labeled_dn_t;
+typedef struct { double v; int32_t n; } vec_labeled_dn_t;
 /* Parametri OMOGENEI (entrambi DOUBLE) — la firma mista PARAMETRI/ritorno resta vietata
  * per design (regola preesistente, indipendente dallo UDT): solo i CAMPI del ritorno
  * possono avere kind diverso tra loro. */
-vec_labeled_dn_t vec_make_labeled_dn(double v, double n) { vec_labeled_dn_t r; r.v = v; r.n = (long)n; return r; }
-typedef struct { long n; double v; } vec_labeled_nd_t;
-vec_labeled_nd_t vec_make_labeled_nd(double n, double v) { vec_labeled_nd_t r; r.n = (long)n; r.v = v; return r; }
+vec_labeled_dn_t vec_make_labeled_dn(double v, double n) { vec_labeled_dn_t r; r.v = v; r.n = (int32_t)n; return r; }
+typedef struct { int32_t n; double v; } vec_labeled_nd_t;
+vec_labeled_nd_t vec_make_labeled_nd(double n, double v) { vec_labeled_nd_t r; r.n = (int32_t)n; r.v = v; return r; }
 
 /* Kind misto come PARAMETRO (2026-09-29): un UDT a kind misto passato BYVAL — il caso che
  * prima era vietato dal marshalling FFI. */
@@ -281,7 +282,7 @@ long vec_cb_apply_i2d(double (*cb)(double), long unused) { (void)unused; return 
  * vero struct annidato rende il test end-to-end realistico. Parametro E ritorno nella stessa
  * firma (roundtrip), come vec_point_add. */
 typedef struct { double x; } vec_inner_t;
-typedef struct { vec_inner_t i; long y; } vec_outer_t;
+typedef struct { vec_inner_t i; int32_t y; } vec_outer_t;
 vec_outer_t vec_nested_roundtrip(vec_outer_t o) { o.i.x += 1.0; o.y += 1; return o; }
 
 /* Firma mista LONG/DOUBLE fra scalari semplici (2026-10): nessun array/STRING/BYREF/UDT

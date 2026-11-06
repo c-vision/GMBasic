@@ -128,3 +128,4 @@ docs/manual/
 # Si ricostruiscono con `sh shared/minitests/ffi/build_testlibs.sh`.
 !shared/minitests/ffi/libudt_ext.dylib
 !shared/minitests/ffi/libdims_ext.dylib
+!shared/minitests/ffi/liblayout_ext.dylib

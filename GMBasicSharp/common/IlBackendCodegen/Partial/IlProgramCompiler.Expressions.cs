@@ -1455,6 +1455,73 @@ public sealed partial class IlProgramCompiler
         IEnumerable<bool> LeafKinds(UserDefinedType udt) => udt.Fields.SelectMany(f =>
             f.DataType is UserDefinedType nested ? LeafKinds(nested) : new[] { f.DataType is not DoubleType });
         bool IsMixedKindUdt(UserDefinedType udt) => LeafKinds(udt).Distinct().Count() > 1;
+        // ── Forma FFI (layout C reale) per il backend IL (S1, 2026-11-06) ─────────────────
+        // Il tipo CLR del dialetto mappa INTEGER/LONG a Int64 e SINGLE a Double: non coincide
+        // col layout C. La forma viaggia come stringa "size|nome:tipo:offset;…" e il runtime
+        // costruisce un tipo-ombra col layout giusto, convertendo campo per campo.
+        static int FfiCode2(DataType t) => t switch
+        {
+            DoubleType => 0, SingleType => 8, SByteType => 2, ByteType => 3,
+            IntegerType => 4, UIntegerType => 5, LongType => 6, ULongType => 7,
+            QuadType => 1, UQuadType => 10, _ => -1,
+        };
+        static int FfiSz2(int code) => code switch
+        {
+            0 or 1 or 9 or 10 => 8, 6 or 7 or 8 => 4, 4 or 5 => 2, _ => 1,
+        };
+        int LayoutUdt2(UserDefinedType udt, string what, string prefix, List<(string Path, int Code, int Off)> outLeaves)
+        {
+            var off = 0; var align = 1;
+            foreach (var f in udt.Fields)
+            {
+                var path = prefix.Length == 0 ? f.Name.Lexeme : $"{prefix}.{f.Name.Lexeme}";
+                if (f.DataType is ArrayType)
+                    throw new NotSupportedException($"FFI '{symbolName}': il campo ARRAY '{path}' non è supportato in un UDT per valore ({what}).");
+                if (f.DataType is StringType)
+                    throw new NotSupportedException($"FFI '{symbolName}': il campo STRING '{path}' non è ancora supportato in un UDT per valore ({what}).");
+                if (f.DataType is UserDefinedType sub)
+                {
+                    if (!IsSimpleUdt(sub))
+                        throw new NotSupportedException($"FFI '{symbolName}': lo UDT '{sub.Name.Lexeme}' (campo '{path}') non è ammesso dal marshalling FFI (solo TYPE semplici).");
+                    var start = outLeaves.Count;
+                    var subSize = LayoutUdt2(sub, what, path, outLeaves);
+                    var end = outLeaves.Count > start ? outLeaves[^1].Off + FfiSz2(outLeaves[^1].Code) : 0;
+                    if (subSize != end)
+                        throw new NotSupportedException($"FFI '{symbolName}': lo UDT '{udt.Name.Lexeme}' usato per {what} contiene la struttura annidata '{sub.Name.Lexeme}' con PADDING: il layout non è riproducibile — dichiara i campi nell'UDT esterno.");
+                    var subAlign = 1;
+                    foreach (var l in outLeaves.GetRange(start, outLeaves.Count - start)) subAlign = Math.Max(subAlign, FfiSz2(l.Code));
+                    off = (off + subAlign - 1) / subAlign * subAlign;
+                    for (var k = start; k < outLeaves.Count; k++)
+                    {
+                        var l = outLeaves[k];
+                        outLeaves[k] = (l.Path, l.Code, l.Off + off);
+                    }
+                    off += subSize;
+                    align = Math.Max(align, subAlign);
+                }
+                else
+                {
+                    var code = FfiCode2(f.DataType);
+                    if (code < 0)
+                        throw new NotSupportedException($"FFI '{symbolName}': tipo del campo '{path}' non supportato per {what}.");
+                    var sz = FfiSz2(code);
+                    off = (off + sz - 1) / sz * sz;
+                    outLeaves.Add((path, code, off));
+                    off += sz;
+                    align = Math.Max(align, sz);
+                }
+            }
+            return (off + align - 1) / align * align;
+        }
+        string UdtShapeString(UserDefinedType udt, string what)
+        {
+            var leaves = new List<(string Path, int Code, int Off)>();
+            var size = LayoutUdt2(udt, what, "", leaves);
+            var sb = new System.Text.StringBuilder();
+            sb.Append(size).Append('|');
+            foreach (var l in leaves) sb.Append(l.Path).Append(':').Append(l.Code).Append(':').Append(l.Off).Append(';');
+            return sb.ToString();
+        }
         int CountFfiLeaves(UserDefinedType udt, string what)
         {
             var count = 0;
@@ -1467,11 +1534,16 @@ public sealed partial class IlProgramCompiler
                             $"FFI '{symbolName}': lo UDT '{nested.Name.Lexeme}' (campo '{f.Name.Lexeme}') usato per {what} non è ammesso dal marshalling FFI (solo TYPE semplici, senza operatori/costruttori/metodi/generici).");
                     count += CountFfiLeaves(nested, what);
                 }
-                else if (f.DataType is DoubleType or LongType or QuadType or ULongType or UQuadType)
+                else if (f.DataType is DoubleType or SingleType or LongType or IntegerType
+                         or QuadType or ULongType or UQuadType or UIntegerType
+                         or ByteType or SByteType)
                     count++;
+                else if (f.DataType is StringType)
+                    throw new NotSupportedException(
+                        $"FFI '{symbolName}': il campo STRING '{f.Name.Lexeme}' non è ancora supportato in un UDT per valore ({what}).");
                 else
                     throw new NotSupportedException(
-                        $"FFI '{symbolName}': tipo del campo '{f.Name.Lexeme}' non supportato per {what} (UDT '{udt.Name.Lexeme}', solo AS DOUBLE o LONG/QUAD, non INTEGER/BYTE/SINGLE — larghezza nativa a 8 byte).");
+                        $"FFI '{symbolName}': tipo del campo '{f.Name.Lexeme}' non supportato per {what} (UDT '{udt.Name.Lexeme}'; ammessi DOUBLE/SINGLE, interi a 1/2/4/8 byte).");
             }
             return count;
         }
@@ -1487,9 +1559,9 @@ public sealed partial class IlProgramCompiler
             // il numero di campi non è più un vincolo ABI. Restano fuori 9+ campi e i tipi di
             // campo non a 8 byte: richiedono il layout C completo (stadio S1, descrittore v3).
             var leafCount = CountFfiLeaves(udt, what);
-            if (leafCount is 0 or > 8)
+            if (leafCount is 0 or > 64)
                 throw new NotSupportedException(
-                    $"FFI '{symbolName}': lo UDT '{udt.Name.Lexeme}' usato per {what} ha {leafCount} campi/campi-foglia (ammessi da 1 a 8 — ogni foglia occupa 8 byte; oltre 8 campi serve il layout C completo, stadio S1).");
+                    $"FFI '{symbolName}': lo UDT '{udt.Name.Lexeme}' usato per {what} ha {leafCount} campi/campi-foglia (ammessi da 1 a 64).");
             // Kind misto (2026-09-29, parità Compiler.Expressions.cs): non un limite ABI reale
             // (SysV/AAPCS64 classificano ogni eightbyte indipendentemente) — vietato solo come
             // PARAMETRO perché VM/C chiama attraverso un cast di funzione con un solo tipo
@@ -1593,7 +1665,8 @@ public sealed partial class IlProgramCompiler
         // la firma omogenea, con errore di compilazione esplicito.
         var mixedKinds = kindList.Distinct().Count() > 1;
         var mixedWithPointers = anyHardPtr && !anyUdt && mixedKinds;
-        if (!mixedScalarsOnly && !mixedWithPointers && mixedKinds)
+        // UDT (2026-11-06, S1): con il layout esplicito la firma puo essere mista anche con UDT.
+        if (!mixedScalarsOnly && !mixedWithPointers && !anyUdt && mixedKinds)
             throw new NotSupportedException(
                 anyPtr
                     ? $"FFI '{symbolName}': un parametro array, STRING o BYREF richiede firma INT64 (dichiarare gli altri parametri/il ritorno AS LONG — il puntatore viaggia come intero)."
@@ -1776,22 +1849,21 @@ public sealed partial class IlProgramCompiler
         // vera ABI .NET, nessuna forma-ombra/copia campo-per-campo (args[i] è già l'istanza
         // boxed giusta, vedi EmitObjectBoxedArgument/DataTypeMapper.Map). Lascia l'array in
         // cima allo stack — va chiamato appena prima del Call, come argomento posizionale.
-        void EmitUdtParamTypesArray()
+        void EmitUdtShapesArray()
         {
             _il.Emit(OpCodes.Ldc_I4, epd.Parameters.Length);
-            _il.Emit(OpCodes.Newarr, typeof(Type));
-            var udtTypesLocal = _il.DeclareLocal(typeof(Type[]));
-            _il.Emit(OpCodes.Stloc, udtTypesLocal);
+            _il.Emit(OpCodes.Newarr, typeof(string));
+            var udtShapesLocal = _il.DeclareLocal(typeof(string[]));
+            _il.Emit(OpCodes.Stloc, udtShapesLocal);
             for (var pi = 0; pi < epd.Parameters.Length; pi++)
             {
                 if (!IsUdtParam(epd.Parameters[pi])) continue;
-                _il.Emit(OpCodes.Ldloc, udtTypesLocal);
+                _il.Emit(OpCodes.Ldloc, udtShapesLocal);
                 _il.Emit(OpCodes.Ldc_I4, pi);
-                _il.Emit(OpCodes.Ldtoken, DataTypeMapper.Map(epd.Parameters[pi].DataType!, _types, _classTypes));
-                _il.Emit(OpCodes.Call, GetTypeFromHandleMethod);
+                _il.Emit(OpCodes.Ldstr, UdtShapeString((UserDefinedType)epd.Parameters[pi].DataType!, $"il parametro '{epd.Parameters[pi].Name.Lexeme}'"));
                 _il.Emit(OpCodes.Stelem_Ref);
             }
-            _il.Emit(OpCodes.Ldloc, udtTypesLocal);
+            _il.Emit(OpCodes.Ldloc, udtShapesLocal);
         }
         // SUB FFI (DECLARE SUB, ReturnType null/Void): come per una FUNCTION il runtime
         // helper (FfiCallTyped) lascia SEMPRE un double sullo stack; il chiamante statement
@@ -1810,8 +1882,8 @@ public sealed partial class IlProgramCompiler
                 _il.Emit(OpCodes.Ldc_I8, (long)stringMask);
                 _il.Emit(OpCodes.Ldc_I8, (long)byrefScalarMask);
                 _il.Emit(OpCodes.Ldc_I8, (long)byrefScalarElemIntMask);
-                EmitUdtParamTypesArray();
-                _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.FfiCallTypedArrUdt), typeof(string), typeof(string), typeof(object[]), typeof(int), typeof(long), typeof(long), typeof(long), typeof(long), typeof(long), typeof(Type[])));
+                EmitUdtShapesArray();
+                _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.FfiCallTypedArrUdt), typeof(string), typeof(string), typeof(object[]), typeof(int), typeof(long), typeof(long), typeof(long), typeof(long), typeof(long), typeof(string[])));
             }
             else if (arrayMask != 0 || stringMask != 0 || byrefScalarMask != 0 || anyCallbackParam)
             {
@@ -1865,10 +1937,11 @@ public sealed partial class IlProgramCompiler
             _il.Emit(OpCodes.Ldc_I8, (long)stringMask);
             _il.Emit(OpCodes.Ldc_I8, (long)byrefScalarMask);
             _il.Emit(OpCodes.Ldc_I8, (long)byrefScalarElemIntMask);
-            if (anyUdtParam) EmitUdtParamTypesArray(); else _il.Emit(OpCodes.Ldnull);
+            if (anyUdtParam) EmitUdtShapesArray(); else _il.Emit(OpCodes.Ldnull);
+            _il.Emit(OpCodes.Ldstr, UdtShapeString(udtReturn, "il ritorno"));
             _il.Emit(OpCodes.Ldtoken, udtReturnClrType);
             _il.Emit(OpCodes.Call, GetTypeFromHandleMethod);
-            _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.FfiCallTypedArrUdtRet), typeof(string), typeof(string), typeof(object[]), typeof(int), typeof(long), typeof(long), typeof(long), typeof(long), typeof(long), typeof(Type[]), typeof(Type)));
+            _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.FfiCallTypedArrUdtRet), typeof(string), typeof(string), typeof(object[]), typeof(int), typeof(long), typeof(long), typeof(long), typeof(long), typeof(long), typeof(string[]), typeof(string), typeof(Type)));
             _il.Emit(OpCodes.Unbox_Any, udtReturnClrType);
             EmitByRefScalarWriteback();
             EmitCallbackKeepAliveIfAny();
@@ -1881,11 +1954,11 @@ public sealed partial class IlProgramCompiler
             _il.Emit(OpCodes.Ldc_I8, (long)stringMask);
             _il.Emit(OpCodes.Ldc_I8, (long)byrefScalarMask);
             _il.Emit(OpCodes.Ldc_I8, (long)byrefScalarElemIntMask);
-            EmitUdtParamTypesArray();
+            EmitUdtShapesArray();
             if (retIsString)
-                _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.FfiCallTypedArrUdtStr), typeof(string), typeof(string), typeof(object[]), typeof(int), typeof(long), typeof(long), typeof(long), typeof(long), typeof(long), typeof(Type[])));
+                _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.FfiCallTypedArrUdtStr), typeof(string), typeof(string), typeof(object[]), typeof(int), typeof(long), typeof(long), typeof(long), typeof(long), typeof(long), typeof(string[])));
             else
-                _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.FfiCallTypedArrUdt), typeof(string), typeof(string), typeof(object[]), typeof(int), typeof(long), typeof(long), typeof(long), typeof(long), typeof(long), typeof(Type[])));
+                _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.FfiCallTypedArrUdt), typeof(string), typeof(string), typeof(object[]), typeof(int), typeof(long), typeof(long), typeof(long), typeof(long), typeof(long), typeof(string[])));
             EmitByRefScalarWriteback();
             EmitCallbackKeepAliveIfAny();
         }
