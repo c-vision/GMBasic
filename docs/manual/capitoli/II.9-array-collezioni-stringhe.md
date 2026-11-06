@@ -18,6 +18,31 @@ DIM B() AS STRING           ' dinamico: cresce con AADD/REDIM
 causa numero uno degli "off by one". Un array numerico non inizializzato vale `0`, uno `STRING`
 vale `""`.
 
+### 1.1 Lower bound espliciti e array N-D
+
+La forma completa del `DIM` è `DIM nome(lo TO hi [, lo2 TO hi2, ...]) [AS tipo]`. Ogni asse ha
+il proprio lower bound e il numero di dimensioni è libero (fino a 8):
+
+```basic
+DIM m(1 TO 3, 1 TO 4) AS DOUBLE          ' 3 righe x 4 colonne, indici 1..3 e 1..4
+DIM q(-1 TO 1, 0 TO 2, 1 TO 2) AS DOUBLE ' 3-D, lower misti e negativi
+DIM serie(1 TO n) AS DOUBLE              ' n calcolato a runtime
+```
+
+Regole:
+
+- Il **lower** (`lo`) è una costante intera, eventualmente negativa. L'**upper** (`hi`) può
+  essere un'espressione calcolata a runtime: la lunghezza dell'asse è `hi - lo + 1`.
+- Un lower non costante è un errore di compilazione su tutti i backend (il backend IL memorizza
+  i lower bound in una tabella compile-time).
+- Gli indici scritti nel programma sono quelli **utente**: su `DIM m(1 TO 3, 1 TO 4)`, il primo
+  elemento è `m(1,1)` e l'ultimo `m(3,4)`; `m(0,1)` è fuori dai limiti.
+- Il layout interno è **denso row-major**: l'ultimo asse varia più velocemente. Non è osservabile
+  dal programma, che usa sempre gli indici utente, ma spiega l'ordine dei letterali annidati.
+- `DIM a(n)` è la forma abbreviata di `DIM a(0 TO n)`.
+- Un array `STRING` non inizializzato ha elementi `""`; un array di UDT ha istanze con i campi
+  al valore di default.
+
 ## 2. Letterali: `{ }` e `[ ]`
 
 ```basic
@@ -44,8 +69,27 @@ PRINT LBOUND(A)    ' primo indice
 PRINT LEN(A)       ' numero di elementi
 ```
 
-Per le matrici `UBOUND(M, 1)` dà le righe, `UBOUND(M, 2)` le colonne. `LEN` funziona anche su un
-array passato come parametro a una procedura: la dimensione viaggia con l'array.
+### 3.1 Limiti per asse: `LBOUND` e `UBOUND`
+
+`LBOUND(A[, dim])` e `UBOUND(A[, dim])` restituiscono il primo e l'ultimo indice valido
+dell'asse `dim`.
+
+| Parametro | Tipo | Descrizione |
+|---|---|---|
+| `A` | array | array nativo `DIM a(...)`. Su una lista o un dict `UBOUND` restituisce `Count-1` e `LBOUND` restituisce `0`. |
+| `dim` | `LONG`, opzionale | asse **1-based**: `1` è la prima dimensione, `2` la seconda, e così via. Default `1`. |
+| valore | `LONG` | `LBOUND` = lower dell'asse; `UBOUND` = upper dell'asse. |
+
+- `UBOUND(A)` senza `dim` restituisce l'upper del **primo** asse, non il numero di elementi:
+  su `DIM a(3, 7)` vale `3`. Per il conteggio si usa `LEN(A)`.
+- Con un lower esplicito `DIM a(lo TO hi)`, `LBOUND(a)=lo` e `UBOUND(a)=hi`: la lunghezza è
+  `hi - lo + 1`, non `hi`.
+- Ogni asse è indipendente: `DIM m(0 TO 1, 1 TO 3)` ha `LBOUND(m,1)=0`, `UBOUND(m,1)=1`,
+  `LBOUND(m,2)=1`, `UBOUND(m,2)=3`.
+- Un `dim` fuori dal rank dell'array è un errore: viene rilevato in compilazione su IL e
+  C99Native, a runtime su PCodeVM e VM/C.
+- `LEN(A)` su un array restituisce il numero complessivo di elementi; su un array passato come
+  parametro a una procedura la dimensione viaggia con l'array.
 
 **Slicing.** `a[start:end]` produce una nuova lista con gli elementi da `start` incluso a `end`
 escluso:
@@ -197,6 +241,35 @@ La tabella è la misura del §7: `LEN` conta i caratteri, `LENB` i byte. `instr 
 `INSTR` restituisce la posizione in **caratteri** (la emoji è il primo, la `x` il secondo), non in
 byte — che sarebbero 5.
 
+**Matrici e tensori con lower bound** — `shared/samples/Arrays/MultidimBounds.bas`:
+
+```basic
+DIM temp(1 TO 7) AS DOUBLE
+DIM griglia(1 TO righe, 1 TO colonne) AS DOUBLE
+DIM campo(1 TO nx, 1 TO ny, 1 TO nz) AS DOUBLE
+DIM hyper(1 TO 2, 1 TO 2, 1 TO 2, 1 TO 2) AS DOUBLE
+DIM kernel(1 TO 2, 1 TO 2, 1 TO 2) AS DOUBLE = {{{1,2},{3,4}},{{5,6},{7,8}}}
+```
+
+```
+serie: lb= 1  ub= 7
+       somma= 70  min= 4  max= 16
+griglia: lb= 1 , 1  ub= 3 , 4
+         angoli= 11 , 34
+campo 3-D: ub= 3 , 4 , 2
+           totale= 156  [1,1,1]= 2  [3,4,2]= 14
+ipercubo: ub4= 2  primo= 15  ultimo= 30
+          totale= 360
+kernel: [1,1,1]= 1  [2,2,2]= 8
+offset: lb=-1 ,-1  ub= 1 , 1
+        diag=-1 , 0 , 1
+```
+
+L'esempio usa `UBOUND(asse)` come limite dei cicli invece di costanti scritte a mano, riempie
+gli array con gli **indici utente** (non con offset) e mostra che `FOR EACH` su un array 1-D
+parte da `LBOUND`. Il kernel 3-D è un letterale annidato: l'ordine è row-major e il programma lo
+legge con `kernel(1,1,1) … kernel(2,2,2)`.
+
 ## 9. Errori frequenti
 
 | Sintomo | Causa | Correzione |
@@ -205,6 +278,9 @@ byte — che sarebbero 5.
 | scrittura con `a[i] = v` non compila | la scrittura vuole le tonde | `a(i) = v`; le quadre per leggere |
 | `AINS`/`ADEL` spostano di uno | indici 0-based | ricorda che il primo elemento è `0` |
 | un letterale 2-D non compila | righe di lunghezze diverse | rendilo rettangolare |
+| `DIM m(lo TO hi)` non compila | il lower `lo` è una variabile | usa una costante come lower, l'upper può essere runtime |
+| `UBOUND(m, 3)` su una matrice 2-D fallisce | `dim` fuori dal rank | chiedi solo gli assi `1..2`, o `LEN(m)` per il conteggio |
+| `m(0,1)` "fuori dai limiti" | la matrice è dichiarata `1 TO r, 1 TO c` | usa gli indici utente `1..r` e `1..c`; non sottrarre 1 |
 | `DIM x = [[1,2],[3,4]]` non è una matrice | fuori da un DIM di array, `[...]` è una lista | dichiara `DIM m(1,1)`, o usa le graffe |
 | un campo lungo 10 con `"AB"` | `STRING * 10` padda | `TRIM` in lettura |
 | tronco un'emoji a metà | si è lavorato in byte | usa `LEN`/`LEFT$`, non `LENB` |

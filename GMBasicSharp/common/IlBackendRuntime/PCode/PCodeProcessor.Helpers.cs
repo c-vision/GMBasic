@@ -181,14 +181,17 @@ internal sealed partial class PCodeProcessor
         var nd = sizes.Length;
         if (nd == 1)
         {
-            for (var i = 0; i < arr.Length; i++) arr.SetValue(make(), i);
+            var lo0 = arr.GetLowerBound(0);
+            for (var i = 0; i < arr.Length; i++) arr.SetValue(make(), lo0 + i);
             return;
         }
+        var lo = new int[nd];
+        for (var d = 0; d < nd; d++) lo[d] = arr.GetLowerBound(d);
         var idx = new int[nd];
         for (var i = 0; i < arr.Length; i++)
         {
             var rem = i;
-            for (var d = nd - 1; d >= 0; d--) { idx[d] = sizes[d] == 0 ? 0 : rem % sizes[d]; rem = sizes[d] == 0 ? 0 : rem / sizes[d]; }
+            for (var d = nd - 1; d >= 0; d--) { idx[d] = lo[d] + (sizes[d] == 0 ? 0 : rem % sizes[d]); rem = sizes[d] == 0 ? 0 : rem / sizes[d]; }
             arr.SetValue(make(), idx);
         }
     }

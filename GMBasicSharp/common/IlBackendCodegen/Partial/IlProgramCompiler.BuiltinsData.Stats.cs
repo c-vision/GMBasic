@@ -650,7 +650,20 @@ public sealed partial class IlProgramCompiler
         var (arrayInfo, axisIndex) = ResolveArrayBoundArgs(expr, "UBOUND");
 
         EmitArrayRefFromInfo(arrayInfo);
-        _il.Emit(OpCodes.Ldc_I4, axisIndex);
+        /* Gli array di UDT/CLASS sono CLR JAGGED (T[][]), non rettangolari: l'asse 0 è il
+         * rank 1 dell'array esterno, gli assi > 0 vivono nelle righe. GetUpperBound(1) su
+         * T[][] lancia "Array does not have that many dimensions". */
+        var jaggedClr = arrayInfo.ClrArrayType.GetArrayRank() == 1 && arrayInfo.Rank > 1;
+        if (jaggedClr && axisIndex > 0)
+        {
+            _il.Emit(OpCodes.Ldc_I4_0);          // prima riga
+            _il.Emit(OpCodes.Ldelem_Ref);
+            _il.Emit(OpCodes.Ldc_I4_0);          // GetUpperBound(0) della riga
+        }
+        else
+        {
+            _il.Emit(OpCodes.Ldc_I4, axisIndex);
+        }
         _il.Emit(OpCodes.Callvirt, _types.ArrayGetUpperBound);
         var lowerBound = arrayInfo.LowerBounds[axisIndex];
         if (lowerBound != 0)
