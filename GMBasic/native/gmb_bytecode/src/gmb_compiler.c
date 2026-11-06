@@ -2548,7 +2548,7 @@ static void cc_emit_ffi_call(gmb_cc_t* c, const gmb_expr_t* e, const gmb_stmt_t*
 {
     int argc = e->nargs;
     int nparams = pd->n_params;
-    if (argc > 8) { cc_err(c, "FFI: massimo 8 argomenti supportati dal marshalling"); return; }
+    if (argc > GMB_FFI_MAX_ARGS) { cc_err(c, "FFI: massimo 16 argomenti supportati dal marshalling"); return; }
     const char* lib = pd->ffi_lib ? pd->ffi_lib : "";
     const char* sym = pd->ffi_symbol ? pd->ffi_symbol : pd->func_name;
     int is_func = !pd->is_sub;
@@ -2556,9 +2556,9 @@ static void cc_emit_ffi_call(gmb_cc_t* c, const gmb_expr_t* e, const gmb_stmt_t*
     int ret_is_string = (is_func && cc_ffi_is_string_type(rt)) ? 1 : 0;
     int ret_udt_idx = (is_func && rt) ? cc_udt_find(c, rt) : -1;
 
-    unsigned char is_array[8] = {0}, is_string[8] = {0}, is_byref[8] = {0}, is_plain[8] = {0}, is_udt[8] = {0}, is_cb[8] = {0}, p_int[8] = {0};
-    cc_ffi_leaf_t param_leaves[8][8]; int n_param_leaves[8] = {0};
-    for (int i = 0; i < argc && i < 8; i++) {
+    unsigned char is_array[GMB_FFI_MAX_ARGS] = {0}, is_string[GMB_FFI_MAX_ARGS] = {0}, is_byref[GMB_FFI_MAX_ARGS] = {0}, is_plain[GMB_FFI_MAX_ARGS] = {0}, is_udt[GMB_FFI_MAX_ARGS] = {0}, is_cb[GMB_FFI_MAX_ARGS] = {0}, p_int[GMB_FFI_MAX_ARGS] = {0};
+    cc_ffi_leaf_t param_leaves[GMB_FFI_MAX_ARGS][8]; int n_param_leaves[GMB_FFI_MAX_ARGS] = {0};
+    for (int i = 0; i < argc && i < GMB_FFI_MAX_ARGS; i++) {
         const char* pt = (pd->param_types && i < nparams) ? pd->param_types[i] : NULL;
         is_array[i] = (pd->param_is_array && pd->param_is_array[i]) ? 1 : 0;
         is_string[i] = (!is_array[i] && cc_ffi_is_string_type(pt)) ? 1 : 0;
@@ -2579,7 +2579,7 @@ static void cc_emit_ffi_call(gmb_cc_t* c, const gmb_expr_t* e, const gmb_stmt_t*
      * — un parametro UDT a kind misto è ESCLUSO da paramKinds (come Compiler.Expressions.cs),
      * quindi con soli parametri misti il fallback è Int64. */
     int first_p_kind = 1;
-    for (int i = 0; i < argc && i < 8; i++) {
+    for (int i = 0; i < argc && i < GMB_FFI_MAX_ARGS; i++) {
         if (is_udt[i]) {
             int k0 = (n_param_leaves[i] > 0) ? param_leaves[i][0].is_int : 0;
             int mixed = 0;
@@ -2599,16 +2599,16 @@ static void cc_emit_ffi_call(gmb_cc_t* c, const gmb_expr_t* e, const gmb_stmt_t*
         else kind = cc_ffi_is_int_type(rt) ? 1 : 0;
     } else kind = first_p_kind;
 
-    unsigned char scalarKindMask = 0, arrayMask = 0, arrayElemIntMask = 0, stringMask = 0;
-    unsigned char byrefScalarMask = 0, byrefScalarElemIntMask = 0;
-    unsigned char udtParamFieldCount[8] = {0}, udtParamFieldKindMask[8] = {0};
+    unsigned int scalarKindMask = 0, arrayMask = 0, arrayElemIntMask = 0, stringMask = 0;
+    unsigned int byrefScalarMask = 0, byrefScalarElemIntMask = 0;
+    unsigned char udtParamFieldCount[GMB_FFI_MAX_ARGS] = {0}, udtParamFieldKindMask[GMB_FFI_MAX_ARGS] = {0};
     unsigned char retUdtFieldCount = (unsigned char)n_ret_leaves, retUdtFieldKindMask = 0;
-    unsigned char cbArity[8], cbKindMask = 0, cbHasRetMask = 0;
-    for (int i = 0; i < 8; i++) cbArity[i] = 255;
-    for (int i = 0; i < argc && i < 8; i++) {
-        if (is_array[i]) { arrayMask |= (unsigned char)(1 << i); if (p_int[i]) arrayElemIntMask |= (unsigned char)(1 << i); }
-        else if (is_string[i]) { stringMask |= (unsigned char)(1 << i); }
-        else if (is_byref[i]) { byrefScalarMask |= (unsigned char)(1 << i); if (p_int[i]) byrefScalarElemIntMask |= (unsigned char)(1 << i); }
+    unsigned char cbArity[GMB_FFI_MAX_ARGS]; unsigned int cbKindMask = 0, cbHasRetMask = 0;
+    for (int i = 0; i < GMB_FFI_MAX_ARGS; i++) cbArity[i] = 255;
+    for (int i = 0; i < argc && i < GMB_FFI_MAX_ARGS; i++) {
+        if (is_array[i]) { arrayMask |= (unsigned)(1u << i); if (p_int[i]) arrayElemIntMask |= (unsigned)(1u << i); }
+        else if (is_string[i]) { stringMask |= (unsigned)(1u << i); }
+        else if (is_byref[i]) { byrefScalarMask |= (unsigned)(1u << i); if (p_int[i]) byrefScalarElemIntMask |= (unsigned)(1u << i); }
         else if (is_udt[i]) {
             udtParamFieldCount[i] = (unsigned char)n_param_leaves[i];
             for (int f = 0; f < n_param_leaves[i]; f++) if (param_leaves[i][f].is_int) udtParamFieldKindMask[i] |= (unsigned char)(1 << f);
@@ -2617,21 +2617,21 @@ static void cc_emit_ffi_call(gmb_cc_t* c, const gmb_expr_t* e, const gmb_stmt_t*
             cbArity[i] = (unsigned char)(ar > 4 ? 4 : ar);
             int cb_int = (ar > 0) ? ((pd->param_fn_kind_mask && (pd->param_fn_kind_mask[i] & 1)) ? 1 : 0)
                                   : ((pd->param_fn_ret_int && pd->param_fn_ret_int[i]) ? 1 : 0);
-            if (cb_int) cbKindMask |= (unsigned char)(1 << i);
-            if (pd->param_fn_has_ret && pd->param_fn_has_ret[i]) cbHasRetMask |= (unsigned char)(1 << i);
+            if (cb_int) cbKindMask |= (unsigned)(1u << i);
+            if (pd->param_fn_has_ret && pd->param_fn_has_ret[i]) cbHasRetMask |= (unsigned)(1u << i);
         }
         /* I parametri STRING sono PUNTATORI (classe intera) → bit sempre 1, anche in una
          * firma "mista" a ritorno scalare (es. MARKETBUY(LONG, STRING, DOUBLE...)): il path
          * mixed li passa come int64 con args[i] = indirizzo dei dati (vedi gmb_vm_core.c). */
         int bit = is_plain[i] ? p_int[i] : (is_string[i] ? 1 : (kind == 1));
-        if (bit) scalarKindMask |= (unsigned char)(1 << i);
+        if (bit) scalarKindMask |= (unsigned)(1u << i);
     }
     for (int f = 0; f < n_ret_leaves; f++) if (ret_leaves[f].is_int) retUdtFieldKindMask |= (unsigned char)(1 << f);
 
     /* Argomenti: i BYREF scalari viaggiano come puntatore (OP_MAKE_BYREF) — come una CALL
      * normale (cc_call_arg), altrimenti il copy-out della VM non ha dove scrivere. */
     uint64_t ffi_brm = 0;
-    for (int i = 0; i < argc && i < 8; i++) if (is_byref[i]) ffi_brm |= ((uint64_t)1 << i);
+    for (int i = 0; i < argc && i < GMB_FFI_MAX_ARGS; i++) if (is_byref[i]) ffi_brm |= ((uint64_t)1 << i);
     for (int i = 0; i < argc; i++) { cc_call_arg(c, ffi_brm, i, e->args[i]); if (c->error) return; }
 
     int libIdx = cc_add_const(c, GMB_CCONST_STRING, 0, lib);
@@ -2641,7 +2641,7 @@ static void cc_emit_ffi_call(gmb_cc_t* c, const gmb_expr_t* e, const gmb_stmt_t*
     /* Firma all-DOUBLE senza puntatori/UDT/callback → opcode LEGACY OP_CALL_FFI (unico che
      * copre la chiamata a 0 argomenti, es. BARS()). */
     int any_ptr = (ret_is_string || ret_udt_idx >= 0) ? 1 : 0;
-    for (int i = 0; i < argc && i < 8; i++)
+    for (int i = 0; i < argc && i < GMB_FFI_MAX_ARGS; i++)
         if (is_array[i] || is_string[i] || is_byref[i] || is_udt[i] || is_cb[i]) any_ptr = 1;
     if (!any_ptr && kind == 0 && scalarKindMask == 0) {
         cc_byte(c, GMB_OP_CALL_FFI);
@@ -2656,24 +2656,24 @@ static void cc_emit_ffi_call(gmb_cc_t* c, const gmb_expr_t* e, const gmb_stmt_t*
     cc_u16(c, (uint16_t)nameIdx);
     cc_byte(c, (uint8_t)argc);
     cc_byte(c, (uint8_t)kind);
-    cc_byte(c, scalarKindMask);
-    cc_byte(c, arrayMask);
-    cc_byte(c, arrayElemIntMask);
-    cc_byte(c, stringMask);
+    cc_u16(c, (uint16_t)scalarKindMask);
+    cc_u16(c, (uint16_t)arrayMask);
+    cc_u16(c, (uint16_t)arrayElemIntMask);
+    cc_u16(c, (uint16_t)stringMask);
     cc_byte(c, (uint8_t)ret_is_string);
-    cc_byte(c, byrefScalarMask);
-    cc_byte(c, byrefScalarElemIntMask);
-    for (int i = 0; i < 8; i++) cc_byte(c, udtParamFieldCount[i]);
-    for (int i = 0; i < 8; i++) cc_byte(c, udtParamFieldKindMask[i]);
+    cc_u16(c, (uint16_t)byrefScalarMask);
+    cc_u16(c, (uint16_t)byrefScalarElemIntMask);
+    for (int i = 0; i < GMB_FFI_MAX_ARGS; i++) cc_byte(c, udtParamFieldCount[i]);
+    for (int i = 0; i < GMB_FFI_MAX_ARGS; i++) cc_byte(c, udtParamFieldKindMask[i]);
     cc_byte(c, retUdtFieldCount);
     cc_byte(c, retUdtFieldKindMask);
-    for (int i = 0; i < 8; i++) cc_byte(c, cbArity[i]);
-    cc_byte(c, cbKindMask);
-    cc_byte(c, cbHasRetMask);
+    for (int i = 0; i < GMB_FFI_MAX_ARGS; i++) cc_byte(c, cbArity[i]);
+    cc_u16(c, (uint16_t)cbKindMask);
+    cc_u16(c, (uint16_t)cbHasRetMask);
     /* Coda: per ogni foglia UDT (prima i parametri, poi il ritorno), DUE u16 (path-nomi,
      * SymbolId-path CSV). */
     char csv[64];
-    for (int i = 0; i < argc && i < 8; i++) {
+    for (int i = 0; i < argc && i < GMB_FFI_MAX_ARGS; i++) {
         if (!is_udt[i]) continue;
         for (int f = 0; f < n_param_leaves[i]; f++) {
             cc_ffi_symid_csv(param_leaves[i][f].path, csv, sizeof csv);
@@ -5917,6 +5917,13 @@ static void cc_stmt(gmb_cc_t* c, const gmb_stmt_t* s)
         if (s->win_name && s->mutex_action && strcasecmp(s->win_name, "AI") == 0) {
             const char* verb = s->mutex_action;
             int vsub = (s->n_go_args >= 1 && s->go_args[0]->kind == GMB_EXPR_VAR) ? 1 : 0;
+            /* AI LIST OPTIONS (parser: act_tk = GMB_TOK_AiListOptions, nessun argomento):
+             * il runtime formatta il testo, il comando lo STAMPA (§1: comando-query). */
+            if (s->act_tk == GMB_TOK_AiListOptions) {
+                cc_byte(c, GMB_OP_CALL_BUILTIN); cc_u16(c, 3714); cc_byte(c, 0);
+                cc_byte(c, GMB_OP_PRINT_LINE);
+                break;
+            }
             if (strcasecmp(verb, "VAULT") == 0 && vsub && s->go_args[0]->var) {
                 const char* sub = s->go_args[0]->var;
                 int code = -1;
@@ -7918,7 +7925,7 @@ void gmb_pkg_set_cache_dir(const char* dir) { g_pkg_cache_dir = (dir && *dir) ? 
 
 char* gmb_pkg_collect_requires(const char* main_src, const char* project_dir)
 {
-    const char* cache = getenv("GMB_PKG_CACHE");
+    const char* cache = g_pkg_cache_dir;   /* cache EFFETTIVA iniettata dal driver (già comprensiva di GMB_PKG_CACHE, letta lì via gmb_opt_env) */
     char cachebuf[4096];
     char* b = NULL;
     size_t n = 0, cap = 0;

@@ -85,8 +85,8 @@ public interface IFfiService
     /// IlProgramCompiler.Expressions.cs) — per quelle posizioni il bit corrispondente non è
     /// significativo. Default 0 = comportamento legacy (tutti gli scalari semplici seguono
     /// <paramref name="kind"/>, nessun cambio per le dichiarazioni esistenti).</param>
-    object? CallFunctionTypedArr(IntPtr function, object?[] args, byte kind, byte arrayMask, byte arrayElemIntMask,
-        byte stringMask, bool retIsString, byte byrefScalarMask = 0, byte byrefScalarElemIntMask = 0,
+    object? CallFunctionTypedArr(IntPtr function, object?[] args, int kind, int arrayMask, int arrayElemIntMask,
+        int stringMask, bool retIsString, int byrefScalarMask = 0, int byrefScalarElemIntMask = 0,
         FfiUdtShape?[]? udtParams = null, FfiUdtShape? udtReturn = null,
-        Type?[]? udtParamClrTypes = null, Type? udtReturnClrType = null, byte scalarKindMask = 0);
+        Type?[]? udtParamClrTypes = null, Type? udtReturnClrType = null, int scalarKindMask = 0);
 }

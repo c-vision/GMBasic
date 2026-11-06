@@ -31,6 +31,10 @@ internal enum PCodeTickResult
 /// </summary>
 internal sealed partial class PCodeProcessor
 {
+    /// <summary>Massimo numero di argomenti/slot FFI (2026-11: era 8). Specchio di
+    /// GMB_FFI_MAX_ARGS in gmb_bytecode/include/gmb_compiler.h.</summary>
+    internal const int PCodeFfiMaxArgs = 16;
+
     private readonly IRuntimeHost _runtime;
 
     /// <summary>
@@ -5322,18 +5326,18 @@ internal sealed partial class PCodeProcessor
                 // quelle il bit è irrilevante, ignorato — restano classificate dalle rispettive
                 // maschere dedicate sotto). Nel caso omogeneo legacy coincide con 'kind' per
                 // ogni bit. Vedi OpCode.cs OP_CALL_FFI_T e Compiler.Expressions.cs.
-                var scalarKindMask = ReadU8(task);
+                var scalarKindMask = ReadU16(task);
                 // array_mask (2026-09-28): bit i settato se l'argomento logico i è un array
                 // BYREF (double[]/long[] CLR, non uno scalare) — vedi OpCode.cs OP_CALL_FFI_T.
-                var arrayMask = ReadU8(task);
+                var arrayMask = ReadU16(task);
                 // array_elem_int_mask (2026-09-28, fix parità): tipo elemento dichiarato per
                 // ogni array — PCodeVM non lo preserva a runtime (object[] boxati), vedi
                 // OpCode.cs OP_CALL_FFI_T e Compiler.Expressions.cs per il dettaglio del bug.
-                var arrayElemIntMask = ReadU8(task);
+                var arrayElemIntMask = ReadU16(task);
                 // string_mask/ret_is_string (2026-09-28, supporto STRING): vedi OpCode.cs
                 // OP_CALL_FFI_T. Il risultato, quando ret_is_string, è una string CLR (non un
                 // double) — task.PushRef è già generico, nessun trattamento speciale qui.
-                var stringMask = ReadU8(task);
+                var stringMask = ReadU16(task);
                 var retIsString = ReadU8(task) != 0;
                 // byref_scalar_mask/byref_scalar_elem_int_mask (2026-09-28, BYREF scalare): vedi
                 // OpCode.cs OP_CALL_FFI_T. Il compilatore ha emesso OP_MAKE_BYREF/_GLOBAL/_ELEMENT
@@ -5343,8 +5347,8 @@ internal sealed partial class PCodeProcessor
                 // da parte, e DOPO la chiamata si riscrive box.Value col valore "out" che
                 // FfiService lascia in args[i] (mutato in place, stesso contratto della copy-out
                 // degli array).
-                var byrefScalarMask = ReadU8(task);
-                var byrefScalarElemIntMask = ReadU8(task);
+                var byrefScalarMask = ReadU16(task);
+                var byrefScalarElemIntMask = ReadU16(task);
                 // udt_param_field_count[8]/ret_udt_field_count (2026-09-28, struct/UDT per
                 // valore): a differenza di array/STRING/BYREF (un bit, sempre puntatore) un
                 // parametro UDT si "espande" in N campi — un byte PER POSIZIONE (0 = non è un
@@ -5354,15 +5358,15 @@ internal sealed partial class PCodeProcessor
                 // (Dictionary&lt;string,object&gt; chiavato per nome); il SymbolId serve a
                 // costruire un'istanza in uscita leggibile da OP_LOAD_MEMBER (offset=SymbolId
                 // contro __class__/FieldNames).
-                var udtParamFieldCount = new int[8];
-                for (var pi = 0; pi < 8; pi++) udtParamFieldCount[pi] = ReadU8(task);
+                var udtParamFieldCount = new int[PCodeFfiMaxArgs];
+                for (var pi = 0; pi < PCodeFfiMaxArgs; pi++) udtParamFieldCount[pi] = ReadU8(task);
                 // udtParamFieldKindMask[8] (2026-09-29, kind misto come parametro): bit i =
                 // campo i del parametro UDT alla posizione pi è INTERO (0=DOUBLE) — un UDT-
                 // PARAMETRO uniforme ha tutti i bit uguali (equivalente al vecchio 'kind'
                 // esterno), un UDT-PARAMETRO a kind misto (al massimo uno per dichiarazione,
                 // guard compile-time) usa questa maschera per sapere come leggere ogni campo.
-                var udtParamFieldKindMask = new int[8];
-                for (var pi = 0; pi < 8; pi++) udtParamFieldKindMask[pi] = ReadU8(task);
+                var udtParamFieldKindMask = new int[PCodeFfiMaxArgs];
+                for (var pi = 0; pi < PCodeFfiMaxArgs; pi++) udtParamFieldKindMask[pi] = ReadU8(task);
                 var retUdtFieldCount = ReadU8(task);
                 // retUdtFieldKindMask (2026-09-29, kind misto sul ritorno): bit i = campo i del
                 // ritorno UDT è INTERO (0=DOUBLE) — a differenza dei parametri (kind uniforme
@@ -5374,10 +5378,10 @@ internal sealed partial class PCodeProcessor
                 // (255 = non è un callback, altrimenti l'arità 0-4), poi kind-mask/has-ret-mask
                 // del trampolino nativo — vedi la costruzione del trampolino più sotto
                 // (BuildFfiCallbackTrampoline) dove vengono effettivamente usati.
-                var callbackParamArity = new int[8];
-                for (var pi = 0; pi < 8; pi++) callbackParamArity[pi] = ReadU8(task);
-                var callbackParamKindMask = ReadU8(task);
-                var callbackParamHasRetMask = ReadU8(task);
+                var callbackParamArity = new int[PCodeFfiMaxArgs];
+                for (var pi = 0; pi < PCodeFfiMaxArgs; pi++) callbackParamArity[pi] = ReadU8(task);
+                var callbackParamKindMask = ReadU16(task);
+                var callbackParamHasRetMask = ReadU16(task);
                 Basic.Runtime.FfiUdtShape? ReadUdtShape(int fieldCount, byte kindMask)
                 {
                     var names = new string[fieldCount];
@@ -5396,8 +5400,8 @@ internal sealed partial class PCodeProcessor
                     }
                     return new Basic.Runtime.FfiUdtShape(names, symbolIdPaths, fieldIsInt);
                 }
-                var udtParamShapes = new Basic.Runtime.FfiUdtShape?[8];
-                for (var pi = 0; pi < 8; pi++)
+                var udtParamShapes = new Basic.Runtime.FfiUdtShape?[PCodeFfiMaxArgs];
+                for (var pi = 0; pi < PCodeFfiMaxArgs; pi++)
                     if (udtParamFieldCount[pi] > 0) udtParamShapes[pi] = ReadUdtShape(udtParamFieldCount[pi], (byte)udtParamFieldKindMask[pi]);
                 var retUdtShape = retUdtFieldCount > 0 ? ReadUdtShape(retUdtFieldCount, retUdtFieldKindMask) : null;
                 var args = new object?[argCount];
@@ -5432,7 +5436,7 @@ internal sealed partial class PCodeProcessor
                         // vanno mantenute vive (GC-rooted) per tutta la durata della chiamata
                         // nativa sottostante — vedi callbackKeepAlive/GC.KeepAlive sotto.
                         var callbackKeepAlive = new List<Delegate>();
-                        for (var i = 0; i < argCount && i < 8; i++)
+                        for (var i = 0; i < argCount && i < PCodeFfiMaxArgs; i++)
                         {
                             if (callbackParamArity[i] == 255) continue;
                             if (args[i] is not Basic.Runtime.Gpm.ClosureData cd)
@@ -5451,7 +5455,7 @@ internal sealed partial class PCodeProcessor
                         // costruzione del guard di compilazione — Compiler.Expressions.cs) →
                         // serve SEMPRE il path per-parametro di CallFunctionTypedArr, mai il
                         // fast path CallFunctionTyped (che assume un kind unico per tutto).
-                        var fullMaskForArgc = argCount >= 8 ? (byte)0xFF : (byte)((1 << argCount) - 1);
+                        var fullMaskForArgc = argCount >= PCodeFfiMaxArgs ? (ushort)0xFFFF : (ushort)((1 << argCount) - 1);
                         var uniformScalarKind = scalarKindMask == (kind == 1 ? fullMaskForArgc : 0);
                         var result = arrayMask != 0 || stringMask != 0 || retIsString || byrefScalarMask != 0 || anyUdt || !uniformScalarKind
                             ? _runtime.Ffi.CallFunctionTypedArr(funcPtr, args, kind, arrayMask, arrayElemIntMask, stringMask, retIsString, byrefScalarMask, byrefScalarElemIntMask, udtParamShapes, retUdtShape, scalarKindMask: scalarKindMask)

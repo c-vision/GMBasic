@@ -1329,6 +1329,7 @@ static int cls_inherits_named(ctx_t* c, const char* clsname, const char* target)
 static int fn_ret_is_str(const fn_info_t* fn);
 static int fn_ret_is_tuple(const fn_info_t* fn);
 static int fn_ret_is_func(const fn_info_t* fn);
+static fn_info_t* find_fn_arity(ctx_t* c, const char* name, int nargs, const char* ns);
 static const char* fn_ret_ctype(ctx_t* c, const fn_info_t* fn);
 static void lambda_synth(ctx_t* c, gmb_expr_t* e);
 int bi_is(const char* name, const char* base);
@@ -1465,8 +1466,6 @@ static int dim_arr_init_kind(ctx_t* c, const gmb_expr_t* e) {
         { GMB_TOK_MatrixArgMax, 1, 1 }, { GMB_TOK_MatrixArgMin, 1, 1 },
         { GMB_TOK_MatrixAboveMask, 1, 2 }, { GMB_TOK_MatrixAboveMatrix, 1, 2 },
         { GMB_TOK_MatrixMultiplyVector, 1, 2 }, { GMB_TOK_MatrixMultiplyLeftVector, 1, 2 },
-        /* BLOCKCHAIN: ABIDECODE(hex$, types[]) → double* + out-len (gmb_abi_decode_doubles) */
-        { GMB_TOK_AbiDecode, 1, 1 },
         /* ANALYSIS array-returning (2026-09-13): IRFFT/SPLREP/SPLEV → double* + out-len */
         { GMB_TOK_FftIrfft, 1, 2 }, { GMB_TOK_InterpSplrep, 1, 2 }, { GMB_TOK_InterpSplev, 1, 2 },
     };
@@ -1481,8 +1480,17 @@ static int dim_arr_init_kind(ctx_t* c, const gmb_expr_t* e) {
  * (parity oracolo Builtin.cs). Nota: l'oracolo non supporta l'accesso ai membri
  * (emette `if (0)`); qui i membri sono letti via gmb_val_dict_get/gmb_val_index
  * per parità con PCodeVM, che è la semantica canonica. */
-static int dim_val_init_kind(const gmb_expr_t* e) {
+static int dim_val_init_kind(ctx_t* c, const gmb_expr_t* e) {
     if (!e || e->kind != GMB_EXPR_CALL || !e->var) return 0;
+    /* Una FUNZIONE UTENTE (modulo/.inc) con questo nome+arità VINCE sul TokenKind storico:
+     * i namespace migrati a FFI lasciano i TokenKind nel lexer, ma il tipo del risultato è
+     * quello DICHIARATO dalla funzione, non quello del builtin dismesso (es. BLOCKCHAIN.
+     * DERIVEKEY era un dict boxed e ora scrive 97 byte in un buffer BYTE e ritorna LONG). */
+    {
+        const char* b = strrchr(e->var, '.');
+        b = (b && b[1]) ? b + 1 : e->var;
+        if (find_fn_arity(c, b, e->nargs, NULL)) return 0;
+    }
     if (e->tk == GMB_TOK_KMeans) return e->nargs >= 2 ? 1 : 0;
     if (e->tk == GMB_TOK_Fetch) return e->nargs >= 1 ? 1 : 0;
     /* CHACHA20POLY1305ENCRYPT → dict val (gmb_val_t) con ciphertext/tag. */
@@ -1499,9 +1507,6 @@ static int dim_val_init_kind(const gmb_expr_t* e) {
     if (e->tk == GMB_TOK_JsonToObject) return 1;
     /* CONVERT.PARSE(md$) → AST markdown boxed gmb_val_t (gmb_md_parse). */
     if (e->tk == GMB_TOK_MdParse) return 1;
-    /* BLOCKCHAIN.DERIVEKEY/CONTRACT → dict boxed gmb_val_t (privateKey/publicKey/chainCode,
-     * address/interface/rpcUrl). */
-    if (e->tk == GMB_TOK_DeriveKey || e->tk == GMB_TOK_Contract) return 1;
     /* TRADING.PORTFOLIO: i risultati di ottimizzazione (MAXSHARPE/MEANVARIANCE/
      * MINVOLATILITY/RISKPARITY/EQUALLYWEIGHTED) e PortfolioResult (MAXRETURN/
      * KELLYCRITERION/MINCVAR/MINCDAR) sono dict boxed gmb_val_t (parity emitter C#). */
@@ -2279,6 +2284,18 @@ int etype(ctx_t* c, gmb_expr_t* e) {
     if (e && e->kind == GMB_EXPR_VAR && e->var && !strchr(e->var, '.')) {
         int _it = imap_type_of(c, e->var);
         if (_it >= 0) return _it;
+    }
+    /* Funzione UTENTE (modulo/.inc) con nome+arità: il tipo del risultato è quello
+     * DICHIARATO dalla funzione, non quello del TokenKind storico del lexer. I namespace
+     * migrati a FFI lasciano i TokenKind in vita (le keyword restano): senza questa
+     * precedenza un `n = DERIVEKEY(...)` del pacchetto blockchain veniva tipato come dict
+     * boxed del builtin dismesso ("valore dinamico assegnato alla variabile numerica").
+     * Stessa precedenza dell'emissione (find_fn_arity prima dei rami per-tk). */
+    if (e && e->kind == GMB_EXPR_CALL && e->var) {
+        const char* _ub = strrchr(e->var, '.');
+        _ub = (_ub && _ub[1]) ? _ub + 1 : e->var;
+        fn_info_t* _uf = find_fn_arity(c, _ub, e->nargs, NULL);
+        if (_uf) return fn_ret_is_tuple(_uf) ? TY_VAL : (fn_ret_is_str(_uf) ? TY_STR : TY_NUM);
     }
         /* LINALG.FACTOR(decomp, name): handle matrice (int64_t), non stringa.
      * GMB_TOK_Get è condiviso con POOL.Get/SyncMap.Get (stringa). */
@@ -3076,7 +3093,6 @@ int etype(ctx_t* c, gmb_expr_t* e) {
         if (e->tk == GMB_TOK_FromHex || e->tk == GMB_TOK_ToHex || e->tk == GMB_TOK_FromBase64
             || e->tk == GMB_TOK_ToBase64 || e->tk == GMB_TOK_Md5 || e->tk == GMB_TOK_Sha1
             || e->tk == GMB_TOK_Sha256 || e->tk == GMB_TOK_Sha512
-            || e->tk == GMB_TOK_StrKeccak256 || e->tk == GMB_TOK_StrRipeMd160
             || e->tk == GMB_TOK_Base58Encode || e->tk == GMB_TOK_Base58Decode
             || e->tk == GMB_TOK_Base32Encode || e->tk == GMB_TOK_Base32Decode
             || e->tk == GMB_TOK_FromBase64Url || e->tk == GMB_TOK_ToBase64Url
@@ -3087,13 +3103,7 @@ int etype(ctx_t* c, gmb_expr_t* e) {
             || e->tk == GMB_TOK_ChaCha20Encrypt || e->tk == GMB_TOK_ChaCha20Decrypt
             || e->tk == GMB_TOK_HashFile || e->tk == GMB_TOK_StrHashFile
             || e->tk == GMB_TOK_Sign || e->tk == GMB_TOK_KeyExport
-            || e->tk == GMB_TOK_EncryptAsym || e->tk == GMB_TOK_DecryptAsym
-            /* BLOCKCHAIN byte[] (gmb_string_t binaria): KECCAK256/RIPEMD160/BLAKE2B256,
-             * RLPENCODE/VARINTENCODE, MNEMONICTOSEED/GETPUBLICKEY/SECP256K1SIGN. */
-            || e->tk == GMB_TOK_Keccak256 || e->tk == GMB_TOK_RipeMd160
-            || e->tk == GMB_TOK_Blake2b256 || e->tk == GMB_TOK_RlpEncode
-            || e->tk == GMB_TOK_VarIntEncode || e->tk == GMB_TOK_MnemonicToSeed
-            || e->tk == GMB_TOK_GetPublicKey || e->tk == GMB_TOK_EcdsaSecp256k1Sign)
+            || e->tk == GMB_TOK_EncryptAsym || e->tk == GMB_TOK_DecryptAsym)
             return TY_STR;
         /* chiamata INDIRETTA su variabile function-typed con ritorno STRING (es.
          * `saluta(...)` con DIM saluta AS FUNCTION(...) AS STRING) → tipo stringa */
@@ -3897,7 +3907,7 @@ if (s->dim_var) {            int ty = suffix_type(s->dim_var);
                 }
             }
             {
-                int dvk = dim_val_init_kind(s->dim_init);
+                int dvk = dim_val_init_kind(c, s->dim_init);
                 /* Non marcare boxed_val per `DIM x() = <membro di dict boxed>` (es.
                  * `DIM priv() = dk("privateKey")`): l'array vuoto `()` è un BYTE-array
                  * (ramo is_bytes sotto), non un dict. Senza `!dim_empty_parens` il boxed_val
@@ -6319,7 +6329,6 @@ int emit_bf_team(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk,
 int emit_bf_tray(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk, gmb_expr_t** args, int nargs, int line);
 int emit_bf_console(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk, gmb_expr_t** args, int nargs, int line); /* gmb_c99_emit_console.c */
 int emit_bf_net(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk, gmb_expr_t** args, int nargs, int line);
-int emit_bf_blockchain(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk, gmb_expr_t** args, int nargs, int line); /* gmb_c99_emit_builtin.c */
 int emit_bf_connector(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk, gmb_expr_t** args, int nargs, int line); /* gmb_c99_emit_console.c */
 int emit_bf_security_tok(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk, gmb_expr_t** args, int nargs, int line);
 int emit_bf_memory(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk, gmb_expr_t** args, int nargs, int line);
@@ -7379,25 +7388,6 @@ static const gmb_bf_row_t gmb_bf_composite[] = {
     { NULL, GMB_TOK_VectorCosineDistance, emit_bf_vector },
     { NULL, GMB_TOK_VectorMinkowski, emit_bf_vector },
     { NULL, GMB_TOK_DotProduct, emit_bf_vector },
-    /* BLOCKCHAIN (18 funzioni, runtime condiviso gmb_commonlib.h/gmb_blockchain.c) */
-    { NULL, GMB_TOK_Keccak256, emit_bf_blockchain },
-    { NULL, GMB_TOK_RipeMd160, emit_bf_blockchain },
-    { NULL, GMB_TOK_Blake2b256, emit_bf_blockchain },
-    { NULL, GMB_TOK_RlpEncode, emit_bf_blockchain },
-    { NULL, GMB_TOK_VarIntEncode, emit_bf_blockchain },
-    { NULL, GMB_TOK_VarIntDecode, emit_bf_blockchain },
-    { NULL, GMB_TOK_EthAddressFromPub, emit_bf_blockchain },
-    { NULL, GMB_TOK_EthAddressChecksum, emit_bf_blockchain },
-    { NULL, GMB_TOK_BtcAddressFromPub, emit_bf_blockchain },
-    { NULL, GMB_TOK_BlockDifficulty, emit_bf_blockchain },
-    { NULL, GMB_TOK_EcdsaSecp256k1Sign, emit_bf_blockchain },
-    { NULL, GMB_TOK_GenerateMnemonic, emit_bf_blockchain },
-    { NULL, GMB_TOK_MnemonicToSeed, emit_bf_blockchain },
-    { NULL, GMB_TOK_DeriveKey, emit_bf_blockchain },
-    { NULL, GMB_TOK_GetPublicKey, emit_bf_blockchain },
-    { NULL, GMB_TOK_Contract, emit_bf_blockchain },
-    { NULL, GMB_TOK_AbiEncode, emit_bf_blockchain },
-    { NULL, GMB_TOK_AbiDecode, emit_bf_blockchain },
     /* CONVERT/DOCUMENT (31 funzioni — gmb_doc_c + gmb_runtime_c/gmb_md.c). Token-first
      * (regola d'oro §12): l'audit conta le entry per TokenKind. */
     { NULL, GMB_TOK_CvtBatch, emit_bf_convert },
@@ -7737,8 +7727,6 @@ static const gmb_bf_row_t gmb_bf_composite[] = {
     { NULL, GMB_TOK_FromBase64Url, emit_bf_encoding },
     { NULL, GMB_TOK_FromHex, emit_bf_encoding },
     { NULL, GMB_TOK_ToHex, emit_bf_encoding },
-    { NULL, GMB_TOK_StrKeccak256, emit_bf_encoding },
-    { NULL, GMB_TOK_StrRipeMd160, emit_bf_encoding },
     { NULL, GMB_TOK_MemoryStore, emit_bf_memory },
     { NULL, GMB_TOK_MemoryLoad, emit_bf_memory },
     { NULL, GMB_TOK_MemoryDelete, emit_bf_memory },
@@ -8764,19 +8752,6 @@ static void emit_dim_arr_init(ctx_t* c, gmb_stmt_t* s) {
         ind(c);
         emit_ident(c, v->name);
         sb_put(&c->out, "_len = gmb_lambda_ret_len_get();\n");
-        return;
-    }
-    /* BLOCKCHAIN.ABIDECODE(hex$, types[]) → double* + <var>_len (gmb_abi_decode_doubles).
-     * Parità IlRuntime.AbiDecode: parole da 32 byte big-endian dall'offset 0. */
-    if (init->tk == GMB_TOK_AbiDecode) {
-        if (init->nargs < 1) { c99_fail(c, s->line, "%s: ABIDECODE richiede (hex$)", bn); return; }
-        ind(c);
-        sb_put(&c->out, "{ int _ad_n = 0; ");
-        emit_ident(c, v->name);
-        sb_put(&c->out, " = gmb_abi_decode_doubles((");
-        emit_str_operand(c, init->args[0]); sb_put(&c->out, ").data, &_ad_n); ");
-        emit_ident(c, v->name);
-        sb_put(&c->out, "_len = (gmb_int_t)_ad_n; }\n");
         return;
     }
     /* ── ARRAYS.AMAP/AFILTER/AREVERSE/ACLONE/AUNIQUE su array PRIMITIVI (parity
@@ -10062,6 +10037,27 @@ static void emit_arr_call_arg(ctx_t* c, fn_info_t* fn, int i, gmb_expr_t* arg, i
         return;
     }
     var_t* tv = lookup_var(c, vname);
+    /* BYTE-stringa (DIM x() = FROMHEX(...)/digest, CAS BYTE legacy): rappresentazione
+     * gmb_string_t binaria, NON un array C. Un parametro `arr() AS BYTE` vuole (ptr, bound):
+     * si converte byte per byte col ponte del runtime condiviso (buffer a rotazione, nessun
+     * free dal chiamante, valori 0..255 come il DOM di BYTE). Prima era un errore di
+     * emissione ("l'argomento N non è un array"): un byte-array non poteva essere passato a
+     * una SUB/FUNCTION con parametro array — e quindi nemmeno a un wrapper FFI. */
+    if (tv && !tv->is_array && tv->is_bytes) {
+        var_t* pv_b = vars_find(&fn->locals, fn->stmt->func_params[i]);
+        if (pv_b && pv_b->arr_byref) {
+            c99_fail(c, line,
+                     "%s: un byte-array (FROMHEX/digest) non puo' essere passato a un parametro array BYREF/REDIM",
+                     fn->stmt->func_name);
+            return;
+        }
+        sb_put(&c->out, "gmb_bytes_as_doubles(");
+        emit_ident(c, tv->name);
+        sb_put(&c->out, ", NULL), (gmb_int_t)(");
+        emit_ident(c, tv->name);
+        sb_put(&c->out, ").length - 1");
+        return;
+    }
     if (!tv || !tv->is_array) {
         c99_fail(c, line, "%s: l'argomento %d non è un array", fn->stmt->func_name, i + 1);
         return;
@@ -15902,7 +15898,7 @@ static void emit_arr_literal_assign(ctx_t* c, const char* target, gmb_expr_t* li
       if (target && value && !strchr(target, '.')) {
           var_t* nv = lookup_var(c, target);
           if (nv && nv->type == TY_NUM && !nv->boxed_val && !nv->gkind && !nv->vclass[0]
-              && !nv->is_array && dim_val_init_kind(value)) {
+              && !nv->is_array && dim_val_init_kind(c, value)) {
               c99_fail(c, line,
                        "valore dinamico (JSON/dict) assegnato alla variabile numerica '%s': dichiararla AS JSON (o convertire in stringa)",
                        nv->name);
@@ -16048,7 +16044,7 @@ static void emit_arr_literal_assign(ctx_t* c, const char* target, gmb_expr_t* li
                * è C illegale e la variabile boxed restava rotta (bug C99Native-JSON-Load:
                * `DIM j AS JSON` + `j = JSON.Load(...)`). Predicato canonico = quello usato da
                * DIM (dim_val_init_kind), così la forma in assegnazione non diverge. */
-              else if (value && dim_val_init_kind(value))
+              else if (value && dim_val_init_kind(c, value))
                   emit_expr(c, value);
               else if (value && etype(c, value) == TY_STR) { sb_put(&c->out, "gmb_make_val_string(("); emit_expr(c, value); sb_put(&c->out, ").data)"); }
               /* NEW LIST/DICT/... (COLLNEW) su un val boxed → gmb_make_val_list/dict (non
@@ -16114,7 +16110,7 @@ static void emit_arr_literal_assign(ctx_t* c, const char* target, gmb_expr_t* li
                      for (const char* q = dm + 1; *q; q++) { if (*q == '"' || *q == '\\') sb_put(&c->out, "\\"); sb_putn(&c->out, q, 1); }
                      sb_put(&c->out, "\", ");
                      if (etype(c, value) == TY_STR) { sb_put(&c->out, "gmb_make_val_string(("); emit_expr(c, value); sb_put(&c->out, ").data)"); }
-                     else if (etype(c, value) == TY_VAL || dim_val_init_kind(value)) { emit_expr(c, value); }
+                     else if (etype(c, value) == TY_VAL || dim_val_init_kind(c, value)) { emit_expr(c, value); }
                      /* RHS TY_VAL (json("k")/call su val boxed): l'emissione è già un gmb_val_t
                       * → passalo RAW (gmb_make_val_double((double)(val)) è C illegale). */
                      else if (etype(c, value) == TY_VAL) { emit_expr(c, value); }
@@ -16465,7 +16461,7 @@ static void emit_arr_literal_assign(ctx_t* c, const char* target, gmb_expr_t* li
                          sb_putn(&c->out, p, 1);
                      }
                      sb_put(&c->out, "\", ");
-                     if (dim_val_init_kind(value)) {
+                     if (dim_val_init_kind(c, value)) {
                          emit_expr(c, value);
                      } else if (value->kind == GMB_EXPR_VAR && value->var && lookup_var(c, value->var) && lookup_var(c, value->var)->boxed_val) {
                          emit_expr(c, value);
@@ -18331,7 +18327,7 @@ static void st_let_assign(ctx_t* c, gmb_stmt_t* s) {
                             sb_put(&c->out, ", ");
                             var_t* sv3 = (s->value && s->value->kind == GMB_EXPR_VAR && s->value->var) ? lookup_var(c, s->value->var) : NULL;
                             if (sv3 && !sv3->vclass[0] && sv3->boxed_val) emit_expr(c, s->value);
-                            else if (dim_val_init_kind(s->value)) emit_expr(c, s->value);
+                            else if (dim_val_init_kind(c, s->value)) emit_expr(c, s->value);
                             else if (etype(c, s->value) == TY_STR) { sb_put(&c->out, "gmb_make_val_string(("); emit_expr(c, s->value); sb_put(&c->out, ").data)"); }
                             else if (s->value && s->value->kind == GMB_EXPR_VAR && s->value->var) {
                                 sb_put(&c->out, "gmb_make_val_double((double)("); emit_expr(c, s->value); sb_put(&c->out, "))");
@@ -18394,7 +18390,7 @@ static void st_let_assign(ctx_t* c, gmb_stmt_t* s) {
                 else if (s->value && s->value->var && (strcmp(s->value->var, "_true_") == 0 || strcmp(s->value->var, "_false_") == 0)) { sb_put(&c->out, "gmb_make_val_bool(("); emit_expr(c, s->value); sb_put(&c->out, "))"); }
                 else if (s->value && s->value->kind == GMB_EXPR_BINARY && s->value->op && (!strcmp(s->value->op, "=") || !strcmp(s->value->op, "<>") || !strcmp(s->value->op, "<") || !strcmp(s->value->op, ">") || !strcmp(s->value->op, "<=") || !strcmp(s->value->op, ">="))) { sb_put(&c->out, "gmb_make_val_bool(("); emit_expr(c, s->value); sb_put(&c->out, "))"); }
                 else if (etype(c, s->value) == TY_STR) { sb_put(&c->out, "gmb_make_val_string(("); emit_expr(c, s->value); sb_put(&c->out, ").data)"); }
-                else if (dim_val_init_kind(s->value)) { emit_expr(c, s->value); }
+                else if (dim_val_init_kind(c, s->value)) { emit_expr(c, s->value); }
                 /* RHS TY_VAL (json("k")/call su val boxed): l'emissione è già un gmb_val_t → RAW
                  * (bug BspModelAuthDemo: s("user") = gUser("name")). */
                 else if (etype(c, s->value) == TY_VAL) { emit_expr(c, s->value); }
@@ -19233,7 +19229,7 @@ static void emit_dict_literal(ctx_t* c, gmb_expr_t* e) {
             }
         }
         if (dv && dv->type == TY_NUM && !dv->boxed_val && !dv->gkind && !dv->vclass[0]
-            && dim_val_init_kind(s->dim_init)) {
+            && dim_val_init_kind(c, s->dim_init)) {
             c99_fail(c, s->line,
                      "valore dinamico (JSON/dict) assegnato alla variabile numerica '%s': dichiararla AS JSON (o convertire in stringa)",
                      dv->name);
@@ -25825,6 +25821,16 @@ static void emit_ai_domain(ctx_t* c, gmb_stmt_t* s) {
         sb_put(&c->out, "gmb_raise_error(0, \"AI REGISTER: provider non registrato (per i modelli usa AI MODEL LOAD)\", 0);\n");
         return;
     }
+    /* AI LIST OPTIONS (parser: act_tk = GMB_TOK_AiListOptions, nessun argomento): comando-query
+     * (§1) che STAMPA le voci dichiarate del registro opzioni. Il testo e' formattato dal runtime
+     * condiviso `gmb_opt_list_text()`, quindi VM/C e C99Native non possono divergere. */
+    if (s->act_tk == GMB_TOK_AiListOptions) {
+        ind(c);
+        sb_put(&c->out, "gmb_print_string(gmb_string_alloc(gmb_opt_list_text()));\n");
+        ind(c);
+        sb_put(&c->out, "gmb_print_newline();\n");
+        return;
+    }
     if (gmb_keyword_tok(verb) == GMB_TOK_Set) {
         if (n < 1 || !a[0] || !a[0]->var) { c99_fail(c, s->line, "AI SET: attesa forma AI SET <KEY|MODEL|TEMP|BASE|DEFAULT> ..."); return; }
         const char* prop = a[0]->var;
@@ -31047,9 +31053,13 @@ static void emit_ffi_wrapper(ctx_t* c, fn_info_t* fn) {
              * letto con un passo a 8 byte da' garbage (bug osservato lato IL: AS BYTE pinnato
              * direttamente). Vedi Compiler.Expressions.cs per il dettaglio completo. */
             gmb_tokenkind_t ek = s->param_types && s->param_types[i] ? gmb_keyword_tok(s->param_types[i]) : GMB_TOK_Double;
+            /* BYTE/SBYTE (2026-11-06): ammessi come elemento-array — lo storage BASIC resta
+             * gmb_double_t*, la conversione a gmb_int_t (8 byte per elemento, valori 0..255) e'
+             * fatta da __ci_<param> sotto (n_intarr), con copy-back dopo la chiamata. */
             int elemOk = ek == GMB_TOK_Double
                 || ek == GMB_TOK_Long || ek == GMB_TOK_Quad
-                || ek == GMB_TOK_UQuad || ek == GMB_TOK_ULong;
+                || ek == GMB_TOK_UQuad || ek == GMB_TOK_ULong
+                || ek == GMB_TOK_Byte || ek == GMB_TOK_SByte;
             if (!elemOk) {
                 c99_fail(c, s->line, "FFI '%s': tipo elemento non supportato per il parametro "
                          "array '%s' (solo AS DOUBLE o LONG/QUAD, non INTEGER/BYTE/SINGLE — "
@@ -31140,9 +31150,10 @@ static void emit_ffi_wrapper(ctx_t* c, fn_info_t* fn) {
             }
         }
     }
-    /* Limite arità (parità 4 backend: la VM/C chiama al massimo 8 argomenti). */
-    if (s->n_params > 8) {
-        c99_fail(c, s->line, "FFI '%s': massimo 8 argomenti supportati dal marshalling FFI.", sym);
+    /* Limite arità (parità 4 backend: la VM/C usa libffi con maschere a 16 bit; C#/IL e
+     * PCode hanno lo stesso limite, vedi FfiMaxArgs). */
+    if (s->n_params > 16) {
+        c99_fail(c, s->line, "FFI '%s': massimo 16 argomenti supportati dal marshalling FFI.", sym);
         return;
     }
     int ret_is_udt = ret_udt_ci != NULL;
@@ -34154,7 +34165,7 @@ int gmb_c99_emit(const gmb_program_t* prog, char** out_src, char** error) {
         /* Canary tasti TUI (parità col backend C#): GMB_TUI_SCRIPT inietta una sequenza
          * (es. ESC×256 dal gate/CI) che chiude i modali widget headless. */
         if (c->uses_tui)
-            sb_put(&c->out, "    { const char* _gmb_tui_script = getenv(\"GMB_TUI_SCRIPT\");"
+            sb_put(&c->out, "    { const char* _gmb_tui_script = gmb_opt_env(\"GMB_TUI_SCRIPT\");"
                             " if (_gmb_tui_script && *_gmb_tui_script) gmb_tui_inject_keys(_gmb_tui_script); }\n");
         int err_sv = c->n_err_decl;
         size_t err_pos = c->out.len;

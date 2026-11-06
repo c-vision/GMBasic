@@ -7,6 +7,11 @@
 
 #include "gmb_vm_core.h"
 #include "gmb_call.h"
+
+/* Specchio di GMB_FFI_MAX_ARGS in gmb_bytecode/include/gmb_compiler.h. */
+#ifndef GMB_FFI_MAX_ARGS
+#define GMB_FFI_MAX_ARGS 16
+#endif
 #include "gmb_tray.h"
 #include "gmb_vm_signal.h"
 #include "gmb_state_hook.h"   /* canale d'errore dell'hook di stato (VM/C ospitata) */
@@ -1493,6 +1498,18 @@ static double gmb_vm_ffi_call_mixed(void* fn, int argc, unsigned shapeBits, int 
     return 0.0;
 }
 
+
+/* Slot UNIFORMI int64 (puntatori array/string/byref/callback + scalari interi): libffi.
+ * Ritorna -1 se la firma non è preparabile (il chiamante usa il dispatch storico). */
+static int gmb_vm_ffi_call_uniform_int(void* fn, int n, const double* a, int64_t* out)
+{
+    if (!gmb_call_enabled() || n < 0 || n > GMB_FFI_MAX_ARGS) return -1;
+    unsigned char is_int[GMB_FFI_MAX_ARGS];
+    void* vals[GMB_FFI_MAX_ARGS];
+    int64_t iv[GMB_FFI_MAX_ARGS];
+    for (int i = 0; i < n; i++) { is_int[i] = 1; iv[i] = (int64_t)a[i]; vals[i] = &iv[i]; }
+    return gmb_call_invoke(fn, n, is_int, vals, 1, out);
+}
 
 /* FFI: chiamata a una funzione NON-variadic con firma ESATTA per argc. MAI il typedef
  * variadico `double (*)(double, ...)`: su ARM64 invocare una funzione non-variadic
@@ -14608,7 +14625,7 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                     fn = vm->chunk->constants[nameIdx].s;
 
                 double result = 0.0;
-                if (lib != NULL && fn != NULL && argc <= 8)
+                if (lib != NULL && fn != NULL && argc <= GMB_FFI_MAX_ARGS)
                 {
                     void* h = gmb_ffi_dl_open(lib);
                     if (h != NULL)
@@ -14648,12 +14665,12 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                  * quelle il bit e' ignorato, restano classificate dalle rispettive maschere
                  * sotto). Nel caso omogeneo legacy coincide con 'kind' per ogni bit. Vedi
                  * OpCode.cs OP_CALL_FFI_T e Compiler.Expressions.cs. */
-                int scalarKindMask = gmb_vm_read_u8(vm, task);
+                int scalarKindMask = gmb_vm_read_u16(vm, task);
                 /* array_mask (2026-09-28): bit i settato se l'argomento logico i e' un array
                  * BYREF — il ref va tenuto vivo (NON released qui) fino al marshalling sotto,
                  * che lo trasforma in un puntatore nativo scratch invece che leggerlo come
                  * scalare double. Vedi OpCode.cs OP_CALL_FFI_T e Compiler.Expressions.cs. */
-                int arrayMask = gmb_vm_read_u8(vm, task);
+                int arrayMask = gmb_vm_read_u16(vm, task);
                 /* array_elem_int_mask (2026-09-28, fix parita'): bit i settato se l'array al
                  * parametro i ha elementi INTERI (AS LONG/...) invece di DOUBLE — dichiarato a
                  * compile-time, NON dedotto dal tag a runtime: un `DIM v() AS LONG` in VM/C
@@ -14661,7 +14678,7 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                  * osservato in FfiService.cs/PCodeVM), quindi il peek su
                  * sv->list->items[0].kind sceglieva sistematicamente lo scratch del tipo
                  * sbagliato. Vedi OpCode.cs OP_CALL_FFI_T. */
-                int arrayElemIntMask = gmb_vm_read_u8(vm, task);
+                int arrayElemIntMask = gmb_vm_read_u16(vm, task);
                 /* string_mask/ret_is_string (2026-09-28, supporto STRING): un parametro STRING
                  * e' un gmb_obj_string_t* (gmb_vm_value.h, DIVERSO dal gmb_obj_shared_val_t
                  * degli array) — il ref va tenuto vivo come per gli array, ma il puntatore
@@ -14669,15 +14686,15 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                  * buffer necessario, a differenza degli array taggati). ret_is_string: il
                  * ritorno e' un puntatore nativo (spesso un buffer statico/riusato) da copiare
                  * IMMEDIATAMENTE in una nuova stringa BASIC invece di trattarlo come numero. */
-                int stringMask = gmb_vm_read_u8(vm, task);
+                int stringMask = gmb_vm_read_u16(vm, task);
                 int retIsString = gmb_vm_read_u8(vm, task);
                 /* byref_scalar_mask/byref_scalar_elem_int_mask (2026-09-28, BYREF scalare): il
                  * compilatore ha emesso OP_MAKE_BYREF/_GLOBAL/_ELEMENT per questi argomenti
                  * (Compiler.Expressions.cs) — lo stack contiene una gmb_obj_byref_t* (stesso
                  * meccanismo del BYREF ordinario). Il ref va tenuto vivo (riusa arrRefs[])
                  * finché non si ri-scrive il valore OUT dopo la chiamata via gmb_byref_store. */
-                int byrefScalarMask = gmb_vm_read_u8(vm, task);
-                int byrefScalarElemIntMask = gmb_vm_read_u8(vm, task);
+                int byrefScalarMask = gmb_vm_read_u16(vm, task);
+                int byrefScalarElemIntMask = gmb_vm_read_u16(vm, task);
                 /* udt_param_field_count[8]/ret_udt_field_count + coda nomi/SymbolId
                  * (2026-09-28, struct/UDT per valore): vedi OpCode.cs/Disassembler.cs
                  * OP_CALL_FFI_T e Compiler.Expressions.cs. Un parametro UDT non è un bit
@@ -14687,14 +14704,14 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                  * (gmb_dict_t chiavato per nome, come OP_NEW_UDT_INSTANCE la popola); i
                  * SymbolId servono a costruire un'istanza in uscita leggibile da
                  * OP_LOAD_MEMBER (fallback "__m<SymbolId>", vedi vm_field_name_from_offset). */
-                int udtParamFieldCount[8] = {0};
-                for (int pi = 0; pi < 8; pi++) udtParamFieldCount[pi] = gmb_vm_read_u8(vm, task);
+                int udtParamFieldCount[GMB_FFI_MAX_ARGS] = {0};
+                for (int pi = 0; pi < GMB_FFI_MAX_ARGS; pi++) udtParamFieldCount[pi] = gmb_vm_read_u8(vm, task);
                 /* udtParamFieldKindMask[8] (2026-09-29, kind misto come parametro): bit i =
                  * campo i del parametro UDT alla posizione pi è INTERO (0=DOUBLE) — vedi
                  * Compiler.Expressions.cs/Disassembler.cs. Un parametro UDT uniforme ha tutti i
                  * bit uguali (0 o 3 per 2 campi); mask 1 o 2 = kind misto (vedi mixedParamIdx). */
-                int udtParamFieldKindMask[8] = {0};
-                for (int pi = 0; pi < 8; pi++) udtParamFieldKindMask[pi] = gmb_vm_read_u8(vm, task);
+                int udtParamFieldKindMask[GMB_FFI_MAX_ARGS] = {0};
+                for (int pi = 0; pi < GMB_FFI_MAX_ARGS; pi++) udtParamFieldKindMask[pi] = gmb_vm_read_u8(vm, task);
                 int retUdtFieldCount = gmb_vm_read_u8(vm, task);
                 /* retUdtFieldKindMask (2026-09-29, kind misto sul ritorno): bit i = campo i del
                  * ritorno UDT è INTERO (0=DOUBLE) — a differenza dei parametri (kind uniforme,
@@ -14707,11 +14724,11 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                  * mask del trampolino nativo — usati sotto da gmb_ffi_cb_alloc per scegliere il
                  * trampolino pre-dichiarato giusto (vedi il pool subito dopo
                  * gmb_vm_call_closure_sync_n, piu' in alto nel file). */
-                int callbackParamArity[8] = {0};
-                for (int pi = 0; pi < 8; pi++)
+                int callbackParamArity[GMB_FFI_MAX_ARGS] = {0};
+                for (int pi = 0; pi < GMB_FFI_MAX_ARGS; pi++)
                     callbackParamArity[pi] = gmb_vm_read_u8(vm, task);
-                int callbackParamKindMask = gmb_vm_read_u8(vm, task);
-                int callbackParamHasRetMask = gmb_vm_read_u8(vm, task);
+                int callbackParamKindMask = gmb_vm_read_u16(vm, task);
+                int callbackParamHasRetMask = gmb_vm_read_u16(vm, task);
                 // Struct annidate (2026-09-29): la seconda costante per foglia è un CSV di
                 // SymbolId (uno PER SEGMENTO del path, non solo la foglia finale — vedi
                 // Compiler.Expressions.cs CollectFfiLeaves/SymbolIdPath), parsato in un path di
@@ -14719,11 +14736,11 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                 // dict per nome, mai per offset) — il path-SymbolId è comunque consumato dal
                 // bytecode per restare allineati, anche se qui non viene usato. Per il RITORNO
                 // (ricostruzione istanza OUT) serve invece entrambi — vedi vm_ffi_set_leaf.
-                const char* udtFieldNames[8][8] = {{0}};
-                const char* retUdtFieldNames[8] = {0};
-                int retUdtFieldSymbolIdPath[8][4] = {{0}};
-                int retUdtFieldSymbolIdDepth[8] = {0};
-                for (int pi = 0; pi < 8; pi++)
+                const char* udtFieldNames[GMB_FFI_MAX_ARGS][8] = {{0}};
+                const char* retUdtFieldNames[GMB_FFI_MAX_ARGS] = {0};
+                int retUdtFieldSymbolIdPath[GMB_FFI_MAX_ARGS][4] = {{0}};
+                int retUdtFieldSymbolIdDepth[GMB_FFI_MAX_ARGS] = {0};
+                for (int pi = 0; pi < GMB_FFI_MAX_ARGS; pi++)
                     for (int fi = 0; fi < udtParamFieldCount[pi]; fi++)
                     {
                         int nameIdxF = gmb_vm_read_u16(vm, task);
@@ -14778,9 +14795,9 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                  * nativeSlotOf[i] dice a quale slot nativo INIZIA il parametro logico i.
                  * Il compilatore garantisce nativeSlotCount <= 8 (guardia "troppi slot
                  * nativi", Compiler.Expressions.cs). */
-                int nativeSlotOf[8] = {0};
+                int nativeSlotOf[GMB_FFI_MAX_ARGS] = {0};
                 int nativeSlotCount = 0;
-                for (int i = 0; i < argc && i < 8; i++)
+                for (int i = 0; i < argc && i < GMB_FFI_MAX_ARGS; i++)
                 {
                     nativeSlotOf[i] = nativeSlotCount;
                     nativeSlotCount += udtParamFieldCount[i] > 0 ? udtParamFieldCount[i] : 1;
@@ -14792,7 +14809,7 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                  * (Compiler.Expressions.cs). mixedNB/mixedNA = quanti slot SCALAR_T PRIMA/DOPO
                  * la sua posizione — usati da GMB_FFI_MIXED_DISPATCH (vedi sopra). */
                 int mixedParamIdx = -1, mixedNB = 0, mixedNA = 0, mixedIsIdOrder = 0;
-                for (int i = 0; i < 8; i++)
+                for (int i = 0; i < GMB_FFI_MAX_ARGS; i++)
                     if (udtParamFieldCount[i] == 2 && (udtParamFieldKindMask[i] == 1 || udtParamFieldKindMask[i] == 2))
                     {
                         mixedParamIdx = i;
@@ -14822,9 +14839,9 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                  * riconoscimento di OP_CALL_INDIRECT, gmb_vm_core.c:6094-6102). Gli slot
                  * allocati vengono liberati subito dopo la chiamata nativa (vedi sotto, insieme
                  * al rilascio di arrRefs[]). */
-                int cbAllocKind[8], cbAllocArity[8], cbAllocSlot[8], cbAllocCount = 0;
+                int cbAllocKind[GMB_FFI_MAX_ARGS], cbAllocArity[GMB_FFI_MAX_ARGS], cbAllocSlot[GMB_FFI_MAX_ARGS], cbAllocCount = 0;
                 int callbackError = 0;
-                for (int i = 0; i < argc && i < 8; i++)
+                for (int i = 0; i < argc && i < GMB_FFI_MAX_ARGS; i++)
                 {
                     if (callbackParamArity[i] == 255) continue;
                     gmb_obj_closure_t* cl = NULL;
@@ -14858,7 +14875,7 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                     if (h != NULL)
                     {
                         void* p = gmb_ffi_dl_sym(h, fn);
-                        unsigned fullMaskForArgc = argc >= 8 ? 0xFFu : (unsigned)((1 << argc) - 1);
+                        unsigned fullMaskForArgc = argc >= GMB_FFI_MAX_ARGS ? 0xFFFFu : (unsigned)((1u << argc) - 1u);
                         /* 2026-11-02: slot puntatore (array/STRING/BYREF) presenti? Se sì il
                          * path "misto" scalare-puro non basta: serve il marshalling degli
                          * argomenti puntatore PRIMA della dispatch (vedi il ramo sotto). */
@@ -14877,7 +14894,7 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                         }
                         else if (p != NULL && (kind == 1 || hasPtrSlot))
                         {
-                            /* Array BYREF (2026-09-28): gli array BASIC qui sono gmb_val_t*
+                                                        /* Array BYREF (2026-09-28): gli array BASIC qui sono gmb_val_t*
                              * TAGGATI (gmb_obj_shared_val_t->list), non un buffer nativo
                              * contiguo — a differenza di C99Native (che emettono C
                              * e riusano il puntatore vero). Serve un marshalling copy-in/
@@ -14888,10 +14905,10 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                              * ricopiano i valori (eventualmente scritti dalla funzione) dentro
                              * gli item della lista — copre sia input (letti) che output
                              * (scritti, es. CopyBuffer-style) senza distinguere i due casi. */
-                            void* scratch[8] = {0};
-                            gmb_int_t scratchLen[8] = {0};
-                            int scratchIsInt[8] = {0};
-                            for (int i = 0; i < argc && i < 8; i++)
+                            void* scratch[GMB_FFI_MAX_ARGS] = {0};
+                            gmb_int_t scratchLen[GMB_FFI_MAX_ARGS] = {0};
+                            int scratchIsInt[GMB_FFI_MAX_ARGS] = {0};
+                            for (int i = 0; i < argc && i < GMB_FFI_MAX_ARGS; i++)
                             {
                                 if (!(arrayMask & (1 << i)) || !arrRefs[i]) continue;
                                 gmb_obj_shared_val_t* sv = (gmb_obj_shared_val_t*)arrRefs[i];
@@ -14918,7 +14935,7 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                              * Compiler.Expressions.cs IsFfiArrayElemType). Riusa lo stesso array
                              * scratch[]/scratchIsInt[] delle array (slot disgiunti: un bit è
                              * settato in arrayMask O in byrefScalarMask, mai entrambi). */
-                            for (int i = 0; i < argc && i < 8; i++)
+                            for (int i = 0; i < argc && i < GMB_FFI_MAX_ARGS; i++)
                             {
                                 if (!(byrefScalarMask & (1 << i)) || !arrRefs[i]) continue;
                                 int isInt = (byrefScalarElemIntMask & (1 << i)) != 0;
@@ -14948,8 +14965,8 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                              * slot calcolato da nativeSlotOf[]. Gli altri slot (scalare/array/
                              * STRING/BYREF) restano GMB_FFI_A(i) invariato, solo spostato nello
                              * slot nativo giusto (== i se nessun UDT precede). */
-                            double nativeArgs[8] = {0};
-                            for (int i = 0; i < argc && i < 8; i++)
+                            double nativeArgs[GMB_FFI_MAX_ARGS] = {0};
+                            for (int i = 0; i < argc && i < GMB_FFI_MAX_ARGS; i++)
                             {
                                 if (udtParamFieldCount[i] > 0)
                                 {
@@ -14974,7 +14991,7 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                                  * in scratch[]/arrRefs[] sopra: qui si sostituiscono in args[]
                                  * col loro indirizzo (double, come già avviene per i
                                  * callback), poi si dispatcha per-kind-slot. */
-                                for (int i = 0; i < argc && i < 8; i++)
+                                for (int i = 0; i < argc && i < GMB_FFI_MAX_ARGS; i++)
                                 {
                                     if ((arrayMask | byrefScalarMask) & (1 << i))
                                         args[i] = (double)(intptr_t)scratch[i];
@@ -14987,7 +15004,19 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                                                                kind == 1 ? 1 : 0, args);
                             }
                             else if (retUdtFieldCount == 0)
-                                GMB_FFI_CALL_T(int64_t, int64_t, nativeArgs, r);
+                            {
+                                /* Nessun UDT in uscita: se non ci sono UDT in ingresso la firma
+                                 * è un vettore uniforme di slot int64 → libffi (regge N>8). */
+                                int hasUdtParam = 0;
+                                for (int i = 0; i < argc && i < GMB_FFI_MAX_ARGS; i++)
+                                    if (udtParamFieldCount[i] > 0) { hasUdtParam = 1; break; }
+                                int64_t rr = 0;
+                                if (!hasUdtParam &&
+                                    gmb_vm_ffi_call_uniform_int(p, nativeSlotCount, nativeArgs, &rr) == 0)
+                                    r = rr;
+                                else
+                                    GMB_FFI_CALL_T(int64_t, int64_t, nativeArgs, r);
+                            }
                             /* Struct/UDT per valore, RITORNO (2026-09-28): switch su
                              * retUdtFieldCount per selezionare la "forma" pre-dichiarata
                              * giusta (gmb_ffi_udti<N>_t) — il tipo di ritorno del cast deve
@@ -15045,7 +15074,7 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                              * invece scritta-through nel box via gmb_byref_store (write-through,
                              * stesso schema del BYREF ordinario) — slot disgiunti da arrayMask,
                              * quindi arrRefs[i] qui è una gmb_obj_byref_t*, non una lista. */
-                            for (int i = 0; i < argc && i < 8; i++)
+                            for (int i = 0; i < argc && i < GMB_FFI_MAX_ARGS; i++)
                             {
                                 if (!scratch[i]) continue;
                                 if (byrefScalarMask & (1 << i))
@@ -15074,8 +15103,8 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                             /* kind 0 = double: firma ESATTA per argc (mai il variadico). Nessun
                              * array/STRING/BYREF possibile qui (forzano sempre kind=1) — solo
                              * eventuali parametri/ritorno UDT tutto-DOUBLE (2026-09-28). */
-                            double nativeArgsD[8] = {0};
-                            for (int i = 0; i < argc && i < 8; i++)
+                            double nativeArgsD[GMB_FFI_MAX_ARGS] = {0};
+                            for (int i = 0; i < argc && i < GMB_FFI_MAX_ARGS; i++)
                             {
                                 if (udtParamFieldCount[i] > 0)
                                 {
@@ -15125,7 +15154,7 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                 }
                 /* Rilascia i ref array/stringa tenuti vivi per il marshalling sopra (anche se
                  * lib/fn non sono stati risolti — non devono fuoriuscire dal refcount). */
-                for (int i = 0; i < argc && i < 16; i++)
+                for (int i = 0; i < argc && i < GMB_FFI_MAX_ARGS; i++)
                     if (arrRefs[i]) gmb_obj_release(arrRefs[i]);
                 /* Libera i trampolini callback allocati sopra — schema SOLO SINCRONO (v1): il
                  * nativo deve richiamare il callback DURANTE questa chiamata, mai dopo (un
