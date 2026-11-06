@@ -984,41 +984,31 @@ BRAINS FIND PATH "index.md" TO "trading/momentum.md"   ' path più corto nel gra
 |---|---|---|
 | `BRAINS.Neighbors(brain, node)` | JSON | vicini diretti (out+in) |
 | `BRAINS.Path(brain, from, to)` | JSON | cammino minimo (BFS) |
-| `BRAINS.PageRank(brain [, topK])` | JSON | PageRank (power iteration) |
-| `BRAINS.Connected(brain)` | JSON | componenti connesse |
-| `BRAINS.StronglyConnected(brain)` | JSON | SCC (Tarjan) |
-| `BRAINS.TopoSort(brain)` | JSON | ordinamento topologico (Kahn) |
-| `BRAINS.Bipartite(brain)` | JSON | bipartiteness |
-| `BRAINS.Betweenness(brain)` | JSON | centralità betweenness (Brandes) |
-| `BRAINS.Clustering(brain, node)` | JSON | coefficiente di clustering locale |
-| `BRAINS.Diameter(brain)` | JSON | diametro (Floyd-Warshall) |
-| `BRAINS.Mst(brain)` | JSON | albero ricoprente minimo (Kruskal) |
 | `BRAINS.Stats(brain)` | JSON | metriche base + PageRank top |
 | `BRAINS.IsValid(brain)` | `1`/`0` | 1 se almeno un nodo (brain assente → 0) |
-| `BRAINS.HasCycle(brain)` | `1`/`0` | 1 se contiene un ciclo (brain assente → 0) |
-| `BRAINS.Eccentricity(brain, node)` | JSON | eccentricità del nodo |
-| `BRAINS.Dfs(brain, root)` | JSON | visita in profondità |
-| `BRAINS.Bfs(brain, root)` | JSON | visita in ampiezza |
-| `BRAINS.Dijkstra(brain, from, to)` | JSON | cammino a costo minimo (archi pesati) |
-| `BRAINS.Louvain(brain)` | JSON | community detection (Louvain) |
-| `BRAINS.MaxFlow(brain, from, to)` | JSON | flusso massimo (Edmonds-Karp) |
+
+> **Boundary (2026-11-06).** `BRAINS` non contiene più algoritmi di teoria dei grafi: espone
+> solo l'accesso AI/dati al cervello. Gli algoritmi (PageRank, connected/SCC, topo-sort,
+> bipartiteness, betweenness, clustering, diametro, eccentricità, MST, DFS/BFS, Dijkstra,
+> Louvain, max-flow, sottografo, has-cycle) stanno **una sola volta** nel pacchetto FFI
+> `GRAPH`/`FLOW` e lavorano su matrici esplicite — vedi §2 "graph.inc" più sotto e
+> `shared/samples/graph/GraphFFILab.bas`. Mappa `BRAINS.X → GRAPH.Y` nel commento di testa di
+> `GMBasicSharp/common/StdLib/StdLib.Brains.cs`.
 
 ## 2bis. Community detection e flusso massimo (dettaglio)
 
-### `BRAINS.Louvain(brain)`
-
-### `BRAINS.MaxFlow(brain, from, to)`
+Gli algoritmi sono nel pacchetto FFI (una sola implementazione, in C):
 
 IMPORT GRAPH
-' ... BRAINS BUILD <fixture>, <work> ...
-PRINT BRAINS.Louvain("graph-vault")
-PRINT BRAINS.MaxFlow("graph-vault", "index.md", "airline/load-factor.md")
+IMPORT FLOW
+' adj()/w() = matrice di adiacenza o dei pesi, n = numero di nodi (row-major)
+PRINT GRAPH.LOUVAIN(w, n, comm, 1.0)                   ' community detection
+PRINT FLOW.MAXFLOW(cap, n, s, t)                      ' flusso massimo s -> t
 
 
 ## 3. Export estesi
 
 PRINT BRAINS.Dot("graph-vault")                        ' Graphviz (dot)
-PRINT BRAINS.Subgraph("graph-vault", "index.md", 1)    ' mermaid, distanza ≤ depth
 PRINT BRAINS.ByTag("graph-vault", "strategy")          ' nodi con tag + edge
 PRINT BRAINS.ByFolder("graph-vault", "strategies")     ' nodi della cartella + edge
 

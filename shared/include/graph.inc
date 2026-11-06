@@ -9,8 +9,11 @@
 '   - `w()`:   DOUBLE, peso; INFINITY (1e30) = arco assente.
 ' `n` è il lato della matrice (numero di nodi).
 '
-' I grafi dei cervelli (wiki/brain) NON sono qui: sono nel namespace BRAINS
-' (BRAINS.BFS/NEIGHBORS/PATH...), con le funzioni wiki-only in BRAINS.BYTAG/BRAINS.BYFOLDER/BRAINS.QUERYMULTI.
+' TUTTA la matematica dei grafi è qui: il namespace builtin BRAINS non contiene più
+' algoritmi (BFS/DFS/Dijkstra/PageRank/Louvain/MST/SCC/TopoSort/... si chiamano da GRAPH e
+' lavorano su queste matrici). In BRAINS restano solo le QUERY sul cervello
+' (BYTAG/BYFOLDER/QUERYMULTI/NEIGHBORS/PATH/STATS/ISVALID/DOT): quel grafo va materializzato
+' dal chiamante in nodi + matrice per usare gli algoritmi di questo pacchetto.
 '
 ' Gli array `out()` vanno dimensionati dal chiamante:
 '   - order()/comp()/prev()/color()/comm()/clique(): n

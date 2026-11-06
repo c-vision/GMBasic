@@ -6,10 +6,15 @@ Pacchetto FFI del namespace BASIC **`GRAPH`**: algoritmi di teoria dei grafi su 
 dense, motore `gmbortools` (`gor_graph`, `gor_graph2`, `gor_graph3`) copiato qui per essere
 autonomo. Binding BASIC: `shared/include/graph.inc` (`IMPORT GRAPH`).
 
-> I grafi dei **brain** (conoscenza/wiki) NON sono qui: sono nel namespace builtin `BRAINS`
-> (`BRAINS.BFS`, …), con le funzioni wiki-only in `BRAINS.BYTAG` / `BRAINS.BYFOLDER` /
-> `BRAINS.QUERYMULTI`. La separazione è del 2026-11-04: il vecchio builtin `GRAPH` è stato
-> rinominato `BRAINS` per liberare `GRAPH` alla teoria dei grafi.
+> **Boundary (2026-11-06).** TUTTA la matematica dei grafi sta qui. Il namespace builtin
+> `BRAINS` non contiene più algoritmi (BFS/DFS/Dijkstra/PageRank/Louvain/MST/SCC/TopoSort/
+> betweenness/clustering/diametro/eccentricità/componenti/subgrafo/bipartite/has-cycle/max-flow):
+> erano una seconda implementazione degli stessi algoritmi. In `BRAINS` restano solo le query
+> sul cervello (`BYTAG`, `BYFOLDER`, `QUERYMULTI`, `NEIGHBORS`, `PATH`, `STATS`,
+> `ISVALID`, `DOT`): il grafo del cervello va materializzato dal chiamante (nodi + matrice).
+> La separazione dei nomi è del 2026-11-04 (il vecchio builtin `GRAPH` è stato rinominato
+> `BRAINS` per liberare `GRAPH` alla teoria dei grafi); il ritiro degli algoritmi da
+> `BRAINS` è del 2026-11-06.
 
 ## Rappresentazione
 

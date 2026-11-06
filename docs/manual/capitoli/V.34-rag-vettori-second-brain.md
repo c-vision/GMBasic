@@ -632,29 +632,22 @@ DIM cmp$ = VECTORDB.COMPARE(cfg$)
 | `GRAPH ENRICH SEMANTIC <wikiDir> [-g dir] [-n nome] [--max N]` | l'LLM (anche modello locale) deduce relazioni implicite tra le note |
 | Funzione | Ritorna |
 |---|---|
-| `BRAINS.Neighbors(brain, nota)` | vicini diretti |
+| `BRAINS.Neighbors(brain, nota)` | vicini diretti (out+in) |
 | `BRAINS.Path(brain, da, a)` | cammino più corto |
-| `BRAINS.PageRank(brain [, topK])` | ranking |
-| `BRAINS.Connected(brain)` | componenti connesse |
-| `BRAINS.Stats(brain)` | nodi/edge/dangling/community/top |
-| `BRAINS.StronglyConnected(brain)` | SCC |
-| `BRAINS.TopoSort(brain)` | ordinamento topologico |
-| `BRAINS.Bipartite(brain)` | test bipartiteness |
-| `BRAINS.Betweenness(brain)` | centralità |
-| `BRAINS.Clustering(brain, nota)` | clustering locale |
-| `BRAINS.Diameter(brain)` | diametro |
-| `BRAINS.Mst(brain)` | albero ricoprente minimo |
+| `BRAINS.Stats(brain)` | nodi/edge/dangling/PageRank top |
+| `BRAINS.IsValid(brain)` | 1 se il brain ha almeno un nodo |
 | `BRAINS.QueryMulti(query [, brains])` | ricerca multi-brain graph |
 | `BRAINS.Dot(brain)` | export Graphviz |
-| `BRAINS.Subgraph(brain, root [, depth])` | sottografo mermaid |
 | `BRAINS.ByTag(brain, tag)` | JSON per tag |
 | `BRAINS.ByFolder(brain, folder)` | JSON per cartella |
-| `BRAINS.IsValid(brain)` | 1 se ha nodi |
-| `BRAINS.Dijkstra(brain, da, a)` | path a costo minimo (archi pesati) |
-| `BRAINS.HasCycle(brain)` | 1 se ha un ciclo |
-| `BRAINS.Eccentricity(brain, nota)` | eccentricità del nodo |
-| `BRAINS.Dfs(brain, root)` | visita in profondità |
-| `BRAINS.Bfs(brain, root)` | visita in ampiezza |
+
+> **La teoria dei grafi non è più in `BRAINS`** (2026-11-06): `BRAINS` espone solo l'accesso
+> AI/dati del cervello (query, ispezione, export). BFS, DFS, Dijkstra, PageRank, Louvain,
+> betweenness, clustering, diametro, eccentricità, MST, SCC, componenti connesse, topo-sort,
+> sottografo, bipartiteness, has-cycle e max-flow vivono **una sola volta** nei pacchetti FFI
+> `GRAPH`/`FLOW` (`IMPORT GRAPH`, `IMPORT FLOW`), su matrici esplicite — vedi IV.21 e
+> `shared/samples/graph/GraphFFILab.bas`. La mappa `BRAINS.X → GRAPH.Y` è nel commento di testa
+> di `GMBasicSharp/common/StdLib/StdLib.Brains.cs`.
 | `AI.AGENTRUNGRAPH(nome, prompt [, rounds])` | un agente esplora il grafo con i tool `graph.*` |
 | `AI.AGENTRUNRAG(nome, prompt [, rounds])` | un agente interroga i brain RAG con i tool `rag.*` (speculare a `AGENTRUNGRAPH`; senza provider/brain → errore esplicito) |
 
@@ -968,26 +961,21 @@ BRAINS FIND PATH "index.md" TO "trading/momentum.md"
 |---|---|
 | `BRAINS.Neighbors(brain, nota)` | vicini diretti di una nota |
 | `BRAINS.Path(brain, da, a)` | cammino più corto (BFS) |
-| `BRAINS.PageRank(brain [, topK])` | ranking di importanza dei nodi |
-| `BRAINS.Connected(brain)` | componenti connesse |
 | `BRAINS.Stats(brain)` | nodi/relazioni/dangling + top PageRank |
-| `BRAINS.StronglyConnected(brain)` | componenti fortemente connesse |
-| `BRAINS.TopoSort(brain)` | ordinamento topologico |
-| `BRAINS.Bipartite(brain)` | test di bipartiteness |
-| `BRAINS.Betweenness(brain)` | centralità di betweenness |
-| `BRAINS.Clustering(brain, nota)` | coefficiente di clustering |
-| `BRAINS.Diameter(brain)` | diametro del grafo |
-| `BRAINS.Mst(brain)` | albero ricoprente minimo |
 | `BRAINS.QueryMulti(query [, brains])` | ricerca su più brain graph uniti |
 | `BRAINS.Dot(brain)` | export Graphviz (dot) |
-| `BRAINS.Subgraph(brain, root [, depth])` | sottografo a distanza ≤ depth dal nodo (mermaid) |
 | `BRAINS.ByTag(brain, tag)` | JSON dei nodi con quel tag + i loro edge |
 | `BRAINS.ByFolder(brain, folder)` | JSON dei nodi nella cartella (o sotto) + edge |
 | `BRAINS.IsValid(brain)` | 1 se il grafo ha almeno un nodo |
 
+> **Gli algoritmi non sono in `BRAINS`** (dal 2026-11-06). PageRank, componenti connesse/SCC,
+> topo-sort, bipartiteness, betweenness, clustering, diametro, eccentricità, MST, DFS/BFS,
+> Dijkstra, Louvain, max-flow e sottografo vivono una sola volta nel pacchetto FFI
+> `GRAPH`/`FLOW` e lavorano su matrici esplicite: materializza il grafo del cervello in
+> (nodi, matrice) e usa `GRAPH.*` — vedi `shared/samples/graph/GraphFFILab.bas`.
+
 BRAINS BUILD "../Fixtures/graph-vault"
 PRINT BRAINS.Neighbors("graph-vault", "index.md")
-PRINT BRAINS.PageRank("graph-vault", 3)
 PRINT BRAINS.Path("graph-vault", "index.md", "trading/momentum.md")
 PRINT BRAINS.QueryMulti("momentum", "graph-vault,strategies")
 PRINT BRAINS.Dot("graph-vault")

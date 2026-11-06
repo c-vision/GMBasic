@@ -6183,58 +6183,6 @@
     },
     {
       "ns": "BRAINS",
-      "name": "Betweenness",
-      "fn": true,
-      "return": "string",
-      "params": [
-        {
-          "name": "brain",
-          "type": "string",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        }
-      ]
-    },
-    {
-      "ns": "BRAINS",
-      "name": "Bfs",
-      "fn": true,
-      "return": "string",
-      "params": [
-        {
-          "name": "brain",
-          "type": "string",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        },
-        {
-          "name": "root",
-          "type": "string",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        }
-      ]
-    },
-    {
-      "ns": "BRAINS",
-      "name": "Bipartite",
-      "fn": true,
-      "return": "string",
-      "params": [
-        {
-          "name": "brain",
-          "type": "string",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        }
-      ]
-    },
-    {
-      "ns": "BRAINS",
       "name": "ByFolder",
       "fn": true,
       "return": "string",
@@ -6279,149 +6227,9 @@
     },
     {
       "ns": "BRAINS",
-      "name": "Clustering",
-      "fn": true,
-      "return": "string",
-      "params": [
-        {
-          "name": "brain",
-          "type": "string",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        },
-        {
-          "name": "node",
-          "type": "string",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        }
-      ]
-    },
-    {
-      "ns": "BRAINS",
-      "name": "Connected",
-      "fn": true,
-      "return": "string",
-      "params": [
-        {
-          "name": "brain",
-          "type": "string",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        }
-      ]
-    },
-    {
-      "ns": "BRAINS",
-      "name": "Dfs",
-      "fn": true,
-      "return": "string",
-      "params": [
-        {
-          "name": "brain",
-          "type": "string",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        },
-        {
-          "name": "root",
-          "type": "string",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        }
-      ]
-    },
-    {
-      "ns": "BRAINS",
-      "name": "Diameter",
-      "fn": true,
-      "return": "string",
-      "params": [
-        {
-          "name": "brain",
-          "type": "string",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        }
-      ]
-    },
-    {
-      "ns": "BRAINS",
-      "name": "Dijkstra",
-      "fn": true,
-      "return": "string",
-      "params": [
-        {
-          "name": "brain",
-          "type": "string",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        },
-        {
-          "name": "from",
-          "type": "string",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        },
-        {
-          "name": "to",
-          "type": "string",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        }
-      ]
-    },
-    {
-      "ns": "BRAINS",
       "name": "Dot",
       "fn": true,
       "return": "string",
-      "params": [
-        {
-          "name": "brain",
-          "type": "string",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        }
-      ]
-    },
-    {
-      "ns": "BRAINS",
-      "name": "Eccentricity",
-      "fn": true,
-      "return": "string",
-      "params": [
-        {
-          "name": "brain",
-          "type": "string",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        },
-        {
-          "name": "node",
-          "type": "string",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        }
-      ]
-    },
-    {
-      "ns": "BRAINS",
-      "name": "HasCycle",
-      "fn": true,
-      "return": "double",
       "params": [
         {
           "name": "brain",
@@ -6449,65 +6257,6 @@
     },
     {
       "ns": "BRAINS",
-      "name": "Louvain",
-      "fn": true,
-      "return": "string",
-      "params": [
-        {
-          "name": "brain",
-          "type": "string",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        }
-      ]
-    },
-    {
-      "ns": "BRAINS",
-      "name": "MaxFlow",
-      "fn": true,
-      "return": "string",
-      "params": [
-        {
-          "name": "brain",
-          "type": "string",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        },
-        {
-          "name": "from",
-          "type": "string",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        },
-        {
-          "name": "to",
-          "type": "string",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        }
-      ]
-    },
-    {
-      "ns": "BRAINS",
-      "name": "Mst",
-      "fn": true,
-      "return": "string",
-      "params": [
-        {
-          "name": "brain",
-          "type": "string",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        }
-      ]
-    },
-    {
-      "ns": "BRAINS",
       "name": "Neighbors",
       "fn": true,
       "return": "string",
@@ -6523,28 +6272,6 @@
           "name": "node",
           "type": "string",
           "optional": false,
-          "byRef": false,
-          "array": false
-        }
-      ]
-    },
-    {
-      "ns": "BRAINS",
-      "name": "PageRank",
-      "fn": true,
-      "return": "string",
-      "params": [
-        {
-          "name": "brain",
-          "type": "string",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        },
-        {
-          "name": "topK",
-          "type": "int",
-          "optional": true,
           "byRef": false,
           "array": false
         }
@@ -6604,65 +6331,6 @@
     {
       "ns": "BRAINS",
       "name": "Stats",
-      "fn": true,
-      "return": "string",
-      "params": [
-        {
-          "name": "brain",
-          "type": "string",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        }
-      ]
-    },
-    {
-      "ns": "BRAINS",
-      "name": "StronglyConnected",
-      "fn": true,
-      "return": "string",
-      "params": [
-        {
-          "name": "brain",
-          "type": "string",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        }
-      ]
-    },
-    {
-      "ns": "BRAINS",
-      "name": "Subgraph",
-      "fn": true,
-      "return": "string",
-      "params": [
-        {
-          "name": "brain",
-          "type": "string",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        },
-        {
-          "name": "root",
-          "type": "string",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        },
-        {
-          "name": "depth",
-          "type": "int",
-          "optional": true,
-          "byRef": false,
-          "array": false
-        }
-      ]
-    },
-    {
-      "ns": "BRAINS",
-      "name": "TopoSort",
       "fn": true,
       "return": "string",
       "params": [

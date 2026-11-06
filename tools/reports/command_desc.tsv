@@ -383,31 +383,6 @@ BITS	HAMMINGDIST	function	x = BITS.HAMMINGDIST(a1, a2)	── Tier 3: algorithms
 BITS	ISPOW2	function	x = BITS.ISPOW2(a1)	-> BIT	metadati	
 BITS	NEXTPOW2	function	x = BITS.NEXTPOW2(a1)	-> LONG	metadati	
 BITS	PARITY	function	x = BITS.PARITY(a1)	-> LONG	metadati	
-BLOCKCHAIN	ABIDECODE	function	x = BLOCKCHAIN.ABIDECODE(a1, a2)	Decodes ABI -> ARRAY.	storico	
-BLOCKCHAIN	ABIENCODE	function	x = BLOCKCHAIN.ABIENCODE(a1, ...)	Encodes ABI payload -> HEX.	storico	
-BLOCKCHAIN	BASE32DECODE	function	x = BLOCKCHAIN.BASE32DECODE(base32_string)	Base32 decoding -> ARRAY BYTE.	storico	
-BLOCKCHAIN	BASE32ENCODE	function	x = BLOCKCHAIN.BASE32ENCODE(data)	Base32 encoding -> STRINGA.	storico	
-BLOCKCHAIN	BASE58DECODE	function	x = BLOCKCHAIN.BASE58DECODE(base58_string)	Base58 decoding -> ARRAY BYTE.	storico	
-BLOCKCHAIN	BASE58ENCODE	function	x = BLOCKCHAIN.BASE58ENCODE(data)	Base58 encoding -> STRINGA.	storico	
-BLOCKCHAIN	BLAKE2B256	function	x = BLOCKCHAIN.BLAKE2B256(data)	BLAKE2b-256 hash -> ARRAY BYTE.	storico	
-BLOCKCHAIN	BLOCKDIFFICULTY	function	x = BLOCKCHAIN.BLOCKDIFFICULTY(header, bits)	Block difficulty.	storico	
-BLOCKCHAIN	BTCADDRFROMPUB	function	x = BLOCKCHAIN.BTCADDRFROMPUB(public_key, is_testnet)	BTC address from public key.	storico	
-BLOCKCHAIN	CONTRACT	function	x = BLOCKCHAIN.CONTRACT(address, interfaceName, rpcUrl, privateKey)	Proxy to EVM smart contract.	storico	
-BLOCKCHAIN	DERIVEKEY	function	x = BLOCKCHAIN.DERIVEKEY(seed, path)	Derives BIP32/BIP44 keys.	storico	
-BLOCKCHAIN	ETHADDRCHECKSUM	function	x = BLOCKCHAIN.ETHADDRCHECKSUM(address)	ETH address with checksum.	storico	
-BLOCKCHAIN	ETHADDRFROMPUB	function	x = BLOCKCHAIN.ETHADDRFROMPUB(public_key)	ETH address from public key.	storico	
-BLOCKCHAIN	GENERATEMNEMONIC	function	x = BLOCKCHAIN.GENERATEMNEMONIC(wordCount)	Generates BIP39 mnemonic.	storico	
-BLOCKCHAIN	GETPUBLICKEY	function	x = BLOCKCHAIN.GETPUBLICKEY(privateKey)	Public key from private.	storico	
-BLOCKCHAIN	KECCAK256	function	x = BLOCKCHAIN.KECCAK256(data)	Keccak-256 hash -> ARRAY DI BYTE.	storico	
-BLOCKCHAIN	MNEMONICTOSEED	function	x = BLOCKCHAIN.MNEMONICTOSEED(mnemonic, passphrase)	Seed from BIP39 mnemonic.	storico	
-BLOCKCHAIN	RIPEMD160	function	x = BLOCKCHAIN.RIPEMD160(data)	RIPEMD-160 hash -> ARRAY DI BYTE.	storico	
-BLOCKCHAIN	RLPENCODE	function	x = BLOCKCHAIN.RLPENCODE(data)	RLP encoding -> ARRAY DI BYTE.	storico	
-BLOCKCHAIN	SECP256K1SIGN	function	x = BLOCKCHAIN.SECP256K1SIGN(message_hash, private_key)	SECP256K1 signature (Ecdsa).	storico	
-BLOCKCHAIN	STRKECCAK256	function	x = BLOCKCHAIN.STRKECCAK256(data)	Keccak-256 hash -> STRINGA.	storico	
-BLOCKCHAIN	STRRIPEMD160	function	x = BLOCKCHAIN.STRRIPEMD160(data)	RIPEMD-160 hash -> STRINGA.	storico	
-BLOCKCHAIN	TYPE:IERC20	type	TYPE IERC20	methods: TotalSupply, BalanceOf, Transfer, Allowance (+5)	metadati:membri	metodi: TotalSupply(): STRING, BalanceOf(account AS STRING): STRING, Transfer(to AS STRING, amount AS STRING): BIT, Allowance(owner AS STRING, spender AS STRING): STRING, Approve(spender AS STRING, amount AS STRING): BIT, TransferFrom(from AS STRING, to AS STRING, amount AS STRING): BIT, Name(): STRING, Symbol(): STRING, Decimals(): INTEGER
-BLOCKCHAIN	VARINTDECODE	function	x = BLOCKCHAIN.VARINTDECODE(data)	VarInt decoding -> LONG.	storico	
-BLOCKCHAIN	VARINTENCODE	function	x = BLOCKCHAIN.VARINTENCODE(value)	VarInt encoding -> ARRAY BYTE.	storico	
 BROWSER	ACCESSTREE	function	x = BROWSER.ACCESSTREE()	-> STRING	metadati	
 BROWSER	AUTH	function	x = BROWSER.AUTH(op, name)	-> STRING · arg op, name	metadati	
 BROWSER	CLEARCOOKIES	function	x = BROWSER.CLEARCOOKIES()	-> STRING	metadati	
@@ -2660,3 +2635,178 @@ MATRIX	TYPE:QrDecomposition	type	TYPE QrDecomposition	Type defined by the runtim
 MATRIX	TYPE:SvdDecomposition	type	TYPE SvdDecomposition	Type defined by the runtime.	derivato:tipo	
 MESSAGE	DELIVERY	function	x = MESSAGE.DELIVERY(bus)	bus delivery counters (sent/recv/ack/nack/dup/last).	commento	
 STRINGS	LenB	function	x = STRINGS.LENB(source)	UTF-8 BYTES of the string. LEN counts CHARACTERS (code point: "😀"=1),	commento	
+AI	BrainInstall	funzione	x = AI.BRAININSTALL(name [, source])	-> LONG · arg name, source?	metadati	
+AI	BrainUninstall	funzione	x = AI.BRAINUNINSTALL(name)	-> LONG · arg name	metadati	
+BRAINS	ByFolder	funzione	x = BRAINS.BYFOLDER(brain, folder)	-> STRING · arg brain, folder	metadati	
+BRAINS	ByTag	funzione	x = BRAINS.BYTAG(brain, tag)	-> STRING · arg brain, tag	metadati	
+BRAINS	Dot	funzione	x = BRAINS.DOT(brain)	dot / subgraph / isValid.	commento	
+BRAINS	IsValid	funzione	x = BRAINS.ISVALID(brain)	dot / subgraph / isValid.	commento	
+BRAINS	Neighbors	funzione	x = BRAINS.NEIGHBORS(brain, node)	-> STRING · arg brain, node	metadati	
+BRAINS	Path	funzione	x = BRAINS.PATH(json_object, path)	scrive un ARRAY DI BYTE su file in modo byte-esatto	commento	
+BRAINS	QueryMulti	funzione	x = BRAINS.QUERYMULTI(query [, brains])	-> STRING · arg query, brains?	metadati	
+BRAINS	Stats	funzione	x = BRAINS.STATS(brain)	Interpreter.StdLib.Stats.cs	commento	
+ENV	ENV	funzione	x = ENV.ENV(name)	lettura ESPLICITA dell'ambiente di processo (sola lettura).	commento	
+ENV	HAS	funzione	x = ENV.HAS(name)	-1 se presente, 0 se assente (convenzione booleana BASIC).	commento	
+FONTS	TTGLYPHS	funzione	x = FONTS.TTGLYPHS(path)	-> ARRAY · arg path:PARAMETER	metadati	
+FONTS	TTMETRICS	funzione	x = FONTS.TTMETRICS(path, size, codepoint)	-> ARRAY · arg path:PARAMETER, size:PARAMETER, codepoint:PARAMETER	metadati	
+FONTS	TTRENDER	funzione	x = FONTS.TTRENDER(path, size, codepoint)	copertura alpha 0..255,	commento	
+IO	WriteBytes	funzione	x = IO.WRITEBYTES(path, bytes)	scrive un ARRAY DI BYTE su file in modo byte-esatto	commento	
+LINALG	CHOLESKY	funzione	x = LINALG.CHOLESKY(handle)	-> CHOLESKYDECOMPOSITION · arg handle:PARAMETER	metadati	
+LINALG	COND	funzione	x = LINALG.COND(handle)	-> DOUBLE · arg handle:PARAMETER	metadati	
+LINALG	COSM	funzione	x = LINALG.COSM(handle)	-> LONG · arg handle:PARAMETER	metadati	
+LINALG	DETERMINANT	funzione	x = LINALG.DETERMINANT(handle)	-> DOUBLE · arg handle:PARAMETER	metadati	
+LINALG	EIG	funzione	x = LINALG.EIG(handle)	funzioni matriciali, SVD, costruttori, eig/schur ---	commento	
+LINALG	EVD	funzione	x = LINALG.EVD(handle)	-> EVDDECOMPOSITION · arg handle:PARAMETER	metadati	
+LINALG	EXPM	funzione	x = LINALG.EXPM(handle)	-> LONG · arg handle:PARAMETER	metadati	
+LINALG	FACTOR	funzione	x = LINALG.FACTOR(cost, salvage, life, period, factor)	-> DOUBLE · arg cost:PARAMETER, salvage:PARAMETER, life:PARAMETER, period:PARAMETER, factor:PARAMETER	metadati	
+LINALG	FRACTIONALPOWER	funzione	x = LINALG.FRACTIONALPOWER(handle, p)	-> LONG · arg handle:PARAMETER, p:PARAMETER	metadati	
+LINALG	FROBENIUSNORM	funzione	x = LINALG.FROBENIUSNORM()	-> DOUBLE · arg 	metadati	
+LINALG	HESSENBERG	funzione	x = LINALG.HESSENBERG(handle)	funzioni matriciali (SQRTM/LOGM/HESSENBERG/BLOCKDIAG/NULLSPACE) ---	commento	
+LINALG	INFINITYNORM	funzione	x = LINALG.INFINITYNORM()	-> DOUBLE · arg 	metadati	
+LINALG	INVERSE	funzione	x = LINALG.INVERSE(handle)	quantili e valori critici (scipy.stats)	commento	
+LINALG	LOGM	funzione	x = LINALG.LOGM(handle)	funzioni matriciali (SQRTM/LOGM/HESSENBERG/BLOCKDIAG/NULLSPACE) ---	commento	
+LINALG	LU	funzione	x = LINALG.LU(handle)	-> LUDECOMPOSITION · arg handle:PARAMETER	metadati	
+LINALG	NORM	funzione	x = LINALG.NORM(handle)	-> DOUBLE · arg handle:PARAMETER	metadati	
+LINALG	NUCLEARNORM	funzione	x = LINALG.NUCLEARNORM(handle)	-> DOUBLE · arg handle:PARAMETER	metadati	
+LINALG	NULLSPACE	funzione	x = LINALG.NULLSPACE(handle)	funzioni matriciali (SQRTM/LOGM/HESSENBERG/BLOCKDIAG/NULLSPACE) ---	commento	
+LINALG	ONENORM	funzione	x = LINALG.ONENORM()	-> DOUBLE · arg 	metadati	
+LINALG	ORTH	funzione	x = LINALG.ORTH(handle)	-> LONG · arg handle:PARAMETER	metadati	
+LINALG	PINVERSE	funzione	x = LINALG.PINVERSE(handle)	-> LONG · arg handle:PARAMETER	metadati	
+LINALG	POLAR	funzione	x = LINALG.POLAR(handle)	-> LONG · arg handle:PARAMETER	metadati	
+LINALG	QR	funzione	x = LINALG.QR(handle)	-> QRDECOMPOSITION · arg handle:PARAMETER	metadati	
+LINALG	RANK	funzione	x = LINALG.RANK(handle)	lettore imatrix (sensibilita' per-layer) + mappa rank.	commento	
+LINALG	SCHUR	funzione	x = LINALG.SCHUR(handle)	funzioni matriciali, SVD, costruttori, eig/schur ---	commento	
+LINALG	SIGNM	funzione	x = LINALG.SIGNM(handle)	-> LONG · arg handle:PARAMETER	metadati	
+LINALG	SINM	funzione	x = LINALG.SINM(handle)	-> LONG · arg handle:PARAMETER	metadati	
+LINALG	SOLVE	funzione	x = LINALG.SOLVE(matrixHandle, vectorHandle)	-> ARRAY · arg matrixHandle:PARAMETER, vectorHandle:PARAMETER	metadati	
+LINALG	SOLVETRIANGULAR	funzione	x = LINALG.SOLVETRIANGULAR(handleA, handleB, lower)	-> ARRAY · arg handleA:PARAMETER, handleB:PARAMETER, lower:PARAMETER	metadati	
+LINALG	SQRTM	funzione	x = LINALG.SQRTM(handle)	funzioni matriciali (SQRTM/LOGM/HESSENBERG/BLOCKDIAG/NULLSPACE) ---	commento	
+LINALG	SUBSPACEANGLES	funzione	x = LINALG.SUBSPACEANGLES(handle1, handle2)	-> ARRAY · arg handle1:PARAMETER, handle2:PARAMETER	metadati	
+LINALG	SVD	funzione	x = LINALG.SVD(handle)	funzioni matriciali, SVD, costruttori, eig/schur ---	commento	
+LINALG	TANM	funzione	x = LINALG.TANM(handle)	-> LONG · arg handle:PARAMETER	metadati	
+NUMERICAL	CubicSpline	funzione	x = NUMERICAL.CUBICSPLINE(x_new)	-> DOUBLE · arg , , x_new:PARAMETER	metadati	
+NUMERICAL	CumTrapezoid	funzione	x = NUMERICAL.CUMTRAPEZOID()	-> ARRAY · arg , 	metadati	
+NUMERICAL	Differentiate	funzione	x = NUMERICAL.DIFFERENTIATE(x)	-> DOUBLE · arg , x:PARAMETER	metadati	
+NUMERICAL	Fft	funzione	x = NUMERICAL.FFT()	splrep/splev; scipy.fft P1: rfft/irfft.	commento	
+NUMERICAL	FftComplex	funzione	x = NUMERICAL.FFTCOMPLEX()	-> ARRAY · arg , 	metadati	
+NUMERICAL	FftFreq	funzione	x = NUMERICAL.FFTFREQ(n, d)	-> ARRAY · arg n:PARAMETER, d:PARAMETER	metadati	
+NUMERICAL	FftShift	funzione	x = NUMERICAL.FFTSHIFT()	-> ARRAY · arg 	metadati	
+NUMERICAL	Ifft	funzione	x = NUMERICAL.IFFT()	-> ARRAY · arg 	metadati	
+NUMERICAL	IfftComplex	funzione	x = NUMERICAL.IFFTCOMPLEX()	-> ARRAY · arg , 	metadati	
+NUMERICAL	IfftShift	funzione	x = NUMERICAL.IFFTSHIFT()	-> ARRAY · arg 	metadati	
+NUMERICAL	Integrate	funzione	x = NUMERICAL.INTEGRATE(a, b)	f(t, y[]) → y'[], traiettoria matrice.	commento	
+NUMERICAL	InterpolateClamp	funzione	x = NUMERICAL.INTERPOLATECLAMP(x_new)	-> DOUBLE · arg , , x_new:PARAMETER	metadati	
+NUMERICAL	InterpolateGeneric	funzione	x = NUMERICAL.INTERPOLATEGENERIC(method, , , x_new)	-> DOUBLE · arg method:PARAMETER, , , x_new:PARAMETER	metadati	
+NUMERICAL	InterpolateLinear	funzione	x = NUMERICAL.INTERPOLATELINEAR(x_new)	-> DOUBLE · arg , , x_new:PARAMETER	metadati	
+NUMERICAL	InterpolatePchip	funzione	x = NUMERICAL.INTERPOLATEPCHIP(x_new)	-> DOUBLE · arg , , x_new:PARAMETER	metadati	
+NUMERICAL	InterpolatePolynomial	funzione	x = NUMERICAL.INTERPOLATEPOLYNOMIAL(x_new)	-> DOUBLE · arg , , x_new:PARAMETER	metadati	
+NUMERICAL	InterpolateSpline	funzione	x = NUMERICAL.INTERPOLATESPLINE(x_new)	-> DOUBLE · arg , , x_new:PARAMETER	metadati	
+NUMERICAL	InterpolateStep	funzione	x = NUMERICAL.INTERPOLATESTEP(x_new)	-> DOUBLE · arg , , x_new:PARAMETER	metadati	
+NUMERICAL	Irfft	funzione	x = NUMERICAL.IRFFT()	splrep/splev; scipy.fft P1: rfft/irfft.	commento	
+NUMERICAL	Rfft	funzione	x = NUMERICAL.RFFT()	splrep/splev; scipy.fft P1: rfft/irfft.	commento	
+NUMERICAL	Simpson	funzione	x = NUMERICAL.SIMPSON(a, b, n)	-> DOUBLE · arg , a:PARAMETER, b:PARAMETER, n:PARAMETER	metadati	
+NUMERICAL	SolveIvp	funzione	x = NUMERICAL.SOLVEIVP(ode_function, y0, t0, t1)	-> LONG · arg , ode_function:PARAMETER, y0:PARAMETER, t0:PARAMETER, t1:PARAMETER	metadati	
+NUMERICAL	SolveOde	funzione	x = NUMERICAL.SOLVEODE(ode_function, y0, t0, t1, steps)	-> ARRAY · arg ode_function:PARAMETER, y0:PARAMETER, t0:PARAMETER, t1:PARAMETER, steps:PARAMETER	metadati	
+NUMERICAL	Splev	funzione	x = NUMERICAL.SPLEV(spline, xq)	splrep/splev; scipy.fft P1: rfft/irfft.	commento	
+NUMERICAL	Splrep	funzione	x = NUMERICAL.SPLREP()	splrep/splev; scipy.fft P1: rfft/irfft.	commento	
+NUMERICAL	Trapezoid	funzione	x = NUMERICAL.TRAPEZOID()	-> DOUBLE · arg , 	metadati	
+REGRESSION	Regress	funzione	x = REGRESSION.REGRESS()	-> REGRESSIONRESULT · arg , 	metadati	
+STATS	BetaIsf	funzione	x = STATS.BETAISF(a, b)	-> DOUBLE · arg , a:PARAMETER, b:PARAMETER	metadati	
+STATS	BetaSf	funzione	x = STATS.BETASF(alpha, beta)	-> DOUBLE · arg , alpha:PARAMETER, beta:PARAMETER	metadati	
+STATS	ChiIsf	funzione	x = STATS.CHIISF(k)	-> DOUBLE · arg , k:PARAMETER	metadati	
+STATS	ChiSf	funzione	x = STATS.CHISF(k)	-> DOUBLE · arg , k:PARAMETER	metadati	
+STATS	ChiSquaredSf	funzione	x = STATS.CHISQUAREDSF(k)	-> DOUBLE · arg , k:PARAMETER	metadati	
+STATS	ExponentialSf	funzione	x = STATS.EXPONENTIALSF(rate)	-> DOUBLE · arg , rate:PARAMETER	metadati	
+STATS	FSf	funzione	x = STATS.FSF(d1, d2)	-> DOUBLE · arg , d1:PARAMETER, d2:PARAMETER	metadati	
+STATS	FTest	funzione	x = STATS.FTEST()	-> ANY · arg , 	metadati	
+STATS	GammaSf	funzione	x = STATS.GAMMASF(shape, scale, x)	-> DOUBLE · arg shape:PARAMETER, scale:PARAMETER, x:PARAMETER	metadati	
+STATS	KendallTau	funzione	x = STATS.KENDALLTAU()	-> ANY · arg , 	metadati	
+STATS	Kruskal	funzione	x = STATS.KRUSKAL(groups)	-> ANY · arg groups:PARAMETER	metadati	
+STATS	LogisticCdf	funzione	x = STATS.LOGISTICCDF([, location, scale])	-> DOUBLE · arg , location:PARAMETER?, scale:PARAMETER?	metadati	
+STATS	LogisticIsf	funzione	x = STATS.LOGISTICISF(location, scale)	-> DOUBLE · arg , location:PARAMETER, scale:PARAMETER	metadati	
+STATS	LogisticSf	funzione	x = STATS.LOGISTICSF([, location, scale])	-> DOUBLE · arg , location:PARAMETER?, scale:PARAMETER?	metadati	
+STATS	LognormalIsf	funzione	x = STATS.LOGNORMALISF([, mu, sigma])	-> DOUBLE · arg , mu:PARAMETER?, sigma:PARAMETER?	metadati	
+STATS	LognormalSf	funzione	x = STATS.LOGNORMALSF([, mu, sigma])	-> DOUBLE · arg , mu:PARAMETER?, sigma:PARAMETER?	metadati	
+STATS	NcBetaCdf	funzione	x = STATS.NCBETACDF(a, b, nc)	-> DOUBLE · arg , a:PARAMETER, b:PARAMETER, nc:PARAMETER	metadati	
+STATS	NcBetaIsf	funzione	x = STATS.NCBETAISF(a, b, nc)	-> DOUBLE · arg , a:PARAMETER, b:PARAMETER, nc:PARAMETER	metadati	
+STATS	NcBetaPdf	funzione	x = STATS.NCBETAPDF(a, b, nc)	-> DOUBLE · arg , a:PARAMETER, b:PARAMETER, nc:PARAMETER	metadati	
+STATS	NcBetaPpf	funzione	x = STATS.NCBETAPPF(a, b, nc)	-> DOUBLE · arg , a:PARAMETER, b:PARAMETER, nc:PARAMETER	metadati	
+STATS	NcBetaSf	funzione	x = STATS.NCBETASF(a, b, nc)	-> DOUBLE · arg , a:PARAMETER, b:PARAMETER, nc:PARAMETER	metadati	
+STATS	NcChi2Cdf	funzione	x = STATS.NCCHI2CDF(df, nc)	-> DOUBLE · arg , df:PARAMETER, nc:PARAMETER	metadati	
+STATS	NcChi2Isf	funzione	x = STATS.NCCHI2ISF(df, nc)	-> DOUBLE · arg , df:PARAMETER, nc:PARAMETER	metadati	
+STATS	NcChi2Pdf	funzione	x = STATS.NCCHI2PDF(df, nc)	-> DOUBLE · arg , df:PARAMETER, nc:PARAMETER	metadati	
+STATS	NcChi2Ppf	funzione	x = STATS.NCCHI2PPF(df, nc)	-> DOUBLE · arg , df:PARAMETER, nc:PARAMETER	metadati	
+STATS	NcChi2Sf	funzione	x = STATS.NCCHI2SF(df, nc)	-> DOUBLE · arg , df:PARAMETER, nc:PARAMETER	metadati	
+STATS	NcFCdf	funzione	x = STATS.NCFCDF(d1, d2, nc)	-> DOUBLE · arg , d1:PARAMETER, d2:PARAMETER, nc:PARAMETER	metadati	
+STATS	NcFIsf	funzione	x = STATS.NCFISF(d1, d2, nc)	-> DOUBLE · arg , d1:PARAMETER, d2:PARAMETER, nc:PARAMETER	metadati	
+STATS	NcFPdf	funzione	x = STATS.NCFPDF(d1, d2, nc)	-> DOUBLE · arg , d1:PARAMETER, d2:PARAMETER, nc:PARAMETER	metadati	
+STATS	NcFPpf	funzione	x = STATS.NCFPPF(d1, d2, nc)	-> DOUBLE · arg , d1:PARAMETER, d2:PARAMETER, nc:PARAMETER	metadati	
+STATS	NcFSf	funzione	x = STATS.NCFSF(d1, d2, nc)	-> DOUBLE · arg , d1:PARAMETER, d2:PARAMETER, nc:PARAMETER	metadati	
+STATS	NcGammaCdf	funzione	x = STATS.NCGAMMACDF(shape, nc)	-> DOUBLE · arg , shape:PARAMETER, nc:PARAMETER	metadati	
+STATS	NcGammaIsf	funzione	x = STATS.NCGAMMAISF(shape, nc)	-> DOUBLE · arg , shape:PARAMETER, nc:PARAMETER	metadati	
+STATS	NcGammaPdf	funzione	x = STATS.NCGAMMAPDF(shape, nc)	-> DOUBLE · arg , shape:PARAMETER, nc:PARAMETER	metadati	
+STATS	NcGammaPpf	funzione	x = STATS.NCGAMMAPPF(shape, nc)	-> DOUBLE · arg , shape:PARAMETER, nc:PARAMETER	metadati	
+STATS	NcGammaSf	funzione	x = STATS.NCGAMMASF(shape, nc)	-> DOUBLE · arg , shape:PARAMETER, nc:PARAMETER	metadati	
+STATS	NcTCdf	funzione	x = STATS.NCTCDF(df, nc)	-> DOUBLE · arg , df:PARAMETER, nc:PARAMETER	metadati	
+STATS	NcTIsf	funzione	x = STATS.NCTISF(df, nc)	-> DOUBLE · arg , df:PARAMETER, nc:PARAMETER	metadati	
+STATS	NcTPdf	funzione	x = STATS.NCTPDF(df, nc)	-> DOUBLE · arg , df:PARAMETER, nc:PARAMETER	metadati	
+STATS	NcTPpf	funzione	x = STATS.NCTPPF(df, nc)	-> DOUBLE · arg , df:PARAMETER, nc:PARAMETER	metadati	
+STATS	NcTSf	funzione	x = STATS.NCTSF(df, nc)	-> DOUBLE · arg , df:PARAMETER, nc:PARAMETER	metadati	
+STATS	NormalSf	funzione	x = STATS.NORMALSF([, mu, sigma])	-> DOUBLE · arg , mu:PARAMETER?, sigma:PARAMETER?	metadati	
+STATS	ParetoCdf	funzione	x = STATS.PARETOCDF(scale, shape)	-> DOUBLE · arg , scale:PARAMETER, shape:PARAMETER	metadati	
+STATS	ParetoIsf	funzione	x = STATS.PARETOISF(scale, shape)	-> DOUBLE · arg , scale:PARAMETER, shape:PARAMETER	metadati	
+STATS	ParetoSf	funzione	x = STATS.PARETOSF(scale, shape)	-> DOUBLE · arg , scale:PARAMETER, shape:PARAMETER	metadati	
+STATS	StudentTSf	funzione	x = STATS.STUDENTTSF(nu)	-> DOUBLE · arg , nu:PARAMETER	metadati	
+STATS	TriangularCdf	funzione	x = STATS.TRIANGULARCDF([, min, mode, max])	-> DOUBLE · arg , min:PARAMETER?, mode:PARAMETER?, max:PARAMETER?	metadati	
+STATS	TriangularIsf	funzione	x = STATS.TRIANGULARISF([, min, mode, max])	-> DOUBLE · arg , min:PARAMETER?, mode:PARAMETER?, max:PARAMETER?	metadati	
+STATS	TriangularSf	funzione	x = STATS.TRIANGULARSF([, min, mode, max])	-> DOUBLE · arg , min:PARAMETER?, mode:PARAMETER?, max:PARAMETER?	metadati	
+STATS	UniformCdf	funzione	x = STATS.UNIFORMCDF(a, b)	-> DOUBLE · arg , a:PARAMETER, b:PARAMETER	metadati	
+STATS	UniformIsf	funzione	x = STATS.UNIFORMISF([, a, b])	-> DOUBLE · arg , a:PARAMETER?, b:PARAMETER?	metadati	
+STATS	UniformSf	funzione	x = STATS.UNIFORMSF(a, b)	-> DOUBLE · arg , a:PARAMETER, b:PARAMETER	metadati	
+STATS	WeibullIsf	funzione	x = STATS.WEIBULLISF(shape, scale)	-> DOUBLE · arg , shape:PARAMETER, scale:PARAMETER	metadati	
+STATS	WeibullSf	funzione	x = STATS.WEIBULLSF(shape, scale)	-> DOUBLE · arg , shape:PARAMETER, scale:PARAMETER	metadati	
+STATS	ZTPoissonCdf	funzione	x = STATS.ZTPOISSONCDF(lambda)	-> DOUBLE · arg , lambda:PARAMETER	metadati	
+STATS	ZTPoissonPmf	funzione	x = STATS.ZTPOISSONPMF(lambda)	-> DOUBLE · arg , lambda:PARAMETER	metadati	
+VECTOR	Angle2d	funzione	x = VECTOR.ANGLE2D(x1, y1, x2, y2)	-> DOUBLE · arg x1:PARAMETER, y1:PARAMETER, x2:PARAMETER, y2:PARAMETER	metadati	
+VECTOR	Dist2d	funzione	x = VECTOR.DIST2D(x1, y1, x2, y2)	-> DOUBLE · arg x1:PARAMETER, y1:PARAMETER, x2:PARAMETER, y2:PARAMETER	metadati	
+VECTOR	Dist3d	funzione	x = VECTOR.DIST3D(x1, y1, z1, x2, y2, z2)	-> DOUBLE · arg x1:PARAMETER, y1:PARAMETER, z1:PARAMETER, x2:PARAMETER, y2:PARAMETER, z2:PARAMETER	metadati	
+VECTOR	EuclideanDistanceSquared	funzione	x = VECTOR.EUCLIDEANDISTANCESQUARED()	-> DOUBLE · arg , 	metadati	
+VECTOR	POLAR_X	funzione	x = VECTOR.POLAR_X(radius, angleDegrees)	-> DOUBLE · arg radius:PARAMETER, angleDegrees:PARAMETER	metadati	
+VECTOR	POLAR_Y	funzione	x = VECTOR.POLAR_Y(radius, angleDegrees)	-> DOUBLE · arg radius:PARAMETER, angleDegrees:PARAMETER	metadati	
+VECTOR	VADD	funzione	x = VECTOR.VADD(a, b)	-> LONG · arg a:PARAMETER, b:PARAMETER	metadati	
+VECTOR	VANGLE	funzione	x = VECTOR.VANGLE(a, b)	-> DOUBLE · arg a:PARAMETER, b:PARAMETER	metadati	
+VECTOR	VCROSS	funzione	x = VECTOR.VCROSS(a, b)	-> LONG · arg a:PARAMETER, b:PARAMETER	metadati	
+VECTOR	VDIST	funzione	x = VECTOR.VDIST(a, b)	-> DOUBLE · arg a:PARAMETER, b:PARAMETER	metadati	
+VECTOR	VDIV	funzione	x = VECTOR.VDIV(a, b)	-> LONG · arg a:PARAMETER, b:PARAMETER	metadati	
+VECTOR	VGET	funzione	x = VECTOR.VGET(handle, index)	-> DOUBLE · arg handle:PARAMETER, index:PARAMETER	metadati	
+VECTOR	VLERP	funzione	x = VECTOR.VLERP(a, b, t)	-> LONG · arg a:PARAMETER, b:PARAMETER, t:PARAMETER	metadati	
+VECTOR	VMAX	funzione	x = VECTOR.VMAX(a, b)	-> LONG · arg a:PARAMETER, b:PARAMETER	metadati	
+VECTOR	VMIN	funzione	x = VECTOR.VMIN(a, b)	-> LONG · arg a:PARAMETER, b:PARAMETER	metadati	
+VECTOR	VMUL	funzione	x = VECTOR.VMUL(a, b)	-> LONG · arg a:PARAMETER, b:PARAMETER	metadati	
+VECTOR	VNORM	funzione	x = VECTOR.VNORM(handle)	-> LONG · arg handle:PARAMETER	metadati	
+VECTOR	VSCALE	funzione	x = VECTOR.VSCALE(handle, s)	-> LONG · arg handle:PARAMETER, s:PARAMETER	metadati	
+VECTOR	VSUB	funzione	x = VECTOR.VSUB(a, b)	-> LONG · arg a:PARAMETER, b:PARAMETER	metadati	
+CONSTANTS	DECIDE	costante		= 6	metadati:valore	
+LINALG	TYPE:CholeskyDecomposition	tipo	TYPE CholeskyDecomposition	Tipo definito dal runtime.	derivato:tipo	
+LINALG	TYPE:EvdDecomposition	tipo	TYPE EvdDecomposition	Tipo definito dal runtime.	derivato:tipo	
+LINALG	TYPE:LuDecomposition	tipo	TYPE LuDecomposition	Tipo definito dal runtime.	derivato:tipo	
+LINALG	TYPE:QrDecomposition	tipo	TYPE QrDecomposition	Tipo definito dal runtime.	derivato:tipo	
+LINALG	TYPE:SvdDecomposition	tipo	TYPE SvdDecomposition	Tipo definito dal runtime.	derivato:tipo	
+REGRESSION	TYPE:RegressionResult	tipo	TYPE RegressionResult	Tipo definito dal runtime.	derivato:tipo	
+STATS	TYPE:AnovaResult	tipo	TYPE AnovaResult	Tipo definito dal runtime.	derivato:tipo	
+CONSTANTS	%DECIDE	costante	%DECIDE	= 6	metadati:valore	
+	CANVAS	comando		Dispatcher del namespace CANVAS.	derivato:dispatcher	
+	TYPE:AdfTestResultType	tipo	TYPE AdfTestResultType	Campi: Statistic, PValue	metadati:membri	Campi: Statistic, PValue
+	TYPE:AnovaResultType	tipo	TYPE AnovaResultType	Campi: FValue, PValue, DFBetween, DFWithin, SSBetween, SSWithin, MSBetween, MSWithin	metadati:membri	Campi: FValue, PValue, DFBetween, DFWithin, SSBetween, SSWithin, MSBetween, MSWithin
+	TYPE:ArimaResultType	tipo	TYPE ArimaResultType	Campi: ArCoeffs, MaCoeffs, AIC, Fitted	metadati:membri	Campi: ArCoeffs, MaCoeffs, AIC, Fitted
+	TYPE:GmmResultType	tipo	TYPE GmmResultType	Campi: Mu, Variance, Weight	metadati:membri	Campi: Mu, Variance, Weight
+	TYPE:GpResultType	tipo	TYPE GpResultType	Campi: Mean, Variance	metadati:membri	Campi: Mean, Variance
+	TYPE:HmmResultType	tipo	TYPE HmmResultType	Campi: Pi, A, Means, Covs, LogLikelihood	metadati:membri	Campi: Pi, A, Means, Covs, LogLikelihood
+	TYPE:HoltWintersResultType	tipo	TYPE HoltWintersResultType	Campi: Forecast, Mse	metadati:membri	Campi: Forecast, Mse
+	TYPE:JohansenResultType	tipo	TYPE JohansenResultType	Campi: EigenValues, TraceStatistic, MaxStatistic, Observations, Lags	metadati:membri	Campi: EigenValues, TraceStatistic, MaxStatistic, Observations, Lags
+	TYPE:KMeansResultType	tipo	TYPE KMeansResultType	Campi: Centroids, Assignments, Iterations	metadati:membri	Campi: Centroids, Assignments, Iterations
+	TYPE:ParticleResultType	tipo	TYPE ParticleResultType	Campi: Mean, Variance	metadati:membri	Campi: Mean, Variance
+	TYPE:PcaResultType	tipo	TYPE PcaResultType	Campi: EigenValues, EigenVectors	metadati:membri	Campi: EigenValues, EigenVectors
+	TYPE:PolyFitResultType	tipo	TYPE PolyFitResultType	Campi: Coef, Ssq	metadati:membri	Campi: Coef, Ssq
+	TYPE:RegressionResultType	tipo	TYPE RegressionResultType	Campi: Slope, Intercept, R2, StandardError	metadati:membri	Campi: Slope, Intercept, R2, StandardError
+	TYPE:SvmResultType	tipo	TYPE SvmResultType	Campi: W, Classes, Features	metadati:membri	Campi: W, Classes, Features
