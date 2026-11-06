@@ -1,5 +1,5 @@
 ' NEURAL (FFI) — SNN, BNN, PINN, detection (IoU/NMS/YOLO), KNN, metriche, memplan.
-' EXPECT: snn=0.50,0.250,-0.125|lut= 2 |bnn= 2 , 1 : 0 = 5 , 3 , 3 ,-2.0,-32767.0|pinn=0.0,1.0,1.0,9.0,56.25,4.0,9.0|pn=3.0|iou=1.0|nms= 2 : 0 , 2 |yolo= 4001 : 0 =0.1154,0.1154,0.1538,0.2308|yf= 0 |mc= 0 :0.9,0.0,0.7|knn= 4101 : 0 , 1 ,1.00|kf= 0 |cm= 0 : 1 , 1 , 1 , 1 , 2 |acc=0.6667,0.6667|pr=0.7222:1.00,0.50,0.67|rc=0.6667:0.50,1.00|f1=0.6556:0.50,0.80|reg=1.3333,0.6667,-1.0|mem=30.0:20.0,0.0,0.0|f=0
+' EXPECT: snn=0.50,0.250,-0.125|lut= 2 |bnn= 2 , 1 : 0 = 5 , 3 , 3 ,-2.0,-32767.0|pinn=0.0,1.0,1.0,9.0,56.25,4.0,9.0|pn=3.0|iou=1.0|nms= 2 : 0 , 2 |yolo= 0 =0.1154,0.1154,0.1538,0.2308||mc= 0 :0.9,0.0,0.7|knn= 0 , 1 ,1.00|kf=none|cm= 0 : 1 , 1 , 1 , 1 , 2 |acc=0.6667,0.6667|pr=0.7222:1.00,0.50,0.67|rc=0.6667:0.50,1.00|f1=0.6556:0.50,0.80|reg=1.3333,0.6667,-1.0|mem=30.0:20.0,0.0,0.0|f=0
 IMPORT NEURAL
 
 SUB Main()
@@ -41,10 +41,8 @@ SUB Main()
   PRINT "nms="; k; ":"; keep(0); ","; keep(1); "|";
 
   DIM yo(3) AS DOUBLE
-  yh = NEURAL.YOLOBOXCFG(2, 3, 1, 1, 13, 13)
-  PRINT "yolo="; yh; ":"; NEURAL.YOLOBOX(yh, 0, 0, 0, 0, yo); "=";
-  PRINT FORMAT(yo(0), "#.0000"); ","; FORMAT(yo(1), "#.0000"); ","; FORMAT(yo(2), "#.0000"); ","; FORMAT(yo(3), "#.0000");
-  PRINT "|yf="; NEURAL.YOLOBOXFREE(yh);
+  PRINT "yolo="; NEURAL.YOLOBOX(yo, 0, 0, 0, 0, 2, 3, 1, 1, 13, 13); "=";
+  PRINT FORMAT(yo(0), "#.0000"); ","; FORMAT(yo(1), "#.0000"); ","; FORMAT(yo(2), "#.0000"); ","; FORMAT(yo(3), "#.0000"); "|";
 
   DIM pr(2) AS DOUBLE
   pr(0)=0.9 : pr(1)=0.8 : pr(2)=0.7
@@ -61,14 +59,13 @@ SUB Main()
       ytr(i) = 1
     END IF
   NEXT i
-  kh = NEURAL.KNNINIT(Xtr, ytr, 6, 1, 2)
   xq(0)=2.1
-  PRINT "|knn="; kh; ":"; NEURAL.KNNCLASSIFY(kh, 1, xq);
+  PRINT "|knn="; NEURAL.KNNCLASSIFY(Xtr, ytr, 6, 1, 2, 1, xq);
   xq(0)=10.2
-  PRINT ","; NEURAL.KNNCLASSIFY(kh, 1, xq);
+  PRINT ","; NEURAL.KNNCLASSIFY(Xtr, ytr, 6, 1, 2, 1, xq);
   Xte(0)=0.1 : Xte(1)=10.9 : yte(0)=0 : yte(1)=1
-  PRINT ","; FORMAT(NEURAL.KNNACCURACY(kh, 1, Xte, yte, 2), "#.00");
-  PRINT "|kf="; NEURAL.KNNFREE(kh);
+  PRINT ","; FORMAT(NEURAL.KNNACCURACY(Xtr, ytr, 6, Xte, yte, 2, 1, 2, 1), "#.00");
+  PRINT "|kf=none";
 
   DIM yt(5) AS LONG, yp(5) AS LONG, cm(8) AS LONG, per(2) AS DOUBLE
   yt(0)=0 : yt(1)=0 : yt(2)=1 : yt(3)=1 : yt(4)=2 : yt(5)=2
@@ -86,11 +83,12 @@ SUB Main()
   PRINT "reg="; FORMAT(NEURAL.MSE(vt, vp, 3), "#.0000"); ","; FORMAT(NEURAL.MAE(vt, vp, 3), "#.0000");
   PRINT ","; FORMAT(NEURAL.R2(vt, vp, 3), "#.0"); "|";
 
-  DIM ms(2) AS DOUBLE, mb(2) AS LONG, md(2) AS LONG, mo(2) AS DOUBLE
-  ms(0)=10 : ms(1)=20 : ms(2)=5
-  mb(0)=0 : mb(1)=0 : mb(2)=2
-  md(0)=1 : md(1)=1 : md(2)=3
-  PRINT "mem="; FORMAT(NEURAL.MEMPLAN(ms, mb, md, 3, mo), "#.0"); ":";
+  ' array di UDT: TYPE MemTensor { Size AS DOUBLE : Birth AS LONG : Death AS LONG }
+  DIM mt(2) AS MemTensor, mo(2) AS DOUBLE
+  mt(0).Size=10 : mt(0).Birth=0 : mt(0).Death=1
+  mt(1).Size=20 : mt(1).Birth=0 : mt(1).Death=1
+  mt(2).Size=5  : mt(2).Birth=2 : mt(2).Death=3
+  PRINT "mem="; FORMAT(NEURAL.MEMPLAN(mt, 3, mo), "#.0"); ":";
   PRINT FORMAT(mo(0), "#.0"); ","; FORMAT(mo(1), "#.0"); ","; FORMAT(mo(2), "#.0"); "|";
   PRINT "f=0"
 END SUB

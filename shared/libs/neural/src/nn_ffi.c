@@ -53,12 +53,6 @@
 typedef long long i64;
 
 #define NN_MAX 32
-#define NN_LAYER_MAX 32
-#define NN_LAYER_BASE 1000
-
-typedef struct nn_layer nn_layer;
-static nn_layer *lay_get(i64 h);
-static void lay_reset(i64 h);
 #define NN_MAXP 40   /* massimo numero di matrici di parametri (BiRNN LSTM = 30) */
 
 typedef struct nn_entry {
@@ -75,9 +69,6 @@ typedef struct nn_entry {
     int npar;
     gn_mat *m;
     gn_mat *v;
-    /* kind 5 (PBP): copia dei parametri medi/varianza dello strato */
-    int pbp_in, pbp_out;
-    double *pbp_mw, *pbp_vw;
 } nn_entry;
 
 static nn_entry g_nn[NN_MAX];
@@ -247,7 +238,6 @@ static i64 nn_free_entry(i64 h)
     else if (e->kind == 2) gn_lstm_free(&e->u.l);
     else if (e->kind == 3) gn_gru_free(&e->u.g);
     else if (e->kind == 4) gn_birnn_free(&e->u.b);
-    else if (e->kind == 5) { free(e->pbp_mw); free(e->pbp_vw); }
     if (e->m) {
         for (i = 0; i < e->npar; i++) gn_mat_free(&e->m[i]);
         free(e->m);
@@ -397,13 +387,9 @@ i64 ofx_nn_birnn_backward(i64 h, const double *gy, i64 T)
 /* ── comuni ────────────────────────────────────────────────────────────────── */
 i64 ofx_nn_zerograd(i64 h) { return nn_zerograd(h); }
 i64 ofx_nn_step(i64 h, i64 okind, double lr) { return nn_step(h, okind, lr); }
-/* Libera un handle NEURAL (rete/cella) o un handle di layer (conv/pool/fusedmm). */
+/* Libera un handle NEURAL (rete, cella o strato con stato). */
 i64 ofx_nn_free(i64 h)
 {
-    if (h > NN_LAYER_BASE) {
-        lay_reset(h);
-        return 0;
-    }
     return nn_free_entry(h);
 }
 
@@ -418,89 +404,24 @@ i64 ofx_nn_pbp_moments(double m_a, double v_a, double *out)
     return 0;
 }
 
-/* PBP a handle: INIT copia m_w/v_w (out×in) nello handle; RUN prende solo i vettori
- * di stato del passo. Lo stato non si ricrea a ogni forward. */
-i64 ofx_nn_pbp_init(const double *m_w, const double *v_w, i64 in, i64 out)
+/* PBP su strato denso, senza handle: m_w/v_w sono i momenti dei pesi (out×in),
+ * m_prev/v_prev i momenti in ingresso, m_z/v_z quelli in uscita. relu <> 0 applica
+ * i momenti ReLU, altrimenti il layer resta lineare. */
+i64 ofx_nn_pbp_player(const double *m_w, const double *v_w, const double *m_prev,
+                      const double *v_prev, double *m_z, double *v_z,
+                      i64 in, i64 out, double scaling, i64 relu)
 {
-    i64 h;
-    size_t n;
-    nn_entry *e;
-    if (!m_w || !v_w || in <= 0 || out <= 0) return -1;
-    h = nn_alloc(5);
-    if (h < 0) return -1;
-    e = &g_nn[h - 1];
-    n = (size_t)in * (size_t)out;
-    e->pbp_mw = (double *)malloc(n * sizeof(double));
-    e->pbp_vw = (double *)malloc(n * sizeof(double));
-    if (!e->pbp_mw || !e->pbp_vw) {
-        free(e->pbp_mw);
-        free(e->pbp_vw);
-        memset(e, 0, sizeof(*e));
-        return -1;
-    }
-    memcpy(e->pbp_mw, m_w, n * sizeof(double));
-    memcpy(e->pbp_vw, v_w, n * sizeof(double));
-    e->pbp_in = (int)in;
-    e->pbp_out = (int)out;
-    return h;
-}
-
-i64 ofx_nn_pbp_run(i64 h, const double *m_z_prev, const double *v_z_prev,
-                   double scaling, i64 relu, double *m_z, double *v_z)
-{
-    nn_entry *e = nn_get(h);
-    if (!e || e->kind != 5 || !m_z_prev || !v_z_prev || !m_z || !v_z) return -1;
-    return (i64)gn_pbp_layer_forward((const gn_real *)e->pbp_mw, (const gn_real *)e->pbp_vw,
-                                     (const gn_real *)m_z_prev, (const gn_real *)v_z_prev,
-                                     e->pbp_in, e->pbp_out, (gn_real)scaling, (int)relu,
+    if (!m_w || !v_w || !m_prev || !v_prev || !m_z || !v_z || in <= 0 || out <= 0) return -1;
+    return (i64)gn_pbp_layer_forward((const gn_real *)m_w, (const gn_real *)v_w,
+                                     (const gn_real *)m_prev, (const gn_real *)v_prev,
+                                     (int)in, (int)out, (gn_real)scaling, (int)relu,
                                      (gn_real *)m_z, (gn_real *)v_z);
 }
 
-
-/* ── CNN / FusedMM: configurazioni di layer su handle (spazio 1001+) ──────────
- * La configurazione (dimensioni, stride, pad, alpha/beta) vive in un handle:
- * il FORWARD prende solo gli array e i parametri non si ripetono. */
-
-struct nn_layer {
-    int used;
-    int kind;   /* 1 im2col 2 col2im 3 conv 4 deconv 5 winograd 6 lrn 7 resize
-                 * 8 maxpool 9 avgpool 10 unpool 11 fusedmm 12 aggregate */
-    int c, h, w, oc, kh, kw, stride, pad, dil, tile, size, oh, ow;
-    int rows, cols, kk, nnz;
-    double alpha, beta, scale;
-};
-
-static nn_layer g_layer[NN_LAYER_MAX];
-
-static nn_layer *lay_get(i64 h)
-{
-    if (h <= NN_LAYER_BASE || h > NN_LAYER_BASE + NN_LAYER_MAX) return NULL;
-    if (!g_layer[h - NN_LAYER_BASE - 1].used) return NULL;
-    return &g_layer[h - NN_LAYER_BASE - 1];
-}
-
-static void lay_reset(i64 h)
-{
-    nn_layer *L = lay_get(h);
-    if (L) memset(L, 0, sizeof(*L));
-}
-
-static i64 lay_alloc(int kind)
-{
-    int i;
-    for (i = 0; i < NN_LAYER_MAX; i++) {
-        if (g_layer[i].used) continue;
-        memset(&g_layer[i], 0, sizeof(g_layer[i]));
-        g_layer[i].used = 1;
-        g_layer[i].kind = kind;
-        g_layer[i].dil = 1;
-        g_layer[i].tile = 2;
-        g_layer[i].alpha = 1.0;
-        g_layer[i].beta = 1.0;
-        return (i64)(NN_LAYER_BASE + i + 1);
-    }
-    return -1;
-}
+/* ── CNN, pooling e FusedMM: chiamate DIRETTE (FFI fino a 64 argomenti) ───────
+ * Le funzioni stateless non hanno piu' un handle di configurazione: dimensioni,
+ * stride, pad e dilatazione sono parametri espliciti. Layout tensori: CHW
+ * (canale, altezza, larghezza), DOUBLE row-major. */
 
 /* Dimensione di uscita di una conv/pool: floor((dim + 2*pad - k)/stride) + 1. */
 i64 ofx_nn_outsize(i64 dim, i64 k, i64 stride, i64 pad)
@@ -509,334 +430,202 @@ i64 ofx_nn_outsize(i64 dim, i64 k, i64 stride, i64 pad)
     return (dim + 2 * pad - k) / stride + 1;
 }
 
-i64 ofx_nn_conv_init(i64 c, i64 h, i64 w, i64 oc, i64 kh, i64 kw, i64 stride, i64 pad)
+/* out (oc×oh×ow) = conv2d(in c×h×w, weight oc×c×kh×kw). dil = 1 → standard. */
+i64 ofx_nn_conv2d(double *out, const double *in, const double *weight,
+                  i64 c, i64 h, i64 w, i64 oc, i64 kh, i64 kw,
+                  i64 stride, i64 pad, i64 dil)
 {
-    i64 lh;
-    nn_layer *L;
+    if (!out || !in || !weight) return -1;
+    if (c <= 0 || h <= 0 || w <= 0 || oc <= 0 || kh <= 0 || kw <= 0 || stride <= 0 || dil <= 0) return -1;
+    if (dil > 1)
+        return (i64)gn_conv2d_dilated((gn_real *)out, (const gn_real *)in, (int)c, (int)h, (int)w,
+                                      (const gn_real *)weight, NULL, (int)oc, (int)kh, (int)kw,
+                                      (int)stride, (int)pad, (int)dil);
+    return (i64)gn_conv2d((gn_real *)out, (const gn_real *)in, (int)c, (int)h, (int)w,
+                          (const gn_real *)weight, NULL, (int)oc, (int)kh, (int)kw,
+                          (int)stride, (int)pad);
+}
+
+i64 ofx_nn_conv2db(double *out, const double *in, const double *weight, const double *bias,
+                   i64 c, i64 h, i64 w, i64 oc, i64 kh, i64 kw,
+                   i64 stride, i64 pad, i64 dil)
+{
+    if (!out || !in || !weight || !bias) return -1;
+    if (c <= 0 || h <= 0 || w <= 0 || oc <= 0 || kh <= 0 || kw <= 0 || stride <= 0 || dil <= 0) return -1;
+    if (dil > 1)
+        return (i64)gn_conv2d_dilated((gn_real *)out, (const gn_real *)in, (int)c, (int)h, (int)w,
+                                      (const gn_real *)weight, (const gn_real *)bias, (int)oc,
+                                      (int)kh, (int)kw, (int)stride, (int)pad, (int)dil);
+    return (i64)gn_conv2d((gn_real *)out, (const gn_real *)in, (int)c, (int)h, (int)w,
+                          (const gn_real *)weight, (const gn_real *)bias, (int)oc,
+                          (int)kh, (int)kw, (int)stride, (int)pad);
+}
+
+/* Deconvoluzione (transposed conv): out = (h-1)*stride-2*pad+kh per lato. */
+i64 ofx_nn_deconv2d(double *out, const double *in, const double *weight,
+                    i64 c, i64 h, i64 w, i64 oc, i64 kh, i64 kw, i64 stride, i64 pad)
+{
+    if (!out || !in || !weight) return -1;
     if (c <= 0 || h <= 0 || w <= 0 || oc <= 0 || kh <= 0 || kw <= 0 || stride <= 0) return -1;
-    lh = lay_alloc(3);
-    if (lh < 0) return -1;
-    L = lay_get(lh);
-    L->c = (int)c; L->h = (int)h; L->w = (int)w; L->oc = (int)oc;
-    L->kh = (int)kh; L->kw = (int)kw; L->stride = (int)stride; L->pad = (int)pad;
-    L->oh = (int)((h + 2 * pad - kh) / stride + 1);
-    L->ow = (int)((w + 2 * pad - kw) / stride + 1);
-    return lh;
+    return (i64)gn_deconv2d((gn_real *)out, (const gn_real *)in, (int)c, (int)h, (int)w,
+                            (const gn_real *)weight, NULL, (int)oc, (int)kh, (int)kw,
+                            (int)stride, (int)pad);
 }
 
-i64 ofx_nn_conv_set_dil(i64 lh, i64 dil)
+i64 ofx_nn_deconv2db(double *out, const double *in, const double *weight, const double *bias,
+                     i64 c, i64 h, i64 w, i64 oc, i64 kh, i64 kw, i64 stride, i64 pad)
 {
-    nn_layer *L = lay_get(lh);
-    if (!L || L->kind != 3 || dil <= 0) return -1;
-    L->dil = (int)dil;
-    return 0;
-}
-
-/* conv (dil=1) / conv dilatata (dil>1); bias opzionale: _run senza, _runb con. */
-i64 ofx_nn_conv_run(i64 lh, const double *in, const double *weight, double *out)
-{
-    nn_layer *L = lay_get(lh);
-    if (!L || L->kind != 3 || !in || !weight || !out) return -1;
-    if (L->dil <= 1)
-        return (i64)gn_conv2d((gn_real *)out, (const gn_real *)in, L->c, L->h, L->w,
-                              (const gn_real *)weight, NULL, L->oc, L->kh, L->kw,
-                              L->stride, L->pad);
-    return (i64)gn_conv2d_dilated((gn_real *)out, (const gn_real *)in, L->c, L->h, L->w,
-                                  (const gn_real *)weight, NULL, L->oc, L->kh, L->kw,
-                                  L->stride, L->pad, L->dil);
-}
-
-i64 ofx_nn_conv_runb(i64 lh, const double *in, const double *weight, const double *bias, double *out)
-{
-    nn_layer *L = lay_get(lh);
-    if (!L || L->kind != 3 || !in || !weight || !bias || !out) return -1;
-    if (L->dil <= 1)
-        return (i64)gn_conv2d((gn_real *)out, (const gn_real *)in, L->c, L->h, L->w,
-                              (const gn_real *)weight, (const gn_real *)bias, L->oc,
-                              L->kh, L->kw, L->stride, L->pad);
-    return (i64)gn_conv2d_dilated((gn_real *)out, (const gn_real *)in, L->c, L->h, L->w,
-                                  (const gn_real *)weight, (const gn_real *)bias, L->oc,
-                                  L->kh, L->kw, L->stride, L->pad, L->dil);
-}
-
-i64 ofx_nn_deconv_init(i64 c, i64 h, i64 w, i64 oc, i64 kh, i64 kw, i64 stride, i64 pad)
-{
-    i64 lh;
-    nn_layer *L;
+    if (!out || !in || !weight || !bias) return -1;
     if (c <= 0 || h <= 0 || w <= 0 || oc <= 0 || kh <= 0 || kw <= 0 || stride <= 0) return -1;
-    lh = lay_alloc(4);
-    if (lh < 0) return -1;
-    L = lay_get(lh);
-    L->c = (int)c; L->h = (int)h; L->w = (int)w; L->oc = (int)oc;
-    L->kh = (int)kh; L->kw = (int)kw; L->stride = (int)stride; L->pad = (int)pad;
-    L->oh = (int)((h - 1) * stride - 2 * pad + kh);
-    L->ow = (int)((w - 1) * stride - 2 * pad + kw);
-    return lh;
+    return (i64)gn_deconv2d((gn_real *)out, (const gn_real *)in, (int)c, (int)h, (int)w,
+                            (const gn_real *)weight, (const gn_real *)bias, (int)oc,
+                            (int)kh, (int)kw, (int)stride, (int)pad);
 }
 
-i64 ofx_nn_deconv_run(i64 lh, const double *in, const double *weight, double *out)
+/* Winograd F(m×m, 3×3): stride 1, pad 1; tile 2 o 4 (h,w multipli di tile). */
+i64 ofx_nn_winograd(double *out, const double *in, const double *weight,
+                    i64 c, i64 h, i64 w, i64 oc, i64 tile)
 {
-    nn_layer *L = lay_get(lh);
-    if (!L || L->kind != 4 || !in || !weight || !out) return -1;
-    return (i64)gn_deconv2d((gn_real *)out, (const gn_real *)in, L->c, L->h, L->w,
-                            (const gn_real *)weight, NULL, L->oc, L->kh, L->kw,
-                            L->stride, L->pad);
+    if (!out || !in || !weight) return -1;
+    if (c <= 0 || h <= 0 || w <= 0 || oc <= 0) return -1;
+    return (i64)gn_winograd_conv2d((gn_real *)out, (const gn_real *)in, (int)c, (int)h, (int)w,
+                                   (const gn_real *)weight, NULL, (int)oc, (int)((tile == 4) ? 4 : 2));
 }
 
-i64 ofx_nn_deconv_runb(i64 lh, const double *in, const double *weight, const double *bias, double *out)
+i64 ofx_nn_winogradb(double *out, const double *in, const double *weight, const double *bias,
+                     i64 c, i64 h, i64 w, i64 oc, i64 tile)
 {
-    nn_layer *L = lay_get(lh);
-    if (!L || L->kind != 4 || !in || !weight || !bias || !out) return -1;
-    return (i64)gn_deconv2d((gn_real *)out, (const gn_real *)in, L->c, L->h, L->w,
-                            (const gn_real *)weight, (const gn_real *)bias, L->oc,
-                            L->kh, L->kw, L->stride, L->pad);
+    if (!out || !in || !weight || !bias) return -1;
+    if (c <= 0 || h <= 0 || w <= 0 || oc <= 0) return -1;
+    return (i64)gn_winograd_conv2d((gn_real *)out, (const gn_real *)in, (int)c, (int)h, (int)w,
+                                   (const gn_real *)weight, (const gn_real *)bias, (int)oc,
+                                   (int)((tile == 4) ? 4 : 2));
 }
 
-i64 ofx_nn_wino_init(i64 c, i64 h, i64 w, i64 oc, i64 tile)
+/* im2col / col2im: col = (c*kh*kw) × (oh*ow). */
+i64 ofx_nn_im2col(double *col, const double *in, i64 c, i64 h, i64 w,
+                  i64 kh, i64 kw, i64 stride, i64 pad)
 {
-    i64 lh = lay_alloc(5);
-    nn_layer *L;
-    if (lh < 0) return -1;
-    L = lay_get(lh);
-    L->c = (int)c; L->h = (int)h; L->w = (int)w; L->oc = (int)oc;
-    L->kh = 3; L->kw = 3; L->stride = 1; L->pad = 1;
-    L->tile = (int)((tile == 4) ? 4 : 2);
-    L->oh = (int)h; L->ow = (int)w;
-    return lh;
-}
-
-i64 ofx_nn_wino_run(i64 lh, const double *in, const double *weight, double *out)
-{
-    nn_layer *L = lay_get(lh);
-    if (!L || L->kind != 5 || !in || !weight || !out) return -1;
-    return (i64)gn_winograd_conv2d((gn_real *)out, (const gn_real *)in, L->c, L->h, L->w,
-                                   (const gn_real *)weight, NULL, L->oc, L->tile);
-}
-
-i64 ofx_nn_wino_runb(i64 lh, const double *in, const double *weight, const double *bias, double *out)
-{
-    nn_layer *L = lay_get(lh);
-    if (!L || L->kind != 5 || !in || !weight || !bias || !out) return -1;
-    return (i64)gn_winograd_conv2d((gn_real *)out, (const gn_real *)in, L->c, L->h, L->w,
-                                   (const gn_real *)weight, (const gn_real *)bias, L->oc, L->tile);
-}
-
-i64 ofx_nn_im2col_init(i64 c, i64 h, i64 w, i64 kh, i64 kw, i64 stride, i64 pad)
-{
-    i64 lh = lay_alloc(1);
-    nn_layer *L;
-    if (lh < 0) return -1;
-    L = lay_get(lh);
-    L->c = (int)c; L->h = (int)h; L->w = (int)w;
-    L->kh = (int)kh; L->kw = (int)kw; L->stride = (int)stride; L->pad = (int)pad;
-    L->oh = (int)((h + 2 * pad - kh) / stride + 1);
-    L->ow = (int)((w + 2 * pad - kw) / stride + 1);
-    return lh;
-}
-
-i64 ofx_nn_im2col_run(i64 lh, const double *in, double *col)
-{
-    nn_layer *L = lay_get(lh);
     int oh = 0, ow = 0;
-    if (!L || L->kind != 1 || !in || !col) return -1;
-    return (i64)gn_im2col((const gn_real *)in, L->c, L->h, L->w, L->kh, L->kw,
-                          L->stride, L->pad, (gn_real *)col, &oh, &ow);
+    if (!col || !in || c <= 0 || h <= 0 || w <= 0 || kh <= 0 || kw <= 0 || stride <= 0) return -1;
+    return (i64)gn_im2col((const gn_real *)in, (int)c, (int)h, (int)w, (int)kh, (int)kw,
+                          (int)stride, (int)pad, (gn_real *)col, &oh, &ow);
 }
 
-i64 ofx_nn_col2im_init(i64 c, i64 h, i64 w, i64 kh, i64 kw, i64 stride, i64 pad)
+i64 ofx_nn_col2im(double *out, const double *col, i64 c, i64 h, i64 w,
+                  i64 kh, i64 kw, i64 stride, i64 pad)
 {
-    i64 lh = lay_alloc(2);
-    nn_layer *L;
-    if (lh < 0) return -1;
-    L = lay_get(lh);
-    L->c = (int)c; L->h = (int)h; L->w = (int)w;
-    L->kh = (int)kh; L->kw = (int)kw; L->stride = (int)stride; L->pad = (int)pad;
-    return lh;
+    if (!out || !col || c <= 0 || h <= 0 || w <= 0 || kh <= 0 || kw <= 0 || stride <= 0) return -1;
+    return (i64)gn_col2im((const gn_real *)col, (int)c, (int)h, (int)w, (int)kh, (int)kw,
+                          (int)stride, (int)pad, (gn_real *)out);
 }
 
-i64 ofx_nn_col2im_run(i64 lh, const double *col, double *out)
+/* Local Response Normalization. */
+i64 ofx_nn_lrn(double *out, const double *in, i64 c, i64 h, i64 w, i64 size,
+               double alpha, double beta, double biasv)
 {
-    nn_layer *L = lay_get(lh);
-    if (!L || L->kind != 2 || !col || !out) return -1;
-    return (i64)gn_col2im((const gn_real *)col, L->c, L->h, L->w, L->kh, L->kw,
-                          L->stride, L->pad, (gn_real *)out);
+    if (!out || !in || c <= 0 || h <= 0 || w <= 0 || size <= 0) return -1;
+    return (i64)gn_lrn((gn_real *)out, (const gn_real *)in, (int)c, (int)h, (int)w,
+                       (int)size, (gn_real)alpha, (gn_real)beta, (gn_real)biasv);
 }
 
-i64 ofx_nn_lrn_init(i64 c, i64 h, i64 w, i64 size, double alpha, double beta, double biasv)
+/* Resize: kind 0 = nearest, 1 = bilinear. */
+i64 ofx_nn_resize(double *out, const double *in, i64 c, i64 h, i64 w, i64 oh, i64 ow, i64 kind)
 {
-    i64 lh = lay_alloc(6);
-    nn_layer *L;
-    if (lh < 0) return -1;
-    L = lay_get(lh);
-    L->c = (int)c; L->h = (int)h; L->w = (int)w; L->size = (int)size;
-    L->alpha = alpha; L->beta = beta; L->scale = biasv;
-    return lh;
-}
-
-i64 ofx_nn_lrn_run(i64 lh, const double *in, double *out)
-{
-    nn_layer *L = lay_get(lh);
-    if (!L || L->kind != 6 || !in || !out) return -1;
-    return (i64)gn_lrn((gn_real *)out, (const gn_real *)in, L->c, L->h, L->w,
-                       L->size, L->alpha, L->beta, L->scale);
-}
-
-i64 ofx_nn_resize_init(i64 c, i64 h, i64 w, i64 oh, i64 ow)
-{
-    i64 lh = lay_alloc(7);
-    nn_layer *L;
-    if (lh < 0) return -1;
-    L = lay_get(lh);
-    L->c = (int)c; L->h = (int)h; L->w = (int)w; L->oh = (int)oh; L->ow = (int)ow;
-    return lh;
-}
-
-/* kind: 0 nearest, 1 bilinear. */
-i64 ofx_nn_resize_run(i64 lh, i64 kind, const double *in, double *out)
-{
-    nn_layer *L = lay_get(lh);
-    if (!L || L->kind != 7 || !in || !out) return -1;
+    if (!out || !in || c <= 0 || h <= 0 || w <= 0 || oh <= 0 || ow <= 0) return -1;
     if (kind == 0)
-        return (i64)gn_resize_nearest((gn_real *)out, (const gn_real *)in, L->c, L->h, L->w, L->oh, L->ow);
-    return (i64)gn_resize_bilinear((gn_real *)out, (const gn_real *)in, L->c, L->h, L->w, L->oh, L->ow);
+        return (i64)gn_resize_nearest((gn_real *)out, (const gn_real *)in, (int)c, (int)h, (int)w,
+                                      (int)oh, (int)ow);
+    return (i64)gn_resize_bilinear((gn_real *)out, (const gn_real *)in, (int)c, (int)h, (int)w,
+                                   (int)oh, (int)ow);
 }
 
-i64 ofx_nn_maxpool_init(i64 c, i64 h, i64 w, i64 size, i64 stride)
+/* Pooling 2D (size/stride). MAXPOOLARG riceve l'indice ky*size+kx per output. */
+i64 ofx_nn_maxpool(double *out, const double *in, i64 c, i64 h, i64 w, i64 size, i64 stride)
 {
-    i64 lh = lay_alloc(8);
-    nn_layer *L;
-    if (lh < 0) return -1;
-    L = lay_get(lh);
-    L->c = (int)c; L->h = (int)h; L->w = (int)w; L->size = (int)size; L->stride = (int)stride;
-    L->oh = (int)((h - size) / stride + 1);
-    L->ow = (int)((w - size) / stride + 1);
-    return lh;
+    if (!out || !in || c <= 0 || h <= 0 || w <= 0 || size <= 0 || stride <= 0) return -1;
+    return (i64)gn_maxpool2d((gn_real *)out, (const gn_real *)in, (int)c, (int)h, (int)w,
+                             (int)size, (int)stride, NULL);
 }
 
-i64 ofx_nn_avgpool_init(i64 c, i64 h, i64 w, i64 size, i64 stride)
+i64 ofx_nn_maxpool_arg(double *out, const double *in, i64 *argmax,
+                       i64 c, i64 h, i64 w, i64 size, i64 stride)
 {
-    i64 lh = lay_alloc(9);
-    nn_layer *L;
-    if (lh < 0) return -1;
-    L = lay_get(lh);
-    L->c = (int)c; L->h = (int)h; L->w = (int)w; L->size = (int)size; L->stride = (int)stride;
-    L->oh = (int)((h - size) / stride + 1);
-    L->ow = (int)((w - size) / stride + 1);
-    return lh;
-}
-
-i64 ofx_nn_pool_run(i64 lh, const double *in, double *out)
-{
-    nn_layer *L = lay_get(lh);
-    if (!L || (L->kind != 8 && L->kind != 9) || !in || !out) return -1;
-    if (L->kind == 8)
-        return (i64)gn_maxpool2d((gn_real *)out, (const gn_real *)in, L->c, L->h, L->w,
-                                 L->size, L->stride, NULL);
-    return (i64)gn_avgpool2d((gn_real *)out, (const gn_real *)in, L->c, L->h, L->w,
-                             L->size, L->stride);
-}
-
-/* maxpool con argmax (LONG array, out×). */
-i64 ofx_nn_pool_run_arg(i64 lh, const double *in, double *out, i64 *argmax)
-{
-    nn_layer *L = lay_get(lh);
-    int *am = NULL;
-    int n, i, rc;
-    if (!L || L->kind != 8 || !in || !out || !argmax) return -1;
-    n = L->c * L->oh * L->ow;
+    int *am;
+    int oh, ow, n, i, rc;
+    if (!out || !in || !argmax || c <= 0 || h <= 0 || w <= 0 || size <= 0 || stride <= 0) return -1;
+    oh = (int)((h - size) / stride + 1);
+    ow = (int)((w - size) / stride + 1);
+    if (oh <= 0 || ow <= 0) return -1;
+    n = (int)(c * oh * ow);
     am = (int *)calloc((size_t)(n > 0 ? n : 1), sizeof(int));
     if (!am) return -1;
-    rc = gn_maxpool2d((gn_real *)out, (const gn_real *)in, L->c, L->h, L->w,
-                      L->size, L->stride, am);
-    if (rc == GN_OK)
-        for (i = 0; i < n; i++) argmax[i] = (i64)am[i];
+    rc = gn_maxpool2d((gn_real *)out, (const gn_real *)in, (int)c, (int)h, (int)w,
+                      (int)size, (int)stride, am);
+    if (rc == GN_OK) for (i = 0; i < n; i++) argmax[i] = (i64)am[i];
     free(am);
     return (i64)rc;
 }
 
-i64 ofx_nn_unpool_init(i64 c, i64 h, i64 w, i64 size, i64 stride)
+i64 ofx_nn_avgpool(double *out, const double *in, i64 c, i64 h, i64 w, i64 size, i64 stride)
 {
-    i64 lh = lay_alloc(10);
-    nn_layer *L;
-    if (lh < 0) return -1;
-    L = lay_get(lh);
-    L->c = (int)c; L->h = (int)h; L->w = (int)w; L->size = (int)size; L->stride = (int)stride;
-    L->oh = (int)((h - size) / stride + 1);
-    L->ow = (int)((w - size) / stride + 1);
-    return lh;
+    if (!out || !in || c <= 0 || h <= 0 || w <= 0 || size <= 0 || stride <= 0) return -1;
+    return (i64)gn_avgpool2d((gn_real *)out, (const gn_real *)in, (int)c, (int)h, (int)w,
+                             (int)size, (int)stride);
 }
 
-i64 ofx_nn_unpool_run(i64 lh, const double *in, const i64 *argmax, double fill, double *out)
+i64 ofx_nn_unpool(double *out, const double *in, const i64 *argmax,
+                  i64 c, i64 h, i64 w, i64 size, i64 stride, double fill)
 {
-    nn_layer *L = lay_get(lh);
-    int *am = NULL;
-    int n, i, rc;
-    if (!L || L->kind != 10 || !in || !argmax || !out) return -1;
-    n = L->c * L->oh * L->ow;
+    int *am;
+    int oh, ow, n, i, rc;
+    if (!out || !in || !argmax || c <= 0 || h <= 0 || w <= 0 || size <= 0 || stride <= 0) return -1;
+    oh = (int)((h - size) / stride + 1);
+    ow = (int)((w - size) / stride + 1);
+    if (oh <= 0 || ow <= 0) return -1;
+    n = (int)(c * oh * ow);
     am = (int *)malloc((size_t)(n > 0 ? n : 1) * sizeof(int));
     if (!am) return -1;
     for (i = 0; i < n; i++) am[i] = (int)argmax[i];
-    rc = gn_maxunpool2d((gn_real *)out, (const gn_real *)in, am, L->c, L->h, L->w,
-                        L->size, L->stride, (gn_real)fill);
+    rc = gn_maxunpool2d((gn_real *)out, (const gn_real *)in, am, (int)c, (int)h, (int)w,
+                        (int)size, (int)stride, (gn_real)fill);
     free(am);
     return (i64)rc;
 }
 
-i64 ofx_nn_fusedmm_init(i64 rows, i64 cols, i64 k, i64 nnz, double alpha, double beta)
+/* FusedMM / aggregazione su matrice CSR (GAT/GraphSAGE). */
+i64 ofx_nn_fusedmm(double *out, const i64 *rowptr, const i64 *colidx, const double *val,
+                   const double *X, const double *Y,
+                   i64 rows, i64 cols, i64 k, i64 nnz, double alpha, double beta)
 {
-    i64 lh = lay_alloc(11);
-    nn_layer *L;
-    if (lh < 0) return -1;
-    L = lay_get(lh);
-    L->rows = (int)rows; L->cols = (int)cols; L->kk = (int)k; L->nnz = (int)nnz;
-    L->alpha = alpha; L->beta = beta;
-    return lh;
-}
-
-i64 ofx_nn_fusedmm_run(i64 lh, const i64 *rowptr, const i64 *colidx, const double *val,
-                       const double *X, const double *Y, double *Z)
-{
-    nn_layer *L = lay_get(lh);
-    int *rp = NULL, *ci = NULL;
-    int i, rc;
-    if (!L || L->kind != 11 || !rowptr || !colidx || !X || !Y || !Z) return -1;
-    rp = (int *)malloc((size_t)(L->rows + 1) * sizeof(int));
-    ci = (int *)malloc((size_t)(L->nnz > 0 ? L->nnz : 1) * sizeof(int));
+    int *rp, *ci, i, rc;
+    if (!out || !rowptr || !colidx || !X || !Y || rows <= 0 || cols <= 0 || k <= 0) return -1;
+    rp = (int *)malloc((size_t)(rows + 1) * sizeof(int));
+    ci = (int *)malloc((size_t)(nnz > 0 ? nnz : 1) * sizeof(int));
     if (!rp || !ci) { free(rp); free(ci); return -1; }
-    for (i = 0; i <= L->rows; i++) rp[i] = (int)rowptr[i];
-    for (i = 0; i < L->nnz; i++) ci[i] = (int)colidx[i];
-    rc = gn_fusedmm_csr(rp, ci, (const gn_real *)val, L->rows, L->cols, L->kk,
-                        (const gn_real *)X, (const gn_real *)Y, L->alpha, L->beta, (gn_real *)Z);
+    for (i = 0; i <= (int)rows; i++) rp[i] = (int)rowptr[i];
+    for (i = 0; i < (int)nnz; i++) ci[i] = (int)colidx[i];
+    rc = gn_fusedmm_csr(rp, ci, (const gn_real *)val, (int)rows, (int)cols, (int)k,
+                        (const gn_real *)X, (const gn_real *)Y, (gn_real)alpha, (gn_real)beta,
+                        (gn_real *)out);
     free(rp);
     free(ci);
     return (i64)rc;
 }
 
-i64 ofx_nn_aggregate_init(i64 rows, i64 cols, i64 k, i64 nnz, double alpha, double beta)
+i64 ofx_nn_aggregate(double *out, const i64 *rowptr, const i64 *colidx, const double *val,
+                     const double *Y, i64 rows, i64 cols, i64 k, i64 nnz,
+                     double alpha, double beta)
 {
-    i64 lh = lay_alloc(12);
-    nn_layer *L;
-    if (lh < 0) return -1;
-    L = lay_get(lh);
-    L->rows = (int)rows; L->cols = (int)cols; L->kk = (int)k; L->nnz = (int)nnz;
-    L->alpha = alpha; L->beta = beta;
-    return lh;
-}
-
-i64 ofx_nn_aggregate_run(i64 lh, const i64 *rowptr, const i64 *colidx, const double *val,
-                         const double *Y, double *Z)
-{
-    nn_layer *L = lay_get(lh);
-    int *rp = NULL, *ci = NULL;
-    int i, rc;
-    if (!L || L->kind != 12 || !rowptr || !colidx || !Y || !Z) return -1;
-    rp = (int *)malloc((size_t)(L->rows + 1) * sizeof(int));
-    ci = (int *)malloc((size_t)(L->nnz > 0 ? L->nnz : 1) * sizeof(int));
+    int *rp, *ci, i, rc;
+    if (!out || !rowptr || !colidx || !Y || rows <= 0 || cols <= 0 || k <= 0) return -1;
+    rp = (int *)malloc((size_t)(rows + 1) * sizeof(int));
+    ci = (int *)malloc((size_t)(nnz > 0 ? nnz : 1) * sizeof(int));
     if (!rp || !ci) { free(rp); free(ci); return -1; }
-    for (i = 0; i <= L->rows; i++) rp[i] = (int)rowptr[i];
-    for (i = 0; i < L->nnz; i++) ci[i] = (int)colidx[i];
-    rc = gn_aggregate_csr(rp, ci, (const gn_real *)val, L->rows, L->cols, L->kk,
-                          (const gn_real *)Y, L->alpha, L->beta, (gn_real *)Z);
+    for (i = 0; i <= (int)rows; i++) rp[i] = (int)rowptr[i];
+    for (i = 0; i < (int)nnz; i++) ci[i] = (int)colidx[i];
+    rc = gn_aggregate_csr(rp, ci, (const gn_real *)val, (int)rows, (int)cols, (int)k,
+                          (const gn_real *)Y, (gn_real)alpha, (gn_real)beta, (gn_real *)out);
     free(rp);
     free(ci);
     return (i64)rc;
@@ -1474,43 +1263,16 @@ i64 ofx_nn_nms(const double *boxes, const double *scores, i64 n, double iou_thre
     return (i64)nk;
 }
 
-#define NN_YOLO_MAX 16
-#define NN_YOLO_BASE 4000
-
-typedef struct { int used; int grid_w, grid_h; double aw, ah; int cx, cy; } nn_yolocfg;
-static nn_yolocfg g_yolo[NN_YOLO_MAX];
-
-i64 ofx_nn_yolo_cfg(double anchor_w, double anchor_h, i64 cx, i64 cy, i64 grid_w, i64 grid_h)
+/* Decode di una cella YOLO (nessun handle: i parametri della cella sono espliciti).
+ * out(0..3) = bx, by, bw, bh normalizzati. */
+i64 ofx_nn_yolo_box(double *out, double tx, double ty, double tw, double th,
+                    double anchor_w, double anchor_h,
+                    i64 cx, i64 cy, i64 grid_w, i64 grid_h)
 {
-    int i;
-    for (i = 0; i < NN_YOLO_MAX; i++) {
-        if (g_yolo[i].used) continue;
-        g_yolo[i].used = 1;
-        g_yolo[i].aw = anchor_w; g_yolo[i].ah = anchor_h;
-        g_yolo[i].cx = (int)cx; g_yolo[i].cy = (int)cy;
-        g_yolo[i].grid_w = (int)grid_w; g_yolo[i].grid_h = (int)grid_h;
-        return (i64)(NN_YOLO_BASE + i + 1);
-    }
-    return -1;
-}
-
-i64 ofx_nn_yolo_box(i64 h, double tx, double ty, double tw, double th, double *out)
-{
-    nn_yolocfg *c;
-    if (h <= NN_YOLO_BASE || h > NN_YOLO_BASE + NN_YOLO_MAX || !out) return -1;
-    c = &g_yolo[h - NN_YOLO_BASE - 1];
-    if (!c->used) return -1;
+    if (!out || anchor_w <= 0.0 || anchor_h <= 0.0 || grid_w <= 0 || grid_h <= 0) return -1;
     gn_yolo_decode_box((gn_real)tx, (gn_real)ty, (gn_real)tw, (gn_real)th,
-                       (gn_real)c->aw, (gn_real)c->ah, c->cx, c->cy,
-                       c->grid_w, c->grid_h, (gn_real *)out);
-    return 0;
-}
-
-i64 ofx_nn_yolo_free(i64 h)
-{
-    if (h <= NN_YOLO_BASE || h > NN_YOLO_BASE + NN_YOLO_MAX) return -1;
-    if (!g_yolo[h - NN_YOLO_BASE - 1].used) return -1;
-    memset(&g_yolo[h - NN_YOLO_BASE - 1], 0, sizeof(nn_yolocfg));
+                       (gn_real)anchor_w, (gn_real)anchor_h, (int)cx, (int)cy,
+                       (int)grid_w, (int)grid_h, (gn_real *)out);
     return 0;
 }
 
@@ -1521,69 +1283,35 @@ i64 ofx_nn_nms_multiclass(const double *boxes, double *probs, i64 n, i64 classes
     return 0;
 }
 
-/* KNN: handle 4101+ con copia del training set */
-#define NN_KNN_MAX 16
-#define NN_KNN_BASE 4100
-
-typedef struct { int used; double *X; int *y; int n, d, ncls; } nn_knn;
-static nn_knn g_knn[NN_KNN_MAX];
-
-static nn_knn *knn_get(i64 h)
+/* KNN senza handle: il training set e' passato a ogni chiamata (Xtr come matrice
+ * ntr×d, accettata anche nella forma 2-D di BASIC). */
+i64 ofx_nn_knn_classify(const double *Xtr, const i64 *ytr, i64 ntr, i64 d,
+                        i64 n_classes, i64 k, const double *x)
 {
-    if (h <= NN_KNN_BASE || h > NN_KNN_BASE + NN_KNN_MAX) return NULL;
-    if (!g_knn[h - NN_KNN_BASE - 1].used) return NULL;
-    return &g_knn[h - NN_KNN_BASE - 1];
-}
-
-i64 ofx_nn_knn_init(const double *X, const i64 *y, i64 n, i64 d, i64 n_classes)
-{
-    int slot, j;
-    if (!X || !y || n <= 0 || d <= 0 || n_classes <= 0) return -1;
-    for (slot = 0; slot < NN_KNN_MAX; slot++) {
-        nn_knn *k;
-        if (g_knn[slot].used) continue;
-        k = &g_knn[slot];
-        memset(k, 0, sizeof(*k));
-        k->X = (double *)malloc((size_t)(n * d) * sizeof(double));
-        k->y = (int *)malloc((size_t)n * sizeof(int));
-        if (!k->X || !k->y) { free(k->X); free(k->y); return -1; }
-        memcpy(k->X, X, (size_t)(n * d) * sizeof(double));
-        for (j = 0; j < (int)n; j++) k->y[j] = (int)y[j];
-        k->n = (int)n; k->d = (int)d; k->ncls = (int)n_classes; k->used = 1;
-        return (i64)(NN_KNN_BASE + slot + 1);
-    }
-    return -1;
-}
-
-i64 ofx_nn_knn_classify(i64 h, i64 k, const double *x)
-{
-    nn_knn *m = knn_get(h);
-    if (!m || !x) return -1;
-    return (i64)gn_knn_classify(m->X, m->y, m->n, m->d, m->ncls, (int)k, x);
-}
-
-double ofx_nn_knn_accuracy(i64 h, i64 k, const double *Xte, const i64 *yte, i64 nte)
-{
-    nn_knn *m = knn_get(h);
-    int *yt;
-    double rc;
-    if (!m || !Xte || !yte || nte <= 0) return 0.0;
-    yt = i32_from_longs(yte, (int)nte);
-    if (!yt) return 0.0;
-    rc = gn_knn_accuracy(m->X, m->y, m->n, Xte, yt, (int)nte, m->d, m->ncls, (int)k);
-    free(yt);
+    int *y;
+    i64 rc;
+    if (!Xtr || !ytr || !x || ntr <= 0 || d <= 0 || n_classes <= 0) return -1;
+    y = i32_from_longs(ytr, (int)ntr);
+    if (!y) return -1;
+    rc = (i64)gn_knn_classify(Xtr, y, (int)ntr, (int)d, (int)n_classes, (int)k, x);
+    free(y);
     return rc;
 }
 
-i64 ofx_nn_knn_free(i64 h)
+double ofx_nn_knn_accuracy(const double *Xtr, const i64 *ytr, i64 ntr,
+                           const double *Xte, const i64 *yte, i64 nte,
+                           i64 d, i64 n_classes, i64 k)
 {
-    nn_knn *m = knn_get(h);
-    if (!m) return -1;
-    free(m->X);
-    free(m->y);
-    m->X = NULL; m->y = NULL;
-    m->used = 0;
-    return 0;
+    int *it, *ie;
+    double rc;
+    if (!Xtr || !ytr || !Xte || !yte || ntr <= 0 || nte <= 0 || d <= 0 || n_classes <= 0) return 0.0;
+    it = i32_from_longs(ytr, (int)ntr);
+    ie = i32_from_longs(yte, (int)nte);
+    if (!it || !ie) { free(it); free(ie); return 0.0; }
+    rc = gn_knn_accuracy(Xtr, it, (int)ntr, Xte, ie, (int)nte, (int)d, (int)n_classes, (int)k);
+    free(it);
+    free(ie);
+    return rc;
 }
 
 /* Metriche */
@@ -1686,23 +1414,15 @@ double ofx_nn_r2(const double *yt, const double *yp, i64 n)
 }
 
 /* Memplan: offset per tensore (lifetime) e dimensione totale. */
-double ofx_nn_memplan(const double *size, const i64 *birth, const i64 *death, i64 n, double *offsets)
+/* Memplan con array di UDT: TYPE MemTensor { Size AS DOUBLE : Birth AS LONG : Death AS LONG }
+ * ha lo stesso layout della struct C (double + int32 + int32, 16 byte), quindi il
+ * buffer arriva gia' nella forma di gn_memplan_tensor. */
+double ofx_nn_memplan(const void *t, i64 n, double *offsets)
 {
-    gn_memplan_tensor *t;
-    int i;
-    double total;
-    if (!size || !birth || !death || !offsets || n <= 0) return 0.0;
-    t = (gn_memplan_tensor *)calloc((size_t)n, sizeof(gn_memplan_tensor));
-    if (!t) return 0.0;
-    for (i = 0; i < (int)n; i++) {
-        t[i].size = (gn_real)size[i];
-        t[i].birth = (int)birth[i];
-        t[i].death = (int)death[i];
-    }
-    total = (double)gn_mem_plan(t, (int)n, (gn_real *)offsets);
-    free(t);
-    return total;
+    if (!t || !offsets || n <= 0) return 0.0;
+    return (double)gn_mem_plan((const gn_memplan_tensor *)t, (int)n, (gn_real *)offsets);
 }
+
 
 /* ══ Attivazioni / gradienti (gn_act) ═══════════════════════════════════════
  * I VALORI di sigmoid/tanh/relu/gelu sono gia' in TORCH: qui si espongono i

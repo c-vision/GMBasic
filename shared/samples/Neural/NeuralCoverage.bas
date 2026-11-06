@@ -1,6 +1,6 @@
 ' FILE: Neural/NeuralCoverage.bas
 ' COPERTURA DIDATTICA — un programma solo, un SUB per famiglia, che chiama OGNI
-' funzione del namespace NEURAL (230 export del pacchetto gmbneural via FFI).
+' funzione del namespace NEURAL (213 export del pacchetto gmbneural via FFI).
 '
 ' Serve come contratto di superficie: se una funzione viene rinominata o rimossa,
 ' questo sample non compila più. L'output è deterministico e si verifica sui 4 backend
@@ -8,7 +8,8 @@
 '
 ' Famiglie: ricorrenti (RNN/LSTM/GRU/BiRNN/PBP), CNN, pruning/quantizzazione/ternario,
 ' alberi/forest/adaboost, SNN/BNN/PINN/detection/KNN/metriche/memplan,
-' attivazioni+denso+perdite, dropout/norm/chuck, autodiff+GP, norm/gather/block.
+' attivazioni+denso+perdite, dropout/norm/chuck, autodiff+GP, norm/gather/block,
+' matrici 2-D.
 '
 ' Domini: NEURAL.
 IMPORT NEURAL
@@ -21,8 +22,11 @@ FUNCTION GpFit(code() AS DOUBLE) AS DOUBLE
   NEXT i
   RETURN s
 END FUNCTION
+FUNCTION QuadPlus1(x AS DOUBLE) AS DOUBLE
+  RETURN x * x + 1
+END FUNCTION
 ' NEURAL (FFI) — slice ricorrente: RNN, LSTM, GRU, BiRNN (BPTT + ottimizzatore) e PBP.
-' EXPECT: rnn= 1 |f= 0 |y=0.2515,0.2417,0.4177|b= 0 |s= 0 |zg= 0 |f2= 0 |y2=0.1060|z= 0 |lstm= 0 |gru= 0 |birnn= 0 |pbp= 0 ,0.3989,0.3408|pl= 0 |mz=0.1000,0.2000|vz=0.0250,0.1000|fz= 0
+' EXPECT: rnn= 1 |f= 0 |y=0.2515,0.2417,0.4177|b= 0 |s= 0 |zg= 0 |f2= 0 |y2=0.1060|z= 0 |lstm= 0 |gru= 0 |birnn= 0 |pbp= 0 ,0.3989,0.3408|pl= 0 |mz=0.1000,0.2000|vz=0.0250,0.1000|fz=none
 ' IMPORTA NEURAL (pacchetto gmbneural): solo ciò che non esiste in GMBasic (TORCH copre MLP).
 
 SUB UnaRicorrente()
@@ -61,45 +65,45 @@ SUB UnaRicorrente()
   mw(0) = 0.5 : mw(1) = 1.0
   vw(0) = 0.0 : vw(1) = 0.0
   mzp(0) = 0.2 : vzp(0) = 0.1
-  ph = NEURAL.PBPLAYERINIT(mw, vw, 1, 2)
-  PRINT "|pl="; NEURAL.PBPLAYER(ph, mzp, vzp, 1.0, 0, mzo, vzo);
+  ' senza handle: i pesi e i momenti sono parametri della chiamata
+  PRINT "|pl="; NEURAL.PBPLAYER(mw, vw, mzp, vzp, mzo, vzo, 1, 2, 1.0, 0);
   PRINT "|mz="; FORMAT(mzo(0), "#.0000"); ","; FORMAT(mzo(1), "#.0000");
   PRINT "|vz="; FORMAT(vzo(0), "#.0000"); ","; FORMAT(vzo(1), "#.0000");
-  PRINT "|fz="; NEURAL.FREE(ph)
+  PRINT "|fz=none"
 END SUB
 
-' NEURAL (FFI) — CNN: conv, pooling, im2col, resize, winograd, deconv, LRN + FusedMM CSR.
-' EXPECT: conv= 0  , 3 , 5 , 7 , 9  |mp= 0  , 4 , 3  |ap= 0  , 2.5  |i2c= 0  , 1 , 2 , 3 , 4  |rs= 0  , 1 , 1 , 4  |w= 0  , 1 , 6 , 16  |d= 0  , 2 , 2 , 2 , 2  |l= 0 |0.9998,1.9997|fm= 0  , 4 , 9  |ag= 0  , 2 , 3  ||osz= 3 |cr= 0 =2.0,8.0|dd= 0 : 0 =20.0|c2i= 0 =4.0|db= 0 =3.0,3.0|up= 0 =0.0,4.0|wb= 0 =2.0,7.0|f= 0
-' IMPORTA NEURAL (pacchetto gmbneural): layout CHW, handle per la configurazione.
+' NEURAL (FFI) — CNN, pooling, im2col, resize, winograd, deconv, LRN e FusedMM.
+' Chiamate DIRETTE: nessun handle di configurazione (le dimensioni sono parametri).
+' EXPECT: conv= 0  , 3 , 5 , 7 , 9  |cr= 0  , 2 , 8  |mp= 0  , 4 , 3  |mp2= 0  , 4  |ap= 0  , 2.5  |osz= 3  |i2c= 0  , 1 , 2 , 3 , 4  |c2i= 0  , 4  |rs= 0  , 1 , 1 , 4  |w= 0  , 1 , 6 , 16  |wb= 0  , 2 , 7  |d= 0  , 2 , 2 , 2 , 2  |db= 0  , 3 , 3  |up= 0  , 0 , 4  |l= 0  |0.9998,1.9997 |dd= 0  , 20  |fm= 0  , 4 , 9  |ag= 0  , 2 , 3  |f=-1
+' IMPORTA NEURAL (pacchetto gmbneural): layout CHW, array 1-D o 2-D di BASIC.
 
 SUB UnaCnn()
-  DIM o4(3) AS DOUBLE, in4(3) AS DOUBLE, w1(0) AS DOUBLE, b1(0) AS DOUBLE
+  ' ── conv 2×2 con kernel 1×1 (peso 2) e bias 1 → 3 5 7 9 ──
+  DIM in4(3) AS DOUBLE, w1(0) AS DOUBLE, b1(0) AS DOUBLE, o4(3) AS DOUBLE
   in4(0)=1 : in4(1)=2 : in4(2)=3 : in4(3)=4
   w1(0)=2 : b1(0)=1
-  DIM lh AS LONG
-  lh = NEURAL.CONVINIT(1, 2, 2, 1, 1, 1, 1, 0)
-  PRINT "conv="; NEURAL.CONVRUNB(lh, in4, w1, b1, o4); " ,"; o4(0); ","; o4(1); ","; o4(2); ","; o4(3); " |";
-  NEURAL.FREE(lh)
+  PRINT "conv="; NEURAL.CONV2DB(o4, in4, w1, b1, 1, 2, 2, 1, 1, 1, 1, 0, 1); " ,"; o4(0); ","; o4(1); ","; o4(2); ","; o4(3); " |";
+  ' senza bias (dilatazione 1)
+  PRINT "cr="; NEURAL.CONV2D(o4, in4, w1, 1, 2, 2, 1, 1, 1, 1, 0, 1); " ,"; o4(0); ","; o4(3); " |";
 
+  ' ── pooling ──
   DIM po(0) AS DOUBLE, am(0) AS LONG
-  lh = NEURAL.MAXPOOLINIT(1, 2, 2, 2, 2)
-  PRINT "mp="; NEURAL.POOLRUNARG(lh, in4, po, am); " ,"; po(0); ","; am(0); " |";
-  NEURAL.FREE(lh)
-  lh = NEURAL.AVGPOOLINIT(1, 2, 2, 2, 2)
-  PRINT "ap="; NEURAL.POOLRUN(lh, in4, po); " ,"; po(0); " |";
-  NEURAL.FREE(lh)
+  PRINT "mp="; NEURAL.MAXPOOLARG(po, in4, am, 1, 2, 2, 2, 2); " ,"; po(0); ","; am(0); " |";
+  PRINT "mp2="; NEURAL.MAXPOOL(po, in4, 1, 2, 2, 2, 2); " ,"; po(0); " |";
+  PRINT "ap="; NEURAL.AVGPOOL(po, in4, 1, 2, 2, 2, 2); " ,"; po(0); " |";
+  PRINT "osz="; NEURAL.OUTSIZE(5, 3, 2, 1); " |";
 
+  ' ── im2col / col2im ──
   DIM col(3) AS DOUBLE, back(3) AS DOUBLE
-  lh = NEURAL.IM2COLINIT(1, 2, 2, 1, 1, 1, 0)
-  PRINT "i2c="; NEURAL.IM2COLRUN(lh, in4, col); " ,"; col(0); ","; col(1); ","; col(2); ","; col(3); " |";
-  NEURAL.FREE(lh)
+  PRINT "i2c="; NEURAL.IM2COL(col, in4, 1, 2, 2, 1, 1, 1, 0); " ,"; col(0); ","; col(1); ","; col(2); ","; col(3); " |";
+  PRINT "c2i="; NEURAL.COL2IM(back, col, 1, 2, 2, 1, 1, 1, 0); " ,"; back(3); " |";
 
+  ' ── resize nearest 2×2 → 4×4 ──
   DIM o16(15) AS DOUBLE
-  lh = NEURAL.RESIZEINIT(1, 2, 2, 4, 4)
-  PRINT "rs="; NEURAL.RESIZERUN(lh, 0, in4, o16); " ,"; o16(0); ","; o16(5); ","; o16(15); " |";
-  NEURAL.FREE(lh)
+  PRINT "rs="; NEURAL.RESIZE(o16, in4, 1, 2, 2, 4, 4, 0); " ,"; o16(0); ","; o16(5); ","; o16(15); " |";
 
-  DIM i16(15) AS DOUBLE, w9(8) AS DOUBLE
+  ' ── winograd (4×4, kernel 3×3 con centro 1) senza e con bias ──
+  DIM i16(15) AS DOUBLE, w9(8) AS DOUBLE, wb(0) AS DOUBLE
   DIM xx AS LONG, yy AS LONG
   FOR yy = 0 TO 3
     FOR xx = 0 TO 3
@@ -110,77 +114,45 @@ SUB UnaCnn()
     w9(xx) = 0
   NEXT xx
   w9(4) = 1
-  lh = NEURAL.WINOINIT(1, 4, 4, 1, 2)
-  PRINT "w="; NEURAL.WINORUN(lh, i16, w9, o16); " ,"; o16(0); ","; o16(5); ","; o16(15); " |";
-  NEURAL.FREE(lh)
+  PRINT "w="; NEURAL.WINOGRAD(o16, i16, w9, 1, 4, 4, 1, 2); " ,"; o16(0); ","; o16(5); ","; o16(15); " |";
+  wb(0) = 1
+  PRINT "wb="; NEURAL.WINOGRADB(o16, i16, w9, wb, 1, 4, 4, 1, 2); " ,"; o16(0); ","; o16(5); " |";
 
-  DIM d1(0) AS DOUBLE, dw(3) AS DOUBLE, dout(3) AS DOUBLE
+  ' ── deconv (1×1 → 2×2, stride 2) senza e con bias ──
+  DIM d1(0) AS DOUBLE, dw(3) AS DOUBLE, dout(3) AS DOUBLE, dbi(0) AS DOUBLE
   d1(0) = 2
   dw(0)=1 : dw(1)=1 : dw(2)=1 : dw(3)=1
-  lh = NEURAL.DECONVINIT(1, 1, 1, 1, 2, 2, 2, 0)
-  PRINT "d="; NEURAL.DECONVRUN(lh, d1, dw, dout); " ,"; dout(0); ","; dout(1); ","; dout(2); ","; dout(3); " |";
-  NEURAL.FREE(lh)
+  PRINT "d="; NEURAL.DECONV2D(dout, d1, dw, 1, 1, 1, 1, 2, 2, 2, 0); " ,"; dout(0); ","; dout(1); ","; dout(2); ","; dout(3); " |";
+  dbi(0) = 1
+  PRINT "db="; NEURAL.DECONV2DB(dout, d1, dw, dbi, 1, 1, 1, 1, 2, 2, 2, 0); " ,"; dout(0); ","; dout(3); " |";
 
+  ' ── unpool (fill 0, argmax 3) ──
+  DIM upin(0) AS DOUBLE, upam(0) AS LONG, upout(3) AS DOUBLE
+  upin(0)=4 : upam(0)=3
+  PRINT "up="; NEURAL.UNPOOL(upout, upin, upam, 1, 2, 2, 2, 2, 0.0); " ,"; upout(0); ","; upout(3); " |";
+
+  ' ── LRN ──
   DIM l2(1) AS DOUBLE, lo(1) AS DOUBLE
   l2(0)=1 : l2(1)=2
-  lh = NEURAL.LRNINIT(2, 1, 1, 2, 0.0001, 0.75, 1.0)
-  PRINT "l="; NEURAL.LRNRUN(lh, l2, lo); "|"; FORMAT(lo(0), "#.0000"); ","; FORMAT(lo(1), "#.0000"); "|";
-  NEURAL.FREE(lh)
+  PRINT "l="; NEURAL.LRN(lo, l2, 2, 1, 1, 2, 0.0001, 0.75, 1.0); " |"; FORMAT(lo(0), "#.0000"); ","; FORMAT(lo(1), "#.0000"); " |";
 
-  DIM rp(2) AS LONG, ci(1) AS LONG, vv(1) AS DOUBLE, X(1) AS DOUBLE, Y(1) AS DOUBLE, Z(1) AS DOUBLE
-  rp(0)=0 : rp(1)=1 : rp(2)=2 : ci(0)=0 : ci(1)=1 : vv(0)=1 : vv(1)=1
-  X(0)=1 : X(1)=1 : Y(0)=2 : Y(1)=3
-  lh = NEURAL.FUSEDMMINIT(2, 2, 1, 2, 1.0, 0.0)
-  PRINT "fm="; NEURAL.FUSEDMMRUN(lh, rp, ci, vv, X, Y, Z); " ,"; Z(0); ","; Z(1); " |";
-  NEURAL.FREE(lh)
-  DIM Z2(1) AS DOUBLE
-  lh = NEURAL.AGGINIT(2, 2, 1, 2, 1.0, 0.0)
-  PRINT "ag="; NEURAL.AGGRUN(lh, rp, ci, vv, Y, Z2); " ,"; Z2(0); ","; Z2(1); " |";
-  NEURAL.FREE(lh)
-
-  ' ── complementi CNN: OUTSIZE, CONVRUN senza bias, dilatazione, col2im,
-  '    deconv con bias, unpool, winograd con bias ──
-  PRINT "|osz="; NEURAL.OUTSIZE(5, 3, 2, 1);
-  DIM c2w(0) AS DOUBLE, c2o(3) AS DOUBLE
-  c2w(0)=2
-  lh = NEURAL.CONVINIT(1, 2, 2, 1, 1, 1, 1, 0)
-  PRINT "|cr="; NEURAL.CONVRUN(lh, in4, c2w, c2o); "="; FORMAT(c2o(0), "#.0"); ","; FORMAT(c2o(3), "#.0");
-  NEURAL.FREE(lh)
-
+  ' ── convoluzione dilatata su 3×3 (kernel 2×2) ──
   DIM din(8) AS DOUBLE, dw2(3) AS DOUBLE, dout1(0) AS DOUBLE
-  DIM dbi(0) AS DOUBLE, doutb(3) AS DOUBLE, k2 AS LONG
+  DIM k2 AS LONG
   FOR k2 = 0 TO 8
     din(k2) = k2 + 1
   NEXT k2
   dw2(0)=1 : dw2(1)=1 : dw2(2)=1 : dw2(3)=1
-  lh = NEURAL.CONVINIT(1, 3, 3, 1, 2, 2, 1, 0)
-  PRINT "|dd="; NEURAL.CONVSETDIL(lh, 2); ":"; NEURAL.CONVRUN(lh, din, dw2, dout1); "="; FORMAT(dout1(0), "#.0");
-  NEURAL.FREE(lh)
+  PRINT "dd="; NEURAL.CONV2D(dout1, din, dw2, 1, 3, 3, 1, 2, 2, 1, 0, 2); " ,"; dout1(0); " |";
 
-  DIM ccol(3) AS DOUBLE, cback(3) AS DOUBLE
-  lh = NEURAL.IM2COLINIT(1, 2, 2, 1, 1, 1, 0)
-  NEURAL.IM2COLRUN(lh, in4, ccol)
-  NEURAL.FREE(lh)
-  lh = NEURAL.COL2IMINIT(1, 2, 2, 1, 1, 1, 0)
-  PRINT "|c2i="; NEURAL.COL2IMRUN(lh, ccol, cback); "="; FORMAT(cback(3), "#.0");
-  NEURAL.FREE(lh)
+  ' ── FusedMM e aggregazione su CSR ──
+  DIM rp(2) AS LONG, ci(1) AS LONG, vv(1) AS DOUBLE, X(1) AS DOUBLE, Y(1) AS DOUBLE, Z(1) AS DOUBLE
+  rp(0)=0 : rp(1)=1 : rp(2)=2 : ci(0)=0 : ci(1)=1 : vv(0)=1 : vv(1)=1
+  X(0)=1 : X(1)=1 : Y(0)=2 : Y(1)=3
+  PRINT "fm="; NEURAL.FUSEDMM(Z, rp, ci, vv, X, Y, 2, 2, 1, 2, 1.0, 0.0); " ,"; Z(0); ","; Z(1); " |";
+  DIM Z2(1) AS DOUBLE
+  PRINT "ag="; NEURAL.AGGREGATE(Z2, rp, ci, vv, Y, 2, 2, 1, 2, 1.0, 0.0); " ,"; Z2(0); ","; Z2(1); " |";
 
-  dbi(0)=1
-  lh = NEURAL.DECONVINIT(1, 1, 1, 1, 2, 2, 2, 0)
-  PRINT "|db="; NEURAL.DECONVRUNB(lh, d1, dw2, dbi, doutb); "="; FORMAT(doutb(0), "#.0"); ","; FORMAT(doutb(3), "#.0");
-  NEURAL.FREE(lh)
-
-  DIM upin(0) AS DOUBLE, upam(0) AS LONG, upout(3) AS DOUBLE
-  upin(0)=4 : upam(0)=3
-  lh = NEURAL.UNPOOLINIT(1, 2, 2, 2, 2)
-  PRINT "|up="; NEURAL.UNPOOLRUN(lh, upin, upam, 0.0, upout); "="; FORMAT(upout(0), "#.0"); ","; FORMAT(upout(3), "#.0");
-  NEURAL.FREE(lh)
-
-  DIM wb(0) AS DOUBLE, wbo(15) AS DOUBLE
-  wb(0)=1
-  lh = NEURAL.WINOINIT(1, 4, 4, 1, 2)
-  PRINT "|wb="; NEURAL.WINORUNB(lh, i16, w9, wb, wbo); "="; FORMAT(wbo(0), "#.0"); ","; FORMAT(wbo(5), "#.0"); "|";
-  NEURAL.FREE(lh)
   PRINT "f="; NEURAL.FREE(9999)
 END SUB
 
@@ -317,7 +289,7 @@ SUB UnAlbero()
 END SUB
 
 ' NEURAL (FFI) — SNN, BNN, PINN, detection (IoU/NMS/YOLO), KNN, metriche, memplan.
-' EXPECT: snn=0.50,0.250,-0.125|lut= 2 |bnn= 2 , 1 : 0 = 5 , 3 , 3 ,-2.0,-32767.0|pinn=0.0,1.0,1.0,9.0,56.25,4.0,9.0|pn=3.0|iou=1.0|nms= 2 : 0 , 2 |yolo= 4001 : 0 =0.1154,0.1154,0.1538,0.2308|yf= 0 |mc= 0 :0.9,0.0,0.7|knn= 4101 : 0 , 1 ,1.00|kf= 0 |cm= 0 : 1 , 1 , 1 , 1 , 2 |acc=0.6667,0.6667|pr=0.7222:1.00,0.50,0.67|rc=0.6667:0.50,1.00|f1=0.6556:0.50,0.80|reg=1.3333,0.6667,-1.0|mem=30.0:20.0,0.0,0.0|f=0
+' EXPECT: snn=0.50,0.250,-0.125|lut= 2 |bnn= 2 , 1 : 0 = 5 , 3 , 3 ,-2.0,-32767.0|pinn=0.0,1.0,1.0,9.0,56.25,4.0,9.0|pn=3.0|iou=1.0|nms= 2 : 0 , 2 |yolo= 0 =0.1154,0.1154,0.1538,0.2308||mc= 0 :0.9,0.0,0.7|knn= 0 , 1 ,1.00|kf=none|cm= 0 : 1 , 1 , 1 , 1 , 2 |acc=0.6667,0.6667|pr=0.7222:1.00,0.50,0.67|rc=0.6667:0.50,1.00|f1=0.6556:0.50,0.80|reg=1.3333,0.6667,-1.0|mem=30.0:20.0,0.0,0.0|f=0
 
 SUB UnaUtility()
   PRINT "snn="; FORMAT(NEURAL.SNNSURROGATE(0), "#.00"); ","; FORMAT(NEURAL.SNNSURROGATE(1), "#.000"); ","; FORMAT(NEURAL.SNNSURROGATEGRAD(1), "#.000"); "|";
@@ -358,10 +330,8 @@ SUB UnaUtility()
   PRINT "nms="; k; ":"; keep(0); ","; keep(1); "|";
 
   DIM yo(3) AS DOUBLE
-  yh = NEURAL.YOLOBOXCFG(2, 3, 1, 1, 13, 13)
-  PRINT "yolo="; yh; ":"; NEURAL.YOLOBOX(yh, 0, 0, 0, 0, yo); "=";
-  PRINT FORMAT(yo(0), "#.0000"); ","; FORMAT(yo(1), "#.0000"); ","; FORMAT(yo(2), "#.0000"); ","; FORMAT(yo(3), "#.0000");
-  PRINT "|yf="; NEURAL.YOLOBOXFREE(yh);
+  PRINT "yolo="; NEURAL.YOLOBOX(yo, 0, 0, 0, 0, 2, 3, 1, 1, 13, 13); "=";
+  PRINT FORMAT(yo(0), "#.0000"); ","; FORMAT(yo(1), "#.0000"); ","; FORMAT(yo(2), "#.0000"); ","; FORMAT(yo(3), "#.0000"); "|";
 
   DIM pr(2) AS DOUBLE
   pr(0)=0.9 : pr(1)=0.8 : pr(2)=0.7
@@ -378,14 +348,13 @@ SUB UnaUtility()
       ytr(i) = 1
     END IF
   NEXT i
-  kh = NEURAL.KNNINIT(Xtr, ytr, 6, 1, 2)
   xq(0)=2.1
-  PRINT "|knn="; kh; ":"; NEURAL.KNNCLASSIFY(kh, 1, xq);
+  PRINT "|knn="; NEURAL.KNNCLASSIFY(Xtr, ytr, 6, 1, 2, 1, xq);
   xq(0)=10.2
-  PRINT ","; NEURAL.KNNCLASSIFY(kh, 1, xq);
+  PRINT ","; NEURAL.KNNCLASSIFY(Xtr, ytr, 6, 1, 2, 1, xq);
   Xte(0)=0.1 : Xte(1)=10.9 : yte(0)=0 : yte(1)=1
-  PRINT ","; FORMAT(NEURAL.KNNACCURACY(kh, 1, Xte, yte, 2), "#.00");
-  PRINT "|kf="; NEURAL.KNNFREE(kh);
+  PRINT ","; FORMAT(NEURAL.KNNACCURACY(Xtr, ytr, 6, Xte, yte, 2, 1, 2, 1), "#.00");
+  PRINT "|kf=none";
 
   DIM yt(5) AS LONG, yp(5) AS LONG, cm(8) AS LONG, per(2) AS DOUBLE
   yt(0)=0 : yt(1)=0 : yt(2)=1 : yt(3)=1 : yt(4)=2 : yt(5)=2
@@ -403,11 +372,12 @@ SUB UnaUtility()
   PRINT "reg="; FORMAT(NEURAL.MSE(vt, vp, 3), "#.0000"); ","; FORMAT(NEURAL.MAE(vt, vp, 3), "#.0000");
   PRINT ","; FORMAT(NEURAL.R2(vt, vp, 3), "#.0"); "|";
 
-  DIM ms(2) AS DOUBLE, mb(2) AS LONG, md(2) AS LONG, mo(2) AS DOUBLE
-  ms(0)=10 : ms(1)=20 : ms(2)=5
-  mb(0)=0 : mb(1)=0 : mb(2)=2
-  md(0)=1 : md(1)=1 : md(2)=3
-  PRINT "mem="; FORMAT(NEURAL.MEMPLAN(ms, mb, md, 3, mo), "#.0"); ":";
+  ' array di UDT: TYPE MemTensor { Size AS DOUBLE : Birth AS LONG : Death AS LONG }
+  DIM mt(2) AS MemTensor, mo(2) AS DOUBLE
+  mt(0).Size=10 : mt(0).Birth=0 : mt(0).Death=1
+  mt(1).Size=20 : mt(1).Birth=0 : mt(1).Death=1
+  mt(2).Size=5  : mt(2).Birth=2 : mt(2).Death=3
+  PRINT "mem="; FORMAT(NEURAL.MEMPLAN(mt, 3, mo), "#.0"); ":";
   PRINT FORMAT(mo(0), "#.0"); ","; FORMAT(mo(1), "#.0"); ","; FORMAT(mo(2), "#.0"); "|";
   PRINT "f=0"
 END SUB
@@ -541,13 +511,49 @@ SUB UnaNormDrop()
   PRINT "|f=0"
 END SUB
 
+' NEURAL (FFI) — matrici 2-D di BASIC passate direttamente alle funzioni del pacchetto.
+' L'ABI C riceve il buffer contiguo row-major (zero-copy): le dimensioni restano
+' parametri espliciti perché l'FFI non le passa.
+' EXPECT: fw= 0 = 3 , 7 |loss= 0 =1.0000,-1 ,-1 |bw= 0 :-1 ,-1 ,-1 ,-1 |st= 0 : 0 =1.4,1.6:0.2|y2=4.80,10.80|f= 0
+
+SUB UnaMatrice()
+  ' x: 2 righe × 2 colonne = [1,2 ; 3,4]
+  DIM x(1, 1) AS DOUBLE
+  x(0,0)=1 : x(0,1)=2
+  x(1,0)=3 : x(1,1)=4
+  ' y/t/grad: 2 righe × 1 colonna (dichiarate 4 righe per riuso)
+  DIM t(3, 0) AS DOUBLE
+  DIM y(3, 0) AS DOUBLE
+  DIM g(3, 0) AS DOUBLE
+  DIM gx(1, 1) AS DOUBLE
+  DIM loss(0) AS DOUBLE, W(1) AS DOUBLE, b(0) AS DOUBLE
+  W(0)=1 : W(1)=1 : b(0)=0
+
+  h = NEURAL.DENSEINIT(2, 1, 7)
+  NEURAL.DENSESETPARAMS(h, W, b)
+  PRINT "fw="; NEURAL.DENSEFORWARD(h, x, 2, y); "="; y(0,0); ","; y(1,0);
+
+  ' perdita su matrici: bersaglio [4,8] → errori -1,-1 → MSE 1.0
+  t(0,0)=4 : t(1,0)=8
+  PRINT "|loss="; NEURAL.LOSSMSE(y, t, 2, 1, g, loss); "="; FORMAT(loss(0), "#.0000");
+  PRINT ","; g(0,0); ","; g(1,0);
+
+  ' backward + SGD: gradW = gyᵀx = [-4,-6], gradb = -2
+  PRINT "|bw="; NEURAL.DENSEBACKWARD(h, g, 2, gx); ":"; gx(0,0); ","; gx(0,1); ","; gx(1,0); ","; gx(1,1);
+  PRINT "|st="; NEURAL.DENSESTEP(h, 0, 0.1); ":";
+  PRINT NEURAL.DENSEPARAMS(h, W, b); "=";
+  PRINT FORMAT(W(0), "#.0"); ","; FORMAT(W(1), "#.0"); ":"; FORMAT(b(0), "#.0");
+
+  ' una matrice 2-D funziona anche con lo strato denso in inferenza (y = x·Wᵀ + b)
+  NEURAL.DENSEFORWARD(h, x, 2, y)
+  PRINT "|y2="; FORMAT(y(0,0), "#.00"); ","; FORMAT(y(1,0), "#.00");
+  PRINT "|f="; NEURAL.DENSEFREE(h)
+END SUB
+
 ' NEURAL (FFI) — scaler adattivo (gn_norm), gather/block (gn_ops), apply/absmax (gn_core).
 ' EXPECT: n= 7201 : 0 , 0 : 2 : 0 |ap= 0 =1.0,1.0|dn= 0 =3.0,4.0|zs= 0 =0.7071,0.7071|st= 0 =3.0,4.0,2.0,3.0,1.4142,1.4142|nf= 0 |ga= 0 =5.0,6.0,1.0,2.0|sl= 0 =3.0,4.0,5.0,6.0|cb= 0 =5.0,6.0,8.0,9.0|ap2= 0 =2.0,5.0,10.0|mx=5.0|sm= 0 =0.2689,0.7311|smt= 0 =0.1192,0.8808|lut= 0 =8.0,10.0|f=0
 
 ' Funzione applicata elemento per elemento (MATAPPLY).
-FUNCTION QuadPlus1(x AS DOUBLE) AS DOUBLE
-  RETURN x * x + 1
-END FUNCTION
 
 SUB UnaNormOp()
   DIM o1(1) AS DOUBLE, o2(1) AS DOUBLE, v(1) AS DOUBLE, o(1) AS DOUBLE, st(5) AS DOUBLE
@@ -605,7 +611,6 @@ SUB UnaNormOp()
   PRINT "|lut="; NEURAL.SNNLUTFORWARD(lut, 2, lj, 2, 2, ly); "="; FORMAT(ly(0), "#.0"); ","; FORMAT(ly(1), "#.0");
   PRINT "|f=0"
 END SUB
-
 ' NEURAL (FFI) — autodiff scalare (micrograd) e programmazione genetica (gn_gp).
 ' EXPECT: z= 7004 :8.0|b= 0 |g=4.0,2.0,1.0|w=9.0:6.0,-6.0|t=0.0000|f= 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 |dv=2.0,1.0000,-3.0,8.0,0.0|gp= 7101 : 9 :26.0: 3 , 3 , 3 , 3 , 3 , 3 , 3 , 3 , 2 ,|ev=6.0|gpf= 0
 
@@ -683,7 +688,8 @@ SUB Main()
   UnaUtility()
   UnaAttivazione()
   UnaNormDrop()
+  UnaMatrice()
   UnGrafo()
   UnaNormOp()
-  PRINT "NEURAL coverage: 230 funzioni richiamate."
+  PRINT "NEURAL coverage: superficie completa richiamata."
 END SUB

@@ -16,11 +16,11 @@ Questi moduli restano fuori dal pacchetto per non duplicare la superficie BASIC.
 | GRU | `GRUINIT/FORWARD/BACKWARD` | z/r/n, BPTT |
 | BiRNN | `BIRNNINIT/FORWARD/BACKWARD` | `kind` 0=RNN 1=LSTM 2=GRU, due direzioni |
 | comuni | `ZEROGRAD`, `STEP`, `FREE` | handle; `STEP(h, 0|1|2, lr)` = SGD/momentum/Adam |
-| PBP | `PBPMOMENTS`, `PBPLAYERINIT`, `PBPLAYER` | momenti ReLU + forward denso (handle) |
+| PBP | `PBPMOMENTS`, `PBPLAYER` | momenti ReLU + forward denso diretto (pesi e momenti come parametri) |
 | ~~ML classico~~ | — | **non qui**: KMeans/PCA/SVM sono già FFI nel namespace `MULTIVARIATE` (`multivariate.inc`, libgmbstats), dopo il ritiro dei builtin (2026-11-05) |
-| CNN | `CONVINIT/CONVSETDIL/CONVRUN[R B]`, `DECONV*`, `WINO*`, `IM2COL*`, `COL2IM*`, `LRN*`, `RESIZE*` | layout CHW; configurazione su handle (i parametri non si ripetono a ogni forward) |
+| CNN | `CONV2D[B]`, `DECONV2D[B]`, `WINOGRAD[B]`, `IM2COL`, `COL2IM`, `LRN`, `RESIZE`, `MAXPOOL`, `AVGPOOL`, `MAXPOOLARG`, `UNPOOL` | layout CHW; chiamate **dirette** (fino a 14 argomenti), nessun handle |
 | Pooling | `MAXPOOLINIT`, `AVGPOOLINIT`, `POOLRUN`, `POOLRUNARG`, `UNPOOLINIT`, `UNPOOLRUN` | argmax LONG per il backward |
-| FusedMM | `FUSEDMMINIT/RUN`, `AGGINIT/RUN` | CSR (GAT/GraphSAGE) |
+| FusedMM | `FUSEDMM`, `AGGREGATE` | CSR (GAT/GraphSAGE), chiamata diretta |
 | Pruning | `SPARSIFY24`, `PRUNECHANNELL1`, `PRUNECHANNELMASK` | 2:4 strutturato, channel pruning |
 | Quantizzazione | `QUANTI8`, `DEQUANTI8`, `REQUANTI8`, `QUANTPARAMS`, `QUANTGEMMU8`, `QUANTREQSHIFTI8`, `QUANTCONV2DI8`, `QUANTCLAMPU8`, `QUANTPARAMSCHANNEL`, `QUANTCONV2DI8CHANNEL` | array a byte come `LONG`; firme naturali a 13/14/15 argomenti (la FFI ne regge 20) |
 | Ternario | `TERNARYINIT/FREE/ACTBYTES/DOTROW/FORWARD/TOMAT` | bit-slicing 1.58-bit, handle 2001+ |
@@ -29,10 +29,10 @@ Questi moduli restano fuori dal pacchetto per non duplicare la superficie BASIC.
 | AdaBoost | `ADABOOSTINIT/ADABOOSTFIT/ADABOOSTPREDICT/ADABOOSTFREE` | SAMME binario, handle 3201+ |
 | SNN / BNN | `SNNSURROGATE[GRAD]`, `SNNLUTINDEX`; `BNNBYTES/WORDS/PACK/THRESH/XNOR/DOT` | BNN: pacchetti 64-bit in array `LONG` |
 | PINN | `PINNHEAT/WAVE/LAPLACE/ADVECTION/BURGERS/BOUNDARY/INITIAL/ADAPTIVENORM` | residui quadratici |
-| Detection | `IOU`, `NMS`, `YOLOBOXCFG/YOLOBOX/YOLOBOXFREE`, `NMSMULTICLASS` | bbox x,y,w,h; cfg handle 4001+ |
-| KNN | `KNNINIT/KNNCLASSIFY/KNNACCURACY/KNNFREE` | handle 4101+, copia il training set |
+| Detection | `IOU`, `NMS`, `YOLOBOX`, `NMSMULTICLASS` | bbox x,y,w,h; anchor e cella come parametri (nessun handle) |
+| KNN | `KNNCLASSIFY`, `KNNACCURACY` | training set passato a ogni chiamata (Xtr anche come matrice 2-D) |
 | Metriche | `CONFUSION`, `ACCURACY[CM]`, `PRECISION/RECALL/F1`, `MSE/MAE/R2` | macro come ritorno, per-classe in `out()` |
-| Memplan | `MEMPLAN` | offset per lifetime, ritorna la dimensione totale |
+| Memplan | `MEMPLAN` | array di UDT `MemTensor` (`Size` DOUBLE, `Birth`/`Death` LONG), offset per lifetime |
 | Attivazioni | `*GRAD` (sigmoid/tanh/relu/gelu), `LEAKYRELU`, `ELU`, `SELU`, `SILU`, `MISH`, `PLSE`, `LOGGY`, `HARDTAN`, `LHTAN`, `RELIE`, `RAMP`, `STAIR`, `IDENTITY`, `THRESHOLD`, `HARD*`, `CELU`, `PRELU`, `CRELU` (+ `*GRAD`) | valori RELU/SIGMOID/TANH/GELU già in TORCH: qui solo i gradienti |
 | Strato denso | `DENSEINIT/FORWARD/BACKWARD/PARAMS/SETPARAMS/ZEROGRAD/STEP/FREE` | handle 5001+; SGD/momentum/Adam |
 | Perdite | `LOSSMSE/LOSSMAE/LOSSCROSSENTROPY/LOSSBINARYCROSSENTROPY` | valore in `loss(0)`, gradiente in `grad()` |
@@ -44,7 +44,9 @@ Questi moduli restano fuori dal pacchetto per non duplicare la superficie BASIC.
 | Normalizzazione online | `NORMINIT/OBSERVE/FINALIZE/APPLY/DENORM/ZSCORE/STATS/COUNT/FREE` | scaler addestrato e riusabile, handle 7201+ |
 | Righe/matrici | `GATHERROWS`, `SLICEROWS`, `COPYBLOCK`, `MATAPPLY`, `MATABSMAX`, `SOFTMAXTEMP`, `SNNLUTFORWARD` | il resto (concat, matmul, softmax a temp 1...) resta in TORCH |
 
-Convenzioni: `x()` = T×in, `y()`/`gy()` = T×out, DOUBLE row-major; handle LONG > 0;
+Convenzioni: `x()` = T×in, `y()`/`gy()` = T×out, DOUBLE row-major; le funzioni che
+prendono matrici accettano anche un array 2-D (`DIM m(righe-1, colonne-1)`) — buffer
+contiguo, dimensioni come parametri; handle LONG > 0 solo per le famiglie con stato;
 `STEP` usa i gradienti accumulati da `BACKWARD` (buffer m/v allocati al primo passo,
 Adam con contatore di passo globale). Tabella handle: 32 vivi, uso sequenziale.
 
@@ -80,7 +82,7 @@ zsh tools/sh/test_minitests_parity.sh "neural/neural_recurrent.bas"
 
 ## Copertura completa di gmbneural
 
-Portati (230 export `ofx_nn_*`): RNN/LSTM/GRU/BiRNN/PBP, CNN (conv/deconv/winograd/
+Portati (213 export `ofx_nn_*`): RNN/LSTM/GRU/BiRNN/PBP, CNN (conv/deconv/winograd/
 im2col/col2im/LRN/resize), pooling, FusedMM/aggregate, prune, quant, ternary,
 CART/forest/adaboost, SNN/BNN/PINN/detection/KNN/metrics/memplan, attivazioni e
 gradienti, strato denso, perdite, dropout, batchnorm/layernorm, Chuck, autograd, GP.
