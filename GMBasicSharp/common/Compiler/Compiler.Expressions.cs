@@ -1069,6 +1069,32 @@ public sealed partial class Compiler
                     if (f.DataType is ArrayType)
                         throw new BasicException(expr.OriginalToken,
                             $"FFI '{symbolName}': il campo ARRAY '{path}' non è supportato in un UDT passato per valore ({what}).");
+                    // Campo ARRAY di uno UDT (S3b, 2026-11-06): N elementi contigui (`A(4)` = 5
+                    // slot, come DIM). Diventano N foglie `A[k]` consecutive; il layout coincide
+                    // con quello del membro C `T a[N]`.
+                    if (!f.Dimensions.IsEmpty)
+                    {
+                        var codeArr = FfiCode(f.DataType);
+                        if (codeArr < 0)
+                            throw new BasicException(expr.OriginalToken,
+                                $"FFI '{symbolName}': tipo del campo array '{path}' non supportato ({what}).");
+                        var nArr = 1;
+                        foreach (var d in f.Dimensions)
+                        {
+                            if (d is NumberExpr ne) nArr *= (int)ne.Value + 1;
+                            else throw new BasicException(expr.OriginalToken,
+                                $"FFI '{symbolName}': il campo array '{path}' deve avere bound letterali ({what}).");
+                        }
+                        var szA = FfiSz(codeArr);
+                        off = (off + szA - 1) / szA * szA;
+                        for (var k = 0; k < nArr; k++)
+                        {
+                            outLeaves.Add(($"{path}[{k}]", symPath, codeArr, off, codeArr != 0 && codeArr != 8));
+                            off += szA;
+                        }
+                        align = Math.Max(align, szA);
+                        continue;
+                    }
                     if (f.DataType is UserDefinedType sub)
                     {
                         if (!IsSimpleUdt(sub))

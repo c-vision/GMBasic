@@ -749,6 +749,17 @@ static void sb_ident(sb_t* b, const char* name) {
         else sb_printf(b, "_%02X", (unsigned char)*p);
     }
 }
+/* SEGMENTO di un path di campo: nome (sanitizzato) + eventuale suffisso di indice `[k]`
+ * di un campo-array (S3b), emesso letteralmente. */
+static void sb_ident_seg(sb_t* b, const char* seg) {
+    const char* br = strchr(seg, '[');
+    if (!br) { sb_ident(b, seg); return; }
+    char nm[96]; size_t n = (size_t)(br - seg);
+    if (n >= sizeof nm) n = sizeof nm - 1;
+    memcpy(nm, seg, n); nm[n] = 0;
+    sb_ident(b, nm);
+    sb_put(b, br);
+}
 /* Come sb_ident ma su buffer esterno: ritorna il puntatore di fine (per comporre
  * nomi C di struct/variabili closure, FASE 2.6(j)). */
 static char* sb_ident_to(char* dst, const char* name) {
@@ -19320,6 +19331,18 @@ static void st_dim(ctx_t* c, gmb_stmt_t* s) {
                 emit_ident(c, dv->name);
                 sb_printf(&c->out, " = gmb_make_val_obj(gmb_obj_new_typed(calloc(1, sizeof(gmb_obj_%s)), \"%s\"));\n",
                           dci->name, dci->name);
+                /* Campi ARRAY di uno UDT (S3b, 2026-11-06): il campo è un PUNTATORE
+                 * (gmb_double_t*) e va allocato — senza, `v.A(0)` dereferenzia NULL. */
+                for (int fi = 0; fi < dci->nfields; fi++) {
+                    int asz = cls_field_arr_size(dci->ftype[fi]);
+                    if (asz < 0) continue;
+                    ind(c);
+                    sb_printf(&c->out, "((gmb_obj_%s*)(((gmb_obj_t*)", dci->name);
+                    emit_ident(c, dv->name);
+                    sb_printf(&c->out, ".v_ptr)->data))->");
+                    sb_ident(&c->out, dci->fname[fi]);
+                    sb_printf(&c->out, " = (gmb_double_t*)calloc(%d, sizeof(gmb_double_t));\n", asz);
+                }
             }
         }
         /* DIM scalare senza inizializzatore: dichiarazione già raccolta */
@@ -30804,7 +30827,32 @@ static int ffi_layout_rec(ctx_t* c, struct cls_info* ci, const char* prefix, ffi
         char path[128];
         if (prefix[0]) snprintf(path, sizeof(path), "%s.%s", prefix, ci->fname[fi]);
         else snprintf(path, sizeof(path), "%s", ci->fname[fi]);
-        if (cls_field_arr_size(ci->ftype[fi]) >= 0) return -1;
+        int arrn = cls_field_arr_size(ci->ftype[fi]);
+        if (arrn >= 0) {
+            /* Campo ARRAY di uno UDT (S3b, 2026-11-06): N elementi CONTIGUI nel layout C.
+             * Nel typedef piatto diventano N foglie `A[i]` consecutive (stesso layout di
+             * `T A[N]`), lette/scritte come elementi dell'array dentro l'istanza boxata. */
+            char base[64]; snprintf(base, sizeof(base), "%s", ci->ftype[fi]);
+            char* brk = strchr(base, '['); if (brk) *brk = 0;
+            int code = ffi_code_of_type(base);
+            if (code < 0) return -1;
+            int sz = ffi_code_size(code);
+            off = (off + sz - 1) / sz * sz;
+            for (int k = 0; k < arrn; k++) {
+                if (*n >= max) return -1;
+                char apath[160];
+                snprintf(apath, sizeof(apath), "%s[%d]", path, k);
+                snprintf(out[*n].path, sizeof(out[*n].path), "%s", apath);
+                out[*n].is_int = (code != 0 && code != 8);
+                out[*n].code = code;
+                out[*n].off = off;
+                out[*n].size = sz;
+                (*n)++;
+                off += sz;
+            }
+            if (sz > al) al = sz;
+            continue;
+        }
         int code = ffi_code_of_type(ci->ftype[fi]);
         if (code >= 0) {
             if (*n >= max) return -1;
@@ -31526,7 +31574,7 @@ static void emit_ffi_wrapper(ctx_t* c, fn_info_t* fn) {
             for (;;) {
                 char* dot = strchr(seg, '.');
                 if (dot) *dot = 0;
-                sb_ident(&c->out, seg);
+                sb_ident_seg(&c->out, seg);
                 if (!dot) break;
                 sb_put(&c->out, ".");
                 seg = dot + 1;
@@ -31581,7 +31629,7 @@ static void emit_ffi_wrapper(ctx_t* c, fn_info_t* fn) {
                     for (;;) { \
                         char* __dot = strchr(__seg, '.'); \
                         if (__dot) *__dot = 0; \
-                        sb_ident(&c->out, __seg); \
+                        sb_ident_seg(&c->out, __seg); \
                         if (!__dot) break; \
                         sb_put(&c->out, "."); \
                         __seg = __dot + 1; \
@@ -31656,7 +31704,7 @@ static void emit_ffi_wrapper(ctx_t* c, fn_info_t* fn) {
                 for (;;) {
                     char* dot = strchr(seg, '.');
                     if (dot) *dot = 0;
-                    sb_ident(&c->out, seg);
+                    sb_ident_seg(&c->out, seg);
                     if (!dot) break;
                     sb_put(&c->out, ".");
                     seg = dot + 1;
@@ -31682,6 +31730,15 @@ static void emit_ffi_wrapper(ctx_t* c, fn_info_t* fn) {
              * questo emitter (VecMakePoint-style). */
             ind(c);
             sb_printf(&c->out, "gmb_obj_%s* __ru = (gmb_obj_%s*)calloc(1, sizeof(gmb_obj_%s));\n", ret_udt_ci->name, ret_udt_ci->name, ret_udt_ci->name);
+            /* Campi ARRAY del ritorno (S3b): il campo è un puntatore da allocare. */
+            for (int fi = 0; fi < ret_udt_ci->nfields; fi++) {
+                int asz = cls_field_arr_size(ret_udt_ci->ftype[fi]);
+                if (asz < 0) continue;
+                ind(c);
+                sb_printf(&c->out, "if (__ru) __ru->");
+                sb_ident(&c->out, ret_udt_ci->fname[fi]);
+                sb_printf(&c->out, " = (gmb_double_t*)calloc(%d, sizeof(gmb_double_t));\n", asz);
+            }
             {
                 // Struct annidate (2026-09-29): itera le FOGLIE (non i campi diretti) — un path
                 // "I.X" e' un lvalue C valido, "__ru->I.X", perche' il campo "I" e' ora
