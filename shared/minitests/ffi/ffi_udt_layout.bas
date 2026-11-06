@@ -1,10 +1,21 @@
 ' UDT con layout C reale (S1, 2026-11-06): campi a 1/8 byte, padding, kind misto.
 ' Le size/offset sono confrontate con quelle calcolate dal compilatore C.
-' EXPECT: sz= 24|ob= 8|oc= 16|fsz= 16|s1= 13|b.a= 4|b.b= 5.5|b.c= 6|f1= 6.5|fk.x= 2.5|fk.y= 5|fk.z= 5
+' EXPECT: sz= 24|ob= 8|oc= 16|fsz= 16|s1= 13|b.a= 4|b.b= 5.5|b.c= 6|f1= 6.5|fk.x= 2.5|fk.y= 5|fk.z= 5|nl= 7|wsz= 16|w1= 6|wb= 2 , 4 , 6
 TYPE Mixed
     A AS LONG
     B AS DOUBLE
     C AS BYTE
+END TYPE
+
+TYPE Named2
+    S AS STRING
+    N AS LONG
+END TYPE
+
+TYPE Wide
+    A AS INTEGER
+    B AS LONG
+    C AS QUAD
 END TYPE
 
 TYPE Fiz
@@ -21,6 +32,12 @@ DECLARE FUNCTION MixedSum LIB "liblayout_ext" ALIAS "mixed_sum" (m AS Mixed) AS 
 DECLARE FUNCTION MixedBump LIB "liblayout_ext" ALIAS "mixed_bump" (m AS Mixed) AS Mixed
 DECLARE FUNCTION FizSum LIB "liblayout_ext" ALIAS "fiz_sum" (f AS Fiz) AS DOUBLE
 DECLARE FUNCTION FizBump LIB "liblayout_ext" ALIAS "fiz_bump" (f AS Fiz) AS Fiz
+DECLARE FUNCTION Named2Size LIB "liblayout_ext" ALIAS "named2_size" () AS LONG
+DECLARE FUNCTION Named2Len LIB "liblayout_ext" ALIAS "named2_len" (v AS Named2) AS LONG
+DECLARE FUNCTION Named2Make LIB "liblayout_ext" ALIAS "named2_make" (s AS STRING, n AS LONG) AS Named2
+DECLARE FUNCTION WideSize LIB "liblayout_ext" ALIAS "wide_size" () AS LONG
+DECLARE FUNCTION WideSum LIB "liblayout_ext" ALIAS "wide_sum" (w AS Wide) AS DOUBLE
+DECLARE FUNCTION WideBump LIB "liblayout_ext" ALIAS "wide_bump" (w AS Wide) AS Wide
 
 SUB Main()
     PRINT "sz="; MixedSize()
@@ -47,4 +64,16 @@ SUB Main()
     PRINT "fk.x="; fk.X
     PRINT "fk.y="; fk.Y
     PRINT "fk.z="; fk.Z
+    DIM nm AS Named2
+    nm = Named2Make("abcd", 3)
+    PRINT "nl="; Named2Len(nm)
+
+    DIM w AS Wide
+    w.A = 1 : w.B = 2 : w.C = 3
+    PRINT "wsz="; WideSize()
+    PRINT "w1="; WideSum(w)
+
+    DIM wb AS Wide
+    wb = WideBump(w)
+    PRINT "wb="; wb.A; ","; wb.B; ","; wb.C
 END SUB
