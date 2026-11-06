@@ -83,3 +83,10 @@ DECLARE FUNCTION RASTERCLIPNEAR LIB "gmbgraphics" ALIAS "ofx_gfx_raster_clip_nea
 DECLARE FUNCTION MESHSURFACE LIB "gmbgraphics" ALIAS "ofx_gfx_mesh_surface" (z() AS DOUBLE, nx AS LONG, ny AS LONG, sx AS DOUBLE, sy AS DOUBLE, zscale AS DOUBLE) AS LONG
 ' DDA su griglia rows*cols (grid() piatto, !=0 solido). hit() = [hit,map_x,map_y,side,perp_dist,wall_x].
 DECLARE FUNCTION RAYCASTDDA LIB "gmbgraphics" ALIAS "ofx_gfx_raycast_dda" (grid() AS DOUBLE, rows AS LONG, cols AS LONG, px AS DOUBLE, py AS DOUBLE, dx AS DOUBLE, dy AS DOUBLE, hit() AS DOUBLE) AS LONG
+
+' ── cilindro/cono e trasformazione AABB ───────────────────────────────────
+DECLARE FUNCTION RAYCYLINDER LIB "gmbgraphics" ALIAS "ofx_gfx_ray_cylinder" (ray() AS DOUBLE, base() AS DOUBLE, axis() AS DOUBLE, radius AS DOUBLE, height AS DOUBLE, t() AS DOUBLE) AS LONG
+DECLARE FUNCTION RAYCONE LIB "gmbgraphics" ALIAS "ofx_gfx_ray_cone" (ray() AS DOUBLE, apex() AS DOUBLE, axis() AS DOUBLE, radius AS DOUBLE, height AS DOUBLE, t() AS DOUBLE) AS LONG
+DECLARE FUNCTION CYLINDERNORMAL LIB "gmbgraphics" ALIAS "ofx_gfx_cylinder_normal" (base() AS DOUBLE, axis() AS DOUBLE, p() AS DOUBLE, out() AS DOUBLE) AS LONG
+DECLARE FUNCTION CONENORMAL LIB "gmbgraphics" ALIAS "ofx_gfx_cone_normal" (apex() AS DOUBLE, axis() AS DOUBLE, k AS DOUBLE, p() AS DOUBLE, out() AS DOUBLE) AS LONG
+DECLARE FUNCTION AABBTRANSFORM LIB "gmbgraphics" ALIAS "ofx_gfx_aabb_transform" (a() AS DOUBLE, m() AS DOUBLE, out() AS DOUBLE) AS LONG

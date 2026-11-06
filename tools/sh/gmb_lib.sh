@@ -38,7 +38,7 @@ inc_name() {
     opt) echo "optimize.inc" ;;
     or)  echo "ortools.inc" ;;
     # piu' export per una sola dylib (modello gmbstats): elenco separato da spazi.
-    graphics) echo "gfxcolor.inc gfxshape.inc gfx2d.inc gfx3d.inc" ;;
+    graphics) echo "gfxcolor.inc gfxshape.inc gfx2d.inc gfx3d.inc gfxcodec.inc" ;;
     *)   echo "$1.inc" ;;
   esac
 }

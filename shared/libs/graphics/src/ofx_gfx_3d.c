@@ -424,3 +424,46 @@ int ofx_gfx_raycast_dda(const double* grid, int rows, int cols, double px, doubl
     out[3] = h.side; out[4] = h.perp_dist; out[5] = h.wall_x;
     return rc;
 }
+
+/* ── cilindro/cono + AABB transform (gfx3d.inc) ──────────────────────────── */
+
+int ofx_gfx_ray_cylinder(const double* r, const double* base, const double* axis,
+                         double radius, double height, double* t)
+{
+    if (!r || !base || !axis || !t) return -1;
+    gm_real tt = 0;
+    int hit = gm_ray_cylinder(ray_in(r), v3(base), v3(axis), radius, height, &tt);
+    t[0] = tt;
+    return hit;
+}
+
+int ofx_gfx_ray_cone(const double* r, const double* apex, const double* axis,
+                     double radius, double height, double* t)
+{
+    if (!r || !apex || !axis || !t) return -1;
+    gm_real tt = 0;
+    int hit = gm_ray_cone(ray_in(r), v3(apex), v3(axis), radius, height, &tt);
+    t[0] = tt;
+    return hit;
+}
+
+int ofx_gfx_cylinder_normal(const double* base, const double* axis, const double* p, double* out)
+{
+    if (!base || !axis || !p || !out) return -1;
+    v3_out(gm_cylinder_normal(v3(base), v3(axis), v3(p)), out);
+    return 0;
+}
+
+int ofx_gfx_cone_normal(const double* apex, const double* axis, double k, const double* p, double* out)
+{
+    if (!apex || !axis || !p || !out) return -1;
+    v3_out(gm_cone_normal(v3(apex), v3(axis), k, v3(p)), out);
+    return 0;
+}
+
+int ofx_gfx_aabb_transform(const double* a, const double* m, double* out)
+{
+    if (!a || !m || !out) return -1;
+    box_out(gm_aabb_transform(box_in(a), mat4_in(m)), out);
+    return 0;
+}

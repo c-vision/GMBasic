@@ -586,3 +586,125 @@ int ofx_gfx_img3_convolve_sep(const double* in, int w, int h, int d,
     gm_image3_convolve_sep(a, k, n, b);
     return 0;
 }
+
+/* ── bitmap RGB8 come array di colori impacchettati 0xRRGGBB (gfx2d.inc) ─────
+ * Un pixel = un double 0xRRGGBB. Conversione esplicita verso gm_bitmap (3 byte/px). */
+
+static gm_bitmap bitmap_from_packed(const double* px, int w, int h)
+{
+    gm_bitmap bm;
+    bm.w = w; bm.h = h; bm.data = NULL;
+    if (w <= 0 || h <= 0 || !px) return bm;
+    if (gm_bitmap_alloc(&bm, w, h) != 0) { bm.w = bm.h = 0; return bm; }
+    for (int i = 0; i < w * h; i++)
+    {
+        uint32_t c = (uint32_t)px[i] & 0xFFFFFFu;
+        bm.data[3 * i + 0] = (unsigned char)((c >> 16) & 0xFF);
+        bm.data[3 * i + 1] = (unsigned char)((c >> 8) & 0xFF);
+        bm.data[3 * i + 2] = (unsigned char)(c & 0xFF);
+    }
+    return bm;
+}
+
+static void bitmap_to_packed(const gm_bitmap* bm, double* out)
+{
+    for (int i = 0; i < bm->w * bm->h; i++)
+        out[i] = (double)(((uint32_t)bm->data[3 * i + 0] << 16) |
+                          ((uint32_t)bm->data[3 * i + 1] << 8) |
+                          (uint32_t)bm->data[3 * i + 2]);
+}
+
+int ofx_gfx_bmp_gray_naive(const double* px, int w, int h, double* out)
+{
+    if (!out) return -1;
+    gm_bitmap bm = bitmap_from_packed(px, w, h);
+    if (!bm.data) return -1;
+    gm_bitmap_grayscale_naive(&bm);
+    bitmap_to_packed(&bm, out);
+    gm_bitmap_free(&bm);
+    return 0;
+}
+
+int ofx_gfx_bmp_gray_lum(const double* px, int w, int h, double* out)
+{
+    if (!out) return -1;
+    gm_bitmap bm = bitmap_from_packed(px, w, h);
+    if (!bm.data) return -1;
+    gm_bitmap_grayscale_luminance(&bm);
+    bitmap_to_packed(&bm, out);
+    gm_bitmap_free(&bm);
+    return 0;
+}
+
+int ofx_gfx_bmp_convolve3(const double* px, int w, int h, const double* k, double divider, double* out)
+{
+    if (!k || !out) return -1;
+    int kern[9];
+    for (int i = 0; i < 9; i++) kern[i] = (int)k[i];
+    gm_bitmap bm = bitmap_from_packed(px, w, h);
+    if (!bm.data) return -1;
+    int rc = gm_bitmap_convolve3(&bm, kern, divider);
+    bitmap_to_packed(&bm, out);
+    gm_bitmap_free(&bm);
+    return rc;
+}
+
+int ofx_gfx_bmp_brightness(const double* px, int w, int h, double brightness, double contrast, double* out)
+{
+    if (!out) return -1;
+    gm_bitmap bm = bitmap_from_packed(px, w, h);
+    if (!bm.data) return -1;
+    gm_bitmap_brightness_contrast(&bm, brightness, contrast);
+    bitmap_to_packed(&bm, out);
+    gm_bitmap_free(&bm);
+    return 0;
+}
+
+/* Luminanza RGB8 -> immagine float (gm_image) nell'array out(). */
+int ofx_gfx_bmp_to_image(const double* px, int w, int h, double* out)
+{
+    if (!out) return -1;
+    gm_bitmap bm = bitmap_from_packed(px, w, h);
+    if (!bm.data) return -1;
+    gm_image im; im.w = 0; im.h = 0; im.data = NULL;
+    int rc = gm_bitmap_to_image(&bm, &im);
+    if (rc == 0 && im.data)
+        for (int i = 0; i < w * h; i++) out[i] = im.data[i];
+    gm_image_free(&im);
+    gm_bitmap_free(&bm);
+    return rc;
+}
+
+/* ── statistiche/operazioni su immagini float (gfx2d.inc) ─────────────────── */
+
+double ofx_gfx_img_min(const double* in, int w, int h)
+{
+    if (!in || w <= 0 || h <= 0) return 0.0;
+    gm_image a = img_wrap(in, w, h);
+    return gm_image_min(a);
+}
+double ofx_gfx_img_max(const double* in, int w, int h)
+{
+    if (!in || w <= 0 || h <= 0) return 0.0;
+    gm_image a = img_wrap(in, w, h);
+    return gm_image_max(a);
+}
+double ofx_gfx_img_absmax(const double* in, int w, int h)
+{
+    if (!in || w <= 0 || h <= 0) return 0.0;
+    gm_image a = img_wrap(in, w, h);
+    return gm_image_absmax(a);
+}
+int ofx_gfx_img_scale(double* d, int w, int h, double s)
+{
+    if (!d || w <= 0 || h <= 0) return -1;
+    gm_image a = img_wrap(d, w, h);
+    gm_image_scale(a, s);
+    return 0;
+}
+int ofx_gfx_img_sub(const double* a, const double* b, int w, int h, double* out)
+{
+    if (!a || !b || !out || w <= 0 || h <= 0) return -1;
+    gm_image_sub(img_wrap(a, w, h), img_wrap(b, w, h), img_wrap(out, w, h));
+    return 0;
+}

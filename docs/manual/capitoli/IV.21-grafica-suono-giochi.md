@@ -198,6 +198,7 @@ sinusoidale, PNG, rilettura e blit). MiniTest: `graphics/canvas_core.bas`.
 
 
 
+
 <!-- BEGIN SURFACE (generato da tools/sh/manual_surface.sh — non modificare a mano) -->
 
 ## Riferimento completo: comandi, funzioni, parametri
@@ -415,6 +416,8 @@ PRINT GFXSHAPE.POLYGONAREA(p(), 8)                    ' 100
 | disegno in-place | `DRAWLINE`, `DRAWRECT`, `DRAWRECTF`, `DRAWCIRCLE` |
 | avanzate | `WARP` (CHW + flow), `POISSON` (seamless clone) |
 | volumi/superfici | `IMG3CONVOLVE` (volume `w*h*d`), `HEATMAP` (griglia → colori impacchettati) |
+| statistiche | `IMGMIN`, `IMGMAX`, `IMGABSMAX`, `IMGSCALE` (in-place), `IMGSUB` (`a-b`) |
+| bitmap RGB8 | `GRAYNAIVE`, `GRAYLUM`, `CONVOLVE3`, `BRIGHTNESS`, `TOIMAGE` (pixel = colori `0xRRGGBB`) |
 
 IMPORT GFX2D
 DIM a(15) AS DOUBLE, o(15) AS DOUBLE
@@ -436,6 +439,7 @@ ok = GFX2D.DRAWLINE(d(), 4, 4, 0, 0, 3, 3, 2.5)  ' disegno su array
 | mesh (handle) | `MESHSPHERE`, `MESHBOX`, `MESHPLANE`, `MESHCYLINDER`, `MESHNV`, `MESHNT`, `MESHPOS`, `MESHTRI`, `MESHFREE` |
 | raster (handle) | `RASTERNEW`, `RASTERFREE`, `RASTERCLEAR`, `RASTERGET`, `RASTERTRI`, `RASTERCLIPNEAR` |
 | superfici/griglie | `MESHSURFACE` (campo di altezza → handle), `RAYCASTDDA` (griglia, max 256 passi) |
+| altro | `RAYCYLINDER`, `RAYCONE`, `CYLINDERNORMAL`, `CONENORMAL`, `AABBTRANSFORM` |
 
 IMPORT GFX3D
 DIM m(15) AS DOUBLE
@@ -452,6 +456,21 @@ ok = GFX3D.MESHFREE(h)
 r = GFX3D.RASTERNEW(64, 64)                 ' z-buffer RGB float
 ok = GFX3D.RASTERCLEAR(r, 1.0)
 ok = GFX3D.RASTERTRI(r, p(), c())           ' p() e c() = 9 valori (3 vertici RGB)
+
+
+## 4sexies. Codec texture via FFI (`GFXCODEC`)
+| Funzione | Firma | Note |
+|---|---|---|
+| `BC1ENCODEBLOCK` | `(rgb(), out())` | 48 → 8 |
+| `BC1DECODEBLOCK` | `(in(), out())` | 8 → 48 |
+| `BC1ENCODE` | `(rgb(), w, h, out())` | `w,h` multipli di 4; `out()` = `(w/4)*(h/4)*8` |
+| `BC1DECODE` | `(in(), w, h, out())` | `out()` = `w*h*3` |
+
+IMPORT GFXCODEC
+DIM rgb(47) AS DOUBLE, enc(7) AS DOUBLE, dec(47) AS DOUBLE
+FOR i = 0 TO 47 : rgb(i) = 10 + (i MOD 16) * 12 : NEXT i
+ok = GFXCODEC.BC1ENCODEBLOCK(rgb(), enc())
+ok = GFXCODEC.BC1DECODEBLOCK(enc(), dec())
 
 
 ## 5. Viewport e finestre

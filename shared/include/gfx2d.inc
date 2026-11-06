@@ -55,3 +55,23 @@ DECLARE FUNCTION POISSON LIB "gmbgraphics" ALIAS "ofx_gfx_img_poisson" (target()
 DECLARE FUNCTION IMG3CONVOLVE LIB "gmbgraphics" ALIAS "ofx_gfx_img3_convolve_sep" (in() AS DOUBLE, w AS LONG, h AS LONG, d AS LONG, k() AS DOUBLE, n AS LONG, out() AS DOUBLE) AS LONG
 ' Heatmap da griglia z(nx*ny): out() = nx*ny colori impacchettati (0x40000000|RGB), pronti per CANVAS SET.
 DECLARE FUNCTION HEATMAP LIB "gmbgraphics" ALIAS "ofx_gfx_heatmap" (z() AS DOUBLE, nx AS LONG, ny AS LONG, zmin AS DOUBLE, zmax AS DOUBLE, out() AS DOUBLE) AS LONG
+
+' ── statistiche e combinazioni (immagini float) ────────────────────────────
+DECLARE FUNCTION IMGMIN LIB "gmbgraphics" ALIAS "ofx_gfx_img_min" (in() AS DOUBLE, w AS LONG, h AS LONG) AS DOUBLE
+DECLARE FUNCTION IMGMAX LIB "gmbgraphics" ALIAS "ofx_gfx_img_max" (in() AS DOUBLE, w AS LONG, h AS LONG) AS DOUBLE
+DECLARE FUNCTION IMGABSMAX LIB "gmbgraphics" ALIAS "ofx_gfx_img_absmax" (in() AS DOUBLE, w AS LONG, h AS LONG) AS DOUBLE
+' Scala in-place: out = d * s.
+DECLARE FUNCTION IMGSCALE LIB "gmbgraphics" ALIAS "ofx_gfx_img_scale" (d() AS DOUBLE, w AS LONG, h AS LONG, s AS DOUBLE) AS LONG
+' Differenza: out = a - b.
+DECLARE FUNCTION IMGSUB LIB "gmbgraphics" ALIAS "ofx_gfx_img_sub" (a() AS DOUBLE, b() AS DOUBLE, w AS LONG, h AS LONG, out() AS DOUBLE) AS LONG
+
+' ── bitmap RGB8 (pixel = colori impacchettati 0xRRGGBB) ────────────────────
+' Grayscale naive (media) e a luminanza; out() = w*h colori impacchettati.
+DECLARE FUNCTION GRAYNAIVE LIB "gmbgraphics" ALIAS "ofx_gfx_bmp_gray_naive" (px() AS DOUBLE, w AS LONG, h AS LONG, out() AS DOUBLE) AS LONG
+DECLARE FUNCTION GRAYLUM LIB "gmbgraphics" ALIAS "ofx_gfx_bmp_gray_lum" (px() AS DOUBLE, w AS LONG, h AS LONG, out() AS DOUBLE) AS LONG
+' Convoluzione 3x3 per canale (kernel 9 valori, divider); bordo invariato.
+DECLARE FUNCTION CONVOLVE3 LIB "gmbgraphics" ALIAS "ofx_gfx_bmp_convolve3" (px() AS DOUBLE, w AS LONG, h AS LONG, k() AS DOUBLE, divider AS DOUBLE, out() AS DOUBLE) AS LONG
+' Luminosità/contrasto: out = clamp((in-128)*contrast + 128 + brightness).
+DECLARE FUNCTION BRIGHTNESS LIB "gmbgraphics" ALIAS "ofx_gfx_bmp_brightness" (px() AS DOUBLE, w AS LONG, h AS LONG, brightness AS DOUBLE, contrast AS DOUBLE, out() AS DOUBLE) AS LONG
+' Luminanza RGB8 -> immagine float out() (w*h).
+DECLARE FUNCTION TOIMAGE LIB "gmbgraphics" ALIAS "ofx_gfx_bmp_to_image" (px() AS DOUBLE, w AS LONG, h AS LONG, out() AS DOUBLE) AS LONG
