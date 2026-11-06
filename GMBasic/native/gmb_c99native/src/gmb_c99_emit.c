@@ -30854,6 +30854,11 @@ static const char* ffi_param_ctype(gmb_stmt_t* s, int i) {
 /* Struct annidate (2026-09-29): una FOGLIA scalare FFI dopo flattening ricorsivo — path
  * punteggiato ("I.X" per un campo annidato, "Y" per un campo diretto) + kind. Il limite resta
  * 2 foglie TOTALI (non più 2 campi diretti) — vedi ffi_validate_udt. */
+/* Limite argomenti del wrapper FFI (parità con GMB_FFI_MAX_ARGS dei bytecode/VM/C/IL):
+ * prima gli array per-parametro erano [8] e le guardie `i < 8` rendevano MUTI (o sbagliati)
+ * gli argomenti UDT/array/stringa in posizione >= 9 (matrice F5, 2026-11-06). */
+#define C99_FFI_MAX_ARGS 64
+
 typedef struct { char path[128]; int is_int; int code; int off; int size; } ffi_leaf_t;
 
 /* Codici tipo CONDIVISI con il bytecode e la VM/C (0=double 1=int64 2=int8 3=uint8 4=int16
@@ -31224,37 +31229,37 @@ static void emit_ffi_wrapper(ctx_t* c, fn_info_t* fn) {
      * puntatore nativo — vietato solo il BYREF SCALARE; tipo elemento ristretto a DOUBLE/
      * SINGLE o famiglia intera (nessuna rappresentazione nativa per STRING/UDT). Vedi AiWiki
      * Bugs/(solved) - FFI-Marshalling-Limitato-No-BYREF-Array-Struct.md punto (1). */
-    int is_arr_param[8] = {0};
-    int is_str_param[8] = {0};
+    int is_arr_param[C99_FFI_MAX_ARGS] = {0};
+    int is_str_param[C99_FFI_MAX_ARGS] = {0};
     /* BYREF scalare (2026-09-28): come un array/STRING, forza la firma a Int64 (e' un
      * puntatore). Questo backend emette C: il wrapper prende gia' un puntatore come parametro
      * per un BYREF (stessa convenzione del BYREF ordinario verso una FUNCTION/SUB utente),
      * quindi non serve nessuno scratch buffer copy-in/copy-out (a differenza di PCodeVM/VM-C,
      * dove gli argomenti sono boxati/taggati) — "il compilatore C gestisce l'ABI". Vedi AiWiki
      * Bugs/(open) - FFI-Estensioni-Possibili-BYREF-Struct-Callback.md paragrafo 1. */
-    int is_byref_param[8] = {0};
+    int is_byref_param[C99_FFI_MAX_ARGS] = {0};
     /* Struct/UDT per valore (2026-09-29): a differenza delle altre gambe, questo backend
      * emette C reale — un UDT semplice puo' viaggiare come vero struct C-by-value alla
      * frontiera FFI (gmb_ffi_udt{i,d}{1,2}_t, dichiarati sempre in proto) e il VERO
      * compilatore C che compila questo output ne classifica l'ABI da solo, nessun trucco
      * di flattening manuale (a differenza di gmb_vm_core.c). Limite 1-2 campi comunque
      * imposto per PARITA' con le altre gambe (stesso messaggio d'errore). */
-    struct cls_info* udt_param_ci[8] = {0};
+    struct cls_info* udt_param_ci[C99_FFI_MAX_ARGS] = {0};
     /* Callback (2026-09-29): un parametro `AS FUNCTION(...) AS T`/`AS SUB(...)` viaggia come
      * PUNTATORE nativo (un trampolino pre-dichiarato, pool emesso da emit_ffi_callback_pool
      * sotto) — stessa classe di registri intera di array/STRING/BYREF, indipendentemente dal
      * kind INTERNO del callback. v1: arità 0-4, firma interna omogenea per kind, BYVAL. Vedi
      * AiWiki Bugs/(open) - FFI-Estensioni-Possibili-BYREF-Struct-Callback.md §3bis. */
-    int is_cb_param[8] = {0};
-    struct cls_info* arr_udt_ci[8] = {0};   /* array con elemento TYPE (S3) */
-    char arr_udt_tname[8][72] = {{0}};
-    int cb_arity[8] = {0};
-    int cb_kind_int[8] = {0};  /* 1 = firma interna del callback e' INT64, 0 = DOUBLE */
-    int cb_has_ret[8] = {0};
+    int is_cb_param[C99_FFI_MAX_ARGS] = {0};
+    struct cls_info* arr_udt_ci[C99_FFI_MAX_ARGS] = {0};   /* array con elemento TYPE (S3) */
+    char arr_udt_tname[C99_FFI_MAX_ARGS][72] = {{0}};
+    int cb_arity[C99_FFI_MAX_ARGS] = {0};
+    int cb_kind_int[C99_FFI_MAX_ARGS] = {0};  /* 1 = firma interna del callback e' INT64, 0 = DOUBLE */
+    int cb_has_ret[C99_FFI_MAX_ARGS] = {0};
     for (int i = 0; i < s->n_params; i++) {
         int isArr = s->param_is_array && s->param_is_array[i];
-        if (i < 8) is_arr_param[i] = isArr;
-        if (!isArr && i < 8 && s->param_fn_arity && s->param_fn_arity[i] >= 0) {
+        if (i < C99_FFI_MAX_ARGS) is_arr_param[i] = isArr;
+        if (!isArr && i < C99_FFI_MAX_ARGS && s->param_fn_arity && s->param_fn_arity[i] >= 0) {
             int arity = s->param_fn_arity[i];
             char what[96];
             snprintf(what, sizeof(what), "il parametro '%s'", s->func_params[i]);
@@ -31335,7 +31340,7 @@ static void emit_ffi_wrapper(ctx_t* c, fn_info_t* fn) {
                 char whatA[96];
                 snprintf(whatA, sizeof(whatA), "il parametro array '%s'", s->func_params[i]);
                 if (!ffi_validate_udt(c, aci, sym, whatA, s->line, 1)) return;
-                if (i < 8) arr_udt_ci[i] = aci;
+                if (i < C99_FFI_MAX_ARGS) arr_udt_ci[i] = aci;
                 continue;
             }
             int elemOk = ek == GMB_TOK_Double
@@ -31365,12 +31370,12 @@ static void emit_ffi_wrapper(ctx_t* c, fn_info_t* fn) {
                          "larghezza nativa a 8 byte).", sym, s->func_params[i]);
                 return;
             }
-            if (i < 8) is_byref_param[i] = 1;
+            if (i < C99_FFI_MAX_ARGS) is_byref_param[i] = 1;
             continue;
         }
-        if (i < 8 && s->param_types && s->param_types[i] && gmb_keyword_tok(s->param_types[i]) == GMB_TOK_StringType) {
+        if (i < C99_FFI_MAX_ARGS && s->param_types && s->param_types[i] && gmb_keyword_tok(s->param_types[i]) == GMB_TOK_StringType) {
             is_str_param[i] = 1;
-        } else if (i < 8 && s->param_types && s->param_types[i] && cls_find(c, s->param_types[i])) {
+        } else if (i < C99_FFI_MAX_ARGS && s->param_types && s->param_types[i] && cls_find(c, s->param_types[i])) {
             struct cls_info* uci = cls_find(c, s->param_types[i]);
             char what[96];
             snprintf(what, sizeof(what), "il parametro '%s'", s->func_params[i]);
@@ -31459,23 +31464,23 @@ static void emit_ffi_wrapper(ctx_t* c, fn_info_t* fn) {
      * N parametri a kind misto sono ammessi (nessuna guardia). */
     int nint = 0, ndbl = 0, nany_arr = 0, nany_str = 0, nany_byref = 0;
     /* Array di UDT (S3): nome del tipo C dell'elemento (usato in firma e nel cast). */
-    for (int i = 0; i < s->n_params && i < 8; i++)
+    for (int i = 0; i < s->n_params && i < C99_FFI_MAX_ARGS; i++)
         if (arr_udt_ci[i]) {
             const char* tn = ffi_udt_shape_name(c, arr_udt_ci[i]);
             snprintf(arr_udt_tname[i], sizeof(arr_udt_tname[i]), "%s*", tn);
         }
     for (int i = 0; i < s->n_params; i++) {
-        if (i < 8 && is_arr_param[i]) { nint++; nany_arr++; continue; }
-        if (i < 8 && is_str_param[i]) { nint++; nany_str++; continue; }
-        if (i < 8 && is_byref_param[i]) { nint++; nany_byref++; continue; }
+        if (i < C99_FFI_MAX_ARGS && is_arr_param[i]) { nint++; nany_arr++; continue; }
+        if (i < C99_FFI_MAX_ARGS && is_str_param[i]) { nint++; nany_str++; continue; }
+        if (i < C99_FFI_MAX_ARGS && is_byref_param[i]) { nint++; nany_byref++; continue; }
         /* Callback (2026-09-29): come array/STRING/BYREF, forza Int64 sull'INTERA firma
          * ESTERNA (e' un puntatore) — indipendentemente dal kind INTERNO del callback
          * (cb_kind_int), che riguarda SOLO la firma del trampolino, non questo conteggio. */
-        if (i < 8 && is_cb_param[i]) { nint++; nany_arr++; continue; }
+        if (i < C99_FFI_MAX_ARGS && is_cb_param[i]) { nint++; nany_arr++; continue; }
         /* Kind misto come PARAMETRO: nessun kind singolo da far combaciare (vedi
          * ret_udt_mixed sopra, stesso principio) — escluso dal conteggio. */
-        if (i < 8 && udt_param_ci[i] && ffi_udt_is_mixed(c, udt_param_ci[i])) continue;
-        if (i < 8 && udt_param_ci[i]) { if (ffi_udt_kind_is_int(c, udt_param_ci[i])) nint++; else ndbl++; continue; }
+        if (i < C99_FFI_MAX_ARGS && udt_param_ci[i] && ffi_udt_is_mixed(c, udt_param_ci[i])) continue;
+        if (i < C99_FFI_MAX_ARGS && udt_param_ci[i]) { if (ffi_udt_kind_is_int(c, udt_param_ci[i])) nint++; else ndbl++; continue; }
         const char* pc = ffi_param_ctype(s, i);
         if (strcmp(pc, "gmb_int_t") == 0) nint++;
         else ndbl++;
@@ -31502,13 +31507,13 @@ static void emit_ffi_wrapper(ctx_t* c, fn_info_t* fn) {
     /* 2026-11-02: array/BYREF non sono più "puntatori duri" per il misto: il wrapper emette
      * il tipo C vero per slot (vedi mixed_allowed sotto). */
     int any_udt_sig = ret_udt_ci != NULL;
-    for (int i = 0; i < 8 && !any_udt_sig; i++)
+    for (int i = 0; i < C99_FFI_MAX_ARGS && !any_udt_sig; i++)
         if (udt_param_ci[i]) any_udt_sig = 1;
     /* 2026-11-02: firma mista ammessa con array/STRING/BYREF (il wrapper emette il tipo C VERO
      * per ogni slot), NON con callback: trampolino + slot misti era instabile (hang osservato)
      * → per i callback resta l'errore di compilazione esplicito. */
     int any_cb_sig = 0;
-    for (int i = 0; i < 8; i++) if (is_cb_param[i]) { any_cb_sig = 1; break; }
+    for (int i = 0; i < C99_FFI_MAX_ARGS; i++) if (is_cb_param[i]) { any_cb_sig = 1; break; }
     /* S1 (2026-11-06): con il layout esplicito ogni slot ha il proprio tipo C reale, quindi
      * una firma mista (anche con UDT) e ammessa: il wrapper emette il tipo vero per slot. */
     int mixed_allowed = 1;
@@ -31528,14 +31533,14 @@ static void emit_ffi_wrapper(ctx_t* c, fn_info_t* fn) {
      * come parametro AS LONG separato, come farebbe con l'API C reale). Una STRING e'
      * `const char*` (NON gmb_string_t per valore — quella e' l'ABI SBAGLIATA che la guardia
      * preveniva: struct invece di puntatore). */
-    #define FFI_INNER(k2) ((k2) < 8 && is_cb_param[k2] ? ffi_cb_native_type(cb_arity[k2], cb_kind_int[k2], cb_has_ret[k2]) \
-        : (k2) < 8 && udt_param_ci[k2] ? ffi_udt_shape_name(c, udt_param_ci[k2]) \
-        : (k2) < 8 && arr_udt_ci[k2] ? arr_udt_tname[k2] \
-        : (k2) < 8 && is_arr_param[k2] \
+    #define FFI_INNER(k2) ((k2) < C99_FFI_MAX_ARGS && is_cb_param[k2] ? ffi_cb_native_type(cb_arity[k2], cb_kind_int[k2], cb_has_ret[k2]) \
+        : (k2) < C99_FFI_MAX_ARGS && udt_param_ci[k2] ? ffi_udt_shape_name(c, udt_param_ci[k2]) \
+        : (k2) < C99_FFI_MAX_ARGS && arr_udt_ci[k2] ? arr_udt_tname[k2] \
+        : (k2) < C99_FFI_MAX_ARGS && is_arr_param[k2] \
         ? (strcmp(ffi_param_ctype(s, k2), "gmb_int_t") == 0 ? "gmb_int_t*" : "gmb_double_t*") \
-        : (k2) < 8 && is_byref_param[k2] \
+        : (k2) < C99_FFI_MAX_ARGS && is_byref_param[k2] \
         ? (strcmp(ffi_param_ctype(s, k2), "gmb_int_t") == 0 ? "gmb_int_t*" : "gmb_double_t*") \
-        : (k2) < 8 && is_str_param[k2] ? "const char*" \
+        : (k2) < C99_FFI_MAX_ARGS && is_str_param[k2] ? "const char*" \
         : (ffi_param_ctype(s, k2)))
     const char* inner_ret = ret_is_udt ? ffi_udt_shape_name(c, ret_udt_ci)
         : ret_is_str ? "const char*"
@@ -31543,14 +31548,14 @@ static void emit_ffi_wrapper(ctx_t* c, fn_info_t* fn) {
     /* Callback FFI (2026-09-29): pool di trampolini emesso UNA VOLTA, PRIMA del wrapper che lo
      * usa — vedi emit_ffi_callback_pool sopra. */
     int any_cb_param = 0;
-    for (int i = 0; i < s->n_params && i < 8; i++) if (is_cb_param[i]) any_cb_param = 1;
+    for (int i = 0; i < s->n_params && i < C99_FFI_MAX_ARGS; i++) if (is_cb_param[i]) any_cb_param = 1;
     if (any_cb_param) emit_ffi_callback_pool(c);
     /* Array a elemento INTERO: la memoria BASIC e' double* → serve copy-in/copy-back verso
      * un temporaneo gmb_int_t* (parità PCode/VM-C che fanno copy-in/copy-out per gli array
      * non blittable). Conta quanti per sapere se il corpo deve usare il percorso a temporanei. */
     int n_intarr = 0;
     for (int i = 0; i < s->n_params; i++)
-        if (i < 8 && is_arr_param[i] && strcmp(ffi_param_ctype(s, i), "gmb_int_t") == 0) n_intarr++;
+        if (i < C99_FFI_MAX_ARGS && is_arr_param[i] && strcmp(ffi_param_ctype(s, i), "gmb_int_t") == 0) n_intarr++;
     sb_printf(&c->out, "static %s gmb_user_", retC);
     emit_ident(c, s->func_name);
     if (fn->ovl_idx > 0) sb_printf(&c->out, "__%d", fn->ovl_idx);
@@ -31558,7 +31563,7 @@ static void emit_ffi_wrapper(ctx_t* c, fn_info_t* fn) {
     if (s->n_params == 0) sb_put(&c->out, "void");
     for (int i = 0; i < s->n_params; i++) {
         if (i) sb_put(&c->out, ", ");
-        if (i < 8 && is_cb_param[i]) {
+        if (i < C99_FFI_MAX_ARGS && is_cb_param[i]) {
             /* Lato wrapper (BASIC-facing): gmb_fn_t (fn+ctx), il vero riferimento a funzione
              * BASIC — stessa convenzione di AMAP/AFILTER/ASORT. L'"acquire" che lo trasforma
              * nel puntatore trampolino nativo avviene nel corpo, subito prima della chiamata
@@ -31567,7 +31572,7 @@ static void emit_ffi_wrapper(ctx_t* c, fn_info_t* fn) {
             emit_ident(c, s->func_params[i]);
             continue;
         }
-        if (i < 8 && is_arr_param[i]) {
+        if (i < C99_FFI_MAX_ARGS && is_arr_param[i]) {
             /* Lato wrapper (BASIC-facing): puntatore + `_len` compagna, STESSA convenzione
              * usata per gli array BYREF delle FUNCTION/SUB utente (emit_function, oracolo
              * EmitArrayArg/Collections.cs) — il resto del compilatore emette sempre la coppia
@@ -31589,7 +31594,7 @@ static void emit_ffi_wrapper(ctx_t* c, fn_info_t* fn) {
             sb_bound_ident(&c->out, s->func_params[i], 0);
             continue;
         }
-        if (i < 8 && is_byref_param[i]) {
+        if (i < C99_FFI_MAX_ARGS && is_byref_param[i]) {
             /* BYREF scalare (2026-09-28): il wrapper prende gia' un PUNTATORE come parametro,
              * stessa convenzione del BYREF ordinario verso una FUNCTION/SUB utente in questo
              * backend — il call-site (emit_call_args) emette gia' `&var` per un argomento
@@ -31599,7 +31604,7 @@ static void emit_ffi_wrapper(ctx_t* c, fn_info_t* fn) {
             emit_ident(c, s->func_params[i]);
             continue;
         }
-        if (i < 8 && udt_param_ci[i]) {
+        if (i < C99_FFI_MAX_ARGS && udt_param_ci[i]) {
             /* Struct/UDT per valore (2026-09-29): lato wrapper (BASIC-facing) l'istanza e'
              * SEMPRE gmb_val_t (boxata) — stessa convenzione di qualunque altro parametro
              * BYVAL di tipo classe/TYPE in questo backend (sb_var_ctype). Lo si spacchetta
@@ -31635,7 +31640,7 @@ static void emit_ffi_wrapper(ctx_t* c, fn_info_t* fn) {
     sb_put(&c->out, "if (__ffi_fn) {\n");
     c->indent = 3;
     /* copy-in per gli array a elemento intero (memoria BASIC = gmb_double_t*). */
-    for (int i = 0; i < s->n_params && i < 8; i++) {
+    for (int i = 0; i < s->n_params && i < C99_FFI_MAX_ARGS; i++) {
         if (!is_arr_param[i] || strcmp(ffi_param_ctype(s, i), "gmb_int_t") != 0) continue;
         ind(c);
         sb_put(&c->out, "gmb_int_t* __ci_"); emit_ident(c, s->func_params[i]);
@@ -31646,7 +31651,7 @@ static void emit_ffi_wrapper(ctx_t* c, fn_info_t* fn) {
     }
     /* Array di UDT (S3, 2026-11-06): buffer contiguo di struct nel layout C, riempito dagli
      * elementi (istanze boxate gmb_obj_<Tipo>) — il nativo vede `gmb_ffi_udt_<Tipo>_t*`. */
-    for (int i = 0; i < s->n_params && i < 8; i++) {
+    for (int i = 0; i < s->n_params && i < C99_FFI_MAX_ARGS; i++) {
         if (!arr_udt_ci[i]) continue;
         struct cls_info* uci = arr_udt_ci[i];
         ffi_leaf_t lv[64];
@@ -31680,7 +31685,7 @@ static void emit_ffi_wrapper(ctx_t* c, fn_info_t* fn) {
     /* Callback (2026-09-29): "acquire" va emesso PRIMA della chiamata nativa (assegna lo slot
      * globale), "release" SUBITO DOPO (mai prima — il nativo può richiamare il callback in un
      * punto qualunque durante la sua esecuzione, vedi il blocco dopo la chiamata sotto). */
-    for (int i = 0; i < s->n_params && i < 8; i++) {
+    for (int i = 0; i < s->n_params && i < C99_FFI_MAX_ARGS; i++) {
         if (!is_cb_param[i]) continue;
         ind(c);
         sb_put(&c->out, "int __cbslot_"); emit_ident(c, s->func_params[i]);
@@ -31691,11 +31696,11 @@ static void emit_ffi_wrapper(ctx_t* c, fn_info_t* fn) {
     /* Emette l'argomento i per la chiamata al simbolo nativo: uno STRING passa .data (il
      * puntatore, non lo struct per valore — l'ABI sbagliata che la guardia preveniva). */
     #define FFI_EMIT_ARG(i) do { \
-        if ((i) < 8 && is_cb_param[i]) { \
+        if ((i) < C99_FFI_MAX_ARGS && is_cb_param[i]) { \
             sb_printf(&c->out, "%s%s%d[__cbslot_", cb_has_ret[i] ? "g_ffi_cb_ptr_" : "g_ffi_cb_ptr_sub_", cb_kind_int[i] ? "i" : "d", cb_arity[i]); \
             emit_ident(c, s->func_params[i]); \
             sb_put(&c->out, "]"); \
-        } else if ((i) < 8 && udt_param_ci[i]) { \
+        } else if ((i) < C99_FFI_MAX_ARGS && udt_param_ci[i]) { \
             /* Struct/UDT per valore, IN (2026-09-29): un COMPOUND LITERAL C99 dello shape \
              * nativo, popolato campo-per-campo da un cast a gmb_obj_<Nome>* — questo backend \
              * memorizza SEMPRE i campi numerici di un UDT come gmb_double_t (vedi \
@@ -31731,26 +31736,26 @@ static void emit_ffi_wrapper(ctx_t* c, fn_info_t* fn) {
                 } \
             } \
             sb_put(&c->out, "}"); \
-        } else if ((i) < 8 && arr_udt_ci[i]) { \
+        } else if ((i) < C99_FFI_MAX_ARGS && arr_udt_ci[i]) { \
             sb_put(&c->out, "__ua_"); emit_ident(c, s->func_params[i]); \
-        } else if ((i) < 8 && is_arr_param[i] && strcmp(ffi_param_ctype(s, i), "gmb_int_t") == 0) { \
+        } else if ((i) < C99_FFI_MAX_ARGS && is_arr_param[i] && strcmp(ffi_param_ctype(s, i), "gmb_int_t") == 0) { \
             sb_put(&c->out, "__ci_"); emit_ident(c, s->func_params[i]); \
-        } else if ((i) < 8 && is_str_param[i]) { \
+        } else if ((i) < C99_FFI_MAX_ARGS && is_str_param[i]) { \
             emit_ident(c, s->func_params[i]); sb_put(&c->out, ".data"); \
-        } else if ((i) < 8 && is_byref_param[i]) { \
+        } else if ((i) < C99_FFI_MAX_ARGS && is_byref_param[i]) { \
             /* Wrapper param gia' puntatore (dichiarato sopra) — passa diretto, nessun cast:  \
              * FFI_INNER(i) per questo slot e' esattamente lo stesso tipo puntatore. */ \
             emit_ident(c, s->func_params[i]); \
         } else { \
             const char* inner = FFI_INNER(i); \
-            int need_cast = strcmp(inner, "gmb_int_t") == 0 && !((i) < 8 && is_arr_param[i]); \
+            int need_cast = strcmp(inner, "gmb_int_t") == 0 && !((i) < C99_FFI_MAX_ARGS && is_arr_param[i]); \
             sb_put(&c->out, need_cast ? "(gmb_int_t)" : ""); \
             emit_ident(c, s->func_params[i]); \
         } \
     } while (0)
     int cast_ret = strcmp(inner_ret, retC) != 0 && strcmp(retC, "void") != 0 && strcmp(inner_ret, "void") != 0;
     int any_arr_udt = 0;
-    for (int i = 0; i < s->n_params && i < 8; i++) if (arr_udt_ci[i]) any_arr_udt = 1;
+    for (int i = 0; i < s->n_params && i < C99_FFI_MAX_ARGS; i++) if (arr_udt_ci[i]) any_arr_udt = 1;
     if (n_intarr == 0 && !ret_is_udt && !any_cb_param && !any_arr_udt) {
         ind(c);
         if (strcmp(retC, "void") == 0) sb_put(&c->out, "__ffi_fn(");
@@ -31764,14 +31769,14 @@ static void emit_ffi_wrapper(ctx_t* c, fn_info_t* fn) {
         else sb_printf(&c->out, "%s __rr = __ffi_fn(", inner_ret);
         for (int i = 0; i < s->n_params; i++) { if (i) sb_put(&c->out, ", "); FFI_EMIT_ARG(i); }
         sb_put(&c->out, ");\n");
-        for (int i = 0; i < s->n_params && i < 8; i++) {
+        for (int i = 0; i < s->n_params && i < C99_FFI_MAX_ARGS; i++) {
             if (!is_cb_param[i]) continue;
             ind(c);
             sb_printf(&c->out, "gmb_ffi_cb_release_%s%d(__cbslot_", cb_kind_int[i] ? "i" : "d", cb_arity[i]);
             emit_ident(c, s->func_params[i]);
             sb_put(&c->out, ");\n");
         }
-        for (int i = 0; i < s->n_params && i < 8; i++) {
+        for (int i = 0; i < s->n_params && i < C99_FFI_MAX_ARGS; i++) {
             if (!is_arr_param[i] || strcmp(ffi_param_ctype(s, i), "gmb_int_t") != 0) continue;
             ind(c);
             sb_put(&c->out, "for (gmb_int_t __k = 0; __k <= "); emit_ident(c, s->func_params[i]); sb_put(&c->out, "__b0; __k++) ");
@@ -31780,7 +31785,7 @@ static void emit_ffi_wrapper(ctx_t* c, fn_info_t* fn) {
             sb_put(&c->out, "free(__ci_"); emit_ident(c, s->func_params[i]); sb_put(&c->out, ");\n");
         }
         /* Copy-back degli array di UDT (S3): il nativo può aver modificato il buffer. */
-        for (int i = 0; i < s->n_params && i < 8; i++) {
+        for (int i = 0; i < s->n_params && i < C99_FFI_MAX_ARGS; i++) {
             if (!arr_udt_ci[i]) continue;
             struct cls_info* uci = arr_udt_ci[i];
             ffi_leaf_t lv[64];

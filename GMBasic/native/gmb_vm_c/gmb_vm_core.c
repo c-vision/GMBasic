@@ -15152,8 +15152,11 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                      * callback verso una funzione top-level SENZA catture arriva invece come
                      * a.type==1 (address grezzo) — nessun ref da trattenere, cade nel ramo else
                      * come un normale scalare (stesso pattern di OP_CALL_INDIRECT). */
+                    /* NB: nessun `i < 8` — un parametro UDT/array-di-UDT/callback in POSIZIONE
+                     * >= 9 perdeva il ref (arrRefs[i] restava NULL) e i suoi campi arrivavano
+                     * ZERO al nativo (matrice F5, 2026-11-06). */
                     if (((arrayMask & (1ull << i)) != 0 || (stringMask & (1ull << i)) != 0 || (byrefScalarMask & (1ull << i)) != 0
-                         || (i < 8 && udtParamFieldCount[i] > 0) || (i < 8 && udtArrCount[i] > 0) || (i < 8 && callbackParamArity[i] != 255)) && a.type == 2 && a.ref)
+                         || udtParamFieldCount[i] > 0 || udtArrCount[i] > 0 || callbackParamArity[i] != 255) && a.type == 2 && a.ref)
                     {
                         arrRefs[i] = a.ref;
                         /* args[i]: per BYREF il valore; per STRING l'INDIRIZZO dei dati (il
