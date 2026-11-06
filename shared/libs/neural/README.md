@@ -18,6 +18,9 @@ Questi moduli restano fuori dal pacchetto per non duplicare la superficie BASIC.
 | comuni | `ZEROGRAD`, `STEP`, `FREE` | handle; `STEP(h, 0|1|2, lr)` = SGD/momentum/Adam |
 | PBP | `PBPMOMENTS`, `PBPLAYERINIT`, `PBPLAYER` | momenti ReLU + forward denso (handle) |
 | ~~ML classico~~ | — | **non qui**: KMeans/PCA/SVM sono già FFI nel namespace `MULTIVARIATE` (`multivariate.inc`, libgmbstats), dopo il ritiro dei builtin (2026-11-05) |
+| CNN | `CONVINIT/CONVSETDIL/CONVRUN[R B]`, `DECONV*`, `WINO*`, `IM2COL*`, `COL2IM*`, `LRN*`, `RESIZE*` | layout CHW; configurazione su handle (le funzioni C superano gli 8 argomenti FFI) |
+| Pooling | `MAXPOOLINIT`, `AVGPOOLINIT`, `POOLRUN`, `POOLRUNARG`, `UNPOOLINIT`, `UNPOOLRUN` | argmax LONG per il backward |
+| FusedMM | `FUSEDMMINIT/RUN`, `AGGINIT/RUN` | CSR (GAT/GraphSAGE) |
 
 Convenzioni: `x()` = T×in, `y()`/`gy()` = T×out, DOUBLE row-major; handle LONG > 0;
 `STEP` usa i gradienti accumulati da `BACKWARD` (buffer m/v allocati al primo passo,
