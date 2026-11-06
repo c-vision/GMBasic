@@ -1,4 +1,4 @@
-' EXPECT: dist= 5|aabb= 0 : 0 , 0 , 4 , 2|center= 0 : 2 , 1|ext= 0 : 2 , 1|valid= 1|merge= 0 : 0 , 6 , 3|aa= 1  ac= 0|clray= 0 : 2 , 1|clbox= 0 : 2 , 0|clcirc= 0 : 3 , 4|claa= 0 : 2 , 1|cc= 1|r2c= 1 : 4|r2a= 1 : 0 , 4|r2s= 1 : 5|bary= 1 : 0.5 , 0.25 , 0.25|orect= 1|quad= 1|hex= 10.3923048454133 , 4 , 3.46410161513775 , 1.73205080756888|sarea= 16|chamfer= 8|haus= 2
+' EXPECT: dist= 5 |aabb= 0 : 0 , 0 , 4 , 2 |center= 0 : 2 , 1 |ext= 0 : 2 , 1 |valid= 1 |merge= 0 : 0 , 6 , 3 |aa= 1  ac= 0 |clray= 0 : 2 , 1 |clbox= 0 : 2 , 0 |clcirc= 0 : 3 , 4 |claa= 0 : 2 , 1 |cc= 1 |r2c= 1 : 4 |r2a= 1 : 0 , 4 |r2s= 1 : 5 |bary= 1 : 0.5 , 0.25 , 0.25 |orect= 1 |quad= 1 |hex= 10.3923048454133 , 4 , 3.46410161513775 , 1.73205080756888 |sarea= 16 |chamfer= 8 |haus= 2 |a2mk= 0 : 1 , 2 , 5 , 7 |r2at= 0 : 5 , 1 
 ' FFI gmbgraphics: GFXSHAPE completo — AABB 2D, vicinanza, intersezioni 2D, poligoni,
 ' esagono, point-cloud. Solo calcolo, parità 4 backend.
 IMPORT GFXSHAPE
@@ -68,4 +68,10 @@ SUB Main()
   c3b(0)=0:c3b(1)=0:c3b(2)=2 : c3b(3)=1:c3b(4)=0:c3b(5)=2
   PRINT "chamfer="; GFXSHAPE.CHAMFER(c3a(), 6, c3b(), 6)
   PRINT "haus="; GFXSHAPE.HAUSDORFF(c3a(), 6, c3b(), 6)
+  DIM amn(1) AS DOUBLE, amx(1) AS DOUBLE, o4(3) AS DOUBLE
+  amn(0) = 1 : amn(1) = 2
+  amx(0) = 5 : amx(1) = 7
+  PRINT "a2mk="; GFXSHAPE.AABB2MAKE(amn(), amx(), o4()); ":";
+  PRINT o4(0); ","; o4(1); ","; o4(2); ","; o4(3)
+  PRINT "r2at="; GFXSHAPE.RAY2AT(ray(), 5, o()); ":"; o(0); ","; o(1)
 END SUB

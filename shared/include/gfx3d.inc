@@ -90,3 +90,13 @@ DECLARE FUNCTION RAYCONE LIB "gmbgraphics" ALIAS "ofx_gfx_ray_cone" (ray() AS DO
 DECLARE FUNCTION CYLINDERNORMAL LIB "gmbgraphics" ALIAS "ofx_gfx_cylinder_normal" (base() AS DOUBLE, axis() AS DOUBLE, p() AS DOUBLE, out() AS DOUBLE) AS LONG
 DECLARE FUNCTION CONENORMAL LIB "gmbgraphics" ALIAS "ofx_gfx_cone_normal" (apex() AS DOUBLE, axis() AS DOUBLE, k AS DOUBLE, p() AS DOUBLE, out() AS DOUBLE) AS LONG
 DECLARE FUNCTION AABBTRANSFORM LIB "gmbgraphics" ALIAS "ofx_gfx_aabb_transform" (a() AS DOUBLE, m() AS DOUBLE, out() AS DOUBLE) AS LONG
+
+' ── costruttori e camera ──────────────────────────────────────────────────
+DECLARE FUNCTION AABBMAKE LIB "gmbgraphics" ALIAS "ofx_gfx_aabb_make" (mn() AS DOUBLE, mx() AS DOUBLE, out() AS DOUBLE) AS LONG
+' Punto al parametro t lungo il raggio.
+DECLARE FUNCTION RAYAT LIB "gmbgraphics" ALIAS "ofx_gfx_ray_at" (ray() AS DOUBLE, t AS DOUBLE, out() AS DOUBLE) AS LONG
+' Orbita/traslazione della camera: out() = nuova posizione.
+DECLARE FUNCTION CAMERAORBIT LIB "gmbgraphics" ALIAS "ofx_gfx_camera_orbit" (eye() AS DOUBLE, target() AS DOUBLE, yaw AS DOUBLE, pitch AS DOUBLE, radius AS DOUBLE, out() AS DOUBLE) AS LONG
+DECLARE FUNCTION CAMERATRANSLATE LIB "gmbgraphics" ALIAS "ofx_gfx_camera_translate" (eye() AS DOUBLE, target() AS DOUBLE, delta() AS DOUBLE, out() AS DOUBLE) AS LONG
+' Direzione del raggio dal NDC ([-1,1]^2) nel mondo.
+DECLARE FUNCTION CAMERANDCRAY LIB "gmbgraphics" ALIAS "ofx_gfx_camera_ndc_ray" (pos() AS DOUBLE, target() AS DOUBLE, up() AS DOUBLE, fov AS DOUBLE, aspect AS DOUBLE, ndcx AS DOUBLE, ndcy AS DOUBLE, out() AS DOUBLE) AS LONG

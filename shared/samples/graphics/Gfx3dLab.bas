@@ -40,6 +40,18 @@ SUB Main()
   PRINT r0; ","; r1; ","; r2
   PRINT "rfree="; GFX3D.RASTERFREE(rh)
 
+  DIM op(2) AS DOUBLE, tp(2) AS DOUBLE, dl(2) AS DOUBLE, amn(2) AS DOUBLE, amx(2) AS DOUBLE
+  PRINT "orbit="; GFX3D.CAMERAORBIT(eye(), ctr(), 0, 0.5, 6, op()); ":";
+  PRINT op(0); ","; op(1); ","; op(2)
+  dl(0) = 1 : dl(1) = 0 : dl(2) = 0
+  PRINT "camtr="; GFX3D.CAMERATRANSLATE(eye(), ctr(), dl(), op()); ":"; op(0)
+  PRINT "ndc="; GFX3D.CAMERANDCRAY(eye(), ctr(), upv(), 1.5707963, 1.5, 0, 0, op()); ":";
+  PRINT op(0); ","; op(1); ","; op(2)
+  PRINT "rayat="; GFX3D.RAYAT(r(), 4, tp()); ":"; tp(0); ","; tp(1); ","; tp(2)
+  amn(0) = -1 : amn(1) = -1 : amn(2) = -1
+  amx(0) = 1 : amx(1) = 1 : amx(2) = 1
+  PRINT "aabbmk="; GFX3D.AABBMAKE(amn(), amx(), tp()); ":"; tp(0); ","; tp(2)
+
   DIM gmap(15) AS DOUBLE, hit(5) AS DOUBLE
   gmap(2) = 1 : gmap(6) = 1 : gmap(10) = 1 : gmap(14) = 1
   PRINT "dda="; GFX3D.RAYCASTDDA(gmap(), 4, 4, 0.5, 0.5, 1, 0, hit()); ":";

@@ -1,4 +1,4 @@
-' EXPECT: persp= 0 : 0.666666666666667 , 1 ,-1 , 0|look= 0 : 1 , 1 ,-5|aabb= 0 :-1 ,-1 , 0 , 1 , 2 , 2|center= 0 : 0 , 0.5 , 1|raysph= 1 : 4|raypl= 1 : 5|raytri= 1 : 5|reflect= 0 : 0 , 0 , 1|phong= 0 : 0.5 , 0.5 , 0.5|decomp= 1 : 1 , 1 , 1 : 1 : 0|mesh= 1 : 8 : 12 : 0 :-0.5 ,-0.5 ,-0.5 : 0 : 0 , 1 , 2|mfree= 0|raster= 1 : 0|rtri= 0|rget= 0 : 0.285714285714286 , 0.214285714285714 , 0.5|rfree= 0|surf= 1 : 4 : 2|sfree= 0|dda= 1 : 2 , 0 , 0 , 1.5|cyl= 1 : 4|cone= 1 : 4.2|cyln= 0 : 1 , 0 , 0|conen= 0 : 0.992876838486922 , 0.119145220618431 , 0|abtr= 0 :-1 , 1
+' EXPECT: persp= 0 : 0.666666666666667 , 1 ,-1 , 0 |look= 0 : 1 , 1 ,-5 |aabb= 0 :-1 ,-1 , 0 , 1 , 2 , 2 |center= 0 : 0 , 0.5 , 1 |raysph= 1 : 4 |raypl= 1 : 5 |raytri= 1 : 5 |reflect= 0 : 0 , 0 , 1 |phong= 0 : 0.5 , 0.5 , 0.5 |decomp= 1 : 1 , 1 , 1 : 1 : 0 |mesh= 1 : 8 : 12 : 0 :-0.5 ,-0.5 ,-0.5 : 0 : 0 , 1 , 2 |mfree= 0 |raster= 1 : 0 |rtri= 0 |rget= 0 : 0.285714285714286 , 0.214285714285714 , 0.5 |rfree= 0 |surf= 1 : 4 : 2 |sfree= 0 |dda= 1 : 2 , 0 , 0 , 1.5 |cyl= 1 : 4 |cone= 1 : 4.2 |cyln= 0 : 1 , 0 , 0 |conen= 0 : 0.992876838486922 , 0.119145220618431 , 0 |abtr= 0 :-1 , 1 |orbit= 0 : 0 , 2.87655323162522 , 5.26549537134224 |camtr= 0 : 1 |ndc= 0 : 0 , 0 ,-1 |rayat= 0 : 0 , 0 , 1 |aabbmk= 0 :-1 ,-1 
 ' FFI gmbgraphics: GFX3D — geometria, raggi/intersezioni, mesh, raster software.
 ' Solo calcolo: nessun display, parità 4 backend.
 IMPORT GFX3D
@@ -114,4 +114,15 @@ SUB Main()
   mtx(0) = 1 : mtx(5) = 1 : mtx(10) = 1 : mtx(15) = 1
   PRINT "abtr="; GFX3D.AABBTRANSFORM(ibox(), mtx(), obox()); ":";
   PRINT obox(0); ","; obox(3)
+  DIM op(2) AS DOUBLE, tp(2) AS DOUBLE, dl(2) AS DOUBLE, amn(2) AS DOUBLE, amx(2) AS DOUBLE
+  PRINT "orbit="; GFX3D.CAMERAORBIT(eye(), ctr(), 0, 0.5, 6, op()); ":";
+  PRINT op(0); ","; op(1); ","; op(2)
+  dl(0) = 1 : dl(1) = 0 : dl(2) = 0
+  PRINT "camtr="; GFX3D.CAMERATRANSLATE(eye(), ctr(), dl(), op()); ":"; op(0)
+  PRINT "ndc="; GFX3D.CAMERANDCRAY(eye(), ctr(), upv(), 1.5707963, 1.5, 0, 0, op()); ":";
+  PRINT op(0); ","; op(1); ","; op(2)
+  PRINT "rayat="; GFX3D.RAYAT(r(), 4, tp()); ":"; tp(0); ","; tp(1); ","; tp(2)
+  amn(0) = -1 : amn(1) = -1 : amn(2) = -1
+  amx(0) = 1 : amx(1) = 1 : amx(2) = 1
+  PRINT "aabbmk="; GFX3D.AABBMAKE(amn(), amx(), tp()); ":"; tp(0); ","; tp(2)
 END SUB

@@ -467,3 +467,47 @@ int ofx_gfx_aabb_transform(const double* a, const double* m, double* out)
     box_out(gm_aabb_transform(box_in(a), mat4_in(m)), out);
     return 0;
 }
+
+/* ── costruttori e camera orbit/translate/ndc (gfx3d.inc) ────────────────── */
+
+int ofx_gfx_aabb_make(const double* mn, const double* mx, double* out)
+{
+    if (!mn || !mx || !out) return -1;
+    box_out(gm_aabb_make(v3(mn), v3(mx)), out);
+    return 0;
+}
+
+int ofx_gfx_ray_at(const double* r, double t, double* out)
+{
+    if (!r || !out) return -1;
+    v3_out(gm_ray_at(ray_in(r), t), out);
+    return 0;
+}
+
+int ofx_gfx_camera_orbit(const double* eye, const double* target, double yaw, double pitch,
+                         double radius, double* out)
+{
+    if (!eye || !target || !out) return -1;
+    gm_camera c = gm_camera_make(v3(eye), v3(target), (gm_vec3){0, 1, 0});
+    gm_camera_orbit(&c, v3(target), yaw, pitch, radius);
+    v3_out(c.position, out);
+    return 0;
+}
+
+int ofx_gfx_camera_translate(const double* eye, const double* target, const double* delta, double* out)
+{
+    if (!eye || !target || !delta || !out) return -1;
+    gm_camera c = gm_camera_make(v3(eye), v3(target), (gm_vec3){0, 1, 0});
+    gm_camera_translate(&c, v3(delta));
+    v3_out(c.position, out);
+    return 0;
+}
+
+int ofx_gfx_camera_ndc_ray(const double* pos, const double* target, const double* up,
+                           double fov, double aspect, double ndcx, double ndcy, double* out)
+{
+    if (!pos || !target || !up || !out) return -1;
+    gm_camera c = gm_camera_perspective(v3(pos), v3(target), v3(up), fov, aspect, 0.1, 100.0);
+    v3_out(gm_camera_ndc_ray_dir(&c, ndcx, ndcy), out);
+    return 0;
+}
