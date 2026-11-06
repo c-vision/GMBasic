@@ -18813,6 +18813,18 @@ static void emit_dict_literal(ctx_t* c, gmb_expr_t* e) {
  * row-major e riempie il buffer DENSO dell'array (offset 0..len-1, senza lower bound:
  * il layout interno è denso). La guardia usa il numero di elementi dichiarati, che può
  * essere runtime. Vale per 1-D, matrici 2-D e N-D. */
+/* Lower bound di DIM: deve essere un intero costante (numero o unario meno). Il backend IL
+ * non può rappresentare un lower runtime (ArrayInfo.LowerBounds è int[]), quindi per parità
+ * lo rifiutano anche C99Native e il compilatore bytecode nativo. */
+static int gmb_expr_is_const_int(const gmb_expr_t* e)
+{
+    if (!e) return 0;
+    if (e->kind == GMB_EXPR_NUM) return 1;
+    if (e->kind == GMB_EXPR_UNARY && e->op && strcmp(e->op, "-") == 0)
+        return gmb_expr_is_const_int(e->left);
+    return 0;
+}
+
 static void emit_dim_literal_flat(ctx_t* c, var_t* v, const gmb_expr_t* e,
                                   int* pos, int dim_id, int ndims)
 {
@@ -19027,6 +19039,11 @@ static void st_dim(ctx_t* c, gmb_stmt_t* s) {
                 his[k + 1] = s->dim_extra[k];
                 los[k + 1] = (s->dim_extra_lo && k < s->n_dim_extra) ? s->dim_extra_lo[k] : NULL;
             }
+            for (int k = 0; k < v->ndims; k++)
+                if (los[k] && !gmb_expr_is_const_int(los[k])) {
+                    c99_fail(c, s->line, "DIM %s: il lower bound deve essere una costante intera", v->name);
+                    return;
+                }
             int any_lo = 0;
             for (int k = 0; k < v->ndims; k++) if (los[k]) any_lo = 1;
             if (any_lo) v->has_blo = 1;
@@ -31643,6 +31660,20 @@ static void emit_function(ctx_t* c, fn_info_t* fn) {
                 sb_put(&c->out, "gmb_int_t ");
                 sb_bound_ident(&c->out, v->name, k);
                 sb_put(&c->out, " = -1;\n");
+            }
+            /* Lower bound per asse (DIM m(1 TO r, 1 TO c) AS UDT): servono a UBOUND/LBOUND
+             * e all'indicizzazione densa, come per gli array scalari. */
+            ind(c);
+            sb_put(&c->out, "gmb_int_t ");
+            sb_bound_lo(&c->out, v);
+            sb_put(&c->out, " = 0;\n");
+            if (v->has_blo) {
+                for (int kb = 1; kb < nd; kb++) {
+                    ind(c);
+                    sb_put(&c->out, "gmb_int_t ");
+                    sb_bound_lo_k(&c->out, v, kb);
+                    sb_put(&c->out, " = 0;\n");
+                }
             }
         } else if (v->vclass[0]) {
             /* 2.7: istanza di classe boxed */

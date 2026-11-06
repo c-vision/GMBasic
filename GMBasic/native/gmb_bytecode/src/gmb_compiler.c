@@ -4106,6 +4106,18 @@ static void cc_emit_array_literal_flat(gmb_cc_t* c, const gmb_expr_t* e)
     cc_expr(c, (gmb_expr_t*)e);
 }
 
+/* Lower bound di DIM: deve essere un intero costante (numero o unario meno). Il backend IL
+ * non può rappresentare un lower runtime (ArrayInfo.LowerBounds è int[]), quindi per parità
+ * lo rifiutano anche C99Native e il compilatore bytecode nativo. */
+static int gmb_expr_is_const_int(const gmb_expr_t* e)
+{
+    if (!e) return 0;
+    if (e->kind == GMB_EXPR_NUM) return 1;
+    if (e->kind == GMB_EXPR_UNARY && e->op && strcmp(e->op, "-") == 0)
+        return gmb_expr_is_const_int(e->left);
+    return 0;
+}
+
 static void cc_stmt(gmb_cc_t* c, const gmb_stmt_t* s)
 {
     if (!s) return;
@@ -4534,6 +4546,18 @@ static void cc_stmt(gmb_cc_t* c, const gmb_stmt_t* s)
             int has_to = (s->dim_to_hi != NULL);
             for (int dk = 0; dk < s->n_dim_extra; dk++)
                 if (s->dim_extra_lo && s->dim_extra_lo[dk]) has_to = 1;
+            if (has_to) {
+                if (s->dim_to_hi && s->array_size && !gmb_expr_is_const_int(s->array_size)) {
+                    cc_err(c, "DIM: il lower bound deve essere una costante intera");
+                    return;
+                }
+                for (int dk = 0; dk < s->n_dim_extra; dk++)
+                    if (s->dim_extra_lo && s->dim_extra_lo[dk]
+                        && !gmb_expr_is_const_int(s->dim_extra_lo[dk])) {
+                        cc_err(c, "DIM: il lower bound deve essere una costante intera");
+                        return;
+                    }
+            }
             if (has_to) {
                 int nargs = 0;
                 if (udt_desc != 65535) {

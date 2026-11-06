@@ -64,6 +64,20 @@ public static partial class Linker
 
     private const bool BindingLog = false;
 
+    /// <summary>Vero se l'espressione è un intero noto a compile-time (numero, unario meno,
+    /// conversione intera di un costante). Il backend IL memorizza i lower bound in un int[]
+    /// compile-time (ArrayInfo.LowerBounds), quindi un lower runtime non è rappresentabile:
+    /// per parità lo rifiutano anche PCode/VM-C (prima lo accettavano solo loro).</summary>
+    private static bool IsCompileTimeInteger(Expr e) => e switch
+    {
+        NumberExpr => true,
+        UnaryExpr { Op.Kind: TokenKind.Minus } u => IsCompileTimeInteger(u.Right),
+        GroupingExpr g => IsCompileTimeInteger(g.Expression),
+        BuiltinFunctionCallExpr { Name.Kind: TokenKind.CLng or TokenKind.CInt or TokenKind.CByte } f
+            when f.Args.Length == 1 => IsCompileTimeInteger(f.Args[0]),
+        _ => false
+    };
+
     /// <summary>
     /// [FASE 2] Punto di ingresso principale per il processo di binding e popolamento della SymbolTable.
     /// Questo metodo agisce come orchestratore per la seconda fase del ciclo di vita della compilazione.
@@ -2633,6 +2647,9 @@ public static partial class Linker
             var boundLowerBounds = decl.LowerBounds
                 .Select(d => BindExpression(d, program, isStrict))
                 .ToImmutableArray();
+            foreach (var lb in boundLowerBounds)
+                if (!IsCompileTimeInteger(lb))
+                    throw new BasicException(lb, "il lower bound di DIM deve essere una costante intera");
 
             var finalDecl = decl with
             {
@@ -3702,6 +3719,9 @@ public static partial class Linker
             if (bindExpressions && !decl.LowerBounds.IsDefaultOrEmpty)
             {
                 boundLowerBounds = [..decl.LowerBounds.Select(d => BindExpression(d, program, isStrict))];
+                foreach (var lb in boundLowerBounds)
+                    if (!IsCompileTimeInteger(lb))
+                        throw new BasicException(lb, "il lower bound di DIM deve essere una costante intera");
             }
 
             var finalDecl = decl with
