@@ -407,8 +407,8 @@ i64 ofx_nn_pbp_moments(double m_a, double v_a, double *out)
     return 0;
 }
 
-/* PBP a handle: i 10 argomenti della funzione C superano il limite di 8 del
- * marshalling FFI. INIT copia m_w/v_w (out×in) nello handle; RUN prende 7 argomenti. */
+/* PBP a handle: INIT copia m_w/v_w (out×in) nello handle; RUN prende solo i vettori
+ * di stato del passo. Lo stato non si ricrea a ogni forward. */
 i64 ofx_nn_pbp_init(const double *m_w, const double *v_w, i64 in, i64 out)
 {
     i64 h;
@@ -447,9 +447,8 @@ i64 ofx_nn_pbp_run(i64 h, const double *m_z_prev, const double *v_z_prev,
 
 
 /* ── CNN / FusedMM: configurazioni di layer su handle (spazio 1001+) ──────────
- * Le funzioni C di conv/pool/fusedmm hanno fino a 13 argomenti: il marshalling FFI
- * ne supporta 8. La configurazione (dimensioni, stride, pad, alpha/beta) vive in un
- * handle; il FORWARD prende solo gli array. */
+ * La configurazione (dimensioni, stride, pad, alpha/beta) vive in un handle:
+ * il FORWARD prende solo gli array e i parametri non si ripetono. */
 
 struct nn_layer {
     int used;
@@ -957,7 +956,7 @@ i64 ofx_nn_quant_params(const double *x, i64 n, double *out)
 
 /* GEMM quantizzato uint8: acc int32, correzione zero-point, bias int32 (n), requant.
  * par(0..5) = scale_a, zp_a, scale_b, zp_b, scale_out, zp_out — la firma resta a 8
- * argomenti: oltre 8 il marshalling VM/C non esegue la chiamata (limite noto). */
+ * par(0..5) = scale_a, zp_a, scale_b, zp_b, scale_out, zp_out. */
 i64 ofx_nn_quant_gemm_u8(i64 *out, const i64 *a, const i64 *b, const i64 *bias,
                          const double *par, i64 m, i64 k, i64 n)
 {
