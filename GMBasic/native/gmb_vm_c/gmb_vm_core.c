@@ -2733,11 +2733,28 @@ static void vm_ffi_set_leaf_val(gmb_obj_shared_val_t* root, const char* namePath
             {
                 int idxS = atoi(brS + 1); *brS = 0;
                 gmb_val_t cv = vm_dict_get_ci(cur->dict, seg);
-                if (cv.kind == GMB_TYPE_OBJECT && cv.v_ptr)
+                gmb_obj_shared_val_t* lv2 = NULL;
+                if (cv.kind == GMB_TYPE_OBJECT && cv.v_ptr &&
+                    ((gmb_obj_t*)cv.v_ptr)->kind == GMB_OBJ_LIST)
+                    lv2 = (gmb_obj_shared_val_t*)cv.v_ptr;
+                else
                 {
-                    gmb_obj_shared_val_t* lv2 = (gmb_obj_shared_val_t*)cv.v_ptr;
-                    if (lv2->list) gmb_list_set(lv2->list, (gmb_int_t)idxS, value);
+                    /* Campo ARRAY di uno UDT (S3b): l'istanza può essere costruita da zero
+                     * (ritorno FFI) senza descriptor → la lista non esiste ancora: la crea
+                     * qui e la registra (nome + "__m<SymbolId>", come i campi scalari). */
+                    lv2 = gmb_shared_list_new();
+                    if (!lv2) return;
+                    gmb_dict_set(cur->dict, seg, gmb_make_val_obj((gmb_obj_t*)lv2));
+                    if (li < depth)
+                    {
+                        char mkey[32];
+                        snprintf(mkey, sizeof(mkey), "__m%d", symbolIdPath[li]);
+                        gmb_dict_set(cur->dict, mkey, gmb_make_val_obj((gmb_obj_t*)lv2));
+                    }
                 }
+                if (!lv2->list) return;
+                while (lv2->list->count <= (size_t)idxS) gmb_list_add(lv2->list, gmb_val_nil());
+                gmb_list_set(lv2->list, (gmb_int_t)idxS, value);
                 return;
             }
             gmb_dict_set(cur->dict, seg, value);

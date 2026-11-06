@@ -112,3 +112,22 @@ Arr4 arr4_bump(Arr4 v)
     v.b += 0.5;
     return v;
 }
+
+/* UDT con DUE campi ARRAY (S3b, 2026-11-06): A(4) → 5 int32, D(2) → 3 double. */
+typedef struct { int32_t a[5]; double d[3]; double b; } ArrMix;
+
+int32_t arrmix_size(void) { return (int32_t)sizeof(ArrMix); }
+double arrmix_sum(ArrMix v)
+{
+    double s = v.b;
+    for (int i = 0; i < 5; i++) s += (double)v.a[i];
+    for (int i = 0; i < 3; i++) s += v.d[i];
+    return s;
+}
+ArrMix arrmix_bump(ArrMix v)
+{
+    for (int i = 0; i < 5; i++) v.a[i] += 1;
+    for (int i = 0; i < 3; i++) v.d[i] += 0.5;
+    v.b += 10;
+    return v;
+}

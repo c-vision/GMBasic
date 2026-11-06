@@ -72,6 +72,30 @@ public class FfiService : IFfiService
                 cur = next;
             }
         }
+        // Campo ARRAY di uno UDT (S3b, 2026-11-06): il path finisce con "A[k]" → scrive
+        // l'elemento k dell'array-campo (creato qui se assente, come fa OP_NEW_*_INSTANCE
+        // via FieldArrayDimensions). Rappresentazione PCodeVM: object[] (Array), così
+        // `r.A(0)` indicizza come su un campo-array dichiarato.
+        var lastRaw = names[^1];
+        var br = lastRaw.IndexOf('[');
+        if (br > 0)
+        {
+            var fname = lastRaw[..br];
+            var ai = int.TryParse(lastRaw[(br + 1)..^1], out var kk) ? kk : -1;
+            if (ai < 0) return;
+            var curArr = cur.TryGetValue(fname, out var ev) ? ev as System.Array : null;
+            if (curArr is null || curArr.Rank != 1 || curArr.GetLowerBound(0) != 0 || curArr.Length <= ai)
+            {
+                var size = System.Math.Max(ai + 1, curArr?.Length ?? 0);
+                var na = new object?[size];
+                if (curArr is not null) System.Array.Copy(curArr, na, System.Math.Min(curArr.Length, size));
+                curArr = na;
+                cur[fname] = na;
+                if (symbolIdPath.Length > 0) cur["__field_" + symbolIdPath[^1]] = na;
+            }
+            curArr.SetValue(value, ai);
+            return;
+        }
         cur[names[^1]] = value;
         if (symbolIdPath.Length > 0) cur["__field_" + symbolIdPath[^1]] = value;
     }
@@ -1397,7 +1421,8 @@ public class FfiService : IFfiService
                     else
                         value = Convert.ToDouble(raw ?? 0.0);
                     SetFfiLeafValue(instance, udtReturn.FieldNames[fi], symbolIdPath, value);
-                    if (symbolIdPath.Length > 0) fieldNamesBySymbolId[symbolIdPath[0]] = udtReturn.FieldNames[fi].Split('.')[0];
+                    // Campo ARRAY (S3b): la foglia si chiama "A[k]" — il NOME del campo è "A".
+                    if (symbolIdPath.Length > 0) fieldNamesBySymbolId[symbolIdPath[0]] = udtReturn.FieldNames[fi].Split('.')[0].Split('[')[0];
                 }
                 instance["__class__"] = new Dictionary<string, object?> { ["FieldNames"] = fieldNamesBySymbolId };
                 return instance;

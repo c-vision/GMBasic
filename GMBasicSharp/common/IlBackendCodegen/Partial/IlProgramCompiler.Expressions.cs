@@ -1479,6 +1479,8 @@ public sealed partial class IlProgramCompiler
                 if (!f.Dimensions.IsEmpty)
                 {
                     var codeArr = FfiCode2(f.DataType);
+                    if (codeArr == 9)
+                        throw new NotSupportedException($"FFI '{symbolName}': il campo array '{path}' ha elementi STRING: non supportato ({what}).");
                     if (codeArr < 0)
                         throw new NotSupportedException($"FFI '{symbolName}': tipo del campo array '{path}' non supportato ({what}).");
                     var nArr = 1;

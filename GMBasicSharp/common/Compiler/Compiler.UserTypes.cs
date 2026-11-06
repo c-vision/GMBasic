@@ -283,6 +283,27 @@ public sealed partial class Compiler
         // "" incondizionato per ogni campo non ancora assegnato — vedi OP_NEW_UDT_INSTANCE e
         // MakeDefaultUdtInstance in PCodeProcessor.cs.
         classDescriptor["FieldTypes"] = udt.Fields.ToDictionary(f => f.SymbolId, f => (DataType)f.DataType);
+        // Dimensioni degli array-campo (SymbolId -> coppie lower/upper), come per le CLASS:
+        // senza, la VM/PCode non alloca la lista e `v.A(0)` su un campo array di un TYPE
+        // risolve su uno scalare (2026-11-06, S3b).
+        {
+            var fieldArrDimsUdt = new Dictionary<int, double[]>();
+            foreach (var field in udt.Fields)
+            {
+                if (field.Dimensions.IsEmpty) continue;
+                var pairs = new double[field.Dimensions.Length * 2];
+                var ok = true;
+                for (var d = 0; d < field.Dimensions.Length; d++)
+                {
+                    if (field.Dimensions[d] is not NumberExpr up) { ok = false; break; }
+                    /* i campi di un TYPE non hanno lower bound esplicito (sempre 0-based) */
+                    pairs[d * 2] = 0;
+                    pairs[d * 2 + 1] = up.Value;
+                }
+                if (ok) fieldArrDimsUdt[field.SymbolId] = pairs;
+            }
+            classDescriptor["FieldArrayDimensions"] = fieldArrDimsUdt;
+        }
         // Descriptor dell'ELEMENTO per i campi ARRAY/LIST OF <ElemUDT> (SymbolId -> descriptor
         // {FieldNames,FieldTypes}): il VM-C/PCode lo usa per agganciare il __class__ agli
         // elementi — campi LIST OF popolati da JSON.TOOBJECT (gli elementi arrivano come dict
