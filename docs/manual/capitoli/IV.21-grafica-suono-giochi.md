@@ -271,9 +271,10 @@ tutte le gambe. Due limiti pratici da conoscere:
 
 - una chiamata FFI ammette al massimo **8 slot nativi**, per questo alcune funzioni
   raggruppano i parametri in array (`RAYCASTDDAEX`, `DRAWTRIANGLE`);
-- una procedura troppo grande (molte centinaia di variabili locali) può superare i limiti del
-  bytecode: nei programmi lunghi conviene dividere il lavoro in `SUB`, come fa il sample
-  `shared/samples/graphics/GraphicsTour.bas` (una `SUB` per dominio).
+- i locals delle procedure sono **dinamici** (crescono on demand): centinaia di variabili in
+  una sola `SUB` funzionano su tutti i backend. Resta comunque consigliato dividere i programmi
+  lunghi in `SUB` per leggibilità, come fa `shared/samples/graphics/GraphicsTour.bas`
+  (una `SUB` per dominio).
 
 ### 4.6 Esempi e verifiche
 

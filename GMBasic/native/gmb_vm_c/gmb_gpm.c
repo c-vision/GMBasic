@@ -144,13 +144,56 @@ void gmb_dyn_scope_clear(gmb_dyn_scope_t* s)
     s->cap = 0;
 }
 
+/* Crescita dei locals (2026-11-05): i frame partono dalla capacità dichiarata dalla
+ * procedura e crescono se il codice usa più slot; prima il limite fisso a 256 faceva
+ * perdere silenziosamente gli slot oltre soglia (output VM/C diverso dagli altri backend).
+ * I nuovi slot sono azzerati. Ritorna 0 su OOM (il chiamante ignora la scrittura). */
+static int grow_locals(double** nums, gmb_obj_t*** refs, uint8_t** types, uint8_t** basic,
+                       int* cap, int need)
+{
+    if (need <= *cap) return 1;
+    int n = *cap > 0 ? *cap : GMB_LOCALS_CAP;
+    while (n < need) n *= 2;
+    double* nn = (double*)realloc(*nums, (size_t)n * sizeof(double));
+    if (!nn) return 0;
+    gmb_obj_t** nr = (gmb_obj_t**)realloc(*refs, (size_t)n * sizeof(gmb_obj_t*));
+    if (!nr) return 0;
+    uint8_t* nt = (uint8_t*)realloc(*types, (size_t)n);
+    if (!nt) return 0;
+    uint8_t* nb = (uint8_t*)realloc(*basic, (size_t)n);
+    if (!nb) return 0;
+    int old = *cap;
+    memset(nn + old, 0, (size_t)(n - old) * sizeof(double));
+    memset(nr + old, 0, (size_t)(n - old) * sizeof(gmb_obj_t*));
+    memset(nt + old, 0, (size_t)(n - old));
+    memset(nb + old, 0, (size_t)(n - old));
+    *nums = nn; *refs = nr; *types = nt; *basic = nb; *cap = n;
+    return 1;
+}
+
+int gmb_frame_ensure_locals(gmb_frame_t* f, int n)
+{
+    if (!f) return 0;
+    return grow_locals(&f->local_nums, &f->local_refs, &f->local_types, &f->local_basic,
+                       &f->nlocals, n);
+}
+
+int gmb_task_ensure_locals(gmb_task_t* t, int n)
+{
+    if (!t) return 0;
+    if (t->frame) return gmb_frame_ensure_locals(t->frame, n);
+    return grow_locals(&t->locals_nums, &t->locals_refs, &t->locals_types, &t->locals_basic,
+                       &t->locals_cap, n);
+}
+
 void gmb_frame_release(gmb_frame_t* f)
 {
     if (!f) return;
     if (--f->refcount <= 0)
     {
-        for (int i = 0; i < GMB_FRAME_LOCALS_CAP; i++)
+        for (int i = 0; i < f->nlocals; i++)
             if (f->local_types[i] == 2 && f->local_refs[i]) gmb_obj_release(f->local_refs[i]);
+        free(f->local_nums); free(f->local_refs); free(f->local_types); free(f->local_basic);
         if (f->upvalues_owned)
             for (int i = 0; i < 16; i++)
                 if (f->upvalues[i].type == 2 && f->upvalues[i].ref) gmb_obj_release(f->upvalues[i].ref);
@@ -271,7 +314,8 @@ static gmb_stack_entry_t byref_read(const gmb_obj_byref_t* b)
     double* nums; gmb_obj_t** refs; uint8_t* types; uint8_t* basic;
     if (b->frame) { nums = b->frame->local_nums; refs = b->frame->local_refs; types = b->frame->local_types; basic = b->frame->local_basic; }
     else { nums = t->locals_nums; refs = t->locals_refs; types = t->locals_types; basic = t->locals_basic; }
-    if (b->slot < 0 || b->slot >= GMB_LOCALS_CAP) return e;
+    int cap = b->frame ? b->frame->nlocals : t->locals_cap;
+    if (b->slot < 0 || b->slot >= cap) return e;
     e.type = types[b->slot]; e.num = nums[b->slot]; e.ref = refs[b->slot]; e.basic_type = basic[b->slot];
     if (e.type == 2 && e.ref && e.ref->kind == GMB_OBJ_BYREF)
         return byref_read((const gmb_obj_byref_t*)e.ref);
@@ -323,7 +367,8 @@ static void byref_write(gmb_obj_byref_t* b, gmb_stack_entry_t e, int retain_exis
     double* nums; gmb_obj_t** refs; uint8_t* types; uint8_t* basic;
     if (b->frame) { nums = b->frame->local_nums; refs = b->frame->local_refs; types = b->frame->local_types; basic = b->frame->local_basic; }
     else { nums = t->locals_nums; refs = t->locals_refs; types = t->locals_types; basic = t->locals_basic; }
-    if (b->slot < 0 || b->slot >= GMB_LOCALS_CAP) return;
+    int cap = b->frame ? b->frame->nlocals : t->locals_cap;
+    if (b->slot < 0 || b->slot >= cap) return;
     if (types[b->slot] == 2 && refs[b->slot]) gmb_obj_release(refs[b->slot]);
     nums[b->slot] = e.num;
     refs[b->slot] = e.type == 2 ? (gmb_obj_t*)e.ref : NULL;
@@ -336,11 +381,11 @@ gmb_stack_entry_t gmb_byref_load(const gmb_obj_byref_t* box) { return byref_read
 void gmb_byref_store(gmb_obj_byref_t* box, gmb_stack_entry_t value) { byref_write(box, value, 0); }
 
 static gmb_stack_entry_t capture_slot_byref_x(double* nums, gmb_obj_t** refs,
-                                               uint8_t* types, uint8_t* basic, int slot,
+                                               uint8_t* types, uint8_t* basic, int cap, int slot,
                                                int box_strings)
 {
     gmb_stack_entry_t out = { 0 };
-    if (slot < 0 || slot >= GMB_LOCALS_CAP) return out;
+    if (slot < 0 || slot >= cap) return out;
     if (types[slot] == 2 && refs[slot] && refs[slot]->kind == GMB_OBJ_BYREF)
     {
         out.type = 2; out.ref = refs[slot]; out.basic_type = GMB_BT_OBJECT;
@@ -389,18 +434,22 @@ gmb_stack_entry_t gmb_task_capture_local_byref(gmb_task_t* t, int slot)
      * `s = "b"` del chiamante sostituiva l'oggetto nello slot e la closure continuava a
      * vedere l'oggetto vecchio. La cella `is_cell` possiede il valore → sopravvive
      * anche al pop del frame (closure ritornata). */
+    if (slot >= 0) gmb_task_ensure_locals(t, slot + 1);
+    int cap = gmb_locals_cap_of(t);
     if (t->frame) return capture_slot_byref_x(t->frame->local_nums, t->frame->local_refs,
-        t->frame->local_types, t->frame->local_basic, slot, 1);
-    return capture_slot_byref_x(t->locals_nums, t->locals_refs, t->locals_types, t->locals_basic, slot, 1);
+        t->frame->local_types, t->frame->local_basic, cap, slot, 1);
+    return capture_slot_byref_x(t->locals_nums, t->locals_refs, t->locals_types, t->locals_basic, cap, slot, 1);
 }
 
 /* Target di @GET (anche stringa): cella write-through sullo slot locale. */
 gmb_stack_entry_t gmb_task_capture_local_cell(gmb_task_t* t, int slot)
 {
     if (!t) return (gmb_stack_entry_t){0};
+    if (slot >= 0) gmb_task_ensure_locals(t, slot + 1);
+    int cap = gmb_locals_cap_of(t);
     if (t->frame) return capture_slot_byref_x(t->frame->local_nums, t->frame->local_refs,
-        t->frame->local_types, t->frame->local_basic, slot, 1);
-    return capture_slot_byref_x(t->locals_nums, t->locals_refs, t->locals_types, t->locals_basic, slot, 1);
+        t->frame->local_types, t->frame->local_basic, cap, slot, 1);
+    return capture_slot_byref_x(t->locals_nums, t->locals_refs, t->locals_types, t->locals_basic, cap, slot, 1);
 }
 
 gmb_stack_entry_t gmb_task_capture_global_byref(gmb_task_t* t, int slot)
@@ -430,10 +479,13 @@ gmb_stack_entry_t gmb_task_capture_global_byref(gmb_task_t* t, int slot)
 void gmb_task_store_local(gmb_task_t* t, int slot, gmb_stack_entry_t e)
 {
     gmb_frame_t* f = t->frame;
+    if (slot < 0) return;
+    /* crescita on demand: uno slot mai visto allarga i locals (frame o top-level) */
+    if (!gmb_task_ensure_locals(t, slot + 1)) return;
     double* nums; gmb_obj_t** refs; uint8_t* types; uint8_t* basic;
     if (f) { nums = f->local_nums; refs = f->local_refs; types = f->local_types; basic = f->local_basic; }
     else { nums = t->locals_nums; refs = t->locals_refs; types = t->locals_types; basic = t->locals_basic; }
-    if (slot < 0 || slot >= GMB_LOCALS_CAP) return;
+    if (slot >= gmb_locals_cap_of(t)) return;
     /* BYREF write-through: lo slot contiene un box (specchio C#: ByRefBox.Value = val). */
     if (types[slot] == 2 && refs[slot] && refs[slot]->kind == GMB_OBJ_BYREF)
     {
@@ -455,7 +507,7 @@ gmb_stack_entry_t gmb_task_load_local(gmb_task_t* t, int slot)
     double* nums; gmb_obj_t** refs; uint8_t* types; uint8_t* basic;
     if (f) { nums = f->local_nums; refs = f->local_refs; types = f->local_types; basic = f->local_basic; }
     else { nums = t->locals_nums; refs = t->locals_refs; types = t->locals_types; basic = t->locals_basic; }
-    if (slot < 0 || slot >= GMB_LOCALS_CAP) return e;
+    if (slot < 0 || slot >= gmb_locals_cap_of(t)) return e;
     e.type = types[slot]; e.num = nums[slot]; e.ref = refs[slot]; e.basic_type = basic[slot];
     /* BYREF: lo slot contiene un box → risolve al valore del target. */
     if (e.type == 2 && e.ref && e.ref->kind == GMB_OBJ_BYREF)
@@ -1985,8 +2037,9 @@ void gmb_task_free(gmb_task_t* t)
     /* Gruppo implicito dei figli senza IN (WAIT nuda, bug 2026-10-01): rilascia il ref
      * del genitore; i figli trattengono il proprio (release al loro finish). */
     if (t->implicit_waitgroup) { gmb_obj_release((gmb_obj_t*)t->implicit_waitgroup); t->implicit_waitgroup = NULL; }
-    for (int i = 0; i < GMB_LOCALS_CAP; i++)
+    for (int i = 0; i < t->locals_cap; i++)
         if (t->locals_types[i] == 2 && t->locals_refs[i]) gmb_obj_release(t->locals_refs[i]);
+    free(t->locals_nums); free(t->locals_refs); free(t->locals_types); free(t->locals_basic);
     if (t->globals_nums && t->owns_globals)
     {
         for (uint32_t i = 0; i < t->globals_count; i++)

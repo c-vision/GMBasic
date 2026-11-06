@@ -2467,7 +2467,8 @@ static gmb_frame_t* push_class_frame(gmb_task_t* t, gmb_stack_entry_t* slots, in
 {
     gmb_frame_t* f = push_frame(t, t->sp, t->ip);
     if (!f) return NULL;
-    for (int i = 0; i < nslots && i < GMB_FRAME_LOCALS_CAP; i++)
+    if (nslots > 0 && !gmb_frame_ensure_locals(f, nslots)) return NULL;
+    for (int i = 0; i < nslots && i < f->nlocals; i++)
     {
         f->local_types[i] = slots[i].type;
         f->local_basic[i] = slots[i].basic_type;
@@ -2532,6 +2533,15 @@ static gmb_frame_t* push_frame(gmb_task_t* t, int saved_sp, int return_ip)
     f->saved_sp = saved_sp;
     f->return_ip = return_ip;
     f->frame_sp = 0;
+    /* Locals dimensionati sul local_count della procedura (+ margine per i temporanei):
+     * prima erano fissi a 256 e una SUB con più di ~127 variabili perdeva slot. */
+    {
+        gmb_vm_t* vm = (gmb_vm_t*)t->vm_ctx;
+        int nloc = GMB_FRAME_LOCALS_CAP;
+        if (vm && vm->chunk && (int)vm->chunk->local_count + 32 > nloc)
+            nloc = (int)vm->chunk->local_count + 32;
+        if (!gmb_frame_ensure_locals(f, nloc)) { free(f); vm_error(t, "out of memory: locals"); return NULL; }
+    }
     /* V4e: EnterProcedureErrorScope — ogni chiamata è un boundary: salva lo stato
      * ON ERROR del chiamante e lo resetta (l'handler NON attraversa le chiamate). */
     f->is_error_scope_boundary = 1;
@@ -2557,6 +2567,9 @@ static void init_numeric_locals(gmb_task_t* t, int addr)
 {
     gmb_vm_t* vm = (gmb_vm_t*)t->vm_ctx;
     if (!vm || !vm->chunk || !vm->chunk->plnum_addrs || vm->chunk->plnum_count == 0) return;
+    /* i locals possono non essere ancora allocati (top-level, nessuna STORE_LOCAL): li
+     * creiamo qui alla capacità iniziale, altrimenti nums sarebbe NULL. */
+    if (!gmb_task_ensure_locals(t, GMB_LOCALS_CAP)) return;
     double* nums; uint8_t* types; uint8_t* basic;
     if (t->frame) { nums = t->frame->local_nums; types = t->frame->local_types; basic = t->frame->local_basic; }
     else { nums = t->locals_nums; types = t->locals_types; basic = t->locals_basic; }
@@ -2565,7 +2578,7 @@ static void init_numeric_locals(gmb_task_t* t, int addr)
         if ((int)vm->chunk->plnum_addrs[i] != addr) continue;
         const uint8_t* fl = vm->chunk->plnum_flags[i];
         uint32_t n = vm->chunk->plnum_counts[i];
-        for (uint32_t s = 0; s < n && s < GMB_FRAME_LOCALS_CAP; s++)
+        for (uint32_t s = 0; s < n && s < (uint32_t)gmb_locals_cap_of(t); s++)
             if (fl[s] && types[s] == 0)
             {
                 nums[s] = 0.0;
@@ -6926,7 +6939,7 @@ static gmb_stack_entry_t vm_byref_peek_one_level(const gmb_obj_byref_t* b)
     double* nums; gmb_obj_t** refs; uint8_t* types; uint8_t* basic;
     if (b->frame) { nums = b->frame->local_nums; refs = b->frame->local_refs; types = b->frame->local_types; basic = b->frame->local_basic; }
     else { nums = t->locals_nums; refs = t->locals_refs; types = t->locals_types; basic = t->locals_basic; }
-    if (b->slot < 0 || b->slot >= GMB_LOCALS_CAP) return e;
+    if (b->slot < 0 || b->slot >= gmb_locals_cap_of(t)) return e;
     e.type = types[b->slot]; e.num = nums[b->slot]; e.ref = refs[b->slot]; e.basic_type = basic[b->slot];
     return e;
 }
@@ -13217,7 +13230,7 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                     vm_error(task, "out of memory: stato FOR");
                     break;
                 }
-                if (slot >= 0 && slot < GMB_FRAME_LOCALS_CAP)
+                if (slot >= 0 && slot < gmb_locals_cap_of(task))
                 {
                     gmb_stack_entry_t e = { 0 };
                     e.num = start; e.type = 1; e.basic_type = GMB_BT_NUMBER;
@@ -13236,7 +13249,7 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                 if (fe)
                 {
                     double actual = 0;
-                    if (slot < GMB_FRAME_LOCALS_CAP)
+                    if (slot < gmb_locals_cap_of(task))
                     {
                         gmb_stack_entry_t e = gmb_task_load_local(task, slot);
                         if (e.type == 1) actual = e.num;
@@ -13247,7 +13260,7 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                     double nxt = actual + step;
                     int done = (step >= 0) ? nxt > end : nxt < end;
                     fe->counter = nxt;
-                    if (slot < GMB_FRAME_LOCALS_CAP)
+                    if (slot < gmb_locals_cap_of(task))
                     {
                         gmb_stack_entry_t e = { 0 };
                         e.num = nxt; e.type = 1; e.basic_type = GMB_BT_NUMBER;
@@ -13368,13 +13381,13 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                     fe->counter = i;
                     gmb_for_drop(fs, ctr_slot);
                     /* scrivi l'accumulatore e il contatore finale nelle locals */
-                    if (acc_slot >= 0 && acc_slot < GMB_FRAME_LOCALS_CAP)
+                    if (acc_slot >= 0 && acc_slot < gmb_locals_cap_of(task))
                     {
                         gmb_stack_entry_t e = { 0 };
                         e.num = acc; e.type = 1; e.basic_type = GMB_BT_NUMBER;
                         gmb_task_store_local(task, acc_slot, e);
                     }
-                    if (ctr_slot >= 0 && ctr_slot < GMB_FRAME_LOCALS_CAP)
+                    if (ctr_slot >= 0 && ctr_slot < gmb_locals_cap_of(task))
                     {
                         gmb_stack_entry_t e = { 0 };
                         e.num = i; e.type = 1; e.basic_type = GMB_BT_NUMBER;
@@ -13465,14 +13478,14 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                     fe->counter = i;
                     gmb_for_drop(fs, ctr_slot);
                     /* scrivi il risultato (oggetto nuovo) e il contatore finale nelle locals */
-                    if (acc_slot >= 0 && acc_slot < GMB_FRAME_LOCALS_CAP)
+                    if (acc_slot >= 0 && acc_slot < gmb_locals_cap_of(task))
                     {
                         gmb_obj_string_t* result = gmb_str_alloc(buf, (uint32_t)len);
                         gmb_stack_entry_t e = { 0 };
                         e.ref = (gmb_obj_t*)result; e.type = 2; e.basic_type = GMB_BT_STRING;
                         gmb_task_store_local(task, acc_slot, e);
                     }
-                    if (ctr_slot >= 0 && ctr_slot < GMB_FRAME_LOCALS_CAP)
+                    if (ctr_slot >= 0 && ctr_slot < gmb_locals_cap_of(task))
                     {
                         gmb_stack_entry_t e = { 0 };
                         e.num = i; e.type = 1; e.basic_type = GMB_BT_NUMBER;
@@ -13510,7 +13523,7 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                     case 9:  r = trunc(src); break;         /* FIX */
                     default: break;
                 }
-                if (dst_slot >= 0 && dst_slot < GMB_FRAME_LOCALS_CAP)
+                if (dst_slot >= 0 && dst_slot < gmb_locals_cap_of(task))
                 {
                     gmb_stack_entry_t e = { 0 };
                     e.num = r; e.type = 1; e.basic_type = GMB_BT_NUMBER;
@@ -16827,7 +16840,7 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
             if (fe)
             {
                 double actual = 0;
-                if (slot < GMB_FRAME_LOCALS_CAP)
+                if (slot < gmb_locals_cap_of(task))
                 {
                     gmb_stack_entry_t e = gmb_task_load_local(task, slot);
                     if (e.type == 1) actual = e.num;
@@ -16838,7 +16851,7 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                 double nxt = actual + step;
                 int done = (step >= 0) ? nxt > end : nxt < end;
                 fe->counter = nxt;
-                if (slot < GMB_FRAME_LOCALS_CAP)
+                if (slot < gmb_locals_cap_of(task))
                 {
                     gmb_stack_entry_t e = { 0 };
                     e.num = nxt; e.type = 1; e.basic_type = GMB_BT_NUMBER;
@@ -17049,7 +17062,7 @@ int gmb_vm_debug_read(gmb_vm_t* vm, const char* name, char* buf, size_t cap)
     if (slot >= 0) {
         gmb_frame_t* frame = main->frame;
         gmb_stack_entry_t e;
-        if (frame && slot < GMB_FRAME_LOCALS_CAP) {
+        if (frame && slot < gmb_locals_cap_of(main)) {
             e.num = frame->local_nums[slot];
             e.ref = frame->local_refs[slot];
             e.type = frame->local_types[slot];
@@ -17058,7 +17071,7 @@ int gmb_vm_debug_read(gmb_vm_t* vm, const char* name, char* buf, size_t cap)
             gmb_format_value(buf, cap, e);
             return 1;
         }
-        if (!frame && slot < GMB_LOCALS_CAP) {
+        if (!frame && slot < gmb_locals_cap_of(main)) {
             e.num = main->locals_nums[slot];
             e.ref = main->locals_refs[slot];
             e.type = main->locals_types[slot];
