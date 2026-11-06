@@ -37,6 +37,9 @@
 #include "gn_act.h"
 #include "gn_dense.h"
 #include "gn_loss.h"
+#include "gn_dropout.h"
+#include "gn_normlayer.h"
+#include "gn_chuck.h"
 #include "gn_opt.h"
 
 #include <stdlib.h>
@@ -1924,5 +1927,321 @@ i64 ofx_nn_loss_binary_cross_entropy(const double *y, const double *t, i64 rows,
     Y.data = (gn_real *)y; T.data = (gn_real *)t;
     G.rows = (int)rows; G.cols = (int)cols; G.data = (gn_real *)grad;
     *loss = (double)gn_loss_binary_cross_entropy(&Y, &T, grad ? &G : NULL);
+    return 0;
+}
+
+/* ══ Dropout (gn_dropout) — handle 6001+ ════════════════════════════════════
+ * La maschera e' interna: FORWARD la rigenera (train) e BACKWARD la riusa. */
+#define NN_DROP_MAX 16
+#define NN_DROP_BASE 6000
+
+typedef struct { int used; gn_dropout d; } nn_drop_e;
+static nn_drop_e g_drop[NN_DROP_MAX];
+
+static nn_drop_e *drop_get(i64 h)
+{
+    if (h <= NN_DROP_BASE || h > NN_DROP_BASE + NN_DROP_MAX) return NULL;
+    if (!g_drop[h - NN_DROP_BASE - 1].used) return NULL;
+    return &g_drop[h - NN_DROP_BASE - 1];
+}
+
+i64 ofx_nn_dropout_init(i64 n, double rate)
+{
+    int i;
+    if (n <= 0) return -1;
+    for (i = 0; i < NN_DROP_MAX; i++) {
+        if (g_drop[i].used) continue;
+        memset(&g_drop[i], 0, sizeof(g_drop[i]));
+        if (gn_dropout_init(&g_drop[i].d, (int)n, (gn_real)rate) != GN_OK) return -1;
+        g_drop[i].used = 1;
+        return (i64)(NN_DROP_BASE + i + 1);
+    }
+    return -1;
+}
+
+i64 ofx_nn_dropout_forward(i64 h, const double *x, double *out, i64 train, i64 seed)
+{
+    nn_drop_e *e = drop_get(h);
+    if (!e || !x || !out) return -1;
+    return (i64)gn_dropout_forward(&e->d, (const gn_real *)x, (gn_real *)out,
+                                   (int)train, (unsigned long long)seed);
+}
+
+i64 ofx_nn_dropout_backward(i64 h, const double *grad_out, double *grad_x)
+{
+    nn_drop_e *e = drop_get(h);
+    if (!e || !grad_out || !grad_x) return -1;
+    return (i64)gn_dropout_backward(&e->d, (const gn_real *)grad_out, (gn_real *)grad_x);
+}
+
+i64 ofx_nn_dropout_free(i64 h)
+{
+    nn_drop_e *e = drop_get(h);
+    if (!e) return -1;
+    gn_dropout_free(&e->d);
+    memset(e, 0, sizeof(*e));
+    return 0;
+}
+
+/* ══ BatchNorm / LayerNorm (gn_normlayer) — handle 6101+ / 6201+ ════════════ */
+#define NN_BN_MAX 16
+#define NN_BN_BASE 6100
+#define NN_LN_MAX 16
+#define NN_LN_BASE 6200
+
+typedef struct { int used; gn_batchnorm bn; } nn_bn_e;
+typedef struct { int used; gn_layernorm ln; } nn_ln_e;
+static nn_bn_e g_bn[NN_BN_MAX];
+static nn_ln_e g_ln[NN_LN_MAX];
+
+static nn_bn_e *bn_get(i64 h)
+{
+    if (h <= NN_BN_BASE || h > NN_BN_BASE + NN_BN_MAX) return NULL;
+    if (!g_bn[h - NN_BN_BASE - 1].used) return NULL;
+    return &g_bn[h - NN_BN_BASE - 1];
+}
+
+static nn_ln_e *ln_get(i64 h)
+{
+    if (h <= NN_LN_BASE || h > NN_LN_BASE + NN_LN_MAX) return NULL;
+    if (!g_ln[h - NN_LN_BASE - 1].used) return NULL;
+    return &g_ln[h - NN_LN_BASE - 1];
+}
+
+i64 ofx_nn_bn_init(i64 features, double eps, double momentum)
+{
+    int i;
+    if (features <= 0) return -1;
+    for (i = 0; i < NN_BN_MAX; i++) {
+        if (g_bn[i].used) continue;
+        memset(&g_bn[i], 0, sizeof(g_bn[i]));
+        if (gn_batchnorm_init(&g_bn[i].bn, (int)features, (gn_real)eps, (gn_real)momentum) != GN_OK) return -1;
+        g_bn[i].used = 1;
+        return (i64)(NN_BN_BASE + i + 1);
+    }
+    return -1;
+}
+
+/* train <> 0 aggiorna le statistiche correnti; 0 usa rmean/rvar (inferenza). */
+i64 ofx_nn_bn_forward(i64 h, const double *x, i64 batch, double *y, i64 train)
+{
+    nn_bn_e *e = bn_get(h);
+    gn_mat X, Y;
+    if (!e || !x || !y || batch <= 0) return -1;
+    X.rows = (int)batch; X.cols = e->bn.features; X.data = (gn_real *)x;
+    Y.rows = (int)batch; Y.cols = e->bn.features; Y.data = (gn_real *)y;
+    return (i64)gn_batchnorm_forward(&e->bn, &X, &Y, (int)train);
+}
+
+i64 ofx_nn_bn_backward(i64 h, const double *gy, i64 batch, double *gx)
+{
+    nn_bn_e *e = bn_get(h);
+    gn_mat GY, GX;
+    if (!e || !gy || !gx || batch <= 0) return -1;
+    GY.rows = (int)batch; GY.cols = e->bn.features; GY.data = (gn_real *)gy;
+    GX.rows = (int)batch; GX.cols = e->bn.features; GX.data = (gn_real *)gx;
+    return (i64)gn_batchnorm_backward(&e->bn, &GY, &GX);
+}
+
+i64 ofx_nn_bn_params(i64 h, double *gamma, double *beta)
+{
+    nn_bn_e *e = bn_get(h);
+    int i;
+    if (!e || !gamma || !beta) return -1;
+    for (i = 0; i < e->bn.features; i++) { gamma[i] = (double)e->bn.gamma.data[i]; beta[i] = (double)e->bn.beta.data[i]; }
+    return 0;
+}
+
+i64 ofx_nn_bn_setparams(i64 h, const double *gamma, const double *beta)
+{
+    nn_bn_e *e = bn_get(h);
+    int i;
+    if (!e || !gamma || !beta) return -1;
+    for (i = 0; i < e->bn.features; i++) { e->bn.gamma.data[i] = (gn_real)gamma[i]; e->bn.beta.data[i] = (gn_real)beta[i]; }
+    return 0;
+}
+
+i64 ofx_nn_bn_zerograd(i64 h)
+{
+    nn_bn_e *e = bn_get(h);
+    if (!e) return -1;
+    return (i64)gn_batchnorm_zero_grad(&e->bn);
+}
+
+i64 ofx_nn_bn_free(i64 h)
+{
+    nn_bn_e *e = bn_get(h);
+    if (!e) return -1;
+    gn_batchnorm_free(&e->bn);
+    memset(e, 0, sizeof(*e));
+    return 0;
+}
+
+i64 ofx_nn_ln_init(i64 features, double eps)
+{
+    int i;
+    if (features <= 0) return -1;
+    for (i = 0; i < NN_LN_MAX; i++) {
+        if (g_ln[i].used) continue;
+        memset(&g_ln[i], 0, sizeof(g_ln[i]));
+        if (gn_layernorm_init(&g_ln[i].ln, (int)features, (gn_real)eps) != GN_OK) return -1;
+        g_ln[i].used = 1;
+        return (i64)(NN_LN_BASE + i + 1);
+    }
+    return -1;
+}
+
+i64 ofx_nn_ln_forward(i64 h, const double *x, i64 batch, double *y)
+{
+    nn_ln_e *e = ln_get(h);
+    gn_mat X, Y;
+    if (!e || !x || !y || batch <= 0) return -1;
+    X.rows = (int)batch; X.cols = e->ln.features; X.data = (gn_real *)x;
+    Y.rows = (int)batch; Y.cols = e->ln.features; Y.data = (gn_real *)y;
+    return (i64)gn_layernorm_forward(&e->ln, &X, &Y);
+}
+
+i64 ofx_nn_ln_backward(i64 h, const double *gy, i64 batch, double *gx)
+{
+    nn_ln_e *e = ln_get(h);
+    gn_mat GY, GX;
+    if (!e || !gy || !gx || batch <= 0) return -1;
+    GY.rows = (int)batch; GY.cols = e->ln.features; GY.data = (gn_real *)gy;
+    GX.rows = (int)batch; GX.cols = e->ln.features; GX.data = (gn_real *)gx;
+    return (i64)gn_layernorm_backward(&e->ln, &GY, &GX);
+}
+
+i64 ofx_nn_ln_params(i64 h, double *gamma, double *beta)
+{
+    nn_ln_e *e = ln_get(h);
+    int i;
+    if (!e || !gamma || !beta) return -1;
+    for (i = 0; i < e->ln.features; i++) { gamma[i] = (double)e->ln.gamma.data[i]; beta[i] = (double)e->ln.beta.data[i]; }
+    return 0;
+}
+
+i64 ofx_nn_ln_setparams(i64 h, const double *gamma, const double *beta)
+{
+    nn_ln_e *e = ln_get(h);
+    int i;
+    if (!e || !gamma || !beta) return -1;
+    for (i = 0; i < e->ln.features; i++) { e->ln.gamma.data[i] = (gn_real)gamma[i]; e->ln.beta.data[i] = (gn_real)beta[i]; }
+    return 0;
+}
+
+i64 ofx_nn_ln_zerograd(i64 h)
+{
+    nn_ln_e *e = ln_get(h);
+    if (!e) return -1;
+    return (i64)gn_layernorm_zero_grad(&e->ln);
+}
+
+i64 ofx_nn_ln_free(i64 h)
+{
+    nn_ln_e *e = ln_get(h);
+    if (!e) return -1;
+    gn_layernorm_free(&e->ln);
+    memset(e, 0, sizeof(*e));
+    return 0;
+}
+
+/* ══ Chuck: Adam con dampening/iniezione di rumore (gn_chuck) — 6301+ ══════
+ * Un handle = un parametro (matrice rows×cols) con il suo pstate e i buffer m/v. */
+#define NN_CHUCK_MAX 16
+#define NN_CHUCK_BASE 6300
+
+typedef struct {
+    int used;
+    gn_chuck c;
+    gn_chuck_pstate p;
+    gn_mat m, v;
+    int rows, cols;
+} nn_chuck_e;
+
+static nn_chuck_e g_chuck[NN_CHUCK_MAX];
+
+static nn_chuck_e *chuck_get(i64 h)
+{
+    if (h <= NN_CHUCK_BASE || h > NN_CHUCK_BASE + NN_CHUCK_MAX) return NULL;
+    if (!g_chuck[h - NN_CHUCK_BASE - 1].used) return NULL;
+    return &g_chuck[h - NN_CHUCK_BASE - 1];
+}
+
+i64 ofx_nn_chuck_init(void)
+{
+    int i;
+    for (i = 0; i < NN_CHUCK_MAX; i++) {
+        if (g_chuck[i].used) continue;
+        memset(&g_chuck[i], 0, sizeof(g_chuck[i]));
+        gn_chuck_init(&g_chuck[i].c);
+        gn_chuck_pstate_init(&g_chuck[i].p);
+        g_chuck[i].used = 1;
+        return (i64)(NN_CHUCK_BASE + i + 1);
+    }
+    return -1;
+}
+
+i64 ofx_nn_chuck_loss(i64 h, double loss)
+{
+    nn_chuck_e *e = chuck_get(h);
+    if (!e) return -1;
+    gn_chuck_observe_loss(&e->c, (gn_real)loss);
+    return 0;
+}
+
+/* param -= aggiornamento Chuck; m/v allocati al primo passo (o se cambiano le dim). */
+i64 ofx_nn_chuck_step(i64 h, double *param, const double *grad, i64 rows, i64 cols,
+                      double lr, double beta1, double beta2, double eps)
+{
+    nn_chuck_e *e = chuck_get(h);
+    gn_mat P, G;
+    if (!e || !param || !grad || rows <= 0 || cols <= 0 || lr <= 0.0) return -1;
+    if (e->rows != (int)rows || e->cols != (int)cols) {
+        gn_mat_free(&e->m);
+        gn_mat_free(&e->v);
+        if (gn_mat_alloc(&e->m, (int)rows, (int)cols) != GN_OK) return -1;
+        if (gn_mat_alloc(&e->v, (int)rows, (int)cols) != GN_OK) { gn_mat_free(&e->m); return -1; }
+        gn_mat_zero(&e->m);
+        gn_mat_zero(&e->v);
+        e->rows = (int)rows;
+        e->cols = (int)cols;
+    }
+    P.rows = (int)rows; P.cols = (int)cols; P.data = (gn_real *)param;
+    G.rows = (int)rows; G.cols = (int)cols; G.data = (gn_real *)grad;
+    return (i64)gn_chuck_step(&e->c, &e->p, &P, &G, &e->m, &e->v,
+                              (gn_real)lr, (gn_real)beta1, (gn_real)beta2, (gn_real)eps);
+}
+
+/* out(0)=dampen out(1)=loss_ema out(2)=noise out(3)=lr_scale out(4)=global_step out(5)=frozen */
+i64 ofx_nn_chuck_state(i64 h, double *out)
+{
+    nn_chuck_e *e = chuck_get(h);
+    if (!e || !out) return -1;
+    out[0] = (double)e->c.dampen;
+    out[1] = (double)e->c.loss_ema;
+    out[2] = (double)e->c.noise;
+    out[3] = (double)e->c.lr_scale;
+    out[4] = (double)e->c.global_step;
+    out[5] = (double)e->p.frozen;
+    return 0;
+}
+
+i64 ofx_nn_chuck_reset(i64 h)
+{
+    nn_chuck_e *e = chuck_get(h);
+    if (!e) return -1;
+    gn_chuck_init(&e->c);
+    gn_chuck_pstate_init(&e->p);
+    if (e->rows > 0 && e->cols > 0) { gn_mat_zero(&e->m); gn_mat_zero(&e->v); }
+    return 0;
+}
+
+i64 ofx_nn_chuck_free(i64 h)
+{
+    nn_chuck_e *e = chuck_get(h);
+    if (!e) return -1;
+    gn_mat_free(&e->m);
+    gn_mat_free(&e->v);
+    memset(e, 0, sizeof(*e));
     return 0;
 }

@@ -311,3 +311,41 @@ DECLARE FUNCTION LOSSMSE LIB "gmbneural" ALIAS "ofx_nn_loss_mse" (y() AS DOUBLE,
 DECLARE FUNCTION LOSSMAE LIB "gmbneural" ALIAS "ofx_nn_loss_mae" (y() AS DOUBLE, t() AS DOUBLE, rows AS LONG, cols AS LONG, grad() AS DOUBLE, loss() AS DOUBLE) AS LONG
 DECLARE FUNCTION LOSSCROSSENTROPY LIB "gmbneural" ALIAS "ofx_nn_loss_cross_entropy" (y() AS DOUBLE, t() AS DOUBLE, rows AS LONG, cols AS LONG, grad() AS DOUBLE, loss() AS DOUBLE) AS LONG
 DECLARE FUNCTION LOSSBINARYCROSSENTROPY LIB "gmbneural" ALIAS "ofx_nn_loss_binary_cross_entropy" (y() AS DOUBLE, t() AS DOUBLE, rows AS LONG, cols AS LONG, grad() AS DOUBLE, loss() AS DOUBLE) AS LONG
+
+' ── Dropout — handle 6001+ (maschera interna, rigenerata dal FORWARD in train) ──
+DECLARE FUNCTION DROPOUTINIT LIB "gmbneural" ALIAS "ofx_nn_dropout_init" (n AS LONG, rate AS DOUBLE) AS LONG
+' train <> 0: campiona con seed e scala 1/(1-rate); train = 0: copia e maschera tutta 1.
+DECLARE FUNCTION DROPOUTFORWARD LIB "gmbneural" ALIAS "ofx_nn_dropout_forward" (h AS LONG, x() AS DOUBLE, out_() AS DOUBLE, train AS LONG, seed AS LONG) AS LONG
+' Riusa la maschera dell'ultimo FORWARD.
+DECLARE FUNCTION DROPOUTBACKWARD LIB "gmbneural" ALIAS "ofx_nn_dropout_backward" (h AS LONG, grad_out() AS DOUBLE, grad_x() AS DOUBLE) AS LONG
+DECLARE FUNCTION DROPOUTFREE LIB "gmbneural" ALIAS "ofx_nn_dropout_free" (h AS LONG) AS LONG
+
+' ── BatchNorm — handle 6101+ (features colonne, x batch×features) ──────────
+' train <> 0 aggiorna rmean/rvar con momentum (default 0.1); 0 usa le statistiche correnti.
+DECLARE FUNCTION BNINIT LIB "gmbneural" ALIAS "ofx_nn_bn_init" (features AS LONG, eps AS DOUBLE, momentum AS DOUBLE) AS LONG
+DECLARE FUNCTION BNFORWARD LIB "gmbneural" ALIAS "ofx_nn_bn_forward" (h AS LONG, x() AS DOUBLE, batch AS LONG, y() AS DOUBLE, train AS LONG) AS LONG
+' Accumula ggamma/gbeta; senza STEP i gradienti si azzerano con BNZEROGRAD.
+DECLARE FUNCTION BNBACKWARD LIB "gmbneural" ALIAS "ofx_nn_bn_backward" (h AS LONG, grad_y() AS DOUBLE, batch AS LONG, grad_x() AS DOUBLE) AS LONG
+DECLARE FUNCTION BNPARAMS LIB "gmbneural" ALIAS "ofx_nn_bn_params" (h AS LONG, gamma() AS DOUBLE, beta() AS DOUBLE) AS LONG
+DECLARE FUNCTION BNSETPARAMS LIB "gmbneural" ALIAS "ofx_nn_bn_setparams" (h AS LONG, gamma() AS DOUBLE, beta() AS DOUBLE) AS LONG
+DECLARE FUNCTION BNZEROGRAD LIB "gmbneural" ALIAS "ofx_nn_bn_zerograd" (h AS LONG) AS LONG
+DECLARE FUNCTION BNFREE LIB "gmbneural" ALIAS "ofx_nn_bn_free" (h AS LONG) AS LONG
+
+' ── LayerNorm — handle 6201+ (normalizza per riga) ─────────────────────────
+DECLARE FUNCTION LNINIT LIB "gmbneural" ALIAS "ofx_nn_ln_init" (features AS LONG, eps AS DOUBLE) AS LONG
+DECLARE FUNCTION LNFORWARD LIB "gmbneural" ALIAS "ofx_nn_ln_forward" (h AS LONG, x() AS DOUBLE, batch AS LONG, y() AS DOUBLE) AS LONG
+DECLARE FUNCTION LNBACKWARD LIB "gmbneural" ALIAS "ofx_nn_ln_backward" (h AS LONG, grad_y() AS DOUBLE, batch AS LONG, grad_x() AS DOUBLE) AS LONG
+DECLARE FUNCTION LNPARAMS LIB "gmbneural" ALIAS "ofx_nn_ln_params" (h AS LONG, gamma() AS DOUBLE, beta() AS DOUBLE) AS LONG
+DECLARE FUNCTION LNSETPARAMS LIB "gmbneural" ALIAS "ofx_nn_ln_setparams" (h AS LONG, gamma() AS DOUBLE, beta() AS DOUBLE) AS LONG
+DECLARE FUNCTION LNZEROGRAD LIB "gmbneural" ALIAS "ofx_nn_ln_zerograd" (h AS LONG) AS LONG
+DECLARE FUNCTION LNFREE LIB "gmbneural" ALIAS "ofx_nn_ln_free" (h AS LONG) AS LONG
+
+' ── Chuck (Adam con dampening, iniezione di rumore, freeze) — handle 6301+ ──
+' Un handle = un parametro (matrice rows×cols) con il suo stato m/v e pstate.
+DECLARE FUNCTION CHUCKINIT LIB "gmbneural" ALIAS "ofx_nn_chuck_init" () AS LONG
+DECLARE FUNCTION CHUCKLOSS LIB "gmbneural" ALIAS "ofx_nn_chuck_loss" (h AS LONG, loss AS DOUBLE) AS LONG
+DECLARE FUNCTION CHUCKSTEP LIB "gmbneural" ALIAS "ofx_nn_chuck_step" (h AS LONG, param() AS DOUBLE, grad() AS DOUBLE, rows AS LONG, cols AS LONG, lr AS DOUBLE, beta1 AS DOUBLE, beta2 AS DOUBLE, eps AS DOUBLE) AS LONG
+' out(0)=dampen out(1)=loss_ema out(2)=noise out(3)=lr_scale out(4)=global_step out(5)=frozen
+DECLARE FUNCTION CHUCKSTATE LIB "gmbneural" ALIAS "ofx_nn_chuck_state" (h AS LONG, out() AS DOUBLE) AS LONG
+DECLARE FUNCTION CHUCKREST LIB "gmbneural" ALIAS "ofx_nn_chuck_reset" (h AS LONG) AS LONG
+DECLARE FUNCTION CHUCKFREE LIB "gmbneural" ALIAS "ofx_nn_chuck_free" (h AS LONG) AS LONG
