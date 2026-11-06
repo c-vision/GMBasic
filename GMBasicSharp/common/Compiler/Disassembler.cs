@@ -631,7 +631,7 @@ public static class Disassembler
     /// <para>Otto byte [callback_param_arity[8] (byte ciascuno)] e due byte
     /// [callback_param_kind_mask]/[callback_param_has_ret_mask] (2026-09-29, callback come
     /// parametro FFI): callback_param_arity[8] è 255 se quella posizione parametro NON è un
-    /// callback, altrimenti l'arità 0-4 del callback (v1). callback_param_kind_mask: bit i
+    /// callback, altrimenti l'arità 0-8 del callback. callback_param_kind_mask: bit i
     /// settato se il callback alla posizione i ha firma interna INT64. callback_param_has_ret_
     /// mask: bit i settato se il callback alla posizione i ha un ritorno (AS FUNCTION, non AS
     /// SUB). Scaffolding bytecode — il runtime che genera/seleziona i trampolini nativi non è
@@ -667,7 +667,7 @@ public static class Disassembler
         var retUdtFieldKindMask = typed ? chunk.Code[offset + 31] : 0;
         // callbackParamArity[8]/callbackParamKindMask/callbackParamHasRetMask (2026-09-29,
         // callback come parametro FFI): un byte PER POSIZIONE parametro (255 = non è un
-        // callback, altrimenti l'arità 0-4), poi un bit-mask del kind interno e uno di
+        // callback, altrimenti l'arità 0-8), poi un bit-mask del kind interno e uno di
         // presenza-ritorno — vedi Compiler.Expressions.cs.
         var callbackParamArity = new int[8];
         for (var pi = 0; pi < 8; pi++)

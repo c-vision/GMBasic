@@ -2709,7 +2709,7 @@ static void cc_emit_ffi_call(gmb_cc_t* c, const gmb_expr_t* e, const gmb_stmt_t*
         else if (is_byref[i]) { byrefScalarMask |= (unsigned)(1u << i); if (p_int[i]) byrefScalarElemIntMask |= (unsigned)(1u << i); }
         else if (is_cb[i]) {
             int ar = pd->param_fn_arity[i];
-            cbArity[i] = (unsigned char)(ar > 4 ? 4 : ar);
+            cbArity[i] = (unsigned char)(ar > 8 ? 8 : ar);
             int cb_int = (ar > 0) ? ((pd->param_fn_kind_mask && (pd->param_fn_kind_mask[i] & 1)) ? 1 : 0)
                                   : ((pd->param_fn_ret_int && pd->param_fn_ret_int[i]) ? 1 : 0);
             if (cb_int) cbKindMask |= (unsigned)(1u << i);

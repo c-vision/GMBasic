@@ -3627,8 +3627,8 @@ typedef struct {
     int in_use;
 } gmb_ffi_cb_slot_t;
 
-static gmb_ffi_cb_slot_t g_ffi_cb_slots_d[5][2]; /* kind DOUBLE, arita' 0-4, 2 slot */
-static gmb_ffi_cb_slot_t g_ffi_cb_slots_i[5][2]; /* kind INT64 */
+static gmb_ffi_cb_slot_t g_ffi_cb_slots_d[9][2]; /* kind DOUBLE, arita' 0-8, 2 slot */
+static gmb_ffi_cb_slot_t g_ffi_cb_slots_i[9][2]; /* kind INT64 */
 
 static double gmb_ffi_cb_d0_0(void) { gmb_ffi_cb_slot_t* s = &g_ffi_cb_slots_d[0][0]; return gmb_vm_call_closure_sync_n(s->vm, s->task, s->closure, s->addr, NULL, 0); }
 static double gmb_ffi_cb_d0_1(void) { gmb_ffi_cb_slot_t* s = &g_ffi_cb_slots_d[0][1]; return gmb_vm_call_closure_sync_n(s->vm, s->task, s->closure, s->addr, NULL, 0); }
@@ -3651,20 +3651,44 @@ static int64_t gmb_ffi_cb_i3_0(int64_t a0, int64_t a1, int64_t a2) { gmb_ffi_cb_
 static int64_t gmb_ffi_cb_i3_1(int64_t a0, int64_t a1, int64_t a2) { gmb_ffi_cb_slot_t* s = &g_ffi_cb_slots_i[3][1]; double a[3] = {(double)a0, (double)a1, (double)a2}; return (int64_t)gmb_vm_call_closure_sync_n(s->vm, s->task, s->closure, s->addr, a, 3); }
 static int64_t gmb_ffi_cb_i4_0(int64_t a0, int64_t a1, int64_t a2, int64_t a3) { gmb_ffi_cb_slot_t* s = &g_ffi_cb_slots_i[4][0]; double a[4] = {(double)a0, (double)a1, (double)a2, (double)a3}; return (int64_t)gmb_vm_call_closure_sync_n(s->vm, s->task, s->closure, s->addr, a, 4); }
 static int64_t gmb_ffi_cb_i4_1(int64_t a0, int64_t a1, int64_t a2, int64_t a3) { gmb_ffi_cb_slot_t* s = &g_ffi_cb_slots_i[4][1]; double a[4] = {(double)a0, (double)a1, (double)a2, (double)a3}; return (int64_t)gmb_vm_call_closure_sync_n(s->vm, s->task, s->closure, s->addr, a, 4); }
+static double gmb_ffi_cb_d5_0(double a0, double a1, double a2, double a3, double a4) { gmb_ffi_cb_slot_t* s = &g_ffi_cb_slots_d[5][0]; double a[5] = {a0, a1, a2, a3, a4}; return gmb_vm_call_closure_sync_n(s->vm, s->task, s->closure, s->addr, a, 5); }
+static double gmb_ffi_cb_d5_1(double a0, double a1, double a2, double a3, double a4) { gmb_ffi_cb_slot_t* s = &g_ffi_cb_slots_d[5][1]; double a[5] = {a0, a1, a2, a3, a4}; return gmb_vm_call_closure_sync_n(s->vm, s->task, s->closure, s->addr, a, 5); }
+static double gmb_ffi_cb_d6_0(double a0, double a1, double a2, double a3, double a4, double a5) { gmb_ffi_cb_slot_t* s = &g_ffi_cb_slots_d[6][0]; double a[6] = {a0, a1, a2, a3, a4, a5}; return gmb_vm_call_closure_sync_n(s->vm, s->task, s->closure, s->addr, a, 6); }
+static double gmb_ffi_cb_d6_1(double a0, double a1, double a2, double a3, double a4, double a5) { gmb_ffi_cb_slot_t* s = &g_ffi_cb_slots_d[6][1]; double a[6] = {a0, a1, a2, a3, a4, a5}; return gmb_vm_call_closure_sync_n(s->vm, s->task, s->closure, s->addr, a, 6); }
+static double gmb_ffi_cb_d7_0(double a0, double a1, double a2, double a3, double a4, double a5, double a6) { gmb_ffi_cb_slot_t* s = &g_ffi_cb_slots_d[7][0]; double a[7] = {a0, a1, a2, a3, a4, a5, a6}; return gmb_vm_call_closure_sync_n(s->vm, s->task, s->closure, s->addr, a, 7); }
+static double gmb_ffi_cb_d7_1(double a0, double a1, double a2, double a3, double a4, double a5, double a6) { gmb_ffi_cb_slot_t* s = &g_ffi_cb_slots_d[7][1]; double a[7] = {a0, a1, a2, a3, a4, a5, a6}; return gmb_vm_call_closure_sync_n(s->vm, s->task, s->closure, s->addr, a, 7); }
+static double gmb_ffi_cb_d8_0(double a0, double a1, double a2, double a3, double a4, double a5, double a6, double a7) { gmb_ffi_cb_slot_t* s = &g_ffi_cb_slots_d[8][0]; double a[8] = {a0, a1, a2, a3, a4, a5, a6, a7}; return gmb_vm_call_closure_sync_n(s->vm, s->task, s->closure, s->addr, a, 8); }
+static double gmb_ffi_cb_d8_1(double a0, double a1, double a2, double a3, double a4, double a5, double a6, double a7) { gmb_ffi_cb_slot_t* s = &g_ffi_cb_slots_d[8][1]; double a[8] = {a0, a1, a2, a3, a4, a5, a6, a7}; return gmb_vm_call_closure_sync_n(s->vm, s->task, s->closure, s->addr, a, 8); }
+static int64_t gmb_ffi_cb_i5_0(int64_t a0, int64_t a1, int64_t a2, int64_t a3, int64_t a4) { gmb_ffi_cb_slot_t* s = &g_ffi_cb_slots_i[5][0]; double a[5] = {(double)a0, (double)a1, (double)a2, (double)a3, (double)a4}; return (int64_t)gmb_vm_call_closure_sync_n(s->vm, s->task, s->closure, s->addr, a, 5); }
+static int64_t gmb_ffi_cb_i5_1(int64_t a0, int64_t a1, int64_t a2, int64_t a3, int64_t a4) { gmb_ffi_cb_slot_t* s = &g_ffi_cb_slots_i[5][1]; double a[5] = {(double)a0, (double)a1, (double)a2, (double)a3, (double)a4}; return (int64_t)gmb_vm_call_closure_sync_n(s->vm, s->task, s->closure, s->addr, a, 5); }
+static int64_t gmb_ffi_cb_i6_0(int64_t a0, int64_t a1, int64_t a2, int64_t a3, int64_t a4, int64_t a5) { gmb_ffi_cb_slot_t* s = &g_ffi_cb_slots_i[6][0]; double a[6] = {(double)a0, (double)a1, (double)a2, (double)a3, (double)a4, (double)a5}; return (int64_t)gmb_vm_call_closure_sync_n(s->vm, s->task, s->closure, s->addr, a, 6); }
+static int64_t gmb_ffi_cb_i6_1(int64_t a0, int64_t a1, int64_t a2, int64_t a3, int64_t a4, int64_t a5) { gmb_ffi_cb_slot_t* s = &g_ffi_cb_slots_i[6][1]; double a[6] = {(double)a0, (double)a1, (double)a2, (double)a3, (double)a4, (double)a5}; return (int64_t)gmb_vm_call_closure_sync_n(s->vm, s->task, s->closure, s->addr, a, 6); }
+static int64_t gmb_ffi_cb_i7_0(int64_t a0, int64_t a1, int64_t a2, int64_t a3, int64_t a4, int64_t a5, int64_t a6) { gmb_ffi_cb_slot_t* s = &g_ffi_cb_slots_i[7][0]; double a[7] = {(double)a0, (double)a1, (double)a2, (double)a3, (double)a4, (double)a5, (double)a6}; return (int64_t)gmb_vm_call_closure_sync_n(s->vm, s->task, s->closure, s->addr, a, 7); }
+static int64_t gmb_ffi_cb_i7_1(int64_t a0, int64_t a1, int64_t a2, int64_t a3, int64_t a4, int64_t a5, int64_t a6) { gmb_ffi_cb_slot_t* s = &g_ffi_cb_slots_i[7][1]; double a[7] = {(double)a0, (double)a1, (double)a2, (double)a3, (double)a4, (double)a5, (double)a6}; return (int64_t)gmb_vm_call_closure_sync_n(s->vm, s->task, s->closure, s->addr, a, 7); }
+static int64_t gmb_ffi_cb_i8_0(int64_t a0, int64_t a1, int64_t a2, int64_t a3, int64_t a4, int64_t a5, int64_t a6, int64_t a7) { gmb_ffi_cb_slot_t* s = &g_ffi_cb_slots_i[8][0]; double a[8] = {(double)a0, (double)a1, (double)a2, (double)a3, (double)a4, (double)a5, (double)a6, (double)a7}; return (int64_t)gmb_vm_call_closure_sync_n(s->vm, s->task, s->closure, s->addr, a, 8); }
+static int64_t gmb_ffi_cb_i8_1(int64_t a0, int64_t a1, int64_t a2, int64_t a3, int64_t a4, int64_t a5, int64_t a6, int64_t a7) { gmb_ffi_cb_slot_t* s = &g_ffi_cb_slots_i[8][1]; double a[8] = {(double)a0, (double)a1, (double)a2, (double)a3, (double)a4, (double)a5, (double)a6, (double)a7}; return (int64_t)gmb_vm_call_closure_sync_n(s->vm, s->task, s->closure, s->addr, a, 8); }
 
-static void* g_ffi_cb_trampolines_d[5][2] = {
+static void* g_ffi_cb_trampolines_d[9][2] = {
     { (void*)gmb_ffi_cb_d0_0, (void*)gmb_ffi_cb_d0_1 },
     { (void*)gmb_ffi_cb_d1_0, (void*)gmb_ffi_cb_d1_1 },
     { (void*)gmb_ffi_cb_d2_0, (void*)gmb_ffi_cb_d2_1 },
     { (void*)gmb_ffi_cb_d3_0, (void*)gmb_ffi_cb_d3_1 },
     { (void*)gmb_ffi_cb_d4_0, (void*)gmb_ffi_cb_d4_1 },
+    { (void*)gmb_ffi_cb_d5_0, (void*)gmb_ffi_cb_d5_1 },
+    { (void*)gmb_ffi_cb_d6_0, (void*)gmb_ffi_cb_d6_1 },
+    { (void*)gmb_ffi_cb_d7_0, (void*)gmb_ffi_cb_d7_1 },
+    { (void*)gmb_ffi_cb_d8_0, (void*)gmb_ffi_cb_d8_1 }
 };
-static void* g_ffi_cb_trampolines_i[5][2] = {
+static void* g_ffi_cb_trampolines_i[9][2] = {
     { (void*)gmb_ffi_cb_i0_0, (void*)gmb_ffi_cb_i0_1 },
     { (void*)gmb_ffi_cb_i1_0, (void*)gmb_ffi_cb_i1_1 },
     { (void*)gmb_ffi_cb_i2_0, (void*)gmb_ffi_cb_i2_1 },
     { (void*)gmb_ffi_cb_i3_0, (void*)gmb_ffi_cb_i3_1 },
     { (void*)gmb_ffi_cb_i4_0, (void*)gmb_ffi_cb_i4_1 },
+    { (void*)gmb_ffi_cb_i5_0, (void*)gmb_ffi_cb_i5_1 },
+    { (void*)gmb_ffi_cb_i6_0, (void*)gmb_ffi_cb_i6_1 },
+    { (void*)gmb_ffi_cb_i7_0, (void*)gmb_ffi_cb_i7_1 },
+    { (void*)gmb_ffi_cb_i8_0, (void*)gmb_ffi_cb_i8_1 }
 };
 
 /* ── Callback VETTORIALE (2026-11-02, arity 128): `FUNCTION(v() AS DOUBLE) AS DOUBLE`.
@@ -3770,7 +3794,7 @@ static void* gmb_ffi_cb_alloc(int kind, int arity, gmb_vm_t* vm, gmb_task_t* tas
         }
         return NULL;
     }
-    if (arity < 0 || arity > 4) return NULL;
+    if (arity < 0 || arity > 8) return NULL;
     gmb_ffi_cb_slot_t (*arr)[2] = kind == 1 ? g_ffi_cb_slots_i : g_ffi_cb_slots_d;
     for (int s = 0; s < 2; s++)
     {

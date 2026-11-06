@@ -1413,9 +1413,9 @@ public sealed partial class IlProgramCompiler
                 throw new NotSupportedException(
                     $"FFI '{symbolName}': callback con array usato per {what} non supportato " +
                     "(ammessi solo array di DOUBLE, con ritorno DOUBLE o ARRAY OF DOUBLE).");
-            if (fp.ParameterTypes.Length > 4)
+            if (fp.ParameterTypes.Length > 8)
                 throw new NotSupportedException(
-                    $"FFI '{symbolName}': il callback usato per {what} ha {fp.ParameterTypes.Length} parametri (ammessi 0-4 nella v1 del supporto callback).");
+                    $"FFI '{symbolName}': il callback usato per {what} ha {fp.ParameterTypes.Length} parametri (ammessi 0-8).");
             var hasReturn = fp.ReturnType is not VoidType;
             var kinds = fp.ParameterTypes.Select(t => IsI64(t)).ToList();
             if (hasReturn) kinds.Add(IsI64(fp.ReturnType));
