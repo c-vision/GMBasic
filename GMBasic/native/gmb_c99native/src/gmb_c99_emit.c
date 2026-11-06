@@ -820,6 +820,14 @@ void sb_bound_var(sb_t* b, const var_t* v, int k) {
 }
 /* Lower bound compagna `<ident>__blo` (canone 1-based 2026-09-30): assegnata al DIM con
  * TO, letta da FOR EACH (inizio) e LBOUND. Esiste solo se il DIM l'ha emessa (flag). */
+/* Nome del lower bound di un PARAMETRO (senza il prefisso `_` degli alias BYREF):
+ * `<nome>__blo` per l'asse 0, `<nome>__bloK` per gli assi successivi. */
+static void sb_lo_ident(sb_t* b, const char* name, int k) {
+    sb_ident(b, name);
+    if (k == 0) sb_put(b, "__blo");
+    else sb_printf(b, "__blo%d", k);
+}
+
 void sb_bound_lo_k(sb_t* b, const var_t* v, int k) {
     if (v->arr_byref) sb_put(b, "_");
     sb_ident(b, v->name);
@@ -942,6 +950,17 @@ static int p_arraylike(const gmb_stmt_t* s, int i) {
     if (s->param_variadic && s->param_variadic[i]) return 1;
     return 0;
 }
+/* ABI dei lower bound per gli array passati alle procedure NOMINALI (SUB/FUNCTION
+ * top-level, non lambda/metodi/FFI): la firma C porta `<param>__bloK` dopo `<param>__bK`.
+ * Lambda e metodi hanno ABI a function-pointer fisso e restano 0-based. */
+static int fn_array_lower_abi(const fn_info_t* fn) {
+    /* Solo SUB/FUNCTION top-level: metodi di classe e lambda usano ABI a
+     * function-pointer/delegate fisso. Le lambda ricevono i lower dal canale
+     * gmb_lambda_lower; i metodi con parametri array restano un limite noto C99. */
+    return fn && !fn->is_lambda && !fn->is_lambda_cap && !fn->cls_owner[0]
+           && !(fn->stmt && fn->stmt->is_ffi);
+}
+
 static int sync_gkind_tok(int tk) {
     switch (tk) {
         case GMB_TOK_Channel: return GK_CHAN;
@@ -9954,6 +9973,28 @@ static int dim_arr_timeseries1d(ctx_t* c, gmb_stmt_t* s, gmb_expr_t* init) {
 /* 2.8: argomento array di una chiamata a funzione utente: coppia puntatore+bound
  * (parity EmitArrayArg oracolo, Collections.cs:506); se il parametro callee è
  * REDIMmato nel body (arr_byref) passa gli indirizzi (&arr, &arr__b0). */
+/* Coda dell'argomento array per una procedura nominale: `<param>__bloK` (byval) o
+ * `&<expr>__bloK` (byref). Per un array senza lower si passa 0 (o l'indirizzo di uno
+ * zero temporaneo), così il callee vede 0-based come prima. */
+static void emit_arr_arg_lowers(ctx_t* c, fn_info_t* fn, int i, const var_t* tv) {
+    if (!fn_array_lower_abi(fn) || !fn || !fn->stmt || i < 0 || i >= fn->stmt->n_params) return;
+    int nd = (fn->stmt->param_ndims && fn->stmt->param_ndims[i] >= 2) ? fn->stmt->param_ndims[i] : 1;
+    /* Il lower è un PUNTATORE solo quando il callee usa l'alias BYREF/REDIM (pv->arr_byref,
+     * la stessa condizione della firma); un semplice BYREF senza REDIM riceve il valore. */
+    var_t* pv = vars_find(&fn->locals, fn->stmt->func_params[i]);
+    int byref = pv && pv->arr_byref;
+    for (int k = 0; k < nd; k++) {
+        sb_put(&c->out, ", ");
+        if (byref) {
+            if (tv && tv->has_blo) { sb_put(&c->out, "&"); sb_bound_lo_k(&c->out, tv, k); }
+            else sb_put(&c->out, "&((gmb_int_t){0})");
+        } else {
+            if (tv && tv->has_blo) sb_bound_lo_k(&c->out, tv, k);
+            else sb_put(&c->out, "0");
+        }
+    }
+}
+
 static void emit_arr_call_arg(ctx_t* c, fn_info_t* fn, int i, gmb_expr_t* arg, int line) {
     /* Array LITERAL come argomento (2026-11-03): `Somma({1, 2})`. Il parser rappresenta
      * `{…}` come CALL "_array_"; si materializza un array temporaneo C99 e si passa
@@ -9999,6 +10040,7 @@ static void emit_arr_call_arg(ctx_t* c, fn_info_t* fn, int i, gmb_expr_t* arg, i
         }
         sb_put(&c->out, " }, (gmb_int_t)");
         sb_printf(&c->out, "%d", n - 1);
+        emit_arr_arg_lowers(c, fn, i, NULL);
         return;
     }
     /* variabile nuda (stile moderno) o "Nome()" con 0 argomenti (stile classico) */
@@ -10030,6 +10072,7 @@ static void emit_arr_call_arg(ctx_t* c, fn_info_t* fn, int i, gmb_expr_t* arg, i
         sb_put(&c->out, ", NULL), (gmb_int_t)(");
         emit_ident(c, tv->name);
         sb_put(&c->out, ").length - 1");
+        emit_arr_arg_lowers(c, fn, i, NULL);
         return;
     }
     if (!tv || !tv->is_array) {
@@ -10050,6 +10093,7 @@ static void emit_arr_call_arg(ctx_t* c, fn_info_t* fn, int i, gmb_expr_t* arg, i
         sb_put(&c->out, "_len) > 0 ? (gmb_int_t)(");
         emit_ident(c, tv->name);
         sb_put(&c->out, "_len) - 1 : -1)");
+        emit_arr_arg_lowers(c, fn, i, tv);
         return;
     }
     if (tv->matrix) {
@@ -10073,6 +10117,7 @@ static void emit_arr_call_arg(ctx_t* c, fn_info_t* fn, int i, gmb_expr_t* arg, i
         sb_put(&c->out, ", ");
         emit_ident(c, tv->name);
         sb_put(&c->out, "__cols");
+        emit_arr_arg_lowers(c, fn, i, NULL);
         return;
     }
     if (want_ref) sb_put(&c->out, "&");
@@ -10086,6 +10131,7 @@ static void emit_arr_call_arg(ctx_t* c, fn_info_t* fn, int i, gmb_expr_t* arg, i
         if (want_ref) sb_put(&c->out, "&");
         sb_bound_ident(&c->out, tv->name, _j);
     }
+    emit_arr_arg_lowers(c, fn, i, tv);
 }
 
 /* PARAMARRAY (2026-08-31, audit §6): compatta gli argomenti eccedenti
@@ -13546,11 +13592,21 @@ static void emit_call(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_
             for (int k = 0; k < n_arr; k++) {
                 sb_printf(&c->out, "gmb_int_t __pb%d = gmb_lambda_bound(%d); gmb_lambda_bound_set(%d, ", k, k, k);
                 if (arr_lit[k]) sb_printf(&c->out, "(gmb_int_t)%d); ", args[arr_slot[k]]->nargs - 1);
-                else {
+                else if (arr_var[k] && arr_var[k]->dyn_len) {
                     sb_put(&c->out, "(gmb_int_t)(");
                     emit_arr_len_of(c, arr_var[k]);
                     sb_put(&c->out, ") - 1); ");
-                }
+                } else if (arr_var[k]) {
+                    /* Upper BOUND, non count-1: con DIM 1 TO n il count è n ma l'upper è n
+                     * (l'indice utente massimo); count-1 darebbe n-1. */
+                    sb_put(&c->out, "(gmb_int_t)(");
+                    sb_bound_ident(&c->out, arr_var[k]->name, 0);
+                    sb_put(&c->out, ")); ");
+                } else sb_put(&c->out, "(gmb_int_t)-1); ");
+                sb_printf(&c->out, "gmb_int_t __pl%d = gmb_lambda_lower(%d); gmb_lambda_lower_set(%d, ", k, k, k);
+                if (!arr_lit[k] && arr_var[k] && arr_var[k]->has_blo) sb_bound_lo_k(&c->out, arr_var[k], 0);
+                else sb_put(&c->out, "0");
+                sb_put(&c->out, "); ");
             }
             if (n_arr) {
                 sb_printf(&c->out, "%s __rf = ", fv->func_ret_str ? "gmb_string_t" : "gmb_double_t");
@@ -13589,7 +13645,7 @@ static void emit_call(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_
             sb_put(&c->out, ")");
             if (n_arr) {
                 for (int k = 0; k < n_arr; k++)
-                    sb_printf(&c->out, "; gmb_lambda_bound_set(%d, __pb%d);", k, k);
+                    sb_printf(&c->out, "; gmb_lambda_bound_set(%d, __pb%d); gmb_lambda_lower_set(%d, __pl%d);", k, k, k, k);
                 sb_put(&c->out, " __rf; })");
             }
             return;
@@ -13781,6 +13837,7 @@ static void emit_call(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_
             if (is_variadic_last && !c->error[0]) {
                 if (fixed_count) sb_put(&c->out, ", ");
                 emit_variadic_pack(c, fn, args, fixed_count, variadic_argc, line);
+                emit_arr_arg_lowers(c, fn, fixed_count, NULL);
             }
             sb_put(&c->out, ")");
             return;
@@ -13805,6 +13862,7 @@ static void emit_call(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_
             if (is_variadic_last && !c->error[0]) {
                 if (fixed_count) sb_put(&c->out, ", ");
                 emit_variadic_pack(c, fn, args, fixed_count, variadic_argc, line);
+                emit_arr_arg_lowers(c, fn, fixed_count, NULL);
             }
             if (ret_arr_call) sb_put(&c->out, ", NULL); gmb_lambda_ret_ptr_get(); })");
             else sb_put(&c->out, ")");
@@ -31467,6 +31525,14 @@ static void emit_function(ctx_t* c, fn_info_t* fn) {
      * emitter C# EmitFfiWrapper) al posto del corpo (n_funcbody=0). */
     if (s->is_ffi) { emit_ffi_wrapper(c, fn); return; }
     c->cur_fn = fn;
+    /* Array passati a una procedura nominale: il lower bound viaggia nella firma
+     * (`<param>__bloK`), quindi il corpo del callee usa __bloK anche per gli
+     * array-parametro (prima vedevano 0-based). */
+    if (fn_array_lower_abi(fn))
+        for (int i = 0; i < s->n_params; i++) {
+            var_t* pv = vars_find(&fn->locals, s->func_params[i]);
+            if (pv && pv->is_array) pv->has_blo = 1;
+        }
     /* 2.6(s): pre-scan GOSUB e reset siti per-funzione */
     fn->has_gosub = body_has_gosub(s->func_body, s->n_funcbody);
     c->n_gosub_sites = 0;
@@ -31508,7 +31574,9 @@ static void emit_function(ctx_t* c, fn_info_t* fn) {
             sb_put(&c->out, ", gmb_int_t* ");
             sb_bound_ident(&c->out, s->func_params[i], 0);
             { int _nd = (s->param_ndims && s->param_ndims[i] >= 2) ? s->param_ndims[i] : 1;
-              for (int _j = 1; _j < _nd; _j++) { sb_put(&c->out, ", gmb_int_t* "); sb_bound_ident(&c->out, s->func_params[i], _j); } }
+              for (int _j = 1; _j < _nd; _j++) { sb_put(&c->out, ", gmb_int_t* "); sb_bound_ident(&c->out, s->func_params[i], _j); }
+              if (fn_array_lower_abi(fn))
+                  for (int _j = 0; _j < _nd; _j++) { sb_put(&c->out, ", gmb_int_t* "); sb_lo_ident(&c->out, s->func_params[i], _j); } }
         } else {
             if (pv) sb_var_ctype(&c->out, pv);
             else sb_put(&c->out, ctype_name(TY_NUM));
@@ -31526,6 +31594,8 @@ static void emit_function(ctx_t* c, fn_info_t* fn) {
                     emit_ident(c, s->func_params[i]);
                     sb_put(&c->out, "__cols");
                 }
+                if (fn_array_lower_abi(fn))
+                    for (int _j = 0; _j < _nd; _j++) { sb_put(&c->out, ", gmb_int_t "); sb_lo_ident(&c->out, s->func_params[i], _j); }
             }
         }
     }
@@ -31544,6 +31614,12 @@ static void emit_function(ctx_t* c, fn_info_t* fn) {
                 sb_put(&c->out, "gmb_int_t ");
                 sb_bound_ident(&c->out, s->func_params[i], 0);
                 sb_printf(&c->out, " = gmb_lambda_bound(%d);\n", lb_ord);
+                /* Lower bound: stesso canale thread-local (0 = 0-based). */
+                pvb->has_blo = 1;
+                ind(c);
+                sb_put(&c->out, "gmb_int_t ");
+                sb_bound_lo_k(&c->out, pvb, 0);
+                sb_printf(&c->out, " = gmb_lambda_lower(%d);\n", lb_ord);
                 lb_ord++;
             }
         }
@@ -31595,6 +31671,17 @@ static void emit_function(ctx_t* c, fn_info_t* fn) {
         sb_put(&c->out, " = *");
         sb_bound_ident(&c->out, s->func_params[i], 0);
         sb_put(&c->out, ";\n");
+        if (fn_array_lower_abi(fn)) {
+            int _nd = (s->param_ndims && s->param_ndims[i] >= 2) ? s->param_ndims[i] : 1;
+            for (int _j = 0; _j < _nd; _j++) {
+                ind(c);
+                sb_put(&c->out, "gmb_int_t ");
+                sb_bound_lo_k(&c->out, pv, _j);      /* _<param>__bloK */
+                sb_put(&c->out, " = *");
+                sb_lo_ident(&c->out, s->func_params[i], _j);   /* <param>__bloK */
+                sb_put(&c->out, ";\n");
+            }
+        }
     }
     /* dichiarazioni locali (esclusi i parametri e le variabili catturate: queste
      * vivono nella struct __ctx della closure, FASE 2.6(j)) */
@@ -33790,7 +33877,9 @@ int gmb_c99_emit(const gmb_program_t* prog, char** out_src, char** error) {
                 sb_put(&proto, ", gmb_int_t* ");
                 sb_bound_ident(&proto, s->func_params[k], 0);
                 { int _nd = (s->param_ndims && s->param_ndims[k] >= 2) ? s->param_ndims[k] : 1;
-                  for (int _j = 1; _j < _nd; _j++) { sb_put(&proto, ", gmb_int_t* "); sb_bound_ident(&proto, s->func_params[k], _j); } }
+                  for (int _j = 1; _j < _nd; _j++) { sb_put(&proto, ", gmb_int_t* "); sb_bound_ident(&proto, s->func_params[k], _j); }
+                  if (fn_array_lower_abi(&c->fns[i]))
+                      for (int _j = 0; _j < _nd; _j++) { sb_put(&proto, ", gmb_int_t* "); sb_lo_ident(&proto, s->func_params[k], _j); } }
                 continue;
             }
             /* BYREF scalare verso una FFI (2026-09-28): il tipo generico (sb_var_ctype, TY_NUM
@@ -33819,6 +33908,8 @@ int gmb_c99_emit(const gmb_program_t* prog, char** out_src, char** error) {
                     sb_ident(&proto, s->func_params[k]);
                     sb_put(&proto, "__cols");
                 }
+                if (fn_array_lower_abi(&c->fns[i]))
+                    for (int _j = 0; _j < _nd; _j++) { sb_put(&proto, ", gmb_int_t "); sb_lo_ident(&proto, s->func_params[k], _j); }
             }
         }
         if (fn_ret_is_arr(&c->fns[i]))
@@ -33927,6 +34018,11 @@ int gmb_c99_emit(const gmb_program_t* prog, char** out_src, char** error) {
                 /* parametro JAGGED: il trampolino non conosce le colonne (0 = ignote). */
                 var_t* pva2 = vars_find(&fa->locals, fa->stmt->func_params[k]);
                 if (pva2 && pva2->jagged) sb_put(&proto, ", 0");
+                if (fn_array_lower_abi(fa)) {
+                    int _ndl = (fa->stmt->param_ndims && fa->stmt->param_ndims[k] >= 2) ? fa->stmt->param_ndims[k] : 1;
+                    for (int _lj = 0; _lj < _ndl; _lj++)
+                        sb_printf(&proto, ", gmb_lambda_lower(%d)", _ba);
+                }
             }
         }
         if (fa_ret_arr) sb_put(&proto, ", __out");

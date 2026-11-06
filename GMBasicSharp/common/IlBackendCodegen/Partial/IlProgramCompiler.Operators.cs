@@ -1112,14 +1112,44 @@ public sealed partial class IlProgramCompiler
 
     private void EmitIndirectFunctionCall(FunctionExpr expr)
     {
-        var delegateType = _parameters.TryGetValue(expr.SymbolId, out var param)
-            ? DataTypeMapper.Map(param.DataType, _types, _classTypes)
-            : DataTypeMapper.Map(_program.Symbols.GetSymbol(expr.SymbolId).DataType, _types, _classTypes);
+        /* Il tipo effettivo del local può essere un delegate `ref T[]` (CbRef…) scelto
+         * per una FUNCTION nominata con parametri array, diverso dal Func<…> del tipo
+         * simbolo. Usa il local quando è un delegate. */
+        Type delegateType;
+        if (_locals.TryGetValue(expr.SymbolId, out var dloc) && typeof(Delegate).IsAssignableFrom(dloc.LocalType))
+            delegateType = dloc.LocalType;
+        else
+            delegateType = _parameters.TryGetValue(expr.SymbolId, out var param)
+                ? DataTypeMapper.Map(param.DataType, _types, _classTypes)
+                : DataTypeMapper.Map(_program.Symbols.GetSymbol(expr.SymbolId).DataType, _types, _classTypes);
         var invokeMethod = delegateType.GetMethod("Invoke")
             ?? throw new NotSupportedException($"Backend IL: metodo Invoke non trovato sul delegate '{delegateType}'.");
 
         EmitLoadVariable(expr.SymbolId);
-        foreach (var arg in expr.Args) EmitExpression(arg);
+        var ps = invokeMethod.GetParameters();
+        for (var i = 0; i < expr.Args.Length; i++)
+        {
+            var arg = expr.Args[i];
+            if (i < ps.Length && ps[i].ParameterType.IsByRef)
+            {
+                /* Delegate con parametri ARRAY `ref T[]` (CbRef1D/…): l'Invoke vuole
+                 * l'INDIRIZZO, non il valore (prima si passava l'array byval → il callee
+                 * leggeva un riferimento non valido e l'indicizzazione falliva). */
+                if (arg is VariableExpr)
+                {
+                    EmitAddressOf(arg);
+                }
+                else
+                {
+                    var elem = ps[i].ParameterType.GetElementType()!;
+                    var tmp = _il.DeclareLocal(elem);
+                    EmitExpression(arg);
+                    _il.Emit(OpCodes.Stloc, tmp);
+                    _il.Emit(OpCodes.Ldloca, tmp);
+                }
+            }
+            else EmitExpression(arg);
+        }
         _il.Emit(OpCodes.Callvirt, invokeMethod);
     }
 }

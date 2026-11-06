@@ -588,7 +588,7 @@ public sealed partial class IlProgramCompiler
         {
             _il.Emit(OpCodes.Dup);
             _il.Emit(OpCodes.Ldc_I4, axis);
-            _il.Emit(OpCodes.Ldc_I4, rArr.LowerBounds[axis]);
+            EmitArrayLower(rArr, axis);
             _il.Emit(OpCodes.Stelem_I4);
         }
         _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.ArrayBound),
@@ -675,10 +675,9 @@ public sealed partial class IlProgramCompiler
             _il.Emit(OpCodes.Ldc_I4, axisIndex);
         }
         _il.Emit(OpCodes.Callvirt, _types.ArrayGetUpperBound);
-        var lowerBound = arrayInfo.LowerBounds[axisIndex];
-        if (lowerBound != 0)
+        if ((arrayInfo.LowerLocals is { Length: > 0 }) || arrayInfo.LowerBounds[axisIndex] != 0)
         {
-            _il.Emit(OpCodes.Ldc_I4, lowerBound);
+            EmitArrayLower(arrayInfo, axisIndex);
             _il.Emit(OpCodes.Add);
         }
         // UBOUND e' dichiarato LongType (Interpreter/StdLib/StdLib.System.cs,
@@ -699,7 +698,7 @@ public sealed partial class IlProgramCompiler
     {
         if (TryEmitRuntimeBound(expr, "LBOUND", isUpper: false)) return;
         var (arrayInfo, axisIndex) = ResolveArrayBoundArgs(expr, "LBOUND");
-        _il.Emit(OpCodes.Ldc_I4, arrayInfo.LowerBounds[axisIndex]);
+        EmitArrayLower(arrayInfo, axisIndex);
         _il.Emit(OpCodes.Conv_I8); // LongType, vedi EmitUBoundCall
     }
 

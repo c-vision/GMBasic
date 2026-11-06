@@ -841,6 +841,23 @@ public sealed partial class IlProgramCompiler
                 _il.Emit(OpCodes.Castclass, clrArrayType);
             };
         }
+        /* Lower bound logici: associati all'oggetto-array (CWT) così passano alle procedure
+         * per riferimento, senza cambiarne la firma. Solo se almeno un asse è != 0. */
+        if (lowerBounds.Any(l => l != 0))
+        {
+            _il.Emit(OpCodes.Ldloc, arrayLocal);
+            _il.Emit(OpCodes.Ldc_I4, rank);
+            _il.Emit(OpCodes.Newarr, typeof(int));
+            for (var axis = 0; axis < rank; axis++)
+            {
+                _il.Emit(OpCodes.Dup);
+                _il.Emit(OpCodes.Ldc_I4, axis);
+                _il.Emit(OpCodes.Ldc_I4, lowerBounds[axis]);
+                _il.Emit(OpCodes.Stelem_I4);
+            }
+            _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.SetArrayLowerBounds),
+                typeof(Array), typeof(int[])));
+        }
         _arrays[declaration.SymbolId] = bagLoadRef is null
             ? new ArrayInfo(arrayLocal, clrArrayType, elementDataType, rank, lowerBounds)
             : new ArrayInfo(arrayLocal, clrArrayType, elementDataType, rank, lowerBounds, bagLoadRef);

@@ -1168,6 +1168,9 @@ gmb_string_t gmb_data_read_str(void) { return gmb_val_to_string(gmb_data_take())
 #define GMB_LAMBDA_TLS
 #endif
 static GMB_LAMBDA_TLS gmb_int_t g_lambda_bounds[GMB_LAMBDA_MAX_BOUNDS] = { -1, -1, -1, -1 };
+/* Lower bound degli array per le lambda/fn-value C99: il chiamante lo pubblica prima
+ * dell'invocazione (come il bound); default 0 = 0-based. */
+static GMB_LAMBDA_TLS gmb_int_t g_lambda_lowers[GMB_LAMBDA_MAX_BOUNDS] = { 0, 0, 0, 0 };
 /* Lunghezza dell'ultimo array restituito da una lambda AS ARRAY (2026-11-03): il chiamante
  * (es. LEASTSQUARESFIT) la usa quando il numero di residui non e' noto a compile-time. */
 static GMB_LAMBDA_TLS gmb_int_t g_lambda_ret_len = 0;
@@ -1178,6 +1181,8 @@ static GMB_LAMBDA_TLS gmb_int_t g_lambda_ret_len = 0;
 static GMB_LAMBDA_TLS gmb_double_t* g_lambda_ret_ptr = NULL;
 gmb_int_t gmb_lambda_bound(int idx) { return (idx >= 0 && idx < GMB_LAMBDA_MAX_BOUNDS) ? g_lambda_bounds[idx] : -1; }
 void gmb_lambda_bound_set(int idx, gmb_int_t b0) { if (idx >= 0 && idx < GMB_LAMBDA_MAX_BOUNDS) g_lambda_bounds[idx] = b0; }
+gmb_int_t gmb_lambda_lower(int idx) { return (idx >= 0 && idx < GMB_LAMBDA_MAX_BOUNDS) ? g_lambda_lowers[idx] : 0; }
+void gmb_lambda_lower_set(int idx, gmb_int_t lo) { if (idx >= 0 && idx < GMB_LAMBDA_MAX_BOUNDS) g_lambda_lowers[idx] = lo; }
 gmb_int_t gmb_lambda_ret_len_get(void) { return g_lambda_ret_len; }
 void gmb_lambda_ret_len_set(gmb_int_t n) { g_lambda_ret_len = n; }
 gmb_double_t* gmb_lambda_ret_ptr_get(void) { return g_lambda_ret_ptr; }

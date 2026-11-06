@@ -656,7 +656,7 @@ public sealed partial class IlProgramCompiler
             // dimostrato con `FOR EACH s IN stringArray()`).
             _program.Symbols.UpdateSymbolType(iteratorSymbolId, arrayInfo.ElementDataType);
             var counterLocal = _il.DeclareLocal(_types.Int32);
-            _il.Emit(OpCodes.Ldc_I4, arrayInfo.LowerBounds[0]);
+            EmitArrayLower(arrayInfo, 0);
             _il.Emit(OpCodes.Stloc, counterLocal);
             _forEachState[stmt.Variables[0].Lexeme] = (arrayInfo, counterLocal, iteratorSymbolId);
             // Un nome di variabile riusato per un loop di forma DIVERSA più avanti nello stesso
@@ -885,7 +885,9 @@ public sealed partial class IlProgramCompiler
             EmitArrayRefFromInfo(state.Array);
             _il.Emit(OpCodes.Ldlen);
             _il.Emit(OpCodes.Conv_I4);
-            _il.Emit(OpCodes.Ldc_I4, state.Array.LowerBounds[0] - 1);
+            EmitArrayLower(state.Array, 0);
+            _il.Emit(OpCodes.Ldc_I4_1);
+            _il.Emit(OpCodes.Sub);
             _il.Emit(OpCodes.Add); // upperBound = LowerBound - 1 + Length
             _il.Emit(OpCodes.Cgt); // counter > upperBound?
             EmitBranch(stmt.ExitLabel, OpCodes.Brtrue);
@@ -894,9 +896,9 @@ public sealed partial class IlProgramCompiler
             {
                 EmitArrayRefFromInfo(state.Array);
                 _il.Emit(OpCodes.Ldloc, state.CounterLocal);
-                if (state.Array.LowerBounds[0] != 0)
+                if ((state.Array.LowerLocals is { Length: > 0 }) || state.Array.LowerBounds[0] != 0)
                 {
-                    _il.Emit(OpCodes.Ldc_I4, state.Array.LowerBounds[0]);
+                    EmitArrayLower(state.Array, 0);
                     _il.Emit(OpCodes.Sub);
                 }
                 EmitArrayElementLoad(state.Array.ElementDataType);

@@ -994,16 +994,18 @@ public sealed partial class IlProgramCompiler
         });
     }
 
-    private void EmitLoadArrayRefAndIndices(Action emitLoadRef, int rank, int[] lowerBounds, ImmutableArray<Expr> indices, Type infoClrArrayType)
+    private void EmitLoadArrayRefAndIndices(Action emitLoadRef, int rank, int[] lowerBounds, ImmutableArray<Expr> indices, Type infoClrArrayType, ArrayInfo? lowerInfo = null)
     {
         emitLoadRef();
         var isJagged = rank > 1 && infoClrArrayType.GetElementType()!.IsArray;
         for (var axis = 0; axis < rank; axis++)
         {
             EmitInt32Arg(indices[axis]);
-            if (lowerBounds[axis] != 0)
+            /* Parametri-array: lower runtime da LowerLocals; array locali: costante. */
+            if ((lowerInfo?.LowerLocals is { Length: > 0 }) || lowerBounds[axis] != 0)
             {
-                _il.Emit(OpCodes.Ldc_I4, lowerBounds[axis]);
+                if (lowerInfo is not null) EmitArrayLower(lowerInfo, axis);
+                else _il.Emit(OpCodes.Ldc_I4, lowerBounds[axis]);
                 _il.Emit(OpCodes.Sub);
             }
             // Array JAGGED (rank > 1, es. double[][] dal DIM implicito 2D): gli axis intermedi
@@ -1039,7 +1041,17 @@ public sealed partial class IlProgramCompiler
     }
 
     private void EmitLoadArrayRefAndIndices(ArrayInfo info, ImmutableArray<Expr> indices)
-        => EmitLoadArrayRefAndIndices(() => EmitArrayRefFromInfo(info), info.Rank, info.LowerBounds, indices, info.ClrArrayType);
+        => EmitLoadArrayRefAndIndices(() => EmitArrayRefFromInfo(info), info.Rank, info.LowerBounds, indices, info.ClrArrayType, info);
+
+    /// <summary>Emette il lower bound logico dell'asse: costante per gli array locali,
+    /// letto da una local per i parametri-array (propagato via IlRuntime.ArrayLowerTable).</summary>
+    private void EmitArrayLower(ArrayInfo info, int axis)
+    {
+        if (info.LowerLocals is { Length: > 0 } ll && axis >= 0 && axis < ll.Length && ll[axis] is not null)
+            _il.Emit(OpCodes.Ldloc, ll[axis]!);
+        else
+            _il.Emit(OpCodes.Ldc_I4, axis < info.LowerBounds.Length ? info.LowerBounds[axis] : 0);
+    }
 
     private ArrayInfo GetArrayInfo(int symbolId, int indicesCount)
     {

@@ -253,9 +253,9 @@ public sealed partial class IlProgramCompiler
                 {
                     indices[axis] = _il.DeclareLocal(_types.Int32);
                     EmitInt32Arg(arrayElement.Indices[axis]);
-                    if (info.LowerBounds[axis] != 0)
+                    if ((info.LowerLocals is { Length: > 0 }) || info.LowerBounds[axis] != 0)
                     {
-                        _il.Emit(OpCodes.Ldc_I4, info.LowerBounds[axis]);
+                        EmitArrayLower(info, axis);
                         _il.Emit(OpCodes.Sub);
                     }
                     _il.Emit(OpCodes.Stloc, indices[axis]);
