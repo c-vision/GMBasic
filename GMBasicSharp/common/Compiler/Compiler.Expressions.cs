@@ -1601,8 +1601,11 @@ public sealed partial class Compiler
             EmitByte((byte)OpCode.OP_NEW_CLASS_INSTANCE);
             EmitShort(classDescriptorIndex);
         }
-        // Caso 2: Istanziazione di un UDT con costruttore
-        else if (expr.ParsedType is UserDefinedType udt && expr.ConstructorArgs.HasValue)
+        // Caso 2: Istanziazione di un UDT (con o SENZA costruttore esplicito). La forma
+        // senza parentesi `NEW TipoUdt` è l'idioma classico dei TYPE: deve comunque produrre
+        // un'istanza zero-inizializzata via OP_NEW_UDT_INSTANCE. Prima cadeva nel Caso 3
+        // (tipi built-in) con typeCode 0 → VM/C la trattava come una LISTA e PCode come NIL.
+        else if (expr.ParsedType is UserDefinedType udt)
         {
             if (!_compiledClassDescriptors.TryGetValue(udt.Name.Lexeme + "#" + udt.SymbolId, out var udtDescriptor))
             {

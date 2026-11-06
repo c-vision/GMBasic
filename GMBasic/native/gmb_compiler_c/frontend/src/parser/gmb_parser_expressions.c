@@ -1471,7 +1471,12 @@ gmb_expr_t* gmb_p_parse_primary(gmb_parser_t* p)
              * container risolto qui nel parser (tabella di frontiera, direttiva 2026-09-08). */
             return gmb_expr_call_typed(strdup(cnm), gmb_keyword_tok(nm), NULL, 0, line);
         }
-        return gmb_expr_var(strdup(nm), line);
+        /* `NEW <Tipo>` SENZA parentesi (idioma classico dei TYPE): è comunque una
+         * COSTRUZIONE di istanza (0 argomenti) — prima diventava una VAR e l'emitter
+         * creava una variabile implicita col nome del TIPO (`gmb_double_t Arr4 = 0`) e
+         * `n = NEW Arr4` emetteva `n = gmb_obj_copy_typed(Arr4, ...)` (C non compilabile
+         * con "passing 'double' to 'gmb_val_t'"). */
+        return gmb_expr_call(strdup(nm), NULL, 0, line);
     }
     if (t->kind == GMB_TOK_Dot && gmb_p_peek(p, 1) && gmb_p_peek(p, 1)->length == 1 && gmb_p_peek(p, 2)
         && (gmb_p_peek(p, 1)->lexeme[0] == 'T' || gmb_p_peek(p, 1)->lexeme[0] == 'F' || gmb_p_peek(p, 1)->lexeme[0] == 't' || gmb_p_peek(p, 1)->lexeme[0] == 'f')
