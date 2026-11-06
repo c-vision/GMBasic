@@ -488,6 +488,31 @@ public class FfiService : IFfiService
         foreach (var v in a) yield return v;
     }
 
+    /// <summary>Flatten ricorsivo per array annidati (PCode usa object[] di object[]).</summary>
+    private static IEnumerable<object?> FlatValuesAny(object? a)
+    {
+        if (a is Array arr)
+        {
+            foreach (var v in arr)
+                foreach (var x in FlatValuesAny(v)) yield return x;
+            yield break;
+        }
+        yield return a;
+    }
+
+    /// <summary>Copy-out ricorsivo verso array annidati (PCode object[] di object[]).</summary>
+    private static void SetFlatValuesAny(object? target, Array src, ref int k)
+    {
+        if (target is Array arr)
+        {
+            for (var i = 0; i < arr.Length; i++)
+            {
+                if (arr.GetValue(i) is Array child) SetFlatValuesAny(child, src, ref k);
+                else arr.SetValue(src.GetValue(k++), i);
+            }
+        }
+    }
+
     public object? CallFunctionTypedArr(IntPtr function, object?[] args, int kind, long arrayMask, long arrayElemIntMask,
         long stringMask, bool retIsString, long byrefScalarMask = 0, long byrefScalarElemIntMask = 0,
         FfiUdtShape?[]? udtParams = null, FfiUdtShape? udtReturn = null,
@@ -708,6 +733,26 @@ public class FfiService : IFfiService
                     }
                     case object[] boxed:
                     {
+                        /* PCode: una jagged e' object[] di object[] (non object[][] tipizzato).
+                         * Appiattiscila nello scratch tipizzato e ricopia ricorsivamente. */
+                        if (boxed.Length > 0 && boxed.Any(e => e is Array))
+                        {
+                            var wantIntN = (arrayElemIntMask & (1L << i)) != 0;
+                            var flatCountN = FlatValuesAny(boxed).Count();
+                            var bufN = wantIntN ? (Array)new long[flatCountN] : (Array)new double[flatCountN];
+                            var jN = 0;
+                            foreach (var rawN in FlatValuesAny(boxed))
+                            {
+                                if (wantIntN) ((long[])bufN)[jN] = Convert.ToInt64(rawN ?? 0L);
+                                else ((double[])bufN)[jN] = Convert.ToDouble(rawN ?? 0.0);
+                                jN++;
+                            }
+                            typedScratch[i] = bufN;
+                            typedOrig[i] = boxed;
+                            handles[i] = GCHandle.Alloc(bufN, GCHandleType.Pinned);
+                            dArgs[i] = handles[i].AddrOfPinnedObject();
+                            break;
+                        }
                         var isInt = (arrayElemIntMask & (1L << i)) != 0;
                         scratchIsInt[i] = isInt;
                         scratchOrig[i] = boxed;
@@ -823,6 +868,12 @@ public class FfiService : IFfiService
                             for (var r0 = 0; r0 < ojag.Length; r0++)
                                 for (var c0 = 0; c0 < ojag[r0].Length; c0++)
                                     ojag[r0][c0] = tbuf.GetValue(k++);
+                            break;
+                        }
+                        case object[] onest:
+                        {
+                            var k = 0;
+                            SetFlatValuesAny(onest, tbuf, ref k);
                             break;
                         }
                     }
