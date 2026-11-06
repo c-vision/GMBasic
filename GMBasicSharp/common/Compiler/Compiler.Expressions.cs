@@ -8,7 +8,7 @@ public sealed partial class Compiler
     /// <summary>Massimo numero di argomenti/slot FFI (2026-11: era 8, limite della tabella
     /// di dispatch; con il motore libffi il limite è il formato a 16 bit). Specchio di
     /// GMB_FFI_MAX_ARGS in gmb_bytecode/include/gmb_compiler.h.</summary>
-    public const int FfiMaxArgs = 32;
+    public const int FfiMaxArgs = 64;
 
     /// <summary>
     /// Dispatcher principale per visitare e compilare un nodo espressione (Expr).

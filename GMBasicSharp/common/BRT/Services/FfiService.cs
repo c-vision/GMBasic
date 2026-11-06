@@ -408,7 +408,7 @@ public class FfiService : IFfiService
         return kind == 1 ? Convert.ToDouble(result ?? 0L) : result;
     }
 
-    private readonly Dictionary<(IntPtr, int, int, int, int, int, int, string), Delegate> _typedArrDelegateCache = new();
+    private readonly Dictionary<(IntPtr, int, int, long, long, long, long, string), Delegate> _typedArrDelegateCache = new();
     // Struct/UDT (2026-09-28): cache dei VALUE TYPE CLR costruiti a runtime per una "forma"
     // UDT (kind + numero di campi) — riusata sia per parametri sia per ritorni, e tra chiamate
     // diverse con la stessa forma (es. due UDT distinti con lo stesso numero di campi/kind
@@ -469,10 +469,29 @@ public class FfiService : IFfiService
     /// puntatore nativo (spesso un buffer statico/riusato) — copiato IMMEDIATAMENTE in una nuova
     /// <c>string</c> CLR (<see cref="Marshal.PtrToStringUTF8(IntPtr)"/>) e ritornato come tale
     /// (non convertito a double) — mai tenuto vivo oltre la chiamata.</para></summary>
-    public object? CallFunctionTypedArr(IntPtr function, object?[] args, int kind, int arrayMask, int arrayElemIntMask,
-        int stringMask, bool retIsString, int byrefScalarMask = 0, int byrefScalarElemIntMask = 0,
+    /// <summary>Numero di elementi "piatti" di un array: per una jagged somma le righe,
+    /// per una matrice rettangolare e' il prodotto delle dimensioni (Array.Length).</summary>
+    private static int FlatLength(Array a)
+        => a is Array[] ja ? ja.Sum(r => r?.Length ?? 0) : a.Length;
+
+    /// <summary>Enumerazione row-major degli elementi: per una jagged concatena le righe,
+    /// per una matrice rettangolare `foreach` su un Array multidimensionale e' gia' row-major.</summary>
+    private static IEnumerable<object?> FlatValues(Array a)
+    {
+        if (a is Array[] ja)
+        {
+            foreach (var row in ja)
+                if (row is not null)
+                    foreach (var v in row) yield return v;
+            yield break;
+        }
+        foreach (var v in a) yield return v;
+    }
+
+    public object? CallFunctionTypedArr(IntPtr function, object?[] args, int kind, long arrayMask, long arrayElemIntMask,
+        long stringMask, bool retIsString, long byrefScalarMask = 0, long byrefScalarElemIntMask = 0,
         FfiUdtShape?[]? udtParams = null, FfiUdtShape? udtReturn = null,
-        Type?[]? udtParamClrTypes = null, Type? udtReturnClrType = null, int scalarKindMask = 0)
+        Type?[]? udtParamClrTypes = null, Type? udtReturnClrType = null, long scalarKindMask = 0)
     {
         if (function == IntPtr.Zero) return null;
         var n = args.Length;
@@ -503,19 +522,19 @@ public class FfiService : IFfiService
                     // struct P/Invoke nativo, nessuna classificazione manuale dei registri).
                     // Vedi AiWiki Bugs/(open) - FFI-Estensioni-Possibili-BYREF-Struct-Callback.md §2.
                     ? GetOrBuildUdtShapeType(udtP.FieldIsInt)
-                    : (byrefScalarMask & (1 << i)) != 0
+                    : (byrefScalarMask & (1L << i)) != 0
                     // BYREF scalare (2026-09-28): un parametro CLR ref BLITTABLE — .NET
                     // marshalla un ref double/ref long verso P/Invoke passando direttamente
                     // l'indirizzo (stesso meccanismo di un vero parametro C `double*`/`int64_t*`
                     // nativo, nessuna copia manuale servita qui). DynamicInvoke scrive il valore
                     // OUT dentro lo stesso slot dArgs[i] dopo la chiamata — vedi sotto.
                     ? ((byrefScalarElemIntMask & (1 << i)) != 0 ? typeof(long) : typeof(double)).MakeByRefType()
-                    : (arrayMask & (1 << i)) != 0 || (stringMask & (1 << i)) != 0
+                    : (arrayMask & (1L << i)) != 0 || (stringMask & (1L << i)) != 0
                         ? typeof(IntPtr)
                         // Firma mista (2026-10): uno scalare SEMPLICE segue scalarKindMask (per
                         // posizione), non più il 'kind' uniforme — nel caso omogeneo legacy
                         // coincide sempre con 'kind' (il chiamante lo garantisce), zero cambio.
-                        : ((scalarKindMask & (1 << i)) != 0 ? typeof(long) : typeof(double));
+                        : ((scalarKindMask & (1L << i)) != 0 ? typeof(long) : typeof(double));
             var returnType = udtReturnClrType ?? (udtReturn != null
                 ? GetOrBuildUdtShapeType(udtReturn.FieldIsInt)
                 : kind == 1 ? typeof(long) : typeof(double));
@@ -573,13 +592,13 @@ public class FfiService : IFfiService
                     dArgs[i] = boxedIn;
                     continue;
                 }
-                if ((stringMask & (1 << i)) != 0)
+                if ((stringMask & (1L << i)) != 0)
                 {
                     stringPtrs[i] = Marshal.StringToCoTaskMemUTF8((string?)args[i] ?? "");
                     dArgs[i] = stringPtrs[i];
                     continue;
                 }
-                if ((byrefScalarMask & (1 << i)) != 0)
+                if ((byrefScalarMask & (1L << i)) != 0)
                 {
                     // BYREF scalare: il valore IN va nel box che DynamicInvoke aggiorna in place
                     // per un parametro CLR ref — il tipo (int64 vs double) segue
@@ -591,11 +610,11 @@ public class FfiService : IFfiService
                         : Convert.ToDouble(args[i] ?? 0.0);
                     continue;
                 }
-                if ((arrayMask & (1 << i)) == 0)
+                if ((arrayMask & (1L << i)) == 0)
                 {
                     // Firma mista (2026-10): scalare semplice, segue scalarKindMask per
                     // posizione (coincide con 'kind' nel caso omogeneo legacy).
-                    dArgs[i] = (scalarKindMask & (1 << i)) != 0 ? (object)Convert.ToInt64(args[i] ?? 0L) : Convert.ToDouble(args[i] ?? 0.0);
+                    dArgs[i] = (scalarKindMask & (1L << i)) != 0 ? (object)Convert.ToInt64(args[i] ?? 0L) : Convert.ToDouble(args[i] ?? 0.0);
                     continue;
                 }
                 switch (args[i])
@@ -605,7 +624,9 @@ public class FfiService : IFfiService
                     // IsFfiArrayElemType, fix 2026-09-28: INTEGER/BYTE/SBYTE/UINTEGER/SINGLE
                     // mappano a CLR byte[]/short[]/float[]/... — larghezza < 8 byte, pinnarli
                     // direttamente e passarli come gmb_int_t*/double* a 8 byte darebbe garbage).
-                    case double[] or long[] or ulong[]:
+                    case double[] or long[] or ulong[]
+                        or double[,] or long[,] or ulong[,]
+                        or double[][] or long[][]:
                     {
                         var arr = (Array)args[i]!;
                         /* KIND dell'elemento (2026-11-04): `arrayElemIntMask` dice se il
@@ -617,18 +638,31 @@ public class FfiService : IFfiService
                          * al contrario per un `DIM c(n) AS LONG` verso un parametro double.
                          * Qui si converte in uno scratch del tipo GIUSTO e — nel copy-out —
                          * si riportano le eventuali scritture del nativo nell'array originale. */
-                        var wantInt = (arrayElemIntMask & (1 << i)) != 0;
-                        var arrIsInt64 = arr is long[] or ulong[];
-                        if (wantInt != arrIsInt64)
+                        var wantInt = (arrayElemIntMask & (1L << i)) != 0;
+                        var arrIsInt64 = arr is long[] or ulong[] or long[,] or ulong[,] or long[][];
+                        /* Matrici (2026-11-06): una matrice CLR rettangolare (`double[,]`) e'
+                         * contigua row-major, quindi si pinna direttamente come buffer piatto.
+                         * Una jagged (`double[][]`) non e' contigua: va appiattita in scratch.
+                         * Il nativo riceve `double*`/`int64_t*` con rows*cols elementi; le
+                         * dimensioni restano parametri espliciti (l'ABI C non le passa). */
+                        var isJagged = arr is Array[];
+                        if (!isJagged && wantInt == arrIsInt64)
                         {
+                            handles[i] = GCHandle.Alloc(arr, GCHandleType.Pinned);
+                            dArgs[i] = handles[i].AddrOfPinnedObject();
+                            break;
+                        }
+                        {
+                            var flatCount = FlatLength(arr);
                             var buf = wantInt
-                                ? (Array)new long[arr.Length]
-                                : new double[arr.Length];
-                            for (var j = 0; j < arr.Length; j++)
+                                ? (Array)new long[flatCount]
+                                : new double[flatCount];
+                            var j = 0;
+                            foreach (var raw in FlatValues(arr))
                             {
-                                var v = arr.GetValue(j);
-                                if (wantInt) ((long[])buf)[j] = Convert.ToInt64(v ?? 0L);
-                                else ((double[])buf)[j] = Convert.ToDouble(v ?? 0.0);
+                                if (wantInt) ((long[])buf)[j] = Convert.ToInt64(raw ?? 0L);
+                                else ((double[])buf)[j] = Convert.ToDouble(raw ?? 0.0);
+                                j++;
                             }
                             typedScratch[i] = buf;
                             typedOrig[i] = arr;
@@ -636,9 +670,6 @@ public class FfiService : IFfiService
                             dArgs[i] = handles[i].AddrOfPinnedObject();
                             break;
                         }
-                        handles[i] = GCHandle.Alloc(arr, GCHandleType.Pinned);
-                        dArgs[i] = handles[i].AddrOfPinnedObject();
-                        break;
                     }
                     case byte[] or sbyte[]:
                     {
@@ -652,9 +683,32 @@ public class FfiService : IFfiService
                         dArgs[i] = handles[i].AddrOfPinnedObject();
                         break;
                     }
+                    /* PCode (dinamicamente tipizzato) consegna le matrici come `object[,]`
+                     * (o jagged `object[][]`) con valori boxati: si appiattiscono in uno
+                     * scratch tipizzato come per gli array CLR tipizzati, e il copy-out
+                     * riscrive i valori convertiti nella matrice originale. */
+                    case object[,] or object[][]:
+                    {
+                        var arr = (Array)args[i]!;
+                        var wantInt2 = (arrayElemIntMask & (1L << i)) != 0;
+                        var flatCount2 = FlatLength(arr);
+                        var buf2 = wantInt2 ? (Array)new long[flatCount2] : (Array)new double[flatCount2];
+                        var j2 = 0;
+                        foreach (var raw2 in FlatValues(arr))
+                        {
+                            if (wantInt2) ((long[])buf2)[j2] = Convert.ToInt64(raw2 ?? 0L);
+                            else ((double[])buf2)[j2] = Convert.ToDouble(raw2 ?? 0.0);
+                            j2++;
+                        }
+                        typedScratch[i] = buf2;
+                        typedOrig[i] = arr;
+                        handles[i] = GCHandle.Alloc(buf2, GCHandleType.Pinned);
+                        dArgs[i] = handles[i].AddrOfPinnedObject();
+                        break;
+                    }
                     case object[] boxed:
                     {
-                        var isInt = (arrayElemIntMask & (1 << i)) != 0;
+                        var isInt = (arrayElemIntMask & (1L << i)) != 0;
                         scratchIsInt[i] = isInt;
                         scratchOrig[i] = boxed;
                         var buf = isInt ? (Array)new long[boxed.Length] : new double[boxed.Length];
@@ -715,6 +769,62 @@ public class FfiService : IFfiService
                         case ulong[] uorig:
                             for (var j = 0; j < uorig.Length; j++) uorig[j] = Convert.ToUInt64(tbuf.GetValue(j));
                             break;
+                        case double[,] dmat:
+                        {
+                            var k = 0;
+                            for (var r0 = 0; r0 < dmat.GetLength(0); r0++)
+                                for (var c0 = 0; c0 < dmat.GetLength(1); c0++)
+                                    dmat[r0, c0] = Convert.ToDouble(tbuf.GetValue(k++));
+                            break;
+                        }
+                        case long[,] lmat:
+                        {
+                            var k = 0;
+                            for (var r0 = 0; r0 < lmat.GetLength(0); r0++)
+                                for (var c0 = 0; c0 < lmat.GetLength(1); c0++)
+                                    lmat[r0, c0] = Convert.ToInt64(tbuf.GetValue(k++));
+                            break;
+                        }
+                        case ulong[,] umat:
+                        {
+                            var k = 0;
+                            for (var r0 = 0; r0 < umat.GetLength(0); r0++)
+                                for (var c0 = 0; c0 < umat.GetLength(1); c0++)
+                                    umat[r0, c0] = Convert.ToUInt64(tbuf.GetValue(k++));
+                            break;
+                        }
+                        case double[][] djag:
+                        {
+                            var k = 0;
+                            for (var r0 = 0; r0 < djag.Length; r0++)
+                                for (var c0 = 0; c0 < djag[r0].Length; c0++)
+                                    djag[r0][c0] = Convert.ToDouble(tbuf.GetValue(k++));
+                            break;
+                        }
+                        case long[][] ljag:
+                        {
+                            var k = 0;
+                            for (var r0 = 0; r0 < ljag.Length; r0++)
+                                for (var c0 = 0; c0 < ljag[r0].Length; c0++)
+                                    ljag[r0][c0] = Convert.ToInt64(tbuf.GetValue(k++));
+                            break;
+                        }
+                        case object[,] omat:
+                        {
+                            var k = 0;
+                            for (var r0 = 0; r0 < omat.GetLength(0); r0++)
+                                for (var c0 = 0; c0 < omat.GetLength(1); c0++)
+                                    omat[r0, c0] = tbuf.GetValue(k++);
+                            break;
+                        }
+                        case object[][] ojag:
+                        {
+                            var k = 0;
+                            for (var r0 = 0; r0 < ojag.Length; r0++)
+                                for (var c0 = 0; c0 < ojag[r0].Length; c0++)
+                                    ojag[r0][c0] = tbuf.GetValue(k++);
+                            break;
+                        }
                     }
                 }
             }
@@ -726,7 +836,7 @@ public class FfiService : IFfiService
             // IFfiService.cs.
             if (byrefScalarMask != 0)
                 for (var i = 0; i < n; i++)
-                    if ((byrefScalarMask & (1 << i)) != 0) args[i] = dArgs[i];
+                    if ((byrefScalarMask & (1L << i)) != 0) args[i] = dArgs[i];
             if (retIsString)
             {
                 var ptr = (IntPtr)Convert.ToInt64(result ?? 0L);

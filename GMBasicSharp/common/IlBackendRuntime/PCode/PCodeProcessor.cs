@@ -33,7 +33,7 @@ internal sealed partial class PCodeProcessor
 {
     /// <summary>Massimo numero di argomenti/slot FFI (2026-11: era 8). Specchio di
     /// GMB_FFI_MAX_ARGS in gmb_bytecode/include/gmb_compiler.h.</summary>
-    internal const int PCodeFfiMaxArgs = 32;
+    internal const int PCodeFfiMaxArgs = 64;
 
     private readonly IRuntimeHost _runtime;
 
