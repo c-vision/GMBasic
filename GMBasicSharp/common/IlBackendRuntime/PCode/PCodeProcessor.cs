@@ -4556,38 +4556,41 @@ internal sealed partial class PCodeProcessor
                 // rappresentazione interna per il dispatch <= 32; non fanno parte del bytecode.
                 if (argCount > PCodeFfiMaxArgs)
                     throw new InvalidOperationException($"FFI: troppi argomenti ({argCount}, max {PCodeFfiMaxArgs})");
-                int scalarKindMask = 0, arrayMask = 0, arrayElemIntMask = 0, stringMask = 0;
-                int byrefScalarMask = 0, byrefScalarElemIntMask = 0;
-                int callbackParamKindMask = 0, callbackParamHasRetMask = 0;
+                /* Maschere a 64 bit (2026-11-06): con `int` e `1 << pi` il 33-esimo
+                 * argomento (pi = 32) riavvolgeva sul bit 0 → "argomento 0 atteso array".
+                 * Il resto del path e' gia' a 64 bit (IL `long`, VM/C `uint64_t`). */
+                long scalarKindMask = 0, arrayMask = 0, arrayElemIntMask = 0, stringMask = 0;
+                long byrefScalarMask = 0, byrefScalarElemIntMask = 0;
+                long callbackParamKindMask = 0, callbackParamHasRetMask = 0;
                 var udtParamFieldCount = new int[PCodeFfiMaxArgs];
                 var udtParamFieldKindMask = new int[PCodeFfiMaxArgs];
                 var udtParamNew = new bool[PCodeFfiMaxArgs];
                 var udtArrCount = new int[PCodeFfiMaxArgs];
-                var byrefUdtMask = 0;
+                long byrefUdtMask = 0;
                 var callbackParamArity = new int[PCodeFfiMaxArgs];
                 for (var pi = 0; pi < PCodeFfiMaxArgs; pi++) callbackParamArity[pi] = 255;
                 for (var pi = 0; pi < argCount; pi++)
                 {
                     int f = ReadU8(task), a1 = ReadU8(task), a2 = ReadU8(task);
-                    if ((f & 1) != 0) scalarKindMask |= 1 << pi;
-                    if ((f & 2) != 0) arrayMask |= 1 << pi;
-                    if ((f & 0x40) != 0) arrayElemIntMask |= 1 << pi;
-                    if ((f & 4) != 0) stringMask |= 1 << pi;
+                    if ((f & 1) != 0) scalarKindMask |= 1L << pi;
+                    if ((f & 2) != 0) arrayMask |= 1L << pi;
+                    if ((f & 0x40) != 0) arrayElemIntMask |= 1L << pi;
+                    if ((f & 4) != 0) stringMask |= 1L << pi;
                     if ((f & 8) != 0)
                     {
                         // BYREF UDT (2026-11-06): bit 0x20 = UDT → puntatore a struct.
-                        if ((f & 0x20) != 0) byrefUdtMask |= 1 << pi;
+                        if ((f & 0x20) != 0) byrefUdtMask |= 1L << pi;
                         else
                         {
-                            byrefScalarMask |= 1 << pi;
-                            if ((f & 0x80) != 0) byrefScalarElemIntMask |= 1 << pi;
+                            byrefScalarMask |= 1L << pi;
+                            if ((f & 0x80) != 0) byrefScalarElemIntMask |= 1L << pi;
                         }
                     }
                     if ((f & 0x10) != 0)
                     {
                         callbackParamArity[pi] = a1;
-                        callbackParamKindMask |= (a2 & 1) << pi;
-                        callbackParamHasRetMask |= ((a2 >> 1) & 1) << pi;
+                        callbackParamKindMask |= (long)(a2 & 1) << pi;
+                        callbackParamHasRetMask |= (long)((a2 >> 1) & 1) << pi;
                     }
                     if ((f & 2) != 0 && (f & 0x80) != 0)
                     {
@@ -4656,7 +4659,7 @@ internal sealed partial class PCodeProcessor
                 for (var i = argCount - 1; i >= 0; i--)
                 {
                     var popped = task.Sp > 0 ? task.PopRef() : null;
-                    if (((byrefScalarMask & (1 << i)) != 0 || (byrefUdtMask & (1 << i)) != 0)
+                    if (((byrefScalarMask & (1L << i)) != 0 || (byrefUdtMask & (1L << i)) != 0)
                         && popped is Basic.Runtime.Gpm.ByRefBox box)
                     {
                         byrefBoxes[i] = box;
@@ -4689,8 +4692,8 @@ internal sealed partial class PCodeProcessor
                             if (callbackParamArity[i] == 255) continue;
                             if (args[i] is not Basic.Runtime.Gpm.ClosureData cd)
                                 throw new InvalidOperationException($"il parametro {i + 1} atteso come callback (AS FUNCTION/AS SUB) non è una closure valida.");
-                            var cbIsInt = (callbackParamKindMask & (1 << i)) != 0;
-                            var cbHasRet = (callbackParamHasRetMask & (1 << i)) != 0;
+                            var cbIsInt = (callbackParamKindMask & (1L << i)) != 0;
+                            var cbHasRet = (callbackParamHasRetMask & (1L << i)) != 0;
                             var (keepAlive, ptr) = BuildFfiCallbackTrampoline(task, cd, callbackParamArity[i], cbIsInt, cbHasRet);
                             callbackKeepAlive.Add(keepAlive);
                             args[i] = ptr.ToInt64();
@@ -4703,8 +4706,8 @@ internal sealed partial class PCodeProcessor
                         // costruzione del guard di compilazione — Compiler.Expressions.cs) →
                         // serve SEMPRE il path per-parametro di CallFunctionTypedArr, mai il
                         // fast path CallFunctionTyped (che assume un kind unico per tutto).
-                        var fullMaskForArgc = argCount >= PCodeFfiMaxArgs ? (ushort)0xFFFF : (ushort)((1 << argCount) - 1);
-                        var uniformScalarKind = scalarKindMask == (kind == 1 ? fullMaskForArgc : 0);
+                        var fullMaskForArgc = argCount >= PCodeFfiMaxArgs ? -1L : (1L << argCount) - 1;
+                        var uniformScalarKind = scalarKindMask == (kind == 1 ? fullMaskForArgc : 0L);
                         var result = arrayMask != 0 || stringMask != 0 || retIsString || byrefScalarMask != 0 || anyUdt || !uniformScalarKind
                             ? _runtime.Ffi.CallFunctionTypedArr(funcPtr, args, kind, arrayMask, arrayElemIntMask, stringMask, retIsString, byrefScalarMask, byrefScalarElemIntMask, udtParamShapes, retUdtShape, scalarKindMask: scalarKindMask, byrefUdtMask: byrefUdtMask)
                             : _runtime.Ffi.CallFunctionTyped(funcPtr, args, (byte)kind);

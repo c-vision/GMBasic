@@ -1,0 +1,4 @@
+# Sorgenti condivisi compilati dentro libgmbconic.
+# L'algebra lineare dei solver (dmat_*, spchol_*, splu_*) e' l'unica copia di
+# gmbmath-linalg: niente jacobi.c locale duplicato.
+math/src/gm_sparse_linalg.c

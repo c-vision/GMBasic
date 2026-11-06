@@ -1326,7 +1326,7 @@ public sealed partial class Compiler
             // ogni bit coincide esattamente con 'emittedKind' — zero cambio di comportamento
             // per i programmi esistenti (letto ma mai divergente da 'kind' quando la firma è
             // già omogenea).
-            int scalarKindMask = 0;
+            long scalarKindMask = 0;
             for (var pi = 0; pi < ffiProc.Parameters.Length && pi < FfiMaxArgs; pi++)
             {
                 var p = ffiProc.Parameters[pi];
@@ -1336,7 +1336,7 @@ public sealed partial class Compiler
                 var bitIsInt = isPlainScalar ? ClassifyFfiType(p.DataType, $"il parametro '{p.Name.Lexeme}'") == FfiInt64
                               : IsUdtParam(p) ? emittedKind == FfiInt64
                               : true;
-                if (bitIsInt) scalarKindMask |= 1 << pi;
+                if (bitIsInt) scalarKindMask |= 1L << pi;
             }
             if (useTypedPath)
             {
