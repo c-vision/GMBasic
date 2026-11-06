@@ -127,20 +127,17 @@ DECLARE FUNCTION REQUANTI8 LIB "gmbneural" ALIAS "ofx_nn_requant_i8" (acc() AS L
 ' out(0) = scale, out(1) = zero_point per la griglia int8 dai min/max di x.
 DECLARE FUNCTION QUANTPARAMS LIB "gmbneural" ALIAS "ofx_nn_quant_params" (x() AS DOUBLE, n AS LONG, out() AS DOUBLE) AS LONG
 ' GEMM uint8: out(m×n) = A(m×k)·B(k×n), accumulo int32, zero-point, bias int32(n), requant.
-DECLARE FUNCTION QUANTGEMMU8 LIB "gmbneural" ALIAS "ofx_nn_quant_gemm_u8" (out() AS LONG, a() AS LONG, b() AS LONG, bias() AS LONG, par() AS DOUBLE, m AS LONG, k AS LONG, n AS LONG) AS LONG
-' par(0..5) = scale_a, zp_a, scale_b, zp_b, scale_out, zp_out.
+DECLARE FUNCTION QUANTGEMMU8 LIB "gmbneural" ALIAS "ofx_nn_quant_gemm_u8" (out() AS LONG, a() AS LONG, b() AS LONG, bias() AS LONG, m AS LONG, k AS LONG, n AS LONG, scale_a AS DOUBLE, zp_a AS LONG, scale_b AS DOUBLE, zp_b AS LONG, scale_out AS DOUBLE, zp_out AS LONG) AS LONG
 ' Requantizzazione a shift (CMSIS-NN): out = clamp((acc + (1<<(rshift-1))) >> rshift).
 DECLARE FUNCTION QUANTREQSHIFTI8 LIB "gmbneural" ALIAS "ofx_nn_quant_requant_shift_i8" (acc() AS LONG, n AS LONG, rshift AS LONG, out() AS LONG) AS LONG
 ' Conv2D quantizzata uint8->int8: in c×h×w, weight out_c×c×kh×kw, bias int32(out_c).
-DECLARE FUNCTION QUANTCONV2DI8 LIB "gmbneural" ALIAS "ofx_nn_quant_conv2d_i8" (out() AS LONG, in_() AS LONG, weight() AS LONG, bias() AS LONG, cfg() AS LONG) AS LONG
-' cfg(0..9) = c, h, w, out_c, kh, kw, stride, pad, bias_shift, out_shift.
+DECLARE FUNCTION QUANTCONV2DI8 LIB "gmbneural" ALIAS "ofx_nn_quant_conv2d_i8" (out() AS LONG, in_() AS LONG, weight() AS LONG, bias() AS LONG, c AS LONG, h AS LONG, w AS LONG, out_c AS LONG, kh AS LONG, kw AS LONG, stride AS LONG, pad AS LONG, bias_shift AS LONG, out_shift AS LONG) AS LONG
 ' Clamp di un tensore uint8 in [lo,hi] (in place).
 DECLARE FUNCTION QUANTCLAMPU8 LIB "gmbneural" ALIAS "ofx_nn_quant_clamp_u8" (x() AS LONG, n AS LONG, lo AS LONG, hi AS LONG) AS LONG
 ' Per-canale: scale(out_c) e zero-point(out_c) sulla griglia uint8 [0,255].
 DECLARE FUNCTION QUANTPARAMSCHANNEL LIB "gmbneural" ALIAS "ofx_nn_quant_params_channel" (w() AS DOUBLE, out_c AS LONG, per_ch AS LONG, scale() AS DOUBLE, zp() AS LONG) AS LONG
 ' Conv2D uint8 con scala di uscita per-canale: M(out_c) = scale_in*scale_w/scale_out.
-DECLARE FUNCTION QUANTCONV2DI8CHANNEL LIB "gmbneural" ALIAS "ofx_nn_quant_conv2d_i8_channel" (out() AS LONG, in_() AS LONG, weight() AS LONG, bias() AS LONG, M() AS DOUBLE, cfg() AS LONG) AS LONG
-' cfg(0..9) = c, h, w, out_c, kh, kw, stride, pad, zp_in, zp_out.
+DECLARE FUNCTION QUANTCONV2DI8CHANNEL LIB "gmbneural" ALIAS "ofx_nn_quant_conv2d_i8_channel" (out() AS LONG, in_() AS LONG, weight() AS LONG, bias() AS LONG, M() AS DOUBLE, c AS LONG, h AS LONG, w AS LONG, out_c AS LONG, kh AS LONG, kw AS LONG, stride AS LONG, pad AS LONG, zp_in AS LONG, zp_out AS LONG) AS LONG
 
 ' ── Ternario (1.58-bit, bit-slicing) — handle 2001+ ─────────────────────────
 ' Quantizza W (rows×cols) a {-1,0,+1}: scale = media(|W|), bitplane w_pos/w_neg.

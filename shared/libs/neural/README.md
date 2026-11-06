@@ -22,7 +22,7 @@ Questi moduli restano fuori dal pacchetto per non duplicare la superficie BASIC.
 | Pooling | `MAXPOOLINIT`, `AVGPOOLINIT`, `POOLRUN`, `POOLRUNARG`, `UNPOOLINIT`, `UNPOOLRUN` | argmax LONG per il backward |
 | FusedMM | `FUSEDMMINIT/RUN`, `AGGINIT/RUN` | CSR (GAT/GraphSAGE) |
 | Pruning | `SPARSIFY24`, `PRUNECHANNELL1`, `PRUNECHANNELMASK` | 2:4 strutturato, channel pruning |
-| Quantizzazione | `QUANTI8`, `DEQUANTI8`, `REQUANTI8`, `QUANTPARAMS`, `QUANTGEMMU8`, `QUANTREQSHIFTI8`, `QUANTCONV2DI8`, `QUANTCLAMPU8`, `QUANTPARAMSCHANNEL`, `QUANTCONV2DI8CHANNEL` | array a byte trasportati come `LONG`; configurazioni in `cfg()`/`par()` |
+| Quantizzazione | `QUANTI8`, `DEQUANTI8`, `REQUANTI8`, `QUANTPARAMS`, `QUANTGEMMU8`, `QUANTREQSHIFTI8`, `QUANTCONV2DI8`, `QUANTCLAMPU8`, `QUANTPARAMSCHANNEL`, `QUANTCONV2DI8CHANNEL` | array a byte come `LONG`; firme naturali a 13/14/15 argomenti (la FFI ne regge 20) |
 | Ternario | `TERNARYINIT/FREE/ACTBYTES/DOTROW/FORWARD/TOMAT` | bit-slicing 1.58-bit, handle 2001+ |
 | Alberi | `TREEINIT/TREEFITREG/TREEFITCLS/TREEPREDICT/TREEFREE` | CART, handle 3001+ |
 | Random Forest | `FORESTINIT/FORESTFITREG/FORESTFITCLS/FORESTPREDICT/FORESTFREE`, `AUC` | bagging deterministico (seed), handle 3101+ |

@@ -954,29 +954,24 @@ i64 ofx_nn_quant_params(const double *x, i64 n, double *out)
     return 0;
 }
 
-/* GEMM quantizzato uint8: acc int32, correzione zero-point, bias int32 (n), requant.
- * par(0..5) = scale_a, zp_a, scale_b, zp_b, scale_out, zp_out — la firma resta a 8
- * par(0..5) = scale_a, zp_a, scale_b, zp_b, scale_out, zp_out. */
+/* GEMM quantizzato uint8: acc int32, correzione zero-point, bias int32 (n), requant. */
 i64 ofx_nn_quant_gemm_u8(i64 *out, const i64 *a, const i64 *b, const i64 *bias,
-                         const double *par, i64 m, i64 k, i64 n)
+                         i64 m, i64 k, i64 n,
+                         double scale_a, i64 zp_a, double scale_b, i64 zp_b,
+                         double scale_out, i64 zp_out)
 {
     unsigned char *ao = NULL, *bo = NULL, *co = NULL;
     int *bi = NULL;
     int i, total;
-    double scale_a, scale_b, scale_out;
-    int zp_a, zp_b, zp_out;
-    if (!out || !a || !b || !par || m <= 0 || k <= 0 || n <= 0) return -1;
-    scale_a = par[0]; zp_a = (int)par[1];
-    scale_b = par[2]; zp_b = (int)par[3];
-    scale_out = par[4]; zp_out = (int)par[5];
+    if (!out || !a || !b || m <= 0 || k <= 0 || n <= 0) return -1;
     total = (int)(m * n);
     ao = u8_from_longs(a, (int)(m * k));
     bo = u8_from_longs(b, (int)(k * n));
     co = (unsigned char *)calloc((size_t)total, 1);
     if (bias) bi = i32_from_longs(bias, (int)n);
     if (!ao || !bo || !co || (bias && !bi)) { free(ao); free(bo); free(co); free(bi); return -1; }
-    gn_quant_gemm_u8(co, ao, bo, (int)m, (int)k, (int)n, (gn_real)scale_a, zp_a,
-                     (gn_real)scale_b, zp_b, bi, (gn_real)scale_out, zp_out);
+    gn_quant_gemm_u8(co, ao, bo, (int)m, (int)k, (int)n, (gn_real)scale_a, (int)zp_a,
+                     (gn_real)scale_b, (int)zp_b, bi, (gn_real)scale_out, (int)zp_out);
     for (i = 0; i < total; i++) out[i] = (i64)co[i];
     free(ao); free(bo); free(co); free(bi);
     return 0;
@@ -1000,31 +995,29 @@ i64 ofx_nn_quant_requant_shift_i8(const i64 *acc, i64 n, i64 rshift, i64 *out)
 }
 
 /* Convoluzione 2D quantizzata uint8->int8 (bias int32 per canale di uscita). */
-i64 ofx_nn_quant_conv2d_i8(i64 *out, const i64 *in, const i64 *weight,
-                           const i64 *bias, const i64 *cfg)
+i64 ofx_nn_quant_conv2d_i8(i64 *out, const i64 *in, const i64 *weight, const i64 *bias,
+                           i64 c, i64 h, i64 w, i64 out_c, i64 kh, i64 kw,
+                           i64 stride, i64 pad, i64 bias_shift, i64 out_shift)
 {
     unsigned char *ib = NULL;
     signed char *wb = NULL, *ob = NULL;
     int *bi = NULL;
-    int c, h, w, out_c, kh, kw, stride, pad, bias_shift, out_shift;
     int oh, ow, total, i;
     i64 rc;
-    if (!out || !in || !weight || !cfg) return -1;
-    c = (int)cfg[0]; h = (int)cfg[1]; w = (int)cfg[2]; out_c = (int)cfg[3];
-    kh = (int)cfg[4]; kw = (int)cfg[5]; stride = (int)cfg[6]; pad = (int)cfg[7];
-    bias_shift = (int)cfg[8]; out_shift = (int)cfg[9];
+    if (!out || !in || !weight) return -1;
     if (c <= 0 || h <= 0 || w <= 0 || out_c <= 0 || kh <= 0 || kw <= 0 || stride <= 0) return -1;
-    oh = (h + 2 * pad - kh) / stride + 1;
-    ow = (w + 2 * pad - kw) / stride + 1;
+    oh = (int)((h + 2 * pad - kh) / stride + 1);
+    ow = (int)((w + 2 * pad - kw) / stride + 1);
     if (oh <= 0 || ow <= 0) return -1;
-    total = out_c * oh * ow;
-    ib = u8_from_longs(in, c * h * w);
-    wb = i8_from_longs(weight, out_c * c * kh * kw);
+    total = (int)(out_c * oh * ow);
+    ib = u8_from_longs(in, (int)(c * h * w));
+    wb = i8_from_longs(weight, (int)(out_c * c * kh * kw));
     ob = (signed char *)calloc((size_t)total, 1);
-    if (bias) bi = i32_from_longs(bias, out_c);
+    if (bias) bi = i32_from_longs(bias, (int)out_c);
     if (!ib || !wb || !ob || (bias && !bi)) { free(ib); free(wb); free(ob); free(bi); return -1; }
-    rc = (i64)gn_quant_conv2d_i8(ob, ib, c, h, w, wb, bi, out_c,
-                                 kh, kw, stride, pad, bias_shift, out_shift);
+    rc = (i64)gn_quant_conv2d_i8(ob, ib, (int)c, (int)h, (int)w, wb, bi, (int)out_c,
+                                 (int)kh, (int)kw, (int)stride, (int)pad,
+                                 (int)bias_shift, (int)out_shift);
     for (i = 0; i < total; i++) out[i] = (i64)ob[i];
     free(ib); free(wb); free(ob); free(bi);
     return rc;
@@ -1060,31 +1053,29 @@ i64 ofx_nn_quant_params_channel(const double *w, i64 out_c, i64 per_ch,
 
 /* Convoluzione uint8 con scala di uscita per-canale (M double[out_c]). */
 i64 ofx_nn_quant_conv2d_i8_channel(i64 *out, const i64 *in, const i64 *weight,
-                                   const i64 *bias, const double *M, const i64 *cfg)
+                                   const i64 *bias, const double *M,
+                                   i64 c, i64 h, i64 w, i64 out_c, i64 kh, i64 kw,
+                                   i64 stride, i64 pad, i64 zp_in, i64 zp_out)
 {
     unsigned char *ib = NULL, *ob = NULL;
     signed char *wb = NULL;
     int *bi = NULL;
-    int c, h, w, out_c, kh, kw, stride, pad, zp_in, zp_out;
     int oh, ow, total, i;
     i64 rc;
-    if (!out || !in || !weight || !M || !cfg) return -1;
-    c = (int)cfg[0]; h = (int)cfg[1]; w = (int)cfg[2]; out_c = (int)cfg[3];
-    kh = (int)cfg[4]; kw = (int)cfg[5]; stride = (int)cfg[6]; pad = (int)cfg[7];
-    zp_in = (int)cfg[8]; zp_out = (int)cfg[9];
+    if (!out || !in || !weight || !M) return -1;
     if (c <= 0 || h <= 0 || w <= 0 || out_c <= 0 || kh <= 0 || kw <= 0 || stride <= 0) return -1;
-    oh = (h + 2 * pad - kh) / stride + 1;
-    ow = (w + 2 * pad - kw) / stride + 1;
+    oh = (int)((h + 2 * pad - kh) / stride + 1);
+    ow = (int)((w + 2 * pad - kw) / stride + 1);
     if (oh <= 0 || ow <= 0) return -1;
-    total = out_c * oh * ow;
-    ib = u8_from_longs(in, c * h * w);
-    wb = i8_from_longs(weight, out_c * c * kh * kw);
+    total = (int)(out_c * oh * ow);
+    ib = u8_from_longs(in, (int)(c * h * w));
+    wb = i8_from_longs(weight, (int)(out_c * c * kh * kw));
     ob = (unsigned char *)calloc((size_t)total, 1);
-    if (bias) bi = i32_from_longs(bias, out_c);
+    if (bias) bi = i32_from_longs(bias, (int)out_c);
     if (!ib || !wb || !ob || (bias && !bi)) { free(ib); free(wb); free(ob); free(bi); return -1; }
-    rc = (i64)gn_quant_conv2d_i8_channel(ob, ib, c, h, w, wb, bi,
-                                         (const gn_real *)M, out_c, kh, kw,
-                                         stride, pad, zp_in, zp_out);
+    rc = (i64)gn_quant_conv2d_i8_channel(ob, ib, (int)c, (int)h, (int)w, wb, bi,
+                                         (const gn_real *)M, (int)out_c, (int)kh, (int)kw,
+                                         (int)stride, (int)pad, (int)zp_in, (int)zp_out);
     for (i = 0; i < total; i++) out[i] = (i64)ob[i];
     free(ib); free(wb); free(ob); free(bi);
     return rc;

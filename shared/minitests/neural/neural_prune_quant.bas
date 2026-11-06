@@ -36,10 +36,9 @@ SUB Main()
   PRINT "rq="; NEURAL.REQUANTI8(acc, 2, 0.1, 0, 0.05, 10, rq); ":";
   PRINT rq(0); ","; rq(1); "|";
 
-  DIM a2(1) AS LONG, b2(1) AS LONG, bias0(0) AS LONG, g1(0) AS LONG, gpar(5) AS DOUBLE
+  DIM a2(1) AS LONG, b2(1) AS LONG, bias0(0) AS LONG, g1(0) AS LONG
   a2(0)=10 : a2(1)=20 : b2(0)=1 : b2(1)=2 : bias0(0)=0
-  gpar(0)=0.1 : gpar(1)=0 : gpar(2)=0.5 : gpar(3)=0 : gpar(4)=0.25 : gpar(5)=0
-  PRINT "gemm="; NEURAL.QUANTGEMMU8(g1, a2, b2, bias0, gpar, 1, 2, 1); ":";
+  PRINT "gemm="; NEURAL.QUANTGEMMU8(g1, a2, b2, bias0, 1, 2, 1, 0.1, 0, 0.5, 0, 0.25, 0); ":";
   PRINT g1(0); "|";
 
   DIM sh3(3) AS LONG, sho(3) AS LONG
@@ -47,11 +46,10 @@ SUB Main()
   PRINT "rsh="; NEURAL.QUANTREQSHIFTI8(sh3, 4, 2, sho); ":";
   PRINT sho(0); ","; sho(1); ","; sho(2); ","; sho(3); "|";
 
-  DIM qin(3) AS LONG, qw(0) AS LONG, qbias(0) AS LONG, qout(3) AS LONG, qcfg(9) AS LONG
+  DIM qin(3) AS LONG, qw(0) AS LONG, qbias(0) AS LONG, qout(3) AS LONG
   qin(0)=1 : qin(1)=2 : qin(2)=3 : qin(3)=4
   qw(0)=1 : qbias(0)=0
-  qcfg(0)=1 : qcfg(1)=2 : qcfg(2)=2 : qcfg(3)=1 : qcfg(4)=1 : qcfg(5)=1 : qcfg(6)=1 : qcfg(7)=0 : qcfg(8)=0 : qcfg(9)=0
-  PRINT "qconv="; NEURAL.QUANTCONV2DI8(qout, qin, qw, qbias, qcfg); ":";
+  PRINT "qconv="; NEURAL.QUANTCONV2DI8(qout, qin, qw, qbias, 1, 2, 2, 1, 1, 1, 1, 0, 0, 0); ":";
   PRINT qout(0); ","; qout(1); ","; qout(2); ","; qout(3); "|";
 
   DIM cl(3) AS LONG
@@ -64,11 +62,10 @@ SUB Main()
   PRINT "pc="; NEURAL.QUANTPARAMSCHANNEL(pwc, 2, 2, psc, pzp); ":";
   PRINT FORMAT(psc(0), "#.0000000"); ","; pzp(0); ","; pzp(1); "|";
 
-  DIM cin(3) AS LONG, cw(0) AS LONG, cb(0) AS LONG, cm(0) AS DOUBLE, cout(3) AS LONG, ccfg(9) AS LONG
+  DIM cin(3) AS LONG, cw(0) AS LONG, cb(0) AS LONG, cm(0) AS DOUBLE, cout(3) AS LONG
   cin(0)=10 : cin(1)=20 : cin(2)=30 : cin(3)=40
   cw(0)=1 : cb(0)=0 : cm(0)=0.1
-  ccfg(0)=1 : ccfg(1)=2 : ccfg(2)=2 : ccfg(3)=1 : ccfg(4)=1 : ccfg(5)=1 : ccfg(6)=1 : ccfg(7)=0 : ccfg(8)=0 : ccfg(9)=0
-  PRINT "cc="; NEURAL.QUANTCONV2DI8CHANNEL(cout, cin, cw, cb, cm, ccfg); ":";
+  PRINT "cc="; NEURAL.QUANTCONV2DI8CHANNEL(cout, cin, cw, cb, cm, 1, 2, 2, 1, 1, 1, 1, 0, 0, 0); ":";
   PRINT cout(0); ","; cout(1); ","; cout(2); ","; cout(3); "|";
 
   ' ── ternario ──
