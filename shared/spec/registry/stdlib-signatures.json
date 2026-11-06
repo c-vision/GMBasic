@@ -24978,6 +24978,28 @@
     },
     {
       "ns": "TORCH",
+      "name": "MODELLOAD",
+      "fn": true,
+      "return": "long",
+      "params": [
+        {
+          "name": "h",
+          "type": "long",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        },
+        {
+          "name": "path",
+          "type": "string",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        }
+      ]
+    },
+    {
+      "ns": "TORCH",
       "name": "MODELLOSS",
       "fn": true,
       "return": "double",

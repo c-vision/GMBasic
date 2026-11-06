@@ -292,6 +292,8 @@ public sealed partial class StdLib
                 [hParam], stringType, TokenKind.TorchDeviceOf),
             new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.TorchModelSave, "MODELSAVE"),
                 [hParam, new Parameter(-1, T(TokenKind.Identifier, "path"), stringType, noFlags, null, false)], longType, TokenKind.TorchModelSave),
+            new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.TorchModelLoad, "MODELLOAD"),
+                [hParam, new Parameter(-1, T(TokenKind.Identifier, "path"), stringType, noFlags, null, false)], longType, TokenKind.TorchModelLoad),
             new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.TorchModelReset, "MODELRESET"),
                 [hParam], longType, TokenKind.TorchModelReset),
             new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.TorchLossMse, "LOSSMSE"),

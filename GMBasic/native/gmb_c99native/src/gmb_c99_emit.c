@@ -7020,6 +7020,7 @@ static const gmb_bf_row_t gmb_bf_composite[] = {
     { NULL, GMB_TOK_TorchModelFree, emit_bf_torch },
     { NULL, GMB_TOK_TorchModelReset, emit_bf_torch },
     { NULL, GMB_TOK_TorchModelSave, emit_bf_torch },
+    { NULL, GMB_TOK_TorchModelLoad, emit_bf_torch },
     { NULL, GMB_TOK_TorchModelInput, emit_bf_torch },
     { NULL, GMB_TOK_TorchModelOutput, emit_bf_torch },
     { NULL, GMB_TOK_TorchModelForward, emit_bf_torch },

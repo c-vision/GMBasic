@@ -81,6 +81,7 @@ internal sealed partial class PCodeProcessor
         BuiltInFunction.TORCH_AVAILABLE,
         BuiltInFunction.TORCH_DEVICEOF,
         BuiltInFunction.TORCH_MODELSAVE,
+        BuiltInFunction.TORCH_MODELLOAD,
         BuiltInFunction.TORCH_MODELRESET,
         BuiltInFunction.TORCH_LOSSMSE,
         BuiltInFunction.TORCH_LOSSCROSSENTROPY,
@@ -355,6 +356,10 @@ internal sealed partial class PCodeProcessor
         [BuiltInFunction.TORCH_MODELSAVE] = (task, args) =>
         {
                                 Basic.IlBackend.IlRuntime.TorchEnsureLoaded();return (double)Basic.IlBackend.IlRuntime.TorchModelSave((long)SafeDouble(ArgOr(args, 0)), ArgOr(args, 1)?.ToString() ?? "");
+        },
+        [BuiltInFunction.TORCH_MODELLOAD] = (task, args) =>
+        {
+                                Basic.IlBackend.IlRuntime.TorchEnsureLoaded();return (double)Basic.IlBackend.IlRuntime.TorchModelLoad((long)SafeDouble(ArgOr(args, 0)), ArgOr(args, 1)?.ToString() ?? "");
         },
         [BuiltInFunction.TORCH_MODELRESET] = (task, args) =>
         {

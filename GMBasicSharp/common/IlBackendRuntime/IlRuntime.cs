@@ -977,6 +977,13 @@ public static partial class IlRuntime
         TorchEnsureLoaded();
         return MlNativeEngine.gmb_ml_model_save(h, path ?? "");
     }
+    /// <summary>Ricarica i pesi di un modello gia' creato con la stessa architettura
+    /// (formato flat di MODELSAVE). 0 ok, &lt;0 errore (handle/path non validi, numel diverso).</summary>
+    public static long TorchModelLoad(long h, string path)
+    {
+        TorchEnsureLoaded();
+        return MlNativeEngine.gmb_ml_model_load(h, path ?? "");
+    }
     public static long TorchModelReset(long h)
     {
         TorchEnsureLoaded();

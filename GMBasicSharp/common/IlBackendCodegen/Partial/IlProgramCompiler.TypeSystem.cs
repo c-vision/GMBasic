@@ -320,6 +320,7 @@ public sealed partial class IlProgramCompiler
             or TokenKind.TorchStack or TokenKind.TorchSplit or TokenKind.TorchFree or TokenKind.TorchSet
             or TokenKind.TorchModelCreate or TokenKind.TorchModelTrainStep or TokenKind.TorchModelForward
             or TokenKind.TorchModelParameters or TokenKind.TorchModelSave or TokenKind.TorchModelReset
+            or TokenKind.TorchModelLoad
             or TokenKind.TorchModelInput or TokenKind.TorchModelOutput => new LongType(),
         BuiltinFunctionCallExpr f when f.Name.Kind is TokenKind.TorchGet or TokenKind.TorchSum
             or TokenKind.TorchMean or TokenKind.TorchMax or TokenKind.TorchMin or TokenKind.TorchSimilarity

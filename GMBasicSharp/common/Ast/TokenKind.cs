@@ -2581,4 +2581,8 @@ public enum TokenKind
     // (ordinali canonici): mai inserire nel mezzo. La forma CONTROLS `CANVAS x,y,w,h`
     // resta gestita dal parser dei controlli (disambiguazione come CHART).
     Canvas,
+    // TORCH MODEL LOAD (2026-11-06): ricarica i pesi salvati da MODELSAVE in un modello
+    // gia' creato con la stessa architettura/dims. Funzione qualificata `TORCH.MODELLOAD`.
+    // In coda (ordinali canonici): mai inserire nel mezzo.
+    TorchModelLoad,
 }

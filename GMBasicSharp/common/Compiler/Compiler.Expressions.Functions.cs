@@ -220,6 +220,7 @@ public sealed partial class Compiler
         { TokenKind.TorchImatrixLoad, BuiltInFunction.TORCH_IMATRIXLOAD }, { TokenKind.TorchImatrixRanks, BuiltInFunction.TORCH_IMATRIXRANKS },
         { TokenKind.TorchDtype, BuiltInFunction.TORCH_DTYPE }, { TokenKind.TorchAvailable, BuiltInFunction.TORCH_AVAILABLE },
         { TokenKind.TorchDeviceOf, BuiltInFunction.TORCH_DEVICEOF }, { TokenKind.TorchModelSave, BuiltInFunction.TORCH_MODELSAVE },
+        { TokenKind.TorchModelLoad, BuiltInFunction.TORCH_MODELLOAD },
         { TokenKind.TorchModelReset, BuiltInFunction.TORCH_MODELRESET }, { TokenKind.TorchLossMse, BuiltInFunction.TORCH_LOSSMSE },
         { TokenKind.TorchLossCrossEntropy, BuiltInFunction.TORCH_LOSSCROSSENTROPY }, { TokenKind.TorchLossBinary, BuiltInFunction.TORCH_LOSSBINARY },
         { TokenKind.TorchAccuracy, BuiltInFunction.TORCH_ACCURACY }, { TokenKind.TorchModelInput, BuiltInFunction.TORCH_MODELINPUT },

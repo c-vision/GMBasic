@@ -1245,6 +1245,7 @@ static const gmb_ns_type_row_t gmb_ns_types[] = {
     { GMB_TOK_TorchAvailable, 1 },
     { GMB_TOK_TorchDeviceOf, 1 },
     { GMB_TOK_TorchModelSave, 0 },
+    { GMB_TOK_TorchModelLoad, 0 },
     { GMB_TOK_TorchModelReset, 0 },
     { GMB_TOK_TorchLossMse, 0 },
     { GMB_TOK_TorchLossCrossEntropy, 0 },

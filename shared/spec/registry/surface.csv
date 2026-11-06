@@ -1304,6 +1304,7 @@ procedure,TORCH,MODELEXPORT,TorchModelExport
 procedure,TORCH,MODELFORWARD,TorchModelForward
 procedure,TORCH,MODELFREE,TorchModelFree
 procedure,TORCH,MODELINPUT,TorchModelInput
+procedure,TORCH,MODELLOAD,TorchModelLoad
 procedure,TORCH,MODELLOSS,TorchModelLoss
 procedure,TORCH,MODELOUTPUT,TorchModelOutput
 procedure,TORCH,MODELPARAMETERS,TorchModelParameters
