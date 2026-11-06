@@ -31,7 +31,7 @@ vertici in ordine, senza ripetere il primo; area/perimetro assumono il verso
 
 | gmbgeo | dove |
 |---|---|
-| `geo_convex_hull` | `SPATIAL.CONVEXHULL` (indici dei vertici; i punti si ricavano con GATHER-style) |
+| `geo_convex_hull` | `SPATIAL.CONVEXHULL` (indici dei vertici: si selezionano da xs()/ys() con quegli indici) |
 | distanze batch fra insiemi di punti | `SPATIAL.PDIST` / `CDIST` / `DISTANCEMATRIX` — `GEO.DIST` resta la primitiva **scalare** usata anche dalle altre funzioni |
 | trigonometria (sin/cos per rotazioni custom) | `MATH` |
 | operazioni su matrici | `MATRIX` |

@@ -1707,44 +1707,44 @@ double ofx_nn_memplan(const double *size, const i64 *birth, const i64 *death, i6
 /* ══ Attivazioni / gradienti (gn_act) ═══════════════════════════════════════
  * I VALORI di sigmoid/tanh/relu/gelu sono gia' in TORCH: qui si espongono i
  * gradienti (y = attivazione gia' calcolata) e le attivazioni non coperte. */
-#define NN_ACT1(fn) double ofx_nn_act_##fn(double x) { return (double)gn_##fn((gn_real)x); }
-NN_ACT1(sigmoid_grad)
-NN_ACT1(tanh_grad)
-NN_ACT1(relu_grad)
-NN_ACT1(gelu_grad)
-NN_ACT1(leaky_relu)
-NN_ACT1(leaky_relu_grad)
-NN_ACT1(elu)
-NN_ACT1(elu_grad)
-NN_ACT1(identity)
-NN_ACT1(identity_grad)
-NN_ACT1(threshold)
-NN_ACT1(threshold_grad)
-NN_ACT1(hardsigmoid)
-NN_ACT1(hardsigmoid_grad)
-NN_ACT1(hardswish)
-NN_ACT1(hardswish_grad)
-NN_ACT1(silu)
-NN_ACT1(silu_grad)
-NN_ACT1(mish)
-NN_ACT1(mish_grad)
-NN_ACT1(selu)
-NN_ACT1(selu_grad)
-NN_ACT1(plse)
-NN_ACT1(plse_grad)
-NN_ACT1(loggy)
-NN_ACT1(loggy_grad)
-NN_ACT1(hardtan)
-NN_ACT1(hardtan_grad)
-NN_ACT1(lhtan)
-NN_ACT1(lhtan_grad)
-NN_ACT1(relie)
-NN_ACT1(relie_grad)
-NN_ACT1(ramp)
-NN_ACT1(ramp_grad)
-NN_ACT1(stair)
-NN_ACT1(stair_grad)
-#undef NN_ACT1
+/* Attivazioni 1-argomento: definizioni ESPLICITE (il gate di audit cerca i
+ * simboli ofx_nn_act_* nel sorgente, non l espansione di una macro). */
+double ofx_nn_act_sigmoid_grad(double x) { return (double)gn_sigmoid_grad((gn_real)x); }
+double ofx_nn_act_tanh_grad(double x) { return (double)gn_tanh_grad((gn_real)x); }
+double ofx_nn_act_relu_grad(double x) { return (double)gn_relu_grad((gn_real)x); }
+double ofx_nn_act_gelu_grad(double x) { return (double)gn_gelu_grad((gn_real)x); }
+double ofx_nn_act_leaky_relu(double x) { return (double)gn_leaky_relu((gn_real)x); }
+double ofx_nn_act_leaky_relu_grad(double x) { return (double)gn_leaky_relu_grad((gn_real)x); }
+double ofx_nn_act_elu(double x) { return (double)gn_elu((gn_real)x); }
+double ofx_nn_act_elu_grad(double x) { return (double)gn_elu_grad((gn_real)x); }
+double ofx_nn_act_identity(double x) { return (double)gn_identity((gn_real)x); }
+double ofx_nn_act_identity_grad(double x) { return (double)gn_identity_grad((gn_real)x); }
+double ofx_nn_act_threshold(double x) { return (double)gn_threshold((gn_real)x); }
+double ofx_nn_act_threshold_grad(double x) { return (double)gn_threshold_grad((gn_real)x); }
+double ofx_nn_act_hardsigmoid(double x) { return (double)gn_hardsigmoid((gn_real)x); }
+double ofx_nn_act_hardsigmoid_grad(double x) { return (double)gn_hardsigmoid_grad((gn_real)x); }
+double ofx_nn_act_hardswish(double x) { return (double)gn_hardswish((gn_real)x); }
+double ofx_nn_act_hardswish_grad(double x) { return (double)gn_hardswish_grad((gn_real)x); }
+double ofx_nn_act_silu(double x) { return (double)gn_silu((gn_real)x); }
+double ofx_nn_act_silu_grad(double x) { return (double)gn_silu_grad((gn_real)x); }
+double ofx_nn_act_mish(double x) { return (double)gn_mish((gn_real)x); }
+double ofx_nn_act_mish_grad(double x) { return (double)gn_mish_grad((gn_real)x); }
+double ofx_nn_act_selu(double x) { return (double)gn_selu((gn_real)x); }
+double ofx_nn_act_selu_grad(double x) { return (double)gn_selu_grad((gn_real)x); }
+double ofx_nn_act_plse(double x) { return (double)gn_plse((gn_real)x); }
+double ofx_nn_act_plse_grad(double x) { return (double)gn_plse_grad((gn_real)x); }
+double ofx_nn_act_loggy(double x) { return (double)gn_loggy((gn_real)x); }
+double ofx_nn_act_loggy_grad(double x) { return (double)gn_loggy_grad((gn_real)x); }
+double ofx_nn_act_hardtan(double x) { return (double)gn_hardtan((gn_real)x); }
+double ofx_nn_act_hardtan_grad(double x) { return (double)gn_hardtan_grad((gn_real)x); }
+double ofx_nn_act_lhtan(double x) { return (double)gn_lhtan((gn_real)x); }
+double ofx_nn_act_lhtan_grad(double x) { return (double)gn_lhtan_grad((gn_real)x); }
+double ofx_nn_act_relie(double x) { return (double)gn_relie((gn_real)x); }
+double ofx_nn_act_relie_grad(double x) { return (double)gn_relie_grad((gn_real)x); }
+double ofx_nn_act_ramp(double x) { return (double)gn_ramp((gn_real)x); }
+double ofx_nn_act_ramp_grad(double x) { return (double)gn_ramp_grad((gn_real)x); }
+double ofx_nn_act_stair(double x) { return (double)gn_stair((gn_real)x); }
+double ofx_nn_act_stair_grad(double x) { return (double)gn_stair_grad((gn_real)x); }
 
 double ofx_nn_act_celu(double x, double alpha) { return (double)gn_celu((gn_real)x, (gn_real)alpha); }
 double ofx_nn_act_celu_grad(double x, double alpha) { return (double)gn_celu_grad((gn_real)x, (gn_real)alpha); }
