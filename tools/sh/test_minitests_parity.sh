@@ -96,10 +96,53 @@ fi
 # `dotnet test` da solo non sempre ricostruisce le dipendenze qui; con build esplicito
 # + `--no-build` il run è deterministico. La guardia runtime è in
 # `tests/GMBASIC.IlBackend.Tests/BuildFreshness.cs` (fallisce se una DLL resta stale).
-echo "build del test project (anti-stale)..."
-dotnet build "$ROOT/tests/GMBASIC.IlBackend.Tests" \
-  -v q --nologo || exit 1
-dotnet test "$ROOT/tests/GMBASIC.IlBackend.Tests" \
-  --no-build \
-  --filter "FullyQualifiedName~MiniTests_IL_PCode_Parity" \
-  $flags
+# Su una macchina carica il rebuild del test project può dominare il tempo del gate (minuti
+# di MSBuild). GMB_SKIP_DOTNET_BUILD=1 salta il build quando le DLL sono già aggiornate
+# (es. run ripetuti ravvicinati); il controllo anti-stale resta attivo nella build normale.
+if [ "${GMB_SKIP_DOTNET_BUILD:-0}" = "1" ]; then
+  echo "build del test project: SALTATO (GMB_SKIP_DOTNET_BUILD=1)"
+else
+  echo "build del test project (anti-stale)..."
+  dotnet build "$ROOT/tests/GMBASIC.IlBackend.Tests" \
+    -v q --nologo || exit 1
+fi
+# ISOLAMENTO PER FILE (default, GMB_MINI_SPLIT=0 per disattivarlo): le gambe IL e PCode
+# girano nello STESSO processo del test host. Con molti MiniTest FFI pesanti nello stesso
+# processo il runtime può terminare (crash del GC dopo ~6 file: ognuno pinna decine di array
+# e crea tipi-delegate): i risultati sono identici, è l'host che muore. Un `dotnet test` per
+# file isola il processo e rende il gate deterministico (~2 s di startup per file).
+if [ "${GMB_MINI_SPLIT:-1}" = "1" ] && [ -n "${GMB_MINI_ONLY:-}" ]; then
+  SPLIT_FAIL=0; SPLIT_N=0
+  LIST="$(mktemp "${TMPDIR:-/tmp}/gmb_split.XXXXXX")"
+  NEEDLES="$(mktemp "${TMPDIR:-/tmp}/gmb_needles.XXXXXX")"
+  printf '%s\n' "$GMB_MINI_ONLY" | tr ',' '\n' | sed '/^$/d' > "$NEEDLES"
+  while IFS= read -r f; do
+    [ -n "$f" ] || continue
+    rel="${f#"$WS/shared/minitests/"}"
+    hit=0
+    while IFS= read -r n; do
+      [ -n "$n" ] || continue
+      case "$rel" in *"$n"*) hit=1 ;; esac
+    done < "$NEEDLES"
+    [ "$hit" = 1 ] && printf '%s\n' "$rel" >> "$LIST"
+  done <<EOF
+$(find "$WS/shared/minitests" -name '*.bas' -type f | sort)
+EOF
+  rm -f "$NEEDLES"
+  while IFS= read -r rel; do
+    [ -n "$rel" ] || continue
+    SPLIT_N=$((SPLIT_N+1))
+    if ! GMB_MINI_ONLY="$rel" dotnet test "$ROOT/tests/GMBASIC.IlBackend.Tests" \
+        --no-build --filter "FullyQualifiedName~MiniTests_IL_PCode_Parity" $flags; then
+      SPLIT_FAIL=1
+    fi
+  done < "$LIST"
+  rm -f "$LIST"
+  echo "parità gestita: $SPLIT_N file (un processo per file)"
+  [ "$SPLIT_FAIL" = 0 ] || exit 1
+else
+  dotnet test "$ROOT/tests/GMBASIC.IlBackend.Tests" \
+    --no-build \
+    --filter "FullyQualifiedName~MiniTests_IL_PCode_Parity" \
+    $flags
+fi

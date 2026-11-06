@@ -34,6 +34,8 @@ enum {
  * GMB_TASK_STACK_CAP resta solo la capacità INIZIALE (come PCodeVm: stack
  * iniziale 4096, raddoppio fino al cap configurabile GMBASIC_PCODE_MAX_STACK). */
 #define GMB_TASK_STACK_CAP 4096
+/* Capacità INIZIALE dei locals (cresce on demand: un programma con centinaia di variabili
+ * non deve più perdere gli slot oltre la soglia — vedi gmb_task_ensure_locals). */
 #define GMB_LOCALS_CAP 256
 
 typedef struct gmb_task gmb_task_t;
@@ -123,7 +125,8 @@ static inline void gmb_try_entry_release(gmb_try_entry_t* e)
 }
 
 /* ---- Frame di chiamata (specchio di PCodeCallFrame) ---- */
-#define GMB_FRAME_LOCALS_CAP 256
+#define GMB_FRAME_LOCALS_CAP 256   /* capacità iniziale dei locals di un frame */
+#define GMB_FRAME_STACK_CAP 256
 #define GMB_FRAME_DEFER_CAP 64
 
 /* SCOPE DINAMICO (DYNAMIC, spec Variables-Scope §2.5): tabella name→valore di una
@@ -229,11 +232,15 @@ typedef struct gmb_frame {
     int      refcount;   /* 1 = nella frame chain; i box BYREF aggiungono ref */
     int      saved_sp;
     int      return_ip;
-    double   local_nums[GMB_FRAME_LOCALS_CAP];
-    gmb_obj_t* local_refs[GMB_FRAME_LOCALS_CAP];
-    uint8_t  local_types[GMB_FRAME_LOCALS_CAP];
-    uint8_t  local_basic[GMB_FRAME_LOCALS_CAP];
-    gmb_stack_entry_t frame_stack[GMB_FRAME_LOCALS_CAP];
+    /* Locals DINAMICI (2026-11-05): capacità decisa alla creazione dal local_count della
+     * procedura e crescibile on demand. Prima erano array fissi a 256: una SUB con più di
+     * ~127 variabili perdeva silenziosamente gli slot oltre il limite (VM/C divergeva). */
+    int      nlocals;
+    double*  local_nums;
+    gmb_obj_t** local_refs;
+    uint8_t* local_types;
+    uint8_t* local_basic;
+    gmb_stack_entry_t frame_stack[GMB_FRAME_STACK_CAP];
     int      frame_sp;
     /* upvalue catturate (per closure annidate); [0..15] */
     gmb_stack_entry_t upvalues[16];
@@ -276,6 +283,10 @@ void gmb_dyn_scope_clear(gmb_dyn_scope_t* s);
 
 /* Rilascia un ref al frame (libera quando il conteggio scende a zero). */
 void gmb_frame_release(gmb_frame_t* f);
+
+/* Porta i locals del frame/task alla capacità n (>=), preservando i valori; 0 = OOM. */
+int gmb_frame_ensure_locals(gmb_frame_t* f, int n);
+int gmb_task_ensure_locals(gmb_task_t* t, int n);
 
 /* ---- Box BYREF (specchio ByRefBox C#): riferimento write-through a uno slot
  * local/global. Il frame target è trattenuto con un ref finché il box vive. */
@@ -329,11 +340,12 @@ struct gmb_task {
     int sp;
     int stack_cap;
     int stack_overflow;
-    /* locals (usati quando frame==NULL — GetLocals) */
-    double    locals_nums[GMB_LOCALS_CAP];
-    gmb_obj_t* locals_refs[GMB_LOCALS_CAP];
-    uint8_t   locals_types[GMB_LOCALS_CAP];
-    uint8_t   locals_basic[GMB_LOCALS_CAP];
+    /* locals (usati quando frame==NULL — GetLocals) — dinamici come i frame */
+    int       locals_cap;
+    double*   locals_nums;
+    gmb_obj_t** locals_refs;
+    uint8_t*  locals_types;
+    uint8_t*  locals_basic;
     /* frame di chiamata */
     gmb_frame_t* frame;
     /* globals condivisi per riferimento (come goTask.Globals = task.Globals) */
@@ -462,6 +474,12 @@ struct gmb_task {
      * Liberato da gmb_task_free. Vedi OP_DYN_* in gmb_vm_core.c. */
     gmb_dyn_scope_t* dyn_base;
 };
+/* Capacità corrente degli slot locali (frame attivo, altrimenti locals top-level). */
+static inline int gmb_locals_cap_of(const gmb_task_t* t)
+{
+    return t->frame ? t->frame->nlocals : t->locals_cap;
+}
+
 
 /* ---- Scheduler — specchio di PCodeScheduler ---- */
 struct gmb_scheduler {

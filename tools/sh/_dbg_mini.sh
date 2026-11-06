@@ -143,7 +143,13 @@ ENSURE_POLICY=hard
 if [ ! -x "$DRV" ] || [ "$DRV" -ot "$HOST_BUILD/libgmb_compiler_c.a" ] || \
    [ "$DRV" -ot "$DRIVER_SRC" ]; then
   echo "build driver (stale o mancante)..."
-  cc "$DRIVER_SRC" $INC_C $INC_RT "$HOST_BUILD/libgmb_compiler_c.a" -o "$DRV" || exit 1
+  # gmb_opt_env/gmb_paths/gmb_abi vivono nel runtime ma il driver li usa per il registro
+  # opzioni: il target CMake `gmbnative` li compila DENTRO; il link manuale deve fare lo stesso.
+  cc "$DRIVER_SRC" \
+     "$ROOT/native/gmb_runtime_c/src/gmb_opts.c" \
+     "$ROOT/native/gmb_runtime_c/src/gmb_paths.c" \
+     "$ROOT/native/gmb_runtime_c/src/gmb_abi.c" \
+     $INC_C $INC_RT "$HOST_BUILD/libgmb_compiler_c.a" -o "$DRV" || exit 1
 fi
 
 # incExtra/ext (stesso setup del gate C99)
