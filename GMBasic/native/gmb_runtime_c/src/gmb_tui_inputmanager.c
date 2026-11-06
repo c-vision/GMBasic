@@ -8,6 +8,7 @@
 void gmb_input_field_init(gmb_input_field_t* f)
 {
     memset(f, 0, sizeof(*f));
+    memset(f, 0, sizeof(*f));
     f->min_len = 1;
     f->century = true;
 }
@@ -60,6 +61,7 @@ void gmb_input_field_date(gmb_input_field_t* f, int x, int y, const char* date, 
 
 void gmb_input_manager_init(gmb_input_manager_t* m)
 {
+    memset(m, 0, sizeof(*m));
     memset(m, 0, sizeof(*m));
     m->colors_fg = GMB_CELLCOLOR_GREEN;
     m->colors_bg = GMB_CELLCOLOR_BLACK;

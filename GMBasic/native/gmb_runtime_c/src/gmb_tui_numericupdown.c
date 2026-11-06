@@ -99,6 +99,7 @@ static void numericupdown_draw_px(void* u, gmb_control_t* c)
 }
 void gmb_numeric_updown_init(gmb_numeric_updown_t* n, int x, int y, int w)
 {
+    memset(n, 0, sizeof(*n));
     gmb_control_init(&n->ctrl, "", x, y, w, 1, numeric_draw, numeric_key);
     n->ctrl.handle_click_fn = numeric_click;
     n->ctrl.draw_px_fn = numericupdown_draw_px;

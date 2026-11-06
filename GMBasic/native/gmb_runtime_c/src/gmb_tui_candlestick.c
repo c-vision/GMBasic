@@ -105,6 +105,7 @@ static bool candlestick_key(void* u, gmb_control_t* c, int key)
 void gmb_candlestick_init(gmb_candlestick_t* k, int x, int y, int w, int h)
 {
     memset(k, 0, sizeof(*k));
+    memset(k, 0, sizeof(*k));
     gmb_control_init(&k->ctrl, "", x, y, w, h, candlestick_draw, candlestick_key);
     k->ctrl.user = k;
 }

@@ -74,6 +74,7 @@ static void confirmationbox_draw_px(void* u, gmb_control_t* c)
 }
 void gmb_confirmation_box_init(gmb_confirmation_box_t* c, int x, int y, int w, int h)
 {
+    memset(c, 0, sizeof(*c));
     gmb_control_init(&c->ctrl, "", x, y, w, h, confirmationbox_draw, NULL);
     c->ctrl.draw_px_fn = confirmationbox_draw_px;
     c->ctrl.user = c;

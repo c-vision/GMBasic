@@ -46,6 +46,7 @@ static bool numeric_modern_key(void* u, gmb_control_t* c, int key)
 void gmb_numeric_up_down_init(gmb_numeric_up_down_t* n, int x, int y, int w)
 {
     memset(n, 0, sizeof(*n));
+    memset(n, 0, sizeof(*n));
     gmb_control_init(&n->ctrl, "", x, y, w, 1, numeric_modern_draw, numeric_modern_key);
     n->ctrl.user = n;
     n->value = 0;

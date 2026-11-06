@@ -830,6 +830,7 @@ void gmb_clipper_input_set_key(gmb_clipper_state_t* st, int key, void (*fn)(void
 void gmb_get_init(gmb_get_t* g)
 {
     memset(g, 0, sizeof(*g));
+    memset(g, 0, sizeof(*g));
     g->fill = ' ';
     g->valid_address = 0;
 }

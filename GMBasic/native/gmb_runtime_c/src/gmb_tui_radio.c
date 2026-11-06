@@ -57,6 +57,7 @@ static void radio_draw_px(void* u, gmb_control_t* c)
 }
 void gmb_radio_group_init(gmb_radio_group_t* r, int x, int y, int w, int h)
 {
+    memset(r, 0, sizeof(*r));
     gmb_control_init(&r->ctrl, "", x, y, w, h, radio_draw, radio_key);
     r->ctrl.draw_px_fn = radio_draw_px;
     r->ctrl.ctrl_kind = GMB_CK_RADIO;
@@ -77,7 +78,8 @@ const char* gmb_radio_group_selected_value(gmb_radio_group_t* r)
 int gmb_radio_group_render_line(gmb_radio_group_t* r, int idx, char* out, int cap)
 {
     const char* mark = idx == r->selected ? "(•)" : "( )";
-    int o = snprintf(out, cap, "%s %s", mark, idx < r->options_count ? r->options[idx] : "");
+    /* TV TRadioButtons: icona " ( ) " — spazio iniziale compreso. */
+    int o = snprintf(out, cap, " %s %s", mark, idx < r->options_count ? r->options[idx] : "");
     if (o > r->ctrl.width) o = r->ctrl.width;
     else for (int i = o; i < r->ctrl.width && i < cap - 1; i++) out[o++] = ' ';
     out[o] = '\0';

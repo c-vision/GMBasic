@@ -334,6 +334,7 @@ static bool gmb_fe_click_px(void* u, gmb_control_t* c, int x, int y)
 void gmb_file_explorer_init(gmb_file_explorer_t* e, const char* path)
 {
     memset(e, 0, sizeof(*e));
+    memset(e, 0, sizeof(*e));
     gmb_control_init(&e->ctrl, "", 0, 0, 0, 10, gmb_fe_draw, gmb_fe_key);
     e->ctrl.draw_px_fn = fileexplorer_draw_px;
     e->ctrl.user = e;

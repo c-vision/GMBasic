@@ -7,6 +7,7 @@
 
 void gmb_default_hinter_init(gmb_default_hinter_t* h, int min_chars, gmb_basic_history_t* history)
 {
+    memset(h, 0, sizeof(*h));
     h->min_chars = min_chars;
     h->history = history;
 }

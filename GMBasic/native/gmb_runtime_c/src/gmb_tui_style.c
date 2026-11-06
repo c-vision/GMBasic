@@ -15,6 +15,7 @@ static gmb_cell_color_t style_default_fg(void) { return crgb(200, 208, 220); }
 void gmb_control_style_init(gmb_control_style_t* s)
 {
     memset(s, 0, sizeof(*s));
+    memset(s, 0, sizeof(*s));
     s->fill_char = ' ';
 }
 
@@ -59,8 +60,14 @@ gmb_control_style_t gmb_control_style_from_theme(const gmb_theme_t* t)
 {
     gmb_control_style_t s;
     memset(&s, 0, sizeof(s));
-    s.has_fg = true; s.fg = t->text;
-    s.has_bg = true; s.bg = t->window_bg;
+    /* I controlli TV vivono nei DIALOG (grigi): base dai colori dialog quando definiti,
+     * altrimenti finestra. NB: il nero (0,0,0) è un colore VALIDO per il dialog — la
+     * sentinella "deriva" è il BG non impostato, non il FG. */
+    int has_dlg = (t->dlg_bg.r || t->dlg_bg.g || t->dlg_bg.b) ? 1 : 0;
+    gmb_cell_color_t dfg = has_dlg ? t->dlg_fg : t->text;
+    gmb_cell_color_t dbg = has_dlg ? t->dlg_bg : t->window_bg;
+    s.has_fg = true; s.fg = dfg;
+    s.has_bg = true; s.bg = dbg;
     s.has_fg_focus = true; s.fg_focus = t->title_fg;
     s.has_bg_focus = true; s.bg_focus = t->active_bg;
     s.has_fg_error = true; s.fg_error = GMB_CELLCOLOR_WHITE;

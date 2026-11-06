@@ -49,6 +49,7 @@ static bool imagebutton_click(void* u, gmb_control_t* c, int x, int y)
 }
 void gmb_image_button_init(gmb_image_button_t* b, int x, int y, int w)
 {
+    memset(b, 0, sizeof(*b));
     gmb_control_init(&b->ctrl, "", x, y, w, 1, imagebutton_draw, imagebutton_key);
     b->ctrl.handle_click_fn = imagebutton_click;
     b->ctrl.user = b;

@@ -12,6 +12,7 @@
 void gmb_ctrl_event_handler_init(gmb_ctrl_event_handler_t* h)
 {
     memset(h, 0, sizeof(*h));
+    memset(h, 0, sizeof(*h));
     gmb_focus_manager_init(&h->focus);
 }
 

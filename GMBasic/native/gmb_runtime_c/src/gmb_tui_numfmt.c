@@ -25,6 +25,7 @@ typedef struct numfmt_spec {
 
 void gmb_numfmt_init(gmb_number_format_t* nf, char decimal_sep, char group_delimiter)
 {
+    memset(nf, 0, sizeof(*nf));
     if (!nf) return;
     nf->decimal_sep = decimal_sep ? decimal_sep : '.';
     nf->group_delimiter = group_delimiter ? group_delimiter : ',';

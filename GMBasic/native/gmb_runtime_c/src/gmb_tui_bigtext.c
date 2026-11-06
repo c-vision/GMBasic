@@ -158,6 +158,7 @@ static void bigtext_draw_px(void* u, gmb_control_t* c)
 void gmb_big_text_init(gmb_big_text_t* b, int x, int y)
 {
     memset(b, 0, sizeof(*b));
+    memset(b, 0, sizeof(*b));
     gmb_control_init(&b->ctrl, "", x, y, 40, 7, bigtext_draw, NULL);
     b->ctrl.draw_px_fn = bigtext_draw_px;
     b->ctrl.user = b;

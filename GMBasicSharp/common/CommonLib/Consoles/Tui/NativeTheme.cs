@@ -26,6 +26,7 @@ public static class NativeTheme
         public CColor cal_today_bg, cal_today_fg, cal_sel_bg, cal_sel_fg, head_bg, head_fg;
         public CColor editor_bg, editor_fg, editor_frame, menu_bg, menu_fg, dlg_bg, dlg_fg,
             stat_bg, stat_fg;
+        public CColor desktop_fg;
         public IntPtr desktop_pattern;
     }
 

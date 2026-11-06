@@ -37,6 +37,7 @@ static long app_now_ms(void)
 void gmb_blink_clock_init(gmb_blink_clock_t* c)
 {
     memset(c, 0, sizeof(*c));
+    memset(c, 0, sizeof(*c));
     c->period_ms = GMB_BLINK_MS;
     c->blink_on = true;
 }
@@ -75,6 +76,7 @@ bool gmb_blink_clock_tick(gmb_blink_clock_t* c, gmb_clipper_state_t* st)
 void gmb_event_loop_init(gmb_event_loop_t* l, const gmb_input_source_t* input)
 {
     memset(l, 0, sizeof(*l));
+    memset(l, 0, sizeof(*l));
     if (input) l->input = *input;
     gmb_blink_clock_init(&l->clock);
 }
@@ -106,6 +108,7 @@ static gmb_modal_host_t* g_current_host = NULL;
 
 void gmb_modal_host_init(gmb_modal_host_t* h, const gmb_input_source_t* input)
 {
+    memset(h, 0, sizeof(*h));
     memset(h, 0, sizeof(*h));
     if (input) h->input = *input;
     gmb_event_loop_init(&h->loop, &h->input);
@@ -164,6 +167,7 @@ static int clipper_source_read(void* user, int timeout_ms, gmb_ui_event_t* out)
 
 void gmb_clipper_input_source_init(gmb_input_source_t* src, gmb_clipper_state_t* st)
 {
+    memset(src, 0, sizeof(*src));
     src->user = st;
     src->read = clipper_source_read;
 }
@@ -172,6 +176,7 @@ void gmb_clipper_input_source_init(gmb_input_source_t* src, gmb_clipper_state_t*
 
 void gmb_event_dispatcher_init(gmb_event_dispatcher_t* d)
 {
+    memset(d, 0, sizeof(*d));
     memset(d, 0, sizeof(*d));
 }
 
@@ -319,6 +324,7 @@ void gmb_event_dispatcher_unregister_mouse(gmb_event_dispatcher_t* d, int kind)
 
 void gmb_app_runner_init(gmb_app_runner_t* r)
 {
+    memset(r, 0, sizeof(*r));
     memset(r, 0, sizeof(*r));
 }
 gmb_app_runner_t* gmb_app_runner_on_key(gmb_app_runner_t* r, int key, void (*fn)(void* app_ctx))

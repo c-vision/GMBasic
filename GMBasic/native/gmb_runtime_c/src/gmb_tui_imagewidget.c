@@ -82,6 +82,7 @@ static bool imagewidget_click(void* user, gmb_control_t* c, int x, int y)
 void gmb_image_widget_init(gmb_image_widget_t* w)
 {
     memset(w, 0, sizeof(*w));
+    memset(w, 0, sizeof(*w));
     gmb_control_init(&w->ctrl, "", 0, 0, 0, 0, imagewidget_draw, NULL);
     w->ctrl.user = w;
     w->ctrl.handle_click_fn = imagewidget_click;

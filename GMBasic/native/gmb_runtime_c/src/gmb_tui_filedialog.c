@@ -77,6 +77,7 @@ static void filedialog_draw_px(void* u, gmb_control_t* c)
 }
 void gmb_file_dialog_init(gmb_file_dialog_t* f, int x, int y, int w, int h)
 {
+    memset(f, 0, sizeof(*f));
     gmb_control_init(&f->ctrl, "", x, y, w, h, filedialog_draw, filedialog_key);
     f->ctrl.draw_px_fn = filedialog_draw_px;
     f->ctrl.handle_click_fn = filedialog_click;

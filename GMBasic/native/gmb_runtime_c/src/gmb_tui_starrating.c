@@ -93,6 +93,7 @@ static void starrating_draw_px(void* u, gmb_control_t* c)
 void gmb_star_rating_init(gmb_star_rating_t* s, int x, int y, int w)
 {
     memset(s, 0, sizeof(*s));
+    memset(s, 0, sizeof(*s));
     gmb_control_init(&s->ctrl, "", x, y, w, 1, starrating_draw, starrating_key);
     s->ctrl.draw_px_fn = starrating_draw_px;
     s->ctrl.handle_mouse_fn = starrating_mouse;

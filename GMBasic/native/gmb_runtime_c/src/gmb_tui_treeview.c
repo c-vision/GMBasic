@@ -109,6 +109,7 @@ static void treeview_draw_px(void* u, gmb_control_t* c)
 }
 void gmb_tree_view_init(gmb_tree_view_t* t, int x, int y, int w, int h)
 {
+    memset(t, 0, sizeof(*t));
     gmb_control_init(&t->ctrl, "", x, y, w, h, treeview_draw, treeview_key);
     t->ctrl.draw_px_fn = treeview_draw_px;
     t->ctrl.ctrl_kind = GMB_CK_TREE;

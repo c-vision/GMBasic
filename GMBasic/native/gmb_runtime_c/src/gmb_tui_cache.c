@@ -7,6 +7,7 @@
 void gmb_tiny_cache_init(gmb_tiny_cache_t* c, int capacity)
 {
     memset(c, 0, sizeof(*c));
+    memset(c, 0, sizeof(*c));
     if (capacity > GMB_CACHE_MAX) capacity = GMB_CACHE_MAX;
     if (capacity < 0) capacity = 0;
     c->capacity = capacity;

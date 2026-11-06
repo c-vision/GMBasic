@@ -42,6 +42,7 @@ typedef struct gmbtheme {
     gmb_cell_color_t menu_bg, menu_fg;                   /* menu bar/dropdown: grigio/nero */
     gmb_cell_color_t dlg_bg, dlg_fg;                     /* dialog: grigio/nero */
     gmb_cell_color_t stat_bg, stat_fg;                   /* statusline: ciano/nero */
+    gmb_cell_color_t desktop_fg;   /* colore del retino del desktop (0,0,0 = deriva) */
     const char* desktop_pattern;   /* UTF-8: "░" / "·" / " " (Theme.cs DesktopPattern) */
 } gmb_theme_t;
 
@@ -49,6 +50,7 @@ typedef struct gmbtheme {
 void gmb_theme_kind(const gmb_theme_t* t, int kind, gmb_cell_color_t* fg, gmb_cell_color_t* bg);
 
 gmb_theme_t gmb_theme_turbo(void);
+gmb_theme_t gmb_theme_borland(void);   /* TV 2.0: desktop grigio, finestre blu, dialog grigi */
 gmb_theme_t gmb_theme_qbasic(void);
 gmb_theme_t gmb_theme_midnight(void);
 gmb_theme_t gmb_theme_nord(void);
@@ -103,6 +105,8 @@ void gmb_ui_set_theme_name(const char* name);
 /* Hook OPZIONALE (NULL-safe) notificato quando il tema cambia: la UI (finestre/controlli)
  * ripittura desktop e finestre. Registrato dal layer UI; il core funziona anche senza. */
 void gmb_ui_theme_on_change(void (*fn)(const char* name));
+/* Marker TV (`[ ]` sui bottoni, `» «` sui controlli): globale, default 0 come TView::showMarkers. */
+extern int gmb_tui_show_markers;
 /* Dipinge il desktop con il tema attivo (colore + retino). Unica implementazione,
  * condivisa da layer console/TUI e window-statement. */
 void gmb_theme_paint_desktop(gmb_screen_buffer_t* buf);

@@ -76,6 +76,7 @@ static void tab_draw_px(void* u, gmb_control_t* c)
 }
 void gmb_tab_init(gmb_tab_t* t, int x, int y, int w)
 {
+    memset(t, 0, sizeof(*t));
     gmb_control_init(&t->ctrl, "", x, y, w, 1, tab_draw, tab_key);
     t->ctrl.draw_px_fn = tab_draw_px;
     t->ctrl.ctrl_kind = GMB_CK_TAB;

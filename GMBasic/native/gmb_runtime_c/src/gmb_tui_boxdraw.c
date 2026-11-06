@@ -170,6 +170,7 @@ void gmb_box_drawing_draw_box(gmb_screen_buffer_t* buffer, int x, int y, int w, 
 void gmb_box_widget_init(gmb_box_widget_t* b, int x, int y, int w, int h)
 {
     memset(b, 0, sizeof(*b));
+    memset(b, 0, sizeof(*b));
     b->x = x; b->y = y; b->w = w; b->h = h;
     b->style = gmb_box_char_thin();
 }

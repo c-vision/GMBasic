@@ -10,6 +10,7 @@
 
 void gmb_feeder_init(gmb_feeder_t* f, const char* dir)
 {
+    memset(f, 0, sizeof(*f));
     snprintf(f->directory, sizeof(f->directory), "%s", dir && dir[0] ? dir : ".");
 }
 int gmb_feeder_filter(const char* const* items, int n, const char* text, char out[][256], int cap)

@@ -8,6 +8,7 @@
 void gmb_basic_history_init(gmb_basic_history_t* h, int capacity)
 {
     memset(h, 0, sizeof(*h));
+    memset(h, 0, sizeof(*h));
     h->capacity = capacity;
     h->cursor = -1;
 }

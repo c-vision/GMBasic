@@ -147,6 +147,7 @@ static void propertygrid_draw_px(void* u, gmb_control_t* c)
 
 void gmb_property_grid_init(gmb_property_grid_t* p, int x, int y, int w, int h)
 {
+    memset(p, 0, sizeof(*p));
     gmb_control_init(&p->ctrl, "", x, y, w, h, propertygrid_draw, propertygrid_key);
     p->ctrl.ctrl_kind = GMB_CK_PROPERTYGRID;
     p->ctrl.draw_px_fn = propertygrid_draw_px;

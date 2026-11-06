@@ -247,6 +247,7 @@ static void codearea_draw_px(void* u, gmb_control_t* c)
 void gmb_code_area_init(gmb_code_area_t* ca, int x, int y, int w, int h)
 {
     memset(ca, 0, sizeof(*ca));
+    memset(ca, 0, sizeof(*ca));
     gmb_control_init(&ca->ctrl, "", x, y, w, h, codearea_draw, codearea_key);
     ca->ctrl.ctrl_kind = GMB_CK_CODEAREA;
     ca->ctrl.draw_px_fn = codearea_draw_px;

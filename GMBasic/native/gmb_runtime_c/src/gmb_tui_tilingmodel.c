@@ -13,6 +13,7 @@
 void gmb_tiling_model_init(gmb_tiling_model_t* m)
 {
     memset(m, 0, sizeof(*m));
+    memset(m, 0, sizeof(*m));
     m->node_count = 1;
     m->root = 0;
     m->nodes[0].id = 0;

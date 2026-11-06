@@ -169,6 +169,7 @@ void gmb_canvas_box(gmb_canvas_t* c, gmb_rect_t rect, const gmb_cell_color_t* fg
 
 void gmb_canvas_label_init(gmb_canvas_label_t* l, const char* text, gmb_rect_t area)
 {
+    memset(l, 0, sizeof(*l));
     gmb_text_raw(&l->content, text ? text : "");
     l->area = area;
 }
@@ -182,6 +183,7 @@ void gmb_canvas_label_draw(gmb_canvas_label_t* l, gmb_canvas_t* canvas)
 
 void gmb_canvas_panel_init(gmb_canvas_panel_t* p, gmb_rect_t area, const char* title, const gmb_canvas_label_t* child)
 {
+    memset(p, 0, sizeof(*p));
     memset(p, 0, sizeof(*p));
     p->area = area;
     if (title && title[0])

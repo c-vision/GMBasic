@@ -54,6 +54,7 @@ static void hline_draw(void* u, gmb_control_t* c, gmb_screen_buffer_t* buf)
 }
 void gmb_hline_init(gmb_hline_t* h, int x, int y, int w, const char* label)
 {
+    memset(h, 0, sizeof(*h));
     gmb_control_init(&h->ctrl, "", x, y, w, 1, hline_draw, NULL);
     h->ctrl.user = h;
     snprintf(h->label, sizeof(h->label), "%s", label ? label : "");
@@ -69,6 +70,7 @@ static void vline_draw(void* u, gmb_control_t* c, gmb_screen_buffer_t* buf)
 }
 void gmb_vline_init(gmb_vline_t* v, int x, int y, int h)
 {
+    memset(v, 0, sizeof(*v));
     gmb_control_init(&v->ctrl, "", x, y, 1, h, vline_draw, NULL);
     v->ctrl.user = v;
 }

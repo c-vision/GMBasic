@@ -38,6 +38,7 @@ static void label_draw_px(void* u, gmb_control_t* c)
 }
 void gmb_label_init(gmb_label_t* l, int x, int y, int w, const char* text)
 {
+    memset(l, 0, sizeof(*l));
     gmb_control_init(&l->ctrl, "", x, y, w, 1, label_draw, NULL);
     l->ctrl.draw_px_fn = label_draw_px;
     l->ctrl.user = l;
@@ -49,15 +50,14 @@ void gmb_label_set_text(gmb_label_t* l, const char* text)
 }
 int gmb_label_render_line(gmb_label_t* l, char* out, int cap)
 {
+    /* TV TLabel: testo a col 1 (una cella di margine), marker a col 0 quando attivi. */
     int w = l->ctrl.width;
     int len = (int)strlen(l->text);
-    if (len >= w)
-    {
-        snprintf(out, cap, "%.*s", w, l->text);
-        return w;
-    }
-    int pad = w - len;
+    if (len > w - 1) len = w - 1 > 0 ? w - 1 : 0;
     int o = 0;
+    out[o++] = ' ';
+    int pad = w - 1 - len;
+    if (pad < 0) pad = 0;
     if (l->align == 2)
     {
         for (int i = 0; i < pad; i++) out[o++] = ' ';

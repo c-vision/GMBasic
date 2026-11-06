@@ -263,6 +263,7 @@ static void menu_draw_px(void* u, gmb_control_t* c)
 void gmb_menu_init(gmb_menu_t* m, int x, int y, int w)
 {
     memset(m, 0, sizeof(*m));
+    memset(m, 0, sizeof(*m));
     gmb_control_init(&m->ctrl, "", x, y, w, 1, menu_draw, menu_key);
     m->ctrl.handle_mouse_fn = menu_mouse;
     m->ctrl.draw_px_fn = menu_draw_px;

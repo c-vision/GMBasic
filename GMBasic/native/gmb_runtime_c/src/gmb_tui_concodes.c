@@ -136,6 +136,7 @@ enum {
 void gmb_parser_init(gmb_parser_t* p, bool emulator)
 {
     memset(p, 0, sizeof(*p));
+    memset(p, 0, sizeof(*p));
     p->emulator = emulator;
     p->state = ST_GROUND;
 }

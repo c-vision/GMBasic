@@ -87,6 +87,7 @@ static void scrollview_draw_px(void* u, gmb_control_t* c)
 }
 void gmb_scroll_view_init(gmb_scroll_view_t* s, int x, int y, int w, int h)
 {
+    memset(s, 0, sizeof(*s));
     gmb_control_init(&s->ctrl, "", x, y, w, h, scrollview_draw, scrollview_key);
     s->ctrl.draw_px_fn = scrollview_draw_px;
     s->ctrl.handle_mouse_fn = scrollview_mouse;

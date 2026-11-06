@@ -9,6 +9,7 @@
 void gmb_fsm_init(gmb_fsm_t* f, int initial, gmb_fsm_on_event_t handler, void* ctx)
 {
     memset(f, 0, sizeof(*f));
+    memset(f, 0, sizeof(*f));
     f->current_state = initial;
     f->running = true;
     f->on_event = handler;

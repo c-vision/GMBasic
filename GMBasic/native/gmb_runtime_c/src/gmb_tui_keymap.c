@@ -13,6 +13,7 @@
 void gmb_key_map_init(gmb_key_map_t* k) { memset(k, 0, sizeof(*k)); }
 void gmb_key_map_bind(gmb_key_map_t* k, const char* chord, int action)
 {
+    memset(k, 0, sizeof(*k));
     if (!chord || k->count >= 16) return;
     char c[32];
     snprintf(c, sizeof(c), "%s", chord);

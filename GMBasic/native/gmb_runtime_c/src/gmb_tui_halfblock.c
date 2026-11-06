@@ -12,6 +12,7 @@
 
 void gmb_half_block_canvas_init(gmb_half_block_canvas_t* c, int width, int height, uint32_t fill)
 {
+    memset(c, 0, sizeof(*c));
     c->width = width;
     c->height = height;
     c->cells = (gmb_half_cell_t*)calloc((size_t)(width * height), sizeof(gmb_half_cell_t));

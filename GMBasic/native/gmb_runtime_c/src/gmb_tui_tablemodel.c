@@ -46,6 +46,7 @@ int gmb_text_align_align(const char* text, int width, int align, char* out, int 
 void gmb_table_columns_init(gmb_table_columns_t* c)
 {
     memset(c, 0, sizeof(*c));
+    memset(c, 0, sizeof(*c));
 }
 int gmb_table_columns_add(gmb_table_columns_t* c, const char* name)
 {
@@ -105,6 +106,7 @@ int gmb_text_align(const char* text, int width, int align, char* out, int cap)
 
 void gmb_column_init(gmb_column_t* c, const char* name, int index)
 {
+    memset(c, 0, sizeof(*c));
     if (!c) return;
     snprintf(c->name, sizeof(c->name), "%s", name ? name : "");
     c->index = index;

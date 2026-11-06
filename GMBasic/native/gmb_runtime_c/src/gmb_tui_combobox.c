@@ -17,8 +17,14 @@ static void combobox_draw(void* u, gmb_control_t* c, gmb_screen_buffer_t* buf)
     char line[128];
     gmb_combobox_render_line(cb, line, (int)sizeof(line));
     gmb_screen_setstring(buf, c->x, c->y, line, fg, bg);
-    /* C# Draw: SetChar(X + Width - 1, Y, '▼') */
-    gmb_screen_setchar(buf, c->x + c->width - 1, c->y, 0x25BC, fg, bg);
+    /* TV THistory: icona `▐↓▌` (tre celle); `↓` se lo spazio è ridotto. */
+    if (c->width >= 4) {
+        gmb_screen_setchar(buf, c->x + c->width - 3, c->y, 0x2590, fg, bg);  /* ▐ */
+        gmb_screen_setchar(buf, c->x + c->width - 2, c->y, 0x2193, fg, bg);  /* ↓ */
+        gmb_screen_setchar(buf, c->x + c->width - 1, c->y, 0x258C, fg, bg);  /* ▌ */
+    } else if (c->width >= 1) {
+        gmb_screen_setchar(buf, c->x + c->width - 1, c->y, 0x2193, fg, bg);
+    }
 
     if (cb->open && cb->items_count > 0)
     {
@@ -124,6 +130,7 @@ static void combobox_draw_px(void* u, gmb_control_t* c)
 }
 void gmb_combobox_init(gmb_combobox_t* c, int x, int y, int w)
 {
+    memset(c, 0, sizeof(*c));
     gmb_control_init(&c->ctrl, "", x, y, w, 1, combobox_draw, combobox_key);
     c->ctrl.handle_click_fn = combobox_click;
     c->ctrl.user = c;
@@ -153,8 +160,8 @@ const char* gmb_combobox_selected_value(gmb_combobox_t* c)
 int gmb_combobox_render_line(gmb_combobox_t* c, char* out, int cap)
 {
     const char* val = gmb_combobox_selected_value(c);
-    /* C# RenderLine: tronca a Width-1 (spazio per ▼), poi PadRight(Width). */
-    int maxw = c->ctrl.width - 1;
+    /* TV THistory: icona a 3 celle (`▐↓▌`), quindi il testo si ferma a Width-3. */
+    int maxw = c->ctrl.width - (c->ctrl.width >= 4 ? 3 : 1);
     if (maxw < 0) maxw = 0;
     int o = snprintf(out, cap, "%.*s", maxw, val ? val : "");
     for (int i = o; i < c->ctrl.width && i < cap - 1; i++) out[o++] = ' ';
