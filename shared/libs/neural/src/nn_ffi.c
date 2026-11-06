@@ -34,6 +34,9 @@
 #include "gn_knn.h"
 #include "gn_metrics.h"
 #include "gn_memplan.h"
+#include "gn_act.h"
+#include "gn_dense.h"
+#include "gn_loss.h"
 #include "gn_opt.h"
 
 #include <stdlib.h>
@@ -1691,4 +1694,235 @@ double ofx_nn_memplan(const double *size, const i64 *birth, const i64 *death, i6
     total = (double)gn_mem_plan(t, (int)n, (gn_real *)offsets);
     free(t);
     return total;
+}
+
+/* ══ Attivazioni / gradienti (gn_act) ═══════════════════════════════════════
+ * I VALORI di sigmoid/tanh/relu/gelu sono gia' in TORCH: qui si espongono i
+ * gradienti (y = attivazione gia' calcolata) e le attivazioni non coperte. */
+#define NN_ACT1(fn) double ofx_nn_act_##fn(double x) { return (double)gn_##fn((gn_real)x); }
+NN_ACT1(sigmoid_grad)
+NN_ACT1(tanh_grad)
+NN_ACT1(relu_grad)
+NN_ACT1(gelu_grad)
+NN_ACT1(leaky_relu)
+NN_ACT1(leaky_relu_grad)
+NN_ACT1(elu)
+NN_ACT1(elu_grad)
+NN_ACT1(identity)
+NN_ACT1(identity_grad)
+NN_ACT1(threshold)
+NN_ACT1(threshold_grad)
+NN_ACT1(hardsigmoid)
+NN_ACT1(hardsigmoid_grad)
+NN_ACT1(hardswish)
+NN_ACT1(hardswish_grad)
+NN_ACT1(silu)
+NN_ACT1(silu_grad)
+NN_ACT1(mish)
+NN_ACT1(mish_grad)
+NN_ACT1(selu)
+NN_ACT1(selu_grad)
+NN_ACT1(plse)
+NN_ACT1(plse_grad)
+NN_ACT1(loggy)
+NN_ACT1(loggy_grad)
+NN_ACT1(hardtan)
+NN_ACT1(hardtan_grad)
+NN_ACT1(lhtan)
+NN_ACT1(lhtan_grad)
+NN_ACT1(relie)
+NN_ACT1(relie_grad)
+NN_ACT1(ramp)
+NN_ACT1(ramp_grad)
+NN_ACT1(stair)
+NN_ACT1(stair_grad)
+#undef NN_ACT1
+
+double ofx_nn_act_celu(double x, double alpha) { return (double)gn_celu((gn_real)x, (gn_real)alpha); }
+double ofx_nn_act_celu_grad(double x, double alpha) { return (double)gn_celu_grad((gn_real)x, (gn_real)alpha); }
+double ofx_nn_act_prelu(double x, double alpha) { return (double)gn_prelu((gn_real)x, (gn_real)alpha); }
+double ofx_nn_act_prelu_grad(double x, double alpha) { return (double)gn_prelu_grad((gn_real)x, (gn_real)alpha); }
+
+i64 ofx_nn_act_crelu(double *out, const double *in, i64 n)
+{
+    if (!out || !in || n <= 0) return -1;
+    gn_crelu((gn_real *)out, (const gn_real *)in, (int)n);
+    return 0;
+}
+
+i64 ofx_nn_act_crelu_grad(double *grad_in, const double *grad_out, const double *in, i64 n)
+{
+    if (!grad_in || !grad_out || !in || n <= 0) return -1;
+    gn_crelu_grad((gn_real *)grad_in, (const gn_real *)grad_out, (const gn_real *)in, (int)n);
+    return 0;
+}
+
+/* ══ Strato denso addestrabile (gn_dense) — handle 5001+ ════════════════════
+ * W: out×in, b: 1×out. Il forward memorizza x (batch×in) per il backward;
+ * ZEROGRAD/STEP accumulano e applicano SGD/momentum/Adam come le RNN. */
+
+#define NN_DENSE_MAX 16
+#define NN_DENSE_BASE 5000
+
+typedef struct {
+    int used;
+    gn_dense l;
+    gn_opt opt;
+    int step;
+    gn_mat mW, mb, vW, vb;
+} nn_dense_e;
+
+static nn_dense_e g_dense[NN_DENSE_MAX];
+
+static nn_dense_e *dense_get(i64 h)
+{
+    if (h <= NN_DENSE_BASE || h > NN_DENSE_BASE + NN_DENSE_MAX) return NULL;
+    if (!g_dense[h - NN_DENSE_BASE - 1].used) return NULL;
+    return &g_dense[h - NN_DENSE_BASE - 1];
+}
+
+i64 ofx_nn_dense_init(i64 in, i64 out, i64 seed)
+{
+    int i;
+    if (in <= 0 || out <= 0) return -1;
+    for (i = 0; i < NN_DENSE_MAX; i++) {
+        nn_dense_e *e;
+        if (g_dense[i].used) continue;
+        e = &g_dense[i];
+        memset(e, 0, sizeof(*e));
+        if (gn_dense_init(&e->l, (int)in, (int)out, (unsigned long long)seed) != GN_OK) return -1;
+        if (gn_mat_alloc(&e->mW, (int)out, (int)in) != GN_OK) { gn_dense_free(&e->l); return -1; }
+        if (gn_mat_alloc(&e->vW, (int)out, (int)in) != GN_OK) { gn_dense_free(&e->l); gn_mat_free(&e->mW); return -1; }
+        if (gn_mat_alloc(&e->mb, 1, (int)out) != GN_OK) { gn_dense_free(&e->l); gn_mat_free(&e->mW); gn_mat_free(&e->vW); return -1; }
+        if (gn_mat_alloc(&e->vb, 1, (int)out) != GN_OK) {
+            gn_dense_free(&e->l); gn_mat_free(&e->mW); gn_mat_free(&e->vW); gn_mat_free(&e->mb);
+            return -1;
+        }
+        gn_mat_zero(&e->mW); gn_mat_zero(&e->vW);
+        gn_mat_zero(&e->mb); gn_mat_zero(&e->vb);
+        e->used = 1;
+        return (i64)(NN_DENSE_BASE + i + 1);
+    }
+    return -1;
+}
+
+/* y (batch×out) = x (batch×in) · Wᵀ + b */
+i64 ofx_nn_dense_forward(i64 h, const double *x, i64 batch, double *y)
+{
+    nn_dense_e *e = dense_get(h);
+    gn_mat X, Y;
+    if (!e || !x || !y || batch <= 0) return -1;
+    X.rows = (int)batch; X.cols = e->l.in; X.data = (gn_real *)x;
+    Y.rows = (int)batch; Y.cols = e->l.out; Y.data = (gn_real *)y;
+    return (i64)gn_dense_forward(&e->l, &X, &Y);
+}
+
+/* grad_x (batch×in) = grad_y (batch×out) · W ; accumula gradW/gradb. */
+i64 ofx_nn_dense_backward(i64 h, const double *gy, i64 batch, double *gx)
+{
+    nn_dense_e *e = dense_get(h);
+    gn_mat GY, GX;
+    if (!e || !gy || !gx || batch <= 0) return -1;
+    GY.rows = (int)batch; GY.cols = e->l.out; GY.data = (gn_real *)gy;
+    GX.rows = (int)batch; GX.cols = e->l.in; GX.data = (gn_real *)gx;
+    return (i64)gn_dense_backward(&e->l, &GY, &GX);
+}
+
+/* W (out×in) e b (out). */
+i64 ofx_nn_dense_params(i64 h, double *W, double *b)
+{
+    nn_dense_e *e = dense_get(h);
+    int i;
+    if (!e || !W || !b) return -1;
+    for (i = 0; i < e->l.out * e->l.in; i++) W[i] = (double)e->l.W.data[i];
+    for (i = 0; i < e->l.out; i++) b[i] = (double)e->l.b.data[i];
+    return 0;
+}
+
+i64 ofx_nn_dense_setparams(i64 h, const double *W, const double *b)
+{
+    nn_dense_e *e = dense_get(h);
+    int i;
+    if (!e || !W || !b) return -1;
+    for (i = 0; i < e->l.out * e->l.in; i++) e->l.W.data[i] = (gn_real)W[i];
+    for (i = 0; i < e->l.out; i++) e->l.b.data[i] = (gn_real)b[i];
+    return 0;
+}
+
+i64 ofx_nn_dense_zerograd(i64 h)
+{
+    nn_dense_e *e = dense_get(h);
+    if (!e) return -1;
+    gn_mat_zero(&e->l.gradW);
+    gn_mat_zero(&e->l.gradb);
+    return 0;
+}
+
+/* okind: 0 SGD, 1 momentum, 2 Adam. */
+i64 ofx_nn_dense_step(i64 h, i64 okind, double lr)
+{
+    nn_dense_e *e = dense_get(h);
+    if (!e || okind < 0 || okind > 2 || lr <= 0.0) return -1;
+    e->opt = gn_opt_make((int)okind, (gn_real)lr);
+    e->opt.t = e->step;
+    if (gn_opt_apply(&e->opt, &e->l.W, &e->l.gradW, &e->mW, &e->vW) != GN_OK) return -1;
+    if (gn_opt_apply(&e->opt, &e->l.b, &e->l.gradb, &e->mb, &e->vb) != GN_OK) return -1;
+    e->step++;
+    return 0;
+}
+
+i64 ofx_nn_dense_free(i64 h)
+{
+    nn_dense_e *e = dense_get(h);
+    if (!e) return -1;
+    gn_dense_free(&e->l);
+    gn_mat_free(&e->mW); gn_mat_free(&e->vW);
+    gn_mat_free(&e->mb); gn_mat_free(&e->vb);
+    memset(e, 0, sizeof(*e));
+    return 0;
+}
+
+/* ══ Perdite con gradiente (gn_loss): y, t e grad sono rows×cols ═══════════ */
+i64 ofx_nn_loss_mse(const double *y, const double *t, i64 rows, i64 cols, double *grad, double *loss)
+{
+    gn_mat Y, T, G;
+    if (!y || !t || !loss || rows <= 0 || cols <= 0) return -1;
+    Y.rows = T.rows = (int)rows; Y.cols = T.cols = (int)cols;
+    Y.data = (gn_real *)y; T.data = (gn_real *)t;
+    G.rows = (int)rows; G.cols = (int)cols; G.data = (gn_real *)grad;
+    *loss = (double)gn_loss_mse(&Y, &T, grad ? &G : NULL);
+    return 0;
+}
+
+i64 ofx_nn_loss_mae(const double *y, const double *t, i64 rows, i64 cols, double *grad, double *loss)
+{
+    gn_mat Y, T, G;
+    if (!y || !t || !loss || rows <= 0 || cols <= 0) return -1;
+    Y.rows = T.rows = (int)rows; Y.cols = T.cols = (int)cols;
+    Y.data = (gn_real *)y; T.data = (gn_real *)t;
+    G.rows = (int)rows; G.cols = (int)cols; G.data = (gn_real *)grad;
+    *loss = (double)gn_loss_mae(&Y, &T, grad ? &G : NULL);
+    return 0;
+}
+
+i64 ofx_nn_loss_cross_entropy(const double *y, const double *t, i64 rows, i64 cols, double *grad, double *loss)
+{
+    gn_mat Y, T, G;
+    if (!y || !t || !loss || rows <= 0 || cols <= 0) return -1;
+    Y.rows = T.rows = (int)rows; Y.cols = T.cols = (int)cols;
+    Y.data = (gn_real *)y; T.data = (gn_real *)t;
+    G.rows = (int)rows; G.cols = (int)cols; G.data = (gn_real *)grad;
+    *loss = (double)gn_loss_cross_entropy(&Y, &T, grad ? &G : NULL);
+    return 0;
+}
+
+i64 ofx_nn_loss_binary_cross_entropy(const double *y, const double *t, i64 rows, i64 cols, double *grad, double *loss)
+{
+    gn_mat Y, T, G;
+    if (!y || !t || !loss || rows <= 0 || cols <= 0) return -1;
+    Y.rows = T.rows = (int)rows; Y.cols = T.cols = (int)cols;
+    Y.data = (gn_real *)y; T.data = (gn_real *)t;
+    G.rows = (int)rows; G.cols = (int)cols; G.data = (gn_real *)grad;
+    *loss = (double)gn_loss_binary_cross_entropy(&Y, &T, grad ? &G : NULL);
+    return 0;
 }
