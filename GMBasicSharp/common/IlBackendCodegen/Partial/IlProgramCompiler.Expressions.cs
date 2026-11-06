@@ -1475,6 +1475,28 @@ public sealed partial class IlProgramCompiler
             foreach (var f in udt.Fields)
             {
                 var path = prefix.Length == 0 ? f.Name.Lexeme : $"{prefix}.{f.Name.Lexeme}";
+                // Campo ARRAY di uno UDT (S3b, 2026-11-06): N elementi contigui → N foglie A[k].
+                if (!f.Dimensions.IsEmpty)
+                {
+                    var codeArr = FfiCode2(f.DataType);
+                    if (codeArr < 0)
+                        throw new NotSupportedException($"FFI '{symbolName}': tipo del campo array '{path}' non supportato ({what}).");
+                    var nArr = 1;
+                    foreach (var d in f.Dimensions)
+                    {
+                        if (d is NumberExpr ne) nArr *= (int)ne.Value + 1;
+                        else throw new NotSupportedException($"FFI '{symbolName}': il campo array '{path}' deve avere bound letterali ({what}).");
+                    }
+                    var szA = FfiSz2(codeArr);
+                    off = (off + szA - 1) / szA * szA;
+                    for (var k = 0; k < nArr; k++)
+                    {
+                        outLeaves.Add(($"{path}[{k}]", codeArr, off));
+                        off += szA;
+                    }
+                    align = Math.Max(align, szA);
+                    continue;
+                }
                 if (f.DataType is ArrayType)
                     throw new NotSupportedException($"FFI '{symbolName}': il campo ARRAY '{path}' non è supportato in un UDT per valore ({what}).");
                 if (f.DataType is UserDefinedType sub)

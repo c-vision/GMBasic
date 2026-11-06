@@ -21,10 +21,25 @@ public class FfiService : IFfiService
     private static object? GetFfiLeafValue(System.Collections.IDictionary? dict, string path)
     {
         object? cur = dict;
-        foreach (var seg in path.Split('.'))
+        foreach (var raw in path.Split('.'))
         {
+            // Campo ARRAY di uno UDT (S3b): segmento "A[k]" → campo A, elemento k.
+            var seg = raw;
+            var br = raw.IndexOf('[');
+            var idx = -1;
+            if (br >= 0)
+            {
+                seg = raw[..br];
+                idx = int.TryParse(raw[(br + 1)..^1], out var kk) ? kk : -1;
+            }
             if (cur is not System.Collections.IDictionary d || !d.Contains(seg)) return null;
             cur = d[seg];
+            if (idx >= 0)
+            {
+                if (cur is Array arr) cur = idx < arr.Length ? arr.GetValue(idx) : null;
+                else if (cur is System.Collections.IList lst) cur = idx < lst.Count ? lst[idx] : null;
+                else return null;
+            }
         }
         return cur;
     }
@@ -548,19 +563,50 @@ public class FfiService : IFfiService
 
     private static object? GetPathValue(object? src, string path)
     {
-        foreach (var seg in path.Split('.'))
+        foreach (var raw in path.Split('.'))
         {
             if (src is null) return null;
+            var seg = raw;
+            var br = raw.IndexOf('[');
+            var idx = -1;
+            if (br >= 0) { seg = raw[..br]; idx = int.TryParse(raw[(br + 1)..^1], out var kk) ? kk : -1; }
             var f = src.GetType().GetField(seg, System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
             if (f is null) return null;
             src = f.GetValue(src);
+            if (idx >= 0)
+            {
+                if (src is Array arr) src = idx < arr.Length ? arr.GetValue(idx) : null;
+                else if (src is System.Collections.IList lst) src = idx < lst.Count ? lst[idx] : null;
+                else return null;
+            }
         }
         return src;
     }
 
     private static void SetPathValue(object root, string[] segs, int idx, object? value)
     {
-        var f = root.GetType().GetField(segs[idx], System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance)!;
+        // Campo ARRAY di uno UDT (S3b): segmento "A[k]" → elemento k dell'array (allocato
+        // alla prima scrittura, dimensione k+1).
+        var seg = segs[idx];
+        var br = seg.IndexOf('[');
+        var arrIdx = -1;
+        if (br >= 0) { arrIdx = int.TryParse(seg[(br + 1)..^1], out var kk) ? kk : -1; seg = seg[..br]; }
+        var f = root.GetType().GetField(seg, System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance)!;
+        if (arrIdx >= 0)
+        {
+            var et = f.FieldType.GetElementType()!;
+            var arr = (Array?)f.GetValue(root);
+            if (arr == null || arr.Length <= arrIdx)
+            {
+                var na = Array.CreateInstance(et, arrIdx + 1);
+                if (arr != null) Array.Copy(arr, na, arr.Length);
+                arr = na;
+                f.SetValue(root, arr);
+            }
+            object? ev = et == typeof(string) ? (value as string ?? Convert.ToString(value)) : Convert.ChangeType(value ?? 0, et);
+            arr.SetValue(ev, arrIdx);
+            return;
+        }
         if (idx == segs.Length - 1)
         {
             var ft = f.FieldType;

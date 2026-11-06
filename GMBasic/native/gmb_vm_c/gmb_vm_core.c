@@ -2693,8 +2693,19 @@ static gmb_val_t vm_ffi_get_leaf_val(gmb_dict_t* d, const char* namePath)
         char seg[64];
         if (seglen >= sizeof(seg)) seglen = sizeof(seg) - 1;
         memcpy(seg, p, seglen); seg[seglen] = 0;
+        char* br = strchr(seg, '[');
+        int idx = -1;
+        if (br) { idx = atoi(br + 1); *br = 0; }
         if (!cur) return (gmb_val_t){0};
         gmb_val_t v = vm_dict_get_ci(cur, seg);
+        if (idx >= 0)
+        {
+            /* campo ARRAY di uno UDT (S3b): elemento idx della lista */
+            if (v.kind != GMB_TYPE_OBJECT || !v.v_ptr) return (gmb_val_t){0};
+            gmb_obj_shared_val_t* svA = (gmb_obj_shared_val_t*)v.v_ptr;
+            if (!svA->list || (size_t)idx >= svA->list->count) return (gmb_val_t){0};
+            v = svA->list->items[idx];
+        }
         if (!dot) return v;
         if (v.kind != GMB_TYPE_OBJECT || !v.v_ptr || ((gmb_obj_t*)v.v_ptr)->kind != GMB_OBJ_DICT) return (gmb_val_t){0};
         cur = ((gmb_obj_shared_val_t*)v.v_ptr)->dict;
@@ -2717,6 +2728,18 @@ static void vm_ffi_set_leaf_val(gmb_obj_shared_val_t* root, const char* namePath
         memcpy(seg, p, seglen); seg[seglen] = 0;
         if (!dot)
         {
+            char* brS = strchr(seg, '[');
+            if (brS)
+            {
+                int idxS = atoi(brS + 1); *brS = 0;
+                gmb_val_t cv = vm_dict_get_ci(cur->dict, seg);
+                if (cv.kind == GMB_TYPE_OBJECT && cv.v_ptr)
+                {
+                    gmb_obj_shared_val_t* lv2 = (gmb_obj_shared_val_t*)cv.v_ptr;
+                    if (lv2->list) gmb_list_set(lv2->list, (gmb_int_t)idxS, value);
+                }
+                return;
+            }
             gmb_dict_set(cur->dict, seg, value);
             if (li < depth)
             {

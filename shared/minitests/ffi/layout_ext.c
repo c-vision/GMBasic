@@ -95,3 +95,20 @@ void pts_scale(Pt2 *a, int64_t n, double k)
 {
     for (int64_t i = 0; i < n; i++) { a[i].x = (int32_t)(a[i].x * k); a[i].y *= k; }
 }
+
+/* Campo ARRAY dentro uno UDT (S3b, 2026-11-06): A(4) → 5 elementi int32 contigui. */
+typedef struct { int32_t a[5]; double b; } Arr4;
+
+int32_t arr4_size(void) { return (int32_t)sizeof(Arr4); }
+double arr4_sum(Arr4 v)
+{
+    double s = v.b;
+    for (int i = 0; i < 5; i++) s += (double)v.a[i];
+    return s;
+}
+Arr4 arr4_bump(Arr4 v)
+{
+    for (int i = 0; i < 5; i++) v.a[i] += 1;
+    v.b += 0.5;
+    return v;
+}
