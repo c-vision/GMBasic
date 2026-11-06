@@ -1794,35 +1794,35 @@ static const ma_row MATH_TBL[] = {
     { GMB_TOK_Fix, 1, "trunc", NULL },
     { GMB_TOK_Rnd, 0, NULL, ma_rnd }, { GMB_TOK_Yield, 0, NULL, ma_yield },
     { GMB_TOK_Sleep, 0, NULL, ma_sleepasync }, { GMB_TOK_Format, 0, NULL, ma_format },
-    { GMB_TOK_SpecialBetaInc, 3, "gmb_incbeta", NULL },
-    { GMB_TOK_SpecialBetaIncInv, 3, "gmb_betaincinv", NULL }, { GMB_TOK_SpecialBetaLn, 2, "gmb_betaln", NULL },
-    { GMB_TOK_SpecialErf, 1, "gmb_erf", NULL }, { GMB_TOK_SpecialErfc, 1, "gmb_erf_c", NULL },
-    { GMB_TOK_SpecialErfcInv, 1, "gmb_erfcinv", NULL }, { GMB_TOK_SpecialErfInv, 1, "gmb_erfinv", NULL },
+    
+     
+     
+     
     { GMB_TOK_Fact, 1, "gmb_fact", NULL }, { GMB_TOK_Gamma, 1, "gmb_gamma", NULL },
-    { GMB_TOK_SpecialGammaInc, 2, "gmb_gamma_p", NULL }, { GMB_TOK_SpecialGammaIncc, 2, "gmb_gammaincc", NULL },
-    { GMB_TOK_SpecialGammaInccInv, 2, "gmb_gammainccinv", NULL }, { GMB_TOK_SpecialGammaIncInv, 2, "gmb_gammaincinv", NULL },
+     
+     
     /* scipy.special P1: LGamma/Digamma/Bessel (canone CommonLib.Numerics.Special; runtime condiviso). */
-    { GMB_TOK_SpecialLGamma, 1, "gmb_lgamma", NULL },
-    { GMB_TOK_SpecialDigamma, 1, "gmb_digamma", NULL },
-    { GMB_TOK_SpecialBesselJ, 2, "gmb_besselj", NULL },
-    { GMB_TOK_SpecialBesselY, 2, "gmb_bessely", NULL },
-    { GMB_TOK_SpecialBesselI, 2, "gmb_besseli", NULL },
-    { GMB_TOK_SpecialBesselK, 2, "gmb_besselk", NULL },
+    
+    
+    
+    
+    
+    
     /* SPECIAL.GAMMA/BETA: i token SpecialGamma/SpecialBeta non erano nella tabella
      * (solo Gamma/Beta di FINANCE) → "simbolo non trovato". */
-    { GMB_TOK_SpecialGamma, 1, "gmb_gamma", NULL },
-    { GMB_TOK_SpecialBeta, 2, "gmb_beta_fn", NULL },
-    { GMB_TOK_SpecialZeta, 1, "gmb_special_zeta", NULL },
-    { GMB_TOK_SpecialZetaHurwitz, 2, "gmb_special_zeta_hurwitz", NULL },
-    { GMB_TOK_SpecialPolygamma, 2, "gmb_special_polygamma", NULL },
-    { GMB_TOK_SpecialHypergeom2F1, 4, "gmb_special_hypergeom_2f1", NULL },
-    { GMB_TOK_SpecialHypergeom1F1, 3, "gmb_special_hypergeom_1f1", NULL },
-    { GMB_TOK_SpecialLambertW, 1, "gmb_special_lambert_w", NULL },
-    { GMB_TOK_SpecialMittagLeffler, 3, "gmb_special_mittag_leffler", NULL },
-    { GMB_TOK_SpecialStruveH, 2, "gmb_special_struve_h", NULL },
-    { GMB_TOK_SpecialKelvinBer, 1, "gmb_special_kelvin_ber", NULL },
-    { GMB_TOK_SpecialKelvinBei, 1, "gmb_special_kelvin_bei", NULL },
-    { GMB_TOK_SpecialParabolicCylinder, 2, "gmb_special_parabolic_cylinder", NULL },
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
 };
 int emit_bf_math(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk, gmb_expr_t** args, int nargs, int line) {
     (void)name; (void)ns; (void)line;
@@ -2691,17 +2691,17 @@ static int sa_avg(ctx_t* c, gmb_expr_t** a, int n) {
     return 1;
 }
 static const sa_row SA_TBL[] = {
-    { GMB_TOK_Mean, sa_mean }, { GMB_TOK_Avg, sa_avg },
-    { GMB_TOK_Median, sa_median }, { GMB_TOK_StdDev, sa_stddev },
+     { GMB_TOK_Avg, sa_avg },
+     
     { GMB_TOK_Variance, sa_variance }, { GMB_TOK_AMax, sa_amax },
     { GMB_TOK_AMin, sa_amin }, { GMB_TOK_ASum, sa_asum },
-    { GMB_TOK_Kurtosis, sa_kurtosis }, { GMB_TOK_Mad, sa_mad },
-    { GMB_TOK_Skewness, sa_skewness }, { GMB_TOK_Correlation, sa_correlation },
-    { GMB_TOK_Percentile, sa_percentile },
+     
+     
+    
     { GMB_TOK_StatsMode, sa_mode }, { GMB_TOK_StatsIqr, sa_iqr }, { GMB_TOK_StatsMoment, sa_moment },
-    { GMB_TOK_StatsCovariance, sa_covariance },
-    { GMB_TOK_StatsRange, sa_range },
-    { GMB_TOK_StatsMax, sa_amax }, { GMB_TOK_StatsMin, sa_amin },
+    
+    
+     
 };
 int emit_bf_stats_arr(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk, gmb_expr_t** args, int nargs, int line) {
     (void)name; (void)ns; (void)line;
@@ -3301,9 +3301,9 @@ static int an_holtwinters(ctx_t* c, gmb_expr_t** a, int n) {
     sb_put(&c->out, ")"); return 1;
 }
 static const sa_row AN_TBL[] = {
-    { GMB_TOK_AdfTest, an_adftest },
-    { GMB_TOK_Arima, an_arima },
-    { GMB_TOK_HoltWinters, an_holtwinters },
+    
+    
+    
     { GMB_TOK_Trapezoid, an_trapezoid },
     { GMB_TOK_FftRfft, an_rfft },
     { GMB_TOK_SolveIvp, an_solveivp },
@@ -6101,8 +6101,6 @@ int emit_bf_mv(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk, g
     if (tk == GMB_TOK_MvSvmFit) return mv_svm_fit(c, args, nargs);
     if (tk == GMB_TOK_MvGmm) return mv_gmm(c, args, nargs);
     if (tk == GMB_TOK_MvSvmPredict) return mv_svm_predict(c, args, nargs);
-    if (tk == GMB_TOK_MvBoostPredict) return mv_boost_predict(c, args, nargs);
-    if (tk == GMB_TOK_MvBoostScore) return mv_boost_score(c, args, nargs);
     if (tk == GMB_TOK_MvBoei) return mv_bo4(c, args, nargs, "gmb_mv_bo_ei");
     if (tk == GMB_TOK_MvBopi) return mv_bo4(c, args, nargs, "gmb_mv_bo_pi");
     if (tk == GMB_TOK_MvBoucb) return mv_bo3(c, args, nargs, "gmb_mv_bo_ucb");
@@ -6160,12 +6158,6 @@ static int fit_rsq_test(ctx_t* c, gmb_expr_t** a, int n) {
 }
 int emit_bf_fit(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk, gmb_expr_t** args, int nargs, int line) {
     (void)name; (void)ns; (void)line;
-    if (tk == GMB_TOK_FittingPolyFit) return fit_polyfit(c, args, nargs);
-    if (tk == GMB_TOK_FittingPolyEval) return fit_eval1(c, args, nargs, "gmb_fit_poly_eval", 1);
-    if (tk == GMB_TOK_FittingChebEval) return fit_eval1(c, args, nargs, "gmb_fit_cheb_eval", 0);
-    if (tk == GMB_TOK_FittingPadeEval) return fit_padeeval(c, args, nargs);
-    if (tk == GMB_TOK_FittingRSquared) return fit_rsq(c, args, nargs);
-    if (tk == GMB_TOK_FittingRSquaredTest) return fit_rsq_test(c, args, nargs);
     return 0;
 }
 
@@ -6229,40 +6221,6 @@ int emit_bf_vecop(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk
 }
 int emit_bf_sim(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk, gmb_expr_t** args, int nargs, int line) {
     (void)name; (void)ns; (void)line;
-    if (tk == GMB_TOK_SimSeed) {
-        if (nargs < 1) return 0;
-        sb_put(&c->out, "(gmb_sim_seed((unsigned long long)("); emit_expr(c, args[0]); sb_put(&c->out, ")), 0.0)");
-        return 1;
-    }
-    if (tk == GMB_TOK_SimUniform) { sb_put(&c->out, "gmb_sim_uniform()"); return 1; }
-    if (tk == GMB_TOK_SimNormal) { sb_put(&c->out, "gmb_sim_normal()"); return 1; }
-    if (tk == GMB_TOK_SimExponential) {
-        if (nargs < 1) return 0;
-        sb_put(&c->out, "gmb_sim_exponential((double)("); emit_expr(c, args[0]); sb_put(&c->out, "))");
-        return 1;
-    }
-    if (tk == GMB_TOK_SimBernoulli) {
-        if (nargs < 1) return 0;
-        sb_put(&c->out, "gmb_sim_bernoulli((double)("); emit_expr(c, args[0]); sb_put(&c->out, "))");
-        return 1;
-    }
-    if (tk == GMB_TOK_SimBinomial) {
-        if (nargs < 2) return 0;
-        sb_put(&c->out, "gmb_sim_binomial((double)("); emit_expr(c, args[0]);
-        sb_put(&c->out, "), (double)("); emit_expr(c, args[1]); sb_put(&c->out, "))");
-        return 1;
-    }
-    if (tk == GMB_TOK_SimParticle) {
-        var_t* ov;
-        if (nargs < 6 || !mv_arr(c, args[0], &ov)) return 0;
-        sb_put(&c->out, "gmb_sim_particle_filter((const double*)"); emit_var_ref(c, ov);
-        sb_put(&c->out, ", (int)("); emit_arr_len_of(c, ov);
-        sb_put(&c->out, ")");
-        for (int i = 1; i < 4; i++) { sb_put(&c->out, ", (double)("); emit_expr(c, args[i]); sb_put(&c->out, ")"); }
-        sb_put(&c->out, ", (int)("); emit_expr(c, args[4]);
-        sb_put(&c->out, "), (double)("); emit_expr(c, args[5]); sb_put(&c->out, "))");
-        return 1;
-    }
     return 0;
 }
 int emit_bf_ts(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk, gmb_expr_t** args, int nargs, int line) {
@@ -6348,6 +6306,27 @@ static int en_frombase64(ctx_t* c, gmb_expr_t** a, int n) { return en_decode(c, 
 static int en_frombase64url(ctx_t* c, gmb_expr_t** a, int n) { return en_decode(c, a, n, "gmb_base64url_decode"); }
 static int en_tohex(ctx_t* c, gmb_expr_t** a, int n) {
     if (n < 1) return 0;
+    /* Array numerico BYTE (DIM x(n) AS BYTE, buffer di digest): in C e' `gmb_double_t*`
+     * con bound `<nome>__b0`, NON una stringa. TOHEX deve produrre l'hex dei valori
+     * 0..255 col ponte del runtime condiviso (gmb_hex_from_doubles): senza questo ramo
+     * l'operando finiva in gmb_double_to_string(puntatore) => C non compilabile. */
+    if (a[0] && a[0]->kind == GMB_EXPR_VAR) {
+        var_t* tv = lookup_var(c, a[0]->var);
+        if (tv && tv->is_array && !tv->matrix && !tv->jagged && !tv->is_bytes && tv->elem_byte) {
+            sb_put(&c->out, "gmb_string_alloc(gmb_hex_from_doubles(");
+            emit_ident(c, tv->name);
+            sb_put(&c->out, ", (gmb_int_t)(");
+            if (tv->dyn_len) {
+                emit_ident(c, tv->name);
+                sb_put(&c->out, "_len)");
+            } else {
+                emit_ident(c, tv->name);
+                sb_put(&c->out, "__b0) + 1");
+            }
+            sb_put(&c->out, "))");
+            return 1;
+        }
+    }
     sb_put(&c->out, "gmb_string_alloc(gmb_hex_encode_string((const uint8_t*)");
     emit_bytes_operand(c, a[0]);
     sb_put(&c->out, ".data, ");
@@ -6356,202 +6335,17 @@ static int en_tohex(ctx_t* c, gmb_expr_t** a, int n) {
     return 1;
 }
 static int en_fromhex(ctx_t* c, gmb_expr_t** a, int n) { if (n < 1) return 0; sb_put(&c->out, "gmb_bytes_fromhex("); emit_str_operand(c, a[0]); sb_put(&c->out, ")"); return 1; }
-static int en_keccak(ctx_t* c, gmb_expr_t** a, int n) { return en_encode(c, a, n, "gmb_keccak256_hex"); }
-static int en_ripemd(ctx_t* c, gmb_expr_t** a, int n) { return en_encode(c, a, n, "gmb_ripemd160_hex"); }
 static const en_row EN_TBL[] = {
     { GMB_TOK_Base58Encode, en_base58encode }, { GMB_TOK_Base32Encode, en_base32encode },
     { GMB_TOK_ToBase64, en_tobase64 },
     { GMB_TOK_Base58Decode, en_base58decode }, { GMB_TOK_Base32Decode, en_base32decode },
     { GMB_TOK_FromBase64, en_frombase64 }, { GMB_TOK_ToHex, en_tohex }, { GMB_TOK_FromHex, en_fromhex },
     { GMB_TOK_FromBase64Url, en_frombase64url },
-    { GMB_TOK_StrKeccak256, en_keccak }, { GMB_TOK_StrRipeMd160, en_ripemd },
 };
 int emit_bf_encoding(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk, gmb_expr_t** args, int nargs, int line) {
     (void)name; (void)ns; (void)line;
     for (size_t i = 0; i < sizeof(EN_TBL) / sizeof(EN_TBL[0]); i++)
         if (EN_TBL[i].tk == tk) return EN_TBL[i].sp(c, args, nargs);
-    return 0;
-}
-/* ── dominio: blockchain (delegazione §0quater) ──
- * 18 funzioni BLOCKCHAIN: hashing byte[] (KECCAK256/RIPEMD160/BLAKE2B256), encoding
- * (RLP/VarInt/ABI), indirizzi ETH/BTC, derivazione chiavi (BIP32/BIP39), contract proxy.
- * Tutto dal runtime condiviso gmb_runtime_c (§0bis): nessuno stub, nessuna logica inline. */
-typedef struct { gmb_tokenkind_t tk; ma_sp sp; } bc_row;
-/* Hash byte[] → gmb_string_t binaria (algo 4/5/6 di gmb_digest_raw, come MD5/SHA 0-3). */
-static int bc_hash(ctx_t* c, gmb_expr_t** a, int n, int algo) {
-    if (n < 1) return 0;
-    sb_printf(&c->out, "gmb_digest_raw(%d, (const uint8_t*)", algo);
-    emit_bytes_operand(c, a[0]); sb_put(&c->out, ".data, (size_t)");
-    emit_bytes_operand(c, a[0]); sb_put(&c->out, ".length)");
-    return 1;
-}
-static int bc_keccak(ctx_t* c, gmb_expr_t** a, int n) { return bc_hash(c, a, n, 4); }
-static int bc_ripemd(ctx_t* c, gmb_expr_t** a, int n) { return bc_hash(c, a, n, 5); }
-static int bc_blake(ctx_t* c, gmb_expr_t** a, int n) { return bc_hash(c, a, n, 6); }
-/* RLPENCODE(data) → byte[] (uint8_t* + out-len → gmb_string_t binaria). */
-static int bc_rlp(ctx_t* c, gmb_expr_t** a, int n) {
-    if (n < 1) return 0;
-    sb_put(&c->out, "({ size_t _bc_n = 0; uint8_t* _bc_p = gmb_rlp_encode((const uint8_t*)");
-    emit_bytes_operand(c, a[0]); sb_put(&c->out, ".data, (size_t)");
-    emit_bytes_operand(c, a[0]); sb_put(&c->out, ".length, &_bc_n); gmb_string_take_bytes(_bc_p, _bc_n); })");
-    return 1;
-}
-/* VARINTENCODE(value) → byte[] LEB128. */
-static int bc_varint_encode(ctx_t* c, gmb_expr_t** a, int n) {
-    if (n < 1) return 0;
-    sb_put(&c->out, "({ size_t _bc_n = 0; uint8_t* _bc_p = gmb_varint_encode((int64_t)(");
-    emit_expr(c, a[0]); sb_put(&c->out, "), &_bc_n); gmb_string_take_bytes(_bc_p, _bc_n); })");
-    return 1;
-}
-/* VARINTDECODE(data[]) → int64 (double in contesto espressione). */
-static int bc_varint_decode(ctx_t* c, gmb_expr_t** a, int n) {
-    if (n < 1) return 0;
-    sb_put(&c->out, "(gmb_double_t)gmb_varint_decode((const uint8_t*)");
-    emit_bytes_operand(c, a[0]); sb_put(&c->out, ".data, (size_t)");
-    emit_bytes_operand(c, a[0]); sb_put(&c->out, ".length, NULL)");
-    return 1;
-}
-/* ETHADDRFROMPUB(pub[]) → stringa "0x...". */
-static int bc_eth_addr(ctx_t* c, gmb_expr_t** a, int n) {
-    if (n < 1) return 0;
-    sb_put(&c->out, "gmb_string_alloc(gmb_eth_address_from_pub_hex((const uint8_t*)");
-    emit_bytes_operand(c, a[0]); sb_put(&c->out, ".data, (size_t)");
-    emit_bytes_operand(c, a[0]); sb_put(&c->out, ".length))");
-    return 1;
-}
-/* ETHADDRCHECKSUM(addr$) → stringa EIP-55. */
-static int bc_eth_checksum(ctx_t* c, gmb_expr_t** a, int n) {
-    if (n < 1) return 0;
-    sb_put(&c->out, "gmb_string_alloc(gmb_eth_address_checksum((");
-    emit_str_operand(c, a[0]); sb_put(&c->out, ").data))");
-    return 1;
-}
-/* BTCADDRFROMPUB(pub[], testnet) → stringa base58check. */
-static int bc_btc_addr(ctx_t* c, gmb_expr_t** a, int n) {
-    if (n < 1) return 0;
-    sb_put(&c->out, "gmb_string_alloc(gmb_btc_address_from_pub((const uint8_t*)");
-    emit_bytes_operand(c, a[0]); sb_put(&c->out, ".data, (size_t)");
-    emit_bytes_operand(c, a[0]); sb_put(&c->out, ".length, (int)(");
-    if (n >= 2) emit_expr(c, a[1]); else sb_put(&c->out, "0");
-    sb_put(&c->out, ")))");
-    return 1;
-}
-/* BLOCKDIFFICULTY(header[], bits) → double. */
-static int bc_difficulty(ctx_t* c, gmb_expr_t** a, int n) {
-    if (n < 2) return 0;
-    sb_put(&c->out, "(gmb_double_t)gmb_block_difficulty((const uint8_t*)");
-    emit_bytes_operand(c, a[0]); sb_put(&c->out, ".data, (size_t)");
-    emit_bytes_operand(c, a[0]); sb_put(&c->out, ".length, (int32_t)(");
-    emit_expr(c, a[1]); sb_put(&c->out, "))");
-    return 1;
-}
-/* SECP256K1SIGN(msg[], priv[]) → byte[] DER. */
-static int bc_sign(ctx_t* c, gmb_expr_t** a, int n) {
-    if (n < 2) return 0;
-    sb_put(&c->out, "({ size_t _bc_n = 0; uint8_t* _bc_p = gmb_ecdsa_sign_raw((const uint8_t*)");
-    emit_bytes_operand(c, a[0]); sb_put(&c->out, ".data, (size_t)");
-    emit_bytes_operand(c, a[0]); sb_put(&c->out, ".length, (const uint8_t*)");
-    emit_bytes_operand(c, a[1]); sb_put(&c->out, ".data, (size_t)");
-    emit_bytes_operand(c, a[1]); sb_put(&c->out, ".length, &_bc_n); gmb_string_take_bytes(_bc_p, _bc_n); })");
-    return 1;
-}
-/* GENERATEMNEMONIC(n) → stringa (default 12 parole). */
-static int bc_mnemonic(ctx_t* c, gmb_expr_t** a, int n) {
-    sb_put(&c->out, "gmb_string_alloc(gmb_bip39_generate_mnemonic((unsigned)(");
-    if (n >= 1) emit_expr(c, a[0]); else sb_put(&c->out, "12");
-    sb_put(&c->out, ")))");
-    return 1;
-}
-/* MNEMONICTOSEED(mnemonic$[, passphrase$]) → byte[] (64). */
-static int bc_mnemonic_to_seed(ctx_t* c, gmb_expr_t** a, int n) {
-    if (n < 1) return 0;
-    sb_put(&c->out, "({ size_t _bc_n = 0; uint8_t* _bc_p = gmb_bip39_mnemonic_to_seed_alloc((");
-    emit_str_operand(c, a[0]); sb_put(&c->out, ").data, ");
-    if (n >= 2) { sb_put(&c->out, "("); emit_str_operand(c, a[1]); sb_put(&c->out, ").data"); }
-    else sb_put(&c->out, "\"\"");
-    sb_put(&c->out, ", &_bc_n); gmb_string_take_bytes(_bc_p, _bc_n); })");
-    return 1;
-}
-/* DERIVEKEY(seed[], path$) → dict boxed (privateKey/publicKey/chainCode). */
-static int bc_derive_key(ctx_t* c, gmb_expr_t** a, int n) {
-    if (n < 1) return 0;
-    sb_put(&c->out, "gmb_bip32_derive_key_dict_val((const uint8_t*)");
-    emit_bytes_operand(c, a[0]); sb_put(&c->out, ".data, (size_t)");
-    emit_bytes_operand(c, a[0]); sb_put(&c->out, ".length, ");
-    if (n >= 2) { sb_put(&c->out, "("); emit_str_operand(c, a[1]); sb_put(&c->out, ").data"); }
-    else sb_put(&c->out, "\"m\"");
-    sb_put(&c->out, ")");
-    return 1;
-}
-/* GETPUBLICKEY(priv[]) → byte[] (33 compressed). */
-static int bc_get_pubkey(ctx_t* c, gmb_expr_t** a, int n) {
-    if (n < 1) return 0;
-    sb_put(&c->out, "({ size_t _bc_n = 0; uint8_t* _bc_p = gmb_get_public_key((const uint8_t*)");
-    emit_bytes_operand(c, a[0]); sb_put(&c->out, ".data, (size_t)");
-    emit_bytes_operand(c, a[0]); sb_put(&c->out, ".length, &_bc_n); gmb_string_take_bytes(_bc_p, _bc_n); })");
-    return 1;
-}
-/* CONTRACT(addr$, iface$[, rpc$]) → dict boxed {address, interface, rpcUrl}. */
-static int bc_contract(ctx_t* c, gmb_expr_t** a, int n) {
-    if (n < 2) return 0;
-    sb_put(&c->out, "gmb_contract_proxy_val((");
-    emit_str_operand(c, a[0]); sb_put(&c->out, ").data, (");
-    emit_str_operand(c, a[1]); sb_put(&c->out, ").data, ");
-    if (n >= 3) { sb_put(&c->out, "("); emit_str_operand(c, a[2]); sb_put(&c->out, ").data"); }
-    else sb_put(&c->out, "\"\"");
-    sb_put(&c->out, ")");
-    return 1;
-}
-/* ABIENCODE(sig$, args...) → stringa hex (gmb_abi_encode_vals). Gli argomenti variadici
- * sono impacchettati in un array gmb_val_t (stringa o double). */
-static int bc_abi_encode(ctx_t* c, gmb_expr_t** a, int n) {
-    if (n < 1) return 0;
-    int argc = n - 1;
-    sb_put(&c->out, "gmb_string_alloc(gmb_abi_encode_vals((");
-    emit_str_operand(c, a[0]); sb_put(&c->out, ").data, ");
-    if (argc > 0) {
-        sb_put(&c->out, "(const gmb_val_t[]){ ");
-        for (int i = 1; i < n; i++) {
-            if (i > 1) sb_put(&c->out, ", ");
-            if (etype(c, a[i]) == TY_STR) {
-                sb_put(&c->out, "gmb_make_val_string((");
-                emit_str_operand(c, a[i]); sb_put(&c->out, ").data)");
-            } else {
-                sb_put(&c->out, "gmb_make_val_double((");
-                emit_expr(c, a[i]); sb_put(&c->out, "))");
-            }
-        }
-        sb_put(&c->out, " }, ");
-    } else {
-        sb_put(&c->out, "NULL, ");
-    }
-    sb_printf(&c->out, "%d))", argc);
-    return 1;
-}
-/* ABIDECODE(hex$, types[]) → double* (la forma `DIM r = ...` passa da dim_arr_init_kind). */
-static int bc_abi_decode(ctx_t* c, gmb_expr_t** a, int n) {
-    if (n < 1) return 0;
-    sb_put(&c->out, "gmb_abi_decode_doubles((");
-    emit_str_operand(c, a[0]); sb_put(&c->out, ").data, &(int){0})");
-    return 1;
-}
-static const bc_row BC_TBL[] = {
-    { GMB_TOK_Keccak256, bc_keccak }, { GMB_TOK_RipeMd160, bc_ripemd },
-    { GMB_TOK_Blake2b256, bc_blake },
-    { GMB_TOK_RlpEncode, bc_rlp }, { GMB_TOK_VarIntEncode, bc_varint_encode },
-    { GMB_TOK_VarIntDecode, bc_varint_decode },
-    { GMB_TOK_EthAddressFromPub, bc_eth_addr }, { GMB_TOK_EthAddressChecksum, bc_eth_checksum },
-    { GMB_TOK_BtcAddressFromPub, bc_btc_addr }, { GMB_TOK_BlockDifficulty, bc_difficulty },
-    { GMB_TOK_EcdsaSecp256k1Sign, bc_sign },
-    { GMB_TOK_GenerateMnemonic, bc_mnemonic }, { GMB_TOK_MnemonicToSeed, bc_mnemonic_to_seed },
-    { GMB_TOK_DeriveKey, bc_derive_key }, { GMB_TOK_GetPublicKey, bc_get_pubkey },
-    { GMB_TOK_Contract, bc_contract },
-    { GMB_TOK_AbiEncode, bc_abi_encode }, { GMB_TOK_AbiDecode, bc_abi_decode },
-};
-int emit_bf_blockchain(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk, gmb_expr_t** args, int nargs, int line) {
-    (void)name; (void)ns; (void)line;
-    for (size_t i = 0; i < sizeof(BC_TBL) / sizeof(BC_TBL[0]); i++)
-        if (BC_TBL[i].tk == tk) return BC_TBL[i].sp(c, args, nargs);
     return 0;
 }
 /* ── dominio: finance_scalar (delegazione §0quater) ── */
