@@ -961,9 +961,6 @@ procedure,MOUSE,RIGHT,MouseRight
 procedure,MOUSE,WHEEL,MouseWheel
 procedure,MOUSE,X,MouseX
 procedure,MOUSE,Y,MouseY
-procedure,MULTIVARIATE,BOOSTFIT,MvBoostFit
-procedure,MULTIVARIATE,BOOSTPREDICT,MvBoostPredict
-procedure,MULTIVARIATE,BOOSTSCORE,MvBoostScore
 procedure,MUTEX,TRYLOCK,MutexTryLock
 procedure,NET,CONN,Conn
 procedure,NET,GETHOSTIP,GetHostIp

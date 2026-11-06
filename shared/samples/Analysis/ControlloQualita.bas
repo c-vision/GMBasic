@@ -10,7 +10,7 @@
 '
 ' Domini: ANALYSIS + MATH. Input fissi: l'output è riproducibile.
 
-IMPORT MULTIVARIATEX
+IMPORT MULTIVARIATE
 IMPORT STATS
 SUB Main()
     ' ── 1. ANOVA: tre linee, quattro pezzi ciascuna ──────────────────────────
@@ -41,7 +41,7 @@ SUB Main()
     misure(4) = {24.0, 1.05}
     misure(5) = {25.0, 1.06}
     DIM pcaOut(5) AS DOUBLE
-    CALL MULTIVARIATEX.PCA(misure, pcaOut)
+    CALL MULTIVARIATE.PCA(misure, pcaOut)
     PRINT "== 2. PCA: temperatura e pressione =="
     PRINT "autovalore 1 = "; MATH.ROUND(pcaOut(0), 6)
     PRINT "autovalore 2 = "; MATH.ROUND(pcaOut(1), 6)

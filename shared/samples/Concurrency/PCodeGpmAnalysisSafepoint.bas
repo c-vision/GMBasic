@@ -1,5 +1,5 @@
 ' KMEANS oltre la soglia CPU: il PCB deve parcheggiarsi senza occupare l'unico worker P.
-IMPORT MULTIVARIATEX
+IMPORT MULTIVARIATE
 
 SUB HeavyAnalysis(WG AS WAITGROUP)
   DIM data(99999) AS DOUBLE
@@ -13,7 +13,7 @@ SUB HeavyAnalysis(WG AS WAITGROUP)
   NEXT
 
   DIM result(100001) AS DOUBLE
-  CALL MULTIVARIATEX.KMEANS(data, 2, result)
+  CALL MULTIVARIATE.KMEANS(data, 2, result)
   IF result(0) > 0 THEN
     PRINT "ANALYSIS-RESULT-OK"
   ELSE

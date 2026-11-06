@@ -1,6 +1,6 @@
 ' multivariatex.inc — MULTIVARIATE via FFI (libgmbstats), prima slice scalare.
 ' Stessi nomi/parametri del builtin; n dedotto dagli array dove possibile.
-NAMESPACE MULTIVARIATEX
+NAMESPACE MULTIVARIATE
 
 DECLARE FUNCTION MXF_BOEI LIB "gmbstats" ALIAS "ofx_bo_ei" (mu AS DOUBLE, sd AS DOUBLE, best AS DOUBLE, xi AS DOUBLE) AS DOUBLE
 DECLARE FUNCTION MXF_BOPI LIB "gmbstats" ALIAS "ofx_bo_pi" (mu AS DOUBLE, sd AS DOUBLE, best AS DOUBLE, xi AS DOUBLE) AS DOUBLE
@@ -155,3 +155,43 @@ PUBLIC FUNCTION SVMPREDICT(W() AS DOUBLE, x() AS DOUBLE, d AS LONG, k AS LONG) A
     __r = MXF_SVMPRED(W, x, d, k)
     RETURN __r
 END FUNCTION
+
+' ── Gradient boosting: modello opaco (handle LONG) ────────────────────────
+DECLARE FUNCTION MXF_BOOSTFIT LIB "gmbstats" ALIAS "ofx_boost_fit" (X() AS DOUBLE, y() AS DOUBLE, n AS LONG, d AS LONG, engine AS LONG, nEst AS LONG, lr AS DOUBLE, maxDepth AS LONG) AS LONG
+DECLARE FUNCTION MXF_BOOSTPRED LIB "gmbstats" ALIAS "ofx_boost_predict" (model AS LONG, x() AS DOUBLE, d AS LONG) AS DOUBLE
+DECLARE FUNCTION MXF_BOOSTSCORE LIB "gmbstats" ALIAS "ofx_boost_score" (model AS LONG, X() AS DOUBLE, y() AS DOUBLE, n AS LONG, d AS LONG) AS DOUBLE
+DECLARE SUB MXF_BOOSTFREE LIB "gmbstats" ALIAS "ofx_boost_free" (model AS LONG)
+
+PUBLIC FUNCTION BOOSTFIT(X() AS ARRAY OF DOUBLE, y() AS DOUBLE, engine AS LONG, nEst AS LONG, lr AS DOUBLE, maxDepth AS LONG) AS LONG
+    DIM n AS LONG = UBOUND(X) + 1
+    DIM d AS LONG = UBOUND(X(0)) + 1
+    DIM flat((n * d) - 1) AS DOUBLE
+    FOR i = 0 TO n - 1
+        FOR j = 0 TO d - 1
+            flat(i * d + j) = X(i)(j)
+        NEXT j
+    NEXT i
+    DIM __h AS LONG
+    __h = MXF_BOOSTFIT(flat, y, n, d, engine, nEst, lr, maxDepth)
+    RETURN __h
+END FUNCTION
+
+PUBLIC FUNCTION BOOSTPREDICT(model AS LONG, x() AS DOUBLE) AS DOUBLE
+    RETURN MXF_BOOSTPRED(model, x, UBOUND(x) + 1)
+END FUNCTION
+
+PUBLIC FUNCTION BOOSTSCORE(model AS LONG, X() AS ARRAY OF DOUBLE, y() AS DOUBLE) AS DOUBLE
+    DIM n AS LONG = UBOUND(X) + 1
+    DIM d AS LONG = UBOUND(X(0)) + 1
+    DIM flat((n * d) - 1) AS DOUBLE
+    FOR i = 0 TO n - 1
+        FOR j = 0 TO d - 1
+            flat(i * d + j) = X(i)(j)
+        NEXT j
+    NEXT i
+    RETURN MXF_BOOSTSCORE(model, flat, y, n, d)
+END FUNCTION
+
+PUBLIC SUB BOOSTFREE(model AS LONG)
+    CALL MXF_BOOSTFREE(model)
+END SUB
