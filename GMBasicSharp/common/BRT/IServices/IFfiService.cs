@@ -95,5 +95,5 @@ public interface IFfiService
         long stringMask, bool retIsString, long byrefScalarMask = 0, long byrefScalarElemIntMask = 0,
         FfiUdtShape?[]? udtParams = null, FfiUdtShape? udtReturn = null,
         Type?[]? udtParamClrTypes = null, Type? udtReturnClrType = null, long scalarKindMask = 0,
-        string[]? udtShapeStrs = null, string? udtReturnShapeStr = null);
+        string[]? udtShapeStrs = null, string? udtReturnShapeStr = null, long byrefUdtMask = 0);
 }

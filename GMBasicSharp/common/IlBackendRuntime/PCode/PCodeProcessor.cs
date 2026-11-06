@@ -4563,6 +4563,7 @@ internal sealed partial class PCodeProcessor
                 var udtParamFieldKindMask = new int[PCodeFfiMaxArgs];
                 var udtParamNew = new bool[PCodeFfiMaxArgs];
                 var udtArrCount = new int[PCodeFfiMaxArgs];
+                var byrefUdtMask = 0;
                 var callbackParamArity = new int[PCodeFfiMaxArgs];
                 for (var pi = 0; pi < PCodeFfiMaxArgs; pi++) callbackParamArity[pi] = 255;
                 for (var pi = 0; pi < argCount; pi++)
@@ -4574,8 +4575,13 @@ internal sealed partial class PCodeProcessor
                     if ((f & 4) != 0) stringMask |= 1 << pi;
                     if ((f & 8) != 0)
                     {
-                        byrefScalarMask |= 1 << pi;
-                        if ((f & 0x80) != 0) byrefScalarElemIntMask |= 1 << pi;
+                        // BYREF UDT (2026-11-06): bit 0x20 = UDT → puntatore a struct.
+                        if ((f & 0x20) != 0) byrefUdtMask |= 1 << pi;
+                        else
+                        {
+                            byrefScalarMask |= 1 << pi;
+                            if ((f & 0x80) != 0) byrefScalarElemIntMask |= 1 << pi;
+                        }
                     }
                     if ((f & 0x10) != 0)
                     {
@@ -4650,7 +4656,8 @@ internal sealed partial class PCodeProcessor
                 for (var i = argCount - 1; i >= 0; i--)
                 {
                     var popped = task.Sp > 0 ? task.PopRef() : null;
-                    if ((byrefScalarMask & (1 << i)) != 0 && popped is Basic.Runtime.Gpm.ByRefBox box)
+                    if (((byrefScalarMask & (1 << i)) != 0 || (byrefUdtMask & (1 << i)) != 0)
+                        && popped is Basic.Runtime.Gpm.ByRefBox box)
                     {
                         byrefBoxes[i] = box;
                         args[i] = box.Value;
@@ -4699,7 +4706,7 @@ internal sealed partial class PCodeProcessor
                         var fullMaskForArgc = argCount >= PCodeFfiMaxArgs ? (ushort)0xFFFF : (ushort)((1 << argCount) - 1);
                         var uniformScalarKind = scalarKindMask == (kind == 1 ? fullMaskForArgc : 0);
                         var result = arrayMask != 0 || stringMask != 0 || retIsString || byrefScalarMask != 0 || anyUdt || !uniformScalarKind
-                            ? _runtime.Ffi.CallFunctionTypedArr(funcPtr, args, kind, arrayMask, arrayElemIntMask, stringMask, retIsString, byrefScalarMask, byrefScalarElemIntMask, udtParamShapes, retUdtShape, scalarKindMask: scalarKindMask)
+                            ? _runtime.Ffi.CallFunctionTypedArr(funcPtr, args, kind, arrayMask, arrayElemIntMask, stringMask, retIsString, byrefScalarMask, byrefScalarElemIntMask, udtParamShapes, retUdtShape, scalarKindMask: scalarKindMask, byrefUdtMask: byrefUdtMask)
                             : _runtime.Ffi.CallFunctionTyped(funcPtr, args, (byte)kind);
                         GC.KeepAlive(callbackKeepAlive);
                         for (var i = 0; i < argCount; i++)
