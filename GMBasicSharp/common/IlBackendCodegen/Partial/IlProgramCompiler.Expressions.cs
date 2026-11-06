@@ -1886,7 +1886,8 @@ public sealed partial class IlProgramCompiler
                 _il.Emit(OpCodes.Ldc_I8, (long)byrefScalarMask);
                 _il.Emit(OpCodes.Ldc_I8, (long)byrefScalarElemIntMask);
                 EmitUdtShapesArray();
-                _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.FfiCallTypedArrUdt), typeof(string), typeof(string), typeof(object[]), typeof(int), typeof(long), typeof(long), typeof(long), typeof(long), typeof(long), typeof(string[])));
+                _il.Emit(OpCodes.Ldc_I8, (long)scalarKindMask);
+                _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.FfiCallTypedArrUdt), typeof(string), typeof(string), typeof(object[]), typeof(int), typeof(long), typeof(long), typeof(long), typeof(long), typeof(long), typeof(string[]), typeof(long)));
             }
             else if (arrayMask != 0 || stringMask != 0 || byrefScalarMask != 0 || anyCallbackParam)
             {
@@ -1941,10 +1942,11 @@ public sealed partial class IlProgramCompiler
             _il.Emit(OpCodes.Ldc_I8, (long)byrefScalarMask);
             _il.Emit(OpCodes.Ldc_I8, (long)byrefScalarElemIntMask);
             if (anyUdtParam) EmitUdtShapesArray(); else _il.Emit(OpCodes.Ldnull);
+            _il.Emit(OpCodes.Ldc_I8, (long)scalarKindMask);
             _il.Emit(OpCodes.Ldstr, UdtShapeString(udtReturn, "il ritorno"));
             _il.Emit(OpCodes.Ldtoken, udtReturnClrType);
             _il.Emit(OpCodes.Call, GetTypeFromHandleMethod);
-            _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.FfiCallTypedArrUdtRet), typeof(string), typeof(string), typeof(object[]), typeof(int), typeof(long), typeof(long), typeof(long), typeof(long), typeof(long), typeof(string[]), typeof(string), typeof(Type)));
+            _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.FfiCallTypedArrUdtRet), typeof(string), typeof(string), typeof(object[]), typeof(int), typeof(long), typeof(long), typeof(long), typeof(long), typeof(long), typeof(string[]), typeof(long), typeof(string), typeof(Type)));
             _il.Emit(OpCodes.Unbox_Any, udtReturnClrType);
             EmitByRefScalarWriteback();
             EmitCallbackKeepAliveIfAny();
@@ -1958,10 +1960,11 @@ public sealed partial class IlProgramCompiler
             _il.Emit(OpCodes.Ldc_I8, (long)byrefScalarMask);
             _il.Emit(OpCodes.Ldc_I8, (long)byrefScalarElemIntMask);
             EmitUdtShapesArray();
+            _il.Emit(OpCodes.Ldc_I8, (long)scalarKindMask);
             if (retIsString)
-                _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.FfiCallTypedArrUdtStr), typeof(string), typeof(string), typeof(object[]), typeof(int), typeof(long), typeof(long), typeof(long), typeof(long), typeof(long), typeof(string[])));
+                _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.FfiCallTypedArrUdtStr), typeof(string), typeof(string), typeof(object[]), typeof(int), typeof(long), typeof(long), typeof(long), typeof(long), typeof(long), typeof(string[]), typeof(long)));
             else
-                _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.FfiCallTypedArrUdt), typeof(string), typeof(string), typeof(object[]), typeof(int), typeof(long), typeof(long), typeof(long), typeof(long), typeof(long), typeof(string[])));
+                _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.FfiCallTypedArrUdt), typeof(string), typeof(string), typeof(object[]), typeof(int), typeof(long), typeof(long), typeof(long), typeof(long), typeof(long), typeof(string[]), typeof(long)));
             EmitByRefScalarWriteback();
             EmitCallbackKeepAliveIfAny();
         }

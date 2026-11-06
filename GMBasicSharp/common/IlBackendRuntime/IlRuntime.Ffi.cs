@@ -72,23 +72,23 @@ public static partial class IlRuntime
     /// TypeBuilder) di quel parametro; <c>args[i]</c> è già l'istanza boxed corrispondente
     /// (EmitObjectBoxedArgument, EmitFfiCall). Usato quando il RITORNO NON è un UDT né STRING
     /// (altrimenti vedi <see cref="FfiCallTypedArrUdtStr"/>/<see cref="FfiCallTypedArrUdtRet"/>).</summary>
-    public static double FfiCallTypedArrUdt(string lib, string symbol, object?[] args, int kind, long arrayMask, long arrayElemIntMask, long stringMask, long byrefScalarMask, long byrefScalarElemIntMask, string[] udtShapes)
+    public static double FfiCallTypedArrUdt(string lib, string symbol, object?[] args, int kind, long arrayMask, long arrayElemIntMask, long stringMask, long byrefScalarMask, long byrefScalarElemIntMask, string[] udtShapes, long scalarKindMask)
     {
         var ffi = Current.Ffi;
         var handle = ffi.LoadLibrary(lib);
         var fnPtr = ffi.GetFunction(handle, symbol);
-        var result = ffi.CallFunctionTypedArr(fnPtr, args, kind, arrayMask, arrayElemIntMask, stringMask, retIsString: false, byrefScalarMask, byrefScalarElemIntMask, udtShapeStrs: udtShapes, scalarKindMask: (kind == 1 ? 0xFFFF : 0));
+        var result = ffi.CallFunctionTypedArr(fnPtr, args, kind, arrayMask, arrayElemIntMask, stringMask, retIsString: false, byrefScalarMask, byrefScalarElemIntMask, udtShapeStrs: udtShapes, scalarKindMask: scalarKindMask);
         return Convert.ToDouble(result ?? 0.0);
     }
 
     /// <summary>Come <see cref="FfiCallTypedArrUdt"/>, per una dichiarazione il cui RITORNO è
     /// STRING (stesso motivo di <see cref="FfiCallTypedArrStr"/>: IL è staticamente tipizzato).</summary>
-    public static string FfiCallTypedArrUdtStr(string lib, string symbol, object?[] args, int kind, long arrayMask, long arrayElemIntMask, long stringMask, long byrefScalarMask, long byrefScalarElemIntMask, string[] udtShapes)
+    public static string FfiCallTypedArrUdtStr(string lib, string symbol, object?[] args, int kind, long arrayMask, long arrayElemIntMask, long stringMask, long byrefScalarMask, long byrefScalarElemIntMask, string[] udtShapes, long scalarKindMask)
     {
         var ffi = Current.Ffi;
         var handle = ffi.LoadLibrary(lib);
         var fnPtr = ffi.GetFunction(handle, symbol);
-        var result = ffi.CallFunctionTypedArr(fnPtr, args, kind, arrayMask, arrayElemIntMask, stringMask, retIsString: true, byrefScalarMask, byrefScalarElemIntMask, udtShapeStrs: udtShapes, scalarKindMask: (kind == 1 ? 0xFFFF : 0));
+        var result = ffi.CallFunctionTypedArr(fnPtr, args, kind, arrayMask, arrayElemIntMask, stringMask, retIsString: true, byrefScalarMask, byrefScalarElemIntMask, udtShapeStrs: udtShapes, scalarKindMask: scalarKindMask);
         return result as string ?? "";
     }
 
@@ -97,12 +97,12 @@ public static partial class IlRuntime
     /// ritorno — il risultato torna COM'È (istanza boxed di quel tipo), il chiamante
     /// (EmitFfiCall) la unboxa con <c>Unbox_Any</c> sul tipo noto a compile-time. <paramref
     /// name="udtParamTypes"/> può essere null se nessun PARAMETRO è un UDT (solo il ritorno).</summary>
-    public static object FfiCallTypedArrUdtRet(string lib, string symbol, object?[] args, int kind, long arrayMask, long arrayElemIntMask, long stringMask, long byrefScalarMask, long byrefScalarElemIntMask, string[]? udtShapes, string udtReturnShape, Type udtReturnType)
+    public static object FfiCallTypedArrUdtRet(string lib, string symbol, object?[] args, int kind, long arrayMask, long arrayElemIntMask, long stringMask, long byrefScalarMask, long byrefScalarElemIntMask, string[]? udtShapes, long scalarKindMask, string udtReturnShape, Type udtReturnType)
     {
         var ffi = Current.Ffi;
         var handle = ffi.LoadLibrary(lib);
         var fnPtr = ffi.GetFunction(handle, symbol);
-        var result = ffi.CallFunctionTypedArr(fnPtr, args, kind, arrayMask, arrayElemIntMask, stringMask, retIsString: false, byrefScalarMask, byrefScalarElemIntMask, udtReturnClrType: udtReturnType, scalarKindMask: (kind == 1 ? 0xFFFF : 0), udtShapeStrs: udtShapes, udtReturnShapeStr: udtReturnShape);
+        var result = ffi.CallFunctionTypedArr(fnPtr, args, kind, arrayMask, arrayElemIntMask, stringMask, retIsString: false, byrefScalarMask, byrefScalarElemIntMask, udtReturnClrType: udtReturnType, scalarKindMask: scalarKindMask, udtShapeStrs: udtShapes, udtReturnShapeStr: udtReturnShape);
         return result!;
     }
 }

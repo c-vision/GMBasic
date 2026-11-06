@@ -606,6 +606,60 @@ public class FfiService : IFfiService
         return dst;
     }
 
+    /// <summary>Scrive un elemento di array-di-UDT in memoria nativa, campo per campo, secondo i
+    /// codici tipo del layout C (S3, 2026-11-06). Evita del tutto il marshalling di struct a
+    /// layout esplicito (che causava SIGBUS passando un array gestito pinnato a libffi).</summary>
+    private static void WriteFfiElem(IntPtr dst, FfiUdtShape shape, object? src, List<IntPtr> strPtrs)
+    {
+        var d = src as System.Collections.IDictionary;
+        for (var i = 0; i < shape.FieldNames.Length; i++)
+        {
+            object? raw = d != null ? GetFfiLeafValue(d, shape.FieldNames[i]) : GetPathValue(src, shape.FieldNames[i]);
+            var code = shape.FieldTypes![i];
+            var p = dst + shape.FieldOffsets![i];
+            switch (code)
+            {
+                case 0: Marshal.WriteInt64(p, BitConverter.DoubleToInt64Bits(Convert.ToDouble(raw ?? 0.0))); break;
+                case 1:
+                case 10: Marshal.WriteInt64(p, Convert.ToInt64(raw ?? 0L)); break;
+                case 2: Marshal.WriteByte(p, (byte)Convert.ToSByte(raw ?? 0)); break;
+                case 3: Marshal.WriteByte(p, Convert.ToByte(raw ?? 0)); break;
+                case 4:
+                case 5: Marshal.WriteInt16(p, Convert.ToInt16(raw ?? 0)); break;
+                case 6:
+                case 7: Marshal.WriteInt32(p, Convert.ToInt32(raw ?? 0)); break;
+                case 8: Marshal.WriteInt32(p, BitConverter.SingleToInt32Bits(Convert.ToSingle(raw ?? 0.0))); break;
+                case 9:
+                    var sp = Marshal.StringToCoTaskMemUTF8(Convert.ToString(raw) ?? "");
+                    strPtrs.Add(sp);
+                    Marshal.WriteIntPtr(p, sp);
+                    break;
+            }
+        }
+    }
+
+    private static object?[] ReadFfiElem(IntPtr src, FfiUdtShape shape)
+    {
+        var vals = new object?[shape.FieldNames.Length];
+        for (var i = 0; i < vals.Length; i++)
+        {
+            var code = shape.FieldTypes![i];
+            var p = src + shape.FieldOffsets![i];
+            vals[i] = code switch
+            {
+                0 => BitConverter.Int64BitsToDouble(Marshal.ReadInt64(p)),
+                1 or 10 => Marshal.ReadInt64(p),
+                2 or 3 => (double)Marshal.ReadByte(p),
+                4 or 5 => (double)Marshal.ReadInt16(p),
+                6 or 7 => (double)Marshal.ReadInt32(p),
+                8 => (double)BitConverter.Int32BitsToSingle(Marshal.ReadInt32(p)),
+                9 => Marshal.PtrToStringUTF8(Marshal.ReadIntPtr(p)) ?? "",
+                _ => 0.0,
+            };
+        }
+        return vals;
+    }
+
     /// <summary>Costruisce un elemento struct-ombra (layout C) da una struct del dialetto (IL) o
     /// da un Dictionary (PCode), per gli array di UDT (S3, 2026-11-06).</summary>
     private static object BuildFfiElem(object? src, FfiUdtShape shape, Type ffiElem, List<IntPtr> strPtrs)
@@ -808,6 +862,9 @@ public class FfiService : IFfiService
         var udtArrScratch = new Array?[n];
         var udtArrOrig = new Array?[n];
         var udtArrShapes = new FfiUdtShape?[n];
+        var udtArrRaw = new IntPtr[n];
+        var udtArrElemSize = new int[n];
+        var udtArrElemType = new Type?[n];
         var byteOrig = new Array?[n];
         try
         {
@@ -845,14 +902,20 @@ public class FfiService : IFfiService
                     var ffiElem = GetOrBuildUdtShapeType(udtArrShape.FieldTypes, udtArrShape.FieldIsInt, udtArrShape.FieldOffsets);
                     var srcArr = args[i] as Array;
                     var na = srcArr?.Length ?? 0;
-                    var dst = Array.CreateInstance(ffiElem, na);
+                    // Buffer NON gestito: un array gestito di struct a layout esplicito non è
+                    // affidabile da pinnare (SIGBUS in ffi_call, 2026-11-06). Si scrive campo per
+                    // campo in memoria nativa e si rilegge dopo la chiamata.
+                    var elemSize = udtArrShape.Size > 0 ? udtArrShape.Size : Marshal.SizeOf(ffiElem);
+                    var raw = Marshal.AllocHGlobal(Math.Max(1, na * elemSize));
                     var strPtrs = udtStrPtrs ??= new List<IntPtr>();
                     for (var j = 0; j < na; j++)
-                        dst.SetValue(BuildFfiElem(srcArr!.GetValue(j), udtArrShape, ffiElem, strPtrs), j);
-                    udtArrScratch[i] = dst;
+                        WriteFfiElem(raw + j * elemSize, udtArrShape, srcArr!.GetValue(j), strPtrs);
+                    udtArrScratch[i] = null;
                     udtArrOrig[i] = srcArr;
-                    handles[i] = GCHandle.Alloc(dst, GCHandleType.Pinned);
-                    dArgs[i] = handles[i].AddrOfPinnedObject();
+                    udtArrElemSize[i] = elemSize;
+                    udtArrRaw[i] = raw;
+                    udtArrElemType[i] = ffiElem;
+                    dArgs[i] = raw;
                     continue;
                 }
                 if (udtParams != null && i < udtParams.Length && udtParams[i] is { } udtShapeIn)
@@ -1221,18 +1284,16 @@ public class FfiService : IFfiService
             // Copy-out degli array di UDT (S3): la funzione nativa può aver modificato il buffer.
             for (var i = 0; i < n; i++)
             {
-                if (udtArrScratch[i] is not { } dstArr || udtArrOrig[i] is not { } srcArr) continue;
+                if (udtArrRaw[i] == IntPtr.Zero || udtArrOrig[i] is not { } srcArr) continue;
                 var shape = udtArrShapes[i]!;
-                for (var j = 0; j < dstArr.Length && j < srcArr.Length; j++)
+                var esz = udtArrElemSize[i];
+                for (var j = 0; j < srcArr.Length; j++)
                 {
-                    var ffi = dstArr.GetValue(j)!;
+                    var vals = ReadFfiElem(udtArrRaw[i] + j * esz, shape);
                     var target = srcArr.GetValue(j);
                     for (var f = 0; f < shape.FieldNames.Length; f++)
                     {
-                        var raw = ffi.GetType().GetField($"F{f}")!.GetValue(ffi);
-                        object? v = shape.FieldTypes != null && shape.FieldTypes[f] == 9
-                            ? (raw is IntPtr ip ? (Marshal.PtrToStringUTF8(ip) ?? "") : (raw as string ?? ""))
-                            : Convert.ToDouble(raw ?? 0.0);
+                        object? v = vals[f];
                         var symbolPath = shape.FieldSymbolIdPaths[f];
                         if (target is Dictionary<string, object?> td)
                             SetFfiLeafValue(td, shape.FieldNames[f], symbolPath, v);
@@ -1308,6 +1369,8 @@ public class FfiService : IFfiService
             {
                 foreach (var sp in udtStrPtrs) Marshal.FreeCoTaskMem(sp);
             }
+            for (var i = 0; i < n; i++)
+                if (udtArrRaw[i] != IntPtr.Zero) { Marshal.FreeHGlobal(udtArrRaw[i]); udtArrRaw[i] = IntPtr.Zero; }
         }
     }
 

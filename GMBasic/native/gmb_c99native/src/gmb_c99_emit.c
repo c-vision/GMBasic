@@ -31105,6 +31105,8 @@ static void emit_ffi_wrapper(ctx_t* c, fn_info_t* fn) {
      * kind INTERNO del callback. v1: arità 0-4, firma interna omogenea per kind, BYVAL. Vedi
      * AiWiki Bugs/(open) - FFI-Estensioni-Possibili-BYREF-Struct-Callback.md §3bis. */
     int is_cb_param[8] = {0};
+    struct cls_info* arr_udt_ci[8] = {0};   /* array con elemento TYPE (S3) */
+    char arr_udt_tname[8][72] = {{0}};
     int cb_arity[8] = {0};
     int cb_kind_int[8] = {0};  /* 1 = firma interna del callback e' INT64, 0 = DOUBLE */
     int cb_has_ret[8] = {0};
@@ -31186,6 +31188,15 @@ static void emit_ffi_wrapper(ctx_t* c, fn_info_t* fn) {
             /* BYTE/SBYTE (2026-11-06): ammessi come elemento-array — lo storage BASIC resta
              * gmb_double_t*, la conversione a gmb_int_t (8 byte per elemento, valori 0..255) e'
              * fatta da __ci_<param> sotto (n_intarr), con copy-back dopo la chiamata. */
+            /* Array di UDT (S3, 2026-11-06): elemento = TYPE semplice. */
+            struct cls_info* aci = s->param_types && s->param_types[i] ? cls_find(c, s->param_types[i]) : NULL;
+            if (aci && aci->is_udt) {
+                char whatA[96];
+                snprintf(whatA, sizeof(whatA), "il parametro array '%s'", s->func_params[i]);
+                if (!ffi_validate_udt(c, aci, sym, whatA, s->line, 1)) return;
+                if (i < 8) arr_udt_ci[i] = aci;
+                continue;
+            }
             int elemOk = ek == GMB_TOK_Double
                 || ek == GMB_TOK_Long || ek == GMB_TOK_Quad
                 || ek == GMB_TOK_UQuad || ek == GMB_TOK_ULong
@@ -31306,6 +31317,12 @@ static void emit_ffi_wrapper(ctx_t* c, fn_info_t* fn) {
      * Con libffi ogni argomento ha il proprio slot tipizzato, quindi il limite non esiste più:
      * N parametri a kind misto sono ammessi (nessuna guardia). */
     int nint = 0, ndbl = 0, nany_arr = 0, nany_str = 0, nany_byref = 0;
+    /* Array di UDT (S3): nome del tipo C dell'elemento (usato in firma e nel cast). */
+    for (int i = 0; i < s->n_params && i < 8; i++)
+        if (arr_udt_ci[i]) {
+            const char* tn = ffi_udt_shape_name(c, arr_udt_ci[i]);
+            snprintf(arr_udt_tname[i], sizeof(arr_udt_tname[i]), "%s*", tn);
+        }
     for (int i = 0; i < s->n_params; i++) {
         if (i < 8 && is_arr_param[i]) { nint++; nany_arr++; continue; }
         if (i < 8 && is_str_param[i]) { nint++; nany_str++; continue; }
@@ -31372,6 +31389,7 @@ static void emit_ffi_wrapper(ctx_t* c, fn_info_t* fn) {
      * preveniva: struct invece di puntatore). */
     #define FFI_INNER(k2) ((k2) < 8 && is_cb_param[k2] ? ffi_cb_native_type(cb_arity[k2], cb_kind_int[k2], cb_has_ret[k2]) \
         : (k2) < 8 && udt_param_ci[k2] ? ffi_udt_shape_name(c, udt_param_ci[k2]) \
+        : (k2) < 8 && arr_udt_ci[k2] ? arr_udt_tname[k2] \
         : (k2) < 8 && is_arr_param[k2] \
         ? (strcmp(ffi_param_ctype(s, k2), "gmb_int_t") == 0 ? "gmb_int_t*" : "gmb_double_t*") \
         : (k2) < 8 && is_byref_param[k2] \
@@ -31419,7 +31437,12 @@ static void emit_ffi_wrapper(ctx_t* c, fn_info_t* fn) {
              * SEMPRE gmb_double_t* (anche `DIM x(n) AS LONG`) → il parametro-wrapper e'
              * sempre double* + bound compagna; la conversione al tipo-elemento FFI
              * (intero) avviene nel corpo (copy-in/copy-back). */
-            sb_put(&c->out, "gmb_double_t* ");
+            if (arr_udt_ci[i]) {
+                /* Array di UDT: la memoria BASIC e un array di gmb_val_t (istanze boxate). */
+                sb_put(&c->out, "gmb_val_t* ");
+            } else {
+                sb_put(&c->out, "gmb_double_t* ");
+            }
             emit_ident(c, s->func_params[i]);
             sb_put(&c->out, ", gmb_int_t ");
             sb_bound_ident(&c->out, s->func_params[i], 0);
@@ -31480,6 +31503,39 @@ static void emit_ffi_wrapper(ctx_t* c, fn_info_t* fn) {
         sb_put(&c->out, "for (gmb_int_t __k = 0; __k <= "); emit_ident(c, s->func_params[i]); sb_put(&c->out, "__b0; __k++) __ci_");
         emit_ident(c, s->func_params[i]); sb_put(&c->out, "[__k] = (gmb_int_t)"); emit_ident(c, s->func_params[i]); sb_put(&c->out, "[__k];\n");
     }
+    /* Array di UDT (S3, 2026-11-06): buffer contiguo di struct nel layout C, riempito dagli
+     * elementi (istanze boxate gmb_obj_<Tipo>) — il nativo vede `gmb_ffi_udt_<Tipo>_t*`. */
+    for (int i = 0; i < s->n_params && i < 8; i++) {
+        if (!arr_udt_ci[i]) continue;
+        struct cls_info* uci = arr_udt_ci[i];
+        ffi_leaf_t lv[64];
+        int nlv = collect_ffi_leaves_silent(c, uci, "", lv, 64);
+        ind(c);
+        sb_printf(&c->out, "gmb_ffi_udt_%s_t __ua_", uci->name); emit_ident(c, s->func_params[i]);
+        sb_put(&c->out, "["); emit_ident(c, s->func_params[i]); sb_put(&c->out, "__b0 + 1];\n");
+        ind(c);
+        sb_put(&c->out, "for (gmb_int_t __k = 0; __k <= "); emit_ident(c, s->func_params[i]);
+        sb_put(&c->out, "__b0; __k++) { gmb_obj_"); sb_printf(&c->out, "%s* __e = (gmb_obj_%s*)(((gmb_obj_t*)", uci->name, uci->name);
+        emit_ident(c, s->func_params[i]); sb_put(&c->out, "[__k].v_ptr)->data); __ua_");
+        emit_ident(c, s->func_params[i]); sb_printf(&c->out, "[__k] = (gmb_ffi_udt_%s_t){", uci->name);
+        for (int f = 0; f < nlv; f++) {
+            if (f) sb_put(&c->out, ", ");
+            sb_printf(&c->out, "(%s)(__e->", ffi_code_ctype(lv[f].code));
+            char pb[128]; snprintf(pb, sizeof(pb), "%s", lv[f].path);
+            char* seg = pb;
+            for (;;) {
+                char* dot = strchr(seg, '.');
+                if (dot) *dot = 0;
+                sb_ident(&c->out, seg);
+                if (!dot) break;
+                sb_put(&c->out, ".");
+                seg = dot + 1;
+            }
+            if (lv[f].code == 9) sb_put(&c->out, ".data");
+            sb_put(&c->out, ")");
+        }
+        sb_put(&c->out, "}; }\n");
+    }
     /* Callback (2026-09-29): "acquire" va emesso PRIMA della chiamata nativa (assegna lo slot
      * globale), "release" SUBITO DOPO (mai prima — il nativo può richiamare il callback in un
      * punto qualunque durante la sua esecuzione, vedi il blocco dopo la chiamata sotto). */
@@ -31534,6 +31590,8 @@ static void emit_ffi_wrapper(ctx_t* c, fn_info_t* fn) {
                 } \
             } \
             sb_put(&c->out, "}"); \
+        } else if ((i) < 8 && arr_udt_ci[i]) { \
+            sb_put(&c->out, "__ua_"); emit_ident(c, s->func_params[i]); \
         } else if ((i) < 8 && is_arr_param[i] && strcmp(ffi_param_ctype(s, i), "gmb_int_t") == 0) { \
             sb_put(&c->out, "__ci_"); emit_ident(c, s->func_params[i]); \
         } else if ((i) < 8 && is_str_param[i]) { \
