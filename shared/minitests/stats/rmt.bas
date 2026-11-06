@@ -10,7 +10,7 @@ SUB Main()
   a(0) = 1: a(1) = 0.2: a(2) = 0.1
   a(3) = 0.2: a(4) = 3: a(5) = 0.4
   a(6) = 0.1: a(7) = 0.4: a(8) = 2
-  PRINT "norm="; MATH.ROUND(MULTIVARIATE.RMTSPECTRALNORM(a, 3), 6)
+  PRINT "norm="; MATH.ROUND(MULTIVARIATE.RMTSPECTRALNORM(a), 6)
   PRINT "dk="; MATH.ROUND(MULTIVARIATE.RMTDAVISKAHAN(0.5, 0.25), 6)
   DIM u(2) AS DOUBLE
   DIM w(2) AS DOUBLE

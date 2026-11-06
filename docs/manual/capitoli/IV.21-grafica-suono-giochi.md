@@ -269,7 +269,7 @@ Il motore di disegno e `CANVAS` sono **nativi**: le quattro gambe (C99 nativo, I
 VM/C) eseguono lo stesso codice e producono lo stesso output. Le superfici FFI sono comuni a
 tutte le gambe. Due limiti pratici da conoscere:
 
-- il formato FFI non ha maschere e il compilatore accetta fino a **32 argomenti** (la VM/C
+- il formato FFI non ha maschere e il compilatore accetta fino a **64 argomenti** (la VM/C
   ha buffer dinamici); le funzioni grafiche raggruppano comunque i parametri in array
   (`RAYCASTDDAEX`, `DRAWTRIANGLE`) per compattezza della firma;
 - i locals delle procedure sono **dinamici** (crescono on demand): centinaia di variabili in

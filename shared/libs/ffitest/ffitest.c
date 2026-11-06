@@ -54,3 +54,17 @@ double ft_sum40(double a1, double a2, double a3, double a4, double a5, double a6
                 double a25, double a26, double a27, double a28, double a29, double a30, double a31, double a32,
                 double a33, double a34, double a35, double a36, double a37, double a38, double a39, double a40)
 { return a1+a2+a3+a4+a5+a6+a7+a8+a9+a10+a11+a12+a13+a14+a15+a16+a17+a18+a19+a20+a21+a22+a23+a24+a25+a26+a27+a28+a29+a30+a31+a32+a33+a34+a35+a36+a37+a38+a39+a40; }
+
+
+/* 64 argomenti double: il tetto esatto del marshalling FFI (GMB_FFI_MAX_ARGS).
+ * Somma 1..64 = 2080. */
+double ft_sum64(
+double a1, double a2, double a3, double a4, double a5, double a6, double a7, double a8,
+double a9, double a10, double a11, double a12, double a13, double a14, double a15, double a16,
+double a17, double a18, double a19, double a20, double a21, double a22, double a23, double a24,
+double a25, double a26, double a27, double a28, double a29, double a30, double a31, double a32,
+double a33, double a34, double a35, double a36, double a37, double a38, double a39, double a40,
+double a41, double a42, double a43, double a44, double a45, double a46, double a47, double a48,
+double a49, double a50, double a51, double a52, double a53, double a54, double a55, double a56,
+double a57, double a58, double a59, double a60, double a61, double a62, double a63, double a64)
+{ return a1 + a2 + a3 + a4 + a5 + a6 + a7 + a8 + a9 + a10 + a11 + a12 + a13 + a14 + a15 + a16 + a17 + a18 + a19 + a20 + a21 + a22 + a23 + a24 + a25 + a26 + a27 + a28 + a29 + a30 + a31 + a32 + a33 + a34 + a35 + a36 + a37 + a38 + a39 + a40 + a41 + a42 + a43 + a44 + a45 + a46 + a47 + a48 + a49 + a50 + a51 + a52 + a53 + a54 + a55 + a56 + a57 + a58 + a59 + a60 + a61 + a62 + a63 + a64; }
