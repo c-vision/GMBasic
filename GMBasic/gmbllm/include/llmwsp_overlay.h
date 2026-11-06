@@ -56,6 +56,9 @@ size_t llmwsp_ov_journal_pos(const llmwsp_overlay *o);   /* edit attualmente app
 int    llmwsp_ov_undo(llmwsp_overlay *o);                /* 0 = ok, -1 = niente da annullare */
 int    llmwsp_ov_redo(llmwsp_overlay *o);
 
+/* Legge la slice CORRENTE (overlay se modificata, altrimenti base) come double; *n = elementi. 0 = ok. */
+int llmwsp_ov_read_f64(const llmwsp_overlay *o, const char *addr, double *out, size_t cap, size_t *n);
+
 /* CHECKPOINT/ROLLBACK (W8): segna la posizione del journal con un nome; il rollback annulla le edit successive.
  * Un nome già usato viene sovrascritto. Rollback verso un punto oltre la posizione corrente: errore (-1). */
 int llmwsp_ov_checkpoint(llmwsp_overlay *o, const char *name);

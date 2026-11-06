@@ -4,8 +4,10 @@ Strumenti per **leggere, sezionare, modificare e riscrivere i pesi** di un model
 motore. Piano e storia delle decisioni: nota di piano "Weight-Space-Programming-LLVM-Pesi-Editabili" (vault AiWiki).
 
 **Stato (2026-11-05).** Libreria C completa per i modelli **densi** Qwen3/Llama (HF safetensors, anche MLX quantizzato in sola
-lettura). **Non c'è ancora una superficie BASIC (`WSP.*`) né P/Invoke**: richiedono toccare compilatore/runtime/CMake e sono
-in attesa di permesso. Per questo non esistono ancora sample `.bas` né un capitolo di manuale per l'utente BASIC.
+lettura) con **superficie BASIC `WSP.*`** via FFI: libreria `libgmbwsp` (`shared/libs/wsp`, sorgenti venduti da qui con `build.sh`),
+export `shared/include/wsp.inc`, 7 MiniTest in `shared/minitests/wsp/`, 4 sample in `shared/samples/Wsp/`, capitolo di manuale
+`docs/manual/capitoli/V.37-weight-space-programming.md`. Verificata a parità sulle 4 gambe (`tools/sh/parity4`). Restano fuori P/Invoke C# dedicato
+(non serve: l'FFI è la via) e la registrazione degli strumenti per `AI AGENT`.
 
 ## Moduli (tutti in `gmbllm_core`, test in `tests/test_wsp_*.c`, registrati in `ctest`)
 
