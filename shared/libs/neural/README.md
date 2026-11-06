@@ -27,6 +27,12 @@ Questi moduli restano fuori dal pacchetto per non duplicare la superficie BASIC.
 | Alberi | `TREEINIT/TREEFITREG/TREEFITCLS/TREEPREDICT/TREEFREE` | CART, handle 3001+ |
 | Random Forest | `FORESTINIT/FORESTFITREG/FORESTFITCLS/FORESTPREDICT/FORESTFREE`, `AUC` | bagging deterministico (seed), handle 3101+ |
 | AdaBoost | `ADABOOSTINIT/ADABOOSTFIT/ADABOOSTPREDICT/ADABOOSTFREE` | SAMME binario, handle 3201+ |
+| SNN / BNN | `SNNSURROGATE[GRAD]`, `SNNLUTINDEX`; `BNNBYTES/WORDS/PACK/THRESH/XNOR/DOT` | BNN: pacchetti 64-bit in array `LONG` |
+| PINN | `PINNHEAT/WAVE/LAPLACE/ADVECTION/BURGERS/BOUNDARY/INITIAL/ADAPTIVENORM` | residui quadratici |
+| Detection | `IOU`, `NMS`, `YOLOBOXCFG/YOLOBOX/YOLOBOXFREE`, `NMSMULTICLASS` | bbox x,y,w,h; cfg handle 4001+ |
+| KNN | `KNNINIT/KNNCLASSIFY/KNNACCURACY/KNNFREE` | handle 4101+, copia il training set |
+| Metriche | `CONFUSION`, `ACCURACY[CM]`, `PRECISION/RECALL/F1`, `MSE/MAE/R2` | macro come ritorno, per-classe in `out()` |
+| Memplan | `MEMPLAN` | offset per lifetime, ritorna la dimensione totale |
 
 Convenzioni: `x()` = T×in, `y()`/`gy()` = T×out, DOUBLE row-major; handle LONG > 0;
 `STEP` usa i gradienti accumulati da `BACKWARD` (buffer m/v allocati al primo passo,

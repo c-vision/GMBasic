@@ -184,3 +184,65 @@ DECLARE FUNCTION ADABOOSTFIT LIB "gmbneural" ALIAS "ofx_nn_adaboost_fit" (h AS L
 ' Predizione: +1 / -1 (classe 1 / classe 0).
 DECLARE FUNCTION ADABOOSTPREDICT LIB "gmbneural" ALIAS "ofx_nn_adaboost_predict" (h AS LONG, x() AS DOUBLE) AS LONG
 DECLARE FUNCTION ADABOOSTFREE LIB "gmbneural" ALIAS "ofx_nn_adaboost_free" (h AS LONG) AS LONG
+
+' ── SNN (surrogate gradient) e LUT ─────────────────────────────────────────
+DECLARE FUNCTION SNNSURROGATE LIB "gmbneural" ALIAS "ofx_nn_snn_surrogate" (x AS DOUBLE) AS DOUBLE
+DECLARE FUNCTION SNNSURROGATEGRAD LIB "gmbneural" ALIAS "ofx_nn_snn_surrogate_grad" (x AS DOUBLE) AS DOUBLE
+' Indice LUT: bit r = (x[a(r)] - x[b(r)] > 0), n_c <= 30.
+DECLARE FUNCTION SNNLUTINDEX LIB "gmbneural" ALIAS "ofx_nn_snn_lut_index" (x() AS DOUBLE, a() AS LONG, b() AS LONG, n_c AS LONG) AS LONG
+
+' ── BNN 1-bit: pacchetti da 64 bit in array LONG ───────────────────────────
+DECLARE FUNCTION BNNBYTES LIB "gmbneural" ALIAS "ofx_nn_bnn_bytes" (n AS LONG) AS LONG
+DECLARE FUNCTION BNNWORDS LIB "gmbneural" ALIAS "ofx_nn_bnn_words" (n AS LONG) AS LONG
+' Binarizza x (negativo -> 1) in out() di BNNWORDS(n) parole.
+DECLARE FUNCTION BNNPACK LIB "gmbneural" ALIAS "ofx_nn_bnn_pack" (out() AS LONG, x() AS DOUBLE, n AS LONG) AS LONG
+DECLARE FUNCTION BNNTHRESH LIB "gmbneural" ALIAS "ofx_nn_bnn_thresh" (k AS DOUBLE, h AS DOUBLE) AS DOUBLE
+' XNOR-popcount e prodotto scalare ±1 su n bit.
+DECLARE FUNCTION BNNXNOR LIB "gmbneural" ALIAS "ofx_nn_bnn_xnor" (a() AS LONG, b() AS LONG, n AS LONG) AS LONG
+DECLARE FUNCTION BNNDOT LIB "gmbneural" ALIAS "ofx_nn_bnn_dot" (a() AS LONG, b() AS LONG, n AS LONG) AS LONG
+
+' ── PINN: residui fisici (errore quadratico) ──────────────────────────────
+DECLARE FUNCTION PINNHEAT LIB "gmbneural" ALIAS "ofx_nn_pinn_heat" (u_t AS DOUBLE, u_xx AS DOUBLE, alpha AS DOUBLE) AS DOUBLE
+DECLARE FUNCTION PINNWAVE LIB "gmbneural" ALIAS "ofx_nn_pinn_wave" (u_tt AS DOUBLE, u_xx AS DOUBLE, c AS DOUBLE) AS DOUBLE
+DECLARE FUNCTION PINNLAPLACE LIB "gmbneural" ALIAS "ofx_nn_pinn_laplace" (u_xx AS DOUBLE, u_yy AS DOUBLE, f AS DOUBLE) AS DOUBLE
+DECLARE FUNCTION PINNADVECTION LIB "gmbneural" ALIAS "ofx_nn_pinn_advection" (u_t AS DOUBLE, u_x AS DOUBLE, beta AS DOUBLE) AS DOUBLE
+DECLARE FUNCTION PINNBURGERS LIB "gmbneural" ALIAS "ofx_nn_pinn_burgers" (u_t AS DOUBLE, u_x AS DOUBLE, u_xx AS DOUBLE, u AS DOUBLE, nu AS DOUBLE) AS DOUBLE
+DECLARE FUNCTION PINNBOUNDARY LIB "gmbneural" ALIAS "ofx_nn_pinn_boundary" (u AS DOUBLE, u_bc AS DOUBLE) AS DOUBLE
+DECLARE FUNCTION PINNINITIAL LIB "gmbneural" ALIAS "ofx_nn_pinn_initial" (u AS DOUBLE, u0 AS DOUBLE) AS DOUBLE
+' Fattore di normalizzazione = max(|loss|) con pavimento 1e-8.
+DECLARE FUNCTION PINNADAPTIVENORM LIB "gmbneural" ALIAS "ofx_nn_pinn_adaptive_norm" (losses() AS DOUBLE, n AS LONG) AS DOUBLE
+
+' ── Detection: IoU, NMS, decode YOLO (bbox = x,y,w,h) ─────────────────────
+DECLARE FUNCTION IOU LIB "gmbneural" ALIAS "ofx_nn_iou" (a() AS DOUBLE, b() AS DOUBLE) AS DOUBLE
+' NMS: keep() riceve gli indici tenuti; ritorna quanti.
+DECLARE FUNCTION NMS LIB "gmbneural" ALIAS "ofx_nn_nms" (boxes() AS DOUBLE, scores() AS DOUBLE, n AS LONG, iou_thresh AS DOUBLE, keep() AS LONG) AS LONG
+' Configurazione cella/ancora per YOLOBOX (handle 4001+): 6 argomenti.
+DECLARE FUNCTION YOLOBOXCFG LIB "gmbneural" ALIAS "ofx_nn_yolo_cfg" (anchor_w AS DOUBLE, anchor_h AS DOUBLE, cx AS LONG, cy AS LONG, grid_w AS LONG, grid_h AS LONG) AS LONG
+' Decode: out(0..3) = bx,by,bw,bh normalizzati.
+DECLARE FUNCTION YOLOBOX LIB "gmbneural" ALIAS "ofx_nn_yolo_box" (h AS LONG, tx AS DOUBLE, ty AS DOUBLE, tw AS DOUBLE, th AS DOUBLE, out_() AS DOUBLE) AS LONG
+DECLARE FUNCTION YOLOBOXFREE LIB "gmbneural" ALIAS "ofx_nn_yolo_free" (h AS LONG) AS LONG
+' NMS multi-classe: azzera in place le probabilita' soppresse di probs(n×classes).
+DECLARE FUNCTION NMSMULTICLASS LIB "gmbneural" ALIAS "ofx_nn_nms_multiclass" (boxes() AS DOUBLE, probs() AS DOUBLE, n AS LONG, classes AS LONG, thresh AS DOUBLE) AS LONG
+
+' ── KNN — handle 4101+ (copia il training set) ────────────────────────────
+DECLARE FUNCTION KNNINIT LIB "gmbneural" ALIAS "ofx_nn_knn_init" (Xtr() AS DOUBLE, ytr() AS LONG, ntr AS LONG, d AS LONG, n_classes AS LONG) AS LONG
+DECLARE FUNCTION KNNCLASSIFY LIB "gmbneural" ALIAS "ofx_nn_knn_classify" (h AS LONG, k AS LONG, x() AS DOUBLE) AS LONG
+DECLARE FUNCTION KNNACCURACY LIB "gmbneural" ALIAS "ofx_nn_knn_accuracy" (h AS LONG, k AS LONG, Xte() AS DOUBLE, yte() AS LONG, nte AS LONG) AS DOUBLE
+DECLARE FUNCTION KNNFREE LIB "gmbneural" ALIAS "ofx_nn_knn_free" (h AS LONG) AS LONG
+
+' ── Metriche di classificazione e regressione ─────────────────────────────
+' Matrice di confusione k×k (riga = vera, colonna = predetta).
+DECLARE FUNCTION CONFUSION LIB "gmbneural" ALIAS "ofx_nn_confusion" (y_true() AS LONG, y_pred() AS LONG, n AS LONG, k AS LONG, cm() AS LONG) AS LONG
+DECLARE FUNCTION ACCURACY LIB "gmbneural" ALIAS "ofx_nn_accuracy" (y_true() AS LONG, y_pred() AS LONG, n AS LONG) AS DOUBLE
+DECLARE FUNCTION ACCURACYCM LIB "gmbneural" ALIAS "ofx_nn_accuracy_cm" (cm() AS LONG, k AS LONG) AS DOUBLE
+' PRECISION/RECALL/F1: per-classe in out(k), macro come valore di ritorno.
+DECLARE FUNCTION PRECISION LIB "gmbneural" ALIAS "ofx_nn_precision" (cm() AS LONG, k AS LONG, out() AS DOUBLE) AS DOUBLE
+DECLARE FUNCTION RECALL LIB "gmbneural" ALIAS "ofx_nn_recall" (cm() AS LONG, k AS LONG, out() AS DOUBLE) AS DOUBLE
+DECLARE FUNCTION F1 LIB "gmbneural" ALIAS "ofx_nn_f1" (cm() AS LONG, k AS LONG, out() AS DOUBLE) AS DOUBLE
+DECLARE FUNCTION MSE LIB "gmbneural" ALIAS "ofx_nn_mse" (y_true() AS DOUBLE, y_pred() AS DOUBLE, n AS LONG) AS DOUBLE
+DECLARE FUNCTION MAE LIB "gmbneural" ALIAS "ofx_nn_mae" (y_true() AS DOUBLE, y_pred() AS DOUBLE, n AS LONG) AS DOUBLE
+DECLARE FUNCTION R2 LIB "gmbneural" ALIAS "ofx_nn_r2" (y_true() AS DOUBLE, y_pred() AS DOUBLE, n AS LONG) AS DOUBLE
+
+' ── Pianificazione di memoria (lifetime dei buffer) ───────────────────────
+' offsets(n) riceve l'offset di ogni tensore; ritorna la dimensione totale.
+DECLARE FUNCTION MEMPLAN LIB "gmbneural" ALIAS "ofx_nn_memplan" (size() AS DOUBLE, birth() AS LONG, death() AS LONG, n AS LONG, offsets() AS DOUBLE) AS DOUBLE

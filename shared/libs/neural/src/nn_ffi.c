@@ -27,6 +27,13 @@
 #include "gn_tree.h"
 #include "gn_forest.h"
 #include "gn_adaboost.h"
+#include "gn_snn.h"
+#include "gn_bnn.h"
+#include "gn_pinn.h"
+#include "gn_detect.h"
+#include "gn_knn.h"
+#include "gn_metrics.h"
+#include "gn_memplan.h"
 #include "gn_opt.h"
 
 #include <stdlib.h>
@@ -1372,4 +1379,326 @@ i64 ofx_nn_adaboost_free(i64 h)
     memset(b, 0, sizeof(*b));
     g_ada_used[h - NN_ADA_BASE - 1] = 0;
     return 0;
+}
+
+/* ── Utilità numeriche: SNN, BNN, PINN, detection, KNN, metriche, memplan ─── */
+
+/* SNN */
+double ofx_nn_snn_surrogate(double x) { return (double)gn_snn_surrogate((gn_real)x); }
+double ofx_nn_snn_surrogate_grad(double x) { return (double)gn_snn_surrogate_grad((gn_real)x); }
+
+i64 ofx_nn_snn_lut_index(const double *x, const i64 *a, const i64 *b, i64 n_c)
+{
+    int *ai, *bi;
+    int rc;
+    if (!x || !a || !b || n_c < 0 || n_c > 30) return 0;
+    ai = i32_from_longs(a, (int)n_c);
+    bi = i32_from_longs(b, (int)n_c);
+    if (!ai || !bi) { free(ai); free(bi); return 0; }
+    rc = gn_snn_lut_index((const gn_real *)x, ai, bi, (int)n_c);
+    free(ai);
+    free(bi);
+    return (i64)rc;
+}
+
+/* BNN (pacchetti da 64 bit in array LONG) */
+i64 ofx_nn_bnn_bytes(i64 n) { return (i64)gn_bnn_bytes((int)n); }
+i64 ofx_nn_bnn_words(i64 n) { return (i64)gn_bnn_words((int)n); }
+
+i64 ofx_nn_bnn_pack(i64 *out, const double *x, i64 n)
+{
+    if (!out || !x || n <= 0) return -1;
+    gn_bnn_pack((unsigned long long *)out, (const gn_real *)x, (int)n);
+    return 0;
+}
+
+double ofx_nn_bnn_thresh(double k, double h)
+{
+    return (double)gn_bnn_thresh((gn_real)k, (gn_real)h);
+}
+
+i64 ofx_nn_bnn_xnor(const i64 *a, const i64 *b, i64 n)
+{
+    if (!a || !b || n <= 0) return 0;
+    return (i64)gn_bnn_xnor_popcount((const unsigned long long *)a,
+                                     (const unsigned long long *)b, (int)n);
+}
+
+i64 ofx_nn_bnn_dot(const i64 *a, const i64 *b, i64 n)
+{
+    if (!a || !b || n <= 0) return 0;
+    return (i64)gn_bnn_dot((const unsigned long long *)a,
+                           (const unsigned long long *)b, (int)n);
+}
+
+/* PINN: residui fisici (quadrati) e normalizzazione adattiva delle loss */
+double ofx_nn_pinn_heat(double ut, double uxx, double alpha)
+{ return (double)gn_pinn_heat((gn_real)ut, (gn_real)uxx, (gn_real)alpha); }
+double ofx_nn_pinn_wave(double utt, double uxx, double c)
+{ return (double)gn_pinn_wave((gn_real)utt, (gn_real)uxx, (gn_real)c); }
+double ofx_nn_pinn_laplace(double uxx, double uyy, double f)
+{ return (double)gn_pinn_laplace((gn_real)uxx, (gn_real)uyy, (gn_real)f); }
+double ofx_nn_pinn_advection(double ut, double ux, double beta)
+{ return (double)gn_pinn_advection((gn_real)ut, (gn_real)ux, (gn_real)beta); }
+double ofx_nn_pinn_burgers(double ut, double ux, double uxx, double u, double nu)
+{ return (double)gn_pinn_burgers((gn_real)ut, (gn_real)ux, (gn_real)uxx, (gn_real)u, (gn_real)nu); }
+double ofx_nn_pinn_boundary(double u, double ubc)
+{ return (double)gn_pinn_boundary((gn_real)u, (gn_real)ubc); }
+double ofx_nn_pinn_initial(double u, double u0)
+{ return (double)gn_pinn_initial((gn_real)u, (gn_real)u0); }
+
+double ofx_nn_pinn_adaptive_norm(const double *losses, i64 n)
+{
+    if (!losses || n <= 0) return 1.0;
+    return (double)gn_pinn_adaptive_norm((const gn_real *)losses, (int)n);
+}
+
+/* Detection: IoU, NMS, decode YOLO, NMS multi-classe */
+double ofx_nn_iou(const double *a, const double *b)
+{
+    if (!a || !b) return 0.0;
+    return (double)gn_iou((const gn_real *)a, (const gn_real *)b);
+}
+
+i64 ofx_nn_nms(const double *boxes, const double *scores, i64 n, double iou_thresh, i64 *keep)
+{
+    int *k;
+    int i, nk;
+    if (!boxes || !scores || !keep || n <= 0) return 0;
+    k = (int *)calloc((size_t)n, sizeof(int));
+    if (!k) return 0;
+    nk = gn_nms((const gn_real *)boxes, (const gn_real *)scores, (int)n, (gn_real)iou_thresh, k);
+    for (i = 0; i < nk; i++) keep[i] = (i64)k[i];
+    free(k);
+    return (i64)nk;
+}
+
+#define NN_YOLO_MAX 16
+#define NN_YOLO_BASE 4000
+
+typedef struct { int used; int grid_w, grid_h; double aw, ah; int cx, cy; } nn_yolocfg;
+static nn_yolocfg g_yolo[NN_YOLO_MAX];
+
+i64 ofx_nn_yolo_cfg(double anchor_w, double anchor_h, i64 cx, i64 cy, i64 grid_w, i64 grid_h)
+{
+    int i;
+    for (i = 0; i < NN_YOLO_MAX; i++) {
+        if (g_yolo[i].used) continue;
+        g_yolo[i].used = 1;
+        g_yolo[i].aw = anchor_w; g_yolo[i].ah = anchor_h;
+        g_yolo[i].cx = (int)cx; g_yolo[i].cy = (int)cy;
+        g_yolo[i].grid_w = (int)grid_w; g_yolo[i].grid_h = (int)grid_h;
+        return (i64)(NN_YOLO_BASE + i + 1);
+    }
+    return -1;
+}
+
+i64 ofx_nn_yolo_box(i64 h, double tx, double ty, double tw, double th, double *out)
+{
+    nn_yolocfg *c;
+    if (h <= NN_YOLO_BASE || h > NN_YOLO_BASE + NN_YOLO_MAX || !out) return -1;
+    c = &g_yolo[h - NN_YOLO_BASE - 1];
+    if (!c->used) return -1;
+    gn_yolo_decode_box((gn_real)tx, (gn_real)ty, (gn_real)tw, (gn_real)th,
+                       (gn_real)c->aw, (gn_real)c->ah, c->cx, c->cy,
+                       c->grid_w, c->grid_h, (gn_real *)out);
+    return 0;
+}
+
+i64 ofx_nn_yolo_free(i64 h)
+{
+    if (h <= NN_YOLO_BASE || h > NN_YOLO_BASE + NN_YOLO_MAX) return -1;
+    if (!g_yolo[h - NN_YOLO_BASE - 1].used) return -1;
+    memset(&g_yolo[h - NN_YOLO_BASE - 1], 0, sizeof(nn_yolocfg));
+    return 0;
+}
+
+i64 ofx_nn_nms_multiclass(const double *boxes, double *probs, i64 n, i64 classes, double thresh)
+{
+    if (!boxes || !probs || n <= 0 || classes <= 0) return -1;
+    gn_nms_multiclass((const gn_real *)boxes, (gn_real *)probs, (int)n, (int)classes, (gn_real)thresh);
+    return 0;
+}
+
+/* KNN: handle 4101+ con copia del training set */
+#define NN_KNN_MAX 16
+#define NN_KNN_BASE 4100
+
+typedef struct { int used; double *X; int *y; int n, d, ncls; } nn_knn;
+static nn_knn g_knn[NN_KNN_MAX];
+
+static nn_knn *knn_get(i64 h)
+{
+    if (h <= NN_KNN_BASE || h > NN_KNN_BASE + NN_KNN_MAX) return NULL;
+    if (!g_knn[h - NN_KNN_BASE - 1].used) return NULL;
+    return &g_knn[h - NN_KNN_BASE - 1];
+}
+
+i64 ofx_nn_knn_init(const double *X, const i64 *y, i64 n, i64 d, i64 n_classes)
+{
+    int slot, j;
+    if (!X || !y || n <= 0 || d <= 0 || n_classes <= 0) return -1;
+    for (slot = 0; slot < NN_KNN_MAX; slot++) {
+        nn_knn *k;
+        if (g_knn[slot].used) continue;
+        k = &g_knn[slot];
+        memset(k, 0, sizeof(*k));
+        k->X = (double *)malloc((size_t)(n * d) * sizeof(double));
+        k->y = (int *)malloc((size_t)n * sizeof(int));
+        if (!k->X || !k->y) { free(k->X); free(k->y); return -1; }
+        memcpy(k->X, X, (size_t)(n * d) * sizeof(double));
+        for (j = 0; j < (int)n; j++) k->y[j] = (int)y[j];
+        k->n = (int)n; k->d = (int)d; k->ncls = (int)n_classes; k->used = 1;
+        return (i64)(NN_KNN_BASE + slot + 1);
+    }
+    return -1;
+}
+
+i64 ofx_nn_knn_classify(i64 h, i64 k, const double *x)
+{
+    nn_knn *m = knn_get(h);
+    if (!m || !x) return -1;
+    return (i64)gn_knn_classify(m->X, m->y, m->n, m->d, m->ncls, (int)k, x);
+}
+
+double ofx_nn_knn_accuracy(i64 h, i64 k, const double *Xte, const i64 *yte, i64 nte)
+{
+    nn_knn *m = knn_get(h);
+    int *yt;
+    double rc;
+    if (!m || !Xte || !yte || nte <= 0) return 0.0;
+    yt = i32_from_longs(yte, (int)nte);
+    if (!yt) return 0.0;
+    rc = gn_knn_accuracy(m->X, m->y, m->n, Xte, yt, (int)nte, m->d, m->ncls, (int)k);
+    free(yt);
+    return rc;
+}
+
+i64 ofx_nn_knn_free(i64 h)
+{
+    nn_knn *m = knn_get(h);
+    if (!m) return -1;
+    free(m->X);
+    free(m->y);
+    m->X = NULL; m->y = NULL;
+    m->used = 0;
+    return 0;
+}
+
+/* Metriche */
+i64 ofx_nn_confusion(const i64 *yt, const i64 *yp, i64 n, i64 k, i64 *cm)
+{
+    int *a, *b, *c;
+    int i, rc;
+    if (!yt || !yp || !cm || n < 0 || k <= 0) return -1;
+    a = i32_from_longs(yt, (int)n);
+    b = i32_from_longs(yp, (int)n);
+    c = (int *)calloc((size_t)(k * k), sizeof(int));
+    if (!a || !b || !c) { free(a); free(b); free(c); return -1; }
+    rc = gn_metrics_confusion(a, b, (int)n, (int)k, c);
+    for (i = 0; i < (int)(k * k); i++) cm[i] = (i64)c[i];
+    free(a); free(b); free(c);
+    return (i64)rc;
+}
+
+double ofx_nn_accuracy(const i64 *yt, const i64 *yp, i64 n)
+{
+    int *a, *b;
+    double rc;
+    if (!yt || !yp || n <= 0) return 0.0;
+    a = i32_from_longs(yt, (int)n);
+    b = i32_from_longs(yp, (int)n);
+    if (!a || !b) { free(a); free(b); return 0.0; }
+    rc = gn_metrics_accuracy(a, b, (int)n);
+    free(a); free(b);
+    return rc;
+}
+
+double ofx_nn_accuracy_cm(const i64 *cm, i64 k)
+{
+    int *c;
+    double rc;
+    if (!cm || k <= 0) return 0.0;
+    c = i32_from_longs(cm, (int)(k * k));
+    if (!c) return 0.0;
+    rc = gn_metrics_accuracy_cm(c, (int)k);
+    free(c);
+    return rc;
+}
+
+/* PRECISION/RECALL/F1: per-classe in out(), macro come valore di ritorno. */
+double ofx_nn_precision(const i64 *cm, i64 k, double *out)
+{
+    int *c;
+    double macro = 0.0;
+    int rc;
+    if (!cm || !out || k <= 0) return 0.0;
+    c = i32_from_longs(cm, (int)(k * k));
+    if (!c) return 0.0;
+    rc = gn_metrics_precision(c, (int)k, out, &macro);
+    free(c);
+    return rc == 0 ? macro : 0.0;
+}
+
+double ofx_nn_recall(const i64 *cm, i64 k, double *out)
+{
+    int *c;
+    double macro = 0.0;
+    int rc;
+    if (!cm || !out || k <= 0) return 0.0;
+    c = i32_from_longs(cm, (int)(k * k));
+    if (!c) return 0.0;
+    rc = gn_metrics_recall(c, (int)k, out, &macro);
+    free(c);
+    return rc == 0 ? macro : 0.0;
+}
+
+double ofx_nn_f1(const i64 *cm, i64 k, double *out)
+{
+    int *c;
+    double macro = 0.0;
+    int rc;
+    if (!cm || !out || k <= 0) return 0.0;
+    c = i32_from_longs(cm, (int)(k * k));
+    if (!c) return 0.0;
+    rc = gn_metrics_f1(c, (int)k, out, &macro);
+    free(c);
+    return rc == 0 ? macro : 0.0;
+}
+
+double ofx_nn_mse(const double *yt, const double *yp, i64 n)
+{
+    if (!yt || !yp || n <= 0) return 0.0;
+    return (double)gn_metrics_mse((const gn_real *)yt, (const gn_real *)yp, (int)n);
+}
+
+double ofx_nn_mae(const double *yt, const double *yp, i64 n)
+{
+    if (!yt || !yp || n <= 0) return 0.0;
+    return (double)gn_metrics_mae((const gn_real *)yt, (const gn_real *)yp, (int)n);
+}
+
+double ofx_nn_r2(const double *yt, const double *yp, i64 n)
+{
+    if (!yt || !yp || n <= 0) return 0.0;
+    return (double)gn_metrics_r2((const gn_real *)yt, (const gn_real *)yp, (int)n);
+}
+
+/* Memplan: offset per tensore (lifetime) e dimensione totale. */
+double ofx_nn_memplan(const double *size, const i64 *birth, const i64 *death, i64 n, double *offsets)
+{
+    gn_memplan_tensor *t;
+    int i;
+    double total;
+    if (!size || !birth || !death || !offsets || n <= 0) return 0.0;
+    t = (gn_memplan_tensor *)calloc((size_t)n, sizeof(gn_memplan_tensor));
+    if (!t) return 0.0;
+    for (i = 0; i < (int)n; i++) {
+        t[i].size = (gn_real)size[i];
+        t[i].birth = (int)birth[i];
+        t[i].death = (int)death[i];
+    }
+    total = (double)gn_mem_plan(t, (int)n, (gn_real *)offsets);
+    free(t);
+    return total;
 }
