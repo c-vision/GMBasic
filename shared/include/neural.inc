@@ -378,3 +378,30 @@ DECLARE FUNCTION GPEVOLVE LIB "gmbneural" ALIAS "ofx_nn_gp_evolve" (h AS LONG, f
 ' Fitness di un genoma esplicito (codes, n) con la stessa callback.
 DECLARE FUNCTION GPEVAL LIB "gmbneural" ALIAS "ofx_nn_gp_eval" (h AS LONG, codes() AS LONG, n AS LONG, fitness AS FUNCTION(code() AS DOUBLE) AS DOUBLE) AS DOUBLE
 DECLARE FUNCTION GPFREE LIB "gmbneural" ALIAS "ofx_nn_gp_free" (h AS LONG) AS LONG
+
+' ── Normalizzazione online (gn_norm) — handle 7201+ ───────────────────────
+' OSSERVA i campioni (max-abs + media/varianza di Welford), FINALIZZA, poi APPLICA /
+' DENORM / ZSCORE con le statistiche addestrate. E' il caso "scaler riusabile" che
+' TORCH.NORMALIZE/STANDARDIZE (una-shot) non copre.
+DECLARE FUNCTION NORMINIT LIB "gmbneural" ALIAS "ofx_nn_norm_init" (dim AS LONG) AS LONG
+DECLARE FUNCTION NORMOBSERVE LIB "gmbneural" ALIAS "ofx_nn_norm_observe" (h AS LONG, x() AS DOUBLE) AS LONG
+' margin <= 0 = 1.0; allarga il fattore max-abs (es. 1.1 per un margine di sicurezza).
+DECLARE FUNCTION NORMFINALIZE LIB "gmbneural" ALIAS "ofx_nn_norm_finalize" (h AS LONG, margin AS DOUBLE) AS LONG
+' x/scale, x*scale, (x-media)/sd.
+DECLARE FUNCTION NORMAPPLY LIB "gmbneural" ALIAS "ofx_nn_norm_apply" (h AS LONG, x() AS DOUBLE, out_() AS DOUBLE) AS LONG
+DECLARE FUNCTION NORMDENORM LIB "gmbneural" ALIAS "ofx_nn_norm_denormalize" (h AS LONG, x() AS DOUBLE, out_() AS DOUBLE) AS LONG
+DECLARE FUNCTION NORMZSCORE LIB "gmbneural" ALIAS "ofx_nn_norm_zscore" (h AS LONG, x() AS DOUBLE, out_() AS DOUBLE) AS LONG
+' out: dim scale, poi dim medie, poi dim deviazioni standard.
+DECLARE FUNCTION NORMSTATS LIB "gmbneural" ALIAS "ofx_nn_norm_stats" (h AS LONG, out_() AS DOUBLE) AS LONG
+DECLARE FUNCTION NORMCOUNT LIB "gmbneural" ALIAS "ofx_nn_norm_count" (h AS LONG) AS LONG
+DECLARE FUNCTION NORMFREE LIB "gmbneural" ALIAS "ofx_nn_norm_free" (h AS LONG) AS LONG
+
+' ── Righe/matrici non coperte da TORCH (gn_ops, gn_core) ──────────────────
+' GATHERROWS: righe scelte per indice (TORCH.SLICE prende solo un intervallo).
+DECLARE FUNCTION GATHERROWS LIB "gmbneural" ALIAS "ofx_nn_gather_rows" (out_() AS DOUBLE, data() AS DOUBLE, rows AS LONG, cols AS LONG, indices() AS LONG, n_idx AS LONG) AS LONG
+DECLARE FUNCTION SLICEROWS LIB "gmbneural" ALIAS "ofx_nn_slice_rows" (out_() AS DOUBLE, data() AS DOUBLE, rows AS LONG, cols AS LONG, start AS LONG, count AS LONG) AS LONG
+' Sotto-matrice [r0..r0+nr) × [c0..c0+nc).
+DECLARE FUNCTION COPYBLOCK LIB "gmbneural" ALIAS "ofx_nn_copy_block" (out_() AS DOUBLE, data() AS DOUBLE, rows AS LONG, cols AS LONG, r0 AS LONG, c0 AS LONG, nr AS LONG, nc AS LONG) AS LONG
+' Applica una funzione BASIC a ogni elemento; ABSMAX = max(|x|).
+DECLARE FUNCTION MATAPPLY LIB "gmbneural" ALIAS "ofx_nn_mat_apply" (out_() AS DOUBLE, in_() AS DOUBLE, n AS LONG, f AS FUNCTION(x AS DOUBLE) AS DOUBLE) AS LONG
+DECLARE FUNCTION MATABSMAX LIB "gmbneural" ALIAS "ofx_nn_mat_absmax" (in_() AS DOUBLE, n AS LONG) AS DOUBLE
