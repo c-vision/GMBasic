@@ -246,3 +246,10 @@ double str_at9(double a1, double a2, double a3, double a4, double a5, double a6,
 {
     return a1 + a2 + a3 + a4 + a5 + a6 + a7 + a8 + (s && s[0] == 'x' ? 100.0 : 0.0);
 }
+
+/* BYREF UDT (struct*): in/out di una struct per puntatore. */
+typedef struct { double x; double y; } ByrefPt;
+
+double byref_pt_sum(const ByrefPt* p) { return p->x + p->y; }
+void byref_pt_scale(ByrefPt* p, double k) { p->x *= k; p->y *= k; }
+void byref_pt_set(ByrefPt* p, double x, double y) { p->x = x; p->y = y; }

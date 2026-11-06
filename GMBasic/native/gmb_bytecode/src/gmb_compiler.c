@@ -2642,6 +2642,9 @@ static void cc_emit_ffi_call(gmb_cc_t* c, const gmb_expr_t* e, const gmb_stmt_t*
     int ret_udt_idx = (is_func && rt) ? cc_udt_find(c, rt) : -1;
 
     unsigned char is_array[GMB_FFI_MAX_ARGS] = {0}, is_string[GMB_FFI_MAX_ARGS] = {0}, is_byref[GMB_FFI_MAX_ARGS] = {0}, is_plain[GMB_FFI_MAX_ARGS] = {0}, is_udt[GMB_FFI_MAX_ARGS] = {0}, is_cb[GMB_FFI_MAX_ARGS] = {0}, p_int[GMB_FFI_MAX_ARGS] = {0};
+    /* BYREF UDT (2026-11-06): `BYREF p AS <TYPE>` → `<Udt>_t*` (in/out struct). È un UDT per
+     * il layout (va nella coda con size/offset) E un BYREF per il puntatore. */
+    unsigned char is_byref_udt[GMB_FFI_MAX_ARGS] = {0};
     cc_ffi_leaf_t param_leaves[GMB_FFI_MAX_ARGS][CC_FFI_MAX_LEAVES]; int n_param_leaves[GMB_FFI_MAX_ARGS] = {0};
     /* Layout C per UDT (2026-11-06, S1): offset/tipo di ogni foglia + size totale, calcolati
      * qui una volta e trasmessi nel bytecode — la VM/C e PCode li usano senza ricalcolare. */
@@ -2652,8 +2655,9 @@ static void cc_emit_ffi_call(gmb_cc_t* c, const gmb_expr_t* e, const gmb_stmt_t*
         is_array[i] = (pd->param_is_array && pd->param_is_array[i]) ? 1 : 0;
         is_string[i] = (!is_array[i] && cc_ffi_is_string_type(pt)) ? 1 : 0;
         is_cb[i] = (!is_array[i] && !is_string[i] && pd->param_fn_arity && pd->param_fn_arity[i] >= 0) ? 1 : 0;
-        is_byref[i] = (!is_array[i] && !is_string[i] && !is_cb[i] && pd->param_byref && pd->param_byref[i]) ? 1 : 0;
-        is_udt[i] = (!is_array[i] && !is_string[i] && !is_cb[i] && !is_byref[i] && pt && cc_udt_find(c, pt) >= 0) ? 1 : 0;
+        is_udt[i] = (!is_array[i] && !is_string[i] && !is_cb[i] && pt && cc_udt_find(c, pt) >= 0) ? 1 : 0;
+        is_byref_udt[i] = (is_udt[i] && pd->param_byref && pd->param_byref[i]) ? 1 : 0;
+        is_byref[i] = (!is_array[i] && !is_string[i] && !is_cb[i] && !is_udt[i] && pd->param_byref && pd->param_byref[i]) ? 1 : 0;
         is_plain[i] = (!is_array[i] && !is_string[i] && !is_byref[i] && !is_udt[i] && !is_cb[i]) ? 1 : 0;
         p_int[i] = cc_ffi_is_int_type(pt) ? 1 : 0;
         if (is_udt[i]) {
@@ -2731,7 +2735,8 @@ static void cc_emit_ffi_call(gmb_cc_t* c, const gmb_expr_t* e, const gmb_stmt_t*
     /* Argomenti: i BYREF scalari viaggiano come puntatore (OP_MAKE_BYREF) — come una CALL
      * normale (cc_call_arg), altrimenti il copy-out della VM non ha dove scrivere. */
     uint64_t ffi_brm = 0;
-    for (int i = 0; i < argc && i < GMB_FFI_MAX_ARGS; i++) if (is_byref[i]) ffi_brm |= ((uint64_t)1 << i);
+    for (int i = 0; i < argc && i < GMB_FFI_MAX_ARGS; i++)
+        if (is_byref[i] || is_byref_udt[i]) ffi_brm |= ((uint64_t)1 << i);
     for (int i = 0; i < argc; i++) { cc_call_arg(c, ffi_brm, i, e->args[i]); if (c->error) return; }
 
     int libIdx = cc_add_const(c, GMB_CCONST_STRING, 0, lib);
@@ -2742,7 +2747,7 @@ static void cc_emit_ffi_call(gmb_cc_t* c, const gmb_expr_t* e, const gmb_stmt_t*
      * copre la chiamata a 0 argomenti, es. BARS()). */
     int any_ptr = (ret_is_string || ret_udt_idx >= 0) ? 1 : 0;
     for (int i = 0; i < argc && i < GMB_FFI_MAX_ARGS; i++)
-        if (is_array[i] || is_string[i] || is_byref[i] || is_udt[i] || is_cb[i]) any_ptr = 1;
+        if (is_array[i] || is_string[i] || is_byref[i] || is_udt[i] || is_cb[i] || is_byref_udt[i]) any_ptr = 1;
     if (!any_ptr && kind == 0 && scalarKindMask == 0) {
         cc_byte(c, GMB_OP_CALL_FFI);
         cc_u16(c, (uint16_t)libIdx);
@@ -2774,12 +2779,12 @@ static void cc_emit_ffi_call(gmb_cc_t* c, const gmb_expr_t* e, const gmb_stmt_t*
     cc_byte(c, (uint8_t)((n_ret_leaves >> 8) & 0xFF));
     for (int i = 0; i < argc; i++) {
         unsigned f = 0;
-        int ptr = is_array[i] || is_string[i] || is_byref[i] || is_cb[i];
+        int ptr = is_array[i] || is_string[i] || is_byref[i] || is_cb[i] || is_byref_udt[i];
         if (ptr || (is_udt[i] ? (kind == 1) : p_int[i])) f |= 1u;
         if (is_array[i]) { f |= 2u; if (p_int[i]) f |= 0x40u; }
         else if (is_string[i]) f |= 4u;
         else if (is_byref[i]) { f |= 8u; if (p_int[i]) f |= 0x80u; }
-        else if (is_udt[i]) f |= 0x20u | 0x80u;   /* 0x80 = formato layout nuovo */
+        else if (is_udt[i]) { f |= 0x20u | 0x80u; if (is_byref_udt[i]) f |= 8u; }   /* 0x80 = formato layout nuovo */
         else if (is_cb[i]) f |= 0x10u;
         cc_byte(c, (uint8_t)f);
         if (is_udt[i]) {

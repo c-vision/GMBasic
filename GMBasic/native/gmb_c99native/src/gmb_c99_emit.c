@@ -31017,6 +31017,16 @@ static const char* ffi_udt_shape_name(ctx_t* c, struct cls_info* ci) {
     snprintf(ring[rr], sizeof(ring[rr]), "gmb_ffi_udt_%s_t", ci->name);
     return ring[rr];
 }
+
+/* Nome del tipo della struct-ombra come PUNTATORE ("gmb_ffi_udt_T_t *"), per i parametri
+ * BYREF UDT (2026-11-06). Buffer statici round-robin: consumati subito da sb_put. */
+static const char* ffi_udt_shape_name_ptr(ctx_t* c, struct cls_info* ci) {
+    static char bufs[4][96];
+    static int bi = 0;
+    char* b = bufs[bi]; bi = (bi + 1) % 4;
+    snprintf(b, 96, "%s *", ffi_udt_shape_name(c, ci));
+    return b;
+}
 /* Valida un UDT usato per parametro/ritorno FFI: tipo di ogni campo (anche nidificato),
  * niente campi array, niente struct annidate con padding, 1..64 foglie. */
 static int ffi_validate_udt(ctx_t* c, struct cls_info* ci, const char* sym, const char* what, int line, int allow_mixed_kind) {
@@ -31245,6 +31255,10 @@ static void emit_ffi_wrapper(ctx_t* c, fn_info_t* fn) {
      * di flattening manuale (a differenza di gmb_vm_core.c). Limite 1-2 campi comunque
      * imposto per PARITA' con le altre gambe (stesso messaggio d'errore). */
     struct cls_info* udt_param_ci[C99_FFI_MAX_ARGS] = {0};
+    /* BYREF UDT (2026-11-06): `BYREF p AS <TYPE>` → `<Udt>_t *p` nativo. Il wrapper riceve
+     * `gmb_val_t*` (il call-site emette gia' `&var` per un argomento BYREF), costruisce una
+     * struct temporanea, passa il suo indirizzo e la ricopia nell'istanza dopo la chiamata. */
+    struct cls_info* byref_udt_ci[C99_FFI_MAX_ARGS] = {0};
     /* Callback (2026-09-29): un parametro `AS FUNCTION(...) AS T`/`AS SUB(...)` viaggia come
      * PUNTATORE nativo (un trampolino pre-dichiarato, pool emesso da emit_ffi_callback_pool
      * sotto) — stessa classe di registri intera di array/STRING/BYREF, indipendentemente dal
@@ -31359,6 +31373,20 @@ static void emit_ffi_wrapper(ctx_t* c, fn_info_t* fn) {
             if (s->param_types && s->param_types[i] && gmb_keyword_tok(s->param_types[i]) == GMB_TOK_StringType) {
                 c99_fail(c, s->line, "FFI '%s': BYREF di STRING non supportato dal marshalling FFI (passare BYVAL).", sym);
                 return;
+            }
+            /* BYREF UDT: prima del controllo scalare (un TYPE non è una keyword). */
+            if (s->param_types && s->param_types[i] && cls_find(c, s->param_types[i])) {
+                struct cls_info* buci = cls_find(c, s->param_types[i]);
+                char bwhat[96];
+                snprintf(bwhat, sizeof(bwhat), "il parametro BYREF '%s'", s->func_params[i]);
+                if (!buci->is_udt) {
+                    c99_fail(c, s->line, "FFI '%s': lo UDT '%s' usato per %s non è ammesso dal marshalling FFI (solo TYPE semplici).",
+                             sym, buci->name, bwhat);
+                    return;
+                }
+                if (!ffi_validate_udt(c, buci, sym, bwhat, s->line, /*allow_mixed_kind=*/1)) return;
+                if (i < C99_FFI_MAX_ARGS) byref_udt_ci[i] = buci;
+                continue;
             }
             gmb_tokenkind_t bk = s->param_types && s->param_types[i] ? gmb_keyword_tok(s->param_types[i]) : GMB_TOK_Double;
             int byrefOk = bk == GMB_TOK_Double
@@ -31533,7 +31561,8 @@ static void emit_ffi_wrapper(ctx_t* c, fn_info_t* fn) {
      * come parametro AS LONG separato, come farebbe con l'API C reale). Una STRING e'
      * `const char*` (NON gmb_string_t per valore — quella e' l'ABI SBAGLIATA che la guardia
      * preveniva: struct invece di puntatore). */
-    #define FFI_INNER(k2) ((k2) < C99_FFI_MAX_ARGS && is_cb_param[k2] ? ffi_cb_native_type(cb_arity[k2], cb_kind_int[k2], cb_has_ret[k2]) \
+    #define FFI_INNER(k2) ((k2) < C99_FFI_MAX_ARGS && byref_udt_ci[k2] ? ffi_udt_shape_name_ptr(c, byref_udt_ci[k2]) \
+        : (k2) < C99_FFI_MAX_ARGS && is_cb_param[k2] ? ffi_cb_native_type(cb_arity[k2], cb_kind_int[k2], cb_has_ret[k2]) \
         : (k2) < C99_FFI_MAX_ARGS && udt_param_ci[k2] ? ffi_udt_shape_name(c, udt_param_ci[k2]) \
         : (k2) < C99_FFI_MAX_ARGS && arr_udt_ci[k2] ? arr_udt_tname[k2] \
         : (k2) < C99_FFI_MAX_ARGS && is_arr_param[k2] \
@@ -31592,6 +31621,12 @@ static void emit_ffi_wrapper(ctx_t* c, fn_info_t* fn) {
             emit_ident(c, s->func_params[i]);
             sb_put(&c->out, ", gmb_int_t ");
             sb_bound_ident(&c->out, s->func_params[i], 0);
+            continue;
+        }
+        if (i < C99_FFI_MAX_ARGS && byref_udt_ci[i]) {
+            /* BYREF UDT: il call-site passa `&var` (var è la gmb_val_t boxata dell'istanza). */
+            sb_put(&c->out, "gmb_val_t* ");
+            emit_ident(c, s->func_params[i]);
             continue;
         }
         if (i < C99_FFI_MAX_ARGS && is_byref_param[i]) {
@@ -31685,6 +31720,36 @@ static void emit_ffi_wrapper(ctx_t* c, fn_info_t* fn) {
     /* Callback (2026-09-29): "acquire" va emesso PRIMA della chiamata nativa (assegna lo slot
      * globale), "release" SUBITO DOPO (mai prima — il nativo può richiamare il callback in un
      * punto qualunque durante la sua esecuzione, vedi il blocco dopo la chiamata sotto). */
+    /* BYREF UDT (2026-11-06): struct temporanea dall'istanza (`*p`, il puntatore del
+     * call-site), passata per indirizzo al nativo e ricopiata indietro dopo la chiamata. */
+    for (int i = 0; i < s->n_params && i < C99_FFI_MAX_ARGS; i++) {
+        if (!byref_udt_ci[i]) continue;
+        struct cls_info* buci = byref_udt_ci[i];
+        ffi_leaf_t blv[64];
+        int bnl = collect_ffi_leaves_silent(c, buci, "", blv, 64);
+        ind(c);
+        sb_printf(&c->out, "gmb_ffi_udt_%s_t __ub_", buci->name);
+        emit_ident(c, s->func_params[i]);
+        sb_printf(&c->out, " = (gmb_ffi_udt_%s_t){", buci->name);
+        for (int f = 0; f < bnl; f++) {
+            if (f) sb_put(&c->out, ", ");
+            sb_printf(&c->out, "(%s)((gmb_obj_%s*)(((gmb_obj_t*)(*", ffi_code_ctype(blv[f].code), buci->name);
+            emit_ident(c, s->func_params[i]);
+            sb_put(&c->out, ").v_ptr)->data))->");
+            char pb[128]; snprintf(pb, sizeof(pb), "%s", blv[f].path);
+            char* seg = pb;
+            for (;;) {
+                char* dot = strchr(seg, '.');
+                if (dot) *dot = 0;
+                sb_ident_seg(&c->out, seg);
+                if (!dot) break;
+                sb_put(&c->out, ".");
+                seg = dot + 1;
+            }
+            if (blv[f].code == 9) sb_put(&c->out, ".data");
+        }
+        sb_put(&c->out, "};\n");
+    }
     for (int i = 0; i < s->n_params && i < C99_FFI_MAX_ARGS; i++) {
         if (!is_cb_param[i]) continue;
         ind(c);
@@ -31736,6 +31801,8 @@ static void emit_ffi_wrapper(ctx_t* c, fn_info_t* fn) {
                 } \
             } \
             sb_put(&c->out, "}"); \
+        } else if ((i) < C99_FFI_MAX_ARGS && byref_udt_ci[i]) { \
+            sb_put(&c->out, "&__ub_"); emit_ident(c, s->func_params[i]);  \
         } else if ((i) < C99_FFI_MAX_ARGS && arr_udt_ci[i]) { \
             sb_put(&c->out, "__ua_"); emit_ident(c, s->func_params[i]); \
         } else if ((i) < C99_FFI_MAX_ARGS && is_arr_param[i] && strcmp(ffi_param_ctype(s, i), "gmb_int_t") == 0) { \
@@ -31756,7 +31823,10 @@ static void emit_ffi_wrapper(ctx_t* c, fn_info_t* fn) {
     int cast_ret = strcmp(inner_ret, retC) != 0 && strcmp(retC, "void") != 0 && strcmp(inner_ret, "void") != 0;
     int any_arr_udt = 0;
     for (int i = 0; i < s->n_params && i < C99_FFI_MAX_ARGS; i++) if (arr_udt_ci[i]) any_arr_udt = 1;
-    if (n_intarr == 0 && !ret_is_udt && !any_cb_param && !any_arr_udt) {
+    /* BYREF UDT: serve SEMPRE il path "esteso" (chiamata in una variabile + copy-back). */
+    int any_byref_udt = 0;
+    for (int i = 0; i < s->n_params && i < C99_FFI_MAX_ARGS; i++) if (byref_udt_ci[i]) any_byref_udt = 1;
+    if (n_intarr == 0 && !ret_is_udt && !any_cb_param && !any_arr_udt && !any_byref_udt) {
         ind(c);
         if (strcmp(retC, "void") == 0) sb_put(&c->out, "__ffi_fn(");
         else if (ret_is_str) sb_put(&c->out, "return gmb_string_alloc(__ffi_fn(");
@@ -31783,6 +31853,37 @@ static void emit_ffi_wrapper(ctx_t* c, fn_info_t* fn) {
             emit_ident(c, s->func_params[i]); sb_put(&c->out, "[__k] = (gmb_double_t)__ci_"); emit_ident(c, s->func_params[i]); sb_put(&c->out, "[__k];\n");
             ind(c);
             sb_put(&c->out, "free(__ci_"); emit_ident(c, s->func_params[i]); sb_put(&c->out, ");\n");
+        }
+        /* Copy-back BYREF UDT (2026-11-06): il nativo può aver modificato la struct. */
+        for (int i = 0; i < s->n_params && i < C99_FFI_MAX_ARGS; i++) {
+            if (!byref_udt_ci[i]) continue;
+            struct cls_info* buci = byref_udt_ci[i];
+            ffi_leaf_t blv[64];
+            int bnl = collect_ffi_leaves_silent(c, buci, "", blv, 64);
+            ind(c);
+            sb_printf(&c->out, "{ gmb_obj_%s* __e = (gmb_obj_%s*)(((gmb_obj_t*)(*", buci->name, buci->name);
+            emit_ident(c, s->func_params[i]);
+            sb_put(&c->out, ").v_ptr)->data); if (__e) { ");
+            for (int f = 0; f < bnl; f++) {
+                sb_put(&c->out, "__e->");
+                char pb[128]; snprintf(pb, sizeof(pb), "%s", blv[f].path);
+                char* seg = pb;
+                for (;;) {
+                    char* dot = strchr(seg, '.');
+                    if (dot) *dot = 0;
+                    sb_ident_seg(&c->out, seg);
+                    if (!dot) break;
+                    sb_put(&c->out, ".");
+                    seg = dot + 1;
+                }
+                if (blv[f].code == 9)
+                    sb_put(&c->out, " = gmb_string_alloc(__ub_");
+                else
+                    sb_put(&c->out, " = (gmb_double_t)__ub_");
+                emit_ident(c, s->func_params[i]);
+                sb_printf(&c->out, ".f%d; ", f);
+            }
+            sb_put(&c->out, "} }\n");
         }
         /* Copy-back degli array di UDT (S3): il nativo può aver modificato il buffer. */
         for (int i = 0; i < s->n_params && i < C99_FFI_MAX_ARGS; i++) {
@@ -34279,11 +34380,17 @@ int gmb_c99_emit(const gmb_program_t* prog, char** out_src, char** error) {
              * byte) — senza questa correzione il prototipo diverge dalla definizione
              * ("conflicting types for gmb_user_..."). Vedi AiWiki
              * Bugs/(open) - FFI-Estensioni-Possibili-BYREF-Struct-Callback.md §1. */
+            /* BYREF UDT (2026-11-06): il wrapper riceve `gmb_val_t*` (istanza boxata passata
+             * per indirizzo dal call-site). Prima il prototipo cadeva sul tipo scalare BYREF
+             * e divergeva dalla definizione ("conflicting types for gmb_user_..."). */
+            int ffiByRefUdt = c->fns[i].stmt->is_ffi && pv && pv->byref && !p_arraylike(s, k)
+                && s->param_types && s->param_types[k] && cls_find(c, s->param_types[k]) != NULL;
             int ffiIntByRef = c->fns[i].stmt->is_ffi && pv && pv->byref && !p_arraylike(s, k)
                 && s->param_types && s->param_types[k]
                 && gmb_keyword_tok(s->param_types[k]) != GMB_TOK_Double
                 && gmb_keyword_tok(s->param_types[k]) != GMB_TOK_StringType;
-            if (ffiIntByRef) sb_put(&proto, "gmb_int_t*");
+            if (ffiByRefUdt) sb_put(&proto, "gmb_val_t*");
+            else if (ffiIntByRef) sb_put(&proto, "gmb_int_t*");
             else if (pv) sb_var_ctype(&proto, pv);
             else sb_put(&proto, ctype_name(TY_NUM));
             sb_put(&proto, " ");
