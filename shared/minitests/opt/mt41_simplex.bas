@@ -12,6 +12,6 @@ SUB Main()
     DIM b(1) AS DOUBLE
     b(0) = 4.0 : b(1) = 2.0
     DIM o(2) AS DOUBLE
-    CALL OPTIMIZE.SIMPLEX(c, 2, A, 2, b, o)
+    CALL OPTIMIZE.SIMPLEX(c, A, b, o)
     PRINT "v="; MATH.ROUND(o(0), 3); ","; MATH.ROUND(o(1), 3); ","; MATH.ROUND(o(2), 3)
 END SUB

@@ -11,7 +11,7 @@ SUB Main()
     DIM b(2) AS DOUBLE
     b(0) = 3.0 : b(1) = 5.0 : b(2) = 7.0
     DIM x(1) AS DOUBLE
-    CALL OPTIMIZE.LEASTSQUARES(A, 3, 2, b, x)
+    CALL OPTIMIZE.LEASTSQUARES(A, b, x)
     PRINT "LEASTSQUARES   ="; x(0); ","; x(1)
 
     ' Cholesky [[4,2],[2,3]] x = [10,8] -> (1.75, 1.5)
@@ -20,7 +20,7 @@ SUB Main()
     DIM bc(1) AS DOUBLE
     bc(0) = 10.0 : bc(1) = 8.0
     DIM xc(1) AS DOUBLE
-    CALL OPTIMIZE.CHOLESKYSOLVE(CH, 2, bc, xc)
+    CALL OPTIMIZE.CHOLESKYSOLVE(CH, bc, xc)
     PRINT "CHOLESKYSOLVE ="; xc(0); ","; xc(1)
 
     ' SIMPLEX: max 2x+3y, x+y<=4, x<=2 -> (0,4) obiettivo 12
@@ -31,14 +31,14 @@ SUB Main()
     DIM bm(1) AS DOUBLE
     bm(0) = 4.0 : bm(1) = 2.0
     DIM sx(2) AS DOUBLE
-    CALL OPTIMIZE.SIMPLEX(c, 2, M, 2, bm, sx)
+    CALL OPTIMIZE.SIMPLEX(c, M, bm, sx)
     PRINT "SIMPLEX        ="; sx(0); ","; sx(1); " obj="; sx(2)
 
     ' LINPROG: min -x-y con gli stessi vincoli -> (2,2)
     DIM cmin(1) AS DOUBLE
     cmin(0) = -1.0 : cmin(1) = -1.0
     DIM xl(1) AS DOUBLE
-    CALL OPTIMIZE.LINPROG(cmin, 2, M, 2, bm, xl)
+    CALL OPTIMIZE.LINPROG(cmin, M, bm, xl)
     PRINT "LINPROG        ="; xl(0); ","; xl(1)
 
     ' LINPROGEQ: x+y con x+2y<=6, x=y -> (2,2)
@@ -50,6 +50,6 @@ SUB Main()
     Aeq(0) = 1.0 : Aeq(1) = -1.0
     DIM beq(0) AS DOUBLE
     beq(0) = 0.0
-    CALL OPTIMIZE.LINPROGEQ(cmin, 2, Aub, 1, bub, Aeq, 1, beq, xl)
+    CALL OPTIMIZE.LINPROGEQ(cmin, Aub, bub, Aeq, beq, xl)
     PRINT "LINPROGEQ      ="; xl(0); ","; xl(1)
 END SUB

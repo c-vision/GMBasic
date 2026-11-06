@@ -10,6 +10,6 @@ SUB Main()
     DIM b(2) AS DOUBLE
     b(0) = 3.0 : b(1) = 5.0 : b(2) = 7.0
     DIM o(1) AS DOUBLE
-    CALL OPTIMIZE.LEASTSQUARES(A, 3, 2, b, o)
+    CALL OPTIMIZE.LEASTSQUARES(A, b, o)
     PRINT "v="; MATH.ROUND(o(0), 4); ","; MATH.ROUND(o(1), 4)
 END SUB

@@ -3350,13 +3350,20 @@ static void gmb_bf_917(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func
             else bout->is_num = 0;
         }
 }
-static double gmb_bound_of_shared(gmb_obj_shared_val_t* sv, int dim, int func_code)
+static double gmb_bound_of_shared(gmb_task_t* task, gmb_obj_shared_val_t* sv, int dim, int func_code)
 {
     if (!sv) return func_code == 33 ? 0.0 : -1.0;
     /* Array creato da CREATE_ARRAY (DIM A(...)): bound per la dimensione richiesta
      * (1-based). Prima si ritornava SEMPRE count-1 (lista piatta), quindi UBOUND di una
-     * matrice 2D dava il totale degli elementi -1 (es. DIM A(1,1) → 3,3). */
-    if (sv->ndims > 0 && dim >= 1 && dim <= sv->ndims)
+     * matrice 2D dava il totale degli elementi -1 (es. DIM A(1,1) → 3,3).
+     * Dimensione fuori range: errore runtime come IL/PCode (GetUpperBound(-1/ndims)
+     * lancia IndexOutOfRange). Prima si ricadeva sul count della lista, quindi
+     * UBOUND(v, 2) su un array 1-D restituiva n-1 e su un 3-D UBOUND(g, 4) il totale-1. */
+    if (dim < 1 || dim > (sv->ndims > 0 ? sv->ndims : 1)) {
+        vm_error(task, "LBOUND/UBOUND: dimensione fuori range");
+        return func_code == 33 ? 0.0 : -1.0;
+    }
+    if (sv->ndims > 0)
         return func_code == 33 ? (double)sv->dim_lower[dim - 1] : (double)sv->dim_upper[dim - 1];
     double n = (double)gmb_list_count(*sv->list);
     return func_code == 33 ? 0.0 : (n > 0 ? n - 1 : -1.0);
@@ -3369,13 +3376,13 @@ static void gmb_bf_32(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_
             {
                 gmb_obj_shared_val_t* sv = (gmb_obj_shared_val_t*)args[0].ref;
                 int dim = (argc >= 2 && args[1].type == 1) ? (int)args[1].num : 1;
-                bout->result = gmb_bound_of_shared(sv, dim, func_code);
+                bout->result = gmb_bound_of_shared(task, sv, dim, func_code);
             }
             else if (argc >= 2 && args[1].type == 2 && args[1].ref && args[1].ref->kind == GMB_OBJ_LIST)
             {
                 gmb_obj_shared_val_t* sv = (gmb_obj_shared_val_t*)args[1].ref;
                 int dim = (args[0].type == 1) ? (int)args[0].num : 1;
-                bout->result = gmb_bound_of_shared(sv, dim, func_code);
+                bout->result = gmb_bound_of_shared(task, sv, dim, func_code);
             }
             else if (argc >= 1 && args[0].type == 2 && args[0].ref && args[0].ref->kind == GMB_OBJ_STRING)
             {

@@ -76,28 +76,41 @@ PUBLIC DECLARE FUNCTION MINIMIZESCALARM LIB "gmbopt" ALIAS "gor_optb_minimize_sc
 
 ' ═══════════════════════════════════════════════════════════════════════════
 ' Minimi quadrati lineari / Cholesky / programmazione lineare
-' Le matrici sono PIATTE row-major (m*n) + dimensioni esplicite: l'ABI FFI non
-' conosce gli array di array e la forma piatta e' identica su tutti i backend.
+' Le matrici sono PIATTE row-major (m*n): le DIMENSIONI le deduce il wrapper
+' (rows = UBOUND(b)+1, cols = (UBOUND(A)+1)/rows per A piatta 1-D), non il
+' chiamante. Per l'input JAGGED ci sono le FUNCTION omonime con `ARRAY OF DOUBLE`
+' in fondo al file, che appiattiscono qui dentro.
+' Una matrice 2-D (DIM m(r,c)) va passata alle DECLARE OPTN_* con dimensioni
+' esplicite: un parametro array del linguaggio non conserva il rank su C99
+' (IL/PCode/VM-C lo vedrebbero, C99 no) — per un'API cross-backend usare le
+' forme piatte/jagged di questi wrapper.
 ' ═══════════════════════════════════════════════════════════════════════════
 
 ' A (rows×cols, row-major), b[rows] -> out[cols].
-PUBLIC SUB LEASTSQUARES(A() AS DOUBLE, rows AS LONG, cols AS LONG, b() AS DOUBLE, out() AS DOUBLE)
+PUBLIC SUB LEASTSQUARES(A() AS DOUBLE, b() AS DOUBLE, out() AS DOUBLE)
+    DIM rows AS LONG = UBOUND(b) + 1
+    DIM cols AS LONG = (UBOUND(A) + 1) / rows
     CALL OPTN_LEASTSQUARES(A, rows, cols, b, out)
 END SUB
 
 ' A (n×n simmetrica definita positiva, row-major), b[n] -> out[n].
-PUBLIC SUB CHOLESKYSOLVE(A() AS DOUBLE, n AS LONG, b() AS DOUBLE, out() AS DOUBLE)
+PUBLIC SUB CHOLESKYSOLVE(A() AS DOUBLE, b() AS DOUBLE, out() AS DOUBLE)
+    DIM n AS LONG = UBOUND(b) + 1
     CALL OPTN_CHOLESKYSOLVE(A, b, n, out)
 END SUB
 
 ' SIMPLEX: massimizza c'x con A x <= b, x >= 0 (A m×n row-major).
 ' out(n) = soluzione, out(n+1) = obiettivo.
-PUBLIC SUB SIMPLEX(c() AS DOUBLE, n AS LONG, A() AS DOUBLE, m AS LONG, b() AS DOUBLE, out() AS DOUBLE)
+PUBLIC SUB SIMPLEX(c() AS DOUBLE, A() AS DOUBLE, b() AS DOUBLE, out() AS DOUBLE)
+    DIM n AS LONG = UBOUND(c) + 1
+    DIM m AS LONG = UBOUND(b) + 1
     CALL OPTN_SIMPLEX(c, n, A, m, b, out)
 END SUB
 
 ' LINPROG minimizza c'x; A x <= b (m×n row-major), x >= 0.
-PUBLIC SUB LINPROG(c() AS DOUBLE, n AS LONG, A() AS DOUBLE, m AS LONG, b() AS DOUBLE, out() AS DOUBLE)
+PUBLIC SUB LINPROG(c() AS DOUBLE, A() AS DOUBLE, b() AS DOUBLE, out() AS DOUBLE)
+    DIM n AS LONG = UBOUND(c) + 1
+    DIM m AS LONG = UBOUND(b) + 1
     DIM bnd(2 * n - 1) AS DOUBLE
     DIM big AS DOUBLE = 10.0 ^ 30
     DIM i AS LONG
@@ -107,14 +120,19 @@ PUBLIC SUB LINPROG(c() AS DOUBLE, n AS LONG, A() AS DOUBLE, m AS LONG, b() AS DO
     CALL OPTN_LINPROG(c, n, A, m, b, bnd, out)
 END SUB
 
-PUBLIC SUB LINPROGB(c() AS DOUBLE, n AS LONG, A() AS DOUBLE, m AS LONG, b() AS DOUBLE, bounds() AS DOUBLE, out() AS DOUBLE)
+PUBLIC SUB LINPROGB(c() AS DOUBLE, A() AS DOUBLE, b() AS DOUBLE, bounds() AS DOUBLE, out() AS DOUBLE)
+    DIM n AS LONG = UBOUND(c) + 1
+    DIM m AS LONG = UBOUND(b) + 1
     CALL OPTN_LINPROG(c, n, A, m, b, bounds, out)
 END SUB
 ' LEASTSQUARESFIT con m DEDOTTO: la callback dichiara quanti residui restituisce.
 DECLARE SUB OPTN_LEASTSQUARESFITAUTO LIB "gmbopt" ALIAS "gor_optb_least_squares_fit_auto" (f AS FUNCTION(x() AS DOUBLE) AS ARRAY, x0() AS DOUBLE, n AS LONG, bounds() AS DOUBLE, out() AS DOUBLE)
 
 ' Uguaglianze Ae x = be (me×n) espanse in due disuguaglianze.
-PUBLIC SUB LINPROGEQ(c() AS DOUBLE, n AS LONG, A() AS DOUBLE, m AS LONG, b() AS DOUBLE, Ae() AS DOUBLE, me AS LONG, be() AS DOUBLE, out() AS DOUBLE)
+PUBLIC SUB LINPROGEQ(c() AS DOUBLE, A() AS DOUBLE, b() AS DOUBLE, Ae() AS DOUBLE, be() AS DOUBLE, out() AS DOUBLE)
+    DIM n AS LONG = UBOUND(c) + 1
+    DIM m AS LONG = UBOUND(b) + 1
+    DIM me AS LONG = UBOUND(be) + 1
     DIM rows AS LONG = m + 2 * me
     DIM flat(rows * n - 1) AS DOUBLE
     DIM bb(rows - 1) AS DOUBLE
@@ -141,7 +159,10 @@ PUBLIC SUB LINPROGEQ(c() AS DOUBLE, n AS LONG, A() AS DOUBLE, m AS LONG, b() AS 
     CALL OPTN_LINPROG(c, n, flat, rows, bb, bnd, out)
 END SUB
 
-PUBLIC SUB LINPROGFULL(c() AS DOUBLE, n AS LONG, A() AS DOUBLE, m AS LONG, b() AS DOUBLE, Ae() AS DOUBLE, me AS LONG, be() AS DOUBLE, bounds() AS DOUBLE, out() AS DOUBLE)
+PUBLIC SUB LINPROGFULL(c() AS DOUBLE, A() AS DOUBLE, b() AS DOUBLE, Ae() AS DOUBLE, be() AS DOUBLE, bounds() AS DOUBLE, out() AS DOUBLE)
+    DIM n AS LONG = UBOUND(c) + 1
+    DIM m AS LONG = UBOUND(b) + 1
+    DIM me AS LONG = UBOUND(be) + 1
     DIM rows AS LONG = m + 2 * me
     DIM flat(rows * n - 1) AS DOUBLE
     DIM bb(rows - 1) AS DOUBLE
@@ -348,34 +369,11 @@ END SUB
 ' `LEASTSQUARESFIT` deduce m dal valore di ritorno della callback (come il builtin).
 ' ═══════════════════════════════════════════════════════════════════════════
 
-PUBLIC FUNCTION LEASTSQUARES(A() AS DOUBLE, rows AS LONG, cols AS LONG, b() AS DOUBLE) AS ARRAY OF DOUBLE
-    DIM o(cols - 1) AS DOUBLE
-    CALL LEASTSQUARES(A, rows, cols, b, o)
-    RETURN o
-END FUNCTION
-
-PUBLIC FUNCTION CHOLESKYSOLVE(A() AS DOUBLE, n AS LONG, b() AS DOUBLE) AS ARRAY OF DOUBLE
-    DIM o(n - 1) AS DOUBLE
-    CALL CHOLESKYSOLVE(A, n, b, o)
-    RETURN o
-END FUNCTION
-
 ' out = soluzione (n valori) + obiettivo in coda (n+1 totali), come la SUB.
-PUBLIC FUNCTION SIMPLEX(c() AS DOUBLE, n AS LONG, A() AS DOUBLE, m AS LONG, b() AS DOUBLE) AS ARRAY OF DOUBLE
-    DIM o(n) AS DOUBLE
-    CALL SIMPLEX(c, n, A, m, b, o)
-    RETURN o
-END FUNCTION
-
-PUBLIC FUNCTION LINPROG(c() AS DOUBLE, n AS LONG, A() AS DOUBLE, m AS LONG, b() AS DOUBLE) AS ARRAY OF DOUBLE
+PUBLIC FUNCTION LINPROGB(c() AS DOUBLE, A() AS DOUBLE, b() AS DOUBLE, bounds() AS DOUBLE) AS ARRAY OF DOUBLE
+    DIM n AS LONG = UBOUND(c) + 1
     DIM o(n - 1) AS DOUBLE
-    CALL LINPROG(c, n, A, m, b, o)
-    RETURN o
-END FUNCTION
-
-PUBLIC FUNCTION LINPROGB(c() AS DOUBLE, n AS LONG, A() AS DOUBLE, m AS LONG, b() AS DOUBLE, bounds() AS DOUBLE) AS ARRAY OF DOUBLE
-    DIM o(n - 1) AS DOUBLE
-    CALL LINPROGB(c, n, A, m, b, bounds, o)
+    CALL LINPROGB(c, A, b, bounds, o)
     RETURN o
 END FUNCTION
 

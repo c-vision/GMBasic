@@ -11,6 +11,6 @@ SUB Main()
     DIM b(1) AS DOUBLE
     b(0) = 4.0 : b(1) = 2.0
     DIM sx(2) AS DOUBLE
-    CALL OPTIMIZE.SIMPLEX(c, 2, A, 2, b, sx)
+    CALL OPTIMIZE.SIMPLEX(c, A, b, sx)
     PRINT "simplex="; sx(0); ","; sx(1); " obj="; sx(2)
 END SUB

@@ -1130,7 +1130,12 @@ public sealed partial class IlProgramCompiler
         switch (expr)
         {
             case NumberExpr n: value = (int)n.Value; return true;
-            case BuiltinFunctionCallExpr { Name.Kind: TokenKind.CLng } f when f.Args.Length == 1:
+            /* Conversioni intere iniettate dal Linker sugli argomenti con tipo dichiarato
+             * LONG (es. la dimensione di LBOUND/UBOUND: `LBOUND(A, 1)` arriva come
+             * `CONVERSIONS.CINT(1)`). Senza questo caso la dimensione era trattata come
+             * RUNTIME (TryEmitRuntimeBound) e il lower bound logico (DIM 1 TO N) veniva
+             * perso: UBOUND(a, 1) restituiva la length-1 CLR invece del bound BASIC. */
+            case BuiltinFunctionCallExpr { Name.Kind: TokenKind.CLng or TokenKind.CInt or TokenKind.CByte } f when f.Args.Length == 1:
                 return TryExtractCompileTimeInt32(f.Args[0], out value);
             case UnaryExpr u when u.Op.Kind == TokenKind.Minus:
                 if (TryExtractCompileTimeInt32(u.Right, out var inner)) { value = -inner; return true; }
