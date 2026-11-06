@@ -90,6 +90,10 @@ dell'asse `dim`.
   C99Native, a runtime su PCodeVM e VM/C.
 - `LEN(A)` su un array restituisce il numero complessivo di elementi; su un array passato come
   parametro a una procedura la dimensione viaggia con l'array.
+- **Limite noto**: il lower bound appartiene alla dichiarazione `DIM`, non al valore passato a
+  un parametro `a()`. PCodeVM e VM/C conservano i limiti (array auto-descrittivi); IL e
+  C99Native vedono un array 0-based nel callee. Per codice portabile, passare il lower come
+  parametro esplicito o usare array 0-based per i parametri.
 
 **Slicing.** `a[start:end]` produce una nuova lista con gli elementi da `start` incluso a `end`
 escluso:
