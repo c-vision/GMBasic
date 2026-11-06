@@ -8,24 +8,27 @@ I/O GeoJSON/WKT e indice spaziale a griglia.
 
 ## Rappresentazione
 
-Le struct C (`geo_pt { double x, y; }`, `geo_bbox`) non attraversano l'FFI: ogni
-geometria viaggia come **due array paralleli `xs()` / `ys()` + `n`**. Poligoni:
-vertici in ordine, senza ripetere il primo; area/perimetro assumono il verso
-(antiorario = area positiva).
+Ogni geometria è un **array del TYPE `GeoPoint`** (`X`, `Y` AS DOUBLE) + il numero di
+vertici `n`. Il layout del TYPE è identico a quello della struct C `geo_pt`, quindi il
+buffer viaggia contiguo (copy-in/copy-out dell FFI) e i punti singoli si passano e
+tornano **per valore**. Il bounding box è il TYPE `GeoBox` (`MinX`, `MinY`, `MaxX`,
+`MaxY`). Poligoni: vertici in ordine, senza ripetere il primo; area/perimetro
+assumono il verso (antiorario = area positiva).
 
 ## Superficie (`shared/include/geo.inc`, `IMPORT GEO`)
 
 | famiglia | funzioni |
 |---|---|
-| misure | `POLYAREA`, `PERIMETER`, `CENTROID`, `DIST` |
+| misure | `POLYAREA`, `PERIMETER`, `CENTROID` (ritorna `GeoPoint`), `DIST` |
+| forma (ritorni) | `CENTROID` → `GeoPoint`, `BBOX` → `GeoBox` |
 | predicati / distanze | `POINTINPOLY`, `ONSEGMENT`, `DISTPOINTSEG`, `DISTSEGSEG` |
-| intersezione | `SEGINTERSECT`, `SEGINTERSECTION` (punto in `out(0..1)`, `out()` primo argomento) |
+| intersezione | `SEGINTERSECT`, `SEGINTERSECTION` (punto in `out(0)`, array di 1 `GeoPoint`) |
 | forma | `BBOX` (`out(0..3)=minx,miny,maxx,maxy`), `CONVEXHULL`, `SIMPLIFY` (Douglas-Peucker), `TRANSLATE`, `SCALE`, `ROTATE`, `CLIP` (Sutherland-Hodgman, clip convesso antiorario) |
-| geodesia | `PROJECT`/`UNPROJECT` (Web Mercator, `out(0..1)`), `HAVERSINE` (metri, sfera R=6378137) |
+| geodesia | `PROJECT`/`UNPROJECT` (ritornano `GeoPoint`: est/nord in metri, lon/lat in gradi), `HAVERSINE` (metri, sfera R=6378137) |
 | overlay | `OVERLAY` (0=intersezione, 1=unione, 2=differenza A−B; Greiner-Hormann) |
-| spatial join | `SPATIALJOIN` (offset `aoff`/`boff` su array piatti, coppie in `pairs()`) |
+| spatial join | `SPATIALJOIN` (offset `aoff`/`boff` sull array di `GeoPoint`, coppie in `pairs()`) |
 | I/O | `GEOJSONPARSE`, `GEOJSONWRITE`, `WKTPARSE`, `WKTPOINT`, `WKTWRITE` |
-| indice | `GRIDNEW`, `GRIDQUERY`, `GRIDFREE` (handle 7301+) |
+| indice | `GRIDNEW`, `GRIDQUERY` (finestra `GeoBox`), `GRIDFREE` (handle 7301+) |
 
 ## Cosa NON è qui (già coperto dalla superficie BASIC)
 
