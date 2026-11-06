@@ -42,7 +42,7 @@ Questi moduli restano fuori dal pacchetto per non duplicare la superficie BASIC.
 | Autodiff | `AUTOVALUE`, `AUTO{ADD,SUB,MUL,DIV,POW,NEG,RELU,TANH,EXP}`, `AUTODATA/GRAD/BACKWARD/FREE` | grafo scalare (micrograd), handle 7001+ |
 | GP | `GPINIT/GPEVOLVE/GPEVAL/GPFREE` | alfabeto codes/arity + fitness `FUNCTION(code() AS DOUBLE) AS DOUBLE`, handle 7101+ |
 | Normalizzazione online | `NORMINIT/OBSERVE/FINALIZE/APPLY/DENORM/ZSCORE/STATS/COUNT/FREE` | scaler addestrato e riusabile, handle 7201+ |
-| Righe/matrici | `GATHERROWS`, `SLICEROWS`, `COPYBLOCK`, `MATAPPLY`, `MATABSMAX` | il resto (concat, matmul...) resta in TORCH |
+| Righe/matrici | `GATHERROWS`, `SLICEROWS`, `COPYBLOCK`, `MATAPPLY`, `MATABSMAX`, `SOFTMAXTEMP`, `SNNLUTFORWARD` | il resto (concat, matmul, softmax a temp 1...) resta in TORCH |
 
 Convenzioni: `x()` = T×in, `y()`/`gy()` = T×out, DOUBLE row-major; handle LONG > 0;
 `STEP` usa i gradienti accumulati da `BACKWARD` (buffer m/v allocati al primo passo,
@@ -71,7 +71,7 @@ zsh tools/sh/test_minitests_parity.sh "neural/neural_recurrent.bas"
 
 ## Copertura completa di gmbneural
 
-Portati (228 export `ofx_nn_*`): RNN/LSTM/GRU/BiRNN/PBP, CNN (conv/deconv/winograd/
+Portati (230 export `ofx_nn_*`): RNN/LSTM/GRU/BiRNN/PBP, CNN (conv/deconv/winograd/
 im2col/col2im/LRN/resize), pooling, FusedMM/aggregate, prune, quant, ternary,
 CART/forest/adaboost, SNN/BNN/PINN/detection/KNN/metrics/memplan, attivazioni e
 gradienti, strato denso, perdite, dropout, batchnorm/layernorm, Chuck, autograd, GP.

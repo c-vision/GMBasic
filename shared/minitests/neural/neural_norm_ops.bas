@@ -1,5 +1,5 @@
 ' NEURAL (FFI) — scaler adattivo (gn_norm), gather/block (gn_ops), apply/absmax (gn_core).
-' EXPECT: n= 7201 : 0 , 0 : 2 : 0 |ap= 0 =1.0,1.0|dn= 0 =3.0,4.0|zs= 0 =0.7071,0.7071|st= 0 =3.0,4.0,2.0,3.0,1.4142,1.4142|nf= 0 |ga= 0 =5.0,6.0,1.0,2.0|sl= 0 =3.0,4.0,5.0,6.0|cb= 0 =5.0,6.0,8.0,9.0|ap2= 0 =2.0,5.0,10.0|mx=5.0|f=0
+' EXPECT: n= 7201 : 0 , 0 : 2 : 0 |ap= 0 =1.0,1.0|dn= 0 =3.0,4.0|zs= 0 =0.7071,0.7071|st= 0 =3.0,4.0,2.0,3.0,1.4142,1.4142|nf= 0 |ga= 0 =5.0,6.0,1.0,2.0|sl= 0 =3.0,4.0,5.0,6.0|cb= 0 =5.0,6.0,8.0,9.0|ap2= 0 =2.0,5.0,10.0|mx=5.0|sm= 0 =0.2689,0.7311|smt= 0 =0.1192,0.8808|lut= 0 =8.0,10.0|f=0
 IMPORT NEURAL
 
 ' Funzione applicata elemento per elemento (MATAPPLY).
@@ -49,5 +49,17 @@ SUB Main()
   PRINT FORMAT(mo(0), "#.0"); ","; FORMAT(mo(1), "#.0"); ","; FORMAT(mo(2), "#.0");
   ab(0)=-5 : ab(1)=3
   PRINT "|mx="; FORMAT(NEURAL.MATABSMAX(ab, 2), "#.0");
+  DIM z2(1) AS DOUBLE, so(1) AS DOUBLE
+  z2(0)=0 : z2(1)=1
+  PRINT "|sm="; NEURAL.SOFTMAXTEMP(so, z2, 1, 2, 1.0); "="; FORMAT(so(0), "#.0000"); ","; FORMAT(so(1), "#.0000");
+  PRINT "|smt="; NEURAL.SOFTMAXTEMP(so, z2, 1, 2, 0.5); "="; FORMAT(so(0), "#.0000"); ","; FORMAT(so(1), "#.0000");
+  DIM lut(7) AS DOUBLE, lj(1) AS LONG, ly(1) AS DOUBLE
+  DIM t AS LONG
+  FOR t = 0 TO 7
+    lut(t) = t + 1
+  NEXT t
+  lj(0)=1 : lj(1)=0
+  ly(0)=0 : ly(1)=0
+  PRINT "|lut="; NEURAL.SNNLUTFORWARD(lut, 2, lj, 2, 2, ly); "="; FORMAT(ly(0), "#.0"); ","; FORMAT(ly(1), "#.0");
   PRINT "|f=0"
 END SUB

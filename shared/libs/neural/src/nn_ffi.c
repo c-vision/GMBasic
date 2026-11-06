@@ -2657,3 +2657,31 @@ double ofx_nn_mat_absmax(const double *in, i64 n)
     I.rows = 1; I.cols = (int)n; I.data = (gn_real *)in;
     return (double)gn_mat_absmax(&I);
 }
+
+/* Softmax con temperatura (TORCH.SOFTMAX copre la variante a temperatura 1). */
+i64 ofx_nn_softmax_temp(double *out, const double *z, i64 rows, i64 cols, double temp)
+{
+    gn_mat O, Z;
+    if (!out || !z || rows <= 0 || cols <= 0) return -1;
+    O.rows = Z.rows = (int)rows; O.cols = Z.cols = (int)cols;
+    O.data = (gn_real *)out; Z.data = (gn_real *)z;
+    return (i64)gn_softmax_temp(&O, &Z, (gn_real)temp);
+}
+
+/* LUT SNN: s() e' lo stack contiguo dei tempi (n_t blocchi di n_tab tabelle da
+ * y_dim); S[i] = s + i*n_tab*y_dim, tabella j[i]. y[k] += tab[k] (accumula). */
+i64 ofx_nn_snn_lut_forward(const double *s, i64 n_tab, const i64 *j, i64 n_t, i64 y_dim, double *y)
+{
+    const gn_real **S;
+    int *ji;
+    int i;
+    if (!s || !j || !y || n_tab <= 0 || n_t <= 0 || y_dim <= 0) return -1;
+    S = (const gn_real **)malloc((size_t)n_t * sizeof(gn_real *));
+    ji = i32_from_longs(j, (int)n_t);
+    if (!S || !ji) { free(S); free(ji); return -1; }
+    for (i = 0; i < (int)n_t; i++) S[i] = (const gn_real *)s + (size_t)i * (size_t)n_tab * (size_t)y_dim;
+    gn_snn_lut_forward(S, ji, (int)n_t, (int)y_dim, (gn_real *)y);
+    free(S);
+    free(ji);
+    return 0;
+}
