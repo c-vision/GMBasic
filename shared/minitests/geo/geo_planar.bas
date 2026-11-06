@@ -1,5 +1,5 @@
 ' GEO (FFI) — geometria piana: misure, predicati, forma, clip, overlay.
-' EXPECT: area=16.0|per=16.0|cen= 0 =2.0,2.0|d=5.0|in= 1 , 0 |on= 1 , 0 |dps=3.0|dss=3.0|si= 1 |sp= 1 =2.0,2.0|bb= 0 =0.0,0.0,4.0,4.0|simp= 2 =4.0,0.0|tr= 0 =1.0,2.0|sc= 0 =8.0,12.0|ro= 0 =0.0,4.0|clip= 4 :4.0|ov0= 4 :16.0|ov1= 8 :-56.0|ov2= 6 :-20.0|f=0
+' EXPECT: area=16.0|per=16.0|cen= 0 =2.0,2.0|d=5.0|in= 1 , 0 |on= 1 , 0 |dps=3.0|dss=3.0|si= 1 |sp= 1 =2.0,2.0|bb= 0 =0.0,0.0,4.0,4.0|simp= 2 =4.0,0.0|tr= 0 =1.0,2.0|sc= 0 =8.0,12.0|ro= 0 =0.0,4.0|clip= 4 :4.0|ov0= 4 :16.0|ov1= 8 :-56.0|ov2= 6 :-20.0|hu= 4 :16.0|f=0
 IMPORT GEO
 
 SUB Main()
@@ -48,5 +48,10 @@ SUB Main()
   PRINT "|ov1="; n; ":"; FORMAT(GEO.POLYAREA(ox, oy, n), "#.0");
   n = GEO.OVERLAY(ax, ay, 4, bx, by, 4, ox, oy, 16, 2)
   PRINT "|ov2="; n; ":"; FORMAT(GEO.POLYAREA(ox, oy, n), "#.0");
+  DIM hx(7) AS DOUBLE, hy(7) AS DOUBLE
+  DIM hxs(4) AS DOUBLE, hys(4) AS DOUBLE
+  hxs(0)=0 : hxs(1)=4 : hxs(2)=4 : hxs(3)=0 : hxs(4)=2
+  hys(0)=0 : hys(1)=0 : hys(2)=4 : hys(3)=4 : hys(4)=2
+  PRINT "|hu="; GEO.CONVEXHULL(hxs, hys, 5, hx, hy, 8); ":"; FORMAT(GEO.POLYAREA(hx, hy, 4), "#.0");
   PRINT "|f=0"
 END SUB

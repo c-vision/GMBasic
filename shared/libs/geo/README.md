@@ -20,7 +20,7 @@ vertici in ordine, senza ripetere il primo; area/perimetro assumono il verso
 | misure | `POLYAREA`, `PERIMETER`, `CENTROID`, `DIST` |
 | predicati / distanze | `POINTINPOLY`, `ONSEGMENT`, `DISTPOINTSEG`, `DISTSEGSEG` |
 | intersezione | `SEGINTERSECT`, `SEGINTERSECTION` (punto in `out(0..1)`, `out()` primo argomento) |
-| forma | `BBOX` (`out(0..3)=minx,miny,maxx,maxy`), `SIMPLIFY` (Douglas-Peucker), `TRANSLATE`, `SCALE`, `ROTATE`, `CLIP` (Sutherland-Hodgman, clip convesso antiorario) |
+| forma | `BBOX` (`out(0..3)=minx,miny,maxx,maxy`), `CONVEXHULL`, `SIMPLIFY` (Douglas-Peucker), `TRANSLATE`, `SCALE`, `ROTATE`, `CLIP` (Sutherland-Hodgman, clip convesso antiorario) |
 | geodesia | `PROJECT`/`UNPROJECT` (Web Mercator, `out(0..1)`), `HAVERSINE` (metri, sfera R=6378137) |
 | overlay | `OVERLAY` (0=intersezione, 1=unione, 2=differenza A−B; Greiner-Hormann) |
 | spatial join | `SPATIALJOIN` (offset `aoff`/`boff` su array piatti, coppie in `pairs()`) |
@@ -29,9 +29,12 @@ vertici in ordine, senza ripetere il primo; area/perimetro assumono il verso
 
 ## Cosa NON è qui (già coperto dalla superficie BASIC)
 
+`GEO.CONVEXHULL` restituisce il **poligono** (xs/ys) e `SPATIAL.CONVEXHULL` gli
+**indici** dei vertici su una matrice X/Y: sono due forme diverse, entrambe disponibili.
+`GEO.WKTWRITE` è un'aggiunta (gmbgeo ha solo il parser WKT): serve al round-trip dei test.
+
 | gmbgeo | dove |
 |---|---|
-| `geo_convex_hull` | `SPATIAL.CONVEXHULL` (indici dei vertici: si selezionano da xs()/ys() con quegli indici) |
 | distanze batch fra insiemi di punti | `SPATIAL.PDIST` / `CDIST` / `DISTANCEMATRIX` — `GEO.DIST` resta la primitiva **scalare** usata anche dalle altre funzioni |
 | trigonometria (sin/cos per rotazioni custom) | `MATH` |
 | operazioni su matrici | `MATRIX` |

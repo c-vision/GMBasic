@@ -474,3 +474,24 @@ i64 ofx_geo_grid_free(i64 h)
     e->used = 0;
     return 0;
 }
+
+/* ── Inviluppo convesso (monotone chain) ─────────────────────────────────────
+ * Ritorna il numero di vertici dello scafo e li scrive in oxs/oys (cap vertici),
+ * in ordine. Diverso da SPATIAL.CONVEXHULL, che restituisce gli INDICI dei vertici
+ * di una matrice X/Y: qui il risultato e' gia' il poligono (xs/ys) pronto per
+ * POLYAREA/OVERLAY. */
+i64 ofx_geo_convex_hull(const double *xs, const double *ys, i64 n,
+                        double *oxs, double *oys, i64 cap)
+{
+    geo_pt *p, *o;
+    int r;
+    if (n < 1 || cap < 3) return -1;
+    p = geo_in(xs, ys, (int)n);
+    o = (geo_pt *)calloc((size_t)cap, sizeof(geo_pt));
+    if (!p || !o) { free(p); free(o); return -1; }
+    r = geo_convex_hull(p, (int)n, o, (int)cap);
+    if (r > 0) geo_out(o, r, oxs, oys);
+    free(p);
+    free(o);
+    return (i64)r;
+}
