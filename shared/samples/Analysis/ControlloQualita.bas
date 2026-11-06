@@ -10,7 +10,7 @@
 '
 ' Domini: ANALYSIS + MATH. Input fissi: l'output è riproducibile.
 
-IMPORT MULTIVARIATE
+IMPORT MULTIVARIATEX
 IMPORT STATS
 SUB Main()
     ' ── 1. ANOVA: tre linee, quattro pezzi ciascuna ──────────────────────────
@@ -33,20 +33,20 @@ SUB Main()
     ' ── 2. PCA: temperatura e pressione ──────────────────────────────────────
     ' Se le due grandezze crescono insieme, la prima componente spiega quasi
     ' tutta la variabilità (autovalore 1 molto maggiore dell'autovalore 2).
-    DIM misure(5, 1) AS DOUBLE
-    misure(0, 0) = 20.0 : misure(0, 1) = 1.01
-    misure(1, 0) = 21.0 : misure(1, 1) = 1.02
-    misure(2, 0) = 22.0 : misure(2, 1) = 1.03
-    misure(3, 0) = 23.0 : misure(3, 1) = 1.04
-    misure(4, 0) = 24.0 : misure(4, 1) = 1.05
-    misure(5, 0) = 25.0 : misure(5, 1) = 1.06
-    DIM pca AS MULTIVARIATE.PcaResult
-    pca = MULTIVARIATE.Pca(misure)
+    DIM misure(5) AS ARRAY OF DOUBLE
+    misure(0) = {20.0, 1.01}
+    misure(1) = {21.0, 1.02}
+    misure(2) = {22.0, 1.03}
+    misure(3) = {23.0, 1.04}
+    misure(4) = {24.0, 1.05}
+    misure(5) = {25.0, 1.06}
+    DIM pcaOut(5) AS DOUBLE
+    CALL MULTIVARIATEX.PCA(misure, pcaOut)
     PRINT "== 2. PCA: temperatura e pressione =="
-    PRINT "autovalore 1 = "; MATH.ROUND(pca.EigenValues(0), 6)
-    PRINT "autovalore 2 = "; MATH.ROUND(pca.EigenValues(1), 6)
+    PRINT "autovalore 1 = "; MATH.ROUND(pcaOut(0), 6)
+    PRINT "autovalore 2 = "; MATH.ROUND(pcaOut(1), 6)
     DIM quota AS DOUBLE
-    quota = pca.EigenValues(0) / (pca.EigenValues(0) + pca.EigenValues(1)) * 100.0
+    quota = pcaOut(0) / (pcaOut(0) + pcaOut(1)) * 100.0
     PRINT "prima componente spiega il "; MATH.ROUND(quota, 2); "% della variabilita'"
 
     ' ── 3. FFT: frequenza di vibrazione del macchinario ──────────────────────

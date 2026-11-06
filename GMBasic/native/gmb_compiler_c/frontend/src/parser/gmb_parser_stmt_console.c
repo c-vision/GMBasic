@@ -265,6 +265,15 @@ gmb_stmt_t* gmb_p_parse_set(gmb_parser_t* p, int line)
                           || gmb_p_tok_is_keyword(gmb_p_cur(p), "Theme"))) {
             gmb_p_adv(p);
         }
+        /* SET THEME [TO] <expr> — il valore va CATTURATO in s->col: prima finiva nel
+         * "salta fino a fine riga" e sui backend C il tema non veniva mai applicato. */
+        if (gmb_p_tok_is_keyword(a, "Theme")) {
+            if (gmb_p_cur(p) && gmb_p_tok_is_keyword(gmb_p_cur(p), "To")) gmb_p_adv(p);
+            if (gmb_p_cur(p) && !gmb_p_at_end(p) && !gmb_p_check(p, GMB_TOK_Newline)
+                && !gmb_p_check(p, GMB_TOK_Colon))
+                s->col = gmb_p_parse_expr(p);
+            return s;
+        }
         /* valore */
         while (!gmb_p_at_end(p) && !gmb_p_check(p, GMB_TOK_Newline) && !gmb_p_check(p, GMB_TOK_Colon)) gmb_p_adv(p);
     }

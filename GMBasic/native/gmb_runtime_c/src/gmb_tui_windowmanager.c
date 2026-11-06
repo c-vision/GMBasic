@@ -282,7 +282,27 @@ double gmb_window_desktop(void)
     gmb_window_manager_t* m = gmb_window_manager_static();
     return (double)(m->current_desktop > 0 ? m->current_desktop : 1);
 }
-const char* gmb_window_theme(void) { return "Turbo"; }
+/* Tema corrente: UNICA fonte = registro tema del runtime (gmb_ui_theme_name, default
+ * "turbo"). Prima era la costante "Turbo": su VM/C e C99Native il lettore
+ * WINDOWS.THEME() ignorava il tema impostato (divergenza da IL). */
+const char* gmb_window_theme(void) { return gmb_ui_theme_name(); }
+
+/* Dimensioni della finestra attiva (celle, come X/Y): -1 se non c'e' finestra.
+ * Prima erano stub (-1.0) su VM/C e C99Native. */
+double gmb_window_width(void)
+{
+    gmb_window_manager_t* m = gmb_window_manager_static();
+    int id = gmb_window_manager_focused(m);
+    gmb_managed_window_t* w = id >= 0 ? gmb_window_manager_get(m, id) : NULL;
+    return w ? (double)w->rect.w : -1.0;
+}
+double gmb_window_height(void)
+{
+    gmb_window_manager_t* m = gmb_window_manager_static();
+    int id = gmb_window_manager_focused(m);
+    gmb_managed_window_t* w = id >= 0 ? gmb_window_manager_get(m, id) : NULL;
+    return w ? (double)w->rect.h : -1.0;
+}
 
 /* ============================================================================
  * 100% parity WindowManager.cs:1321 — desktop/status/drag/resize/select/tile/ctrl

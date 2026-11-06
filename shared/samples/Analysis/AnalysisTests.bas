@@ -15,6 +15,7 @@
 ' - Interpolazione: Linear, Spline, Polynomial.
 ' - Calcolo: Integrate, Differentiate.
 ' =================================================================================================
+IMPORT MULTIVARIATEX
 IMPORT TIMESERIES
 IMPORT REGRESSION
 IMPORT STATS
@@ -80,8 +81,9 @@ SUB Main()
     FOR i = 0 TO 9 : ClusterData(i) = RND() : NEXT
     FOR i = 10 TO 19: ClusterData(i) = 10 + RND() : NEXT
     
-    DIM KRes = MULTIVARIATE.KMeans(ClusterData, 2) ' Cerchiamo 2 cluster
-    PRINT "Centroidi trovati:   "; JSON.Stringify(KRes.Centroids)
+    DIM KOut(21) AS DOUBLE
+    CALL MULTIVARIATEX.KMEANS(ClusterData, 2, KOut) ' Cerchiamo 2 cluster
+    PRINT "Centroidi trovati:   "; KOut(0); ", "; KOut(1)
     PRINT
     
     ' --- 4. TRASFORMATE (FFT) ---

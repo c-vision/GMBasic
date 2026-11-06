@@ -254,31 +254,37 @@ int gs_gp_regression(const gc_real *x, const gc_real *y, int n,
                      const gc_real *xs, int m, gc_real l2, gc_real noise,
                      gc_real *out_mean, gc_real *out_var)
 {
-    double *K, *alpha, *kx, *v;
+    double *K, *K0, *alpha, *kx, *v;
     int i, j, q;
     if (!x || !y || !xs || !out_mean || !out_var || n < 1 || m < 1 || l2 <= 0.0) return -1;
     K = malloc(sizeof(double)*(size_t)n*n);
+    K0 = malloc(sizeof(double)*(size_t)n*n);
     alpha = malloc(sizeof(double)*n);
     kx = malloc(sizeof(double)*n);
     v = malloc(sizeof(double)*n);
-    if (!K||!alpha||!kx||!v){ free(K);free(alpha);free(kx);free(v); return -1; }
+    if (!K||!K0||!alpha||!kx||!v){ free(K);free(K0);free(alpha);free(kx);free(v); return -1; }
     for (i=0;i<n;i++) for (j=0;j<n;j++) {
         double d = x[i]-x[j];
         K[(size_t)i*n+j] = exp(-0.5*d*d/l2) + (i==j ? noise : 0.0);
     }
+    /* solve_spd fattorizza K IN PLACE: serve la matrice originale per ogni RHS
+     * (la versione precedente riusava il fattore Cholesky come se fosse K, quindi
+     * la varianza predetta collassava a `noise`). */
+    memcpy(K0, K, sizeof(double)*(size_t)n*n);
     for (i=0;i<n;i++) alpha[i] = y[i];
-    if (solve_spd(K, alpha, n) != 0) { free(K);free(alpha);free(kx);free(v); return -1; }
+    if (solve_spd(K, alpha, n) != 0) { free(K);free(K0);free(alpha);free(kx);free(v); return -1; }
     for (q=0;q<m;q++) {
         double mu = 0.0, kv;
         for (i=0;i<n;i++) { double d=xs[q]-x[i]; kx[i]=exp(-0.5*d*d/l2); mu += kx[i]*alpha[i]; }
         for (i=0;i<n;i++) v[i]=kx[i];
+        memcpy(K, K0, sizeof(double)*(size_t)n*n);
         if (solve_spd(K, v, n) != 0) { out_mean[q]=mu; out_var[q]=noise; continue; }
         kv = 1.0 + noise;
         for (i=0;i<n;i++) kv -= kx[i]*v[i];
         out_mean[q] = mu;
         out_var[q] = kv > 0.0 ? kv : 0.0;
     }
-    free(K);free(alpha);free(kx);free(v);
+    free(K);free(K0);free(alpha);free(kx);free(v);
     return 0;
 }
 

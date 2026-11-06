@@ -961,16 +961,9 @@ procedure,MOUSE,RIGHT,MouseRight
 procedure,MOUSE,WHEEL,MouseWheel
 procedure,MOUSE,X,MouseX
 procedure,MOUSE,Y,MouseY
-procedure,MULTIVARIATE,BONEXT,MvBonext
 procedure,MULTIVARIATE,BOOSTFIT,MvBoostFit
 procedure,MULTIVARIATE,BOOSTPREDICT,MvBoostPredict
 procedure,MULTIVARIATE,BOOSTSCORE,MvBoostScore
-procedure,MULTIVARIATE,GMMEM1D,MvGmm
-procedure,MULTIVARIATE,GPRREGRESS,MvGpr
-procedure,MULTIVARIATE,KMeans,KMeans
-procedure,MULTIVARIATE,Pca,Pca
-procedure,MULTIVARIATE,SVMFIT,MvSvmFit
-procedure,MULTIVARIATE,SVMPREDICT,MvSvmPredict
 procedure,MUTEX,TRYLOCK,MutexTryLock
 procedure,NET,CONN,Conn
 procedure,NET,GETHOSTIP,GetHostIp

@@ -787,13 +787,24 @@ void gmb_vm_exec_tui_syscall(gmb_vm_t* vm, gmb_task_t* task, int code, int argc)
     /* SET SHELL ON|OFF (subcode 21 del SET_CLIPPER): il VM/C instrada i SET_CLIPPER al
      * delegate TUI → senza questo case il flag restava OFF (divergenza 4 backend).
      * Parità col runtime condiviso (gmb_console.c case 21 → gmb_shell_set_enabled). */
+    /* SET_CLIPPER (297): stack [valore, subcode]. La gestione è UNA sola, quella del runtime
+     * condiviso (gmb_console_set_clipper): subCode 4 = THEME, 5 = DATEFORMAT, 21 = SHELL…
+     * Prima questo ramo gestiva solo il 21 e SCARTAVA gli altri: SET THEME non applicava il
+     * tema su VM/C (divergenza con IL/C99Native). */
     if (code == GMB_SC_SET_CLIPPER || code == 21) {
-        /* SET_CLIPPER (295): stack [valore, subcode] (EmitConstant(value); EmitConstant(sub); argc=2).
-         * subcode 21 = SET SHELL ON|OFF → gmb_shell_set_enabled (parità runtime/C99). */
-        int sub = 0, v = 0;
-        if (argc >= 2 && task->sp >= 2) { sub = (int)tui_pop_num(task); v = (int)tui_pop_num(task); }
-        else if (argc >= 1 && task->sp >= 1) { v = (int)tui_pop_num(task); sub = code; }
-        if (sub == 21) gmb_shell_set_enabled(v);
+        if (argc >= 2 && task->sp >= 2) {
+            int sub = (int)tui_pop_num(task);
+            double vnum = 0.0;
+            const char* sval = "";
+            if (sub == 4 || sub == 5 || sub == 8 || sub == 9 || sub == 11
+                || sub == 14 || sub == 15 || sub == 16)
+                sval = tui_pop_str(task);
+            else
+                vnum = tui_pop_num(task);
+            gmb_console_set_clipper(sub, vnum, sval);
+        } else if (argc >= 1 && task->sp >= 1) {
+            gmb_console_set_clipper(code == 21 ? 21 : code, tui_pop_num(task), "");
+        }
         return;
     }
     switch (code)

@@ -376,6 +376,10 @@ gmb_theme_t gmb_theme_default(void) { return gmb_theme_turbo(); }
 static gmb_theme_t g_ui_theme;
 static int g_ui_theme_set = 0;
 static char g_ui_theme_name[48] = "turbo";
+static void (*g_ui_theme_hook)(const char* name) = NULL;
+
+void gmb_ui_theme_on_change(void (*fn)(const char* name)) { g_ui_theme_hook = fn; }
+static void ui_theme_notify(void) { if (g_ui_theme_hook) g_ui_theme_hook(g_ui_theme_name); }
 
 static unsigned int ps_rgba(gmb_cell_color_t c, unsigned int a)
 {
@@ -393,7 +397,7 @@ static int theme_is_classic(const char* n)
 
 void gmb_ui_set_theme(const gmb_theme_t* t)
 {
-    if (t) { g_ui_theme = *t; g_ui_theme_set = 1; }
+    if (t) { g_ui_theme = *t; g_ui_theme_set = 1; ui_theme_notify(); }
 }
 
 void gmb_ui_set_theme_name(const char* name)
@@ -409,6 +413,7 @@ void gmb_ui_set_theme_name(const char* name)
     g_ui_theme = gmb_theme_named(name);
     g_ui_theme_set = 1;
     snprintf(g_ui_theme_name, sizeof(g_ui_theme_name), "%s", n[0] ? n : "turbo");
+    ui_theme_notify();
 }
 
 gmb_theme_t gmb_ui_theme(void)
@@ -419,6 +424,24 @@ gmb_theme_t gmb_ui_theme(void)
 
 const char* gmb_ui_theme_name(void) { return g_ui_theme_name; }
 int gmb_ui_theme_is_set(void) { return g_ui_theme_set; }
+
+/* Desktop dal tema: UNA implementazione per console/TUI e finestre.
+ * Turbo resta identico al default storico (blu Borland + retino ░). */
+void gmb_theme_paint_desktop(gmb_screen_buffer_t* buf)
+{
+    if (!buf) return;
+    gmb_theme_t th = gmb_ui_theme();
+    gmb_cell_color_t fg = (th.head_fg.r || th.head_fg.g || th.head_fg.b) ? th.head_fg : th.text;
+    uint32_t pat = 0x2591;   /* ░ */
+    const char* p = th.desktop_pattern;
+    if (p && p[0] == ' ') pat = ' ';
+    else if (p && (unsigned char)p[0] == 0xC2 && (unsigned char)p[1] == 0xB7) pat = 0x00B7;  /* · */
+    else if (p && (unsigned char)p[0] && (unsigned char)p[0] < 0x80) pat = (unsigned char)p[0];
+    int bw = gmb_screen_width(buf), bh = gmb_screen_height(buf);
+    for (int y = 0; y < bh; y++)
+        for (int x = 0; x < bw; x++)
+            gmb_screen_setchar(buf, x, y, pat, fg, th.desktop_bg);
+}
 
 gmb_widget_style_t gmb_widget_style_from_theme(const gmb_theme_t* t)
 {

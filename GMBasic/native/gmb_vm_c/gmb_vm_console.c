@@ -426,15 +426,22 @@ if (task->sp > 0)
 }
 
 }
-/* WINDOW_THEME (310): push themeName → pop (numero; stringa → 0). */
+/* WINDOW_THEME (310): push themeName → pop. Forma STRINGA = tema per nome
+ * (gmb_winstmt_theme_name, stessa palette di C99Native/IL); forma NUMERICA = legado
+ * gmb_winstmt_theme(n). Prima la stringa veniva castata a numero (0) e il nome del tema
+ * andava perso: su VM/C WINDOW THEME "Nord" non applicava nulla. */
 static void vm_winstmt_310(gmb_vm_t* vm, gmb_task_t* task, int code, int argc) {
     (void)vm; (void)code; (void)argc;
 if (task->sp > 0)
 {
     gmb_stack_entry_t e = gmb_task_pop(task);
-    int theme = (e.type != 2 && e.ref == NULL) ? (int)e.num : 0;
+    if (e.type == 2 && e.ref && e.ref->kind == GMB_OBJ_STRING) {
+        gmb_winstmt_theme_name(((gmb_obj_string_t*)e.ref)->data);
+    } else {
+        int theme = (e.type != 2 && e.ref == NULL) ? (int)e.num : 0;
+        gmb_winstmt_theme(theme);
+    }
     if (e.ref) gmb_obj_release(e.ref);
-    gmb_winstmt_theme(theme);
 }
 
 }
@@ -767,7 +774,9 @@ static const cons_sys_row CONSOLE_SYS_TBL[] = {
     { 229, vm_console_227 },
     { 268, vm_console_268 },
     { 269, vm_console_269 },
-    { 290, vm_console_290 },
+    { GMB_SC_SET_CLIPPER, vm_console_290 },   /* 297: SET BELL/THEME/DATEFORMAT… (era il letterale 290,
+                                                * ormai TUI_DATEPICKER: con il vecchio mapping il
+                                                * comando SET non arrivava al runtime) */
     { GMB_SC_SPRITE_DEF, vm_console_296 },
     /* WINDOW 302-314 (codici reali SysCalls.cs; 297/298 sono SPRITE_CMD/TILEMAP_CMD
      * → grafica, instradati a headless_big in gmb_vm_core.c). 308 (WINDOW_EDIT) ora ha
