@@ -226,3 +226,23 @@ NamedVec nv_make(void)
     NamedVec r; r.name = b; r.v[0] = 1; r.v[1] = 2; r.v[2] = 3;
     return r;
 }
+
+/* UDT come argomento in POSIZIONE > 8 (matrice F5: i limiti `i < 8` dell'emitter). */
+double udt_at9(double a1, double a2, double a3, double a4, double a5, double a6, double a7, double a8, Arr4 v)
+{
+    return a1 + a2 + a3 + a4 + a5 + a6 + a7 + a8 + v.b + (double)v.a[0];
+}
+
+/* Parametri ARRAY e STRING in POSIZIONE >= 9 (stessa classe di bug dell'UDT in coda). */
+double arr_at9(double a1, double a2, double a3, double a4, double a5, double a6, double a7, double a8,
+               double* buf, int64_t n)
+{
+    double s = a1 + a2 + a3 + a4 + a5 + a6 + a7 + a8;
+    for (int64_t i = 0; i < n; i++) s += buf[i];
+    return s;
+}
+double str_at9(double a1, double a2, double a3, double a4, double a5, double a6, double a7, double a8,
+               const char* s)
+{
+    return a1 + a2 + a3 + a4 + a5 + a6 + a7 + a8 + (s && s[0] == 'x' ? 100.0 : 0.0);
+}
