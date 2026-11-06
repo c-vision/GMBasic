@@ -836,6 +836,13 @@ public sealed partial class Parser
             if (originalToken.Kind != TokenKind.Identifier
                 && Peek().Kind != TokenKind.LeftParen     // `STRTIME()` lo gestisce il postfix
                 && !_declaredVariableNames.Contains(originalToken.Lexeme)
+                // Un PARAMETRO omonimo shadowa la keyword a 0 argomenti come una variabile DIM:
+                // `FUNCTION F(message AS STRING)` + `PRINT message` legge il parametro, non chiama
+                // MESSAGE() (bug 2026-11-06: il parametro `message` risultava "" su IL/PCode/VM-C;
+                // C99Native ha un parser proprio e non era affetto). Insieme separato da
+                // _declaredVariableNames di proposito: quello devierebbe anche le chiamate con
+                // parentesi (`LEN(x)` con un parametro `len`).
+                && !_declaredParameterNames.Contains(originalToken.Lexeme)
                 && !isCurrentProcName)
             {
                 if (ResolveBuiltinFunctionCall(originalToken, ImmutableArray<Expr>.Empty) is { } zeroArgCall)

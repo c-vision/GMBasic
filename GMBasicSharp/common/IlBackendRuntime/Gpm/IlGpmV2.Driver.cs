@@ -551,7 +551,9 @@ namespace Basic.IlBackend.Gpm;
                     if (_current.Caller is not { } caller)
                     {
                         // Root: FUNCTION Main con valore numerico = EXIT CODE del processo.
-                        if (_captureRootExitCode && t.Value is not null)
+                        // Solo il task Main: un GO FUNCTION (task->FutureToResolve) che ritorna un valore NON e' 
+                        // l'exit code del processo (bug GoRoutinesWorkers: Manager RETURN 240 -> rc=240).
+                        if (_captureRootExitCode && t.Value is not null && task.FutureToResolve is null)
                         {
                             try { IlRuntime.SetProgramExitCode(Convert.ToDouble(t.Value)); } catch { }
                         }

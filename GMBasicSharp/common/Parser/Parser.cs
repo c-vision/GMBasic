@@ -313,6 +313,14 @@ public sealed partial class Parser
     private readonly HashSet<string> _declaredVariableNames = new(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>
+    /// Nomi dei PARAMETRI di procedura visti finora (flat sul modulo, come <see cref="_declaredVariableNames"/>).
+    /// Serve SOLO al ramo "keyword a 0 argomenti senza parentesi" di ParsePrimaryAtom: un parametro
+    /// omonimo (es. `message`, builtin MESSAGE()) è una variabile, non una chiamata. Tenuto separato
+    /// dal set delle variabili per non deviare le chiamate con parentesi a builtin omonimi.
+    /// </summary>
+    private readonly HashSet<string> _declaredParameterNames = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>
     /// Sottoinsieme di <see cref="_declaredVariableNames"/>: nomi dichiarati come ARRAY
     /// (es. DIM amax()) — serve a dare alla variabile-array la priorità sulla funzione
     /// builtin omonima in forma nuda (es. amax(0) è accesso all'elemento, non chiamata ad
