@@ -51,6 +51,8 @@ int gmb_net_waiter_register_ev(int fd, void* waiter, int64_t timeout_ms, short e
    backend per il confronto al retry (vedi gmb_net_handle_gen). */
 int gmb_net_waiter_register_gen(int fd, void* waiter, int64_t timeout_ms, short events, uint32_t gen);
 void gmb_net_waiter_unregister(int fd, void* waiter);
+/* Waiter attualmente registrati (task parcheggiati su I/O): il watchdog deadlock li conta come I/O in attesa. */
+int gmb_net_waiter_count(void);
 
 /* V7c: generation token corrente dell'handle (0 = handle chiuso/non valido).
    Monotono per allocazione: un handle chiuso e riusato ha gen diversa, così un

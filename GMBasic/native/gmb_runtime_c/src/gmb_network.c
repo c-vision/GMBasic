@@ -292,6 +292,19 @@ int gmb_net_waiter_register(int fd, void* waiter, int64_t timeout_ms)
     return gmb_net_waiter_register_ev(fd, waiter, timeout_ms, 0);
 }
 
+/* Numero di task parcheggiati su I/O di rete (registry fd->waiter, incl. pipe DNS e connect
+   POLLOUT). Serve al watchdog anti-deadlock del backend: un task qui dentro NON e' bloccato
+   per sempre, il network-watcher lo sveglia a fd pronto o timeout. */
+int gmb_net_waiter_count(void)
+{
+    int n = 0;
+    gmb_net_lock(&g_waiters_lock);
+    for (int i = 0; i < GMB_NET_MAX_WAITERS; i++)
+        if (g_waiters[i].in_use) n++;
+    gmb_net_unlock(&g_waiters_lock);
+    return n;
+}
+
 void gmb_net_waiter_unregister(int fd, void* waiter)
 {
     gmb_net_lock(&g_waiters_lock);
