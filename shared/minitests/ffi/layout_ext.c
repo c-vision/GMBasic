@@ -80,3 +80,18 @@ typedef struct { uint16_t a; uint32_t b; uint64_t c; } Wide;
 int32_t wide_size(void) { return (int32_t)sizeof(Wide); }
 double wide_sum(Wide w) { return (double)w.a + (double)w.b + (double)w.c; }
 Wide wide_bump(Wide w) { w.a += 1; w.b += 2; w.c += 3; return w; }
+
+/* Array di UDT (S3, 2026-11-06): n struct contigue (layout C). */
+typedef struct { int32_t x; double y; } Pt2;
+
+double pts_sum(Pt2 *a, int64_t n)
+{
+    double s = 0;
+    for (int64_t i = 0; i < n; i++) s += (double)a[i].x + a[i].y;
+    return s;
+}
+
+void pts_scale(Pt2 *a, int64_t n, double k)
+{
+    for (int64_t i = 0; i < n; i++) { a[i].x = (int32_t)(a[i].x * k); a[i].y *= k; }
+}

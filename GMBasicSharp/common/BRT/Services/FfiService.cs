@@ -498,6 +498,23 @@ public class FfiService : IFfiService
         return (size, fields);
     }
 
+    private static FfiUdtShape ShapeFromString(string s)
+    {
+        var (size, flds) = ParseUdtShape(s);
+        var names = new string[flds.Length];
+        var types = new byte[flds.Length];
+        var offs = new int[flds.Length];
+        var isInt = new bool[flds.Length];
+        var sym = new int[flds.Length][];
+        for (var i = 0; i < flds.Length; i++)
+        {
+            names[i] = flds[i].Path; types[i] = flds[i].Code; offs[i] = flds[i].Off;
+            isInt[i] = types[i] != 0 && types[i] != 8;
+            sym[i] = Array.Empty<int>();
+        }
+        return new FfiUdtShape(names, sym, isInt, types, offs, size);
+    }
+
     private static Type BuildFfiTypeFromShape((string Path, byte Code, int Off)[] fields)
     {
         var types = new byte[fields.Length];
@@ -585,6 +602,29 @@ public class FfiService : IFfiService
                 ? (raw is IntPtr ip ? (Marshal.PtrToStringUTF8(ip) ?? "") : (raw as string ?? ""))
                 : Convert.ToDouble(raw ?? 0.0);
             SetPathValue(dst, fields[i].Path.Split('.'), 0, val);
+        }
+        return dst;
+    }
+
+    /// <summary>Costruisce un elemento struct-ombra (layout C) da una struct del dialetto (IL) o
+    /// da un Dictionary (PCode), per gli array di UDT (S3, 2026-11-06).</summary>
+    private static object BuildFfiElem(object? src, FfiUdtShape shape, Type ffiElem, List<IntPtr> strPtrs)
+    {
+        var dst = Activator.CreateInstance(ffiElem)!;
+        var d = src as System.Collections.IDictionary;
+        for (var i = 0; i < shape.FieldNames.Length; i++)
+        {
+            object? raw = d != null ? GetFfiLeafValue(d, shape.FieldNames[i]) : GetPathValue(src, shape.FieldNames[i]);
+            object? val;
+            var code = shape.FieldTypes![i];
+            if (code == 9)
+            {
+                var sp = Marshal.StringToCoTaskMemUTF8(Convert.ToString(raw) ?? "");
+                strPtrs.Add(sp);
+                val = sp;
+            }
+            else val = ConvertFfiValue(raw, code);
+            ffiElem.GetField($"F{i}")!.SetValue(dst, val);
         }
         return dst;
     }
@@ -704,6 +744,7 @@ public class FfiService : IFfiService
             var paramTypes = new Type[n];
             for (var i = 0; i < n; i++)
                 paramTypes[i] = udtShapeStrs != null && i < udtShapeStrs.Length && udtShapeStrs[i] != null
+                    && (arrayMask & (1L << i)) == 0
                     // Backend IL con layout C reale (S1, 2026-11-06): tipo-ombra costruito dalla
                     // forma (larghezze C vere) — args[i] viene convertito campo per campo sotto.
                     ? BuildFfiTypeFromShape(ParseUdtShape(udtShapeStrs[i]).Fields)
@@ -712,7 +753,7 @@ public class FfiService : IFfiService
                     // UDT, già costruito a compile-time (TypeBuilder) — nessuna forma-ombra da
                     // costruire, args[i] è già un'istanza boxed di ESATTAMENTE questo tipo.
                     ? clrT
-                    : udtParams != null && i < udtParams.Length && udtParams[i] is { } udtP
+                    : udtParams != null && i < udtParams.Length && udtParams[i] is { } udtP && (arrayMask & (1L << i)) == 0
                     // Struct/UDT per valore, backend PCodeVM (2026-09-28): un vero VALUE TYPE CLR
                     // costruito a runtime (campi kind-omogenei, layout sequenziale) — .NET
                     // marshalla il passaggio per valore da solo (stessa ABI di un parametro
@@ -762,12 +803,18 @@ public class FfiService : IFfiService
         // BYTE/SBYTE: elemento largo 1 byte nella VM ma 8 byte nello scratch FFI
         // (il nativo riceve `int64_t*` con valori 0..255); copy-in/copy-back qui.
         var byteScratch = new long[]?[n];
+        // Array di UDT (S3, 2026-11-06): buffer CLR di struct-ombra (layout C) + array
+        // originale per il copy-out; i puntatori delle stringhe vivono fino a fine chiamata.
+        var udtArrScratch = new Array?[n];
+        var udtArrOrig = new Array?[n];
+        var udtArrShapes = new FfiUdtShape?[n];
         var byteOrig = new Array?[n];
         try
         {
             for (var i = 0; i < n; i++)
             {
-                if (udtShapeStrs != null && i < udtShapeStrs.Length && udtShapeStrs[i] != null)
+                if (udtShapeStrs != null && i < udtShapeStrs.Length && udtShapeStrs[i] != null
+                    && (arrayMask & (1L << i)) == 0)
                 {
                     // Backend IL con layout C reale (S1, 2026-11-06): args[i] è la struct del
                     // dialetto (64-bit ovunque); si converte campo per campo nel tipo-ombra col
@@ -783,6 +830,29 @@ public class FfiService : IFfiService
                     // un'istanza boxed del tipo CLR reale (EmitObjectBoxedArgument l'ha
                     // costruita/boxata a compile-time) — passa inalterata, nessuna copia.
                     dArgs[i] = args[i];
+                    continue;
+                }
+                if ((arrayMask & (1L << i)) != 0
+                    && ((udtParams != null && i < udtParams.Length && udtParams[i] is { } s0) 
+                        || (udtShapeStrs != null && i < udtShapeStrs.Length && udtShapeStrs[i] != null)))
+                {
+                    var udtArrShape = (udtParams != null && i < udtParams.Length && udtParams[i] is { } s1)
+                        ? s1
+                        : ShapeFromString(udtShapeStrs![i]);
+                    udtArrShapes[i] = udtArrShape;
+                    // Array di UDT (S3, 2026-11-06): n struct contigue nel layout C. La sorgente
+                    // può essere un array di struct del dialetto (IL) o di Dictionary (PCode).
+                    var ffiElem = GetOrBuildUdtShapeType(udtArrShape.FieldTypes, udtArrShape.FieldIsInt, udtArrShape.FieldOffsets);
+                    var srcArr = args[i] as Array;
+                    var na = srcArr?.Length ?? 0;
+                    var dst = Array.CreateInstance(ffiElem, na);
+                    var strPtrs = udtStrPtrs ??= new List<IntPtr>();
+                    for (var j = 0; j < na; j++)
+                        dst.SetValue(BuildFfiElem(srcArr!.GetValue(j), udtArrShape, ffiElem, strPtrs), j);
+                    udtArrScratch[i] = dst;
+                    udtArrOrig[i] = srcArr;
+                    handles[i] = GCHandle.Alloc(dst, GCHandleType.Pinned);
+                    dArgs[i] = handles[i].AddrOfPinnedObject();
                     continue;
                 }
                 if (udtParams != null && i < udtParams.Length && udtParams[i] is { } udtShapeIn)
@@ -1147,6 +1217,30 @@ public class FfiService : IFfiService
             {
                 var ptr = (IntPtr)Convert.ToInt64(result ?? 0L);
                 return ptr == IntPtr.Zero ? "" : (Marshal.PtrToStringUTF8(ptr) ?? "");
+            }
+            // Copy-out degli array di UDT (S3): la funzione nativa può aver modificato il buffer.
+            for (var i = 0; i < n; i++)
+            {
+                if (udtArrScratch[i] is not { } dstArr || udtArrOrig[i] is not { } srcArr) continue;
+                var shape = udtArrShapes[i]!;
+                for (var j = 0; j < dstArr.Length && j < srcArr.Length; j++)
+                {
+                    var ffi = dstArr.GetValue(j)!;
+                    var target = srcArr.GetValue(j);
+                    for (var f = 0; f < shape.FieldNames.Length; f++)
+                    {
+                        var raw = ffi.GetType().GetField($"F{f}")!.GetValue(ffi);
+                        object? v = shape.FieldTypes != null && shape.FieldTypes[f] == 9
+                            ? (raw is IntPtr ip ? (Marshal.PtrToStringUTF8(ip) ?? "") : (raw as string ?? ""))
+                            : Convert.ToDouble(raw ?? 0.0);
+                        var symbolPath = shape.FieldSymbolIdPaths[f];
+                        if (target is Dictionary<string, object?> td)
+                            SetFfiLeafValue(td, shape.FieldNames[f], symbolPath, v);
+                        else if (target != null)
+                            SetPathValue(target, shape.FieldNames[f].Split('.'), 0, v);
+                    }
+                    if (target is not null and not Dictionary<string, object?>) srcArr.SetValue(target, j);
+                }
             }
             if (udtReturnShapeStr != null)
             {
