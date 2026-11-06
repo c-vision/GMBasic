@@ -25,7 +25,7 @@ static int gmb_tk_in(gmb_tokenkind_t tk, const gmb_tokenkind_t* s, unsigned n)
     return 0;
 }
 static const gmb_tokenkind_t gmb_tk_dim_num[] = { GMB_TOK_Boolean, GMB_TOK_Bool, GMB_TOK_Long, GMB_TOK_Integer, GMB_TOK_Int, GMB_TOK_Double, GMB_TOK_Single, GMB_TOK_P_Float };
-static const gmb_tokenkind_t gmb_tk_analysis_box[] = { GMB_TOK_KMeans, GMB_TOK_Pca, GMB_TOK_Anova, GMB_TOK_Arima, GMB_TOK_HoltWinters, GMB_TOK_AdfTest, GMB_TOK_P_Regression, GMB_TOK_TsHmmFit, GMB_TOK_TsKpss, GMB_TOK_TsQlr, GMB_TOK_TsDfgls, GMB_TOK_TsEngleGranger, GMB_TOK_TsJohansen, GMB_TOK_MvGpr, GMB_TOK_MvSvmFit, GMB_TOK_MvGmm, GMB_TOK_FittingPolyFit, GMB_TOK_FittingRSquared, GMB_TOK_SimParticle, GMB_TOK_MvBonext };
+static const gmb_tokenkind_t gmb_tk_analysis_box[] = { GMB_TOK_KMeans, GMB_TOK_Pca, GMB_TOK_Anova, GMB_TOK_P_Regression, GMB_TOK_TsHmmFit, GMB_TOK_TsKpss, GMB_TOK_TsQlr, GMB_TOK_TsDfgls, GMB_TOK_TsEngleGranger, GMB_TOK_TsJohansen, GMB_TOK_MvGpr, GMB_TOK_MvSvmFit, GMB_TOK_MvGmm, GMB_TOK_MvBonext };
 static const gmb_tokenkind_t gmb_tk_dictish[] = { GMB_TOK_Dict, GMB_TOK_Sorted, GMB_TOK_Tree, GMB_TOK_AVLTree, GMB_TOK_RedBlack, GMB_TOK_BPlusTree };
 #include "gmb_ns_types.h"
 #include "gmb_lexer.h"
@@ -1423,8 +1423,8 @@ static int dim_arr_init_kind(ctx_t* c, const gmb_expr_t* e) {
         { GMB_TOK_Fft, 2, 1 }, { GMB_TOK_Ifft, 2, 1 },
         { GMB_TOK_FftComplex, 2, 1 }, { GMB_TOK_IfftComplex, 2, 1 },
         { GMB_TOK_FftFreq, 1, 1 }, { GMB_TOK_FftShift, 1, 1 }, { GMB_TOK_IfftShift, 1, 1 },
-        { GMB_TOK_CumTrapezoid, 1, 1 }, { GMB_TOK_YuleWalker, 1, 1 },
-        { GMB_TOK_MaCoefficients, 1, 1 }, { GMB_TOK_SolveOde, 1, 1 },
+        { GMB_TOK_CumTrapezoid, 1, 1 }, 
+         { GMB_TOK_SolveOde, 1, 1 },
         { GMB_TOK_MovingAverage, 1, 1 }, { GMB_TOK_EMA, 1, 1 },
         { GMB_TOK_TsLowPass, 1, 1 }, { GMB_TOK_TsHighPass, 1, 1 },
         { GMB_TOK_TsBandPass, 1, 1 }, { GMB_TOK_TsBandStop, 1, 1 },
@@ -1448,8 +1448,8 @@ static int dim_arr_init_kind(ctx_t* c, const gmb_expr_t* e) {
         { GMB_TOK_TsStationaryBootstrap, 1, 3 },
         { GMB_TOK_TsBmaWeights, 1, 1 },
         { GMB_TOK_TsHmmViterbi, 1, 3 },
-        { GMB_TOK_MvBoostFit, 1, 6 },
-        { GMB_TOK_SimTpe, 1, 6 },
+        
+        
         { GMB_TOK_Deseasonalize, 1, 1 }, { GMB_TOK_TimeSeriesMinMax, 1, 1 },
         { GMB_TOK_AMap, 1, 1 }, { GMB_TOK_AFilter, 1, 1 }, { GMB_TOK_AReverse, 1, 1 },
         { GMB_TOK_ASort, 1, 1 }, { GMB_TOK_APad, 1, 2 }, { GMB_TOK_AClone, 1, 1 }, { GMB_TOK_AUnique, 1, 1 },
@@ -3488,7 +3488,13 @@ static void reg_let_assign(ctx_t* c, gmb_stmt_t* s, vars_t* scope) {
             /* `DIM m()` (array DINAMICO senza elementi dichiarati) + `m = <call che ritorna lista>`: l'assegnazione
              * SOSTITUISCE l'array con la lista (come IL/PCode/VM-C) → riclassifica; un array a bound FISSO
              * (`DIM dims(7)`) resta array (il RHS lì è un double*). */
-            if (s->value && s->value->kind == GMB_EXPR_CALL && (!tv->is_array || (tv->dyn_len && !tv->gkind && !tv->matrix))) {
+            /* `DIM x$() AS STRING` + `x$ = IO.READLINES(...)`: l'array DICHIARATO resta un array
+             * (ptr + _len), non viene riclassificato a gmb_list_t. L'assegnazione ha gia' la
+             * conversione gmb_list_to_strings_array, e passare x$ a un parametro array esige
+             * is_array: senza, "l'argomento N non e' un array" (recon_stdlib.bas, FileNamespace). */
+            if (s->value && s->value->kind == GMB_EXPR_CALL
+                && !(s->value->tk == GMB_TOK_ReadLinesFunc && tv->is_array && tv->dyn_len && tv->type == TY_STR)
+                && (!tv->is_array || (tv->dyn_len && !tv->gkind && !tv->matrix))) {
                 int es0 = 0;
                 if (tk_returns_list(s->value->tk, &es0)) {
                     tv->gkind = GK_LIST; tv->elem_str = es0; if (es0) tv->type = TY_STR;
@@ -6785,38 +6791,38 @@ static const gmb_bf_row_t gmb_bf_composite[] = {
     { NULL, GMB_TOK_Sleep, emit_bf_math },
     { NULL, GMB_TOK_Format, emit_bf_math },
     { NULL, GMB_TOK_Beta, emit_bf_metrics },
-    { NULL, GMB_TOK_SpecialBetaInc, emit_bf_math },
-    { NULL, GMB_TOK_SpecialBetaIncInv, emit_bf_math },
-    { NULL, GMB_TOK_SpecialBetaLn, emit_bf_math },
-    { NULL, GMB_TOK_SpecialErf, emit_bf_math },
-    { NULL, GMB_TOK_SpecialErfc, emit_bf_math },
-    { NULL, GMB_TOK_SpecialErfcInv, emit_bf_math },
-    { NULL, GMB_TOK_SpecialErfInv, emit_bf_math },
-    { NULL, GMB_TOK_SpecialGamma, emit_bf_math },
-    { NULL, GMB_TOK_SpecialBeta, emit_bf_math },
+    
+    
+    
+    
+    
+    
+    
+    
+    
     { NULL, GMB_TOK_Fact, emit_bf_math },
     { NULL, GMB_TOK_Angle2d, emit_bf_math },
-    { NULL, GMB_TOK_SpecialGammaInc, emit_bf_math },
-    { NULL, GMB_TOK_SpecialGammaIncc, emit_bf_math },
-    { NULL, GMB_TOK_SpecialGammaInccInv, emit_bf_math },
-    { NULL, GMB_TOK_SpecialGammaIncInv, emit_bf_math },
-    { NULL, GMB_TOK_SpecialLGamma, emit_bf_math },
-    { NULL, GMB_TOK_SpecialDigamma, emit_bf_math },
-    { NULL, GMB_TOK_SpecialZeta, emit_bf_math },
-    { NULL, GMB_TOK_SpecialZetaHurwitz, emit_bf_math },
-    { NULL, GMB_TOK_SpecialPolygamma, emit_bf_math },
-    { NULL, GMB_TOK_SpecialHypergeom2F1, emit_bf_math },
-    { NULL, GMB_TOK_SpecialHypergeom1F1, emit_bf_math },
-    { NULL, GMB_TOK_SpecialLambertW, emit_bf_math },
-    { NULL, GMB_TOK_SpecialMittagLeffler, emit_bf_math },
-    { NULL, GMB_TOK_SpecialStruveH, emit_bf_math },
-    { NULL, GMB_TOK_SpecialKelvinBer, emit_bf_math },
-    { NULL, GMB_TOK_SpecialKelvinBei, emit_bf_math },
-    { NULL, GMB_TOK_SpecialParabolicCylinder, emit_bf_math },
-    { NULL, GMB_TOK_SpecialBesselJ, emit_bf_math },
-    { NULL, GMB_TOK_SpecialBesselY, emit_bf_math },
-    { NULL, GMB_TOK_SpecialBesselI, emit_bf_math },
-    { NULL, GMB_TOK_SpecialBesselK, emit_bf_math },
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
     { NULL, GMB_TOK_AtomicIncrement, emit_bf_sync },
     { NULL, GMB_TOK_AtomicFetchValue, emit_bf_sync },
     { NULL, GMB_TOK_AtomicStore, emit_bf_sync },
@@ -7011,7 +7017,7 @@ static const gmb_bf_row_t gmb_bf_composite[] = {
     { NULL, GMB_TOK_UBound, emit_bf_bounds },
     { NULL, GMB_TOK_LBound, emit_bf_bounds },
     { NULL, GMB_TOK_Join, emit_bf_bounds },
-    { NULL, GMB_TOK_Mean, emit_bf_stats_arr },
+    
     /* TRADING.METRICS (2026-09-08): array→scalar, runtime condivisa gmb_tm_* */
     { NULL, GMB_TOK_MaxDrawdown, emit_bf_metrics }, { NULL, GMB_TOK_AnnualizedReturn, emit_bf_metrics },
     { NULL, GMB_TOK_AnnualizedVolatility, emit_bf_metrics }, { NULL, GMB_TOK_CalmarRatio, emit_bf_metrics },
@@ -7046,12 +7052,12 @@ static const gmb_bf_row_t gmb_bf_composite[] = {
     { NULL, GMB_TOK_PortfolioVar, emit_bf_metrics },
     { NULL, GMB_TOK_PortfolioCVar, emit_bf_metrics },
     { NULL, GMB_TOK_IsLongOnly, emit_bf_metrics },
-    { NULL, GMB_TOK_Kurtosis, emit_bf_stats_arr }, { NULL, GMB_TOK_Mad, emit_bf_stats_arr },
-    { NULL, GMB_TOK_Skewness, emit_bf_stats_arr }, { NULL, GMB_TOK_Correlation, emit_bf_stats_arr },
-    { NULL, GMB_TOK_Percentile, emit_bf_stats_arr },
+     
+     
+    
     { NULL, GMB_TOK_Avg, emit_bf_stats_arr },
-    { NULL, GMB_TOK_Median, emit_bf_stats_arr },
-    { NULL, GMB_TOK_StdDev, emit_bf_stats_arr },
+    
+    
     { NULL, GMB_TOK_Variance, emit_bf_stats_arr },
     { NULL, GMB_TOK_AMax, emit_bf_stats_arr },
     { NULL, GMB_TOK_AMin, emit_bf_stats_arr },
@@ -7059,9 +7065,9 @@ static const gmb_bf_row_t gmb_bf_composite[] = {
     { NULL, GMB_TOK_StatsMode, emit_bf_stats_arr },
     { NULL, GMB_TOK_StatsIqr, emit_bf_stats_arr },
     { NULL, GMB_TOK_StatsMoment, emit_bf_stats_arr },
-    { NULL, GMB_TOK_StatsCovariance, emit_bf_stats_arr },
-    { NULL, GMB_TOK_StatsRange, emit_bf_stats_arr },
-    { NULL, GMB_TOK_StatsMax, emit_bf_stats_arr }, { NULL, GMB_TOK_StatsMin, emit_bf_stats_arr },
+    
+    
+     
     /* STATS test d'ipotesi (dict-returning): runtime condiviso gmb_stats.c */
     { NULL, GMB_TOK_TTest, emit_bf_stats_dict },
     { NULL, GMB_TOK_TTestPaired, emit_bf_stats_dict },
@@ -7181,9 +7187,9 @@ static const gmb_bf_row_t gmb_bf_composite[] = {
     { NULL, GMB_TOK_Integrate, emit_bf_analysis },
     { NULL, GMB_TOK_Simpson, emit_bf_analysis },
     { NULL, GMB_TOK_Differentiate, emit_bf_analysis },
-    { NULL, GMB_TOK_AdfTest, emit_bf_analysis },
-    { NULL, GMB_TOK_Arima, emit_bf_analysis },
-    { NULL, GMB_TOK_HoltWinters, emit_bf_analysis },
+    
+    
+    
     { NULL, GMB_TOK_BookValuePerShare, emit_bf_finance },
     { NULL, GMB_TOK_BsCall, emit_bf_finance },
     { NULL, GMB_TOK_BsPut, emit_bf_finance },
@@ -7682,18 +7688,18 @@ static const gmb_bf_row_t gmb_bf_composite[] = {
     { NULL, GMB_TOK_MvSvmFit, emit_bf_mv },
     { NULL, GMB_TOK_MvSvmPredict, emit_bf_mv },
     { NULL, GMB_TOK_MvGmm, emit_bf_mv },
-    { NULL, GMB_TOK_FittingPolyFit, emit_bf_fit },
-    { NULL, GMB_TOK_FittingPolyEval, emit_bf_fit },
-    { NULL, GMB_TOK_FittingChebEval, emit_bf_fit },
-    { NULL, GMB_TOK_FittingPadeEval, emit_bf_fit },
-    { NULL, GMB_TOK_FittingRSquared, emit_bf_fit },
-    { NULL, GMB_TOK_FittingRSquaredTest, emit_bf_fit },
-    { NULL, GMB_TOK_SimSeed, emit_bf_sim },
-    { NULL, GMB_TOK_SimUniform, emit_bf_sim },
-    { NULL, GMB_TOK_SimNormal, emit_bf_sim },
-    { NULL, GMB_TOK_SimExponential, emit_bf_sim },
-    { NULL, GMB_TOK_SimBernoulli, emit_bf_sim },
-    { NULL, GMB_TOK_SimBinomial, emit_bf_sim },
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
     { NULL, GMB_TOK_VGet, emit_bf_vecop },
     { NULL, GMB_TOK_VAdd, emit_bf_vecop },
     { NULL, GMB_TOK_VSub, emit_bf_vecop },
@@ -7707,9 +7713,9 @@ static const gmb_bf_row_t gmb_bf_composite[] = {
     { NULL, GMB_TOK_VDist, emit_bf_vecop },
     { NULL, GMB_TOK_VMin, emit_bf_vecop },
     { NULL, GMB_TOK_VMax, emit_bf_vecop },
-    { NULL, GMB_TOK_SimParticle, emit_bf_sim },
-    { NULL, GMB_TOK_MvBoostPredict, emit_bf_mv },
-    { NULL, GMB_TOK_MvBoostScore, emit_bf_mv },
+    
+    
+    
     { NULL, GMB_TOK_MvBoei, emit_bf_mv },
     { NULL, GMB_TOK_MvBopi, emit_bf_mv },
     { NULL, GMB_TOK_MvBoucb, emit_bf_mv },
@@ -9398,8 +9404,6 @@ static int dim_arr_analysis1d(ctx_t* c, gmb_stmt_t* s, gmb_expr_t* init) {
     else if (init->tk == GMB_TOK_FftShift) fn = "gmb_fftshift";
     else if (init->tk == GMB_TOK_IfftShift) fn = "gmb_ifftshift";
     else if (init->tk == GMB_TOK_CumTrapezoid) fn = "gmb_cumtrapezoid";
-    else if (init->tk == GMB_TOK_YuleWalker) fn = "gmb_yule_walker";
-    else if (init->tk == GMB_TOK_MaCoefficients) fn = "gmb_ma_coefficients";
     else if (init->tk == GMB_TOK_SolveOde) fn = "gmb_solve_ode_c99";
     else if (init->tk == GMB_TOK_FftIrfft) fn = "gmb_irfft_c99";
     else if (init->tk == GMB_TOK_InterpSplrep) fn = "gmb_splrep_c99";
@@ -9692,30 +9696,6 @@ static int dim_arr_timeseries1d(ctx_t* c, gmb_stmt_t* s, gmb_expr_t* init) {
      * si controlla: il token TS è univoco (chiave canonica). nm resta solo per i messaggi. */
     const char* nm = init->var;
     var_t* av = NULL;
-    if (init->tk == GMB_TOK_SimTpe) {
-        var_t *lo = NULL, *hi = NULL;
-        if (init->nargs < 6) {
-            c99_fail(c, s->line, "DIM %s: SIMULATION.TPE richiede (f, lo, hi, nIter, nInit, seed)", v->name);
-            return 1;
-        }
-        if (!an1d_arr(c, init->args[1], &lo) || !an1d_arr(c, init->args[2], &hi)) {
-            c99_fail(c, s->line, "DIM %s: lo/hi devono essere array", v->name);
-            return 1;
-        }
-        ind(c);
-        emit_ident(c, v->name);
-        sb_put(&c->out, " = gmb_sim_tpe_c99(");
-        emit_expr(c, init->args[0]);
-        sb_put(&c->out, ", (const double*)"); emit_var_ref(c, lo);
-        sb_put(&c->out, ", (const double*)"); emit_var_ref(c, hi);
-        sb_put(&c->out, ", (int)("); emit_arr_len_of(c, lo);
-        sb_put(&c->out, "), (int)("); emit_expr(c, init->args[3]);
-        sb_put(&c->out, "), (int)("); emit_expr(c, init->args[4]);
-        sb_put(&c->out, "), (double)("); emit_expr(c, init->args[5]);
-        sb_put(&c->out, "), &");
-        emit_ident(c, v->name); sb_put(&c->out, "_len);\n");
-        return 1;
-    }
     if (init->nargs < 1 || !an1d_arr(c, init->args[0], &av)) return 0;
     /* famiglia 1: gmb_ts_*(serie, n, parametro-long, &out_len) — finestra/ordine/periodo
      * (parity StdLib.Runtime.TimeSeries.cs: MA/ROLLMEAN/ROLLSTDDEV/ROLLMAD/ROLLZSCORE/
@@ -9913,41 +9893,6 @@ static int dim_arr_timeseries1d(ctx_t* c, gmb_stmt_t* s, gmb_expr_t* init) {
         sb_put(&c->out, ", (gmb_int_t)("); emit_expr(c, init->args[1]); sb_put(&c->out, ")");
         sb_put(&c->out, ", (gmb_int_t)("); emit_expr(c, init->args[2]); sb_put(&c->out, ")");
         sb_put(&c->out, ", &"); emit_ident(c, v->name); sb_put(&c->out, "_len);\n");
-        return 1;
-    }
-    if (init->tk == GMB_TOK_MvBoostFit) {
-        var_t *Xv = NULL, *yv = NULL;
-        int cols = 0;
-        if (init->nargs < 6) {
-            c99_fail(c, s->line, "DIM %s: MULTIVARIATE.BOOSTFIT richiede (X, y, engine, nEst, lr, maxDepth)", v->name);
-            return 1;
-        }
-        if (!init->args[0] || init->args[0]->kind != GMB_EXPR_VAR || !init->args[0]->var) {
-            c99_fail(c, s->line, "DIM %s: X non e' una matrice", v->name);
-            return 1;
-        }
-        Xv = lookup_var(c, init->args[0]->var);
-        if (!Xv || !Xv->is_array) { c99_fail(c, s->line, "DIM %s: X non e' una matrice", v->name); return 1; }
-        if (!an1d_arr(c, init->args[1], &yv)) { c99_fail(c, s->line, "DIM %s: y non e' un array", v->name); return 1; }
-        ind(c);
-        emit_ident(c, v->name);
-        sb_put(&c->out, " = gmb_mv_boost_fit_alloc((const double*)");
-        emit_var_ref(c, Xv);
-        sb_put(&c->out, ", (int)(");
-        if (Xv->jagged) {
-            sb_bound_var(&c->out, Xv, 0); sb_put(&c->out, " + 1), (int)(");
-            emit_ident(c, Xv->name); sb_put(&c->out, "__cols)");
-        } else if (Xv->matrix || Xv->ndims >= 2) {
-            sb_bound_var(&c->out, Xv, 0); sb_put(&c->out, " + 1), (int)(");
-            sb_bound_var(&c->out, Xv, 1); sb_put(&c->out, " + 1)");
-        } else { c99_fail(c, s->line, "DIM %s: X non e' 2-D", v->name); return 1; }
-        sb_put(&c->out, ", (const double*)"); emit_var_ref(c, yv);
-        sb_put(&c->out, ", (int)("); emit_expr(c, init->args[2]);
-        sb_put(&c->out, "), (int)("); emit_expr(c, init->args[3]);
-        sb_put(&c->out, "), (double)("); emit_expr(c, init->args[4]);
-        sb_put(&c->out, "), (int)("); emit_expr(c, init->args[5]);
-        sb_put(&c->out, "), &");
-        emit_ident(c, v->name); sb_put(&c->out, "_len);\n");
         return 1;
     }
     if (init->tk == GMB_TOK_TsHmmViterbi) {
@@ -16864,43 +16809,6 @@ static void emit_arr_literal_assign(ctx_t* c, const char* target, gmb_expr_t* li
             sb_put(&c->out, " = gmb_linregress_flat(");
             emit_arr_arg_len(c, value->args[0]);
             sb_put(&c->out, ", "); emit_arr_arg_len(c, value->args[1]);
-            sb_put(&c->out, ");\n");
-            return;
-        }
-        if (value->tk == GMB_TOK_AdfTest) {
-            if (value->nargs < 1) { c99_fail(c, line, "ADFTEST richiede (data)"); return; }
-            var_t* va = NULL;
-            if (!an1d_arr(c, value->args[0], &va)) return;
-            ind(c);
-            sb_ident(&c->out, v->name);
-            sb_put(&c->out, " = gmb_adf_test_result((const double*)");
-            emit_var_ref(c, va); sb_put(&c->out, ", (int)("); emit_arr_len_of(c, va);
-            sb_put(&c->out, "));\n");
-            return;
-        }
-        if (value->tk == GMB_TOK_Arima) {
-            if (value->nargs < 4) { c99_fail(c, line, "ARIMA richiede (data, p, d, q)"); return; }
-            var_t* va = NULL;
-            if (!an1d_arr(c, value->args[0], &va)) return;
-            ind(c);
-            sb_ident(&c->out, v->name);
-            sb_put(&c->out, " = gmb_arima_result((const double*)");
-            emit_var_ref(c, va); sb_put(&c->out, ", (int)("); emit_arr_len_of(c, va);
-            sb_put(&c->out, ")");
-            for (int i = 1; i <= 3; i++) { sb_put(&c->out, ", (int)("); emit_expr(c, value->args[i]); sb_put(&c->out, ")"); }
-            sb_put(&c->out, ");\n");
-            return;
-        }
-        if (value->tk == GMB_TOK_HoltWinters) {
-            if (value->nargs < 5) { c99_fail(c, line, "HOLTWINTERS richiede (data, alpha, beta, gamma, period)"); return; }
-            var_t* va = NULL;
-            if (!an1d_arr(c, value->args[0], &va)) return;
-            ind(c);
-            sb_ident(&c->out, v->name);
-            sb_put(&c->out, " = gmb_holt_winters_result((const double*)");
-            emit_var_ref(c, va); sb_put(&c->out, ", (int)("); emit_arr_len_of(c, va);
-            sb_put(&c->out, ")");
-            for (int i = 1; i <= 4; i++) { sb_put(&c->out, ", "); emit_expr(c, value->args[i]); }
             sb_put(&c->out, ");\n");
             return;
         }
