@@ -255,6 +255,21 @@ if [ -x "$FETCH" ]; then
   fi
 fi
 
+# Robustezza (2026-11-06): un'altra sessione può rigenerare il build tree mentre questo comando
+# gira, lasciando una statica MANCANTE e facendo fallire il link — falso negativo del gate
+# (caso reale: 5 MiniTest "FAIL" solo perché `libgmb_doc.a` era in ricostruzione). Se una delle
+# statiche attese non c'è, si ricostruisce il target e si prosegue (una volta).
+for _t in gmb_doc gmb_agent_runtime; do
+  case "$_t" in
+    gmb_doc) _needlib="$L/gmb_doc_c_build/libgmb_doc.a" ;;
+    *) _needlib="$L/gmb_agent_runtime_build/libgmb_agent_runtime.a" ;;
+  esac
+  if [ ! -f "$_needlib" ]; then
+    echo "[c99native] statica mancante ($_needlib): ricostruisco il target $_t" >&2
+    cmake --build "$L" --target "$_t" -j4 >/dev/null 2>&1 || true
+  fi
+done
+
 $CC_BIN $CF $CCFIRST -Wl,-dead_strip_dylibs $EXPORTDYN -Wl,-rpath,@loader_path -Wl,-rpath,"$CODEC" "$DIR/$CASE.o" $TORCH_OBJS $JINJA_OBJ -o "$OUTBIN" \
   "$L/libgmb_vm.a" "$RUNTIME_LIB" $TRAY_LINK "$ASRLIB" \
   "$ROOT/native/gmb_runtime_c/build/gmb_chart_build/libgmb_chart.a" \
