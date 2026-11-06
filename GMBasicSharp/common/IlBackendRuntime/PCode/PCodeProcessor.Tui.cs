@@ -389,7 +389,7 @@ internal sealed partial class PCodeProcessor
             case 3: st.SetCentury = PopInt(task) != 0; break;       // CENTURY
             case 4: // THEME
             {
-                var name = task.PopRef()?.ToString() ?? "turbo";
+                var name = task.PopRef()?.ToString() ?? "turbovision";
                 var theme = Theme.Named(name);
                 Basic.IlBackend.IlRuntime.Current.Graphics.ClipperSetThemeName(name);
                 Basic.IlBackend.IlRuntime.Current.Graphics.ClipperSetFgBg(theme.Text, theme.DesktopBg);

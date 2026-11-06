@@ -50,8 +50,8 @@ typedef struct gmbtheme {
 /* Colori per-vista dal tema. kind: 0=editor, 1=menu, 2=dialog, 3=status. */
 void gmb_theme_kind(const gmb_theme_t* t, int kind, gmb_cell_color_t* fg, gmb_cell_color_t* bg);
 
-gmb_theme_t gmb_theme_turbo(void);
-gmb_theme_t gmb_theme_borland(void);   /* TV 2.0: desktop grigio, finestre blu, dialog grigi */
+gmb_theme_t gmb_theme_turbovision(void);  /* TV 2.0 (default): desktop grigio, finestre blu, dialog grigi */
+gmb_theme_t gmb_theme_clipper(void);      /* legacy Clipper/DOS: navy + ▒ teal, cornice ciano, selezione verde */
 gmb_theme_t gmb_theme_qbasic(void);
 gmb_theme_t gmb_theme_midnight(void);
 gmb_theme_t gmb_theme_nord(void);

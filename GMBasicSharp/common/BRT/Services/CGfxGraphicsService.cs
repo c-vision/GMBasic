@@ -255,7 +255,7 @@ public sealed class CGfxGraphicsService : IGraphicsService
     public int ClipperEpoch() { try { return gmb_clipper_set_epoch(gmb_clipper_global_state(), -1); } catch { return 1900; } }
     [DllImport(Lib)] private static extern void gmb_ui_set_theme_name(string name);
     [DllImport(Lib)] private static extern IntPtr gmb_ui_theme_name();
-    public void ClipperSetThemeName(string name) { try { gmb_ui_set_theme_name(string.IsNullOrEmpty(name) ? "turbo" : name); } catch { } }
+    public void ClipperSetThemeName(string name) { try { gmb_ui_set_theme_name(string.IsNullOrEmpty(name) ? "turbovision" : name); } catch { } }
     public string ClipperThemeName() { try { return System.Runtime.InteropServices.Marshal.PtrToStringAnsi(gmb_ui_theme_name()) ?? "Turbo"; } catch { return "Turbo"; } }
     [DllImport(Lib)] private static extern void gmb_clipper_set_fg_rgb(IntPtr st, int r, int g, int b, int isDefault);
     [DllImport(Lib)] private static extern void gmb_clipper_set_bg_rgb(IntPtr st, int r, int g, int b, int isDefault);

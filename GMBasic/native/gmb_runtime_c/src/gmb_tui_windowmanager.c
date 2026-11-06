@@ -821,7 +821,7 @@ void gmb_window_manager_render(gmb_window_manager_t* m, gmb_screen_buffer_t* buf
 
 void gmb_window_manager_render_named(gmb_window_manager_t* m, gmb_screen_buffer_t* buf, const char* theme_name, const char* header)
 {
-    gmb_theme_t th = gmb_theme_named((theme_name && *theme_name) ? theme_name : "turbo");
+    gmb_theme_t th = gmb_theme_named((theme_name && *theme_name) ? theme_name : "turbovision");
     gmb_window_manager_render(m, buf, &th, header);
 }
 
