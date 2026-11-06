@@ -19,7 +19,7 @@ Questi moduli restano fuori dal pacchetto per non duplicare la superficie BASIC.
 | PBP | `PBPMOMENTS`, `PBPLAYER` | momenti ReLU + forward denso diretto (pesi e momenti come parametri) |
 | ~~ML classico~~ | — | **non qui**: KMeans/PCA/SVM sono già FFI nel namespace `MULTIVARIATE` (`multivariate.inc`, libgmbstats), dopo il ritiro dei builtin (2026-11-05) |
 | CNN | `CONV2D[B]`, `DECONV2D[B]`, `WINOGRAD[B]`, `IM2COL`, `COL2IM`, `LRN`, `RESIZE`, `MAXPOOL`, `AVGPOOL`, `MAXPOOLARG`, `UNPOOL` | layout CHW; chiamate **dirette** (fino a 14 argomenti), nessun handle |
-| Pooling | `MAXPOOLINIT`, `AVGPOOLINIT`, `POOLRUN`, `POOLRUNARG`, `UNPOOLINIT`, `UNPOOLRUN` | argmax LONG per il backward |
+| Pooling | `MAXPOOL`, `AVGPOOL`, `MAXPOOLARG`, `UNPOOL` | argmax LONG per il backward |
 | FusedMM | `FUSEDMM`, `AGGREGATE` | CSR (GAT/GraphSAGE), chiamata diretta |
 | Pruning | `SPARSIFY24`, `PRUNECHANNELL1`, `PRUNECHANNELMASK` | 2:4 strutturato, channel pruning |
 | Quantizzazione | `QUANTI8`, `DEQUANTI8`, `REQUANTI8`, `QUANTPARAMS`, `QUANTGEMMU8`, `QUANTREQSHIFTI8`, `QUANTCONV2DI8`, `QUANTCLAMPU8`, `QUANTPARAMSCHANNEL`, `QUANTCONV2DI8CHANNEL` | array a byte come `LONG`; firme naturali a 13/14/15 argomenti (la FFI ne regge 20) |
@@ -50,10 +50,10 @@ contiguo, dimensioni come parametri; handle LONG > 0 solo per le famiglie con st
 `STEP` usa i gradienti accumulati da `BACKWARD` (buffer m/v allocati al primo passo,
 Adam con contatore di passo globale). Tabella handle: 32 vivi, uso sequenziale.
 
-### Perché `PBPLAYERINIT` + `PBPLAYER`
+### Perché `PBPLAYER` non ha handle
 
-`PBPLAYERINIT` copia `m_w/v_w` (out×in) in un handle, `PBPLAYER` riceve solo i
-vettori di stato del passo: i buffer non si ricreano a ogni forward.
+Con la FFI a 64 argomenti i pesi `m_w`/`v_w` (out×in) e i momenti di stato sono
+parametri della chiamata: nessun buffer da allocare, nessun handle da liberare.
 
 ## Sorgenti (copia autonoma)
 
