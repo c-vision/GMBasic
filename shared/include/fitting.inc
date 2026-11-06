@@ -11,8 +11,9 @@ DECLARE SUB FXN_RSQUARED LIB "gmbstats" ALIAS "ofx_fit_rsquared" (data() AS DOUB
 DECLARE FUNCTION FXN_RSQUAREDTEST LIB "gmbstats" ALIAS "gs_rsquared_test" (data() AS DOUBLE, n AS LONG) AS DOUBLE
 
 ' coef() deve avere m+1 elementi; m = grado del polinomio (esplicito).
-PUBLIC FUNCTION POLYFIT(x() AS DOUBLE, y() AS DOUBLE, m AS LONG, coef() AS DOUBLE) AS DOUBLE
-    RETURN FXN_POLYFIT(x, y, UBOUND(x) + 1, m, coef)
+PUBLIC FUNCTION POLYFIT(x() AS DOUBLE, y() AS DOUBLE, coef() AS DOUBLE) AS DOUBLE
+    ' Il grado m e' dedotto da coef(): coef ha m+1 elementi.
+    RETURN FXN_POLYFIT(x, y, UBOUND(x) + 1, UBOUND(coef), coef)
 END FUNCTION
 
 ' gs_fit_poly_eval vuole l'INDICE massimo del coefficiente (= UBOUND).

@@ -8,7 +8,7 @@ SUB Main()
     x(i) = i * 0.5
     y(i) = 1.0 + 2.0 * x(i) + 3.0 * x(i) * x(i)
   NEXT i
-  ssq = FITTING.POLYFIT(x, y, 2, coef)
+  ssq = FITTING.POLYFIT(x, y, coef)
   PRINT "c0="; MATH.ROUND(coef(0), 6)
   PRINT "c1="; MATH.ROUND(coef(1), 6)
   PRINT "c2="; MATH.ROUND(coef(2), 6)

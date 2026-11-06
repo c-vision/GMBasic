@@ -19,7 +19,7 @@ SUB Main()
   wm(0) = 0: wm(1) = 0: wm(2) = 1: wm(3) = -1
   DIM q(1) AS DOUBLE
   q(0) = 2.0: q(1) = 2.0
-  PRINT "p0="; MULTIVARIATE.SVMPREDICT(wm, q, 2, 2)
+  PRINT "p0="; MULTIVARIATE.SVMPREDICT(wm, q)
   q(0) = 8.0: q(1) = 7.6
-  PRINT "p1="; MULTIVARIATE.SVMPREDICT(wm, q, 2, 2)
+  PRINT "p1="; MULTIVARIATE.SVMPREDICT(wm, q)
 END SUB

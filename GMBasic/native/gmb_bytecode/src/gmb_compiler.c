@@ -2627,7 +2627,13 @@ static void cc_emit_ffi_call(gmb_cc_t* c, const gmb_expr_t* e, const gmb_stmt_t*
 {
     int argc = e->nargs;
     int nparams = pd->n_params;
-    if (argc > GMB_FFI_MAX_ARGS) { cc_err(c, "FFI: massimo 32 argomenti supportati dal marshalling"); return; }
+    if (argc > GMB_FFI_MAX_ARGS) {
+        char _ffi_argc_msg[96];
+        snprintf(_ffi_argc_msg, sizeof(_ffi_argc_msg),
+                 "FFI: massimo %d argomenti supportati dal marshalling", GMB_FFI_MAX_ARGS);
+        cc_err(c, _ffi_argc_msg);
+        return;
+    }
     const char* lib = pd->ffi_lib ? pd->ffi_lib : "";
     const char* sym = pd->ffi_symbol ? pd->ffi_symbol : pd->func_name;
     int is_func = !pd->is_sub;
