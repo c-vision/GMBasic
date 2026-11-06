@@ -2566,7 +2566,7 @@ static int cc_ffi_scalar_code(const char* t)
         case GMB_TOK_ULong:     return 7;
         case GMB_TOK_Quad:      return 1;
         case GMB_TOK_UQuad:     return 10;
-        case GMB_TOK_StringType:return -1;   /* campo STRING: non ancora supportato in uno struct */
+        case GMB_TOK_StringType:return 9;    /* char* */
         default:                return -1;
     }
 }

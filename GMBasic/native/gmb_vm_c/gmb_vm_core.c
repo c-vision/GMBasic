@@ -2494,8 +2494,13 @@ static void vm_ffi_store_field(unsigned char* buf, int off, int code, gmb_val_t 
         case 6:  { int32_t x = (int32_t)iv;   memcpy(buf + off, &x, 4); break; }
         case 7:  { uint32_t x = (uint32_t)iv; memcpy(buf + off, &x, 4); break; }
         case 8:  { float x = (float)d; memcpy(buf + off, &x, 4); break; }
-        case 9:  { int64_t p = (v.kind == GMB_TYPE_STRING && v.v_ptr)
-                       ? (int64_t)(intptr_t)((gmb_obj_string_t*)v.v_ptr)->data : 0;
+        case 9:  { /* char*: la stringa può essere un val STRING o un oggetto stringa */
+                   const char* sp = NULL;
+                   if (v.kind == GMB_TYPE_STRING) sp = v.v_string.data;
+                   else if (v.kind == GMB_TYPE_OBJECT && v.v_ptr
+                            && ((gmb_obj_t*)v.v_ptr)->kind == GMB_OBJ_STRING)
+                       sp = ((gmb_obj_string_t*)v.v_ptr)->data;
+                   int64_t p = (int64_t)(intptr_t)sp;
                    memcpy(buf + off, &p, 8); break; }
         default: { uint64_t x = (uint64_t)iv; memcpy(buf + off, &x, 8); break; }
     }

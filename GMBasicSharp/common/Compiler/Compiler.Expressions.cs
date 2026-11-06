@@ -1041,7 +1041,7 @@ public sealed partial class Compiler
             {
                 DoubleType => 0, SingleType => 8, SByteType => 2, ByteType => 3,
                 IntegerType => 4, UIntegerType => 5, LongType => 6, ULongType => 7,
-                QuadType => 1, UQuadType => 10,
+                QuadType => 1, UQuadType => 10, StringType => 9,
                 _ => -1,
             };
             static int FfiSz(int code) => code switch
@@ -1066,9 +1066,6 @@ public sealed partial class Compiler
                     if (f.DataType is ArrayType)
                         throw new BasicException(expr.OriginalToken,
                             $"FFI '{symbolName}': il campo ARRAY '{path}' non è supportato in un UDT passato per valore ({what}).");
-                    if (f.DataType is StringType)
-                        throw new BasicException(expr.OriginalToken,
-                            $"FFI '{symbolName}': il campo STRING '{path}' non è ancora supportato in un UDT per valore ({what}).");
                     if (f.DataType is UserDefinedType sub)
                     {
                         if (!IsSimpleUdt(sub))

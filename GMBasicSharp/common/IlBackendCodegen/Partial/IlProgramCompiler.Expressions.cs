@@ -1463,7 +1463,7 @@ public sealed partial class IlProgramCompiler
         {
             DoubleType => 0, SingleType => 8, SByteType => 2, ByteType => 3,
             IntegerType => 4, UIntegerType => 5, LongType => 6, ULongType => 7,
-            QuadType => 1, UQuadType => 10, _ => -1,
+            QuadType => 1, UQuadType => 10, StringType => 9, _ => -1,
         };
         static int FfiSz2(int code) => code switch
         {
@@ -1477,8 +1477,6 @@ public sealed partial class IlProgramCompiler
                 var path = prefix.Length == 0 ? f.Name.Lexeme : $"{prefix}.{f.Name.Lexeme}";
                 if (f.DataType is ArrayType)
                     throw new NotSupportedException($"FFI '{symbolName}': il campo ARRAY '{path}' non è supportato in un UDT per valore ({what}).");
-                if (f.DataType is StringType)
-                    throw new NotSupportedException($"FFI '{symbolName}': il campo STRING '{path}' non è ancora supportato in un UDT per valore ({what}).");
                 if (f.DataType is UserDefinedType sub)
                 {
                     if (!IsSimpleUdt(sub))
@@ -1536,11 +1534,8 @@ public sealed partial class IlProgramCompiler
                 }
                 else if (f.DataType is DoubleType or SingleType or LongType or IntegerType
                          or QuadType or ULongType or UQuadType or UIntegerType
-                         or ByteType or SByteType)
+                         or ByteType or SByteType or StringType)
                     count++;
-                else if (f.DataType is StringType)
-                    throw new NotSupportedException(
-                        $"FFI '{symbolName}': il campo STRING '{f.Name.Lexeme}' non è ancora supportato in un UDT per valore ({what}).");
                 else
                     throw new NotSupportedException(
                         $"FFI '{symbolName}': tipo del campo '{f.Name.Lexeme}' non supportato per {what} (UDT '{udt.Name.Lexeme}'; ammessi DOUBLE/SINGLE, interi a 1/2/4/8 byte).");

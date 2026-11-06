@@ -3,6 +3,7 @@
  * Compilata da build_testlibs.sh in liblayout_ext.dylib. */
 #include <stdint.h>
 #include <stddef.h>
+#include <string.h>
 
 /* a@0 (4), padding 4, b@8 (8), c@16 (1), padding 7 → size 24 */
 typedef struct { int32_t a; double b; uint8_t c; } Mixed;
@@ -65,3 +66,17 @@ Big12 big12_inc(Big12 b)
     b.f6++; b.f7++; b.f8++; b.f9++; b.f10++; b.f11++;
     return b;
 }
+
+/* Campo STRING (2026-11-06, S1): char* → il nativo non trattiene il puntatore. */
+typedef struct { char *s; int32_t n; } Named2;
+
+int32_t named2_size(void) { return (int32_t)sizeof(Named2); }
+int32_t named2_len(Named2 v) { return (int32_t)(v.s ? (int32_t)strlen(v.s) : 0) + v.n; }
+Named2 named2_make(const char *s, int32_t n) { Named2 r; r.s = (char *)s; r.n = n; return r; }
+
+/* Campi senza segno (2026-11-06): uint16/uint32/uint64. */
+typedef struct { int16_t a; int32_t b; int64_t c; } Wide;
+
+int32_t wide_size(void) { return (int32_t)sizeof(Wide); }
+double wide_sum(Wide w) { return (double)w.a + (double)w.b + (double)w.c; }
+Wide wide_bump(Wide w) { w.a += 1; w.b += 2; w.c += 3; return w; }
