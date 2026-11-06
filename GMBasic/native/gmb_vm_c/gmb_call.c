@@ -9,10 +9,12 @@
 #include <stdlib.h>
 #include <string.h>
 
-#if defined(__APPLE__)
-#  include <ffi/ffi.h>
+#if defined(GMB_FFI_VENDORED)
+#  include <ffi.h>          /* copia vendorizzata: shared/libs/ffi/out/include */
+#elif defined(__APPLE__)
+#  include <ffi/ffi.h>      /* SDK macOS */
 #else
-#  include <ffi.h>
+#  include <ffi.h>          /* libffi-dev */
 #endif
 
 int gmb_call_enabled(void)
