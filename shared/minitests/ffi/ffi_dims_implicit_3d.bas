@@ -1,4 +1,3 @@
-' @heavy   (pending: richiede le DIMENSIONI IMPLICITE degli array nella DECLARE FFI)
 ' 3-D + copy-back in place (scale3): dopo la chiamata il cubo deve risultare scalato.
 ' EXPECT: s3= 36|k0= 2|k7= 16|s3b= 72
 DECLARE FUNCTION SUM3I  LIB "libdims_ext" ALIAS "sum3"   (a() AS DOUBLE) AS DOUBLE

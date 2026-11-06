@@ -512,3 +512,30 @@ int gor_optb_linprog(const double *c, int n,
     free(aub); free(lo); free(hi);
     return GOR_OK;
 }
+
+#include <stdint.h>
+/* Shim FFI (estensioni automatiche degli array, ffi_ext_shim.pl): firma con int64_t dopo ogni array. */
+void gor_optb_basin_hopping__ffi(gor_optb_fv f, const double *x0, int64_t x0_ext, int n, int niter, double *out, int64_t out_ext) { gor_optb_basin_hopping(f, x0, n, niter, out); }
+void gor_optb_bfgs__ffi(gor_optb_fv f, const double *x0, int64_t x0_ext, int n, double *out, int64_t out_ext) { gor_optb_bfgs(f, x0, n, out); }
+void gor_optb_broyden__ffi(gor_optb_fvv f, const double *x0, int64_t x0_ext, int n, double *out, int64_t out_ext) { gor_optb_broyden(f, x0, n, out); }
+void gor_optb_brute__ffi(gor_optb_fv f, const double *ranges, int64_t ranges_ext, int n, int N, double *out, int64_t out_ext) { gor_optb_brute(f, ranges, n, N, out); }
+int gor_optb_cholesky_solve__ffi(const double *A, int64_t A_ext, const double *b, int64_t b_ext, int n, double *out, int64_t out_ext) { return gor_optb_cholesky_solve(A, b, n, out); }
+void gor_optb_cobyla__ffi(gor_optb_fv f, const double *x0, int64_t x0_ext, int n, const double *bounds, int64_t bounds_ext, double *out, int64_t out_ext) { gor_optb_cobyla(f, x0, n, bounds, out); }
+void gor_optb_conjugate_gradient__ffi(gor_optb_fv f, const double *x0, int64_t x0_ext, int n, double *out, int64_t out_ext) { gor_optb_conjugate_gradient(f, x0, n, out); }
+void gor_optb_curve_fit__ffi(gor_optb_fm model, const double *x, int64_t x_ext, const double *y, int64_t y_ext, int nx, const double *p0, int64_t p0_ext, int np, double *out, int64_t out_ext) { gor_optb_curve_fit(model, x, y, nx, p0, np, out); }
+void gor_optb_differential_evolution__ffi(gor_optb_fv f, const double *bounds, int64_t bounds_ext, int n, double *out, int64_t out_ext) { gor_optb_differential_evolution(f, bounds, n, out); }
+void gor_optb_dual_annealing__ffi(gor_optb_fv f, const double *bounds, int64_t bounds_ext, int n, int maxiter, double *out, int64_t out_ext) { gor_optb_dual_annealing(f, bounds, n, maxiter, out); }
+void gor_optb_fsolve__ffi(gor_optb_fvv f, const double *x0, int64_t x0_ext, int n, double *out, int64_t out_ext) { gor_optb_fsolve(f, x0, n, out); }
+void gor_optb_lbfgs__ffi(gor_optb_fv f, const double *x0, int64_t x0_ext, int n, double *out, int64_t out_ext) { gor_optb_lbfgs(f, x0, n, out); }
+int gor_optb_least_squares__ffi(const double *A, int64_t A_ext, int rows, int cols, const double *b, int64_t b_ext, double *out, int64_t out_ext) { return gor_optb_least_squares(A, rows, cols, b, out); }
+void gor_optb_least_squares_fit__ffi(gor_optb_fvv f, const double *x0, int64_t x0_ext, int n, int m, const double *bounds, int64_t bounds_ext, double *out, int64_t out_ext) { gor_optb_least_squares_fit(f, x0, n, m, bounds, out); }
+void gor_optb_least_squares_fit_auto__ffi(gor_optb_fvv_len f, const double *x0, int64_t x0_ext, int n, const double *bounds, int64_t bounds_ext, double *out, int64_t out_ext) { gor_optb_least_squares_fit_auto(f, x0, n, bounds, out); }
+void gor_optb_levenberg_marquardt__ffi(gor_optb_fm model, const double *p0, int64_t p0_ext, int np, const double *x, int64_t x_ext, const double *y, int64_t y_ext, int nx, double *out, int64_t out_ext) { gor_optb_levenberg_marquardt(model, p0, np, x, y, nx, out); }
+void gor_optb_levenberg_marquardt_vec__ffi(gor_optb_fvm model, const double *p0, int64_t p0_ext, int np, const double *x, int64_t x_ext, const double *y, int64_t y_ext, int nx, double *out, int64_t out_ext) { gor_optb_levenberg_marquardt_vec(model, p0, np, x, y, nx, out); }
+int gor_optb_linprog__ffi(const double *c, int64_t c_ext, int n, const double *A_ub, int64_t A_ub_ext, int mub, const double *b_ub, int64_t b_ub_ext, const double *bounds, int64_t bounds_ext, double *out, int64_t out_ext) { return gor_optb_linprog(c, n, A_ub, mub, b_ub, bounds, out); }
+int gor_optb_minimize__ffi(gor_optb_fv f, const double *x0, int64_t x0_ext, int n, const char *method, const double *bounds, int64_t bounds_ext, double *out, int64_t out_ext) { return gor_optb_minimize(f, x0, n, method, bounds, out); }
+void gor_optb_nelder_mead__ffi(gor_optb_fv f, const double *x0, int64_t x0_ext, int n, double *out, int64_t out_ext) { gor_optb_nelder_mead(f, x0, n, out); }
+void gor_optb_powell__ffi(gor_optb_fv f, const double *x0, int64_t x0_ext, int n, double *out, int64_t out_ext) { gor_optb_powell(f, x0, n, out); }
+int gor_optb_simplex__ffi(const double *c, int64_t c_ext, int n, const double *A, int64_t A_ext, int m, const double *b, int64_t b_ext, double *out, int64_t out_ext) { return gor_optb_simplex(c, n, A, m, b, out); }
+void gor_optb_slsqp__ffi(gor_optb_fv f, const double *x0, int64_t x0_ext, int n, const double *bounds, int64_t bounds_ext, double *out, int64_t out_ext) { gor_optb_slsqp(f, x0, n, bounds, out); }
+void gor_optb_tnc__ffi(gor_optb_fv f, const double *x0, int64_t x0_ext, int n, const double *bounds, int64_t bounds_ext, double *out, int64_t out_ext) { gor_optb_tnc(f, x0, n, bounds, out); }

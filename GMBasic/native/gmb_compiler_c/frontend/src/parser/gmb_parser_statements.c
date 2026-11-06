@@ -1451,6 +1451,9 @@ static gmb_stmt_t* gmb_p_parse_stmt_impl(gmb_parser_t* p, bool* multiline)
         gmb_p_adv(p);
         /* visibilità: consumata e ignorata (il codice C generato è statico) */
         if (gmb_p_check(p, GMB_TOK_Public) || gmb_p_tok_is_keyword(gmb_p_cur(p), "Private")) gmb_p_adv(p);
+        /* DECLARE NATIVE FUNCTION|SUB: modificatore contestuale (non riservato): ABI esatta, niente estensioni array. */
+        int dl_native = 0;
+        if (gmb_p_tok_is_soft_keyword(gmb_p_cur(p), "native")) { dl_native = 1; gmb_p_adv(p); }
         /* SUB/FN/FUNCTION lexano come GMB_TOK_Function: SUB si distingue dal lessema. */
         const gmb_token_t* dk = gmb_p_cur(p);
         int dl_is_sub = gmb_p_tok_is_soft_keyword(dk, "sub");
@@ -1459,6 +1462,7 @@ static gmb_stmt_t* gmb_p_parse_stmt_impl(gmb_parser_t* p, bool* multiline)
         gmb_p_adv(p);
         gmb_stmt_t* s = gmb_stmt_new(GMB_STMT_FUNCTION, line);
         s->is_ffi = 1;
+        s->ffi_native = dl_native;
         s->is_sub = dl_is_sub;
         /* 2026-09-24: namespace di definizione (check shadowing builtin in emissione). */
         if (p->cur_ns[0]) { s->func_ns = strdup(p->cur_ns); }

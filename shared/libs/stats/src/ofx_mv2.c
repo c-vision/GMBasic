@@ -126,3 +126,15 @@ void ofx_boost_free(long long handle)
 {
     if (handle) gs_boost_free((gs_boost_model *)(intptr_t)handle);
 }
+
+#include <stdint.h>
+/* Shim FFI (estensioni automatiche degli array, ffi_ext_shim.pl): firma con int64_t dopo ogni array. */
+int ofx_bo_next__ffi(const double *x, int64_t x_ext, const double *y, int64_t y_ext, const double *cand, int64_t cand_ext, int n, int m, const double *hyper, int64_t hyper_ext, double *out, int64_t out_ext) { return ofx_bo_next(x, y, cand, n, m, hyper, out); }
+long long ofx_boost_fit__ffi(const double *X, int64_t X_ext, const double *y, int64_t y_ext, int n, int d, int engine, int n_estimators, double lr, int max_depth) { return ofx_boost_fit(X, y, n, d, engine, n_estimators, lr, max_depth); }
+double ofx_boost_predict__ffi(long long handle, const double *x, int64_t x_ext, int d) { return ofx_boost_predict(handle, x, d); }
+double ofx_boost_score__ffi(long long handle, const double *X, int64_t X_ext, const double *y, int64_t y_ext, int n, int d) { return ofx_boost_score(handle, X, y, n, d); }
+int ofx_gmm_1d__ffi(const double *x, int64_t x_ext, int n, int k, int iters, double *out, int64_t out_ext) { return ofx_gmm_1d(x, n, k, iters, out); }
+int ofx_gp__ffi(const double *x, int64_t x_ext, const double *y, int64_t y_ext, int n, const double *xs, int64_t xs_ext, int m, double l2, double noise, double *out, int64_t out_ext) { return ofx_gp(x, y, n, xs, m, l2, noise, out); }
+int ofx_pca__ffi(const double *data, int64_t data_ext, int rows, int cols, double *out, int64_t out_ext) { return ofx_pca(data, rows, cols, out); }
+int ofx_svm_fit__ffi(const double *X, int64_t X_ext, const double *y, int64_t y_ext, int n, int d, int k, double C, int max_iter, double *out, int64_t out_ext) { return ofx_svm_fit(X, y, n, d, k, C, max_iter, out); }
+int ofx_svm_predict__ffi(const double *W, int64_t W_ext, const double *x, int64_t x_ext, int d, int k) { return ofx_svm_predict(W, x, d, k); }

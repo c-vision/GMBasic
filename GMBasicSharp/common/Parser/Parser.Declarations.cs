@@ -769,6 +769,13 @@ public sealed partial class Parser
 
         // Salva il token 'DECLARE' che contiene la posizione corretta.
         var declareToken = Consume(TokenKind.Declare, "Internal parser error: Expected 'DECLARE' token.");
+        // `DECLARE NATIVE FUNCTION|SUB`: modificatore contestuale (non e' una parola riservata).
+        var isNativeAbi = false;
+        if (Peek().Lexeme.Equals("NATIVE", StringComparison.OrdinalIgnoreCase) && At(1).Kind == TokenKind.Function)
+        {
+            isNativeAbi = true;
+            Advance();
+        }
         Consume(TokenKind.Function, "Expected FUNCTION or SUB after DECLARE.");
         var nameToken = Peek();
         if (!IsPermissiveNameToken(nameToken))
@@ -805,7 +812,8 @@ public sealed partial class Parser
         {
             Flags = flags | (isFunction ? SymbolFlags.IsFunction : SymbolFlags.None),
             OriginalName = nameToken,
-            DeclaredNamespace = _currentNamespace
+            DeclaredNamespace = _currentNamespace,
+            IsNativeAbi = isNativeAbi
         };
 
         Log($"[ParseDeclareStatement] EXIT. Parsed DECLARE for '{nameToken.Lexeme}'. Next: {Peek()}");

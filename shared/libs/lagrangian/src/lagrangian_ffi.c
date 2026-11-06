@@ -72,3 +72,7 @@ double ofx_lagr_subgradient(ffx_lagr_cb sub, const double *A, const double *b,
     free(best_x);
     return (double)lb;
 }
+
+#include <stdint.h>
+/* Shim FFI (estensioni automatiche degli array, ffi_ext_shim.pl): firma con int64_t dopo ogni array. */
+double ofx_lagr_subgradient__ffi(ffx_lagr_cb sub, const double *A, int64_t A_ext, const double *b, int64_t b_ext, i64 m, i64 nx, i64 maxit, double *out, int64_t out_ext) { return ofx_lagr_subgradient(sub, A, b, m, nx, maxit, out); }

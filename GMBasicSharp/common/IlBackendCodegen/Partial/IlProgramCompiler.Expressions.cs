@@ -1758,6 +1758,9 @@ public sealed partial class IlProgramCompiler
             var elem = (epd.Parameters[pi].DataType as ArrayType)?.ElementType;
             if (IsI64(elem)) arrayElemIntMask |= 1L << pi;
         }
+        // DECLARE NATIVE: ABI esatta, nessuna estensione automatica degli array (bit 0x100 nel kind;
+        // FfiService.CallFunctionTypedArr lo toglie prima di marshallare).
+        if (epd.IsNativeAbi && arrayMask != 0) kind |= 0x100;
         // BYREF scalare: l'argomento deve essere una variabile semplice (stessa restrizione di
         // Compiler.Expressions.cs — serve un simbolo su cui fare il write-back dopo la chiamata).
         for (var pi = 0; pi < epd.Parameters.Length; pi++)

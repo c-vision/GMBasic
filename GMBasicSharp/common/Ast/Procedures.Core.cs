@@ -580,6 +580,10 @@ public sealed record ExternalProcedureDefinition(
     Body: ImmutableArray<Stmt>.Empty
 )
 {
+    /// <summary>`DECLARE NATIVE FUNCTION|SUB`: ABI nativa esatta come dichiarata — nessuna estensione automatica
+    /// degli array (a() emette d0..dN-1 per le DECLARE normali). Per librerie con firma C fissa (API di sistema, terze parti).</summary>
+    public bool IsNativeAbi { get; init; }
+
     /// <summary>
     /// Fornisce una rappresentazione testuale che identifica questa come una funzione FFI.
     /// </summary>
@@ -613,7 +617,8 @@ public sealed record ExternalProcedureDefinition(
         )
         {
             Flags = Flags,
-            OriginalName = (Token)OriginalName.DeepClone()
+            OriginalName = (Token)OriginalName.DeepClone(),
+            IsNativeAbi = IsNativeAbi
         };
     }
 }

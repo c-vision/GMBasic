@@ -178,6 +178,13 @@ typedef struct {
     char dyn_names[128][48];
     int dyn_isstr[128];
     int n_dyn_names;
+    /* FFI array con estensioni automatiche (a() invariata): varianti del wrapper per VETTORE DI
+     * RANGHI. Il rango di un array e' statico per variabile (DIM a(i,j) = 2); il wrapper ha arita'
+     * nativa fissa, quindi se ne emette una variante per ogni vettore di ranghi usato dai
+     * call-site. ffi_var_key[k] = una cifra (1..4) per parametro della DECLARE (0 = non array). */
+    int ffi_var_n;
+    int ffi_var_fn[128];
+    char ffi_var_key[128][65];
 } ctx_t;
 
 #endif /* GMB_C99_EMIT_CTX_H */

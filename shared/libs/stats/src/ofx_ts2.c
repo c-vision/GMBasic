@@ -225,3 +225,20 @@ int ofx_ts_hmmfit(const double *X, int n, int d, int K, int nIter, double *out)
     free(gmean); free(gcov);
     return i < 0 ? -1 : 0;
 }
+
+#include <stdint.h>
+/* Shim FFI (estensioni automatiche degli array, ffi_ext_shim.pl): firma con int64_t dopo ogni array. */
+double ofx_ts_approxent__ffi(const double *x, int64_t x_ext, int n, int m, double r) { return ofx_ts_approxent(x, n, m, r); }
+int ofx_ts_bma__ffi(const double *ic, int64_t ic_ext, int m, double *out, int64_t out_ext) { return ofx_ts_bma(ic, m, out); }
+int ofx_ts_bootstrap__ffi(const double *x, int64_t x_ext, int n, int window, int seed, double *out, int64_t out_ext) { return ofx_ts_bootstrap(x, n, window, seed, out); }
+int ofx_ts_fracdiff__ffi(const double *x, int64_t x_ext, int n, double d, double *out, int64_t out_ext) { return ofx_ts_fracdiff(x, n, d, out); }
+int ofx_ts_garch11__ffi(const double *x, int64_t x_ext, int n, double *out, int64_t out_ext) { return ofx_ts_garch11(x, n, out); }
+int ofx_ts_granger__ffi(const double *x, int64_t x_ext, const double *y, int64_t y_ext, int n, int p, double *out, int64_t out_ext) { return ofx_ts_granger(x, y, n, p, out); }
+int ofx_ts_hmmfit__ffi(const double *X, int64_t X_ext, int n, int d, int K, int nIter, double *out, int64_t out_ext) { return ofx_ts_hmmfit(X, n, d, K, nIter, out); }
+double ofx_ts_hurst__ffi(const double *x, int64_t x_ext, int n) { return ofx_ts_hurst(x, n); }
+int ofx_ts_kalman1d__ffi(const double *z, int64_t z_ext, int n, double a, double h, double q, double r, double *out, int64_t out_ext) { return ofx_ts_kalman1d(z, n, a, h, q, r, out); }
+double ofx_ts_lyap__ffi(const double *x, int64_t x_ext, int n, int m, int tau) { return ofx_ts_lyap(x, n, m, tau); }
+double ofx_ts_lz__ffi(const double *x, int64_t x_ext, int n) { return ofx_ts_lz(x, n); }
+int ofx_ts_oufit__ffi(const double *x, int64_t x_ext, int n, double dt, double *out, int64_t out_ext) { return ofx_ts_oufit(x, n, dt, out); }
+double ofx_ts_perm__ffi(const double *x, int64_t x_ext, int n, int m, int lag) { return ofx_ts_perm(x, n, m, lag); }
+double ofx_ts_sampen__ffi(const double *x, int64_t x_ext, int n, int m, double r) { return ofx_ts_sampen(x, n, m, r); }

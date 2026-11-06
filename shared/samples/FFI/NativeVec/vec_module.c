@@ -136,10 +136,12 @@ long vec_isum(long* buf, long n)
 /* Array BYREF multiplo (3 parametri array nella STESSA chiamata, non tutti in
  * posizione 0): out[i] = a[i] + b[i]. Copre arrayMask multi-bit con array non
  * all'indice 0 (n e' il primo parametro, scalare) e piu' array attivi insieme. */
-void vec_combine(long n, double* a, double* b, double* out)
+void vec_combine(double* a, int64_t na, double* b, int64_t nb, double* out, int64_t nout)
 {
+    int64_t n = na < nb ? na : nb;
+    if (nout < n) n = nout;
     if (a == NULL || b == NULL || out == NULL) return;
-    for (long i = 0; i < n; i++) out[i] = a[i] + b[i];
+    for (int64_t i = 0; i < n; i++) out[i] = a[i] + b[i];
 }
 
 /* Array + STRING nella STESSA firma (entrambi puntatori, entrambi forzano firma
@@ -344,14 +346,16 @@ double vec_cb_arr_scalar(double (*cb)(double*, int64_t, double), const double* v
 }
 
 /* Callback con RITORNO ARRAY (2026-11-02): f(v[]) AS ARRAY (Fsolve/Broyden/LSQF). */
-void vec_cb_arr_out(void (*cb)(double*, int64_t, double*), const double* v, int64_t n, double* out)
+void vec_cb_arr_out(void (*cb)(double*, int64_t, double*), const double* v, int64_t n, double* out, int64_t nout)
 {
+    (void)nout;
     if (cb) cb((double*)v, n, out);
 }
 /* Due array in ingresso + ritorno array (LMVec): f(p[], x[]) AS ARRAY. */
 void vec_cb_vv_out(void (*cb)(double*, int64_t, double*, int64_t, double*),
-                   const double* p, int64_t np, const double* x, int64_t nx, double* out)
+                   const double* p, int64_t np, const double* x, int64_t nx, double* out, int64_t nout)
 {
+    (void)nout;
     if (cb) cb((double*)p, np, (double*)x, nx, out);
 }
 
@@ -362,16 +366,17 @@ double vec_cb_vv_scalar(double (*cb)(double*, int64_t, double*, int64_t), const 
 }
 
 /* Test marshalling: 5 array in una sola chiamata. out(i) = a(i)+b(i)+c(i)+d(i). */
-void vec_five(const double* a, int64_t na, const double* b, int64_t nb, const double* c, int64_t nc, const double* d, int64_t nd, double* out)
+void vec_five(const double* a, int64_t na, const double* b, int64_t nb, const double* c, int64_t nc, const double* d, int64_t nd, double* out, int64_t nout)
 {
-    int64_t i, n = na;
+    int64_t i, n = na; (void)nout;
     if (nb < n) n = nb; if (nc < n) n = nc; if (nd < n) n = nd;
     for (i = 0; i < n; i++) out[i] = a[i] + b[i] + c[i] + d[i];
 }
 
 /* 5 array + 1 scalare (forma di LINPROG: c, A, b, bounds, out). */
-void vec_five2(const double* a, const double* b, const double* c, const double* d, int64_t n, double* out)
+void vec_five2(const double* a, int64_t na, const double* b, int64_t nb, const double* c, int64_t nc, const double* d, int64_t nd, double* out, int64_t nout)
 {
-    int64_t i;
+    int64_t i, n = na;
+    (void)nb; (void)nc; (void)nd; (void)nout;
     for (i = 0; i < n; i++) out[i] = a[i] + b[i] + c[i] + d[i];
 }

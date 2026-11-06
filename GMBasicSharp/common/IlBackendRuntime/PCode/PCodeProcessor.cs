@@ -4548,7 +4548,9 @@ internal sealed partial class PCodeProcessor
                 // S1 (2026-11-06): bit7 di `kind` = ritorno UDT con layout esplicito (i due byte
                 // successivi sono il conteggio foglie u16). Senza il bit resta il formato storico.
                 var retUdtNew = (kindByte & 0x80) != 0;
-                var kind = kindByte & 0x7F;
+                // bit 0x20 di `kind` = DECLARE NATIVE (ABI esatta: nessuna estensione automatica degli array).
+                var nativeAbi = (kindByte & 0x20) != 0;
+                var kind = kindByte & 0x5F;
                 var retUdtFieldCount = retUdtNew ? (retLo | (retHi << 8)) : retLo;
                 var retUdtFieldKindMask = retUdtNew ? 0 : retHi;
                 // Descrittore PER ARGOMENTO (2026-11-06, niente maschere nel formato):
@@ -4709,7 +4711,7 @@ internal sealed partial class PCodeProcessor
                         var fullMaskForArgc = argCount >= PCodeFfiMaxArgs ? -1L : (1L << argCount) - 1;
                         var uniformScalarKind = scalarKindMask == (kind == 1 ? fullMaskForArgc : 0L);
                         var result = arrayMask != 0 || stringMask != 0 || retIsString || byrefScalarMask != 0 || anyUdt || !uniformScalarKind
-                            ? _runtime.Ffi.CallFunctionTypedArr(funcPtr, args, kind, arrayMask, arrayElemIntMask, stringMask, retIsString, byrefScalarMask, byrefScalarElemIntMask, udtParamShapes, retUdtShape, scalarKindMask: scalarKindMask, byrefUdtMask: byrefUdtMask)
+                            ? _runtime.Ffi.CallFunctionTypedArr(funcPtr, args, nativeAbi ? (kind | 0x100) : kind, arrayMask, arrayElemIntMask, stringMask, retIsString, byrefScalarMask, byrefScalarElemIntMask, udtParamShapes, retUdtShape, scalarKindMask: scalarKindMask, byrefUdtMask: byrefUdtMask)
                             : _runtime.Ffi.CallFunctionTyped(funcPtr, args, (byte)kind);
                         GC.KeepAlive(callbackKeepAlive);
                         for (var i = 0; i < argCount; i++)

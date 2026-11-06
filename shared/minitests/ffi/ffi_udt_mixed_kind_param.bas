@@ -11,7 +11,7 @@ DECLARE FUNCTION VecLabeledDnTotal LIB "libvec_module" ALIAS "vec_labeled_dn_tot
 DECLARE FUNCTION VecLabeledNdTotal LIB "libvec_module" ALIAS "vec_labeled_nd_total" (a AS LabeledND) AS DOUBLE
 DECLARE FUNCTION VecLabeledDnBetween LIB "libvec_module" ALIAS "vec_labeled_dn_between" (before AS DOUBLE, a AS LabeledDN, after AS DOUBLE) AS DOUBLE
 DECLARE FUNCTION VecLabeledDnLast LIB "libvec_module" ALIAS "vec_labeled_dn_last" (a AS DOUBLE, b AS DOUBLE, c AS DOUBLE, lab AS LabeledDN) AS DOUBLE
-DECLARE FUNCTION VecLabeledDnWithArray LIB "libvec_module" ALIAS "vec_labeled_dn_with_array" (buf() AS LONG, n AS LONG, lab AS LabeledDN) AS LONG
+DECLARE FUNCTION VecLabeledDnWithArray LIB "libvec_module" ALIAS "vec_labeled_dn_with_array" (buf() AS LONG, lab AS LabeledDN) AS LONG
 
 SUB Main()
     DIM a AS LabeledDN
@@ -28,5 +28,5 @@ SUB Main()
 
     DIM buf(2) AS LONG
     buf(0) = 10 : buf(1) = 20 : buf(2) = 30
-    PRINT "dn_with_array="; VecLabeledDnWithArray(buf(), 3, a)  ' 60+3+7=70
+    PRINT "dn_with_array="; VecLabeledDnWithArray(buf(), a)  ' 60+3+7=70
 END SUB
