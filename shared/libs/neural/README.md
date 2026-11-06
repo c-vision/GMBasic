@@ -18,11 +18,11 @@ Questi moduli restano fuori dal pacchetto per non duplicare la superficie BASIC.
 | comuni | `ZEROGRAD`, `STEP`, `FREE` | handle; `STEP(h, 0|1|2, lr)` = SGD/momentum/Adam |
 | PBP | `PBPMOMENTS`, `PBPLAYERINIT`, `PBPLAYER` | momenti ReLU + forward denso (handle) |
 | ~~ML classico~~ | — | **non qui**: KMeans/PCA/SVM sono già FFI nel namespace `MULTIVARIATE` (`multivariate.inc`, libgmbstats), dopo il ritiro dei builtin (2026-11-05) |
-| CNN | `CONVINIT/CONVSETDIL/CONVRUN[R B]`, `DECONV*`, `WINO*`, `IM2COL*`, `COL2IM*`, `LRN*`, `RESIZE*` | layout CHW; configurazione su handle (le funzioni C superano gli 8 argomenti FFI) |
+| CNN | `CONVINIT/CONVSETDIL/CONVRUN[R B]`, `DECONV*`, `WINO*`, `IM2COL*`, `COL2IM*`, `LRN*`, `RESIZE*` | layout CHW; configurazione su handle (i parametri non si ripetono a ogni forward) |
 | Pooling | `MAXPOOLINIT`, `AVGPOOLINIT`, `POOLRUN`, `POOLRUNARG`, `UNPOOLINIT`, `UNPOOLRUN` | argmax LONG per il backward |
 | FusedMM | `FUSEDMMINIT/RUN`, `AGGINIT/RUN` | CSR (GAT/GraphSAGE) |
 | Pruning | `SPARSIFY24`, `PRUNECHANNELL1`, `PRUNECHANNELMASK` | 2:4 strutturato, channel pruning |
-| Quantizzazione | `QUANTI8`, `DEQUANTI8`, `REQUANTI8`, `QUANTPARAMS`, `QUANTGEMMU8`, `QUANTREQSHIFTI8`, `QUANTCONV2DI8`, `QUANTCLAMPU8`, `QUANTPARAMSCHANNEL`, `QUANTCONV2DI8CHANNEL` | array a byte trasportati come `LONG`; configurazioni in `cfg()`/`par()` per restare entro gli 8 argomenti |
+| Quantizzazione | `QUANTI8`, `DEQUANTI8`, `REQUANTI8`, `QUANTPARAMS`, `QUANTGEMMU8`, `QUANTREQSHIFTI8`, `QUANTCONV2DI8`, `QUANTCLAMPU8`, `QUANTPARAMSCHANNEL`, `QUANTCONV2DI8CHANNEL` | array a byte trasportati come `LONG`; configurazioni in `cfg()`/`par()` |
 | Ternario | `TERNARYINIT/FREE/ACTBYTES/DOTROW/FORWARD/TOMAT` | bit-slicing 1.58-bit, handle 2001+ |
 | Alberi | `TREEINIT/TREEFITREG/TREEFITCLS/TREEPREDICT/TREEFREE` | CART, handle 3001+ |
 | Random Forest | `FORESTINIT/FORESTFITREG/FORESTFITCLS/FORESTPREDICT/FORESTFREE`, `AUC` | bagging deterministico (seed), handle 3101+ |
@@ -40,9 +40,8 @@ Adam con contatore di passo globale). Tabella handle: 32 vivi, uso sequenziale.
 
 ### Perché `PBPLAYERINIT` + `PBPLAYER`
 
-La funzione C `gn_pbp_layer_forward` ha 10 argomenti; il marshalling FFI ne supporta 8.
-`PBPLAYERINIT` copia `m_w/v_w` (out×in) in un handle, `PBPLAYER` prende i 7 argomenti
-rimanenti.
+`PBPLAYERINIT` copia `m_w/v_w` (out×in) in un handle, `PBPLAYER` riceve solo i
+vettori di stato del passo: i buffer non si ricreano a ogni forward.
 
 ## Sorgenti (copia autonoma)
 

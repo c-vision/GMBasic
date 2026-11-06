@@ -48,8 +48,8 @@ DECLARE FUNCTION FREE LIB "gmbneural" ALIAS "ofx_nn_free" (h AS LONG) AS LONG
 ' ── PBP (Probabilistic Backpropagation, momenti ReLU) ──────────────────────
 ' out(0)=m_z, out(1)=v_z dei momenti ReLU su N(m_a, v_a).
 DECLARE FUNCTION PBPMOMENTS LIB "gmbneural" ALIAS "ofx_nn_pbp_moments" (m_a AS DOUBLE, v_a AS DOUBLE, out() AS DOUBLE) AS LONG
-' Strato denso PBP: gli argomenti della funzione C sono 10 (>8 del marshalling FFI),
-' quindi i parametri m_w/v_w (out×in) si copiano in un handle con PBPLAYERINIT.
+' Strato denso PBP: i parametri m_w/v_w (out×in) vivono in un handle (PBPLAYERINIT),
+' cosi' il FORWARD resta corto e i buffer di stato non si ricreano a ogni passo.
 DECLARE FUNCTION PBPLAYERINIT LIB "gmbneural" ALIAS "ofx_nn_pbp_init" (m_w() AS DOUBLE, v_w() AS DOUBLE, in_ AS LONG, out_ AS LONG) AS LONG
 ' Forward: m_z_prev/v_z_prev = in, m_z/v_z = out; scaling (es. 1/in);
 ' relu <> 0 applica i momenti ReLU, altrimenti lineare.
@@ -57,8 +57,8 @@ DECLARE FUNCTION PBPLAYER LIB "gmbneural" ALIAS "ofx_nn_pbp_run" (h AS LONG, m_z
 
 
 ' ── CNN (conv/pool/im2col/resize/LRN) e FusedMM — configurazioni su handle ──
-' Le funzioni C hanno fino a 13 argomenti (>8 del marshalling FFI): la configurazione
-' (dimensioni/stride/pad) sta in un handle (1001+), il FORWARD prende solo gli array.
+' La configurazione (dimensioni/stride/pad) sta in un handle (1001+): il FORWARD
+' prende solo gli array e i parametri non si ripetono a ogni chiamata.
 ' Layout tensori: CHW (canale, altezza, larghezza), DOUBLE row-major.
 ' Dimensione di uscita: floor((dim + 2*pad - k)/stride) + 1.
 DECLARE FUNCTION OUTSIZE LIB "gmbneural" ALIAS "ofx_nn_outsize" (dim AS LONG, k AS LONG, stride AS LONG, pad AS LONG) AS LONG
@@ -128,7 +128,7 @@ DECLARE FUNCTION REQUANTI8 LIB "gmbneural" ALIAS "ofx_nn_requant_i8" (acc() AS L
 DECLARE FUNCTION QUANTPARAMS LIB "gmbneural" ALIAS "ofx_nn_quant_params" (x() AS DOUBLE, n AS LONG, out() AS DOUBLE) AS LONG
 ' GEMM uint8: out(m×n) = A(m×k)·B(k×n), accumulo int32, zero-point, bias int32(n), requant.
 DECLARE FUNCTION QUANTGEMMU8 LIB "gmbneural" ALIAS "ofx_nn_quant_gemm_u8" (out() AS LONG, a() AS LONG, b() AS LONG, bias() AS LONG, par() AS DOUBLE, m AS LONG, k AS LONG, n AS LONG) AS LONG
-' par(0..5) = scale_a, zp_a, scale_b, zp_b, scale_out, zp_out (firma a 8 argomenti: la VM/C non marshalla oltre 8).
+' par(0..5) = scale_a, zp_a, scale_b, zp_b, scale_out, zp_out.
 ' Requantizzazione a shift (CMSIS-NN): out = clamp((acc + (1<<(rshift-1))) >> rshift).
 DECLARE FUNCTION QUANTREQSHIFTI8 LIB "gmbneural" ALIAS "ofx_nn_quant_requant_shift_i8" (acc() AS LONG, n AS LONG, rshift AS LONG, out() AS LONG) AS LONG
 ' Conv2D quantizzata uint8->int8: in c×h×w, weight out_c×c×kh×kw, bias int32(out_c).
