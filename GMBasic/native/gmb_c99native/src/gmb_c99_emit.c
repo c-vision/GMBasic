@@ -1954,6 +1954,26 @@ static fn_info_t* cls_find_method_chain(ctx_t* c, const char* clsname, const cha
     }
     return NULL;
 }
+/* Overload di METODO/COSTRUTTORE per ARITÀ (parity IL/PCode: `NEW Cls()` e
+ * `NEW Cls(a)` possono coesistere). Fallback al primo omonimo. */
+static fn_info_t* cls_find_method_arity(ctx_t* c, const char* clsname, const char* meth, int nargs) {
+    for (int i = 0; i < c->nfn; i++)
+        if (c->fns[i].cls_owner[0] && strcasecmp(c->fns[i].cls_owner, clsname) == 0 &&
+            c->fns[i].stmt && c->fns[i].stmt->func_name &&
+            strcasecmp(c->fns[i].stmt->func_name, meth) == 0 &&
+            c->fns[i].n_params == nargs)
+            return &c->fns[i];
+    return cls_find_method(c, clsname, meth);
+}
+static fn_info_t* cls_find_method_chain_arity(ctx_t* c, const char* clsname, const char* meth, int nargs) {
+    for (int d = 0; d < 8 && clsname; d++) {
+        struct cls_info* ci = cls_find(c, clsname);
+        fn_info_t* mf = cls_find_method_arity(c, ci ? ci->name : clsname, meth, nargs);
+        if (mf) return mf;
+        clsname = (ci && ci->base[0]) ? ci->base : NULL;
+    }
+    return NULL;
+}
 /* True se la classe (o una sua base) è `Control` (namespace CONTROLS) — per lo zucchero
  * `istanza.Move/SetFocus/ZOrder/Invalidate/Refresh(...)` → comando `CONTROL ...` (§11.7). */
 static int cls_inherits_control(ctx_t* c, const char* clsname) {
@@ -2185,6 +2205,7 @@ static void emit_virt_call(ctx_t* c, fn_info_t** defs, int ndefs, void (*emit_in
         sb_ident(&c->out, mf->cls_owner);
         sb_put(&c->out, "_");
         sb_ident(&c->out, mf->stmt->func_name);
+        if (mf->ovl_idx > 0) sb_printf(&c->out, "__%d", mf->ovl_idx);
         sb_put(&c->out, "(&(");
         emit_inst(c, ud);
             sb_put(&c->out, ")");
@@ -2205,6 +2226,7 @@ static void emit_virt_call(ctx_t* c, fn_info_t** defs, int ndefs, void (*emit_in
         sb_ident(&c->out, defs[k]->cls_owner);
         sb_put(&c->out, "_");
         sb_ident(&c->out, defs[k]->stmt->func_name);
+        if (defs[k]->ovl_idx > 0) sb_printf(&c->out, "__%d", defs[k]->ovl_idx);
         sb_put(&c->out, "(&(");
         emit_inst(c, ud);
             sb_put(&c->out, ")");
@@ -2221,6 +2243,7 @@ static void emit_virt_call(ctx_t* c, fn_info_t** defs, int ndefs, void (*emit_in
         sb_ident(&c->out, mf->cls_owner);
         sb_put(&c->out, "_");
         sb_ident(&c->out, mf->stmt->func_name);
+        if (mf->ovl_idx > 0) sb_printf(&c->out, "__%d", mf->ovl_idx);
         sb_put(&c->out, "(&(");
         emit_inst(c, ud);
             sb_put(&c->out, ")");
@@ -5202,11 +5225,13 @@ static void sb_fn_cname(sb_t* b, fn_info_t* fn) {
 static void assign_cnames(ctx_t* c) {
     for (int i = 0; i < c->nfn; i++) {
         fn_info_t* fn = &c->fns[i];
-        if (!fn->stmt || !fn->stmt->func_name || fn->parent || fn->cls_owner[0]) continue;
+        if (!fn->stmt || !fn->stmt->func_name || fn->parent) continue;
         int idx = 0;
         for (int j = 0; j < i; j++) {
             fn_info_t* o = &c->fns[j];
-            if (!o->stmt || !o->stmt->func_name || o->parent || o->cls_owner[0]) continue;
+            if (!o->stmt || !o->stmt->func_name || o->parent) continue;
+            /* Overload solo nello STESSO scope: stessa classe (o entrambi top-level). */
+            if (strcasecmp(o->cls_owner, fn->cls_owner) != 0) continue;
             if (strcasecmp(o->stmt->func_name, fn->stmt->func_name) == 0) idx++;
         }
         fn->ovl_idx = idx;
@@ -12763,18 +12788,20 @@ static void emit_call(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_
                         struct cls_info* bc = cls_find(c, oc->base);
                         if (!bc) { c99_fail(c, line, "BASE: classe base '%s' non trovata", oc->base); return; }
                         if (gmb_member_tok(mdot + 1) == GMB_TOK_New) {
-                            fn_info_t* bctor = cls_find_method(c, bc->name, "NEW");
+                            fn_info_t* bctor = cls_find_method_arity(c, bc->name, "NEW", nargs);
                             if (!bctor) { c99_fail(c, line, "BASE.NEW: nessun costruttore in %s", bc->name); return; }
                             if (nargs != bctor->n_params) {
                                 c99_fail(c, line, "BASE.NEW: attesi %d argomenti, trovati %d", bctor->n_params, nargs);
                                 return;
                             }
-                            sb_put(&c->out, "gmb_user_"); sb_ident(&c->out, bc->name); sb_put(&c->out, "_init(self");
+                            sb_put(&c->out, "gmb_user_"); sb_ident(&c->out, bc->name); sb_put(&c->out, "_init");
+                            if (bctor->ovl_idx > 0) sb_printf(&c->out, "__%d", bctor->ovl_idx);
+                            sb_put(&c->out, "(self");
                             emit_method_arr_args(c, bctor, 0, args, 0, nargs, line);
             sb_put(&c->out, ")");
                             return;
                         }
-                        fn_info_t* bm = cls_find_method(c, bc->name, mdot + 1);
+                        fn_info_t* bm = cls_find_method_arity(c, bc->name, mdot + 1, nargs);
                         if (!bm) { c99_fail(c, line, "BASE.%s: metodo non definito nella classe base %s", mdot + 1, bc->name); return; }
                         if (nargs != bm->n_params) {
                             c99_fail(c, line, "BASE.%s: attesi %d argomenti, trovati %d", mdot + 1, bm->n_params, nargs);
@@ -12782,6 +12809,7 @@ static void emit_call(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_
                         }
                         sb_put(&c->out, "gmb_user_"); sb_ident(&c->out, bc->name); sb_put(&c->out, "_");
                         sb_ident(&c->out, bm->stmt->func_name);
+                        if (bm->ovl_idx > 0) sb_printf(&c->out, "__%d", bm->ovl_idx);
                         sb_put(&c->out, "(self");
                         emit_method_arr_args(c, bm, 0, args, 0, nargs, line);
             sb_put(&c->out, ")");
@@ -12807,7 +12835,7 @@ static void emit_call(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_
                                 return;
                             }
                         }
-                        fn_info_t* mf = cls_find_method_chain(c, bv->vclass, meth);
+                        fn_info_t* mf = cls_find_method_chain_arity(c, bv->vclass, meth, nargs - nd);
                         if (mf && nargs - nd == mf->n_params) {
                             if (gmb_keyword_tok(mf->stmt->func_name) != GMB_TOK_New) {
                                 /* 2.7(d): dispatch dinamico OVERRIDE su elemento array */
@@ -12822,8 +12850,13 @@ static void emit_call(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_
                             sb_put(&c->out, "gmb_user_");
                             sb_ident(&c->out, mf->cls_owner);
                             sb_put(&c->out, "_");
-                            if (gmb_keyword_tok(mf->stmt->func_name) == GMB_TOK_New) sb_put(&c->out, "init");
-                            else sb_ident(&c->out, mf->stmt->func_name);
+                            if (gmb_keyword_tok(mf->stmt->func_name) == GMB_TOK_New) {
+                                sb_put(&c->out, "init");
+                                if (mf->ovl_idx > 0) sb_printf(&c->out, "__%d", mf->ovl_idx);
+                            } else {
+                                sb_ident(&c->out, mf->stmt->func_name);
+                                if (mf->ovl_idx > 0) sb_printf(&c->out, "__%d", mf->ovl_idx);
+                            }
                             sb_put(&c->out, "(&");
                             emit_flat_index(c, bv, args, nd);
                             emit_method_arr_args(c, mf, 0, args, nd, nargs, line);
@@ -13115,7 +13148,7 @@ static void emit_call(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_
                             }
                         }
                     }
-                    fn_info_t* mf = cls_find_method_chain(c, cls, mdot + 1);
+                    fn_info_t* mf = cls_find_method_chain_arity(c, cls, mdot + 1, nargs);
                     if (!mf && cls_inherits_control(c, cls)) {
                         /* Zucchero Control (§11.7): istanza.Metodo(...) → gmb_form_control_* (id=nome vars). */
                         const char* cid = (bv && bv->name) ? bv->name : "";
@@ -13155,7 +13188,9 @@ static void emit_call(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_
                     if (gmb_keyword_tok(mf->stmt->func_name) == GMB_TOK_New) {
                         sb_put(&c->out, "gmb_user_");
                         sb_ident(&c->out, mf->cls_owner);
-                        sb_put(&c->out, "_init(");
+                        sb_put(&c->out, "_init");
+                        if (mf->ovl_idx > 0) sb_printf(&c->out, "__%d", mf->ovl_idx);
+                        sb_put(&c->out, "(");
                         if (bv) { sb_put(&c->out, "&"); emit_ident(c, bv->name); }
                         else sb_put(&c->out, "self");
                         emit_method_arr_args(c, mf, 0, args, 0, nargs, line);
@@ -13174,6 +13209,7 @@ static void emit_call(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_
                     sb_ident(&c->out, mf->cls_owner);
                     sb_put(&c->out, "_");
                     sb_ident(&c->out, mf->stmt->func_name);
+                    if (mf->ovl_idx > 0) sb_printf(&c->out, "__%d", mf->ovl_idx);
                     sb_put(&c->out, "(");
                     if (bv) { sb_put(&c->out, "&"); emit_ident(c, bv->name); }
                     else sb_put(&c->out, "self");
@@ -13189,7 +13225,7 @@ static void emit_call(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_
                     c99_fail(c, line, "NEW %s: impossibile istanziare un'interfaccia", name);
                     return;
                 }
-                fn_info_t* ctor = cls_find_method(c, ci->name, "NEW");
+                fn_info_t* ctor = cls_find_method_arity(c, ci->name, "NEW", nargs);
                 if (ctor) {
                     if (nargs != ctor->n_params) {
                         c99_fail(c, line, "NEW %s: numero argomenti errato: attesi %d, trovati %d",
@@ -13198,7 +13234,9 @@ static void emit_call(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_
                     }
                     sb_put(&c->out, "gmb_user_");
                     sb_ident(&c->out, ci->name);
-                    sb_put(&c->out, "_NEW(");
+                    sb_put(&c->out, "_NEW");
+                    if (ctor->ovl_idx > 0) sb_printf(&c->out, "__%d", ctor->ovl_idx);
+                    sb_put(&c->out, "(");
                     for (int i = 0; i < nargs; i++) {
                         if (i) sb_put(&c->out, ", ");
                         if (p_arraylike(ctor->stmt, i)) emit_arr_call_arg(c, ctor, i, args[i], line);
@@ -31584,9 +31622,13 @@ static void emit_function(ctx_t* c, fn_info_t* fn) {
     int is_ctor = fn->cls_owner[0] && gmb_keyword_tok(s->func_name) == GMB_TOK_New;
     sb_printf(&c->out, "static %s gmb_user_", fn_ret_ctype(c, fn));
     if (fn->cls_owner[0]) { sb_ident(&c->out, fn->cls_owner); sb_put(&c->out, "_"); }
-    if (is_ctor) sb_put(&c->out, "init");
-    else emit_ident(c, s->func_name);
-    if (!fn->cls_owner[0] && fn->ovl_idx > 0) sb_printf(&c->out, "__%d", fn->ovl_idx);
+    if (is_ctor) {
+        sb_put(&c->out, "init");
+        if (fn->ovl_idx > 0) sb_printf(&c->out, "__%d", fn->ovl_idx);
+    } else {
+        emit_ident(c, s->func_name);
+        if (fn->ovl_idx > 0) sb_printf(&c->out, "__%d", fn->ovl_idx);
+    }
     sb_put(&c->out, "(");
     if (fn->cls_owner[0]) sb_put(&c->out, "gmb_val_t* self");
     if (s->n_params == 0 && !has_ctx && !is_lctx && !is_lamv && !fn->cls_owner[0]) sb_put(&c->out, "void");
@@ -32099,7 +32141,9 @@ static void emit_function(ctx_t* c, fn_info_t* fn) {
     if (is_ctor && !c->error[0]) {
         sb_put(&c->out, "static gmb_val_t gmb_user_");
         sb_ident(&c->out, fn->cls_owner);
-        sb_put(&c->out, "_NEW(");
+        sb_put(&c->out, "_NEW");
+        if (fn->ovl_idx > 0) sb_printf(&c->out, "__%d", fn->ovl_idx);
+        sb_put(&c->out, "(");
         if (s->n_params == 0) sb_put(&c->out, "void");
         for (int i = 0; i < s->n_params; i++) {
             if (i) sb_put(&c->out, ", ");
@@ -32117,7 +32161,9 @@ static void emit_function(ctx_t* c, fn_info_t* fn) {
         sb_put(&c->out, ") {\n");
         sb_printf(&c->out, "    gmb_val_t __inst = gmb_make_val_obj(gmb_obj_new_typed((gmb_obj_%s*)calloc(1, sizeof(gmb_obj_%s)), \"%s\"));\n",
                   fn->cls_owner, fn->cls_owner, fn->cls_owner);
-        sb_printf(&c->out, "    gmb_user_%s_init(&__inst", fn->cls_owner);
+        sb_printf(&c->out, "    gmb_user_%s_init", fn->cls_owner);
+        if (fn->ovl_idx > 0) sb_printf(&c->out, "__%d", fn->ovl_idx);
+        sb_put(&c->out, "(&__inst");
         for (int i = 0; i < s->n_params; i++) {
             sb_put(&c->out, ", "); sb_ident(&c->out, s->func_params[i]);
             if (p_arraylike(s, i)) {
@@ -33900,9 +33946,13 @@ int gmb_c99_emit(const gmb_program_t* prog, char** out_src, char** error) {
         int m_is_ctor = c->fns[i].cls_owner[0] && gmb_keyword_tok(s->func_name) == GMB_TOK_New;
         sb_printf(&proto, "static %s gmb_user_", fn_ret_ctype(c, &c->fns[i]));
         if (c->fns[i].cls_owner[0]) { sb_ident(&proto, c->fns[i].cls_owner); sb_put(&proto, "_"); }
-        if (m_is_ctor) sb_put(&proto, "init");
-        else sb_ident(&proto, s->func_name);
-        if (!c->fns[i].cls_owner[0] && c->fns[i].ovl_idx > 0) sb_printf(&proto, "__%d", c->fns[i].ovl_idx);
+        if (m_is_ctor) {
+            sb_put(&proto, "init");
+            if (c->fns[i].ovl_idx > 0) sb_printf(&proto, "__%d", c->fns[i].ovl_idx);
+        } else {
+            sb_ident(&proto, s->func_name);
+            if (c->fns[i].ovl_idx > 0) sb_printf(&proto, "__%d", c->fns[i].ovl_idx);
+        }
         sb_put(&proto, "(");
         if (c->fns[i].cls_owner[0]) sb_put(&proto, "gmb_val_t* self");
         if (s->n_params == 0 && !has_ctx && !is_lctx && !is_lamv && !c->fns[i].cls_owner[0]) sb_put(&proto, "void");
@@ -33969,7 +34019,9 @@ int gmb_c99_emit(const gmb_program_t* prog, char** out_src, char** error) {
         }
         /* 2.7: prototipo wrapper boxed del costruttore */
         if (m_is_ctor) {
-            sb_printf(&proto, "static gmb_val_t gmb_user_%s_NEW(", c->fns[i].cls_owner);
+            sb_printf(&proto, "static gmb_val_t gmb_user_%s_NEW", c->fns[i].cls_owner);
+            if (c->fns[i].ovl_idx > 0) sb_printf(&proto, "__%d", c->fns[i].ovl_idx);
+            sb_put(&proto, "(");
             if (s->n_params == 0) sb_put(&proto, "void");
             for (int k = 0; k < s->n_params; k++) {
                 if (k) sb_put(&proto, ", ");
