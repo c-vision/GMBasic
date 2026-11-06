@@ -16010,7 +16010,16 @@ static void emit_arr_literal_assign(ctx_t* c, const char* target, gmb_expr_t* li
        * non un C invalido a valle (`assigning to 'gmb_double_t' from 'gmb_val_t'`). */
       if (target && value && !strchr(target, '.')) {
           var_t* nv = lookup_var(c, target);
-          if (nv && nv->type == TY_NUM && !nv->boxed_val && !nv->gkind && !nv->vclass[0]
+          /* La VARIABILE-RITORNO di una FUNCTION che ritorna un UDT non ha `vclass` nel
+           * registro locale (il valore viaggia in `__ret` come gmb_val_t): `RESULT =
+           * JSON.ToObject(TradeResult, ...)` è un assegnamento UDT legittimo, non un
+           * numerico da convertire — senza questa esclusione era un errore di emissione
+           * (regressione json/toobject_udt_fn). */
+          int fnret_udt = c->cur_fn && c->cur_fn->stmt && c->cur_fn->stmt->func_name
+                          && strcasecmp(c->cur_fn->stmt->func_name, target) == 0
+                          && c->cur_fn->stmt->func_ret_type
+                          && cls_find(c, c->cur_fn->stmt->func_ret_type) != NULL;
+          if (!fnret_udt && nv && nv->type == TY_NUM && !nv->boxed_val && !nv->gkind && !nv->vclass[0]
               && !nv->is_array && dim_val_init_kind(c, value)) {
               c99_fail(c, line,
                        "valore dinamico (JSON/dict) assegnato alla variabile numerica '%s': dichiararla AS JSON (o convertire in stringa)",
