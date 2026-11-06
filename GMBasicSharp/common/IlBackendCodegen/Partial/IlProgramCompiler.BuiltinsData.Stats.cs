@@ -578,11 +578,21 @@ public sealed partial class IlProgramCompiler
             || !_arrays.TryGetValue(rv.SymbolId, out var rArr) || TryExtractCompileTimeInt32(expr.Args[1], out _))
             return false;
         EmitExpression(expr.Args[0]);
-        EmitInt32Argument(expr.Args[1]);
-        _il.Emit(OpCodes.Ldc_I4_1);
-        _il.Emit(OpCodes.Sub);
-        var m = rArr.ClrArrayType.GetMethod(isUpper ? "GetUpperBound" : "GetLowerBound", [typeof(int)]);
-        _il.Emit(m!.IsVirtual ? OpCodes.Callvirt : OpCodes.Call, m);
+        _il.Emit(OpCodes.Castclass, typeof(Array));
+        EmitInt32Argument(expr.Args[1]);          // asse 1-based
+        _il.Emit(isUpper ? OpCodes.Ldc_I4_1 : OpCodes.Ldc_I4_0);
+        /* lower bound logici per asse: int[] costruito a runtime (rank piccolo). */
+        _il.Emit(OpCodes.Ldc_I4, rArr.Rank);
+        _il.Emit(OpCodes.Newarr, typeof(int));
+        for (var axis = 0; axis < rArr.Rank; axis++)
+        {
+            _il.Emit(OpCodes.Dup);
+            _il.Emit(OpCodes.Ldc_I4, axis);
+            _il.Emit(OpCodes.Ldc_I4, rArr.LowerBounds[axis]);
+            _il.Emit(OpCodes.Stelem_I4);
+        }
+        _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.ArrayBound),
+            typeof(Array), typeof(int), typeof(bool), typeof(int[])));
         _il.Emit(OpCodes.Conv_I8);
         return true;
     }

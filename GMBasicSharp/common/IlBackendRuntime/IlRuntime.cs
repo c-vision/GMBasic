@@ -14820,6 +14820,32 @@ public static double TextWidth(string s)
             File.WriteAllBytes(path, bytes);
     }
 
+    /// <summary>UBOUND/LBOUND con asse scelto a runtime: <paramref name="dim"/> è 1-based,
+    /// <paramref name="lowers"/> contiene i lower bound logici per asse (compile-time nel
+    /// backend IL). Gestisce sia gli array rettangolari (double[,], ecc.) sia quelli JAGGED
+    /// usati per gli array di UDT/CLASS (T[][]): per un asse > 0 la riga è la prima
+    /// dell'array esterno. Non usa GetMethod sul tipo (fallirebbe sui TypeBuilder).</summary>
+    public static long ArrayBound(Array? arr, int dim, bool upper, int[]? lowers)
+    {
+        if (arr is null) return upper ? -1 : 0;
+        if (dim < 1) dim = 1;
+        var rank = lowers?.Length ?? 1;
+        if (dim > rank)
+            throw new IndexOutOfRangeException("Array does not have that many dimensions.");
+        var axis = dim - 1;
+        var target = arr;
+        if (axis > 0 && arr.Rank == 1)
+        {
+            if (arr.Length == 0)
+                return (upper ? -1 : 0) + (lowers is not null && axis < lowers.Length ? lowers[axis] : 0);
+            target = (Array)arr.GetValue(0)!;
+            axis = 0;
+        }
+        var b = upper ? target.GetUpperBound(axis) : target.GetLowerBound(axis);
+        var lo = lowers is not null && dim - 1 < lowers.Length ? lowers[dim - 1] : 0;
+        return b + lo;
+    }
+
     /// <summary>Count di una collection/array boxed (AnyType) — per UBOUND/LBOUND dinamici.</summary>
     public static double CollectionCount(object? collection)
     {

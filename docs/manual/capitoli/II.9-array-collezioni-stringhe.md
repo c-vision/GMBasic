@@ -77,7 +77,7 @@ dell'asse `dim`.
 | Parametro | Tipo | Descrizione |
 |---|---|---|
 | `A` | array | array nativo `DIM a(...)`. Su una lista o un dict `UBOUND` restituisce `Count-1` e `LBOUND` restituisce `0`. |
-| `dim` | `LONG`, opzionale | asse **1-based**: `1` è la prima dimensione, `2` la seconda, e così via. Default `1`. |
+| `dim` | `LONG`, opzionale | asse **1-based**: `1` è la prima dimensione, `2` la seconda, e così via. Default `1`. Può essere un'espressione o una variabile: l'asse viene selezionato a runtime. |
 | valore | `LONG` | `LBOUND` = lower dell'asse; `UBOUND` = upper dell'asse. |
 
 - `UBOUND(A)` senza `dim` restituisce l'upper del **primo** asse, non il numero di elementi:
