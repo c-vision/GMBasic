@@ -8,23 +8,23 @@ La libreria è **self-contained**: `build.sh` compila solo i file in `src/` con 
 | `src/gc_core.c`, `include/gc_core.h` | `gmbsuite/gmbcompute` |
 | `src/gm_core.c`, `include/gm_core.h` | `gmbsuite/gmbmath-core` |
 | `src/gm_vec.c`, `include/gm_vec.h` | `gmbsuite/gmbmath-vector` |
-| `src/gm_color.c`, `include/gm_color.h` | `gmbsuite/gmbgraphics` |
-| `src/gm_gfx_shape.c`, `include/gm_gfx_shape.h` | `gmbsuite/gmbgraphics` |
-| `src/gm_gfx_image.c`, `include/gm_gfx_image.h` | `gmbsuite/gmbgraphics` |
+| `src/gm_color.c`, `include/gm_color.h` | `gmbsuite/gmbgfx-color` |
+| `src/gm_gfx_shape.c`, `include/gm_gfx_shape.h` | `gmbsuite/gmbgfx-2d` |
+| `src/gm_gfx_image.c`, `include/gm_gfx_image.h` | `gmbsuite/gmbgfx-2d` |
 | `src/gm_mat.c`, `include/gm_mat.h` | `gmbsuite/gmbmath-vector` |
 | `src/gm_quat.c`, `include/gm_quat.h` | `gmbsuite/gmbmath-vector` |
-| `src/gm_gfx_geom.c`, `include/gm_gfx_geom.h` | `gmbsuite/gmbgraphics` |
-| `src/gm_gfx_intersect.c`, `include/gm_gfx_intersect.h` | `gmbsuite/gmbgraphics` |
-| `src/gm_gfx_ray.c`, `include/gm_gfx_ray.h` | `gmbsuite/gmbgraphics` |
-| `src/gm_gfx_mesh.c`, `include/gm_gfx_mesh.h` | `gmbsuite/gmbgraphics` |
-| `src/gm_gfx_raster.c`, `include/gm_gfx_raster.h` | `gmbsuite/gmbgraphics` |
-| `src/gm_gfx_bitmap.c`, `include/gm_gfx_bitmap.h` | `gmbsuite/gmbgraphics` |
-| `src/gm_gfx_surface.c`, `include/gm_gfx_surface.h` | `gmbsuite/gmbgraphics` |
-| `src/gm_bc1.c`, `include/gm_bc1.h` | `gmbsuite/gmbgraphics` |
+| `src/gm_gfx_geom.c`, `include/gm_gfx_geom.h` | `gmbsuite/gmbgfx-3d` |
+| `src/gm_gfx_intersect.c`, `include/gm_gfx_intersect.h` | `gmbsuite/gmbgfx-3d` |
+| `src/gm_gfx_ray.c`, `include/gm_gfx_ray.h` | `gmbsuite/gmbgfx-3d` |
+| `src/gm_gfx_mesh.c`, `include/gm_gfx_mesh.h` | `gmbsuite/gmbgfx-3d` |
+| `src/gm_gfx_raster.c`, `include/gm_gfx_raster.h` | `gmbsuite/gmbgfx-3d` |
+| `src/gm_gfx_bitmap.c`, `include/gm_gfx_bitmap.h` | `gmbsuite/gmbgfx-2d` |
+| `src/gm_gfx_surface.c`, `include/gm_gfx_surface.h` | `gmbsuite/gmbgfx-surface` |
+| `src/gm_bc1.c`, `include/gm_bc1.h` | `gmbsuite/gmbgfx-codec` |
 | `src/ofx_gfx.c`, `src/ofx_gfx_3d.c` | shim FFI di questo pacchetto |
 
 
-Aggiornare i file qui sopra quando si ri-vendono i sorgenti da gmbsuite, poi ricompilare con
+Aggiornare i file qui sopra quando si ri-vendono i sorgenti dai domini `gmbsuite/gmbgfx-*`, poi ricompilare con
 `bash build.sh` (output `libgmbgraphics.dylib`) e verificare con
 `bash ../../../tools/sh/gmb_lib.sh check graphics`.
 
