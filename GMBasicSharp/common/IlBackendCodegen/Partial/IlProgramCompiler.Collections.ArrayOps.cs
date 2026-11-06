@@ -703,6 +703,42 @@ public sealed partial class IlProgramCompiler
             {
                 _il.Emit(OpCodes.Newarr, elementClrType);
                 _il.Emit(OpCodes.Stloc, arrayLocal);
+                // Array di UDT con campi ARRAY (S3b, 2026-11-06): `newarr` lascia ogni
+                // elemento a struct ZERO — i campi-array (riferimenti) restano NULL e
+                // `v(i).A(0)` va in NullReferenceException. Si invoca il ctor implicito (che
+                // alloca i campi array, vedi EmitUdtConstructorBody) su ogni slot.
+                if (elementDataType is UserDefinedType udtElem
+                    && udtElem.Fields.Any(f => !f.Dimensions.IsEmpty)
+                    && _classConstructors.TryGetValue(udtElem.SymbolId, out var udtCtors)
+                    && udtCtors.FirstOrDefault(c => c.Parameters.Length == 0) is { } paramlessCtor)
+                {
+                    var idxLocal = _il.DeclareLocal(_types.Int32);
+                    var lenLocal = _il.DeclareLocal(_types.Int32);
+                    _il.Emit(OpCodes.Ldloc, arrayLocal);
+                    _il.Emit(OpCodes.Ldlen);
+                    _il.Emit(OpCodes.Conv_I4);
+                    _il.Emit(OpCodes.Stloc, lenLocal);
+                    _il.Emit(OpCodes.Ldc_I4_0);
+                    _il.Emit(OpCodes.Stloc, idxLocal);
+                    var loopChk = _il.DefineLabel();
+                    var loopEnd = _il.DefineLabel();
+                    _il.Emit(OpCodes.Br, loopChk);
+                    var loopBody = _il.DefineLabel();
+                    _il.MarkLabel(loopBody);
+                    _il.Emit(OpCodes.Ldloc, arrayLocal);
+                    _il.Emit(OpCodes.Ldloc, idxLocal);
+                    _il.Emit(OpCodes.Newobj, paramlessCtor.Builder);
+                    _il.Emit(OpCodes.Stelem, elementClrType);
+                    _il.Emit(OpCodes.Ldloc, idxLocal);
+                    _il.Emit(OpCodes.Ldc_I4_1);
+                    _il.Emit(OpCodes.Add);
+                    _il.Emit(OpCodes.Stloc, idxLocal);
+                    _il.MarkLabel(loopChk);
+                    _il.Emit(OpCodes.Ldloc, idxLocal);
+                    _il.Emit(OpCodes.Ldloc, lenLocal);
+                    _il.Emit(OpCodes.Blt, loopBody);
+                    _il.MarkLabel(loopEnd);
+                }
             }
 
             // Inizializzatore letterale: sia `{..}` (ArrayLiteralExpr) sia `[..]`
