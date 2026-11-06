@@ -190,6 +190,9 @@ FUNCTION SkipPath(p AS STRING) AS LONG
   IF INSTR(u, "/.build/") > 0 THEN RETURN -1
   IF INSTR(u, "/.content/") > 0 THEN RETURN -1
   IF INSTR(u, "/out/") > 0 THEN RETURN -1
+  ' `bin/` = output generato dal compilatore (es. samples/bin/*_out.c): non e' sorgente
+  ' del pacchetto, altrimenti l'audit conta simboli definiti da codice di prova.
+  IF INSTR(u, "/bin/") > 0 THEN RETURN -1
   RETURN 0
 END FUNCTION
 

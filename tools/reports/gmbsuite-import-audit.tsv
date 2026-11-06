@@ -38,7 +38,8 @@ ffi_internal	wsp	/Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/libs/w
 package_internal	avif	/Users/gaetano/Documents/Projects/GMBasicMonoRepo/packages/avif	alias=5	OK	alias_senza_def=0 alias_non_esportati=0 header_senza_def=0 (WARN)
 package_internal	blockchain	/Users/gaetano/Documents/Projects/GMBasicMonoRepo/packages/blockchain	alias=19	OK	alias_senza_def=0 alias_non_esportati=0 header_senza_def=0 (WARN)
 package_internal	dom	/Users/gaetano/Documents/Projects/GMBasicMonoRepo/packages/dom	alias=8	OK	alias_senza_def=0 alias_non_esportati=0 header_senza_def=0 (WARN)
-package_internal	duckdb	/Users/gaetano/Documents/Projects/GMBasicMonoRepo/packages/duckdb	alias=11	GAP	alias_senza_def=11 alias_non_esportati=0 header_senza_def=15
+package_internal	duckdb	/Users/gaetano/Documents/Projects/GMBasicMonoRepo/packages/duckdb	alias=11	INFO-REMOTE	nessun sorgente locale: pacchetto scaricato dal registry; ABI verificata sul binario
+package_internal	duckdb	/Users/gaetano/Documents/Projects/GMBasicMonoRepo/packages/duckdb	alias=11	OK	alias_senza_def=0 alias_non_esportati=0 header_senza_def=15 (WARN)
 package_internal	hdf5	/Users/gaetano/Documents/Projects/GMBasicMonoRepo/packages/hdf5	alias=19	OK	alias_senza_def=0 alias_non_esportati=0 header_senza_def=0 (WARN)
 package_internal	heif	/Users/gaetano/Documents/Projects/GMBasicMonoRepo/packages/heif	alias=5	OK	alias_senza_def=0 alias_non_esportati=0 header_senza_def=0 (WARN)
 package_internal	mongo	/Users/gaetano/Documents/Projects/GMBasicMonoRepo/packages/mongo	alias=4	OK	alias_senza_def=0 alias_non_esportati=0 header_senza_def=0 (WARN)
@@ -52,4 +53,102 @@ project_inventory	gmbcompute	/Users/gaetano/Documents/Projects/GMBSuite/gmbcompu
 project_inventory	gmbgeo	/Users/gaetano/Documents/Projects/GMBSuite/gmbgeo	h=29 def=46 match=29 non_match=0	INFO	
 project_inventory	gmbgfx-2d	/Users/gaetano/Documents/Projects/GMBSuite/gmbgfx-2d	h=88 def=91 match=88 non_match=0	INFO	
 project_inventory	gmbgfx-3d	/Users/gaetano/Documents/Projects/GMBSuite/gmbgfx-3d	h=60 def=63 match=60 non_match=0	INFO	
-project_i
+project_inventory	gmbgfx-codec	/Users/gaetano/Documents/Projects/GMBSuite/gmbgfx-codec	h=4 def=6 match=4 non_match=0	INFO	
+project_inventory	gmbgfx-color	/Users/gaetano/Documents/Projects/GMBSuite/gmbgfx-color	h=10 def=10 match=10 non_match=0	INFO	
+project_inventory	gmbgfx-surface	/Users/gaetano/Documents/Projects/GMBSuite/gmbgfx-surface	h=3 def=3 match=3 non_match=0	INFO	
+project_inventory	gmbgraphics	/Users/gaetano/Documents/Projects/GMBSuite/gmbgraphics	h=0 def=20 match=0 non_match=0	INFO	
+project_inventory	gmbhdf5	/Users/gaetano/Documents/Projects/GMBSuite/gmbhdf5	h=17 def=22 match=17 non_match=0	INFO	
+project_inventory	gmbmath	/Users/gaetano/Documents/Projects/GMBSuite/gmbmath	h=319 def=690 match=319 non_match=0	INFO	
+project_inventory	gmbmath-core	/Users/gaetano/Documents/Projects/GMBSuite/gmbmath-core	h=38 def=38 match=38 non_match=0	INFO	
+project_inventory	gmbmath-linalg	/Users/gaetano/Documents/Projects/GMBSuite/gmbmath-linalg	h=105 def=120 match=105 non_match=0	INFO	
+project_inventory	gmbmath-numerical	/Users/gaetano/Documents/Projects/GMBSuite/gmbmath-numerical	h=85 def=98 match=85 non_match=0	INFO	
+project_inventory	gmbmath-special	/Users/gaetano/Documents/Projects/GMBSuite/gmbmath-special	h=30 def=76 match=30 non_match=0	INFO	
+project_inventory	gmbmath-vector	/Users/gaetano/Documents/Projects/GMBSuite/gmbmath-vector	h=189 def=191 match=189 non_match=0	INFO	
+project_inventory	gmbneural	header	gn_standardize	UNMATCHED	norm=gn_standardize
+project_inventory	gmbneural	header	gn_minmax_scale	UNMATCHED	norm=gn_minmax_scale
+project_inventory	gmbneural	header	gn_onehot_encode	UNMATCHED	norm=gn_onehot_encode
+project_inventory	gmbneural	header	gn_svm_train	UNMATCHED	norm=gn_svm_train
+project_inventory	gmbneural	header	gn_svm_predict	UNMATCHED	norm=gn_svm_predict
+project_inventory	gmbneural	header	gn_pca	UNMATCHED	norm=gn_pca
+project_inventory	gmbneural	header	gn_pca_transform	UNMATCHED	norm=gn_pca_transform
+project_inventory	gmbneural	header	gn_kmeans	UNMATCHED	norm=gn_kmeans
+project_inventory	gmbneural	header	gn_kmeans_inertia	UNMATCHED	norm=gn_kmeans_inertia
+project_inventory	gmbneural	header	gn_net_init	UNMATCHED	norm=gn_net_init
+project_inventory	gmbneural	header	gn_net_free	UNMATCHED	norm=gn_net_free
+project_inventory	gmbneural	header	gn_net_forward	UNMATCHED	norm=gn_net_forward
+project_inventory	gmbneural	header	gn_net_backward	UNMATCHED	norm=gn_net_backward
+project_inventory	gmbneural	header	gn_net_save	UNMATCHED	norm=gn_net_save
+project_inventory	gmbneural	header	gn_net_load	UNMATCHED	norm=gn_net_load
+project_inventory	gmbneural	header	gn_net_copy	UNMATCHED	norm=gn_net_copy
+project_inventory	gmbneural	header	gn_net_merge	UNMATCHED	norm=gn_net_merge
+project_inventory	gmbneural	header	gn_net_zero_grad	UNMATCHED	norm=gn_net_zero_grad
+project_inventory	gmbneural	header	gn_net_step	UNMATCHED	norm=gn_net_step
+project_inventory	gmbneural	/Users/gaetano/Documents/Projects/GMBSuite/gmbneural	h=246 def=359 match=227 non_match=19	INFO	
+project_inventory	gmbortools	header	ipm_solve_std	UNMATCHED	norm=ipm_solve_std
+project_inventory	gmbortools	header	ipm_solve_std_csc	UNMATCHED	norm=ipm_solve_std_csc
+project_inventory	gmbortools	header	ipm_solve_qp_csc	UNMATCHED	norm=ipm_solve_qp_csc
+project_inventory	gmbortools	header	socp_solve	UNMATCHED	norm=socp_solve
+project_inventory	gmbortools	header	socp_solve_sparse	UNMATCHED	norm=socp_solve_sparse
+project_inventory	gmbortools	header	gmi_graph_init	UNMATCHED	norm=gmi_graph_init
+project_inventory	gmbortools	header	gmi_graph_shutdown	UNMATCHED	norm=gmi_graph_shutdown
+project_inventory	gmbortools	header	gmi_graph_create	UNMATCHED	norm=gmi_graph_create
+project_inventory	gmbortools	header	gmi_graph_free	UNMATCHED	norm=gmi_graph_free
+project_inventory	gmbortools	header	gmi_graph_add_node	UNMATCHED	norm=gmi_graph_add_node
+project_inventory	gmbortools	header	gmi_graph_add_node_consistent	UNMATCHED	norm=gmi_graph_add_node_consistent
+project_inventory	gmbortools	header	gmi_graph_add_edge	UNMATCHED	norm=gmi_graph_add_edge
+project_inventory	gmbortools	header	gmi_graph_add_edge_multi	UNMATCHED	norm=gmi_graph_add_edge_multi
+project_inventory	gmbortools	header	gmi_graph_remove_node	UNMATCHED	norm=gmi_graph_remove_node
+project_inventory	gmbortools	header	gmi_graph_remove_edge	UNMATCHED	norm=gmi_graph_remove_edge
+project_inventory	gmbortools	header	gmi_graph_has_node	UNMATCHED	norm=gmi_graph_has_node
+project_inventory	gmbortools	header	gmi_graph_has_edge	UNMATCHED	norm=gmi_graph_has_edge
+project_inventory	gmbortools	header	gmi_graph_get_edge_weight	UNMATCHED	norm=gmi_graph_get_edge_weight
+project_inventory	gmbortools	header	gmi_graph_get_indegree	UNMATCHED	norm=gmi_graph_get_indegree
+project_inventory	gmbortools	header	gmi_graph_node_count	UNMATCHED	norm=gmi_graph_node_count
+project_inventory	gmbortools	header	gmi_graph_bfs	UNMATCHED	norm=gmi_graph_bfs
+project_inventory	gmbortools	header	gmi_graph_dfs	UNMATCHED	norm=gmi_graph_dfs
+project_inventory	gmbortools	header	gmi_graph_nodes	UNMATCHED	norm=gmi_graph_nodes
+project_inventory	gmbortools	header	gmi_graph_neighbors	UNMATCHED	norm=gmi_graph_neighbors
+project_inventory	gmbortools	header	gmi_graph_dijkstra	UNMATCHED	norm=gmi_graph_dijkstra
+project_inventory	gmbortools	header	gmi_graph_pagerank	UNMATCHED	norm=gmi_graph_pagerank
+project_inventory	gmbortools	header	gmi_graph_get_outdegree	UNMATCHED	norm=gmi_graph_get_outdegree
+project_inventory	gmbortools	header	gmi_graph_get_degree	UNMATCHED	norm=gmi_graph_get_degree
+project_inventory	gmbortools	header	gmi_graph_shortest_path	UNMATCHED	norm=gmi_graph_shortest_path
+project_inventory	gmbortools	header	gmi_graph_dijkstra_path	UNMATCHED	norm=gmi_graph_dijkstra_path
+project_inventory	gmbortools	header	gmi_graph_find_path	UNMATCHED	norm=gmi_graph_find_path
+project_inventory	gmbortools	header	gmi_graph_bellman_ford	UNMATCHED	norm=gmi_graph_bellman_ford
+project_inventory	gmbortools	header	gmi_graph_scc	UNMATCHED	norm=gmi_graph_scc
+project_inventory	gmbortools	header	gmi_graph_free_str_array_array	UNMATCHED	norm=gmi_graph_free_str_array_array
+project_inventory	gmbortools	header	gmi_graph_has_cycle	UNMATCHED	norm=gmi_graph_has_cycle
+project_inventory	gmbortools	header	gmi_graph_toposort	UNMATCHED	norm=gmi_graph_toposort
+project_inventory	gmbortools	header	gmi_graph_is_bipartite	UNMATCHED	norm=gmi_graph_is_bipartite
+project_inventory	gmbortools	header	gmi_graph_connected_components	UNMATCHED	norm=gmi_graph_connected_components
+project_inventory	gmbortools	header	gmi_graph_betweenness	UNMATCHED	norm=gmi_graph_betweenness
+project_inventory	gmbortools	header	gmi_graph_diameter	UNMATCHED	norm=gmi_graph_diameter
+project_inventory	gmbortools	header	gmi_graph_eccentricity	UNMATCHED	norm=gmi_graph_eccentricity
+project_inventory	gmbortools	header	gmi_graph_clustering_coefficient	UNMATCHED	norm=gmi_graph_clustering_coefficient
+project_inventory	gmbortools	header	gmi_graph_edge_list	UNMATCHED	norm=gmi_graph_edge_list
+project_inventory	gmbortools	header	lp_presolve	UNMATCHED	norm=lp_presolve
+project_inventory	gmbortools	header	presolve_changed	UNMATCHED	norm=presolve_changed
+project_inventory	gmbortools	header	presolve_reduced	UNMATCHED	norm=presolve_reduced
+project_inventory	gmbortools	header	presolve_postsolve	UNMATCHED	norm=presolve_postsolve
+project_inventory	gmbortools	header	presolve_postsolve_dir	UNMATCHED	norm=presolve_postsolve_dir
+project_inventory	gmbortools	header	presolve_free	UNMATCHED	norm=presolve_free
+project_inventory	gmbortools	header	stdform_build	UNMATCHED	norm=stdform_build
+project_inventory	gmbortools	header	stdform_free	UNMATCHED	norm=stdform_free
+project_inventory	gmbortools	header	stdform_map_x	UNMATCHED	norm=stdform_map_x
+project_inventory	gmbortools	header	stdform_map_dir	UNMATCHED	norm=stdform_map_dir
+project_inventory	gmbortools	header	stdform_map_y	UNMATCHED	norm=stdform_map_y
+project_inventory	gmbortools	header	stdform_dense_A	UNMATCHED	norm=stdform_dense_a
+project_inventory	gmbortools	header	stdform_dense_Q	UNMATCHED	norm=stdform_dense_q
+project_inventory	gmbortools	header	sdp_ipm	UNMATCHED	norm=sdp_ipm
+project_inventory	gmbortools	/Users/gaetano/Documents/Projects/GMBSuite/gmbortools	h=402 def=715 match=345 non_match=57	INFO	
+project_inventory	gmbscheduling	/Users/gaetano/Documents/Projects/GMBSuite/gmbscheduling	h=3 def=8 match=3 non_match=0	INFO	
+project_inventory	gmbstats	/Users/gaetano/Documents/Projects/GMBSuite/gmbstats	h=16 def=39 match=16 non_match=0	INFO	
+project_inventory	gmbstats-base	/Users/gaetano/Documents/Projects/GMBSuite/gmbstats-base	h=47 def=57 match=47 non_match=0	INFO	
+project_inventory	gmbstats-finance	/Users/gaetano/Documents/Projects/GMBSuite/gmbstats-finance	h=40 def=76 match=40 non_match=0	INFO	
+project_inventory	gmbstats-fitting	/Users/gaetano/Documents/Projects/GMBSuite/gmbstats-fitting	h=27 def=29 match=27 non_match=0	INFO	
+project_inventory	gmbstats-multivariate	/Users/gaetano/Documents/Projects/GMBSuite/gmbstats-multivariate	h=28 def=56 match=28 non_match=0	INFO	
+project_inventory	gmbstats-regression	/Users/gaetano/Documents/Projects/GMBSuite/gmbstats-regression	h=18 def=18 match=18 non_match=0	INFO	
+project_inventory	gmbstats-simulation	/Users/gaetano/Documents/Projects/GMBSuite/gmbstats-simulation	h=122 def=99 match=122 non_match=0	INFO	
+project_inventory	gmbstats-stats	/Users/gaetano/Documents/Projects/GMBSuite/gmbstats-stats	h=201 def=240 match=201 non_match=0	INFO	
+project_inventory	gmbstats-timeseries	/Users/gaetano/Documents/Projects/GMBSuite/gmbstats-timeseries	h=81 def=163 match=81 non_match=0	INFO	
