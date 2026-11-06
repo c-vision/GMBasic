@@ -2541,7 +2541,8 @@ static int vm_ffi_call_slots(void* fn, int argc,
                              int retSize, int64_t* out_int, double* out_double,
                              gmb_val_t* out_fields,
                              const int* uaCount, const unsigned char (*uaType)[64],
-                             const int (*uaOff)[64], const int* uaSize, const char* (*uaNames)[64])
+                             const int (*uaOff)[64], const int* uaSize, const char* (*uaNames)[64],
+                             uint64_t byrefUdtMask)
 {
     if (!fn || argc < 0 || argc > GMB_FFI_MAX_ARGS) return -1;
     if (!gmb_call_enabled()) return -1;
@@ -2565,11 +2566,24 @@ static int vm_ffi_call_slots(void* fn, int argc,
                 vm_ffi_store_field(b, udtOff[i][f], udtType[i][f], v);
             }
             ubuf[i] = b;
-            slots[i].kind = 2;
-            slots[i].nfields = udtCount[i];
-            slots[i].field_type = udtType[i];
-            slots[i].field_off = udtOff[i];
-            vals[i] = b;
+            if (byrefUdtMask & (1ull << i))
+            {
+                /* BYREF UDT: al nativo va l'INDIRIZZO della struct (slot puntatore). */
+                iv[i] = (int64_t)(intptr_t)b;
+                vals[i] = &iv[i];
+                slots[i].kind = 1;
+                slots[i].nfields = 0;
+                slots[i].field_type = NULL;
+                slots[i].field_off = NULL;
+            }
+            else
+            {
+                slots[i].kind = 2;
+                slots[i].nfields = udtCount[i];
+                slots[i].field_type = udtType[i];
+                slots[i].field_off = udtOff[i];
+                vals[i] = b;
+            }
             continue;
         }
         // Array di UDT (S3, 2026-11-06): buffer contiguo di n struct, riempito dagli elementi
@@ -2578,13 +2592,6 @@ static int vm_ffi_call_slots(void* fn, int argc,
         {
             gmb_obj_shared_val_t* sv = (gmb_obj_shared_val_t*)arrRefs[i];
             int na = (sv && sv->list) ? (int)sv->list->count : 0;
-            if (sv && sv->list && sv->list->items[0].kind == GMB_TYPE_OBJECT && sv->list->items[0].v_ptr)
-            {
-                gmb_obj_shared_val_t* i0 = (gmb_obj_shared_val_t*)sv->list->items[0].v_ptr;
-                gmb_val_t x0 = (i0 && i0->dict) ? vm_dict_get_ci(i0->dict, "X") : (gmb_val_t){0};
-                fprintf(stderr, " X.kind=%d X=%.1f", x0.kind, x0.kind == GMB_TYPE_INT ? (double)x0.v_int : x0.v_double);
-            }
-            fprintf(stderr, "\n");
             int es = uaSize && uaSize[i] > 0 ? uaSize[i] : 1;
             unsigned char* b = (unsigned char*)calloc((size_t)(na > 0 ? na : 1) * (size_t)es, 1);
             if (!b) goto fail;
@@ -2665,6 +2672,15 @@ static int vm_ffi_call_slots(void* fn, int argc,
                     vm_ffi_set_leaf_val(inst, uaNames[i][f], NULL, 0, vm_ffi_load_field(eb, uaOff[i][f], uaType[i][f]));
             }
         }
+    }
+    /* Copy-back dei BYREF UDT (2026-11-06): il nativo può aver modificato la struct. */
+    for (int i = 0; i < argc; i++)
+    {
+        if (!(byrefUdtMask & (1ull << i)) || !ubuf[i] || udtCount[i] <= 0) continue;
+        gmb_obj_shared_val_t* inst = (gmb_obj_shared_val_t*)arrRefs[i];
+        if (!inst || !inst->dict) continue;
+        for (int f = 0; f < udtCount[i] && f < 64; f++)
+            vm_ffi_set_leaf_val(inst, udtNames[i][f], NULL, 0, vm_ffi_load_field(ubuf[i], udtOff[i][f], udtType[i][f]));
     }
     for (int i = 0; i < argc; i++) free(ubuf[i]);
     return 0;
@@ -15003,6 +15019,7 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                 int udtArrSize[narg];
                 unsigned char udtArrType[narg][64];
                 int udtArrOff[narg][64];
+                uint64_t byrefUdtMask = 0;
                 int callbackParamArity[narg];
                 uint64_t callbackParamKindMask = 0, callbackParamHasRetMask = 0;
                 memset(udtParamFieldCount, 0, sizeof(int) * (size_t)narg);
@@ -15027,8 +15044,14 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                     if (f & 4u) stringMask |= (1ull << i);
                     if (f & 8u)
                     {
-                        byrefScalarMask |= (1ull << i);
-                        if (f & 0x80u) byrefScalarElemIntMask |= (1ull << i);
+                        /* BYREF UDT (2026-11-06): puntatore a struct, non a scalare — il bit
+                         * 0x20 (UDT) distingue i due casi. */
+                        if (f & 0x20u) byrefUdtMask |= (1ull << i);
+                        else
+                        {
+                            byrefScalarMask |= (1ull << i);
+                            if (f & 0x80u) byrefScalarElemIntMask |= (1ull << i);
+                        }
                     }
                     if (f & 0x10u)
                     {
@@ -15438,7 +15461,8 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                                                   retUdtFieldCount, retTypeArr, retOffArr, retSizeCalc,
                                                   kind == 1 ? &r : NULL, kind == 1 ? NULL : &result, retVals,
                                                   udtArrCount, (const unsigned char (*)[64])udtArrType,
-                                                  (const int (*)[64])udtArrOff, udtArrSize, udtArrNames) == 0)
+                                                  (const int (*)[64])udtArrOff, udtArrSize, udtArrNames,
+                                                  byrefUdtMask) == 0)
                                 udtSlotsDone = 1;
                             /* Kind misto (2026-09-29): retUdtFieldKindMask sceglie la forma
                              * ESATTA indipendentemente dal ramo kind=1/kind=0 in cui ci troviamo
@@ -15562,7 +15586,8 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                                                       retUdtFieldCount, retTypeArr, retOffArr, retSizeCalc,
                                                       NULL, &result, retValsD,
                                                       udtArrCount, (const unsigned char (*)[64])udtArrType,
-                                                      (const int (*)[64])udtArrOff, udtArrSize, udtArrNames) == 0)
+                                                      (const int (*)[64])udtArrOff, udtArrSize, udtArrNames,
+                                                      byrefUdtMask) == 0)
                                     udtSlotsDoneD = 1;
                                 /* Kind misto (2026-09-29): stessa selezione via
                                  * retUdtFieldKindMask del ramo kind=1 — vedi commento gemello. */
