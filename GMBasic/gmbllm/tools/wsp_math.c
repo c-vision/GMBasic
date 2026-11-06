@@ -83,6 +83,20 @@ static int same_answer(const char *a, const char *b) {
     free(x); free(y); return eq;
 }
 
+/* LOOP: quota di posizioni j (j >= N) il cui N-gramma di token [j-N+1..j] è già comparso prima nella finestra [from, j). */
+static double repeat_share(const int32_t *g, int n, int from, int N) {
+    int rep = 0, tot = 0;
+    for (int j = from + N - 1; j < n; j++) {
+        tot++;
+        for (int i = from + N - 1; i < j; i++) {
+            int same = 1;
+            for (int k = 0; k < N; k++) if (g[i - k] != g[j - k]) { same = 0; break; }
+            if (same) { rep++; break; }
+        }
+    }
+    return tot ? (double)rep / (double)tot : 0;
+}
+
 int main(int argc, char **argv) {
     if (argc < 10) { fprintf(stderr, "uso: %s <mlx.dylib> <tok.dylib> <modello> <test.jsonl> <inizio> <passo> <conteggio> <max_new> <seed>\n", argv[0]); return 2; }
     void *lm = dlopen(argv[1], RTLD_NOW | RTLD_LOCAL), *lt = dlopen(argv[2], RTLD_NOW | RTLD_LOCAL);
@@ -100,7 +114,7 @@ int main(int argc, char **argv) {
     int32_t imend[4] = {0}; te(tk, "<|im_end|>", imend, 4);
     const int32_t EOS1 = imend[0], EOS2 = 248044;
     FILE *f = fopen(argv[4], "rb"); if (!f) return 1;
-    char *line = (char *)malloc(1 << 20); int idx = 0, done = 0, correct = 0, cut = 0, noans = 0; long tot_tok = 0;
+    char *line = (char *)malloc(1 << 20); int idx = 0, done = 0, correct = 0, cut = 0, noans = 0, loops = 0; long tot_tok = 0; double sum_rall = 0, sum_rtail = 0;
     int32_t *gen = (int32_t *)malloc((size_t)maxnew * sizeof(int32_t)), *pr = (int32_t *)malloc(8192 * sizeof(int32_t));
     char *text = (char *)malloc((size_t)maxnew * 8 + 4096);
     struct timespec t0, t1; clock_gettime(CLOCK_MONOTONIC, &t0);
@@ -129,7 +143,10 @@ int main(int argc, char **argv) {
         int ok = b && same_answer(b, ans);
         done++; correct += ok; tot_tok += ng;
         int was_cut = !finished || ng >= maxnew; cut += was_cut; if (!b) noans++;
-        printf("[%3d] idx=%d token=%d%s risposta=%s attesa=%s %s\n", done, idx - 1, ng, was_cut ? " (TAGLIATA)" : "", b ? b : "-", ans, ok ? "OK" : "no");
+        /* misura di LOOP: ripetizione di 8-grammi di token sull'intera generazione e sulle ultime 1024 posizioni */
+        double rall = repeat_share(gen, ng, 0, 8), rtail = repeat_share(gen, ng, ng > 1024 ? ng - 1024 : 0, 8);
+        int looped = rtail > 0.5; loops += looped; sum_rall += rall; sum_rtail += rtail;
+        printf("[%3d] idx=%d token=%d%s rip8_tutta=%.2f rip8_coda=%.2f%s risposta=%s attesa=%s %s\n", done, idx - 1, ng, was_cut ? " (TAGLIATA)" : "", rall, rtail, looped ? " LOOP" : "", b ? b : "-", ans, ok ? "OK" : "no");
         fflush(stdout);
         free(b); free(prob); free(ans);
     }
@@ -137,6 +154,7 @@ int main(int argc, char **argv) {
     printf("RIEPILOGO %s: %d problemi, accuratezza %.1f%% (%d), tagliate al tetto %.1f%% (%d), senza \\boxed %.1f%%, token medi %.0f, tempo %.0fs\n",
            argv[3], done, 100.0 * correct / done, correct, 100.0 * cut / done, cut, 100.0 * noans / done, (double)tot_tok / done,
            (double)(t1.tv_sec - t0.tv_sec) + (double)(t1.tv_nsec - t0.tv_nsec) / 1e9);
+    printf("LOOP %s: in loop (rip8_coda>0.5) %d/%d = %.1f%%, rip8 medio sull'intera generazione %.3f, sulla coda %.3f\n", argv[3], loops, done, 100.0 * loops / done, sum_rall / done, sum_rtail / done);
     fr(m);
     return 0;
 }
