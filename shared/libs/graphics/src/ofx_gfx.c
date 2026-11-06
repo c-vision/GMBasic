@@ -708,3 +708,17 @@ int ofx_gfx_img_sub(const double* a, const double* b, int w, int h, double* out)
     gm_image_sub(img_wrap(a, w, h), img_wrap(b, w, h), img_wrap(out, w, h));
     return 0;
 }
+
+/* Costruttori 2D (gfxshape.inc). */
+int ofx_gfx_shape_aabb2_make(const double* mn, const double* mx, double* out)
+{
+    if (!mn || !mx || !out) return -1;
+    box2_out(gm_aabb2_make(v2(mn), v2(mx)), out);
+    return 0;
+}
+int ofx_gfx_shape_ray2_at(const double* r, double t, double* out)
+{
+    if (!r || !out) return -1;
+    v2_out(gm_ray2_at(ray2_in(r), t), out);
+    return 0;
+}

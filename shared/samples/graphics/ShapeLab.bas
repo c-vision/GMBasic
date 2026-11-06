@@ -27,6 +27,12 @@ SUB Main()
   PRINT "bary="; GFXSHAPE.BARYCENTRIC(d(), p(), c(), c(), o()); ":";
   PRINT o(0); ","; o(1); ","; o(2)
 
+  DIM amn(1) AS DOUBLE, amx(1) AS DOUBLE
+  amn(0) = 1 : amn(1) = 2
+  amx(0) = 5 : amx(1) = 7
+  PRINT "a2mk="; GFXSHAPE.AABB2MAKE(amn(), amx(), o()); ":"; o(0); ","; o(1); ","; o(2); ","; o(3)
+  PRINT "r2at="; GFXSHAPE.RAY2AT(ray(), 5, o()); ":"; o(0); ","; o(1)
+
   PRINT "hex="; GFXSHAPE.HEXAREA(2); ","; GFXSHAPE.HEXINNER(2)
 
   DIM A(5) AS DOUBLE, B(5) AS DOUBLE

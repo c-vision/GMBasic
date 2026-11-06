@@ -61,3 +61,7 @@ DECLARE FUNCTION HEXINNER LIB "gmbgraphics" ALIAS "ofx_gfx_shape_hex_inner" (sid
 ' A/B = array piatti x,y,z,…; n = numero di VALORI (multipli di 3).
 DECLARE FUNCTION CHAMFER LIB "gmbgraphics" ALIAS "ofx_gfx_shape_chamfer" (A() AS DOUBLE, n AS LONG, B() AS DOUBLE, m AS LONG) AS DOUBLE
 DECLARE FUNCTION HAUSDORFF LIB "gmbgraphics" ALIAS "ofx_gfx_shape_hausdorff" (A() AS DOUBLE, n AS LONG, B() AS DOUBLE, m AS LONG) AS DOUBLE
+
+' Costruttori 2D (AABB da min/max, punto al parametro t sul raggio).
+DECLARE FUNCTION AABB2MAKE LIB "gmbgraphics" ALIAS "ofx_gfx_shape_aabb2_make" (mn() AS DOUBLE, mx() AS DOUBLE, out() AS DOUBLE) AS LONG
+DECLARE FUNCTION RAY2AT LIB "gmbgraphics" ALIAS "ofx_gfx_shape_ray2_at" (ray() AS DOUBLE, t AS DOUBLE, out() AS DOUBLE) AS LONG

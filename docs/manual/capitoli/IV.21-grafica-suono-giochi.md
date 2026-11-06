@@ -201,6 +201,7 @@ sinusoidale, PNG, rilettura e blit). MiniTest: `graphics/canvas_core.bas`.
 
 
 
+
 <!-- BEGIN SURFACE (generato da tools/sh/manual_surface.sh — non modificare a mano) -->
 
 ## Riferimento completo: comandi, funzioni, parametri
@@ -397,6 +398,7 @@ IMPORT GFXSHAPE
 | `POLYGONSIGNEDAREA` | area con segno (shoelace) | |
 | `HEXAREA` / `HEXLONG` / `HEXSHORT` / `HEXINNER` | esagono regolare | |
 | `CHAMFER` / `HAUSDORFF` | `(A(), n, B(), m)` | point cloud xyz (n,m = valori) |
+| `AABB2MAKE` / `RAY2AT` | costruttori AABB 2D / punto sul raggio | |
 
 DIM o(5) AS DOUBLE
 ok = GFXCOLOR.MIX(0, 0, 255, 255, 255, 255, 0.5, o)   ' grigio 128,128,128
@@ -441,7 +443,7 @@ ok = GFX2D.DRAWLINE(d(), 4, 4, 0, 0, 3, 3, 2.5)  ' disegno su array
 | mesh (handle) | `MESHSPHERE`, `MESHBOX`, `MESHPLANE`, `MESHCYLINDER`, `MESHNV`, `MESHNT`, `MESHPOS`, `MESHTRI`, `MESHFREE` |
 | raster (handle) | `RASTERNEW`, `RASTERFREE`, `RASTERCLEAR`, `RASTERGET`, `RASTERTRI`, `RASTERCLIPNEAR` |
 | superfici/griglie | `MESHSURFACE` (campo di altezza → handle), `RAYCASTDDA` (griglia, max 256 passi) |
-| altro | `RAYCYLINDER`, `RAYCONE`, `CYLINDERNORMAL`, `CONENORMAL`, `AABBTRANSFORM` |
+| altro | `RAYCYLINDER`, `RAYCONE`, `CYLINDERNORMAL`, `CONENORMAL`, `AABBTRANSFORM`, `AABBMAKE`, `RAYAT`, `CAMERAORBIT`, `CAMERATRANSLATE`, `CAMERANDCRAY` |
 
 IMPORT GFX3D
 DIM m(15) AS DOUBLE
