@@ -274,6 +274,34 @@ static void case_static(int mode, uint32_t* h)
     *h = hash_buf();
 }
 
+/* TBROWSE: griglia con colonne/righe, navigazione tastiera e click. */
+static void case_tbrowse(int mode, uint32_t* h)
+{
+    case_begin(mode, "TBrowse");
+    gmb_control_t* c = gmb_tui_add_tbrowse(3, 3, 44, 6, "Nome:12:0:l|Eta:6:N",
+                                           "Mario|42;Luigi|31;Anna|28");
+    gmb_tui_draw_controls(B);
+    gmb_tui_control_focus(0);
+    key("\x18");  /* DOWN */
+    CHECK(gmb_tui_control_selrow(0) == 1, "tbrowse: Down -> riga 1");
+    key("\x18");
+    CHECK(gmb_tui_control_selrow(0) == 2, "tbrowse: Down -> riga 2");
+    key("\x05");  /* UP */
+    CHECK(gmb_tui_control_selrow(0) == 1, "tbrowse: Up -> riga 1");
+    key("\x01");  /* HOME */
+    CHECK(gmb_tui_control_selrow(0) == 0, "tbrowse: Home -> riga 0");
+    key("\x06");  /* END */
+    CHECK(gmb_tui_control_selrow(0) == 2, "tbrowse: End -> ultima riga");
+    /* END porta in fondo e scorre (top_row>0): HOME riporta in cima, poi il click sulla
+     * 2a riga dati (bordo+header+separatore => +3, quindi +3 e +4 per la riga 1) deve
+     * selezionare la riga 1. */
+    key("\x01");  /* HOME: top_row = 0 */
+    click(c->x + 2, c->y + 4);
+    CHECK(gmb_tui_control_selrow(0) == 1, "tbrowse: click riga 2 -> 1");
+    gmb_tui_draw_controls(B);
+    *h = hash_buf();
+}
+
 typedef struct { const char* name; void (*fn)(int, uint32_t*); } Case;
 
 int main(int argc, char** argv)
@@ -289,6 +317,7 @@ int main(int argc, char** argv)
         {"combo", case_combo}, {"slider", case_slider}, {"numupdown", case_numupdown},
         {"tab", case_tab}, {"menu", case_menu}, {"scrollbar", case_scrollbar},
         {"stars", case_stars}, {"spinner", case_spinner}, {"static", case_static},
+        {"tbrowse", case_tbrowse},
     };
     int nc = (int)(sizeof cases / sizeof cases[0]);
 
