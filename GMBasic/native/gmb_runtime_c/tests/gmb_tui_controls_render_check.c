@@ -113,6 +113,9 @@ int main(int argc, char** argv)
     check("reorderlist",  gmb_tui_add_reorderlistbox(2, 1, 20, 3, "x|y|z"));
     check("scrollview",   gmb_tui_add_scrollview(2, 1, 20, 3, "uno|due|tre"));
     check("contextmenu",  gmb_tui_add_contextmenu(2, 1, 16, 3, "Apri|Salva"));
+    check("tbrowse",      gmb_tui_add_tbrowse(1, 1, 44, 6,
+                          "Nome:12:0:l|Eta:6:N",
+                          "Mario|42;Luigi|31;Anna|28"));
 
     printf("\nTOTALE: %d controlli con violazioni\n", fails);
     return fails ? 1 : 0;
