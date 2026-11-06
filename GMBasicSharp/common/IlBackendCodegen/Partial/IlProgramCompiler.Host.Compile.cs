@@ -414,6 +414,14 @@ public sealed partial class IlProgramCompiler
                 // verifier) e ritorna: è esattamente il default di una struct.
                 udtImplicitIl.Emit(OpCodes.Ldarg_0);
                 udtImplicitIl.Emit(OpCodes.Initobj, udtTypeBuilder);
+                // Campi ARRAY del UDT (S3b, 2026-11-06): initobj li azzera a NULL — vanno
+                // allocati qui, come in EmitUdtConstructorBody (che però NON copre questo
+                // ctor implicito: è emesso qui con un ILGenerator grezzo). Senza,
+                // `n = NEW Arr4 : n.A(1) = 3` andava in NullReferenceException (le altre
+                // gambe allocavano i campi).
+                foreach (var farr in udtFieldArrayDeclarations[udtDef.SymbolId])
+                    EmitFieldArrayAllocationCode(udtImplicitIl, types, classFieldArrays[farr.SymbolId],
+                        farr.Dimensions, () => udtImplicitIl.Emit(OpCodes.Ldarg_0));
                 udtImplicitIl.Emit(OpCodes.Ret);
                 udtDeclaredConstructors.Add(new ClassConstructorInfo(udtImplicitCtor, ImmutableArray<Parameter>.Empty));
             }

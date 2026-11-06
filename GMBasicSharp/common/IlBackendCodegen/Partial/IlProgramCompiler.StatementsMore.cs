@@ -172,7 +172,7 @@ public sealed partial class IlProgramCompiler
             // struct è IL invalido e può crashare il JIT, es. lettura di un UDT globale
             // mai inizializzato: il ramo "null" di TryEmitLoadGlobal produceva Ldnull
             // invece di una struct default). Initobj del tipo.
-            case UserDefinedType:
+            case UserDefinedType udtDefault:
             {
                 var structClr = DataTypeMapper.Map(type, _types, _classTypes);
                 if (structClr.IsValueType)
@@ -180,6 +180,16 @@ public sealed partial class IlProgramCompiler
                     var tmpLocal = _il.DeclareLocal(structClr);
                     _il.Emit(OpCodes.Ldloca, tmpLocal);
                     _il.Emit(OpCodes.Initobj, structClr);
+                    // Campi ARRAY del UDT (S3b, 2026-11-06): un initobj li lascia a NULL, e la
+                    // variabile GLOBALE (questo ramo serve le globali senza inizializzatore)
+                    // non passa mai da EmitScalarDeclaration → `g.A(0)` andava in
+                    // NullReferenceException. Stessa allocazione del percorso locale.
+                    foreach (var field in udtDefault.Fields)
+                    {
+                        if (field.Dimensions.IsEmpty) continue;
+                        if (_classFieldArrays.TryGetValue(field.SymbolId, out var fai))
+                            EmitFieldArrayAllocationCode(_il, _types, fai, field.Dimensions, () => _il.Emit(OpCodes.Ldloca, tmpLocal));
+                    }
                     _il.Emit(OpCodes.Ldloc, tmpLocal);
                 }
                 else _il.Emit(OpCodes.Ldnull);
