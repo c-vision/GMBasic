@@ -33,8 +33,11 @@ Senza `ALIAS` il simbolo nativo ha lo stesso nome della funzione BASIC.
 | `BYREF` scalare | puntatore a un valore: solo `DOUBLE`/`LONG`/`QUAD`/`ULONG`/`UQUAD` |
 | struct/UDT | per valore, 1-2 campi |
 
-Massimo **8 slot** per chiamata; un array, una stringa o un `BYREF` contano uno slot, una
-struct conta un campo per slot.
+Il formato delle chiamate non usa maschere a bit: `argc` è a 16 bit e ogni argomento ha il
+suo descrittore. Il compilatore accetta oggi fino a **32 argomenti** per chiamata (la VM/C ha
+buffer dinamici, quindi margine ulteriore); un array, una stringa o un `BYREF` contano un
+argomento, una struct conta un campo per argomento (limite 8 per UDT/callback nella prima
+iterazione).
 
 ## 3. La regola della firma omogenea
 
@@ -96,7 +99,7 @@ Tutti questi sono **errori di compilazione**, con messaggio identico sui backend
 
 | Messaggio | Causa | Correzione |
 |---|---|---|
-| `massimo 8 argomenti supportati` | troppi slot | raggruppa in una struct |
+| `massimo 32 argomenti supportati` | troppi argomenti | raggruppa in una struct |
 | `firma mista LONG/DOUBLE non supportata` | array/stringa/BYREF in una firma mista | dichiara tutto `AS LONG` |
 | `un parametro array, STRING o BYREF richiede firma INT64` | stesso caso, visto dall'altro lato | idem |
 | `tipo elemento non supportato per il parametro array` | `INTEGER`/`BYTE`/`SINGLE` in un array | usa `DOUBLE` o `LONG` |
@@ -118,8 +121,6 @@ puntatore a un buffer e gestire la memoria dal lato C.
 - **II.11** — `LIBRARY`: il percorso inverso, esportare BASIC verso C.
 - **III.15** — i MiniTest FFI (`shared/minitests/ffi/`) come modello di prova.
 - **III.12** — cosa succede quando la libreria carica dentro il processo.
-
-
 
 <!-- BEGIN SURFACE (generato da tools/sh/manual_surface.sh — non modificare a mano) -->
 
@@ -287,7 +288,7 @@ PRINT VecMixed(7, 2.5, 7)   ' 17.5
 
 ## 6. Messaggi errore esatti (identici su 4 backend)
 
-FFI '<sym>': massimo 8 argomenti supportati dal marshalling FFI.
+FFI '<sym>': massimo 32 argomenti supportati dal marshalling FFI.
 FFI '<sym>': firma mista LONG/DOUBLE non supportata dal marshalling FFI (tutti i parametri e il ritorno AS LONG oppure AS DOUBLE).
 FFI '<sym>': un parametro array, STRING o BYREF richiede firma INT64 (dichiarare gli altri parametri/il ritorno AS LONG — il puntatore viaggia come intero).
 FFI '<sym>': tipo elemento non supportato per il parametro array '<nome>' (solo AS DOUBLE o LONG/QUAD, non INTEGER/BYTE/SINGLE — larghezza nativa a 8 byte).
@@ -610,7 +611,7 @@ PRINT VecMixed(7, 2.5, 7)   ' 17.5
 
 ## 6. Messaggi errore esatti (identici su 4 backend)
 
-FFI '<sym>': massimo 8 argomenti supportati dal marshalling FFI.
+FFI '<sym>': massimo 32 argomenti supportati dal marshalling FFI.
 FFI '<sym>': firma mista LONG/DOUBLE non supportata dal marshalling FFI (tutti i parametri e il ritorno AS LONG oppure AS DOUBLE).
 FFI '<sym>': un parametro array, STRING o BYREF richiede firma INT64 (dichiarare gli altri parametri/il ritorno AS LONG — il puntatore viaggia come intero).
 FFI '<sym>': tipo elemento non supportato per il parametro array '<nome>' (solo AS DOUBLE o LONG/QUAD, non INTEGER/BYTE/SINGLE — larghezza nativa a 8 byte).

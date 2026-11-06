@@ -1691,7 +1691,7 @@ public sealed partial class IlProgramCompiler
                 if (CallbackIsInt64(fp)) callbackKindMask |= 1 << pi;
                 if (fp.ReturnType is not VoidType) callbackHasRetMask |= 1 << pi;
             }
-            _il.Emit(OpCodes.Ldc_I4, 8);
+            _il.Emit(OpCodes.Ldc_I4, 16);
             _il.Emit(OpCodes.Newarr, typeof(int));
             var cbArityLocal = _il.DeclareLocal(typeof(int[]));
             _il.Emit(OpCodes.Stloc, cbArityLocal);

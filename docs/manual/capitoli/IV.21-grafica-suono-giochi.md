@@ -269,8 +269,9 @@ Il motore di disegno e `CANVAS` sono **nativi**: le quattro gambe (C99 nativo, I
 VM/C) eseguono lo stesso codice e producono lo stesso output. Le superfici FFI sono comuni a
 tutte le gambe. Due limiti pratici da conoscere:
 
-- una chiamata FFI ammette al massimo **8 slot nativi**, per questo alcune funzioni
-  raggruppano i parametri in array (`RAYCASTDDAEX`, `DRAWTRIANGLE`);
+- il formato FFI non ha maschere e il compilatore accetta fino a **32 argomenti** (la VM/C
+  ha buffer dinamici); le funzioni grafiche raggruppano comunque i parametri in array
+  (`RAYCASTDDAEX`, `DRAWTRIANGLE`) per compattezza della firma;
 - i locals delle procedure sono **dinamici** (crescono on demand): centinaia di variabili in
   una sola `SUB` funzionano su tutti i backend. Resta comunque consigliato dividere i programmi
   lunghi in `SUB` per leggibilità, come fa `shared/samples/graphics/GraphicsTour.bas`
@@ -288,7 +289,6 @@ tutte le gambe. Due limiti pratici da conoscere:
 | `shared/samples/graphics/ShapeLab.bas` | geometria 2D completa e point cloud 3D |
 | `shared/samples/graphics/Bc1Lab.bas` | BC1/DXT1 blocco e immagine |
 | `shared/minitests/graphics/`, `shared/minitests/graphicsffi/` | MiniTest con oracolo `EXPECT`, uno per superficie |
-
 
 <!-- BEGIN SURFACE (generato da tools/sh/manual_surface.sh — non modificare a mano) -->
 
