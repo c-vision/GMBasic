@@ -114,6 +114,9 @@ nulla sul comportamento — meglio dichiararlo che simulare una verifica che non
 - **IV.19** — finestre ed eventi.
 - **IV.20** — i controlli, se non ti serve disegnare a mano.
 - **V.27** — la matematica che serve al movimento.
+- **VI.38 §7bis** — le opzioni del registro della grafica (`GMB_GFX_BACKEND`, `GMB_GFX_NULL`,
+  `GMB_GFX_SCALE`, `GMB_GFX_SHOT`, `GMB_UI_FONT_SIZE`) e le impostazioni che le sostituiscono;
+  `AI LIST OPTIONS` stampa nome, descrizione e valore corrente di ognuna.
 
 
 
@@ -201,6 +204,89 @@ sinusoidale, PNG, rilettura e blit). MiniTest: `graphics/canvas_core.bas`.
 
 
 
+
+
+
+## 4. Il dominio grafico: primitive nel linguaggio, calcolo in FFI
+
+Il linguaggio espone solo le **primitive del compilatore**: le istruzioni di disegno storiche
+(`PSET`, `LINE`, `CIRCLE`, `PAINT`, `DRAW`, `SCREEN`) e il comando `CANVAS`. Tutto ciò che è
+calcolo — conversione di colore, geometria, filtri, 3D, compressione delle texture — è
+implementato nella libreria `gmbgraphics` e raggiungibile via **FFI** con cinque include.
+
+| Superficie | Natura | Dove vive | Motivo |
+|---|---|---|---|
+| `SCREEN`, `PSET`, `LINE`, `CIRCLE`, `PAINT`, `DRAW` | comandi | runtime nativo | azioni sul framebuffer, non valori |
+| `CANVAS` (12 sottocomandi) | comando | runtime nativo | gestione esplicita di buffer offscreen |
+| `GFXCOLOR` (11) | funzioni | FFI `libgmbgraphics` | valori puri (conversioni, miscela) |
+| `GFXSHAPE` (35) | funzioni | FFI `libgmbgraphics` | predicati e misure geometriche |
+| `GFX2D` (44) | funzioni | FFI `libgmbgraphics` | elaborazione numerica di immagini |
+| `GFX3D` (60) | funzioni | FFI `libgmbgraphics` | geometria, raggi, mesh, raster |
+| `GFXCODEC` (4) | funzioni | FFI `libgmbgraphics` | compressione BC1/DXT1 |
+
+### 4.1 Perché questa separazione
+
+Un comando descrive un'**azione** con effetti osservabili (disegnare, salvare, selezionare un
+buffer); una funzione descrive un **valore** (un colore convertito, un'area, una matrice). Tenere
+nel linguaggio solo le azioni evita di gonfiare il set di keyword e lascia la matematica in una
+libreria C compilabile e testabile da sola. Il confine è verificato: le funzioni colore e
+hit-test che in una prima iterazione erano builtin sono state rimosse dal runtime e vivono solo
+in FFI, senza duplicazioni.
+
+### 4.2 Modello dei dati
+
+Le superfici FFI non usano struct opache: ricevono e restituiscono **array `DOUBLE`**.
+
+- Immagini 2D: `w*h` valori row-major (`x + w*y`); volumi 3D: `w*h*d` (`x + w*(y + h*z)`).
+- Poligoni: coppie `x0,y0,x1,y1,…`; il parametro `n` è il numero di **valori** (quindi `n/2`
+  vertici).
+- AABB 2D: `[minx,miny,maxx,maxy]`; AABB 3D: `[minx,miny,minz,maxx,maxy,maxz]`.
+- Raggi 2D: `[ox,oy,dx,dy]`; raggi 3D: `[ox,oy,oz,dx,dy,dz]`.
+- Matrici 4x4: 16 valori in ordine **column-major**; frustum: 6 piani `[a,b,c,d]` (24 valori).
+- Mesh e raster: **handle** `LONG` su tabelle statiche della libreria, da liberare sempre.
+
+### 4.3 Contratto di errore
+
+Le funzioni con parametri di uscita ritornano `0` in caso di successo e `-1` se un argomento non
+è valido; i predicati ritornano `1`/`0`; le funzioni che creano handle ritornano `0` in caso di
+errore. Le scritture fuori dai limiti (pixel, voxel, indici) sono **no-op silenziosi** o
+ritornano `-1`, mai corruzione di memoria. Le funzioni che allocano (mesh, raster, superfici)
+richiedono la liberazione esplicita: un handle non liberato resta occupato nella tabella del
+processo.
+
+### 4.4 `CANVAS`: disegno offscreen
+
+`CANVAS` gestisce buffer RGBA8 indipendenti dalla finestra: `NEW` crea, `USE`/`END` selezionano
+il target delle primitive, `SET`/`GET` leggono e scrivono pixel, `CLEAR` riempie, `BLIT` copia,
+`SAVE`/`LOAD` scambiano PNG, `WIDTH`/`HEIGHT` interrogano, `FREE` rilascia. L'handle `0`
+identifica lo schermo. Con un canvas attivo le primitive (`PSET`, `LINE`, `CIRCLE`, testo)
+disegnano lì e la scala di render Retina non viene applicata: le coordinate sono 1:1 con i
+pixel del buffer. È la base per generare immagini in modo deterministico e headless.
+
+### 4.5 Parità fra backend e limiti
+
+Il motore di disegno e `CANVAS` sono **nativi**: le quattro gambe (C99 nativo, IL, P-Code,
+VM/C) eseguono lo stesso codice e producono lo stesso output. Le superfici FFI sono comuni a
+tutte le gambe. Due limiti pratici da conoscere:
+
+- una chiamata FFI ammette al massimo **8 slot nativi**, per questo alcune funzioni
+  raggruppano i parametri in array (`RAYCASTDDAEX`, `DRAWTRIANGLE`);
+- una procedura troppo grande (molte centinaia di variabili locali) può superare i limiti del
+  bytecode: nei programmi lunghi conviene dividere il lavoro in `SUB`, come fa il sample
+  `shared/samples/graphics/GraphicsTour.bas` (una `SUB` per dominio).
+
+### 4.6 Esempi e verifiche
+
+| Programma | Cosa mostra |
+|---|---|
+| `shared/samples/graphics/GraphicsTour.bas` | **tour completo**: CANVAS + tutte le 154 funzioni FFI, una sezione per dominio |
+| `shared/samples/graphics/CanvasPlot.bas` | canvas, curva, PNG, rilettura, blit |
+| `shared/samples/graphics/HeatmapLab.bas` | campo scalare, heatmap, helper immagine/bitmap |
+| `shared/samples/graphics/ColorLab.bas` | conversioni colore, hit-test, canvas |
+| `shared/samples/graphics/Gfx3dLab.bas` | camera, mesh, raster, raggi, DDA con limite di passi |
+| `shared/samples/graphics/ShapeLab.bas` | geometria 2D completa e point cloud 3D |
+| `shared/samples/graphics/Bc1Lab.bas` | BC1/DXT1 blocco e immagine |
+| `shared/minitests/graphics/`, `shared/minitests/graphicsffi/` | MiniTest con oracolo `EXPECT`, uno per superficie |
 
 
 <!-- BEGIN SURFACE (generato da tools/sh/manual_surface.sh — non modificare a mano) -->
@@ -482,6 +568,184 @@ FOR i = 0 TO 47 : rgb(i) = 10 + (i MOD 16) * 12 : NEXT i
 ok = GFXCODEC.BC1ENCODEBLOCK(rgb(), enc())
 ok = GFXCODEC.BC1DECODEBLOCK(enc(), dec())
 
+
+## 4septies. Riferimento completo delle funzioni FFI
+
+#### `GFXCOLOR` — 11 funzioni
+| Funzione | Firma | Parametri e ritorno |
+|---|---|---|
+| `RGB2HSV` | `(r AS DOUBLE, g AS DOUBLE, b AS DOUBLE, out() AS DOUBLE) AS LONG` | RGB (0..255) -> HSV: out(0)=h [0,360), out(1)=s, out(2)=v [0,1]. |
+| `HSV2RGB` | `(h AS DOUBLE, s AS DOUBLE, v AS DOUBLE, out() AS DOUBLE) AS LONG` | HSV -> RGB (0..255) in out(). |
+| `RGB2HSL` | `(r AS DOUBLE, g AS DOUBLE, b AS DOUBLE, out() AS DOUBLE) AS LONG` | RGB -> HSL: out(0)=h, out(1)=s, out(2)=l. |
+| `HSL2RGB` | `(h AS DOUBLE, s AS DOUBLE, l AS DOUBLE, out() AS DOUBLE) AS LONG` | HSL -> RGB (0..255) in out(). |
+| `RGB2CMYK` | `(r AS DOUBLE, g AS DOUBLE, b AS DOUBLE, out() AS DOUBLE) AS LONG` | RGB -> CMYK: out(0..3)=c,m,y,k in [0,1]. |
+| `CMYK2RGB` | `(c AS DOUBLE, m AS DOUBLE, y AS DOUBLE, k AS DOUBLE, out() AS DOUBLE) AS LONG` | CMYK (0..1) -> RGB (0..255) in out(). |
+| `MIX` | `(r1 AS DOUBLE, g1 AS DOUBLE, b1 AS DOUBLE, r2 AS DOUBLE, g2 AS DOUBLE, b2 AS DOUBLE, t AS DOUBLE, out() AS DOUBLE) AS LONG` | Interpolazione lineare tra due RGB: t clampato [0,1]; out() = 3 componenti 0..255. |
+| `LIGHTEN` | `(r AS DOUBLE, g AS DOUBLE, b AS DOUBLE, amt AS DOUBLE, out() AS DOUBLE) AS LONG` | Luminosità HSL +amt (0..1); out() = RGB 0..255. |
+| `DARKEN` | `(r AS DOUBLE, g AS DOUBLE, b AS DOUBLE, amt AS DOUBLE, out() AS DOUBLE) AS LONG` | Luminosità HSL -amt; out() = RGB 0..255. |
+| `SATURATE` | `(r AS DOUBLE, g AS DOUBLE, b AS DOUBLE, amt AS DOUBLE, out() AS DOUBLE) AS LONG` | Saturazione HSL +amt; out() = RGB 0..255. |
+| `COLORMAP` | `(t AS DOUBLE, out() AS DOUBLE) AS LONG` | Colormap jet-like: t in [0,1] -> out() = RGB 0..255 (blu -> ciano -> verde -> giallo -> rosso). |
+
+#### `GFXSHAPE` — 35 funzioni
+| Funzione | Firma | Parametri e ritorno |
+|---|---|---|
+| `POINTINPOLYGON` | `(x AS DOUBLE, y AS DOUBLE, pts() AS DOUBLE, n AS LONG) AS LONG` | Punto in un poligono (even-odd, come il ray-casting classico). |
+| `POINTINCIRCLE` | `(x AS DOUBLE, y AS DOUBLE, cx AS DOUBLE, cy AS DOUBLE, r AS DOUBLE) AS LONG` | Punto in un cerchio (bordo incluso). |
+| `POINTINRECT` | `(x AS DOUBLE, y AS DOUBLE, x1 AS DOUBLE, y1 AS DOUBLE, x2 AS DOUBLE, y2 AS DOUBLE) AS LONG` | Punto in un rettangolo (vertici in qualunque ordine). |
+| `POINTINTRIANGLE` | `(x AS DOUBLE, y AS DOUBLE, ax AS DOUBLE, ay AS DOUBLE, bx AS DOUBLE, by AS DOUBLE, cx AS DOUBLE, cy AS DOUBLE) AS LONG` | Punto in un triangolo (baricentrico). |
+| `POLYGONAREA` | `(pts() AS DOUBLE, n AS LONG) AS DOUBLE` | Area del poligono (shoelace, sempre >= 0). |
+| `POLYGONCENTROID` | `(pts() AS DOUBLE, n AS LONG, out() AS DOUBLE) AS LONG` | Baricentro dell'area: out(0)=x, out(1)=y. |
+| `CLOSESTPOINTSEG` | `(px AS DOUBLE, py AS DOUBLE, ax AS DOUBLE, ay AS DOUBLE, bx AS DOUBLE, by AS DOUBLE, out() AS DOUBLE) AS LONG` | Punto più vicino sul segmento (a,b): out(0)=x, out(1)=y. |
+| `AABBFROMPOINTS2D` | `(pts() AS DOUBLE, n AS LONG, out() AS DOUBLE) AS LONG` | AABB = [minx,miny,maxx,maxy]; n = numero di VALORI del poligono/point-cloud. |
+| `AABBMERGE2D` | `(a() AS DOUBLE, b() AS DOUBLE, out() AS DOUBLE) AS LONG` | Unione di due AABB 2D: out() = [minx,miny,maxx,maxy]. |
+| `AABBCENTER2D` | `(a() AS DOUBLE, out() AS DOUBLE) AS LONG` | Centro dell'AABB 2D: out(0)=x, out(1)=y. |
+| `AABBEXTENTS2D` | `(a() AS DOUBLE, out() AS DOUBLE) AS LONG` | Estensioni (max-min) dell'AABB 2D: out(0)=dx, out(1)=dy. |
+| `AABBVALID` | `(a() AS DOUBLE) AS LONG` | 1 se l'AABB è ben formato (min <= max), 0 altrimenti. |
+| `DIST` | `(a() AS DOUBLE, b() AS DOUBLE) AS DOUBLE` | ── vicinanza / distanze ────────────────────────────────────────────────── |
+| `CLOSESTRAY` | `(ray() AS DOUBLE, p() AS DOUBLE, out() AS DOUBLE) AS LONG` | Punto più vicino sul raggio 2D [ox,oy,dx,dy] / sull'AABB / su un cerchio / fra due AABB. |
+| `CLOSESTAABB` | `(box() AS DOUBLE, p() AS DOUBLE, out() AS DOUBLE) AS LONG` | Punto dell'AABB più vicino a p(): out(0)=x, out(1)=y. |
+| `CLOSESTCIRCLE` | `(cx AS DOUBLE, cy AS DOUBLE, r AS DOUBLE, p() AS DOUBLE, out() AS DOUBLE) AS LONG` | Punto del cerchio (cx,cy,r) più vicino a p(): out(0)=x, out(1)=y. |
+| `CLOSESTAABBAABB` | `(a() AS DOUBLE, b() AS DOUBLE, out() AS DOUBLE) AS LONG` | Punto di a() più vicino a b(): out(0)=x, out(1)=y. |
+| `CIRCLECIRCLE` | `(c1() AS DOUBLE, r1 AS DOUBLE, c2() AS DOUBLE, r2 AS DOUBLE) AS LONG` | ── intersezioni 2D ─────────────────────────────────────────────────────── |
+| `AABBAABB` | `(a() AS DOUBLE, b() AS DOUBLE) AS LONG` | 1 se i due AABB 2D si sovrappongono. |
+| `AABBCIRCLE` | `(a() AS DOUBLE, cx AS DOUBLE, cy AS DOUBLE, r AS DOUBLE) AS LONG` | 1 se l'AABB 2D interseca il cerchio (cx,cy,r). |
+| `RAY2CIRCLE` | `(ray() AS DOUBLE, cx AS DOUBLE, cy AS DOUBLE, r AS DOUBLE, t() AS DOUBLE) AS LONG` | Raggio 2D vs cerchio/AABB/segmento: t() riceve il parametro (o tmin/tmax per AABB). |
+| `RAY2AABB` | `(ray() AS DOUBLE, box() AS DOUBLE, t() AS DOUBLE) AS LONG` | Raggio 2D vs AABB: t() = [tmin,tmax]; 1 se colpito. |
+| `RAY2SEGMENT` | `(ray() AS DOUBLE, a() AS DOUBLE, b() AS DOUBLE, t() AS DOUBLE) AS LONG` | Raggio 2D vs segmento a–b: t(0)=parametro; 1 se colpito. |
+| `BARYCENTRIC` | `(a() AS DOUBLE, b() AS DOUBLE, c() AS DOUBLE, p() AS DOUBLE, out() AS DOUBLE) AS LONG` | Baricentro: out(0..2)=wa,wb,wc (somma 1); ritorno 0 su triangolo degenere. |
+| `POINTINORIENTEDRECT` | `(center() AS DOUBLE, u() AS DOUBLE, v() AS DOUBLE, half_u AS DOUBLE, half_v AS DOUBLE, p() AS DOUBLE) AS LONG` | Rettangolo orientato (centro, assi u/v ortonormali, semi-lati) e quadrilatero (4 vertici). |
+| `POINTINQUAD` | `(a() AS DOUBLE, b() AS DOUBLE, c() AS DOUBLE, d() AS DOUBLE, p() AS DOUBLE) AS LONG` | 1 se p() è dentro il quadrilatero a,b,c,d (vertici in ordine). |
+| `POLYGONSIGNEDAREA` | `(pts() AS DOUBLE, n AS LONG) AS DOUBLE` | Area con segno (shoelace): il segno indica il verso dei vertici. |
+| `HEXAREA` | `(side AS DOUBLE) AS DOUBLE` | ── esagono regolare ────────────────────────────────────────────────────── |
+| `HEXLONG` | `(side AS DOUBLE) AS DOUBLE` | Diagonale lunga di un esagono regolare di lato side. |
+| `HEXSHORT` | `(side AS DOUBLE) AS DOUBLE` | Diagonale corta di un esagono regolare di lato side. |
+| `HEXINNER` | `(side AS DOUBLE) AS DOUBLE` | Apotema (raggio inscritto) di un esagono regolare di lato side. |
+| `CHAMFER` | `(A() AS DOUBLE, n AS LONG, B() AS DOUBLE, m AS LONG) AS DOUBLE` | A/B = array piatti x,y,z,…; n = numero di VALORI (multipli di 3). |
+| `HAUSDORFF` | `(A() AS DOUBLE, n AS LONG, B() AS DOUBLE, m AS LONG) AS DOUBLE` | Distanza di Hausdorff fra due point cloud 3D (max delle distanze minime). |
+| `AABB2MAKE` | `(mn() AS DOUBLE, mx() AS DOUBLE, out() AS DOUBLE) AS LONG` | Costruttori 2D (AABB da min/max, punto al parametro t sul raggio). |
+| `RAY2AT` | `(ray() AS DOUBLE, t AS DOUBLE, out() AS DOUBLE) AS LONG` | Punto al parametro t lungo il raggio 2D: out(0)=x, out(1)=y. |
+
+#### `GFX2D` — 44 funzioni
+| Funzione | Firma | Parametri e ritorno |
+|---|---|---|
+| `CONVOLVE` | `(in() AS DOUBLE, w AS LONG, h AS LONG, k() AS DOUBLE, kx AS LONG, ky AS LONG, out() AS DOUBLE) AS LONG` | Convoluzione 2D con kernel kx*ky (ancorata al centro), bordo invariato. |
+| `CONVOLVESEP` | `(in() AS DOUBLE, w AS LONG, h AS LONG, kx() AS DOUBLE, nx AS LONG, ky() AS DOUBLE, ny AS LONG, out() AS DOUBLE) AS LONG` | Convoluzione separabile: righe con kx(nx), colonne con ky(ny). |
+| `GAUSSIAN` | `(in() AS DOUBLE, w AS LONG, h AS LONG, sigma AS DOUBLE, out() AS DOUBLE) AS LONG` | Blur gaussiano (kernel costruito da sigma). |
+| `SOBEL` | `(in() AS DOUBLE, w AS LONG, h AS LONG, gx() AS DOUBLE, gy() AS DOUBLE) AS LONG` | Gradiente di Sobel: gx() e gy() in uscita (w*h ciascuno). |
+| `MEDIAN3` | `(in() AS DOUBLE, w AS LONG, h AS LONG, out() AS DOUBLE) AS LONG` | Mediana 3x3. |
+| `RESAMPLE` | `(in() AS DOUBLE, w AS LONG, h AS LONG, nw AS LONG, nh AS LONG, out() AS DOUBLE) AS LONG` | Ricampionamento bilineare a nw x nh (out() = nw*nh). |
+| `TRANSPOSE` | `(in() AS DOUBLE, w AS LONG, h AS LONG, out() AS DOUBLE) AS LONG` | Trasposta (out() stessa dimensione, w*h valori; nuove dim = h x w). |
+| `ROTATE90` | `(in() AS DOUBLE, w AS LONG, h AS LONG, k AS LONG, out() AS DOUBLE) AS LONG` | Rotazione di k*90° antiorario (k mod 4); stessi w*h valori, dim scambiate se k dispari. |
+| `ROTATE` | `(in() AS DOUBLE, w AS LONG, h AS LONG, radians AS DOUBLE, bg AS DOUBLE, out() AS DOUBLE) AS LONG` | Rotazione arbitraria attorno al centro (bilineare, bg fuori immagine). |
+| `FLIPH` | `(in() AS DOUBLE, w AS LONG, h AS LONG, out() AS DOUBLE) AS LONG` | Flip orizzontale / verticale. |
+| `FLIPV` | `(in() AS DOUBLE, w AS LONG, h AS LONG, out() AS DOUBLE) AS LONG` | Flip verticale: out() riceve l'immagine rovesciata (stesse dimensioni). |
+| `THRESHOLD` | `(in() AS DOUBLE, w AS LONG, h AS LONG, t AS DOUBLE, lo AS DOUBLE, hi AS DOUBLE, out() AS DOUBLE) AS LONG` | Soglia: sotto t -> lo, sopra -> hi. |
+| `NORMALIZE` | `(in() AS DOUBLE, w AS LONG, h AS LONG, lo AS DOUBLE, hi AS DOUBLE, out() AS DOUBLE) AS LONG` | Normalizza min..max in lo..hi. |
+| `HISTOGRAM` | `(in() AS DOUBLE, w AS LONG, h AS LONG, nbins AS LONG, lo AS DOUBLE, hi AS DOUBLE, counts() AS DOUBLE) AS LONG` | Istogramma a nbins classi in [lo,hi]: counts() ha nbins elementi. |
+| `HISTEQUALIZE` | `(in() AS DOUBLE, w AS LONG, h AS LONG, nbins AS LONG, out() AS DOUBLE) AS LONG` | Equalizzazione dell'istogramma. |
+| `DRAWLINE` | `(d() AS DOUBLE, w AS LONG, h AS LONG, x0 AS LONG, y0 AS LONG, x1 AS LONG, y1 AS LONG, v AS DOUBLE) AS LONG` | --- disegno (in-place sull'array) --- |
+| `DRAWRECTF` | `(d() AS DOUBLE, w AS LONG, h AS LONG, x0 AS LONG, y0 AS LONG, x1 AS LONG, y1 AS LONG, v AS DOUBLE) AS LONG` | Rettangolo pieno in-place su un'immagine float. |
+| `DRAWRECT` | `(d() AS DOUBLE, w AS LONG, h AS LONG, x0 AS LONG, y0 AS LONG, x1 AS LONG, y1 AS LONG, v AS DOUBLE) AS LONG` | Rettangolo (solo contorno) in-place su un'immagine float. |
+| `DRAWCIRCLE` | `(d() AS DOUBLE, w AS LONG, h AS LONG, cx AS LONG, cy AS LONG, r AS LONG, v AS DOUBLE, fill AS LONG) AS LONG` | Cerchio in-place: fill=1 pieno, fill=0 contorno. |
+| `WARP` | `(in() AS DOUBLE, c AS LONG, h AS LONG, w AS LONG, fx() AS DOUBLE, fy() AS DOUBLE, out() AS DOUBLE) AS LONG` | Warping all'indietro: in() = c*h*w (CHW), fx()/fy() = h*w offset, out() = c*h*w. |
+| `POISSON` | `(target() AS DOUBLE, source() AS DOUBLE, mask() AS DOUBLE, nx AS LONG, ny AS LONG, out() AS DOUBLE, maxit AS LONG) AS LONG` | Poisson/seamless clone: mask() = double 0/1 (nx*ny), out() = nx*ny. |
+| `IMG3CONVOLVE` | `(in() AS DOUBLE, w AS LONG, h AS LONG, d AS LONG, k() AS DOUBLE, n AS LONG, out() AS DOUBLE) AS LONG` | Convoluzione separabile su volume w*h*d (stesso kernel 1D sui tre assi). |
+| `HEATMAP` | `(z() AS DOUBLE, nx AS LONG, ny AS LONG, zmin AS DOUBLE, zmax AS DOUBLE, out() AS DOUBLE) AS LONG` | Heatmap da griglia z(nx*ny): out() = nx*ny colori impacchettati (0x40000000/RGB), pronti per CANVAS SET. |
+| `IMGMIN` | `(in() AS DOUBLE, w AS LONG, h AS LONG) AS DOUBLE` | ── statistiche e combinazioni (immagini float) ──────────────────────────── |
+| `IMGMAX` | `(in() AS DOUBLE, w AS LONG, h AS LONG) AS DOUBLE` | Valore massimo dell'immagine. |
+| `IMGABSMAX` | `(in() AS DOUBLE, w AS LONG, h AS LONG) AS DOUBLE` | Massimo valore assoluto dell'immagine. |
+| `IMGSCALE` | `(d() AS DOUBLE, w AS LONG, h AS LONG, s AS DOUBLE) AS LONG` | Scala in-place: out = d * s. |
+| `IMGSUB` | `(a() AS DOUBLE, b() AS DOUBLE, w AS LONG, h AS LONG, out() AS DOUBLE) AS LONG` | Differenza: out = a - b. |
+| `IMGGET` | `(in() AS DOUBLE, w AS LONG, h AS LONG, x AS LONG, y AS LONG) AS DOUBLE` | Valore del pixel (x,y); coordinate fuori range -> 0. |
+| `IMGSET` | `(d() AS DOUBLE, w AS LONG, h AS LONG, x AS LONG, y AS LONG, v AS DOUBLE) AS LONG` | Scrittura di un pixel e riempimento dell'intera immagine (in-place). |
+| `IMGFILL` | `(d() AS DOUBLE, w AS LONG, h AS LONG, v AS DOUBLE) AS LONG` | Riempie tutta l'immagine con v (in-place). |
+| `IMGCLONE` | `(in() AS DOUBLE, w AS LONG, h AS LONG, out() AS DOUBLE) AS LONG` | Copia indipendente: out() = clone di in() (w*h). |
+| `IMG3GET` | `(in() AS DOUBLE, w AS LONG, h AS LONG, d AS LONG, x AS LONG, y AS LONG, z AS LONG) AS DOUBLE` | Volume 3D w*h*d (layout x + w*(y + h*z)): pixel e riempimento. |
+| `IMG3SET` | `(v() AS DOUBLE, w AS LONG, h AS LONG, d AS LONG, x AS LONG, y AS LONG, z AS LONG, val AS DOUBLE) AS LONG` | Scrive il voxel (x,y,z) del volume w*h*d. |
+| `IMG3FILL` | `(v() AS DOUBLE, w AS LONG, h AS LONG, d AS LONG, val AS DOUBLE) AS LONG` | Riempie il volume w*h*d con val. |
+| `DRAWTRIANGLE` | `(d() AS DOUBLE, w AS LONG, h AS LONG, a() AS DOUBLE, b() AS DOUBLE, c() AS DOUBLE, v AS DOUBLE, fill AS LONG) AS LONG` | Triangolo (pieno o contorno): vertici in array [x,y] (a(),b(),c()), in-place. |
+| `GRAYNAIVE` | `(px() AS DOUBLE, w AS LONG, h AS LONG, out() AS DOUBLE) AS LONG` | Grayscale naive (media) e a luminanza; out() = w*h colori impacchettati. |
+| `GRAYLUM` | `(px() AS DOUBLE, w AS LONG, h AS LONG, out() AS DOUBLE) AS LONG` | Grayscale a luminanza (0.299r+0.587g+0.114b) -> colori packed 0xRRGGBB. |
+| `CONVOLVE3` | `(px() AS DOUBLE, w AS LONG, h AS LONG, k() AS DOUBLE, divider AS DOUBLE, out() AS DOUBLE) AS LONG` | Convoluzione 3x3 per canale (kernel 9 valori, divider); bordo invariato. |
+| `BRIGHTNESS` | `(px() AS DOUBLE, w AS LONG, h AS LONG, brightness AS DOUBLE, contrast AS DOUBLE, out() AS DOUBLE) AS LONG` | Luminosità/contrasto: out = clamp((in-128)*contrast + 128 + brightness). |
+| `TOIMAGE` | `(px() AS DOUBLE, w AS LONG, h AS LONG, out() AS DOUBLE) AS LONG` | Luminanza RGB8 -> immagine float out() (w*h). |
+| `BMPGET` | `(px() AS DOUBLE, w AS LONG, h AS LONG, x AS LONG, y AS LONG) AS DOUBLE` | Pixel RGB8 (packed 0xRRGGBB): lettura (fuori range -> 0), scrittura, riempimento. |
+| `BMPSET` | `(px() AS DOUBLE, w AS LONG, h AS LONG, x AS LONG, y AS LONG, color AS DOUBLE) AS LONG` | Scrive il pixel RGB8 (colore packed 0xRRGGBB); fuori range = -1. |
+| `BMPFILL` | `(px() AS DOUBLE, w AS LONG, h AS LONG, color AS DOUBLE) AS LONG` | Riempie la bitmap con il colore packed 0xRRGGBB. |
+
+#### `GFX3D` — 60 funzioni
+| Funzione | Firma | Parametri e ritorno |
+|---|---|---|
+| `PERSPECTIVE` | `(fovy AS DOUBLE, aspect AS DOUBLE, znear AS DOUBLE, zfar AS DOUBLE, m() AS DOUBLE) AS LONG` | Proiezione prospettica: m() riceve 16 valori. |
+| `ORTHO` | `(left AS DOUBLE, right AS DOUBLE, bottom AS DOUBLE, top AS DOUBLE, znear AS DOUBLE, zfar AS DOUBLE, m() AS DOUBLE) AS LONG` | Proiezione ortografica. |
+| `LOOKAT` | `(eye() AS DOUBLE, center() AS DOUBLE, up() AS DOUBLE, m() AS DOUBLE) AS LONG` | Matrice di vista look-at. |
+| `AABBFROMPOINTS` | `(pts() AS DOUBLE, n AS LONG, out() AS DOUBLE) AS LONG` | AABB dai punti (array piatto x,y,z,…; n = numero di VALORI, multiplo di 3). |
+| `AABBMERGE` | `(a() AS DOUBLE, b() AS DOUBLE, out() AS DOUBLE) AS LONG` | Unione di due AABB. |
+| `AABBCENTER` | `(a() AS DOUBLE, out() AS DOUBLE) AS LONG` | Centro / estensioni di un AABB. |
+| `AABBEXTENTS` | `(a() AS DOUBLE, out() AS DOUBLE) AS LONG` | Estensioni (max-min) dell'AABB 3D: out() = [dx,dy,dz]. |
+| `AABBTESTPOINT` | `(a() AS DOUBLE, p() AS DOUBLE) AS LONG` | Test punto in AABB / intersezione AABB. |
+| `AABBINTERSECT` | `(a() AS DOUBLE, b() AS DOUBLE) AS LONG` | 1 se i due AABB 3D si sovrappongono. |
+| `FRUSTUMFROM` | `(m() AS DOUBLE, planes() AS DOUBLE) AS LONG` | Frustum da matrice (6 piani = 24 valori) e test punto/AABB. |
+| `FRUSTUMTESTPOINT` | `(planes() AS DOUBLE, p() AS DOUBLE) AS LONG` | 1 se il punto è dentro il frustum (piani con normale verso l'interno). |
+| `FRUSTUMTESTAABB` | `(planes() AS DOUBLE, box() AS DOUBLE) AS LONG` | 1 se l'AABB è almeno parzialmente dentro il frustum. |
+| `DECOMPOSESRT` | `(m() AS DOUBLE, scale() AS DOUBLE, rot() AS DOUBLE, pos() AS DOUBLE) AS LONG` | Decomposizione SRT: m = T*R*S -> scale(), rot() (quaternione 4), pos(). |
+| `CAMERAVIEW` | `(pos() AS DOUBLE, target() AS DOUBLE, up() AS DOUBLE, m() AS DOUBLE) AS LONG` | Camera: vista / proiezione / view-projection. |
+| `CAMERAPROJECTION` | `(fov AS DOUBLE, aspect AS DOUBLE, znear AS DOUBLE, zfar AS DOUBLE, m() AS DOUBLE) AS LONG` | Matrice di proiezione prospettica della camera (16 valori). |
+| `CAMERAVIEWPROJECTION` | `(pos() AS DOUBLE, target() AS DOUBLE, up() AS DOUBLE, fov AS DOUBLE, aspect AS DOUBLE, znear AS DOUBLE, zfar AS DOUBLE, m() AS DOUBLE) AS LONG` | Matrice vista x proiezione (16 valori). |
+| `RAYSPHERE` | `(ray() AS DOUBLE, sphere() AS DOUBLE, t() AS DOUBLE) AS LONG` | Sfera: sphere() = [cx,cy,cz,r]; t(0) = parametro del colpo più vicino. |
+| `RAYPLANE` | `(ray() AS DOUBLE, plane() AS DOUBLE, t() AS DOUBLE) AS LONG` | Piano: plane() = [px,py,pz,nx,ny,nz]. |
+| `RAYTRIANGLE` | `(ray() AS DOUBLE, tri() AS DOUBLE, tuv() AS DOUBLE) AS LONG` | Triangolo (Möller–Trumbore): tri() = 9 valori, tuv() = [t,u,v] baricentriche. |
+| `RAYAABB` | `(ray() AS DOUBLE, box() AS DOUBLE, t() AS DOUBLE) AS LONG` | AABB: t() = [tmin,tmax]; RAYBOX = t della prima faccia. |
+| `RAYBOX` | `(ray() AS DOUBLE, box() AS DOUBLE, t() AS DOUBLE) AS LONG` | t della prima faccia dell'AABB colpita dal raggio. |
+| `RAYREFLECT` | `(v() AS DOUBLE, n() AS DOUBLE, out() AS DOUBLE) AS LONG` | Riflessione e rifrazione (eta = n1/n2; 0 = riflessione totale interna). |
+| `RAYREFRACT` | `(v() AS DOUBLE, n() AS DOUBLE, eta AS DOUBLE, out() AS DOUBLE) AS LONG` | Rifrazione (legge di Snell, eta=n1/n2): out()=direzione; 0 = riflessione totale. |
+| `SHADEPHONG` | `(p() AS DOUBLE, n() AS DOUBLE, view() AS DOUBLE, light() AS DOUBLE, params() AS DOUBLE, out() AS DOUBLE) AS LONG` | Phong: params() = [lr,lg,lb, or,og,ob, ka,kd,ks,shininess]; out() = RGB. |
+| `SPHERESPHERE` | `(c1() AS DOUBLE, r1 AS DOUBLE, c2() AS DOUBLE, r2 AS DOUBLE) AS LONG` | Intersezioni sfera/segmento/triangolo. |
+| `SPHEREBOX` | `(c() AS DOUBLE, r AS DOUBLE, box() AS DOUBLE) AS LONG` | 1 se la sfera interseca l'AABB. |
+| `SPHEREPLANE` | `(c() AS DOUBLE, r AS DOUBLE, plane() AS DOUBLE, dist() AS DOUBLE) AS LONG` | 1 se la sfera interseca il piano; dist(0)=distanza con segno centro-piano. |
+| `SEGMENTPLANE` | `(a() AS DOUBLE, b() AS DOUBLE, plane() AS DOUBLE, t() AS DOUBLE) AS LONG` | 1 se il segmento interseca il piano; t(0) in [0,1]. |
+| `SEGMENTSPHERE` | `(a() AS DOUBLE, b() AS DOUBLE, c() AS DOUBLE, r AS DOUBLE, t() AS DOUBLE) AS LONG` | 1 se il segmento interseca la sfera; t(0) in [0,1]. |
+| `SEGMENTTRIANGLE` | `(a() AS DOUBLE, b() AS DOUBLE, tri() AS DOUBLE, t() AS DOUBLE) AS LONG` | 1 se il segmento interseca il triangolo; t(0) in [0,1]. |
+| `TRIANGLETRIANGLE` | `(t1() AS DOUBLE, t2() AS DOUBLE) AS LONG` | 1 se i due triangoli (9 valori ciascuno) si intersecano. |
+| `VOLUMERENDER` | `(n AS LONG, sigma() AS DOUBLE, rgb() AS DOUBLE, dt() AS DOUBLE, out() AS DOUBLE, acc() AS DOUBLE) AS LONG` | Volume rendering: n campioni, sigma(n), rgb(n*3), dt(n); out() = RGB, acc() = opacità. |
+| `MESHSPHERE` | `(slices AS LONG, stacks AS LONG, radius AS DOUBLE) AS LONG` | ── mesh (handle) ───────────────────────────────────────────────────────── |
+| `MESHBOX` | `(sx AS DOUBLE, sy AS DOUBLE, sz AS DOUBLE) AS LONG` | Mesh box (handle), dimensioni sx,sy,sz. |
+| `MESHPLANE` | `(nx AS LONG, ny AS LONG, sx AS DOUBLE, sy AS DOUBLE) AS LONG` | Mesh piano nx x ny (handle), estensione sx,sy. |
+| `MESHCYLINDER` | `(slices AS LONG, radius AS DOUBLE, height AS DOUBLE) AS LONG` | Mesh cilindro (handle): slices, radius, height. |
+| `MESHNV` | `(h AS LONG) AS LONG` | Vertici/triangoli: MESHPOS riempie nv*3 valori, MESHTRI nt*3 indici. |
+| `MESHNT` | `(h AS LONG) AS LONG` | Numero di triangoli della mesh. |
+| `MESHPOS` | `(h AS LONG, out() AS DOUBLE) AS LONG` | Vertici della mesh: out() = nv*3 valori x,y,z. |
+| `MESHTRI` | `(h AS LONG, out() AS DOUBLE) AS LONG` | Indici dei triangoli: out() = nt*3 valori. |
+| `MESHFREE` | `(h AS LONG) AS LONG` | Libera la mesh: l'handle non è più valido. |
+| `RASTERNEW` | `(w AS LONG, h AS LONG) AS LONG` | ── raster software (handle) ────────────────────────────────────────────── |
+| `RASTERFREE` | `(h AS LONG) AS LONG` | Libera il raster: l'handle non è più valido. |
+| `RASTERCLEAR` | `(h AS LONG, depth AS DOUBLE) AS LONG` | Azzera colore e z-buffer al valore depth. |
+| `RASTERGET` | `(h AS LONG, x AS LONG, y AS LONG, out() AS DOUBLE) AS LONG` | Colore RGB del pixel (x,y): out() = 3 valori. |
+| `RASTERTRI` | `(h AS LONG, p() AS DOUBLE, c() AS DOUBLE) AS LONG` | Rasterizza un triangolo con colore per vertice (p() e c() = 9 valori). |
+| `RASTERCLIPNEAR` | `(tri() AS DOUBLE, znear AS DOUBLE, out() AS DOUBLE) AS LONG` | Clippa il triangolo contro z >= znear: ritorna il numero di vertici (out() fino a 12 valori). |
+| `MESHSURFACE` | `(z() AS DOUBLE, nx AS LONG, ny AS LONG, sx AS DOUBLE, sy AS DOUBLE, zscale AS DOUBLE) AS LONG` | Mesh da campo di altezza z(nx*ny) su [0,sx]x[0,sy], altezza z*zscale (handle). |
+| `RAYCASTDDA` | `(grid() AS DOUBLE, rows AS LONG, cols AS LONG, px AS DOUBLE, py AS DOUBLE, dx AS DOUBLE, dy AS DOUBLE, hit() AS DOUBLE) AS LONG` | DDA su griglia rows*cols (grid() piatto, !=0 solido). hit() = [hit,map_x,map_y,side,perp_dist,wall_x]. |
+| `RAYCASTDDAEX` | `(grid() AS DOUBLE, rows AS LONG, cols AS LONG, ray() AS DOUBLE, hit() AS DOUBLE) AS LONG` | (maxsteps <= 0 -> 256). Limite FFI di 8 slot: gli argomenti del raggio stanno in un array. |
+| `RAYCYLINDER` | `(ray() AS DOUBLE, base() AS DOUBLE, axis() AS DOUBLE, radius AS DOUBLE, height AS DOUBLE, t() AS DOUBLE) AS LONG` | ── cilindro/cono e trasformazione AABB ─────────────────────────────────── |
+| `RAYCONE` | `(ray() AS DOUBLE, apex() AS DOUBLE, axis() AS DOUBLE, radius AS DOUBLE, height AS DOUBLE, t() AS DOUBLE) AS LONG` | Raggio vs cono (apex, axis, radius, height): t(0). |
+| `CYLINDERNORMAL` | `(base() AS DOUBLE, axis() AS DOUBLE, p() AS DOUBLE, out() AS DOUBLE) AS LONG` | Normale del cilindro nel punto p(): out() = 3 valori. |
+| `CONENORMAL` | `(apex() AS DOUBLE, axis() AS DOUBLE, k AS DOUBLE, p() AS DOUBLE, out() AS DOUBLE) AS LONG` | Normale del cono (k = raggio/altezza) nel punto p(): out() = 3 valori. |
+| `AABBTRANSFORM` | `(a() AS DOUBLE, m() AS DOUBLE, out() AS DOUBLE) AS LONG` | AABB trasformato dalla matrice 4x4: out() = 6 valori. |
+| `AABBMAKE` | `(mn() AS DOUBLE, mx() AS DOUBLE, out() AS DOUBLE) AS LONG` | ── costruttori e camera ────────────────────────────────────────────────── |
+| `RAYAT` | `(ray() AS DOUBLE, t AS DOUBLE, out() AS DOUBLE) AS LONG` | Punto al parametro t lungo il raggio. |
+| `CAMERAORBIT` | `(eye() AS DOUBLE, target() AS DOUBLE, yaw AS DOUBLE, pitch AS DOUBLE, radius AS DOUBLE, out() AS DOUBLE) AS LONG` | Orbita/traslazione della camera: out() = nuova posizione. |
+| `CAMERATRANSLATE` | `(eye() AS DOUBLE, target() AS DOUBLE, delta() AS DOUBLE, out() AS DOUBLE) AS LONG` | Trasla la camera di delta(): out() = nuova posizione. |
+| `CAMERANDCRAY` | `(pos() AS DOUBLE, target() AS DOUBLE, up() AS DOUBLE, fov AS DOUBLE, aspect AS DOUBLE, ndcx AS DOUBLE, ndcy AS DOUBLE, out() AS DOUBLE) AS LONG` | Direzione del raggio dal NDC ([-1,1]^2) nel mondo. |
+
+#### `GFXCODEC` — 4 funzioni
+| Funzione | Firma | Parametri e ritorno |
+|---|---|---|
+| `BC1ENCODEBLOCK` | `(rgb() AS DOUBLE, out() AS DOUBLE) AS LONG` | Comprimi un blocco 4x4: rgb() 48 valori -> out() 8 byte. |
+| `BC1DECODEBLOCK` | `(in() AS DOUBLE, out() AS DOUBLE) AS LONG` | Decomprimi un blocco: in() 8 byte -> out() 48 valori RGB. |
+| `BC1ENCODE` | `(rgb() AS DOUBLE, w AS LONG, h AS LONG, out() AS DOUBLE) AS LONG` | Immagine intera (w,h multipli di 4): out() = (w/4)*(h/4)*8 byte; ritorno = byte scritti o -1. |
+| `BC1DECODE` | `(in() AS DOUBLE, w AS LONG, h AS LONG, out() AS DOUBLE) AS LONG` | Decodifica: in() = blocchi compressi, out() = w*h*3 valori RGB. |
+
+### Tour completo (riferimento eseguibile)
 
 ## 5. Viewport e finestre
 
