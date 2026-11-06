@@ -2578,6 +2578,13 @@ static int vm_ffi_call_slots(void* fn, int argc,
         {
             gmb_obj_shared_val_t* sv = (gmb_obj_shared_val_t*)arrRefs[i];
             int na = (sv && sv->list) ? (int)sv->list->count : 0;
+            if (sv && sv->list && sv->list->items[0].kind == GMB_TYPE_OBJECT && sv->list->items[0].v_ptr)
+            {
+                gmb_obj_shared_val_t* i0 = (gmb_obj_shared_val_t*)sv->list->items[0].v_ptr;
+                gmb_val_t x0 = (i0 && i0->dict) ? vm_dict_get_ci(i0->dict, "X") : (gmb_val_t){0};
+                fprintf(stderr, " X.kind=%d X=%.1f", x0.kind, x0.kind == GMB_TYPE_INT ? (double)x0.v_int : x0.v_double);
+            }
+            fprintf(stderr, "\n");
             int es = uaSize && uaSize[i] > 0 ? uaSize[i] : 1;
             unsigned char* b = (unsigned char*)calloc((size_t)(na > 0 ? na : 1) * (size_t)es, 1);
             if (!b) goto fail;
@@ -2651,14 +2658,11 @@ static int vm_ffi_call_slots(void* fn, int argc,
             if (!inst) continue;
             unsigned char* eb = ubuf[i] + (size_t)j * (size_t)es;
             {
-                /* Elemento per VALORE: si ricostruisce una nuova istanza e si scrive nella lista
-                 * con l API canonica (gmb_list_set gestisce refcount e sostituzione). */
-                gmb_obj_shared_val_t* ninst = gmb_shared_dict_new();
+                /* Mutazione dell'istanza ESISTENTE: conserva __class__/FieldNames (necessari a
+                 * `a(i).Campo`), che una istanza nuova creata qui non avrebbe. */
+                if (!inst) continue;
                 for (int f = 0; f < uaCount[i] && f < 64; f++)
-                    vm_ffi_set_leaf_val(ninst, uaNames[i][f], NULL, 0, vm_ffi_load_field(eb, uaOff[i][f], uaType[i][f]));
-                gmb_val_t nv = gmb_make_val_obj((gmb_obj_t*)ninst);
-                if (sv && sv->list) gmb_list_set(sv->list, (gmb_int_t)j, nv);
-                gmb_val_release(nv);
+                    vm_ffi_set_leaf_val(inst, uaNames[i][f], NULL, 0, vm_ffi_load_field(eb, uaOff[i][f], uaType[i][f]));
             }
         }
     }
@@ -15225,6 +15229,9 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                             for (int i = 0; i < argc; i++)
                             {
                                 if (!(arrayMask & (1ull << i)) || !arrRefs[i]) continue;
+                                /* Array di UDT (S3): hanno il loro buffer tipizzato, NON lo scratch
+                                 * double — il copy-out generico li sovrascriverebbe con double. */
+                                if (udtArrCount[i] > 0) continue;
                                 gmb_obj_shared_val_t* sv = (gmb_obj_shared_val_t*)arrRefs[i];
                                 gmb_int_t n = sv->list ? (gmb_int_t)sv->list->count : 0;
                                 int isInt = (arrayElemIntMask & (1ull << i)) != 0;
