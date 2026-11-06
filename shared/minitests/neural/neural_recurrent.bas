@@ -1,5 +1,5 @@
 ' NEURAL (FFI) — slice ricorrente: RNN, LSTM, GRU, BiRNN (BPTT + ottimizzatore) e PBP.
-' EXPECT: rnn= 1 |f= 0 |y=0.2515,0.2417,0.4177|b= 0 |s= 0 |zg= 0 |f2= 0 |y2=0.1060|z= 0 |lstm= 0 |gru= 0 |birnn= 0 |pbp= 0 ,0.3989,0.3408|pl= 0 |mz=0.1000,0.2000|vz=0.0250,0.1000|fz= 0
+' EXPECT: rnn= 1 |f= 0 |y=0.2515,0.2417,0.4177|b= 0 |s= 0 |zg= 0 |f2= 0 |y2=0.1060|z= 0 |lstm= 0 |gru= 0 |birnn= 0 |pbp= 0 ,0.3989,0.3408|pl= 0 |mz=0.1000,0.2000|vz=0.0250,0.1000|fz=none
 ' IMPORTA NEURAL (pacchetto gmbneural): solo ciò che non esiste in GMBasic (TORCH copre MLP).
 IMPORT NEURAL
 
@@ -39,9 +39,9 @@ SUB Main()
   mw(0) = 0.5 : mw(1) = 1.0
   vw(0) = 0.0 : vw(1) = 0.0
   mzp(0) = 0.2 : vzp(0) = 0.1
-  ph = NEURAL.PBPLAYERINIT(mw, vw, 1, 2)
-  PRINT "|pl="; NEURAL.PBPLAYER(ph, mzp, vzp, 1.0, 0, mzo, vzo);
+  ' senza handle: i pesi e i momenti sono parametri della chiamata
+  PRINT "|pl="; NEURAL.PBPLAYER(mw, vw, mzp, vzp, mzo, vzo, 1, 2, 1.0, 0);
   PRINT "|mz="; FORMAT(mzo(0), "#.0000"); ","; FORMAT(mzo(1), "#.0000");
   PRINT "|vz="; FORMAT(vzo(0), "#.0000"); ","; FORMAT(vzo(1), "#.0000");
-  PRINT "|fz="; NEURAL.FREE(ph)
+  PRINT "|fz=none"
 END SUB

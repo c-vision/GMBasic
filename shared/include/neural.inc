@@ -2,18 +2,23 @@
 ' PERMESSO ESPLICITO dell'utente. GMBasic è un progetto SEPARATO: se serve una modifica,
 ' FERMARSI e CHIEDERE.
 '
-' neural.inc — namespace NEURAL: reti ricorrenti (slice 1 di gmbneural, pacchetto gmbneural).
+' neural.inc — namespace NEURAL: reti, alberi, quantizzazione e autodiff (gmbneural).
 '
-' Copre SOLO ciò che non esiste in GMBasic: RNN/LSTM/GRU/BiRNN con BPTT e i momenti PBP.
-' MLP/dense/attivazioni/loss sono coperti da TORCH (libtorch) e restano interni al pacchetto;
-' kmeans/pca/svm/preprocessing sono coperti da MULTIVARIATE/TORCH e non sono qui.
+' Copre SOLO ciò che non esiste in GMBasic: RNN/LSTM/GRU/BiRNN con BPTT, PBP, CNN,
+' pruning/quantizzazione, alberi e foreste, autodiff, GP e utilità numeriche.
+' MLP/dense/attivazioni/loss chiavi-in-mano sono in TORCH; kmeans/pca/svm in MULTIVARIATE.
 '
 ' Convenzioni (come gmbneural):
 '   x()  : T × in    DOUBLE row-major     y()/gy() : T × out
-'   stato: handle LONG (>0); ZEROGRAD/STEP/FREE sono comuni a tutte le famiglie.
+'   Le funzioni che prendono matrici accettano anche un array 2-D di BASIC
+'   (DIM m(righe-1, colonne-1)): il buffer e' contiguo row-major e le dimensioni
+'   restano parametri espliciti (l'ABI C non le passa).
+'   stato: handle LONG (>0); ZEROGRAD/STEP/FREE per le famiglie con parametri.
 '   STEP applica un ottimizzatore sui gradienti accumulati da BACKWARD:
 '         kind = 0 SGD, 1 momentum, 2 Adam; lr > 0.
 '   seed: intero (RNG deterministico).
+'   Gli strati senza stato (conv, pooling, winograd, im2col, LRN, resize, FusedMM,
+'   PBP, YOLO, KNN) NON usano handle: dimensioni e configurazione sono parametri.
 
 NAMESPACE NEURAL
 
@@ -47,66 +52,47 @@ DECLARE FUNCTION FREE LIB "gmbneural" ALIAS "ofx_nn_free" (h AS LONG) AS LONG
 
 ' ── PBP (Probabilistic Backpropagation, momenti ReLU) ──────────────────────
 ' out(0)=m_z, out(1)=v_z dei momenti ReLU su N(m_a, v_a).
-DECLARE FUNCTION PBPMOMENTS LIB "gmbneural" ALIAS "ofx_nn_pbp_moments" (m_a AS DOUBLE, v_a AS DOUBLE, out() AS DOUBLE) AS LONG
-' Strato denso PBP: i parametri m_w/v_w (out×in) vivono in un handle (PBPLAYERINIT),
-' cosi' il FORWARD resta corto e i buffer di stato non si ricreano a ogni passo.
-DECLARE FUNCTION PBPLAYERINIT LIB "gmbneural" ALIAS "ofx_nn_pbp_init" (m_w() AS DOUBLE, v_w() AS DOUBLE, in_ AS LONG, out_ AS LONG) AS LONG
-' Forward: m_z_prev/v_z_prev = in, m_z/v_z = out; scaling (es. 1/in);
-' relu <> 0 applica i momenti ReLU, altrimenti lineare.
-DECLARE FUNCTION PBPLAYER LIB "gmbneural" ALIAS "ofx_nn_pbp_run" (h AS LONG, m_z_prev() AS DOUBLE, v_z_prev() AS DOUBLE, scaling AS DOUBLE, relu AS LONG, m_z() AS DOUBLE, v_z() AS DOUBLE) AS LONG
-
-
-' ── CNN (conv/pool/im2col/resize/LRN) e FusedMM — configurazioni su handle ──
-' La configurazione (dimensioni/stride/pad) sta in un handle (1001+): il FORWARD
-' prende solo gli array e i parametri non si ripetono a ogni chiamata.
+DECLARE FUNCTION PBPMOMENTS LIB "gmbneural" ALIAS "ofx_nn_pbp_moments" (m_a AS DOUBLE, v_a AS DOUBLE, out_() AS DOUBLE) AS LONG
+' Strato denso PBP senza handle: m_w/v_w (out×in) e i momenti di stato sono parametri.
+' relu <> 0 applica i momenti ReLU, altrimenti il layer resta lineare.
+DECLARE FUNCTION PBPLAYER LIB "gmbneural" ALIAS "ofx_nn_pbp_player" (m_w() AS DOUBLE, v_w() AS DOUBLE, m_prev() AS DOUBLE, v_prev() AS DOUBLE, m_z() AS DOUBLE, v_z() AS DOUBLE, in_ AS LONG, out_ AS LONG, scaling AS DOUBLE, relu AS LONG) AS LONG
+' ── CNN, pooling, FusedMM: chiamate dirette (FFI fino a 64 argomenti) ──────
 ' Layout tensori: CHW (canale, altezza, larghezza), DOUBLE row-major.
 ' Dimensione di uscita: floor((dim + 2*pad - k)/stride) + 1.
 DECLARE FUNCTION OUTSIZE LIB "gmbneural" ALIAS "ofx_nn_outsize" (dim AS LONG, k AS LONG, stride AS LONG, pad AS LONG) AS LONG
 
-' Convoluzione (dil=1 di default; CONVSETDIL per la dilatata). Pesi: out_c×c×kh×kw.
-DECLARE FUNCTION CONVINIT LIB "gmbneural" ALIAS "ofx_nn_conv_init" (c AS LONG, h AS LONG, w AS LONG, oc AS LONG, kh AS LONG, kw AS LONG, stride AS LONG, pad AS LONG) AS LONG
-DECLARE FUNCTION CONVSETDIL LIB "gmbneural" ALIAS "ofx_nn_conv_set_dil" (lh AS LONG, dil AS LONG) AS LONG
-DECLARE FUNCTION CONVRUN LIB "gmbneural" ALIAS "ofx_nn_conv_run" (lh AS LONG, in_() AS DOUBLE, weight() AS DOUBLE, out_() AS DOUBLE) AS LONG
-DECLARE FUNCTION CONVRUNB LIB "gmbneural" ALIAS "ofx_nn_conv_runb" (lh AS LONG, in_() AS DOUBLE, weight() AS DOUBLE, bias() AS DOUBLE, out_() AS DOUBLE) AS LONG
+' Convoluzione 2D: out (oc×oh×ow) da in (c×h×w) e weight (oc×c×kh×kw).
+' dil = 1 → standard, dil > 1 → dilatata. CONV2DB aggiunge il bias (un valore per canale).
+DECLARE FUNCTION CONV2D LIB "gmbneural" ALIAS "ofx_nn_conv2d" (out_() AS DOUBLE, in_() AS DOUBLE, weight() AS DOUBLE, c AS LONG, h AS LONG, w AS LONG, oc AS LONG, kh AS LONG, kw AS LONG, stride AS LONG, pad AS LONG, dil AS LONG) AS LONG
+DECLARE FUNCTION CONV2DB LIB "gmbneural" ALIAS "ofx_nn_conv2db" (out_() AS DOUBLE, in_() AS DOUBLE, weight() AS DOUBLE, bias() AS DOUBLE, c AS LONG, h AS LONG, w AS LONG, oc AS LONG, kh AS LONG, kw AS LONG, stride AS LONG, pad AS LONG, dil AS LONG) AS LONG
 
-' Deconvoluzione (transposed conv): out = (h-1)*stride-2*pad+kh.
-DECLARE FUNCTION DECONVINIT LIB "gmbneural" ALIAS "ofx_nn_deconv_init" (c AS LONG, h AS LONG, w AS LONG, oc AS LONG, kh AS LONG, kw AS LONG, stride AS LONG, pad AS LONG) AS LONG
-DECLARE FUNCTION DECONVRUN LIB "gmbneural" ALIAS "ofx_nn_deconv_run" (lh AS LONG, in_() AS DOUBLE, weight() AS DOUBLE, out_() AS DOUBLE) AS LONG
-DECLARE FUNCTION DECONVRUNB LIB "gmbneural" ALIAS "ofx_nn_deconv_runb" (lh AS LONG, in_() AS DOUBLE, weight() AS DOUBLE, bias() AS DOUBLE, out_() AS DOUBLE) AS LONG
+' Deconvoluzione (transposed conv): out = (h-1)*stride - 2*pad + kh per lato.
+DECLARE FUNCTION DECONV2D LIB "gmbneural" ALIAS "ofx_nn_deconv2d" (out_() AS DOUBLE, in_() AS DOUBLE, weight() AS DOUBLE, c AS LONG, h AS LONG, w AS LONG, oc AS LONG, kh AS LONG, kw AS LONG, stride AS LONG, pad AS LONG) AS LONG
+DECLARE FUNCTION DECONV2DB LIB "gmbneural" ALIAS "ofx_nn_deconv2db" (out_() AS DOUBLE, in_() AS DOUBLE, weight() AS DOUBLE, bias() AS DOUBLE, c AS LONG, h AS LONG, w AS LONG, oc AS LONG, kh AS LONG, kw AS LONG, stride AS LONG, pad AS LONG) AS LONG
 
-' Winograd F(m×m,3×3), stride 1 pad 1, filtro 3×3; tile 2 o 4 (h,w multipli di tile).
-DECLARE FUNCTION WINOINIT LIB "gmbneural" ALIAS "ofx_nn_wino_init" (c AS LONG, h AS LONG, w AS LONG, oc AS LONG, tile AS LONG) AS LONG
-DECLARE FUNCTION WINORUN LIB "gmbneural" ALIAS "ofx_nn_wino_run" (lh AS LONG, in_() AS DOUBLE, weight() AS DOUBLE, out_() AS DOUBLE) AS LONG
-DECLARE FUNCTION WINORUNB LIB "gmbneural" ALIAS "ofx_nn_wino_runb" (lh AS LONG, in_() AS DOUBLE, weight() AS DOUBLE, bias() AS DOUBLE, out_() AS DOUBLE) AS LONG
+' Winograd F(m×m, 3×3): stride 1, pad 1; tile 2 o 4 (h,w multipli di tile).
+DECLARE FUNCTION WINOGRAD LIB "gmbneural" ALIAS "ofx_nn_winograd" (out_() AS DOUBLE, in_() AS DOUBLE, weight() AS DOUBLE, c AS LONG, h AS LONG, w AS LONG, oc AS LONG, tile AS LONG) AS LONG
+DECLARE FUNCTION WINOGRADB LIB "gmbneural" ALIAS "ofx_nn_winogradb" (out_() AS DOUBLE, in_() AS DOUBLE, weight() AS DOUBLE, bias() AS DOUBLE, c AS LONG, h AS LONG, w AS LONG, oc AS LONG, tile AS LONG) AS LONG
 
 ' im2col / col2im: col = (c*kh*kw) × (oh*ow).
-DECLARE FUNCTION IM2COLINIT LIB "gmbneural" ALIAS "ofx_nn_im2col_init" (c AS LONG, h AS LONG, w AS LONG, kh AS LONG, kw AS LONG, stride AS LONG, pad AS LONG) AS LONG
-DECLARE FUNCTION IM2COLRUN LIB "gmbneural" ALIAS "ofx_nn_im2col_run" (lh AS LONG, in_() AS DOUBLE, col() AS DOUBLE) AS LONG
-DECLARE FUNCTION COL2IMINIT LIB "gmbneural" ALIAS "ofx_nn_col2im_init" (c AS LONG, h AS LONG, w AS LONG, kh AS LONG, kw AS LONG, stride AS LONG, pad AS LONG) AS LONG
-DECLARE FUNCTION COL2IMRUN LIB "gmbneural" ALIAS "ofx_nn_col2im_run" (lh AS LONG, col() AS DOUBLE, out_() AS DOUBLE) AS LONG
+DECLARE FUNCTION IM2COL LIB "gmbneural" ALIAS "ofx_nn_im2col" (col() AS DOUBLE, in_() AS DOUBLE, c AS LONG, h AS LONG, w AS LONG, kh AS LONG, kw AS LONG, stride AS LONG, pad AS LONG) AS LONG
+DECLARE FUNCTION COL2IM LIB "gmbneural" ALIAS "ofx_nn_col2im" (out_() AS DOUBLE, col() AS DOUBLE, c AS LONG, h AS LONG, w AS LONG, kh AS LONG, kw AS LONG, stride AS LONG, pad AS LONG) AS LONG
 
 ' Local Response Normalization.
-DECLARE FUNCTION LRNINIT LIB "gmbneural" ALIAS "ofx_nn_lrn_init" (c AS LONG, h AS LONG, w AS LONG, size AS LONG, alpha AS DOUBLE, beta AS DOUBLE, biasv AS DOUBLE) AS LONG
-DECLARE FUNCTION LRNRUN LIB "gmbneural" ALIAS "ofx_nn_lrn_run" (lh AS LONG, in_() AS DOUBLE, out_() AS DOUBLE) AS LONG
+DECLARE FUNCTION LRN LIB "gmbneural" ALIAS "ofx_nn_lrn" (out_() AS DOUBLE, in_() AS DOUBLE, c AS LONG, h AS LONG, w AS LONG, size AS LONG, alpha AS DOUBLE, beta AS DOUBLE, biasv AS DOUBLE) AS LONG
 
 ' Resize: kind 0 = nearest, 1 = bilinear.
-DECLARE FUNCTION RESIZEINIT LIB "gmbneural" ALIAS "ofx_nn_resize_init" (c AS LONG, h AS LONG, w AS LONG, oh AS LONG, ow AS LONG) AS LONG
-DECLARE FUNCTION RESIZERUN LIB "gmbneural" ALIAS "ofx_nn_resize_run" (lh AS LONG, kind AS LONG, in_() AS DOUBLE, out_() AS DOUBLE) AS LONG
+DECLARE FUNCTION RESIZE LIB "gmbneural" ALIAS "ofx_nn_resize" (out_() AS DOUBLE, in_() AS DOUBLE, c AS LONG, h AS LONG, w AS LONG, oh AS LONG, ow AS LONG, kind AS LONG) AS LONG
 
-' Pooling 2D (size/stride); ARG riceve l'indice ky*size+kx per output.
-DECLARE FUNCTION MAXPOOLINIT LIB "gmbneural" ALIAS "ofx_nn_maxpool_init" (c AS LONG, h AS LONG, w AS LONG, size AS LONG, stride AS LONG) AS LONG
-DECLARE FUNCTION AVGPOOLINIT LIB "gmbneural" ALIAS "ofx_nn_avgpool_init" (c AS LONG, h AS LONG, w AS LONG, size AS LONG, stride AS LONG) AS LONG
-DECLARE FUNCTION POOLRUN LIB "gmbneural" ALIAS "ofx_nn_pool_run" (lh AS LONG, in_() AS DOUBLE, out_() AS DOUBLE) AS LONG
-DECLARE FUNCTION POOLRUNARG LIB "gmbneural" ALIAS "ofx_nn_pool_run_arg" (lh AS LONG, in_() AS DOUBLE, out_() AS DOUBLE, argmax() AS LONG) AS LONG
-DECLARE FUNCTION UNPOOLINIT LIB "gmbneural" ALIAS "ofx_nn_unpool_init" (c AS LONG, h AS LONG, w AS LONG, size AS LONG, stride AS LONG) AS LONG
-DECLARE FUNCTION UNPOOLRUN LIB "gmbneural" ALIAS "ofx_nn_unpool_run" (lh AS LONG, in_() AS DOUBLE, argmax() AS LONG, fill AS DOUBLE, out_() AS DOUBLE) AS LONG
+' Pooling 2D (size/stride); MAXPOOLARG riceve l'indice ky*size+kx di ogni output.
+DECLARE FUNCTION MAXPOOL LIB "gmbneural" ALIAS "ofx_nn_maxpool" (out_() AS DOUBLE, in_() AS DOUBLE, c AS LONG, h AS LONG, w AS LONG, size AS LONG, stride AS LONG) AS LONG
+DECLARE FUNCTION AVGPOOL LIB "gmbneural" ALIAS "ofx_nn_avgpool" (out_() AS DOUBLE, in_() AS DOUBLE, c AS LONG, h AS LONG, w AS LONG, size AS LONG, stride AS LONG) AS LONG
+DECLARE FUNCTION MAXPOOLARG LIB "gmbneural" ALIAS "ofx_nn_maxpool_arg" (out_() AS DOUBLE, in_() AS DOUBLE, argmax() AS LONG, c AS LONG, h AS LONG, w AS LONG, size AS LONG, stride AS LONG) AS LONG
+DECLARE FUNCTION UNPOOL LIB "gmbneural" ALIAS "ofx_nn_unpool" (out_() AS DOUBLE, in_() AS DOUBLE, argmax() AS LONG, c AS LONG, h AS LONG, w AS LONG, size AS LONG, stride AS LONG, fill AS DOUBLE) AS LONG
 
-' FusedMM su CSR (GAT/GraphSAGE): val() può essere vuoto (peso 1)? No: passare i pesi.
-DECLARE FUNCTION FUSEDMMINIT LIB "gmbneural" ALIAS "ofx_nn_fusedmm_init" (rows AS LONG, cols AS LONG, k AS LONG, nnz AS LONG, alpha AS DOUBLE, beta AS DOUBLE) AS LONG
-DECLARE FUNCTION FUSEDMMRUN LIB "gmbneural" ALIAS "ofx_nn_fusedmm_run" (lh AS LONG, rowptr() AS LONG, colidx() AS LONG, val() AS DOUBLE, X() AS DOUBLE, Y() AS DOUBLE, Z() AS DOUBLE) AS LONG
-DECLARE FUNCTION AGGINIT LIB "gmbneural" ALIAS "ofx_nn_aggregate_init" (rows AS LONG, cols AS LONG, k AS LONG, nnz AS LONG, alpha AS DOUBLE, beta AS DOUBLE) AS LONG
-DECLARE FUNCTION AGGRUN LIB "gmbneural" ALIAS "ofx_nn_aggregate_run" (lh AS LONG, rowptr() AS LONG, colidx() AS LONG, val() AS DOUBLE, Y() AS DOUBLE, Z() AS DOUBLE) AS LONG
-
+' FusedMM / aggregazione su matrice CSR (GAT/GraphSAGE).
+DECLARE FUNCTION FUSEDMM LIB "gmbneural" ALIAS "ofx_nn_fusedmm" (out_() AS DOUBLE, rowptr() AS LONG, colidx() AS LONG, val() AS DOUBLE, X() AS DOUBLE, Y() AS DOUBLE, rows AS LONG, cols AS LONG, k AS LONG, nnz AS LONG, alpha AS DOUBLE, beta AS DOUBLE) AS LONG
+DECLARE FUNCTION AGGREGATE LIB "gmbneural" ALIAS "ofx_nn_aggregate" (out_() AS DOUBLE, rowptr() AS LONG, colidx() AS LONG, val() AS DOUBLE, Y() AS DOUBLE, rows AS LONG, cols AS LONG, k AS LONG, nnz AS LONG, alpha AS DOUBLE, beta AS DOUBLE) AS LONG
 ' ── Pruning: 2:4 strutturato e channel pruning (da lightNet) ────────────────
 ' SPARSIFY24 azzera, in ogni finestra di `window` pesi consecutivi, tutti tranne i
 ' `nonzeros` di |w| maggiore; ritorna il numero di pesi azzerati (window=4,nonzeros=2 = 2:4).
@@ -213,19 +199,15 @@ DECLARE FUNCTION PINNADAPTIVENORM LIB "gmbneural" ALIAS "ofx_nn_pinn_adaptive_no
 DECLARE FUNCTION IOU LIB "gmbneural" ALIAS "ofx_nn_iou" (a() AS DOUBLE, b() AS DOUBLE) AS DOUBLE
 ' NMS: keep() riceve gli indici tenuti; ritorna quanti.
 DECLARE FUNCTION NMS LIB "gmbneural" ALIAS "ofx_nn_nms" (boxes() AS DOUBLE, scores() AS DOUBLE, n AS LONG, iou_thresh AS DOUBLE, keep() AS LONG) AS LONG
-' Configurazione cella/ancora per YOLOBOX (handle 4001+): 6 argomenti.
-DECLARE FUNCTION YOLOBOXCFG LIB "gmbneural" ALIAS "ofx_nn_yolo_cfg" (anchor_w AS DOUBLE, anchor_h AS DOUBLE, cx AS LONG, cy AS LONG, grid_w AS LONG, grid_h AS LONG) AS LONG
-' Decode: out(0..3) = bx,by,bw,bh normalizzati.
-DECLARE FUNCTION YOLOBOX LIB "gmbneural" ALIAS "ofx_nn_yolo_box" (h AS LONG, tx AS DOUBLE, ty AS DOUBLE, tw AS DOUBLE, th AS DOUBLE, out_() AS DOUBLE) AS LONG
-DECLARE FUNCTION YOLOBOXFREE LIB "gmbneural" ALIAS "ofx_nn_yolo_free" (h AS LONG) AS LONG
+' Decode di una cella YOLO: out(0..3) = bx,by,bw,bh normalizzati. Anchor e cella
+' sono parametri espliciti (nessun handle).
+DECLARE FUNCTION YOLOBOX LIB "gmbneural" ALIAS "ofx_nn_yolo_box" (out_() AS DOUBLE, tx AS DOUBLE, ty AS DOUBLE, tw AS DOUBLE, th AS DOUBLE, anchor_w AS DOUBLE, anchor_h AS DOUBLE, cx AS LONG, cy AS LONG, grid_w AS LONG, grid_h AS LONG) AS LONG
 ' NMS multi-classe: azzera in place le probabilita' soppresse di probs(n×classes).
 DECLARE FUNCTION NMSMULTICLASS LIB "gmbneural" ALIAS "ofx_nn_nms_multiclass" (boxes() AS DOUBLE, probs() AS DOUBLE, n AS LONG, classes AS LONG, thresh AS DOUBLE) AS LONG
 
-' ── KNN — handle 4101+ (copia il training set) ────────────────────────────
-DECLARE FUNCTION KNNINIT LIB "gmbneural" ALIAS "ofx_nn_knn_init" (Xtr() AS DOUBLE, ytr() AS LONG, ntr AS LONG, d AS LONG, n_classes AS LONG) AS LONG
-DECLARE FUNCTION KNNCLASSIFY LIB "gmbneural" ALIAS "ofx_nn_knn_classify" (h AS LONG, k AS LONG, x() AS DOUBLE) AS LONG
-DECLARE FUNCTION KNNACCURACY LIB "gmbneural" ALIAS "ofx_nn_knn_accuracy" (h AS LONG, k AS LONG, Xte() AS DOUBLE, yte() AS LONG, nte AS LONG) AS DOUBLE
-DECLARE FUNCTION KNNFREE LIB "gmbneural" ALIAS "ofx_nn_knn_free" (h AS LONG) AS LONG
+' ── KNN: training set passato a ogni chiamata (Xtr come matrice ntr×d) ─────
+DECLARE FUNCTION KNNCLASSIFY LIB "gmbneural" ALIAS "ofx_nn_knn_classify" (Xtr() AS DOUBLE, ytr() AS LONG, ntr AS LONG, d AS LONG, n_classes AS LONG, k AS LONG, x() AS DOUBLE) AS LONG
+DECLARE FUNCTION KNNACCURACY LIB "gmbneural" ALIAS "ofx_nn_knn_accuracy" (Xtr() AS DOUBLE, ytr() AS LONG, ntr AS LONG, Xte() AS DOUBLE, yte() AS LONG, nte AS LONG, d AS LONG, n_classes AS LONG, k AS LONG) AS DOUBLE
 
 ' ── Metriche di classificazione e regressione ─────────────────────────────
 ' Matrice di confusione k×k (riga = vera, colonna = predetta).
@@ -241,8 +223,15 @@ DECLARE FUNCTION MAE LIB "gmbneural" ALIAS "ofx_nn_mae" (y_true() AS DOUBLE, y_p
 DECLARE FUNCTION R2 LIB "gmbneural" ALIAS "ofx_nn_r2" (y_true() AS DOUBLE, y_pred() AS DOUBLE, n AS LONG) AS DOUBLE
 
 ' ── Pianificazione di memoria (lifetime dei buffer) ───────────────────────
-' offsets(n) riceve l'offset di ogni tensore; ritorna la dimensione totale.
-DECLARE FUNCTION MEMPLAN LIB "gmbneural" ALIAS "ofx_nn_memplan" (size() AS DOUBLE, birth() AS LONG, death() AS LONG, n AS LONG, offsets() AS DOUBLE) AS DOUBLE
+' Array di UDT: il layout C di MemTensor e' double + int32 + int32 (16 byte), lo
+' stesso di gn_memplan_tensor. offsets(n) riceve l'offset di ogni tensore; il
+' valore di ritorno e' la dimensione totale del buffer.
+TYPE MemTensor
+  Size AS DOUBLE
+  Birth AS LONG
+  Death AS LONG
+END TYPE
+DECLARE FUNCTION MEMPLAN LIB "gmbneural" ALIAS "ofx_nn_memplan" (t() AS MemTensor, n AS LONG, offsets() AS DOUBLE) AS DOUBLE
 
 ' ── Attivazioni e gradienti (gn_act) ──────────────────────────────────────
 ' I valori di RELU/SIGMOID/TANH/GELU sono gia' in TORCH: qui stanno i gradienti
