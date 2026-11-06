@@ -1,4 +1,4 @@
-' MiniTest NAMESPACE TIMESERIESX (FFI) — tutti i 32 simboli della superficie.
+' MiniTest NAMESPACE TIMESERIES (FFI) — tutti i 32 simboli della superficie.
 '
 ' Superficie (shared/spec/registry/surface.csv): TSAUTOCORR, TSBANDPASS, TSBANDSTOP,
 ' TSCOVARIANCEMATRIX, TSDECOMPOSE, TSDESEASONALIZE, TSDIFFERENCE, TSEMA, TSHIGHPASS,

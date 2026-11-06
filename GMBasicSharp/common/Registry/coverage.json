@@ -1,5 +1,5 @@
 {
-  "total_canonical": 1715,
+  "total_canonical": 1714,
   "scope": "DECLARED by BackendSupport/Registry (name-match; NON misurato su dispatch reali)",
   "declared_per_backend": {
     "IL": 0,
@@ -13533,16 +13533,6 @@
     {
       "id": 1349,
       "ns": "TIMESERIES",
-      "name": "HMMFIT",
-      "kind": "TsHmmFit",
-      "IL": false,
-      "PCodeVM": false,
-      "VMC": false,
-      "C99Native": false
-    },
-    {
-      "id": 1350,
-      "ns": "TIMESERIES",
       "name": "HoltWinters",
       "kind": "HoltWinters",
       "IL": false,
@@ -13551,7 +13541,7 @@
       "C99Native": false
     },
     {
-      "id": 1351,
+      "id": 1350,
       "ns": "TIMESERIES",
       "name": "MaCoefficients",
       "kind": "MaCoefficients",
@@ -13561,7 +13551,7 @@
       "C99Native": false
     },
     {
-      "id": 1352,
+      "id": 1351,
       "ns": "TIMESERIES",
       "name": "YuleWalker",
       "kind": "YuleWalker",
@@ -13571,7 +13561,7 @@
       "C99Native": false
     },
     {
-      "id": 1353,
+      "id": 1352,
       "ns": "TOOL",
       "name": "Register",
       "kind": "ToolRegister",
@@ -13581,7 +13571,7 @@
       "C99Native": false
     },
     {
-      "id": 1354,
+      "id": 1353,
       "ns": "TOOL",
       "name": "Search",
       "kind": "ToolSearch",
@@ -13591,7 +13581,7 @@
       "C99Native": false
     },
     {
-      "id": 1355,
+      "id": 1354,
       "ns": "TORCH",
       "name": "ABS",
       "kind": "TorchAbs",
@@ -13601,7 +13591,7 @@
       "C99Native": false
     },
     {
-      "id": 1356,
+      "id": 1355,
       "ns": "TORCH",
       "name": "ACCURACY",
       "kind": "TorchAccuracy",
@@ -13611,7 +13601,7 @@
       "C99Native": false
     },
     {
-      "id": 1357,
+      "id": 1356,
       "ns": "TORCH",
       "name": "ADD",
       "kind": "TorchAdd",
@@ -13621,7 +13611,7 @@
       "C99Native": false
     },
     {
-      "id": 1358,
+      "id": 1357,
       "ns": "TORCH",
       "name": "ALLCLOSE",
       "kind": "TorchAllclose",
@@ -13631,7 +13621,7 @@
       "C99Native": false
     },
     {
-      "id": 1359,
+      "id": 1358,
       "ns": "TORCH",
       "name": "ARGMAX",
       "kind": "TorchArgmax",
@@ -13641,7 +13631,7 @@
       "C99Native": false
     },
     {
-      "id": 1360,
+      "id": 1359,
       "ns": "TORCH",
       "name": "ARGSORT",
       "kind": "TorchArgsort",
@@ -13651,7 +13641,7 @@
       "C99Native": false
     },
     {
-      "id": 1361,
+      "id": 1360,
       "ns": "TORCH",
       "name": "AVAILABLE",
       "kind": "TorchAvailable",
@@ -13661,7 +13651,7 @@
       "C99Native": false
     },
     {
-      "id": 1362,
+      "id": 1361,
       "ns": "TORCH",
       "name": "BLEU",
       "kind": "TorchBleu",
@@ -13671,7 +13661,7 @@
       "C99Native": false
     },
     {
-      "id": 1363,
+      "id": 1362,
       "ns": "TORCH",
       "name": "CLIP",
       "kind": "TorchClip",
@@ -13681,7 +13671,7 @@
       "C99Native": false
     },
     {
-      "id": 1364,
+      "id": 1363,
       "ns": "TORCH",
       "name": "CONCAT",
       "kind": "TorchConcat",
@@ -13691,7 +13681,7 @@
       "C99Native": false
     },
     {
-      "id": 1365,
+      "id": 1364,
       "ns": "TORCH",
       "name": "CREATE",
       "kind": "TorchCreate",
@@ -13701,7 +13691,7 @@
       "C99Native": false
     },
     {
-      "id": 1366,
+      "id": 1365,
       "ns": "TORCH",
       "name": "DATASETLOAD",
       "kind": "TorchDatasetLoad",
@@ -13711,7 +13701,7 @@
       "C99Native": false
     },
     {
-      "id": 1367,
+      "id": 1366,
       "ns": "TORCH",
       "name": "DEVICE",
       "kind": "TorchDevice",
@@ -13721,7 +13711,7 @@
       "C99Native": false
     },
     {
-      "id": 1368,
+      "id": 1367,
       "ns": "TORCH",
       "name": "DEVICEOF",
       "kind": "TorchDeviceOf",
@@ -13731,7 +13721,7 @@
       "C99Native": false
     },
     {
-      "id": 1369,
+      "id": 1368,
       "ns": "TORCH",
       "name": "DIV",
       "kind": "TorchDiv",
@@ -13741,7 +13731,7 @@
       "C99Native": false
     },
     {
-      "id": 1370,
+      "id": 1369,
       "ns": "TORCH",
       "name": "DTYPE",
       "kind": "TorchDtype",
@@ -13751,7 +13741,7 @@
       "C99Native": false
     },
     {
-      "id": 1371,
+      "id": 1370,
       "ns": "TORCH",
       "name": "EXP",
       "kind": "TorchExp",
@@ -13761,7 +13751,7 @@
       "C99Native": false
     },
     {
-      "id": 1372,
+      "id": 1371,
       "ns": "TORCH",
       "name": "EYE",
       "kind": "TorchEye",
@@ -13771,7 +13761,7 @@
       "C99Native": false
     },
     {
-      "id": 1373,
+      "id": 1372,
       "ns": "TORCH",
       "name": "FREE",
       "kind": "TorchFree",
@@ -13781,7 +13771,7 @@
       "C99Native": false
     },
     {
-      "id": 1374,
+      "id": 1373,
       "ns": "TORCH",
       "name": "FROM",
       "kind": "TorchFrom",
@@ -13791,7 +13781,7 @@
       "C99Native": false
     },
     {
-      "id": 1375,
+      "id": 1374,
       "ns": "TORCH",
       "name": "GELU",
       "kind": "TorchGelu",
@@ -13801,7 +13791,7 @@
       "C99Native": false
     },
     {
-      "id": 1376,
+      "id": 1375,
       "ns": "TORCH",
       "name": "GET",
       "kind": "TorchGet",
@@ -13811,7 +13801,7 @@
       "C99Native": false
     },
     {
-      "id": 1377,
+      "id": 1376,
       "ns": "TORCH",
       "name": "IMATRIXLOAD",
       "kind": "TorchImatrixLoad",
@@ -13821,7 +13811,7 @@
       "C99Native": false
     },
     {
-      "id": 1378,
+      "id": 1377,
       "ns": "TORCH",
       "name": "IMATRIXRANKS",
       "kind": "TorchImatrixRanks",
@@ -13831,7 +13821,7 @@
       "C99Native": false
     },
     {
-      "id": 1379,
+      "id": 1378,
       "ns": "TORCH",
       "name": "LIBPATH",
       "kind": "TorchLibPath",
@@ -13841,7 +13831,7 @@
       "C99Native": false
     },
     {
-      "id": 1380,
+      "id": 1379,
       "ns": "TORCH",
       "name": "LOADED",
       "kind": "TorchLoaded",
@@ -13851,7 +13841,7 @@
       "C99Native": false
     },
     {
-      "id": 1381,
+      "id": 1380,
       "ns": "TORCH",
       "name": "LOG",
       "kind": "TorchLog",
@@ -13861,7 +13851,7 @@
       "C99Native": false
     },
     {
-      "id": 1382,
+      "id": 1381,
       "ns": "TORCH",
       "name": "LOSSBINARY",
       "kind": "TorchLossBinary",
@@ -13871,7 +13861,7 @@
       "C99Native": false
     },
     {
-      "id": 1383,
+      "id": 1382,
       "ns": "TORCH",
       "name": "LOSSCROSSENTROPY",
       "kind": "TorchLossCrossEntropy",
@@ -13881,7 +13871,7 @@
       "C99Native": false
     },
     {
-      "id": 1384,
+      "id": 1383,
       "ns": "TORCH",
       "name": "LOSSMSE",
       "kind": "TorchLossMse",
@@ -13891,7 +13881,7 @@
       "C99Native": false
     },
     {
-      "id": 1385,
+      "id": 1384,
       "ns": "TORCH",
       "name": "MATMUL",
       "kind": "TorchMatmul",
@@ -13901,7 +13891,7 @@
       "C99Native": false
     },
     {
-      "id": 1386,
+      "id": 1385,
       "ns": "TORCH",
       "name": "MAX",
       "kind": "TorchMax",
@@ -13911,7 +13901,7 @@
       "C99Native": false
     },
     {
-      "id": 1387,
+      "id": 1386,
       "ns": "TORCH",
       "name": "MEAN",
       "kind": "TorchMean",
@@ -13921,7 +13911,7 @@
       "C99Native": false
     },
     {
-      "id": 1388,
+      "id": 1387,
       "ns": "TORCH",
       "name": "MIN",
       "kind": "TorchMin",
@@ -13931,7 +13921,7 @@
       "C99Native": false
     },
     {
-      "id": 1389,
+      "id": 1388,
       "ns": "TORCH",
       "name": "MODELCREATE",
       "kind": "TorchModelCreate",
@@ -13941,7 +13931,7 @@
       "C99Native": false
     },
     {
-      "id": 1390,
+      "id": 1389,
       "ns": "TORCH",
       "name": "MODELDPOSTEP",
       "kind": "TorchDpoStep",
@@ -13951,7 +13941,7 @@
       "C99Native": false
     },
     {
-      "id": 1391,
+      "id": 1390,
       "ns": "TORCH",
       "name": "MODELEXPORT",
       "kind": "TorchModelExport",
@@ -13961,7 +13951,7 @@
       "C99Native": false
     },
     {
-      "id": 1392,
+      "id": 1391,
       "ns": "TORCH",
       "name": "MODELFORWARD",
       "kind": "TorchModelForward",
@@ -13971,7 +13961,7 @@
       "C99Native": false
     },
     {
-      "id": 1393,
+      "id": 1392,
       "ns": "TORCH",
       "name": "MODELFREE",
       "kind": "TorchModelFree",
@@ -13981,7 +13971,7 @@
       "C99Native": false
     },
     {
-      "id": 1394,
+      "id": 1393,
       "ns": "TORCH",
       "name": "MODELINPUT",
       "kind": "TorchModelInput",
@@ -13991,7 +13981,7 @@
       "C99Native": false
     },
     {
-      "id": 1395,
+      "id": 1394,
       "ns": "TORCH",
       "name": "MODELLOSS",
       "kind": "TorchModelLoss",
@@ -14001,7 +13991,7 @@
       "C99Native": false
     },
     {
-      "id": 1396,
+      "id": 1395,
       "ns": "TORCH",
       "name": "MODELOUTPUT",
       "kind": "TorchModelOutput",
@@ -14011,7 +14001,7 @@
       "C99Native": false
     },
     {
-      "id": 1397,
+      "id": 1396,
       "ns": "TORCH",
       "name": "MODELPARAMETERS",
       "kind": "TorchModelParameters",
@@ -14021,7 +14011,7 @@
       "C99Native": false
     },
     {
-      "id": 1398,
+      "id": 1397,
       "ns": "TORCH",
       "name": "MODELRESET",
       "kind": "TorchModelReset",
@@ -14031,7 +14021,7 @@
       "C99Native": false
     },
     {
-      "id": 1399,
+      "id": 1398,
       "ns": "TORCH",
       "name": "MODELSAVE",
       "kind": "TorchModelSave",
@@ -14041,7 +14031,7 @@
       "C99Native": false
     },
     {
-      "id": 1400,
+      "id": 1399,
       "ns": "TORCH",
       "name": "MODELSTATE",
       "kind": "TorchModelState",
@@ -14051,7 +14041,7 @@
       "C99Native": false
     },
     {
-      "id": 1401,
+      "id": 1400,
       "ns": "TORCH",
       "name": "MODELTRAINSTEP",
       "kind": "TorchModelTrainStep",
@@ -14061,7 +14051,7 @@
       "C99Native": false
     },
     {
-      "id": 1402,
+      "id": 1401,
       "ns": "TORCH",
       "name": "MUL",
       "kind": "TorchMul",
@@ -14071,7 +14061,7 @@
       "C99Native": false
     },
     {
-      "id": 1403,
+      "id": 1402,
       "ns": "TORCH",
       "name": "NORMALIZE",
       "kind": "TorchNormalize",
@@ -14081,7 +14071,7 @@
       "C99Native": false
     },
     {
-      "id": 1404,
+      "id": 1403,
       "ns": "TORCH",
       "name": "ONEHOT",
       "kind": "TorchOneHot",
@@ -14091,7 +14081,7 @@
       "C99Native": false
     },
     {
-      "id": 1405,
+      "id": 1404,
       "ns": "TORCH",
       "name": "ONES",
       "kind": "TorchOnes",
@@ -14101,7 +14091,7 @@
       "C99Native": false
     },
     {
-      "id": 1406,
+      "id": 1405,
       "ns": "TORCH",
       "name": "PERMUTE",
       "kind": "TorchPermute",
@@ -14111,7 +14101,7 @@
       "C99Native": false
     },
     {
-      "id": 1407,
+      "id": 1406,
       "ns": "TORCH",
       "name": "POW",
       "kind": "TorchPow",
@@ -14121,7 +14111,7 @@
       "C99Native": false
     },
     {
-      "id": 1408,
+      "id": 1407,
       "ns": "TORCH",
       "name": "RANDN",
       "kind": "TorchRandn",
@@ -14131,7 +14121,7 @@
       "C99Native": false
     },
     {
-      "id": 1409,
+      "id": 1408,
       "ns": "TORCH",
       "name": "RELU",
       "kind": "TorchRelu",
@@ -14141,7 +14131,7 @@
       "C99Native": false
     },
     {
-      "id": 1410,
+      "id": 1409,
       "ns": "TORCH",
       "name": "RESHAPE",
       "kind": "TorchReshape",
@@ -14151,7 +14141,7 @@
       "C99Native": false
     },
     {
-      "id": 1411,
+      "id": 1410,
       "ns": "TORCH",
       "name": "ROUGE",
       "kind": "TorchRouge",
@@ -14161,7 +14151,7 @@
       "C99Native": false
     },
     {
-      "id": 1412,
+      "id": 1411,
       "ns": "TORCH",
       "name": "SET",
       "kind": "TorchSet",
@@ -14171,7 +14161,7 @@
       "C99Native": false
     },
     {
-      "id": 1413,
+      "id": 1412,
       "ns": "TORCH",
       "name": "SHAPE",
       "kind": "TorchShape",
@@ -14181,7 +14171,7 @@
       "C99Native": false
     },
     {
-      "id": 1414,
+      "id": 1413,
       "ns": "TORCH",
       "name": "SIGMOID",
       "kind": "TorchSigmoid",
@@ -14191,7 +14181,7 @@
       "C99Native": false
     },
     {
-      "id": 1415,
+      "id": 1414,
       "ns": "TORCH",
       "name": "SIMILARITY",
       "kind": "TorchSimilarity",
@@ -14201,7 +14191,7 @@
       "C99Native": false
     },
     {
-      "id": 1416,
+      "id": 1415,
       "ns": "TORCH",
       "name": "SLICE",
       "kind": "TorchSlice",
@@ -14211,7 +14201,7 @@
       "C99Native": false
     },
     {
-      "id": 1417,
+      "id": 1416,
       "ns": "TORCH",
       "name": "SOFTMAX",
       "kind": "TorchSoftmax",
@@ -14221,7 +14211,7 @@
       "C99Native": false
     },
     {
-      "id": 1418,
+      "id": 1417,
       "ns": "TORCH",
       "name": "SPLIT",
       "kind": "TorchSplit",
@@ -14231,7 +14221,7 @@
       "C99Native": false
     },
     {
-      "id": 1419,
+      "id": 1418,
       "ns": "TORCH",
       "name": "SQRT",
       "kind": "TorchSqrt",
@@ -14241,7 +14231,7 @@
       "C99Native": false
     },
     {
-      "id": 1420,
+      "id": 1419,
       "ns": "TORCH",
       "name": "STACK",
       "kind": "TorchStack",
@@ -14251,7 +14241,7 @@
       "C99Native": false
     },
     {
-      "id": 1421,
+      "id": 1420,
       "ns": "TORCH",
       "name": "STANDARDIZE",
       "kind": "TorchStandardize",
@@ -14261,7 +14251,7 @@
       "C99Native": false
     },
     {
-      "id": 1422,
+      "id": 1421,
       "ns": "TORCH",
       "name": "SUB",
       "kind": "TorchSub",
@@ -14271,7 +14261,7 @@
       "C99Native": false
     },
     {
-      "id": 1423,
+      "id": 1422,
       "ns": "TORCH",
       "name": "SUM",
       "kind": "TorchSum",
@@ -14281,7 +14271,7 @@
       "C99Native": false
     },
     {
-      "id": 1424,
+      "id": 1423,
       "ns": "TORCH",
       "name": "TANH",
       "kind": "TorchTanh",
@@ -14291,7 +14281,7 @@
       "C99Native": false
     },
     {
-      "id": 1425,
+      "id": 1424,
       "ns": "TORCH",
       "name": "TEXTDECODE",
       "kind": "TorchTextDecode",
@@ -14301,7 +14291,7 @@
       "C99Native": false
     },
     {
-      "id": 1426,
+      "id": 1425,
       "ns": "TORCH",
       "name": "TEXTENCODE",
       "kind": "TorchTextEncode",
@@ -14311,7 +14301,7 @@
       "C99Native": false
     },
     {
-      "id": 1427,
+      "id": 1426,
       "ns": "TORCH",
       "name": "TOARRAY",
       "kind": "TorchToArray",
@@ -14321,7 +14311,7 @@
       "C99Native": false
     },
     {
-      "id": 1428,
+      "id": 1427,
       "ns": "TORCH",
       "name": "TOPK",
       "kind": "TorchTopK",
@@ -14331,7 +14321,7 @@
       "C99Native": false
     },
     {
-      "id": 1429,
+      "id": 1428,
       "ns": "TORCH",
       "name": "TRANSPOSE",
       "kind": "TorchTranspose",
@@ -14341,7 +14331,7 @@
       "C99Native": false
     },
     {
-      "id": 1430,
+      "id": 1429,
       "ns": "TORCH",
       "name": "ZEROS",
       "kind": "TorchZeros",
@@ -14351,7 +14341,7 @@
       "C99Native": false
     },
     {
-      "id": 1431,
+      "id": 1430,
       "ns": "TRADING",
       "name": "BidAskSpread",
       "kind": "BidAskSpread",
@@ -14361,7 +14351,7 @@
       "C99Native": false
     },
     {
-      "id": 1432,
+      "id": 1431,
       "ns": "TRADING",
       "name": "CAPM",
       "kind": "CAPM",
@@ -14371,7 +14361,7 @@
       "C99Native": false
     },
     {
-      "id": 1433,
+      "id": 1432,
       "ns": "TRADING",
       "name": "CapitalGainsYield",
       "kind": "CapitalGainsYield",
@@ -14381,7 +14371,7 @@
       "C99Native": false
     },
     {
-      "id": 1434,
+      "id": 1433,
       "ns": "TRADING",
       "name": "GeometricMeanReturn",
       "kind": "GeometricMeanReturn",
@@ -14391,7 +14381,7 @@
       "C99Native": false
     },
     {
-      "id": 1435,
+      "id": 1434,
       "ns": "TRADING",
       "name": "GrowthRate",
       "kind": "GrowthRate",
@@ -14401,7 +14391,7 @@
       "C99Native": false
     },
     {
-      "id": 1436,
+      "id": 1435,
       "ns": "TRADING",
       "name": "HoldingPeriodReturn",
       "kind": "HoldingPeriodReturn",
@@ -14411,7 +14401,7 @@
       "C99Native": false
     },
     {
-      "id": 1437,
+      "id": 1436,
       "ns": "TRADING",
       "name": "PreferredStockValue",
       "kind": "PreferredStockValue",
@@ -14421,7 +14411,7 @@
       "C99Native": false
     },
     {
-      "id": 1438,
+      "id": 1437,
       "ns": "TRADING",
       "name": "RiskPremium",
       "kind": "RiskPremium",
@@ -14431,7 +14421,7 @@
       "C99Native": false
     },
     {
-      "id": 1439,
+      "id": 1438,
       "ns": "TRADING",
       "name": "StockValueConstGrowth",
       "kind": "StockValueConstGrowth",
@@ -14441,7 +14431,7 @@
       "C99Native": false
     },
     {
-      "id": 1440,
+      "id": 1439,
       "ns": "TRADING",
       "name": "StockValueZeroGrowth",
       "kind": "StockValueZeroGrowth",
@@ -14451,7 +14441,7 @@
       "C99Native": false
     },
     {
-      "id": 1441,
+      "id": 1440,
       "ns": "TRADING",
       "name": "TaxEquivalentYield",
       "kind": "TaxEquivalentYield",
@@ -14461,7 +14451,7 @@
       "C99Native": false
     },
     {
-      "id": 1442,
+      "id": 1441,
       "ns": "TRADING",
       "name": "TotalStockReturn",
       "kind": "TotalStockReturn",
@@ -14471,7 +14461,7 @@
       "C99Native": false
     },
     {
-      "id": 1443,
+      "id": 1442,
       "ns": "TRADING.BACKTESTS",
       "name": "RUN",
       "kind": "Run",
@@ -14481,7 +14471,7 @@
       "C99Native": false
     },
     {
-      "id": 1444,
+      "id": 1443,
       "ns": "TRADING.BONDS",
       "name": "BondEquivalentYield",
       "kind": "BondEquivalentYield",
@@ -14491,7 +14481,7 @@
       "C99Native": false
     },
     {
-      "id": 1445,
+      "id": 1444,
       "ns": "TRADING.BONDS",
       "name": "BondPrice",
       "kind": "BondPrice",
@@ -14501,7 +14491,7 @@
       "C99Native": false
     },
     {
-      "id": 1446,
+      "id": 1445,
       "ns": "TRADING.BONDS",
       "name": "BondYield",
       "kind": "BondYield",
@@ -14511,7 +14501,7 @@
       "C99Native": false
     },
     {
-      "id": 1447,
+      "id": 1446,
       "ns": "TRADING.BONDS",
       "name": "CurrentYield",
       "kind": "CurrentYield",
@@ -14521,7 +14511,7 @@
       "C99Native": false
     },
     {
-      "id": 1448,
+      "id": 1447,
       "ns": "TRADING.BONDS",
       "name": "DURATION",
       "kind": "Duration",
@@ -14531,7 +14521,7 @@
       "C99Native": false
     },
     {
-      "id": 1449,
+      "id": 1448,
       "ns": "TRADING.BONDS",
       "name": "PRICESIMPLE",
       "kind": "PriceSimple",
@@ -14541,7 +14531,7 @@
       "C99Native": false
     },
     {
-      "id": 1450,
+      "id": 1449,
       "ns": "TRADING.BONDS",
       "name": "YieldToMaturity",
       "kind": "YieldToMaturity",
@@ -14551,7 +14541,7 @@
       "C99Native": false
     },
     {
-      "id": 1451,
+      "id": 1450,
       "ns": "TRADING.BONDS",
       "name": "ZeroCouponBondValue",
       "kind": "ZeroCouponBondValue",
@@ -14561,7 +14551,7 @@
       "C99Native": false
     },
     {
-      "id": 1452,
+      "id": 1451,
       "ns": "TRADING.BONDS",
       "name": "ZeroCouponBondYield",
       "kind": "ZeroCouponBondYield",
@@ -14571,7 +14561,7 @@
       "C99Native": false
     },
     {
-      "id": 1453,
+      "id": 1452,
       "ns": "TRADING.METRICS",
       "name": "Alpha",
       "kind": "Alpha",
@@ -14581,7 +14571,7 @@
       "C99Native": false
     },
     {
-      "id": 1454,
+      "id": 1453,
       "ns": "TRADING.METRICS",
       "name": "AnnualizedDownsideDeviation",
       "kind": "AnnualizedDownsideDeviation",
@@ -14591,7 +14581,7 @@
       "C99Native": false
     },
     {
-      "id": 1455,
+      "id": 1454,
       "ns": "TRADING.METRICS",
       "name": "AnnualizedReturn",
       "kind": "AnnualizedReturn",
@@ -14601,7 +14591,7 @@
       "C99Native": false
     },
     {
-      "id": 1456,
+      "id": 1455,
       "ns": "TRADING.METRICS",
       "name": "AnnualizedTrackingError",
       "kind": "AnnualizedTrackingError",
@@ -14611,7 +14601,7 @@
       "C99Native": false
     },
     {
-      "id": 1457,
+      "id": 1456,
       "ns": "TRADING.METRICS",
       "name": "AnnualizedVolatility",
       "kind": "AnnualizedVolatility",
@@ -14621,7 +14611,7 @@
       "C99Native": false
     },
     {
-      "id": 1458,
+      "id": 1457,
       "ns": "TRADING.METRICS",
       "name": "Beta",
       "kind": "Beta",
@@ -14631,7 +14621,7 @@
       "C99Native": false
     },
     {
-      "id": 1459,
+      "id": 1458,
       "ns": "TRADING.METRICS",
       "name": "BookValuePerShare",
       "kind": "BookValuePerShare",
@@ -14641,7 +14631,7 @@
       "C99Native": false
     },
     {
-      "id": 1460,
+      "id": 1459,
       "ns": "TRADING.METRICS",
       "name": "CalmarRatio",
       "kind": "CalmarRatio",
@@ -14651,7 +14641,7 @@
       "C99Native": false
     },
     {
-      "id": 1461,
+      "id": 1460,
       "ns": "TRADING.METRICS",
       "name": "ConditionalValueAtRisk",
       "kind": "ConditionalValueAtRisk",
@@ -14661,7 +14651,7 @@
       "C99Native": false
     },
     {
-      "id": 1462,
+      "id": 1461,
       "ns": "TRADING.METRICS",
       "name": "DPS",
       "kind": "DPS",
@@ -14671,7 +14661,7 @@
       "C99Native": false
     },
     {
-      "id": 1463,
+      "id": 1462,
       "ns": "TRADING.METRICS",
       "name": "DilutedEPS",
       "kind": "DilutedEPS",
@@ -14681,7 +14671,7 @@
       "C99Native": false
     },
     {
-      "id": 1464,
+      "id": 1463,
       "ns": "TRADING.METRICS",
       "name": "DividendPayoutRatio",
       "kind": "DividendPayoutRatio",
@@ -14691,7 +14681,7 @@
       "C99Native": false
     },
     {
-      "id": 1465,
+      "id": 1464,
       "ns": "TRADING.METRICS",
       "name": "DividendYield",
       "kind": "DividendYield",
@@ -14701,7 +14691,7 @@
       "C99Native": false
     },
     {
-      "id": 1466,
+      "id": 1465,
       "ns": "TRADING.METRICS",
       "name": "DownsideDeviation",
       "kind": "DownsideDeviation",
@@ -14711,7 +14701,7 @@
       "C99Native": false
     },
     {
-      "id": 1467,
+      "id": 1466,
       "ns": "TRADING.METRICS",
       "name": "EPS",
       "kind": "EPS",
@@ -14721,7 +14711,7 @@
       "C99Native": false
     },
     {
-      "id": 1468,
+      "id": 1467,
       "ns": "TRADING.METRICS",
       "name": "EquityMultiplier",
       "kind": "EquityMultiplier",
@@ -14731,7 +14721,7 @@
       "C99Native": false
     },
     {
-      "id": 1469,
+      "id": 1468,
       "ns": "TRADING.METRICS",
       "name": "InformationRatio",
       "kind": "InformationRatio",
@@ -14741,7 +14731,7 @@
       "C99Native": false
     },
     {
-      "id": 1470,
+      "id": 1469,
       "ns": "TRADING.METRICS",
       "name": "JarqueBeraTest",
       "kind": "JarqueBeraTest",
@@ -14751,7 +14741,7 @@
       "C99Native": false
     },
     {
-      "id": 1471,
+      "id": 1470,
       "ns": "TRADING.METRICS",
       "name": "MaxDrawdown",
       "kind": "MaxDrawdown",
@@ -14761,7 +14751,7 @@
       "C99Native": false
     },
     {
-      "id": 1472,
+      "id": 1471,
       "ns": "TRADING.METRICS",
       "name": "NAV",
       "kind": "NAV",
@@ -14771,7 +14761,7 @@
       "C99Native": false
     },
     {
-      "id": 1473,
+      "id": 1472,
       "ns": "TRADING.METRICS",
       "name": "OmegaRatio",
       "kind": "OmegaRatio",
@@ -14781,7 +14771,7 @@
       "C99Native": false
     },
     {
-      "id": 1474,
+      "id": 1473,
       "ns": "TRADING.METRICS",
       "name": "PBRatio",
       "kind": "PBRatio",
@@ -14791,7 +14781,7 @@
       "C99Native": false
     },
     {
-      "id": 1475,
+      "id": 1474,
       "ns": "TRADING.METRICS",
       "name": "PERatio",
       "kind": "PERatio",
@@ -14801,7 +14791,7 @@
       "C99Native": false
     },
     {
-      "id": 1476,
+      "id": 1475,
       "ns": "TRADING.METRICS",
       "name": "PSRatio",
       "kind": "PSRatio",
@@ -14811,7 +14801,7 @@
       "C99Native": false
     },
     {
-      "id": 1477,
+      "id": 1476,
       "ns": "TRADING.METRICS",
       "name": "ReturnsKurtosis",
       "kind": "ReturnsKurtosis",
@@ -14821,7 +14811,7 @@
       "C99Native": false
     },
     {
-      "id": 1478,
+      "id": 1477,
       "ns": "TRADING.METRICS",
       "name": "ReturnsSkewness",
       "kind": "ReturnsSkewness",
@@ -14831,7 +14821,7 @@
       "C99Native": false
     },
     {
-      "id": 1479,
+      "id": 1478,
       "ns": "TRADING.METRICS",
       "name": "SHARPERATIO",
       "kind": "SharpeRatio",
@@ -14841,7 +14831,7 @@
       "C99Native": false
     },
     {
-      "id": 1480,
+      "id": 1479,
       "ns": "TRADING.METRICS",
       "name": "SortinoRatio",
       "kind": "SortinoRatio",
@@ -14851,7 +14841,7 @@
       "C99Native": false
     },
     {
-      "id": 1481,
+      "id": 1480,
       "ns": "TRADING.METRICS",
       "name": "TotalReturn",
       "kind": "TotalReturn",
@@ -14861,7 +14851,7 @@
       "C99Native": false
     },
     {
-      "id": 1482,
+      "id": 1481,
       "ns": "TRADING.METRICS",
       "name": "TreynorRatio",
       "kind": "TreynorRatio",
@@ -14871,7 +14861,7 @@
       "C99Native": false
     },
     {
-      "id": 1483,
+      "id": 1482,
       "ns": "TRADING.METRICS",
       "name": "UlcerIndex",
       "kind": "UlcerIndex",
@@ -14881,7 +14871,7 @@
       "C99Native": false
     },
     {
-      "id": 1484,
+      "id": 1483,
       "ns": "TRADING.METRICS",
       "name": "ValueAtRisk",
       "kind": "ValueAtRisk",
@@ -14891,7 +14881,7 @@
       "C99Native": false
     },
     {
-      "id": 1485,
+      "id": 1484,
       "ns": "TRADING.OPTIONS",
       "name": "BinomialOption",
       "kind": "BinomialOption",
@@ -14901,7 +14891,7 @@
       "C99Native": false
     },
     {
-      "id": 1486,
+      "id": 1485,
       "ns": "TRADING.OPTIONS",
       "name": "BsCall",
       "kind": "BsCall",
@@ -14911,7 +14901,7 @@
       "C99Native": false
     },
     {
-      "id": 1487,
+      "id": 1486,
       "ns": "TRADING.OPTIONS",
       "name": "BsPut",
       "kind": "BsPut",
@@ -14921,7 +14911,7 @@
       "C99Native": false
     },
     {
-      "id": 1488,
+      "id": 1487,
       "ns": "TRADING.OPTIONS",
       "name": "Charm",
       "kind": "Charm",
@@ -14931,7 +14921,7 @@
       "C99Native": false
     },
     {
-      "id": 1489,
+      "id": 1488,
       "ns": "TRADING.OPTIONS",
       "name": "Delta",
       "kind": "Delta",
@@ -14941,7 +14931,7 @@
       "C99Native": false
     },
     {
-      "id": 1490,
+      "id": 1489,
       "ns": "TRADING.OPTIONS",
       "name": "DeltaSpeed",
       "kind": "DeltaSpeed",
@@ -14951,7 +14941,7 @@
       "C99Native": false
     },
     {
-      "id": 1491,
+      "id": 1490,
       "ns": "TRADING.OPTIONS",
       "name": "Gamma",
       "kind": "Gamma",
@@ -14961,7 +14951,7 @@
       "C99Native": false
     },
     {
-      "id": 1492,
+      "id": 1491,
       "ns": "TRADING.OPTIONS",
       "name": "GammaColor",
       "kind": "GammaColor",
@@ -14971,7 +14961,7 @@
       "C99Native": false
     },
     {
-      "id": 1493,
+      "id": 1492,
       "ns": "TRADING.OPTIONS",
       "name": "MertonCall",
       "kind": "MertonCall",
@@ -14981,7 +14971,7 @@
       "C99Native": false
     },
     {
-      "id": 1494,
+      "id": 1493,
       "ns": "TRADING.OPTIONS",
       "name": "MertonPut",
       "kind": "MertonPut",
@@ -14991,7 +14981,7 @@
       "C99Native": false
     },
     {
-      "id": 1495,
+      "id": 1494,
       "ns": "TRADING.OPTIONS",
       "name": "Rho",
       "kind": "Rho",
@@ -15001,7 +14991,7 @@
       "C99Native": false
     },
     {
-      "id": 1496,
+      "id": 1495,
       "ns": "TRADING.OPTIONS",
       "name": "Theta",
       "kind": "Theta",
@@ -15011,7 +15001,7 @@
       "C99Native": false
     },
     {
-      "id": 1497,
+      "id": 1496,
       "ns": "TRADING.OPTIONS",
       "name": "Vanna",
       "kind": "Vanna",
@@ -15021,7 +15011,7 @@
       "C99Native": false
     },
     {
-      "id": 1498,
+      "id": 1497,
       "ns": "TRADING.OPTIONS",
       "name": "Vega",
       "kind": "Vega",
@@ -15031,7 +15021,7 @@
       "C99Native": false
     },
     {
-      "id": 1499,
+      "id": 1498,
       "ns": "TRADING.OPTIONS",
       "name": "Volga",
       "kind": "Volga",
@@ -15041,7 +15031,7 @@
       "C99Native": false
     },
     {
-      "id": 1500,
+      "id": 1499,
       "ns": "TRADING.OPTIONS",
       "name": "Zomma",
       "kind": "Zomma",
@@ -15051,7 +15041,7 @@
       "C99Native": false
     },
     {
-      "id": 1501,
+      "id": 1500,
       "ns": "TRADING.PORTFOLIO",
       "name": "BLACKLITTERMAN",
       "kind": "BlackLitterman",
@@ -15061,7 +15051,7 @@
       "C99Native": false
     },
     {
-      "id": 1502,
+      "id": 1501,
       "ns": "TRADING.PORTFOLIO",
       "name": "CVAR",
       "kind": "PortfolioCVar",
@@ -15071,7 +15061,7 @@
       "C99Native": false
     },
     {
-      "id": 1503,
+      "id": 1502,
       "ns": "TRADING.PORTFOLIO",
       "name": "EQUALLYWEIGHTED",
       "kind": "EquallyWeighted",
@@ -15081,7 +15071,7 @@
       "C99Native": false
     },
     {
-      "id": 1504,
+      "id": 1503,
       "ns": "TRADING.PORTFOLIO",
       "name": "EVOLVE",
       "kind": "Evolve",
@@ -15091,7 +15081,7 @@
       "C99Native": false
     },
     {
-      "id": 1505,
+      "id": 1504,
       "ns": "TRADING.PORTFOLIO",
       "name": "EXPECTEDRETURN",
       "kind": "PortfolioExpectedReturn",
@@ -15101,7 +15091,7 @@
       "C99Native": false
     },
     {
-      "id": 1506,
+      "id": 1505,
       "ns": "TRADING.PORTFOLIO",
       "name": "ISLONGONLY",
       "kind": "IsLongOnly",
@@ -15111,7 +15101,7 @@
       "C99Native": false
     },
     {
-      "id": 1507,
+      "id": 1506,
       "ns": "TRADING.PORTFOLIO",
       "name": "KELLYCRITERION",
       "kind": "KellyCriterion",
@@ -15121,7 +15111,7 @@
       "C99Native": false
     },
     {
-      "id": 1508,
+      "id": 1507,
       "ns": "TRADING.PORTFOLIO",
       "name": "MAXRETURN",
       "kind": "MaxReturn",
@@ -15131,7 +15121,7 @@
       "C99Native": false
     },
     {
-      "id": 1509,
+      "id": 1508,
       "ns": "TRADING.PORTFOLIO",
       "name": "MAXSHARPE",
       "kind": "MaxSharpe",
@@ -15141,7 +15131,7 @@
       "C99Native": false
     },
     {
-      "id": 1510,
+      "id": 1509,
       "ns": "TRADING.PORTFOLIO",
       "name": "MEANVARIANCE",
       "kind": "MeanVariance",
@@ -15151,7 +15141,7 @@
       "C99Native": false
     },
     {
-      "id": 1511,
+      "id": 1510,
       "ns": "TRADING.PORTFOLIO",
       "name": "MINCDAR",
       "kind": "MinCdar",
@@ -15161,7 +15151,7 @@
       "C99Native": false
     },
     {
-      "id": 1512,
+      "id": 1511,
       "ns": "TRADING.PORTFOLIO",
       "name": "MINCVAR",
       "kind": "MinCvar",
@@ -15171,7 +15161,7 @@
       "C99Native": false
     },
     {
-      "id": 1513,
+      "id": 1512,
       "ns": "TRADING.PORTFOLIO",
       "name": "MINVOLATILITY",
       "kind": "MinVolatility",
@@ -15181,7 +15171,7 @@
       "C99Native": false
     },
     {
-      "id": 1514,
+      "id": 1513,
       "ns": "TRADING.PORTFOLIO",
       "name": "PORTFOLIOMAD",
       "kind": "PortfolioMad",
@@ -15191,7 +15181,7 @@
       "C99Native": false
     },
     {
-      "id": 1515,
+      "id": 1514,
       "ns": "TRADING.PORTFOLIO",
       "name": "PORTFOLIOSEMIMAD",
       "kind": "PortfolioSemiMad",
@@ -15201,7 +15191,7 @@
       "C99Native": false
     },
     {
-      "id": 1516,
+      "id": 1515,
       "ns": "TRADING.PORTFOLIO",
       "name": "PVAR",
       "kind": "PortfolioVar",
@@ -15211,7 +15201,7 @@
       "C99Native": false
     },
     {
-      "id": 1517,
+      "id": 1516,
       "ns": "TRADING.PORTFOLIO",
       "name": "RISKPARITY",
       "kind": "RiskParity",
@@ -15221,7 +15211,7 @@
       "C99Native": false
     },
     {
-      "id": 1518,
+      "id": 1517,
       "ns": "TRADING.PORTFOLIO",
       "name": "SHARPERATIO",
       "kind": "PortfolioSharpeRatio",
@@ -15231,7 +15221,7 @@
       "C99Native": false
     },
     {
-      "id": 1519,
+      "id": 1518,
       "ns": "TRADING.PORTFOLIO",
       "name": "STDEV",
       "kind": "PortfolioStDev",
@@ -15241,7 +15231,7 @@
       "C99Native": false
     },
     {
-      "id": 1520,
+      "id": 1519,
       "ns": "TRAY",
       "name": "TRAYAVAILABLE",
       "kind": "TrayAvailable",
@@ -15251,7 +15241,7 @@
       "C99Native": false
     },
     {
-      "id": 1521,
+      "id": 1520,
       "ns": "TRAY",
       "name": "TRAYBACKEND",
       "kind": "TrayBackend",
@@ -15261,7 +15251,7 @@
       "C99Native": false
     },
     {
-      "id": 1522,
+      "id": 1521,
       "ns": "TRAY",
       "name": "TRAYCREATE",
       "kind": "TrayCreate",
@@ -15271,7 +15261,7 @@
       "C99Native": false
     },
     {
-      "id": 1523,
+      "id": 1522,
       "ns": "TRAY",
       "name": "TRAYITEM",
       "kind": "TrayItem",
@@ -15281,7 +15271,7 @@
       "C99Native": false
     },
     {
-      "id": 1524,
+      "id": 1523,
       "ns": "TRAY",
       "name": "TRAYLAST",
       "kind": "TrayLast",
@@ -15291,7 +15281,7 @@
       "C99Native": false
     },
     {
-      "id": 1525,
+      "id": 1524,
       "ns": "TRAY",
       "name": "TRAYPOLL",
       "kind": "TrayPoll",
@@ -15301,7 +15291,7 @@
       "C99Native": false
     },
     {
-      "id": 1526,
+      "id": 1525,
       "ns": "TRAY",
       "name": "TRAYREMOVE",
       "kind": "TrayRemove",
@@ -15311,7 +15301,7 @@
       "C99Native": false
     },
     {
-      "id": 1527,
+      "id": 1526,
       "ns": "TRAY",
       "name": "TRAYSELFTEST",
       "kind": "TraySelfTest",
@@ -15321,7 +15311,7 @@
       "C99Native": false
     },
     {
-      "id": 1528,
+      "id": 1527,
       "ns": "TRAY",
       "name": "TRAYSEP",
       "kind": "TraySep",
@@ -15331,7 +15321,7 @@
       "C99Native": false
     },
     {
-      "id": 1529,
+      "id": 1528,
       "ns": "TRAY",
       "name": "TRAYTOOLTIP",
       "kind": "TrayTooltip",
@@ -15341,7 +15331,7 @@
       "C99Native": false
     },
     {
-      "id": 1530,
+      "id": 1529,
       "ns": "TYPEINFO",
       "name": "HAS",
       "kind": "TypeInfoHas",
@@ -15351,7 +15341,7 @@
       "C99Native": false
     },
     {
-      "id": 1531,
+      "id": 1530,
       "ns": "TYPEINFO",
       "name": "METHODINFO",
       "kind": "MethodInfo",
@@ -15361,7 +15351,7 @@
       "C99Native": false
     },
     {
-      "id": 1532,
+      "id": 1531,
       "ns": "TYPEINFO",
       "name": "PROPERTYINFO",
       "kind": "PropertyInfo",
@@ -15371,7 +15361,7 @@
       "C99Native": false
     },
     {
-      "id": 1533,
+      "id": 1532,
       "ns": "TYPEINFO",
       "name": "TYPEINFO",
       "kind": "TypeInfo",
@@ -15381,7 +15371,7 @@
       "C99Native": false
     },
     {
-      "id": 1534,
+      "id": 1533,
       "ns": "UI",
       "name": "Click",
       "kind": "UiClick",
@@ -15391,7 +15381,7 @@
       "C99Native": false
     },
     {
-      "id": 1535,
+      "id": 1534,
       "ns": "UI",
       "name": "Find",
       "kind": "UiFind",
@@ -15401,7 +15391,7 @@
       "C99Native": false
     },
     {
-      "id": 1536,
+      "id": 1535,
       "ns": "UI",
       "name": "FindAll",
       "kind": "UiFindAll",
@@ -15411,7 +15401,7 @@
       "C99Native": false
     },
     {
-      "id": 1537,
+      "id": 1536,
       "ns": "UI",
       "name": "Type",
       "kind": "UiType",
@@ -15421,7 +15411,7 @@
       "C99Native": false
     },
     {
-      "id": 1538,
+      "id": 1537,
       "ns": "VECTOR",
       "name": "Angle2d",
       "kind": "Angle2d",
@@ -15431,7 +15421,7 @@
       "C99Native": false
     },
     {
-      "id": 1539,
+      "id": 1538,
       "ns": "VECTOR",
       "name": "CHEBYSHEV",
       "kind": "VectorChebyshev",
@@ -15441,7 +15431,7 @@
       "C99Native": false
     },
     {
-      "id": 1540,
+      "id": 1539,
       "ns": "VECTOR",
       "name": "COSINE",
       "kind": "VectorCosineDistance",
@@ -15451,7 +15441,7 @@
       "C99Native": false
     },
     {
-      "id": 1541,
+      "id": 1540,
       "ns": "VECTOR",
       "name": "CREATE",
       "kind": "LinAlgVectorCreateFunc",
@@ -15461,7 +15451,7 @@
       "C99Native": false
     },
     {
-      "id": 1542,
+      "id": 1541,
       "ns": "VECTOR",
       "name": "Dist2d",
       "kind": "Dist2d",
@@ -15471,7 +15461,7 @@
       "C99Native": false
     },
     {
-      "id": 1543,
+      "id": 1542,
       "ns": "VECTOR",
       "name": "Dist3d",
       "kind": "Dist3d",
@@ -15481,7 +15471,7 @@
       "C99Native": false
     },
     {
-      "id": 1544,
+      "id": 1543,
       "ns": "VECTOR",
       "name": "EUCLIDEA",
       "kind": "Norm",
@@ -15491,7 +15481,7 @@
       "C99Native": false
     },
     {
-      "id": 1545,
+      "id": 1544,
       "ns": "VECTOR",
       "name": "EuclideanDistanceSquared",
       "kind": "EuclideanDistanceSquared",
@@ -15501,7 +15491,7 @@
       "C99Native": false
     },
     {
-      "id": 1546,
+      "id": 1545,
       "ns": "VECTOR",
       "name": "MANHATTAN",
       "kind": "VectorManhattan",
@@ -15511,7 +15501,7 @@
       "C99Native": false
     },
     {
-      "id": 1547,
+      "id": 1546,
       "ns": "VECTOR",
       "name": "MINKOWSKI",
       "kind": "VectorMinkowski",
@@ -15521,7 +15511,7 @@
       "C99Native": false
     },
     {
-      "id": 1548,
+      "id": 1547,
       "ns": "VECTOR",
       "name": "POLAR_X",
       "kind": "PolarX",
@@ -15531,7 +15521,7 @@
       "C99Native": false
     },
     {
-      "id": 1549,
+      "id": 1548,
       "ns": "VECTOR",
       "name": "POLAR_Y",
       "kind": "PolarY",
@@ -15541,7 +15531,7 @@
       "C99Native": false
     },
     {
-      "id": 1550,
+      "id": 1549,
       "ns": "VECTOR",
       "name": "PRODUCT",
       "kind": "DotProduct",
@@ -15551,7 +15541,7 @@
       "C99Native": false
     },
     {
-      "id": 1551,
+      "id": 1550,
       "ns": "VECTOR",
       "name": "VADD",
       "kind": "VAdd",
@@ -15561,7 +15551,7 @@
       "C99Native": false
     },
     {
-      "id": 1552,
+      "id": 1551,
       "ns": "VECTOR",
       "name": "VANGLE",
       "kind": "VAngle",
@@ -15571,7 +15561,7 @@
       "C99Native": false
     },
     {
-      "id": 1553,
+      "id": 1552,
       "ns": "VECTOR",
       "name": "VCROSS",
       "kind": "VCross",
@@ -15581,7 +15571,7 @@
       "C99Native": false
     },
     {
-      "id": 1554,
+      "id": 1553,
       "ns": "VECTOR",
       "name": "VDIST",
       "kind": "VDist",
@@ -15591,7 +15581,7 @@
       "C99Native": false
     },
     {
-      "id": 1555,
+      "id": 1554,
       "ns": "VECTOR",
       "name": "VDIV",
       "kind": "VDiv",
@@ -15601,7 +15591,7 @@
       "C99Native": false
     },
     {
-      "id": 1556,
+      "id": 1555,
       "ns": "VECTOR",
       "name": "VGET",
       "kind": "VGet",
@@ -15611,7 +15601,7 @@
       "C99Native": false
     },
     {
-      "id": 1557,
+      "id": 1556,
       "ns": "VECTOR",
       "name": "VLERP",
       "kind": "VLerp",
@@ -15621,7 +15611,7 @@
       "C99Native": false
     },
     {
-      "id": 1558,
+      "id": 1557,
       "ns": "VECTOR",
       "name": "VMAX",
       "kind": "VMax",
@@ -15631,7 +15621,7 @@
       "C99Native": false
     },
     {
-      "id": 1559,
+      "id": 1558,
       "ns": "VECTOR",
       "name": "VMIN",
       "kind": "VMin",
@@ -15641,7 +15631,7 @@
       "C99Native": false
     },
     {
-      "id": 1560,
+      "id": 1559,
       "ns": "VECTOR",
       "name": "VMUL",
       "kind": "VMul",
@@ -15651,7 +15641,7 @@
       "C99Native": false
     },
     {
-      "id": 1561,
+      "id": 1560,
       "ns": "VECTOR",
       "name": "VNORM",
       "kind": "VNorm",
@@ -15661,7 +15651,7 @@
       "C99Native": false
     },
     {
-      "id": 1562,
+      "id": 1561,
       "ns": "VECTOR",
       "name": "VSCALE",
       "kind": "VScale",
@@ -15671,7 +15661,7 @@
       "C99Native": false
     },
     {
-      "id": 1563,
+      "id": 1562,
       "ns": "VECTOR",
       "name": "VSUB",
       "kind": "VSub",
@@ -15681,7 +15671,7 @@
       "C99Native": false
     },
     {
-      "id": 1564,
+      "id": 1563,
       "ns": "VECTORDB",
       "name": "AbTest",
       "kind": "VectorDbAbTest",
@@ -15691,7 +15681,7 @@
       "C99Native": false
     },
     {
-      "id": 1565,
+      "id": 1564,
       "ns": "VECTORDB",
       "name": "Baseline",
       "kind": "VectorDbBaseline",
@@ -15701,7 +15691,7 @@
       "C99Native": false
     },
     {
-      "id": 1566,
+      "id": 1565,
       "ns": "VECTORDB",
       "name": "Calibrate",
       "kind": "VectorDbCalibrate",
@@ -15711,7 +15701,7 @@
       "C99Native": false
     },
     {
-      "id": 1567,
+      "id": 1566,
       "ns": "VECTORDB",
       "name": "Compare",
       "kind": "VectorDbCompare",
@@ -15721,7 +15711,7 @@
       "C99Native": false
     },
     {
-      "id": 1568,
+      "id": 1567,
       "ns": "VECTORDB",
       "name": "Completeness",
       "kind": "VectorDbCompleteness",
@@ -15731,7 +15721,7 @@
       "C99Native": false
     },
     {
-      "id": 1569,
+      "id": 1568,
       "ns": "VECTORDB",
       "name": "Count",
       "kind": "AiVectorCountEmbeddings",
@@ -15741,7 +15731,7 @@
       "C99Native": false
     },
     {
-      "id": 1570,
+      "id": 1569,
       "ns": "VECTORDB",
       "name": "Diagnose",
       "kind": "VectorDbDiagnose",
@@ -15751,7 +15741,7 @@
       "C99Native": false
     },
     {
-      "id": 1571,
+      "id": 1570,
       "ns": "VECTORDB",
       "name": "DiagnoseReport",
       "kind": "VectorDbDiagnoseReport",
@@ -15761,7 +15751,7 @@
       "C99Native": false
     },
     {
-      "id": 1572,
+      "id": 1571,
       "ns": "VECTORDB",
       "name": "Drift",
       "kind": "VectorDbDrift",
@@ -15771,7 +15761,7 @@
       "C99Native": false
     },
     {
-      "id": 1573,
+      "id": 1572,
       "ns": "VECTORDB",
       "name": "Embed",
       "kind": "AiVectorEmbed",
@@ -15781,7 +15771,7 @@
       "C99Native": false
     },
     {
-      "id": 1574,
+      "id": 1573,
       "ns": "VECTORDB",
       "name": "EnsureCollection",
       "kind": "AiVectorEnsureCollection",
@@ -15791,7 +15781,7 @@
       "C99Native": false
     },
     {
-      "id": 1575,
+      "id": 1574,
       "ns": "VECTORDB",
       "name": "EvalDiff",
       "kind": "VectorDbEvalDiff",
@@ -15801,7 +15791,7 @@
       "C99Native": false
     },
     {
-      "id": 1576,
+      "id": 1575,
       "ns": "VECTORDB",
       "name": "EvalGate",
       "kind": "VectorDbEvalGate",
@@ -15811,7 +15801,7 @@
       "C99Native": false
     },
     {
-      "id": 1577,
+      "id": 1576,
       "ns": "VECTORDB",
       "name": "Faithfulness",
       "kind": "VectorDbFaithfulness",
@@ -15821,7 +15811,7 @@
       "C99Native": false
     },
     {
-      "id": 1578,
+      "id": 1577,
       "ns": "VECTORDB",
       "name": "GenTest",
       "kind": "AiVectorGenTest",
@@ -15831,7 +15821,7 @@
       "C99Native": false
     },
     {
-      "id": 1579,
+      "id": 1578,
       "ns": "VECTORDB",
       "name": "Hallucination",
       "kind": "VectorDbHallucination",
@@ -15841,7 +15831,7 @@
       "C99Native": false
     },
     {
-      "id": 1580,
+      "id": 1579,
       "ns": "VECTORDB",
       "name": "IndexMeta",
       "kind": "AiVectorIndexMeta",
@@ -15851,7 +15841,7 @@
       "C99Native": false
     },
     {
-      "id": 1581,
+      "id": 1580,
       "ns": "VECTORDB",
       "name": "IndexText",
       "kind": "AiVectorIndexText",
@@ -15861,7 +15851,7 @@
       "C99Native": false
     },
     {
-      "id": 1582,
+      "id": 1581,
       "ns": "VECTORDB",
       "name": "ListCollections",
       "kind": "AiVectorListCollections",
@@ -15871,7 +15861,7 @@
       "C99Native": false
     },
     {
-      "id": 1583,
+      "id": 1582,
       "ns": "VECTORDB",
       "name": "LoadDocuments",
       "kind": "AiVectorLoadDocuments",
@@ -15881,7 +15871,7 @@
       "C99Native": false
     },
     {
-      "id": 1584,
+      "id": 1583,
       "ns": "VECTORDB",
       "name": "Mrr",
       "kind": "VectorDbMrr",
@@ -15891,7 +15881,7 @@
       "C99Native": false
     },
     {
-      "id": 1585,
+      "id": 1584,
       "ns": "VECTORDB",
       "name": "NdcgAt",
       "kind": "VectorDbNdcgAt",
@@ -15901,7 +15891,7 @@
       "C99Native": false
     },
     {
-      "id": 1586,
+      "id": 1585,
       "ns": "VECTORDB",
       "name": "PrecisionAt",
       "kind": "VectorDbPrecisionAt",
@@ -15911,7 +15901,7 @@
       "C99Native": false
     },
     {
-      "id": 1587,
+      "id": 1586,
       "ns": "VECTORDB",
       "name": "PurgeDeprecated",
       "kind": "AiVectorPurgeDeprecated",
@@ -15921,7 +15911,7 @@
       "C99Native": false
     },
     {
-      "id": 1588,
+      "id": 1587,
       "ns": "VECTORDB",
       "name": "RecallAt",
       "kind": "VectorDbRecallAt",
@@ -15931,7 +15921,7 @@
       "C99Native": false
     },
     {
-      "id": 1589,
+      "id": 1588,
       "ns": "VECTORDB",
       "name": "Relevance",
       "kind": "VectorDbRelevance",
@@ -15941,7 +15931,7 @@
       "C99Native": false
     },
     {
-      "id": 1590,
+      "id": 1589,
       "ns": "VECTORDB",
       "name": "RemoveSource",
       "kind": "AiVectorRemoveSource",
@@ -15951,7 +15941,7 @@
       "C99Native": false
     },
     {
-      "id": 1591,
+      "id": 1590,
       "ns": "VECTORDB",
       "name": "Search",
       "kind": "AiVectorSearch",
@@ -15961,7 +15951,7 @@
       "C99Native": false
     },
     {
-      "id": 1592,
+      "id": 1591,
       "ns": "WINDOWS",
       "name": "DESKTOP",
       "kind": "WindowDesktop",
@@ -15971,7 +15961,7 @@
       "C99Native": false
     },
     {
-      "id": 1593,
+      "id": 1592,
       "ns": "WINDOWS",
       "name": "HEIGHT",
       "kind": "WindowHeight",
@@ -15981,7 +15971,7 @@
       "C99Native": false
     },
     {
-      "id": 1594,
+      "id": 1593,
       "ns": "WINDOWS",
       "name": "THEME",
       "kind": "WindowTheme",
@@ -15991,7 +15981,7 @@
       "C99Native": false
     },
     {
-      "id": 1595,
+      "id": 1594,
       "ns": "WINDOWS",
       "name": "WIDTH",
       "kind": "WindowWidth",
@@ -16001,7 +15991,7 @@
       "C99Native": false
     },
     {
-      "id": 1596,
+      "id": 1595,
       "ns": "WINDOWS",
       "name": "WINDOWCLOSED",
       "kind": "Identifier",
@@ -16011,7 +16001,7 @@
       "C99Native": false
     },
     {
-      "id": 1597,
+      "id": 1596,
       "ns": "WINDOWS",
       "name": "X",
       "kind": "WindowX",
@@ -16021,7 +16011,7 @@
       "C99Native": false
     },
     {
-      "id": 1598,
+      "id": 1597,
       "ns": "WINDOWS",
       "name": "Y",
       "kind": "WindowY",

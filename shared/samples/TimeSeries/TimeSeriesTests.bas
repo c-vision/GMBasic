@@ -14,7 +14,7 @@
 ' - Outliers: TSOUTLIERS.
 ' =================================================================================================
 
-IMPORT TIMESERIES AS TS
+IMPORT TIMESERIESX AS TS
 IMPORT JSON
 
 SUB Main()
@@ -88,8 +88,9 @@ SUB Main()
     PRINT "--- 4. Advanced Analysis ---"
     
     ' Rilevamento Outliers (basato su soglia sigma o MAD)
-    DIM outliers() AS LONG = TS.TSOUTLIERS(Prices, 2.0)
-    PRINT "Indices Outliers (> 2 sigma): "; JSON.Stringify(outliers)
+    DIM outliers(UBOUND(Prices)) AS LONG
+    DIM nOut AS LONG = TS.TSOUTLIERS(Prices, 2.0, outliers)
+    PRINT "Outliers (> 2 sigma): "; nOut
     
     ' Volatilità totale della serie
     DIM totalVol = TS.TSVOLATILITY(rets)

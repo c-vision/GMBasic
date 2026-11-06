@@ -26075,35 +26075,6 @@
     },
     {
       "ns": "TIMESERIES",
-      "name": "HMMFIT",
-      "fn": true,
-      "return": "HMMRESULT",
-      "params": [
-        {
-          "name": "data",
-          "type": "double",
-          "optional": false,
-          "byRef": false,
-          "array": true
-        },
-        {
-          "name": "nStates",
-          "type": "long",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        },
-        {
-          "name": "nIter",
-          "type": "long",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        }
-      ]
-    },
-    {
-      "ns": "TIMESERIES",
       "name": "HoltWinters",
       "fn": true,
       "return": "HOLTWINTERSRESULT",

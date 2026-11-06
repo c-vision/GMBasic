@@ -83,12 +83,7 @@ public sealed partial class StdLib
         var procedures = new ProcedureDefinition[]
         {
             // Wrapper filtri SIGNAL (design+apply): filtro Butterworth su una serie.
-            new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.TsHmmFit, "HMMFIT"),
-                [new Parameter(-1, T(TokenKind.Identifier, "data"), new DoubleType(), arrayFlag, null, false),
-                 new Parameter(-1, T(TokenKind.Identifier, "nStates"), new LongType(), noFlags, null, false),
-                 new Parameter(-1, T(TokenKind.Identifier, "nIter"), new LongType(), noFlags, null, false)],
-                new HmmResultType(), TokenKind.TsHmmFit),
-            new NativeProcedureDefinition(-1, SymbolFlags.IsPublic, T(TokenKind.Arima, "Arima"),
+                        new NativeProcedureDefinition(-1, SymbolFlags.IsPublic, T(TokenKind.Arima, "Arima"),
             [
                 dataArrayParam,
                 new Parameter(-1, T(TokenKind.Identifier, "p"), new IntegerType(), SymbolFlags.None, null,

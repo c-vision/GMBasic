@@ -11,7 +11,7 @@
 ' - Decomposizione: TSDECOMPOSE (scompone una serie in trend, stagionalità e residuo).
 ' =================================================================================================
 
-IMPORT TIMESERIES AS TS
+IMPORT TIMESERIESX AS TS
 IMPORT JSON
 
 SUB Main()
@@ -49,9 +49,8 @@ SUB Main()
 
     ' --- 2. REGRESSIONE ROLLING ---
     PRINT "--- 2. Regressione Rolling (Alpha & Beta) ---"
-    DIM rollReg() AS ARRAY OF DOUBLE = TS.TSROLLREGRESSION(SerieA, SerieB, Periodo)
-    DIM regLen = LEN(rollReg) - 1
-    DIM ultimoBeta = rollReg(regLen)(1)
+    DIM rollReg() AS DOUBLE = TS.TSROLLREGRESSION(SerieA, SerieB, Periodo)
+    DIM ultimoBeta = rollReg(LEN(rollReg) - 1)
     PRINT "Beta Rolling (ultimo valore):         "; MATH.ROUND(ultimoBeta, 4)
     PRINT
 
@@ -63,15 +62,13 @@ SUB Main()
         SerieStagionale(si) = (si * 0.1) + SIN(si * 2 * MATH.PI() / 12) * 5 + (MATH.RND() - 0.5)
         si = si + 1
     WEND
-    DIM Decomposed() AS ARRAY OF DOUBLE = TS.TSDECOMPOSE(SerieStagionale, 12)
-    LET Trend() = Decomposed(0)
-    DIM Seasonal() = Decomposed(1)
-    DIM Residual() = Decomposed(2)
-    DIM decLen = LEN(Trend) - 1
+    DIM Decomposed() AS DOUBLE = TS.TSDECOMPOSE(SerieStagionale, 12)
+    DIM decN = LEN(Decomposed) / 3
+    DIM decLen = decN - 1
     PRINT "Decomposizione (ultimi valori):"
-    PRINT "  Trend:      "; MATH.ROUND(Trend(decLen), 4)
-    PRINT "  Stagionalità:"; MATH.ROUND(Seasonal(decLen), 4)
-    PRINT "  Residuo:    "; MATH.ROUND(Residual(decLen), 4)
+    PRINT "  Trend:      "; MATH.ROUND(Decomposed(decLen), 4)
+    PRINT "  Stagionalità:"; MATH.ROUND(Decomposed(decN + decLen), 4)
+    PRINT "  Residuo:    "; MATH.ROUND(Decomposed(2 * decN + decLen), 4)
     
     PRINT
     PRINT "Test Completato."

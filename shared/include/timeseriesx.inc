@@ -1,4 +1,4 @@
-' timeseriesx.inc — namespace TIMESERIESX via FFI (libgmbstats: gmbstats-timeseries/stats).
+' timeseriesx.inc — namespace TIMESERIES via FFI (libgmbstats: gmbstats-timeseries/stats).
 ' Primitive con dimensioni esplicite + wrapper PUBLIC che le deducono dagli array.
 ' Le uscite composte sono in out() piatto, documentato per funzione.
 NAMESPACE TIMESERIESX
@@ -460,3 +460,19 @@ PUBLIC FUNCTION TSBMAWEIGHTS(ic() AS DOUBLE) AS ARRAY OF DOUBLE
     CALL AXF_BMA(ic, m, o)
     RETURN o
 END FUNCTION
+
+' HMMFIT: data() jagged (osservazioni x dimensioni). out piatto:
+' pi(K), A(K*K), means(K*d), covs(K*d*d).
+DECLARE FUNCTION AXF_HMMFIT LIB "gmbstats" ALIAS "ofx_ts_hmmfit" (X() AS DOUBLE, n AS LONG, d AS LONG, K AS LONG, nIter AS LONG, out() AS DOUBLE) AS LONG
+
+PUBLIC SUB HMMFIT(data() AS ARRAY OF DOUBLE, nStates AS LONG, nIter AS LONG, out() AS DOUBLE)
+    DIM n AS LONG = UBOUND(data) + 1
+    DIM d AS LONG = UBOUND(data(0)) + 1
+    DIM flat((n * d) - 1) AS DOUBLE
+    FOR i = 0 TO n - 1
+        FOR j = 0 TO d - 1
+            flat(i * d + j) = data(i)(j)
+        NEXT j
+    NEXT i
+    CALL AXF_HMMFIT(flat, n, d, nStates, nIter, out)
+END SUB

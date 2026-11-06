@@ -1,7 +1,6 @@
-' EXPECT: fwd= -4.723182|vll= -3.247275|p0= 0 p1= 1 p2= 1|pi0= 0|a00= 0.893468|m00= 0.940789|c00= 0.087935|ll= 21.555536
-' HMM: forward/Viterbi via TIMESERIESX (FFI), fit ancora nel builtin TIMESERIES.
+' EXPECT: fwd= -4.723182|vll= -3.247275|p0= 0 p1= 1 p2= 1|pi0= 0|a00= 0.893468|m00= 0.940789|c00= 0.087935
+' HMM: forward/Viterbi/fit tutti via TIMESERIES (FFI, libgmbstats).
 IMPORT TIMESERIESX
-IMPORT TIMESERIES
 SUB Main()
   DIM lp(1) AS DOUBLE
   DIM la(3) AS DOUBLE
@@ -20,10 +19,11 @@ SUB Main()
   FOR i = 0 TO 19
     x(i) = {SIN(i * 0.35) + i * 0.05, COS(i * 0.35) * 0.8}
   NEXT i
-  DIM r = TIMESERIES.HMMFIT(x, 2, 8)
-  PRINT "pi0="; MATH.ROUND(r.Pi(0), 6)
-  PRINT "a00="; MATH.ROUND(r.A(0), 6)
-  PRINT "m00="; MATH.ROUND(r.Means(0), 6)
-  PRINT "c00="; MATH.ROUND(r.Covs(0), 6)
-  PRINT "ll="; MATH.ROUND(r.LogLikelihood, 6)
+  ' out: pi(2), A(4), means(4), covs(8)
+  DIM o(17) AS DOUBLE
+  CALL TIMESERIESX.HMMFIT(x, 2, 8, o)
+  PRINT "pi0="; MATH.ROUND(o(0), 6)
+  PRINT "a00="; MATH.ROUND(o(2), 6)
+  PRINT "m00="; MATH.ROUND(o(6), 6)
+  PRINT "c00="; MATH.ROUND(o(10), 6)
 END SUB

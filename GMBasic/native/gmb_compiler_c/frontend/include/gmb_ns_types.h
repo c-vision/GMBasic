@@ -1256,7 +1256,6 @@ static const gmb_ns_type_row_t gmb_ns_types[] = {
     { GMB_TOK_GoMaxProcs, 0 },
     { GMB_TOK_NumGoroutine, 0 },
     { GMB_TOK_NumCpu, 0 },
-    { GMB_TOK_TsHmmFit, 0 },
     { GMB_TOK_Arima, 0 },
     { GMB_TOK_HoltWinters, 0 },
     { GMB_TOK_AdfTest, 0 },

@@ -2,7 +2,7 @@
 IMPORT TYPEINFO
 ' FILE: TimeSeries/TimeSeriesFullCoverage.bas
 ' Copertura completa delle funzioni Time Series non ancora coperte.
-IMPORT TIMESERIES AS TS
+IMPORT TIMESERIESX AS TS
 
 SUB Main()
     CLS
@@ -35,7 +35,7 @@ SUB Main()
 
     ' --- TSDECOMPOSE ---
     PRINT "-- TSDECOMPOSE --"
-    DIM dec = TS.TSDECOMPOSE(s, 2)
+    DIM dec() AS DOUBLE = TS.TSDECOMPOSE(s, 2)
     PRINT "TSDECOMPOSE type: "; TYPEINFO(dec)
     PRINT
 

@@ -1,4 +1,4 @@
-' MiniTest TIMESERIES.TSAUTOCORR — copertura con input VALIDO (serie di 10 punti).
+' MiniTest TIMESERIESX.TSAUTOCORR — copertura con input VALIDO (serie di 10 punti).
 ' Gli stub gen_* passavano 0 al posto della serie: nessun backend poteva calcolare.
 ' EXPECT: 0.7
 IMPORT TIMESERIESX AS TS

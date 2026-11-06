@@ -1,5 +1,5 @@
 ' FILE: TimeSeries/TimeSeriesMatrixGaps.bas
-' Copre le sei funzioni TIMESERIESX (FFI) che ritornano matrici/vettori strutturati.
+' Copre le sei funzioni TIMESERIES (FFI) che ritornano matrici/vettori strutturati.
 ' Chiamate qualificate (TIMESERIESX.NOME) così restano rintracciabili dal controllo
 ' di copertura. Le matrici sono PIATTE: row-major (o coppie interleaved).
 

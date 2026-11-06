@@ -1,5 +1,5 @@
 ' EXPECT: kstat= 0.095901|kbw= 3|kcrit5= 0.146|qt= 7|qtl= 3.5|qbest= 1
-' TIMESERIESX (FFI, libgmbstats): dimensioni dedotte, uscite in out() piatto.
+' TIMESERIES (FFI, libgmbstats): dimensioni dedotte, uscite in out() piatto.
 IMPORT TIMESERIESX
 SUB Main()
   DIM x(49) AS DOUBLE

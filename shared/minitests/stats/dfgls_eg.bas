@@ -1,5 +1,5 @@
 ' EXPECT: dstat=-1.874815|dlags= 1|dobs= 58|estat=-262.162522|elags= 1|enreg= 2
-' TIMESERIESX (FFI): DF-GLS e Engle-Granger con matrice jagged (righe=osservazioni).
+' TIMESERIES (FFI): DF-GLS e Engle-Granger con matrice jagged (righe=osservazioni).
 IMPORT TIMESERIESX
 SUB Main()
   DIM x(59) AS DOUBLE
