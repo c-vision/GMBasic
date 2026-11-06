@@ -1,0 +1,116 @@
+/*
+ * conic_ipm.c — shim FFI del solver interior-point (LP/QP).
+ *
+ * Tutti i parametri sono espliciti: A (m x n row-major), Q (n x n row-major,
+ * solo QP), b, c, tolleranze, iterazioni, vettori di uscita x (n), y (m), z (n).
+ * Le varianti CSC prendono la matrice sparsa in formato compress-sparse-column
+ * (Aptr n+1, Arow/Aval per gli nnz); per il QP anche Q nel triangolo inferiore.
+ *
+ * Ritorno: 0 ottimo, 1 max iter, 2 memoria, 3 sistema singolare, -1 argomenti.
+ */
+#include "ipm.h"
+
+#include <stdlib.h>
+
+typedef long long i64;
+
+static int *cvt_i(const i64 *src, i64 n)
+{
+    int *d;
+    i64 i;
+    if (!src || n <= 0) return NULL;
+    d = (int *)malloc((size_t)n * sizeof(int));
+    if (!d) return NULL;
+    for (i = 0; i < n; i++) d[i] = (int)src[i];
+    return d;
+}
+
+i64 ofx_ipm_lp(const double *A, i64 m, i64 n,
+               const double *b, const double *c,
+               double tol_gap, double tol_pfeas, double tol_dfeas, i64 max_iter,
+               double *x, double *y, double *z)
+{
+    if (!A || !b || !c || !x || !y || !z || m < 1 || n < 1) return -1;
+    return (i64)ipm_solve_std(A, NULL, (int)m, (int)n, b, c,
+                              tol_gap, tol_pfeas, tol_dfeas, (int)max_iter,
+                              x, y, z, NULL, NULL);
+}
+
+i64 ofx_ipm_qp(const double *A, const double *Q, i64 m, i64 n,
+               const double *b, const double *c,
+               double tol_gap, double tol_pfeas, double tol_dfeas, i64 max_iter,
+               double *x, double *y, double *z)
+{
+    if (!A || !Q || !b || !c || !x || !y || !z || m < 1 || n < 1) return -1;
+    return (i64)ipm_solve_std(A, Q, (int)m, (int)n, b, c,
+                              tol_gap, tol_pfeas, tol_dfeas, (int)max_iter,
+                              x, y, z, NULL, NULL);
+}
+
+i64 ofx_ipm_lp_warm(const double *A, i64 m, i64 n,
+                    const double *b, const double *c,
+                    double tol_gap, double tol_pfeas, double tol_dfeas, i64 max_iter,
+                    double *x, double *y, double *z,
+                    const double *x0, const double *y0)
+{
+    if (!A || !b || !c || !x || !y || !z || !x0 || !y0 || m < 1 || n < 1) return -1;
+    return (i64)ipm_solve_std(A, NULL, (int)m, (int)n, b, c,
+                              tol_gap, tol_pfeas, tol_dfeas, (int)max_iter,
+                              x, y, z, x0, y0);
+}
+
+i64 ofx_ipm_qp_warm(const double *A, const double *Q, i64 m, i64 n,
+                    const double *b, const double *c,
+                    double tol_gap, double tol_pfeas, double tol_dfeas, i64 max_iter,
+                    double *x, double *y, double *z,
+                    const double *x0, const double *y0)
+{
+    if (!A || !Q || !b || !c || !x || !y || !z || !x0 || !y0 || m < 1 || n < 1) return -1;
+    return (i64)ipm_solve_std(A, Q, (int)m, (int)n, b, c,
+                              tol_gap, tol_pfeas, tol_dfeas, (int)max_iter,
+                              x, y, z, x0, y0);
+}
+
+i64 ofx_ipm_lp_csc(const i64 *Aptr, const i64 *Arow, const double *Aval,
+                   i64 m, i64 n, const double *b, const double *c,
+                   double tol_gap, double tol_pfeas, double tol_dfeas, i64 max_iter,
+                   double *x, double *y, double *z)
+{
+    int *ap, *ar;
+    i64 r;
+    if (!Aptr || !Arow || !Aval || !b || !c || !x || !y || !z || m < 1 || n < 1) return -1;
+    ap = cvt_i(Aptr, n + 1);
+    ar = cvt_i(Arow, Aptr[n]);
+    if (!ap || (Aptr[n] > 0 && !ar)) { free(ap); free(ar); return -1; }
+    r = (i64)ipm_solve_std_csc(ap, ar, Aval, (int)m, (int)n, b, c,
+                               tol_gap, tol_pfeas, tol_dfeas, (int)max_iter,
+                               x, y, z, NULL, NULL);
+    free(ap); free(ar);
+    return r;
+}
+
+i64 ofx_ipm_qp_csc(const i64 *Aptr, const i64 *Arow, const double *Aval,
+                   const i64 *Qptr, const i64 *Qrow, const double *Qval,
+                   i64 m, i64 n, const double *b, const double *c,
+                   double tol_gap, double tol_pfeas, double tol_dfeas, i64 max_iter,
+                   double *x, double *y, double *z)
+{
+    int *ap, *ar, *qp, *qr;
+    i64 r, nnzq;
+    if (!Aptr || !Arow || !Aval || !Qptr || !Qrow || !Qval ||
+        !b || !c || !x || !y || !z || m < 1 || n < 1) return -1;
+    nnzq = Qptr[n];
+    ap = cvt_i(Aptr, n + 1);
+    ar = cvt_i(Arow, Aptr[n]);
+    qp = cvt_i(Qptr, n + 1);
+    qr = cvt_i(Qrow, nnzq);
+    if (!ap || !qp || (Aptr[n] > 0 && !ar) || (nnzq > 0 && !qr)) {
+        free(ap); free(ar); free(qp); free(qr);
+        return -1;
+    }
+    r = (i64)ipm_solve_qp_csc(ap, ar, Aval, qp, qr, Qval, (int)m, (int)n, b, c,
+                              tol_gap, tol_pfeas, tol_dfeas, (int)max_iter,
+                              x, y, z, NULL, NULL);
+    free(ap); free(ar); free(qp); free(qr);
+    return r;
+}

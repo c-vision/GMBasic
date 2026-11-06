@@ -1723,7 +1723,10 @@ public sealed partial class IlProgramCompiler
         // callback/UDT (altrove il bit non è consultato dal runtime, lasciato a 'kind' per
         // leggibilità). Nel caso omogeneo legacy coincide sempre con 'kind'.
         long scalarKindMask = 0;
-        for (var pi = 0; pi < epd.Parameters.Length && pi < 16; pi++)
+        /* 64, non 16 (2026-11-06): con il cap a 16 gli scalari oltre la posizione 15
+         * perdevano il kind intero e viaggiavano come DOUBLE (il 19-esimo argomento
+         * `maxIter` arrivava corrotto al nativo, che tornava 1 invece di 0). */
+        for (var pi = 0; pi < epd.Parameters.Length && pi < 64; pi++)
         {
             var p = epd.Parameters[pi];
             var isPlainScalar = !IsArrayParam(p) && !IsStringParam(p) && !IsByRefScalarParam(p) && !IsCallbackParam(p) && !IsUdtParam(p);

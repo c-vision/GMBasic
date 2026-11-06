@@ -121,10 +121,17 @@ static void walk_stmt(gmb_semgraph_t* g, const gmb_stmt_t* s, const char* file, 
         case GMB_STMT_FUNCTION: {
             /* simbolo: Procedure (SUB) o Function */
             char sig[256]; size_t o = 0; sig[0] = 0;
-            for (int i = 0; i < s->n_params; i++)
-                o += (size_t)snprintf(sig + o, sizeof sig - o, "%s%s%s", i ? "," : "",
-                                      s->param_byref && s->param_byref[i] ? "BYREF " : "",
-                                      s->func_params ? s->func_params[i] : "");
+            for (int i = 0; i < s->n_params; i++) {
+                /* snprintf ritorna la lunghezza che AVREBBE scritto: se la firma supera
+                 * il buffer, `o` sfora e `sizeof sig - o` va in underflow (stack smash,
+                 * osservato con una DECLARE FFI da 33 parametri). Clampa: la firma si
+                 * tronca, il nodo semantico resta valido (l'id stabile e' un hash). */
+                int w = snprintf(sig + o, sizeof sig - o, "%s%s%s", i ? "," : "",
+                                 s->param_byref && s->param_byref[i] ? "BYREF " : "",
+                                 s->func_params ? s->func_params[i] : "");
+                if (w > 0) o += (size_t)w;
+                if (o >= sizeof sig) { o = sizeof sig - 1; break; }
+            }
             char fid[256]; id_stable(fid, sizeof fid, s->func_ns, s->is_sub ? GMB_SYM_PROCEDURE : GMB_SYM_FUNCTION, s->func_name, sig);
             walk_body(g, s->func_body, s->n_funcbody, file, fid);
             break;
