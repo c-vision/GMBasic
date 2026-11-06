@@ -712,7 +712,7 @@ public class FfiService : IFfiService
                      * (o jagged `object[][]`) con valori boxati: si appiattiscono in uno
                      * scratch tipizzato come per gli array CLR tipizzati, e il copy-out
                      * riscrive i valori convertiti nella matrice originale. */
-                    case object[,] or object[][]:
+                    case object[,] or object[][] or object[,,]:
                     {
                         var arr = (Array)args[i]!;
                         var wantInt2 = (arrayElemIntMask & (1L << i)) != 0;
@@ -728,6 +728,36 @@ public class FfiService : IFfiService
                         typedScratch[i] = buf2;
                         typedOrig[i] = arr;
                         handles[i] = GCHandle.Alloc(buf2, GCHandleType.Pinned);
+                        dArgs[i] = handles[i].AddrOfPinnedObject();
+                        break;
+                    }
+                    /* Rango >= 3 (2026-11-06, S2): una matrice CLR rettangolare di qualunque
+                     * rango è contigua row-major come una 2-D. Se l'elemento è a 8 byte e il
+                     * kind combacia col parametro nativo si pinna direttamente (zero-copy);
+                     * altrimenti si appiattisce in uno scratch tipizzato, con copy-out. */
+                    case Array arect when arect.Rank >= 2:
+                    {
+                        var wantIntR = (arrayElemIntMask & (1L << i)) != 0;
+                        var etR = arect.GetType().GetElementType();
+                        var isInt64R = etR == typeof(long) || etR == typeof(ulong);
+                        var flatCountR = FlatLength(arect);
+                        if ((etR == typeof(double) || isInt64R) && wantIntR == isInt64R)
+                        {
+                            handles[i] = GCHandle.Alloc(arect, GCHandleType.Pinned);
+                            dArgs[i] = handles[i].AddrOfPinnedObject();
+                            break;
+                        }
+                        var bufR = wantIntR ? (Array)new long[flatCountR] : new double[flatCountR];
+                        var jR = 0;
+                        foreach (var rawR in FlatValues(arect))
+                        {
+                            if (wantIntR) ((long[])bufR)[jR] = Convert.ToInt64(rawR ?? 0L);
+                            else ((double[])bufR)[jR] = Convert.ToDouble(rawR ?? 0.0);
+                            jR++;
+                        }
+                        typedScratch[i] = bufR;
+                        typedOrig[i] = arect;
+                        handles[i] = GCHandle.Alloc(bufR, GCHandleType.Pinned);
                         dArgs[i] = handles[i].AddrOfPinnedObject();
                         break;
                     }
@@ -874,6 +904,32 @@ public class FfiService : IFfiService
                         {
                             var k = 0;
                             SetFlatValuesAny(onest, tbuf, ref k);
+                            break;
+                        }
+                        default:
+                        {
+                            /* Rango >= 3 (2026-11-06, S2): copy-out generico su matrice
+                             * rettangolare — gli indici si ricostruiscono dalla posizione
+                             * lineare row-major, il valore si converte sul tipo dell'elemento
+                             * (lo scratch può essere int64 mentre la matrice è double e
+                             * viceversa). */
+                            if (typedOrig[i] is Array oarr && oarr.Rank >= 2)
+                            {
+                                var etO = oarr.GetType().GetElementType();
+                                var dimsO = new int[oarr.Rank];
+                                for (var d0 = 0; d0 < oarr.Rank; d0++) dimsO[d0] = oarr.GetLength(d0);
+                                var idxO = new int[oarr.Rank];
+                                for (var kO = 0; kO < oarr.Length; kO++)
+                                {
+                                    var remO = kO;
+                                    for (var d0 = oarr.Rank - 1; d0 >= 0; d0--) { idxO[d0] = remO % dimsO[d0]; remO /= dimsO[d0]; }
+                                    object vO = tbuf.GetValue(kO) ?? 0;
+                                    if (etO == typeof(double)) vO = Convert.ToDouble(vO);
+                                    else if (etO == typeof(long)) vO = Convert.ToInt64(vO);
+                                    else if (etO == typeof(ulong)) vO = Convert.ToUInt64(vO);
+                                    oarr.SetValue(vO, idxO);
+                                }
+                            }
                             break;
                         }
                     }

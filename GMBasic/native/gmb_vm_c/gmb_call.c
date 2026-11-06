@@ -19,13 +19,10 @@
 
 int gmb_call_enabled(void)
 {
-    static int cached = -1;
-    if (cached < 0)
-    {
-        const char* e = getenv("GMB_FFI_LIBFFI");
-        cached = (e && e[0] == '0') ? 0 : 1;
-    }
-    return cached;
+    /* Sempre attivo (2026-11-06): l'interruttore via env `GMB_FFI_LIBFFI=0` violava la regola
+     * del monorepo (nessuna env nuova per governare il comportamento). Il ripiego sul dispatch
+     * storico resta automatico quando `ffi_prep_cif` fallisce, senza bisogno di un flag. */
+    return 1;
 }
 
 int gmb_call_invoke(void* fn, int n, const unsigned char* is_int,

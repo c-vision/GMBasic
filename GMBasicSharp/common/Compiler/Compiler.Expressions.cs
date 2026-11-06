@@ -1065,23 +1065,18 @@ public sealed partial class Compiler
                     throw new BasicException(expr.OriginalToken,
                         $"FFI '{symbolName}': lo UDT '{udt.Name.Lexeme}' usato per {what} non è ammesso dal marshalling FFI (solo TYPE semplici, senza operatori/costruttori/metodi/generici).");
                 var leaves = CollectFfiLeaves(udt, what, "", "");
-                // Limite a 1-2 campi FOGLIA dopo flattening ricorsivo (2026-09-28, ristretto da
-                // 1-8 dopo un bug reale trovato testando VM/C; esteso al nesting 2026-09-29): un
-                // parametro/ritorno UDT oltre i 16 byte totali (>2 foglie a 8 byte) NON è più
-                // passabile in registri sulla ABI reale (SysV x86-64/AAPCS64) — serve un
-                // indirizzo indiretto, un meccanismo di chiamata COMPLETAMENTE diverso da "N
-                // argomenti scalari consecutivi" (che funziona SOLO entro la soglia dei 2
-                // eightbyte/16 byte, dove passare per registri "N scalari" e passare "1 struct"
-                // producono la STESSA sequenza di registri — un nesting con 2 foglie totali è
-                // ABI-identico a un UDT piatto con 2 campi). Oltre le 2 foglie, VM/C (che non
-                // emette C generato, chiama attraverso un cast di funzione scritto a mano)
-                // richiederebbe un meccanismo di chiamata dedicato per OGNI combinazione
-                // posizione+forma — fuori scope per ora. Limite verificato con crash reale
-                // (SIGSEGV) su un parametro Int3 a 3 campi — vedi AiWiki
-                // Bugs/(open) - FFI-Estensioni-Possibili-BYREF-Struct-Callback.md §2.
-                if (leaves.Count is 0 or > 2)
+                // Limite a 8 campi FOGLIA dopo flattening ricorsivo (S0, 2026-11-06). Il vecchio
+                // limite a 1-2 foglie (16 byte) esisteva perché la VM/C chiamava attraverso un
+                // CAST di funzione scritto a mano: oltre i 2 eightbyte lo struct passa in memoria
+                // e serviva un meccanismo dedicato per ogni forma. Ora la VM/C usa libffi
+                // (gmb_call_invoke_slots: ffi_type struct costruito a runtime), che classifica
+                // registri/memoria da solo; IL/PCode costruiscono un value type CLR per forma e
+                // C99 emette un typedef per UDT, con il VERO compilatore C a fare l'ABI. Restano
+                // fuori 9+ campi e i tipi di campo non a 8 byte: richiedono il layout C completo
+                // (stadio S1, descrittore v3).
+                if (leaves.Count is 0 or > 8)
                     throw new BasicException(expr.OriginalToken,
-                        $"FFI '{symbolName}': lo UDT '{udt.Name.Lexeme}' usato per {what} ha {leaves.Count} campi/campi-foglia (ammessi 1 o 2 — oltre i 16 byte totali lo struct non è più passabile in registri su tutte le architetture).");
+                        $"FFI '{symbolName}': lo UDT '{udt.Name.Lexeme}' usato per {what} ha {leaves.Count} campi/campi-foglia (ammessi da 1 a 8 — ogni foglia occupa 8 byte; oltre 8 campi serve il layout C completo, stadio S1).");
                 // Kind misto (2026-09-29): un DOUBLE e un intero nello STESSO UDT NON è un
                 // limite ABI reale (SysV x86-64/AAPCS64 classificano ogni eightbyte dello
                 // struct indipendentemente — un campo DOUBLE e uno intero convivono benissimo
@@ -1120,10 +1115,8 @@ public sealed partial class Compiler
                     if (pi < FfiMaxArgs) udtParamLeaves[pi] = leaves;
                 }
             var udtReturnLeaves = udtReturn != null ? ValidateUdtForFfi(udtReturn, "il ritorno", allowMixedKind: true) : null;
-            var mixedKindUdtParams = ffiProc.Parameters.Where(p => IsUdtParam(p) && IsMixedKindUdt((UserDefinedType)p.DataType)).ToList();
-            if (mixedKindUdtParams.Count > 1)
-                throw new BasicException(expr.OriginalToken,
-                    $"FFI '{symbolName}': al massimo UN parametro UDT a kind misto per dichiarazione (trovati {mixedKindUdtParams.Count}) — limite del dispatch nativo VM/C.");
+            // S0 (2026-11-06): il limite "un solo parametro UDT a kind misto" era del dispatch
+            // per-cast della VM/C; con libffi (slot per argomento) non serve più.
             // Kind misto sul RITORNO o su un PARAMETRO (2026-09-29): un UDT a kind misto non ha
             // un singolo "kind" da far combaciare col resto della firma — sia il dispatch del
             // ritorno sia quello del parametro misto selezionano la propria forma/posizione

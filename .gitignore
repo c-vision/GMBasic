@@ -123,3 +123,8 @@ TestResults/
 
 # manuale cartaceo: materiale locale del libro, non tracciato
 docs/manual/
+
+# Fixture native dei MiniTest FFI (2026-11-06): NON sono artefatti di build, servono ai test.
+# Si ricostruiscono con `sh shared/minitests/ffi/build_testlibs.sh`.
+!shared/minitests/ffi/libudt_ext.dylib
+!shared/minitests/ffi/libdims_ext.dylib

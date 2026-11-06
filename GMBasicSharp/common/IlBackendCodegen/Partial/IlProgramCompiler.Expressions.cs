@@ -1460,15 +1460,16 @@ public sealed partial class IlProgramCompiler
             if (!IsSimpleUdt(udt))
                 throw new NotSupportedException(
                     $"FFI '{symbolName}': lo UDT '{udt.Name.Lexeme}' usato per {what} non è ammesso dal marshalling FFI (solo TYPE semplici, senza operatori/costruttori/metodi/generici).");
-            // Limite a 1-2 campi FOGLIA dopo flattening ricorsivo — parità Compiler.Expressions.cs
-            // (bug reale, SIGSEGV VM/C su un parametro a 3 campi: oltre i 16 byte totali lo
-            // struct non è più passabile in registri sulla ABI reale; esteso al nesting
-            // 2026-09-29 — un nesting con 2 foglie totali è ABI-identico a un UDT piatto con 2
-            // campi, vedi commento gemello nella gamba PCode/VM-C).
+            // Limite a 8 campi FOGLIA dopo flattening ricorsivo (S0 2026-11-06) — parità
+            // Compiler.Expressions.cs. Il vecchio limite a 1-2 foglie (16 byte) valeva finché la
+            // VM/C chiamava con un cast di funzione scritto a mano; ora la VM/C usa libffi
+            // (gmb_call_invoke_slots) e IL/PCode costruiscono un value type CLR per forma, quindi
+            // il numero di campi non è più un vincolo ABI. Restano fuori 9+ campi e i tipi di
+            // campo non a 8 byte: richiedono il layout C completo (stadio S1, descrittore v3).
             var leafCount = CountFfiLeaves(udt, what);
-            if (leafCount is 0 or > 2)
+            if (leafCount is 0 or > 8)
                 throw new NotSupportedException(
-                    $"FFI '{symbolName}': lo UDT '{udt.Name.Lexeme}' usato per {what} ha {leafCount} campi/campi-foglia (ammessi 1 o 2 — oltre i 16 byte totali lo struct non è più passabile in registri su tutte le architetture).");
+                    $"FFI '{symbolName}': lo UDT '{udt.Name.Lexeme}' usato per {what} ha {leafCount} campi/campi-foglia (ammessi da 1 a 8 — ogni foglia occupa 8 byte; oltre 8 campi serve il layout C completo, stadio S1).");
             // Kind misto (2026-09-29, parità Compiler.Expressions.cs): non un limite ABI reale
             // (SysV/AAPCS64 classificano ogni eightbyte indipendentemente) — vietato solo come
             // PARAMETRO perché VM/C chiama attraverso un cast di funzione con un solo tipo
@@ -1488,10 +1489,8 @@ public sealed partial class IlProgramCompiler
         foreach (var p in epd.Parameters)
             if (IsUdtParam(p)) ValidateUdtForFfi((UserDefinedType)p.DataType!, $"il parametro '{p.Name.Lexeme}'", allowMixedKind: true);
         if (udtReturn != null) ValidateUdtForFfi(udtReturn, "il ritorno", allowMixedKind: true);
-        var mixedKindUdtParams = epd.Parameters.Where(p => IsUdtParam(p) && IsMixedKindUdt((UserDefinedType)p.DataType!)).ToList();
-        if (mixedKindUdtParams.Count > 1)
-            throw new NotSupportedException(
-                $"FFI '{symbolName}': al massimo UN parametro UDT a kind misto per dichiarazione (trovati {mixedKindUdtParams.Count}) — limite del dispatch nativo VM/C.");
+        // S0 (2026-11-06): il limite "un solo parametro UDT a kind misto" era del dispatch
+        // per-cast della VM/C; con libffi (slot per argomento) non serve più.
         foreach (var p in epd.Parameters)
             if (!IsArrayParam(p) && !IsStringParam(p) && !IsByRefScalarParam(p) && !IsUdtParam(p) && !IsCallbackParam(p)) CheckFfiType(p.DataType, $"il parametro '{p.Name.Lexeme}'");
         if (epd.IsFunction && !(epd.ReturnType is StringType) && udtReturn == null) CheckFfiType(epd.ReturnType, "il ritorno");
