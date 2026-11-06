@@ -2651,12 +2651,14 @@ static int vm_ffi_call_slots(void* fn, int argc,
             if (!inst) continue;
             unsigned char* eb = ubuf[i] + (size_t)j * (size_t)es;
             {
-                /* Nuova istanza: scrivere direttamente quella vecchia non si propaga se
-                 * l elemento della lista e un valore. */
+                /* Elemento per VALORE: si ricostruisce una nuova istanza e si scrive nella lista
+                 * con l API canonica (gmb_list_set gestisce refcount e sostituzione). */
                 gmb_obj_shared_val_t* ninst = gmb_shared_dict_new();
                 for (int f = 0; f < uaCount[i] && f < 64; f++)
                     vm_ffi_set_leaf_val(ninst, uaNames[i][f], NULL, 0, vm_ffi_load_field(eb, uaOff[i][f], uaType[i][f]));
-                sv->list->items[j] = gmb_make_val_obj((gmb_obj_t*)ninst);
+                gmb_val_t nv = gmb_make_val_obj((gmb_obj_t*)ninst);
+                if (sv && sv->list) gmb_list_set(sv->list, (gmb_int_t)j, nv);
+                gmb_val_release(nv);
             }
         }
     }
