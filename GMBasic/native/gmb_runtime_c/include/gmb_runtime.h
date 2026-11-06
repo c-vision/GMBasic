@@ -2163,6 +2163,7 @@ gmb_val_t gmb_spearmanr_flat(const double* x, int nx, const double* y, int ny);
 gmb_val_t gmb_kendalltau_flat(const double* x, int nx, const double* y, int ny);
 gmb_val_t gmb_ftest_flat(const double* x, int nx, const double* y, int ny);
 gmb_val_t gmb_linregress_flat(const double* x, int nx, const double* y, int ny);
+gmb_val_t gmb_regress_flat(const double* x, int nx, const double* y, int ny);
 gmb_val_t gmb_mannwhitney_flat(const double* x, int nx, const double* y, int ny);
 gmb_val_t gmb_wilcoxon_flat(const double* x, int nx, const double* y, int ny);
 gmb_val_t gmb_skewtest_flat(const double* a, int n);

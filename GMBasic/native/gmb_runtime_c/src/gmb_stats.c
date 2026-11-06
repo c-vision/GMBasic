@@ -986,6 +986,21 @@ gmb_val_t gmb_linregress_flat(const double* x, int nx, const double* y, int ny)
     gmb_val_t xl = gmb_stats_list_from_arr(x, nx), yl = gmb_stats_list_from_arr(y, ny);
     return gmb_linregress(xl, yl);
 }
+
+/* REGRESSION.Regress: canone CommonLib.Numerics.LinearRegression (una passata,
+ * come IlRuntime.Regress e il builtin VM-C gmb_bf_91). NON gmb_linregress, che e'
+ * la variante scipy-like di STATS.LINREGRESS (due passate) e diverge di 1 ULP
+ * sull'intercetta. */
+gmb_val_t gmb_regress_flat(const double* x, int nx, const double* y, int ny)
+{
+    int n = nx < ny ? nx : ny;
+    double slope = 0, intercept = 0, r2 = 0;
+    gmb_analysis_linear_regression(x, y, n, &slope, &intercept, &r2);
+    return gmb_make_dict(3,
+        "Slope", gmb_make_val_double(slope),
+        "Intercept", gmb_make_val_double(intercept),
+        "R2", gmb_make_val_double(r2));
+}
 gmb_val_t gmb_mannwhitney_flat(const double* x, int nx, const double* y, int ny)
 {
     gmb_val_t xl = gmb_stats_list_from_arr(x, nx), yl = gmb_stats_list_from_arr(y, ny);
