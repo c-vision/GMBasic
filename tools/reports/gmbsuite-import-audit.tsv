@@ -15,7 +15,7 @@ ffi_internal	ffi	/Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/libs/f
 ffi_internal	ffitest	/Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/libs/ffitest	alias=0	OK	alias_senza_def=0 alias_non_esportati=0 header_senza_def=0 (WARN)
 ffi_internal	flow	/Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/libs/flow	alias=10	OK	alias_senza_def=0 alias_non_esportati=0 header_senza_def=0 (WARN)
 ffi_internal	gametheory	/Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/libs/gametheory	alias=5	OK	alias_senza_def=0 alias_non_esportati=0 header_senza_def=0 (WARN)
-ffi_internal	geo	/Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/libs/geo	alias=29	OK	alias_senza_def=0 alias_non_esportati=0 header_senza_def=0 (WARN)
+ffi_internal	geo	/Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/libs/geo	alias=30	OK	alias_senza_def=0 alias_non_esportati=0 header_senza_def=0 (WARN)
 ffi_internal	graph	/Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/libs/graph	alias=39	OK	alias_senza_def=0 alias_non_esportati=0 header_senza_def=0 (WARN)
 ffi_internal	graphics	/Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/libs/graphics	alias=0	OK	alias_senza_def=0 alias_non_esportati=0 header_senza_def=0 (WARN)
 ffi_internal	grpc	/Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/libs/grpc	alias=4	OK	alias_senza_def=0 alias_non_esportati=0 header_senza_def=0 (WARN)
