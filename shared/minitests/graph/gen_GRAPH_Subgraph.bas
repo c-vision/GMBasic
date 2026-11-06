@@ -1,5 +1,0 @@
-IMPORT BRAINS
-
-SUB Main()
-    PRINT BRAINS.SUBGRAPH("", "", 0)
-END SUB
