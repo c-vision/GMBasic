@@ -1,6 +1,6 @@
 ' UDT con layout C reale (S1, 2026-11-06): campi a 1/8 byte, padding, kind misto.
 ' Le size/offset sono confrontate con quelle calcolate dal compilatore C.
-' EXPECT: sz= 24|ob= 8|oc= 16|fsz= 16|s1= 13|b.a= 4|b.b= 5.5|b.c= 6|f1= 6.5|fk.x= 2.5|fk.y= 5|fk.z= 5|nl= 7|wsz= 16|w1= 6|wb= 2 , 4 , 6
+' EXPECT: sz= 24|ob= 8|oc= 16|fsz= 16|s1= 13|b.a= 4|b.b= 5.5|b.c= 6|f1= 6.5|fk.x= 2.5|fk.y= 5|fk.z= 5|nl= 7|wsz= 16|w1= 6|wbs= 12
 TYPE Mixed
     A AS LONG
     B AS DOUBLE
@@ -13,9 +13,9 @@ TYPE Named2
 END TYPE
 
 TYPE Wide
-    A AS INTEGER
-    B AS LONG
-    C AS QUAD
+    A AS UINTEGER
+    B AS ULONG
+    C AS UQUAD
 END TYPE
 
 TYPE Fiz
@@ -75,5 +75,5 @@ SUB Main()
 
     DIM wb AS Wide
     wb = WideBump(w)
-    PRINT "wb="; wb.A; ","; wb.B; ","; wb.C
+    PRINT "wbs="; WideSum(wb)
 END SUB

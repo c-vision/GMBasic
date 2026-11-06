@@ -75,7 +75,7 @@ int32_t named2_len(Named2 v) { return (int32_t)(v.s ? (int32_t)strlen(v.s) : 0) 
 Named2 named2_make(const char *s, int32_t n) { Named2 r; r.s = (char *)s; r.n = n; return r; }
 
 /* Campi senza segno (2026-11-06): uint16/uint32/uint64. */
-typedef struct { int16_t a; int32_t b; int64_t c; } Wide;
+typedef struct { uint16_t a; uint32_t b; uint64_t c; } Wide;
 
 int32_t wide_size(void) { return (int32_t)sizeof(Wide); }
 double wide_sum(Wide w) { return (double)w.a + (double)w.b + (double)w.c; }
