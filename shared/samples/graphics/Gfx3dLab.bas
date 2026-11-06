@@ -56,4 +56,12 @@ SUB Main()
   gmap(2) = 1 : gmap(6) = 1 : gmap(10) = 1 : gmap(14) = 1
   PRINT "dda="; GFX3D.RAYCASTDDA(gmap(), 4, 4, 0.5, 0.5, 1, 0, hit()); ":";
   PRINT hit(1); ","; hit(2); ","; hit(4)
+
+  ' DDA con limite di passi: il muro è a 6 celle -> 3 passi bastano? no, 10 sì
+  DIM dg(63) AS DOUBLE, dh(5) AS DOUBLE, dray(4) AS DOUBLE
+  dg(38) = 1
+  dray(0) = 0.5 : dray(1) = 4.5 : dray(2) = 1 : dray(3) = 0 : dray(4) = 3
+  PRINT "dda3="; GFX3D.RAYCASTDDAEX(dg(), 8, 8, dray(), dh()); ":"; dh(0)
+  dray(4) = 10
+  PRINT "dda10="; GFX3D.RAYCASTDDAEX(dg(), 8, 8, dray(), dh()); ":"; dh(0); ","; dh(1); ","; dh(2)
 END SUB

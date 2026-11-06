@@ -83,6 +83,9 @@ DECLARE FUNCTION RASTERCLIPNEAR LIB "gmbgraphics" ALIAS "ofx_gfx_raster_clip_nea
 DECLARE FUNCTION MESHSURFACE LIB "gmbgraphics" ALIAS "ofx_gfx_mesh_surface" (z() AS DOUBLE, nx AS LONG, ny AS LONG, sx AS DOUBLE, sy AS DOUBLE, zscale AS DOUBLE) AS LONG
 ' DDA su griglia rows*cols (grid() piatto, !=0 solido). hit() = [hit,map_x,map_y,side,perp_dist,wall_x].
 DECLARE FUNCTION RAYCASTDDA LIB "gmbgraphics" ALIAS "ofx_gfx_raycast_dda" (grid() AS DOUBLE, rows AS LONG, cols AS LONG, px AS DOUBLE, py AS DOUBLE, dx AS DOUBLE, dy AS DOUBLE, hit() AS DOUBLE) AS LONG
+' Come RAYCASTDDA ma con limite di passi configurabile: ray() = [px, py, dx, dy, maxsteps]
+' (maxsteps <= 0 -> 256). Limite FFI di 8 slot: gli argomenti del raggio stanno in un array.
+DECLARE FUNCTION RAYCASTDDAEX LIB "gmbgraphics" ALIAS "ofx_gfx_raycast_dda_ex" (grid() AS DOUBLE, rows AS LONG, cols AS LONG, ray() AS DOUBLE, hit() AS DOUBLE) AS LONG
 
 ' ── cilindro/cono e trasformazione AABB ───────────────────────────────────
 DECLARE FUNCTION RAYCYLINDER LIB "gmbgraphics" ALIAS "ofx_gfx_ray_cylinder" (ray() AS DOUBLE, base() AS DOUBLE, axis() AS DOUBLE, radius AS DOUBLE, height AS DOUBLE, t() AS DOUBLE) AS LONG

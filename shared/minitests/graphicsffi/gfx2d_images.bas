@@ -1,4 +1,4 @@
-' EXPECT: gauss= 0 : 1.36726787450996 , 13.63273212549|sobel= 0 : 8 , 32|transp= 0 : 4 , 1|rot90= 0 : 12 , 3|fliph= 0 : 3 , 0|thr= 0 : 0 , 1|norm= 0 : 0 , 1|hist= 0 : 4 , 4 , 4 , 4|eq= 0 : 0 , 11.25|line= 0 : 2.5 , 2.5 , 2.5|med= 0 : 5|heat= 0 : 1073742079 , 1090453504|img3= 0 : 1.75 , 5.25|res= 0 : 0 , 15|stat= 0 , 15 , 15|scale= 0 : 0 , 30|sub= 0 :-1 , 14|grylum= 0 : 5000268 , 16777215|bright= 0 : 16714250|toimg= 0 : 76.245 , 255|conv3= 0 : 16711680 , 16777215
+' EXPECT: gauss= 0 : 1.36726787450996 , 13.63273212549|sobel= 0 : 8 , 32|transp= 0 : 4 , 1|rot90= 0 : 12 , 3|fliph= 0 : 3 , 0|thr= 0 : 0 , 1|norm= 0 : 0 , 1|hist= 0 : 4 , 4 , 4 , 4|eq= 0 : 0 , 11.25|line= 0 : 2.5 , 2.5 , 2.5|med= 0 : 5|heat= 0 : 1073742079 , 1090453504|img3= 0 : 1.75 , 5.25|res= 0 : 0 , 15|stat= 0 , 15 , 15|scale= 0 : 0 , 30|sub= 0 :-1 , 14|grylum= 0 : 5000268 , 16777215|bright= 0 : 16714250|toimg= 0 : 76.245 , 255|conv3= 0 : 16711680 , 16777215|iget= 9 , 0|iset= 0 : 99 , 99|ifill= 0 : 3 , 3|iclone= 0 : 99 , 0|i3set= 0 : 7.5|i3fill= 0 : 2 , 2|bget= 255 , 0|bset= 0 : 8421504|bfill= 0 : 255 , 255|tri= 0 : 1.5 , 0
 ' FFI gmbgraphics: GFX2D — immagini float (filtri, trasformazioni, istogrammi, disegno).
 ' Solo calcolo: nessun display, parità 4 backend.
 IMPORT GFX2D
@@ -64,4 +64,29 @@ SUB Main()
   DIM ik(8) AS DOUBLE
   ik(4) = 1
   PRINT "conv3="; GFX2D.CONVOLVE3(px(), 2, 2, ik(), 1, bi()); ":"; bi(0); ","; bi(3)
+
+  ' helper puntuali: pixel, fill, clone, volumi, bitmap, triangolo
+  DIM hp(15) AS DOUBLE, hq(15) AS DOUBLE
+  FOR i = 0 TO 15 : hp(i) = a(i) : NEXT i
+  DIM hp9 AS DOUBLE, hp10 AS DOUBLE
+  hp9 = 0 : hp10 = 0
+  PRINT "iget="; GFX2D.IMGGET(hp(), 4, 4, 1, 2); ","; GFX2D.IMGGET(hp(), 4, 4, 9, 9)
+  PRINT "iset="; GFX2D.IMGSET(hp(), 4, 4, 1, 2, 99); ":"; hp(9); ","; GFX2D.IMGGET(hp(), 4, 4, 1, 2)
+  PRINT "ifill="; GFX2D.IMGFILL(hq(), 4, 4, 3); ":"; hq(0); ","; hq(15)
+  PRINT "iclone="; GFX2D.IMGCLONE(hp(), 4, 4, hq()); ":"; hq(9); ","; hq(0)
+
+  DIM iv(7) AS DOUBLE
+  PRINT "i3set="; GFX2D.IMG3SET(iv(), 2, 2, 2, 1, 1, 1, 7.5); ":"; GFX2D.IMG3GET(iv(), 2, 2, 2, 1, 1, 1)
+  PRINT "i3fill="; GFX2D.IMG3FILL(iv(), 2, 2, 2, 2); ":"; iv(0); ","; iv(7)
+
+  PRINT "bget="; GFX2D.BMPGET(px(), 2, 2, 0, 1); ","; GFX2D.BMPGET(px(), 2, 2, 9, 9)
+  PRINT "bset="; GFX2D.BMPSET(px(), 2, 2, 1, 1, 8421504); ":"; px(3)
+  PRINT "bfill="; GFX2D.BMPFILL(px(), 2, 2, 255); ":"; px(0); ","; px(3)
+
+  DIM tri(15) AS DOUBLE, va(1) AS DOUBLE, vb(1) AS DOUBLE, vc(1) AS DOUBLE
+  va(0) = 0 : va(1) = 0
+  vb(0) = 3 : vb(1) = 0
+  vc(0) = 0 : vc(1) = 3
+  PRINT "tri="; GFX2D.DRAWTRIANGLE(tri(), 4, 4, va(), vb(), vc(), 1.5, 1); ":";
+  PRINT tri(0); ","; tri(15)
 END SUB

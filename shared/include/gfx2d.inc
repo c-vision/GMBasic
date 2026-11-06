@@ -65,6 +65,24 @@ DECLARE FUNCTION IMGSCALE LIB "gmbgraphics" ALIAS "ofx_gfx_img_scale" (d() AS DO
 ' Differenza: out = a - b.
 DECLARE FUNCTION IMGSUB LIB "gmbgraphics" ALIAS "ofx_gfx_img_sub" (a() AS DOUBLE, b() AS DOUBLE, w AS LONG, h AS LONG, out() AS DOUBLE) AS LONG
 
+' ── accesso puntuale e helper ──────────────────────────────────────────────
+' Valore del pixel (x,y); coordinate fuori range -> 0.
+DECLARE FUNCTION IMGGET LIB "gmbgraphics" ALIAS "ofx_gfx_img_get" (in() AS DOUBLE, w AS LONG, h AS LONG, x AS LONG, y AS LONG) AS DOUBLE
+' Scrittura di un pixel e riempimento dell'intera immagine (in-place).
+DECLARE FUNCTION IMGSET LIB "gmbgraphics" ALIAS "ofx_gfx_img_set" (d() AS DOUBLE, w AS LONG, h AS LONG, x AS LONG, y AS LONG, v AS DOUBLE) AS LONG
+DECLARE FUNCTION IMGFILL LIB "gmbgraphics" ALIAS "ofx_gfx_img_fill" (d() AS DOUBLE, w AS LONG, h AS LONG, v AS DOUBLE) AS LONG
+' Copia indipendente: out() = clone di in() (w*h).
+DECLARE FUNCTION IMGCLONE LIB "gmbgraphics" ALIAS "ofx_gfx_img_clone" (in() AS DOUBLE, w AS LONG, h AS LONG, out() AS DOUBLE) AS LONG
+
+' Volume 3D w*h*d (layout x + w*(y + h*z)): pixel e riempimento.
+DECLARE FUNCTION IMG3GET LIB "gmbgraphics" ALIAS "ofx_gfx_img3_get" (in() AS DOUBLE, w AS LONG, h AS LONG, d AS LONG, x AS LONG, y AS LONG, z AS LONG) AS DOUBLE
+DECLARE FUNCTION IMG3SET LIB "gmbgraphics" ALIAS "ofx_gfx_img3_set" (v() AS DOUBLE, w AS LONG, h AS LONG, d AS LONG, x AS LONG, y AS LONG, z AS LONG, val AS DOUBLE) AS LONG
+DECLARE FUNCTION IMG3FILL LIB "gmbgraphics" ALIAS "ofx_gfx_img3_fill" (v() AS DOUBLE, w AS LONG, h AS LONG, d AS LONG, val AS DOUBLE) AS LONG
+
+' Triangolo (pieno o contorno) su immagine float, in-place.
+' Triangolo (pieno o contorno): vertici in array [x,y] (a(),b(),c()), in-place.
+DECLARE FUNCTION DRAWTRIANGLE LIB "gmbgraphics" ALIAS "ofx_gfx_img_draw_triangle" (d() AS DOUBLE, w AS LONG, h AS LONG, a() AS DOUBLE, b() AS DOUBLE, c() AS DOUBLE, v AS DOUBLE, fill AS LONG) AS LONG
+
 ' ── bitmap RGB8 (pixel = colori impacchettati 0xRRGGBB) ────────────────────
 ' Grayscale naive (media) e a luminanza; out() = w*h colori impacchettati.
 DECLARE FUNCTION GRAYNAIVE LIB "gmbgraphics" ALIAS "ofx_gfx_bmp_gray_naive" (px() AS DOUBLE, w AS LONG, h AS LONG, out() AS DOUBLE) AS LONG
@@ -75,3 +93,7 @@ DECLARE FUNCTION CONVOLVE3 LIB "gmbgraphics" ALIAS "ofx_gfx_bmp_convolve3" (px()
 DECLARE FUNCTION BRIGHTNESS LIB "gmbgraphics" ALIAS "ofx_gfx_bmp_brightness" (px() AS DOUBLE, w AS LONG, h AS LONG, brightness AS DOUBLE, contrast AS DOUBLE, out() AS DOUBLE) AS LONG
 ' Luminanza RGB8 -> immagine float out() (w*h).
 DECLARE FUNCTION TOIMAGE LIB "gmbgraphics" ALIAS "ofx_gfx_bmp_to_image" (px() AS DOUBLE, w AS LONG, h AS LONG, out() AS DOUBLE) AS LONG
+' Pixel RGB8 (packed 0xRRGGBB): lettura (fuori range -> 0), scrittura, riempimento.
+DECLARE FUNCTION BMPGET LIB "gmbgraphics" ALIAS "ofx_gfx_bmp_get" (px() AS DOUBLE, w AS LONG, h AS LONG, x AS LONG, y AS LONG) AS DOUBLE
+DECLARE FUNCTION BMPSET LIB "gmbgraphics" ALIAS "ofx_gfx_bmp_set" (px() AS DOUBLE, w AS LONG, h AS LONG, x AS LONG, y AS LONG, color AS DOUBLE) AS LONG
+DECLARE FUNCTION BMPFILL LIB "gmbgraphics" ALIAS "ofx_gfx_bmp_fill" (px() AS DOUBLE, w AS LONG, h AS LONG, color AS DOUBLE) AS LONG
