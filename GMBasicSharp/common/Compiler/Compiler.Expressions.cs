@@ -8,7 +8,7 @@ public sealed partial class Compiler
     /// <summary>Massimo numero di argomenti/slot FFI (2026-11: era 8, limite della tabella
     /// di dispatch; con il motore libffi il limite è il formato a 16 bit). Specchio di
     /// GMB_FFI_MAX_ARGS in gmb_bytecode/include/gmb_compiler.h.</summary>
-    public const int FfiMaxArgs = 16;
+    public const int FfiMaxArgs = 32;
 
     /// <summary>
     /// Dispatcher principale per visitare e compilare un nodo espressione (Expr).
@@ -1277,124 +1277,55 @@ public sealed partial class Compiler
                 EmitByte((byte)OpCode.OP_CALL_FFI_T);
                 EmitShort(libIndex);
                 EmitShort(nameIndex);
-                EmitByte((byte)expr.Args.Length);
+                EmitShort((ushort)expr.Args.Length);
                 EmitByte(emittedKind);
-                EmitShort((ushort)scalarKindMask);
-                // arrayParamMask: bit i settato se il parametro logico i è un array — il
-                // runtime (PCodeVM/VM-C, che eseguono lo stesso stream di bytecode) lo usa per
-                // sapere quali argomenti pinnare/marshallare come puntatore invece di leggerli
-                // come scalari int64 puri. L'IL backend non ne ha bisogno (shape nota a
-                // compile-time, vedi IlProgramCompiler.Expressions.cs).
-                int arrayMask = 0;
-                for (var pi = 0; pi < ffiProc.Parameters.Length; pi++)
-                    if (IsArrayParam(ffiProc.Parameters[pi])) arrayMask |= 1 << pi;
-                EmitShort((ushort)arrayMask);
-                // arrayElemIntMask (2026-09-28, fix): bit i settato se il parametro-array i ha
-                // ELEMENTI interi (AS LONG/INTEGER/...) invece di DOUBLE. Necessario perché gli
-                // array di PCodeVM (object[] boxati, OP_REDIM) e VM/C (gmb_val_t taggati) NON
-                // preservano in modo affidabile "AS LONG" vs "AS DOUBLE" per-elemento a runtime
-                // (es. `DIM v(5) AS LONG: v(0)=1` finisce comunque boxato/taggato come DOUBLE in
-                // entrambi) — dedurre il tipo dal PRIMO elemento a runtime dava un buffer scratch
-                // del tipo sbagliato → bit reinterpretati (1.0 double letto come ~4.6e18 int64).
-                // Il tipo dichiarato a compile-time è l'unica fonte affidabile. IL non ne ha
-                // bisogno (i suoi array CLR double[]/long[] sono già tipizzati correttamente).
-                int arrayElemIntMask = 0;
-                for (var pi = 0; pi < ffiProc.Parameters.Length; pi++)
-                {
-                    if (!IsArrayParam(ffiProc.Parameters[pi])) continue;
-                    var elem = (ffiProc.Parameters[pi].DataType as ArrayType)?.ElementType;
-                    if (IsFfiInt64Type(elem)) arrayElemIntMask |= 1 << pi;
-                }
-                EmitShort((ushort)arrayElemIntMask);
-                // stringMask (2026-09-28, supporto STRING): bit i settato se il parametro
-                // logico i è STRING — viaggia come puntatore (const char*) come un array, ma
-                // senza scratch buffer nel caso comune (i backend con storage già char* lo
-                // passano diretto). retIsString: il ritorno è STRING → il valore int64 restituito
-                // dalla chiamata nativa è in realtà un puntatore da copiare in una nuova stringa
-                // BASIC-owned (copy-out), non un numero.
-                int stringMask = 0;
-                for (var pi = 0; pi < ffiProc.Parameters.Length; pi++)
-                    if (IsStringParam(ffiProc.Parameters[pi])) stringMask |= 1 << pi;
-                EmitShort((ushort)stringMask);
                 EmitByte((byte)(retIsString ? 1 : 0));
-                // byrefScalarMask/byrefScalarElemIntMask (2026-09-28, BYREF scalare): bit i
-                // settato se il parametro logico i è BYREF scalare (viaggia come puntatore a un
-                // singolo valore, marshalling copy-in/copy-out — "array di lunghezza 1"); il
-                // secondo byte indica se quel valore è intero (AS LONG/QUAD/...) invece di
-                // DOUBLE, stesso ruolo di arrayElemIntMask. Vedi AiWiki
-                // Bugs/(open) - FFI-Estensioni-Possibili-BYREF-Struct-Callback.md §1.
-                int byrefScalarMask = 0;
-                int byrefScalarElemIntMask = 0;
-                for (var pi = 0; pi < ffiProc.Parameters.Length; pi++)
-                {
-                    if (!IsByRefScalarParam(ffiProc.Parameters[pi])) continue;
-                    byrefScalarMask |= 1 << pi;
-                    if (IsFfiInt64Type(ffiProc.Parameters[pi].DataType)) byrefScalarElemIntMask |= 1 << pi;
-                }
-                EmitShort((ushort)byrefScalarMask);
-                EmitShort((ushort)byrefScalarElemIntMask);
-                // udtParamFieldCount[8]/retUdtFieldCount (2026-09-28, struct/UDT per valore): un
-                // byte PER POSIZIONE parametro (0 = non è un UDT, altrimenti il numero di campi,
-                // 1-8) — un parametro UDT non è un singolo bit come array/STRING/BYREF perché si
-                // "espande" in N slot nativi (uno per campo). Il kind dei campi è SEMPRE
-                // 'emittedKind' (la firma omogenea lo garantisce, nessun byte separato serve).
-                // retUdtFieldCount: stesso significato per il ritorno (0 = non è un UDT).
-                for (var pi = 0; pi < FfiMaxArgs; pi++)
-                    EmitByte((byte)(udtParamLeaves[pi]?.Count ?? 0));
-                // udtParamFieldKindMask[8] (2026-09-29, kind misto come PARAMETRO): bit i
-                // settato se la FOGLIA i del parametro UDT alla posizione pi è di kind INTERO
-                // (0 = DOUBLE) — un UDT-PARAMETRO uniforme ha tutti i bit uguali (ridondante col
-                // 'kind' esterno ma uniforma la lettura); un UDT-PARAMETRO a kind misto (al
-                // massimo UNO per dichiarazione, guard sopra) usa questa maschera per sapere
-                // come leggere ogni campo. 0 se quella posizione non è un UDT.
-                for (var pi = 0; pi < FfiMaxArgs; pi++)
-                {
-                    byte m = 0;
-                    if (udtParamLeaves[pi] is { } leaves)
-                        for (var fi = 0; fi < leaves.Count; fi++)
-                            if (leaves[fi].IsInt) m |= (byte)(1 << fi);
-                    EmitByte(m);
-                }
                 EmitByte((byte)(udtReturnLeaves?.Count ?? 0));
-                // retUdtFieldKindMask (2026-09-29, kind misto sul ritorno): bit i settato se la
-                // FOGLIA i del ritorno UDT è di kind INTERO (0 = DOUBLE) — a differenza dei
-                // parametri (sempre kind uniforme, garantito dal guard sopra), il RITORNO può
-                // avere campi di kind diverso tra loro; il dispatch (PCodeVM/VM-C) usa questa
-                // maschera per scegliere la forma nativa giusta (gmb_ffi_udt{d,i,di,id}N_t) e per
-                // sapere come convertire ogni campo in lettura/scrittura. 0 se non è un ritorno UDT.
                 byte retUdtFieldKindMask = 0;
                 if (udtReturnLeaves != null)
                     for (var fi = 0; fi < udtReturnLeaves.Count; fi++)
                         if (udtReturnLeaves[fi].IsInt) retUdtFieldKindMask |= (byte)(1 << fi);
                 EmitByte(retUdtFieldKindMask);
-                // callbackParamArity[8]/callbackParamKindMask/callbackParamHasRetMask
-                // (2026-09-29, RIPRESO — vedi AiWiki Todo/(open) - FFI-Struct-UDT-Callback-
-                // Handoff-Sessione-2026-09-29.md): callbackParamArity[8] è UN BYTE PER
-                // POSIZIONE parametro (255 = quella posizione non è un callback, altrimenti
-                // l'arità 0-4 del callback — v1, guard sopra). callbackParamKindMask: bit i
-                // settato se il callback alla posizione i ha firma interna INT64 (irrilevante
-                // se arity[i]==255). callbackParamHasRetMask: bit i settato se il callback alla
-                // posizione i ha un ritorno (AS FUNCTION, non AS SUB) — determina se il
-                // trampolino nativo deve restituire un valore o essere void. Il runtime
-                // (PCodeVM/VM-C) usa questi 3 campi per selezionare/generare il trampolino
-                // nativo giusto per quello slot al momento della chiamata.
-                int callbackParamKindMask = 0, callbackParamHasRetMask = 0;
-                for (var pi = 0; pi < FfiMaxArgs; pi++)
+                // Descrittore PER ARGOMENTO (2026-11-06): niente maschere a bit; 3 byte per
+                // argomento (flags, aux1, aux2) — vedi cc_emit_ffi_call in gmb_compiler.c.
+                for (var pi = 0; pi < expr.Args.Length; pi++)
                 {
-                    if (pi < ffiProc.Parameters.Length && IsCallbackParam(ffiProc.Parameters[pi]))
+                    var p = ffiProc.Parameters[pi];
+                    var isArr = IsArrayParam(p);
+                    var isStr = !isArr && IsStringParam(p);
+                    var isBr = !isArr && !isStr && IsByRefScalarParam(p);
+                    var isCb = !isArr && !isStr && !isBr && IsCallbackParam(p);
+                    var isUd = !isArr && !isStr && !isBr && !isCb && IsUdtParam(p);
+                    int flags = 0;
+                    var intClass = isArr || isStr || isBr || isCb
+                        ? true
+                        : isUd ? emittedKind == FfiInt64 : ClassifyFfiType(p.DataType, $"il parametro '{p.Name.Lexeme}'") == FfiInt64;
+                    if (intClass) flags |= 1;
+                    if (isArr) { flags |= 2; if (IsFfiInt64Type((p.DataType as ArrayType)?.ElementType)) flags |= 0x40; }
+                    else if (isStr) flags |= 4;
+                    else if (isBr) { flags |= 8; if (IsFfiInt64Type(p.DataType)) flags |= 0x80; }
+                    else if (isUd) flags |= 0x20;
+                    else if (isCb) flags |= 0x10;
+                    EmitByte((byte)flags);
+                    byte a1 = 0, a2 = 0;
+                    if (isUd)
                     {
-                        var fp = (FunctionPointerType)ffiProc.Parameters[pi].DataType;
-                        EmitByte((byte)CallbackArityByte(fp));
-                        if (CallbackIsInt64(fp)) callbackParamKindMask |= 1 << pi;
-                        if (fp.ReturnType is not VoidType) callbackParamHasRetMask |= 1 << pi;
+                        var leaves = udtParamLeaves[pi];
+                        a1 = (byte)(leaves?.Count ?? 0);
+                        if (leaves != null)
+                            for (var fi = 0; fi < leaves.Count && fi < 8; fi++)
+                                if (leaves[fi].IsInt) a2 |= (byte)(1 << fi);
                     }
-                    else
+                    else if (isCb)
                     {
-                        EmitByte(255);
+                        var fp = (FunctionPointerType)p.DataType;
+                        a1 = (byte)CallbackArityByte(fp);
+                        if (CallbackIsInt64(fp)) a2 |= 1;
+                        if (fp.ReturnType is not VoidType) a2 |= 2;
                     }
+                    EmitByte(a1);
+                    EmitByte(a2);
                 }
-                EmitShort((ushort)callbackParamKindMask);
-                EmitShort((ushort)callbackParamHasRetMask);
                 // Path foglia + SymbolIdPath (2026-09-28, struct/UDT; esteso al nesting
                 // 2026-09-29): DUE u16 PER FOGLIA (indice costante del path-nomi, indice
                 // costante del path-SymbolId), in ordine di dichiarazione, appesi in coda —

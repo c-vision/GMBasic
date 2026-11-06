@@ -2548,7 +2548,7 @@ static void cc_emit_ffi_call(gmb_cc_t* c, const gmb_expr_t* e, const gmb_stmt_t*
 {
     int argc = e->nargs;
     int nparams = pd->n_params;
-    if (argc > GMB_FFI_MAX_ARGS) { cc_err(c, "FFI: massimo 16 argomenti supportati dal marshalling"); return; }
+    if (argc > GMB_FFI_MAX_ARGS) { cc_err(c, "FFI: massimo 32 argomenti supportati dal marshalling"); return; }
     const char* lib = pd->ffi_lib ? pd->ffi_lib : "";
     const char* sym = pd->ffi_symbol ? pd->ffi_symbol : pd->func_name;
     int is_func = !pd->is_sub;
@@ -2654,22 +2654,35 @@ static void cc_emit_ffi_call(gmb_cc_t* c, const gmb_expr_t* e, const gmb_stmt_t*
     cc_byte(c, GMB_OP_CALL_FFI_T);
     cc_u16(c, (uint16_t)libIdx);
     cc_u16(c, (uint16_t)nameIdx);
-    cc_byte(c, (uint8_t)argc);
+    /* DESCRITTORE PER ARGOMENTO (2026-11-06): niente maschere a bit. Il limite non è più la
+     * larghezza di una maschera: vale argc (u16). Per ogni argomento 3 byte:
+     *   flags bit0 int64/puntatore, bit1 array, bit2 string, bit3 byref,
+     *         bit4 callback, bit5 UDT, bit6 array elem int, bit7 byref elem int
+     *   aux1  UDT: numero campi;  callback: arità (0-4);  altrimenti 0
+     *   aux2  UDT: mask kind dei campi;  callback: bit0 kind int, bit1 ha ritorno */
+    cc_u16(c, (uint16_t)argc);
     cc_byte(c, (uint8_t)kind);
-    cc_u16(c, (uint16_t)scalarKindMask);
-    cc_u16(c, (uint16_t)arrayMask);
-    cc_u16(c, (uint16_t)arrayElemIntMask);
-    cc_u16(c, (uint16_t)stringMask);
     cc_byte(c, (uint8_t)ret_is_string);
-    cc_u16(c, (uint16_t)byrefScalarMask);
-    cc_u16(c, (uint16_t)byrefScalarElemIntMask);
-    for (int i = 0; i < GMB_FFI_MAX_ARGS; i++) cc_byte(c, udtParamFieldCount[i]);
-    for (int i = 0; i < GMB_FFI_MAX_ARGS; i++) cc_byte(c, udtParamFieldKindMask[i]);
     cc_byte(c, retUdtFieldCount);
     cc_byte(c, retUdtFieldKindMask);
-    for (int i = 0; i < GMB_FFI_MAX_ARGS; i++) cc_byte(c, cbArity[i]);
-    cc_u16(c, (uint16_t)cbKindMask);
-    cc_u16(c, (uint16_t)cbHasRetMask);
+    for (int i = 0; i < argc; i++) {
+        unsigned f = 0;
+        int ptr = is_array[i] || is_string[i] || is_byref[i] || is_cb[i];
+        if (ptr || (is_udt[i] ? (kind == 1) : p_int[i])) f |= 1u;
+        if (is_array[i]) { f |= 2u; if (p_int[i]) f |= 0x40u; }
+        else if (is_string[i]) f |= 4u;
+        else if (is_byref[i]) { f |= 8u; if (p_int[i]) f |= 0x80u; }
+        else if (is_udt[i]) f |= 0x20u;
+        else if (is_cb[i]) f |= 0x10u;
+        cc_byte(c, (uint8_t)f);
+        if (is_udt[i]) { cc_byte(c, (uint8_t)n_param_leaves[i]); cc_byte(c, (uint8_t)udtParamFieldKindMask[i]); }
+        else if (is_cb[i]) {
+            int cbk = (cbKindMask >> i) & 1;
+            int cbr = (cbHasRetMask >> i) & 1;
+            cc_byte(c, (uint8_t)cbArity[i]);
+            cc_byte(c, (uint8_t)((cbk ? 1 : 0) | (cbr ? 2 : 0)));
+        } else { cc_byte(c, 0); cc_byte(c, 0); }
+    }
     /* Coda: per ogni foglia UDT (prima i parametri, poi il ritorno), DUE u16 (path-nomi,
      * SymbolId-path CSV). */
     char csv[64];

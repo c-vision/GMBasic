@@ -40,3 +40,9 @@ double ft_arr_tail(const double* v, int n, double a1, double a2, double a3, doub
 double ft_mix9(int64_t a, double b, int64_t c, double d, int64_t e, double f,
                int64_t g, double h, int64_t i)
 { return (double)(a+c+e+g+i) + b+d+f+h; }
+
+/* 20 argomenti double: dimostra che il limite non è più 16. */
+double ft_sum20(double a1, double a2, double a3, double a4, double a5, double a6, double a7, double a8,
+                double a9, double a10, double a11, double a12, double a13, double a14, double a15, double a16,
+                double a17, double a18, double a19, double a20)
+{ return a1+a2+a3+a4+a5+a6+a7+a8+a9+a10+a11+a12+a13+a14+a15+a16+a17+a18+a19+a20; }
