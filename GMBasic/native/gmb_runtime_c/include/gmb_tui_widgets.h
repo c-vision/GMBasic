@@ -6,6 +6,7 @@
 #ifndef GMB_TUI_WIDGETS_H
 #define GMB_TUI_WIDGETS_H
 
+#include "gmb_runtime.h"
 #include "gmb_tui.h"
 #include "gmb_tui_mouse.h"
 #include "gmb_tui_console.h"
@@ -212,6 +213,7 @@ typedef struct gmb_control {
     int last_event;
     int handle;
     double* bind_value;   /* INTO del BASIC: valore sincronizzato ad ogni frame TUI */
+    gmb_string_t* bind_str; /* INTO stringa (COMBOBOX/LISTBOX/RADIO/MENU): testo selezionato */
     char container[64];   /* contenitore ospite (window/tab/panel/usercontrol); "" = radice/corrente */
     /* Proprietà VB6 non ancora specializzate dal widget (Font, Locked, Appearance,
        MousePointer, RightToLeft, proprietà Data/DataGrid/CommonDialog, ...).

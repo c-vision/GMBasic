@@ -712,11 +712,16 @@ int emit_control_stmt(ctx_t* c, gmb_stmt_t* s)
         sb_put(&c->out, "{ ");
         ctl_split_csv(c, a[4], "__lbiv", "__lbic", NULL);
         ctl_join_csv_from(c, "__lbiv", "__lbic", "__lbcsv");
-        sb_put(&c->out, "gmb_control_add_listbox((int)("); emit_expr_dflt(c, a[0], "0"); sb_put(&c->out, "), (int)("); emit_expr_dflt(c, a[1], "0");
+        sb_put(&c->out, "int __tui_h = gmb_control_add_listbox((int)("); emit_expr_dflt(c, a[0], "0"); sb_put(&c->out, "), (int)("); emit_expr_dflt(c, a[1], "0");
         sb_put(&c->out, "), (int)("); emit_expr_dflt(c, a[2], "20"); sb_put(&c->out, "), (int)("); emit_expr_dflt(c, a[3], "5"); sb_put(&c->out, "), __lbcsv, ");
-        if (_iv && _iv->type != TY_STR) { sb_put(&c->out, "(double*)&("); emit_ident(c, (char*)into_nm); sb_put(&c->out, ")"); }
+        if (_iv && _iv->type != TY_STR && into_nm) { sb_put(&c->out, "(double*)&("); emit_ident(c, (char*)into_nm); sb_put(&c->out, ")"); }
         else sb_put(&c->out, "(double*)0");
         sb_put(&c->out, "); ");
+        if (_iv && _iv->type == TY_STR && into_nm) {
+            sb_put(&c->out, "if (__tui_h >= 0) gmb_tui_bind_str(__tui_h, (gmb_string_t*)&(");
+            emit_ident(c, (char*)into_nm);
+            sb_put(&c->out, ")); ");
+        }
         /* Clausole (NAME/TAG/TOOLTIP/VISIBLE/…/STYLE e COLOR/COLORFOCUS/COLORSEL/COLORERROR):
          * il parser le fonde in set_attr[0]; qui si applicano al controllo appena creato.
          * Senza, `LISTBOX ... COLOR "W+/B" COLORFOCUS "GR+/B"` perdeva i colori
@@ -739,11 +744,16 @@ int emit_control_stmt(ctx_t* c, gmb_stmt_t* s)
         sb_put(&c->out, "{ ");
         ctl_split_csv(c, a[3], "__mn", "__mnn", NULL);
         ctl_join_csv_from(c, "__mn", "__mnn", "__mncsv");
-        sb_put(&c->out, "gmb_form_add_menubar((int)("); emit_expr_dflt(c, a[0], "0"); sb_put(&c->out, "), (int)("); emit_expr_dflt(c, a[1], "0");
+        sb_put(&c->out, "int __tui_h = gmb_form_add_menubar((int)("); emit_expr_dflt(c, a[0], "0"); sb_put(&c->out, "), (int)("); emit_expr_dflt(c, a[1], "0");
         sb_put(&c->out, "), __mncsv, ");
-        if (_iv && _iv->type != TY_STR) { sb_put(&c->out, "(double*)&("); emit_ident(c, (char*)into_nm); sb_put(&c->out, ")"); }
+        if (_iv && _iv->type != TY_STR && into_nm) { sb_put(&c->out, "(double*)&("); emit_ident(c, (char*)into_nm); sb_put(&c->out, ")"); }
         else sb_put(&c->out, "(double*)0");
         sb_put(&c->out, "); ");
+        if (_iv && _iv->type == TY_STR && into_nm) {
+            sb_put(&c->out, "if (__tui_h >= 0) gmb_tui_bind_str(__tui_h, (gmb_string_t*)&(");
+            emit_ident(c, (char*)into_nm);
+            sb_put(&c->out, ")); ");
+        }
         if (s->id_var && *s->id_var) { emit_ident(c, s->id_var); sb_put(&c->out, " = (gmb_double_t)gmb_form_last_handle(); "); }
         emit_ctrl_events(c, s);
         sb_put(&c->out, "}\n");
@@ -760,16 +770,22 @@ int emit_control_stmt(ctx_t* c, gmb_stmt_t* s)
         emit_ctrl_events(c, s);
         sb_put(&c->out, "}\n");
     } else if (strcasecmp(cname, "COMBOBOX") == 0 && na >= 4) {
-        /* Factory polimorfica. Argomenti: x, y, w, items. */
+        /* Factory polimorfica. Argomenti: x, y, w, items.
+         * INTO: numerico → indice (double*); stringa → testo selezionato (bind_str). */
         ind(c);
         sb_put(&c->out, "{ ");
         ctl_split_csv(c, a[3], "__cbiv", "__cbic", NULL);
         ctl_join_csv_from(c, "__cbiv", "__cbic", "__cbcsv");
-        sb_put(&c->out, "gmb_control_add_combobox((int)("); emit_expr_dflt(c, a[0], "0"); sb_put(&c->out, "), (int)("); emit_expr_dflt(c, a[1], "0");
+        sb_put(&c->out, "int __tui_h = gmb_control_add_combobox((int)("); emit_expr_dflt(c, a[0], "0"); sb_put(&c->out, "), (int)("); emit_expr_dflt(c, a[1], "0");
         sb_put(&c->out, "), (int)("); emit_expr_dflt(c, a[2], "20"); sb_put(&c->out, "), __cbcsv, ");
-        if (_iv && _iv->type != TY_STR) { sb_put(&c->out, "(double*)&("); emit_ident(c, (char*)into_nm); sb_put(&c->out, ")"); }
+        if (_iv && _iv->type != TY_STR && into_nm) { sb_put(&c->out, "(double*)&("); emit_ident(c, (char*)into_nm); sb_put(&c->out, ")"); }
         else sb_put(&c->out, "(double*)0");
         sb_put(&c->out, "); ");
+        if (_iv && _iv->type == TY_STR && into_nm) {
+            sb_put(&c->out, "if (__tui_h >= 0) gmb_tui_bind_str(__tui_h, (gmb_string_t*)&(");
+            emit_ident(c, (char*)into_nm);
+            sb_put(&c->out, ")); ");
+        }
         if (s->id_var && *s->id_var) { emit_ident(c, s->id_var); sb_put(&c->out, " = (gmb_double_t)gmb_form_last_handle(); "); }
         emit_ctrl_events(c, s);
         sb_put(&c->out, "}\n");
@@ -779,11 +795,16 @@ int emit_control_stmt(ctx_t* c, gmb_stmt_t* s)
         sb_put(&c->out, "{ ");
         ctl_split_csv(c, nr >= 4 ? a[3] : a[2], "__rgiv", "__rgic", NULL);
         ctl_join_csv_from(c, "__rgiv", "__rgic", "__rgcsv");
-        sb_put(&c->out, "gmb_control_add_radio((int)("); emit_expr_dflt(c, a[0], "0"); sb_put(&c->out, "), (int)("); emit_expr_dflt(c, a[1], "0");
+        sb_put(&c->out, "int __tui_h = gmb_control_add_radio((int)("); emit_expr_dflt(c, a[0], "0"); sb_put(&c->out, "), (int)("); emit_expr_dflt(c, a[1], "0");
         sb_put(&c->out, "), (int)("); if (nr >= 4) emit_expr_dflt(c, a[2], "20"); else sb_put(&c->out, "20"); sb_put(&c->out, "), __rgcsv, ");
-        if (_iv && _iv->type != TY_STR) { sb_put(&c->out, "(double*)&("); emit_ident(c, (char*)into_nm); sb_put(&c->out, ")"); }
+        if (_iv && _iv->type != TY_STR && into_nm) { sb_put(&c->out, "(double*)&("); emit_ident(c, (char*)into_nm); sb_put(&c->out, ")"); }
         else sb_put(&c->out, "(double*)0");
         sb_put(&c->out, "); ");
+        if (_iv && _iv->type == TY_STR && into_nm) {
+            sb_put(&c->out, "if (__tui_h >= 0) gmb_tui_bind_str(__tui_h, (gmb_string_t*)&(");
+            emit_ident(c, (char*)into_nm);
+            sb_put(&c->out, ")); ");
+        }
         if (s->id_var && *s->id_var) { emit_ident(c, s->id_var); sb_put(&c->out, " = (gmb_double_t)gmb_form_last_handle(); "); }
         emit_ctrl_events(c, s);
         sb_put(&c->out, "}\n");

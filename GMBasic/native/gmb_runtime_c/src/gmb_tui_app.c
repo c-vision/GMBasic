@@ -1006,20 +1006,54 @@ static double tui_ctrl_value(gmb_control_t* c)
     }
 }
 
+/* Testo "corrente" per INTO stringa (TV: il testo selezionato dell'item). */
+static const char* tui_ctrl_text(gmb_control_t* c)
+{
+    if (!c) return "";
+    switch (c->ctrl_kind)
+    {
+    case GMB_CK_COMBOBOX: return gmb_combobox_selected_value((gmb_combobox_t*)c);
+    case GMB_CK_LISTBOX:  return gmb_listbox_selected_value((gmb_listbox_t*)c);
+    case GMB_CK_RADIO:    return gmb_radio_group_selected_value((gmb_radio_group_t*)c);
+    case GMB_CK_MENU:     return gmb_menu_get_selected_label((gmb_menu_t*)c);
+    case GMB_CK_TAB: { gmb_tab_t* t = (gmb_tab_t*)c; return (t->selected >= 0 && t->selected < t->tabs_count) ? t->tabs[t->selected] : ""; }
+    case GMB_CK_DATALIST: { gmb_data_list_t* d = (gmb_data_list_t*)c; return (d->selected_index >= 0 && d->selected_index < d->items_count) ? d->items[d->selected_index] : ""; }
+    default: return "";
+    }
+}
+
+static void tui_bind_str_sync(gmb_control_t* c)
+{
+    if (!c || !c->bind_str) return;
+    const char* txt = tui_ctrl_text(c);
+    const char* cur = c->bind_str->data ? c->bind_str->data : "";
+    if (strcmp(txt, cur) != 0) *c->bind_str = gmb_string_alloc(txt);
+}
+
 /* Collega/sgancia (out==NULL) la variabile INTO a un controllo del registry. */
 /* Sincronizza le variabili INTO dei controlli TUI (usata anche in GRAPHICS:
  * il frame TUI non gira li', ma i controlli cell-based restano vivi). */
 void gmb_tui_sync_bindings(void)
 {
     for (int i = 0; i < g_reg_n; i++)
-        if (g_reg_ctrl[i] && g_reg_ctrl[i]->bind_value)
-            *g_reg_ctrl[i]->bind_value = tui_ctrl_value(g_reg_ctrl[i]);
+        if (g_reg_ctrl[i]) {
+            if (g_reg_ctrl[i]->bind_value)
+                *g_reg_ctrl[i]->bind_value = tui_ctrl_value(g_reg_ctrl[i]);
+            tui_bind_str_sync(g_reg_ctrl[i]);
+        }
 }
 
 void gmb_tui_bind_value(int handle, double* out)
 {
     if (handle < 0 || handle >= g_reg_n) return;
     g_reg_ctrl[handle]->bind_value = out;
+}
+
+void gmb_tui_bind_str(int handle, gmb_string_t* out)
+{
+    if (handle < 0 || handle >= g_reg_n) return;
+    g_reg_ctrl[handle]->bind_str = out;
+    tui_bind_str_sync(g_reg_ctrl[handle]);   /* valore subito leggibile (parità IL) */
 }
 
 static int g_gfxq[128]; static int g_gfxq_h = 0, g_gfxq_t = 0;
@@ -1117,8 +1151,11 @@ int gmb_tui_controls_frame(int frame_ms)
     }
     /* Sincronizza le variabili INTO dei controlli TUI (stato persistente nel registry). */
     for (int i = 0; i < g_reg_n; i++)
-        if (g_reg_ctrl[i] && g_reg_ctrl[i]->bind_value)
-            *g_reg_ctrl[i]->bind_value = tui_ctrl_value(g_reg_ctrl[i]);
+        if (g_reg_ctrl[i]) {
+            if (g_reg_ctrl[i]->bind_value)
+                *g_reg_ctrl[i]->bind_value = tui_ctrl_value(g_reg_ctrl[i]);
+            tui_bind_str_sync(g_reg_ctrl[i]);
+        }
     gmb_screen_buffer_t* buf = modal_target_buffer();
     gmb_surface_set_autoattach(0);
     /* Desktop TV: pulisci il buffer col pattern (blu + '░') ad OGNI frame, altrimenti restano

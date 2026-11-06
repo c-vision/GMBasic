@@ -246,6 +246,9 @@ int    gmb_tui_firing_event(void);
 void gmb_ui_frame(int ms);
 /* INTO del BASIC per i controlli TUI: valore sincronizzato ad ogni frame (out=NULL sgancia). */
 void gmb_tui_bind_value(int handle, double* out);
+/* INTO stringa: lega il testo selezionato del controllo (COMBOBOX/LISTBOX/RADIO/MENU) e lo
+ * sincronizza subito (il valore è leggibile già alla creazione, come su IL). */
+void gmb_tui_bind_str(int handle, gmb_string_t* out);
 gmb_control_t* gmb_tui_add_button(int x, int y, int w, const char* label);
 gmb_control_t* gmb_tui_add_checkbox(int x, int y, int w, const char* label);
 gmb_control_t* gmb_tui_add_listbox(int x, int y, int w, int h, const char* items_csv);
