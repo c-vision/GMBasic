@@ -2460,6 +2460,93 @@ static double vm_ffi_get_leaf(gmb_dict_t* d, const char* namePath)
     }
 }
 
+/* FFI con UDT, qualunque forma (2026-11-06, S0): chiamata tramite libffi con UNO SLOT PER
+ * ARGOMENTO — scalare intero/puntatore, scalare double, oppure struct con N campi da 8 byte.
+ * Sostituisce il dispatch storico per-cast (gmb_ffi_udt*_{1,2}_t + GMB_FFI_MIXED_DISPATCH),
+ * che copriva solo struct a 1-2 campi e un solo parametro a kind misto.
+ *
+ * Contratto dei valori in ingresso (identico a GMB_FFI_A del chiamante):
+ *   - array  → indirizzo del buffer di scratch[i] (già materializzato dal chiamante);
+ *   - BYREF  → indirizzo della cella di scratch[i];
+ *   - STRING → puntatore ai dati della gmb_obj_string_t in arrRefs[i];
+ *   - scalare→ args[i] (già numerico: int64 o double secondo scalarKindMask);
+ *   - UDT    → campi letti per nome (path punteggiato) dall'istanza dict in arrRefs[i].
+ * Uscita: *out_int/*out_double per il ritorno scalare, out_fields[] (double per foglia) per
+ * il ritorno UDT. Ritorna 0 se la chiamata è stata eseguita, -1 se la firma non è
+ * preparabile (il chiamante ricade sul dispatch storico). */
+static int vm_ffi_call_slots(void* fn, int argc,
+                             const int* udtCount, const int* udtKindMask,
+                             const char* (*udtNames)[8],
+                             const double* args,
+                             void* const* scratch, gmb_obj_t* const* arrRefs,
+                             uint64_t arrayMask, uint64_t byrefMask, uint64_t stringMask,
+                             uint64_t scalarKindMask,
+                             int retCount, int retKindMask,
+                             int64_t* out_int, double* out_double, double* out_fields)
+{
+    if (!fn || argc < 0 || argc > GMB_FFI_MAX_ARGS) return -1;
+    if (!gmb_call_enabled()) return -1;
+    gmb_call_slot slots[GMB_FFI_MAX_ARGS];
+    void* vals[GMB_FFI_MAX_ARGS];
+    int64_t iv[GMB_FFI_MAX_ARGS];
+    double dv[GMB_FFI_MAX_ARGS];
+    unsigned char fieldIsInt[GMB_FFI_MAX_ARGS][8];
+    uint64_t sbuf[GMB_FFI_MAX_ARGS][8];
+    uint64_t rbuf[8];
+    memset(fieldIsInt, 0, sizeof(fieldIsInt));
+    memset(sbuf, 0, sizeof(sbuf));
+    memset(rbuf, 0, sizeof(rbuf));
+    for (int i = 0; i < argc; i++)
+    {
+        if (udtCount[i] > 0)
+        {
+            int nf = udtCount[i] > 8 ? 8 : udtCount[i];
+            gmb_obj_shared_val_t* ud = (gmb_obj_shared_val_t*)arrRefs[i];
+            slots[i].kind = 2;
+            slots[i].nfields = nf;
+            slots[i].field_is_int = fieldIsInt[i];
+            for (int f = 0; f < nf; f++)
+            {
+                int isInt = (udtKindMask[i] >> f) & 1;
+                fieldIsInt[i][f] = (unsigned char)isInt;
+                double v = (ud && ud->dict) ? vm_ffi_get_leaf(ud->dict, udtNames[i][f]) : 0.0;
+                if (isInt) sbuf[i][f] = (uint64_t)(int64_t)v;
+                else { double d = v; memcpy(&sbuf[i][f], &d, sizeof(double)); }
+            }
+            vals[i] = sbuf[i];
+            continue;
+        }
+        int isInt = (int)((scalarKindMask >> i) & 1ull);
+        slots[i].nfields = 0;
+        slots[i].field_is_int = NULL;
+        if (arrayMask & (1ull << i)) { isInt = 1; iv[i] = (int64_t)(intptr_t)scratch[i]; vals[i] = &iv[i]; }
+        else if (byrefMask & (1ull << i)) { isInt = 1; iv[i] = (int64_t)(intptr_t)scratch[i]; vals[i] = &iv[i]; }
+        else if (stringMask & (1ull << i)) { isInt = 1; iv[i] = arrRefs[i] ? (int64_t)(intptr_t)((gmb_obj_string_t*)arrRefs[i])->data : 0; vals[i] = &iv[i]; }
+        else if (isInt) { iv[i] = (int64_t)args[i]; vals[i] = &iv[i]; }
+        else { dv[i] = args[i]; vals[i] = &dv[i]; }
+        slots[i].kind = isInt;
+    }
+    unsigned char retFieldIsInt[8] = {0};
+    for (int f = 0; f < retCount && f < 8; f++) retFieldIsInt[f] = (unsigned char)((retKindMask >> f) & 1);
+    int ret_kind = retCount > 0 ? 2 : (out_int ? 1 : 0);
+    if (gmb_call_invoke_slots(fn, argc, slots, vals, ret_kind, retCount, retFieldIsInt, rbuf) != 0)
+        return -1;
+    if (retCount > 0)
+    {
+        for (int f = 0; f < retCount && f < 8; f++)
+        {
+            if (retFieldIsInt[f]) out_fields[f] = (double)(int64_t)rbuf[f];
+            else { double d; memcpy(&d, &rbuf[f], sizeof(double)); out_fields[f] = d; }
+        }
+        if (out_int) *out_int = 0;
+        if (out_double) *out_double = 0.0;
+        return 0;
+    }
+    if (out_int) memcpy(out_int, &rbuf[0], sizeof(int64_t));
+    else if (out_double) memcpy(out_double, &rbuf[0], sizeof(double));
+    return 0;
+}
+
 /* Struct annidate FFI (2026-09-29): scrive la FOGLIA scalare indicata da un path punteggiato
  * dentro un'istanza UDT VM/C in costruzione (il ritorno di una FFI a UDT annidato), creando i
  * sotto-dict intermedi mancanti man mano che scende. Ad ogni livello scrive SIA il nome-piano
@@ -14959,7 +15046,14 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                             #undef GMB_FFI_A
                             int64_t r = 0;
                             int mixedDispatch = 0;
-                            if (retUdtFieldCount == 0 && !retIsString &&
+                            /* S0 (2026-11-06): firma con UDT (parametri e/o ritorno) → percorso a
+                             * slot tipizzati su libffi (vm_ffi_call_slots), che regge N campi e
+                             * qualunque mix di kind. Il dispatch per-cast sotto resta solo per le
+                             * firme SENZA UDT. */
+                            int hasAnyUdt = (retUdtFieldCount > 0);
+                            for (int i = 0; i < argc; i++)
+                                if (udtParamFieldCount[i] > 0) { hasAnyUdt = 1; break; }
+                            if (!hasAnyUdt && retUdtFieldCount == 0 && !retIsString &&
                                 (unsigned)scalarKindMask != (unsigned)(kind == 1 ? fullMaskForArgc : 0))
                             {
                                 /* 2026-11-02: firma mista anche con slot puntatore. Gli
@@ -14979,7 +15073,7 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                                                                scalarKindMask & fullMaskForArgc,
                                                                kind == 1 ? 1 : 0, args);
                             }
-                            else if (retUdtFieldCount == 0)
+                            else if (!hasAnyUdt && retUdtFieldCount == 0)
                             {
                                 /* Nessun UDT in uscita: se non ci sono UDT in ingresso la firma
                                  * è un vettore uniforme di slot int64 → libffi (regge N>8). */
@@ -15004,11 +15098,21 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                              * comune, indipendente dalla forma) per il resto della gestione.
                              */
                             double retFieldsD[8] = {0};
+                            /* S0 (2026-11-06): UDT → slot tipizzati (N campi, kind misto) al posto
+                             * dello switch per-cast 1-2 campi. */
+                            int udtSlotsDone = 0;
+                            if (hasAnyUdt &&
+                                vm_ffi_call_slots(p, argc, udtParamFieldCount, udtParamFieldKindMask,
+                                                  udtFieldNames, args, scratch, arrRefs,
+                                                  arrayMask, byrefScalarMask, stringMask, scalarKindMask,
+                                                  retUdtFieldCount, retUdtFieldKindMask,
+                                                  &r, NULL, retFieldsD) == 0)
+                                udtSlotsDone = 1;
                             /* Kind misto (2026-09-29): retUdtFieldKindMask sceglie la forma
                              * ESATTA indipendentemente dal ramo kind=1/kind=0 in cui ci troviamo
                              * (il ritorno non è vincolato al kind "esterno" della firma — vedi
                              * commento su ValidateUdtForFfi/kindList in Compiler.Expressions.cs). */
-                            if (retUdtFieldCount == 1) {
+                            if (!udtSlotsDone && retUdtFieldCount == 1) {
                                 if (retUdtFieldKindMask & 1) { gmb_ffi_udti1_t rv = {0}; GMB_FFI_CALL_T(int64_t, gmb_ffi_udti1_t, nativeArgs, rv); retFieldsD[0] = (double)rv.f[0]; }
                                 else { gmb_ffi_udtd1_t rv = {0}; GMB_FFI_CALL_T(int64_t, gmb_ffi_udtd1_t, nativeArgs, rv); retFieldsD[0] = rv.f[0]; }
                             } else if (retUdtFieldCount == 2) {
@@ -15080,6 +15184,10 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                              * array/STRING/BYREF possibile qui (forzano sempre kind=1) — solo
                              * eventuali parametri/ritorno UDT tutto-DOUBLE (2026-09-28). */
                             double nativeArgsD[narg]; memset(nativeArgsD, 0, sizeof(double) * (size_t)narg);
+                            /* S0: firma con UDT → slot tipizzati (vedi vm_ffi_call_slots). */
+                            int hasUdtD = (retUdtFieldCount > 0);
+                            for (int i = 0; i < argc && !hasUdtD; i++)
+                                if (udtParamFieldCount[i] > 0) hasUdtD = 1;
                             for (int i = 0; i < argc; i++)
                             {
                                 if (udtParamFieldCount[i] > 0)
@@ -15093,7 +15201,7 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                                 }
                                 else nativeArgsD[nativeSlotOf[i]] = args[i];
                             }
-                            if (retUdtFieldCount == 0)
+                            if (!hasUdtD && retUdtFieldCount == 0)
                             {
                                 if (mixedParamIdx < 0)
                                     result = gmb_vm_ffi_call_double(p, nativeSlotCount, nativeArgsD);
@@ -15105,9 +15213,17 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                                 /* Struct/UDT per valore, RITORNO, kind DOUBLE — stesso principio
                                  * del ramo kind=1 sopra ma con le forme gmb_ffi_udtd<N>_t. */
                                 double retFieldsD2[8] = {0};
+                                /* S0 (2026-11-06): UDT → slot tipizzati (vedi ramo kind=1). */
+                                int udtSlotsDoneD = 0;
+                                if (vm_ffi_call_slots(p, argc, udtParamFieldCount, udtParamFieldKindMask,
+                                                      udtFieldNames, args, NULL, arrRefs,
+                                                      0, 0, 0, scalarKindMask,
+                                                      retUdtFieldCount, retUdtFieldKindMask,
+                                                      NULL, &result, retFieldsD2) == 0)
+                                    udtSlotsDoneD = 1;
                                 /* Kind misto (2026-09-29): stessa selezione via
                                  * retUdtFieldKindMask del ramo kind=1 — vedi commento gemello. */
-                                if (retUdtFieldCount == 1) {
+                                if (!udtSlotsDoneD && retUdtFieldCount == 1) {
                                     if (retUdtFieldKindMask & 1) { gmb_ffi_udti1_t rv = {0}; GMB_FFI_CALL_T(double, gmb_ffi_udti1_t, nativeArgsD, rv); retFieldsD2[0] = (double)rv.f[0]; }
                                     else { gmb_ffi_udtd1_t rv = {0}; GMB_FFI_CALL_T(double, gmb_ffi_udtd1_t, nativeArgsD, rv); retFieldsD2[0] = rv.f[0]; }
                                 } else if (retUdtFieldCount == 2) {
@@ -15118,12 +15234,15 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                                     default: { gmb_ffi_udti2_t rv = {0}; GMB_FFI_CALL_T(double, gmb_ffi_udti2_t, nativeArgsD, rv); retFieldsD2[0] = (double)rv.f[0]; retFieldsD2[1] = (double)rv.f[1]; break; }
                                     }
                                 }
-                                retUdtInst = gmb_shared_dict_new();
-                                if (retUdtInst)
-                                    for (int fi = 0; fi < retUdtFieldCount; fi++)
-                                        // Struct annidate (2026-09-29) — vedi vm_ffi_set_leaf e
-                                        // il commento gemello nel ramo kind=1 sopra.
-                                        vm_ffi_set_leaf(retUdtInst, retUdtFieldNames[fi], retUdtFieldSymbolIdPath[fi], retUdtFieldSymbolIdDepth[fi], retFieldsD2[fi]);
+                                if (retUdtFieldCount > 0)
+                                {
+                                    retUdtInst = gmb_shared_dict_new();
+                                    if (retUdtInst)
+                                        for (int fi = 0; fi < retUdtFieldCount; fi++)
+                                            // Struct annidate (2026-09-29) — vedi vm_ffi_set_leaf e
+                                            // il commento gemello nel ramo kind=1 sopra.
+                                            vm_ffi_set_leaf(retUdtInst, retUdtFieldNames[fi], retUdtFieldSymbolIdPath[fi], retUdtFieldSymbolIdDepth[fi], retFieldsD2[fi]);
+                                }
                             }
                         }
                     }
@@ -17326,7 +17445,8 @@ static void* sleep_watcher_loop(void* arg)
         if (gmb_iowatch_count() > 0)
             vm_iowatch_poll_dispatch(vm, vm->http_main_task);
         int64_t next_deadline = gmb_sched_next_timer_deadline(vm->scheduler);
-        if (next_deadline < 0 && gmb_iowatch_count() == 0 && gmb_sched_is_stuck(vm->scheduler))
+        if (next_deadline < 0 && gmb_iowatch_count() == 0 && gmb_net_waiter_count() == 0
+            && gmb_sched_is_stuck(vm->scheduler))
         {
             if (++stuck_streak >= 2)
             {
