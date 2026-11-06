@@ -161,7 +161,25 @@ public sealed partial class IlProgramCompiler
         _il.Emit(OpCodes.Ldarg_0);
         if (body.Length > 0 && body[0] is BaseConstructorCallStmt baseCall)
         {
-            foreach (var arg in baseCall.Args) EmitExpression(arg);
+            var bp = baseConstructor.GetParameters();
+            for (var ai = 0; ai < baseCall.Args.Length; ai++)
+            {
+                var arg = baseCall.Args[ai];
+                /* Parametro array del ctor base: `T[]&` → indirizzo (come NEW ctor). */
+                if (ai < bp.Length && bp[ai].ParameterType.IsByRef)
+                {
+                    if (arg is VariableExpr) EmitAddressOf(arg);
+                    else
+                    {
+                        var elem = bp[ai].ParameterType.GetElementType()!;
+                        var tmp = _il.DeclareLocal(elem);
+                        EmitExpression(arg);
+                        _il.Emit(OpCodes.Stloc, tmp);
+                        _il.Emit(OpCodes.Ldloca, tmp);
+                    }
+                }
+                else EmitExpression(arg);
+            }
             body = body.RemoveAt(0);
         }
         _il.Emit(OpCodes.Call, baseConstructor);

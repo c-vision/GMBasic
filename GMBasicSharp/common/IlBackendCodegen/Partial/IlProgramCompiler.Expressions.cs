@@ -722,7 +722,27 @@ public sealed partial class IlProgramCompiler
         var args = expr.ConstructorArgs ?? ImmutableArray<Expr>.Empty;
         var ctor = ResolveConstructorOverload(candidates, args.Length, typeName);
 
-        foreach (var arg in args) EmitExpression(arg);
+        var ctorParams = ctor.Builder.GetParameters();
+        for (var ai = 0; ai < args.Length; ai++)
+        {
+            var arg = args[ai];
+            /* Parametro array del costruttore: a livello CLR è `T[]&` (BYREF) → serve
+             * l'indirizzo, non il valore (prima Newobj riceveva il riferimento e il ctor
+             * leggeva memoria non valida: AccessViolation su GetUpperBound). */
+            if (ai < ctorParams.Length && ctorParams[ai].ParameterType.IsByRef)
+            {
+                if (arg is VariableExpr) EmitAddressOf(arg);
+                else
+                {
+                    var elem = ctorParams[ai].ParameterType.GetElementType()!;
+                    var tmp = _il.DeclareLocal(elem);
+                    EmitExpression(arg);
+                    _il.Emit(OpCodes.Stloc, tmp);
+                    _il.Emit(OpCodes.Ldloca, tmp);
+                }
+            }
+            else EmitExpression(arg);
+        }
         _il.Emit(OpCodes.Newobj, ctor.Builder);
     }
 
