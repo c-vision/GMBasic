@@ -95,9 +95,9 @@ dell'asse `dim`.
   limiti del chiamante; le modifiche restano visibili. Vale anche per BYREF, per un array
   passato come *function value* e per una lambda. MiniTest
   `shared/minitests/arrays/dim_to_params.bas`.
-- **Limite noto**: i metodi di una `CLASS` con parametri array restano 0-based su C99Native;
-  per codice portabile passare il lower come parametro esplicito o usare array 0-based nei
-  metodi.
+- **Limite noto**: i metodi di una `CLASS` (e i costruttori) con parametri array non sono
+  supportati da C99Native; usare una SUB/FUNCTION top-level, oppure passare al metodo un array
+  convertito in 0-based.
 
 **Slicing.** `a[start:end]` produce una nuova lista con gli elementi da `start` incluso a `end`
 escluso:
