@@ -720,6 +720,19 @@ public sealed partial class IlProgramCompiler
             }
             return;
         }
+        /* `DIM f = <FUNCTION nominata con parametri array>`: il riferimento è un delegate
+         * `ref T[]` (CbRef…), non un Func<…>; dichiara il local con QUEL tipo, altrimenti
+         * lo Stloc è invalido e la successiva Invoke passa un riferimento array sbagliato. */
+        if (declaration.InitialValue is FunctionReferenceExpr fre
+            && _program.Symbols.GetSymbol(fre.SymbolId).DeclarationNode is FunctionDefinition fdRef
+            && TryRefDelegateType(fdRef) is { } refDel)
+        {
+            var refLocal = _il.DeclareLocal(refDel);
+            _locals[declaration.SymbolId] = refLocal;
+            EmitExpression(fre);
+            _il.Emit(OpCodes.Stloc, refLocal);
+            return;
+        }
         var local = GetOrDeclareLocal(declaration.SymbolId);
         // Fase 4 (Closure-ByRef-Box-Linker-Definitivo): la PRIMA scrittura di un local box-typed
         // deve COSTRUIRE il box (Newobj), mai scrivere "attraverso" un box che non esiste ancora

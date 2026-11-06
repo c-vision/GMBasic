@@ -14820,6 +14820,26 @@ public static double TextWidth(string s)
             File.WriteAllBytes(path, bytes);
     }
 
+    /// <summary>Lower bound logici associati agli array (per la propagazione ai parametri
+    /// delle procedure). Condivisi per RIFERIMENTO: passare l'array a una procedura porta
+    /// con sé i limiti, senza cambiare la firma dei metodi (lambde/delegate compresi).
+    /// La CWT non tiene vivo l'array (chiave debole).</summary>
+    private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<Array, int[]> ArrayLowerTable = new();
+
+    public static void SetArrayLowerBounds(Array? arr, int[]? lowers)
+    {
+        if (arr is null || lowers is null) return;
+        ArrayLowerTable.AddOrUpdate(arr, lowers);
+    }
+
+    public static int GetArrayLowerBound(Array? arr, int axis)
+    {
+        if (arr is not null && ArrayLowerTable.TryGetValue(arr, out var l)
+            && axis >= 0 && axis < l.Length)
+            return l[axis];
+        return 0;
+    }
+
     /// <summary>UBOUND/LBOUND con asse scelto a runtime: <paramref name="dim"/> è 1-based,
     /// <paramref name="lowers"/> contiene i lower bound logici per asse (compile-time nel
     /// backend IL). Gestisce sia gli array rettangolari (double[,], ecc.) sia quelli JAGGED

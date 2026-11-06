@@ -4241,9 +4241,14 @@ static void cc_stmt(gmb_cc_t* c, const gmb_stmt_t* s)
                     cc_expr(c, s->value);
                     cc_load_target(c, base);
                     cc_expr(c, s->array_index);
+                    /* Multi-dim: `p(i,j).Campo = v` deve indicizzare TUTTI gli assi, non
+                     * solo il primo (prima si scriveva sul campo dell'elemento p[i] flat,
+                     * mentre la lettura usava p(i,j) → il campo sembrava sempre 0). */
+                    for (int ei = 0; ei < s->n_array_idx_extra && ei < 7 && !c->error; ei++)
+                        cc_expr(c, s->array_idx_extra[ei]);
                     if (c->error) return;
                     cc_byte(c, GMB_OP_LOAD_ELEMENT_REF);
-                    cc_byte(c, 1);   /* numIndices u8 */
+                    cc_byte(c, (uint8_t)(1 + s->n_array_idx_extra));   /* numIndices u8 */
                     int fi = cc_add_const(c, GMB_CCONST_STRING, 0, dot + 1);
                     if (c->error) return;
                     cc_byte(c, GMB_OP_STORE_FIELD); cc_u16(c, fi);

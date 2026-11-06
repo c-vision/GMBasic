@@ -364,7 +364,7 @@ public sealed partial class IlProgramCompiler
     /// senza boxing per il tipo elemento reale, a differenza di Array.GetValue/
     /// SetValue). Entrambe le forme sono memoria CONTIGUA (mai jagged/array-di-array).
     /// </summary>
-    private sealed record ArrayInfo(LocalBuilder Local, Type ClrArrayType, DataType ElementDataType, int Rank, int[] LowerBounds, Action? LoadRef = null);
+    private sealed record ArrayInfo(LocalBuilder Local, Type ClrArrayType, DataType ElementDataType, int Rank, int[] LowerBounds, Action? LoadRef = null, LocalBuilder[]? LowerLocals = null);
 
     /// <summary>
     /// Come <see cref="ArrayInfo"/>, ma per un campo array di CLASSE (un array CLR reale
@@ -740,7 +740,16 @@ public sealed partial class IlProgramCompiler
                 if (parameter.Flags.HasFlag(SymbolFlags.IsByRef))
                     _il.Emit(OpCodes.Ldind_Ref);
                 _il.Emit(OpCodes.Stloc, arrayLocal);
-                _arrays[parameter.SymbolId] = new ArrayInfo(arrayLocal, elementClrType.MakeArrayType(), arrayParamType.ElementType, 1, [0]);
+                /* Lower bound: l'array lo porta con sé (CWT popolata al DIM). Per gli array
+                 * 0-based o creati altrove la tabella risponde 0. */
+                var lowerLocal = _il.DeclareLocal(_types.Int32);
+                _il.Emit(OpCodes.Ldloc, arrayLocal);
+                _il.Emit(OpCodes.Ldc_I4_0);
+                _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.GetArrayLowerBound),
+                    typeof(Array), typeof(int)));
+                _il.Emit(OpCodes.Stloc, lowerLocal);
+                _arrays[parameter.SymbolId] = new ArrayInfo(arrayLocal, elementClrType.MakeArrayType(),
+                    arrayParamType.ElementType, 1, [0], null, [lowerLocal]);
                 _arrayParamWriteback[parameter.SymbolId] = argIndex;
             }
         }

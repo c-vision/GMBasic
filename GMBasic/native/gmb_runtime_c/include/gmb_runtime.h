@@ -70,6 +70,8 @@ void gmb_lambda_ret_len_set(gmb_int_t n);
 gmb_double_t* gmb_lambda_ret_ptr_get(void);
 void gmb_lambda_ret_ptr_set(gmb_double_t* p);
 void gmb_lambda_bound_set(int idx, gmb_int_t b0);
+gmb_int_t gmb_lambda_lower(int idx);
+void gmb_lambda_lower_set(int idx, gmb_int_t lo);
 
 typedef enum {
     GMB_TYPE_NIL = 0,
