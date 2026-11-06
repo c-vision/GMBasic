@@ -137,3 +137,22 @@ typedef struct { uint16_t u16; uint32_t u32; uint64_t u64; } UUns;
 
 int32_t uuns_size(void) { return (int32_t)sizeof(UUns); }
 double uuns_sum(UUns v) { return (double)v.u16 + (double)v.u32 + (double)v.u64; }
+
+/* Callback con arità 6 (S4): oltre il vecchio limite 0-4. */
+double cb6_eval(double (*f)(double, double, double, double, double, double),
+                double a, double b, double c, double d, double e, double g)
+{
+    return f(a, b, c, d, e, g);
+}
+
+/* Callback arità 8 e callback intero arità 6 (S4). */
+double cb8_eval(double (*f)(double, double, double, double, double, double, double, double),
+                double a0, double a1, double a2, double a3, double a4, double a5, double a6, double a7)
+{
+    return f(a0, a1, a2, a3, a4, a5, a6, a7);
+}
+int64_t cb6_eval_i(int64_t (*f)(int64_t, int64_t, int64_t, int64_t, int64_t, int64_t),
+                   int64_t a0, int64_t a1, int64_t a2, int64_t a3, int64_t a4, int64_t a5)
+{
+    return f(a0, a1, a2, a3, a4, a5);
+}

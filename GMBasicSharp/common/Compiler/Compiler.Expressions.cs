@@ -930,7 +930,7 @@ public sealed partial class Compiler
             // callback. BYVAL solo. v1: firma del callback OMOGENEA per kind (niente kind
             // misto tra i suoi parametri, stessa semplificazione già usata per gli UDT prima
             // del supporto kind-misto) e arità 0-4 (non 0-8: il pool di trampolini
-            // pre-dichiarati su VM/C cresce con arità×kind×slot — 4 è un limite v1
+            // pre-dichiarati su VM/C cresce con arità×kind×slot — 8 è un limite pratica
             // documentato ed estendibile con lo stesso pattern, non un vincolo ABI). Vedi
             // AiWiki Bugs/(open) - FFI-Estensioni-Possibili-BYREF-Struct-Callback.md §3.
             bool IsCallbackParam(Parameter p) => !IsArrayParam(p) && !IsStringParam(p) && !IsByRefScalarParam(p) && p.DataType is FunctionPointerType;
@@ -974,9 +974,9 @@ public sealed partial class Compiler
                     throw new BasicException(expr.OriginalToken,
                         $"FFI '{symbolName}': callback con array usato per {what} non supportato " +
                         "(ammessi solo array di DOUBLE, con ritorno DOUBLE o ARRAY OF DOUBLE).");
-                if (fp.ParameterTypes.Length > 4)
+                if (fp.ParameterTypes.Length > 8)
                     throw new BasicException(expr.OriginalToken,
-                        $"FFI '{symbolName}': il callback usato per {what} ha {fp.ParameterTypes.Length} parametri (ammessi 0-4 nella v1 del supporto callback).");
+                        $"FFI '{symbolName}': il callback usato per {what} ha {fp.ParameterTypes.Length} parametri (ammessi 0-8).");
                 var hasReturn = fp.ReturnType is not VoidType;
                 var kinds = fp.ParameterTypes.Select(t => IsFfiInt64Type(t)).ToList();
                 if (hasReturn) kinds.Add(IsFfiInt64Type(fp.ReturnType));

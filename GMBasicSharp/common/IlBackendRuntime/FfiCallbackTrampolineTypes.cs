@@ -45,6 +45,23 @@ internal static class FfiCallbackTrampolineTypes
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)] internal delegate void CbSubD3(double a0, double a1, double a2);
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)] internal delegate void CbSubD4(double a0, double a1, double a2, double a3);
 
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)] internal delegate long CbFnI5(long a0, long a1, long a2, long a3, long a4);
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)] internal delegate long CbFnI6(long a0, long a1, long a2, long a3, long a4, long a5);
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)] internal delegate long CbFnI7(long a0, long a1, long a2, long a3, long a4, long a5, long a6);
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)] internal delegate long CbFnI8(long a0, long a1, long a2, long a3, long a4, long a5, long a6, long a7);
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)] internal delegate double CbFnD5(double a0, double a1, double a2, double a3, double a4);
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)] internal delegate double CbFnD6(double a0, double a1, double a2, double a3, double a4, double a5);
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)] internal delegate double CbFnD7(double a0, double a1, double a2, double a3, double a4, double a5, double a6);
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)] internal delegate double CbFnD8(double a0, double a1, double a2, double a3, double a4, double a5, double a6, double a7);
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)] internal delegate void CbSubI5(long a0, long a1, long a2, long a3, long a4);
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)] internal delegate void CbSubI6(long a0, long a1, long a2, long a3, long a4, long a5);
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)] internal delegate void CbSubI7(long a0, long a1, long a2, long a3, long a4, long a5, long a6);
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)] internal delegate void CbSubI8(long a0, long a1, long a2, long a3, long a4, long a5, long a6, long a7);
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)] internal delegate void CbSubD5(double a0, double a1, double a2, double a3, double a4);
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)] internal delegate void CbSubD6(double a0, double a1, double a2, double a3, double a4, double a5);
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)] internal delegate void CbSubD7(double a0, double a1, double a2, double a3, double a4, double a5, double a6);
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)] internal delegate void CbSubD8(double a0, double a1, double a2, double a3, double a4, double a5, double a6, double a7);
+
     internal static long ToI64(object? v) => v switch { long l => l, int i => i, double d => (long)d, null => 0L, _ => Convert.ToInt64(v) };
     internal static double ToF64(object? v) => v switch { double d => d, long l => l, int i => i, null => 0.0, _ => Convert.ToDouble(v) };
 

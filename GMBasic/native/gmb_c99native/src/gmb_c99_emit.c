@@ -30966,7 +30966,7 @@ static int ffi_validate_udt(ctx_t* c, struct cls_info* ci, const char* sym, cons
  * sb_put/sb_printf PRIMA di una successiva chiamata (mai due FFI_INNER "in sospeso"
  * contemporaneamente), quindi è sicuro riusare un piccolo pool di buffer statici. */
 static const char* ffi_cb_native_type(int arity, int isInt, int hasRet) {
-    static char bufs[4][80];
+    static char bufs[4][512];
     static int bi = 0;
     char* buf = bufs[bi]; bi = (bi + 1) % 4;
     const char* ct = isInt ? "gmb_int_t" : "gmb_double_t";
@@ -30976,32 +30976,32 @@ static const char* ffi_cb_native_type(int arity, int isInt, int hasRet) {
          * 128: (double*, n)                   132: (double*, n, double)
          * 129: (double*, n, double*, n2)      144/145: ritorno ARRAY (out finale) */
         if (arity == 129) {
-            snprintf(buf, 80, "%s (*)(gmb_double_t*, gmb_int_t, gmb_double_t*, gmb_int_t)", retT);
+            snprintf(buf, 512, "%s (*)(gmb_double_t*, gmb_int_t, gmb_double_t*, gmb_int_t)", retT);
             return buf;
         }
         if (arity == 132) {
-            snprintf(buf, 80, "%s (*)(gmb_double_t*, gmb_int_t, gmb_double_t)", retT);
+            snprintf(buf, 512, "%s (*)(gmb_double_t*, gmb_int_t, gmb_double_t)", retT);
             return buf;
         }
         /* 144/145: il trampolino RITORNA il numero di elementi scritti (gor_optb_fvv_len,
          * 2026-11-03) — la firma della call FFI usa `double`, non `void`. */
         if (arity == 144) {
-            snprintf(buf, 80, "double (*)(gmb_double_t*, gmb_int_t, gmb_double_t*)");
+            snprintf(buf, 512, "double (*)(gmb_double_t*, gmb_int_t, gmb_double_t*)");
             return buf;
         }
         if (arity == 145) {
-            snprintf(buf, 80, "double (*)(gmb_double_t*, gmb_int_t, gmb_double_t*, gmb_int_t, gmb_double_t*)");
+            snprintf(buf, 512, "double (*)(gmb_double_t*, gmb_int_t, gmb_double_t*, gmb_int_t, gmb_double_t*)");
             return buf;
         }
-        snprintf(buf, 80, "%s (*)(gmb_double_t*, gmb_int_t)", retT);
+        snprintf(buf, 512, "%s (*)(gmb_double_t*, gmb_int_t)", retT);
         return buf;
     }
-    char params[48] = "";
+    char params[384] = "";
     for (int i = 0; i < arity; i++) {
         if (i) strncat(params, ", ", sizeof(params) - strlen(params) - 1);
         strncat(params, ct, sizeof(params) - strlen(params) - 1);
     }
-    snprintf(buf, 80, "%s (*)(%s)", retT, params);
+    snprintf(buf, 512, "%s (*)(%s)", retT, params);
     return buf;
 }
 
@@ -31022,7 +31022,7 @@ static void emit_ffi_callback_pool(ctx_t* c) {
     for (int kk = 0; kk < 2; kk++) {
         const char* kind = kinds[kk];
         const char* ct = ctypes[kk];
-        for (int arity = 0; arity <= 4; arity++) {
+        for (int arity = 0; arity <= 8; arity++) {
             /* params: dichiarazione parametri, tipo NATIVO ESTERNO ("gmb_int_t a0, ...").
              * ptypes: solo tipi nativi esterni, per la tabella di puntatori ("gmb_int_t, ...").
              * dtypes: SEMPRE gmb_double_t (arity volte) — il cast del gmb_fn_t.fn sottostante,
@@ -31033,7 +31033,10 @@ static void emit_ffi_callback_pool(ctx_t* c) {
              * il predicate generico ASCAN). dargs: gli argomenti nativi esterni CONVERTITI a
              * (gmb_double_t) per la chiamata — no-op per kind="d", conversione reale per
              * kind="i" (es. un LONG ricevuto dal nativo esterno). */
-            char params[80] = ""; char ptypes[64] = ""; char dtypes[80] = ""; char dargs[128] = "";
+            /* arità fino a 8 (2026-11-06): 8 parametri × ~20 caratteri non stanno nei
+             * buffer storici (80/64/80/128) — il troncamento produceva una firma C
+             * invalida. */
+            char params[512] = ""; char ptypes[320] = ""; char dtypes[512] = ""; char dargs[640] = "";
             for (int i = 0; i < arity; i++) {
                 if (i) {
                     strncat(params, ", ", sizeof(params) - strlen(params) - 1);
@@ -31178,9 +31181,9 @@ static void emit_ffi_wrapper(ctx_t* c, fn_info_t* fn) {
             int arity = s->param_fn_arity[i];
             char what[96];
             snprintf(what, sizeof(what), "il parametro '%s'", s->func_params[i]);
-            if (arity > 4) {
+            if (arity > 8) {
                 c99_fail(c, s->line, "FFI '%s': il callback usato per %s ha %d parametri "
-                         "(ammessi 0-4 nella v1 del supporto callback).", sym, what, arity);
+                         "(ammessi 0-8).", sym, what, arity);
                 return;
             }
             int strmask = s->param_fn_str_mask ? s->param_fn_str_mask[i] : 0;

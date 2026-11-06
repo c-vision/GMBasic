@@ -140,6 +140,22 @@ public static partial class IlRuntime
             (false, false, 2) => new CbSubD2((a0, a1) => InvokeFfiCallbackDelegate(cb, [a0, a1])),
             (false, false, 3) => new CbSubD3((a0, a1, a2) => InvokeFfiCallbackDelegate(cb, [a0, a1, a2])),
             (false, false, 4) => new CbSubD4((a0, a1, a2, a3) => InvokeFfiCallbackDelegate(cb, [a0, a1, a2, a3])),
+            (true, true, 5) => new CbFnI5((a0, a1, a2, a3, a4) => ToI64(InvokeFfiCallbackDelegate(cb, [a0, a1, a2, a3, a4]))),
+            (true, true, 6) => new CbFnI6((a0, a1, a2, a3, a4, a5) => ToI64(InvokeFfiCallbackDelegate(cb, [a0, a1, a2, a3, a4, a5]))),
+            (true, true, 7) => new CbFnI7((a0, a1, a2, a3, a4, a5, a6) => ToI64(InvokeFfiCallbackDelegate(cb, [a0, a1, a2, a3, a4, a5, a6]))),
+            (true, true, 8) => new CbFnI8((a0, a1, a2, a3, a4, a5, a6, a7) => ToI64(InvokeFfiCallbackDelegate(cb, [a0, a1, a2, a3, a4, a5, a6, a7]))),
+            (true, false, 5) => new CbFnD5((a0, a1, a2, a3, a4) => ToF64(InvokeFfiCallbackDelegate(cb, [a0, a1, a2, a3, a4]))),
+            (true, false, 6) => new CbFnD6((a0, a1, a2, a3, a4, a5) => ToF64(InvokeFfiCallbackDelegate(cb, [a0, a1, a2, a3, a4, a5]))),
+            (true, false, 7) => new CbFnD7((a0, a1, a2, a3, a4, a5, a6) => ToF64(InvokeFfiCallbackDelegate(cb, [a0, a1, a2, a3, a4, a5, a6]))),
+            (true, false, 8) => new CbFnD8((a0, a1, a2, a3, a4, a5, a6, a7) => ToF64(InvokeFfiCallbackDelegate(cb, [a0, a1, a2, a3, a4, a5, a6, a7]))),
+            (false, true, 5) => new CbSubI5((a0, a1, a2, a3, a4) => InvokeFfiCallbackDelegate(cb, [a0, a1, a2, a3, a4])),
+            (false, true, 6) => new CbSubI6((a0, a1, a2, a3, a4, a5) => InvokeFfiCallbackDelegate(cb, [a0, a1, a2, a3, a4, a5])),
+            (false, true, 7) => new CbSubI7((a0, a1, a2, a3, a4, a5, a6) => InvokeFfiCallbackDelegate(cb, [a0, a1, a2, a3, a4, a5, a6])),
+            (false, true, 8) => new CbSubI8((a0, a1, a2, a3, a4, a5, a6, a7) => InvokeFfiCallbackDelegate(cb, [a0, a1, a2, a3, a4, a5, a6, a7])),
+            (false, false, 5) => new CbSubD5((a0, a1, a2, a3, a4) => InvokeFfiCallbackDelegate(cb, [a0, a1, a2, a3, a4])),
+            (false, false, 6) => new CbSubD6((a0, a1, a2, a3, a4, a5) => InvokeFfiCallbackDelegate(cb, [a0, a1, a2, a3, a4, a5])),
+            (false, false, 7) => new CbSubD7((a0, a1, a2, a3, a4, a5, a6) => InvokeFfiCallbackDelegate(cb, [a0, a1, a2, a3, a4, a5, a6])),
+            (false, false, 8) => new CbSubD8((a0, a1, a2, a3, a4, a5, a6, a7) => InvokeFfiCallbackDelegate(cb, [a0, a1, a2, a3, a4, a5, a6, a7])),
             _ => throw new InvalidOperationException($"arità callback non supportata nella v1 del supporto FFI: {arity}")
         };
         return (d, Marshal.GetFunctionPointerForDelegate(d));
