@@ -94,6 +94,12 @@ NON esposti perché già coperti dalla superficie BASIC (nessun duplicato):
 | `gn_core` (matmul/add/scale) | `TORCH` MATMUL/ADD/MUL/SUB/DIV — `apply`/`absmax` sono in NEURAL |
 | `gn_ops` (concat righe) | `TORCH` CONCAT/STACK — gather/slice/block sono in NEURAL |
 | `gn_preprocess` (standardize/minmax/onehot) | `TORCH` STANDARDIZE/NORMALIZE/ONEHOT |
-| `gn_net` (MLP con save/load/merge) | `TORCH` MODELCREATE/MODELFORWARD/MODELTRAINSTEP/MODELSAVE |
+| `gn_net` (MLP con save/load) | `TORCH` MODELCREATE/MODELFORWARD/MODELTRAINSTEP/MODELSAVE |
+
+`gn_net_copy` e `gn_net_merge` non richiedono una funzione dedicata: i pesi di uno
+strato si leggono e si riscrivono con `DENSEPARAMS`/`DENSESETPARAMS`, quindi la copia
+(`C <- A`) e la fusione pesata (`C <- (1-w)A + wB`, model averaging) si fanno in BASIC
+con un ciclo. `shared/minitests/neural/neural_dense_copy_merge.bas` lo verifica
+numericamente: l'uscita di C coincide con `(1-w)·yA + w·yB` (differenza 0).
 | `gn_kmeans`/`gn_pca`/`gn_svm` | `MULTIVARIATE` (FFI, libgmbstats) |
 | `gn_opt` (SGD/adam grezzi) | esposti tramite `STEP` di RNN/DENSE (stessi parametri m/v) |
