@@ -10,7 +10,8 @@ migrated_pair	netlb	summary	h=88/88 def=0/0	OK	header_mancanti=0 alias_mancanti=
 migrated_pair	redis	summary	h=90/36 def=0/0	OK	header_mancanti=0 alias_mancanti=0 (def_mancanti=0 file_mancanti=0)
 ffi_internal	amqp	/Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/libs/amqp	alias=9	OK	alias_senza_def=0 alias_non_esportati=0 header_senza_def=0 (WARN)
 ffi_internal	aviation	/Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/libs/aviation	alias=15	OK	alias_senza_def=0 alias_non_esportati=0 header_senza_def=0 (WARN)
-ffi_internal	conic	/Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/libs/conic	alias=7	OK	alias_senza_def=0 alias_non_esportati=0 header_senza_def=0 (WARN)
+ffi_internal	compute	/Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/libs/compute	alias=0	OK	alias_senza_def=0 alias_non_esportati=0 header_senza_def=3 (WARN)
+ffi_internal	conic	/Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/libs/conic	alias=33	OK	alias_senza_def=0 alias_non_esportati=0 header_senza_def=0 (WARN)
 ffi_internal	ffi	/Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/libs/ffi	alias=0	OK	alias_senza_def=0 alias_non_esportati=0 header_senza_def=49 (WARN)
 ffi_internal	ffitest	/Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/libs/ffitest	alias=0	OK	alias_senza_def=0 alias_non_esportati=0 header_senza_def=0 (WARN)
 ffi_internal	flow	/Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/libs/flow	alias=10	OK	alias_senza_def=0 alias_non_esportati=0 header_senza_def=0 (WARN)
@@ -22,7 +23,7 @@ ffi_internal	grpc	/Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/libs/
 ffi_internal	kafka	/Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/libs/kafka	alias=7	OK	alias_senza_def=0 alias_non_esportati=0 header_senza_def=0 (WARN)
 ffi_internal	lagrangian	/Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/libs/lagrangian	alias=1	OK	alias_senza_def=0 alias_non_esportati=0 header_senza_def=3 (WARN)
 ffi_internal	localsearch	/Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/libs/localsearch	alias=5	OK	alias_senza_def=0 alias_non_esportati=0 header_senza_def=0 (WARN)
-ffi_internal	math	/Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/libs/math	alias=0	OK	alias_senza_def=0 alias_non_esportati=0 header_senza_def=3 (WARN)
+ffi_internal	math	/Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/libs/math	alias=0	OK	alias_senza_def=0 alias_non_esportati=0 header_senza_def=0 (WARN)
 ffi_internal	mathprog	/Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/libs/mathprog	alias=17	OK	alias_senza_def=0 alias_non_esportati=0 header_senza_def=6 (WARN)
 ffi_internal	media	/Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/libs/media	alias=54	OK	alias_senza_def=0 alias_non_esportati=0 header_senza_def=0 (WARN)
 ffi_internal	mqtt	/Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/libs/mqtt	alias=8	OK	alias_senza_def=0 alias_non_esportati=0 header_senza_def=0 (WARN)
@@ -33,7 +34,7 @@ ffi_internal	or	/Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/libs/or
 ffi_internal	pgm	/Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/libs/pgm	alias=4	OK	alias_senza_def=0 alias_non_esportati=0 header_senza_def=0 (WARN)
 ffi_internal	protobuf	/Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/libs/protobuf	alias=10	OK	alias_senza_def=0 alias_non_esportati=0 header_senza_def=0 (WARN)
 ffi_internal	scheduling	/Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/libs/scheduling	alias=1	OK	alias_senza_def=0 alias_non_esportati=0 header_senza_def=0 (WARN)
-ffi_internal	stats	/Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/libs/stats	alias=0	OK	alias_senza_def=0 alias_non_esportati=0 header_senza_def=3 (WARN)
+ffi_internal	stats	/Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/libs/stats	alias=0	OK	alias_senza_def=0 alias_non_esportati=0 header_senza_def=0 (WARN)
 ffi_internal	wsp	/Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/libs/wsp	alias=57	OK	alias_senza_def=0 alias_non_esportati=0 header_senza_def=13 (WARN)
 package_internal	avif	/Users/gaetano/Documents/Projects/GMBasicMonoRepo/packages/avif	alias=5	OK	alias_senza_def=0 alias_non_esportati=0 header_senza_def=0 (WARN)
 package_internal	blockchain	/Users/gaetano/Documents/Projects/GMBasicMonoRepo/packages/blockchain	alias=19	OK	alias_senza_def=0 alias_non_esportati=0 header_senza_def=0 (WARN)
@@ -84,11 +85,6 @@ project_inventory	gmbneural	header	gn_net_merge	UNMATCHED	norm=gn_net_merge
 project_inventory	gmbneural	header	gn_net_zero_grad	UNMATCHED	norm=gn_net_zero_grad
 project_inventory	gmbneural	header	gn_net_step	UNMATCHED	norm=gn_net_step
 project_inventory	gmbneural	/Users/gaetano/Documents/Projects/GMBSuite/gmbneural	h=246 def=359 match=227 non_match=19	INFO	
-project_inventory	gmbortools	header	ipm_solve_std	UNMATCHED	norm=ipm_solve_std
-project_inventory	gmbortools	header	ipm_solve_std_csc	UNMATCHED	norm=ipm_solve_std_csc
-project_inventory	gmbortools	header	ipm_solve_qp_csc	UNMATCHED	norm=ipm_solve_qp_csc
-project_inventory	gmbortools	header	socp_solve	UNMATCHED	norm=socp_solve
-project_inventory	gmbortools	header	socp_solve_sparse	UNMATCHED	norm=socp_solve_sparse
 project_inventory	gmbortools	header	gmi_graph_init	UNMATCHED	norm=gmi_graph_init
 project_inventory	gmbortools	header	gmi_graph_shutdown	UNMATCHED	norm=gmi_graph_shutdown
 project_inventory	gmbortools	header	gmi_graph_create	UNMATCHED	norm=gmi_graph_create
@@ -127,21 +123,7 @@ project_inventory	gmbortools	header	gmi_graph_diameter	UNMATCHED	norm=gmi_graph_
 project_inventory	gmbortools	header	gmi_graph_eccentricity	UNMATCHED	norm=gmi_graph_eccentricity
 project_inventory	gmbortools	header	gmi_graph_clustering_coefficient	UNMATCHED	norm=gmi_graph_clustering_coefficient
 project_inventory	gmbortools	header	gmi_graph_edge_list	UNMATCHED	norm=gmi_graph_edge_list
-project_inventory	gmbortools	header	lp_presolve	UNMATCHED	norm=lp_presolve
-project_inventory	gmbortools	header	presolve_changed	UNMATCHED	norm=presolve_changed
-project_inventory	gmbortools	header	presolve_reduced	UNMATCHED	norm=presolve_reduced
-project_inventory	gmbortools	header	presolve_postsolve	UNMATCHED	norm=presolve_postsolve
-project_inventory	gmbortools	header	presolve_postsolve_dir	UNMATCHED	norm=presolve_postsolve_dir
-project_inventory	gmbortools	header	presolve_free	UNMATCHED	norm=presolve_free
-project_inventory	gmbortools	header	stdform_build	UNMATCHED	norm=stdform_build
-project_inventory	gmbortools	header	stdform_free	UNMATCHED	norm=stdform_free
-project_inventory	gmbortools	header	stdform_map_x	UNMATCHED	norm=stdform_map_x
-project_inventory	gmbortools	header	stdform_map_dir	UNMATCHED	norm=stdform_map_dir
-project_inventory	gmbortools	header	stdform_map_y	UNMATCHED	norm=stdform_map_y
-project_inventory	gmbortools	header	stdform_dense_A	UNMATCHED	norm=stdform_dense_a
-project_inventory	gmbortools	header	stdform_dense_Q	UNMATCHED	norm=stdform_dense_q
-project_inventory	gmbortools	header	sdp_ipm	UNMATCHED	norm=sdp_ipm
-project_inventory	gmbortools	/Users/gaetano/Documents/Projects/GMBSuite/gmbortools	h=402 def=715 match=345 non_match=57	INFO	
+project_inventory	gmbortools	/Users/gaetano/Documents/Projects/GMBSuite/gmbortools	h=402 def=715 match=364 non_match=38	INFO	
 project_inventory	gmbscheduling	/Users/gaetano/Documents/Projects/GMBSuite/gmbscheduling	h=3 def=8 match=3 non_match=0	INFO	
 project_inventory	gmbstats	/Users/gaetano/Documents/Projects/GMBSuite/gmbstats	h=16 def=39 match=16 non_match=0	INFO	
 project_inventory	gmbstats-base	/Users/gaetano/Documents/Projects/GMBSuite/gmbstats-base	h=47 def=57 match=47 non_match=0	INFO	
