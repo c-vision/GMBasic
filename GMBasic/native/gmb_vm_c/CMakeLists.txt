@@ -95,8 +95,16 @@ else()
     gmb_syscall_sql.c gmb_vm_tui.c gmb_vm_tui_controls.c gmb_vm_console.c)
 endif()
 
+# libffi: motore unico delle chiamate FFI (vedi gmb_call.h). Vendorizzata in futuro in
+# shared/libs/ffi; per ora si usa quella di sistema (macOS SDK, libffi-dev su Linux).
+find_library(GMB_FFI_LIBRARY NAMES ffi ffi-8)
+if(NOT GMB_FFI_LIBRARY)
+    message(FATAL_ERROR "libffi non trovata (installare libffi / libffi-dev)")
+endif()
+
 add_library(gmb_vm STATIC
     ${GMB_VM_EXT_SRC}
+    gmb_call.c
     gmb_vm_value.c
     gmb_chunk.c
     gmb_vm_core.c
@@ -118,7 +126,7 @@ add_library(gmb_vm STATIC
 # SPLIT 2026-11-02: il runtime non propaga più gmbllm/LLMEnv. La VM dispatcha i comandi
 # LLM (LLM TENSOR/ARCH/KERNEL…) e usa direttamente llmmodelio_* → linka gmbllm_core (che a sua
 # volta porta llmcodec/llmtoken/llmdesc in PUBLIC). ASR/DISTILL/modelio passano dal gateway.
-target_link_libraries(gmb_vm PUBLIC pthread gmb_runtime gmb_doc gmb_agent_runtime gmbllm_core ${CMAKE_DL_LIBS})
+target_link_libraries(gmb_vm PUBLIC pthread gmb_runtime gmb_doc gmb_agent_runtime gmbllm_core ${GMB_FFI_LIBRARY} ${CMAKE_DL_LIBS})
 target_include_directories(gmb_vm PUBLIC ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/../gmb_runtime_c/include ${CMAKE_CURRENT_SOURCE_DIR}/../gmb_bytecode/include ${CMAKE_CURRENT_SOURCE_DIR}/../gmb_compiler_c/include ${CMAKE_CURRENT_SOURCE_DIR}/../gmb_compiler_c/frontend/include ${CMAKE_CURRENT_SOURCE_DIR}/../gmb_runtime_c/src ${CMAKE_CURRENT_SOURCE_DIR}/../gmb_doc_c/include ${CMAKE_CURRENT_SOURCE_DIR}/../gmb_torch/include ${LLMENV}/LLMEngine/include ${LLMENV}/LLMEngine/mlx ${LLMENV}/LLMEngine/Options ${LLMENV}/LLMEngine/plugin ${LLMENV}/LLMEngine/moe/include ${CMAKE_CURRENT_SOURCE_DIR}/../../gmbllm/include ${CMAKE_CURRENT_SOURCE_DIR}/../../gmbllm/include/quant ${LLMENV}/LLMToken/include ${LLMENV}/LLMCodec/include ${LLMENV}/LLMDesc)
 
 # Database su file (DBF/ISAM/SPEED/Ledger/Clipper RDD) via gmb_db: SEMPRE presente.

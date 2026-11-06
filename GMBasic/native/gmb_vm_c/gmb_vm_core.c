@@ -6,6 +6,7 @@
  * ============================================================================ */
 
 #include "gmb_vm_core.h"
+#include "gmb_call.h"
 #include "gmb_tray.h"
 #include "gmb_vm_signal.h"
 #include "gmb_state_hook.h"   /* canale d'errore dell'hook di stato (VM/C ospitata) */
@@ -440,6 +441,30 @@ typedef struct { int64_t f0; double f1; } gmb_ffi_udtid2_t;
  * questo file: mai bit reinterpretati, cast esplicito al punto di chiamata). */
 static double gmb_vm_ffi_call_mixed(void* fn, int argc, unsigned shapeBits, int retIsInt, const double* a)
 {
+    /* Motore libffi: kind per slot da shapeBits (1 = int64, 0 = double). */
+    if (gmb_call_enabled() && argc >= 0 && argc <= 32)
+    {
+        unsigned char is_int[32];
+        void* vals[32];
+        int64_t iv[32];
+        double dv[32];
+        for (int i = 0; i < argc; i++)
+        {
+            is_int[i] = (unsigned char)((shapeBits >> i) & 1u);
+            if (is_int[i]) { iv[i] = (int64_t)a[i]; vals[i] = &iv[i]; }
+            else { dv[i] = a[i]; vals[i] = &dv[i]; }
+        }
+        if (retIsInt)
+        {
+            int64_t r = 0;
+            if (gmb_call_invoke(fn, argc, is_int, vals, 1, &r) == 0) return (double)r;
+        }
+        else
+        {
+            double r = 0.0;
+            if (gmb_call_invoke(fn, argc, is_int, vals, 0, &r) == 0) return r;
+        }
+    }
     switch (((unsigned)argc << 9) | ((unsigned)retIsInt << 8) | shapeBits)
     {
     case 0: { double __r = 0.0; GMB_FFI_MIX0(double,fn,a,__r); return __r; }
@@ -1476,6 +1501,17 @@ static double gmb_vm_ffi_call_mixed(void* fn, int argc, unsigned shapeBits, int 
  * OP_CALL_FFI_T (2026-09-22, parità 4 backend). */
 static double gmb_vm_ffi_call_double(void* p, int argc, const double* a)
 {
+    /* Motore libffi (gmb_call.h): una sola implementazione per qualunque arità, niente
+     * tabella 2^N. Se la firma non è preparabile si ricade sul dispatch storico sotto. */
+    if (gmb_call_enabled() && argc >= 0 && argc <= 32)
+    {
+        unsigned char is_int[32] = {0};
+        void* vals[32];
+        double tmp[32];
+        for (int i = 0; i < argc; i++) { tmp[i] = a[i]; vals[i] = &tmp[i]; }
+        double r = 0.0;
+        if (gmb_call_invoke(p, argc, is_int, vals, 0, &r) == 0) return r;
+    }
     switch (argc)
     {
         case 1: { double (*f)(double) = (double (*)(double))p; return f(a[0]); }

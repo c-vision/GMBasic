@@ -132,6 +132,7 @@ EOF
   while IFS= read -r rel; do
     [ -n "$rel" ] || continue
     SPLIT_N=$((SPLIT_N+1))
+    echo "  [split] $rel"
     if ! GMB_MINI_ONLY="$rel" dotnet test "$ROOT/tests/GMBASIC.IlBackend.Tests" \
         --no-build --filter "FullyQualifiedName~MiniTests_IL_PCode_Parity" $flags; then
       SPLIT_FAIL=1
