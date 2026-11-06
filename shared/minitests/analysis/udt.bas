@@ -1,3 +1,4 @@
+IMPORT MULTIVARIATEX
 IMPORT MULTIVARIATE
 IMPORT REGRESSION
 SUB Main()
@@ -9,8 +10,8 @@ SUB Main()
   PRINT r.Intercept
   PRINT r.R2
   DIM d(4) AS DOUBLE = {1, 2, 10, 11}
-  DIM k AS MULTIVARIATE.KMeansResult
-  k = MULTIVARIATE.KMeans(d, 2)
-  PRINT k.Centroids(0)
-  PRINT k.Centroids(1)
+  DIM ko(5) AS DOUBLE
+  CALL MULTIVARIATEX.KMEANS(d, 2, ko)
+  PRINT ko(0)
+  PRINT ko(1)
 END SUB

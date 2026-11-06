@@ -100,6 +100,12 @@ typedef struct gmb_widget_style {
 
 void gmb_ui_set_theme(const gmb_theme_t* t);
 void gmb_ui_set_theme_name(const char* name);
+/* Hook OPZIONALE (NULL-safe) notificato quando il tema cambia: la UI (finestre/controlli)
+ * ripittura desktop e finestre. Registrato dal layer UI; il core funziona anche senza. */
+void gmb_ui_theme_on_change(void (*fn)(const char* name));
+/* Dipinge il desktop con il tema attivo (colore + retino). Unica implementazione,
+ * condivisa da layer console/TUI e window-statement. */
+void gmb_theme_paint_desktop(gmb_screen_buffer_t* buf);
 gmb_theme_t gmb_ui_theme(void);
 const char* gmb_ui_theme_name(void);
 int gmb_ui_theme_is_set(void);

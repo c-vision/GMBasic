@@ -6,6 +6,7 @@
 ' Derivato dai MiniTest per-funzione (stessi input e oracoli).
 ' Scopo: verificare la STESSA versione del namespace sui 4 backend, non un'applicazione.
 ' EXPECT: interp:  3 , 3 , 2|interp2:  3 , 3 , 5|euclid:  30|yw:  1.33333333333333 , 0.333333333333333|ma:  0.5 , 0.057143|4.8|5|3.3466401061363|11.2|0.088041393098|-1.975446428571|3|-0.058600903867|9.5|2.25|6.5|4|6.25|6.21875|9|6.5|40|0.5  3  9.5|0  0.166666666666667  0.333333333333333 -0.5 -0.333333333333333 -0.166666666666667|2  3  0  1|2  3  0  1|4  1|0.25 -0.3|1.96|0.2|0.999375650364|1|10.5|-4.220358|0.792388|0.024221|-0.792388|9.16044|11.023513|F= 4.8|adf_stat= 0  adf_p= 0.75|pca= ok|0.333333333333333|0.333333333333333|0.367879774412498|rows= 2|cols= 2|yend= 0|splev= 12.25|splrep_ok= 1|f00= 3|y00= 0|0  0  1  0|0  1  0  1|rfft_ok= 1|irfft0= 0.25|d= 6
+IMPORT MULTIVARIATEX
 
 
 IMPORT MULTIVARIATE
@@ -82,10 +83,10 @@ SUB A_udt()
   PRINT ROUND(r.Intercept, 12)
   PRINT ROUND(r.R2, 12)
   DIM d(4) AS DOUBLE = {1, 2, 10, 11}
-  DIM k AS MULTIVARIATE.KMeansResult
-  k = MULTIVARIATE.KMeans(d, 2)
-  PRINT k.Centroids(0)
-  PRINT k.Centroids(1)
+  DIM ko(5) AS DOUBLE
+  CALL MULTIVARIATEX.KMEANS(d, 2, ko)
+  PRINT ko(0)
+  PRINT ko(1)
 END SUB
 
 
@@ -123,13 +124,13 @@ END SUB
 
 
 SUB A_pca()
-  DIM data(3, 1) AS DOUBLE
-  data(0,0) = 1: data(0,1) = 2
-  data(1,0) = 2: data(1,1) = 3
-  data(2,0) = 3: data(2,1) = 4
-  data(3,0) = 4: data(3,1) = 5
-  DIM r AS MULTIVARIATE.PcaResult
-  r = MULTIVARIATE.Pca(data)
+  DIM data(3) AS ARRAY OF DOUBLE
+  data(0) = {1, 2}
+  data(1) = {2, 3}
+  data(2) = {3, 4}
+  data(3) = {4, 5}
+  DIM po(5) AS DOUBLE
+  CALL MULTIVARIATEX.PCA(data, po)
   PRINT "pca= ok"
 END SUB
 
