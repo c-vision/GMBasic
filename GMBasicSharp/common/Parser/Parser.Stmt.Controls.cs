@@ -48,10 +48,17 @@ public sealed partial class Parser
     public static Stmt ParseCheckBoxStandalone(Parser p, string? ns)
     {
         var tok = p.Peek(); p.Advance();
-        var cb = ParseControlArgs(p, ("AT", 2), ("TEXT", 1));
+        /* Forme accettate (parita' con l'emitter C99): CHECKBOX x, y, "testo" |
+         * CHECKBOX x, y, w, "testo" | AT x,y [WIDTH w] TEXT "testo".
+         * Con 3 posizionali il terzo finisce in WIDTH: se e' una STRINGA e' il
+         * caption (prima veniva scartato e il label spariva dal controllo). */
+        var cb = ParseControlArgs(p, ("AT", 2), ("WIDTH", 1), ("TEXT", 1));
+        Expr? caption;
+        if (cb[2] is StringExpr) caption = cb[2];
+        else caption = cb[3];   /* il 3o posizionale era la larghezza */
         var row = cb[0] ?? new NumberExpr(0, tok);
         var col = cb[1] ?? new NumberExpr(0, tok);
-        var caption = cb[2] ?? new StringExpr("", tok);
+        if (caption is null) caption = new StringExpr("", tok);
         p.Consume(TokenKind.Into, "Expected 'INTO' after CHECKBOX.");
         var variable = p.ParseTarget();
         Target? id = null;
@@ -73,16 +80,23 @@ public sealed partial class Parser
     public static Stmt ParseComboBoxStandalone(Parser p, string? ns)
     {
         var tok = p.Peek(); p.Advance();
+        /* COMBOBOX x, y, w, items | COMBOBOX x, y, items | AT x,y [WIDTH w] ITEMS items.
+         * Con 3 posizionali il terzo (stringa) e' la lista, non la larghezza. */
         var cbb = ParseControlArgs(p, ("AT", 2), ("WIDTH", 1), ("ITEMS", 1));
+        Expr itemsExpr;
+        Expr widthExpr;
+        if (cbb[2] is StringExpr) { itemsExpr = cbb[2]!; widthExpr = new NumberExpr(0, tok); }
+        else {
+            widthExpr = cbb[2] ?? new NumberExpr(0, tok);
+            itemsExpr = cbb[3] ?? new StringExpr("", tok);
+        }
         var row = cbb[0] ?? new NumberExpr(0, tok);
         var col = cbb[1] ?? new NumberExpr(0, tok);
-        var width = cbb[2] ?? new NumberExpr(0, tok);
-        var items = cbb[3] ?? new StringExpr("", tok);
         p.Consume(TokenKind.Into, "Expected 'INTO' after COMBOBOX.");
         var variable = p.ParseTarget();
         Target? id = null;
         var props = ParseControlProps(p, ref id, out var events, tok);
-        return new ComboBoxStmt(variable, row, col, width, items, tok, id, props, events);
+        return new ComboBoxStmt(variable, row, col, widthExpr, itemsExpr, tok, id, props, events);
     }
 
     public static Stmt ParseMenuStandalone(Parser p, string? ns)

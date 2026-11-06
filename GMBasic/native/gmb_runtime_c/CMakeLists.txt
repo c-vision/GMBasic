@@ -382,7 +382,6 @@ set(GMB_ALL_SRCS
     src/gmb_encoding.c
     src/gmb_difficulty.c
     src/gmb_screen_buffer.c
-    src/gmb_blockchain.c
     src/gmb_compress.c
     src/gmb_bzip2.c
     src/gmb_aes.c
@@ -1260,6 +1259,11 @@ add_executable(gmb_tui_events_selfcheck tests/gmb_tui_events_selfcheck.c)
 target_link_libraries(gmb_tui_events_selfcheck PRIVATE gmb_runtime)
 target_include_directories(gmb_tui_events_selfcheck PRIVATE include)
 add_test(NAME gmb_tui_events_selfcheck COMMAND gmb_tui_events_selfcheck)
+
+add_executable(gmb_form_dropdown_keys_selfcheck tests/gmb_form_dropdown_keys_selfcheck.c)
+target_link_libraries(gmb_form_dropdown_keys_selfcheck PRIVATE gmb_runtime)
+target_include_directories(gmb_form_dropdown_keys_selfcheck PRIVATE include)
+add_test(NAME gmb_form_dropdown_keys_selfcheck COMMAND gmb_form_dropdown_keys_selfcheck)
 
 add_executable(gmb_form_win_selfcheck tests/gmb_form_win_selfcheck.c)
 target_link_libraries(gmb_form_win_selfcheck PRIVATE gmb_runtime)
