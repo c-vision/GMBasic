@@ -31608,7 +31608,9 @@ static void emit_ffi_wrapper(ctx_t* c, fn_info_t* fn) {
         } \
     } while (0)
     int cast_ret = strcmp(inner_ret, retC) != 0 && strcmp(retC, "void") != 0 && strcmp(inner_ret, "void") != 0;
-    if (n_intarr == 0 && !ret_is_udt && !any_cb_param) {
+    int any_arr_udt = 0;
+    for (int i = 0; i < s->n_params && i < 8; i++) if (arr_udt_ci[i]) any_arr_udt = 1;
+    if (n_intarr == 0 && !ret_is_udt && !any_cb_param && !any_arr_udt) {
         ind(c);
         if (strcmp(retC, "void") == 0) sb_put(&c->out, "__ffi_fn(");
         else if (ret_is_str) sb_put(&c->out, "return gmb_string_alloc(__ffi_fn(");
@@ -31635,6 +31637,39 @@ static void emit_ffi_wrapper(ctx_t* c, fn_info_t* fn) {
             emit_ident(c, s->func_params[i]); sb_put(&c->out, "[__k] = (gmb_double_t)__ci_"); emit_ident(c, s->func_params[i]); sb_put(&c->out, "[__k];\n");
             ind(c);
             sb_put(&c->out, "free(__ci_"); emit_ident(c, s->func_params[i]); sb_put(&c->out, ");\n");
+        }
+        /* Copy-back degli array di UDT (S3): il nativo può aver modificato il buffer. */
+        for (int i = 0; i < s->n_params && i < 8; i++) {
+            if (!arr_udt_ci[i]) continue;
+            struct cls_info* uci = arr_udt_ci[i];
+            ffi_leaf_t lv[64];
+            int nlv = collect_ffi_leaves_silent(c, uci, "", lv, 64);
+            ind(c);
+            sb_put(&c->out, "for (gmb_int_t __k = 0; __k <= "); emit_ident(c, s->func_params[i]);
+            sb_printf(&c->out, "__b0; __k++) { gmb_obj_%s* __e = (gmb_obj_%s*)(((gmb_obj_t*)", uci->name, uci->name);
+            emit_ident(c, s->func_params[i]);
+            sb_put(&c->out, "[__k].v_ptr)->data); if (__e) { ");
+            for (int f = 0; f < nlv; f++) {
+                sb_put(&c->out, "__e->");
+                char pb[128]; snprintf(pb, sizeof(pb), "%s", lv[f].path);
+                char* seg = pb;
+                for (;;) {
+                    char* dot = strchr(seg, '.');
+                    if (dot) *dot = 0;
+                    sb_ident(&c->out, seg);
+                    if (!dot) break;
+                    sb_put(&c->out, ".");
+                    seg = dot + 1;
+                }
+                if (lv[f].code == 9) {
+                    sb_printf(&c->out, " = gmb_string_alloc(__ua_"); emit_ident(c, s->func_params[i]);
+                    sb_printf(&c->out, "[__k].f%d); ", f);
+                } else {
+                    sb_printf(&c->out, " = (gmb_double_t)__ua_"); emit_ident(c, s->func_params[i]);
+                    sb_printf(&c->out, "[__k].f%d; ", f);
+                }
+            }
+            sb_put(&c->out, "} }\n");
         }
         if (ret_is_udt) {
             /* Struct/UDT per valore, OUT (2026-09-29): '__rr' è lo shape nativo (campi
