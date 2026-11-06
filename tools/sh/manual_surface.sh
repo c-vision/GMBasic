@@ -168,7 +168,13 @@ for cap in $CAPS; do
   fi
 
   cp "$file" "$BK/$(basename "$file")"
-  { cat "$tmp"; echo; cat "$body"; } > "$file"
+  # Idempotenza: toglie le righe vuote finali residue (altrimenti ogni run ne accumula una).
+  awk '{ lines[NR] = $0 }
+       END { last = NR
+             while (last > 0 && lines[last] ~ /^[[:space:]]*$/) last--
+             for (i = 1; i <= last; i++) print lines[i] }' "$tmp" > "$tmp.trim"
+  { cat "$tmp.trim"; echo; cat "$body"; } > "$file"
+  rm -f "$tmp.trim"
   after=$(( $(wc -c < "$file" | tr -d ' ') ))
   printf "OK    %-6s %8s B -> %8s B  (+%s B da %s note)\n" "$cap" "$before" "$after" "$added" "$(echo $notes | wc -w | tr -d ' ')"
   TOTAL_ADDED=$((TOTAL_ADDED + added))

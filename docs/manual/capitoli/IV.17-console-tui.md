@@ -619,7 +619,7 @@ REMOVE HANDLER obj.Changed, MyHandler
 | Forma | Effetto |
 |---|---|
 | `WINDOW DEFINE <nome> FROM r,c TO r,c [TITLE "t"] [DOUBLE\|SINGLE\|ROUNDED] [SHADOW] [PIXEL] [DESKTOP n]` | crea la finestra (rettangolo + titolo + stile) |
-| `WINDOW THEME <n>` | tema globale finestre |
+| `WINDOW THEME <n>` | tema globale finestre (default `turbovision`; `clipper` = legacy DOS) |
 | `WINDOW DESKTOP <n>` | desktop virtuale globale |
 | `WINDOW FRAME DOUBLE\|SINGLE\|ROUNDED` | cornice globale |
 | `WINDOW SHADOW ON\|OFF` | ombreggiatura globale |

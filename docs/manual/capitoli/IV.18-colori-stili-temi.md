@@ -101,18 +101,61 @@ Nella grafica l'aspetto non si imposta controllo per controllo: si sceglie un te
 lo seguono.
 
 ```basic
-WINDOW THEME "light"
+IMPORT WINDOWS
+WINDOW THEME "turbovision"     ' default: palette Turbo Vision 2.0
 WINDOW SHOW
 BUTTON 60, 50, 200, 44, "Cliccami" ON CLICK OnClick STYLE "rounded radius=8"
 ```
 
-- `WINDOW THEME "light"` imposta il tema della finestra (chiaro/scuro, secondo il tema
-  registrato);
+- `WINDOW THEME "nome"` imposta il tema **globale** di finestre e controlli;
+- `SET THEME TO "nome"` fa lo stesso dal namespace `CONSOLE` (le due forme sono equivalenti);
+- `WINDOWS.THEME()` (funzione, parentesi obbligatorie) legge il nome **canonico** del tema attivo;
 - `STYLE "..."` è la personalizzazione **locale**: una stringa di proprietà separate da spazio
-  (`rounded`, `radius=8`).
+  (`rounded`, `radius=8`) che vince sul tema per quel singolo controllo.
+
+Il **default è `turbovision`**, la palette Turbo Vision 2.0: desktop grigio con retino `░` blu,
+finestre blu con testo grigio chiaro e cornice bianca, dialog/menu grigi con testo nero.
+Il tema **`clipper`** è l'alternativa "DOS": desktop navy con retino `▒` teal, finestre blu con
+cornice ciano, titlebar teal, icone gialle, selezione e statusbar verdi.
+
+| tema | ruolo | alias |
+|---|---|---|
+| `turbovision` | **default**, Turbo Vision 2.0 | `tv2`, `tv`, `turbo2`, `borland`, `turbo` |
+| `clipper` | legacy DOS, aspetto distinto | `tp7`, `turbopascal` |
+| `qbasic` | DOS blu | `dos` |
+| `midnight`, `nord`, `dracula`, `monokai` | temi scuri | — |
+| `solarized` | Solarized | `solarizeddark` |
+| `retrogreen`, `amber` | fosforo verde/ambra | `green`, `matrix` |
+| `vb6` | grigio Windows 98 | `visualbasic` |
+| `light` | chiaro moderno | `win`, `windows` |
+| `soft`, `neon`, `glass` | neumorfico, neon, dashboard | `neumorph` / `violet` / `dashboard` |
+
+Il nome è **case-insensitive** e ignora `-`, `_`, spazi; un nome sconosciuto ricade su
+`turbovision`. Gli alias sono risolti: `WINDOWS.THEME()` riporta sempre il preset vero
+(`"turbo"` → `turbovision`, `"tp7"` → `clipper`), con lo stesso risultato su IL, P-Code, VM/C e
+C99Native.
+
+### 3.1 Cosa cambia davvero: colori e "carattere"
+
+Il tema non è solo colore. In Turbo Vision il **nome** del tema decide anche la forma dei widget
+grafici: i temi classici (`turbovision`, `clipper`, `qbasic`, `amber`, `retrogreen`, `vb6`) usano
+angoli netti e nessuna ombra; i temi moderni (`light`, `midnight`, `nord`, …) usano angoli
+arrotondati e ombra; `neon` e `glass` hanno skin dedicati. I controlli a caratteri, invece, hanno
+sempre gli stessi glifi (è il layout TV: titolo ` Titolo ` centrato, icone `[■]` e `[↑]`, cornice
+doppia sulla finestra attiva e singola sulle altre, angoli `└─`/`─┘`, button a due righe con `▀`,
+checkbox ` [X] `, radio ` (•) `, listbox con `│`, scrollbar `▲▼▒■▓`).
+
+```basic
+' cambio tema e verifica
+WINDOW THEME "clipper"
+PRINT WINDOWS.THEME()          ' clipper
+SET THEME TO "nord"
+PRINT WINDOWS.THEME()          ' nord
+```
 
 La precedenza è quella che serve: il tema dà la base, lo `STYLE` del singolo controllo la
 corregge. Un controllo senza `STYLE` resta coerente col tema anche quando il tema cambia.
+
 
 ## 4. Tema, stile, proprietà: chi vince
 
@@ -155,8 +198,6 @@ causa numero uno di "il tema non funziona".
 - **IV.17** — i comandi della console.
 - **IV.19** — finestre ed eventi.
 - **IV.20** — i controlli che ricevono stile e tema.
-
-
 
 <!-- BEGIN SURFACE (generato da tools/sh/manual_surface.sh — non modificare a mano) -->
 
@@ -353,45 +394,87 @@ BUTTON 48, 320, 208, 48, "Save"    STYLE "primary rounded radius=10"
 ## Sintassi
 
 IMPORT WINDOWS
-WINDOW THEME "soft"        ' forma effettiva (applica il tema)
-SET THEME TO "soft"        ' accettata ma NO-OP sul runtime nativo (compatibilità)
 
+WINDOW THEME "turbovision"     ' forma COMANDO (legacy a spazio): applica il tema
+SET THEME TO "clipper"         ' forma alternativa (namespace CONSOLE): stesso effetto
+PRINT WINDOWS.THEME()          ' funzione di LETTURA: nome canonico del tema attivo
 
-## Temi disponibili (13 famiglie)
-| tema | alias accettati |
+| forma | tipo | effetto |
+|---|---|---|
+| `WINDOW THEME "nome"` | comando (`WINDOWS`, serve `IMPORT WINDOWS`) | applica il tema globale |
+| `SET THEME TO "nome"` | comando (`CONSOLE`) | identico a `WINDOW THEME` |
+| `WINDOWS.THEME()` | funzione (parentesi obbligatorie) | legge il nome canonico del tema attivo |
+
+## Temi disponibili
+| tema | ruolo | alias |
+|---|---|---|
+| **`turbovision`** | **default**, palette Turbo Vision 2.0 | `tv2`, `tv`, `turbo2`, `borland`, `turbo` |
+| **`clipper`** | legacy DOS, aspetto distinto | `tp7`, `turbopascal` |
+| `qbasic` | DOS blu | `dos` |
+| `midnight` | scuro blu notte | — |
+| `nord` | scuro artico | — |
+| `dracula` | scuro viola | — |
+| `monokai` | scuro caldo | — |
+| `solarized` | chiaro/scuro Solarized | `solarizeddark` |
+| `retrogreen` | verde fosforo | `green`, `matrix` |
+| `amber` | ambra fosforo | — |
+| `vb6` | grigio Windows 98 | `visualbasic` |
+| `light` | chiaro moderno | `win`, `windows` |
+| `soft` | neumorfico | `neumorph`, `neumorphic` |
+| `neon` | card bianche, accento viola | `violet` |
+| `glass` | dashboard vetro | `dashboard`, `navy` |
+
+## `turbovision` e `clipper` a confronto
+| elemento | `turbovision` | `clipper` |
+|---|---|---|
+| desktop | grigio `#AAAAAA` + retino `░` blu | navy `#000080` + retino `▒` teal |
+| finestra | blu `#0000AA`, testo grigio chiaro | blu `#0000AA`, testo bianco |
+| cornice / titolo | bianchi su blu | ciano `#00FFFF`, titlebar teal |
+| icone `[■]`/`[↑]` | bianche | gialle |
+| selezione / statusbar | blu / grigia | verde / verde |
+| dialog / menu | grigi con testo nero | navy / teal con testo bianco |
+
+## Palette per-vista
+| vista | temi classici (`turbovision`/`clipper`) |
 |---|---|
-| `midnight` | — |
-| `nord` | — |
-| `dracula` | — |
-| `qbasic` | `dos` |
-| `monokai` | — |
-| `solarized` | `solarizeddark` |
-| `retrogreen` | `green`, `matrix` |
-| `amber` | — |
-| `turbo` | *(default)* |
-| `light` | `win`, `windows` |
-| `soft` | `neumorph`, `neumorphic` |
-| `neon` | `violet` |
-| `glass` | `dashboard`, `navy` |
+| editor (`CODEAREA`, `TEXTAREA`) | sfondo blu, testo bianco, cornice ciano |
+| menu bar / dropdown | grigio su grigio scuro (TV) / teal |
+| dialog | grigio con testo nero (TV) / navy con bianco |
+| statusbar | riga dedicata (grigia in TV, verde in `clipper`) |
+
+## Marker dei controlli
+| opzione runtime | default | effetto |
+|---|---|---|
+| `gmb_tui_show_markers` | `0` (spenti) | `1` mostra i marker `[ ]` / `» «` sui controlli |
+| tema attivo | `turbovision` | vedi tabella dei temi qui sopra |
 
 ## Esempi
 
-SET THEME TO "nord"
-WINDOW THEME "soft"
-BUTTON 4, 4, 20, 6, "OK" STYLE "primary rounded radius=10"
+IMPORT WINDOWS
+
+' 1) tema di default (Turbo Vision 2.0)
+PRINT "Tema: "; WINDOWS.THEME()          ' turbovision
+
+' 2) cambio tema e verifica
+WINDOW THEME "clipper"
+PRINT "Tema: "; WINDOWS.THEME()          ' clipper
+
+' 3) tema scuro per un editor
+WINDOW THEME "nord"
+WINDOW DEFINE Editor FROM 2, 2 TO 20, 70 TITLE "Editor" DOUBLE SHADOW
+WINDOW Editor PRINT "testo di prova"
+
+' 4) forma SET (namespace CONSOLE)
+SET THEME TO "glass"
 
 
 ## Disponibilità per backend
-| backend | `WINDOW THEME` (con `IMPORT WINDOWS`) |
-|---|---|
-| IL | ✅ `theme=ok` |
-| P-Code | ✅ `theme=ok` |
-| VM/C | ✅ `theme=ok` |
-| C99Native | ✅ `theme=ok` |
-
-printf 'IMPORT WINDOWS\nWINDOW THEME "soft"\nPRINT "theme=ok"\n' > /tmp/themeI.bas
-# 4 backend → theme=ok (commit 578e7307f)
-
+| backend | `WINDOW THEME` | `SET THEME TO` | `WINDOWS.THEME()` |
+|---|---|---|---|
+| IL | ✅ | ✅ | ✅ |
+| P-Code | ✅ | ✅ | ✅ |
+| VM/C | ✅ | ✅ | ✅ |
+| C99Native | ✅ | ✅ | ✅ |
 
 ## Riferimenti
 
