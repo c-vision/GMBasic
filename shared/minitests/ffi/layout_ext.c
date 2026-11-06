@@ -131,3 +131,9 @@ ArrMix arrmix_bump(ArrMix v)
     v.b += 10;
     return v;
 }
+
+/* Campi UNSIGNED di larghezza dichiarata (UINTEGER=uint16, ULONG=uint32, UQUAD=uint64). */
+typedef struct { uint16_t u16; uint32_t u32; uint64_t u64; } UUns;
+
+int32_t uuns_size(void) { return (int32_t)sizeof(UUns); }
+double uuns_sum(UUns v) { return (double)v.u16 + (double)v.u32 + (double)v.u64; }
