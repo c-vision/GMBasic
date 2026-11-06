@@ -143,7 +143,6 @@ public sealed partial class StdLib : IParserRegistry
         CreateMatrixNamespace();
         CreateLinalgNamespace();
         // SPECIAL: namespace LIBERATO — ri-esposto via FFI (shared/include/special.inc, libgmbmath).
-        // CreateSpecialNamespace();
         CreateSignalNamespace();
         CreateVectorNamespace();
         CreateIONamespace();
@@ -184,9 +183,7 @@ public sealed partial class StdLib : IParserRegistry
         CreateStatsNamespace();
         CreateNumericalNamespace();
         // FITTING: namespace LIBERATO — ri-esposto via FFI (shared/include/fitting.inc, libgmbstats).
-        // CreateFittingNamespace();
         // SIMULATION: namespace LIBERATO — ri-esposto via FFI (shared/include/simulation.inc, libgmbstats).
-        // CreateSimulationNamespace();
         CreateRegressionNamespace();
         RegisterAnalysisResultTypeSchemas();
         // CreateOptimizeNamespace();  // DEPRECATO 2026-11-03: namespace OPTIMIZE dismesso,

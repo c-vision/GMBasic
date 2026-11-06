@@ -1090,8 +1090,6 @@ procedure,STATS,ChiSquaredIsf,ChiSquaredIsf
 procedure,STATS,ChiSquaredPdf,ChiSquaredPdf
 procedure,STATS,ChiSquaredPpf,ChiSquaredPpf
 procedure,STATS,ChiSquaredSf,StatsChiSquaredSf
-procedure,STATS,Correlation,Correlation
-procedure,STATS,Covariance,StatsCovariance
 procedure,STATS,Describe,StatsDescribe
 procedure,STATS,ExponentialCdf,ExponentialCdf
 procedure,STATS,ExponentialIsf,ExponentialIsf
@@ -1117,7 +1115,6 @@ procedure,STATS,JarqueBera,StatsJarqueBera
 procedure,STATS,KendallTau,StatsKendallTau
 procedure,STATS,Kruskal,StatsKruskal
 procedure,STATS,Ks,KolmogorovSmirnov
-procedure,STATS,Kurtosis,Kurtosis
 procedure,STATS,KurtosisTest,StatsKurtosisTest
 procedure,STATS,LinRegress,StatsLinRegress
 procedure,STATS,LogisticCdf,StatsLogisticCdf
@@ -1130,12 +1127,7 @@ procedure,STATS,LognormalIsf,StatsLognormalIsf
 procedure,STATS,LognormalPdf,LognormalPdf
 procedure,STATS,LognormalPpf,LognormalPpf
 procedure,STATS,LognormalSf,StatsLognormalSf
-procedure,STATS,MAX,StatsMax
-procedure,STATS,MIN,StatsMin
-procedure,STATS,Mad,Mad
 procedure,STATS,MannWhitney,StatsMannWhitney
-procedure,STATS,Mean,Mean
-procedure,STATS,Median,Median
 procedure,STATS,Mode,StatsMode
 procedure,STATS,Moment,StatsMoment
 procedure,STATS,NcBetaCdf,StatsNcBetaCdf
@@ -1176,15 +1168,11 @@ procedure,STATS,ParetoPdf,ParetoPdf
 procedure,STATS,ParetoPpf,ParetoPpf
 procedure,STATS,ParetoSf,StatsParetoSf
 procedure,STATS,PearsonR,StatsPearsonR
-procedure,STATS,Percentile,Percentile
 procedure,STATS,PoissonPmf,PoissonPmf
-procedure,STATS,RANGE,StatsRange
 procedure,STATS,Shapiro,ShapiroWilk
 procedure,STATS,SkewTest,StatsSkewTest
 procedure,STATS,SkewedNormalPdf,SkewedNormalPdf
-procedure,STATS,Skewness,Skewness
 procedure,STATS,SpearmanR,StatsSpearmanR
-procedure,STATS,StdDev,StdDev
 procedure,STATS,StudentTCdf,StudentTCdf
 procedure,STATS,StudentTIsf,StudentTIsf
 procedure,STATS,StudentTPdf,StudentTPdf
@@ -1203,7 +1191,6 @@ procedure,STATS,UniformIsf,StatsUniformIsf
 procedure,STATS,UniformPdf,UniformPdf
 procedure,STATS,UniformPpf,UniformPpf
 procedure,STATS,UniformSf,StatsUniformSf
-procedure,STATS,Variance,Variance
 procedure,STATS,WeibullCdf,WeibullCdf
 procedure,STATS,WeibullIsf,StatsWeibullIsf
 procedure,STATS,WeibullPdf,WeibullPdf

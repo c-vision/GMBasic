@@ -1752,14 +1752,6 @@ if (args.Length >= 2) { var file = args[0]?.ToString() ?? ""; var section = args
                 return CommonLib.Numerics.RollingRegression(ToDoubleArr(ArgOr(args, 0)), (int)SafeDouble(ArgOr(args, 1)))
                     .Select(item => new[] { item.slope, item.intercept }).ToArray();
         },
-        [BuiltInFunction.YULEWALKER] = (task, args) =>
-        {
-                return CommonLib.Numerics.YuleWalker(ToDoubleArr(ArgOr(args, 0)), (int)SafeDouble(ArgOr(args, 1)));
-        },
-        [BuiltInFunction.MACOEFFICIENTS] = (task, args) =>
-        {
-                return CommonLib.Numerics.MaCoefficients(ToDoubleArr(ArgOr(args, 0)), (int)SafeDouble(ArgOr(args, 1)));
-        },
         [BuiltInFunction.EUCLIDEANDISTANCESQUARED] = (task, args) =>
         {
                 return CommonLib.Numerics.EuclideanDistanceSquared(ToDoubleArr(ArgOr(args, 0)), ToDoubleArr(ArgOr(args, 1)));
@@ -1982,43 +1974,6 @@ if (args.Length >= 3) { var file = args[0]?.ToString() ?? ""; var section = args
         {
                 if (args.Length >= 5) { try { return CommonLib.Trading.Options.Zomma(SafeDouble(args[0]), SafeDouble(args[1]), SafeDouble(args[2]), SafeDouble(args[3]), SafeDouble(args[4])); } catch { } } return 0.0;
         },
-        [BuiltInFunction.HOLTWINTERS] = (task, args) =>
-        {
-                // BASIC: HOLTWINTERS(series, alpha, beta, gamma, period) — args[1..3]=alpha/beta/
-                // gamma, args[4]=period; il case leggeva args[1] come seasonalPeriod invece di
-                // alpha (seasonalPeriod=0 -> forecasts vuoto -> HwRes.Forecast(0) fuori range).
-                // Ritorna un Dictionary (stesso motivo di REGRESS sopra), stesso fix di GMBasic
-                // (TODO AnalysisTests-ADFTEST-ARIMA-KMEANS bug #2+#3).
-                if (args.Length >= 2 && args[0] is System.Collections.IList hwIn) {
-                    var hwD = ToDoubleArray(hwIn);
-                    var hwR = CommonLib.Numerics.HoltWintersFit(hwD, (int)SafeDouble(ArgOr(args,4,4)), SafeDouble(ArgOr(args,1,0.3)), SafeDouble(ArgOr(args,2,0.1)), SafeDouble(ArgOr(args,3,0.1)));
-                    return new Dictionary<string, object?> { ["Forecast"] = hwR.fitted, ["Mse"] = hwR.mse };
-                }
-                return null;
-        
-            // ARIMA/ADFTEST/KMEANS erano raggruppati nel case INTERPOLATECLAMP (arità e semantica
-            // incompatibili) — cadevano silenziosamente nel ramo `return 0.0`, nessuna implementazione
-            // reale sotto (CommonLib.Numerics non aveva ADF/ARIMA/KMeans — stesso bug di GMBasic,
-            // TODO AnalysisTests-ADFTEST-ARIMA-KMEANS bug #1). Implementati in
-            // CommonLib/Numerics/Analysis.cs (identico a GMBasic); ritornano Dictionary per lo
-            // stesso motivo di REGRESS/HOLTWINTERS sopra.
-        },
-        [BuiltInFunction.ARIMA] = (task, args) =>
-        {
-                if (args.Length >= 4 && args[0] is System.Collections.IList arimaData) {
-                    try {
-                        var (arC, maC, aic, fitted) = CommonLib.Numerics.ArimaFit(ToDoubleArray(arimaData), (int)SafeDouble(args[1]), (int)SafeDouble(args[2]), (int)SafeDouble(args[3]));
-                        return new Dictionary<string, object?> { ["ArCoeffs"] = arC, ["MaCoeffs"] = maC, ["AIC"] = aic, ["Fitted"] = fitted };
-                    } catch { }
-                }
-                return null;
-        },
-        [BuiltInFunction.ADFTEST] = (task, args) =>
-        {
-                // Runtime comune (IlRuntime): stessa logica — unica implementazione.
-                if (args.Length >= 1 && args[0] is System.Collections.IList adfData) return Basic.IlBackend.IlRuntime.AdfTest(ToDoubleArray(adfData));
-                return null;
-        },
         [BuiltInFunction.KMEANS] = (task, args) =>
         {
                 if (args.Length >= 2 && args[0] is System.Collections.IList kmData) {
@@ -2146,35 +2101,11 @@ if (args.Length >= 3) { var file = args[0]?.ToString() ?? ""; var section = args
                     DateTime.FromOADate(SafeDouble(args[0])), args.Length >= 2 ? (short)SafeDouble(args[1]) : (short)0);
                 return 0.0;
         },
-        [BuiltInFunction.MEAN] = (task, args) =>
-        {
-                // Runtime comune (IlRuntime): GPU per array grandi — unica implementazione.
-                // ParamArray: appiattisce TUTTI gli argomenti (es. MEAN(1,2,3,4) arriva come
-                // 4 scalari separati, MEAN(v) come lista) — come MIN/MAX (SelectMany).
-                {
-                    var vals = args.SelectMany(a => ToDoubleArr(a)).ToArray();
-                    return Basic.IlBackend.IlRuntime.Mean(vals);
-                }
-        },
-        [BuiltInFunction.MEDIAN] = (task, args) =>
-        {
-                {
-                    var vals = args.SelectMany(a => ToDoubleArr(a)).ToArray();
-                    return Basic.IlBackend.IlRuntime.Median(vals);
-                }
-        },
         [BuiltInFunction.VARIANCE] = (task, args) =>
         {
                 {
                     var vals = args.SelectMany(a => ToDoubleArr(a)).ToArray();
                     return Basic.IlBackend.IlRuntime.Variance(vals);
-                }
-        },
-        [BuiltInFunction.STDDEV] = (task, args) =>
-        {
-                {
-                    var vals = args.SelectMany(a => ToDoubleArr(a)).ToArray();
-                    return Basic.IlBackend.IlRuntime.StdDev(vals);
                 }
         },
         [BuiltInFunction.RND] = (task, args) =>
@@ -2273,14 +2204,6 @@ if (args.Length >= 3) { var file = args[0]?.ToString() ?? ""; var section = args
                     args.Length > 1 ? SafeDouble(args[1] ?? 0) : 0,
                     args.Length > 2 ? SafeDouble(args[2] ?? 0) : 0,
                     args.Length > 3 ? SafeDouble(args[3] ?? 0) : 0);
-        },
-        [BuiltInFunction.MAD] = (task, args) =>
-        {
-                // Runtime comune (IlRuntime): CommonLib.Numerics — unica implementazione.
-                {
-                    var vals = args.SelectMany(a => ToDoubleArr(a)).ToArray();
-                    return Basic.IlBackend.IlRuntime.Mad(vals);
-                }
         },
         [BuiltInFunction.SQR] = (task, args) =>
         {
@@ -3164,35 +3087,6 @@ if (args.Length > 0 && args[0] is System.Collections.IList wts) { var w = new do
                     args.Length > 3 ? (long)SafeDouble(args[3]) : 252L);
                 return 0.0;
         },
-        [BuiltInFunction.SKEWNESS] = (task, args) =>
-        {
-                // Runtime comune (IlRuntime): CommonLib.Numerics — unica implementazione.
-                {
-                    var vals = args.SelectMany(a => ToDoubleArr(a)).ToArray();
-                    return Basic.IlBackend.IlRuntime.Skewness(vals);
-                }
-        },
-        [BuiltInFunction.KURTOSIS] = (task, args) =>
-        {
-                {
-                    var vals = args.SelectMany(a => ToDoubleArr(a)).ToArray();
-                    return Basic.IlBackend.IlRuntime.Kurtosis(vals);
-                }
-        },
-        [BuiltInFunction.CORRELATION] = (task, args) =>
-        {
-                // Runtime comune (IlRuntime): GPU per array grandi — unica implementazione.
-                return Basic.IlBackend.IlRuntime.Correlation(
-                    ToDoubleArr(args.Length > 0 ? args[0] : null),
-                    ToDoubleArr(args.Length > 1 ? args[1] : null));
-        },
-        [BuiltInFunction.PERCENTILE] = (task, args) =>
-        {
-                // Runtime comune (IlRuntime): CommonLib.Numerics — unica implementazione.
-                return Basic.IlBackend.IlRuntime.Percentile(
-                    ToDoubleArr(args.Length > 0 ? args[0] : null),
-                    args.Length > 1 ? SafeDouble(args[1] ?? 50) : 50);
-        },
         [BuiltInFunction.TREYNORRATIO] = (task, args) =>
         {
                 // Firma canonica (StdLib): (asset, benchmark, riskfree, periodi) → IlRuntime.
@@ -3935,18 +3829,6 @@ if (args.Length > 0 && args[0] is System.Collections.IList wts) { var w = new do
         {
                 return Basic.StdLibRuntime.MathFunctions.BinomialPmf(SafeDouble(args.Length > 2 ? args[2] : null), (int)SafeDouble(args.Length > 1 ? args[1] : null), (int)SafeDouble(args.Length > 0 ? args[0] : null));
         },
-        [BuiltInFunction.BLAKE2B256] = (task, args) =>
-        {
-                return CommonLib.BlockchainUtils.Blake2b256(ToBytes(ArgOr(args, 0)));
-        },
-        [BuiltInFunction.BLOCKDIFFICULTY] = (task, args) =>
-        {
-            {
-                var header = ToBytes(ArgOr(args, 0));
-                var bits = (int)SafeDouble(ArgOr(args, 1));
-                return double.Parse(CommonLib.BlockchainUtils.BlockDifficulty(header, bits).ToString(), System.Globalization.CultureInfo.InvariantCulture);
-            }
-        },
         [BuiltInFunction.BONDEQUIVALENTYIELD] = (task, args) =>
         {
                 return Basic.StdLibRuntime.TradingFunctions.BondEquivalentYield(SafeDouble(ArgOr(args, 0)), SafeDouble(ArgOr(args, 1)), SafeDouble(ArgOr(args, 2)));
@@ -3976,14 +3858,6 @@ if (args.Length > 0 && args[0] is System.Collections.IList wts) { var w = new do
                 var dy = SafeDouble(ArgOr(args, 5));
                 return dy == 0 ? Basic.StdLibRuntime.TradingFunctions.BsPut(SafeDouble(ArgOr(args, 0)), SafeDouble(ArgOr(args, 1)), SafeDouble(ArgOr(args, 2)), SafeDouble(ArgOr(args, 3)), SafeDouble(ArgOr(args, 4))) : Basic.StdLibRuntime.TradingFunctions.MertonPut(SafeDouble(ArgOr(args, 0)), SafeDouble(ArgOr(args, 1)), SafeDouble(ArgOr(args, 2)), SafeDouble(ArgOr(args, 3)), dy, SafeDouble(ArgOr(args, 4)));
             }
-        },
-        [BuiltInFunction.BTCADDRESSFROMPUB] = (task, args) =>
-        {
-                // Runtime comune (IlRuntime): stessa logica — unica implementazione.
-                // Il flag testnet può arrivare come bool (TRUE/FALSE): SafeDouble(bool) vale 0
-                // ("True" non è parsabile) → il testnet veniva ignorato. Gestisci il bool.
-                var testnet = args.Length > 1 && (ArgOr(args, 1) is bool bt ? bt : SafeDouble(args[1]) != 0.0);
-                return Basic.IlBackend.IlRuntime.BtcAddressFromPub(ArgOr(args, 0), testnet);
         },
         [BuiltInFunction.CAPITALGAINSYIELD] = (task, args) =>
         {
@@ -4083,49 +3957,6 @@ if (args.Length > 0 && args[0] is System.Collections.IList wts) { var w = new do
         {
                 return Basic.StdLibRuntime.FinanceFunctions.Duration(ToDateTime(ArgOr(args, 0)), ToDateTime(ArgOr(args, 1)), SafeDouble(ArgOr(args, 2)), SafeDouble(ArgOr(args, 3)), (int)SafeDouble(ArgOr(args, 4)), (int)SafeDouble(ArgOr(args, 5)));
         },
-        [BuiltInFunction.ECDSASECP256K1SIGN] = (task, args) =>
-        {
-                return CommonLib.BlockchainUtils.EcdsaSecp256k1Sign(ToBytes(ArgOr(args, 0)), ToBytes(ArgOr(args, 1)));
-        },
-        [BuiltInFunction.GENERATEMNEMONIC] = (task, args) =>
-        {
-                // Runtime comune (IlRuntime): stessa logica — unica implementazione.
-                return Basic.IlBackend.IlRuntime.GenerateMnemonic(args.Length > 0 ? SafeDouble(ArgOr(args, 0)) : 12);
-        },
-        [BuiltInFunction.MNEMONICTOSEED] = (task, args) =>
-        {
-                return Basic.IlBackend.IlRuntime.MnemonicToSeed(
-                    ArgOr(args, 0)?.ToString() ?? "", args.Length > 1 ? ArgOr(args, 1)?.ToString() ?? "" : "");
-        },
-        [BuiltInFunction.DERIVEKEY] = (task, args) =>
-        {
-            {
-                var seed = ToBytes(ArgOr(args, 0));
-                var path = ArgOr(args, 1)?.ToString() ?? "m";
-                var dict = CommonLib.BlockchainUtils.DeriveKey(seed, path);
-                return new System.Collections.Generic.Dictionary<string, object?>
-                {
-                    ["privateKey"] = dict["privateKey"],
-                    ["publicKey"] = dict["publicKey"],
-                    ["chainCode"] = dict["chainCode"]
-                };
-            }
-        },
-        [BuiltInFunction.GETPUBLICKEY] = (task, args) =>
-        {
-                return CommonLib.BlockchainUtils.GetPublicKey(ToBytes(ArgOr(args, 0)));
-        },
-        [BuiltInFunction.CONTRACT] = (task, args) =>
-        {
-                // CONTRACT(address, interfaceName, rpcUrl?, privateKey?) — restituisce un dict proxy.
-                return new System.Collections.Generic.Dictionary<string, object?>
-                {
-                    ["address"] = ArgOr(args, 0)?.ToString() ?? "",
-                    ["interface"] = ArgOr(args, 1)?.ToString() ?? "",
-                    ["rpcUrl"] = args.Length > 2 ? ArgOr(args, 2)?.ToString() : "",
-                    ["privateKey"] = args.Length > 3 ? ArgOr(args, 3)?.ToString() : ""
-                };
-        },
         [BuiltInFunction.EMA] = (task, args) =>
         {
             {
@@ -4176,15 +4007,6 @@ if (args.Length > 0 && args[0] is System.Collections.IList wts) { var w = new do
         [BuiltInFunction.EQUITYMULTIPLIER] = (task, args) =>
         {
                 return Basic.StdLibRuntime.TradingFunctions.EquityMultiplier(SafeDouble(ArgOr(args, 0)), SafeDouble(ArgOr(args, 1)));
-        },
-        [BuiltInFunction.ETHADDRESSCHECKSUM] = (task, args) =>
-        {
-                // Runtime comune (IlRuntime): stessa logica — unica implementazione.
-                return Basic.IlBackend.IlRuntime.EthAddressChecksum(ArgOr(args, 0)?.ToString() ?? "");
-        },
-        [BuiltInFunction.ETHADDRESSFROMPUB] = (task, args) =>
-        {
-                return Basic.IlBackend.IlRuntime.EthAddressFromPub(ArgOr(args, 0));
         },
         [BuiltInFunction.EXPONENTIALCDF] = (task, args) =>
         {
@@ -4246,34 +4068,6 @@ if (args.Length > 0 && args[0] is System.Collections.IList wts) { var w = new do
         {
                 return Basic.StdLibRuntime.MathFunctions.HypergeometricPmf((int)SafeDouble(args.Length > 1 ? args[1] : null), (int)SafeDouble(args.Length > 2 ? args[2] : null), (int)SafeDouble(args.Length > 3 ? args[3] : null), (int)SafeDouble(args.Length > 0 ? args[0] : null));
             // --- INTERPOLATE: delegato a ExecuteBuiltInInterpolate (PCodeProcessor.Builtins.Interpolate.cs) ---
-        },
-        [BuiltInFunction.ABIENCODE] = (task, args) =>
-        {
-                // Runtime comune (IlRuntime): Keccak selector + ABI words, e l'appiattimento
-                // RICORSIVO del tail variadico (che può arrivare impacchettato dal ParamArray o
-                // essere un array a runtime). Vive SOLO lì (una sola implementazione, condivisa
-                // con la gamba IL): prima era duplicato qui.
-                if (args.Length >= 1)
-                {
-                    var tail = new object[args.Length - 1];
-                    for (int i = 1; i < args.Length; i++) tail[i - 1] = ArgOr(args, i)!;
-                    return Basic.IlBackend.IlRuntime.AbiEncode(ArgOr(args, 0)?.ToString() ?? "", tail);
-                }
-                return "0x";
-        },
-        [BuiltInFunction.ABIDECODE] = (task, args) =>
-        {
-                // Runtime comune (IlRuntime): stessa logica ABI (bool/string/uint) — unica impl.
-                if (args.Length >= 2)
-                {
-                    var typeList = new List<string>();
-                    if (ArgOr(args, 1) is System.Collections.IList tl)
-                        foreach (var t in tl) typeList.Add(t?.ToString() ?? "uint256");
-                    else if (ArgOr(args, 1) is string ts) typeList.Add(ts);
-                    return Basic.IlBackend.IlRuntime.AbiDecode(
-                        ArgOr(args, 0)?.ToString() ?? "", typeList.ToArray());
-                }
-                return Array.Empty<object?>();
         },
         [BuiltInFunction.KEYEXPORT] = (task, args) =>
         {
@@ -4529,10 +4323,6 @@ if (args.Length > 0 && args[0] is System.Collections.IList wts) { var w = new do
         [BuiltInFunction.RISKPREMIUM] = (task, args) =>
         {
                 return Basic.StdLibRuntime.TradingFunctions.RiskPremium(SafeDouble(ArgOr(args, 0)), SafeDouble(ArgOr(args, 1)));
-        },
-        [BuiltInFunction.RLPENCODE] = (task, args) =>
-        {
-                return CommonLib.BlockchainUtils.RlpEncode(ToBytes(ArgOr(args, 0)));
         },
         [BuiltInFunction.ROLLINGAUTOCORRELATION] = (task, args) =>
         {
@@ -4837,14 +4627,6 @@ if (args.Length > 0 && args[0] is System.Collections.IList wts) { var w = new do
                 // Runtime comune (IlRuntime): stessa logica — unica implementazione.
                 return Basic.IlBackend.IlRuntime.Vanna(SafeDouble(ArgOr(args, 0)), SafeDouble(ArgOr(args, 1)), SafeDouble(ArgOr(args, 2)), SafeDouble(ArgOr(args, 3)), SafeDouble(ArgOr(args, 4)));
         },
-        [BuiltInFunction.VARINTDECODE] = (task, args) =>
-        {
-                return CommonLib.BlockchainUtils.VarIntDecode(ToBytes(ArgOr(args, 0)));
-        },
-        [BuiltInFunction.VARINTENCODE] = (task, args) =>
-        {
-                return CommonLib.BlockchainUtils.VarIntEncode((long)SafeDouble(ArgOr(args, 0)));
-        },
         [BuiltInFunction.VEGA] = (task, args) =>
         {
                 // Runtime comune (IlRuntime): stessa logica — unica implementazione.
@@ -4945,18 +4727,6 @@ if (args.Length > 0 && args[0] is System.Collections.IList wts) { var w = new do
         {
                 return Basic.IlBackend.IlRuntime.AteMatching(ToDoubleArr(ArgOr(args, 0)), ToDoubleArr(ArgOr(args, 1)), ToDoubleArr(ArgOr(args, 2)));
         },
-        [BuiltInFunction.MULTIVARIATE_BOOSTFIT] = (task, args) =>
-        {
-                return Basic.IlBackend.IlRuntime.BoostFit(ToJaggedArr(ArgOr(args, 0)), ToDoubleArr(ArgOr(args, 1)), (long)SafeDouble(ArgOr(args, 2)), (long)SafeDouble(ArgOr(args, 3)), SafeDouble(ArgOr(args, 4)), (long)SafeDouble(ArgOr(args, 5)));
-        },
-        [BuiltInFunction.MULTIVARIATE_BOOSTPREDICT] = (task, args) =>
-        {
-                return Basic.IlBackend.IlRuntime.BoostPredict(ToDoubleArr(ArgOr(args, 0)), ToDoubleArr(ArgOr(args, 1)));
-        },
-        [BuiltInFunction.MULTIVARIATE_BOOSTSCORE] = (task, args) =>
-        {
-                return Basic.IlBackend.IlRuntime.BoostScore(ToDoubleArr(ArgOr(args, 0)), ToJaggedArr(ArgOr(args, 1)), ToDoubleArr(ArgOr(args, 2)));
-        },
         [BuiltInFunction.VECTOR_VGET] = (task, args) =>
         {
                 return VecGetP(args);
@@ -5008,71 +4778,6 @@ if (args.Length > 0 && args[0] is System.Collections.IList wts) { var w = new do
         [BuiltInFunction.VECTOR_VMAX] = (task, args) =>
         {
                 return VecOpP(args, 9);
-        },
-        [BuiltInFunction.SIM_TPE] = (task, args) =>
-        {
-                if (args.Length >= 6 && args[0] is ClosureData tf)
-                {
-                        try
-                        {
-                                Func<double[], double> fn = x => SafeDouble(CallClosureSync(task, tf, x));
-                                return Basic.IlBackend.IlRuntime.Tpe(fn, ToDoubleArr(ArgOr(args, 1)), ToDoubleArr(ArgOr(args, 2)), (long)SafeDouble(ArgOr(args, 3)), (long)SafeDouble(ArgOr(args, 4)), SafeDouble(ArgOr(args, 5)));
-                        }
-                        catch { }
-                }
-                return null;
-        },
-        [BuiltInFunction.SIM_PARTICLEFILTER] = (task, args) =>
-        {
-                return Basic.IlBackend.IlRuntime.ParticleFilter(ToDoubleArr(ArgOr(args, 0)), SafeDouble(ArgOr(args, 1)), SafeDouble(ArgOr(args, 2)), SafeDouble(ArgOr(args, 3)), SafeDouble(ArgOr(args, 4)), SafeDouble(ArgOr(args, 5)));
-        },
-        [BuiltInFunction.SIM_SEED] = (task, args) =>
-        {
-                return Basic.IlBackend.IlRuntime.SimSeed(SafeDouble(ArgOr(args, 0)));
-        },
-        [BuiltInFunction.SIM_UNIFORM] = (task, args) =>
-        {
-                return Basic.IlBackend.IlRuntime.SimUniform();
-        },
-        [BuiltInFunction.SIM_NORMAL] = (task, args) =>
-        {
-                return Basic.IlBackend.IlRuntime.SimNormal();
-        },
-        [BuiltInFunction.SIM_EXPONENTIAL] = (task, args) =>
-        {
-                return Basic.IlBackend.IlRuntime.SimExponential(SafeDouble(ArgOr(args, 0)));
-        },
-        [BuiltInFunction.SIM_BERNOULLI] = (task, args) =>
-        {
-                return Basic.IlBackend.IlRuntime.SimBernoulli(SafeDouble(ArgOr(args, 0)));
-        },
-        [BuiltInFunction.SIM_BINOMIAL] = (task, args) =>
-        {
-                return Basic.IlBackend.IlRuntime.SimBinomial(SafeDouble(ArgOr(args, 0)), SafeDouble(ArgOr(args, 1)));
-        },
-        [BuiltInFunction.FITTING_POLYFIT] = (task, args) =>
-        {
-                return Basic.IlBackend.IlRuntime.PolyFit(ToDoubleArr(ArgOr(args, 0)), ToDoubleArr(ArgOr(args, 1)), (long)SafeDouble(ArgOr(args, 2)));
-        },
-        [BuiltInFunction.FITTING_POLYEVAL] = (task, args) =>
-        {
-                return Basic.IlBackend.IlRuntime.PolyEval(SafeDouble(ArgOr(args, 0)), ToDoubleArr(ArgOr(args, 1)));
-        },
-        [BuiltInFunction.FITTING_CHEBEVAL] = (task, args) =>
-        {
-                return Basic.IlBackend.IlRuntime.ChebEval(SafeDouble(ArgOr(args, 0)), ToDoubleArr(ArgOr(args, 1)));
-        },
-        [BuiltInFunction.FITTING_PADEEVAL] = (task, args) =>
-        {
-                return Basic.IlBackend.IlRuntime.PadeEval(SafeDouble(ArgOr(args, 0)), ToDoubleArr(ArgOr(args, 1)), ToDoubleArr(ArgOr(args, 2)));
-        },
-        [BuiltInFunction.FITTING_RSQUARED] = (task, args) =>
-        {
-                return Basic.IlBackend.IlRuntime.RSquared(ToDoubleArr(ArgOr(args, 0)));
-        },
-        [BuiltInFunction.FITTING_RSQUAREDTEST] = (task, args) =>
-        {
-                return Basic.IlBackend.IlRuntime.RSquaredTest(ToDoubleArr(ArgOr(args, 0)));
         },
         [BuiltInFunction.MULTIVARIATE_GMMEM1D] = (task, args) =>
         {
@@ -5536,22 +5241,6 @@ if (args.Length > 0 && args[0] is System.Collections.IList wts) { var w = new do
             if (args.Length >= 2)
                 return Basic.IlBackend.IlRuntime.PortfolioStDev(args[0]!, args[1]!);
             return 0.0;
-        },
-        [BuiltInFunction.KECCAK256STRING] = (task, args) =>
-        {
-            return Basic.IlBackend.IlRuntime.StrKeccak256(ArgOr(args, 0));
-        },
-        [BuiltInFunction.KECCAK256] = (task, args) =>
-        {
-            return Basic.IlBackend.IlRuntime.Keccak256(ArgOr(args, 0));
-        },
-        [BuiltInFunction.RIPEMD160STRING] = (task, args) =>
-        {
-            return Basic.IlBackend.IlRuntime.StrRipeMd160(ArgOr(args, 0));
-        },
-        [BuiltInFunction.RIPEMD160] = (task, args) =>
-        {
-            return Basic.IlBackend.IlRuntime.RipeMd160(ArgOr(args, 0));
         },
         [BuiltInFunction.MINCVAR] = (task, args) =>
         {
