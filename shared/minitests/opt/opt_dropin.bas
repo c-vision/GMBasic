@@ -22,14 +22,17 @@ SUB Main()
     DIM A(3) AS DOUBLE
     A(0) = 4.0 : A(1) = 2.0 : A(2) = 2.0 : A(3) = 3.0
     DIM bb(1) AS DOUBLE = {10.0, 8.0}
-    DIM ch() = OPTIMIZE.CHOLESKYSOLVE(A, 2, bb)
+    DIM ch(1) AS DOUBLE
+    CALL OPTIMIZE.CHOLESKYSOLVE(A, bb, ch)
     PRINT "ls="; MATH.ROUND(ch(0), 4); " , "; MATH.ROUND(ch(1), 4)
     DIM Aub(3) AS DOUBLE
     Aub(0) = 1.0 : Aub(1) = 2.0 : Aub(2) = 3.0 : Aub(3) = 2.0
     DIM bub(1) AS DOUBLE = {4.0, 6.0}
-    DIM lp() = OPTIMIZE.LINPROG(bb, 2, Aub, 2, bub)
+    DIM lp(1) AS DOUBLE
+    CALL OPTIMIZE.LINPROG(bb, Aub, bub, lp)
     PRINT "lp="; MATH.ROUND(lp(0), 4); " , "; MATH.ROUND(lp(1), 4)
-    DIM sp() = OPTIMIZE.SIMPLEX(bb, 2, Aub, 2, bub)
+    DIM sp(2) AS DOUBLE
+    CALL OPTIMIZE.SIMPLEX(bb, Aub, bub, sp)
     PRINT "sp="; MATH.ROUND(sp(0), 4); " , "; MATH.ROUND(sp(1), 4); " , "; MATH.ROUND(sp(2), 4)
     DIM xs(2) AS DOUBLE = {1.0, 2.0, 3.0}
     DIM ys(2) AS DOUBLE = {2.0, 4.0, 6.0}

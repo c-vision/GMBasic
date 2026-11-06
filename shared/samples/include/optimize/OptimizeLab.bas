@@ -90,7 +90,7 @@ SUB Main()
     DIM yb(2) AS DOUBLE
     yb(0) = 3.0 : yb(1) = 5.0 : yb(2) = 7.0
     DIM lin(1) AS DOUBLE
-    CALL OPTIMIZE.LEASTSQUARES(A, 3, 2, yb, lin)
+    CALL OPTIMIZE.LEASTSQUARES(A, yb, lin)
     PRINT "LSTSQ    a,b ="; MATH.ROUND(lin(0), 3); ","; MATH.ROUND(lin(1), 3)
 
     DIM SPD(3) AS DOUBLE
@@ -98,7 +98,7 @@ SUB Main()
     DIM rhs(1) AS DOUBLE
     rhs(0) = 10.0 : rhs(1) = 8.0
     DIM chol(1) AS DOUBLE
-    CALL OPTIMIZE.CHOLESKYSOLVE(SPD, 2, rhs, chol)
+    CALL OPTIMIZE.CHOLESKYSOLVE(SPD, rhs, chol)
     PRINT "CHOLESKY x,y ="; MATH.ROUND(chol(0), 3); ","; MATH.ROUND(chol(1), 3)
 
     ' ── 5. programmazione lineare (SIMPLEX, LINPROG, LINPROGEQ) ───────────────
@@ -109,13 +109,13 @@ SUB Main()
     DIM bm(1) AS DOUBLE
     bm(0) = 4.0 : bm(1) = 2.0
     DIM sx(2) AS DOUBLE
-    CALL OPTIMIZE.SIMPLEX(obj, 2, M, 2, bm, sx)
+    CALL OPTIMIZE.SIMPLEX(obj, M, bm, sx)
     PRINT "SIMPLEX  x,y,obj ="; MATH.ROUND(sx(0), 3); ","; MATH.ROUND(sx(1), 3); ","; MATH.ROUND(sx(2), 3)
 
     DIM cmin(1) AS DOUBLE
     cmin(0) = -1.0 : cmin(1) = -1.0
     DIM xl(1) AS DOUBLE
-    CALL OPTIMIZE.LINPROG(cmin, 2, M, 2, bm, xl)
+    CALL OPTIMIZE.LINPROG(cmin, M, bm, xl)
     PRINT "LINPROG  x,y ="; MATH.ROUND(xl(0), 3); ","; MATH.ROUND(xl(1), 3)
 
     DIM Aub(1) AS DOUBLE
@@ -126,7 +126,7 @@ SUB Main()
     Aeq(0) = 1.0 : Aeq(1) = -1.0
     DIM beq(0) AS DOUBLE
     beq(0) = 0.0
-    CALL OPTIMIZE.LINPROGEQ(cmin, 2, Aub, 1, bub, Aeq, 1, beq, xl)
+    CALL OPTIMIZE.LINPROGEQ(cmin, Aub, bub, Aeq, beq, xl)
     PRINT "LINPROGEQ x,y ="; MATH.ROUND(xl(0), 3); ","; MATH.ROUND(xl(1), 3)
 
     ' ── 6. minimizzatori (9) ─────────────────────────────────────────────────

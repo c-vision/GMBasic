@@ -17,6 +17,6 @@ SUB Main()
     DIM bnd(3) AS DOUBLE
     bnd(0) = 0.0 : bnd(1) = 3.0 : bnd(2) = 0.0 : bnd(3) = 3.0
     DIM o(1) AS DOUBLE
-    CALL OPTIMIZE.LINPROGFULL(c, 2, A, 1, b, Ae, 1, be, bnd, o)
+    CALL OPTIMIZE.LINPROGFULL(c, A, b, Ae, be, bnd, o)
     PRINT "v="; MATH.ROUND(o(0), 4); ","; MATH.ROUND(o(1), 4)
 END SUB
