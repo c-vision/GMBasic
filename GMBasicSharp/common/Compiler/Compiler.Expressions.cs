@@ -922,7 +922,9 @@ public sealed partial class Compiler
             // dal tipo puntato. BYREF di STRING resta vietato (nessuna semantica in/out chiara
             // per un puntatore-a-puntatore char**, fuori scope). Vedi AiWiki
             // Bugs/(open) - FFI-Estensioni-Possibili-BYREF-Struct-Callback.md §1.
-            bool IsByRefScalarParam(Parameter p) => p.Flags.HasFlag(SymbolFlags.IsByRef) && !IsArrayParam(p) && !IsStringParam(p);
+            bool IsByRefScalarParam(Parameter p) => p.Flags.HasFlag(SymbolFlags.IsByRef) && !IsArrayParam(p) && !IsStringParam(p) && p.DataType is not UserDefinedType;
+            /* BYREF UDT (2026-11-06): `BYREF p AS <TYPE>` → `<Udt>_t*` (in/out struct). */
+            bool IsByRefUdtParam(Parameter p) => p.Flags.HasFlag(SymbolFlags.IsByRef) && !IsArrayParam(p) && !IsStringParam(p) && p.DataType is UserDefinedType;
             // Callback (2026-09-29): un parametro `AS FUNCTION(...) AS T` / `AS SUB(...)`
             // viaggia come PUNTATORE nativo (l'indirizzo di un trampolino C vero, generato a
             // runtime da una famiglia pre-dichiarata — vedi gmb_vm_core.c) — stessa classe di
@@ -1015,7 +1017,7 @@ public sealed partial class Compiler
             // coesistere con un array/STRING/BYREF (che forzano Int64) nella stessa
             // dichiarazione. Vedi AiWiki Bugs/(open) - FFI-Estensioni-Possibili-BYREF-Struct-
             // Callback.md §2.
-            bool IsUdtParam(Parameter p) => !IsArrayParam(p) && !IsStringParam(p) && !IsByRefScalarParam(p) && p.DataType is UserDefinedType;
+            bool IsUdtParam(Parameter p) => !IsArrayParam(p) && !IsStringParam(p) && p.DataType is UserDefinedType && !IsCallbackParam(p);
             // Array di UDT (S3, 2026-11-06): elemento = TYPE semplice; il layout dell elemento
             // viaggia nello stesso modo del parametro UDT singolo (conteggio + size + tipo/offset).
             UserDefinedType? UdtArrayElem(Parameter p) => IsArrayParam(p) && (p.DataType as ArrayType)?.ElementType is UserDefinedType u ? u : null;
@@ -1357,6 +1359,7 @@ public sealed partial class Compiler
                     var isArr = IsArrayParam(p);
                     var isStr = !isArr && IsStringParam(p);
                     var isBr = !isArr && !isStr && IsByRefScalarParam(p);
+                    var isBrUdt = !isArr && !isStr && IsByRefUdtParam(p);
                     var isCb = !isArr && !isStr && !isBr && IsCallbackParam(p);
                     var isUd = !isArr && !isStr && !isBr && !isCb && IsUdtParam(p);
                     int flags = 0;
@@ -1373,7 +1376,7 @@ public sealed partial class Compiler
                     }
                     else if (isStr) flags |= 4;
                     else if (isBr) { flags |= 8; if (IsFfiInt64Type(p.DataType)) flags |= 0x80; }
-                    else if (isUd) flags |= 0x20 | 0x80;   /* 0x80 = formato layout nuovo */
+                    else if (isUd) { flags |= 0x20 | 0x80; if (isBrUdt) flags |= 8; }   /* 0x80 = layout nuovo, 8 = BYREF */
                     else if (isCb) flags |= 0x10;
                     EmitByte((byte)flags);
                     byte a1 = 0, a2 = 0;

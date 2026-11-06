@@ -72,23 +72,29 @@ public static partial class IlRuntime
     /// TypeBuilder) di quel parametro; <c>args[i]</c> è già l'istanza boxed corrispondente
     /// (EmitObjectBoxedArgument, EmitFfiCall). Usato quando il RITORNO NON è un UDT né STRING
     /// (altrimenti vedi <see cref="FfiCallTypedArrUdtStr"/>/<see cref="FfiCallTypedArrUdtRet"/>).</summary>
-    public static double FfiCallTypedArrUdt(string lib, string symbol, object?[] args, int kind, long arrayMask, long arrayElemIntMask, long stringMask, long byrefScalarMask, long byrefScalarElemIntMask, string[] udtShapes, long scalarKindMask)
+    public static double FfiCallTypedArrUdt(string lib, string symbol, object?[] args, int kind, long arrayMask, long arrayElemIntMask, long stringMask, long byrefScalarMask, long byrefScalarElemIntMask, string[] udtShapes, long scalarKindMask, long byrefUdtMask = 0)
     {
         var ffi = Current.Ffi;
         var handle = ffi.LoadLibrary(lib);
         var fnPtr = ffi.GetFunction(handle, symbol);
-        var result = ffi.CallFunctionTypedArr(fnPtr, args, kind, arrayMask, arrayElemIntMask, stringMask, retIsString: false, byrefScalarMask, byrefScalarElemIntMask, udtShapeStrs: udtShapes, scalarKindMask: scalarKindMask);
+        var result = ffi.CallFunctionTypedArr(fnPtr, args, kind, arrayMask, arrayElemIntMask, stringMask, retIsString: false, byrefScalarMask, byrefScalarElemIntMask, udtShapeStrs: udtShapes, scalarKindMask: scalarKindMask, byrefUdtMask: byrefUdtMask);
         return Convert.ToDouble(result ?? 0.0);
     }
 
+    /// <summary>BYREF UDT (2026-11-06): riconverte la struct-ombra (layout C, tipo del
+    /// delegate) nel tipo del DIALETTO (campos 64-bit) partendo dal valore corrente della
+    /// variabile BASIC e applicando le foglie lette — usato dal write-back del BYREF UDT.</summary>
+    public static object FfiCopyShapeToStruct(string shapeStr, object? shadow, object? current)
+        => Basic.Runtime.Services.FfiService.CopyShapeToStruct(shapeStr, shadow, current);
+
     /// <summary>Come <see cref="FfiCallTypedArrUdt"/>, per una dichiarazione il cui RITORNO è
     /// STRING (stesso motivo di <see cref="FfiCallTypedArrStr"/>: IL è staticamente tipizzato).</summary>
-    public static string FfiCallTypedArrUdtStr(string lib, string symbol, object?[] args, int kind, long arrayMask, long arrayElemIntMask, long stringMask, long byrefScalarMask, long byrefScalarElemIntMask, string[] udtShapes, long scalarKindMask)
+    public static string FfiCallTypedArrUdtStr(string lib, string symbol, object?[] args, int kind, long arrayMask, long arrayElemIntMask, long stringMask, long byrefScalarMask, long byrefScalarElemIntMask, string[] udtShapes, long scalarKindMask, long byrefUdtMask = 0)
     {
         var ffi = Current.Ffi;
         var handle = ffi.LoadLibrary(lib);
         var fnPtr = ffi.GetFunction(handle, symbol);
-        var result = ffi.CallFunctionTypedArr(fnPtr, args, kind, arrayMask, arrayElemIntMask, stringMask, retIsString: true, byrefScalarMask, byrefScalarElemIntMask, udtShapeStrs: udtShapes, scalarKindMask: scalarKindMask);
+        var result = ffi.CallFunctionTypedArr(fnPtr, args, kind, arrayMask, arrayElemIntMask, stringMask, retIsString: true, byrefScalarMask, byrefScalarElemIntMask, udtShapeStrs: udtShapes, scalarKindMask: scalarKindMask, byrefUdtMask: byrefUdtMask);
         return result as string ?? "";
     }
 
@@ -97,12 +103,12 @@ public static partial class IlRuntime
     /// ritorno — il risultato torna COM'È (istanza boxed di quel tipo), il chiamante
     /// (EmitFfiCall) la unboxa con <c>Unbox_Any</c> sul tipo noto a compile-time. <paramref
     /// name="udtParamTypes"/> può essere null se nessun PARAMETRO è un UDT (solo il ritorno).</summary>
-    public static object FfiCallTypedArrUdtRet(string lib, string symbol, object?[] args, int kind, long arrayMask, long arrayElemIntMask, long stringMask, long byrefScalarMask, long byrefScalarElemIntMask, string[]? udtShapes, long scalarKindMask, string udtReturnShape, Type udtReturnType)
+    public static object FfiCallTypedArrUdtRet(string lib, string symbol, object?[] args, int kind, long arrayMask, long arrayElemIntMask, long stringMask, long byrefScalarMask, long byrefScalarElemIntMask, string[]? udtShapes, long scalarKindMask, long byrefUdtMask, string udtReturnShape, Type udtReturnType)
     {
         var ffi = Current.Ffi;
         var handle = ffi.LoadLibrary(lib);
         var fnPtr = ffi.GetFunction(handle, symbol);
-        var result = ffi.CallFunctionTypedArr(fnPtr, args, kind, arrayMask, arrayElemIntMask, stringMask, retIsString: false, byrefScalarMask, byrefScalarElemIntMask, udtReturnClrType: udtReturnType, scalarKindMask: scalarKindMask, udtShapeStrs: udtShapes, udtReturnShapeStr: udtReturnShape);
+        var result = ffi.CallFunctionTypedArr(fnPtr, args, kind, arrayMask, arrayElemIntMask, stringMask, retIsString: false, byrefScalarMask, byrefScalarElemIntMask, udtReturnClrType: udtReturnType, scalarKindMask: scalarKindMask, udtShapeStrs: udtShapes, udtReturnShapeStr: udtReturnShape, byrefUdtMask: byrefUdtMask);
         return result!;
     }
 }

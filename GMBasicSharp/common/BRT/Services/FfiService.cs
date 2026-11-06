@@ -450,7 +450,7 @@ public class FfiService : IFfiService
         return kind == 1 ? Convert.ToDouble(result ?? 0L) : result;
     }
 
-    private readonly Dictionary<(IntPtr, int, int, long, long, long, long, string), Delegate> _typedArrDelegateCache = new();
+    private readonly Dictionary<(IntPtr, int, int, long, long, long, long, string, long), Delegate> _typedArrDelegateCache = new();
     // Struct/UDT (2026-09-28): cache dei VALUE TYPE CLR costruiti a runtime per una "forma"
     // UDT (kind + numero di campi) — riusata sia per parametri sia per ritorni, e tra chiamate
     // diverse con la stessa forma (es. due UDT distinti con lo stesso numero di campi/kind
@@ -521,6 +521,31 @@ public class FfiService : IFfiService
     /// annidati). Serve al backend IL, dove il tipo CLR del dialetto (INTEGER/LONG a 64 bit)
     /// non coincide col layout C: il runtime costruisce un tipo-ombra col layout giusto e
     /// converte campo per campo (2026-11-06, S1).</summary>
+    /// <summary>BYREF UDT (2026-11-06): riconverte una struct-OMBRA (layout C, tipo del
+    /// delegate nativo) nel tipo del DIALETTO partendo dal valore corrente della variabile
+    /// BASIC (`current`, boxato) e applicando tutte le foglie lette da `shadow`. Usata dal
+    /// write-back del BYREF UDT in IL (il delegate ritorna il tipo-ombra, non quello del
+    /// dialetto).</summary>
+    public static object CopyShapeToStruct(string shapeStr, object? shadow, object? current)
+    {
+        var (_, fields) = ParseUdtShape(shapeStr);
+        var dst = current ?? throw new ArgumentNullException(nameof(current));
+        var dstType = dst.GetType();
+        var fresh = Activator.CreateInstance(dstType)!;
+        // copia il valore corrente (i campi non toccati dalla FFI restano quelli di prima)
+        foreach (var fi in dstType.GetFields(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance))
+            fi.SetValue(fresh, fi.GetValue(dst));
+        for (var f = 0; f < fields.Length; f++)
+        {
+            var raw = shadow?.GetType().GetField($"F{f}")?.GetValue(shadow);
+            object? val = fields[f].Code == 9
+                ? (raw is IntPtr ip ? (Marshal.PtrToStringUTF8(ip) ?? "") : (raw as string ?? ""))
+                : Convert.ToDouble(raw ?? 0.0);
+            SetPathValue(fresh, fields[f].Path.Split('.'), 0, val);
+        }
+        return fresh;
+    }
+
     private static (int Size, (string Path, byte Code, int Off)[] Fields) ParseUdtShape(string s)
     {
         var bar = s.IndexOf('|');
@@ -843,7 +868,7 @@ public class FfiService : IFfiService
         long stringMask, bool retIsString, long byrefScalarMask = 0, long byrefScalarElemIntMask = 0,
         FfiUdtShape?[]? udtParams = null, FfiUdtShape? udtReturn = null,
         Type?[]? udtParamClrTypes = null, Type? udtReturnClrType = null, long scalarKindMask = 0,
-        string[]? udtShapeStrs = null, string? udtReturnShapeStr = null)
+        string[]? udtShapeStrs = null, string? udtReturnShapeStr = null, long byrefUdtMask = 0)
     {
         if (function == IntPtr.Zero) return null;
         var n = args.Length;
@@ -862,7 +887,7 @@ public class FfiService : IFfiService
             string.Join(",", (udtParams ?? Array.Empty<FfiUdtShape?>()).Select(ShapeSig)) + "|" + ShapeSig(udtReturn) +
             "|" + string.Join(",", (udtParamClrTypes ?? Array.Empty<Type?>()).Select(t => t?.FullName ?? "")) + "|" + (udtReturnClrType?.FullName ?? "") +
             "|" + string.Join(",", udtShapeStrs ?? Array.Empty<string>()) + "|" + (udtReturnShapeStr ?? "");
-        var key = (function, n, kind, arrayMask, stringMask, byrefScalarMask, scalarKindMask, udtShapeKey);
+        var key = (function, n, kind, arrayMask, stringMask, byrefScalarMask, scalarKindMask, udtShapeKey, byrefUdtMask);
         if (!_typedArrDelegateCache.TryGetValue(key, out var del))
         {
             var paramTypes = new Type[n];
@@ -871,12 +896,22 @@ public class FfiService : IFfiService
                     && (arrayMask & (1L << i)) == 0
                     // Backend IL con layout C reale (S1, 2026-11-06): tipo-ombra costruito dalla
                     // forma (larghezze C vere) — args[i] viene convertito campo per campo sotto.
-                    ? BuildFfiTypeFromShape(ParseUdtShape(udtShapeStrs[i]).Fields)
+                    // BYREF UDT (2026-11-06): parametro `ref T` → il nativo riceve `T*`.
+                    // BYREF UDT (2026-11-06): si passa un PUNTATORE a un buffer nativo (come per
+                    // gli array di UDT): il marshaller CLR su un `ref` struct a layout esplicito
+                    // andava in crash nativo (PCode). Copy-out dopo la chiamata.
+                    ? ((byrefUdtMask & (1L << i)) != 0
+                        ? typeof(IntPtr)
+                        : BuildFfiTypeFromShape(ParseUdtShape(udtShapeStrs[i]).Fields))
                     : udtParamClrTypes != null && i < udtParamClrTypes.Length && udtParamClrTypes[i] is { } clrT
                     // Struct/UDT per valore, backend IL (2026-09-29): il tipo CLR REALE del
                     // UDT, già costruito a compile-time (TypeBuilder) — nessuna forma-ombra da
                     // costruire, args[i] è già un'istanza boxed di ESATTAMENTE questo tipo.
                     ? clrT
+                    : udtParams != null && i < udtParams.Length && udtParams[i] is { } udtPBr && (arrayMask & (1L << i)) == 0
+                    && (byrefUdtMask & (1L << i)) != 0
+                    // BYREF UDT (PCodeVM): puntatore a buffer nativo (stesso schema degli array).
+                    ? typeof(IntPtr)
                     : udtParams != null && i < udtParams.Length && udtParams[i] is { } udtP && (arrayMask & (1L << i)) == 0
                     // Struct/UDT per valore, backend PCodeVM (2026-09-28): un vero VALUE TYPE CLR
                     // costruito a runtime (campi kind-omogenei, layout sequenziale) — .NET
@@ -932,6 +967,10 @@ public class FfiService : IFfiService
         var udtArrScratch = new Array?[n];
         var udtArrOrig = new Array?[n];
         var udtArrShapes = new FfiUdtShape?[n];
+        var byrefUdtRaw = new IntPtr[n];
+        var byrefUdtShapeStr = new string?[n];
+        var byrefUdtShapes = new FfiUdtShape?[n];
+        var byrefUdtOrig = new object?[n];
         var udtArrRaw = new IntPtr[n];
         var udtArrElemSize = new int[n];
         var udtArrElemType = new Type?[n];
@@ -940,6 +979,23 @@ public class FfiService : IFfiService
         {
             for (var i = 0; i < n; i++)
             {
+                if (udtShapeStrs != null && i < udtShapeStrs.Length && udtShapeStrs[i] != null
+                    && (arrayMask & (1L << i)) == 0 && (byrefUdtMask & (1L << i)) != 0)
+                {
+                    // BYREF UDT: struct in memoria NON gestita (layout C), puntatore al nativo.
+                    var shapeBr = ParseUdtShape(udtShapeStrs[i]);
+                    var ffiTypeBr = BuildFfiTypeFromShape(shapeBr.Fields);
+                    var sizeBr = shapeBr.Size > 0 ? shapeBr.Size : Marshal.SizeOf(ffiTypeBr);
+                    var rawBr = Marshal.AllocHGlobal(Math.Max(1, sizeBr));
+                    var strPtrsBr = udtStrPtrs ??= new List<IntPtr>();
+                    WriteFfiElem(rawBr, ShapeFromString(udtShapeStrs[i]), args[i], strPtrsBr);
+                    byrefUdtRaw[i] = rawBr;
+                    byrefUdtShapes[i] = ShapeFromString(udtShapeStrs[i]);
+                    byrefUdtShapeStr[i] = udtShapeStrs[i];
+                    byrefUdtOrig[i] = args[i];
+                    dArgs[i] = rawBr;
+                    continue;
+                }
                 if (udtShapeStrs != null && i < udtShapeStrs.Length && udtShapeStrs[i] != null
                     && (arrayMask & (1L << i)) == 0)
                 {
@@ -986,6 +1042,21 @@ public class FfiService : IFfiService
                     udtArrRaw[i] = raw;
                     udtArrElemType[i] = ffiElem;
                     dArgs[i] = raw;
+                    continue;
+                }
+                if (udtParams != null && i < udtParams.Length && udtParams[i] is { } udtShapeBr && (byrefUdtMask & (1L << i)) != 0)
+                {
+                    // BYREF UDT (PCodeVM): buffer nativo + puntatore (copy-out dopo la chiamata).
+                    var ffiTypeBr2 = GetOrBuildUdtShapeType(udtShapeBr.FieldTypes, udtShapeBr.FieldIsInt, udtShapeBr.FieldOffsets);
+                    var sizeBr2 = udtShapeBr.Size > 0 ? udtShapeBr.Size : Marshal.SizeOf(ffiTypeBr2);
+                    var rawBr2 = Marshal.AllocHGlobal(Math.Max(1, sizeBr2));
+                    var strPtrsBr2 = udtStrPtrs ??= new List<IntPtr>();
+                    WriteFfiElem(rawBr2, udtShapeBr, args[i], strPtrsBr2);
+                    byrefUdtRaw[i] = rawBr2;
+                    byrefUdtShapes[i] = udtShapeBr;
+                    byrefUdtOrig[i] = args[i];
+                    byrefUdtShapeStr[i] = null;
+                    dArgs[i] = rawBr2;
                     continue;
                 }
                 if (udtParams != null && i < udtParams.Length && udtParams[i] is { } udtShapeIn)
@@ -1346,6 +1417,28 @@ public class FfiService : IFfiService
             if (byrefScalarMask != 0)
                 for (var i = 0; i < n; i++)
                     if ((byrefScalarMask & (1L << i)) != 0) args[i] = dArgs[i];
+            // BYREF UDT (2026-11-06): rilettura del buffer nativo e riscrittura nell'istanza.
+            for (var i = 0; i < n; i++)
+            {
+                if (byrefUdtRaw[i] == IntPtr.Zero || byrefUdtShapes[i] is not { } shpBr) continue;
+                var valsBr = ReadFfiElem(byrefUdtRaw[i], shpBr);
+                if (byrefUdtOrig[i] is Dictionary<string, object?> dBr)
+                {
+                    for (var f = 0; f < shpBr.FieldNames.Length; f++)
+                        SetFfiLeafValue(dBr, shpBr.FieldNames[f], shpBr.FieldSymbolIdPaths[f], valsBr[f]);
+                }
+                else
+                {
+                    // IL: ricostruisce la struct-OMBRA aggiornata (il writeback la converte).
+                    var ffiTypeBr = byrefUdtShapeStr[i] != null
+                        ? BuildFfiTypeFromShape(ParseUdtShape(byrefUdtShapeStr[i]!).Fields)
+                        : GetOrBuildUdtShapeType(shpBr.FieldTypes, shpBr.FieldIsInt, shpBr.FieldOffsets);
+                    var boxedBr = Activator.CreateInstance(ffiTypeBr)!;
+                    for (var f = 0; f < shpBr.FieldNames.Length; f++)
+                        ffiTypeBr.GetField($"F{f}")!.SetValue(boxedBr, valsBr[f]);
+                    args[i] = boxedBr;
+                }
+            }
             if (retIsString)
             {
                 var ptr = (IntPtr)Convert.ToInt64(result ?? 0L);
