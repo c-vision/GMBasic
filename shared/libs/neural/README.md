@@ -36,6 +36,9 @@ Questi moduli restano fuori dal pacchetto per non duplicare la superficie BASIC.
 | Attivazioni | `*GRAD` (sigmoid/tanh/relu/gelu), `LEAKYRELU`, `ELU`, `SELU`, `SILU`, `MISH`, `PLSE`, `LOGGY`, `HARDTAN`, `LHTAN`, `RELIE`, `RAMP`, `STAIR`, `IDENTITY`, `THRESHOLD`, `HARD*`, `CELU`, `PRELU`, `CRELU` (+ `*GRAD`) | valori RELU/SIGMOID/TANH/GELU già in TORCH: qui solo i gradienti |
 | Strato denso | `DENSEINIT/FORWARD/BACKWARD/PARAMS/SETPARAMS/ZEROGRAD/STEP/FREE` | handle 5001+; SGD/momentum/Adam |
 | Perdite | `LOSSMSE/LOSSMAE/LOSSCROSSENTROPY/LOSSBINARYCROSSENTROPY` | valore in `loss(0)`, gradiente in `grad()` |
+| Dropout | `DROPOUTINIT/FORWARD/BACKWARD/FREE` | handle 6001+, maschera interna |
+| BatchNorm / LayerNorm | `BNINIT/FORWARD/BACKWARD/PARAMS/SETPARAMS/ZEROGRAD/FREE`, `LN*` | handle 6101+/6201+, gamma/beta e statistiche correnti |
+| Chuck | `CHUCKINIT/LOSS/STEP/STATE/REST/FREE` | Adam con dampening, rumore su stallo, freeze — handle 6301+ |
 
 Convenzioni: `x()` = T×in, `y()`/`gy()` = T×out, DOUBLE row-major; handle LONG > 0;
 `STEP` usa i gradienti accumulati da `BACKWARD` (buffer m/v allocati al primo passo,
