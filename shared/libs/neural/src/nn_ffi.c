@@ -21,6 +21,9 @@
 #include "gn_pbp.h"
 #include "gn_conv.h"
 #include "gn_fusedmm.h"
+#include "gn_prune.h"
+#include "gn_quant.h"
+#include "gn_ternary.h"
 #include "gn_opt.h"
 
 #include <stdlib.h>
@@ -816,5 +819,354 @@ i64 ofx_nn_aggregate_run(i64 lh, const i64 *rowptr, const i64 *colidx, const dou
                           (const gn_real *)Y, L->alpha, L->beta, (gn_real *)Z);
     free(rp);
     free(ci);
+    return (i64)rc;
+}
+
+/* ══ Pruning / quantizzazione affine / ternario ══════════════════════════════
+ * Gli array a byte (signed/unsigned char) non esistono nel marshalling FFI
+ * (solo DOUBLE e LONG): qui sono trasportati come array LONG e convertiti in
+ * scratch buffer. I parametri di quantizzazione a uscita multipla sono
+ * restituiti per indice in un array (QUANTPARAMS -> out(0)=scale, out(1)=zp).
+ */
+
+/* ── Pruning (2:4 strutturato, channel pruning) ───────────────────────────── */
+
+i64 ofx_nn_sparsify24(double *w, i64 n, i64 window, i64 nonzeros)
+{
+    if (!w || n <= 0 || window <= 0) return -1;
+    return (i64)gn_sparsify_2_4((gn_real *)w, (int)n, (int)window, (int)nonzeros);
+}
+
+i64 ofx_nn_prune_channel_l1(const double *w, i64 out_c, i64 per_ch, double *l1)
+{
+    if (!w || !l1 || out_c <= 0 || per_ch <= 0) return -1;
+    gn_prune_channel_l1((const gn_real *)w, (int)out_c, (int)per_ch, (gn_real *)l1);
+    return 0;
+}
+
+i64 ofx_nn_prune_channels_mask(const double *l1, i64 out_c, double keep_frac, i64 *mask)
+{
+    unsigned char *tmp;
+    int i, kept;
+    if (!l1 || !mask || out_c <= 0) return -1;
+    tmp = (unsigned char *)calloc((size_t)out_c, 1);
+    if (!tmp) return -1;
+    kept = gn_prune_channels_mask((const gn_real *)l1, (int)out_c, (gn_real)keep_frac, tmp);
+    for (i = 0; i < (int)out_c; i++) mask[i] = (i64)tmp[i];
+    free(tmp);
+    return (i64)kept;
+}
+
+/* ── conversione LONG[] <-> byte[] ────────────────────────────────────────── */
+
+static signed char *i8_from_longs(const i64 *src, int n)
+{
+    signed char *b = (signed char *)malloc((size_t)(n > 0 ? n : 1));
+    int i;
+    if (!b) return NULL;
+    for (i = 0; i < n; i++) b[i] = (signed char)src[i];
+    return b;
+}
+
+static unsigned char *u8_from_longs(const i64 *src, int n)
+{
+    unsigned char *b = (unsigned char *)malloc((size_t)(n > 0 ? n : 1));
+    int i;
+    if (!b) return NULL;
+    for (i = 0; i < n; i++) b[i] = (unsigned char)src[i];
+    return b;
+}
+
+static int *i32_from_longs(const i64 *src, int n)
+{
+    int *b = (int *)malloc((size_t)(n > 0 ? n : 1) * sizeof(int));
+    int i;
+    if (!b) return NULL;
+    for (i = 0; i < n; i++) b[i] = (int)src[i];
+    return b;
+}
+
+/* ── Quantizzazione affine INT8 / UINT8 ───────────────────────────────────── */
+
+/* x -> int8 con (scale, zero_point); out LONG con i valori -128..127. */
+i64 ofx_nn_quant_i8(const double *x, i64 n, double scale, i64 zero_point, i64 *out)
+{
+    signed char *q;
+    int i;
+    if (!x || !out || n <= 0) return -1;
+    q = (signed char *)malloc((size_t)n);
+    if (!q) return -1;
+    gn_quant_i8((const gn_real *)x, (int)n, (gn_real)scale, (int)zero_point, q);
+    for (i = 0; i < (int)n; i++) out[i] = (i64)q[i];
+    free(q);
+    return 0;
+}
+
+/* int8 (LONG) -> double. */
+i64 ofx_nn_dequant_i8(const i64 *q, i64 n, double scale, i64 zero_point, double *out)
+{
+    signed char *b;
+    if (!q || !out || n <= 0) return -1;
+    b = i8_from_longs(q, (int)n);
+    if (!b) return -1;
+    gn_dequant_i8(b, (int)n, (gn_real)scale, (int)zero_point, (gn_real *)out);
+    free(b);
+    return 0;
+}
+
+/* Requantizzazione int32 -> int8 tra due griglie. */
+i64 ofx_nn_requant_i8(const i64 *acc, i64 n, double in_scale, i64 in_zp,
+                      double out_scale, i64 out_zp, i64 *out)
+{
+    int *a;
+    signed char *q;
+    int i;
+    if (!acc || !out || n <= 0) return -1;
+    a = i32_from_longs(acc, (int)n);
+    q = (signed char *)malloc((size_t)n);
+    if (!a || !q) { free(a); free(q); return -1; }
+    gn_requant_i8(a, (int)n, (gn_real)in_scale, (int)in_zp,
+                  (gn_real)out_scale, (int)out_zp, q);
+    for (i = 0; i < (int)n; i++) out[i] = (i64)q[i];
+    free(a);
+    free(q);
+    return 0;
+}
+
+/* out(0) = scale, out(1) = zero_point (griglia int8 [-128,127]). */
+i64 ofx_nn_quant_params(const double *x, i64 n, double *out)
+{
+    gn_real scale = 1.0;
+    int zp = 0;
+    if (!x || !out || n <= 0) return -1;
+    gn_quant_params((const gn_real *)x, (int)n, &scale, &zp);
+    out[0] = (double)scale;
+    out[1] = (double)zp;
+    return 0;
+}
+
+/* GEMM quantizzato uint8: acc int32, correzione zero-point, bias int32 (n), requant.
+ * par(0..5) = scale_a, zp_a, scale_b, zp_b, scale_out, zp_out — la firma resta a 8
+ * argomenti: oltre 8 il marshalling VM/C non esegue la chiamata (limite noto). */
+i64 ofx_nn_quant_gemm_u8(i64 *out, const i64 *a, const i64 *b, const i64 *bias,
+                         const double *par, i64 m, i64 k, i64 n)
+{
+    unsigned char *ao = NULL, *bo = NULL, *co = NULL;
+    int *bi = NULL;
+    int i, total;
+    double scale_a, scale_b, scale_out;
+    int zp_a, zp_b, zp_out;
+    if (!out || !a || !b || !par || m <= 0 || k <= 0 || n <= 0) return -1;
+    scale_a = par[0]; zp_a = (int)par[1];
+    scale_b = par[2]; zp_b = (int)par[3];
+    scale_out = par[4]; zp_out = (int)par[5];
+    total = (int)(m * n);
+    ao = u8_from_longs(a, (int)(m * k));
+    bo = u8_from_longs(b, (int)(k * n));
+    co = (unsigned char *)calloc((size_t)total, 1);
+    if (bias) bi = i32_from_longs(bias, (int)n);
+    if (!ao || !bo || !co || (bias && !bi)) { free(ao); free(bo); free(co); free(bi); return -1; }
+    gn_quant_gemm_u8(co, ao, bo, (int)m, (int)k, (int)n, (gn_real)scale_a, zp_a,
+                     (gn_real)scale_b, zp_b, bi, (gn_real)scale_out, zp_out);
+    for (i = 0; i < total; i++) out[i] = (i64)co[i];
+    free(ao); free(bo); free(co); free(bi);
+    return 0;
+}
+
+/* Requantizzazione a shift (schema CMSIS-NN/NNoM). */
+i64 ofx_nn_quant_requant_shift_i8(const i64 *acc, i64 n, i64 rshift, i64 *out)
+{
+    int *a;
+    signed char *q;
+    int i;
+    if (!acc || !out || n <= 0) return -1;
+    a = i32_from_longs(acc, (int)n);
+    q = (signed char *)malloc((size_t)n);
+    if (!a || !q) { free(a); free(q); return -1; }
+    gn_quant_requant_shift_i8(a, (int)n, (int)rshift, q);
+    for (i = 0; i < (int)n; i++) out[i] = (i64)q[i];
+    free(a);
+    free(q);
+    return 0;
+}
+
+/* Convoluzione 2D quantizzata uint8->int8 (bias int32 per canale di uscita). */
+i64 ofx_nn_quant_conv2d_i8(i64 *out, const i64 *in, const i64 *weight,
+                           const i64 *bias, const i64 *cfg)
+{
+    unsigned char *ib = NULL;
+    signed char *wb = NULL, *ob = NULL;
+    int *bi = NULL;
+    int c, h, w, out_c, kh, kw, stride, pad, bias_shift, out_shift;
+    int oh, ow, total, i;
+    i64 rc;
+    if (!out || !in || !weight || !cfg) return -1;
+    c = (int)cfg[0]; h = (int)cfg[1]; w = (int)cfg[2]; out_c = (int)cfg[3];
+    kh = (int)cfg[4]; kw = (int)cfg[5]; stride = (int)cfg[6]; pad = (int)cfg[7];
+    bias_shift = (int)cfg[8]; out_shift = (int)cfg[9];
+    if (c <= 0 || h <= 0 || w <= 0 || out_c <= 0 || kh <= 0 || kw <= 0 || stride <= 0) return -1;
+    oh = (h + 2 * pad - kh) / stride + 1;
+    ow = (w + 2 * pad - kw) / stride + 1;
+    if (oh <= 0 || ow <= 0) return -1;
+    total = out_c * oh * ow;
+    ib = u8_from_longs(in, c * h * w);
+    wb = i8_from_longs(weight, out_c * c * kh * kw);
+    ob = (signed char *)calloc((size_t)total, 1);
+    if (bias) bi = i32_from_longs(bias, out_c);
+    if (!ib || !wb || !ob || (bias && !bi)) { free(ib); free(wb); free(ob); free(bi); return -1; }
+    rc = (i64)gn_quant_conv2d_i8(ob, ib, c, h, w, wb, bi, out_c,
+                                 kh, kw, stride, pad, bias_shift, out_shift);
+    for (i = 0; i < total; i++) out[i] = (i64)ob[i];
+    free(ib); free(wb); free(ob); free(bi);
+    return rc;
+}
+
+i64 ofx_nn_quant_clamp_u8(i64 *x, i64 n, i64 lo, i64 hi)
+{
+    unsigned char *b;
+    int i;
+    if (!x || n <= 0) return -1;
+    b = u8_from_longs(x, (int)n);
+    if (!b) return -1;
+    gn_quant_clamp_u8(b, (int)n, (int)lo, (int)hi);
+    for (i = 0; i < (int)n; i++) x[i] = (i64)b[i];
+    free(b);
+    return 0;
+}
+
+/* Per-canale: scale(out_c) DOUBLE, zp(out_c) LONG (griglia uint8 [0,255]). */
+i64 ofx_nn_quant_params_channel(const double *w, i64 out_c, i64 per_ch,
+                                double *scale, i64 *zp)
+{
+    int *z = NULL;
+    int i;
+    if (!w || !scale || !zp || out_c <= 0 || per_ch <= 0) return -1;
+    z = (int *)calloc((size_t)out_c, sizeof(int));
+    if (!z) return -1;
+    gn_quant_params_channel((const gn_real *)w, (int)out_c, (int)per_ch, (gn_real *)scale, z);
+    for (i = 0; i < (int)out_c; i++) zp[i] = (i64)z[i];
+    free(z);
+    return 0;
+}
+
+/* Convoluzione uint8 con scala di uscita per-canale (M double[out_c]). */
+i64 ofx_nn_quant_conv2d_i8_channel(i64 *out, const i64 *in, const i64 *weight,
+                                   const i64 *bias, const double *M, const i64 *cfg)
+{
+    unsigned char *ib = NULL, *ob = NULL;
+    signed char *wb = NULL;
+    int *bi = NULL;
+    int c, h, w, out_c, kh, kw, stride, pad, zp_in, zp_out;
+    int oh, ow, total, i;
+    i64 rc;
+    if (!out || !in || !weight || !M || !cfg) return -1;
+    c = (int)cfg[0]; h = (int)cfg[1]; w = (int)cfg[2]; out_c = (int)cfg[3];
+    kh = (int)cfg[4]; kw = (int)cfg[5]; stride = (int)cfg[6]; pad = (int)cfg[7];
+    zp_in = (int)cfg[8]; zp_out = (int)cfg[9];
+    if (c <= 0 || h <= 0 || w <= 0 || out_c <= 0 || kh <= 0 || kw <= 0 || stride <= 0) return -1;
+    oh = (h + 2 * pad - kh) / stride + 1;
+    ow = (w + 2 * pad - kw) / stride + 1;
+    if (oh <= 0 || ow <= 0) return -1;
+    total = out_c * oh * ow;
+    ib = u8_from_longs(in, c * h * w);
+    wb = i8_from_longs(weight, out_c * c * kh * kw);
+    ob = (unsigned char *)calloc((size_t)total, 1);
+    if (bias) bi = i32_from_longs(bias, out_c);
+    if (!ib || !wb || !ob || (bias && !bi)) { free(ib); free(wb); free(ob); free(bi); return -1; }
+    rc = (i64)gn_quant_conv2d_i8_channel(ob, ib, c, h, w, wb, bi,
+                                         (const gn_real *)M, out_c, kh, kw,
+                                         stride, pad, zp_in, zp_out);
+    for (i = 0; i < total; i++) out[i] = (i64)ob[i];
+    free(ib); free(wb); free(ob); free(bi);
+    return rc;
+}
+
+/* ── Ternario (1.58-bit, bit-slicing) — handle 2001+ ──────────────────────── */
+
+#define NN_TERN_MAX 32
+#define NN_TERN_BASE 2000
+
+static gn_ternary g_tern[NN_TERN_MAX];
+static unsigned char g_tern_used[NN_TERN_MAX];
+
+static gn_ternary *tern_get(i64 h)
+{
+    if (h <= NN_TERN_BASE || h > NN_TERN_BASE + NN_TERN_MAX) return NULL;
+    if (!g_tern_used[h - NN_TERN_BASE - 1]) return NULL;
+    return &g_tern[h - NN_TERN_BASE - 1];
+}
+
+/* Quantizza W (rows×cols, DOUBLE row-major) a ternario {-1,0,+1}. */
+i64 ofx_nn_ternary_init(const double *w, i64 rows, i64 cols)
+{
+    gn_mat W;
+    int i;
+    i64 h;
+    if (!w || rows <= 0 || cols <= 0) return -1;
+    for (i = 0; i < NN_TERN_MAX; i++) {
+        if (g_tern_used[i]) continue;
+        memset(&g_tern[i], 0, sizeof(g_tern[i]));
+        W.rows = (int)rows; W.cols = (int)cols; W.data = (gn_real *)w;
+        if (gn_ternary_from_mat(&g_tern[i], &W) != GN_OK) return -1;
+        g_tern_used[i] = 1;
+        h = (i64)(NN_TERN_BASE + i + 1);
+        return h;
+    }
+    return -1;
+}
+
+i64 ofx_nn_ternary_free(i64 h)
+{
+    gn_ternary *t = tern_get(h);
+    if (!t) return -1;
+    gn_ternary_free(t);
+    memset(t, 0, sizeof(*t));
+    g_tern_used[h - NN_TERN_BASE - 1] = 0;
+    return 0;
+}
+
+i64 ofx_nn_ternary_act_bytes(i64 dim)
+{
+    if (dim <= 0) return -1;
+    return (i64)gn_ternary_act_bytes((int)dim);
+}
+
+/* Prodotto scalare bit-sliced della riga `row`: a() = byte in LONG, nbits bit. */
+i64 ofx_nn_ternary_dotrow(i64 h, i64 row, const i64 *a, i64 nbits)
+{
+    gn_ternary *t = tern_get(h);
+    unsigned char *ab;
+    int rc;
+    if (!t || !a || row < 0 || row >= t->rows || nbits <= 0) return -1;
+    ab = u8_from_longs(a, (int)gn_ternary_act_bytes((int)nbits));
+    if (!ab) return -1;
+    rc = gn_ternary_dot(t->w_pos + (size_t)row * t->stride,
+                        t->w_neg + (size_t)row * t->stride, ab, (int)nbits);
+    free(ab);
+    return (i64)rc;
+}
+
+/* forward: x (batch×cols) -> out (batch×rows) = scale * (W ⊙ sign(x)). */
+i64 ofx_nn_ternary_forward(i64 h, const double *x, i64 batch, double *out)
+{
+    gn_ternary *t = tern_get(h);
+    gn_mat X, Y;
+    gn_status rc;
+    if (!t || !x || !out || batch <= 0) return -1;
+    X.rows = (int)batch; X.cols = t->cols; X.data = (gn_real *)x;
+    Y.rows = (int)batch; Y.cols = t->rows; Y.data = (gn_real *)out;
+    rc = gn_ternary_forward(t, &X, &Y);
+    return (i64)rc;
+}
+
+/* Dequantizza W in DOUBLE row-major (rows×cols). */
+i64 ofx_nn_ternary_tomat(i64 h, double *w)
+{
+    gn_ternary *t = tern_get(h);
+    gn_mat W;
+    gn_status rc;
+    if (!t || !w) return -1;
+    W.rows = t->rows; W.cols = t->cols; W.data = (gn_real *)w;
+    rc = gn_ternary_to_mat(t, &W);
     return (i64)rc;
 }

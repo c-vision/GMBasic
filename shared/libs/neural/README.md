@@ -21,6 +21,9 @@ Questi moduli restano fuori dal pacchetto per non duplicare la superficie BASIC.
 | CNN | `CONVINIT/CONVSETDIL/CONVRUN[R B]`, `DECONV*`, `WINO*`, `IM2COL*`, `COL2IM*`, `LRN*`, `RESIZE*` | layout CHW; configurazione su handle (le funzioni C superano gli 8 argomenti FFI) |
 | Pooling | `MAXPOOLINIT`, `AVGPOOLINIT`, `POOLRUN`, `POOLRUNARG`, `UNPOOLINIT`, `UNPOOLRUN` | argmax LONG per il backward |
 | FusedMM | `FUSEDMMINIT/RUN`, `AGGINIT/RUN` | CSR (GAT/GraphSAGE) |
+| Pruning | `SPARSIFY24`, `PRUNECHANNELL1`, `PRUNECHANNELMASK` | 2:4 strutturato, channel pruning |
+| Quantizzazione | `QUANTI8`, `DEQUANTI8`, `REQUANTI8`, `QUANTPARAMS`, `QUANTGEMMU8`, `QUANTREQSHIFTI8`, `QUANTCONV2DI8`, `QUANTCLAMPU8`, `QUANTPARAMSCHANNEL`, `QUANTCONV2DI8CHANNEL` | array a byte trasportati come `LONG`; configurazioni in `cfg()`/`par()` per restare entro gli 8 argomenti |
+| Ternario | `TERNARYINIT/FREE/ACTBYTES/DOTROW/FORWARD/TOMAT` | bit-slicing 1.58-bit, handle 2001+ |
 
 Convenzioni: `x()` = T×in, `y()`/`gy()` = T×out, DOUBLE row-major; handle LONG > 0;
 `STEP` usa i gradienti accumulati da `BACKWARD` (buffer m/v allocati al primo passo,
