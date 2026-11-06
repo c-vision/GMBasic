@@ -79,3 +79,9 @@ DECLARE FUNCTION GRIDNEW LIB "gmbgeo" ALIAS "ofx_geo_grid_new" (xs() AS DOUBLE, 
 ' Indici dei punti nella finestra [minx..maxx] × [miny..maxy]; ritorna quanti.
 DECLARE FUNCTION GRIDQUERY LIB "gmbgeo" ALIAS "ofx_geo_grid_query" (h AS LONG, minx AS DOUBLE, miny AS DOUBLE, maxx AS DOUBLE, maxy AS DOUBLE, idx() AS LONG, cap AS LONG) AS LONG
 DECLARE FUNCTION GRIDFREE LIB "gmbgeo" ALIAS "ofx_geo_grid_free" (h AS LONG) AS LONG
+
+' ── Inviluppo convesso ────────────────────────────────────────────────────
+' Ritorna i vertici dello scafo in oxs/oys (n. vertici, 0/-1 errore) — pronto per
+' POLYAREA/OVERLAY. SPATIAL.CONVEXHULL resta la variante che restituisce gli INDICI
+' dei vertici su una matrice X/Y (per selezionare punti da un array esistente).
+DECLARE FUNCTION CONVEXHULL LIB "gmbgeo" ALIAS "ofx_geo_convex_hull" (xs() AS DOUBLE, ys() AS DOUBLE, n AS LONG, oxs() AS DOUBLE, oys() AS DOUBLE, cap AS LONG) AS LONG
