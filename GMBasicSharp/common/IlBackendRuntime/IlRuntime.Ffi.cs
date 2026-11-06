@@ -42,7 +42,7 @@ public static partial class IlRuntime
     /// SEMPLICE i è Int64, invece del <paramref name="kind"/> uniforme. Default 0: nel caso
     /// omogeneo esistente il chiamante passa comunque il valore coerente con <paramref
     /// name="kind"/> — vedi FfiService.CallFunctionTypedArr.</param>
-    public static double FfiCallTypedArr(string lib, string symbol, object?[] args, int kind, int arrayMask, int arrayElemIntMask, int stringMask, int byrefScalarMask = 0, int byrefScalarElemIntMask = 0, int scalarKindMask = 0)
+    public static double FfiCallTypedArr(string lib, string symbol, object?[] args, int kind, long arrayMask, long arrayElemIntMask, long stringMask, long byrefScalarMask = 0, long byrefScalarElemIntMask = 0, long scalarKindMask = 0)
     {
         var ffi = Current.Ffi;
         var handle = ffi.LoadLibrary(lib);
@@ -57,7 +57,7 @@ public static partial class IlRuntime
     /// un metodo runtime a parte che ritorna string invece di double (FfiService fa il
     /// copy-out UTF-8 del puntatore nativo prima di tornare — vedi
     /// FfiService.CallFunctionTypedArr). PCodeVM non ne ha bisogno: task.PushRef è già generico.</summary>
-    public static string FfiCallTypedArrStr(string lib, string symbol, object?[] args, int kind, int arrayMask, int arrayElemIntMask, int stringMask, int byrefScalarMask = 0, int byrefScalarElemIntMask = 0)
+    public static string FfiCallTypedArrStr(string lib, string symbol, object?[] args, int kind, long arrayMask, long arrayElemIntMask, long stringMask, long byrefScalarMask = 0, long byrefScalarElemIntMask = 0)
     {
         var ffi = Current.Ffi;
         var handle = ffi.LoadLibrary(lib);
@@ -72,7 +72,7 @@ public static partial class IlRuntime
     /// TypeBuilder) di quel parametro; <c>args[i]</c> è già l'istanza boxed corrispondente
     /// (EmitObjectBoxedArgument, EmitFfiCall). Usato quando il RITORNO NON è un UDT né STRING
     /// (altrimenti vedi <see cref="FfiCallTypedArrUdtStr"/>/<see cref="FfiCallTypedArrUdtRet"/>).</summary>
-    public static double FfiCallTypedArrUdt(string lib, string symbol, object?[] args, int kind, int arrayMask, int arrayElemIntMask, int stringMask, int byrefScalarMask, int byrefScalarElemIntMask, Type?[] udtParamTypes)
+    public static double FfiCallTypedArrUdt(string lib, string symbol, object?[] args, int kind, long arrayMask, long arrayElemIntMask, long stringMask, long byrefScalarMask, long byrefScalarElemIntMask, Type?[] udtParamTypes)
     {
         var ffi = Current.Ffi;
         var handle = ffi.LoadLibrary(lib);
@@ -83,7 +83,7 @@ public static partial class IlRuntime
 
     /// <summary>Come <see cref="FfiCallTypedArrUdt"/>, per una dichiarazione il cui RITORNO è
     /// STRING (stesso motivo di <see cref="FfiCallTypedArrStr"/>: IL è staticamente tipizzato).</summary>
-    public static string FfiCallTypedArrUdtStr(string lib, string symbol, object?[] args, int kind, int arrayMask, int arrayElemIntMask, int stringMask, int byrefScalarMask, int byrefScalarElemIntMask, Type?[] udtParamTypes)
+    public static string FfiCallTypedArrUdtStr(string lib, string symbol, object?[] args, int kind, long arrayMask, long arrayElemIntMask, long stringMask, long byrefScalarMask, long byrefScalarElemIntMask, Type?[] udtParamTypes)
     {
         var ffi = Current.Ffi;
         var handle = ffi.LoadLibrary(lib);
@@ -97,7 +97,7 @@ public static partial class IlRuntime
     /// ritorno — il risultato torna COM'È (istanza boxed di quel tipo), il chiamante
     /// (EmitFfiCall) la unboxa con <c>Unbox_Any</c> sul tipo noto a compile-time. <paramref
     /// name="udtParamTypes"/> può essere null se nessun PARAMETRO è un UDT (solo il ritorno).</summary>
-    public static object FfiCallTypedArrUdtRet(string lib, string symbol, object?[] args, int kind, int arrayMask, int arrayElemIntMask, int stringMask, int byrefScalarMask, int byrefScalarElemIntMask, Type?[]? udtParamTypes, Type udtReturnType)
+    public static object FfiCallTypedArrUdtRet(string lib, string symbol, object?[] args, int kind, long arrayMask, long arrayElemIntMask, long stringMask, long byrefScalarMask, long byrefScalarElemIntMask, Type?[]? udtParamTypes, Type udtReturnType)
     {
         var ffi = Current.Ffi;
         var handle = ffi.LoadLibrary(lib);

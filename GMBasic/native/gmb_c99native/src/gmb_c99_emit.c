@@ -5852,6 +5852,9 @@ static void hoist_nested_fns(ctx_t* c, int parent_idx) {
             pv->byref = ns->param_byref && ns->param_byref[k] ? 1 : 0;
             if (ns->param_fixed_lens && ns->param_fixed_lens[k] > 0) pv->fixed_len = ns->param_fixed_lens[k];
             if (p_arraylike(ns, k)) { pv->is_array = 1; pv->ndims = (ns->param_ndims && ns->param_ndims[k] >= 2) ? ns->param_ndims[k] : 1; }
+            /* Parametro array `a() AS BYTE`: stesso tipo-elemento delle DIM BYTE. Senza,
+             * TOHEX(a) dentro la SUB finiva in gmb_double_to_string(puntatore). */
+            if (p_arraylike(ns, k) && pt && gmb_keyword_tok(pt) == GMB_TOK_Byte) pv->elem_byte = 1;
             /* Parametro IMPLICITO non tipato usato con member access (`result.Statistic`):
              * valore DINAMICO → gmb_val_t boxed (parità VM/PCode VARIANT; un double non ha campi). */
             if (!pt && !pv->is_array && !pv->byref && !pv->gkind
@@ -31060,8 +31063,8 @@ static void emit_ffi_wrapper(ctx_t* c, fn_info_t* fn) {
     }
     /* Limite arità (parità 4 backend: la VM/C usa libffi con maschere a 16 bit; C#/IL e
      * PCode hanno lo stesso limite, vedi FfiMaxArgs). */
-    if (s->n_params > 32) {
-        c99_fail(c, s->line, "FFI '%s': massimo 32 argomenti supportati dal marshalling FFI.", sym);
+    if (s->n_params > 64) {
+        c99_fail(c, s->line, "FFI '%s': massimo 64 argomenti supportati dal marshalling FFI.", sym);
         return;
     }
     int ret_is_udt = ret_udt_ci != NULL;

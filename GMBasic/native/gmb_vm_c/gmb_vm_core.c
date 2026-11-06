@@ -447,12 +447,12 @@ typedef struct { int64_t f0; double f1; } gmb_ffi_udtid2_t;
 static double gmb_vm_ffi_call_mixed(void* fn, int argc, unsigned shapeBits, int retIsInt, const double* a)
 {
     /* Motore libffi: kind per slot da shapeBits (1 = int64, 0 = double). */
-    if (gmb_call_enabled() && argc >= 0 && argc <= 32)
+    if (gmb_call_enabled() && argc >= 0 && argc <= GMB_FFI_MAX_ARGS)
     {
-        unsigned char is_int[32];
-        void* vals[32];
-        int64_t iv[32];
-        double dv[32];
+        unsigned char is_int[GMB_FFI_MAX_ARGS];
+        void* vals[GMB_FFI_MAX_ARGS];
+        int64_t iv[GMB_FFI_MAX_ARGS];
+        double dv[GMB_FFI_MAX_ARGS];
         for (int i = 0; i < argc; i++)
         {
             is_int[i] = (unsigned char)((shapeBits >> i) & 1u);
@@ -1520,11 +1520,11 @@ static double gmb_vm_ffi_call_double(void* p, int argc, const double* a)
 {
     /* Motore libffi (gmb_call.h): una sola implementazione per qualunque arità, niente
      * tabella 2^N. Se la firma non è preparabile si ricade sul dispatch storico sotto. */
-    if (gmb_call_enabled() && argc >= 0 && argc <= 32)
+    if (gmb_call_enabled() && argc >= 0 && argc <= GMB_FFI_MAX_ARGS)
     {
-        unsigned char is_int[32] = {0};
-        void* vals[32];
-        double tmp[32];
+        unsigned char is_int[GMB_FFI_MAX_ARGS] = {0};
+        void* vals[GMB_FFI_MAX_ARGS];
+        double tmp[GMB_FFI_MAX_ARGS];
         for (int i = 0; i < argc; i++) { tmp[i] = a[i]; vals[i] = &tmp[i]; }
         double r = 0.0;
         if (gmb_call_invoke(p, argc, is_int, vals, 0, &r) == 0) return r;
@@ -14608,7 +14608,7 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                 int libIdx = gmb_vm_read_u16(vm, task);
                 int nameIdx = gmb_vm_read_u16(vm, task);
                 int argc = gmb_vm_read_u8(vm, task);
-                double args[16];
+                double args[argc > 0 ? argc : 1];
                 for (int i = argc - 1; i >= 0 && task->sp > 0; i--)
                 {
                     gmb_stack_entry_t a = gmb_task_pop(task);

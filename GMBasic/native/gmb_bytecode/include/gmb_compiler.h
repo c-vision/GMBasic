@@ -19,7 +19,7 @@ extern "C" {
 /* Opcode P-Code (specchio di Compiler/OpCode.cs — stessi valori della VM/C). */
 /* Massimo numero di argomenti FFI (2026-11: era 8, limite della tabella di
  * dispatch; con libffi il limite è il formato a 16 bit). */
-#define GMB_FFI_MAX_ARGS 32  /* limite del compilatore = C#/PCode; la VM/C ha headroom a 64 */
+#define GMB_FFI_MAX_ARGS 64  /* limite del compilatore = C#/PCode; la VM/C ha headroom a 64 */
 
 enum {
     GMB_OP_PUSH_CONST = 0, GMB_OP_PUSH_NIL = 1, GMB_OP_PUSH_TRUE = 2, GMB_OP_PUSH_FALSE = 3,

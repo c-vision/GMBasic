@@ -1507,7 +1507,7 @@ public sealed partial class IlProgramCompiler
         // cross-backend richiede lo STESSO limite/messaggio qui, anche se IL stesso non
         // "espande" nulla (passa lo struct vero).
         var flattenedSlotCount = epd.Parameters.Sum(p => IsUdtParam(p) ? LeafKinds((UserDefinedType)p.DataType!).Count() : 1);
-        if (flattenedSlotCount > 32)
+        if (flattenedSlotCount > 64)
             throw new NotSupportedException(
                 $"FFI '{symbolName}': troppi slot nativi risultanti dall'espansione degli UDT per valore ({flattenedSlotCount}, massimo 8 — ogni campo UDT conta come uno slot).");
         if (anyStringByRef)
@@ -1543,9 +1543,9 @@ public sealed partial class IlProgramCompiler
                     $"FFI '{symbolName}': tipo non supportato per il parametro BYREF '{p.Name.Lexeme}' (solo AS DOUBLE o LONG/QUAD, non INTEGER/BYTE/SINGLE — larghezza nativa a 8 byte).");
         }
         // Limite arità (parità 4 backend: la VM/C chiama al massimo 8 argomenti).
-        if (epd.Parameters.Length > 32)
+        if (epd.Parameters.Length > 64)
             throw new NotSupportedException(
-                $"FFI '{symbolName}': massimo 32 argomenti supportati dal marshalling FFI.");
+                $"FFI '{symbolName}': massimo 64 argomenti supportati dal marshalling FFI.");
         // Firma OMOGENEA: parametri E ritorno dello stesso kind. Il ritorno va incluso
         // (solo per FUNCTION) — altrimenti `(LONG) AS DOUBLE` passava come all-double
         // (divergenza vs le gambe C, che mappano i tipi per-parametro). Fix parità 2026-09-22.
@@ -1603,41 +1603,41 @@ public sealed partial class IlProgramCompiler
         // posizione i è Int64 — significativo solo per le posizioni non-array/STRING/BYREF/
         // callback/UDT (altrove il bit non è consultato dal runtime, lasciato a 'kind' per
         // leggibilità). Nel caso omogeneo legacy coincide sempre con 'kind'.
-        var scalarKindMask = 0;
+        long scalarKindMask = 0;
         for (var pi = 0; pi < epd.Parameters.Length && pi < 16; pi++)
         {
             var p = epd.Parameters[pi];
             var isPlainScalar = !IsArrayParam(p) && !IsStringParam(p) && !IsByRefScalarParam(p) && !IsCallbackParam(p) && !IsUdtParam(p);
             if (isPlainScalar ? IsI64(p.DataType)
                               : IsUdtParam(p) ? kind == 1
-                              : true) scalarKindMask |= 1 << pi;
+                              : true) scalarKindMask |= 1L << pi;
         }
         // Struct/UDT (2026-09-29): un UDT tutto-DOUBLE (nessun array/STRING/BYREF a forzare
         // Int64) deve comunque passare dal path "esteso" (tipi reali per i parametri/ritorno,
         // non lo scalare long/double omogeneo puro) — parità con "useTypedPath" in
         // Compiler.Expressions.cs (anyUdt forza il path tipizzato anche a kind=0/Double).
-        var arrayMask = 0;
-        var arrayElemIntMask = 0;
-        var stringMask = 0;
-        var byrefScalarMask = 0;
-        var byrefScalarElemIntMask = 0;
+        long arrayMask = 0;
+        long arrayElemIntMask = 0;
+        long stringMask = 0;
+        long byrefScalarMask = 0;
+        long byrefScalarElemIntMask = 0;
         for (var pi = 0; pi < epd.Parameters.Length; pi++)
         {
-            if (IsStringParam(epd.Parameters[pi])) stringMask |= 1 << pi;
+            if (IsStringParam(epd.Parameters[pi])) stringMask |= 1L << pi;
             if (IsByRefScalarParam(epd.Parameters[pi]))
             {
-                byrefScalarMask |= 1 << pi;
-                if (IsI64(epd.Parameters[pi].DataType)) byrefScalarElemIntMask |= 1 << pi;
+                byrefScalarMask |= 1L << pi;
+                if (IsI64(epd.Parameters[pi].DataType)) byrefScalarElemIntMask |= 1L << pi;
             }
             if (!IsArrayParam(epd.Parameters[pi])) continue;
-            arrayMask |= 1 << pi;
+            arrayMask |= 1L << pi;
             var elem = (epd.Parameters[pi].DataType as ArrayType)?.ElementType;
-            if (IsI64(elem)) arrayElemIntMask |= 1 << pi;
+            if (IsI64(elem)) arrayElemIntMask |= 1L << pi;
         }
         // BYREF scalare: l'argomento deve essere una variabile semplice (stessa restrizione di
         // Compiler.Expressions.cs — serve un simbolo su cui fare il write-back dopo la chiamata).
         for (var pi = 0; pi < epd.Parameters.Length; pi++)
-            if ((byrefScalarMask & (1 << pi)) != 0 && expr.Args[pi] is not VariableExpr)
+            if ((byrefScalarMask & (1L << pi)) != 0 && expr.Args[pi] is not VariableExpr)
                 throw new NotSupportedException(
                     $"FFI '{symbolName}': il parametro BYREF '{epd.Parameters[pi].Name.Lexeme}' richiede una variabile semplice come argomento (non un'espressione).");
         _il.Emit(OpCodes.Ldstr, libPath);
@@ -1682,20 +1682,21 @@ public sealed partial class IlProgramCompiler
         LocalBuilder? cbKeepAliveLocal = null;
         if (anyCallbackParam)
         {
-            var callbackKindMask = 0;
-            var callbackHasRetMask = 0;
+            long callbackKindMask = 0;
+            long callbackHasRetMask = 0;
             for (var pi = 0; pi < epd.Parameters.Length; pi++)
             {
                 if (!IsCallbackParam(epd.Parameters[pi])) continue;
                 var fp = (FunctionPointerType)epd.Parameters[pi].DataType!;
-                if (CallbackIsInt64(fp)) callbackKindMask |= 1 << pi;
-                if (fp.ReturnType is not VoidType) callbackHasRetMask |= 1 << pi;
+                if (CallbackIsInt64(fp)) callbackKindMask |= 1L << pi;
+                if (fp.ReturnType is not VoidType) callbackHasRetMask |= 1L << pi;
             }
-            _il.Emit(OpCodes.Ldc_I4, 16);
+            var cbAritySize = Math.Max(16, epd.Parameters.Length);
+            _il.Emit(OpCodes.Ldc_I4, cbAritySize);
             _il.Emit(OpCodes.Newarr, typeof(int));
             var cbArityLocal = _il.DeclareLocal(typeof(int[]));
             _il.Emit(OpCodes.Stloc, cbArityLocal);
-            for (var pi = 0; pi < 16; pi++)
+            for (var pi = 0; pi < cbAritySize; pi++)
             {
                 _il.Emit(OpCodes.Ldloc, cbArityLocal);
                 _il.Emit(OpCodes.Ldc_I4, pi);
@@ -1730,9 +1731,9 @@ public sealed partial class IlProgramCompiler
         {
             for (var pi = 0; pi < epd.Parameters.Length; pi++)
             {
-                if ((byrefScalarMask & (1 << pi)) == 0) continue;
+                if ((byrefScalarMask & (1L << pi)) == 0) continue;
                 var ve = (VariableExpr)expr.Args[pi];
-                var isInt = (byrefScalarElemIntMask & (1 << pi)) != 0;
+                var isInt = (byrefScalarElemIntMask & (1L << pi)) != 0;
                 var elemType = epd.Parameters[pi].DataType;
                 var pi2 = pi;
                 EmitStoreVariable(ve.SymbolId, () =>
@@ -1785,23 +1786,23 @@ public sealed partial class IlProgramCompiler
             _il.Emit(OpCodes.Ldc_I4, kind);
             if (anyUdtParam)
             {
-                _il.Emit(OpCodes.Ldc_I4, arrayMask);
-                _il.Emit(OpCodes.Ldc_I4, arrayElemIntMask);
-                _il.Emit(OpCodes.Ldc_I4, stringMask);
-                _il.Emit(OpCodes.Ldc_I4, byrefScalarMask);
-                _il.Emit(OpCodes.Ldc_I4, byrefScalarElemIntMask);
+                _il.Emit(OpCodes.Ldc_I8, (long)arrayMask);
+                _il.Emit(OpCodes.Ldc_I8, (long)arrayElemIntMask);
+                _il.Emit(OpCodes.Ldc_I8, (long)stringMask);
+                _il.Emit(OpCodes.Ldc_I8, (long)byrefScalarMask);
+                _il.Emit(OpCodes.Ldc_I8, (long)byrefScalarElemIntMask);
                 EmitUdtParamTypesArray();
-                _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.FfiCallTypedArrUdt), typeof(string), typeof(string), typeof(object[]), typeof(int), typeof(int), typeof(int), typeof(int), typeof(int), typeof(int), typeof(Type[])));
+                _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.FfiCallTypedArrUdt), typeof(string), typeof(string), typeof(object[]), typeof(int), typeof(long), typeof(long), typeof(long), typeof(long), typeof(long), typeof(Type[])));
             }
             else if (arrayMask != 0 || stringMask != 0 || byrefScalarMask != 0 || anyCallbackParam)
             {
-                _il.Emit(OpCodes.Ldc_I4, arrayMask);
-                _il.Emit(OpCodes.Ldc_I4, arrayElemIntMask);
-                _il.Emit(OpCodes.Ldc_I4, stringMask);
-                _il.Emit(OpCodes.Ldc_I4, byrefScalarMask);
-                _il.Emit(OpCodes.Ldc_I4, byrefScalarElemIntMask);
-                _il.Emit(OpCodes.Ldc_I4, scalarKindMask);
-                _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.FfiCallTypedArr), typeof(string), typeof(string), typeof(object[]), typeof(int), typeof(int), typeof(int), typeof(int), typeof(int), typeof(int), typeof(int)));
+                _il.Emit(OpCodes.Ldc_I8, (long)arrayMask);
+                _il.Emit(OpCodes.Ldc_I8, (long)arrayElemIntMask);
+                _il.Emit(OpCodes.Ldc_I8, (long)stringMask);
+                _il.Emit(OpCodes.Ldc_I8, (long)byrefScalarMask);
+                _il.Emit(OpCodes.Ldc_I8, (long)byrefScalarElemIntMask);
+                _il.Emit(OpCodes.Ldc_I8, (long)scalarKindMask);
+                _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.FfiCallTypedArr), typeof(string), typeof(string), typeof(object[]), typeof(int), typeof(long), typeof(long), typeof(long), typeof(long), typeof(long), typeof(long)));
             }
             else if (mixedScalarsOnly)
             {
@@ -1813,8 +1814,8 @@ public sealed partial class IlProgramCompiler
                 _il.Emit(OpCodes.Ldc_I4, 0);
                 _il.Emit(OpCodes.Ldc_I4, 0);
                 _il.Emit(OpCodes.Ldc_I4, 0);
-                _il.Emit(OpCodes.Ldc_I4, scalarKindMask);
-                _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.FfiCallTypedArr), typeof(string), typeof(string), typeof(object[]), typeof(int), typeof(int), typeof(int), typeof(int), typeof(int), typeof(int), typeof(int)));
+                _il.Emit(OpCodes.Ldc_I8, (long)scalarKindMask);
+                _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.FfiCallTypedArr), typeof(string), typeof(string), typeof(object[]), typeof(int), typeof(long), typeof(long), typeof(long), typeof(long), typeof(long), typeof(long)));
             }
             else
             {
@@ -1840,15 +1841,15 @@ public sealed partial class IlProgramCompiler
             // del tipo CLR reale) — unboxata subito dopo il Call sul tipo noto a compile-time,
             // così lo stack ha il vero value type, come qualunque altra espressione UDT.
             var udtReturnClrType = DataTypeMapper.Map(udtReturn, _types, _classTypes);
-            _il.Emit(OpCodes.Ldc_I4, arrayMask);
-            _il.Emit(OpCodes.Ldc_I4, arrayElemIntMask);
-            _il.Emit(OpCodes.Ldc_I4, stringMask);
-            _il.Emit(OpCodes.Ldc_I4, byrefScalarMask);
-            _il.Emit(OpCodes.Ldc_I4, byrefScalarElemIntMask);
+            _il.Emit(OpCodes.Ldc_I8, (long)arrayMask);
+            _il.Emit(OpCodes.Ldc_I8, (long)arrayElemIntMask);
+            _il.Emit(OpCodes.Ldc_I8, (long)stringMask);
+            _il.Emit(OpCodes.Ldc_I8, (long)byrefScalarMask);
+            _il.Emit(OpCodes.Ldc_I8, (long)byrefScalarElemIntMask);
             if (anyUdtParam) EmitUdtParamTypesArray(); else _il.Emit(OpCodes.Ldnull);
             _il.Emit(OpCodes.Ldtoken, udtReturnClrType);
             _il.Emit(OpCodes.Call, GetTypeFromHandleMethod);
-            _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.FfiCallTypedArrUdtRet), typeof(string), typeof(string), typeof(object[]), typeof(int), typeof(int), typeof(int), typeof(int), typeof(int), typeof(int), typeof(Type[]), typeof(Type)));
+            _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.FfiCallTypedArrUdtRet), typeof(string), typeof(string), typeof(object[]), typeof(int), typeof(long), typeof(long), typeof(long), typeof(long), typeof(long), typeof(Type[]), typeof(Type)));
             _il.Emit(OpCodes.Unbox_Any, udtReturnClrType);
             EmitByRefScalarWriteback();
             EmitCallbackKeepAliveIfAny();
@@ -1856,39 +1857,39 @@ public sealed partial class IlProgramCompiler
         else if (anyUdtParam)
         {
             // Il ritorno NON è un UDT (double/long/STRING/void), ma almeno un PARAMETRO lo è.
-            _il.Emit(OpCodes.Ldc_I4, arrayMask);
-            _il.Emit(OpCodes.Ldc_I4, arrayElemIntMask);
-            _il.Emit(OpCodes.Ldc_I4, stringMask);
-            _il.Emit(OpCodes.Ldc_I4, byrefScalarMask);
-            _il.Emit(OpCodes.Ldc_I4, byrefScalarElemIntMask);
+            _il.Emit(OpCodes.Ldc_I8, (long)arrayMask);
+            _il.Emit(OpCodes.Ldc_I8, (long)arrayElemIntMask);
+            _il.Emit(OpCodes.Ldc_I8, (long)stringMask);
+            _il.Emit(OpCodes.Ldc_I8, (long)byrefScalarMask);
+            _il.Emit(OpCodes.Ldc_I8, (long)byrefScalarElemIntMask);
             EmitUdtParamTypesArray();
             if (retIsString)
-                _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.FfiCallTypedArrUdtStr), typeof(string), typeof(string), typeof(object[]), typeof(int), typeof(int), typeof(int), typeof(int), typeof(int), typeof(int), typeof(Type[])));
+                _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.FfiCallTypedArrUdtStr), typeof(string), typeof(string), typeof(object[]), typeof(int), typeof(long), typeof(long), typeof(long), typeof(long), typeof(long), typeof(Type[])));
             else
-                _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.FfiCallTypedArrUdt), typeof(string), typeof(string), typeof(object[]), typeof(int), typeof(int), typeof(int), typeof(int), typeof(int), typeof(int), typeof(Type[])));
+                _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.FfiCallTypedArrUdt), typeof(string), typeof(string), typeof(object[]), typeof(int), typeof(long), typeof(long), typeof(long), typeof(long), typeof(long), typeof(Type[])));
             EmitByRefScalarWriteback();
             EmitCallbackKeepAliveIfAny();
         }
         else if (retIsString)
         {
-            _il.Emit(OpCodes.Ldc_I4, arrayMask);
-            _il.Emit(OpCodes.Ldc_I4, arrayElemIntMask);
-            _il.Emit(OpCodes.Ldc_I4, stringMask);
-            _il.Emit(OpCodes.Ldc_I4, byrefScalarMask);
-            _il.Emit(OpCodes.Ldc_I4, byrefScalarElemIntMask);
-            _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.FfiCallTypedArrStr), typeof(string), typeof(string), typeof(object[]), typeof(int), typeof(int), typeof(int), typeof(int), typeof(int), typeof(int)));
+            _il.Emit(OpCodes.Ldc_I8, (long)arrayMask);
+            _il.Emit(OpCodes.Ldc_I8, (long)arrayElemIntMask);
+            _il.Emit(OpCodes.Ldc_I8, (long)stringMask);
+            _il.Emit(OpCodes.Ldc_I8, (long)byrefScalarMask);
+            _il.Emit(OpCodes.Ldc_I8, (long)byrefScalarElemIntMask);
+            _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.FfiCallTypedArrStr), typeof(string), typeof(string), typeof(object[]), typeof(int), typeof(long), typeof(long), typeof(long), typeof(long), typeof(long)));
             EmitByRefScalarWriteback();
             EmitCallbackKeepAliveIfAny();
         }
         else if (arrayMask != 0 || stringMask != 0 || byrefScalarMask != 0 || anyCallbackParam)
         {
-            _il.Emit(OpCodes.Ldc_I4, arrayMask);
-            _il.Emit(OpCodes.Ldc_I4, arrayElemIntMask);
-            _il.Emit(OpCodes.Ldc_I4, stringMask);
-            _il.Emit(OpCodes.Ldc_I4, byrefScalarMask);
-            _il.Emit(OpCodes.Ldc_I4, byrefScalarElemIntMask);
-            _il.Emit(OpCodes.Ldc_I4, scalarKindMask);
-            _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.FfiCallTypedArr), typeof(string), typeof(string), typeof(object[]), typeof(int), typeof(int), typeof(int), typeof(int), typeof(int), typeof(int), typeof(int)));
+            _il.Emit(OpCodes.Ldc_I8, (long)arrayMask);
+            _il.Emit(OpCodes.Ldc_I8, (long)arrayElemIntMask);
+            _il.Emit(OpCodes.Ldc_I8, (long)stringMask);
+            _il.Emit(OpCodes.Ldc_I8, (long)byrefScalarMask);
+            _il.Emit(OpCodes.Ldc_I8, (long)byrefScalarElemIntMask);
+            _il.Emit(OpCodes.Ldc_I8, (long)scalarKindMask);
+            _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.FfiCallTypedArr), typeof(string), typeof(string), typeof(object[]), typeof(int), typeof(long), typeof(long), typeof(long), typeof(long), typeof(long), typeof(long)));
             EmitByRefScalarWriteback();
             EmitCallbackKeepAliveIfAny();
         }
@@ -1901,8 +1902,8 @@ public sealed partial class IlProgramCompiler
             _il.Emit(OpCodes.Ldc_I4, 0);
             _il.Emit(OpCodes.Ldc_I4, 0);
             _il.Emit(OpCodes.Ldc_I4, 0);
-            _il.Emit(OpCodes.Ldc_I4, scalarKindMask);
-            _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.FfiCallTypedArr), typeof(string), typeof(string), typeof(object[]), typeof(int), typeof(int), typeof(int), typeof(int), typeof(int), typeof(int), typeof(int)));
+            _il.Emit(OpCodes.Ldc_I8, (long)scalarKindMask);
+            _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.FfiCallTypedArr), typeof(string), typeof(string), typeof(object[]), typeof(int), typeof(long), typeof(long), typeof(long), typeof(long), typeof(long), typeof(long)));
             EmitByRefScalarWriteback();
             EmitCallbackKeepAliveIfAny();
         }
