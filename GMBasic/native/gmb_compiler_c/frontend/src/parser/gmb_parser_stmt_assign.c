@@ -144,6 +144,26 @@ gmb_stmt_t* gmb_p_parse_assign_or_call(gmb_parser_t* p, const char* target, int 
                     }
                     gmb_p_match(p, GMB_TOK_RightParen);
                     es->expr = gmb_expr_call(strdup(nm), margs, mna, line);
+                    /* `Base(i).CampoArray(k) = v` — assegnazione a un elemento di un campo
+                     * ARRAY di un elemento di array di UDT (S3b, 2026-11-06): qui gli indici
+                     * sono DUE gruppi (elemento + campo) e senza questo ramo il parser
+                     * costruiva solo la CALL lasciando cadere `= v` (assegnazione persa in
+                     * silenzio: `v(1).A(0) = 5` non emetteva NULLA). */
+                    if (gmb_p_check(p, GMB_TOK_Equal) && mna >= 1) {
+                        gmb_p_adv(p);
+                        gmb_stmt_t* a = gmb_stmt_new(GMB_STMT_ASSIGN, line);
+                        a->target = strdup(nm);
+                        a->array_index = es->expr->args ? es->expr->args[0] : NULL;
+                        if (a->array_index) es->expr->args[0] = NULL;
+                        for (int k = 1; k < mna; k++) {
+                            a->array_idx_extra = (gmb_expr_t**)realloc(a->array_idx_extra, (size_t)(a->n_array_idx_extra + 1) * sizeof(gmb_expr_t*));
+                            a->array_idx_extra[a->n_array_idx_extra++] = es->expr->args[k];
+                            es->expr->args[k] = NULL;
+                        }
+                        a->value = gmb_p_parse_expr(p);
+                        gmb_expr_free(es->expr); free(es);
+                        return a;
+                    }
                 } else if (gmb_p_match(p, GMB_TOK_Equal)) {
                     gmb_stmt_t* a = gmb_stmt_new(GMB_STMT_ASSIGN, line);
                     a->target = strdup(nm);

@@ -318,10 +318,16 @@ internal sealed partial class PCodeProcessor
     {
         var inst = new System.Collections.Generic.Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase) { ["__class__"] = desc };
         var fieldTypes = desc.Contains("FieldTypes") ? desc["FieldTypes"] as System.Collections.IDictionary : null;
+        // Campi ARRAY (S3b, 2026-11-06): un tipo-array di UDT deve allocare l'array di OGNI
+        // campo-array (prima restava il default scalare 0.0 → `v(1).A(0)` indicizzava un
+        // numero e restituiva vuoto). Stessa allocazione di OP_NEW_UDT_INSTANCE.
+        var fieldArrDims = desc.Contains("FieldArrayDimensions") ? desc["FieldArrayDimensions"] as System.Collections.IDictionary : null;
         if (desc["FieldNames"] is System.Collections.IDictionary fn)
             foreach (var k in fn.Keys)
                 if (fn[k] is string fieldName)
-                    inst[fieldName] = DefaultValueForFieldType(fieldTypes != null && fieldTypes.Contains(k) ? fieldTypes[k] : null);
+                    inst[fieldName] = fieldArrDims != null && fieldArrDims.Contains(k)
+                        ? MakeFieldArray(fieldArrDims[k], fieldTypes != null && fieldTypes.Contains(k) ? fieldTypes[k] : null)
+                        : DefaultValueForFieldType(fieldTypes != null && fieldTypes.Contains(k) ? fieldTypes[k] : null);
         return inst;
     }
 

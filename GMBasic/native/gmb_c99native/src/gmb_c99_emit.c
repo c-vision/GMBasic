@@ -12895,6 +12895,32 @@ static void emit_call(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_
                                 return;
                             }
                         }
+                        /* `v(i).CampoArray(k)` — ELEMENTO di un campo ARRAY di un elemento di
+                         * array di UDT (S3b, 2026-11-06): i primi `nd` argomenti sono gli
+                         * indici dell'array di UDT, i restanti l'indice (flat) nel campo.
+                         * Prima: "membro 'A' non risolto su array di classi". */
+                        if (nargs > nd) {
+                            struct cls_info* foA = cls_field_owner(c, bv->vclass, meth);
+                            const char* ftyA = foA ? cls_field_type_of(foA, meth) : NULL;
+                            if (foA && ftyA && cls_field_arr_size(ftyA) >= 0) {
+                                int nfA = nargs - nd;
+                                sb_printf(&c->out, "((gmb_obj_%s*)(((gmb_obj_t*)", foA->name);
+                                emit_flat_index(c, bv, args, nd);
+                                sb_put(&c->out, ".v_ptr)->data))->");
+                                sb_ident(&c->out, meth);
+                                sb_put(&c->out, "[");
+                                for (int kA = 0; kA < nfA; kA++) {
+                                    if (kA) sb_put(&c->out, " + ");
+                                    sb_put(&c->out, "((gmb_int_t)(");
+                                    emit_expr(c, args[nd + kA]);
+                                    sb_put(&c->out, "))");
+                                    for (int jA = kA + 1; jA < nfA; jA++)
+                                        sb_printf(&c->out, " * ((gmb_int_t)(%ld) + 1)", cls_field_arr_dim(ftyA, jA));
+                                }
+                                sb_put(&c->out, "]");
+                                return;
+                            }
+                        }
                     }
                     c99_fail(c, line, "%s: membro '%s' non risolto su array di classi %s", name, mdot + 1, bv->vclass);
                     return;
@@ -18265,11 +18291,41 @@ static void st_let_assign(ctx_t* c, gmb_stmt_t* s) {
                                 if (bfo) {
                                     int ni2 = 1 + s->n_array_idx_extra;
                                     int nd2 = bv->ndims > 0 ? bv->ndims : 1;
+                                    gmb_expr_t* idxs2[8];
+                                    idxs2[0] = s->array_index;
+                                    for (int k = 0; k < s->n_array_idx_extra && k < 7; k++)
+                                        idxs2[k + 1] = s->array_idx_extra[k];
+                                    /* `v(i).CampoArray(k) = x` (S3b, 2026-11-06): oltre agli indici
+                                     * dell'array di UDT ci sono quelli del campo ARRAY. Prima
+                                     * ni2 != nd2 → nessun ramo → assegnazione DROPPATA in
+                                     * silenzio (nessun errore, valore mai scritto). */
+                                    if (ni2 > nd2) {
+                                        const char* ftyW = cls_field_type_of(bfo, dt0 + 1);
+                                        if (ftyW && cls_field_arr_size(ftyW) >= 0) {
+                                            int nfW = ni2 - nd2;
+                                            ind(c);
+                                            sb_printf(&c->out, "((gmb_obj_%s*)(((gmb_obj_t*)", bfo->name);
+                                            emit_flat_index(c, bv, idxs2, nd2);
+                                            sb_printf(&c->out, ".v_ptr)->data))->");
+                                            sb_ident(&c->out, dt0 + 1);
+                                            sb_put(&c->out, "[");
+                                            for (int kA = 0; kA < nfW; kA++) {
+                                                if (kA) sb_put(&c->out, " + ");
+                                                sb_put(&c->out, "((gmb_int_t)(");
+                                                emit_expr(c, idxs2[nd2 + kA]);
+                                                sb_put(&c->out, "))");
+                                                for (int jA = kA + 1; jA < nfW; jA++)
+                                                    sb_printf(&c->out, " * ((gmb_int_t)(%ld) + 1)", cls_field_arr_dim(ftyW, jA));
+                                            }
+                                            sb_put(&c->out, "] = (");
+                                            sb_put(&c->out, ctype_name(TY_NUM));
+                                            sb_put(&c->out, ")(");
+                                            emit_expr(c, s->value);
+                                            sb_put(&c->out, ");\n");
+                                            { res_guard_end(c, res_guard); return; }
+                                        }
+                                    }
                                     if (ni2 == nd2) {
-                                        gmb_expr_t* idxs2[8];
-                                        idxs2[0] = s->array_index;
-                                        for (int k = 0; k < s->n_array_idx_extra && k < 7; k++)
-                                            idxs2[k + 1] = s->array_idx_extra[k];
                                         int fstr2 = cls_field_is_str(bfo, dt0 + 1);
                                         int vt2 = etype(c, s->value);
                                         int json_num2 = (!fstr2 && vt2 == TY_STR && is_json_index_member_call(c, s->value));

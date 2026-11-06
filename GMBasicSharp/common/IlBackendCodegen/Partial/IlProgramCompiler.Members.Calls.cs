@@ -589,6 +589,32 @@ public sealed partial class IlProgramCompiler
     {
         loadInstance = () => { };
         fieldArrayInfo = null!;
+        // `v(i).CampoArray(k)` (S3b, 2026-11-06): l'istanza proprietaria del campo-array è
+        // un ELEMENTO di un array di UDT (value type). Si carica l'elemento in un local
+        // temporaneo e si passa il suo INDIRIZZO (Ldloca) a Ldfld, come per un'istanza
+        // locale. Prima questa forma cadeva in "assegnazione a target indicizzato
+        // 'FieldAccessExpr' non ancora supportata" (in scrittura) e in
+        // "espressione 'IndexedAccessExpr' non ancora supportata" (in lettura).
+        if (baseExpr is FieldAccessExpr elemMember
+            && elemMember.Structure is IndexedAccessExpr or ArrayAccessExpr)
+        {
+            var elemType = NormalizeInferredType(InferType(elemMember.Structure));
+            if (elemType is UserDefinedType elemUdt)
+            {
+                var elemInfo = FindFieldArrayInHierarchy(elemUdt.SymbolId, elemMember.Field.Lexeme);
+                if (elemInfo is not null)
+                {
+                    var elemClr = DataTypeMapper.Map(elemUdt, _types, _classTypes);
+                    EmitExpression(elemMember.Structure);
+                    var tmp = _il.DeclareLocal(elemClr);
+                    _il.Emit(OpCodes.Stloc, tmp);
+                    loadInstance = () => _il.Emit(OpCodes.Ldloca, tmp);
+                    fieldArrayInfo = elemInfo;
+                    return true;
+                }
+            }
+            return false;
+        }
         if (baseExpr is not FieldAccessExpr memberAccess || memberAccess.Structure is not VariableExpr instanceVar)
             return false;
 
