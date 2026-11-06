@@ -156,3 +156,73 @@ int64_t cb6_eval_i(int64_t (*f)(int64_t, int64_t, int64_t, int64_t, int64_t, int
 {
     return f(a0, a1, a2, a3, a4, a5);
 }
+
+/* Combinazione completa (S1+S3b+S0): struct annidata + campo ARRAY + larghezze miste. */
+typedef struct { double x; double y; } PtD;
+typedef struct { PtD p; int32_t k; double z; double a[3]; int64_t n; } Blob;
+
+int32_t blob_size(void) { return (int32_t)sizeof(Blob); }
+double blob_sum(Blob b)
+{
+    return b.p.x + b.p.y + (double)b.k + b.z + b.a[0] + b.a[1] + b.a[2] + (double)b.n;
+}
+Blob blob_bump(Blob b)
+{
+    b.p.x += 1; b.p.y += 2; b.k += 3; b.z += 4;
+    for (int i = 0; i < 3; i++) b.a[i] += 5;
+    b.n += 6;
+    return b;
+}
+
+/* Array di UDT che a loro volta hanno campi ARRAY (S3 + S3b). */
+double arr4_block_sum(Arr4* v, int64_t n)
+{
+    double s = 0;
+    for (int64_t i = 0; i < n; i++) { s += v[i].b; for (int k = 0; k < 5; k++) s += (double)v[i].a[k]; }
+    return s;
+}
+void arr4_block_bump(Arr4* v, int64_t n)
+{
+    for (int64_t i = 0; i < n; i++) { for (int k = 0; k < 5; k++) v[i].a[k] += 1; v[i].b += 1; }
+}
+
+/* Riempie un array di UDT con campi array (il BASIC non può scrivere v(i).A(k) su 3 gambe). */
+void arr4_fill(Arr4* v, int64_t n)
+{
+    for (int64_t i = 0; i < n; i++) {
+        for (int k = 0; k < 5; k++) v[i].a[k] = 0;
+        v[i].a[0] = (int32_t)(1 + i);
+        v[i].a[4] = (int32_t)(5 + i);
+        v[i].b = 1;
+    }
+}
+
+/* 16 campi con larghezze miste (matrice F5: struct >8 campi). */
+typedef struct {
+    int16_t a; int32_t b; double c; float d; int64_t e; uint8_t f; double g; int32_t h;
+    double i; int16_t j; double k; int32_t l; double m; int64_t n; double o; float p;
+} Wide16;
+
+int32_t wide16_size(void) { return (int32_t)sizeof(Wide16); }
+double wide16_sum(Wide16 w)
+{
+    return (double)w.a + (double)w.b + w.c + (double)w.d + (double)w.e + (double)w.f
+         + w.g + (double)w.h + w.i + (double)w.j + w.k + (double)w.l + w.m
+         + (double)w.n + w.o + (double)w.p;
+}
+
+/* UDT con campo STRING (char*) + campo ARRAY: marshalling misto, parametro e ritorno. */
+typedef struct { char* name; int32_t v[3]; } NamedVec;
+
+int32_t nv_size(void) { return (int32_t)sizeof(NamedVec); }
+double nv_sum(NamedVec n)
+{
+    return (double)n.v[0] + (double)n.v[1] + (double)n.v[2]
+         + (n.name && n.name[0] == 'x' ? 100.0 : 0.0);
+}
+NamedVec nv_make(void)
+{
+    static char b[] = "xyz";
+    NamedVec r; r.name = b; r.v[0] = 1; r.v[1] = 2; r.v[2] = 3;
+    return r;
+}
