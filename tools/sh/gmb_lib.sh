@@ -73,18 +73,48 @@ build_one() {
   local cc="${CC:-cc}"
   local srcs; srcs=$(find "$dir/src" -name '*.c' | sort)
 
+  # Sorgenti CONDIVISI: `shared-src.txt` elenca (uno per riga, `#` = commento) altri
+  # contenitori di `shared/libs/<nome>` da compilare dentro questa dylib. Serve a tenere
+  # UNA sola copia dei sorgenti comuni (`compute`, `math`) invece di vendorizzarli in ogni
+  # libreria: la dylib resta self-contained, ma il sorgente esiste in un posto solo.
+  local shared_dirs="" shared_srcs="" shared_incs=""
+  if [ -f "$dir/shared-src.txt" ]; then
+    while IFS= read -r sd; do
+      case "$sd" in ''|\#*) continue ;; esac
+      case "$sd" in
+        # Forma puntuale: `math/src/gm_vec.c` (percorso relativo a shared/libs).
+        */*.c)
+          [ -f "$LIBS/$sd" ] || die "$lib: shared-src inesistente: $LIBS/$sd"
+          shared_srcs="$shared_srcs $LIBS/$sd"
+          local sdlib="${sd%%/*}"
+          shared_incs="$shared_incs -I$LIBS/$sdlib/include -I$LIBS/$sdlib/src"
+          ;;
+        # Forma intera: `math` = tutti i .c sotto shared/libs/math/src (ricorsivo).
+        *)
+          [ -d "$LIBS/$sd/src" ] || die "$lib: shared-src inesistente: $LIBS/$sd/src"
+          shared_dirs="$shared_dirs $LIBS/$sd"
+          ;;
+      esac
+    done < "$dir/shared-src.txt"
+  fi
+  local sd
+  for sd in $shared_dirs; do
+    shared_srcs="$shared_srcs $(find "$sd/src" -name '*.c' | sort)"
+    shared_incs="$shared_incs -I$sd/include -I$sd/src"
+  done
+
   echo "[$lib] cc -> $out"
   # `@rpath` = relocabile (distribuibile). NIENTE `-fvisibility=hidden`: gli export sono i
   # simboli C che l'FFI cerca per nome, senza attributi nel sorgente.
   case "$(uname -s)" in
     Darwin)
       $cc -std=c99 -O2 -fPIC -dynamiclib \
-          -I"$dir/include" -I"$dir/src" -I"$INCLUDE" \
-          $srcs -o "$out" -lm -ldl -install_name "@rpath/libgmb$lib.$E" ;;
+          -I"$dir/include" -I"$dir/src" $shared_incs -I"$INCLUDE" \
+          $srcs $shared_srcs -o "$out" -lm -ldl -install_name "@rpath/libgmb$lib.$E" ;;
     *)
       $cc -std=c99 -O2 -fPIC -shared \
-          -I"$dir/include" -I"$dir/src" -I"$INCLUDE" \
-          $srcs -o "$out" -lm -ldl ;;
+          -I"$dir/include" -I"$dir/src" $shared_incs -I"$INCLUDE" \
+          $srcs $shared_srcs -o "$out" -lm -ldl ;;
   esac
   # Gli export BASIC vivono in shared/include (sorgente, in git); gli header C restano in
   # shared/libs/<nome>/include, che è l'unica sorgente (shared/include è solo BASIC).

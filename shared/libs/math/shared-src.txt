@@ -1,0 +1,4 @@
+# Sorgenti condivisi compilati dentro libgmbmath.
+# `compute` = gmbcompute (layer gc_*): una sola copia in shared/libs/compute/src,
+# niente piu' vendorizzazione duplicata.
+compute

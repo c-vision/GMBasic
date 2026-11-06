@@ -5,8 +5,10 @@ Sorgenti venduti da `gmbsuite` per ricompilare la libreria senza dipendenze este
 - `gmbstats-base`, `gmbstats-stats`, `gmbstats-regression`, `gmbstats-fitting`,
   `gmbstats-simulation`, `gmbstats-timeseries`, `gmbstats-multivariate`,
   `gmbstats-finance` (+ header legacy `gmbstats/include`)
-- `gmbcompute`, `gmbmath-core`, `gmbmath-special`, `gmbmath-linalg`,
-  `gmbmath-vector`, `gmbmath-numerical`, `gmbmath/src` (dipendenze vendute)
+
+Le dipendenze `gmbcompute` e `gmbmath` **non** sono più copiate qui: vivono una volta sola in
+`shared/libs/compute` e `shared/libs/math`, elencate in `shared-src.txt` (`compute`, `math`).
+La dylib resta self-contained, ma il sorgente esiste in un posto solo.
 
 Build:
 
