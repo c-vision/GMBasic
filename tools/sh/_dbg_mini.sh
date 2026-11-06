@@ -127,9 +127,13 @@ ensure_static_lib "$ROOT/native/gmb_db_c/build/libgmb_db.a" "$ROOT/native/gmb_db
 # Lib LLM precompilate, stesso problema (linkate by-path in LINK_IN): gmbllm è PUL e vive nel
 # repo; llmengine_plugin/llmdesc vivono in LLMEnv. Una .a vecchia falsa i test LLM (o fa fallire
 # il link con simboli che non esistono più). Policy soft: vedi commento sopra.
+# `gmbllm` è un target INTERFACE (aggregato): i due archivi reali sono gmbllm_core e gmbllm_train
+# (link order: train prima di core). Si forza la build dei due, non dell'interfaccia.
 ENSURE_POLICY=soft
-ensure_static_lib "$ROOT/native/gmb_runtime_c/build/gmbllm_build/libgmbllm.a" \
-  "$ROOT/native/gmb_runtime_c/build" gmbllm "$ROOT/gmbllm"
+ensure_static_lib "$ROOT/native/gmb_runtime_c/build/gmbllm_build/libgmbllm_train.a" \
+  "$ROOT/native/gmb_runtime_c/build" gmbllm_train "$ROOT/gmbllm"
+ensure_static_lib "$ROOT/native/gmb_runtime_c/build/gmbllm_build/libgmbllm_core.a" \
+  "$ROOT/native/gmb_runtime_c/build" gmbllm_core "$ROOT/gmbllm"
 ensure_static_lib "$ROOT/native/gmb_runtime_c/build/llmengine_plugin_build/libllmengine_plugin.a" \
   "$ROOT/native/gmb_runtime_c/build" llmengine_plugin "$LLMENV/LLMEngine/plugin"
 ensure_static_lib "$ROOT/native/gmb_runtime_c/build/llmdesc_build/libllmdesc.a" \
@@ -345,7 +349,8 @@ for f in "$MINI"/**/*.bas "$MINI"/*.bas; do
   # MODEL I/O + plugin/model_desc + tokenizer: `gmb_llm_model_convert` (e il resto del namespace
   # LLM) vivono nel progetto separato gmb_model_io, che il C99Native deve linkare
   # (il C generato per `LLM MODEL CONVERT` li chiama). Prebuilt come db/moe/codec.
-  MIO="$ROOT/native/gmb_runtime_c/build/gmbllm_build/libgmbllm.a"
+  MIO=( "$ROOT/native/gmb_runtime_c/build/gmbllm_build/libgmbllm_train.a" \
+        "$ROOT/native/gmb_runtime_c/build/gmbllm_build/libgmbllm_core.a" )
   PLG="$ROOT/native/gmb_runtime_c/build/llmengine_plugin_build/libllmengine_plugin.a"
   MDS="$ROOT/native/gmb_runtime_c/build/llmdesc_build/libllmdesc.a"
   TOK="$LLMENV/build/dist/osx-arm64/libllmtoken.dylib"
@@ -353,7 +358,7 @@ for f in "$MINI"/**/*.bas "$MINI"/*.bas; do
   # duplicata (due copie da tenere allineate) e la gamba LIBRARY linkava per forza un binario.
   # Array (non stringa) perché il path di rpath può contenere spazi e perché $AGENT/$DOC_SRCS
   # sono già liste: nello stringone i confini dei token dipendevano dallo split implicito.
-  LINK_IN=( "$RT_LIB" $AGENT $COMPILER "$DB_LIB" "$MOE_LIB" "$MIO" "$PLG" "$MDS" $DOC_SRCS $TORCH_SRCS )
+  LINK_IN=( "$RT_LIB" $AGENT $COMPILER "$DB_LIB" "$MOE_LIB" "${MIO[@]}" "$PLG" "$MDS" $DOC_SRCS $TORCH_SRCS )
   LINK_FLAGS=( $INC_RT -I"$ROOT/native/gmb_agent_runtime" -I"$LLMENV/LLMJinja" -I"$LLMENV/LLMEngine/mlx"
     -I"$ROOT/native/gmb_compiler_c/include" $CODEC_INC $DB_INC $LLM_INC $INC_EXTRA $FRAMEWORKS
     -lm -w -ffp-contract=off -Wl,-dead_strip $CODEC_LIB "$TOK" -Wl,-rpath,"$(dirname "$TOK")"

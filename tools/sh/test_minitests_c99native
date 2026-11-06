@@ -41,6 +41,20 @@ RT_SRCS="$(echo "$ROOT"/native/gmb_runtime_c/src/*.c) $(echo "$ROOT"/native/gmb_
 # includerebbe → due definizioni di `gmb_ai_decide_local_run` e riferimenti LLMEnv non linkati.
 # Il core usa il forwarder del gateway, che carica la dylib a runtime.
 RT_SRCS="$(echo $RT_SRCS | tr ' ' '\n' | grep -v '/gmb_ai_decide_local.c$' | tr '\n' ' ')"
+# ORDINE DEI MEMBRI NELL'ARCHIVIO (§0bis: una sola implementazione, quella FORTE).
+# `gmb_ai_gateway.c` espone copie DEBOLI (GMB_AI_WEAK) di ASR/LLM/modelio/distill, che a runtime
+# fanno `dlopen` di `libgmb_runtime_ai`: sul ramo non-Windows quei forti vivono nella dylib AI, non
+# nel core (CMakeLists §"SPLIT core/AI"). Qui però il runtime è MONOLITICO (come il ramo WIN32) e i
+# sorgenti AI ci sono TUTTI. In un archivio vince il PRIMO membro che soddisfa un simbolo: con
+# l'ordine alfabetico è il gateway, che quindi fa scartare il forte → il test ricade sul `dlopen`,
+# che in questo eseguibile non riesce a risolvere i simboli del core e muore con SIGSEGV
+# (train/train_dataset_build.bas, 2026-11-04: EXC_BAD_ACCESS a 0x0 dentro un initializer della
+# dylib, chiamato da ai_sym). I forti vanno PRIMA del gateway.
+RT_SRCS_AI_STRONG=""
+for _ai in gmb_asr_cmd.c gmb_llm_tok.c gmb_model_io.c gmb_distill.c gmb_ai_register.c; do
+  [ -f "$ROOT/native/gmb_runtime_c/src/$_ai" ] && RT_SRCS_AI_STRONG="$RT_SRCS_AI_STRONG $ROOT/native/gmb_runtime_c/src/$_ai"
+done
+RT_SRCS="$RT_SRCS_AI_STRONG $(echo $RT_SRCS | tr ' ' '\n' | grep -vE '/(gmb_asr_cmd|gmb_llm_tok|gmb_model_io|gmb_distill|gmb_ai_register)\.c$' | tr '\n' ' ')"
 # Engine ASR (LLMEnv/LLMEngine/asr): gmb_asr_cmd.c (in gmb_runtime_c/src) usa i simboli gmb_asr_*,
 # le cui implementazioni NON sono più in gmb_runtime_c/src (refactor ASR) → senza, il link fallisce.
 RT_SRCS="$RT_SRCS $(echo "$LLMENV"/LLMEngine/asr/src/*.c)"
@@ -127,9 +141,13 @@ ensure_static_lib "$ROOT/native/gmb_db_c/build/libgmb_db.a" "$ROOT/native/gmb_db
 # Lib LLM precompilate, stesso problema (linkate by-path in LINK_IN): gmbllm è PUL e vive nel
 # repo; llmengine_plugin/llmdesc vivono in LLMEnv. Una .a vecchia falsa i test LLM (o fa fallire
 # il link con simboli che non esistono più). Policy soft: vedi commento sopra.
+# `gmbllm` è un target INTERFACE (aggregato): gli archivi reali sono gmbllm_core e gmbllm_train
+# (link order: train prima di core), non esiste più un libgmbllm.a da ricostruire.
 ENSURE_POLICY=soft
-ensure_static_lib "$ROOT/native/gmb_runtime_c/build/gmbllm_build/libgmbllm.a" \
-  "$ROOT/native/gmb_runtime_c/build" gmbllm "$ROOT/gmbllm"
+ensure_static_lib "$ROOT/native/gmb_runtime_c/build/gmbllm_build/libgmbllm_train.a" \
+  "$ROOT/native/gmb_runtime_c/build" gmbllm_train "$ROOT/gmbllm"
+ensure_static_lib "$ROOT/native/gmb_runtime_c/build/gmbllm_build/libgmbllm_core.a" \
+  "$ROOT/native/gmb_runtime_c/build" gmbllm_core "$ROOT/gmbllm"
 ensure_static_lib "$ROOT/native/gmb_runtime_c/build/llmengine_plugin_build/libllmengine_plugin.a" \
   "$ROOT/native/gmb_runtime_c/build" llmengine_plugin "$LLMENV/LLMEngine/plugin"
 ensure_static_lib "$ROOT/native/gmb_runtime_c/build/llmdesc_build/libllmdesc.a" \
@@ -345,7 +363,8 @@ for f in "$MINI"/**/*.bas "$MINI"/*.bas; do
   # MODEL I/O + plugin/model_desc + tokenizer: `gmb_llm_model_convert` (e il resto del namespace
   # LLM) vivono nel progetto separato gmb_model_io, che il C99Native deve linkare
   # (il C generato per `LLM MODEL CONVERT` li chiama). Prebuilt come db/moe/codec.
-  MIO="$ROOT/native/gmb_runtime_c/build/gmbllm_build/libgmbllm.a"
+  MIO=( "$ROOT/native/gmb_runtime_c/build/gmbllm_build/libgmbllm_train.a" \
+        "$ROOT/native/gmb_runtime_c/build/gmbllm_build/libgmbllm_core.a" )
   PLG="$ROOT/native/gmb_runtime_c/build/llmengine_plugin_build/libllmengine_plugin.a"
   MDS="$ROOT/native/gmb_runtime_c/build/llmdesc_build/libllmdesc.a"
   TOK="$LLMENV/build/dist/osx-arm64/libllmtoken.dylib"
@@ -353,7 +372,7 @@ for f in "$MINI"/**/*.bas "$MINI"/*.bas; do
   # duplicata (due copie da tenere allineate) e la gamba LIBRARY linkava per forza un binario.
   # Array (non stringa) perché il path di rpath può contenere spazi e perché $AGENT/$DOC_SRCS
   # sono già liste: nello stringone i confini dei token dipendevano dallo split implicito.
-  LINK_IN=( "$RT_LIB" $AGENT $COMPILER "$DB_LIB" "$MOE_LIB" "$MIO" "$PLG" "$MDS" $DOC_SRCS $TORCH_SRCS )
+  LINK_IN=( "$RT_LIB" $AGENT $COMPILER "$DB_LIB" "$MOE_LIB" "${MIO[@]}" "$PLG" "$MDS" $DOC_SRCS $TORCH_SRCS )
   LINK_FLAGS=( $INC_RT -I"$ROOT/native/gmb_agent_runtime" -I"$LLMENV/LLMJinja" -I"$LLMENV/LLMEngine/mlx"
     -I"$ROOT/native/gmb_compiler_c/include" $CODEC_INC $DB_INC $LLM_INC $INC_EXTRA $FRAMEWORKS
     -lm -w -ffp-contract=off -Wl,-dead_strip $CODEC_LIB "$TOK" -Wl,-rpath,"$(dirname "$TOK")"
