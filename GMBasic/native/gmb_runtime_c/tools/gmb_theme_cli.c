@@ -11,7 +11,7 @@ static void rgb_json(const char* key, gmb_cell_color_t c, int last)
 }
 
 static const char* names[] = {
-    "turbo", "qbasic", "midnight", "nord", "light", "soft", "neon", "glass",
+    "turbovision", "clipper", "qbasic", "midnight", "nord", "light", "soft", "neon", "glass",
     "dracula", "monokai", "solarized", "retrogreen", "amber", "vb6", NULL
 };
 
@@ -20,11 +20,11 @@ int main(int argc, char** argv)
     if (argc >= 2 && (!strcmp(argv[1], "-help") || !strcmp(argv[1], "--help") || !strcmp(argv[1], "-h"))) {
         printf("uso: gmbtheme [--list] [--name <tema>]\n"
                "  --list        elenca i temi disponibili (JSON)\n"
-               "  --name NOME   emette il tema NOME in JSON (default: turbo)\n"
+               "  --name NOME   emette il tema NOME in JSON (default: turbovision)\n"
                "  senza argomenti: emette il tema di default in JSON\n");
         return 0;
     }
-    const char* name = "turbo";
+    const char* name = "turbovision";
     int list = 0;
     for (int i = 1; i < argc; i++) {
         if (strcmp(argv[i], "--list") == 0) list = 1;
