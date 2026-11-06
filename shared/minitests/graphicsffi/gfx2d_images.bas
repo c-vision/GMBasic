@@ -1,4 +1,4 @@
-' EXPECT: gauss= 0 : 1.36726787450996 , 13.63273212549|sobel= 0 : 8 , 32|transp= 0 : 4 , 1|rot90= 0 : 12 , 3|fliph= 0 : 3 , 0|thr= 0 : 0 , 1|norm= 0 : 0 , 1|hist= 0 : 4 , 4 , 4 , 4|eq= 0 : 0 , 11.25|line= 0 : 2.5 , 2.5 , 2.5|med= 0 : 5|heat= 0 : 1073742079 , 1090453504|img3= 0 : 1.75 , 5.25|res= 0 : 0 , 15
+' EXPECT: gauss= 0 : 1.36726787450996 , 13.63273212549|sobel= 0 : 8 , 32|transp= 0 : 4 , 1|rot90= 0 : 12 , 3|fliph= 0 : 3 , 0|thr= 0 : 0 , 1|norm= 0 : 0 , 1|hist= 0 : 4 , 4 , 4 , 4|eq= 0 : 0 , 11.25|line= 0 : 2.5 , 2.5 , 2.5|med= 0 : 5|heat= 0 : 1073742079 , 1090453504|img3= 0 : 1.75 , 5.25|res= 0 : 0 , 15|stat= 0 , 15 , 15|scale= 0 : 0 , 30|sub= 0 :-1 , 14|grylum= 0 : 5000268 , 16777215|bright= 0 : 16714250|toimg= 0 : 76.245 , 255|conv3= 0 : 16711680 , 16777215
 ' FFI gmbgraphics: GFX2D — immagini float (filtri, trasformazioni, istogrammi, disegno).
 ' Solo calcolo: nessun display, parità 4 backend.
 IMPORT GFX2D
@@ -48,4 +48,20 @@ SUB Main()
   DIM r(3) AS DOUBLE
   PRINT "res="; GFX2D.RESAMPLE(a(), 4, 4, 2, 2, r()); ":";
   PRINT r(0); ","; r(3)
+  PRINT "stat="; GFX2D.IMGMIN(a(), 4, 4); ","; GFX2D.IMGMAX(a(), 4, 4); ","; GFX2D.IMGABSMAX(a(), 4, 4)
+  DIM sc(15) AS DOUBLE
+  FOR i = 0 TO 15 : sc(i) = a(i) : NEXT i
+  PRINT "scale="; GFX2D.IMGSCALE(sc(), 4, 4, 2); ":"; sc(0); ","; sc(15)
+  DIM sb(15) AS DOUBLE, s2(15) AS DOUBLE
+  FOR i = 0 TO 15 : s2(i) = 1 : NEXT i
+  PRINT "sub="; GFX2D.IMGSUB(a(), s2(), 4, 4, sb()); ":"; sb(0); ","; sb(15)
+
+  DIM px(3) AS DOUBLE, gb(3) AS DOUBLE, bi(3) AS DOUBLE, fi(3) AS DOUBLE
+  px(0) = 16711680 : px(1) = 65280 : px(2) = 255 : px(3) = 16777215
+  PRINT "grylum="; GFX2D.GRAYLUM(px(), 2, 2, gb()); ":"; gb(0); ","; gb(3)
+  PRINT "bright="; GFX2D.BRIGHTNESS(px(), 2, 2, 10, 1, bi()); ":"; bi(0)
+  PRINT "toimg="; GFX2D.TOIMAGE(px(), 2, 2, fi()); ":"; fi(0); ","; fi(3)
+  DIM ik(8) AS DOUBLE
+  ik(4) = 1
+  PRINT "conv3="; GFX2D.CONVOLVE3(px(), 2, 2, ik(), 1, bi()); ":"; bi(0); ","; bi(3)
 END SUB

@@ -20,6 +20,7 @@ La libreria è **self-contained**: `build.sh` compila solo i file in `src/` con 
 | `src/gm_gfx_raster.c`, `include/gm_gfx_raster.h` | `gmbsuite/gmbgraphics` |
 | `src/gm_gfx_bitmap.c`, `include/gm_gfx_bitmap.h` | `gmbsuite/gmbgraphics` |
 | `src/gm_gfx_surface.c`, `include/gm_gfx_surface.h` | `gmbsuite/gmbgraphics` |
+| `src/gm_bc1.c`, `include/gm_bc1.h` | `gmbsuite/gmbgraphics` |
 | `src/ofx_gfx.c`, `src/ofx_gfx_3d.c` | shim FFI di questo pacchetto |
 
 

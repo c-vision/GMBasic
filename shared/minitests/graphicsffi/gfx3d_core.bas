@@ -1,4 +1,4 @@
-' EXPECT: persp= 0 : 0.666666666666667 , 1 ,-1 , 0|look= 0 : 1 , 1 ,-5|aabb= 0 :-1 ,-1 , 0 , 1 , 2 , 2|center= 0 : 0 , 0.5 , 1|raysph= 1 : 4|raypl= 1 : 5|raytri= 1 : 5|reflect= 0 : 0 , 0 , 1|phong= 0 : 0.5 , 0.5 , 0.5|decomp= 1 : 1 , 1 , 1 : 1 : 0|mesh= 1 : 8 : 12 : 0 :-0.5 ,-0.5 ,-0.5 : 0 : 0 , 1 , 2|mfree= 0|raster= 1 : 0|rtri= 0|rget= 0 : 0.285714285714286 , 0.214285714285714 , 0.5|rfree= 0|surf= 1 : 4 : 2|sfree= 0|dda= 1 : 2 , 0 , 0 , 1.5
+' EXPECT: persp= 0 : 0.666666666666667 , 1 ,-1 , 0|look= 0 : 1 , 1 ,-5|aabb= 0 :-1 ,-1 , 0 , 1 , 2 , 2|center= 0 : 0 , 0.5 , 1|raysph= 1 : 4|raypl= 1 : 5|raytri= 1 : 5|reflect= 0 : 0 , 0 , 1|phong= 0 : 0.5 , 0.5 , 0.5|decomp= 1 : 1 , 1 , 1 : 1 : 0|mesh= 1 : 8 : 12 : 0 :-0.5 ,-0.5 ,-0.5 : 0 : 0 , 1 , 2|mfree= 0|raster= 1 : 0|rtri= 0|rget= 0 : 0.285714285714286 , 0.214285714285714 , 0.5|rfree= 0|surf= 1 : 4 : 2|sfree= 0|dda= 1 : 2 , 0 , 0 , 1.5|cyl= 1 : 4|cone= 1 : 4.2|cyln= 0 : 1 , 0 , 0|conen= 0 : 0.992876838486922 , 0.119145220618431 , 0|abtr= 0 :-1 , 1
 ' FFI gmbgraphics: GFX3D — geometria, raggi/intersezioni, mesh, raster software.
 ' Solo calcolo: nessun display, parità 4 backend.
 IMPORT GFX3D
@@ -96,4 +96,22 @@ SUB Main()
   gmap(2) = 1 : gmap(6) = 1 : gmap(10) = 1 : gmap(14) = 1
   PRINT "dda="; GFX3D.RAYCASTDDA(gmap(), 4, 4, 0.5, 0.5, 1, 0, hit); ":";
   PRINT hit(1); ","; hit(2); ","; hit(3); ","; hit(4)
+  DIM cbase(2) AS DOUBLE, axis(2) AS DOUBLE, ryv(5) AS DOUBLE, t2(1) AS DOUBLE, nrm2(2) AS DOUBLE
+  axis(0) = 0 : axis(1) = 1 : axis(2) = 0
+  ryv(0) = 5 : ryv(1) = 1 : ryv(2) = 0 : ryv(3) = -1 : ryv(4) = 0 : ryv(5) = 0
+  PRINT "cyl="; GFX3D.RAYCYLINDER(ryv(), cbase(), axis(), 1, 5, t2()); ":"; t2(0)
+  DIM apex(2) AS DOUBLE
+  apex(0) = 0 : apex(1) = 5 : apex(2) = 0
+  DIM caxis(2) AS DOUBLE
+  caxis(0) = 0 : caxis(1) = -1 : caxis(2) = 0
+  PRINT "cone="; GFX3D.RAYCONE(ryv(), apex(), caxis(), 1, 5, t2()); ":"; t2(0)
+  DIM cp(2) AS DOUBLE
+  cp(0) = 1 : cp(1) = 2 : cp(2) = 0
+  PRINT "cyln="; GFX3D.CYLINDERNORMAL(cbase(), axis(), cp(), nrm2()); ":"; nrm2(0); ","; nrm2(1); ","; nrm2(2)
+  PRINT "conen="; GFX3D.CONENORMAL(apex(), caxis(), 0.2, cp(), nrm2()); ":"; nrm2(0); ","; nrm2(1); ","; nrm2(2)
+  DIM ibox(5) AS DOUBLE, mtx(15) AS DOUBLE, obox(5) AS DOUBLE
+  ibox(0) = -1 : ibox(1) = -1 : ibox(2) = -1 : ibox(3) = 1 : ibox(4) = 1 : ibox(5) = 1
+  mtx(0) = 1 : mtx(5) = 1 : mtx(10) = 1 : mtx(15) = 1
+  PRINT "abtr="; GFX3D.AABBTRANSFORM(ibox(), mtx(), obox()); ":";
+  PRINT obox(0); ","; obox(3)
 END SUB
