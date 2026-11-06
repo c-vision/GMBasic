@@ -320,6 +320,9 @@ struct gmb_stmt {
                                 * distinto da "nessuna parentesi affatto" (v resta scalare) e
                                 * da "DIM v(N)" (array_size valorizzato, N+1 slot già presenti) */
     gmb_expr_t** dim_extra; int n_dim_extra;  /* DIM v(N, M, ...): dimensioni dalla 2ª in poi */
+    gmb_expr_t** dim_extra_lo;                /* DIM v(lo TO hi, lo2 TO hi2, ...): lower bound per
+                                               * le dimensioni dalla 2ª (NULL = 0). dim_extra[k] è
+                                               * sempre il bound SUPERIORE. */
     gmb_expr_t* dim_init;      /* DIM v [AS tipo] = expr: inizializzatore */
     int dim_is_dynamic;        /* DYNAMIC v [AS STRING] [= expr] (scope dinamico, spec
                                 * Variables-Scope §2.5): reuse GMB_STMT_DIM — la var NON è un

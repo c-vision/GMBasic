@@ -799,7 +799,7 @@ public sealed partial class IlProgramCompiler
                         remaining /= axisLengths[axis];
                     }
                     for (var axis = 0; axis < rank; axis++)
-                        _il.Emit(OpCodes.Ldc_I4, lowerBounds[axis] + idxAtAxis[axis]);
+                        _il.Emit(OpCodes.Ldc_I4, idxAtAxis[axis]);   /* array CLR denso 0-based */
                     EmitExpression(multiDimLiteral[flatIndex]);
                     // Coerce al tipo dell'elemento (DIM m(1,1) AS INTEGER = {{1,2},{3,4}}:
                     // il letterale è double → Set(int32,int32,int16) senza conv.i2 =

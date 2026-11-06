@@ -30,6 +30,8 @@ enum {
     GMB_OP_CMP_LT = 22, GMB_OP_CMP_LTE = 23,
     GMB_OP_XOR = 212, GMB_OP_BITAND = 220, GMB_OP_BITOR = 221,
     GMB_OP_MK_ARRAY = 45,
+    GMB_OP_INIT_ARRAY = 46,   /* riempie un array GIÀ creato (sotto gli elementi sullo stack):
+                               * [array][v1..vN] → pop N, pop array, muta, push array. */
     GMB_OP_LOAD_ELEMENT = 38, GMB_OP_STORE_ELEMENT = 40,
     GMB_OP_LOAD_FIELD = 41, GMB_OP_STORE_FIELD = 42,
     GMB_OP_REDIM = 43,

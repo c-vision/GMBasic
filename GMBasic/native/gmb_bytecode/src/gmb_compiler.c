@@ -4082,6 +4082,30 @@ static void cc_ui_control(gmb_cc_t* c, const gmb_stmt_t* s, const char* kind, in
     cc_syscall(c, 400, 4);
 }
 
+/* Letterali annidati `{{1,2},{5,7}}`: il parser li rappresenta come CALL "_array_"
+ * annidate. Per riempire un array N-D (buffer denso row-major) servono gli elementi in
+ * ordine FLAT: conta ricorsivamente e poi emetti gli scalari in ordine row-major. */
+static int cc_count_array_literal(const gmb_expr_t* e)
+{
+    if (!e) return 0;
+    if (e->kind == GMB_EXPR_CALL && e->var && strcmp(e->var, "_array_") == 0) {
+        int n = 0;
+        for (int i = 0; i < e->nargs; i++) n += cc_count_array_literal(e->args[i]);
+        return n;
+    }
+    return 1;
+}
+static void cc_emit_array_literal_flat(gmb_cc_t* c, const gmb_expr_t* e)
+{
+    if (!e || c->error) return;
+    if (e->kind == GMB_EXPR_CALL && e->var && strcmp(e->var, "_array_") == 0) {
+        for (int i = 0; i < e->nargs && !c->error; i++)
+            cc_emit_array_literal_flat(c, e->args[i]);
+        return;
+    }
+    cc_expr(c, (gmb_expr_t*)e);
+}
+
 static void cc_stmt(gmb_cc_t* c, const gmb_stmt_t* s)
 {
     if (!s) return;
@@ -4503,14 +4527,51 @@ static void cc_stmt(gmb_cc_t* c, const gmb_stmt_t* s)
                 int ui = cc_udt_find(c, s->dim_type);
                 if (ui >= 0) udt_desc = cc_udt_desc_const_idx(c, &c->udts[ui]);
             }
-            cc_expr(c, s->array_size);
-            if (c->error) return;
-            for (int dk = 0; dk < s->n_dim_extra && dk < 7 && !c->error; dk++)
-                cc_expr(c, s->dim_extra[dk]);
-            if (c->error) return;
-            cc_byte(c, GMB_OP_REDIM);
-            cc_byte(c, (uint8_t)(1 + s->n_dim_extra));   /* numDims */
-            cc_u16(c, (uint16_t)udt_desc);   /* udtDescIdx (0xFFFF = nessun UDT) */
+            /* DIM con TO (1-D o multi-dim): OP_REDIM non trasporta i lower bound, quindi
+             * si usa CREATE_ARRAY (builtin 621) con la stessa convenzione del compilatore
+             * C#: [udtDesc?], numDims, (lo, hi) per asse. Vale anche per `DIM a(1 TO 4)`
+             * (prima array_size=1 era usato come upper: 2 slot, LBOUND sempre 0). */
+            int has_to = (s->dim_to_hi != NULL);
+            for (int dk = 0; dk < s->n_dim_extra; dk++)
+                if (s->dim_extra_lo && s->dim_extra_lo[dk]) has_to = 1;
+            if (has_to) {
+                int nargs = 0;
+                if (udt_desc != 65535) {
+                    int ci = cc_add_const(c, GMB_CCONST_DOUBLE, (double)udt_desc, NULL);
+                    cc_byte(c, GMB_OP_PUSH_CONST); cc_u16(c, (uint16_t)ci); nargs++;
+                }
+                int nc = cc_add_const(c, GMB_CCONST_DOUBLE, (double)(1 + s->n_dim_extra), NULL);
+                cc_byte(c, GMB_OP_PUSH_CONST); cc_u16(c, (uint16_t)nc); nargs++;
+                for (int dk = 0; dk < 1 + s->n_dim_extra && !c->error; dk++) {
+                    gmb_expr_t* lo = (dk == 0)
+                        ? (s->dim_to_hi ? s->array_size : NULL)
+                        : (s->dim_extra_lo ? s->dim_extra_lo[dk - 1] : NULL);
+                    gmb_expr_t* hi = (dk == 0)
+                        ? (s->dim_to_hi ? s->dim_to_hi : s->array_size)
+                        : s->dim_extra[dk - 1];
+                    if (lo) cc_expr(c, lo);
+                    else {
+                        int lc = cc_add_const(c, GMB_CCONST_DOUBLE, 0.0, NULL);
+                        cc_byte(c, GMB_OP_PUSH_CONST); cc_u16(c, (uint16_t)lc);
+                    }
+                    nargs++;
+                    cc_expr(c, hi);
+                    nargs++;
+                }
+                if (c->error) return;
+                cc_byte(c, GMB_OP_CALL_BUILTIN);
+                cc_u16(c, 621);                 /* CREATE_ARRAY */
+                cc_byte(c, (uint8_t)nargs);
+            } else {
+                cc_expr(c, s->array_size);
+                if (c->error) return;
+                for (int dk = 0; dk < s->n_dim_extra && dk < 7 && !c->error; dk++)
+                    cc_expr(c, s->dim_extra[dk]);
+                if (c->error) return;
+                cc_byte(c, GMB_OP_REDIM);
+                cc_byte(c, (uint8_t)(1 + s->n_dim_extra));   /* numDims */
+                cc_u16(c, (uint16_t)udt_desc);   /* udtDescIdx (0xFFFF = nessun UDT) */
+            }
             cc_store_dim_target(c, s->dim_var, s->line);
             cc_arr_rank_set(c, s->dim_var, 1 + s->n_dim_extra);
             /* traccia il tipo elemento (vt_names/vt_types, stesso registro usato per gli
@@ -4525,14 +4586,19 @@ static void cc_stmt(gmb_cc_t* c, const gmb_stmt_t* s)
              * i restanti slot restano default). Bug: CurveFitSciPyParity / DIM-array-da-literal. */
             if (s->dim_init && s->dim_init->kind == GMB_EXPR_CALL && s->dim_init->var
                 && strcasecmp(s->dim_init->var, "_array_") == 0) {
-                for (int li = 0; li < s->dim_init->nargs && !c->error; li++) {
-                    cc_expr(c, s->dim_init->args[li]);          /* valore */
+                /* Riempimento con OP_INIT_ARRAY: appiattisce i letterali annidati e lascia
+                 * al runtime la base (1-D con lower → slot lower+j; N-D → buffer denso
+                 * row-major). Prima si emetteva uno STORE_ELEMENT per elemento con indice
+                 * 0-based: su DIM 1 TO n/2-D con TO falliva il bounds check e i letterali
+                 * annidati restavano liste annidate invece di scalari. */
+                int nlit = cc_count_array_literal(s->dim_init);
+                if (nlit > 0) {
+                    cc_load_target(c, s->dim_var);              /* array sotto gli elementi */
                     if (c->error) return;
-                    cc_load_target(c, s->dim_var);              /* array */
-                    int lidx = cc_add_const(c, GMB_CCONST_DOUBLE, (double)li, NULL);
-                    cc_byte(c, GMB_OP_PUSH_CONST); cc_u16(c, lidx);   /* indice li */
+                    cc_emit_array_literal_flat(c, s->dim_init);
                     if (c->error) return;
-                    cc_byte(c, GMB_OP_STORE_ELEMENT); cc_byte(c, 1);
+                    cc_byte(c, GMB_OP_INIT_ARRAY); cc_u16(c, (uint16_t)nlit);
+                    cc_byte(c, GMB_OP_POP);                     /* l'array è già nel target */
                 }
             }
             break;
