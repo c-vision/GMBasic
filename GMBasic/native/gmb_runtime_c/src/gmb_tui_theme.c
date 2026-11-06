@@ -11,42 +11,41 @@
 
 /* ===================== Theme ===================== */
 
-gmb_theme_t gmb_theme_turbo(void)
+gmb_theme_t gmb_theme_clipper(void)
 {
     gmb_theme_t t;
     memset(&t, 0, sizeof t);
-    /* SPECCHIO ESATTO di common/ClipperLib/Controls/Theme.cs -> Turbo(). */
-    t.desktop_bg = crgb(0, 0, 170);      /* DesktopBg: blu Borland */
-    t.desktop_fg = crgb(255, 255, 255);  /* retino ░ bianco sul blu (TV 1.0/TP7) */
-    t.window_bg = crgb(170, 170, 170);   /* WindowBg: grigio chiaro (finestre/controlli) */
-    t.title_focus = crgb(170, 170, 170); /* TitleFocus */
-    t.title_blur = crgb(85, 85, 85);     /* TitleBlur */
-    t.title_fg = crgb(0, 0, 0);          /* TitleFg */
-    t.border = crgb(170, 170, 170);      /* Border */
-    t.ctrl_fg = crgb(0, 0, 0);           /* CtrlFg */
-    t.close_fg = crgb(0, 170, 0);        /* CloseFg */
-    t.text = crgb(0, 0, 0);              /* Text */
-    t.dim = crgb(85, 85, 85);            /* Dim */
-    t.accent = crgb(170, 170, 170);      /* Accent */
-    t.active_bg = crgb(0, 170, 170);     /* ActiveBg: ciano focus/selezione */
-    t.shadow = crgb(0, 0, 0);            /* Shadow */
-    t.desktop_pattern = "\xE2\x96\x91"; /* DesktopPattern: '░' */
-    t.head_bg = crgb(0, 0, 170); t.head_fg = crgb(255, 255, 255);
-    /* Palette PER-VISTA (TV, dallo screenshot tvedit): editor blu/bianco/cornice ciano;
-     * menu e dialog grigi/nero; statusline ciano/nero. (0,0,0 = deriva dai base.) */
-    t.editor_bg = crgb(0, 0, 170); t.editor_fg = crgb(255, 255, 255); t.editor_frame = crgb(0, 255, 255);
-    t.menu_bg = crgb(170, 170, 170); t.menu_fg = crgb(0, 0, 0);
-    t.dlg_bg = crgb(170, 170, 170); t.dlg_fg = crgb(0, 0, 0);
-    t.stat_bg = crgb(0, 255, 255); t.stat_fg = crgb(0, 0, 0);
-    t.cal_sel_bg = crgb(0, 255, 255); t.cal_sel_fg = crgb(0, 0, 0);
-    t.cal_today_bg = crgb(255, 255, 85); t.cal_today_fg = crgb(0, 0, 170);
+    /* "Clipper/DOS" — tema LEGACY distinto da Turbo Vision: navy + retino ▒ teal,
+     * finestre blu con cornice ciano, titlebar teal, selezione verde, status verde. */
+    t.desktop_bg = crgb(0, 0, 128);        /* navy */
+    t.desktop_fg = crgb(0, 170, 170);      /* retino teal */
+    t.desktop_pattern = "\xE2\x96\x92";    /* ▒ (diverso dal ░ di turbovision) */
+    t.window_bg = crgb(0, 0, 170);         /* finestra blu */
+    t.text = crgb(255, 255, 255);
+    t.title_focus = crgb(0, 170, 170);     /* titlebar teal, testo nero */
+    t.title_blur = crgb(0, 85, 85);
+    t.title_fg = crgb(0, 0, 0);
+    t.border = crgb(0, 255, 255);          /* cornice ciano */
+    t.ctrl_fg = crgb(0, 0, 0);
+    t.close_fg = crgb(255, 255, 85);       /* icone gialle */
+    t.dim = crgb(0, 128, 128);
+    t.accent = crgb(0, 170, 170);
+    t.active_bg = crgb(0, 170, 0);         /* selezione verde */
+    t.shadow = crgb(0, 0, 0);
+    t.head_bg = crgb(0, 128, 128); t.head_fg = crgb(255, 255, 255);
+    t.editor_bg = crgb(0, 0, 128); t.editor_fg = crgb(255, 255, 255); t.editor_frame = crgb(0, 255, 255);
+    t.menu_bg = crgb(0, 128, 128); t.menu_fg = crgb(255, 255, 255);
+    t.dlg_bg = crgb(0, 0, 128); t.dlg_fg = crgb(255, 255, 255);
+    t.stat_bg = crgb(0, 170, 0); t.stat_fg = crgb(0, 0, 0);
+    t.cal_sel_bg = crgb(0, 170, 0); t.cal_sel_fg = crgb(0, 0, 0);
+    t.cal_today_bg = crgb(255, 255, 85); t.cal_today_fg = crgb(0, 0, 128);
     return t;
 }
 
 /* Turbo Vision 2.0 (magiblot) — palette "Borland" di default: desktop GRIGIO con retino
  * blu, finestre BLU con testo grigio chiaro e cornice bianca, dialog GRIGI con testo nero.
  * (turbo = look TV 1.0/TP7: desktop blu, finestre grigie.) */
-gmb_theme_t gmb_theme_borland(void)
+gmb_theme_t gmb_theme_turbovision(void)
 {
     gmb_theme_t t;
     memset(&t, 0, sizeof t);
@@ -407,22 +406,25 @@ gmb_theme_t gmb_theme_named(const char* name)
     if (strcmp(n, "retrogreen") == 0 || strcmp(n, "green") == 0 || strcmp(n, "matrix") == 0) return gmb_theme_retro_green();
     if (strcmp(n, "amber") == 0) return gmb_theme_amber();
     if (strcmp(n, "vb6") == 0 || strcmp(n, "visualbasic") == 0) return gmb_theme_vb6();
-    if (strcmp(n, "turbo") == 0) return gmb_theme_turbo();
-    if (strcmp(n, "borland") == 0 || strcmp(n, "tv2") == 0 || strcmp(n, "turbo2") == 0) return gmb_theme_borland();
+    if (strcmp(n, "turbovision") == 0 || strcmp(n, "tv2") == 0 || strcmp(n, "tv") == 0
+        || strcmp(n, "borland") == 0 || strcmp(n, "turbo2") == 0
+        || strcmp(n, "turbo") == 0) return gmb_theme_turbovision();
+    if (strcmp(n, "clipper") == 0 || strcmp(n, "tp7") == 0 || strcmp(n, "turbopascal") == 0)
+        return gmb_theme_clipper();
     if (strcmp(n, "light") == 0 || strcmp(n, "win") == 0 || strcmp(n, "windows") == 0) return gmb_theme_light();
     if (strcmp(n, "soft") == 0 || strcmp(n, "neumorph") == 0 || strcmp(n, "neumorphic") == 0) return gmb_theme_soft();
     if (strcmp(n, "neon") == 0 || strcmp(n, "violet") == 0) return gmb_theme_neon();
     if (strcmp(n, "glass") == 0 || strcmp(n, "dashboard") == 0 || strcmp(n, "navy") == 0) return gmb_theme_glass();
-    return gmb_theme_turbo();   /* Theme.cs: _ => Turbo() */
+    return gmb_theme_turbovision();   /* default = Turbo Vision 2.0 */
 }
 
-gmb_theme_t gmb_theme_default(void) { return gmb_theme_turbo(); }
+gmb_theme_t gmb_theme_default(void) { return gmb_theme_turbovision(); }
 
 /* ===================== Widget style (pixel) ===================== */
 
 static gmb_theme_t g_ui_theme;
 static int g_ui_theme_set = 0;
-static char g_ui_theme_name[48] = "turbo";
+static char g_ui_theme_name[48] = "turbovision";
 static void (*g_ui_theme_hook)(const char* name) = NULL;
 
 void gmb_ui_theme_on_change(void (*fn)(const char* name)) { g_ui_theme_hook = fn; }
@@ -437,8 +439,11 @@ static unsigned int ps_rgba(gmb_cell_color_t c, unsigned int a)
 
 static int theme_is_classic(const char* n)
 {
-    return strcasecmp(n, "turbo") == 0 || strcasecmp(n, "borland") == 0
-        || strcasecmp(n, "tv2") == 0 || strcasecmp(n, "turbo2") == 0
+    return strcasecmp(n, "turbovision") == 0 || strcasecmp(n, "borland") == 0
+        || strcasecmp(n, "turbo") == 0 || strcasecmp(n, "tv2") == 0 || strcasecmp(n, "tv") == 0
+        || strcasecmp(n, "turbo2") == 0
+        || strcasecmp(n, "clipper") == 0 || strcasecmp(n, "tp7") == 0
+        || strcasecmp(n, "turbopascal") == 0
         || strcasecmp(n, "qbasic") == 0
         || strcasecmp(n, "dos") == 0 || strcasecmp(n, "retrogreen") == 0
         || strcasecmp(n, "green") == 0 || strcasecmp(n, "matrix") == 0
@@ -463,7 +468,15 @@ void gmb_ui_set_theme_name(const char* name)
     n[j] = 0;
     g_ui_theme = gmb_theme_named(name);
     g_ui_theme_set = 1;
-    snprintf(g_ui_theme_name, sizeof(g_ui_theme_name), "%s", n[0] ? n : "turbo");
+    /* Nome CANONICO: gli alias storici riportano il preset vero (es. turbo/borland →
+     * turbovision, tp7/turbopascal → clipper). */
+    if (strcmp(n, "turbo") == 0 || strcmp(n, "borland") == 0 || strcmp(n, "tv2") == 0
+        || strcmp(n, "tv") == 0 || strcmp(n, "turbo2") == 0)
+        snprintf(g_ui_theme_name, sizeof(g_ui_theme_name), "turbovision");
+    else if (strcmp(n, "tp7") == 0 || strcmp(n, "turbopascal") == 0)
+        snprintf(g_ui_theme_name, sizeof(g_ui_theme_name), "clipper");
+    else
+        snprintf(g_ui_theme_name, sizeof(g_ui_theme_name), "%s", n[0] ? n : "turbovision");
     gmb_control_style_set_theme(&g_ui_theme);
     ui_theme_notify();
 }

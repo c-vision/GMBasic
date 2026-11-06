@@ -30,10 +30,10 @@ public class Theme
 
     public static Theme Named(string name)
     {
-        var c = NativeTheme.gmb_theme_named(name ?? "turbo");
+        var c = NativeTheme.gmb_theme_named(name ?? "turbovision");
         var t = new Theme
         {
-            Name = string.IsNullOrWhiteSpace(name) ? "Turbo" : name,
+            Name = string.IsNullOrWhiteSpace(name) ? "TurboVision" : name,
             DesktopBg = C(c.desktop_bg),
             WindowBg = C(c.window_bg),
             TitleFocus = C(c.title_focus),
@@ -53,7 +53,9 @@ public class Theme
         return t;
     }
 
-    public static Theme Turbo() => Named("turbo");
+    public static Theme TurboVision() => Named("turbovision");
+    public static Theme Clipper() => Named("clipper");
+    public static Theme Turbo() => Named("turbo");   /* alias storico: ora = TurboVision */
     public static Theme QBasic() => Named("qbasic");
     public static Theme Midnight() => Named("midnight");
     public static Theme Nord() => Named("nord");
@@ -63,5 +65,5 @@ public class Theme
     public static Theme RetroGreen() => Named("retrogreen");
     public static Theme Amber() => Named("amber");
 
-    public static Theme Default() => Named("turbo");
+    public static Theme Default() => Named("turbovision");
 }

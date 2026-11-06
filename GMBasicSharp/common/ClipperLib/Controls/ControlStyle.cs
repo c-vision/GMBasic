@@ -28,7 +28,7 @@ public class ControlStyle
     public static Theme ActiveTheme => Theme.Named(NativeTheme.UiThemeName());
 
     /// <summary>Imposta il tema globale nel runtime C (via unica, come la grafica).</summary>
-    public static void SetTheme(Theme theme) => NativeTheme.gmb_ui_set_theme_name(string.IsNullOrWhiteSpace(theme.Name) ? "turbo" : theme.Name);
+    public static void SetTheme(Theme theme) => NativeTheme.gmb_ui_set_theme_name(string.IsNullOrWhiteSpace(theme.Name) ? "turbovision" : theme.Name);
 
     public static ControlStyle Default() =>
         NativeTheme.gmb_ui_theme_is_set() == 0

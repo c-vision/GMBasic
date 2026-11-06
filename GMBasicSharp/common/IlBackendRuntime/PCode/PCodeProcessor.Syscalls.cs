@@ -5847,7 +5847,7 @@ internal sealed partial class PCodeProcessor
             }
             case SysCall.WINDOW_THEME:
             {
-                var themeName = task.PopRef()?.ToString() ?? "turbo";
+                var themeName = task.PopRef()?.ToString() ?? "turbovision";
                 var theme = ClipperLib.Controls.Theme.Named(themeName);
                 Basic.IlBackend.IlRuntime.Current.Graphics.ClipperSetThemeName(themeName);
                 Basic.IlBackend.IlRuntime.Current.Graphics.ClipperSetFgBg(theme.Text, theme.DesktopBg);

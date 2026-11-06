@@ -47,6 +47,6 @@ public static class NativeTheme
     public static string UiThemeName()
     {
         var p = gmb_ui_theme_name();
-        return p == IntPtr.Zero ? "turbo" : (System.Runtime.InteropServices.Marshal.PtrToStringAnsi(p) ?? "turbo");
+        return p == IntPtr.Zero ? "turbo" : (System.Runtime.InteropServices.Marshal.PtrToStringAnsi(p) ?? "turbovision");
     }
 }
