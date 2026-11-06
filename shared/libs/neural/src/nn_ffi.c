@@ -40,6 +40,8 @@
 #include "gn_dropout.h"
 #include "gn_normlayer.h"
 #include "gn_chuck.h"
+#include "gn_autograd.h"
+#include "gn_gp.h"
 #include "gn_opt.h"
 
 #include <stdlib.h>
@@ -2242,6 +2244,263 @@ i64 ofx_nn_chuck_free(i64 h)
     if (!e) return -1;
     gn_mat_free(&e->m);
     gn_mat_free(&e->v);
+    memset(e, 0, sizeof(*e));
+    return 0;
+}
+
+/* ══ Autodiff scalare (gn_autograd) — handle 7001+ ══════════════════════════
+ * Ogni nodo e' un handle: DATA/GRAD lo leggono, BACKWARD propaga i gradienti.
+ * SUB crea un nodo neg interno (non esposto): viene liberato con FREE del nodo
+ * risultante (flag own_child1). Gli altri nodi restano di proprieta' dei loro
+ * handle: liberarli quando non servono piu' (prima i figli dei padri). */
+#define NN_AUTO_MAX 2048
+#define NN_AUTO_BASE 7000
+
+typedef struct { gn_value *v; unsigned char own_child1; } nn_auto_e;
+static nn_auto_e g_auto[NN_AUTO_MAX];
+
+static gn_value *auto_get(i64 h)
+{
+    if (h <= NN_AUTO_BASE || h > NN_AUTO_BASE + NN_AUTO_MAX) return NULL;
+    return g_auto[h - NN_AUTO_BASE - 1].v;
+}
+
+static i64 auto_reg(gn_value *v, int own_child1)
+{
+    int i;
+    if (!v) return -1;
+    for (i = 0; i < NN_AUTO_MAX; i++) {
+        if (g_auto[i].v) continue;
+        g_auto[i].v = v;
+        g_auto[i].own_child1 = (unsigned char)own_child1;
+        return (i64)(NN_AUTO_BASE + i + 1);
+    }
+    gn_value_free(v);
+    return -1;
+}
+
+i64 ofx_nn_auto_value(double x)
+{
+    return auto_reg(gn_value_new((gn_real)x, NULL, 0, "v"), 0);
+}
+
+i64 ofx_nn_auto_add(i64 ha, i64 hb)
+{
+    gn_value *a = auto_get(ha), *b = auto_get(hb);
+    if (!a || !b) return -1;
+    return auto_reg(gn_value_add(a, b), 0);
+}
+
+/* SUB = add(a, neg(b)): il neg interno viene liberato dal FREE del risultato. */
+i64 ofx_nn_auto_sub(i64 ha, i64 hb)
+{
+    gn_value *a = auto_get(ha), *b = auto_get(hb);
+    if (!a || !b) return -1;
+    return auto_reg(gn_value_sub(a, b), 1);
+}
+
+i64 ofx_nn_auto_mul(i64 ha, i64 hb)
+{
+    gn_value *a = auto_get(ha), *b = auto_get(hb);
+    if (!a || !b) return -1;
+    return auto_reg(gn_value_mul(a, b), 0);
+}
+
+i64 ofx_nn_auto_div(i64 ha, i64 hb)
+{
+    gn_value *a = auto_get(ha), *b = auto_get(hb);
+    if (!a || !b) return -1;
+    return auto_reg(gn_value_div(a, b), 0);
+}
+
+i64 ofx_nn_auto_pow(i64 ha, double p)
+{
+    gn_value *a = auto_get(ha);
+    if (!a) return -1;
+    return auto_reg(gn_value_pow(a, (gn_real)p), 0);
+}
+
+i64 ofx_nn_auto_neg(i64 ha)
+{
+    gn_value *a = auto_get(ha);
+    if (!a) return -1;
+    return auto_reg(gn_value_neg(a), 0);
+}
+
+i64 ofx_nn_auto_relu(i64 ha)
+{
+    gn_value *a = auto_get(ha);
+    if (!a) return -1;
+    return auto_reg(gn_value_relu(a), 0);
+}
+
+i64 ofx_nn_auto_tanh(i64 ha)
+{
+    gn_value *a = auto_get(ha);
+    if (!a) return -1;
+    return auto_reg(gn_value_tanh(a), 0);
+}
+
+i64 ofx_nn_auto_exp(i64 ha)
+{
+    gn_value *a = auto_get(ha);
+    if (!a) return -1;
+    return auto_reg(gn_value_exp(a), 0);
+}
+
+double ofx_nn_auto_data(i64 h)
+{
+    gn_value *v = auto_get(h);
+    return v ? (double)v->data : 0.0;
+}
+
+double ofx_nn_auto_grad(i64 h)
+{
+    gn_value *v = auto_get(h);
+    return v ? (double)v->grad : 0.0;
+}
+
+i64 ofx_nn_auto_backward(i64 h)
+{
+    gn_value *v = auto_get(h);
+    if (!v) return -1;
+    gn_value_backward(v);
+    return 0;
+}
+
+i64 ofx_nn_auto_free(i64 h)
+{
+    gn_value *v = auto_get(h);
+    int slot;
+    if (!v) return -1;
+    slot = (int)(h - NN_AUTO_BASE - 1);
+    if (g_auto[slot].own_child1 && v->nprev == 2 && v->prev) gn_value_free(v->prev[1]);
+    gn_value_free(v);
+    g_auto[slot].v = NULL;
+    g_auto[slot].own_child1 = 0;
+    return 0;
+}
+
+/* ══ Programmazione genetica (gn_gp) — handle 7101+ ═════════════════════════
+ * L'interfaccia host del motore C (spec con arity/random_code/fitness) e'
+ * adattata a cio' che BASIC sa esprimere: l'alfabeto dei codici con la loro
+ * arita' (array) e la fitness come callback che riceve il genoma (array).
+ * Il motore e' quello di gn_gp: selezione a torneo, crossover 0.9, mutazione 0.1. */
+
+#define NN_GP_MAX 8
+#define NN_GP_BASE 7100
+#define NN_GP_MAXCODE 64
+
+typedef struct {
+    int code[NN_GP_MAXCODE];
+    int arity[NN_GP_MAXCODE];
+    int n;
+    double (*fit)(double *, long long);
+} gp_ctx_t;
+
+typedef struct {
+    int used;
+    gp_ctx_t ctx;
+} nn_gp_e;
+
+static nn_gp_e g_gp[NN_GP_MAX];
+static gp_ctx_t *g_gp_cur;   /* correnti durante la chiamata a gn_gp_evolve */
+
+static int gp_arity_cb(int code)
+{
+    int i;
+    if (!g_gp_cur) return 0;
+    for (i = 0; i < g_gp_cur->n; i++) if (g_gp_cur->code[i] == code) return g_gp_cur->arity[i];
+    return 0;
+}
+
+static int gp_random_cb(gn_gp_rng *r, void *ctx)
+{
+    (void)ctx;
+    if (!g_gp_cur || g_gp_cur->n <= 0) return 0;
+    return g_gp_cur->code[gn_gp_rand_int(r, g_gp_cur->n)];
+}
+
+static double gp_fit_cb(const gn_gp_genome *g, void *ctx)
+{
+    gp_ctx_t *c = (gp_ctx_t *)ctx;
+    double buf[GN_GP_MAXN];
+    int i;
+    if (!c->fit || !g) return 0.0;
+    for (i = 0; i < g->n; i++) buf[i] = (double)g->code[i];
+    return c->fit(buf, (long long)g->n);
+}
+
+static nn_gp_e *gp_get(i64 h)
+{
+    if (h <= NN_GP_BASE || h > NN_GP_BASE + NN_GP_MAX) return NULL;
+    if (!g_gp[h - NN_GP_BASE - 1].used) return NULL;
+    return &g_gp[h - NN_GP_BASE - 1];
+}
+
+/* codes/arity: alfabeto (stessa lunghezza); seed 0 = default del motore. */
+i64 ofx_nn_gp_init(const i64 *codes, const i64 *arity, i64 n)
+{
+    int i, j;
+    if (!codes || !arity || n <= 0 || n > NN_GP_MAXCODE) return -1;
+    for (i = 0; i < NN_GP_MAX; i++) {
+        if (g_gp[i].used) continue;
+        memset(&g_gp[i], 0, sizeof(g_gp[i]));
+        g_gp[i].ctx.n = (int)n;
+        for (j = 0; j < (int)n; j++) {
+            g_gp[i].ctx.code[j] = (int)codes[j];
+            g_gp[i].ctx.arity[j] = (int)arity[j];
+        }
+        g_gp[i].used = 1;
+        return (i64)(NN_GP_BASE + i + 1);
+    }
+    return -1;
+}
+
+/* Ritorna la lunghezza del genoma migliore; out_best() riceve i codici,
+ * out_fit(0) la fitness. */
+i64 ofx_nn_gp_evolve(i64 h, double (*fit)(double *, long long),
+                     i64 *out_best, double *out_fit,
+                     i64 pop, i64 gens, i64 seed, i64 max_depth)
+{
+    nn_gp_e *e = gp_get(h);
+    gn_gp_spec spec;
+    gn_gp_genome best;
+    double bestfit = 0.0;
+    int i, rc;
+    if (!e || !fit || !out_best || pop < 2 || gens < 1) return -1;
+    e->ctx.fit = fit;
+    g_gp_cur = &e->ctx;
+    spec.arity = gp_arity_cb;
+    spec.random_code = gp_random_cb;
+    spec.fitness = gp_fit_cb;
+    rc = gn_gp_evolve(&spec, &e->ctx, (int)pop, (int)gens,
+                      (unsigned long long)seed, (int)max_depth, &best, &bestfit);
+    g_gp_cur = NULL;
+    e->ctx.fit = NULL;
+    if (rc != 0) return -1;
+    for (i = 0; i < best.n; i++) out_best[i] = (i64)best.code[i];
+    if (out_fit) out_fit[0] = bestfit;
+    return (i64)best.n;
+}
+
+/* Fitness di un genoma dato (codes, n): utile per valutare/validare l'albero. */
+double ofx_nn_gp_eval(i64 h, const i64 *codes, i64 n, double (*fit)(double *, long long))
+{
+    nn_gp_e *e = gp_get(h);
+    gn_gp_genome g;
+    double buf[GN_GP_MAXN];
+    int i;
+    if (!e || !codes || n <= 0 || n > GN_GP_MAXN || !fit) return 0.0;
+    g.n = (int)n;
+    for (i = 0; i < (int)n; i++) { g.code[i] = (int)codes[i]; buf[i] = (double)codes[i]; }
+    return fit(buf, (long long)n);
+}
+
+i64 ofx_nn_gp_free(i64 h)
+{
+    nn_gp_e *e = gp_get(h);
+    if (!e) return -1;
     memset(e, 0, sizeof(*e));
     return 0;
 }
