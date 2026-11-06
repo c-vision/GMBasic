@@ -31,4 +31,20 @@ int gmb_call_enabled(void);
 }
 #endif
 
+
+/* Slot tipizzato per chiamate con struct/UDT per valore (2026-11-06).
+ * kind: 0 = double, 1 = int64/puntatore, 2 = struct (nfields campi da 8 byte).
+ * Per le struct il valore in vals[i] punta a un buffer di nfields*8 byte con i campi
+ * consecutivi (il layout ABI di campi tutti a 8 byte è sequenziale). */
+typedef struct gmb_call_slot {
+    int kind;
+    int nfields;
+    const unsigned char* field_is_int;   /* nfields: 1 = int64, 0 = double */
+} gmb_call_slot;
+
+int gmb_call_invoke_slots(void* fn, int n, const gmb_call_slot* slots,
+                          void* const* vals, int ret_kind,
+                          int ret_nfields, const unsigned char* ret_field_is_int,
+                          void* ret);
+
 #endif /* GMB_CALL_H */
