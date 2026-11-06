@@ -349,3 +349,32 @@ DECLARE FUNCTION CHUCKSTEP LIB "gmbneural" ALIAS "ofx_nn_chuck_step" (h AS LONG,
 DECLARE FUNCTION CHUCKSTATE LIB "gmbneural" ALIAS "ofx_nn_chuck_state" (h AS LONG, out() AS DOUBLE) AS LONG
 DECLARE FUNCTION CHUCKREST LIB "gmbneural" ALIAS "ofx_nn_chuck_reset" (h AS LONG) AS LONG
 DECLARE FUNCTION CHUCKFREE LIB "gmbneural" ALIAS "ofx_nn_chuck_free" (h AS LONG) AS LONG
+
+' ── Autodiff scalare (micrograd) — handle 7001+ ────────────────────────────
+' Ogni nodo e' un handle: le operazioni ne creano uno nuovo che referenzia i figli.
+' BACKWARD propaga i gradienti; FREE libera il nodo (i figli restano dei loro handle).
+DECLARE FUNCTION AUTOVALUE LIB "gmbneural" ALIAS "ofx_nn_auto_value" (x AS DOUBLE) AS LONG
+DECLARE FUNCTION AUTOADD LIB "gmbneural" ALIAS "ofx_nn_auto_add" (a AS LONG, b AS LONG) AS LONG
+DECLARE FUNCTION AUTOSUB LIB "gmbneural" ALIAS "ofx_nn_auto_sub" (a AS LONG, b AS LONG) AS LONG
+DECLARE FUNCTION AUTOMUL LIB "gmbneural" ALIAS "ofx_nn_auto_mul" (a AS LONG, b AS LONG) AS LONG
+DECLARE FUNCTION AUTODIV LIB "gmbneural" ALIAS "ofx_nn_auto_div" (a AS LONG, b AS LONG) AS LONG
+DECLARE FUNCTION AUTOPOW LIB "gmbneural" ALIAS "ofx_nn_auto_pow" (a AS LONG, p AS DOUBLE) AS LONG
+DECLARE FUNCTION AUTONEG LIB "gmbneural" ALIAS "ofx_nn_auto_neg" (a AS LONG) AS LONG
+DECLARE FUNCTION AUTORELU LIB "gmbneural" ALIAS "ofx_nn_auto_relu" (a AS LONG) AS LONG
+DECLARE FUNCTION AUTOTANH LIB "gmbneural" ALIAS "ofx_nn_auto_tanh" (a AS LONG) AS LONG
+DECLARE FUNCTION AUTOEXP LIB "gmbneural" ALIAS "ofx_nn_auto_exp" (a AS LONG) AS LONG
+DECLARE FUNCTION AUTODATA LIB "gmbneural" ALIAS "ofx_nn_auto_data" (h AS LONG) AS DOUBLE
+DECLARE FUNCTION AUTOGRAD LIB "gmbneural" ALIAS "ofx_nn_auto_grad" (h AS LONG) AS DOUBLE
+DECLARE FUNCTION AUTOBACKWARD LIB "gmbneural" ALIAS "ofx_nn_auto_backward" (h AS LONG) AS LONG
+DECLARE FUNCTION AUTOFREE LIB "gmbneural" ALIAS "ofx_nn_auto_free" (h AS LONG) AS LONG
+
+' ── Programmazione genetica (gn_gp) — handle 7101+ ────────────────────────
+' Alfabeto: codes(i) con arity(i) (0 = terminale, 1/2 = funzione). La fitness e'
+' una FUNCTION(code() AS DOUBLE) AS DOUBLE che riceve il genoma in ordine prefisso.
+DECLARE FUNCTION GPINIT LIB "gmbneural" ALIAS "ofx_nn_gp_init" (codes() AS LONG, arity() AS LONG, n AS LONG) AS LONG
+' Ritorna la lunghezza del genoma migliore; best() riceve i codici, fit(0) la fitness.
+' seed 0 = default del motore; max_depth viene limitato a [1,5].
+DECLARE FUNCTION GPEVOLVE LIB "gmbneural" ALIAS "ofx_nn_gp_evolve" (h AS LONG, fitness AS FUNCTION(code() AS DOUBLE) AS DOUBLE, best() AS LONG, fit() AS DOUBLE, pop AS LONG, gens AS LONG, seed AS LONG, max_depth AS LONG) AS LONG
+' Fitness di un genoma esplicito (codes, n) con la stessa callback.
+DECLARE FUNCTION GPEVAL LIB "gmbneural" ALIAS "ofx_nn_gp_eval" (h AS LONG, codes() AS LONG, n AS LONG, fitness AS FUNCTION(code() AS DOUBLE) AS DOUBLE) AS DOUBLE
+DECLARE FUNCTION GPFREE LIB "gmbneural" ALIAS "ofx_nn_gp_free" (h AS LONG) AS LONG
