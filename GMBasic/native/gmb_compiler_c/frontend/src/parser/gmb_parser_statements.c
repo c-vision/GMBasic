@@ -2581,8 +2581,13 @@ if (gmb_tk_rem_vari_in(t->kind)) {
             if (gmb_p_tok_is_keyword(gmb_p_cur(p), "To") || gmb_p_check(p, GMB_TOK_To)) { gmb_p_adv(p); ls->dim_to_hi = gmb_p_parse_expr(p); }
             while (gmb_p_match(p, GMB_TOK_Comma) && !gmb_p_check(p, GMB_TOK_RightParen) && !gmb_p_at_end(p)) {
                 gmb_expr_t* d = gmb_p_parse_expr(p);
+                gmb_expr_t* d_lo = NULL;
+                if (gmb_p_tok_is_keyword(gmb_p_cur(p), "To") || gmb_p_check(p, GMB_TOK_To)) { gmb_p_adv(p); d_lo = d; d = gmb_p_parse_expr(p); }
                 ls->dim_extra = (gmb_expr_t**)realloc(ls->dim_extra, (size_t)(ls->n_dim_extra + 1) * sizeof(gmb_expr_t*));
-                ls->dim_extra[ls->n_dim_extra++] = d;
+                ls->dim_extra_lo = (gmb_expr_t**)realloc(ls->dim_extra_lo, (size_t)(ls->n_dim_extra + 1) * sizeof(gmb_expr_t*));
+                ls->dim_extra[ls->n_dim_extra] = d;
+                ls->dim_extra_lo[ls->n_dim_extra] = d_lo;
+                ls->n_dim_extra++;
             }
             while (!gmb_p_at_end(p) && !gmb_p_check(p, GMB_TOK_RightParen)) gmb_p_adv(p);
             gmb_p_match(p, GMB_TOK_RightParen);
@@ -2650,10 +2655,16 @@ if (gmb_tk_rem_vari_in(t->kind)) {
         const gmb_token_t* gv = gmb_p_cur(p);
         if (gv) { gs->dim_var = (char*)malloc((size_t)gv->length + 1); memcpy(gs->dim_var, gv->lexeme, (size_t)gv->length); gs->dim_var[gv->length] = 0; gmb_p_adv(p); }
         if (gmb_p_match(p, GMB_TOK_LeftParen)) { if (!gmb_p_check(p, GMB_TOK_RightParen)) gs->array_size = gmb_p_parse_expr(p);
+            if (gmb_p_tok_is_keyword(gmb_p_cur(p), "To") || gmb_p_check(p, GMB_TOK_To)) { gmb_p_adv(p); gs->dim_to_hi = gmb_p_parse_expr(p); }
             while (gmb_p_match(p, GMB_TOK_Comma) && !gmb_p_check(p, GMB_TOK_RightParen) && !gmb_p_at_end(p)) {
                 gmb_expr_t* d = gmb_p_parse_expr(p);
+                gmb_expr_t* d_lo = NULL;
+                if (gmb_p_tok_is_keyword(gmb_p_cur(p), "To") || gmb_p_check(p, GMB_TOK_To)) { gmb_p_adv(p); d_lo = d; d = gmb_p_parse_expr(p); }
                 gs->dim_extra = (gmb_expr_t**)realloc(gs->dim_extra, (size_t)(gs->n_dim_extra + 1) * sizeof(gmb_expr_t*));
-                gs->dim_extra[gs->n_dim_extra++] = d;
+                gs->dim_extra_lo = (gmb_expr_t**)realloc(gs->dim_extra_lo, (size_t)(gs->n_dim_extra + 1) * sizeof(gmb_expr_t*));
+                gs->dim_extra[gs->n_dim_extra] = d;
+                gs->dim_extra_lo[gs->n_dim_extra] = d_lo;
+                gs->n_dim_extra++;
             }
             while (!gmb_p_at_end(p) && !gmb_p_check(p, GMB_TOK_RightParen)) gmb_p_adv(p); gmb_p_match(p, GMB_TOK_RightParen); }
         /* `GLOBAL x AS STRING` — la clausola AS va catturata (prima era ignorata: il tipo
@@ -2795,8 +2806,13 @@ if (gmb_tk_rem_vari_in(t->kind)) {
                 if (n1 && n1->kind == GMB_TOK_Identifier && n2 && n2->kind == GMB_TOK_LeftParen) break;
                 gmb_p_adv(p);
                 gmb_expr_t* d = gmb_p_parse_expr(p);
+                gmb_expr_t* d_lo = NULL;
+                if (gmb_p_tok_is_keyword(gmb_p_cur(p), "To") || gmb_p_check(p, GMB_TOK_To)) { gmb_p_adv(p); d_lo = d; d = gmb_p_parse_expr(p); }
                 s->dim_extra = (gmb_expr_t**)realloc(s->dim_extra, (size_t)(s->n_dim_extra + 1) * sizeof(gmb_expr_t*));
-                s->dim_extra[s->n_dim_extra++] = d;
+                s->dim_extra_lo = (gmb_expr_t**)realloc(s->dim_extra_lo, (size_t)(s->n_dim_extra + 1) * sizeof(gmb_expr_t*));
+                s->dim_extra[s->n_dim_extra] = d;
+                s->dim_extra_lo[s->n_dim_extra] = d_lo;
+                s->n_dim_extra++;
             }
             while (!gmb_p_at_end(p) && !gmb_p_check(p, GMB_TOK_RightParen)) gmb_p_adv(p);
             gmb_p_match(p, GMB_TOK_RightParen);
@@ -2820,8 +2836,13 @@ if (gmb_tk_rem_vari_in(t->kind)) {
                 if (n1 && n1->kind == GMB_TOK_Identifier && n2 && n2->kind == GMB_TOK_LeftParen) break;
                 gmb_p_adv(p);
                 gmb_expr_t* dd = gmb_p_parse_expr(p);
+                gmb_expr_t* dd_lo = NULL;
+                if (gmb_p_tok_is_keyword(gmb_p_cur(p), "To") || gmb_p_check(p, GMB_TOK_To)) { gmb_p_adv(p); dd_lo = dd; dd = gmb_p_parse_expr(p); }
                 d->dim_extra = (gmb_expr_t**)realloc(d->dim_extra, (size_t)(d->n_dim_extra + 1) * sizeof(gmb_expr_t*));
-                d->dim_extra[d->n_dim_extra++] = dd;
+                d->dim_extra_lo = (gmb_expr_t**)realloc(d->dim_extra_lo, (size_t)(d->n_dim_extra + 1) * sizeof(gmb_expr_t*));
+                d->dim_extra[d->n_dim_extra] = dd;
+                d->dim_extra_lo[d->n_dim_extra] = dd_lo;
+                d->n_dim_extra++;
             }
             while (!gmb_p_at_end(p) && !gmb_p_check(p, GMB_TOK_RightParen)) gmb_p_adv(p);
             gmb_p_match(p, GMB_TOK_RightParen);

@@ -83,8 +83,13 @@ gmb_stmt_t* gmb_p_parse_redim(gmb_parser_t* p, int line)
         if (!gmb_p_check(p, GMB_TOK_RightParen)) s->array_size = gmb_p_parse_expr(p);
         while (gmb_p_match(p, GMB_TOK_Comma) && !gmb_p_check(p, GMB_TOK_RightParen) && !gmb_p_at_end(p)) {
             gmb_expr_t* d = gmb_p_parse_expr(p);
+            gmb_expr_t* d_lo = NULL;
+            if (gmb_p_tok_is_keyword(gmb_p_cur(p), "To") || gmb_p_check(p, GMB_TOK_To)) { gmb_p_adv(p); d_lo = d; d = gmb_p_parse_expr(p); }
             s->dim_extra = (gmb_expr_t**)realloc(s->dim_extra, (size_t)(s->n_dim_extra + 1) * sizeof(gmb_expr_t*));
-            s->dim_extra[s->n_dim_extra++] = d;
+            s->dim_extra_lo = (gmb_expr_t**)realloc(s->dim_extra_lo, (size_t)(s->n_dim_extra + 1) * sizeof(gmb_expr_t*));
+            s->dim_extra[s->n_dim_extra] = d;
+            s->dim_extra_lo[s->n_dim_extra] = d_lo;
+            s->n_dim_extra++;
         }
         while (!gmb_p_at_end(p) && !gmb_p_check(p, GMB_TOK_RightParen)) gmb_p_adv(p);
         gmb_p_match(p, GMB_TOK_RightParen);

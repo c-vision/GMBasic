@@ -115,6 +115,7 @@ const char* ctype_name(int ty);
 void sb_bound_ident(sb_t* b, const char* arr, int k);
 void emit_var_ref(ctx_t* c, const var_t* v);
 void sb_bound_var(sb_t* b, const var_t* v, int k);
+void sb_bound_lo_k(sb_t* b, const var_t* v, int k);   /* lower bound dell'asse k (__blo/__bloK) */
 const char* gkind_ctype(int gk);
 void sb_var_ctype(sb_t* b, var_t* v);
 int gmb_udt_var_type(ctx_t* c, const char* name, char* out, int cap); /* nome-tipo UDT di una var (mappa popolata al DIM) */

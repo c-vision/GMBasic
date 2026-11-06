@@ -820,11 +820,13 @@ void sb_bound_var(sb_t* b, const var_t* v, int k) {
 }
 /* Lower bound compagna `<ident>__blo` (canone 1-based 2026-09-30): assegnata al DIM con
  * TO, letta da FOR EACH (inizio) e LBOUND. Esiste solo se il DIM l'ha emessa (flag). */
-static void sb_bound_lo(sb_t* b, const var_t* v) {
+void sb_bound_lo_k(sb_t* b, const var_t* v, int k) {
     if (v->arr_byref) sb_put(b, "_");
     sb_ident(b, v->name);
-    sb_put(b, "__blo");
+    if (k == 0) sb_put(b, "__blo");
+    else sb_printf(b, "__blo%d", k);
 }
+static void sb_bound_lo(sb_t* b, const var_t* v) { sb_bound_lo_k(b, v, 0); }
 
 /* ─────────────── FASE 2.6(b): helper GPM (parità oracolo C# Gpm.cs) ─────────────── */
 
@@ -3844,7 +3846,14 @@ if (s->dim_var) {            int ty = suffix_type(s->dim_var);
                     || s->dim_init->tk == GMB_TOK_MemoryMap)
                     { v->matrix_handle = 1; v->type = TY_NUM; }
             }
-            if (s->array_size) { v->is_array = 1; v->ndims = 1 + s->n_dim_extra; }
+            if (s->array_size) {
+                v->is_array = 1; v->ndims = 1 + s->n_dim_extra;
+                /* DIM con TO (anche su una sola dimensione): servono le compagne __bloK
+                 * emesse nella dichiarazione e usate da indicizzazione/LBOUND/FOR EACH. */
+                if (s->dim_to_hi) v->has_blo = 1;
+                for (int kd = 0; kd < s->n_dim_extra; kd++)
+                    if (s->dim_extra_lo && s->dim_extra_lo[kd]) v->has_blo = 1;
+            }
             else {
                 int arik = dim_arr_init_kind(c, s->dim_init);
                 if (arik) {
@@ -8374,6 +8383,8 @@ static void emit_flat_index(ctx_t* c, var_t* v, gmb_expr_t** idx, int nidx) {
     for (int k = 0; k < nidx; k++) {
         if (k) sb_put(&c->out, " + ");
         int gk = arr_index_guard(c, v, k);
+        /* Con lower bound != 0 l'offset è (indice - lower): parentesi prima dello stride. */
+        if (v->has_blo) sb_put(&c->out, "(");
         if (gk) {
             /* Indice valutato UNA volta: gmb_arr_check solleva ERR 9 fuori dai limiti
              * (parità IL/PCode/VM-C; prima C99 leggeva/sciveva fuori allocazione). */
@@ -8385,21 +8396,26 @@ static void emit_flat_index(ctx_t* c, var_t* v, gmb_expr_t** idx, int nidx) {
                 emit_var_ref(c, v);
                 sb_put(&c->out, "_len) - 1");
             } else {
-                if (v->has_blo && k == 0) sb_bound_lo(&c->out, v);
+                if (v->has_blo) sb_bound_lo_k(&c->out, v, k);
                 else sb_put(&c->out, "0");
                 sb_put(&c->out, ", (gmb_int_t)(");
                 sb_bound_var(&c->out, v, k);
                 sb_put(&c->out, ")");
             }
             sb_printf(&c->out, ", %d)", idx[k] ? idx[k]->line : 0);
+            /* gmb_arr_check restituisce l'indice utente: per un array con lower bound != 0
+             * l'offset nel buffer (denso 0..len-1) è indice - lower. */
+            if (v->has_blo) { sb_put(&c->out, " - "); sb_bound_lo_k(&c->out, v, k); sb_put(&c->out, ")"); }
         } else {
             sb_put(&c->out, "((gmb_int_t)(");
             emit_expr(c, idx[k]);
             sb_put(&c->out, "))");
+            if (v->has_blo) { sb_put(&c->out, " - "); sb_bound_lo_k(&c->out, v, k); sb_put(&c->out, ")"); }
         }
         for (int j = k + 1; j < nidx; j++) {
             sb_put(&c->out, " * ((gmb_int_t)(");
             sb_bound_var(&c->out, v, j);
+            if (v->has_blo) { sb_put(&c->out, " - "); sb_bound_lo_k(&c->out, v, j); }
             sb_put(&c->out, ") + 1)");
         }
     }
@@ -8423,9 +8439,25 @@ void emit_arr_len_of(ctx_t* c, var_t* av) {
         emit_ident(c, av->name);
         sb_put(&c->out, "_len");
     } else {
-        sb_put(&c->out, "(");
-        sb_bound_var(&c->out, av, 0);
-        sb_put(&c->out, ") + 1");
+        if (av->has_blo) {
+            /* DIM con TO: il numero di elementi è il prodotto delle lunghezze
+             * (upper - lower + 1), non upper+1. */
+            int nd = av->ndims > 0 ? av->ndims : 1;
+            sb_put(&c->out, "(");
+            for (int k = 0; k < nd; k++) {
+                if (k) sb_put(&c->out, " * ");
+                sb_put(&c->out, "((gmb_int_t)(");
+                sb_bound_var(&c->out, av, k);
+                sb_put(&c->out, " - ");
+                sb_bound_lo_k(&c->out, av, k);
+                sb_put(&c->out, ") + 1)");
+            }
+            sb_put(&c->out, ")");
+        } else {
+            sb_put(&c->out, "(");
+            sb_bound_var(&c->out, av, 0);
+            sb_put(&c->out, ") + 1");
+        }
     }
 }
 
@@ -18777,7 +18809,34 @@ static void emit_dict_literal(ctx_t* c, gmb_expr_t* e) {
     sb_put(&c->out, "__d; })");
 }
 
- static void st_dim(ctx_t* c, gmb_stmt_t* s) {
+ /* DIM a(...) = { ... }: appiattisce un letterale annidato (CALL "_array_") in ordine
+ * row-major e riempie il buffer DENSO dell'array (offset 0..len-1, senza lower bound:
+ * il layout interno è denso). La guardia usa il numero di elementi dichiarati, che può
+ * essere runtime. Vale per 1-D, matrici 2-D e N-D. */
+static void emit_dim_literal_flat(ctx_t* c, var_t* v, const gmb_expr_t* e,
+                                  int* pos, int dim_id, int ndims)
+{
+    if (!e || c->error[0]) return;
+    if (e->kind == GMB_EXPR_CALL && e->var && strcmp(e->var, "_array_") == 0) {
+        for (int i = 0; i < e->nargs && !c->error[0]; i++)
+            emit_dim_literal_flat(c, v, e->args[i], pos, dim_id, ndims);
+        return;
+    }
+    ind(c);
+    sb_printf(&c->out, "if (%d < (gmb_int_t)(", *pos);
+    for (int k = 0; k < ndims; k++) {
+        if (k) sb_put(&c->out, " * ");
+        sb_printf(&c->out, "(__dim%d_%d + 1)", dim_id, k);
+    }
+    sb_put(&c->out, ")) { ");
+    emit_var_ref(c, v);
+    sb_printf(&c->out, "[%d] = ", *pos);
+    emit_expr(c, (gmb_expr_t*)e);
+    sb_put(&c->out, "; }\n");
+    (*pos)++;
+}
+
+static void st_dim(ctx_t* c, gmb_stmt_t* s) {
  {
          if (s->dim_is_dynamic) { gmb_c99_emit_dyn_declare(c, s); return; }
          var_t* dv = NULL;
@@ -18956,27 +19015,38 @@ static void emit_dict_literal(ctx_t* c, gmb_expr_t* e) {
                 c99_fail(c, s->line, "DIM %s: troppe dimensioni (max 8)", s->dim_var);
                 return;
             }
-            gmb_expr_t* dims[8];
-            dims[0] = s->array_size;
-            for (int k = 0; k < s->n_dim_extra; k++) dims[k + 1] = s->dim_extra[k];
-            /* Canone 1-based 2026-09-30: DIM v(lo TO hi) — la dimensione è hi (array_size
-             * resta lo per la compagna __blo sotto). Solo 1D (n_dim_extra==0). */
-            int dim_has_to = (s->dim_to_hi != NULL && s->n_dim_extra == 0);
-            if (dim_has_to) dims[0] = s->dim_to_hi;
+            /* Per ogni asse: hi (bound superiore) e lo (lower, NULL = 0). La prima
+             * dimensione usa array_size/dim_to_hi, le altre dim_extra/dim_extra_lo.
+             * Supporta `DIM m(1 TO r, 1 TO c)` (lower bound per-asse). */
+            gmb_expr_t* his[8];
+            gmb_expr_t* los[8];
+            his[0] = s->array_size;
+            los[0] = NULL;
+            if (s->dim_to_hi) { los[0] = s->array_size; his[0] = s->dim_to_hi; }
+            for (int k = 0; k < s->n_dim_extra; k++) {
+                his[k + 1] = s->dim_extra[k];
+                los[k + 1] = (s->dim_extra_lo && k < s->n_dim_extra) ? s->dim_extra_lo[k] : NULL;
+            }
+            int any_lo = 0;
+            for (int k = 0; k < v->ndims; k++) if (los[k]) any_lo = 1;
+            if (any_lo) v->has_blo = 1;
             static int dim_uid = 0;
             int id = ++dim_uid;
-            /* Contatore di elementi a SCOPE DI FUNZIONE. La dimensione vive in __dim<id>_0,
-             * che è dichiarata DENTRO il blocco qui sotto: dopo il DIM non è più in scope
-             * (e `sizeof(array)/sizeof(array[0])` su un puntatore calloc vale 1, non N). Chi
-             * deve conoscere la lunghezza (es. DBF/ISAM.APPENDMANY) usa `<var>_count`.
-             * ADDITIVO: non modifica l'emissione esistente né i rami con return. */
-            if (v && s->dim_var && dims[0]) {
+            /* Contatore di elementi a SCOPE DI FUNZIONE: prodotto delle lunghezze
+             * (hi - lo + 1). La dimensione vive in __dim<id>_k, dichiarata DENTRO il blocco
+             * qui sotto: dopo il DIM non è più in scope (e sizeof su un puntatore vale 1). */
+            if (v && s->dim_var && his[0]) {
                 ind(c);
                 sb_put(&c->out, "gmb_int_t ");
                 emit_ident(c, v->name);
-                sb_put(&c->out, "_count = (gmb_int_t)(");
-                emit_expr(c, dims[0]);
-                sb_put(&c->out, ") + 1;\n");
+                sb_put(&c->out, "_count = 1");
+                for (int k = 0; k < v->ndims; k++) {
+                    sb_put(&c->out, " * ((gmb_int_t)(");
+                    emit_expr(c, his[k]);
+                    if (los[k]) { sb_put(&c->out, ") - (gmb_int_t)("); emit_expr(c, los[k]); }
+                    sb_put(&c->out, ") + 1)");
+                }
+                sb_put(&c->out, ";\n");
                 snprintf(v->dim_expr, sizeof(v->dim_expr), "%s_count", v->name);
             }
             ind(c); sb_put(&c->out, "{\n");
@@ -18984,8 +19054,10 @@ static void emit_dict_literal(ctx_t* c, gmb_expr_t* e) {
             for (int k = 0; k < v->ndims && !c->error[0]; k++) {
                 ind(c);
                 sb_printf(&c->out, "gmb_int_t __dim%d_%d = (gmb_int_t)(", id, k);
-                emit_expr(c, dims[k]);
-                sb_put(&c->out, ");\n");
+                emit_expr(c, his[k]);
+                sb_put(&c->out, ")");
+                if (los[k]) { sb_put(&c->out, " - (gmb_int_t)("); emit_expr(c, los[k]); sb_put(&c->out, ")"); }
+                sb_put(&c->out, ";\n");
             }
             ind(c);
             sb_put(&c->out, "free(");
@@ -18998,20 +19070,24 @@ static void emit_dict_literal(ctx_t* c, gmb_expr_t* e) {
             for (int k = 0; k < v->ndims; k++)
                 sb_printf(&c->out, " * ((size_t)__dim%d_%d + 1)", id, k);
             sb_printf(&c->out, ", sizeof(%s));\n", elct);
+            /* __bK = hi (bound SUPERIORE logico), __bloK = lo (lower). Il buffer è denso
+             * 0..len-1: l'indicizzazione toglie __bloK (vedi emit_flat_index). */
             for (int k = 0; k < v->ndims; k++) {
                 ind(c);
                 sb_bound_ident(&c->out, v->name, k);
-                sb_printf(&c->out, " = __dim%d_%d;\n", id, k);
+                sb_printf(&c->out, " = (gmb_int_t)(__dim%d_%d)", id, k);
+                if (los[k]) { sb_put(&c->out, " + (gmb_int_t)("); emit_expr(c, los[k]); sb_put(&c->out, ")"); }
+                sb_put(&c->out, ";\n");
             }
-            /* Compagna lower bound (array_size è lo quando dim_to_hi): letta da FOR EACH
-             * (inizio) e LBOUND se has_blo. Solo 1D TO. */
-            if (dim_has_to && v && s->array_size) {
-                ind(c);
-                sb_bound_lo(&c->out, v);
-                sb_put(&c->out, " = (gmb_int_t)(");
-                emit_expr(c, s->array_size);
-                sb_put(&c->out, ");\n");
-                v->has_blo = 1;
+            if (v->has_blo) {
+                for (int k = 0; k < v->ndims; k++) {
+                    ind(c);
+                    sb_bound_lo_k(&c->out, v, k);
+                    sb_put(&c->out, " = (gmb_int_t)(");
+                    if (los[k]) emit_expr(c, los[k]);
+                    else sb_put(&c->out, "0");
+                    sb_put(&c->out, ");\n");
+                }
             }
             /* 2026-09-03: array di UDT (TYPE) — ogni elemento va a un'istanza zero-init
              * (semantica UDT BASIC, parity PCodeVM OP_REDIM+vm_make_default_instance e fix
@@ -19043,66 +19119,16 @@ static void emit_dict_literal(ctx_t* c, gmb_expr_t* e) {
                     for (int d = 0; d < v->ndims; d++) { c->indent--; ind(c); sb_put(&c->out, "}\n"); }
                 }
             }
-            /* DIM a(r, c) AS T = { {...}, {...} }: matrice 2D — riempimento row-major
-             * elemento per elemento via emit_flat_index (stesso schema/helper già usato da
-             * emit_arr_literal_assign per l'assegnamento POST-dim `M = {{...}}`; qui va
-             * applicato anche all'inizializzatore CONTESTUALE al DIM, che prima cadeva nel
-             * ramo generico emit_assignment/emit_expr — non gestisce un letterale annidato
-             * come rvalue, quindi l'array restava a zero, silenziosamente). Il letterale
-             * DEVE essere annidato e rettangolare, come per emit_arr_literal_assign. */
-            if (v->ndims == 2 && !v->vclass[0] && s->dim_init && s->dim_init->kind == GMB_EXPR_CALL
-                && s->dim_init->var && strcmp(s->dim_init->var, "_array_") == 0) {
-                gmb_expr_t* lit = s->dim_init;
-                int nrows = lit->nargs;
-                int ncols = -1;
-                int nested = nrows > 0;
-                for (int i = 0; i < nrows; i++) {
-                    gmb_expr_t* el = lit->args[i];
-                    if (!(el->kind == GMB_EXPR_CALL && el->var && strcmp(el->var, "_array_") == 0)) {
-                        nested = 0; break;
-                    }
-                    if (ncols < 0) ncols = el->nargs;
-                    else if (ncols != el->nargs) { nested = 0; break; }
-                }
-                if (!nested || ncols < 0) {
-                    c99_fail(c, s->line, "DIM %s: la matrice richiede un letterale annidato e rettangolare {{...}}",
-                              v->name);
-                } else {
-                    for (int r = 0; r < nrows && !c->error[0]; r++) {
-                        gmb_expr_t* row = lit->args[r];
-                        for (int cc = 0; cc < row->nargs && !c->error[0]; cc++) {
-                            gmb_expr_t* idxs[2];
-                            idxs[0] = gmb_expr_num((double)r, s->line);
-                            idxs[1] = gmb_expr_num((double)cc, s->line);
-                            ind(c);
-                            emit_flat_index(c, v, idxs, 2);
-                            sb_put(&c->out, " = ");
-                            emit_expr(c, row->args[cc]);
-                            sb_put(&c->out, ";\n");
-                        }
-                    }
-                }
-                c->indent--;
-                ind(c); sb_put(&c->out, "}\n");
-                return;
+            /* DIM a(...) AS T = { ... } (1-D, 2-D e N-D): il letterale può essere
+             * annidato; si appiattisce row-major nel buffer DENSO (offset 0..len-1, niente
+             * offset di lower bound). La guardia usa gli elementi dichiarati (dims runtime). */
+            if (!v->vclass[0] && v->ndims >= 1 && s->dim_init
+                && s->dim_init->kind == GMB_EXPR_CALL && s->dim_init->var
+                && strcmp(s->dim_init->var, "_array_") == 0) {
+                int lit_pos = 0;
+                emit_dim_literal_flat(c, v, s->dim_init, &lit_pos, id, v->ndims);
             }
-            /* DIM a(N) = { e1, ..., en }: inizializzazione parziale elemento-per-elemento */
-            if (v->ndims == 1 && s->dim_init && s->dim_init->kind == GMB_EXPR_CALL
-                && s->dim_init->var && strcmp(s->dim_init->var, "_array_") == 0) {
-                for (int i = 0; i < s->dim_init->nargs && !c->error[0]; i++) {
-                    gmb_expr_t* el = s->dim_init->args[i];
-                    if (el->kind == GMB_EXPR_CALL && el->var && strcmp(el->var, "_array_") == 0) {
-                        c99_fail(c, s->line, "DIM %s: letterali annidati {{...}} non supportati", v->name);
-                        break;
-                    }
-                    ind(c);
-                    sb_printf(&c->out, "if (%d <= __dim%d_0) { ", i, id);
-                    emit_ident(c, v->name);
-                    sb_printf(&c->out, "[%d] = ", i);
-                    emit_expr(c, el);
-                    sb_put(&c->out, "; }\n");
-                }
-            }
+            /* Chiude il blocco `{` aperto all'inizio del DIM (anche senza inizializzatore). */
             c->indent--;
             ind(c); sb_put(&c->out, "}\n");
             return;
@@ -20273,7 +20299,8 @@ static void st_for(ctx_t* c, gmb_stmt_t* s) {
             sb_put(&c->out, " = ");
             if (conv_arr && !shadow) sb_put(&c->out, "gmb_string_concat(gmb_string_alloc(\" \"), gmb_double_to_string(");
             emit_var_ref(c, av);
-            sb_printf(&c->out, "[__fe%d]", id);
+            if (av->has_blo) { sb_printf(&c->out, "[__fe%d - ", id); sb_bound_lo(&c->out, av); sb_put(&c->out, "]"); }
+            else sb_printf(&c->out, "[__fe%d]", id);
             if (conv_arr && !shadow) sb_put(&c->out, "))");
             sb_put(&c->out, ";\n");
             if (shadow) {
@@ -31688,11 +31715,21 @@ static void emit_function(ctx_t* c, fn_info_t* fn) {
                 sb_put(&c->out, " = -1;\n");
             }
             /* Compagna lower bound (canone 1-based 2026-09-30): assegnata dal DIM con TO,
-             * default 0 = array 0-based. Letta da FOR EACH/LBOUND se has_blo. */
+             * default 0 = array 0-based. Letta da FOR EACH/LBOUND se has_blo. Per le
+             * matrici (DIM m(1 TO r, 1 TO c)) c'è una compagna per OGNI asse: __blo0 = __blo,
+             * __blo1, ... (l'offset row-major deve togliere il lower di ciascun asse). */
             ind(c);
             sb_put(&c->out, "gmb_int_t ");
             sb_bound_lo(&c->out, v);
             sb_put(&c->out, " = 0;\n");
+            if (v->has_blo) {
+                for (int kb = 1; kb < nd; kb++) {
+                    ind(c);
+                    sb_put(&c->out, "gmb_int_t ");
+                    sb_bound_lo_k(&c->out, v, kb);
+                    sb_put(&c->out, " = 0;\n");
+                }
+            }
         } else if (v->type == TY_STR) {
             sb_put(&c->out, "gmb_string_t ");
             emit_ident(c, v->name);
@@ -34328,6 +34365,13 @@ int gmb_c99_emit(const gmb_program_t* prog, char** out_src, char** error) {
             sb_put(&fin, "static gmb_int_t ");
             sb_bound_lo(&fin, gv);
             sb_put(&fin, " = 0;\n");
+            if (gv->has_blo) {
+                for (int kb = 1; kb < nd; kb++) {
+                    sb_put(&fin, "static gmb_int_t ");
+                    sb_bound_lo_k(&fin, gv, kb);
+                    sb_put(&fin, " = 0;\n");
+                }
+            }
             continue;
         }
         sb_printf(&fin, "static %s ", ctype_name(gv->type));

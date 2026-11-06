@@ -1809,13 +1809,14 @@ internal sealed partial class PCodeProcessor
                     {
                         // Multi-dimensional array: map flat index to indices
                         var dims = new int[a.Rank];
-                        for (int di = 0; di < a.Rank; di++) dims[di] = a.GetLength(di);
+                        var lob = new int[a.Rank];
+                        for (int di = 0; di < a.Rank; di++) { dims[di] = a.GetLength(di); lob[di] = a.GetLowerBound(di); }
                         for (var j = 0; j < elements.Length && j < a.Length; j++)
                         {
                             var idx = new int[a.Rank];
                             var rem = j;
                             for (int di = a.Rank - 1; di >= 0; di--) {
-                                idx[di] = rem % dims[di];
+                                idx[di] = lob[di] + rem % dims[di];
                                 rem /= dims[di];
                             }
                             a.SetValue(elements[j], idx);
@@ -1825,7 +1826,7 @@ internal sealed partial class PCodeProcessor
                             var idx = new int[a.Rank];
                             var rem = j;
                             for (int di = a.Rank - 1; di >= 0; di--) {
-                                idx[di] = rem % dims[di];
+                                idx[di] = lob[di] + rem % dims[di];
                                 rem /= dims[di];
                             }
                             a.SetValue(0.0, idx);
@@ -1833,10 +1834,11 @@ internal sealed partial class PCodeProcessor
                     }
                     else
                     {
+                        var lob0 = a.GetLowerBound(0);
                         for (var j = 0; j < elements.Length && j < a.Length; j++)
-                            a.SetValue(elements[j], j);
+                            a.SetValue(elements[j], lob0 + j);
                         for (var j = elements.Length; j < a.Length; j++)
-                            a.SetValue(0.0, j);
+                            a.SetValue(0.0, lob0 + j);
                     }
                 }
                 else if (arr is System.Collections.Generic.HashSet<object?> hs)

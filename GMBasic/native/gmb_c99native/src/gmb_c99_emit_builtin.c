@@ -2350,22 +2350,44 @@ static const char* bd_arg_name(gmb_expr_t* e) {
     return NULL;
 }
 static int bd_lbound(ctx_t* c, gmb_expr_t** a, int n, int line) {
-    (void)line;
     if (n != 1 && n != 2) return 0;
     const char* an0 = bd_arg_name(a[0]);
     if (!an0) return 0;
     var_t* av = lookup_var(c, an0);
-    if (av && av->is_array) {
-        /* Canone 1-based 2026-09-30: lower dal DIM con TO (__blo), default 0. */
-        if (av->has_blo) {
-            sb_put(&c->out, "(gmb_double_t)(");
-            if (av->arr_byref) sb_put(&c->out, "_");
-            emit_ident(c, av->name);
-            sb_put(&c->out, "__blo)");
-        } else sb_put(&c->out, "(gmb_double_t)0");
+    if (!av || !av->is_array) return 0;
+    int nd = av->ndims > 0 ? av->ndims : 1;
+    if (!av->has_blo) { sb_put(&c->out, "(gmb_double_t)0"); return 1; }
+    if (n == 1) {
+        sb_put(&c->out, "(gmb_double_t)(");
+        sb_bound_lo_k(&c->out, av, 0);
+        sb_put(&c->out, ")");
         return 1;
     }
-    return 0;
+    if (a[1]->kind == GMB_EXPR_NUM) {
+        int k = (int)a[1]->num - 1;
+        if (k < 0 || k >= nd) {
+            c99_fail(c, line, "LBOUND(arr, dim): dimensione %d fuori range (ndims=%d)",
+                     (int)a[1]->num, nd);
+            return 0;
+        }
+        sb_put(&c->out, "(gmb_double_t)(");
+        sb_bound_lo_k(&c->out, av, k);
+        sb_put(&c->out, ")");
+        return 1;
+    }
+    /* dimensione non costante: ternario a runtime (k 1-based) */
+    sb_put(&c->out, "(gmb_double_t)(");
+    for (int k = 0; k < nd; k++) {
+        sb_put(&c->out, "((gmb_int_t)(");
+        emit_expr(c, a[1]);
+        sb_printf(&c->out, ") == %d ? (gmb_int_t)(", k + 1);
+        sb_bound_lo_k(&c->out, av, k);
+        sb_put(&c->out, ") : ");
+    }
+    sb_put(&c->out, "(gmb_int_t)0");
+    for (int k = 0; k < nd; k++) sb_put(&c->out, ")");
+    sb_put(&c->out, ")");
+    return 1;
 }
 static int bd_ubound(ctx_t* c, gmb_expr_t** a, int n, int line) {
     if (n != 1 && n != 2) return 0;
@@ -2516,9 +2538,17 @@ static int bd_ubound(ctx_t* c, gmb_expr_t** a, int n, int line) {
             sb_put(&c->out, ")");
             return 1;
         }
-        sb_put(&c->out, "(gmb_double_t)(");
-        emit_arr_len_of(c, av);
-        sb_put(&c->out, ") - 1");
+        if (!av->dyn_len && !av->matrix) {
+            /* UBOUND(A) = upper del PRIMO asse (parità IL/PCode/VM-C), non len-1:
+             * per DIM 1 TO n e per le matrici (dove len-1 darebbe il numero di righe). */
+            sb_put(&c->out, "(gmb_double_t)(");
+            sb_bound_var(&c->out, av, 0);
+            sb_put(&c->out, ")");
+        } else {
+            sb_put(&c->out, "(gmb_double_t)(");
+            emit_arr_len_of(c, av);
+            sb_put(&c->out, ") - 1");
+        }
         return 1;
     }
     /* UBOUND(<base>.<membro>) con base JSON/boxed/dict e membro lista/array (es.

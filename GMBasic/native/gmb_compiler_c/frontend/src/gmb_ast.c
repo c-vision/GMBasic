@@ -252,6 +252,10 @@ void gmb_stmt_free(gmb_stmt_t* s)
     gmb_expr_free(s->dim_to_hi);
     for (int i = 0; i < s->n_dim_extra; i++) gmb_expr_free(s->dim_extra[i]);
     free(s->dim_extra);
+    if (s->dim_extra_lo) {
+        for (int i = 0; i < s->n_dim_extra; i++) gmb_expr_free(s->dim_extra_lo[i]);
+        free(s->dim_extra_lo);
+    }
     gmb_expr_free(s->dim_init);
     if (s->dim_type) free(s->dim_type);
     gmb_expr_free(s->ret_value);

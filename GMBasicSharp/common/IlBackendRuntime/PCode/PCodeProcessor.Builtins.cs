@@ -3699,12 +3699,13 @@ if (args.Length > 0 && args[0] is System.Collections.IList wts) { var w = new do
                             System.Globalization.CultureInfo.InvariantCulture);
                     int rk = fillArrN.Rank;
                     var dims = new int[rk];
+                    var lob = new int[rk];
                     var idx = new int[rk];
-                    for (int d = 0; d < rk; d++) dims[d] = fillArrN.GetLength(d);
+                    for (int d = 0; d < rk; d++) { dims[d] = fillArrN.GetLength(d); lob[d] = fillArrN.GetLowerBound(d); }
                     for (int flat = 0; flat < fillArrN.Length; flat++)
                     {
                         int rem = flat;
-                        for (int d = rk - 1; d >= 0; d--) { idx[d] = rem % dims[d]; rem /= dims[d]; }
+                        for (int d = rk - 1; d >= 0; d--) { idx[d] = lob[d] + rem % dims[d]; rem /= dims[d]; }
                         fillArrN.SetValue(fillValN, idx);
                     }
                     return fillArrN;

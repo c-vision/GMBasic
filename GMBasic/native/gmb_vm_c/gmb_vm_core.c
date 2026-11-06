@@ -8522,8 +8522,11 @@ static long gmb_multidim_target(gmb_obj_shared_val_t* sv, const double* indices,
         long off = 0;
         for (int i = 0; i < numIndices && i < 8; i++) {
             long stride = 1;
+            /* Lunghezza dell'asse j = upper - lower + 1 (con lower != 0 il solo upper+1
+             * sbagliava lo stride: DIM m(1 TO 4, 1 TO 3) leggeva/scriveva in una lista
+             * sparsa crescendo oltre il totale allocato). */
             for (int j = i + 1; j < sv->ndims && j < 8; j++)
-                stride *= (long)sv->dim_upper[j] + 1;
+                stride *= (long)sv->dim_upper[j] - (long)sv->dim_lower[j] + 1;
             long lo = (i < 8) ? (long)sv->dim_lower[i] : 0;
             off += ((long)indices[i] - lo) * stride;
         }
@@ -9850,15 +9853,19 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                 int declared = (int)gmb_list_count(*arr->list);
                 if (declared > 0)
                 {
-                    int fill = n < declared ? n : declared;
+                    /* Array 1-D con lower != 0: le slot sono indicizzate per INDICE UTENTE
+                     * (0..upper), quindi i valori del letterale vanno in lower+j. Le matrici
+                     * N-D usano invece un buffer denso 0..total-1 (base 0). */
+                    int base = (arr->ndims == 1 && arr->dim_lower[0] != 0) ? arr->dim_lower[0] : 0;
+                    int fill = n < declared - base ? n : declared - base;
+                    for (int j = 0; j < declared; j++)
+                        gmb_list_set(arr->list, j, gmb_make_val_double(0));
                     for (int j = 0; j < n; j++)
                     {
                         gmb_val_t v = gmb_adapter_stack_to_val_borrowed(elems[n - 1 - j]);   /* la lista trattiene da se': nessun retain extra */
-                        if (j < fill) gmb_list_set(arr->list, j, v);
+                        if (j < fill) gmb_list_set(arr->list, base + j, v);
                         gmb_obj_release(elems[n - 1 - j].ref);
                     }
-                    for (int j = n; j < declared; j++)
-                        gmb_list_set(arr->list, j, gmb_make_val_double(0));
                 }
                 else
                 {
