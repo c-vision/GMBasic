@@ -16806,7 +16806,7 @@ static void emit_arr_literal_assign(ctx_t* c, const char* target, gmb_expr_t* li
             if (value->nargs < 2) { c99_fail(c, line, "REGRESS richiede (x, y)"); return; }
             ind(c);
             sb_ident(&c->out, v->name);
-            sb_put(&c->out, " = gmb_linregress_flat(");
+            sb_put(&c->out, " = gmb_regress_flat(");
             emit_arr_arg_len(c, value->args[0]);
             sb_put(&c->out, ", "); emit_arr_arg_len(c, value->args[1]);
             sb_put(&c->out, ");\n");
