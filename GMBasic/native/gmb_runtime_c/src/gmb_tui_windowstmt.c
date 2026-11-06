@@ -630,6 +630,25 @@ void gmb_winstmt_reset(void)
     memset(g_ws, 0, sizeof(g_ws));
     g_ws_theme = 0;
     g_ws_desktop = 0;
+    /* Reset COERENTE anche del WindowManager: senza, le finestre restano nel WM tra un
+     * reset e l'altro (test, riavvio del programma) fino al limite GMB_WM_MAX_WINDOWS:
+     * le nuove non vengono più registrate e il loro corpo non è ridisegnato (resta il
+     * desktop). Era il motivo per cui, dopo molte finestre, il body spariva. */
+    gmb_window_manager_t* m = gmb_window_manager_static();
+    if (m)
+    {
+        memset(m->windows, 0, sizeof(m->windows));
+        m->count = 0;
+        m->focus = -1;
+        m->next_id = 1;
+        m->next_z = 1;
+        m->current_desktop = 0;
+        m->status_text[0] = '\0';
+        m->drag_id = -1; m->drag_ox = 0; m->drag_oy = 0;
+        m->resize_id = -1; m->resize_edges = 0;
+    }
+    s_drag_id = -1; s_drag_dx = 0; s_drag_dy = 0;
+    s_resize_id = -1; s_edge[0] = 0;
 }
 
 /* Render nativo PIXEL di una finestra (piano TUI-GUI): frame rounded sul page gfx.
