@@ -1,4 +1,4 @@
-' EXPECT: dist= 5 |aabb= 0 : 0 , 0 , 4 , 2 |center= 0 : 2 , 1 |ext= 0 : 2 , 1 |valid= 1 |merge= 0 : 0 , 6 , 3 |aa= 1  ac= 0 |clray= 0 : 2 , 1 |clbox= 0 : 2 , 0 |clcirc= 0 : 3 , 4 |claa= 0 : 2 , 1 |cc= 1 |r2c= 1 : 4 |r2a= 1 : 0 , 4 |r2s= 1 : 5 |bary= 1 : 0.5 , 0.25 , 0.25 |orect= 1 |quad= 1 |hex= 10.3923048454133 , 4 , 3.46410161513775 , 1.73205080756888 |sarea= 16 |chamfer= 8 |haus= 2 |a2mk= 0 : 1 , 2 , 5 , 7 |r2at= 0 : 5 , 1 
+' EXPECT: dist= 5|aabb= 0 : 0 , 0 , 4 , 2|center= 0 : 2 , 1|ext= 0 : 2 , 1|valid= 1|merge= 0 : 0 , 6 , 3|aa= 1  ac= 0|clray= 0 : 2 , 1|clbox= 0 : 2 , 0|clcirc= 0 : 3 , 4|claa= 0 : 2 , 1|cc= 1|r2c= 1 : 4|r2a= 1 : 0 , 4|r2s= 1 : 5|bary= 1 : 0.5 , 0.25 , 0.25|orect= 1|quad= 1|hex= 10.3923048454133 , 4 , 3.46410161513775 , 1.73205080756888|sarea= 16|chamfer= 8|haus= 2|a2mk= 0 : 1 , 2 , 5 , 7|r2at= 0 : 5 , 1
 ' FFI gmbgraphics: GFXSHAPE completo — AABB 2D, vicinanza, intersezioni 2D, poligoni,
 ' esagono, point-cloud. Solo calcolo, parità 4 backend.
 IMPORT GFXSHAPE
