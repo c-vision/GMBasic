@@ -273,11 +273,15 @@ static int gmb_ffi_dl_find_pkgcache(const char* path, char* out, size_t cap)
     const char* base = name;
     if (strlen(name) > 3 && strncmp(name, "lib", 3) == 0) base = name + 3;
 
-    const char* cache = gmb_opt_env("GMB_PKG_CACHE");
+    /* Ordine DOCUMENTATO (manuale VI.38 §7bis.1): vince `paths.packagesDir`; la chiave storica
+     * `GMB_PKG_CACHE` resta solo come ripiego quando le impostazioni non danno una cartella. */
     char cachebuf[4096];
-    if (cache == NULL || *cache == '\0') {
-        gmb_paths_packages_dir(cachebuf, sizeof(cachebuf));   /* default <root>/packages (node_modules) */
-        cache = cachebuf;
+    cachebuf[0] = '\0';
+    gmb_paths_packages_dir(cachebuf, sizeof(cachebuf));   /* paths.packagesDir, altrimenti il default */
+    const char* cache = cachebuf;
+    if (cache[0] == '\0') {
+        const char* legacy = gmb_opt_env("GMB_PKG_CACHE");
+        if (legacy && *legacy) cache = legacy;
     }
     /* INSTALLAZIONE LOCALE dell'app (<dir dell'eseguibile>/packages, modello node_modules):
      * ha la PRECEDENZA sulla cache. Stessa regola del compilatore (gmb_pkg_collect_requires),
@@ -420,8 +424,10 @@ void* gmb_ffi_dl_open(const char* path)
             if (nwarned < (int)(sizeof(warned) / sizeof(warned[0]))) warned[nwarned++] = path;
             {
                 char cachebuf2[4096];
-                const char* eff = gmb_opt_env("GMB_PKG_CACHE");
-                if (eff == NULL || *eff == '\0') { gmb_paths_packages_dir(cachebuf2, sizeof(cachebuf2)); eff = cachebuf2; }
+                cachebuf2[0] = '\0';
+                gmb_paths_packages_dir(cachebuf2, sizeof(cachebuf2));   /* vince paths.packagesDir */
+                const char* eff = cachebuf2;
+                if (eff[0] == '\0') { const char* legacy = gmb_opt_env("GMB_PKG_CACHE"); if (legacy && *legacy) eff = legacy; }
                 fprintf(stderr, "[FFI] libreria '%s' NON trovata: cercata come file, in <progetto>/libs, "
                                 "in <dir dell'eseguibile>/packages e in %s. Installala con "
                                 "`gmb pkg install <pacchetto>` (o --local).\n", path, eff ? eff : "?");
