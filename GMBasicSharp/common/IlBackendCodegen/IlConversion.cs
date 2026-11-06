@@ -227,6 +227,30 @@ public static class IlConversion
             }
             return;
         }
+        // Interi SENZA SEGNO (2026-11-06): il dialetto non li usava nelle conversioni, ma i
+        // campi struct FFI con larghezza dichiarata UINTEGER/ULONG/UQUAD ne hanno bisogno.
+        // Doppio → intero unsigned: conv.r8 poi conv.u8/u4/u2 (tronca verso zero).
+        if (toClr == typeof(ulong))
+        {
+            if (fromClr == typeof(decimal)) il.Emit(OpCodes.Call, types.ConvertToDoubleDecimal);
+            else if (fromClr != typeof(double)) il.Emit(OpCodes.Conv_R8);
+            il.Emit(OpCodes.Conv_U8);
+            return;
+        }
+        if (toClr == typeof(uint))
+        {
+            if (fromClr == typeof(decimal)) il.Emit(OpCodes.Call, types.ConvertToDoubleDecimal);
+            else if (fromClr != typeof(double)) il.Emit(OpCodes.Conv_R8);
+            il.Emit(OpCodes.Conv_U4);
+            return;
+        }
+        if (toClr == typeof(ushort))
+        {
+            if (fromClr == typeof(decimal)) il.Emit(OpCodes.Call, types.ConvertToDoubleDecimal);
+            else if (fromClr != typeof(double)) il.Emit(OpCodes.Conv_R8);
+            il.Emit(OpCodes.Conv_U2);
+            return;
+        }
         if (toClr == types.Int16)
         {
             // Da integrale: conv.i2 UNCHECKED (wraparound, semantica P-Code/Executor che
