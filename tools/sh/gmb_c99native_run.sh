@@ -258,7 +258,8 @@ fi
 $CC_BIN $CF $CCFIRST -Wl,-dead_strip_dylibs $EXPORTDYN -Wl,-rpath,@loader_path -Wl,-rpath,"$CODEC" "$DIR/$CASE.o" $TORCH_OBJS $JINJA_OBJ -o "$OUTBIN" \
   "$L/libgmb_vm.a" "$RUNTIME_LIB" $TRAY_LINK "$ASRLIB" \
   "$ROOT/native/gmb_runtime_c/build/gmb_chart_build/libgmb_chart.a" \
-  "$ROOT/native/gmb_runtime_c/build/gmbllm_build/libgmbllm.a" \
+  "$ROOT/native/gmb_runtime_c/build/gmbllm_build/libgmbllm_train.a" \
+  "$ROOT/native/gmb_runtime_c/build/gmbllm_build/libgmbllm_core.a" \
   "$ROOT/native/gmb_runtime_c/build/llmengine_plugin_build/libllmengine_plugin.a" \
   "$ROOT/native/gmb_runtime_c/build/llmdesc_build/libllmdesc.a" \
   "$CODEC/llmcodec_mlx_build/libllmcodec.a" "$CODEC/llmengine_moe_mlx_build/libllmengine_moe.a" -L"$CODEC" -lllmcodec_ggml -lllmcodec_mlx_affine -lllmcodec_fp8 -Wl,-rpath,"$CODEC" "$L/gmb_compiler_c_build/libgmb_compiler_c.a" -lpthread \
