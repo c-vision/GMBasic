@@ -182,7 +182,6 @@ public sealed partial class StdLib : IParserRegistry
         CreateConstantsNamespace();
         // CreateMcpNamespace();   // fusa nel namespace AI (2026-08-19): non esiste un namespace MCP
         CreateStatsNamespace();
-        CreateTimeSeriesNamespace();
         CreateNumericalNamespace();
         CreateMultivariateNamespace();
         // FITTING: namespace LIBERATO — ri-esposto via FFI (shared/include/fitting.inc, libgmbstats).

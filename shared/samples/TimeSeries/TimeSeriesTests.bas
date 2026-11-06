@@ -14,7 +14,7 @@
 ' - Outliers: TSOUTLIERS.
 ' =================================================================================================
 
-IMPORT TIMESERIESX AS TS
+IMPORT TIMESERIES AS TS
 IMPORT JSON
 
 SUB Main()

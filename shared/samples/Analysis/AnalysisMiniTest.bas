@@ -8,9 +8,8 @@ SUB Main()
   ' AdfTest su trend lineare (non stazionario)
   DIM d(49) AS DOUBLE
   FOR i = 0 TO 49: d(i) = i: NEXT
-  DIM adf AS TIMESERIES.AdfTestResult
-  adf = TIMESERIES.AdfTest(d)
-  PRINT "adf_stat="; ROUND(adf.Statistic, 4); " p="; ROUND(adf.PValue, 4)
+  DIM adf() AS DOUBLE = TIMESERIES.ADFTEST(d)
+  PRINT "adf_stat="; ROUND(adf(0), 4); " p="; ROUND(adf(1), 4)
   ' Rfft/Irfft: cos(2pi*i/8)
   DIM x(7) AS DOUBLE
   FOR i = 0 TO 7: x(i) = COS(2 * 3.141592653589793 * i / 8): NEXT

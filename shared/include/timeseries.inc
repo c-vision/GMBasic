@@ -1,7 +1,7 @@
 ' timeseriesx.inc — namespace TIMESERIES via FFI (libgmbstats: gmbstats-timeseries/stats).
 ' Primitive con dimensioni esplicite + wrapper PUBLIC che le deducono dagli array.
 ' Le uscite composte sono in out() piatto, documentato per funzione.
-NAMESPACE TIMESERIESX
+NAMESPACE TIMESERIES
 
 DECLARE SUB TXF_KPSS LIB "gmbstats" ALIAS "ofx_ts_kpss" (series() AS DOUBLE, n AS LONG, bandwidth AS LONG, deterministic AS LONG, out() AS DOUBLE)
 DECLARE SUB TXF_QLR LIB "gmbstats" ALIAS "ofx_ts_qlr" (l0 AS DOUBLE, lbeta() AS DOUBLE, n AS LONG, kappa AS DOUBLE, out() AS DOUBLE)
@@ -75,7 +75,7 @@ END SUB
 ' Famiglia rolling/trasformazioni. Le funzioni che restituiscono serie hanno
 ' la STESSA forma del builtin (array di n-w+1 valori per le finestre mobili).
 ' ═══════════════════════════════════════════════════════════════════════════
-DECLARE SUB RXF_MA LIB "gmbstats" ALIAS "ofx_ts_ma" (x() AS DOUBLE, n AS LONG, w AS LONG, out() AS DOUBLE)
+DECLARE SUB RXF_MA LIB "gmbstats" ALIAS "ofx_ts_macoeff" (x() AS DOUBLE, n AS LONG, w AS LONG, out() AS DOUBLE)
 DECLARE SUB RXF_EMA LIB "gmbstats" ALIAS "ofx_ts_ema" (x() AS DOUBLE, n AS LONG, period AS LONG, out() AS DOUBLE)
 DECLARE SUB RXF_MINMAX LIB "gmbstats" ALIAS "ofx_ts_minmax" (x() AS DOUBLE, n AS LONG, out() AS DOUBLE)
 DECLARE FUNCTION RXF_AUTOCORR LIB "gmbstats" ALIAS "ofx_ts_autocorr" (x() AS DOUBLE, n AS LONG, lag AS LONG) AS DOUBLE
@@ -475,4 +475,47 @@ PUBLIC SUB HMMFIT(data() AS ARRAY OF DOUBLE, nStates AS LONG, nIter AS LONG, out
         NEXT j
     NEXT i
     CALL AXF_HMMFIT(flat, n, d, nStates, nIter, out)
+END SUB
+
+' ═══════════════════════════════════════════════════════════════════════════
+' Ultime 5 funzioni (già builtin): ARIMA, Holt-Winters, ADF, Yule-Walker, MA.
+' ═══════════════════════════════════════════════════════════════════════════
+DECLARE FUNCTION BXF_YULE LIB "gmbstats" ALIAS "ofx_ts_yule" (acf() AS DOUBLE, n AS LONG, order AS LONG, out() AS DOUBLE) AS LONG
+DECLARE FUNCTION BXF_MA LIB "gmbstats" ALIAS "ofx_ts_macoeff" (res() AS DOUBLE, n AS LONG, q AS LONG, out() AS DOUBLE) AS LONG
+DECLARE FUNCTION BXF_ADF LIB "gmbstats" ALIAS "ofx_ts_adf" (y() AS DOUBLE, n AS LONG, out() AS DOUBLE) AS LONG
+DECLARE FUNCTION BXF_HW LIB "gmbstats" ALIAS "ofx_ts_hw" (y() AS DOUBLE, n AS LONG, alpha AS DOUBLE, beta AS DOUBLE, gamma AS DOUBLE, period AS LONG, forecast() AS DOUBLE) AS DOUBLE
+DECLARE FUNCTION BXF_ARIMA LIB "gmbstats" ALIAS "ofx_ts_arima" (y() AS DOUBLE, n AS LONG, p AS LONG, d AS LONG, q AS LONG, out() AS DOUBLE) AS LONG
+
+' Yule-Walker: l'input è l'ACF; ritorna i `order` coefficienti AR.
+PUBLIC FUNCTION YULEWALKER(acf() AS DOUBLE, order AS LONG) AS ARRAY OF DOUBLE
+    DIM o(order - 1) AS DOUBLE
+    CALL BXF_YULE(acf, UBOUND(acf) + 1, order, o)
+    RETURN o
+END FUNCTION
+
+' MaCoefficients: coefficienti MA(q) dall'autocorrelazione dei residui.
+PUBLIC FUNCTION MACOEFFICIENTS(residuals() AS DOUBLE, q AS LONG) AS ARRAY OF DOUBLE
+    DIM o(q - 1) AS DOUBLE
+    CALL BXF_MA(residuals, UBOUND(residuals) + 1, q, o)
+    RETURN o
+END FUNCTION
+
+' AdfTest: out(2) = statistic, pvalue (interpolazione MacKinnon, caso costante).
+PUBLIC FUNCTION ADFTEST(series() AS DOUBLE) AS ARRAY OF DOUBLE
+    DIM o(1) AS DOUBLE
+    CALL BXF_ADF(series, UBOUND(series) + 1, o)
+    RETURN o
+END FUNCTION
+
+' HoltWinters additivo: forecast(n) in out; ritorna l'MSE in-sample.
+PUBLIC FUNCTION HOLTWINTERS(series() AS DOUBLE, alpha AS DOUBLE, beta AS DOUBLE, gamma AS DOUBLE, period AS LONG, forecast() AS DOUBLE) AS DOUBLE
+    DIM __r AS DOUBLE
+    __r = BXF_HW(series, UBOUND(series) + 1, alpha, beta, gamma, period, forecast)
+    RETURN __r
+END FUNCTION
+
+' Arima(p,d,q): out(1 + p + q + nd), nd = n-d:
+'   out(0)=AIC, out(1..p)=AR, out(1+p..p+q)=MA, out(1+p+q..)=Fitted(nd).
+PUBLIC SUB ARIMA(series() AS DOUBLE, p AS LONG, d AS LONG, q AS LONG, out() AS DOUBLE)
+    CALL BXF_ARIMA(series, UBOUND(series) + 1, p, d, q, out)
 END SUB

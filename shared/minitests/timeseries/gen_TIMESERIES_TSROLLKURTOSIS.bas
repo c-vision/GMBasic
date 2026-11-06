@@ -1,7 +1,7 @@
-' MiniTest TIMESERIESX.TSROLLKURTOSIS — copertura con input VALIDO (serie di 10 punti).
+' MiniTest TIMESERIES.TSROLLKURTOSIS — copertura con input VALIDO (serie di 10 punti).
 ' Gli stub gen_* passavano 0 al posto della serie: nessun backend poteva calcolare.
 ' EXPECT: 6 |-1.2
-IMPORT TIMESERIESX AS TS
+IMPORT TIMESERIES AS TS
 
 SUB Main()
     DIM s(9) AS DOUBLE = {1,2,3,4,5,6,7,8,9,10}

@@ -1,5 +1,6 @@
 REM FILE: AnalysisCommonLibAdvanced.bas
 REM Copertura delle funzioni applicative di CommonLib.Numerics.Advanced esposte in NUMERICAL/TIMESERIES/STATS/MULTIVARIATE.
+IMPORT TIMESERIES
 
 
 SUB Main()

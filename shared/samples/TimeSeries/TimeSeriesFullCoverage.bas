@@ -2,7 +2,7 @@
 IMPORT TYPEINFO
 ' FILE: TimeSeries/TimeSeriesFullCoverage.bas
 ' Copertura completa delle funzioni Time Series non ancora coperte.
-IMPORT TIMESERIESX AS TS
+IMPORT TIMESERIES AS TS
 
 SUB Main()
     CLS
