@@ -35115,6 +35115,9 @@ static int gmb_c99_emit_once(const gmb_program_t* prog, char** out_src, char** e
     sb_t fin;
     memset(&fin, 0, sizeof(fin));
     sb_put(&fin, "/* Generato da gmb_c99_emit (compilatore nativo GMBASIC, FASE 1). */\n");
+    /* Parita' bit-exact (K6): niente contrazione FMA (`a*b+c` = mul poi add), indipendentemente dai flag
+     * con cui il C generato viene compilato (clang su arm64 contrae di default). */
+    sb_put(&fin, "#pragma STDC FP_CONTRACT OFF\n");
     sb_put(&fin, "#include \"gmb_runtime.h\"\n#include \"gmb_collections.h\"\n#include \"gmb_finance.h\"\n#include \"gmb_commonlib.h\"\n#include \"gmb_eval_scope.h\"\n#include \"gmb_c99gpm.h\"\n#include \"gmb_network.h\"\n#include \"gmb_msg.h\"\n#include \"gmb_signal.h\"\n#include \"gmb_connector.h\"\n#include \"gmb_graphics.h\"\n#include \"gmb_compress.h\"\n#include \"gmb_grep.h\"\n#include \"gmb_moestream.h\"\n#include \"gmb_cua_runtime.h\"\n#include \"tool_registry.h\"\n#include \"gmb_codegen.h\"\n#include \"gmb_graph.h\"\n#include \"gmb_db.h\"\n#include \"gmb_ml.h\"\n#include \"gmb_torch.h\"\n#include \"llmmodelio_model.h\"\n#include \"gmb_dscope.h\"\n"
                     "#include \"gmb_uncertainty.h\"\n"
                     /* P1/P2/P3 runtime AI: OBSERVE/CONTEXT/WORKER. Senza questi header il C
