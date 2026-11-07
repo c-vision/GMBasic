@@ -3,13 +3,14 @@
 '
 '   A) raffreddamento di Newton  T' = -k(T - Ta)  ->  T(60) = 20 + 80 e^-6
 '      risolto con Adams-Bashforth 4, Adams-Moulton 4 e BDF2 (implicito)
-'   B) sistema NON autonomo y' = cos(t): il tempo entra nello stato (s' = 1),
-'      così la callback resta autonoma e vale y(1) = sin(1)
+'   B) sistema NON autonomo y' = cos(t): il tempo e' un parametro della callback,
+'      quindi vale y(1) = sin(1)
 '   C) oscillatore armonico: Verlet, con l'energia come prova
 '   D) trave appoggiata con carico uniforme y'' = -1: differenze finite e shooting
 '
-' Nota sull'ABI: la callback del sistema riceve solo y() (autonoma); per il tempo si
-' usa la variabile di stato aggiuntiva. La callback del BVP è scalare e riceve x.
+' Nota sull'ABI: la callback del sistema riceve (y(), t) — array prima, tempo dopo,
+' la forma che l'ABI regge su tutte e quattro le gambe. La callback del BVP è scalare
+' e riceve x.
 '
 ' Domini: ODE. Output deterministico.
 IMPORT ODE
@@ -17,22 +18,21 @@ IMPORT ODE
 CONST PIVAL = 3.14159265358979323846
 
 ' A) Raffreddamento: T' = -k (T - Ta), k = 0.1, Ta = 20.
-FUNCTION Freddo(y() AS DOUBLE) AS ARRAY OF DOUBLE
+FUNCTION Freddo(y() AS DOUBLE, t AS DOUBLE) AS ARRAY OF DOUBLE
   DIM r(0) AS DOUBLE
   r(0) = -0.1 * (y(0) - 20)
   RETURN r
 END FUNCTION
 
-' B) Non autonomo portato in forma autonoma: stato (y, s), s' = 1, y' = cos(s).
-FUNCTION Forzato(y() AS DOUBLE) AS ARRAY OF DOUBLE
-  DIM r(1) AS DOUBLE
-  r(0) = MATH.COS(y(1))
-  r(1) = 1
+' B) Non autonomo: y' = cos(t). Il tempo arriva come secondo parametro della callback.
+FUNCTION Forzato(y() AS DOUBLE, t AS DOUBLE) AS ARRAY OF DOUBLE
+  DIM r(0) AS DOUBLE
+  r(0) = MATH.COS(t)
   RETURN r
 END FUNCTION
 
 ' C) Oscillatore: stato (q, p), derivate (p, -q).
-FUNCTION Osc(y() AS DOUBLE) AS ARRAY OF DOUBLE
+FUNCTION Osc(y() AS DOUBLE, t AS DOUBLE) AS ARRAY OF DOUBLE
   DIM r(1) AS DOUBLE
   r(0) = y(1)
   r(1) = -y(0)
@@ -40,7 +40,7 @@ FUNCTION Osc(y() AS DOUBLE) AS ARRAY OF DOUBLE
 END FUNCTION
 
 ' C) Accelerazione per Verlet (riceve le posizioni).
-FUNCTION Acc(y() AS DOUBLE) AS ARRAY OF DOUBLE
+FUNCTION Acc(y() AS DOUBLE, t AS DOUBLE) AS ARRAY OF DOUBLE
   DIM r(0) AS DOUBLE
   r(0) = -y(0)
   RETURN r
@@ -77,10 +77,10 @@ SUB Main()
   PRINT "  "; FORMAT(yout(0), "#.000000")
 
   ' ══════════════════════════════════════════════════════════════════════════
-  ' B) NON AUTONOMO: y' = cos(t) con il tempo nello stato
+  ' B) NON AUTONOMO: y' = cos(t), il tempo è un parametro della callback
   ' ══════════════════════════════════════════════════════════════════════════
-  st(0) = 0 : st(1) = 0
-  PRINT "B) y' = cos(t), y(0)=0, fino a t=1: tempo nello stato (s'=1)"
+  st(0) = 0
+  PRINT "B) y' = cos(t), y(0)=0, fino a t=1: il tempo è un parametro"
   PRINT " ab4 = "; ODE.ADAMSBASHFORTH4(Forzato, st, 0, 1, 1000, out2)
   PRINT "  y = "; FORMAT(out2(0), "#.000000000000"); "  atteso sin(1) = "; FORMAT(MATH.SIN(1), "#.000000000000")
   err = MATH.ABS(out2(0) - MATH.SIN(1))

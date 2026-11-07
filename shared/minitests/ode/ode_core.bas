@@ -3,20 +3,20 @@
 '   y' = -y, y(0)=1                 -> y(1) = e^-1 = 0.367879441171442
 '   oscillatore q'' = -q            -> un giro (t=2pi) riporta a (q,v) = (1,0)
 '   y'' = -1, y(0)=y(1)=0           -> y = x(1-x)/2, quindi y(0.5) = 0.125
-' EXPECT: ab4= 0|:0.367879442436||am4= 0|:0.367879441072||bdf2= 0|:0.367867730442||mid= 0|:0.367876375475|verlet= 0|:1.000000,-0.000000|energia=1.000000||bvpfd= 0|:0.000000,0.125000,0.000000||bvpshoot= 0|:0.000000,0.125000,-0.000000||guard=-1|:-1||f=0
+' EXPECT: ab4= 0|:0.367879442436||am4= 0|:0.367879441072||bdf2= 0|:0.367867730442||mid= 0|:0.367876375475||forced= 0|:0.841470984808 sin1=0.841470984808|verlet= 0|:1.000000,-0.000000|energia=1.000000||bvpfd= 0|:0.000000,0.125000,0.000000||bvpshoot= 0|:0.000000,0.125000,-0.000000||guard=-1|:-1||f=0
 IMPORT ODE
 
 CONST PIVAL = 3.14159265358979323846
 
 ' Decadimento: derivata = -y (sistema 1x1).
-FUNCTION Decay(y() AS DOUBLE) AS ARRAY OF DOUBLE
+FUNCTION Decay(y() AS DOUBLE, t AS DOUBLE) AS ARRAY OF DOUBLE
   DIM r(0) AS DOUBLE
   r(0) = -y(0)
   RETURN r
 END FUNCTION
 
 ' Oscillatore: stato (q, p), derivate (p, -q).
-FUNCTION Osc(y() AS DOUBLE) AS ARRAY OF DOUBLE
+FUNCTION Osc(y() AS DOUBLE, t AS DOUBLE) AS ARRAY OF DOUBLE
   DIM r(1) AS DOUBLE
   r(0) = y(1)
   r(1) = -y(0)
@@ -24,9 +24,17 @@ FUNCTION Osc(y() AS DOUBLE) AS ARRAY OF DOUBLE
 END FUNCTION
 
 ' Accelerazione per Verlet: riceve le POSIZIONI, restituisce a = -q.
-FUNCTION Acc(y() AS DOUBLE) AS ARRAY OF DOUBLE
+FUNCTION Acc(y() AS DOUBLE, t AS DOUBLE) AS ARRAY OF DOUBLE
   DIM r(0) AS DOUBLE
   r(0) = -y(0)
+  RETURN r
+END FUNCTION
+
+' Sistema NON autonomo: y' = cos(t), y(0)=0 -> y(1) = sin(1). Usa il tempo
+' nella callback (forma array + scalare, descrittore 148).
+FUNCTION Forced(y() AS DOUBLE, t AS DOUBLE) AS ARRAY OF DOUBLE
+  DIM r(0) AS DOUBLE
+  r(0) = MATH.COS(t)
   RETURN r
 END FUNCTION
 
@@ -51,6 +59,10 @@ SUB Main()
   PRINT ":"; FORMAT(yout(0), "#.000000000000")
   PRINT "|mid="; ODE.IMPLICITMIDPOINT(Decay, y0, 0, 1, 100, 20, 0.0000000001, yout)
   PRINT ":"; FORMAT(yout(0), "#.000000000000")
+  ' non autonomo: il tempo e' un parametro della callback
+  y0(0) = 0
+  PRINT "|forced="; ODE.ADAMSBASHFORTH4(Forced, y0, 0, 1, 1000, yout)
+  PRINT ":"; FORMAT(yout(0), "#.000000000000"); " sin1="; FORMAT(MATH.SIN(1), "#.000000000000")
 
   ' ── oscillatore: un giro esatto con metodi simplettici ────────────────────
   s2(0) = 1 : s2(1) = 0

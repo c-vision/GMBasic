@@ -68,6 +68,12 @@ internal sealed partial class PCodeProcessor
                 var dv = new CbV1S1D((p, n, s) => ToF64(CallFnSync(task, cd, Ld(p, n), s)));
                 return (dv, Marshal.GetFunctionPointerForDelegate(dv));
             }
+            if (nArr == 1 && nSca == 1 && arrRet && !isInt)
+            {
+                /* 148 (2026-11-07): f(v(), x) AS ARRAY — array + scalare, ritorno array. */
+                var dv = new CbV1S1OutD((p, n, s, outp) => { var r1 = CallFnSync(task, cd, Ld(p, n), s); WriteOut(outp, r1); return OutCount(r1); });
+                return (dv, Marshal.GetFunctionPointerForDelegate(dv));
+            }
             if (nArr == 1 && nSca == 0 && arrRet)
             {
                 var dv = new CbV1OutD((p, n, outp) => { var r1 = CallFnSync(task, cd, Ld(p, n)); WriteOut(outp, r1); return OutCount(r1); });

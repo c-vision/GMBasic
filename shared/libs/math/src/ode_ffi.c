@@ -26,7 +26,7 @@
 
 typedef long long i64;
 
-typedef double (*ode_cb)(const double *y, i64 n, double *out);
+typedef double (*ode_cb)(const double *y, i64 n, double t, double *out);
 typedef double (*bvp_cb)(double x, double y, double dy);
 
 static ode_cb g_ode;
@@ -37,11 +37,10 @@ static void ode_bridge(gm_real t, const gm_real *y, gm_real *dy, int n, void *ct
     double *buf;
     int i;
     (void)ctx;
-    (void)t;   /* l'RHS è autonomo: il tempo entra nello stato se serve */
     if (!g_ode || !dy || n < 1) return;
     buf = (double *)calloc((size_t)n, sizeof(double));
     if (!buf) return;
-    (void)g_ode((const double *)y, (i64)n, buf);
+    (void)g_ode((const double *)y, (i64)n, (double)t, buf);
     for (i = 0; i < n; i++) dy[i] = (gm_real)buf[i];
     free(buf);
 }
