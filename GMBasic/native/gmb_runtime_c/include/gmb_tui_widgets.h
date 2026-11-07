@@ -750,9 +750,15 @@ typedef struct gmb_big_text {
 
 void gmb_big_text_init(gmb_big_text_t* b, int x, int y);
 void gmb_big_text_set_text(gmb_big_text_t* b, const char* text);
-int  gmb_bigtext_get(uint32_t key, char rows[7][8]);
+int  gmb_bigtext_get(uint32_t key, char rows[7][32]);
 int  gmb_bigtext_width(uint32_t key);
+/* Tabella glifi BIGTEXT (gmb_tui_bigfont.c): righe 7×5, fallback '?'. */
+const uint8_t* gmb_bigfont_row(uint32_t key, int* out_width);
+int  gmb_bigfont_count(void);
+/* Blocco renderizzato: 7 righe UTF-8 ("█"/spazio, un carattere tra i glifi). */
 int  gmb_bigtext_to_block(const char* text, char out[7][512]);
+/* Misura: larghezza in celle (5 + 1 di spazio), altezza 7. Ritorna #caratteri. */
+int  gmb_bigtext_measure(const char* text, int* out_w, int* out_h);
 void gmb_bigtext_render_to_buffer(gmb_screen_buffer_t* buf, int x, int y, const char* text,
                                   const gmb_cell_color_t* fg, const gmb_cell_color_t* bg);
 void gmb_big_text_render(gmb_big_text_t* b, gmb_screen_buffer_t* buffer, int x, int y);

@@ -12,59 +12,31 @@
 
 /* ===================== BigText ===================== */
 
-static const uint8_t bigfont_letters[26][7] = {
-    {0x04,0x0A,0x0A,0x1F,0x11,0x11,0x11}, /* A */
-    {0x1E,0x11,0x11,0x1E,0x11,0x11,0x1E}, /* B */
-    {0x0E,0x11,0x10,0x10,0x10,0x11,0x0E}, /* C */
-    {0x1E,0x11,0x11,0x11,0x11,0x11,0x1E}, /* D */
-    {0x1F,0x10,0x10,0x1E,0x10,0x10,0x1F}, /* E */
-    {0x1F,0x10,0x10,0x1E,0x10,0x10,0x10}, /* F */
-    {0x0E,0x11,0x10,0x17,0x11,0x11,0x0F}, /* G */
-    {0x11,0x11,0x11,0x1F,0x11,0x11,0x11}, /* H */
-    {0x0E,0x04,0x04,0x04,0x04,0x04,0x0E}, /* I */
-    {0x07,0x02,0x02,0x02,0x12,0x12,0x0C}, /* J */
-    {0x11,0x12,0x14,0x18,0x14,0x12,0x11}, /* K */
-    {0x10,0x10,0x10,0x10,0x10,0x10,0x1F}, /* L */
-    {0x11,0x1B,0x15,0x15,0x11,0x11,0x11}, /* M */
-    {0x11,0x19,0x15,0x13,0x11,0x11,0x11}, /* N */
-    {0x0E,0x11,0x11,0x11,0x11,0x11,0x0E}, /* O */
-    {0x1E,0x11,0x11,0x1E,0x10,0x10,0x10}, /* P */
-    {0x0E,0x11,0x11,0x11,0x15,0x12,0x0D}, /* Q */
-    {0x1E,0x11,0x11,0x1E,0x14,0x12,0x11}, /* R */
-    {0x0F,0x10,0x10,0x0E,0x01,0x01,0x1E}, /* S */
-    {0x1F,0x04,0x04,0x04,0x04,0x04,0x04}, /* T */
-    {0x11,0x11,0x11,0x11,0x11,0x11,0x0E}, /* U */
-    {0x11,0x11,0x11,0x11,0x11,0x0A,0x04}, /* V */
-    {0x11,0x11,0x11,0x15,0x15,0x1B,0x11}, /* W */
-    {0x11,0x11,0x0A,0x04,0x0A,0x11,0x11}, /* X */
-    {0x11,0x11,0x0A,0x04,0x04,0x04,0x04}, /* Y */
-    {0x1F,0x01,0x02,0x04,0x08,0x10,0x1F}  /* Z */
-};
-static const uint8_t bigfont_digits[10][7] = {
-    {0x0E,0x11,0x13,0x15,0x19,0x11,0x0E}, /* 0 */
-    {0x04,0x0C,0x04,0x04,0x04,0x04,0x0E}, /* 1 */
-    {0x0E,0x11,0x01,0x02,0x04,0x08,0x1F}, /* 2 */
-    {0x1F,0x02,0x04,0x02,0x01,0x11,0x0E}, /* 3 */
-    {0x02,0x06,0x0A,0x12,0x1F,0x02,0x02}, /* 4 */
-    {0x1F,0x10,0x1E,0x01,0x01,0x11,0x0E}, /* 5 */
-    {0x06,0x08,0x10,0x1E,0x11,0x11,0x0E}, /* 6 */
-    {0x1F,0x01,0x02,0x04,0x08,0x08,0x08}, /* 7 */
-    {0x0E,0x11,0x11,0x0E,0x11,0x11,0x0E}, /* 8 */
-    {0x0E,0x11,0x11,0x0F,0x01,0x02,0x0C}  /* 9 */
-};
-
-static const uint8_t* bigfont_row(int key, int* out_width)
+/* Tabella dei glifi nel modulo dedicato (gmb_tui_bigfont.c): unica fonte. */
+static const uint8_t* bigfont_row(uint32_t key, int* out_width)
 {
-    if (out_width) *out_width = 5;
-    if (key >= 'a' && key <= 'z') key = key - 'a' + 'A';
-    if (key >= 'A' && key <= 'Z') return bigfont_letters[key - 'A'];
-    if (key >= '0' && key <= '9') return bigfont_digits[key - '0'];
-    return NULL;
+    return gmb_bigfont_row(key, out_width);
+}
+
+/* Decodifica UN codepoint UTF-8; ritorna i byte consumati (>=1). */
+static int bt_utf8(const char* s, uint32_t* cp)
+{
+    const unsigned char* p = (const unsigned char*)s;
+    if (p[0] < 0x80) { *cp = p[0]; return 1; }
+    if ((p[0] & 0xE0) == 0xC0 && (p[1] & 0xC0) == 0x80)
+    { *cp = ((uint32_t)(p[0] & 0x1F) << 6) | (uint32_t)(p[1] & 0x3F); return 2; }
+    if ((p[0] & 0xF0) == 0xE0 && (p[1] & 0xC0) == 0x80 && (p[2] & 0xC0) == 0x80)
+    { *cp = ((uint32_t)(p[0] & 0x0F) << 12) | ((uint32_t)(p[1] & 0x3F) << 6) | (uint32_t)(p[2] & 0x3F); return 3; }
+    if ((p[0] & 0xF8) == 0xF0 && (p[1] & 0xC0) == 0x80 && (p[2] & 0xC0) == 0x80 && (p[3] & 0xC0) == 0x80)
+    { *cp = ((uint32_t)(p[0] & 0x07) << 18) | ((uint32_t)(p[1] & 0x3F) << 12)
+           | ((uint32_t)(p[2] & 0x3F) << 6) | (uint32_t)(p[3] & 0x3F); return 4; }
+    *cp = p[0];
+    return 1;
 }
 
 static void bigfont_row_string(uint32_t key, int row, char* out, int cap)
 {
-    const uint8_t* g = bigfont_row((int)key, NULL);
+    const uint8_t* g = bigfont_row(key, NULL);
     int o = 0;
     for (int c = 0; c < 5 && o < cap - 1; c++)
     {
@@ -77,37 +49,58 @@ static void bigfont_row_string(uint32_t key, int row, char* out, int cap)
     out[o] = '\0';
 }
 
-int gmb_bigtext_get(uint32_t key, char rows[7][8])
+int gmb_bigtext_get(uint32_t key, char rows[7][32])
 {
-    const uint8_t* g = bigfont_row((int)key, NULL);
+    const uint8_t* g = bigfont_row(key, NULL);
     if (!g) return 0;
-    for (int r = 0; r < 7; r++) bigfont_row_string(key, r, rows[r], 8);
+    for (int r = 0; r < 7; r++) bigfont_row_string(key, r, rows[r], 32);
     return 1;
 }
 int gmb_bigtext_width(uint32_t key)
 {
-    return bigfont_row((int)key, NULL) ? 5 : 0;
+    return bigfont_row(key, NULL) ? 5 : 0;
 }
 int gmb_bigtext_to_block(const char* text, char out[7][512])
 {
     for (int r = 0; r < 7; r++) out[r][0] = '\0';
     if (!text) return 0;
-    for (const char* p = text; *p; p++)
+    const char* p = text;
+    int first = 1;
+    while (*p)
     {
-        uint32_t key = (unsigned char)*p;
+        uint32_t key; int adv = bt_utf8(p, &key);
         for (int r = 0; r < 7; r++)
         {
-            char row[8];
-            bigfont_row_string(key, r, row, 8);
+            char row[32];
+            bigfont_row_string(key, r, row, (int)sizeof(row));
             int cur = (int)strlen(out[r]);
-            if (cur + 6 < 512)
+            int len = (int)strlen(row);
+            int need = len + (first ? 0 : 1);
+            if (cur + need < 512)
             {
-                if (p != text) out[r][cur++] = ' ';
-                strncat(out[r], row, 6);
+                if (!first) out[r][cur++] = ' ';
+                memcpy(out[r] + cur, row, (size_t)len + 1);
             }
         }
+        first = 0;
+        p += adv;
     }
     return 7;
+}
+
+/* Misura del blocco: larghezza in CELLE (glifo 5 + 1 di spazio) e altezza 7.
+ * Ritorna il numero di caratteri disegnabili (0 = stringa vuota). */
+int gmb_bigtext_measure(const char* text, int* out_w, int* out_h)
+{
+    int w = 0, n = 0;
+    if (text)
+    {
+        const char* p = text;
+        while (*p) { uint32_t cp; int adv = bt_utf8(p, &cp); w += (n == 0) ? 5 : 6; n++; p += adv; }
+    }
+    if (out_w) *out_w = w;
+    if (out_h) *out_h = 7;
+    return n;
 }
 
 static void bigtext_draw(void* u, gmb_control_t* c, gmb_screen_buffer_t* buf)
@@ -119,28 +112,32 @@ static void bigtext_draw(void* u, gmb_control_t* c, gmb_screen_buffer_t* buf)
     if (sk && sk->is_gfx)
     {
         int x2 = c->x, y2 = c->y;
-        for (const char* p = b->text; *p; p++)
+        for (const char* p = b->text; *p; )
         {
-            const uint8_t* g = bigfont_row((unsigned char)*p, NULL);
-            if (!g) continue;
-            for (int r = 0; r < 7; r++)
-                for (int cc = 0; cc < 5; cc++)
-                    if (g[r] & (1 << (4 - cc)))
-                        gmb_surface_rounded_rect(buf, x2 + cc, y2 + r, 1, 1, 0, fg, fg, 1);
+            uint32_t cp; int adv = bt_utf8(p, &cp);
+            const uint8_t* g = bigfont_row(cp, NULL);
+            if (g)
+                for (int r = 0; r < 7; r++)
+                    for (int cc = 0; cc < 5; cc++)
+                        if (g[r] & (1 << (4 - cc)))
+                            gmb_surface_rounded_rect(buf, x2 + cc, y2 + r, 1, 1, 0, fg, fg, 1);
             x2 += 6;
+            p += adv;
         }
         return;
     }
     int x = c->x, y = c->y;
-    for (const char* p = b->text; *p; p++)
+    for (const char* p = b->text; *p; )
     {
-        const uint8_t* g = bigfont_row((unsigned char)*p, NULL);
-        if (!g) continue;
-        for (int r = 0; r < 7; r++)
-            for (int cc = 0; cc < 5; cc++)
-                if (g[r] & (1 << (4 - cc)))
-                    gmb_screen_setchar(buf, x + cc, y + r, 0x2588, fg, bg);
+        uint32_t cp; int adv = bt_utf8(p, &cp);
+        const uint8_t* g = bigfont_row(cp, NULL);
+        if (g)
+            for (int r = 0; r < 7; r++)
+                for (int cc = 0; cc < 5; cc++)
+                    if (g[r] & (1 << (4 - cc)))
+                        gmb_screen_setchar(buf, x + cc, y + r, 0x2588, fg, bg);
         x += 6;
+        p += adv;
     }
 }
 static void bigtext_draw_px(void* u, gmb_control_t* c)
@@ -174,15 +171,17 @@ void gmb_bigtext_render_to_buffer(gmb_screen_buffer_t* buf, int x, int y, const 
     gmb_cell_color_t f = fg ? *fg : GMB_CELLCOLOR_DEFAULT;
     gmb_cell_color_t b = bg ? *bg : GMB_CELLCOLOR_DEFAULT;
     int cx = x;
-    for (const char* p = text; *p; p++)
+    for (const char* p = text; *p; )
     {
-        const uint8_t* g = bigfont_row((unsigned char)*p, NULL);
-        if (!g) continue;
-        for (int r = 0; r < 7; r++)
-            for (int cc = 0; cc < 5; cc++)
-                if (g[r] & (1 << (4 - cc)))
-                    gmb_screen_setchar(buf, cx + cc, y + r, 0x2588, f, b);
+        uint32_t cp; int adv = bt_utf8(p, &cp);
+        const uint8_t* g = bigfont_row(cp, NULL);
+        if (g)
+            for (int r = 0; r < 7; r++)
+                for (int cc = 0; cc < 5; cc++)
+                    if (g[r] & (1 << (4 - cc)))
+                        gmb_screen_setchar(buf, cx + cc, y + r, 0x2588, f, b);
         cx += 6;
+        p += adv;
     }
 }
 
@@ -195,10 +194,7 @@ void gmb_big_text_render(gmb_big_text_t* b, gmb_screen_buffer_t* buffer, int x, 
 void gmb_big_text_dimensions(gmb_big_text_t* b, int* w, int* h)
 {
     int wsum = 0;
-    for (const char* p = b->text; *p; p++)
-    {
-        if (bigfont_row((unsigned char)*p, NULL)) wsum += (p == b->text) ? 5 : 6;
-    }
+    gmb_bigtext_measure(b ? b->text : NULL, &wsum, NULL);
     if (w) *w = wsum;
     if (h) *h = 7;
 }
