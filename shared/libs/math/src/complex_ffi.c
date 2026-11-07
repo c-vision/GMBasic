@@ -52,19 +52,12 @@ double ofx_cpx_arg(c2 a)   { return (double)gm_cpx_arg(c_from(a)); }
 double ofx_cpx_norm2(c2 a) { return (double)gm_cpx_norm2(c_from(a)); }
 
 /*
- * Uguaglianza con tolleranza RELATIVA fissa: 1e-9 scalata sui moduli.
- *
- * Perché non un parametro `tol`: su VM/C un DOUBLE dopo due struct piccoli passati per
- * valore non arriva al nativo (arriva 0), quindi `EQ(a, b, tol)` divergerebbe dalle altre
- * gambe. Con due soli argomenti la chiamata è identica su IL, PCodeVM, VM/C e C99Native.
- * Chi ha bisogno di una tolleranza propria scrive `COMPLEX.CABS(COMPLEX.SUB(a, b)) < tol`.
+ * Uguaglianza entro tolleranza: 1 se |dre| e |dim| stanno dentro `tol`.
+ * La tolleranza è esplicita e arriva al nativo su tutte e quattro le gambe.
  */
-i64 ofx_cpx_eq(c2 a, c2 b)
+i64 ofx_cpx_eq(c2 a, c2 b, double tol)
 {
-    gm_cpx x = c_from(a), y = c_from(b);
-    double scale = 1.0 + gm_cpx_abs(x) + gm_cpx_abs(y);
-    double tol = 1e-9 * scale;
-    return (i64)gm_cpx_eq(x, y, tol);
+    return (i64)gm_cpx_eq(c_from(a), c_from(b), tol);
 }
 
 c2 ofx_cpx_exp(c2 z) { return c_to(gm_cpx_exp(c_from(z))); }
