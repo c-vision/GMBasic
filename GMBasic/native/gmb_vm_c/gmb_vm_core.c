@@ -15329,7 +15329,13 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                          * path "misto" scalare-puro non basta: serve il marshalling degli
                          * argomenti puntatore PRIMA della dispatch (vedi il ramo sotto). */
                         int hasPtrSlot = (arrayMask | byrefScalarMask | stringMask) != 0;
-                        if (p != NULL && !hasPtrSlot &&
+                        /* UDT (parametri, array di UDT o ritorno): mai sul path "scalari semplici" — un UDT occupa
+                         * piu' slot nativi e la maschera dei kind non lo descrive (un DOUBLE dopo due UDT
+                         * per valore con ritorno LONG arrivava a 0). Va ai slot tipizzati (vm_ffi_call_slots). */
+                        int hasUdtSig = (retUdtFieldCount > 0);
+                        for (int i = 0; i < argc && !hasUdtSig; i++)
+                            if (udtParamFieldCount[i] > 0 || udtArrCount[i] > 0) hasUdtSig = 1;
+                        if (p != NULL && !hasPtrSlot && !hasUdtSig &&
                             (unsigned)scalarKindMask != (unsigned)(kind == 1 ? fullMaskForArgc : 0))
                         {
                             /* Firma mista LONG/DOUBLE fra SCALARI SEMPLICI (2026-10, v1):

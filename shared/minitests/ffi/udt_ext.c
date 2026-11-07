@@ -53,3 +53,25 @@ Int3 int3_scale(Int3 v, int64_t k)
     r.c = v.c * k;
     return r;
 }
+
+/* UDT piccoli (16 byte, due double) passati per valore: risultato di una chiamata FFI come
+ * argomento di un'altra (IL) e DOUBLE dopo due UDT per valore (VM/C). */
+typedef struct { double re, im; } Cplx16;
+Cplx16 cplx16_make(double re, double im) { Cplx16 c = { re, im }; return c; }
+double cplx16_eq_tol(Cplx16 a, Cplx16 b, double tol)
+{
+    double dr = a.re - b.re, di = a.im - b.im;
+    if (dr < 0) dr = -dr; if (di < 0) di = -di;
+    return (dr <= tol && di <= tol) ? 1.0 : 0.0;
+}
+double cplx16_eq(Cplx16 a, Cplx16 b) { return cplx16_eq_tol(a, b, 0.0); }
+
+/* Due UDT da 16 byte di interi per valore, poi un DOUBLE (classe INTEGER: x0-x3, il double in d0). */
+typedef struct { int64_t a, b; } I16;
+double i16_pair_tol(I16 p, I16 q, double tol) { return (double)(p.a - q.a) + (double)(p.b - q.b) * 10.0 + tol * 100.0; }
+/* Struct 16 byte con campo misto (long + double): classe mista, ognuna in un registro diverso. */
+typedef struct { int64_t k; double v; } M16;
+double m16_pair_tol(M16 p, M16 q, double tol) { return (double)(p.k - q.k) + (p.v - q.v) * 10.0 + tol * 100.0; }
+
+/* Come EQ di COMPLEX: due struct 16 byte (2 double, HFA) + tolleranza DOUBLE, ritorno LONG. */
+int32_t cplx16_eq_tol_l(Cplx16 a, Cplx16 b, double tol) { return (int32_t)cplx16_eq_tol(a, b, tol); }
