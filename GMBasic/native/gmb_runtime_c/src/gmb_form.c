@@ -648,15 +648,14 @@ static void draw_button_body(gmb_form_btn_t* b, float sc)
         else if (rounded)               GMB_GFX_FILL_RRECT(x, y, w, h, rad, s->gradient_on ? s->grad_top : fill);
         else                            fill_rect_style(x, y, w, h, fill);
 
-        /* 3b) GLOSS (stile "lucido"): riflesso SFRONTATO con gradiente sul bottone intero.
-         * Prima era un RETTANGOLO PIENO più chiaro sui 40% alti, con uno scalino netto:
-         * ogni bottone risultava di DUE COLORI (blocco chiaro sopra, pieno sotto). */
+        /* 3b) GLOSS: riflesso BIANCO TRASLUCIDO che sfuma nel pieno (alpha-blend reale),
+         * non un blocco di colore più chiaro: la tinta del riflesso non dipende dal fill,
+         * quindi funziona su qualunque colore (navy, accent, grigio) e non crea scalini. */
         if (s->gloss) {
-            int r0 = (fill >> 16) & 0xFF, g0 = (fill >> 8) & 0xFF, b0 = fill & 0xFF;
-            r0 += (255 - r0) * 26 / 100; g0 += (255 - g0) * 26 / 100; b0 += (255 - b0) * 26 / 100;
-            unsigned int hl = 0xFF000000u | ((unsigned)r0 << 16) | ((unsigned)g0 << 8) | (unsigned)b0;
-            unsigned int base = 0xFF000000u | (fill & 0xFFFFFFu);
-            gmb_gfx_fill_rounded_gradient(x, y, w, h, rounded ? rad : 0, hl, base);
+            gmb_gfx_fill_rounded_gradient(x, y, w, h, rounded ? rad : 0, 0x50FFFFFFu, 0x00FFFFFFu);
+            int rr2 = rounded ? rad : 0;   /* filo di luce sul bordo alto */
+            if (w > 2 * rr2 + 6)
+                GMB_GFX_LINE(x + rr2, y + 1, x + w - 1 - rr2, y + 1, GFX_RGB(0x38FFFFFFu), "");
         }
         /* 4) bevel 3D (raised/sunken): luci/ombre sui bordi. */
         if (s->bevel != 0) {
