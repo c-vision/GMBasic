@@ -454,6 +454,7 @@ END SUB
 | `ffi_five_arrays.bas` | **Cinque array** nella stessa chiamata | `o0= 10\|o1= 10` |
 | `ffi_manyargs.bas` | Firme con **9/12/16/20/40 argomenti**, miste, array in coda | `s64= 2080\|s9= 45\|s16= 136\|arr= 55` |
 | `ffi_array_scalar_mixed.bas` | **Array BYREF + scalari DOUBLE**: kind per slot, non più firma omogenea | `mixed= 15.5\|mixed2= 6.5` |
+| `ffi_array_byte.bas` | **Array di BYTE/SBYTE**: elementi a 8 byte (scratch + copy-back con saturazione), estensioni automatiche | `sum= 15\|inc= 2 , 3 , 4 , 5 , 6\|sum2= 20\|ssum= 0` |
 | `ffi_matrix_2d.bas` | Matrice 2D: `a()` resta, le estensioni `d0,d1` le emette il compilatore | `mean= 2.5` |
 | `ffi_native_abi.bas` | **DECLARE NATIVE**: ABI esatta, nessuna estensione automatica | `s2= 10\|s3= 36` |
 | `ffi_rank_n.bas` | Array/matrici a **rango N** (buffer piatto row-major, `d0..dN` dal valore) | `s2= 10\|s3= 36\|s4= 136\|k0= 2\|k7= 16` |
@@ -854,6 +855,7 @@ END SUB
 | `ffi_five_arrays.bas` | **Cinque array** nella stessa chiamata | `o0= 10\|o1= 10` |
 | `ffi_manyargs.bas` | Firme con **9/12/16/20/40 argomenti**, miste, array in coda | `s64= 2080\|s9= 45\|s16= 136\|arr= 55` |
 | `ffi_array_scalar_mixed.bas` | **Array BYREF + scalari DOUBLE**: kind per slot, non più firma omogenea | `mixed= 15.5\|mixed2= 6.5` |
+| `ffi_array_byte.bas` | **Array di BYTE/SBYTE**: elementi a 8 byte (scratch + copy-back con saturazione), estensioni automatiche | `sum= 15\|inc= 2 , 3 , 4 , 5 , 6\|sum2= 20\|ssum= 0` |
 | `ffi_matrix_2d.bas` | Matrice 2D: `a()` resta, le estensioni `d0,d1` le emette il compilatore | `mean= 2.5` |
 | `ffi_native_abi.bas` | **DECLARE NATIVE**: ABI esatta, nessuna estensione automatica | `s2= 10\|s3= 36` |
 | `ffi_rank_n.bas` | Array/matrici a **rango N** (buffer piatto row-major, `d0..dN` dal valore) | `s2= 10\|s3= 36\|s4= 136\|k0= 2\|k7= 16` |

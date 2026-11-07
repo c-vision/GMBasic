@@ -113,13 +113,13 @@ TestResults/
 
 # ── IDE in sviluppo, FUORI dal repo pubblico (2026-11-01) ────────────────────────────────
 # Le due IDE del progetto non sono complete: `GMBasicIDE/` (GUI nativa macOS/Cocoa, VB6-style)
-# ha ~51+76 item aperti nel suo piano, `GMBasicTuiIde/` (TUI scritta in BASIC) 11. Finché non
+# ha ~51+76 item aperti nel suo piano, `GMBasicTuiIDE/` (TUI scritta in BASIC) 11. Finché non
 # sono finiti restano **in locale** e non entrano nel repository: qui sono escluse, le copie di
 # lavoro restano su disco (nessun build/test le referenzia). Il motore che usano (REPL TUI in
 # `GMBasic/native/repl/ide.c`, logica condivisa `gmb_runtime_c/src/gmb_ide.c`, `REPL/GMBasicIde.cs`)
 # resta versionato: fa parte del REPL, non delle due IDE.
 /GMBasicIDE/
-/GMBasicTuiIde/
+/GMBasicTuiIDE/
 
 # manuale cartaceo: materiale locale del libro, non tracciato
 docs/manual/
@@ -130,6 +130,7 @@ docs/manual/
 !shared/minitests/ffi/libdims_ext.dylib
 !shared/minitests/ffi/liblayout_ext.dylib
 !shared/minitests/ffi/libcbfield_ext.dylib
+!shared/minitests/ffi/libbytearr_ext.dylib
 
 # Report/screenshot generati dai tool di verifica (rigenerabili): i PNG del giro visivo
 # TUI/grafica non si versionano (`bash tools/sh/tui_visual_gallery.sh`).

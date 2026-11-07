@@ -282,6 +282,20 @@ public static class IlConversion
             il.Emit(OpCodes.Conv_U1);
             return;
         }
+        if (toClr == types.SByte)
+        {
+            // Specchio del ramo Byte (2026-11-07): clamp a [-128,127] poi Conv_I1.
+            // Prima ogni conversione Double→SBYTE lanciava "non supportata" — una
+            // `DIM s(2) AS SBYTE : s(0) = -1` non compilava su IL (MiniTest FFI
+            // array di SBYTE). Saturazione coerente con CByte.
+            if (fromClr != typeof(double))
+                il.Emit(OpCodes.Conv_R8);
+            il.Emit(OpCodes.Ldc_R8, -128.0);
+            il.Emit(OpCodes.Ldc_R8, 127.0);
+            il.Emit(OpCodes.Call, typeof(Math).GetMethod(nameof(Math.Clamp), [typeof(double), typeof(double), typeof(double)])!);
+            il.Emit(OpCodes.Conv_I1);
+            return;
+        }
         if (toClr == types.Double)
         {
             if (fromClr == typeof(decimal))
