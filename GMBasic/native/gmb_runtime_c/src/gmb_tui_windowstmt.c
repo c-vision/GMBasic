@@ -592,6 +592,11 @@ int gmb_winstmt_frame_get(const char* name)
     gmb_winstmt_t* w = ws_find(name);
     return w ? w->frame : -1;
 }
+int gmb_winstmt_is_pixel(const char* name)
+{
+    gmb_winstmt_t* w = ws_find(name);
+    return w ? w->pixel : 0;
+}
 
 void gmb_winstmt_render(const char* name)
 {
@@ -680,25 +685,25 @@ void gmb_winstmt_render_pixel(const char* name, int origin_x, int origin_y, int 
 #define GMB_WIN_TITLE_H 24
 #define GMB_WIN_RADIUS  6
 #define GMB_WIN_PAD     6
-#define GMB_COL_TITLE_TOP   0xFFAAAAAAu
-#define GMB_COL_TITLE_BOT   0xFFAAAAAAu
-#define GMB_COL_TITLE_TOPF  0xFFAAAAAAu
-#define GMB_COL_TITLE_BOTF  0xFFAAAAAAu
-#define GMB_COL_BORDER      0xFFAAAAAAu
-#define GMB_COL_BORDER_DIM  0xFF555555u
-#define GMB_COL_RING        0x40AAAAAAu
-#define GMB_COL_BODY        0xFFAAAAAAu
-#define GMB_COL_TITLE       0xFF000000u
-#define GMB_COL_TEXT        0xFF000000u
-#define GMB_COL_CLOSE       0xFF00AA00u
-#define GMB_COL_MIN         0xFF00AA00u
-#define GMB_COL_MAX         0xFF008800u
+#define GMB_COL_TITLE_TOP   0xFF23262Fu
+#define GMB_COL_TITLE_BOT   0xFF16181Fu
+#define GMB_COL_TITLE_TOPF  0xFF2B3350u
+#define GMB_COL_TITLE_BOTF  0xFF1A1E2Eu
+#define GMB_COL_BORDER      0xFF3A4258u
+#define GMB_COL_BORDER_DIM  0xFF262A35u
+#define GMB_COL_RING        0x406CB6FFu
+#define GMB_COL_BODY        0xFF14161Cu
+#define GMB_COL_TITLE       0xFFD6DCE6u
+#define GMB_COL_TEXT        0xFFD0D6E0u
+#define GMB_COL_CLOSE       0xFFFF5F57u   /* macOS: rosso */
+#define GMB_COL_MIN         0xFFFFBD2Eu   /* macOS: giallo */
+#define GMB_COL_MAX         0xFF28C940u   /* macOS: verde */
 #define GMB_COL_SHADOW      0x8A000000u
 #define GMB_COL_DESKTOP     0xFF0000AAu
-#define GMB_COL_TASKBAR_BG  0xFFAAAAAAu
-#define GMB_COL_CHIP        0xFFAAAAAAu
-#define GMB_COL_CHIP_FOCUS  0xFF00AAAAu
-#define GMB_COL_CHIP_TEXT   0xFF000000u
+#define GMB_COL_TASKBAR_BG  0xFF0E1016u
+#define GMB_COL_CHIP        0xFF262A35u
+#define GMB_COL_CHIP_FOCUS  0xFF33394Au
+#define GMB_COL_CHIP_TEXT   0xFFD6DCE6u
 #define GMB_TASKBAR_H       28
 #define GMB_CHIP_W          130
 #define GMB_CHIP_GAP        6
@@ -795,7 +800,10 @@ void gmb_winstmt_compose_all_pixel(void)
              * DENTRO la finestra. Fallback alle righe w->lines solo se il buffer non c'e'. */
             gmb_clipper_state_t* stc = gmb_clipper_global_state();
             int rendered = 0;
-            if (stc && stc->buffer)
+            /* Il blit celle->pixel vale per le finestre TUI (rect in CELLE). Le finestre
+             * PIXEL hanno rect in PIXEL: il contenuto sta in w->lines, non nel buffer
+             * globale → senza questa distinzione le finestre PIXEL restavano VUOTE. */
+            if (!mw->pixel && stc && stc->buffer)
             {
                 int bw = gmb_screen_width(stc->buffer), bh = gmb_screen_height(stc->buffer);
                 gmb_screen_cell_t* cells = gmb_screen_cells(stc->buffer);
@@ -809,8 +817,10 @@ void gmb_winstmt_compose_all_pixel(void)
                         gmb_screen_cell_t* cell = &cells[by * bw + bx];
                         uint32_t fgc = 0x40000000u | ((uint32_t)cell->fg_rgb.r << 16)
                                      | ((uint32_t)cell->fg_rgb.g << 8) | cell->fg_rgb.b;
-                        uint32_t bgc = 0x40000000u | ((uint32_t)cell->bg_rgb.r << 16)
-                                     | ((uint32_t)cell->bg_rgb.g << 8) | cell->bg_rgb.b;
+                        /* Sfondo = colore del CORPO della finestra (chrome nativo): il buffer
+                         * TUI porta il blu del tema e lascerebbe un riquadro blu dentro una
+                         * finestra scura. Il testo (fg) resta quello della cella. */
+                        uint32_t bgc = col_body;
                         /* draw_cell NON applica la render-scale: passiamo coordinate native. */
                         int ncx = crx + c2 * cw, ncy = cry + r * ch;
                         int ncw = cw, nch = ch;
