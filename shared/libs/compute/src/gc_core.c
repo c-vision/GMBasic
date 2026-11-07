@@ -53,7 +53,7 @@ void *gc_aligned_alloc(size_t alignment, size_t size)
     if (size == 0) size = 1;
     /* arrotonda la dimensione al multiplo dell'allineamento */
     size = (size + alignment - 1) & ~(alignment - 1);
-#if defined(_MSC_VER)
+#if defined(_MSC_VER) || defined(_WIN32)
     return _aligned_malloc(size, alignment);
 #elif defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L
     ptr = aligned_alloc(alignment, size);
