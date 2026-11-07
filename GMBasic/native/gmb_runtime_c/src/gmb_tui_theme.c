@@ -558,6 +558,15 @@ gmb_widget_style_t gmb_widget_style_from_theme(const gmb_theme_t* t)
     }
     s.shadow_dx = 2; s.shadow_dy = 2; s.shadow_soft = 0;
     s.skin = soft ? 0 : (neon ? 1 : 2);
+    /* CONTRASTO: se l'accento coincide con la superficie (turbovision: blu su blu) la
+     * selezione, la progress e le stelle diventano invisibili nel percorso pixel.
+     * In quel caso si usa il colore di selezione del tema (o il verde TV). */
+    if ((s.accent & 0xFFFFFFu) == (s.fill & 0xFFFFFFu))
+    {
+        unsigned ab = ps_rgba(t->active_bg, 0xFF);
+        s.accent = ((ab & 0xFFFFFFu) && ((ab & 0xFFFFFFu) != (s.fill & 0xFFFFFFu)))
+                   ? ab : ps_rgba(crgb(0, 170, 0), 0xFF);
+    }
     /* GLOSS: riflesso sul terzo alto (superfici "lucide"). Stile di default dei temi
      * moderni (glass/neon/soft) e attivabile con `STYLE "gloss"` su un singolo widget. */
     s.gloss = (soft || neon || glass) ? 1 : 0;

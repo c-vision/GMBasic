@@ -151,6 +151,10 @@ gmb_control_t* gmb_tui_add_chart(int x, int y, int w, int h, const char* csv)
         n = 20;
     }
     gmb_chart_plot(ch, xs, ys, n, "");
+    /* Il renderer GRAFICO usa colori RGB (0xRRGGBB), mentre il chart di default emette
+     * INDICI di palette: indice 15 = 0x00000F, cioè nero su fondo blu (linea invisibile).
+     * Qui la serie prende il bianco del tema. */
+    if (ch->n_series > 0) ch->series_col[0] = 0xFFFFFF;
 
     gmb_control_init(&g->ctrl, "", x, y, w, h, cchart_cell_draw, NULL);
     g->ctrl.draw_px_fn = cchart_px_draw;

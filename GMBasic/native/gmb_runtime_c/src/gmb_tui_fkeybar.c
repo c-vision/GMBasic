@@ -85,63 +85,54 @@ static void fkeybar_ctrl_draw(void* u, gmb_control_t* c, gmb_screen_buffer_t* bu
 
 static void fkeybar_ctrl_draw_px(void* u, gmb_control_t* c)
 {
-    /* Renderer PIXEL guidato dal TEMA (gmb_widget_style_current): stessa ricetta dei
-     * widget form (shadow soft, radius/shape del tema, fill/hover/press, testo del tema).
-     * Nessun colore hardcoded: cambiando tema cambia il look&feel. */
+    /* Renderer PIXEL guidato dal tema. Chip COMPATTI (larghezza dal testo) come una
+     * barra di tasti vera; prima ogni chip prendeva w/n e l'altezza veniva forzata a 66,
+     * disegnando fuori dal rect del controllo. */
     gmb_fkeybar_ctrl_t* f = (gmb_fkeybar_ctrl_t*)u;
     gmb_widget_style_t s = gmb_widget_style_current();
     int x = c->x, y = c->y, w = c->width, h = c->height;
-    if (h < 66) h = 66;
+    if (h < 20) h = 20;
     int rounded = (s.shape == 1);
     int rad = s.radius > 0 ? s.radius : 6;
-    int crad = rad + 2;
 
-    /* 1) ombra soft (come draw_button_body) */
-    if (s.shadow_on)
-    {
-        for (int L = 3; L >= 1; L--)
-        {
-            unsigned int sh = s.shadow;
-            unsigned a = ((sh >> 24) & 0xFF) / (unsigned)(L + 1);
-            sh = (a << 24) | (sh & 0xFFFFFFu);
-            int sx = x + s.shadow_dx + (L - 1), sy = y + s.shadow_dy + (L - 1);
-            if (rounded) gmb_gfx_fill_rounded_rect(sx, sy, w, h, crad, sh);
-            else gmb_gfx_fill_rounded_rect(sx, sy, w, h, 0, sh);
-        }
-    }
-    /* 2) card */
-    if (rounded) gmb_gfx_fill_rounded_rect(x, y, w, h, crad, s.fill);
+    if (rounded) gmb_gfx_fill_rounded_rect(x, y, w, h, rad, s.fill);
     else gmb_gfx_fill_rounded_rect(x, y, w, h, 0, s.fill);
-    if (s.border_w > 0 || s.shape == 0) gmb_gfx_stroke_rounded_rect(x, y, w, h, rounded ? crad : 0, s.border);
+    if (s.border_w > 0 || s.shape == 0) gmb_gfx_stroke_rounded_rect(x, y, w, h, rounded ? rad : 0, s.border);
 
     int n = 0; for (int i = 0; i < 10; i++) if (f->bar.keys[i][0]) n++;
     if (n <= 0) return;
-    int th = gmb_gfx_text_height_logical(); if (th <= 0) th = 16;
-    const int pad = 10, gap = 6, ktop = 8, foot = 26;
-    int kh = h - ktop - foot; if (kh < 28) kh = 28;
-    int x0 = x + pad, x1 = x + w - pad;
-    int span = x1 - x0 - gap * (n - 1);
-    if (span < n * 24) span = n * 24;
-    int base = span / n, rem = span % n;
-    int cx = x0;
-    for (int i = 0; i < 10; i++)
+
+    const int pad = 6, gap = 4;
+    int avail = w - 2 * pad;
+    int cwl[10]; int total = 0;
+    for (int i = 0, k = 0; i < 10; i++)
     {
-        const char* k = f->bar.keys[i];
-        if (!k || !*k) continue;
-        int cw = base + (rem > 0 ? 1 : 0); if (rem > 0) rem--;
+        const char* key = f->bar.keys[i];
+        if (!key || !*key) continue;
+        int tw = (int)gmb_gfx_text_width(key);
+        int cw = tw + 18; if (cw < 30) cw = 30;
+        cwl[k++] = cw; total += cw;
+    }
+    total += gap * (n - 1);
+    if (total > avail && total > 0)
+    {
+        double sc = (double)avail / (double)total;
+        for (int k = 0; k < n; k++) { cwl[k] = (int)(cwl[k] * sc); if (cwl[k] < 18) cwl[k] = 18; }
+    }
+
+    int ch = h - 6; if (ch < 16) ch = 16;
+    int cx = x + pad, cy = y + (h - ch) / 2;
+    for (int i = 0, k = 0; i < 10; i++)
+    {
+        const char* key = f->bar.keys[i];
+        if (!key || !*key) continue;
         int hot = (i == f->bar.last_key);
         int hov = (i == f->hover_key);
-        /* Chip con il renderer dei widget pixel (draw_button_body): centratura/testo/
-         * shadow/radius dal tema, niente testo manuale. */
-        { extern void gmb_form_draw_chip(int, int, int, int, const char*, int);
-          gmb_form_draw_chip(cx, y + ktop, cw, kh, k, hot ? 2 : (hov ? 1 : 0)); }
-        cx += cw + gap;
-    }
-    if (f->bar.last_key >= 0 && f->bar.last_key < 10 && f->bar.keys[f->bar.last_key][0])
-    {
-        char fb[64];
-        snprintf(fb, sizeof(fb), "F%d  %s", f->bar.last_key + 1, f->bar.keys[f->bar.last_key]);
-        gmb_gfx_draw_text(fb, x + pad, y + h - 22, 0, (int)(0x40000000u | (s.text & 0xFFFFFFu)));
+        extern void gmb_form_draw_chip(int, int, int, int, const char*, int);
+        gmb_form_draw_chip(cx, cy, cwl[k], ch, key, hot ? 2 : (hov ? 1 : 0));
+        cx += cwl[k] + gap;
+        k++;
+        if (cx >= x + w - pad) break;
     }
 }
 static bool fkeybar_ctrl_mouse(void* u, gmb_control_t* c, const gmb_mouse_action_t* a)
