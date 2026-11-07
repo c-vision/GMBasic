@@ -43,7 +43,7 @@ static double nice_step(double range)
 
 static void draw_grid(const gmb_chart_renderer_t* r, int ox, int oy, int w, int h,
                       double xmin, double xmax, double ymin, double ymax, int col,
-                      int label_x, int label_y)
+                      int label_x, int label_y, int labels)
 {
     int th = R_th(r);
     double step = nice_step(ymax - ymin);
@@ -54,17 +54,14 @@ static void draw_grid(const gmb_chart_renderer_t* r, int ox, int oy, int w, int 
         int gy = oy + h - 1 - (int)((y - ymin) / (ymax - ymin) * (h - 2)) - 1;
         if (gy < oy || gy > oy + h - 1) continue;
         R_line(r, ox + 1, gy, ox + w - 2, gy, col);
-        char lbl[40]; snprintf(lbl, sizeof(lbl), "%.6g", y);
-        R_text(r, lbl, label_x, gy - th + 1, 0, CLR_TXT);
+        if (labels) { char lbl[40]; snprintf(lbl, sizeof(lbl), "%.6g", y); R_text(r, lbl, label_x, gy - th + 1, 0, CLR_TXT); }
     }
     /* Tacche X + etichette SOTTO l'area del grafico (prima erano dentro, sull'asse). */
     for (int g = 0; g <= 5; g++)
     {
         int gx = ox + 1 + g * (w - 2) / 6;
         R_line(r, gx, oy + 1, gx, oy + h - 2, col);
-        double xv = xmin + (xmax - xmin) * g / 6.0;
-        char lbl[40]; snprintf(lbl, sizeof(lbl), "%.5g", xv);
-        R_text(r, lbl, gx + 1, label_y, 0, CLR_TXT);
+        if (labels) { double xv = xmin + (xmax - xmin) * g / 6.0; char lbl[40]; snprintf(lbl, sizeof(lbl), "%.5g", xv); R_text(r, lbl, gx + 1, label_y, 0, CLR_TXT); }
     }
 }
 
@@ -234,7 +231,10 @@ void gmb_chart_draw(gmb_chart_t* ch, const gmb_chart_renderer_t* r, int ox, int 
      * l'area del grafico. Prima entrambe stavano DENTRO il plot, sopra la griglia. ── */
     int th_lbl = R_th(r);
     int ylw = 0, xlh = 0;
-    if (ch->show_grid)
+    /* Grafico PICCOLO (card KPI): niente etichette, solo la forma — le etichette a 60px
+     * di altezza si sovrapponevano tra loro e alla linea. */
+    int labels = !(w < 200 || h < 96);
+    if (ch->show_grid && labels)
     {
         double stp = nice_step(ymax - ymin);
         for (double y = ceil(ymin / stp) * stp; y <= ymax + 1e-9; y += stp)
@@ -261,7 +261,7 @@ void gmb_chart_draw(gmb_chart_t* ch, const gmb_chart_renderer_t* r, int ox, int 
     if (ch->title[0])  R_text(r, ch->title, ox + w / 2, oy + 2, 1, ch->axis_col);
     if (ch->ylabel[0]) R_text(r, ch->ylabel, ox + 2, oy + R_th(r) + 2, 0, ch->axis_col);
 
-    if (ch->show_grid)   draw_grid(r, ox, oy, w, h, xmin, xmax, ymin, ymax, ch->grid_col, label_x, label_y);
+    if (ch->show_grid)   draw_grid(r, ox, oy, w, h, xmin, xmax, ymin, ymax, ch->grid_col, label_x, label_y, labels);
     if (ch->show_legend) draw_legend(ch, r, ox, oy, w);
 
     static const int colors[8] = { 15, 10, 14, 13, 11, 9, 12, 6 };
