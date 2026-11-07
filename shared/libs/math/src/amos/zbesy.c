@@ -246,7 +246,7 @@ L60:
     k1 = i1mach_(&c__15);
     k2 = i1mach_(&c__16);
 /* Computing MIN */
-    i__1 = abs(k1), i__2 = abs(k2);
+    i__1 = f2c_abs(k1), i__2 = f2c_abs(k2);
     k = min(i__1,i__2);
     r1m5 = d1mach_(&c__5);
 /* ----------------------------------------------------------------------- */
@@ -256,7 +256,7 @@ L60:
     exr = cos(*zr);
     exi = sin(*zr);
     ey = 0.;
-    tay = (d__1 = *zi + *zi, abs(d__1));
+    tay = (d__1 = *zi + *zi, f2c_abs(d__1));
     if (tay < elim) {
 	ey = exp(-tay);
     }
@@ -283,7 +283,7 @@ L70:
 	bb = cwrki[i__];
 	atol = 1.;
 /* Computing MAX */
-	d__1 = abs(aa), d__2 = abs(bb);
+	d__1 = f2c_abs(aa), d__2 = f2c_abs(bb);
 	if (max(d__1,d__2) > ascle) {
 	    goto L75;
 	}
@@ -297,7 +297,7 @@ L75:
 	bb = cyi[i__];
 	atol = 1.;
 /* Computing MAX */
-	d__1 = abs(aa), d__2 = abs(bb);
+	d__1 = f2c_abs(aa), d__2 = f2c_abs(bb);
 	if (max(d__1,d__2) > ascle) {
 	    goto L85;
 	}

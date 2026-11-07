@@ -56,7 +56,7 @@ L10:
 	goto L60;
     }
     *bi = dhpi;
-    *br = log((abs(*ai)));
+    *br = log((f2c_abs(*ai)));
     if (*ai < 0.) {
 	*bi = -(*bi);
     }
@@ -65,7 +65,7 @@ L20:
     if (*ar > 0.) {
 	goto L30;
     }
-    *br = log((abs(*ar)));
+    *br = log((f2c_abs(*ar)));
     *bi = dpi;
     return 0;
 L30:

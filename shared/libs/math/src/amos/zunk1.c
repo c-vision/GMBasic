@@ -152,13 +152,13 @@ L30:
 /* ----------------------------------------------------------------------- */
 /*     TEST FOR UNDERFLOW AND OVERFLOW */
 /* ----------------------------------------------------------------------- */
-	if (abs(rs1) > *elim) {
+	if (f2c_abs(rs1) > *elim) {
 	    goto L60;
 	}
 	if (kdflg == 1) {
 	    kflag = 2;
 	}
-	if (abs(rs1) < *alim) {
+	if (f2c_abs(rs1) < *alim) {
 	    goto L40;
 	}
 /* ----------------------------------------------------------------------- */
@@ -166,7 +166,7 @@ L30:
 /* ----------------------------------------------------------------------- */
 	aphi = azabs_(&phir[j - 1], &phii[j - 1]);
 	rs1 += log(aphi);
-	if (abs(rs1) > *elim) {
+	if (f2c_abs(rs1) > *elim) {
 	    goto L60;
 	}
 	if (kdflg == 1) {
@@ -276,10 +276,10 @@ L80:
     s1i = zet1di - zet2di;
 L90:
     rs1 = s1r;
-    if (abs(rs1) > *elim) {
+    if (f2c_abs(rs1) > *elim) {
 	goto L95;
     }
-    if (abs(rs1) < *alim) {
+    if (f2c_abs(rs1) < *alim) {
 	goto L100;
     }
 /* ---------------------------------------------------------------------------- */
@@ -287,11 +287,11 @@ L90:
 /* ------------------------------------------------------------------------- */
     aphi = azabs_(&phidr, &phidi);
     rs1 += log(aphi);
-    if (abs(rs1) < *elim) {
+    if (f2c_abs(rs1) < *elim) {
 	goto L100;
     }
 L95:
-    if (abs(rs1) > 0.) {
+    if (f2c_abs(rs1) > 0.) {
 	goto L300;
     }
 /* ----------------------------------------------------------------------- */
@@ -335,8 +335,8 @@ L100:
 	if (kflag >= 3) {
 	    goto L120;
 	}
-	str = abs(c2r);
-	sti = abs(c2i);
+	str = f2c_abs(c2r);
+	sti = f2c_abs(c2i);
 	c2m = max(str,sti);
 	if (c2m <= ascle) {
 	    goto L120;
@@ -442,13 +442,13 @@ L210:
 /*     TEST FOR UNDERFLOW AND OVERFLOW */
 /* ----------------------------------------------------------------------- */
 	rs1 = s1r;
-	if (abs(rs1) > *elim) {
+	if (f2c_abs(rs1) > *elim) {
 	    goto L260;
 	}
 	if (kdflg == 1) {
 	    iflag = 2;
 	}
-	if (abs(rs1) < *alim) {
+	if (f2c_abs(rs1) < *alim) {
 	    goto L220;
 	}
 /* ----------------------------------------------------------------------- */
@@ -456,7 +456,7 @@ L210:
 /* ----------------------------------------------------------------------- */
 	aphi = azabs_(&phidr, &phidi);
 	rs1 += log(aphi);
-	if (abs(rs1) > *elim) {
+	if (f2c_abs(rs1) > *elim) {
 	    goto L260;
 	}
 	if (kdflg == 1) {
@@ -579,8 +579,8 @@ L280:
 	if (iflag >= 3) {
 	    goto L290;
 	}
-	c2r = abs(ckr);
-	c2i = abs(cki);
+	c2r = f2c_abs(ckr);
+	c2i = f2c_abs(cki);
 	c2m = max(c2r,c2i);
 	if (c2m <= ascle) {
 	    goto L290;

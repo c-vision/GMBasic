@@ -135,11 +135,11 @@ static integer c__5 = 5;
     rzi = (sti + sti) * rcaz;
     inu = (integer) ((real) (*fnu + .5));
     dnu = *fnu - (doublereal) ((real) inu);
-    if (abs(dnu) == .5) {
+    if (f2c_abs(dnu) == .5) {
 	goto L110;
     }
     dnu2 = 0.;
-    if (abs(dnu) > *tol) {
+    if (f2c_abs(dnu) > *tol) {
 	dnu2 = dnu * dnu;
     }
     if (caz > r1) {
@@ -167,7 +167,7 @@ L10:
 /* ----------------------------------------------------------------------- */
     t2 = exp(-dgamln_(&a2, &idum));
     t1 = 1. / (t2 * fc);
-    if (abs(dnu) > .1) {
+    if (f2c_abs(dnu) > .1) {
 	goto L40;
     }
 /* ----------------------------------------------------------------------- */
@@ -179,7 +179,7 @@ L10:
 	ak *= dnu2;
 	tm = cc[k - 1] * ak;
 	s += tm;
-	if (abs(tm) < *tol) {
+	if (f2c_abs(tm) < *tol) {
 	    goto L30;
 	}
 /* L20: */
@@ -290,7 +290,7 @@ L90:
 L100:
     kflag = 2;
     a1 = *fnu + 1.;
-    ak = a1 * abs(smur);
+    ak = a1 * f2c_abs(smur);
     if (ak > *alim) {
 	kflag = 3;
     }
@@ -329,18 +329,18 @@ L110:
     str *= cos(*zi);
     zmlt_(&coefr, &coefi, &str, &sti, &coefr, &coefi);
 L120:
-    if (abs(dnu) == .5) {
+    if (f2c_abs(dnu) == .5) {
 	goto L300;
     }
 /* ----------------------------------------------------------------------- */
 /*     MILLER ALGORITHM FOR CABS(Z).GT.R1 */
 /* ----------------------------------------------------------------------- */
     ak = cos(dpi * dnu);
-    ak = abs(ak);
+    ak = f2c_abs(ak);
     if (ak == czeror) {
 	goto L300;
     }
-    fhs = (d__1 = .25 - dnu2, abs(d__1));
+    fhs = (d__1 = .25 - dnu2, f2c_abs(d__1));
     if (fhs == czeror) {
 	goto L300;
     }
@@ -362,7 +362,7 @@ L120:
     goto L140;
 L130:
     t1 = atan(*zi / *zr);
-    t1 = abs(t1);
+    t1 = f2c_abs(t1);
 L140:
     if (t2 > caz) {
 	goto L170;
@@ -390,7 +390,7 @@ L140:
 	fks = fks + fk + fk + ctwor;
 	fhs = fhs + fk + fk;
 	fk += coner;
-	str = abs(p2r) * fk;
+	str = f2c_abs(p2r) * fk;
 	if (etest < str) {
 	    goto L160;
 	}
@@ -399,7 +399,7 @@ L140:
     goto L310;
 L160:
     fk += spi * t1 * sqrt(t2 / caz);
-    fhs = (d__1 = .25 - dnu2, abs(d__1));
+    fhs = (d__1 = .25 - dnu2, f2c_abs(d__1));
     goto L180;
 L170:
 /* ----------------------------------------------------------------------- */
@@ -529,8 +529,8 @@ L225:
 	}
 	p2r = s2r * p1r;
 	p2i = s2i * p1r;
-	str = abs(p2r);
-	sti = abs(p2i);
+	str = f2c_abs(p2r);
+	sti = f2c_abs(p2i);
 	p2m = max(str,sti);
 	if (p2m <= ascle) {
 	    goto L230;
@@ -592,8 +592,8 @@ L250:
 	if (kflag >= 3) {
 	    goto L260;
 	}
-	str = abs(p2r);
-	sti = abs(p2i);
+	str = f2c_abs(p2r);
+	sti = f2c_abs(p2i);
 	p2m = max(str,sti);
 	if (p2m <= ascle) {
 	    goto L260;

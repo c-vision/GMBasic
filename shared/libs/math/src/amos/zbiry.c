@@ -276,7 +276,7 @@ L40:
     ztar = tth * (*zr * str - *zi * sti);
     ztai = tth * (*zr * sti + *zi * str);
     aa = ztar;
-    aa = -abs(aa);
+    aa = -f2c_abs(aa);
     eaa = exp(aa);
     *bir *= eaa;
     *bii *= eaa;
@@ -300,7 +300,7 @@ L60:
     ztar = tth * (*zr * str - *zi * sti);
     ztai = tth * (*zr * sti + *zi * str);
     aa = ztar;
-    aa = -abs(aa);
+    aa = -f2c_abs(aa);
     eaa = exp(aa);
     *bir *= eaa;
     *bii *= eaa;
@@ -325,7 +325,7 @@ L70:
     k2 = i1mach_(&c__16);
     r1m5 = d1mach_(&c__5);
 /* Computing MIN */
-    i__1 = abs(k1), i__2 = abs(k2);
+    i__1 = f2c_abs(k1), i__2 = f2c_abs(k2);
     k = min(i__1,i__2);
     elim = ((doublereal) ((real) k) * r1m5 - 3.) * 2.303;
     k1 = i1mach_(&c__14) - 1;
@@ -363,7 +363,7 @@ L70:
 	goto L80;
     }
     bk = ztar;
-    ck = -abs(bk);
+    ck = -f2c_abs(bk);
     ztar = ck;
     ztai = ak;
 L80:
@@ -380,7 +380,7 @@ L90:
 /* ----------------------------------------------------------------------- */
 /*     OVERFLOW TEST */
 /* ----------------------------------------------------------------------- */
-    bb = abs(aa);
+    bb = f2c_abs(aa);
     if (bb < alim) {
 	goto L100;
     }

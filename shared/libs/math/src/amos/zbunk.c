@@ -40,8 +40,8 @@
 
     /* Function Body */
     *nz = 0;
-    ax = abs(*zr) * 1.7321;
-    ay = abs(*zi);
+    ax = f2c_abs(*zr) * 1.7321;
+    ay = f2c_abs(*zi);
     if (ay > ax) {
 	goto L10;
     }

@@ -275,7 +275,7 @@ static integer c__2 = 2;
     k2 = i1mach_(&c__16);
     r1m5 = d1mach_(&c__5);
 /* Computing MIN */
-    i__1 = abs(k1), i__2 = abs(k2);
+    i__1 = f2c_abs(k1), i__2 = f2c_abs(k2);
     k = min(i__1,i__2);
     elim = ((doublereal) ((real) k) * r1m5 - 3.) * 2.303;
     k1 = i1mach_(&c__14) - 1;
@@ -440,7 +440,7 @@ L120:
 	bb = cyi[i__];
 	atol = 1.;
 /* Computing MAX */
-	d__1 = abs(aa), d__2 = abs(bb);
+	d__1 = f2c_abs(aa), d__2 = f2c_abs(bb);
 	if (max(d__1,d__2) > ascle) {
 	    goto L135;
 	}

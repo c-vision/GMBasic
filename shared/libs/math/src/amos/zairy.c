@@ -333,7 +333,7 @@ L70:
     k2 = i1mach_(&c__16);
     r1m5 = d1mach_(&c__5);
 /* Computing MIN */
-    i__1 = abs(k1), i__2 = abs(k2);
+    i__1 = f2c_abs(k1), i__2 = f2c_abs(k2);
     k = min(i__1,i__2);
     elim = ((doublereal) ((real) k) * r1m5 - 3.) * 2.303;
     k1 = i1mach_(&c__14) - 1;
@@ -372,7 +372,7 @@ L70:
 	goto L80;
     }
     bk = ztar;
-    ck = -abs(bk);
+    ck = -f2c_abs(bk);
     ztar = ck;
     ztai = ak;
 L80:

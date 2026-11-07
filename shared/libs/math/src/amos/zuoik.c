@@ -107,8 +107,8 @@ static integer c__1 = 1;
 L10:
     zbr = zrr;
     zbi = zri;
-    ax = abs(*zr) * 1.7321;
-    ay = abs(*zi);
+    ax = f2c_abs(*zr) * 1.7321;
+    ay = f2c_abs(*zi);
     iform = 1;
     if (ay > ax) {
 	iform = 2;

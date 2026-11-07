@@ -62,8 +62,8 @@ static integer c__1 = 1;
 
     /* Function Body */
     *nz = 0;
-    ax = abs(*zr) * 1.7321;
-    ay = abs(*zi);
+    ax = f2c_abs(*zr) * 1.7321;
+    ay = f2c_abs(*zi);
     iform = 1;
     if (ay > ax) {
 	iform = 2;
@@ -148,8 +148,8 @@ L25:
 	}
 	str = s2r * cscrr;
 	sti = s2i * cscrr;
-	c1r = abs(str);
-	c1i = abs(sti);
+	c1r = f2c_abs(str);
+	c1i = f2c_abs(sti);
 	c1m = max(c1r,c1i);
 	if (c1m <= ascle) {
 	    goto L30;
@@ -194,8 +194,8 @@ L30:
 	if (iflag >= 3) {
 	    goto L40;
 	}
-	c1r = abs(str);
-	c1i = abs(sti);
+	c1r = f2c_abs(str);
+	c1i = f2c_abs(sti);
 	c1m = max(c1r,c1i);
 	if (c1m <= ascle) {
 	    goto L40;

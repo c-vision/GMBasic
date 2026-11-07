@@ -266,8 +266,8 @@ L70:
 	if (kflag >= 3) {
 	    goto L80;
 	}
-	ptr = abs(c1r);
-	pti = abs(c1i);
+	ptr = f2c_abs(c1r);
+	pti = f2c_abs(c1i);
 	c1m = max(ptr,pti);
 	if (c1m <= bscle) {
 	    goto L80;

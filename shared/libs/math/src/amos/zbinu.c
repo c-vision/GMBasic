@@ -84,7 +84,7 @@ L10:
 /*     POWER SERIES */
 /* ----------------------------------------------------------------------- */
     zseri_(zr, zi, fnu, kode, &nn, &cyr[1], &cyi[1], &nw, tol, elim, alim);
-    inw = abs(nw);
+    inw = f2c_abs(nw);
     *nz += inw;
     nn -= inw;
     if (nn == 0) {
