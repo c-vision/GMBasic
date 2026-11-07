@@ -40,7 +40,7 @@ inc_name() {
     # piu' export per una sola dylib (modello gmbstats): elenco separato da spazi.
     graphics) echo "gfxcolor.inc gfxshape.inc gfx2d.inc gfx3d.inc gfxcodec.inc" ;;
     # libgmbmath: SPECIAL (gmbmath-special) + QUAT (gmbmath-vector) + COMPLEX (gmbmath-core).
-    math) echo "special.inc quat.inc complex.inc" ;;
+    math) echo "special.inc quat.inc complex.inc xform.inc" ;;
     *)   echo "$1.inc" ;;
   esac
 }

@@ -31,6 +31,10 @@ Produce `libgmbmath.dylib` (o `.so`). Export BASIC:
   trigonometriche, iperboliche e inverse) via shim `src/complex_ffi.c` (`ofx_cpx_*`).
   Il numero viaggia per valore come `TYPE Complex { RE, IM }`; le funzioni che hanno già
   un nome scalare nel linguaggio usano il prefisso `C` (CABS, CEXP, CSIN, …).
+- `shared/include/xform.inc` (namespace `XFORM`, 2026-11-07). Trasformazioni 3D di
+  `gmbmath-vector` (`gm_mat3_*`/`gm_mat4_*`, 18 funzioni: rotazioni, traslazione, scala,
+  composizione, punto/direzione, inversa affine, matrice normale, conversioni 3x3<->4x4)
+  via shim `src/xform_ffi.c` (`ofx_xf_*`). Matrici piatte row-major (9 o 16 double).
 
-Guide utente: `QUAT-Guida-Utente`, `COMPLEX-Guida-Utente` (vault) e capitolo V.27 del
+Guide utente: `QUAT-Guida-Utente`, `COMPLEX-Guida-Utente`, `XFORM-Guida-Utente` (vault) e capitolo V.27 del
 manuale.
