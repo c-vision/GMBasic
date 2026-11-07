@@ -31508,9 +31508,9 @@ static void emit_ffi_wrapper(ctx_t* c, fn_info_t* fn, const char* vkey) {
                              "INTERI: i callback vettoriali ammettono solo array di DOUBLE.", sym, what);
                     return;
                 }
-                if (!((nArr == 1 && nSca == 0) || (nArr == 2 && nSca == 0) || (nArr == 1 && nSca == 1))) {
+                if (!((nArr == 1 && nSca == 0) || (nArr == 2 && nSca == 0) || (nArr == 1 && nSca == 1 && !arrRet))) {
                     c99_fail(c, s->line, "FFI '%s': forma di callback non supportata per %s "
-                             "(%d array, %d scalari): ammesse f(v()), f(a(), b()) e f(v(), x).",
+                             "(%d array, %d scalari): ammesse: f(v()) -> scalare/array, f(a(), b()) -> scalare/array, f(v(), x) -> scalare.",
                              sym, what, nArr, nSca);
                     return;
                 }
