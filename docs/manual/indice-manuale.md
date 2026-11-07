@@ -62,7 +62,7 @@
 
 | Cap. | Titolo | pp | Note | Esempi (presenti/citati) |
 |---|---|---|---|---|
-| V.27 | Matematica e statistica | 28 | 16 | 58/58 |
+| V.27 | Matematica e statistica | 28 | 17 | 58/58 |
 | V.28 | Segnali, trading e blockchain | 12 | 8 | 33/33 |
 | V.29 | Date, ore e sistema | 10 | 4 | 40/40 |
 | V.30 | Compressione e dati binari | 4 | 2 | 14/14 |
@@ -321,9 +321,11 @@ assorbita (non si stampa due volte).
 - `Funzioni-Matematiche-Guida-Utente` — sezione
 - `KdTree-Manual` — sezione
 - `Matrix-Linalg-Manual` — sezione
+- `Optimize-Conic-Guida-Utente` — sezione
 - `Optimize-Manual` — sezione
 - `Optimize-OR-Guida-Utente` — sezione
 - `Optimize-ORTools-Guida-Utente` — sezione
+- `QUAT-Guida-Utente` — sezione
 - `Spatial-Guida-Utente` — sezione
 - `Special-Manual` — sezione
 - `Stats-Manual` — sezione

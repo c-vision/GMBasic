@@ -75,6 +75,7 @@ decisione.
 | matrici (struttura e comandi) | `MATRIX`, `Matrix-Linalg-Manual` | creazione, accesso, copia, slicing, prodotti, predicati |
 | algebra lineare (algoritmi) | `LINALG`, `Matrix-Linalg-Manual` | decomposizioni, risolutori, norme, funzioni matriciali |
 | vettori | `VECTOR` | norme, distanze, prodotto scalare |
+| quaternioni e rotazioni 3D | `QUAT`, `QUAT-Guida-Utente` | composizione, interpolazione (SLERP), matrice 3×3 |
 | statistica | `STATS`, `Stats-Manual` | descrittiva, test, distribuzioni |
 | serie temporali | `TIMESERIES` | ARIMA, GARCH, Kalman, HMM, previsione |
 | regressione e fitting | `REGRESSION`, `FITTING` | modelli lineari, curve fit |
@@ -154,6 +155,69 @@ differenze finite centrali della barriera e si controlla la convessità con i cr
 Sylvester (`08-Conic.bas` fa esattamente questo, e verifica che `scale` coincida con la gap
 delle metriche NT).
 
+#### Solver conici completi (`IPM*`, `SOCP*`, `SDP*`, `PRESOLVE*`, `STDFORM*`)
+
+Gli stessi generatori sono il motore di quattro solver che `gmbconic` espone per intero.
+La forma dei dati è sempre la stessa: **array piatti** con layout dichiarato, nessuna struct
+da costruire e nessuna tabella di puntatori da passare in BASIC.
+
+**IPM** risolve `min c'x` con `A x = b`, `x >= 0` (`IPMLP`) oppure `min 1/2 x'Qx + c'x`
+(`IPMQP`). Le uscite sono `x` (`n`), `y` (`m`) e `z` (`n`); le varianti `*WARM` accettano un
+punto iniziale, le varianti `*CSC` la matrice in forma sparsa. Per un QP sparso `Q` si passa
+nel triangolo inferiore in CSC, con la diagonale presente.
+
+**SOCP** risolve `min c'x` con `E x = d` e `G x + h` in un prodotto di coni. I coni sono tre
+array paralleli: `ctype(k)` (`0` = `R+`, `1` = cono quadratico, `2` = quadratico ruotato),
+`cnm(k)` (dimensione) e `cmem()` (indici dei membri dei soli coni SOC, concatenati in ordine
+di cono). `G` ha `K = somma(cnm)` righe e `n` colonne. `SOCPSOLVESP` risolve lo stesso
+problema con la LU sparsa: risultati identici, costo `O(fill)` invece di `O(N^3)`.
+
+**SDP** (`SDPSOLVE`) è il problema conico unificato: variabili scalari non negative, blocchi
+PSD `X_j`, blocchi SOC `z_i` e blocchi esponenziali/potenza. `dims(j)` dà l'ordine del blocco
+PSD, `Cbar`/`Abar` sono le matrici consecutive (per `Abar`: per riga di uguaglianza, poi per
+blocco), `socdims`, `Csoc`/`Asoc`, `ekind`/`ealpha`, `Cexp`/`Aexp` seguono lo stesso schema.
+Le uscite hanno il medesimo layout, più `x`, `y` e `fb(0)` che segnala un punto di fallback
+near-optimal.
+
+**Presolve** (`PRESOLVENEW` … `PRESOLVEFREE`) riduce un LP in forma standard con riduzioni
+strutturali sicure e un postsolve esatto. L'handle contiene lo stato; `PRESOLVEDIMS` dice
+quante righe/colonne/`nnz` ha il ridotto, `PRESOLVEREDUCED` lo copia in CSC,
+`PRESOLVEPOSTSOLVE` riporta la soluzione nello spazio originale e `PRESOLVEPOSTSOLVEDIR` fa
+lo stesso per una direzione di Farkas. Se il ridotto è vuoto (`mr = nr = 0`) il postsolve
+ricostruisce comunque tutta la soluzione.
+
+**Forma standard** (`STDFORMBUILD` … `STDFORMFREE`) trasforma un LP/QP con bounds e vincoli
+`<=`/`>=`/`=` nella forma `min 1/2 xt'Qs xt + cs'xt`, `As xt = bs`, `xt >= 0`, gestendo shift,
+colonne negate, variabili libere spezzate e fisse. `STDFORMGETA/GETB/GETC/GETQ`
+materializzano il problema standard per `IPMLP`/`IPMQP`; `STDFORMMAPX/MAPY/MAPDIR` riportano
+primali, duali e direzioni nello spazio originale. I lati liberi si indicano con
+`-1E308`/`+1E308`.
+
+```basic
+' dispacciamento: min 2g1+3g2+4g3  s.t. g1+g2+g3=100, g1+g2=60, g>=0
+DIM A(5) AS DOUBLE
+A(0)=1 : A(1)=1 : A(2)=1 : A(3)=1 : A(4)=1 : A(5)=0
+DIM b(1) AS DOUBLE : b(0)=100 : b(1)=60
+DIM c(2) AS DOUBLE : c(0)=2 : c(1)=3 : c(2)=4
+DIM g(2) AS DOUBLE, y(1) AS DOUBLE, z(2) AS DOUBLE
+PRINT OPTIMIZE.IPMLP(A, 2, 3, b, c, 1E-8, 1E-8, 1E-8, 200, g, y, z)
+' 0 — g = (60, 0, 40), y = (4, -2)
+```
+
+Tre dettagli pratici. Primo: `tol` è la tolleranza **assoluta** di Newton e il pavimento del
+double rende inutile scendere sotto `1e-8`; con `1e-10` il ciclo può esaurire le iterazioni
+(`1`) pur avendo già il punto corretto. Secondo: i duali di un LP degenere **non sono unici**,
+quindi `MAPY` restituisce un duale valido ma non necessariamente quello "atteso" — si verifica
+la stazionarietà, non un numero fissato. Terzo: i ritorni sono `0` ottimo, `1` max iter,
+`2` memoria, `3` singolare, `-1` argomenti; un `-1` non è "non risolto", è un errore di
+chiamata.
+
+La verifica segue il protocollo dei quattro backend: `16-ConicSolvers.bas` usa tutte le 26
+funzioni di solver e trasformazione su uno scenario di dispacciamento e allocazione, con
+`parity4` verde; `conic_ipm_presolve.bas`, `conic_socp_sdp.bas` e `conic_stdform.bas` coprono
+i casi limite (ridotto vuoto, duale non unico, blocchi PSD/SOC/EXP). La guida di riferimento
+è `Optimize-Conic-Guida-Utente`.
+
 ### 7.3 Rilassamento lagrangiano (`LAGRANGIANSUBGRADIENT`)
 
 Per `min f(x)` soggetto a `A x >= b` e `x` in un insieme `X`, i vincoli vengono spostati nella
@@ -231,7 +295,54 @@ PRINT OPTIMIZE.LSSOLVE(Score, init, 4, 0, 200, out)   ' 1
 PRINT out(1), init(0), init(1), init(2), init(3)      ' 14  0 1 2 3
 ```
 
-## 8. Errori frequenti
+## 8. Quaternioni e rotazioni 3D (`QUAT`)
+
+Una rotazione tridimensionale si può descrivere con tre angoli (Eulero), con una matrice
+3×3, oppure con quattro numeri: un **quaternione unitario**. La terza forma è quella che
+usa un motore grafico o un simulatore, perché comporre due rotazioni costa 16 prodotti,
+interpolare costa un `acos` e non esiste il blocco cardinale (gimbal lock) degli angoli.
+
+`QUAT` (in `libgmbmath`, `IMPORT QUAT`) è il `TYPE Quat { X, Y, Z, W AS DOUBLE }` passato
+**per valore**, senza handle né stato: diciannove funzioni pure.
+
+```basic
+IMPORT QUAT
+
+DIM q AS Quat, v(2) AS DOUBLE
+q = QUAT.FROMAXISANGLE(0, 0, 1, MATH.DEG2RAD(90))   ' 90° attorno a +Z
+QUAT.ROTATEVEC3(q, 1, 0, 0, v)
+PRINT v(0), v(1), v(2)                              ' 0  1  0
+```
+
+Le quattro convenzioni che generano errori se non si tengono presenti:
+
+1. **i campi sono `X, Y, Z, W`** — parte vettoriale prima, parte scalare dopo; l'identità
+   è `(0,0,0,1)`;
+2. **`MUL(a, b)` applica prima `b`, poi `a`** (prodotto di Hamilton): l'ordine è
+   l'opposto di come si legge;
+3. **`FROMDIR` porta +Z** sulla direzione (convenzione camera); per una coppia arbitraria
+   di vettori si usa `FROMTWOVECTORS`;
+4. **`TOMAT3` scrive row-major** (`m(0..2)` = prima riga), mentre la struct C di origine è
+   column-major: la conversione è fatta nello shim, chi legge la matrice vede righe.
+
+Il gruppo completo:
+
+| gruppo | funzioni | note |
+|---|---|---|
+| costruzione | `IDENTITY`, `MAKE`, `FROMDIR`, `FROMAXISANGLE`, `FROMTWOVECTORS`, `FROMMAT3` | `MAKE` non normalizza |
+| algebra | `ADD`, `SCALE`, `NEG`, `MUL`, `CONJUGATE`, `DOT`, `LENGTH`, `NORMALIZE`, `INVERSE` | `DOT` = `cos(θ/2)` fra versori |
+| interpolazione | `LERP`, `SLERP` | `SLERP` per animazioni (velocità angolare costante) |
+| conversione | `TOMAT3`, `ROTATEVEC3` | ritornano `0` oppure `-1` se l'array è corto |
+
+`INVERSE` è l'unica funzione con esito: su un quaternione nullo non esiste l'inversa e lo
+stato in `st()` vale `-1`. `NORMALIZE` del nullo restituisce l'identità (scelta della
+libreria C, documentata perché è un caso che si incontra con dati rumorosi).
+
+Sample completo: `shared/samples/Quat/QuatOrientation.bas` (assetto di un drone, tutte e
+19 le funzioni). MiniTest: `shared/minitests/quat/quat_core.bas`. Parità verificata su
+IL, PCodeVM, VM/C e C99Native.
+
+## 9. Errori frequenti
 
 | Sintomo | Causa | Correzione |
 |---|---|---|
@@ -240,8 +351,10 @@ PRINT out(1), init(0), init(1), init(2), init(3)      ' 14  0 1 2 3
 | varianza "sbagliata" | divisore `n` contro `n-1` | controlla la convenzione della guida |
 | `NaN` in un risultato | dominio non valido (log di 0, sqrt negativo) | valida l'input prima |
 | confronto fra double che fallisce | uguaglianza esatta | usa una tolleranza |
+| rotazione che "scala" | quaternione non normalizzato | `QUAT.NORMALIZE` prima di usarlo |
+| composizione invertita | ordine di `MUL(a, b)` | `MUL(a, b)` = prima `b`, poi `a` |
 
-## 9. Dove andare adesso
+## 10. Dove andare adesso
 
 - **V.28** — le stesse formule applicate a serie temporali e trading.
 - **V.31** — TORCH, quando la matematica diventa tensori.
@@ -1744,6 +1857,11 @@ PRINT MATRIX.GETVALUE(m, 1, 1)
 ### Special-Manual
 
 *Fonte: `Special-Manual`*
+
+> **SPECIAL è un namespace FFI**, non un builtin: l'implementazione C è in
+> `shared/libs/math` (sorgenti inclusi, `libgmbmath`), l'export BASIC è
+> `shared/include/special.inc`. Serve `IMPORT SPECIAL`; la sintassi
+> `SPECIAL.NOME(...)` è invariata rispetto al vecchio builtin.
 
 
 ## 1. Riferimento funzioni
