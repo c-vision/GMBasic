@@ -27,6 +27,10 @@ internal static class FfiCallbackTrampolineTypes
     // array + scalare, ritorno array: il nativo passa (ptr, n, scalare, out) e il
     // trampolino restituisce il numero di elementi scritti (come 144/145).
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)] internal delegate double CbV1S1OutD(IntPtr a0, long n0, double s0, IntPtr outv);
+    // 192+arità (2026-11-07): solo scalari -> array (f(x[,y[,z]]) AS ARRAY).
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)] internal delegate double CbS1OutD(double a0, IntPtr outv);
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)] internal delegate double CbS2OutD(double a0, double a1, IntPtr outv);
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)] internal delegate double CbS3OutD(double a0, double a1, double a2, IntPtr outv);
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)] internal delegate double CbV1OutD(IntPtr a0, long n0, IntPtr outv);   // ritorna il numero di elementi scritti
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)] internal delegate double CbV2D(IntPtr a0, long n0, IntPtr a1, long n1);
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)] internal delegate double CbV2OutD(IntPtr a0, long n0, IntPtr a1, long n1, IntPtr outv);   // idem
