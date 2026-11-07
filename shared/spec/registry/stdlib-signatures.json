@@ -6183,6 +6183,21 @@
     },
     {
       "ns": "BRAINS",
+      "name": "Adjacency",
+      "fn": true,
+      "return": "string",
+      "params": [
+        {
+          "name": "brain",
+          "type": "string",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        }
+      ]
+    },
+    {
+      "ns": "BRAINS",
       "name": "ByFolder",
       "fn": true,
       "return": "string",

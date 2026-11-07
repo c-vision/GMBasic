@@ -2596,6 +2596,54 @@ char* gmb_graph_brain_query(const char* brain, const char* op, const char* arg1,
         for (int i = 0; i < k5; i++) { char rn[64]; sb_num6(pr[i].rank, rn, sizeof(rn)); char nnb[4096]; sb_esc(pr[i].node ? pr[i].node : "", nnb, sizeof(nnb)); snprintf(tmp, sizeof(tmp), "%s{\"node\":\"%s\",\"rank\":%s}", i ? "," : "", nnb, rn); sb_app(&out, &len, &cap, tmp); }
         sb_app(&out, &len, &cap, "]}");
         free(ns); free(pr);
+    } else if (strcasecmp(op, "ADJACENCY") == 0) {
+        /* Ponte BRAINS -> GRAPH/FLOW: nodi (ordine ordinale = indice di matrice) + archi.
+         * Ordine canonico IDENTICO al mondo C# (GraphMultiQuery.Adjacency): nodi in ordine strcmp,
+         * una voce per coppia (i,j) — topologia, peso uniforme —, coppie ordinate per (i,j).
+         * Niente pesi nel payload: C# legge il grafo attivo in memoria e il C il JSON esportato,
+         * quindi le confidenze degli archi inferiti divergono; il ponte resta sulla topologia. */
+        int ncnt = 0; char** ns = gmb_graph_nodes(h, &ncnt);
+        for (int i = 1; i < ncnt; i++) {
+            char* k = ns[i]; int j = i - 1;
+            while (j >= 0 && strcmp(ns[j], k) > 0) { ns[j + 1] = ns[j]; j--; }
+            ns[j + 1] = k;
+        }
+        int el = 0; gmb_graph_edge_full_t* es = gmb_graph_edge_list(h, &el);
+        typedef struct { int i, j; } sb_adj_e_t;
+        sb_adj_e_t* ag = el > 0 ? (sb_adj_e_t*)calloc((size_t)el, sizeof(sb_adj_e_t)) : NULL;
+        int an = 0;
+        for (int e = 0; e < el; e++) {
+            int a = -1, b = -1;
+            for (int i = 0; i < ncnt; i++) {
+                if (a < 0 && strcmp(ns[i], es[e].from) == 0) a = i;
+                if (b < 0 && strcmp(ns[i], es[e].to) == 0) b = i;
+                if (a >= 0 && b >= 0) break;
+            }
+            if (a < 0 || b < 0 || !ag) continue;
+            int found = 0;
+            for (int k = 0; k < an; k++) if (ag[k].i == a && ag[k].j == b) { found = 1; break; }
+            if (!found) { ag[an].i = a; ag[an].j = b; an++; }
+        }
+        for (int i = 1; i < an; i++) {
+            sb_adj_e_t k = ag[i]; int j = i - 1;
+            while (j >= 0 && (ag[j].i > k.i || (ag[j].i == k.i && ag[j].j > k.j))) { ag[j + 1] = ag[j]; j--; }
+            ag[j + 1] = k;
+        }
+        size_t cap = 1024 + (size_t)ncnt * 96 + (size_t)an * 48, len = 0; out = (char*)malloc(cap); out[0] = 0;
+        char tmp[8192];
+        snprintf(tmp, sizeof(tmp), "{\"status\":\"Success\",\"brain\":\"%s\",\"n\":%d,\"nodes\":[", bb, ncnt);
+        sb_app(&out, &len, &cap, tmp);
+        for (int i = 0; i < ncnt; i++) {
+            char nb[4096]; sb_esc(ns[i] ? ns[i] : "", nb, sizeof(nb));
+            snprintf(tmp, sizeof(tmp), "%s\"%s\"", i ? "," : "", nb); sb_app(&out, &len, &cap, tmp);
+        }
+        sb_app(&out, &len, &cap, "],\"edges\":[");
+        for (int k = 0; k < an; k++) {
+            snprintf(tmp, sizeof(tmp), "%s[%d,%d]", k ? "," : "", ag[k].i, ag[k].j);
+            sb_app(&out, &len, &cap, tmp);
+        }
+        sb_app(&out, &len, &cap, "]}");
+        free(ns); free(es); free(ag);
     } else if (strcasecmp(op, "NEIGHBORS") == 0 && arg1) {
         int l = 0; gmb_graph_edge_t* ns = gmb_graph_neighbors(h, arg1, &l);
         char** arr = (char**)malloc((size_t)(l ? l : 1) * sizeof(char*)); for (int i = 0; i < l; i++) arr[i] = ns[i].node;

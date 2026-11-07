@@ -46,6 +46,7 @@ internal sealed partial class PCodeProcessor
         BuiltInFunction.GRAPHPAGERANK,
         BuiltInFunction.GRAPHCONNECTED,
         BuiltInFunction.GRAPHSTATS,
+        BuiltInFunction.BRAINSADJACENCY,
         BuiltInFunction.GRAPHSTRONGLYCONNECTED,
         BuiltInFunction.GRAPHTOPOSORT,
         BuiltInFunction.GRAPHBIPARTITE,
@@ -264,78 +265,13 @@ internal sealed partial class PCodeProcessor
                 return Basic.IlBackend.IlRuntime.GraphPath(
                     ArgOr(args, 0)?.ToString() ?? "", ArgOr(args, 1)?.ToString() ?? "", ArgOr(args, 2)?.ToString() ?? "");
         },
-        [BuiltInFunction.GRAPHPAGERANK] = (task, args) =>
-        {
-                return Basic.IlBackend.IlRuntime.GraphPageRank(
-                    ArgOr(args, 0)?.ToString() ?? "", args.Length > 1 ? SafeDouble(ArgOr(args, 1)) : 10);
-        },
-        [BuiltInFunction.GRAPHCONNECTED] = (task, args) =>
-        {
-                return Basic.IlBackend.IlRuntime.GraphConnected(ArgOr(args, 0)?.ToString() ?? "");
-        },
         [BuiltInFunction.GRAPHSTATS] = (task, args) =>
         {
                 return Basic.IlBackend.IlRuntime.GraphStats(ArgOr(args, 0)?.ToString() ?? "");
         },
-        [BuiltInFunction.GRAPHSTRONGLYCONNECTED] = (task, args) =>
+        [BuiltInFunction.BRAINSADJACENCY] = (task, args) =>
         {
-                return Basic.IlBackend.IlRuntime.GraphStronglyConnected(ArgOr(args, 0)?.ToString() ?? "");
-        },
-        [BuiltInFunction.GRAPHTOPOSORT] = (task, args) =>
-        {
-                return Basic.IlBackend.IlRuntime.GraphTopoSort(ArgOr(args, 0)?.ToString() ?? "");
-        },
-        [BuiltInFunction.GRAPHBIPARTITE] = (task, args) =>
-        {
-                return Basic.IlBackend.IlRuntime.GraphBipartite(ArgOr(args, 0)?.ToString() ?? "");
-        },
-        [BuiltInFunction.GRAPHBETWEENNESS] = (task, args) =>
-        {
-                return Basic.IlBackend.IlRuntime.GraphBetweenness(ArgOr(args, 0)?.ToString() ?? "");
-        },
-        [BuiltInFunction.GRAPHCLUSTERING] = (task, args) =>
-        {
-                return Basic.IlBackend.IlRuntime.GraphClustering(
-                    ArgOr(args, 0)?.ToString() ?? "", ArgOr(args, 1)?.ToString() ?? "");
-        },
-        [BuiltInFunction.GRAPHDIAMETER] = (task, args) =>
-        {
-                return Basic.IlBackend.IlRuntime.GraphDiameter(ArgOr(args, 0)?.ToString() ?? "");
-        },
-        [BuiltInFunction.GRAPHMST] = (task, args) =>
-        {
-                return Basic.IlBackend.IlRuntime.GraphMst(ArgOr(args, 0)?.ToString() ?? "");
-        },
-        [BuiltInFunction.GRAPHLOUVAIN] = (task, args) =>
-        {
-                return Basic.IlBackend.IlRuntime.GraphLouvain(ArgOr(args, 0)?.ToString() ?? "");
-        },
-        [BuiltInFunction.GRAPHMAXFLOW] = (task, args) =>
-        {
-                return Basic.IlBackend.IlRuntime.GraphMaxFlow(
-                    ArgOr(args, 0)?.ToString() ?? "", ArgOr(args, 1)?.ToString() ?? "", ArgOr(args, 2)?.ToString() ?? "");
-        },
-        [BuiltInFunction.GRAPHDIJKSTRA] = (task, args) =>
-        {
-                return Basic.IlBackend.IlRuntime.GraphDijkstra(
-                    ArgOr(args, 0)?.ToString() ?? "", ArgOr(args, 1)?.ToString() ?? "", ArgOr(args, 2)?.ToString() ?? "");
-        },
-        [BuiltInFunction.GRAPHHASCYCLE] = (task, args) =>
-        {
-                return Basic.IlBackend.IlRuntime.GraphHasCycle(ArgOr(args, 0)?.ToString() ?? "");
-        },
-        [BuiltInFunction.GRAPHECCENTRICITY] = (task, args) =>
-        {
-                return Basic.IlBackend.IlRuntime.GraphEccentricity(
-                    ArgOr(args, 0)?.ToString() ?? "", ArgOr(args, 1)?.ToString() ?? "");
-        },
-        [BuiltInFunction.GRAPHDFS] = (task, args) =>
-        {
-                return Basic.IlBackend.IlRuntime.GraphDfs(ArgOr(args, 0)?.ToString() ?? "", ArgOr(args, 1)?.ToString() ?? "");
-        },
-        [BuiltInFunction.GRAPHBFS] = (task, args) =>
-        {
-                return Basic.IlBackend.IlRuntime.GraphBfs(ArgOr(args, 0)?.ToString() ?? "", ArgOr(args, 1)?.ToString() ?? "");
+                return Basic.IlBackend.IlRuntime.GraphAdjacency(ArgOr(args, 0)?.ToString() ?? "");
         },
         [BuiltInFunction.GRAPHBUILD] = (task, args) =>
         {
@@ -409,12 +345,6 @@ internal sealed partial class PCodeProcessor
         [BuiltInFunction.GRAPHDOT] = (task, args) =>
         {
                 return Basic.IlBackend.IlRuntime.GraphDot(ArgOr(args, 0)?.ToString() ?? "");
-        },
-        [BuiltInFunction.GRAPHSUBGRAPH] = (task, args) =>
-        {
-                return Basic.IlBackend.IlRuntime.GraphSubgraph(
-                    ArgOr(args, 0)?.ToString() ?? "", ArgOr(args, 1)?.ToString() ?? "",
-                    args.Length > 2 ? SafeDouble(ArgOr(args, 2)) : 1);
         },
         [BuiltInFunction.GRAPHBYTAG] = (task, args) =>
         {

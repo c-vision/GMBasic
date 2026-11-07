@@ -12,8 +12,9 @@
 ' TUTTA la matematica dei grafi è qui: il namespace builtin BRAINS non contiene più
 ' algoritmi (BFS/DFS/Dijkstra/PageRank/Louvain/MST/SCC/TopoSort/... si chiamano da GRAPH e
 ' lavorano su queste matrici). In BRAINS restano solo le QUERY sul cervello
-' (BYTAG/BYFOLDER/QUERYMULTI/NEIGHBORS/PATH/STATS/ISVALID/DOT): quel grafo va materializzato
-' dal chiamante in nodi + matrice per usare gli algoritmi di questo pacchetto.
+' (ADJACENCY/BYTAG/BYFOLDER/QUERYMULTI/NEIGHBORS/PATH/STATS/ISVALID/DOT). Per usare gli
+' algoritmi di questo pacchetto su un cervello: BRAINS.Adjacency(brain) dà n, i nomi dei nodi
+' (indice = riga/colonna) e gli archi come coppie [i,j]; da lì si riempie la matrice n x n.
 '
 ' Gli array `out()` vanno dimensionati dal chiamante:
 '   - order()/comp()/prev()/color()/comm()/clique(): n

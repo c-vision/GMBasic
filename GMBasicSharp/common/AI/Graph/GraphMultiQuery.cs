@@ -207,6 +207,32 @@ public static class GraphMultiQuery
         return JsonSerializer.Serialize(new { status = path.Count > 0 ? "Success" : "InsufficientEvidence", brain, from, to, path }, JsonOpts);
     }
 
+    /// <summary>BRAINS.ADJACENCY(brain): materializza il grafo del cervello (nodi + archi pesati)
+    /// perché gli algoritmi FFI GRAPH/FLOW possano lavorarci — la matematica resta una sola, in C.
+    /// Ritorna JSON {status, brain, n, nodes:[...], edges:[[i,j],...]}: i nodi sono in ordine
+    /// ORDINALE e il loro indice è riga/colonna della matrice di adiacenza n×n (row-major).
+    /// Una coppia per arco, ordinate per (i,j): è l'ordine canonico condiviso col runtime C
+    /// (gmb_graph_brain_query op "ADJACENCY"), così i 4 backend producono lo STESSO JSON.
+    /// Il payload è TOPOLOGICO (peso uniforme): i pesi di confidenza degli archi inferiti non
+    /// sono confrontabili fra i due mondi (C# legge il grafo attivo in memoria, il C il JSON
+    /// esportato) e restano fuori dal ponte per non introdurre divergenze.</summary>
+    public static string Adjacency(string brain)
+    {
+        var g = LoadBrain(brain);
+        if (g is null) return JsonSerializer.Serialize(new { status = "Error", error = $"brain '{brain}' non disponibile come graph" });
+        var nodes = g.Nodes.Keys.OrderBy(x => x, StringComparer.Ordinal).ToList();
+        var idx = new Dictionary<string, int>(StringComparer.Ordinal);
+        for (var i = 0; i < nodes.Count; i++) idx[nodes[i]] = i;
+        var pairs = new SortedSet<(int I, int J)>();
+        foreach (var e in g.Edges)
+        {
+            if (!idx.TryGetValue(e.From, out var a) || !idx.TryGetValue(e.To, out var b)) continue;
+            pairs.Add((a, b));
+        }
+        var edges = pairs.Select(p => new[] { (double)p.I, (double)p.J }).ToList();
+        return JsonSerializer.Serialize(new { status = "Success", brain, n = nodes.Count, nodes, edges }, JsonOpts);
+    }
+
     /// <summary>GRAPH.PAGERANK(brain [, topK]): ranking PageRank dei nodi (fallback C# power
     /// iteration, coerente con WikiGraph.PageRank). Ritorna JSON {status, brain, top:[{node,rank}]}.</summary>
     public static string PageRank(string brain, int topK = 10)

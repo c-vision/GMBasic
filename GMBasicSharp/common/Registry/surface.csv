@@ -330,6 +330,7 @@ procedure,BITS,HAMMINGDIST,HammingDist
 procedure,BITS,ISPOW2,IsPow2
 procedure,BITS,NEXTPOW2,NextPow2
 procedure,BITS,PARITY,BitParity
+procedure,BRAINS,Adjacency,BrainsAdjacency
 procedure,BRAINS,ByFolder,GraphByFolder
 procedure,BRAINS,ByTag,GraphByTag
 procedure,BRAINS,Dot,GraphDot
