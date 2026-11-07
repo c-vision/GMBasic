@@ -1,13 +1,20 @@
 # libgmbgraphics (FFI) — grafica computazionale
 
-Sorgenti venduti da `gmbsuite/gmbgraphics` (colore e geometria 2D; gli altri moduli si
-aggiungono per dominio). Build: `bash build.sh` → `libgmbgraphics.dylib`.
+Sorgenti venduti da `gmbsuite/gmbgraphics` (color, 2D, 3D, codec e surface). Il build
+compila i domini in `src/` più i sorgenti condivisi elencati in `shared-src.txt`
+(`shared/libs/compute` e il nucleo vettoriale di `shared/libs/math`).
+Build: `bash build.sh` → `libgmbgraphics.dylib`.
 
-Export BASIC (in `shared/include/`):
+Export BASIC (in `shared/include/`, 154 funzioni):
 
 - `gfxcolor.inc` → namespace `GFXCOLOR` (conversioni RGB/HSV/HSL/CMYK, mix, lighten/darken/saturate)
 - `gfxshape.inc` → namespace `GFXSHAPE` (point-in-polygon/circle/rect/triangle, area/centroide,
   closest point su segmento)
+- `gfx2d.inc` → namespace `GFX2D` (immagini float 2D: convoluzioni, Sobel, gaussiana, mediana,
+  ricampionamento, rotazione, warping, equalizzazione, blending)
+- `gfx3d.inc` → namespace `GFX3D` (camera, matrici di proiezione/view, intersezioni raggio,
+  mesh, rasterizzazione, frustum/AABB, shading)
+- `gfxcodec.inc` → namespace `GFXCODEC` (BC1)
 
 ## Confine con il linguaggio
 
