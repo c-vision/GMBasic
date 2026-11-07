@@ -35,3 +35,10 @@ double sum4(const double *a, int64_t d0, int64_t d1, int64_t d2, int64_t d3)
     for (int64_t i = 0; i < n; i++) s += a[i];
     return s;
 }
+
+/* Prima estensione: valida con qualunque rango (gli argomenti oltre la prima restano ignorati). */
+double first_ext(const double *a, int64_t d0)
+{
+    (void)a;
+    return (double)d0;
+}

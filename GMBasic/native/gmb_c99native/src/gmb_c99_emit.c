@@ -10031,6 +10031,34 @@ static int dim_arr_timeseries1d(ctx_t* c, gmb_stmt_t* s, gmb_expr_t* init) {
  * serve dichiarare il parametro con le virgole, come per UBOUND(a,2) (limite del linguaggio,
  * non solo della FFI). Sempre attivo, salvo DECLARE NATIVE. */
 #define C99_FFI_MAXRANK 4
+#define C99_RANK_ABS "((gmb_int_t)(-9223372036854775807LL - 1))"   /* bound assente: rango minore del parametro */
+/* Tabella dei ranghi visti ai call-site per ogni parametro array di una procedura nominale (persistente
+ * fra le passate di emissione: l'AST e' lo stesso). min<max = parametro a RANGO MISTO: i call-site
+ * passano i bound reali e ABS per le dimensioni mancanti, la callee ha rango max. */
+static struct { const gmb_stmt_t* s; int i, mn, mx; } g_rank_tab[512];
+static int g_rank_n = 0;
+static int rank_tab_find(const gmb_stmt_t* s, int i) { for (int k = 0; k < g_rank_n; k++) if (g_rank_tab[k].s == s && g_rank_tab[k].i == i) return k; return -1; }
+static int rank_tab_mixed(const gmb_stmt_t* s, int i, int* mxp) { int k = rank_tab_find(s, i); if (k < 0 || g_rank_tab[k].mn >= g_rank_tab[k].mx) return 0; if (mxp) *mxp = g_rank_tab[k].mx; return 1; }
+/* aggiorna min/max; ritorna 1 se serve rifare l'emissione (cambia qualcosa con max >= 2) */
+static int rank_tab_note(const gmb_stmt_t* s, int i, int rmin, int rmax) {
+    int k = rank_tab_find(s, i), ch = 0;
+    if (k < 0) { if (g_rank_n >= 512) return 0; k = g_rank_n++; g_rank_tab[k].s = s; g_rank_tab[k].i = i; g_rank_tab[k].mn = rmin; g_rank_tab[k].mx = rmax; return rmax >= 2; }
+    if (rmin < g_rank_tab[k].mn) { g_rank_tab[k].mn = rmin; ch = 1; }
+    if (rmax > g_rank_tab[k].mx) { g_rank_tab[k].mx = rmax; ch = 1; }
+    return ch && g_rank_tab[k].mx >= 2;
+}
+/* Parametro del TIPO "array a rango misto" della funzione corrente? (per nome della variabile) */
+static int rank_mixed_param(ctx_t* c, const char* name, int* mxp) {
+    if (!c->cur_fn || !c->cur_fn->stmt || !name) return 0;
+    const gmb_stmt_t* s = c->cur_fn->stmt;
+    for (int i = 0; i < s->n_params; i++) if (s->func_params[i] && strcasecmp(s->func_params[i], name) == 0) return rank_tab_mixed(s, i, mxp);
+    return 0;
+}
+/* Selezione dei ranghi per la chiamata FFI con argomenti a rango misto: il call-site emette una
+ * catena `cond ? chiamata_rango_1 : ... : chiamata_rango_max` (come IL/PCode/VM-C, che leggono il
+ * rango a runtime). */
+typedef struct { char name[48]; int maxr; } ffi_dyn_t;
+static ffi_dyn_t g_dyn[4]; static int g_ndyn = 0; static int g_dyn_sel[4]; static int g_dyn_force = 0;
 static int ffi_fn_has_arrays(const fn_info_t* fn) {
     if (!fn || !fn->stmt || !fn->stmt->is_ffi || fn->stmt->ffi_native) return 0;   /* NATIVE: ABI esatta */
     for (int i = 0; i < fn->stmt->n_params; i++) if (p_arraylike(fn->stmt, i)) return 1;
@@ -10041,6 +10069,7 @@ static int ffi_arg_rank(ctx_t* c, gmb_expr_t* arg) {
     if (arg && arg->kind == GMB_EXPR_VAR) vname = arg->var;
     else if (arg && arg->kind == GMB_EXPR_CALL && arg->var && arg->nargs == 0) vname = arg->var;
     var_t* tv = vname ? lookup_var(c, vname) : NULL;
+    if (g_dyn_force && tv) for (int j = 0; j < g_ndyn; j++) if (strcasecmp(tv->name, g_dyn[j].name) == 0) return g_dyn_sel[j];
     int r = (tv && tv->is_array && !tv->matrix && !tv->jagged && !tv->dyn_len && tv->ndims > 0) ? tv->ndims : 1;
     return r > C99_FFI_MAXRANK ? C99_FFI_MAXRANK : r;
 }
@@ -10238,12 +10267,18 @@ static void emit_arr_call_arg(ctx_t* c, fn_info_t* fn, int i, gmb_expr_t* arg, i
      * il cui parametro e' dichiarato `a()` rende la callee N-D (come se fosse `a(,)`): l'ABI dei bound
      * (`__b1..`) e' gia' quella dei parametri con virgole. Al primo cambiamento l'emissione viene ripetuta
      * da capo (gmb_c99_emit) fino al punto fisso, cosi' firma, corpo e call-site concordano. */
-    if (fn_array_lower_abi(fn) && !fn->stmt->is_ffi && tv->ndims >= 2 && tv->ndims <= C99_FFI_MAXRANK
-        && !(fn->stmt->param_variadic && fn->stmt->param_variadic[i])
-        && !(fn->stmt->param_ndims && fn->stmt->param_ndims[i] >= 2)) {
+    if (fn_array_lower_abi(fn) && !fn->stmt->is_ffi && !(fn->stmt->param_variadic && fn->stmt->param_variadic[i])) {
+        int r = tv->ndims > 0 ? tv->ndims : 1, rmin = r, rmax = r, cmx = 0;
+        if (r > C99_FFI_MAXRANK) r = rmin = rmax = C99_FFI_MAXRANK;
+        if (rank_mixed_param(c, tv->name, &cmx)) { rmin = 1; rmax = cmx; }   /* inoltro di un parametro a rango misto */
+        if (rank_tab_note(fn->stmt, i, rmin, rmax)) g_c99_rank_changed = 1;
+        int tmx = 0; rank_tab_mixed(fn->stmt, i, &tmx);
+        if (!tmx) { int k = rank_tab_find(fn->stmt, i); if (k >= 0) tmx = g_rank_tab[k].mx; }
         gmb_stmt_t* cs = fn->stmt;
-        if (!cs->param_ndims) cs->param_ndims = (uint8_t*)calloc((size_t)(cs->n_params > 0 ? cs->n_params : 1), 1);
-        if (cs->param_ndims) { cs->param_ndims[i] = (uint8_t)tv->ndims; g_c99_rank_changed = 1; }
+        if (tmx >= 2 && !(cs->param_ndims && cs->param_ndims[i] >= tmx)) {
+            if (!cs->param_ndims) cs->param_ndims = (uint8_t*)calloc((size_t)(cs->n_params > 0 ? cs->n_params : 1), 1);
+            if (cs->param_ndims) { cs->param_ndims[i] = (uint8_t)tmx; g_c99_rank_changed = 1; }
+        }
     }
     if (want_ref) sb_put(&c->out, "&");
     emit_ident(c, tv->name);
@@ -10255,7 +10290,8 @@ static void emit_arr_call_arg(ctx_t* c, fn_info_t* fn, int i, gmb_expr_t* arg, i
         sb_put(&c->out, ", ");
         if (want_ref) sb_put(&c->out, "&");
         if (_j < tv->ndims) sb_bound_ident(&c->out, tv->name, _j);
-        else sb_put(&c->out, want_ref ? "((gmb_int_t){0})" : "0");   /* rango minore del parametro: bound mancante */
+        else if (rank_tab_mixed(fn->stmt, i, NULL)) sb_put(&c->out, want_ref ? "((gmb_int_t){" C99_RANK_ABS "})" : C99_RANK_ABS);   /* rango misto: dimensione assente */
+        else sb_put(&c->out, want_ref ? "((gmb_int_t){0})" : "0");
     }
     /* FFI con estensioni automatiche: il wrapper-variante di rango R riceve anche __b1..__b(R-1). */
     if (fn->stmt->is_ffi && !fn->stmt->ffi_native) {
@@ -14038,6 +14074,40 @@ static void emit_call(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_
          * pubblica puntatore+lunghezza nel canale thread-local) e si legge il puntatore.
          * Il chiamante che deve anche la lunghezza (`DIM x() = F(...)`) la preleva subito
          * dopo con gmb_lambda_ret_len_get(). */
+        /* Argomenti array a RANGO MISTO (parametri della funzione corrente che ricevono ranghi diversi)
+         * inoltrati a una FFI: una chiamata per ogni rango possibile, scelta a runtime dai bound
+         * (ABS = dimensione assente), come fanno IL/PCode/VM-C leggendo il rango dal valore. */
+        g_ndyn = 0; g_dyn_force = 0;
+        if (ffi_fn_has_arrays(fn)) {
+            for (int i = 0; i < fixed_count && i < 64 && g_ndyn < 4; i++) {
+                if (!p_arraylike(fn->stmt, i)) continue;
+                gmb_expr_t* ea = EFF_ARG(i); const char* vn = NULL;
+                if (ea && ea->kind == GMB_EXPR_VAR) vn = ea->var;
+                else if (ea && ea->kind == GMB_EXPR_CALL && ea->var && ea->nargs == 0) vn = ea->var;
+                var_t* dv = vn ? lookup_var(c, vn) : NULL; int dmx = 0;
+                if (dv && dv->is_array && rank_mixed_param(c, dv->name, &dmx) && dmx >= 2) {
+                    snprintf(g_dyn[g_ndyn].name, sizeof(g_dyn[g_ndyn].name), "%s", dv->name); g_dyn[g_ndyn].maxr = dmx > C99_FFI_MAXRANK ? C99_FFI_MAXRANK : dmx; g_ndyn++;
+                }
+            }
+        }
+        int ncombo = 1; for (int j = 0; j < g_ndyn; j++) ncombo *= g_dyn[j].maxr;
+        int dyn_n = g_ndyn; ffi_dyn_t dyn_save[4]; memcpy(dyn_save, g_dyn, sizeof(dyn_save));
+        if (ncombo > 1) sb_put(&c->out, "(");
+        for (int combo = 0; combo < ncombo && !c->error[0]; combo++) {
+            if (ncombo > 1) {
+                memcpy(g_dyn, dyn_save, sizeof(dyn_save)); g_ndyn = dyn_n;
+                int kk = combo;
+                for (int j = dyn_n - 1; j >= 0; j--) { g_dyn_sel[j] = 1 + kk % g_dyn[j].maxr; kk /= g_dyn[j].maxr; }
+                g_dyn_force = 1;
+                if (combo < ncombo - 1) {
+                    int first = 1;
+                    for (int j = 0; j < dyn_n; j++) if (g_dyn_sel[j] < g_dyn[j].maxr) {
+                        if (!first) sb_put(&c->out, " && ");
+                        first = 0; sb_put(&c->out, "("); sb_bound_ident(&c->out, g_dyn[j].name, g_dyn_sel[j]); sb_put(&c->out, " == " C99_RANK_ABS ")");
+                    }
+                    sb_put(&c->out, " ? ");
+                }
+            }
         int ret_arr_call = fn_ret_is_arr(fn);
         if (ret_arr_call) sb_put(&c->out, "({ ");
         emit_fn_cname_call(c, fn, args, nargs);
@@ -14055,6 +14125,10 @@ static void emit_call(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_
             }
             if (ret_arr_call) sb_put(&c->out, ", NULL); gmb_lambda_ret_ptr_get(); })");
             else sb_put(&c->out, ")");
+            if (ncombo > 1 && combo < ncombo - 1) sb_put(&c->out, " : ");
+        }
+        g_dyn_force = 0; g_ndyn = 0;
+        if (ncombo > 1) sb_put(&c->out, ")");
             return;
         }
         if (fn->parent && fn->n_cap > 0) {
