@@ -236,20 +236,12 @@ public static class BigTextBuilder
 
     public static void RenderToBuffer(ScreenBuffer buf, int x, int y, string text, CellColor? fg, CellColor? bg)
     {
+        // Deprecato: il disegno del BigText vive nel runtime C (gmb_tui_draw_control,
+        // kind GMB_DK_BIGTEXT). Resta solo come utilità di misura (ToBlock/Dimensions).
         var block = ToBlock(text);
-        for (var i = 0; i < block.Count; i++)
-        {
-            var row = string.Concat(block[i]);
-            if (string.IsNullOrEmpty(row))
-                continue;
-            for (var j = 0; j < row.Length; j++)
-            {
-                if (row[j] == '█')
-                    buf.SetChar(x + j, y + i, '█', fg, bg);
-                else
-                    buf.SetChar(x + j, y + i, ' ', null, bg);
-            }
-        }
+        if (block.Count == 0 || block.All(r => r.Length == 0)) return;
+        int w = block.Max(r => string.Concat(r).Length);
+        NativeDraw.Show(buf, NativeDraw.BigText, x, y, w, block.Count, text: text);
     }
 }
 
@@ -302,7 +294,8 @@ public class BigText : Control
 
     public void Render(ScreenBuffer buffer, int x, int y)
     {
-        BigTextBuilder.RenderToBuffer(buffer, x, y, Text, Color, Background);
+        // Render nativo (runtime C): nessun disegno a celle nel client.
+        NativeDraw.Show(buffer, NativeDraw.BigText, x, y, Width, Height, text: Text);
     }
 
     public override bool HandleKey(int key) => false;
