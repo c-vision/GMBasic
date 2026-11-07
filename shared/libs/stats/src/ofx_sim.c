@@ -2,6 +2,7 @@
 #include "gs_sim.h"
 #include "gs_num.h"
 #include "gs_math.h"
+#include <stdint.h>
 #include <math.h>
 #include <stdlib.h>
 

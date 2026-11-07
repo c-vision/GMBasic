@@ -258,7 +258,13 @@ int llmwsp_derive(const llmwsp_store *s, const llmwsp_doc *d, const char *srcdir
         while ((e = readdir(dp))) if (strcmp(e->d_name, ".") && strcmp(e->d_name, "..")) busy = 1;
         closedir(dp);
         if (busy) { E(err, ec, "outdir non vuota", outdir); return -1; }
-    } else mkdir(outdir, 0755);
+    } else {
+#if defined(_WIN32)
+        mkdir(outdir);
+#else
+        mkdir(outdir, 0755);
+#endif
+    }
 
     size_t cap = llmwsp_doc_leaf_count(d) * (nl ? nl : 1) / (size_t)(g.layers ? g.layers : 1) + 8, n = 0;
     item *it = (item *)calloc(cap + llmwsp_doc_leaf_count(d), sizeof *it);
@@ -345,7 +351,11 @@ int llmwsp_derive(const llmwsp_store *s, const llmwsp_doc *d, const char *srcdir
         snprintf(sp2, sizeof sp2, "%s/%s", srcdir, e->d_name); snprintf(dp2, sizeof dp2, "%s/%s", outdir, e->d_name);
         if (stat(sp2, &fs) < 0) continue;
         if (S_ISDIR(fs.st_mode) && !strcmp(e->d_name, "arch")) {
+#if defined(_WIN32)
+            mkdir(dp2);
+#else
             mkdir(dp2, 0755);
+#endif
             DIR *ad = opendir(sp2); struct dirent *ae;
             while (ad && (ae = readdir(ad))) {
                 if (!has_sfx(ae->d_name, ".gmbarch")) continue;

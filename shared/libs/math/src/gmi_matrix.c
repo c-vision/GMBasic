@@ -6,6 +6,11 @@
 #include "gmi_matrix.h"
 #include "gc_gemm.h"
 #include "gc_array.h"
+#if defined(_WIN32)
+#include <direct.h>
+#else
+#include <unistd.h>
+#endif
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
