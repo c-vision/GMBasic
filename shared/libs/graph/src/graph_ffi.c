@@ -680,3 +680,67 @@ double gfx_link_katz(const double *w, int64_t w_n, i64 n, double beta, i64 u, i6
         return 0.0;
     return (double)score;
 }
+
+/* ── Helper di contenitore: cose che la matrice non dà in una chiamata ────── */
+
+/* Ricostruisce il cammino src→dst dai predecessori prodotti da DIJKSTRA/BELLMANFORD
+ * (prev(i) = predecessore di i, -1 per radice/assente). out() riceve i nodi da src
+ * a dst. Ritorna il numero di nodi (0 = non raggiungibile, -1 = argomenti). */
+i64 gfx_path_reconstruct(const i64 *prev, int64_t prev_n, i64 n, i64 src, i64 dst, i64 *out, int64_t out_n)
+{
+    i64 cap = (i64)out_n;
+    (void)prev_n;
+    int *p, *o;
+    int len = 0, ok;
+    i64 i, m;
+    if (!prev || !out || n <= 0 || src < 0 || src >= n || dst < 0 || dst >= n || cap < 1) return -1;
+    p = (int *)malloc((size_t)n * sizeof(int));
+    o = (int *)malloc((size_t)n * sizeof(int));
+    if (!p || !o) { free(p); free(o); return -1; }
+    for (i = 0; i < n; i++) p[i] = (int)prev[i];
+    ok = gor_path_reconstruct(p, (int)src, (int)n, (int)dst, o, &len);
+    free(p);
+    if (!ok || len <= 0) { free(o); return 0; }
+    m = (len < (int)cap) ? len : cap;
+    for (i = 0; i < m; i++) out[i] = (i64)o[i];
+    free(o);
+    return m;
+}
+
+/* Elenca gli archi di una matrice pesata n×n (triangolo superiore, arco presente
+ * se w < 1e29). Scrive eu/ev/ew; ritorna il numero di archi (o -1 se cap troppo
+ * piccolo / argomenti non validi). */
+i64 gfx_edge_list(const double *w, int64_t w_n, i64 n, i64 *eu, int64_t eu_n, i64 *ev, int64_t ev_n, double *ew, int64_t ew_n)
+{
+    i64 cap = (i64)(eu_n < ev_n ? (ew_n < eu_n ? ew_n : eu_n) : (ew_n < ev_n ? ew_n : ev_n));
+    (void)w_n;
+    i64 i, j, k = 0;
+    if (!w || !eu || !ev || !ew || n <= 0 || cap < 1) return -1;
+    for (i = 0; i < n; i++)
+        for (j = i + 1; j < n; j++) {
+            double x = w[i * n + j];
+            if (x < 1e29) {
+                if (k >= cap) return -1;
+                eu[k] = i;
+                ev[k] = j;
+                ew[k] = x;
+                k++;
+            }
+        }
+    return k;
+}
+
+/* Vicini di v nella matrice di adiacenza 0/1 (riga v). Ritorna quanti (o -1). */
+i64 gfx_neighbors(const i64 *adj, int64_t adj_n, i64 n, i64 v, i64 *out, int64_t out_n)
+{
+    i64 cap = (i64)out_n;
+    (void)adj_n;
+    i64 u, k = 0;
+    if (!adj || !out || n <= 0 || v < 0 || v >= n || cap < 1) return -1;
+    for (u = 0; u < n; u++)
+        if (adj[v * n + u]) {
+            if (k >= cap) return -1;
+            out[k++] = u;
+        }
+    return k;
+}
