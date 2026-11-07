@@ -689,12 +689,36 @@ static std::unique_ptr<Model> gml_model_build(const char* arch, const char* cfg)
         std::vector<int64_t> hidden;
         gml_json_hidden(cfg, &hidden);
         if (hidden.empty()) hidden.push_back(8);
+        /* acts (2026-11-06): attivazione per strato nascosto — "relu" (default) oppure
+         * lista separata da virgole ("tanh,relu"). Valori: relu | tanh | sigmoid |
+         * leaky | linear/none. Copre la scelta per-layer di gn_net (gmbneural) senza
+         * toccare l'API: è un'estensione del config di MODELCREATE("mlp"). */
+        char abuf[192] = {0};
+        gml_json_str(cfg, "acts", abuf, sizeof abuf);
+        std::string actspec = abuf[0] ? abuf : "relu";
+        std::vector<std::string> acts;
+        {
+            size_t start = 0;
+            for (;;) {
+                size_t c = actspec.find(',', start);
+                acts.push_back(actspec.substr(start, c == std::string::npos ? std::string::npos : c - start));
+                if (c == std::string::npos) break;
+                start = c + 1;
+            }
+        }
         int64_t prev = in;
         torch::nn::Sequential seq;
+        auto addAct = [&seq](const std::string& a) {
+            if (a == "tanh") seq->push_back(torch::nn::Tanh());
+            else if (a == "sigmoid") seq->push_back(torch::nn::Sigmoid());
+            else if (a == "leaky") seq->push_back(torch::nn::LeakyReLU(torch::nn::LeakyReLUOptions().negative_slope(0.01)));
+            else if (a == "linear" || a == "none") { /* nessuna attivazione */ }
+            else seq->push_back(torch::nn::ReLU());
+        };
         for (size_t i = 0; i < hidden.size(); i++)
         {
             seq->push_back(torch::nn::Linear(prev, hidden[i]));
-            seq->push_back(torch::nn::ReLU());
+            addAct(acts[i < acts.size() ? i : acts.size() - 1]);
             prev = hidden[i];
         }
         seq->push_back(torch::nn::Linear(prev, out));
