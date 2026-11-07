@@ -16,24 +16,24 @@ DIM sx AS INTEGER, sy AS INTEGER, px AS INTEGER, py AS INTEGER
 
 ' ── HEADER: barra-card + titolo, sottotitolo, menubar ─────────────────────
 PANEL 0, 0, 1280, 68, ""
-BIGTEXT 28, 10, "GMBASIC"
+BIGTEXT 28, 12, "GMBASIC" STYLE "font=30"
 LABEL 316, 34, 340, "CONTROL ROOM · live telemetry"
 MENU 760, 26, 492, "Overview|Fleet|Events|Reports"
 
 ' ── KPI ROW (4 card, 84..252) ────────────────────────────────────────────
 PANEL 28, 84, 294, 168, "REVENUE"
 LABEL 44, 124, 200, "MRR · mese corrente"
-BIGTEXT 44, 140, "48.2k"
+BIGTEXT 44, 138, "48.2k" STYLE "font=30"
 PROGRESS 44, 224, 262, 78
 
 PANEL 340, 84, 294, 168, "LATENCY"
 LABEL 356, 124, 200, "p95 · ultimi 5 min"
-BIGTEXT 356, 140, "38ms"
+BIGTEXT 356, 138, "38ms" STYLE "font=30"
 PROGRESS 356, 224, 262, 38
 
 PANEL 652, 84, 294, 168, "THROUGHPUT"
 LABEL 668, 124, 200, "req/s · picco"
-BIGTEXT 668, 140, "2.4k"
+BIGTEXT 668, 138, "2.4k" STYLE "font=30"
 CHART 668, 190, 262, 62, "1,12;2,16;3,14;4,22;5,19;6,28;7,24;8,31;9,27;10,36"
 
 PANEL 964, 84, 288, 168, "HEALTH"

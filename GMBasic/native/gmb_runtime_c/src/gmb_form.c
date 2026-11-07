@@ -581,6 +581,8 @@ static void style_apply(gmb_widget_style_t* s, const char* spec)
                 if (pl >= sizeof(s->font_path)) pl = sizeof(s->font_path) - 1;
                 memcpy(s->font_path, val, pl); s->font_path[pl] = 0;
                 s->font_size = atoi(comma + 1);
+            } else if (*val && isdigit((unsigned char)*val)) {
+                s->font_size = atoi(val);            /* solo dimensione: "font=34" */
             } else snprintf(s->font_path, sizeof(s->font_path), "%s", val);
             if (s->font_path[0] == '"') { memmove(s->font_path, s->font_path + 1, strlen(s->font_path)); size_t l = strlen(s->font_path); if (l && s->font_path[l-1] == '"') s->font_path[l-1] = 0; }
         }
@@ -612,15 +614,25 @@ static void draw_button_body(gmb_form_btn_t* b, float sc)
         }
         int th = (int)(GMB_GFX_TEXT_H() / sc + 0.5f); if (th <= 0) th = 14;
 
-        /* 1) ombra (soft = piu' passate con alpha decrescente). */
+        /* 1) ombra PROPORZIONATA (blur reale). Prima, sui temi non "soft", era una
+         * COPIA NERA dura offsettata della stessa dimensione: si vedeva come un
+         * rettangolo scuro dietro al bottone ("ombra sbagliata"). */
         if (s->shadow_on) {
-            int layers = s->shadow_soft ? 3 : 1;
+#ifdef GMB_WITH_UI
+            int blur = (h <= 60) ? 4 : 8;
+            gmb_gfx_drop_shadow_rounded(x, y, w, h, 1,
+                                        ui_tint(0x000000u, s->shadow_soft ? 0x20u : 0x16u),
+                                        rounded ? rad : 0, blur);
+#else
+            int layers = s->shadow_soft ? 3 : 2;
             for (int L = layers; L >= 1; L--) {
                 unsigned int sh = s->shadow;
-                if (s->shadow_soft) { unsigned a = ((sh >> 24) & 0xFF) / (unsigned)(L + 1); sh = (a << 24) | (sh & 0xFFFFFFu); }
+                unsigned a = ((sh >> 24) & 0xFF) / (unsigned)(L + 1);
+                sh = (a << 24) | (sh & 0xFFFFFFu);
                 int sx = x + s->shadow_dx + (L - 1), sy = y + s->shadow_dy + (L - 1);
                 if (rounded) GMB_GFX_FILL_RRECT(sx, sy, w, h, rad, sh); else fill_rect_style(sx, sy, w, h, sh);
             }
+#endif
         }
         /* 2) glow (anello esterno). */
         if (s->glow_on) {
@@ -636,14 +648,15 @@ static void draw_button_body(gmb_form_btn_t* b, float sc)
         else if (rounded)               GMB_GFX_FILL_RRECT(x, y, w, h, rad, s->gradient_on ? s->grad_top : fill);
         else                            fill_rect_style(x, y, w, h, fill);
 
-        /* 3b) GLOSS (stile "lucido"): riflesso sui ~40% alti, colore derivato dal fill. */
+        /* 3b) GLOSS (stile "lucido"): riflesso SFRONTATO con gradiente sul bottone intero.
+         * Prima era un RETTANGOLO PIENO più chiaro sui 40% alti, con uno scalino netto:
+         * ogni bottone risultava di DUE COLORI (blocco chiaro sopra, pieno sotto). */
         if (s->gloss) {
-            int gh = (h * 2) / 5; if (gh < 2) gh = 2;
-            int r = (fill >> 16) & 0xFF, g = (fill >> 8) & 0xFF, bl = fill & 0xFF;
-            r += (255 - r) * 24 / 100; g += (255 - g) * 24 / 100; bl += (255 - bl) * 24 / 100;
-            unsigned int hl = 0xFF000000u | ((unsigned)r << 16) | ((unsigned)g << 8) | (unsigned)bl;
-            if (rounded) GMB_GFX_FILL_RRECT(x + 1, y + 1, w - 2, gh, rad > 2 ? rad / 2 : 1, hl);
-            else         GMB_GFX_LINE(x + 1, y + 1, x + w - 2, y + gh, GFX_RGB(hl), "BF");
+            int r0 = (fill >> 16) & 0xFF, g0 = (fill >> 8) & 0xFF, b0 = fill & 0xFF;
+            r0 += (255 - r0) * 26 / 100; g0 += (255 - g0) * 26 / 100; b0 += (255 - b0) * 26 / 100;
+            unsigned int hl = 0xFF000000u | ((unsigned)r0 << 16) | ((unsigned)g0 << 8) | (unsigned)b0;
+            unsigned int base = 0xFF000000u | (fill & 0xFFFFFFu);
+            gmb_gfx_fill_rounded_gradient(x, y, w, h, rounded ? rad : 0, hl, base);
         }
         /* 4) bevel 3D (raised/sunken): luci/ombre sui bordi. */
         if (s->bevel != 0) {
@@ -844,7 +857,8 @@ static void draw_one_widget(gmb_pix_widget_t* wd, float sc)
                 int kd = th2 - 6, kx = on ? x + tw - kd - 3 : x + 3;
                 ui_soft_shadow(kx, y + 3, kd, kd, kd / 2);
                 GMB_GFX_FILL_CIRCLE(kx + kd / 2, y + th2 / 2, kd, 0xFFFFFFFFu);
-                GMB_GFX_DRAW_TEXT(on ? "ON" : "OFF", on ? x + 14 : x + tw - 12 - (int)(GMB_GFX_TEXT_W("OFF") / sc), y + (th2 - tl) / 2, 0, GFX_RGB(on ? 0x40FFFFFFu : s->text_disabled));
+                /* NIENTE testo ON/OFF dentro la pillola: si sovrapponeva al cursore.
+                 * Lo stato lo dicono posizione del cursore + colore. */
             }
             else
             {
@@ -1442,7 +1456,7 @@ void gmb_form_set_last_style(const char* spec)
 static void apply_base_props(gmb_pix_widget_t* wd, const char* spec, int idx)
 {
     if (!wd || !spec) return;
-    static const char* keys[] = { "name", "tag", "tooltip", "visible", "enabled", "tabindex", "tabstop", "metric", NULL };
+    static const char* keys[] = { "name", "tag", "tooltip", "visible", "enabled", "tabindex", "tabstop", "metric", "font", NULL };
     for (int k = 0; keys[k]; k++) {
         char pat[16]; snprintf(pat, sizeof(pat), "%s=", keys[k]); size_t pl = strlen(pat);
         const char* p = spec;
@@ -1461,6 +1475,7 @@ static void apply_base_props(gmb_pix_widget_t* wd, const char* spec, int idx)
             else if (!strcasecmp(keys[k], "tabindex")) wd->base.tab_index = atoi(tmp);
             else if (!strcasecmp(keys[k], "tabstop")) wd->base.tab_stop = atoi(tmp);
             else if (!strcasecmp(keys[k], "metric"))  wd->base.coord_mode = atoi(tmp);
+            else if (!strcasecmp(keys[k], "font"))    wd->base.font_size = atoi(tmp);
             break;
         }
     }
@@ -1471,7 +1486,7 @@ static void apply_base_props(gmb_pix_widget_t* wd, const char* spec, int idx)
 static void apply_base_props_btn(gmb_form_btn_t* b, const char* spec)
 {
     if (!b || !spec) return;
-    static const char* keys[] = { "name", "tag", "tooltip", "visible", "enabled", "tabindex", "tabstop", "metric", NULL };
+    static const char* keys[] = { "name", "tag", "tooltip", "visible", "enabled", "tabindex", "tabstop", "metric", "font", NULL };
     for (int k = 0; keys[k]; k++) {
         char pat[16]; snprintf(pat, sizeof(pat), "%s=", keys[k]); size_t pl = strlen(pat);
         const char* p = spec;
@@ -1490,6 +1505,7 @@ static void apply_base_props_btn(gmb_form_btn_t* b, const char* spec)
             else if (!strcasecmp(keys[k], "tabindex")) b->base.tab_index = atoi(tmp);
             else if (!strcasecmp(keys[k], "tabstop")) b->base.tab_stop = atoi(tmp);
             else if (!strcasecmp(keys[k], "metric"))  b->base.coord_mode = atoi(tmp);
+            else if (!strcasecmp(keys[k], "font"))    b->base.font_size = atoi(tmp);
             break;
         }
     }
