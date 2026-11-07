@@ -10,6 +10,8 @@ linguaggio.
 |---|---|---|
 | `GMBasicSharp/common/CommonLib/Trading/General.cs` | `GMBasicSharp/common/CommonLib/Trading/General.cs` (facciata P/Invoke su `libgmbquant`) + sorgente C in `gmbsuite/gmbquant` / `shared/libs/quant` | 2026-11-07 |
 | `GMBasicSharp/common/CommonLib/Trading/Metrics.cs` | `GMBasicSharp/common/CommonLib/Trading/Metrics.cs` (facciata P/Invoke su `libgmbquant`) + sorgente C in `gmbsuite/gmbquant` / `shared/libs/quant` | 2026-11-07 |
+| `GMBasicSharp/common/CommonLib/Trading/Bonds.cs` | `GMBasicSharp/common/CommonLib/Trading/Bonds.cs` (facciata P/Invoke su `libgmbquant`) + sorgente C in `gmbsuite/gmbquant` / `shared/libs/quant` | 2026-11-07 |
+| `GMBasicSharp/common/CommonLib/Trading/Options.cs` | `GMBasicSharp/common/CommonLib/Trading/Options.cs` (facciata P/Invoke su `libgmbquant`) + sorgente C in `gmbsuite/gmbquant` / `shared/libs/quant` | 2026-11-07 |
 | `GMBasicSharp/common/StdLib/StdLib.BlockChain.cs` | pacchetto `blockchain` + `packages/blockchain/0.1.0/blockchain.inc` (dominio `BLOCKCHAIN` via FFI) | 2026-11-06 |
 | `shared/minitests/blockchain/*.bas` | stessi nomi in `shared/minitests/blockchain/` riscritti sull'include FFI (array di BYTE) | 2026-11-06 |
 | `shared/samples/Crypto/CryptoBlockchain.bas` | `shared/samples/Crypto/CryptoBlockchain.bas` (riscritto) | 2026-11-06 |
@@ -19,14 +21,14 @@ linguaggio.
 
 ## Trading (2026-11-07)
 
-`CommonLib/Trading/General.cs` e `Metrics.cs` contenevano le formule C# della superficie
-`TRADING.*` (ondata 1, 44 funzioni). Sono archiviate qui e sostituite da **facade
-P/Invoke** (`CommonLib.Trading.General` / `Metrics` → `QuantNative` → `libgmbquant`):
-la sorgente unica delle formule è ora C, in `gmbsuite/gmbquant` con la copia compilata
-in `shared/libs/quant` (è una **lib**, non un package). IL/PCodeVM usano il P/Invoke;
-VM/C e C99Native usano direttamente la stessa lib C. Le funzioni non ancora migrate
-(`Options`, `Bonds`, `Portfolio`, `Backtest`, `QLNet`, `MadSolver`, `PsoOptimizer`)
-restano C# fino alle ondate 2-3 e saranno archiviate qui a mano a mano.
+`CommonLib/Trading/General.cs`, `Metrics.cs`, `Bonds.cs` e `Options.cs` contenevano le
+formule C# della superficie `TRADING.*` (ondate 1-2, 69 funzioni). Sono archiviate qui e
+sostituite da **facade P/Invoke** (`CommonLib.Trading.General` / `Metrics` / `Bonds` /
+`Options` → `QuantNative` → `libgmbquant`): la sorgente unica delle formule è ora C, in
+`gmbsuite/gmbquant` con la copia compilata in `shared/libs/quant` (è una **lib**, non un
+package). IL/PCodeVM usano il P/Invoke; VM/C e C99Native usano direttamente la stessa lib
+C. Le funzioni non ancora migrate (`Portfolio`, `Backtest`, `QLNet`, `MadSolver`,
+`PsoOptimizer`) restano C# fino all'ondata 3 e saranno archiviate qui a mano a mano.
 
 ## Perché
 

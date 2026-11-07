@@ -10,9 +10,9 @@ FFI, le funzioni della superficie `TRADING.*` della StdLib.
 | `include/gm_quant*.h` | API C pubblica (copiata da `GMBSuite/gmbquant/include`) |
 | `src/gq_*.c` | implementazione (copiata da `GMBSuite/gmbquant/src`) |
 | `src/quant_ffi.c` | shim ABI FFI (`ofx_q_*`), unico file non in gmbsuite |
-| `shared/include/{trading,metrics,volatility,fundamentals}.inc` | export BASIC (il build li sposta dal lib dir a `shared/include/`) |
+| `shared/include/{trading,metrics,volatility,fundamentals,bonds,derivatives}.inc` | export BASIC (il build li sposta dal lib dir a `shared/include/`) |
 
-## Export e namespace (ondata 1, 44 funzioni)
+## Export e namespace (ondata 2, 69 funzioni)
 
 | `.inc` | namespace | funzioni |
 |---|---|---|
@@ -20,6 +20,8 @@ FFI, le funzioni della superficie `TRADING.*` della StdLib.
 | `metrics.inc` | `METRICS` | 18 (performance e rischio) |
 | `volatility.inc` | `VOLATILITY` | 3 (volatilità, downside) |
 | `fundamentals.inc` | `FUNDAMENTALS` | 11 (EPS/DPS/NAV, P/E, P/B, P/S, payout, yield) |
+| `bonds.inc` | `BONDS` | 9 (prezzo/rendimento, duration, BEY, current yield, YTM, ZCB) |
+| `derivatives.inc` | `DERIVATIVES` | 16 (Black-Scholes/Merton, binomiale, 11 greche) |
 
 `TRADING_CORE` è il nome di transizione: quando i builtin `TRADING.*` saranno rimossi
 il namespace prenderà il nome `TRADING` (vedi `Guide/utente/Quant-Guida-Utente.md`).
@@ -29,8 +31,8 @@ il namespace prenderà il nome `TRADING` (vedi `Guide/utente/Quant-Guida-Utente.
 ```bash
 bash tools/sh/gmb_lib.sh build quant    # ricompila shared/libs/quant/libgmbquant.*
 bash tools/sh/gmb_lib.sh check quant    # install_name + presenza degli export .inc
-GMB_MINI_ONLY="quant/quant_core.bas" tools/sh/test_minitests_c99native
-zsh tools/sh/test_minitests_parity.sh "quant/quant_core.bas"
+GMB_MINI_ONLY="quant/" tools/sh/test_minitests_c99native
+zsh tools/sh/test_minitests_parity.sh "quant/"
 zsh tools/sh/parity4 ../shared/samples/Quant/QuantLab.bas
 ```
 
@@ -40,9 +42,10 @@ gambe IL/PCode/VM-C la caricano da lì (`gmb_lib.sh build` non lo fa).
 ## Note
 
 - La semantica (rendimenti in frazione, `DividendYield` in percentuale, input non
-  valido → 0) è quella dei builtin; il riferimento di parità è `CommonLib.Trading`.
-- **C# usa il P/Invoke**: le vecchie formule C# (`CommonLib/Trading/General.cs` e
-  `Metrics.cs`) sono archiviate in `gmbasicmonorepo-deprecated/`; al loro posto ci sono
+  valido → 0, date `BONDS` come OADate) è quella dei builtin; il riferimento di parità è
+  `CommonLib.Trading`.
+- **C# usa il P/Invoke**: le vecchie formule C# (`General.cs`, `Metrics.cs`, `Bonds.cs`,
+  `Options.cs`) sono archiviate in `gmbasicmonorepo-deprecated/`; al loro posto ci sono
   facade che chiamano `gq_*` di questa lib. IL/PCodeVM passano da qui, VM/C e C99Native
   usano la stessa lib direttamente.
 - Nessuna dipendenza esterna oltre libm; monodirezionale `gmbquant -> gmbmaths`.

@@ -13,6 +13,7 @@
 #include "gm_quant.h"
 
 #include <stdint.h>
+#include <strings.h>
 
 /* ── General (namespace TRADING) ─────────────────────────────────────────── */
 
@@ -167,3 +168,104 @@ double ofx_q_pe_ratio(double price, double eps)
 
 double ofx_q_ps_ratio(double price, double sps)
 { return gq_ps_ratio(price, sps); }
+
+/* ── Bonds (namespace BONDS) ─────────────────────────────────────────────── */
+
+double ofx_q_bond_price(double settle, double mat, double rate, double yld,
+                        double redemption, int64_t freq, int64_t model)
+{ return gq_bond_price(settle, mat, rate, yld, redemption, (int)freq, (int)model); }
+
+double ofx_q_bond_yield(double settle, double mat, double rate, double price,
+                        double redemption, int64_t freq, int64_t model)
+{ return gq_bond_yield(settle, mat, rate, price, redemption, (int)freq, (int)model); }
+
+double ofx_q_bond_equiv(double face, double price, double days)
+{ return gq_bond_equiv_yield(face, price, days); }
+
+double ofx_q_current_yield(double coupons, double price)
+{ return gq_current_yield(coupons, price); }
+
+double ofx_q_duration(double settle, double mat, double coupon, double yld,
+                      int64_t freq, int64_t basis, int64_t modified)
+{ return gq_duration(settle, mat, coupon, yld, (int)freq, (int)basis, (int)modified); }
+
+double ofx_q_price_simple(double settle, double mat, double rate, double yld,
+                          double redemption, int64_t freq)
+{ return gq_price_simple(settle, mat, rate, yld, redemption, (int)freq); }
+
+double ofx_q_ytm(double coupon, double face, double price, double years)
+{ return gq_ytm(coupon, face, price, years); }
+
+double ofx_q_zcb_value(double face, double rate, double time)
+{ return gq_zcb_value(face, rate, time); }
+
+double ofx_q_zcb_yield(double face, double price, double time)
+{ return gq_zcb_yield(face, price, time); }
+
+/* ── Derivatives (namespace DERIVATIVES) ─────────────────────────────────── */
+
+double ofx_q_bs_call(double s, double k, double t, double r, double v, double q)
+{ return gq_bs_call_q(s, k, t, r, v, q); }
+
+double ofx_q_bs_put(double s, double k, double t, double r, double v, double q)
+{ return gq_bs_put_q(s, k, t, r, v, q); }
+
+double ofx_q_merton_call(double s, double k, double t, double r, double v, double q)
+{ return gq_merton_call_surface(s, k, t, r, v, q); }
+
+double ofx_q_merton_put(double s, double k, double t, double r, double v, double q)
+{ return gq_merton_put_surface(s, k, t, r, v, q); }
+
+double ofx_q_binomial(double s, double k, double t, double r, double v,
+                      int64_t steps, int64_t is_put)
+{ return gq_binomial(s, k, t, r, v, (int)steps, (int)is_put); }
+
+double ofx_q_delta(double s, double k, double t, double r, double v, int64_t is_put)
+{ return gq_delta(s, k, t, r, v, (int)is_put); }
+
+double ofx_q_gamma(double s, double k, double t, double r, double v)
+{ return gq_gamma(s, k, t, r, v); }
+
+double ofx_q_vega(double s, double k, double t, double r, double v)
+{ return gq_vega(s, k, t, r, v); }
+
+double ofx_q_theta(double s, double k, double t, double r, double v, int64_t is_put)
+{ return gq_theta(s, k, t, r, v, (int)is_put); }
+
+double ofx_q_rho(double s, double k, double t, double r, double v, int64_t is_put)
+{ return gq_rho(s, k, t, r, v, (int)is_put); }
+
+double ofx_q_vanna(double s, double k, double t, double r, double v)
+{ return gq_vanna(s, k, t, r, v); }
+
+double ofx_q_volga(double s, double k, double t, double r, double v)
+{ return gq_volga(s, k, t, r, v); }
+
+double ofx_q_speed(double s, double k, double t, double r, double v)
+{ return gq_speed(s, k, t, r, v); }
+
+double ofx_q_zomma(double s, double k, double t, double r, double v)
+{ return gq_zomma(s, k, t, r, v); }
+
+double ofx_q_charm(double s, double k, double t, double r, double v, int64_t is_put)
+{ return gq_charm(s, k, t, r, v, (int)is_put); }
+
+double ofx_q_color(double s, double k, double t, double r, double v)
+{ return gq_color(s, k, t, r, v); }
+
+/* Varianti con `type` STRING ("CALL"/"PUT") usate direttamente dagli .inc. */
+double ofx_q_binomial_s(double s, double k, double t, double r, double v,
+                        int64_t steps, const char *type)
+{ return gq_binomial(s, k, t, r, v, (int)steps, type && strcasecmp(type, "PUT") == 0); }
+
+double ofx_q_delta_s(double s, double k, double t, double r, double v, const char *type)
+{ return gq_delta(s, k, t, r, v, type && strcasecmp(type, "PUT") == 0); }
+
+double ofx_q_theta_s(double s, double k, double t, double r, double v, const char *type)
+{ return gq_theta(s, k, t, r, v, type && strcasecmp(type, "PUT") == 0); }
+
+double ofx_q_rho_s(double s, double k, double t, double r, double v, const char *type)
+{ return gq_rho(s, k, t, r, v, type && strcasecmp(type, "PUT") == 0); }
+
+double ofx_q_charm_s(double s, double k, double t, double r, double v, const char *type)
+{ return gq_charm(s, k, t, r, v, type && strcasecmp(type, "PUT") == 0); }

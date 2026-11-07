@@ -61,8 +61,8 @@ public static class TradingFunctions
     public static double Color(double s, double k, double t, double r, double v) => CommonLib.Trading.Options.Color(s, k, t, r, v);
 
     // --- Obbligazioni (Bonds) ---
-    public static double BondPrice(DateTime settlement, DateTime maturity, double rate, double yld, double redemption, int frequency, int model = 0) => model == 1 ? CommonLib.Numerics.Price(settlement, maturity, rate, yld, redemption, frequency, 0) : CommonLib.Trading.Bonds.BondPrice(settlement, maturity, rate, yld, redemption, frequency);
-    public static double BondYield(DateTime settlement, DateTime maturity, double rate, double pr, double redemption, int frequency, int model = 0) => model == 1 ? CommonLib.Numerics.Yield(settlement, maturity, pr, redemption, rate, frequency, 0) : CommonLib.Trading.Bonds.BondYield(settlement, maturity, rate, pr, redemption, frequency);
+    public static double BondPrice(DateTime settlement, DateTime maturity, double rate, double yld, double redemption, int frequency, int model = 0) => CommonLib.Trading.Bonds.BondPriceModel(settlement, maturity, rate, yld, redemption, frequency, model);
+    public static double BondYield(DateTime settlement, DateTime maturity, double rate, double pr, double redemption, int frequency, int model = 0) => CommonLib.Trading.Bonds.BondYieldModel(settlement, maturity, rate, pr, redemption, frequency, model);
     public static double BondEquivalentYield(double faceValue, double bondPrice, double daysToMaturity) => CommonLib.Trading.Bonds.BondEquivalentYield(faceValue, bondPrice, daysToMaturity);
     public static double CurrentYield(double annualCoupons, double bondPrice) => CommonLib.Trading.Bonds.CurrentYield(annualCoupons, bondPrice);
     public static double YieldToMaturity(double couponPayment, double faceValue, double price, double years) => CommonLib.Trading.Bonds.YieldToMaturity(couponPayment, faceValue, price, years);

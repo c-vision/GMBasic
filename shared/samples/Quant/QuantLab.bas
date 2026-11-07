@@ -11,16 +11,24 @@
 '   C) volatilità (VOLATILITY): volatilità annualizzata, downside deviation e sua
 '      versione annualizzata.
 '   D) fondamentali (FUNDAMENTALS): EPS/DPS/NAV, P/E, P/B, P/S, payout, dividend yield.
+'   E) obbligazioni (BONDS): prezzo/rendimento di un BTP biennale cedola 5%, duration
+'      e duration modificata, rendimento equivalente, current yield, YTM, zero-coupon.
+'   F) derivati (DERIVATIVES): Black-Scholes e Merton su una call ATM, binomiale a
+'      200 passi come controprova, e le greche di un book (delta, gamma, vega, theta,
+'      rho, vanna, volga, charm, speed, zomma, color).
 '
 ' I numeri sono scelti per avere valori leggibili e verosimili: titolo a 50, dividendo
 ' 2, crescita 3%, risk-free 3%, mercato 10%; fondo con 5 rendimenti periodici contro
-' un benchmark.
+' un benchmark; obbligazione 2 anni al 5%; opzione ATM 1 anno, vol 20%.
 '
-' Domini: TRADING_CORE, METRICS, VOLATILITY, FUNDAMENTALS. Output deterministico.
+' Domini: TRADING_CORE, METRICS, VOLATILITY, FUNDAMENTALS, BONDS, DERIVATIVES.
+' Output deterministico.
 IMPORT TRADING_CORE
 IMPORT METRICS
 IMPORT VOLATILITY
 IMPORT FUNDAMENTALS
+IMPORT BONDS
+IMPORT DERIVATIVES
 
 SUB Main()
   DIM r(4) AS DOUBLE          ' rendimenti del fondo
@@ -99,6 +107,50 @@ SUB Main()
   PRINT " P/E (50/2)                      = "; FORMAT(FUNDAMENTALS.PERatio(50, 2), "#.000000")
   PRINT " P/B (50/25)                     = "; FORMAT(FUNDAMENTALS.PBRatio(50, 25), "#.000000")
   PRINT " P/S (50/10)                     = "; FORMAT(FUNDAMENTALS.PSRatio(50, 10), "#.000000")
+
+  ' ══════════════════════════════════════════════════════════════════════════
+  ' E) OBBLIGAZIONI
+  '    BTP: acquisto 2024-01-01, scadenza 2026-01-01, cedola 5% annua,
+  '    rendimento richiesto 5%, rimborso 100, periodicità annuale.
+  '    Le date sono OADate (DATETIME.DATEVALUE -> DOUBLE).
+  ' ══════════════════════════════════════════════════════════════════════════
+  PRINT "E) obbligazioni (BTP 2024->2026, cedola 5%, y 5%, rimborso 100)"
+  DIM settle AS DOUBLE, maturity AS DOUBLE
+  settle = DATETIME.DATEVALUE("2024-01-01")
+  maturity = DATETIME.DATEVALUE("2026-01-01")
+  PRINT " prezzo modello Bonds            = "; FORMAT(BONDS.BondPrice(settle, maturity, 0.05, 0.05, 100, 1), "#.000000")
+  PRINT " prezzo modello Numerics         = "; FORMAT(BONDS.BondPrice(settle, maturity, 0.05, 0.05, 100, 1, 1), "#.000000")
+  PRINT " prezzo semplice (periodi interi)= "; FORMAT(BONDS.PRICESIMPLE(settle, maturity, 0.05, 0.05, 100, 1), "#.000000")
+  PRINT " yield a 96 (modello Bonds)      = "; FORMAT(BONDS.BondYield(settle, maturity, 0.05, 96, 100, 1), "#.000000")
+  PRINT " duration (Macaulay)             = "; FORMAT(BONDS.DURATION(settle, maturity, 0.05, 0.05, 1, 0, 0), "#.000000")
+  PRINT " duration modificata             = "; FORMAT(BONDS.DURATION(settle, maturity, 0.05, 0.05, 1, 0, 1), "#.000000")
+  PRINT " rend. equivalente (100->98.5/180g)= "; FORMAT(BONDS.BondEquivalentYield(100, 98.5, 180), "#.000000")
+  PRINT " current yield (5/100)           = "; FORMAT(BONDS.CurrentYield(5, 100), "#.000000")
+  PRINT " YTM (5, 100, 105, 10 anni)      = "; FORMAT(BONDS.YieldToMaturity(5, 100, 105, 10), "#.000000")
+  PRINT " ZCB valore (100, 5%, 5 anni)    = "; FORMAT(BONDS.ZeroCouponBondValue(100, 0.05, 5), "#.000000")
+  PRINT " ZCB rendimento (100->82, 5 anni)= "; FORMAT(BONDS.ZeroCouponBondYield(100, 82, 5), "#.000000")
+
+  ' ══════════════════════════════════════════════════════════════════════════
+  ' F) DERIVATI
+  '    call europea ATM: S=100, K=100, T=1 anno, r=5%, vol=20%.
+  '    Merton con dividend yield 2%. Il binomiale a 200 passi è la controprova
+  '    numerica del prezzo Black-Scholes. Le greche sono quelle del book.
+  ' ══════════════════════════════════════════════════════════════════════════
+  PRINT "F) derivati (call ATM S=K=100, T=1, r=5%, vol=20%)"
+  PRINT " Black-Scholes call              = "; FORMAT(DERIVATIVES.BsCall(100, 100, 1, 0.05, 0.2), "#.000000")
+  PRINT " Black-Scholes put               = "; FORMAT(DERIVATIVES.BsPut(100, 100, 1, 0.05, 0.2), "#.000000")
+  PRINT " call con dividend yield 2%      = "; FORMAT(DERIVATIVES.BsCall(100, 100, 1, 0.05, 0.2, 0.02), "#.000000")
+  PRINT " Merton call (q 2%)              = "; FORMAT(DERIVATIVES.MertonCall(100, 100, 1, 0.05, 0.2, 0.02), "#.000000")
+  PRINT " Merton put  (q 2%)              = "; FORMAT(DERIVATIVES.MertonPut(100, 100, 1, 0.05, 0.2, 0.02), "#.000000")
+  PRINT " binomiale 200 passi (controllo) = "; FORMAT(DERIVATIVES.BinomialOption(100, 100, 1, 0.05, 0.2, 200, "CALL"), "#.000000")
+  PRINT " delta call / delta put          = "; FORMAT(DERIVATIVES.Delta(100, 100, 1, 0.05, 0.2, "CALL"), "#.000000"); " / "; FORMAT(DERIVATIVES.Delta(100, 100, 1, 0.05, 0.2, "PUT"), "#.000000")
+  PRINT " gamma                           = "; FORMAT(DERIVATIVES.Gamma(100, 100, 1, 0.05, 0.2), "#.000000")
+  PRINT " vega (per 1% di vol)            = "; FORMAT(DERIVATIVES.Vega(100, 100, 1, 0.05, 0.2), "#.000000")
+  PRINT " theta (al giorno)               = "; FORMAT(DERIVATIVES.Theta(100, 100, 1, 0.05, 0.2, "CALL"), "#.000000")
+  PRINT " rho (per 1% di tasso)           = "; FORMAT(DERIVATIVES.Rho(100, 100, 1, 0.05, 0.2, "CALL"), "#.000000")
+  PRINT " vanna / volga                   = "; FORMAT(DERIVATIVES.Vanna(100, 100, 1, 0.05, 0.2), "#.000000"); " / "; FORMAT(DERIVATIVES.Volga(100, 100, 1, 0.05, 0.2), "#.000000")
+  PRINT " charm (al giorno)               = "; FORMAT(DERIVATIVES.Charm(100, 100, 1, 0.05, 0.2, "CALL"), "#.000000")
+  PRINT " speed / zomma / color           = "; FORMAT(DERIVATIVES.DeltaSpeed(100, 100, 1, 0.05, 0.2), "#.000000"); " / "; FORMAT(DERIVATIVES.Zomma(100, 100, 1, 0.05, 0.2), "#.000000"); " / "; FORMAT(DERIVATIVES.GammaColor(100, 100, 1, 0.05, 0.2), "#.000000")
 
   PRINT "fine"
 END SUB

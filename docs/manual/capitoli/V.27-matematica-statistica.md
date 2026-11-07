@@ -737,7 +737,7 @@ sperimentali servono strumenti diversi (interpolazione, `SPARSE`, `MESH`).
 ## 17. Trading quantitativo (`QUANT`)
 
 La superficie `TRADING.*` della StdLib è in migrazione verso una **libreria nativa FFI**
-(`libgmbquant`) esterna al compilatore. L'ondata 1 espone 44 funzioni in quattro gruppi,
+(`libgmbquant`) esterna al compilatore. Le ondate 1-2 espongono 69 funzioni in sei gruppi,
 con gli stessi nomi e la stessa semantica dei builtin:
 
 | file `.inc` | namespace | contenuto |
@@ -746,8 +746,10 @@ con gli stessi nomi e la stessa semantica dei builtin:
 | `metrics.inc` | `METRICS` | performance e rischio (Sharpe/Sortino/Calmar, drawdown, VaR/CVaR, alpha/beta, momenti, Jarque-Bera) |
 | `volatility.inc` | `VOLATILITY` | volatilità annualizzata, downside deviation |
 | `fundamentals.inc` | `FUNDAMENTALS` | EPS/DPS/NAV, P/E, P/B, P/S, payout, dividend yield |
+| `bonds.inc` | `BONDS` | prezzo/rendimento obbligazionario, duration, BEY, current yield, YTM, zero-coupon |
+| `derivatives.inc` | `DERIVATIVES` | Black-Scholes, Merton, binomiale CRR, 11 greche |
 
-Le ondate successive aggiungono `BONDS`, `DERIVATIVES`, `PORTFOLIO`, `BACKTEST`.
+L'ondata 3 aggiunge `PORTFOLIO` e `BACKTEST`.
 
 ### 17.1 Uso e convenzioni
 
@@ -772,6 +774,17 @@ corta, puntatore nullo) restituisce `0`; nessuna eccezione attraversa l'FFI. Gli
 viaggiano per riferimento con l'estensione automatica `d0..dN-1` (la `DECLARE` non
 elenca la lunghezza). `JarqueBeraTest` restituisce `ARRAY OF DOUBLE` `[statistica,
 p-value]`.
+
+Le funzioni di `BONDS` prendono le date come **`OADate`** — il seriale `DateTime` di
+GMBasic, giorni dal 1899-12-30 — e si passano direttamente da
+`DATETIME.DATEVALUE("AAAA-MM-GG")` (vocazione `DateTime`→`DOUBLE`, nessun tipo data
+nell'FFI). `frequency` vale 1, 2 o 4; `model` (`0` = `Trading.Bonds`, `1` =
+`Numerics.Price` con basis 0) è opzionale e vale 0.
+
+Le funzioni di `DERIVATIVES` che distinguono la gamba prendono la stringa `type`
+(`"CALL"`/`"PUT"`, case-insensitive); `vol` è la volatilità annualizzata in frazione e
+`T` il tempo a scadenza in anni. Con `T ≤ 0` o `vol ≤ 0` il prezzo degenera nel valore
+intrinseco. `Vega` e `Rho` sono per 1% di movimento, `Theta` e `Charm` per giorno.
 
 Il nome `TRADING_CORE` è **di transizione**: finché esistono i builtin `TRADING.*` il
 compilatore rifiuta una funzione utente con lo stesso nome/arità nel namespace
@@ -828,38 +841,106 @@ strumenti)`, `DividendPayoutRatio(div, ni)`, `DividendYield(div, prezzo)` (**×1
 `DPS(div, azioni)`, `EPS(ni, azioni)`, `EquityMultiplier(attivo, equity)`, `NAV(attivo,
 passivo, azioni)`, `PBRatio(prezzo, book)`, `PERatio(prezzo, eps)`, `PSRatio(prezzo, sps)`.
 
+`BONDS` (9):
+
+| funzione | firma | risultato |
+|---|---|---|
+| `BondPrice` | `(settle, maturity, rate, yld, redemption, frequency[, model])` | prezzo *dirty* (rateo incluso) |
+| `BondYield` | `(settle, maturity, rate, price, redemption, frequency[, model])` | YTM dal prezzo (Newton) |
+| `PRICESIMPLE` | `(settle, maturity, rate, yld, redemption, frequency)` | prezzo a periodi interi, senza rateo |
+| `DURATION` | `(settle, maturity, rate, yld, frequency, basis, calcMethod)` | Macaulay; `calcMethod 1` → modificata |
+| `BondEquivalentYield` | `(face, price, giorni)` | `((F−P)/P)·(365/giorni)` |
+| `CurrentYield` | `(cedoleAnnuali, price)` | `cedole/prezzo` |
+| `YieldToMaturity` | `(cedola, nominale, price, anni)` | `(C+(F−P)/t)/((F+P)/2)` |
+| `ZeroCouponBondValue` | `(nominale, tasso, tempo)` | `F/(1+r)^t` |
+| `ZeroCouponBondYield` | `(nominale, price, tempo)` | `(F/P)^(1/t)−1` |
+
+Modello `BondPrice`: `N` cedole residue contate dal prossimo stacco, `DSC` giorni
+settlement→stacco su base 30/360, `E` giorni del periodo cedolare; il prezzo somma le
+cedole attualizzate a `1+y/f` e sottrae il rateo `C·(E−DSC)/E`. Il modello `1`
+(`Numerics.Price`, basis 0) usa periodi frazionari `(DSC+E(k−1))/E` e rateo `1−DSC/E`.
+
+`DERIVATIVES` (16):
+
+| funzione | firma | risultato |
+|---|---|---|
+| `BsCall` / `BsPut` | `(S, K, T, r, vol[, q])` | Black-Scholes; `q ≠ 0` → Merton |
+| `MertonCall` / `MertonPut` | `(S, K, T, r, vol[, q])` | `q` = dividend yield continuo |
+| `BinomialOption` | `(S, K, T, r, vol, steps, type)` | albero CRR europeo |
+| `Delta` | `(S, K, T, r, vol, type)` | `±N(d1)` |
+| `Gamma` | `(S, K, T, r, vol)` | `φ(d1)/(S·σ√T)` |
+| `Vega` | `(S, K, T, r, vol)` | per 1% di volatilità |
+| `Theta` | `(S, K, T, r, vol, type)` | per giorno |
+| `Rho` | `(S, K, T, r, vol, type)` | per 1% di tasso |
+| `Vanna` / `Volga` | `(S, K, T, r, vol)` | derivate seconde miste |
+| `Charm` | `(S, K, T, r, vol, type)` | delta-decay, per giorno |
+| `DeltaSpeed` | `(S, K, T, r, vol)` | `−Γ/S·(d1/(σ√T)+1)` |
+| `Zomma` | `(S, K, T, r, vol)` | `∂Γ/∂σ` |
+| `GammaColor` | `(S, K, T, r, vol)` | `∂Γ/∂T` |
+
+Il binomiale è Cox-Ross-Rubinstein: `u = e^{σ√Δt}`, `d = 1/u`,
+`p = (e^{rΔt}−d)/(u−d)`; se `p ∉ [0,1]` restituisce `0`. Con `steps` crescenti
+converge a Black-Scholes (200 passi: 10.440591 contro 10.450584).
+
 ### 17.3 Esempio eseguito
 
-`shared/samples/Quant/QuantLab.bas` analizza un titolo (prezzo 50, dividendo 2,
-required return 10%, crescita 3%) e un fondo (5 rendimenti periodici contro un
-benchmark). Valori prodotti:
+`shared/samples/Quant/QuantLab.bas` è un laboratorio in sei sezioni: un titolo (prezzo 50,
+dividendo 2, required return 10%, crescita 3%), un fondo (5 rendimenti periodici contro un
+benchmark), un BTP biennale cedola 5% e una call ATM (`S=K=100`, `T=1`, `r=5%`, `vol=20%`).
+Valori prodotti (76 righe):
 
 ```
-DDM crescita zero = 20.000000       DDM Gordon = 28.571429
-CAPM = 0.114000                      rendimento totale = 0.120000
-rendimento del fondo = 0.034786      Sharpe = 5.982583
-Sortino = 5.556078                   Calmar = 230.185794
-beta = 1.650000                      alpha = 0.526901
-max drawdown = -0.020000             VaR 80% = 0.000000
-CVaR 80% = -0.010000                 Jarque-Bera = 0.261097, 0.877614
-volatilità annualizzata = 0.294856   downside = 0.020000
-EPS = 2.000000                       P/E = 25.000000
-dividend yield = 5.000000 %          P/B = 2.000000
+A) valutazione azionaria
+ DDM crescita zero = 20.000000        DDM Gordon = 28.571429
+ CAPM = 0.114000                      rendimento totale = 0.120000
+ holding period = 0.059870            media geometrica = 0.019571
+B) performance e rischio
+ rendimento totale = 0.033953         annualizzato = 0.083432
+ Sharpe = 6.831246                    Sortino = 5.997036
+ Calmar = 243.370996                  Information = 5.328636
+ max drawdown = -0.018000             VaR 80% = 0.004000
+ CVaR 80% = -0.007000                 beta = 1.537791
+ alpha = 0.831240                     Jarque-Bera = 1.437129, 0.487451
+ skewness = -0.953739                 curtosi = 1.805478
+ tracking error = 0.094583            Omega = 4.000000
+C) volatilità
+ annualizzata = 0.250847              downside = 0.018000
+D) fondamentali
+ EPS = 2.000000                       P/E = 25.000000
+ dividend yield = 5.000000 %          P/B = 2.000000
+E) obbligazioni (BTP 2024->2026, cedola 5%, y 5%)
+ prezzo modello Bonds = 100.000000    prezzo modello Numerics = 95.680812
+ duration = 1.952381                  duration modificata = 1.859410
+ yield a 96 = 0.072191                current yield = 0.050000
+ YTM (5,100,105,10) = 0.043902        ZCB valore = 78.352617
+F) derivati (call ATM S=K=100, T=1, r=5%, vol=20%)
+ Black-Scholes call = 10.450584       put = 5.573526
+ call con q 2% = 9.227006             Merton put (q 2%) = 6.330081
+ binomiale 200 passi = 10.440591      delta call/put = 0.636831/-0.363169
+ gamma = 0.018762                     vega (1%) = 0.375240
+ theta (giorno) = -0.017573           rho (1%) = 0.532325
+ vanna/volga = -0.281430/9.850059     charm = -0.000253
+ speed/zomma/color = -0.000516/-0.088885/-0.025798
 ```
+
+La differenza fra i due modelli di `BondPrice` sullo stesso titolo (100 contro 95.680812)
+è il rateo: il modello `Numerics.Price` sconta il rateo maturato `1−DSC/E`, quello
+`Trading.Bonds` lo sottrae come `C·(E−DSC)/E` sulla cedola intera. Il binomiale a 200
+passi conferma Black-Scholes a meno di 0.01.
 
 ### 17.4 Parità e limiti
 
 La superficie è unica (`shared/include/*.inc`) e la libreria è una sola
 (`libgmbquant`): firme, aritmetica e risultati sono identici su IL, PCodeVM, VM/C e
-C99Native. Il MiniTest `shared/minitests/quant/quant_core.bas` verifica tutte e 44 le
-funzioni con valori chiusi; il sample `QuantLab.bas` produce 49 righe identiche sulle
-quattro gambe.
+C99Native. I MiniTest `shared/minitests/quant/quant_core.bas` (44 funzioni) e
+`shared/minitests/quant/quant_bonds_derivatives.bas` (25) verificano tutta la superficie
+con valori chiusi; il sample `QuantLab.bas` produce 76 righe identiche sulle quattro
+gambe.
 
-Limiti dell'ondata 1: niente obbligazioni, derivati, ottimizzazione di portafoglio né
-backtest (arrivano nelle ondate 2-3); le funzioni non allocano e non ridimensionano
-array; i risultati `ARRAY` sono solo quelli di `JarqueBeraTest` (2 elementi). La
-libreria è in `shared/libs/quant` (sorgenti C + shim FFI) e in `GMBSuite/gmbquant`
-(copia di sviluppo con self-test).
+Limiti dell'ondata 2: restano da migrare l'ottimizzazione di portafoglio e il backtest
+(ondata 3); le funzioni non allocano e non ridimensionano array; i risultati `ARRAY`
+sono solo quelli di `JarqueBeraTest` (2 elementi). La libreria è in `shared/libs/quant`
+(sorgenti C + shim FFI) e in `GMBSuite/gmbquant` (copia di sviluppo con self-test).
 
 ## 18. Errori frequenti
 
