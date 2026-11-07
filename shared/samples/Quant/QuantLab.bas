@@ -29,6 +29,8 @@ IMPORT VOLATILITY
 IMPORT FUNDAMENTALS
 IMPORT BONDS
 IMPORT DERIVATIVES
+IMPORT PORTFOLIO
+IMPORT BACKTEST
 
 SUB Main()
   DIM r(4) AS DOUBLE          ' rendimenti del fondo
@@ -151,6 +153,86 @@ SUB Main()
   PRINT " vanna / volga                   = "; FORMAT(DERIVATIVES.Vanna(100, 100, 1, 0.05, 0.2), "#.000000"); " / "; FORMAT(DERIVATIVES.Volga(100, 100, 1, 0.05, 0.2), "#.000000")
   PRINT " charm (al giorno)               = "; FORMAT(DERIVATIVES.Charm(100, 100, 1, 0.05, 0.2, "CALL"), "#.000000")
   PRINT " speed / zomma / color           = "; FORMAT(DERIVATIVES.DeltaSpeed(100, 100, 1, 0.05, 0.2), "#.000000"); " / "; FORMAT(DERIVATIVES.Zomma(100, 100, 1, 0.05, 0.2), "#.000000"); " / "; FORMAT(DERIVATIVES.GammaColor(100, 100, 1, 0.05, 0.2), "#.000000")
+
+  ' ══════════════════════════════════════════════════════════════════════════
+  ' G) PORTAFOGLIO
+  '    tre asset: azioni, obbligazioni, oro. Rendimenti attesi 10%/5%/2%,
+  '    matrice di covarianza con correlazioni realistiche. Le funzioni che
+  '    restituivano un PortfolioResult ritornano un ARRAY:
+  '    [rendimento, volatilita', Sharpe, pesi...].
+  ' ══════════════════════════════════════════════════════════════════════════
+  PRINT "G) portafoglio (3 asset: azioni, bond, oro; rf 2%)"
+  DIM w0(2) AS DOUBLE : w0 = {0.5, 0.3, 0.2}
+  DIM mu(2) AS DOUBLE : mu = {0.10, 0.05, 0.035}
+  DIM cov(2) AS ARRAY OF DOUBLE
+  cov(0) = {0.0400, 0.0020, 0.0005}
+  cov(1) = {0.0020, 0.0100, 0.0002}
+  cov(2) = {0.0005, 0.0002, 0.0025}
+  DIM pr() AS DOUBLE
+
+  PRINT " rendimento atteso (50/30/20)    = "; FORMAT(PORTFOLIO.EXPECTEDRETURN(w0, mu), "#.000000")
+  PRINT " volatilita' (50/30/20)          = "; FORMAT(PORTFOLIO.STDEV(w0, cov), "#.000000")
+  PRINT " Sharpe (10%, 12%, rf 2%)        = "; FORMAT(PORTFOLIO.SHARPERATIO(0.10, 0.12, 0.02), "#.000000")
+  PRINT " long-only (50/30/20)            = "; PORTFOLIO.ISLONGONLY(w0)
+  PRINT " MAD sui rendimenti attesi       = "; FORMAT(PORTFOLIO.PORTFOLIOMAD(mu), "#.000000")
+  PRINT " semi-MAD (sotto 6%)             = "; FORMAT(PORTFOLIO.PORTFOLIOSEMIMAD(mu, 0.06), "#.000000")
+
+  pr = PORTFOLIO.MINVOLATILITY(cov)
+  PRINT " min-varianza pesi               = "; FORMAT(pr(3), "#.000000"); " / "; FORMAT(pr(4), "#.000000"); " / "; FORMAT(pr(5), "#.000000"); "  (vol "; FORMAT(pr(1), "#.000000"); ")"
+  pr = PORTFOLIO.MAXSHARPE(mu, cov, 0.02)
+  PRINT " max-Sharpe pesi                 = "; FORMAT(pr(3), "#.000000"); " / "; FORMAT(pr(4), "#.000000"); " / "; FORMAT(pr(5), "#.000000"); "  (Sharpe "; FORMAT(pr(2), "#.000000"); ")"
+  pr = PORTFOLIO.MEANVARIANCE(mu, cov)
+  PRINT " mean-variance (rf 0) rendimento = "; FORMAT(pr(0), "#.000000")
+  pr = PORTFOLIO.RISKPARITY(cov)
+  PRINT " risk parity pesi                = "; FORMAT(pr(3), "#.000000"); " / "; FORMAT(pr(4), "#.000000"); " / "; FORMAT(pr(5), "#.000000")
+  pr = PORTFOLIO.EQUALLYWEIGHTED(3)
+  PRINT " equipesato (1/3)                = "; FORMAT(pr(3), "#.000000")
+  pr = PORTFOLIO.MAXRETURN(mu)
+  PRINT " max-return: 100% su asset 0     = "; pr(3); " "; pr(4); " "; pr(5)
+  DIM rr(5) AS DOUBLE : rr = {0.02, -0.01, 0.03, 0.01, -0.02, 0.015}
+  pr = PORTFOLIO.KELLYCRITERION(rr, 0.02)
+  PRINT " Kelly su serie con perdite      = "; FORMAT(pr(0), "#.000000")
+  pr = PORTFOLIO.MINCVAR(rr, 0.95, 0.02)
+  PRINT " min-CVaR 95%                    = "; FORMAT(pr(0), "#.000000")
+  pr = PORTFOLIO.MINCDAR(rr, 0.95, 0.02)
+  PRINT " min-CDaR 95%                    = "; FORMAT(pr(0), "#.000000")
+  pr = PORTFOLIO.EVOLVE(mu, cov)
+  PRINT " evolve (min-var deterministica) = "; FORMAT(pr(3) + pr(4) + pr(5), "#.000000"); " (somma pesi)"
+
+  DIM caps(2) AS DOUBLE : caps = {1000000, 500000, 250000}
+  DIM P(2) AS ARRAY OF DOUBLE
+  P(0) = {1.0, 0.0, 0.0} : P(1) = {0.0, 1.0, 0.0} : P(2) = {0.0, 0.0, 1.0}
+  DIM Q(2) AS DOUBLE : Q = {0.12, 0.04, 0.03}
+  DIM om(2) AS ARRAY OF DOUBLE
+  om(0) = {0.0004, 0.0, 0.0} : om(1) = {0.0, 0.0002, 0.0} : om(2) = {0.0, 0.0, 0.0001}
+  pr = PORTFOLIO.BLACKLITTERMAN(caps, cov, 2.5, 0.05, P, Q, om, 0.02)
+  PRINT " Black-Litterman (somma, vol)    = "; FORMAT(pr(3) + pr(4) + pr(5), "#.000000"); " / "; FORMAT(pr(1), "#.000000")
+
+  DIM hist(2) AS ARRAY OF DOUBLE
+  hist(0) = {0.02, -0.01, 0.03, 0.01, -0.02}
+  hist(1) = {0.01, 0.005, -0.005, 0.02, 0.01}
+  hist(2) = {0.005, 0.01, -0.01, 0.015, 0.005}
+  PRINT " VaR 95% multi-asset             = "; FORMAT(PORTFOLIO.PVAR(hist, w0, 0.95), "#.000000")
+  PRINT " CVaR 95% multi-asset            = "; FORMAT(PORTFOLIO.CVAR(hist, w0, 0.95), "#.000000")
+
+  ' ══════════════════════════════════════════════════════════════════════════
+  ' H) BACKTEST
+  '    quattro mesi, due asset; rendimento di periodo = media degli asset.
+  '    RUN ritorna [TotalReturn%, AnnualizedReturn%, MaxDrawdown, Sharpe,
+  '    TradesCount, Turnover, curva dei rendimenti...].
+  ' ══════════════════════════════════════════════════════════════════════════
+  PRINT "H) backtest (4 mesi, 2 asset, pesi uguali)"
+  DIM mesi(3) AS ARRAY OF DOUBLE
+  mesi(0) = {0.010, 0.020}
+  mesi(1) = {-0.005, 0.010}
+  mesi(2) = {0.015, -0.005}
+  mesi(3) = {0.020, 0.030}
+  DIM bt() AS DOUBLE
+  bt = BACKTEST.RUN(mesi, "")
+  PRINT " TotalReturn / Annualized        = "; FORMAT(bt(0), "#.000000"); " % / "; FORMAT(bt(1), "#.000000"); " %"
+  PRINT " MaxDrawdown / Sharpe            = "; FORMAT(bt(2), "#.000000"); " / "; FORMAT(bt(3), "#.000000")
+  PRINT " periodi / turnover              = "; bt(4); " / "; FORMAT(bt(5), "#.000000")
+  PRINT " curva per periodo               = "; FORMAT(bt(6), "#.000000"); " "; FORMAT(bt(7), "#.000000"); " "; FORMAT(bt(8), "#.000000"); " "; FORMAT(bt(9), "#.000000")
 
   PRINT "fine"
 END SUB

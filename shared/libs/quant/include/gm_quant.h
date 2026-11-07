@@ -1,9 +1,10 @@
 /*
  * gm_quant.h — gmbquant: libreria C99 del dominio quantitativo "StdLib trading".
  *
- * Contenuto (ondata 1): funzioni generali di valutazione azionaria, metriche di
- * performance/rischio, volatilità, fondamentali. Obiettivo: esporre in C le
- * funzioni dei namespace TRADING.* della StdLib, con semantica identica a IL/PCode.
+ * Contenuto (ondata 3): valutazione azionaria, metriche di performance/rischio,
+ * volatilità, fondamentali, obbligazioni, derivati, ottimizzazione di portafoglio
+ * e backtest. Espone in C le funzioni dei namespace TRADING.* della StdLib, con
+ * semantica identica ai backend (canone del runtime condiviso).
  *
  * Convenzioni:
  *  - tutte le funzioni sono PURE (nessuno stato globale, nessuna I/O);
@@ -25,6 +26,8 @@
 #include "gm_quant_fundamentals.h"
 #include "gm_quant_bonds.h"
 #include "gm_quant_derivatives.h"
+#include "gm_quant_portfolio.h"
+#include "gm_quant_backtest.h"
 
 #ifdef __cplusplus
 extern "C" {

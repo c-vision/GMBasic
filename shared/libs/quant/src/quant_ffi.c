@@ -12,7 +12,9 @@
  */
 #include "gm_quant.h"
 
+#include <math.h>
 #include <stdint.h>
+#include <stdlib.h>
 #include <strings.h>
 
 /* ── General (namespace TRADING) ─────────────────────────────────────────── */
@@ -269,3 +271,185 @@ double ofx_q_rho_s(double s, double k, double t, double r, double v, const char 
 
 double ofx_q_charm_s(double s, double k, double t, double r, double v, const char *type)
 { return gq_charm(s, k, t, r, v, type && strcasecmp(type, "PUT") == 0); }
+
+/* ── Portfolio (namespace PORTFOLIO) ─────────────────────────────────────── */
+
+static int pf_n_from_flat(int64_t nflat)
+{
+    int n = (int)(sqrt((double)nflat) + 0.5);
+    while ((int64_t)n * n > nflat) n--;
+    while ((int64_t)(n + 1) * (n + 1) <= nflat) n++;
+    return n;
+}
+
+double ofx_q_pf_expected(const double *w, int64_t nw, const double *m, int64_t nm)
+{ return gq_port_expected_return(w, m, (int)(nw < nm ? nw : nm)); }
+
+double ofx_q_pf_stdev(const double *w, int64_t nw, const double *cov, int64_t ncov)
+{
+    int n = (int)nw;
+    if ((int64_t)n * n > ncov) n = pf_n_from_flat(ncov);
+    return gq_port_stdev(w, cov, n);
+}
+
+double ofx_q_pf_sharpe(double ret, double sd, double rf)
+{ return gq_port_sharpe(ret, sd, rf); }
+
+double ofx_q_pf_longonly(const double *w, int64_t n)
+{ return gq_port_is_long_only(w, (int)n); }
+
+double ofx_q_pf_mad(const double *r, int64_t n)
+{ return gq_port_mad(r, (int)n); }
+
+double ofx_q_pf_semimad(const double *r, int64_t n, double target)
+{ return gq_port_semimad(r, (int)n, target); }
+
+/* PVAR/CVAR: i pesi sono ignorati (parita' builtin TRADING.PORTFOLIO). */
+double ofx_q_pf_var(const double *hist, int64_t nh, const double *w, int64_t nw, double conf)
+{ (void)w; (void)nw; return gq_port_var(hist, (int)nh, conf); }
+
+double ofx_q_pf_cvar(const double *hist, int64_t nh, const double *w, int64_t nw, double conf)
+{ (void)w; (void)nw; return gq_port_cvar(hist, (int)nh, conf); }
+
+void ofx_q_pf_minvol(const double *cov, int64_t ncov, double *out, int64_t nout)
+{
+    (void)nout;
+    int n = pf_n_from_flat(ncov);
+    double *w = (double *)malloc(sizeof(double) * (size_t)(n > 0 ? n : 1));
+    if (!w) return;
+    gq_port_min_volatility(cov, n, w);
+    gq_port_pack(w, n, NULL, cov, 0.0, out);
+    free(w);
+}
+
+void ofx_q_pf_maxsharpe(const double *mean, int64_t nm, const double *cov, int64_t ncov,
+                        double rf, double *out, int64_t nout)
+{
+    (void)nout;
+    int n = (int)nm;
+    double *w = (double *)malloc(sizeof(double) * (size_t)(n > 0 ? n : 1));
+    if (!w) return;
+    gq_port_max_sharpe(mean, cov, n, rf, w);
+    gq_port_pack(w, n, mean, cov, rf, out);
+    free(w);
+}
+
+void ofx_q_pf_meanvar(const double *mean, int64_t nm, const double *cov, int64_t ncov,
+                      double *out, int64_t nout)
+{
+    (void)nout;
+    int n = (int)nm;
+    double *w = (double *)malloc(sizeof(double) * (size_t)(n > 0 ? n : 1));
+    if (!w) return;
+    gq_port_mean_variance(mean, cov, n, w);
+    gq_port_pack(w, n, mean, cov, 0.0, out);
+    free(w);
+}
+
+void ofx_q_pf_riskparity(const double *cov, int64_t ncov, double *out, int64_t nout)
+{
+    (void)nout;
+    int n = pf_n_from_flat(ncov);
+    double *w = (double *)malloc(sizeof(double) * (size_t)(n > 0 ? n : 1));
+    if (!w) return;
+    gq_port_risk_parity(cov, n, w);
+    gq_port_pack(w, n, NULL, cov, 0.0, out);
+    free(w);
+}
+
+void ofx_q_pf_equally(int64_t n, double *out, int64_t nout)
+{
+    (void)nout;
+    int k = (int)n;
+    double *w = (double *)malloc(sizeof(double) * (size_t)(k > 0 ? k : 1));
+    if (!w) return;
+    gq_port_equally_weighted(k, w);
+    gq_port_pack(w, k, NULL, NULL, 0.0, out);
+    free(w);
+}
+
+/* MAXRETURN: out = [max, 0, 0, one-hot n]. */
+void ofx_q_pf_maxreturn(const double *mean, int64_t n, double *out, int64_t nout)
+{
+    (void)nout;
+    int k = (int)n;
+    double *w = (double *)malloc(sizeof(double) * (size_t)(k > 0 ? k : 1));
+    if (!w) return;
+    gq_port_max_return_weights(mean, k, w);
+    gq_port_pack(w, k, NULL, NULL, 0.0, out);
+    out[0] = gq_port_max_return_value(mean, k);
+    free(w);
+}
+
+/* KELLYCRITERION: out = [k, 0, 0, k] (il builtin usa un solo "asset").
+ * `rf` resta nella firma per compatibilita' ma e' ignorato (parita' VM/C). */
+void ofx_q_pf_kelly(const double *r, int64_t n, double rf, double *out, int64_t nout)
+{
+    (void)nout;
+    (void)rf;
+    double k = gq_port_kelly_value(r, (int)n);
+    out[0] = k; out[1] = 0.0; out[2] = 0.0; out[3] = k;
+}
+
+/* MINCVAR/MINCDAR: out = [metrica, 0, 0, 1.0]. */
+void ofx_q_pf_mincvar(const double *r, int64_t n, double conf, double rf, double *out, int64_t nout)
+{
+    (void)nout;
+    (void)rf;
+    out[0] = gq_port_min_cvar_value(r, (int)n, conf);
+    out[1] = 0.0; out[2] = 0.0; out[3] = 1.0;
+}
+
+void ofx_q_pf_mincdar(const double *r, int64_t n, double conf, double rf, double *out, int64_t nout)
+{
+    (void)nout;
+    (void)rf;
+    out[0] = gq_port_min_cdar_value(r, (int)n, conf);
+    out[1] = 0.0; out[2] = 0.0; out[3] = 1.0;
+}
+
+void ofx_q_pf_evolve(const double *cov, int64_t ncov, const double *mean, int64_t nm,
+                     double *out, int64_t nout)
+{
+    (void)nout;
+    int n = pf_n_from_flat(ncov);
+    double *w = (double *)malloc(sizeof(double) * (size_t)(n > 0 ? n : 1));
+    if (!w) return;
+    gq_port_evolve(cov, n, w);
+    gq_port_pack(w, n, mean, cov, 0.0, out);
+    free(w);
+}
+
+void ofx_q_pf_blacklitterman(const double *caps, int64_t ncaps,
+                             const double *cov, int64_t ncov,
+                             double risk, double tau,
+                             const double *P, int64_t nP,
+                             const double *Q, int64_t nQ,
+                             const double *om, int64_t nOm,
+                             double rf, double *out, int64_t nout)
+{
+    (void)nP; (void)nOm; (void)nout;
+    int n = (int)ncaps;
+    int k = (int)nQ;
+    double *w = (double *)malloc(sizeof(double) * (size_t)(n > 0 ? n : 1));
+    if (!w) return;
+    if (!gq_port_black_litterman(caps, cov, n, risk, tau, P, k, Q, om, rf, w))
+    {
+        gq_port_equally_weighted(n, w);
+        gq_port_pack(w, n, NULL, cov, rf, out);
+        free(w);
+        return;
+    }
+    gq_port_pack(w, n, NULL, cov, rf, out);
+    free(w);
+}
+
+/* ── Backtest (namespace BACKTEST) ───────────────────────────────────────── */
+
+int64_t ofx_q_bt_run(const double *data, int64_t n, int64_t cols, double *out, int64_t nout)
+{
+    (void)nout;
+    if (cols <= 0 || n <= 0) return 0;
+    int periods = (int)(n / cols);
+    return (int64_t)gq_backtest_run(data, periods, (int)cols, out);
+}

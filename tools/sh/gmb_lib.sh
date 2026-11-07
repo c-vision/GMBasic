@@ -41,7 +41,7 @@ inc_name() {
     graphics) echo "gfxcolor.inc gfxshape.inc gfx2d.inc gfx3d.inc gfxcodec.inc" ;;
     # libgmbmath: SPECIAL (gmbmath-special) + QUAT (gmbmath-vector) + COMPLEX (gmbmath-core).
     math) echo "special.inc quat.inc complex.inc xform.inc spectral.inc vec.inc sparse.inc quad.inc ode.inc veccalc.inc" ;;
-    quant) echo "trading.inc metrics.inc volatility.inc fundamentals.inc bonds.inc derivatives.inc" ;;
+    quant) echo "trading.inc metrics.inc volatility.inc fundamentals.inc bonds.inc derivatives.inc portfolio.inc backtest.inc" ;;
     *)   echo "$1.inc" ;;
   esac
 }

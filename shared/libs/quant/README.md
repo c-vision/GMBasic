@@ -12,7 +12,7 @@ FFI, le funzioni della superficie `TRADING.*` della StdLib.
 | `src/quant_ffi.c` | shim ABI FFI (`ofx_q_*`), unico file non in gmbsuite |
 | `shared/include/{trading,metrics,volatility,fundamentals,bonds,derivatives}.inc` | export BASIC (il build li sposta dal lib dir a `shared/include/`) |
 
-## Export e namespace (ondata 2, 69 funzioni)
+## Export e namespace (ondata 3, 89 funzioni)
 
 | `.inc` | namespace | funzioni |
 |---|---|---|
@@ -22,9 +22,16 @@ FFI, le funzioni della superficie `TRADING.*` della StdLib.
 | `fundamentals.inc` | `FUNDAMENTALS` | 11 (EPS/DPS/NAV, P/E, P/B, P/S, payout, yield) |
 | `bonds.inc` | `BONDS` | 9 (prezzo/rendimento, duration, BEY, current yield, YTM, ZCB) |
 | `derivatives.inc` | `DERIVATIVES` | 16 (Black-Scholes/Merton, binomiale, 11 greche) |
+| `portfolio.inc` | `PORTFOLIO` | 19 (metriche multi-asset, min-var/max-Sharpe/risk-parity, Kelly, BL, CVaR/CDaR) |
+| `backtest.inc` | `BACKTEST` | 1 (`RUN`, pesi uguali) |
 
 `TRADING_CORE` è il nome di transizione: quando i builtin `TRADING.*` saranno rimossi
 il namespace prenderà il nome `TRADING` (vedi `Guide/utente/Quant-Guida-Utente.md`).
+
+`PORTFOLIO` e `BACKTEST` restituiscono **ARRAY** (non più il `PortfolioResult`/`BacktestResult`):
+`[rendimento, volatilità, Sharpe, pesi...]` e `[metriche, curva...]`. L'ABI è documentata
+nell'intestazione dei due `.inc`; è la stessa scelta di `optimize.inc` (le strutture
+composte non attraversano l'FFI). Anche le matrici sono passate appiattite dai wrapper.
 
 ## Build e verifica
 
