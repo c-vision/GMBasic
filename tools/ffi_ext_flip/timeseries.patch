@@ -1,0 +1,218 @@
+--- a/shared/include/timeseries.inc
++++ b/shared/include/timeseries.inc
+@@ -3,14 +3,21 @@
+ ' Le uscite composte sono in out() piatto, documentato per funzione.
+ NAMESPACE TIMESERIES
+ 
+-DECLARE SUB TXF_KPSS LIB "gmbstats" ALIAS "ofx_ts_kpss" (series() AS DOUBLE, n AS LONG, bandwidth AS LONG, deterministic AS LONG, out() AS DOUBLE)
+-DECLARE SUB TXF_QLR LIB "gmbstats" ALIAS "ofx_ts_qlr" (l0 AS DOUBLE, lbeta() AS DOUBLE, n AS LONG, kappa AS DOUBLE, out() AS DOUBLE)
+-DECLARE SUB TXF_DFGLS LIB "gmbstats" ALIAS "ofx_ts_dfgls" (series() AS DOUBLE, n AS LONG, lags AS LONG, deterministic AS LONG, out() AS DOUBLE)
+-DECLARE FUNCTION TXF_HMMFORWARD LIB "gmbstats" ALIAS "ofx_ts_hmm_forward" (logpi() AS DOUBLE, loga() AS DOUBLE, loge() AS DOUBLE, K AS LONG, n AS LONG) AS DOUBLE
+-DECLARE FUNCTION TXF_HMMVITERBI LIB "gmbstats" ALIAS "ofx_ts_hmm_viterbi" (logpi() AS DOUBLE, loga() AS DOUBLE, loge() AS DOUBLE, K AS LONG, n AS LONG, path() AS LONG) AS DOUBLE
+-DECLARE SUB TXF_ENGLEGRANGER LIB "gmbstats" ALIAS "ofx_ts_engle_granger" (Y() AS DOUBLE, n AS LONG, k AS LONG, dependent AS LONG, lags AS LONG, withConstant AS LONG, out() AS DOUBLE)
+-DECLARE SUB TXF_JOHANSEN LIB "gmbstats" ALIAS "ofx_ts_johansen" (Y() AS DOUBLE, nvars AS LONG, periods AS LONG, lags AS LONG, out() AS DOUBLE)
++DECLARE SUB TXF_KPSS LIB "gmbstats" ALIAS "ofx_ts_kpss__ffi" (series() AS DOUBLE, n AS LONG, bandwidth AS LONG, deterministic AS LONG, out() AS DOUBLE)
+ 
++DECLARE SUB TXF_QLR LIB "gmbstats" ALIAS "ofx_ts_qlr__ffi" (l0 AS DOUBLE, lbeta() AS DOUBLE, n AS LONG, kappa AS DOUBLE, out() AS DOUBLE)
++
++DECLARE SUB TXF_DFGLS LIB "gmbstats" ALIAS "ofx_ts_dfgls__ffi" (series() AS DOUBLE, n AS LONG, lags AS LONG, deterministic AS LONG, out() AS DOUBLE)
++
++DECLARE FUNCTION TXF_HMMFORWARD LIB "gmbstats" ALIAS "ofx_ts_hmm_forward__ffi" (logpi() AS DOUBLE, loga() AS DOUBLE, loge() AS DOUBLE, K AS LONG, n AS LONG) AS DOUBLE
++
++DECLARE FUNCTION TXF_HMMVITERBI LIB "gmbstats" ALIAS "ofx_ts_hmm_viterbi__ffi" (logpi() AS DOUBLE, loga() AS DOUBLE, loge() AS DOUBLE, K AS LONG, n AS LONG, path() AS LONG) AS DOUBLE
++
++DECLARE SUB TXF_ENGLEGRANGER LIB "gmbstats" ALIAS "ofx_ts_engle_granger__ffi" (Y() AS DOUBLE, n AS LONG, k AS LONG, dependent AS LONG, lags AS LONG, withConstant AS LONG, out() AS DOUBLE)
++
++DECLARE SUB TXF_JOHANSEN LIB "gmbstats" ALIAS "ofx_ts_johansen__ffi" (Y() AS DOUBLE, nvars AS LONG, periods AS LONG, lags AS LONG, out() AS DOUBLE)
++
++
+ ' KPSS: out(9) = statistic, bandwidth, observations, deterministic,
+ '           long_run_variance, critical10, critical5, critical25, critical1.
+ PUBLIC SUB KPSS(series() AS DOUBLE, bandwidth AS LONG, deterministic AS LONG, out() AS DOUBLE)
+@@ -75,41 +82,73 @@
+ ' Famiglia rolling/trasformazioni. Le funzioni che restituiscono serie hanno
+ ' la STESSA forma del builtin (array di n-w+1 valori per le finestre mobili).
+ ' ═══════════════════════════════════════════════════════════════════════════
+-DECLARE SUB RXF_MA LIB "gmbstats" ALIAS "ofx_ts_macoeff" (x() AS DOUBLE, n AS LONG, w AS LONG, out() AS DOUBLE)
+-DECLARE SUB RXF_EMA LIB "gmbstats" ALIAS "ofx_ts_ema" (x() AS DOUBLE, n AS LONG, period AS LONG, out() AS DOUBLE)
+-DECLARE SUB RXF_MINMAX LIB "gmbstats" ALIAS "ofx_ts_minmax" (x() AS DOUBLE, n AS LONG, out() AS DOUBLE)
+-DECLARE FUNCTION RXF_AUTOCORR LIB "gmbstats" ALIAS "ofx_ts_autocorr" (x() AS DOUBLE, n AS LONG, lag AS LONG) AS DOUBLE
+-DECLARE FUNCTION RXF_VOLATILITY LIB "gmbstats" ALIAS "ofx_ts_volatility" (x() AS DOUBLE, n AS LONG) AS DOUBLE
+-DECLARE FUNCTION RXF_DIFFERENCE LIB "gmbstats" ALIAS "ofx_ts_difference" (x() AS DOUBLE, n AS LONG, order AS LONG, out() AS DOUBLE) AS LONG
+-DECLARE SUB RXF_RETURNS LIB "gmbstats" ALIAS "ofx_ts_returns" (x() AS DOUBLE, n AS LONG, out() AS DOUBLE)
+-DECLARE SUB RXF_DESEASONALIZE LIB "gmbstats" ALIAS "ofx_ts_deseasonalize" (x() AS DOUBLE, n AS LONG, period AS LONG, out() AS DOUBLE)
+-DECLARE SUB RXF_DECOMPOSE LIB "gmbstats" ALIAS "ofx_ts_decompose" (x() AS DOUBLE, n AS LONG, period AS LONG, trend() AS DOUBLE, seasonal() AS DOUBLE, resid() AS DOUBLE)
+-DECLARE SUB RXF_COVMATRIX LIB "gmbstats" ALIAS "ofx_ts_covmatrix" (data() AS DOUBLE, nobs AS LONG, m AS LONG, out() AS DOUBLE)
+-DECLARE FUNCTION RXF_OUTLIERS LIB "gmbstats" ALIAS "ofx_ts_outliers" (x() AS DOUBLE, n AS LONG, threshold AS DOUBLE, idx() AS LONG) AS LONG
++DECLARE SUB RXF_MA LIB "gmbstats" ALIAS "ofx_ts_macoeff__ffi" (x() AS DOUBLE, n AS LONG, w AS LONG, out() AS DOUBLE)
+ 
+-DECLARE SUB RXF_ROLL_MEAN LIB "gmbstats" ALIAS "ofx_roll_mean" (x() AS DOUBLE, n AS LONG, w AS LONG, out() AS DOUBLE)
+-DECLARE SUB RXF_ROLL_STD LIB "gmbstats" ALIAS "ofx_roll_std" (x() AS DOUBLE, n AS LONG, w AS LONG, out() AS DOUBLE)
+-DECLARE SUB RXF_ROLL_SKEW LIB "gmbstats" ALIAS "ofx_roll_skew" (x() AS DOUBLE, n AS LONG, w AS LONG, out() AS DOUBLE)
+-DECLARE SUB RXF_ROLL_KURT LIB "gmbstats" ALIAS "ofx_roll_kurt" (x() AS DOUBLE, n AS LONG, w AS LONG, out() AS DOUBLE)
+-DECLARE SUB RXF_ROLL_MEDIAN LIB "gmbstats" ALIAS "ofx_roll_median" (x() AS DOUBLE, n AS LONG, w AS LONG, out() AS DOUBLE)
+-DECLARE SUB RXF_ROLL_QUANTILE LIB "gmbstats" ALIAS "ofx_roll_quantile" (x() AS DOUBLE, n AS LONG, w AS LONG, q AS DOUBLE, out() AS DOUBLE)
+-DECLARE SUB RXF_ROLL_SHARPE LIB "gmbstats" ALIAS "ofx_roll_sharpe" (x() AS DOUBLE, n AS LONG, w AS LONG, rf AS DOUBLE, out() AS DOUBLE)
+-DECLARE SUB RXF_ROLL_MAD LIB "gmbstats" ALIAS "ofx_roll_mad" (x() AS DOUBLE, n AS LONG, w AS LONG, out() AS DOUBLE)
+-DECLARE SUB RXF_ROLL_ZSCORE LIB "gmbstats" ALIAS "ofx_roll_zscore" (x() AS DOUBLE, n AS LONG, w AS LONG, out() AS DOUBLE)
+-DECLARE SUB RXF_ROLL_AUTOCORR LIB "gmbstats" ALIAS "ofx_roll_autocorr" (x() AS DOUBLE, n AS LONG, w AS LONG, lag AS LONG, out() AS DOUBLE)
+-DECLARE SUB RXF_ROLL_COV LIB "gmbstats" ALIAS "ofx_roll_cov" (x() AS DOUBLE, y() AS DOUBLE, n AS LONG, w AS LONG, out() AS DOUBLE)
+-DECLARE SUB RXF_ROLL_CORR LIB "gmbstats" ALIAS "ofx_roll_corr" (x() AS DOUBLE, y() AS DOUBLE, n AS LONG, w AS LONG, out() AS DOUBLE)
+-DECLARE SUB RXF_ROLL_REGRESSION LIB "gmbstats" ALIAS "ofx_roll_regression" (x() AS DOUBLE, y() AS DOUBLE, n AS LONG, w AS LONG, slope() AS DOUBLE, intercept() AS DOUBLE)
+-DECLARE SUB RXF_ROLL_REGRESSION_SINGLE LIB "gmbstats" ALIAS "ofx_roll_regression_single" (y() AS DOUBLE, n AS LONG, w AS LONG, slope() AS DOUBLE, intercept() AS DOUBLE)
+-DECLARE SUB RXF_ROLL_DELTA LIB "gmbstats" ALIAS "ofx_roll_delta" (x() AS DOUBLE, n AS LONG, w AS LONG, out() AS DOUBLE)
+-DECLARE SUB RXF_ROLL_SORTINO LIB "gmbstats" ALIAS "ofx_roll_sortino" (x() AS DOUBLE, n AS LONG, w AS LONG, rf AS DOUBLE, target AS DOUBLE, out() AS DOUBLE)
+-DECLARE SUB RXF_ROLL_MINMAX LIB "gmbstats" ALIAS "ofx_roll_minmax" (x() AS DOUBLE, n AS LONG, w AS LONG, mn() AS DOUBLE, mx() AS DOUBLE)
++DECLARE SUB RXF_EMA LIB "gmbstats" ALIAS "ofx_ts_ema__ffi" (x() AS DOUBLE, n AS LONG, period AS LONG, out() AS DOUBLE)
+ 
+-DECLARE FUNCTION RXF_LOWPASS LIB "gmbstats" ALIAS "ofx_ts_lowpass" (x() AS DOUBLE, n AS LONG, wn AS DOUBLE, order AS LONG, out() AS DOUBLE) AS LONG
+-DECLARE FUNCTION RXF_HIGHPASS LIB "gmbstats" ALIAS "ofx_ts_highpass" (x() AS DOUBLE, n AS LONG, wn AS DOUBLE, order AS LONG, out() AS DOUBLE) AS LONG
+-DECLARE FUNCTION RXF_BANDPASS LIB "gmbstats" ALIAS "ofx_ts_bandpass" (x() AS DOUBLE, n AS LONG, w1 AS DOUBLE, w2 AS DOUBLE, order AS LONG, out() AS DOUBLE) AS LONG
+-DECLARE FUNCTION RXF_BANDSTOP LIB "gmbstats" ALIAS "ofx_ts_bandstop" (x() AS DOUBLE, n AS LONG, w1 AS DOUBLE, w2 AS DOUBLE, order AS LONG, out() AS DOUBLE) AS LONG
++DECLARE SUB RXF_MINMAX LIB "gmbstats" ALIAS "ofx_ts_minmax__ffi" (x() AS DOUBLE, n AS LONG, out() AS DOUBLE)
++
++DECLARE FUNCTION RXF_AUTOCORR LIB "gmbstats" ALIAS "ofx_ts_autocorr__ffi" (x() AS DOUBLE, n AS LONG, lag AS LONG) AS DOUBLE
++
++DECLARE FUNCTION RXF_VOLATILITY LIB "gmbstats" ALIAS "ofx_ts_volatility__ffi" (x() AS DOUBLE, n AS LONG) AS DOUBLE
++
++DECLARE FUNCTION RXF_DIFFERENCE LIB "gmbstats" ALIAS "ofx_ts_difference__ffi" (x() AS DOUBLE, n AS LONG, order AS LONG, out() AS DOUBLE) AS LONG
++
++DECLARE SUB RXF_RETURNS LIB "gmbstats" ALIAS "ofx_ts_returns__ffi" (x() AS DOUBLE, n AS LONG, out() AS DOUBLE)
++
++DECLARE SUB RXF_DESEASONALIZE LIB "gmbstats" ALIAS "ofx_ts_deseasonalize__ffi" (x() AS DOUBLE, n AS LONG, period AS LONG, out() AS DOUBLE)
++
++DECLARE SUB RXF_DECOMPOSE LIB "gmbstats" ALIAS "ofx_ts_decompose__ffi" (x() AS DOUBLE, n AS LONG, period AS LONG, trend() AS DOUBLE, seasonal() AS DOUBLE, resid() AS DOUBLE)
++
++DECLARE SUB RXF_COVMATRIX LIB "gmbstats" ALIAS "ofx_ts_covmatrix__ffi" (data() AS DOUBLE, nobs AS LONG, m AS LONG, out() AS DOUBLE)
++
++DECLARE FUNCTION RXF_OUTLIERS LIB "gmbstats" ALIAS "ofx_ts_outliers__ffi" (x() AS DOUBLE, n AS LONG, threshold AS DOUBLE, idx() AS LONG) AS LONG
++
++
++DECLARE SUB RXF_ROLL_MEAN LIB "gmbstats" ALIAS "ofx_roll_mean__ffi" (x() AS DOUBLE, n AS LONG, w AS LONG, out() AS DOUBLE)
++
++DECLARE SUB RXF_ROLL_STD LIB "gmbstats" ALIAS "ofx_roll_std__ffi" (x() AS DOUBLE, n AS LONG, w AS LONG, out() AS DOUBLE)
++
++DECLARE SUB RXF_ROLL_SKEW LIB "gmbstats" ALIAS "ofx_roll_skew__ffi" (x() AS DOUBLE, n AS LONG, w AS LONG, out() AS DOUBLE)
++
++DECLARE SUB RXF_ROLL_KURT LIB "gmbstats" ALIAS "ofx_roll_kurt__ffi" (x() AS DOUBLE, n AS LONG, w AS LONG, out() AS DOUBLE)
++
++DECLARE SUB RXF_ROLL_MEDIAN LIB "gmbstats" ALIAS "ofx_roll_median__ffi" (x() AS DOUBLE, n AS LONG, w AS LONG, out() AS DOUBLE)
++
++DECLARE SUB RXF_ROLL_QUANTILE LIB "gmbstats" ALIAS "ofx_roll_quantile__ffi" (x() AS DOUBLE, n AS LONG, w AS LONG, q AS DOUBLE, out() AS DOUBLE)
++
++DECLARE SUB RXF_ROLL_SHARPE LIB "gmbstats" ALIAS "ofx_roll_sharpe__ffi" (x() AS DOUBLE, n AS LONG, w AS LONG, rf AS DOUBLE, out() AS DOUBLE)
++
++DECLARE SUB RXF_ROLL_MAD LIB "gmbstats" ALIAS "ofx_roll_mad__ffi" (x() AS DOUBLE, n AS LONG, w AS LONG, out() AS DOUBLE)
+ 
++DECLARE SUB RXF_ROLL_ZSCORE LIB "gmbstats" ALIAS "ofx_roll_zscore__ffi" (x() AS DOUBLE, n AS LONG, w AS LONG, out() AS DOUBLE)
++
++DECLARE SUB RXF_ROLL_AUTOCORR LIB "gmbstats" ALIAS "ofx_roll_autocorr__ffi" (x() AS DOUBLE, n AS LONG, w AS LONG, lag AS LONG, out() AS DOUBLE)
++
++DECLARE SUB RXF_ROLL_COV LIB "gmbstats" ALIAS "ofx_roll_cov__ffi" (x() AS DOUBLE, y() AS DOUBLE, n AS LONG, w AS LONG, out() AS DOUBLE)
++
++DECLARE SUB RXF_ROLL_CORR LIB "gmbstats" ALIAS "ofx_roll_corr__ffi" (x() AS DOUBLE, y() AS DOUBLE, n AS LONG, w AS LONG, out() AS DOUBLE)
++
++DECLARE SUB RXF_ROLL_REGRESSION LIB "gmbstats" ALIAS "ofx_roll_regression__ffi" (x() AS DOUBLE, y() AS DOUBLE, n AS LONG, w AS LONG, slope() AS DOUBLE, intercept() AS DOUBLE)
++
++DECLARE SUB RXF_ROLL_REGRESSION_SINGLE LIB "gmbstats" ALIAS "ofx_roll_regression_single__ffi" (y() AS DOUBLE, n AS LONG, w AS LONG, slope() AS DOUBLE, intercept() AS DOUBLE)
++
++DECLARE SUB RXF_ROLL_DELTA LIB "gmbstats" ALIAS "ofx_roll_delta__ffi" (x() AS DOUBLE, n AS LONG, w AS LONG, out() AS DOUBLE)
++
++DECLARE SUB RXF_ROLL_SORTINO LIB "gmbstats" ALIAS "ofx_roll_sortino__ffi" (x() AS DOUBLE, n AS LONG, w AS LONG, rf AS DOUBLE, target AS DOUBLE, out() AS DOUBLE)
++
++DECLARE SUB RXF_ROLL_MINMAX LIB "gmbstats" ALIAS "ofx_roll_minmax__ffi" (x() AS DOUBLE, n AS LONG, w AS LONG, mn() AS DOUBLE, mx() AS DOUBLE)
++
++
++DECLARE FUNCTION RXF_LOWPASS LIB "gmbstats" ALIAS "ofx_ts_lowpass__ffi" (x() AS DOUBLE, n AS LONG, wn AS DOUBLE, order AS LONG, out() AS DOUBLE) AS LONG
++
++DECLARE FUNCTION RXF_HIGHPASS LIB "gmbstats" ALIAS "ofx_ts_highpass__ffi" (x() AS DOUBLE, n AS LONG, wn AS DOUBLE, order AS LONG, out() AS DOUBLE) AS LONG
++
++DECLARE FUNCTION RXF_BANDPASS LIB "gmbstats" ALIAS "ofx_ts_bandpass__ffi" (x() AS DOUBLE, n AS LONG, w1 AS DOUBLE, w2 AS DOUBLE, order AS LONG, out() AS DOUBLE) AS LONG
++
++DECLARE FUNCTION RXF_BANDSTOP LIB "gmbstats" ALIAS "ofx_ts_bandstop__ffi" (x() AS DOUBLE, n AS LONG, w1 AS DOUBLE, w2 AS DOUBLE, order AS LONG, out() AS DOUBLE) AS LONG
++
++
+ ' ── trasformazioni ─────────────────────────────────────────────────────────
+ PUBLIC FUNCTION TSEMA(series() AS DOUBLE, period AS LONG) AS ARRAY OF DOUBLE
+     DIM n AS LONG = UBOUND(series) + 1
+@@ -374,20 +413,33 @@
+ ' Famiglia avanzata: Hurst, frazionale, Granger, GARCH, Kalman, bootstrap,
+ ' entropie, Lyapunov, OU, BMA. I risultati composti sono array piatti.
+ ' ═══════════════════════════════════════════════════════════════════════════
+-DECLARE FUNCTION AXF_HURST LIB "gmbstats" ALIAS "ofx_ts_hurst" (x() AS DOUBLE, n AS LONG) AS DOUBLE
+-DECLARE FUNCTION AXF_FRACDIFF LIB "gmbstats" ALIAS "ofx_ts_fracdiff" (x() AS DOUBLE, n AS LONG, d AS DOUBLE, out() AS DOUBLE) AS LONG
+-DECLARE FUNCTION AXF_GRANGER LIB "gmbstats" ALIAS "ofx_ts_granger" (x() AS DOUBLE, y() AS DOUBLE, n AS LONG, p AS LONG, out() AS DOUBLE) AS LONG
+-DECLARE FUNCTION AXF_GARCH11 LIB "gmbstats" ALIAS "ofx_ts_garch11" (x() AS DOUBLE, n AS LONG, out() AS DOUBLE) AS LONG
+-DECLARE FUNCTION AXF_KALMAN1D LIB "gmbstats" ALIAS "ofx_ts_kalman1d" (z() AS DOUBLE, n AS LONG, a AS DOUBLE, h AS DOUBLE, q AS DOUBLE, r AS DOUBLE, out() AS DOUBLE) AS LONG
+-DECLARE FUNCTION AXF_BOOTSTRAP LIB "gmbstats" ALIAS "ofx_ts_bootstrap" (x() AS DOUBLE, n AS LONG, window AS LONG, seed AS LONG, out() AS DOUBLE) AS LONG
+-DECLARE FUNCTION AXF_SAMPEN LIB "gmbstats" ALIAS "ofx_ts_sampen" (x() AS DOUBLE, n AS LONG, m AS LONG, r AS DOUBLE) AS DOUBLE
+-DECLARE FUNCTION AXF_APPROXENT LIB "gmbstats" ALIAS "ofx_ts_approxent" (x() AS DOUBLE, n AS LONG, m AS LONG, r AS DOUBLE) AS DOUBLE
+-DECLARE FUNCTION AXF_PERM LIB "gmbstats" ALIAS "ofx_ts_perm" (x() AS DOUBLE, n AS LONG, m AS LONG, lag AS LONG) AS DOUBLE
+-DECLARE FUNCTION AXF_LZ LIB "gmbstats" ALIAS "ofx_ts_lz" (x() AS DOUBLE, n AS LONG) AS DOUBLE
+-DECLARE FUNCTION AXF_LYAP LIB "gmbstats" ALIAS "ofx_ts_lyap" (x() AS DOUBLE, n AS LONG, m AS LONG, tau AS LONG) AS DOUBLE
+-DECLARE FUNCTION AXF_OUFIT LIB "gmbstats" ALIAS "ofx_ts_oufit" (x() AS DOUBLE, n AS LONG, dt AS DOUBLE, out() AS DOUBLE) AS LONG
+-DECLARE FUNCTION AXF_BMA LIB "gmbstats" ALIAS "ofx_ts_bma" (ic() AS DOUBLE, m AS LONG, out() AS DOUBLE) AS LONG
++DECLARE FUNCTION AXF_HURST LIB "gmbstats" ALIAS "ofx_ts_hurst__ffi" (x() AS DOUBLE, n AS LONG) AS DOUBLE
++
++DECLARE FUNCTION AXF_FRACDIFF LIB "gmbstats" ALIAS "ofx_ts_fracdiff__ffi" (x() AS DOUBLE, n AS LONG, d AS DOUBLE, out() AS DOUBLE) AS LONG
+ 
++DECLARE FUNCTION AXF_GRANGER LIB "gmbstats" ALIAS "ofx_ts_granger__ffi" (x() AS DOUBLE, y() AS DOUBLE, n AS LONG, p AS LONG, out() AS DOUBLE) AS LONG
++
++DECLARE FUNCTION AXF_GARCH11 LIB "gmbstats" ALIAS "ofx_ts_garch11__ffi" (x() AS DOUBLE, n AS LONG, out() AS DOUBLE) AS LONG
++
++DECLARE FUNCTION AXF_KALMAN1D LIB "gmbstats" ALIAS "ofx_ts_kalman1d__ffi" (z() AS DOUBLE, n AS LONG, a AS DOUBLE, h AS DOUBLE, q AS DOUBLE, r AS DOUBLE, out() AS DOUBLE) AS LONG
++
++DECLARE FUNCTION AXF_BOOTSTRAP LIB "gmbstats" ALIAS "ofx_ts_bootstrap__ffi" (x() AS DOUBLE, n AS LONG, window AS LONG, seed AS LONG, out() AS DOUBLE) AS LONG
++
++DECLARE FUNCTION AXF_SAMPEN LIB "gmbstats" ALIAS "ofx_ts_sampen__ffi" (x() AS DOUBLE, n AS LONG, m AS LONG, r AS DOUBLE) AS DOUBLE
++
++DECLARE FUNCTION AXF_APPROXENT LIB "gmbstats" ALIAS "ofx_ts_approxent__ffi" (x() AS DOUBLE, n AS LONG, m AS LONG, r AS DOUBLE) AS DOUBLE
++
++DECLARE FUNCTION AXF_PERM LIB "gmbstats" ALIAS "ofx_ts_perm__ffi" (x() AS DOUBLE, n AS LONG, m AS LONG, lag AS LONG) AS DOUBLE
++
++DECLARE FUNCTION AXF_LZ LIB "gmbstats" ALIAS "ofx_ts_lz__ffi" (x() AS DOUBLE, n AS LONG) AS DOUBLE
++
++DECLARE FUNCTION AXF_LYAP LIB "gmbstats" ALIAS "ofx_ts_lyap__ffi" (x() AS DOUBLE, n AS LONG, m AS LONG, tau AS LONG) AS DOUBLE
++
++DECLARE FUNCTION AXF_OUFIT LIB "gmbstats" ALIAS "ofx_ts_oufit__ffi" (x() AS DOUBLE, n AS LONG, dt AS DOUBLE, out() AS DOUBLE) AS LONG
++
++DECLARE FUNCTION AXF_BMA LIB "gmbstats" ALIAS "ofx_ts_bma__ffi" (ic() AS DOUBLE, m AS LONG, out() AS DOUBLE) AS LONG
++
++
+ PUBLIC FUNCTION TSHURST(series() AS DOUBLE) AS DOUBLE
+     RETURN AXF_HURST(series, UBOUND(series) + 1)
+ END FUNCTION
+@@ -463,8 +515,9 @@
+ 
+ ' HMMFIT: data() jagged (osservazioni x dimensioni). out piatto:
+ ' pi(K), A(K*K), means(K*d), covs(K*d*d).
+-DECLARE FUNCTION AXF_HMMFIT LIB "gmbstats" ALIAS "ofx_ts_hmmfit" (X() AS DOUBLE, n AS LONG, d AS LONG, K AS LONG, nIter AS LONG, out() AS DOUBLE) AS LONG
++DECLARE FUNCTION AXF_HMMFIT LIB "gmbstats" ALIAS "ofx_ts_hmmfit__ffi" (X() AS DOUBLE, n AS LONG, d AS LONG, K AS LONG, nIter AS LONG, out() AS DOUBLE) AS LONG
+ 
++
+ PUBLIC SUB HMMFIT(data() AS ARRAY OF DOUBLE, nStates AS LONG, nIter AS LONG, out() AS DOUBLE)
+     DIM n AS LONG = UBOUND(data) + 1
+     DIM d AS LONG = UBOUND(data(0)) + 1
+@@ -480,12 +533,17 @@
+ ' ═══════════════════════════════════════════════════════════════════════════
+ ' Ultime 5 funzioni (già builtin): ARIMA, Holt-Winters, ADF, Yule-Walker, MA.
+ ' ═══════════════════════════════════════════════════════════════════════════
+-DECLARE FUNCTION BXF_YULE LIB "gmbstats" ALIAS "ofx_ts_yule" (acf() AS DOUBLE, n AS LONG, order AS LONG, out() AS DOUBLE) AS LONG
+-DECLARE FUNCTION BXF_MA LIB "gmbstats" ALIAS "ofx_ts_macoeff" (res() AS DOUBLE, n AS LONG, q AS LONG, out() AS DOUBLE) AS LONG
+-DECLARE FUNCTION BXF_ADF LIB "gmbstats" ALIAS "ofx_ts_adf" (y() AS DOUBLE, n AS LONG, out() AS DOUBLE) AS LONG
+-DECLARE FUNCTION BXF_HW LIB "gmbstats" ALIAS "ofx_ts_hw" (y() AS DOUBLE, n AS LONG, alpha AS DOUBLE, beta AS DOUBLE, gamma AS DOUBLE, period AS LONG, forecast() AS DOUBLE) AS DOUBLE
+-DECLARE FUNCTION BXF_ARIMA LIB "gmbstats" ALIAS "ofx_ts_arima" (y() AS DOUBLE, n AS LONG, p AS LONG, d AS LONG, q AS LONG, out() AS DOUBLE) AS LONG
++DECLARE FUNCTION BXF_YULE LIB "gmbstats" ALIAS "ofx_ts_yule__ffi" (acf() AS DOUBLE, n AS LONG, order AS LONG, out() AS DOUBLE) AS LONG
+ 
++DECLARE FUNCTION BXF_MA LIB "gmbstats" ALIAS "ofx_ts_macoeff__ffi" (res() AS DOUBLE, n AS LONG, q AS LONG, out() AS DOUBLE) AS LONG
++
++DECLARE FUNCTION BXF_ADF LIB "gmbstats" ALIAS "ofx_ts_adf__ffi" (y() AS DOUBLE, n AS LONG, out() AS DOUBLE) AS LONG
++
++DECLARE FUNCTION BXF_HW LIB "gmbstats" ALIAS "ofx_ts_hw__ffi" (y() AS DOUBLE, n AS LONG, alpha AS DOUBLE, beta AS DOUBLE, gamma AS DOUBLE, period AS LONG, forecast() AS DOUBLE) AS DOUBLE
++
++DECLARE FUNCTION BXF_ARIMA LIB "gmbstats" ALIAS "ofx_ts_arima__ffi" (y() AS DOUBLE, n AS LONG, p AS LONG, d AS LONG, q AS LONG, out() AS DOUBLE) AS LONG
++
++
+ ' Yule-Walker: l'input è l'ACF; ritorna i `order` coefficienti AR.
+ PUBLIC FUNCTION YULEWALKER(acf() AS DOUBLE, order AS LONG) AS ARRAY OF DOUBLE
+     DIM o(order - 1) AS DOUBLE

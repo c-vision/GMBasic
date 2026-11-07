@@ -212,6 +212,10 @@ DIM v(5) AS DOUBLE
 VecFill(v, 5)          ' vec_fill (native C): void vec_fill(double* buf, long n)
 
 
+### `DECLARE NATIVE` — ABI esatta (2026-11-06)
+
+`DECLARE NATIVE FUNCTION|SUB ...` (anche `PUBLIC DECLARE NATIVE ...`) dichiara una funzione la cui firma C resta ESATTAMENTE quella scritta: nessun adattamento automatico dei parametri array. Serve per le API di sistema (`kernel32`, `user32`, `ws2_32`, ...) e per le librerie di terzi con firma C fissa. `NATIVE` è un modificatore contestuale (non una parola riservata). Quando le estensioni automatiche degli array saranno attive, solo le DECLARE senza `NATIVE` emetteranno `d0..dN-1` dopo ogni puntatore.
+
 ## 4ter. STRING — parametro e ritorno (2026-09-28)
 
 DECLARE FUNCTION VecLabel LIB "libvec_module" ALIAS "vec_label" (id AS LONG, name AS STRING) AS STRING
@@ -534,6 +538,10 @@ DECLARE SUB VecFill LIB "libvec_module" ALIAS "vec_fill" (buf() AS DOUBLE, n AS 
 DIM v(5) AS DOUBLE
 VecFill(v, 5)          ' vec_fill (native C): void vec_fill(double* buf, long n)
 
+
+### `DECLARE NATIVE` — ABI esatta (2026-11-06)
+
+`DECLARE NATIVE FUNCTION|SUB ...` (anche `PUBLIC DECLARE NATIVE ...`) dichiara una funzione la cui firma C resta ESATTAMENTE quella scritta: nessun adattamento automatico dei parametri array. Serve per le API di sistema (`kernel32`, `user32`, `ws2_32`, ...) e per le librerie di terzi con firma C fissa. `NATIVE` è un modificatore contestuale (non una parola riservata). Quando le estensioni automatiche degli array saranno attive, solo le DECLARE senza `NATIVE` emetteranno `d0..dN-1` dopo ogni puntatore.
 
 ## 4ter. STRING — parametro e ritorno (2026-09-28)
 

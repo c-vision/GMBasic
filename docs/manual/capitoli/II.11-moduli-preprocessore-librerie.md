@@ -52,7 +52,7 @@ canali distinti, che rispondono a tre domande diverse:
 |---|---|---|---|
 | **Modulo** | `IMPORT <NAMESPACE>` | un file `.inc` (o `.bas`) che dichiara `NAMESPACE` | `shared/include/`, cartelle di progetto, `compiler.searchFolders` |
 | **Pacchetto** | `REQUIRE "nome" VERSION "^1.0"` | un pacchetto installato dal package manager; i suoi export sono preposti al programma | `vendor/`, `<exe>/packages/`, `~/.gmbasic/packages/` |
-| **FFI** | `DECLARE FUNCTION … LIB "gmbnome"` | una libreria dinamica (`libgmbnome.dylib`/`.so`/`.dll`) | `build/libs/<rid>/`, `shared/libs/<nome>/`, `~/.gmbasic/libs/<rid>/` |
+| **FFI** | `DECLARE FUNCTION … LIB "gmbnome"` | una libreria dinamica (`libgmbnome.dylib`/`.so`/`.dll`) | `build/libs/<rid>/`, `shared/libs/<nome>/` (solo sviluppo), `~/.gmbasic/libs/<rid>/` |
 
 Il file `.inc` è il **testo del modulo**; `IMPORT` è il canale che lo porta dentro il
 programma. `REQUIRE` non importa un file: dichiara una dipendenza che il package manager
@@ -66,6 +66,12 @@ simbolo a una funzione C.
 | `shared/include/<nome>.inc` | export pubblico del modulo (`NAMESPACE`, `DECLARE`) |
 | `shared/libs/<nome>/include/gmb<nome>.h` | header C della stessa libreria |
 | `shared/libs/<nome>/` | progetto di una libreria **nostra** (`build.sh`, `src/`, `include/`, `samples/`) |
+
+> `shared/libs/` e **opzionale**: serve solo a sviluppare le librerie (sorgenti + `build.sh`).
+> Il compilatore e il runtime non lo richiedono: le librerie si prendono da `build/libs/<rid>/`
+> o dalla cache `~/.gmbasic/libs/<rid>/` (scaricate da `gmb libs ensure`).
+> Gruppi pubblicati: `runtime`, `llmmotor`, `ffi`, **`domain`** (GRAPH, GFX*, CONIC, OR, NEURAL,
+> MATH, STATS, GEO, FLOW, WSP, PGM, LOCALSEARCH, MATHPROG, GAMETHEORY, AVIATION, LAGRANGIAN, SCHEDULING).
 | `packages/<nome>/<versione>/` | sorgenti di un **pacchetto** con dipendenze esterne |
 | `GMBasic/build/libs/<rid>/` | artefatti di build (gitignored) |
 | `~/.gmbasic/libs/<rid>/` | cache delle librerie pubblicate + librerie esterne |

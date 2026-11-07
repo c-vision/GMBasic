@@ -18,6 +18,11 @@ nello stesso albero, senza sottomoduli. Per lavorare su un checkout servono due 
 
 Le librerie native, i feed di mercato e i cervelli non stanno in git: si scaricano dalle release
 dei repository compagni, verificati con sha256, solo quando servono. Se manca una libreria, il
+
+`shared/libs/` (sorgenti C delle librerie) e una **facolta di sviluppo**, non un requisito: il
+compilatore e il runtime non lo leggono mai. Le librerie arrivano dalla cache
+(`~/.gmbasic/libs/<rid>/`, popolata da `gmb libs ensure`) o da `build/libs/<rid>/` in un
+checkout; i gruppi pubblicati sono `runtime`, `llmmotor`, `ffi`, `domain` (+ componenti esterni).
 runtime la scarica al primo uso della funzione che la richiede.
 
 ## 2. I quattro comandi del primo avvio
