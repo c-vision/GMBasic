@@ -2,6 +2,7 @@
 #include "gn_opt.h"
 
 #include <math.h>
+#include <stdint.h>
 
 gn_opt gn_opt_make(int kind, gn_real lr)
 {

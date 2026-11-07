@@ -44,19 +44,19 @@ PUBLIC DECLARE FUNCTION ZTPOISSONPMF LIB "gmbstats" ALIAS "gs_dist_ztpoisson_pmf
 PUBLIC DECLARE FUNCTION ZTPOISSONCDF LIB "gmbstats" ALIAS "gs_dist_ztpoisson_cdf" (lambda AS DOUBLE, k AS LONG) AS DOUBLE
 
 ' --- descrittive scalari (gs_stats_*): primitive con n esplicito, wrapper sotto ---
-DECLARE FUNCTION SXN_MEAN LIB "gmbstats" ALIAS "gs_stats_mean__ffi" (a() AS DOUBLE, n AS LONG) AS DOUBLE
-DECLARE FUNCTION SXN_VARIANCE LIB "gmbstats" ALIAS "gs_stats_variance__ffi" (a() AS DOUBLE, n AS LONG, sample AS LONG) AS DOUBLE
-DECLARE FUNCTION SXN_STDDEV LIB "gmbstats" ALIAS "gs_stats_stddev__ffi" (a() AS DOUBLE, n AS LONG, sample AS LONG) AS DOUBLE
-DECLARE FUNCTION SXN_SKEWNESS LIB "gmbstats" ALIAS "gs_stats_skewness__ffi" (a() AS DOUBLE, n AS LONG) AS DOUBLE
-DECLARE FUNCTION SXN_KURTOSIS LIB "gmbstats" ALIAS "gs_stats_kurtosis__ffi" (a() AS DOUBLE, n AS LONG) AS DOUBLE
-DECLARE FUNCTION SXN_MIN LIB "gmbstats" ALIAS "gs_stats_min__ffi" (a() AS DOUBLE, n AS LONG) AS DOUBLE
-DECLARE FUNCTION SXN_MAX LIB "gmbstats" ALIAS "gs_stats_max__ffi" (a() AS DOUBLE, n AS LONG) AS DOUBLE
-DECLARE FUNCTION SXN_RANGE LIB "gmbstats" ALIAS "gs_stats_range__ffi" (a() AS DOUBLE, n AS LONG) AS DOUBLE
-DECLARE FUNCTION SXN_MEDIAN LIB "gmbstats" ALIAS "gs_stats_median__ffi" (a() AS DOUBLE, n AS LONG) AS DOUBLE
-DECLARE FUNCTION SXN_PERCENTILE LIB "gmbstats" ALIAS "gs_stats_percentile__ffi" (a() AS DOUBLE, n AS LONG, p AS DOUBLE) AS DOUBLE
-DECLARE FUNCTION SXN_MAD LIB "gmbstats" ALIAS "gs_stats_mad__ffi" (a() AS DOUBLE, n AS LONG) AS DOUBLE
-DECLARE FUNCTION SXN_COVARIANCE LIB "gmbstats" ALIAS "gs_stats_covariance__ffi" (a() AS DOUBLE, b() AS DOUBLE, n AS LONG, sample AS LONG) AS DOUBLE
-DECLARE FUNCTION SXN_CORRELATION LIB "gmbstats" ALIAS "gs_stats_correlation__ffi" (a() AS DOUBLE, b() AS DOUBLE, n AS LONG) AS DOUBLE
+DECLARE NATIVE FUNCTION SXN_MEAN LIB "gmbstats" ALIAS "gs_stats_mean" (a() AS DOUBLE, n AS LONG) AS DOUBLE
+DECLARE NATIVE FUNCTION SXN_VARIANCE LIB "gmbstats" ALIAS "gs_stats_variance" (a() AS DOUBLE, n AS LONG, sample AS LONG) AS DOUBLE
+DECLARE NATIVE FUNCTION SXN_STDDEV LIB "gmbstats" ALIAS "gs_stats_stddev" (a() AS DOUBLE, n AS LONG, sample AS LONG) AS DOUBLE
+DECLARE NATIVE FUNCTION SXN_SKEWNESS LIB "gmbstats" ALIAS "gs_stats_skewness" (a() AS DOUBLE, n AS LONG) AS DOUBLE
+DECLARE NATIVE FUNCTION SXN_KURTOSIS LIB "gmbstats" ALIAS "gs_stats_kurtosis" (a() AS DOUBLE, n AS LONG) AS DOUBLE
+DECLARE NATIVE FUNCTION SXN_MIN LIB "gmbstats" ALIAS "gs_stats_min" (a() AS DOUBLE, n AS LONG) AS DOUBLE
+DECLARE NATIVE FUNCTION SXN_MAX LIB "gmbstats" ALIAS "gs_stats_max" (a() AS DOUBLE, n AS LONG) AS DOUBLE
+DECLARE NATIVE FUNCTION SXN_RANGE LIB "gmbstats" ALIAS "gs_stats_range" (a() AS DOUBLE, n AS LONG) AS DOUBLE
+DECLARE NATIVE FUNCTION SXN_MEDIAN LIB "gmbstats" ALIAS "gs_stats_median" (a() AS DOUBLE, n AS LONG) AS DOUBLE
+DECLARE NATIVE FUNCTION SXN_PERCENTILE LIB "gmbstats" ALIAS "gs_stats_percentile" (a() AS DOUBLE, n AS LONG, p AS DOUBLE) AS DOUBLE
+DECLARE NATIVE FUNCTION SXN_MAD LIB "gmbstats" ALIAS "gs_stats_mad" (a() AS DOUBLE, n AS LONG) AS DOUBLE
+DECLARE NATIVE FUNCTION SXN_COVARIANCE LIB "gmbstats" ALIAS "gs_stats_covariance" (a() AS DOUBLE, b() AS DOUBLE, n AS LONG, sample AS LONG) AS DOUBLE
+DECLARE NATIVE FUNCTION SXN_CORRELATION LIB "gmbstats" ALIAS "gs_stats_correlation" (a() AS DOUBLE, b() AS DOUBLE, n AS LONG) AS DOUBLE
 
 ' --- distribuzioni centrali (gs_dist_*), ordine C: parametri, poi x (o p) ---
 ' Normale

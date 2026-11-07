@@ -25,33 +25,33 @@ NAMESPACE OPTIMIZE
 ' Binding nativi (uso interno)
 ' ═══════════════════════════════════════════════════════════════════════════
 
-DECLARE SUB OPTN_LEASTSQUARES LIB "gmbopt" ALIAS "gor_optb_least_squares__ffi" (A() AS DOUBLE, rows AS LONG, cols AS LONG, b() AS DOUBLE, out() AS DOUBLE)
-DECLARE SUB OPTN_CHOLESKYSOLVE LIB "gmbopt" ALIAS "gor_optb_cholesky_solve__ffi" (A() AS DOUBLE, b() AS DOUBLE, n AS LONG, out() AS DOUBLE)
-DECLARE SUB OPTN_SIMPLEX LIB "gmbopt" ALIAS "gor_optb_simplex__ffi" (c() AS DOUBLE, n AS LONG, A() AS DOUBLE, m AS LONG, b() AS DOUBLE, out() AS DOUBLE)
-DECLARE SUB OPTN_LINPROG LIB "gmbopt" ALIAS "gor_optb_linprog__ffi" (c() AS DOUBLE, n AS LONG, A_ub() AS DOUBLE, m AS LONG, b_ub() AS DOUBLE, bounds() AS DOUBLE, out() AS DOUBLE)
+DECLARE NATIVE SUB OPTN_LEASTSQUARES LIB "gmbopt" ALIAS "gor_optb_least_squares" (A() AS DOUBLE, rows AS LONG, cols AS LONG, b() AS DOUBLE, out() AS DOUBLE)
+DECLARE NATIVE SUB OPTN_CHOLESKYSOLVE LIB "gmbopt" ALIAS "gor_optb_cholesky_solve" (A() AS DOUBLE, b() AS DOUBLE, n AS LONG, out() AS DOUBLE)
+DECLARE NATIVE SUB OPTN_SIMPLEX LIB "gmbopt" ALIAS "gor_optb_simplex" (c() AS DOUBLE, n AS LONG, A() AS DOUBLE, m AS LONG, b() AS DOUBLE, out() AS DOUBLE)
+DECLARE NATIVE SUB OPTN_LINPROG LIB "gmbopt" ALIAS "gor_optb_linprog" (c() AS DOUBLE, n AS LONG, A_ub() AS DOUBLE, m AS LONG, b_ub() AS DOUBLE, bounds() AS DOUBLE, out() AS DOUBLE)
 
-DECLARE SUB OPTN_NELDERMEAD LIB "gmbopt" ALIAS "gor_optb_nelder_mead__ffi" (f AS FUNCTION(x() AS DOUBLE) AS DOUBLE, x0() AS DOUBLE, n AS LONG, out() AS DOUBLE)
-DECLARE SUB OPTN_BFGS LIB "gmbopt" ALIAS "gor_optb_bfgs__ffi" (f AS FUNCTION(x() AS DOUBLE) AS DOUBLE, x0() AS DOUBLE, n AS LONG, out() AS DOUBLE)
-DECLARE SUB OPTN_LBFGS LIB "gmbopt" ALIAS "gor_optb_lbfgs__ffi" (f AS FUNCTION(x() AS DOUBLE) AS DOUBLE, x0() AS DOUBLE, n AS LONG, out() AS DOUBLE)
-DECLARE SUB OPTN_CONJUGATEGRADIENT LIB "gmbopt" ALIAS "gor_optb_conjugate_gradient__ffi" (f AS FUNCTION(x() AS DOUBLE) AS DOUBLE, x0() AS DOUBLE, n AS LONG, out() AS DOUBLE)
-DECLARE SUB OPTN_POWELL LIB "gmbopt" ALIAS "gor_optb_powell__ffi" (f AS FUNCTION(x() AS DOUBLE) AS DOUBLE, x0() AS DOUBLE, n AS LONG, out() AS DOUBLE)
-DECLARE SUB OPTN_TNC LIB "gmbopt" ALIAS "gor_optb_tnc__ffi" (f AS FUNCTION(x() AS DOUBLE) AS DOUBLE, x0() AS DOUBLE, n AS LONG, bounds() AS DOUBLE, out() AS DOUBLE)
-DECLARE SUB OPTN_COBYLA LIB "gmbopt" ALIAS "gor_optb_cobyla__ffi" (f AS FUNCTION(x() AS DOUBLE) AS DOUBLE, x0() AS DOUBLE, n AS LONG, bounds() AS DOUBLE, out() AS DOUBLE)
-DECLARE SUB OPTN_SLSQP LIB "gmbopt" ALIAS "gor_optb_slsqp__ffi" (f AS FUNCTION(x() AS DOUBLE) AS DOUBLE, x0() AS DOUBLE, n AS LONG, bounds() AS DOUBLE, out() AS DOUBLE)
-DECLARE SUB OPTN_MINIMIZE LIB "gmbopt" ALIAS "gor_optb_minimize__ffi" (f AS FUNCTION(x() AS DOUBLE) AS DOUBLE, x0() AS DOUBLE, n AS LONG, method AS STRING, bounds() AS DOUBLE, out() AS DOUBLE)
+DECLARE NATIVE SUB OPTN_NELDERMEAD LIB "gmbopt" ALIAS "gor_optb_nelder_mead" (f AS FUNCTION(x() AS DOUBLE) AS DOUBLE, x0() AS DOUBLE, n AS LONG, out() AS DOUBLE)
+DECLARE NATIVE SUB OPTN_BFGS LIB "gmbopt" ALIAS "gor_optb_bfgs" (f AS FUNCTION(x() AS DOUBLE) AS DOUBLE, x0() AS DOUBLE, n AS LONG, out() AS DOUBLE)
+DECLARE NATIVE SUB OPTN_LBFGS LIB "gmbopt" ALIAS "gor_optb_lbfgs" (f AS FUNCTION(x() AS DOUBLE) AS DOUBLE, x0() AS DOUBLE, n AS LONG, out() AS DOUBLE)
+DECLARE NATIVE SUB OPTN_CONJUGATEGRADIENT LIB "gmbopt" ALIAS "gor_optb_conjugate_gradient" (f AS FUNCTION(x() AS DOUBLE) AS DOUBLE, x0() AS DOUBLE, n AS LONG, out() AS DOUBLE)
+DECLARE NATIVE SUB OPTN_POWELL LIB "gmbopt" ALIAS "gor_optb_powell" (f AS FUNCTION(x() AS DOUBLE) AS DOUBLE, x0() AS DOUBLE, n AS LONG, out() AS DOUBLE)
+DECLARE NATIVE SUB OPTN_TNC LIB "gmbopt" ALIAS "gor_optb_tnc" (f AS FUNCTION(x() AS DOUBLE) AS DOUBLE, x0() AS DOUBLE, n AS LONG, bounds() AS DOUBLE, out() AS DOUBLE)
+DECLARE NATIVE SUB OPTN_COBYLA LIB "gmbopt" ALIAS "gor_optb_cobyla" (f AS FUNCTION(x() AS DOUBLE) AS DOUBLE, x0() AS DOUBLE, n AS LONG, bounds() AS DOUBLE, out() AS DOUBLE)
+DECLARE NATIVE SUB OPTN_SLSQP LIB "gmbopt" ALIAS "gor_optb_slsqp" (f AS FUNCTION(x() AS DOUBLE) AS DOUBLE, x0() AS DOUBLE, n AS LONG, bounds() AS DOUBLE, out() AS DOUBLE)
+DECLARE NATIVE SUB OPTN_MINIMIZE LIB "gmbopt" ALIAS "gor_optb_minimize" (f AS FUNCTION(x() AS DOUBLE) AS DOUBLE, x0() AS DOUBLE, n AS LONG, method AS STRING, bounds() AS DOUBLE, out() AS DOUBLE)
 
-DECLARE SUB OPTN_BRUTE LIB "gmbopt" ALIAS "gor_optb_brute__ffi" (f AS FUNCTION(x() AS DOUBLE) AS DOUBLE, ranges() AS DOUBLE, n AS LONG, npts AS LONG, out() AS DOUBLE)
-DECLARE SUB OPTN_BASINHOPPING LIB "gmbopt" ALIAS "gor_optb_basin_hopping__ffi" (f AS FUNCTION(x() AS DOUBLE) AS DOUBLE, x0() AS DOUBLE, n AS LONG, niter AS LONG, out() AS DOUBLE)
-DECLARE SUB OPTN_DUALANNEALING LIB "gmbopt" ALIAS "gor_optb_dual_annealing__ffi" (f AS FUNCTION(x() AS DOUBLE) AS DOUBLE, bounds() AS DOUBLE, n AS LONG, maxiter AS LONG, out() AS DOUBLE)
-DECLARE SUB OPTN_DIFFERENTIALEVOLUTION LIB "gmbopt" ALIAS "gor_optb_differential_evolution__ffi" (f AS FUNCTION(x() AS DOUBLE) AS DOUBLE, bounds() AS DOUBLE, n AS LONG, out() AS DOUBLE)
+DECLARE NATIVE SUB OPTN_BRUTE LIB "gmbopt" ALIAS "gor_optb_brute" (f AS FUNCTION(x() AS DOUBLE) AS DOUBLE, ranges() AS DOUBLE, n AS LONG, npts AS LONG, out() AS DOUBLE)
+DECLARE NATIVE SUB OPTN_BASINHOPPING LIB "gmbopt" ALIAS "gor_optb_basin_hopping" (f AS FUNCTION(x() AS DOUBLE) AS DOUBLE, x0() AS DOUBLE, n AS LONG, niter AS LONG, out() AS DOUBLE)
+DECLARE NATIVE SUB OPTN_DUALANNEALING LIB "gmbopt" ALIAS "gor_optb_dual_annealing" (f AS FUNCTION(x() AS DOUBLE) AS DOUBLE, bounds() AS DOUBLE, n AS LONG, maxiter AS LONG, out() AS DOUBLE)
+DECLARE NATIVE SUB OPTN_DIFFERENTIALEVOLUTION LIB "gmbopt" ALIAS "gor_optb_differential_evolution" (f AS FUNCTION(x() AS DOUBLE) AS DOUBLE, bounds() AS DOUBLE, n AS LONG, out() AS DOUBLE)
 
-DECLARE SUB OPTN_FSOLVE LIB "gmbopt" ALIAS "gor_optb_fsolve__ffi" (f AS FUNCTION(x() AS DOUBLE) AS ARRAY, x0() AS DOUBLE, n AS LONG, out() AS DOUBLE)
-DECLARE SUB OPTN_BROYDEN LIB "gmbopt" ALIAS "gor_optb_broyden__ffi" (f AS FUNCTION(x() AS DOUBLE) AS ARRAY, x0() AS DOUBLE, n AS LONG, out() AS DOUBLE)
-DECLARE SUB OPTN_LEASTSQUARESFIT LIB "gmbopt" ALIAS "gor_optb_least_squares_fit__ffi" (f AS FUNCTION(x() AS DOUBLE) AS ARRAY, x0() AS DOUBLE, n AS LONG, m AS LONG, bounds() AS DOUBLE, out() AS DOUBLE)
+DECLARE NATIVE SUB OPTN_FSOLVE LIB "gmbopt" ALIAS "gor_optb_fsolve" (f AS FUNCTION(x() AS DOUBLE) AS ARRAY, x0() AS DOUBLE, n AS LONG, out() AS DOUBLE)
+DECLARE NATIVE SUB OPTN_BROYDEN LIB "gmbopt" ALIAS "gor_optb_broyden" (f AS FUNCTION(x() AS DOUBLE) AS ARRAY, x0() AS DOUBLE, n AS LONG, out() AS DOUBLE)
+DECLARE NATIVE SUB OPTN_LEASTSQUARESFIT LIB "gmbopt" ALIAS "gor_optb_least_squares_fit" (f AS FUNCTION(x() AS DOUBLE) AS ARRAY, x0() AS DOUBLE, n AS LONG, m AS LONG, bounds() AS DOUBLE, out() AS DOUBLE)
 
-DECLARE SUB OPTN_LEVENBERGMARQUARDT LIB "gmbopt" ALIAS "gor_optb_levenberg_marquardt__ffi" (f AS FUNCTION(p() AS DOUBLE, x AS DOUBLE) AS DOUBLE, p0() AS DOUBLE, np AS LONG, xdata() AS DOUBLE, ydata() AS DOUBLE, nx AS LONG, out() AS DOUBLE)
-DECLARE SUB OPTN_LEVENBERGMARQUARDTVEC LIB "gmbopt" ALIAS "gor_optb_levenberg_marquardt_vec__ffi" (f AS FUNCTION(p() AS DOUBLE, x() AS DOUBLE) AS ARRAY, p0() AS DOUBLE, np AS LONG, xdata() AS DOUBLE, ydata() AS DOUBLE, nx AS LONG, out() AS DOUBLE)
-DECLARE SUB OPTN_CURVEFIT LIB "gmbopt" ALIAS "gor_optb_curve_fit__ffi" (f AS FUNCTION(p() AS DOUBLE, x AS DOUBLE) AS DOUBLE, xdata() AS DOUBLE, ydata() AS DOUBLE, nx AS LONG, p0() AS DOUBLE, np AS LONG, out() AS DOUBLE)
+DECLARE NATIVE SUB OPTN_LEVENBERGMARQUARDT LIB "gmbopt" ALIAS "gor_optb_levenberg_marquardt" (f AS FUNCTION(p() AS DOUBLE, x AS DOUBLE) AS DOUBLE, p0() AS DOUBLE, np AS LONG, xdata() AS DOUBLE, ydata() AS DOUBLE, nx AS LONG, out() AS DOUBLE)
+DECLARE NATIVE SUB OPTN_LEVENBERGMARQUARDTVEC LIB "gmbopt" ALIAS "gor_optb_levenberg_marquardt_vec" (f AS FUNCTION(p() AS DOUBLE, x() AS DOUBLE) AS ARRAY, p0() AS DOUBLE, np AS LONG, xdata() AS DOUBLE, ydata() AS DOUBLE, nx AS LONG, out() AS DOUBLE)
+DECLARE NATIVE SUB OPTN_CURVEFIT LIB "gmbopt" ALIAS "gor_optb_curve_fit" (f AS FUNCTION(p() AS DOUBLE, x AS DOUBLE) AS DOUBLE, xdata() AS DOUBLE, ydata() AS DOUBLE, nx AS LONG, p0() AS DOUBLE, np AS LONG, out() AS DOUBLE)
 
 
 ' ═══════════════════════════════════════════════════════════════════════════
@@ -126,7 +126,7 @@ PUBLIC SUB LINPROGB(c() AS DOUBLE, A() AS DOUBLE, b() AS DOUBLE, bounds() AS DOU
     CALL OPTN_LINPROG(c, n, A, m, b, bounds, out)
 END SUB
 ' LEASTSQUARESFIT con m DEDOTTO: la callback dichiara quanti residui restituisce.
-DECLARE SUB OPTN_LEASTSQUARESFITAUTO LIB "gmbopt" ALIAS "gor_optb_least_squares_fit_auto__ffi" (f AS FUNCTION(x() AS DOUBLE) AS ARRAY, x0() AS DOUBLE, n AS LONG, bounds() AS DOUBLE, out() AS DOUBLE)
+DECLARE NATIVE SUB OPTN_LEASTSQUARESFITAUTO LIB "gmbopt" ALIAS "gor_optb_least_squares_fit_auto" (f AS FUNCTION(x() AS DOUBLE) AS ARRAY, x0() AS DOUBLE, n AS LONG, bounds() AS DOUBLE, out() AS DOUBLE)
 
 ' Uguaglianze Ae x = be (me×n) espanse in due disuguaglianze.
 PUBLIC SUB LINPROGEQ(c() AS DOUBLE, A() AS DOUBLE, b() AS DOUBLE, Ae() AS DOUBLE, be() AS DOUBLE, out() AS DOUBLE)

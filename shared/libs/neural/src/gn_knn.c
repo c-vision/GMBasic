@@ -2,6 +2,7 @@
 #include "gn_knn.h"
 
 #include <stdlib.h>
+#include <stdint.h>
 #include <string.h>
 
 int gn_knn_classify(const double *Xtr, const int *ytr, int ntr, int d,

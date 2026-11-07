@@ -3,6 +3,7 @@
 #include "gc_gemm.h"
 
 #include <math.h>
+#include <stdint.h>
 #include <stdlib.h>
 
 /* RNG xorshift64 per l'inizializzazione. */

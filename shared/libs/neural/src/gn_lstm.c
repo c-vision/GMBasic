@@ -4,6 +4,7 @@
 #include "gn_lstm.h"
 #include "gn_act.h"
 #include <stdlib.h>
+#include <stdint.h>
 #include <string.h>
 
 static gn_status lp(gn_mat *w, gn_mat *g, int r, int c)

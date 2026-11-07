@@ -165,3 +165,17 @@ i64 ofx_meta_nsga2(ffx_meta_cb f1, ffx_meta_cb f2, i64 d, const double *lo, int6
     free(pareto); free(fv1); free(fv2);
     return (i64)k;
 }
+
+#include <stdint.h>
+/* Trampolini DECLARE NATIVE (ffi_ext_native.pl): firma originale, estensioni = INT64_MAX. */
+double ofx_meta_aco_tsp__nat(const double *dist, i64 n, i64 *tour, i64 ants, i64 maxit) { return ofx_meta_aco_tsp(dist, INT64_MAX, n, tour, INT64_MAX, ants, maxit); }
+double ofx_meta_ars__nat(ffx_meta_cb f, double *x, i64 d, double sigma, double alpha, i64 top_b, i64 pop, i64 maxit) { return ofx_meta_ars(f, x, INT64_MAX, d, sigma, alpha, top_b, pop, maxit); }
+double ofx_meta_cmaes__nat(ffx_meta_cb f, double *x, i64 d, const double *lo, const double *hi, i64 maxit) { return ofx_meta_cmaes(f, x, INT64_MAX, d, lo, INT64_MAX, hi, INT64_MAX, maxit); }
+double ofx_meta_de__nat(ffx_meta_cb f, double *x, i64 d, const double *lo, const double *hi, i64 pop, i64 maxgen) { return ofx_meta_de(f, x, INT64_MAX, d, lo, INT64_MAX, hi, INT64_MAX, pop, maxgen); }
+double ofx_meta_es__nat(ffx_meta_cb f, double *x, i64 d, double sigma, double alpha, i64 pop, i64 maxit) { return ofx_meta_es(f, x, INT64_MAX, d, sigma, alpha, pop, maxit); }
+double ofx_meta_ga__nat(ffx_meta_cb f, double *x, i64 d, const double *lo, const double *hi, i64 pop, i64 maxgen) { return ofx_meta_ga(f, x, INT64_MAX, d, lo, INT64_MAX, hi, INT64_MAX, pop, maxgen); }
+double ofx_meta_hill_climb__nat(ffx_meta_cb f, double *x, i64 d, const double *lo, const double *hi, i64 maxit) { return ofx_meta_hill_climb(f, x, INT64_MAX, d, lo, INT64_MAX, hi, INT64_MAX, maxit); }
+i64 ofx_meta_nsga2__nat(ffx_meta_cb f1, ffx_meta_cb f2, i64 d, const double *lo, const double *hi, i64 pop, i64 maxgen, double *out) { return ofx_meta_nsga2(f1, f2, d, lo, INT64_MAX, hi, INT64_MAX, pop, maxgen, out, INT64_MAX); }
+double ofx_meta_pso__nat(ffx_meta_cb f, double *x, i64 d, const double *lo, const double *hi, i64 swarm, i64 maxit) { return ofx_meta_pso(f, x, INT64_MAX, d, lo, INT64_MAX, hi, INT64_MAX, swarm, maxit); }
+double ofx_meta_sa__nat(ffx_meta_cb f, double *x, i64 d, const double *lo, const double *hi, i64 maxit, double t0, double alpha) { return ofx_meta_sa(f, x, INT64_MAX, d, lo, INT64_MAX, hi, INT64_MAX, maxit, t0, alpha); }
+double ofx_meta_tabu__nat(ffx_meta_cb f, double *x, i64 d, const double *lo, const double *hi, i64 maxit, i64 tenure) { return ofx_meta_tabu(f, x, INT64_MAX, d, lo, INT64_MAX, hi, INT64_MAX, maxit, tenure); }

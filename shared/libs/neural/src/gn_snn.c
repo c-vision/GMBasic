@@ -3,6 +3,7 @@
  */
 #include "gn_snn.h"
 #include <math.h>
+#include <stdint.h>
 
 gn_real gn_snn_surrogate(gn_real x)
 {

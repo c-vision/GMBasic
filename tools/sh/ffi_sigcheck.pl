@@ -6,9 +6,9 @@ my @f; find(sub { push @f,$File::Find::name if /\.c$/ }, @dirs); my %src; for my
 my ($ok,$bad,$nf)=(0,0,0);
 for my $l (@lines) {
   next unless $l =~ /DECLARE\s+(NATIVE\s+)?(?:FUNCTION|SUB)\s+(\w+)\s+LIB\s+"[^"]+"(?:\s+ALIAS\s+"([^"]+)")?\s*\((.*)\)\s*(?:AS\s+\w+)?\s*$/i;
-  my ($nat,$name,$alias,$p)=($1,$2,$3,$4); next if $nat; my $sym=$alias//$name;
+  my ($nat,$name,$alias,$p)=($1,$2,$3,$4); my $sym=$alias//$name;
   my @ps = split_top($p); my $arr = grep { /^\s*(?:BYREF\s+|BYVAL\s+)?\w+\(\)\s+AS/i } @ps; next unless $arr;
-  my $exp = @ps + $arr; my $found;
+  my $exp = $nat ? scalar(@ps) : @ps + $arr; my $found;
   for my $x (sort keys %src) { if ($src{$x} =~ /(?:^|\n)[A-Za-z_][\w\s\*]*?\b\Q$sym\E\s*\(([^)]*)\)\s*\{/) { my @cp = split_top($1); $found = scalar(@cp); last; } }
   if (!defined $found) { $nf++; print "NOTFOUND $sym\n"; next; }
   if ($found == $exp) { $ok++ } else { $bad++; print "MISMATCH $sym: DECLARE+estensioni=$exp, C=$found\n"; }

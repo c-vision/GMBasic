@@ -3,6 +3,7 @@
  */
 #include "gn_dropout.h"
 #include <stdlib.h>
+#include <stdint.h>
 
 gn_status gn_dropout_init(gn_dropout *d, int n, gn_real rate)
 {

@@ -2,6 +2,7 @@
 #include "gor_core.h"
 
 #include <math.h>
+#include <stdint.h>
 
 const char *gor_version(void)
 {

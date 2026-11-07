@@ -4,6 +4,7 @@
  * clamp al box [lo,hi]. Solo libc/libm. */
 #include "gor_meta.h"
 #include <stdlib.h>
+#include <stdint.h>
 #include <string.h>
 #include <math.h>
 

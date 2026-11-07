@@ -1,6 +1,7 @@
 /* gn_birnn.c — layer ricorrente bidirezionale (clean-room). */
 #include "gn_birnn.h"
 #include <string.h>
+#include <stdint.h>
 
 static gn_status aseg(gn_mat *m, int r, int c)
 {

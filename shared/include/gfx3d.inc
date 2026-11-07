@@ -56,7 +56,7 @@ DECLARE FUNCTION SEGMENTSPHERE LIB "gmbgraphics" ALIAS "ofx_gfx_segment_sphere" 
 DECLARE FUNCTION SEGMENTTRIANGLE LIB "gmbgraphics" ALIAS "ofx_gfx_segment_triangle" (a() AS DOUBLE, b() AS DOUBLE, tri() AS DOUBLE, t() AS DOUBLE) AS LONG
 DECLARE FUNCTION TRIANGLETRIANGLE LIB "gmbgraphics" ALIAS "ofx_gfx_triangle_triangle" (t1() AS DOUBLE, t2() AS DOUBLE) AS LONG
 ' Volume rendering: n campioni, sigma(n), rgb(n*3), dt(n); out() = RGB, acc() = opacità.
-DECLARE FUNCTION VOLUMERENDER LIB "gmbgraphics" ALIAS "ofx_gfx_volume_render" (n AS LONG, sigma() AS DOUBLE, rgb() AS DOUBLE, dt() AS DOUBLE, out() AS DOUBLE, acc() AS DOUBLE) AS LONG
+DECLARE NATIVE FUNCTION VOLUMERENDER LIB "gmbgraphics" ALIAS "ofx_gfx_volume_render__nat" (n AS LONG, sigma() AS DOUBLE, rgb() AS DOUBLE, dt() AS DOUBLE, out() AS DOUBLE, acc() AS DOUBLE) AS LONG
 
 ' ── mesh (handle) ─────────────────────────────────────────────────────────
 DECLARE FUNCTION MESHSPHERE LIB "gmbgraphics" ALIAS "ofx_gfx_mesh_sphere" (slices AS LONG, stacks AS LONG, radius AS DOUBLE) AS LONG
@@ -66,26 +66,26 @@ DECLARE FUNCTION MESHCYLINDER LIB "gmbgraphics" ALIAS "ofx_gfx_mesh_cylinder" (s
 ' Vertici/triangoli: MESHPOS riempie nv*3 valori, MESHTRI nt*3 indici.
 DECLARE FUNCTION MESHNV LIB "gmbgraphics" ALIAS "ofx_gfx_mesh_nv" (h AS LONG) AS LONG
 DECLARE FUNCTION MESHNT LIB "gmbgraphics" ALIAS "ofx_gfx_mesh_nt" (h AS LONG) AS LONG
-DECLARE FUNCTION MESHPOS LIB "gmbgraphics" ALIAS "ofx_gfx_mesh_pos" (h AS LONG, out() AS DOUBLE) AS LONG
-DECLARE FUNCTION MESHTRI LIB "gmbgraphics" ALIAS "ofx_gfx_mesh_tri" (h AS LONG, out() AS DOUBLE) AS LONG
+DECLARE NATIVE FUNCTION MESHPOS LIB "gmbgraphics" ALIAS "ofx_gfx_mesh_pos__nat" (h AS LONG, out() AS DOUBLE) AS LONG
+DECLARE NATIVE FUNCTION MESHTRI LIB "gmbgraphics" ALIAS "ofx_gfx_mesh_tri__nat" (h AS LONG, out() AS DOUBLE) AS LONG
 DECLARE FUNCTION MESHFREE LIB "gmbgraphics" ALIAS "ofx_gfx_mesh_free" (h AS LONG) AS LONG
 
 ' ── raster software (handle) ──────────────────────────────────────────────
 DECLARE FUNCTION RASTERNEW LIB "gmbgraphics" ALIAS "ofx_gfx_raster_new" (w AS LONG, h AS LONG) AS LONG
 DECLARE FUNCTION RASTERFREE LIB "gmbgraphics" ALIAS "ofx_gfx_raster_free" (h AS LONG) AS LONG
 DECLARE FUNCTION RASTERCLEAR LIB "gmbgraphics" ALIAS "ofx_gfx_raster_clear" (h AS LONG, depth AS DOUBLE) AS LONG
-DECLARE FUNCTION RASTERGET LIB "gmbgraphics" ALIAS "ofx_gfx_raster_get" (h AS LONG, x AS LONG, y AS LONG, out() AS DOUBLE) AS LONG
-DECLARE FUNCTION RASTERTRI LIB "gmbgraphics" ALIAS "ofx_gfx_raster_tri" (h AS LONG, p() AS DOUBLE, c() AS DOUBLE) AS LONG
+DECLARE NATIVE FUNCTION RASTERGET LIB "gmbgraphics" ALIAS "ofx_gfx_raster_get__nat" (h AS LONG, x AS LONG, y AS LONG, out() AS DOUBLE) AS LONG
+DECLARE NATIVE FUNCTION RASTERTRI LIB "gmbgraphics" ALIAS "ofx_gfx_raster_tri__nat" (h AS LONG, p() AS DOUBLE, c() AS DOUBLE) AS LONG
 DECLARE FUNCTION RASTERCLIPNEAR LIB "gmbgraphics" ALIAS "ofx_gfx_raster_clip_near" (tri() AS DOUBLE, znear AS DOUBLE, out() AS DOUBLE) AS LONG
 
 ' ── superfici e raycasting su griglia ─────────────────────────────────────
 ' Mesh da campo di altezza z(nx*ny) su [0,sx]x[0,sy], altezza z*zscale (handle).
-DECLARE FUNCTION MESHSURFACE LIB "gmbgraphics" ALIAS "ofx_gfx_mesh_surface" (z() AS DOUBLE, nx AS LONG, ny AS LONG, sx AS DOUBLE, sy AS DOUBLE, zscale AS DOUBLE) AS LONG
+DECLARE NATIVE FUNCTION MESHSURFACE LIB "gmbgraphics" ALIAS "ofx_gfx_mesh_surface__nat" (z() AS DOUBLE, nx AS LONG, ny AS LONG, sx AS DOUBLE, sy AS DOUBLE, zscale AS DOUBLE) AS LONG
 ' DDA su griglia rows*cols (grid() piatto, !=0 solido). hit() = [hit,map_x,map_y,side,perp_dist,wall_x].
-DECLARE FUNCTION RAYCASTDDA LIB "gmbgraphics" ALIAS "ofx_gfx_raycast_dda" (grid() AS DOUBLE, rows AS LONG, cols AS LONG, px AS DOUBLE, py AS DOUBLE, dx AS DOUBLE, dy AS DOUBLE, hit() AS DOUBLE) AS LONG
+DECLARE NATIVE FUNCTION RAYCASTDDA LIB "gmbgraphics" ALIAS "ofx_gfx_raycast_dda__nat" (grid() AS DOUBLE, rows AS LONG, cols AS LONG, px AS DOUBLE, py AS DOUBLE, dx AS DOUBLE, dy AS DOUBLE, hit() AS DOUBLE) AS LONG
 ' Come RAYCASTDDA ma con limite di passi configurabile: ray() = [px, py, dx, dy, maxsteps]
 ' (maxsteps <= 0 -> 256). Limite FFI di 8 slot: gli argomenti del raggio stanno in un array.
-DECLARE FUNCTION RAYCASTDDAEX LIB "gmbgraphics" ALIAS "ofx_gfx_raycast_dda_ex" (grid() AS DOUBLE, rows AS LONG, cols AS LONG, ray() AS DOUBLE, hit() AS DOUBLE) AS LONG
+DECLARE NATIVE FUNCTION RAYCASTDDAEX LIB "gmbgraphics" ALIAS "ofx_gfx_raycast_dda_ex__nat" (grid() AS DOUBLE, rows AS LONG, cols AS LONG, ray() AS DOUBLE, hit() AS DOUBLE) AS LONG
 
 ' ── cilindro/cono e trasformazione AABB ───────────────────────────────────
 DECLARE FUNCTION RAYCYLINDER LIB "gmbgraphics" ALIAS "ofx_gfx_ray_cylinder" (ray() AS DOUBLE, base() AS DOUBLE, axis() AS DOUBLE, radius AS DOUBLE, height AS DOUBLE, t() AS DOUBLE) AS LONG

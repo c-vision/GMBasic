@@ -3,6 +3,7 @@
  */
 #include "gn_detect.h"
 #include <stdlib.h>
+#include <stdint.h>
 #include <math.h>
 
 gn_real gn_iou(const gn_real *a, const gn_real *b)

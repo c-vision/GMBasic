@@ -3,6 +3,7 @@
  */
 #include "gn_conv.h"
 #include <stdlib.h>
+#include <stdint.h>
 #include <string.h>
 #include <math.h>
 

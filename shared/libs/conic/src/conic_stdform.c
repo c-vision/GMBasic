@@ -202,3 +202,15 @@ i64 ofx_stdform_free(i64 h)
     s->used = 0;
     return 0;
 }
+
+#include <stdint.h>
+/* Trampolini DECLARE NATIVE (ffi_ext_native.pl): firma originale, estensioni = INT64_MAX. */
+i64 ofx_stdform_build__nat(i64 nvar, i64 ncon, const double *c_int, const i64 *qi, const i64 *qj, const double *qv, i64 nq, const double *lx, const double *ux, const double *lc, const double *uc, const i64 *col_ptr, const i64 *sub, const double *val) { return ofx_stdform_build(nvar, ncon, c_int, INT64_MAX, qi, INT64_MAX, qj, INT64_MAX, qv, INT64_MAX, nq, lx, INT64_MAX, ux, INT64_MAX, lc, INT64_MAX, uc, INT64_MAX, col_ptr, INT64_MAX, sub, INT64_MAX, val, INT64_MAX); }
+i64 ofx_stdform_get_a__nat(i64 h, double *A) { return ofx_stdform_get_a(h, A, INT64_MAX); }
+i64 ofx_stdform_get_b__nat(i64 h, double *b) { return ofx_stdform_get_b(h, b, INT64_MAX); }
+i64 ofx_stdform_get_c__nat(i64 h, double *c) { return ofx_stdform_get_c(h, c, INT64_MAX); }
+i64 ofx_stdform_get_q__nat(i64 h, double *Q) { return ofx_stdform_get_q(h, Q, INT64_MAX); }
+i64 ofx_stdform_info__nat(i64 h, double *out) { return ofx_stdform_info(h, out, INT64_MAX); }
+i64 ofx_stdform_map_dir__nat(i64 h, const double *dxt, double *dx) { return ofx_stdform_map_dir(h, dxt, INT64_MAX, dx, INT64_MAX); }
+i64 ofx_stdform_map_x__nat(i64 h, const double *xt, double *x) { return ofx_stdform_map_x(h, xt, INT64_MAX, x, INT64_MAX); }
+i64 ofx_stdform_map_y__nat(i64 h, const double *ystd, double *ymin) { return ofx_stdform_map_y(h, ystd, INT64_MAX, ymin, INT64_MAX); }

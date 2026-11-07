@@ -168,3 +168,7 @@ done:
     free(dimsI); free(socdimsI); free(ekindI);
     return (i64)r;
 }
+
+#include <stdint.h>
+/* Trampolini DECLARE NATIVE (ffi_ext_native.pl): firma originale, estensioni = INT64_MAX. */
+i64 ofx_sdp_solve__nat(i64 m, i64 n, const double *A, const double *b, const double *c, i64 nb, const i64 *dims, const double *Cbar, const double *Abar, i64 nsoc, const i64 *socdims, const double *Csoc, const double *Asoc, i64 nep, const i64 *ekind, const double *ealpha, const double *Cexp, const double *Aexp, i64 max_iter, double tol, double rtol_pri, double rtol_dual, double rtol_gap, double near_rel, double *x, double *Xbar, double *y, double *Sbar, double *Zsoc, double *Ssoc, double *Zexp, double *Sexp, i64 *fb_ok) { return ofx_sdp_solve(m, n, A, INT64_MAX, b, INT64_MAX, c, INT64_MAX, nb, dims, INT64_MAX, Cbar, INT64_MAX, Abar, INT64_MAX, nsoc, socdims, INT64_MAX, Csoc, INT64_MAX, Asoc, INT64_MAX, nep, ekind, INT64_MAX, ealpha, INT64_MAX, Cexp, INT64_MAX, Aexp, INT64_MAX, max_iter, tol, rtol_pri, rtol_dual, rtol_gap, near_rel, x, INT64_MAX, Xbar, INT64_MAX, y, INT64_MAX, Sbar, INT64_MAX, Zsoc, INT64_MAX, Ssoc, INT64_MAX, Zexp, INT64_MAX, Sexp, INT64_MAX, fb_ok, INT64_MAX); }

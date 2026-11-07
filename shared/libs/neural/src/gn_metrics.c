@@ -1,6 +1,7 @@
 /* gn_metrics.c — metriche di classificazione e regressione. Solo libc. */
 #include "gn_metrics.h"
 #include <stdlib.h>
+#include <stdint.h>
 #include <math.h>
 
 int gn_metrics_confusion(const int *y_true, const int *y_pred, int n, int k, int *cm)

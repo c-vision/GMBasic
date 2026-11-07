@@ -37,7 +37,3 @@ i64 ofx_sched_paths_time_window(const i64 *adj, const double *windows, i64 n, i6
     free(a); free(p); free(l);
     return (i64)r;
 }
-
-#include <stdint.h>
-/* Shim FFI (estensioni automatiche degli array, ffi_ext_shim.pl): firma con int64_t dopo ogni array. */
-i64 ofx_sched_paths_time_window__ffi(const i64 *adj, int64_t adj_ext, const double *windows, int64_t windows_ext, i64 n, i64 s, i64 t, i64 *paths, int64_t paths_ext, i64 *lens, int64_t lens_ext, i64 max_paths) { return ofx_sched_paths_time_window(adj, windows, n, s, t, paths, lens, max_paths); }

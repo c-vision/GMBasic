@@ -1,6 +1,7 @@
 /* gn_adaboost.c — AdaBoost SAMME con stump (Gini ponderato), clean-room. */
 #include "gn_adaboost.h"
 #include <math.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 

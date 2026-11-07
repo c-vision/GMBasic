@@ -11,6 +11,7 @@
 #include "gc_array.h"
 
 #include <stdlib.h>
+#include <stdint.h>
 #include <string.h>
 
 #if defined(__ARM_NEON) || defined(__ARM_NEON__)

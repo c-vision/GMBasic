@@ -235,17 +235,4 @@ double ofx_av_column_gen(const i64 *voli, const double *cost, i64 nf, i64 np,
 
 #include <stdint.h>
 /* Shim FFI (estensioni automatiche degli array, ffi_ext_shim.pl): firma con int64_t dopo ogni array. */
-i64 ofx_av_aircraft_routing__ffi(const double *flights, int64_t flights_ext, i64 nf, double min_turn, i64 *route_of, int64_t route_of_ext) { return ofx_av_aircraft_routing(flights, nf, min_turn, route_of); }
-double ofx_av_column_gen__ffi(const i64 *voli, int64_t voli_ext, const double *cost, int64_t cost_ext, i64 nf, i64 np, i64 *chosen, int64_t chosen_ext, i64 *n_chosen, int64_t n_chosen_ext, i64 maxiter) { return ofx_av_column_gen(voli, cost, nf, np, chosen, n_chosen, maxiter); }
-double ofx_av_crew_pairing__ffi(const i64 *voli, int64_t voli_ext, const double *cost, int64_t cost_ext, i64 nf, i64 np, i64 *chosen, int64_t chosen_ext, i64 *n_chosen, int64_t n_chosen_ext) { return ofx_av_crew_pairing(voli, cost, nf, np, chosen, n_chosen); }
-double ofx_av_crew_resched__ffi(const double *cost, int64_t cost_ext, const i64 *available, int64_t available_ext, i64 ncrew, i64 nf, i64 *assign, int64_t assign_ext) { return ofx_av_crew_resched(cost, available, ncrew, nf, assign); }
-double ofx_av_emsr_b__ffi(const double *fares, int64_t fares_ext, const double *mean, int64_t mean_ext, const double *sd, int64_t sd_ext, i64 n, double capacity, double *protection, int64_t protection_ext) { return ofx_av_emsr_b(fares, mean, sd, n, capacity, protection); }
-double ofx_av_fleet__ffi(const double *profit, int64_t profit_ext, const double *capacity, int64_t capacity_ext, const double *demand, int64_t demand_ext, const i64 *avail, int64_t avail_ext, i64 nf, i64 nt, i64 *assign, int64_t assign_ext) { return ofx_av_fleet(profit, capacity, demand, avail, nf, nt, assign); }
-double ofx_av_hub__ffi(const double *dist, int64_t dist_ext, const double *flow, int64_t flow_ext, i64 n, i64 p, double alpha, i64 *hubs, int64_t hubs_ext) { return ofx_av_hub(dist, flow, n, p, alpha, hubs); }
 double ofx_av_overbooking__ffi(double capacity, double fare, double denied, double show_prob, double show_std, double *bookings, int64_t bookings_ext) { return ofx_av_overbooking(capacity, fare, denied, show_prob, show_std, bookings); }
-double ofx_av_recovery__ffi(const double *delay_cost, int64_t delay_cost_ext, i64 nf, i64 na, i64 *assign, int64_t assign_ext) { return ofx_av_recovery(delay_cost, nf, na, assign); }
-double ofx_av_slot__ffi(const double *bid, int64_t bid_ext, i64 na, i64 ns, i64 *alloc, int64_t alloc_ext) { return ofx_av_slot(bid, na, ns, alloc); }
-double ofx_av_steiner__ffi(const double *w, int64_t w_ext, i64 n, const i64 *terminals, int64_t terminals_ext, i64 nt, i64 *in_tree, int64_t in_tree_ext) { return ofx_av_steiner(w, n, terminals, nt, in_tree); }
-double ofx_av_tail_assignment__ffi(const double *cost, int64_t cost_ext, i64 na, i64 nf, i64 *assign, int64_t assign_ext) { return ofx_av_tail_assignment(cost, na, nf, assign); }
-double ofx_av_tail_continuity__ffi(const double *cost, int64_t cost_ext, i64 na, i64 nf, i64 *assign, int64_t assign_ext) { return ofx_av_tail_continuity(cost, na, nf, assign); }
-i64 ofx_av_uld__ffi(const double *items, int64_t items_ext, i64 n, double W, double H, double D, i64 *uld_of, int64_t uld_of_ext) { return ofx_av_uld(items, n, W, H, D, uld_of); }

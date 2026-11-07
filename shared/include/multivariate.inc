@@ -7,17 +7,17 @@ DECLARE FUNCTION MXF_BOPI LIB "gmbstats" ALIAS "ofx_bo_pi" (mu AS DOUBLE, sd AS 
 DECLARE FUNCTION MXF_BOUCB LIB "gmbstats" ALIAS "ofx_bo_ucb" (mu AS DOUBLE, sd AS DOUBLE, kappa AS DOUBLE) AS DOUBLE
 DECLARE FUNCTION MXF_GAMBP LIB "gmbstats" ALIAS "ofx_gambler_p" (i AS DOUBLE, N AS DOUBLE, p AS DOUBLE) AS DOUBLE
 DECLARE FUNCTION MXF_GAMBD LIB "gmbstats" ALIAS "ofx_gambler_d" (i AS DOUBLE, N AS DOUBLE, p AS DOUBLE) AS DOUBLE
-DECLARE FUNCTION MXF_ATEIPW LIB "gmbstats" ALIAS "ofx_ate_ipw__ffi" (t() AS DOUBLE, y() AS DOUBLE, ps() AS DOUBLE, n AS LONG) AS DOUBLE
-DECLARE FUNCTION MXF_ATEMATCH LIB "gmbstats" ALIAS "ofx_ate_matching__ffi" (t() AS DOUBLE, y() AS DOUBLE, ps() AS DOUBLE, n AS LONG) AS DOUBLE
+DECLARE NATIVE FUNCTION MXF_ATEIPW LIB "gmbstats" ALIAS "ofx_ate_ipw" (t() AS DOUBLE, y() AS DOUBLE, ps() AS DOUBLE, n AS LONG) AS DOUBLE
+DECLARE NATIVE FUNCTION MXF_ATEMATCH LIB "gmbstats" ALIAS "ofx_ate_matching" (t() AS DOUBLE, y() AS DOUBLE, ps() AS DOUBLE, n AS LONG) AS DOUBLE
 DECLARE FUNCTION MXF_RMTLP LIB "gmbstats" ALIAS "ofx_rmt_lambda_plus" (n AS LONG, T AS LONG, sigma2 AS DOUBLE) AS DOUBLE
 DECLARE FUNCTION MXF_RMTLM LIB "gmbstats" ALIAS "ofx_rmt_lambda_minus" (n AS LONG, T AS LONG, sigma2 AS DOUBLE) AS DOUBLE
-DECLARE FUNCTION MXF_RMTCOH LIB "gmbstats" ALIAS "ofx_rmt_coherence__ffi" (v() AS DOUBLE, n AS LONG) AS DOUBLE
-DECLARE FUNCTION MXF_RMTNORM LIB "gmbstats" ALIAS "ofx_rmt_spectral_norm__ffi" (A() AS DOUBLE, n AS LONG) AS DOUBLE
+DECLARE NATIVE FUNCTION MXF_RMTCOH LIB "gmbstats" ALIAS "ofx_rmt_coherence" (v() AS DOUBLE, n AS LONG) AS DOUBLE
+DECLARE NATIVE FUNCTION MXF_RMTNORM LIB "gmbstats" ALIAS "ofx_rmt_spectral_norm" (A() AS DOUBLE, n AS LONG) AS DOUBLE
 DECLARE FUNCTION MXF_RMTDK LIB "gmbstats" ALIAS "ofx_rmt_davis_kahan" (eNorm AS DOUBLE, gap AS DOUBLE) AS DOUBLE
-DECLARE FUNCTION MXF_RMTANG LIB "gmbstats" ALIAS "ofx_rmt_principal_angle__ffi" (u() AS DOUBLE, v() AS DOUBLE, n AS LONG) AS DOUBLE
+DECLARE NATIVE FUNCTION MXF_RMTANG LIB "gmbstats" ALIAS "ofx_rmt_principal_angle" (u() AS DOUBLE, v() AS DOUBLE, n AS LONG) AS DOUBLE
 DECLARE FUNCTION MXF_RMTTIGHT LIB "gmbstats" ALIAS "ofx_rmt_tightness" (observed AS DOUBLE, bound AS DOUBLE) AS DOUBLE
-DECLARE FUNCTION MXF_MVGAUSS LIB "gmbstats" ALIAS "ofx_mv_gauss_pdf__ffi" (x() AS DOUBLE, loc() AS DOUBLE, cov() AS DOUBLE, d AS LONG) AS DOUBLE
-DECLARE FUNCTION MXF_MVSTUDENT LIB "gmbstats" ALIAS "ofx_mv_student_pdf__ffi" (x() AS DOUBLE, loc() AS DOUBLE, cov() AS DOUBLE, nu AS DOUBLE, d AS LONG) AS DOUBLE
+DECLARE NATIVE FUNCTION MXF_MVGAUSS LIB "gmbstats" ALIAS "ofx_mv_gauss_pdf" (x() AS DOUBLE, loc() AS DOUBLE, cov() AS DOUBLE, d AS LONG) AS DOUBLE
+DECLARE NATIVE FUNCTION MXF_MVSTUDENT LIB "gmbstats" ALIAS "ofx_mv_student_pdf" (x() AS DOUBLE, loc() AS DOUBLE, cov() AS DOUBLE, nu AS DOUBLE, d AS LONG) AS DOUBLE
 DECLARE FUNCTION MXF_COPCLA LIB "gmbstats" ALIAS "ofx_copula_clayton" (u AS DOUBLE, v AS DOUBLE, theta AS DOUBLE) AS DOUBLE
 DECLARE FUNCTION MXF_COPGUM LIB "gmbstats" ALIAS "ofx_copula_gumbel" (u AS DOUBLE, v AS DOUBLE, theta AS DOUBLE) AS DOUBLE
 DECLARE FUNCTION MXF_COPFRANK LIB "gmbstats" ALIAS "ofx_copula_frank" (u AS DOUBLE, v AS DOUBLE, theta AS DOUBLE) AS DOUBLE
@@ -91,13 +91,13 @@ END FUNCTION
 ' ═══════════════════════════════════════════════════════════════════════════
 ' Seconda slice: KMeans/PCA/GMM/GP/SVM (risultati composti in out() piatto).
 ' ═══════════════════════════════════════════════════════════════════════════
-DECLARE FUNCTION MXF_KMEANS LIB "gmbstats" ALIAS "ofx_kmeans__ffi" (x() AS DOUBLE, n AS LONG, k AS LONG, maxIter AS LONG, out() AS DOUBLE) AS LONG
-DECLARE FUNCTION MXF_PCA LIB "gmbstats" ALIAS "ofx_pca__ffi" (data() AS DOUBLE, rows AS LONG, cols AS LONG, out() AS DOUBLE) AS LONG
-DECLARE FUNCTION MXF_GMM LIB "gmbstats" ALIAS "ofx_gmm_1d__ffi" (x() AS DOUBLE, n AS LONG, k AS LONG, iters AS LONG, out() AS DOUBLE) AS LONG
-DECLARE FUNCTION MXF_GP LIB "gmbstats" ALIAS "ofx_gp__ffi" (x() AS DOUBLE, y() AS DOUBLE, n AS LONG, xs() AS DOUBLE, m AS LONG, l2 AS DOUBLE, noise AS DOUBLE, out() AS DOUBLE) AS LONG
-DECLARE FUNCTION MXF_BONEXT LIB "gmbstats" ALIAS "ofx_bo_next__ffi" (x() AS DOUBLE, y() AS DOUBLE, cand() AS DOUBLE, n AS LONG, m AS LONG, hyper() AS DOUBLE, out() AS DOUBLE) AS LONG
-DECLARE FUNCTION MXF_SVMFIT LIB "gmbstats" ALIAS "ofx_svm_fit__ffi" (X() AS DOUBLE, y() AS DOUBLE, n AS LONG, d AS LONG, k AS LONG, C AS DOUBLE, maxIter AS LONG, out() AS DOUBLE) AS LONG
-DECLARE FUNCTION MXF_SVMPRED LIB "gmbstats" ALIAS "ofx_svm_predict__ffi" (W() AS DOUBLE, x() AS DOUBLE, d AS LONG, k AS LONG) AS LONG
+DECLARE NATIVE FUNCTION MXF_KMEANS LIB "gmbstats" ALIAS "ofx_kmeans" (x() AS DOUBLE, n AS LONG, k AS LONG, maxIter AS LONG, out() AS DOUBLE) AS LONG
+DECLARE NATIVE FUNCTION MXF_PCA LIB "gmbstats" ALIAS "ofx_pca" (data() AS DOUBLE, rows AS LONG, cols AS LONG, out() AS DOUBLE) AS LONG
+DECLARE NATIVE FUNCTION MXF_GMM LIB "gmbstats" ALIAS "ofx_gmm_1d" (x() AS DOUBLE, n AS LONG, k AS LONG, iters AS LONG, out() AS DOUBLE) AS LONG
+DECLARE NATIVE FUNCTION MXF_GP LIB "gmbstats" ALIAS "ofx_gp" (x() AS DOUBLE, y() AS DOUBLE, n AS LONG, xs() AS DOUBLE, m AS LONG, l2 AS DOUBLE, noise AS DOUBLE, out() AS DOUBLE) AS LONG
+DECLARE NATIVE FUNCTION MXF_BONEXT LIB "gmbstats" ALIAS "ofx_bo_next" (x() AS DOUBLE, y() AS DOUBLE, cand() AS DOUBLE, n AS LONG, m AS LONG, hyper() AS DOUBLE, out() AS DOUBLE) AS LONG
+DECLARE NATIVE FUNCTION MXF_SVMFIT LIB "gmbstats" ALIAS "ofx_svm_fit" (X() AS DOUBLE, y() AS DOUBLE, n AS LONG, d AS LONG, k AS LONG, C AS DOUBLE, maxIter AS LONG, out() AS DOUBLE) AS LONG
+DECLARE NATIVE FUNCTION MXF_SVMPRED LIB "gmbstats" ALIAS "ofx_svm_predict" (W() AS DOUBLE, x() AS DOUBLE, d AS LONG, k AS LONG) AS LONG
 
 ' KMeans 1D: out = centri(k) + assegnazioni(n).
 PUBLIC SUB KMEANS(data() AS DOUBLE, k AS LONG, out() AS DOUBLE)
@@ -163,9 +163,9 @@ PUBLIC FUNCTION SVMPREDICT(W() AS DOUBLE, x() AS DOUBLE) AS LONG
 END FUNCTION
 
 ' ── Gradient boosting: modello opaco (handle LONG) ────────────────────────
-DECLARE FUNCTION MXF_BOOSTFIT LIB "gmbstats" ALIAS "ofx_boost_fit__ffi" (X() AS DOUBLE, y() AS DOUBLE, n AS LONG, d AS LONG, engine AS LONG, nEst AS LONG, lr AS DOUBLE, maxDepth AS LONG) AS LONG
-DECLARE FUNCTION MXF_BOOSTPRED LIB "gmbstats" ALIAS "ofx_boost_predict__ffi" (model AS LONG, x() AS DOUBLE, d AS LONG) AS DOUBLE
-DECLARE FUNCTION MXF_BOOSTSCORE LIB "gmbstats" ALIAS "ofx_boost_score__ffi" (model AS LONG, X() AS DOUBLE, y() AS DOUBLE, n AS LONG, d AS LONG) AS DOUBLE
+DECLARE NATIVE FUNCTION MXF_BOOSTFIT LIB "gmbstats" ALIAS "ofx_boost_fit" (X() AS DOUBLE, y() AS DOUBLE, n AS LONG, d AS LONG, engine AS LONG, nEst AS LONG, lr AS DOUBLE, maxDepth AS LONG) AS LONG
+DECLARE NATIVE FUNCTION MXF_BOOSTPRED LIB "gmbstats" ALIAS "ofx_boost_predict" (model AS LONG, x() AS DOUBLE, d AS LONG) AS DOUBLE
+DECLARE NATIVE FUNCTION MXF_BOOSTSCORE LIB "gmbstats" ALIAS "ofx_boost_score" (model AS LONG, X() AS DOUBLE, y() AS DOUBLE, n AS LONG, d AS LONG) AS DOUBLE
 DECLARE SUB MXF_BOOSTFREE LIB "gmbstats" ALIAS "ofx_boost_free" (model AS LONG)
 
 PUBLIC FUNCTION BOOSTFIT(X() AS ARRAY OF DOUBLE, y() AS DOUBLE, engine AS LONG, nEst AS LONG, lr AS DOUBLE, maxDepth AS LONG) AS LONG

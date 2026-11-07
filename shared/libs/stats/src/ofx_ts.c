@@ -111,13 +111,3 @@ double ofx_ts_hmm_viterbi(const double* logpi, const double* logA, const double*
     free(tmp);
     return ll;
 }
-
-#include <stdint.h>
-/* Shim FFI (estensioni automatiche degli array, ffi_ext_shim.pl): firma con int64_t dopo ogni array. */
-void ofx_ts_dfgls__ffi(const double* series, int64_t series_ext, int n, int lags, int deterministic, double* out, int64_t out_ext) { ofx_ts_dfgls(series, n, lags, deterministic, out); }
-void ofx_ts_engle_granger__ffi(const double* Y, int64_t Y_ext, int n, int k, int dependent, int lags, int with_constant, double* out, int64_t out_ext) { ofx_ts_engle_granger(Y, n, k, dependent, lags, with_constant, out); }
-double ofx_ts_hmm_forward__ffi(const double* logpi, int64_t logpi_ext, const double* logA, int64_t logA_ext, const double* logE, int64_t logE_ext, int K, int n) { return ofx_ts_hmm_forward(logpi, logA, logE, K, n); }
-double ofx_ts_hmm_viterbi__ffi(const double* logpi, int64_t logpi_ext, const double* logA, int64_t logA_ext, const double* logE, int64_t logE_ext, int K, int n, long long* path, int64_t path_ext) { return ofx_ts_hmm_viterbi(logpi, logA, logE, K, n, path); }
-void ofx_ts_johansen__ffi(const double* Y, int64_t Y_ext, int nvars, int periods, int lags, double* out, int64_t out_ext) { ofx_ts_johansen(Y, nvars, periods, lags, out); }
-void ofx_ts_kpss__ffi(const double* series, int64_t series_ext, int n, int bandwidth, int deterministic, double* out, int64_t out_ext) { ofx_ts_kpss(series, n, bandwidth, deterministic, out); }
-void ofx_ts_qlr__ffi(double l0, const double* l_beta, int64_t l_beta_ext, int n_beta, double kappa, double* out, int64_t out_ext) { ofx_ts_qlr(l0, l_beta, n_beta, kappa, out); }

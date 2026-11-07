@@ -49,3 +49,9 @@ double ofx_dp_sports(int n_games, i64 needed, double p_home, double p_away, cons
     free(h);
     return r;
 }
+
+#include <stdint.h>
+/* Trampolini DECLARE NATIVE (ffi_ext_native.pl): firma originale, estensioni = INT64_MAX. */
+double ofx_dp_equipment__nat(i64 years, double buy_cost, i64 max_age, const double *op_cost, const double *resale, i64 *schedule) { return ofx_dp_equipment(years, buy_cost, max_age, op_cost, INT64_MAX, resale, INT64_MAX, schedule, INT64_MAX); }
+double ofx_dp_optimal_bst__nat(const double *p, i64 n, i64 *root) { return ofx_dp_optimal_bst(p, INT64_MAX, n, root, INT64_MAX); }
+double ofx_dp_sports__nat(int n_games, i64 needed, double p_home, double p_away, const i64 *is_home) { return ofx_dp_sports(n_games, needed, p_home, p_away, is_home, INT64_MAX); }

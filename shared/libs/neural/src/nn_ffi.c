@@ -1418,7 +1418,7 @@ double ofx_nn_r2(const double *yt, int64_t yt_n, const double *yp, int64_t yp_n,
 /* Memplan con array di UDT: TYPE MemTensor { Size AS DOUBLE : Birth AS LONG : Death AS LONG }
  * ha lo stesso layout della struct C (double + int32 + int32, 16 byte), quindi il
  * buffer arriva gia' nella forma di gn_memplan_tensor. */
-double ofx_nn_memplan(const void *t, i64 n, double *offsets, int64_t offsets_n)
+double ofx_nn_memplan(const void *t, int64_t t_n, i64 n, double *offsets, int64_t offsets_n)
 {
     if (!t || !offsets || n <= 0) return 0.0;
     return (double)gn_mem_plan((const gn_memplan_tensor *)t, (int)n, (gn_real *)offsets);
@@ -1536,7 +1536,7 @@ i64 ofx_nn_dense_init(i64 in, i64 out, i64 seed)
 }
 
 /* y (batch×out) = x (batch×in) · Wᵀ + b */
-i64 ofx_nn_dense_forward(i64 h, const double *x, int64_t x_n, i64 batch, double *y, int64_t y_n)
+i64 ofx_nn_dense_forward(i64 h, const double *x, i64 batch, double *y)
 {
     nn_dense_e *e = dense_get(h);
     gn_mat X, Y;
@@ -1547,7 +1547,7 @@ i64 ofx_nn_dense_forward(i64 h, const double *x, int64_t x_n, i64 batch, double 
 }
 
 /* grad_x (batch×in) = grad_y (batch×out) · W ; accumula gradW/gradb. */
-i64 ofx_nn_dense_backward(i64 h, const double *gy, int64_t gy_n, i64 batch, double *gx, int64_t gx_n)
+i64 ofx_nn_dense_backward(i64 h, const double *gy, i64 batch, double *gx)
 {
     nn_dense_e *e = dense_get(h);
     gn_mat GY, GX;
@@ -1558,7 +1558,7 @@ i64 ofx_nn_dense_backward(i64 h, const double *gy, int64_t gy_n, i64 batch, doub
 }
 
 /* W (out×in) e b (out). */
-i64 ofx_nn_dense_params(i64 h, double *W, int64_t W_n, double *b, int64_t b_n)
+i64 ofx_nn_dense_params(i64 h, double *W, double *b)
 {
     nn_dense_e *e = dense_get(h);
     int i;
@@ -1568,7 +1568,7 @@ i64 ofx_nn_dense_params(i64 h, double *W, int64_t W_n, double *b, int64_t b_n)
     return 0;
 }
 
-i64 ofx_nn_dense_setparams(i64 h, const double *W, int64_t W_n, const double *b, int64_t b_n)
+i64 ofx_nn_dense_setparams(i64 h, const double *W, const double *b)
 {
     nn_dense_e *e = dense_get(h);
     int i;
@@ -1612,7 +1612,7 @@ i64 ofx_nn_dense_free(i64 h)
 }
 
 /* ══ Perdite con gradiente (gn_loss): y, t e grad sono rows×cols ═══════════ */
-i64 ofx_nn_loss_mse(const double *y, int64_t y_n, const double *t, int64_t t_n, i64 rows, i64 cols, double *grad, int64_t grad_n, double *loss, int64_t loss_n)
+i64 ofx_nn_loss_mse(const double *y, const double *t, i64 rows, i64 cols, double *grad, double *loss)
 {
     gn_mat Y, T, G;
     if (!y || !t || !loss || rows <= 0 || cols <= 0) return -1;
@@ -2184,7 +2184,7 @@ i64 ofx_nn_gp_init(const i64 *codes, int64_t codes_n, const i64 *arity, int64_t 
 /* Ritorna la lunghezza del genoma migliore; out_best() riceve i codici,
  * out_fit(0) la fitness. */
 i64 ofx_nn_gp_evolve(i64 h, double (*fit)(double *, long long),
-                     i64 *out_best, double *out_fit,
+                     i64 *out_best, int64_t out_best_n, double *out_fit, int64_t out_fit_n,
                      i64 pop, i64 gens, i64 seed, i64 max_depth)
 {
     nn_gp_e *e = gp_get(h);
@@ -2203,8 +2203,8 @@ i64 ofx_nn_gp_evolve(i64 h, double (*fit)(double *, long long),
     g_gp_cur = NULL;
     e->ctx.fit = NULL;
     if (rc != 0) return -1;
-    for (i = 0; i < best.n; i++) out_best[i] = (i64)best.code[i];
-    if (out_fit) out_fit[0] = bestfit;
+    for (i = 0; i < best.n && i < out_best_n; i++) out_best[i] = (i64)best.code[i];
+    if (out_fit && out_fit_n >= 1) out_fit[0] = bestfit;
     return (i64)best.n;
 }
 
@@ -2406,3 +2406,115 @@ i64 ofx_nn_snn_lut_forward(const double *s, int64_t s_n, i64 n_tab, const i64 *j
     free(ji);
     return 0;
 }
+
+#include <stdint.h>
+/* Trampolini DECLARE NATIVE (ffi_ext_native.pl): firma originale, estensioni = INT64_MAX. */
+double ofx_nn_accuracy__nat(const i64 *yt, const i64 *yp, i64 n) { return ofx_nn_accuracy(yt, INT64_MAX, yp, INT64_MAX, n); }
+double ofx_nn_accuracy_cm__nat(const i64 *cm, i64 k) { return ofx_nn_accuracy_cm(cm, INT64_MAX, k); }
+i64 ofx_nn_act_crelu__nat(double *out, const double *in, i64 n) { return ofx_nn_act_crelu(out, INT64_MAX, in, INT64_MAX, n); }
+i64 ofx_nn_act_crelu_grad__nat(double *grad_in, const double *grad_out, const double *in, i64 n) { return ofx_nn_act_crelu_grad(grad_in, INT64_MAX, grad_out, INT64_MAX, in, INT64_MAX, n); }
+i64 ofx_nn_adaboost_fit__nat(i64 h, const double *X, const i64 *y, i64 n, i64 d) { return ofx_nn_adaboost_fit(h, X, INT64_MAX, y, INT64_MAX, n, d); }
+i64 ofx_nn_adaboost_predict__nat(i64 h, const double *x) { return ofx_nn_adaboost_predict(h, x, INT64_MAX); }
+i64 ofx_nn_aggregate__nat(double *out, const i64 *rowptr, const i64 *colidx, const double *val, const double *Y, i64 rows, i64 cols, i64 k, i64 nnz, double alpha, double beta) { return ofx_nn_aggregate(out, INT64_MAX, rowptr, INT64_MAX, colidx, INT64_MAX, val, INT64_MAX, Y, INT64_MAX, rows, cols, k, nnz, alpha, beta); }
+double ofx_nn_auc__nat(const double *actual, const double *score, i64 n) { return ofx_nn_auc(actual, INT64_MAX, score, INT64_MAX, n); }
+i64 ofx_nn_avgpool__nat(double *out, const double *in, i64 c, i64 h, i64 w, i64 size, i64 stride) { return ofx_nn_avgpool(out, INT64_MAX, in, INT64_MAX, c, h, w, size, stride); }
+i64 ofx_nn_birnn_backward__nat(i64 h, const double *gy, i64 T) { return ofx_nn_birnn_backward(h, gy, INT64_MAX, T); }
+i64 ofx_nn_birnn_forward__nat(i64 h, const double *x, i64 T, double *y) { return ofx_nn_birnn_forward(h, x, INT64_MAX, T, y, INT64_MAX); }
+i64 ofx_nn_bn_backward__nat(i64 h, const double *gy, i64 batch, double *gx) { return ofx_nn_bn_backward(h, gy, INT64_MAX, batch, gx, INT64_MAX); }
+i64 ofx_nn_bn_forward__nat(i64 h, const double *x, i64 batch, double *y, i64 train) { return ofx_nn_bn_forward(h, x, INT64_MAX, batch, y, INT64_MAX, train); }
+i64 ofx_nn_bn_params__nat(i64 h, double *gamma, double *beta) { return ofx_nn_bn_params(h, gamma, INT64_MAX, beta, INT64_MAX); }
+i64 ofx_nn_bn_setparams__nat(i64 h, const double *gamma, const double *beta) { return ofx_nn_bn_setparams(h, gamma, INT64_MAX, beta, INT64_MAX); }
+i64 ofx_nn_bnn_dot__nat(const i64 *a, const i64 *b, i64 n) { return ofx_nn_bnn_dot(a, INT64_MAX, b, INT64_MAX, n); }
+i64 ofx_nn_bnn_pack__nat(i64 *out, const double *x, i64 n) { return ofx_nn_bnn_pack(out, INT64_MAX, x, INT64_MAX, n); }
+i64 ofx_nn_bnn_xnor__nat(const i64 *a, const i64 *b, i64 n) { return ofx_nn_bnn_xnor(a, INT64_MAX, b, INT64_MAX, n); }
+i64 ofx_nn_chuck_state__nat(i64 h, double *out) { return ofx_nn_chuck_state(h, out, INT64_MAX); }
+i64 ofx_nn_chuck_step__nat(i64 h, double *param, const double *grad, i64 rows, i64 cols, double lr, double beta1, double beta2, double eps) { return ofx_nn_chuck_step(h, param, INT64_MAX, grad, INT64_MAX, rows, cols, lr, beta1, beta2, eps); }
+i64 ofx_nn_col2im__nat(double *out, const double *col, i64 c, i64 h, i64 w, i64 kh, i64 kw, i64 stride, i64 pad) { return ofx_nn_col2im(out, INT64_MAX, col, INT64_MAX, c, h, w, kh, kw, stride, pad); }
+i64 ofx_nn_confusion__nat(const i64 *yt, const i64 *yp, i64 n, i64 k, i64 *cm) { return ofx_nn_confusion(yt, INT64_MAX, yp, INT64_MAX, n, k, cm, INT64_MAX); }
+i64 ofx_nn_conv2d__nat(double *out, const double *in, const double *weight, i64 c, i64 h, i64 w, i64 oc, i64 kh, i64 kw, i64 stride, i64 pad, i64 dil) { return ofx_nn_conv2d(out, INT64_MAX, in, INT64_MAX, weight, INT64_MAX, c, h, w, oc, kh, kw, stride, pad, dil); }
+i64 ofx_nn_conv2db__nat(double *out, const double *in, const double *weight, const double *bias, i64 c, i64 h, i64 w, i64 oc, i64 kh, i64 kw, i64 stride, i64 pad, i64 dil) { return ofx_nn_conv2db(out, INT64_MAX, in, INT64_MAX, weight, INT64_MAX, bias, INT64_MAX, c, h, w, oc, kh, kw, stride, pad, dil); }
+i64 ofx_nn_copy_block__nat(double *out, const double *data, i64 rows, i64 cols, i64 r0, i64 c0, i64 nr, i64 nc) { return ofx_nn_copy_block(out, INT64_MAX, data, INT64_MAX, rows, cols, r0, c0, nr, nc); }
+i64 ofx_nn_deconv2d__nat(double *out, const double *in, const double *weight, i64 c, i64 h, i64 w, i64 oc, i64 kh, i64 kw, i64 stride, i64 pad) { return ofx_nn_deconv2d(out, INT64_MAX, in, INT64_MAX, weight, INT64_MAX, c, h, w, oc, kh, kw, stride, pad); }
+i64 ofx_nn_deconv2db__nat(double *out, const double *in, const double *weight, const double *bias, i64 c, i64 h, i64 w, i64 oc, i64 kh, i64 kw, i64 stride, i64 pad) { return ofx_nn_deconv2db(out, INT64_MAX, in, INT64_MAX, weight, INT64_MAX, bias, INT64_MAX, c, h, w, oc, kh, kw, stride, pad); }
+i64 ofx_nn_dequant_i8__nat(const i64 *q, i64 n, double scale, i64 zero_point, double *out) { return ofx_nn_dequant_i8(q, INT64_MAX, n, scale, zero_point, out, INT64_MAX); }
+i64 ofx_nn_dropout_backward__nat(i64 h, const double *grad_out, double *grad_x) { return ofx_nn_dropout_backward(h, grad_out, INT64_MAX, grad_x, INT64_MAX); }
+i64 ofx_nn_dropout_forward__nat(i64 h, const double *x, double *out, i64 train, i64 seed) { return ofx_nn_dropout_forward(h, x, INT64_MAX, out, INT64_MAX, train, seed); }
+double ofx_nn_f1__nat(const i64 *cm, i64 k, double *out) { return ofx_nn_f1(cm, INT64_MAX, k, out, INT64_MAX); }
+i64 ofx_nn_forest_fit_cls__nat(i64 h, const double *X, const i64 *y, i64 n, i64 d, i64 n_classes) { return ofx_nn_forest_fit_cls(h, X, INT64_MAX, y, INT64_MAX, n, d, n_classes); }
+i64 ofx_nn_forest_fit_reg__nat(i64 h, const double *X, const double *y, i64 n, i64 d) { return ofx_nn_forest_fit_reg(h, X, INT64_MAX, y, INT64_MAX, n, d); }
+double ofx_nn_forest_predict__nat(i64 h, const double *x) { return ofx_nn_forest_predict(h, x, INT64_MAX); }
+i64 ofx_nn_fusedmm__nat(double *out, const i64 *rowptr, const i64 *colidx, const double *val, const double *X, const double *Y, i64 rows, i64 cols, i64 k, i64 nnz, double alpha, double beta) { return ofx_nn_fusedmm(out, INT64_MAX, rowptr, INT64_MAX, colidx, INT64_MAX, val, INT64_MAX, X, INT64_MAX, Y, INT64_MAX, rows, cols, k, nnz, alpha, beta); }
+i64 ofx_nn_gather_rows__nat(double *out, const double *data, i64 rows, i64 cols, const i64 *indices, i64 n_idx) { return ofx_nn_gather_rows(out, INT64_MAX, data, INT64_MAX, rows, cols, indices, INT64_MAX, n_idx); }
+i64 ofx_nn_gp_init__nat(const i64 *codes, const i64 *arity, i64 n) { return ofx_nn_gp_init(codes, INT64_MAX, arity, INT64_MAX, n); }
+i64 ofx_nn_gru_backward__nat(i64 h, const double *gy, i64 T) { return ofx_nn_gru_backward(h, gy, INT64_MAX, T); }
+i64 ofx_nn_gru_forward__nat(i64 h, const double *x, i64 T, double *y) { return ofx_nn_gru_forward(h, x, INT64_MAX, T, y, INT64_MAX); }
+i64 ofx_nn_im2col__nat(double *col, const double *in, i64 c, i64 h, i64 w, i64 kh, i64 kw, i64 stride, i64 pad) { return ofx_nn_im2col(col, INT64_MAX, in, INT64_MAX, c, h, w, kh, kw, stride, pad); }
+double ofx_nn_knn_accuracy__nat(const double *Xtr, const i64 *ytr, i64 ntr, const double *Xte, const i64 *yte, i64 nte, i64 d, i64 n_classes, i64 k) { return ofx_nn_knn_accuracy(Xtr, INT64_MAX, ytr, INT64_MAX, ntr, Xte, INT64_MAX, yte, INT64_MAX, nte, d, n_classes, k); }
+i64 ofx_nn_knn_classify__nat(const double *Xtr, const i64 *ytr, i64 ntr, i64 d, i64 n_classes, i64 k, const double *x) { return ofx_nn_knn_classify(Xtr, INT64_MAX, ytr, INT64_MAX, ntr, d, n_classes, k, x, INT64_MAX); }
+i64 ofx_nn_ln_backward__nat(i64 h, const double *gy, i64 batch, double *gx) { return ofx_nn_ln_backward(h, gy, INT64_MAX, batch, gx, INT64_MAX); }
+i64 ofx_nn_ln_forward__nat(i64 h, const double *x, i64 batch, double *y) { return ofx_nn_ln_forward(h, x, INT64_MAX, batch, y, INT64_MAX); }
+i64 ofx_nn_ln_params__nat(i64 h, double *gamma, double *beta) { return ofx_nn_ln_params(h, gamma, INT64_MAX, beta, INT64_MAX); }
+i64 ofx_nn_ln_setparams__nat(i64 h, const double *gamma, const double *beta) { return ofx_nn_ln_setparams(h, gamma, INT64_MAX, beta, INT64_MAX); }
+i64 ofx_nn_loss_binary_cross_entropy__nat(const double *y, const double *t, i64 rows, i64 cols, double *grad, double *loss) { return ofx_nn_loss_binary_cross_entropy(y, INT64_MAX, t, INT64_MAX, rows, cols, grad, INT64_MAX, loss, INT64_MAX); }
+i64 ofx_nn_loss_cross_entropy__nat(const double *y, const double *t, i64 rows, i64 cols, double *grad, double *loss) { return ofx_nn_loss_cross_entropy(y, INT64_MAX, t, INT64_MAX, rows, cols, grad, INT64_MAX, loss, INT64_MAX); }
+i64 ofx_nn_loss_mae__nat(const double *y, const double *t, i64 rows, i64 cols, double *grad, double *loss) { return ofx_nn_loss_mae(y, INT64_MAX, t, INT64_MAX, rows, cols, grad, INT64_MAX, loss, INT64_MAX); }
+i64 ofx_nn_lrn__nat(double *out, const double *in, i64 c, i64 h, i64 w, i64 size, double alpha, double beta, double biasv) { return ofx_nn_lrn(out, INT64_MAX, in, INT64_MAX, c, h, w, size, alpha, beta, biasv); }
+i64 ofx_nn_lstm_backward__nat(i64 h, const double *gy, i64 T) { return ofx_nn_lstm_backward(h, gy, INT64_MAX, T); }
+i64 ofx_nn_lstm_forward__nat(i64 h, const double *x, i64 T, double *y) { return ofx_nn_lstm_forward(h, x, INT64_MAX, T, y, INT64_MAX); }
+double ofx_nn_mae__nat(const double *yt, const double *yp, i64 n) { return ofx_nn_mae(yt, INT64_MAX, yp, INT64_MAX, n); }
+double ofx_nn_mat_absmax__nat(const double *in, i64 n) { return ofx_nn_mat_absmax(in, INT64_MAX, n); }
+i64 ofx_nn_maxpool__nat(double *out, const double *in, i64 c, i64 h, i64 w, i64 size, i64 stride) { return ofx_nn_maxpool(out, INT64_MAX, in, INT64_MAX, c, h, w, size, stride); }
+i64 ofx_nn_maxpool_arg__nat(double *out, const double *in, i64 *argmax, i64 c, i64 h, i64 w, i64 size, i64 stride) { return ofx_nn_maxpool_arg(out, INT64_MAX, in, INT64_MAX, argmax, INT64_MAX, c, h, w, size, stride); }
+double ofx_nn_memplan__nat(const void *t, i64 n, double *offsets) { return ofx_nn_memplan(t, INT64_MAX, n, offsets, INT64_MAX); }
+double ofx_nn_mse__nat(const double *yt, const double *yp, i64 n) { return ofx_nn_mse(yt, INT64_MAX, yp, INT64_MAX, n); }
+i64 ofx_nn_nms__nat(const double *boxes, const double *scores, i64 n, double iou_thresh, i64 *keep) { return ofx_nn_nms(boxes, INT64_MAX, scores, INT64_MAX, n, iou_thresh, keep, INT64_MAX); }
+i64 ofx_nn_nms_multiclass__nat(const double *boxes, double *probs, i64 n, i64 classes, double thresh) { return ofx_nn_nms_multiclass(boxes, INT64_MAX, probs, INT64_MAX, n, classes, thresh); }
+i64 ofx_nn_norm_apply__nat(i64 h, const double *x, double *out) { return ofx_nn_norm_apply(h, x, INT64_MAX, out, INT64_MAX); }
+i64 ofx_nn_norm_denormalize__nat(i64 h, const double *x, double *out) { return ofx_nn_norm_denormalize(h, x, INT64_MAX, out, INT64_MAX); }
+i64 ofx_nn_norm_observe__nat(i64 h, const double *x) { return ofx_nn_norm_observe(h, x, INT64_MAX); }
+i64 ofx_nn_norm_stats__nat(i64 h, double *out) { return ofx_nn_norm_stats(h, out, INT64_MAX); }
+i64 ofx_nn_norm_zscore__nat(i64 h, const double *x, double *out) { return ofx_nn_norm_zscore(h, x, INT64_MAX, out, INT64_MAX); }
+i64 ofx_nn_pbp_player__nat(const double *m_w, const double *v_w, const double *m_prev, const double *v_prev, double *m_z, double *v_z, i64 in, i64 out, double scaling, i64 relu) { return ofx_nn_pbp_player(m_w, INT64_MAX, v_w, INT64_MAX, m_prev, INT64_MAX, v_prev, INT64_MAX, m_z, INT64_MAX, v_z, INT64_MAX, in, out, scaling, relu); }
+double ofx_nn_pinn_adaptive_norm__nat(const double *losses, i64 n) { return ofx_nn_pinn_adaptive_norm(losses, INT64_MAX, n); }
+double ofx_nn_precision__nat(const i64 *cm, i64 k, double *out) { return ofx_nn_precision(cm, INT64_MAX, k, out, INT64_MAX); }
+i64 ofx_nn_prune_channel_l1__nat(const double *w, i64 out_c, i64 per_ch, double *l1) { return ofx_nn_prune_channel_l1(w, INT64_MAX, out_c, per_ch, l1, INT64_MAX); }
+i64 ofx_nn_prune_channels_mask__nat(const double *l1, i64 out_c, double keep_frac, i64 *mask) { return ofx_nn_prune_channels_mask(l1, INT64_MAX, out_c, keep_frac, mask, INT64_MAX); }
+i64 ofx_nn_quant_clamp_u8__nat(i64 *x, i64 n, i64 lo, i64 hi) { return ofx_nn_quant_clamp_u8(x, INT64_MAX, n, lo, hi); }
+i64 ofx_nn_quant_conv2d_i8__nat(i64 *out, const i64 *in, const i64 *weight, const i64 *bias, i64 c, i64 h, i64 w, i64 out_c, i64 kh, i64 kw, i64 stride, i64 pad, i64 bias_shift, i64 out_shift) { return ofx_nn_quant_conv2d_i8(out, INT64_MAX, in, INT64_MAX, weight, INT64_MAX, bias, INT64_MAX, c, h, w, out_c, kh, kw, stride, pad, bias_shift, out_shift); }
+i64 ofx_nn_quant_conv2d_i8_channel__nat(i64 *out, const i64 *in, const i64 *weight, const i64 *bias, const double *M, i64 c, i64 h, i64 w, i64 out_c, i64 kh, i64 kw, i64 stride, i64 pad, i64 zp_in, i64 zp_out) { return ofx_nn_quant_conv2d_i8_channel(out, INT64_MAX, in, INT64_MAX, weight, INT64_MAX, bias, INT64_MAX, M, INT64_MAX, c, h, w, out_c, kh, kw, stride, pad, zp_in, zp_out); }
+i64 ofx_nn_quant_gemm_u8__nat(i64 *out, const i64 *a, const i64 *b, const i64 *bias, i64 m, i64 k, i64 n, double scale_a, i64 zp_a, double scale_b, i64 zp_b, double scale_out, i64 zp_out) { return ofx_nn_quant_gemm_u8(out, INT64_MAX, a, INT64_MAX, b, INT64_MAX, bias, INT64_MAX, m, k, n, scale_a, zp_a, scale_b, zp_b, scale_out, zp_out); }
+i64 ofx_nn_quant_i8__nat(const double *x, i64 n, double scale, i64 zero_point, i64 *out) { return ofx_nn_quant_i8(x, INT64_MAX, n, scale, zero_point, out, INT64_MAX); }
+i64 ofx_nn_quant_params__nat(const double *x, i64 n, double *out) { return ofx_nn_quant_params(x, INT64_MAX, n, out, INT64_MAX); }
+i64 ofx_nn_quant_params_channel__nat(const double *w, i64 out_c, i64 per_ch, double *scale, i64 *zp) { return ofx_nn_quant_params_channel(w, INT64_MAX, out_c, per_ch, scale, INT64_MAX, zp, INT64_MAX); }
+i64 ofx_nn_quant_requant_shift_i8__nat(const i64 *acc, i64 n, i64 rshift, i64 *out) { return ofx_nn_quant_requant_shift_i8(acc, INT64_MAX, n, rshift, out, INT64_MAX); }
+double ofx_nn_r2__nat(const double *yt, const double *yp, i64 n) { return ofx_nn_r2(yt, INT64_MAX, yp, INT64_MAX, n); }
+double ofx_nn_recall__nat(const i64 *cm, i64 k, double *out) { return ofx_nn_recall(cm, INT64_MAX, k, out, INT64_MAX); }
+i64 ofx_nn_requant_i8__nat(const i64 *acc, i64 n, double in_scale, i64 in_zp, double out_scale, i64 out_zp, i64 *out) { return ofx_nn_requant_i8(acc, INT64_MAX, n, in_scale, in_zp, out_scale, out_zp, out, INT64_MAX); }
+i64 ofx_nn_resize__nat(double *out, const double *in, i64 c, i64 h, i64 w, i64 oh, i64 ow, i64 kind) { return ofx_nn_resize(out, INT64_MAX, in, INT64_MAX, c, h, w, oh, ow, kind); }
+i64 ofx_nn_rnn_backward__nat(i64 h, const double *gy, i64 T) { return ofx_nn_rnn_backward(h, gy, INT64_MAX, T); }
+i64 ofx_nn_rnn_forward__nat(i64 h, const double *x, i64 T, double *y) { return ofx_nn_rnn_forward(h, x, INT64_MAX, T, y, INT64_MAX); }
+i64 ofx_nn_slice_rows__nat(double *out, const double *data, i64 rows, i64 cols, i64 start, i64 count) { return ofx_nn_slice_rows(out, INT64_MAX, data, INT64_MAX, rows, cols, start, count); }
+i64 ofx_nn_snn_lut_forward__nat(const double *s, i64 n_tab, const i64 *j, i64 n_t, i64 y_dim, double *y) { return ofx_nn_snn_lut_forward(s, INT64_MAX, n_tab, j, INT64_MAX, n_t, y_dim, y, INT64_MAX); }
+i64 ofx_nn_snn_lut_index__nat(const double *x, const i64 *a, const i64 *b, i64 n_c) { return ofx_nn_snn_lut_index(x, INT64_MAX, a, INT64_MAX, b, INT64_MAX, n_c); }
+i64 ofx_nn_softmax_temp__nat(double *out, const double *z, i64 rows, i64 cols, double temp) { return ofx_nn_softmax_temp(out, INT64_MAX, z, INT64_MAX, rows, cols, temp); }
+i64 ofx_nn_sparsify24__nat(double *w, i64 n, i64 window, i64 nonzeros) { return ofx_nn_sparsify24(w, INT64_MAX, n, window, nonzeros); }
+i64 ofx_nn_ternary_dotrow__nat(i64 h, i64 row, const i64 *a, i64 nbits) { return ofx_nn_ternary_dotrow(h, row, a, INT64_MAX, nbits); }
+i64 ofx_nn_ternary_forward__nat(i64 h, const double *x, i64 batch, double *out) { return ofx_nn_ternary_forward(h, x, INT64_MAX, batch, out, INT64_MAX); }
+i64 ofx_nn_ternary_init__nat(const double *w, i64 rows, i64 cols) { return ofx_nn_ternary_init(w, INT64_MAX, rows, cols); }
+i64 ofx_nn_ternary_tomat__nat(i64 h, double *w) { return ofx_nn_ternary_tomat(h, w, INT64_MAX); }
+i64 ofx_nn_tree_fit_cls__nat(i64 h, const double *X, const i64 *y, i64 n, i64 d, i64 n_classes) { return ofx_nn_tree_fit_cls(h, X, INT64_MAX, y, INT64_MAX, n, d, n_classes); }
+i64 ofx_nn_tree_fit_reg__nat(i64 h, const double *X, const double *y, i64 n, i64 d) { return ofx_nn_tree_fit_reg(h, X, INT64_MAX, y, INT64_MAX, n, d); }
+double ofx_nn_tree_predict__nat(i64 h, const double *x) { return ofx_nn_tree_predict(h, x, INT64_MAX); }
+i64 ofx_nn_unpool__nat(double *out, const double *in, const i64 *argmax, i64 c, i64 h, i64 w, i64 size, i64 stride, double fill) { return ofx_nn_unpool(out, INT64_MAX, in, INT64_MAX, argmax, INT64_MAX, c, h, w, size, stride, fill); }
+i64 ofx_nn_winograd__nat(double *out, const double *in, const double *weight, i64 c, i64 h, i64 w, i64 oc, i64 tile) { return ofx_nn_winograd(out, INT64_MAX, in, INT64_MAX, weight, INT64_MAX, c, h, w, oc, tile); }
+i64 ofx_nn_winogradb__nat(double *out, const double *in, const double *weight, const double *bias, i64 c, i64 h, i64 w, i64 oc, i64 tile) { return ofx_nn_winogradb(out, INT64_MAX, in, INT64_MAX, weight, INT64_MAX, bias, INT64_MAX, c, h, w, oc, tile); }
+i64 ofx_nn_yolo_box__nat(double *out, double tx, double ty, double tw, double th, double anchor_w, double anchor_h, i64 cx, i64 cy, i64 grid_w, i64 grid_h) { return ofx_nn_yolo_box(out, INT64_MAX, tx, ty, tw, th, anchor_w, anchor_h, cx, cy, grid_w, grid_h); }
+
+/* Trampolini DECLARE NATIVE per le funzioni con callback (firma originale, estensioni = INT64_MAX). */
+i64 ofx_nn_gp_evolve__nat(i64 h, double (*fit)(double *, long long), i64 *out_best, double *out_fit,
+                          i64 pop, i64 gens, i64 seed, i64 max_depth)
+{ return ofx_nn_gp_evolve(h, fit, out_best, INT64_MAX, out_fit, INT64_MAX, pop, gens, seed, max_depth); }
+double ofx_nn_gp_eval__nat(i64 h, const i64 *codes, i64 n, double (*fit)(double *, long long))
+{ return ofx_nn_gp_eval(h, codes, INT64_MAX, n, fit); }
+i64 ofx_nn_mat_apply__nat(double *out, const double *in, i64 n, double (*f)(double))
+{ return ofx_nn_mat_apply(out, INT64_MAX, in, INT64_MAX, n, f); }

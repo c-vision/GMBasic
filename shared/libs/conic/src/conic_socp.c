@@ -90,3 +90,8 @@ i64 ofx_socp_solve_sparse(i64 n, i64 p,
     return socp_run(1, n, p, E, d, c, ncones, ctype, cnm, cmem, G, h,
                     tol_gap, tol_feas, max_iter, x, y, lam);
 }
+
+#include <stdint.h>
+/* Trampolini DECLARE NATIVE (ffi_ext_native.pl): firma originale, estensioni = INT64_MAX. */
+i64 ofx_socp_solve__nat(i64 n, i64 p, const double *E, const double *d, const double *c, i64 ncones, const i64 *ctype, const i64 *cnm, const i64 *cmem, const double *G, const double *h, double tol_gap, double tol_feas, i64 max_iter, double *x, double *y, double *lam) { return ofx_socp_solve(n, p, E, INT64_MAX, d, INT64_MAX, c, INT64_MAX, ncones, ctype, INT64_MAX, cnm, INT64_MAX, cmem, INT64_MAX, G, INT64_MAX, h, INT64_MAX, tol_gap, tol_feas, max_iter, x, INT64_MAX, y, INT64_MAX, lam, INT64_MAX); }
+i64 ofx_socp_solve_sparse__nat(i64 n, i64 p, const double *E, const double *d, const double *c, i64 ncones, const i64 *ctype, const i64 *cnm, const i64 *cmem, const double *G, const double *h, double tol_gap, double tol_feas, i64 max_iter, double *x, double *y, double *lam) { return ofx_socp_solve_sparse(n, p, E, INT64_MAX, d, INT64_MAX, c, INT64_MAX, ncones, ctype, INT64_MAX, cnm, INT64_MAX, cmem, INT64_MAX, G, INT64_MAX, h, INT64_MAX, tol_gap, tol_feas, max_iter, x, INT64_MAX, y, INT64_MAX, lam, INT64_MAX); }

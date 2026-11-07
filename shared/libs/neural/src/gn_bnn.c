@@ -3,6 +3,7 @@
  */
 #include "gn_bnn.h"
 #include <stdlib.h>
+#include <stdint.h>
 
 int gn_bnn_bytes(int n) { return n <= 0 ? 0 : (n + 7) / 8; }
 int gn_bnn_words(int n) { return n <= 0 ? 0 : (n + 63) / 64; }

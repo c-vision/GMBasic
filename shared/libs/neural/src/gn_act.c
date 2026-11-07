@@ -2,6 +2,7 @@
 #include "gn_act.h"
 
 #include <math.h>
+#include <stdint.h>
 
 gn_real gn_sigmoid(gn_real x) { return 1.0 / (1.0 + exp(-x)); }
 gn_real gn_sigmoid_grad(gn_real y) { return y * (1.0 - y); }

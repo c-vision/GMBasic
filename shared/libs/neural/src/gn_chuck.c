@@ -3,6 +3,7 @@
  */
 #include "gn_chuck.h"
 #include <math.h>
+#include <stdint.h>
 #include <stdlib.h>
 
 void gn_chuck_init(gn_chuck *c)

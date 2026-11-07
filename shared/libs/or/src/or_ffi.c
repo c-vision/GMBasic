@@ -557,3 +557,41 @@ i64 ofx_cp_binary(const i64 *dom, int64_t dom_n, const i64 *allowed, int64_t all
     free(d); free(a); free(s);
     return (i64)r;
 }
+
+#include <stdint.h>
+/* Trampolini DECLARE NATIVE (ffi_ext_native.pl): firma originale, estensioni = INT64_MAX. */
+i64 ofx_alldiff__nat(const i64 *dom, i64 n, i64 D, i64 *sol) { return ofx_alldiff(dom, INT64_MAX, n, D, sol, INT64_MAX); }
+double ofx_auction__nat(const double *cost, i64 n, i64 m, i64 *assignment, double eps) { return ofx_auction(cost, INT64_MAX, n, m, assignment, INT64_MAX, eps); }
+i64 ofx_bin_packing__nat(const double *items, i64 n, double cap, i64 algo, i64 *bin_of) { return ofx_bin_packing(items, INT64_MAX, n, cap, algo, bin_of, INT64_MAX); }
+i64 ofx_bin_packing_3d__nat(const double *items, i64 n, double W, double H, double D, i64 *bin_of) { return ofx_bin_packing_3d(items, INT64_MAX, n, W, H, D, bin_of, INT64_MAX); }
+i64 ofx_bin_packing_lb__nat(const double *items, i64 n, double cap) { return ofx_bin_packing_lb(items, INT64_MAX, n, cap); }
+double ofx_bottleneck__nat(const double *cost, i64 n, i64 *assignment) { return ofx_bottleneck(cost, INT64_MAX, n, assignment, INT64_MAX); }
+i64 ofx_cp_binary__nat(const i64 *dom, const i64 *allowed, i64 n, i64 D, i64 *sol) { return ofx_cp_binary(dom, INT64_MAX, allowed, INT64_MAX, n, D, sol, INT64_MAX); }
+i64 ofx_cutting_stock__nat(const double *pieces, i64 n, double stock, i64 *pattern) { return ofx_cutting_stock(pieces, INT64_MAX, n, stock, pattern, INT64_MAX); }
+double ofx_facility_location__nat(const double *open_cost, const double *conn_cost, i64 m, i64 n, i64 *open) { return ofx_facility_location(open_cost, INT64_MAX, conn_cost, INT64_MAX, m, n, open, INT64_MAX); }
+i64 ofx_hitting_set__nat(const i64 *elem, i64 m, i64 n, i64 *chosen, i64 *n_chosen) { return ofx_hitting_set(elem, INT64_MAX, m, n, chosen, INT64_MAX, n_chosen, INT64_MAX); }
+double ofx_hungarian__nat(const double *cost, i64 n, i64 m, i64 *assignment) { return ofx_hungarian(cost, INT64_MAX, n, m, assignment, INT64_MAX); }
+double ofx_kmeans__nat(const double *points, i64 n, i64 dim, i64 k, double *centroids, i64 *labels, i64 maxit) { return ofx_kmeans(points, INT64_MAX, n, dim, k, centroids, INT64_MAX, labels, INT64_MAX, maxit); }
+double ofx_knapsack_01__nat(const double *w, const double *v, i64 n, i64 cap, i64 *take) { return ofx_knapsack_01(w, INT64_MAX, v, INT64_MAX, n, cap, take, INT64_MAX); }
+double ofx_knapsack_01_mitm__nat(const double *w, const double *v, i64 n, double cap, i64 *take) { return ofx_knapsack_01_mitm(w, INT64_MAX, v, INT64_MAX, n, cap, take, INT64_MAX); }
+double ofx_knapsack_frac__nat(const double *w, const double *v, i64 n, double cap, double *x) { return ofx_knapsack_frac(w, INT64_MAX, v, INT64_MAX, n, cap, x, INT64_MAX); }
+double ofx_knapsack_unbounded__nat(const double *w, const double *v, i64 n, i64 cap, i64 *counts) { return ofx_knapsack_unbounded(w, INT64_MAX, v, INT64_MAX, n, cap, counts, INT64_MAX); }
+i64 ofx_max_coverage__nat(const i64 *elem, i64 m, i64 n, i64 k, i64 *chosen, i64 *n_chosen) { return ofx_max_coverage(elem, INT64_MAX, m, n, k, chosen, INT64_MAX, n_chosen, INT64_MAX); }
+double ofx_pcenter__nat(const double *dist, i64 n, i64 p, i64 *medians) { return ofx_pcenter(dist, INT64_MAX, n, p, medians, INT64_MAX); }
+double ofx_pmedian__nat(const double *dist, i64 n, i64 p, i64 *medians, i64 *assign, i64 maxit) { return ofx_pmedian(dist, INT64_MAX, n, p, medians, INT64_MAX, assign, INT64_MAX, maxit); }
+double ofx_qap_tabu__nat(const double *A, const double *B, i64 n, i64 *p, i64 maxit, i64 seed) { return ofx_qap_tabu(A, INT64_MAX, B, INT64_MAX, n, p, INT64_MAX, maxit, seed); }
+i64 ofx_sat__nat(const i64 *clauses, const i64 *clause_start, const i64 *clause_len, i64 nvars, i64 nclauses, i64 *assignment) { return ofx_sat(clauses, INT64_MAX, clause_start, INT64_MAX, clause_len, INT64_MAX, nvars, nclauses, assignment, INT64_MAX); }
+double ofx_set_cover__nat(const i64 *elem, const double *cost, i64 m, i64 n, i64 *chosen, i64 *n_chosen) { return ofx_set_cover(elem, INT64_MAX, cost, INT64_MAX, m, n, chosen, INT64_MAX, n_chosen, INT64_MAX); }
+double ofx_set_cover_grasp__nat(const i64 *elem, const double *cost, i64 m, i64 n, double alpha, i64 maxit, i64 *chosen, i64 *n_chosen) { return ofx_set_cover_grasp(elem, INT64_MAX, cost, INT64_MAX, m, n, alpha, maxit, chosen, INT64_MAX, n_chosen, INT64_MAX); }
+double ofx_set_cover_local__nat(const i64 *elem, const double *cost, i64 m, i64 n, i64 *chosen, i64 *n_chosen, i64 maxit) { return ofx_set_cover_local(elem, INT64_MAX, cost, INT64_MAX, m, n, chosen, INT64_MAX, n_chosen, INT64_MAX, maxit); }
+double ofx_set_cover_pricing__nat(const double *y, i64 m, double base_cost, double cost_per_elem, i64 *chosen_set) { return ofx_set_cover_pricing(y, INT64_MAX, m, base_cost, cost_per_elem, chosen_set, INT64_MAX); }
+double ofx_set_cover_rgrasp__nat(const i64 *elem, const double *cost, i64 m, i64 n, const double *alphas, i64 maxit, i64 *chosen, i64 *n_chosen) { return ofx_set_cover_rgrasp(elem, INT64_MAX, cost, INT64_MAX, m, n, alphas, INT64_MAX, maxit, chosen, INT64_MAX, n_chosen, INT64_MAX); }
+double ofx_set_cover_sa__nat(const i64 *elem, const double *cost, i64 m, i64 n, double pen, i64 maxit, i64 seed, i64 *chosen) { return ofx_set_cover_sa(elem, INT64_MAX, cost, INT64_MAX, m, n, pen, maxit, seed, chosen, INT64_MAX); }
+double ofx_set_cover_soft__nat(const i64 *elem, const double *cost, i64 m, i64 n, const i64 *chosen, double pen, i64 *uncovered) { return ofx_set_cover_soft(elem, INT64_MAX, cost, INT64_MAX, m, n, chosen, INT64_MAX, pen, uncovered, INT64_MAX); }
+i64 ofx_stable_marriage__nat(const i64 *pref_men, const i64 *pref_women, i64 n, i64 *match_men) { return ofx_stable_marriage(pref_men, INT64_MAX, pref_women, INT64_MAX, n, match_men, INT64_MAX); }
+i64 ofx_subset_sum__nat(const double *items, i64 n, double target, i64 *take) { return ofx_subset_sum(items, INT64_MAX, n, target, take, INT64_MAX); }
+double ofx_transport_least_cost__nat(const double *supply, const double *demand, const double *cost, i64 m, i64 n, double *x) { return ofx_transport_least_cost(supply, INT64_MAX, demand, INT64_MAX, cost, INT64_MAX, m, n, x, INT64_MAX); }
+double ofx_transport_modi__nat(const double *supply, const double *demand, const double *cost, i64 m, i64 n, double *x, i64 maxit) { return ofx_transport_modi(supply, INT64_MAX, demand, INT64_MAX, cost, INT64_MAX, m, n, x, INT64_MAX, maxit); }
+double ofx_transport_northwest__nat(const double *supply, const double *demand, const double *cost, i64 m, i64 n, double *x) { return ofx_transport_northwest(supply, INT64_MAX, demand, INT64_MAX, cost, INT64_MAX, m, n, x, INT64_MAX); }
+double ofx_transport_vam__nat(const double *supply, const double *demand, const double *cost, i64 m, i64 n, double *x) { return ofx_transport_vam(supply, INT64_MAX, demand, INT64_MAX, cost, INT64_MAX, m, n, x, INT64_MAX); }
+i64 ofx_vertex_cover__nat(const i64 *edges, i64 n, i64 ne, i64 *cover) { return ofx_vertex_cover(edges, INT64_MAX, n, ne, cover, INT64_MAX); }

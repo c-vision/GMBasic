@@ -2,6 +2,7 @@
 #include "gor_cp.h"
 
 #include <stdlib.h>
+#include <stdint.h>
 #include <string.h>
 
 /* ============================== SAT (DPLL) ============================== */
