@@ -46,7 +46,15 @@ Produce `libgmbmath.dylib` (o `.so`). Export BASIC:
   `gmbcompute/gc_sparse` (COO/CSR/CSC, conversioni, trasposizione) e solutori diretti di
   `gmbmath-linalg` (Cholesky e LU sparsi) via shim `src/sparse_ffi.c` (`ofx_sp_*`).
   Superficie a handle (64 slot), `FREE` per liberare.
+- `shared/include/quad.inc` (namespace `QUAD`, 2026-11-07). Quadratura di
+  `gmbmath-numerical` (Gauss-Kronrod con errore, Gauss-Legendre, Romberg, tanh-sinh e
+  variante complement, nodi Legendre/Hermite) via shim `src/quad_ffi.c` (`ofx_quad_*`).
+  Callback BASIC `(x AS DOUBLE) AS DOUBLE`.
+- `shared/include/ode.inc` (namespace `ODE`, 2026-11-07). Metodi avanzati di
+  `gmbmath-numerical` (Adams-Bashforth/Moulton 4, BDF2 e midpoint impliciti, Verlet,
+  BVP shooting/differenze finite) via shim `src/ode_ffi.c` (`ofx_ode_*`). Callback
+  autonoma `(y() AS DOUBLE) AS ARRAY`; il tempo entra nello stato.
 
 
-Guide utente: `QUAT-Guida-Utente`, `COMPLEX-Guida-Utente`, `XFORM-Guida-Utente`, `SPECTRAL-Guida-Utente`, `VEC-Guida-Utente`, `SPARSE-Guida-Utente` (vault) e capitolo V.27 del
+Guide utente: `QUAT-Guida-Utente`, `COMPLEX-Guida-Utente`, `XFORM-Guida-Utente`, `SPECTRAL-Guida-Utente`, `VEC-Guida-Utente`, `SPARSE-Guida-Utente`, `QUAD-Guida-Utente`, `ODE-Guida-Utente` (vault) e capitolo V.27 del
 manuale.

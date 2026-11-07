@@ -37,3 +37,23 @@ PUBLIC DECLARE FUNCTION STRUVEH LIB "gmbmath" ALIAS "gm_struve_h" (v AS DOUBLE, 
 PUBLIC DECLARE FUNCTION KELVINBER LIB "gmbmath" ALIAS "gm_kelvin_ber" (x AS DOUBLE) AS DOUBLE
 PUBLIC DECLARE FUNCTION KELVINBEI LIB "gmbmath" ALIAS "gm_kelvin_bei" (x AS DOUBLE) AS DOUBLE
 PUBLIC DECLARE FUNCTION PARABOLICCYLINDER LIB "gmbmath" ALIAS "gm_parabolic_cylinder" (a AS DOUBLE, x AS DOUBLE) AS DOUBLE
+
+' ── Integrali e funzioni ellittiche, Airy, Bessel sferiche (2026-11-07) ─────
+' Carlson RF/RD e gli integrali ellittici completi/incompleti. k è il MODULO
+' (non il parametro m = k^2): K(0) = pi/2, F(phi, k) con phi in radianti.
+PUBLIC DECLARE FUNCTION ELLIPTICRF LIB "gmbmath" ALIAS "gm_ellip_rf" (x AS DOUBLE, y AS DOUBLE, z AS DOUBLE) AS DOUBLE
+PUBLIC DECLARE FUNCTION ELLIPTICRD LIB "gmbmath" ALIAS "gm_ellip_rd" (x AS DOUBLE, y AS DOUBLE, z AS DOUBLE) AS DOUBLE
+PUBLIC DECLARE FUNCTION ELLIPTICK LIB "gmbmath" ALIAS "gm_ellip_K" (k AS DOUBLE) AS DOUBLE
+PUBLIC DECLARE FUNCTION ELLIPTICE LIB "gmbmath" ALIAS "gm_ellip_E" (k AS DOUBLE) AS DOUBLE
+PUBLIC DECLARE FUNCTION ELLIPTICF LIB "gmbmath" ALIAS "gm_ellip_F" (phi AS DOUBLE, k AS DOUBLE) AS DOUBLE
+PUBLIC DECLARE FUNCTION ELLIPTICEINC LIB "gmbmath" ALIAS "gm_ellip_Einc" (phi AS DOUBLE, k AS DOUBLE) AS DOUBLE
+' Jacobi: ampiezza am(u,k) e sn/cn/dn (sn^2 + cn^2 = 1, dn^2 + k^2 sn^2 = 1).
+PUBLIC DECLARE FUNCTION JACOBIAM LIB "gmbmath" ALIAS "gm_ellip_am" (u AS DOUBLE, k AS DOUBLE) AS DOUBLE
+PUBLIC DECLARE FUNCTION JACOBISN LIB "gmbmath" ALIAS "gm_ellip_sn" (u AS DOUBLE, k AS DOUBLE) AS DOUBLE
+PUBLIC DECLARE FUNCTION JACOBICN LIB "gmbmath" ALIAS "gm_ellip_cn" (u AS DOUBLE, k AS DOUBLE) AS DOUBLE
+PUBLIC DECLARE FUNCTION JACOBIDN LIB "gmbmath" ALIAS "gm_ellip_dn" (u AS DOUBLE, k AS DOUBLE) AS DOUBLE
+' Nome q(k) della serie di Fourier delle funzioni ellittiche.
+PUBLIC DECLARE FUNCTION ELLIPTICNOME LIB "gmbmath" ALIAS "gm_ellip_nome" (k AS DOUBLE) AS DOUBLE
+' Bessel sferiche j_n(x) e y_n(x), n intero >= 0.
+PUBLIC DECLARE FUNCTION BESSELSPHJ LIB "gmbmath" ALIAS "gm_bessel_sph_j" (n AS LONG, x AS DOUBLE) AS DOUBLE
+PUBLIC DECLARE FUNCTION BESSELSPHY LIB "gmbmath" ALIAS "gm_bessel_sph_y" (n AS LONG, x AS DOUBLE) AS DOUBLE
