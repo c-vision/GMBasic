@@ -56,12 +56,29 @@ static void draw_grid(const gmb_chart_renderer_t* r, int ox, int oy, int w, int 
         R_line(r, ox + 1, gy, ox + w - 2, gy, col);
         if (labels) { char lbl[40]; snprintf(lbl, sizeof(lbl), "%.6g", y); R_text(r, lbl, label_x, gy - th + 1, 0, CLR_TXT); }
     }
-    /* Tacche X + etichette SOTTO l'area del grafico (prima erano dentro, sull'asse). */
-    for (int g = 0; g <= 5; g++)
+    /* Tacche X con passo "bello" (1/2/5x10^k) e etichette SOTTO l'area del grafico.
+     * Prima erano 6 divisioni fisse con "%.5g": uscivano numeri come 2.8333 e 4.6667,
+     * illeggibili in una UI. Ora il passo è tondo (1,2,5,10...) e gli interi si
+     * scrivono senza decimali. */
     {
-        int gx = ox + 1 + g * (w - 2) / 6;
-        R_line(r, gx, oy + 1, gx, oy + h - 2, col);
-        if (labels) { double xv = xmin + (xmax - xmin) * g / 6.0; char lbl[40]; snprintf(lbl, sizeof(lbl), "%.5g", xv); R_text(r, lbl, gx + 1, label_y, 0, CLR_TXT); }
+        double step = nice_step(xmax - xmin);
+        /* etichette: al massimo una ogni ~60px, così non si accavallano */
+        int last_x = -10000;
+        for (double x = ceil(xmin / step) * step; x <= xmax + 1e-9; x += step)
+        {
+            int gx = ox + 1 + (int)((x - xmin) / (xmax - xmin) * (w - 2));
+            if (gx < ox || gx > ox + w - 2) continue;
+            R_line(r, gx, oy + 1, gx, oy + h - 2, col);
+            if (!labels) continue;
+            char lbl[40];
+            double rv = floor(x + 0.5);
+            if (fabs(x - rv) < 1e-9) snprintf(lbl, sizeof(lbl), "%.0f", rv);
+            else snprintf(lbl, sizeof(lbl), "%.6g", x);
+            int tw = R_tw(r, lbl);
+            if (gx - last_x < tw + 10) continue;      /* salta: si sovrapporrebbe */
+            R_text(r, lbl, gx + 1, label_y, 0, CLR_TXT);
+            last_x = gx + tw;
+        }
     }
 }
 
