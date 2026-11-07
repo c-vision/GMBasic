@@ -106,8 +106,9 @@ int gmb_bigtext_measure(const char* text, int* out_w, int* out_h)
 static void bigtext_draw(void* u, gmb_control_t* c, gmb_screen_buffer_t* buf)
 {
     gmb_big_text_t* b = (gmb_big_text_t*)u;
-    gmb_cell_color_t fg = b->has_color ? b->color : GMB_CELLCOLOR_DEFAULT;
-    gmb_cell_color_t bg = b->has_bg ? b->bg : GMB_CELLCOLOR_DEFAULT;
+    gmb_theme_t th = gmb_ui_theme();
+    gmb_cell_color_t fg = b->has_color ? b->color : th.text;
+    gmb_cell_color_t bg = b->has_bg ? b->bg : th.window_bg;
     gmb_screen_sink_t* sk = gmb_screen_get_sink(buf);
     if (sk && sk->is_gfx)
     {

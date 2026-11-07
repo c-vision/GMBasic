@@ -364,6 +364,8 @@ static int dk_draw(gmb_screen_buffer_t* buf, const gmb_draw_req_t* r)
                 tmp[n][i] = 0; n++;
                 if (*p == '|') p++;
             }
+            /* le voci non fornite NON devono ereditare i default "7List…10Quit" */
+            for (int i = 0; i < 10; i++) o->keys[i][0] = '\0';
             for (int i = 0; i < n; i++) snprintf(o->keys[i], sizeof(o->keys[i]), "%s", tmp[i]);
         }
         gmb_function_key_bar_draw(o, buf);

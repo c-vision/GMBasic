@@ -107,6 +107,58 @@ void gmb_vec_ds_datasource(gmb_vec_ds_t* v, gmb_browse_datasource_t* out)
 
 /* ===================== TBrowse core ===================== */
 
+/* Render PIXEL del TBrowse: stessa geometria del render a celle (header, separatore,
+ * righe, riga corrente evidenziata) ma con testo proporzionale su card del tema. */
+static void tbrowse_draw_px(void* u, gmb_control_t* c)
+{
+    gmb_browse_t* b = (gmb_browse_t*)u;
+    gmb_widget_style_t st = gmb_widget_style_current();
+    int x = c->x, y = c->y, w = c->width, h = c->height;
+    if (w < 24 || h < 24) return;
+    int soft = (st.shape == 1 && st.radius >= 12);
+    int rr = soft ? 12 : 4;
+    unsigned fill = (st.skin == 2) ? st.fill : 0xFFFFFFFFu;
+    gmb_gfx_fill_rounded_rect(x, y, w, h, rr, fill);
+    gmb_gfx_stroke_rounded_rect(x, y, w, h, rr, st.border);
+
+    int rh = (st.row_h > 0 ? st.row_h : 22);
+    if (rh < 12) rh = 12;
+    int pad = soft ? 8 : 4;
+    float sc = gmb_gfx_render_scale(); if (sc <= 0) sc = 1;
+    int th = (int)(gmb_gfx_text_height() / sc);
+    int ty = y + pad;
+    char line[2048];
+
+    if (b->show_header)
+    {
+        gmb_gfx_fill_rounded_rect(x + 4, ty, w - 8, rh, 2, (st.border & 0xFFFFFFu) | 0x33000000u);
+        gmb_browse_render_header(b, line, (int)sizeof(line));
+        gmb_gfx_draw_text(line, x + pad, ty + (rh - th) / 2, 0,
+                          (int)(0x40000000u | (st.text & 0xFFFFFFu)));
+        ty += rh;
+        gmb_gfx_fill_rounded_rect(x + pad, ty, w - 2 * pad, 1, 0, st.border);
+    }
+
+    gmb_browse_render_rows(b, line, (int)sizeof(line));
+    int cur_disp = b->current_row - b->top_row;
+    int dr = 0;
+    char* p = line;
+    while (p && *p)
+    {
+        char* nl = strchr(p, '\n');
+        if (nl) *nl = '\0';
+        int ry = ty + dr * rh;
+        if (ry + rh > y + h - pad) break;
+        if (dr == cur_disp && b->highlight_row)
+            gmb_gfx_fill_rounded_rect(x + 4, ry, w - 8, rh, 2, (st.accent & 0xFFFFFFu) | 0x33000000u);
+        gmb_gfx_draw_text(p, x + pad, ry + (rh - th) / 2, 0,
+                          (int)(0x40000000u | (st.text & 0xFFFFFFu)));
+        dr++;
+        if (!nl) break;
+        p = nl + 1;
+    }
+}
+
 gmb_browse_t* gmb_browse_new(const gmb_rect_t* area, int col_count, const gmb_browse_column_t* cols,
                              const gmb_browse_datasource_t* ds)
 {
@@ -138,6 +190,7 @@ gmb_browse_t* gmb_browse_new(const gmb_rect_t* area, int col_count, const gmb_br
     strcpy(b->foot_sep, "\xE2\x94\x80");  /* ─ */
     gmb_control_init(&b->ctrl, "", b->area.x, b->area.y, b->area.w, b->area.h, bc_draw, bc_key);
     b->ctrl.ctrl_kind = GMB_CK_TBROWSE;   /* per CONTROL SET/GET (showheader/toprow/sort/filter…) */
+    b->ctrl.draw_px_fn = tbrowse_draw_px; /* grafica: card + header + righe, no fallback a celle */
     b->ctrl.user = b;
     b->ctrl.handle_click_fn = bc_click;
     b->ctrl.handle_mouse_fn = bc_mouse;
@@ -1681,12 +1734,15 @@ void gmb_browse_draw(gmb_browse_t* b, gmb_screen_buffer_t* buffer)
 
         if (b->show_border)
         {
+            int bw = gmb_screen_width(buffer);
             gmb_screen_setstring(buffer, ax, y, "\xE2\x94\x82", border_fg, border_bg);
             gmb_screen_setstring(buffer, ax + 1, y, row_line, fg, bg);
-            if (ax + 1 + inner_w < w)
-                gmb_screen_setstring(buffer, ax + 1 + inner_w, y, "\xE2\x94\x82", border_fg, border_bg);
-            else
-                gmb_screen_setstring(buffer, (w - 1 < ax + w - 1 ? w - 1 : ax + w - 1), y, "\xE2\x94\x82", border_fg, border_bg);
+            /* bordo destro: coordinata ASSOLUTA (ax + 1 + inner_w), confrontata con la
+             * larghezza del BUFFER. Prima si confrontava con b->area.w (larghezza del
+             * controllo) e si finiva col disegnare il `│` a x = area.w-1, cioè DENTRO la
+             * riga: "Mario" diventava "Ma│io" (visibile solo con ax != 0). */
+            int rx = ax + 1 + inner_w;
+            if (rx < bw) gmb_screen_setstring(buffer, rx, y, "\xE2\x94\x82", border_fg, border_bg);
         }
         else
             gmb_screen_setstring(buffer, ax, y, row_line, fg, bg);

@@ -923,12 +923,27 @@ static void draw_one_widget(gmb_pix_widget_t* wd, float sc)
             int rowH = soft ? 26 : 22, rows = h / rowH, sel = (int)(wd_num(wd) + 0.5);
             for (int r = 0; r < rows && wd->first + r < wd->nitems; r++) {
                 int j = wd->first + r, ry = y + r * rowH;
+                unsigned int tcol = s->text;
                 if (j == sel) {
                     if (soft) GMB_GFX_FILL_RRECT(x + 4, ry + 1, w - 8, rowH - 2, (rowH - 2) / 2, ui_tint(acc, 0x2A));
-                    else      GMB_GFX_LINE(x + 1, ry, x + w - 2, ry + rowH - 1, GFX_RGB(s->fill_hover), "BF");
+                    else {
+                        /* selezione classica: se sel_bg coincide con lo sfondo della card
+                         * (turbovision) si schiarisce lo sfondo: altrimenti è invisibile. */
+                        unsigned selbg = s->sel_bg;
+                        if ((selbg & 0xFFFFFFu) == (s->fill & 0xFFFFFFu))
+                        {
+                            unsigned b = s->fill & 0xFFFFFFu;
+                            unsigned lr = (((b >> 16) & 0xFF) + 255) / 2;
+                            unsigned lg = (((b >> 8) & 0xFF) + 255) / 2;
+                            unsigned lb = ((b & 0xFF) + 255) / 2;
+                            selbg = (lr << 16) | (lg << 8) | lb;
+                        }
+                        GMB_GFX_LINE(x + 1, ry, x + w - 2, ry + rowH - 1, GFX_RGB(selbg), "BF");
+                        if ((s->sel_fg & 0xFFFFFFu) == (selbg & 0xFFFFFFu)) tcol = s->text;
+                        else tcol = s->sel_fg;
+                    }
                 }
                 const char* it = wd->items[j];
-                unsigned int tcol = s->text;
                 if (it[0] == '@' && (it[1] == 'g' || it[1] == 'G')) { tcol = 0xFF16A34Au; it += 2; if (*it == ' ') it++; }
                 else if (it[0] == '@' && (it[1] == 'r' || it[1] == 'R')) { tcol = 0xFFDC2626u; it += 2; if (*it == ' ') it++; }
                 GMB_GFX_DRAW_TEXT(it, x + (soft ? 14 : 8), ry + (rowH - tl) / 2, 0, GFX_RGB(tcol));
@@ -1160,8 +1175,10 @@ static void form_draw(void)
     float sc = GMB_GFX_RENDER_SCALE(); if (sc <= 0.0f) sc = 1.0f;
     const char* op = GMB_GFX_FONT_PATH(); char ops[160]; snprintf(ops, sizeof(ops), "%s", op ? op : "");
     int os = GMB_GFX_FONT_SIZE(); int fc = 0;
-    for (int i = 0; i < g_nbtn; i++) { if (!g_btns[i].base.visible) continue; if (g_btns[i].style.font_size > 0) fc = 1; draw_button_body(&g_btns[i], sc); }
     draw_widgets(sc);
+    /* Bottoni SOPRA i widget: il pannello-card (draw_widgets) copriva i bottoni
+     * aggiunti prima di lui. Le dropdown restano l'overlay più alto. */
+    for (int i = 0; i < g_nbtn; i++) { if (!g_btns[i].base.visible) continue; if (g_btns[i].style.font_size > 0) fc = 1; draw_button_body(&g_btns[i], sc); }
     draw_open_dropdowns(sc);
     if (fc) GMB_GFX_FONT(ops, os);
 }

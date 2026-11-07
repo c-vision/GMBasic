@@ -153,11 +153,52 @@ static bool textarea_click(void* u, gmb_control_t* c, int x, int y)
     }
     return true;
 }
+static void textarea_draw_px(void* u, gmb_control_t* c)
+{
+    /* Editor multi-riga in pixel: card del tema + testo monospazio + caret. */
+    gmb_text_area_t* t = (gmb_text_area_t*)u;
+    gmb_widget_style_t st = gmb_widget_style_current();
+    int x = c->x, y = c->y, w = c->width, h = c->height;
+    if (w < 16 || h < 16) return;
+    int soft = (st.shape == 1 && st.radius >= 12);
+    int rr = soft ? 12 : 4;
+    unsigned fill = (st.skin == 2) ? st.fill : 0xFFFFFFFFu;
+    gmb_gfx_fill_rounded_rect(x, y, w, h, rr, fill);
+    gmb_gfx_stroke_rounded_rect(x, y, w, h, rr, st.border);
+    int rh = (st.row_h > 0 ? st.row_h : 22);
+    if (rh < 12) rh = 12;
+    int pad = soft ? 8 : 4;
+    float sc = gmb_gfx_render_scale(); if (sc <= 0) sc = 1;
+    int th = (int)(gmb_gfx_text_height() / sc);
+    int vis = rh > 0 ? (h - pad * 2) / rh : 0;
+    if (vis < 1) vis = 1;
+    if (t->cursor_line < t->scroll_offset) t->scroll_offset = t->cursor_line;
+    if (t->cursor_line >= t->scroll_offset + vis) t->scroll_offset = t->cursor_line - vis + 1;
+    if (t->scroll_offset < 0) t->scroll_offset = 0;
+    unsigned acc = (st.accent & 0xFFFFFFu) ? st.accent : st.fill_press;
+    for (int r = 0; r < vis; r++)
+    {
+        int ln = t->scroll_offset + r;
+        if (ln >= t->lines_count) break;
+        int ry = y + pad + r * rh;
+        gmb_gfx_draw_text(t->lines[ln], x + pad, ry + (rh - th) / 2, 0,
+                          (int)(0x40000000u | (st.text & 0xFFFFFFu)));
+        if (ln == t->cursor_line && c->focused)
+        {
+            int cw = (int)(gmb_gfx_text_width("M") / sc); if (cw < 2) cw = 8;
+            int cx = x + pad + t->cursor_col * cw;
+            if (cx + 2 > x + w - pad) cx = x + w - pad - 2;
+            gmb_gfx_fill_rounded_rect(cx, ry + 3, 2, rh - 6, 1, (acc & 0xFFFFFFu) | 0x40000000u);
+        }
+    }
+}
+
 void gmb_text_area_init(gmb_text_area_t* t, int x, int y, int w, int h)
 {
     memset(t, 0, sizeof(*t));
     gmb_control_init(&t->ctrl, "", x, y, w, h, textarea_draw, textarea_key);
     t->ctrl.handle_click_fn = textarea_click;
+    t->ctrl.draw_px_fn = textarea_draw_px;   /* grafica: card + testo, no fallback a celle */
     t->ctrl.user = t;
     snprintf(t->lines[0], 256, "");
     t->lines_count = 1;
