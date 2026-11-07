@@ -76,6 +76,7 @@ public sealed class CGfxGraphicsService : IGraphicsService
     [DllImport(Lib)] private static extern void gmb_gfx_sprite_draw(int id);
     [DllImport(Lib)] private static extern int gmb_gfx_sprite_pixels_to_array(int src, int[] outv, int max);
     [DllImport(Lib)] private static extern int gmb_gfx_collide(int id1, int id2);
+    [DllImport(Lib)] private static extern int gmb_gfx_take_collision(out int id1, out int id2, out float x, out float y);
     [DllImport(Lib)] private static extern int gmb_gfx_chart_create();
     [DllImport(Lib)] private static extern void gmb_gfx_chart_plot(int handle, double[] xs, double[] ys, int count, string label);
     [DllImport(Lib)] private static extern void gmb_gfx_chart_show(int handle, int x, int y);
@@ -938,6 +939,16 @@ public sealed class CGfxGraphicsService : IGraphicsService
     public double TextWidth(string text) => gmb_gfx_text_width_logical(text);
     public double TextHeight() => gmb_gfx_text_height_logical();
     public void Sync() => Enq(() => gmb_gfx_sync());
+    /// <summary>SYNC con barriera: ritorna dopo che il motore C ha eseguito il frame (anche se il pump SDL gira su un altro
+    /// thread). Serve a chi deve leggere subito l'esito del SYNC (collisioni sprite) fuori dallo stepper GPM.</summary>
+    public void SyncBarrier()
+    {
+        if (!_mainActive || OnMain) { gmb_gfx_sync(); return; }
+        using var done = new System.Threading.ManualResetEventSlim(false);
+        Enq(() => gmb_gfx_sync());
+        EnqAfterPresent(() => done.Set());
+        done.Wait(5000);
+    }
     public void WindowVisible(bool visible) => Enq(() => gmb_gfx_window_set_visible(visible ? 1 : 0));
     public bool IsAvailable => true;
 
@@ -1079,9 +1090,12 @@ public sealed class CGfxGraphicsService : IGraphicsService
     }
     public SpriteCollisionHit[] TakeLastCollisions()
     {
-        var arr = _lastCollisions.ToArray();
+        // Collisione rilevata dal motore C all'ultimo SYNC (ON SPRITE COLLISION): prima delle hit esplicite di COLLIDE.
+        var list = new System.Collections.Generic.List<SpriteCollisionHit>();
+        try { if (gmb_gfx_take_collision(out var c1, out var c2, out var cx, out var cy) != 0) list.Add(new SpriteCollisionHit(c1, c2, cx, cy)); } catch { }
+        list.AddRange(_lastCollisions);
         _lastCollisions.Clear();
-        return arr;
+        return list.ToArray();
     }
     public int[] SpriteGetPixels(int spriteId)
     {

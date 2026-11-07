@@ -5355,6 +5355,42 @@ static void vm_sys_event_346(gmb_vm_t* vm, gmb_task_t* task, int code, int argc)
     push_num_entry(task, (double)rc, GMB_BT_NUMBER);
 }
 
+/* SYNC (SYNC_PROCESS): ON SPRITE COLLISION — il SYNC N rileva le collisioni (runtime grafico C), il SYNC N+1 chiama
+ * gli handler registrati con ADD_HANDLER "SPRITE_COLLISION" (una chiamata per SYNC, prima collisione, (x, y)).
+ * Stessa semantica di IL/PCode/C99. Ritorna -1 come lo stub headless precedente. */
+static int    g_vm_col_pending = 0;
+static double g_vm_col_x = 0, g_vm_col_y = 0;
+static void vm_sys_sync_process(gmb_vm_t* vm, gmb_task_t* task, int code, int argc) {
+    (void)code;
+    gmb_stack_entry_t a[4];
+    int n = argc > 4 ? 4 : argc;
+    vm_pop_args_ordered(task, a, n);
+    if (g_vm_col_pending)
+    {
+        g_vm_col_pending = 0;
+        for (int sl = 0; sl < ev_count; sl++)
+        {
+            if (strcasecmp(ev_names[sl], "SPRITE_COLLISION") != 0) continue;
+            for (int h = 0; h < ev_handler_count[sl]; h++)
+            {
+                int addr = -1;
+                for (uint32_t p = 0; p < vm->chunk->proc_count; p++)
+                    if (vm->chunk->proc_names[p] && strcasecmp(vm->chunk->proc_names[p], ev_handlers[sl][h]) == 0)
+                    { addr = (int)vm->chunk->proc_addrs[p]; break; }
+                if (addr < 0) continue;
+                gmb_stack_entry_t ca[2]; memset(ca, 0, sizeof(ca));
+                ca[0].type = 1; ca[0].num = g_vm_col_x; ca[0].basic_type = GMB_BT_NUMBER;
+                ca[1].type = 1; ca[1].num = g_vm_col_y; ca[1].basic_type = GMB_BT_NUMBER;
+                vm_call_addr_sync_args(vm, task, addr, ca, 2);
+            }
+        }
+    }
+    gmb_gfx_sync();
+    { int id1 = 0, id2 = 0; float cx = 0, cy = 0;
+      if (gmb_gfx_take_collision(&id1, &id2, &cx, &cy)) { g_vm_col_pending = 1; g_vm_col_x = cx; g_vm_col_y = cy; } }
+    push_num_entry(task, -1.0, GMB_BT_NUMBER);
+}
+
 static void vm_sys_memmap_open(gmb_vm_t* vm, gmb_task_t* task, int code, int argc) {
     (void)vm; (void)code; (void)argc;
 char mp[1024]; vm_pop_str(task, mp, sizeof(mp));
@@ -6233,7 +6269,7 @@ static const vm_sys_row VM_SYS_TBL[] = {
     { GMB_SC_SPRITE_CMD, vm_sys_sprite_cmd },
     { GMB_SC_TILEMAP_CMD, vm_sys_headless_big },
     { GMB_SC_TICK_PROCESS, vm_sys_headless_big },
-    { GMB_SC_SYNC_PROCESS, vm_sys_headless_big },
+    { GMB_SC_SYNC_PROCESS, vm_sys_sync_process },
     { GMB_SC_ON_WINDOW_EVENT, vm_sys_delegate_tui },
     /* WINDOW 304-316 (WINDOW_ACTION..WINDOW_SHADOW, enum C#): i handler `vm_winstmt_*`
      * vivono nella tabella CONSOLE (gmb_vm_console.c), quindi il delegate giusto è

@@ -252,8 +252,8 @@ public sealed partial class IlProgramCompiler
 
     private void EmitSyncStatement(SyncStmt stmt)
     {
-        EmitLoadGraphicsService();
-        _il.Emit(OpCodes.Callvirt, GraphicsSyncMethod);
+        // SYNC + consegna/prelievo delle collisioni sprite (ON SPRITE COLLISION), come TrySyncPark nello stepper.
+        _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.SyncWithCollisions)));
     }
 
     private void EmitLoadTextureStatement(LoadTextureStmt stmt)
@@ -491,6 +491,13 @@ public sealed partial class IlProgramCompiler
                 EmitStringArg(stmt.Arguments[0]);
                 _il.Emit(OpCodes.Ldc_I4_0);
                 _il.Emit(OpCodes.Callvirt, GraphicsSpriteLoadMethod); // → int id
+                // SpriteLoad ritorna int32: la variabile target puo' essere DOUBLE (DIM SpA senza tipo) o LONG;
+                // senza conversione lo stloc scrive un int32 in un local float64 (IL non valido: ILOptim lo rifiuta).
+                {
+                    var spTgt = IsGlobalSymbol(ve.SymbolId) ? GlobalClrType(ve.SymbolId)
+                        : (_locals.TryGetValue(ve.SymbolId, out var spLb) ? spLb.LocalType : typeof(double));
+                    IlConversion.EmitConvert(_il, _types, new DoubleType(), typeof(int), spTgt);
+                }
                 EmitStoreVariable(ve.SymbolId, () => { });
             }
             else if (stmt.Arguments[1] is ArrayAccessExpr aae)

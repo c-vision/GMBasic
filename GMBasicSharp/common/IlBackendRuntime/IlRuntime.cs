@@ -14279,6 +14279,15 @@ public static double TextWidth(string s)
     public static void CaptureSpriteCollisionsFromMainThread()
         => _pendingSpriteCollisions = Current.Graphics.TakeLastCollisions();
 
+    /// <summary>SYNC fuori dallo stepper GPM (programma IL diretto): consegna le collisioni rilevate dal SYNC
+    /// precedente, esegue il SYNC e preleva quelle del frame appena presentato (stessa semantica di TrySyncPark).</summary>
+    public static void SyncWithCollisions()
+    {
+        DispatchPendingSpriteCollisions();
+        if (Current.Graphics is Basic.Runtime.CGfxGraphicsService cg) cg.SyncBarrier(); else Current.Graphics.Sync();
+        CaptureSpriteCollisionsFromMainThread();
+    }
+
     /// <summary>Chiamato nel worker all'inizio di SYNC. Gmo alterna singolare/plurale
     /// perché può hijackare un solo IP; qui gli handler sono Proc_* non-park: si invocano
     /// entrambi sullo stesso set di hit (esplosione + SPRITE OFF nello stesso ciclo).</summary>

@@ -33,7 +33,7 @@ public class NullGraphicsService : IGraphicsService
     public int LoadTexture(string path, int textureId) => 0;
     public void DrawTextures(int x, int y, int textureId, int frame) { }
     public void Polygon(float[] points, int color) { }
-    public void Sync() { }
+    public void Sync() { NullDetectCollisions(); }
     public void SetAttribute(int attr) { }
     public void CursorState(bool visible) { }
     public void CursorShape(int shape) { }
@@ -48,17 +48,60 @@ public class NullGraphicsService : IGraphicsService
     public double SpriteCollide(int id1, int id2) => 0;
     public object[] SpriteCollideAll(int id) => Array.Empty<object>();
     public object[] SpriteCollideBatch(float[] xs, float[] ys, float w, float h) => Array.Empty<object>();
-    public int SpriteLoad(string filePath, int spriteId) => 0;
-    public void SpriteSetPosition(int spriteId, float x, float y) { }
-    public void SpriteSetVisible(int spriteId, bool visible) { }
+    // Modello software minimo degli sprite (headless, senza SDL): id progressivi, rettangolo = dimensioni del PNG,
+    // posizione e visibilita'. Serve solo a rilevare le collisioni al SYNC (ON SPRITE COLLISION), come la C runtime
+    // headless (gmb_graphics_sprite.c) e GraphicsManager.DetectCollisions.
+    private readonly System.Collections.Generic.SortedDictionary<int, (float X, float Y, int W, int H, bool Vis)> _nullSprites = new();
+    private int _nullNextSprite = 1;
+    private readonly System.Collections.Generic.List<SpriteCollisionHit> _nullHits = new();
+    private int NullSpriteAdd(string filePath)
+    {
+        int w = 1, h = 1;
+        try
+        {
+            using var fs = System.IO.File.OpenRead(filePath);
+            var hdr = new byte[24];
+            if (fs.Read(hdr, 0, 24) == 24 && hdr[1] == (byte)'P' && hdr[2] == (byte)'N' && hdr[3] == (byte)'G')
+            {
+                w = (hdr[16] << 24) | (hdr[17] << 16) | (hdr[18] << 8) | hdr[19];
+                h = (hdr[20] << 24) | (hdr[21] << 16) | (hdr[22] << 8) | hdr[23];
+            }
+        }
+        catch { }
+        var id = _nullNextSprite++;
+        _nullSprites[id] = (0, 0, w, h, true);
+        return id;
+    }
+    private void NullDetectCollisions()
+    {
+        _nullHits.Clear();
+        var ids = _nullSprites.Keys.ToList();
+        for (var i = 0; i < ids.Count; i++)
+        {
+            var a = _nullSprites[ids[i]];
+            if (!a.Vis) continue;
+            for (var j = i + 1; j < ids.Count; j++)
+            {
+                var b = _nullSprites[ids[j]];
+                if (!b.Vis) continue;
+                if (a.X < b.X + b.W && a.X + a.W > b.X && a.Y < b.Y + b.H && a.Y + a.H > b.Y)
+                    _nullHits.Add(new SpriteCollisionHit(ids[i], ids[j], a.X + a.W / 2f, a.Y + a.H / 2f));
+            }
+        }
+    }
+    public int SpriteLoad(string filePath, int spriteId) => NullSpriteAdd(filePath);
+    public void SpriteSetPosition(int spriteId, float x, float y)
+    { if (_nullSprites.TryGetValue(spriteId, out var s)) _nullSprites[spriteId] = (x, y, s.W, s.H, s.Vis); }
+    public void SpriteSetVisible(int spriteId, bool visible)
+    { if (_nullSprites.TryGetValue(spriteId, out var s)) _nullSprites[spriteId] = (s.X, s.Y, s.W, s.H, visible); }
     public void SpriteSetPriority(int spriteId, int priority) { }
     public void SpriteSetScale(int spriteId, float sx, float sy) { }
     public void SpriteSetRotation(int spriteId, float degrees) { }
-    public void SpriteLoadGpm(string filePath, Action<object?, Exception?> completion) => completion(1, null);
+    public void SpriteLoadGpm(string filePath, Action<object?, Exception?> completion) => completion(NullSpriteAdd(filePath), null);
     public void LoadTextureGpm(string path, Action<object?, Exception?> completion) => completion(1, null);
     public void LoadTextureSheetGpm(string path, int cellW, int cellH, Action<object?, Exception?> completion)
         => completion(Array.Empty<int>(), null);
-    public void SyncGpm(Action<object?, Exception?> completion) => completion(null, null);
+    public void SyncGpm(Action<object?, Exception?> completion) { NullDetectCollisions(); completion(null, null); }
     public void PointGpm(int x, int y, Action<object?, Exception?> completion) => completion(0, null);
     public void ScreenGpm(int mode, int width, int height, int bpp, Action<object?, Exception?> completion) => completion(null, null);
     // GETPIXELS headless: dummy VALIDO — [width, height, pixel...] di uno sprite 1x1 bianco
@@ -68,7 +111,7 @@ public class NullGraphicsService : IGraphicsService
         => completion(new int[] { 1, 1, 0x00FFFFFF }, null);
     public void SpriteSetTransform(int spriteId, long matrixId) { }
     public void SpriteSetMatrix(int spriteId, long matrixId) { }
-    public SpriteCollisionHit[] TakeLastCollisions() => [];
+    public SpriteCollisionHit[] TakeLastCollisions() { var r = _nullHits.ToArray(); _nullHits.Clear(); return r; }
     public void Print(string? text) { }
     public void Locate(int col, int line) { }
     public void Color(object? foreground, object? background) { }
