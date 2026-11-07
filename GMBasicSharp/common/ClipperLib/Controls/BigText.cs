@@ -297,7 +297,7 @@ public class BigText : Control
 
     public override void Draw(ScreenBuffer buffer)
     {
-        Render(buffer, X, Y);
+        NativeDraw.Show(buffer, NativeDraw.BigText, this, text: Text, h: Height, w: Width);
     }
 
     public void Render(ScreenBuffer buffer, int x, int y)

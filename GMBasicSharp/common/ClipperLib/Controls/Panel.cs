@@ -38,35 +38,10 @@ public class Panel : Control
 
     public override void Draw(ScreenBuffer buffer)
     {
-        var (fg, bg) = Style.Effective(Focused);
         if (Border == PanelBorder.None) return;
-
-        var (tl, th, tr, vl, br, bh, bl, vr) = BorderChars(Border);
-
-        buffer.SetChar(X, Y, tl, fg, bg);
-        buffer.SetChar(X + Width - 1, Y, tr, fg, bg);
-        buffer.SetChar(X, Y + Height - 1, bl, fg, bg);
-        buffer.SetChar(X + Width - 1, Y + Height - 1, br, fg, bg);
-
-        for (var x = X + 1; x < X + Width - 1; x++)
-        {
-            buffer.SetChar(x, Y, th, fg, bg);
-            buffer.SetChar(x, Y + Height - 1, bh, fg, bg);
-        }
-        for (var y = Y + 1; y < Y + Height - 1; y++)
-        {
-            buffer.SetChar(X, y, vl, fg, bg);
-            for (var x = X + 1; x < X + Width - 1; x++)
-                buffer.SetChar(x, y, ' ', fg, bg);
-            buffer.SetChar(X + Width - 1, y, vr, fg, bg);
-        }
-
-        if (!string.IsNullOrEmpty(Title))
-        {
-            var title = $" {Title} ";
-            if (title.Length < Width - 2)
-                buffer.SetString(X + 1, Y, title, fg, bg);
-        }
+        NativeDraw.Show(buffer, NativeDraw.Panel, this,
+                        text: Title ?? "",
+                        sel: NativeDraw.CgPanelBorder(Border));
     }
 
     public override bool HandleKey(int key) => false;
@@ -133,34 +108,10 @@ public class Window : Control
     public override void Draw(ScreenBuffer buffer)
     {
         if (!Visible) return;
-        var (fg, bg) = Style.Effective(Focused);
-        var (tl, th, tr, vl, br, bh, bl, vr) = BorderChars(Border);
-
-        buffer.SetChar(X, Y, tl, fg, bg);
-        buffer.SetChar(X + Width - 1, Y, tr, fg, bg);
-        buffer.SetChar(X, Y + Height - 1, bl, fg, bg);
-        buffer.SetChar(X + Width - 1, Y + Height - 1, br, fg, bg);
-
-        for (var x = X + 1; x < X + Width - 1; x++)
-        {
-            buffer.SetChar(x, Y, th, fg, bg);
-            buffer.SetChar(x, Y + Height - 1, bh, fg, bg);
-        }
-        for (var y = Y + 1; y < Y + Height - 1; y++)
-        {
-            buffer.SetChar(X, y, vl, fg, bg);
-            for (var x = X + 1; x < X + Width - 1; x++)
-                buffer.SetChar(x, y, ' ', fg, bg);
-            buffer.SetChar(X + Width - 1, y, vr, fg, bg);
-        }
-
-        var title = $" {ApplyCase(Title)} ";
-        if (title.Length < Width - 2)
-        {
-            buffer.SetString(X + 1, Y, title, fg, bg);
-            if (Closable)
-                buffer.SetString(X + Width - 3, Y, " ×", Style.FgError ?? CellColor.Red, bg);
-        }
+        NativeDraw.Show(buffer, NativeDraw.Window, this,
+                        extra: ApplyCase(Title),
+                        sel: NativeDraw.CgPanelBorder(Border),
+                        extraState: Closable ? NativeDraw.StOpen : 0);
     }
 
     public override bool HandleKey(int key) => false;

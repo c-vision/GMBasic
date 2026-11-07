@@ -18,3 +18,12 @@ int  gmb_tui_control_add(gmb_control_t* c)
     if (g_reg_focus < 0) g_reg_focus = g_reg_n;
     return g_reg_n++;
 }
+
+/* Rimuove l'ultimo controllo registrato: il chiamante ne resta proprietario. */
+void gmb_tui_control_remove_last(void)
+{
+    if (g_reg_n <= 0) return;
+    g_reg_n--;
+    g_reg_ctrl[g_reg_n] = NULL;
+    if (g_reg_focus >= g_reg_n) g_reg_focus = g_reg_n - 1;
+}

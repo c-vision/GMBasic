@@ -82,12 +82,21 @@ static bool button_click(void* u, gmb_control_t* c, int x, int y)
     if (b->on_click) b->on_click(b->click_ctx);
     return true;
 }
+static void button_draw_px(void* u, gmb_control_t* c)
+{
+    gmb_button_t* b = (gmb_button_t*)u;
+    extern void gmb_form_draw_chip(int x, int y, int w, int h, const char* label, int state);
+    gmb_form_draw_chip(c->px_x, c->px_y, c->px_w, c->px_h, b->label,
+                       c->focused ? 2 : 0);   /* 0=normale, 2=premuto/focus */
+}
+
 void gmb_button_init(gmb_button_t* b, int x, int y, int w, const char* label)
 {
     memset(b, 0, sizeof(*b));
     gmb_control_init(&b->ctrl, "", x, y, w, 2, button_draw, button_key);   /* TV: alto 2 (titolo + ombra) */
     b->ctrl.handle_click_fn = button_click;
     b->ctrl.user = b;
+    b->ctrl.draw_px_fn = button_draw_px;   /* percorso PIXEL (grafica): chip nativo, no celle */
     snprintf(b->label, sizeof(b->label), "%s", label ? label : "OK");
 }
 void gmb_button_set_onclick(gmb_button_t* b, void (*fn)(void* ctx), void* ctx)

@@ -23,8 +23,8 @@ public class CheckBox : Control
 
     public override void Draw(ScreenBuffer buffer)
     {
-        var (fg, bg) = Style.Effective(Focused, HasError);
-        buffer.SetString(X, Y, ApplyCase(RenderLine()), fg, bg);
+        NativeDraw.Show(buffer, NativeDraw.CheckBox, this, text: ApplyCase(Label),
+                        extraState: Checked ? NativeDraw.StChecked : 0);
     }
 
     public override bool HandleKey(int key)

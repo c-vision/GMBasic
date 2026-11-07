@@ -33,9 +33,8 @@ public class Button : Control
 
     public override void Draw(ScreenBuffer buffer)
     {
-        var (fg, bg) = Style.Effective(Focused, HasError);
-        if (IsDefault && !Focused && !HasError) { fg = new CellColor { R = 0, G = 0, B = 0 }; bg = new CellColor { R = 0, G = 170, B = 0 }; }
-        buffer.SetString(X, Y, ApplyCase(RenderLine()), fg, bg);
+        // Render nativo (runtime C): unica fonte del disegno dei controlli.
+        NativeDraw.Show(buffer, NativeDraw.Button, this, text: ApplyCase(Label));
     }
 
     public override bool HandleKey(int key)

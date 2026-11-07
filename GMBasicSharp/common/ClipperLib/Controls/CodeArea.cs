@@ -212,61 +212,9 @@ public class CodeArea : TextArea
 
     public override void Draw(ScreenBuffer buffer)
     {
-        var (fg, bg) = Style.Effective(Focused, HasError);
-        var gutter = GutterWidth;
-        var codeX = X + gutter;
-        var sbW = ShowScrollBar ? 1 : 0;
-        var codeW = Math.Max(0, Width - gutter - sbW);
-
-        var selRange = SelectionRange;
-
-        for (var i = 0; i < Height; i++)
-        {
-            var idx = ScrollOffset + i;
-            if (idx >= Lines.Count) break;
-
-            var rowBg = bg;
-            if (CurrentExecutionLine == idx) rowBg = MarkerCurrentLine;
-            else if (selRange.HasValue && idx >= selRange.Value.from && idx <= selRange.Value.to) rowBg = SelRowBg;
-
-            if (gutter > 0)
-            {
-                var marker = BreakpointLines.Contains(idx) ? '●'
-                    : BookmarkLines.Contains(idx) ? '◆'
-                    : ' ';
-                buffer.SetChar(X, Y + i, marker, MarkerBreakpoint, rowBg);
-                var num = FormatLineNumber(idx + 1, GutterInnerWidth);
-                buffer.SetString(X + 1, Y + i, num, GutterColor, rowBg);
-            }
-
-            var line = Lines[idx];
-            var colors = Syntax.Colorize(line);
-
-            for (var j = 0; j < codeW; j++)
-            {
-                var screenCol = codeX + j;
-                var ch = j < line.Length ? line[j] : ' ';
-                var c = j < colors.Length && colors[j].HasValue ? colors[j]!.Value : fg;
-                if (rowBg == SelRowBg && CurrentSelectionCovers(idx, j, selRange)) c = fg;
-                buffer.SetChar(screenCol, Y + i, ch, c, rowBg);
-            }
-        }
-
-        if (sbW > 0)
-        {
-            var sbX = X + Width - 1;
-            var total = Math.Max(1, Lines.Count);
-            var page = Math.Max(1, Height);
-            var thumb = Math.Max(1, Height * page / total);
-            var maxPos = Math.Max(0, total - page);
-            var pos = Math.Min(maxPos, ScrollOffset);
-            var startY = maxPos > 0 ? pos * (Height - thumb) / maxPos : 0;
-            for (var i = 0; i < Height; i++)
-            {
-                var inThumb = i >= startY && i < startY + thumb;
-                buffer.SetChar(sbX, Y + i, ' ', inThumb ? ScrollThumb : ScrollTrack, inThumb ? ScrollThumb : ScrollTrack);
-            }
-        }
+        NativeDraw.Show(buffer, NativeDraw.CodeArea, this,
+                        text: string.Join("\n", Lines),
+                        sel: ScrollOffset, min: CursorLine, max: CursorCol);
     }
 
     /// <summary>True se la cella (riga, colonna) cade dentro l'intervallo di selezione.</summary>

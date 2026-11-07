@@ -62,20 +62,9 @@ public class ScrollBar : Control
     {
         var range = Math.Max(1, Max - Min);
         if (Page >= range) return;
-        var (fg, bg) = Style.Effective(Focused, HasError);
-        if (Orientation == Orientation.Vertical)
-        {
-            var rows = RenderRows();
-            for (var i = 0; i < rows.Count && i < Height; i++)
-            {
-                var color = rows[i] == "│" && TrackColor.HasValue ? TrackColor.Value : fg;
-                buffer.SetString(X, Y + i, rows[i], color, bg);
-            }
-        }
-        else
-        {
-            buffer.SetString(X, Y, RenderLine(), fg, bg);
-        }
+        NativeDraw.Show(buffer, NativeDraw.ScrollBar, this,
+                        value: Position, min: Min, max: Max,
+                        w: Width, h: Orientation == Orientation.Vertical ? Height : 1);
     }
 
     public override bool HandleKey(int key)

@@ -161,6 +161,9 @@ void gmb_tui_controls_reset(void);
 void gmb_tui_host_key_push(int k);
 int  gmb_tui_host_key_pop(void);
 int  gmb_tui_control_add(gmb_control_t* c);
+/* Rimuove l'ULTIMO controllo registrato (usato dai render temporanei: il controllo
+ * viene costruito dalla factory canonica, disegnato e poi scartato). */
+void gmb_tui_control_remove_last(void);
 int  gmb_tui_control_count(void);
 gmb_control_t* gmb_tui_control_at(int i);
 long long gmb_tui_control_selrow(int i);   /* riga selezionata di un controllo TBROWSE, -1 altrimenti */

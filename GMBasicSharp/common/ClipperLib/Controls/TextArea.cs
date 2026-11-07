@@ -32,24 +32,9 @@ public class TextArea : Control
 
     public override void Draw(ScreenBuffer buffer)
     {
-        var (fg, bg) = Style.Effective(Focused, HasError);
-        for (var i = 0; i < Height; i++)
-        {
-            var idx = ScrollOffset + i;
-            if (idx >= Lines.Count) break;
-            var line = ApplyCase(Lines[idx].Length > Width ? Lines[idx][..Width] : Lines[idx]);
-            buffer.SetString(X, Y + i, line.Length < Width ? line.PadRight(Width) : line, fg, bg);
-        }
-
-        if (Focused && BlinkOn)
-        {
-            var visY = CursorLine - ScrollOffset;
-            if (visY >= 0 && visY < Height && visY < Lines.Count)
-            {
-                var ch = CursorCol < Lines[CursorLine].Length ? Lines[CursorLine][CursorCol] : ' ';
-                buffer.SetChar(X + CursorCol, Y + visY, ch, bg, fg);
-            }
-        }
+        NativeDraw.Show(buffer, NativeDraw.TextArea, this,
+                        text: string.Join("\n", Lines),
+                        sel: ScrollOffset, min: CursorLine, max: CursorCol);
     }
 
     public override bool HandleKey(int key)

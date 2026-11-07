@@ -30,23 +30,10 @@ public class ComboBox : Control
 
     public override void Draw(ScreenBuffer buffer)
     {
-        var (fg, bg) = Style.Effective(Focused);
-        var display = RenderLine();
-        buffer.SetString(X, Y, display, fg, bg);
-        buffer.SetChar(X + Width - 1, Y, '▼', fg, bg);
-
-        if (Open && Items.Count > 0)
-        {
-            var (popFg, popBg) = Style.Effective(false);
-            var (selFg, selBg) = Style.Effective(selected: true);
-            var maxH = Math.Min(DropDownHeight, Items.Count);
-            for (var i = 0; i < maxH; i++)
-            {
-                var item = ApplyCase(Items[i].Length > Width ? Items[i][..Width] : Items[i].PadRight(Width));
-                var (f, b) = i == Highlight ? (selFg, selBg) : (popFg, popBg);
-                buffer.SetString(X, Y + 1 + i, item, f, b);
-            }
-        }
+        NativeDraw.Show(buffer, NativeDraw.ComboBox, this,
+                        text: string.Join("|", Items),
+                        sel: Selected ?? 0,
+                        extraState: Open ? NativeDraw.StOpen : 0);
     }
 
     public override bool HandleKey(int key)
