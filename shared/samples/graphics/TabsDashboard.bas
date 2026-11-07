@@ -54,34 +54,39 @@ SCROLLBAR 660, 456, 260, 0, 100, 40 INTO n NAME "p2_k"
 PROPERTYGRID 976, 434, 264, 60, "policy=rolling|window=5m" NAME "p2_l"
 
 ' ══ PAGINA 3 · FILES & PRINT (a-l) ══════════════════════════════════════
-PANEL 24, 126, 600, 360, "FILES" NAME "p3_a"
-FILEEXPLORER 40, 158, 568, 250, "." NAME "p3_b"
+PANEL 24, 126, 600, 150, "FILES" NAME "p3_a"
+FILEEXPLORER 40, 158, 568, 104, "." NAME "p3_b"
 FILEDIALOG "*.bas", "Apri", "*.bas" NAME "p3_c"
-PANEL 644, 126, 612, 360, "PRINT / MEDIA" NAME "p3_d"
+CONTROL SET "p3_c", "left", 40
+CONTROL SET "p3_c", "top", 300
+PANEL 644, 126, 612, 150, "PRINT / MEDIA" NAME "p3_d"
 PRINTERDIALOG "Stampa", s, n, n2 NAME "p3_e"
-IMAGEBUTTON 660, 250, 260, 40, "Open file" NAME "p3_f"
-TEXTBOX 660, 326, 560, 34 INTO s2 NAME "p3_g"
-QR 660, 392, 120, 120, "GMBASIC" NAME "p3_h"
-RICHTEXT 800, 392, 440, 100, "File caricato: 128 KB|Nessun errore|Pronto per la stampa" NAME "p3_i"
-PANEL 24, 502, 600, 240, "SPLITTER" NAME "p3_j"
-SPLITTER 40, 544, 568, 22, 0 NAME "p3_k"
-LABEL 40, 600, 560, "splitter orizzontale" NAME "p3_l"
+CONTROL SET "p3_e", "left", 700
+CONTROL SET "p3_e", "top", 300
+IMAGEBUTTON 660, 180, 260, 40, "Open file" NAME "p3_f"
+TEXTBOX 980, 180, 260, 34 INTO s2 NAME "p3_g"
+
+
+
+
+
 
 ' ══ PAGINA 4 · CLIPPER (a-l) ════════════════════════════════════════════
-PANEL 24, 126, 700, 360, "CLIPPER · @SAY / @GET / MENU" NAME "p4_a"
-LABEL 40, 170, 660, "Cliente: Mario Rossi   ·   Saldo: 1.240,00 EUR" NAME "p4_b"
-LABEL 40, 208, 300, "@ GET" NAME "p4_c"
-TEXTBOX 40, 228, 660, 34 INTO s NAME "p4_d"
-MENU 40, 286, 660, "File|Edit|View|Help" NAME "p4_e"
-CONTEXTMENU 40, 330, 300, "Copy|Paste|Delete" NAME "p4_f"
-LABEL 40, 400, 660, "menubar + context menu + @SAY/@GET (stile Clipper)" NAME "p4_g"
+PANEL 24, 126, 700, 360, "TBROWSE - @SELECT (Clipper)" NAME "p4_a"
+TBROWSE 40, 168, 668, 292, [["Name", 22], ["Qty", 8], ["Status", 12]], [["alpha", 12, "ok"], ["beta", 7, "ok"], ["gamma", 3, "warn"], ["delta", 21, "ok"], ["epsilon", 9, "crit"], ["zeta", 15, "ok"], ["eta", 4, "ok"]] INTO n NAME "p4_b"
 
-PANEL 744, 126, 512, 360, "DIALOGHI" NAME "p4_h"
-ALERTBOX 764, 170, 220, 96, "Deploy completato" NAME "p4_i"
-CONFIRMATIONBOX 1000, 170, 236, 96, "Procedere?" NAME "p4_j"
-LABEL 764, 300, 460, "ALERTBOX / CONFIRMATIONBOX" NAME "p4_k"
+PANEL 744, 126, 512, 230, "CLIPPER - @SAY / @GET / MENU" NAME "p4_c"
+LABEL 764, 166, 470, "Cliente: Mario Rossi   Saldo 1.240,00" NAME "p4_d"
+TEXTBOX 764, 204, 470, 34 INTO s NAME "p4_e"
+MENU 764, 254, 470, "File|Edit|View|Help" NAME "p4_f"
+CONTEXTMENU 764, 298, 300, "Copy|Paste|Delete" NAME "p4_g"
 
-PANEL 24, 502, 1232, 130, "ALERTBOX · CONFIRMATIONBOX · FUNCTIONKEYBAR (vedi PixelControlsGallery)" NAME "p4_l"
+PANEL 744, 372, 512, 114, "DIALOGHI" NAME "p4_h"
+ALERTBOX 764, 402, 220, 70, "Deploy completato" NAME "p4_i"
+CONFIRMATIONBOX 1000, 402, 236, 70, "Procedere?" NAME "p4_j"
+
+PANEL 24, 502, 1232, 130, "TABLE MODEL + DIALOGHI (pixel, nessuna cella)" NAME "p4_l"
+LABEL 44, 540, 1180, "TBROWSE legge il datasource colonna per colonna e compone le celle in pixel" NAME "p4_k"
 
 ' ══ PAGINA 5 · CHARTS (a-l) ═════════════════════════════════════════════
 PANEL 24, 126, 600, 360, "LINE CHART" NAME "p5_a"

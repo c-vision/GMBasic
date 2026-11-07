@@ -107,53 +107,120 @@ void gmb_vec_ds_datasource(gmb_vec_ds_t* v, gmb_browse_datasource_t* out)
 
 /* ===================== TBrowse core ===================== */
 
-/* Render PIXEL del TBrowse: stessa geometria del render a celle (header, separatore,
- * righe, riga corrente evidenziata) ma con testo proporzionale su card del tema. */
+/* Render PIXEL del TBrowse — RISCRITTO per la grafica: legge il MODELLO (colonne,
+ * datasource, riga corrente) e compone ogni cella alle coordinate pixel della sua
+ * colonna. Non usa più `gmb_browse_render_header/_row` (righe a larghezza fissa di
+ * celle): quelle erano la versione testuale adattata alla grafica. */
 static void tbrowse_draw_px(void* u, gmb_control_t* c)
 {
     gmb_browse_t* b = (gmb_browse_t*)u;
     gmb_widget_style_t st = gmb_widget_style_current();
-    int x = c->x, y = c->y, w = c->width, h = c->height;
-    if (w < 24 || h < 24) return;
-    int soft = (st.shape == 1 && st.radius >= 12);
-    int rr = soft ? 12 : 4;
-    unsigned fill = (st.skin == 2) ? st.fill : 0xFFFFFFFFu;
-    gmb_gfx_fill_rounded_rect(x, y, w, h, rr, fill);
+    int x = (c->px_w > 0) ? c->px_x : c->x;
+    int y = (c->px_h > 0) ? c->px_y : c->y;
+    int w = (c->px_w > 0) ? c->px_w : c->width;
+    int h = (c->px_h > 0) ? c->px_h : c->height;
+    if (w < 80 || h < 48) return;
+
+    /* Cella logica (per interpretare le larghezze colonna, che il modello ha in celle). */
+    int cw = 8;
+    { extern gmb_clipper_state_t* gmb_clipper_peek_state(void);
+      gmb_clipper_state_t* s2 = gmb_clipper_peek_state();
+      if (s2 && s2->buffer) { int bw = gmb_screen_width(s2->buffer), pw = gmb_gfx_screen_width();
+                              if (bw > 0 && pw > 0) cw = pw / bw; } }
+    if (cw < 5) cw = 8;
+
+    int rr = st.radius > 0 ? st.radius : 6;
+    int th = gmb_gfx_text_height_logical(); if (th <= 0) th = 16;
+    int rh = st.row_h > 0 ? st.row_h : 24; if (rh < th + 6) rh = th + 6;
+    int pad = 10;
+
+    /* Card. */
+    gmb_gfx_fill_rounded_rect(x, y, w, h, rr, st.fill);
     gmb_gfx_stroke_rounded_rect(x, y, w, h, rr, st.border);
 
-    int rh = (st.row_h > 0 ? st.row_h : 22);
-    if (rh < 12) rh = 12;
-    int pad = soft ? 8 : 4;
-    float sc = gmb_gfx_render_scale(); if (sc <= 0) sc = 1;
-    int th = (int)(gmb_gfx_text_height() / sc);
-    int ty = y + pad;
-    char line[2048];
+    /* Anelli della griglia: zona header e zona righe. */
+    int hh = b->show_header ? rh : 0;
+    int rows_top = y + hh + 2;
+    int nrows = b->ds.row_count ? b->ds.row_count(b->ds.user) : b->view_count;
+    int total = gmb_browse_row_count(b);
+    if (nrows <= 0) nrows = total;
+    int visible = (y + h - pad - rows_top) / rh;
+    if (visible < 1) visible = 1;
 
+    /* Larghezze colonne in PIXEL (modello in celle). */
+    int cx[GMB_BROWSE_MAX_COLS], cwid[GMB_BROWSE_MAX_COLS];
+    int ncol = b->col_count > 0 ? b->col_count : 1;
+    if (ncol > GMB_BROWSE_MAX_COLS) ncol = GMB_BROWSE_MAX_COLS;
+    int used = 0;
+    for (int i = 0; i < ncol; i++)
+    {
+        int cwi = b->columns[i].width > 0 ? b->columns[i].width * cw : (w - 2 * pad) / ncol;
+        if (cwi < 48) cwi = 48;
+        cx[i] = x + pad + used;
+        cwid[i] = cwi;
+        used += cwi;
+    }
+    /* Se le colonne non riempiono la card, allarga l'ultima; se sbordano, clippa. */
+    int inner = w - 2 * pad;
+    if (used < inner && ncol > 0) cwid[ncol - 1] += inner - used;
+
+    /* HEADER: banda piena + titolo per colonna + filo di separazione. */
     if (b->show_header)
     {
-        gmb_gfx_fill_rounded_rect(x + 4, ty, w - 8, rh, 2, (st.border & 0xFFFFFFu) | 0x33000000u);
-        gmb_browse_render_header(b, line, (int)sizeof(line));
-        gmb_gfx_draw_text(line, x + pad, ty + (rh - th) / 2, 0,
-                          (int)(0x40000000u | (st.text & 0xFFFFFFu)));
-        ty += rh;
-        gmb_gfx_fill_rounded_rect(x + pad, ty, w - 2 * pad, 1, 0, st.border);
+        gmb_gfx_fill_rounded_rect(x + 1, y + 1, w - 2, hh, rr > 2 ? rr - 1 : 0, st.head_bg);
+        for (int i = 0; i < ncol; i++)
+        {
+            const char* hd = b->columns[i].header[0] ? b->columns[i].header : "";
+            gmb_gfx_draw_text(hd, cx[i], y + 2 + (hh - th) / 2, 0,
+                              (int)(0x40000000u | (st.head_fg & 0xFFFFFFu)));
+            if (i > 0) gmb_gfx_fill_rounded_rect(cx[i] - 1, y + 6, 1, hh - 12, 0, st.border);
+        }
     }
 
-    int cur_disp = b->current_row - b->top_row;
-    int dr = 0;
-    while (1)
+    /* RIGHE: zebra + selezione (accent) + testo per colonna, ritagliato alla colonna. */
+    char cell_txt[512];
+    for (int r = 0; r < visible; r++)
     {
-        int ry = ty + dr * rh;
-        if (ry + rh > y + h - pad) break;
-        char row[2048];
-        if (gmb_browse_render_row(b, dr, row, (int)sizeof(row)) <= 0) break;
-        if (dr == cur_disp && b->highlight_row)
-            gmb_gfx_fill_rounded_rect(x + 4, ry, w - 8, rh, 2, (st.accent & 0xFFFFFFu) | 0x33000000u);
-        gmb_gfx_draw_text(row, x + pad, ry + (rh - th) / 2, 0,
-                          (int)(0x40000000u | (st.text & 0xFFFFFFu)));
-        dr++;
-        if (b->top_row + dr >= gmb_browse_row_count(b)) break;
+        int data_row = b->top_row + r;
+        if (data_row >= nrows) break;
+        int ry = rows_top + r * rh;
+        int sel = (data_row == b->current_row) && b->highlight_row;
+        if (sel)
+            gmb_gfx_fill_rounded_rect(x + 4, ry, w - 8, rh, 4, (st.accent & 0xFFFFFFu) | 0x55000000u);
+        else if (r & 1)
+            gmb_gfx_fill_rounded_rect(x + 4, ry, w - 8, rh, 0, (st.border & 0xFFFFFFu) | 0x14000000u);
+        for (int i = 0; i < ncol; i++)
+        {
+            cell_txt[0] = 0;
+            if (b->ds.get_value) b->ds.get_value(b->ds.user, data_row, i, cell_txt, (int)sizeof(cell_txt));
+            else if (b->view && data_row < b->view_count) { /* fallback: view senza ds */ }
+            if (!cell_txt[0]) continue;
+            /* tronca alla larghezza pixel della colonna */
+            int avail = cwid[i] - 12;
+            int len = (int)strlen(cell_txt);
+            while (len > 0 && gmb_gfx_text_width_logical(cell_txt) > avail) cell_txt[--len] = 0;
+            if (!cell_txt[0]) continue;
+            int tx = cx[i] + 4;
+            if (b->columns[i].align == GMB_ALIGN_RIGHT) tx = cx[i] + cwid[i] - 8 - gmb_gfx_text_width_logical(cell_txt);
+            else if (b->columns[i].align == GMB_ALIGN_CENTER) tx = cx[i] + (cwid[i] - gmb_gfx_text_width_logical(cell_txt)) / 2;
+            gmb_gfx_draw_text(cell_txt, tx, ry + (rh - th) / 2, 0,
+                              (int)(0x40000000u | ((sel ? 0xFFFFFFu : (st.text & 0xFFFFFFu)))));
+        }
     }
+
+    /* Barra di scorrimento verticale (solo se le righe non entrano tutte). */
+    if (nrows > visible)
+    {
+        int track_x = x + w - 7, track_y = rows_top, track_h = visible * rh;
+        gmb_gfx_fill_rounded_rect(track_x, track_y, 4, track_h, 2, (st.border & 0xFFFFFFu) | 0x33000000u);
+        int thumb_h = track_h * visible / nrows; if (thumb_h < 14) thumb_h = 14;
+        int span = nrows - visible; if (span < 1) span = 1;
+        int thumb_y = track_y + (track_h - thumb_h) * (b->top_row > span ? span : b->top_row) / span;
+        gmb_gfx_fill_rounded_rect(track_x, thumb_y, 4, thumb_h, 2, st.accent);
+    }
+
+    /* Focus: anello accent. */
+    if (c->focused) gmb_gfx_stroke_rounded_rect(x, y, w, h, rr, st.accent);
 }
 
 gmb_browse_t* gmb_browse_new(const gmb_rect_t* area, int col_count, const gmb_browse_column_t* cols,

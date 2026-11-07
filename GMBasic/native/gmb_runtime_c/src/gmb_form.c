@@ -936,9 +936,14 @@ static void draw_one_widget(gmb_pix_widget_t* wd, float sc)
             ui_fill_card(x, y, w, h, rr, s);
             GMB_GFX_STROKE_RRECT(x, y, w, h, rr, s->border);
             int rowH = soft ? 26 : 22, rows = h / rowH, sel = (int)(wd_num(wd) + 0.5);
+            if (rows < 1) rows = 1;
+            int rail = (wd->nitems > rows) ? 6 : 0;   /* spazio per la barra di scorrimento */
             for (int r = 0; r < rows && wd->first + r < wd->nitems; r++) {
                 int j = wd->first + r, ry = y + r * rowH;
                 unsigned int tcol = s->text;
+                /* Zebra: righe alternate, per leggere la lista a colpo d'occhio. */
+                if (j != sel && (r & 1))
+                    GMB_GFX_FILL_RRECT(x + 2, ry, w - 4, rowH, 0, (s->border & 0xFFFFFFu) | 0x14000000u);
                 if (j == sel) {
                     if (soft) GMB_GFX_FILL_RRECT(x + 4, ry + 1, w - 8, rowH - 2, (rowH - 2) / 2, ui_tint(acc, 0x2A));
                     else {
@@ -962,6 +967,16 @@ static void draw_one_widget(gmb_pix_widget_t* wd, float sc)
                 if (it[0] == '@' && (it[1] == 'g' || it[1] == 'G')) { tcol = 0xFF16A34Au; it += 2; if (*it == ' ') it++; }
                 else if (it[0] == '@' && (it[1] == 'r' || it[1] == 'R')) { tcol = 0xFFDC2626u; it += 2; if (*it == ' ') it++; }
                 GMB_GFX_DRAW_TEXT(it, x + (soft ? 14 : 8), ry + (rowH - tl) / 2, 0, GFX_RGB(tcol));
+            }
+            /* Barra di scorrimento: rail + thumb proporzionale (solo se serve). */
+            if (rail) {
+                int rx = x + w - 8, ry2 = y + 4, rh2 = h - 8;
+                GMB_GFX_FILL_RRECT(rx, ry2, 4, rh2, 2, (s->border & 0xFFFFFFu) | 0x33000000u);
+                int th2 = rh2 * rows / wd->nitems; if (th2 < 14) th2 = 14;
+                int maxf = wd->nitems - rows; if (maxf < 1) maxf = 1;
+                int f = wd->first > maxf ? maxf : wd->first;
+                int ty2 = ry2 + (rh2 - th2) * f / maxf;
+                GMB_GFX_FILL_RRECT(rx, ty2, 4, th2, 2, acc);
             }
         } else if (wd->kind == W_COLORPICKER) {
             int sel = (int)(wd_num(wd) + 0.5);

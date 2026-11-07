@@ -1438,6 +1438,7 @@ typedef struct gmb_file_dialog {
 } gmb_file_dialog_t;
 void gmb_file_dialog_init(gmb_file_dialog_t* f, int x, int y, int w, int h);
 void gmb_file_dialog_set_entries(gmb_file_dialog_t* f, const gmb_file_entry_t* entries, int count);
+void gmb_file_dialog_load(gmb_file_dialog_t* f, const char* dir, const char* mask);
 int  gmb_file_dialog_render_line(gmb_file_dialog_t* f, int idx, char* out, int cap);
 
 /* ---- Pretty (specchio Pretty.cs) ---- */
