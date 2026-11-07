@@ -1073,7 +1073,7 @@ int emit_control_stmt(ctx_t* c, gmb_stmt_t* s)
     } else if (strcasecmp(cname, "PRINTERDIALOG") == 0 && na >= 3) {
         /* PRINTERDIALOG [titolo,] stampante$, copie, duplex: non bloccante (parità
          * emitter C#: stampante "", copie 1, duplex 0). I 3 target sono a[0],a[1],a[2]. */
-        ind(c); sb_put(&c->out, "{ static gmb_printer_dialog_t _tui_pd; gmb_printer_dialog_init(&_tui_pd); ");
+        ind(c); sb_put(&c->out, "{ static gmb_printer_dialog_t _tui_pd; gmb_printer_dialog_init(&_tui_pd); gmb_tui_control_register(&_tui_pd.ctrl); ");
         var_t* pv = a[0] && a[0]->kind == GMB_EXPR_VAR ? emit_net_target(c, a[0]->var) : NULL;
         var_t* cv = a[1] && a[1]->kind == GMB_EXPR_VAR ? emit_net_target(c, a[1]->var) : NULL;
         var_t* dv = a[2] && a[2]->kind == GMB_EXPR_VAR ? emit_net_target(c, a[2]->var) : NULL;
@@ -1083,8 +1083,9 @@ int emit_control_stmt(ctx_t* c, gmb_stmt_t* s)
         sb_put(&c->out, "}\n");
     } else if (strcasecmp(cname, "FILEDIALOG") == 0 && na >= 2) {
         ind(c); sb_put(&c->out, "{ static gmb_file_dialog_t _tui_fd; ");
-        sb_put(&c->out, "gmb_file_dialog_init(&_tui_fd, 0, 0, 60, 20); ");
+        sb_put(&c->out, "gmb_file_dialog_init(&_tui_fd, 0, 0, 0, 0);   /* 0 -> dimensioni/posizione proprie (centrata) */ ");
         sb_put(&c->out, "gmb_tui_control_register(&_tui_fd.ctrl); ");
+        sb_put(&c->out, "gmb_file_dialog_load(&_tui_fd, \".\", "); emit_str_operand(c, a[0]); sb_put(&c->out, ".data); ");
         if (_iv) { emit_net_lhs(c, _iv);
             if (_iv->type == TY_STR) sb_put(&c->out, " = gmb_string_alloc(\"\"); ");
             else sb_put(&c->out, " = 0.0; ");

@@ -164,37 +164,135 @@ static bool pd_key(void* u, gmb_control_t* c, int key)
     return false;
 }
 
+/* ── Layout PIXEL del PrinterDialog (condiviso da render e hit-test) ─────────── */
+#define PD_PX_W    520
+#define PD_PX_H    360
+#define PD_PX_TB   34          /* barra titolo */
+#define PD_PX_PAD  14
+#define PD_PX_ROW  26
+
+static void pd_px_layout(const gmb_control_t* c, int* x, int* y, int* w, int* h)
+{
+    *x = (c->px_w > 0) ? c->px_x : c->x;
+    *y = (c->px_h > 0) ? c->px_y : c->y;
+    *w = (c->px_w > 0) ? c->px_w : c->width;
+    *h = (c->px_h > 0) ? c->px_h : c->height;
+}
+
+/* Render PIXEL: dialogo con titolo, elenco stampanti, copie +/-, duplex, OK/Annulla. */
+static void pd_draw_px(void* u, gmb_control_t* c)
+{
+    gmb_printer_dialog_t* d = (gmb_printer_dialog_t*)u;
+    gmb_widget_style_t st = gmb_widget_style_current();
+    int x, y, w, h; pd_px_layout(c, &x, &y, &w, &h);
+    if (w < 200 || h < 160) return;
+    int rr = st.radius > 0 ? st.radius : 8;
+    int th = gmb_gfx_text_height_logical(); if (th <= 0) th = 16;
+
+    gmb_gfx_fill_rounded_rect(x, y, w, h, rr, st.fill);
+    gmb_gfx_stroke_rounded_rect(x, y, w, h, rr, st.border);
+    gmb_gfx_fill_rounded_rect(x + 1, y + 1, w - 2, PD_PX_TB, rr > 2 ? rr - 1 : 0, st.head_bg);
+    gmb_gfx_draw_text(d->title, x + PD_PX_PAD, y + 1 + (PD_PX_TB - th) / 2, 0,
+                      (int)(0x40000000u | (st.head_fg & 0xFFFFFFu)));
+
+    /* Elenco stampanti. */
+    int ly = y + PD_PX_TB + 10;
+    int lh = h - PD_PX_TB - 10 - 96;
+    int rows = lh / PD_PX_ROW; if (rows < 1) rows = 1;
+    gmb_gfx_fill_rounded_rect(x + PD_PX_PAD - 6, ly - 4, w - 2 * PD_PX_PAD + 12, lh + 8, 6,
+                              (st.border & 0xFFFFFFu) | 0x22000000u);
+    for (int r = 0; r < rows && r < d->printers_count; r++)
+    {
+        int ry = ly + r * PD_PX_ROW;
+        int sel = (r == d->selected_index);
+        if (sel) gmb_gfx_fill_rounded_rect(x + PD_PX_PAD - 4, ry, w - 2 * PD_PX_PAD + 8, PD_PX_ROW, 5,
+                                           (st.accent & 0xFFFFFFu) | 0x55000000u);
+        else if (r & 1) gmb_gfx_fill_rounded_rect(x + PD_PX_PAD - 4, ry, w - 2 * PD_PX_PAD + 8, PD_PX_ROW, 0,
+                                                  (st.border & 0xFFFFFFu) | 0x14000000u);
+        gmb_gfx_draw_text(d->printers[r], x + PD_PX_PAD, ry + (PD_PX_ROW - th) / 2, 0,
+                          (int)(0x40000000u | ((sel ? 0xFFFFFFu : (st.text & 0xFFFFFFu)))));
+    }
+
+    /* Copie: -  N  +   e casella duplex. */
+    int cy = y + h - 88;
+    gmb_gfx_draw_text("Copie", x + PD_PX_PAD, cy + 8, 0, (int)(0x40000000u | (st.text & 0xFFFFFFu)));
+    int bx = x + PD_PX_PAD + 60;
+    gmb_gfx_fill_rounded_rect(bx, cy, 30, 28, 8, st.fill_hover);
+    gmb_gfx_stroke_rounded_rect(bx, cy, 30, 28, 8, st.border);
+    gmb_gfx_draw_text("-", bx + 15 - gmb_gfx_text_width_logical("-") / 2, cy + (28 - th) / 2, 0,
+                      (int)(0x40000000u | (st.text & 0xFFFFFFu)));
+    char cb[16]; snprintf(cb, sizeof(cb), "%u", (unsigned)d->copies);
+    gmb_gfx_draw_text(cb, bx + 40, cy + (28 - th) / 2, 0, (int)(0x40000000u | (st.text & 0xFFFFFFu)));
+    int bx2 = bx + 30 + 24;
+    gmb_gfx_fill_rounded_rect(bx2, cy, 30, 28, 8, st.fill_hover);
+    gmb_gfx_stroke_rounded_rect(bx2, cy, 30, 28, 8, st.border);
+    gmb_gfx_draw_text("+", bx2 + 15 - gmb_gfx_text_width_logical("+") / 2, cy + (28 - th) / 2, 0,
+                      (int)(0x40000000u | (st.text & 0xFFFFFFu)));
+    int dx = x + w / 2;
+    gmb_gfx_fill_rounded_rect(dx, cy + 2, 22, 22, 6, d->duplex ? st.accent : st.fill_hover);
+    if (!d->duplex) gmb_gfx_stroke_rounded_rect(dx, cy + 2, 22, 22, 6, st.border);
+    gmb_gfx_draw_text("Fronte-retro", dx + 32, cy + (28 - th) / 2, 0,
+                      (int)(0x40000000u | (st.text & 0xFFFFFFu)));
+
+    /* OK / Annulla. */
+    int by = y + h - 46;
+    gmb_gfx_fill_rounded_rect(x + w - 230, by, 100, 30, 15, (st.accent & 0xFFFFFFu) | 0xFF000000u);
+    gmb_gfx_draw_text(d->ok_label, x + w - 230 + 50 - gmb_gfx_text_width_logical(d->ok_label) / 2,
+                      by + (30 - th) / 2, 0, (int)(0x40000000u | 0xFFFFFFu));
+    gmb_gfx_fill_rounded_rect(x + w - 118, by, 100, 30, 15, st.fill_hover);
+    gmb_gfx_stroke_rounded_rect(x + w - 118, by, 100, 30, 15, st.border);
+    gmb_gfx_draw_text(d->cancel_label, x + w - 118 + 50 - gmb_gfx_text_width_logical(d->cancel_label) / 2,
+                      by + (30 - th) / 2, 0, (int)(0x40000000u | (st.text & 0xFFFFFFu)));
+}
+
 static bool pd_click(void* u, gmb_control_t* c, int x, int y)
 {
     gmb_printer_dialog_t* d = (gmb_printer_dialog_t*)u;
     if (!c->enabled) return false;
-    int W = c->width, H = c->height;
-    gmb_rect_t okr = { c->x + 2, c->y + H - 2, 8, 1 };
-    gmb_rect_t car = { c->x + W - 10, c->y + H - 2, 8, 1 };
-    if (rect_contains(okr, x, y)) { c->focused = true; d->confirmed = true; return true; }
-    if (rect_contains(car, x, y)) { c->focused = false; d->confirmed = false; return true; }
-    gmb_rect_t r = gmb_control_rect(c);
-    if (!rect_contains(r, x, y)) return false;
+    int bx, by, w, h; pd_px_layout(c, &bx, &by, &w, &h);
+    if (x < bx || x >= bx + w || y < by || y >= by + h) return false;
     c->focused = true;
-    int relY = y - (c->y + 1);
-    int listRows = d->printers_count < H - 4 ? d->printers_count : H - 4;
-    if (listRows < 0) listRows = 0;
-    if (relY == listRows + 1)
+
+    /* Pulsanti (stesse zone del render). */
+    int fby = by + h - 46;
+    if (y >= fby && y < fby + 30)
     {
-        int rx = x - (c->x + 1);
-        if (rx >= 7 && rx <= 9) { d->copies = (unsigned short)(d->copies > 1 ? d->copies - 1 : 1); return true; }
-        if (rx >= 15 && rx <= 17) { d->copies = (unsigned short)(d->copies + 1 > 999 ? 999 : d->copies + 1); return true; }
-        if (rx >= 19 && rx <= 21) { d->duplex = !d->duplex; return true; }
+        if (x >= bx + w - 230 && x < bx + w - 130) { d->confirmed = true; return true; }
+        if (x >= bx + w - 118 && x < bx + w - 18) { d->confirmed = false; d->btn_focus = 2; return true; }
     }
-    if (relY >= 0 && relY < listRows) { d->selected_index = relY; return true; }
+    /* Copie -/+ e duplex. */
+    int cy = by + h - 88;
+    if (y >= cy && y < cy + 28)
+    {
+        int cbx = bx + PD_PX_PAD + 60;
+        if (x >= cbx && x < cbx + 30) { d->copies = (unsigned short)(d->copies > 1 ? d->copies - 1 : 1); return true; }
+        if (x >= cbx + 54 && x < cbx + 84) { d->copies = (unsigned short)(d->copies < 999 ? d->copies + 1 : 999); return true; }
+        int dx = bx + w / 2;
+        if (x >= dx && x < dx + 22) { d->duplex = !d->duplex; return true; }
+    }
+    /* Elenco stampanti. */
+    int ly = by + PD_PX_TB + 10;
+    int lh = h - PD_PX_TB - 10 - 96;
+    if (y >= ly && y < ly + lh)
+    {
+        int r = (y - ly) / PD_PX_ROW;
+        int rows = lh / PD_PX_ROW;
+        if (r >= 0 && r < rows && r < d->printers_count) { d->selected_index = r; return true; }
+    }
     return true;
 }
 
 void gmb_printer_dialog_init(gmb_printer_dialog_t* d)
 {
     memset(d, 0, sizeof(*d));
-    memset(d, 0, sizeof(*d));
-    gmb_control_init(&d->ctrl, "", 0, 0, 40, 8, pd_draw, pd_key);
+    /* Dialogo CENTRATO sulla pagina logica, con dimensioni proprie (pixel). */
+    int sw = gmb_gfx_screen_width(), sh = gmb_gfx_screen_height();
+    int w = PD_PX_W, h = PD_PX_H;
+    int x = sw > 0 ? (sw - w) / 2 : 40;
+    int y = sh > 0 ? (sh - h) / 2 : 40;
+    gmb_control_init(&d->ctrl, "", x, y, w, h, pd_draw, pd_key);
+    d->ctrl.coord_auto_w = 1; d->ctrl.coord_auto_h = 1;
+    d->ctrl.draw_px_fn = pd_draw_px;      /* grafica: renderer pixel, niente celle */
     d->ctrl.user = d;
     d->ctrl.handle_click_fn = pd_click;
     d->copies = 1;
