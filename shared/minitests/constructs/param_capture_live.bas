@@ -2,7 +2,7 @@
 ' La closure cattura la VARIABILE, non il valore: una riassegnazione del parametro dopo
 ' la creazione della lambda si vede (parità IL/PCode/VM-C/C99Native). Un parametro BYREF
 ' inoltrato a un'altra SUB continua a scrivere lo slot del chiamante.
-' EXPECT: r1= 16|orig= 5|r2= ciao!|s= 99|boxed= 3
+' EXPECT: r1= 16|orig= 5|r2=ciao!|s=99|boxed= 3
 SUB Bump(ByRef x AS INTEGER)
   x = x + 1
 END SUB
