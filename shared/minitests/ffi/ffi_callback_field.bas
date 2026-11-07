@@ -1,4 +1,4 @@
-' EXPECT: curve= 247||patch= 839||field= 353||scale= 4|: 2.5 , 5 , 7.5 , 10||lam= 4|: 11 , 12 , 13 , 14
+' EXPECT: curve= 247||patch= 839||field= 353||scale= 4|: 2.5 , 5 , 7.5 , 10||lam= 4|: 11 , 12 , 13 , 14||shadow= 257
 ' Callback "campi" (2026-11-07): le due forme che NON hanno array in testa.
 '   148  f(v(), x) AS ARRAY     -> double (*)(double*, int64_t, double, double*)
 '   193  f(t) AS ARRAY          -> double (*)(double, double*)
@@ -50,4 +50,9 @@ SUB Main()
     DIM q(3) AS DOUBLE
     PRINT "|lam="; CbfScale(FN(w() AS DOUBLE, k AS DOUBLE) AS ARRAY OF DOUBLE => {w(0) + k, w(1) + k, w(2) + k, w(3) + k}, v, 10.0, q)
     PRINT ":"; q(0); ","; q(1); ","; q(2); ","; q(3)
+
+    ' REGRESSIONE 2026-11-07: il parametro `v` della lambda OMBRA l'array esterno `v`.
+    ' Prima, sul ramo upvalue (PCodeVM), la lambda leggeva l'array esterno invece del
+    ' parametro: il callback FFI falliva con InvalidCastException. Atteso 257 = 2*100+5*10+7.
+    PRINT "|shadow="; CbfField(FN(v AS DOUBLE, y AS DOUBLE, z AS DOUBLE) AS ARRAY OF DOUBLE => {v, y, z}, 2.0, 5.0, 7.0)
 END SUB

@@ -258,6 +258,17 @@ public sealed partial class Compiler
         if (_enclosing == null) return -1;
         
         var normalizedName = NormalizeIdentifierName(name);
+
+        // SHADOWING (2026-11-07): un locale/parametro del compilatore CORRENTE ha la
+        // precedenza sull'upvalue omonimo. Senza questa guardia, i call-site che
+        // consultano ResolveUpvalueByName PRIMA di ResolveLocal (LoadVariable,
+        // StoreVariable... per motivi storici) facevano vincere la variabile esterna:
+        // una lambda `FN(u, v) => {u, v, u*v}` con un `DIM v(...)` esterno leggeva
+        // l'array esterno invece del parametro (era il ramo upvalue) e il callback FFI
+        // falliva con InvalidCastException su PCodeVM. Il controllo è innocuo nella
+        // ricorsione transitiva: il chiamante verifica già `_enclosing.ResolveLocal`
+        // prima di ricorrere, quindi qui il nome non è un locale del genitore.
+        if (ResolveLocal(normalizedName) != -1) return -1;
         
         // Cerca come locale nel genitore
         var localIndex = _enclosing.ResolveLocal(normalizedName);

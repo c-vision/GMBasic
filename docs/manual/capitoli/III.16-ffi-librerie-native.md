@@ -448,7 +448,7 @@ END SUB
 | `ffi_callback_vector_named.bas` | **Tutte** le forme 128/129/132/144/145 con FUNCTION nominate, §4septies | `r128= 25\|r129= 11\|r132= 14\|r144= 6 , 8\|r145= 2 , 4 , 6` |
 | `ffi_callback_vector_return.bas` | Callback **array → array** (144) con lambda, §4septies | `a0= 6\|a1= 8\|b0= 3\|b1= 4` |
 | `ffi_callback_vv_return.bas` | Callback **due array → array** (145), forma di `LEVENBERGMARQUARDTVEC` | `c0= 2 \|c1= 4 \|c2= 6` |
-| `ffi_callback_field.bas` | Callback **148** (`f(v(),x)→array`) e **193/194/195** (solo scalari → array), FUNCTION e lambda, §4septies | `curve= 247\|patch= 839\|field= 353\|scale= 4` |
+| `ffi_callback_field.bas` | Callback **148** (`f(v(),x)→array`) e **193/194/195** (solo scalari → array), FUNCTION e lambda, **+ regressione ombra del nome** (parametro `v` su `DIM v(...)` esterno), §4septies | `curve= 247\|patch= 839\|field= 353\|scale= 4\|shadow= 257` |
 | `ffi_mixed_scalar.bas` | **Firme miste** per posizione (anche con array/BYREF/UDT; non con callback), §4sexies | `r= 17.5\|s= 11\|r8= 36` |
 | `ffi_args_late.bas` | UDT/array/STRING in **posizione ≥ 9** (vecchio limite `i < 8`) | `u= 39\|a= 43\|s= 136` |
 | `ffi_five_arrays.bas` | **Cinque array** nella stessa chiamata | `o0= 10\|o1= 10` |
@@ -848,7 +848,7 @@ END SUB
 | `ffi_callback_vector_named.bas` | **Tutte** le forme 128/129/132/144/145 con FUNCTION nominate, §4septies | `r128= 25\|r129= 11\|r132= 14\|r144= 6 , 8\|r145= 2 , 4 , 6` |
 | `ffi_callback_vector_return.bas` | Callback **array → array** (144) con lambda, §4septies | `a0= 6\|a1= 8\|b0= 3\|b1= 4` |
 | `ffi_callback_vv_return.bas` | Callback **due array → array** (145), forma di `LEVENBERGMARQUARDTVEC` | `c0= 2 \|c1= 4 \|c2= 6` |
-| `ffi_callback_field.bas` | Callback **148** (`f(v(),x)→array`) e **193/194/195** (solo scalari → array), FUNCTION e lambda, §4septies | `curve= 247\|patch= 839\|field= 353\|scale= 4` |
+| `ffi_callback_field.bas` | Callback **148** (`f(v(),x)→array`) e **193/194/195** (solo scalari → array), FUNCTION e lambda, **+ regressione ombra del nome** (parametro `v` su `DIM v(...)` esterno), §4septies | `curve= 247\|patch= 839\|field= 353\|scale= 4\|shadow= 257` |
 | `ffi_mixed_scalar.bas` | **Firme miste** per posizione (anche con array/BYREF/UDT; non con callback), §4sexies | `r= 17.5\|s= 11\|r8= 36` |
 | `ffi_args_late.bas` | UDT/array/STRING in **posizione ≥ 9** (vecchio limite `i < 8`) | `u= 39\|a= 43\|s= 136` |
 | `ffi_five_arrays.bas` | **Cinque array** nella stessa chiamata | `o0= 10\|o1= 10` |

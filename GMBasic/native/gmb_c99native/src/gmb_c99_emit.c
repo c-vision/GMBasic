@@ -15276,7 +15276,15 @@ void emit_expr(ctx_t* c, gmb_expr_t* e) {
                     sb_put(&c->out, "((gmb_fn_t){ .fn = (void*)gmb_user_");
                     emit_ident(c, rf->stmt->func_name);
                     sb_put(&c->out, fn_needs_fv_adapter(rf) ? "_fv" : "");
-                    sb_put(&c->out, ", .ctx = NULL })");
+                    /* Una λ ha SEMPRE `void* __ctx` in testa alla firma (anche senza
+                     * catture, is_lamv): il ctx è lo slot del contesto closure. Se lo
+                     * lasciassimo NULL, i trampolini che distinguono "ha un ctx?" (famiglia
+                     * 192+arità, callback scalari→array) chiamerebbero SENZA il primo
+                     * argomento, spostando i parametri: una λ captureless passata come
+                     * callback 195 leggeva il valore sbagliato (0). Sentinella non dereferenziata:
+                     * una λ captureless non ha campi catturati. Le FUNCTION nominate restano
+                     * a NULL (firma senza ctx, oppure adapter `_fv`). */
+                    sb_put(&c->out, rf->is_lambda ? ", .ctx = (void*)1 })" : ", .ctx = NULL })");
                 }
                 break;
             }
