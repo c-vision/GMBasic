@@ -3,7 +3,7 @@
 #
 # Perché esiste: i `.dylib` delle fixture sono esclusi dal `.gitignore` (`*.dylib`), quindi da
 # un clone pulito NON ci sono. Alcune sono storiche e già tracciate (`libvec_module.dylib`),
-# altre (`libudt_ext`, `libdims_ext`, `liblayout_ext`, `libcbfield_ext`) si generano da qui.
+# altre (`libudt_ext`, `libdims_ext`, `liblayout_ext`, `libcbfield_ext`, `libbytearr_ext`) si generano da qui.
 # Le quattro generate sono comunque tracciate (negazioni esplicite nel `.gitignore`).
 #
 # Uso:  sh shared/minitests/ffi/build_testlibs.sh
@@ -24,5 +24,6 @@ build udt_ext.c    libudt_ext
 build dims_ext.c   libdims_ext
 build layout_ext.c liblayout_ext
 build cbfield_ext.c libcbfield_ext
+build bytearr_ext.c libbytearr_ext
 
 echo "ok: librerie di test FFI pronte in $(pwd)"
