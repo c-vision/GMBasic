@@ -9734,9 +9734,12 @@ static void gmb_bf_393(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func
             : gmb_mouse_click();
         return;
     }
-    /* MOUSE getters (MOUSE.BUTTON/WHEEL/DBLCLICK/PRESENT/MIDDLE): stato mouse TUI corrente
-     * (0 in headless), parità ClipperMouse/oracolo. Tabella di lookup (no switch). */
+    /* MOUSE getters (MOUSE.X/Y/BUTTON/WHEEL/DBLCLICK/PRESENT/MIDDLE): stato mouse TUI
+     * corrente (0 in headless), parità ClipperMouse/oracolo. Tabella di lookup (no switch). */
     static const struct { int code; gmb_double_t (*fn)(void); } t[] = {
+        /* 2026-11-06: X/Y mancavano dalla tabella → MOUSE.X/Y non risolte sul VM/C
+         * (il C99 e IL/PCode le avevano già). Pixel, 0 in headless. */
+        { 393, gmb_mouse_x }, { 394, gmb_mouse_y },
         { 395, gmb_mouse_button }, { 396, gmb_mouse_wheel }, { 398, gmb_mouse_dblclick },
         { 400, gmb_mouse_present }, { 403, gmb_mouse_middle },
         /* 2026-09-22: LEFT/RIGHT/MOVE mancavano → cadevano a 0 (headless coincide, ma
@@ -18520,6 +18523,13 @@ static const gmb_bf_impl_t gmb_bf_impl_core[] = {
     { 588, gmb_bf_588 },
     { 589, gmb_bf_589 },
     { 590, gmb_bf_590 },
+    { 393, gmb_bf_393 },
+    { 394, gmb_bf_393 },
+    { 395, gmb_bf_393 },
+    { 396, gmb_bf_393 },
+    { 397, gmb_bf_393 },
+    { 398, gmb_bf_393 },
+    { 399, gmb_bf_393 },
     { 400, gmb_bf_393 },
     { 401, gmb_bf_393 },
     { 402, gmb_bf_393 },
