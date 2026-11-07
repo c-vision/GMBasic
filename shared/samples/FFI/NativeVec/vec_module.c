@@ -380,3 +380,40 @@ void vec_five2(const double* a, int64_t na, const double* b, int64_t nb, const d
     (void)nb; (void)nc; (void)nd; (void)nout;
     for (i = 0; i < n; i++) out[i] = a[i] + b[i] + c[i] + d[i];
 }
+
+/* ── Callback "campi" (2026-11-07) ──────────────────────────────────────────
+ * Due forme che non hanno array in testa:
+ *   148  f(v[], s) -> out[]   void (*)(double*, int64_t, double, double*)
+ *   192+K (1-3 scalari) -> vec3 letta con l'indice: double (*)(double[,...], double*)
+ * Sono le forme di VECCALC (campo vettoriale 195, curva 193, patch 194) e di
+ * OPTIMIZE (148). */
+void vec_cb_arr_s_out(void (*cb)(double*, int64_t, double, double*),
+                      const double* v, int64_t n, double s, double* out, int64_t nout)
+{
+    (void)nout;
+    if (cb) cb((double*)v, n, s, out);
+}
+
+void vec_cb_s1_out(double (*cb)(double, double*), double t, double* out, int64_t nout)
+{
+    double o[3] = { 0.0, 0.0, 0.0 };
+    int64_t i;
+    if (cb) cb(t, o);
+    for (i = 0; i < 3 && i < nout; i++) out[i] = o[i];
+}
+
+void vec_cb_s2_out(double (*cb)(double, double, double*), double u, double v, double* out, int64_t nout)
+{
+    double o[3] = { 0.0, 0.0, 0.0 };
+    int64_t i;
+    if (cb) cb(u, v, o);
+    for (i = 0; i < 3 && i < nout; i++) out[i] = o[i];
+}
+
+void vec_cb_s3_out(double (*cb)(double, double, double, double*), double x, double y, double z, double* out, int64_t nout)
+{
+    double o[3] = { 0.0, 0.0, 0.0 };
+    int64_t i;
+    if (cb) cb(x, y, z, o);
+    for (i = 0; i < 3 && i < nout; i++) out[i] = o[i];
+}
