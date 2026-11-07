@@ -15,7 +15,13 @@ extern void gmb_form_frame(int frame_ms);
 
 void gmb_tui_control_register(gmb_control_t* c) { gmb_tui_control_add(c); }
 
-/* Pump unificato: GRAPHICS -> gmb_form_frame; TEXT -> gmb_tui_controls_frame. Stesso modello. */
+/* Pump unificato: GRAPHICS -> gmb_form_frame; TEXT -> gmb_tui_controls_frame. Stesso modello.
+ *
+ * GPM + SDL: il pump può girare su un WORKER GPM (WINDOW PUMP è BASIC). La UI (SDL) può
+ * stare SOLO sul main thread: il main ha già il suo present (`gmb_tui_present_gfx`, che
+ * renderizza e presenta ogni ms). Qui dal worker si fa solo l'evento/park e la
+ * sincronizzazione; il present si fa solo se siamo sul main thread. Prima si chiamava
+ * `gmb_gfx_present_tick()` sempre: SDL dal worker → segfault dopo pochi frame. */
 void gmb_ui_frame(int ms)
 {
     if (gmb_gfx_screen_on())
@@ -24,9 +30,14 @@ void gmb_ui_frame(int ms)
         /* I tasti SDL vanno ai controlli anche in grafica (il frame TUI non gira lì). */
         gmb_tui_process_pending_keys();
         { extern void gmb_tui_sync_bindings(void); gmb_tui_sync_bindings(); }
-        /* Ridisegna/presenta: senza questo il feedback di tasto/clic non appare. */
-        { extern void gmb_form_render_if_dirty(void); extern void gmb_gfx_present_tick(void);
-          gmb_form_render_if_dirty(); gmb_gfx_present_tick(); }
+        { extern int gmb_gfx_present_on_main_thread(void);
+          if (gmb_gfx_present_on_main_thread())
+          {
+              extern void gmb_form_render_if_dirty(void);
+              extern void gmb_gfx_present_tick(void);
+              gmb_form_render_if_dirty();
+              gmb_gfx_present_tick();
+          } }
     }
     else gmb_tui_controls_frame(ms);
 }
