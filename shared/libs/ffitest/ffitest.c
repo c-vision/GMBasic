@@ -1,6 +1,7 @@
 /* ffitest.c — libreria di test per il marshalling FFI oltre gli 8 argomenti.
  * Funzioni deterministiche, senza dipendenze: ogni test somma/combina i valori. */
 #include <stdint.h>
+#include <time.h>
 
 double ft_sum9(double a1, double a2, double a3, double a4, double a5,
                double a6, double a7, double a8, double a9)
@@ -68,3 +69,21 @@ double a41, double a42, double a43, double a44, double a45, double a46, double a
 double a49, double a50, double a51, double a52, double a53, double a54, double a55, double a56,
 double a57, double a58, double a59, double a60, double a61, double a62, double a63, double a64)
 { return a1 + a2 + a3 + a4 + a5 + a6 + a7 + a8 + a9 + a10 + a11 + a12 + a13 + a14 + a15 + a16 + a17 + a18 + a19 + a20 + a21 + a22 + a23 + a24 + a25 + a26 + a27 + a28 + a29 + a30 + a31 + a32 + a33 + a34 + a35 + a36 + a37 + a38 + a39 + a40 + a41 + a42 + a43 + a44 + a45 + a46 + a47 + a48 + a49 + a50 + a51 + a52 + a53 + a54 + a55 + a56 + a57 + a58 + a59 + a60 + a61 + a62 + a63 + a64; }
+
+
+/* ── Banco prestazioni FFI (2026-11-07) ─────────────────────────────────────
+ * ft_now_ms: orologio monotono in millisecondi (double), per misurare un loop
+ *            dentro il programma BASIC su tutte e 4 le gambe.
+ * ft_id2:    doppio -> doppio (a+b), funzione banale per misurare il costo di
+ *            una chiamata FFI senza lavoro utile. */
+double ft_now_ms(void)
+{
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    return (double)ts.tv_sec * 1000.0 + (double)ts.tv_nsec / 1000000.0;
+}
+
+double ft_id2(double a, double b)
+{
+    return a + b;
+}

@@ -11,6 +11,11 @@ public class FfiService : IFfiService
 {
     private readonly Dictionary<IntPtr, string> _libraries = new();
     private readonly Dictionary<(IntPtr, int), Delegate> _delegateCache = new();
+    /* Cache per NOME dichiarato (2026-11-07): LoadLibrary fa il walk-up `libs/`, la cache
+     * pacchetti e il download on-demand a OGNI risoluzione fallita. Senza questa cache una
+     * chiamata FFI in un loop costava ~1,3 ms su IL/PCode (misurato con
+     * `tools/sh/ffi_bench.sh`); con la cache si scende al costo del solo delegate. */
+    private readonly ConcurrentDictionary<string, IntPtr> _libraryHandleCache = new(StringComparer.Ordinal);
 
     /// <summary>Struct annidate (2026-09-29): legge la FOGLIA scalare indicata da un path
     /// punteggiato (es. "I.X") navigando ricorsivamente un'istanza UDT PCodeVM
@@ -132,6 +137,16 @@ public class FfiService : IFfiService
     }
 
     public IntPtr LoadLibrary(string path)
+    {
+        if (!string.IsNullOrEmpty(path) && _libraryHandleCache.TryGetValue(path, out var cached))
+            return cached;
+        var resolved = LoadLibraryUncached(path);
+        if (!string.IsNullOrEmpty(path) && resolved != IntPtr.Zero)
+            _libraryHandleCache[path] = resolved;
+        return resolved;
+    }
+
+    private IntPtr LoadLibraryUncached(string path)
     {
         if (NativeLibrary.TryLoad(path, out var handle))
         {
