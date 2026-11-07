@@ -4,7 +4,7 @@
 '   F(x,y,z) = (x, y, z)         -> div = 3, curl = 0
 '   G(x,y,z) = (-y, x, 0)        -> div = 0, curl = (0,0,2)
 '   cerchio r(t) = (cos t, sin t, 0)   -> lunghezza 2*pi, kappa 1, tau 0
-' EXPECT: grad= 0|:2.000000,4.000000,6.000000||lap=6.000000||div-rad=3.000000||curl-rad= 0|:0.000000,0.000000,0.000000||div-swirl=0.000000||curl-swirl= 0|:0.000000,0.000000,2.000000||solen= 1||irrot= 1||no= 0 , 0||len=6.283185||tnb= 0|:0.000000,1.000000,0.000000|N=-1.000000,0.000000,0.000000|B=0.000000,0.000000,1.000000|k=1.000000 t=0.000000||ls=6.283185||lw=6.283185||flux=1.000000||guard=-1|:-1|:-1||f=0
+' EXPECT: grad= 0|:2.000000,4.000000,6.000000||lap=6.000000||div-rad=3.000000||curl-rad= 0|:0.000000,0.000000,0.000000||div-swirl=0.000000||curl-swirl= 0|:0.000000,0.000000,2.000000||solen= 1||irrot= 1||no= 0 , 0||grad3= 0|:12.000000,8.000000,6.000000||div3=18.000000||len=6.283185||tnb= 0|:0.000000,1.000000,0.000000|N=-1.000000,0.000000,0.000000|B=0.000000,0.000000,1.000000|k=1.000000 t=0.000000||line= 0|:k=0.000000 t=0.000000||ls=6.283185||lw=6.283185||flux=1.000000||guard=-1|:-1|:-1||h0=-1|:-1|:-1|:-1|:-1|:0.000000|:0.000000||f=0
 IMPORT VECCALC
 
 CONST PIVAL = 3.14159265358979323846
@@ -59,6 +59,29 @@ FUNCTION Up(x AS DOUBLE, y AS DOUBLE, z AS DOUBLE) AS ARRAY OF DOUBLE
   RETURN r
 END FUNCTION
 
+' Campo scalare NON simmetrico: f = x*y*z -> grad = (y z, x z, x y), laplaciano 0.
+FUNCTION Trip(x AS DOUBLE, y AS DOUBLE, z AS DOUBLE) AS DOUBLE
+  RETURN x * y * z
+END FUNCTION
+
+' Campo vettoriale NON simmetrico: F = (x^2, y^2, z^2) -> div = 2(x+y+z), curl = 0.
+FUNCTION Squares(x AS DOUBLE, y AS DOUBLE, z AS DOUBLE) AS ARRAY OF DOUBLE
+  DIM r(2) AS DOUBLE
+  r(0) = x * x
+  r(1) = y * y
+  r(2) = z * z
+  RETURN r
+END FUNCTION
+
+' Retta r(t) = (t, 2t, 3t): curvatura e torsione nulle.
+FUNCTION Straight(t AS DOUBLE) AS ARRAY OF DOUBLE
+  DIM r(2) AS DOUBLE
+  r(0) = t
+  r(1) = 2 * t
+  r(2) = 3 * t
+  RETURN r
+END FUNCTION
+
 SUB Main()
   DIM o(10) AS DOUBLE
   DIM h AS DOUBLE
@@ -80,6 +103,12 @@ SUB Main()
   PRINT "|irrot="; VECCALC.ISIRROTATIONAL(Rad, 1, 2, 3, h, 0.0001)
   PRINT "|no="; VECCALC.ISSOLENOIDAL(Rad, 1, 2, 3, h, 0.0001); ","; VECCALC.ISIRROTATIONAL(Swirl, 1, 2, 3, h, 0.0001)
 
+  ' ── campo NON simmetrico: le tre derivate parziali devono essere distinte ──
+  ' f = x*y*z a (2,3,4) -> grad = (12, 8, 6); F = (x^2,y^2,z^2) -> div = 2(2+3+4) = 18
+  PRINT "|grad3="; VECCALC.GRADIENT(Trip, 2, 3, 4, h, o)
+  PRINT ":"; FORMAT(o(0), "#.000000"); ","; FORMAT(o(1), "#.000000"); ","; FORMAT(o(2), "#.000000")
+  PRINT "|div3="; FORMAT(VECCALC.DIVERGENCE(Squares, 2, 3, 4, h), "#.000000")
+
   ' ── curva: lunghezza d'arco e triedro di Frenet ───────────────────────────
   PRINT "|len="; FORMAT(VECCALC.ARCLENGTH(Circle, 0, 2 * PIVAL, 0.000001), "#.000000")
   PRINT "|tnb="; VECCALC.TNB(Circle, 0, 0.0001, o)
@@ -87,6 +116,9 @@ SUB Main()
   PRINT " N="; FORMAT(o(3), "#.000000"); ","; FORMAT(o(4), "#.000000"); ","; FORMAT(o(5), "#.000000")
   PRINT " B="; FORMAT(o(6), "#.000000"); ","; FORMAT(o(7), "#.000000"); ","; FORMAT(o(8), "#.000000")
   PRINT " k="; FORMAT(o(9), "#.000000"); " t="; FORMAT(o(10), "#.000000")
+  ' retta: kappa = tau = 0 (limite documentato per curve rettilinee)
+  PRINT "|line="; VECCALC.TNB(Straight, 1, h, o)
+  PRINT ":k="; FORMAT(o(9), "#.000000"); " t="; FORMAT(o(10), "#.000000")
 
   ' ── integrali di linea e flusso ───────────────────────────────────────────
   ' f = x^2+y^2 vale 1 sul cerchio: integrale di f ds = 2*pi
@@ -101,5 +133,13 @@ SUB Main()
   PRINT "|guard="; VECCALC.GRADIENT(Sph, 1, 2, 3, h, corto)
   PRINT ":"; VECCALC.CURL(Rad, 1, 2, 3, h, corto)
   PRINT ":"; VECCALC.TNB(Circle, 0, h, corto)
+  ' h = 0: le funzioni con array di uscita danno -1, quelle DOUBLE 0
+  PRINT "|h0="; VECCALC.GRADIENT(Sph, 1, 2, 3, 0, o)
+  PRINT ":"; VECCALC.CURL(Rad, 1, 2, 3, 0, o)
+  PRINT ":"; VECCALC.TNB(Circle, 0, 0, o)
+  PRINT ":"; VECCALC.ISSOLENOIDAL(Swirl, 1, 2, 3, 0, 0.0001)
+  PRINT ":"; VECCALC.ISIRROTATIONAL(Rad, 1, 2, 3, 0, 0.0001)
+  PRINT ":"; FORMAT(VECCALC.DIVERGENCE(Rad, 1, 2, 3, 0), "#.000000")
+  PRINT ":"; FORMAT(VECCALC.LAPLACIAN(Sph, 1, 2, 3, 0), "#.000000")
   PRINT "|f=0"
 END SUB

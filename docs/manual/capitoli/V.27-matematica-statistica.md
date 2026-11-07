@@ -76,6 +76,14 @@ decisione.
 | algebra lineare (algoritmi) | `LINALG`, `Matrix-Linalg-Manual` | decomposizioni, risolutori, norme, funzioni matriciali |
 | vettori | `VECTOR` | norme, distanze, prodotto scalare |
 | quaternioni e rotazioni 3D | `QUAT`, `QUAT-Guida-Utente` | composizione, interpolazione (SLERP), matrice 3×3 |
+| numeri complessi | `COMPLEX`, `COMPLEX-Guida-Utente` | aritmetica, modulo/fase, trascendenti e inverse |
+| trasformazioni 3D | `XFORM`, `XFORM-Guida-Utente` | rotazioni/traslazioni, punto/direzione, inversa affine |
+| trasformate (DCT, STFT, Haar, Hilbert, Z) | `SPECTRAL`, `SPECTRAL-Guida-Utente` | tempo-frequenza, compressione, inviluppo |
+| vettori per la grafica | `VEC`, `VEC-Guida-Utente` | proiezione, Fresnel, bias, clamp, gamma |
+| matrici sparse e solutori diretti | `SPARSE`, `SPARSE-Guida-Utente` | COO/CSR/CSC, Cholesky e LU sparsi |
+| quadratura numerica | `QUAD`, `QUAD-Guida-Utente` | Gauss-Kronrod con errore, tanh-sinh, nodi |
+| equazioni differenziali | `ODE`, `ODE-Guida-Utente` | multi-passo, BDF2 stiff, Verlet, BVP |
+| calcolo vettoriale | `VECCALC`, `VECCALC-Guida-Utente` | gradiente, divergenza, rotore, Frenet, flussi |
 | statistica | `STATS`, `Stats-Manual` | descrittiva, test, distribuzioni |
 | serie temporali | `TIMESERIES` | ARIMA, GARCH, Kalman, HMM, previsione |
 | regressione e fitting | `REGRESSION`, `FITTING` | modelli lineari, curve fit |
@@ -342,7 +350,391 @@ Sample completo: `shared/samples/Quat/QuatOrientation.bas` (assetto di un drone,
 19 le funzioni). MiniTest: `shared/minitests/quat/quat_core.bas`. Parità verificata su
 IL, PCodeVM, VM/C e C99Native.
 
-## 9. Errori frequenti
+## 9. Numeri complessi (`COMPLEX`)
+
+Un numero complesso è una coppia `(re, im)`: la parte reale e quella immaginaria. Serve
+ogni volta che una soluzione esce dall'asse reale — un discriminante negativo, una
+radice di un numero negativo, un'impedenza induttiva o capacitiva, un'esponenziale
+oscillante. `COMPLEX` (in `libgmbmath`, `IMPORT COMPLEX`) è il `TYPE Complex` passato
+per valore, senza handle né stato: ventotto funzioni pure.
+
+```basic
+IMPORT COMPLEX
+
+DIM z AS Complex
+z = COMPLEX.MAKE(3, 4)          ' 3 + 4i
+PRINT COMPLEX.CABS(z)           ' 5        (modulo)
+PRINT COMPLEX.ARG(z)            ' 0.927295 (fase, radianti)
+PRINT COMPLEX.NORM2(z)          ' 25       (modulo al quadrato)
+```
+
+**Il prefisso `C` sulle funzioni trascendenti non è un vezzo.** `ABS`, `EXP`, `LOG`,
+`SIN`, `COS`, `TAN`, `ASIN`, `ACOS`, `SINH`, `COSH`, `TANH` sono già funzioni scalari
+del linguaggio: in `COMPLEX.ABS(z)` alcuni backend risolvono il nome sul builtin
+scalare e il risultato sarebbe zero. La superficie usa quindi `CABS`, `CEXP`, `CLOG`,
+`CSIN`, `CCOS`, `CTAN`, `CASIN`, `CACOS`, `CSINH`, `CCOSH`, `CTANH` — la stessa
+convenzione di `<complex.h>` del C99. I nomi liberi restano naturali (`MAKE`, `ADD`,
+`MUL`, `DIV`, `CONJ`, `ARG`, `NORM2`, `EQ`, `SQRT`, `POW`, …).
+
+| gruppo | funzioni | note |
+|---|---|---|
+| aritmetica | `MAKE`, `ADD`, `SUB`, `MUL`, `DIV`, `NEG`, `CONJ`, `SCALE` | `DIV` per zero → `(0,0)`, documentato |
+| misure | `CABS`, `ARG`, `NORM2`, `EQ` | `ARG` in `(-π, π]`; `EQ` con tolleranza esplicita |
+| esponenziale | `CEXP`, `CLOG`, `CSQRT`, `POW` | ramo principale; `CLOG` di zero → `(-inf, 0)` |
+| trigonometriche | `CSIN`, `CCOS`, `CTAN`, `CASIN`, `CACOS`, `CATAN` | `sin(i) = i·sinh(1)`, ecc. |
+| iperboliche | `CSINH`, `CCOSH`, `CTANH`, `ASINH`, `ACOSH`, `ATANH` | round-trip con le inverse |
+
+Due accortezze che evitano la maggior parte degli errori:
+
+1. **non confrontare** `RE`/`IM` con `=` dopo una funzione trascendente: usare
+   `EQ(a, b, tol)` con una tolleranza adeguata;
+2. **assegnare a una variabile** il risultato di una funzione prima di passarlo a
+   un'altra: `z = CSQRT(w)` e poi `CABS(z)`. Le chiamate innestate con un `TYPE` come
+   argomento non sono gestite allo stesso modo da tutti i backend; la forma con le
+   variabili è portabile e più leggibile.
+
+Sample completo: `shared/samples/Complex/ComplexWorkbench.bas` (circuito RL-C, radici
+di un polinomio, Mandelbrot, identità di Eulero). MiniTest:
+`shared/minitests/complex/complex_core.bas`. Parità verificata su IL, PCodeVM, VM/C e
+C99Native.
+
+## 10. Trasformazioni 3D (`XFORM`)
+
+Una scena 3D ha bisogno di tre operazioni che `MATRIX` non esprime: mettere un oggetto
+in un punto (`T`), orientarlo (`R`), dargli una dimensione (`S`). `XFORM` (`IMPORT XFORM`)
+le fornisce sulle **matrici piatte** che usa già `GFX3D` — 9 double per la 3×3, 16 per la
+4×4 omogenea, **row-major** — con `0` = ok e `-1` per argomenti non validi.
+
+```basic
+DIM t(15) AS DOUBLE, r(15) AS DOUBLE, m(15) AS DOUBLE, p(2) AS DOUBLE
+XFORM.MAT4ROTZ(MATH.DEG2RAD(90), r)    ' orientamento
+XFORM.MAT4TRANSLATE(5, 0, 2, t)        ' posizione
+XFORM.MAT4MUL(t, r, m)                 ' prima R, poi T
+XFORM.MAT4POINT(m, 1, 0, 0, p)         ' (5, 1, 2)
+```
+
+| gruppo | funzioni |
+|---|---|
+| 3×3 | `MAT3IDENTITY`, `MAT3ROTX/Y/Z`, `MAT3MUL`, `MAT3NORMAL`, `MAT3FROM4` |
+| 4×4 | `MAT4IDENTITY`, `MAT4TRANSLATE`, `MAT4SCALE`, `MAT4ROTX/Y/Z`, `MAT4MUL`, `MAT4INVERSEAFFINE`, `MAT4FROM3` |
+| punti/direzioni | `MAT4POINT` (w = 1, divide per w), `MAT4DIR` (w = 0, ignora la traslazione) |
+
+Tre punti che decidono la correttezza di una scena:
+
+1. **`MUL(a, b)` applica prima `b`**: `MUL(T, R)` mette l'oggetto già orientato al suo
+   posto; l'ordine inverso lo fa ruotare attorno all'origine del mondo;
+2. **una direzione non è un punto**: con `MAT4DIR` la traslazione non entra, ed è quello
+   che serve per le normali o per i raggi;
+3. **con scale non uniformi le normali non usano la 3×3** ma la matrice normale
+   `(M⁻¹)ᵀ` di `MAT3NORMAL`: senza, l'illuminazione delle superfici inclinate sbaglia.
+
+Sample: `shared/samples/Xform/XformWorkbench.bas` (pannello solare su una torre: azimuth
+e inclinazione, quattro angoli proiettati nel mondo, matrice normale sotto scala
+`(2,1,1)`, inversa affine). MiniTest: `shared/minitests/xform/xform_core.bas`.
+
+## 11. Trasformate: DCT, STFT, Haar, Hilbert (`SPECTRAL`)
+
+`SPECTRAL` (`IMPORT SPECTRAL`) copre le trasformate che il linguaggio non aveva — DCT/DST
+e inverse, DCT 2D, Haar, Hilbert, Z-trasformata, STFT/iSTFT — mentre i **filtri** restano
+in `SIGNAL` (butter/cheby/ellip, lfilter, filtfilt, freqz, decimate, welch, savgol). La
+regola dell'ABI è una sola e va ricordata: **la lunghezza del segnale è quella
+dell'array dichiarato** (`DIM x(3)` = 4 campioni).
+
+```basic
+DIM x(7) AS DOUBLE, y(7) AS DOUBLE
+FOR i = 0 TO 7 : x(i) = i : NEXT i
+SPECTRAL.DCT(x, y)          ' DCT-II ortonormale: y(0) = somma/√8
+y(6) = 0 : y(7) = 0         ' compressione: scarto il dettaglio fine
+SPECTRAL.IDCT(y, x)         ' ricostruzione addolcita
+```
+
+| gruppo | funzioni |
+|---|---|
+| 1D | `DCT`, `DST`, `IDCT`, `HAAR`, `HILBERT` |
+| 2D | `DCT2`, `IDCT2` (rows × cols, row-major) |
+| spettro | `ZTRANSFORM` (in `z = re + i·im`), `STFT`, `ISTFT` |
+
+Lo spettro della STFT è in coppie **(re, im) interleate**, frame per frame: per il frame
+`f` e il bin `k`, `out(2*(f*(N/2+1)+k))` e `out(...+1)`. `STFT` ritorna il numero di
+frame, `ISTFT` ricostruisce con overlap-add (esatto dove la finestra copre; con Hann e
+`hop = N/2` i primi e gli ultimi `hop` campioni sono bordo).
+
+`HILBERT` ruota la fase di -90° (`cos → -sin`): con il segnale originale dà il segnale
+analitico, la cui ampiezza `sqrt(x² + H²)` è l'inviluppo. La DCT è la trasformata della
+compressione: tenere i primi coefficienti e scartare gli ultimi è il gesto che sta dietro
+a JPEG e MP3.
+
+Sample: `shared/samples/Spectral/SpectralLab.bas` (tono a 1 kHz campionato a 8 kHz:
+picco sul bin 1 con `|X| = 4`, ricostruzione esatta, compressione DCT di una rampa, DCT 2D
+di una immagine 4×4, Haar su un gradino, inviluppo di Hilbert, Z-trasformata di
+`[1, 0.5]`). MiniTest: `shared/minitests/spectral/spectral_core.bas`.
+
+## 12. Vettori per la grafica (`VEC`)
+
+`VECTOR` ha l'aritmetica dei vettori (somma, prodotto scalare e vettoriale, norma,
+distanze, lerp, min/max). `VEC` (`IMPORT VEC`) aggiunge le undici operazioni che mancano a
+una scena 3D: scomposizione rispetto a una direzione, Fresnel, bias dei raggi, limiti,
+funzioni per componente e perpendicolare 2D.
+
+```basic
+DIM v(2) AS DOUBLE, n(2) AS DOUBLE, pr(2) AS DOUBLE, tg(2) AS DOUBLE
+v(0)=3 : v(1)=-2 : v(2)=1
+n(0)=0 : n(1)=1  : n(2)=0
+VEC.PROJECT(v, n, pr)      ' (0, -2, 0)  componente lungo la normale
+VEC.REJECT(v, n, tg)       ' (3,  0, 1)  componente tangente
+```
+
+| gruppo | funzioni | note |
+|---|---|---|
+| scomposizione | `PROJECT`, `REJECT` | `pr + tg = v`; direzione nulla → vettore zero |
+| illuminazione | `SCHLICK` (Fresnel), `BIAS` | bias = `v + n·eps`, evita l'auto-intersezione |
+| limiti | `VCLAMP`, `VCLAMP01`, `VCLAMPMAG` | modulo contro componente: sono cose diverse |
+| per componente | `VABS`, `VSQRT`, `VPOW` | `VPOW(c, 1/2.2)` è la gamma sRGB |
+| 2D | `PERP2D` | `(3,4) → (-4,3)` |
+
+I prefissi `V` (`VABS`, `VSQRT`, …) hanno la stessa ragione di `COMPLEX`: `ABS`, `SQRT`,
+`POW`, `CLAMP` sono funzioni scalari del linguaggio e in forma qualificata verrebbero
+risolte sul builtin. `PROJECT`/`REJECT`/`SCHLICK`/`BIAS`/`PERP2D` non hanno questo
+problema e restano naturali.
+
+Il rimbalzo su un piano si scrive in tre righe: `PROJECT` per la normale, `REJECT` per la
+tangente, poi la normale si inverte e perde energia (`pr(1) = -pr(1)*e`). L'esempio in
+`shared/samples/Vec/VecWorkbench.bas` fa questo e in più Fresnel dell'acqua a tre angoli
+(0.02 → 0.050625 → 0.598680), clamp di un colore HDR, gamma e perpendicolare 2D.
+MiniTest: `shared/minitests/vec/vec_core.bas`.
+
+## 13. Matrici sparse e solutori diretti (`SPARSE`)
+
+Quando la matrice ha pochi non-zeri — griglie di un'equazione differenziale, grafi,
+sistemi con migliaia di incognite — la rappresentazione densa di `MATRIX` costa `n²`.
+`SPARSE` (`IMPORT SPARSE`) offre i tre contenitori classici e due solutori diretti, con
+una superficie a **handle** (`FREE` per liberare):
+
+| gruppo | funzioni |
+|---|---|
+| costruzione | `COONEW` (triplette), `COOSET`, `DENSETOCSR` (zeri scartati) |
+| conversioni | `COOTOCSR`, `COOTOCSC`, `CSRTOCSC`, `CSCTOCSR`, `CSRTRANSPOSE`, `CSCTRANSPOSE` |
+| ispezione | `SIZES` (righe, colonne, nnz), `TRIPLET` (riga, colonna, valore) |
+| solutori | `SPCHOLFACTOR`/`SPCHOLSOLVE` (simmetrica definita positiva, CSC triangolo inferiore), `SPLUFACTOR`/`SPLUSOLVE` (completa, pivoting parziale) |
+
+```basic
+hcoo = SPARSE.COONEW(n, n, 3*n - 2)      ' tridiagonale
+' ... COOSET per diagonale e sottodiagonali ...
+hcsc = SPARSE.COOTOCSC(hcoo)
+hf = SPARSE.SPLUFACTOR(hcsc)
+IF hf > 0 THEN
+  rc = SPARSE.SPLUSOLVE(hf, b)           ' b diventa la soluzione
+  SPARSE.FREE(hf)
+END IF
+SPARSE.FREE(hcsc) : SPARSE.FREE(hcoo)
+```
+
+I fattori sono **riutilizzabili**: si fattorizza una volta e si risolve per più termini
+notti (analisi con molti carichi, cicli a matrice costante). `CSRTRANSPOSE` restituisce
+la CSC della trasposta: è il modo per passare da "righe" a "colonne" senza ricostruire.
+
+Sample: `shared/samples/Sparse/SparseHeatRod.bas` (temperatura di regime in una barra:
+13 non-zeri su 25, soluzione confrontata con `u(x) = x(1−x)/2`, errore 0). MiniTest:
+`shared/minitests/sparse/sparse_core.bas` (Cholesky e LU con soluzione `(2/9, 1/9, 13/9)`,
+trasposta non simmetrica, guardie).
+
+## 14. Quadratura numerica (`QUAD`)
+
+`NUMERICAL.INTEGRATE` è Simpson a passi fissi. `QUAD` (`IMPORT QUAD`) aggiunge i metodi
+adattivi e quelli per gli integrali difficili. La funzione da integrare è una FUNCTION
+passata per nome (`f(x AS DOUBLE) AS DOUBLE`).
+
+| funzione | uso |
+|---|---|
+| `KRONROD(f, a, b, out)` | G7-K15 **con stima d'errore** in `out(1)`: se è grande si suddivide |
+| `GAUSS(f, a, b, n)` | n nodi, esatto fino al grado `2n-1` |
+| `ROMBERG(f, a, b, tol, maxit)` | estrapolazione, fino a tolleranza |
+| `TANHSINH(f, a, b, acc, maxeval)` | singolarità agli estremi (`1/√x`), estremi infiniti |
+| `TANHSINHCOMP(f2, …)` | come sopra, con `d` = distanza dall'estremo |
+| `LEGENDRENODES`, `HERMITENODES` | nodi e pesi per quadrature proprie |
+
+Il punto didattico è l'**errore stimato**: una regola a 15 punti non risolve una terza
+armonica; la stima lo dice e si suddivide. Nel sample l'RMS di una tensione distorta su 20
+sottointervalli dà `73.824115` con errore `1.8e-11`, mentre in un colpo solo la stima è
+enorme.
+
+```basic
+DIM o(1) AS DOUBLE
+QUAD.KRONROD(F, 0, 1, o)          ' o(0) = 1/3, o(1) = errore
+QUAD.GAUSS(F, 0, 6.283185307179586, 10)
+QUAD.TANHSINH(Portata, 0, 1, 1e-10, 2000)
+```
+
+Sample: `shared/samples/Quad/QuadLab.bas`. MiniTest: `shared/minitests/quad/quad_core.bas`.
+
+## 15. Equazioni differenziali ordinarie (`ODE`)
+
+`NUMERICAL.SOLVEODE` è un solo metodo esplicito. `ODE` (`IMPORT ODE`) aggiunge i metodi
+impliciti, il simplettico e i problemi ai limiti.
+
+| funzione | tipo | quando |
+|---|---|---|
+| `ADAMSBASHFORTH4`, `ADAMSMOULTON4` | multi-passo | problema liscio |
+| `BDF2`, `IMPLICITMIDPOINT` | impliciti (maxit + tol) | **stiff**, conservazione |
+| `VERLET` | simplettico | meccanica, energia a lungo termine |
+| `BVPSHOOTING`, `BVPFD` | problemi ai limiti | `y'' = f(x,y,y')` con due estremi |
+
+Due regole d'uso:
+
+1. **lo stato non è in ingresso/uscita**: `y0()` in ingresso, `yout()` in uscita (la
+   scrittura su un array in ingresso non è portabile);
+2. **la callback riceve `(y(), t)`**: array prima, tempo dopo — è la forma che l'ABI
+   regge su tutte e quattro le gambe (descrittore 148). Per i BVP la callback è scalare
+   e `x` c'è.
+
+```basic
+FUNCTION Decay(y() AS DOUBLE, t AS DOUBLE) AS ARRAY OF DOUBLE
+  DIM r(0) AS DOUBLE
+  r(0) = -0.1 * (y(0) - 20)
+  RETURN r
+END FUNCTION
+
+ODE.ADAMSBASHFORTH4(Decay, y0, 0, 60, 600, yout)     ' T(60) = 20.198300
+ODE.VERLET(Acc, stato, 0, 2 * PI, 1000, yout)        ' energia 1.000000
+ODE.BVPFD(Trave, 0, 1, 0, 0, nodi)                   ' y = x(1-x)/2
+```
+
+Sample: `shared/samples/Ode/OdeLab.bas` (raffreddamento, non autonomo, oscillatore,
+trave). MiniTest: `shared/minitests/ode/ode_core.bas`.
+
+## 16. Calcolo vettoriale (`VECCALC`)
+
+`VECCALC` porta nel linguaggio il calcolo differenziale e integrale sui **campi dati
+come formule**: si fornisce una `FUNCTION` e il punto in cui valutarla, e l'implementazione
+approssima le derivate con **differenze centrali** di passo `h`. Non si costruisce una
+griglia e non si precalcola nulla: il campo resta un'espressione BASIC, richiamata dal
+runtime nativo (`libgmbmath`) durante il calcolo.
+
+Serve a elettromagnetismo, fluidodinamica, meccanica e geometria differenziale, dove il
+campo è una formula e servono gradiente, divergenza, rotore, laplaciano, curvatura,
+integrali di linea e flusso. Per l'algebra vettoriale elementare (somma, prodotto scalare
+e vettoriale, norma) si usano `VECTOR`/`VEC`; per l'evoluzione temporale, `ODE`.
+
+### 16.1 Modello dei dati e contratto delle callback
+
+Quattro forme di callback, secondo l'oggetto matematico:
+
+| oggetto | firma BASIC | ritorno |
+|---|---|---|
+| campo scalare | `f(x AS DOUBLE, y AS DOUBLE, z AS DOUBLE)` | `DOUBLE` |
+| campo vettoriale | `F(x, y, z)` | `ARRAY OF DOUBLE` di 3 elementi |
+| curva | `r(t AS DOUBLE)` | `ARRAY OF DOUBLE` di 3 elementi |
+| patch | `S(u AS DOUBLE, v AS DOUBLE)` | `ARRAY OF DOUBLE` di 3 elementi |
+
+Il runtime non deduce nulla: la callback deve restituire esattamente tre componenti.
+Gli array di uscita (`out_()`) sono allocati dal chiamante con la dimensione minima
+richiesta (3 per `GRADIENT`/`CURL`, 11 per `TNB`).
+
+### 16.2 Parametri
+
+| nome | tipo | significato |
+|---|---|---|
+| `h` | `DOUBLE` | passo delle differenze centrali, `> 0`; errore di troncamento `O(h²)` |
+| `tol` | `DOUBLE` | soglia assoluta per `|∇·F|`/`|∇×F|` oppure tolleranza dell'integratore adattivo |
+| `out_()` | `ARRAY OF DOUBLE` | buffer di uscita del chiamante |
+| `x, y, z` | `DOUBLE` | punto di valutazione |
+| `a, b` | `DOUBLE` | estremi dell'intervallo della curva |
+| `u0,u1,v0,v1` | `DOUBLE` | dominio dei parametri della patch |
+
+`h` controlla il compromesso tra troncamento e arrotondamento: `1e-4` è il valore
+consigliato (errore assoluto tipico `1e-7`–`1e-8` su campi regolari), `1e-3` per campi con
+derivate molto variabili, `1e-5` per funzioni molto lisce. Sotto `1e-7` domina il rumore
+in virgola mobile. `h = 0` è rifiutato.
+
+`tol` ha due usi distinti: nelle funzioni booleane è la soglia su `|∇·F|` o `|∇×F|`
+(`1e-6` per campi esatti); negli integrali è la tolleranza di Simpson adattiva
+(`1e-6` dà sei decimali stabili).
+
+### 16.3 Riferimento delle funzioni
+
+| funzione | firma | risultato |
+|---|---|---|
+| `GRADIENT` | `(f, x, y, z, h, out_())` | `out_(0..2) = (∂f/∂x, ∂f/∂y, ∂f/∂z)`; ritorna `0`/`-1` |
+| `LAPLACIAN` | `(f, x, y, z, h)` | `∇²f` con stencil a 7 punti; `DOUBLE` |
+| `DIVERGENCE` | `(F, x, y, z, h)` | `∇·F`; `DOUBLE` |
+| `CURL` | `(F, x, y, z, h, out_())` | `out_(0..2) = ∇×F`; ritorna `0`/`-1` |
+| `ISSOLENOIDAL` | `(F, x, y, z, h, tol)` | `1` se `|∇·F| ≤ tol`, `0` altrimenti, `-1` su parametri invalidi |
+| `ISIRROTATIONAL` | `(F, x, y, z, h, tol)` | `1` se `|∇×F| ≤ tol`, `0` altrimenti, `-1` su parametri invalidi |
+| `ARCLENGTH` | `(r, a, b, tol)` | `∫ |r'(t)| dt` su `[a,b]`; `DOUBLE` |
+| `TNB` | `(r, t, h, out_())` | `out_(0..2)=T`, `(3..5)=N`, `(6..8)=B`, `out_(9)=κ`, `out_(10)=τ`; `0`/`-1` |
+| `LINESCALAR` | `(f, r, a, b, tol)` | `∫ f(r(t))·|r'(t)| dt`; `DOUBLE` |
+| `LINEWORK` | `(F, r, a, b, tol)` | `∫ F(r(t))·r'(t) dt`; `DOUBLE` |
+| `FLUX` | `(F, S, u0, u1, v0, v1, tol)` | `∫∫ F(S)·(S_u × S_v) du dv`; `DOUBLE` |
+
+Convenzioni sui valori di ritorno: le funzioni che scrivono in `out_()` ritornano
+`LONG` (`0` successo, `-1` argomenti invalidi: `h = 0`, callback nulla, `out_()` troppo
+corto); le funzioni che ritornano `DOUBLE` ritornano `0` con callback nulla o `h = 0`
+(il controllo va fatto sui parametri). `TNB` richiede `out_()` di almeno 11 elementi;
+per una curva rettilinea restituisce `N = B = 0`, `κ = τ = 0`, senza amplificare il
+rumore numerico.
+
+L'orientamento di `FLUX` è quello del prodotto `S_u × S_v`: scambiare i due parametri
+cambia il segno del risultato.
+
+### 16.4 Esempio eseguito: le identità di Maxwell
+
+```basic
+IMPORT VECCALC
+
+FUNCTION Pot(x AS DOUBLE, y AS DOUBLE, z AS DOUBLE) AS DOUBLE
+  RETURN 1 / MATH.SQR(x * x + y * y + z * z)      ' V = 1/r
+END FUNCTION
+
+FUNCTION Elec(x AS DOUBLE, y AS DOUBLE, z AS DOUBLE) AS ARRAY OF DOUBLE
+  DIM r(2) AS DOUBLE, d AS DOUBLE
+  d = (x * x + y * y + z * z)
+  d = d * MATH.SQR(d)                             ' d = |r|^3
+  r(0) = x / d : r(1) = y / d : r(2) = z / d      ' E = r/|r|^3
+  RETURN r
+END FUNCTION
+
+DIM g(2) AS DOUBLE
+VECCALC.GRADIENT(Pot, 1, 1, 1, 0.0001, g)         ' (-0.192450, -0.192450, -0.192450)
+VECCALC.DIVERGENCE(Elec, 1, 1, 1, 0.0001)         ' 3e-9   -> solenoidale
+VECCALC.LAPLACIAN(Pot, 1, 1, 1, 0.0001)           ' -3e-8  -> armonica
+```
+
+In `(1,1,1)` si ha `|r| = √3` ed `E = (1,1,1)/(3√3) ≈ (0.192450, …)`: il gradiente di
+`1/r` è `−E`, la divergenza di `E` è nulla fuori dalla carica (campo solenoidale), il
+rotore è nullo (campo conservativo) e il laplaciano di `1/r` è nullo (funzione armonica).
+Il sample `shared/samples/VecCalc/VecCalcLab.bas` esegue queste verifiche e ne stampa
+gli **errori** (`|grad V + E| ≈ 7e-10`, `|div E| ≈ 3e-9`), oltre a:
+
+- campo non simmetrico `f = xyz` → gradiente `(12, 8, 6)` in `(2,3,4)` e
+  `F = (x²,y²,z²)` → divergenza `18`, che verificano le tre derivate parziali distinte;
+- rotazione rigida `(−y, x, 0)` → `div = 0`, `curl = (0,0,2)`;
+- elica `(cos t, sin t, t/5)` → lunghezza `6.407617`, `κ = 0.961538`, `τ = 0.192308`
+  (formule `2π√(1+a²)`, `1/(1+a²)`, `a/(1+a²)`);
+- retta `(t, 2t, 3t)` → `κ = τ = 0`;
+- lavoro e integrale scalare sul cerchio unitario → `2π`, flusso verticale sul
+  paraboloide → `1`;
+- guardie: `out_()` corto → `-1`, `h = 0` → `-1`/`0`.
+
+### 16.5 Parità e limiti
+
+La superficie è unica (`shared/include/veccalc.inc`), quindi firme e parametri sono
+identici su IL, PCodeVM, VM/C e C99Native; il MiniTest
+`shared/minitests/veccalc/veccalc_core.bas` e il sample sono verificati sulle quattro
+gambe (`zsh tools/sh/test_minitests_parity.sh "veccalc/veccalc_core.bas"`,
+`zsh tools/sh/parity4 ../shared/samples/VecCalc/VecCalcLab.bas`).
+
+Il calcolo è in `double` e le derivate sono approssimate: il risultato è accurato quanto
+`h` e la regolarità del campo consentono. Per derivate esatte di una funzione di una
+variabile si usa `NUMERICAL.DIFFERENTIATE`; per campi definiti su griglie o dati
+sperimentali servono strumenti diversi (interpolazione, `SPARSE`, `MESH`).
+
+`VECCALC` non copre:
+- algebra vettoriale elementare (somma, prodotto, norma, proiezione): `VECTOR`, `VEC`;
+- matrici di trasformazione 3D: `XFORM`;
+- integrazione di funzioni di una variabile e ODE: `QUAD`, `ODE`;
+- differenziazione simbolica: non è un CAS.
+
+## 17. Errori frequenti
 
 | Sintomo | Causa | Correzione |
 |---|---|---|
@@ -354,7 +746,7 @@ IL, PCodeVM, VM/C e C99Native.
 | rotazione che "scala" | quaternione non normalizzato | `QUAT.NORMALIZE` prima di usarlo |
 | composizione invertita | ordine di `MUL(a, b)` | `MUL(a, b)` = prima `b`, poi `a` |
 
-## 10. Dove andare adesso
+## 18. Dove andare adesso
 
 - **V.28** — le stesse formule applicate a serie temporali e trading.
 - **V.31** — TORCH, quando la matematica diventa tensori.
@@ -555,8 +947,6 @@ nel corpus di test e sample `.bas`/`.inc`: dove il corpus non usa il simbolo è 
 - **STATS.WILCOXON(x1, x2)** — `r = STATS.WILCOXON(x, y)` (shared/samples/Math/StatsSciPyParityP0.bas:52)
 - **STATS.ZTEST(x1, x2, x3)** — `result = STATS.ZTEST(x, 5.0, 2.0)` (shared/samples/Analysis/StatsSciPyParity.bas:32)
 <!-- END DOMAIN TABLE -->
-
-
 
 <!-- BEGIN SURFACE (generato da tools/sh/manual_surface.sh — non modificare a mano) -->
 
@@ -898,6 +1288,843 @@ PRINT "gray_viol="; viol          ' 0
 ## 6. Verifica
 
 ## 7. Note e limiti
+
+### COMPLEX-Guida-Utente
+
+*Fonte: `COMPLEX-Guida-Utente`*
+
+
+## A cosa serve
+
+## Modello dei dati
+
+TYPE Complex
+  RE AS DOUBLE
+  IM AS DOUBLE
+END TYPE
+
+DIM z AS Complex
+z = COMPLEX.MAKE(3, 4)
+PRINT COMPLEX.CABS(z)        ' 5       (modulo)
+PRINT COMPLEX.ARG(z)         ' 0.927295 (fase in radianti)
+PRINT z.RE; " "; z.IM        ' 3  4
+
+
+## Perché alcune funzioni hanno il prefisso `C`
+
+## Convenzioni matematiche
+| aspetto | convenzione |
+|---|---|
+| fase (`ARG`) | radianti, intervallo `(-π, π]`, come `atan2(IM, RE)` |
+| modulo (`CABS`) | `sqrt(RE² + IM²)`; `NORM2` è il modulo al quadrato (evita la radice) |
+| `CLOG` | ramo principale: `log|z| + i·arg(z)` |
+| `CSQRT` | radice con parte immaginaria concorde a `IM` (ramo principale) |
+| `POW(z, w)` | `exp(w · log z)`; l'esponente è complesso |
+| `EQ` | tolleranza esplicita sullo scarto di `RE` e `IM` (stesso `tol` per entrambi) |
+| confronto | mai `RE =` e `IM =` sui risultati di funzioni trascendenti: usare `EQ` |
+
+## Aritmetica
+
+a = COMPLEX.MAKE(1, 2)
+b = COMPLEX.MAKE(3, 4)
+
+COMPLEX.ADD(a, b)        '  4 + 6i
+COMPLEX.SUB(a, b)        ' -2 - 2i
+COMPLEX.MUL(a, b)        ' -5 + 10i     (i² = -1)
+COMPLEX.DIV(a, b)        '  0.44 + 0.08i
+COMPLEX.NEG(a)           ' -1 - 2i
+COMPLEX.CONJ(a)          '  1 - 2i      (coniugato: cambia segno a IM)
+COMPLEX.SCALE(a, 2)      '  2 + 4i      (scalare reale)
+
+
+## Misure
+
+z = COMPLEX.MAKE(3, 4)
+COMPLEX.CABS(z)     ' 5
+COMPLEX.ARG(z)      ' 0.927295  (rad)
+COMPLEX.NORM2(z)    ' 25
+u = COMPLEX.MAKE(3, 4)
+COMPLEX.EQ(z, u, 0.000001)    ' 1
+u = COMPLEX.MAKE(3, 4.1)
+COMPLEX.EQ(z, u, 0.000001)    ' 0
+
+
+## Esponenziale, logaritmo, potenza
+
+' identità di Eulero: e^(i·pi) = -1
+t = COMPLEX.MAKE(0, MATH.PI())
+z = COMPLEX.CEXP(t)
+PRINT z.RE; " + j("; z.IM; ")"        ' -1 + j(0)
+
+' log(-1) = i·pi
+t = COMPLEX.MAKE(-1, 0)
+z = COMPLEX.CLOG(t)
+PRINT z.RE; " + j("; z.IM; ")"        ' 0 + j(3.14159)
+
+' i² = -1
+t = COMPLEX.MAKE(0, 1)
+u = COMPLEX.MAKE(2, 0)
+z = COMPLEX.POW(t, u)
+
+' radice quadrata di un numero negativo: sqrt(-1) = i
+
+
+## Trigonometriche e iperboliche
+
+' sin(i) = i·sinh(1) = 1.175201i
+' cos(i) = cosh(1)     = 1.543081
+' tan(i) = i·tanh(1)   = 0.761594i
+' sinh(i) = i·sin(1)   = 0.841471i
+' cosh(i) = cos(1)     = 0.540302
+' tanh(i) = i·tan(1)   = 1.557408i
+
+
+## Un esempio completo
+
+## Stile portabile
+
+z = COMPLEX.CSQRT(w)      ' prima
+v = COMPLEX.CABS(z)       ' poi
+
+' invece di: COMPLEX.CABS(COMPLEX.CSQRT(w))
+
+
+## Riferimento completo delle funzioni
+| funzione | firma | ritorna | significato |
+|---|---|---|---|
+| `MAKE` | `(re, im AS DOUBLE)` | Complex | numero esplicito |
+| `ADD` | `(a, b AS Complex)` | Complex | somma |
+| `SUB` | `(a, b AS Complex)` | Complex | differenza |
+| `MUL` | `(a, b AS Complex)` | Complex | prodotto (i² = -1) |
+| `DIV` | `(a, b AS Complex)` | Complex | quoziente; divisore nullo → `(0,0)` |
+| `NEG` | `(a AS Complex)` | Complex | opposto |
+| `CONJ` | `(a AS Complex)` | Complex | coniugato `(re, -im)` |
+| `SCALE` | `(a AS Complex, s AS DOUBLE)` | Complex | prodotto per uno scalare reale |
+| funzione | firma | ritorna | significato |
+|---|---|---|---|
+| `CABS` | `(a AS Complex)` | DOUBLE | modulo `|z|` |
+| `ARG` | `(a AS Complex)` | DOUBLE | fase in radianti, `(-π, π]` |
+| `NORM2` | `(a AS Complex)` | DOUBLE | modulo al quadrato |
+| `EQ` | `(a, b AS Complex, tol AS DOUBLE)` | LONG | 1 se `|dre| <= tol` e `|dim| <= tol` |
+| funzione | firma | ritorna | significato |
+|---|---|---|---|
+| `CEXP` | `(z AS Complex)` | Complex | `e^z` |
+| `CLOG` | `(z AS Complex)` | Complex | ramo principale; zero → `(-inf, 0)` |
+| `CSQRT` | `(z AS Complex)` | Complex | radice principale |
+| `POW` | `(z, w AS Complex)` | Complex | `z^w` con esponente complesso |
+| funzione | firma | ritorna | significato |
+|---|---|---|---|
+| `CSIN` | `(z AS Complex)` | Complex | seno |
+| `CCOS` | `(z AS Complex)` | Complex | coseno |
+| `CTAN` | `(z AS Complex)` | Complex | tangente (`sin/cos`) |
+| `CASIN` | `(z AS Complex)` | Complex | arcoseno, ramo principale |
+| `CACOS` | `(z AS Complex)` | Complex | arcocoseno, ramo principale |
+| `CATAN` | `(z AS Complex)` | Complex | arcotangente |
+| funzione | firma | ritorna | significato |
+|---|---|---|---|
+| `CSINH` | `(z AS Complex)` | Complex | seno iperbolico |
+| `CCOSH` | `(z AS Complex)` | Complex | coseno iperbolico |
+| `CTANH` | `(z AS Complex)` | Complex | tangente iperbolica |
+| `ASINH` | `(z AS Complex)` | Complex | settore iperbolico inverso |
+| `ACOSH` | `(z AS Complex)` | Complex | settore iperbolico inverso |
+| `ATANH` | `(z AS Complex)` | Complex | settore iperbolico inverso |
+
+## Parità e verifica
+
+## Cosa non è qui, e perché
+| bisogno | dove |
+|---|---|
+| aritmetica reale, arrotondamenti, combinatoria | `MATH` |
+| matrici e decomposizioni (anche a coefficienti complessi) | `MATRIX`, `LINALG` |
+| FFT e spettri da campioni reali | `NUMERICAL.FFT` / `FFTCOMPLEX` |
+| tensori e autodiff | `TORCH` |
+| numeri complessi come tipo del motore grafico (quaternioni) | `QUAT` |
+
+### XFORM-Guida-Utente
+
+*Fonte: `XFORM-Guida-Utente`*
+
+
+## A cosa serve
+
+## Modello dei dati
+
+DIM m3(8) AS DOUBLE      ' 3x3: m3(riga*3 + colonna)
+DIM m4(15) AS DOUBLE     ' 4x4: m4(riga*4 + colonna)
+
+XFORM.MAT4TRANSLATE(5, 0, 2, m4)
+PRINT m4(3); " "; m4(7); " "; m4(11)     ' 5  0  2   (ultima colonna = traslazione)
+
+
+[ r00 r01 r02 tx ]
+[ r10 r11 r12 ty ]
+[ r20 r21 r22 tz ]
+[  0   0   0  1  ]
+
+
+## Convenzioni
+| aspetto | convenzione |
+|---|---|
+| ordine dei valori | row-major, contiguo |
+| angoli | radianti (usare `D2R` o `MATH.DEG2RAD`) |
+| composizione | `MUL(a, b)` applica **prima `b`, poi `a`** (prodotto di matrici) |
+| punto | `MAT4POINT` usa `w = 1` e divide per `w` se la prospettiva lo cambia |
+| direzione | `MAT4DIR` usa `w = 0`: la traslazione **non** la tocca |
+| normali | con scale non uniformi usare `MAT3NORMAL` (inversa trasposta), non la 3×3 |
+| esiti | `0` = ok, `-1` = argomento non valido o matrice singolare |
+
+## Costruire una trasformazione
+
+DIM t(15) AS DOUBLE, r(15) AS DOUBLE, s(15) AS DOUBLE, m(15) AS DOUBLE, tmp(15) AS DOUBLE
+
+XFORM.MAT4TRANSLATE(5, 0, 2, t)     ' sposta
+XFORM.MAT4ROTZ(MATH.DEG2RAD(30), r) ' azimuth
+XFORM.MAT4SCALE(2, 1, 1, s)         ' scala
+
+XFORM.MAT4MUL(r, s, tmp)            ' prima la scala, poi la rotazione
+XFORM.MAT4MUL(t, tmp, m)            ' infine la traslazione
+
+
+## Punti, direzioni, normali
+
+DIM p(2) AS DOUBLE
+
+' un punto: risente della traslazione (w = 1)
+XFORM.MAT4POINT(m, 1, 0, 0, p)
+
+' una direzione: NON risente della traslazione (w = 0)
+XFORM.MAT4DIR(m, 1, 0, 0, p)
+
+
+## Inversa affine
+
+DIM inv(15) AS DOUBLE
+IF XFORM.MAT4INVERSEAFFINE(m, inv) = 0 THEN
+  ' il punto del mondo torna alle coordinate locali
+  XFORM.MAT4POINT(inv, wx, wy, wz, p)
+END IF
+
+
+## Un esempio completo
+
+## Riferimento completo delle funzioni
+| funzione | firma | significato |
+|---|---|---|
+| `MAT3IDENTITY` | `(m())` | matrice identità |
+| `MAT3ROTX` | `(rad, m())` | rotazione attorno a X |
+| `MAT3ROTY` | `(rad, m())` | rotazione attorno a Y |
+| `MAT3ROTZ` | `(rad, m())` | rotazione attorno a Z |
+| `MAT3MUL` | `(a(), b(), out_())` | prodotto `a·b` (prima `b`, poi `a`) |
+| `MAT3NORMAL` | `(a(), out_())` | matrice normale `(M⁻¹)ᵀ`; `-1` se singolare |
+| `MAT3FROM4` | `(m4(), out_())` | estrae la 3×3 da una 4×4 |
+| funzione | firma | significato |
+|---|---|---|
+| `MAT4IDENTITY` | `(m())` | identità |
+| `MAT4TRANSLATE` | `(x, y, z, m())` | traslazione |
+| `MAT4SCALE` | `(x, y, z, m())` | scala sugli assi |
+| `MAT4ROTX` | `(rad, m())` | rotazione attorno a X |
+| `MAT4ROTY` | `(rad, m())` | rotazione attorno a Y |
+| `MAT4ROTZ` | `(rad, m())` | rotazione attorno a Z |
+| `MAT4MUL` | `(a(), b(), out_())` | composizione `a·b` |
+| `MAT4INVERSEAFFINE` | `(a(), out_())` | inversa affine; `-1` se singolare |
+| `MAT4POINT` | `(m(), x, y, z, out_())` | punto con divisione per `w` (3 double) |
+| `MAT4DIR` | `(m(), x, y, z, out_())` | direzione (traslazione ignorata) |
+| `MAT4FROM3` | `(m3(), out_())` | 4×4 con la 3×3 data e traslazione nulla |
+
+## Parità e verifica
+
+## Cosa non è qui, e perché
+| bisogno | dove |
+|---|---|
+| rotazioni come quaternioni, SLERP | `QUAT` |
+| matrice di vista/proiezione, look-at, frustum, ray casting | `GFX3D` |
+| matrici generiche, decomposizioni, determinante | `MATRIX`, `LINALG` |
+| rotazione di un poligono nel piano (gradi, attorno all'origine) | `GEO.ROTATE` |
+
+### SPECTRAL-Guida-Utente
+
+*Fonte: `SPECTRAL-Guida-Utente`*
+
+
+## A cosa serve
+
+## Modello dei dati
+
+DIM x(3) AS DOUBLE, y(3) AS DOUBLE
+x(0)=1 : x(1)=2 : x(2)=3 : x(3)=4
+SPECTRAL.DCT(x, y)            ' DCT di 4 campioni; y(0)=5, ...
+
+
+out(2*(f*(N/2+1) + k))      parte reale
+out(2*(f*(N/2+1) + k) + 1)  parte immaginaria
+
+
+## DCT / DST e inverse
+
+DIM x(7) AS DOUBLE, y(7) AS DOUBLE, back(7) AS DOUBLE
+
+FOR i = 0 TO 7 : x(i) = i : NEXT i
+SPECTRAL.DCT(x, y)          ' coefficienti in y
+y(5) = 0 : y(6) = 0 : y(7) = 0   ' scarto il dettaglio fine
+SPECTRAL.IDCT(y, back)      ' ricostruzione addolcita
+
+
+## DCT 2D
+
+DIM img(15) AS DOUBLE, coeff(15) AS DOUBLE   ' 4x4
+FOR i = 0 TO 15 : img(i) = i : NEXT i
+SPECTRAL.DCT2(img, 4, 4, coeff)              ' coeff(0) = 30 = somma/4
+SPECTRAL.IDCT2(coeff, 4, 4, img)             ' ricostruzione esatta
+
+
+## Wavelet di Haar
+
+## Trasformata di Hilbert
+
+SPECTRAL.HILBERT(x, h)
+FOR i = 0 TO n-1
+  env = MATH.SQR(x(i)*x(i) + h(i)*h(i))     ' inviluppo
+NEXT i
+
+
+## Z-trasformata
+
+DIM h(1) AS DOUBLE
+' risposta all'impulso [1, 0.5, 0, 0]
+SPECTRAL.ZTRANSFORM(x, 1, 0, h)      ' 1.5 + j0
+SPECTRAL.ZTRANSFORM(x, -1, 0, h)     ' 0.5 + j0
+
+
+## STFT / iSTFT
+
+DIM x(15) AS DOUBLE, w(7) AS DOUBLE, st(29) AS DOUBLE, rec(15) AS DOUBLE
+' tono a 1 kHz, fs 8 kHz, N = 8 -> bin 1
+FOR i = 0 TO 15 : x(i) = MATH.COS(2 * MATH.PI() * i / 8) : NEXT i
+FOR i = 0 TO 7  : w(i) = 1 : NEXT i            ' rettangolare (o Hann)
+nf = SPECTRAL.STFT(x, 8, w, 4, st)             ' 3 frame, 5 bin
+SPECTRAL.ISTFT(st, nf, 8, w, 4, rec)           ' ricostruzione
+
+
+## Un esempio completo
+
+## Riferimento completo delle funzioni
+| funzione | firma | ritorna | significato |
+|---|---|---|---|
+| `DCT` | `(x(), out_())` | LONG | DCT-II ortonormale; n = lunghezza di `x()` |
+| `DST` | `(x(), out_())` | LONG | DST-II ortonormale |
+| `IDCT` | `(x(), out_())` | LONG | inversa della DCT-II |
+| `DCT2` | `(x(), rows, cols, out_())` | LONG | DCT 2D separabile, row-major |
+| `IDCT2` | `(x(), rows, cols, out_())` | LONG | inversa della DCT 2D |
+| `HAAR` | `(x(), out_())` | LONG | wavelet di Haar (n potenza di 2) |
+| `HILBERT` | `(x(), out_())` | LONG | trasformata di Hilbert (fase -90°) |
+| `ZTRANSFORM` | `(x(), re, im, out_())` | LONG | Z-trasformata; `out_(0)=re`, `out_(1)=im` |
+| `STFT` | `(x(), N, w(), hop, out_())` | LONG | spettrogramma; ritorna `nf` |
+| `ISTFT` | `(X(), nframes, N, w(), hop, out_())` | LONG | ricostruzione; ritorna n |
+
+## Parità e verifica
+
+## Cosa non è qui, e perché
+| bisogno | dove |
+|---|---|
+| filtri IIR/FIR, filtfilt, freqz, decimazione, welch, savgol | `SIGNAL` |
+| FFT di un segnale reale o complesso, frequenze | `NUMERICAL.FFT`, `FFTCOMPLEX`, `FFTFREQ` |
+| spettro di potenza, periodogramma | `SIGNAL.WELCH` |
+| trasformata di Laplace inversa numerica | non esposta: richiede una callback di funzione; si scrive in BASIC con `SIGNAL`/`NUMERICAL` |
+| numeri complessi come tipo | `COMPLEX` |
+
+### VEC-Guida-Utente
+
+*Fonte: `VEC-Guida-Utente`*
+
+
+## A cosa serve
+
+## Modello dei dati
+
+DIM v(2) AS DOUBLE, o(2) AS DOUBLE
+v(0)=3 : v(1)=4 : v(2)=0
+VEC.VCLAMPMAG(v, 2, o)      ' o = (1.2, 1.6, 0)
+
+
+## Perché i prefissi `V` e `PERP2D`
+
+## Scomporre un vettore
+
+' v = (3, -2, 1), piano con normale +Y
+VEC.PROJECT(v, n, pr)     ' (0, -2, 0)   componente lungo la normale
+VEC.REJECT(v, n, tg)      ' (3,  0, 1)   componente tangente
+
+
+pr(1) = -pr(1) * e                 ' e = coefficiente di restituzione
+v(0) = tg(0) + pr(0)
+v(1) = tg(1) + pr(1)
+v(2) = tg(2) + pr(2)
+
+
+## Illuminazione
+
+f0 = (0.02, 0.02, 0.02)      ' acqua
+u = 1    -> 0.020000
+u = 0.5  -> 0.050625
+u = 0.1  -> 0.598680
+
+
+## Limiti
+| funzione | uso |
+|---|---|
+| `VCLAMP(v, lo, hi, o)` | limitare ogni componente in un intervallo |
+| `VCLAMP01(v, o)` | colore/normale in `[0,1]` (tonemap, texture coordinate) |
+| `VCLAMPMAG(v, max, o)` | limitare il **modulo** lasciando la direzione (velocità massima) |
+
+## Per componente
+
+## Perpendicolare 2D
+
+## Un esempio completo
+
+## Riferimento completo delle funzioni
+| funzione | firma | significato |
+|---|---|---|
+| `PROJECT` | `(v(), on_(), out_())` | proiezione di `v` su `on` |
+| `REJECT` | `(v(), on_(), out_())` | componente perpendicolare a `on` |
+| `SCHLICK` | `(f0(), u, out_())` | Fresnel di Schlick per componente |
+| `BIAS` | `(v(), nrm(), out_())` | `v + nrm·eps` (eps da `\|v\|`) |
+| `PERP2D` | `(x, y, out_())` | perpendicolare 2D: `(-y, x)` (2 double) |
+| `VCLAMP` | `(v(), lo, hi, out_())` | clamp per componente |
+| `VCLAMP01` | `(v(), out_())` | clamp per componente in `[0,1]` |
+| `VCLAMPMAG` | `(v(), maxlen, out_())` | limita il modulo |
+| `VABS` | `(v(), out_())` | valore assoluto per componente |
+| `VSQRT` | `(v(), out_())` | radice per componente |
+| `VPOW` | `(v(), p, out_())` | potenza per componente |
+
+## Parità e verifica
+
+## Cosa non è qui, e perché
+| bisogno | dove |
+|---|---|
+| somma, differenza, prodotto scalare/vettoriale, norma, distanze, lerp, min/max | `VECTOR` |
+| rotazioni come quaternioni, SLERP | `QUAT` |
+| matrici di trasformazione, punto/direzione, inversa affine | `XFORM` |
+| riflessione di un raggio su una superficie | `GFX3D.RAYREFLECT` |
+| rotazione di un poligono nel piano | `GEO.ROTATE` |
+
+### SPARSE-Guida-Utente
+
+*Fonte: `SPARSE-Guida-Utente`*
+
+
+## A cosa serve
+
+## Modello dei dati
+| formato | contenuto |
+|---|---|
+| **COO** | triplette `(riga, colonna, valore)` in ordine di inserimento |
+| **CSR** | `rowptr(righe+1)`, `colidx(nnz)`, `val(nnz)` — entry contigue per riga |
+| **CSC** | `colptr(colonne+1)`, `rowidx(nnz)`, `val(nnz)` — entry contigue per colonna |
+
+IMPORT SPARSE
+
+DIM sz(2) AS LONG
+' matrice 3x3 tridiagonale: diagonale 2, fuori diagonale -1
+h = SPARSE.COONEW(3, 3, 7)
+k = 0
+FOR i = 0 TO 2
+  SPARSE.COOSET(h, k, i, i, 2) : k = k + 1
+NEXT i
+FOR i = 1 TO 2
+  SPARSE.COOSET(h, k, i, i - 1, -1) : k = k + 1
+  SPARSE.COOSET(h, k, i - 1, i, -1) : k = k + 1
+NEXT i
+hcsr = SPARSE.COOTOCSR(h)
+SPARSE.SIZES(hcsr, sz)          ' sz(0)=3, sz(1)=3, sz(2)=7
+
+
+## Conversioni e ispezione
+| funzione | fa |
+|---|---|
+| `DENSETOCSR(rows, cols, a())` | da una matrice densa row-major, scartando gli zeri |
+| `COOTOCSR(h)`, `COOTOCSC(h)` | triplette → CSR / CSC (somma i duplicati, ordina) |
+| `CSRTOCSC(h)`, `CSCTOCSR(h)` | cambio di formato, stessa matrice |
+| `CSRTRANSPOSE(h)` | CSR → **CSC della trasposta** |
+| `CSCTRANSPOSE(h)` | CSC → **CSR della trasposta** |
+| `SIZES(h, out())` | `out(0)` righe, `out(1)` colonne, `out(2)` non-zeri |
+| `TRIPLET(h, k, out())` | la k-esima entry nello stoccaggio: `(riga, colonna, valore)` |
+
+## Solutori diretti
+
+hcscl = SPARSE.COOTOCSC(hcoo_inferiore)
+hf = SPARSE.SPCHOLFACTOR(hcscl)
+IF hf > 0 THEN
+  rc = SPARSE.SPCHOLSOLVE(hf, b)      ' b viene sovrascritto dalla soluzione
+  SPARSE.FREE(hf)
+END IF
+
+
+hcsc = SPARSE.CSRTOCSC(hcsr)
+hf = SPARSE.SPLUFACTOR(hcsc)
+IF hf > 0 THEN
+  rc = SPARSE.SPLUSOLVE(hf, b)
+  SPARSE.FREE(hf)
+END IF
+
+
+## Un esempio completo
+
+u = (0.069444, 0.111111, 0.125000, 0.111111, 0.069444)
+differenza LU - Cholesky = 0.000000000000
+errore rispetto alla soluzione esatta = 0.000000000000
+
+
+## Riferimento completo delle funzioni
+| funzione | firma | ritorna |
+|---|---|---|
+| `COONEW` | `(rows, cols, nnz)` | handle di triplette (max `nnz`) |
+| `COOSET` | `(h, k, row, col, val)` | `0`/`-1` |
+| `DENSETOCSR` | `(rows, cols, a())` | handle CSR (zeri scartati) |
+| funzione | firma | ritorna |
+|---|---|---|
+| `COOTOCSR` | `(h)` | nuovo handle CSR |
+| `COOTOCSC` | `(h)` | nuovo handle CSC |
+| `CSRTOCSC` | `(h)` | nuovo handle CSC |
+| `CSCTOCSR` | `(h)` | nuovo handle CSR |
+| `CSRTRANSPOSE` | `(h)` | nuovo handle CSC (di `Aᵀ`) |
+| `CSCTRANSPOSE` | `(h)` | nuovo handle CSR (di `Aᵀ`) |
+| funzione | firma | ritorna |
+|---|---|---|
+| `SIZES` | `(h, out_())` | `0`; `out_` = righe, colonne, nnz |
+| `TRIPLET` | `(h, k, out_())` | `0`; `out_` = riga, colonna, valore |
+| funzione | firma | ritorna |
+|---|---|---|
+| `SPCHOLFACTOR` | `(h_csc)` | handle fattore o `-1` (non SPD) |
+| `SPCHOLSOLVE` | `(hf, b())` | `0`; `b()` diventa la soluzione |
+| `SPLUFACTOR` | `(h_csc)` | handle fattore o `-1` (singolare) |
+| `SPLUSOLVE` | `(hf, b())` | `0`; `b()` diventa la soluzione |
+| `FREE` | `(h)` | `0` (qualsiasi contenitore o fattore) |
+
+## Parità e verifica
+
+## Cosa non è qui, e perché
+| bisogno | dove |
+|---|---|
+| matrici dense, determinante, trasposta, slicing | `MATRIX` |
+| decomposizioni dense (SVD, QR, autovalori) | `LINALG` |
+| sistemi conici/sparsi dei solver (KKT) | `OPTIMIZE` (conic) |
+| calcolo scientifico su tensori | `TORCH` |
+
+### QUAD-Guida-Utente
+
+*Fonte: `QUAD-Guida-Utente`*
+
+
+## A cosa serve
+| metodo | quando serve |
+|---|---|
+| `KRONROD` | caso generale, **con stima d'errore** (G7-K15) |
+| `GAUSS` | integrande lisce, n nodi (esatto fino al grado 2n-1) |
+| `ROMBERG` | funzione liscia, con tolleranza richiesta dall'utente |
+| `TANHSINH` | **singolarità agli estremi** (es. `1/√x`), estremi infiniti |
+| `TANHSINHCOMP` | come tanh-sinh, con la distanza dall'estremo (`1/√d`) |
+| `LEGENDRENODES`, `HERMITENODES` | nodi e pesi per costruire quadrature proprie |
+
+## Modello dei dati
+
+IMPORT QUAD
+
+FUNCTION Quadrato(x AS DOUBLE) AS DOUBLE
+  RETURN x * x
+END FUNCTION
+
+SUB Main()
+  DIM o(1) AS DOUBLE
+  QUAD.KRONROD(Quadrato, 0, 1, o)     ' o(0) = 1/3, o(1) = errore stimato
+END SUB
+
+
+## Metodi
+
+### Gauss-Kronrod (con errore)
+
+ns = 20 : tot = 0 : toterr = 0
+FOR k = 0 TO ns - 1
+  QUAD.KRONROD(F, k * T / ns, (k + 1) * T / ns, o)
+  tot = tot + o(0) : toterr = toterr + o(1)
+NEXT k
+
+
+### Gauss-Legendre e Romberg
+
+QUAD.GAUSS(f, a, b, 10)                    ' 10 nodi
+QUAD.ROMBERG(f, a, b, 1e-10, 15)           ' tol assoluta, max 15 livelli
+
+
+### tanh-sinh (singolarità e infiniti)
+
+FUNCTION Portata(h AS DOUBLE) AS DOUBLE
+  IF h <= 0 THEN RETURN 0
+  RETURN 1 / MATH.SQR(h)
+END FUNCTION
+
+QUAD.TANHSINH(Portata, 0, 1, 1e-10, 2000)          ' ~ 2
+QUAD.TANHSINHCOMP(Tensione, 0, 1, 1e-10, 2000)     ' f(x, d): d = distanza dall'estremo
+
+
+### Nodi e pesi
+
+QUAD.LEGENDRENODES(4, x, w)
+acc = 0
+FOR i = 0 TO 3 : acc = acc + w(i) * Quadrato(x(i)) : NEXT i   ' 2/3 su [-1,1]
+
+
+## Un esempio completo
+
+## Riferimento completo delle funzioni
+| funzione | firma | ritorna |
+|---|---|---|
+| `KRONROD` | `(f, a, b, out_())` | `0`; `out_(0)=integrale`, `out_(1)=errore` |
+| `GAUSS` | `(f, a, b, n)` | integrale (NaN se `f` è nulla) |
+| `ROMBERG` | `(f, a, b, tol, maxit)` | integrale |
+| `TANHSINH` | `(f, a, b, absacc, maxeval)` | integrale |
+| `TANHSINHCOMP` | `(f2, a, b, absacc, maxeval)` | integrale; `f2(x, d)` |
+| `LEGENDRENODES` | `(n, x(), w())` | `n` (o `-1` se gli array sono corti) |
+| `HERMITENODES` | `(n, x(), w())` | `n` (o `-1`) |
+
+## Parità e verifica
+
+## Cosa non è qui, e perché
+| bisogno | dove |
+|---|---|
+| Simpson, trapezi, cumulativa | `NUMERICAL.INTEGRATE`, `TRAPEZOID`, `CUMTRAPEZOID` |
+| FFT, DCT | `NUMERICAL.FFT`, `SPECTRAL.DCT` |
+| ODE e problemi ai limiti | `ODE` |
+| integrazione di funzioni di più variabili | si compone: `GAUSS` su ogni asse |
+
+### ODE-Guida-Utente
+
+*Fonte: `ODE-Guida-Utente`*
+
+
+## A cosa serve
+
+## Modello dei dati
+
+IMPORT ODE
+
+FUNCTION Decay(y() AS DOUBLE, t AS DOUBLE) AS ARRAY OF DOUBLE
+  DIM r(0) AS DOUBLE
+  r(0) = -0.1 * (y(0) - 20)
+  RETURN r
+END FUNCTION
+
+SUB Main()
+  DIM y0(0) AS DOUBLE, yout(0) AS DOUBLE
+  y0(0) = 100
+  ODE.BDF2(Decay, y0, 0, 60, 600, 30, 0.0000000001, yout)
+END SUB
+
+
+## Metodi per il problema ai valori iniziali
+| funzione | ordine | quando |
+|---|---|---|
+| `ADAMSBASHFORTH4` | 4, esplicito | problema liscio, costo minimo |
+| `ADAMSMOULTON4` | 4, implicito | più stabile dell'esplicito |
+| `BDF2` | 2, implicito | **problemi stiff** (maxit + tol dell'iterazione interna) |
+| `IMPLICITMIDPOINT` | 2, implicito | conservativo su sistemi hamiltoniani lineari |
+| `VERLET` | 2, simplettico | meccanica: conserva l'energia a lungo termine |
+
+ODE.ADAMSBASHFORTH4(f, y0, 0, 1, 100, yout)
+ODE.BDF2(f, y0, 0, 60, 600, 30, 1e-10, yout)   ' 30 iterazioni di punto fisso
+ODE.VERLET(acc, y0, 0, 2*PI, 1000, yout)       ' y = (pos, vel), 2 componenti
+
+
+## Problemi ai limiti
+
+FUNCTION Trave(x AS DOUBLE, y AS DOUBLE, dy AS DOUBLE) AS DOUBLE
+  RETURN -1
+END FUNCTION
+
+DIM g(10) AS DOUBLE
+ODE.BVPFD(Trave, 0, 1, 0, 0, g)        ' 11 nodi, differenze finite
+ODE.BVPSHOOTING(Trave, 0, 1, 0, 0, g)  ' 11 nodi, shooting
+
+
+## Un esempio completo
+
+## Riferimento completo delle funzioni
+| funzione | firma | ritorna |
+|---|---|---|
+| `ADAMSBASHFORTH4` | `(f, y0(), a, b, steps, yout())` | `0` / `-1` |
+| `ADAMSMOULTON4` | `(f, y0(), a, b, steps, yout())` | `0` / `-1` |
+| `BDF2` | `(f, y0(), a, b, steps, maxit, tol, yout())` | `0` / `-1` |
+| `IMPLICITMIDPOINT` | `(f, y0(), a, b, steps, maxit, tol, yout())` | `0` / `-1` |
+| `VERLET` | `(acc, y0(), a, b, steps, yout())` | `0` / `-1` |
+| `BVPSHOOTING` | `(fn, a, b, alpha, beta, yout())` | `0` / `-1` |
+| `BVPFD` | `(fn, a, b, alpha, beta, yout())` | `0` / `-1` |
+
+## Parità e verifica
+
+## Cosa non è qui, e perché
+| bisogno | dove |
+|---|---|
+| un metodo esplicito semplice (Euler/RK) | `NUMERICAL.SOLVEODE`, `NUMERICAL.SOLVEIVP` |
+| integrali e quadrature | `QUAD` |
+| sistemi lineari sparsi (per i metodi impliciti scritti a mano) | `SPARSE` |
+| PDE (equazioni alle derivate parziali) | si discretizzano in BASIC: `SPARSE` + `ODE` |
+
+### VECCALC-Guida-Utente
+
+*Fonte: `VECCALC-Guida-Utente`*
+
+
+## A cosa serve
+
+## Modello dei dati
+| oggetto | callback BASIC | ritorno |
+|---|---|---|
+| campo scalare | `f(x, y, z)` | `DOUBLE` |
+| campo vettoriale | `F(x, y, z)` | `ARRAY OF DOUBLE` (3) |
+| curva | `r(t)` | `ARRAY OF DOUBLE` (3) |
+| patch | `S(u, v)` | `ARRAY OF DOUBLE` (3) |
+
+IMPORT VECCALC
+
+' campo scalare: distanza al quadrato
+FUNCTION Sph(x AS DOUBLE, y AS DOUBLE, z AS DOUBLE) AS DOUBLE
+  RETURN x * x + y * y + z * z
+END FUNCTION
+
+' campo vettoriale: rotazione rigida
+FUNCTION Swirl(x AS DOUBLE, y AS DOUBLE, z AS DOUBLE) AS ARRAY OF DOUBLE
+  DIM r(2) AS DOUBLE
+  r(0) = -y : r(1) = x : r(2) = 0
+  RETURN r
+END FUNCTION
+
+SUB Main()
+  DIM g(2) AS DOUBLE
+
+
+## Cosa calcola
+| funzione | campo | risultato |
+|---|---|---|
+| `GRADIENT(f, x, y, z, h, out)` | scalare | `(∂f/∂x, ∂f/∂y, ∂f/∂z)` in `out(0..2)` |
+| `LAPLACIAN(f, x, y, z, h)` | scalare | `∇²f` (stencil a 7 punti) |
+| `DIVERGENCE(F, x, y, z, h)` | vettoriale | `∇·F` |
+| `CURL(F, x, y, z, h, out)` | vettoriale | `∇×F` in `out(0..2)` |
+| `ISSOLENOIDAL(F, x, y, z, h, tol)` | vettoriale | 1 se `|∇·F| ≤ tol` |
+| `ISIRROTATIONAL(F, x, y, z, h, tol)` | vettoriale | 1 se `|∇×F| ≤ tol` |
+| `ARCLENGTH(r, a, b, tol)` | curva | lunghezza d'arco su `[a,b]` |
+| `TNB(r, t, h, out)` | curva | `T, N, B, κ, τ` in `out(0..10)` |
+| `LINESCALAR(f, r, a, b, tol)` | scalare + curva | `∫ f(r(t))·|r'(t)| dt` |
+| `LINEWORK(F, r, a, b, tol)` | vettoriale + curva | `∫ F(r(t))·r'(t) dt` (lavoro) |
+| `FLUX(F, S, u0, u1, v0, v1, tol)` | vettoriale + patch | `∫∫ F(S)·(S_u×S_v)` |
+
+## Le identità che si possono verificare
+
+## Un esempio completo
+
+## Riferimento completo delle funzioni
+| funzione | firma | ritorna |
+|---|---|---|
+| `GRADIENT` | `(f, x, y, z, h, out_())` | `0` / `-1` |
+| `LAPLACIAN` | `(f, x, y, z, h)` | DOUBLE |
+| `DIVERGENCE` | `(F, x, y, z, h)` | DOUBLE |
+| `CURL` | `(F, x, y, z, h, out_())` | `0` / `-1` |
+| `ISSOLENOIDAL` | `(F, x, y, z, h, tol)` | `1` / `0` / `-1` |
+| `ISIRROTATIONAL` | `(F, x, y, z, h, tol)` | `1` / `0` / `-1` |
+| `ARCLENGTH` | `(r, a, b, tol)` | DOUBLE |
+| `TNB` | `(r, t, h, out_())` | `0` / `-1` |
+| `LINESCALAR` | `(f, r, a, b, tol)` | DOUBLE |
+| `LINEWORK` | `(F, r, a, b, tol)` | DOUBLE |
+| `FLUX` | `(F, S, u0, u1, v0, v1, tol)` | DOUBLE |
+
+### Parametri ricorrenti
+| nome | tipo BASIC | significato |
+|---|---|---|
+| `f` | `FUNCTION(x, y, z) AS DOUBLE` | campo scalare `f: R³ → R` |
+| `F` | `FUNCTION(x, y, z) AS ARRAY OF DOUBLE` | campo vettoriale `F: R³ → R³`, 3 componenti |
+| `r` | `FUNCTION(t) AS ARRAY OF DOUBLE` | curva parametrica `r: R → R³`, 3 componenti |
+| `S` | `FUNCTION(u, v) AS ARRAY OF DOUBLE` | patch parametrica `S: R² → R³`, 3 componenti |
+| `x, y, z` | `DOUBLE` | punto in cui si valuta la derivata |
+| `h` | `DOUBLE` | passo delle differenze centrali, **> 0** (tipico `1e-4`) |
+| `out_()` | `ARRAY OF DOUBLE` | buffer di uscita fornito dal chiamante |
+| `tol` | `DOUBLE` | tolleranza assoluta (confronto o integrazione adattiva) |
+| `a, b` | `DOUBLE` | estremi dell'intervallo della curva (`a < b`) |
+| `u0, u1, v0, v1` | `DOUBLE` | dominio del parametro della patch |
+
+### Valori di ritorno ed errori
+
+### `VECCALC.GRADIENT(f, x, y, z, h, out_())`
+
+DIM g(2) AS DOUBLE
+VECCALC.GRADIENT(Pot, 1, 1, 1, 0.0001, g)   ' (-0.192450, -0.192450, -0.192450)
+
+
+### `VECCALC.LAPLACIAN(f, x, y, z, h)`
+
+VECCALC.LAPLACIAN(Pot, 1, 1, 1, 0.0001)      ' ~0: 1/r è armonica
+
+
+### `VECCALC.DIVERGENCE(F, x, y, z, h)`
+
+VECCALC.DIVERGENCE(Elec, 1, 1, 1, 0.0001)    ' ~0 fuori dalla carica
+
+
+### `VECCALC.CURL(F, x, y, z, h, out_())`
+
+DIM c(2) AS DOUBLE
+VECCALC.CURL(Spin, 1, 2, 3, 0.0001, c)       ' (0, 0, 2) per G = (-y, x, 0)
+
+
+### `VECCALC.ISSOLENOIDAL(F, x, y, z, h, tol)`
+
+VECCALC.ISSOLENOIDAL(Spin, 1, 2, 3, 0.0001, 0.000001)   ' 1
+VECCALC.ISSOLENOIDAL(Rad, 1, 2, 3, 0.0001, 0.000001)    ' 0
+
+
+### `VECCALC.ISIRROTATIONAL(F, x, y, z, h, tol)`
+
+VECCALC.ISIRROTATIONAL(Rad, 1, 2, 3, 0.0001, 0.000001)  ' 1
+VECCALC.ISIRROTATIONAL(Spin, 1, 2, 3, 0.0001, 0.000001) ' 0
+
+
+### `VECCALC.ARCLENGTH(r, a, b, tol)`
+
+VECCALC.ARCLENGTH(Elix, 0, 2 * PIVAL, 0.000001)   ' 6.407617 (elica con a = 1/5)
+
+
+### `VECCALC.TNB(r, t, h, out_())`
+| indici | contenuto |
+|---|---|
+| 0–2 | tangente `T` |
+| 3–5 | normale `N` |
+| 6–8 | binormale `B` |
+| 9 | curvatura `κ` |
+| 10 | torsione `τ` |
+
+### `VECCALC.LINESCALAR(f, r, a, b, tol)`
+
+VECCALC.LINESCALAR(Pot, Ring, 0, 2 * PIVAL, 0.000001)   ' 2*pi (1/r = 1 sul cerchio)
+
+
+### `VECCALC.LINEWORK(F, r, a, b, tol)`
+
+VECCALC.LINEWORK(Spin, Ring, 0, 2 * PIVAL, 0.000001)    ' 2*pi
+
+
+### `VECCALC.FLUX(F, S, u0, u1, v0, v1, tol)`
+
+VECCALC.FLUX(Up, Bowl, 0, 1, 0, 1, 0.000001)   ' 1 (campo verticale su superficie piana)
+
+
+## Parità e verifica
+
+## Cosa non è qui, e perché
+| bisogno | dove |
+|---|---|
+| algebra vettoriale (somma, prodotto, norma, proiezione) | `VECTOR`, `VEC` |
+| matrici di trasformazione 3D | `XFORM` |
+| integrazione e ODE | `QUAD`, `ODE` |
+| differenziazione di una funzione di una variabile | `NUMERICAL.DIFFERENTIATE` |
 
 ### Finance-Guida-Utente
 
@@ -1293,6 +2520,163 @@ SUB Main()
 ## 4. Parità backend (2026-09-12)
 
 ## 5. Sessione 2026-09-16 — blocco VALIDATO DEFINITIVO
+
+### Optimize-Conic-Guida-Utente
+
+*Fonte: `Optimize-Conic-Guida-Utente`*
+
+
+## A cosa serve
+
+## Modello dei dati
+| oggetto | layout |
+|---|---|
+| `A` (IPM) | `m` righe × `n` colonne, **row-major** |
+| `Q` (QP) | `n × n` simmetrica, row-major |
+| `A`, `Q` sparse | **CSC 0-based**: `Xptr` ha `n+1` elementi, `Xrow`/`Xval` hanno `nnz` elementi |
+| `Cbar`, `Abar`, `Csoc`, `Asoc`, `Cexp`, `Aexp` (SDP) | blocchi **consecutivi**, offset deducibili dalle dimensioni |
+| `dims`, `socdims`, `ekind` | un valore per blocco |
+
+DIM ap(3) AS LONG, ar(4) AS LONG, av(4) AS DOUBLE
+ap(0)=0 : ap(1)=2 : ap(2)=4 : ap(3)=5     ' colonne 0,1,2 -> offset
+ar(0)=0 : ar(1)=1 : ar(2)=0 : ar(3)=1 : ar(4)=0
+av(0)=1 : av(1)=1 : av(2)=1 : av(3)=1 : av(4)=1
+
+
+## Convenzioni
+
+## IPM: LP e QP
+
+' min 2 g1 + 3 g2 + 4 g3  s.t.  g1+g2+g3 = 100, g1+g2 = 60, g >= 0
+DIM A(5) AS DOUBLE
+A(0)=1 : A(1)=1 : A(2)=1 : A(3)=1 : A(4)=1 : A(5)=0
+DIM b(1) AS DOUBLE : b(0)=100 : b(1)=60
+DIM c(2) AS DOUBLE : c(0)=2 : c(1)=3 : c(2)=4
+DIM g(2) AS DOUBLE, y(1) AS DOUBLE, z(2) AS DOUBLE
+PRINT OPTIMIZE.IPMLP(A, 2, 3, b, c, 1E-8, 1E-8, 1E-8, 200, g, y, z)   ' 0
+' g = (60, 0, 40), y = (4, -2)
+
+
+## SOCP
+| array | significato |
+|---|---|
+| `ctype(k)` | `0` = `R+` (una sola riga di `G`), `1` = cono quadratico (`SOC`), `2` = quadratico ruotato |
+| `cnm(k)` | dimensione del cono `k` |
+| `cmem()` | concatenazione degli indici dei membri dei **soli** coni SOC, in ordine di cono |
+
+' min t  s.t.  g = 30, (t, g) in SOC  ->  t = 30, lam = (1, -1), y = -1
+DIM E(1) AS DOUBLE : E(0)=0 : E(1)=1
+DIM d(0) AS DOUBLE : d(0)=30
+DIM c(1) AS DOUBLE : c(0)=1 : c(1)=0
+DIM ctype(0) AS LONG, cnm(0) AS LONG, cmem(1) AS LONG
+ctype(0)=1 : cnm(0)=2 : cmem(0)=0 : cmem(1)=1
+DIM G(3) AS DOUBLE : G(0)=1 : G(1)=0 : G(2)=0 : G(3)=1
+DIM hh(1) AS DOUBLE : hh(0)=0 : hh(1)=0
+DIM xs(1) AS DOUBLE, ys(0) AS DOUBLE, lam(1) AS DOUBLE
+PRINT OPTIMIZE.SOCPSOLVE(2, 1, E, d, c, 1, ctype, cnm, cmem, G, hh, 1E-8, 1E-8, 200, xs, ys, lam)
+
+
+## SDP e problema conico unificato
+
+min  c'x + sum_j <C_j, X_j> + sum_i <c_i, z_i>
+s.t. A x + sum_j <A_kj, X_j> + sum_i <a_ki, z_i> = b_k
+     x >= 0,  X_j >= 0 (PSD),  z_i in cono (SOC o esponenziale/potenza)
+
+| parametro | contenuto |
+|---|---|
+| `dims(j)` | ordine `d_j` del blocco PSD `j` |
+| `Cbar` | matrici `d_j × d_j` consecutive (row-major) |
+| `Abar` | per `k = 0..m-1`, per `j = 0..nb-1`: matrice `d_j × d_j` (lunghezza `m · Σ d_j²`) |
+| `socdims(i)` | dimensione `k_i` del blocco SOC `i` |
+| `Csoc`, `Asoc` | vettori `k_i` consecutivi; `Asoc` per `k`, per `i` (lunghezza `m · Σ k_i`) |
+| `ekind(i)` | `0` PEXP, `1` PPOW, `2` RPOW (3 componenti per blocco) |
+| `ealpha(i)` | parametro `alpha` del blocco |
+| `Cexp`, `Aexp` | 3 valori per blocco; `Aexp` per `k`, per `i` (lunghezza `3 · m · nep`) |
+
+' min X11 + 2 X22  s.t.  tr(X) = 2, X >= 0  ->  X = [[2,0],[0,0]], y = 1
+DIM b(0) AS DOUBLE : b(0)=2
+DIM dims(0) AS LONG : dims(0)=2
+DIM Cbar(3) AS DOUBLE, Abar(3) AS DOUBLE
+Cbar(0)=1 : Cbar(1)=0 : Cbar(2)=0 : Cbar(3)=2
+Abar(0)=1 : Abar(1)=0 : Abar(2)=0 : Abar(3)=1
+DIM Xb(3) AS DOUBLE, Sb(3) AS DOUBLE, y(0) AS DOUBLE, fb(0) AS LONG
+DIM dL(0) AS LONG, dD(0) AS DOUBLE, zA(0) AS DOUBLE, zC(0) AS DOUBLE
+PRINT OPTIMIZE.SDPSOLVE(1, 0, zA, b, zC, 1, dims, Cbar, Abar, 0, dL, dD, dD, 0, dL, dD, dD, dD, _
+      300, 1E-8, 1E-7, 1E-7, 1E-7, 1000, zA, Xb, y, Sb, dD, dD, dD, dD, fb)
+
+
+## Presolve LP
+
+h = OPTIMIZE.PRESOLVENEW(Aptr, Arow, Aval, b, c, m, n, 1E-9)
+IF h > 0 THEN
+  PRINT OPTIMIZE.PRESOLVECHANGED(h)          ' 0/1
+  DIM info(2) AS LONG
+  w = OPTIMIZE.PRESOLVEDIMS(h, info)         ' info = (mr, nr, nnz)
+  DIM rp(8) AS LONG, rr(32) AS LONG, rv(32) AS DOUBLE
+  DIM rb(8) AS DOUBLE, rc(8) AS DOUBLE
+  nr = OPTIMIZE.PRESOLVEREDUCED(h, rp, rr, rv, rb, rc)
+  ' ... risolvi il ridotto con IPMLP o un altro solver ...
+  w = OPTIMIZE.PRESOLVEPOSTSOLVE(h, xred, yred, xfull, yfull)
+  w = OPTIMIZE.PRESOLVEFREE(h)
+END IF
+
+
+## Forma standard
+
+min  1/2 xt' Qs xt + cs' xt     s.t.  As xt = bs,  xt >= 0
+
+
+DIM lx(2) AS DOUBLE, ux(2) AS DOUBLE      ' 0 <= x <= 70
+DIM lc(1) AS DOUBLE, uc(1) AS DOUBLE      ' due uguaglianze: 100 e 60
+lc(0)=100 : uc(0)=100 : lc(1)=60 : uc(1)=60
+h = OPTIMIZE.STDFORMBUILD(3, 2, c_int, dqL, dqL, dqD, 0, lx, ux, lc, uc, colptr, srow, val)
+
+
+## Riferimento completo delle funzioni
+| `EXPCONEBARRIER` | `(kind AS LONG, alpha AS DOUBLE, x() AS DOUBLE, f() AS DOUBLE)` | LONG | kind: 0=PEXP, 1=PPOW, 2=RPOW. Vettori dei membri: x()/s()/z() = 3. |
+| `EXPCONEGRAD` | `(kind AS LONG, alpha AS DOUBLE, x() AS DOUBLE, g() AS DOUBLE)` | LONG | g() = gradiente (3). |
+| `EXPCONEHESS` | `(kind AS LONG, alpha AS DOUBLE, x() AS DOUBLE, H() AS DOUBLE)` | LONG | H() = Hessiana 3x3 row-major (9). |
+| `EXPCONEDUALIN` | `(kind AS LONG, alpha AS DOUBLE, s() AS DOUBLE)` | LONG | 1 se s e' strettamente interno al cono duale K*. |
+| `EXPCONEDUALPOINT` | `(kind AS LONG, alpha AS DOUBLE, s() AS DOUBLE, W() AS DOUBLE)` | LONG | W() = punto di scaling (3). |
+| `EXPCONENTMETRICS` | `(kind AS LONG, alpha AS DOUBLE, z() AS DOUBLE, s() AS DOUBLE, m() AS DOUBLE)` | LONG | m() = 7 metriche (GAP, CONDZ, CONDS, REL, MZ, MS, WN). |
+| `EXPCONESCALING` | `(kind AS LONG, alpha AS DOUBLE, z() AS DOUBLE, s() AS DOUBLE, smu AS DOUBLE, out() AS DOUBLE)` | LONG | out() = Theta[9] | Thin[9] | rt[9] | scale (28). Ritorna il ramo (1 NT, 0 Hessiana, -1 errore). |
+| `IPMLP` | `(A() AS DOUBLE, m AS LONG, n AS LONG, b() AS DOUBLE, c() AS DOUBLE, tolGap AS DOUBLE, tolPfeas AS DOUBLE, tolDfeas AS DOUBLE, maxIter AS LONG, x() AS DOUBLE, y() AS DOUBLE, z() AS DOUBLE)` | LONG | A = m x n row-major. Uscite: x (n), y (m), z (n) — le prime due sono i primali, |
+| `IPMLPWARM` | `(A() AS DOUBLE, m AS LONG, n AS LONG, b() AS DOUBLE, c() AS DOUBLE, tolGap AS DOUBLE, tolPfeas AS DOUBLE, tolDfeas AS DOUBLE, maxIter AS LONG, x() AS DOUBLE, y() AS DOUBLE, z() AS DOUBLE, x0() AS DOUBLE, y0() AS DOUBLE)` | LONG | — |
+| `IPMQP` | `(A() AS DOUBLE, Q() AS DOUBLE, m AS LONG, n AS LONG, b() AS DOUBLE, c() AS DOUBLE, tolGap AS DOUBLE, tolPfeas AS DOUBLE, tolDfeas AS DOUBLE, maxIter AS LONG, x() AS DOUBLE, y() AS DOUBLE, z() AS DOUBLE)` | LONG | — |
+| `IPMQPWARM` | `(A() AS DOUBLE, Q() AS DOUBLE, m AS LONG, n AS LONG, b() AS DOUBLE, c() AS DOUBLE, tolGap AS DOUBLE, tolPfeas AS DOUBLE, tolDfeas AS DOUBLE, maxIter AS LONG, x() AS DOUBLE, y() AS DOUBLE, z() AS DOUBLE, x0() AS DOUBLE, y0() AS DOUBLE)` | LONG | — |
+| `IPMLPCSC` | `(Aptr() AS LONG, Arow() AS LONG, Aval() AS DOUBLE, m AS LONG, n AS LONG, b() AS DOUBLE, c() AS DOUBLE, tolGap AS DOUBLE, tolPfeas AS DOUBLE, tolDfeas AS DOUBLE, maxIter AS LONG, x() AS DOUBLE, y() AS DOUBLE, z() AS DOUBLE)` | LONG | Varianti sparse: A in CSC (Aptr n+1, Arow/ Aval per gli nnz, 0-based); |
+| `IPMQPCSC` | `(Aptr() AS LONG, Arow() AS LONG, Aval() AS DOUBLE, Qptr() AS LONG, Qrow() AS LONG, Qval() AS DOUBLE, m AS LONG, n AS LONG, b() AS DOUBLE, c() AS DOUBLE, tolGap AS DOUBLE, tolPfeas AS DOUBLE, tolDfeas AS DOUBLE, maxIter AS LONG, x() AS DOUBLE, y() AS DOUBLE, z() AS DOUBLE)` | LONG | — |
+| `SOCPSOLVE` | `(n AS LONG, p AS LONG, E() AS DOUBLE, d() AS DOUBLE, c() AS DOUBLE, ncones AS LONG, ctype() AS LONG, cnm() AS LONG, cmem() AS LONG, G() AS DOUBLE, h() AS DOUBLE, tolGap AS DOUBLE, tolFeas AS DOUBLE, maxIter AS LONG, x() AS DOUBLE, y() AS DOUBLE, lam() AS DOUBLE)` | LONG | E = p x n row-major, d (p), c (n). G = K x n row-major con K = somma delle |
+| `SOCPSOLVESP` | `(n AS LONG, p AS LONG, E() AS DOUBLE, d() AS DOUBLE, c() AS DOUBLE, ncones AS LONG, ctype() AS LONG, cnm() AS LONG, cmem() AS LONG, G() AS DOUBLE, h() AS DOUBLE, tolGap AS DOUBLE, tolFeas AS DOUBLE, maxIter AS LONG, x() AS DOUBLE, y() AS DOUBLE, lam() AS DOUBLE)` | LONG | — |
+| `SDPSOLVE` | `(m AS LONG, n AS LONG, A() AS DOUBLE, b() AS DOUBLE, c() AS DOUBLE, nb AS LONG, dims() AS LONG, Cbar() AS DOUBLE, Abar() AS DOUBLE, nsoc AS LONG, socdims() AS LONG, Csoc() AS DOUBLE, Asoc() AS DOUBLE, nep AS LONG, ekind() AS LONG, ealpha() AS DOUBLE, Cexp() AS DOUBLE, Aexp() AS DOUBLE, maxIter AS LONG, tol AS DOUBLE, rtolPri AS DOUBLE, rtolDual AS DOUBLE, rtolGap AS DOUBLE, nearRel AS DOUBLE, x() AS DOUBLE, Xbar() AS DOUBLE, y() AS DOUBLE, Sbar() AS DOUBLE, Zsoc() AS DOUBLE, Ssoc() AS DOUBLE, Zexp() AS DOUBLE, Sexp() AS DOUBLE, fb() AS LONG)` | LONG | min c'x + <C,X> + <c_i,z_i>  s.t.  A x + <A_kj,X_j> + <a_ki,z_i> = b_k, |
+| `PRESOLVENEW` | `(Aptr() AS LONG, Arow() AS LONG, Aval() AS DOUBLE, b() AS DOUBLE, c() AS DOUBLE, m AS LONG, n AS LONG, tol AS DOUBLE)` | LONG | PRESOLVENEW riduce min c'x, A x = b, x >= 0 (A in CSC, 0-based) e ritorna un |
+| `PRESOLVECHANGED` | `(h AS LONG)` | LONG | — |
+| `PRESOLVEDIMS` | `(h AS LONG, out_() AS LONG)` | LONG | out(0)=mr, out(1)=nr, out(2)=nnz(Ar). |
+| `PRESOLVEREDUCED` | `(h AS LONG, Arptr() AS LONG, Arrow() AS LONG, Arval() AS DOUBLE, br() AS DOUBLE, cr() AS DOUBLE)` | LONG | Copia il ridotto in CSC: Arptr (nr+1), Arrow/Arval (nnz), br (mr), cr (nr). |
+| `PRESOLVEPOSTSOLVE` | `(h AS LONG, xred() AS DOUBLE, yred() AS DOUBLE, xfull() AS DOUBLE, yfull() AS DOUBLE)` | LONG | Riporta la soluzione ridotta (xred nr, yred mr) nello spazio originale. |
+| `PRESOLVEPOSTSOLVEDIR` | `(h AS LONG, rred() AS DOUBLE, yred() AS DOUBLE, rfull() AS DOUBLE, yfull() AS DOUBLE)` | LONG | Come sopra, per una direzione (raggio di Farkas) omogenea. |
+| `PRESOLVEFREE` | `(h AS LONG)` | LONG | — |
+| `STDFORMBUILD` | `(nvar AS LONG, ncon AS LONG, c_int() AS DOUBLE, qi() AS LONG, qj() AS LONG, qv() AS DOUBLE, nq AS LONG, lx() AS DOUBLE, ux() AS DOUBLE, lc() AS DOUBLE, uc() AS DOUBLE, colptr() AS LONG, srow() AS LONG, val() AS DOUBLE)` | LONG | STDFORMBUILD prende l'LP/QP utente (vincoli EQ/LO/UP/free, bounds, Q come |
+| `STDFORMINFO` | `(h AS LONG, out_() AS DOUBLE)` | LONG | out(0)=m, out(1)=n, out(2)=nvar, out(3)=ncon, out(4)=cfix. |
+| `STDFORMGETA` | `(h AS LONG, A_() AS DOUBLE)` | LONG | — |
+| `STDFORMGETB` | `(h AS LONG, b_() AS DOUBLE)` | LONG | — |
+| `STDFORMGETC` | `(h AS LONG, c_() AS DOUBLE)` | LONG | — |
+| `STDFORMGETQ` | `(h AS LONG, Q_() AS DOUBLE)` | LONG | Q densa n x n; ritorna -1 se il problema e' un LP (nessuna Q). |
+| `STDFORMMAPX` | `(h AS LONG, xt() AS DOUBLE, x_() AS DOUBLE)` | LONG | — |
+| `STDFORMMAPDIR` | `(h AS LONG, dxt() AS DOUBLE, dxt_out() AS DOUBLE)` | LONG | — |
+| `STDFORMMAPY` | `(h AS LONG, ystd() AS DOUBLE, y_() AS DOUBLE)` | LONG | — |
+| `STDFORMFREE` | `(h AS LONG)` | LONG | — |
+
+## Parità e verifica
+
+## Cosa non è qui, e perché
+| bisogno | dove |
+|---|---|
+| simplesso su tableau, LP con `<=`, analisi fine (duali, costi ridotti, Gomory) | `optimize.inc` / `mathprog.inc` |
+| euristiche e MIP classici (packing, routing, scheduling) | `ortools.inc` (106 funzioni) |
+| minimi quadrati, BFGS, Nelder-Mead, ricerca globale | `optimize.inc` |
+| KMeans, PCA, SVM, regressione | `MULTIVARIATE` / `STATSX` |
+| algebra lineare densa/sparsa | `LINALG` / `MATRIX` |
 
 ### Optimize-Manual
 
@@ -1793,6 +3177,129 @@ IMPORT OPTIMIZE
 
 ## 7. Riferimenti
 
+### QUAT-Guida-Utente
+
+*Fonte: `QUAT-Guida-Utente`*
+
+
+## A cosa serve
+
+## Modello dei dati
+
+TYPE Quat
+  X AS DOUBLE
+  Y AS DOUBLE
+  Z AS DOUBLE
+  W AS DOUBLE
+END TYPE
+
+DIM q AS Quat
+q = QUAT.FROMAXISANGLE(0, 0, 1, 90 * 0.017453292519943295)   ' 90° attorno a +Z
+PRINT q.X; " "; q.Y; " "; q.Z; " "; q.W                       ' 0 0 0.707107 0.707107
+
+
+## Convenzioni da tenere presenti
+| aspetto | convenzione |
+|---|---|
+| ordine dei campi | `X, Y, Z, W` — vettore prima, scalare dopo |
+| rotazioni | il quaternione deve essere **normalizzato** (`NORMALIZE`, o gli esempi `FROM*`) |
+| angoli | **radiante** (usare `D2R` o `MATH.DEG2RAD`) |
+| matrici 3×3 | **row-major**: `m(0..2)` prima riga, `m(3..5)` seconda, `m(6..8)` terza |
+| composizione | `MUL(a, b)` applica **prima `b`, poi `a`** (prodotto di Hamilton) |
+| verso di rotazione | antiorario guardando l'asse dalla punta verso l'origine (regola della mano destra) |
+| `FROMDIR` | porta **+Z** sulla direzione indicata (convenzione camera) |
+| `FROMTWOVECTORS` | porta il primo vettore sul secondo, qualunque coppia |
+| interpolazione | `t` in `[0, 1]`; `SLERP` sceglie l'emisfero corto |
+
+## Costruzione di una rotazione
+
+' 1) angolo attorno a un asse (il caso più comune)
+yaw = QUAT.FROMAXISANGLE(0, 0, 1, MATH.DEG2RAD(90))
+
+' 2) direzione da puntare: la camera guarda +Z, il bersaglio è (1,1,1)
+look = QUAT.FROMDIR(1, 1, 1)
+
+' 3) da un vettore a un altro
+q = QUAT.FROMTWOVECTORS(1, 0, 0, 0, 1, 0)     ' +X su +Y = quarto di giro attorno a Z
+
+' 4) quattro componenti già note (es. lette da un file o da una rete)
+q = QUAT.NORMALIZE(QUAT.MAKE(0.5, -0.5, 0.5, 0.5))
+
+
+## Algebra
+
+## Interpolazione
+
+a = QUAT.FROMAXISANGLE(0, 0, 1, 0)                 ' identità
+b = QUAT.FROMAXISANGLE(0, 0, 1, MATH.DEG2RAD(90))
+FOR i = 0 TO 4
+  q = QUAT.SLERP(a, b, i / 4)
+  QUAT.ROTATEVEC3(q, 1, 0, 0, v)                   ' il muso descrive l'arco
+NEXT i
+
+
+## Matrice e applicazione a un vettore
+
+DIM m(8) AS DOUBLE, v(2) AS DOUBLE
+q = QUAT.FROMAXISANGLE(0, 0, 1, MATH.DEG2RAD(90))
+QUAT.TOMAT3(q, m)          ' riga 0 = 0 -1 0, riga 1 = 1 0 0, riga 2 = 0 0 1
+QUAT.ROTATEVEC3(q, 1, 0, 0, v)
+PRINT v(0); " "; v(1); " "; v(2)   ' 0  1  0
+
+
+## Errori e casi limite
+| situazione | cosa succede |
+|---|---|
+| `INVERSE` di un quaternione nullo | `st(0) = -1`, il valore restituito è `(0,0,0,0)` |
+| `NORMALIZE` di un quaternione nullo | restituisce l'identità `(0,0,0,1)` (scelta della libreria C) |
+| `TOMAT3` con `m()` più corto di 9 | ritorna `-1`, non scrive nulla |
+| `ROTATEVEC3` con `out_()` più corto di 3 | ritorna `-1`, non scrive nulla |
+| `FROMDIR(0,0,0)` | direzione non definita: il risultato non è significativo |
+| `SLERP` fra quaternioni opposti (`dot ≈ -1`) | il percorso non è unico; `SLERP` usa l'emisfero corto |
+| rotazione con quaternione non normalizzato | la matrice risultante non è una rotazione (può contenere scala) |
+
+## Riferimento completo delle funzioni
+| funzione | firma | ritorna | significato |
+|---|---|---|---|
+| `IDENTITY` | `()` | Quat | `(0,0,0,1)` |
+| `MAKE` | `(x, y, z, w AS DOUBLE)` | Quat | quaternione esplicito, **non** normalizzato |
+| `FROMDIR` | `(x, y, z AS DOUBLE)` | Quat | porta +Z sulla direzione indicata |
+| `FROMAXISANGLE` | `(ax, ay, az, radians AS DOUBLE)` | Quat | rotazione di `radians` attorno all'asse |
+| `FROMTWOVECTORS` | `(fx, fy, fz, tx, ty, tz AS DOUBLE)` | Quat | rotazione che porta il primo vettore sul secondo |
+| `FROMMAT3` | `(m() AS DOUBLE)` | Quat | quaternione della matrice 3×3 row-major |
+| funzione | firma | ritorna | significato |
+|---|---|---|---|
+| `ADD` | `(a, b AS Quat)` | Quat | somma componente per componente |
+| `SCALE` | `(a AS Quat, s AS DOUBLE)` | Quat | moltiplicazione per uno scalare |
+| `NEG` | `(a AS Quat)` | Quat | opposto (stessa rotazione) |
+| `MUL` | `(a, b AS Quat)` | Quat | prodotto di Hamilton: prima `b`, poi `a` |
+| `CONJUGATE` | `(a AS Quat)` | Quat | coniugato `(-x,-y,-z,w)` |
+| `DOT` | `(a, b AS Quat)` | DOUBLE | prodotto scalare a 4 componenti |
+| `LENGTH` | `(a AS Quat)` | DOUBLE | norma |
+| `NORMALIZE` | `(a AS Quat)` | Quat | porta la norma a 1 (nullo → identità) |
+| `INVERSE` | `(a AS Quat, st() AS LONG)` | Quat | inversa; `st(0)`: 0 = ok, -1 = nullo |
+| funzione | firma | ritorna | significato |
+|---|---|---|---|
+| `LERP` | `(a, b AS Quat, t AS DOUBLE)` | Quat | lineare + rinormalizzazione |
+| `SLERP` | `(a, b AS Quat, t AS DOUBLE)` | Quat | sferica, emisfero corto |
+| funzione | firma | ritorna | significato |
+|---|---|---|---|
+| `TOMAT3` | `(a AS Quat, m() AS DOUBLE)` | LONG | matrice 3×3 row-major (0 = ok, -1 = array corto) |
+| `ROTATEVEC3` | `(a AS Quat, x, y, z AS DOUBLE, out_() AS DOUBLE)` | LONG | ruota il vettore, 3 double in `out_()` |
+
+## Un esempio completo
+
+## Parità e verifica
+
+## Cosa non è qui, e perché
+| bisogno | dove |
+|---|---|
+| rotazione di un poligono nel piano | `GEO.ROTATE` (gradi, attorno all'origine) |
+| vettori 2D/3D elementari (somma, prodotto vettoriale, norma) | `VECTOR` |
+| matrici, decomposizioni, esponenziale di matrice | `MATRIX`, `LINALG` |
+| trasformazioni di scena e proiezione prospettica | `GFX3D` (motore grafico) |
+| assetto da misure (accelerometro/giroscopio, filtro) | si compone qui: `normalize` dell'integrazione + `SLERP` di correzione |
+
 ### Spatial-Guida-Utente
 
 *Fonte: `Spatial-Guida-Utente`*
@@ -1858,11 +3365,6 @@ PRINT MATRIX.GETVALUE(m, 1, 1)
 
 *Fonte: `Special-Manual`*
 
-> **SPECIAL è un namespace FFI**, non un builtin: l'implementazione C è in
-> `shared/libs/math` (sorgenti inclusi, `libgmbmath`), l'export BASIC è
-> `shared/include/special.inc`. Serve `IMPORT SPECIAL`; la sintassi
-> `SPECIAL.NOME(...)` è invariata rispetto al vecchio builtin.
-
 
 ## 1. Riferimento funzioni
 | NOME | SINTASSI / ESEMPIO | DESCRIZIONE |
@@ -1908,6 +3410,16 @@ SUB Main()
 
 
 ## 3. Note e limitazioni
+
+## 4. Integrali e funzioni ellittiche, Bessel sferiche (2026-11-07)
+| gruppo | funzioni |
+|---|---|
+| Carlson | `ELLIPTICRF(x,y,z)`, `ELLIPTICRD(x,y,z)` |
+| integrali completi | `ELLIPTICK(k)`, `ELLIPTICE(k)` |
+| integrali incompleti | `ELLIPTICF(phi,k)`, `ELLIPTICEINC(phi,k)` |
+| Jacobi | `JACOBIAM(u,k)`, `JACOBISN(u,k)`, `JACOBICN(u,k)`, `JACOBIDN(u,k)` |
+| nome | `ELLIPTICNOME(k)` |
+| Bessel sferiche | `BESSELSPHJ(n,x)`, `BESSELSPHY(n,x)` |
 
 ### Stats-Manual
 

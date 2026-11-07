@@ -62,7 +62,7 @@
 
 | Cap. | Titolo | pp | Note | Esempi (presenti/citati) |
 |---|---|---|---|---|
-| V.27 | Matematica e statistica | 28 | 17 | 58/58 |
+| V.27 | Matematica e statistica | 59 | 25 | 58/58 |
 | V.28 | Segnali, trading e blockchain | 12 | 8 | 33/33 |
 | V.29 | Date, ore e sistema | 10 | 4 | 40/40 |
 | V.30 | Compressione e dati binari | 4 | 2 | 14/14 |
@@ -317,6 +317,14 @@ assorbita (non si stampa due volte).
 - `ABS-Guida-Utente` — sezione
 - `Analysis-Manual` — sezione
 - `BITS-Guida-Utente` — sezione
+- `COMPLEX-Guida-Utente` — sezione
+- `XFORM-Guida-Utente` — sezione
+- `SPECTRAL-Guida-Utente` — sezione
+- `VEC-Guida-Utente` — sezione
+- `SPARSE-Guida-Utente` — sezione
+- `QUAD-Guida-Utente` — sezione
+- `ODE-Guida-Utente` — sezione
+- `VECCALC-Guida-Utente` — sezione
 - `Finance-Guida-Utente` — sezione
 - `Funzioni-Matematiche-Guida-Utente` — sezione
 - `KdTree-Manual` — sezione
