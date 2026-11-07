@@ -171,6 +171,16 @@ static void ctl_as_list(ctx_t* c, gmb_expr_t* e)
         sb_put(&c->out, "))");
         return;
     }
+    /* Stringa (letterale o variabile) come argomento-lista: lista di UNA voce.
+     * Prima finiva in gmb_val_as_list(gmb_string_t) → errore di compilazione
+     * ("passing 'gmb_string_t' to parameter of type 'gmb_val_t'"). */
+    if (e && (e->kind == GMB_EXPR_STR ||
+              (e->kind == GMB_EXPR_VAR && e->var && (lookup_var(c, e->var) == NULL || lookup_var(c, e->var)->type == TY_STR)))) {
+        sb_put(&c->out, "gmb_list_from_strings((const gmb_string_t[]){ ");
+        emit_str_operand(c, e);
+        sb_put(&c->out, " }, 1)");
+        return;
+    }
     sb_put(&c->out, "gmb_val_as_list(");
     emit_expr(c, e);
     sb_put(&c->out, ")");
@@ -236,8 +246,7 @@ static int tui_spec_val(const char* spec, const char* key, char* out, int cap)
     return 0;
 }
 static void emit_tui_props(ctx_t* c, gmb_stmt_t* s)
-{
-    if (!s->set_attr || s->n_set_attr<=0 || !s->set_attr[0] || !*s->set_attr[0]) return;
+{    if (!s->set_attr || s->n_set_attr<=0 || !s->set_attr[0] || !*s->set_attr[0]) return;
     const char* spec=s->set_attr[0];
     char nm[64]={0}, tg[64]={0}, tp[128]={0}, ti[32]={0}, vis[32]={0}, en[32]={0}, ts[32]={0};
     unsigned flags=0;
@@ -1141,4 +1150,24 @@ int emit_control_stmt(ctx_t* c, gmb_stmt_t* s)
     }
     (void)ctl_free_csv;
     return 1;
+}
+
+/* Clausole dichiarate del controllo (proprietà base + spec CSS-like/metric): le applica
+ * l'EMITTER CHIAMANTE dopo emit_control_stmt, così valgono anche per i rami che fanno
+ * `return 0` prima della coda (CHART, CANDLESTICK, QR, FKEYBAR, TBROWSE, ...).
+ * Prima quelle clausole (compreso NAME) andavano perse → `CONTROL SET "nome"` non
+ * trovava il controllo e la visibilità per scheda non funzionava. */
+void emit_control_clauses(ctx_t* c, gmb_stmt_t* s)
+{
+    if (!c || !s || s->kind != GMB_STMT_CONTROL) return;
+    emit_tui_props(c, s);
+    if (s->set_attr && s->n_set_attr > 0 && s->set_attr[0] && *s->set_attr[0]) {
+        ind(c);
+        sb_put(&c->out, "gmb_form_apply_last_style(\"");
+        for (const char* _pp = s->set_attr[0]; *_pp; _pp++) {
+            if (*_pp == '"' || *_pp == '\\') sb_put(&c->out, "\\");
+            char _ch[2] = { *_pp, 0 }; sb_put(&c->out, _ch);
+        }
+        sb_put(&c->out, "\");\n");
+    }
 }

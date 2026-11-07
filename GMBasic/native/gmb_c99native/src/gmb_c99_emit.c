@@ -23912,7 +23912,8 @@ static void st_on_window(ctx_t* c, gmb_stmt_t* s) {
 
 /* Controlli TUI: delega al file di dominio gmb_c99_emit_controls.c (§0quater). */
 int emit_control_stmt(ctx_t* c, gmb_stmt_t* s);
-static void st_control(ctx_t* c, gmb_stmt_t* s) { (void)emit_control_stmt(c, s); }
+void emit_control_clauses(ctx_t* c, gmb_stmt_t* s);
+static void st_control(ctx_t* c, gmb_stmt_t* s) { (void)emit_control_stmt(c, s); emit_control_clauses(c, s); }
 
 static void st_set(ctx_t* c, gmb_stmt_t* s) {
 /* SET SHELL ON|OFF — opt-in per SYSTEM.SHELL/EXEC (runtime condiviso gmb_shell.c).
