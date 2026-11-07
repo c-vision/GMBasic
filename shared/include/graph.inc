@@ -130,3 +130,14 @@ DECLARE FUNCTION LINKKATZ LIB "gmbgraph" ALIAS "gfx_link_katz" (w() AS DOUBLE, n
 PUBLIC FUNCTION ABSENT() AS DOUBLE
     RETURN 1000000000000000000000000000000.0
 END FUNCTION
+
+' ── Helper di contenitore (2026-11-06) ──────────────────────────────────────
+' La rappresentazione è la matrice: queste tre funzioni evitano i cicli in BASIC
+' per le operazioni che la matrice non dà in una chiamata.
+' Cammino src→dst ricostruito dai predecessori di DIJKSTRA/BELLMANFORD
+' (prev(i) = predecessore, -1 per radice/assente). out() riceve i nodi.
+DECLARE FUNCTION FINDPATH LIB "gmbgraph" ALIAS "gfx_path_reconstruct" (prev() AS LONG, n AS LONG, src AS LONG, dst AS LONG, out_() AS LONG) AS LONG
+' Elenco degli archi (triangolo superiore): eu/ev/ew per ogni arco presente.
+DECLARE FUNCTION EDGELIST LIB "gmbgraph" ALIAS "gfx_edge_list" (w() AS DOUBLE, n AS LONG, eu() AS LONG, ev() AS LONG, ew() AS DOUBLE) AS LONG
+' Vicini di v (riga v della matrice 0/1).
+DECLARE FUNCTION NEIGHBORLIST LIB "gmbgraph" ALIAS "gfx_neighbors" (adj() AS LONG, n AS LONG, v AS LONG, out_() AS LONG) AS LONG
