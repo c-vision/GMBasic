@@ -76,7 +76,7 @@ public sealed class CGfxGraphicsService : IGraphicsService
     [DllImport(Lib)] private static extern void gmb_gfx_sprite_draw(int id);
     [DllImport(Lib)] private static extern int gmb_gfx_sprite_pixels_to_array(int src, int[] outv, int max);
     [DllImport(Lib)] private static extern int gmb_gfx_collide(int id1, int id2);
-    [DllImport(Lib)] private static extern int gmb_gfx_take_collision(out int id1, out int id2, out float x, out float y);
+    [DllImport(Lib)] private static extern int gmb_gfx_take_collisions(int[] id1, int[] id2, float[] x, float[] y, int max);
     [DllImport(Lib)] private static extern int gmb_gfx_chart_create();
     [DllImport(Lib)] private static extern void gmb_gfx_chart_plot(int handle, double[] xs, double[] ys, int count, string label);
     [DllImport(Lib)] private static extern void gmb_gfx_chart_show(int handle, int x, int y);
@@ -1090,9 +1090,15 @@ public sealed class CGfxGraphicsService : IGraphicsService
     }
     public SpriteCollisionHit[] TakeLastCollisions()
     {
-        // Collisione rilevata dal motore C all'ultimo SYNC (ON SPRITE COLLISION): prima delle hit esplicite di COLLIDE.
+        // Collisioni rilevate dal motore C all'ultimo SYNC (ON SPRITE COLLISION): prima delle hit esplicite di COLLIDE.
         var list = new System.Collections.Generic.List<SpriteCollisionHit>();
-        try { if (gmb_gfx_take_collision(out var c1, out var c2, out var cx, out var cy) != 0) list.Add(new SpriteCollisionHit(c1, c2, cx, cy)); } catch { }
+        try
+        {
+            var i1 = new int[256]; var i2 = new int[256]; var px = new float[256]; var py = new float[256];
+            var n = gmb_gfx_take_collisions(i1, i2, px, py, 256);
+            for (var k = 0; k < n; k++) list.Add(new SpriteCollisionHit(i1[k], i2[k], px[k], py[k]));
+        }
+        catch { }
         list.AddRange(_lastCollisions);
         _lastCollisions.Clear();
         return list.ToArray();

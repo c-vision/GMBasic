@@ -182,12 +182,15 @@ int  gmb_gfx_sprite_count(void);
 /* ---- Sync / input ---- */
 /* SYNC: presenta il frame. In headless e' un no-op immediato. */
 void gmb_gfx_sync(void);
-/* ON SPRITE COLLISION: handler (x, y) invocato (una volta per SYNC) con la prima coppia di sprite visibili con i
- * rettangoli sovrapposti rilevata dal SYNC precedente; (x, y) = centro del rettangolo dello sprite con id minore. */
+/* ON SPRITE COLLISION / COLLISIONS: handler C invocati al SYNC successivo a quello che ha rilevato le collisioni.
+ * Singolare: (x, y) della PRIMA coppia (centro dello sprite con id minore). Plurale: id unici degli sprite coinvolti.
+ * NULL = nessun handler. */
 typedef void (*gmb_gfx_collision_fn)(double x, double y);
+typedef void (*gmb_gfx_collisions_fn)(const double* ids, int n);
 void gmb_gfx_on_sprite_collision(gmb_gfx_collision_fn cb);
-/* Senza handler C: preleva la collisione rilevata dall'ultimo SYNC (1 = presente, riempie id1/id2/x/y). */
-int  gmb_gfx_take_collision(int* id1, int* id2, float* x, float* y);
+void gmb_gfx_on_sprite_collisions(gmb_gfx_collisions_fn cb);
+/* Senza handler C: preleva le coppie rilevate dall'ultimo SYNC (id1, id2, x, y); ritorna quante (max `max`). */
+int  gmb_gfx_take_collisions(int* id1, int* id2, float* x, float* y, int max);
 /* Present SDL (also used by the TICK loop: one present per frame). */
 void gmb_gfx_present_tick(void);
 /* Cattura offscreen pagina+sprite GPU (SAVE/IMAGEGET): 0 = ok, -1 = usa la pagina. */
