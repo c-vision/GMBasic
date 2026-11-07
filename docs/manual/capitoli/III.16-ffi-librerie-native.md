@@ -207,14 +207,31 @@ DECLARE FUNCTION ns_add LIB "libvec" ALIAS "vec_add" (a AS LONG, b AS LONG) AS L
 
 ## 4bis. Array BYREF (2026-09-28)
 
-DECLARE SUB VecFill LIB "libvec_module" ALIAS "vec_fill" (buf() AS DOUBLE, n AS LONG)
+DECLARE SUB VecFill LIB "libvec_module" ALIAS "vec_fill" (buf() AS DOUBLE)
 DIM v(5) AS DOUBLE
-VecFill(v, 5)          ' vec_fill (native C): void vec_fill(double* buf, long n)
+VecFill(v)             ' vec_fill (native C): void vec_fill(double* buf, int64_t n)
+
+**Estensioni automatiche (2026-11-06).** Un parametro `a()` emette verso la funzione nativa, subito dopo il puntatore, le estensioni d0..dN-1 (int64) dell'array concreto, per OGNI rango: `DIM v(5)` passa `(ptr, 6)`, una matrice `DIM m(1, 1)` passa `(ptr, 2, 2)`, un cubo `(ptr, d0, d1, d2)`. La DECLARE non elenca mai le dimensioni. Ogni array nella firma (anche di sola uscita) porta le proprie estensioni. Il rango si legge dal valore array, quindi vale anche attraverso una SUB su tutte e 4 le gambe: C99Native inferisce i ranghi dei parametri `a()` dai call-site (dal 2026-11-07) e, se lo stesso parametro riceve array di rango diverso, sceglie la variante a runtime. Le librerie con firma C fissa si dichiarano `DECLARE NATIVE` (nessuna estensione).
 
 
 ### `DECLARE NATIVE` — ABI esatta (2026-11-06)
 
-`DECLARE NATIVE FUNCTION|SUB ...` (anche `PUBLIC DECLARE NATIVE ...`) dichiara una funzione la cui firma C resta ESATTAMENTE quella scritta: nessun adattamento automatico dei parametri array. Serve per le API di sistema (`kernel32`, `user32`, `ws2_32`, ...) e per le librerie di terzi con firma C fissa. `NATIVE` è un modificatore contestuale (non una parola riservata). Quando le estensioni automatiche degli array saranno attive, solo le DECLARE senza `NATIVE` emetteranno `d0..dN-1` dopo ogni puntatore.
+**Contratto delle estensioni.** Il compilatore emette tante estensioni quante sono le dimensioni dell'array passato (rango); la funzione C ha invece un numero fisso di parametri. Quindi: una funzione che prende la forma dal runtime (`a()` senza interi di dimensione nella DECLARE) deve aspettarsi il rango dei suoi chiamanti; una funzione che definisce da sola la forma dei suoi array (parametri espliciti `rows`, `cols`, `batch`, `n`, `m`, o che accetta matrici di qualsiasi rango) va dichiarata `NATIVE`: riceve il buffer contiguo row-major e le dimensioni esplicite, come prima. Non si impone ai chiamanti di usare array piatti.
+
+`DECLARE NATIVE FUNCTION|SUB ...` (anche `PUBLIC DECLARE NATIVE ...`) dichiara una funzione la cui firma C resta ESATTAMENTE quella scritta: nessun adattamento automatico dei parametri array. Serve per le API di sistema (`kernel32`, `user32`, `ws2_32`, ...) e per le librerie di terzi con firma C fissa. `NATIVE` è un modificatore contestuale (non una parola riservata). Le DECLARE senza `NATIVE` emettono invece `d0..dN-1` dopo ogni puntatore array (vedi §4bis).
+
+**Regola per una libreria dell'utente.** Guardate la firma C:
+
+| C | DECLARE |
+|---|---|
+| `double f(const double *a, int n)` — `n` è un parametro “vostro” | `DECLARE NATIVE FUNCTION F ... (a() AS DOUBLE, n AS LONG) AS DOUBLE` + `F(a, n)` |
+| `double f(const double *a, int64_t a_ext)` — l'estensione è il conteggio | `DECLARE FUNCTION F ... (a() AS DOUBLE) AS DOUBLE` + `F(a)` |
+
+La seconda forma è comoda per vettori e matrici (il compilatore passa `a_ext`, `a_ext2`, …),
+ma lega la funzione al rango dei chiamanti. Non mescolate i due stili nella stessa firma:
+scegliete `NATIVE` se la funzione ha dimensioni semantiche proprie (taglie di matrice,
+numero di vertici, vincoli), auto-extents se il conteggio è puro duplicato dell'array. In
+caso di dubbio, `NATIVE`: è sempre corretto e non dipende dal rango.
 
 ## 4ter. STRING — parametro e ritorno (2026-09-28)
 
@@ -534,14 +551,29 @@ DECLARE FUNCTION ns_add LIB "libvec" ALIAS "vec_add" (a AS LONG, b AS LONG) AS L
 
 ## 4bis. Array BYREF (2026-09-28)
 
-DECLARE SUB VecFill LIB "libvec_module" ALIAS "vec_fill" (buf() AS DOUBLE, n AS LONG)
+DECLARE SUB VecFill LIB "libvec_module" ALIAS "vec_fill" (buf() AS DOUBLE)
 DIM v(5) AS DOUBLE
-VecFill(v, 5)          ' vec_fill (native C): void vec_fill(double* buf, long n)
+VecFill(v)             ' vec_fill (native C): void vec_fill(double* buf, int64_t n)
+
+**Estensioni automatiche (2026-11-06).** Un parametro `a()` emette verso la funzione nativa, subito dopo il puntatore, le estensioni d0..dN-1 (int64) dell'array concreto, per OGNI rango: `DIM v(5)` passa `(ptr, 6)`, una matrice `DIM m(1, 1)` passa `(ptr, 2, 2)`, un cubo `(ptr, d0, d1, d2)`. La DECLARE non elenca mai le dimensioni. Ogni array nella firma (anche di sola uscita) porta le proprie estensioni. Il rango si legge dal valore array, quindi vale anche attraverso una SUB su tutte e 4 le gambe: C99Native inferisce i ranghi dei parametri `a()` dai call-site (dal 2026-11-07) e, se lo stesso parametro riceve array di rango diverso, sceglie la variante a runtime. Le librerie con firma C fissa si dichiarano `DECLARE NATIVE` (nessuna estensione).
 
 
 ### `DECLARE NATIVE` — ABI esatta (2026-11-06)
 
-`DECLARE NATIVE FUNCTION|SUB ...` (anche `PUBLIC DECLARE NATIVE ...`) dichiara una funzione la cui firma C resta ESATTAMENTE quella scritta: nessun adattamento automatico dei parametri array. Serve per le API di sistema (`kernel32`, `user32`, `ws2_32`, ...) e per le librerie di terzi con firma C fissa. `NATIVE` è un modificatore contestuale (non una parola riservata). Quando le estensioni automatiche degli array saranno attive, solo le DECLARE senza `NATIVE` emetteranno `d0..dN-1` dopo ogni puntatore.
+`DECLARE NATIVE FUNCTION|SUB ...` (anche `PUBLIC DECLARE NATIVE ...`) dichiara una funzione la cui firma C resta ESATTAMENTE quella scritta: nessun adattamento automatico dei parametri array. Serve per le API di sistema (`kernel32`, `user32`, `ws2_32`, ...) e per le librerie di terzi con firma C fissa. `NATIVE` è un modificatore contestuale (non una parola riservata). Le DECLARE senza `NATIVE` emettono invece `d0..dN-1` dopo ogni puntatore array (vedi §4bis).
+
+**Regola per una libreria dell'utente.** Guardate la firma C:
+
+| C | DECLARE |
+|---|---|
+| `double f(const double *a, int n)` — `n` è un parametro “vostro” | `DECLARE NATIVE FUNCTION F ... (a() AS DOUBLE, n AS LONG) AS DOUBLE` + `F(a, n)` |
+| `double f(const double *a, int64_t a_ext)` — l'estensione è il conteggio | `DECLARE FUNCTION F ... (a() AS DOUBLE) AS DOUBLE` + `F(a)` |
+
+La seconda forma è comoda per vettori e matrici (il compilatore passa `a_ext`, `a_ext2`, …),
+ma lega la funzione al rango dei chiamanti. Non mescolate i due stili nella stessa firma:
+scegliete `NATIVE` se la funzione ha dimensioni semantiche proprie (taglie di matrice,
+numero di vertici, vincoli), auto-extents se il conteggio è puro duplicato dell'array. In
+caso di dubbio, `NATIVE`: è sempre corretto e non dipende dal rango.
 
 ## 4ter. STRING — parametro e ritorno (2026-09-28)
 

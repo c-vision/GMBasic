@@ -17,6 +17,57 @@
 #  include <ffi.h>          /* libffi-dev */
 #endif
 
+/* Cache delle `ffi_cif` (2026-11-07, banco FFI). `ffi_prep_cif` costa ~7 ns per
+ * chiamata e, con la cache, il solo `ffi_call` resta ~16 ns. Chiave: (n, maschera
+ * int64 per posizione, kind del ritorno) — copre tutte le firme omogenee/miste scalari.
+ * La tabella è fissa (64 firme distinte) e le `ffi_type*` restano vive quanto la voce:
+ * libffi le referenzia per tutta la vita del cif. VM/C è single-thread per VM. */
+#define GMB_CIF_CACHE_MAX 64
+typedef struct {
+    int used;
+    int n;
+    int ret_is_int;
+    uint64_t int_mask;
+    ffi_cif cif;
+    ffi_type** types;   /* array allocato, posseduto dalla voce */
+} gmb_cif_entry_t;
+
+static gmb_cif_entry_t g_cif_cache[GMB_CIF_CACHE_MAX];
+static int g_cif_next = 0;
+
+static gmb_cif_entry_t* gmb_cif_cache_get(int n, uint64_t mask, int ret_is_int)
+{
+    for (int i = 0; i < GMB_CIF_CACHE_MAX; i++)
+    {
+        gmb_cif_entry_t* e = &g_cif_cache[i];
+        if (e->used && e->n == n && e->ret_is_int == ret_is_int && e->int_mask == mask)
+            return e;
+    }
+    gmb_cif_entry_t* e = &g_cif_cache[g_cif_next];
+    g_cif_next = (g_cif_next + 1) % GMB_CIF_CACHE_MAX;
+    free(e->types);
+    e->types = NULL;
+    e->used = 0;
+    e->n = n;
+    e->ret_is_int = ret_is_int;
+    e->int_mask = mask;
+    if (n > 0)
+    {
+        e->types = (ffi_type**)malloc((size_t)n * sizeof(ffi_type*));
+        if (!e->types) return NULL;
+        for (int i = 0; i < n; i++)
+            e->types[i] = (mask & (1ull << i)) ? &ffi_type_sint64 : &ffi_type_double;
+    }
+    ffi_type* rt = ret_is_int ? &ffi_type_sint64 : &ffi_type_double;
+    if (ffi_prep_cif(&e->cif, FFI_DEFAULT_ABI, (unsigned)n, rt, e->types) != FFI_OK)
+    {
+        free(e->types); e->types = NULL;
+        return NULL;
+    }
+    e->used = 1;
+    return e;
+}
+
 int gmb_call_enabled(void)
 {
     /* Sempre attivo (2026-11-06): l'interruttore via env `GMB_FFI_LIBFFI=0` violava la regola
@@ -28,24 +79,16 @@ int gmb_call_enabled(void)
 int gmb_call_invoke(void* fn, int n, const unsigned char* is_int,
                     void* const* vals, int ret_is_int, void* ret)
 {
-    if (!fn || !ret || n < 0) return -1;
-    ffi_cif cif;
-    ffi_type* local_types[32];
-    ffi_type** types = local_types;
-    if (n > 32)
-    {
-        types = (ffi_type**)malloc((size_t)n * sizeof(ffi_type*));
-        if (!types) return -1;
-    }
+    if (!fn || !ret || n < 0 || n > 64) return -1;
+    uint64_t mask = 0;
     for (int i = 0; i < n; i++)
-        types[i] = is_int[i] ? &ffi_type_sint64 : &ffi_type_double;
+        if (is_int[i]) mask |= (1ull << i);
 
-    ffi_type* rt = ret_is_int ? &ffi_type_sint64 : &ffi_type_double;
+    gmb_cif_entry_t* e = gmb_cif_cache_get(n, mask, ret_is_int);
+    if (!e) return -1;
     /* ffi_call vuole un void** non-const: i puntatori ai valori non vengono modificati. */
-    int rc = ffi_prep_cif(&cif, FFI_DEFAULT_ABI, (unsigned)n, rt, types);
-    if (rc == FFI_OK) ffi_call(&cif, FFI_FN(fn), ret, (void**)(size_t)vals);
-    if (types != local_types) free(types);
-    return rc == FFI_OK ? 0 : -1;
+    ffi_call(&e->cif, FFI_FN(fn), ret, (void**)(size_t)vals);
+    return 0;
 }
 
 /* Mappa un codice tipo del descrittore FFI (condiviso con il bytecode e il C#) su un

@@ -39,6 +39,53 @@
 
 #define GMB_FFI_DL_CACHE_MAX 64
 
+/* Cache path -> handle (2026-11-07, banco FFI). Senza cache OGNI chiamata FFI rifaceva
+ * dlopen + fallback estensioni + walk-up `libs/` + scansione pacchetti: ~0,7 ms per
+ * chiamata su VM/C (misurato da tools/sh/ffi_bench.sh). La cache riduce a un confronto. */
+typedef struct { char path[1152]; void* handle; } gmb_dl_cache_entry_t;
+static gmb_dl_cache_entry_t g_dl_cache[GMB_FFI_DL_CACHE_MAX];
+static int g_dl_cache_count = 0;
+
+static void* gmb_dl_cache_get(const char* path)
+{
+    for (int i = 0; i < g_dl_cache_count; i++)
+        if (strcmp(g_dl_cache[i].path, path) == 0) return g_dl_cache[i].handle;
+    return NULL;
+}
+static void gmb_dl_cache_put(const char* path, void* h)
+{
+    if (!path || !*path || !h) return;
+    if (gmb_dl_cache_get(path)) return;
+    if (g_dl_cache_count >= GMB_FFI_DL_CACHE_MAX) return;
+    snprintf(g_dl_cache[g_dl_cache_count].path, sizeof(g_dl_cache[0].path), "%s", path);
+    g_dl_cache[g_dl_cache_count].handle = h;
+    g_dl_cache_count++;
+}
+
+/* Cache (handle, simbolo) -> puntatore: dlsym/GetProcAddress a ogni chiamata FFI costano
+ * ~100-200 ns. 256 voci coprono ampiamente una superficie dichiarata. */
+#define GMB_FFI_SYM_CACHE_MAX 256
+typedef struct { void* handle; char name[96]; void* fn; } gmb_sym_cache_entry_t;
+static gmb_sym_cache_entry_t g_sym_cache[GMB_FFI_SYM_CACHE_MAX];
+static int g_sym_cache_count = 0;
+
+static void* gmb_sym_cache_get(void* h, const char* name)
+{
+    for (int i = 0; i < g_sym_cache_count; i++)
+        if (g_sym_cache[i].handle == h && strcmp(g_sym_cache[i].name, name) == 0)
+            return g_sym_cache[i].fn;
+    return NULL;
+}
+static void gmb_sym_cache_put(void* h, const char* name, void* fn)
+{
+    if (!h || !name || !fn || g_sym_cache_count >= GMB_FFI_SYM_CACHE_MAX) return;
+    if (strlen(name) >= sizeof(g_sym_cache[0].name)) return;
+    g_sym_cache[g_sym_cache_count].handle = h;
+    snprintf(g_sym_cache[g_sym_cache_count].name, sizeof(g_sym_cache[0].name), "%s", name);
+    g_sym_cache[g_sym_cache_count].fn = fn;
+    g_sym_cache_count++;
+}
+
 /* --- Preload (librerie dei pacchetti REQUIRE risolti) --- */
 typedef struct {
     void*  handle;
@@ -371,8 +418,11 @@ void* gmb_ffi_dl_open(const char* path)
 {
     if (path == NULL || *path == '\0') return NULL;
 
+    void* cached = gmb_dl_cache_get(path);
+    if (cached != NULL) return cached;
+
     void* h = GMB_DL_OPEN(path);
-    if (h != NULL) return h;
+    if (h != NULL) { gmb_dl_cache_put(path, h); return h; }
 
     char buf[1152];
     const char* exts[] = { ".dylib", ".so", ".dll" };
@@ -380,7 +430,7 @@ void* gmb_ffi_dl_open(const char* path)
     {
         snprintf(buf, sizeof(buf), "%s%s", path, exts[i]);
         h = GMB_DL_OPEN(buf);
-        if (h != NULL) return h;
+        if (h != NULL) { gmb_dl_cache_put(path, h); return h; }
     }
 
     /* auto-discovery `libs/` (drop-in FFI, 2026-09-22): <dir>/libs/ risalendo dal CWD */
@@ -390,7 +440,7 @@ void* gmb_ffi_dl_open(const char* path)
         gmb_ffi_dl_preload(libsPath);   /* dlopen + registra per basename */
         for (int i = 0; i < g_preloaded_count; i++)
             if (strcmp(g_preloaded[i].path, libsPath) == 0)
-                return g_preloaded[i].handle;
+            { gmb_dl_cache_put(path, g_preloaded[i].handle); return g_preloaded[i].handle; }
     }
 
     /* auto-discovery cache pacchetti GMB (~/.gmbasic/packages): lib dei pacchetti REQUIRE */
@@ -400,7 +450,7 @@ void* gmb_ffi_dl_open(const char* path)
         gmb_ffi_dl_preload(pkgPath);
         for (int i = 0; i < g_preloaded_count; i++)
             if (strcmp(g_preloaded[i].path, pkgPath) == 0)
-                return g_preloaded[i].handle;
+            { gmb_dl_cache_put(path, g_preloaded[i].handle); return g_preloaded[i].handle; }
     }
 
     /* match per basename sulle librerie pre-caricate dei pacchetti */
@@ -409,7 +459,7 @@ void* gmb_ffi_dl_open(const char* path)
     if (want[0] != '\0')
         for (int i = 0; i < g_preloaded_count; i++)
             if (strcmp(g_preloaded[i].base, want) == 0)
-                return g_preloaded[i].handle;
+            { gmb_dl_cache_put(path, g_preloaded[i].handle); return g_preloaded[i].handle; }
 
     /* NON SILENZIOSO (direttiva: mai risultati silenziosi). Un DECLARE LIB che non trova la
      * libreria restituiva 0 come se la funzione fosse stata eseguita: il programma proseguiva
@@ -442,5 +492,9 @@ void* gmb_ffi_dl_open(const char* path)
 void* gmb_ffi_dl_sym(void* lib, const char* name)
 {
     if (lib == NULL || name == NULL) return NULL;
-    return GMB_DL_SYM(lib, name);
+    void* cached = gmb_sym_cache_get(lib, name);
+    if (cached != NULL) return cached;
+    void* fn = GMB_DL_SYM(lib, name);
+    if (fn != NULL) gmb_sym_cache_put(lib, name, fn);
+    return fn;
 }

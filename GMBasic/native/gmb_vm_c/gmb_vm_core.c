@@ -446,8 +446,10 @@ typedef struct { int64_t f0; double f1; } gmb_ffi_udtid2_t;
  * questo file: mai bit reinterpretati, cast esplicito al punto di chiamata). */
 static double gmb_vm_ffi_call_mixed(void* fn, int argc, unsigned shapeBits, int retIsInt, const double* a)
 {
-    /* Motore libffi: kind per slot da shapeBits (1 = int64, 0 = double). */
-    if (gmb_call_enabled() && argc >= 0 && argc <= GMB_FFI_MAX_ARGS)
+    /* Fast path (2026-11-07): fino a 8 argomenti c'è il dispatch tipizzato generato
+     * (1022 casi, sotto): una chiamata C diretta costa ~0,6 contro ~16-23 di libffi.
+     * libffi resta per argc > 8. */
+    if (gmb_call_enabled() && argc > 8 && argc <= GMB_FFI_MAX_ARGS)
     {
         unsigned char is_int[GMB_FFI_MAX_ARGS];
         void* vals[GMB_FFI_MAX_ARGS];
@@ -1518,9 +1520,9 @@ static int gmb_vm_ffi_call_uniform_int(void* fn, int n, const double* a, int64_t
  * OP_CALL_FFI_T (2026-09-22, parità 4 backend). */
 static double gmb_vm_ffi_call_double(void* p, int argc, const double* a)
 {
-    /* Motore libffi (gmb_call.h): una sola implementazione per qualunque arità, niente
-     * tabella 2^N. Se la firma non è preparabile si ricade sul dispatch storico sotto. */
-    if (gmb_call_enabled() && argc >= 0 && argc <= GMB_FFI_MAX_ARGS)
+    /* Fast path (2026-11-07): 1-8 argomenti double con chiamata C diretta; libffi solo
+     * per argc == 0 (il case non esiste nel dispatch sotto) e per argc > 8. */
+    if (gmb_call_enabled() && (argc == 0 || argc > 8) && argc <= GMB_FFI_MAX_ARGS)
     {
         unsigned char is_int[GMB_FFI_MAX_ARGS] = {0};
         void* vals[GMB_FFI_MAX_ARGS];

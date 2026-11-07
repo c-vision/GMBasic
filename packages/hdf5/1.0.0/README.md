@@ -18,6 +18,14 @@ va versionato/distribuito separatamente dai sorgenti di gmbsuite.
   binding a due livelli le chiamate dello shim restano legate alla **nostra** copia:
   `H5VERSION` = **2.2.0 su tutti e 4 i backend**.
 
+## FFI: firma C fissa (`DECLARE NATIVE`)
+
+Le funzioni di questa libreria hanno un'ABI fissa: tutte le `DECLARE` con array sono
+`DECLARE NATIVE`, quindi il compilatore passa l'array come **solo puntatore** e le
+dimensioni restano parametri espliciti (`n`, `rank`, `dims`). Non aggiungete le
+auto-extents (`d0..dN`): il C della libreria non le riceve. Regola completa nella
+guida FFI e nel manuale III.16.
+
 ## Build
 
 ```bash
