@@ -27,7 +27,7 @@ LIBS="$MONO/shared/libs"
 INCLUDE="$MONO/shared/include"
 TOOLS="$MONO/tools/sh"
 
-ALL_LIBS="amqp grpc kafka mqtt nats protobuf media opt graph flow or mathprog gametheory aviation localsearch conic lagrangian scheduling math stats graphics pgm neural geo wsp"
+ALL_LIBS="amqp grpc kafka mqtt nats protobuf media opt graph flow or mathprog gametheory aviation localsearch conic lagrangian scheduling math stats graphics pgm neural geo wsp quant"
 
 die() { echo "gmb_lib: $*" >&2; exit 1; }
 
@@ -41,6 +41,7 @@ inc_name() {
     graphics) echo "gfxcolor.inc gfxshape.inc gfx2d.inc gfx3d.inc gfxcodec.inc" ;;
     # libgmbmath: SPECIAL (gmbmath-special) + QUAT (gmbmath-vector) + COMPLEX (gmbmath-core).
     math) echo "special.inc quat.inc complex.inc xform.inc spectral.inc vec.inc sparse.inc quad.inc ode.inc veccalc.inc" ;;
+    quant) echo "trading.inc metrics.inc volatility.inc fundamentals.inc" ;;
     *)   echo "$1.inc" ;;
   esac
 }

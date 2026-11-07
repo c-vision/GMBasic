@@ -8682,7 +8682,8 @@ public static double TextWidth(string s)
         if (coll is System.Collections.IList l) l.Add(value);
         else if (coll is System.Collections.IDictionary d) d.Add(key!, value);
     }
-    public static double DividendYield(double div, double price) => price > 0 ? div / price * 100 : 0;
+    // P/Invoke su libgmbquant (General.DividendYield = facciata C, x100).
+    public static double DividendYield(double div, double price) => CommonLib.Trading.General.DividendYield(div, price);
     public static double KellyCriterion(double[] rets)
     {
         if (rets.Length == 0) return 0.0;
@@ -13492,13 +13493,9 @@ public static double TextWidth(string s)
 
 
     // --- Categoria 6: TRADING/STAT blocco 1 (semantica = case VM) ---
+    // P/Invoke su libgmbquant (Metrics.SharpeRatio rf=0, ppy=252 = canone 1-arg).
     public static double SharpeRatio(double[] returns)
-    {
-        if (returns == null || returns.Length < 2) return 0.0;
-        double avg = returns.Average();
-        double std = Math.Sqrt(returns.Sum(r => Math.Pow(r - avg, 2)) / (returns.Length - 1));
-        return std > 0 ? (avg / std) * Math.Sqrt(252) : 0;
-    }
+        => returns is { Length: >= 2 } ? CommonLib.Trading.Metrics.SharpeRatio(returns, 0.0, 252) : 0.0;
 
     public static double MinVolatility(double[] returns)
     {

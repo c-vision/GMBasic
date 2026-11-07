@@ -734,7 +734,134 @@ sperimentali servono strumenti diversi (interpolazione, `SPARSE`, `MESH`).
 - integrazione di funzioni di una variabile e ODE: `QUAD`, `ODE`;
 - differenziazione simbolica: non è un CAS.
 
-## 17. Errori frequenti
+## 17. Trading quantitativo (`QUANT`)
+
+La superficie `TRADING.*` della StdLib è in migrazione verso una **libreria nativa FFI**
+(`libgmbquant`) esterna al compilatore. L'ondata 1 espone 44 funzioni in quattro gruppi,
+con gli stessi nomi e la stessa semantica dei builtin:
+
+| file `.inc` | namespace | contenuto |
+|---|---|---|
+| `trading.inc` | `TRADING_CORE` | valutazione azionaria, CAPM, rendimenti, spread |
+| `metrics.inc` | `METRICS` | performance e rischio (Sharpe/Sortino/Calmar, drawdown, VaR/CVaR, alpha/beta, momenti, Jarque-Bera) |
+| `volatility.inc` | `VOLATILITY` | volatilità annualizzata, downside deviation |
+| `fundamentals.inc` | `FUNDAMENTALS` | EPS/DPS/NAV, P/E, P/B, P/S, payout, dividend yield |
+
+Le ondate successive aggiungono `BONDS`, `DERIVATIVES`, `PORTFOLIO`, `BACKTEST`.
+
+### 17.1 Uso e convenzioni
+
+```basic
+IMPORT TRADING_CORE
+IMPORT METRICS
+IMPORT VOLATILITY
+IMPORT FUNDAMENTALS
+
+DIM r(4) AS DOUBLE
+r(0) = 0.01 : r(1) = -0.02 : r(2) = 0.03 : r(3) = 0.00 : r(4) = 0.015
+
+PRINT METRICS.TotalReturn(r)                   ' 0.034786 (frazione)
+PRINT METRICS.SHARPERATIO(r)                   ' 5.982583
+PRINT VOLATILITY.AnnualizedVolatility(r, 252)  ' 0.294856
+PRINT FUNDAMENTALS.DividendYield(5, 100)       ' 5 (percentuale)
+```
+
+I **rendimenti sono frazioni** (`0.05` = 5%). `DividendYield` è l'eccezione: è in
+percentuale, come il builtin. Un input non valido (denominatore zero, serie troppo
+corta, puntatore nullo) restituisce `0`; nessuna eccezione attraversa l'FFI. Gli array
+viaggiano per riferimento con l'estensione automatica `d0..dN-1` (la `DECLARE` non
+elenca la lunghezza). `JarqueBeraTest` restituisce `ARRAY OF DOUBLE` `[statistica,
+p-value]`.
+
+Il nome `TRADING_CORE` è **di transizione**: finché esistono i builtin `TRADING.*` il
+compilatore rifiuta una funzione utente con lo stesso nome/arità nel namespace
+`TRADING`; a fine migrazione il namespace prenderà il nome `TRADING`.
+
+### 17.2 Riferimento delle funzioni
+
+`TRADING_CORE` (12):
+
+| funzione | firma | risultato |
+|---|---|---|
+| `StockValueZeroGrowth` | `(dividend, requiredRate)` | `D/r` |
+| `StockValueConstGrowth` | `(nextDividend, rate, growth)` | `D1/(r−g)` (Gordon) |
+| `PreferredStockValue` | `(dividend, discountRate)` | `D/r` |
+| `CAPM` | `(rf, beta, marketReturn)` | `rf + β(rm−rf)` |
+| `RiskPremium` | `(assetReturn, rf)` | `r−rf` |
+| `TotalStockReturn` | `(p0, p1, dividends)` | `((p1−p0)+div)/p0` |
+| `CapitalGainsYield` | `(p0, p1)` | `(p1−p0)/p0` |
+| `HoldingPeriodReturn` | `(returns())` | `∏(1+r)−1` |
+| `GeometricMeanReturn` | `(returns())` | `∏(1+r)^(1/n)−1` |
+| `GrowthRate` | `(retentionRate, roe)` | `retention·ROE` |
+| `TaxEquivalentYield` | `(taxFreeYield, taxRate)` | `tfy/(1−tax)` |
+| `BidAskSpread` | `(bid, ask)` | `ask−bid` |
+
+`METRICS` (18):
+
+| funzione | firma | risultato |
+|---|---|---|
+| `TotalReturn` | `(returns())` | `∏(1+r)−1` |
+| `AnnualizedReturn` | `(returns(), ppy)` | `(1+TR)^(ppy/n)−1` |
+| `SHARPERATIO` | `(returns())` | `mean/std·√252` |
+| `SortinoRatio` | `(returns(), rf, ppy)` | `√ppy·mean(r−rf)/downside(r−rf,0)` |
+| `CalmarRatio` | `(returns(), ppy)` | `AR/|maxDD|` |
+| `InformationRatio` | `(returns(), bench(), ppy)` | `√ppy·mean(attivo)/std(attivo)` |
+| `TreynorRatio` | `(returns(), bench(), rf, ppy)` | `(AR−AR(rf))/β` |
+| `MaxDrawdown` | `(returns())` | minimo drawdown composto (negativo) |
+| `ValueAtRisk` | `(returns(), confidence)` | percentile nearest al livello `1−conf` |
+| `ConditionalValueAtRisk` | `(returns(), confidence)` | media della coda `≤ VaR` |
+| `Beta` | `(returns(), bench())` | `cov/var` |
+| `Alpha` | `(returns(), bench(), rf, ppy)` | Jensen annualizzato |
+| `ReturnsSkewness` | `(returns())` | skew campionaria corretta |
+| `ReturnsKurtosis` | `(returns())` | curtosi in eccesso non distorta |
+| `JarqueBeraTest` | `(returns())` | `[statistica, p-value]` |
+| `AnnualizedTrackingError` | `(returns(), bench(), ppy)` | `√ppy·std(attivo)` |
+| `OmegaRatio` | `(returns(), threshold)` | guadagni/perdite (`+INF` se perdite 0) |
+| `UlcerIndex` | `(returns())` | `√(media dd%² composti)` |
+
+`VOLATILITY` (3): `AnnualizedVolatility(returns, ppy)` = `√ppy·std`;
+`DownsideDeviation(returns, threshold)`; `AnnualizedDownsideDeviation(returns, threshold,
+ppy)` = `√ppy·downside`.
+
+`FUNDAMENTALS` (11): `BookValuePerShare(equity, azioni)`, `DilutedEPS(ni, azioni,
+strumenti)`, `DividendPayoutRatio(div, ni)`, `DividendYield(div, prezzo)` (**×100**),
+`DPS(div, azioni)`, `EPS(ni, azioni)`, `EquityMultiplier(attivo, equity)`, `NAV(attivo,
+passivo, azioni)`, `PBRatio(prezzo, book)`, `PERatio(prezzo, eps)`, `PSRatio(prezzo, sps)`.
+
+### 17.3 Esempio eseguito
+
+`shared/samples/Quant/QuantLab.bas` analizza un titolo (prezzo 50, dividendo 2,
+required return 10%, crescita 3%) e un fondo (5 rendimenti periodici contro un
+benchmark). Valori prodotti:
+
+```
+DDM crescita zero = 20.000000       DDM Gordon = 28.571429
+CAPM = 0.114000                      rendimento totale = 0.120000
+rendimento del fondo = 0.034786      Sharpe = 5.982583
+Sortino = 5.556078                   Calmar = 230.185794
+beta = 1.650000                      alpha = 0.526901
+max drawdown = -0.020000             VaR 80% = 0.000000
+CVaR 80% = -0.010000                 Jarque-Bera = 0.261097, 0.877614
+volatilità annualizzata = 0.294856   downside = 0.020000
+EPS = 2.000000                       P/E = 25.000000
+dividend yield = 5.000000 %          P/B = 2.000000
+```
+
+### 17.4 Parità e limiti
+
+La superficie è unica (`shared/include/*.inc`) e la libreria è una sola
+(`libgmbquant`): firme, aritmetica e risultati sono identici su IL, PCodeVM, VM/C e
+C99Native. Il MiniTest `shared/minitests/quant/quant_core.bas` verifica tutte e 44 le
+funzioni con valori chiusi; il sample `QuantLab.bas` produce 49 righe identiche sulle
+quattro gambe.
+
+Limiti dell'ondata 1: niente obbligazioni, derivati, ottimizzazione di portafoglio né
+backtest (arrivano nelle ondate 2-3); le funzioni non allocano e non ridimensionano
+array; i risultati `ARRAY` sono solo quelli di `JarqueBeraTest` (2 elementi). La
+libreria è in `shared/libs/quant` (sorgenti C + shim FFI) e in `GMBSuite/gmbquant`
+(copia di sviluppo con self-test).
+
+## 18. Errori frequenti
 
 | Sintomo | Causa | Correzione |
 |---|---|---|
@@ -746,7 +873,7 @@ sperimentali servono strumenti diversi (interpolazione, `SPARSE`, `MESH`).
 | rotazione che "scala" | quaternione non normalizzato | `QUAT.NORMALIZE` prima di usarlo |
 | composizione invertita | ordine di `MUL(a, b)` | `MUL(a, b)` = prima `b`, poi `a` |
 
-## 18. Dove andare adesso
+## 19. Dove andare adesso
 
 - **V.28** — le stesse formule applicate a serie temporali e trading.
 - **V.31** — TORCH, quando la matematica diventa tensori.
@@ -2125,6 +2252,125 @@ VECCALC.FLUX(Up, Bowl, 0, 1, 0, 1, 0.000001)   ' 1 (campo verticale su superfici
 | matrici di trasformazione 3D | `XFORM` |
 | integrazione e ODE | `QUAD`, `ODE` |
 | differenziazione di una funzione di una variabile | `NUMERICAL.DIFFERENTIATE` |
+
+### Quant-Guida-Utente
+
+*Fonte: `Quant-Guida-Utente`*
+
+
+## A cosa serve
+| file `.inc` | namespace | contenuto |
+|---|---|---|
+| `trading.inc` | `TRADING_CORE` | valutazione azionaria, CAPM, rendimenti, spread |
+| `metrics.inc` | `METRICS` | performance e rischio: Sharpe, Sortino, Calmar, drawdown, VaR/CVaR, alpha/beta, momenti, Jarque-Bera |
+| `volatility.inc` | `VOLATILITY` | volatilità annualizzata, downside deviation |
+| `fundamentals.inc` | `FUNDAMENTALS` | EPS/DPS/NAV, P/E, P/B, P/S, payout, dividend yield |
+
+## Uso
+
+IMPORT TRADING_CORE
+IMPORT METRICS
+IMPORT VOLATILITY
+IMPORT FUNDAMENTALS
+
+DIM r(4) AS DOUBLE
+r(0) = 0.01 : r(1) = -0.02 : r(2) = 0.03 : r(3) = 0.00 : r(4) = 0.015
+
+PRINT METRICS.TotalReturn(r)          ' 0.034786 (frazione: 3.4786%)
+PRINT METRICS.SHARPERATIO(r)          ' 5.982583 (mean/std * sqrt(252))
+PRINT VOLATILITY.AnnualizedVolatility(r, 252)   ' 0.294856
+PRINT FUNDAMENTALS.DividendYield(5, 100)        ' 5 (percentuale)
+
+
+## Convenzioni
+
+## Da dove vengono (mapping dal vecchio namespace)
+| vecchio | nuovo | note |
+|---|---|---|
+| `TRADING.<12>` | `TRADING_CORE.<12>` | stesso nome e argomenti |
+| `TRADING.METRICS.<18>` | `METRICS.<...>` | performance e rischio |
+| `TRADING.METRICS.AnnualizedVolatility` | `VOLATILITY.AnnualizedVolatility` | gruppo volatilità |
+| `TRADING.METRICS.DownsideDeviation` | `VOLATILITY.DownsideDeviation` | gruppo volatilità |
+| `TRADING.METRICS.AnnualizedDownsideDeviation` | `VOLATILITY.AnnualizedDownsideDeviation` | gruppo volatilità |
+| `TRADING.METRICS.<11 fondamentali>` | `FUNDAMENTALS.<...>` | EPS, DPS, NAV, P/E, P/B, P/S, payout, dividend yield |
+| `TRADING.BONDS` | `BONDS` | ondata 2 |
+| `TRADING.OPTIONS` | `DERIVATIVES` | ondata 2 |
+| `TRADING.PORTFOLIO` | `PORTFOLIO` | ondata 3 |
+| `TRADING.BACKTESTS` | `BACKTEST` | ondata 3 |
+
+## Riferimento: `TRADING_CORE` (12)
+| funzione | firma | risultato / note |
+|---|---|---|
+| `StockValueZeroGrowth` | `(dividend, requiredRate)` | `D / r`; `r = 0 → 0` |
+| `StockValueConstGrowth` | `(nextDividend, rate, growth)` | Gordon `D1/(r-g)`; `r ≤ g → 0` |
+| `PreferredStockValue` | `(dividend, discountRate)` | `D / r` |
+| `CAPM` | `(riskFreeRate, beta, marketReturn)` | `rf + β(rm − rf)` |
+| `RiskPremium` | `(assetReturn, riskFreeReturn)` | `r − rf` |
+| `TotalStockReturn` | `(initialPrice, endPrice, dividends)` | `((P1−P0)+div)/P0` |
+| `CapitalGainsYield` | `(initialPrice, endPrice)` | `(P1−P0)/P0` |
+| `HoldingPeriodReturn` | `(returns())` | `∏(1+r) − 1` |
+| `GeometricMeanReturn` | `(returns())` | `∏(1+r)^(1/n) − 1` |
+| `GrowthRate` | `(retentionRate, roe)` | `retention × ROE` |
+| `TaxEquivalentYield` | `(taxFreeYield, taxRate)` | `tfy/(1−tax)`; `tax ∉ [0,1) → 0` |
+| `BidAskSpread` | `(bid, ask)` | `ask − bid` |
+
+## Riferimento: `METRICS` (18)
+| funzione | firma | risultato / note |
+|---|---|---|
+| `TotalReturn` | `(returns())` | `∏(1+r) − 1` |
+| `AnnualizedReturn` | `(returns(), ppy)` | `(1+TR)^(ppy/n) − 1` |
+| `SHARPERATIO` | `(returns())` | `mean/std · √252` (canone 1-arg) |
+| `SortinoRatio` | `(returns(), rf, ppy)` | `√ppy · mean(r−rf) / downside(r−rf, 0)` |
+| `CalmarRatio` | `(returns(), ppy)` | `AR / |maxDD|` |
+| `InformationRatio` | `(returns(), bench(), ppy)` | `√ppy · mean(attivo)/std(attivo)` |
+| `TreynorRatio` | `(returns(), bench(), rf, ppy)` | `(AR − AR(rf))/β` |
+| `MaxDrawdown` | `(returns())` | minimo drawdown composto (negativo) |
+| `ValueAtRisk` | `(returns(), confidence)` | percentile *nearest* (MathNet) al livello `1−conf` |
+| `ConditionalValueAtRisk` | `(returns(), confidence)` | media dei rendimenti `≤ VaR` |
+| `Beta` | `(returns(), bench())` | `cov/var` campionarie |
+| `Alpha` | `(returns(), bench(), rf, ppy)` | Jensen annualizzato |
+| `ReturnsSkewness` | `(returns())` | skew campionaria corretta (Fisher) |
+| `ReturnsKurtosis` | `(returns())` | curtosi in eccesso non distorta |
+| `JarqueBeraTest` | `(returns())` | `ARRAY OF DOUBLE` `[stat, p]`; `n<4 → [0,1]` |
+| `AnnualizedTrackingError` | `(returns(), bench(), ppy)` | `√ppy · std(attivo)` |
+| `OmegaRatio` | `(returns(), threshold)` | guadagni/perdite; perdite=0 → `+INF` |
+| `UlcerIndex` | `(returns())` | `√(media dei drawdown%² composti)` |
+
+## Riferimento: `VOLATILITY` (3)
+| funzione | firma | risultato |
+|---|---|---|
+| `AnnualizedVolatility` | `(returns(), ppy)` | `√ppy · std campionaria` |
+| `DownsideDeviation` | `(returns(), threshold)` | `√(media dei (r−thr)² per r<thr)` |
+| `AnnualizedDownsideDeviation` | `(returns(), threshold, ppy)` | `√ppy · DownsideDeviation` |
+
+## Riferimento: `FUNDAMENTALS` (11)
+| funzione | firma | risultato |
+|---|---|---|
+| `BookValuePerShare` | `(totalEquity, commonShares)` | `equity/azioni` |
+| `DilutedEPS` | `(netIncome, avgShares, otherInstruments)` | `ni/(azioni+strumenti)` |
+| `DividendPayoutRatio` | `(dividends, netIncome)` | `div/ni` |
+| `DividendYield` | `(dividends, price)` | `div/prezzo × 100` **(percentuale)** |
+| `DPS` | `(dividends, numShares)` | `div/azioni` |
+| `EPS` | `(netIncome, avgShares)` | `ni/azioni` |
+| `EquityMultiplier` | `(totalAssets, equity)` | `attivo/equity` |
+| `NAV` | `(fundAssets, fundLiabilities, outstandingShares)` | `(attivo−passivo)/azioni` |
+| `PBRatio` | `(price, bookValue)` | `P/B` |
+| `PERatio` | `(price, eps)` | `P/E` |
+| `PSRatio` | `(price, salesPerShare)` | `P/S` |
+
+## Esempio completo
+
+## Parità e verifica
+
+## Cosa non è (ancora) qui
+| bisogno | dove |
+|---|---|
+| obbligazioni, duration, ZCB | `BONDS` (ondata 2) |
+| opzioni, Black-Scholes, greche, binomiale | `DERIVATIVES` (ondata 2) |
+| ottimizzazione di portafoglio, Kelly, VaR multi-asset | `PORTFOLIO` (ondata 3) |
+| backtest di strategia | `BACKTEST` (ondata 3) |
+| calcolo vettoriale, quadratura, ODE | `VECCALC`, `QUAD`, `ODE` |
+| algebra vettoriale e matrici | `VECTOR`, `MATRIX`, `LINALG` |
 
 ### Finance-Guida-Utente
 
