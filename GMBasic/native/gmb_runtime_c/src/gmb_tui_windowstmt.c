@@ -795,48 +795,54 @@ void gmb_winstmt_compose_all_pixel(void)
         int crw = ww - 2 * GMB_WIN_PAD, crh = hh - titleh - GMB_WIN_PAD;
         if (crw > 0 && crh > 0)
         {
-            /* Contenuto della finestra = regione di st->buffer (celle) → render cella->pixel.
-             * Cosi' testo (WINDOW PRINT) E CONTROLLI (disegnati nel buffer globale) appaiono
-             * DENTRO la finestra. Fallback alle righe w->lines solo se il buffer non c'e'. */
+            /* CONTENUTO = TESTO PIXEL (GUI), non celle.
+             * La sintassi resta `WINDOW x PRINT ...` (il testo arriva dal buffer TUI), ma il
+             * rendering è TTF: niente font monospaziato, niente glifi a cella, niente griglia.
+             * Le finestre PIXEL usano le righe del ManagedWindow (w->lines). */
             gmb_clipper_state_t* stc = gmb_clipper_global_state();
             int rendered = 0;
-            /* Il blit celle->pixel vale per le finestre TUI (rect in CELLE). Le finestre
-             * PIXEL hanno rect in PIXEL: il contenuto sta in w->lines, non nel buffer
-             * globale → senza questa distinzione le finestre PIXEL restavano VUOTE. */
+            int th = (int)(gmb_gfx_text_height() / sc + 0.5f); if (th <= 0) th = 14;
+            int line_h = th + 8;
+            int nrows = (crh - 8) / line_h; if (nrows < 1) nrows = 1;
+            int maxw = crw - 16; if (maxw < 8) maxw = 8;
             if (!mw->pixel && stc && stc->buffer)
             {
                 int bw = gmb_screen_width(stc->buffer), bh = gmb_screen_height(stc->buffer);
                 gmb_screen_cell_t* cells = gmb_screen_cells(stc->buffer);
-                int cols = crw / cw, rws = crh / ch;
-                int cx0 = mw->rect.x + 1, cy0 = mw->rect.y + 1;   /* origine content in st->buffer */
-                for (int r = 0; r < rws; r++)
-                    for (int c2 = 0; c2 < cols; c2++)
+                int cols = mw->rect.w - 2;     /* celle INTERNE (senza cornice) */
+                int cx0 = mw->rect.x + 1, cy0 = mw->rect.y + 1;
+                for (int r = 0; r < nrows; r++)
+                {
+                    char line[512]; int n = 0; unsigned fg = 0;
+                    for (int c2 = 0; c2 < cols && n < (int)sizeof(line) - 4; c2++)
                     {
                         int bx = cx0 + c2, by = cy0 + w->scroll_top + r;
-                        if (bx < 0 || by < 0 || bx >= bw || by >= bh) continue;
+                        if (bx < 0 || by < 0 || bx >= bw || by >= bh) break;
                         gmb_screen_cell_t* cell = &cells[by * bw + bx];
-                        uint32_t fgc = 0x40000000u | ((uint32_t)cell->fg_rgb.r << 16)
-                                     | ((uint32_t)cell->fg_rgb.g << 8) | cell->fg_rgb.b;
-                        /* Sfondo = colore del CORPO della finestra (chrome nativo): il buffer
-                         * TUI porta il blu del tema e lascerebbe un riquadro blu dentro una
-                         * finestra scura. Il testo (fg) resta quello della cella. */
-                        uint32_t bgc = col_body;
-                        /* draw_cell NON applica la render-scale: passiamo coordinate native. */
-                        int ncx = crx + c2 * cw, ncy = cry + r * ch;
-                        int ncw = cw, nch = ch;
-                        gmb_gfx_draw_cell(ncx, ncy, ncw, nch,
-                                          (uint32_t)cell->character, fgc, bgc);
+                        unsigned cp = (unsigned)cell->character; if (cp == 0) cp = ' ';
+                        if (cp < 0x80) line[n++] = (char)cp;
+                        else if (cp < 0x800) { line[n++] = (char)(0xC0 | (cp >> 6)); line[n++] = (char)(0x80 | (cp & 0x3F)); }
+                        else { line[n++] = (char)(0xE0 | (cp >> 12)); line[n++] = (char)(0x80 | ((cp >> 6) & 0x3F)); line[n++] = (char)(0x80 | (cp & 0x3F)); }
+                        if (!fg && cp != ' ')
+                            fg = ((unsigned)cell->fg_rgb.r << 16) | ((unsigned)cell->fg_rgb.g << 8) | cell->fg_rgb.b;
                     }
+                    while (n > 0 && line[n - 1] == ' ') n--;
+                    line[n] = '\0';
+                    if (n == 0) continue;
+                    while (n > 0 && gmb_gfx_text_width(line) > maxw) line[--n] = '\0';
+                    if (n == 0) continue;
+                    gmb_gfx_draw_text(line, crx + 8, cry + 4 + r * line_h, 0,
+                                      (int)(0x40000000u | (fg ? fg : (GMB_COL_TEXT & 0xFFFFFFu))));
+                }
                 rendered = 1;
             }
             if (!rendered)
             {
-                int rows = crh / ch;
-                for (int r = 0; r < rows; r++)
+                for (int r = 0; r < nrows; r++)
                 {
                     int idx = w->scroll_top + r;
                     if (idx >= w->line_count) break;
-                    wm_text(w->lines[idx], crx, cry + r * ch,
+                    wm_text(w->lines[idx], crx + 8, cry + 4 + r * line_h,
                             mw->fg_color ? mw->fg_color : GMB_COL_TEXT);
                 }
             }
