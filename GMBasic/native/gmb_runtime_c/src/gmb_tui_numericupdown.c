@@ -66,18 +66,25 @@ static bool numeric_click(void* u, gmb_control_t* c, int x, int y)
 {
     gmb_numeric_updown_t* n = (gmb_numeric_updown_t*)u;
     if (!c->enabled) return false;
-    gmb_rect_t r = gmb_control_rect(c);
-    if (!rect_contains(r, x, y)) return false;
+    /* Rect PIXEL (px_*): in grafica i due pulsanti sono larghi ~26px, mentre le
+     * coordinate del controllo sono in CELLE (width in celle, height 1). Usando
+     * c->width/c->height il click funzionava solo su una striscia di 2px. */
+    int bx = (c->px_w > 0) ? c->px_x : c->x;
+    int by = (c->px_h > 0) ? c->px_y : c->y;
+    int bw = (c->px_w > 0) ? c->px_w : c->width;
+    int bh = (c->px_h > 0) ? c->px_h : c->height;
+    if (x < bx || x >= bx + bw || y < by || y >= by + bh) return false;
     c->focused = true;
-    int local_x = x - c->x;
-    if (local_x >= c->width - 2)
-    {
-        if (local_x == c->width - 2) { if (n->value < n->max) n->value = (n->value + n->step < n->max ? n->value + n->step : n->max); }
-        else { if (n->value > n->min) n->value = (n->value - n->step > n->min ? n->value - n->step : n->min); }
+    int bwd = 26; if (bw < 60) bwd = bw / 3; if (bwd < 8) bwd = 8;
+    if (x >= bx + bw - bwd) {            /* '+' */
+        if (n->value < n->max) n->value = (n->value + n->step < n->max ? n->value + n->step : n->max);
         return true;
     }
-    if (n->value > n->min) n->value = (n->value - n->step > n->min ? n->value - n->step : n->min);
-    return true;
+    if (x >= bx + bw - 2 * bwd) {        /* '-' */
+        if (n->value > n->min) n->value = (n->value - n->step > n->min ? n->value - n->step : n->min);
+        return true;
+    }
+    return true;                          /* click sul campo: solo focus */
 }
 static void numericupdown_draw_px(void* u, gmb_control_t* c)
 {
