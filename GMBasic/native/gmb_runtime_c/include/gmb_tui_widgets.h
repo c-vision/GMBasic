@@ -221,6 +221,10 @@ typedef struct gmb_control {
      * Il programma ha dichiarato solo la posizione: la conversione celle→pixel non deve
      * toccare una dimensione che non ha scritto (altrimenti il controllo diventa enorme). */
     int coord_auto_w, coord_auto_h;
+    /* Dimensione font ESPLICITA per il controllo (`STYLE "font=NN"`), 0 = dal tema.
+     * Serve ai controlli che disegnano testo proprio (BIGTEXT, LABEL…): senza, la
+     * dimensione era fissa/derivata e non regolabile dal programma. */
+    int font_size;
     gmb_tui_cb ev_cb[GMB_TUI_EV_COUNT];
     int last_event;
     int handle;

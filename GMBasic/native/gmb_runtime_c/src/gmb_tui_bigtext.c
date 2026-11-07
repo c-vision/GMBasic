@@ -152,7 +152,10 @@ static void bigtext_draw_px(void* u, gmb_control_t* c)
     int bx = (c->px_w > 0) ? c->px_x : c->x;
     int by = (c->px_h > 0) ? c->px_y : c->y;
     int bh = (c->px_h > 0) ? c->px_h : c->height;
-    int bs = bh - 6; if (bs < 48) bs = 48;   /* BIGTEXT: dimensione leggibile anche con h di default */
+    /* Dimensione: esplicita con STYLE "font=NN"; altrimenti derivata dall'altezza.
+     * Prima era FORZATA a >= 48px: testo sempre enorme e non regolabile. */
+    int bs = c->font_size > 0 ? c->font_size : (bh - 6);
+    if (bs < 14) bs = 14;
     gmb_gfx_font(ops, bs);
     int col = (int)(0x40000000u | (st.text & 0xFFFFFFu));
     gmb_gfx_draw_text(b->text, bx + 2, by + 3, 0, col);

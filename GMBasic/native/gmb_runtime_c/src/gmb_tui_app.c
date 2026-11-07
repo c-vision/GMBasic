@@ -787,6 +787,11 @@ static void apply_style_kv(gmb_control_t* c, const char* spec)
             p += 7;
             c->coord_mode = atoi(p);
         }
+        else if (strncasecmp(p, "font=", 5) == 0) {
+            /* Dimensione font ESPLICITA del controllo (vedi gmb_control_t.font_size). */
+            p += 5;
+            c->font_size = atoi(p);
+        }
         while (*p && *p != ' ') p++;
     }
 }

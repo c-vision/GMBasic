@@ -5,6 +5,7 @@
 #include "gmb_tui_app.h"
 #include "gmb_tui_tbrowse.h"
 #include "gmb_form.h"
+#include "gmb_graphics.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -476,7 +477,27 @@ typedef struct { gmb_control_t ctrl; int pxkind; char text[256]; } gmb_gfx_contr
 static void gfx_control_draw_px(void* u, gmb_control_t* c)
 {
     gmb_gfx_control_t* g = (gmb_gfx_control_t*)u;
-    gmb_px_draw_ex(g->pxkind, c->x, c->y, c->width, c->height, g->text, NULL, 0, 0, 0, 0, NULL, 0, NULL, 0);
+    /* Rect PIXEL (px_*): è lì che il renderer ha applicato lo spazio coordinate. */
+    int x = (c->px_w > 0) ? c->px_x : c->x;
+    int y = (c->px_h > 0) ? c->px_y : c->y;
+    int w = (c->px_w > 0) ? c->px_w : c->width;
+    int h = (c->px_h > 0) ? c->px_h : c->height;
+    /* RICHTEXT: righe separate da '|' (prima finivano su una riga sola, con i '|'). */
+    if (g->pxkind == GMB_PX_RICHTEXT && g->text[0] && strchr(g->text, '|'))
+    {
+        gmb_widget_style_t st = gmb_widget_style_current();
+        int th = gmb_gfx_text_height_logical(); if (th <= 0) th = 16;
+        char buf[512]; snprintf(buf, sizeof(buf), "%s", g->text);
+        char* s1 = NULL; int line = 0;
+        for (char* ln = strtok_r(buf, "|", &s1); ln; ln = strtok_r(NULL, "|", &s1), line++)
+        {
+            if (4 + line * (th + 4) > h) break;
+            gmb_gfx_draw_text(ln, x + 4, y + 4 + line * (th + 4), 0,
+                              (int)(0x40000000u | (st.text & 0xFFFFFFu)));
+        }
+        return;
+    }
+    gmb_px_draw_ex(g->pxkind, x, y, w, h, g->text, NULL, 0, 0, 0, 0, NULL, 0, NULL, 0);
 }
 
 static gmb_control_t* gfx_control_add(int ck, int px, int x, int y, int w, int h, const char* text)
