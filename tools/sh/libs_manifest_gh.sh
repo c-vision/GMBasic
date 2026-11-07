@@ -73,7 +73,7 @@ RID=""
 # DECLARE … LIB: amqp, grpc, kafka, media, mqtt, nats, protobuf) + `torch` (external, sotto).
 # I gruppi storici `boot`/`engine`/`core`/`support` NON hanno più una release propria (sono
 # confluiti in `runtime-vN`): chiederli faceva fallire il build con "nessuna release trovata".
-GROUP_LIST="runtime,llmmotor,dev,ffi"
+GROUP_LIST="runtime,llmmotor,dev,ffi,domain"
 WITH_TORCH=1
 CMD="${1:-build}"; [ $# -gt 0 ] && shift
 

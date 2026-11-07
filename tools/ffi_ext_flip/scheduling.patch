@@ -1,0 +1,9 @@
+--- a/shared/include/scheduling.inc
++++ b/shared/include/scheduling.inc
+@@ -13,4 +13,5 @@
+ NAMESPACE OPTIMIZE
+ 
+ ' SCHEDPATHSTIMEWINDOWS: cammini s->t che rispettano le finestre temporali.
+-DECLARE FUNCTION SCHEDPATHSTIMEWINDOWS LIB "gmbscheduling" ALIAS "ofx_sched_paths_time_window" (adj() AS LONG, windows() AS DOUBLE, n AS LONG, s AS LONG, t AS LONG, paths() AS LONG, lens() AS LONG, maxPaths AS LONG) AS LONG
++DECLARE FUNCTION SCHEDPATHSTIMEWINDOWS LIB "gmbscheduling" ALIAS "ofx_sched_paths_time_window__ffi" (adj() AS LONG, windows() AS DOUBLE, n AS LONG, s AS LONG, t AS LONG, paths() AS LONG, lens() AS LONG, maxPaths AS LONG) AS LONG
++

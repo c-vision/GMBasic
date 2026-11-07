@@ -102,6 +102,14 @@ libs_group_pick() {
           libgmbamqp.*|libgmbgrpc.*|libgmbkafka.*|libgmbmqtt.*|libgmbnats.*|libgmbprotobuf.*|libgmbmedia.*) ;;  # gruppo `ffi`
           *) echo "$f";;
         esac;;
+      domain)
+        # Librerie di DOMINIO di gmbsuite (namespace BASIC: GRAPH/GFX*/CONIC/OR/NEURAL/
+        # MATH/STATS/GEO/FLOW/... ): caricate a runtime con `DECLARE ... LIB "<nome>"`,
+        # NON sono dipendenze di link. Senza un asset pubblicato un programma compilato su
+        # un altra macchina non le trova (autoensure non le conosce) => vanno distribuite.
+        case "$f" in
+          libgmbgraph.*|libgmbgraphics.*|libgmbconic.*|libgmbor.*|libgmbneural.*|libgmbmath.*|libgmbstats.*|libgmbgeo.*|libgmbflow.*|libgmbwsp.*|libgmbpgm.*|libgmblocalsearch.*|libgmbmathprog.*|libgmbgametheory.*|libgmbaviation.*|libgmblagrangian.*|libgmbscheduling.*) echo "$f";;
+        esac;;
     esac
   done
 }

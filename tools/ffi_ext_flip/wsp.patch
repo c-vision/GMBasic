@@ -1,0 +1,66 @@
+--- a/shared/include/wsp.inc
++++ b/shared/include/wsp.inc
+@@ -35,32 +35,42 @@
+ ' sha256 del contenuto CORRENTE di un tensore (overlay se modificato).
+ DECLARE FUNCTION SHA LIB "gmbwsp" ALIAS "wsp_sha" (h AS LONG, tensor AS STRING) AS STRING
+ ' Legge la slice CORRENTE come double in out(); ritorna gli elementi (o -1).
+-DECLARE FUNCTION READSLICE LIB "gmbwsp" ALIAS "wsp_readslice" (h AS LONG, addr AS STRING, out() AS DOUBLE, cap AS LONG) AS LONG
++DECLARE FUNCTION READSLICE LIB "gmbwsp" ALIAS "wsp_readslice__ffi" (h AS LONG, addr AS STRING, out() AS DOUBLE, cap AS LONG) AS LONG
+ 
++
+ ' ---- analisi senza forward ------------------------------------------------------------------------------------------
+ ' kind: "q" | "k" | "v" | "o"; scrive la norma di Frobenius di ogni testa (o gruppo kv) in out(); ritorna quante.
+-DECLARE FUNCTION NORMS LIB "gmbwsp" ALIAS "wsp_norms" (h AS LONG, layer AS LONG, kind AS STRING, out() AS DOUBLE, cap AS LONG) AS LONG
++DECLARE FUNCTION NORMS LIB "gmbwsp" ALIAS "wsp_norms__ffi" (h AS LONG, layer AS LONG, kind AS STRING, out() AS DOUBLE, cap AS LONG) AS LONG
++
+ ' circuit: "OV" | "QK". out(0) = Σλ/Σ|λ|, out(1) = frazione di autovalori a parte reale > 0 (le DUE definizioni di copying score).
+ ' QK senza RoPE/qk-norm: approssimazione per i modelli che le usano.
+-DECLARE FUNCTION COPYSCORE LIB "gmbwsp" ALIAS "wsp_copyscore" (h AS LONG, layer AS LONG, head AS LONG, circuit AS STRING, out() AS DOUBLE) AS LONG
+-DECLARE FUNCTION SPECTRUM LIB "gmbwsp" ALIAS "wsp_spectrum" (h AS LONG, layer AS LONG, head AS LONG, circuit AS STRING, wr() AS DOUBLE, wi() AS DOUBLE, cap AS LONG) AS LONG
++DECLARE FUNCTION COPYSCORE LIB "gmbwsp" ALIAS "wsp_copyscore__ffi" (h AS LONG, layer AS LONG, head AS LONG, circuit AS STRING, out() AS DOUBLE) AS LONG
++
++DECLARE FUNCTION SPECTRUM LIB "gmbwsp" ALIAS "wsp_spectrum__ffi" (h AS LONG, layer AS LONG, head AS LONG, circuit AS STRING, wr() AS DOUBLE, wi() AS DOUBLE, cap AS LONG) AS LONG
++
+ ' Projection Kernel fra lo spazio scritto da (l1,h1) e quello letto da (l2,h2) come "q"|"k"|"v" (0..head_dim; -1 errore).
+ DECLARE FUNCTION COMPOSE LIB "gmbwsp" ALIAS "wsp_compose" (h AS LONG, l1 AS LONG, h1 AS LONG, l2 AS LONG, h2 AS LONG, which AS STRING) AS DOUBLE
+ ' Importanza SENZA dati (solo pesi) di neuroni MLP e gruppi kv: baseline debole, da validare con PPL/KL.
+-DECLARE FUNCTION MLPIMPORTANCE LIB "gmbwsp" ALIAS "wsp_mlpimportance" (h AS LONG, layer AS LONG, out() AS DOUBLE, cap AS LONG) AS LONG
+-DECLARE FUNCTION KVIMPORTANCE LIB "gmbwsp" ALIAS "wsp_kvimportance" (h AS LONG, layer AS LONG, out() AS DOUBLE, cap AS LONG) AS LONG
++DECLARE FUNCTION MLPIMPORTANCE LIB "gmbwsp" ALIAS "wsp_mlpimportance__ffi" (h AS LONG, layer AS LONG, out() AS DOUBLE, cap AS LONG) AS LONG
++
++DECLARE FUNCTION KVIMPORTANCE LIB "gmbwsp" ALIAS "wsp_kvimportance__ffi" (h AS LONG, layer AS LONG, out() AS DOUBLE, cap AS LONG) AS LONG
++
+ ' Indici dei k punteggi più alti, in ordine crescente di indice.
+-DECLARE FUNCTION TOPK LIB "gmbwsp" ALIAS "wsp_topk" (score() AS DOUBLE, n AS LONG, k AS LONG, out() AS LONG) AS LONG
++DECLARE FUNCTION TOPK LIB "gmbwsp" ALIAS "wsp_topk__ffi" (score() AS DOUBLE, n AS LONG, k AS LONG, out() AS LONG) AS LONG
+ 
++
+ ' ---- edit su overlay (0 = ok, -1 = rifiutata e nulla cambia; LASTREPORT: toccati/totale, variazione di norma) ------------
+ DECLARE FUNCTION SCALESLICE LIB "gmbwsp" ALIAS "wsp_scaleslice" (h AS LONG, addr AS STRING, alpha AS DOUBLE) AS LONG
+ DECLARE FUNCTION ZEROSLICE LIB "gmbwsp" ALIAS "wsp_zeroslice" (h AS LONG, addr AS STRING) AS LONG
+-DECLARE FUNCTION SETVALUES LIB "gmbwsp" ALIAS "wsp_setvalues" (h AS LONG, addr AS STRING, v() AS DOUBLE, n AS LONG) AS LONG
+-DECLARE FUNCTION ADDDELTA LIB "gmbwsp" ALIAS "wsp_adddelta" (h AS LONG, addr AS STRING, v() AS DOUBLE, n AS LONG) AS LONG
++DECLARE FUNCTION SETVALUES LIB "gmbwsp" ALIAS "wsp_setvalues__ffi" (h AS LONG, addr AS STRING, v() AS DOUBLE, n AS LONG) AS LONG
++
++DECLARE FUNCTION ADDDELTA LIB "gmbwsp" ALIAS "wsp_adddelta__ffi" (h AS LONG, addr AS STRING, v() AS DOUBLE, n AS LONG) AS LONG
++
+ DECLARE FUNCTION COPYSLICE LIB "gmbwsp" ALIAS "wsp_copyslice" (h AS LONG, dst AS STRING, src AS STRING) AS LONG
+ ' Toglie dalla slice le componenti lungo ndirs direzioni (len elementi ciascuna). vec_axis: 0 = le colonne sono i vettori
+ ' (o_proj/down_proj), 1 = le righe (embed, q/k/v/gate/up). flags: 1 = norm-preserving, 2 = direzione innocua (dirs = d, h).
+-DECLARE FUNCTION PROJECTOUT LIB "gmbwsp" ALIAS "wsp_projectout" (h AS LONG, addr AS STRING, dirs() AS DOUBLE, ndirs AS LONG, len AS LONG, vec_axis AS LONG, flags AS LONG) AS LONG
++DECLARE FUNCTION PROJECTOUT LIB "gmbwsp" ALIAS "wsp_projectout__ffi" (h AS LONG, addr AS STRING, dirs() AS DOUBLE, ndirs AS LONG, len AS LONG, vec_axis AS LONG, flags AS LONG) AS LONG
++
+ DECLARE FUNCTION LASTREPORT LIB "gmbwsp" ALIAS "wsp_lastreport" (h AS LONG) AS STRING
+ 
+ ' ---- journal, scrittura, ricette ------------------------------------------------------------------------------------
+@@ -85,8 +95,9 @@
+ ' ---- chirurgia di architettura (modello derivato) --------------------------------------------------------------------
+ ' layer_map(nl): layer di uscita <- layer sorgente (nl = 0: identità). kv_keep(nl_out*kvm): gruppi kv tenuti per layer di uscita
+ ' (kvm = 0: nessuna potatura). neuron_keep(nl_out*neuk): neuroni tenuti (neuk = 0: nessuna). Valida prima di scrivere e rivalida dopo.
+-DECLARE FUNCTION DERIVE LIB "gmbwsp" ALIAS "wsp_derive" (h AS LONG, outdir AS STRING, layer_map() AS LONG, nl AS LONG, kv_keep() AS LONG, kvm AS LONG, neuron_keep() AS LONG, neuk AS LONG) AS LONG
++DECLARE FUNCTION DERIVE LIB "gmbwsp" ALIAS "wsp_derive__ffi" (h AS LONG, outdir AS STRING, layer_map() AS LONG, nl AS LONG, kv_keep() AS LONG, kvm AS LONG, neuron_keep() AS LONG, neuk AS LONG) AS LONG
+ 
++
+ ' ---- verifica, gate, provenienza ---------------------------------------------------------------------------------------
+ ' flags: 1 = documento, 2 = finitezza NaN/Inf. 0 = ok; >0 = problemi (dettaglio in LASTERROR(0)).
+ DECLARE FUNCTION VERIFYMODEL LIB "gmbwsp" ALIAS "wsp_verifymodel" (dir AS STRING, flags AS LONG) AS LONG

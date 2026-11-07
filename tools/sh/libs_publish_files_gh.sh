@@ -35,7 +35,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 GROUP="${1:-}"; RID="${2:-}"
 [ -n "$GROUP" ] && [ -n "$RID" ] || { sed -n '2,30p' "$0" | sed 's/^# \{0,1\}//'; exit 2; }
 shift 2
-case "$GROUP" in boot|dev|support|core|engine|llmmotor|ffi|runtime|runtime-core) ;; *) echo "gruppo non valido: $GROUP" >&2; exit 2;; esac
+case "$GROUP" in boot|dev|support|core|engine|llmmotor|ffi|domain|runtime|runtime-core) ;; *) echo "gruppo non valido: $GROUP" >&2; exit 2;; esac
 LIBS_RID="$RID"   # regole di gruppo per RID di DESTINAZIONE
 
 SRC=""; TAG=""; YES=0; DRY=0; PRUNE=0; TREE=0; REPO="c-vision/GMBasicModules"
