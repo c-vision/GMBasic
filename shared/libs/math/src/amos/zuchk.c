@@ -33,8 +33,8 @@
 
 /*     COMPLEX Y */
     *nz = 0;
-    wr = abs(*yr);
-    wi = abs(*yi);
+    wr = f2c_abs(*yr);
+    wi = f2c_abs(*yi);
     st = min(wr,wi);
     if (st > *ascle) {
 	return 0;

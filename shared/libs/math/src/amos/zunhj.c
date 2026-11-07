@@ -364,10 +364,10 @@ static integer c__1 = 1;
 /* ----------------------------------------------------------------------- */
     test = d1mach_(&c__1) * 1e3;
     ac = *fnu * test;
-    if (abs(*zr) > ac || abs(*zi) > ac) {
+    if (f2c_abs(*zr) > ac || f2c_abs(*zi) > ac) {
 	goto L15;
     }
-    *zeta1r = (d__1 = log(test), abs(d__1)) * 2. + *fnu;
+    *zeta1r = (d__1 = log(test), f2c_abs(d__1)) * 2. + *fnu;
     *zeta1i = 0.;
     *zeta2r = *fnu;
     *zeta2i = 0.;
@@ -455,7 +455,7 @@ L20:
     *bsumi = sumbi;
     l1 = 0;
     l2 = 30;
-    btol = *tol * (abs(*bsumr) + abs(*bsumi));
+    btol = *tol * (f2c_abs(*bsumr) + f2c_abs(*bsumi));
     atol = *tol;
     pp = 1.;
     ias = 0;
@@ -622,7 +622,7 @@ L140:
     upr[0] = coner;
     upi[0] = conei;
     pp = 1.;
-    btol = *tol * (abs(*bsumr) + abs(*bsumi));
+    btol = *tol * (f2c_abs(*bsumr) + f2c_abs(*bsumi));
     ks = 0;
     kp1 = 2;
     l = 3;
@@ -681,7 +681,7 @@ L140:
 	}
 	*asumr += sumar;
 	*asumi += sumai;
-	test = abs(sumar) + abs(sumai);
+	test = f2c_abs(sumar) + f2c_abs(sumai);
 	if (pp < *tol && test < *tol) {
 	    ias = 1;
 	}
@@ -703,7 +703,7 @@ L180:
 	}
 	*bsumr += sumbr;
 	*bsumi += sumbi;
-	test = abs(sumbr) + abs(sumbi);
+	test = f2c_abs(sumbr) + f2c_abs(sumbi);
 	if (pp < btol && test < btol) {
 	    ibs = 1;
 	}

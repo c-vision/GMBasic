@@ -31,8 +31,8 @@ doublereal azabs_(doublereal *zr, doublereal *zi)
 
 /* ***ROUTINES CALLED  (NONE) */
 /* ***END PROLOGUE  AZABS */
-    u = abs(*zr);
-    v = abs(*zi);
+    u = f2c_abs(*zr);
+    v = f2c_abs(*zi);
     s = u + v;
 /* ----------------------------------------------------------------------- */
 /*     S*1.0D0 MAKES AN UNNORMALIZED UNDERFLOW ON CDC MACHINES INTO A */

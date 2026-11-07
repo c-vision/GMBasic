@@ -124,7 +124,7 @@ L10:
     s1i = -zeta1i + zeta2i;
 L20:
     rs1 = s1r;
-    if (abs(rs1) > *elim) {
+    if (f2c_abs(rs1) > *elim) {
 	goto L130;
     }
 L30:
@@ -154,13 +154,13 @@ L50:
 /*     TEST FOR UNDERFLOW AND OVERFLOW */
 /* ----------------------------------------------------------------------- */
 	rs1 = s1r;
-	if (abs(rs1) > *elim) {
+	if (f2c_abs(rs1) > *elim) {
 	    goto L110;
 	}
 	if (i__ == 1) {
 	    iflag = 2;
 	}
-	if (abs(rs1) < *alim) {
+	if (f2c_abs(rs1) < *alim) {
 	    goto L60;
 	}
 /* ----------------------------------------------------------------------- */
@@ -168,7 +168,7 @@ L50:
 /* ----------------------------------------------------------------------- */
 	aphi = azabs_(&phir, &phii);
 	rs1 += log(aphi);
-	if (abs(rs1) > *elim) {
+	if (f2c_abs(rs1) > *elim) {
 	    goto L110;
 	}
 	if (i__ == 1) {
@@ -242,8 +242,8 @@ L70:
 	if (iflag >= 3) {
 	    goto L90;
 	}
-	str = abs(c2r);
-	sti = abs(c2i);
+	str = f2c_abs(c2r);
+	sti = f2c_abs(c2i);
 	c2m = max(str,sti);
 	if (c2m <= ascle) {
 	    goto L90;

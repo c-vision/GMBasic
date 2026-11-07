@@ -67,7 +67,7 @@ L20:
 	goto L30;
     }
     *br = 0.;
-    *bi = sqrt((abs(*ar)));
+    *bi = sqrt((f2c_abs(*ar)));
     return 0;
 L30:
     *br = sqrt(*ar);

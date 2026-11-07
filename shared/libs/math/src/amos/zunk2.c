@@ -194,13 +194,13 @@ L40:
 /*     TEST FOR UNDERFLOW AND OVERFLOW */
 /* ----------------------------------------------------------------------- */
 	rs1 = s1r;
-	if (abs(rs1) > *elim) {
+	if (f2c_abs(rs1) > *elim) {
 	    goto L70;
 	}
 	if (kdflg == 1) {
 	    kflag = 2;
 	}
-	if (abs(rs1) < *alim) {
+	if (f2c_abs(rs1) < *alim) {
 	    goto L50;
 	}
 /* ----------------------------------------------------------------------- */
@@ -209,7 +209,7 @@ L40:
 	aphi = azabs_(&phir[j - 1], &phii[j - 1]);
 	aarg = azabs_(&argr[j - 1], &argi[j - 1]);
 	rs1 = rs1 + log(aphi) - log(aarg) * .25 - aic;
-	if (abs(rs1) > *elim) {
+	if (f2c_abs(rs1) > *elim) {
 	    goto L70;
 	}
 	if (kdflg == 1) {
@@ -339,10 +339,10 @@ L90:
     s1i = zet1di - zet2di;
 L100:
     rs1 = s1r;
-    if (abs(rs1) > *elim) {
+    if (f2c_abs(rs1) > *elim) {
 	goto L105;
     }
-    if (abs(rs1) < *alim) {
+    if (f2c_abs(rs1) < *alim) {
 	goto L120;
     }
 /* ---------------------------------------------------------------------------- */
@@ -350,7 +350,7 @@ L100:
 /* ------------------------------------------------------------------------- */
     aphi = azabs_(&phidr, &phidi);
     rs1 += log(aphi);
-    if (abs(rs1) < *elim) {
+    if (f2c_abs(rs1) < *elim) {
 	goto L120;
     }
 L105:
@@ -395,8 +395,8 @@ L120:
 	if (kflag >= 3) {
 	    goto L130;
 	}
-	str = abs(c2r);
-	sti = abs(c2i);
+	str = f2c_abs(c2r);
+	sti = f2c_abs(c2i);
 	c2m = max(str,sti);
 	if (c2m <= ascle) {
 	    goto L130;
@@ -517,13 +517,13 @@ L230:
 /*     TEST FOR UNDERFLOW AND OVERFLOW */
 /* ----------------------------------------------------------------------- */
 	rs1 = s1r;
-	if (abs(rs1) > *elim) {
+	if (f2c_abs(rs1) > *elim) {
 	    goto L280;
 	}
 	if (kdflg == 1) {
 	    iflag = 2;
 	}
-	if (abs(rs1) < *alim) {
+	if (f2c_abs(rs1) < *alim) {
 	    goto L240;
 	}
 /* ----------------------------------------------------------------------- */
@@ -532,7 +532,7 @@ L230:
 	aphi = azabs_(&phidr, &phidi);
 	aarg = azabs_(&argdr, &argdi);
 	rs1 = rs1 + log(aphi) - log(aarg) * .25 - aic;
-	if (abs(rs1) > *elim) {
+	if (f2c_abs(rs1) > *elim) {
 	    goto L280;
 	}
 	if (kdflg == 1) {
@@ -667,8 +667,8 @@ L300:
 	if (iflag >= 3) {
 	    goto L310;
 	}
-	c2r = abs(ckr);
-	c2i = abs(cki);
+	c2r = f2c_abs(ckr);
+	c2i = f2c_abs(cki);
 	c2m = max(c2r,c2i);
 	if (c2m <= ascle) {
 	    goto L310;

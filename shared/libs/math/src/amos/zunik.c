@@ -131,10 +131,10 @@ static integer c__1 = 1;
 /* ----------------------------------------------------------------------- */
     test = d1mach_(&c__1) * 1e3;
     ac = *fnu * test;
-    if (abs(*zrr) > ac || abs(*zri) > ac) {
+    if (f2c_abs(*zrr) > ac || f2c_abs(*zri) > ac) {
 	goto L15;
     }
-    *zeta1r = (d__1 = log(test), abs(d__1)) * 2. + *fnu;
+    *zeta1r = (d__1 = log(test), f2c_abs(d__1)) * 2. + *fnu;
     *zeta1i = 0.;
     *zeta2r = *fnu;
     *zeta2i = 0.;
@@ -188,7 +188,7 @@ L15:
 	cwrkr[k] = crfnr * sr - crfni * si;
 	cwrki[k] = crfnr * si + crfni * sr;
 	ac *= rfn;
-	test = (d__1 = cwrkr[k], abs(d__1)) + (d__2 = cwrki[k], abs(d__2));
+	test = (d__1 = cwrkr[k], f2c_abs(d__1)) + (d__2 = cwrki[k], f2c_abs(d__2));
 	if (ac < *tol && test < *tol) {
 	    goto L30;
 	}

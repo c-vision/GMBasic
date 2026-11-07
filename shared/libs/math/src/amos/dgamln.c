@@ -174,7 +174,7 @@ L20:
     for (k = 2; k <= 22; ++k) {
 	zp *= zsq;
 	trm = cf[k - 1] * zp;
-	if (abs(trm) < tst) {
+	if (f2c_abs(trm) < tst) {
 	    goto L40;
 	}
 	s += trm;

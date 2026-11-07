@@ -102,12 +102,12 @@ static integer c__1 = 1;
     czr = zeror;
     czi = *zi;
 L10:
-    if (abs(czr) > *elim) {
+    if (f2c_abs(czr) > *elim) {
 	goto L100;
     }
     dnu2 = dfnu + dfnu;
     koded = 1;
-    if (abs(czr) > *alim && *n > 2) {
+    if (f2c_abs(czr) > *alim && *n > 2) {
 	goto L20;
     }
     koded = 0;
@@ -156,7 +156,7 @@ L30:
     i__1 = il;
     for (k = 1; k <= i__1; ++k) {
 	sqk = fdn - 1.;
-	atol = s * abs(sqk);
+	atol = s * f2c_abs(sqk);
 	sgn = 1.;
 	cs1r = coner;
 	cs1i = conei;
@@ -181,7 +181,7 @@ L30:
 	    cs1i += cki * sgn;
 	    dkr += ezr;
 	    dki += ezi;
-	    aa = aa * abs(sqk) / bb;
+	    aa = aa * f2c_abs(sqk) / bb;
 	    bb += aez;
 	    ak += 8.;
 	    sqk -= ak;
