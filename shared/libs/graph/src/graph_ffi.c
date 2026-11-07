@@ -8,12 +8,14 @@
  *   - array DOUBLE come double*.
  * Questo file adatta i tipi e costruisce il `gor_graph` quando serve, senza stato globale.
  */
+#include <stdint.h>
 #include "gor_graph.h"
 #include "gor_graph2.h"
 #include "gor_graph3.h"
 #include "gor_linkpred.h"
 
 #include <math.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 
