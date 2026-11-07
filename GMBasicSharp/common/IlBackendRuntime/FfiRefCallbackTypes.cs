@@ -15,4 +15,6 @@ public static class FfiRefCallbackTypes
     public delegate long CbRef2I(ref double[] a, ref double[] b);
     public delegate double[] CbRef1ArrD(ref double[] a);
     public delegate double[] CbRef2ArrD(ref double[] a, ref double[] b);
+    // 148 (2026-11-07): f(v(), x) AS ARRAY — array + scalare, ritorno array.
+    public delegate double[] CbRef1S1ArrD(ref double[] a, double s);
 }

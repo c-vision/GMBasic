@@ -1406,9 +1406,9 @@ public sealed partial class IlProgramCompiler
                 int nArr = 0;
                 while (nArr < fp.ParameterTypes.Length && fp.ParameterTypes[nArr] is ArrayType) nArr++;
                 int nSca = fp.ParameterTypes.Length - nArr;
-                if (!((nArr == 1 && nSca == 0) || (nArr == 2 && nSca == 0) || (nArr == 1 && nSca == 1 && fp.ReturnType is not ArrayType)))
+                if (!((nArr == 1 && nSca == 0) || (nArr == 2 && nSca == 0) || (nArr == 1 && nSca == 1)))
                     throw new NotSupportedException(
-                        $"FFI '{symbolName}': forma di callback non supportata per {what} ({nArr} array, {nSca} scalari): ammesse: f(v()) -> scalare/array, f(a(), b()) -> scalare/array, f(v(), x) -> scalare.");
+                        $"FFI '{symbolName}': forma di callback non supportata per {what} ({nArr} array, {nSca} scalari): ammesse: f(v()) -> scalare/array, f(a(), b()) -> scalare/array, f(v(), x) -> scalare/array.");
                 return;
             }
             if (fp.ParameterTypes.Any(t => t is ArrayType))
@@ -2134,6 +2134,7 @@ public sealed partial class IlProgramCompiler
             (2, 0, true, false) => typeof(FfiRefCallbackTypes.CbRef2I),
             (1, 0, false, true) => typeof(FfiRefCallbackTypes.CbRef1ArrD),
             (2, 0, false, true) => typeof(FfiRefCallbackTypes.CbRef2ArrD),
+            (1, 1, false, true) => typeof(FfiRefCallbackTypes.CbRef1S1ArrD),
             _ => null
         };
     }

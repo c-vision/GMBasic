@@ -92,6 +92,17 @@ public static partial class IlRuntime
                 var dv = new CbV1S1D((p, n, s) => ToF64(InvokeFfiCallbackDelegate(cb, [CopyD(p, n), s])));
                 return (dv, Marshal.GetFunctionPointerForDelegate(dv));
             }
+            if (nArr == 1 && nSca == 1 && arrRet && !isInt)
+            {
+                /* 148 (2026-11-07): f(v(), x) AS ARRAY — array + scalare, ritorno array. */
+                var dv = new CbV1S1OutD((p, n, s, outp) =>
+                {
+                    var r1 = InvokeFfiCallbackDelegate(cb, [CopyD(p, n), s]);
+                    WriteOutArray(outp, r1);
+                    return OutLength(r1);
+                });
+                return (dv, Marshal.GetFunctionPointerForDelegate(dv));
+            }
             if (nArr == 1 && nSca == 0 && arrRet)
             {
                 var dv = new CbV1OutD((p, n, outp) =>
