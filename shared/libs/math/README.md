@@ -35,6 +35,10 @@ Produce `libgmbmath.dylib` (o `.so`). Export BASIC:
   `gmbmath-vector` (`gm_mat3_*`/`gm_mat4_*`, 18 funzioni: rotazioni, traslazione, scala,
   composizione, punto/direzione, inversa affine, matrice normale, conversioni 3x3<->4x4)
   via shim `src/xform_ffi.c` (`ofx_xf_*`). Matrici piatte row-major (9 o 16 double).
+- `shared/include/spectral.inc` (namespace `SPECTRAL`, 2026-11-07). Trasformate di
+  `gmbmath-numerical` (DCT/DST e inverse, DCT2, Haar, Hilbert, Z-trasformata, STFT/iSTFT)
+  via shim `src/spectral_ffi.c` (`ofx_sp_*`). I filtri restano in `SIGNAL`.
 
-Guide utente: `QUAT-Guida-Utente`, `COMPLEX-Guida-Utente`, `XFORM-Guida-Utente` (vault) e capitolo V.27 del
+
+Guide utente: `QUAT-Guida-Utente`, `COMPLEX-Guida-Utente`, `XFORM-Guida-Utente`, `SPECTRAL-Guida-Utente` (vault) e capitolo V.27 del
 manuale.
