@@ -38,7 +38,11 @@ Produce `libgmbmath.dylib` (o `.so`). Export BASIC:
 - `shared/include/spectral.inc` (namespace `SPECTRAL`, 2026-11-07). Trasformate di
   `gmbmath-numerical` (DCT/DST e inverse, DCT2, Haar, Hilbert, Z-trasformata, STFT/iSTFT)
   via shim `src/spectral_ffi.c` (`ofx_sp_*`). I filtri restano in `SIGNAL`.
+- `shared/include/vec.inc` (namespace `VEC`, 2026-11-07). Le operazioni vettoriali che
+  `VECTOR` non ha (`gm_vec3_*`: proiezione, componente perpendicolare, Fresnel di Schlick,
+  bias, clamp/clamp01/clamp_mag, abs/sqrt/pow per componente, perpendicolare 2D) via
+  shim `src/vec_ffi.c` (`ofx_vec_*`).
 
 
-Guide utente: `QUAT-Guida-Utente`, `COMPLEX-Guida-Utente`, `XFORM-Guida-Utente`, `SPECTRAL-Guida-Utente` (vault) e capitolo V.27 del
+Guide utente: `QUAT-Guida-Utente`, `COMPLEX-Guida-Utente`, `XFORM-Guida-Utente`, `SPECTRAL-Guida-Utente`, `VEC-Guida-Utente` (vault) e capitolo V.27 del
 manuale.
