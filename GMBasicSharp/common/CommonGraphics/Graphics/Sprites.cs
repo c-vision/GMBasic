@@ -33,15 +33,13 @@ public sealed partial class GraphicsManager
     }
 
     /// <summary>Rileva le collisioni AABB tra gli sprite visibili (O(n²)) dopo il draw.</summary>
-    private int _collisionCheckCounter;
 
     /// <summary>Rileva le collisioni AABB tra gli sprite visibili (O(n²)) dopo il draw.
-    /// Il check è THROTTLED (ogni 10 SYNC): con le collisioni continue, il dispatch delle
-    /// callback a OGNI frame rallentava il loop di animazione (frame rate basso, lampeggio).</summary>
+    /// Il check è eseguito ad OGNI SYNC (parità con C99/VM-C: stessa semantica su tutti i backend);
+    /// il dispatch dell'handler avviene al SYNC successivo (vedi IlRuntime.DispatchPendingSpriteCollisions).</summary>
     private void DetectCollisions()
     {
         _lastCollisions.Clear();
-        if (++_collisionCheckCounter % 5 != 0) return;
         var vis = _visibleSpritesSorted;
         if (vis.Count < 2) return;
 

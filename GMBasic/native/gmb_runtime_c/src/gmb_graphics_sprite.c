@@ -10,7 +10,8 @@
 int gmb_gfx_sprite_load(const char* path)
 {
     gmb_gfx_init();
-    if (gmb_gfx_null_mode()) return 1;
+    /* Anche in null mode lo stato sprite e' software (PNG decodificato, nessuna SDL): serve a rilevare le
+     * collisioni al SYNC (ON SPRITE COLLISION) con id e rettangoli veri, uguali a quelli della grafica reale. */
     if (!path) return -1;
     if (g_gfx.next_sprite_id >= GMB_GFX_MAX_SPRITES) return -1;
     int id = g_gfx.next_sprite_id++;

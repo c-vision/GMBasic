@@ -21100,6 +21100,41 @@ static void st_on_error(ctx_t* c, gmb_stmt_t* s) {
             }
             return;
         }
+        /* ON SPRITE COLLISION <handler>: handler (x, y) invocato dal runtime grafico ad ogni SYNC per ogni
+         * coppia di sprite visibili sovrapposti (gmb_gfx_on_sprite_collision). Wrapper di file con firma
+         * void(double, double) attorno alla SUB utente. */
+        if (strcmp(ok, "SPRITE_COLLISION") == 0) {
+            c99_mark_ui(c);
+            char want[128]; int wl = 0;
+            for (const char* q = s->target_label ? s->target_label : ""; *q && wl < 126; q++)
+                if (*q != '_') want[wl++] = (char)tolower((unsigned char)*q);
+            want[wl] = 0;
+            fn_info_t* hf = NULL;
+            for (int k = 0; k < c->nfn; k++) {
+                char have[128]; int hl = 0;
+                for (const char* q = c->fns[k].stmt->func_name; *q && hl < 126; q++)
+                    if (*q != '_') have[hl++] = (char)tolower((unsigned char)*q);
+                have[hl] = 0;
+                if (strcmp(want, have) == 0) { hf = &c->fns[k]; break; }
+            }
+            if (!hf) { c99_fail(c, s->line, "ON SPRITE COLLISION: handler '%s' non trovato", s->target_label ? s->target_label : ""); return; }
+            if (hf->stmt->n_params > 2) { c99_fail(c, s->line, "ON SPRITE COLLISION: l'handler '%s' ha %d parametri (ammessi 0-2: x, y)", s->target_label, hf->stmt->n_params); return; }
+            char wname[160];
+            { sb_t t; memset(&t, 0, sizeof t); sb_put(&t, "__spcol_"); sb_ident(&t, hf->stmt->func_name); snprintf(wname, sizeof wname, "%s", t.s ? t.s : "__spcol"); free(t.s); }
+            if (!c->go_wraps.s || !strstr(c->go_wraps.s, wname)) {
+                sb_printf(&c->go_wraps, "static void %s(double x, double y) { (void)x; (void)y; gmb_user_", wname);
+                sb_ident(&c->go_wraps, hf->stmt->func_name);
+                sb_put(&c->go_wraps, hf->stmt->n_params == 2 ? "((gmb_double_t)x, (gmb_double_t)y); }\n"
+                                      : hf->stmt->n_params == 1 ? "((gmb_double_t)x); }\n" : "(); }\n");
+            }
+            ind(c); sb_printf(&c->out, "gmb_gfx_on_sprite_collision(%s);\n", wname);
+            return;
+        }
+        /* ON SPRITE COLLISIONS <handler> (array degli id): non ancora supportato su C99Native — no-op. */
+        if (strcmp(ok, "SPRITE_COLLISIONS") == 0) {
+            ind(c); sb_put(&c->out, "/* ON SPRITE COLLISIONS: non supportato dal backend C99Native (no-op) */\n");
+            return;
+        }
         /* ON <evento> non gestito (es. `ON SPRITE COLLISION`/`ON SPRITE COLLISIONS` → il parser
          * nativo li marca on_kind="OTHER"): NO-OP, come l'oracolo C# (EmitGraphicsStatement non
          * ha un case per OnSpriteCollisionStmt → non emette nulla). Prima falliva ("ON ERROR

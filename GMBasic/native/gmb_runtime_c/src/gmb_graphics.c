@@ -906,10 +906,62 @@ const uint32_t* gmb_gfx_visible_pixels(int* out_w, int* out_h)
     return p->pixels;
 }
 
+static gmb_gfx_collision_fn g_collision_cb = NULL;
+void gmb_gfx_on_sprite_collision(gmb_gfx_collision_fn cb) { g_collision_cb = cb; }
+
+/* Collisioni AABB fra sprite visibili (rettangoli = dimensioni della texture, come gmb_gfx_collide).
+ * Semantica identica a IL/PCode: il SYNC N rileva, il SYNC N+1 consegna all'handler (una sola
+ * chiamata per SYNC, con la PRIMA collisione: (x, y) = centro del rettangolo dello sprite con id minore). */
+static int g_col_pending = 0;
+static int g_col_id1 = 0, g_col_id2 = 0;
+static double g_col_px = 0, g_col_py = 0;
+
+static void gfx_detect_collisions(void)
+{
+    g_col_pending = 0;
+    for (int i = 1; i < g_gfx.next_sprite_id && i < GMB_GFX_MAX_SPRITES; i++)
+    {
+        gmb_gfx_sprite_t* a = &g_gfx.sprites[i];
+        if (!a->in_use || !a->visible || a->tex_id <= 0 || a->tex_id >= GMB_GFX_MAX_TEXTURES || !g_gfx.textures[a->tex_id].in_use) continue;
+        for (int j = i + 1; j < g_gfx.next_sprite_id && j < GMB_GFX_MAX_SPRITES; j++)
+        {
+            gmb_gfx_sprite_t* b = &g_gfx.sprites[j];
+            if (!b->in_use || !b->visible || b->tex_id <= 0 || b->tex_id >= GMB_GFX_MAX_TEXTURES || !g_gfx.textures[b->tex_id].in_use) continue;
+            if (!gmb_gfx_collide(i, j)) continue;
+            g_col_pending = 1;
+            g_col_id1 = i; g_col_id2 = j;
+            g_col_px = (double)a->x + g_gfx.textures[a->tex_id].w / 2.0;
+            g_col_py = (double)a->y + g_gfx.textures[a->tex_id].h / 2.0;
+            return;
+        }
+    }
+}
+
+static void gfx_dispatch_collisions(void)
+{
+    if (!g_collision_cb || !g_col_pending) return;   /* senza handler C la collisione resta in attesa per gmb_gfx_take_collision */
+    g_col_pending = 0;
+    g_collision_cb(g_col_px, g_col_py);
+}
+
+/* Preleva la collisione rilevata dall'ultimo SYNC (per i backend che dispacciano l'handler da se': C#/VM-C).
+ * Ritorna 1 e riempie id1, id2, x, y; 0 se non ce ne sono. Svuota l'attesa. */
+int gmb_gfx_take_collision(int* id1, int* id2, float* x, float* y)
+{
+    if (!g_col_pending) return 0;
+    g_col_pending = 0;
+    if (id1) *id1 = g_col_id1;
+    if (id2) *id2 = g_col_id2;
+    if (x) *x = (float)g_col_px;
+    if (y) *y = (float)g_col_py;
+    return 1;
+}
+
 void gmb_gfx_sync(void)
 {
+    gfx_dispatch_collisions();   /* consegna le collisioni rilevate dal SYNC precedente */
     gmb_gfx_page_t* p = active_page();
-    if (!p) return;
+    if (!p) { gfx_detect_collisions(); return; }
     /* Present: disegna gli sprite visibili (in ordine di priorita') sul frame.
      * Usa gmb_gfx_draw_texture così rotazione/scala per-sprite sono rispettate. */
     for (int prio = 0; prio < 256; prio++)
@@ -920,6 +972,7 @@ void gmb_gfx_sync(void)
             if (s->tex_id <= 0 || s->tex_id >= GMB_GFX_MAX_TEXTURES || !g_gfx.textures[s->tex_id].in_use) continue;
             gmb_gfx_draw_texture(s->tex_id, (int)s->x, (int)s->y, s->rotation, s->scale_x, s->scale_y);
         }
+    gfx_detect_collisions();
 }
 
 void gmb_gfx_waitkey(void)

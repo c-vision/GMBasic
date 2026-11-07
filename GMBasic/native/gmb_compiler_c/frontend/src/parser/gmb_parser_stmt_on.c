@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
+#include <strings.h>
 
 static int on_event_valid(const gmb_token_t* t)
 {
@@ -133,6 +134,20 @@ gmb_stmt_t* gmb_p_parse_on(gmb_parser_t* p, int line, bool* multiline)
         else if (gmb_p_tok_is_keyword(gmb_p_cur(p), "Call") || gmb_p_check(p, GMB_TOK_Call)) { gmb_p_adv(p); s->target_label = read_label(p); s->on_goto = false; }
         else if (gmb_p_tok_is_keyword(gmb_p_cur(p), "Stop") || gmb_p_check(p, GMB_TOK_Stop)) gmb_p_adv(p);
         return s;
+    }
+    /* ON SPRITE COLLISION[S] <handler>: l'handler resta in target_label (on_kind SPRITE_COLLISION / SPRITE_COLLISIONS). */
+    if (gmb_p_tok_is_soft_keyword(gmb_p_cur(p), "SPRITE") || gmb_p_tok_is_keyword(gmb_p_cur(p), "Sprite")) {
+        gmb_p_adv(p);
+        const gmb_token_t* ev = gmb_p_cur(p);
+        int plural = 0, ok = 0;
+        if (ev && ev->lexeme && ev->length == 9 && strncasecmp(ev->lexeme, "COLLISION", 9) == 0) ok = 1;
+        else if (ev && ev->lexeme && ev->length == 10 && strncasecmp(ev->lexeme, "COLLISIONS", 10) == 0) { ok = 1; plural = 1; }
+        if (ok) {
+            gmb_p_adv(p);
+            s->on_kind = plural ? "SPRITE_COLLISIONS" : "SPRITE_COLLISION";
+            s->target_label = read_label(p);
+            return s;
+        }
     }
     /* ON <evento> <handler> non riconosciuto (es. ON SPRITE COLLISION ...) — consuma la riga */
     while (!gmb_p_at_end(p) && !gmb_p_check(p, GMB_TOK_Newline)) gmb_p_adv(p);
