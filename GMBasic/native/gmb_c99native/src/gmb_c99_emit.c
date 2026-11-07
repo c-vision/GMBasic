@@ -31567,6 +31567,14 @@ static void emit_ffi_wrapper(ctx_t* c, fn_info_t* fn, const char* vkey) {
             int kindmask = s->param_fn_kind_mask ? s->param_fn_kind_mask[i] : 0;
             int hasRet = s->param_fn_has_ret ? s->param_fn_has_ret[i] : 0;
             int retInt = hasRet && s->param_fn_ret_int ? s->param_fn_ret_int[i] : 0;
+            /* (2026-11-07) Un array FUORI dalla testa (es. `f(t, y())`) non è una forma
+             * supportata: prima cadeva nel ramo scalare e il tipo emesso era sbagliato
+             * (crash a runtime con array bound 0). Stesso messaggio delle altre gambe. */
+            if (s->param_fn_arr_mask && s->param_fn_arr_mask[i] && !(s->param_fn_arr_mask[i] & 1)) {
+                c99_fail(c, s->line, "FFI '%s': callback con array usato per %s non supportato "
+                         "(gli array devono stare in testa: f(v()), f(a(), b()), f(v(), x)).", sym, what);
+                return;
+            }
             /* Callback VETTORIALE (2026-11-02): 1-2 array in testa (+ eventuali scalari).
              * descriptor = (nArr-1) | (nSca<<2). Native: (double*, n[, double*, n2][, double...]). */
             if (s->param_fn_arr_mask && (s->param_fn_arr_mask[i] & 1)) {
