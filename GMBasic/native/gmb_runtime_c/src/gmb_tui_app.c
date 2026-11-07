@@ -863,20 +863,16 @@ void gmb_tui_draw_px_all(void)
         if (g_reg_ctrl[i])
         {
             gmb_control_t* cc = g_reg_ctrl[i];
-            /* Backend = SORGENTE delle coordinate: su schermo GRAFICO le coordinate dei
-             * controlli sono GIA' pixel (come i widget form); in TUI/SDLConsole sono celle
-             * e si convertono con l'helper cella->pixel. Un solo modello per schermata. */
-            cc->window_kind = gmb_base_window_kind();   /* backend ATTUALE (regola: le coordinate seguono il backend) */
-            int gfx_backend = gmb_gfx_screen_on();
-            int save_x = cc->x, save_y = cc->y, save_w = cc->width, save_h = cc->height, ox = 0, oy = 0;
-            if (cc->container[0] &&
-                (gmb_winstmt_content_origin(cc->container, &ox, &oy) ||
-                 gmb_tui_control_content_origin(cc->container, &ox, &oy))) { cc->x += ox; cc->y += oy; }
-            if (gfx_backend) { cc->px_x = cc->x; cc->px_y = cc->y; cc->px_w = cc->width; cc->px_h = cc->height; }
-            else { cc->x *= cw; cc->y *= ch; cc->width *= cw; cc->height *= ch; cc->px_x = cc->x; cc->px_y = cc->y; cc->px_w = cc->width; cc->px_h = cc->height; }
+            /* REGOLA: in GRAFICA le coordinate dei controlli sono PIXEL, sempre.
+             * Nessuna conversione implicita da celle e nessun offset di origine a celle:
+             * un controllo grafico si posiziona pixel per pixel. La conversione
+             * celle->pixel resta un HELPER ESPLICITO per i client TUI (che hanno le
+             * coordinate in celle), non una trasformazione automatica del renderer. */
+            cc->window_kind = gmb_base_window_kind();
+            cc->px_x = cc->x; cc->px_y = cc->y;
+            cc->px_w = cc->width; cc->px_h = cc->height;
             if (cc->draw_px_fn) cc->draw_px_fn(cc->user, cc);
             else draw_cells_px_fallback(cc, cw, ch);
-            cc->x = save_x; cc->y = save_y; cc->width = save_w; cc->height = save_h;
         }}
 
 void gmb_tui_refresh_window(void)
