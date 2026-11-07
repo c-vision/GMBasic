@@ -14199,7 +14199,40 @@ static void emit_call(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_
             sb_put(&c->out, "; ");
         }
         CHK();
+        /* Ranghi misti (parametri a() che ricevono ranghi diversi) inoltrati a una FFI: come nel
+         * call-site principale, una chiamata per rango scelta a runtime dai bound. */
+        g_ndyn = 0; g_dyn_force = 0;
+        if (ffi_fn_has_arrays(fn)) {
+            for (int i = 0; i < fixed_count && i < 64 && g_ndyn < 4; i++) {
+                if (!p_arraylike(fn->stmt, i)) continue;
+                gmb_expr_t* ea = EFF_ARG(i); const char* vn = NULL;
+                if (ea && ea->kind == GMB_EXPR_VAR) vn = ea->var;
+                else if (ea && ea->kind == GMB_EXPR_CALL && ea->var && ea->nargs == 0) vn = ea->var;
+                var_t* dv = vn ? lookup_var(c, vn) : NULL; int dmx = 0;
+                if (dv && dv->is_array && rank_mixed_param(c, dv->name, &dmx) && dmx >= 2) {
+                    snprintf(g_dyn[g_ndyn].name, sizeof(g_dyn[g_ndyn].name), "%s", dv->name); g_dyn[g_ndyn].maxr = dmx > C99_FFI_MAXRANK ? C99_FFI_MAXRANK : dmx; g_ndyn++;
+                }
+            }
+        }
+        int ncombo = 1; for (int j = 0; j < g_ndyn; j++) ncombo *= g_dyn[j].maxr;
+        int dyn_n = g_ndyn; ffi_dyn_t dyn_save[4]; memcpy(dyn_save, g_dyn, sizeof(dyn_save));
         sb_printf(&c->out, "%s __brr = ", fn_ret_ctype(c, fn));
+        if (ncombo > 1) sb_put(&c->out, "(");
+        for (int combo = 0; combo < ncombo && !c->error[0]; combo++) {
+            if (ncombo > 1) {
+                memcpy(g_dyn, dyn_save, sizeof(dyn_save)); g_ndyn = dyn_n;
+                int kk = combo;
+                for (int j = dyn_n - 1; j >= 0; j--) { g_dyn_sel[j] = 1 + kk % g_dyn[j].maxr; kk /= g_dyn[j].maxr; }
+                g_dyn_force = 1;
+                if (combo < ncombo - 1) {
+                    int first = 1;
+                    for (int j = 0; j < dyn_n; j++) if (g_dyn_sel[j] < g_dyn[j].maxr) {
+                        if (!first) sb_put(&c->out, " && ");
+                        first = 0; sb_put(&c->out, "("); sb_bound_ident(&c->out, g_dyn[j].name, g_dyn_sel[j]); sb_put(&c->out, " == " C99_RANK_ABS ")");
+                    }
+                    sb_put(&c->out, " ? ");
+                }
+            }
         emit_fn_cname_call(c, fn, args, nargs);
         sb_put(&c->out, "(");
         for (int i = 0; i < fixed_count && !c->error[0]; i++) {
@@ -14226,7 +14259,12 @@ static void emit_call(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_
             }
             else emit_expr(c, a);
         }
-        sb_put(&c->out, "); ");
+        sb_put(&c->out, ")");
+            if (ncombo > 1 && combo < ncombo - 1) sb_put(&c->out, " : ");
+        }
+        g_dyn_force = 0; g_ndyn = 0;
+        if (ncombo > 1) sb_put(&c->out, ")");
+        sb_put(&c->out, "; ");
         for (int i = 0; i < fixed_count && !c->error[0]; i++) {
             if (!fn->stmt->param_byref[i] || (i < 64 && direct_addr[i])) continue;
             if (p_arraylike(fn->stmt, i)) continue;   /* array: nessun writeback */

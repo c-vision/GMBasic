@@ -42,3 +42,10 @@ double first_ext(const double *a, int64_t d0)
     (void)a;
     return (double)d0;
 }
+
+/* Scalare BYREF PRIMA dell array (le estensioni seguono l array: arita variabile col rango): scrive d0 in *out (valida con qualunque rango). */
+void first_ext_out(double *out, const double *a, int64_t d0)
+{
+    (void)a;
+    *out = (double)d0;
+}
