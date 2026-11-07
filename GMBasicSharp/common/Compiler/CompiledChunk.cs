@@ -8,6 +8,14 @@ namespace Compiler;
 public sealed class CompiledChunk
 {
     /// <summary>
+    /// Versione del formato A1/GMBC. **2** = descrittore FFI per argomento (2026-11-06);
+    /// **1** = formato storico (maschere), valido solo per chunk SENZA chiamate FFI.
+    /// I chunk compilati in-process sono sempre 2; il valore arriva da
+    /// <c>ChunkA1Serializer.Deserialize</c> per i chunk letti da file.
+    /// </summary>
+    public int FormatVersion { get; set; } = 2;
+
+    /// <summary>
     /// La sequenza di byte che rappresentano le istruzioni P-Code.
     /// </summary>
     public List<byte> Code { get; } = [];

@@ -388,6 +388,7 @@ internal sealed partial class PCodeProcessor
         catch { }
     }
 
+    private readonly int _chunkFormatVersion = 2;
     private readonly Dictionary<int, string> _addrToProcedureName;
     private Dictionary<int, Basic.Runtime.Gpm.IslandRun> _islandByAddr = new();
     private int _islandCacheVersion = -1;
@@ -398,6 +399,7 @@ internal sealed partial class PCodeProcessor
         SubscribeGuiMouseEvents();
         SubscribeBreakEvent();
         _runtime = runtime;
+        _chunkFormatVersion = chunk.FormatVersion;
         _code = chunk.Code.ToArray();
         _debugSourceLines = chunk.Lines.Count == chunk.Code.Count ? chunk.Lines.ToArray() : null;
         _debugStatementRanges = chunk.StatementRanges.Count > 0 ? chunk.StatementRanges.ToArray() : null;
@@ -4538,6 +4540,11 @@ internal sealed partial class PCodeProcessor
             // === FFI CALL (tipizzata: kind omogeneo 0=double, 1=int64) ===
             case OpCode.OP_CALL_FFI_T:
             {
+                // Chunk v1 (pre-2026-11-06): il formato FFI era a maschere, non a descrittore.
+                // Rifiuto ESPLICITO invece di un parse silenziosamente sbagliato.
+                if (_chunkFormatVersion < 2)
+                    throw new InvalidOperationException(
+                        "FFI: chunk v1 (formato precedente al 2026-11-06) con chiamata FFI: ricompilare il sorgente.");
                 var libIdx = ReadU16(task);
                 var nameIdx = ReadU16(task);
                 var argCount = ReadU16(task);

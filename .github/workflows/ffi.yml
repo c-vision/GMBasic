@@ -1,0 +1,101 @@
+# .github/workflows/ffi.yml — gate del motore FFI (libffi vendorizzata + MiniTest ffi/)
+#
+# PERCHÉ ESISTE. `libs.yml` compila e pubblica i gruppi di librerie, ma NON costruisce
+# `gmb_vm_host` (il consumatore di libffi) e non esegue i MiniTest FFI: fino al 2026-11-07 la
+# libffi era verificata solo sulla macchina di sviluppo (macOS arm64). Questo workflow rende
+# ripetibile ciò che il piano FFI chiedeva (criterio 5): build + gate FFI su macOS e Linux.
+#
+# COSA VERIFICA
+#   1. `shared/libs/ffi/build.sh` produce `out/lib/libffi.a` (vendorizzata, 3.5.2).
+#   2. `gmb_vm_host` si configura e linka con libffi (fallisce se l'integrazione CMake si rompe).
+#   3. `gmb_ffi_selfcheck` (runtime C) gira verde.
+#   4. I MiniTest `shared/minitests/ffi/` passano sulla gamba NATIVA (C99Native), che è il
+#      riferimento del monorepo; include `ffi_negative_byref_string` (parità errore) e
+#      `ffi_udt_wide64` (cap 64 campi).
+#
+# WINDOWS: NON abilitato. `gmb_vm_host` e la VM/C usano API POSIX (dlopen, pthread, fork/exec);
+# il port Win32 è un lavoro separato, non un residuo FFI. Motivazione identica a `libs.yml`.
+#
+# SEGRETI/VARIABILI: `LLMENV_REPO` (variable, es. `c-vision/LLMEnv`) è necessario perché
+# `gmb_runtime_c` include LLMEnv; in alternativa `LLMENV_DIR` con un checkout precompilato.
+#
+# STATO: prima esecuzione da validare (le dipendenze di sistema Linux sono quelle di `libs.yml`).
+name: ffi
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "ffi-*"
+
+permissions:
+  contents: read
+
+jobs:
+  build-test:
+    name: build+test ${{ matrix.rid }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - rid: osx-arm64
+            os: macos-14
+          - rid: linux-x64
+            os: ubuntu-24.04
+    runs-on: ${{ matrix.os }}
+    env:
+      LLMENV: ${{ vars.LLMENV_DIR || '' }}
+      GMBASIC_ROOT: ${{ github.workspace }}/GMBasic
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: dipendenze di sistema (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          brew update >/dev/null
+          brew install cmake openssl@3 zstd curl brotli lz4 sdl2 sdl2_ttf jpeg-turbo libpng libtiff webp sqlite
+
+      - name: dipendenze di sistema (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            cmake build-essential libssl-dev libzstd-dev libcurl4-openssl-dev \
+            libbrotli-dev liblz4-dev libsdl2-dev libsdl2-ttf-dev libjpeg-dev \
+            libpng-dev libtiff-dev libwebp-dev libsqlite3-dev libopenblas-dev
+
+      - name: checkout LLMEnv
+        if: ${{ vars.LLMENV_REPO != '' }}
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ vars.LLMENV_REPO }}
+          path: LLMEnv
+
+      - name: compute LLMENV
+        run: |
+          if [ -d "$GITHUB_WORKSPACE/LLMEnv" ]; then echo "LLMENV=$GITHUB_WORKSPACE/LLMEnv" >> "$GITHUB_ENV"; fi
+
+      - name: LLMEnv presente? (errore chiaro)
+        run: |
+          if [ -z "${LLMENV:-}" ] || [ ! -d "$LLMENV" ]; then
+            echo "::error::LLMEnv non trovato: imposta la variable LLMENV_REPO (es. c-vision/LLMEnv) o LLMENV_DIR." >&2
+            exit 1
+          fi
+
+      - name: libffi vendorizzata (build)
+        run: bash shared/libs/ffi/build.sh
+
+      - name: configure gmb_vm_c
+        run: cmake -S GMBasic/native/gmb_vm_c -B GMBasic/native/gmb_vm_c/build -DCMAKE_BUILD_TYPE=Release
+
+      - name: build gmb_vm_host + gmb_ffi_selfcheck
+        run: cmake --build GMBasic/native/gmb_vm_c/build --target gmb_vm_host gmb_ffi_selfcheck -j 4
+
+      - name: gmb_ffi_selfcheck (runtime C)
+        run: |
+          bin="$(find GMBasic/native/gmb_vm_c/build -type f -name gmb_ffi_selfcheck -perm -u+x | head -1)"
+          [ -n "$bin" ] || { echo "::error::gmb_ffi_selfcheck non trovato nel build tree" >&2; exit 1; }
+          "$bin"
+
+      - name: MiniTest FFI — gamba nativa (C99Native)
+        run: GMB_MINI_ONLY="ffi/" tools/sh/test_minitests_c99native

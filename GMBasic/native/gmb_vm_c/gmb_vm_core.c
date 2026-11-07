@@ -15238,6 +15238,13 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
             }
             case OP_CALL_FFI_T:
             {
+                /* Chunk v1 (pre-2026-11-06): il formato FFI era a maschere, non a descrittore.
+                 * Rifiuto ESPLICITO invece di un parse silenziosamente sbagliato. */
+                if (vm->chunk && vm->chunk->version < 2)
+                {
+                    vm_error(task, "[FFI] chunk v1 (formato precedente al 2026-11-06) con chiamata FFI: ricompilare il sorgente.");
+                    return -1;
+                }
                 /* FFI tipizzata (kind omogeneo 0=double, 1=int64): il function-pointer C
                  * usa la firma reale del simbolo exportato (int64) — il contratto all-double
                  * di OP_CALL_FFI leggeva registri sbagliati su `long vec_add(long,long)`

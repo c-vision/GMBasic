@@ -1,4 +1,18 @@
 
+# libffi (vendorizzata) — README di progetto GMBASIC
+
+> Questo file è il README **upstream** di libffi 3.5.2. La nota di progetto (versione, licenza,
+> build, uso nel monorepo) è **[`VENDOR.md`](VENDOR.md)**; il motore di chiamata che la usa è
+> `GMBasic/native/gmb_vm_c/gmb_call.{h,c}`.
+>
+> - Build: `bash shared/libs/ffi/build.sh` → `out/lib/libffi.a` + `out/include/ffi.h`.
+> - Consumo: `gmb_vm_host` (VM/C) la linka **staticamente**; non è distribuita come asset.
+> - Limiti FFI del linguaggio: **64 argomenti** (`GMB_FFI_MAX_ARGS`), UDT **64 campi-foglia**,
+>   callback **0-8**, `DECLARE NATIVE` per l'ABI esatta; **varargs fuori scope**.
+> - Piano e verifiche: `AiWiki/01-Projects/GMBasicMonoRepo/Piani/(solved) - FFI-Oltre-8-Slot.md`.
+
+---
+
 libffi-3.5.2 was released on August 2, 2025.
 
 

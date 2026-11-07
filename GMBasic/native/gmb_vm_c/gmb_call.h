@@ -24,7 +24,9 @@ extern "C" {
 int gmb_call_invoke(void* fn, int n, const unsigned char* is_int,
                     void* const* vals, int ret_is_int, void* ret);
 
-/* 1 = usa libffi (default), 0 = forza il dispatch storico (GMB_FFI_LIBFFI=0). */
+/* Sempre 1 (libffi): l'ex interruttore via env `GMB_FFI_LIBFFI` è stato rimosso il 2026-11-06
+ * (AGENTS: nessuna env per governare il comportamento). Il ripiego sul dispatch storico resta
+ * automatico quando `ffi_prep_cif` fallisce. */
 int gmb_call_enabled(void);
 
 #ifdef __cplusplus

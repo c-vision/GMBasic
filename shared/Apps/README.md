@@ -150,7 +150,7 @@ the tool's CLI). Apps therefore select their behaviour through `#IFDEF` compile-
 | [`RuleFlow`](RuleFlow/README.md) | [RuleFlow-OSS/RuleFlow](https://github.com/RuleFlow-OSS/RuleFlow) — rewrite systems (SSS/ECA) with causal graph and metrics | Python | MIT | M1 headless: FlowLang parser (`->` `-->` `>` `><`), events with delta, **causal DAG** (nodes/edges/density/max path); **verified on IL/PCode/VM/C/C99Native**; parallelism/multiway in TODO |
 | [`ServiceConsole`](ServiceConsole/README.md) | — (original) | BASIC | GMBasic | test bench for the polymorphic **daemon + GUI** (in-language HTTP, tray, console TUI; scripts `console_tui.sh`/`console_gui.sh`) |
 
-> **No longer here**: the TUI IDE (formerly `Apps/GMBasicIde`, now `GMBasicTuiIde`) is **not in this
+> **No longer here**: the TUI IDE (formerly `Apps/GMBasicIde`, now `GMBasicTuiIDE`) is **not in this
 > repository**: it is developed locally and excluded until complete (`.gitignore`), together with the
 > GUI IDE (`GMBasicIDE/`). Reason it will be published as an autonomous project when ready: it is the
 > measurement bench for the footprint of a complex, compiled BASIC program.
