@@ -967,7 +967,7 @@ public sealed partial class Compiler
                     int nArr = 0;
                     while (nArr < fp.ParameterTypes.Length && fp.ParameterTypes[nArr] is ArrayType) nArr++;
                     int nSca = fp.ParameterTypes.Length - nArr;
-                    if (!((nArr == 1 && nSca == 0) || (nArr == 2 && nSca == 0) || (nArr == 1 && nSca == 1)))
+                    if (!((nArr == 1 && nSca == 0) || (nArr == 2 && nSca == 0) || (nArr == 1 && nSca == 1 && fp.ReturnType is not ArrayType)))
                         throw new BasicException(expr.OriginalToken,
                             $"FFI '{symbolName}': forma di callback non supportata per {what} ({nArr} array, {nSca} scalari): ammesse: f(v()) -> scalare/array, f(a(), b()) -> scalare/array, f(v(), x) -> scalare.");
                     return;
