@@ -42,7 +42,11 @@ Produce `libgmbmath.dylib` (o `.so`). Export BASIC:
   `VECTOR` non ha (`gm_vec3_*`: proiezione, componente perpendicolare, Fresnel di Schlick,
   bias, clamp/clamp01/clamp_mag, abs/sqrt/pow per componente, perpendicolare 2D) via
   shim `src/vec_ffi.c` (`ofx_vec_*`).
+- `shared/include/sparse.inc` (namespace `SPARSE`, 2026-11-07). Matrici sparse di
+  `gmbcompute/gc_sparse` (COO/CSR/CSC, conversioni, trasposizione) e solutori diretti di
+  `gmbmath-linalg` (Cholesky e LU sparsi) via shim `src/sparse_ffi.c` (`ofx_sp_*`).
+  Superficie a handle (64 slot), `FREE` per liberare.
 
 
-Guide utente: `QUAT-Guida-Utente`, `COMPLEX-Guida-Utente`, `XFORM-Guida-Utente`, `SPECTRAL-Guida-Utente`, `VEC-Guida-Utente` (vault) e capitolo V.27 del
+Guide utente: `QUAT-Guida-Utente`, `COMPLEX-Guida-Utente`, `XFORM-Guida-Utente`, `SPECTRAL-Guida-Utente`, `VEC-Guida-Utente`, `SPARSE-Guida-Utente` (vault) e capitolo V.27 del
 manuale.
