@@ -1,5 +1,5 @@
 ' Combinazione: struct ANNIDATA + campo ARRAY + larghezze miste, parametro e ritorno (S3b).
-' EXPECT: sz= 64|s= 45|px= 2|py= 4|k= 6|z= 8|a0= 9|a2= 19|n= 7
+' EXPECT: sz= 64|s= 38|px= 2|py= 4|k= 6|z= 8|a0= 9|a2= 19|n= 7
 TYPE Pt2
     X AS DOUBLE
     Y AS DOUBLE

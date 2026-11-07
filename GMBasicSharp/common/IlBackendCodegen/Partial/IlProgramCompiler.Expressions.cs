@@ -2007,10 +2007,15 @@ public sealed partial class IlProgramCompiler
             _il.Emit(OpCodes.Ldc_I8, (long)byrefScalarElemIntMask);
             if (anyUdtParam) EmitUdtShapesArray(); else _il.Emit(OpCodes.Ldnull);
             _il.Emit(OpCodes.Ldc_I8, (long)scalarKindMask);
+            /* Ordine dei parametri di FfiCallTypedArrUdtRet: (..., scalarKindMask,
+             * byrefUdtMask, udtReturnShape, udtReturnType). Il Ldc_I8 deve precedere
+             * la stringa: se finisce dopo Ldtoken/GetTypeFromHandle lo stack ha
+             * (string, Type, long) invece di (long, string, Type) e il JIT rifiuta il
+             * metodo con InvalidProgramException (tutti i ritorni UDT su IL, 2026-11-06). */
+            _il.Emit(OpCodes.Ldc_I8, (long)byrefUdtMask);
             _il.Emit(OpCodes.Ldstr, UdtShapeString(udtReturn, "il ritorno"));
             _il.Emit(OpCodes.Ldtoken, udtReturnClrType);
             _il.Emit(OpCodes.Call, GetTypeFromHandleMethod);
-            _il.Emit(OpCodes.Ldc_I8, (long)byrefUdtMask);
             _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.FfiCallTypedArrUdtRet), typeof(string), typeof(string), typeof(object[]), typeof(int), typeof(long), typeof(long), typeof(long), typeof(long), typeof(long), typeof(string[]), typeof(long), typeof(long), typeof(string), typeof(Type)));
             _il.Emit(OpCodes.Unbox_Any, udtReturnClrType);
             EmitByRefScalarWriteback();
