@@ -23,9 +23,9 @@ public static class ChunkA1Serializer
         using var ms = new MemoryStream();
         using var w = new BinaryWriter(ms);
 
-        // MAGIC "GMBC" + VERSION
+        // MAGIC "GMBC" + VERSION (2 = descrittore FFI per argomento, 2026-11-06)
         w.Write((byte)'G'); w.Write((byte)'M'); w.Write((byte)'B'); w.Write((byte)'C');
-        w.Write((byte)1);
+        w.Write((byte)2);
 
         // HEAD: entry_point, global_count, data_count, code_len, consts_len
         WriteU32(w, (uint)chunk.EntryPoint);
@@ -133,11 +133,14 @@ public static class ChunkA1Serializer
             if (r.ReadByte() != (byte)"GMBC"[i])
                 throw new InvalidDataException("Magic A1/GMBC mancante nel chunk.");
         var version = r.ReadByte();
-        if (version != 1)
+        // 1 = formato storico (maschere FFI): leggibile SOLO se il chunk non usa FFI
+        //     (PCodeVM rifiuta la chiamata con un errore esplicito); 2 = descrittore per argomento.
+        if (version != 1 && version != 2)
             throw new InvalidDataException($"Versione chunk A1/GMBC non supportata: {version}.");
 
         var chunk = new CompiledChunk
         {
+            FormatVersion = version,
             EntryPoint = unchecked((int)ReadU32(r)),
             GlobalCount = unchecked((int)ReadU32(r)),
         };

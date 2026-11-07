@@ -222,7 +222,7 @@ public static class Orchestrator
         var packageManager = new Parser.PackageManager();
         // Cache override per test/progetto (GMB_PKG_CACHE, legacy). Default: cache UNICA
         // GmbiPaths.PackagesDir (= <install GMBasic>/packages), condivisa da tutti i programmi.
-        if (Environment.GetEnvironmentVariable("GMB_PKG_CACHE") is { } pkgCache && pkgCache.Length > 0)
+        if (Basic.Providers.GmbEnv.Get("GMB_PKG_CACHE") is { } pkgCache && pkgCache.Length > 0)
             packageManager.CacheRoot = pkgCache;
         // Contesto di build: piattaforma corrente + edizione + backend default il.
         // Il C99/VM harness passa backend="c99"/"vm" via PackageBuildContext quando serve
@@ -1175,7 +1175,7 @@ public static class Orchestrator
             Span<byte> hdr = stackalloc byte[5];
             stream.ReadExactly(hdr);
             return hdr[0] == (byte)'G' && hdr[1] == (byte)'M' && hdr[2] == (byte)'B' && hdr[3] == (byte)'C'
-                && hdr[4] == 1; // GMB_CHUNK_VERSION
+                && (hdr[4] == 1 || hdr[4] == 2); // GMB_CHUNK_VERSION (1 storico, 2 descrittore FFI)
         }
         catch { return false; }
     }

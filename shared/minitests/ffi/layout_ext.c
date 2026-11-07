@@ -247,6 +247,40 @@ double str_at9(double a1, double a2, double a3, double a4, double a5, double a6,
     return a1 + a2 + a3 + a4 + a5 + a6 + a7 + a8 + (s && s[0] == 'x' ? 100.0 : 0.0);
 }
 
+/* 64 campi (cap dichiarato del layout UDT, F5 2026-11-07): il test più largo era 16.
+ * 64 int32 = 256 byte; `wide64_sum` = somma dei valori 1..64 = 2080. */
+typedef struct {
+    int32_t f0, f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11, f12, f13, f14, f15;
+    int32_t f16, f17, f18, f19, f20, f21, f22, f23, f24, f25, f26, f27, f28, f29, f30, f31;
+    int32_t f32, f33, f34, f35, f36, f37, f38, f39, f40, f41, f42, f43, f44, f45, f46, f47;
+    int32_t f48, f49, f50, f51, f52, f53, f54, f55, f56, f57, f58, f59, f60, f61, f62, f63;
+} Wide64;
+
+int32_t wide64_size(void) { return (int32_t)sizeof(Wide64); }
+double wide64_sum(Wide64 w)
+{
+    return (double)(w.f0 + w.f1 + w.f2 + w.f3 + w.f4 + w.f5 + w.f6 + w.f7
+                  + w.f8 + w.f9 + w.f10 + w.f11 + w.f12 + w.f13 + w.f14 + w.f15
+                  + w.f16 + w.f17 + w.f18 + w.f19 + w.f20 + w.f21 + w.f22 + w.f23
+                  + w.f24 + w.f25 + w.f26 + w.f27 + w.f28 + w.f29 + w.f30 + w.f31
+                  + w.f32 + w.f33 + w.f34 + w.f35 + w.f36 + w.f37 + w.f38 + w.f39
+                  + w.f40 + w.f41 + w.f42 + w.f43 + w.f44 + w.f45 + w.f46 + w.f47
+                  + w.f48 + w.f49 + w.f50 + w.f51 + w.f52 + w.f53 + w.f54 + w.f55
+                  + w.f56 + w.f57 + w.f58 + w.f59 + w.f60 + w.f61 + w.f62 + w.f63);
+}
+Wide64 wide64_inc(Wide64 w)
+{
+    w.f0++; w.f1++; w.f2++; w.f3++; w.f4++; w.f5++; w.f6++; w.f7++;
+    w.f8++; w.f9++; w.f10++; w.f11++; w.f12++; w.f13++; w.f14++; w.f15++;
+    w.f16++; w.f17++; w.f18++; w.f19++; w.f20++; w.f21++; w.f22++; w.f23++;
+    w.f24++; w.f25++; w.f26++; w.f27++; w.f28++; w.f29++; w.f30++; w.f31++;
+    w.f32++; w.f33++; w.f34++; w.f35++; w.f36++; w.f37++; w.f38++; w.f39++;
+    w.f40++; w.f41++; w.f42++; w.f43++; w.f44++; w.f45++; w.f46++; w.f47++;
+    w.f48++; w.f49++; w.f50++; w.f51++; w.f52++; w.f53++; w.f54++; w.f55++;
+    w.f56++; w.f57++; w.f58++; w.f59++; w.f60++; w.f61++; w.f62++; w.f63++;
+    return w;
+}
+
 /* BYREF UDT (struct*): in/out di una struct per puntatore. */
 typedef struct { double x; double y; } ByrefPt;
 

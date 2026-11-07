@@ -8,7 +8,7 @@ source of truth for details:
 
 ## 1. The two IDEs — outside the repo until complete
 
-`GMBasicIDE/` (native macOS GUI, VB6-style) and `GMBasicTuiIde/` (TUI written in BASIC) are **not
+`GMBasicIDE/` (native macOS GUI, VB6-style) and `GMBasicTuiIDE/` (TUI written in BASIC) are **not
 part of this repository** for now: both are incomplete (GUI backlog ~51 items over groups G0–G7
 plus the designer/codegen groups; TUI 11 items: completion popup, find/replace, cursor in the status
 bar, real screen size, real-display verification, user guide, C tech debt). They live locally and

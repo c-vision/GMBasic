@@ -27,7 +27,7 @@ The folders are domains, not separate repos:
 | `shared/` | material shared by both: MiniTests, samples, spec/registry, settings, skills, plugins |
 | `tools/` | tooling (BASIC/C/shell) at the repo root, shared by both worlds |
 
-The two IDEs (`GMBasicIDE/` — native macOS GUI, VB6-style; `GMBasicTuiIde/` — TUI written in BASIC)
+The two IDEs (`GMBasicIDE/` — native macOS GUI, VB6-style; `GMBasicTuiIDE/` — TUI written in BASIC)
 are **in development and are not part of this repository** for now: they are excluded until
 complete. The REPL's own TUI (`IDE` command: `REPL/ide.c`, shared logic in `gmb_runtime_c/src/gmb_ide.c`) **is** in the repo,
 because it is part of the canonical C REPL.
@@ -527,7 +527,7 @@ CALL SleepAsync(1000)
 The main open work items are tracked in **[TODO.md](./TODO.md)**:
 
 - **the two IDEs are not in this repo yet** — the GUI (`GMBasicIDE`, VB6-style: form designer, code
-  window, build/run, debug) and the TUI (`GMBasicTuiIde`, written in BASIC) are developed locally and
+  window, build/run, debug) and the TUI (`GMBasicTuiIDE`, written in BASIC) are developed locally and
   will be published when complete (GUI backlog ~51 items over groups G0–G7, TUI 11 items);
 - **`libs` CI workflow is red** at the macOS system-dependencies step (so releases and
   `libs-manifest.json` have never been published from CI).

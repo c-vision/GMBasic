@@ -17,7 +17,10 @@ extern "C" {
 #endif
 
 #define GMB_CHUNK_MAGIC "GMBC"
-#define GMB_CHUNK_VERSION 1
+/* 2 = descrittore FFI per argomento (2026-11-06). La 1 (formato storico a maschere) è ancora
+ * letta: è valida per i chunk SENZA chiamate FFI (es. le pagine BSP); una chiamata FFI in un
+ * chunk v1 produce un errore esplicito ("ricompilare"), mai un parse silenzioso. */
+#define GMB_CHUNK_VERSION 2
 
 /* ---- Tipi di valore nel constant pool ---- */
 enum {
@@ -132,6 +135,9 @@ typedef struct {
     char** _strings;
     uint32_t _strings_count;
     uint32_t _strings_cap;
+    /* Versione del formato letta dall'header: 1 = storico (maschere FFI), 2 = descrittore
+     * per argomento. Un OP_CALL_FFI_T in un chunk v1 è un errore esplicito (ricompilare). */
+    uint8_t   version;
     /* Refcount: il chunk compilato è IMMUTABILE durante l'esecuzione → la cache in-memory del
      * motore BSP lo condivide fra render concorrenti (eviction quando l'ultimo render finisce). */
     int refs;

@@ -109,13 +109,15 @@ gmb_chunk_t* gmb_chunk_load(const uint8_t* data, size_t len, bool load_lines)
     if (!data || len < 5 + 5 * 4) return NULL;
     reader_t r = { data, data + len, 0 };
 
-    /* MAGIC + VERSION */
+    /* MAGIC + VERSION (1 storico, 2 descrittore FFI; entrambe leggibili, vedi gmb_chunk.h) */
     for (int i = 0; i < 4; i++)
         if (rd_u8(&r) != (uint8_t)GMB_CHUNK_MAGIC[i]) return NULL;
-    if (rd_u8(&r) != GMB_CHUNK_VERSION) return NULL;
+    uint8_t version = rd_u8(&r);
+    if (version != 1 && version != GMB_CHUNK_VERSION) return NULL;
 
     gmb_chunk_t* c = (gmb_chunk_t*)calloc(1, sizeof(gmb_chunk_t));
     if (!c) return NULL;
+    c->version = version;
 
     c->entry_point = (int32_t)rd_u32(&r);
     c->global_count = rd_u32(&r);
