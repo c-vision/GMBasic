@@ -31337,6 +31337,19 @@ static const char* ffi_cb_native_type(int arity, int isInt, int hasRet) {
             snprintf(buf, 512, "double (*)(gmb_double_t*, gmb_int_t, gmb_double_t, gmb_double_t*)");
             return buf;
         }
+        /* 192+arità (2026-11-07): solo scalari -> array. */
+        if (arity == 193) {
+            snprintf(buf, 512, "double (*)(gmb_double_t, gmb_double_t*)");
+            return buf;
+        }
+        if (arity == 194) {
+            snprintf(buf, 512, "double (*)(gmb_double_t, gmb_double_t, gmb_double_t*)");
+            return buf;
+        }
+        if (arity == 195) {
+            snprintf(buf, 512, "double (*)(gmb_double_t, gmb_double_t, gmb_double_t, gmb_double_t*)");
+            return buf;
+        }
         /* 144/145: il trampolino RITORNA il numero di elementi scritti (gor_optb_fvv_len,
          * 2026-11-03) — la firma della call FFI usa `double`, non `void`. */
         if (arity == 144) {
@@ -31490,6 +31503,32 @@ static void emit_ffi_callback_pool(ctx_t* c) {
         sb_printf(&c->out, "static double (*g_ffi_cb_ptr_sub_%s148[2])(gmb_double_t*, gmb_int_t, gmb_double_t, gmb_double_t*) = { gmb_ffi_cb_%s148_0, gmb_ffi_cb_%s148_1 };\n", kind, kind, kind);
         sb_printf(&c->out, "static int gmb_ffi_cb_acquire_%s148(gmb_fn_t f) { for (int s = 0; s < 2; s++) if (!g_ffi_cb_inuse_%s148[s]) { g_ffi_cb_inuse_%s148[s] = 1; g_ffi_cb_slot_%s148[s] = f; return s; } return -1; }\n", kind, kind, kind, kind);
         sb_printf(&c->out, "static void gmb_ffi_cb_release_%s148(int s) { if (s >= 0) g_ffi_cb_inuse_%s148[s] = 0; }\n", kind, kind);
+        /* 192+arità (2026-11-07): SOLO scalari -> array, f(x[, y[, z]]) AS ARRAY. Il nativo
+         * passa gli scalari e il buffer di ritorno; il trampolino ritorna gli elementi scritti. */
+        sb_printf(&c->out, "static gmb_fn_t g_ffi_cb_slot_%s193[2];\nstatic int g_ffi_cb_inuse_%s193[2];\n", kind, kind);
+        for (int slot = 0; slot < 2; slot++)
+            sb_printf(&c->out, "static double gmb_ffi_cb_%s193_%d(gmb_double_t a0, gmb_double_t* out) { gmb_fn_t f = g_ffi_cb_slot_%s193[%d]; if (f.ctx) ((void(*)(void*, gmb_double_t, gmb_double_t*))f.fn)(f.ctx, a0, out); else ((void(*)(gmb_double_t, gmb_double_t*))f.fn)(a0, out); return (double)gmb_lambda_ret_len_get(); }\n",
+                kind, slot, kind, slot);
+        sb_printf(&c->out, "static double (*g_ffi_cb_ptr_%s193[2])(gmb_double_t, gmb_double_t*) = { gmb_ffi_cb_%s193_0, gmb_ffi_cb_%s193_1 };\n", kind, kind, kind);
+        sb_printf(&c->out, "static double (*g_ffi_cb_ptr_sub_%s193[2])(gmb_double_t, gmb_double_t*) = { gmb_ffi_cb_%s193_0, gmb_ffi_cb_%s193_1 };\n", kind, kind, kind);
+        sb_printf(&c->out, "static int gmb_ffi_cb_acquire_%s193(gmb_fn_t f) { for (int s = 0; s < 2; s++) if (!g_ffi_cb_inuse_%s193[s]) { g_ffi_cb_inuse_%s193[s] = 1; g_ffi_cb_slot_%s193[s] = f; return s; } return -1; }\n", kind, kind, kind, kind);
+        sb_printf(&c->out, "static void gmb_ffi_cb_release_%s193(int s) { if (s >= 0) g_ffi_cb_inuse_%s193[s] = 0; }\n", kind, kind);
+        sb_printf(&c->out, "static gmb_fn_t g_ffi_cb_slot_%s194[2];\nstatic int g_ffi_cb_inuse_%s194[2];\n", kind, kind);
+        for (int slot = 0; slot < 2; slot++)
+            sb_printf(&c->out, "static double gmb_ffi_cb_%s194_%d(gmb_double_t a0, gmb_double_t a1, gmb_double_t* out) { gmb_fn_t f = g_ffi_cb_slot_%s194[%d]; if (f.ctx) ((void(*)(void*, gmb_double_t, gmb_double_t, gmb_double_t*))f.fn)(f.ctx, a0, a1, out); else ((void(*)(gmb_double_t, gmb_double_t, gmb_double_t*))f.fn)(a0, a1, out); return (double)gmb_lambda_ret_len_get(); }\n",
+                kind, slot, kind, slot);
+        sb_printf(&c->out, "static double (*g_ffi_cb_ptr_%s194[2])(gmb_double_t, gmb_double_t, gmb_double_t*) = { gmb_ffi_cb_%s194_0, gmb_ffi_cb_%s194_1 };\n", kind, kind, kind);
+        sb_printf(&c->out, "static double (*g_ffi_cb_ptr_sub_%s194[2])(gmb_double_t, gmb_double_t, gmb_double_t*) = { gmb_ffi_cb_%s194_0, gmb_ffi_cb_%s194_1 };\n", kind, kind, kind);
+        sb_printf(&c->out, "static int gmb_ffi_cb_acquire_%s194(gmb_fn_t f) { for (int s = 0; s < 2; s++) if (!g_ffi_cb_inuse_%s194[s]) { g_ffi_cb_inuse_%s194[s] = 1; g_ffi_cb_slot_%s194[s] = f; return s; } return -1; }\n", kind, kind, kind, kind);
+        sb_printf(&c->out, "static void gmb_ffi_cb_release_%s194(int s) { if (s >= 0) g_ffi_cb_inuse_%s194[s] = 0; }\n", kind, kind);
+        sb_printf(&c->out, "static gmb_fn_t g_ffi_cb_slot_%s195[2];\nstatic int g_ffi_cb_inuse_%s195[2];\n", kind, kind);
+        for (int slot = 0; slot < 2; slot++)
+            sb_printf(&c->out, "static double gmb_ffi_cb_%s195_%d(gmb_double_t a0, gmb_double_t a1, gmb_double_t a2, gmb_double_t* out) { gmb_fn_t f = g_ffi_cb_slot_%s195[%d]; if (f.ctx) ((void(*)(void*, gmb_double_t, gmb_double_t, gmb_double_t, gmb_double_t*))f.fn)(f.ctx, a0, a1, a2, out); else ((void(*)(gmb_double_t, gmb_double_t, gmb_double_t, gmb_double_t*))f.fn)(a0, a1, a2, out); return (double)gmb_lambda_ret_len_get(); }\n",
+                kind, slot, kind, slot);
+        sb_printf(&c->out, "static double (*g_ffi_cb_ptr_%s195[2])(gmb_double_t, gmb_double_t, gmb_double_t, gmb_double_t*) = { gmb_ffi_cb_%s195_0, gmb_ffi_cb_%s195_1 };\n", kind, kind, kind);
+        sb_printf(&c->out, "static double (*g_ffi_cb_ptr_sub_%s195[2])(gmb_double_t, gmb_double_t, gmb_double_t, gmb_double_t*) = { gmb_ffi_cb_%s195_0, gmb_ffi_cb_%s195_1 };\n", kind, kind, kind);
+        sb_printf(&c->out, "static int gmb_ffi_cb_acquire_%s195(gmb_fn_t f) { for (int s = 0; s < 2; s++) if (!g_ffi_cb_inuse_%s195[s]) { g_ffi_cb_inuse_%s195[s] = 1; g_ffi_cb_slot_%s195[s] = f; return s; } return -1; }\n", kind, kind, kind, kind);
+        sb_printf(&c->out, "static void gmb_ffi_cb_release_%s195(int s) { if (s >= 0) g_ffi_cb_inuse_%s195[s] = 0; }\n", kind, kind);
     }
     sb_put(&c->out, "\n");
 }
@@ -31601,6 +31640,26 @@ static void emit_ffi_wrapper(ctx_t* c, fn_info_t* fn, const char* vkey) {
                 cb_arity[i] = 128 + code;
                 cb_kind_int[i] = retInt;
                 cb_has_ret[i] = hasRet;
+                continue;
+            }
+            /* 192+arità (2026-11-07): SOLO scalari -> array, f(x[, y[, z]]) AS ARRAY.
+             * ABI nativa `double (*)(double[, double[, double]], double* out)`; il trampolino
+             * ritorna il numero di elementi scritti (come 144/145/148). */
+            if (s->param_fn_ret_arr && s->param_fn_ret_arr[i]) {
+                if (kindmask) {
+                    c99_fail(c, s->line, "FFI '%s': il callback usato per %s ha un parametro "
+                             "INTERO con ritorno array: ammessi solo DOUBLE.", sym, what);
+                    return;
+                }
+                if (arity < 1 || arity > 3) {
+                    c99_fail(c, s->line, "FFI '%s': il callback usato per %s ha %d parametri "
+                             "scalari con ritorno array (ammessi 1-3).", sym, what, arity);
+                    return;
+                }
+                is_cb_param[i] = 1;
+                cb_arity[i] = 192 + arity;
+                cb_kind_int[i] = 0;
+                cb_has_ret[i] = 1;
                 continue;
             }
             /* Omogeneità della firma INTERNA del callback (2026-09-29, v1): tutti i parametri

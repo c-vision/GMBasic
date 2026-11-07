@@ -1397,10 +1397,25 @@ public sealed partial class IlProgramCompiler
             bool arrRet = fp.ReturnType is ArrayType;
             return (nArr - 1) | (nSca << 2) | (arrRet ? 16 : 0);
         }
+        /// <summary>Callback "solo scalari -> array" (2026-11-07): f(x[, y[, z]]) AS ARRAY.
+        /// Descrittore 192+arità, ABI `double (*)(double[, double[, double]], double* out)`.</summary>
+        bool IsScalarArrayCallback(FunctionPointerType fp) =>
+            fp.ParameterTypes.Length >= 1
+            && fp.ParameterTypes.All(t => t is not ArrayType && IsFfiDoubleType(t))
+            && fp.ReturnType is ArrayType sar && IsVecElem(sar.ElementType);
         int CallbackArityByte(FunctionPointerType fp) =>
-            IsVecCallback(fp) ? 128 + VecCallbackCode(fp) : fp.ParameterTypes.Length;
+            IsVecCallback(fp) ? 128 + VecCallbackCode(fp)
+            : IsScalarArrayCallback(fp) ? 192 + fp.ParameterTypes.Length
+            : fp.ParameterTypes.Length;
         void ValidateCallbackForFfi(FunctionPointerType fp, string what)
         {
+            if (IsScalarArrayCallback(fp))
+            {
+                if (fp.ParameterTypes.Length > 3)
+                    throw new NotSupportedException(
+                        $"FFI '{symbolName}': il callback usato per {what} ha {fp.ParameterTypes.Length} parametri scalari con ritorno array (ammessi 1-3).");
+                return;
+            }
             if (IsVecCallback(fp))
             {
                 int nArr = 0;

@@ -3526,6 +3526,42 @@ static double gmb_vm_call_closure_sync_list_s_vec(gmb_vm_t* vm, gmb_task_t* task
     return 0.0;
 }
 
+/* Callback "solo scalari -> array" (192+arità, 2026-11-07): f(x[, y[, z]]) AS ARRAY.
+ * Il nativo passa gli scalari e il buffer di ritorno; qui si spingono gli argomenti in
+ * ordine inverso (come sync2), si invoca la closure e si copia la lista in out. */
+static double gmb_vm_call_closure_sync_n_out(gmb_vm_t* vm, gmb_task_t* task, gmb_obj_closure_t* closure,
+                                             const double* args, int nargs, double* out, int nout)
+{
+    if (!closure) { if (nout > 0) for (int i = 0; i < nout; i++) out[i] = 0; return 0.0; }
+    /* push_frame(sp - nargs): il PRIMO push e' l'argomento 0 (come sync_list2), quindi
+     * gli argomenti si spingono in ordine diretto. */
+    for (int i = 0; i < nargs; i++) gmb_task_push_num(task, args[i], GMB_BT_NUMBER);
+    if (!push_frame(task, task->sp - nargs, -2)) return 0.0;
+    if (closure->num_upvalues > 0 && closure->upvalues)
+        for (int i = 0; i < closure->num_upvalues && i < 16; i++)
+            task->frame->upvalues[i] = closure->upvalues[i];
+    task->sync_saved_ip = task->ip;
+    task->sync_active = 1;
+    task->sync_result = 0;
+    task->sync_result_ref = NULL;
+    task->sync_result_type = 0;
+    task->ip = closure->address;
+    int guard = 0;
+    while (task->sync_active && guard++ < 1000000) gmb_vm_tick(vm, task);
+    if (task->ip == -2) task->ip = task->sync_saved_ip;
+    if (task->sync_result_ref && task->sync_result_ref->kind == GMB_OBJ_LIST)
+    {
+        gmb_obj_shared_val_t* rl = (gmb_obj_shared_val_t*)task->sync_result_ref;
+        int cnt = (int)rl->list->count;
+        if (nout > 0 && cnt > nout) cnt = nout;
+        for (int i = 0; i < cnt; i++)
+        { gmb_val_t v = rl->list->items[i]; out[i] = v.kind == GMB_TYPE_DOUBLE ? v.v_double : (double)v.v_int; }
+        return (double)cnt;
+    }
+    if (nout > 0) for (int i = 0; i < nout; i++) out[i] = 0;
+    return 0.0;
+}
+
 /* Callback con RITORNO ARRAY (2026-11-02): una lista in ingresso -> out[] (f(v[]) AS ARRAY). */
 static double gmb_vm_call_closure_sync_list_vec(gmb_vm_t* vm, gmb_task_t* task, gmb_obj_closure_t* closure,
                                                const double* vals, int n, double* out, int nout)
@@ -3833,6 +3869,19 @@ static gmb_ffi_cb_slot_t g_ffi_cb_slots_vso[2];
 static double gmb_ffi_cb_vso_0(double* v, int64_t n, double s, double* out) { gmb_ffi_cb_slot_t* q = &g_ffi_cb_slots_vso[0]; return gmb_vm_call_closure_sync_list_s_vec(q->vm, q->task, q->closure, v, (int)n, s, out, 0); }
 static double gmb_ffi_cb_vso_1(double* v, int64_t n, double s, double* out) { gmb_ffi_cb_slot_t* q = &g_ffi_cb_slots_vso[1]; return gmb_vm_call_closure_sync_list_s_vec(q->vm, q->task, q->closure, v, (int)n, s, out, 0); }
 static void* g_ffi_cb_tramp_vso[2] = { (void*)gmb_ffi_cb_vso_0, (void*)gmb_ffi_cb_vso_1 };
+/* 192+arità (2026-11-07): solo scalari -> array, f(x[,y[,z]]) AS ARRAY. */
+static gmb_ffi_cb_slot_t g_ffi_cb_slots_s1o[2];
+static gmb_ffi_cb_slot_t g_ffi_cb_slots_s2o[2];
+static gmb_ffi_cb_slot_t g_ffi_cb_slots_s3o[2];
+static double gmb_ffi_cb_s1o_0(double a0, double* out) { double a[1] = { a0 }; gmb_ffi_cb_slot_t* q = &g_ffi_cb_slots_s1o[0]; return gmb_vm_call_closure_sync_n_out(q->vm, q->task, q->closure, a, 1, out, 0); }
+static double gmb_ffi_cb_s1o_1(double a0, double* out) { double a[1] = { a0 }; gmb_ffi_cb_slot_t* q = &g_ffi_cb_slots_s1o[1]; return gmb_vm_call_closure_sync_n_out(q->vm, q->task, q->closure, a, 1, out, 0); }
+static double gmb_ffi_cb_s2o_0(double a0, double a1, double* out) { double a[2] = { a0, a1 }; gmb_ffi_cb_slot_t* q = &g_ffi_cb_slots_s2o[0]; return gmb_vm_call_closure_sync_n_out(q->vm, q->task, q->closure, a, 2, out, 0); }
+static double gmb_ffi_cb_s2o_1(double a0, double a1, double* out) { double a[2] = { a0, a1 }; gmb_ffi_cb_slot_t* q = &g_ffi_cb_slots_s2o[1]; return gmb_vm_call_closure_sync_n_out(q->vm, q->task, q->closure, a, 2, out, 0); }
+static double gmb_ffi_cb_s3o_0(double a0, double a1, double a2, double* out) { double a[3] = { a0, a1, a2 }; gmb_ffi_cb_slot_t* q = &g_ffi_cb_slots_s3o[0]; return gmb_vm_call_closure_sync_n_out(q->vm, q->task, q->closure, a, 3, out, 0); }
+static double gmb_ffi_cb_s3o_1(double a0, double a1, double a2, double* out) { double a[3] = { a0, a1, a2 }; gmb_ffi_cb_slot_t* q = &g_ffi_cb_slots_s3o[1]; return gmb_vm_call_closure_sync_n_out(q->vm, q->task, q->closure, a, 3, out, 0); }
+static void* g_ffi_cb_tramp_s1o[2] = { (void*)gmb_ffi_cb_s1o_0, (void*)gmb_ffi_cb_s1o_1 };
+static void* g_ffi_cb_tramp_s2o[2] = { (void*)gmb_ffi_cb_s2o_0, (void*)gmb_ffi_cb_s2o_1 };
+static void* g_ffi_cb_tramp_s3o[2] = { (void*)gmb_ffi_cb_s3o_0, (void*)gmb_ffi_cb_s3o_1 };
 
 /* Trova il primo slot libero per (kind,arita'), lo popola con vm/task/closure(o addr), e
  * ritorna l'indirizzo del trampolino pre-dichiarato corrispondente (NULL se pool esaurito —
@@ -3877,6 +3926,21 @@ static void* gmb_ffi_cb_alloc(int kind, int arity, gmb_vm_t* vm, gmb_task_t* tas
                 arr[s].vm = vm; arr[s].task = task; arr[s].closure = closure; arr[s].addr = addr; arr[s].in_use = 1;
                 *out_slot = s;
                 return g_ffi_cb_tramp_vso[s];
+            }
+        }
+        return NULL;
+    }
+    if (arity == 193 || arity == 194 || arity == 195)
+    {
+        gmb_ffi_cb_slot_t* arr = arity == 193 ? g_ffi_cb_slots_s1o : (arity == 194 ? g_ffi_cb_slots_s2o : g_ffi_cb_slots_s3o);
+        void** tr = arity == 193 ? g_ffi_cb_tramp_s1o : (arity == 194 ? g_ffi_cb_tramp_s2o : g_ffi_cb_tramp_s3o);
+        for (int s = 0; s < 2; s++)
+        {
+            if (!arr[s].in_use)
+            {
+                arr[s].vm = vm; arr[s].task = task; arr[s].closure = closure; arr[s].addr = addr; arr[s].in_use = 1;
+                *out_slot = s;
+                return tr[s];
             }
         }
         return NULL;
@@ -3947,6 +4011,13 @@ static void gmb_ffi_cb_free(int kind, int arity, int slot)
     if (arity == 148)
     {
         gmb_ffi_cb_slot_t* q = &g_ffi_cb_slots_vso[slot];
+        q->in_use = 0;
+        q->closure = NULL;
+        return;
+    }
+    if (arity == 193 || arity == 194 || arity == 195)
+    {
+        gmb_ffi_cb_slot_t* q = arity == 193 ? &g_ffi_cb_slots_s1o[slot] : (arity == 194 ? &g_ffi_cb_slots_s2o[slot] : &g_ffi_cb_slots_s3o[slot]);
         q->in_use = 0;
         q->closure = NULL;
         return;

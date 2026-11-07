@@ -53,8 +53,12 @@ Produce `libgmbmath.dylib` (o `.so`). Export BASIC:
 - `shared/include/ode.inc` (namespace `ODE`, 2026-11-07). Metodi avanzati di
   `gmbmath-numerical` (Adams-Bashforth/Moulton 4, BDF2 e midpoint impliciti, Verlet,
   BVP shooting/differenze finite) via shim `src/ode_ffi.c` (`ofx_ode_*`). Callback
-  autonoma `(y() AS DOUBLE) AS ARRAY`; il tempo entra nello stato.
+  `(y() AS DOUBLE, t AS DOUBLE) AS ARRAY` — array prima, tempo dopo (descrittore 148).
+- `shared/include/veccalc.inc` (namespace `VECCALC`, 2026-11-07). Calcolo vettoriale di
+  `gmbmath-numerical` (gradiente, divergenza, rotore, laplaciano, triedro di Frenet,
+  lunghezza d'arco, integrali di linea, flusso) via shim `src/veccalc_ffi.c`
+  (`ofx_vc_*`). Callback: campo scalare/vettoriale, curva, patch (descrittori 192+N).
 
 
-Guide utente: `QUAT-Guida-Utente`, `COMPLEX-Guida-Utente`, `XFORM-Guida-Utente`, `SPECTRAL-Guida-Utente`, `VEC-Guida-Utente`, `SPARSE-Guida-Utente`, `QUAD-Guida-Utente`, `ODE-Guida-Utente` (vault) e capitolo V.27 del
+Guide utente: `QUAT-Guida-Utente`, `COMPLEX-Guida-Utente`, `XFORM-Guida-Utente`, `SPECTRAL-Guida-Utente`, `VEC-Guida-Utente`, `SPARSE-Guida-Utente`, `QUAD-Guida-Utente`, `ODE-Guida-Utente`, `VECCALC-Guida-Utente` (vault) e capitolo V.27 del
 manuale.

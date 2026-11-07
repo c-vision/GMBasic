@@ -53,6 +53,23 @@ internal sealed partial class PCodeProcessor
                 for (var i = 0; i < l.Count; i++)
                     Marshal.WriteInt64(outp, i * 8, BitConverter.DoubleToInt64Bits(Convert.ToDouble(l[i] ?? 0.0)));
             }
+            // 192+arità (2026-11-07): SOLO scalari -> array, f(x[, y[, z]]) AS ARRAY.
+            if (arity >= 193 && arity <= 195)
+            {
+                var ns = arity - 192;
+                if (ns == 1)
+                {
+                    var dv = new CbS1OutD((a0, outp) => { var r = CallFnSync(task, cd, a0); WriteOut(outp, r); return OutCount(r); });
+                    return (dv, Marshal.GetFunctionPointerForDelegate(dv));
+                }
+                if (ns == 2)
+                {
+                    var dv = new CbS2OutD((a0, a1, outp) => { var r = CallFnSync(task, cd, a0, a1); WriteOut(outp, r); return OutCount(r); });
+                    return (dv, Marshal.GetFunctionPointerForDelegate(dv));
+                }
+                var dv3 = new CbS3OutD((a0, a1, a2, outp) => { var r = CallFnSync(task, cd, a0, a1, a2); WriteOut(outp, r); return OutCount(r); });
+                return (dv3, Marshal.GetFunctionPointerForDelegate(dv3));
+            }
             if (nArr == 1 && nSca == 0 && !arrRet)
             {
                 if (isInt)

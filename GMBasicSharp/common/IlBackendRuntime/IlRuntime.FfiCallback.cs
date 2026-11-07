@@ -69,6 +69,24 @@ public static partial class IlRuntime
         // Callback VETTORIALE (2026-11-02): arity >= 128, descriptor = arity-128:
         // bit0-1 nArray-1, bit2-3 nScalari, bit4 ritorno ARRAY. ABI nativa:
         // (double* a0, int64_t n0[, double* a1, int64_t n1][, double s0[, double s1]][, double* out]).
+        // 192+arità (2026-11-07): SOLO scalari -> array, f(x[, y[, z]]) AS ARRAY.
+        // ABI nativa: (double a0[, double a1[, double a2]], double* out).
+        if (arity >= 193 && arity <= 195)
+        {
+            var ns = arity - 192;
+            if (ns == 1)
+            {
+                var dv = new CbS1OutD((a0, outp) => { var r = InvokeFfiCallbackDelegate(cb, [a0]); WriteOutArray(outp, r); return OutLength(r); });
+                return (dv, Marshal.GetFunctionPointerForDelegate(dv));
+            }
+            if (ns == 2)
+            {
+                var dv = new CbS2OutD((a0, a1, outp) => { var r = InvokeFfiCallbackDelegate(cb, [a0, a1]); WriteOutArray(outp, r); return OutLength(r); });
+                return (dv, Marshal.GetFunctionPointerForDelegate(dv));
+            }
+            var dv3 = new CbS3OutD((a0, a1, a2, outp) => { var r = InvokeFfiCallbackDelegate(cb, [a0, a1, a2]); WriteOutArray(outp, r); return OutLength(r); });
+            return (dv3, Marshal.GetFunctionPointerForDelegate(dv3));
+        }
         if (arity >= 128)
         {
             var code = arity - 128;
