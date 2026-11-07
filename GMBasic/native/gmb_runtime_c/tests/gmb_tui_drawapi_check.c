@@ -146,6 +146,29 @@ static void check_windowmanager(void)
     if (verbose) printf("[ OK ] windowmanager\n");
 }
 
+static void check_bigtext_block(void)
+{
+    char rows[7][32];
+    if (!gmb_bigtext_get('A', rows)) { printf("[FAIL] bigtext: get('A')\n"); fails++; return; }
+    if (strcmp(rows[3], "█████") != 0) { printf("[FAIL] bigtext: glifo 'A' riga 3\n"); fails++; return; }
+
+    char block[7][512];
+    gmb_bigtext_to_block("AB", block);
+    int cells = 0;
+    for (const char* p = block[0]; *p; )
+    {
+        unsigned char c = (unsigned char)*p;
+        int adv = c < 0x80 ? 1 : (c & 0xE0) == 0xC0 ? 2 : (c & 0xF0) == 0xE0 ? 3 : 4;
+        p += adv; cells++;
+    }
+    if (cells != 11) { printf("[FAIL] bigtext: to_block celle=%d (attese 11)\n", cells); fails++; return; }
+
+    int w = 0, h = 0;
+    int n = gmb_bigtext_measure("AB", &w, &h);
+    if (n != 2 || w != 11 || h != 7) { printf("[FAIL] bigtext: measure %d,%d n=%d\n", w, h, n); fails++; return; }
+    if (verbose) printf("[ OK ] bigtext block/measure\n");
+}
+
 int main(int argc, char** argv)
 {
     if (argc > 1 && strcmp(argv[1], "--verbose") == 0) verbose = 1;
@@ -153,6 +176,7 @@ int main(int argc, char** argv)
     check_richtext();
     check_paragraph();
     check_windowmanager();
+    check_bigtext_block();
 
     static const dk_case_t cases[] = {
         { "button",     GMB_DK_BUTTON },

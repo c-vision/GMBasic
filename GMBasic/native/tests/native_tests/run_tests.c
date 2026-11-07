@@ -1440,7 +1440,7 @@ int main(void)
 
     /* ---- gmb_tui_widgets: BigText ---- */
     {
-        char rows[7][8];
+        char rows[7][32];
         CHECK(gmb_bigtext_get('A', rows) == 1);
         CHECK((unsigned char)rows[0][2] == 0xE2 && (unsigned char)rows[0][3] == 0x96 && (unsigned char)rows[0][4] == 0x88);
         CHECK(gmb_bigtext_width('A') == 5);

@@ -12,138 +12,8 @@ public class Block : List<string[]>
     public Block(IEnumerable<string[]> collection) : base(collection) { }
 }
 
-internal static class BigTextFont
-{
-    private static readonly Dictionary<char, string[]> Font = BuildFont();
-
-    private static Dictionary<char, string[]> BuildFont()
-    {
-        var f = new Dictionary<char, string[]>();
-
-        void Add(char ch, string[] rows)
-        {
-            var w = rows.Max(r => r.Length);
-            var norm = new string[7];
-            for (var i = 0; i < 7; i++)
-                norm[i] = rows[i].PadRight(w);
-            f[ch] = norm;
-        }
-
-        Add(' ', ["     ", "     ", "     ", "     ", "     ", "     ", "     "]);
-        Add('A', ["  █  ", " █ █ ", "█   █", "█████", "█   █", "█   █", "█   █"]);
-        Add('B', ["████ ", "█   █", "█   █", "████ ", "█   █", "█   █", "████ "]);
-        Add('C', [" ███ ", "█   █", "█    ", "█    ", "█    ", "█   █", " ███ "]);
-        Add('D', ["████ ", "█   █", "█   █", "█   █", "█   █", "█   █", "████ "]);
-        Add('E', ["█████", "█    ", "█    ", "████ ", "█    ", "█    ", "█████"]);
-        Add('F', ["█████", "█    ", "█    ", "████ ", "█    ", "█    ", "█    "]);
-        Add('G', [" ███ ", "█   █", "█    ", "█ ███", "█   █", "█   █", " ███ "]);
-        Add('H', ["█   █", "█   █", "█   █", "█████", "█   █", "█   █", "█   █"]);
-        Add('I', ["█████", "  █  ", "  █  ", "  █  ", "  █  ", "  █  ", "█████"]);
-        Add('J', [" ███ ", "   █ ", "   █ ", "   █ ", "   █ ", "█  █ ", " ██  "]);
-        Add('K', ["█   █", "█  █ ", "█ █  ", "██   ", "█ █  ", "█  █ ", "█   █"]);
-        Add('L', ["█    ", "█    ", "█    ", "█    ", "█    ", "█    ", "█████"]);
-        Add('M', ["█   █", "██ ██", "█ █ █", "█   █", "█   █", "█   █", "█   █"]);
-        Add('N', ["█   █", "██  █", "█ █ █", "█  ██", "█   █", "█   █", "█   █"]);
-        Add('O', [" ███ ", "█   █", "█   █", "█   █", "█   █", "█   █", " ███ "]);
-        Add('P', ["████ ", "█   █", "█   █", "████ ", "█    ", "█    ", "█    "]);
-        Add('Q', [" ███ ", "█   █", "█   █", "█   █", "█   █", "█  █ ", " ██ █"]);
-        Add('R', ["████ ", "█   █", "█   █", "████ ", "█ █  ", "█  █ ", "█   █"]);
-        Add('S', [" ███ ", "█   █", "█    ", " ███ ", "    █", "█   █", " ███ "]);
-        Add('T', ["█████", "  █  ", "  █  ", "  █  ", "  █  ", "  █  ", "  █  "]);
-        Add('U', ["█   █", "█   █", "█   █", "█   █", "█   █", "█   █", " ███ "]);
-        Add('V', ["█   █", "█   █", "█   █", "█   █", "█   █", " █ █ ", "  █  "]);
-        Add('W', ["█   █", "█   █", "█   █", "█   █", "█ █ █", "██ ██", "█   █"]);
-        Add('X', ["█   █", "█   █", " █ █ ", "  █  ", " █ █ ", "█   █", "█   █"]);
-        Add('Y', ["█   █", "█   █", " █ █ ", "  █  ", "  █  ", "  █  ", "  █  "]);
-        Add('Z', ["█████", "    █", "   █ ", "  █  ", " █   ", "█    ", "█████"]);
-
-        Add('0', [" ███ ", "█   █", "█  ██", "█ █ █", "██  █", "█   █", " ███ "]);
-        Add('1', ["  █  ", " ██  ", "  █  ", "  █  ", "  █  ", "  █  ", " ███ "]);
-        Add('2', [" ███ ", "█   █", "    █", "   █ ", "  █  ", " █   ", "█████"]);
-        Add('3', [" ███ ", "█   █", "    █", "  ██ ", "    █", "█   █", " ███ "]);
-        Add('4', ["    █", "   ██", "  █ █", " █  █", "█████", "    █", "    █"]);
-        Add('5', ["█████", "█    ", "████ ", "    █", "    █", "█   █", " ███ "]);
-        Add('6', [" ███ ", "█   █", "█    ", "████ ", "█   █", "█   █", " ███ "]);
-        Add('7', ["█████", "    █", "   █ ", "  █  ", "  █  ", "  █  ", "  █  "]);
-        Add('8', [" ███ ", "█   █", "█   █", " ███ ", "█   █", "█   █", " ███ "]);
-        Add('9', [" ███ ", "█   █", "█   █", " ████", "    █", "█   █", " ███ "]);
-
-        Add('.', ["     ", "     ", "     ", "     ", "     ", "     ", "  █  "]);
-        Add(',', ["     ", "     ", "     ", "     ", "     ", "  █  ", " █   "]);
-        Add('!', ["  █  ", "  █  ", "  █  ", "  █  ", "  █  ", "     ", "  █  "]);
-        Add('?', [" ███ ", "█   █", "    █", "   █ ", "   █ ", "     ", "   █ "]);
-        Add('-', ["     ", "     ", "     ", "█████", "     ", "     ", "     "]);
-        Add('_', ["     ", "     ", "     ", "     ", "     ", "     ", "█████"]);
-        Add('+', ["     ", "     ", "  █  ", "█████", "  █  ", "     ", "     "]);
-        Add('=', ["     ", "     ", "█████", "     ", "█████", "     ", "     "]);
-        Add('/', ["    █", "   █ ", "  █  ", " █   ", "█    ", "     ", "     "]);
-        Add('\\', ["█    ", " █   ", "  █  ", "   █ ", "    █", "     ", "     "]);
-        Add(':', ["     ", "     ", "  █  ", "     ", "     ", "  █  ", "     "]);
-        Add(';', ["     ", "     ", "  █  ", "     ", "     ", "  █  ", " █   "]);
-        Add('(', ["   █ ", "  █  ", " █   ", " █   ", " █   ", "  █  ", "   █ "]);
-        Add(')', [" █   ", "  █  ", "   █ ", "   █ ", "   █ ", "  █  ", " █   "]);
-        Add('[', [" ███ ", " █   ", " █   ", " █   ", " █   ", " █   ", " ███ "]);
-        Add(']', [" ███ ", "   █ ", "   █ ", "   █ ", "   █ ", "   █ ", " ███ "]);
-        Add('{', ["  ██ ", " █   ", " █   ", "█    ", " █   ", " █   ", "  ██ "]);
-        Add('}', [" ██  ", "   █ ", "   █ ", "    █", "   █ ", "   █ ", " ██  "]);
-        Add('<', ["    █", "   █ ", "  █  ", " █   ", "  █  ", "   █ ", "    █"]);
-        Add('>', ["█    ", " █   ", "  █  ", "   █ ", "  █  ", " █   ", "█    "]);
-        Add('*', ["     ", "  █  ", "█ █ █", " ███ ", "█ █ █", "  █  ", "     "]);
-        Add('&', [" █   ", "█ █  ", " █   ", "█ █  ", "█  █ ", "█  █ ", " ██  "]);
-        Add('%', ["█  █ ", " █ █ ", "   █ ", "  █  ", " █   ", "█ █  ", "█    "]);
-        Add('#', [" █ █ ", "█████", " █ █ ", "█████", " █ █ ", "█████", " █ █ "]);
-        Add('@', [" ███ ", "█   █", "█ █ █", "█ █ █", "█ ███", "█    ", " ███ "]);
-        Add('$', ["  █  ", " ███ ", "█ █  ", " ███ ", "  ██ ", "████ ", "  █  "]);
-        Add('\u00a3', [" ███ ", "█    ", "███  ", "█    ", "█    ", "█    ", " ███ "]); // £
-        Add('\u20ac', ["  ███", " █   ", "████ ", " █   ", "████ ", " █   ", "  ███"]); // €
-        Add('~', ["     ", "     ", "     ", " █ █ ", "█   █", "     ", "     "]);
-        Add('`', ["█    ", " █   ", "  █  ", "     ", "     ", "     ", "     "]);
-        Add('\u00b4', ["  █  ", " █   ", "█    ", "     ", "     ", "     ", "     "]); // ´
-        Add('^', ["  █  ", " █ █ ", "█   █", "     ", "     ", "     ", "     "]);
-        Add('|', ["  █  ", "  █  ", "  █  ", "  █  ", "  █  ", "  █  ", "  █  "]);
-        Add('\u2080', ["     ", "     ", "     ", "     ", " ███ ", "█   █", " ███ "]); // ₀
-        Add('\u00b9', ["     ", "     ", "     ", "  █  ", " ██  ", "  █  ", " ███ "]); // ¹
-        Add('\u00b2', ["     ", "     ", "     ", " ███ ", "    █", "  █  ", "████ "]); // ²
-        Add('\u00b3', ["     ", "     ", "     ", " ███ ", "    █", "  ██ ", " ███ "]); // ³
-        Add('\u00a7', [" ██  ", "█    ", " ██  ", "█  █ ", " ██  ", "   █ ", " ██  "]); // §
-        Add('\u00b5', ["     ", "     ", "█   █", "█   █", "█   █", "█   █", " ███ "]); // µ
-        Add('\u00df', ["██   ", "█ █  ", "█ █  ", "██   ", "█ █  ", "█ █  ", "██   "]); // ß
-        Add('\u00c4', [" █ █ ", "     ", " ███ ", "█   █", "█████", "█   █", "█   █"]); // Ä
-        Add('\u00d6', [" █ █ ", "     ", " ███ ", "█   █", "█   █", "█   █", " ███ "]); // Ö
-        Add('\u00dc', [" █ █ ", "     ", "█   █", "█   █", "█   █", "█   █", " ███ "]); // Ü
-        Add('\u00e1', ["   █ ", "  █  ", " ██  ", "   █ ", " ███ ", "█   █", " ███ "]); // á
-        Add('\u00e0', ["█    ", " █   ", " ██  ", "   █ ", " ███ ", "█   █", " ███ "]); // à
-        Add('\u00e9', ["   █ ", "  █  ", " ██  ", "█    ", "████ ", "█    ", " ██  "]); // é
-        Add('\u00e8', ["█    ", " █   ", " ██  ", "█    ", "████ ", "█    ", " ██  "]); // è
-        Add('\u00ed', ["   █ ", "  █  ", "  █  ", "  █  ", "  █  ", "  █  ", " ███ "]); // í
-        Add('\u00ec', ["█    ", " █   ", "  █  ", "  █  ", "  █  ", "  █  ", " ███ "]); // ì
-        Add('\u00f3', ["   █ ", "  █  ", " ██  ", "█   █", "█   █", "█   █", " ██  "]); // ó
-        Add('\u00f2', ["█    ", " █   ", " ██  ", "█   █", "█   █", "█   █", " ██  "]); // ò
-        Add('\u00f1', ["     ", "█  █ ", " ██  ", "█    ", "██   ", "█ █  ", "██   "]); // ñ
-
-        return f;
-    }
-
-    public static string[] Get(char c)
-    {
-        var key = char.IsLower(c) ? char.ToUpperInvariant(c) : c;
-        if (Font.TryGetValue(key, out var rows))
-            return rows;
-        return Font['?'];
-    }
-
-    public static int GetWidth(char c)
-    {
-        var rows = Get(c);
-        return rows.Length > 0 ? rows[0].Length : 0;
-    }
-}
-
 public static class BigTextBuilder
 {
-    private static readonly Block EmptyBlock =
-        [[], [], [], [], [], [], []];
-
     public static string ToBlockString(string text)
     {
         return ToString(ToBlock(text));
@@ -151,21 +21,30 @@ public static class BigTextBuilder
 
     public static Block ToBlock(string text)
     {
-        var result = new Block(7);
-        for (var i = 0; i < 7; i++)
-            result.Add([]);
+        // Composizione del blocco NEL runtime C (gmb_tui_bigfont.c + gmb_bigtext_to_block):
+        // il client non ha più né la tabella dei glifi né la logica di concatenazione.
+        var raw = new byte[7 * 512];
+        NativeControlDraw.gmb_bigtext_to_block(text ?? "", raw);
 
-        foreach (var ch in text)
+        var block = new Block(7);
+        for (var r = 0; r < 7; r++)
         {
-            var charRows = BigTextFont.Get(ch);
-            var charBlock = new Block(7);
-            for (var i = 0; i < 7; i++)
-                charBlock.Add([charRows[i]]);
-
-            result = ConcatBlock(result, charBlock);
+            var cells = new List<string>();
+            var i = r * 512;
+            var end = i;
+            while (end < i + 512 && raw[end] != 0) end++;
+            while (i < end)
+            {
+                var len = raw[i] < 0x80 ? 1
+                        : (raw[i] & 0xE0) == 0xC0 ? 2
+                        : (raw[i] & 0xF0) == 0xE0 ? 3 : 4;
+                if (i + len > end) len = 1;
+                cells.Add(Encoding.UTF8.GetString(raw, i, len));
+                i += len;
+            }
+            block.Add(cells.ToArray());
         }
-
-        return result;
+        return block;
     }
 
     public static Block ConcatBlock(Block a, Block b)
@@ -237,11 +116,10 @@ public static class BigTextBuilder
     public static void RenderToBuffer(ScreenBuffer buf, int x, int y, string text, CellColor? fg, CellColor? bg)
     {
         // Deprecato: il disegno del BigText vive nel runtime C (gmb_tui_draw_control,
-        // kind GMB_DK_BIGTEXT). Resta solo come utilità di misura (ToBlock/Dimensions).
-        var block = ToBlock(text);
-        if (block.Count == 0 || block.All(r => r.Length == 0)) return;
-        int w = block.Max(r => string.Concat(r).Length);
-        NativeDraw.Show(buf, NativeDraw.BigText, x, y, w, block.Count, text: text);
+        // kind GMB_DK_BIGTEXT). La metrica viene dalla stessa tabella C.
+        var n = NativeControlDraw.gmb_bigtext_measure(text, out var w, out var h);
+        if (n <= 0) return;
+        NativeDraw.Show(buf, NativeDraw.BigText, x, y, w, h, text: text);
     }
 }
 
@@ -279,11 +157,9 @@ public class BigText : Control
     {
         get
         {
-            var block = BigTextBuilder.ToBlock(Text);
-            if (block.Count == 0 || block.All(r => r.Length == 0))
-                return (0, 0);
-            var w = block.Max(row => string.Concat(row).Length);
-            return (w, block.Count);
+            // Metrica nel runtime C (stessa tabella del render): nessuna copia in C#.
+            var n = NativeControlDraw.gmb_bigtext_measure(Text, out var w, out var h);
+            return n > 0 ? (w, h) : (0, 0);
         }
     }
 

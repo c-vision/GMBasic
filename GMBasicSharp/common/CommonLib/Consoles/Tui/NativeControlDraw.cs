@@ -66,4 +66,13 @@ public static class NativeControlDraw
     [DllImport(Lib, CallingConvention = CallingConvention.Cdecl)]
     public static extern int gmb_richtext_render_paragraph(
         IntPtr buf, int x, int y, int w, int h, [In] RichSpanC[] spans, int count, int wrap);
+
+    // ---- BigText: glifi e metrica nel runtime C (gmb_tui_bigfont.c) ----
+    [DllImport(Lib, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
+    public static extern int gmb_bigtext_to_block(
+        [MarshalAs(UnmanagedType.LPStr)] string text, [Out] byte[] outRows7x512);
+
+    [DllImport(Lib, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
+    public static extern int gmb_bigtext_measure(
+        [MarshalAs(UnmanagedType.LPStr)] string? text, out int w, out int h);
 }
