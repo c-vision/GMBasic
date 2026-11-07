@@ -34,6 +34,7 @@ void gmb_function_key_bar_draw(gmb_function_key_bar_t* b, gmb_screen_buffer_t* b
     int col = b->x + 1;
     for (int i = 0; i < 10; i++)
     {
+        if (!b->keys[i][0]) break;   /* voci non fornite: la barra finisce qui */
         const char* label = b->keys[i];
         int num_end = 0;
         while (label[num_end] >= '0' && label[num_end] <= '9') num_end++;

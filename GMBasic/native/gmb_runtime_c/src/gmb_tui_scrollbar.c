@@ -47,13 +47,16 @@ static void scrollbar_draw_px(void* u, gmb_control_t* c)
     int x = c->x, y = c->y, w = c->width, h = c->height;
     int horizontal = (s->orientation == 0);
     int len = horizontal ? w : h;
-    GMB_GFX_FILL_RRECT(x, y, w, h, 2, st.fill);
+    /* track scuro/semitrasparente, thumb con il colore di cornice del tema:
+     * su temi classici fill e accent possono coincidere (thumb invisibile). */
+    GMB_GFX_FILL_RRECT(x, y, w, h, 2, (st.fill & 0xFFFFFFu) | 0x80000000u);
     double span = (double)(s->max - s->min); if (span <= 0) span = 1;
     double t = ((double)s->value - s->min) / span; if (t < 0) t = 0; if (t > 1) t = 1;
     int thumb = len / 4; if (thumb < 12) thumb = 12; if (thumb > len) thumb = len;
     int pos = (int)(t * (len - thumb));
-    if (horizontal) GMB_GFX_FILL_RRECT(x + pos, y, thumb, h, 2, st.accent);
-    else GMB_GFX_FILL_RRECT(x, y + pos, w, thumb, 2, st.accent);
+    unsigned thumbc = (st.border & 0xFFFFFFu) ? st.border : st.accent;
+    if (horizontal) GMB_GFX_FILL_RRECT(x + pos, y + 2, thumb, h > 4 ? h - 4 : h, 2, thumbc);
+    else GMB_GFX_FILL_RRECT(x + 2, y + pos, w > 4 ? w - 4 : w, thumb, 2, thumbc);
     GMB_GFX_STROKE_RRECT(x, y, w, h, 2, st.border);
 }
 static bool scrollbar_click(void* u, gmb_control_t* c, int x, int y)
