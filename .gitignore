@@ -129,6 +129,7 @@ docs/manual/
 !shared/minitests/ffi/libudt_ext.dylib
 !shared/minitests/ffi/libdims_ext.dylib
 !shared/minitests/ffi/liblayout_ext.dylib
+!shared/minitests/ffi/libcbfield_ext.dylib
 
 # Report/screenshot generati dai tool di verifica (rigenerabili): i PNG del giro visivo
 # TUI/grafica non si versionano (`bash tools/sh/tui_visual_gallery.sh`).
