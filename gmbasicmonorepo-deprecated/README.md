@@ -28,7 +28,9 @@ sostituite da **facade P/Invoke** (`CommonLib.Trading.General` / `Metrics` / `Bo
 `gmbsuite/gmbquant` con la copia compilata in `shared/libs/quant` (è una **lib**, non un
 package). IL/PCodeVM usano il P/Invoke; VM/C e C99Native usano direttamente la stessa lib
 C. Le funzioni non ancora migrate (`Portfolio`, `Backtest`, `QLNet`, `MadSolver`,
-`PsoOptimizer`) restano C# fino all'ondata 3 e saranno archiviate qui a mano a mano.
+`PsoOptimizer`) restano C#: la formula canonica è già in `gmbquant` (ondata 3) per
+l'FFI, ma i builtin `TRADING.PORTFOLIO`/`TRADING.BACKTESTS` mantengono la forma a UDT
+fino all'ondata 4 (rimozione dei builtin e riscrittura del corpus).
 
 ## Perché
 

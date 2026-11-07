@@ -737,7 +737,7 @@ sperimentali servono strumenti diversi (interpolazione, `SPARSE`, `MESH`).
 ## 17. Trading quantitativo (`QUANT`)
 
 La superficie `TRADING.*` della StdLib è in migrazione verso una **libreria nativa FFI**
-(`libgmbquant`) esterna al compilatore. Le ondate 1-2 espongono 69 funzioni in sei gruppi,
+(`libgmbquant`) esterna al compilatore. Le ondate 1-3 espongono 89 funzioni in otto gruppi,
 con gli stessi nomi e la stessa semantica dei builtin:
 
 | file `.inc` | namespace | contenuto |
@@ -748,8 +748,10 @@ con gli stessi nomi e la stessa semantica dei builtin:
 | `fundamentals.inc` | `FUNDAMENTALS` | EPS/DPS/NAV, P/E, P/B, P/S, payout, dividend yield |
 | `bonds.inc` | `BONDS` | prezzo/rendimento obbligazionario, duration, BEY, current yield, YTM, zero-coupon |
 | `derivatives.inc` | `DERIVATIVES` | Black-Scholes, Merton, binomiale CRR, 11 greche |
+| `portfolio.inc` | `PORTFOLIO` | metriche multi-asset, min-varianza/max-Sharpe/risk-parity, Kelly, Black-Litterman, VaR/CVaR |
+| `backtest.inc` | `BACKTEST` | backtest a pesi uguali (metriche e curva) |
 
-L'ondata 3 aggiunge `PORTFOLIO` e `BACKTEST`.
+L'ondata 4 rimuove i builtin `TRADING.*` e riscrive il corpus sulla superficie FFI.
 
 ### 17.1 Uso e convenzioni
 
@@ -785,6 +787,25 @@ Le funzioni di `DERIVATIVES` che distinguono la gamba prendono la stringa `type`
 (`"CALL"`/`"PUT"`, case-insensitive); `vol` è la volatilità annualizzata in frazione e
 `T` il tempo a scadenza in anni. Con `T ≤ 0` o `vol ≤ 0` il prezzo degenera nel valore
 intrinseco. `Vega` e `Rho` sono per 1% di movimento, `Theta` e `Charm` per giorno.
+
+`PORTFOLIO` e `BACKTEST` non restituiscono più i tipi composti `PortfolioResult`/
+`BacktestResult` (una struct C non può contenere un array di lunghezza variabile): le
+funzioni ritornano un `ARRAY OF DOUBLE`. Il layout è
+`[rendimento atteso, volatilità, Sharpe, pesi 0..n−1]` per gli ottimizzatori
+(`MINVOLATILITY`, `MAXSHARPE`, `MEANVARIANCE`, `RISKPARITY`, `EQUALLYWEIGHTED`,
+`MAXRETURN`, `EVOLVE`, `BLACKLITTERMAN`); `[metrica, 0, 0, peso]` per
+`KELLYCRITERION`/`MINCVAR`/`MINCDAR`; `[TotalReturn%, AnnualizedReturn%, MaxDrawdown,
+Sharpe, TradesCount, Turnover, curva...]` per `BACKTEST.RUN`. Le matrici di covarianza
+sono **jagged** (`DIM cov(2) AS ARRAY OF DOUBLE`, righe di pari lunghezza); una matrice
+2-D (`DIM cov(2,2)`) non va passata a un parametro FFI 1-D o jagged, perché il
+marshalling la interpreta male.
+
+Le formule chiuse di `MAXSHARPE`, `MEANVARIANCE` e `BLACKLITTERMAN` non impongono il
+vincolo long-only: con correlazioni forti possono uscire pesi negativi, come nei builtin.
+`MINVOLATILITY` è `w ∝ Σ⁻¹1`, `MAXSHARPE` è `w ∝ Σ⁻¹(μ−rf)`, `RISKPARITY` è
+l'iterazione ERC a 1000 passi, `EVOLVE` è la soluzione deterministica di minima varianza
+(il parametro GA del builtin non esiste più). `PVAR`/`CVAR` lavorano sullo storico
+appiattito e ignorano i pesi, come le gambe C del runtime.
 
 Il nome `TRADING_CORE` è **di transizione**: finché esistono i builtin `TRADING.*` il
 compilatore rifiuta una funzione utente con lo stesso nome/arità nel namespace
@@ -882,9 +903,26 @@ Il binomiale è Cox-Ross-Rubinstein: `u = e^{σ√Δt}`, `d = 1/u`,
 `p = (e^{rΔt}−d)/(u−d)`; se `p ∉ [0,1]` restituisce `0`. Con `steps` crescenti
 converge a Black-Scholes (200 passi: 10.440591 contro 10.450584).
 
+`PORTFOLIO` (19): `EXPECTEDRETURN(w, μ) = Σw_iμ_i`; `STDEV(w, Σ) = √(wᵀΣw)`;
+`SHARPERATIO(ret, sd, rf)`; `ISLONGONLY(w)` = `-1` se tutti `w ≥ 0`, altrimenti `0`;
+`PORTFOLIOMAD(r)` = scarto medio assoluto dalla mediana; `PORTFOLIOSEMIMAD(r[, target])`
+sui valori `< target`; `MINVOLATILITY(Σ)`; `MAXSHARPE(μ, Σ, rf)`; `MEANVARIANCE(μ, Σ)`
+(come MAXSHARPE con `rf = 0`); `RISKPARITY(Σ)`; `EQUALLYWEIGHTED(n)`; `MAXRETURN(μ)`;
+`KELLYCRITERION(r, rf)` (rf ignorato); `MINCVAR(r, conf, rf)`; `MINCDAR(r, conf, rf)`;
+`EVOLVE(μ, Σ)`; `BLACKLITTERMAN(caps, Σ, λ, τ, P, Q, Ω, rf)` con
+`Π = λΣw_mkt`, posterior `[(τΣ)⁻¹ + PᵀΩ⁻¹P]⁻¹[(τΣ)⁻¹Π + PᵀΩ⁻¹Q]` e poi MAXSHARPE;
+`PVAR(hist, w, conf)` in percentuale e `CVAR(hist, w, conf)` in frazione, entrambi sul
+buffer appiattito con `w` ignorato.
+
+`BACKTEST` (1): `RUN(data[, strategia])` e `RUNFLAT(flat, periodi, asset)`. Il rendimento
+di ogni periodo è la media degli asset della riga (pesi uguali, nessun ribilanciamento);
+`TotalReturn` e `AnnualizedReturn` sono in percentuale, `Sharpe` usa 252 periodi/anno,
+`MaxDrawdown` è calcolato sul cumulato additivo dei rendimenti, `TradesCount` è il numero
+di periodi.
+
 ### 17.3 Esempio eseguito
 
-`shared/samples/Quant/QuantLab.bas` è un laboratorio in sei sezioni: un titolo (prezzo 50,
+`shared/samples/Quant/QuantLab.bas` è un laboratorio in otto sezioni: un titolo (prezzo 50,
 dividendo 2, required return 10%, crescita 3%), un fondo (5 rendimenti periodici contro un
 benchmark), un BTP biennale cedola 5% e una call ATM (`S=K=100`, `T=1`, `r=5%`, `vol=20%`).
 Valori prodotti (76 righe):
@@ -921,26 +959,42 @@ F) derivati (call ATM S=K=100, T=1, r=5%, vol=20%)
  theta (giorno) = -0.017573           rho (1%) = 0.532325
  vanna/volga = -0.281430/9.850059     charm = -0.000253
  speed/zomma/color = -0.000516/-0.088885/-0.025798
+G) portafoglio (3 asset: azioni, bond, oro; rf 2%)
+ rendimento 50/30/20 = 0.072000        volatilità = 0.108277
+ Sharpe (10,12,rf2) = 0.666667        long-only = -1
+ min-varianza pesi = 0.031699/0.180128/0.788173  vol = 0.044970
+ max-Sharpe pesi = 0.184763/0.258915/0.556322    Sharpe = 0.549450
+ mean-variance rendimento = 0.045295   equipesato = 0.333333
+ Kelly (serie con perdite) = 0.400000  min-CVaR/CDaR 95% = 0.020000
+ Black-Litterman: somma pesi = 1.000000, vol = 0.274231
+ VaR 95% = 2.000000                   CVaR 95% = 0.020000
+H) backtest (4 mesi, 2 asset, pesi uguali)
+ TotalReturn = 4.819082 %             Annualized = 15.165143 %
+ MaxDrawdown = 0.000000               Sharpe = 18.333124
+ periodi = 4                          curva = 0.0150/0.0025/0.0050/0.0250
 ```
 
 La differenza fra i due modelli di `BondPrice` sullo stesso titolo (100 contro 95.680812)
 è il rateo: il modello `Numerics.Price` sconta il rateo maturato `1−DSC/E`, quello
 `Trading.Bonds` lo sottrae come `C·(E−DSC)/E` sulla cedola intera. Il binomiale a 200
-passi conferma Black-Scholes a meno di 0.01.
+passi conferma Black-Scholes a meno di 0.01. Nel portafoglio, `RISKPARITY` coincide con
+`MINVOLATILITY` su questa matrice (è il punto fisso dell'iterazione), mentre `MAXSHARPE`
+distribuisce su tutti e tre gli asset.
 
 ### 17.4 Parità e limiti
 
 La superficie è unica (`shared/include/*.inc`) e la libreria è una sola
 (`libgmbquant`): firme, aritmetica e risultati sono identici su IL, PCodeVM, VM/C e
-C99Native. I MiniTest `shared/minitests/quant/quant_core.bas` (44 funzioni) e
-`shared/minitests/quant/quant_bonds_derivatives.bas` (25) verificano tutta la superficie
-con valori chiusi; il sample `QuantLab.bas` produce 76 righe identiche sulle quattro
-gambe.
+C99Native. I MiniTest `shared/minitests/quant/quant_core.bas` (44 funzioni),
+`quant_bonds_derivatives.bas` (25) e `quant_portfolio_backtest.bas` (20) verificano
+tutta la superficie con valori chiusi; il sample `QuantLab.bas` produce 101 righe
+identiche sulle quattro gambe.
 
-Limiti dell'ondata 2: restano da migrare l'ottimizzazione di portafoglio e il backtest
-(ondata 3); le funzioni non allocano e non ridimensionano array; i risultati `ARRAY`
-sono solo quelli di `JarqueBeraTest` (2 elementi). La libreria è in `shared/libs/quant`
-(sorgenti C + shim FFI) e in `GMBSuite/gmbquant` (copia di sviluppo con self-test).
+Limiti dell'ondata 3: restano la rimozione dei builtin `TRADING.*` e la riscrittura del
+corpus (ondata 4); i risultati composti sono array (non UDT) e i pesi degli ottimizzatori
+a formula chiusa non sono vincolati a essere non negativi. La libreria è in
+`shared/libs/quant` (sorgenti C + shim FFI) e in `GMBSuite/gmbquant` (copia di sviluppo
+con self-test).
 
 ## 18. Errori frequenti
 
