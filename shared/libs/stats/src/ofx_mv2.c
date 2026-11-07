@@ -138,3 +138,7 @@ int ofx_gp__ffi(const double *x, int64_t x_ext, const double *y, int64_t y_ext, 
 int ofx_pca__ffi(const double *data, int64_t data_ext, int rows, int cols, double *out, int64_t out_ext) { return ofx_pca(data, rows, cols, out); }
 int ofx_svm_fit__ffi(const double *X, int64_t X_ext, const double *y, int64_t y_ext, int n, int d, int k, double C, int max_iter, double *out, int64_t out_ext) { return ofx_svm_fit(X, y, n, d, k, C, max_iter, out); }
 int ofx_svm_predict__ffi(const double *W, int64_t W_ext, const double *x, int64_t x_ext, int d, int k) { return ofx_svm_predict(W, x, d, k); }
+
+#include <stdint.h>
+/* Shim FFI (estensioni automatiche degli array, ffi_ext_shim.pl): firma con int64_t dopo ogni array. */
+int ofx_kmeans__ffi(const double *x, int64_t x_ext, int n, int k, int max_iter, double *out, int64_t out_ext) { return ofx_kmeans(x, n, k, max_iter, out); }

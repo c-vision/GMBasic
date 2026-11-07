@@ -91,7 +91,7 @@ END FUNCTION
 ' ═══════════════════════════════════════════════════════════════════════════
 ' Seconda slice: KMeans/PCA/GMM/GP/SVM (risultati composti in out() piatto).
 ' ═══════════════════════════════════════════════════════════════════════════
-DECLARE FUNCTION MXF_KMEANS LIB "gmbstats" ALIAS "ofx_kmeans" (x() AS DOUBLE, n AS LONG, k AS LONG, maxIter AS LONG, out() AS DOUBLE) AS LONG
+DECLARE FUNCTION MXF_KMEANS LIB "gmbstats" ALIAS "ofx_kmeans__ffi" (x() AS DOUBLE, n AS LONG, k AS LONG, maxIter AS LONG, out() AS DOUBLE) AS LONG
 DECLARE FUNCTION MXF_PCA LIB "gmbstats" ALIAS "ofx_pca__ffi" (data() AS DOUBLE, rows AS LONG, cols AS LONG, out() AS DOUBLE) AS LONG
 DECLARE FUNCTION MXF_GMM LIB "gmbstats" ALIAS "ofx_gmm_1d__ffi" (x() AS DOUBLE, n AS LONG, k AS LONG, iters AS LONG, out() AS DOUBLE) AS LONG
 DECLARE FUNCTION MXF_GP LIB "gmbstats" ALIAS "ofx_gp__ffi" (x() AS DOUBLE, y() AS DOUBLE, n AS LONG, xs() AS DOUBLE, m AS LONG, l2 AS DOUBLE, noise AS DOUBLE, out() AS DOUBLE) AS LONG

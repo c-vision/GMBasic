@@ -15448,7 +15448,7 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                                 if (udtParamFieldCount[i] > 0 || udtArrCount[i] > 0) { hasAnyUdt = 1; break; }
                             /* Estensioni array automatiche: serve il percorso a slot (arita' nativa
                              * variabile con il rango dell'array). */
-                            const int extSlots = arrayMask != 0 && !nativeAbi;
+                            const int extSlots = arrayMask != 0;   // percorso a slot (libffi) anche per NATIVE: nativeAbi sopprime solo le estensioni
                             if (!hasAnyUdt && !extSlots && retUdtFieldCount == 0 && !retIsString &&
                                 (unsigned)scalarKindMask != (unsigned)(kind == 1 ? fullMaskForArgc : 0))
                             {
