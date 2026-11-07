@@ -43,9 +43,8 @@ DECLARE FUNCTION CABS LIB "gmbmath" ALIAS "ofx_cpx_abs" (a AS Complex) AS DOUBLE
 DECLARE FUNCTION ARG LIB "gmbmath" ALIAS "ofx_cpx_arg" (a AS Complex) AS DOUBLE
 ' Modulo al quadrato re^2+im^2 (evita la radice).
 DECLARE FUNCTION NORM2 LIB "gmbmath" ALIAS "ofx_cpx_norm2" (a AS Complex) AS DOUBLE
-' Uguaglianza con tolleranza relativa 1e-9 (scalata sui moduli): 1 = uguali.
-' Per una tolleranza propria: COMPLEX.CABS(COMPLEX.SUB(a, b)) < tol.
-DECLARE FUNCTION EQ LIB "gmbmath" ALIAS "ofx_cpx_eq" (a AS Complex, b AS Complex) AS LONG
+ ' Uguaglianza entro tolleranza (|dre| e |dim| <= tol): 1 = uguali.
+DECLARE FUNCTION EQ LIB "gmbmath" ALIAS "ofx_cpx_eq" (a AS Complex, b AS Complex, tol AS DOUBLE) AS LONG
 
 ' ── esponenziale, logaritmo, potenza ────────────────────────────────────────
 DECLARE FUNCTION CEXP LIB "gmbmath" ALIAS "ofx_cpx_exp" (z AS Complex) AS Complex

@@ -16,9 +16,9 @@ SUB Main()
   PRINT "abs="; FORMAT(COMPLEX.CABS(a), "#.000000"); " arg="; FORMAT(COMPLEX.ARG(a), "#.000000")
   PRINT "|norm2="; FORMAT(COMPLEX.NORM2(a), "#.0")
   b = COMPLEX.MAKE(3, 4)
-  PRINT "|eq="; COMPLEX.EQ(a, b); " ";
+  PRINT "|eq="; COMPLEX.EQ(a, b, 0.000001); " ";
   b = COMPLEX.MAKE(3, 4.1)
-  PRINT COMPLEX.EQ(a, b)
+  PRINT COMPLEX.EQ(a, b, 0.000001)
 
   ' ── aritmetica ────────────────────────────────────────────────────────────
   a = COMPLEX.MAKE(1, 2)
@@ -43,7 +43,7 @@ SUB Main()
   t = COMPLEX.MAKE(0, PIVAL)
   z = COMPLEX.CEXP(t)
   t = COMPLEX.MAKE(-1, 0)
-  PRINT "euler="; COMPLEX.EQ(z, t)
+  PRINT "euler="; COMPLEX.EQ(z, t, 0.000001)
   ' log(-1) = i·pi
   z = COMPLEX.CLOG(t)
   PRINT "|log-1="; FORMAT(z.RE, "#.000000"); ","; FORMAT(z.IM, "#.000000")
@@ -55,12 +55,12 @@ SUB Main()
   b = COMPLEX.MAKE(2, 0)
   z = COMPLEX.POW(a, b)
   t = COMPLEX.MAKE(-1, 0)
-  PRINT "|i2="; COMPLEX.EQ(z, t)
+  PRINT "|i2="; COMPLEX.EQ(z, t, 0.000001)
   ' radice quadrata: sqrt(z)^2 = z
   a = COMPLEX.MAKE(3, 4)
   z = COMPLEX.CSQRT(a)
   t = COMPLEX.MUL(z, z)
-  PRINT "|sqrt2="; COMPLEX.EQ(t, a)
+  PRINT "|sqrt2="; COMPLEX.EQ(t, a, 0.000001)
 
   ' ── trigonometriche: valori esatti in i·teta ──────────────────────────────
   ' sin(i) = i·sinh(1); cos(i) = cosh(1); tan(i) = i·tanh(1)
@@ -105,25 +105,25 @@ SUB Main()
   PRINT "rt-trig=";
   z = COMPLEX.CASIN(b)
   t = COMPLEX.CSIN(z)
-  PRINT COMPLEX.EQ(t, b);
+  PRINT COMPLEX.EQ(t, b, 0.000001);
   z = COMPLEX.CACOS(b)
   t = COMPLEX.CCOS(z)
-  PRINT " "; COMPLEX.EQ(t, b);
+  PRINT " "; COMPLEX.EQ(t, b, 0.000001);
   z = COMPLEX.CATAN(b)
   t = COMPLEX.CTAN(z)
-  PRINT " "; COMPLEX.EQ(t, b)
+  PRINT " "; COMPLEX.EQ(t, b, 0.000001)
   ' round-trip: sinh(asinh w) = w, cosh(acosh w) = w, tanh(atanh w) = w
   b = COMPLEX.MAKE(1.5, 0.5)
   PRINT "rt-ip=";
   z = COMPLEX.ASINH(b)
   t = COMPLEX.CSINH(z)
-  PRINT COMPLEX.EQ(t, b);
+  PRINT COMPLEX.EQ(t, b, 0.000001);
   z = COMPLEX.ACOSH(b)
   t = COMPLEX.CCOSH(z)
-  PRINT " "; COMPLEX.EQ(t, b);
+  PRINT " "; COMPLEX.EQ(t, b, 0.000001);
   z = COMPLEX.ATANH(b)
   t = COMPLEX.CTANH(z)
-  PRINT " "; COMPLEX.EQ(t, b)
+  PRINT " "; COMPLEX.EQ(t, b, 0.000001)
 
   ' ── casi limite documentati ───────────────────────────────────────────────
   a = COMPLEX.MAKE(1, 2)

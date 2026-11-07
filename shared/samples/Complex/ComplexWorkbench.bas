@@ -70,7 +70,7 @@ SUB Main()
   f = COMPLEX.NORM2(t) * 100
   w2 = COMPLEX.SCALE(u, f)
   u = COMPLEX.MAKE(z.RE, 0)
-  PRINT " P da |I|^2*R = "; FORMAT(w2.RE, "#.00"); " W, uguale = "; COMPLEX.EQ(w2, u)
+  PRINT " P da |I|^2*R = "; FORMAT(w2.RE, "#.00"); " W, uguale = "; COMPLEX.EQ(w2, u, 0.01)
 
   ' ══════════════════════════════════════════════════════════════════════════
   ' B) RADICI DI z^2 + 2z + 5 = 0  →  z = -1 ± 2i
@@ -94,7 +94,7 @@ SUB Main()
   w2 = COMPLEX.MAKE(5, 0)
   z = COMPLEX.ADD(z, w2)                         ' z1^2 + 2*z1 + 5
   w2 = COMPLEX.MAKE(0, 0)
-  PRINT " residuo = "; FORMAT(COMPLEX.CABS(z), "#.000000"); " (zero = "; COMPLEX.EQ(z, w2); ")"
+  PRINT " residuo = "; FORMAT(COMPLEX.CABS(z), "#.000000"); " (zero = "; COMPLEX.EQ(z, w2, 0.000001); ")"
 
   ' ══════════════════════════════════════════════════════════════════════════
   ' C) MANDELBROT — quante iterazioni z <- z^2 + c restano dentro |z| < 2
@@ -164,7 +164,7 @@ SUB Main()
   t = COMPLEX.MAKE(3, 4)
   z = COMPLEX.CSQRT(t)
   u = COMPLEX.MUL(z, z)
-  PRINT " sqrt(3+4i)^2 = z: "; COMPLEX.EQ(u, t)
+  PRINT " sqrt(3+4i)^2 = z: "; COMPLEX.EQ(u, t, 0.000001)
 
   ' sin(i) = i*sinh(1), cos(i) = cosh(1), tan(i) = i*tanh(1)
   u = COMPLEX.MAKE(0, 1)
@@ -205,24 +205,24 @@ SUB Main()
   PRINT " round-trip trig: ";
   z = COMPLEX.CASIN(t)
   u = COMPLEX.CSIN(z)
-  PRINT COMPLEX.EQ(u, t);
+  PRINT COMPLEX.EQ(u, t, 0.000001);
   z = COMPLEX.CACOS(t)
   u = COMPLEX.CCOS(z)
-  PRINT " "; COMPLEX.EQ(u, t);
+  PRINT " "; COMPLEX.EQ(u, t, 0.000001);
   z = COMPLEX.CATAN(t)
   u = COMPLEX.CTAN(z)
-  PRINT " "; COMPLEX.EQ(u, t)
+  PRINT " "; COMPLEX.EQ(u, t, 0.000001)
   t = COMPLEX.MAKE(1.5, 0.5)
   PRINT " round-trip iper: ";
   z = COMPLEX.ASINH(t)
   u = COMPLEX.CSINH(z)
-  PRINT COMPLEX.EQ(u, t);
+  PRINT COMPLEX.EQ(u, t, 0.000001);
   z = COMPLEX.ACOSH(t)
   u = COMPLEX.CCOSH(z)
-  PRINT " "; COMPLEX.EQ(u, t);
+  PRINT " "; COMPLEX.EQ(u, t, 0.000001);
   z = COMPLEX.ATANH(t)
   u = COMPLEX.CTANH(z)
-  PRINT " "; COMPLEX.EQ(u, t)
+  PRINT " "; COMPLEX.EQ(u, t, 0.000001)
 
   ' casi limite documentati
   t = COMPLEX.MAKE(1, 2)
