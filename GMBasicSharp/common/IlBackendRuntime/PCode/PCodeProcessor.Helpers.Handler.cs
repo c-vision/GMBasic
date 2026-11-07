@@ -374,31 +374,29 @@ internal sealed partial class PCodeProcessor
     private void DispatchSpriteCollisions(PCodeTask task)
     {
         if (_pendingSpriteCollisions is not { Count: > 0 } collisions || _eventHandlers == null) return;
-        if (_dispatchNextPlural)
+        _pendingSpriteCollisions = null;
+        // Singolare E plurale nello stesso SYNC (parita' IL/VM-C/C99): prima ON SPRITE COLLISION, poi ON SPRITE COLLISIONS.
+        // Un solo IP: si usa la stessa catena degli handler di RAISE EVENT (il RETURN passa al successivo).
+        var chain = new List<(string Handler, object?[] Args)>();
+        if (_eventHandlers.TryGetValue("SPRITE_COLLISION", out var hSing) && hSing.Count > 0)
         {
-            _dispatchNextPlural = false;
-            if (_eventHandlers.TryGetValue("SPRITE_COLLISIONS", out var hPlur) && hPlur.Count > 0)
-            {
-                _pendingSpriteCollisions = null;
-                var ids = new List<object?>();
-                foreach (var (ia, ib, _, _) in collisions)
-                {
-                    if (ia >= 0 && !ids.Contains((double)ia)) ids.Add((double)ia);
-                    if (ib >= 0 && !ids.Contains((double)ib)) ids.Add((double)ib);
-                }
-                DispatchEventHandler(task, hPlur[0], new object?[] { ids });
-            }
+            var (_, _, cx, cy) = collisions[0];
+            chain.Add((hSing[0], new object?[] { (double)cx, (double)cy }));
         }
-        else
+        if (_eventHandlers.TryGetValue("SPRITE_COLLISIONS", out var hPlur) && hPlur.Count > 0)
         {
-            _dispatchNextPlural = true;
-            if (_eventHandlers.TryGetValue("SPRITE_COLLISION", out var hSing) && hSing.Count > 0)
+            var ids = new List<object?>();
+            foreach (var (ia, ib, _, _) in collisions)
             {
-                _pendingSpriteCollisions = null;
-                var (id1, id2, cx, cy) = collisions[0];
-                DispatchEventHandler(task, hSing[0], new object?[] { (double)cx, (double)cy });
+                if (ia >= 0 && !ids.Contains((double)ia)) ids.Add((double)ia);
+                if (ib >= 0 && !ids.Contains((double)ib)) ids.Add((double)ib);
             }
+            chain.Add((hPlur[0], new object?[] { ids }));
         }
+        if (chain.Count == 0) return;
+        _pendingEventHandlers = chain.ToArray();
+        _pendingEventIndex = 0;
+        DispatchEventHandler(task, chain[0].Handler, chain[0].Args);
     }
 
     private void DispatchEventHandler(PCodeTask task, string handlerName, object?[] args)

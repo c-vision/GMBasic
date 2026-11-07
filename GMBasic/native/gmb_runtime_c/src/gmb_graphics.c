@@ -907,18 +907,22 @@ const uint32_t* gmb_gfx_visible_pixels(int* out_w, int* out_h)
 }
 
 static gmb_gfx_collision_fn g_collision_cb = NULL;
+static gmb_gfx_collisions_fn g_collisions_cb = NULL;
 void gmb_gfx_on_sprite_collision(gmb_gfx_collision_fn cb) { g_collision_cb = cb; }
+void gmb_gfx_on_sprite_collisions(gmb_gfx_collisions_fn cb) { g_collisions_cb = cb; }
 
 /* Collisioni AABB fra sprite visibili (rettangoli = dimensioni della texture, come gmb_gfx_collide).
- * Semantica identica a IL/PCode: il SYNC N rileva, il SYNC N+1 consegna all'handler (una sola
- * chiamata per SYNC, con la PRIMA collisione: (x, y) = centro del rettangolo dello sprite con id minore). */
-static int g_col_pending = 0;
-static int g_col_id1 = 0, g_col_id2 = 0;
-static double g_col_px = 0, g_col_py = 0;
+ * Semantica identica su tutti i backend: il SYNC N rileva TUTTE le coppie, il SYNC N+1 le consegna agli handler
+ * (singolare: una chiamata con la PRIMA coppia, (x, y) = centro del rettangolo dello sprite con id minore;
+ * plurale: una chiamata con gli id coinvolti, unici, nell'ordine id1, id2 di ogni coppia). */
+#define GFX_COL_MAX 256
+static int    g_col_n = 0;
+static int    g_col_a[GFX_COL_MAX], g_col_b[GFX_COL_MAX];
+static float  g_col_x[GFX_COL_MAX], g_col_y[GFX_COL_MAX];
 
 static void gfx_detect_collisions(void)
 {
-    g_col_pending = 0;
+    g_col_n = 0;
     for (int i = 1; i < g_gfx.next_sprite_id && i < GMB_GFX_MAX_SPRITES; i++)
     {
         gmb_gfx_sprite_t* a = &g_gfx.sprites[i];
@@ -928,33 +932,54 @@ static void gfx_detect_collisions(void)
             gmb_gfx_sprite_t* b = &g_gfx.sprites[j];
             if (!b->in_use || !b->visible || b->tex_id <= 0 || b->tex_id >= GMB_GFX_MAX_TEXTURES || !g_gfx.textures[b->tex_id].in_use) continue;
             if (!gmb_gfx_collide(i, j)) continue;
-            g_col_pending = 1;
-            g_col_id1 = i; g_col_id2 = j;
-            g_col_px = (double)a->x + g_gfx.textures[a->tex_id].w / 2.0;
-            g_col_py = (double)a->y + g_gfx.textures[a->tex_id].h / 2.0;
-            return;
+            if (g_col_n >= GFX_COL_MAX) return;
+            g_col_a[g_col_n] = i; g_col_b[g_col_n] = j;
+            g_col_x[g_col_n] = a->x + g_gfx.textures[a->tex_id].w / 2.0f;
+            g_col_y[g_col_n] = a->y + g_gfx.textures[a->tex_id].h / 2.0f;
+            g_col_n++;
         }
     }
 }
 
 static void gfx_dispatch_collisions(void)
 {
-    if (!g_collision_cb || !g_col_pending) return;   /* senza handler C la collisione resta in attesa per gmb_gfx_take_collision */
-    g_col_pending = 0;
-    g_collision_cb(g_col_px, g_col_py);
+    if ((!g_collision_cb && !g_collisions_cb) || g_col_n == 0) return;   /* senza handler C le coppie restano in attesa per gmb_gfx_take_collisions */
+    int n = g_col_n; g_col_n = 0;
+    /* copia locale: l'handler puo' invocare SYNC/altro che rimpiazza le coppie */
+    int ca[GFX_COL_MAX], cb[GFX_COL_MAX]; float cx = g_col_x[0], cy = g_col_y[0];
+    memcpy(ca, g_col_a, sizeof(int) * (size_t)n); memcpy(cb, g_col_b, sizeof(int) * (size_t)n);
+    if (g_collision_cb) g_collision_cb((double)cx, (double)cy);
+    if (g_collisions_cb)
+    {
+        double ids[2 * GFX_COL_MAX]; int m = 0;
+        for (int k = 0; k < n; k++)
+        {
+            int cand[2] = { ca[k], cb[k] };
+            for (int q = 0; q < 2; q++)
+            {
+                int dup = 0;
+                for (int z = 0; z < m; z++) if ((int)ids[z] == cand[q]) { dup = 1; break; }
+                if (!dup) ids[m++] = (double)cand[q];
+            }
+        }
+        g_collisions_cb(ids, m);
+    }
 }
 
-/* Preleva la collisione rilevata dall'ultimo SYNC (per i backend che dispacciano l'handler da se': C#/VM-C).
- * Ritorna 1 e riempie id1, id2, x, y; 0 se non ce ne sono. Svuota l'attesa. */
-int gmb_gfx_take_collision(int* id1, int* id2, float* x, float* y)
+/* Preleva le coppie rilevate dall'ultimo SYNC (per i backend che dispacciano gli handler da se': C#/VM-C).
+ * Riempie fino a max coppie (id1, id2, x, y), ritorna il numero e svuota l'attesa. */
+int gmb_gfx_take_collisions(int* id1, int* id2, float* x, float* y, int max)
 {
-    if (!g_col_pending) return 0;
-    g_col_pending = 0;
-    if (id1) *id1 = g_col_id1;
-    if (id2) *id2 = g_col_id2;
-    if (x) *x = (float)g_col_px;
-    if (y) *y = (float)g_col_py;
-    return 1;
+    int n = g_col_n < max ? g_col_n : max;
+    for (int k = 0; k < n; k++)
+    {
+        if (id1) id1[k] = g_col_a[k];
+        if (id2) id2[k] = g_col_b[k];
+        if (x) x[k] = g_col_x[k];
+        if (y) y[k] = g_col_y[k];
+    }
+    g_col_n = 0;
+    return n;
 }
 
 void gmb_gfx_sync(void)

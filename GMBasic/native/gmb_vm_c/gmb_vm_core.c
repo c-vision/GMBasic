@@ -3488,6 +3488,44 @@ double gmb_vm_call_closure_sync_list2_vec(gmb_vm_t* vm, gmb_task_t* task, gmb_ob
     return 0.0;
 }
 
+/* Callback con RITORNO ARRAY e uno scalare (descriptor 148, 2026-11-07):
+ * f(v[] AS DOUBLE, x AS DOUBLE) AS ARRAY. Il nativo chiama (double* v, int64_t n,
+ * double x, double* out); qui si costruisce la lista, si passa lo scalare, si invoca
+ * la closure sincronamente e si copia il risultato in out. Ritorna gli elementi scritti. */
+static double gmb_vm_call_closure_sync_list_s_vec(gmb_vm_t* vm, gmb_task_t* task, gmb_obj_closure_t* closure,
+                                                  const double* vals, int n, double x, double* out, int nout)
+{
+    if (!closure) { if (nout > 0) for (int i = 0; i < nout; i++) out[i] = 0; return 0.0; }
+    gmb_obj_shared_val_t* lst = gmb_shared_list_new();
+    if (lst) { for (int i = 0; i < n; i++) gmb_list_add(lst->list, gmb_make_val_double(vals[i])); gmb_task_push_ref(task, (gmb_obj_t*)lst, GMB_BT_OBJECT); }
+    else gmb_task_push_num(task, 0, GMB_BT_NUMBER);
+    gmb_task_push_num(task, x, GMB_BT_NUMBER);
+    if (!push_frame(task, task->sp - 2, -2)) return 0.0;
+    if (closure->num_upvalues > 0 && closure->upvalues)
+        for (int i = 0; i < closure->num_upvalues && i < 16; i++)
+            task->frame->upvalues[i] = closure->upvalues[i];
+    task->sync_saved_ip = task->ip;
+    task->sync_active = 1;
+    task->sync_result = 0;
+    task->sync_result_ref = NULL;
+    task->sync_result_type = 0;
+    task->ip = closure->address;
+    int guard = 0;
+    while (task->sync_active && guard++ < 1000000) gmb_vm_tick(vm, task);
+    if (task->ip == -2) task->ip = task->sync_saved_ip;
+    if (task->sync_result_ref && task->sync_result_ref->kind == GMB_OBJ_LIST)
+    {
+        gmb_obj_shared_val_t* rl = (gmb_obj_shared_val_t*)task->sync_result_ref;
+        int cnt = (int)rl->list->count;
+        if (nout > 0 && cnt > nout) cnt = nout;
+        for (int i = 0; i < cnt; i++)
+        { gmb_val_t v = rl->list->items[i]; out[i] = v.kind == GMB_TYPE_DOUBLE ? v.v_double : (double)v.v_int; }
+        return (double)cnt;
+    }
+    if (nout > 0) for (int i = 0; i < nout; i++) out[i] = 0;
+    return 0.0;
+}
+
 /* Callback con RITORNO ARRAY (2026-11-02): una lista in ingresso -> out[] (f(v[]) AS ARRAY). */
 static double gmb_vm_call_closure_sync_list_vec(gmb_vm_t* vm, gmb_task_t* task, gmb_obj_closure_t* closure,
                                                const double* vals, int n, double* out, int nout)
@@ -3790,6 +3828,11 @@ static double gmb_ffi_cb_vvo_0(double* a, int64_t na, double* b, int64_t nb, dou
 static double gmb_ffi_cb_vvo_1(double* a, int64_t na, double* b, int64_t nb, double* out) { gmb_ffi_cb_slot_t* q = &g_ffi_cb_slots_vvo[1]; return gmb_vm_call_closure_sync_list2_vec(q->vm, q->task, q->closure, a, (int)na, b, (int)nb, out); }
 static void* g_ffi_cb_tramp_vo[2] = { (void*)gmb_ffi_cb_vo_0, (void*)gmb_ffi_cb_vo_1 };
 static void* g_ffi_cb_tramp_vvo[2] = { (void*)gmb_ffi_cb_vvo_0, (void*)gmb_ffi_cb_vvo_1 };
+/* 148 (2026-11-07): f(v[], x) AS ARRAY — array + scalare, ritorno array. */
+static gmb_ffi_cb_slot_t g_ffi_cb_slots_vso[2];
+static double gmb_ffi_cb_vso_0(double* v, int64_t n, double s, double* out) { gmb_ffi_cb_slot_t* q = &g_ffi_cb_slots_vso[0]; return gmb_vm_call_closure_sync_list_s_vec(q->vm, q->task, q->closure, v, (int)n, s, out, 0); }
+static double gmb_ffi_cb_vso_1(double* v, int64_t n, double s, double* out) { gmb_ffi_cb_slot_t* q = &g_ffi_cb_slots_vso[1]; return gmb_vm_call_closure_sync_list_s_vec(q->vm, q->task, q->closure, v, (int)n, s, out, 0); }
+static void* g_ffi_cb_tramp_vso[2] = { (void*)gmb_ffi_cb_vso_0, (void*)gmb_ffi_cb_vso_1 };
 
 /* Trova il primo slot libero per (kind,arita'), lo popola con vm/task/closure(o addr), e
  * ritorna l'indirizzo del trampolino pre-dichiarato corrispondente (NULL se pool esaurito —
@@ -3820,6 +3863,20 @@ static void* gmb_ffi_cb_alloc(int kind, int arity, gmb_vm_t* vm, gmb_task_t* tas
                 arr[s].vm = vm; arr[s].task = task; arr[s].closure = closure; arr[s].addr = addr; arr[s].in_use = 1;
                 *out_slot = s;
                 return kind == 1 ? g_ffi_cb_tramp_vv_i[s] : g_ffi_cb_tramp_vv_d[s];
+            }
+        }
+        return NULL;
+    }
+    if (arity == 148)
+    {
+        gmb_ffi_cb_slot_t* arr = g_ffi_cb_slots_vso;
+        for (int s = 0; s < 2; s++)
+        {
+            if (!arr[s].in_use)
+            {
+                arr[s].vm = vm; arr[s].task = task; arr[s].closure = closure; arr[s].addr = addr; arr[s].in_use = 1;
+                *out_slot = s;
+                return g_ffi_cb_tramp_vso[s];
             }
         }
         return NULL;
@@ -3883,6 +3940,13 @@ static void gmb_ffi_cb_free(int kind, int arity, int slot)
     if (arity == 129)
     {
         gmb_ffi_cb_slot_t* q = kind == 1 ? &g_ffi_cb_slots_vv_i[slot] : &g_ffi_cb_slots_vv_d[slot];
+        q->in_use = 0;
+        q->closure = NULL;
+        return;
+    }
+    if (arity == 148)
+    {
+        gmb_ffi_cb_slot_t* q = &g_ffi_cb_slots_vso[slot];
         q->in_use = 0;
         q->closure = NULL;
         return;
@@ -5355,39 +5419,78 @@ static void vm_sys_event_346(gmb_vm_t* vm, gmb_task_t* task, int code, int argc)
     push_num_entry(task, (double)rc, GMB_BT_NUMBER);
 }
 
-/* SYNC (SYNC_PROCESS): ON SPRITE COLLISION — il SYNC N rileva le collisioni (runtime grafico C), il SYNC N+1 chiama
- * gli handler registrati con ADD_HANDLER "SPRITE_COLLISION" (una chiamata per SYNC, prima collisione, (x, y)).
- * Stessa semantica di IL/PCode/C99. Ritorna -1 come lo stub headless precedente. */
-static int    g_vm_col_pending = 0;
-static double g_vm_col_x = 0, g_vm_col_y = 0;
+/* SYNC (SYNC_PROCESS): ON SPRITE COLLISION / COLLISIONS — il SYNC N rileva le collisioni (runtime grafico C), il SYNC N+1
+ * chiama gli handler registrati con ADD_HANDLER: "SPRITE_COLLISION" una volta con (x, y) della prima coppia, poi
+ * "SPRITE_COLLISIONS" una volta con la lista degli id unici (id1, id2 di ogni coppia). Stessa semantica di IL/PCode/C99.
+ * Ritorna -1 come lo stub headless precedente. */
+#define VM_COL_MAX 256
+static int   g_vm_col_n = 0;
+static int   g_vm_col_a[VM_COL_MAX], g_vm_col_b[VM_COL_MAX];
+static float g_vm_col_x[VM_COL_MAX], g_vm_col_y[VM_COL_MAX];
+static int vm_ev_handler_addr(gmb_vm_t* vm, const char* ev, int idx)
+{
+    for (int sl = 0; sl < ev_count; sl++)
+    {
+        if (strcasecmp(ev_names[sl], ev) != 0) continue;
+        if (idx >= ev_handler_count[sl]) return -1;
+        for (uint32_t p = 0; p < vm->chunk->proc_count; p++)
+            if (vm->chunk->proc_names[p] && strcasecmp(vm->chunk->proc_names[p], ev_handlers[sl][idx]) == 0)
+                return (int)vm->chunk->proc_addrs[p];
+        return -1;
+    }
+    return -1;
+}
+static int vm_ev_handler_count(const char* ev)
+{
+    for (int sl = 0; sl < ev_count; sl++) if (strcasecmp(ev_names[sl], ev) == 0) return ev_handler_count[sl];
+    return 0;
+}
 static void vm_sys_sync_process(gmb_vm_t* vm, gmb_task_t* task, int code, int argc) {
     (void)code;
     gmb_stack_entry_t a[4];
     int n = argc > 4 ? 4 : argc;
     vm_pop_args_ordered(task, a, n);
-    if (g_vm_col_pending)
+    if (g_vm_col_n > 0)
     {
-        g_vm_col_pending = 0;
-        for (int sl = 0; sl < ev_count; sl++)
+        int cn = g_vm_col_n; g_vm_col_n = 0;
+        int ca[VM_COL_MAX], cb[VM_COL_MAX]; float cx = g_vm_col_x[0], cy = g_vm_col_y[0];
+        memcpy(ca, g_vm_col_a, sizeof(int) * (size_t)cn); memcpy(cb, g_vm_col_b, sizeof(int) * (size_t)cn);
+        for (int h = 0, hc = vm_ev_handler_count("SPRITE_COLLISION"); h < hc; h++)
         {
-            if (strcasecmp(ev_names[sl], "SPRITE_COLLISION") != 0) continue;
-            for (int h = 0; h < ev_handler_count[sl]; h++)
+            int addr = vm_ev_handler_addr(vm, "SPRITE_COLLISION", h);
+            if (addr < 0) continue;
+            gmb_stack_entry_t sa[2]; memset(sa, 0, sizeof(sa));
+            sa[0].type = 1; sa[0].num = cx; sa[0].basic_type = GMB_BT_NUMBER;
+            sa[1].type = 1; sa[1].num = cy; sa[1].basic_type = GMB_BT_NUMBER;
+            vm_call_addr_sync_args(vm, task, addr, sa, 2);
+        }
+        for (int h = 0, hc = vm_ev_handler_count("SPRITE_COLLISIONS"); h < hc; h++)
+        {
+            int addr = vm_ev_handler_addr(vm, "SPRITE_COLLISIONS", h);
+            if (addr < 0) continue;
+            gmb_obj_shared_val_t* l = gmb_shared_list_new();
+            if (!l) continue;
+            int seen[2 * VM_COL_MAX], m = 0;
+            for (int k = 0; k < cn; k++)
             {
-                int addr = -1;
-                for (uint32_t p = 0; p < vm->chunk->proc_count; p++)
-                    if (vm->chunk->proc_names[p] && strcasecmp(vm->chunk->proc_names[p], ev_handlers[sl][h]) == 0)
-                    { addr = (int)vm->chunk->proc_addrs[p]; break; }
-                if (addr < 0) continue;
-                gmb_stack_entry_t ca[2]; memset(ca, 0, sizeof(ca));
-                ca[0].type = 1; ca[0].num = g_vm_col_x; ca[0].basic_type = GMB_BT_NUMBER;
-                ca[1].type = 1; ca[1].num = g_vm_col_y; ca[1].basic_type = GMB_BT_NUMBER;
-                vm_call_addr_sync_args(vm, task, addr, ca, 2);
+                int cand[2] = { ca[k], cb[k] };
+                for (int q = 0; q < 2; q++)
+                {
+                    int dup = 0;
+                    for (int z = 0; z < m; z++) if (seen[z] == cand[q]) { dup = 1; break; }
+                    if (!dup) { seen[m++] = cand[q]; gmb_list_add(l->list, gmb_make_val_double((double)cand[q])); }
+                }
             }
+            gmb_stack_entry_t pa[1]; memset(pa, 0, sizeof(pa));
+            pa[0].type = 2; pa[0].ref = (gmb_obj_t*)l; pa[0].basic_type = GMB_BT_OBJECT;
+            vm_call_addr_sync_args(vm, task, addr, pa, 1);
         }
     }
     gmb_gfx_sync();
-    { int id1 = 0, id2 = 0; float cx = 0, cy = 0;
-      if (gmb_gfx_take_collision(&id1, &id2, &cx, &cy)) { g_vm_col_pending = 1; g_vm_col_x = cx; g_vm_col_y = cy; } }
+    { int i1[VM_COL_MAX], i2[VM_COL_MAX]; float px[VM_COL_MAX], py[VM_COL_MAX];
+      int got = gmb_gfx_take_collisions(i1, i2, px, py, VM_COL_MAX);
+      for (int k = 0; k < got; k++) { g_vm_col_a[k] = i1[k]; g_vm_col_b[k] = i2[k]; g_vm_col_x[k] = px[k]; g_vm_col_y[k] = py[k]; }
+      g_vm_col_n = got; }
     push_num_entry(task, -1.0, GMB_BT_NUMBER);
 }
 

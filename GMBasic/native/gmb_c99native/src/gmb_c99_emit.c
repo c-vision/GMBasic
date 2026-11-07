@@ -21130,9 +21130,33 @@ static void st_on_error(ctx_t* c, gmb_stmt_t* s) {
             ind(c); sb_printf(&c->out, "gmb_gfx_on_sprite_collision(%s);\n", wname);
             return;
         }
-        /* ON SPRITE COLLISIONS <handler> (array degli id): non ancora supportato su C99Native — no-op. */
+        /* ON SPRITE COLLISIONS <handler(ids())>: il runtime consegna gli id unici degli sprite coinvolti; wrapper di file
+         * che costruisce l'array (puntatore, bound superiore, bound inferiore) della SUB utente. */
         if (strcmp(ok, "SPRITE_COLLISIONS") == 0) {
-            ind(c); sb_put(&c->out, "/* ON SPRITE COLLISIONS: non supportato dal backend C99Native (no-op) */\n");
+            c99_mark_ui(c);
+            char want[128]; int wl = 0;
+            for (const char* q = s->target_label ? s->target_label : ""; *q && wl < 126; q++)
+                if (*q != '_') want[wl++] = (char)tolower((unsigned char)*q);
+            want[wl] = 0;
+            fn_info_t* hf = NULL;
+            for (int k = 0; k < c->nfn; k++) {
+                char have[128]; int hl = 0;
+                for (const char* q = c->fns[k].stmt->func_name; *q && hl < 126; q++)
+                    if (*q != '_') have[hl++] = (char)tolower((unsigned char)*q);
+                have[hl] = 0;
+                if (strcmp(want, have) == 0) { hf = &c->fns[k]; break; }
+            }
+            if (!hf) { c99_fail(c, s->line, "ON SPRITE COLLISIONS: handler '%s' non trovato", s->target_label ? s->target_label : ""); return; }
+            if (hf->stmt->n_params != 1 || !(hf->stmt->param_is_array && hf->stmt->param_is_array[0])) {
+                c99_fail(c, s->line, "ON SPRITE COLLISIONS: l'handler '%s' deve avere un solo parametro array (ids())", s->target_label); return; }
+            char wname[160];
+            { sb_t t; memset(&t, 0, sizeof t); sb_put(&t, "__spcols_"); sb_ident(&t, hf->stmt->func_name); snprintf(wname, sizeof wname, "%s", t.s ? t.s : "__spcols"); free(t.s); }
+            if (!c->go_wraps.s || !strstr(c->go_wraps.s, wname)) {
+                sb_printf(&c->go_wraps, "static void %s(const double* ids, int n) { gmb_double_t buf[n > 0 ? n : 1]; for (int i = 0; i < n; i++) buf[i] = (gmb_double_t)ids[i]; gmb_user_", wname);
+                sb_ident(&c->go_wraps, hf->stmt->func_name);
+                sb_put(&c->go_wraps, "(buf, (gmb_int_t)(n - 1), 0); }\n");
+            }
+            ind(c); sb_printf(&c->out, "gmb_gfx_on_sprite_collisions(%s);\n", wname);
             return;
         }
         /* ON <evento> non gestito (es. `ON SPRITE COLLISION`/`ON SPRITE COLLISIONS` → il parser
@@ -31308,6 +31332,11 @@ static const char* ffi_cb_native_type(int arity, int isInt, int hasRet) {
             snprintf(buf, 512, "%s (*)(gmb_double_t*, gmb_int_t, gmb_double_t)", retT);
             return buf;
         }
+        /* 148 (2026-11-07): f(v(), x) AS ARRAY — array + scalare, ritorno array. */
+        if (arity == 148) {
+            snprintf(buf, 512, "double (*)(gmb_double_t*, gmb_int_t, gmb_double_t, gmb_double_t*)");
+            return buf;
+        }
         /* 144/145: il trampolino RITORNA il numero di elementi scritti (gor_optb_fvv_len,
          * 2026-11-03) — la firma della call FFI usa `double`, non `void`. */
         if (arity == 144) {
@@ -31451,6 +31480,16 @@ static void emit_ffi_callback_pool(ctx_t* c) {
         sb_printf(&c->out, "static double (*g_ffi_cb_ptr_sub_%s145[2])(gmb_double_t*, gmb_int_t, gmb_double_t*, gmb_int_t, gmb_double_t*) = { gmb_ffi_cb_%s145_0, gmb_ffi_cb_%s145_1 };\n", kind, kind, kind);
         sb_printf(&c->out, "static int gmb_ffi_cb_acquire_%s145(gmb_fn_t f) { for (int s = 0; s < 2; s++) if (!g_ffi_cb_inuse_%s145[s]) { g_ffi_cb_inuse_%s145[s] = 1; g_ffi_cb_slot_%s145[s] = f; return s; } return -1; }\n", kind, kind, kind, kind);
         sb_printf(&c->out, "static void gmb_ffi_cb_release_%s145(int s) { if (s >= 0) g_ffi_cb_inuse_%s145[s] = 0; }\n", kind, kind);
+        /* 148 (2026-11-07): f(v(), x) AS ARRAY — array + scalare, ritorno array. ABI nativa
+         * (double* v, int64_t n, double x, double* out); ritorno = elementi scritti. */
+        sb_printf(&c->out, "static gmb_fn_t g_ffi_cb_slot_%s148[2];\nstatic int g_ffi_cb_inuse_%s148[2];\n", kind, kind);
+        for (int slot = 0; slot < 2; slot++)
+            sb_printf(&c->out, "static double gmb_ffi_cb_%s148_%d(gmb_double_t* v, gmb_int_t n, gmb_double_t s, gmb_double_t* out) { gmb_int_t pv = gmb_lambda_bound(0); gmb_fn_t f = g_ffi_cb_slot_%s148[%d]; gmb_lambda_bound_set(0, n - 1); ((void(*)(void*, gmb_double_t*, gmb_double_t, gmb_double_t*))f.fn)(f.ctx, v, s, out); gmb_lambda_bound_set(0, pv); return (double)gmb_lambda_ret_len_get(); }\n",
+                kind, slot, kind, slot);
+        sb_printf(&c->out, "static double (*g_ffi_cb_ptr_%s148[2])(gmb_double_t*, gmb_int_t, gmb_double_t, gmb_double_t*) = { gmb_ffi_cb_%s148_0, gmb_ffi_cb_%s148_1 };\n", kind, kind, kind);
+        sb_printf(&c->out, "static double (*g_ffi_cb_ptr_sub_%s148[2])(gmb_double_t*, gmb_int_t, gmb_double_t, gmb_double_t*) = { gmb_ffi_cb_%s148_0, gmb_ffi_cb_%s148_1 };\n", kind, kind, kind);
+        sb_printf(&c->out, "static int gmb_ffi_cb_acquire_%s148(gmb_fn_t f) { for (int s = 0; s < 2; s++) if (!g_ffi_cb_inuse_%s148[s]) { g_ffi_cb_inuse_%s148[s] = 1; g_ffi_cb_slot_%s148[s] = f; return s; } return -1; }\n", kind, kind, kind, kind);
+        sb_printf(&c->out, "static void gmb_ffi_cb_release_%s148(int s) { if (s >= 0) g_ffi_cb_inuse_%s148[s] = 0; }\n", kind, kind);
     }
     sb_put(&c->out, "\n");
 }
@@ -31543,9 +31582,9 @@ static void emit_ffi_wrapper(ctx_t* c, fn_info_t* fn, const char* vkey) {
                              "INTERI: i callback vettoriali ammettono solo array di DOUBLE.", sym, what);
                     return;
                 }
-                if (!((nArr == 1 && nSca == 0) || (nArr == 2 && nSca == 0) || (nArr == 1 && nSca == 1 && !arrRet))) {
+                if (!((nArr == 1 && nSca == 0) || (nArr == 2 && nSca == 0) || (nArr == 1 && nSca == 1))) {
                     c99_fail(c, s->line, "FFI '%s': forma di callback non supportata per %s "
-                             "(%d array, %d scalari): ammesse: f(v()) -> scalare/array, f(a(), b()) -> scalare/array, f(v(), x) -> scalare.",
+                             "(%d array, %d scalari): ammesse: f(v()) -> scalare/array, f(a(), b()) -> scalare/array, f(v(), x) -> scalare/array.",
                              sym, what, nArr, nSca);
                     return;
                 }
