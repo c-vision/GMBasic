@@ -157,4 +157,75 @@ internal static class QuantNative
 
     [DllImport(Lib, EntryPoint = "gq_ps_ratio", CallingConvention = CC)]
     internal static extern double PsRatio(double price, double salesPerShare);
+
+    // ── Bonds ────────────────────────────────────────────────────────────────
+    [DllImport(Lib, EntryPoint = "gq_bond_price", CallingConvention = CC)]
+    internal static extern double BondPrice(double settleOa, double maturityOa, double rate, double yld, double redemption, int frequency, int model);
+
+    [DllImport(Lib, EntryPoint = "gq_bond_yield", CallingConvention = CC)]
+    internal static extern double BondYield(double settleOa, double maturityOa, double rate, double price, double redemption, int frequency, int model);
+
+    [DllImport(Lib, EntryPoint = "gq_bond_equiv_yield", CallingConvention = CC)]
+    internal static extern double BondEquivalentYield(double faceValue, double bondPrice, double daysToMaturity);
+
+    [DllImport(Lib, EntryPoint = "gq_current_yield", CallingConvention = CC)]
+    internal static extern double CurrentYield(double annualCoupons, double bondPrice);
+
+    [DllImport(Lib, EntryPoint = "gq_ytm", CallingConvention = CC)]
+    internal static extern double YieldToMaturity(double couponPayment, double faceValue, double price, double years);
+
+    [DllImport(Lib, EntryPoint = "gq_zcb_value", CallingConvention = CC)]
+    internal static extern double ZeroCouponBondValue(double faceValue, double rate, double time);
+
+    [DllImport(Lib, EntryPoint = "gq_zcb_yield", CallingConvention = CC)]
+    internal static extern double ZeroCouponBondYield(double faceValue, double price, double time);
+
+    // ── Derivatives ──────────────────────────────────────────────────────────
+    [DllImport(Lib, EntryPoint = "gq_bs_call", CallingConvention = CC)]
+    internal static extern double BsCall(double s, double k, double t, double r, double v);
+
+    [DllImport(Lib, EntryPoint = "gq_bs_put", CallingConvention = CC)]
+    internal static extern double BsPut(double s, double k, double t, double r, double v);
+
+    [DllImport(Lib, EntryPoint = "gq_merton_call", CallingConvention = CC)]
+    internal static extern double MertonCall(double s, double k, double t, double r, double q, double v);
+
+    [DllImport(Lib, EntryPoint = "gq_merton_put", CallingConvention = CC)]
+    internal static extern double MertonPut(double s, double k, double t, double r, double q, double v);
+
+    [DllImport(Lib, EntryPoint = "gq_binomial_ex", CallingConvention = CC)]
+    internal static extern double BinomialEx(double s, double k, double t, double r, double v, int steps, int isPut, int isAmerican);
+
+    [DllImport(Lib, EntryPoint = "gq_delta", CallingConvention = CC)]
+    internal static extern double Delta(double s, double k, double t, double r, double v, int isPut);
+
+    [DllImport(Lib, EntryPoint = "gq_gamma", CallingConvention = CC)]
+    internal static extern double Gamma(double s, double k, double t, double r, double v);
+
+    [DllImport(Lib, EntryPoint = "gq_vega", CallingConvention = CC)]
+    internal static extern double Vega(double s, double k, double t, double r, double v);
+
+    [DllImport(Lib, EntryPoint = "gq_theta", CallingConvention = CC)]
+    internal static extern double Theta(double s, double k, double t, double r, double v, int isPut);
+
+    [DllImport(Lib, EntryPoint = "gq_rho", CallingConvention = CC)]
+    internal static extern double Rho(double s, double k, double t, double r, double v, int isPut);
+
+    [DllImport(Lib, EntryPoint = "gq_vanna", CallingConvention = CC)]
+    internal static extern double Vanna(double s, double k, double t, double r, double v);
+
+    [DllImport(Lib, EntryPoint = "gq_volga", CallingConvention = CC)]
+    internal static extern double Volga(double s, double k, double t, double r, double v);
+
+    [DllImport(Lib, EntryPoint = "gq_speed", CallingConvention = CC)]
+    internal static extern double Speed(double s, double k, double t, double r, double v);
+
+    [DllImport(Lib, EntryPoint = "gq_zomma", CallingConvention = CC)]
+    internal static extern double Zomma(double s, double k, double t, double r, double v);
+
+    [DllImport(Lib, EntryPoint = "gq_charm", CallingConvention = CC)]
+    internal static extern double Charm(double s, double k, double t, double r, double v, int isPut);
+
+    [DllImport(Lib, EntryPoint = "gq_color", CallingConvention = CC)]
+    internal static extern double Color(double s, double k, double t, double r, double v);
 }

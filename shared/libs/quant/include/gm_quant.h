@@ -23,6 +23,8 @@
 #include "gm_quant_metrics.h"
 #include "gm_quant_volatility.h"
 #include "gm_quant_fundamentals.h"
+#include "gm_quant_bonds.h"
+#include "gm_quant_derivatives.h"
 
 #ifdef __cplusplus
 extern "C" {
