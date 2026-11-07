@@ -31,144 +31,59 @@ public class RichSpan
 /// </summary>
 public static class RichText
 {
-    /// <summary>Parse markup into a flat list of styled spans.</summary>
+    /// <summary>Converte gli span C# nella struct del runtime C (testo troncato a 255).</summary>
+    internal static NativeControlDraw.RichSpanC[] ToNative(IReadOnlyList<RichSpan> spans)
+    {
+        var arr = new NativeControlDraw.RichSpanC[spans.Count];
+        for (var i = 0; i < spans.Count; i++)
+        {
+            var s = spans[i];
+            var text = s.Text ?? "";
+            if (text.Length > 255) text = text[..255];
+            var e = new NativeControlDraw.RichSpanC { Text = text, Bold = s.Bold, Italic = s.Italic, Underline = s.Underline };
+            if (s.Fg is CellColor f) { e.HasFg = true; e.Fg = new NativeControlDraw.RichColor { R = f.R, G = f.G, B = f.B, IsDefault = f.IsDefault }; }
+            if (s.Bg is CellColor b) { e.HasBg = true; e.Bg = new NativeControlDraw.RichColor { R = b.R, G = b.G, B = b.B, IsDefault = b.IsDefault }; }
+            arr[i] = e;
+        }
+        return arr;
+    }
+
+    /// <summary>Parse markup into a flat list of styled spans (parser nel runtime C).</summary>
     public static List<RichSpan> Parse(string markup)
     {
-        var spans = new List<RichSpan>();
-        var text = new System.Text.StringBuilder();
-        bool bold = false, italic = false, underline = false;
-        CellColor? fg = null, bg = null;
-
-        void Flush()
+        var native = new NativeControlDraw.RichSpanC[64];
+        var n = NativeControlDraw.gmb_richtext_parse(markup ?? "", native, native.Length);
+        var spans = new List<RichSpan>(n);
+        for (var i = 0; i < n; i++)
         {
-            if (text.Length > 0)
+            var c = native[i];
+            spans.Add(new RichSpan
             {
-                spans.Add(new RichSpan
-                {
-                    Text = text.ToString(),
-                    Fg = fg,
-                    Bg = bg,
-                    Bold = bold,
-                    Italic = italic,
-                    Underline = underline
-                });
-                text.Clear();
-            }
+                Text = c.Text ?? "",
+                Fg = c.HasFg ? new CellColor { R = c.Fg.R, G = c.Fg.G, B = c.Fg.B, IsDefault = c.Fg.IsDefault } : null,
+                Bg = c.HasBg ? new CellColor { R = c.Bg.R, G = c.Bg.G, B = c.Bg.B, IsDefault = c.Bg.IsDefault } : null,
+                Bold = c.Bold,
+                Italic = c.Italic,
+                Underline = c.Underline
+            });
         }
-
-        var i = 0;
-        while (i < markup.Length)
-        {
-            var c = markup[i];
-            if (c == '*')
-            {
-                Flush();
-                bold = !bold;
-                i++;
-                continue;
-            }
-            if (c == '_')
-            {
-                Flush();
-                italic = !italic;
-                i++;
-                continue;
-            }
-            if (c == '{')
-            {
-                var close = markup.IndexOf('}', i);
-                if (close < 0)
-                {
-                    text.Append(c);
-                    i++;
-                    continue;
-                }
-                var inner = markup.Substring(i + 1, close - i - 1);
-                var sp = inner.IndexOf(' ');
-                if (sp < 0)
-                {
-                    // bare color tag: just set fg for subsequent text
-                    fg = ParseColor(inner) ?? fg;
-                    i = close + 1;
-                    continue;
-                }
-                var colorTok = inner[..sp];
-                var content = inner[(sp + 1)..];
-                var prevFg = fg;
-                fg = ParseColor(colorTok) ?? fg;
-                if (content.Length > 0)
-                {
-                    spans.Add(new RichSpan
-                    {
-                        Text = content,
-                        Fg = fg,
-                        Bg = bg,
-                        Bold = bold,
-                        Italic = italic,
-                        Underline = underline
-                    });
-                }
-                fg = prevFg;
-                i = close + 1;
-                continue;
-            }
-            text.Append(c);
-            i++;
-        }
-        Flush();
         return spans;
     }
 
-    /// <summary>Draw spans left-to-right starting at (x,y), stopping at maxWidth.</summary>
+    /// <summary>Draw spans left-to-right starting at (x,y), stopping at maxWidth (render C).</summary>
     public static void RenderToBuffer(ScreenBuffer buf, int x, int y, List<RichSpan> spans, int maxWidth)
     {
-        var cx = x;
-        var limit = x + maxWidth;
-        foreach (var span in spans)
-        {
-            foreach (var ch in span.Text)
-            {
-                if (cx >= limit) return;
-                buf.SetChar(cx, y, ch, span.Fg, span.Bg);
-                cx++;
-            }
-        }
+        if (spans == null || spans.Count == 0 || maxWidth <= 0 || buf.Handle == IntPtr.Zero) return;
+        var arr = ToNative(spans);
+        NativeControlDraw.gmb_richtext_render_to_buffer(buf.Handle, x, y, arr, arr.Length, maxWidth);
     }
 
-    /// <summary>Resolve a color token: <c>#rrggbb</c> hex or a CSS-style name.</summary>
+    /// <summary>Resolve a color token: <c>#rrggbb</c> hex or a CSS-style name (parser C).</summary>
     public static CellColor? ParseColor(string tok)
     {
         if (string.IsNullOrEmpty(tok)) return null;
-        if (tok[0] == '#')
-        {
-            var hex = tok[1..];
-            if (hex.Length == 6 &&
-                int.TryParse(hex[..2], System.Globalization.NumberStyles.HexNumber, null, out var r) &&
-                int.TryParse(hex.Substring(2, 2), System.Globalization.NumberStyles.HexNumber, null, out var g) &&
-                int.TryParse(hex.Substring(4, 2), System.Globalization.NumberStyles.HexNumber, null, out var b))
-            {
-                return new CellColor { R = (byte)r, G = (byte)g, B = (byte)b };
-            }
-            return null;
-        }
-        return tok.ToLowerInvariant() switch
-        {
-            "black" => CellColor.Black,
-            "white" => CellColor.White,
-            "red" => CellColor.Red,
-            "green" => CellColor.Green,
-            "blue" => CellColor.Blue,
-            "yellow" => CellColor.Yellow,
-            "cyan" => CellColor.Cyan,
-            "magenta" => CellColor.Magenta,
-            "grey" or "gray" => CellColor.Grey,
-            "darkred" => CellColor.DarkRed,
-            "darkgreen" => CellColor.DarkGreen,
-            "darkblue" => CellColor.DarkBlue,
-            "darkyellow" => CellColor.DarkYellow,
-            "darkcyan" => CellColor.DarkCyan,
-            "darkmagenta" => CellColor.DarkMagenta,
-            _ => null
-        };
+        var c = new NativeControlDraw.RichColor();
+        if (NativeControlDraw.gmb_richtext_parse_color(tok, ref c) == 0) return null;
+        return new CellColor { R = c.R, G = c.G, B = c.B, IsDefault = c.IsDefault };
     }
 }

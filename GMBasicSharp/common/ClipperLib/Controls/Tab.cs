@@ -25,18 +25,8 @@ public class Tab : Control
 
     public override void Draw(ScreenBuffer buffer)
     {
-        var (fg, bg) = Style.Effective(Focused, HasError);
-        var (activeFg, activeBg) = Style.Effective(selected: true);
-
-        var cx = X;
-        for (var i = 0; i < Tabs.Count; i++)
-        {
-            var tb = $" {ApplyCase(Tabs[i])} ";
-            var (f, b) = i == Active ? (activeFg, activeBg) : (fg, bg);
-            if (cx + tb.Length > X + Width) break;
-            buffer.SetString(cx, Y, tb, f, b);
-            cx += tb.Length;
-        }
+        NativeDraw.Show(buffer, NativeDraw.Tab, this,
+                        text: string.Join("|", Tabs), sel: Active);
     }
 
     public override bool HandleKey(int key)

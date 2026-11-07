@@ -197,41 +197,9 @@ public class FileExplorer : Control
 
     public override void Draw(ScreenBuffer buffer)
     {
-        var (fg, bg) = Style.Effective(Focused, HasError);
-        var (selFg, selBg) = Style.Effective(selected: true);
-
-        var headerText = _searchMode ? "/" + _searchQuery : CurrentPath;
-        headerText = ApplyCase(headerText);
-        if (headerText.Length > Width) headerText = headerText[..Width];
-        buffer.SetString(X, Y,
-            headerText.Length < Width ? headerText.PadRight(Width) : headerText,
-            fg, bg);
-
-        var bodyTop = Y + 1;
-        var rows = BodyRows;
-        var visible = VisibleIndices();
-        for (var i = 0; i < rows; i++)
-        {
-            var idx = _offset + i;
-            var rowY = bodyTop + i;
-            if (idx >= visible.Count)
-            {
-                buffer.SetString(X, rowY, new string(' ', Width), fg, bg);
-                continue;
-            }
-            var e = _entries[visible[idx]];
-            var line = BuildLine(e, idx == _selected);
-            if (idx == _selected)
-            {
-                buffer.SetString(X, rowY, line, selFg, selBg);
-            }
-            else
-            {
-                var efg = fg;
-                if (ShowIcons) efg = FileTheme.ColorForPath(e.Path);
-                buffer.SetString(X, rowY, line, efg, bg);
-            }
-        }
+        NativeDraw.Show(buffer, NativeDraw.FileExplorer, this,
+                        extra: _searchMode ? "/" + _searchQuery : CurrentPath,
+                        sel: _selected, min: _offset);
     }
 
     // --- input ------------------------------------------------------------

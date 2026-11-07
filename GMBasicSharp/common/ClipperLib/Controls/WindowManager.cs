@@ -983,74 +983,14 @@ public class WindowManager
         return id >= 0 ? id : null;
     }
 
-    private void DrawContentWithScroll(ScreenBuffer buf, ScreenRect cr, ManagedWindow win, Theme theme)
-    {
-        var showScroll = win.Lines.Count > cr.H;
-        var contentWidth = showScroll ? Math.Max(1, cr.W - 1) : cr.W;
-        for (var row = 0; row < cr.H; row++)
-        {
-            var idx = win.ScrollOffset + row;
-            if (idx >= win.Lines.Count) break;
-            var line = win.Lines[idx];
-            var clip = line.Length > contentWidth ? line[..contentWidth] : line;
-            for (var c = 0; c < clip.Length; c++)
-                buf.SetChar(cr.X + c, cr.Y + row, clip[c], theme.Text, theme.WindowBg);
-        }
-
-        if (showScroll)
-        {
-            var barX = cr.X + cr.W - 1;
-            var page = Math.Max(1, cr.H);
-            var max = Math.Max(0, win.Lines.Count - page);
-            var thumb = Math.Max(1, (int)Math.Round(cr.H * (double)page / Math.Max(1, win.Lines.Count)));
-            var startThumb = max > 0 ? (int)Math.Round(win.ScrollOffset * (double)(cr.H - thumb) / max) : 0;
-
-            buf.SetChar(barX, cr.Y, '▲', theme.Accent, theme.WindowBg);
-            buf.SetChar(barX, cr.Y + cr.H - 1, '▼', theme.Accent, theme.WindowBg);
-
-            for (var row = 1; row < cr.H - 1; row++)
-            {
-                var isThumb = row > startThumb && row <= startThumb + thumb - 1;
-                buf.SetChar(barX, cr.Y + row, isThumb ? '█' : '░',
-                    isThumb ? theme.Accent : theme.Dim, theme.WindowBg);
-            }
-        }
-    }
-
-    private static int contentW(ScreenRect cr, ManagedWindow win)
-    {
-        var showScroll = win.Lines.Count > cr.H;
-        return Math.Max(0, (showScroll ? cr.W - 1 : cr.W) - 1);
-    }
-
-    /// <summary>Composita l'intero WindowManager in un buffer: cornici/desktop/status dal C,
-    /// contenuto (Lines) delle finestre dal binding C.</summary>
+    // (contenuto finestre: disegnato dal runtime C in gmb_window_manager_render)
+    /// <summary>Composita l'intero WindowManager in un buffer: desktop, cornici, titoli,
+    /// taskbar, statusbar E contenuto delle finestre (Lines + scrollbar + caret).
+    /// Tutto il disegno è nel runtime C (gmb_window_manager_render_named).</summary>
     public void RenderWm(ScreenBuffer buf, Theme theme, string header, string status)
     {
         ControlStyle.SetTheme(theme);
         if (!string.IsNullOrEmpty(status)) SetStatusBar(status);
         CommonLib.Consoles.Tui.ClipperWmNative.RenderNamed(_c, buf.Handle, theme.Name, string.IsNullOrEmpty(header) ? null : header);
-        foreach (var win in ZOrdered)
-        {
-            if (win.Minimized) continue;
-            DrawWindowContent(buf, win, theme);
-        }
-    }
-
-    /// <summary>Disegna SOLO il contenuto (Lines + scrollbar + cursore) nella ContentRect.</summary>
-    private void DrawWindowContent(ScreenBuffer buf, ManagedWindow win, Theme theme)
-    {
-        var cr = win.ContentRect;
-        if (win.Lines.Count > 0) DrawContentWithScroll(buf, cr, win, theme);
-        if (win.Editable && win.Focused && win.Lines.Count > 0)
-        {
-            var visY = win.CursorLine - win.ScrollOffset;
-            if (visY >= 0 && visY < cr.H)
-            {
-                var lineLen = win.CursorLine < win.Lines.Count ? win.Lines[win.CursorLine].Length : 0;
-                var ch = win.CursorCol < lineLen ? win.Lines[win.CursorLine][win.CursorCol] : ' ';
-                buf.SetChar(cr.X + Math.Min(win.CursorCol, contentW(cr, win)), cr.Y + visY, ch, theme.Accent, theme.Text);
-            }
-        }
     }
 }

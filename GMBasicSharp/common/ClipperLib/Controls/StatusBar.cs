@@ -23,16 +23,7 @@ public class StatusBar : Control
 
     public override void Draw(ScreenBuffer buffer)
     {
-        var (fg, bg) = Style.Effective(Focused, HasError);
-        var red = new CellColor { R = 170, G = 0, B = 0 };
-        var line = ApplyCase(RenderLine());
-        var x = X; var i = 0;
-        while (i < line.Length && x < X + Width)
-        {
-            var len = MatchKeyToken(line, i);
-            if (len > 0) { buffer.SetString(x, Y, line.Substring(i, len), red, bg); x += len; i += len; }
-            else { buffer.SetChar(x++, Y, line[i], fg, bg); i++; }
-        }
+        NativeDraw.Show(buffer, NativeDraw.StatusBar, this, text: ApplyCase(Text));
     }
 
     /// <summary>Riconosce un token di tasto (F1..F12 / Alt-X / Ctrl-X / Shift-X) alla posizione i.</summary>

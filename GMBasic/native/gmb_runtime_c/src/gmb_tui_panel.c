@@ -3,6 +3,7 @@
  * ============================================================================ */
 #include "gmb_tui_widgets.h"
 #include "gmb_graphics.h"
+#include "gmb_form.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -54,11 +55,19 @@ static void panel_draw(void* u, gmb_control_t* c, gmb_screen_buffer_t* buf)
         gmb_screen_setstring(buf, c->x + 1, c->y, ct, fg, bg);
     }
 }
+static void panel_draw_px(void* u, gmb_control_t* c)
+{
+    gmb_panel_t* p = (gmb_panel_t*)u;
+    gmb_px_draw_ex(GMB_PX_PANEL, c->px_x, c->px_y, c->px_w, c->px_h, p->title,
+                   NULL, 0, 0.0, 0.0, 0.0, NULL, 0, NULL, 0);
+}
+
 void gmb_panel_init(gmb_panel_t* p, int x, int y, int w, int h, const char* title)
 {
     memset(p, 0, sizeof(*p));
     gmb_control_init(&p->ctrl, "", x, y, w, h, panel_draw, NULL);
     p->ctrl.user = p;
+    p->ctrl.draw_px_fn = panel_draw_px;   /* grafica: card nativa, no celle */
     snprintf(p->title, sizeof(p->title), "%s", title ? title : "");
     p->border = GMB_PB_SINGLE;
     p->draggable = true;

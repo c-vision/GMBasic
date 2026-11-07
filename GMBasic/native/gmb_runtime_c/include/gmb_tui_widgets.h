@@ -1068,6 +1068,9 @@ typedef struct gmb_rich_span {
 int gmb_richtext_parse_color(const char* tok, gmb_cell_color_t* out);
 int gmb_richtext_parse(const char* markup, gmb_rich_span_t* out, int max);
 void gmb_richtext_render_to_buffer(gmb_screen_buffer_t* buf, int x, int y, gmb_rich_span_t* spans, int count, int max_width);
+/* Paragraph: come sopra ma con word-wrap nel rect (x,y,w,h). wrap=0 → una riga. */
+int  gmb_richtext_render_paragraph(gmb_screen_buffer_t* buf, int x, int y, int w, int h,
+                                   gmb_rich_span_t* spans, int count, int wrap);
 
 /* ---- KeyMap (specchio KeyMap.cs) ---- */
 typedef struct gmb_key_map {

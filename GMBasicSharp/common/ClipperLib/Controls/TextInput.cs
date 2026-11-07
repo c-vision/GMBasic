@@ -32,20 +32,10 @@ public class TextInput : Control
     public override void Draw(ScreenBuffer buffer)
     {
         var error = HasError || !IsValid;
-        var (fg, bg) = Style.Effective(Focused, error);
-        var fill = new string(Style.FillChar, Width);
-        buffer.SetString(X, Y, fill, fg, bg);
-
-        var shown = PasswordMode ? new string('*', Text.Length) : ApplyCase(Text);
-        if (Picture != null) shown = FormatPicture.Apply(Text, Picture);
-        for (var i = 0; i < Math.Min(shown.Length, Width); i++)
-            buffer.SetChar(X + i, Y, shown[i], fg, bg);
-
-        if (Focused && Cursor < Width && BlinkOn)
-        {
-            var c = Cursor < shown.Length ? shown[Cursor] : Style.FillChar;
-            buffer.SetChar(X + Cursor, Y, c, bg, fg);
-        }
+        var st = (PasswordMode ? NativeDraw.StPassword : 0) | (ReadOnly ? NativeDraw.StReadOnly : 0);
+        NativeDraw.Show(buffer, NativeDraw.TextInput, this,
+                        text: ApplyCase(Text), sel: Cursor,
+                        extraState: st | (error ? NativeDraw.StError : 0));
     }
 
     public override bool HandleKey(int key)

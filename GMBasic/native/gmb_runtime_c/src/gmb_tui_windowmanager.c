@@ -747,6 +747,84 @@ static void wm_titlebar(gmb_screen_buffer_t* b, gmb_rect_t r, gmb_cell_color_t f
     }
 }
 
+static void wm_render_content(gmb_screen_buffer_t* b, gmb_managed_window_t* w, const gmb_theme_t* th)
+{
+    if (w->lines_count <= 0) return;
+    gmb_rect_t cr = gmb_managed_window_content_rect(w);
+    if (cr.w <= 0 || cr.h <= 0) return;
+
+    int show_scroll = w->lines_count > cr.h;
+    int cw = show_scroll ? cr.w - 1 : cr.w;
+    if (cw < 1) cw = 1;
+
+    for (int row = 0; row < cr.h; row++)
+    {
+        int idx = w->scroll_offset + row;
+        if (idx < 0) continue;
+        if (idx >= w->lines_count) break;
+        const char* line = w->lines[idx];
+        int col = 0;
+        while (line[col] && col < cw)
+        {
+            unsigned cp;
+            int adv;
+            const unsigned char* p = (const unsigned char*)(line + col);
+            if (p[0] < 0x80) { cp = p[0]; adv = 1; }
+            else if ((p[0] & 0xE0) == 0xC0 && (p[1] & 0xC0) == 0x80)
+            { cp = ((unsigned)(p[0] & 0x1F) << 6) | (unsigned)(p[1] & 0x3F); adv = 2; }
+            else if ((p[0] & 0xF0) == 0xE0 && (p[1] & 0xC0) == 0x80 && (p[2] & 0xC0) == 0x80)
+            { cp = ((unsigned)(p[0] & 0x0F) << 12) | ((unsigned)(p[1] & 0x3F) << 6) | (unsigned)(p[2] & 0x3F); adv = 3; }
+            else { cp = p[0]; adv = 1; }
+            wmsc(b, cr.x + col, cr.y + row, cp, th->text, th->window_bg);
+            col += adv;
+        }
+    }
+
+    if (show_scroll)
+    {
+        int barX = cr.x + cr.w - 1;
+        int page = cr.h > 0 ? cr.h : 1;
+        int total = w->lines_count;
+        int max = total - page; if (max < 0) max = 0;
+        int thumb = (int)((double)cr.h * (double)page / (double)(total > 0 ? total : 1) + 0.5);
+        if (thumb < 1) thumb = 1;
+        if (thumb > cr.h) thumb = cr.h;
+        int maxpos = cr.h - thumb; if (maxpos < 0) maxpos = 0;
+        int startThumb = max > 0 ? (int)((double)w->scroll_offset * (double)maxpos / (double)max + 0.5) : 0;
+
+        wmsc(b, barX, cr.y, 0x25B2, th->accent, th->window_bg);                 /* ▲ */
+        wmsc(b, barX, cr.y + cr.h - 1, 0x25BC, th->accent, th->window_bg);     /* ▼ */
+        for (int row = 1; row < cr.h - 1; row++)
+        {
+            int is_thumb = (row > startThumb && row <= startThumb + thumb - 1);
+            wmsc(b, barX, cr.y + row, is_thumb ? 0x2588 : 0x2591,               /* █ / ░ */
+                 is_thumb ? th->accent : th->dim, th->window_bg);
+        }
+    }
+
+    if (w->editable && w->focused)
+    {
+        int visY = w->cursor_line - w->scroll_offset;
+        if (visY >= 0 && visY < cr.h)
+        {
+            int line_len = (w->cursor_line >= 0 && w->cursor_line < w->lines_count)
+                         ? (int)strlen(w->lines[w->cursor_line]) : 0;
+            unsigned ch = ' ';
+            int col = w->cursor_col;
+            if (col < line_len)
+            {
+                const unsigned char* p = (const unsigned char*)(w->lines[w->cursor_line] + col);
+                if (p[0] < 0x80) ch = p[0];
+                else ch = ' ';
+            }
+            int maxcol = (show_scroll ? cr.w - 1 : cr.w) - 1;
+            if (maxcol < 0) maxcol = 0;
+            if (col > maxcol) col = maxcol;
+            wmsc(b, cr.x + col, cr.y + visY, ch, th->accent, th->text);   /* caret inverso */
+        }
+    }
+}
+
 static void wm_render_window(gmb_screen_buffer_t* b, gmb_managed_window_t* w, const gmb_theme_t* th, int desktop)
 {
     if (w->minimized || w->desktop != desktop) return;
@@ -772,6 +850,8 @@ static void wm_render_window(gmb_screen_buffer_t* b, gmb_managed_window_t* w, co
     else wm_frame(b, r, GMB_WM_BORDER_DOUBLE, frame, tbg);
     /* titlebar */
     wm_titlebar(b, r, frame, th->close_fg, tbg, th->dim, w->title, focused, th);
+    /* contenuto (Lines + scrollbar + caret): parte della finestra, non del client */
+    wm_render_content(b, w, th);
 }
 
 void gmb_window_manager_render(gmb_window_manager_t* m, gmb_screen_buffer_t* buf, const gmb_theme_t* th, const char* header)

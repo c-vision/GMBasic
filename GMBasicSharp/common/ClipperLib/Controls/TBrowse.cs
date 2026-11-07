@@ -922,73 +922,21 @@ public class TBrowse : Control
     public override void Draw(ScreenBuffer buffer)
     {
         if (_dispLocked) return;
-        int ax = X, ay = Y;
-        var innerW = InnerWidth;
-        var bh = buffer.Height;
-        var y = ay;
-
-        (var hfg, var hbg) = (HeaderColors.Fg, HeaderColors.Bg);
-        (var rfg, var rbg) = (RowColors.Fg, RowColors.Bg);
-        (var sfg, var sbg) = (HighlightColors.Fg, HighlightColors.Bg);
-
-        if (ShowBorder && Width >= 2) { if (y < bh) buffer.SetString(ax, y, $"┌{new string('─', innerW)}┐", hfg, hbg); y++; }
-        if (ShowHeader)
+        // Render nativo (runtime C): l'intero TBrowse (bordo, header, righe, footer,
+        // cursore) è disegnato da gmb_tui_draw_control. Una sola implementazione.
+        var cols = string.Join("|", Columns.Select(c => $"{c.Header}:{c.Width}"));
+        var sb = new System.Text.StringBuilder();
+        int nr = RowCount(), nc = Columns.Count;
+        for (int r = 0; r < nr && r < 64; r++)
         {
-            var h = RenderHeader();
-            if (y < bh) buffer.SetString(ax, y, ShowBorder ? $"│{h}│" : h, hfg, hbg);
-            y++;
-            var sep = RenderSeparator();
-            if (y < bh) buffer.SetString(ax, y, ShowBorder ? $"│{sep}│" : sep, hfg, hbg);
-            y++;
-        }
-
-        var rows = RenderRows();
-        for (var dr = 0; dr < rows.Count; dr++)
-        {
-            if (y >= bh) break;
-            var dataRow = TopRow + dr;
-            var line = rows[dr];
-            var isCur = dataRow == CurrentRow && dataRow < RowCount();
-            (var fg, var bg) = isCur ? (sfg, sbg) : (rfg, rbg);
-            if (ShowBorder)
+            if (r > 0) sb.Append(';');
+            for (int c = 0; c < nc && c < 16; c++)
             {
-                buffer.SetChar(ax, y, '│', hfg, hbg);
-                buffer.SetString(ax + 1, y, line, fg, bg);
-                buffer.SetChar(ax + 1 + innerW, y, '│', hfg, hbg);
+                if (c > 0) sb.Append('|');
+                sb.Append(_data.GetValue(r, c));
             }
-            else buffer.SetString(ax, y, line, fg, bg);
-
-            if (_edit.HasValue && _edit!.Value.Row == dataRow)
-            {
-                var view = EditCellView();
-                if (view.HasValue)
-                {
-                    var contentX = ax + (ShowBorder ? 1 : 0);
-                    var cx = contentX + view.Value.Item1 + view.Value.Item2;
-                    if (cx < ax + Width)
-                    {
-                        var ch = _edit!.Value.Cursor < _edit!.Value.Buf.Length ? _edit!.Value.Buf[_edit!.Value.Cursor] : ' ';
-                        buffer.SetChar(cx, y, ch, sbg, sfg);
-                    }
-                }
-            }
-            y++;
         }
-
-        if (FooterText != null)
-        {
-            var fsep = RenderFooterSeparator();
-            if (y < bh) buffer.SetString(ax, y, ShowBorder ? $"│{fsep}│" : fsep, hfg, hbg);
-            y++;
-            if (y < bh)
-            {
-                var f = FormatCell(FooterText, innerW, BrowseAlign.Left);
-                buffer.SetString(ax, y, ShowBorder ? $"│{f}│" : f, rfg, rbg);
-            }
-            y++;
-        }
-        if (ShowBorder && Width >= 2 && y < bh)
-            buffer.SetString(ax, y, $"└{new string('─', innerW)}┘", hfg, hbg);
+        NativeDraw.Show(buffer, NativeDraw.TBrowse, this, text: cols, extra: sb.ToString());
     }
 
     public override bool HandleKey(int key)

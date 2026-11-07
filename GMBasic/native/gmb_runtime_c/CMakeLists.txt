@@ -1032,6 +1032,13 @@ target_link_libraries(gmb_tui_controls_render_check PRIVATE gmb_runtime)
 target_include_directories(gmb_tui_controls_render_check PRIVATE include)
 add_test(NAME gmb_tui_controls_render_check COMMAND gmb_tui_controls_render_check)
 
+# Contratto dell'API di disegno usata dai client C# (P/Invoke): ogni kind deve
+# avere un render reale nel runtime C (nessun controllo fantasma, nessun fallback).
+add_executable(gmb_tui_drawapi_check tests/gmb_tui_drawapi_check.c)
+target_link_libraries(gmb_tui_drawapi_check PRIVATE gmb_runtime)
+target_include_directories(gmb_tui_drawapi_check PRIVATE include)
+add_test(NAME gmb_tui_drawapi_check COMMAND gmb_tui_drawapi_check)
+
 add_executable(gmb_grep_selfcheck tests/gmb_grep_selfcheck.c)
 target_link_libraries(gmb_grep_selfcheck PRIVATE gmb_runtime)
 target_include_directories(gmb_grep_selfcheck PRIVATE include)

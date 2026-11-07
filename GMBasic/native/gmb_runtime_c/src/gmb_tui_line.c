@@ -25,11 +25,14 @@ static void hline_draw(void* u, gmb_control_t* c, gmb_screen_buffer_t* buf)
                               (int)(0x40000000u | ((unsigned)fg.r << 16) | ((unsigned)fg.g << 8) | fg.b));
         return;
     }
-    char line[256];
+    char line[1024];
     if (h->label[0] == '\0')
     {
-        for (int i = 0; i < c->width && i < 255; i++) line[i] = 0x2500;
-        line[c->width < 255 ? c->width : 255] = '\0';
+        /* '─' in UTF-8: il buffer del sink è UTF-8, non codepoint grezzi. */
+        int o = 0;
+        for (int i = 0; i < c->width && o + 3 < (int)sizeof(line); i++)
+        { line[o++] = (char)0xE2; line[o++] = (char)0x94; line[o++] = (char)0x80; }
+        line[o] = '\0';
     }
     else
     {
@@ -45,9 +48,11 @@ static void hline_draw(void* u, gmb_control_t* c, gmb_screen_buffer_t* buf)
         int right = c->width - left - il;
         if (right < 0) right = 0;
         int o = 0;
-        for (int i = 0; i < left; i++) line[o++] = 0x2500;
-        for (int i = 0; i < il; i++) line[o++] = inner[i];
-        for (int i = 0; i < right; i++) line[o++] = 0x2500;
+        for (int i = 0; i < left && o + 3 < (int)sizeof(line); i++)
+        { line[o++] = (char)0xE2; line[o++] = (char)0x94; line[o++] = (char)0x80; }
+        for (int i = 0; i < il && o + 1 < (int)sizeof(line); i++) line[o++] = inner[i];
+        for (int i = 0; i < right && o + 3 < (int)sizeof(line); i++)
+        { line[o++] = (char)0xE2; line[o++] = (char)0x94; line[o++] = (char)0x80; }
         line[o] = '\0';
     }
     gmb_screen_setstring(buf, c->x, c->y, line, fg, bg);

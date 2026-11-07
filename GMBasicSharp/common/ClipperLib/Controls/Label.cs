@@ -30,8 +30,7 @@ public class Label : Control
 
     public override void Draw(ScreenBuffer buffer)
     {
-        var (fg, bg) = Style.Effective(Focused, HasError);
-        buffer.SetString(X, Y, ApplyCase(RenderLine()), fg, bg);
+        NativeDraw.Show(buffer, NativeDraw.Label, this, text: ApplyCase(Text), sel: (int)Align);
     }
 
     public override bool HandleKey(int key) => false;

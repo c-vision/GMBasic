@@ -22,25 +22,6 @@ public class Menu : Control
 
     public Menu() { Height = 3; }
 
-    private static readonly CellColor BorderFg = new() { R = 0, G = 0, B = 0 };
-    private static readonly CellColor BorderBg = new() { R = 192, G = 192, B = 192 };
-    /// <summary>Rosso Borland per le lettere hotkey (~X~) nel menu/status.</summary>
-    private static readonly CellColor HotkeyRed = new() { R = 170, G = 0, B = 0 };
-
-    /// <summary>Disegna una label con marker ~X~ : X in rosso (o hotkeyColor), il resto fg.
-    /// Ritorna la x dopo il testo.</summary>
-    private static int DrawHotkeyLabel(ScreenBuffer buffer, int x, int y, string label, CellColor fg, CellColor bg, CellColor hotkey)
-    {
-        var cx = x; var inHk = false;
-        foreach (var ch in label)
-        {
-            if (ch == '~') { inHk = !inHk; continue; }
-            buffer.SetChar(cx++, y, ch, inHk ? hotkey : fg, bg);
-        }
-        return cx;
-    }
-    private static string StripTilde(string s) => s.Replace("~", "");
-
     private int ComputeWidth()
     {
         if (Items.Count == 0) return Width;
@@ -78,61 +59,10 @@ public class Menu : Control
 
     public override void Draw(ScreenBuffer buffer)
     {
-        var (fg, bg) = Style.Effective(false);
-        var (selFg, selBg) = Style.Effective(selected: true);
-
-        // Top-level menu bar — fill entire row with bg
-        buffer.SetString(0, Y, new string(' ', buffer.Width), fg, bg);
-        var cx = X;
-        for (var i = 0; i < Items.Count; i++)
-        {
-            var sel = i == SelectedIndex && IsOpen;
-            var (f, b) = sel ? (selFg, selBg) : (fg, bg);
-            var hk = sel ? selFg : HotkeyRed;
-            cx = DrawHotkeyLabel(buffer, cx, Y, " " + ApplyCase(Items[i].Label) + " ", f, b, hk);
-        }
-
-        // Submenu
-        if (!IsOpen || SelectedIndex < 0 || SelectedIndex >= Items.Count) return;
-        var menu = Items[SelectedIndex];
-        if (menu.SubItems.Count == 0) return;
-
-        var px = X;
-        for (var i = 0; i < SelectedIndex; i++)
-            px += Items[i].Label.Length + 2;
-
-        var subs = menu.SubItems;
-        var maxLabel = subs.Max(s => s.Label.Length);
-        var maxHotkey = subs.Max(s => s.Hotkey?.Length ?? 0);
-        var innerW = maxLabel + (maxHotkey > 0 ? maxHotkey + 4 : 3);
-        var sy = Y + 1;
-
-        // Top border
-        buffer.SetString(px, sy, "┌" + new string('─', innerW) + "┐", BorderFg, BorderBg);
-
-        for (var i = 0; i < subs.Count; i++)
-        {
-            var iy = sy + 1 + i;
-            if (subs[i].Separator)
-            {
-                buffer.SetString(px, iy, "├" + new string('─', innerW) + "┤", BorderFg, BorderBg);
-            }
-            else
-            {
-                var isSel = i == SubSelectedIndex;
-                var (selFgCol, selBgCol) = isSel ? (BorderBg, BorderFg) : (BorderFg, BorderBg);
-                buffer.SetChar(px, iy, '│', BorderFg, BorderBg);
-                var vis = StripTilde(subs[i].Label);
-                var pad = " " + vis.PadRight(maxLabel);
-                DrawHotkeyLabel(buffer, px + 1, iy, " " + subs[i].Label + new string(' ', Math.Max(0, maxLabel - vis.Length)), selFgCol, selBgCol, isSel ? selFgCol : HotkeyRed);
-                var accel = subs[i].Hotkey != null ? "  " + subs[i].Hotkey!.PadLeft(maxHotkey) + " " : "  ";
-                buffer.SetString(px + 1 + pad.Length, iy, accel.PadRight(innerW - pad.Length), selFgCol, selBgCol);
-                buffer.SetChar(px + innerW + 1, iy, '│', BorderFg, BorderBg);
-            }
-        }
-
-        // Bottom border
-        buffer.SetString(px, sy + 1 + subs.Count, "└" + new string('─', innerW) + "┘", BorderFg, BorderBg);
+        NativeDraw.Show(buffer, NativeDraw.Menu, this,
+                        text: string.Join("|", Items.Select(i => i.Label)),
+                        sel: SelectedIndex,
+                        extraState: IsOpen ? NativeDraw.StOpen : 0);
     }
 
     public override bool HandleKey(int key)

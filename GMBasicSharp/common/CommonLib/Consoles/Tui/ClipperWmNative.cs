@@ -48,7 +48,7 @@ public static class ClipperWmNative
     [DllImport(Lib)] public static extern int gmb_window_manager_has_status(IntPtr m);
     [DllImport(Lib)] public static extern void gmb_window_manager_sync_workarea(IntPtr m, int width, int height);
     [DllImport(Lib)] private static extern int gmb_window_manager_add_ex(IntPtr m, IntPtr name, IntPtr title,
-        int x, int y, int w, int h, int border, int frame, int shadow, int desktop);
+        WmRect rect, int border, int frame, int shadow, int desktop);
     [DllImport(Lib)] private static extern int gmb_window_manager_find_by_title(IntPtr m, IntPtr title);
     [DllImport(Lib)] private static extern int gmb_window_manager_find_by_name(IntPtr m, IntPtr name);
 
@@ -57,7 +57,11 @@ public static class ClipperWmNative
         int x, int y, int w, int h, int border, int frame, int shadow, int desktop)
     {
         var n = A(name); var t = A(title);
-        try { return gmb_window_manager_add_ex(m, n, t, x, y, w, h, border, frame, shadow, desktop); }
+        try
+        {
+            var r = new WmRect { x = x, y = y, w = w, h = h };
+            return gmb_window_manager_add_ex(m, n, t, r, border, frame, shadow, desktop);
+        }
         finally { Free(n); Free(t); }
     }
 

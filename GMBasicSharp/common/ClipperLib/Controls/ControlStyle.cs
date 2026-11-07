@@ -14,15 +14,56 @@ namespace ClipperLib.Controls;
 /// </summary>
 public class ControlStyle
 {
-    public CellColor? Fg { get; set; }
-    public CellColor? Bg { get; set; }
-    public CellColor? FgFocus { get; set; }
-    public CellColor? BgFocus { get; set; }
-    public CellColor? FgError { get; set; }
-    public CellColor? BgError { get; set; }
-    public CellColor? SelFg { get; set; }
-    public CellColor? SelBg { get; set; }
+    private CellColor? _fg, _bg, _fgFocus, _bgFocus, _fgError, _bgError, _selFg, _selBg;
+
+    // I setter marcano il colore come ESPLICITO (oggetto inizializzato a mano o With*):
+    // solo in quel caso il render nativo lo applica. Gli stili derivati dal tema
+    // (Default/FromTheme) azzerano il flag: decide il runtime C.
+    public CellColor? Fg
+    {
+        get => _fg;
+        set { _fg = value; if (value != null) Explicit = true; }
+    }
+    public CellColor? Bg
+    {
+        get => _bg;
+        set { _bg = value; if (value != null) Explicit = true; }
+    }
+    public CellColor? FgFocus
+    {
+        get => _fgFocus;
+        set { _fgFocus = value; if (value != null) Explicit = true; }
+    }
+    public CellColor? BgFocus
+    {
+        get => _bgFocus;
+        set { _bgFocus = value; if (value != null) Explicit = true; }
+    }
+    public CellColor? FgError
+    {
+        get => _fgError;
+        set { _fgError = value; if (value != null) Explicit = true; }
+    }
+    public CellColor? BgError
+    {
+        get => _bgError;
+        set { _bgError = value; if (value != null) Explicit = true; }
+    }
+    public CellColor? SelFg
+    {
+        get => _selFg;
+        set { _selFg = value; if (value != null) Explicit = true; }
+    }
+    public CellColor? SelBg
+    {
+        get => _selBg;
+        set { _selBg = value; if (value != null) Explicit = true; }
+    }
     public char FillChar { get; set; } = ' ';
+
+    /// <summary>True se il chiamante ha impostato colori ESPLICITI (WithColors/...).
+    /// In quel caso il render nativo li applica; altrimenti decide il tema del runtime C.</summary>
+    public bool Explicit { get; private set; }
 
     /// <summary>Tema globale attivo (letto dal runtime C).</summary>
     public static Theme ActiveTheme => Theme.Named(NativeTheme.UiThemeName());
@@ -30,9 +71,11 @@ public class ControlStyle
     /// <summary>Imposta il tema globale nel runtime C (via unica, come la grafica).</summary>
     public static void SetTheme(Theme theme) => NativeTheme.gmb_ui_set_theme_name(string.IsNullOrWhiteSpace(theme.Name) ? "turbovision" : theme.Name);
 
-    public static ControlStyle Default() =>
-        NativeTheme.gmb_ui_theme_is_set() == 0
-            ? new()
+    public static ControlStyle Default()
+    {
+        ControlStyle s;
+        if (NativeTheme.gmb_ui_theme_is_set() == 0)
+            s = new()
             {
                 Fg = new CellColor { R = 200, G = 208, B = 220 },
                 Bg = CellColor.Blue,
@@ -43,50 +86,64 @@ public class ControlStyle
                 SelFg = CellColor.Black,
                 SelBg = CellColor.Cyan,
                 FillChar = ' '
-            }
-            : FromTheme(ActiveTheme);
+            };
+        else
+            s = FromTheme(ActiveTheme);
+        s.Explicit = false;   /* derivato dal tema: decide il runtime C */
+        return s;
+    }
 
     /// <summary>Build a ControlStyle from a Theme palette (so themes apply to controls).</summary>
-    public static ControlStyle FromTheme(Theme t) => new()
+    public static ControlStyle FromTheme(Theme t)
     {
-        Fg = t.Text,
-        Bg = t.WindowBg,
-        FgFocus = t.WindowBg,
-        BgFocus = t.Accent,
-        FgError = CellColor.White,
-        BgError = CellColor.Red,
-        SelFg = t.WindowBg,
-        SelBg = t.ActiveBg,
-        FillChar = ' '
-    };
+        var s = new ControlStyle
+        {
+            Fg = t.Text,
+            Bg = t.WindowBg,
+            FgFocus = t.WindowBg,
+            BgFocus = t.Accent,
+            FgError = CellColor.White,
+            BgError = CellColor.Red,
+            SelFg = t.WindowBg,
+            SelBg = t.ActiveBg,
+            FillChar = ' '
+        };
+        s.Explicit = false;
+        return s;
+    }
 
-    public ControlStyle Clone() => new()
+    public ControlStyle Clone()
     {
-        Fg = Fg, Bg = Bg,
-        FgFocus = FgFocus, BgFocus = BgFocus,
-        FgError = FgError, BgError = BgError,
-        SelFg = SelFg, SelBg = SelBg,
-        FillChar = FillChar
-    };
+        var s = new ControlStyle
+        {
+            Fg = Fg, Bg = Bg,
+            FgFocus = FgFocus, BgFocus = BgFocus,
+            FgError = FgError, BgError = BgError,
+            SelFg = SelFg, SelBg = SelBg,
+            FillChar = FillChar
+        };
+        s.Explicit = Explicit;
+        return s;
+    }
 
     public ControlStyle WithColors(CellColor fg, CellColor bg)
     {
-        Fg = fg; Bg = bg; return this;
+        Fg = fg; Bg = bg; Explicit = true; return this;
     }
 
     public ControlStyle WithFocusColors(CellColor fg, CellColor bg)
     {
-        FgFocus = fg; BgFocus = bg; return this;
+        FgFocus = fg; BgFocus = bg; Explicit = true; return this;
     }
 
     public ControlStyle WithErrorColors(CellColor fg, CellColor bg)
     {
-        FgError = fg; BgError = bg; return this;
+        FgError = fg; BgError = bg; Explicit = true; return this;
     }
 
     public ControlStyle WithSelectedColors(CellColor fg, CellColor bg)
     {
-        SelFg = fg; SelBg = bg; return this;
+        SelFg = fg; SelBg = bg; Explicit = true; return this;
     }
 
     public ControlStyle WithFill(char fill)
