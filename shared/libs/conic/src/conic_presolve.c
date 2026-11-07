@@ -10,6 +10,7 @@
 #include "presolve.h"
 
 #include <stdlib.h>
+#include <stdint.h>
 #include <string.h>
 
 typedef long long i64;
@@ -38,8 +39,8 @@ static int *cvt_i(const i64 *src, i64 n)
     return d;
 }
 
-i64 ofx_presolve_new(const i64 *Aptr, const i64 *Arow, const double *Aval,
-                     const double *b, const double *c, i64 m, i64 n, double tol)
+i64 ofx_presolve_new(const i64 *Aptr, int64_t Aptr_n, const i64 *Arow, int64_t Arow_n, const double *Aval, int64_t Aval_n,
+                     const double *b, int64_t b_n, const double *c, int64_t c_n, i64 m, i64 n, double tol)
 {
     int *ap, *ar, i, rc;
     Presolve *p = NULL;
@@ -68,7 +69,7 @@ i64 ofx_presolve_changed(i64 h)
 }
 
 /* out(0)=mr, out(1)=nr, out(2)=nnz(Ar) */
-i64 ofx_presolve_dims(i64 h, i64 *out)
+i64 ofx_presolve_dims(i64 h, i64 *out, int64_t out_n)
 {
     const int *ap, *ar;
     const double *av, *br, *cr;
@@ -82,8 +83,8 @@ i64 ofx_presolve_dims(i64 h, i64 *out)
     return 0;
 }
 
-i64 ofx_presolve_reduced(i64 h, i64 *Arptr, i64 *Arrow, double *Arval,
-                         double *br, double *cr)
+i64 ofx_presolve_reduced(i64 h, i64 *Arptr, int64_t Arptr_n, i64 *Arrow, int64_t Arrow_n, double *Arval, int64_t Arval_n,
+                         double *br, int64_t br_n, double *cr, int64_t cr_n)
 {
     const int *ap, *ar;
     const double *av, *bp, *cp;
@@ -99,8 +100,8 @@ i64 ofx_presolve_reduced(i64 h, i64 *Arptr, i64 *Arrow, double *Arval,
     return (i64)nr;
 }
 
-i64 ofx_presolve_postsolve(i64 h, const double *xred, const double *yred,
-                           double *xfull, double *yfull)
+i64 ofx_presolve_postsolve(i64 h, const double *xred, int64_t xred_n, const double *yred, int64_t yred_n,
+                           double *xfull, int64_t xfull_n, double *yfull, int64_t yfull_n)
 {
     pre_slot *s = pre_get(h);
     if (!s || !xfull || !yfull) return -1;
@@ -108,8 +109,8 @@ i64 ofx_presolve_postsolve(i64 h, const double *xred, const double *yred,
     return 0;
 }
 
-i64 ofx_presolve_postsolve_dir(i64 h, const double *rred, const double *yred,
-                               double *rfull, double *yfull)
+i64 ofx_presolve_postsolve_dir(i64 h, const double *rred, int64_t rred_n, const double *yred, int64_t yred_n,
+                               double *rfull, int64_t rfull_n, double *yfull, int64_t yfull_n)
 {
     pre_slot *s = pre_get(h);
     if (!s || !rfull || !yfull) return -1;

@@ -26,6 +26,7 @@
 #include "sdp.h"
 
 #include <stdlib.h>
+#include <stdint.h>
 
 typedef long long i64;
 
@@ -41,16 +42,16 @@ static int *cvt_i(const i64 *src, i64 n)
 }
 
 i64 ofx_sdp_solve(i64 m, i64 n,
-                  const double *A, const double *b, const double *c,
-                  i64 nb, const i64 *dims, const double *Cbar, const double *Abar,
-                  i64 nsoc, const i64 *socdims, const double *Csoc, const double *Asoc,
-                  i64 nep, const i64 *ekind, const double *ealpha,
-                  const double *Cexp, const double *Aexp,
+                  const double *A, int64_t A_n, const double *b, int64_t b_n, const double *c, int64_t c_n,
+                  i64 nb, const i64 *dims, int64_t dims_n, const double *Cbar, int64_t Cbar_n, const double *Abar, int64_t Abar_n,
+                  i64 nsoc, const i64 *socdims, int64_t socdims_n, const double *Csoc, int64_t Csoc_n, const double *Asoc, int64_t Asoc_n,
+                  i64 nep, const i64 *ekind, int64_t ekind_n, const double *ealpha, int64_t ealpha_n,
+                  const double *Cexp, int64_t Cexp_n, const double *Aexp, int64_t Aexp_n,
                   i64 max_iter, double tol, double rtol_pri, double rtol_dual,
                   double rtol_gap, double near_rel,
-                  double *x, double *Xbar, double *y, double *Sbar,
-                  double *Zsoc, double *Ssoc, double *Zexp, double *Sexp,
-                  i64 *fb_ok)
+                  double *x, int64_t x_n, double *Xbar, int64_t Xbar_n, double *y, int64_t y_n, double *Sbar, int64_t Sbar_n,
+                  double *Zsoc, int64_t Zsoc_n, double *Ssoc, int64_t Ssoc_n, double *Zexp, int64_t Zexp_n, double *Sexp, int64_t Sexp_n,
+                  i64 *fb_ok, int64_t fb_ok_n)
 {
     const double **CbarP = NULL, **AbarP = NULL, **CsocP = NULL, **AsocP = NULL;
     const double **CexpP = NULL, **AexpP = NULL;

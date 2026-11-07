@@ -20,7 +20,7 @@ SUB Main()
   pts(0) = -1 : pts(1) = -1 : pts(2) = 0
   pts(3) = 1  : pts(4) = 1  : pts(5) = 2
   pts(6) = 0  : pts(7) = 2  : pts(8) = 1
-  PRINT "aabb="; GFX3D.AABBFROMPOINTS(pts(), 9, a); ":";
+  PRINT "aabb="; GFX3D.AABBFROMPOINTS(pts(), a); ":";
   PRINT a(0); ","; a(1); ","; a(2); ","; a(3); ","; a(4); ","; a(5)
   PRINT "center="; GFX3D.AABBCENTER(a(), o3); ":"; o3(0); ","; o3(1); ","; o3(2)
 

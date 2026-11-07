@@ -12,7 +12,7 @@ DECLARE FUNCTION ORTHO LIB "gmbgraphics" ALIAS "ofx_gfx_ortho" (left AS DOUBLE, 
 ' Matrice di vista look-at.
 DECLARE FUNCTION LOOKAT LIB "gmbgraphics" ALIAS "ofx_gfx_lookat" (eye() AS DOUBLE, center() AS DOUBLE, up() AS DOUBLE, m() AS DOUBLE) AS LONG
 ' AABB dai punti (array piatto x,y,z,…; n = numero di VALORI, multiplo di 3).
-DECLARE FUNCTION AABBFROMPOINTS LIB "gmbgraphics" ALIAS "ofx_gfx_aabb_from_points" (pts() AS DOUBLE, n AS LONG, out() AS DOUBLE) AS LONG
+DECLARE FUNCTION AABBFROMPOINTS LIB "gmbgraphics" ALIAS "ofx_gfx_aabb_from_points" (pts() AS DOUBLE, out() AS DOUBLE) AS LONG
 ' Unione di due AABB.
 DECLARE FUNCTION AABBMERGE LIB "gmbgraphics" ALIAS "ofx_gfx_aabb_merge" (a() AS DOUBLE, b() AS DOUBLE, out() AS DOUBLE) AS LONG
 ' Centro / estensioni di un AABB.

@@ -14,6 +14,7 @@
 #include "stdform.h"
 
 #include <math.h>
+#include <stdint.h>
 #include <stdlib.h>
 
 typedef long long i64;
@@ -43,11 +44,11 @@ static int *cvt_i(const i64 *src, i64 n)
 }
 
 i64 ofx_stdform_build(i64 nvar, i64 ncon,
-                      const double *c_int,
-                      const i64 *qi, const i64 *qj, const double *qv, i64 nq,
-                      const double *lx, const double *ux,
-                      const double *lc, const double *uc,
-                      const i64 *col_ptr, const i64 *sub, const double *val)
+                      const double *c_int, int64_t c_int_n,
+                      const i64 *qi, int64_t qi_n, const i64 *qj, int64_t qj_n, const double *qv, int64_t qv_n, i64 nq,
+                      const double *lx, int64_t lx_n, const double *ux, int64_t ux_n,
+                      const double *lc, int64_t lc_n, const double *uc, int64_t uc_n,
+                      const i64 *col_ptr, int64_t col_ptr_n, const i64 *sub, int64_t sub_n, const double *val, int64_t val_n)
 {
     int *qii = NULL, *qjj = NULL, *cp = NULL, *sb = NULL;
     double *blx = NULL, *bux = NULL, *blc = NULL, *buc = NULL;
@@ -106,7 +107,7 @@ i64 ofx_stdform_build(i64 nvar, i64 ncon,
 }
 
 /* out(0)=m, out(1)=n, out(2)=nvar, out(3)=ncon, out(4)=cfix */
-i64 ofx_stdform_info(i64 h, double *out)
+i64 ofx_stdform_info(i64 h, double *out, int64_t out_n)
 {
     sf_slot *s = sf_get(h);
     if (!s || !out) return -1;
@@ -119,7 +120,7 @@ i64 ofx_stdform_info(i64 h, double *out)
 }
 
 /* b del problema standard (m valori). */
-i64 ofx_stdform_get_b(i64 h, double *b)
+i64 ofx_stdform_get_b(i64 h, double *b, int64_t b_n)
 {
     sf_slot *s = sf_get(h);
     int i;
@@ -129,7 +130,7 @@ i64 ofx_stdform_get_b(i64 h, double *b)
 }
 
 /* c del problema standard (n valori; include il termine 1/2 xt' Qs xt). */
-i64 ofx_stdform_get_c(i64 h, double *c)
+i64 ofx_stdform_get_c(i64 h, double *c, int64_t c_n)
 {
     sf_slot *s = sf_get(h);
     int i;
@@ -139,7 +140,7 @@ i64 ofx_stdform_get_c(i64 h, double *c)
 }
 
 /* A densa m x n row-major; il chiamante dimensiona A(m*n). */
-i64 ofx_stdform_get_a(i64 h, double *A)
+i64 ofx_stdform_get_a(i64 h, double *A, int64_t A_n)
 {
     sf_slot *s = sf_get(h);
     double *d;
@@ -154,7 +155,7 @@ i64 ofx_stdform_get_a(i64 h, double *A)
 }
 
 /* Q densa n x n row-major; -1 se il problema e' un LP (nessuna Q). */
-i64 ofx_stdform_get_q(i64 h, double *Q)
+i64 ofx_stdform_get_q(i64 h, double *Q, int64_t Q_n)
 {
     sf_slot *s = sf_get(h);
     double *d;
@@ -168,7 +169,7 @@ i64 ofx_stdform_get_q(i64 h, double *Q)
     return 0;
 }
 
-i64 ofx_stdform_map_x(i64 h, const double *xt, double *x)
+i64 ofx_stdform_map_x(i64 h, const double *xt, int64_t xt_n, double *x, int64_t x_n)
 {
     sf_slot *s = sf_get(h);
     if (!s || !xt || !x) return -1;
@@ -176,7 +177,7 @@ i64 ofx_stdform_map_x(i64 h, const double *xt, double *x)
     return 0;
 }
 
-i64 ofx_stdform_map_dir(i64 h, const double *dxt, double *dx)
+i64 ofx_stdform_map_dir(i64 h, const double *dxt, int64_t dxt_n, double *dx, int64_t dx_n)
 {
     sf_slot *s = sf_get(h);
     if (!s || !dxt || !dx) return -1;
@@ -184,7 +185,7 @@ i64 ofx_stdform_map_dir(i64 h, const double *dxt, double *dx)
     return 0;
 }
 
-i64 ofx_stdform_map_y(i64 h, const double *ystd, double *ymin)
+i64 ofx_stdform_map_y(i64 h, const double *ystd, int64_t ystd_n, double *ymin, int64_t ymin_n)
 {
     sf_slot *s = sf_get(h);
     if (!s || !ystd || !ymin) return -1;

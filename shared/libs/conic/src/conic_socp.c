@@ -23,6 +23,7 @@
 #include "socp.h"
 
 #include <stdlib.h>
+#include <stdint.h>
 
 typedef long long i64;
 
@@ -69,22 +70,22 @@ static i64 socp_run(i64 sparse, i64 n, i64 p,
 }
 
 i64 ofx_socp_solve(i64 n, i64 p,
-                   const double *E, const double *d, const double *c,
-                   i64 ncones, const i64 *ctype, const i64 *cnm, const i64 *cmem,
-                   const double *G, const double *h,
+                   const double *E, int64_t E_n, const double *d, int64_t d_n, const double *c, int64_t c_n,
+                   i64 ncones, const i64 *ctype, int64_t ctype_n, const i64 *cnm, int64_t cnm_n, const i64 *cmem, int64_t cmem_n,
+                   const double *G, int64_t G_n, const double *h, int64_t h_n,
                    double tol_gap, double tol_feas, i64 max_iter,
-                   double *x, double *y, double *lam)
+                   double *x, int64_t x_n, double *y, int64_t y_n, double *lam, int64_t lam_n)
 {
     return socp_run(0, n, p, E, d, c, ncones, ctype, cnm, cmem, G, h,
                     tol_gap, tol_feas, max_iter, x, y, lam);
 }
 
 i64 ofx_socp_solve_sparse(i64 n, i64 p,
-                          const double *E, const double *d, const double *c,
-                          i64 ncones, const i64 *ctype, const i64 *cnm, const i64 *cmem,
-                          const double *G, const double *h,
+                          const double *E, int64_t E_n, const double *d, int64_t d_n, const double *c, int64_t c_n,
+                          i64 ncones, const i64 *ctype, int64_t ctype_n, const i64 *cnm, int64_t cnm_n, const i64 *cmem, int64_t cmem_n,
+                          const double *G, int64_t G_n, const double *h, int64_t h_n,
                           double tol_gap, double tol_feas, i64 max_iter,
-                          double *x, double *y, double *lam)
+                          double *x, int64_t x_n, double *y, int64_t y_n, double *lam, int64_t lam_n)
 {
     return socp_run(1, n, p, E, d, c, ncones, ctype, cnm, cmem, G, h,
                     tol_gap, tol_feas, max_iter, x, y, lam);

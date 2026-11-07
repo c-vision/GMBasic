@@ -71,7 +71,7 @@ static void copy_out_d(const gor_real *src, double *dst, i64 n)
 
 /* ------------------------------------------------------------ struttura */
 
-i64 gfx_degree(const i64 *adj, i64 n, i64 v)
+i64 gfx_degree(const i64 *adj, int64_t adj_n, i64 n, i64 v)
 {
     i64 i, d = 0;
     if (adj == NULL || n <= 0 || v < 0 || v >= n) return -1;
@@ -79,7 +79,7 @@ i64 gfx_degree(const i64 *adj, i64 n, i64 v)
     return d;
 }
 
-i64 gfx_has_cycle(const i64 *adj, i64 n)
+i64 gfx_has_cycle(const i64 *adj, int64_t adj_n, i64 n)
 {
     i64 i, r;
     int *a;
@@ -92,7 +92,7 @@ i64 gfx_has_cycle(const i64 *adj, i64 n)
     return r;
 }
 
-i64 gfx_is_bipartite(const i64 *adj, i64 n)
+i64 gfx_is_bipartite(const i64 *adj, int64_t adj_n, i64 n)
 {
     i64 i, r;
     int *a;
@@ -107,7 +107,7 @@ i64 gfx_is_bipartite(const i64 *adj, i64 n)
 
 /* ---------------------------------------------------------- traversamento */
 
-i64 gfx_bfs(const i64 *adj, i64 n, i64 src, i64 *order)
+i64 gfx_bfs(const i64 *adj, int64_t adj_n, i64 n, i64 src, i64 *order, int64_t order_n)
 {
     gor_graph g;
     int *o, cnt = 0;
@@ -121,7 +121,7 @@ i64 gfx_bfs(const i64 *adj, i64 n, i64 src, i64 *order)
     return (i64)cnt;
 }
 
-i64 gfx_dfs(const i64 *adj, i64 n, i64 src, i64 *order)
+i64 gfx_dfs(const i64 *adj, int64_t adj_n, i64 n, i64 src, i64 *order, int64_t order_n)
 {
     gor_graph g;
     int *o, cnt = 0;
@@ -135,7 +135,7 @@ i64 gfx_dfs(const i64 *adj, i64 n, i64 src, i64 *order)
     return (i64)cnt;
 }
 
-i64 gfx_toposort(const i64 *adj, i64 n, i64 *order)
+i64 gfx_toposort(const i64 *adj, int64_t adj_n, i64 n, i64 *order, int64_t order_n)
 {
     gor_graph g;
     int *o;
@@ -150,7 +150,7 @@ i64 gfx_toposort(const i64 *adj, i64 n, i64 *order)
     return r;
 }
 
-i64 gfx_components(const i64 *adj, i64 n, i64 *comp)
+i64 gfx_components(const i64 *adj, int64_t adj_n, i64 n, i64 *comp, int64_t comp_n)
 {
     gor_graph g;
     int *c, ncomp = 0;
@@ -164,7 +164,7 @@ i64 gfx_components(const i64 *adj, i64 n, i64 *comp)
     return (i64)ncomp;
 }
 
-i64 gfx_scc(const i64 *adj, i64 n, i64 *comp)
+i64 gfx_scc(const i64 *adj, int64_t adj_n, i64 n, i64 *comp, int64_t comp_n)
 {
     i64 i, k;
     int *a, *c;
@@ -182,7 +182,7 @@ i64 gfx_scc(const i64 *adj, i64 n, i64 *comp)
 
 /* -------------------------------------------------------------- percorsi */
 
-i64 gfx_dijkstra(const double *w, i64 n, i64 src, double *dist, i64 *prev)
+i64 gfx_dijkstra(const double *w, int64_t w_n, i64 n, i64 src, double *dist, int64_t dist_n, i64 *prev, int64_t prev_n)
 {
     gor_graph g;
     gor_real *d;
@@ -203,7 +203,7 @@ i64 gfx_dijkstra(const double *w, i64 n, i64 src, double *dist, i64 *prev)
     return 1;
 }
 
-i64 gfx_bellman_ford(const double *w, i64 n, i64 src, double *dist, i64 *prev)
+i64 gfx_bellman_ford(const double *w, int64_t w_n, i64 n, i64 src, double *dist, int64_t dist_n, i64 *prev, int64_t prev_n)
 {
     gor_graph g;
     gor_real *d;
@@ -224,7 +224,7 @@ i64 gfx_bellman_ford(const double *w, i64 n, i64 src, double *dist, i64 *prev)
     return 1;
 }
 
-i64 gfx_floyd_warshall(const double *w, i64 n, double *dist)
+i64 gfx_floyd_warshall(const double *w, int64_t w_n, i64 n, double *dist, int64_t dist_n)
 {
     gor_graph g;
     gor_real *d;
@@ -243,7 +243,7 @@ i64 gfx_floyd_warshall(const double *w, i64 n, double *dist)
 
 /* ------------------------------------------------------ centralità/community */
 
-i64 gfx_pagerank(const double *w, i64 n, double *rank, double damping, i64 iters)
+i64 gfx_pagerank(const double *w, int64_t w_n, i64 n, double *rank, int64_t rank_n, double damping, i64 iters)
 {
     double *c;
     if (n <= 0 || w == NULL || rank == NULL) return 0;
@@ -255,7 +255,7 @@ i64 gfx_pagerank(const double *w, i64 n, double *rank, double damping, i64 iters
     return 1;
 }
 
-double gfx_betweenness(const double *w, i64 n, double *bc)
+double gfx_betweenness(const double *w, int64_t w_n, i64 n, double *bc, int64_t bc_n)
 {
     double *c;
     double r;
@@ -267,7 +267,7 @@ double gfx_betweenness(const double *w, i64 n, double *bc)
     return r;
 }
 
-i64 gfx_closeness(const i64 *adj, i64 n, double *cc)
+i64 gfx_closeness(const i64 *adj, int64_t adj_n, i64 n, double *cc, int64_t cc_n)
 {
     i64 i;
     gor_real *a, *out;
@@ -283,7 +283,7 @@ i64 gfx_closeness(const i64 *adj, i64 n, double *cc)
     return 1;
 }
 
-i64 gfx_louvain(const double *w, i64 n, i64 *comm, double resolution)
+i64 gfx_louvain(const double *w, int64_t w_n, i64 n, i64 *comm, int64_t comm_n, double resolution)
 {
     gor_real *a;
     int *c, k, i;
@@ -302,7 +302,7 @@ i64 gfx_louvain(const double *w, i64 n, i64 *comm, double resolution)
 
 /* ------------------------------------- colorazione/clique/chiusura/struttura */
 
-i64 gfx_coloring(const i64 *adj, i64 n, i64 *color)
+i64 gfx_coloring(const i64 *adj, int64_t adj_n, i64 n, i64 *color, int64_t color_n)
 {
     i64 i;
     int *a, *c, k;
@@ -318,7 +318,7 @@ i64 gfx_coloring(const i64 *adj, i64 n, i64 *color)
     return (i64)k;
 }
 
-i64 gfx_max_clique(const i64 *adj, i64 n, i64 *clique)
+i64 gfx_max_clique(const i64 *adj, int64_t adj_n, i64 n, i64 *clique, int64_t clique_n)
 {
     i64 i;
     int *a, *c, size = 0;
@@ -334,7 +334,7 @@ i64 gfx_max_clique(const i64 *adj, i64 n, i64 *clique)
     return (i64)size;
 }
 
-i64 gfx_transitive_closure(const i64 *adj, i64 n, i64 *out)
+i64 gfx_transitive_closure(const i64 *adj, int64_t adj_n, i64 n, i64 *out, int64_t out_n)
 {
     i64 i;
     int *a, *c;
@@ -352,7 +352,7 @@ i64 gfx_transitive_closure(const i64 *adj, i64 n, i64 *out)
 
 /* ------------------------------------------------------------- proprietà */
 
-double gfx_diameter(const double *w, i64 n)
+double gfx_diameter(const double *w, int64_t w_n, i64 n)
 {
     double *c;
     double r;
@@ -364,7 +364,7 @@ double gfx_diameter(const double *w, i64 n)
     return r;
 }
 
-double gfx_eccentricity(const double *w, i64 n, i64 v)
+double gfx_eccentricity(const double *w, int64_t w_n, i64 n, i64 v)
 {
     double *c;
     double r;
@@ -376,7 +376,7 @@ double gfx_eccentricity(const double *w, i64 n, i64 v)
     return r;
 }
 
-double gfx_clustering(const i64 *adj, i64 n, i64 v)
+double gfx_clustering(const i64 *adj, int64_t adj_n, i64 n, i64 v)
 {
     i64 i;
     int *a;
@@ -390,7 +390,7 @@ double gfx_clustering(const i64 *adj, i64 n, i64 v)
     return r;
 }
 
-i64 gfx_subgraph(const double *w, i64 n, const i64 *nodes, i64 k, double *out)
+i64 gfx_subgraph(const double *w, int64_t w_n, i64 n, const i64 *nodes, int64_t nodes_n, i64 k, double *out, int64_t out_n)
 {
     i64 i;
     int *idx;
@@ -407,7 +407,7 @@ i64 gfx_subgraph(const double *w, i64 n, const i64 *nodes, i64 k, double *out)
     return (i64)r;
 }
 
-i64 gfx_mst_kruskal(const double *w, i64 n, i64 *eu, i64 *ev, double *ew)
+i64 gfx_mst_kruskal(const double *w, int64_t w_n, i64 n, i64 *eu, int64_t eu_n, i64 *ev, int64_t ev_n, double *ew, int64_t ew_n)
 {
     gor_graph g;
     gor_edge *e;
@@ -427,7 +427,7 @@ i64 gfx_mst_kruskal(const double *w, i64 n, i64 *eu, i64 *ev, double *ew)
 
 /* ═══════════════════════ seconda slice: algoritmi avanzati ═══════════════════ */
 
-i64 gfx_bridges(const i64 *adj, i64 n, i64 *is_bridge)
+i64 gfx_bridges(const i64 *adj, int64_t adj_n, i64 n, i64 *is_bridge, int64_t is_bridge_n)
 {
     i64 i;
     int *a, *b, k;
@@ -443,7 +443,7 @@ i64 gfx_bridges(const i64 *adj, i64 n, i64 *is_bridge)
     return (i64)k;
 }
 
-i64 gfx_articulation(const i64 *adj, i64 n, i64 *art)
+i64 gfx_articulation(const i64 *adj, int64_t adj_n, i64 n, i64 *art, int64_t art_n)
 {
     i64 i;
     int *a, *b, k;
@@ -459,7 +459,7 @@ i64 gfx_articulation(const i64 *adj, i64 n, i64 *art)
     return (i64)k;
 }
 
-double gfx_astar(const double *w, i64 n, const double *h, i64 s, i64 t, i64 *path, i64 *info)
+double gfx_astar(const double *w, int64_t w_n, i64 n, const double *h, int64_t h_n, i64 s, i64 t, i64 *path, int64_t path_n, i64 *info, int64_t info_n)
 {
     double *wn, *hn;
     int *p, plen = 0;
@@ -481,7 +481,7 @@ double gfx_astar(const double *w, i64 n, const double *h, i64 s, i64 t, i64 *pat
     return (double)cost;
 }
 
-double gfx_stoer_wagner(const double *w, i64 n)
+double gfx_stoer_wagner(const double *w, int64_t w_n, i64 n)
 {
     double *c;
     double r;
@@ -494,7 +494,7 @@ double gfx_stoer_wagner(const double *w, i64 n)
     return r;
 }
 
-i64 gfx_k_shortest(const double *w, i64 n, i64 s, i64 t, i64 K, i64 *paths, i64 *plens)
+i64 gfx_k_shortest(const double *w, int64_t w_n, i64 n, i64 s, i64 t, i64 K, i64 *paths, int64_t paths_n, i64 *plens, int64_t plens_n)
 {
     double *wn;
     int *p, *pl, k;
@@ -518,7 +518,7 @@ i64 gfx_k_shortest(const double *w, i64 n, i64 s, i64 t, i64 K, i64 *paths, i64 
     return (i64)k;
 }
 
-i64 gfx_isomorphic(const i64 *adj1, i64 n1, const i64 *adj2, i64 n2, i64 *mapping)
+i64 gfx_isomorphic(const i64 *adj1, int64_t adj1_n, i64 n1, const i64 *adj2, int64_t adj2_n, i64 n2, i64 *mapping, int64_t mapping_n)
 {
     i64 i;
     int *a, *b, *m, r;
@@ -537,7 +537,7 @@ i64 gfx_isomorphic(const i64 *adj1, i64 n1, const i64 *adj2, i64 n2, i64 *mappin
     return (i64)r;
 }
 
-i64 gfx_drnl(const i64 *adj, i64 n, i64 u, i64 v, i64 *label)
+i64 gfx_drnl(const i64 *adj, int64_t adj_n, i64 n, i64 u, i64 v, i64 *label, int64_t label_n)
 {
     i64 i;
     int *a, *l, k;
@@ -553,7 +553,7 @@ i64 gfx_drnl(const i64 *adj, i64 n, i64 u, i64 v, i64 *label)
     return 1;
 }
 
-i64 gfx_wl(const i64 *adj, i64 n, i64 *colors)
+i64 gfx_wl(const i64 *adj, int64_t adj_n, i64 n, i64 *colors, int64_t colors_n)
 {
     i64 i;
     int *a, *c, k;
@@ -569,7 +569,7 @@ i64 gfx_wl(const i64 *adj, i64 n, i64 *colors)
     return (i64)k;
 }
 
-i64 gfx_min_path_cover(const i64 *adj, i64 n)
+i64 gfx_min_path_cover(const i64 *adj, int64_t adj_n, i64 n)
 {
     i64 i;
     int *a, k;
@@ -582,7 +582,7 @@ i64 gfx_min_path_cover(const i64 *adj, i64 n)
     return (i64)k;
 }
 
-i64 gfx_bfs_direction_optimizing(const i64 *adj, i64 n, i64 src, double thr, double *dist)
+i64 gfx_bfs_direction_optimizing(const i64 *adj, int64_t adj_n, i64 n, i64 src, double thr, double *dist, int64_t dist_n)
 {
     i64 i;
     int *a, *d, k;
@@ -609,7 +609,7 @@ static int *lp_adj(const i64 *adj, i64 n)
     return a;
 }
 
-i64 gfx_link_common_neighbors(const i64 *adj, i64 n, i64 u, i64 v)
+i64 gfx_link_common_neighbors(const i64 *adj, int64_t adj_n, i64 n, i64 u, i64 v)
 {
     int *a;
     int r;
@@ -621,7 +621,7 @@ i64 gfx_link_common_neighbors(const i64 *adj, i64 n, i64 u, i64 v)
     return (i64)r;
 }
 
-double gfx_link_jaccard(const i64 *adj, i64 n, i64 u, i64 v)
+double gfx_link_jaccard(const i64 *adj, int64_t adj_n, i64 n, i64 u, i64 v)
 {
     int *a;
     double r;
@@ -633,7 +633,7 @@ double gfx_link_jaccard(const i64 *adj, i64 n, i64 u, i64 v)
     return r;
 }
 
-double gfx_link_adamic_adar(const i64 *adj, i64 n, i64 u, i64 v)
+double gfx_link_adamic_adar(const i64 *adj, int64_t adj_n, i64 n, i64 u, i64 v)
 {
     int *a;
     double r;
@@ -645,7 +645,7 @@ double gfx_link_adamic_adar(const i64 *adj, i64 n, i64 u, i64 v)
     return r;
 }
 
-double gfx_link_resource_allocation(const i64 *adj, i64 n, i64 u, i64 v)
+double gfx_link_resource_allocation(const i64 *adj, int64_t adj_n, i64 n, i64 u, i64 v)
 {
     int *a;
     double r;
@@ -657,7 +657,7 @@ double gfx_link_resource_allocation(const i64 *adj, i64 n, i64 u, i64 v)
     return r;
 }
 
-i64 gfx_link_preferential_attachment(const i64 *adj, i64 n, i64 u, i64 v)
+i64 gfx_link_preferential_attachment(const i64 *adj, int64_t adj_n, i64 n, i64 u, i64 v)
 {
     int *a;
     int r;
@@ -670,7 +670,7 @@ i64 gfx_link_preferential_attachment(const i64 *adj, i64 n, i64 u, i64 v)
 }
 
 /* Katz: la matrice è DOUBLE (pesata); ritorna lo score, 0.0 su errore. */
-double gfx_link_katz(const double *w, i64 n, double beta, i64 u, i64 v)
+double gfx_link_katz(const double *w, int64_t w_n, i64 n, double beta, i64 u, i64 v)
 {
     gor_real score = 0.0;
     if (n <= 0 || w == NULL || u < 0 || v < 0 || u >= n || v >= n) return 0.0;

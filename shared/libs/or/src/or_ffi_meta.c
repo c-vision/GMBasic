@@ -10,6 +10,7 @@
 #include "gor_meta.h"
 
 #include <stdlib.h>
+#include <stdint.h>
 
 typedef long long i64;
 typedef double (*ffx_meta_cb)(const double *, long long);
@@ -29,7 +30,7 @@ static gor_real ffx_bridge2(const gor_real *x, int d, void *ctx)
     return (gor_real)g_cb2((const double *)x, (long long)d);
 }
 
-double ofx_meta_hill_climb(ffx_meta_cb f, double *x, i64 d, const double *lo, const double *hi,
+double ofx_meta_hill_climb(ffx_meta_cb f, double *x, int64_t x_n, i64 d, const double *lo, int64_t lo_n, const double *hi, int64_t hi_n,
                            i64 maxit)
 {
     if (f == NULL || x == NULL || lo == NULL || hi == NULL || d <= 0) return -1.0;
@@ -39,7 +40,7 @@ double ofx_meta_hill_climb(ffx_meta_cb f, double *x, i64 d, const double *lo, co
                                        (int)maxit, 12345UL);
 }
 
-double ofx_meta_sa(ffx_meta_cb f, double *x, i64 d, const double *lo, const double *hi,
+double ofx_meta_sa(ffx_meta_cb f, double *x, int64_t x_n, i64 d, const double *lo, int64_t lo_n, const double *hi, int64_t hi_n,
                    i64 maxit, double t0, double alpha)
 {
     if (f == NULL || x == NULL || lo == NULL || hi == NULL || d <= 0) return -1.0;
@@ -49,7 +50,7 @@ double ofx_meta_sa(ffx_meta_cb f, double *x, i64 d, const double *lo, const doub
                                (gor_real)t0, (gor_real)alpha, 12345UL);
 }
 
-double ofx_meta_tabu(ffx_meta_cb f, double *x, i64 d, const double *lo, const double *hi,
+double ofx_meta_tabu(ffx_meta_cb f, double *x, int64_t x_n, i64 d, const double *lo, int64_t lo_n, const double *hi, int64_t hi_n,
                      i64 maxit, i64 tenure)
 {
     if (f == NULL || x == NULL || lo == NULL || hi == NULL || d <= 0) return -1.0;
@@ -59,7 +60,7 @@ double ofx_meta_tabu(ffx_meta_cb f, double *x, i64 d, const double *lo, const do
                                  (int)tenure, 12345UL);
 }
 
-double ofx_meta_ga(ffx_meta_cb f, double *x, i64 d, const double *lo, const double *hi,
+double ofx_meta_ga(ffx_meta_cb f, double *x, int64_t x_n, i64 d, const double *lo, int64_t lo_n, const double *hi, int64_t hi_n,
                    i64 pop, i64 maxgen)
 {
     if (f == NULL || x == NULL || lo == NULL || hi == NULL || d <= 0) return -1.0;
@@ -69,7 +70,7 @@ double ofx_meta_ga(ffx_meta_cb f, double *x, i64 d, const double *lo, const doub
                                (int)pop, (int)maxgen, 12345UL);
 }
 
-double ofx_meta_pso(ffx_meta_cb f, double *x, i64 d, const double *lo, const double *hi,
+double ofx_meta_pso(ffx_meta_cb f, double *x, int64_t x_n, i64 d, const double *lo, int64_t lo_n, const double *hi, int64_t hi_n,
                     i64 swarm, i64 maxit)
 {
     if (f == NULL || x == NULL || lo == NULL || hi == NULL || d <= 0) return -1.0;
@@ -79,7 +80,7 @@ double ofx_meta_pso(ffx_meta_cb f, double *x, i64 d, const double *lo, const dou
                                 (int)swarm, (int)maxit, 12345UL);
 }
 
-double ofx_meta_de(ffx_meta_cb f, double *x, i64 d, const double *lo, const double *hi,
+double ofx_meta_de(ffx_meta_cb f, double *x, int64_t x_n, i64 d, const double *lo, int64_t lo_n, const double *hi, int64_t hi_n,
                    i64 pop, i64 maxgen)
 {
     if (f == NULL || x == NULL || lo == NULL || hi == NULL || d <= 0) return -1.0;
@@ -89,7 +90,7 @@ double ofx_meta_de(ffx_meta_cb f, double *x, i64 d, const double *lo, const doub
                                (int)pop, (int)maxgen, 12345UL);
 }
 
-double ofx_meta_cmaes(ffx_meta_cb f, double *x, i64 d, const double *lo, const double *hi,
+double ofx_meta_cmaes(ffx_meta_cb f, double *x, int64_t x_n, i64 d, const double *lo, int64_t lo_n, const double *hi, int64_t hi_n,
                       i64 maxit)
 {
     if (f == NULL || x == NULL || lo == NULL || hi == NULL || d <= 0) return -1.0;
@@ -99,7 +100,7 @@ double ofx_meta_cmaes(ffx_meta_cb f, double *x, i64 d, const double *lo, const d
                                   (int)maxit, 12345UL);
 }
 
-double ofx_meta_es(ffx_meta_cb f, double *x, i64 d, double sigma, double alpha,
+double ofx_meta_es(ffx_meta_cb f, double *x, int64_t x_n, i64 d, double sigma, double alpha,
                    i64 pop, i64 maxit)
 {
     if (f == NULL || x == NULL || d <= 0) return -1.0;
@@ -108,7 +109,7 @@ double ofx_meta_es(ffx_meta_cb f, double *x, i64 d, double sigma, double alpha,
                                (gor_real)sigma, (gor_real)alpha, (int)pop, (int)maxit, 12345ULL);
 }
 
-double ofx_meta_ars(ffx_meta_cb f, double *x, i64 d, double sigma, double alpha,
+double ofx_meta_ars(ffx_meta_cb f, double *x, int64_t x_n, i64 d, double sigma, double alpha,
                     i64 top_b, i64 pop, i64 maxit)
 {
     if (f == NULL || x == NULL || d <= 0) return -1.0;
@@ -118,7 +119,7 @@ double ofx_meta_ars(ffx_meta_cb f, double *x, i64 d, double sigma, double alpha,
                                 (int)maxit, 12345ULL);
 }
 
-double ofx_meta_aco_tsp(const double *dist, i64 n, i64 *tour, i64 ants, i64 maxit)
+double ofx_meta_aco_tsp(const double *dist, int64_t dist_n, i64 n, i64 *tour, int64_t tour_n, i64 ants, i64 maxit)
 {
     int *t;
     double r;
@@ -137,8 +138,8 @@ i64 ofx_tabu_tenure(i64 kind, i64 it, i64 n)
 }
 
 /* NSGA-II: out() = pareto[pop*d] | fv1[pop] | fv2[pop] (impacchettati per stare in 8 arg). */
-i64 ofx_meta_nsga2(ffx_meta_cb f1, ffx_meta_cb f2, i64 d, const double *lo, const double *hi,
-                   i64 pop, i64 maxgen, double *out)
+i64 ofx_meta_nsga2(ffx_meta_cb f1, ffx_meta_cb f2, i64 d, const double *lo, int64_t lo_n, const double *hi, int64_t hi_n,
+                   i64 pop, i64 maxgen, double *out, int64_t out_n)
 {
     gor_real *pareto, *fv1, *fv2;
     int k;

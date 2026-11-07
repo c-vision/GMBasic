@@ -50,19 +50,20 @@ static gm_frustum frustum_in(const double* p)
 
 /* ── geometria ──────────────────────────────────────────────────────────── */
 
-int ofx_gfx_perspective(double fovy, double aspect, double zn, double zf, double* out)
+int ofx_gfx_perspective(double fovy, double aspect, double zn, double zf, double* out, int64_t out_n)
 { if (!out) return -1; mat4_out(gm_mat4_perspective(fovy, aspect, zn, zf), out); return 0; }
 
-int ofx_gfx_ortho(double l, double r, double b, double t, double zn, double zf, double* out)
+int ofx_gfx_ortho(double l, double r, double b, double t, double zn, double zf, double* out, int64_t out_n)
 { if (!out) return -1; mat4_out(gm_mat4_ortho(l, r, b, t, zn, zf), out); return 0; }
 
-int ofx_gfx_lookat(const double* eye, const double* center, const double* up, double* out)
+int ofx_gfx_lookat(const double* eye, int64_t eye_n, const double* center, int64_t center_n, const double* up, int64_t up_n, double* out, int64_t out_n)
 { if (!eye || !center || !up || !out) return -1; mat4_out(gm_mat4_look_at(v3(eye), v3(center), v3(up)), out); return 0; }
 
-int ofx_gfx_aabb_from_points(const double* pts, int nvalues, double* out)
+int ofx_gfx_aabb_from_points(const double* pts, int64_t pts_n, double* out, int64_t out_n)
 {
-    if (!pts || !out || nvalues < 3) return -1;
-    int n = nvalues / 3;
+    /* il numero di valori e' l'estensione dell'array (n esplicito tolto dalla DECLARE) */
+    if (!pts || !out || pts_n < 3 || out_n < 6) return -1;
+    int n = (int)(pts_n / 3);
     gm_vec3* v = (gm_vec3*)malloc(sizeof(gm_vec3) * (size_t)n);
     if (!v) return -1;
     for (int i = 0; i < n; i++) v[i] = v3(pts + 3 * i);
@@ -72,22 +73,22 @@ int ofx_gfx_aabb_from_points(const double* pts, int nvalues, double* out)
     return 0;
 }
 
-int ofx_gfx_aabb_merge(const double* a, const double* b, double* out)
+int ofx_gfx_aabb_merge(const double* a, int64_t a_n, const double* b, int64_t b_n, double* out, int64_t out_n)
 { if (!a || !b || !out) return -1; box_out(gm_aabb_merge(box_in(a), box_in(b)), out); return 0; }
 
-int ofx_gfx_aabb_center(const double* a, double* out)
+int ofx_gfx_aabb_center(const double* a, int64_t a_n, double* out, int64_t out_n)
 { if (!a || !out) return -1; v3_out(gm_aabb_center(box_in(a)), out); return 0; }
 
-int ofx_gfx_aabb_extents(const double* a, double* out)
+int ofx_gfx_aabb_extents(const double* a, int64_t a_n, double* out, int64_t out_n)
 { if (!a || !out) return -1; v3_out(gm_aabb_extents(box_in(a)), out); return 0; }
 
-int ofx_gfx_aabb_test_point(const double* a, const double* p)
+int ofx_gfx_aabb_test_point(const double* a, int64_t a_n, const double* p, int64_t p_n)
 { if (!a || !p) return 0; return gm_aabb_test_point(box_in(a), v3(p)); }
 
-int ofx_gfx_aabb_intersect(const double* a, const double* b)
+int ofx_gfx_aabb_intersect(const double* a, int64_t a_n, const double* b, int64_t b_n)
 { if (!a || !b) return 0; return gm_aabb_intersect(box_in(a), box_in(b)); }
 
-int ofx_gfx_frustum_from(const double* m, double* out)
+int ofx_gfx_frustum_from(const double* m, int64_t m_n, double* out, int64_t out_n)
 {
     if (!m || !out) return -1;
     gm_frustum f = gm_frustum_from_matrix(mat4_in(m));
@@ -99,13 +100,13 @@ int ofx_gfx_frustum_from(const double* m, double* out)
     return 0;
 }
 
-int ofx_gfx_frustum_test_point(const double* planes, const double* p)
+int ofx_gfx_frustum_test_point(const double* planes, int64_t planes_n, const double* p, int64_t p_n)
 { if (!planes || !p) return 0; return gm_frustum_test_point(frustum_in(planes), v3(p)); }
 
-int ofx_gfx_frustum_test_aabb(const double* planes, const double* box)
+int ofx_gfx_frustum_test_aabb(const double* planes, int64_t planes_n, const double* box, int64_t box_n)
 { if (!planes || !box) return 0; return gm_frustum_intersect_aabb(frustum_in(planes), box_in(box)); }
 
-int ofx_gfx_decompose_srt(const double* m, double* scale, double* rot, double* pos)
+int ofx_gfx_decompose_srt(const double* m, int64_t m_n, double* scale, int64_t scale_n, double* rot, int64_t rot_n, double* pos, int64_t pos_n)
 {
     if (!m || !scale || !rot || !pos) return -1;
     gm_vec3 s, t; gm_quat q;
@@ -115,7 +116,7 @@ int ofx_gfx_decompose_srt(const double* m, double* scale, double* rot, double* p
     return rc;
 }
 
-int ofx_gfx_camera_view(const double* pos, const double* target, const double* up, double* out)
+int ofx_gfx_camera_view(const double* pos, int64_t pos_n, const double* target, int64_t target_n, const double* up, int64_t up_n, double* out, int64_t out_n)
 {
     if (!pos || !target || !up || !out) return -1;
     gm_camera c = gm_camera_make(v3(pos), v3(target), v3(up));
@@ -123,7 +124,7 @@ int ofx_gfx_camera_view(const double* pos, const double* target, const double* u
     return 0;
 }
 
-int ofx_gfx_camera_projection(double fov, double aspect, double zn, double zf, double* out)
+int ofx_gfx_camera_projection(double fov, double aspect, double zn, double zf, double* out, int64_t out_n)
 {
     if (!out) return -1;
     gm_camera c = gm_camera_perspective((gm_vec3){0, 0, 0}, (gm_vec3){0, 0, -1}, (gm_vec3){0, 1, 0}, fov, aspect, zn, zf);
@@ -131,8 +132,8 @@ int ofx_gfx_camera_projection(double fov, double aspect, double zn, double zf, d
     return 0;
 }
 
-int ofx_gfx_camera_view_projection(const double* pos, const double* target, const double* up,
-                                   double fov, double aspect, double zn, double zf, double* out)
+int ofx_gfx_camera_view_projection(const double* pos, int64_t pos_n, const double* target, int64_t target_n, const double* up, int64_t up_n,
+                                   double fov, double aspect, double zn, double zf, double* out, int64_t out_n)
 {
     if (!pos || !target || !up || !out) return -1;
     gm_camera c = gm_camera_perspective(v3(pos), v3(target), v3(up), fov, aspect, zn, zf);
@@ -142,7 +143,7 @@ int ofx_gfx_camera_view_projection(const double* pos, const double* target, cons
 
 /* ── raggi e intersezioni ───────────────────────────────────────────────── */
 
-int ofx_gfx_ray_sphere(const double* r, const double* sphere, double* t)
+int ofx_gfx_ray_sphere(const double* r, int64_t r_n, const double* sphere, int64_t sphere_n, double* t, int64_t t_n)
 {
     if (!r || !sphere || !t) return -1;
     gm_real tt = 0;
@@ -151,7 +152,7 @@ int ofx_gfx_ray_sphere(const double* r, const double* sphere, double* t)
     return hit;
 }
 
-int ofx_gfx_ray_plane(const double* r, const double* plane, double* t)
+int ofx_gfx_ray_plane(const double* r, int64_t r_n, const double* plane, int64_t plane_n, double* t, int64_t t_n)
 {
     if (!r || !plane || !t) return -1;
     gm_real tt = 0;
@@ -160,7 +161,7 @@ int ofx_gfx_ray_plane(const double* r, const double* plane, double* t)
     return hit;
 }
 
-int ofx_gfx_ray_triangle(const double* r, const double* tri, double* tuv)
+int ofx_gfx_ray_triangle(const double* r, int64_t r_n, const double* tri, int64_t tri_n, double* tuv, int64_t tuv_n)
 {
     if (!r || !tri || !tuv) return -1;
     gm_real t = 0, u = 0, v = 0;
@@ -169,7 +170,7 @@ int ofx_gfx_ray_triangle(const double* r, const double* tri, double* tuv)
     return hit;
 }
 
-int ofx_gfx_ray_aabb(const double* r, const double* box, double* t)
+int ofx_gfx_ray_aabb(const double* r, int64_t r_n, const double* box, int64_t box_n, double* t, int64_t t_n)
 {
     if (!r || !box || !t) return -1;
     gm_real tmin = 0, tmax = 0;
@@ -178,7 +179,7 @@ int ofx_gfx_ray_aabb(const double* r, const double* box, double* t)
     return hit;
 }
 
-int ofx_gfx_ray_box(const double* r, const double* box, double* t)
+int ofx_gfx_ray_box(const double* r, int64_t r_n, const double* box, int64_t box_n, double* t, int64_t t_n)
 {
     if (!r || !box || !t) return -1;
     gm_real tt = 0;
@@ -187,10 +188,10 @@ int ofx_gfx_ray_box(const double* r, const double* box, double* t)
     return hit;
 }
 
-int ofx_gfx_ray_reflect(const double* v, const double* n, double* out)
+int ofx_gfx_ray_reflect(const double* v, int64_t v_n, const double* n, int64_t n_n, double* out, int64_t out_n)
 { if (!v || !n || !out) return -1; v3_out(gm_ray_reflect(v3(v), v3(n)), out); return 0; }
 
-int ofx_gfx_ray_refract(const double* v, const double* n, double eta, double* out)
+int ofx_gfx_ray_refract(const double* v, int64_t v_n, const double* n, int64_t n_n, double eta, double* out, int64_t out_n)
 {
     if (!v || !n || !out) return -1;
     gm_vec3 o;
@@ -201,8 +202,8 @@ int ofx_gfx_ray_refract(const double* v, const double* n, double eta, double* ou
 
 /* params = [light_rgb(3), obj_rgb(3), ka, kd, ks, shininess] (10 valori): un solo array
  * accessorio evita le chiamate FFI con troppi array (limite pratico dell'emitter). */
-int ofx_gfx_shade_phong(const double* p, const double* n, const double* view, const double* light,
-                        const double* params, double* out)
+int ofx_gfx_shade_phong(const double* p, int64_t p_n, const double* n, int64_t n_n, const double* view, int64_t view_n, const double* light, int64_t light_n,
+                        const double* params, int64_t params_n, double* out, int64_t out_n)
 {
     if (!p || !n || !view || !light || !params || !out) return -1;
     v3_out(gm_shade_phong(v3(p), v3(n), v3(view), v3(light), v3(params), v3(params + 3),
@@ -210,13 +211,13 @@ int ofx_gfx_shade_phong(const double* p, const double* n, const double* view, co
     return 0;
 }
 
-int ofx_gfx_sphere_sphere(const double* c1, double r1, const double* c2, double r2)
+int ofx_gfx_sphere_sphere(const double* c1, int64_t c1_n, double r1, const double* c2, int64_t c2_n, double r2)
 { if (!c1 || !c2) return 0; return gm_intersect_sphere_sphere(v3(c1), r1, v3(c2), r2); }
 
-int ofx_gfx_sphere_box(const double* c, double r, const double* box)
+int ofx_gfx_sphere_box(const double* c, int64_t c_n, double r, const double* box, int64_t box_n)
 { if (!c || !box) return 0; return gm_intersect_sphere_box(v3(c), r, v3(box), v3(box + 3)); }
 
-int ofx_gfx_sphere_plane(const double* c, double r, const double* plane, double* dist)
+int ofx_gfx_sphere_plane(const double* c, int64_t c_n, double r, const double* plane, int64_t plane_n, double* dist, int64_t dist_n)
 {
     if (!c || !plane || !dist) return -1;
     gm_real d = 0;
@@ -225,7 +226,7 @@ int ofx_gfx_sphere_plane(const double* c, double r, const double* plane, double*
     return hit;
 }
 
-int ofx_gfx_segment_plane(const double* a, const double* b, const double* plane, double* t)
+int ofx_gfx_segment_plane(const double* a, int64_t a_n, const double* b, int64_t b_n, const double* plane, int64_t plane_n, double* t, int64_t t_n)
 {
     if (!a || !b || !plane || !t) return -1;
     gm_real tt = 0;
@@ -234,7 +235,7 @@ int ofx_gfx_segment_plane(const double* a, const double* b, const double* plane,
     return hit;
 }
 
-int ofx_gfx_segment_sphere(const double* a, const double* b, const double* c, double r, double* t)
+int ofx_gfx_segment_sphere(const double* a, int64_t a_n, const double* b, int64_t b_n, const double* c, int64_t c_n, double r, double* t, int64_t t_n)
 {
     if (!a || !b || !c || !t) return -1;
     gm_real tt = 0;
@@ -243,7 +244,7 @@ int ofx_gfx_segment_sphere(const double* a, const double* b, const double* c, do
     return hit;
 }
 
-int ofx_gfx_segment_triangle(const double* a, const double* b, const double* tri, double* t)
+int ofx_gfx_segment_triangle(const double* a, int64_t a_n, const double* b, int64_t b_n, const double* tri, int64_t tri_n, double* t, int64_t t_n)
 {
     if (!a || !b || !tri || !t) return -1;
     gm_real tt = 0;
@@ -252,7 +253,7 @@ int ofx_gfx_segment_triangle(const double* a, const double* b, const double* tri
     return hit;
 }
 
-int ofx_gfx_triangle_triangle(const double* t1, const double* t2)
+int ofx_gfx_triangle_triangle(const double* t1, int64_t t1_n, const double* t2, int64_t t2_n)
 {
     if (!t1 || !t2) return 0;
     gm_vec3 a[3] = { v3(t1), v3(t1 + 3), v3(t1 + 6) };
@@ -260,8 +261,8 @@ int ofx_gfx_triangle_triangle(const double* t1, const double* t2)
     return gm_intersect_triangle_triangle(a, b);
 }
 
-int ofx_gfx_volume_render(int n, const double* sigma, const double* rgb, const double* dt,
-                          double* out_rgb, double* out_acc)
+int ofx_gfx_volume_render(int n, const double* sigma, int64_t sigma_n, const double* rgb, int64_t rgb_n, const double* dt, int64_t dt_n,
+                          double* out_rgb, int64_t out_rgb_n, double* out_acc, int64_t out_acc_n)
 {
     if (n <= 0 || !sigma || !rgb || !dt || !out_rgb) return -1;
     gm_real acc = 0;
@@ -307,7 +308,7 @@ int ofx_gfx_mesh_cylinder(int slices, double radius, double height)
 int ofx_gfx_mesh_nv(int h) { gm_mesh* m = mesh_get(h); return m ? m->nv : -1; }
 int ofx_gfx_mesh_nt(int h) { gm_mesh* m = mesh_get(h); return m ? m->nt : -1; }
 
-int ofx_gfx_mesh_pos(int h, double* out)
+int ofx_gfx_mesh_pos(int h, double* out, int64_t out_n)
 {
     gm_mesh* m = mesh_get(h);
     if (!m || !out) return -1;
@@ -315,7 +316,7 @@ int ofx_gfx_mesh_pos(int h, double* out)
     return 0;
 }
 
-int ofx_gfx_mesh_tri(int h, double* out)
+int ofx_gfx_mesh_tri(int h, double* out, int64_t out_n)
 {
     gm_mesh* m = mesh_get(h);
     if (!m || !out) return -1;
@@ -373,7 +374,7 @@ int ofx_gfx_raster_clear(int h, double depth)
     return 0;
 }
 
-int ofx_gfx_raster_get(int h, int x, int y, double* out)
+int ofx_gfx_raster_get(int h, int x, int y, double* out, int64_t out_n)
 {
     gm_raster* r = raster_get(h);
     if (!r || !out || x < 0 || y < 0 || x >= r->w || y >= r->h) return -1;
@@ -383,7 +384,7 @@ int ofx_gfx_raster_get(int h, int x, int y, double* out)
     return 0;
 }
 
-int ofx_gfx_raster_tri(int h, const double* p, const double* c)
+int ofx_gfx_raster_tri(int h, const double* p, int64_t p_n, const double* c, int64_t c_n)
 {
     gm_raster* r = raster_get(h);
     if (!r || !p || !c) return -1;
@@ -391,7 +392,7 @@ int ofx_gfx_raster_tri(int h, const double* p, const double* c)
     return 0;
 }
 
-int ofx_gfx_raster_clip_near(const double* tri, double znear, double* out)
+int ofx_gfx_raster_clip_near(const double* tri, int64_t tri_n, double znear, double* out, int64_t out_n)
 {
     if (!tri || !out) return -1;
     return gm_raster_clip_near(tri, znear, out);
@@ -401,7 +402,7 @@ int ofx_gfx_raster_clip_near(const double* tri, double znear, double* out)
 
 #include "gm_gfx_surface.h"
 
-int ofx_gfx_mesh_surface(const double* z, int nx, int ny, double sx, double sy, double zscale)
+int ofx_gfx_mesh_surface(const double* z, int64_t z_n, int nx, int ny, double sx, double sy, double zscale)
 {
     if (!z || nx < 2 || ny < 2) return 0;
     gm_mesh m = { 0, NULL, 0, NULL };
@@ -428,8 +429,8 @@ static int raycast_dda_steps(const double* grid, int rows, int cols, double px, 
 }
 
 /* Compat: 256 passi (massimo storico). */
-int ofx_gfx_raycast_dda(const double* grid, int rows, int cols, double px, double py,
-                        double dx, double dy, double* out)
+int ofx_gfx_raycast_dda(const double* grid, int64_t grid_n, int rows, int cols, double px, double py,
+                        double dx, double dy, double* out, int64_t out_n)
 {
     return raycast_dda_steps(grid, rows, cols, px, py, dx, dy, 256, out);
 }
@@ -437,7 +438,7 @@ int ofx_gfx_raycast_dda(const double* grid, int rows, int cols, double px, doubl
 /* Variante con limite di passi configurabile (gfx3d.inc: RAYCASTDDAEX).
  * ray() = [px, py, dx, dy, maxsteps]: con 9 parametri scalari si supererebbero gli 8 slot
  * nativi ammessi dall'FFI, quindi gli argomenti del raggio viaggiano in un array. */
-int ofx_gfx_raycast_dda_ex(const double* grid, int rows, int cols, const double* ray, double* out)
+int ofx_gfx_raycast_dda_ex(const double* grid, int64_t grid_n, int rows, int cols, const double* ray, int64_t ray_n, double* out, int64_t out_n)
 {
     if (!ray) return -1;
     int steps = (int)ray[4];
@@ -446,8 +447,8 @@ int ofx_gfx_raycast_dda_ex(const double* grid, int rows, int cols, const double*
 
 /* ── cilindro/cono + AABB transform (gfx3d.inc) ──────────────────────────── */
 
-int ofx_gfx_ray_cylinder(const double* r, const double* base, const double* axis,
-                         double radius, double height, double* t)
+int ofx_gfx_ray_cylinder(const double* r, int64_t r_n, const double* base, int64_t base_n, const double* axis, int64_t axis_n,
+                         double radius, double height, double* t, int64_t t_n)
 {
     if (!r || !base || !axis || !t) return -1;
     gm_real tt = 0;
@@ -456,8 +457,8 @@ int ofx_gfx_ray_cylinder(const double* r, const double* base, const double* axis
     return hit;
 }
 
-int ofx_gfx_ray_cone(const double* r, const double* apex, const double* axis,
-                     double radius, double height, double* t)
+int ofx_gfx_ray_cone(const double* r, int64_t r_n, const double* apex, int64_t apex_n, const double* axis, int64_t axis_n,
+                     double radius, double height, double* t, int64_t t_n)
 {
     if (!r || !apex || !axis || !t) return -1;
     gm_real tt = 0;
@@ -466,21 +467,21 @@ int ofx_gfx_ray_cone(const double* r, const double* apex, const double* axis,
     return hit;
 }
 
-int ofx_gfx_cylinder_normal(const double* base, const double* axis, const double* p, double* out)
+int ofx_gfx_cylinder_normal(const double* base, int64_t base_n, const double* axis, int64_t axis_n, const double* p, int64_t p_n, double* out, int64_t out_n)
 {
     if (!base || !axis || !p || !out) return -1;
     v3_out(gm_cylinder_normal(v3(base), v3(axis), v3(p)), out);
     return 0;
 }
 
-int ofx_gfx_cone_normal(const double* apex, const double* axis, double k, const double* p, double* out)
+int ofx_gfx_cone_normal(const double* apex, int64_t apex_n, const double* axis, int64_t axis_n, double k, const double* p, int64_t p_n, double* out, int64_t out_n)
 {
     if (!apex || !axis || !p || !out) return -1;
     v3_out(gm_cone_normal(v3(apex), v3(axis), k, v3(p)), out);
     return 0;
 }
 
-int ofx_gfx_aabb_transform(const double* a, const double* m, double* out)
+int ofx_gfx_aabb_transform(const double* a, int64_t a_n, const double* m, int64_t m_n, double* out, int64_t out_n)
 {
     if (!a || !m || !out) return -1;
     box_out(gm_aabb_transform(box_in(a), mat4_in(m)), out);
@@ -489,22 +490,22 @@ int ofx_gfx_aabb_transform(const double* a, const double* m, double* out)
 
 /* ── costruttori e camera orbit/translate/ndc (gfx3d.inc) ────────────────── */
 
-int ofx_gfx_aabb_make(const double* mn, const double* mx, double* out)
+int ofx_gfx_aabb_make(const double* mn, int64_t mn_n, const double* mx, int64_t mx_n, double* out, int64_t out_n)
 {
     if (!mn || !mx || !out) return -1;
     box_out(gm_aabb_make(v3(mn), v3(mx)), out);
     return 0;
 }
 
-int ofx_gfx_ray_at(const double* r, double t, double* out)
+int ofx_gfx_ray_at(const double* r, int64_t r_n, double t, double* out, int64_t out_n)
 {
     if (!r || !out) return -1;
     v3_out(gm_ray_at(ray_in(r), t), out);
     return 0;
 }
 
-int ofx_gfx_camera_orbit(const double* eye, const double* target, double yaw, double pitch,
-                         double radius, double* out)
+int ofx_gfx_camera_orbit(const double* eye, int64_t eye_n, const double* target, int64_t target_n, double yaw, double pitch,
+                         double radius, double* out, int64_t out_n)
 {
     if (!eye || !target || !out) return -1;
     gm_camera c = gm_camera_make(v3(eye), v3(target), (gm_vec3){0, 1, 0});
@@ -513,7 +514,7 @@ int ofx_gfx_camera_orbit(const double* eye, const double* target, double yaw, do
     return 0;
 }
 
-int ofx_gfx_camera_translate(const double* eye, const double* target, const double* delta, double* out)
+int ofx_gfx_camera_translate(const double* eye, int64_t eye_n, const double* target, int64_t target_n, const double* delta, int64_t delta_n, double* out, int64_t out_n)
 {
     if (!eye || !target || !delta || !out) return -1;
     gm_camera c = gm_camera_make(v3(eye), v3(target), (gm_vec3){0, 1, 0});
@@ -522,8 +523,8 @@ int ofx_gfx_camera_translate(const double* eye, const double* target, const doub
     return 0;
 }
 
-int ofx_gfx_camera_ndc_ray(const double* pos, const double* target, const double* up,
-                           double fov, double aspect, double ndcx, double ndcy, double* out)
+int ofx_gfx_camera_ndc_ray(const double* pos, int64_t pos_n, const double* target, int64_t target_n, const double* up, int64_t up_n,
+                           double fov, double aspect, double ndcx, double ndcy, double* out, int64_t out_n)
 {
     if (!pos || !target || !up || !out) return -1;
     gm_camera c = gm_camera_perspective(v3(pos), v3(target), v3(up), fov, aspect, 0.1, 100.0);

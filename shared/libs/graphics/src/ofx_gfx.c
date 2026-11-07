@@ -42,92 +42,92 @@ static gm_vec2* pts_from(const double* p, int nvalues, int* out_n)
 
 /* ── colore ─────────────────────────────────────────────────────────────── */
 
-int ofx_gfx_rgb2hsv(double r, double g, double b, double* out)
+int ofx_gfx_rgb2hsv(double r, double g, double b, double* out, int64_t out_n)
 {
     double h, s, v;
-    if (!out) return -1;
+    if (!out || out_n < 3) return -1;
     gm_color_rgb2hsv(c8(r), c8(g), c8(b), &h, &s, &v);
     out[0] = h; out[1] = s; out[2] = v;
     return 0;
 }
 
-int ofx_gfx_hsv2rgb(double h, double s, double v, double* out)
+int ofx_gfx_hsv2rgb(double h, double s, double v, double* out, int64_t out_n)
 {
     double r, g, b;
-    if (!out) return -1;
+    if (!out || out_n < 3) return -1;
     gm_color_hsv2rgb(h, s, v, &r, &g, &b);
     out[0] = c255(r); out[1] = c255(g); out[2] = c255(b);
     return 0;
 }
 
-int ofx_gfx_rgb2hsl(double r, double g, double b, double* out)
+int ofx_gfx_rgb2hsl(double r, double g, double b, double* out, int64_t out_n)
 {
     double h, s, l;
-    if (!out) return -1;
+    if (!out || out_n < 3) return -1;
     gm_color_rgb2hsl(c8(r), c8(g), c8(b), &h, &s, &l);
     out[0] = h; out[1] = s; out[2] = l;
     return 0;
 }
 
-int ofx_gfx_hsl2rgb(double h, double s, double l, double* out)
+int ofx_gfx_hsl2rgb(double h, double s, double l, double* out, int64_t out_n)
 {
     double r, g, b;
-    if (!out) return -1;
+    if (!out || out_n < 3) return -1;
     gm_color_hsl2rgb(h, s, l, &r, &g, &b);
     out[0] = c255(r); out[1] = c255(g); out[2] = c255(b);
     return 0;
 }
 
-int ofx_gfx_rgb2cmyk(double r, double g, double b, double* out)
+int ofx_gfx_rgb2cmyk(double r, double g, double b, double* out, int64_t out_n)
 {
     double c, m, y, k;
-    if (!out) return -1;
+    if (!out || out_n < 4) return -1;
     gm_color_rgb2cmyk(c8(r), c8(g), c8(b), &c, &m, &y, &k);
     out[0] = c; out[1] = m; out[2] = y; out[3] = k;
     return 0;
 }
 
-int ofx_gfx_cmyk2rgb(double c, double m, double y, double k, double* out)
+int ofx_gfx_cmyk2rgb(double c, double m, double y, double k, double* out, int64_t out_n)
 {
     double r, g, b;
-    if (!out) return -1;
+    if (!out || out_n < 3) return -1;
     gm_color_cmyk2rgb(c, m, y, k, &r, &g, &b);
     out[0] = c255(r); out[1] = c255(g); out[2] = c255(b);
     return 0;
 }
 
 int ofx_gfx_mix(double r1, double g1, double b1, double r2, double g2, double b2,
-                double t, double* out)
+                double t, double* out, int64_t out_n)
 {
     double r, g, b;
-    if (!out) return -1;
+    if (!out || out_n < 3) return -1;
     gm_color_mix(c8(r1), c8(g1), c8(b1), c8(r2), c8(g2), c8(b2), t, &r, &g, &b);
     out[0] = c255(r); out[1] = c255(g); out[2] = c255(b);
     return 0;
 }
 
-int ofx_gfx_lighten(double r, double g, double b, double amt, double* out)
+int ofx_gfx_lighten(double r, double g, double b, double amt, double* out, int64_t out_n)
 {
     double ro, go, bo;
-    if (!out) return -1;
+    if (!out || out_n < 3) return -1;
     gm_color_lighten(c8(r), c8(g), c8(b), amt, &ro, &go, &bo);
     out[0] = c255(ro); out[1] = c255(go); out[2] = c255(bo);
     return 0;
 }
 
-int ofx_gfx_darken(double r, double g, double b, double amt, double* out)
+int ofx_gfx_darken(double r, double g, double b, double amt, double* out, int64_t out_n)
 {
     double ro, go, bo;
-    if (!out) return -1;
+    if (!out || out_n < 3) return -1;
     gm_color_darken(c8(r), c8(g), c8(b), amt, &ro, &go, &bo);
     out[0] = c255(ro); out[1] = c255(go); out[2] = c255(bo);
     return 0;
 }
 
-int ofx_gfx_saturate(double r, double g, double b, double amt, double* out)
+int ofx_gfx_saturate(double r, double g, double b, double amt, double* out, int64_t out_n)
 {
     double ro, go, bo;
-    if (!out) return -1;
+    if (!out || out_n < 3) return -1;
     gm_color_saturate(c8(r), c8(g), c8(b), amt, &ro, &go, &bo);
     out[0] = c255(ro); out[1] = c255(go); out[2] = c255(bo);
     return 0;
@@ -135,7 +135,7 @@ int ofx_gfx_saturate(double r, double g, double b, double amt, double* out)
 
 /* ── geometria 2D / hit-test ────────────────────────────────────────────── */
 
-int ofx_gfx_point_in_polygon(double x, double y, const double* pts, int nvalues)
+int ofx_gfx_point_in_polygon(double x, double y, const double* pts, int64_t nvalues)
 {
     int n = 0;
     gm_vec2* v = pts_from(pts, nvalues, &n);
@@ -165,7 +165,7 @@ int ofx_gfx_point_in_rect(double x, double y, double x1, double y1, double x2, d
     return gm_shape_point_in_aabb2(box, p);
 }
 
-double ofx_gfx_polygon_area(const double* pts, int nvalues)
+double ofx_gfx_polygon_area(const double* pts, int64_t nvalues)
 {
     int n = 0;
     gm_vec2* v = pts_from(pts, nvalues, &n);
@@ -175,11 +175,11 @@ double ofx_gfx_polygon_area(const double* pts, int nvalues)
     return a;
 }
 
-int ofx_gfx_polygon_centroid(const double* pts, int nvalues, double* out)
+int ofx_gfx_polygon_centroid(const double* pts, int64_t pts_n, double* out, int64_t out_n)
 {
     int n = 0;
-    if (!out) return -1;
-    gm_vec2* v = pts_from(pts, nvalues, &n);
+    if (!out || out_n < 3) return -1;
+    gm_vec2* v = pts_from(pts, pts_n, &n);
     if (!v || n < 3) { free(v); return -1; }
     gm_vec2 c = gm_shape_polygon_centroid(v, n);
     free(v);
@@ -188,9 +188,9 @@ int ofx_gfx_polygon_centroid(const double* pts, int nvalues, double* out)
 }
 
 int ofx_gfx_closest_point_segment(double px, double py, double ax, double ay,
-                                  double bx, double by, double* out)
+                                  double bx, double by, double* out, int64_t out_n)
 {
-    if (!out) return -1;
+    if (!out || out_n < 2) return -1;
     gm_vec2 p = { px, py }, a = { ax, ay }, b = { bx, by };
     gm_vec2 c = gm_shape_closest_point_segment(p, a, b);
     out[0] = c.x; out[1] = c.y;
@@ -220,7 +220,7 @@ static gm_image img_wrap(const double* data, int w, int h)
     return im;
 }
 
-int ofx_gfx_img_convolve(const double* in, int w, int h, const double* k, int kx, int ky, double* out)
+int ofx_gfx_img_convolve(const double* in, int64_t in_n, int w, int h, const double* k, int64_t k_n, int kx, int ky, double* out, int64_t out_n)
 {
     if (!in || !k || !out || w <= 0 || h <= 0 || kx <= 0 || ky <= 0) return -1;
     gm_image a = img_wrap(in, w, h), b = img_wrap(out, w, h);
@@ -228,8 +228,8 @@ int ofx_gfx_img_convolve(const double* in, int w, int h, const double* k, int kx
     return 0;
 }
 
-int ofx_gfx_img_convolve_sep(const double* in, int w, int h, const double* kx, int nx,
-                             const double* ky, int ny, double* out)
+int ofx_gfx_img_convolve_sep(const double* in, int64_t in_n, int w, int h, const double* kx, int64_t kx_n, int nx,
+                             const double* ky, int64_t ky_n, int ny, double* out, int64_t out_n)
 {
     if (!in || !kx || !ky || !out || w <= 0 || h <= 0 || nx <= 0 || ny <= 0) return -1;
     gm_image a = img_wrap(in, w, h), b = img_wrap(out, w, h);
@@ -237,7 +237,7 @@ int ofx_gfx_img_convolve_sep(const double* in, int w, int h, const double* kx, i
     return 0;
 }
 
-int ofx_gfx_img_gaussian(const double* in, int w, int h, double sigma, double* out)
+int ofx_gfx_img_gaussian(const double* in, int64_t in_n, int w, int h, double sigma, double* out, int64_t out_n)
 {
     if (!in || !out || w <= 0 || h <= 0) return -1;
     gm_image a = img_wrap(in, w, h), b = img_wrap(out, w, h);
@@ -245,7 +245,7 @@ int ofx_gfx_img_gaussian(const double* in, int w, int h, double sigma, double* o
     return 0;
 }
 
-int ofx_gfx_img_sobel(const double* in, int w, int h, double* gx, double* gy)
+int ofx_gfx_img_sobel(const double* in, int64_t in_n, int w, int h, double* gx, int64_t gx_n, double* gy, int64_t gy_n)
 {
     if (!in || !gx || !gy || w <= 0 || h <= 0) return -1;
     gm_image a = img_wrap(in, w, h), b = img_wrap(gx, w, h), c = img_wrap(gy, w, h);
@@ -253,7 +253,7 @@ int ofx_gfx_img_sobel(const double* in, int w, int h, double* gx, double* gy)
     return 0;
 }
 
-int ofx_gfx_img_resample(const double* in, int w, int h, int nw, int nh, double* out)
+int ofx_gfx_img_resample(const double* in, int64_t in_n, int w, int h, int nw, int nh, double* out, int64_t out_n)
 {
     if (!in || !out || w <= 0 || h <= 0 || nw <= 0 || nh <= 0) return -1;
     gm_image r = gm_image_resample(img_wrap(in, w, h), nw, nh);
@@ -263,7 +263,7 @@ int ofx_gfx_img_resample(const double* in, int w, int h, int nw, int nh, double*
     return 0;
 }
 
-int ofx_gfx_img_transpose(const double* in, int w, int h, double* out)
+int ofx_gfx_img_transpose(const double* in, int64_t in_n, int w, int h, double* out, int64_t out_n)
 {
     if (!in || !out || w <= 0 || h <= 0) return -1;
     gm_image r = gm_image_transpose(img_wrap(in, w, h));
@@ -273,7 +273,7 @@ int ofx_gfx_img_transpose(const double* in, int w, int h, double* out)
     return 0;
 }
 
-int ofx_gfx_img_rotate90(const double* in, int w, int h, int k, double* out)
+int ofx_gfx_img_rotate90(const double* in, int64_t in_n, int w, int h, int k, double* out, int64_t out_n)
 {
     if (!in || !out || w <= 0 || h <= 0) return -1;
     gm_image r = gm_image_rotate90(img_wrap(in, w, h), k);
@@ -283,7 +283,7 @@ int ofx_gfx_img_rotate90(const double* in, int w, int h, int k, double* out)
     return 0;
 }
 
-int ofx_gfx_img_rotate(const double* in, int w, int h, double radians, double bg, double* out)
+int ofx_gfx_img_rotate(const double* in, int64_t in_n, int w, int h, double radians, double bg, double* out, int64_t out_n)
 {
     if (!in || !out || w <= 0 || h <= 0) return -1;
     gm_image r = gm_image_rotate(img_wrap(in, w, h), radians, bg);
@@ -293,84 +293,84 @@ int ofx_gfx_img_rotate(const double* in, int w, int h, double radians, double bg
     return 0;
 }
 
-int ofx_gfx_img_flip_h(const double* in, int w, int h, double* out)
+int ofx_gfx_img_flip_h(const double* in, int64_t in_n, int w, int h, double* out, int64_t out_n)
 {
     if (!in || !out || w <= 0 || h <= 0) return -1;
     return gm_image_flip_h(img_wrap(in, w, h), img_wrap(out, w, h));
 }
 
-int ofx_gfx_img_flip_v(const double* in, int w, int h, double* out)
+int ofx_gfx_img_flip_v(const double* in, int64_t in_n, int w, int h, double* out, int64_t out_n)
 {
     if (!in || !out || w <= 0 || h <= 0) return -1;
     return gm_image_flip_v(img_wrap(in, w, h), img_wrap(out, w, h));
 }
 
-int ofx_gfx_img_threshold(const double* in, int w, int h, double t, double lo, double hi, double* out)
+int ofx_gfx_img_threshold(const double* in, int64_t in_n, int w, int h, double t, double lo, double hi, double* out, int64_t out_n)
 {
     if (!in || !out || w <= 0 || h <= 0) return -1;
     return gm_image_threshold(img_wrap(in, w, h), t, lo, hi, img_wrap(out, w, h));
 }
 
-int ofx_gfx_img_normalize(const double* in, int w, int h, double lo, double hi, double* out)
+int ofx_gfx_img_normalize(const double* in, int64_t in_n, int w, int h, double lo, double hi, double* out, int64_t out_n)
 {
     if (!in || !out || w <= 0 || h <= 0) return -1;
     return gm_image_normalize(img_wrap(in, w, h), lo, hi, img_wrap(out, w, h));
 }
 
-int ofx_gfx_img_histogram(const double* in, int w, int h, int nbins, double lo, double hi, double* counts)
+int ofx_gfx_img_histogram(const double* in, int64_t in_n, int w, int h, int nbins, double lo, double hi, double* counts, int64_t counts_n)
 {
     if (!in || !counts || w <= 0 || h <= 0 || nbins <= 0) return -1;
     return gm_image_histogram(img_wrap(in, w, h), nbins, lo, hi, counts);
 }
 
-int ofx_gfx_img_hist_equalize(const double* in, int w, int h, int nbins, double* out)
+int ofx_gfx_img_hist_equalize(const double* in, int64_t in_n, int w, int h, int nbins, double* out, int64_t out_n)
 {
     if (!in || !out || w <= 0 || h <= 0 || nbins <= 0) return -1;
     return gm_image_hist_equalize(img_wrap(in, w, h), nbins, img_wrap(out, w, h));
 }
 
-int ofx_gfx_img_median3(const double* in, int w, int h, double* out)
+int ofx_gfx_img_median3(const double* in, int64_t in_n, int w, int h, double* out, int64_t out_n)
 {
     if (!in || !out || w <= 0 || h <= 0) return -1;
     return gm_image_median3(img_wrap(in, w, h), img_wrap(out, w, h));
 }
 
-int ofx_gfx_img_draw_line(double* d, int w, int h, int x0, int y0, int x1, int y1, double v)
+int ofx_gfx_img_draw_line(double* d, int64_t d_n, int w, int h, int x0, int y0, int x1, int y1, double v)
 {
     if (!d || w <= 0 || h <= 0) return -1;
     gm_image_draw_line(img_wrap(d, w, h), x0, y0, x1, y1, v);
     return 0;
 }
 
-int ofx_gfx_img_draw_rect_fill(double* d, int w, int h, int x0, int y0, int x1, int y1, double v)
+int ofx_gfx_img_draw_rect_fill(double* d, int64_t d_n, int w, int h, int x0, int y0, int x1, int y1, double v)
 {
     if (!d || w <= 0 || h <= 0) return -1;
     gm_image_draw_rect(img_wrap(d, w, h), x0, y0, x1, y1, v, 1);
     return 0;
 }
 
-int ofx_gfx_img_draw_rect_stroke(double* d, int w, int h, int x0, int y0, int x1, int y1, double v)
+int ofx_gfx_img_draw_rect_stroke(double* d, int64_t d_n, int w, int h, int x0, int y0, int x1, int y1, double v)
 {
     if (!d || w <= 0 || h <= 0) return -1;
     gm_image_draw_rect(img_wrap(d, w, h), x0, y0, x1, y1, v, 0);
     return 0;
 }
 
-int ofx_gfx_img_draw_circle(double* d, int w, int h, int cx, int cy, int r, double v, int fill)
+int ofx_gfx_img_draw_circle(double* d, int64_t d_n, int w, int h, int cx, int cy, int r, double v, int fill)
 {
     if (!d || w <= 0 || h <= 0) return -1;
     gm_image_draw_circle(img_wrap(d, w, h), cx, cy, r, v, fill);
     return 0;
 }
 
-int ofx_gfx_img_warp(const double* in, int c, int h, int w, const double* fx, const double* fy, double* out)
+int ofx_gfx_img_warp(const double* in, int64_t in_n, int c, int h, int w, const double* fx, int64_t fx_n, const double* fy, int64_t fy_n, double* out, int64_t out_n)
 {
     if (!in || !fx || !fy || !out || c <= 0 || h <= 0 || w <= 0) return -1;
     return gm_image_warp_bilinear(out, in, c, h, w, fx, fy);
 }
 
-int ofx_gfx_img_poisson(const double* target, const double* source, const double* mask,
-                        int nx, int ny, double* out, int maxit)
+int ofx_gfx_img_poisson(const double* target, int64_t target_n, const double* source, int64_t source_n, const double* mask, int64_t mask_n,
+                        int nx, int ny, double* out, int64_t out_n, int maxit)
 {
     if (!target || !source || !mask || !out || nx <= 0 || ny <= 0) return -1;
     /* mask BASIC = double 0/1; il blend vuole unsigned char: conversione esplicita. */
@@ -406,16 +406,20 @@ static gm_ray2 ray2_in(const double* r)
     return x;
 }
 
-double ofx_gfx_shape_dist(const double* a, const double* b)
+/* ── gfxshape: geometria 2D (2026-11-06, dimensioni implicite) ──────────────
+ * Dopo OGNI puntatore a array segue `int64_t <nome>_n` (estensione = lunghezza dell'array),
+ * emessa dal compilatore secondo la DECLARE. I vettori hanno lunghezze minime fisse
+ * (2 = punto, 4 = AABB/raggio); si valida il minimo e si ignorano eventuali extra. */
+double ofx_gfx_shape_dist(const double* a, int64_t a_n, const double* b, int64_t b_n)
 {
-    if (!a || !b) return 0.0;
+    if (!a || !b || a_n < 2 || b_n < 2) return 0.0;
     return gm_shape_distance(v2(a), v2(b));
 }
 
-int ofx_gfx_shape_aabb_from_points(const double* pts, int nvalues, double* out)
+int ofx_gfx_shape_aabb_from_points(const double* pts, int64_t pts_n, double* out, int64_t out_n)
 {
-    if (!pts || !out || nvalues < 2) return -1;
-    int n = nvalues / 2;
+    if (!pts || !out || pts_n < 2 || out_n < 4) return -1;
+    int n = (int)(pts_n / 2);
     gm_vec2* v = (gm_vec2*)malloc(sizeof(gm_vec2) * (size_t)n);
     if (!v) return -1;
     for (int i = 0; i < n; i++) v[i] = v2(pts + 2 * i);
@@ -425,48 +429,55 @@ int ofx_gfx_shape_aabb_from_points(const double* pts, int nvalues, double* out)
     return 0;
 }
 
-int ofx_gfx_shape_aabb_merge(const double* a, const double* b, double* out)
-{ if (!a || !b || !out) return -1; box2_out(gm_aabb2_merge(box2_in(a), box2_in(b)), out); return 0; }
-int ofx_gfx_shape_aabb_center(const double* a, double* out)
-{ if (!a || !out) return -1; v2_out(gm_aabb2_center(box2_in(a)), out); return 0; }
-int ofx_gfx_shape_aabb_extents(const double* a, double* out)
-{ if (!a || !out) return -1; v2_out(gm_aabb2_extents(box2_in(a)), out); return 0; }
-int ofx_gfx_shape_aabb_valid(const double* a)
-{ if (!a) return 0; return gm_aabb2_valid(box2_in(a)); }
+int ofx_gfx_shape_aabb_merge(const double* a, int64_t a_n, const double* b, int64_t b_n,
+                             double* out, int64_t out_n)
+{ if (!a || !b || !out || a_n < 4 || b_n < 4 || out_n < 4) return -1; box2_out(gm_aabb2_merge(box2_in(a), box2_in(b)), out); return 0; }
+int ofx_gfx_shape_aabb_center(const double* a, int64_t a_n, double* out, int64_t out_n)
+{ if (!a || !out || a_n < 4 || out_n < 2) return -1; v2_out(gm_aabb2_center(box2_in(a)), out); return 0; }
+int ofx_gfx_shape_aabb_extents(const double* a, int64_t a_n, double* out, int64_t out_n)
+{ if (!a || !out || a_n < 4 || out_n < 2) return -1; v2_out(gm_aabb2_extents(box2_in(a)), out); return 0; }
+int ofx_gfx_shape_aabb_valid(const double* a, int64_t a_n)
+{ if (!a || a_n < 4) return 0; return gm_aabb2_valid(box2_in(a)); }
 
-int ofx_gfx_shape_closest_ray(const double* ray, const double* p, double* out)
-{ if (!ray || !p || !out) return -1; v2_out(gm_shape_closest_point_ray(ray2_in(ray), v2(p)), out); return 0; }
-int ofx_gfx_shape_closest_aabb(const double* box, const double* p, double* out)
-{ if (!box || !p || !out) return -1; v2_out(gm_shape_closest_point_aabb2(box2_in(box), v2(p)), out); return 0; }
-int ofx_gfx_shape_closest_circle(double cx, double cy, double r, const double* p, double* out)
+int ofx_gfx_shape_closest_ray(const double* ray, int64_t ray_n, const double* p, int64_t p_n,
+                              double* out, int64_t out_n)
+{ if (!ray || !p || !out || ray_n < 4 || p_n < 2 || out_n < 2) return -1; v2_out(gm_shape_closest_point_ray(ray2_in(ray), v2(p)), out); return 0; }
+int ofx_gfx_shape_closest_aabb(const double* box, int64_t box_n, const double* p, int64_t p_n,
+                               double* out, int64_t out_n)
+{ if (!box || !p || !out || box_n < 4 || p_n < 2 || out_n < 2) return -1; v2_out(gm_shape_closest_point_aabb2(box2_in(box), v2(p)), out); return 0; }
+int ofx_gfx_shape_closest_circle(double cx, double cy, double r, const double* p, int64_t p_n,
+                                 double* out, int64_t out_n)
 {
-    if (!p || !out) return -1;
+    if (!p || !out || p_n < 2 || out_n < 2) return -1;
     gm_vec2 c = { cx, cy };
     gm_circle cir = gm_circle_make(c, r);
     v2_out(gm_shape_closest_point_circle(cir, v2(p)), out);
     return 0;
 }
-int ofx_gfx_shape_closest_aabb_aabb(const double* a, const double* b, double* out)
-{ if (!a || !b || !out) return -1; v2_out(gm_shape_closest_point_aabb2_aabb2(box2_in(a), box2_in(b)), out); return 0; }
+int ofx_gfx_shape_closest_aabb_aabb(const double* a, int64_t a_n, const double* b, int64_t b_n,
+                                    double* out, int64_t out_n)
+{ if (!a || !b || !out || a_n < 4 || b_n < 4 || out_n < 2) return -1; v2_out(gm_shape_closest_point_aabb2_aabb2(box2_in(a), box2_in(b)), out); return 0; }
 
-int ofx_gfx_shape_circle_circle(const double* c1, double r1, const double* c2, double r2)
+int ofx_gfx_shape_circle_circle(const double* c1, int64_t c1_n, double r1,
+                                const double* c2, int64_t c2_n, double r2)
 {
-    if (!c1 || !c2) return 0;
+    if (!c1 || !c2 || c1_n < 2 || c2_n < 2) return 0;
     gm_vec2 a = { c1[0], c1[1] }, b = { c2[0], c2[1] };
     return gm_shape_circle_circle(gm_circle_make(a, r1), gm_circle_make(b, r2));
 }
-int ofx_gfx_shape_aabb_aabb(const double* a, const double* b)
-{ if (!a || !b) return 0; return gm_shape_aabb2_aabb2(box2_in(a), box2_in(b)); }
-int ofx_gfx_shape_aabb_circle(const double* a, double cx, double cy, double r)
+int ofx_gfx_shape_aabb_aabb(const double* a, int64_t a_n, const double* b, int64_t b_n)
+{ if (!a || !b || a_n < 4 || b_n < 4) return 0; return gm_shape_aabb2_aabb2(box2_in(a), box2_in(b)); }
+int ofx_gfx_shape_aabb_circle(const double* a, int64_t a_n, double cx, double cy, double r)
 {
-    if (!a) return 0;
+    if (!a || a_n < 4) return 0;
     gm_vec2 c = { cx, cy };
     return gm_shape_aabb2_circle(box2_in(a), gm_circle_make(c, r));
 }
 
-int ofx_gfx_shape_ray2_circle(const double* ray, double cx, double cy, double r, double* t)
+int ofx_gfx_shape_ray2_circle(const double* ray, int64_t ray_n, double cx, double cy, double r,
+                              double* t, int64_t t_n)
 {
-    if (!ray || !t) return -1;
+    if (!ray || !t || ray_n < 4 || t_n < 1) return -1;
     gm_vec2 c = { cx, cy };
     gm_circle cir = gm_circle_make(c, r);
     gm_real tt = 0;
@@ -474,44 +485,49 @@ int ofx_gfx_shape_ray2_circle(const double* ray, double cx, double cy, double r,
     t[0] = tt;
     return hit;
 }
-int ofx_gfx_shape_ray2_aabb(const double* ray, const double* box, double* t)
+int ofx_gfx_shape_ray2_aabb(const double* ray, int64_t ray_n, const double* box, int64_t box_n,
+                            double* t, int64_t t_n)
 {
-    if (!ray || !box || !t) return -1;
+    if (!ray || !box || !t || ray_n < 4 || box_n < 4 || t_n < 2) return -1;
     gm_real tmin = 0, tmax = 0;
     int hit = gm_shape_ray2_aabb2(ray2_in(ray), box2_in(box), &tmin, &tmax);
     t[0] = tmin; t[1] = tmax;
     return hit;
 }
-int ofx_gfx_shape_ray2_segment(const double* ray, const double* a, const double* b, double* t)
+int ofx_gfx_shape_ray2_segment(const double* ray, int64_t ray_n, const double* a, int64_t a_n,
+                               const double* b, int64_t b_n, double* t, int64_t t_n)
 {
-    if (!ray || !a || !b || !t) return -1;
+    if (!ray || !a || !b || !t || ray_n < 4 || a_n < 2 || b_n < 2 || t_n < 1) return -1;
     gm_real tt = 0;
     int hit = gm_shape_ray2_segment(ray2_in(ray), v2(a), v2(b), &tt);
     t[0] = tt;
     return hit;
 }
 
-int ofx_gfx_shape_barycentric(const double* a, const double* b, const double* c,
-                              const double* p, double* out)
+int ofx_gfx_shape_barycentric(const double* a, int64_t a_n, const double* b, int64_t b_n,
+                              const double* c, int64_t c_n, const double* p, int64_t p_n,
+                              double* out, int64_t out_n)
 {
-    if (!a || !b || !c || !p || !out) return -1;
+    if (!a || !b || !c || !p || !out || a_n < 2 || b_n < 2 || c_n < 2 || p_n < 2 || out_n < 3) return -1;
     gm_real wa = 0, wb = 0, wc = 0;
     int rc = gm_shape_barycentric(v2(a), v2(b), v2(c), v2(p), &wa, &wb, &wc);
     out[0] = wa; out[1] = wb; out[2] = wc;
     return rc;
 }
 
-int ofx_gfx_shape_point_in_oriented_rect(const double* center, const double* u, const double* v,
-                                         double half_u, double half_v, const double* p)
+int ofx_gfx_shape_point_in_oriented_rect(const double* center, int64_t center_n,
+                                         const double* u, int64_t u_n, const double* v, int64_t v_n,
+                                         double half_u, double half_v, const double* p, int64_t p_n)
 {
-    if (!center || !u || !v || !p) return 0;
+    if (!center || !u || !v || !p || center_n < 2 || u_n < 2 || v_n < 2 || p_n < 2) return 0;
     return gm_shape_point_in_oriented_rect(v2(center), v2(u), v2(v), half_u, half_v, v2(p));
 }
 
-int ofx_gfx_shape_point_in_quad(const double* a, const double* b, const double* c,
-                                const double* d, const double* p)
+int ofx_gfx_shape_point_in_quad(const double* a, int64_t a_n, const double* b, int64_t b_n,
+                                const double* c, int64_t c_n, const double* d, int64_t d_n,
+                                const double* p, int64_t p_n)
 {
-    if (!a || !b || !c || !d || !p) return 0;
+    if (!a || !b || !c || !d || !p || a_n < 2 || b_n < 2 || c_n < 2 || d_n < 2 || p_n < 2) return 0;
     return gm_shape_point_in_quad(v2(a), v2(b), v2(c), v2(d), v2(p));
 }
 
@@ -530,15 +546,15 @@ double ofx_gfx_shape_polygon_signed_area(const double* pts, int nvalues)
     return a;
 }
 
-double ofx_gfx_shape_chamfer(const double* A, int nvalues_a, const double* B, int nvalues_b)
+double ofx_gfx_shape_chamfer(const double* A, int64_t nvalues_a, const double* B, int64_t nvalues_b)
 {
     if (!A || !B || nvalues_a < 3 || nvalues_b < 3) return 0.0;
-    return gm_shape_chamfer(A, nvalues_a / 3, B, nvalues_b / 3);
+    return gm_shape_chamfer(A, (int)(nvalues_a / 3), B, (int)(nvalues_b / 3));
 }
-double ofx_gfx_shape_hausdorff(const double* A, int nvalues_a, const double* B, int nvalues_b)
+double ofx_gfx_shape_hausdorff(const double* A, int64_t nvalues_a, const double* B, int64_t nvalues_b)
 {
     if (!A || !B || nvalues_a < 3 || nvalues_b < 3) return 0.0;
-    return gm_shape_hausdorff(A, nvalues_a / 3, B, nvalues_b / 3);
+    return gm_shape_hausdorff(A, (int)(nvalues_a / 3), B, (int)(nvalues_b / 3));
 }
 
 /* ── superficie: colormap e heatmap (gfxcolor.inc / gfx2d.inc) ───────────── */
@@ -546,10 +562,10 @@ double ofx_gfx_shape_hausdorff(const double* A, int nvalues_a, const double* B, 
 #include "gm_gfx_bitmap.h"
 #include "gm_gfx_surface.h"
 
-int ofx_gfx_colormap(double t, double* out)
+int ofx_gfx_colormap(double t, double* out, int64_t out_n)
 {
     unsigned char r = 0, g = 0, b = 0;
-    if (!out) return -1;
+    if (!out || out_n < 3) return -1;
     gm_gfx_colormap(t, &r, &g, &b);
     out[0] = r; out[1] = g; out[2] = b;
     return 0;
@@ -557,7 +573,7 @@ int ofx_gfx_colormap(double t, double* out)
 
 /* Heatmap: z[nx*ny] -> out() = nx*ny colori impacchettati (0x40000000|RGB), pronti per
  * CANVAS SET (stesso formato di GRAPHICS.RGB dopo il packing). */
-int ofx_gfx_heatmap(const double* z, int nx, int ny, double zmin, double zmax, double* out)
+int ofx_gfx_heatmap(const double* z, int64_t z_n, int nx, int ny, double zmin, double zmax, double* out, int64_t out_n)
 {
     if (!z || !out || nx <= 0 || ny <= 0) return -1;
     /* gm_gfx_heatmap libera out->data se non-NULL: il bitmap va azzerato (stack garbage
@@ -577,8 +593,8 @@ int ofx_gfx_heatmap(const double* z, int nx, int ny, double zmin, double zmax, d
 
 /* Volume 3D: convoluzione separabile con lo stesso kernel 1D sui tre assi. */
 #include "gm_gfx_image.h"
-int ofx_gfx_img3_convolve_sep(const double* in, int w, int h, int d,
-                              const double* k, int n, double* out)
+int ofx_gfx_img3_convolve_sep(const double* in, int64_t in_n, int w, int h, int d,
+                              const double* k, int64_t k_n, int n, double* out, int64_t out_n)
 {
     if (!in || !k || !out || w <= 0 || h <= 0 || d <= 0 || n <= 0) return -1;
     gm_image3 a, b;
@@ -615,7 +631,7 @@ static void bitmap_to_packed(const gm_bitmap* bm, double* out)
                           (uint32_t)bm->data[3 * i + 2]);
 }
 
-int ofx_gfx_bmp_gray_naive(const double* px, int w, int h, double* out)
+int ofx_gfx_bmp_gray_naive(const double* px, int64_t px_n, int w, int h, double* out, int64_t out_n)
 {
     if (!out) return -1;
     gm_bitmap bm = bitmap_from_packed(px, w, h);
@@ -626,7 +642,7 @@ int ofx_gfx_bmp_gray_naive(const double* px, int w, int h, double* out)
     return 0;
 }
 
-int ofx_gfx_bmp_gray_lum(const double* px, int w, int h, double* out)
+int ofx_gfx_bmp_gray_lum(const double* px, int64_t px_n, int w, int h, double* out, int64_t out_n)
 {
     if (!out) return -1;
     gm_bitmap bm = bitmap_from_packed(px, w, h);
@@ -637,7 +653,7 @@ int ofx_gfx_bmp_gray_lum(const double* px, int w, int h, double* out)
     return 0;
 }
 
-int ofx_gfx_bmp_convolve3(const double* px, int w, int h, const double* k, double divider, double* out)
+int ofx_gfx_bmp_convolve3(const double* px, int64_t px_n, int w, int h, const double* k, int64_t k_n, double divider, double* out, int64_t out_n)
 {
     if (!k || !out) return -1;
     int kern[9];
@@ -650,7 +666,7 @@ int ofx_gfx_bmp_convolve3(const double* px, int w, int h, const double* k, doubl
     return rc;
 }
 
-int ofx_gfx_bmp_brightness(const double* px, int w, int h, double brightness, double contrast, double* out)
+int ofx_gfx_bmp_brightness(const double* px, int64_t px_n, int w, int h, double brightness, double contrast, double* out, int64_t out_n)
 {
     if (!out) return -1;
     gm_bitmap bm = bitmap_from_packed(px, w, h);
@@ -662,7 +678,7 @@ int ofx_gfx_bmp_brightness(const double* px, int w, int h, double brightness, do
 }
 
 /* Luminanza RGB8 -> immagine float (gm_image) nell'array out(). */
-int ofx_gfx_bmp_to_image(const double* px, int w, int h, double* out)
+int ofx_gfx_bmp_to_image(const double* px, int64_t px_n, int w, int h, double* out, int64_t out_n)
 {
     if (!out) return -1;
     gm_bitmap bm = bitmap_from_packed(px, w, h);
@@ -678,32 +694,32 @@ int ofx_gfx_bmp_to_image(const double* px, int w, int h, double* out)
 
 /* ── statistiche/operazioni su immagini float (gfx2d.inc) ─────────────────── */
 
-double ofx_gfx_img_min(const double* in, int w, int h)
+double ofx_gfx_img_min(const double* in, int64_t in_n, int w, int h)
 {
     if (!in || w <= 0 || h <= 0) return 0.0;
     gm_image a = img_wrap(in, w, h);
     return gm_image_min(a);
 }
-double ofx_gfx_img_max(const double* in, int w, int h)
+double ofx_gfx_img_max(const double* in, int64_t in_n, int w, int h)
 {
     if (!in || w <= 0 || h <= 0) return 0.0;
     gm_image a = img_wrap(in, w, h);
     return gm_image_max(a);
 }
-double ofx_gfx_img_absmax(const double* in, int w, int h)
+double ofx_gfx_img_absmax(const double* in, int64_t in_n, int w, int h)
 {
     if (!in || w <= 0 || h <= 0) return 0.0;
     gm_image a = img_wrap(in, w, h);
     return gm_image_absmax(a);
 }
-int ofx_gfx_img_scale(double* d, int w, int h, double s)
+int ofx_gfx_img_scale(double* d, int64_t d_n, int w, int h, double s)
 {
     if (!d || w <= 0 || h <= 0) return -1;
     gm_image a = img_wrap(d, w, h);
     gm_image_scale(a, s);
     return 0;
 }
-int ofx_gfx_img_sub(const double* a, const double* b, int w, int h, double* out)
+int ofx_gfx_img_sub(const double* a, int64_t a_n, const double* b, int64_t b_n, int w, int h, double* out, int64_t out_n)
 {
     if (!a || !b || !out || w <= 0 || h <= 0) return -1;
     gm_image_sub(img_wrap(a, w, h), img_wrap(b, w, h), img_wrap(out, w, h));
@@ -713,7 +729,7 @@ int ofx_gfx_img_sub(const double* a, const double* b, int w, int h, double* out)
 /* ── helper puntuali (gfx2d.inc): pixel, fill, clone, volumi e bitmap ────── */
 
 /* Lettura di un pixel: fuori range -> 0 (nessun clamp silenzioso come gm_image_get). */
-double ofx_gfx_img_get(const double* in, int w, int h, int x, int y)
+double ofx_gfx_img_get(const double* in, int64_t in_n, int w, int h, int x, int y)
 {
     if (!in || w <= 0 || h <= 0) return 0.0;
     if (x < 0 || y < 0 || x >= w || y >= h) return 0.0;
@@ -721,14 +737,14 @@ double ofx_gfx_img_get(const double* in, int w, int h, int x, int y)
 }
 
 /* Scrittura di un pixel (fuori range = no-op, come gm_image_set). */
-int ofx_gfx_img_set(double* d, int w, int h, int x, int y, double v)
+int ofx_gfx_img_set(double* d, int64_t d_n, int w, int h, int x, int y, double v)
 {
     if (!d || w <= 0 || h <= 0) return -1;
     gm_image_set(img_wrap(d, w, h), x, y, v);
     return 0;
 }
 
-int ofx_gfx_img_fill(double* d, int w, int h, double v)
+int ofx_gfx_img_fill(double* d, int64_t d_n, int w, int h, double v)
 {
     if (!d || w <= 0 || h <= 0) return -1;
     gm_image_fill(img_wrap(d, w, h), v);
@@ -736,7 +752,7 @@ int ofx_gfx_img_fill(double* d, int w, int h, double v)
 }
 
 /* Copia (gm_image_clone): out() = copia indipendente di in(). */
-int ofx_gfx_img_clone(const double* in, int w, int h, double* out)
+int ofx_gfx_img_clone(const double* in, int64_t in_n, int w, int h, double* out, int64_t out_n)
 {
     if (!in || !out || w <= 0 || h <= 0) return -1;
     gm_image c = gm_image_clone(img_wrap(in, w, h));
@@ -753,21 +769,21 @@ static gm_image3 img3_wrap(const double* data, int w, int h, int d)
     return v;
 }
 
-double ofx_gfx_img3_get(const double* in, int w, int h, int d, int x, int y, int z)
+double ofx_gfx_img3_get(const double* in, int64_t in_n, int w, int h, int d, int x, int y, int z)
 {
     if (!in || w <= 0 || h <= 0 || d <= 0) return 0.0;
     if (x < 0 || y < 0 || z < 0 || x >= w || y >= h || z >= d) return 0.0;
     return gm_image3_get(img3_wrap(in, w, h, d), x, y, z);
 }
 
-int ofx_gfx_img3_set(double* v, int w, int h, int d, int x, int y, int z, double val)
+int ofx_gfx_img3_set(double* v, int64_t v_n, int w, int h, int d, int x, int y, int z, double val)
 {
     if (!v || w <= 0 || h <= 0 || d <= 0) return -1;
     gm_image3_set(img3_wrap(v, w, h, d), x, y, z, val);
     return 0;
 }
 
-int ofx_gfx_img3_fill(double* v, int w, int h, int d, double val)
+int ofx_gfx_img3_fill(double* v, int64_t v_n, int w, int h, int d, double val)
 {
     if (!v || w <= 0 || h <= 0 || d <= 0) return -1;
     gm_image3_fill(img3_wrap(v, w, h, d), val);
@@ -775,14 +791,14 @@ int ofx_gfx_img3_fill(double* v, int w, int h, int d, double val)
 }
 
 /* Bitmap RGB8 packed 0xRRGGBB (stesse semantiche di gm_bitmap_get/set/fill). */
-double ofx_gfx_bmp_get(const double* px, int w, int h, int x, int y)
+double ofx_gfx_bmp_get(const double* px, int64_t px_n, int w, int h, int x, int y)
 {
     if (!px || w <= 0 || h <= 0) return 0.0;
     if (x < 0 || y < 0 || x >= w || y >= h) return 0.0;
     return (double)((uint32_t)px[(size_t)y * (size_t)w + (size_t)x] & 0xFFFFFFu);
 }
 
-int ofx_gfx_bmp_set(double* px, int w, int h, int x, int y, double color)
+int ofx_gfx_bmp_set(double* px, int64_t px_n, int w, int h, int x, int y, double color)
 {
     if (!px || w <= 0 || h <= 0) return -1;
     if (x < 0 || y < 0 || x >= w || y >= h) return -1;
@@ -790,7 +806,7 @@ int ofx_gfx_bmp_set(double* px, int w, int h, int x, int y, double color)
     return 0;
 }
 
-int ofx_gfx_bmp_fill(double* px, int w, int h, double color)
+int ofx_gfx_bmp_fill(double* px, int64_t px_n, int w, int h, double color)
 {
     if (!px || w <= 0 || h <= 0) return -1;
     uint32_t c = (uint32_t)color & 0xFFFFFFu;
@@ -800,8 +816,8 @@ int ofx_gfx_bmp_fill(double* px, int w, int h, double color)
 
 /* Triangolo pieno/vuoto su immagine (in-place). I vertici viaggiano in array [x,y] perché
  * l'FFI ammette al massimo 8 slot nativi per chiamata (3 punti + immagine + v + fill = 8). */
-int ofx_gfx_img_draw_triangle(double* d, int w, int h, const double* a, const double* b,
-                              const double* c, double v, int fill)
+int ofx_gfx_img_draw_triangle(double* d, int64_t d_n, int w, int h, const double* a, int64_t a_n, const double* b, int64_t b_n,
+                              const double* c, int64_t c_n, double v, int fill)
 {
     if (!d || !a || !b || !c || w <= 0 || h <= 0) return -1;
     gm_image_draw_triangle(img_wrap(d, w, h),
@@ -811,15 +827,15 @@ int ofx_gfx_img_draw_triangle(double* d, int w, int h, const double* a, const do
 }
 
 /* Costruttori 2D (gfxshape.inc). */
-int ofx_gfx_shape_aabb2_make(const double* mn, const double* mx, double* out)
+int ofx_gfx_shape_aabb2_make(const double* mn, int64_t mn_n, const double* mx, int64_t mx_n, double* out, int64_t out_n)
 {
-    if (!mn || !mx || !out) return -1;
+    if (!mn || !mx || !out || mn_n < 2 || mx_n < 2 || out_n < 4) return -1;
     box2_out(gm_aabb2_make(v2(mn), v2(mx)), out);
     return 0;
 }
-int ofx_gfx_shape_ray2_at(const double* r, double t, double* out)
+int ofx_gfx_shape_ray2_at(const double* r, int64_t r_n, double t, double* out, int64_t out_n)
 {
-    if (!r || !out) return -1;
+    if (!r || !out || r_n < 4 || out_n < 2) return -1;
     v2_out(gm_ray2_at(ray2_in(r), t), out);
     return 0;
 }
