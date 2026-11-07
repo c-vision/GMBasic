@@ -361,43 +361,56 @@ END SUB
 SUB IncSymbols(files$(), nf AS LONG, basic$(), alias$(), BYREF nOut AS LONG)
   DIM i AS LONG, t AS STRING, u AS STRING, p AS LONG, rest AS STRING, line AS STRING
   DIM nb AS LONG, nm AS STRING, k AS LONG, av AS STRING, q1 AS LONG, q2 AS LONG, nl AS LONG
+  DIM off AS LONG
   nb = 0
   FOR i = 0 TO nf - 1
     t = IO.READFILE(files$(i))
+    ' DECLARE NATIVE (2026-11-06): ABI esatta, nessuna estensione automatica degli array.
+    ' Il prefisso NATIVE non cambia l'export: si normalizza per contare anche quelle righe
+    ' (prima il gate vedeva alias=0 sui pacchetti migrati a DECLARE NATIVE).
+    t = REPLACE$(t, "DECLARE NATIVE FUNCTION ", "DECLARE FUNCTION ")
+    t = REPLACE$(t, "DECLARE NATIVE SUB ", "DECLARE SUB ")
     u = UCASE$(t)
     p = 1
     DO
-      p = INSTR(p, u, "DECLARE FUNCTION ")
+      p = INSTR(p, u, "DECLARE ")
       IF p = 0 THEN EXIT DO
-      rest = MID$(t, p + 17)
-      k = 1
-      nm = ""
-      DO WHILE k <= LEN(rest) AND IsIdentCh(MID$(rest, k, 1))
-        nm = nm + MID$(rest, k, 1)
-        k = k + 1
-      LOOP
-      nl = INSTR(rest, CHR$(10))
-      IF nl = 0 THEN nl = LEN(rest) + 1
-      line = LEFT$(rest, nl - 1)
-      av = nm
-      q1 = INSTR(UCASE$(line), "ALIAS")
-      IF q1 > 0 THEN
-        av = ""
-        q2 = INSTR(q1, line, CHR$(34))
-        IF q2 > 0 THEN
-          k = q2 + 1
-          DO WHILE k <= LEN(line) AND MID$(line, k, 1) <> CHR$(34)
-            av = av + MID$(line, k, 1)
-            k = k + 1
-          LOOP
+      rest = MID$(t, p + 8)
+      off = 0
+      IF UCASE$(LEFT$(rest, 9)) = "FUNCTION " THEN off = 9
+      IF UCASE$(LEFT$(rest, 4)) = "SUB " THEN off = 4
+      IF off = 0 THEN
+        p = p + 8
+      ELSE
+        k = off + 1
+        nm = ""
+        DO WHILE k <= LEN(rest) AND IsIdentCh(MID$(rest, k, 1))
+          nm = nm + MID$(rest, k, 1)
+          k = k + 1
+        LOOP
+        nl = INSTR(rest, CHR$(10))
+        IF nl = 0 THEN nl = LEN(rest) + 1
+        line = LEFT$(rest, nl - 1)
+        av = nm
+        q1 = INSTR(UCASE$(line), "ALIAS")
+        IF q1 > 0 THEN
+          av = ""
+          q2 = INSTR(q1, line, CHR$(34))
+          IF q2 > 0 THEN
+            k = q2 + 1
+            DO WHILE k <= LEN(line) AND MID$(line, k, 1) <> CHR$(34)
+              av = av + MID$(line, k, 1)
+              k = k + 1
+            LOOP
+          END IF
         END IF
+        IF LEN(nm) > 0 AND nb < 8192 THEN
+          basic$(nb) = nm
+          alias$(nb) = av
+          nb = nb + 1
+        END IF
+        p = p + 8
       END IF
-      IF LEN(nm) > 0 AND nb < 8192 THEN
-        basic$(nb) = nm
-        alias$(nb) = av
-        nb = nb + 1
-      END IF
-      p = p + 17
     LOOP
   NEXT i
   nOut = nb
