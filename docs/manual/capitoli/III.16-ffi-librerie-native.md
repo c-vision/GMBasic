@@ -29,7 +29,7 @@ Senza `ALIAS` il simbolo nativo ha lo stesso nome della funzione BASIC.
 | `DOUBLE` | `double` |
 | `LONG`, `INTEGER`, `QUAD`, `BYTE` | `int64_t` (tutti a 8 byte) |
 | `STRING` | puntatore; ammesso come parametro e come ritorno |
-| array (`a() AS ...`) | puntatore al buffer + estensioni `d0..dN-1`; elementi solo `DOUBLE` o `LONG`/`QUAD` |
+| array (`a() AS ...`) | puntatore al buffer + estensioni `d0..dN-1`; elementi `DOUBLE`, interi a 8 byte, `BYTE`/`SBYTE` o un TYPE |
 | `BYREF` scalare | puntatore a un valore: solo `DOUBLE`/`LONG`/`QUAD`/`ULONG`/`UQUAD` |
 | struct/UDT | per valore, layout C esplicito (campi anche misti, 12/16 coperti) |
 
