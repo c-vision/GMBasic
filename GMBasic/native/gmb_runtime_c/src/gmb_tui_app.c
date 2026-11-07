@@ -891,6 +891,11 @@ void gmb_tui_draw_px_all(void)
                 if (!cc->coord_auto_w) cc->px_w = cc->width * cw;
                 if (!cc->coord_auto_h) cc->px_h = cc->height * ch;
             }
+            /* Altezza in CELLE (1) su un controllo con renderer pixel: il renderer lavora in
+             * pixel, quindi un h=1 lo fa sparire (STARRATING, SCROLLBAR, FKEYBAR…).
+             * Si usa l'altezza riga del tema. */
+            if (cc->px_h <= 2) { gmb_widget_style_t st = gmb_widget_style_current();
+                                 if (st.row_h > 0) cc->px_h = st.row_h; }
             if (cc->draw_px_fn) cc->draw_px_fn(cc->user, cc);
             else draw_cells_px_fallback(cc, cw, ch);
         }}

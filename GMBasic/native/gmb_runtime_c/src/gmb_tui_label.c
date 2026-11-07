@@ -33,8 +33,16 @@ static void label_draw(void* u, gmb_control_t* c, gmb_screen_buffer_t* buf)
 }
 static void label_draw_px(void* u, gmb_control_t* c)
 {
+    /* Un LABEL è testo, non una chip: prima passava da GMB_PX_STATUSBAR e disegnava un
+     * riquadro (bordo del tema) sopra il testo → le didascalie sembravano barrate. */
     gmb_label_t* l = (gmb_label_t*)u;
-    gmb_px_draw_ex(GMB_PX_STATUSBAR, c->x, c->y, c->width, c->height, l->text, NULL, 0, 0, 0, 0, NULL, 0, NULL, 0);
+    gmb_widget_style_t st = gmb_widget_style_current();
+    int bx = (c->px_w > 0) ? c->px_x : c->x;
+    int by = (c->px_h > 0) ? c->px_y : c->y;
+    int bh = (c->px_h > 2) ? c->px_h : (st.row_h > 0 ? st.row_h : 20);
+    int th = gmb_gfx_text_height_logical(); if (th <= 0) th = 16;
+    gmb_gfx_draw_text(l->text, bx, by + (bh - th) / 2, 0,
+                      (int)(0x40000000u | (st.text & 0xFFFFFFu)));
 }
 void gmb_label_init(gmb_label_t* l, int x, int y, int w, const char* text)
 {

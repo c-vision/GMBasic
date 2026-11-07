@@ -60,34 +60,24 @@ static bool starrating_mouse(void* u, gmb_control_t* c, const gmb_mouse_action_t
 }
 static void starrating_draw_px(void* u, gmb_control_t* c)
 {
-    /* Stelle come glifi del font (★/☆): nitide a ogni dimensione e colorate dal tema.
-     * Si disegna prima la riga "vuota" (bordo) e poi il prefisso pieno (accent) sopra. */
+    /* Valutazione disegnata in PRIMITIVE (pip tondi): i glifi ★/☆ non esistono nel font
+     * della UI e il controllo restava invisibile. Pieni = accent, vuoti = bordo. */
     gmb_star_rating_t* s = (gmb_star_rating_t*)u;
     gmb_widget_style_t st = gmb_widget_style_current();
     int n = s->max > 0 ? s->max : 5;
-    int x = c->x, y = c->y, w = c->width, h = c->height;
-    if (n < 1 || w < 8 || h < 6) return;
-    unsigned on = (st.accent & 0xFFFFFFu) ? st.accent : st.fill_press;
+    int x = (c->px_w > 0) ? c->px_x : c->x;
+    int y = (c->px_h > 0) ? c->px_y : c->y;
+    int h = (c->px_h > 2) ? c->px_h : (st.row_h > 0 ? st.row_h : 22);
+    if (n < 1) return;
+    int d = h - 4; if (d > 20) d = 20; if (d < 6) d = 6;
+    int gap = 7;
+    unsigned on  = (st.accent & 0xFFFFFFu) ? st.accent : st.fill_press;
     unsigned off = st.border;
-    char empty[256], filled[256];
-    static const char STAR_ON[]  = "\xE2\x98\x85";
-    static const char STAR_OFF[] = "\xE2\x98\x86";
-    int o = 0;
-    for (int i = 0; i < n && o + 4 < (int)sizeof(empty); i++) {
-        empty[o++] = STAR_OFF[0]; empty[o++] = STAR_OFF[1]; empty[o++] = STAR_OFF[2];
-    }
-    empty[o] = 0;
-    filled[0] = 0;
-    int th = GMB_GFX_TEXT_H(); if (th <= 0) th = 16;
-    int ty = y + (h - th) / 2;
-    GMB_GFX_DRAW_TEXT(empty, x, ty, 0, star_rgb(off));
-    if (s->value > 0) {
-        int o2 = 0, lim = s->value < n ? s->value : n;
-        for (int i = 0; i < lim && o2 + 4 < (int)sizeof(filled); i++) {
-            filled[o2++] = STAR_ON[0]; filled[o2++] = STAR_ON[1]; filled[o2++] = STAR_ON[2];
-        }
-        filled[o2] = 0;
-        GMB_GFX_DRAW_TEXT(filled, x, ty, 0, star_rgb(on));
+    int cy = y + (h - d) / 2;
+    for (int i = 0; i < n; i++) {
+        int cx = x + i * (d + gap);
+        if (i < s->value) gmb_gfx_fill_rounded_rect(cx, cy, d, d, d / 2, on | 0xFF000000u);
+        else              gmb_gfx_stroke_rounded_rect(cx, cy, d, d, d / 2, off | 0xFF000000u);
     }
 }
 void gmb_star_rating_init(gmb_star_rating_t* s, int x, int y, int w)
