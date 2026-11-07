@@ -69,37 +69,45 @@ BUTTON 1052, 736, 184, 38, "CANCEL"
 
 STATUSBAR 28, 800, 1224, "ready · 128 clients · build 4.2.1"
 
-' ── frame ────────────────────────────────────────────────────────────────
-FOR n = 1 TO 40 : WINDOW PUMP 16 : NEXT
+' ── Overlay grafico: ridisegnato a OGNI frame, altrimenti il redraw del form
+'    (qualsiasi evento "dirty": mouse, hover, timer) lo cancella. ──────────
+SUB PaintOverlay()
+  DIM i AS INTEGER
+  DIM sx AS INTEGER, sy AS INTEGER, px AS INTEGER, py AS INTEGER
+  ' Accento superiore (4px) + filo sotto l'header: non coprono alcun controllo.
+  LINE (0, 0)-(1279, 3), RGB(79, 195, 247), "BF"
+  LINE (0, 68)-(1279, 68), RGB(28, 72, 130), "BF"
 
-' ── GRAFICA CUSTOM (sopra il form) ───────────────────────────────────────
-' Accento superiore (4px) + filo sotto l'header: non coprono alcun controllo.
-LINE (0, 0)-(1279, 3), RGB(79, 195, 247), "BF"
-LINE (0, 68)-(1279, 68), RGB(28, 72, 130), "BF"
+  ' Sparkline REVENUE (ciano).
+  px = 44 : py = 210
+  FOR i = 0 TO 20
+    sx = 44 + i * 13
+    sy = 210 - INT(8 * SIN(i * 0.7) + i * 0.45)
+    IF i > 0 THEN LINE (px, py)-(sx, sy), RGB(79, 195, 247)
+    px = sx : py = sy
+  NEXT i
 
-' Sparkline REVENUE (ciano).
-px = 44 : py = 210
-FOR i = 0 TO 20
-  sx = 44 + i * 13
-  sy = 210 - INT(8 * SIN(i * 0.7) + i * 0.45)
-  IF i > 0 THEN LINE (px, py)-(sx, sy), RGB(79, 195, 247)
-  px = sx : py = sy
-NEXT i
+  ' Sparkline LATENCY (corallo).
+  px = 356 : py = 210
+  FOR i = 0 TO 20
+    sx = 356 + i * 13
+    sy = 210 - INT(5 * SIN(i * 0.5 + 1.4) + i * 0.5)
+    IF i > 0 THEN LINE (px, py)-(sx, sy), RGB(255, 107, 129)
+    px = sx : py = sy
+  NEXT i
 
-' Sparkline LATENCY (corallo).
-px = 356 : py = 210
-FOR i = 0 TO 20
-  sx = 356 + i * 13
-  sy = 210 - INT(5 * SIN(i * 0.5 + 1.4) + i * 0.5)
-  IF i > 0 THEN LINE (px, py)-(sx, sy), RGB(255, 107, 129)
-  px = sx : py = sy
-NEXT i
+  ' LED di stato sulle quattro card.
+  LINE (296, 100)-(303, 107), RGB(70, 220, 130), "BF"
+  LINE (608, 100)-(615, 107), RGB(255, 200, 70), "BF"
+  LINE (920, 100)-(927, 107), RGB(255, 107, 129), "BF"
+  LINE (1232, 100)-(1239, 107), RGB(70, 220, 130), "BF"
+END SUB
 
-' LED di stato sulle quattro card.
-LINE (296, 100)-(303, 107), RGB(70, 220, 130), "BF"
-LINE (608, 100)-(615, 107), RGB(255, 200, 70), "BF"
-LINE (920, 100)-(927, 107), RGB(255, 107, 129), "BF"
-LINE (1232, 100)-(1239, 107), RGB(70, 220, 130), "BF"
+' ── frame: pump del form e poi l'overlay (sopra i controlli) ──────────────
+FOR n = 1 TO 60
+  WINDOW PUMP 16
+  PaintOverlay()
+NEXT
 
 SAVE SCREEN "work/ops_dashboard.png"
 SCREEN 0
