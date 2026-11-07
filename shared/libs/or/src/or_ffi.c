@@ -12,6 +12,7 @@
 #include "gor_pack.h"
 
 #include <stdlib.h>
+#include <stdint.h>
 
 typedef long long i64;
 
@@ -34,7 +35,7 @@ static void out_iarr(const int *a, i64 *out, i64 n)
 
 /* ═══════════════════════════════ PACK ═══════════════════════════════ */
 
-i64 ofx_bin_packing(const double *items, i64 n, double cap, i64 algo, i64 *bin_of)
+i64 ofx_bin_packing(const double *items, int64_t items_n, i64 n, double cap, i64 algo, i64 *bin_of, int64_t bin_of_n)
 {
     int *b;
     int r;
@@ -47,20 +48,20 @@ i64 ofx_bin_packing(const double *items, i64 n, double cap, i64 algo, i64 *bin_o
     return (i64)r;
 }
 
-i64 ofx_bin_packing_lb(const double *items, i64 n, double cap)
+i64 ofx_bin_packing_lb(const double *items, int64_t items_n, i64 n, double cap)
 {
     if (n <= 0 || items == NULL) return -1;
     return (i64)gor_bin_packing_lb((int)n, (const gor_real *)items, (gor_real)cap);
 }
 
-double ofx_knapsack_frac(const double *w, const double *v, i64 n, double cap, double *x)
+double ofx_knapsack_frac(const double *w, int64_t w_n, const double *v, int64_t v_n, i64 n, double cap, double *x, int64_t x_n)
 {
     if (n <= 0 || w == NULL || v == NULL || x == NULL) return -1.0;
     return (double)gor_knapsack_frac((int)n, (const gor_real *)w, (const gor_real *)v,
                                      (gor_real)cap, (gor_real *)x);
 }
 
-double ofx_knapsack_01(const double *w, const double *v, i64 n, i64 cap, i64 *take)
+double ofx_knapsack_01(const double *w, int64_t w_n, const double *v, int64_t v_n, i64 n, i64 cap, i64 *take, int64_t take_n)
 {
     int *t;
     double r;
@@ -73,7 +74,7 @@ double ofx_knapsack_01(const double *w, const double *v, i64 n, i64 cap, i64 *ta
     return r;
 }
 
-double ofx_knapsack_01_mitm(const double *w, const double *v, i64 n, double cap, i64 *take)
+double ofx_knapsack_01_mitm(const double *w, int64_t w_n, const double *v, int64_t v_n, i64 n, double cap, i64 *take, int64_t take_n)
 {
     int *t;
     double r;
@@ -87,7 +88,7 @@ double ofx_knapsack_01_mitm(const double *w, const double *v, i64 n, double cap,
     return r;
 }
 
-double ofx_knapsack_unbounded(const double *w, const double *v, i64 n, i64 cap, i64 *counts)
+double ofx_knapsack_unbounded(const double *w, int64_t w_n, const double *v, int64_t v_n, i64 n, i64 cap, i64 *counts, int64_t counts_n)
 {
     int *c;
     double r;
@@ -101,7 +102,7 @@ double ofx_knapsack_unbounded(const double *w, const double *v, i64 n, i64 cap, 
     return r;
 }
 
-i64 ofx_subset_sum(const double *items, i64 n, double target, i64 *take)
+i64 ofx_subset_sum(const double *items, int64_t items_n, i64 n, double target, i64 *take, int64_t take_n)
 {
     int *t;
     int r;
@@ -114,7 +115,7 @@ i64 ofx_subset_sum(const double *items, i64 n, double target, i64 *take)
     return (i64)r;
 }
 
-i64 ofx_cutting_stock(const double *pieces, i64 n, double stock, i64 *pattern)
+i64 ofx_cutting_stock(const double *pieces, int64_t pieces_n, i64 n, double stock, i64 *pattern, int64_t pattern_n)
 {
     int *p;
     int r;
@@ -127,7 +128,7 @@ i64 ofx_cutting_stock(const double *pieces, i64 n, double stock, i64 *pattern)
     return (i64)r;
 }
 
-i64 ofx_bin_packing_3d(const double *items, i64 n, double W, double H, double D, i64 *bin_of)
+i64 ofx_bin_packing_3d(const double *items, int64_t items_n, i64 n, double W, double H, double D, i64 *bin_of, int64_t bin_of_n)
 {
     int *b;
     int r;
@@ -143,7 +144,7 @@ i64 ofx_bin_packing_3d(const double *items, i64 n, double W, double H, double D,
 
 /* ═══════════════════════════════ ASSIGN ═══════════════════════════════ */
 
-double ofx_hungarian(const double *cost, i64 n, i64 m, i64 *assignment)
+double ofx_hungarian(const double *cost, int64_t cost_n, i64 n, i64 m, i64 *assignment, int64_t assignment_n)
 {
     int *a;
     double r;
@@ -156,7 +157,7 @@ double ofx_hungarian(const double *cost, i64 n, i64 m, i64 *assignment)
     return r;
 }
 
-double ofx_auction(const double *cost, i64 n, i64 m, i64 *assignment, double eps)
+double ofx_auction(const double *cost, int64_t cost_n, i64 n, i64 m, i64 *assignment, int64_t assignment_n, double eps)
 {
     int *a;
     double r;
@@ -169,7 +170,7 @@ double ofx_auction(const double *cost, i64 n, i64 m, i64 *assignment, double eps
     return r;
 }
 
-double ofx_bottleneck(const double *cost, i64 n, i64 *assignment)
+double ofx_bottleneck(const double *cost, int64_t cost_n, i64 n, i64 *assignment, int64_t assignment_n)
 {
     int *a;
     double r;
@@ -182,7 +183,7 @@ double ofx_bottleneck(const double *cost, i64 n, i64 *assignment)
     return r;
 }
 
-i64 ofx_stable_marriage(const i64 *pref_men, const i64 *pref_women, i64 n, i64 *match_men)
+i64 ofx_stable_marriage(const i64 *pref_men, int64_t pref_men_n, const i64 *pref_women, int64_t pref_women_n, i64 n, i64 *match_men, int64_t match_men_n)
 {
     int *pm, *pw, *mm;
     gor_status r;
@@ -199,8 +200,8 @@ i64 ofx_stable_marriage(const i64 *pref_men, const i64 *pref_women, i64 n, i64 *
     return (r == GOR_OK) ? 1 : 0;
 }
 
-double ofx_transport_vam(const double *supply, const double *demand, const double *cost,
-                         i64 m, i64 n, double *x)
+double ofx_transport_vam(const double *supply, int64_t supply_n, const double *demand, int64_t demand_n, const double *cost, int64_t cost_n,
+                         i64 m, i64 n, double *x, int64_t x_n)
 {
     if (m <= 0 || n <= 0 || supply == NULL || demand == NULL || cost == NULL || x == NULL) return -1.0;
     return (double)gor_transport_vam((int)m, (int)n, (const gor_real *)supply,
@@ -208,8 +209,8 @@ double ofx_transport_vam(const double *supply, const double *demand, const doubl
                                      (gor_real *)x);
 }
 
-double ofx_transport_northwest(const double *supply, const double *demand, const double *cost,
-                               i64 m, i64 n, double *x)
+double ofx_transport_northwest(const double *supply, int64_t supply_n, const double *demand, int64_t demand_n, const double *cost, int64_t cost_n,
+                               i64 m, i64 n, double *x, int64_t x_n)
 {
     if (m <= 0 || n <= 0 || supply == NULL || demand == NULL || cost == NULL || x == NULL) return -1.0;
     return (double)gor_transport_northwest((int)m, (int)n, (const gor_real *)supply,
@@ -217,8 +218,8 @@ double ofx_transport_northwest(const double *supply, const double *demand, const
                                            (gor_real *)x);
 }
 
-double ofx_transport_least_cost(const double *supply, const double *demand, const double *cost,
-                                i64 m, i64 n, double *x)
+double ofx_transport_least_cost(const double *supply, int64_t supply_n, const double *demand, int64_t demand_n, const double *cost, int64_t cost_n,
+                                i64 m, i64 n, double *x, int64_t x_n)
 {
     if (m <= 0 || n <= 0 || supply == NULL || demand == NULL || cost == NULL || x == NULL) return -1.0;
     return (double)gor_transport_least_cost((int)m, (int)n, (const gor_real *)supply,
@@ -226,8 +227,8 @@ double ofx_transport_least_cost(const double *supply, const double *demand, cons
                                             (gor_real *)x);
 }
 
-double ofx_transport_modi(const double *supply, const double *demand, const double *cost,
-                          i64 m, i64 n, double *x, i64 maxit)
+double ofx_transport_modi(const double *supply, int64_t supply_n, const double *demand, int64_t demand_n, const double *cost, int64_t cost_n,
+                          i64 m, i64 n, double *x, int64_t x_n, i64 maxit)
 {
     if (m <= 0 || n <= 0 || supply == NULL || demand == NULL || cost == NULL || x == NULL) return -1.0;
     return (double)gor_transport_modi((int)m, (int)n, (const gor_real *)supply,
@@ -235,7 +236,7 @@ double ofx_transport_modi(const double *supply, const double *demand, const doub
                                       (gor_real *)x, (int)maxit);
 }
 
-double ofx_qap_tabu(const double *A, const double *B, i64 n, i64 *p, i64 maxit, i64 seed)
+double ofx_qap_tabu(const double *A, int64_t A_n, const double *B, int64_t B_n, i64 n, i64 *p, int64_t p_n, i64 maxit, i64 seed)
 {
     int *pp;
     double r;
@@ -251,8 +252,8 @@ double ofx_qap_tabu(const double *A, const double *B, i64 n, i64 *p, i64 maxit, 
 
 /* ═══════════════════════════════ COVER ═══════════════════════════════ */
 
-double ofx_set_cover(const i64 *elem, const double *cost, i64 m, i64 n,
-                     i64 *chosen, i64 *n_chosen)
+double ofx_set_cover(const i64 *elem, int64_t elem_n, const double *cost, int64_t cost_n, i64 m, i64 n,
+                     i64 *chosen, int64_t chosen_n, i64 *n_chosen, int64_t n_chosen_n)
 {
     int *e, *c;
     double r;
@@ -269,8 +270,8 @@ double ofx_set_cover(const i64 *elem, const double *cost, i64 m, i64 n,
     return r;
 }
 
-double ofx_set_cover_soft(const i64 *elem, const double *cost, i64 m, i64 n,
-                          const i64 *chosen, double pen, i64 *uncovered)
+double ofx_set_cover_soft(const i64 *elem, int64_t elem_n, const double *cost, int64_t cost_n, i64 m, i64 n,
+                          const i64 *chosen, int64_t chosen_n, double pen, i64 *uncovered, int64_t uncovered_n)
 {
     int *e;
     char *ch;
@@ -290,8 +291,8 @@ double ofx_set_cover_soft(const i64 *elem, const double *cost, i64 m, i64 n,
     return r;
 }
 
-double ofx_set_cover_pricing(const double *y, i64 m, double base_cost, double cost_per_elem,
-                             i64 *chosen_set)
+double ofx_set_cover_pricing(const double *y, int64_t y_n, i64 m, double base_cost, double cost_per_elem,
+                             i64 *chosen_set, int64_t chosen_set_n)
 {
     char *c;
     double r;
@@ -306,8 +307,8 @@ double ofx_set_cover_pricing(const double *y, i64 m, double base_cost, double co
     return r;
 }
 
-double ofx_set_cover_sa(const i64 *elem, const double *cost, i64 m, i64 n,
-                        double pen, i64 maxit, i64 seed, i64 *chosen)
+double ofx_set_cover_sa(const i64 *elem, int64_t elem_n, const double *cost, int64_t cost_n, i64 m, i64 n,
+                        double pen, i64 maxit, i64 seed, i64 *chosen, int64_t chosen_n)
 {
     int *e;
     char *ch;
@@ -326,8 +327,8 @@ double ofx_set_cover_sa(const i64 *elem, const double *cost, i64 m, i64 n,
     return r;
 }
 
-double ofx_set_cover_local(const i64 *elem, const double *cost, i64 m, i64 n,
-                           i64 *chosen, i64 *n_chosen, i64 maxit)
+double ofx_set_cover_local(const i64 *elem, int64_t elem_n, const double *cost, int64_t cost_n, i64 m, i64 n,
+                           i64 *chosen, int64_t chosen_n, i64 *n_chosen, int64_t n_chosen_n, i64 maxit)
 {
     int *e, *c;
     double r;
@@ -347,8 +348,8 @@ double ofx_set_cover_local(const i64 *elem, const double *cost, i64 m, i64 n,
     return r;
 }
 
-double ofx_set_cover_grasp(const i64 *elem, const double *cost, i64 m, i64 n,
-                           double alpha, i64 maxit, i64 *chosen, i64 *n_chosen)
+double ofx_set_cover_grasp(const i64 *elem, int64_t elem_n, const double *cost, int64_t cost_n, i64 m, i64 n,
+                           double alpha, i64 maxit, i64 *chosen, int64_t chosen_n, i64 *n_chosen, int64_t n_chosen_n)
 {
     int *e, *c;
     double r;
@@ -367,8 +368,8 @@ double ofx_set_cover_grasp(const i64 *elem, const double *cost, i64 m, i64 n,
 }
 
 /* alphas() = [nalpha, a0, a1, ...] (nalpha compatto in testa; seed fisso). */
-double ofx_set_cover_rgrasp(const i64 *elem, const double *cost, i64 m, i64 n,
-                            const double *alphas, i64 maxit, i64 *chosen, i64 *n_chosen)
+double ofx_set_cover_rgrasp(const i64 *elem, int64_t elem_n, const double *cost, int64_t cost_n, i64 m, i64 n,
+                            const double *alphas, int64_t alphas_n, i64 maxit, i64 *chosen, int64_t chosen_n, i64 *n_chosen, int64_t n_chosen_n)
 {
     int *e, *c;
     double r;
@@ -391,7 +392,7 @@ double ofx_set_cover_rgrasp(const i64 *elem, const double *cost, i64 m, i64 n,
     return r;
 }
 
-i64 ofx_max_coverage(const i64 *elem, i64 m, i64 n, i64 k, i64 *chosen, i64 *n_chosen)
+i64 ofx_max_coverage(const i64 *elem, int64_t elem_n, i64 m, i64 n, i64 k, i64 *chosen, int64_t chosen_n, i64 *n_chosen, int64_t n_chosen_n)
 {
     int *e, *c;
     int nc = 0;
@@ -408,7 +409,7 @@ i64 ofx_max_coverage(const i64 *elem, i64 m, i64 n, i64 k, i64 *chosen, i64 *n_c
     return (i64)r;
 }
 
-double ofx_pmedian(const double *dist, i64 n, i64 p, i64 *medians, i64 *assign, i64 maxit)
+double ofx_pmedian(const double *dist, int64_t dist_n, i64 n, i64 p, i64 *medians, int64_t medians_n, i64 *assign, int64_t assign_n, i64 maxit)
 {
     int *md, *as;
     double r;
@@ -424,7 +425,7 @@ double ofx_pmedian(const double *dist, i64 n, i64 p, i64 *medians, i64 *assign, 
     return r;
 }
 
-double ofx_pcenter(const double *dist, i64 n, i64 p, i64 *medians)
+double ofx_pcenter(const double *dist, int64_t dist_n, i64 n, i64 p, i64 *medians, int64_t medians_n)
 {
     int *md;
     double r;
@@ -437,7 +438,7 @@ double ofx_pcenter(const double *dist, i64 n, i64 p, i64 *medians)
     return r;
 }
 
-i64 ofx_vertex_cover(const i64 *edges, i64 n, i64 ne, i64 *cover)
+i64 ofx_vertex_cover(const i64 *edges, int64_t edges_n, i64 n, i64 ne, i64 *cover, int64_t cover_n)
 {
     int *e, *c;
     int r;
@@ -452,7 +453,7 @@ i64 ofx_vertex_cover(const i64 *edges, i64 n, i64 ne, i64 *cover)
     return (i64)r;
 }
 
-i64 ofx_hitting_set(const i64 *elem, i64 m, i64 n, i64 *chosen, i64 *n_chosen)
+i64 ofx_hitting_set(const i64 *elem, int64_t elem_n, i64 m, i64 n, i64 *chosen, int64_t chosen_n, i64 *n_chosen, int64_t n_chosen_n)
 {
     int *e, *c;
     int nc = 0;
@@ -469,8 +470,8 @@ i64 ofx_hitting_set(const i64 *elem, i64 m, i64 n, i64 *chosen, i64 *n_chosen)
     return (i64)r;
 }
 
-double ofx_facility_location(const double *open_cost, const double *conn_cost, i64 m, i64 n,
-                             i64 *open)
+double ofx_facility_location(const double *open_cost, int64_t open_cost_n, const double *conn_cost, int64_t conn_cost_n, i64 m, i64 n,
+                             i64 *open, int64_t open_n)
 {
     int *o;
     double r;
@@ -484,8 +485,8 @@ double ofx_facility_location(const double *open_cost, const double *conn_cost, i
     return r;
 }
 
-double ofx_kmeans(const double *points, i64 n, i64 dim, i64 k, double *centroids,
-                  i64 *labels, i64 maxit)
+double ofx_kmeans(const double *points, int64_t points_n, i64 n, i64 dim, i64 k, double *centroids, int64_t centroids_n,
+                  i64 *labels, int64_t labels_n, i64 maxit)
 {
     int *l;
     double r;
@@ -501,8 +502,8 @@ double ofx_kmeans(const double *points, i64 n, i64 dim, i64 k, double *centroids
 
 /* ═══════════════════════════════ CP ═══════════════════════════════ */
 
-i64 ofx_sat(const i64 *clauses, const i64 *clause_start, const i64 *clause_len,
-            i64 nvars, i64 nclauses, i64 *assignment)
+i64 ofx_sat(const i64 *clauses, int64_t clauses_n, const i64 *clause_start, int64_t clause_start_n, const i64 *clause_len, int64_t clause_len_n,
+            i64 nvars, i64 nclauses, i64 *assignment, int64_t assignment_n)
 {
     int *cl, *cs, *cln, *as;
     int total, r;
@@ -523,7 +524,7 @@ i64 ofx_sat(const i64 *clauses, const i64 *clause_start, const i64 *clause_len,
     return (i64)r;
 }
 
-i64 ofx_alldiff(const i64 *dom, i64 n, i64 D, i64 *sol)
+i64 ofx_alldiff(const i64 *dom, int64_t dom_n, i64 n, i64 D, i64 *sol, int64_t sol_n)
 {
     int *d, *s;
     int r;
@@ -538,7 +539,7 @@ i64 ofx_alldiff(const i64 *dom, i64 n, i64 D, i64 *sol)
     return (i64)r;
 }
 
-i64 ofx_cp_binary(const i64 *dom, const i64 *allowed, i64 n, i64 D, i64 *sol)
+i64 ofx_cp_binary(const i64 *dom, int64_t dom_n, const i64 *allowed, int64_t allowed_n, i64 n, i64 D, i64 *sol, int64_t sol_n)
 {
     int *d, *a, *s;
     int r;

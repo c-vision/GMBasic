@@ -4,7 +4,7 @@
 NAMESPACE GFXSHAPE
 
 ' Punto in un poligono (even-odd, come il ray-casting classico).
-DECLARE FUNCTION POINTINPOLYGON LIB "gmbgraphics" ALIAS "ofx_gfx_point_in_polygon" (x AS DOUBLE, y AS DOUBLE, pts() AS DOUBLE, n AS LONG) AS LONG
+DECLARE FUNCTION POINTINPOLYGON LIB "gmbgraphics" ALIAS "ofx_gfx_point_in_polygon" (x AS DOUBLE, y AS DOUBLE, pts() AS DOUBLE) AS LONG
 ' Punto in un cerchio (bordo incluso).
 DECLARE FUNCTION POINTINCIRCLE LIB "gmbgraphics" ALIAS "ofx_gfx_point_in_circle" (x AS DOUBLE, y AS DOUBLE, cx AS DOUBLE, cy AS DOUBLE, r AS DOUBLE) AS LONG
 ' Punto in un rettangolo (vertici in qualunque ordine).
@@ -12,15 +12,15 @@ DECLARE FUNCTION POINTINRECT LIB "gmbgraphics" ALIAS "ofx_gfx_point_in_rect" (x 
 ' Punto in un triangolo (baricentrico).
 DECLARE FUNCTION POINTINTRIANGLE LIB "gmbgraphics" ALIAS "ofx_gfx_point_in_triangle" (x AS DOUBLE, y AS DOUBLE, ax AS DOUBLE, ay AS DOUBLE, bx AS DOUBLE, by AS DOUBLE, cx AS DOUBLE, cy AS DOUBLE) AS LONG
 ' Area del poligono (shoelace, sempre >= 0).
-DECLARE FUNCTION POLYGONAREA LIB "gmbgraphics" ALIAS "ofx_gfx_polygon_area" (pts() AS DOUBLE, n AS LONG) AS DOUBLE
+DECLARE FUNCTION POLYGONAREA LIB "gmbgraphics" ALIAS "ofx_gfx_polygon_area" (pts() AS DOUBLE) AS DOUBLE
 ' Baricentro dell'area: out(0)=x, out(1)=y.
-DECLARE FUNCTION POLYGONCENTROID LIB "gmbgraphics" ALIAS "ofx_gfx_polygon_centroid" (pts() AS DOUBLE, n AS LONG, out() AS DOUBLE) AS LONG
+DECLARE FUNCTION POLYGONCENTROID LIB "gmbgraphics" ALIAS "ofx_gfx_polygon_centroid" (pts() AS DOUBLE, out() AS DOUBLE) AS LONG
 ' Punto più vicino sul segmento (a,b): out(0)=x, out(1)=y.
 DECLARE FUNCTION CLOSESTPOINTSEG LIB "gmbgraphics" ALIAS "ofx_gfx_closest_point_segment" (px AS DOUBLE, py AS DOUBLE, ax AS DOUBLE, ay AS DOUBLE, bx AS DOUBLE, by AS DOUBLE, out() AS DOUBLE) AS LONG
 
 ' ── AABB 2D ───────────────────────────────────────────────────────────────
 ' AABB = [minx,miny,maxx,maxy]; n = numero di VALORI del poligono/point-cloud.
-DECLARE FUNCTION AABBFROMPOINTS2D LIB "gmbgraphics" ALIAS "ofx_gfx_shape_aabb_from_points" (pts() AS DOUBLE, n AS LONG, out() AS DOUBLE) AS LONG
+DECLARE FUNCTION AABBFROMPOINTS2D LIB "gmbgraphics" ALIAS "ofx_gfx_shape_aabb_from_points" (pts() AS DOUBLE, out() AS DOUBLE) AS LONG
 DECLARE FUNCTION AABBMERGE2D LIB "gmbgraphics" ALIAS "ofx_gfx_shape_aabb_merge" (a() AS DOUBLE, b() AS DOUBLE, out() AS DOUBLE) AS LONG
 DECLARE FUNCTION AABBCENTER2D LIB "gmbgraphics" ALIAS "ofx_gfx_shape_aabb_center" (a() AS DOUBLE, out() AS DOUBLE) AS LONG
 DECLARE FUNCTION AABBEXTENTS2D LIB "gmbgraphics" ALIAS "ofx_gfx_shape_aabb_extents" (a() AS DOUBLE, out() AS DOUBLE) AS LONG
@@ -49,7 +49,7 @@ DECLARE FUNCTION BARYCENTRIC LIB "gmbgraphics" ALIAS "ofx_gfx_shape_barycentric"
 ' Rettangolo orientato (centro, assi u/v ortonormali, semi-lati) e quadrilatero (4 vertici).
 DECLARE FUNCTION POINTINORIENTEDRECT LIB "gmbgraphics" ALIAS "ofx_gfx_shape_point_in_oriented_rect" (center() AS DOUBLE, u() AS DOUBLE, v() AS DOUBLE, half_u AS DOUBLE, half_v AS DOUBLE, p() AS DOUBLE) AS LONG
 DECLARE FUNCTION POINTINQUAD LIB "gmbgraphics" ALIAS "ofx_gfx_shape_point_in_quad" (a() AS DOUBLE, b() AS DOUBLE, c() AS DOUBLE, d() AS DOUBLE, p() AS DOUBLE) AS LONG
-DECLARE FUNCTION POLYGONSIGNEDAREA LIB "gmbgraphics" ALIAS "ofx_gfx_shape_polygon_signed_area" (pts() AS DOUBLE, n AS LONG) AS DOUBLE
+DECLARE FUNCTION POLYGONSIGNEDAREA LIB "gmbgraphics" ALIAS "ofx_gfx_shape_polygon_signed_area" (pts() AS DOUBLE) AS DOUBLE
 
 ' ── esagono regolare ──────────────────────────────────────────────────────
 DECLARE FUNCTION HEXAREA LIB "gmbgraphics" ALIAS "ofx_gfx_shape_hex_area" (side AS DOUBLE) AS DOUBLE
@@ -59,8 +59,8 @@ DECLARE FUNCTION HEXINNER LIB "gmbgraphics" ALIAS "ofx_gfx_shape_hex_inner" (sid
 
 ' ── point cloud 3D ────────────────────────────────────────────────────────
 ' A/B = array piatti x,y,z,…; n = numero di VALORI (multipli di 3).
-DECLARE FUNCTION CHAMFER LIB "gmbgraphics" ALIAS "ofx_gfx_shape_chamfer" (A() AS DOUBLE, n AS LONG, B() AS DOUBLE, m AS LONG) AS DOUBLE
-DECLARE FUNCTION HAUSDORFF LIB "gmbgraphics" ALIAS "ofx_gfx_shape_hausdorff" (A() AS DOUBLE, n AS LONG, B() AS DOUBLE, m AS LONG) AS DOUBLE
+DECLARE FUNCTION CHAMFER LIB "gmbgraphics" ALIAS "ofx_gfx_shape_chamfer" (A() AS DOUBLE, B() AS DOUBLE) AS DOUBLE
+DECLARE FUNCTION HAUSDORFF LIB "gmbgraphics" ALIAS "ofx_gfx_shape_hausdorff" (A() AS DOUBLE, B() AS DOUBLE) AS DOUBLE
 
 ' Costruttori 2D (AABB da min/max, punto al parametro t sul raggio).
 DECLARE FUNCTION AABB2MAKE LIB "gmbgraphics" ALIAS "ofx_gfx_shape_aabb2_make" (mn() AS DOUBLE, mx() AS DOUBLE, out() AS DOUBLE) AS LONG

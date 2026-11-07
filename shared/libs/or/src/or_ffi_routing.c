@@ -6,6 +6,7 @@
 #include "gor_routing.h"
 
 #include <stdlib.h>
+#include <stdint.h>
 
 typedef long long i64;
 
@@ -29,7 +30,7 @@ static void out_iarr(const int *a, i64 *out, i64 n)
 
 /* ── TSP ─────────────────────────────────────────────────────────────────── */
 
-double ofx_tsp_nn(const double *dist, i64 n, i64 *tour)
+double ofx_tsp_nn(const double *dist, int64_t dist_n, i64 n, i64 *tour, int64_t tour_n)
 {
     int *t; double r;
     if (n <= 0 || dist == NULL || tour == NULL) return -1.0;
@@ -41,7 +42,7 @@ double ofx_tsp_nn(const double *dist, i64 n, i64 *tour)
     return r;
 }
 
-double ofx_tsp_2opt(const double *dist, i64 n, i64 *tour, i64 maxit)
+double ofx_tsp_2opt(const double *dist, int64_t dist_n, i64 n, i64 *tour, int64_t tour_n, i64 maxit)
 {
     int *t; double r;
     if (n <= 0 || dist == NULL || tour == NULL) return -1.0;
@@ -54,7 +55,7 @@ double ofx_tsp_2opt(const double *dist, i64 n, i64 *tour, i64 maxit)
     return r;
 }
 
-double ofx_tsp_tour_cost(const double *dist, i64 n, const i64 *tour)
+double ofx_tsp_tour_cost(const double *dist, int64_t dist_n, i64 n, const i64 *tour, int64_t tour_n)
 {
     int *t; double r;
     if (n <= 0 || dist == NULL || tour == NULL) return -1.0;
@@ -65,7 +66,7 @@ double ofx_tsp_tour_cost(const double *dist, i64 n, const i64 *tour)
     return r;
 }
 
-double ofx_tsp_extra_mileage(const double *dist, i64 n, i64 *tour)
+double ofx_tsp_extra_mileage(const double *dist, int64_t dist_n, i64 n, i64 *tour, int64_t tour_n)
 {
     int *t; double r;
     if (n <= 0 || dist == NULL || tour == NULL) return -1.0;
@@ -77,7 +78,7 @@ double ofx_tsp_extra_mileage(const double *dist, i64 n, i64 *tour)
     return r;
 }
 
-double ofx_tsp_grasp(const double *dist, i64 n, i64 *tour, i64 maxit)
+double ofx_tsp_grasp(const double *dist, int64_t dist_n, i64 n, i64 *tour, int64_t tour_n, i64 maxit)
 {
     int *t; double r;
     if (n <= 0 || dist == NULL || tour == NULL) return -1.0;
@@ -89,7 +90,7 @@ double ofx_tsp_grasp(const double *dist, i64 n, i64 *tour, i64 maxit)
     return r;
 }
 
-double ofx_tsp_vns(const double *dist, i64 n, i64 *tour, i64 maxit)
+double ofx_tsp_vns(const double *dist, int64_t dist_n, i64 n, i64 *tour, int64_t tour_n, i64 maxit)
 {
     int *t; double r;
     if (n <= 0 || dist == NULL || tour == NULL) return -1.0;
@@ -102,7 +103,7 @@ double ofx_tsp_vns(const double *dist, i64 n, i64 *tour, i64 maxit)
     return r;
 }
 
-double ofx_tsp_3opt(const double *dist, i64 n, i64 *tour, i64 maxit)
+double ofx_tsp_3opt(const double *dist, int64_t dist_n, i64 n, i64 *tour, int64_t tour_n, i64 maxit)
 {
     int *t; double r;
     if (n <= 0 || dist == NULL || tour == NULL) return -1.0;
@@ -115,7 +116,7 @@ double ofx_tsp_3opt(const double *dist, i64 n, i64 *tour, i64 maxit)
     return r;
 }
 
-double ofx_tsp_sa(const double *dist, i64 n, i64 *tour, double t0, double cooling, i64 iters)
+double ofx_tsp_sa(const double *dist, int64_t dist_n, i64 n, i64 *tour, int64_t tour_n, double t0, double cooling, i64 iters)
 {
     int *t; double r;
     if (n <= 0 || dist == NULL || tour == NULL) return -1.0;
@@ -129,7 +130,7 @@ double ofx_tsp_sa(const double *dist, i64 n, i64 *tour, double t0, double coolin
     return r;
 }
 
-double ofx_tsp_tabu(const double *dist, i64 n, i64 *tour, i64 maxit, i64 tenure_kind)
+double ofx_tsp_tabu(const double *dist, int64_t dist_n, i64 n, i64 *tour, int64_t tour_n, i64 maxit, i64 tenure_kind)
 {
     int *t; double r;
     if (n <= 0 || dist == NULL || tour == NULL) return -1.0;
@@ -143,7 +144,7 @@ double ofx_tsp_tabu(const double *dist, i64 n, i64 *tour, i64 maxit, i64 tenure_
     return r;
 }
 
-double ofx_tsp_one_tree(const double *dist, i64 n, i64 root, i64 *edges)
+double ofx_tsp_one_tree(const double *dist, int64_t dist_n, i64 n, i64 root, i64 *edges, int64_t edges_n)
 {
     int *e; double r;
     if (n <= 0 || dist == NULL || edges == NULL) return -1.0;
@@ -155,13 +156,13 @@ double ofx_tsp_one_tree(const double *dist, i64 n, i64 root, i64 *edges)
     return r;
 }
 
-double ofx_tsp_hk_bound(const double *dist, i64 n, i64 maxit, double *pi)
+double ofx_tsp_hk_bound(const double *dist, int64_t dist_n, i64 n, i64 maxit, double *pi, int64_t pi_n)
 {
     if (n <= 0 || dist == NULL || pi == NULL) return -1.0;
     return (double)gor_tsp_hk_bound((int)n, (const gor_real *)dist, (int)maxit, (gor_real *)pi);
 }
 
-i64 ofx_tsp_subtours(const i64 *succ, i64 n, i64 *comp, i64 *sizes)
+i64 ofx_tsp_subtours(const i64 *succ, int64_t succ_n, i64 n, i64 *comp, int64_t comp_n, i64 *sizes, int64_t sizes_n)
 {
     int *s, *c, *sz; int r;
     if (n <= 0 || succ == NULL || comp == NULL || sizes == NULL) return -1;
@@ -176,7 +177,7 @@ i64 ofx_tsp_subtours(const i64 *succ, i64 n, i64 *comp, i64 *sizes)
     return (i64)r;
 }
 
-double ofx_tsp_dfj(const double *dist, i64 n, i64 *tour, i64 maxcuts)
+double ofx_tsp_dfj(const double *dist, int64_t dist_n, i64 n, i64 *tour, int64_t tour_n, i64 maxcuts)
 {
     int *t; double r;
     if (n <= 0 || dist == NULL || tour == NULL) return -1.0;
@@ -188,7 +189,7 @@ double ofx_tsp_dfj(const double *dist, i64 n, i64 *tour, i64 maxcuts)
     return r;
 }
 
-i64 ofx_tsp_erx(const i64 *p1, const i64 *p2, i64 n, i64 *child)
+i64 ofx_tsp_erx(const i64 *p1, int64_t p1_n, const i64 *p2, int64_t p2_n, i64 n, i64 *child, int64_t child_n)
 {
     int *a, *b, *c;
     if (n <= 0 || p1 == NULL || p2 == NULL || child == NULL) return 0;
@@ -202,7 +203,7 @@ i64 ofx_tsp_erx(const i64 *p1, const i64 *p2, i64 n, i64 *child)
     return 1;
 }
 
-double ofx_tsp_ga(const double *dist, i64 n, i64 *tour, i64 pop, i64 gens)
+double ofx_tsp_ga(const double *dist, int64_t dist_n, i64 n, i64 *tour, int64_t tour_n, i64 pop, i64 gens)
 {
     int *t; double r;
     if (n <= 0 || dist == NULL || tour == NULL) return -1.0;
@@ -214,7 +215,7 @@ double ofx_tsp_ga(const double *dist, i64 n, i64 *tour, i64 pop, i64 gens)
     return r;
 }
 
-double ofx_tsp_or_opt(const double *dist, i64 n, i64 *tour, i64 maxit)
+double ofx_tsp_or_opt(const double *dist, int64_t dist_n, i64 n, i64 *tour, int64_t tour_n, i64 maxit)
 {
     int *t; double r;
     if (n <= 0 || dist == NULL || tour == NULL) return -1.0;
@@ -227,7 +228,7 @@ double ofx_tsp_or_opt(const double *dist, i64 n, i64 *tour, i64 maxit)
     return r;
 }
 
-double ofx_tsp_double_tree(const double *dist, i64 n, i64 *tour)
+double ofx_tsp_double_tree(const double *dist, int64_t dist_n, i64 n, i64 *tour, int64_t tour_n)
 {
     int *t; double r;
     if (n <= 0 || dist == NULL || tour == NULL) return -1.0;
@@ -239,7 +240,7 @@ double ofx_tsp_double_tree(const double *dist, i64 n, i64 *tour)
     return r;
 }
 
-double ofx_tsp_held_karp(const double *dist, i64 n, i64 *tour)
+double ofx_tsp_held_karp(const double *dist, int64_t dist_n, i64 n, i64 *tour, int64_t tour_n)
 {
     int *t; double r;
     if (n <= 0 || dist == NULL || tour == NULL) return -1.0;
@@ -253,8 +254,8 @@ double ofx_tsp_held_karp(const double *dist, i64 n, i64 *tour)
 
 /* ── VRP / PDP / arc routing ────────────────────────────────────────────── */
 
-i64 ofx_vrp_clarke_wright(const double *dist, const double *demand, i64 n, double cap,
-                          i64 depot, i64 *route_of, double *total)
+i64 ofx_vrp_clarke_wright(const double *dist, int64_t dist_n, const double *demand, int64_t demand_n, i64 n, double cap,
+                          i64 depot, i64 *route_of, int64_t route_of_n, double *total, int64_t total_n)
 {
     int *r;
     gor_real tot = 0.0;
@@ -271,8 +272,8 @@ i64 ofx_vrp_clarke_wright(const double *dist, const double *demand, i64 n, doubl
 }
 
 /* tw() = ready[n] | due[n] | service[n] (parametri compattati: C ne ha 11). */
-i64 ofx_vrp_time_windows(const double *dist, const double *demand, i64 n, double cap,
-                         i64 depot, const double *tw, i64 *route_of, double *total)
+i64 ofx_vrp_time_windows(const double *dist, int64_t dist_n, const double *demand, int64_t demand_n, i64 n, double cap,
+                         i64 depot, const double *tw, int64_t tw_n, i64 *route_of, int64_t route_of_n, double *total, int64_t total_n)
 {
     int *r;
     gor_real tot = 0.0;
@@ -290,8 +291,8 @@ i64 ofx_vrp_time_windows(const double *dist, const double *demand, i64 n, double
     return (i64)k;
 }
 
-i64 ofx_mdvrp(const double *dist, const double *demand, i64 n, i64 ndepots, double cap,
-              i64 *route_of, double *total)
+i64 ofx_mdvrp(const double *dist, int64_t dist_n, const double *demand, int64_t demand_n, i64 n, i64 ndepots, double cap,
+              i64 *route_of, int64_t route_of_n, double *total, int64_t total_n)
 {
     int *r;
     gor_real tot = 0.0;
@@ -309,8 +310,8 @@ i64 ofx_mdvrp(const double *dist, const double *demand, i64 n, i64 ndepots, doub
     return (i64)k;
 }
 
-i64 ofx_pdp(const double *dist, const double *demand, i64 nreq, double cap,
-            const i64 *pickup, const i64 *delivery, i64 *route, double *total)
+i64 ofx_pdp(const double *dist, int64_t dist_n, const double *demand, int64_t demand_n, i64 nreq, double cap,
+            const i64 *pickup, int64_t pickup_n, const i64 *delivery, int64_t delivery_n, i64 *route, int64_t route_n, double *total, int64_t total_n)
 {
     int *p, *d, *r;
     gor_real tot = 0.0;
@@ -329,7 +330,7 @@ i64 ofx_pdp(const double *dist, const double *demand, i64 nreq, double cap,
     return (i64)k;
 }
 
-double ofx_arc_routing(const double *w, i64 n, i64 *euler, i64 *elen)
+double ofx_arc_routing(const double *w, int64_t w_n, i64 n, i64 *euler, int64_t euler_n, i64 *elen, int64_t elen_n)
 {
     int *e;
     int len = 0;

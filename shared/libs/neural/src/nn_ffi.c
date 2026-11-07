@@ -47,6 +47,7 @@
 #include "gn_opt.h"
 
 #include <stdlib.h>
+#include <stdint.h>
 #include <string.h>
 #include <math.h>
 
@@ -264,7 +265,7 @@ i64 ofx_nn_rnn_init(i64 in, i64 hidden, i64 out, i64 seed)
     return h;
 }
 
-i64 ofx_nn_rnn_forward(i64 h, const double *x, i64 T, double *y)
+i64 ofx_nn_rnn_forward(i64 h, const double *x, int64_t x_n, i64 T, double *y, int64_t y_n)
 {
     nn_entry *e = nn_get(h);
     gn_mat mx, my;
@@ -274,7 +275,7 @@ i64 ofx_nn_rnn_forward(i64 h, const double *x, i64 T, double *y)
     return (i64)gn_rnn_forward(&e->u.r, &mx, &my);
 }
 
-i64 ofx_nn_rnn_backward(i64 h, const double *gy, i64 T)
+i64 ofx_nn_rnn_backward(i64 h, const double *gy, int64_t gy_n, i64 T)
 {
     nn_entry *e = nn_get(h);
     gn_mat mg;
@@ -297,7 +298,7 @@ i64 ofx_nn_lstm_init(i64 in, i64 hidden, i64 out, i64 seed)
     return h;
 }
 
-i64 ofx_nn_lstm_forward(i64 h, const double *x, i64 T, double *y)
+i64 ofx_nn_lstm_forward(i64 h, const double *x, int64_t x_n, i64 T, double *y, int64_t y_n)
 {
     nn_entry *e = nn_get(h);
     gn_mat mx, my;
@@ -307,7 +308,7 @@ i64 ofx_nn_lstm_forward(i64 h, const double *x, i64 T, double *y)
     return (i64)gn_lstm_forward(&e->u.l, &mx, &my);
 }
 
-i64 ofx_nn_lstm_backward(i64 h, const double *gy, i64 T)
+i64 ofx_nn_lstm_backward(i64 h, const double *gy, int64_t gy_n, i64 T)
 {
     nn_entry *e = nn_get(h);
     gn_mat mg;
@@ -330,7 +331,7 @@ i64 ofx_nn_gru_init(i64 in, i64 hidden, i64 out, i64 seed)
     return h;
 }
 
-i64 ofx_nn_gru_forward(i64 h, const double *x, i64 T, double *y)
+i64 ofx_nn_gru_forward(i64 h, const double *x, int64_t x_n, i64 T, double *y, int64_t y_n)
 {
     nn_entry *e = nn_get(h);
     gn_mat mx, my;
@@ -340,7 +341,7 @@ i64 ofx_nn_gru_forward(i64 h, const double *x, i64 T, double *y)
     return (i64)gn_gru_forward(&e->u.g, &mx, &my);
 }
 
-i64 ofx_nn_gru_backward(i64 h, const double *gy, i64 T)
+i64 ofx_nn_gru_backward(i64 h, const double *gy, int64_t gy_n, i64 T)
 {
     nn_entry *e = nn_get(h);
     gn_mat mg;
@@ -365,7 +366,7 @@ i64 ofx_nn_birnn_init(i64 kind, i64 in, i64 hidden, i64 out, i64 seed)
     return h;
 }
 
-i64 ofx_nn_birnn_forward(i64 h, const double *x, i64 T, double *y)
+i64 ofx_nn_birnn_forward(i64 h, const double *x, int64_t x_n, i64 T, double *y, int64_t y_n)
 {
     nn_entry *e = nn_get(h);
     gn_mat mx, my;
@@ -375,7 +376,7 @@ i64 ofx_nn_birnn_forward(i64 h, const double *x, i64 T, double *y)
     return (i64)gn_birnn_forward(&e->u.b, &mx, &my);
 }
 
-i64 ofx_nn_birnn_backward(i64 h, const double *gy, i64 T)
+i64 ofx_nn_birnn_backward(i64 h, const double *gy, int64_t gy_n, i64 T)
 {
     nn_entry *e = nn_get(h);
     gn_mat mg;
@@ -394,7 +395,7 @@ i64 ofx_nn_free(i64 h)
 }
 
 /* ── PBP ───────────────────────────────────────────────────────────────────── */
-i64 ofx_nn_pbp_moments(double m_a, double v_a, double *out)
+i64 ofx_nn_pbp_moments(double m_a, double v_a, double *out, int64_t out_n)
 {
     gn_real m_z = 0.0, v_z = 0.0;
     if (!out) return -1;
@@ -407,8 +408,8 @@ i64 ofx_nn_pbp_moments(double m_a, double v_a, double *out)
 /* PBP su strato denso, senza handle: m_w/v_w sono i momenti dei pesi (out×in),
  * m_prev/v_prev i momenti in ingresso, m_z/v_z quelli in uscita. relu <> 0 applica
  * i momenti ReLU, altrimenti il layer resta lineare. */
-i64 ofx_nn_pbp_player(const double *m_w, const double *v_w, const double *m_prev,
-                      const double *v_prev, double *m_z, double *v_z,
+i64 ofx_nn_pbp_player(const double *m_w, int64_t m_w_n, const double *v_w, int64_t v_w_n, const double *m_prev, int64_t m_prev_n,
+                      const double *v_prev, int64_t v_prev_n, double *m_z, int64_t m_z_n, double *v_z, int64_t v_z_n,
                       i64 in, i64 out, double scaling, i64 relu)
 {
     if (!m_w || !v_w || !m_prev || !v_prev || !m_z || !v_z || in <= 0 || out <= 0) return -1;
@@ -431,7 +432,7 @@ i64 ofx_nn_outsize(i64 dim, i64 k, i64 stride, i64 pad)
 }
 
 /* out (oc×oh×ow) = conv2d(in c×h×w, weight oc×c×kh×kw). dil = 1 → standard. */
-i64 ofx_nn_conv2d(double *out, const double *in, const double *weight,
+i64 ofx_nn_conv2d(double *out, int64_t out_n, const double *in, int64_t in_n, const double *weight, int64_t weight_n,
                   i64 c, i64 h, i64 w, i64 oc, i64 kh, i64 kw,
                   i64 stride, i64 pad, i64 dil)
 {
@@ -446,7 +447,7 @@ i64 ofx_nn_conv2d(double *out, const double *in, const double *weight,
                           (int)stride, (int)pad);
 }
 
-i64 ofx_nn_conv2db(double *out, const double *in, const double *weight, const double *bias,
+i64 ofx_nn_conv2db(double *out, int64_t out_n, const double *in, int64_t in_n, const double *weight, int64_t weight_n, const double *bias, int64_t bias_n,
                    i64 c, i64 h, i64 w, i64 oc, i64 kh, i64 kw,
                    i64 stride, i64 pad, i64 dil)
 {
@@ -462,7 +463,7 @@ i64 ofx_nn_conv2db(double *out, const double *in, const double *weight, const do
 }
 
 /* Deconvoluzione (transposed conv): out = (h-1)*stride-2*pad+kh per lato. */
-i64 ofx_nn_deconv2d(double *out, const double *in, const double *weight,
+i64 ofx_nn_deconv2d(double *out, int64_t out_n, const double *in, int64_t in_n, const double *weight, int64_t weight_n,
                     i64 c, i64 h, i64 w, i64 oc, i64 kh, i64 kw, i64 stride, i64 pad)
 {
     if (!out || !in || !weight) return -1;
@@ -472,7 +473,7 @@ i64 ofx_nn_deconv2d(double *out, const double *in, const double *weight,
                             (int)stride, (int)pad);
 }
 
-i64 ofx_nn_deconv2db(double *out, const double *in, const double *weight, const double *bias,
+i64 ofx_nn_deconv2db(double *out, int64_t out_n, const double *in, int64_t in_n, const double *weight, int64_t weight_n, const double *bias, int64_t bias_n,
                      i64 c, i64 h, i64 w, i64 oc, i64 kh, i64 kw, i64 stride, i64 pad)
 {
     if (!out || !in || !weight || !bias) return -1;
@@ -483,7 +484,7 @@ i64 ofx_nn_deconv2db(double *out, const double *in, const double *weight, const 
 }
 
 /* Winograd F(m×m, 3×3): stride 1, pad 1; tile 2 o 4 (h,w multipli di tile). */
-i64 ofx_nn_winograd(double *out, const double *in, const double *weight,
+i64 ofx_nn_winograd(double *out, int64_t out_n, const double *in, int64_t in_n, const double *weight, int64_t weight_n,
                     i64 c, i64 h, i64 w, i64 oc, i64 tile)
 {
     if (!out || !in || !weight) return -1;
@@ -492,7 +493,7 @@ i64 ofx_nn_winograd(double *out, const double *in, const double *weight,
                                    (const gn_real *)weight, NULL, (int)oc, (int)((tile == 4) ? 4 : 2));
 }
 
-i64 ofx_nn_winogradb(double *out, const double *in, const double *weight, const double *bias,
+i64 ofx_nn_winogradb(double *out, int64_t out_n, const double *in, int64_t in_n, const double *weight, int64_t weight_n, const double *bias, int64_t bias_n,
                      i64 c, i64 h, i64 w, i64 oc, i64 tile)
 {
     if (!out || !in || !weight || !bias) return -1;
@@ -503,7 +504,7 @@ i64 ofx_nn_winogradb(double *out, const double *in, const double *weight, const 
 }
 
 /* im2col / col2im: col = (c*kh*kw) × (oh*ow). */
-i64 ofx_nn_im2col(double *col, const double *in, i64 c, i64 h, i64 w,
+i64 ofx_nn_im2col(double *col, int64_t col_n, const double *in, int64_t in_n, i64 c, i64 h, i64 w,
                   i64 kh, i64 kw, i64 stride, i64 pad)
 {
     int oh = 0, ow = 0;
@@ -512,7 +513,7 @@ i64 ofx_nn_im2col(double *col, const double *in, i64 c, i64 h, i64 w,
                           (int)stride, (int)pad, (gn_real *)col, &oh, &ow);
 }
 
-i64 ofx_nn_col2im(double *out, const double *col, i64 c, i64 h, i64 w,
+i64 ofx_nn_col2im(double *out, int64_t out_n, const double *col, int64_t col_n, i64 c, i64 h, i64 w,
                   i64 kh, i64 kw, i64 stride, i64 pad)
 {
     if (!out || !col || c <= 0 || h <= 0 || w <= 0 || kh <= 0 || kw <= 0 || stride <= 0) return -1;
@@ -521,7 +522,7 @@ i64 ofx_nn_col2im(double *out, const double *col, i64 c, i64 h, i64 w,
 }
 
 /* Local Response Normalization. */
-i64 ofx_nn_lrn(double *out, const double *in, i64 c, i64 h, i64 w, i64 size,
+i64 ofx_nn_lrn(double *out, int64_t out_n, const double *in, int64_t in_n, i64 c, i64 h, i64 w, i64 size,
                double alpha, double beta, double biasv)
 {
     if (!out || !in || c <= 0 || h <= 0 || w <= 0 || size <= 0) return -1;
@@ -530,7 +531,7 @@ i64 ofx_nn_lrn(double *out, const double *in, i64 c, i64 h, i64 w, i64 size,
 }
 
 /* Resize: kind 0 = nearest, 1 = bilinear. */
-i64 ofx_nn_resize(double *out, const double *in, i64 c, i64 h, i64 w, i64 oh, i64 ow, i64 kind)
+i64 ofx_nn_resize(double *out, int64_t out_n, const double *in, int64_t in_n, i64 c, i64 h, i64 w, i64 oh, i64 ow, i64 kind)
 {
     if (!out || !in || c <= 0 || h <= 0 || w <= 0 || oh <= 0 || ow <= 0) return -1;
     if (kind == 0)
@@ -541,14 +542,14 @@ i64 ofx_nn_resize(double *out, const double *in, i64 c, i64 h, i64 w, i64 oh, i6
 }
 
 /* Pooling 2D (size/stride). MAXPOOLARG riceve l'indice ky*size+kx per output. */
-i64 ofx_nn_maxpool(double *out, const double *in, i64 c, i64 h, i64 w, i64 size, i64 stride)
+i64 ofx_nn_maxpool(double *out, int64_t out_n, const double *in, int64_t in_n, i64 c, i64 h, i64 w, i64 size, i64 stride)
 {
     if (!out || !in || c <= 0 || h <= 0 || w <= 0 || size <= 0 || stride <= 0) return -1;
     return (i64)gn_maxpool2d((gn_real *)out, (const gn_real *)in, (int)c, (int)h, (int)w,
                              (int)size, (int)stride, NULL);
 }
 
-i64 ofx_nn_maxpool_arg(double *out, const double *in, i64 *argmax,
+i64 ofx_nn_maxpool_arg(double *out, int64_t out_n, const double *in, int64_t in_n, i64 *argmax, int64_t argmax_n,
                        i64 c, i64 h, i64 w, i64 size, i64 stride)
 {
     int *am;
@@ -567,14 +568,14 @@ i64 ofx_nn_maxpool_arg(double *out, const double *in, i64 *argmax,
     return (i64)rc;
 }
 
-i64 ofx_nn_avgpool(double *out, const double *in, i64 c, i64 h, i64 w, i64 size, i64 stride)
+i64 ofx_nn_avgpool(double *out, int64_t out_n, const double *in, int64_t in_n, i64 c, i64 h, i64 w, i64 size, i64 stride)
 {
     if (!out || !in || c <= 0 || h <= 0 || w <= 0 || size <= 0 || stride <= 0) return -1;
     return (i64)gn_avgpool2d((gn_real *)out, (const gn_real *)in, (int)c, (int)h, (int)w,
                              (int)size, (int)stride);
 }
 
-i64 ofx_nn_unpool(double *out, const double *in, const i64 *argmax,
+i64 ofx_nn_unpool(double *out, int64_t out_n, const double *in, int64_t in_n, const i64 *argmax, int64_t argmax_n,
                   i64 c, i64 h, i64 w, i64 size, i64 stride, double fill)
 {
     int *am;
@@ -594,8 +595,8 @@ i64 ofx_nn_unpool(double *out, const double *in, const i64 *argmax,
 }
 
 /* FusedMM / aggregazione su matrice CSR (GAT/GraphSAGE). */
-i64 ofx_nn_fusedmm(double *out, const i64 *rowptr, const i64 *colidx, const double *val,
-                   const double *X, const double *Y,
+i64 ofx_nn_fusedmm(double *out, int64_t out_n, const i64 *rowptr, int64_t rowptr_n, const i64 *colidx, int64_t colidx_n, const double *val, int64_t val_n,
+                   const double *X, int64_t X_n, const double *Y, int64_t Y_n,
                    i64 rows, i64 cols, i64 k, i64 nnz, double alpha, double beta)
 {
     int *rp, *ci, i, rc;
@@ -613,8 +614,8 @@ i64 ofx_nn_fusedmm(double *out, const i64 *rowptr, const i64 *colidx, const doub
     return (i64)rc;
 }
 
-i64 ofx_nn_aggregate(double *out, const i64 *rowptr, const i64 *colidx, const double *val,
-                     const double *Y, i64 rows, i64 cols, i64 k, i64 nnz,
+i64 ofx_nn_aggregate(double *out, int64_t out_n, const i64 *rowptr, int64_t rowptr_n, const i64 *colidx, int64_t colidx_n, const double *val, int64_t val_n,
+                     const double *Y, int64_t Y_n, i64 rows, i64 cols, i64 k, i64 nnz,
                      double alpha, double beta)
 {
     int *rp, *ci, i, rc;
@@ -640,20 +641,20 @@ i64 ofx_nn_aggregate(double *out, const i64 *rowptr, const i64 *colidx, const do
 
 /* ── Pruning (2:4 strutturato, channel pruning) ───────────────────────────── */
 
-i64 ofx_nn_sparsify24(double *w, i64 n, i64 window, i64 nonzeros)
+i64 ofx_nn_sparsify24(double *w, int64_t w_n, i64 n, i64 window, i64 nonzeros)
 {
     if (!w || n <= 0 || window <= 0) return -1;
     return (i64)gn_sparsify_2_4((gn_real *)w, (int)n, (int)window, (int)nonzeros);
 }
 
-i64 ofx_nn_prune_channel_l1(const double *w, i64 out_c, i64 per_ch, double *l1)
+i64 ofx_nn_prune_channel_l1(const double *w, int64_t w_n, i64 out_c, i64 per_ch, double *l1, int64_t l1_n)
 {
     if (!w || !l1 || out_c <= 0 || per_ch <= 0) return -1;
     gn_prune_channel_l1((const gn_real *)w, (int)out_c, (int)per_ch, (gn_real *)l1);
     return 0;
 }
 
-i64 ofx_nn_prune_channels_mask(const double *l1, i64 out_c, double keep_frac, i64 *mask)
+i64 ofx_nn_prune_channels_mask(const double *l1, int64_t l1_n, i64 out_c, double keep_frac, i64 *mask, int64_t mask_n)
 {
     unsigned char *tmp;
     int i, kept;
@@ -698,7 +699,7 @@ static int *i32_from_longs(const i64 *src, int n)
 /* ── Quantizzazione affine INT8 / UINT8 ───────────────────────────────────── */
 
 /* x -> int8 con (scale, zero_point); out LONG con i valori -128..127. */
-i64 ofx_nn_quant_i8(const double *x, i64 n, double scale, i64 zero_point, i64 *out)
+i64 ofx_nn_quant_i8(const double *x, int64_t x_n, i64 n, double scale, i64 zero_point, i64 *out, int64_t out_n)
 {
     signed char *q;
     int i;
@@ -712,7 +713,7 @@ i64 ofx_nn_quant_i8(const double *x, i64 n, double scale, i64 zero_point, i64 *o
 }
 
 /* int8 (LONG) -> double. */
-i64 ofx_nn_dequant_i8(const i64 *q, i64 n, double scale, i64 zero_point, double *out)
+i64 ofx_nn_dequant_i8(const i64 *q, int64_t q_n, i64 n, double scale, i64 zero_point, double *out, int64_t out_n)
 {
     signed char *b;
     if (!q || !out || n <= 0) return -1;
@@ -724,8 +725,8 @@ i64 ofx_nn_dequant_i8(const i64 *q, i64 n, double scale, i64 zero_point, double 
 }
 
 /* Requantizzazione int32 -> int8 tra due griglie. */
-i64 ofx_nn_requant_i8(const i64 *acc, i64 n, double in_scale, i64 in_zp,
-                      double out_scale, i64 out_zp, i64 *out)
+i64 ofx_nn_requant_i8(const i64 *acc, int64_t acc_n, i64 n, double in_scale, i64 in_zp,
+                      double out_scale, i64 out_zp, i64 *out, int64_t out_n)
 {
     int *a;
     signed char *q;
@@ -743,7 +744,7 @@ i64 ofx_nn_requant_i8(const i64 *acc, i64 n, double in_scale, i64 in_zp,
 }
 
 /* out(0) = scale, out(1) = zero_point (griglia int8 [-128,127]). */
-i64 ofx_nn_quant_params(const double *x, i64 n, double *out)
+i64 ofx_nn_quant_params(const double *x, int64_t x_n, i64 n, double *out, int64_t out_n)
 {
     gn_real scale = 1.0;
     int zp = 0;
@@ -755,7 +756,7 @@ i64 ofx_nn_quant_params(const double *x, i64 n, double *out)
 }
 
 /* GEMM quantizzato uint8: acc int32, correzione zero-point, bias int32 (n), requant. */
-i64 ofx_nn_quant_gemm_u8(i64 *out, const i64 *a, const i64 *b, const i64 *bias,
+i64 ofx_nn_quant_gemm_u8(i64 *out, int64_t out_n, const i64 *a, int64_t a_n, const i64 *b, int64_t b_n, const i64 *bias, int64_t bias_n,
                          i64 m, i64 k, i64 n,
                          double scale_a, i64 zp_a, double scale_b, i64 zp_b,
                          double scale_out, i64 zp_out)
@@ -778,7 +779,7 @@ i64 ofx_nn_quant_gemm_u8(i64 *out, const i64 *a, const i64 *b, const i64 *bias,
 }
 
 /* Requantizzazione a shift (schema CMSIS-NN/NNoM). */
-i64 ofx_nn_quant_requant_shift_i8(const i64 *acc, i64 n, i64 rshift, i64 *out)
+i64 ofx_nn_quant_requant_shift_i8(const i64 *acc, int64_t acc_n, i64 n, i64 rshift, i64 *out, int64_t out_n)
 {
     int *a;
     signed char *q;
@@ -795,7 +796,7 @@ i64 ofx_nn_quant_requant_shift_i8(const i64 *acc, i64 n, i64 rshift, i64 *out)
 }
 
 /* Convoluzione 2D quantizzata uint8->int8 (bias int32 per canale di uscita). */
-i64 ofx_nn_quant_conv2d_i8(i64 *out, const i64 *in, const i64 *weight, const i64 *bias,
+i64 ofx_nn_quant_conv2d_i8(i64 *out, int64_t out_n, const i64 *in, int64_t in_n, const i64 *weight, int64_t weight_n, const i64 *bias, int64_t bias_n,
                            i64 c, i64 h, i64 w, i64 out_c, i64 kh, i64 kw,
                            i64 stride, i64 pad, i64 bias_shift, i64 out_shift)
 {
@@ -823,7 +824,7 @@ i64 ofx_nn_quant_conv2d_i8(i64 *out, const i64 *in, const i64 *weight, const i64
     return rc;
 }
 
-i64 ofx_nn_quant_clamp_u8(i64 *x, i64 n, i64 lo, i64 hi)
+i64 ofx_nn_quant_clamp_u8(i64 *x, int64_t x_n, i64 n, i64 lo, i64 hi)
 {
     unsigned char *b;
     int i;
@@ -837,8 +838,8 @@ i64 ofx_nn_quant_clamp_u8(i64 *x, i64 n, i64 lo, i64 hi)
 }
 
 /* Per-canale: scale(out_c) DOUBLE, zp(out_c) LONG (griglia uint8 [0,255]). */
-i64 ofx_nn_quant_params_channel(const double *w, i64 out_c, i64 per_ch,
-                                double *scale, i64 *zp)
+i64 ofx_nn_quant_params_channel(const double *w, int64_t w_n, i64 out_c, i64 per_ch,
+                                double *scale, int64_t scale_n, i64 *zp, int64_t zp_n)
 {
     int *z = NULL;
     int i;
@@ -852,8 +853,8 @@ i64 ofx_nn_quant_params_channel(const double *w, i64 out_c, i64 per_ch,
 }
 
 /* Convoluzione uint8 con scala di uscita per-canale (M double[out_c]). */
-i64 ofx_nn_quant_conv2d_i8_channel(i64 *out, const i64 *in, const i64 *weight,
-                                   const i64 *bias, const double *M,
+i64 ofx_nn_quant_conv2d_i8_channel(i64 *out, int64_t out_n, const i64 *in, int64_t in_n, const i64 *weight, int64_t weight_n,
+                                   const i64 *bias, int64_t bias_n, const double *M, int64_t M_n,
                                    i64 c, i64 h, i64 w, i64 out_c, i64 kh, i64 kw,
                                    i64 stride, i64 pad, i64 zp_in, i64 zp_out)
 {
@@ -897,7 +898,7 @@ static gn_ternary *tern_get(i64 h)
 }
 
 /* Quantizza W (rows×cols, DOUBLE row-major) a ternario {-1,0,+1}. */
-i64 ofx_nn_ternary_init(const double *w, i64 rows, i64 cols)
+i64 ofx_nn_ternary_init(const double *w, int64_t w_n, i64 rows, i64 cols)
 {
     gn_mat W;
     int i;
@@ -932,7 +933,7 @@ i64 ofx_nn_ternary_act_bytes(i64 dim)
 }
 
 /* Prodotto scalare bit-sliced della riga `row`: a() = byte in LONG, nbits bit. */
-i64 ofx_nn_ternary_dotrow(i64 h, i64 row, const i64 *a, i64 nbits)
+i64 ofx_nn_ternary_dotrow(i64 h, i64 row, const i64 *a, int64_t a_n, i64 nbits)
 {
     gn_ternary *t = tern_get(h);
     unsigned char *ab;
@@ -947,7 +948,7 @@ i64 ofx_nn_ternary_dotrow(i64 h, i64 row, const i64 *a, i64 nbits)
 }
 
 /* forward: x (batch×cols) -> out (batch×rows) = scale * (W ⊙ sign(x)). */
-i64 ofx_nn_ternary_forward(i64 h, const double *x, i64 batch, double *out)
+i64 ofx_nn_ternary_forward(i64 h, const double *x, int64_t x_n, i64 batch, double *out, int64_t out_n)
 {
     gn_ternary *t = tern_get(h);
     gn_mat X, Y;
@@ -960,7 +961,7 @@ i64 ofx_nn_ternary_forward(i64 h, const double *x, i64 batch, double *out)
 }
 
 /* Dequantizza W in DOUBLE row-major (rows×cols). */
-i64 ofx_nn_ternary_tomat(i64 h, double *w)
+i64 ofx_nn_ternary_tomat(i64 h, double *w, int64_t w_n)
 {
     gn_ternary *t = tern_get(h);
     gn_mat W;
@@ -1026,14 +1027,14 @@ i64 ofx_nn_tree_init(i64 max_depth, i64 min_split, i64 min_leaf)
     return -1;
 }
 
-i64 ofx_nn_tree_fit_reg(i64 h, const double *X, const double *y, i64 n, i64 d)
+i64 ofx_nn_tree_fit_reg(i64 h, const double *X, int64_t X_n, const double *y, int64_t y_n, i64 n, i64 d)
 {
     gn_tree *t = tree_get(h);
     if (!t || !X || !y || n <= 0 || d <= 0) return -1;
     return (i64)gn_tree_fit_reg(t, X, y, (int)n, (int)d);
 }
 
-i64 ofx_nn_tree_fit_cls(i64 h, const double *X, const i64 *y, i64 n, i64 d, i64 n_classes)
+i64 ofx_nn_tree_fit_cls(i64 h, const double *X, int64_t X_n, const i64 *y, int64_t y_n, i64 n, i64 d, i64 n_classes)
 {
     gn_tree *t = tree_get(h);
     int *yc;
@@ -1046,7 +1047,7 @@ i64 ofx_nn_tree_fit_cls(i64 h, const double *X, const i64 *y, i64 n, i64 d, i64 
     return rc;
 }
 
-double ofx_nn_tree_predict(i64 h, const double *x)
+double ofx_nn_tree_predict(i64 h, const double *x, int64_t x_n)
 {
     gn_tree *t = tree_get(h);
     if (!t || !x) return 0.0;
@@ -1082,14 +1083,14 @@ i64 ofx_nn_forest_init(i64 n_estimators, i64 max_depth, i64 min_split,
     return -1;
 }
 
-i64 ofx_nn_forest_fit_reg(i64 h, const double *X, const double *y, i64 n, i64 d)
+i64 ofx_nn_forest_fit_reg(i64 h, const double *X, int64_t X_n, const double *y, int64_t y_n, i64 n, i64 d)
 {
     gn_forest *f = for_get(h);
     if (!f || !X || !y || n <= 0 || d <= 0) return -1;
     return (i64)gn_forest_fit_reg(f, X, y, (int)n, (int)d);
 }
 
-i64 ofx_nn_forest_fit_cls(i64 h, const double *X, const i64 *y, i64 n, i64 d, i64 n_classes)
+i64 ofx_nn_forest_fit_cls(i64 h, const double *X, int64_t X_n, const i64 *y, int64_t y_n, i64 n, i64 d, i64 n_classes)
 {
     gn_forest *f = for_get(h);
     int *yc;
@@ -1102,7 +1103,7 @@ i64 ofx_nn_forest_fit_cls(i64 h, const double *X, const i64 *y, i64 n, i64 d, i6
     return rc;
 }
 
-double ofx_nn_forest_predict(i64 h, const double *x)
+double ofx_nn_forest_predict(i64 h, const double *x, int64_t x_n)
 {
     gn_forest *f = for_get(h);
     if (!f || !x) return 0.0;
@@ -1110,7 +1111,7 @@ double ofx_nn_forest_predict(i64 h, const double *x)
 }
 
 /* AUC di Mann-Whitney (actual: 0/1 o valori continui, score: punteggio). */
-double ofx_nn_auc(const double *actual, const double *score, i64 n)
+double ofx_nn_auc(const double *actual, int64_t actual_n, const double *score, int64_t score_n, i64 n)
 {
     if (!actual || !score || n <= 0) return 0.0;
     return gn_auc(actual, score, (int)n);
@@ -1141,7 +1142,7 @@ i64 ofx_nn_adaboost_init(i64 n_estimators, double learning_rate)
     return -1;
 }
 
-i64 ofx_nn_adaboost_fit(i64 h, const double *X, const i64 *y, i64 n, i64 d)
+i64 ofx_nn_adaboost_fit(i64 h, const double *X, int64_t X_n, const i64 *y, int64_t y_n, i64 n, i64 d)
 {
     gn_adaboost *b = ada_get(h);
     int *yc;
@@ -1154,7 +1155,7 @@ i64 ofx_nn_adaboost_fit(i64 h, const double *X, const i64 *y, i64 n, i64 d)
     return rc;
 }
 
-i64 ofx_nn_adaboost_predict(i64 h, const double *x)
+i64 ofx_nn_adaboost_predict(i64 h, const double *x, int64_t x_n)
 {
     gn_adaboost *b = ada_get(h);
     if (!b || !x) return 0;
@@ -1177,7 +1178,7 @@ i64 ofx_nn_adaboost_free(i64 h)
 double ofx_nn_snn_surrogate(double x) { return (double)gn_snn_surrogate((gn_real)x); }
 double ofx_nn_snn_surrogate_grad(double x) { return (double)gn_snn_surrogate_grad((gn_real)x); }
 
-i64 ofx_nn_snn_lut_index(const double *x, const i64 *a, const i64 *b, i64 n_c)
+i64 ofx_nn_snn_lut_index(const double *x, int64_t x_n, const i64 *a, int64_t a_n, const i64 *b, int64_t b_n, i64 n_c)
 {
     int *ai, *bi;
     int rc;
@@ -1195,7 +1196,7 @@ i64 ofx_nn_snn_lut_index(const double *x, const i64 *a, const i64 *b, i64 n_c)
 i64 ofx_nn_bnn_bytes(i64 n) { return (i64)gn_bnn_bytes((int)n); }
 i64 ofx_nn_bnn_words(i64 n) { return (i64)gn_bnn_words((int)n); }
 
-i64 ofx_nn_bnn_pack(i64 *out, const double *x, i64 n)
+i64 ofx_nn_bnn_pack(i64 *out, int64_t out_n, const double *x, int64_t x_n, i64 n)
 {
     if (!out || !x || n <= 0) return -1;
     gn_bnn_pack((unsigned long long *)out, (const gn_real *)x, (int)n);
@@ -1207,14 +1208,14 @@ double ofx_nn_bnn_thresh(double k, double h)
     return (double)gn_bnn_thresh((gn_real)k, (gn_real)h);
 }
 
-i64 ofx_nn_bnn_xnor(const i64 *a, const i64 *b, i64 n)
+i64 ofx_nn_bnn_xnor(const i64 *a, int64_t a_n, const i64 *b, int64_t b_n, i64 n)
 {
     if (!a || !b || n <= 0) return 0;
     return (i64)gn_bnn_xnor_popcount((const unsigned long long *)a,
                                      (const unsigned long long *)b, (int)n);
 }
 
-i64 ofx_nn_bnn_dot(const i64 *a, const i64 *b, i64 n)
+i64 ofx_nn_bnn_dot(const i64 *a, int64_t a_n, const i64 *b, int64_t b_n, i64 n)
 {
     if (!a || !b || n <= 0) return 0;
     return (i64)gn_bnn_dot((const unsigned long long *)a,
@@ -1237,20 +1238,20 @@ double ofx_nn_pinn_boundary(double u, double ubc)
 double ofx_nn_pinn_initial(double u, double u0)
 { return (double)gn_pinn_initial((gn_real)u, (gn_real)u0); }
 
-double ofx_nn_pinn_adaptive_norm(const double *losses, i64 n)
+double ofx_nn_pinn_adaptive_norm(const double *losses, int64_t losses_n, i64 n)
 {
     if (!losses || n <= 0) return 1.0;
     return (double)gn_pinn_adaptive_norm((const gn_real *)losses, (int)n);
 }
 
 /* Detection: IoU, NMS, decode YOLO, NMS multi-classe */
-double ofx_nn_iou(const double *a, const double *b)
+double ofx_nn_iou(const double *a, int64_t a_n, const double *b, int64_t b_n)
 {
     if (!a || !b) return 0.0;
     return (double)gn_iou((const gn_real *)a, (const gn_real *)b);
 }
 
-i64 ofx_nn_nms(const double *boxes, const double *scores, i64 n, double iou_thresh, i64 *keep)
+i64 ofx_nn_nms(const double *boxes, int64_t boxes_n, const double *scores, int64_t scores_n, i64 n, double iou_thresh, i64 *keep, int64_t keep_n)
 {
     int *k;
     int i, nk;
@@ -1265,7 +1266,7 @@ i64 ofx_nn_nms(const double *boxes, const double *scores, i64 n, double iou_thre
 
 /* Decode di una cella YOLO (nessun handle: i parametri della cella sono espliciti).
  * out(0..3) = bx, by, bw, bh normalizzati. */
-i64 ofx_nn_yolo_box(double *out, double tx, double ty, double tw, double th,
+i64 ofx_nn_yolo_box(double *out, int64_t out_n, double tx, double ty, double tw, double th,
                     double anchor_w, double anchor_h,
                     i64 cx, i64 cy, i64 grid_w, i64 grid_h)
 {
@@ -1276,7 +1277,7 @@ i64 ofx_nn_yolo_box(double *out, double tx, double ty, double tw, double th,
     return 0;
 }
 
-i64 ofx_nn_nms_multiclass(const double *boxes, double *probs, i64 n, i64 classes, double thresh)
+i64 ofx_nn_nms_multiclass(const double *boxes, int64_t boxes_n, double *probs, int64_t probs_n, i64 n, i64 classes, double thresh)
 {
     if (!boxes || !probs || n <= 0 || classes <= 0) return -1;
     gn_nms_multiclass((const gn_real *)boxes, (gn_real *)probs, (int)n, (int)classes, (gn_real)thresh);
@@ -1285,8 +1286,8 @@ i64 ofx_nn_nms_multiclass(const double *boxes, double *probs, i64 n, i64 classes
 
 /* KNN senza handle: il training set e' passato a ogni chiamata (Xtr come matrice
  * ntr×d, accettata anche nella forma 2-D di BASIC). */
-i64 ofx_nn_knn_classify(const double *Xtr, const i64 *ytr, i64 ntr, i64 d,
-                        i64 n_classes, i64 k, const double *x)
+i64 ofx_nn_knn_classify(const double *Xtr, int64_t Xtr_n, const i64 *ytr, int64_t ytr_n, i64 ntr, i64 d,
+                        i64 n_classes, i64 k, const double *x, int64_t x_n)
 {
     int *y;
     i64 rc;
@@ -1298,8 +1299,8 @@ i64 ofx_nn_knn_classify(const double *Xtr, const i64 *ytr, i64 ntr, i64 d,
     return rc;
 }
 
-double ofx_nn_knn_accuracy(const double *Xtr, const i64 *ytr, i64 ntr,
-                           const double *Xte, const i64 *yte, i64 nte,
+double ofx_nn_knn_accuracy(const double *Xtr, int64_t Xtr_n, const i64 *ytr, int64_t ytr_n, i64 ntr,
+                           const double *Xte, int64_t Xte_n, const i64 *yte, int64_t yte_n, i64 nte,
                            i64 d, i64 n_classes, i64 k)
 {
     int *it, *ie;
@@ -1315,7 +1316,7 @@ double ofx_nn_knn_accuracy(const double *Xtr, const i64 *ytr, i64 ntr,
 }
 
 /* Metriche */
-i64 ofx_nn_confusion(const i64 *yt, const i64 *yp, i64 n, i64 k, i64 *cm)
+i64 ofx_nn_confusion(const i64 *yt, int64_t yt_n, const i64 *yp, int64_t yp_n, i64 n, i64 k, i64 *cm, int64_t cm_n)
 {
     int *a, *b, *c;
     int i, rc;
@@ -1330,7 +1331,7 @@ i64 ofx_nn_confusion(const i64 *yt, const i64 *yp, i64 n, i64 k, i64 *cm)
     return (i64)rc;
 }
 
-double ofx_nn_accuracy(const i64 *yt, const i64 *yp, i64 n)
+double ofx_nn_accuracy(const i64 *yt, int64_t yt_n, const i64 *yp, int64_t yp_n, i64 n)
 {
     int *a, *b;
     double rc;
@@ -1343,7 +1344,7 @@ double ofx_nn_accuracy(const i64 *yt, const i64 *yp, i64 n)
     return rc;
 }
 
-double ofx_nn_accuracy_cm(const i64 *cm, i64 k)
+double ofx_nn_accuracy_cm(const i64 *cm, int64_t cm_n, i64 k)
 {
     int *c;
     double rc;
@@ -1356,7 +1357,7 @@ double ofx_nn_accuracy_cm(const i64 *cm, i64 k)
 }
 
 /* PRECISION/RECALL/F1: per-classe in out(), macro come valore di ritorno. */
-double ofx_nn_precision(const i64 *cm, i64 k, double *out)
+double ofx_nn_precision(const i64 *cm, int64_t cm_n, i64 k, double *out, int64_t out_n)
 {
     int *c;
     double macro = 0.0;
@@ -1369,7 +1370,7 @@ double ofx_nn_precision(const i64 *cm, i64 k, double *out)
     return rc == 0 ? macro : 0.0;
 }
 
-double ofx_nn_recall(const i64 *cm, i64 k, double *out)
+double ofx_nn_recall(const i64 *cm, int64_t cm_n, i64 k, double *out, int64_t out_n)
 {
     int *c;
     double macro = 0.0;
@@ -1382,7 +1383,7 @@ double ofx_nn_recall(const i64 *cm, i64 k, double *out)
     return rc == 0 ? macro : 0.0;
 }
 
-double ofx_nn_f1(const i64 *cm, i64 k, double *out)
+double ofx_nn_f1(const i64 *cm, int64_t cm_n, i64 k, double *out, int64_t out_n)
 {
     int *c;
     double macro = 0.0;
@@ -1395,19 +1396,19 @@ double ofx_nn_f1(const i64 *cm, i64 k, double *out)
     return rc == 0 ? macro : 0.0;
 }
 
-double ofx_nn_mse(const double *yt, const double *yp, i64 n)
+double ofx_nn_mse(const double *yt, int64_t yt_n, const double *yp, int64_t yp_n, i64 n)
 {
     if (!yt || !yp || n <= 0) return 0.0;
     return (double)gn_metrics_mse((const gn_real *)yt, (const gn_real *)yp, (int)n);
 }
 
-double ofx_nn_mae(const double *yt, const double *yp, i64 n)
+double ofx_nn_mae(const double *yt, int64_t yt_n, const double *yp, int64_t yp_n, i64 n)
 {
     if (!yt || !yp || n <= 0) return 0.0;
     return (double)gn_metrics_mae((const gn_real *)yt, (const gn_real *)yp, (int)n);
 }
 
-double ofx_nn_r2(const double *yt, const double *yp, i64 n)
+double ofx_nn_r2(const double *yt, int64_t yt_n, const double *yp, int64_t yp_n, i64 n)
 {
     if (!yt || !yp || n <= 0) return 0.0;
     return (double)gn_metrics_r2((const gn_real *)yt, (const gn_real *)yp, (int)n);
@@ -1417,7 +1418,7 @@ double ofx_nn_r2(const double *yt, const double *yp, i64 n)
 /* Memplan con array di UDT: TYPE MemTensor { Size AS DOUBLE : Birth AS LONG : Death AS LONG }
  * ha lo stesso layout della struct C (double + int32 + int32, 16 byte), quindi il
  * buffer arriva gia' nella forma di gn_memplan_tensor. */
-double ofx_nn_memplan(const void *t, i64 n, double *offsets)
+double ofx_nn_memplan(const void *t, i64 n, double *offsets, int64_t offsets_n)
 {
     if (!t || !offsets || n <= 0) return 0.0;
     return (double)gn_mem_plan((const gn_memplan_tensor *)t, (int)n, (gn_real *)offsets);
@@ -1471,14 +1472,14 @@ double ofx_nn_act_celu_grad(double x, double alpha) { return (double)gn_celu_gra
 double ofx_nn_act_prelu(double x, double alpha) { return (double)gn_prelu((gn_real)x, (gn_real)alpha); }
 double ofx_nn_act_prelu_grad(double x, double alpha) { return (double)gn_prelu_grad((gn_real)x, (gn_real)alpha); }
 
-i64 ofx_nn_act_crelu(double *out, const double *in, i64 n)
+i64 ofx_nn_act_crelu(double *out, int64_t out_n, const double *in, int64_t in_n, i64 n)
 {
     if (!out || !in || n <= 0) return -1;
     gn_crelu((gn_real *)out, (const gn_real *)in, (int)n);
     return 0;
 }
 
-i64 ofx_nn_act_crelu_grad(double *grad_in, const double *grad_out, const double *in, i64 n)
+i64 ofx_nn_act_crelu_grad(double *grad_in, int64_t grad_in_n, const double *grad_out, int64_t grad_out_n, const double *in, int64_t in_n, i64 n)
 {
     if (!grad_in || !grad_out || !in || n <= 0) return -1;
     gn_crelu_grad((gn_real *)grad_in, (const gn_real *)grad_out, (const gn_real *)in, (int)n);
@@ -1535,7 +1536,7 @@ i64 ofx_nn_dense_init(i64 in, i64 out, i64 seed)
 }
 
 /* y (batch×out) = x (batch×in) · Wᵀ + b */
-i64 ofx_nn_dense_forward(i64 h, const double *x, i64 batch, double *y)
+i64 ofx_nn_dense_forward(i64 h, const double *x, int64_t x_n, i64 batch, double *y, int64_t y_n)
 {
     nn_dense_e *e = dense_get(h);
     gn_mat X, Y;
@@ -1546,7 +1547,7 @@ i64 ofx_nn_dense_forward(i64 h, const double *x, i64 batch, double *y)
 }
 
 /* grad_x (batch×in) = grad_y (batch×out) · W ; accumula gradW/gradb. */
-i64 ofx_nn_dense_backward(i64 h, const double *gy, i64 batch, double *gx)
+i64 ofx_nn_dense_backward(i64 h, const double *gy, int64_t gy_n, i64 batch, double *gx, int64_t gx_n)
 {
     nn_dense_e *e = dense_get(h);
     gn_mat GY, GX;
@@ -1557,7 +1558,7 @@ i64 ofx_nn_dense_backward(i64 h, const double *gy, i64 batch, double *gx)
 }
 
 /* W (out×in) e b (out). */
-i64 ofx_nn_dense_params(i64 h, double *W, double *b)
+i64 ofx_nn_dense_params(i64 h, double *W, int64_t W_n, double *b, int64_t b_n)
 {
     nn_dense_e *e = dense_get(h);
     int i;
@@ -1567,7 +1568,7 @@ i64 ofx_nn_dense_params(i64 h, double *W, double *b)
     return 0;
 }
 
-i64 ofx_nn_dense_setparams(i64 h, const double *W, const double *b)
+i64 ofx_nn_dense_setparams(i64 h, const double *W, int64_t W_n, const double *b, int64_t b_n)
 {
     nn_dense_e *e = dense_get(h);
     int i;
@@ -1611,7 +1612,7 @@ i64 ofx_nn_dense_free(i64 h)
 }
 
 /* ══ Perdite con gradiente (gn_loss): y, t e grad sono rows×cols ═══════════ */
-i64 ofx_nn_loss_mse(const double *y, const double *t, i64 rows, i64 cols, double *grad, double *loss)
+i64 ofx_nn_loss_mse(const double *y, int64_t y_n, const double *t, int64_t t_n, i64 rows, i64 cols, double *grad, int64_t grad_n, double *loss, int64_t loss_n)
 {
     gn_mat Y, T, G;
     if (!y || !t || !loss || rows <= 0 || cols <= 0) return -1;
@@ -1622,7 +1623,7 @@ i64 ofx_nn_loss_mse(const double *y, const double *t, i64 rows, i64 cols, double
     return 0;
 }
 
-i64 ofx_nn_loss_mae(const double *y, const double *t, i64 rows, i64 cols, double *grad, double *loss)
+i64 ofx_nn_loss_mae(const double *y, int64_t y_n, const double *t, int64_t t_n, i64 rows, i64 cols, double *grad, int64_t grad_n, double *loss, int64_t loss_n)
 {
     gn_mat Y, T, G;
     if (!y || !t || !loss || rows <= 0 || cols <= 0) return -1;
@@ -1633,7 +1634,7 @@ i64 ofx_nn_loss_mae(const double *y, const double *t, i64 rows, i64 cols, double
     return 0;
 }
 
-i64 ofx_nn_loss_cross_entropy(const double *y, const double *t, i64 rows, i64 cols, double *grad, double *loss)
+i64 ofx_nn_loss_cross_entropy(const double *y, int64_t y_n, const double *t, int64_t t_n, i64 rows, i64 cols, double *grad, int64_t grad_n, double *loss, int64_t loss_n)
 {
     gn_mat Y, T, G;
     if (!y || !t || !loss || rows <= 0 || cols <= 0) return -1;
@@ -1644,7 +1645,7 @@ i64 ofx_nn_loss_cross_entropy(const double *y, const double *t, i64 rows, i64 co
     return 0;
 }
 
-i64 ofx_nn_loss_binary_cross_entropy(const double *y, const double *t, i64 rows, i64 cols, double *grad, double *loss)
+i64 ofx_nn_loss_binary_cross_entropy(const double *y, int64_t y_n, const double *t, int64_t t_n, i64 rows, i64 cols, double *grad, int64_t grad_n, double *loss, int64_t loss_n)
 {
     gn_mat Y, T, G;
     if (!y || !t || !loss || rows <= 0 || cols <= 0) return -1;
@@ -1684,7 +1685,7 @@ i64 ofx_nn_dropout_init(i64 n, double rate)
     return -1;
 }
 
-i64 ofx_nn_dropout_forward(i64 h, const double *x, double *out, i64 train, i64 seed)
+i64 ofx_nn_dropout_forward(i64 h, const double *x, int64_t x_n, double *out, int64_t out_n, i64 train, i64 seed)
 {
     nn_drop_e *e = drop_get(h);
     if (!e || !x || !out) return -1;
@@ -1692,7 +1693,7 @@ i64 ofx_nn_dropout_forward(i64 h, const double *x, double *out, i64 train, i64 s
                                    (int)train, (unsigned long long)seed);
 }
 
-i64 ofx_nn_dropout_backward(i64 h, const double *grad_out, double *grad_x)
+i64 ofx_nn_dropout_backward(i64 h, const double *grad_out, int64_t grad_out_n, double *grad_x, int64_t grad_x_n)
 {
     nn_drop_e *e = drop_get(h);
     if (!e || !grad_out || !grad_x) return -1;
@@ -1748,7 +1749,7 @@ i64 ofx_nn_bn_init(i64 features, double eps, double momentum)
 }
 
 /* train <> 0 aggiorna le statistiche correnti; 0 usa rmean/rvar (inferenza). */
-i64 ofx_nn_bn_forward(i64 h, const double *x, i64 batch, double *y, i64 train)
+i64 ofx_nn_bn_forward(i64 h, const double *x, int64_t x_n, i64 batch, double *y, int64_t y_n, i64 train)
 {
     nn_bn_e *e = bn_get(h);
     gn_mat X, Y;
@@ -1758,7 +1759,7 @@ i64 ofx_nn_bn_forward(i64 h, const double *x, i64 batch, double *y, i64 train)
     return (i64)gn_batchnorm_forward(&e->bn, &X, &Y, (int)train);
 }
 
-i64 ofx_nn_bn_backward(i64 h, const double *gy, i64 batch, double *gx)
+i64 ofx_nn_bn_backward(i64 h, const double *gy, int64_t gy_n, i64 batch, double *gx, int64_t gx_n)
 {
     nn_bn_e *e = bn_get(h);
     gn_mat GY, GX;
@@ -1768,7 +1769,7 @@ i64 ofx_nn_bn_backward(i64 h, const double *gy, i64 batch, double *gx)
     return (i64)gn_batchnorm_backward(&e->bn, &GY, &GX);
 }
 
-i64 ofx_nn_bn_params(i64 h, double *gamma, double *beta)
+i64 ofx_nn_bn_params(i64 h, double *gamma, int64_t gamma_n, double *beta, int64_t beta_n)
 {
     nn_bn_e *e = bn_get(h);
     int i;
@@ -1777,7 +1778,7 @@ i64 ofx_nn_bn_params(i64 h, double *gamma, double *beta)
     return 0;
 }
 
-i64 ofx_nn_bn_setparams(i64 h, const double *gamma, const double *beta)
+i64 ofx_nn_bn_setparams(i64 h, const double *gamma, int64_t gamma_n, const double *beta, int64_t beta_n)
 {
     nn_bn_e *e = bn_get(h);
     int i;
@@ -1816,7 +1817,7 @@ i64 ofx_nn_ln_init(i64 features, double eps)
     return -1;
 }
 
-i64 ofx_nn_ln_forward(i64 h, const double *x, i64 batch, double *y)
+i64 ofx_nn_ln_forward(i64 h, const double *x, int64_t x_n, i64 batch, double *y, int64_t y_n)
 {
     nn_ln_e *e = ln_get(h);
     gn_mat X, Y;
@@ -1826,7 +1827,7 @@ i64 ofx_nn_ln_forward(i64 h, const double *x, i64 batch, double *y)
     return (i64)gn_layernorm_forward(&e->ln, &X, &Y);
 }
 
-i64 ofx_nn_ln_backward(i64 h, const double *gy, i64 batch, double *gx)
+i64 ofx_nn_ln_backward(i64 h, const double *gy, int64_t gy_n, i64 batch, double *gx, int64_t gx_n)
 {
     nn_ln_e *e = ln_get(h);
     gn_mat GY, GX;
@@ -1836,7 +1837,7 @@ i64 ofx_nn_ln_backward(i64 h, const double *gy, i64 batch, double *gx)
     return (i64)gn_layernorm_backward(&e->ln, &GY, &GX);
 }
 
-i64 ofx_nn_ln_params(i64 h, double *gamma, double *beta)
+i64 ofx_nn_ln_params(i64 h, double *gamma, int64_t gamma_n, double *beta, int64_t beta_n)
 {
     nn_ln_e *e = ln_get(h);
     int i;
@@ -1845,7 +1846,7 @@ i64 ofx_nn_ln_params(i64 h, double *gamma, double *beta)
     return 0;
 }
 
-i64 ofx_nn_ln_setparams(i64 h, const double *gamma, const double *beta)
+i64 ofx_nn_ln_setparams(i64 h, const double *gamma, int64_t gamma_n, const double *beta, int64_t beta_n)
 {
     nn_ln_e *e = ln_get(h);
     int i;
@@ -1915,7 +1916,7 @@ i64 ofx_nn_chuck_loss(i64 h, double loss)
 }
 
 /* param -= aggiornamento Chuck; m/v allocati al primo passo (o se cambiano le dim). */
-i64 ofx_nn_chuck_step(i64 h, double *param, const double *grad, i64 rows, i64 cols,
+i64 ofx_nn_chuck_step(i64 h, double *param, int64_t param_n, const double *grad, int64_t grad_n, i64 rows, i64 cols,
                       double lr, double beta1, double beta2, double eps)
 {
     nn_chuck_e *e = chuck_get(h);
@@ -1938,7 +1939,7 @@ i64 ofx_nn_chuck_step(i64 h, double *param, const double *grad, i64 rows, i64 co
 }
 
 /* out(0)=dampen out(1)=loss_ema out(2)=noise out(3)=lr_scale out(4)=global_step out(5)=frozen */
-i64 ofx_nn_chuck_state(i64 h, double *out)
+i64 ofx_nn_chuck_state(i64 h, double *out, int64_t out_n)
 {
     nn_chuck_e *e = chuck_get(h);
     if (!e || !out) return -1;
@@ -2162,7 +2163,7 @@ static nn_gp_e *gp_get(i64 h)
 }
 
 /* codes/arity: alfabeto (stessa lunghezza); seed 0 = default del motore. */
-i64 ofx_nn_gp_init(const i64 *codes, const i64 *arity, i64 n)
+i64 ofx_nn_gp_init(const i64 *codes, int64_t codes_n, const i64 *arity, int64_t arity_n, i64 n)
 {
     int i, j;
     if (!codes || !arity || n <= 0 || n > NN_GP_MAXCODE) return -1;
@@ -2208,7 +2209,7 @@ i64 ofx_nn_gp_evolve(i64 h, double (*fit)(double *, long long),
 }
 
 /* Fitness di un genoma dato (codes, n): utile per valutare/validare l'albero. */
-double ofx_nn_gp_eval(i64 h, const i64 *codes, i64 n, double (*fit)(double *, long long))
+double ofx_nn_gp_eval(i64 h, const i64 *codes, int64_t codes_n, i64 n, double (*fit)(double *, long long))
 {
     nn_gp_e *e = gp_get(h);
     gn_gp_genome g;
@@ -2258,7 +2259,7 @@ i64 ofx_nn_norm_init(i64 dim)
     return -1;
 }
 
-i64 ofx_nn_norm_observe(i64 h, const double *x)
+i64 ofx_nn_norm_observe(i64 h, const double *x, int64_t x_n)
 {
     nn_norm_e *e = norm_get(h);
     if (!e || !x) return -1;
@@ -2274,21 +2275,21 @@ i64 ofx_nn_norm_finalize(i64 h, double margin)
     return 0;
 }
 
-i64 ofx_nn_norm_apply(i64 h, const double *x, double *out)
+i64 ofx_nn_norm_apply(i64 h, const double *x, int64_t x_n, double *out, int64_t out_n)
 {
     nn_norm_e *e = norm_get(h);
     if (!e || !x || !out) return -1;
     return (i64)gn_norm_apply(&e->n, (const gn_real *)x, (gn_real *)out);
 }
 
-i64 ofx_nn_norm_denormalize(i64 h, const double *x, double *out)
+i64 ofx_nn_norm_denormalize(i64 h, const double *x, int64_t x_n, double *out, int64_t out_n)
 {
     nn_norm_e *e = norm_get(h);
     if (!e || !x || !out) return -1;
     return (i64)gn_norm_denormalize(&e->n, (const gn_real *)x, (gn_real *)out);
 }
 
-i64 ofx_nn_norm_zscore(i64 h, const double *x, double *out)
+i64 ofx_nn_norm_zscore(i64 h, const double *x, int64_t x_n, double *out, int64_t out_n)
 {
     nn_norm_e *e = norm_get(h);
     if (!e || !x || !out) return -1;
@@ -2296,7 +2297,7 @@ i64 ofx_nn_norm_zscore(i64 h, const double *x, double *out)
 }
 
 /* out: dim scalari, poi dim medie, poi dim deviazioni standard. */
-i64 ofx_nn_norm_stats(i64 h, double *out)
+i64 ofx_nn_norm_stats(i64 h, double *out, int64_t out_n)
 {
     nn_norm_e *e = norm_get(h);
     int i, dim;
@@ -2331,8 +2332,8 @@ i64 ofx_nn_norm_free(i64 h)
  * GATHERROWS/COPYBLOCK non hanno equivalente in TORCH (SLICE e' contiguo);
  * SLICEROWS e' l'equivalente diretto di gn_slice_rows. */
 
-i64 ofx_nn_gather_rows(double *out, const double *data, i64 rows, i64 cols,
-                       const i64 *indices, i64 n_idx)
+i64 ofx_nn_gather_rows(double *out, int64_t out_n, const double *data, int64_t data_n, i64 rows, i64 cols,
+                       const i64 *indices, int64_t indices_n, i64 n_idx)
 {
     int *idx;
     i64 rc;
@@ -2345,14 +2346,14 @@ i64 ofx_nn_gather_rows(double *out, const double *data, i64 rows, i64 cols,
     return rc;
 }
 
-i64 ofx_nn_slice_rows(double *out, const double *data, i64 rows, i64 cols, i64 start, i64 count)
+i64 ofx_nn_slice_rows(double *out, int64_t out_n, const double *data, int64_t data_n, i64 rows, i64 cols, i64 start, i64 count)
 {
     if (!out || !data || rows <= 0 || cols <= 0) return -1;
     return (i64)gn_slice_rows((gn_real *)out, (const gn_real *)data, (int)rows, (int)cols,
                               (int)start, (int)count);
 }
 
-i64 ofx_nn_copy_block(double *out, const double *data, i64 rows, i64 cols,
+i64 ofx_nn_copy_block(double *out, int64_t out_n, const double *data, int64_t data_n, i64 rows, i64 cols,
                       i64 r0, i64 c0, i64 nr, i64 nc)
 {
     if (!out || !data || rows <= 0 || cols <= 0) return -1;
@@ -2361,7 +2362,7 @@ i64 ofx_nn_copy_block(double *out, const double *data, i64 rows, i64 cols,
 }
 
 /* f applicata a ogni elemento (stessa ABI del callback vettoriale: double(*)(double)). */
-i64 ofx_nn_mat_apply(double *out, const double *in, i64 n, double (*f)(double))
+i64 ofx_nn_mat_apply(double *out, int64_t out_n, const double *in, int64_t in_n, i64 n, double (*f)(double))
 {
     gn_mat O, I;
     if (!out || !in || n <= 0 || !f) return -1;
@@ -2370,7 +2371,7 @@ i64 ofx_nn_mat_apply(double *out, const double *in, i64 n, double (*f)(double))
     return (i64)gn_mat_apply(&O, &I, (gn_unary)f);
 }
 
-double ofx_nn_mat_absmax(const double *in, i64 n)
+double ofx_nn_mat_absmax(const double *in, int64_t in_n, i64 n)
 {
     gn_mat I;
     if (!in || n <= 0) return 0.0;
@@ -2379,7 +2380,7 @@ double ofx_nn_mat_absmax(const double *in, i64 n)
 }
 
 /* Softmax con temperatura (TORCH.SOFTMAX copre la variante a temperatura 1). */
-i64 ofx_nn_softmax_temp(double *out, const double *z, i64 rows, i64 cols, double temp)
+i64 ofx_nn_softmax_temp(double *out, int64_t out_n, const double *z, int64_t z_n, i64 rows, i64 cols, double temp)
 {
     gn_mat O, Z;
     if (!out || !z || rows <= 0 || cols <= 0) return -1;
@@ -2390,7 +2391,7 @@ i64 ofx_nn_softmax_temp(double *out, const double *z, i64 rows, i64 cols, double
 
 /* LUT SNN: s() e' lo stack contiguo dei tempi (n_t blocchi di n_tab tabelle da
  * y_dim); S[i] = s + i*n_tab*y_dim, tabella j[i]. y[k] += tab[k] (accumula). */
-i64 ofx_nn_snn_lut_forward(const double *s, i64 n_tab, const i64 *j, i64 n_t, i64 y_dim, double *y)
+i64 ofx_nn_snn_lut_forward(const double *s, int64_t s_n, i64 n_tab, const i64 *j, int64_t j_n, i64 n_t, i64 y_dim, double *y, int64_t y_n)
 {
     const gn_real **S;
     int *ji;

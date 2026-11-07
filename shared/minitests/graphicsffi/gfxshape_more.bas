@@ -11,7 +11,7 @@ SUB Main()
 
   DIM p(3) AS DOUBLE, box(3) AS DOUBLE
   p(0) = 0 : p(1) = 0 : p(2) = 4 : p(3) = 2
-  PRINT "aabb="; GFXSHAPE.AABBFROMPOINTS2D(p(), 4, box()); ":";
+  PRINT "aabb="; GFXSHAPE.AABBFROMPOINTS2D(p(), box()); ":";
   PRINT box(0); ","; box(1); ","; box(2); ","; box(3)
   PRINT "center="; GFXSHAPE.AABBCENTER2D(box(), o()); ":"; o(0); ","; o(1)
   PRINT "ext="; GFXSHAPE.AABBEXTENTS2D(box(), o()); ":"; o(0); ","; o(1)
@@ -61,13 +61,13 @@ SUB Main()
   PRINT "hex="; GFXSHAPE.HEXAREA(2); ","; GFXSHAPE.HEXLONG(2); ","; GFXSHAPE.HEXSHORT(2); ","; GFXSHAPE.HEXINNER(2)
   DIM sq(7) AS DOUBLE
   sq(0)=0:sq(1)=0:sq(2)=4:sq(3)=0:sq(4)=4:sq(5)=4:sq(6)=0:sq(7)=4
-  PRINT "sarea="; GFXSHAPE.POLYGONSIGNEDAREA(sq(), 8)
+  PRINT "sarea="; GFXSHAPE.POLYGONSIGNEDAREA(sq()) 
 
   DIM c3a(5) AS DOUBLE, c3b(5) AS DOUBLE
   c3a(0)=0:c3a(1)=0:c3a(2)=0 : c3a(3)=1:c3a(4)=0:c3a(5)=0
   c3b(0)=0:c3b(1)=0:c3b(2)=2 : c3b(3)=1:c3b(4)=0:c3b(5)=2
-  PRINT "chamfer="; GFXSHAPE.CHAMFER(c3a(), 6, c3b(), 6)
-  PRINT "haus="; GFXSHAPE.HAUSDORFF(c3a(), 6, c3b(), 6)
+  PRINT "chamfer="; GFXSHAPE.CHAMFER(c3a(), c3b())
+  PRINT "haus="; GFXSHAPE.HAUSDORFF(c3a(), c3b())
   DIM amn(1) AS DOUBLE, amx(1) AS DOUBLE, o4(3) AS DOUBLE
   amn(0) = 1 : amn(1) = 2
   amx(0) = 5 : amx(1) = 7

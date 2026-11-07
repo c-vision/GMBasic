@@ -10,9 +10,9 @@ SUB Main()
   p(4) = 10 : p(5) = 10
   p(6) = 0  : p(7) = 10
 
-  PRINT "aabb="; GFXSHAPE.AABBFROMPOINTS2D(p(), 8, o()); ":";
+  PRINT "aabb="; GFXSHAPE.AABBFROMPOINTS2D(p(), o()); ":";
   PRINT o(0); ","; o(1); ","; o(2); ","; o(3)
-  PRINT "area="; GFXSHAPE.POLYGONAREA(p(), 8); " sarea="; GFXSHAPE.POLYGONSIGNEDAREA(p(), 8)
+  PRINT "area="; GFXSHAPE.POLYGONAREA(p()) ; " sarea="; GFXSHAPE.POLYGONSIGNEDAREA(p()) 
 
   DIM c(1) AS DOUBLE, d(1) AS DOUBLE
   c(0) = 3 : c(1) = 4
@@ -38,5 +38,5 @@ SUB Main()
   DIM A(5) AS DOUBLE, B(5) AS DOUBLE
   A(0)=0:A(1)=0:A(2)=0 : A(3)=1:A(4)=0:A(5)=0
   B(0)=0:B(1)=0:B(2)=2 : B(3)=1:B(4)=0:B(5)=2
-  PRINT "cham="; GFXSHAPE.CHAMFER(A(), 6, B(), 6); " haus="; GFXSHAPE.HAUSDORFF(A(), 6, B(), 6)
+  PRINT "cham="; GFXSHAPE.CHAMFER(A(), B()); " haus="; GFXSHAPE.HAUSDORFF(A(), B())
 END SUB

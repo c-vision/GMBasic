@@ -69,16 +69,16 @@ SUB TourShape()
   DIM pg(7) AS DOUBLE, s2(1) AS DOUBLE, s4(3) AS DOUBLE
   pg(0) = 0  : pg(1) = 0  : pg(2) = 10 : pg(3) = 0
   pg(4) = 10 : pg(5) = 10 : pg(6) = 0  : pg(7) = 10
-  PRINT "shape="; GFXSHAPE.POINTINPOLYGON(5, 5, pg(), 8); ","; GFXSHAPE.POINTINPOLYGON(15, 5, pg(), 8)
+  PRINT "shape="; GFXSHAPE.POINTINPOLYGON(5, 5, pg()) ; ","; GFXSHAPE.POINTINPOLYGON(15, 5, pg()) 
   PRINT "shape="; GFXSHAPE.POINTINCIRCLE(3, 4, 0, 0, 5); ","; GFXSHAPE.POINTINCIRCLE(9, 9, 0, 0, 5)
   PRINT "shape="; GFXSHAPE.POINTINRECT(1, 1, 0, 0, 4, 4); ","; GFXSHAPE.POINTINRECT(9, 9, 0, 0, 4, 4)
   PRINT "shape="; GFXSHAPE.POINTINTRIANGLE(2, 2, 0, 0, 10, 0, 0, 10); ","; GFXSHAPE.POINTINTRIANGLE(9, 9, 0, 0, 10, 0, 0, 10)
-  PRINT "shape="; GFXSHAPE.POLYGONAREA(pg(), 8); ","; GFXSHAPE.POLYGONSIGNEDAREA(pg(), 8)
-  PRINT "shape="; GFXSHAPE.POLYGONCENTROID(pg(), 8, s2()); ":"; s2(0); ","; s2(1)
+  PRINT "shape="; GFXSHAPE.POLYGONAREA(pg()) ; ","; GFXSHAPE.POLYGONSIGNEDAREA(pg()) 
+  PRINT "shape="; GFXSHAPE.POLYGONCENTROID(pg(), s2()); ":"; s2(0); ","; s2(1)
   PRINT "shape="; GFXSHAPE.CLOSESTPOINTSEG(5, 5, 0, 0, 10, 0, s2()); ":"; s2(0); ","; s2(1)
 
   DIM bb(3) AS DOUBLE, bb2(3) AS DOUBLE, mn2(1) AS DOUBLE, mx2(1) AS DOUBLE
-  PRINT "shape="; GFXSHAPE.AABBFROMPOINTS2D(pg(), 8, bb()); ":"; bb(0); ","; bb(1); ","; bb(2); ","; bb(3)
+  PRINT "shape="; GFXSHAPE.AABBFROMPOINTS2D(pg(), bb()); ":"; bb(0); ","; bb(1); ","; bb(2); ","; bb(3)
   mn2(0) = 15 : mn2(1) = 15 : mx2(0) = 20 : mx2(1) = 20
   PRINT "shape="; GFXSHAPE.AABB2MAKE(mn2(), mx2(), bb2()); ":"; bb2(0); ","; bb2(3)
   PRINT "shape="; GFXSHAPE.AABBMERGE2D(bb(), bb2(), bb2()); ":"; bb2(0); ","; bb2(3)
@@ -214,7 +214,7 @@ SUB Tour3D()
   PRINT "3d="; GFX3D.LOOKAT(eye(), ctr(), upv(), mm); ":"; mm(0); ","; mm(5); ","; mm(15)
   DIM pts(8) AS DOUBLE, ab(5) AS DOUBLE, ab2(5) AS DOUBLE
   FOR i = 0 TO 8 : pts(i) = i - 4 : NEXT i
-  PRINT "3d="; GFX3D.AABBFROMPOINTS(pts(), 9, ab()); ":"; ab(0); ","; ab(3)
+  PRINT "3d="; GFX3D.AABBFROMPOINTS(pts(), ab()); ":"; ab(0); ","; ab(3)
   ab2(0) = 2 : ab2(1) = 2 : ab2(2) = 2 : ab2(3) = 3 : ab2(4) = 3 : ab2(5) = 3
   PRINT "3d="; GFX3D.AABBMERGE(ab(), ab2(), oo()); ":"; oo(0); ","; oo(3)
   PRINT "3d="; GFX3D.AABBCENTER(ab(), o3()); ":"; o3(0); ","; o3(1); ","; o3(2)

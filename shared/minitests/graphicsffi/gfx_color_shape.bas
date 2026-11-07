@@ -30,13 +30,13 @@ SUB Main()
   p(2) = 10 : p(3) = 0
   p(4) = 10 : p(5) = 10
   p(6) = 0  : p(7) = 10
-  PRINT "poly_in="; GFXSHAPE.POINTINPOLYGON(5, 5, p(), 8);
-  PRINT " poly_out="; GFXSHAPE.POINTINPOLYGON(15, 5, p(), 8)
+  PRINT "poly_in="; GFXSHAPE.POINTINPOLYGON(5, 5, p()) ;
+  PRINT " poly_out="; GFXSHAPE.POINTINPOLYGON(15, 5, p()) 
   PRINT "circ="; GFXSHAPE.POINTINCIRCLE(3, 4, 0, 0, 5);
   PRINT " rect="; GFXSHAPE.POINTINRECT(5, 5, 0, 0, 10, 10);
   PRINT " tri="; GFXSHAPE.POINTINTRIANGLE(1, 1, 0, 0, 10, 0, 0, 10)
-  PRINT "area="; GFXSHAPE.POLYGONAREA(p(), 8);
-  PRINT " cent="; GFXSHAPE.POLYGONCENTROID(p(), 8, o); ":";
+  PRINT "area="; GFXSHAPE.POLYGONAREA(p()) ;
+  PRINT " cent="; GFXSHAPE.POLYGONCENTROID(p(), o); ":";
   PRINT o(0); ","; o(1)
   PRINT "closest="; GFXSHAPE.CLOSESTPOINTSEG(5, 5, 0, 0, 10, 0, o); ":";
   PRINT o(0); ","; o(1)

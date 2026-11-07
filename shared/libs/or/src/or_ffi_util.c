@@ -8,6 +8,7 @@
 #include "gor_util.h"
 
 #include <stdlib.h>
+#include <stdint.h>
 
 typedef long long i64;
 typedef double (*ffx_util_cb)(const double *, long long);
@@ -23,7 +24,7 @@ static gor_real ffx_util_bridge(const gor_real *x, int d, void *ctx)
 /* ── code ─────────────────────────────────────────────────────────────── */
 
 /* out() = L, Lq, W, Wq (4); ritorna rho. */
-double ofx_queue_mm1(double lambda, double mu, double *out)
+double ofx_queue_mm1(double lambda, double mu, double *out, int64_t out_n)
 {
     gor_real L = 0, Lq = 0, W = 0, Wq = 0, rho;
     if (out == NULL) return -1.0;
@@ -33,7 +34,7 @@ double ofx_queue_mm1(double lambda, double mu, double *out)
 }
 
 /* out() = L, Lq, W, Wq (4); ritorna rho. */
-double ofx_queue_mmc(double lambda, double mu, i64 c, double *out)
+double ofx_queue_mmc(double lambda, double mu, i64 c, double *out, int64_t out_n)
 {
     gor_real L = 0, Lq = 0, W = 0, Wq = 0, rho;
     if (out == NULL || c <= 0) return -1.0;
@@ -60,7 +61,7 @@ double ofx_safety_stock(double z, double sigma)
 
 /* ── MCDM ─────────────────────────────────────────────────────────────── */
 
-i64 ofx_ahp(const double *pairwise, i64 n, double *weights, double *consistency)
+i64 ofx_ahp(const double *pairwise, int64_t pairwise_n, i64 n, double *weights, int64_t weights_n, double *consistency, int64_t consistency_n)
 {
     gor_real cons = 0.0;
     gor_status r;
@@ -70,7 +71,7 @@ i64 ofx_ahp(const double *pairwise, i64 n, double *weights, double *consistency)
     return (r == GOR_OK) ? 1 : 0;
 }
 
-i64 ofx_topsis(const double *X, i64 m, i64 n, const double *w, const i64 *benefit, double *scores)
+i64 ofx_topsis(const double *X, int64_t X_n, i64 m, i64 n, const double *w, int64_t w_n, const i64 *benefit, int64_t benefit_n, double *scores, int64_t scores_n)
 {
     int *b;
     gor_status r;
@@ -86,7 +87,7 @@ i64 ofx_topsis(const double *X, i64 m, i64 n, const double *w, const i64 *benefi
 /* ── MDP ──────────────────────────────────────────────────────────────── */
 
 /* out() = V[ns] | policy[ns] (policy come double). tol fissa 1e-8. */
-i64 ofx_mdp_value(const double *P, const double *R, i64 ns, i64 na, double gamma, i64 maxit, double *out)
+i64 ofx_mdp_value(const double *P, int64_t P_n, const double *R, int64_t R_n, i64 ns, i64 na, double gamma, i64 maxit, double *out, int64_t out_n)
 {
     gor_real *V;
     int *pol;
@@ -103,7 +104,7 @@ i64 ofx_mdp_value(const double *P, const double *R, i64 ns, i64 na, double gamma
     return (i64)it;
 }
 
-i64 ofx_mdp_policy(const double *P, const double *R, i64 ns, i64 na, double gamma, i64 maxit, double *out)
+i64 ofx_mdp_policy(const double *P, int64_t P_n, const double *R, int64_t R_n, i64 ns, i64 na, double gamma, i64 maxit, double *out, int64_t out_n)
 {
     gor_real *V;
     int *pol;
@@ -123,7 +124,7 @@ i64 ofx_mdp_policy(const double *P, const double *R, i64 ns, i64 na, double gamm
 /* ── simulazione ──────────────────────────────────────────────────────── */
 
 /* out(0) = deviazione standard. */
-double ofx_montecarlo(ffx_util_cb f, i64 d, const double *lo, const double *hi, i64 n, double *out)
+double ofx_montecarlo(ffx_util_cb f, i64 d, const double *lo, int64_t lo_n, const double *hi, int64_t hi_n, i64 n, double *out, int64_t out_n)
 {
     gor_real sd = 0.0;
     double r;
@@ -136,7 +137,7 @@ double ofx_montecarlo(ffx_util_cb f, i64 d, const double *lo, const double *hi, 
 }
 
 /* out(0) = VaR. */
-double ofx_cvar(const double *returns, i64 n, double alpha, double *out)
+double ofx_cvar(const double *returns, int64_t returns_n, i64 n, double alpha, double *out, int64_t out_n)
 {
     gor_real var = 0.0;
     double r;
@@ -147,7 +148,7 @@ double ofx_cvar(const double *returns, i64 n, double alpha, double *out)
 }
 
 /* out(0) = utilizzazione. */
-double ofx_des_mm1(double lambda, double mu, i64 ncust, double *out)
+double ofx_des_mm1(double lambda, double mu, i64 ncust, double *out, int64_t out_n)
 {
     gor_real util = 0.0;
     double r;
@@ -158,7 +159,7 @@ double ofx_des_mm1(double lambda, double mu, i64 ncust, double *out)
 }
 
 /* out(0) = z. */
-double ofx_chance_constraint(const double *sigma, const double *x, i64 n, double alpha, double *out)
+double ofx_chance_constraint(const double *sigma, int64_t sigma_n, const double *x, int64_t x_n, i64 n, double alpha, double *out, int64_t out_n)
 {
     gor_real shift = 0.0;
     double r;

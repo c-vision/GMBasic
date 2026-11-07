@@ -5,6 +5,7 @@
 #include "gor_sched.h"
 
 #include <stdlib.h>
+#include <stdint.h>
 
 typedef long long i64;
 
@@ -27,7 +28,7 @@ static void out_iarr(const int *a, i64 *out, i64 n)
 
 /* ── Macchina singola ───────────────────────────────────────────────────── */
 
-double ofx_sched_spt(const double *p, i64 n, i64 *order)
+double ofx_sched_spt(const double *p, int64_t p_n, i64 n, i64 *order, int64_t order_n)
 {
     int *o; double r;
     if (n <= 0 || p == NULL || order == NULL) return -1.0;
@@ -37,7 +38,7 @@ double ofx_sched_spt(const double *p, i64 n, i64 *order)
     out_iarr(o, order, n); free(o); return r;
 }
 
-double ofx_sched_wspt(const double *p, const double *w, i64 n, i64 *order)
+double ofx_sched_wspt(const double *p, int64_t p_n, const double *w, int64_t w_n, i64 n, i64 *order, int64_t order_n)
 {
     int *o; double r;
     if (n <= 0 || p == NULL || w == NULL || order == NULL) return -1.0;
@@ -47,7 +48,7 @@ double ofx_sched_wspt(const double *p, const double *w, i64 n, i64 *order)
     out_iarr(o, order, n); free(o); return r;
 }
 
-double ofx_sched_edd(const double *p, const double *due, i64 n, i64 *order)
+double ofx_sched_edd(const double *p, int64_t p_n, const double *due, int64_t due_n, i64 n, i64 *order, int64_t order_n)
 {
     int *o; double r;
     if (n <= 0 || p == NULL || due == NULL || order == NULL) return -1.0;
@@ -57,7 +58,7 @@ double ofx_sched_edd(const double *p, const double *due, i64 n, i64 *order)
     out_iarr(o, order, n); free(o); return r;
 }
 
-i64 ofx_sched_moore(const double *p, const double *due, i64 n, i64 *order)
+i64 ofx_sched_moore(const double *p, int64_t p_n, const double *due, int64_t due_n, i64 n, i64 *order, int64_t order_n)
 {
     int *o; int r;
     if (n <= 0 || p == NULL || due == NULL || order == NULL) return -1;
@@ -67,7 +68,7 @@ i64 ofx_sched_moore(const double *p, const double *due, i64 n, i64 *order)
     out_iarr(o, order, n); free(o); return (i64)r;
 }
 
-double ofx_sched_lawler(const double *p, const double *due, i64 n, i64 *order)
+double ofx_sched_lawler(const double *p, int64_t p_n, const double *due, int64_t due_n, i64 n, i64 *order, int64_t order_n)
 {
     int *o; double r;
     if (n <= 0 || p == NULL || due == NULL || order == NULL) return -1.0;
@@ -79,7 +80,7 @@ double ofx_sched_lawler(const double *p, const double *due, i64 n, i64 *order)
 
 /* ── Intervalli ─────────────────────────────────────────────────────────── */
 
-i64 ofx_interval_max(const double *start, const double *end, i64 n, i64 *selected)
+i64 ofx_interval_max(const double *start, int64_t start_n, const double *end, int64_t end_n, i64 n, i64 *selected, int64_t selected_n)
 {
     int *s; int r;
     if (n <= 0 || start == NULL || end == NULL || selected == NULL) return -1;
@@ -89,7 +90,7 @@ i64 ofx_interval_max(const double *start, const double *end, i64 n, i64 *selecte
     out_iarr(s, selected, n); free(s); return (i64)r;
 }
 
-i64 ofx_interval_partition(const double *start, const double *end, i64 n)
+i64 ofx_interval_partition(const double *start, int64_t start_n, const double *end, int64_t end_n, i64 n)
 {
     if (n <= 0 || start == NULL || end == NULL) return -1;
     return (i64)gor_sched_interval_partition((int)n, (const gor_real *)start, (const gor_real *)end);
@@ -97,7 +98,7 @@ i64 ofx_interval_partition(const double *start, const double *end, i64 n)
 
 /* ── Flow shop ──────────────────────────────────────────────────────────── */
 
-double ofx_johnson(const double *p1, const double *p2, i64 n, i64 *seq)
+double ofx_johnson(const double *p1, int64_t p1_n, const double *p2, int64_t p2_n, i64 n, i64 *seq, int64_t seq_n)
 {
     int *s; double r;
     if (n <= 0 || p1 == NULL || p2 == NULL || seq == NULL) return -1.0;
@@ -107,7 +108,7 @@ double ofx_johnson(const double *p1, const double *p2, i64 n, i64 *seq)
     out_iarr(s, seq, n); free(s); return r;
 }
 
-double ofx_neh(const double *p, i64 n, i64 m, i64 *seq)
+double ofx_neh(const double *p, int64_t p_n, i64 n, i64 m, i64 *seq, int64_t seq_n)
 {
     int *s; double r;
     if (n <= 0 || m <= 0 || p == NULL || seq == NULL) return -1.0;
@@ -117,7 +118,7 @@ double ofx_neh(const double *p, i64 n, i64 m, i64 *seq)
     out_iarr(s, seq, n); free(s); return r;
 }
 
-double ofx_johnson3(const double *p1, const double *p2, const double *p3, i64 n, i64 *seq)
+double ofx_johnson3(const double *p1, int64_t p1_n, const double *p2, int64_t p2_n, const double *p3, int64_t p3_n, i64 n, i64 *seq, int64_t seq_n)
 {
     int *s; double r;
     if (n <= 0 || p1 == NULL || p2 == NULL || p3 == NULL || seq == NULL) return -1.0;
@@ -128,7 +129,7 @@ double ofx_johnson3(const double *p1, const double *p2, const double *p3, i64 n,
     out_iarr(s, seq, n); free(s); return r;
 }
 
-double ofx_cds(const double *p, i64 n, i64 m, i64 *seq)
+double ofx_cds(const double *p, int64_t p_n, i64 n, i64 m, i64 *seq, int64_t seq_n)
 {
     int *s; double r;
     if (n <= 0 || m <= 0 || p == NULL || seq == NULL) return -1.0;
@@ -138,7 +139,7 @@ double ofx_cds(const double *p, i64 n, i64 m, i64 *seq)
     out_iarr(s, seq, n); free(s); return r;
 }
 
-double ofx_lpt(const double *p, i64 n, i64 m, i64 *assign)
+double ofx_lpt(const double *p, int64_t p_n, i64 n, i64 m, i64 *assign, int64_t assign_n)
 {
     int *a; double r;
     if (n <= 0 || m <= 0 || p == NULL || assign == NULL) return -1.0;
@@ -150,8 +151,8 @@ double ofx_lpt(const double *p, i64 n, i64 m, i64 *assign)
 
 /* ── Progetto: CPM / PERT / RCPSP ───────────────────────────────────────── */
 
-double ofx_cpm(const double *dur, const i64 *preds, i64 n, i64 npred,
-               double *est, double *lst, double *slack)
+double ofx_cpm(const double *dur, int64_t dur_n, const i64 *preds, int64_t preds_n, i64 n, i64 npred,
+               double *est, int64_t est_n, double *lst, int64_t lst_n, double *slack, int64_t slack_n)
 {
     int *p; double r;
     if (n <= 0 || npred < 0 || dur == NULL || preds == NULL || est == NULL ||
@@ -164,8 +165,8 @@ double ofx_cpm(const double *dur, const i64 *preds, i64 n, i64 npred,
     return r;
 }
 
-double ofx_pert(const double *to, const double *tm, const double *tp, const i64 *preds,
-                i64 n, i64 npred, double *est, double *variance)
+double ofx_pert(const double *to, int64_t to_n, const double *tm, int64_t tm_n, const double *tp, int64_t tp_n, const i64 *preds, int64_t preds_n,
+                i64 n, i64 npred, double *est, int64_t est_n, double *variance, int64_t variance_n)
 {
     int *p; double r;
     if (n <= 0 || npred < 0 || to == NULL || tm == NULL || tp == NULL || preds == NULL ||
@@ -178,8 +179,8 @@ double ofx_pert(const double *to, const double *tm, const double *tp, const i64 
     return r;
 }
 
-double ofx_rcpsp(const double *dur, const i64 *preds, i64 n, i64 npred,
-                 const double *demand, const double *capacity, i64 nr, i64 *start)
+double ofx_rcpsp(const double *dur, int64_t dur_n, const i64 *preds, int64_t preds_n, i64 n, i64 npred,
+                 const double *demand, int64_t demand_n, const double *capacity, int64_t capacity_n, i64 nr, i64 *start, int64_t start_n)
 {
     int *p, *s; double r;
     if (n <= 0 || npred < 0 || nr <= 0 || dur == NULL || preds == NULL || demand == NULL ||
@@ -197,7 +198,7 @@ double ofx_rcpsp(const double *dur, const i64 *preds, i64 n, i64 npred,
 
 /* ── Job shop / timetabling / rostering ─────────────────────────────────── */
 
-double ofx_job_shop(const i64 *route, const double *dur, i64 njobs, i64 nmach, i64 *start)
+double ofx_job_shop(const i64 *route, int64_t route_n, const double *dur, int64_t dur_n, i64 njobs, i64 nmach, i64 *start, int64_t start_n)
 {
     int *rt, *st; double r;
     if (njobs <= 0 || nmach <= 0 || route == NULL || dur == NULL || start == NULL) return -1.0;
@@ -210,7 +211,7 @@ double ofx_job_shop(const i64 *route, const double *dur, i64 njobs, i64 nmach, i
     return r;
 }
 
-i64 ofx_timetabling(const i64 *conflicts, i64 n, i64 *slot_of)
+i64 ofx_timetabling(const i64 *conflicts, int64_t conflicts_n, i64 n, i64 *slot_of, int64_t slot_of_n)
 {
     int *c, *s; int r;
     if (n <= 0 || conflicts == NULL || slot_of == NULL) return -1;
@@ -223,7 +224,7 @@ i64 ofx_timetabling(const i64 *conflicts, i64 n, i64 *slot_of)
     return (i64)r;
 }
 
-i64 ofx_rostering(const i64 *demand, i64 nnurses, i64 ndays, i64 max_work, i64 *schedule)
+i64 ofx_rostering(const i64 *demand, int64_t demand_n, i64 nnurses, i64 ndays, i64 max_work, i64 *schedule, int64_t schedule_n)
 {
     int *d, *s; int r;
     if (nnurses <= 0 || ndays <= 0 || demand == NULL || schedule == NULL) return -1;

@@ -2,10 +2,11 @@
 #include "gor_dp.h"
 
 #include <stdlib.h>
+#include <stdint.h>
 
 typedef long long i64;
 
-double ofx_dp_optimal_bst(const double *p, i64 n, i64 *root)
+double ofx_dp_optimal_bst(const double *p, int64_t p_n, i64 n, i64 *root, int64_t root_n)
 {
     int *r;
     double cost;
@@ -18,8 +19,8 @@ double ofx_dp_optimal_bst(const double *p, i64 n, i64 *root)
     return cost;
 }
 
-double ofx_dp_equipment(i64 years, double buy_cost, i64 max_age, const double *op_cost,
-                        const double *resale, i64 *schedule)
+double ofx_dp_equipment(i64 years, double buy_cost, i64 max_age, const double *op_cost, int64_t op_cost_n,
+                        const double *resale, int64_t resale_n, i64 *schedule, int64_t schedule_n)
 {
     int *sch;
     i64 i;
@@ -35,7 +36,7 @@ double ofx_dp_equipment(i64 years, double buy_cost, i64 max_age, const double *o
     return cost;
 }
 
-double ofx_dp_sports(int n_games, i64 needed, double p_home, double p_away, const i64 *is_home)
+double ofx_dp_sports(int n_games, i64 needed, double p_home, double p_away, const i64 *is_home, int64_t is_home_n)
 {
     int *h;
     double r;
