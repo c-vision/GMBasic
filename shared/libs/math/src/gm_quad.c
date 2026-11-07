@@ -232,7 +232,10 @@ gm_real gm_quad_tanh_sinh(gm_fn1 f, void *ctx, gm_real a, gm_real b,
             if (w < W_MIN) break;
             if (j == 0) {
                 gm_real fx = f(mid + half * tanh(u), ctx);
-                sum += fx * w * 0.5;
+                /* j=0 e il punto centrale: nel trapezio sulla retta intera conta UNA volta
+                 * (le due meta si sommano); il vecchio *0.5 perdeva mezzo nodo per livello,
+                 * cioe O(h) di massa, e la quadratura convergeva linearmente. */
+                sum += fx * w;
                 evals++;
             } else {
                 double x = tanh(u);
@@ -282,7 +285,10 @@ gm_real gm_quad_tanh_sinh_c(gm_real (*f)(gm_real x, gm_real d, void *), void *ct
             if (w < W_MIN) break;
             if (j == 0) {
                 gm_real fx = f(mid, -half, ctx);  /* distanza all'estremo = half */
-                sum += fx * w * 0.5;
+                /* j=0 e il punto centrale: nel trapezio sulla retta intera conta UNA volta
+                 * (le due meta si sommano); il vecchio *0.5 perdeva mezzo nodo per livello,
+                 * cioe O(h) di massa, e la quadratura convergeva linearmente. */
+                sum += fx * w;
                 evals++;
             } else {
                 double x = tanh(u);
