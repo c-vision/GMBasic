@@ -39,6 +39,8 @@ inc_name() {
     or)  echo "ortools.inc" ;;
     # piu' export per una sola dylib (modello gmbstats): elenco separato da spazi.
     graphics) echo "gfxcolor.inc gfxshape.inc gfx2d.inc gfx3d.inc gfxcodec.inc" ;;
+    # libgmbmath: SPECIAL (gmbmath-special) + QUAT (gmbmath-vector, 2026-11-06).
+    math) echo "special.inc quat.inc" ;;
     *)   echo "$1.inc" ;;
   esac
 }
