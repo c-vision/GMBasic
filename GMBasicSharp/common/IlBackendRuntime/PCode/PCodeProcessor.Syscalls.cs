@@ -5410,8 +5410,15 @@ internal sealed partial class PCodeProcessor
                     .SCREEN_GPM(mode, activePage ?? 0, visiblePage ?? 0, custom, swm, cb));
                 return;
             }
-            case SysCall.SCREENSET:
+            case SysCall.SCREEN_COORDS:
             {
+                // SCREEN ... USE CELLS|PIXELS: spazio coordinate DICHIARATO dei controlli.
+                // 1 = CELLE, 0 = PIXEL. Motore unico: runtime C (gmb_gfx_set_coord_mode).
+                var cm = (int)PopNum(task);
+                PCodeGraphics.Instance.CoordMode(cm);
+                return;
+            }
+            case SysCall.SCREENSET:            {
                 // Il compilatore pusha VISIBLE poi ACTIVE (VisitScreenSetStatement). Gli argomenti
                 // omessi sono PUSH_NIL → PushRef(null) → BasicType.Null. `PopInt` su NIL lo
                 // convertiva in 0 (PopNum: Null → 0.0): SCREENSET 1 (solo visible) azzerava

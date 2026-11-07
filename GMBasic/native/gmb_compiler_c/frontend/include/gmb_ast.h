@@ -453,6 +453,10 @@ struct gmb_stmt {
     char* net_assign;                     /* target 1 assegnato dal top-of-stack post NET_CMD */
     char* net_assign2;                    /* target 2 (secondo pop) */
     char* net_assign3;                    /* target 3 (terzo pop) */
+    /* Spazio coordinate DICHIARATO (SCREEN ... USE CELLS|PIXELS):
+     * 0 = non dichiarato (AUTO), 1 = CELLS, 2 = PIXELS. L'emitter lo mappa su
+     * gmb_gfx_set_coord_mode(-1|1|0). 0 e' il default di calloc = AUTO. */
+    int coord_mode;
     /* CLASS (2.7): class_name/class_base; campi = nomi+tipi AS; metodi = FUNCTION stmt
      * annidati (func_name "NEW" = costruttore). PROPERTY/OPERATOR/EVENT: saltati dal parser.
      * 2.7(d)p2b: class_is_interface (INTERFACE = classe senza corpo) e cls_implements

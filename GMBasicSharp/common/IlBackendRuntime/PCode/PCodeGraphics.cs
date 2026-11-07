@@ -33,6 +33,13 @@ internal sealed class PCodeGraphics
 
     internal bool IsScreenOn => _c is null ? GraphicsManager.Instance.IsScreenOn : CGfxGraphicsService.IsScreenOnC;
 
+    /// <summary>Spazio coordinate DICHIARATO (SCREEN ... USE CELLS|PIXELS). Motore unico: runtime C.</summary>
+    internal void CoordMode(int mode)
+    {
+        if (_c is null) return;      /* motore C# legacy: nessuna conversione dichiarata */
+        _c.ScreenCoords(mode);
+    }
+
     internal void TextMode(int mode)
     {
         if (_c is null) GraphicsManager.Instance.TextModeGpm(mode, static (_, _) => { });

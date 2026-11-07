@@ -211,6 +211,20 @@ unsigned char* read_whole_file(const char* path, size_t* len)
 
 /* ============================== Public API ============================== */
 
+/* Spazio coordinate DICHIARATO dai controlli (SCREEN ... USE CELLS|PIXELS).
+ * -1 = AUTO: nessuna dichiarazione → lo spazio nativo del backend (grafica=pixel,
+ * TUI=celle). 0 = PIXELS, 1 = CELLS. Non e' una conversione implicita: e' cio' che
+ * l'utente ha DICHIARATO, e il renderer la applica per-frame. */
+static int g_coord_mode = -1;
+void gmb_gfx_set_coord_mode(int mode) { g_coord_mode = (mode == 0 || mode == 1) ? mode : -1; }
+int  gmb_gfx_coord_mode(void) { return g_coord_mode; }
+int  gmb_gfx_coords_cells(void)
+{
+    if (g_coord_mode == 0) return 0;              /* dichiarato PIXELS */
+    if (g_coord_mode == 1) return 1;              /* dichiarato CELLS  */
+    return gmb_gfx_screen_on() ? 0 : 1;           /* AUTO: spazio nativo */
+}
+
 extern int gmb_gfx_present_video_is_real(void);
 extern void gmb_px_browse_draw(void* browse, void* buffer);
 static const gmb_ui_gfx_iface_t gmb_gfx_iface = {

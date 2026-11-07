@@ -518,6 +518,9 @@ public enum SysCall : ushort
     SIGNAL_PING = 458,          // SIGNAL PING: nessun argomento
     DBF_CLOSE_AREA = 459,       // DBF CLOSE <alias|area>: chiude SOLO l'area indicata (1 arg)
     CANVAS_OP = 460,            // CANVAS <OP> h, ... , path$ -> handle/colore/dimensione (7 argomenti)
+    SCREEN_COORDS = 461,        // SCREEN ... USE CELLS|PIXELS: (mode) -> spazio coordinate DICHIARATO dei controlli
+                                //   -1 = AUTO (nessuna clausola), 1 = CELLE, 0 = PIXEL. Il motore e' il runtime C
+                                //   (gmb_gfx_set_coord_mode): stessa fonte per TUTTI i backend.
 }
 
 /// <summary>

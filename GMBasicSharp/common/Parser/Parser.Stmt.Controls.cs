@@ -16,6 +16,7 @@ public sealed partial class Parser
     {
         Expr? name=null,tag=null,tip=null,vis=null,en=null,ti=null,ts=null,sty=null; bool foc=false;
         Expr? color=null,colorfocus=null,colorsel=null,colorerr=null,haserr=null,upper=null;
+        string? metric = null;   /* clausola USE CELLS|PIXELS → proprietà "metric" fusa nella spec */
         events = null;
         while (p.Peek().Kind != TokenKind.Newline && p.Peek().Kind != TokenKind.Eof)
         {
@@ -26,6 +27,17 @@ public sealed partial class Parser
             if (key == "ON") { p.Advance(); var ev = (p.Peek().Lexeme ?? "").ToUpperInvariant(); p.Advance(); var cl = p.ParseControlEventClause(ev); if (id != null) (events ??= new()).Add(MakeCes(ev, cl, id, tok, p._lastEvTargetToken)); continue; }
             if (key == "ID") { p.Advance(); id = p.ParseTarget(); continue; }
             if (key == "FOCUS") { p.Advance(); foc = true; continue; }
+            /* Spazio coordinate DICHIARATO dal controllo: USE CELLS → metric=1 (CellsToPixel),
+             * USE PIXELS → metric=2 (PixelToCells). Fuso nella spec di stile, che i backend
+             * passano già al runtime (gmb_form_set_last_style / UiControlApplyStyle). */
+            if (key == "USE")
+            {
+                p.Advance();
+                var v = (p.Peek().Lexeme ?? "").ToUpperInvariant();
+                if (v == "CELLS") { p.Advance(); metric = "metric=1"; continue; }
+                if (v == "PIXELS") { p.Advance(); metric = "metric=2"; continue; }
+                throw CreateError(p.Peek(), "USE nel controllo: atteso CELLS o PIXELS.");
+            }
             if (key == "STYLE") { p.Advance(); sty = p.ParseExpression(); continue; }
             if (key == "NAME" || key == "TAG" || key == "TOOLTIP" || key == "VISIBLE" || key == "ENABLED" || key == "TABINDEX" || key == "TABSTOP"
                 || key == "COLOR" || key == "COLORFOCUS" || key == "COLORSEL" || key == "COLORERROR" || key == "HASERROR" || key == "UPPERCASE")
@@ -39,6 +51,12 @@ public sealed partial class Parser
                 continue;
             }
             break;
+        }
+        if (metric != null)
+        {
+            if (sty is StringExpr sspec) sty = new StringExpr(sspec.Value + " " + metric, sspec.Token);
+            else if (sty is null) sty = new StringExpr(metric, tok);
+            else throw CreateError(tok, "USE CELLS|PIXELS accanto a uno STYLE non letterale: usare una stringa costante.");
         }
         if (name==null&&tag==null&&tip==null&&vis==null&&en==null&&ti==null&&ts==null&&!foc&&sty==null
             &&color==null&&colorfocus==null&&colorsel==null&&colorerr==null&&haserr==null&&upper==null) return null;

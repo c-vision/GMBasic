@@ -12,6 +12,10 @@ public readonly record struct TuiCell(char Character, uint FgArgb, uint BgArgb)
 public interface IGraphicsService
 {
     void Screen(int mode, int width, int height, int bpp);
+    /// <summary>Spazio coordinate DICHIARATO dai controlli (`SCREEN ... USE CELLS|PIXELS`):
+    /// -1 = AUTO (nessuna clausola), 1 = CELLE, 0 = PIXEL. Il motore è il runtime C
+    /// (`gmb_gfx_set_coord_mode`), così i backend restano su un'unica fonte.</summary>
+    void ScreenCoords(int mode) { }
 
     // ── Controlli pixel + form (gambe gestite; default no-op) ──
     void FormReset() { }

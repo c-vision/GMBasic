@@ -26,6 +26,7 @@ public sealed class CGfxGraphicsService : IGraphicsService
     // ── P/Invoke (motore C) ──
     [DllImport(Lib)] private static extern void gmb_gfx_init();
     [DllImport(Lib)] private static extern void gmb_gfx_screen(int mode, int w, int h, int bpp);
+    [DllImport(Lib)] private static extern void gmb_gfx_set_coord_mode(int mode);
     [DllImport(Lib)] private static extern void gmb_gfx_console_select(int mode);
     [DllImport(Lib)] private static extern void gmb_gfx_screenset(int visible, int active);
     [DllImport(Lib)] private static extern void gmb_gfx_pcopy(int src, int dst);
@@ -857,6 +858,7 @@ public sealed class CGfxGraphicsService : IGraphicsService
 
     // ── IGraphicsService (drawing: accodato; getter: round-trip) ──
     public void Screen(int mode, int width, int height, int bpp) => Enq(() => ScreenCore(mode, width, height, bpp));
+    public void ScreenCoords(int mode) => Enq(() => gmb_gfx_set_coord_mode(mode));
     public void TextMode(int mode) => Enq(() => gmb_gfx_console_select(mode));
 
     private static void ScreenCore(int mode, int width, int height, int bpp)

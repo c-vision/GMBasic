@@ -155,23 +155,66 @@ public sealed partial class Parser
         Expr? activePage = null;
         Expr? visiblePage = null;
         Expr? closeRepl = null;
+        int coordMode = 0;
 
         // Sintassi unificata (legacy e qualificata fusa): SCREEN mode [, switch] [, active] [, visible] [, repl]
         mode = parser.ParseExpression();
         if (mode is NumberExpr _smode) parser.GuiMode = (_smode.Value != 0);
 
-        if (!parser.Match(TokenKind.Comma))
-            return new ScreenStmt(mode, activePage, visiblePage, closeRepl, screenToken);
-        activePage = parser.ParseOptionalExpression(); // Riutilizzabile
-        if (!parser.Match(TokenKind.Comma))
-            return new ScreenStmt(mode, activePage, visiblePage, closeRepl, screenToken);
-        visiblePage = parser.ParseOptionalExpression(); // Riutilizzabile
+        // Forma COMPATTA: gli argomenti posizionali possono essere interrotti in QUALSIASI
+        // punto dalla clausola dello spazio coordinate (`CELLS`/`PIXELS`/`USE …`).
         if (parser.Match(TokenKind.Comma))
         {
-            closeRepl = parser.ParseOptionalExpression(); // Riutilizzabile
+            if (!TryParseCoordClause(parser, ref coordMode))
+            {
+                activePage = parser.ParseOptionalExpression();
+                if (parser.Match(TokenKind.Comma))
+                {
+                    if (!TryParseCoordClause(parser, ref coordMode))
+                    {
+                        visiblePage = parser.ParseOptionalExpression();
+                        if (parser.Match(TokenKind.Comma))
+                        {
+                            if (!TryParseCoordClause(parser, ref coordMode))
+                            {
+                                closeRepl = parser.ParseOptionalExpression();
+                                if (parser.Match(TokenKind.Comma)) TryParseCoordClause(parser, ref coordMode);
+                            }
+                        }
+                    }
+                }
+            }
         }
 
-        return new ScreenStmt(mode, activePage, visiblePage, closeRepl, screenToken);
+        // Forma ESTESA (token, senza virgole): SCREEN 12 WIDTH 1216 HEIGHT 800 USE CELLS.
+        // WIDTH/HEIGHT occupano la stessa posizione degli argomenti posizionali 2 e 3
+        // (parità di sintassi con il compilatore C: cambia solo il nome dei campi).
+        for (; ; )
+        {
+            if (parser.Match(TokenKind.Width)) { activePage = parser.ParseExpression(); continue; }
+            if (parser.Match(TokenKind.Height)) { visiblePage = parser.ParseExpression(); continue; }
+            if (TryParseCoordClause(parser, ref coordMode)) continue;
+            break;
+        }
+
+        return new ScreenStmt(mode, activePage, visiblePage, closeRepl, screenToken, null, coordMode);
+    }
+
+    /// <summary>
+    /// Clausola dello spazio coordinate dei controlli: `CELLS` | `PIXELS` | `USE CELLS` | `USE PIXELS`.
+    /// 1 = CELLE (CellsToPixel in grafica), 2 = PIXEL (PixelToCells in TUI). Default 0 = AUTO.
+    /// </summary>
+    private static bool TryParseCoordClause(Parser parser, ref int coordMode)
+    {
+        if (parser.Match(TokenKind.Use))
+        {
+            if (parser.Match(TokenKind.Cells)) { coordMode = 1; return true; }
+            if (parser.Match(TokenKind.Pixels)) { coordMode = 2; return true; }
+            throw CreateError(parser.Peek(), "SCREEN: dopo USE atteso CELLS o PIXELS.");
+        }
+        if (parser.Match(TokenKind.Cells)) { coordMode = 1; return true; }
+        if (parser.Match(TokenKind.Pixels)) { coordMode = 2; return true; }
+        return false;
     }
 
     /// <summary>

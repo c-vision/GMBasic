@@ -1125,6 +1125,20 @@ int emit_control_stmt(ctx_t* c, gmb_stmt_t* s)
     }
     if (s->id_var && *s->id_var) { ind(c); emit_ident(c, s->id_var); sb_put(&c->out, " = (gmb_double_t)gmb_form_last_handle();\n"); }
     emit_tui_props(c, s);
+    /* Clausole del controllo (NAME/TAG/TOOLTIP/VISIBLE/ENABLED/TABINDEX/TABSTOP/STYLE/
+     * COLOR... e `metric`) per OGNI tipo: i rami che non le emettono direttamente le
+     * applicano qui, per HANDLE (una sola fonte: il runtime). Senza, `USE CELLS` su
+     * CHECKBOX/TOGGLE/COMBOBOX/PROGRESS/SLIDER/PANEL/... veniva perso e il controllo
+     * finiva disegnato alle coordinate grezze (residui/sovrapposizioni). */
+    if (s->set_attr && s->n_set_attr > 0 && s->set_attr[0] && *s->set_attr[0]) {
+        ind(c);
+        sb_put(&c->out, "gmb_form_apply_last_style(\"");
+        for (const char* _pp = s->set_attr[0]; *_pp; _pp++) {
+            if (*_pp == '"' || *_pp == '\\') sb_put(&c->out, "\\");
+            char _ch[2] = { *_pp, 0 }; sb_put(&c->out, _ch);
+        }
+        sb_put(&c->out, "\");\n");
+    }
     (void)ctl_free_csv;
     return 1;
 }

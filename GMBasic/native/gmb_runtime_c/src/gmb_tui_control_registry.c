@@ -16,6 +16,9 @@ int  gmb_tui_control_add(gmb_control_t* c)
     g_reg_ctrl[g_reg_n] = c;
     c->handle = g_reg_n;
     if (g_reg_focus < 0) g_reg_focus = g_reg_n;
+    /* "Ultimo controllo creato" = handle, in QUALSIASI registry: le clausole della
+     * dichiarazione (NAME/STYLE/…/metric) si applicano per handle, non per indice. */
+    { extern void gmb_form_note_handle(int h); gmb_form_note_handle(c->handle); }
     return g_reg_n++;
 }
 

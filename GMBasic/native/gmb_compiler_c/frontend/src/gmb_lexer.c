@@ -616,6 +616,9 @@ static const gmb_keyword_t gmb_keywords[] = {
     GMB_KEYWORD_ENTRY("HIDE", Hide),
     GMB_KEYWORD_ENTRY("CHART", Chart),
     GMB_KEYWORD_ENTRY("CANVAS", Canvas),
+    /* COORDINATE dei controlli (SCREEN/USE): spazio DICHIARATO, non dedotto. */
+    GMB_KEYWORD_ENTRY("CELLS", Cells),
+    GMB_KEYWORD_ENTRY("PIXELS", Pixels),
     GMB_KEYWORD_ENTRY("PLOT", Plot),
     GMB_KEYWORD_ENTRY("FINANCIAL", Financial),
     GMB_KEYWORD_ENTRY("SHOW", Show),

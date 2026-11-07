@@ -24291,7 +24291,7 @@ static void st_gfx(ctx_t* c, gmb_stmt_t* s) {
         /* 2.6(r): SCREEN/SYNC/POINT/LOAD TEXTURE → gmb_gfx_* (runtime condiviso) */
         gmb_expr_t** ga = s->net_args;
         switch (s->net_sub) {
-        case 1: { /* SCREEN mode [, w, h, bpp] */
+        case 1: { /* SCREEN mode [, w, h, bpp] [USE CELLS|PIXELS] */
             ind(c);
             sb_put(&c->out, "gmb_gfx_screen((int)(");
             emit_expr(c, ga[0]);
@@ -24302,6 +24302,13 @@ static void st_gfx(ctx_t* c, gmb_stmt_t* s) {
                 else sb_put(&c->out, "0");
             }
             sb_put(&c->out, ");\n");
+            /* Spazio coordinate DICHIARATO (0=non dichiarato→AUTO, 1=CELLS, 2=PIXELS):
+             * si applica DOPO gmb_gfx_screen, perche' l'AUTO dipende da screen_on. */
+            if (s->coord_mode == 1 || s->coord_mode == 2) {
+                ind(c);
+                sb_put(&c->out, s->coord_mode == 1 ? "gmb_gfx_set_coord_mode(1);\n"
+                                                   : "gmb_gfx_set_coord_mode(0);\n");
+            }
             break;
         }
         case 2: /* SYNC */

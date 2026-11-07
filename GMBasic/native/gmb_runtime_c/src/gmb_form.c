@@ -101,6 +101,7 @@ static int grid_cell(const gmb_pix_widget_t* wd, int r, int c, char* out, int ca
 static gmb_pix_widget_t g_wid[GMB_FORM_MAX_WIDGETS];
 static int g_nwid = 0;
 static int g_last_handle = -1;   /* ID handle del controllo appena creato (widget=i, button=1000+i) */
+static int g_last_is_tui = 0;    /* 1 = l'ultimo controllo creato vive nel registry TUI (handle 0..63) */
 
 static void set_focus_wid(int i);
 static const char* form_stristr(const char* h, const char* n)
@@ -234,7 +235,7 @@ int gmb_form_add_button(int x, int y, int w, int h, const char* label, gmb_form_
         gmb_control_t* c = gmb_tui_add_button(x, y, w, label);
         if (!c) return -1;
         if (cb) gmb_tui_set_event_id(c->handle, GMB_EV_CLICK, (gmb_tui_cb)cb);
-        g_last_handle = c->handle;
+        gmb_form_note_handle(c->handle);
         return c->handle;
     }
     if (g_nbtn >= GMB_FORM_MAX_BUTTONS) return -1;
@@ -246,6 +247,7 @@ int gmb_form_add_button(int x, int y, int w, int h, const char* label, gmb_form_
     snprintf(b->label, sizeof(b->label), "%s", label ? label : "");
     g_dirty = 1;
     g_last_handle = 1000 + g_nbtn;   /* handle bottone (spazio distinto dai widget) */
+    g_last_is_tui = 0;               /* l'ultimo controllo creato è un FORM button */
     b->base.handle = 1000 + g_nbtn;  /* base Control: handle univoco */
     return g_nbtn++;
 }
@@ -261,7 +263,7 @@ int gmb_control_add_button(int x, int y, int w, int h, const char* label, gmb_fo
         gmb_control_t* c = gmb_tui_add_button(x, y, w, label);
         if (!c) return -1;
         if (cb) gmb_tui_set_event_id(c->handle, GMB_EV_CLICK, (gmb_tui_cb)cb);
-        g_last_handle = c->handle;
+        gmb_form_note_handle(c->handle);
         return c->handle;
     }
     return gmb_form_add_button(x, y, w, h, label, cb);
@@ -277,7 +279,7 @@ int gmb_control_add_checkbox(int x, int y, int w, const char* label, double* var
         gmb_control_t* c = gmb_tui_add_checkbox(x, y, w, label);
         if (!c) return -1;
         if (var) gmb_tui_bind_value(c->handle, var);
-        g_last_handle = c->handle;
+        gmb_form_note_handle(c->handle);
         return c->handle;
     }
     return gmb_form_add_checkbox(x, y, label, var);
@@ -293,7 +295,7 @@ int gmb_control_add_toggle(int x, int y, int w, const char* label, double* var)
         gmb_control_t* c = gmb_tui_add_toggle(x, y, w, label);
         if (!c) return -1;
         if (var) gmb_tui_bind_value(c->handle, var);
-        g_last_handle = c->handle;
+        gmb_form_note_handle(c->handle);
         return c->handle;
     }
     return gmb_form_add_toggle(x, y, label, var);
@@ -316,7 +318,7 @@ int gmb_control_add_radio(int x, int y, int w, const char* items, double* var)
         gmb_control_t* c = gmb_tui_add_radiogroup(x, y, w, 1, items);
         if (!c) return -1;
         if (var) gmb_tui_bind_value(c->handle, var);
-        g_last_handle = c->handle;
+        gmb_form_note_handle(c->handle);
         return c->handle;
     }
     return gmb_form_add_radio(x, y, items, var);
@@ -329,7 +331,7 @@ int gmb_control_add_listbox(int x, int y, int w, int h, const char* items, doubl
         gmb_control_t* c = gmb_tui_add_listbox(x, y, w, h, items);
         if (!c) return -1;
         if (var) gmb_tui_bind_value(c->handle, var);
-        g_last_handle = c->handle;
+        gmb_form_note_handle(c->handle);
         return c->handle;
     }
     return gmb_form_add_listbox(x, y, w, h, items, var);
@@ -342,7 +344,7 @@ int gmb_control_add_combobox(int x, int y, int w, const char* items, double* var
         gmb_control_t* c = gmb_tui_add_combobox(x, y, w, items);
         if (!c) return -1;
         if (var) gmb_tui_bind_value(c->handle, var);
-        g_last_handle = c->handle;
+        gmb_form_note_handle(c->handle);
         return c->handle;
     }
     return gmb_form_add_dropdown(x, y, w, items, var);
@@ -355,7 +357,7 @@ int gmb_control_add_numericupdown(int x, int y, int w, double mn, double mx, dou
         gmb_control_t* c = gmb_tui_add_numericupdown(x, y, w, (int)mn, (int)mx, (int)(var ? *var : mn));
         if (!c) return -1;
         if (var) gmb_tui_bind_value(c->handle, var);
-        g_last_handle = c->handle;
+        gmb_form_note_handle(c->handle);
         return c->handle;
     }
     return gmb_form_add_spinner(x, y, w, mn, mx, step, var);
@@ -366,7 +368,7 @@ int gmb_control_add_starrating(int x, int y, int w, int mx, int val, double* var
     gmb_control_t* c = gmb_tui_add_starrating(x, y, w, mx, val);
     if (!c) return -1;
     if (var) gmb_tui_bind_value(c->handle, var);
-    g_last_handle = c->handle;
+    gmb_form_note_handle(c->handle);
     return c->handle;
 }
 
@@ -375,7 +377,7 @@ int gmb_control_add_scrollbar(int x, int y, int len, int mn, int mx, int val, do
     gmb_control_t* c = gmb_tui_add_scrollbar(x, y, len, mn, mx, val);
     if (!c) return -1;
     if (var) gmb_tui_bind_value(c->handle, var);
-    g_last_handle = c->handle;
+    gmb_form_note_handle(c->handle);
     return c->handle;
 }
 
@@ -390,7 +392,7 @@ int gmb_control_add_grid(int x, int y, int w, int h, const char* headers, const 
         gmb_control_t* c = gmb_tui_add_grid(x, y, w, h, ncols, data);
         if (!c) return -1;
         if (var) gmb_tui_bind_value(c->handle, var);
-        g_last_handle = c->handle;
+        gmb_form_note_handle(c->handle);
         return c->handle;
     }
     return gmb_form_add_grid(x, y, w, h, headers, data, var);
@@ -405,7 +407,7 @@ int gmb_control_add_tree(int x, int y, int w, int h, const char* items, double* 
         gmb_control_t* c = gmb_tui_add_treeview(x, y, w, h, items);
         if (!c) return -1;
         if (var) gmb_tui_bind_value(c->handle, var);
-        g_last_handle = c->handle;
+        gmb_form_note_handle(c->handle);
         return c->handle;
     }
     return gmb_form_add_tree(x, y, w, h, items, var);
@@ -420,7 +422,7 @@ int gmb_control_add_tab(int x, int y, int w, const char* items, double* var)
         gmb_control_t* c = gmb_tui_add_tab(x, y, w, items);
         if (!c) return -1;
         if (var) gmb_tui_bind_value(c->handle, var);
-        g_last_handle = c->handle;
+        gmb_form_note_handle(c->handle);
         return c->handle;
     }
     return gmb_form_add_tabs(x, y, items, var);
@@ -1166,6 +1168,33 @@ static void draw_open_dropdowns(float sc)
 
 /* Disegna tutti i bottoni del form (no-op in TUI/headless). Salva/ripristina il font
  * se qualche bottone usa un font proprio. */
+/* Rect PIXEL effettivo di un controllo del FORM secondo lo spazio coordinate DICHIARATO:
+ * 0 = nessuna conversione (default: pixel in grafica), 1 = celle → pixel (USE CELLS).
+ * La dimensione della cella viene dal buffer TUI e dalla pagina grafica (font/renderScale),
+ * quindi la conversione si ricalcola a ogni frame (nessuna cache da invalidare). */
+static void form_control_px_rect(gmb_control_t* c, int* x, int* y, int* w, int* h)
+{
+    /* Unità LOGICHE (le stesse del disegno gfx: gmb_gfx_* applica la render-scale al suo
+     * interno). La cella si ricava dalla griglia del buffer TUI sulla pagina LOGICA: usare
+     * il drawable fisico la raddoppiava su Retina (pillola schiacciata, non ovale). */
+    int cw = GMB_CELL_PX_W, ch = GMB_CELL_PX_H;
+    { extern gmb_clipper_state_t* gmb_clipper_peek_state(void);
+      gmb_clipper_state_t* st = gmb_clipper_peek_state();
+      if (st && st->buffer) {
+          int bw = gmb_screen_width(st->buffer), bh = gmb_screen_height(st->buffer);
+          int pw = GMB_GFX_SCREEN_W(), ph = GMB_GFX_SCREEN_H();
+          if (bw > 0 && pw > 0) cw = pw / bw;
+          if (bh > 0 && ph > 0) ch = ph / bh;
+      } }
+    if (cw < 1) cw = GMB_CELL_PX_W;
+    if (ch < 1) ch = GMB_CELL_PX_H;
+    int tr = gmb_control_coord_transform(c);
+    if (x) *x = (tr > 0) ? c->x * cw : c->x;
+    if (y) *y = (tr > 0) ? c->y * ch : c->y;
+    if (w) *w = (tr > 0 && !c->coord_auto_w) ? c->width * cw : c->width;
+    if (h) *h = (tr > 0 && !c->coord_auto_h) ? c->height * ch : c->height;
+}
+
 static void form_draw(void)
 {
     if (!GMB_GFX_SCREEN_ON()) return;
@@ -1175,11 +1204,33 @@ static void form_draw(void)
     float sc = GMB_GFX_RENDER_SCALE(); if (sc <= 0.0f) sc = 1.0f;
     const char* op = GMB_GFX_FONT_PATH(); char ops[160]; snprintf(ops, sizeof(ops), "%s", op ? op : "");
     int os = GMB_GFX_FONT_SIZE(); int fc = 0;
+    /* Spazio coordinate DICHIARATO (SCREEN ... USE CELLS / metric=1): il FORM disegna in
+     * pixel, quindi le coordinate in CELLE si convertono QUI, per il frame, e si ripristinano.
+     * Default (metric 0 + SCREEN auto): nessuna conversione. */
+    int sw[GMB_FORM_MAX_WIDGETS], sh[GMB_FORM_MAX_WIDGETS], sx[GMB_FORM_MAX_WIDGETS], sy[GMB_FORM_MAX_WIDGETS];
+    int sbw[GMB_FORM_MAX_BUTTONS], sbh[GMB_FORM_MAX_BUTTONS], sbx[GMB_FORM_MAX_BUTTONS], sby[GMB_FORM_MAX_BUTTONS];
+    for (int i = 0; i < g_nwid; i++) {
+        gmb_control_t* c = &g_wid[i].base;
+        int nx, ny, nw, nh; form_control_px_rect(c, &nx, &ny, &nw, &nh);
+        int conv = gmb_control_coord_transform(c) > 0;
+        sx[i] = c->x; sy[i] = c->y; sw[i] = c->width; sh[i] = c->height;
+        if (conv) { c->x = nx; c->y = ny; c->width = nw; c->height = nh; }
+    }
+    for (int i = 0; i < g_nbtn; i++) {
+        gmb_control_t* c = &g_btns[i].base;
+        int nx, ny, nw, nh; form_control_px_rect(c, &nx, &ny, &nw, &nh);
+        int conv = gmb_control_coord_transform(c) > 0;
+        sbx[i] = c->x; sby[i] = c->y; sbw[i] = c->width; sbh[i] = c->height;
+        if (conv) { c->x = nx; c->y = ny; c->width = nw; c->height = nh; }
+    }
     draw_widgets(sc);
     /* Bottoni SOPRA i widget: il pannello-card (draw_widgets) copriva i bottoni
      * aggiunti prima di lui. Le dropdown restano l'overlay più alto. */
     for (int i = 0; i < g_nbtn; i++) { if (!g_btns[i].base.visible) continue; if (g_btns[i].style.font_size > 0) fc = 1; draw_button_body(&g_btns[i], sc); }
     draw_open_dropdowns(sc);
+    /* Ripristino le coordinate DICHIARATE (il controllo resta nella sua metrica). */
+    for (int i = 0; i < g_nwid; i++) { g_wid[i].base.x = sx[i]; g_wid[i].base.y = sy[i]; g_wid[i].base.width = sw[i]; g_wid[i].base.height = sh[i]; }
+    for (int i = 0; i < g_nbtn; i++) { g_btns[i].base.x = sbx[i]; g_btns[i].base.y = sby[i]; g_btns[i].base.width = sbw[i]; g_btns[i].base.height = sbh[i]; }
     if (fc) GMB_GFX_FONT(ops, os);
 }
 
@@ -1326,8 +1377,56 @@ void gmb_form_apply_props_handle(int handle, unsigned flags, const char* name, c
 
 static void apply_base_props_btn(gmb_form_btn_t* b, const char* spec);
 
+/* Nota l'ultimo controllo creato (usato dagli emitter per applicare le clausole per handle).
+ * Chiamato anche dal registry TUI: una sola nozione di "ultimo controllo" per entrambi. */
+void gmb_form_note_handle(int handle) { g_last_handle = handle; g_last_added = -1; g_last_is_tui = 1; }
+
+/* Applica le clausole dichiarate (NAME/STYLE/metric/…) all'ULTIMO controllo creato,
+ * nel registry giusto: form (widget/button) o TUI. Gli handle dei due registry si
+ * sovrappongono (0..31 / 0..63), quindi il registry NON si può dedurre dall'handle. */
+void gmb_form_apply_last_style(const char* spec)
+{
+    if (!spec) return;
+    if (g_last_is_tui) {
+        extern void gmb_control_apply_style_handle(int, const char*);
+        gmb_control_apply_style_handle(g_last_handle, spec);
+        return;
+    }
+    for (int i = 0; i < g_nwid; i++) if (g_wid[i].base.handle == g_last_handle) {
+        style_apply(&g_wid[i].style, spec); apply_base_props(&g_wid[i], spec, i); g_dirty = 1; return;
+    }
+    for (int i = 0; i < g_nbtn; i++) if (g_btns[i].base.handle == g_last_handle) {
+        style_apply(&g_btns[i].style, spec); apply_base_props_btn(&g_btns[i], spec); g_dirty = 1; return;
+    }
+    { extern void gmb_control_apply_style_handle(int, const char*);
+      gmb_control_apply_style_handle(g_last_handle, spec); }
+}
+
+void gmb_form_apply_style_handle(int handle, const char* spec)
+{
+    /* Form widget/button per handle: stile + proprietà base (NAME/TAG/…/metric). Poi TUI. */
+    for (int i = 0; i < g_nwid; i++) if (g_wid[i].base.handle == handle) {
+        style_apply(&g_wid[i].style, spec); apply_base_props(&g_wid[i], spec, i); g_dirty = 1; return;
+    }
+    for (int i = 0; i < g_nbtn; i++) if (g_btns[i].base.handle == handle) {
+        style_apply(&g_btns[i].style, spec); apply_base_props_btn(&g_btns[i], spec); g_dirty = 1; return;
+    }
+    { extern void gmb_control_apply_style_handle(int, const char*);
+      gmb_control_apply_style_handle(handle, spec); }
+}
+
 void gmb_form_set_last_style(const char* spec)
 {
+    /* TUI (schermo grafico OFF): il controllo vive nel registry TUI, non nei form:
+     * l'"ultimo" è identificato dall'HANDLE (che parte da 0). Senza questo ramo la
+     * spec (colori, proprietà base, `metric`) andava persa in modalità testo. */
+    if (!GMB_GFX_SCREEN_ON()) {
+        if (g_last_handle >= 0) {
+            extern void gmb_control_apply_style_handle(int handle, const char* spec);
+            gmb_control_apply_style_handle(g_last_handle, spec);
+        }
+        return;
+    }
     /* Ultimo controllo puo essere un WIDGET (0..g_nwid-1) o un BUTTON (handle 1000+i):
      * g_last_added indicizza solo i widget, quindi per i bottoni si usa g_last_handle. */
     if (g_last_handle >= 1000) {
@@ -1343,7 +1442,7 @@ void gmb_form_set_last_style(const char* spec)
 static void apply_base_props(gmb_pix_widget_t* wd, const char* spec, int idx)
 {
     if (!wd || !spec) return;
-    static const char* keys[] = { "name", "tag", "tooltip", "visible", "enabled", "tabindex", "tabstop", NULL };
+    static const char* keys[] = { "name", "tag", "tooltip", "visible", "enabled", "tabindex", "tabstop", "metric", NULL };
     for (int k = 0; keys[k]; k++) {
         char pat[16]; snprintf(pat, sizeof(pat), "%s=", keys[k]); size_t pl = strlen(pat);
         const char* p = spec;
@@ -1361,6 +1460,7 @@ static void apply_base_props(gmb_pix_widget_t* wd, const char* spec, int idx)
             else if (!strcasecmp(keys[k], "enabled")) wd->base.enabled = atoi(tmp);
             else if (!strcasecmp(keys[k], "tabindex")) wd->base.tab_index = atoi(tmp);
             else if (!strcasecmp(keys[k], "tabstop")) wd->base.tab_stop = atoi(tmp);
+            else if (!strcasecmp(keys[k], "metric"))  wd->base.coord_mode = atoi(tmp);
             break;
         }
     }
@@ -1371,7 +1471,7 @@ static void apply_base_props(gmb_pix_widget_t* wd, const char* spec, int idx)
 static void apply_base_props_btn(gmb_form_btn_t* b, const char* spec)
 {
     if (!b || !spec) return;
-    static const char* keys[] = { "name", "tag", "tooltip", "visible", "enabled", "tabindex", "tabstop", NULL };
+    static const char* keys[] = { "name", "tag", "tooltip", "visible", "enabled", "tabindex", "tabstop", "metric", NULL };
     for (int k = 0; keys[k]; k++) {
         char pat[16]; snprintf(pat, sizeof(pat), "%s=", keys[k]); size_t pl = strlen(pat);
         const char* p = spec;
@@ -1389,6 +1489,7 @@ static void apply_base_props_btn(gmb_form_btn_t* b, const char* spec)
             else if (!strcasecmp(keys[k], "enabled")) b->base.enabled = atoi(tmp);
             else if (!strcasecmp(keys[k], "tabindex")) b->base.tab_index = atoi(tmp);
             else if (!strcasecmp(keys[k], "tabstop")) b->base.tab_stop = atoi(tmp);
+            else if (!strcasecmp(keys[k], "metric"))  b->base.coord_mode = atoi(tmp);
             break;
         }
     }
@@ -1529,6 +1630,8 @@ static void tui_ctrl_set(const char* name, const char* prop, double num, const c
     else if (!strcasecmp(prop,"enabled")) c->enabled=(num!=0);
     else if (!strcasecmp(prop,"tabindex")) c->tab_index=(int)num;
     else if (!strcasecmp(prop,"tabstop")) c->tab_stop=(num!=0);
+    /* Spazio coordinate DICHIARATO (0=default/segue SCREEN, 1=CellsToPixel, 2=PixelToCells). */
+    else if (!strcasecmp(prop,"metric")||!strcasecmp(prop,"coordmode")) c->coord_mode=(int)num;
     else if (!strcasecmp(prop,"value")||!strcasecmp(prop,"selected")||!strcasecmp(prop,"index")||!strcasecmp(prop,"listindex")) tui_ctrl_set_value(c,num);
     else if (!strcasecmp(prop,"items")||!strcasecmp(prop,"list")) {
         if (str && c->ctrl_kind==GMB_CK_LISTBOX) {
@@ -1620,6 +1723,7 @@ static double tui_ctrl_get(const char* name, const char* prop)
     if (!strcasecmp(prop,"handle")) return (double)c->handle;
     if (!strcasecmp(prop,"tabindex")) return c->tab_index;
     if (!strcasecmp(prop,"tabstop")) return c->tab_stop;
+    if (!strcasecmp(prop,"metric")||!strcasecmp(prop,"coordmode")) return c->coord_mode;
     if (!strcasecmp(prop,"value")||!strcasecmp(prop,"selected")||!strcasecmp(prop,"index")||!strcasecmp(prop,"listindex")) return tui_ctrl_value(c);
     if (!strcasecmp(prop,"listcount")) {
         if (c->ctrl_kind==GMB_CK_LISTBOX) return (double)((gmb_listbox_t*)c->user)->items_count;
@@ -1701,6 +1805,7 @@ void gmb_form_control_set(const char* name, const char* prop, double num, const 
     else if (!strcasecmp(prop, "enabled"))                            { if (w) w->base.enabled = (int)num; else t->base.enabled = (int)num; }
     else if (!strcasecmp(prop, "tabindex"))                           { if (w) w->base.tab_index = (int)num; else t->base.tab_index = (int)num; }
     else if (!strcasecmp(prop, "tabstop"))                            { if (w) w->base.tab_stop = (int)num; else t->base.tab_stop = (int)num; }
+    else if (!strcasecmp(prop, "metric") || !strcasecmp(prop, "coordmode")) { if (w) w->base.coord_mode = (int)num; else t->base.coord_mode = (int)num; }
     else if (!strcasecmp(prop, "value") || !strcasecmp(prop, "listindex")) { if (w) wd_set_num(w, num); }
     else if (!strcasecmp(prop, "selected") || !strcasecmp(prop, "index")) { if (w) wd_set_num(w, num); }
     else if ((!strcasecmp(prop, "items") || !strcasecmp(prop, "list")) && str && w) {
@@ -1741,6 +1846,7 @@ double gmb_form_control_get(const char* name, const char* prop)
     else if (!strcasecmp(prop, "enabled"))                          return w ? w->base.enabled : t->base.enabled;
     else if (!strcasecmp(prop, "tabindex"))                         return w ? w->base.tab_index : t->base.tab_index;
     else if (!strcasecmp(prop, "tabstop"))                          return w ? w->base.tab_stop : t->base.tab_stop;
+    else if (!strcasecmp(prop, "metric") || !strcasecmp(prop, "coordmode")) return w ? w->base.coord_mode : t->base.coord_mode;
     else if (!strcasecmp(prop, "value") || !strcasecmp(prop, "selected") || !strcasecmp(prop, "index") || !strcasecmp(prop, "listindex")) return w ? wd_num(w) : 0;
     else if (!strcasecmp(prop, "listcount")) return w ? w->nitems : 0;
     else if (!strcasecmp(prop, "min") || !strcasecmp(prop, "minvalue")) return w ? w->vmin : 0;
@@ -1834,6 +1940,13 @@ int gmb_form_add_button_css(int x, int y, int w, int h, const char* label, gmb_f
 {
     int idx = gmb_form_add_button(x, y, w, h, label, cb);
     if (idx >= 0) {
+        /* In TEXT il bottone vive nel registry TUI (vedi gmb_form_add_button): `idx` è
+         * l'HANDLE TUI, non un indice in g_btns → la spec va applicata per handle. */
+        if (!GMB_GFX_SCREEN_ON()) {
+            extern void gmb_control_apply_style_handle(int handle, const char* spec);
+            gmb_control_apply_style_handle(idx, spec);
+            return idx;
+        }
         style_apply(&g_btns[idx].style, spec); apply_base_props_btn(&g_btns[idx], spec);
         if (spec && strstr(spec, "primary")) {   /* primario = accento del tema (esplicito) */
             gmb_widget_style_t st = gmb_widget_style_current();
@@ -1854,6 +1967,17 @@ static int form_add_widget(int kind, int x, int y, int w, int h, const char* ite
     memset(wd, 0, sizeof(*wd));
     wd->kind = kind; wd->base.x = x; wd->base.y = y; wd->base.width = w; wd->base.height = h; wd->var = var; wd->ival = var ? *var : 0.0;
     wd->base.visible = 1; wd->base.enabled = 1; wd->base.tab_stop = 1;
+    g_last_is_tui = 0;   /* l'ultimo controllo creato è un FORM widget */
+    /* Controlli a CONTENUTO: la dimensione la calcola il runtime, il programma ha dichiarato
+     * solo la posizione → non va convertita (vedi gmb_control_t.coord_auto_w/h). */
+    switch (kind) {
+        case W_CHECK: case W_TOGGLE: case W_RADIO: case W_TABS: case W_MENUBAR:
+        case W_DATE: case W_COLORPICKER:
+            wd->base.coord_auto_w = 1; wd->base.coord_auto_h = 1; break;
+        case W_TRACK: case W_DROPDOWN: case W_PROGRESS: case W_STATUSBAR: case W_SPINNER:
+            wd->base.coord_auto_h = 1; break;
+        default: break;
+    }
     wd->style = gmb_widget_style_current();
     if (items) wd->nitems = form_split_items(items, wd->items, 8);
     g_dirty = 1;
@@ -1878,7 +2002,7 @@ int gmb_form_add_radio(int x, int y, const char* items, double* var)
         gmb_control_t* c = gmb_tui_add_radiogroup(x, y, 200, 22, items);
         if (!c) return -1;
         if (var) gmb_tui_bind_value(c->handle, var);
-        g_last_handle = c->handle;
+        gmb_form_note_handle(c->handle);
         return c->handle;
     }
     int i = form_add_widget(W_RADIO, x, y, 200, 22, items, var);
@@ -1899,7 +2023,7 @@ int gmb_form_add_track(int x, int y, int w, double vmin, double vmax, double* va
         gmb_control_t* c = gmb_tui_add_slider(x, y, w, (int)vmin, (int)vmax, (int)(var ? *var : vmin));
         if (!c) return -1;
         if (var) gmb_tui_bind_value(c->handle, var);
-        g_last_handle = c->handle;
+        gmb_form_note_handle(c->handle);
         return c->handle;
     }
     int i = form_add_widget(W_TRACK, x, y, w, 24, NULL, var);
@@ -1915,7 +2039,7 @@ int gmb_form_add_dropdown(int x, int y, int w, const char* items, double* var)
         gmb_control_t* c = gmb_tui_add_combobox(x, y, w, items);
         if (!c) return -1;
         if (var) gmb_tui_bind_value(c->handle, var);
-        g_last_handle = c->handle;
+        gmb_form_note_handle(c->handle);
         return c->handle;
     }
     return form_add_widget(W_DROPDOWN, x, y, w, 28, items, var);
@@ -1998,7 +2122,7 @@ int gmb_form_add_grid(int x, int y, int w, int h, const char* headers, const cha
         gmb_control_t* c = gmb_tui_add_grid(x, y, w, h, cols, data);
         if (!c) return -1;
         if (var) gmb_tui_bind_value(c->handle, var);
-        g_last_handle = c->handle;
+        gmb_form_note_handle(c->handle);
         return c->handle;
     }
     int i = form_add_widget(W_GRID, x, y, w, h, NULL, var);
@@ -2034,7 +2158,7 @@ int gmb_form_add_tree(int x, int y, int w, int h, const char* items, double* var
         gmb_control_t* c = gmb_tui_add_treeview(x, y, w, h, items);
         if (!c) return -1;
         if (var) gmb_tui_bind_value(c->handle, var);
-        g_last_handle = c->handle;
+        gmb_form_note_handle(c->handle);
         return c->handle;
     }
     int i = form_add_widget(W_TREE, x, y, w, h, items, var);
@@ -2079,7 +2203,7 @@ int gmb_form_add_toggle(int x, int y, const char* label, double* var)
         gmb_control_t* c = gmb_tui_add_toggle(x, y, 220, label);
         if (!c) return -1;
         if (var) gmb_tui_bind_value(c->handle, var);
-        g_last_handle = c->handle;
+        gmb_form_note_handle(c->handle);
         return c->handle;
     }
     int i = form_add_widget(W_TOGGLE, x, y, 220, 24, NULL, var);
@@ -2099,7 +2223,7 @@ int gmb_form_add_statusbar(int x, int y, int w, const char* text)
         extern gmb_control_t* gmb_tui_add_statusbar(int, int, int, const char*);
         gmb_control_t* c = gmb_tui_add_statusbar(x, y, w, text);
         if (!c) return -1;
-        g_last_handle = c->handle;
+        gmb_form_note_handle(c->handle);
         return c->handle;
     }
     int i = form_add_widget(W_STATUSBAR, x, y, w, 24, NULL, NULL);
@@ -2115,7 +2239,7 @@ int gmb_form_add_tabs(int x, int y, const char* items, double* var)
         gmb_control_t* c = gmb_tui_add_tab(x, y, 60, items);
         if (!c) return -1;
         if (var) gmb_tui_bind_value(c->handle, var);
-        g_last_handle = c->handle;
+        gmb_form_note_handle(c->handle);
         return c->handle;
     }
     return form_add_widget(W_TABS, x, y, 60, 30, items, var);
@@ -2129,7 +2253,7 @@ int gmb_form_add_menubar(int x, int y, const char* items, double* var)
         gmb_control_t* c = gmb_tui_add_menu(x, y, 400, items);
         if (!c) return -1;
         if (var) gmb_tui_bind_value(c->handle, var);
-        g_last_handle = c->handle;
+        gmb_form_note_handle(c->handle);
         return c->handle;
     }
     return form_add_widget(W_MENUBAR, x, y, 400, 24, items, var);
@@ -2143,7 +2267,7 @@ int gmb_form_add_listbox(int x, int y, int w, int h, const char* items, double* 
         gmb_control_t* c = gmb_tui_add_listbox(x, y, w, h, items);
         if (!c) return -1;
         if (var) gmb_tui_bind_value(c->handle, var);
-        g_last_handle = c->handle;
+        gmb_form_note_handle(c->handle);
         return c->handle;
     }
     return form_add_widget(W_LISTBOX, x, y, w, h, items, var);
@@ -2678,7 +2802,8 @@ void gmb_form_dispatch_mouse_px(int type, int x, int y, int button, int wheel)
             gmb_pix_widget_t* fw = &g_wid[fi];
             if (!fw->base.visible || !fw->base.enabled) continue;
             if (fw->kind == W_PROGRESS || fw->kind == W_STATUSBAR) continue;
-            if (x >= fw->base.x && x < fw->base.x + fw->base.width && y >= fw->base.y && y < fw->base.y + fw->base.height) { set_focus_wid(fi); break; }
+            int fx, fy, fwd, fht; form_control_px_rect(&fw->base, &fx, &fy, &fwd, &fht);
+            if (x >= fx && x < fx + fwd && y >= fy && y < fy + fht) { set_focus_wid(fi); break; }
         }
     }
     if (type == GMB_GFX_MOUSE_DOWN && g_focus_wid >= 0 && g_focus_wid < g_nwid && g_wid[g_focus_wid].kind == W_DATE) {
@@ -2689,7 +2814,7 @@ void gmb_form_dispatch_mouse_px(int type, int x, int y, int button, int wheel)
     for (int i = 0; i < g_nbtn; i++) {
         gmb_form_btn_t* b = &g_btns[i];
         if (!b->base.visible) continue;
-        int bx = b->base.x, by = b->base.y, bw = b->base.width, bh = b->base.height;
+        int bx, by, bw, bh; form_control_px_rect(&b->base, &bx, &by, &bw, &bh);
         int hit = b->base.enabled && (x >= bx && x < bx + bw && y >= by && y < by + bh);
         if (type == GMB_GFX_MOUSE_MOVE) {
             if (b->hover != hit) { b->hover = hit; g_dirty = 1; }

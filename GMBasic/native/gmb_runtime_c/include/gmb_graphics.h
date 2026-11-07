@@ -42,6 +42,15 @@ int gmb_gfx_null_mode(void);
  * 16=XGA (640x480/256), 64=C64, 65=CRT (320x200/16). width/height>8 creano una
  * modalita' custom. */
 void gmb_gfx_screen(int mode, int width, int height, int bpp);
+/* Spazio coordinate DICHIARATO dai controlli (`SCREEN ... USE CELLS|PIXELS`).
+ *   -1 = AUTO (default): grafica → PIXEL, TUI → CELLE (nessuna conversione);
+ *    0 = PIXELS: i controlli dichiarano pixel (in TUI si converte in celle);
+ *    1 = CELLS : i controlli dichiarano celle (in grafica si converte in pixel).
+ * La conversione la applica il renderer per-frame (dipende da font/renderScale). */
+void gmb_gfx_set_coord_mode(int mode);
+int  gmb_gfx_coord_mode(void);
+/* Spazio DICHIARATO effettivo: 1 = celle, 0 = pixel. Risolve AUTO sul backend attivo. */
+int  gmb_gfx_coords_cells(void);
 /* TEXTMODE n: seleziona la modalita' console (0=%SDL,1=%C64,2=%ANSI,3=%SYSTEM). Ponte
  * esportato in libgmb_gfx per il runtime C# (gmb_console_select in gmb_console.c). */
 void gmb_gfx_console_select(int mode);

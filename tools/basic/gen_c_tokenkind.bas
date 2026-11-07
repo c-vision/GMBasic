@@ -123,8 +123,17 @@ SUB CsMembers(text AS STRING)
   g_csn = 0
   i0 = INSTR(text, "enum TokenKind")
   IF i0 = 0 THEN EXIT SUB
-  iend = INSTR(i0, text, CHR$(10) + "}")
-  IF iend = 0 THEN EXIT SUB
+  ' Chiusura del blocco enum: il `}` è INDENTATO (`  }`) nel sorgente C# reale, quindi
+  ' `CHR$(10)+"}"` non trovava mai la fine → iend=0 → EXIT SUB → il generatore diventava un
+  ' NO-OP SILENZIOSO (stampava "già in sync" senza aver letto un solo membro). Si cercano
+  ' le indentazioni note e, se nessuna combacia, si SEGNALA l'errore (mai uscire in silenzio).
+  iend = INSTR(i0, text, CHR$(10) + "  }")
+  IF iend = 0 THEN iend = INSTR(i0, text, CHR$(10) + CHR$(9) + "}")
+  IF iend = 0 THEN iend = INSTR(i0, text, CHR$(10) + "}")
+  IF iend = 0 THEN
+    PRINT "ERRORE: chiusura del blocco 'enum TokenKind' non trovata in TokenKind.cs"
+    EXIT SUB
+  END IF
   i = i0
   DO WHILE i < iend
     c = MID$(text, i, 2)
