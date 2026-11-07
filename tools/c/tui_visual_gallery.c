@@ -131,6 +131,68 @@ static void gfx_gallery(void)
     gmb_tui_draw_px_all();
 }
 
+/* Barra di avanzamento: nessuna factory nel registry, la si crea qui. */
+static gmb_control_t* add_progress(int x, int y, int w, int h, int value)
+{
+    gmb_progress_bar_t* p = (gmb_progress_bar_t*)calloc(1, sizeof(*p));
+    if (!p) return NULL;
+    gmb_progress_bar_init(p, x, y, w);
+    gmb_progress_bar_set(p, value);
+    p->ctrl.width = w; p->ctrl.height = h;
+    gmb_tui_control_add(&p->ctrl);
+    return &p->ctrl;
+}
+
+/* Finestra GRAFICA: due zone, "Clipper / Turbo Vision" e "moderni (non Clipper)". */
+static void gfx_window(void)
+{
+    gmb_tui_controls_reset();
+
+    gmb_px_draw_ex(GMB_PX_PANEL, 16, 16, 1368, 868, "GMBasic - finestra grafica", NULL, 0, 0, 0, 0, NULL, 0, NULL, 0);
+    px(gmb_tui_add_menu(36, 40, 1328, "File|Modifica|Vista|Aiuto"), 1328, 28);
+    gmb_px_draw_ex(GMB_PX_PANEL, 36, 76, 650, 744, "Clipper / Turbo Vision", NULL, 0, 0, 0, 0, NULL, 0, NULL, 0);
+    gmb_px_draw_ex(GMB_PX_PANEL, 706, 76, 658, 744, "Moderni (non Clipper)", NULL, 0, 0, 0, 0, NULL, 0, NULL, 0);
+
+    /* ---- zona Clipper ---- */
+    px(gmb_tui_add_label(56, 110, 70, "Nome:"), 70, 24);
+    px(gmb_tui_add_textinput(130, 106, 300, "Mario Rossi"), 300, 30);
+    px(gmb_tui_add_checkbox(56, 155, 300, "Abilita notifiche"), 300, 26);
+    px(gmb_tui_add_radiogroup(56, 190, 300, 90, "Testo|Grafico|Automatico"), 300, 90);
+    px(gmb_tui_add_combobox(56, 295, 300, "turbovision|clipper|nord|glass"), 300, 32);
+    px(gmb_tui_add_listbox(56, 340, 300, 150, "alpha|beta|gamma|delta|epsilon|zeta"), 300, 150);
+    px(gmb_tui_add_button(56, 505, 140, "OK"), 140, 40);
+    px(gmb_tui_add_button(210, 505, 140, "Annulla"), 140, 40);
+    px(gmb_tui_add_slider(56, 565, 300, 0, 100, 65), 300, 28);
+    px(gmb_tui_add_scrollbar(56, 605, 300, 0, 100, 40), 300, 18);
+    px(gmb_tui_add_tab(56, 640, 300, "Dati|Opzioni|Info"), 300, 34);
+    px(gmb_tui_add_bigtext(380, 560, "OK"), 200, 70);
+    px(gmb_tui_add_tbrowse(690, 56, 600, 130, "Nome:12|Citta:14",
+                           "Mario|Roma;Luigi|Milano;Anna|Torino;Sara|Napoli"), 600, 130);
+
+    /* ---- zona moderna (non Clipper) ---- */
+    px(gmb_tui_add_toggle(726, 110, 220, "Modalita esperto"), 220, 28);
+    px(add_progress(726, 150, 300, 22, 72), 300, 22);
+    px(gmb_tui_add_spinner(1050, 106, 100, "line"), 100, 32);
+    px(gmb_tui_add_starrating(1050, 150, 160, 5, 3), 160, 30);
+    px(gmb_tui_add_datepicker(726, 190, 180), 180, 32);
+    px(gmb_tui_add_logview(930, 190, 340, 70, "avvio ok|tema=turbovision|grafico|controlli attivi"), 340, 70);
+    px(gmb_tui_add_treeview(726, 280, 290, 140,
+                            "Documenti|  Foto|  Musica|Progetti+|  note.txt|  todo.txt"), 290, 140);
+    px(gmb_tui_add_grid(726, 440, 290, 120, 3, "Mario|Roma|42|Luigi|Milano|38|Anna|Torino|29"), 290, 120);
+    px(gmb_tui_add_chart(1040, 280, 300, 140, "12;18;15;22;19;25;21;28;24;30"), 300, 140);
+    px(gmb_tui_add_candlestick(1040, 440, 300, 120,
+                               "10,12,9,11;11,14,10,13;13,15,12,14;14,16,13,15;15,17,14,16"), 300, 120);
+    px(gmb_tui_add_qr(726, 580, 100, 100, "https://gmbasic.dev"), 100, 100);
+    px(gmb_tui_add_imagebutton(850, 580, 160, 40, "Immagine"), 160, 40);
+    px(gmb_tui_add_dashboard(1040, 580, 300, 120, "Utenti|1280|12|verde|Ricavi|42.5|8|verde"), 300, 120);
+    px(gmb_tui_add_splitter(726, 700, 614, 90, 0), 614, 90);
+    px(gmb_tui_add_fkeybar(36, 830, 1328, "1Aiuto|2Salva|3Carica|4Cerca|5Esegui|6Modifica"), 1328, 24);
+    px(gmb_tui_add_statusbar(36, 858, 1328, "F1 Aiuto    F2 Salva    F10 Menu    Alt+X Esci"), 1328, 24);
+
+    gmb_tui_px_invalidate();
+    gmb_tui_draw_px_all();
+}
+
 int main(int argc, char** argv)
 {
     const char* mode = argc > 1 ? argv[1] : "tui";
@@ -166,10 +228,11 @@ int main(int argc, char** argv)
     }
 
     gmb_gfx_present_init_main_thread();
-    gmb_gfx_screen(12, 1280, 850, 32);
+    gmb_gfx_screen(12, 1400, 900, 32);
     gmb_theme_t th = gmb_ui_theme();
     gmb_gfx_cls((th.desktop_bg.r << 16) | (th.desktop_bg.g << 8) | th.desktop_bg.b);
-    gfx_gallery();
+    if (strcmp(mode, "window") == 0) gfx_window();
+    else gfx_gallery();
     int rc = gmb_gfx_save_screen_png(out);
     fprintf(stderr, "GFX png rc=%d %s\n", rc, out);
     return rc == 0 ? 0 : 1;

@@ -41,6 +41,8 @@ cc -O1 -w \
 
 "$BIN/tui_visual_gallery" tui "$OUT/gallery_tui.png" $DUMP
 "$BIN/tui_visual_gallery" gfx "$OUT/gallery_gfx.png"
+"$BIN/tui_visual_gallery" window "$OUT/window_gfx.png"
 
 echo "PNG: $OUT/gallery_tui.png"
 echo "     $OUT/gallery_gfx.png"
+echo "     $OUT/window_gfx.png"
