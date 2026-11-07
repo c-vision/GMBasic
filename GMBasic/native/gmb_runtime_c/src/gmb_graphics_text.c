@@ -369,28 +369,53 @@ static int gfx_resolve_font_path(const char* name, char* out, int cap)
     return 0;
 }
 
+/* Font di DEFAULT della UI grafica (finestre pixel, controlli).
+ *
+ * NON e' il font della console di testo (consoleConfiguration[].fontPath, mono):
+ * quello serve alla griglia di celle. La UI pixel usa un font di sistema piccolo e
+ * proporzionale, come le app native macOS. Configurabile in system.settings.json /
+ * app.settings.json con le chiavi DEDICATE "uiFontPath" / "uiFontSize" (nomi distinti
+ * da "fontPath"/"fontSize", che il primo-match JSON confonderebbe) — niente env. */
+static int gfx_ui_settings(char* path, int cap, int* size)
+{
+    extern int gmb_settings_str(const char* file, const char* key, char* out, int cap);
+    extern int gmb_settings_int(const char* file, const char* key, int* out);
+    extern int gmb_paths_settings_file(char* out, size_t cap);
+    extern int gmb_paths_app_settings(char* out, size_t cap);
+    int got = 0;
+    char sp[1024];
+    if (gmb_paths_settings_file(sp, sizeof(sp)))
+    {
+        char nm[512]; int sz;
+        if (path && gmb_settings_str(sp, "uiFontPath", nm, sizeof(nm)) && nm[0])
+        { gfx_resolve_font_path(nm, path, cap); got = 1; }
+        if (gmb_settings_int(sp, "uiFontSize", &sz) && sz > 0) { *size = sz; got = 1; }
+    }
+    static char ap[2600];
+    if (gmb_paths_app_settings(ap, sizeof(ap)))
+    {
+        char nm[512]; int sz;
+        if (path && gmb_settings_str(ap, "uiFontPath", nm, sizeof(nm)) && nm[0])
+        { gfx_resolve_font_path(nm, path, cap); got = 1; }
+        if (gmb_settings_int(ap, "uiFontSize", &sz) && sz > 0) { *size = sz; got = 1; }
+    }
+    return got;
+}
+
 int gmb_gfx_font_default(int size)
 {
+    (void)size;   /* il "size" del chiamante non decide il corpo della UI (vedi sopra) */
     if (g_font_loaded) return 1;
-    const char* env = getenv("GMB_FONT_PATH");
     char fpath[1200] = {0};
-    int fsize = size > 0 ? size : 16;
-    if (env && *env) snprintf(fpath, sizeof(fpath), "%s", env);
-    else {
-        extern int gmb_settings_console_str(int index, const char* key, char* out, int cap);
-        extern int gmb_settings_console_int(int index, const char* key, int* out);
-        int idx = 0; const char* e2 = getenv("GMB_CONSOLE"); if (e2 && *e2) idx = atoi(e2);
-        char nm[256]; int sz;
-        if (gmb_settings_console_str(idx, "fontPath", nm, sizeof(nm))) gfx_resolve_font_path(nm, fpath, sizeof(fpath));
-        if (gmb_settings_console_int(idx, "fontSize", &sz) && sz > 0) fsize = sz;
-    }
+    int fsize = 13;   /* UI: 13px logici = corpo standard macOS */
+    gfx_ui_settings(fpath, sizeof(fpath), &fsize);
     if (fpath[0]) { gmb_gfx_font(fpath, fsize); if (g_font_loaded) return 1; }
     const char* cands[] = { "/System/Library/Fonts/SFNS.ttf",
                             "/System/Library/Fonts/Helvetica.ttc",
                             "/System/Library/Fonts/Supplemental/Arial.ttf",
                             "/System/Library/Fonts/Supplemental/Helvetica.ttf",
                             "/System/Library/Fonts/Geneva.ttf",
-                            "/System/Library/Fonts/Monaco.ttf", "/System/Library/Fonts/SFNSMono.ttf",
+                            "/System/Library/Fonts/Supplemental/Verdana.ttf",
                             "Resources/Sixtyfour.ttf", "Resources/font.ttf", NULL };
     for (int i = 0; cands[i]; i++) { gmb_gfx_font(cands[i], fsize); if (g_font_loaded) return 1; }
     return 0;

@@ -1022,13 +1022,18 @@ int emit_control_stmt(ctx_t* c, gmb_stmt_t* s)
         }
         sb_put(&c->out, "}\n");
     } else if (strcasecmp(cname, "COLORPICKER") == 0 && na >= 3) {
-        ind(c); sb_put(&c->out, "{ static gmb_color_picker_t _tui_cp; ");
-        sb_printf(&c->out, "gmb_color_picker_init(&_tui_cp, (int)("); emit_expr_dflt(c, a[0], "0"); sb_put(&c->out, "), (int)("); emit_expr_dflt(c, a[1], "0"); sb_put(&c->out, "), (int)("); emit_expr_dflt(c, a[2], "8"); sb_put(&c->out, "), 8); ");
-        sb_put(&c->out, "gmb_tui_control_register(&_tui_cp.ctrl); ");
-        if (_iv) { emit_net_lhs(c, _iv);
-            if (_iv->type == TY_STR) sb_put(&c->out, " = gmb_string_alloc(\"-1\"); ");
-            else sb_put(&c->out, " = -1.0; ");
-        }
+        /* Polimorfico: widget PIXEL in grafica (palette di colori), colorpicker a
+         * celle nel TUI. Prima passava sempre dal controllo a celle: in grafica
+         * appariva come una griglia di riquadri VUOTI (nessuna palette). */
+        ind(c);
+        sb_put(&c->out, "{ gmb_control_add_colorpicker((int)("); emit_expr_dflt(c, a[0], "0"); sb_put(&c->out, "), (int)(");
+        emit_expr_dflt(c, a[1], "0"); sb_put(&c->out, "), (int)("); emit_expr_dflt(c, a[2], "208");
+        sb_put(&c->out, "), \"\", ");
+        if (_iv && _iv->type != TY_STR) { sb_put(&c->out, "(double*)&("); emit_ident(c, (char*)into_nm); sb_put(&c->out, ")"); }
+        else sb_put(&c->out, "(double*)0");
+        sb_put(&c->out, "); ");
+        if (s->id_var && *s->id_var) { emit_ident(c, s->id_var); sb_put(&c->out, " = (gmb_double_t)gmb_form_last_handle(); "); }
+        emit_ctrl_events(c, s);
         sb_put(&c->out, "}\n");
     } else if (strcasecmp(cname, "TREEVIEW") == 0 && na >= 5) {
         /* Factory polimorfica. Argomenti: x, y, w, h, items. */

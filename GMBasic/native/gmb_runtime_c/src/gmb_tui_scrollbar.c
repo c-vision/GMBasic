@@ -44,20 +44,37 @@ static void scrollbar_draw_px(void* u, gmb_control_t* c)
 {
     gmb_scrollbar_t* s = (gmb_scrollbar_t*)u;
     gmb_widget_style_t st = gmb_widget_style_current();
-    int x = c->x, y = c->y, w = c->width, h = c->height;
+    int x = (c->px_w > 0) ? c->px_x : c->x;
+    int y = (c->px_h > 0) ? c->px_y : c->y;
+    int w = (c->px_w > 0) ? c->px_w : c->width;
+    int h = (c->px_h > 0) ? c->px_h : c->height;
     int horizontal = (s->orientation == 0);
-    int len = horizontal ? w : h;
-    /* track scuro/semitrasparente, thumb con il colore di cornice del tema:
-     * su temi classici fill e accent possono coincidere (thumb invisibile). */
-    GMB_GFX_FILL_RRECT(x, y, w, h, 2, (st.fill & 0xFFFFFFu) | 0x80000000u);
-    double span = (double)(s->max - s->min); if (span <= 0) span = 1;
-    double t = ((double)s->value - s->min) / span; if (t < 0) t = 0; if (t > 1) t = 1;
-    int thumb = len / 4; if (thumb < 12) thumb = 12; if (thumb > len) thumb = len;
-    int pos = (int)(t * (len - thumb));
-    unsigned thumbc = (st.border & 0xFFFFFFu) ? st.border : st.accent;
-    if (horizontal) GMB_GFX_FILL_RRECT(x + pos, y + 2, thumb, h > 4 ? h - 4 : h, 2, thumbc);
-    else GMB_GFX_FILL_RRECT(x + 2, y + pos, w > 4 ? w - 4 : w, thumb, 2, thumbc);
-    GMB_GFX_STROKE_RRECT(x, y, w, h, 2, st.border);
+    /* Binario SOTTILE centrato (6 px) come una scrollbar di sistema; il thumb ha il
+     * colore accent del tema. Prima track e thumb erano quasi invisibili. */
+    int th = 6;
+    unsigned accent = (st.accent & 0xFFFFFFu) ? st.accent : st.text;
+    if (horizontal && h < th) h = th;
+    if (!horizontal && w < th) w = th;
+    if (horizontal)
+    {
+        int ty = y + (h - th) / 2;
+        gmb_gfx_fill_rounded_rect(x, ty, w, th, 3, (st.border & 0xFFFFFFu) | 0x33000000u);
+        double span = (double)(s->max - s->min); if (span <= 0) span = 1;
+        double t = ((double)s->value - s->min) / span; if (t < 0) t = 0; if (t > 1) t = 1;
+        int tw = w / 4; if (tw < 24) tw = 24; if (tw > w) tw = w;
+        int pos = (int)(t * (w - tw));
+        gmb_gfx_fill_rounded_rect(x + pos, ty, tw, th, 3, accent);
+    }
+    else
+    {
+        int tx = x + (w - th) / 2;
+        gmb_gfx_fill_rounded_rect(tx, y, th, h, 3, (st.border & 0xFFFFFFu) | 0x33000000u);
+        double span = (double)(s->max - s->min); if (span <= 0) span = 1;
+        double t = ((double)s->value - s->min) / span; if (t < 0) t = 0; if (t > 1) t = 1;
+        int tw = h / 4; if (tw < 24) tw = 24; if (tw > h) tw = h;
+        int pos = (int)(t * (h - tw));
+        gmb_gfx_fill_rounded_rect(tx, y + pos, th, tw, 3, accent);
+    }
 }
 static bool scrollbar_click(void* u, gmb_control_t* c, int x, int y)
 {

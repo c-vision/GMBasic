@@ -77,13 +77,57 @@ static bool scrollview_mouse(void* u, gmb_control_t* c, const gmb_mouse_action_t
     if (a->kind == GMB_MA_SCROLLDOWN) { if (s->offset < max_offset) s->offset++; return true; }
     return false;
 }
+/* Renderer PIXEL della SCROLLVIEW — riscritto per la grafica (niente righe a celle):
+ * card del tema, righe col passo del tema, zebra, troncamento al pixel e barra di
+ * scorrimento proporzionale. Prima delegava a gmb_px_draw_ex (GMB_PX_LISTBOX), che
+ * è il percorso a celle adattato alla grafica. */
 static void scrollview_draw_px(void* u, gmb_control_t* c)
 {
     gmb_scroll_view_t* s = (gmb_scroll_view_t*)u;
-    const char* its[64];
-    int n = s->content_count; if (n > 64) n = 64;
-    for (int i = 0; i < n; i++) its[i] = s->content[i];
-    gmb_px_draw_ex(GMB_PX_LISTBOX, c->x, c->y, c->width, c->height, NULL, its, n, 0, 0, n, NULL, s->offset, NULL, 0);
+    gmb_widget_style_t st = gmb_widget_style_current();
+    int x = (c->px_w > 0) ? c->px_x : c->x;
+    int y = (c->px_h > 0) ? c->px_y : c->y;
+    int w = (c->px_w > 0) ? c->px_w : c->width;
+    int h = (c->px_h > 0) ? c->px_h : c->height;
+    if (w < 40 || h < 24) return;
+
+    int rr = st.radius > 0 ? st.radius : 6;
+    int th = gmb_gfx_text_height_logical(); if (th <= 0) th = 16;
+    int rh = st.row_h > 0 ? st.row_h : 24; if (rh < th + 6) rh = th + 6;
+    int pad = 12;
+
+    gmb_gfx_fill_rounded_rect(x, y, w, h, rr, st.fill);
+    gmb_gfx_stroke_rounded_rect(x, y, w, h, rr, st.border);
+
+    int top = y + 6;
+    int rows = (h - 12) / rh; if (rows < 1) rows = 1;
+    int n = s->content_count > 64 ? 64 : s->content_count;
+    int rail = (n > rows) ? 8 : 0;
+
+    char line[512];
+    for (int r = 0; r < rows; r++)
+    {
+        int idx = s->offset + r;
+        if (idx >= n) break;
+        int ry = top + r * rh;
+        if (r & 1) gmb_gfx_fill_rounded_rect(x + 2, ry, w - 4, rh, 0, (st.border & 0xFFFFFFu) | 0x14000000u);
+        snprintf(line, sizeof(line), "%s", s->content[idx] ? s->content[idx] : "");
+        int avail = w - 2 * pad - rail;
+        int len = (int)strlen(line);
+        while (len > 0 && gmb_gfx_text_width_logical(line) > avail) line[--len] = 0;
+        gmb_gfx_draw_text(line, x + pad, ry + (rh - th) / 2, 0, (int)(0x40000000u | (st.text & 0xFFFFFFu)));
+    }
+    if (rail)
+    {
+        int rx = x + w - 8, ry2 = top, rh2 = h - 12;
+        gmb_gfx_fill_rounded_rect(rx, ry2, 4, rh2, 2, (st.border & 0xFFFFFFu) | 0x33000000u);
+        int th2 = rh2 * rows / n; if (th2 < 16) th2 = 16;
+        int maxo = n - rows; if (maxo < 1) maxo = 1;
+        int off = s->offset > maxo ? maxo : s->offset;
+        int ty2 = ry2 + (rh2 - th2) * off / maxo;
+        gmb_gfx_fill_rounded_rect(rx, ty2, 4, th2, 2, (st.accent & 0xFFFFFFu) ? st.accent : st.fill_hover);
+    }
+    if (c->focused) gmb_gfx_stroke_rounded_rect(x, y, w, h, rr, st.accent);
 }
 void gmb_scroll_view_init(gmb_scroll_view_t* s, int x, int y, int w, int h)
 {

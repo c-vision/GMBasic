@@ -31,9 +31,18 @@
   ],
 
   // --------------------------------------------------------------------
+  // --- Sezione Grafica (UI pixel: finestre, controlli)
+  // --------------------------------------------------------------------
+  // Font della UI GRAFICA. Separato dalla console di testo (che resta mono per la
+  // griglia di celle). Chiavi diverse ("uiFont*") per non collidere con "fontPath"/
+  // "fontSize" delle consoleConfiguration nel parser JSON semplificato del runtime C.
+  // Default interno se assenti: /System/Library/Fonts/SFNS.ttf a 13px logici.
+  "uiFontPath": "/System/Library/Fonts/SFNS.ttf",
+  "uiFontSize": 13,
+
+  // --------------------------------------------------------------------
   // --- Sezione Console
   // --------------------------------------------------------------------
-
   // Configurazione per le 4 console di default (da 0 a 3).
   // Ogni elemento è un oggetto ScreenConfig completo.
   "consoleConfiguration": [
