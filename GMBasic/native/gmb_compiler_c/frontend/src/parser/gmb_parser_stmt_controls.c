@@ -422,8 +422,10 @@ gmb_stmt_t* gmb_p_parse_panel(gmb_parser_t* p, int line)
     s->control_args[3] = gmb_p_parse_expr(p); gmb_p_match(p, GMB_TOK_Comma);   /* w */
     s->control_args[4] = gmb_p_parse_expr(p); gmb_p_match(p, GMB_TOK_Comma);   /* h */
     s->control_args[5] = gmb_p_parse_expr(p);                                  /* titolo */
-    /* Clausole: STYLE "spec" e USE CELLS|PIXELS (spazio coordinate dichiarato).
-     * Le altre clausole non sono previste per PANEL: la riga viene chiusa sotto. */
+    /* Clausole: STYLE "spec", USE CELLS|PIXELS e le proprietà base (NAME/TAG/TOOLTIP/
+     * VISIBLE/ENABLED/TABINDEX/TABSTOP/FOCUS). Prima PANEL accettava solo STYLE: la
+     * clausola NAME veniva scartata e `CONTROL SET "<nome>"` non trovava il pannello. */
+    char spec[512]; spec[0] = 0;
     for (;;) {
         const gmb_token_t* t = gmb_p_cur(p);
         if (!t || !t->lexeme) break;
@@ -435,7 +437,8 @@ gmb_stmt_t* gmb_p_parse_panel(gmb_parser_t* p, int line)
                 if (sp) {
                     size_t L = strlen(sp);
                     if (L >= 2 && sp[0] == '"' && sp[L-1] == '"') { memmove(sp, sp + 1, L - 2); sp[L-2] = 0; }
-                    s->control_args[7] = gmb_expr_str(sp, line);
+                    size_t Ls = strlen(spec); snprintf(spec + Ls, sizeof(spec) - Ls, "%s%s", Ls ? " " : "", sp);
+                    free(sp);
                     gmb_p_adv(p);
                 }
             }
@@ -447,22 +450,37 @@ gmb_stmt_t* gmb_p_parse_panel(gmb_parser_t* p, int line)
                             : ctl_is_kw(gmb_p_cur(p), "PIXELS") ? "metric=2" : NULL;
             if (!met) { gmb_p_set_err(p, "USE nel controllo: atteso CELLS o PIXELS", line); break; }
             gmb_p_adv(p);
-            /* Fonde con l'eventuale STYLE già letto (stessa spec CSS-like). */
-            char merged[512];
-            const char* prev = (s->control_args[7] && s->control_args[7]->kind == GMB_EXPR_STR && s->control_args[7]->str)
-                             ? s->control_args[7]->str : "";
-            snprintf(merged, sizeof(merged), "%s%s%s", prev, prev[0] ? " " : "", met);
-            s->control_args[7] = gmb_expr_str(strdup(merged), line);
+            size_t Ls = strlen(spec); snprintf(spec + Ls, sizeof(spec) - Ls, "%s%s", Ls ? " " : "", met);
             continue;
         }
+        if (ctl_is_kw(t, "NAME") || ctl_is_kw(t, "TAG") || ctl_is_kw(t, "TOOLTIP")) {
+            char key[16]; snprintf(key, sizeof(key), "%.*s", (int)t->length, t->lexeme);
+            gmb_p_adv(p);
+            const gmb_token_t* v = gmb_p_cur(p);
+            if (v && v->lexeme) {
+                char raw[192]; snprintf(raw, sizeof(raw), "%.*s", (int)v->length, v->lexeme);
+                char* vp = raw; size_t L = strlen(vp);
+                if (L >= 2 && vp[0] == '"' && vp[L-1] == '"') { vp[L-1] = 0; vp++; }
+                size_t Ls = strlen(spec); snprintf(spec + Ls, sizeof(spec) - Ls, " %s=\"%s\"", key, vp);
+                gmb_p_adv(p);
+            }
+            continue;
+        }
+        if (ctl_is_kw(t, "VISIBLE") || ctl_is_kw(t, "ENABLED") || ctl_is_kw(t, "TABINDEX") || ctl_is_kw(t, "TABSTOP") || ctl_is_kw(t, "FONT")) {
+            char key[16]; snprintf(key, sizeof(key), "%.*s", (int)t->length, t->lexeme);
+            gmb_p_adv(p);
+            const gmb_token_t* v = gmb_p_cur(p);
+            if (v && v->lexeme) { size_t Ls = strlen(spec); snprintf(spec + Ls, sizeof(spec) - Ls, " %s=%.*s", key, (int)v->length, v->lexeme); gmb_p_adv(p); }
+            continue;
+        }
+        if (ctl_is_kw(t, "FOCUS")) { size_t Ls = strlen(spec); snprintf(spec + Ls, sizeof(spec) - Ls, " focus"); gmb_p_adv(p); continue; }
         break;
     }
-    /* La spec (STYLE + USE CELLS|PIXELS) va anche in set_attr: è il canale che l'emitter
-     * applica a OGNI controllo (gmb_form_apply_last_style). Prima restava in args[7] e
-     * l'emitter di PANEL la ignorava (clausola persa). */
-    if (s->control_args[7] && s->control_args[7]->kind == GMB_EXPR_STR && s->control_args[7]->str && s->control_args[7]->str[0]) {
+    if (spec[0]) {
+        s->control_args[7] = gmb_expr_str(strdup(spec), line);
+        /* Stessa spec in set_attr: è il canale che l'emitter applica a OGNI controllo. */
         s->set_attr = (char**)malloc(sizeof(char*));
-        s->set_attr[0] = strdup(s->control_args[7]->str);
+        s->set_attr[0] = strdup(spec);
         s->n_set_attr = 1;
     }
     while (gmb_p_cur(p) && gmb_p_cur(p)->kind != GMB_TOK_Newline

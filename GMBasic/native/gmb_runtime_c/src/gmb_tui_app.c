@@ -715,11 +715,18 @@ static gmb_control_t* ctrl_by_handle(int handle)
 void gmb_control_apply_props_handle(int handle, unsigned flags, const char* name, const char* tag, const char* tooltip,
                                     int tabindex, int visible, int enabled, int tabstop)
 {
-    gmb_control_t* c = ctrl_by_handle(handle);
-    /* Handle unificato: il controllo puo vivere nel registry TUI o in quello FORM.
-     * Si applica a ENTRAMBI (al massimo uno dei due matcha). */
-    { extern void gmb_form_apply_props_handle(int, unsigned, const char*, const char*, const char*, int, int, int, int);
-      gmb_form_apply_props_handle(handle, flags, name, tag, tooltip, tabindex, visible, enabled, tabstop); }
+    /* Handles dei due registry si SOVRAPPONGONO (form 0..31/1000+i, TUI 0..63): applicare
+     * "a entrambi" significava rinominare il controllo sbagliato (es. il PANEL form con
+     * handle 0 veniva rinominato con il NAME del LABEL TUI, anch'esso handle 0).
+     * Decide il registry dell'ULTIMO controllo creato, come per le clausole di stile. */
+    extern int gmb_form_last_is_tui(void);
+    gmb_control_t* c = NULL;
+    if (gmb_form_last_is_tui()) {
+        c = ctrl_by_handle(handle);
+    } else {
+        extern void gmb_form_apply_props_handle(int, unsigned, const char*, const char*, const char*, int, int, int, int);
+        gmb_form_apply_props_handle(handle, flags, name, tag, tooltip, tabindex, visible, enabled, tabstop);
+    }
     if (!c) return;
     if (flags & 1u)  snprintf(c->name, sizeof(c->name), "%s", name ? name : "");
     if (flags & 2u)  snprintf(c->tag, sizeof(c->tag), "%s", tag ? tag : "");
@@ -851,14 +858,16 @@ static void draw_cells_px_fallback(gmb_control_t* c, int cw, int ch)
 /* Dirty del render pixel dei controlli: senza questo OGNI frame ridisegna tutto il
  * testo (rasterizzazione costosa) e la finestra sembra bloccata. */
 static int s_px_dirty = 1;
+/* Invadlidazione del livello pixel: i setter di proprietà dei controlli TUI la chiamano,
+ * altrimenti una modifica (es. visible=0) resta invisibile finché il form non si ridisegna. */
+void gmb_tui_mark_dirty(void) { s_px_dirty = 1; }
 static double s_px_last = 0.0;
 void gmb_tui_px_mark_dirty(void) { s_px_dirty = 1; }
 
 void gmb_tui_px_invalidate(void) { s_px_dirty = 1; }
 
 void gmb_tui_draw_px_all(void)
-{
-    /* Ridisegna solo se sporco o ogni 200 ms (spinner/timer). */
+{    /* Ridisegna solo se sporco o ogni 200 ms (spinner/timer). */
     { double now = (double)app_now_ms();
       if (!s_px_dirty && (now - s_px_last) < 200.0) return;
       s_px_dirty = 0; s_px_last = now; }
@@ -882,6 +891,7 @@ void gmb_tui_draw_px_all(void)
         if (g_reg_ctrl[i])
         {
             gmb_control_t* cc = g_reg_ctrl[i];
+            if (!cc->visible) continue;   /* CONTROL SET name,"visible",0 → non disegnato */
             /* Spazio coordinate DICHIARATO (SCREEN/USE o `USE` sul controllo).
              * Default (metric 0 + SCREEN AUTO) = PIXEL in grafica: nessuna conversione.
              * Solo una dichiarazione esplicita (USE CELLS / metric 1) moltiplica per (cw,ch);
@@ -1174,7 +1184,7 @@ void gmb_tui_draw_controls(gmb_screen_buffer_t* buf)
     for (int i = 0; i < g_reg_n; i++)
     {
         gmb_control_t* c = g_reg_ctrl[i];
-        if (!c) continue;
+        if (!c || !c->visible) continue;
         if (c->ctrl_kind == GMB_CK_MENU && ((gmb_menu_t*)c)->is_open) continue;
         /* Spazio coordinate DICHIARATO: `USE PIXELS` (metric 2, o SCREEN USE PIXELS) su un
          * backend a celle → il controllo dichiara PIXEL e qui si riporta sulla griglia.

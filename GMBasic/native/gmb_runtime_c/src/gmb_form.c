@@ -1124,8 +1124,7 @@ void gmb_px_draw_ex(int wkind, int x, int y, int w, int h, const char* label,
     draw_one_widget(&wd, sc);
 }
 
-static void draw_widgets(float sc) { for (int i = 0; i < g_nwid; i++) draw_one_widget(&g_wid[i], sc); }
-
+static void draw_widgets(float sc) { for (int i = 0; i < g_nwid; i++) { if (!g_wid[i].base.visible) continue; draw_one_widget(&g_wid[i], sc); } }
 /* Popup dei dropdown aperti: disegnato per ULTIMO (sopra ogni altro controllo). */
 static void draw_open_dropdowns(float sc)
 {
@@ -1358,8 +1357,7 @@ void gmb_form_fire_event(int handle, int ev)
  * usata come fallback da gmb_control_apply_props_handle (che cerca nel registry TUI). */
 void gmb_form_apply_props_handle(int handle, unsigned flags, const char* name, const char* tag, const char* tooltip,
                                  int tabindex, int visible, int enabled, int tabstop)
-{
-    for (int i = 0; i < g_nwid; i++) {
+{    for (int i = 0; i < g_nwid; i++) {
         gmb_control_t* c = &g_wid[i].base;
         if (c->handle != handle) continue;
         if (flags & 1u)  { snprintf(c->name, sizeof(c->name), "%s", name ? name : ""); snprintf(g_wid[i].name, sizeof(g_wid[i].name), "%s", name ? name : ""); }
@@ -1636,8 +1634,7 @@ static const char* control_extra_get(gmb_control_t* c, const char* key)
 
 static void tui_ctrl_set(const char* name, const char* prop, double num, const char* str)
 {
-    gmb_control_t* c = gmb_tui_control_find_by_name(name); if (!c || !prop) return;
-    if (!strcasecmp(prop,"left")||!strcasecmp(prop,"x")) c->x=(int)num;
+    gmb_control_t* c = gmb_tui_control_find_by_name(name); if (!c || !prop) return;    if (!strcasecmp(prop,"left")||!strcasecmp(prop,"x")) c->x=(int)num;
     else if (!strcasecmp(prop,"top")||!strcasecmp(prop,"y")) c->y=(int)num;
     else if (!strcasecmp(prop,"width")||!strcasecmp(prop,"w")) c->width=(int)num;
     else if (!strcasecmp(prop,"height")||!strcasecmp(prop,"h")) c->height=(int)num;
@@ -1724,6 +1721,11 @@ static void tui_ctrl_set(const char* name, const char* prop, double num, const c
     else if (!strcasecmp(prop,"selrow")) { if (c->ctrl_kind==GMB_CK_GRID) { ((gmb_grid_t*)c->user)->sel_row=(int)num; ((gmb_grid_t*)c->user)->has_selected=true; } }
     else if (!strcasecmp(prop,"selcol")) { if (c->ctrl_kind==GMB_CK_GRID) ((gmb_grid_t*)c->user)->sel_col=(int)num; }
     else control_extra_set(c, prop, num, str);
+    /* Ogni modifica a un controllo TUI deve riflettersi al frame successivo: il livello
+     * pixel è ridisegnato solo su dirty (senza, `visible=0` lasciava i pixel vecchi).
+     * g_dirty fa anche ripulire la pagina dal form (altrimenti restano i pixel del controllo). */
+    g_dirty = 1;
+    { extern void gmb_tui_mark_dirty(void); gmb_tui_mark_dirty(); }
 }
 static double tui_ctrl_get(const char* name, const char* prop)
 {
@@ -2803,6 +2805,7 @@ static void widget_mouse(int type, int x, int y, float sc)
 
 int gmb_form_active(void) { return (g_nwid > 0 || g_nbtn > 0) ? 1 : 0; }
 int gmb_form_last_handle(void) { return g_last_handle; }
+int gmb_form_last_is_tui(void) { return g_last_is_tui; }
 void gmb_form_set_last_handle(int h) { g_last_handle = h; }
 
 /* Dispatch di UN evento mouse (stessa logica del loop di gmb_form_poll).
