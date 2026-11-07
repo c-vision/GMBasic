@@ -1155,8 +1155,6 @@ public enum TokenKind
     Sha1,
     Sha256,
     Sha512,
-    RipeMd160,
-    Keccak256,
     HashFile,
     ChaCha20Encrypt,
     ChaCha20Decrypt,
@@ -1171,8 +1169,6 @@ public enum TokenKind
     StrSha1,
     StrSha256,
     StrSha512,
-    StrRipeMd160,
-    StrKeccak256,
     StrHashFile,
 
     // ========================================================================
@@ -1235,27 +1231,6 @@ public enum TokenKind
     RandomNormal,
     RandomCryptoBytes,
     
-    // --- Funzioni Blockchain ---
-    Blake2b256,
-    Base58Encode,
-    Base58Decode,
-    Base32Encode,
-    Base32Decode,
-    RlpEncode,
-    VarIntEncode,
-    VarIntDecode,
-    EthAddressFromPub,
-    EthAddressChecksum,
-    BtcAddressFromPub,
-    BlockDifficulty,
-    EcdsaSecp256k1Sign,
-    GenerateMnemonic,
-    MnemonicToSeed,
-    DeriveKey,
-    GetPublicKey,
-    Contract,
-    AbiEncode,
-    AbiDecode,
     
     // ========================================================================
     // --- NUOVE KEYWORD E FUNZIONI PER ARRAY (Stile Clipper) ---
@@ -2581,8 +2556,16 @@ public enum TokenKind
     // (ordinali canonici): mai inserire nel mezzo. La forma CONTROLS `CANVAS x,y,w,h`
     // resta gestita dal parser dei controlli (disambiguazione come CHART).
     Canvas,
+    // AI LIST OPTIONS (2026-11-06): comando-query che stampa le voci DICHIARATE del
+    // registro opzioni (nome, descrizione, valore). In coda (ordinali canonici):
+    // mai inserire nel mezzo.
+    AiListOptions,
     // TORCH MODEL LOAD (2026-11-06): ricarica i pesi salvati da MODELSAVE in un modello
     // gia' creato con la stessa architettura/dims. Funzione qualificata `TORCH.MODELLOAD`.
     // In coda (ordinali canonici): mai inserire nel mezzo.
     TorchModelLoad,
-}
+    // BRAINS ADJACENCY (2026-11-06): materializza il grafo del cervello (nodi + archi pesati)
+    // per gli algoritmi FFI GRAPH/FLOW — il ponte che evita di duplicare la matematica.
+    // In coda (ordinali canonici): mai inserire nel mezzo.
+    BrainsAdjacency,
+  }

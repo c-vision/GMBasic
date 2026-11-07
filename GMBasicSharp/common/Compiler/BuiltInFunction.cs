@@ -693,17 +693,11 @@ public enum BuiltInFunction : ushort
     SHA1 = 335,
     SHA256 = 336,
     SHA512 = 337,
-    RIPEMD160 = 338,
-    KECCAK256 = 339,
-    ABIENCODE = 340,
-    ABIDECODE = 341,
     HASHFILE = 342,
     MD5STRING = 343,
     SHA1STRING = 344,
     SHA256STRING = 345,
     SHA512STRING = 346,
-    RIPEMD160STRING = 347,
-    KECCAK256STRING = 348,
     HASHFILESTRING = 349,
     // --- Funzioni Crittografiche (Cifratura e Utility) ---
     AESENCRYPT = 350,
@@ -744,25 +738,6 @@ public enum BuiltInFunction : ushort
     RANDOMDOUBLE = 372,
     RANDOMNORMAL = 373,
     RANDOMCRYPTOBYTES = 374,
-    // --- Funzioni Blockchain ---
-    BLAKE2B256 = 375,
-    BASE58ENCODE = 376,
-    BASE58DECODE = 377,
-    BASE32ENCODE = 378,
-    BASE32DECODE = 379,
-    RLPENCODE = 380,
-    VARINTENCODE = 381,
-    VARINTDECODE = 382,
-    ETHADDRESSFROMPUB = 383,
-    ETHADDRESSCHECKSUM = 384,
-    BTCADDRESSFROMPUB = 385,
-    BLOCKDIFFICULTY = 386,
-    ECDSASECP256K1SIGN = 387,
-    GENERATEMNEMONIC = 388,
-    MNEMONICTOSEED = 389,
-    DERIVEKEY = 390,
-    GETPUBLICKEY = 391,
-    CONTRACT = 392,
     MOUSEX = 393,
     MOUSEY = 394,
     MOUSEBUTTON = 395,
@@ -1253,6 +1228,7 @@ MCPSERVERMARKETPLACELIST = 730, MCPSERVERMARKETPLACEGET = 731, MCPLISTTOOLSSERVE
     AISETHFTOKEN = 1265, AISETHFREPO = 1266, AIHFREPO = 1267,
     AISETOPTION = 3700,
     AIOPTION = 3701,
+    AILISTOPTIONS = 3714,
     // --- GAP VM chiusi 2026-08-29 (funzioni StdLib senza BuiltInFunction) ---
     LEDGER_EOF = 1268, MATRIXMULTIPLY = 1269, KEYGEN = 1270, SLEEP = 1271,
     // --- VAULT (Second Brain L1, W1 2026-08-31): struttura vault .md ---
@@ -1773,4 +1749,7 @@ MCPSERVERMARKETPLACELIST = 730, MCPSERVERMARKETPLACEGET = 731, MCPLISTTOOLSSERVE
     // TORCH MODEL LOAD (2026-11-06): ricarica i pesi di un modello gia' creato.
     // In coda: mirror in gmb_builtin.c.
     TORCH_MODELLOAD = 3898,
+    // BRAINS.ADJACENCY (2026-11-06): nodi + archi pesati del cervello (ponte verso GRAPH/FLOW).
+    // In coda: mirror in gmb_builtin.c.
+    BRAINSADJACENCY = 3899,
 }

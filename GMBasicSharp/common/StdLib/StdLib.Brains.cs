@@ -33,9 +33,10 @@
 
 /* ==== GMB-STDLIB-AUDIT-BEGIN ====
  * FILE: Brains — namespace 'BRAINS'
- * 8 funzioni | 0 comandi | 0 tipi | 0 costanti
+ * 9 funzioni | 0 comandi | 0 tipi | 0 costanti
  *
- * FUNZIONI (8):
+ * FUNZIONI (9):
+ *   Adjacency
  *   ByFolder
  *   ByTag
  *   Dot
@@ -77,6 +78,10 @@ public sealed partial class StdLib
             new NativeProcedureDefinition(-1, pub, T(TokenKind.GraphPath, "Path"),
                 [P("brain", false), P("from", false), P("to", false)], new StringType(),
                 TokenKind.GraphPath, ExecutionKind: NativeExecutionKind.Pure),
+            // Ponte verso la matematica FFI: materializza nodi + archi pesati del cervello.
+            new NativeProcedureDefinition(-1, pub, T(TokenKind.BrainsAdjacency, "Adjacency"),
+                [P("brain", false)], new StringType(),
+                TokenKind.BrainsAdjacency, ExecutionKind: NativeExecutionKind.Pure),
             // ── ispezione / validazione / export ────────────────────────────────────────
             new NativeProcedureDefinition(-1, pub, T(TokenKind.GraphStats, "Stats"),
                 [P("brain", false)], new StringType(),

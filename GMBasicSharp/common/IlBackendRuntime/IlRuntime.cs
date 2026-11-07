@@ -2477,7 +2477,21 @@ public static partial class IlRuntime
 
     // Crittografia stateless: gli input BASIC stringa/byte[] sono normalizzati nel
     // runtime IL e le chiamate restano AOT-friendly, senza handle della VM.
-    private static byte[] CryptoBytes(object? value) => value switch { null => [], byte[] bytes => bytes, string text => System.Text.Encoding.UTF8.GetBytes(text), _ => System.Text.Encoding.UTF8.GetBytes(Convert.ToString(value, CultureInfo.InvariantCulture) ?? string.Empty) };
+    /* Array di elemento numerico (BASIC `DIM x(n) AS BYTE`, ma anche DOUBLE/LONG): i valori sono
+     * i BYTE 0..255 del buffer, NON la stringa "System.Object[]" del ToString dell'array — senza
+     * questo ramo TOHEX di un array BYTE restituiva l'hex di "System.Object[]" sulle gambe
+     * gestite (IL/PCode/VM-C), divergendo dalle gambe C dove l'array e' un buffer di byte. */
+    private static byte[] CryptoArrayBytes(Array arr)
+    {
+        var bytes = new byte[arr.Length];
+        for (var i = 0; i < arr.Length; i++)
+        {
+            var raw = arr.GetValue(i);
+            bytes[i] = (byte)Math.Clamp(Convert.ToInt64(raw ?? 0L, CultureInfo.InvariantCulture), 0L, 255L);
+        }
+        return bytes;
+    }
+    private static byte[] CryptoBytes(object? value) => value switch { null => [], byte[] bytes => bytes, string text => System.Text.Encoding.UTF8.GetBytes(text), Array arr => CryptoArrayBytes(arr), _ => System.Text.Encoding.UTF8.GetBytes(Convert.ToString(value, CultureInfo.InvariantCulture) ?? string.Empty) };
     // Le 18 funzioni Pure (Fase 10, docs/StdLib-Runtime-Plan.md) forward a
     // Basic.StdLibRuntime.CryptographyFunctions, che a sua volta chiama CommonLib.CryptoUtils —
     // stessi metodi che questi wrapper chiamavano già direttamente (nessun cambio di libreria per
@@ -2585,32 +2599,6 @@ public static partial class IlRuntime
     public static byte[] EncryptAsym(object? data, long publicHandle) => CommonLib.CryptoUtils.EncryptAsymmetric(CryptoBytes(data), GetCryptoKey(publicHandle));
     public static byte[] DecryptAsym(object? data, long privateHandle) => CommonLib.CryptoUtils.DecryptAsymmetric(CryptoBytes(data), GetCryptoKey(privateHandle));
 
-    // BLOCKCHAIN: primitive pure, senza dipendenza dalla VM/P-CODE.
-    public static byte[] Keccak256(object? data) => CommonLib.BlockchainUtils.Keccak256(CryptoBytes(data));
-    public static string StrKeccak256(object? data) => CommonLib.CryptoUtils.CoreToHexString(Keccak256(data));
-    public static byte[] RipeMd160(object? data) => CommonLib.BlockchainUtils.RipeMd160(CryptoBytes(data));
-    public static string StrRipeMd160(object? data) => CommonLib.CryptoUtils.CoreToHexString(RipeMd160(data));
-    public static byte[] Blake2b256(object? data) => CommonLib.BlockchainUtils.Blake2b256(CryptoBytes(data));
-    public static string Base58Encode(object? data) => CommonLib.BlockchainUtils.Base58Encode(CryptoBytes(data));
-    public static byte[] Base58Decode(string data) => CommonLib.BlockchainUtils.Base58Decode(data);
-    public static string Base32Encode(object? data) => CommonLib.BlockchainUtils.Base32Encode(CryptoBytes(data));
-    public static byte[] Base32Decode(string data) => CommonLib.BlockchainUtils.Base32Decode(data);
-    public static byte[] RlpEncode(object? data) => CommonLib.BlockchainUtils.RlpEncode(CryptoBytes(data));
-    public static byte[] VarIntEncode(long value) => CommonLib.BlockchainUtils.VarIntEncode(value);
-    public static long VarIntDecode(object? data) => CommonLib.BlockchainUtils.VarIntDecode(CryptoBytes(data));
-    public static string EthAddressFromPub(object? data) => CommonLib.BlockchainUtils.EthAddressFromPub(CryptoBytes(data));
-    public static string EthAddressChecksum(string address) => CommonLib.BlockchainUtils.EthAddressChecksum(address);
-    public static string BtcAddressFromPub(object? data, bool testnet) => CommonLib.BlockchainUtils.BtcAddressFromPub(CryptoBytes(data), testnet);
-    public static double BlockDifficulty(object? header, long bits) => double.Parse(CommonLib.BlockchainUtils.BlockDifficulty(CryptoBytes(header), checked((int)bits)).ToString(), CultureInfo.InvariantCulture);
-    public static byte[] EcdsaSecp256k1Sign(object? message, object? privateKey) => CommonLib.BlockchainUtils.EcdsaSecp256k1Sign(CryptoBytes(message), CryptoBytes(privateKey));
-    public static byte[] GetPublicKey(object? privateKey)
-    {
-        var curve = Org.BouncyCastle.Asn1.Sec.SecNamedCurves.GetByName("secp256k1")!;
-        var domain = new Org.BouncyCastle.Crypto.Parameters.ECDomainParameters(curve.Curve, curve.G, curve.N, curve.H);
-        var key = new Org.BouncyCastle.Crypto.Parameters.ECPrivateKeyParameters(new Org.BouncyCastle.Math.BigInteger(1, CryptoBytes(privateKey)), domain);
-        return domain.G.Multiply(key.D).GetEncoded(true);
-    }
-    public static byte[] MnemonicToSeed(string mnemonic, string passphrase) => System.Security.Cryptography.Rfc2898DeriveBytes.Pbkdf2(mnemonic, System.Text.Encoding.UTF8.GetBytes("mnemonic" + passphrase), 2048, System.Security.Cryptography.HashAlgorithmName.SHA512, 64);
     public static byte[] ChaCha20Encrypt(object? data, object? key, object? nonce) => Basic.StdLibRuntime.CryptographyFunctions.ChaCha20Encrypt(CryptoBytes(data), CryptoBytes(key), CryptoBytes(nonce));
     public static byte[] ChaCha20Decrypt(object? data, object? key, object? nonce) => Basic.StdLibRuntime.CryptographyFunctions.ChaCha20Decrypt(CryptoBytes(data), CryptoBytes(key), CryptoBytes(nonce));
     public static Dictionary<string, byte[]> ChaCha20Poly1305Encrypt(object? plaintext, object? key, object? nonce, object? aad)
@@ -8632,95 +8620,6 @@ public static double TextWidth(string s)
         try { return Current.Graphics.Point((int)x, (int)y); } catch { return -1.0; }
     }
 
-    // --- Importato da GMBasic (CRYPTO ABI: ABIENCODE/ABIDECODE — Ethereum) ---
-    /// <summary>Payload ABI: selettore (Keccak-256 della firma) + una parola per argomento.
-    /// Il tail variadico puo' arrivare IMPACCHETTATO (il parametro StdLib e' <c>ParamArray</c>,
-    /// anche su piu' livelli) o contenere un array a runtime (es. <c>DIM A = {1,2}</c> passato
-    /// come tail): qui si appiattisce RICORSIVAMENTE. Senza, un contenitore arrivava a
-    /// EncodeAbiWord (<c>Convert.ToDouble</c> su una lista) e l'eccezione, inghiottita dal catch,
-    /// faceva restituire <c>0x</c> — parita' rotta con PCode/VM-C. Una sola implementazione:
-    /// il PCodeVM delega a questo metodo.</summary>
-    public static string AbiEncode(string signature, object[] args)
-    {
-        try
-        {
-            var selector = CommonLib.BlockchainUtils.Keccak256(System.Text.Encoding.UTF8.GetBytes(signature ?? "")).Take(4).ToArray();
-            var encoded = new List<byte>(selector);
-            foreach (var a in FlattenAbiTail(args)) encoded.AddRange(EncodeAbiWord(a));
-            return "0x" + Convert.ToHexString(encoded.ToArray()).ToLower();
-        }
-        catch { return "0x"; }
-    }
-
-    /// <summary>Appiattisce RICORSIVAMENTE il tail variadico di ABIENCODE: le stringhe sono
-    /// VALORI (non contenitori) e non vengono espanse; ogni altro IEnumerable si attraversa.
-    /// Le liste annidate del ParamArray e gli array a runtime diventano argomenti scalari.</summary>
-    private static List<object?> FlattenAbiTail(object? v)
-    {
-        var flat = new List<object?>();
-        void Walk(object? x)
-        {
-            if (x is System.Collections.IEnumerable en and not string)
-                foreach (var e in en) Walk(e);
-            else flat.Add(x);
-        }
-        Walk(v);
-        return flat;
-    }
-
-    public static object[] AbiDecode(string hex, string[] types)
-    {
-        try
-        {
-            var hx = hex ?? "";
-            var clean = hx.StartsWith("0x") || hx.StartsWith("0X") ? hx[2..] : hx;
-            var bytes = Convert.FromHexString(clean);
-            var result = new List<object?>();
-            for (var i = 0; i < (types?.Length ?? 0); i++)
-            {
-                var off = i * 32;
-                if (off + 32 > bytes.Length) { result.Add(0.0); continue; }
-                var word = bytes[off..(off + 32)];
-                var big = new System.Numerics.BigInteger(word, isUnsigned: true, isBigEndian: true);
-#pragma warning disable CS8602 // types[0] element: verified via AbiDecode contract
-                if (types.Length == 0) return Array.Empty<object>();
-                var typeName = types[0]!;
-#pragma warning restore CS8602
-                var t = typeName.ToLowerInvariant();
-                result.Add(t switch
-                {
-                    "bool" => word[31] != 0,
-                    "string" => System.Text.Encoding.UTF8.GetString(bytes[off..]).TrimEnd('\0'),
-                    _ => (object)(double)big
-                });
-            }
-            return result.Cast<object>().ToArray();
-        }
-        catch { return Array.Empty<object>(); }
-    }
-
-    private static byte[] EncodeAbiWord(object val)
-    {
-        var word = new byte[32];
-        if (val is string s)
-        {
-            var data = System.Text.Encoding.UTF8.GetBytes(s);
-            Array.Copy(BitConverter.GetBytes((long)32).Reverse().ToArray(), 0, word, 28, 4);
-            var result = new byte[64 + data.Length];
-            Array.Copy(word, 0, result, 0, 32);
-            Array.Copy(BitConverter.GetBytes((long)data.Length).Reverse().ToArray(), 0, result, 60, 4);
-            Array.Copy(data, 0, result, 64, data.Length);
-            return result;
-        }
-        var big = new System.Numerics.BigInteger(val is bool b ? (b ? 1 : 0) : Convert.ToDouble(val));
-        var bytes = big.ToByteArray(isUnsigned: true, isBigEndian: true);
-        if (bytes.Length <= 32)
-            Array.Copy(bytes, 0, word, 32 - bytes.Length, bytes.Length);
-        else
-            Array.Copy(bytes, bytes.Length - 32, word, 0, 32);
-        return word;
-    }
-
     public static double FvExt(double rate, double nper, double pmt, double pv, double type) => (double)CommonLib.Numerics.FvExt((decimal)rate, (decimal)nper, (decimal)pmt, (decimal)pv, (int)type);
     public static double PvExt(double rate, double nper, double pmt, double fv, double type) => (double)CommonLib.Numerics.PvExt((decimal)rate, (decimal)nper, (decimal)pmt, (decimal)fv, (int)type);
     public static double PmtExt(double rate, double nper, double pv, double fv, double type) => (double)CommonLib.Numerics.PmtExt((decimal)rate, (decimal)nper, (decimal)pv, (decimal)fv, (int)type);
@@ -8783,15 +8682,7 @@ public static double TextWidth(string s)
         if (coll is System.Collections.IList l) l.Add(value);
         else if (coll is System.Collections.IDictionary d) d.Add(key!, value);
     }
-    public static Dictionary<string, object?> DeriveKey(byte[] seed, string path)
-    {
-        var dict = CommonLib.BlockchainUtils.DeriveKey(seed, path);
-        var result = new Dictionary<string, object?>();
-        foreach (var kv in dict) result[kv.Key] = kv.Value;
-        return result;
-    }
     public static double DividendYield(double div, double price) => price > 0 ? div / price * 100 : 0;
-    public static string GenerateMnemonic(double n) => CommonLib.BlockchainUtils.GenerateMnemonic((int)n);
     public static double KellyCriterion(double[] rets)
     {
         if (rets.Length == 0) return 0.0;
@@ -11931,48 +11822,16 @@ public static double TextWidth(string s)
         => Basic.AI.Graph.GraphMultiQuery.Neighbors(brain, node);
     public static string GraphPath(string brain, string from, string to)
         => Basic.AI.Graph.GraphMultiQuery.Path(brain, from, to);
-    public static string GraphPageRank(string brain, double topK)
-        => Basic.AI.Graph.GraphMultiQuery.PageRank(brain, (int)topK);
-    public static string GraphConnected(string brain)
-        => Basic.AI.Graph.GraphMultiQuery.Connected(brain);
     public static string GraphStats(string brain)
         => Basic.AI.Graph.GraphMultiQuery.Stats(brain);
-    public static string GraphStronglyConnected(string brain)
-        => Basic.AI.Graph.GraphMultiQuery.StronglyConnected(brain);
-    public static string GraphTopoSort(string brain)
-        => Basic.AI.Graph.GraphMultiQuery.TopoSort(brain);
-    public static string GraphBipartite(string brain)
-        => Basic.AI.Graph.GraphMultiQuery.Bipartite(brain);
-    public static string GraphBetweenness(string brain)
-        => Basic.AI.Graph.GraphMultiQuery.Betweenness(brain);
-    public static string GraphClustering(string brain, string node)
-        => Basic.AI.Graph.GraphMultiQuery.Clustering(brain, node);
-    public static string GraphDiameter(string brain)
-        => Basic.AI.Graph.GraphMultiQuery.Diameter(brain);
-    public static string GraphMst(string brain)
-        => Basic.AI.Graph.GraphMultiQuery.MinimumSpanningTree(brain);
-    public static string GraphLouvain(string brain)
-        => Basic.AI.Graph.GraphMultiQuery.Louvain(brain);
-    public static string GraphMaxFlow(string brain, string from, string to)
-        => Basic.AI.Graph.GraphMultiQuery.MaxFlow(brain, from, to);
+    public static string GraphAdjacency(string brain)
+        => Basic.AI.Graph.GraphMultiQuery.Adjacency(brain);
 
     // ── GRAPH advanced algorithms (2026-09-07) — Dijkstra/HasCycle/Eccentricity/DFS/BFS ──
-    public static string GraphDijkstra(string brain, string from, string to)
-        => Basic.AI.Graph.GraphMultiQuery.Dijkstra(brain, from, to);
-    public static double GraphHasCycle(string brain)
-        => Basic.AI.Graph.GraphMultiQuery.HasCycle(brain);
-    public static string GraphEccentricity(string brain, string node)
-        => Basic.AI.Graph.GraphMultiQuery.Eccentricity(brain, node);
-    public static string GraphDfs(string brain, string root)
-        => Basic.AI.Graph.GraphMultiQuery.Dfs(brain, root);
-    public static string GraphBfs(string brain, string root)
-        => Basic.AI.Graph.GraphMultiQuery.Bfs(brain, root);
 
     // ── GRAPH export estesi (F7 P1) — mermaid/dot/subgraph/JSON by tag/folder ──
     public static string GraphDot(string brain)
         => Basic.AI.Graph.GraphMultiQuery.Dot(brain);
-    public static string GraphSubgraph(string brain, string root, double depth)
-        => Basic.AI.Graph.GraphMultiQuery.Subgraph(brain, root, (int)depth);
     public static string GraphByTag(string brain, string tag)
         => Basic.AI.Graph.GraphMultiQuery.ByTag(brain, tag);
     public static string GraphByFolder(string brain, string folder)

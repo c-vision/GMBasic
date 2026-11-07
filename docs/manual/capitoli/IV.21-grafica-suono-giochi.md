@@ -982,6 +982,7 @@ BRAINS FIND PATH "index.md" TO "trading/momentum.md"   ' path più corto nel gra
 ## 2. Query single-brain
 | Funzione | Ritorno | Note |
 |---|---|---|
+| `BRAINS.Adjacency(brain)` | JSON | **ponte verso GRAPH/FLOW**: `n`, `nodes` (indice = riga/colonna), `edges` come `[i,j]` |
 | `BRAINS.Neighbors(brain, node)` | JSON | vicini diretti (out+in) |
 | `BRAINS.Path(brain, from, to)` | JSON | cammino minimo (BFS) |
 | `BRAINS.Stats(brain)` | JSON | metriche base + PageRank top |
@@ -994,6 +995,10 @@ BRAINS FIND PATH "index.md" TO "trading/momentum.md"   ' path più corto nel gra
 > `GRAPH`/`FLOW` e lavorano su matrici esplicite — vedi §2 "graph.inc" più sotto e
 > `shared/samples/graph/GraphFFILab.bas`. Mappa `BRAINS.X → GRAPH.Y` nel commento di testa di
 > `GMBasicSharp/common/StdLib/StdLib.Brains.cs`.
+>
+> Il ponte lo fa `BRAINS.Adjacency(brain)`: dà `n`, i nomi dei nodi (l'indice è la riga/colonna
+> della matrice) e gli archi come coppie `[i,j]`; da lì si riempie `w()`/`adj()` e si chiamano
+> `GRAPH.*`. Payload topologico (peso uniforme).
 
 ## 2bis. Community detection e flusso massimo (dettaglio)
 

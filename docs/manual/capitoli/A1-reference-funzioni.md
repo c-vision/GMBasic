@@ -1992,6 +1992,12 @@ BITS.NEXTPOW2   ' dal codice del progetto: shared/minitests/bits/bits_all.bas:40
 BITS.PARITY   ' dal codice del progetto: shared/minitests/bits/bits_all.bas:26
 ```
 
+#### `BRAINS.Adjacency` — arita 1-1
+
+```basic
+BRAINS.ADJACENCY' dal codice del progetto: shared/minitests/graph/adjacency.bas:13
+```
+
 #### `BRAINS.ByFolder` — arita 2-2
 
 ```basic

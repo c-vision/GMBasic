@@ -330,6 +330,7 @@ BITS.HAMMINGDIST	funzione	2-2	si	no	shared/minitests/bits/bits_all.bas:34
 BITS.ISPOW2	funzione	1-1	si	no	shared/minitests/bits/bits_all.bas:42
 BITS.NEXTPOW2	funzione	1-1	si	no	shared/minitests/bits/bits_all.bas:40
 BITS.PARITY	funzione	1-1	si	no	shared/minitests/bits/bits_all.bas:26
+BRAINS.Adjacency	funzione	1-1	si	no	shared/minitests/graph/adjacency.bas:13
 BRAINS.ByFolder	funzione	2-2	si	no	shared/minitests/graph/graph_all.bas:42
 BRAINS.ByTag	funzione	2-2	si	no	shared/minitests/graph/graph_all.bas:40
 BRAINS.Dot	funzione	1-1	si	no	shared/minitests/graph/graph_all.bas:38

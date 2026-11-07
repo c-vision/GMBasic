@@ -342,6 +342,7 @@ static const gmb_ns_lookup_row_t gmb_ns_lookup[] = {
     { "BITS", "ISPOW2", GMB_TOK_IsPow2 },
     { "BITS", "NEXTPOW2", GMB_TOK_NextPow2 },
     { "BITS", "PARITY", GMB_TOK_BitParity },
+    { "BRAINS", "Adjacency", GMB_TOK_BrainsAdjacency },
     { "BRAINS", "ByFolder", GMB_TOK_GraphByFolder },
     { "BRAINS", "ByTag", GMB_TOK_GraphByTag },
     { "BRAINS", "Dot", GMB_TOK_GraphDot },

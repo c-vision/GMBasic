@@ -632,6 +632,7 @@ DIM cmp$ = VECTORDB.COMPARE(cfg$)
 | `GRAPH ENRICH SEMANTIC <wikiDir> [-g dir] [-n nome] [--max N]` | l'LLM (anche modello locale) deduce relazioni implicite tra le note |
 | Funzione | Ritorna |
 |---|---|
+| `BRAINS.Adjacency(brain)` | ponte verso GRAPH/FLOW: nodi + archi (indice = riga/colonna) |
 | `BRAINS.Neighbors(brain, nota)` | vicini diretti (out+in) |
 | `BRAINS.Path(brain, da, a)` | cammino più corto |
 | `BRAINS.Stats(brain)` | nodi/edge/dangling/PageRank top |
@@ -648,6 +649,11 @@ DIM cmp$ = VECTORDB.COMPARE(cfg$)
 > `GRAPH`/`FLOW` (`IMPORT GRAPH`, `IMPORT FLOW`), su matrici esplicite — vedi IV.21 e
 > `shared/samples/graph/GraphFFILab.bas`. La mappa `BRAINS.X → GRAPH.Y` è nel commento di testa
 > di `GMBasicSharp/common/StdLib/StdLib.Brains.cs`.
+>
+> Il ponte è `BRAINS.Adjacency(brain)`: ritorna JSON con `n`, `nodes` (ordine = indice di
+> riga/colonna) ed `edges` come coppie `[i,j]`; da lì si riempie la matrice n×n e si chiamano
+> le funzioni `GRAPH.*`. È topologico (peso uniforme): i pesi di confidenza degli archi
+> inferiti non sono nel payload.
 | `AI.AGENTRUNGRAPH(nome, prompt [, rounds])` | un agente esplora il grafo con i tool `graph.*` |
 | `AI.AGENTRUNRAG(nome, prompt [, rounds])` | un agente interroga i brain RAG con i tool `rag.*` (speculare a `AGENTRUNGRAPH`; senza provider/brain → errore esplicito) |
 

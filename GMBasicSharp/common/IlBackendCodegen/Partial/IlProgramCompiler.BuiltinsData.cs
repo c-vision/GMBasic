@@ -218,15 +218,6 @@ public sealed partial class IlProgramCompiler
     }
 
 
-    private void EmitDeriveKeyCall(BuiltinFunctionCallExpr expr)
-    {
-        if (expr.Args.Length != 2)
-            throw new NotSupportedException("Backend IL: DERIVEKEY richiede 2 argomenti (seed, path).");
-        EmitExpression(expr.Args[0]);
-        EmitStringArg(expr.Args[1]);
-        _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.DeriveKey), typeof(byte[]), typeof(string)));
-    }
-
 
     /// <summary>KELLYCRITERION(rets[], riskFree): array di DOUBLE + double (firma 2 argomenti).</summary>
 
@@ -542,16 +533,6 @@ public sealed partial class IlProgramCompiler
         _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.GraphPath), typeof(string), typeof(string), typeof(string)));
     }
 
-    private void EmitGraphPageRankCall(BuiltinFunctionCallExpr expr)
-    {
-        if (expr.Args.Length is < 1 or > 2)
-            throw new NotSupportedException("Backend IL: GRAPH.PAGERANK richiede 1 o 2 argomenti (brain [, topK]).");
-        EmitStringArg(expr.Args[0]);
-        if (expr.Args.Length == 2) EmitDoubleArgument(expr.Args[1]);
-        else _il.Emit(OpCodes.Ldc_R8, 10.0);
-        _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.GraphPageRank), typeof(string), typeof(double)));
-    }
-
     // ── GRAPH command (Second Brain L5, legacy) ────────────────────────────
     private void EmitGraphBuildCall(BuiltinFunctionCallExpr expr)
     {
@@ -569,26 +550,6 @@ public sealed partial class IlProgramCompiler
             throw new NotSupportedException("Backend IL: GRAPH FIND PATH richiede 2 argomenti (from, to).");
         EmitStringArg(expr.Args[0]); EmitStringArg(expr.Args[1]);
         _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.GraphFindPath), typeof(string), typeof(string)));
-    }
-
-    // ── GRAPH export estesi (F7 P1) ───────────────────────────────────────
-    private void EmitGraphSubgraphCall(BuiltinFunctionCallExpr expr)
-    {
-        if (expr.Args.Length is < 2 or > 3)
-            throw new NotSupportedException("Backend IL: GRAPH.SUBGRAPH richiede 2 o 3 argomenti (brain, root [, depth]).");
-        EmitStringArg(expr.Args[0]); EmitStringArg(expr.Args[1]);
-        if (expr.Args.Length == 3) EmitDoubleArgument(expr.Args[2]);
-        else _il.Emit(OpCodes.Ldc_R8, 1.0);
-        _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.GraphSubgraph), typeof(string), typeof(string), typeof(double)));
-    }
-
-    // ── GRAPH advanced algorithms (2026-09-07) ─────────────────────────────
-    private void EmitGraphDijkstraCall(BuiltinFunctionCallExpr expr)
-    {
-        if (expr.Args.Length != 3)
-            throw new NotSupportedException("Backend IL: GRAPH.DIJKSTRA richiede 3 argomenti (brain, from, to).");
-        EmitStringArg(expr.Args[0]); EmitStringArg(expr.Args[1]); EmitStringArg(expr.Args[2]);
-        _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.GraphDijkstra), typeof(string), typeof(string), typeof(string)));
     }
 
     // ── Gap revisione (F7 P3): folder props / link manuali / sync / web scrape ──
@@ -1065,14 +1026,6 @@ public sealed partial class IlProgramCompiler
         _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.Clip), typeof(string), typeof(string)));
     }
 
-
-    private void EmitContractCall(BuiltinFunctionCallExpr expr)
-    {
-        if (expr.Args.Length < 2) throw new NotSupportedException("Backend IL: CONTRACT richiede almeno 2 argomenti.");
-        EmitStringArg(expr.Args[0]);
-        EmitStringArg(expr.Args[1]);
-        _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.Contract), typeof(string), typeof(string)));
-    }
 
     private void EmitMemoryStoreCall(BuiltinFunctionCallExpr expr)
     {

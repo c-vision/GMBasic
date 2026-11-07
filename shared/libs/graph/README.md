@@ -10,8 +10,10 @@ autonomo. Binding BASIC: `shared/include/graph.inc` (`IMPORT GRAPH`).
 > `BRAINS` non contiene più algoritmi (BFS/DFS/Dijkstra/PageRank/Louvain/MST/SCC/TopoSort/
 > betweenness/clustering/diametro/eccentricità/componenti/subgrafo/bipartite/has-cycle/max-flow):
 > erano una seconda implementazione degli stessi algoritmi. In `BRAINS` restano solo le query
-> sul cervello (`BYTAG`, `BYFOLDER`, `QUERYMULTI`, `NEIGHBORS`, `PATH`, `STATS`,
-> `ISVALID`, `DOT`): il grafo del cervello va materializzato dal chiamante (nodi + matrice).
+> sul cervello (`ADJACENCY`, `BYTAG`, `BYFOLDER`, `QUERYMULTI`, `NEIGHBORS`, `PATH`,
+> `STATS`, `ISVALID`, `DOT`). Il ponte è **`BRAINS.Adjacency(brain)`**: nodi in ordine
+> ordinale (indice = riga/colonna della matrice) + archi come coppie `[i,j]`; da lì si riempie
+> la matrice n×n e si chiamano gli algoritmi di questo pacchetto.
 > La separazione dei nomi è del 2026-11-04 (il vecchio builtin `GRAPH` è stato rinominato
 > `BRAINS` per liberare `GRAPH` alla teoria dei grafi); il ritiro degli algoritmi da
 > `BRAINS` è del 2026-11-06.

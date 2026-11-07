@@ -339,6 +339,7 @@ static const gmb_ns_type_row_t gmb_ns_types[] = {
     { GMB_TOK_GraphByFolder, 1 },
     { GMB_TOK_GraphNeighbors, 1 },
     { GMB_TOK_GraphPath, 1 },
+    { GMB_TOK_BrainsAdjacency, 1 },
     { GMB_TOK_GraphStats, 1 },
     { GMB_TOK_GraphIsValid, 0 },
     { GMB_TOK_GraphDot, 1 },
