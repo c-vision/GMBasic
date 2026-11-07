@@ -1,6 +1,7 @@
 /* gn_forest.c — Random Forest regressione/classificazione. */
 #include "gn_forest.h"
 #include <stdlib.h>
+#include <stdint.h>
 #include <string.h>
 #include <math.h>
 

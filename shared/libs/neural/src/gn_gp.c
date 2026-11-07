@@ -2,6 +2,7 @@
 #include "gn_gp.h"
 
 #include <stdlib.h>
+#include <stdint.h>
 #include <string.h>
 
 gn_gp_rng gn_gp_rng_make(unsigned long long seed)

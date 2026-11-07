@@ -15,6 +15,7 @@
  * Duals: y_std[r] = -costrow[n+r] (phase-2 artificial cost is 0).
  */
 #include <stdlib.h>
+#include <stdint.h>
 #include <string.h>
 #include <math.h>
 #include "simplex.h"

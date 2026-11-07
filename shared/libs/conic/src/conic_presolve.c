@@ -127,3 +127,11 @@ i64 ofx_presolve_free(i64 h)
     s->used = 0;
     return 0;
 }
+
+#include <stdint.h>
+/* Trampolini DECLARE NATIVE (ffi_ext_native.pl): firma originale, estensioni = INT64_MAX. */
+i64 ofx_presolve_dims__nat(i64 h, i64 *out) { return ofx_presolve_dims(h, out, INT64_MAX); }
+i64 ofx_presolve_new__nat(const i64 *Aptr, const i64 *Arow, const double *Aval, const double *b, const double *c, i64 m, i64 n, double tol) { return ofx_presolve_new(Aptr, INT64_MAX, Arow, INT64_MAX, Aval, INT64_MAX, b, INT64_MAX, c, INT64_MAX, m, n, tol); }
+i64 ofx_presolve_postsolve__nat(i64 h, const double *xred, const double *yred, double *xfull, double *yfull) { return ofx_presolve_postsolve(h, xred, INT64_MAX, yred, INT64_MAX, xfull, INT64_MAX, yfull, INT64_MAX); }
+i64 ofx_presolve_postsolve_dir__nat(i64 h, const double *rred, const double *yred, double *rfull, double *yfull) { return ofx_presolve_postsolve_dir(h, rred, INT64_MAX, yred, INT64_MAX, rfull, INT64_MAX, yfull, INT64_MAX); }
+i64 ofx_presolve_reduced__nat(i64 h, i64 *Arptr, i64 *Arrow, double *Arval, double *br, double *cr) { return ofx_presolve_reduced(h, Arptr, INT64_MAX, Arrow, INT64_MAX, Arval, INT64_MAX, br, INT64_MAX, cr, INT64_MAX); }

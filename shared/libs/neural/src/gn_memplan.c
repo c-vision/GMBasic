@@ -3,6 +3,7 @@
  */
 #include "gn_memplan.h"
 #include <stdlib.h>
+#include <stdint.h>
 #include <string.h>
 
 static int overlap(const gn_memplan_tensor *a, const gn_memplan_tensor *b)

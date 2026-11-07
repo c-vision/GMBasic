@@ -1,6 +1,7 @@
 /* gn_tree.c — albero CART di regressione/classificazione. */
 #include "gn_tree.h"
 #include <math.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>

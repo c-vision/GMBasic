@@ -3,12 +3,12 @@
 ' array (UBOUND+1). Output: coef(m+1) per POLYFIT, out(2) per RSQUARED (r2, angle).
 NAMESPACE FITTING
 
-DECLARE FUNCTION FXN_POLYFIT LIB "gmbstats" ALIAS "ofx_fit_polyfit__ffi" (x() AS DOUBLE, y() AS DOUBLE, n AS LONG, m AS LONG, coef() AS DOUBLE) AS DOUBLE
-DECLARE FUNCTION FXN_POLYEVAL LIB "gmbstats" ALIAS "gs_fit_poly_eval__ffi" (x AS DOUBLE, coef() AS DOUBLE, m AS LONG) AS DOUBLE
-DECLARE FUNCTION FXN_CHEBEVAL LIB "gmbstats" ALIAS "gs_fit_cheb_eval__ffi" (x AS DOUBLE, coef() AS DOUBLE, m AS LONG) AS DOUBLE
-DECLARE FUNCTION FXN_PADEEVAL LIB "gmbstats" ALIAS "gs_fit_pade_eval__ffi" (x AS DOUBLE, a() AS DOUBLE, na AS LONG, b() AS DOUBLE, nb AS LONG) AS DOUBLE
-DECLARE SUB FXN_RSQUARED LIB "gmbstats" ALIAS "ofx_fit_rsquared__ffi" (data() AS DOUBLE, n AS LONG, out() AS DOUBLE)
-DECLARE FUNCTION FXN_RSQUAREDTEST LIB "gmbstats" ALIAS "gs_rsquared_test__ffi" (data() AS DOUBLE, n AS LONG) AS DOUBLE
+DECLARE NATIVE FUNCTION FXN_POLYFIT LIB "gmbstats" ALIAS "ofx_fit_polyfit" (x() AS DOUBLE, y() AS DOUBLE, n AS LONG, m AS LONG, coef() AS DOUBLE) AS DOUBLE
+DECLARE NATIVE FUNCTION FXN_POLYEVAL LIB "gmbstats" ALIAS "gs_fit_poly_eval" (x AS DOUBLE, coef() AS DOUBLE, m AS LONG) AS DOUBLE
+DECLARE NATIVE FUNCTION FXN_CHEBEVAL LIB "gmbstats" ALIAS "gs_fit_cheb_eval" (x AS DOUBLE, coef() AS DOUBLE, m AS LONG) AS DOUBLE
+DECLARE NATIVE FUNCTION FXN_PADEEVAL LIB "gmbstats" ALIAS "gs_fit_pade_eval" (x AS DOUBLE, a() AS DOUBLE, na AS LONG, b() AS DOUBLE, nb AS LONG) AS DOUBLE
+DECLARE NATIVE SUB FXN_RSQUARED LIB "gmbstats" ALIAS "ofx_fit_rsquared" (data() AS DOUBLE, n AS LONG, out() AS DOUBLE)
+DECLARE NATIVE FUNCTION FXN_RSQUAREDTEST LIB "gmbstats" ALIAS "gs_rsquared_test" (data() AS DOUBLE, n AS LONG) AS DOUBLE
 
 ' coef() deve avere m+1 elementi; m = grado del polinomio (esplicito).
 PUBLIC FUNCTION POLYFIT(x() AS DOUBLE, y() AS DOUBLE, coef() AS DOUBLE) AS DOUBLE

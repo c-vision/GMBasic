@@ -3,6 +3,7 @@
  */
 #include "gn_prune.h"
 #include <stdlib.h>
+#include <stdint.h>
 #include <math.h>
 
 int gn_sparsify_2_4(gn_real *w, int n, int window, int nonzeros)

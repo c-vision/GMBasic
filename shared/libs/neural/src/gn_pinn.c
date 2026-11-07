@@ -3,6 +3,7 @@
  */
 #include "gn_pinn.h"
 #include <math.h>
+#include <stdint.h>
 
 static gn_real sq(gn_real x) { return x * x; }
 

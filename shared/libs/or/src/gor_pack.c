@@ -2,6 +2,7 @@
 #include "gor_pack.h"
 
 #include <math.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 

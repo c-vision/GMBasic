@@ -2,6 +2,7 @@
 #include "gc_array.h"
 
 #include <math.h>
+#include <stdint.h>
 
 #if defined(__ARM_NEON) || defined(__ARM_NEON__)
 #include <arm_neon.h>

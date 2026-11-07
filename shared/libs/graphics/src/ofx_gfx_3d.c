@@ -531,3 +531,14 @@ int ofx_gfx_camera_ndc_ray(const double* pos, int64_t pos_n, const double* targe
     v3_out(gm_camera_ndc_ray_dir(&c, ndcx, ndcy), out);
     return 0;
 }
+
+#include <stdint.h>
+/* Trampolini DECLARE NATIVE (ffi_ext_native.pl): firma originale, estensioni = INT64_MAX. */
+int ofx_gfx_mesh_pos__nat(int h, double* out) { return ofx_gfx_mesh_pos(h, out, INT64_MAX); }
+int ofx_gfx_mesh_surface__nat(const double* z, int nx, int ny, double sx, double sy, double zscale) { return ofx_gfx_mesh_surface(z, INT64_MAX, nx, ny, sx, sy, zscale); }
+int ofx_gfx_mesh_tri__nat(int h, double* out) { return ofx_gfx_mesh_tri(h, out, INT64_MAX); }
+int ofx_gfx_raster_get__nat(int h, int x, int y, double* out) { return ofx_gfx_raster_get(h, x, y, out, INT64_MAX); }
+int ofx_gfx_raster_tri__nat(int h, const double* p, const double* c) { return ofx_gfx_raster_tri(h, p, INT64_MAX, c, INT64_MAX); }
+int ofx_gfx_raycast_dda__nat(const double* grid, int rows, int cols, double px, double py, double dx, double dy, double* out) { return ofx_gfx_raycast_dda(grid, INT64_MAX, rows, cols, px, py, dx, dy, out, INT64_MAX); }
+int ofx_gfx_raycast_dda_ex__nat(const double* grid, int rows, int cols, const double* ray, double* out) { return ofx_gfx_raycast_dda_ex(grid, INT64_MAX, rows, cols, ray, INT64_MAX, out, INT64_MAX); }
+int ofx_gfx_volume_render__nat(int n, const double* sigma, const double* rgb, const double* dt, double* out_rgb, double* out_acc) { return ofx_gfx_volume_render(n, sigma, INT64_MAX, rgb, INT64_MAX, dt, INT64_MAX, out_rgb, INT64_MAX, out_acc, INT64_MAX); }

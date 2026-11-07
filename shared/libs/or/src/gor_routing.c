@@ -4,6 +4,7 @@
 #include "gor_lp.h"
 
 #include <math.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 

@@ -78,3 +78,8 @@ int ofx_gfx_bc1_decode(const double* in, int64_t in_n, int64_t w, int64_t h, dou
     free(a); free(b);
     return rc;
 }
+
+#include <stdint.h>
+/* Trampolini DECLARE NATIVE (ffi_ext_native.pl): firma originale, estensioni = INT64_MAX. */
+int ofx_gfx_bc1_decode__nat(const double* in, int64_t w, int64_t h, double* out) { return ofx_gfx_bc1_decode(in, INT64_MAX, w, h, out, INT64_MAX); }
+int ofx_gfx_bc1_encode__nat(const double* rgb, int64_t w, int64_t h, double* out) { return ofx_gfx_bc1_encode(rgb, INT64_MAX, w, h, out, INT64_MAX); }

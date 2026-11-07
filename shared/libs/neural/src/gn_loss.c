@@ -2,6 +2,7 @@
 #include "gn_loss.h"
 
 #include <math.h>
+#include <stdint.h>
 
 gn_real gn_loss_mse(const gn_mat *y, const gn_mat *t, gn_mat *grad)
 {

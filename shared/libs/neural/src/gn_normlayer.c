@@ -3,6 +3,7 @@
  */
 #include "gn_normlayer.h"
 #include <stdlib.h>
+#include <stdint.h>
 #include <math.h>
 #include <string.h>
 

@@ -744,3 +744,48 @@ i64 gfx_neighbors(const i64 *adj, int64_t adj_n, i64 n, i64 v, i64 *out, int64_t
         }
     return k;
 }
+
+#include <stdint.h>
+/* Trampolini DECLARE NATIVE (ffi_ext_native.pl): firma originale, estensioni = INT64_MAX. */
+i64 gfx_articulation__nat(const i64 *adj, i64 n, i64 *art) { return gfx_articulation(adj, INT64_MAX, n, art, INT64_MAX); }
+double gfx_astar__nat(const double *w, i64 n, const double *h, i64 s, i64 t, i64 *path, i64 *info) { return gfx_astar(w, INT64_MAX, n, h, INT64_MAX, s, t, path, INT64_MAX, info, INT64_MAX); }
+i64 gfx_bellman_ford__nat(const double *w, i64 n, i64 src, double *dist, i64 *prev) { return gfx_bellman_ford(w, INT64_MAX, n, src, dist, INT64_MAX, prev, INT64_MAX); }
+double gfx_betweenness__nat(const double *w, i64 n, double *bc) { return gfx_betweenness(w, INT64_MAX, n, bc, INT64_MAX); }
+i64 gfx_bfs__nat(const i64 *adj, i64 n, i64 src, i64 *order) { return gfx_bfs(adj, INT64_MAX, n, src, order, INT64_MAX); }
+i64 gfx_bfs_direction_optimizing__nat(const i64 *adj, i64 n, i64 src, double thr, double *dist) { return gfx_bfs_direction_optimizing(adj, INT64_MAX, n, src, thr, dist, INT64_MAX); }
+i64 gfx_bridges__nat(const i64 *adj, i64 n, i64 *is_bridge) { return gfx_bridges(adj, INT64_MAX, n, is_bridge, INT64_MAX); }
+i64 gfx_closeness__nat(const i64 *adj, i64 n, double *cc) { return gfx_closeness(adj, INT64_MAX, n, cc, INT64_MAX); }
+double gfx_clustering__nat(const i64 *adj, i64 n, i64 v) { return gfx_clustering(adj, INT64_MAX, n, v); }
+i64 gfx_coloring__nat(const i64 *adj, i64 n, i64 *color) { return gfx_coloring(adj, INT64_MAX, n, color, INT64_MAX); }
+i64 gfx_components__nat(const i64 *adj, i64 n, i64 *comp) { return gfx_components(adj, INT64_MAX, n, comp, INT64_MAX); }
+i64 gfx_degree__nat(const i64 *adj, i64 n, i64 v) { return gfx_degree(adj, INT64_MAX, n, v); }
+i64 gfx_dfs__nat(const i64 *adj, i64 n, i64 src, i64 *order) { return gfx_dfs(adj, INT64_MAX, n, src, order, INT64_MAX); }
+double gfx_diameter__nat(const double *w, i64 n) { return gfx_diameter(w, INT64_MAX, n); }
+i64 gfx_dijkstra__nat(const double *w, i64 n, i64 src, double *dist, i64 *prev) { return gfx_dijkstra(w, INT64_MAX, n, src, dist, INT64_MAX, prev, INT64_MAX); }
+i64 gfx_drnl__nat(const i64 *adj, i64 n, i64 u, i64 v, i64 *label) { return gfx_drnl(adj, INT64_MAX, n, u, v, label, INT64_MAX); }
+double gfx_eccentricity__nat(const double *w, i64 n, i64 v) { return gfx_eccentricity(w, INT64_MAX, n, v); }
+i64 gfx_edge_list__nat(const double *w, i64 n, i64 *eu, i64 *ev, double *ew) { return gfx_edge_list(w, INT64_MAX, n, eu, INT64_MAX, ev, INT64_MAX, ew, INT64_MAX); }
+i64 gfx_floyd_warshall__nat(const double *w, i64 n, double *dist) { return gfx_floyd_warshall(w, INT64_MAX, n, dist, INT64_MAX); }
+i64 gfx_has_cycle__nat(const i64 *adj, i64 n) { return gfx_has_cycle(adj, INT64_MAX, n); }
+i64 gfx_is_bipartite__nat(const i64 *adj, i64 n) { return gfx_is_bipartite(adj, INT64_MAX, n); }
+i64 gfx_isomorphic__nat(const i64 *adj1, i64 n1, const i64 *adj2, i64 n2, i64 *mapping) { return gfx_isomorphic(adj1, INT64_MAX, n1, adj2, INT64_MAX, n2, mapping, INT64_MAX); }
+i64 gfx_k_shortest__nat(const double *w, i64 n, i64 s, i64 t, i64 K, i64 *paths, i64 *plens) { return gfx_k_shortest(w, INT64_MAX, n, s, t, K, paths, INT64_MAX, plens, INT64_MAX); }
+double gfx_link_adamic_adar__nat(const i64 *adj, i64 n, i64 u, i64 v) { return gfx_link_adamic_adar(adj, INT64_MAX, n, u, v); }
+i64 gfx_link_common_neighbors__nat(const i64 *adj, i64 n, i64 u, i64 v) { return gfx_link_common_neighbors(adj, INT64_MAX, n, u, v); }
+double gfx_link_jaccard__nat(const i64 *adj, i64 n, i64 u, i64 v) { return gfx_link_jaccard(adj, INT64_MAX, n, u, v); }
+double gfx_link_katz__nat(const double *w, i64 n, double beta, i64 u, i64 v) { return gfx_link_katz(w, INT64_MAX, n, beta, u, v); }
+i64 gfx_link_preferential_attachment__nat(const i64 *adj, i64 n, i64 u, i64 v) { return gfx_link_preferential_attachment(adj, INT64_MAX, n, u, v); }
+double gfx_link_resource_allocation__nat(const i64 *adj, i64 n, i64 u, i64 v) { return gfx_link_resource_allocation(adj, INT64_MAX, n, u, v); }
+i64 gfx_louvain__nat(const double *w, i64 n, i64 *comm, double resolution) { return gfx_louvain(w, INT64_MAX, n, comm, INT64_MAX, resolution); }
+i64 gfx_max_clique__nat(const i64 *adj, i64 n, i64 *clique) { return gfx_max_clique(adj, INT64_MAX, n, clique, INT64_MAX); }
+i64 gfx_min_path_cover__nat(const i64 *adj, i64 n) { return gfx_min_path_cover(adj, INT64_MAX, n); }
+i64 gfx_mst_kruskal__nat(const double *w, i64 n, i64 *eu, i64 *ev, double *ew) { return gfx_mst_kruskal(w, INT64_MAX, n, eu, INT64_MAX, ev, INT64_MAX, ew, INT64_MAX); }
+i64 gfx_neighbors__nat(const i64 *adj, i64 n, i64 v, i64 *out) { return gfx_neighbors(adj, INT64_MAX, n, v, out, INT64_MAX); }
+i64 gfx_pagerank__nat(const double *w, i64 n, double *rank, double damping, i64 iters) { return gfx_pagerank(w, INT64_MAX, n, rank, INT64_MAX, damping, iters); }
+i64 gfx_path_reconstruct__nat(const i64 *prev, i64 n, i64 src, i64 dst, i64 *out) { return gfx_path_reconstruct(prev, INT64_MAX, n, src, dst, out, INT64_MAX); }
+i64 gfx_scc__nat(const i64 *adj, i64 n, i64 *comp) { return gfx_scc(adj, INT64_MAX, n, comp, INT64_MAX); }
+double gfx_stoer_wagner__nat(const double *w, i64 n) { return gfx_stoer_wagner(w, INT64_MAX, n); }
+i64 gfx_subgraph__nat(const double *w, i64 n, const i64 *nodes, i64 k, double *out) { return gfx_subgraph(w, INT64_MAX, n, nodes, INT64_MAX, k, out, INT64_MAX); }
+i64 gfx_toposort__nat(const i64 *adj, i64 n, i64 *order) { return gfx_toposort(adj, INT64_MAX, n, order, INT64_MAX); }
+i64 gfx_transitive_closure__nat(const i64 *adj, i64 n, i64 *out) { return gfx_transitive_closure(adj, INT64_MAX, n, out, INT64_MAX); }
+i64 gfx_wl__nat(const i64 *adj, i64 n, i64 *colors) { return gfx_wl(adj, INT64_MAX, n, colors, INT64_MAX); }

@@ -344,3 +344,29 @@ double ofx_arc_routing(const double *w, int64_t w_n, i64 n, i64 *euler, int64_t 
     free(e);
     return r;
 }
+
+#include <stdint.h>
+/* Trampolini DECLARE NATIVE (ffi_ext_native.pl): firma originale, estensioni = INT64_MAX. */
+double ofx_arc_routing__nat(const double *w, i64 n, i64 *euler, i64 *elen) { return ofx_arc_routing(w, INT64_MAX, n, euler, INT64_MAX, elen, INT64_MAX); }
+i64 ofx_mdvrp__nat(const double *dist, const double *demand, i64 n, i64 ndepots, double cap, i64 *route_of, double *total) { return ofx_mdvrp(dist, INT64_MAX, demand, INT64_MAX, n, ndepots, cap, route_of, INT64_MAX, total, INT64_MAX); }
+i64 ofx_pdp__nat(const double *dist, const double *demand, i64 nreq, double cap, const i64 *pickup, const i64 *delivery, i64 *route, double *total) { return ofx_pdp(dist, INT64_MAX, demand, INT64_MAX, nreq, cap, pickup, INT64_MAX, delivery, INT64_MAX, route, INT64_MAX, total, INT64_MAX); }
+double ofx_tsp_2opt__nat(const double *dist, i64 n, i64 *tour, i64 maxit) { return ofx_tsp_2opt(dist, INT64_MAX, n, tour, INT64_MAX, maxit); }
+double ofx_tsp_3opt__nat(const double *dist, i64 n, i64 *tour, i64 maxit) { return ofx_tsp_3opt(dist, INT64_MAX, n, tour, INT64_MAX, maxit); }
+double ofx_tsp_dfj__nat(const double *dist, i64 n, i64 *tour, i64 maxcuts) { return ofx_tsp_dfj(dist, INT64_MAX, n, tour, INT64_MAX, maxcuts); }
+double ofx_tsp_double_tree__nat(const double *dist, i64 n, i64 *tour) { return ofx_tsp_double_tree(dist, INT64_MAX, n, tour, INT64_MAX); }
+i64 ofx_tsp_erx__nat(const i64 *p1, const i64 *p2, i64 n, i64 *child) { return ofx_tsp_erx(p1, INT64_MAX, p2, INT64_MAX, n, child, INT64_MAX); }
+double ofx_tsp_extra_mileage__nat(const double *dist, i64 n, i64 *tour) { return ofx_tsp_extra_mileage(dist, INT64_MAX, n, tour, INT64_MAX); }
+double ofx_tsp_ga__nat(const double *dist, i64 n, i64 *tour, i64 pop, i64 gens) { return ofx_tsp_ga(dist, INT64_MAX, n, tour, INT64_MAX, pop, gens); }
+double ofx_tsp_grasp__nat(const double *dist, i64 n, i64 *tour, i64 maxit) { return ofx_tsp_grasp(dist, INT64_MAX, n, tour, INT64_MAX, maxit); }
+double ofx_tsp_held_karp__nat(const double *dist, i64 n, i64 *tour) { return ofx_tsp_held_karp(dist, INT64_MAX, n, tour, INT64_MAX); }
+double ofx_tsp_hk_bound__nat(const double *dist, i64 n, i64 maxit, double *pi) { return ofx_tsp_hk_bound(dist, INT64_MAX, n, maxit, pi, INT64_MAX); }
+double ofx_tsp_nn__nat(const double *dist, i64 n, i64 *tour) { return ofx_tsp_nn(dist, INT64_MAX, n, tour, INT64_MAX); }
+double ofx_tsp_one_tree__nat(const double *dist, i64 n, i64 root, i64 *edges) { return ofx_tsp_one_tree(dist, INT64_MAX, n, root, edges, INT64_MAX); }
+double ofx_tsp_or_opt__nat(const double *dist, i64 n, i64 *tour, i64 maxit) { return ofx_tsp_or_opt(dist, INT64_MAX, n, tour, INT64_MAX, maxit); }
+double ofx_tsp_sa__nat(const double *dist, i64 n, i64 *tour, double t0, double cooling, i64 iters) { return ofx_tsp_sa(dist, INT64_MAX, n, tour, INT64_MAX, t0, cooling, iters); }
+i64 ofx_tsp_subtours__nat(const i64 *succ, i64 n, i64 *comp, i64 *sizes) { return ofx_tsp_subtours(succ, INT64_MAX, n, comp, INT64_MAX, sizes, INT64_MAX); }
+double ofx_tsp_tabu__nat(const double *dist, i64 n, i64 *tour, i64 maxit, i64 tenure_kind) { return ofx_tsp_tabu(dist, INT64_MAX, n, tour, INT64_MAX, maxit, tenure_kind); }
+double ofx_tsp_tour_cost__nat(const double *dist, i64 n, const i64 *tour) { return ofx_tsp_tour_cost(dist, INT64_MAX, n, tour, INT64_MAX); }
+double ofx_tsp_vns__nat(const double *dist, i64 n, i64 *tour, i64 maxit) { return ofx_tsp_vns(dist, INT64_MAX, n, tour, INT64_MAX, maxit); }
+i64 ofx_vrp_clarke_wright__nat(const double *dist, const double *demand, i64 n, double cap, i64 depot, i64 *route_of, double *total) { return ofx_vrp_clarke_wright(dist, INT64_MAX, demand, INT64_MAX, n, cap, depot, route_of, INT64_MAX, total, INT64_MAX); }
+i64 ofx_vrp_time_windows__nat(const double *dist, const double *demand, i64 n, double cap, i64 depot, const double *tw, i64 *route_of, double *total) { return ofx_vrp_time_windows(dist, INT64_MAX, demand, INT64_MAX, n, cap, depot, tw, INT64_MAX, route_of, INT64_MAX, total, INT64_MAX); }

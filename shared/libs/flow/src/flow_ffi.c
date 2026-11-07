@@ -166,16 +166,3 @@ double ffx_multicommodity(const double *cap, i64 n, i64 ncomm, const double *com
     return (double)gor_multicommodity((int)n, (const gor_real *)cap, (int)ncomm,
                                       (const gor_real *)commodities, (gor_real *)flow);
 }
-
-#include <stdint.h>
-/* Shim FFI (estensioni automatiche degli array, ffi_ext_shim.pl): firma con int64_t dopo ogni array. */
-i64 ffx_bip_match__ffi(const i64 *adj, int64_t adj_ext, i64 nL, i64 nR, i64 *matchL, int64_t matchL_ext, i64 *matchR, int64_t matchR_ext) { return ffx_bip_match(adj, nL, nR, matchL, matchR); }
-i64 ffx_circulation__ffi(const double *lower, int64_t lower_ext, const double *upper, int64_t upper_ext, i64 n, const double *b, int64_t b_ext, double *flow, int64_t flow_ext) { return ffx_circulation(lower, upper, n, b, flow); }
-double ffx_dinic__ffi(const double *cap, int64_t cap_ext, i64 n, i64 s, i64 t) { return ffx_dinic(cap, n, s, t); }
-i64 ffx_gen_match__ffi(const i64 *adj, int64_t adj_ext, i64 n, i64 *match, int64_t match_ext) { return ffx_gen_match(adj, n, match); }
-i64 ffx_gomory_hu__ffi(const double *w, int64_t w_ext, i64 n, i64 *parent, int64_t parent_ext, double *weight, int64_t weight_ext) { return ffx_gomory_hu(w, n, parent, weight); }
-double ffx_max_flow__ffi(const double *cap, int64_t cap_ext, i64 n, i64 s, i64 t) { return ffx_max_flow(cap, n, s, t); }
-double ffx_min_cost_flow__ffi(const double *cap, int64_t cap_ext, const double *cost, int64_t cost_ext, i64 n, i64 s, i64 t, double *flow_value, int64_t flow_value_ext) { return ffx_min_cost_flow(cap, cost, n, s, t, flow_value); }
-double ffx_min_cut__ffi(const double *cap, int64_t cap_ext, i64 n, i64 s, i64 t, i64 *side, int64_t side_ext) { return ffx_min_cut(cap, n, s, t, side); }
-double ffx_multicommodity__ffi(const double *cap, int64_t cap_ext, i64 n, i64 ncomm, const double *commodities, int64_t commodities_ext, double *flow, int64_t flow_ext) { return ffx_multicommodity(cap, n, ncomm, commodities, flow); }
-double ffx_weighted_match__ffi(const double *w, int64_t w_ext, i64 n, i64 *match, int64_t match_ext) { return ffx_weighted_match(w, n, match); }

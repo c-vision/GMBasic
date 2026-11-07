@@ -3,6 +3,7 @@
  */
 #include "gn_norm.h"
 #include <stdlib.h>
+#include <stdint.h>
 #include <math.h>
 
 gn_status gn_norm_init(gn_norm *n, int dim)

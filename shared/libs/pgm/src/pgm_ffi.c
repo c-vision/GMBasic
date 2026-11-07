@@ -73,8 +73,3 @@ i64 gfx_pgm_free(i64 h)
     g_pgm[s] = NULL;
     return 0;
 }
-
-#include <stdint.h>
-/* Shim FFI (estensioni automatiche degli array, ffi_ext_shim.pl): firma con int64_t dopo ogni array. */
-i64 gfx_pgm_build__ffi(const double *x, int64_t x_ext, i64 n, i64 eps) { return gfx_pgm_build(x, n, eps); }
-i64 gfx_pgm_range__ffi(i64 h, double key, i64 *out, int64_t out_ext) { return gfx_pgm_range(h, key, out); }

@@ -839,3 +839,50 @@ int ofx_gfx_shape_ray2_at(const double* r, int64_t r_n, double t, double* out, i
     v2_out(gm_ray2_at(ray2_in(r), t), out);
     return 0;
 }
+
+#include <stdint.h>
+/* Trampolini DECLARE NATIVE (ffi_ext_native.pl): firma originale, estensioni = INT64_MAX. */
+int ofx_gfx_bmp_brightness__nat(const double* px, int w, int h, double brightness, double contrast, double* out) { return ofx_gfx_bmp_brightness(px, INT64_MAX, w, h, brightness, contrast, out, INT64_MAX); }
+int ofx_gfx_bmp_convolve3__nat(const double* px, int w, int h, const double* k, double divider, double* out) { return ofx_gfx_bmp_convolve3(px, INT64_MAX, w, h, k, INT64_MAX, divider, out, INT64_MAX); }
+int ofx_gfx_bmp_fill__nat(double* px, int w, int h, double color) { return ofx_gfx_bmp_fill(px, INT64_MAX, w, h, color); }
+double ofx_gfx_bmp_get__nat(const double* px, int w, int h, int x, int y) { return ofx_gfx_bmp_get(px, INT64_MAX, w, h, x, y); }
+int ofx_gfx_bmp_gray_lum__nat(const double* px, int w, int h, double* out) { return ofx_gfx_bmp_gray_lum(px, INT64_MAX, w, h, out, INT64_MAX); }
+int ofx_gfx_bmp_gray_naive__nat(const double* px, int w, int h, double* out) { return ofx_gfx_bmp_gray_naive(px, INT64_MAX, w, h, out, INT64_MAX); }
+int ofx_gfx_bmp_set__nat(double* px, int w, int h, int x, int y, double color) { return ofx_gfx_bmp_set(px, INT64_MAX, w, h, x, y, color); }
+int ofx_gfx_bmp_to_image__nat(const double* px, int w, int h, double* out) { return ofx_gfx_bmp_to_image(px, INT64_MAX, w, h, out, INT64_MAX); }
+int ofx_gfx_heatmap__nat(const double* z, int nx, int ny, double zmin, double zmax, double* out) { return ofx_gfx_heatmap(z, INT64_MAX, nx, ny, zmin, zmax, out, INT64_MAX); }
+int ofx_gfx_img3_convolve_sep__nat(const double* in, int w, int h, int d, const double* k, int n, double* out) { return ofx_gfx_img3_convolve_sep(in, INT64_MAX, w, h, d, k, INT64_MAX, n, out, INT64_MAX); }
+int ofx_gfx_img3_fill__nat(double* v, int w, int h, int d, double val) { return ofx_gfx_img3_fill(v, INT64_MAX, w, h, d, val); }
+double ofx_gfx_img3_get__nat(const double* in, int w, int h, int d, int x, int y, int z) { return ofx_gfx_img3_get(in, INT64_MAX, w, h, d, x, y, z); }
+int ofx_gfx_img3_set__nat(double* v, int w, int h, int d, int x, int y, int z, double val) { return ofx_gfx_img3_set(v, INT64_MAX, w, h, d, x, y, z, val); }
+double ofx_gfx_img_absmax__nat(const double* in, int w, int h) { return ofx_gfx_img_absmax(in, INT64_MAX, w, h); }
+int ofx_gfx_img_clone__nat(const double* in, int w, int h, double* out) { return ofx_gfx_img_clone(in, INT64_MAX, w, h, out, INT64_MAX); }
+int ofx_gfx_img_convolve__nat(const double* in, int w, int h, const double* k, int kx, int ky, double* out) { return ofx_gfx_img_convolve(in, INT64_MAX, w, h, k, INT64_MAX, kx, ky, out, INT64_MAX); }
+int ofx_gfx_img_convolve_sep__nat(const double* in, int w, int h, const double* kx, int nx, const double* ky, int ny, double* out) { return ofx_gfx_img_convolve_sep(in, INT64_MAX, w, h, kx, INT64_MAX, nx, ky, INT64_MAX, ny, out, INT64_MAX); }
+int ofx_gfx_img_draw_circle__nat(double* d, int w, int h, int cx, int cy, int r, double v, int fill) { return ofx_gfx_img_draw_circle(d, INT64_MAX, w, h, cx, cy, r, v, fill); }
+int ofx_gfx_img_draw_line__nat(double* d, int w, int h, int x0, int y0, int x1, int y1, double v) { return ofx_gfx_img_draw_line(d, INT64_MAX, w, h, x0, y0, x1, y1, v); }
+int ofx_gfx_img_draw_rect_fill__nat(double* d, int w, int h, int x0, int y0, int x1, int y1, double v) { return ofx_gfx_img_draw_rect_fill(d, INT64_MAX, w, h, x0, y0, x1, y1, v); }
+int ofx_gfx_img_draw_rect_stroke__nat(double* d, int w, int h, int x0, int y0, int x1, int y1, double v) { return ofx_gfx_img_draw_rect_stroke(d, INT64_MAX, w, h, x0, y0, x1, y1, v); }
+int ofx_gfx_img_draw_triangle__nat(double* d, int w, int h, const double* a, const double* b, const double* c, double v, int fill) { return ofx_gfx_img_draw_triangle(d, INT64_MAX, w, h, a, INT64_MAX, b, INT64_MAX, c, INT64_MAX, v, fill); }
+int ofx_gfx_img_fill__nat(double* d, int w, int h, double v) { return ofx_gfx_img_fill(d, INT64_MAX, w, h, v); }
+int ofx_gfx_img_flip_h__nat(const double* in, int w, int h, double* out) { return ofx_gfx_img_flip_h(in, INT64_MAX, w, h, out, INT64_MAX); }
+int ofx_gfx_img_flip_v__nat(const double* in, int w, int h, double* out) { return ofx_gfx_img_flip_v(in, INT64_MAX, w, h, out, INT64_MAX); }
+int ofx_gfx_img_gaussian__nat(const double* in, int w, int h, double sigma, double* out) { return ofx_gfx_img_gaussian(in, INT64_MAX, w, h, sigma, out, INT64_MAX); }
+double ofx_gfx_img_get__nat(const double* in, int w, int h, int x, int y) { return ofx_gfx_img_get(in, INT64_MAX, w, h, x, y); }
+int ofx_gfx_img_hist_equalize__nat(const double* in, int w, int h, int nbins, double* out) { return ofx_gfx_img_hist_equalize(in, INT64_MAX, w, h, nbins, out, INT64_MAX); }
+int ofx_gfx_img_histogram__nat(const double* in, int w, int h, int nbins, double lo, double hi, double* counts) { return ofx_gfx_img_histogram(in, INT64_MAX, w, h, nbins, lo, hi, counts, INT64_MAX); }
+double ofx_gfx_img_max__nat(const double* in, int w, int h) { return ofx_gfx_img_max(in, INT64_MAX, w, h); }
+int ofx_gfx_img_median3__nat(const double* in, int w, int h, double* out) { return ofx_gfx_img_median3(in, INT64_MAX, w, h, out, INT64_MAX); }
+double ofx_gfx_img_min__nat(const double* in, int w, int h) { return ofx_gfx_img_min(in, INT64_MAX, w, h); }
+int ofx_gfx_img_normalize__nat(const double* in, int w, int h, double lo, double hi, double* out) { return ofx_gfx_img_normalize(in, INT64_MAX, w, h, lo, hi, out, INT64_MAX); }
+int ofx_gfx_img_poisson__nat(const double* target, const double* source, const double* mask, int nx, int ny, double* out, int maxit) { return ofx_gfx_img_poisson(target, INT64_MAX, source, INT64_MAX, mask, INT64_MAX, nx, ny, out, INT64_MAX, maxit); }
+int ofx_gfx_img_resample__nat(const double* in, int w, int h, int nw, int nh, double* out) { return ofx_gfx_img_resample(in, INT64_MAX, w, h, nw, nh, out, INT64_MAX); }
+int ofx_gfx_img_rotate__nat(const double* in, int w, int h, double radians, double bg, double* out) { return ofx_gfx_img_rotate(in, INT64_MAX, w, h, radians, bg, out, INT64_MAX); }
+int ofx_gfx_img_rotate90__nat(const double* in, int w, int h, int k, double* out) { return ofx_gfx_img_rotate90(in, INT64_MAX, w, h, k, out, INT64_MAX); }
+int ofx_gfx_img_scale__nat(double* d, int w, int h, double s) { return ofx_gfx_img_scale(d, INT64_MAX, w, h, s); }
+int ofx_gfx_img_set__nat(double* d, int w, int h, int x, int y, double v) { return ofx_gfx_img_set(d, INT64_MAX, w, h, x, y, v); }
+int ofx_gfx_img_sobel__nat(const double* in, int w, int h, double* gx, double* gy) { return ofx_gfx_img_sobel(in, INT64_MAX, w, h, gx, INT64_MAX, gy, INT64_MAX); }
+int ofx_gfx_img_sub__nat(const double* a, const double* b, int w, int h, double* out) { return ofx_gfx_img_sub(a, INT64_MAX, b, INT64_MAX, w, h, out, INT64_MAX); }
+int ofx_gfx_img_threshold__nat(const double* in, int w, int h, double t, double lo, double hi, double* out) { return ofx_gfx_img_threshold(in, INT64_MAX, w, h, t, lo, hi, out, INT64_MAX); }
+int ofx_gfx_img_transpose__nat(const double* in, int w, int h, double* out) { return ofx_gfx_img_transpose(in, INT64_MAX, w, h, out, INT64_MAX); }
+int ofx_gfx_img_warp__nat(const double* in, int c, int h, int w, const double* fx, const double* fy, double* out) { return ofx_gfx_img_warp(in, INT64_MAX, c, h, w, fx, INT64_MAX, fy, INT64_MAX, out, INT64_MAX); }

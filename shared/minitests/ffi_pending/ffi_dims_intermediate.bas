@@ -1,7 +1,7 @@
-' @heavy   (pending: richiede il descrittore {rank, extents} NEL VALORE array)
-' Caso chiave: l'array attraversa una SUB intermedia; il rango non e' perso perche'
-' viaggia col valore. E' il motivo per cui il piano prevede il descrittore (non solo
-' l'emissione al call site FFI).
+' @heavy   (pending SOLO per C99Native: IL, PCode e VM/C passano; su C99 il parametro `m()` di una SUB riceve
+' solo il primo bound, quindi l'array N-D attraverso la SUB perde le estensioni oltre la prima:
+' serve inferire il rango dai call-site o dichiarare `m(,)`)
+' Caso chiave: l'array attraversa una SUB intermedia; il rango viaggia col valore (descrittore).
 ' EXPECT: s2= 10|s3= 36
 DECLARE FUNCTION SUM2I LIB "libdims_ext" ALIAS "sum2" (a() AS DOUBLE) AS DOUBLE
 DECLARE FUNCTION SUM3I LIB "libdims_ext" ALIAS "sum3" (a() AS DOUBLE) AS DOUBLE

@@ -3,6 +3,7 @@
  */
 #include "gn_quant.h"
 #include <stdlib.h>
+#include <stdint.h>
 #include <math.h>
 
 static int clamp_i8(long v)

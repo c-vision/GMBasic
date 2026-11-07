@@ -236,3 +236,24 @@ i64 ofx_rostering(const i64 *demand, int64_t demand_n, i64 nnurses, i64 ndays, i
     free(d); free(s);
     return (i64)r;
 }
+
+#include <stdint.h>
+/* Trampolini DECLARE NATIVE (ffi_ext_native.pl): firma originale, estensioni = INT64_MAX. */
+double ofx_cds__nat(const double *p, i64 n, i64 m, i64 *seq) { return ofx_cds(p, INT64_MAX, n, m, seq, INT64_MAX); }
+double ofx_cpm__nat(const double *dur, const i64 *preds, i64 n, i64 npred, double *est, double *lst, double *slack) { return ofx_cpm(dur, INT64_MAX, preds, INT64_MAX, n, npred, est, INT64_MAX, lst, INT64_MAX, slack, INT64_MAX); }
+i64 ofx_interval_max__nat(const double *start, const double *end, i64 n, i64 *selected) { return ofx_interval_max(start, INT64_MAX, end, INT64_MAX, n, selected, INT64_MAX); }
+i64 ofx_interval_partition__nat(const double *start, const double *end, i64 n) { return ofx_interval_partition(start, INT64_MAX, end, INT64_MAX, n); }
+double ofx_job_shop__nat(const i64 *route, const double *dur, i64 njobs, i64 nmach, i64 *start) { return ofx_job_shop(route, INT64_MAX, dur, INT64_MAX, njobs, nmach, start, INT64_MAX); }
+double ofx_johnson__nat(const double *p1, const double *p2, i64 n, i64 *seq) { return ofx_johnson(p1, INT64_MAX, p2, INT64_MAX, n, seq, INT64_MAX); }
+double ofx_johnson3__nat(const double *p1, const double *p2, const double *p3, i64 n, i64 *seq) { return ofx_johnson3(p1, INT64_MAX, p2, INT64_MAX, p3, INT64_MAX, n, seq, INT64_MAX); }
+double ofx_lpt__nat(const double *p, i64 n, i64 m, i64 *assign) { return ofx_lpt(p, INT64_MAX, n, m, assign, INT64_MAX); }
+double ofx_neh__nat(const double *p, i64 n, i64 m, i64 *seq) { return ofx_neh(p, INT64_MAX, n, m, seq, INT64_MAX); }
+double ofx_pert__nat(const double *to, const double *tm, const double *tp, const i64 *preds, i64 n, i64 npred, double *est, double *variance) { return ofx_pert(to, INT64_MAX, tm, INT64_MAX, tp, INT64_MAX, preds, INT64_MAX, n, npred, est, INT64_MAX, variance, INT64_MAX); }
+double ofx_rcpsp__nat(const double *dur, const i64 *preds, i64 n, i64 npred, const double *demand, const double *capacity, i64 nr, i64 *start) { return ofx_rcpsp(dur, INT64_MAX, preds, INT64_MAX, n, npred, demand, INT64_MAX, capacity, INT64_MAX, nr, start, INT64_MAX); }
+i64 ofx_rostering__nat(const i64 *demand, i64 nnurses, i64 ndays, i64 max_work, i64 *schedule) { return ofx_rostering(demand, INT64_MAX, nnurses, ndays, max_work, schedule, INT64_MAX); }
+double ofx_sched_edd__nat(const double *p, const double *due, i64 n, i64 *order) { return ofx_sched_edd(p, INT64_MAX, due, INT64_MAX, n, order, INT64_MAX); }
+double ofx_sched_lawler__nat(const double *p, const double *due, i64 n, i64 *order) { return ofx_sched_lawler(p, INT64_MAX, due, INT64_MAX, n, order, INT64_MAX); }
+i64 ofx_sched_moore__nat(const double *p, const double *due, i64 n, i64 *order) { return ofx_sched_moore(p, INT64_MAX, due, INT64_MAX, n, order, INT64_MAX); }
+double ofx_sched_spt__nat(const double *p, i64 n, i64 *order) { return ofx_sched_spt(p, INT64_MAX, n, order, INT64_MAX); }
+double ofx_sched_wspt__nat(const double *p, const double *w, i64 n, i64 *order) { return ofx_sched_wspt(p, INT64_MAX, w, INT64_MAX, n, order, INT64_MAX); }
+i64 ofx_timetabling__nat(const i64 *conflicts, i64 n, i64 *slot_of) { return ofx_timetabling(conflicts, INT64_MAX, n, slot_of, INT64_MAX); }

@@ -169,3 +169,15 @@ double ofx_chance_constraint(const double *sigma, int64_t sigma_n, const double 
     if (out != NULL) out[0] = (double)shift;
     return r;
 }
+
+#include <stdint.h>
+/* Trampolini DECLARE NATIVE (ffi_ext_native.pl): firma originale, estensioni = INT64_MAX. */
+i64 ofx_ahp__nat(const double *pairwise, i64 n, double *weights, double *consistency) { return ofx_ahp(pairwise, INT64_MAX, n, weights, INT64_MAX, consistency, INT64_MAX); }
+double ofx_chance_constraint__nat(const double *sigma, const double *x, i64 n, double alpha, double *out) { return ofx_chance_constraint(sigma, INT64_MAX, x, INT64_MAX, n, alpha, out, INT64_MAX); }
+double ofx_cvar__nat(const double *returns, i64 n, double alpha, double *out) { return ofx_cvar(returns, INT64_MAX, n, alpha, out, INT64_MAX); }
+double ofx_des_mm1__nat(double lambda, double mu, i64 ncust, double *out) { return ofx_des_mm1(lambda, mu, ncust, out, INT64_MAX); }
+i64 ofx_mdp_policy__nat(const double *P, const double *R, i64 ns, i64 na, double gamma, i64 maxit, double *out) { return ofx_mdp_policy(P, INT64_MAX, R, INT64_MAX, ns, na, gamma, maxit, out, INT64_MAX); }
+i64 ofx_mdp_value__nat(const double *P, const double *R, i64 ns, i64 na, double gamma, i64 maxit, double *out) { return ofx_mdp_value(P, INT64_MAX, R, INT64_MAX, ns, na, gamma, maxit, out, INT64_MAX); }
+double ofx_montecarlo__nat(ffx_util_cb f, i64 d, const double *lo, const double *hi, i64 n, double *out) { return ofx_montecarlo(f, d, lo, INT64_MAX, hi, INT64_MAX, n, out, INT64_MAX); }
+double ofx_queue_mmc__nat(double lambda, double mu, i64 c, double *out) { return ofx_queue_mmc(lambda, mu, c, out, INT64_MAX); }
+i64 ofx_topsis__nat(const double *X, i64 m, i64 n, const double *w, const i64 *benefit, double *scores) { return ofx_topsis(X, INT64_MAX, m, n, w, INT64_MAX, benefit, INT64_MAX, scores, INT64_MAX); }

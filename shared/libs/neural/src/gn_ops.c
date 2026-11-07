@@ -3,6 +3,7 @@
  */
 #include "gn_ops.h"
 #include <string.h>
+#include <stdint.h>
 
 gn_status gn_gather_rows(gn_real *out, const gn_real *data, int rows, int cols,
                          const int *indices, int n_idx)

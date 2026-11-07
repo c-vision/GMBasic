@@ -2,6 +2,7 @@
 #include "gn_rnn.h"
 
 #include <math.h>
+#include <stdint.h>
 #include <stdlib.h>
 
 static unsigned long long rr_next(unsigned long long *s)

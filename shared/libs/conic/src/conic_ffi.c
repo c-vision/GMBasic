@@ -57,3 +57,13 @@ i64 ofx_expcone_scaling(i64 kind, double alpha, const double *z, int64_t z_n, co
     out[27] = scale;
     return (i64)r;
 }
+
+#include <stdint.h>
+/* Trampolini DECLARE NATIVE (ffi_ext_native.pl): firma originale, estensioni = INT64_MAX. */
+i64 ofx_expcone_barrier__nat(i64 kind, double alpha, const double *x, double *out) { return ofx_expcone_barrier(kind, alpha, x, INT64_MAX, out, INT64_MAX); }
+i64 ofx_expcone_dual_in__nat(i64 kind, double alpha, const double *s) { return ofx_expcone_dual_in(kind, alpha, s, INT64_MAX); }
+i64 ofx_expcone_dual_point__nat(i64 kind, double alpha, const double *s, double *w) { return ofx_expcone_dual_point(kind, alpha, s, INT64_MAX, w, INT64_MAX); }
+i64 ofx_expcone_grad__nat(i64 kind, double alpha, const double *x, double *g) { return ofx_expcone_grad(kind, alpha, x, INT64_MAX, g, INT64_MAX); }
+i64 ofx_expcone_hess__nat(i64 kind, double alpha, const double *x, double *H) { return ofx_expcone_hess(kind, alpha, x, INT64_MAX, H, INT64_MAX); }
+i64 ofx_expcone_nt_metrics__nat(i64 kind, double alpha, const double *z, const double *s, double *m) { return ofx_expcone_nt_metrics(kind, alpha, z, INT64_MAX, s, INT64_MAX, m, INT64_MAX); }
+i64 ofx_expcone_scaling__nat(i64 kind, double alpha, const double *z, const double *s, double smu, double *out) { return ofx_expcone_scaling(kind, alpha, z, INT64_MAX, s, INT64_MAX, smu, out, INT64_MAX); }

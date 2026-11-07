@@ -469,11 +469,3 @@ int ofx_ts_arima(const double *y, int n, int p, int d, int q, double *out)
     return fx_arima_fit(y, n, p, d, q, out + 1, out + 1 + p, &out[0],
                         out + 1 + p + q) == 0 ? 1 : 0;
 }
-
-#include <stdint.h>
-/* Shim FFI (estensioni automatiche degli array, ffi_ext_shim.pl): firma con int64_t dopo ogni array. */
-int ofx_ts_adf__ffi(const double *y, int64_t y_ext, int n, double *out, int64_t out_ext) { return ofx_ts_adf(y, n, out); }
-int ofx_ts_arima__ffi(const double *y, int64_t y_ext, int n, int p, int d, int q, double *out, int64_t out_ext) { return ofx_ts_arima(y, n, p, d, q, out); }
-double ofx_ts_hw__ffi(const double *y, int64_t y_ext, int n, double alpha, double beta, double gamma, int period, double *forecast, int64_t forecast_ext) { return ofx_ts_hw(y, n, alpha, beta, gamma, period, forecast); }
-int ofx_ts_macoeff__ffi(const double *res, int64_t res_ext, int n, int q, double *out, int64_t out_ext) { return ofx_ts_macoeff(res, n, q, out); }
-int ofx_ts_yule__ffi(const double *acf, int64_t acf_ext, int n, int order, double *out, int64_t out_ext) { return ofx_ts_yule(acf, n, order, out); }

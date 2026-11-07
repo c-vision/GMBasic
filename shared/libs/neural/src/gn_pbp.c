@@ -3,6 +3,7 @@
  */
 #include "gn_pbp.h"
 #include <math.h>
+#include <stdint.h>
 
 static gn_real pnorm(gn_real a)
 {

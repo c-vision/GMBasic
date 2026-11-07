@@ -67,11 +67,3 @@ i64 ofx_shapley(ffx_mask_cb v, i64 n, double *phi)
     g_mask_cb = v;
     return (i64)gor_shapley((int)n, ffx_mask_bridge, NULL, (gor_real *)phi);
 }
-
-#include <stdint.h>
-/* Shim FFI (estensioni automatiche degli array, ffi_ext_shim.pl): firma con int64_t dopo ogni array. */
-i64 ofx_game_minimax__ffi(const double *A, int64_t A_ext, i64 m, i64 n, double *out, int64_t out_ext) { return ofx_game_minimax(A, m, n, out); }
-i64 ofx_game_saddle__ffi(const double *payoff, int64_t payoff_ext, i64 m, i64 n, double *out, int64_t out_ext) { return ofx_game_saddle(payoff, m, n, out); }
-double ofx_game_value__ffi(const double *payoff, int64_t payoff_ext, i64 m, i64 n, double *row_strat, int64_t row_strat_ext, double *col_strat, int64_t col_strat_ext) { return ofx_game_value(payoff, m, n, row_strat, col_strat); }
-i64 ofx_nash_2p__ffi(const double *A, int64_t A_ext, const double *B, int64_t B_ext, i64 m, i64 n, double *out, int64_t out_ext) { return ofx_nash_2p(A, B, m, n, out); }
-i64 ofx_shapley__ffi(ffx_mask_cb v, i64 n, double *phi, int64_t phi_ext) { return ofx_shapley(v, n, phi); }

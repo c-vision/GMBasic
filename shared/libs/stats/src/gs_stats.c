@@ -625,19 +625,3 @@ double gs_fc_combine(const double *fc, const double *w, int m)
     for (i = 0; i < m; i++) s += fc[i] * w[i];
     return s;
 }
-
-#include <stdint.h>
-/* Shim FFI (estensioni automatiche degli array, ffi_ext_shim.pl): firma con int64_t dopo ogni array. */
-gc_real gs_stats_correlation__ffi(const gc_real *a, int64_t a_ext, const gc_real *b, int64_t b_ext, int n) { return gs_stats_correlation(a, b, n); }
-gc_real gs_stats_covariance__ffi(const gc_real *a, int64_t a_ext, const gc_real *b, int64_t b_ext, int n, int sample) { return gs_stats_covariance(a, b, n, sample); }
-gc_real gs_stats_kurtosis__ffi(const gc_real *a, int64_t a_ext, int n) { return gs_stats_kurtosis(a, n); }
-gc_real gs_stats_mad__ffi(const gc_real *a, int64_t a_ext, int n) { return gs_stats_mad(a, n); }
-gc_real gs_stats_max__ffi(const gc_real *a, int64_t a_ext, int n) { return gs_stats_max(a, n); }
-gc_real gs_stats_mean__ffi(const gc_real *a, int64_t a_ext, int n) { return gs_stats_mean(a, n); }
-gc_real gs_stats_median__ffi(const gc_real *a, int64_t a_ext, int n) { return gs_stats_median(a, n); }
-gc_real gs_stats_min__ffi(const gc_real *a, int64_t a_ext, int n) { return gs_stats_min(a, n); }
-gc_real gs_stats_percentile__ffi(const gc_real *a, int64_t a_ext, int n, gc_real p) { return gs_stats_percentile(a, n, p); }
-gc_real gs_stats_range__ffi(const gc_real *a, int64_t a_ext, int n) { return gs_stats_range(a, n); }
-gc_real gs_stats_skewness__ffi(const gc_real *a, int64_t a_ext, int n) { return gs_stats_skewness(a, n); }
-gc_real gs_stats_stddev__ffi(const gc_real *a, int64_t a_ext, int n, int sample) { return gs_stats_stddev(a, n, sample); }
-gc_real gs_stats_variance__ffi(const gc_real *a, int64_t a_ext, int n, int sample) { return gs_stats_variance(a, n, sample); }
