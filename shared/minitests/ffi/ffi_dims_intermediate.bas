@@ -1,7 +1,4 @@
-' @heavy   (pending SOLO per C99Native: IL, PCode e VM/C passano; su C99 il parametro `m()` di una SUB riceve
-' solo il primo bound, quindi l'array N-D attraverso la SUB perde le estensioni oltre la prima:
-' serve inferire il rango dai call-site o dichiarare `m(,)`)
-' Caso chiave: l'array attraversa una SUB intermedia; il rango viaggia col valore (descrittore).
+' Array N-D che attraversa una SUB `a()` prima della FFI: il rango viaggia col valore (IL, PCode, VM/C) o si inferisce dai call-site (C99).
 ' EXPECT: s2= 10|s3= 36
 DECLARE FUNCTION SUM2I LIB "libdims_ext" ALIAS "sum2" (a() AS DOUBLE) AS DOUBLE
 DECLARE FUNCTION SUM3I LIB "libdims_ext" ALIAS "sum3" (a() AS DOUBLE) AS DOUBLE

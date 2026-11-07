@@ -360,6 +360,7 @@ static void err_decl_insert(ctx_t* c, int sv, size_t pos) {
 static const gmb_c99_anchor_t* g_c99_anchors = NULL;
 static int g_c99_nanchors = 0;
 static int g_c99_last_dir_line = -1;
+static int g_c99_rank_changed = 0;   /* inferenza rango parametri a(): vedi emit_arr_call_arg e gmb_c99_emit */
 static char g_c99_last_dir_file[4096] = "";
 
 static int c99_src_locate(int line, const char** file, int* file_line) {
@@ -10233,6 +10234,17 @@ static void emit_arr_call_arg(ctx_t* c, fn_info_t* fn, int i, gmb_expr_t* arg, i
         emit_arr_arg_lowers(c, fn, i, NULL);
         return;
     }
+    /* Inferenza del rango dei parametri `a()` (2026-11-06): un array N-D passato a una SUB/FUNCTION nominale
+     * il cui parametro e' dichiarato `a()` rende la callee N-D (come se fosse `a(,)`): l'ABI dei bound
+     * (`__b1..`) e' gia' quella dei parametri con virgole. Al primo cambiamento l'emissione viene ripetuta
+     * da capo (gmb_c99_emit) fino al punto fisso, cosi' firma, corpo e call-site concordano. */
+    if (fn_array_lower_abi(fn) && !fn->stmt->is_ffi && tv->ndims >= 2 && tv->ndims <= C99_FFI_MAXRANK
+        && !(fn->stmt->param_variadic && fn->stmt->param_variadic[i])
+        && !(fn->stmt->param_ndims && fn->stmt->param_ndims[i] >= 2)) {
+        gmb_stmt_t* cs = fn->stmt;
+        if (!cs->param_ndims) cs->param_ndims = (uint8_t*)calloc((size_t)(cs->n_params > 0 ? cs->n_params : 1), 1);
+        if (cs->param_ndims) { cs->param_ndims[i] = (uint8_t)tv->ndims; g_c99_rank_changed = 1; }
+    }
     if (want_ref) sb_put(&c->out, "&");
     emit_ident(c, tv->name);
     sb_put(&c->out, ", ");
@@ -10242,7 +10254,8 @@ static void emit_arr_call_arg(ctx_t* c, fn_info_t* fn, int i, gmb_expr_t* arg, i
     for (int _j = 1; _j < _cnd; _j++) {
         sb_put(&c->out, ", ");
         if (want_ref) sb_put(&c->out, "&");
-        sb_bound_ident(&c->out, tv->name, _j);
+        if (_j < tv->ndims) sb_bound_ident(&c->out, tv->name, _j);
+        else sb_put(&c->out, want_ref ? "((gmb_int_t){0})" : "0");   /* rango minore del parametro: bound mancante */
     }
     /* FFI con estensioni automatiche: il wrapper-variante di rango R riceve anche __b1..__b(R-1). */
     if (fn->stmt->is_ffi && !fn->stmt->ffi_native) {
@@ -33962,7 +33975,7 @@ static void collect_global_decls(ctx_t* c, gmb_stmt_t** list, int n) {
     }
 }
 
-int gmb_c99_emit(const gmb_program_t* prog, char** out_src, char** error) {
+static int gmb_c99_emit_once(const gmb_program_t* prog, char** out_src, char** error) {
     g_c99_last_dir_line = -1;   /* O8: la prima direttiva della nuova emissione */
     g_c99_last_dir_file[0] = 0;
     if (prog && prog->stmts && prog->n > 0)
@@ -34617,6 +34630,10 @@ int gmb_c99_emit(const gmb_program_t* prog, char** out_src, char** error) {
             if (fa->stmt->param_is_array && fa->stmt->param_is_array[k]) {
                 int _ba = arr_idx++;
                 sb_printf(&proto, ", gmb_lambda_bound(%d)", _ba);
+                /* parametro N-D (a(,) o rango inferito): i bound oltre il primo viaggiano nello stesso canale
+                 * (valore unico, il trampolino non conosce le altre dimensioni). */
+                { int _nb = (fa->stmt->param_ndims && fa->stmt->param_ndims[k] >= 2) ? fa->stmt->param_ndims[k] : 1;
+                  for (int _bj = 1; _bj < _nb; _bj++) sb_printf(&proto, ", gmb_lambda_bound(%d)", _ba); }
                 /* parametro JAGGED: il trampolino non conosce le colonne (0 = ignote). */
                 var_t* pva2 = vars_find(&fa->locals, fa->stmt->func_params[k]);
                 if (pva2 && pva2->jagged) sb_put(&proto, ", 0");
@@ -35354,4 +35371,21 @@ int gmb_c99_emit(const gmb_program_t* prog, char** out_src, char** error) {
     if (c->preds) { sb_t* pb = (sb_t*)c->preds; if (pb->s) sb_put(&fin, pb->s); }
     *out_src = fin.s;
     return 0;
+}
+
+/* Emissione con inferenza del rango dei parametri array (2026-11-06). Un parametro `a()` di una
+ * SUB/FUNCTION che riceve array N-D diventa N-D: il rango si ricava dai call-site, quindi serve un
+ * PUNTO FISSO (un array passato a una SUB che lo inoltra a un'altra...). Ogni volta che una passata
+ * modifica un `param_ndims` (sull'AST) l'emissione viene scartata e rifatta da capo; l'AST resta
+ * quello della passata precedente, quindi la nuova passata vede i ranghi gia' inferiti. */
+int gmb_c99_emit(const gmb_program_t* prog, char** out_src, char** error) {
+    int rc = 1;
+    for (int pass = 0; pass < 6; pass++) {
+        g_c99_rank_changed = 0;
+        if (out_src && *out_src) { free(*out_src); *out_src = NULL; }
+        if (error && *error) { free(*error); *error = NULL; }
+        rc = gmb_c99_emit_once(prog, out_src, error);
+        if (!g_c99_rank_changed) break;
+    }
+    return rc;
 }
