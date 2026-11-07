@@ -21273,6 +21273,10 @@ static void st_try(ctx_t* c, gmb_stmt_t* s) {
         ind(c); sb_put(&c->out, "{\n");
         c->indent++;
         ind(c); sb_printf(&c->out, "gmb_err_set_handler(__tryprev_%d);\n", id);
+        /* Il longjmp al CATCH salta il `gmb_err_set_resume(NULL)` del guard per-istruzione che era attivo nel
+         * corpo del TRY: il puntatore resterebbe su un jmp_buf di un frame morto e un successivo
+         * `ON ERROR RESUME NEXT` (gmb_err_resume_next) vi farebbe longjmp (stack corrotto). */
+        ind(c); sb_put(&c->out, "gmb_err_set_resume(NULL);\n");
         if (s->n_catch == 0) {
             ind(c); sb_printf(&c->out, "__err_active_%d = 1; __err_num_%d = gmb_err_number(); __err_desc_%d = gmb_err_description(); __err_line_%d = gmb_err_line();\n",
                                id, id, id, id);
