@@ -3043,6 +3043,9 @@ void gmb_form_render_if_dirty(void)
         s_last_scale = sc;
     }
     if (gmb_form_active() && g_dirty) { form_draw(); g_dirty = 0; }
+    /* INTO dei controlli: in GRAFICA il frame TUI non gira, quindi la sincronizzazione
+     * va fatta qui — senza, un clic cambiava il controllo ma NON la variabile BASIC. */
+    { extern void gmb_tui_sync_bindings(void); gmb_tui_sync_bindings(); }
     { extern void gmb_tui_draw_px_all(void); gmb_tui_draw_px_all(); }
 
     if (sp && *sp && sframes == want) GMB_GFX_SAVE_PNG(sp);
