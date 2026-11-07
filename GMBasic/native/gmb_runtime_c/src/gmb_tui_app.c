@@ -597,7 +597,7 @@ int gmb_tui_run_control_modal(gmb_control_t* ctrl)
 /* ===== Registry controlli TUI NON-bloccante (mirror del pixel gmb_form_*) =====
  * Il vecchio path modale (gmb_tui_run_control_modal) BLOCCA in attesa di input.
  * Qui i controlli si REGISTRANO e vengono disegnati/drenati da un frame che ritorna. */
-#define GMB_TUI_CTRL_MAX 64
+#define GMB_TUI_CTRL_MAX 256
 
 /* Canale tasti HOST: la frame cell accoda i tasti NON consumati dal controllo focalizzato
  * (es. F3/F5/F7... shortcut dell'host). L'host li legge con gmb_tui_host_key_pop(). */

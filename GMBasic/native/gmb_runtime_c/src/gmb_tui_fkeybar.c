@@ -95,9 +95,10 @@ static void fkeybar_ctrl_draw_px(void* u, gmb_control_t* c)
     int rounded = (s.shape == 1);
     int rad = s.radius > 0 ? s.radius : 6;
 
-    if (rounded) gmb_gfx_fill_rounded_rect(x, y, w, h, rad, s.fill);
-    else gmb_gfx_fill_rounded_rect(x, y, w, h, 0, s.fill);
-    if (s.border_w > 0 || s.shape == 0) gmb_gfx_stroke_rounded_rect(x, y, w, h, rounded ? rad : 0, s.border);
+    /* Nessuno sfondo: la barra tasti e' una fila di CHIP. Riempire il rect intero
+     * disegnava una fascia chiara larga quanto il controllo (sembrava una statusbar
+     * sotto i tasti). */
+    if (rounded && s.glow_on) gmb_gfx_stroke_rounded_rect(x, y, w, h, rad, s.border);
 
     int n = 0; for (int i = 0; i < 10; i++) if (f->bar.keys[i][0]) n++;
     if (n <= 0) return;

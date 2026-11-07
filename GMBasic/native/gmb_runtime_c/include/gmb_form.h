@@ -117,6 +117,7 @@ int  gmb_control_add_starrating(int x, int y, int w, int mx, int val, double* va
 int  gmb_control_add_scrollbar(int x, int y, int len, int mn, int mx, int val, double* var);
 int  gmb_control_add_grid(int x, int y, int w, int h, const char* headers, const char* data, double* var);
 int  gmb_control_add_tree(int x, int y, int w, int h, const char* items, double* var);
+int  gmb_control_add_colorpicker(int x, int y, int w, const char* palette, double* var);
 int  gmb_control_add_tab(int x, int y, int w, const char* items, double* var);
 int  gmb_form_add_radio(int x, int y, const char* items, double* var);       /* items "a|b|c" */
 int  gmb_form_add_track(int x, int y, int w, double vmin, double vmax, double* var);

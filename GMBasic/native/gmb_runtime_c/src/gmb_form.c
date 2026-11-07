@@ -73,7 +73,7 @@ static int g_last_key_event = 0;   /* ultimo evento tastiera globale (polling KE
 void gmb_form_set_exclusive(int on) { g_form_exclusive = on; }
 
 /* ---- Widget pixel (checkbox/radio/track/dropdown/progress) ---- */
-#define GMB_FORM_MAX_WIDGETS 32
+#define GMB_FORM_MAX_WIDGETS 256
 enum { W_CHECK = 1, W_RADIO, W_TRACK, W_DROPDOWN, W_PROGRESS,
        W_TOGGLE, W_SPINNER, W_STATUSBAR, W_TABS, W_LISTBOX, W_COLORPICKER, W_DATE, W_GRID, W_FILE, W_TREE, W_MENUBAR, W_TEXT,
        W_CANVAS, W_IMAGE, W_IMAGEBUTTON, W_QR, W_RICHTEXT, W_HALFBLOCK, W_TILING, W_PANEL };
@@ -428,6 +428,22 @@ int gmb_control_add_tab(int x, int y, int w, const char* items, double* var)
     return gmb_form_add_tabs(x, y, items, var);
 }
 
+int gmb_control_add_colorpicker(int x, int y, int w, const char* palette, double* var)
+{
+    if (!GMB_GFX_SCREEN_ON())
+    {
+        extern gmb_control_t* gmb_tui_add_colorpicker(int, int, int, int);
+        extern void gmb_tui_bind_value(int, double*);
+        gmb_control_t* c = gmb_tui_add_colorpicker(x, y, w, 8);
+        if (!c) return -1;
+        if (var) gmb_tui_bind_value(c->handle, var);
+        gmb_form_note_handle(c->handle);
+        return c->handle;
+    }
+    /* Grafica: widget PIXEL con la palette (default 8 colori). */
+    return gmb_form_add_colorpicker(x, y, palette, var);
+}
+
 int gmb_form_closed(void)
 {
 #ifdef GMB_GFX_SDL_PRESENT
@@ -607,10 +623,17 @@ static void draw_button_body(gmb_form_btn_t* b, float sc)
         int rad = s->radius;
         if (rounded && rad >= 12) { rad = h / 2; if (rad > 26) rad = 26; }
 
-        /* Font per-bottone (default del tema = 0 -> font corrente). */
+        /* Font per-bottone (default del tema = 0 -> font corrente). Salvato e RIPRISTINATO:
+         * senza ripristino il font del bottone restava attivo per tutti i controlli
+         * disegnati dopo (testo enorme/piccolo a caso). */
+        char prev_font[256]; int prev_size = 0, restore_font = 0;
         if (s->font_size > 0) {
             const char* fp = s->font_path[0] ? s->font_path : GMB_GFX_FONT_PATH();
+            const char* cp = GMB_GFX_FONT_PATH();
+            snprintf(prev_font, sizeof(prev_font), "%s", (cp && *cp) ? cp : "");
+            prev_size = GMB_GFX_FONT_SIZE();
             GMB_GFX_FONT(fp, (int)(s->font_size * sc));
+            restore_font = 1;
         }
         int th = (int)(GMB_GFX_TEXT_H() / sc + 0.5f); if (th <= 0) th = 14;
 
@@ -684,6 +707,7 @@ static void draw_button_body(gmb_form_btn_t* b, float sc)
             GMB_GFX_DRAW_TEXT(b->label, tx - 1, ty - 1, 1, GFX_RGB(s->bevel_dark & 0xFFFFFFu ? s->bevel_dark : 0x80000000u));
         }
         GMB_GFX_DRAW_TEXT(b->label, tx, ty, 1, GFX_RGB(tcol));
+        if (restore_font && prev_font[0]) GMB_GFX_FONT(prev_font, prev_size > 0 ? prev_size : 13);
     }
 }
 
@@ -729,13 +753,33 @@ static void px_draw_arrow_band(int x, int y, int w, int h, int tl,
     GMB_GFX_FILL_RRECT(bx, y, aw, h, rr, s->fill_hover);
     GMB_GFX_STROKE_RRECT(bx, y, aw, h, rr, s->border);
     GMB_GFX_LINE(bx, y + 1, bx, y + h - 2, GFX_RGB(s->border), "");   /* attacco campo|blocco */
-    if (arrows >= 2) {
+    /* Frecce DISEGNATE (chevron), non i caratteri "^"/"v": in un font di UI la "v"
+     * si legge come una lettera e sembrava testo, non un controllo. */
+    unsigned ac = GFX_RGB(s->text);
+    int cx = bx + aw / 2, half = 4, d = 3;
+    if (arrows >= 2)
+    {
         int hh = h / 2;
         GMB_GFX_LINE(bx + 1, y + hh, bx + aw - 1, y + hh, GFX_RGB(s->border), "");
-        GMB_GFX_DRAW_TEXT("^", bx + aw / 2, y + (hh - tl) / 2, 1, GFX_RGB(s->text));
-        GMB_GFX_DRAW_TEXT("v", bx + aw / 2, y + hh + (hh - tl) / 2, 1, GFX_RGB(s->text));
-    } else {
-        GMB_GFX_DRAW_TEXT(open ? "^" : "v", bx + aw / 2, y + (h - tl) / 2, 1, GFX_RGB(s->text));
+        int uy = y + hh / 2, dy = y + hh + hh / 2;
+        GMB_GFX_LINE(cx - half, uy + d, cx, uy - d, ac, "");
+        GMB_GFX_LINE(cx, uy - d, cx + half, uy + d, ac, "");
+        GMB_GFX_LINE(cx - half, dy - d, cx, dy + d, ac, "");
+        GMB_GFX_LINE(cx, dy + d, cx + half, dy - d, ac, "");
+    }
+    else
+    {
+        int cy = y + h / 2;
+        if (open)   /* aperto: freccia verso l'alto */
+        {
+            GMB_GFX_LINE(cx - half, cy + d, cx, cy - d, ac, "");
+            GMB_GFX_LINE(cx, cy - d, cx + half, cy + d, ac, "");
+        }
+        else
+        {
+            GMB_GFX_LINE(cx - half, cy - d, cx, cy + d, ac, "");
+            GMB_GFX_LINE(cx, cy + d, cx + half, cy - d, ac, "");
+        }
     }
 }
 
@@ -876,8 +920,14 @@ static void draw_one_widget(gmb_pix_widget_t* wd, float sc)
             GMB_GFX_STROKE_RRECT(x + w - 2 * bwd, y, bwd, h, 0, s->border);
             GMB_GFX_FILL_RRECT(x + w - bwd, y, bwd, h, 0, s->fill_hover);
             GMB_GFX_STROKE_RRECT(x + w - bwd, y, bwd, h, 0, s->border);
-            GMB_GFX_DRAW_TEXT("-", x + w - 2 * bwd + bwd / 2, y + (h - tl) / 2, 1, GFX_RGB(s->text));
-            GMB_GFX_DRAW_TEXT("+", x + w - bwd + bwd / 2, y + (h - tl) / 2, 1, GFX_RGB(s->text));
+            /* Segni DISEGNATI (linee): con il font di sistema il glifo "-"/"+" era
+             * troppo sottile e sembrava parte del testo. */
+            { unsigned ic = GFX_RGB(s->text);
+              int mcx = x + w - 2 * bwd + bwd / 2, mcy = y + h / 2, arm = 5;
+              GMB_GFX_LINE(mcx - arm, mcy, mcx + arm, mcy, ic, "");
+              int pcx = x + w - bwd + bwd / 2;
+              GMB_GFX_LINE(pcx - arm, mcy, pcx + arm, mcy, ic, "");
+              GMB_GFX_LINE(pcx, mcy - arm, pcx, mcy + arm, ic, ""); }
         } else if (wd->kind == W_STATUSBAR) {
             int soft = ui_soft(s);
             int rr = soft ? 12 : 4;
@@ -1004,7 +1054,15 @@ static void draw_one_widget(gmb_pix_widget_t* wd, float sc)
                     if (soft) GMB_GFX_FILL_RRECT(x + 4, ry, w - 8, rh - 1, (rh - 1) / 2, ui_tint(acc, 0x2A));
                     else      GMB_GFX_LINE(x + 1, ry, x + w - 2, ry + rh - 1, GFX_RGB(s->fill_hover), "BF");
                 }
-                if (tree_has_children(wd, j)) GMB_GFX_DRAW_TEXT(wd->tcol[j] ? "+" : "-", bx, ry + (rh - tl) / 2, 0, GFX_RGB(s->text_disabled));
+                if (tree_has_children(wd, j))
+                {
+                    /* triangolino DISEGNATO (aperto = in giu, chiuso = a destra):
+                     * con il font di sistema "+"/"-" si leggeva come testo. */
+                    int cx0 = bx + tl / 2 - 2, cy0 = ry + rh / 2;
+                    int acol = GFX_RGB(s->text_disabled);
+                    if (wd->tcol[j]) { GMB_GFX_LINE(cx0 - 3, cy0 - 4, cx0 + 3, cy0, acol, ""); GMB_GFX_LINE(cx0 + 3, cy0, cx0 - 3, cy0 + 4, acol, ""); }
+                    else { GMB_GFX_LINE(cx0 - 4, cy0 - 3, cx0, cy0, acol, ""); GMB_GFX_LINE(cx0, cy0, cx0 - 4, cy0 + 3, acol, ""); }
+                }
                 GMB_GFX_DRAW_TEXT(nm, bx + tl + 2, ry + (rh - tl) / 2, 0, GFX_RGB(s->text));
             }
         } else if (wd->kind == W_TEXT) {
@@ -1994,7 +2052,14 @@ int gmb_form_add_button_css(int x, int y, int w, int h, const char* label, gmb_f
 
 static int form_add_widget(int kind, int x, int y, int w, int h, const char* items, double* var)
 {
-    if (g_nwid >= GMB_FORM_MAX_WIDGETS) return -1;
+    if (g_nwid >= GMB_FORM_MAX_WIDGETS)
+    {
+        /* MAI silenzioso: un controllo che non entrava nel registro semplicemente
+         * non veniva disegnato ("alcuni controlli non si vedono"). */
+        static int warned = 0;
+        if (!warned) { warned = 1; fprintf(stderr, "[gmb_form] registro PIENO: GMB_FORM_MAX_WIDGETS=%d (controllo ignorato)\n", GMB_FORM_MAX_WIDGETS); }
+        return -1;
+    }
     gmb_pix_widget_t* wd = &g_wid[g_nwid];
     memset(wd, 0, sizeof(*wd));
     wd->kind = kind; wd->base.x = x; wd->base.y = y; wd->base.width = w; wd->base.height = h; wd->var = var; wd->ival = var ? *var : 0.0;
@@ -2245,7 +2310,15 @@ int gmb_form_add_toggle(int x, int y, const char* label, double* var)
 int gmb_form_add_spinner(int x, int y, int w, double vmin, double vmax, double step, double* var)
 {
     int i = form_add_widget(W_SPINNER, x, y, w, 28, NULL, var);
-    if (i >= 0) { g_wid[i].vmin = vmin; g_wid[i].vmax = vmax; g_wid[i].vstep = step > 0 ? step : 1; }
+    if (i >= 0) {
+        g_wid[i].vmin = vmin; g_wid[i].vmax = vmax; g_wid[i].vstep = step > 0 ? step : 1;
+        /* Valore INIZIALE dentro il range: la variabile INTO parte da 0 e il
+         * controllo mostrava "0" anche con min=1 (valore fuori scala). */
+        double v = wd_num(&g_wid[i]);
+        if (v < vmin) { wd_set_num(&g_wid[i], vmin); }
+        else if (v > vmax) { wd_set_num(&g_wid[i], vmax); }
+        g_dirty = 1;
+    }
     return i;
 }
 int gmb_form_add_statusbar(int x, int y, int w, const char* text)

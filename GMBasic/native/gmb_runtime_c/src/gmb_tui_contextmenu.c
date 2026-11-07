@@ -130,8 +130,15 @@ static void contextmenu_draw_px(void* u, gmb_control_t* c)
         int bh = rh + (soft ? 10 : 6);
         gmb_gfx_fill_rounded_rect(x, y, bw, bh, rr, fill);
         gmb_gfx_stroke_rounded_rect(x, y, bw, bh, rr, st.border);
-        gmb_gfx_draw_text("Azioni  v", x + (soft ? 14 : 6), y + (bh - (int)(gmb_gfx_text_height() / (gmb_gfx_render_scale() > 0 ? gmb_gfx_render_scale() : 1.0f))) / 2,
+        float sc0 = gmb_gfx_render_scale(); if (sc0 <= 0) sc0 = 1;
+        int th = (int)(gmb_gfx_text_height() / sc0);
+        gmb_gfx_draw_text("Azioni", x + (soft ? 14 : 8), y + (bh - th) / 2,
                           0, (int)(0x40000000u | (st.text & 0xFFFFFFu)));
+        /* Chevron DISEGNATO a destra (prima era il carattere "v": sembrava testo). */
+        { int cxx = x + bw - (soft ? 20 : 14), cyy = y + bh / 2, half = 4, d = 3;
+          int ac = (int)(0x40000000u | (st.text & 0xFFFFFFu));
+          gmb_gfx_line(cxx - half, cyy - d, cxx, cyy + d, ac, "");
+          gmb_gfx_line(cxx, cyy + d, cxx + half, cyy - d, ac, ""); }
         return;
     }
     int ph = m->n * rh + 12;
