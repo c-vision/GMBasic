@@ -150,6 +150,51 @@ int main(void)
         report("scrollbar", v >= 40, "valore dopo click a meta barra");
     }
 
+    /* ── COMBOBOX: apre e seleziona la voce 2 ──────────────────────────── */
+    {
+        double v = 0;
+        gmb_form_add_dropdown(40, 520, 220, "uno|due|tre", &v);
+        render_frame();
+        click_at(40 + 60, 520 + 12);              /* apre la lista */
+        click_at(40 + 60, 520 + 28 + 28 + 12);    /* voce 2 = "due" (righe alte come il campo) */
+        { char b[64]; snprintf(b, sizeof b, "  (v=%.0f)", v); printf("%s\n", b); }
+        report("combobox", v == 1, "voce 2 selezionata dopo apertura+click");
+    }
+
+    /* ── TREEVIEW: selezione di un nodo ────────────────────────────────── */
+    {
+        double v = -1;
+        gmb_form_add_tree(500, 380, 260, 160, "root/api|root/api/v1|root/db", &v);
+        render_frame();
+        { gmb_widget_style_t st = gmb_widget_style_current();
+          int rh = st.row_h > 0 ? st.row_h : 24;
+          click_at(500 + 120, 380 + rh * 2 + rh / 2); }   /* terza riga visibile */
+        { char b[64]; snprintf(b, sizeof b, "  (v=%.0f)", v); printf("%s\n", b); }
+        report("treeview", v == 2, "terzo nodo selezionato");
+    }
+
+    /* ── COLORPICKER: click sul terzo campione ─────────────────────────── */
+    {
+        double v = -1;
+        gmb_form_add_colorpicker(500, 560, "", &v);
+        render_frame();
+        click_at(500 + 2 * 26 + 12, 560 + 12);
+        { char b[64]; snprintf(b, sizeof b, "  (v=%.0f)", v); printf("%s\n", b); }
+        report("colorpicker", v == 2, "campione 3 selezionato");
+    }
+
+    /* ── CONTEXT MENU: il click sul trigger apre il menu ───────────────── */
+    {
+        static gmb_context_menu_t cm;
+        const char* its[] = { "Copy", "Paste", "Delete" };
+        gmb_context_menu_init(&cm, 40, 600, 200, 3);
+        gmb_context_menu_set_items(&cm, its, 3);
+        gmb_tui_control_register(&cm.ctrl);
+        render_frame();
+        click_at(40 + 100, 600 + 12);
+        report("contextmenu", cm.open != 0, "menu aperto dal click");
+    }
+
     printf("\nTOTALE: %d PASS, %d FAIL\n", g_pass, g_fail);
     return g_fail;
 }
