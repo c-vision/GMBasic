@@ -26,5 +26,11 @@ Produce `libgmbmath.dylib` (o `.so`). Export BASIC:
   conversione in matrice 3×3 e rotazione di un vettore) via shim `src/quat_ffi.c`
   (`ofx_quat_*`). Il quaternione viaggia per valore come `TYPE Quat`, e la matrice
   viene scambiata row-major.
+- `shared/include/complex.inc` (namespace `COMPLEX`, 2026-11-06). I numeri complessi di
+  `gmbmath-core` (`gm_cpx_*`, 28 funzioni: aritmetica, misure, esponenziale/log/potenza,
+  trigonometriche, iperboliche e inverse) via shim `src/complex_ffi.c` (`ofx_cpx_*`).
+  Il numero viaggia per valore come `TYPE Complex { RE, IM }`; le funzioni che hanno già
+  un nome scalare nel linguaggio usano il prefisso `C` (CABS, CEXP, CSIN, …).
 
-Guida utente: `QUAT-Guida-Utente` (vault) e capitolo V.27 del manuale.
+Guide utente: `QUAT-Guida-Utente`, `COMPLEX-Guida-Utente` (vault) e capitolo V.27 del
+manuale.
