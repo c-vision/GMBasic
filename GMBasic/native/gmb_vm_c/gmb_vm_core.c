@@ -6734,6 +6734,13 @@ static void vm_gfx_syscall(gmb_vm_t* vm, gmb_task_t* task, int code, int argc)
         gmb_gfx_screen((int)mode, 0, 0, 0);
         return;
     }
+    case GMB_SC_SCREEN_COORDS: {
+        /* SCREEN ... USE CELLS|PIXELS: spazio coordinate DICHIARATO dei controlli
+         * (1 = CELLE, 0 = PIXEL). Stessa fonte per tutti i backend: runtime C. */
+        double cm = vm_gfx_pop(task, 0);
+        gmb_gfx_set_coord_mode((int)cm);
+        return;
+    }
     case GMB_SC_CLS: {
         double c = vm_gfx_pop(task, -1);
         if (c < 0) gmb_cls(); else gmb_cls_color((int)c);
@@ -6822,6 +6829,7 @@ void gmb_vm_exec_syscall(gmb_vm_t* vm, gmb_task_t* task, int code, int argc)
 {
     switch (code) {
     case GMB_SC_SCREEN: case GMB_SC_CLS: case GMB_SC_PSET: case GMB_SC_PRESET:
+    case GMB_SC_SCREEN_COORDS:
     case GMB_SC_LINE: case GMB_SC_CIRCLE: case GMB_SC_PAINT: case GMB_SC_PALETTE:
     case GMB_SC_CANVAS_OP:
     case GMB_SC_PROGRAM_EXIT:

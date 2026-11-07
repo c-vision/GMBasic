@@ -789,6 +789,9 @@ public sealed partial class Lexer
         // --- KEYWORD PLOTTING ---
         { "CHART", TokenKind.Chart },
         { "CANVAS", TokenKind.Canvas },
+        // COORDINATE dei controlli (SCREEN/USE): spazio DICHIARATO, non dedotto.
+        { "CELLS", TokenKind.Cells },
+        { "PIXELS", TokenKind.Pixels },
         { "PLOT", TokenKind.Plot },
         { "FINANCIAL", TokenKind.Financial },
         { "SHOW", TokenKind.Show },

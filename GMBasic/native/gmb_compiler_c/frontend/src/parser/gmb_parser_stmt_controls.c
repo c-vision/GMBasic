@@ -232,6 +232,17 @@ gmb_stmt_t* gmb_p_parse_control(gmb_parser_t* p, int line)
             }
             continue;
         }
+        if (ctl_is_kw(t, "USE")) {
+            /* Spazio coordinate DICHIARATO dal controllo: USE CELLS → metric=1
+             * (CellsToPixel, solo su schermo grafico), USE PIXELS → metric=2
+             * (PixelToCells, solo su TUI a celle). Fuso nella spec come le altre
+             * proprietà base, così l'emitter non cambia. */
+            gmb_p_adv(p);
+            if (ctl_is_kw(gmb_p_cur(p), "CELLS"))  { ctl_append_attr(s, " metric=1"); gmb_p_adv(p); continue; }
+            if (ctl_is_kw(gmb_p_cur(p), "PIXELS")) { ctl_append_attr(s, " metric=2"); gmb_p_adv(p); continue; }
+            gmb_p_set_err(p, "USE nel controllo: atteso CELLS o PIXELS", line);
+            break;
+        }
         break;
     }
     return s;
@@ -302,6 +313,14 @@ gmb_stmt_t* gmb_p_parse_button(gmb_parser_t* p, int line)
             const gmb_token_t* v = gmb_p_cur(p);
             if (v && v->lexeme) { s->id_var = gmb_p_tok_strdup(v); gmb_p_adv(p); }
             continue;
+        }
+        if (ctl_is_kw(t, "USE")) {
+            /* Spazio coordinate DICHIARATO dal controllo (vedi gmb_p_parse_control). */
+            gmb_p_adv(p);
+            if (ctl_is_kw(gmb_p_cur(p), "CELLS"))  { size_t Ls = strlen(spec); snprintf(spec + Ls, sizeof(spec) - Ls, " metric=1"); gmb_p_adv(p); continue; }
+            if (ctl_is_kw(gmb_p_cur(p), "PIXELS")) { size_t Ls = strlen(spec); snprintf(spec + Ls, sizeof(spec) - Ls, " metric=2"); gmb_p_adv(p); continue; }
+            gmb_p_set_err(p, "USE nel controllo: atteso CELLS o PIXELS", line);
+            break;
         }
         if (ctl_is_kw(t, "STYLE")) {
             gmb_p_adv(p);
@@ -403,19 +422,48 @@ gmb_stmt_t* gmb_p_parse_panel(gmb_parser_t* p, int line)
     s->control_args[3] = gmb_p_parse_expr(p); gmb_p_match(p, GMB_TOK_Comma);   /* w */
     s->control_args[4] = gmb_p_parse_expr(p); gmb_p_match(p, GMB_TOK_Comma);   /* h */
     s->control_args[5] = gmb_p_parse_expr(p);                                  /* titolo */
-    const gmb_token_t* t = gmb_p_cur(p);
-    if (t && ctl_is_kw(t, "STYLE")) {
-        gmb_p_adv(p);
-        const gmb_token_t* stt = gmb_p_cur(p);
-        if (stt && (stt->kind == GMB_TOK_StringLiteral || stt->kind == GMB_TOK_InterpolatedStringLiteral)) {
-            char* sp = gmb_p_tok_strdup(stt);
-            if (sp) {
-                size_t L = strlen(sp);
-                if (L >= 2 && sp[0] == '"' && sp[L-1] == '"') { memmove(sp, sp + 1, L - 2); sp[L-2] = 0; }
-                s->control_args[7] = gmb_expr_str(sp, line);
-                gmb_p_adv(p);
+    /* Clausole: STYLE "spec" e USE CELLS|PIXELS (spazio coordinate dichiarato).
+     * Le altre clausole non sono previste per PANEL: la riga viene chiusa sotto. */
+    for (;;) {
+        const gmb_token_t* t = gmb_p_cur(p);
+        if (!t || !t->lexeme) break;
+        if (ctl_is_kw(t, "STYLE")) {
+            gmb_p_adv(p);
+            const gmb_token_t* stt = gmb_p_cur(p);
+            if (stt && (stt->kind == GMB_TOK_StringLiteral || stt->kind == GMB_TOK_InterpolatedStringLiteral)) {
+                char* sp = gmb_p_tok_strdup(stt);
+                if (sp) {
+                    size_t L = strlen(sp);
+                    if (L >= 2 && sp[0] == '"' && sp[L-1] == '"') { memmove(sp, sp + 1, L - 2); sp[L-2] = 0; }
+                    s->control_args[7] = gmb_expr_str(sp, line);
+                    gmb_p_adv(p);
+                }
             }
+            continue;
         }
+        if (ctl_is_kw(t, "USE")) {
+            gmb_p_adv(p);
+            const char* met = ctl_is_kw(gmb_p_cur(p), "CELLS") ? "metric=1"
+                            : ctl_is_kw(gmb_p_cur(p), "PIXELS") ? "metric=2" : NULL;
+            if (!met) { gmb_p_set_err(p, "USE nel controllo: atteso CELLS o PIXELS", line); break; }
+            gmb_p_adv(p);
+            /* Fonde con l'eventuale STYLE già letto (stessa spec CSS-like). */
+            char merged[512];
+            const char* prev = (s->control_args[7] && s->control_args[7]->kind == GMB_EXPR_STR && s->control_args[7]->str)
+                             ? s->control_args[7]->str : "";
+            snprintf(merged, sizeof(merged), "%s%s%s", prev, prev[0] ? " " : "", met);
+            s->control_args[7] = gmb_expr_str(strdup(merged), line);
+            continue;
+        }
+        break;
+    }
+    /* La spec (STYLE + USE CELLS|PIXELS) va anche in set_attr: è il canale che l'emitter
+     * applica a OGNI controllo (gmb_form_apply_last_style). Prima restava in args[7] e
+     * l'emitter di PANEL la ignorava (clausola persa). */
+    if (s->control_args[7] && s->control_args[7]->kind == GMB_EXPR_STR && s->control_args[7]->str && s->control_args[7]->str[0]) {
+        s->set_attr = (char**)malloc(sizeof(char*));
+        s->set_attr[0] = strdup(s->control_args[7]->str);
+        s->n_set_attr = 1;
     }
     while (gmb_p_cur(p) && gmb_p_cur(p)->kind != GMB_TOK_Newline
            && gmb_p_cur(p)->kind != GMB_TOK_Colon && gmb_p_cur(p)->kind != GMB_TOK_Eof)

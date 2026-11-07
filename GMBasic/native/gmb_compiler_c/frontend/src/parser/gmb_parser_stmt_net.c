@@ -245,10 +245,30 @@ gmb_stmt_t* gmb_p_parse_gfx(gmb_parser_t* p, int line)
         s->net_args[0] = gmb_p_parse_expr(p);
         /* SCREEN n decide la MODALITA': n==0 => TUI, n!=0 => GRAFICA (controlli pixel). */
         if (s->net_args[0] && s->net_args[0]->kind == GMB_EXPR_NUM) p->gui_mode = (s->net_args[0]->num != 0.0);
+        /* ── Forma COMPATTA (virgole): SCREEN mode [, w [, h [, bpp [, spazio]]]] ── */
         for (int i = 1; i < 4; i++) {
             if (!gmb_p_check(p, GMB_TOK_Comma)) break;
             gmb_p_adv(p);
             s->net_args[i] = gmb_p_parse_expr(p);
+        }
+        /* ── Forma ESTESA (token, senza virgole) e, in coda, la clausola della compatta ──
+         *   SCREEN 12 WIDTH 1216 HEIGHT 800 USE CELLS
+         *   SCREEN 12, 1216, 800, 32, CELLS        (sugar di USE CELLS)
+         * Lo spazio coordinate e' una DICHIARAZIONE: default = non dichiarato (AUTO). */
+        for (;;) {
+            if (gmb_p_check(p, GMB_TOK_Comma)) { gmb_p_adv(p); continue; }
+            if (gmb_p_check(p, GMB_TOK_Width))  { gmb_p_adv(p); if (!s->net_args[1]) s->net_args[1] = gmb_p_parse_expr(p); continue; }
+            if (gmb_p_check(p, GMB_TOK_Height)) { gmb_p_adv(p); if (!s->net_args[2]) s->net_args[2] = gmb_p_parse_expr(p); continue; }
+            if (gmb_p_check(p, GMB_TOK_Use)) {
+                gmb_p_adv(p);
+                if (gmb_p_check(p, GMB_TOK_Cells))       { gmb_p_adv(p); s->coord_mode = 1; continue; }
+                if (gmb_p_check(p, GMB_TOK_Pixels))      { gmb_p_adv(p); s->coord_mode = 2; continue; }
+                gmb_p_set_err(p, "SCREEN: dopo USE atteso CELLS o PIXELS", line);
+                return s;
+            }
+            if (gmb_p_check(p, GMB_TOK_Cells))  { gmb_p_adv(p); s->coord_mode = 1; continue; }
+            if (gmb_p_check(p, GMB_TOK_Pixels)) { gmb_p_adv(p); s->coord_mode = 2; continue; }
+            break;
         }
         return s;
     }

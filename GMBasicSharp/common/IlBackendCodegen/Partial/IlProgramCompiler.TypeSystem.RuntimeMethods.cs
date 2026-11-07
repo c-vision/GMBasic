@@ -382,6 +382,9 @@ public sealed partial class IlProgramCompiler
     // --- IGraphicsService (CommonGraphics; in headless NullGraphicsService) ---
     private static readonly MethodInfo GraphicsScreenMethod =
         typeof(Runtime.IGraphicsService).GetMethod(nameof(Runtime.IGraphicsService.Screen), [typeof(int), typeof(int), typeof(int), typeof(int)])!;
+    /* SCREEN ... USE CELLS|PIXELS: spazio coordinate DICHIARATO (motore unico: runtime C). */
+    private static readonly MethodInfo GraphicsScreenCoordsMethod =
+        typeof(Runtime.IGraphicsService).GetMethod(nameof(Runtime.IGraphicsService.ScreenCoords), [typeof(int)])!;
     private static readonly MethodInfo GraphicsTextModeMethod =
         typeof(Runtime.IGraphicsService).GetMethod(nameof(Runtime.IGraphicsService.TextMode), [typeof(int)])!;
     private static readonly MethodInfo GraphicsPSetMethod =

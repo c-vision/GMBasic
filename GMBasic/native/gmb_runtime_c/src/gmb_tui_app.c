@@ -774,6 +774,19 @@ static void apply_style_kv(gmb_control_t* c, const char* spec)
             else if (kind == 3) apply_style_pair(&c->style.sel_fg, &c->style.has_sel_fg, &c->style.sel_bg, &c->style.has_sel_bg, tok);
             else apply_style_pair(&c->style.fg, &c->style.has_fg, &c->style.bg, &c->style.has_bg, tok);
         } else if (strncasecmp(p, "uppercase", 9) == 0) { c->uppercase = true; p += 9; }
+        else if (strncasecmp(p, "name=", 5) == 0)    { p += 5; char tok[64]; int n = 0; if (*p == '"') p++; while (*p && *p != '"' && *p != ' ' && n < 63) tok[n++] = *p++; tok[n] = 0; snprintf(c->name, sizeof(c->name), "%s", tok); continue; }
+        else if (strncasecmp(p, "tag=", 4) == 0)     { p += 4; char tok[64]; int n = 0; if (*p == '"') p++; while (*p && *p != '"' && *p != ' ' && n < 63) tok[n++] = *p++; tok[n] = 0; snprintf(c->tag, sizeof(c->tag), "%s", tok); continue; }
+        else if (strncasecmp(p, "tooltip=", 8) == 0) { p += 8; char tok[128]; int n = 0; if (*p == '"') p++; while (*p && *p != '"' && *p != ' ' && n < 127) tok[n++] = *p++; tok[n] = 0; snprintf(c->tooltip, sizeof(c->tooltip), "%s", tok); continue; }
+        else if (strncasecmp(p, "visible=", 8) == 0) { p += 8; c->visible = (atoi(p) != 0); }
+        else if (strncasecmp(p, "enabled=", 8) == 0) { p += 8; c->enabled = (atoi(p) != 0); }
+        else if (strncasecmp(p, "tabindex=", 9) == 0) { p += 9; c->tab_index = atoi(p); }
+        else if (strncasecmp(p, "tabstop=", 8) == 0) { p += 8; c->tab_stop = (atoi(p) != 0); }
+        else if (strncasecmp(p, "metric=", 7) == 0) {
+            /* Spazio coordinate DICHIARATO del controllo (0=default/segue SCREEN,
+             * 1=CellsToPixel, 2=PixelToCells). Stessa proprietà di CONTROL SET "metric". */
+            p += 7;
+            c->coord_mode = atoi(p);
+        }
         while (*p && *p != ' ') p++;
     }
 }
@@ -853,8 +866,9 @@ void gmb_tui_draw_px_all(void)
       gmb_clipper_state_t* st = gmb_clipper_peek_state();
       if (st && st->buffer) {
           int bw = gmb_screen_width(st->buffer), bh = gmb_screen_height(st->buffer);
-          int pw = (int)(GMB_GFX_SCREEN_W() * GMB_GFX_RENDER_SCALE() + 0.5f);
-          int ph = (int)(GMB_GFX_SCREEN_H() * GMB_GFX_RENDER_SCALE() + 0.5f);
+          /* Unità LOGICHE: gmb_gfx_* applica la render-scale al suo interno. */
+          int pw = GMB_GFX_SCREEN_W();
+          int ph = GMB_GFX_SCREEN_H();
           if (bw > 0 && pw > 0) cw = pw / bw;
           if (bh > 0 && ph > 0) ch = ph / bh;
       } }
@@ -863,14 +877,20 @@ void gmb_tui_draw_px_all(void)
         if (g_reg_ctrl[i])
         {
             gmb_control_t* cc = g_reg_ctrl[i];
-            /* REGOLA: in GRAFICA le coordinate dei controlli sono PIXEL, sempre.
-             * Nessuna conversione implicita da celle e nessun offset di origine a celle:
-             * un controllo grafico si posiziona pixel per pixel. La conversione
-             * celle->pixel resta un HELPER ESPLICITO per i client TUI (che hanno le
-             * coordinate in celle), non una trasformazione automatica del renderer. */
+            /* Spazio coordinate DICHIARATO (SCREEN/USE o `USE` sul controllo).
+             * Default (metric 0 + SCREEN AUTO) = PIXEL in grafica: nessuna conversione.
+             * Solo una dichiarazione esplicita (USE CELLS / metric 1) moltiplica per (cw,ch);
+             * le dimensioni DERIVATE dal runtime (coord_auto_*) non si convertono. */
+            int tr = gmb_control_coord_transform(cc);
             cc->window_kind = gmb_base_window_kind();
             cc->px_x = cc->x; cc->px_y = cc->y;
             cc->px_w = cc->width; cc->px_h = cc->height;
+            if (tr > 0)
+            {
+                cc->px_x = cc->x * cw; cc->px_y = cc->y * ch;
+                if (!cc->coord_auto_w) cc->px_w = cc->width * cw;
+                if (!cc->coord_auto_h) cc->px_h = cc->height * ch;
+            }
             if (cc->draw_px_fn) cc->draw_px_fn(cc->user, cc);
             else draw_cells_px_fallback(cc, cw, ch);
         }}
@@ -964,10 +984,27 @@ static void tui_process_mouse(const gmb_mouse_action_t* ma)
     {
         gmb_control_t* cc = g_reg_ctrl[i];
         if (!cc) continue;
-        int hx = (g_evt_px && cc->px_w > 0) ? cc->px_x : cc->x;
-        int hy = (g_evt_px && cc->px_h > 0) ? cc->px_y : cc->y;
-        int hw = (g_evt_px && cc->px_w > 0) ? cc->px_w : cc->width;
-        int hh = (g_evt_px && cc->px_h > 0) ? cc->px_h : cc->height;
+        /* Lo spazio dell'EVENTO dipende dal backend (pixel in grafica, celle in TUI);
+         * lo spazio del CONTROLLO e' quello DICHIARATO (gl_control_coord_transform).
+         * La stessa funzione usata dal render garantisce disegno e click coerenti. */
+        int tr = gmb_control_coord_transform(cc);
+        int hx, hy, hw, hh;
+        if (g_evt_px)                      /* evento in PIXEL */
+        {
+            /* px_* è il rect GIÀ trasformato dal render pixel (stessa regola, cw/ch reali).
+             * Solo se il render non è ancora passato si ricade sulla conversione nominale. */
+            if (cc->px_w > 0) { hx = cc->px_x; hy = cc->px_y; hw = cc->px_w; hh = cc->px_h; }
+            else if (tr > 0)  { hx = cc->x * GMB_CELL_PX_W; hy = cc->y * GMB_CELL_PX_H;
+                                hw = cc->width * GMB_CELL_PX_W; hh = cc->height * GMB_CELL_PX_H; }
+            else              { hx = cc->x; hy = cc->y; hw = cc->width; hh = cc->height; }
+        }
+        else                               /* evento in CELLE */
+        {
+            if (tr < 0) { hx = cc->x / GMB_CELL_PX_W; hy = cc->y / GMB_CELL_PX_H;
+                          hw = cc->width / GMB_CELL_PX_W; hh = cc->height / GMB_CELL_PX_H;
+                          if (hw < 1) hw = 1; if (hh < 1) hh = 1; }
+            else        { hx = cc->x; hy = cc->y; hw = cc->width; hh = cc->height; }
+        }
         int inside = (ma->x >= hx && ma->x < hx + hw && ma->y >= hy && ma->y < hy + hh);
         if (!inside && cc->hit_extra_fn) inside = cc->hit_extra_fn(cc->user, cc, ma->x, ma->y);
         if (inside)
@@ -1129,13 +1166,39 @@ void gmb_tui_draw_controls(gmb_screen_buffer_t* buf)
         gmb_control_t* c = g_reg_ctrl[i];
         if (!c) continue;
         if (c->ctrl_kind == GMB_CK_MENU && ((gmb_menu_t*)c)->is_open) continue;
-        gmb_control_draw(c, buf);
+        /* Spazio coordinate DICHIARATO: `USE PIXELS` (metric 2, o SCREEN USE PIXELS) su un
+         * backend a celle → il controllo dichiara PIXEL e qui si riporta sulla griglia.
+         * Default (metric 0 senza SCREEN) = celle: nessuna conversione. */
+        int tr = gmb_control_coord_transform(c);
+        if (tr < 0)
+        {
+            int sx = c->x, sy = c->y, sw = c->width, sh = c->height;
+            c->x = sx / GMB_CELL_PX_W; c->y = sy / GMB_CELL_PX_H;
+            if (!c->coord_auto_w) { c->width = sw / GMB_CELL_PX_W; if (c->width < 1) c->width = 1; }
+            if (!c->coord_auto_h) { c->height = sh / GMB_CELL_PX_H; if (c->height < 1) c->height = 1; }
+            gmb_control_draw(c, buf);
+            c->x = sx; c->y = sy; c->width = sw; c->height = sh;
+        }
+        else gmb_control_draw(c, buf);
     }
     for (int i = 0; i < g_reg_n; i++)
     {
         gmb_control_t* c = g_reg_ctrl[i];
         if (!c) continue;
-        if (c->ctrl_kind == GMB_CK_MENU && ((gmb_menu_t*)c)->is_open) gmb_control_draw(c, buf);
+        if (c->ctrl_kind == GMB_CK_MENU && ((gmb_menu_t*)c)->is_open)
+        {
+            int tr = gmb_control_coord_transform(c);
+            if (tr < 0)
+            {
+                int sx = c->x, sy = c->y, sw = c->width, sh = c->height;
+                c->x = sx / GMB_CELL_PX_W; c->y = sy / GMB_CELL_PX_H;
+                if (!c->coord_auto_w) { c->width = sw / GMB_CELL_PX_W; if (c->width < 1) c->width = 1; }
+                if (!c->coord_auto_h) { c->height = sh / GMB_CELL_PX_H; if (c->height < 1) c->height = 1; }
+                gmb_control_draw(c, buf);
+                c->x = sx; c->y = sy; c->width = sw; c->height = sh;
+            }
+            else gmb_control_draw(c, buf);
+        }
     }
     if (saved_sink) gmb_screen_set_sink(buf, saved_sink);
     gmb_surface_set_autoattach(1);

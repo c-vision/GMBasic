@@ -452,6 +452,7 @@
 #define GMB_SC_SIGNAL_PING 458
 #define GMB_SC_DBF_CLOSE_AREA 459
 #define GMB_SC_CANVAS_OP 460
+#define GMB_SC_SCREEN_COORDS 461
 #define GMB_SC_Default 0
 #define GMB_SC_Json 1
 

@@ -6,7 +6,7 @@ namespace Basic;
 public sealed partial class Parser
 {
     private static readonly HashSet<string> PixelClauseKeys = new(StringComparer.OrdinalIgnoreCase)
-    { "NAME", "TAG", "TOOLTIP", "VISIBLE", "ENABLED", "TABINDEX", "TABSTOP", "FOCUS", "STYLE", "ON", "ID" };
+    { "NAME", "TAG", "TOOLTIP", "VISIBLE", "ENABLED", "TABINDEX", "TABSTOP", "FOCUS", "STYLE", "ON", "ID", "USE" };
 
     /* Nomi di evento validi (per le clausole inline attaccate ON<EVENTO>). */
     private static readonly HashSet<string> PixelEvents = new(StringComparer.OrdinalIgnoreCase)
@@ -84,6 +84,16 @@ public sealed partial class Parser
             else if (key == "ID")
             {
                 id = p.ParseTarget();
+            }
+            else if (key == "USE")
+            {
+                /* Spazio coordinate DICHIARATO dal controllo: USE CELLS → metric=1
+                 * (CellsToPixel), USE PIXELS → metric=2 (PixelToCells). Fuso nella spec
+                 * di stile, che i backend passano già al runtime (unica fonte C). */
+                var v = (p.Peek().Lexeme ?? "").ToUpperInvariant();
+                if (v == "CELLS") { p.Advance(); clauses.Add(new PixelClause("STYLE", new StringExpr("metric=1", t), null, null, KeyKind: TokenKind.PixelStyle)); }
+                else if (v == "PIXELS") { p.Advance(); clauses.Add(new PixelClause("STYLE", new StringExpr("metric=2", t), null, null, KeyKind: TokenKind.PixelStyle)); }
+                else throw CreateError(p.Peek(), "USE nel controllo: atteso CELLS o PIXELS.");
             }
             else
             {

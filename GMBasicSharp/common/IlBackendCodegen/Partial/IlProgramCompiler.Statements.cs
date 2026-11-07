@@ -460,7 +460,10 @@ public sealed partial class IlProgramCompiler
             case TokenKind.Get:
                 EmitLdStr(a.Count > 0 ? a[0] : null); EmitLdStr(a.Count > 1 ? a[1] : null);
                 _il.Emit(OpCodes.Call, IlRuntimeFormControlGetMethod);
-                if (cm.Into is VariableTarget gv) EmitAssignTargetFromTop(gv); else _il.Emit(OpCodes.Pop);
+                /* Il ritorno di FormControlGet è un double: senza il tipo del valore la
+                 * conversione verso un target INTEGER/LONG/BIT non viene emessa e lo store
+                 * scrive i bit di un double in un int32 (valore spazzatura, es. 4.6e18). */
+                if (cm.Into is VariableTarget gv) EmitAssignTargetFromTop(gv, new DoubleType()); else _il.Emit(OpCodes.Pop);
                 break;
             case TokenKind.ControlGets:
                 EmitLdStr(a.Count > 0 ? a[0] : null); EmitLdStr(a.Count > 1 ? a[1] : null);
@@ -1161,6 +1164,13 @@ public sealed partial class IlProgramCompiler
         if (stmt.VisiblePage is not null) EmitInt32Arg(stmt.VisiblePage); else _il.Emit(OpCodes.Ldc_I4_0);
         _il.Emit(OpCodes.Ldc_I4_0);
         _il.Emit(OpCodes.Callvirt, GraphicsScreenMethod);
+        /* Spazio coordinate DICHIARATO: 1 = CELLE, 2 = PIXEL, 0 = AUTO (niente chiamata). */
+        if (stmt.CoordMode != 0)
+        {
+            EmitLoadGraphicsService();
+            _il.Emit(stmt.CoordMode == 1 ? OpCodes.Ldc_I4_1 : OpCodes.Ldc_I4_0);
+            _il.Emit(OpCodes.Callvirt, GraphicsScreenCoordsMethod);
+        }
     }
 
     private void EmitTextModeStatement(TextModeStmt stmt)

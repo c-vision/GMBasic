@@ -212,6 +212,15 @@ typedef struct gmb_control {
     gmb_base_window_t* window;      /* parent fino alla radice (per la gerarchia) */
     int window_handle;              /* [nascosta] handle finestra principale, da creation */
     gmb_window_kind_t window_kind;  /* [nascosta] tipo finestra, da creation: decide il render */
+    /* Spazio coordinate DICHIARATO dal controllo (`... USE CELLS|PIXELS` / CONTROL SET "metric"):
+     * 0 = default (segue SCREEN), 1 = CellsToPixel, 2 = PixelToCells. Non e' una conversione
+     * implicita: e' una dichiarazione esplicita del programma. */
+    int coord_mode;
+    /* 1 = larghezza/altezza DERIVATE dal runtime (controlli a contenuto: CHECKBOX, TOGGLE,
+     * RADIO, TABS, MENU, DATE, COLORPICKER; altezza per PROGRESS/SLIDER/STATUSBAR/DROPDOWN).
+     * Il programma ha dichiarato solo la posizione: la conversione celle→pixel non deve
+     * toccare una dimensione che non ha scritto (altrimenti il controllo diventa enorme). */
+    int coord_auto_w, coord_auto_h;
     gmb_tui_cb ev_cb[GMB_TUI_EV_COUNT];
     int last_event;
     int handle;
@@ -234,6 +243,15 @@ void gmb_control_init(gmb_control_t* c, const char* id, int x, int y, int w, int
                       bool (*key)(void*, gmb_control_t*, int));
 gmb_rect_t gmb_control_rect(const gmb_control_t* c);
 void gmb_control_draw(gmb_control_t* c, gmb_screen_buffer_t* buf);
+/* Trasformazione coordinate del controllo nel backend ATTUALE:
+ *   0 = nessuna conversione, 1 = celle→pixel (grafica), -1 = pixel→celle (TUI).
+ * Regola: metric 1/2 sono dichiarazioni esplicite; metric 0 segue SCREEN (AUTO =
+ * spazio nativo del backend). Unica fonte per render e hit-test. */
+int gmb_control_coord_transform(const gmb_control_t* c);
+/* Dimensione (pixel) di una cella del buffer TUI: usata SOLO dalle conversioni
+ * dichiarate (metric 1/2) e dall'hit-test, mai per dedurre lo spazio di default. */
+#define GMB_CELL_PX_W 8
+#define GMB_CELL_PX_H 16
 /* Applica (solo con tema `turbovision`) la palette CONTROLLI di Turbo Vision risolta dal
  * sorgente ufficiale: input bianco/blu, button nero/verde, cluster e listbox nero/ciano,
  * scrollbar ciano/blu. Chiamata da gmb_control_draw attorno al draw del tipo. */

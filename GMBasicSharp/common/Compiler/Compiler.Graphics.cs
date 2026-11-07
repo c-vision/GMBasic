@@ -24,6 +24,13 @@ public sealed partial class Compiler
         if (stmt.CloseRepl is not null) VisitExpression(stmt.CloseRepl); else EmitByte((byte)OpCode.OP_PUSH_NIL);
         if (stmt.WindowModeExpr is not null) VisitExpression(stmt.WindowModeExpr); else EmitByte((byte)OpCode.OP_PUSH_NIL);
         EmitByte((byte)OpCode.OP_SYSCALL); EmitSysCall(SysCall.SCREEN); EmitByte((byte)5);
+        /* Spazio coordinate DICHIARATO: 1 = CELLE, 2 = PIXEL, 0 = AUTO (nessuna chiamata).
+         * Il motore e' il runtime C (gmb_gfx_set_coord_mode), come per gli altri backend. */
+        if (stmt.CoordMode != 0)
+        {
+            EmitConstant(stmt.CoordMode == 1 ? 1.0 : 0.0);
+            EmitByte((byte)OpCode.OP_SYSCALL); EmitSysCall(SysCall.SCREEN_COORDS); EmitByte((byte)1);
+        }
     }
 
     /// <summary>

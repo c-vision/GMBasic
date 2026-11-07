@@ -147,17 +147,24 @@ static void bigtext_draw_px(void* u, gmb_control_t* c)
     gmb_widget_style_t st = gmb_widget_style_current();
     const char* op = gmb_gfx_font_path(); char ops[160]; snprintf(ops, sizeof(ops), "%s", op ? op : "");
     int os = gmb_gfx_font_logical_size();   /* LOGICO: gmb_gfx_font riapplica la scala */
-    int bs = c->height - 6; if (bs < 48) bs = 48;   /* BIGTEXT: dimensione leggibile anche con h di default */
+    /* Rect del render pixel (px_*) quando disponibile: è lì che il renderer ha già
+     * applicato lo spazio coordinate dichiarato (USE CELLS / metric). */
+    int bx = (c->px_w > 0) ? c->px_x : c->x;
+    int by = (c->px_h > 0) ? c->px_y : c->y;
+    int bh = (c->px_h > 0) ? c->px_h : c->height;
+    int bs = bh - 6; if (bs < 48) bs = 48;   /* BIGTEXT: dimensione leggibile anche con h di default */
     gmb_gfx_font(ops, bs);
     int col = (int)(0x40000000u | (st.text & 0xFFFFFFu));
-    gmb_gfx_draw_text(b->text, c->x + 2, c->y + 3, 0, col);
+    gmb_gfx_draw_text(b->text, bx + 2, by + 3, 0, col);
     gmb_gfx_font(ops, os);
 }
 void gmb_big_text_init(gmb_big_text_t* b, int x, int y)
 {
     memset(b, 0, sizeof(*b));
-    memset(b, 0, sizeof(*b));
     gmb_control_init(&b->ctrl, "", x, y, 40, 7, bigtext_draw, NULL);
+    /* Dimensioni DERIVATE dal testo (il programma dichiara solo x,y): la conversione
+     * celle→pixel non deve scalarle. */
+    b->ctrl.coord_auto_w = 1; b->ctrl.coord_auto_h = 1;
     b->ctrl.draw_px_fn = bigtext_draw_px;
     b->ctrl.user = b;
 }

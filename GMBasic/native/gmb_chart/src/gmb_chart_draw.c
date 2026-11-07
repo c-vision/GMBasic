@@ -12,6 +12,14 @@ static void R_rect(const gmb_chart_renderer_t* r, int x, int y, int w, int h, in
 static void R_text(const gmb_chart_renderer_t* r, const char* s, int x, int y, int align, int col)
 { if (r->text) r->text(r->ctx, s, x, y, align, col); }
 static int  R_th(const gmb_chart_renderer_t* r) { return (r->text_height ? r->text_height(r->ctx) : (r->font_hint > 0 ? r->font_hint : 12)); }
+/* Larghezza del testo logicamente (host che non la espone: stima 0.55 × altezza). */
+static int  R_tw(const gmb_chart_renderer_t* r, const char* s)
+{
+    if (!s) return 0;
+    if (r->text_width) return r->text_width(r->ctx, s);
+    int th = R_th(r);
+    return (int)(strlen(s) * th * 0.55f + 0.5f);
+}
 
 #define CLR_GRID 8
 #define CLR_TXT  7
@@ -34,27 +42,29 @@ static double nice_step(double range)
 }
 
 static void draw_grid(const gmb_chart_renderer_t* r, int ox, int oy, int w, int h,
-                      double xmin, double xmax, double ymin, double ymax, int col)
+                      double xmin, double xmax, double ymin, double ymax, int col,
+                      int label_x, int label_y)
 {
     int th = R_th(r);
     double step = nice_step(ymax - ymin);
-    /* Tacche Y (valori "belli") con etichette. */
+    /* Tacche Y (valori "belli") con etichette NEL MARGINE sinistro: prima stavano a
+     * ox+3, cioè DENTRO l'area del grafico, sopra la griglia e la prima linea. */
     for (double y = ceil(ymin / step) * step; y <= ymax + 1e-9; y += step)
     {
         int gy = oy + h - 1 - (int)((y - ymin) / (ymax - ymin) * (h - 2)) - 1;
         if (gy < oy || gy > oy + h - 1) continue;
         R_line(r, ox + 1, gy, ox + w - 2, gy, col);
         char lbl[40]; snprintf(lbl, sizeof(lbl), "%.6g", y);
-        R_text(r, lbl, ox + 3, gy - th + 1, 0, CLR_TXT);
+        R_text(r, lbl, label_x, gy - th + 1, 0, CLR_TXT);
     }
-    /* Tacche X + etichette in basso. */
+    /* Tacche X + etichette SOTTO l'area del grafico (prima erano dentro, sull'asse). */
     for (int g = 0; g <= 5; g++)
     {
         int gx = ox + 1 + g * (w - 2) / 6;
         R_line(r, gx, oy + 1, gx, oy + h - 2, col);
         double xv = xmin + (xmax - xmin) * g / 6.0;
         char lbl[40]; snprintf(lbl, sizeof(lbl), "%.5g", xv);
-        R_text(r, lbl, gx + 1, oy + h - 1 - th, 0, CLR_TXT);
+        R_text(r, lbl, gx + 1, label_y, 0, CLR_TXT);
     }
 }
 
@@ -220,6 +230,30 @@ void gmb_chart_draw(gmb_chart_t* ch, const gmb_chart_renderer_t* r, int ox, int 
     if (xmax == xmin) xmax = xmin + 1;
     if (ymax == ymin) ymax = ymin + 1;
 
+    /* ── Margini per le ETICHETTE: l'asse Y vive nel margine sinistro, l'asse X sotto
+     * l'area del grafico. Prima entrambe stavano DENTRO il plot, sopra la griglia. ── */
+    int th_lbl = R_th(r);
+    int ylw = 0, xlh = 0;
+    if (ch->show_grid)
+    {
+        double stp = nice_step(ymax - ymin);
+        for (double y = ceil(ymin / stp) * stp; y <= ymax + 1e-9; y += stp)
+        {
+            char lbl[40]; snprintf(lbl, sizeof(lbl), "%.6g", y);
+            int tw = R_tw(r, lbl); if (tw > ylw) ylw = tw;
+        }
+        if (ylw > 0) ylw += 8;                 /* gap etichetta ↔ asse */
+        xlh = th_lbl + 4;                      /* fascia in basso per le etichette X */
+    }
+    if (ylw > w / 3) ylw = w / 3;              /* grafico minuscolo: non mangiarlo tutto */
+    if (xlh > h / 3) xlh = h / 3;
+    int label_x = ox + 2;                      /* etichette Y nel margine */
+    int label_y = oy + h - xlh + 2;             /* etichette X sotto il plot */
+    ox += ylw; w -= ylw;
+    h -= xlh;
+    if (w < 12) { ox -= ylw; w += ylw; ylw = 0; label_x = ox + 2; }
+    if (h < 8)  { h += xlh; xlh = 0; }
+
     /* memorizza la vista effettiva (per pick/drag in pixel) */
     ch->last_ox = ox; ch->last_oy = oy; ch->last_w = w; ch->last_h = h;
     ch->last_x0 = xmin; ch->last_x1 = xmax; ch->last_y0 = ymin; ch->last_y1 = ymax; ch->last_valid = 1;
@@ -227,7 +261,7 @@ void gmb_chart_draw(gmb_chart_t* ch, const gmb_chart_renderer_t* r, int ox, int 
     if (ch->title[0])  R_text(r, ch->title, ox + w / 2, oy + 2, 1, ch->axis_col);
     if (ch->ylabel[0]) R_text(r, ch->ylabel, ox + 2, oy + R_th(r) + 2, 0, ch->axis_col);
 
-    if (ch->show_grid)   draw_grid(r, ox, oy, w, h, xmin, xmax, ymin, ymax, ch->grid_col);
+    if (ch->show_grid)   draw_grid(r, ox, oy, w, h, xmin, xmax, ymin, ymax, ch->grid_col, label_x, label_y);
     if (ch->show_legend) draw_legend(ch, r, ox, oy, w);
 
     static const int colors[8] = { 15, 10, 14, 13, 11, 9, 12, 6 };

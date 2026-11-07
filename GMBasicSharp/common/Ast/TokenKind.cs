@@ -2568,4 +2568,13 @@ public enum TokenKind
     // per gli algoritmi FFI GRAPH/FLOW — il ponte che evita di duplicare la matematica.
     // In coda (ordinali canonici): mai inserire nel mezzo.
     BrainsAdjacency,
+    // COORDINATE (2026-11-07): spazio coordinate DICHIARATO per i controlli.
+    //   SCREEN 12, 1216, 800, 32 USE CELLS      → i controlli dichiarano CELLE
+    //   SCREEN 12 WIDTH 1216 HEIGHT 800 USE CELLS
+    //   BUTTON 40, 30, 220, 44, "OK" USE CELLS  → metric=1 (CellsToPixel)
+    //   BUTTON 40, 30, 220, 44, "OK" USE PIXELS → metric=2 (PixelToCells)
+    // Default (nessuna clausola): AUTO — pixel in grafica, celle in TUI.
+    // In coda (ordinali canonici): mai inserire nel mezzo.
+    Cells,
+    Pixels,
   }

@@ -23,13 +23,23 @@ gmb_window_kind_t gmb_base_window_kind(void)
     return g_root_window.kind;
 }
 
+int gmb_control_coord_transform(const gmb_control_t* c)
+{
+    int gfx = gmb_gfx_screen_on() ? 1 : 0;
+    int metric = c ? c->coord_mode : 0;
+    if (metric == 1) return gfx ? 1 : 0;    /* CellsToPixel: solo su schermo grafico */
+    if (metric == 2) return gfx ? 0 : -1;   /* PixelToCells: solo su TUI a celle */
+    /* metric 0 = default: segue SCREEN (AUTO = spazio nativo del backend). */
+    if (gmb_gfx_coords_cells()) return gfx ? 1 : 0;   /* dichiarato CELLS  */
+    return gfx ? 0 : -1;                              /* dichiarato PIXELS */
+}
+
 /* ===================== Control ===================== */
 
 void gmb_control_init(gmb_control_t* c, const char* id, int x, int y, int w, int h,
                       void (*draw)(void*, gmb_control_t*, gmb_screen_buffer_t*),
                       bool (*key)(void*, gmb_control_t*, int))
 {
-    memset(c, 0, sizeof(*c));
     memset(c, 0, sizeof(*c));
     if (id) snprintf(c->id, sizeof(c->id), "%s", id);
     c->x = x; c->y = y; c->width = w; c->height = h;

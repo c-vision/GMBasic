@@ -170,6 +170,15 @@ void gmb_form_render_if_dirty(void);
 void gmb_form_set_exclusive(int on);
 /* Applica uno stile CSS-like (override colori) all'ULTIMO widget/controllo aggiunto. */
 void gmb_form_set_last_style(const char* spec);
+/* Applica una spec CSS-like (colori + proprietà base + `metric`) a un controllo per HANDLE,
+ * in QUALSIASI registry (form widget/button, poi TUI). Unico punto per gli emitter: le
+ * clausole del controllo non possono più andare perse a seconda del tipo. */
+void gmb_form_apply_style_handle(int handle, const char* spec);
+/* Nota l'handle dell'ultimo controllo creato (form o TUI): gli emitter applicano le
+ * clausole dichiarate (NAME/STYLE/metric/…) a QUEST'ultimo, qualunque sia il registry. */
+void gmb_form_note_handle(int handle);
+/* Applica le clausole all'ULTIMO controllo creato, nel registry corretto (form o TUI). */
+void gmb_form_apply_last_style(const char* spec);
 
 /* Proprieta' base (VB) del controllo: impostabili anche nella spec di STYLE
  * ("name=Ok tag=t visible=1 enabled=1 tabindex=2 tabstop=1 focus"). Getter per indice. */

@@ -199,9 +199,16 @@ public sealed record PSetStmt(Expr X, Expr Y, Expr? Color, Token Token) : Stmt(T
 /// <summary>
 /// Rappresenta l'istruzione SCREEN per impostare la modalità grafica.
 /// </summary>
-public sealed record ScreenStmt(Expr Mode, Expr? ActivePage, Expr? VisiblePage, Expr? CloseRepl, Token Token, Expr? WindowModeExpr = null)
+public sealed record ScreenStmt(Expr Mode, Expr? ActivePage, Expr? VisiblePage, Expr? CloseRepl, Token Token, Expr? WindowModeExpr = null,
+    int CoordMode = 0)
     : Stmt(Token.Position)
 {
+    /// <summary>
+    /// Spazio coordinate DICHIARATO per i controlli (`SCREEN ... USE CELLS|PIXELS`):
+    /// 0 = AUTO (nessuna clausola: pixel in grafica, celle in TUI), 1 = CELLE, 2 = PIXEL.
+    /// </summary>
+    public int CoordModeValue => CoordMode;
+
     /// <summary>
     /// Restituisce una rappresentazione testuale compatta del nodo.
     /// </summary>
@@ -215,7 +222,7 @@ public sealed record ScreenStmt(Expr Mode, Expr? ActivePage, Expr? VisiblePage, 
     {
         return new ScreenStmt(
             (Expr)Mode.DeepClone(), (Expr?)ActivePage?.DeepClone(), (Expr?)VisiblePage?.DeepClone(), (Expr?)CloseRepl?.DeepClone(),
-            (Token)Token.DeepClone(), (Expr?)WindowModeExpr?.DeepClone()
+            (Token)Token.DeepClone(), (Expr?)WindowModeExpr?.DeepClone(), CoordMode
         );
     }
 }

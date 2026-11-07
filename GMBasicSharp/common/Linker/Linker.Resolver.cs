@@ -1296,7 +1296,7 @@ public static partial class Linker
                     s.ActivePage != null ? ResolveExpression(s.ActivePage, program) : null,
                     s.VisiblePage != null ? ResolveExpression(s.VisiblePage, program) : null,
                     s.CloseRepl != null ? ResolveExpression(s.CloseRepl, program) : null,
-                    s.Token
+                    s.Token, null, s.CoordMode
                 ) { ScopeId = s.ScopeId };
 
             case TextModeStmt tms:

@@ -117,14 +117,21 @@ static void logview_draw_px(void* u, gmb_control_t* c)
     int lrh = (st.row_h > 0 ? st.row_h : 22);
     int pad = soft ? 4 : 0;
     int vis = lrh > 0 ? (h - pad * 2) / lrh : 0;
+    /* Colonna del LIVELLO: larghezza misurata sul font corrente (prima era un offset
+     * fisso 56/64 → con "TRACE" il testo della voce si attaccava all'etichetta:
+     * "TRACEstarted"). */
+    int lx = x + (soft ? 12 : 4);
+    int colw = gmb_gfx_text_width_logical("ERROR");
+    if (colw <= 0) colw = 40;
+    int mx = lx + colw + (soft ? 12 : 8);
     int start = l->offset; if (start < 0) start = 0;
     for (int r = 0; r < vis && start + r < l->records_count; r++) {
         gmb_log_record_t* rec = &l->records[start + r];
         int li = rec->level; if (li < 0 || li > 4) li = 2;
         int ry = y + pad + r * lrh;
-        gmb_gfx_draw_text(lvn[li], x + (soft ? 12 : 4), ry + (lrh - (int)(gmb_gfx_text_height() / (gmb_gfx_render_scale() > 0 ? gmb_gfx_render_scale() : 1.0f))) / 2, 0,
+        gmb_gfx_draw_text(lvn[li], lx, ry + (lrh - (int)(gmb_gfx_text_height() / (gmb_gfx_render_scale() > 0 ? gmb_gfx_render_scale() : 1.0f))) / 2, 0,
                           (int)(0x40000000u | lvcol[li]));
-        gmb_gfx_draw_text(rec->message, x + (soft ? 64 : 56), ry + 2, 0,
+        gmb_gfx_draw_text(rec->message, mx, ry + 2, 0,
                           (int)(0x40000000u | (st.text & 0xFFFFFFu)));
     }
 }
