@@ -40,9 +40,9 @@ CHECKBOX 660, 302, 280, "autoscaling" INTO n NAME "p1_k"
 RADIO 660, 362, 580, "Fast|Balanced|Safe" INTO n NAME "p1_l"
 
 ' ══ PAGINA 2 · DATA (a-l) ═══════════════════════════════════════════════
-PANEL 24, 126, 600, 260, "RECORDS" NAME "p2_a"
+PANEL 24, 126, 600, 274, "RECORDS" NAME "p2_a"
 GRID 40, 158, 568, 154, "Node|Region|Load|Status", "alpha|eu-west|62%|ok;beta|us-east|48%|ok;gamma|ap-south|71%|warn;delta|eu-north|33%|ok;epsilon|us-west|89%|crit" INTO n NAME "p2_b"
-LISTBOX 40, 320, 280, 60, "Overview|Metrics|Logs" INTO n NAME "p2_c"
+LISTBOX 40, 320, 280, 72, "Overview|Metrics|Logs" INTO n NAME "p2_c"
 PANEL 644, 126, 300, 260, "TREE" NAME "p2_d"
 TREEVIEW 660, 158, 268, 210, "root/api|root/api/v1|root/db|root/db/primary" INTO n NAME "p2_e"
 PANEL 960, 126, 296, 260, "FILTERS" NAME "p2_f"
@@ -81,9 +81,7 @@ ALERTBOX 764, 170, 220, 96, "Deploy completato" NAME "p4_i"
 CONFIRMATIONBOX 1000, 170, 236, 96, "Procedere?" NAME "p4_j"
 LABEL 764, 300, 460, "ALERTBOX / CONFIRMATIONBOX" NAME "p4_k"
 
-PANEL 24, 502, 1232, 130, "FUNCTIONKEYBAR" NAME "p4_l"
-FUNCTIONKEYBAR 552, 40, 660, "Apri|Salva|Cerca|Esegui|Aiuto|Esci"
-LABEL 40, 600, 700, "Apri · Salva · Cerca · Esegui · Aiuto · Esci"
+PANEL 24, 502, 1232, 130, "ALERTBOX · CONFIRMATIONBOX · FUNCTIONKEYBAR (vedi PixelControlsGallery)" NAME "p4_l"
 
 ' ══ PAGINA 5 · CHARTS (a-l) ═════════════════════════════════════════════
 PANEL 24, 126, 600, 360, "LINE CHART" NAME "p5_a"
