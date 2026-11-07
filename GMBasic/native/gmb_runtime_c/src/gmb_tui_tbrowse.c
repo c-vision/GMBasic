@@ -139,23 +139,20 @@ static void tbrowse_draw_px(void* u, gmb_control_t* c)
         gmb_gfx_fill_rounded_rect(x + pad, ty, w - 2 * pad, 1, 0, st.border);
     }
 
-    gmb_browse_render_rows(b, line, (int)sizeof(line));
     int cur_disp = b->current_row - b->top_row;
     int dr = 0;
-    char* p = line;
-    while (p && *p)
+    while (1)
     {
-        char* nl = strchr(p, '\n');
-        if (nl) *nl = '\0';
         int ry = ty + dr * rh;
         if (ry + rh > y + h - pad) break;
+        char row[2048];
+        if (gmb_browse_render_row(b, dr, row, (int)sizeof(row)) <= 0) break;
         if (dr == cur_disp && b->highlight_row)
             gmb_gfx_fill_rounded_rect(x + 4, ry, w - 8, rh, 2, (st.accent & 0xFFFFFFu) | 0x33000000u);
-        gmb_gfx_draw_text(p, x + pad, ry + (rh - th) / 2, 0,
+        gmb_gfx_draw_text(row, x + pad, ry + (rh - th) / 2, 0,
                           (int)(0x40000000u | (st.text & 0xFFFFFFu)));
         dr++;
-        if (!nl) break;
-        p = nl + 1;
+        if (b->top_row + dr >= gmb_browse_row_count(b)) break;
     }
 }
 
@@ -1458,26 +1455,37 @@ static void row_cell_fn(void* ctx, int col, int width, char* out, int cap)
     gmb_browse_format_cell(cased, width, b->columns[col].align, out, cap);
 }
 
+int gmb_browse_render_row(const gmb_browse_t* b, int display_row, char* out, int cap)
+{
+    if (!out || cap <= 0) return 0;
+    int total = gmb_browse_row_count(b);
+    int inner_w = gmb_browse_inner_width(b);
+    int data_row = b->top_row + display_row;
+    int o = 0;
+    if (data_row >= total)
+    {
+        for (int i = 0; i < inner_w && o < cap - 1; i++) out[o++] = ' ';
+    }
+    else
+    {
+        gmb_row_cell_ctx_t ctx = { b, data_row };
+        char line[2048];
+        gmb_browse_render_inner(b, b->col_sep, line, (int)sizeof(line), &ctx, row_cell_fn);
+        for (char* p = line; *p && o < cap - 1; p++) out[o++] = *p;
+    }
+    out[o] = '\0';
+    return o;
+}
+
 int gmb_browse_render_rows(const gmb_browse_t* b, char* out, int cap)
 {
     int page = gmb_browse_page_size(b);
-    int total = gmb_browse_row_count(b);
-    int inner_w = gmb_browse_inner_width(b);
     int o = 0;
     for (int display_row = 0; display_row < page; display_row++)
     {
-        int data_row = b->top_row + display_row;
-        if (data_row >= total)
-        {
-            for (int i = 0; i < inner_w && o < cap - 1; i++) out[o++] = ' ';
-        }
-        else
-        {
-            gmb_row_cell_ctx_t ctx = { b, data_row };
-            char line[2048];
-            gmb_browse_render_inner(b, b->col_sep, line, (int)sizeof(line), &ctx, row_cell_fn);
-            for (char* p = line; *p && o < cap - 1; p++) out[o++] = *p;
-        }
+        char line[2048];
+        int n = gmb_browse_render_row(b, display_row, line, (int)sizeof(line));
+        for (int i = 0; i < n && o < cap - 1; i++) out[o++] = line[i];
         if (display_row < page - 1 && o < cap - 1) out[o++] = '\n';
     }
     out[o] = '\0';

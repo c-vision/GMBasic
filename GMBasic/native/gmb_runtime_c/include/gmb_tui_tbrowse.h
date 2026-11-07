@@ -281,6 +281,8 @@ gmb_browse_action_t gmb_browse_apply_edit_key(gmb_browse_t* b, int key);
 int  gmb_browse_render_inner(const gmb_browse_t* b, const char* sep, char* out, int cap,
                              void* ctx, void (*cell_fn)(void* ctx, int col, int width, char* out, int cap));
 int  gmb_browse_render_rows(const gmb_browse_t* b, char* out, int cap);
+/* Una sola riga visibile (display_row, 0-based) gia' formattata; cap e' la capacita'. */
+int  gmb_browse_render_row(const gmb_browse_t* b, int display_row, char* out, int cap);
 int  gmb_browse_render_header(const gmb_browse_t* b, char* out, int cap);
 int  gmb_browse_render_separator(const gmb_browse_t* b, char* out, int cap);
 int  gmb_browse_render_footer_separator(const gmb_browse_t* b, char* out, int cap);
