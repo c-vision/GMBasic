@@ -495,7 +495,7 @@ public sealed partial class IlProgramCompiler
         // quindi lì il tipo dichiarato è anche quello davvero sullo stack.
         FunctionExpr fn => NormalizeInferredType(
             fn.ResolvedDefinition is ExternalProcedureDefinition epd
-                ? (epd.ReturnType is StringType ? epd.ReturnType : new DoubleType())
+                ? (epd.ReturnType is StringType or UserDefinedType ? epd.ReturnType : new DoubleType())
                 : fn.ReturnType ?? new VoidType()),
         // Chiamata non risolta dal linker (es. builtin DBF risolti per nome nel P-Code):
         // i numerici senza suffisso sono SEMPRE double (convenzione BASIC) — mai il
