@@ -2130,6 +2130,25 @@ public static partial class Linker
             }
         }
 
+        // (2026-11-07) `NS.MEMBRO(...)` dove NS è ANCHE il nome di una funzione utente
+        // (es. FUNCTION Quad + namespace QUAD): la riscrittura dell'istanza produce un
+        // FunctionReferenceExpr, il ramo sopra non scatta e la chiamata qualificata
+        // resta irrisolta (su IL: ArrayAccessExpr con N indici; su PCode: risultato 0).
+        // La forma qualificata `NS.MEMBRO` è per costruzione un namespace: si risolve
+        // dalla GRAFIA del nodo originale, non dal nodo riscritto. La guardia su
+        // FunctionReferenceExpr esclude i metodi su valori (variabili di classe/UDT,
+        // che restano VariableExpr) — nessun cambio per quei casi.
+        if (rewrittenInstance is FunctionReferenceExpr && mce.Instance is VariableExpr nsSrc)
+        {
+            string? nsAlias;
+            if (aliasMap.TryGetValue(nsSrc.NameCleaned.Lexeme, out nsAlias) ||
+                program.Namespaces.Contains(nsSrc.NameCleaned.Lexeme))
+            {
+                return ResolveQualifiedCall(nsAlias ?? nsSrc.NameCleaned.Lexeme, memberName, mce.Args, program,
+                    mce.MethodName, context);
+            }
+        }
+
         DataType instanceType = LinkerInferExpressionType(rewrittenInstance, context, program);
 
         // 1. Tentativo Metodi Definiti (Classi/UDT)
