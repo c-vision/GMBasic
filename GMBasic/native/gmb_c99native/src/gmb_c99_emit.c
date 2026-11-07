@@ -10925,6 +10925,17 @@ static int ns_is_proper_suffix(const char* suffix, const char* full) {
     return full[fl - sl - 1] == '.' && !strcasecmp(full + fl - sl, suffix);
 }
 
+/* 2026-11-07 (migrazione TRADING -> FFI): un namespace dichiarato da una DECLARE FFI
+ * importata NON è una qualifica parziale del namespace builtin di cui è suffisso
+ * (es. METRICS vs TRADING.METRICS). Se esiste una funzione FFI con quel namespace e
+ * quel nome, la chiamata è legittima e non va rifiutata dalla guardia sotto. */
+static int ffi_ns_declares(ctx_t* c, const char* ns, const char* name, int nargs) {
+    if (!c || !ns || !*ns || !name || !*name) return 0;
+    fn_info_t* f = find_fn_arity(c, name, nargs, ns);
+    if (!f || !f->stmt || !f->stmt->func_ns) return 0;
+    return strcasecmp(f->stmt->func_ns, ns) == 0;
+}
+
 static void emit_call(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk, gmb_expr_t** args, int nargs, int line, gmb_tokenkind_t pf) {
     /* QUALIFICA PARZIALE di un namespace COMPOSTO (es. PORTFOLIO.ISLONGONLY): il
      * namespace scritto non esiste, è solo un suffisso di quello canonico
@@ -10933,7 +10944,8 @@ static void emit_call(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_
      * (IMPORT ... AS X) arriva qui GIÀ risolto al namespace canonico. */
     if (ns && ns[0] && name && name[0]) {
         const char* kns0 = gmb_reg_known_ns(name);
-        if (kns0 && kns0[0] && strcasecmp(ns, kns0) != 0 && ns_is_proper_suffix(ns, kns0)) {
+        if (!ffi_ns_declares(c, ns, name, nargs) &&
+            kns0 && kns0[0] && strcasecmp(ns, kns0) != 0 && ns_is_proper_suffix(ns, kns0)) {
             c99_fail(c, line, "namespace '%s' sconosciuto: usare la qualifica COMPLETA '%s.%s(...)' o IMPORT %s (backend C99Native)",
                      ns, kns0, name, kns0);
             return;
@@ -10950,7 +10962,8 @@ static void emit_call(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_
             size_t pl = (size_t)(dotq - name);
             memcpy(pfx, name, pl); pfx[pl] = 0;
             const char* kns1 = gmb_reg_known_ns(dotq + 1);
-            if (kns1 && kns1[0] && strcasecmp(pfx, kns1) != 0 && ns_is_proper_suffix(pfx, kns1)) {
+            if (!ffi_ns_declares(c, pfx, dotq + 1, nargs) &&
+                kns1 && kns1[0] && strcasecmp(pfx, kns1) != 0 && ns_is_proper_suffix(pfx, kns1)) {
                 c99_fail(c, line, "namespace '%s' sconosciuto: usare la qualifica COMPLETA '%s.%s(...)' o IMPORT %s (backend C99Native)",
                          pfx, kns1, dotq + 1, kns1);
                 return;
