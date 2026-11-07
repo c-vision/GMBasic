@@ -412,7 +412,11 @@ static const char *KN[] = {"SCALE", "ZERO", "SET", "ADDDELTA", "COPY", "PROJECTO
 
 int llmwsp_ov_recipe(const llmwsp_overlay *o, const char *dir, char *err, size_t ec) {
     char p[1100];
+#if defined(_WIN32)
+    mkdir(dir);
+#else
     mkdir(dir, 0755);
+#endif
     snprintf(p, sizeof p, "%s/recipe.gmbderive", dir);
     FILE *f = fopen(p, "wb");
     if (!f) { E(err, ec, "recipe non scrivibile", p); return -1; }
