@@ -190,7 +190,7 @@ int main(void)
         report("colorpicker", v == 2, "campione 3 selezionato");
     }
 
-    /* ── CONTEXT MENU: il click sul trigger apre il menu ───────────────── */
+    /* ── CONTEXT MENU: apertura + scelta voce con click ────────────────── */
     {
         static gmb_context_menu_t cm;
         const char* its[] = { "Copy", "Paste", "Delete" };
@@ -198,8 +198,11 @@ int main(void)
         gmb_context_menu_set_items(&cm, its, 3);
         gmb_tui_control_register(&cm.ctrl);
         render_frame();
-        click_at(40 + 100, 600 + 12);
-        report("contextmenu", cm.open != 0, "menu aperto dal click");
+        click_at(40 + 100, 600 + 12);          /* apre */
+        int opened = cm.open;
+        { int rh = gmb_widget_style_current().row_h; if (rh < 14) rh = 22;
+          click_at(40 + 100, 600 + 6 + rh + rh / 2); }   /* voce 2 = "Paste" */
+        report("contextmenu", opened && !cm.open && cm.chosen == 1, "aperto e voce 2 scelta");
     }
 
     /* ── MODALE: velo + input catturato + chiusura dal pulsante ─────────── */
