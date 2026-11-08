@@ -83,7 +83,10 @@ static bool slider_mouse(void* u, gmb_control_t* c, const gmb_mouse_action_t* a)
 static void slider_draw_px(void* u, gmb_control_t* c)
 {
     gmb_slider_t* s = (gmb_slider_t*)u;
-    gmb_px_draw_ex(GMB_PX_TRACK, c->x, c->y, c->width, c->height, NULL, NULL, 0, s->value, s->min, s->max, NULL, 0, NULL, 0);
+    int x = (c->px_w > 0) ? c->px_x : c->x, y = (c->px_h > 0) ? c->px_y : c->y;
+    int w = (c->px_w > 0) ? c->px_w : c->width, h = (c->px_h > 0) ? c->px_h : c->height;
+    gmb_form_paint_widget_px("track", x, y, w, h, NULL, 0, 0, (double)s->min, (double)s->max,
+                             (double)s->value, NULL, NULL);
 }
 void gmb_slider_init(gmb_slider_t* s, int x, int y, int w)
 {

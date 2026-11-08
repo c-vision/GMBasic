@@ -110,8 +110,12 @@ static bool listbox_mouse(void* u, gmb_control_t* c, const gmb_mouse_action_t* a
 static void listbox_draw_px(void* u, gmb_control_t* c)
 {
     gmb_listbox_t* l = (gmb_listbox_t*)u;
-    const char* _it[32]; for (int i = 0; i < l->items_count && i < 32; i++) _it[i] = l->items[i];
-    gmb_px_draw_ex(GMB_PX_LISTBOX, c->x, c->y, c->width, c->height, NULL, _it, l->items_count, l->selected, 0, 0, NULL, l->scroll_offset, NULL, 0);
+    int x = (c->px_w > 0) ? c->px_x : c->x, y = (c->px_h > 0) ? c->px_y : c->y;
+    int w = (c->px_w > 0) ? c->px_w : c->width, h = (c->px_h > 0) ? c->px_h : c->height;
+    char csv[2048]; int o = 0;
+    for (int i = 0; i < l->items_count && o < 2000; i++)
+        o += snprintf(csv + o, sizeof(csv) - (size_t)o, "%s%s", i ? "|" : "", l->items[i]);
+    gmb_form_paint_widget_px("listbox", x, y, w, h, csv, l->selected, l->scroll_offset, 0, 0, 0, NULL, NULL);
 }
 void gmb_listbox_init(gmb_listbox_t* l, int x, int y, int w, int h)
 {

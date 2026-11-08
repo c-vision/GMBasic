@@ -125,8 +125,12 @@ static bool combobox_click(void* u, gmb_control_t* c, int x, int y)
 static void combobox_draw_px(void* u, gmb_control_t* c)
 {
     gmb_combobox_t* cb = (gmb_combobox_t*)u;
-    const char* _it[16]; for (int i = 0; i < cb->items_count && i < 16; i++) _it[i] = cb->items[i];
-    gmb_px_draw_ex(GMB_PX_DROPDOWN, c->x, c->y, c->width, c->height, NULL, _it, cb->items_count, cb->selected, 0, 0, NULL, 0, NULL, 0);
+    int x = (c->px_w > 0) ? c->px_x : c->x, y = (c->px_h > 0) ? c->px_y : c->y;
+    int w = (c->px_w > 0) ? c->px_w : c->width, h = (c->px_h > 0) ? c->px_h : c->height;
+    char csv[1024]; int o = 0;
+    for (int i = 0; i < cb->items_count && o < 1000; i++)
+        o += snprintf(csv + o, sizeof(csv) - (size_t)o, "%s%s", i ? "|" : "", cb->items[i]);
+    gmb_form_paint_widget_px("dropdown", x, y, w, h, csv, cb->selected, 0, 0, 0, 0, NULL, NULL);
 }
 void gmb_combobox_init(gmb_combobox_t* c, int x, int y, int w)
 {

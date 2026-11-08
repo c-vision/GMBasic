@@ -71,8 +71,12 @@ static bool tab_click(void* u, gmb_control_t* c, int x, int y)
 static void tab_draw_px(void* u, gmb_control_t* c)
 {
     gmb_tab_t* t = (gmb_tab_t*)u;
-    const char* _it[16]; for (int i = 0; i < t->tabs_count && i < 16; i++) _it[i] = t->tabs[i];
-    gmb_px_draw_ex(GMB_PX_TABS, c->x, c->y, c->width, c->height, NULL, _it, t->tabs_count, t->selected, 0, 0, NULL, 0, NULL, 0);
+    int x = (c->px_w > 0) ? c->px_x : c->x, y = (c->px_h > 0) ? c->px_y : c->y;
+    int w = (c->px_w > 0) ? c->px_w : c->width, h = (c->px_h > 0) ? c->px_h : c->height;
+    char csv[1024]; int o = 0;
+    for (int i = 0; i < t->tabs_count && o < 1000; i++)
+        o += snprintf(csv + o, sizeof(csv) - (size_t)o, "%s%s", i ? "|" : "", t->tabs[i]);
+    gmb_form_paint_widget_px("tabs", x, y, w, h, csv, t->selected, 0, 0, 0, 0, NULL, NULL);
 }
 void gmb_tab_init(gmb_tab_t* t, int x, int y, int w)
 {

@@ -58,8 +58,9 @@ static void panel_draw(void* u, gmb_control_t* c, gmb_screen_buffer_t* buf)
 static void panel_draw_px(void* u, gmb_control_t* c)
 {
     gmb_panel_t* p = (gmb_panel_t*)u;
-    gmb_px_draw_ex(GMB_PX_PANEL, c->px_x, c->px_y, c->px_w, c->px_h, p->title,
-                   NULL, 0, 0.0, 0.0, 0.0, NULL, 0, NULL, 0);
+    int x = (c->px_w > 0) ? c->px_x : c->x, y = (c->px_h > 0) ? c->px_y : c->y;
+    int w = (c->px_w > 0) ? c->px_w : c->width, h = (c->px_h > 0) ? c->px_h : c->height;
+    gmb_form_paint_widget_px("panel", x, y, w, h, NULL, 0, 0, 0, 0, 0, p->title, NULL);
 }
 
 void gmb_panel_init(gmb_panel_t* p, int x, int y, int w, int h, const char* title)
