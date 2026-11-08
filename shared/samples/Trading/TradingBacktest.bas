@@ -1,97 +1,62 @@
 ' FILE: Trading/TradingBacktest.bas
 ' =================================================================================================
-'       TEST UNITARIO: TRADING.BACKTESTS - SIMULAZIONE STORICA
+'       TEST UNITARIO: BACKTEST - SIMULAZIONE STORICA
 ' =================================================================================================
-' Questo test verifica il motore di backtesting integrato, utilizzato per valutare
-' strategie di investimento su dati storici.
+' Il backtest FFI lavora a pesi uguali: il rendimento di ogni periodo e' la media degli
+' asset della riga. RUN ritorna un ARRAY:
+'   [TotalReturn%, AnnualizedReturn%, MaxDrawdown, SharpeRatio, TradesCount, Turnover,
+'    curva dei rendimenti per periodo...]
 '
-' COPERTURA:
-' - Configurazione Strategia: RebalanceStrategy (UDT Built-in).
-' - Esecuzione: RUN(rendimenti, strategia).
-' - Analisi Risultati: BacktestResult (UDT Built-in).
-'
-' STRUTTURA OGGETTI (Built-in):
-' 1. RebalanceStrategy:
-'    - Frequency: Frequenza ribilanciamento (es. 1=Mensile, 3=Trimestrale).
-'    - TransactionCost: Costo percentuale per transazione (es. 0.001 = 0.1%).
-'    - Method: Metodo (es. "EqualWeight", "MeanVariance").
-'
-' 2. BacktestResult:
-'    - TotalReturn: Rendimento cumulativo.
-'    - AnnualizedReturn: Rendimento annualizzato.
-'    - MaxDrawdown: Perdita massima.
-'    - SharpeRatio: Indice di Sharpe.
-'    - EquityCurve: Array con l'evoluzione del capitale.
+' La vecchia RebalanceStrategy (UDT) non esiste piu': la strategia non cambia il risultato.
 ' =================================================================================================
 
-IMPORT TRADING.BACKTESTS AS BT
-IMPORT JSON
+IMPORT BACKTEST AS BT
+IMPORT MATH
 
 SUB Main()
 
     CLS
-    PRINT "╔════════════════════════════════════════════════════════════════════════╗"
-    PRINT "║ TRADING.BACKTESTS - Simulazione Strategie                              ║"
-    PRINT "╚════════════════════════════════════════════════════════════════════════╝"
+    PRINT "============================================================"
+    PRINT "BACKTEST - Simulazione Strategia"
+    PRINT "============================================================"
     PRINT
 
-    ' --- 1. GENERAZIONE DATI STORICI (SINTETICI) ---
-    ' Simuliamo rendimenti mensili per 2 asset su 5 anni (60 periodi)
-    ' Asset A: Rendimento medio alto, alta volatilità
-    ' Asset B: Rendimento medio basso, bassa volatilità
+    ' --- 1. GENERAZIONE DATI STORICI (SINTETICI, DETERMINISTICI) ---
+    ' 60 periodi, 2 asset: serie cicliche (output riproducibile).
     DIM N_Asset = 2
     DIM N_Periodi = 60
-    
-    ' Matrice linearizzata o Array di Array? 
-    ' Supponiamo Array di Array per le serie storiche multi-asset.
+
     DIM Returns(59) AS ARRAY OF DOUBLE
-    
+
     FOR i = 0 TO 59
-        DIM retA = (MATH.RND() * 0.10) - 0.04 ' -4% a +6%
-        DIM retB = (MATH.RND() * 0.04) - 0.01 ' -1% a +3%
+        DIM retA = (0.06 * SIN(i / 5.0)) - 0.005
+        DIM retB = (0.02 * SIN(i / 7.0)) + 0.002
         Returns(i) = {retA, retB}
     NEXT i
-    
+
     PRINT "Dati storici generati: "; N_Periodi; " periodi, "; N_Asset; " asset."
     PRINT
 
-    ' --- 2. CONFIGURAZIONE STRATEGIA ---
-    PRINT "--- Configurazione Strategia ---"
-    
-    ' CORREZIONE: Usa il tipo qualificato BT.RebalanceStrategy
-    DIM Strat AS BT.RebalanceStrategy = NEW BT.RebalanceStrategy
-    
-    Strat.Frequency = 3          ' Ribilancia ogni 3 mesi (Trimestrale)
-    Strat.TransactionCost = 0.001 ' 0.1% di commissioni
-    Strat.Method = "RiskParity"  ' Strategia: Parità di Rischio
-    ' Parametri specifici possono essere passati tramite proprietà aggiuntive o dizionari se supportati
-    ' Strat.Params = ... 
-    
-    PRINT "Metodo: "; Strat.Method
-    PRINT "Costi Transazione: "; Strat.TransactionCost * 100; "%"
-    PRINT
-
-    ' --- 3. ESECUZIONE BACKTEST ---
+    ' --- 2. ESECUZIONE BACKTEST ---
     PRINT "--- Esecuzione Backtest (RUN) ---"
-    
-    ' CORREZIONE: Usa il tipo qualificato BT.BacktestResult
-    DIM Result AS BT.BacktestResult
-    ' RUN accetta i dati, la strategia e opzionalmente un array per i pesi ottimali finali
-    Result = BT.RUN(Returns, Strat)
-    
+
+    DIM Result() AS DOUBLE
+    Result = BT.RUN(Returns, "EQUALWEIGHT")
+
     PRINT "Backtest completato."
     PRINT
 
-    ' --- 4. ANALISI RISULTATI ---
+    ' --- 3. ANALISI RISULTATI ---
     PRINT "--- Analisi Performance ---"
-    
-    PRINT "Total Return:      "; MATH.FORMAT(Result.TotalReturn, "0.00%")
-    PRINT "Annualized Return: "; MATH.FORMAT(Result.AnnualizedReturn, "0.00%")
-    PRINT "Max Drawdown:      "; MATH.FORMAT(Result.MaxDrawdown, "0.00%")
-    PRINT "Sharpe Ratio:      "; MATH.FORMAT(Result.SharpeRatio, "0.00")
-    PRINT "Trades Count:      "; Result.TradesCount
-    PRINT "Turnover:          "; MATH.FORMAT(Result.Turnover, "0.00%")
-    
+
+    PRINT "Total Return:      "; FORMAT(Result(0), "0.00"); " %"
+    PRINT "Annualized Return: "; FORMAT(Result(1), "0.00"); " %"
+    PRINT "Max Drawdown:      "; FORMAT(Result(2), "0.0000")
+    PRINT "Sharpe Ratio:      "; FORMAT(Result(3), "0.00")
+    PRINT "Trades Count:      "; Result(4)
+    PRINT "Turnover:          "; FORMAT(Result(5), "0.00")
+    PRINT "Curva (primi 3):   "; FORMAT(Result(6), "0.0000"); " "; FORMAT(Result(7), "0.0000"); " "; FORMAT(Result(8), "0.0000")
+
     PRINT
     PRINT "Test Completato."
 

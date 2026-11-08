@@ -1,15 +1,15 @@
 ' FILE: Trading/TradingMetricsAlpha.bas
 ' =================================================================================================
-' TRADING.METRICS.ALPHA — Alpha di Jensen (rendimento in eccesso rispetto al benchmark).
+' METRICS.ALPHA — Alpha di Jensen (rendimento in eccesso rispetto al benchmark).
 ' =================================================================================================
 ' ALPHA(rendimenti_asset[], rendimenti_benchmark[], tasso_riskfree, periodi_anno) → DOUBLE
 '   = rendimento_asset - [riskfree + beta * (rendimento_benchmark - riskfree)]
 ' =================================================================================================
-IMPORT TRADING.METRICS AS TM
+IMPORT METRICS AS TM
 
 SUB Main()
     CLS
-    PRINT "TRADING.METRICS.ALPHA"
+    PRINT "METRICS.ALPHA"
     PRINT "======================"
     PRINT
 

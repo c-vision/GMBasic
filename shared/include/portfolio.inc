@@ -173,24 +173,50 @@ PUBLIC FUNCTION MAXRETURN(mean() AS DOUBLE) AS ARRAY OF DOUBLE
 END FUNCTION
 
 ' Kelly: o(0) = indice di Kelly, o(3) = stesso valore (un solo "asset").
+' Accetta una matrice JAGGED di rendimenti (periodi x asset), come il builtin:
+' i valori vengono appiattiti (la formula lavora sulla serie, non per asset).
 ' `rf` resta nella firma per compatibilita' ma e' IGNORATO (parita' VM/C/C99).
-PUBLIC FUNCTION KELLYCRITERION(r() AS DOUBLE, rf AS DOUBLE) AS ARRAY OF DOUBLE
+PUBLIC FUNCTION KELLYCRITERION(hist() AS ARRAY OF DOUBLE, rf AS DOUBLE) AS ARRAY OF DOUBLE
+    DIM rows AS LONG = UBOUND(hist) + 1
+    DIM cols AS LONG = UBOUND(hist(0)) + 1
+    DIM flat((rows * cols) - 1) AS DOUBLE
+    FOR i = 0 TO rows - 1
+        FOR j = 0 TO cols - 1
+            flat(i * cols + j) = hist(i)(j)
+        NEXT j
+    NEXT i
     DIM o(3) AS DOUBLE
-    CALL PFN_KELLY(r, rf, o)
+    CALL PFN_KELLY(flat, rf, o)
     RETURN o
 END FUNCTION
 
 ' Min-CVaR storico: o(0) = CVaR, o(3) = 1.0 (il builtin non distribuisce pesi).
-PUBLIC FUNCTION MINCVAR(r() AS DOUBLE, conf AS DOUBLE, rf AS DOUBLE) AS ARRAY OF DOUBLE
+PUBLIC FUNCTION MINCVAR(hist() AS ARRAY OF DOUBLE, conf AS DOUBLE, rf AS DOUBLE) AS ARRAY OF DOUBLE
+    DIM rows AS LONG = UBOUND(hist) + 1
+    DIM cols AS LONG = UBOUND(hist(0)) + 1
+    DIM flat((rows * cols) - 1) AS DOUBLE
+    FOR i = 0 TO rows - 1
+        FOR j = 0 TO cols - 1
+            flat(i * cols + j) = hist(i)(j)
+        NEXT j
+    NEXT i
     DIM o(3) AS DOUBLE
-    CALL PFN_MINCVAR(r, conf, rf, o)
+    CALL PFN_MINCVAR(flat, conf, rf, o)
     RETURN o
 END FUNCTION
 
 ' Min-CDaR storico: o(0) = CDaR, o(3) = 1.0.
-PUBLIC FUNCTION MINCDAR(r() AS DOUBLE, conf AS DOUBLE, rf AS DOUBLE) AS ARRAY OF DOUBLE
+PUBLIC FUNCTION MINCDAR(hist() AS ARRAY OF DOUBLE, conf AS DOUBLE, rf AS DOUBLE) AS ARRAY OF DOUBLE
+    DIM rows AS LONG = UBOUND(hist) + 1
+    DIM cols AS LONG = UBOUND(hist(0)) + 1
+    DIM flat((rows * cols) - 1) AS DOUBLE
+    FOR i = 0 TO rows - 1
+        FOR j = 0 TO cols - 1
+            flat(i * cols + j) = hist(i)(j)
+        NEXT j
+    NEXT i
     DIM o(3) AS DOUBLE
-    CALL PFN_MINCDAR(r, conf, rf, o)
+    CALL PFN_MINCDAR(flat, conf, rf, o)
     RETURN o
 END FUNCTION
 

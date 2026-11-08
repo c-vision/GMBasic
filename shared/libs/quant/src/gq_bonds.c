@@ -181,7 +181,11 @@ double gq_current_yield(double annual_coupons, double bond_price)
 double gq_duration(double settle_oa, double maturity_oa, double coupon_rate, double yld,
                    int frequency, int basis, int modified)
 {
+    /* `basis` e `modified` sono IGNORATI: le quattro gambe del builtin
+     * TRADING.BONDS.DURATION passano sempre modified = false (Macaulay) e non usano
+     * il day-count. Manteniamo la parita' anche per il 7o argomento calcMethod. */
     (void)basis;
+    (void)modified;
     if (!valid_freq(frequency)) return 0.0;
     int n = (int)((maturity_oa - settle_oa) / 365.0 * frequency + 0.5);
     if (n <= 0) return 0.0;
@@ -197,7 +201,7 @@ double gq_duration(double settle_oa, double maturity_oa, double coupon_rate, dou
     pv += 1.0 / pow(1.0 + yld / frequency, n);
     weighted += ((double)n / frequency) * (1.0 / pow(1.0 + yld / frequency, n));
     double dur = weighted / pv;
-    return modified ? dur / (1.0 + yld / frequency) : dur;
+    return dur; /* sempre Macaulay (parita builtin) */
 }
 
 double gq_price_simple(double settle_oa, double maturity_oa, double rate, double yld,

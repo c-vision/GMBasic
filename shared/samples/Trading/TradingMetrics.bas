@@ -10,12 +10,14 @@
 ' - Rischio: MaxDrawdown, ValueAtRisk (Storico), AnnualizedVolatility.
 ' - Statistica: Skewness, Kurtosis, JarqueBera.
 ' =================================================================================================
-IMPORT TRADING.METRICS AS TM
+IMPORT METRICS AS TM
+IMPORT FUNDAMENTALS
+IMPORT VOLATILITY
 
 SUB Main()
     CLS
     PRINT "╔════════════════════════════════════════════════════════════════════════╗"
-    PRINT "║ TRADING.METRICS - Analisi Performance e Rischio                        ║"
+    PRINT "║ METRICS - Analisi Performance e Rischio                        ║"
     PRINT "╚════════════════════════════════════════════════════════════════════════╝"
     PRINT
     ' Generazione dati sintetici (Rendimenti mensili)
@@ -38,10 +40,10 @@ SUB Main()
     ' --- 2. RISCHIO ---
     PRINT
     PRINT "--- Rischio ---"
-    PRINT "Annualized Volat.:  "; FORMAT(TM.AnnualizedVolatility(Rendimenti, PeriodiAnno), "0.00%")
+    PRINT "Annualized Volat.:  "; FORMAT(VOLATILITY.AnnualizedVolatility(Rendimenti, PeriodiAnno), "0.00%")
     PRINT "Max Drawdown:       "; FORMAT(TM.MaxDrawdown(Rendimenti), "0.00%")
     PRINT "Value At Risk (95%):"; FORMAT(TM.ValueAtRisk(Rendimenti, 0.95), "0.00%")
-    PRINT "Downside Deviation: "; FORMAT(TM.DownsideDeviation(Rendimenti, 0), "0.00%")
+    PRINT "Downside Deviation: "; FORMAT(VOLATILITY.DownsideDeviation(Rendimenti, 0), "0.00%")
     
     ' --- 3. RISK ADJUSTED ---
     PRINT
@@ -65,13 +67,13 @@ SUB Main()
     PRINT
     PRINT "--- Additional Metrics ---"
     DIM r2(3): r2(0)=0.01: r2(1)=-0.005: r2(2)=0.02: r2(3)=0.015
-    PRINT "TM.BookValuePerShare(1000,100)="; TM.BookValuePerShare(1000, 100)
-    PRINT "TM.EquityMultiplier(2000,500)="; TM.EquityMultiplier(2000, 500)
-    PRINT "TM.NAV(5000,2000,100)="; TM.NAV(5000, 2000, 100)
+    PRINT "FUNDAMENTALS.BookValuePerShare(1000,100)="; FUNDAMENTALS.BookValuePerShare(1000, 100)
+    PRINT "FUNDAMENTALS.EquityMultiplier(2000,500)="; FUNDAMENTALS.EquityMultiplier(2000, 500)
+    PRINT "FUNDAMENTALS.NAV(5000,2000,100)="; FUNDAMENTALS.NAV(5000, 2000, 100)
     PRINT
     PRINT "Test Completato."
-PRINT "TM.EPS(500,100)="; TM.EPS(500, 100)
-PRINT "TM.DPS(100,50)="; TM.DPS(100, 50)
+PRINT "FUNDAMENTALS.EPS(500,100)="; FUNDAMENTALS.EPS(500, 100)
+PRINT "FUNDAMENTALS.DPS(100,50)="; FUNDAMENTALS.DPS(100, 50)
 
 PRINT "TM.RETURNSKURTOSIS test:"; TM.RETURNSKURTOSIS(Rendimenti)
 
