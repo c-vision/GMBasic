@@ -1332,7 +1332,7 @@ void gmb_px_draw_ex(int wkind, int x, int y, int w, int h, const char* label,
     if (label) snprintf(wd.label, sizeof(wd.label), "%s", label);
     wd.nitems = nitems > 8 ? 8 : nitems;
     for (int i = 0; i < wd.nitems; i++) snprintf(wd.items[i], sizeof(wd.items[i]), "%s", items && items[i] ? items[i] : "");
-    wd.ival = value; wd.vmin = vmin; wd.vmax = vmax; wd.var = (double*)var; wd.first = first;
+    wd.ival = value; wd.vmin = vmin; wd.vmax = vmax; wd.first = first; wd.var = (double*)var; wd.first = first;
     wd.ncolors = ncolors > 16 ? 16 : ncolors; for (int i = 0; i < wd.ncolors; i++) wd.colors[i] = colors ? colors[i] : 0;
     wd.style = gmb_widget_style_current();
     float sc = GMB_GFX_RENDER_SCALE(); if (sc <= 0.0f) sc = 1.0f;
@@ -2558,6 +2558,90 @@ static int grid_cell(const gmb_pix_widget_t* wd, int r, int c, char* out, int ca
     int i = 0; while (*p && *p != ';' && *p != '|' && i < cap - 1) out[i++] = *p++;
     out[i] = 0; return 1;
 }
+/* ── PITTURA "COME LA GUI" DI UN CONTROLLO NON REGISTRATO ────────────────────
+ * I controlli TUI hanno il loro stato (struct proprie) ma devono avere lo STESSO
+ * aspetto grafico dei controlli GUI. Invece di duplicare dieci renderer, si
+ * costruisce un widget FORM temporaneo e lo si dipinge con `draw_one_widget`:
+ * unica fonte di verità per l'aspetto (AGENTS §0bis).
+ * `kind` = W_TOGGLE/W_TABS/W_STATUSBAR/W_TRACK/W_RADIO/W_PANEL/W_LISTBOX/
+ *          W_DROPDOWN/W_COLORPICKER. */
+static int paint_kind_from_name(const char* k)
+{
+    if (!k) return 0;
+    if (!strcasecmp(k, "toggle"))     return W_TOGGLE;
+    if (!strcasecmp(k, "tabs"))       return W_TABS;
+    if (!strcasecmp(k, "statusbar"))  return W_STATUSBAR;
+    if (!strcasecmp(k, "track"))      return W_TRACK;
+    if (!strcasecmp(k, "radio"))      return W_RADIO;
+    if (!strcasecmp(k, "panel"))      return W_PANEL;
+    if (!strcasecmp(k, "listbox"))    return W_LISTBOX;
+    if (!strcasecmp(k, "dropdown"))   return W_DROPDOWN;
+    if (!strcasecmp(k, "colorpicker"))return W_COLORPICKER;
+    if (!strcasecmp(k, "progress"))   return W_PROGRESS;
+    if (!strcasecmp(k, "check"))      return W_CHECK;
+    return 0;
+}
+
+void gmb_form_paint_widget_px(const char* kind, int x, int y, int w, int h,
+                              const char* items_csv, int sel, int first,
+                              double vmin, double vmax, double value,
+                              const char* label, const char* colors_csv)
+{
+    float sc = GMB_GFX_RENDER_SCALE(); if (sc <= 0.0f) sc = 1.0f;
+    gmb_pix_widget_t wd;
+    memset(&wd, 0, sizeof(wd));
+    wd.kind = paint_kind_from_name(kind);
+    if (!wd.kind) return;
+    wd.base.x = x; wd.base.y = y; wd.base.width = w; wd.base.height = h;
+    wd.base.visible = 1; wd.base.enabled = 1;
+    wd.style = gmb_widget_style_current();
+    if (label) snprintf(wd.label, sizeof(wd.label), "%s", label);
+    if (items_csv && *items_csv) wd.nitems = form_split_items(items_csv, wd.items, 8);
+    wd.ival = value; wd.vmin = vmin; wd.vmax = vmax; wd.first = first;
+    if (wd.kind == W_COLORPICKER)
+    {
+        char buf[256]; snprintf(buf, sizeof(buf), "%s", colors_csv ? colors_csv : "");
+        char* sv = NULL;
+        for (char* tk = strtok_r(buf, ",", &sv); tk && wd.ncolors < 16; tk = strtok_r(NULL, ",", &sv))
+        {
+            unsigned int cc = (unsigned int)strtoul(tk, NULL, 16);
+            wd.colors[wd.ncolors++] = 0xFF000000u | (cc & 0xFFFFFFu);
+        }
+        if (!wd.ncolors) { unsigned int def[8] = { 0xFF000000u,0xFFFFFFFFu,0xFFFF0000u,0xFF00C000u,0xFF3060FFu,0xFFFFD400u,0xFFFF00FFu,0xFF00E5FFu }; for (int k = 0; k < 8; k++) wd.colors[wd.ncolors++] = def[k]; }
+    }
+    wd.ival = value;
+    draw_one_widget(&wd, sc);
+}
+
+/* Griglia non registrata (headers "a|b", data "1|2;3|4"). */
+void gmb_form_paint_grid_px(int x, int y, int w, int h, const char* headers, const char* data, int sel)
+{
+    float sc = GMB_GFX_RENDER_SCALE(); if (sc <= 0.0f) sc = 1.0f;
+    gmb_pix_widget_t wd;
+    memset(&wd, 0, sizeof(wd));
+    wd.kind = W_GRID;
+    wd.base.x = x; wd.base.y = y; wd.base.width = w; wd.base.height = h;
+    wd.base.visible = 1; wd.base.enabled = 1;
+    wd.style = gmb_widget_style_current();
+    /* La griglia TUI non ha intestazioni: se ne sintetizza una (vuota) per avere la
+     * STESSA struttura della griglia GUI (banda header + separatori di colonna). */
+    if (!headers || !*headers)
+    {
+        int cols = 1; { const char* p = data ? data : ""; while (*p && *p != ';') { if (*p == '|') cols++; p++; } }
+        static char hb[128]; int o = 0;
+        for (int i = 0; i < cols && o < 120; i++) o += snprintf(hb + o, sizeof(hb) - (size_t)o, "%s ", i ? "|" : "");
+        headers = hb;
+    }
+    wd.gnc = form_split_items(headers, wd.ghead, 8);
+    snprintf(wd.gdata, sizeof(wd.gdata), "%s", data ? data : "");
+    int r = 1; for (const char* p = wd.gdata; *p; p++) if (*p == ';') r++;
+    wd.gnr = r; if (wd.gnr > 64) wd.gnr = 64;
+    for (int k = 0; k < wd.gnr; k++) wd.gorder[k] = k;
+    wd.gsort_col = -1;
+    wd.ival = sel;
+    draw_one_widget(&wd, sc);
+}
+
 int gmb_form_add_grid(int x, int y, int w, int h, const char* headers, const char* data, double* var)
 {
     if (!GMB_GFX_SCREEN_ON())

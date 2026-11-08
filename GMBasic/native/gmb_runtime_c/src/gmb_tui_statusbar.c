@@ -32,7 +32,9 @@ static void statusbar_draw(void* u, gmb_control_t* c, gmb_screen_buffer_t* buf)
 static void statusbar_draw_px(void* u, gmb_control_t* c)
 {
     gmb_status_bar_t* s = (gmb_status_bar_t*)u;
-    gmb_px_draw_ex(GMB_PX_STATUSBAR, c->x, c->y, c->width, c->height, s->text, NULL, 0, 0, 0, 0, NULL, 0, NULL, 0);
+    int x = (c->px_w > 0) ? c->px_x : c->x, y = (c->px_h > 0) ? c->px_y : c->y;
+    int w = (c->px_w > 0) ? c->px_w : c->width, h = (c->px_h > 0) ? c->px_h : c->height;
+    gmb_form_paint_widget_px("statusbar", x, y, w, h, NULL, 0, 0, 0, 0, 0, s->text, NULL);
 }
 void gmb_status_bar_init(gmb_status_bar_t* s, int x, int y, int w)
 {

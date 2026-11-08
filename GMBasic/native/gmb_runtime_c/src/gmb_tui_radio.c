@@ -52,8 +52,12 @@ static bool radio_click(void* u, gmb_control_t* c, int x, int y)
 static void radio_draw_px(void* u, gmb_control_t* c)
 {
     gmb_radio_group_t* r = (gmb_radio_group_t*)u;
-    const char* _it[16]; for (int i = 0; i < r->options_count && i < 16; i++) _it[i] = r->options[i];
-    gmb_px_draw_ex(GMB_PX_RADIO, c->x, c->y, c->width, c->height, NULL, _it, r->options_count, r->selected, 0, 0, NULL, 0, NULL, 0);
+    int x = (c->px_w > 0) ? c->px_x : c->x, y = (c->px_h > 0) ? c->px_y : c->y;
+    int w = (c->px_w > 0) ? c->px_w : c->width, h = (c->px_h > 0) ? c->px_h : c->height;
+    char csv[1024]; int o = 0;
+    for (int i = 0; i < r->options_count && o < 1000; i++)
+        o += snprintf(csv + o, sizeof(csv) - (size_t)o, "%s%s", i ? "|" : "", r->options[i]);
+    gmb_form_paint_widget_px("radio", x, y, w, h, csv, r->selected, 0, 0, 0, 0, NULL, NULL);
 }
 void gmb_radio_group_init(gmb_radio_group_t* r, int x, int y, int w, int h)
 {

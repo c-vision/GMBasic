@@ -69,9 +69,18 @@ static bool grid_click(void* u, gmb_control_t* c, int x, int y)
 static void grid_draw_px(void* u, gmb_control_t* c)
 {
     gmb_grid_t* g = (gmb_grid_t*)u;
-    static char _buf[32][256]; static const char* _it[32]; int cols = g->cols > 0 ? g->cols : 1; int rows = g->cells_count / cols; int n = 0;
-    for (int r = 0; r < rows && n < 32; r++) { int o = 0; for (int cc = 0; cc < cols && o < 250; cc++) o += snprintf(_buf[n] + o, (size_t)(256 - o), "%s%s", cc ? " | " : "", g->cells[r * cols + cc]); _it[n] = _buf[n]; n++; }
-    gmb_px_draw_ex(GMB_PX_LISTBOX, c->x, c->y, c->width, c->height, NULL, _it, n, g->sel_row, 0, 0, NULL, 0, NULL, 0);
+    int x = (c->px_w > 0) ? c->px_x : c->x, y = (c->px_h > 0) ? c->px_y : c->y;
+    int w = (c->px_w > 0) ? c->px_w : c->width, h = (c->px_h > 0) ? c->px_h : c->height;
+    int cols = g->cols > 0 ? g->cols : 1;
+    int rows = g->cells_count / cols;
+    char data[2048]; int o = 0;
+    for (int r = 0; r < rows && o < 2000; r++)
+    {
+        if (r && o < 2000) data[o++] = ';';
+        for (int cc = 0; cc < cols && o < 2000; cc++)
+            o += snprintf(data + o, sizeof(data) - (size_t)o, "%s%s", cc ? "|" : "", g->cells[r * cols + cc]);
+    }
+    gmb_form_paint_grid_px(x, y, w, h, NULL, data, g->sel_row);
 }
 void gmb_grid_init(gmb_grid_t* g, int x, int y, int w, int h)
 {

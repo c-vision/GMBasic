@@ -89,9 +89,13 @@ static bool colorpicker_click(void* u, gmb_control_t* c, int x, int y)
 static void colorpicker_draw_px(void* u, gmb_control_t* c)
 {
     gmb_color_picker_t* p = (gmb_color_picker_t*)u;
-    unsigned cols[256]; int total = (p->columns > 0 ? p->columns : 8) * 8; if (total > 256) total = 256;
-    for (int i = 0; i < total; i++) cols[i] = ((unsigned)p->palette[i].r << 16) | ((unsigned)p->palette[i].g << 8) | p->palette[i].b;
-    gmb_px_draw_ex(GMB_PX_COLORPICKER, c->x, c->y, c->width, c->height, NULL, NULL, 0, p->selected_index, 0, 0, NULL, 0, cols, total);
+    int x = (c->px_w > 0) ? c->px_x : c->x, y = (c->px_h > 0) ? c->px_y : c->y;
+    int w = (c->px_w > 0) ? c->px_w : c->width, h = (c->px_h > 0) ? c->px_h : c->height;
+    char csv[512]; int o = 0;
+    /* Palette: si usa quella di DEFAULT del renderer GUI (parita. visiva). La palette
+     * della struct TUI resta il modello logico del controllo. */
+    (void)p; csv[0] = 0;
+    gmb_form_paint_widget_px("colorpicker", x, y, w, h, NULL, 0, 0, 0, 0, 0, NULL, csv);
 }
 void gmb_color_picker_init(gmb_color_picker_t* p, int x, int y, int w, int h)
 {

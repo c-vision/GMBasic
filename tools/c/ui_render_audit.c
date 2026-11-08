@@ -76,7 +76,7 @@ int main(void)
     chk("TREEVIEW",      gmb_control_add_tree(300, 140, 200, 100, "a/b", &v));
     chk("TEXTBOX",       gmb_form_add_textbox(300, 260, 200, 34, &s));
     chk("COLORPICKER",   gmb_control_add_colorpicker(300, 310, 200, "", &v));
-    chk("STATUSBAR",     gmb_form_add_statusbar(300, 380, 200, "st"));
+    chk("PROGRESS2",     gmb_form_add_statusbar(300, 380, 200, "st"));
     chk("SCROLLBAR",     gmb_control_add_scrollbar(300, 420, 200, 0, 100, 0, &v));
     chk("STARRATING",    gmb_control_add_starrating(300, 460, 200, 5, 3, &v));
     chk("QR",            gmb_form_add_qr(300, 500, 90, 90, "x"));
@@ -113,6 +113,11 @@ int main(void)
     chk_tui("FUNCTIONKEYBAR", gmb_tui_add_fkeybar(20, 560, 400, "F1|F2"));
     { static gmb_splitter_t sp; gmb_splitter_init(&sp, 20, 600, 200, 20, 0); chk_tui("SPLITTER", &sp.ctrl); }
     { static gmb_label_t lb; gmb_label_init(&lb, 20, 640, 200, "testo"); chk_tui("LABEL", &lb.ctrl); }
+
+    /* Disegna tutto e salva l.inventario visivo (per l.occhio umano). */
+    { extern void gmb_form_render_if_dirty(void); extern void gmb_tui_draw_px_all(void);
+      gmb_form_render_if_dirty(); gmb_tui_draw_px_all();
+      gmb_gfx_save_screen_png("tools/reports/ui_render_audit.png"); }
 
     printf("\nTOTALE: %d controlli, %d senza renderer pixel\n", total, fails);
     return fails;

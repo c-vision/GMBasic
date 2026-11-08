@@ -44,7 +44,11 @@ static bool toggle_click(void* u, gmb_control_t* c, int x, int y)
 static void toggle_draw_px(void* u, gmb_control_t* c)
 {
     gmb_toggle_button_t* t = (gmb_toggle_button_t*)u;
-    gmb_px_draw_ex(GMB_PX_TOGGLE, c->x, c->y, c->width, c->height, t->caption, NULL, 0, t->pressed ? 1.0 : 0.0, 0, 0, NULL, 0, NULL, 0);
+    int x = (c->px_w > 0) ? c->px_x : c->x, y = (c->px_h > 0) ? c->px_y : c->y;
+    int w = (c->px_w > 0) ? c->px_w : c->width, h = (c->px_h > 0) ? c->px_h : c->height;
+    /* Parita' GUI: si dipinge con il renderer dei controlli grafici (una sola fonte). */
+    gmb_form_paint_widget_px("toggle", x, y, w, h, NULL, 0, 0, 0, 0,
+                             t->pressed ? 1.0 : 0.0, t->caption, NULL);
 }
 void gmb_toggle_button_init(gmb_toggle_button_t* t, int x, int y, int w, const char* caption)
 {
