@@ -910,7 +910,8 @@ converge a Black-Scholes (200 passi: 10.440591 contro 10.450584).
 `PORTFOLIOMAD(r)` = scarto medio assoluto dalla mediana; `PORTFOLIOSEMIMAD(r[, target])`
 sui valori `< target`; `MINVOLATILITY(Σ)`; `MAXSHARPE(μ, Σ, rf)`; `MEANVARIANCE(μ, Σ)`
 (come MAXSHARPE con `rf = 0`); `RISKPARITY(Σ)`; `EQUALLYWEIGHTED(n)`; `MAXRETURN(μ)`;
-`KELLYCRITERION(r, rf)` (rf ignorato); `MINCVAR(r, conf, rf)`; `MINCDAR(r, conf, rf)`;
+`KELLYCRITERION(storico, rf)`, `MINCVAR(storico, conf, rf)`, `MINCDAR(storico, conf, rf)`
+(storico = matrice jagged appiattita; rf ignorato);
 `EVOLVE(μ, Σ)`; `BLACKLITTERMAN(caps, Σ, λ, τ, P, Q, Ω, rf)` con
 `Π = λΣw_mkt`, posterior `[(τΣ)⁻¹ + PᵀΩ⁻¹P]⁻¹[(τΣ)⁻¹Π + PᵀΩ⁻¹Q]` e poi MAXSHARPE;
 `PVAR(hist, w, conf)` in percentuale e `CVAR(hist, w, conf)` in frazione, entrambi sul

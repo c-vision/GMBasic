@@ -31,7 +31,7 @@ SUB Main()
   PRINT "|ew="; FORMAT(o(3), "#.######")
   o = PORTFOLIO.MAXRETURN(m)
   PRINT "|mr="; FORMAT(o(0), "#.######"); ":"; o(3); o(4); o(5)
-  DIM hm(0) AS ARRAY OF DOUBLE : hm(0) = m
+  DIM hm(0) AS ARRAY OF DOUBLE : hm(0) = {0.10, 0.05, 0.02}
   o = PORTFOLIO.KELLYCRITERION(hm, 0.01)
   PRINT "|kelly="; FORMAT(o(0), "#.######")
   o = PORTFOLIO.MINCVAR(hm, 0.95, 0.01)
