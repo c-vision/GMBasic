@@ -2232,6 +2232,9 @@ static double gmb_stats_beta(const double* x, const double* y, int n)
     return gmb_stats_cov_sample(x, y, n) / v;
 }
 
+/* Prototipo: gmb_tm_calmar_ratio la usa; la definizione sta nella sezione B3 più sotto. */
+double gmb_tm_max_drawdown(const double* r, int n);
+
 double gmb_tm_calmar_ratio(const double* r, int n, int ppy)
 {
     /* canone Metrics.CalmarRatio = AnnualizedReturn / |MaxDrawdown|; MaxDrawdown = compound
