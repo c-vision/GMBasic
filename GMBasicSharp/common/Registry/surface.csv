@@ -945,7 +945,6 @@ procedure,RDD,TABLEREVERT,RddTableRevert
 procedure,RDD,TABLEUPDATE,RddTableUpdate
 procedure,RDD,TODAY,RddToday
 procedure,RDD,VALTYPE,RddValType
-procedure,REGRESSION,Regress,Regress
 procedure,SIGNAL,BLACKMAN,SignalBlackman
 procedure,SIGNAL,BUTTER,SignalButter
 procedure,SIGNAL,CHEBY1,SignalCheby1
@@ -1094,6 +1093,7 @@ procedure,STATS,ParetoPpf,ParetoPpf
 procedure,STATS,ParetoSf,StatsParetoSf
 procedure,STATS,PearsonR,StatsPearsonR
 procedure,STATS,PoissonPmf,PoissonPmf
+procedure,STATS,Regress,Regress
 procedure,STATS,Shapiro,ShapiroWilk
 procedure,STATS,SkewTest,StatsSkewTest
 procedure,STATS,SkewedNormalPdf,SkewedNormalPdf

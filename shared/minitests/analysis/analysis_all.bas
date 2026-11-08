@@ -11,7 +11,6 @@ IMPORT MULTIVARIATE
 
 
 IMPORT MULTIVARIATE
-IMPORT REGRESSION
 IMPORT STATS
 IMPORT TIMESERIES
 SUB A_analysis_interp_real()
@@ -78,8 +77,8 @@ END SUB
 SUB A_udt()
   DIM x(3) AS DOUBLE = {1, 2, 3, 4}
   DIM y(3) AS DOUBLE = {2.1, 4.2, 6.1, 8.0}
-  DIM r AS REGRESSION.RegressionResult
-  r = REGRESSION.Regress(x, y)
+  DIM r AS STATS.RegressionResult
+  r = STATS.Regress(x, y)
   PRINT ROUND(r.Slope, 12)
   PRINT ROUND(r.Intercept, 12)
   PRINT ROUND(r.R2, 12)

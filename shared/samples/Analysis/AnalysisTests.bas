@@ -17,7 +17,6 @@
 ' =================================================================================================
 IMPORT MULTIVARIATE
 IMPORT TIMESERIES
-IMPORT REGRESSION
 IMPORT STATS
 IMPORT JSON
 
@@ -42,9 +41,9 @@ SUB Main()
     PRINT "--- 1. Regressione Lineare ---"
     
     ' Ora 'RegRes' sarà del tipo nativo 'RegressionResultType' fornito da REGRESSION.
-    DIM RegRes AS REGRESSION.RegressionResult
+    DIM RegRes AS STATS.RegressionResult
     ' Esegue la regressione OLS
-    RegRes = REGRESSION.Regress(DatiX, DatiY)
+    RegRes = STATS.Regress(DatiX, DatiY)
     
     PRINT "Pendenza (Slope):    "; FORMAT(RegRes.Slope, "0.00")
     PRINT "Intercetta:          "; FORMAT(RegRes.Intercept, "0.00")

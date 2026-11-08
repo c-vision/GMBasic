@@ -10410,20 +10410,9 @@
       "pure": false
     },
     {
-      "ns": "REGRESSION",
-      "name": "Regress",
-      "id": 947,
-      "tokenKind": 723,
-      "kindName": "Regress",
-      "fn": true,
-      "arityMin": 2,
-      "arityMax": 2,
-      "pure": false
-    },
-    {
       "ns": "SIGNAL",
       "name": "BLACKMAN",
-      "id": 948,
+      "id": 947,
       "tokenKind": 632,
       "kindName": "SignalBlackman",
       "fn": true,
@@ -10434,7 +10423,7 @@
     {
       "ns": "SIGNAL",
       "name": "BUTTER",
-      "id": 949,
+      "id": 948,
       "tokenKind": 633,
       "kindName": "SignalButter",
       "fn": true,
@@ -10445,7 +10434,7 @@
     {
       "ns": "SIGNAL",
       "name": "CHEBY1",
-      "id": 950,
+      "id": 949,
       "tokenKind": 634,
       "kindName": "SignalCheby1",
       "fn": true,
@@ -10456,7 +10445,7 @@
     {
       "ns": "SIGNAL",
       "name": "CHEBY2",
-      "id": 951,
+      "id": 950,
       "tokenKind": 635,
       "kindName": "SignalCheby2",
       "fn": true,
@@ -10467,7 +10456,7 @@
     {
       "ns": "SIGNAL",
       "name": "CONVOLVE",
-      "id": 952,
+      "id": 951,
       "tokenKind": 628,
       "kindName": "SignalConvolve",
       "fn": true,
@@ -10478,7 +10467,7 @@
     {
       "ns": "SIGNAL",
       "name": "CORRELATE",
-      "id": 953,
+      "id": 952,
       "tokenKind": 629,
       "kindName": "SignalCorrelate",
       "fn": true,
@@ -10489,7 +10478,7 @@
     {
       "ns": "SIGNAL",
       "name": "DECIMATE",
-      "id": 954,
+      "id": 953,
       "tokenKind": 1877,
       "kindName": "SignalDecimate",
       "fn": true,
@@ -10500,7 +10489,7 @@
     {
       "ns": "SIGNAL",
       "name": "ELLIP",
-      "id": 955,
+      "id": 954,
       "tokenKind": 636,
       "kindName": "SignalEllip",
       "fn": true,
@@ -10511,7 +10500,7 @@
     {
       "ns": "SIGNAL",
       "name": "FILTFILT",
-      "id": 956,
+      "id": 955,
       "tokenKind": 638,
       "kindName": "SignalFiltfilt",
       "fn": true,
@@ -10522,7 +10511,7 @@
     {
       "ns": "SIGNAL",
       "name": "FINDPEAKS",
-      "id": 957,
+      "id": 956,
       "tokenKind": 1872,
       "kindName": "SignalFindPeaks",
       "fn": true,
@@ -10533,7 +10522,7 @@
     {
       "ns": "SIGNAL",
       "name": "FIRWIN",
-      "id": 958,
+      "id": 957,
       "tokenKind": 1871,
       "kindName": "SignalFirwin",
       "fn": true,
@@ -10544,7 +10533,7 @@
     {
       "ns": "SIGNAL",
       "name": "FREQZ",
-      "id": 959,
+      "id": 958,
       "tokenKind": 639,
       "kindName": "SignalFreqz",
       "fn": true,
@@ -10555,7 +10544,7 @@
     {
       "ns": "SIGNAL",
       "name": "HAMMING",
-      "id": 960,
+      "id": 959,
       "tokenKind": 631,
       "kindName": "SignalHamming",
       "fn": true,
@@ -10566,7 +10555,7 @@
     {
       "ns": "SIGNAL",
       "name": "HANN",
-      "id": 961,
+      "id": 960,
       "tokenKind": 630,
       "kindName": "SignalHann",
       "fn": true,
@@ -10577,7 +10566,7 @@
     {
       "ns": "SIGNAL",
       "name": "LFILTER",
-      "id": 962,
+      "id": 961,
       "tokenKind": 637,
       "kindName": "SignalLfilter",
       "fn": true,
@@ -10588,7 +10577,7 @@
     {
       "ns": "SIGNAL",
       "name": "RESAMPLE",
-      "id": 963,
+      "id": 962,
       "tokenKind": 1876,
       "kindName": "SignalResample",
       "fn": true,
@@ -10599,7 +10588,7 @@
     {
       "ns": "SIGNAL",
       "name": "SAVGOLFILTER",
-      "id": 964,
+      "id": 963,
       "tokenKind": 1875,
       "kindName": "SignalSavgolFilter",
       "fn": true,
@@ -10610,7 +10599,7 @@
     {
       "ns": "SIGNAL",
       "name": "WELCH",
-      "id": 965,
+      "id": 964,
       "tokenKind": 1874,
       "kindName": "SignalWelch",
       "fn": true,
@@ -10621,7 +10610,7 @@
     {
       "ns": "SPATIAL",
       "name": "CDIST",
-      "id": 966,
+      "id": 965,
       "tokenKind": 1881,
       "kindName": "SpatialCdist",
       "fn": true,
@@ -10632,7 +10621,7 @@
     {
       "ns": "SPATIAL",
       "name": "CONVEXHULL",
-      "id": 967,
+      "id": 966,
       "tokenKind": 1883,
       "kindName": "SpatialConvexHull",
       "fn": true,
@@ -10643,7 +10632,7 @@
     {
       "ns": "SPATIAL",
       "name": "DISTANCEMATRIX",
-      "id": 968,
+      "id": 967,
       "tokenKind": 1882,
       "kindName": "SpatialDistanceMatrix",
       "fn": true,
@@ -10654,7 +10643,7 @@
     {
       "ns": "SPATIAL",
       "name": "PDIST",
-      "id": 969,
+      "id": 968,
       "tokenKind": 1880,
       "kindName": "SpatialPdist",
       "fn": true,
@@ -10665,7 +10654,7 @@
     {
       "ns": "SPEED",
       "name": "BEGINGROUPCOMMIT",
-      "id": 970,
+      "id": 969,
       "tokenKind": 1023,
       "kindName": "SpeedBeginGroupCommit",
       "fn": true,
@@ -10676,7 +10665,7 @@
     {
       "ns": "SPEED",
       "name": "BEGINGROUPCOMMIT",
-      "id": 971,
+      "id": 970,
       "tokenKind": 1023,
       "kindName": "SpeedBeginGroupCommit",
       "fn": true,
@@ -10687,7 +10676,7 @@
     {
       "ns": "SPEED",
       "name": "ENDGROUPCOMMIT",
-      "id": 972,
+      "id": 971,
       "tokenKind": 1024,
       "kindName": "SpeedEndGroupCommit",
       "fn": true,
@@ -10698,7 +10687,7 @@
     {
       "ns": "SPEED",
       "name": "ENDGROUPCOMMIT",
-      "id": 973,
+      "id": 972,
       "tokenKind": 1024,
       "kindName": "SpeedEndGroupCommit",
       "fn": true,
@@ -10709,7 +10698,7 @@
     {
       "ns": "SPEED",
       "name": "EOF",
-      "id": 974,
+      "id": 973,
       "tokenKind": 979,
       "kindName": "EofFunc",
       "fn": true,
@@ -10720,7 +10709,7 @@
     {
       "ns": "SPEED",
       "name": "FLUSHDURABILITY",
-      "id": 975,
+      "id": 974,
       "tokenKind": 1022,
       "kindName": "SpeedFlushDurability",
       "fn": true,
@@ -10731,7 +10720,7 @@
     {
       "ns": "SPEED",
       "name": "FLUSHDURABILITY",
-      "id": 976,
+      "id": 975,
       "tokenKind": 1022,
       "kindName": "SpeedFlushDurability",
       "fn": true,
@@ -10742,7 +10731,7 @@
     {
       "ns": "SPEED",
       "name": "INFO",
-      "id": 977,
+      "id": 976,
       "tokenKind": 1026,
       "kindName": "SpeedInfo",
       "fn": true,
@@ -10753,7 +10742,7 @@
     {
       "ns": "SPEED",
       "name": "INFO",
-      "id": 978,
+      "id": 977,
       "tokenKind": 1026,
       "kindName": "SpeedInfo",
       "fn": true,
@@ -10764,7 +10753,7 @@
     {
       "ns": "SPEED",
       "name": "SELECTED",
-      "id": 979,
+      "id": 978,
       "tokenKind": 1001,
       "kindName": "Selected",
       "fn": true,
@@ -10775,7 +10764,7 @@
     {
       "ns": "SPEED",
       "name": "SELECTED",
-      "id": 980,
+      "id": 979,
       "tokenKind": 1001,
       "kindName": "Selected",
       "fn": true,
@@ -10786,7 +10775,7 @@
     {
       "ns": "SPEED",
       "name": "SETDURABILITY",
-      "id": 981,
+      "id": 980,
       "tokenKind": 1021,
       "kindName": "SpeedSetDurability",
       "fn": true,
@@ -10797,7 +10786,7 @@
     {
       "ns": "SPEED",
       "name": "SETDURABILITY",
-      "id": 982,
+      "id": 981,
       "tokenKind": 1021,
       "kindName": "SpeedSetDurability",
       "fn": true,
@@ -10808,7 +10797,7 @@
     {
       "ns": "SPEED",
       "name": "SETMANY",
-      "id": 983,
+      "id": 982,
       "tokenKind": 1025,
       "kindName": "SpeedSetMany",
       "fn": true,
@@ -10819,7 +10808,7 @@
     {
       "ns": "SPEED",
       "name": "SETMANY",
-      "id": 984,
+      "id": 983,
       "tokenKind": 1025,
       "kindName": "SpeedSetMany",
       "fn": true,
@@ -10830,12 +10819,23 @@
     {
       "ns": "SPEED",
       "name": "VALIDATE",
-      "id": 985,
+      "id": 984,
       "tokenKind": 1027,
       "kindName": "SpeedValidate",
       "fn": true,
       "arityMin": 0,
       "arityMax": 0,
+      "pure": false
+    },
+    {
+      "ns": "SPEED",
+      "name": "VALIDATE",
+      "id": 985,
+      "tokenKind": 1027,
+      "kindName": "SpeedValidate",
+      "fn": true,
+      "arityMin": 1,
+      "arityMax": 1,
       "pure": false
     },
     {
@@ -10856,17 +10856,6 @@
       "tokenKind": 1027,
       "kindName": "SpeedValidate",
       "fn": true,
-      "arityMin": 1,
-      "arityMax": 1,
-      "pure": false
-    },
-    {
-      "ns": "SPEED",
-      "name": "VALIDATE",
-      "id": 988,
-      "tokenKind": 1027,
-      "kindName": "SpeedValidate",
-      "fn": true,
       "arityMin": 2,
       "arityMax": 2,
       "pure": false
@@ -10874,7 +10863,7 @@
     {
       "ns": "SQL",
       "name": "CHANGES",
-      "id": 989,
+      "id": 988,
       "tokenKind": 1035,
       "kindName": "SqlChanges",
       "fn": true,
@@ -10885,7 +10874,7 @@
     {
       "ns": "SQL",
       "name": "COL",
-      "id": 990,
+      "id": 989,
       "tokenKind": 2475,
       "kindName": "SqlCol",
       "fn": true,
@@ -10896,7 +10885,7 @@
     {
       "ns": "SQL",
       "name": "DFSCHEMA",
-      "id": 991,
+      "id": 990,
       "tokenKind": 2474,
       "kindName": "SqlDfSchema",
       "fn": true,
@@ -10907,7 +10896,7 @@
     {
       "ns": "SQL",
       "name": "EXEC",
-      "id": 992,
+      "id": 991,
       "tokenKind": 1029,
       "kindName": "SqlExec",
       "fn": true,
@@ -10918,7 +10907,7 @@
     {
       "ns": "SQL",
       "name": "FETCH",
-      "id": 993,
+      "id": 992,
       "tokenKind": 1033,
       "kindName": "SqlFetch",
       "fn": true,
@@ -10929,7 +10918,7 @@
     {
       "ns": "SQL",
       "name": "FROMCSV",
-      "id": 994,
+      "id": 993,
       "tokenKind": 2477,
       "kindName": "SqlFromCsv",
       "fn": true,
@@ -10940,7 +10929,7 @@
     {
       "ns": "SQL",
       "name": "LASTINSERTROWID",
-      "id": 995,
+      "id": 994,
       "tokenKind": 1034,
       "kindName": "SqlLastInsertRowId",
       "fn": true,
@@ -10951,7 +10940,7 @@
     {
       "ns": "SQL",
       "name": "TOCSV",
-      "id": 996,
+      "id": 995,
       "tokenKind": 2476,
       "kindName": "SqlToCsv",
       "fn": true,
@@ -10962,7 +10951,7 @@
     {
       "ns": "STATS",
       "name": "Anova",
-      "id": 997,
+      "id": 996,
       "tokenKind": 1755,
       "kindName": "StatsAnova",
       "fn": true,
@@ -10973,7 +10962,7 @@
     {
       "ns": "STATS",
       "name": "BernoulliPmf",
-      "id": 998,
+      "id": 997,
       "tokenKind": 831,
       "kindName": "BernoulliPmf",
       "fn": true,
@@ -10984,7 +10973,7 @@
     {
       "ns": "STATS",
       "name": "BetaCdf",
-      "id": 999,
+      "id": 998,
       "tokenKind": 680,
       "kindName": "BetaCdf",
       "fn": true,
@@ -10995,7 +10984,7 @@
     {
       "ns": "STATS",
       "name": "BetaIsf",
-      "id": 1000,
+      "id": 999,
       "tokenKind": 1792,
       "kindName": "StatsBetaIsf",
       "fn": true,
@@ -11006,7 +10995,7 @@
     {
       "ns": "STATS",
       "name": "BetaPdf",
-      "id": 1001,
+      "id": 1000,
       "tokenKind": 679,
       "kindName": "BetaPdf",
       "fn": true,
@@ -11017,7 +11006,7 @@
     {
       "ns": "STATS",
       "name": "BetaPpf",
-      "id": 1002,
+      "id": 1001,
       "tokenKind": 700,
       "kindName": "BetaPpf",
       "fn": true,
@@ -11028,7 +11017,7 @@
     {
       "ns": "STATS",
       "name": "BetaSf",
-      "id": 1003,
+      "id": 1002,
       "tokenKind": 1783,
       "kindName": "StatsBetaSf",
       "fn": true,
@@ -11039,7 +11028,7 @@
     {
       "ns": "STATS",
       "name": "BinomialPmf",
-      "id": 1004,
+      "id": 1003,
       "tokenKind": 832,
       "kindName": "BinomialPmf",
       "fn": true,
@@ -11050,7 +11039,7 @@
     {
       "ns": "STATS",
       "name": "Chi2",
-      "id": 1005,
+      "id": 1004,
       "tokenKind": 1756,
       "kindName": "Chi2Test",
       "fn": true,
@@ -11061,7 +11050,7 @@
     {
       "ns": "STATS",
       "name": "Chi2Con",
-      "id": 1006,
+      "id": 1005,
       "tokenKind": 1857,
       "kindName": "StatsChi2Contingency",
       "fn": true,
@@ -11072,7 +11061,7 @@
     {
       "ns": "STATS",
       "name": "ChiCdf",
-      "id": 1007,
+      "id": 1006,
       "tokenKind": 676,
       "kindName": "ChiCdf",
       "fn": true,
@@ -11083,7 +11072,7 @@
     {
       "ns": "STATS",
       "name": "ChiIsf",
-      "id": 1008,
+      "id": 1007,
       "tokenKind": 1797,
       "kindName": "StatsChiIsf",
       "fn": true,
@@ -11094,7 +11083,7 @@
     {
       "ns": "STATS",
       "name": "ChiPdf",
-      "id": 1009,
+      "id": 1008,
       "tokenKind": 675,
       "kindName": "ChiPdf",
       "fn": true,
@@ -11105,7 +11094,7 @@
     {
       "ns": "STATS",
       "name": "ChiPpf",
-      "id": 1010,
+      "id": 1009,
       "tokenKind": 699,
       "kindName": "ChiPpf",
       "fn": true,
@@ -11116,7 +11105,7 @@
     {
       "ns": "STATS",
       "name": "ChiSf",
-      "id": 1011,
+      "id": 1010,
       "tokenKind": 1784,
       "kindName": "StatsChiSf",
       "fn": true,
@@ -11127,7 +11116,7 @@
     {
       "ns": "STATS",
       "name": "ChiSquaredCdf",
-      "id": 1012,
+      "id": 1011,
       "tokenKind": 678,
       "kindName": "ChiSquaredCdf",
       "fn": true,
@@ -11138,7 +11127,7 @@
     {
       "ns": "STATS",
       "name": "ChiSquaredIsf",
-      "id": 1013,
+      "id": 1012,
       "tokenKind": 698,
       "kindName": "ChiSquaredIsf",
       "fn": true,
@@ -11149,7 +11138,7 @@
     {
       "ns": "STATS",
       "name": "ChiSquaredPdf",
-      "id": 1014,
+      "id": 1013,
       "tokenKind": 677,
       "kindName": "ChiSquaredPdf",
       "fn": true,
@@ -11160,7 +11149,7 @@
     {
       "ns": "STATS",
       "name": "ChiSquaredPpf",
-      "id": 1015,
+      "id": 1014,
       "tokenKind": 697,
       "kindName": "ChiSquaredPpf",
       "fn": true,
@@ -11171,7 +11160,7 @@
     {
       "ns": "STATS",
       "name": "ChiSquaredSf",
-      "id": 1016,
+      "id": 1015,
       "tokenKind": 1772,
       "kindName": "StatsChiSquaredSf",
       "fn": true,
@@ -11182,7 +11171,7 @@
     {
       "ns": "STATS",
       "name": "Describe",
-      "id": 1017,
+      "id": 1016,
       "tokenKind": 1870,
       "kindName": "StatsDescribe",
       "fn": true,
@@ -11193,7 +11182,7 @@
     {
       "ns": "STATS",
       "name": "ExponentialCdf",
-      "id": 1018,
+      "id": 1017,
       "tokenKind": 688,
       "kindName": "ExponentialCdf",
       "fn": true,
@@ -11204,7 +11193,7 @@
     {
       "ns": "STATS",
       "name": "ExponentialIsf",
-      "id": 1019,
+      "id": 1018,
       "tokenKind": 706,
       "kindName": "ExponentialIsf",
       "fn": true,
@@ -11215,7 +11204,7 @@
     {
       "ns": "STATS",
       "name": "ExponentialPdf",
-      "id": 1020,
+      "id": 1019,
       "tokenKind": 687,
       "kindName": "ExponentialPdf",
       "fn": true,
@@ -11226,7 +11215,7 @@
     {
       "ns": "STATS",
       "name": "ExponentialPpf",
-      "id": 1021,
+      "id": 1020,
       "tokenKind": 705,
       "kindName": "ExponentialPpf",
       "fn": true,
@@ -11237,7 +11226,7 @@
     {
       "ns": "STATS",
       "name": "ExponentialSf",
-      "id": 1022,
+      "id": 1021,
       "tokenKind": 1770,
       "kindName": "StatsExpSf",
       "fn": true,
@@ -11248,7 +11237,7 @@
     {
       "ns": "STATS",
       "name": "FCdf",
-      "id": 1023,
+      "id": 1022,
       "tokenKind": 686,
       "kindName": "FCdf",
       "fn": true,
@@ -11259,7 +11248,7 @@
     {
       "ns": "STATS",
       "name": "FIsf",
-      "id": 1024,
+      "id": 1023,
       "tokenKind": 702,
       "kindName": "FIsf",
       "fn": true,
@@ -11270,7 +11259,7 @@
     {
       "ns": "STATS",
       "name": "FPdf",
-      "id": 1025,
+      "id": 1024,
       "tokenKind": 685,
       "kindName": "FPdf",
       "fn": true,
@@ -11281,7 +11270,7 @@
     {
       "ns": "STATS",
       "name": "FPpf",
-      "id": 1026,
+      "id": 1025,
       "tokenKind": 701,
       "kindName": "FPpf",
       "fn": true,
@@ -11292,7 +11281,7 @@
     {
       "ns": "STATS",
       "name": "FSf",
-      "id": 1027,
+      "id": 1026,
       "tokenKind": 1774,
       "kindName": "StatsFSf",
       "fn": true,
@@ -11303,7 +11292,7 @@
     {
       "ns": "STATS",
       "name": "FTest",
-      "id": 1028,
+      "id": 1027,
       "tokenKind": 1782,
       "kindName": "StatsFTest",
       "fn": true,
@@ -11314,7 +11303,7 @@
     {
       "ns": "STATS",
       "name": "Fisher",
-      "id": 1029,
+      "id": 1028,
       "tokenKind": 1757,
       "kindName": "FisherExact",
       "fn": true,
@@ -11325,7 +11314,7 @@
     {
       "ns": "STATS",
       "name": "GammaCdf",
-      "id": 1030,
+      "id": 1029,
       "tokenKind": 1861,
       "kindName": "StatsGammaCdf",
       "fn": true,
@@ -11336,7 +11325,7 @@
     {
       "ns": "STATS",
       "name": "GammaIsf",
-      "id": 1031,
+      "id": 1030,
       "tokenKind": 1863,
       "kindName": "StatsGammaIsf",
       "fn": true,
@@ -11347,7 +11336,7 @@
     {
       "ns": "STATS",
       "name": "GammaPdf",
-      "id": 1032,
+      "id": 1031,
       "tokenKind": 1860,
       "kindName": "StatsGammaPdf",
       "fn": true,
@@ -11358,7 +11347,7 @@
     {
       "ns": "STATS",
       "name": "GammaPpf",
-      "id": 1033,
+      "id": 1032,
       "tokenKind": 1862,
       "kindName": "StatsGammaPpf",
       "fn": true,
@@ -11369,7 +11358,7 @@
     {
       "ns": "STATS",
       "name": "GammaSf",
-      "id": 1034,
+      "id": 1033,
       "tokenKind": 1769,
       "kindName": "StatsGammaSf",
       "fn": true,
@@ -11380,7 +11369,7 @@
     {
       "ns": "STATS",
       "name": "GeometricPmf",
-      "id": 1035,
+      "id": 1034,
       "tokenKind": 834,
       "kindName": "GeometricPmf",
       "fn": true,
@@ -11391,7 +11380,7 @@
     {
       "ns": "STATS",
       "name": "HypergeometricPmf",
-      "id": 1036,
+      "id": 1035,
       "tokenKind": 836,
       "kindName": "HypergeometricPmf",
       "fn": true,
@@ -11402,7 +11391,7 @@
     {
       "ns": "STATS",
       "name": "Iqr",
-      "id": 1037,
+      "id": 1036,
       "tokenKind": 1869,
       "kindName": "StatsIqr",
       "fn": true,
@@ -11413,7 +11402,7 @@
     {
       "ns": "STATS",
       "name": "JarqueBera",
-      "id": 1038,
+      "id": 1037,
       "tokenKind": 1866,
       "kindName": "StatsJarqueBera",
       "fn": true,
@@ -11424,7 +11413,7 @@
     {
       "ns": "STATS",
       "name": "KendallTau",
-      "id": 1039,
+      "id": 1038,
       "tokenKind": 1781,
       "kindName": "StatsKendallTau",
       "fn": true,
@@ -11435,7 +11424,7 @@
     {
       "ns": "STATS",
       "name": "Kruskal",
-      "id": 1040,
+      "id": 1039,
       "tokenKind": 1796,
       "kindName": "StatsKruskal",
       "fn": true,
@@ -11446,7 +11435,7 @@
     {
       "ns": "STATS",
       "name": "Ks",
-      "id": 1041,
+      "id": 1040,
       "tokenKind": 1761,
       "kindName": "KolmogorovSmirnov",
       "fn": true,
@@ -11457,7 +11446,7 @@
     {
       "ns": "STATS",
       "name": "KurtosisTest",
-      "id": 1042,
+      "id": 1041,
       "tokenKind": 1865,
       "kindName": "StatsKurtosisTest",
       "fn": true,
@@ -11468,7 +11457,7 @@
     {
       "ns": "STATS",
       "name": "LinRegress",
-      "id": 1043,
+      "id": 1042,
       "tokenKind": 1764,
       "kindName": "StatsLinRegress",
       "fn": true,
@@ -11479,7 +11468,7 @@
     {
       "ns": "STATS",
       "name": "LogisticCdf",
-      "id": 1044,
+      "id": 1043,
       "tokenKind": 1785,
       "kindName": "StatsLogisticCdf",
       "fn": true,
@@ -11490,7 +11479,7 @@
     {
       "ns": "STATS",
       "name": "LogisticIsf",
-      "id": 1045,
+      "id": 1044,
       "tokenKind": 1793,
       "kindName": "StatsLogisticIsf",
       "fn": true,
@@ -11501,7 +11490,7 @@
     {
       "ns": "STATS",
       "name": "LogisticPdf",
-      "id": 1046,
+      "id": 1045,
       "tokenKind": 690,
       "kindName": "LogisticPdf",
       "fn": true,
@@ -11512,7 +11501,7 @@
     {
       "ns": "STATS",
       "name": "LogisticPpf",
-      "id": 1047,
+      "id": 1046,
       "tokenKind": 708,
       "kindName": "LogisticPpf",
       "fn": true,
@@ -11523,7 +11512,7 @@
     {
       "ns": "STATS",
       "name": "LogisticSf",
-      "id": 1048,
+      "id": 1047,
       "tokenKind": 1786,
       "kindName": "StatsLogisticSf",
       "fn": true,
@@ -11534,7 +11523,7 @@
     {
       "ns": "STATS",
       "name": "LognormalCdf",
-      "id": 1049,
+      "id": 1048,
       "tokenKind": 674,
       "kindName": "LognormalCdf",
       "fn": true,
@@ -11545,7 +11534,7 @@
     {
       "ns": "STATS",
       "name": "LognormalIsf",
-      "id": 1050,
+      "id": 1049,
       "tokenKind": 1794,
       "kindName": "StatsLognormalIsf",
       "fn": true,
@@ -11556,7 +11545,7 @@
     {
       "ns": "STATS",
       "name": "LognormalPdf",
-      "id": 1051,
+      "id": 1050,
       "tokenKind": 673,
       "kindName": "LognormalPdf",
       "fn": true,
@@ -11567,7 +11556,7 @@
     {
       "ns": "STATS",
       "name": "LognormalPpf",
-      "id": 1052,
+      "id": 1051,
       "tokenKind": 696,
       "kindName": "LognormalPpf",
       "fn": true,
@@ -11578,7 +11567,7 @@
     {
       "ns": "STATS",
       "name": "LognormalSf",
-      "id": 1053,
+      "id": 1052,
       "tokenKind": 1776,
       "kindName": "StatsLognormalSf",
       "fn": true,
@@ -11589,7 +11578,7 @@
     {
       "ns": "STATS",
       "name": "MannWhitney",
-      "id": 1054,
+      "id": 1053,
       "tokenKind": 1858,
       "kindName": "StatsMannWhitney",
       "fn": true,
@@ -11600,7 +11589,7 @@
     {
       "ns": "STATS",
       "name": "Mode",
-      "id": 1055,
+      "id": 1054,
       "tokenKind": 1867,
       "kindName": "StatsMode",
       "fn": true,
@@ -11611,7 +11600,7 @@
     {
       "ns": "STATS",
       "name": "Moment",
-      "id": 1056,
+      "id": 1055,
       "tokenKind": 1868,
       "kindName": "StatsMoment",
       "fn": true,
@@ -11622,7 +11611,7 @@
     {
       "ns": "STATS",
       "name": "NcBetaCdf",
-      "id": 1057,
+      "id": 1056,
       "tokenKind": 1823,
       "kindName": "StatsNcBetaCdf",
       "fn": true,
@@ -11633,7 +11622,7 @@
     {
       "ns": "STATS",
       "name": "NcBetaIsf",
-      "id": 1058,
+      "id": 1057,
       "tokenKind": 1831,
       "kindName": "StatsNcBetaIsf",
       "fn": true,
@@ -11644,7 +11633,7 @@
     {
       "ns": "STATS",
       "name": "NcBetaPdf",
-      "id": 1059,
+      "id": 1058,
       "tokenKind": 1822,
       "kindName": "StatsNcBetaPdf",
       "fn": true,
@@ -11655,7 +11644,7 @@
     {
       "ns": "STATS",
       "name": "NcBetaPpf",
-      "id": 1060,
+      "id": 1059,
       "tokenKind": 1830,
       "kindName": "StatsNcBetaPpf",
       "fn": true,
@@ -11666,7 +11655,7 @@
     {
       "ns": "STATS",
       "name": "NcBetaSf",
-      "id": 1061,
+      "id": 1060,
       "tokenKind": 1824,
       "kindName": "StatsNcBetaSf",
       "fn": true,
@@ -11677,7 +11666,7 @@
     {
       "ns": "STATS",
       "name": "NcChi2Cdf",
-      "id": 1062,
+      "id": 1061,
       "tokenKind": 1820,
       "kindName": "StatsNcChi2Cdf",
       "fn": true,
@@ -11688,7 +11677,7 @@
     {
       "ns": "STATS",
       "name": "NcChi2Isf",
-      "id": 1063,
+      "id": 1062,
       "tokenKind": 1829,
       "kindName": "StatsNcChi2Isf",
       "fn": true,
@@ -11699,7 +11688,7 @@
     {
       "ns": "STATS",
       "name": "NcChi2Pdf",
-      "id": 1064,
+      "id": 1063,
       "tokenKind": 1819,
       "kindName": "StatsNcChi2Pdf",
       "fn": true,
@@ -11710,7 +11699,7 @@
     {
       "ns": "STATS",
       "name": "NcChi2Ppf",
-      "id": 1065,
+      "id": 1064,
       "tokenKind": 1828,
       "kindName": "StatsNcChi2Ppf",
       "fn": true,
@@ -11721,7 +11710,7 @@
     {
       "ns": "STATS",
       "name": "NcChi2Sf",
-      "id": 1066,
+      "id": 1065,
       "tokenKind": 1821,
       "kindName": "StatsNcChi2Sf",
       "fn": true,
@@ -11732,7 +11721,7 @@
     {
       "ns": "STATS",
       "name": "NcFCdf",
-      "id": 1067,
+      "id": 1066,
       "tokenKind": 1839,
       "kindName": "StatsNcFCdf",
       "fn": true,
@@ -11743,7 +11732,7 @@
     {
       "ns": "STATS",
       "name": "NcFIsf",
-      "id": 1068,
+      "id": 1067,
       "tokenKind": 1835,
       "kindName": "StatsNcFIsf",
       "fn": true,
@@ -11754,7 +11743,7 @@
     {
       "ns": "STATS",
       "name": "NcFPdf",
-      "id": 1069,
+      "id": 1068,
       "tokenKind": 1838,
       "kindName": "StatsNcFPdf",
       "fn": true,
@@ -11765,7 +11754,7 @@
     {
       "ns": "STATS",
       "name": "NcFPpf",
-      "id": 1070,
+      "id": 1069,
       "tokenKind": 1834,
       "kindName": "StatsNcFPpf",
       "fn": true,
@@ -11776,7 +11765,7 @@
     {
       "ns": "STATS",
       "name": "NcFSf",
-      "id": 1071,
+      "id": 1070,
       "tokenKind": 1840,
       "kindName": "StatsNcFSf",
       "fn": true,
@@ -11787,7 +11776,7 @@
     {
       "ns": "STATS",
       "name": "NcGammaCdf",
-      "id": 1072,
+      "id": 1071,
       "tokenKind": 1826,
       "kindName": "StatsNcGammaCdf",
       "fn": true,
@@ -11798,7 +11787,7 @@
     {
       "ns": "STATS",
       "name": "NcGammaIsf",
-      "id": 1073,
+      "id": 1072,
       "tokenKind": 1833,
       "kindName": "StatsNcGammaIsf",
       "fn": true,
@@ -11809,7 +11798,7 @@
     {
       "ns": "STATS",
       "name": "NcGammaPdf",
-      "id": 1074,
+      "id": 1073,
       "tokenKind": 1825,
       "kindName": "StatsNcGammaPdf",
       "fn": true,
@@ -11820,7 +11809,7 @@
     {
       "ns": "STATS",
       "name": "NcGammaPpf",
-      "id": 1075,
+      "id": 1074,
       "tokenKind": 1832,
       "kindName": "StatsNcGammaPpf",
       "fn": true,
@@ -11831,7 +11820,7 @@
     {
       "ns": "STATS",
       "name": "NcGammaSf",
-      "id": 1076,
+      "id": 1075,
       "tokenKind": 1827,
       "kindName": "StatsNcGammaSf",
       "fn": true,
@@ -11842,7 +11831,7 @@
     {
       "ns": "STATS",
       "name": "NcTCdf",
-      "id": 1077,
+      "id": 1076,
       "tokenKind": 1842,
       "kindName": "StatsNcTCdf",
       "fn": true,
@@ -11853,7 +11842,7 @@
     {
       "ns": "STATS",
       "name": "NcTIsf",
-      "id": 1078,
+      "id": 1077,
       "tokenKind": 1837,
       "kindName": "StatsNcTIsf",
       "fn": true,
@@ -11864,7 +11853,7 @@
     {
       "ns": "STATS",
       "name": "NcTPdf",
-      "id": 1079,
+      "id": 1078,
       "tokenKind": 1841,
       "kindName": "StatsNcTPdf",
       "fn": true,
@@ -11875,7 +11864,7 @@
     {
       "ns": "STATS",
       "name": "NcTPpf",
-      "id": 1080,
+      "id": 1079,
       "tokenKind": 1836,
       "kindName": "StatsNcTPpf",
       "fn": true,
@@ -11886,7 +11875,7 @@
     {
       "ns": "STATS",
       "name": "NcTSf",
-      "id": 1081,
+      "id": 1080,
       "tokenKind": 1843,
       "kindName": "StatsNcTSf",
       "fn": true,
@@ -11897,7 +11886,7 @@
     {
       "ns": "STATS",
       "name": "NegativeBinomialPmf",
-      "id": 1082,
+      "id": 1081,
       "tokenKind": 835,
       "kindName": "NegativeBinomialPmf",
       "fn": true,
@@ -11908,7 +11897,7 @@
     {
       "ns": "STATS",
       "name": "NormalCdf",
-      "id": 1083,
+      "id": 1082,
       "tokenKind": 672,
       "kindName": "NormalCdf",
       "fn": true,
@@ -11919,7 +11908,7 @@
     {
       "ns": "STATS",
       "name": "NormalIsf",
-      "id": 1084,
+      "id": 1083,
       "tokenKind": 695,
       "kindName": "NormalIsf",
       "fn": true,
@@ -11930,7 +11919,7 @@
     {
       "ns": "STATS",
       "name": "NormalPdf",
-      "id": 1085,
+      "id": 1084,
       "tokenKind": 671,
       "kindName": "NormalPdf",
       "fn": true,
@@ -11941,7 +11930,7 @@
     {
       "ns": "STATS",
       "name": "NormalPpf",
-      "id": 1086,
+      "id": 1085,
       "tokenKind": 694,
       "kindName": "NormalPpf",
       "fn": true,
@@ -11952,7 +11941,7 @@
     {
       "ns": "STATS",
       "name": "NormalSf",
-      "id": 1087,
+      "id": 1086,
       "tokenKind": 1775,
       "kindName": "StatsNormalSf",
       "fn": true,
@@ -11963,7 +11952,7 @@
     {
       "ns": "STATS",
       "name": "NormalTest",
-      "id": 1088,
+      "id": 1087,
       "tokenKind": 1759,
       "kindName": "NormalTest",
       "fn": true,
@@ -11974,7 +11963,7 @@
     {
       "ns": "STATS",
       "name": "ParetoCdf",
-      "id": 1089,
+      "id": 1088,
       "tokenKind": 1777,
       "kindName": "StatsParetoCdf",
       "fn": true,
@@ -11985,7 +11974,7 @@
     {
       "ns": "STATS",
       "name": "ParetoIsf",
-      "id": 1090,
+      "id": 1089,
       "tokenKind": 1791,
       "kindName": "StatsParetoIsf",
       "fn": true,
@@ -11996,7 +11985,7 @@
     {
       "ns": "STATS",
       "name": "ParetoPdf",
-      "id": 1091,
+      "id": 1090,
       "tokenKind": 689,
       "kindName": "ParetoPdf",
       "fn": true,
@@ -12007,7 +11996,7 @@
     {
       "ns": "STATS",
       "name": "ParetoPpf",
-      "id": 1092,
+      "id": 1091,
       "tokenKind": 710,
       "kindName": "ParetoPpf",
       "fn": true,
@@ -12018,7 +12007,7 @@
     {
       "ns": "STATS",
       "name": "ParetoSf",
-      "id": 1093,
+      "id": 1092,
       "tokenKind": 1778,
       "kindName": "StatsParetoSf",
       "fn": true,
@@ -12029,7 +12018,7 @@
     {
       "ns": "STATS",
       "name": "PearsonR",
-      "id": 1094,
+      "id": 1093,
       "tokenKind": 1762,
       "kindName": "StatsPearsonR",
       "fn": true,
@@ -12040,9 +12029,20 @@
     {
       "ns": "STATS",
       "name": "PoissonPmf",
-      "id": 1095,
+      "id": 1094,
       "tokenKind": 833,
       "kindName": "PoissonPmf",
+      "fn": true,
+      "arityMin": 2,
+      "arityMax": 2,
+      "pure": true
+    },
+    {
+      "ns": "STATS",
+      "name": "Regress",
+      "id": 1095,
+      "tokenKind": 723,
+      "kindName": "Regress",
       "fn": true,
       "arityMin": 2,
       "arityMax": 2,

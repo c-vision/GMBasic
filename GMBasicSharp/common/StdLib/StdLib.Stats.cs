@@ -619,12 +619,20 @@ public sealed partial class StdLib
             new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.StatsIqr, "Iqr"),
                 [dataArrayParam], new DoubleType(), TokenKind.StatsIqr),
             new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.StatsDescribe, "Describe"),
-                [dataArrayParam], new AnyType(), TokenKind.StatsDescribe, ExecutionKind: NativeExecutionKind.Pure)
+                [dataArrayParam], new AnyType(), TokenKind.StatsDescribe, ExecutionKind: NativeExecutionKind.Pure),
+            // REGRESS: ex REGRESSION.Regress (namespace eliminato 2026-11-08). Regressione
+            // lineare ONE-PASS (CommonLib.Numerics.LinearRegression) → {Slope, Intercept, R2}.
+            // NON è un alias di LinRegress (scipy, due passate: R/PValue/Stderr; ~1 ULP di
+            // differenza sull'intercetta).
+            new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.Regress, "Regress"),
+                [dataArrayParam, dataArray2Param], new RegressionResultType(), TokenKind.Regress,
+                ExecutionKind: NativeExecutionKind.Pure)
         };
         
         var types = new Dictionary<string, DataType>(StringComparer.OrdinalIgnoreCase)
         {
-            { "AnovaResult", new AnovaResultType() }
+            { "AnovaResult", new AnovaResultType() },
+            { "RegressionResult", new RegressionResultType() }
         };
         RegisterBuiltinNamespace(namespaceName, procedures, types);
     }
