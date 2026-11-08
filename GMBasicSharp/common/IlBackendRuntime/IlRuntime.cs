@@ -8500,7 +8500,10 @@ public static double TextWidth(string s)
     public static double PriceSimple(double settlement, double maturity, double rate, double yld, double redemption, double freq)
     { try { return CommonLib.Numerics.PriceSimple(DateTime.FromOADate(settlement), DateTime.FromOADate(maturity), rate, yld, redemption, (int)freq); } catch { return 0.0; } }
 
-    // ── MEMORY (List/Store/Load/Delete/Search — parità VM MemoryStore) ────
+    // ── MEMORY interno (BSP state provider; NON è più la superficie MEMORY.*) ──
+    // La superficie di linguaggio MEMORY.STORE/LOAD/SEARCH/LIST/DELETE è nella lib
+    // `memory` (shared/libs/memory, FFI). Questo store C# resta per il provider di
+    // stato delle pagine BSP, che ha un ciclo di vita proprio.
     private static Basic.AgentMemoryStore? _ilMemoryStore;
     private static Basic.AgentMemoryStore MemoryStore()
     {

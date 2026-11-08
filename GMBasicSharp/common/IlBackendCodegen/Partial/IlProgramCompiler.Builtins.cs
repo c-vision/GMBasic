@@ -1294,11 +1294,7 @@ public sealed partial class IlProgramCompiler
             // --- Blocco pass-through CommonLib (parità VM) ---
             case TokenKind.Add: EmitDictAddCall(expr); break;
             case TokenKind.Conn: EmitObjectArgCall(expr, RuntimeMethod(nameof(IlRuntime.Conn))); break;
-            case TokenKind.MemoryList: EmitNoArgBuiltinCall(expr, RuntimeMethod(nameof(IlRuntime.MemoryList))); break;
-            case TokenKind.MemoryStore: EmitMemoryStoreCall(expr); break;
-            case TokenKind.MemoryLoad: EmitStringUnaryBuiltinCall(expr, RuntimeMethod(nameof(IlRuntime.MemoryLoad))); break;
-            case TokenKind.MemoryDelete: EmitStringUnaryBuiltinCall(expr, RuntimeMethod(nameof(IlRuntime.MemoryDelete))); break;
-            case TokenKind.MemorySearch: EmitStringUnaryBuiltinCall(expr, RuntimeMethod(nameof(IlRuntime.MemorySearch))); break;
+            // MEMORY.*: superficie RIMOSSA (shared/libs/memory via FFI).
             // --- AI (AgentServer/AiVector — pass-through) ---
             case TokenKind.AiAgentCreate: EmitStringUnaryBuiltinCall(expr, RuntimeMethod(nameof(IlRuntime.AiAgentCreate))); break;
             case TokenKind.AiAgentDelete: EmitStringUnaryBuiltinCall(expr, RuntimeMethod(nameof(IlRuntime.AiAgentDelete))); break;

@@ -186,6 +186,15 @@ public sealed partial class StdLib
             new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.Command, "COMMAND"),
                 [new Parameter(-1, T(TokenKind.Identifier, "index"), new IntegerType(), noFlags, null, false)],
                 new StringType(), TokenKind.Command),
+            // ENV/HAS: ambiente di processo in sola lettura. Stanno in SYSTEM (sempre
+            // disponibile senza IMPORT) insieme a COMMAND/COMMANDCOUNT, perché sono
+            // parametri del processo. Prima erano un namespace ENV separato.
+            new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.EnvGet, "ENV"),
+                [new Parameter(-1, T(TokenKind.Identifier, "name"), new StringType(), noFlags, null, false)],
+                new StringType(), TokenKind.EnvGet),
+            new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.EnvHas, "HAS"),
+                [new Parameter(-1, T(TokenKind.Identifier, "name"), new StringType(), noFlags, null, false)],
+                new BitType(), TokenKind.EnvHas),
             new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.GoMaxProcs, "GOMAXPROCS"),
                 [
                     new Parameter(-1, T(TokenKind.Identifier, "n"), new IntegerType(), optionalFlag, null, false)

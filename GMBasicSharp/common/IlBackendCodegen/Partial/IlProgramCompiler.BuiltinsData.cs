@@ -1016,21 +1016,7 @@ public sealed partial class IlProgramCompiler
     }
 
 
-    private void EmitMemoryStoreCall(BuiltinFunctionCallExpr expr)
-    {
-        if (expr.Args.Length is < 2 or > 3)
-            throw new NotSupportedException("Backend IL: MEMORY.STORE richiede 2 o 3 argomenti (key, value[, longTerm]).");
-        EmitStringArg(expr.Args[0]);
-        EmitExpression(expr.Args[1]);
-        var vClr = DataTypeMapper.Map(NormalizeInferredType(InferType(expr.Args[1])), _types, _classTypes);
-        if (vClr.IsValueType) _il.Emit(OpCodes.Box, vClr);
-        if (expr.Args.Length == 3) EmitDoubleArgument(expr.Args[2]);
-        else _il.Emit(OpCodes.Ldc_R8, 0.0);
-        _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.MemoryStore), typeof(string), typeof(object), typeof(double)));
-    }
-
-
-
+    // MEMORY.*: superficie RIMOSSA (shared/libs/memory via FFI).
 
     private void EmitExtractCall(BuiltinFunctionCallExpr expr)
     {

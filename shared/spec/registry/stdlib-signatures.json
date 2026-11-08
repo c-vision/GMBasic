@@ -9422,36 +9422,6 @@
       ]
     },
     {
-      "ns": "ENV",
-      "name": "ENV",
-      "fn": true,
-      "return": "string",
-      "params": [
-        {
-          "name": "name",
-          "type": "string",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        }
-      ]
-    },
-    {
-      "ns": "ENV",
-      "name": "HAS",
-      "fn": true,
-      "return": "bool",
-      "params": [
-        {
-          "name": "name",
-          "type": "string",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        }
-      ]
-    },
-    {
       "ns": "FINANCE",
       "name": "CUMIPMT",
       "fn": true,
@@ -15614,87 +15584,6 @@
       "params": [
         {
           "name": "handle",
-          "type": "long",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        }
-      ]
-    },
-    {
-      "ns": "MEMORY",
-      "name": "DELETE",
-      "fn": true,
-      "return": "long",
-      "params": [
-        {
-          "name": "key",
-          "type": "string",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        }
-      ]
-    },
-    {
-      "ns": "MEMORY",
-      "name": "LIST",
-      "fn": true,
-      "return": "string",
-      "params": []
-    },
-    {
-      "ns": "MEMORY",
-      "name": "LOAD",
-      "fn": true,
-      "return": "string",
-      "params": [
-        {
-          "name": "key",
-          "type": "string",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        }
-      ]
-    },
-    {
-      "ns": "MEMORY",
-      "name": "SEARCH",
-      "fn": true,
-      "return": "string",
-      "params": [
-        {
-          "name": "pattern",
-          "type": "string",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        }
-      ]
-    },
-    {
-      "ns": "MEMORY",
-      "name": "STORE",
-      "fn": true,
-      "return": "long",
-      "params": [
-        {
-          "name": "key",
-          "type": "string",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        },
-        {
-          "name": "value",
-          "type": "ANY",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        },
-        {
-          "name": "longTerm",
           "type": "long",
           "optional": false,
           "byRef": false,
@@ -22715,6 +22604,21 @@
     },
     {
       "ns": "SYSTEM",
+      "name": "ENV",
+      "fn": true,
+      "return": "string",
+      "params": [
+        {
+          "name": "name",
+          "type": "string",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        }
+      ]
+    },
+    {
+      "ns": "SYSTEM",
       "name": "GOMAXPROCS",
       "fn": true,
       "return": "long",
@@ -22723,6 +22627,21 @@
           "name": "n",
           "type": "int",
           "optional": true,
+          "byRef": false,
+          "array": false
+        }
+      ]
+    },
+    {
+      "ns": "SYSTEM",
+      "name": "HAS",
+      "fn": true,
+      "return": "bool",
+      "params": [
+        {
+          "name": "name",
+          "type": "string",
+          "optional": false,
           "byRef": false,
           "array": false
         }

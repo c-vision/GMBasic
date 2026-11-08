@@ -27,7 +27,7 @@ LIBS="$MONO/shared/libs"
 INCLUDE="$MONO/shared/include"
 TOOLS="$MONO/tools/sh"
 
-ALL_LIBS="amqp grpc kafka mqtt nats protobuf media opt graph flow or mathprog gametheory aviation localsearch conic lagrangian scheduling math stats graphics pgm neural geo wsp quant auth"
+ALL_LIBS="amqp grpc kafka mqtt nats protobuf media opt graph flow or mathprog gametheory aviation localsearch conic lagrangian scheduling math stats graphics pgm neural geo wsp quant auth memory"
 
 die() { echo "gmb_lib: $*" >&2; exit 1; }
 
@@ -76,6 +76,14 @@ build_one() {
   local cc="${CC:-cc}"
   local srcs; srcs=$(find "$dir/src" -name '*.c' | sort)
 
+  # Dipendenze per-lib dichiarate (la lib resta self-contained a livello di sorgenti):
+  # memory usa SQLite, libreria di PIATTAFORMA/supporto di GMBasic (macOS: /usr/lib;
+  # Linux: gruppo `support` del libs-manifest), non una dipendenza da installare.
+  local EXTRA_LIBS="" EXTRA_INC=""
+  case "$lib" in
+    memory) EXTRA_LIBS="-lsqlite3"; EXTRA_INC="-I$MONO/GMBasic/native/gmb_sql_ext/sqlite346" ;;
+  esac
+
   # Sorgenti CONDIVISI: `shared-src.txt` elenca (uno per riga, `#` = commento) altri
   # contenitori di `shared/libs/<nome>` da compilare dentro questa dylib. Serve a tenere
   # UNA sola copia dei sorgenti comuni (`compute`, `math`) invece di vendorizzarli in ogni
@@ -112,12 +120,12 @@ build_one() {
   case "$(uname -s)" in
     Darwin)
       $cc -std=c99 -O2 -fPIC -dynamiclib \
-          -I"$dir/include" -I"$dir/src" $shared_incs -I"$INCLUDE" \
-          $srcs $shared_srcs -o "$out" -lm -ldl -install_name "@rpath/libgmb$lib.$E" ;;
+          -I"$dir/include" -I"$dir/src" $shared_incs -I"$INCLUDE" $EXTRA_INC \
+          $srcs $shared_srcs -o "$out" -lm -ldl $EXTRA_LIBS -install_name "@rpath/libgmb$lib.$E" ;;
     *)
       $cc -std=c99 -O2 -fPIC -shared \
-          -I"$dir/include" -I"$dir/src" $shared_incs -I"$INCLUDE" \
-          $srcs $shared_srcs -o "$out" -lm -ldl ;;
+          -I"$dir/include" -I"$dir/src" $shared_incs -I"$INCLUDE" $EXTRA_INC \
+          $srcs $shared_srcs -o "$out" -lm -ldl $EXTRA_LIBS ;;
   esac
   # Gli export BASIC vivono in shared/include (sorgente, in git); gli header C restano in
   # shared/libs/<nome>/include, che è l'unica sorgente (shared/include è solo BASIC).

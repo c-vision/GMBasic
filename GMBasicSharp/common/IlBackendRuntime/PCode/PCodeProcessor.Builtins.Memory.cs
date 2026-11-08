@@ -19,16 +19,11 @@ internal sealed partial class PCodeProcessor
     private static readonly HashSet<BuiltInFunction> MEMORYBuiltInFunctions = new HashSet<BuiltInFunction>
     {
         BuiltInFunction.MEMORYASK,
-        BuiltInFunction.MEMORYDELETE,
         BuiltInFunction.MEMORYFORGET,
         BuiltInFunction.MEMORYIMPORT,
-        BuiltInFunction.MEMORYLIST,
-        BuiltInFunction.MEMORYLOAD,
         BuiltInFunction.MEMORYNOTE,
         BuiltInFunction.MEMORYREFRESH,
         BuiltInFunction.MEMORYSAVE,
-        BuiltInFunction.MEMORYSEARCH,
-        BuiltInFunction.MEMORYSTORE,
         BuiltInFunction.MEMORYWATCH,
         BuiltInFunction.MEMORYRANK,
         BuiltInFunction.MEMORYCONSOLIDATE,
@@ -40,30 +35,6 @@ internal sealed partial class PCodeProcessor
         => _memoryDispatch ??= BuildMemoryDispatch();
     private Dictionary<BuiltInFunction, Func<PCodeTask, object?[], object?>> BuildMemoryDispatch() => new()
     {
-        [BuiltInFunction.MEMORYSTORE] = (task, args) =>
-        {
-                // Runtime comune (IlRuntime): stessa logica — unica implementazione.
-                return Basic.IlBackend.IlRuntime.MemoryStore(
-                ArgOr(args, 0)?.ToString() ?? "",
-                args.Length > 1 ? ArgOr(args, 1) : null,
-                args.Length > 2 && SafeDouble(ArgOr(args, 2)) != 0 ? 1 : 0);
-        },
-        [BuiltInFunction.MEMORYLOAD] = (task, args) =>
-        {
-                return Basic.IlBackend.IlRuntime.MemoryLoad(ArgOr(args, 0)?.ToString() ?? "");
-        },
-        [BuiltInFunction.MEMORYSEARCH] = (task, args) =>
-        {
-                return Basic.IlBackend.IlRuntime.MemorySearch(ArgOr(args, 0)?.ToString() ?? "");
-        },
-        [BuiltInFunction.MEMORYDELETE] = (task, args) =>
-        {
-                return Basic.IlBackend.IlRuntime.MemoryDelete(ArgOr(args, 0)?.ToString() ?? "");
-        },
-        [BuiltInFunction.MEMORYLIST] = (task, args) =>
-        {
-                return Basic.IlBackend.IlRuntime.MemoryList();
-        },
         [BuiltInFunction.MEMORYASK] = (task, args) =>
         {
                 return Basic.IlBackend.IlRuntime.MemoryAsk(ArgOr(args, 0)?.ToString() ?? "", args.Length > 1 ? SafeDouble(args[1]) : 0);
