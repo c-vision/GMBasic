@@ -76,12 +76,16 @@ gmb_read_field_t* gmb_read_add_textfield(gmb_read_ctx_t* ctx, int row, int col, 
 int  gmb_read_field_count(gmb_read_ctx_t* ctx);
 int  gmb_read_add_field_active(int row,int col,int width,const char* initial);
 gmb_string_t gmb_read_items_join(const char* a, const char* b);
+/* ITEMS da array di stringhe (emitter C99): concatena con '|' i .data degli elementi. */
+gmb_string_t gmb_read_items_join_arr(const gmb_string_t* items, int n);
 /* Predicati VALID/WHEN come funzioni C (ritorno != 0 = ok). Indice = campo. */
 void gmb_read_set_when_fn(int idx, int (*fn)(void*), void* user);
 void gmb_read_set_valid_fn(int idx, int (*fn)(void*), void* user);
 void gmb_read_set_apply_text(int idx, void (*fn)(void*, const char*), void* user);
 /* Entry point per i backend GESTITI (P/Invoke): niente puntatori al ctx. */
 int         gmb_read_native_run(void);
+/* Ri-prompt VALID: il prossimo run mostra solo il campo idx (skip sugli altri). */
+void        gmb_read_native_focus_only(int idx);
 const char* gmb_read_native_value(int idx);
 void        gmb_read_native_reset(void);
 void        gmb_read_native_clear(void);

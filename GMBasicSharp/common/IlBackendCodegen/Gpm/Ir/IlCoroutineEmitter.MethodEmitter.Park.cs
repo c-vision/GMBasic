@@ -45,9 +45,11 @@ internal sealed partial class MethodEmitter
         private void EmitReadPark(IlCoroutineBlock b)
         {
             var fields = b.ReadFields;
-            /* Blocchi con WHEN: sequenziale via helper (una label in meno, nessun branch):
-             * il predicato vede i valori già confermati dei campi precedenti (Clipper). */
-            if (fields is not null && fields.Exists(x => x.When is not null))
+            /* Blocchi con WHEN o VALID: sequenziale via helper (un campo per volta):
+             * il predicato vede i valori già confermati dei campi precedenti e il
+             * ri-prompt VALID riguarda SOLO il campo rifiutato (il loop nativo non ha
+             * un evaluator BASIC, quindi il predicato si valuta qui). */
+            if (fields is not null && fields.Exists(x => x.When is not null || x.Valid is not null))
             {
                 foreach (var f in fields)
                 {
@@ -89,7 +91,10 @@ internal sealed partial class MethodEmitter
             }
             var again = _il.DefineLabel();
             _il.MarkLabel(again);
-            // READ NATIVO (una sola implementazione): aggiungi i campi, esegui, leggi i valori.
+            // READ NATIVO (una sola implementazione): ri-prompt VALID = si azzera il contesto
+            // e si riaggiungono i campi (il testo rifiutato torna come valore iniziale della
+            // variabile). Senza reset i campi si duplicherebbero a ogni ri-prompt.
+            _il.Emit(OpCodes.Call, ReadNativeResetMethod);
             EmitLdarg(_frameArg);
             _il.Emit(OpCodes.Call, ReadBeginMethod);
 
@@ -143,7 +148,8 @@ internal sealed partial class MethodEmitter
             EmitLdarg(_frameArg);
             _il.Emit(OpCodes.Call, ReadEndMethod);
             /* VALID (Clipper): il predicato legge la variabile già assegnata; se falso si
-             * ripropone il campo (ReadNativeResume) e si rifà il ciclo, come gmb_read_valid_ok. */
+             * ripropone il campo ripartendo dall'inizio del blocco (che azzera il contesto
+             * READ e riaggiunge i campi), come gmb_read_valid_ok. */
             if (fields is not null)
                 for (var i = 0; i < fields.Count; i++)
                 {
@@ -152,8 +158,6 @@ internal sealed partial class MethodEmitter
                     var okLbl = _il.DefineLabel();
                     EmitConditionBoolV2(f.Valid);
                     _il.Emit(OpCodes.Brtrue, okLbl);
-                    _il.Emit(OpCodes.Ldc_I4, i);
-                    _il.Emit(OpCodes.Call, ReadNativeResumeMethod);
                     _il.Emit(OpCodes.Br, again);
                     _il.MarkLabel(okLbl);
                 }

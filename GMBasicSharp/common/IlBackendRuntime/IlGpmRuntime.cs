@@ -1275,8 +1275,6 @@ public static class IlGpmRuntime
     public static void ReadResetField(IlActivationFrame frame)
     { var s = ReadStateOf(frame); s.FieldStarted = false; s.Buffer.Clear(); }
     public static void ReadEnd(IlActivationFrame frame) => frame.ReadState = null;
-    /// <summary>Ri-prompt VALID: riprende il loop nativo dal campo idx (buffer conservati).</summary>
-    public static void ReadNativeResume(int idx) => Basic.Runtime.Services.NativeTui.ReadResume(idx);
 
     /// <summary>Campo READ SEQUENZIALE (blocchi @GET con WHEN): un campo per volta, cosi' il
     /// predicato vede i valori gia' confermati dei campi precedenti (semantica Clipper).

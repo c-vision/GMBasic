@@ -901,7 +901,7 @@ public sealed partial class IlProgramCompiler
     private static readonly MethodInfo IlRuntimeReadSetMessageMethod = typeof(Basic.IlBackend.IlGpmRuntime).GetMethod(nameof(Basic.IlBackend.IlGpmRuntime.ReadNativeSetMessage))!;
     private static readonly MethodInfo IlRuntimeReadSetErrorMethod = typeof(Basic.IlBackend.IlGpmRuntime).GetMethod(nameof(Basic.IlBackend.IlGpmRuntime.ReadNativeSetError))!;
     private static readonly MethodInfo IlRuntimeReadSequentialFieldMethod = typeof(Basic.IlBackend.IlGpmRuntime).GetMethod(nameof(Basic.IlBackend.IlGpmRuntime.ReadSequentialField))!;
-    private static readonly MethodInfo IlRuntimeReadNativeResumeMethod = typeof(Basic.IlBackend.IlGpmRuntime).GetMethod(nameof(Basic.IlBackend.IlGpmRuntime.ReadNativeResume))!;
+    private static readonly MethodInfo IlRuntimeReadNativeResetMethod = typeof(Basic.IlBackend.IlGpmRuntime).GetMethod(nameof(Basic.IlBackend.IlGpmRuntime.ReadNativeReset))!;
     private static readonly MethodInfo IlRuntimeReadNativeRunMethod = typeof(Basic.IlBackend.IlGpmRuntime).GetMethod(nameof(Basic.IlBackend.IlGpmRuntime.ReadNativeRun))!;
     private static readonly MethodInfo IlRuntimeReadNativeValueMethod = typeof(Basic.IlBackend.IlGpmRuntime).GetMethod(nameof(Basic.IlBackend.IlGpmRuntime.ReadNativeValue))!;
     private static readonly MethodInfo IlRuntimeMouseEnableMethod = typeof(IlRuntime).GetMethod(nameof(IlRuntime.MouseEnable))!;

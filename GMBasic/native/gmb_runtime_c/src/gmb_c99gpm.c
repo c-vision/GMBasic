@@ -1444,7 +1444,11 @@ gmb_string_t gmb_key_wait_park(int timeout_ms)
           } }
         if (timeout_ms > 0 && gmb_c99_now_ms() >= deadline_ms) return gmb_string_alloc("");
         if (gmb_gfx_screen_on()) { struct timespec ts = { 0, 1000000 }; nanosleep(&ts, 0); }
-        else gmb_yield_ticks(20);
+        /* Scheduler GPM presente → park cooperativo (gmb_gpm_sleep lo fa); programma
+         * lineare (C99Native senza task) → attesa reale. gmb_yield_ticks da solo
+         * dereferenzia il task corrente (NULL) e andava in SIGSEGV alla PRIMA attesa
+         * su coda vuota (ri-prompt VALID su una form). */
+        else gmb_gpm_sleep(20);
     }
 }
 

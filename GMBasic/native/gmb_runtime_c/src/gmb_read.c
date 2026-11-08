@@ -306,6 +306,7 @@ static void read_show_status(gmb_read_ctx_t* ctx, const char* text)
     }
 }
 
+/* Loop READ (park-based): mostra i campi, attende un tasto per volta, applica i valori. */
 int gmb_read_run(gmb_read_ctx_t* ctx)
 {
     if (!ctx) return GMB_READ_CANCELLED;
@@ -480,9 +481,33 @@ const char* gmb_read_value_at(int idx)
 }
 
 int         gmb_read_native_run(void)   { return gmb_read_run(gmb_read_active()); }
+/* Ri-prompt VALID dei backend gestiti: il prossimo run mostra SOLO il campo idx
+ * (gli altri restano con il testo confermato e non vengono riproposti). */
+void        gmb_read_native_focus_only(int idx)
+{
+    gmb_read_ctx_t* c = gmb_read_active();
+    for (int i = 0; i < c->n_fields; i++) c->fields[i].skip = (i != idx);
+}
 const char* gmb_read_native_value(int i){ return gmb_read_value_at(i); }
 void        gmb_read_native_reset(void) { gmb_read_reset(gmb_read_active()); }
 void        gmb_read_native_clear(void) { gmb_read_ctx_t* c = gmb_read_active(); c->n_fields = 0; c->active = 0; c->state = GMB_READ_RUNNING; }
+
+gmb_string_t gmb_read_items_join_arr(const gmb_string_t* items, int n)
+{
+    char buf[1024];
+    size_t used = 0;
+    buf[0] = 0;
+    for (int i = 0; i < n; i++) {
+        const char* s = (items && items[i].data) ? items[i].data : "";
+        size_t len = strlen(s);
+        if (used && used + 1 < sizeof(buf)) buf[used++] = '|';
+        if (used + len >= sizeof(buf)) len = sizeof(buf) - 1 - used;
+        memcpy(buf + used, s, len);
+        used += len;
+        buf[used] = 0;
+    }
+    return gmb_string_alloc(buf);
+}
 
 void gmb_read_resume(gmb_read_ctx_t* ctx, int active)
 {

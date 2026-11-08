@@ -23904,6 +23904,24 @@ static const gmb_expr_t* atform_clause(const gmb_stmt_t* s, const char* mk) {
 static sb_t* preds_buf(ctx_t* c)
 { if (!c->preds) c->preds = calloc(1, sizeof(sb_t)); return (sb_t*)c->preds; }
 
+/* ITEMS di @GET: array di stringhe → join '|' a runtime (l'array e' gmb_string_t*,
+ * quindi `(array).data` non compila); qualunque altra espressione → stringa. */
+static void emit_atform_items(ctx_t* c, const gmb_expr_t* e) {
+    var_t* iv = (e && e->kind == GMB_EXPR_VAR && e->var) ? lookup_var(c, e->var) : NULL;
+    if (iv && iv->is_array && !iv->matrix && !iv->jagged && !iv->gkind &&
+        (iv->type == TY_STR || iv->elem_str)) {
+        sb_put(&c->out, "gmb_read_items_join_arr((const gmb_string_t*)");
+        emit_var_ref(c, iv);
+        sb_put(&c->out, ", (int)(");
+        emit_arr_len_of(c, iv);
+        sb_put(&c->out, ")).data");
+        return;
+    }
+    sb_put(&c->out, "(");
+    emit_str_operand(c, (gmb_expr_t*)e);
+    sb_put(&c->out, ").data");
+}
+
 static void st_atform(ctx_t* c, gmb_stmt_t* s) {
     c->uses_tui = 1;   /* @SAY/@GET: serve l'input TUI (typeahead/GMB_TUI_SCRIPT) */
     /* @ r,c SAY/GET: form Clipper in grafica (pixel), governato da READ. */
@@ -23953,7 +23971,7 @@ static void st_atform(ctx_t* c, gmb_stmt_t* s) {
               for (int k = 0; k + 1 < s->n_control_args; k += 2) {
                   const gmb_expr_t* kk = s->control_args[k];
                   if (!(kk && kk->var && strcasecmp(kk->var, "ITEMS") == 0)) continue;
-                  sb_put(&c->out, "("); emit_str_operand(c, s->control_args[k + 1]); sb_put(&c->out, ").data");
+                  emit_atform_items(c, s->control_args[k + 1]);
                   break;
               }
           } else {
@@ -23965,7 +23983,7 @@ static void st_atform(ctx_t* c, gmb_stmt_t* s) {
                   if (!(kk && kk->var && strcasecmp(kk->var, "ITEMS") == 0)) continue;
                   idx++;
                   if (idx > 1) sb_put(&c->out, ", ");
-                  sb_put(&c->out, "("); emit_str_operand(c, s->control_args[k + 1]); sb_put(&c->out, ").data");
+                  emit_atform_items(c, s->control_args[k + 1]);
                   if (idx > 1 && idx < n_it) sb_put(&c->out, ").data");
               }
               sb_put(&c->out, ").data");
@@ -24005,17 +24023,25 @@ static void st_atform(ctx_t* c, gmb_stmt_t* s) {
                 if (ev) sb_printf(&c->out, "    if (_ridx%d >= 0) gmb_read_set_valid_fn(_ridx%d, _pred%d, 0);\n", ridx, ridx, ridx);
                 if (ew) sb_printf(&c->out, "    if (_ridx%d >= 0) gmb_read_set_when_fn(_ridx%d, _wpred%d, 0);\n", ridx, ridx, ridx);
             }
-            else if (ew) {
-                /* Target NON dinamico (DIM/STATIC): il predicato non può vivere in una funzione a
-                 * file scope, che non vede i locali della procedura. Lo si valuta QUI, dove la
-                 * variabile è in scope: è equivalente perché per un target statico il valore non
-                 * cambia durante il READ (non c'è write-through). Senza questo ramo il WHEN veniva
-                 * PERSO in silenzio: il campo entrava comunque nel READ e il C99Native restava in
-                 * attesa di un tasto (hang — MiniTest console/get_when_skip_parity). */
-                ind(c);
-                sb_printf(&c->out, "    if (_ridx%d >= 0 && !((int)(", ridx);
-                emit_expr(c, (gmb_expr_t*)ew);
-                sb_printf(&c->out, "))) gmb_read_skip_field(_ridx%d);\n", ridx);
+            else {
+                if (ew) {
+                    /* Target NON dinamico (DIM/STATIC): il predicato non può vivere in una funzione a
+                     * file scope, che non vede i locali della procedura. Lo si valuta QUI, dove la
+                     * variabile è in scope: è equivalente perché per un target statico il valore non
+                     * cambia durante il READ (non c'è write-through). Senza questo ramo il WHEN veniva
+                     * PERSO in silenzio: il campo entrava comunque nel READ e il C99Native restava in
+                     * attesa di un tasto (hang — MiniTest console/get_when_skip_parity). */
+                    ind(c);
+                    sb_printf(&c->out, "    if (_ridx%d >= 0 && !((int)(", ridx);
+                    emit_expr(c, (gmb_expr_t*)ew);
+                    sb_printf(&c->out, "))) gmb_read_skip_field(_ridx%d);\n", ridx);
+                }
+                /* VALID su target NON dinamico: si rivaluta DOPO il READ (st_read), dove i
+                 * locali sono in scope; se falso il READ riparte dal campo rifiutato. */
+                if (vn && ev && c->n_read_valids < 64) {
+                    c->read_valid_idx[c->n_read_valids] = c->n_read_vars;
+                    c->read_valids[c->n_read_valids++] = ev;
+                }
             }
             /* MESSAGE/ERROR: testo di aiuto/errore del campo (reso in TUI dalla riga di stato). */
             {
@@ -30007,8 +30033,19 @@ static void st_read(ctx_t* c, gmb_stmt_t* s) {
     {
         /* READ senza target = READ del form Clipper (@ ... GET): form grafico pixel. */
         if (s->n_read == 0) {
-            /* READ Clipper → loop READ unificato (gmb_read_*): run + assegna i valori. */
-            ind(c); sb_put(&c->out, "gmb_read_run(gmb_read_active());\n");
+            /* READ Clipper → loop READ unificato (gmb_read_*): run + assegna i valori.
+             * Con VALID su target non dinamico (c->n_read_valids > 0) il READ riparte
+             * DAL CAMPO RIFIUTATO finché il predicato è falso: il testo resta nel campo
+             * (come Clipper) e l'utente corregge. ESC annulla (nessun ri-prompt). */
+            int nv = c->n_read_valids;
+            if (nv > 0) { ind(c); sb_put(&c->out, "int _gmb_from = -1;\n"); ind(c); sb_put(&c->out, "for (;;) {\n"); }
+            if (nv > 0) {
+                /* Riprompt: il run mostra SOLO il campo rifiutato (gli altri restano
+                 * confermati, come il loop Clipper per-campo della gamba IL). */
+                ind(c); sb_put(&c->out, "if (_gmb_from >= 0) gmb_read_native_focus_only(_gmb_from);\n");
+                ind(c); sb_put(&c->out, "int _gmb_rst = gmb_read_run(gmb_read_active());\n");
+            }
+            else { ind(c); sb_put(&c->out, "gmb_read_run(gmb_read_active());\n"); }
             for (int k = 0; k < c->n_read_vars; k++) {
                 const char* vn = c->read_vars[k]; int is_str = c->read_is_str[k];
                 if (gmb_c99_dyn_is(c, vn)) {
@@ -30026,8 +30063,20 @@ static void st_read(ctx_t* c, gmb_stmt_t* s) {
                 if (is_str) sb_printf(&c->out, " = gmb_string_alloc(gmb_read_value_at(%d));\n", k);
                 else sb_printf(&c->out, " = gmb_string_to_double(gmb_string_alloc(gmb_read_value_at(%d)));\n", k);
             }
+            if (nv > 0) {
+                ind(c); sb_put(&c->out, "if (_gmb_rst != 1) break;\n");
+                ind(c); sb_put(&c->out, "_gmb_from = -1;\n");
+                for (int k = 0; k < nv; k++) {
+                    ind(c); sb_put(&c->out, k == 0 ? "if (!(" : "else if (!(");
+                    emit_expr(c, (gmb_expr_t*)c->read_valids[k]);
+                    sb_printf(&c->out, ")) _gmb_from = %d;\n", c->read_valid_idx[k]);
+                }
+                ind(c); sb_put(&c->out, "if (_gmb_from < 0) break;\n");
+                ind(c); sb_put(&c->out, "}\n");
+            }
             ind(c); sb_put(&c->out, "gmb_read_reset(gmb_read_active());\n");
             c->n_read_vars = 0;
+            c->n_read_valids = 0;
             return;
         }
         /* 2.8: READ v[, ...] — preleva dalla tabella DATA (parità IlRuntime.ReadData*) */
