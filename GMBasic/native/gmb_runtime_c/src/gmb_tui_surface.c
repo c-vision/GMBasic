@@ -163,7 +163,11 @@ void gmb_tui_present_gfx(void)
      * anche le celle del buffer clipper (era la "console TUI" che si sovrapponeva
      * al form in basso a destra). */
     { extern int gmb_form_active(void);
-      if (gmb_form_active()) { maybe_shot(); gmb_gfx_present_tick(); return; } }
+      if (gmb_form_active()) {
+          /* OVERLAY (lista aperta di dropdown/date) SEMPRE per ULTIMO, appena prima del
+           * present: cosi. nessun passaggio successivo (TUI/says) puo. ricoprirlo. */
+          { extern void gmb_form_draw_overlays(void); gmb_form_draw_overlays(); }
+          maybe_shot(); gmb_gfx_present_tick(); return; } }
     /* GUI grafica (non SDLConsole): NON blittare il buffer clipper (era la "console
      * TUI" che si sovrapponeva al form). Solo se GMB_SDLCONSOLE si usa il blit a celle. */
     { const char* sdlc = gmb_opt_env("GMB_SDLCONSOLE");

@@ -248,6 +248,37 @@ int main(void)
         }
     }
 
+    /* ── ALERTBOX: click sul pulsante OK (geometria pixel) ─────────────── */
+    {
+        static gmb_alert_box_t ab;
+        gmb_alert_box_init(&ab, 600, 40, 220, 110);
+        gmb_alert_box_with_title(&ab, "Avviso");
+        gmb_alert_box_with_message(&ab, "Fatto");
+        gmb_tui_control_register(&ab.ctrl);
+        render_frame();
+        int th = gmb_gfx_text_height_logical(); if (th <= 0) th = 14;
+        int bh = th + 8, bw = gmb_gfx_text_width_logical("OK") + 24; if (bw < 60) bw = 60;
+        click_at(600 + 220 - bw - 10 + bw / 2, 40 + 110 - bh - 8 + bh / 2);
+        report("alertbox", ab.result == 1, "pulsante OK premuto");
+    }
+
+    /* ── CONFIRMATIONBOX: click su Cancel ─────────────────────────────── */
+    {
+        static gmb_confirmation_box_t cb;
+        gmb_confirmation_box_init(&cb, 600, 200, 240, 120);
+        gmb_confirmation_box_with_message(&cb, "Procedere?");
+        gmb_tui_control_register(&cb.ctrl);
+        render_frame();
+        int th = gmb_gfx_text_height_logical(); if (th <= 0) th = 14;
+        int bh = th + 8, gap = 8;
+        int w0 = gmb_gfx_text_width_logical("OK") + 24;     if (w0 < 60) w0 = 60;
+        int w1 = gmb_gfx_text_width_logical("Cancel") + 24; if (w1 < 60) w1 = 60;
+        int totw = w0 + w1 + gap;
+        int bx = 600 + 240 - totw - 10, by = 200 + 120 - bh - 8;
+        click_at(bx + w0 + gap + w1 / 2, by + bh / 2);
+        report("confirmationbox", cb.result == 1, "pulsante Cancel premuto");
+    }
+
     printf("\nTOTALE: %d PASS, %d FAIL\n", g_pass, g_fail);
     return g_fail;
 }
