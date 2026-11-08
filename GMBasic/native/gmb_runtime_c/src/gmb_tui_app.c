@@ -866,6 +866,25 @@ void gmb_tui_px_mark_dirty(void) { s_px_dirty = 1; }
 
 void gmb_tui_px_invalidate(void) { s_px_dirty = 1; }
 
+/* 1 se il controllo ha un POPUP aperto che disegna FUORI dal proprio rettangolo
+ * (lista della combobox, menu, context menu, calendario). Serve a due cose:
+ *  - disegnare questi controlli per ULTIMI (sopra tutto il resto);
+ *  - testarli per PRIMI nel mouse (altrimenti il click sul popup va al controllo
+ *    che sta sotto). Era il difetto "la select appare in secondo piano / non si
+ *    seleziona", presente in OGNI controllo con popup. */
+int gmb_control_popup_open(gmb_control_t* c)
+{
+    if (!c || !c->user) return 0;
+    switch (c->ctrl_kind)
+    {
+        case GMB_CK_COMBOBOX:    return ((gmb_combobox_t*)c->user)->open ? 1 : 0;
+        case GMB_CK_MENU:        return ((gmb_menu_t*)c->user)->is_open ? 1 : 0;
+        case GMB_CK_CONTEXTMENU: return ((gmb_context_menu_t*)c->user)->open ? 1 : 0;
+        case GMB_CK_DATEPICKER:  return ((gmb_date_picker_t*)c->user)->open ? 1 : 0;
+        default: return 0;
+    }
+}
+
 static void tui_draw_px_all_impl(int force);
 void gmb_tui_draw_px_all(void)
 {
@@ -901,11 +920,17 @@ static void tui_draw_px_all_impl(int force)
           if (bh > 0 && ph > 0) ch = ph / bh;
       } }
     if (cw < 1) cw = 8; if (ch < 1) ch = 16;
+    /* DUE PASSATE: prima i controlli normali, poi quelli con POPUP APERTO.
+     * Un popup disegna fuori dal proprio rect (lista combobox, menu, context menu,
+     * calendario): se lo si disegna nel suo turno, i controlli successivi lo
+     * ricoprono. Con la seconda passata il popup è sempre sopra. */
+    for (int pass = 0; pass < 2; pass++)
     for (int i = 0; i < g_reg_n; i++)
         if (g_reg_ctrl[i])
         {
             gmb_control_t* cc = g_reg_ctrl[i];
             if (!cc->visible) continue;   /* CONTROL SET name,"visible",0 → non disegnato */
+            if ((gmb_control_popup_open(cc) ? 1 : 0) != pass) continue;
             /* Spazio coordinate DICHIARATO (SCREEN/USE o `USE` sul controllo).
              * Default (metric 0 + SCREEN AUTO) = PIXEL in grafica: nessuna conversione.
              * Solo una dichiarazione esplicita (USE CELLS / metric 1) moltiplica per (cw,ch);
@@ -1021,6 +1046,10 @@ static void tui_process_key(int k)
 static int g_evt_px = 0;   /* evento mouse in coordinate PIXEL (graphics) */
 static void tui_process_mouse(const gmb_mouse_action_t* ma)
 {
+    /* DUE PASSATE: prima i controlli con POPUP APERTO (sono disegnati sopra, quindi
+     * devono ricevere per primi il click), poi gli altri. L'ordine dentro la passata
+     * resta inverso alla registrazione (l'ultimo creato è il più in alto). */
+    for (int pass = 0; pass < 2; pass++)
     for (int i = g_reg_n - 1; i >= 0; i--)
     {
         gmb_control_t* cc = g_reg_ctrl[i];
@@ -1029,6 +1058,7 @@ static void tui_process_mouse(const gmb_mouse_action_t* ma)
          * invisibile di un'altra scheda (rect sovrapposto) si mangiava il click e il
          * controllo visibile sotto non rispondeva ("sembrano solo disegnati"). */
         if (!cc->visible) continue;
+        if ((gmb_control_popup_open(cc) ? 1 : 0) != pass) continue;
         { extern int gmb_form_modal_active(void);
           if (gmb_form_modal_active()) continue; }   /* il modale ha già gestito l'evento */
         /* Lo spazio dell'EVENTO dipende dal backend (pixel in grafica, celle in TUI);

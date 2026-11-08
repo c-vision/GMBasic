@@ -72,6 +72,16 @@ SUB OnOpenPrintDialog()
   CONTROL SET "p3_modal_print", "modal", 1
 END SUB
 
+SUB OnOpenAlert()
+  CONTROL SET "p3_modal_alert", "visible", 1
+  CONTROL SET "p3_modal_alert", "modal", 1
+END SUB
+
+SUB OnOpenConfirm()
+  CONTROL SET "p3_modal_confirm", "visible", 1
+  CONTROL SET "p3_modal_confirm", "modal", 1
+END SUB
+
 ' ── verifica geometrica della pagina: 0 = tutto a posto ──────────────────
 ' Fuori area (20,120)-(1260,884) = violazione. Due rect si sovrappongono solo se
 ' nessuno dei due CONTIENE l'altro (pannello e figlio, invece, sono annidati).
@@ -268,8 +278,14 @@ BUTTON 40, 366, 240, 44, "Apri file..." ON CLICK OnOpenFileDialog NAME "p3_m"
 CALL Reg("p3_m", 3)
 BUTTON 300, 366, 240, 44, "Stampa..." ON CLICK OnOpenPrintDialog NAME "p3_n"
 CALL Reg("p3_n", 3)
-LABEL 40, 430, 1100, "ESC, Apri/Annulla e OK/Cancel chiudono il modale e nascondono il dialogo." NAME "p3_o"
+LABEL 40, 428, 1000, "ESC, Apri/Annulla e OK/Cancel chiudono il modale e nascondono il dialogo." NAME "p3_o"
 CALL Reg("p3_o", 3)
+BUTTON 40, 462, 240, 40, "Avviso..." ON CLICK OnOpenAlert NAME "p3_s"
+CALL Reg("p3_s", 3)
+BUTTON 300, 462, 240, 40, "Conferma..." ON CLICK OnOpenConfirm NAME "p3_t"
+CALL Reg("p3_t", 3)
+LABEL 560, 474, 660, "Anche avvisi e conferme sono modali: OK/Cancel li chiudono." NAME "p3_u"
+CALL Reg("p3_u", 3)
 
 PANEL 20, 576, 1232, 308, "FILE EXPLORER" NAME "p3_p"
 CALL Reg("p3_p", 3)
@@ -288,8 +304,15 @@ PRINTERDIALOG "Stampa", ps, v14, v15 NAME "p3_modal_print"
 CONTROL SET "p3_modal_print", "left", 380
 CONTROL SET "p3_modal_print", "top", 280
 CONTROL SET "p3_modal_print", "visible", 0
+ALERTBOX 480, 350, 330, 150, "Deploy completato" NAME "p3_modal_alert"
+CONTROL SET "p3_modal_alert", "visible", 0
+CONFIRMATIONBOX 480, 350, 330, 150, "Procedere?" NAME "p3_modal_confirm"
+CONTROL SET "p3_modal_confirm", "visible", 0
 
 ' ══ PAGINA 4 · CLIPPER ═════════════════════════════════════════════════
+' Solo controlli CLIPPER: TBROWSE (@SELECT), @SAY/@GET, MENU TO, context menu,
+' function key bar. Gli ALERT/CONFIRMATION non sono Clipper: stanno nella scheda
+' Files & Print, dove sono APERTI come modali da un pulsante.
 PANEL 20, 120, 760, 560, "TBROWSE · @SELECT (Clipper)" NAME "p4_a"
 CALL Reg("p4_a", 4)
 TBROWSE 36, 160, 728, 504, [["Name", 22], ["Qty", 8], ["Status", 12]], [["alpha", 12, "ok"], ["beta", 7, "ok"], ["gamma", 3, "warn"], ["delta", 21, "ok"], ["epsilon", 9, "crit"], ["zeta", 15, "ok"], ["eta", 4, "ok"], ["theta", 18, "ok"]] INTO v17 NAME "p4_b"
@@ -304,15 +327,15 @@ MENU 812, 234, 432, "File|Edit|View|Help" NAME "p4_f"
 CALL Reg("p4_f", 4)
 CONTEXTMENU 812, 282, 432, "Copy|Paste|Delete" NAME "p4_g"
 CALL Reg("p4_g", 4)
-LABEL 812, 336, 432, "menubar + context menu" NAME "p4_h"
+LABEL 812, 336, 432, "menubar + context menu: il popup si apre SOPRA la pagina" NAME "p4_h"
 CALL Reg("p4_h", 4)
-PANEL 796, 436, 464, 244, "DIALOGHI" NAME "p4_i"
+PANEL 796, 436, 464, 244, "CLIPPER · NOTE" NAME "p4_i"
 CALL Reg("p4_i", 4)
-ALERTBOX 812, 470, 210, 120, "Deploy completato" NAME "p4_j"
+LABEL 812, 476, 432, "@SAY/@GET compongono il form a celle; in grafica il testo e' TTF." NAME "p4_j"
 CALL Reg("p4_j", 4)
-CONFIRMATIONBOX 1036, 470, 208, 120, "Procedere?" NAME "p4_k"
+LABEL 812, 506, 432, "TBROWSE usa il datasource colonna per colonna (niente celle)." NAME "p4_k"
 CALL Reg("p4_k", 4)
-LABEL 812, 606, 432, "ALERTBOX / CONFIRMATIONBOX" NAME "p4_l"
+LABEL 812, 536, 432, "Il click su una riga seleziona: hit-test con la geometria pixel." NAME "p4_l"
 CALL Reg("p4_l", 4)
 PANEL 20, 696, 1232, 188, "FUNCTION KEY BAR · COLOR PICKER" NAME "p4_m"
 CALL Reg("p4_m", 4)
