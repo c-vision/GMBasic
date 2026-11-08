@@ -79,6 +79,7 @@ void gmb_gfx_cls(int color);
 int  gmb_gfx_fg(void);
 int  gmb_gfx_bg(void);
 int  gmb_gfx_page_bg_color(void);   /* RGB dello sfondo pagina (per il repaint incrementale) */
+void gmb_gfx_dim_page(float factor);   /* velo del modale: oscura la pagina */
 
 /* ---- Primitive ---- */
 void gmb_gfx_pset(int x, int y, int color);            /* color<0 -> fg */

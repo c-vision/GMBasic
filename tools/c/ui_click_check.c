@@ -201,6 +201,25 @@ int main(void)
         report("contextmenu", cm.open != 0, "menu aperto dal click");
     }
 
+    /* ── MODALE: velo + input catturato + chiusura dal pulsante ─────────── */
+    {
+        static gmb_file_dialog_t fd;
+        gmb_file_dialog_init(&fd, 0, 0, 0, 0);        /* 0,0 = centrato, 520x420 */
+        gmb_tui_control_register(&fd.ctrl);
+        gmb_form_modal_open(&fd.ctrl);
+        render_frame();
+        int opened = gmb_form_modal_active();
+        click_at(4, 4);                               /* FUORI dal dialogo */
+        int blocked = gmb_form_modal_active();        /* deve restare aperto */
+        int x = (fd.ctrl.px_w > 0) ? fd.ctrl.px_x : fd.ctrl.x;
+        int y = (fd.ctrl.px_h > 0) ? fd.ctrl.px_y : fd.ctrl.y;
+        int w = (fd.ctrl.px_w > 0) ? fd.ctrl.px_w : fd.ctrl.width;
+        int h = (fd.ctrl.px_h > 0) ? fd.ctrl.px_h : fd.ctrl.height;
+        click_at(x + w - 60, y + h - 26);             /* pulsante Annulla */
+        int closed = !gmb_form_modal_active();
+        report("modal", opened && blocked && closed, "aperto, click fuori ignorato, chiuso da Annulla");
+    }
+
     printf("\nTOTALE: %d PASS, %d FAIL\n", g_pass, g_fail);
     return g_fail;
 }

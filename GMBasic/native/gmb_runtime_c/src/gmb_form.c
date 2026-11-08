@@ -13,6 +13,7 @@ static long long form_now_ms(void){ struct timespec ts; clock_gettime(CLOCK_MONO
 #include "gmb_tui_tbrowse.h"   /* gmb_browse_t (props CONTROL SET/GET TBROWSE) */
 #ifdef GMB_GFX_SDL_PRESENT
 #include "gmb_gfx_present.h"
+#include "gmb_graphics_internal.h"   /* active_page(): snapshot della pagina per il MODALE */
 #endif
 #include <stdio.h>
 #include <stdlib.h>
@@ -165,6 +166,80 @@ int gmb_form_damage_hits(int x, int y, int w, int h)
         if (x < d->x + d->w && x + w > d->x && y < d->y + d->h && y + h > d->y) return 1;
     }
     return 0;
+}
+
+/* ── MODALE VERO ─────────────────────────────────────────────────────────────
+ * Un dialogo modale non è una card nella pagina: è un LIVELLO sopra il resto,
+ * con velo (scrim), ombra, input catturato e nessun controllo sotto raggiungibile.
+ * La pagina sotto viene salvata all'apertura: ogni frame si riparte da quella
+ * copia pulita, così il velo non si somma a se stesso. */
+static gmb_control_t* g_modal = NULL;
+static uint32_t* g_modal_snap = NULL;
+static int g_modal_sw = 0, g_modal_sh = 0;
+static int g_skip_cls = 0;
+
+int  gmb_form_modal_active(void)   { return g_modal ? 1 : 0; }
+struct gmb_control* gmb_form_modal_control(void) { return g_modal; }
+
+void gmb_form_modal_open(gmb_control_t* c)
+{
+    if (!c) return;
+    gmb_gfx_page_t* p = active_page();
+    g_modal = c;
+    free(g_modal_snap); g_modal_snap = NULL; g_modal_sw = g_modal_sh = 0;
+    if (p && p->pixels && p->w > 0 && p->h > 0)
+    {
+        size_t n = (size_t)p->w * (size_t)p->h;
+        g_modal_snap = (uint32_t*)malloc(n * sizeof(uint32_t));
+        if (g_modal_snap) { memcpy(g_modal_snap, p->pixels, n * sizeof(uint32_t)); g_modal_sw = p->w; g_modal_sh = p->h; }
+    }
+    gmb_form_invalidate_all();
+}
+
+void gmb_form_modal_close(void)
+{
+    if (!g_modal) return;
+    /* Un dialogo modale non e. una card della pagina: alla chiusura torna nascosto. */
+    g_modal->visible = 0;
+    g_modal = NULL;
+    free(g_modal_snap); g_modal_snap = NULL; g_modal_sw = g_modal_sh = 0;
+    gmb_form_invalidate_all();
+}
+
+/* Riporta la pagina alla copia scattata all'apertura (senza velo). */
+static void modal_restore(void)
+{
+    gmb_gfx_page_t* p = active_page();
+    if (!p || !g_modal_snap || p->w != g_modal_sw || p->h != g_modal_sh) return;
+    memcpy(p->pixels, g_modal_snap, (size_t)p->w * (size_t)p->h * sizeof(uint32_t));
+}
+
+/* Velo scuro semitrasparente su TUTTA la pagina (una volta per frame). */
+static void modal_scrim(void)
+{
+    /* Velo: si OSCURA la pagina (moltiplicazione dei canali). Deterministico e senza
+     * accumulo: si parte sempre dallo snapshot pulito. */
+    gmb_gfx_dim_page(0.52f);
+}
+
+/* Disegna il dialogo modale SOPRA il velo, con ombra. */
+static void modal_draw(void)
+{
+    if (!g_modal) return;
+    gmb_control_t* c = g_modal;
+    int x = (c->px_w > 0) ? c->px_x : c->x;
+    int y = (c->px_h > 0) ? c->px_y : c->y;
+    int w = (c->px_w > 0) ? c->px_w : c->width;
+    int h = (c->px_h > 0) ? c->px_h : c->height;
+    if (w <= 0 || h <= 0) return;
+    gmb_gfx_drop_shadow(x + 4, y + 6, w, h, 0, 0x55000000u, 14);
+    /* Base OPACA: un dialogo non deve far trasparire la pagina sotto (il tema
+     * glass ha fill semitrasparente: sopra il velo il testo diventava illeggibile). */
+    { gmb_widget_style_t st = gmb_widget_style_current();
+      unsigned base = 0xFF000000u | (st.fill & 0xFFFFFFu);
+      gmb_gfx_fill_rounded_rect(x, y, w, h, st.radius > 0 ? st.radius : 12, base); }
+    if (c->draw_px_fn) c->draw_px_fn(c->user, c);
+    else { gmb_gfx_fill_rounded_rect(x, y, w, h, 10, 0xFF1B2B45u); gmb_gfx_stroke_rounded_rect(x, y, w, h, 10, 0x60FFFFFFu); }
 }
 
 
@@ -1270,6 +1345,8 @@ static void draw_widgets(float sc)
         if (!g_wid[i].base.visible) continue;
         /* skip dei widget che non toccano la zona sporca (repaint incrementale) */
         if (!g_draw_full && !gmb_form_damage_hits(g_wid[i].base.x, g_wid[i].base.y, g_wid[i].base.width, g_wid[i].base.height)) continue;
+        /* il controllo modale lo disegna il livello MODALE, non la pagina */
+        if (g_modal && &g_wid[i].base == g_modal) continue;
         draw_one_widget(&g_wid[i], sc);
     }
 }
@@ -1363,7 +1440,7 @@ static void form_draw(void)
      * solo quelle; altrimenti (primo frame, cambio scala, CLS) si ripulisce tutto.
      * Il colore di sfondo è quello di pagina (stesso di CLS senza argomento). */
     int full = (g_dam_full || g_ndam <= 0) ? 1 : 0;
-    if (full) GMB_GFX_CLS(-1);
+    if (full) { if (!g_skip_cls) GMB_GFX_CLS(-1); }
     else
     {
         int bg = (int)(0xFF000000u | ((unsigned)gmb_gfx_page_bg_color() & 0xFFFFFFu));
@@ -1907,6 +1984,10 @@ static void tui_ctrl_set(const char* name, const char* prop, double num, const c
     else if (!strcasecmp(prop,"cursorcol")) { if (c->ctrl_kind==GMB_CK_GRID) ((gmb_grid_t*)c->user)->cursor_col=(int)num; }
     else if (!strcasecmp(prop,"selrow")) { if (c->ctrl_kind==GMB_CK_GRID) { ((gmb_grid_t*)c->user)->sel_row=(int)num; ((gmb_grid_t*)c->user)->has_selected=true; } }
     else if (!strcasecmp(prop,"selcol")) { if (c->ctrl_kind==GMB_CK_GRID) ((gmb_grid_t*)c->user)->sel_col=(int)num; }
+    else if (!strcasecmp(prop, "modal")) {
+        if (num != 0) gmb_form_modal_open(c);
+        else if (gmb_form_modal_control() == c) gmb_form_modal_close();
+    }
     else control_extra_set(c, prop, num, str);
     /* Ogni modifica a un controllo TUI deve riflettersi al frame successivo: il livello
      * pixel è ridisegnato solo su dirty (senza, `visible=0` lasciava i pixel vecchi).
@@ -2041,6 +2122,11 @@ void gmb_form_control_set(const char* name, const char* prop, double num, const 
     else if (!strcasecmp(prop, "barstyle")) { if (str && w) snprintf(w->bar_style, sizeof(w->bar_style), "%s", str); }
     else if (!strcasecmp(prop, "align") || !strcasecmp(prop, "alignment")) { if (w) w->align = (int)num; }
     else if (!strcasecmp(prop, "valid") || !strcasecmp(prop, "isvalid")) { if (w) w->is_valid = (num != 0); }
+    /* MODALE: apre/chiude il dialogo come livello sopra la pagina (velo + input catturato). */
+    else if (!strcasecmp(prop, "modal")) {
+        if (num != 0) { if (w) gmb_form_modal_open(&w->base); else gmb_form_modal_open(&t->base); }
+        else if (gmb_form_modal_control() == (w ? &w->base : &t->base)) gmb_form_modal_close();
+    }
     else control_extra_set(w ? &w->base : &t->base, prop, num, str);
     g_dirty = 1;
     /* Sporca il controllo modificato (prima e dopo): senza, un cambio di valore/
@@ -3044,6 +3130,29 @@ void gmb_form_set_last_handle(int h) { g_last_handle = h; }
  * consegnare l'evento al layer controlli C evento per evento. */
 void gmb_form_dispatch_mouse_px(int type, int x, int y, int button, int wheel)
 {
+    /* ── MODALE: il mouse va SOLO al dialogo; il resto della UI è congelato. ── */
+    if (g_modal)
+    {
+        gmb_control_t* mc = g_modal;
+        int x0 = (mc->px_w > 0) ? mc->px_x : mc->x;
+        int y0 = (mc->px_h > 0) ? mc->px_y : mc->y;
+        int w0 = (mc->px_w > 0) ? mc->px_w : mc->width;
+        int h0 = (mc->px_h > 0) ? mc->px_h : mc->height;
+        if (x >= x0 && x < x0 + w0 && y >= y0 && y < y0 + h0)
+        {
+            gmb_mouse_action_t ma; memset(&ma, 0, sizeof(ma));
+            ma.x = x; ma.y = y;
+            ma.kind = (type == GMB_GFX_MOUSE_DOWN) ? GMB_MA_CLICK
+                    : (type == GMB_GFX_MOUSE_UP) ? GMB_MA_RELEASE
+                    : (type == GMB_GFX_MOUSE_MOVE) ? GMB_MA_MOVE : GMB_MA_CLICK;
+            mc->focused = 1;
+            gmb_control_handle_mouse(mc, &ma);
+            gmb_form_invalidate(x0, y0, w0, h0);
+        }
+        g_dirty = 1;   /* il frame modale ridisegna dal velo in su */
+        (void)wheel;
+        return;
+    }
     float sc = GMB_GFX_RENDER_SCALE();
     if (sc <= 0.0f) sc = 1.0f;
     if (type == GMB_GFX_MOUSE_DOWN) {   /* focus generico (base Control) */
@@ -3100,6 +3209,15 @@ int gmb_form_widget_rect(int i, int* x, int* y, int* w, int* h)
 void gmb_form_dispatch_key(const char* key)
 {
     if (!key || !key[0]) return;
+    /* ── MODALE: la tastiera è del dialogo. ESC lo chiude. ── */
+    if (g_modal)
+    {
+        unsigned char k0 = (unsigned char)key[0];
+        if (k0 == 0x1b) { gmb_form_modal_close(); g_dirty = 1; return; }
+        if (g_modal->handle_key_fn) g_modal->handle_key_fn(g_modal->user, g_modal, (int)k0);
+        g_dirty = 1;
+        return;
+    }
     unsigned char c = (unsigned char)key[0];
     if (g_focus_wid >= 0 && g_focus_wid < g_nwid) {   /* eventi tastiera (VB6) sul controllo focalizzato */
         fire_ev(g_focus_wid, GMB_EV_KEYDOWN);
@@ -3273,6 +3391,32 @@ void gmb_form_render_if_dirty(void)
             gmb_form_invalidate_all();
         }
         s_last_scale = sc;
+    }
+    if (g_modal)
+    {
+        /* ── FRAME MODALE ────────────────────────────────────────────────────
+         * Si riparte dalla pagina pulita (snapshot), si ridisegna il contenuto,
+         * si stende il velo e si disegna il dialogo SOPRA. Nessun controllo sotto
+         * riceve eventi (vedi dispatch) e il velo non si somma a se stesso. */
+        if (!g_dirty && !g_dam_full && g_ndam <= 0 && sframes > 1) { /* niente da rifare */ }
+        else
+        {
+            modal_restore();
+            g_ndam = 0; g_dam_full = 0;   /* il frame modale è sempre "tutto" */
+            if (gmb_form_active())
+            {
+                g_skip_cls = 1;           /* la pagina è già quella dello snapshot */
+                form_draw();
+                g_skip_cls = 0;
+            }
+            { extern void gmb_tui_sync_bindings(void); gmb_tui_sync_bindings(); }
+            { extern void gmb_tui_draw_px_all_force(void); gmb_tui_draw_px_all_force(); }
+            modal_scrim();
+            modal_draw();
+            g_dirty = 0;
+        }
+        if (sp && *sp && sframes == want) GMB_GFX_SAVE_PNG(sp);
+        return;
     }
     if (gmb_form_active() && (g_dirty || g_dam_full || g_ndam > 0))
     {
