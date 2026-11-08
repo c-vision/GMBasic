@@ -188,6 +188,9 @@ long long gmb_tui_code_find(int i, const char* needle, int from); /* prima riga 
 long long gmb_tui_code_replace(int i, const char* find, const char* repl); /* sostituisci tutte, ritorna il conteggio */
 int  gmb_tui_control_cursor(int i, int* row, int* col);      /* cella (0-based) del cursore del CodeArea, 1 se ok */
 gmb_control_t* gmb_tui_control_find_by_name(const char* name);
+int  gmb_control_popup_open(gmb_control_t* c);
+int  gmb_control_popup_paint_rect(gmb_control_t* c, int* x, int* y, int* w, int* h);
+void gmb_control_invalidate_paint(gmb_control_t* c);
 void gmb_control_paint_rect(gmb_control_t* c, int* x, int* y, int* w, int* h);   /* rect che il controllo dipinge davvero */
 /* Origine assoluta del CONTENUTO di un controllo ospite (nome), risolvendo ricorsivamente il
  * suo contenitore (window per nome, oppure un altro controllo/UserControl per nome). */

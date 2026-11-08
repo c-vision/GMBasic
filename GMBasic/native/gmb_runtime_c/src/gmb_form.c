@@ -1345,10 +1345,15 @@ static void draw_widgets(float sc)
     for (int i = 0; i < g_nwid; i++)
     {
         if (!g_wid[i].base.visible) continue;
-        /* skip dei widget che non toccano la zona sporca (repaint incrementale) */
-        if (!g_draw_full && !gmb_form_damage_hits(g_wid[i].base.x, g_wid[i].base.y, g_wid[i].base.width, g_wid[i].base.height)) continue;
         /* il controllo modale lo disegna il livello MODALE, non la pagina */
         if (g_modal && &g_wid[i].base == g_modal) continue;
+        /* AREA del widget = rettangolo ∪ lista aperta (la dropdown dipinge fuori). */
+        int fx = g_wid[i].base.x, fy = g_wid[i].base.y;
+        int fw = g_wid[i].base.width, fh = g_wid[i].base.height;
+        if (g_wid[i].kind == W_DROPDOWN && g_wid[i].open && g_wid[i].nitems > 0)
+            fh += g_wid[i].base.height * g_wid[i].nitems;
+        /* skip dei widget che non toccano la zona sporca (repaint incrementale) */
+        if (!g_draw_full && !gmb_form_damage_hits(fx, fy, fw, fh)) continue;
         draw_one_widget(&g_wid[i], sc);
     }
 }
@@ -1804,6 +1809,85 @@ static double tui_ctrl_value(gmb_control_t* c)
         default: return 0.0;
     }
 }
+/* Area d'ingombro del POPUP aperto, in pixel (0 = nessun popup).
+ * Un controllo non occupa solo il suo rettangolo: la lista aperta di una dropdown,
+ * il menu, il calendario dipingono FUORI. Se l'area non include il popup, il repaint
+ * incrementale non lo ripulisce (restano i pixel della lista chiusa) e non lo ridisegna.
+ * Questa è l'unica fonte della geometria "extra" per TUTTI i controlli con popup. */
+static int popup_area(gmb_control_t* c, int only_if_open, int* x, int* y, int* w, int* h)
+{
+    if (!c || !c->user) return 0;
+    int rx = (c->px_w > 0) ? c->px_x : c->x;
+    int ry = (c->px_h > 0) ? c->px_y : c->y;
+    int rw = (c->px_w > 0) ? c->px_w : c->width;
+    int rh0 = (c->px_h > 0) ? c->px_h : c->height;
+    int row = gmb_widget_style_current().row_h; if (row < 14) row = 24;
+    switch (c->ctrl_kind)
+    {
+        case GMB_CK_COMBOBOX:
+        {
+            gmb_combobox_t* cb = (gmb_combobox_t*)c->user;
+            if ((only_if_open && !cb->open) || cb->items_count <= 0) return 0;
+            int n = cb->drop_down_height > 0 ? cb->drop_down_height : cb->items_count;
+            if (n > cb->items_count) n = cb->items_count;
+            *x = rx; *y = ry + rh0; *w = rw; *h = row * n;
+            return 1;
+        }
+        case GMB_CK_CONTEXTMENU:
+        {
+            gmb_context_menu_t* m = (gmb_context_menu_t*)c->user;
+            if ((only_if_open && !m->open) || m->n <= 0) return 0;
+            *x = rx; *y = ry; *w = rw; *h = m->n * row + 12;
+            return 1;
+        }
+        case GMB_CK_MENU:
+        {
+            gmb_menu_t* m = (gmb_menu_t*)c->user;
+            if (only_if_open && !m->is_open) return 0;
+            int n = m->items_count;
+            if (n <= 0) return 0;
+            *x = rx; *y = ry + row; *w = rw; *h = row * n;
+            return 1;
+        }
+        case GMB_CK_DATEPICKER:
+        {
+            gmb_date_picker_t* d = (gmb_date_picker_t*)c->user;
+            if (only_if_open && !d->open) return 0;
+            *x = rx; *y = ry; *w = rw; *h = rh0 + row * 8;
+            return 1;
+        }
+        default: return 0;
+    }
+}
+
+int gmb_control_popup_paint_rect(gmb_control_t* c, int* x, int* y, int* w, int* h)
+{ return popup_area(c, 1, x, y, w, h); }
+
+/* Sporca TUTTA l.area che il controllo puo. occupare: rettangolo + popup (anche se
+ * chiuso). Si usa quando il popup si apre o si chiude: in quei due istanti l.area
+ * cambia, e con una sola delle due si lasciano pixel vecchi (lista fantasma). */
+void gmb_control_paint_rect(gmb_control_t* c, int* x, int* y, int* w, int* h);   /* fwd: usata qui sotto */
+void gmb_control_invalidate_paint(gmb_control_t* c)
+{
+    int x, y, w, h; gmb_control_paint_rect(c, &x, &y, &w, &h);
+    int ux, uy, uw, uh;
+    if (popup_area(c, 0, &ux, &uy, &uw, &uh))
+    {
+        int x2 = x + w, y2 = y + h, ux2 = ux + uw, uy2 = uy + uh;
+        if (ux < x) x = ux;
+        if (uy < y) y = uy;
+        if (ux2 > x2) x2 = ux2;
+        if (uy2 > y2) y2 = uy2;
+        w = x2 - x; h = y2 - y;
+    }
+    /* Un controllo con POPUP non si puo. invalidare "a modo": aprire/chiudere cambia
+     * l.ingombro e le ombre/liste si sovrappongono a piu. controlli. Questi eventi
+     * sono rari: si ridisegna la pagina intera, che e. l.unica cosa che garantisce
+     * pixel identici prima e dopo (verificato con gmbimgdiff). */
+    if (popup_area(c, 0, &ux, &uy, &uw, &uh)) { gmb_form_invalidate_all(); return; }
+    gmb_form_invalidate(x, y, w, h);
+}
+
 void gmb_control_paint_rect(gmb_control_t* c, int* x, int* y, int* w, int* h)
 {
     int px = (c->px_w > 0) ? c->px_x : c->x;
@@ -1816,6 +1900,18 @@ void gmb_control_paint_rect(gmb_control_t* c, int* x, int* y, int* w, int* h)
     if (ph < th + 6) ph = th + 6;
     if (pw <= 0) pw = 8;
     *x = px - 2; *y = py - 4; *w = pw + 4; *h = ph + 8;
+    /* AREA = rettangolo ∪ popup aperto. */
+    int ux, uy, uw, uh;
+    if (gmb_control_popup_paint_rect(c, &ux, &uy, &uw, &uh))
+    {
+        int x2 = *x + *w, y2 = *y + *h;
+        int ux2 = ux + uw, uy2 = uy + uh;
+        if (ux < *x) *x = ux;
+        if (uy < *y) *y = uy;
+        if (ux2 > x2) x2 = ux2;
+        if (uy2 > y2) y2 = uy2;
+        *w = x2 - *x; *h = y2 - *y;
+    }
 }
 static void tui_ctrl_set_value(gmb_control_t* c, double v)
 {
@@ -2003,9 +2099,8 @@ static void tui_ctrl_set(const char* name, const char* prop, double num, const c
     g_dirty = 1;
     { extern void gmb_tui_mark_dirty(void); gmb_tui_mark_dirty(); }
     /* Sporca SOLO il rettangolo del controllo (prima e dopo): non tutto lo schermo. */
-    { int nx0, ny0, nw0, nh0; gmb_control_paint_rect(c, &nx0, &ny0, &nw0, &nh0);
-      gmb_form_invalidate(ox0, oy0, ow0, oh0);
-      gmb_form_invalidate(nx0, ny0, nw0, nh0); }
+    (void)ox0; (void)oy0; (void)ow0; (void)oh0;
+    gmb_control_invalidate_paint(c);   /* rettangolo + area popup (prima e dopo) */
 }
 static double tui_ctrl_get(const char* name, const char* prop)
 {
@@ -2141,9 +2236,12 @@ void gmb_form_control_set(const char* name, const char* prop, double num, const 
     /* Sporca il controllo modificato (prima e dopo): senza, un cambio di valore/
      * visibilita. su un widget FORM non veniva ridipinto quando il frame era
      * incrementale (es. la pillola del TAB restava sulla scheda vecchia). */
-    { int nx0, ny0, nw0, nh0; form_control_px_rect(b ? &g_btns[i].base : &g_wid[i].base, &nx0, &ny0, &nw0, &nh0);
-      gmb_form_invalidate(ox0, oy0, ow0, oh0);
-      gmb_form_invalidate(nx0, ny0, nw0, nh0); }
+    /* Un widget con POPUP (dropdown/date) cambia ingombro: si ridisegna tutto. */
+    if (w && (w->kind == W_DROPDOWN || w->kind == W_DATE)) gmb_form_invalidate_all();
+    else { int nx0, ny0, nw0, nh0; form_control_px_rect(b ? &g_btns[i].base : &g_wid[i].base, &nx0, &ny0, &nw0, &nh0);
+           (void)ox0; (void)oy0; (void)ow0; (void)oh0;
+           gmb_form_invalidate(ox0, oy0, ow0, oh0);
+           gmb_form_invalidate(nx0, ny0, nw0, nh0); }
 }
 
 double gmb_form_control_get(const char* name, const char* prop)
@@ -3105,7 +3203,7 @@ static void widget_mouse(int type, int x, int y, float sc)
                             int d = r * 7 + c2 - fw + 1;
                             if (d >= 1 && d <= dim) { wd->dday = d; wd->sy = wd->dy; wd->sm = wd->dm; wd->sd = d; char b[16]; snprintf(b, sizeof(b), "%04d-%02d-%02d", wd->dy, wd->dm, d); wd_set_str(wd, b); }
                             wd->open = 0; g_dirty = 1;
-                    gmb_form_invalidate(X, Y, W, H * (wd->nitems + 1));   /* la lista sparisce */
+                    gmb_form_invalidate_all();   /* aprire/chiudere cambia l.ingombro */
                         }
                     } else { wd->open = 0; g_dirty = 1; }
                 } else if (x >= X && x < X + W && y >= Y && y < Y + H) { if (x >= X + W - px_arrow_band_w((int)GMB_GFX_TEXT_END_X("M",0,0))) { wd->open = 1; wd->hover = 0; } else { set_focus_wid(i); date_mask_fill(wd); } g_dirty = 1; }
@@ -3120,7 +3218,7 @@ static void widget_mouse(int type, int x, int y, float sc)
                     wd->open = 0; g_dirty = 1;
                 } else if (x >= X && x < X + W && y >= Y && y < Y + H) {
                     wd->open = 1; wd->hover = -1; fire_ev(i, GMB_EV_DROPDOWN); g_dirty = 1;
-                    gmb_form_invalidate(X, Y, W, H * (wd->nitems + 1));   /* la lista copre sotto */
+                    gmb_form_invalidate_all();
                 }
             } else if (type == GMB_GFX_MOUSE_MOVE && wd->open) {
                 if (x >= X && x < X + W && y >= listY && y < listY + listH) {
