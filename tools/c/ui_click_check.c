@@ -330,6 +330,21 @@ int main(void)
         report("propertygrid", pg.selected_index == 1, "riga 2 selezionata");
     }
 
+    /* ── MENU (menubar): click su una voce la seleziona ────────────────── */
+    {
+        static gmb_menu_t mn;
+        gmb_menu_init(&mn, 40, 800, 260);
+        gmb_menu_add_item(&mn, "File");
+        gmb_menu_add_item(&mn, "Edit");
+        gmb_menu_add_item(&mn, "View");
+        gmb_tui_control_register(&mn.ctrl);
+        render_frame();
+        { int x = 40 + (int)gmb_gfx_text_width_logical("File") + 20 + 12;   /* dentro "Edit" */
+          int h = gmb_widget_style_current().row_h; if (h <= 0) h = 24;
+          click_at(x, 800 + h / 2); }
+        report("menu", mn.selected_index == 1, "voce 2 selezionata dal click");
+    }
+
     printf("\nTOTALE: %d PASS, %d FAIL\n", g_pass, g_fail);
     return g_fail;
 }
