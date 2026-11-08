@@ -10845,14 +10845,22 @@ static void emit_call(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_
     /* Call QUALIFICATA `NS.NOME` a un membro di namespace che ESISTE come funzione/FFI utente:
      * il simbolo del namespace VINCE sui builtin omonimi risolti per nome (bug FFI-collide:
      * PROTOBUF.PARSE -> gmb_json_parse). Azzera tk → si prosegue al percorso user-fn
-     * (find_fn_arity sotto), saltando i rami builtin-per-tk. */
-    if (ns && ns[0] && find_fn_arity(c, name, nargs, ns)) tk = GMB_TOK_Unknown;
+     * (find_fn_arity sotto), saltando i rami builtin-per-tk.
+     * Deve essere lo STESSO namespace (ffi_ns_declares): find_fn_arity(ns) è solo una
+     * preferenza e ricade su qualunque ns, quindi lasciava vincere le DECLARE di statsx.inc
+     * (NORMALCDF C-order) su STATS.NORMALCDF (x-first). */
+    if (ns && ns[0] && ffi_ns_declares(c, ns, name, nargs)) tk = GMB_TOK_Unknown;
     /* Stesso principio per le chiamate QUALIFICATE arrivate con nome dottato e ns vuoto
      * (`TIMESERIESX.TSOUTLIERS`): una funzione UTENTE/FFI con quel nome (e arità) vince
      * sempre sul TokenKind storico del lexer. Senza, i nomi migrati a FFI (TSOUTLIERS,
      * TSROLLMINMAX, ...) venivano emessi come builtin per `tk` anche se il simbolo del
-     * namespace è la funzione .inc. */
-    if (name && name[0]) {
+     * namespace è la funzione .inc.
+     * SOLO con ns VUOTO: se la qualifica è già risolta (ns="STATS"), il simbolo FFI di un
+     * ALTRO namespace con lo stesso nome non deve vincere sul builtin. Caso reale: le
+     * DECLARE di statsx.inc (NORMALCDF(mean,sd,x), ordine C) catturavano STATS.NORMALCDF
+     * (x,mean,sd) → C99 calcolava con argomenti invertiti (normcdf(0,0,1)=0 invece di 0.5).
+     * Con ns noto decide block 1 (find_fn_arity(ns)): vince solo il simbolo dello STESSO ns. */
+    if ((!ns || !ns[0]) && name && name[0]) {
         const char* ndot = strrchr(name, '.');
         const char* bare = ndot ? ndot + 1 : name;
         if (find_fn_arity(c, bare, nargs, NULL)) tk = GMB_TOK_Unknown;
@@ -13672,6 +13680,14 @@ static void emit_call(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_
      * (es. MATH.SQR(16) con solo SQR/2 utente → builtin SQR/1); solo se anche il
      * builtin rifiuta, l'errore riporta le arità utente disponibili (vedi sotto). */
     fn_info_t* fn = find_fn_arity(c, name, nargs, ns);
+    /* Con qualifica ns NON VUOTA vale solo un simbolo dello STESSO namespace: find_fn_arity
+     * ricade su qualunque ns (preferenza, non filtro) e quindi lasciava vincere le DECLARE
+     * di un altro namespace omonime (statsx.inc NORMALCDF C-order su STATS.NORMALCDF
+     * x-first → C99 calcolava argomenti invertiti). Senza qualifica resta il comportamento
+     * storico. */
+    if (fn && ns && ns[0] && fn->stmt && fn->stmt->func_ns &&
+        strcasecmp(fn->stmt->func_ns, ns) != 0)
+        fn = NULL;
     /* Bare call dentro un METODO di classe: il metodo va risolto nella CATENA della CLASSE
      * CORRENTE (ereditarietà inclusa). `find_fn_arity` per NOME dà il PRIMO omonimo, che con
      * più classi omonime (es. `HitTest` in ContextMenu/DataGrid/Splitter) è di un'ALTRA classe

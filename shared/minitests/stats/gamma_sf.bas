@@ -1,4 +1,4 @@
-' EXPECT: sf= 0.323324|cdf+sf= 1
+' EXPECT: sf= 0.199148|cdf+sf= 1
 SUB Main()
   DIM x = 3.0
   DIM sf = STATS.GammaSf(2, 1, x)

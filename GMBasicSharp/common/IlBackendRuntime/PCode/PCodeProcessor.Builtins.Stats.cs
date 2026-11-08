@@ -463,11 +463,13 @@ internal sealed partial class PCodeProcessor
         },
         [BuiltInFunction.STATSANOVA] = (task, args) =>
         {
-                {
+                // STATS.Anova e STATS.ANOVA sono lo STESSO identificatore (BASIC è
+                // case-insensitive): il contratto è il dict SUPERSET di IlRuntime.StatsAnova
+                // (Statistic/PValue/DegreesOfFreedom + FValue/DF*/SS*/MS*). Prima qui si
+                // costruiva il dict RIDOTTO HypothesisResult → su PCode i membri
+                // FValue/DFBetween/... restavano vuoti (analysis_all rosso).
                 var groups = ToDoubleMatrix(ArgOr(args, 0));
-                var (statistic, pValue, _, _) = CommonLib.Numerics.Anova(groups);
-                return HypothesisResult(new CommonLib.StatisticalTestResult(statistic, pValue, groups.Sum(static group => group.Length) - groups.Length));
-                }
+                return Basic.IlBackend.IlRuntime.StatsAnova(groups);
         },
         [BuiltInFunction.CHI2TEST] = (task, args) =>
         {
