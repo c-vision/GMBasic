@@ -37,8 +37,8 @@
   // griglia di celle). Chiavi diverse ("uiFont*") per non collidere con "fontPath"/
   // "fontSize" delle consoleConfiguration nel parser JSON semplificato del runtime C.
   // Default interno se assenti: /System/Library/Fonts/SFNS.ttf a 13px logici.
-  "uiFontPath": "/System/Library/Fonts/SFNS.ttf",
-  "uiFontSize": 13,
+  "uiFontPath": "/System/Library/Fonts/HelveticaNeue.ttc",
+  "uiFontSize": 11,
 
   // --------------------------------------------------------------------
   // --- Sezione Console
