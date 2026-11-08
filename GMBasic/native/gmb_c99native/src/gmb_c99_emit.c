@@ -30038,12 +30038,16 @@ static void st_read(ctx_t* c, gmb_stmt_t* s) {
              * DAL CAMPO RIFIUTATO finché il predicato è falso: il testo resta nel campo
              * (come Clipper) e l'utente corregge. ESC annulla (nessun ri-prompt). */
             int nv = c->n_read_valids;
-            if (nv > 0) { ind(c); sb_put(&c->out, "int _gmb_from = -1;\n"); ind(c); sb_put(&c->out, "for (;;) {\n"); }
             if (nv > 0) {
-                /* Riprompt: il run mostra SOLO il campo rifiutato (gli altri restano
-                 * confermati, come il loop Clipper per-campo della gamba IL). */
-                ind(c); sb_put(&c->out, "if (_gmb_from >= 0) gmb_read_native_focus_only(_gmb_from);\n");
-                ind(c); sb_put(&c->out, "int _gmb_rst = gmb_read_run(gmb_read_active());\n");
+                /* Un campo per volta, in ordine (come il path sequenziale della gamba IL):
+                 * il loop nativo mostra solo il campo _gmb_i; se il suo VALID è falso si
+                 * ripropone SOLO quello, senza rimostrare i campi già confermati. */
+                ind(c); sb_printf(&c->out, "int _gmb_ok = 1;\n");
+                ind(c); sb_printf(&c->out, "for (int _gmb_i = 0; _gmb_i < %d; ++_gmb_i) {\n", c->n_read_vars);
+                ind(c); sb_put(&c->out, "int _gmb_rst = 0;\n");
+                ind(c); sb_put(&c->out, "for (;;) {\n");
+                ind(c); sb_put(&c->out, "gmb_read_native_focus_only(_gmb_i);\n");
+                ind(c); sb_put(&c->out, "_gmb_rst = gmb_read_run(gmb_read_active());\n");
             }
             else { ind(c); sb_put(&c->out, "gmb_read_run(gmb_read_active());\n"); }
             for (int k = 0; k < c->n_read_vars; k++) {
@@ -30065,13 +30069,15 @@ static void st_read(ctx_t* c, gmb_stmt_t* s) {
             }
             if (nv > 0) {
                 ind(c); sb_put(&c->out, "if (_gmb_rst != 1) break;\n");
-                ind(c); sb_put(&c->out, "_gmb_from = -1;\n");
+                ind(c); sb_put(&c->out, "_gmb_ok = 1;\n");
                 for (int k = 0; k < nv; k++) {
-                    ind(c); sb_put(&c->out, k == 0 ? "if (!(" : "else if (!(");
+                    ind(c); sb_printf(&c->out, "if (_gmb_i == %d) _gmb_ok = ((", c->read_valid_idx[k]);
                     emit_expr(c, (gmb_expr_t*)c->read_valids[k]);
-                    sb_printf(&c->out, ")) _gmb_from = %d;\n", c->read_valid_idx[k]);
+                    sb_put(&c->out, ") != 0);\n");
                 }
-                ind(c); sb_put(&c->out, "if (_gmb_from < 0) break;\n");
+                ind(c); sb_put(&c->out, "if (_gmb_ok) break;\n");
+                ind(c); sb_put(&c->out, "}\n");
+                ind(c); sb_put(&c->out, "if (_gmb_rst != 1) break;\n");
                 ind(c); sb_put(&c->out, "}\n");
             }
             ind(c); sb_put(&c->out, "gmb_read_reset(gmb_read_active());\n");

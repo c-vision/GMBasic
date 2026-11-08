@@ -5220,12 +5220,14 @@ internal sealed partial class PCodeProcessor
                     try { text = Basic.IlBackend.IlRuntime.Current.Graphics.PictureApply(expr ?? text, pic); }
                     catch { }
                 }
-                // PrintLine: ogni @...SAY è una riga (il golden ClipperSay lo attende);
-                // Print concateneva tutti i SAY su una riga sola.
-                // Svuota staging + PendingPrints (es. un PRINT del titolo prima dei SAY
-                // uscirebbe a fine tick, DOPO i SAY — ordine sbagliato).
+                // @...SAY scrive nel buffer Clipper (TUI/GUI), come IL/VM-C/C99Native: NON
+                // emette su stdout. Prima stampava "[@ row,col] text" SOLO su PCode, quindi
+                // qualunque programma con @SAY aveva un output diverso dalle altre gambe
+                // (parità rotta: es. samples/Clipper/*). Serve solo a svuotare staging +
+                // PendingPrints (es. un PRINT del titolo prima dei SAY uscirebbe a fine
+                // tick, DOPO i SAY — ordine sbagliato).
                 FlushPrintBuffer(task);
-                lock (_consoleLock) _runtime.Console.PrintLine($"[@ {row},{col}] {text}");
+                _ = text;
                 break;
             }
 
