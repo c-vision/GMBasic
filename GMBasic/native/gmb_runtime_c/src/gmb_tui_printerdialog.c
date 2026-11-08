@@ -4,6 +4,7 @@
  * ============================================================================ */
 #include "gmb_tui_widgets.h"
 #include "gmb_graphics.h"
+#include "gmb_form.h"      /* gmb_form_modal_close() */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -257,8 +258,10 @@ static bool pd_click(void* u, gmb_control_t* c, int x, int y)
     int fby = by + h - 46;
     if (y >= fby && y < fby + 30)
     {
-        if (x >= bx + w - 230 && x < bx + w - 130) { d->confirmed = true; return true; }
-        if (x >= bx + w - 118 && x < bx + w - 18) { d->confirmed = false; d->btn_focus = 2; return true; }
+        if (x >= bx + w - 230 && x < bx + w - 130)
+        { d->confirmed = true; if (gmb_form_modal_active()) gmb_form_modal_close(); return true; }
+        if (x >= bx + w - 118 && x < bx + w - 18)
+        { d->confirmed = false; d->btn_focus = 2; if (gmb_form_modal_active()) gmb_form_modal_close(); return true; }
     }
     /* Copie -/+ e duplex. */
     int cy = by + h - 88;

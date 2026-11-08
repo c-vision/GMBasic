@@ -152,6 +152,12 @@ int  gmb_form_printerdialog(void* pstr, double* copies, double* duplex);        
 
 /* 1 = finestra chiusa (SDL_QUIT/X) o chiusura richiesta. */
 int  gmb_form_closed(void);
+/* MODALE (livello sopra la pagina: velo + ombra + input catturato). */
+struct gmb_control;
+void gmb_form_modal_open(struct gmb_control* c);
+void gmb_form_modal_close(void);
+int  gmb_form_modal_active(void);
+struct gmb_control* gmb_form_modal_control(void);
 /* Pull-eventi (gambe gestite): 1 = letto (ev, indice widget), 0 = coda vuota. */
 int  gmb_form_poll_event(int* ev, int* widx);
 /* Richiede la chiusura (la callback puo' chiamarla per terminare il loop). */

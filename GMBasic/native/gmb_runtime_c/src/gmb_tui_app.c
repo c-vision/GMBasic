@@ -866,10 +866,21 @@ void gmb_tui_px_mark_dirty(void) { s_px_dirty = 1; }
 
 void gmb_tui_px_invalidate(void) { s_px_dirty = 1; }
 
+static void tui_draw_px_all_impl(int force);
 void gmb_tui_draw_px_all(void)
-{    /* Ridisegna solo se sporco o ogni 200 ms (spinner/timer). */
+{
+    /* Con un MODALE aperto il livello TUI lo disegna il frame modale (PRIMA del velo):
+     * qui non si tocca nulla, altrimenti i controlli ricomparirebbero SOPRA il velo. */
+    { extern int gmb_form_modal_active(void); if (gmb_form_modal_active()) return; }
+    tui_draw_px_all_impl(0);
+}
+/* Usata SOLO dal frame modale: disegna il livello TUI sotto il velo. */
+void gmb_tui_draw_px_all_force(void) { tui_draw_px_all_impl(1); }
+static void tui_draw_px_all_impl(int force)
+{
+    /* Ridisegna solo se sporco o ogni 200 ms (spinner/timer). */
     { double now = (double)app_now_ms();
-      if (!s_px_dirty && (now - s_px_last) < 200.0) return;
+      if (!force && !s_px_dirty && (now - s_px_last) < 200.0) return;
       s_px_dirty = 0; s_px_last = now; }
     /* Render pixel ricco dei controlli registrati (chiamato dal present GUI, main thread).
      * I controlli sono posizionati in CELLE: qui si converte il rect in PIXEL (cw,ch) e si
@@ -919,6 +930,8 @@ void gmb_tui_draw_px_all(void)
                         { extern void gmb_control_paint_rect(gmb_control_t*, int*, int*, int*, int*);
                           gmb_control_paint_rect(cc, &dx, &dy, &dw, &dh); }
                         if (!gmb_form_damage_hits(dx, dy, dw, dh)) continue; }
+            { extern int gmb_form_modal_active(void); extern gmb_control_t* gmb_form_modal_control(void);
+              if (gmb_form_modal_active() && gmb_form_modal_control() == cc) continue; }
             if (cc->draw_px_fn) cc->draw_px_fn(cc->user, cc);
             else draw_cells_px_fallback(cc, cw, ch);
         }}

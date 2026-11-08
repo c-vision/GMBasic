@@ -58,6 +58,20 @@ SUB OnTabChange()
   IF p <> curpage THEN CALL ShowPage(p)
 END SUB
 
+' ── EVENTI dei pulsanti che aprono i DIALOGHI MODALI ─────────────────────
+' `modal=1` porta il dialogo SOPRA la pagina: velo, ombra, e input catturato
+' (i controlli sotto non ricevono piu' click/tasti). ESC / Apri / Annulla /
+' OK / Cancel lo chiudono e lo rendono di nuovo nascosto.
+SUB OnOpenFileDialog()
+  CONTROL SET "p3_modal_file", "visible", 1
+  CONTROL SET "p3_modal_file", "modal", 1
+END SUB
+
+SUB OnOpenPrintDialog()
+  CONTROL SET "p3_modal_print", "visible", 1
+  CONTROL SET "p3_modal_print", "modal", 1
+END SUB
+
 ' ── verifica geometrica della pagina: 0 = tutto a posto ──────────────────
 ' Fuori area (20,120)-(1260,884) = violazione. Due rect si sovrappongono solo se
 ' nessuno dei due CONTIENE l'altro (pannello e figlio, invece, sono annidati).
@@ -229,32 +243,51 @@ LISTBOX 952, 728, 292, 120, "canary 25%|hold 5m|auto-rollback" INTO v13 NAME "p2
 CALL Reg("p2_p", 2)
 
 ' ══ PAGINA 3 · FILES & PRINT ════════════════════════════════════════════
-FILEDIALOG "*.bas", "Apri", "*.bas" NAME "p3_a"
-CONTROL SET "p3_a", "left", 20
-CONTROL SET "p3_a", "top", 120
+PANEL 20, 120, 600, 150, "FILES" NAME "p3_a"
 CALL Reg("p3_a", 3)
-PRINTERDIALOG "Stampa", ps, v14, v15 NAME "p3_b"
-CONTROL SET "p3_b", "left", 556
-CONTROL SET "p3_b", "top", 120
+FILEEXPLORER 40, 158, 568, 104, "." NAME "p3_b"
 CALL Reg("p3_b", 3)
-PANEL 1092, 120, 168, 420, "AZIONI" NAME "p3_c"
-CALL Reg("p3_c", 3)
-IMAGEBUTTON 1106, 164, 140, 40, "Apri file" NAME "p3_d"
+PANEL 644, 120, 612, 150, "PRINT / MEDIA" NAME "p3_d"
 CALL Reg("p3_d", 3)
-TEXTBOX 1106, 222, 140, 34 INTO s4 NAME "p3_e"
-CALL Reg("p3_e", 3)
-QR 1106, 276, 96, 96, "GMBASIC" NAME "p3_f"
+IMAGEBUTTON 660, 164, 200, 40, "Apri file" NAME "p3_f"
 CALL Reg("p3_f", 3)
-STARRATING 1106, 392, 140, 5, 4 INTO v16 NAME "p3_g"
+TEXTBOX 880, 164, 360, 34 INTO s4 NAME "p3_g"
 CALL Reg("p3_g", 3)
-LABEL 1106, 444, 140, "valutazione" NAME "p3_h"
+QR 660, 210, 56, 56, "GMBASIC" NAME "p3_h"
 CALL Reg("p3_h", 3)
-PANEL 20, 556, 1232, 328, "FILE EXPLORER" NAME "p3_i"
+LABEL 746, 210, 494, "dialoghi MODALI: velo, ombra, input catturato" NAME "p3_i"
 CALL Reg("p3_i", 3)
-FILEEXPLORER 36, 596, 1200, 236, "." NAME "p3_j"
+STARRATING 746, 240, 160, 5, 4 INTO v16 NAME "p3_j"
 CALL Reg("p3_j", 3)
-SPLITTER 36, 846, 1200, 20, 0 NAME "p3_k"
+
+PANEL 20, 290, 1232, 270, "DIALOGHI MODALI" NAME "p3_k"
 CALL Reg("p3_k", 3)
+LABEL 40, 330, 900, "Apri il dialogo: la pagina sotto si oscura e NON riceve piu input." NAME "p3_l"
+CALL Reg("p3_l", 3)
+BUTTON 40, 366, 240, 44, "Apri file..." ON CLICK OnOpenFileDialog NAME "p3_m"
+CALL Reg("p3_m", 3)
+BUTTON 300, 366, 240, 44, "Stampa..." ON CLICK OnOpenPrintDialog NAME "p3_n"
+CALL Reg("p3_n", 3)
+LABEL 40, 430, 1100, "ESC, Apri/Annulla e OK/Cancel chiudono il modale e nascondono il dialogo." NAME "p3_o"
+CALL Reg("p3_o", 3)
+
+PANEL 20, 576, 1232, 308, "FILE EXPLORER" NAME "p3_p"
+CALL Reg("p3_p", 3)
+FILEEXPLORER 36, 616, 1200, 216, "." NAME "p3_q"
+CALL Reg("p3_q", 3)
+SPLITTER 36, 846, 1200, 20, 0 NAME "p3_r"
+CALL Reg("p3_r", 3)
+
+' I due DIALOGHI non stanno nel manifesto: non sono card della pagina, si aprono
+' solo come MODALI (CONTROL SET ... "modal", 1) e alla chiusura tornano nascosti.
+FILEDIALOG "*.bas", "Apri", "*.bas" NAME "p3_modal_file"
+CONTROL SET "p3_modal_file", "left", 380
+CONTROL SET "p3_modal_file", "top", 240
+CONTROL SET "p3_modal_file", "visible", 0
+PRINTERDIALOG "Stampa", ps, v14, v15 NAME "p3_modal_print"
+CONTROL SET "p3_modal_print", "left", 380
+CONTROL SET "p3_modal_print", "top", 280
+CONTROL SET "p3_modal_print", "visible", 0
 
 ' ══ PAGINA 4 · CLIPPER ═════════════════════════════════════════════════
 PANEL 20, 120, 760, 560, "TBROWSE · @SELECT (Clipper)" NAME "p4_a"

@@ -63,11 +63,48 @@ static bool filedialog_click(void* u, gmb_control_t* c, int x, int y)
 {
     gmb_file_dialog_t* f = (gmb_file_dialog_t*)u;
     if (!c->enabled) return false;
-    gmb_rect_t r = gmb_control_rect(c);
-    if (!rect_contains(r, x, y)) return false;
+    /* Hit-test con la STESSA geometria del renderer PIXEL (righe in pixel, footer
+     * con Apri/Annulla). La versione a celle non vedeva i pulsanti. */
+    int bx = (c->px_w > 0) ? c->px_x : c->x;
+    int by = (c->px_h > 0) ? c->px_y : c->y;
+    int w = (c->px_w > 0) ? c->px_w : c->width;
+    int h = (c->px_h > 0) ? c->px_h : c->height;
+    if (x < bx || x >= bx + w || y < by || y >= by + h) return false;
     c->focused = true;
-    int idx = (y - c->y) + f->scroll_offset;
-    if (idx >= 0 && idx < f->entries_count) f->selected_index = idx;
+
+    gmb_widget_style_t st = gmb_widget_style_current();
+    int th = gmb_gfx_text_height_logical(); if (th <= 0) th = 16;
+    int rh = st.row_h > 0 ? st.row_h : 24; if (rh < th + 6) rh = th + 6;
+    int tb = 34, pad = 12;
+
+    /* Footer: Apri / Annulla (chiudono il modale). */
+    int fby = by + h - 40;
+    if (y >= fby && y < fby + 28)
+    {
+        if (x >= bx + w - 220 && x < bx + w - 120)
+        {
+            if (gmb_form_modal_active()) gmb_form_modal_close();
+            return true;
+        }
+        if (x >= bx + w - 108 && x < bx + w - 12)
+        {
+            if (gmb_form_modal_active()) gmb_form_modal_close();
+            return true;
+        }
+        return true;
+    }
+    /* Elenco: selezione riga. */
+    int ly = by + tb + 6;
+    int lh = h - tb - 6 - 44;
+    if (y >= ly && y < ly + lh)
+    {
+        int idx = f->scroll_offset + (y - ly) / rh;
+        if (idx >= 0 && idx < f->entries_count)
+        {
+            /* Riga su una cartella? Il doppio uso non serve: seleziona e basta. */
+            f->selected_index = idx;
+        }
+    }
     return true;
 }
 /* Render PIXEL (grafica): finestra di dialogo vera, non un blit di celle.

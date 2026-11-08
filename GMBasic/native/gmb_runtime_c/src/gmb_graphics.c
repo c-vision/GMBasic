@@ -560,6 +560,23 @@ void gmb_gfx_cls(int color)
 
 int gmb_gfx_fg(void) { return g_gfx.fg; }
 int gmb_gfx_bg(void) { return g_gfx.bg; }
+// Oscura la pagina moltiplicando i canali (velo del MODALE): deterministico, senza
+// blend accumulabili e senza dipendere dai colori semitrasparenti del tema.
+void gmb_gfx_dim_page(float factor)
+{
+    gmb_gfx_page_t* p = active_page();
+    if (!p || !p->pixels || factor < 0.0f) return;
+    if (factor > 1.0f) factor = 1.0f;
+    size_t n = (size_t)p->w * (size_t)p->h;
+    for (size_t i = 0; i < n; i++)
+    {
+        uint32_t c = p->pixels[i];
+        uint32_t r = (uint32_t)(((c >> 16) & 0xFFu) * factor);
+        uint32_t g = (uint32_t)(((c >> 8) & 0xFFu) * factor);
+        uint32_t b = (uint32_t)((c & 0xFFu) * factor);
+        p->pixels[i] = (r << 16) | (g << 8) | b;
+    }
+}
 /* RGB dello sfondo di pagina (stesso colore che usa CLS senza argomento): serve al
  * repaint incrementale per ripulire solo le zone sporche con il colore giusto. */
 int gmb_gfx_page_bg_color(void)
