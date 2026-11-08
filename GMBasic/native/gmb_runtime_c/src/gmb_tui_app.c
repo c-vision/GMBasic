@@ -1025,6 +1025,12 @@ static void tui_process_mouse(const gmb_mouse_action_t* ma)
     {
         gmb_control_t* cc = g_reg_ctrl[i];
         if (!cc) continue;
+        /* Un controllo NASCOSTO non deve catturare il mouse: prima un controllo
+         * invisibile di un'altra scheda (rect sovrapposto) si mangiava il click e il
+         * controllo visibile sotto non rispondeva ("sembrano solo disegnati"). */
+        if (!cc->visible) continue;
+        { extern int gmb_form_modal_active(void);
+          if (gmb_form_modal_active()) continue; }   /* il modale ha già gestito l'evento */
         /* Lo spazio dell'EVENTO dipende dal backend (pixel in grafica, celle in TUI);
          * lo spazio del CONTROLLO e' quello DICHIARATO (gl_control_coord_transform).
          * La stessa funzione usata dal render garantisce disegno e click coerenti. */

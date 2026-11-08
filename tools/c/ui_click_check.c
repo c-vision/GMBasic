@@ -17,6 +17,7 @@
 #include "gmb_graphics.h"
 #include "gmb_tui_app.h"
 #include "gmb_tui_widgets.h"
+#include "gmb_tui_tbrowse.h"
 #include "gmb_form.h"
 #include "gmb_gfx_input.h"
 
@@ -218,6 +219,33 @@ int main(void)
         click_at(x + w - 60, y + h - 26);             /* pulsante Annulla */
         int closed = !gmb_form_modal_active();
         report("modal", opened && blocked && closed, "aperto, click fuori ignorato, chiuso da Annulla");
+    }
+
+    /* ── TBROWSE: click su una riga (geometria PIXEL del renderer) ─────── */
+    {
+        static gmb_vec_ds_t ds;
+        static gmb_browse_datasource_t dsrc;
+        gmb_rect_t area = { 40, 700, 260, 150 };
+        gmb_vec_ds_make(&ds, 3, 2);
+        gmb_vec_ds_set(&ds, 0, 0, "alpha"); gmb_vec_ds_set(&ds, 0, 1, "1");
+        gmb_vec_ds_set(&ds, 1, 0, "beta");  gmb_vec_ds_set(&ds, 1, 1, "2");
+        gmb_vec_ds_set(&ds, 2, 0, "gamma"); gmb_vec_ds_set(&ds, 2, 1, "3");
+        gmb_vec_ds_datasource(&ds, &dsrc);
+        gmb_browse_t* tb = gmb_browse_new(&area, 0, NULL, &dsrc);
+        gmb_browse_column_t c1, c2;
+        memset(&c1, 0, sizeof(c1)); snprintf(c1.header, sizeof(c1.header), "Nome"); c1.width = 12; c1.visible = true;
+        memset(&c2, 0, sizeof(c2)); snprintf(c2.header, sizeof(c2.header), "Qta");  c2.width = 6;  c2.visible = true;
+        gmb_browse_add_column(tb, &c1);
+        gmb_browse_add_column(tb, &c2);
+        gmb_tui_control_register(&tb->ctrl);
+        render_frame();
+        { gmb_widget_style_t st = gmb_widget_style_current();
+          int th = gmb_gfx_text_height_logical(); if (th <= 0) th = 16;
+          int rh = st.row_h > 0 ? st.row_h : 24; if (rh < th + 6) rh = th + 6;
+          int rows_top = area.y + rh + 2;                 /* header alto rh */
+          click_at(area.x + 30, rows_top + rh + rh / 2);  /* riga 2 */
+          report("tbrowse", gmb_browse_row_pos(tb) == 1, "riga 2 selezionata col click");
+        }
     }
 
     printf("\nTOTALE: %d PASS, %d FAIL\n", g_pass, g_fail);

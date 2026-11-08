@@ -13,8 +13,10 @@ static long long form_now_ms(void){ struct timespec ts; clock_gettime(CLOCK_MONO
 #include "gmb_tui_tbrowse.h"   /* gmb_browse_t (props CONTROL SET/GET TBROWSE) */
 #ifdef GMB_GFX_SDL_PRESENT
 #include "gmb_gfx_present.h"
-#include "gmb_graphics_internal.h"   /* active_page(): snapshot della pagina per il MODALE */
 #endif
+/* Il MODALE (gmb_form_modal_open) usa active_page()/gmb_gfx_page_t anche con GMB_WITH_UI
+ * SENZA SDL (build monolitica dei MiniTest): l'header serve sempre, non solo con SDL. */
+#include "gmb_graphics_internal.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -1443,7 +1445,11 @@ static void form_draw(void)
     if (full) { if (!g_skip_cls) GMB_GFX_CLS(-1); }
     else
     {
-        int bg = (int)(0xFF000000u | ((unsigned)gmb_gfx_page_bg_color() & 0xFFFFFFu));
+        /* ATTENZIONE al formato colore: clear_rect passa da resolve_color(), dove
+         * i colori RGB hanno il flag 0x40000000; 0xFFxxxxxx è NEGATIVO e verrebbe
+         * letto come "foreground" (bianco) — era il motivo delle zone che diventavano
+         * bianche passandoci sopra col mouse. */
+        int bg = (int)(0x40000000u | ((unsigned)gmb_gfx_page_bg_color() & 0xFFFFFFu));
         for (int i = 0; i < g_ndam; i++)
             gmb_gfx_clear_rect(g_dam[i].x, g_dam[i].y, g_dam[i].x + g_dam[i].w - 1,
                                g_dam[i].y + g_dam[i].h - 1, bg);
@@ -2950,6 +2956,7 @@ static void widget_mouse(int type, int x, int y, float sc)
 {
     for (int i = 0; i < g_nwid; i++) {
         gmb_pix_widget_t* wd = &g_wid[i];
+        if (!wd->base.visible) continue;   /* un widget nascosto non reagisce al mouse */
         int X = wd->base.x, Y = wd->base.y, W = wd->base.width, H = wd->base.height;
         /* repaint incrementale: il widget sotto il puntatore e. sporco */
         if (x >= X && x < X + W && y >= Y && y < Y + H) gmb_form_invalidate(X, Y, W, H);

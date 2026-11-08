@@ -111,17 +111,30 @@ void gmb_vec_ds_datasource(gmb_vec_ds_t* v, gmb_browse_datasource_t* out)
  * datasource, riga corrente) e compone ogni cella alle coordinate pixel della sua
  * colonna. Non usa più `gmb_browse_render_header/_row` (righe a larghezza fissa di
  * celle): quelle erano la versione testuale adattata alla grafica. */
-static void tbrowse_draw_px(void* u, gmb_control_t* c)
-{
-    gmb_browse_t* b = (gmb_browse_t*)u;
-    gmb_widget_style_t st = gmb_widget_style_current();
-    int x = (c->px_w > 0) ? c->px_x : c->x;
-    int y = (c->px_h > 0) ? c->px_y : c->y;
-    int w = (c->px_w > 0) ? c->px_w : c->width;
-    int h = (c->px_h > 0) ? c->px_h : c->height;
-    if (w < 80 || h < 48) return;
+/* ── Geometria PIXEL del TBROWSE (UNICA fonte per render e hit-test) ─────────
+ * Il modello ha le larghezze colonna in CELLE; qui si convertono in pixel con la
+ * stessa regola del renderer. Prima il click usava una formula a celle
+ * (data_start_y = area.y + 3) mentre il renderer disegna l'header alto rh pixel:
+ * ogni click finiva su una riga inesistente e la TBROWSE sembrava "solo disegnata". */
+typedef struct {
+    int x, y, w, h;          /* card in pixel */
+    int rr, th, rh, pad;
+    int hh, rows_top;        /* altezza header / inizio righe */
+    int visible;             /* righe visibili */
+    int ncol;
+    int cx[GMB_BROWSE_MAX_COLS];
+    int cwid[GMB_BROWSE_MAX_COLS];
+} tbrowse_px_t;
 
-    /* Cella logica (per interpretare le larghezze colonna, che il modello ha in celle). */
+static void tbrowse_px_geom(gmb_browse_t* b, gmb_control_t* c, tbrowse_px_t* g)
+{
+    gmb_widget_style_t st = gmb_widget_style_current();
+    memset(g, 0, sizeof(*g));
+    g->x = (c->px_w > 0) ? c->px_x : c->x;
+    g->y = (c->px_h > 0) ? c->px_y : c->y;
+    g->w = (c->px_w > 0) ? c->px_w : c->width;
+    g->h = (c->px_h > 0) ? c->px_h : c->height;
+
     int cw = 8;
     { extern gmb_clipper_state_t* gmb_clipper_peek_state(void);
       gmb_clipper_state_t* s2 = gmb_clipper_peek_state();
@@ -129,40 +142,49 @@ static void tbrowse_draw_px(void* u, gmb_control_t* c)
                               if (bw > 0 && pw > 0) cw = pw / bw; } }
     if (cw < 5) cw = 8;
 
-    int rr = st.radius > 0 ? st.radius : 6;
-    int th = gmb_gfx_text_height_logical(); if (th <= 0) th = 16;
-    int rh = st.row_h > 0 ? st.row_h : 24; if (rh < th + 6) rh = th + 6;
-    int pad = 10;
+    g->rr = st.radius > 0 ? st.radius : 6;
+    g->th = gmb_gfx_text_height_logical(); if (g->th <= 0) g->th = 16;
+    g->rh = st.row_h > 0 ? st.row_h : 24; if (g->rh < g->th + 6) g->rh = g->th + 6;
+    g->pad = 10;
+    g->hh = b->show_header ? g->rh : 0;
+    g->rows_top = g->y + g->hh + 2;
+    g->visible = (g->y + g->h - g->pad - g->rows_top) / g->rh;
+    if (g->visible < 1) g->visible = 1;
 
-    /* Card. */
-    gmb_gfx_fill_rounded_rect(x, y, w, h, rr, st.fill);
-    gmb_gfx_stroke_rounded_rect(x, y, w, h, rr, st.border);
-
-    /* Anelli della griglia: zona header e zona righe. */
-    int hh = b->show_header ? rh : 0;
-    int rows_top = y + hh + 2;
-    int nrows = b->ds.row_count ? b->ds.row_count(b->ds.user) : b->view_count;
-    int total = gmb_browse_row_count(b);
-    if (nrows <= 0) nrows = total;
-    int visible = (y + h - pad - rows_top) / rh;
-    if (visible < 1) visible = 1;
-
-    /* Larghezze colonne in PIXEL (modello in celle). */
-    int cx[GMB_BROWSE_MAX_COLS], cwid[GMB_BROWSE_MAX_COLS];
     int ncol = b->col_count > 0 ? b->col_count : 1;
     if (ncol > GMB_BROWSE_MAX_COLS) ncol = GMB_BROWSE_MAX_COLS;
     int used = 0;
     for (int i = 0; i < ncol; i++)
     {
-        int cwi = b->columns[i].width > 0 ? b->columns[i].width * cw : (w - 2 * pad) / ncol;
+        int cwi = b->columns[i].width > 0 ? b->columns[i].width * cw : (g->w - 2 * g->pad) / ncol;
         if (cwi < 48) cwi = 48;
-        cx[i] = x + pad + used;
-        cwid[i] = cwi;
+        g->cx[i] = g->x + g->pad + used;
+        g->cwid[i] = cwi;
         used += cwi;
     }
-    /* Se le colonne non riempiono la card, allarga l'ultima; se sbordano, clippa. */
-    int inner = w - 2 * pad;
-    if (used < inner && ncol > 0) cwid[ncol - 1] += inner - used;
+    int inner = g->w - 2 * g->pad;
+    if (used < inner && ncol > 0) g->cwid[ncol - 1] += inner - used;
+    g->ncol = ncol;
+}
+
+static void tbrowse_draw_px(void* u, gmb_control_t* c)
+{
+    gmb_browse_t* b = (gmb_browse_t*)u;
+    gmb_widget_style_t st = gmb_widget_style_current();
+    tbrowse_px_t g; tbrowse_px_geom(b, c, &g);
+    int x = g.x, y = g.y, w = g.w, h = g.h;
+    if (w < 80 || h < 48) return;
+    int rr = g.rr, th = g.th, rh = g.rh, pad = g.pad;
+    int hh = g.hh, rows_top = g.rows_top, visible = g.visible;
+    int* cx = g.cx; int* cwid = g.cwid; int ncol = g.ncol;
+
+    /* Card. */
+    gmb_gfx_fill_rounded_rect(x, y, w, h, rr, st.fill);
+    gmb_gfx_stroke_rounded_rect(x, y, w, h, rr, st.border);
+
+    int nrows = b->ds.row_count ? b->ds.row_count(b->ds.user) : b->view_count;
+    int total = gmb_browse_row_count(b);
+    if (nrows <= 0) nrows = total;
 
     /* HEADER: banda piena + titolo per colonna + filo di separazione. */
     if (b->show_header)
@@ -1848,8 +1870,36 @@ static bool bc_click(void* u, gmb_control_t* c, int x, int y)
 {
     gmb_browse_t* b = (gmb_browse_t*)u;
     if (!c->enabled) return false;
-    if (x < b->area.x || x >= b->area.x + b->area.w || y < b->area.y || y >= b->area.y + b->area.h) return false;
     if (!b->mouse_enabled) return false;
+    if (x < b->area.x || x >= b->area.x + b->area.w || y < b->area.y || y >= b->area.y + b->area.h)
+    {
+        /* In GRAFICA il rect vero è quello PIXEL del controllo (px_*). */
+        int rx = (c->px_w > 0) ? c->px_x : c->x;
+        int ry = (c->px_h > 0) ? c->px_y : c->y;
+        int rw = (c->px_w > 0) ? c->px_w : c->width;
+        int rh = (c->px_h > 0) ? c->px_h : c->height;
+        if (x < rx || x >= rx + rw || y < ry || y >= ry + rh) return false;
+    }
+    /* In GRAFICA l'hit-test usa la STESSA geometria del renderer pixel. */
+    if (GMB_GFX_SCREEN_ON())
+    {
+        tbrowse_px_t g; tbrowse_px_geom(b, c, &g);
+        if (y >= g.rows_top)
+        {
+            int r = (y - g.rows_top) / g.rh;
+            int nrows = b->ds.row_count ? b->ds.row_count(b->ds.user) : b->view_count;
+            if (nrows <= 0) nrows = gmb_browse_row_count(b);
+            int data_row = b->top_row + r;
+            if (r >= 0 && r < g.visible && data_row >= 0 && data_row < nrows)
+            {
+                b->current_row = data_row;
+                for (int i = 0; i < g.ncol; i++)
+                    if (x >= g.cx[i] && x < g.cx[i] + g.cwid[i]) { b->current_col = i; break; }
+                return true;
+            }
+        }
+        return true;   /* click nella card fuori dalle righe: consumato */
+    }
     gmb_browse_handle_click(b, x, y);
     return true;
 }
