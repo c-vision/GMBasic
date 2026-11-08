@@ -742,7 +742,7 @@ con gli stessi nomi e la stessa semantica dei builtin:
 
 | file `.inc` | namespace | contenuto |
 |---|---|---|
-| `trading.inc` | `TRADING_CORE` | valutazione azionaria, CAPM, rendimenti, spread |
+| `trading.inc` | `TRADING` | valutazione azionaria, CAPM, rendimenti, spread |
 | `metrics.inc` | `METRICS` | performance e rischio (Sharpe/Sortino/Calmar, drawdown, VaR/CVaR, alpha/beta, momenti, Jarque-Bera) |
 | `volatility.inc` | `VOLATILITY` | volatilità annualizzata, downside deviation |
 | `fundamentals.inc` | `FUNDAMENTALS` | EPS/DPS/NAV, P/E, P/B, P/S, payout, dividend yield |
@@ -756,7 +756,7 @@ L'ondata 4 rimuove i builtin `TRADING.*` e riscrive il corpus sulla superficie F
 ### 17.1 Uso e convenzioni
 
 ```basic
-IMPORT TRADING_CORE
+IMPORT TRADING
 IMPORT METRICS
 IMPORT VOLATILITY
 IMPORT FUNDAMENTALS
@@ -813,13 +813,12 @@ l'iterazione ERC a 1000 passi, `EVOLVE` è la soluzione deterministica di minima
 (il parametro GA del builtin non esiste più). `PVAR`/`CVAR` lavorano sullo storico
 appiattito e ignorano i pesi, come le gambe C del runtime.
 
-Il nome `TRADING_CORE` è **di transizione**: finché esistono i builtin `TRADING.*` il
-compilatore rifiuta una funzione utente con lo stesso nome/arità nel namespace
-`TRADING`; a fine migrazione il namespace prenderà il nome `TRADING`.
+I builtin `TRADING.*` sono stati **rimossi** (StdLib e TokenKind): il namespace FFI ha
+preso il nome definitivo `TRADING` e non c'è più collisione con funzioni utente.
 
 ### 17.2 Riferimento delle funzioni
 
-`TRADING_CORE` (12):
+`TRADING` (12):
 
 | funzione | firma | risultato |
 |---|---|---|
@@ -999,9 +998,9 @@ C99Native. I MiniTest `shared/minitests/quant/quant_core.bas` (44 funzioni),
 tutta la superficie con valori chiusi; il sample `QuantLab.bas` produce 101 righe
 identiche sulle quattro gambe.
 
-Limiti dell'ondata 3: restano la rimozione dei builtin `TRADING.*` e la riscrittura del
-corpus (ondata 4); i risultati composti sono array (non UDT) e i pesi degli ottimizzatori
-a formula chiusa non sono vincolati a essere non negativi. La libreria è in
+Migrazione conclusa: i builtin `TRADING.*` non esistono più (StdLib e TokenKind rimossi,
+corpus riscritto sull'FFI). I risultati composti sono array (non UDT) e i pesi degli
+ottimizzatori a formula chiusa non sono vincolati a essere non negativi. La libreria è in
 `shared/libs/quant` (sorgenti C + shim FFI) e in `GMBSuite/gmbquant` (copia di sviluppo
 con self-test).
 
@@ -2405,14 +2404,14 @@ VECCALC.FLUX(Up, Bowl, 0, 1, 0, 1, 0.000001)   ' 1 (campo verticale su superfici
 ## A cosa serve
 | file `.inc` | namespace | contenuto |
 |---|---|---|
-| `trading.inc` | `TRADING_CORE` | valutazione azionaria, CAPM, rendimenti, spread |
+| `trading.inc` | `TRADING` | valutazione azionaria, CAPM, rendimenti, spread |
 | `metrics.inc` | `METRICS` | performance e rischio: Sharpe, Sortino, Calmar, drawdown, VaR/CVaR, alpha/beta, momenti, Jarque-Bera |
 | `volatility.inc` | `VOLATILITY` | volatilità annualizzata, downside deviation |
 | `fundamentals.inc` | `FUNDAMENTALS` | EPS/DPS/NAV, P/E, P/B, P/S, payout, dividend yield |
 
 ## Uso
 
-IMPORT TRADING_CORE
+IMPORT TRADING
 IMPORT METRICS
 IMPORT VOLATILITY
 IMPORT FUNDAMENTALS
@@ -2431,7 +2430,7 @@ PRINT FUNDAMENTALS.DividendYield(5, 100)        ' 5 (percentuale)
 ## Da dove vengono (mapping dal vecchio namespace)
 | vecchio | nuovo | note |
 |---|---|---|
-| `TRADING.<12>` | `TRADING_CORE.<12>` | stesso nome e argomenti |
+| `TRADING.<12>` | `TRADING.<12>` | stesso nome e argomenti |
 | `TRADING.METRICS.<18>` | `METRICS.<...>` | performance e rischio |
 | `TRADING.METRICS.AnnualizedVolatility` | `VOLATILITY.AnnualizedVolatility` | gruppo volatilità |
 | `TRADING.METRICS.DownsideDeviation` | `VOLATILITY.DownsideDeviation` | gruppo volatilità |
@@ -2442,7 +2441,7 @@ PRINT FUNDAMENTALS.DividendYield(5, 100)        ' 5 (percentuale)
 | `TRADING.PORTFOLIO` | `PORTFOLIO` | ondata 3 |
 | `TRADING.BACKTESTS` | `BACKTEST` | ondata 3 |
 
-## Riferimento: `TRADING_CORE` (12)
+## Riferimento: `TRADING` (12)
 | funzione | firma | risultato / note |
 |---|---|---|
 | `StockValueZeroGrowth` | `(dividend, requiredRate)` | `D / r`; `r = 0 → 0` |
