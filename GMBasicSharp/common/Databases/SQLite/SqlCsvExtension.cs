@@ -26,10 +26,8 @@ public static class SqlCsvExtension
             if (path is null) return;
             connection.LoadExtension(path, entryPoint);
         }
-        catch (Exception ex)
+        catch (Exception)
         {
-            if (Environment.GetEnvironmentVariable("GMB_SQL_CSV_DEBUG") == "1")
-                Console.Error.WriteLine($"[{baseName}] load failed: " + ex.Message);
             /* opzionale: provider senza load-extension o file mancante → feature off */
         }
     }

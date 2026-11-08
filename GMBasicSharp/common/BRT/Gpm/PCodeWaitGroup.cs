@@ -19,9 +19,7 @@ public sealed class PCodeWaitGroup
 
     public int Counter { get { lock (_lock) return _counter; } }
 
-    private static readonly bool Dbg = Environment.GetEnvironmentVariable("GMB_DBG_WG") == "1";
-
-    public void Add(int count = 1) { lock (_lock) { _counter += count; if (Dbg) Console.Error.WriteLine($"[WG {GetHashCode()}] Add({count}) -> counter={_counter} tid={System.Threading.Thread.CurrentThread.ManagedThreadId}"); } }
+    public void Add(int count = 1) { lock (_lock) { _counter += count; } }
 
     public void DoneAndWake(PCodeScheduler? scheduler)
     {
@@ -29,7 +27,6 @@ public sealed class PCodeWaitGroup
         lock (_lock)
         {
             _counter--;
-            if (Dbg) Console.Error.WriteLine($"[WG {GetHashCode()}] Done() -> counter={_counter} waiters={_waiters.Count} tid={System.Threading.Thread.CurrentThread.ManagedThreadId}");
             if (_counter > 0) return;
             if (_waiters.Count > 0) { toWake = new List<WaitGroupWaiter>(_waiters); _waiters.Clear(); }
         }
@@ -41,7 +38,6 @@ public sealed class PCodeWaitGroup
     {
         lock (_lock)
         {
-            if (Dbg) Console.Error.WriteLine($"[WG {GetHashCode()}] ShouldWait: counter={_counter} tid={System.Threading.Thread.CurrentThread.ManagedThreadId}");
             if (_counter <= 0) return false;
             var registration = task.BeginWait(PCodeWaitKind.WaitGroup, () => RemoveWaiter(task));
             _waiters.Enqueue(new WaitGroupWaiter(task, registration));

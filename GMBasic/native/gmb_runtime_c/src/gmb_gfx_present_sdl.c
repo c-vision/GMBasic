@@ -17,6 +17,7 @@
 /* Guardato da GMB_GFX_SDL_PRESENT (come il CMake quando trova SDL2): senza il flag questo file
  * e' VUOTO, cosi' gmb_tui_surface.c fornisce gli stub — mai simboli duplicati a link. */
 #ifdef GMB_GFX_SDL_PRESENT
+#include "gmb_runtime.h"
 #include "gmb_gfx_present.h"
 #include "gmb_graphics.h"
 #include "gmb_gfx_input.h"
@@ -92,7 +93,7 @@ static int g_vk_active = 0;
 static int backend_wants_vulkan(void)
 {
 #ifdef GMB_GFX_VULKAN
-    const char* b = getenv("GMB_GFX_BACKEND");
+    const char* b = gmb_opt_env("GMB_GFX_BACKEND");
     return b && (strcmp(b, "vulkan") == 0 || strcmp(b, "auto") == 0);
 #else
     return 0;
@@ -273,10 +274,10 @@ static void ensure_window(int w, int h)
         SDL_GetRendererOutputSize(g_renderer, &ow, &oh);
         SDL_GetWindowSize(g_window, &ww, &wh);
         float sc = (ow > 0 && ww > 0) ? (float)ow / (float)ww : 1.0f;
-        { const char* ov = getenv("GMB_GFX_SCALE"); if (ov && *ov) sc = (float)atof(ov); }   /* override test */
+        { const char* ov = gmb_opt_env("GMB_GFX_SCALE"); if (ov && *ov) sc = (float)atof(ov); }   /* override test */
         if (sc < 1.0f) sc = 1.0f;
         gmb_gfx_set_render_scale(sc);
-        { const char* fp = gmb_gfx_font_path(); int fsz = 16; { const char* e = getenv("GMB_UI_FONT_SIZE"); if (e && *e) fsz = atoi(e); if (fsz < 6) fsz = 6; if (fsz > 48) fsz = 48; } if (fp && *fp) gmb_gfx_font(fp, (int)(fsz * sc + 0.5f)); }   /* font a risoluzione nativa */
+        { const char* fp = gmb_gfx_font_path(); int fsz = 16; { const char* e = gmb_opt_env("GMB_UI_FONT_SIZE"); if (e && *e) fsz = atoi(e); if (fsz < 6) fsz = 6; if (fsz > 48) fsz = 48; } if (fp && *fp) gmb_gfx_font(fp, fsz); }   /* LOGICO: gmb_gfx_font applica la render-scale */
         fprintf(stderr, "[gmb_gfx] window %dx%d (logical) renderScale=%.2f drawable=%dx%d\n",
                 logW, logH, sc, ow, oh);
         { SDL_RendererInfo ri; if (SDL_GetRendererInfo(g_renderer, &ri) == 0 && ri.name)
@@ -333,7 +334,7 @@ void gmb_gfx_present_start(void)
             if (tr) { SDL_GetRendererOutputSize(tr, &ow, &oh); SDL_GetWindowSize(tw, &ww, &wh); SDL_DestroyRenderer(tr); }
             SDL_DestroyWindow(tw);
             float sc = (ow > 0 && ww > 0) ? (float)ow / (float)ww : 1.0f;
-            { const char* ov = getenv("GMB_GFX_SCALE"); if (ov && *ov) sc = (float)atof(ov); }
+            { const char* ov = gmb_opt_env("GMB_GFX_SCALE"); if (ov && *ov) sc = (float)atof(ov); }
             if (sc > 1.0f) { gmb_gfx_set_render_scale(sc); fprintf(stderr, "[gmb_gfx] probe renderScale=%.2f\n", sc); fflush(stderr); }
         }
     }
@@ -352,7 +353,7 @@ void gmb_gfx_present_tick(void)
      * con render_scale). GMB_FORM_AUTOCLICK="frame,x,y". Vedi gmb_form.* . */
     {
         static long s_frame = 0;
-        const char* ac = getenv("GMB_FORM_AUTOCLICK");
+        const char* ac = gmb_opt_env("GMB_FORM_AUTOCLICK");
         if (ac && *ac)
         {
             /* Lista separata da ';': "frame,x,y;frame,x,y;..." (coord LOGICHE). */
@@ -388,25 +389,23 @@ void gmb_gfx_present_tick(void)
     const uint32_t* pixels = gmb_gfx_visible_pixels(&w, &h);
     if (!pixels || w <= 0 || h <= 0) return;
 
-    /* Cap del present (~60 fps): il main loop gira a ~1ms; senza cap si presenta
+    /* Cap del present (~30 fps): il main loop gira a ~1ms; senza cap si presenta
      * a ~1000 fps -> tearing/repaint continui anche su contenuto statico. Gli
      * eventi SDL restano pompati ogni giro (sopra); qui si limita solo il blit. */
     { Uint32 now = SDL_GetTicks(); static Uint32 last = 0;
-      if (last && (now - last) < 15) return;
+      if (last && (now - last) < 33) return;
       last = now; }
 
-    /* Present SOLO se il framebuffer e' cambiato (hash FNV): a riposo zero
-     * repaint, senza flag per-primitiva e senza che il loop eventi disegni.
-     * Copre qualunque scrittura sulla pagina (primitive, testo, celle, blit). */
+    /* Present SOLO se il framebuffer e' cambiato: hash a 32 bit sulle WORD (prima
+     * era byte-per-byte: 17 MB × 60/s = ~1 GB/s di FNV → 100% CPU su Retina).
+     * Ogni word copre 4 byte, quindi nessun pixel può sfuggire. */
     {
         static uint32_t s_last_hash = 0; static int s_last_w = -1, s_last_h = -1;
-        const unsigned char* bp = (const unsigned char*)pixels;
-        size_t nbytes = (size_t)w * (size_t)h * 4u;
         uint32_t hh = 2166136261u;
-        for (size_t i = 0; i < nbytes; i++) { hh ^= bp[i]; hh *= 16777619u; }
-        if (!getenv("GMB_PRESENT_DEBUG") && hh == s_last_hash && w == s_last_w && h == s_last_h && g_pres_sprite_count == 0) return;
+        size_t nwords = (size_t)w * (size_t)h;
+        for (size_t i = 0; i < nwords; i++) { hh ^= pixels[i]; hh *= 16777619u; }
+        if (hh == s_last_hash && w == s_last_w && h == s_last_h && g_pres_sprite_count == 0) return;
         s_last_hash = hh; s_last_w = w; s_last_h = h;
-        if (getenv("GMB_PRESENT_DEBUG")) { static int _n=0; fprintf(stderr, "[PRESENT] %d\n", ++_n); }
     }
 
     ensure_window(w, h);
@@ -429,10 +428,6 @@ void gmb_gfx_present_tick(void)
          * qualunque sia il renderScale/DPI. Prima si usava SDL_GetRendererOutputSize:
          * su Retina/sdl2-compat può tornare la dimensione LOGICA (640x480) e l'immagine
          * finiva in un quarto della finestra (bug Mandelbrot). */
-        int _ow=0,_oh=0,_ww=0,_wh=0;
-        SDL_GetRendererOutputSize(g_renderer,&_ow,&_oh);
-        SDL_GetWindowSize(g_window,&_ww,&_wh);
-        if (getenv("GMB_GFX_DBG")) fprintf(stderr,"[present] page=%dx%d tex=%dx%d scale=%.2f vis=%d px0=%08X pxm=%08X\n", w,h,g_tex_w,g_tex_h,gmb_gfx_render_scale(),gmb_gfx_visible_page(),pixels[0],pixels[(size_t)(h/2)*w + w/2]);
         SDL_RenderCopy(g_renderer, g_texture, NULL, NULL);
     }
     /* SPRITE GPU: composizione degli sprite registrati in questo frame (parità

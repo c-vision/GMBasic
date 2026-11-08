@@ -134,6 +134,10 @@ blocca in modo intermittente — un caso reale del 2026, risolto proprio così.
 
 
 
+> **Nota (2026-11-05):** `SPECIAL` non è più un namespace builtin. È esposto via FFI
+> da `libgmbmath` (`shared/libs/math`, sorgenti inclusi) tramite
+> `shared/include/special.inc`. Le chiamate `SPECIAL.*` restano identiche.
+
 <!-- BEGIN DOMAIN TABLE -->
 ## Tavola sinottica del dominio
 

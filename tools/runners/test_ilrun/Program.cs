@@ -55,7 +55,6 @@ Environment.SetEnvironmentVariable("GMBASIC_HEADLESS", "1");
 var root = FindRepoRoot();
 var samplePath = positional.Count > 0 ? positional[0] : Path.Combine(root, "shared", "samples", "Community", "Collections", "CollectionsLinked.bas");
 var noOpt = Environment.GetEnvironmentVariable("GAI_NO_ILOPT") == "1";
-var dbg = Environment.GetEnvironmentVariable("GAI_DBG") == "1";
 var method = Environment.GetEnvironmentVariable("GAI_METHOD");
 
 static string FindRepoRoot()
@@ -191,7 +190,6 @@ try
 catch (Exception ex)
 {
     Console.Error.WriteLine($"[ILGEN] {ex.GetType().Name}: {ex.Message}");
-    if (dbg) Console.Error.WriteLine(ex.StackTrace);
     return 3;
 }
 if (!File.Exists(asmPath)) { Console.Error.WriteLine("[ILGEN] assembly non generato"); return 3; }
@@ -263,7 +261,6 @@ catch (Exception ex)
 {
     var inner = ex is TargetInvocationException tie ? tie.InnerException ?? ex : ex;
     Console.Error.WriteLine($"[RUN] {inner.GetType().Name}: {inner.Message}");
-    if (dbg) Console.Error.WriteLine(inner.StackTrace);
     return 6;
 }
 finally

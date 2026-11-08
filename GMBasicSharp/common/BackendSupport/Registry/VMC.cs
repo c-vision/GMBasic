@@ -10,8 +10,6 @@ public sealed partial class BackendImplementationRegistry
     {
         var r = new BackendImplementationRegistry();
         r.Register(Backend.VMC, "ARRAYS.AADD");
-        r.Register(Backend.VMC, "BLOCKCHAIN.ABIDECODE");
-        r.Register(Backend.VMC, "BLOCKCHAIN.ABIENCODE");
         r.Register(Backend.VMC, "ARRAYS.ABINARYSEARCH");
         r.Register(Backend.VMC, "MATRIX.ABOVEMASK");
         r.Register(Backend.VMC, "MATRIX.ABOVEMATRIX");
@@ -110,10 +108,6 @@ public sealed partial class BackendImplementationRegistry
         r.Register(Backend.VMC, "CONTEXT.BACKGROUND");
         r.Register(Backend.VMC, "AI.Backlinks");
         r.Register(Backend.VMC, "LEDGER.BALANCE");
-        r.Register(Backend.VMC, "BLOCKCHAIN.BASE32DECODE");
-        r.Register(Backend.VMC, "BLOCKCHAIN.BASE32ENCODE");
-        r.Register(Backend.VMC, "BLOCKCHAIN.BASE58DECODE");
-        r.Register(Backend.VMC, "BLOCKCHAIN.BASE58ENCODE");
         r.Register(Backend.VMC, "VECTORDB.Baseline");
         r.Register(Backend.VMC, "OPTIMIZE.BasinHopping");
         r.Register(Backend.VMC, "CONVERT.Batch");
@@ -161,10 +155,8 @@ public sealed partial class BackendImplementationRegistry
         r.Register(Backend.VMC, "AI.BlackboardWrite");
         r.Register(Backend.VMC, "TRADING.PORTFOLIO.BLACKLITTERMAN");
         r.Register(Backend.VMC, "SIGNAL.BLACKMAN");
-        r.Register(Backend.VMC, "BLOCKCHAIN.BLAKE2B256");
         r.Register(Backend.VMC, "TORCH.BLEU");
         r.Register(Backend.VMC, "MATRIX.BLOCKDIAG");
-        r.Register(Backend.VMC, "BLOCKCHAIN.BLOCKDIFFICULTY");
         r.Register(Backend.VMC, "DBF.BOF");
         r.Register(Backend.VMC, "TRADING.BONDS.BondEquivalentYield");
         r.Register(Backend.VMC, "TRADING.BONDS.BondPrice");
@@ -189,7 +181,6 @@ public sealed partial class BackendImplementationRegistry
         r.Register(Backend.VMC, "OPTIMIZE.Brute");
         r.Register(Backend.VMC, "TRADING.OPTIONS.BsCall");
         r.Register(Backend.VMC, "TRADING.OPTIONS.BsPut");
-        r.Register(Backend.VMC, "BLOCKCHAIN.BTCADDRFROMPUB");
         r.Register(Backend.VMC, "RDD.BUFFER");
         r.Register(Backend.VMC, "SIGNAL.BUTTER");
         r.Register(Backend.VMC, "MOUSE.BUTTON");
@@ -312,7 +303,6 @@ public sealed partial class BackendImplementationRegistry
         r.Register(Backend.VMC, "AI.ContextValid");
         r.Register(Backend.VMC, "AI.ContextView");
         r.Register(Backend.VMC, "AI.ContextViewDebug");
-        r.Register(Backend.VMC, "BLOCKCHAIN.CONTRACT");
         r.Register(Backend.VMC, "SPATIAL.CONVEXHULL");
         r.Register(Backend.VMC, "SIGNAL.CONVOLVE");
         r.Register(Backend.VMC, "SIGNAL.CORRELATE");
@@ -364,7 +354,6 @@ public sealed partial class BackendImplementationRegistry
         r.Register(Backend.VMC, "DBF.DELETED");
         r.Register(Backend.VMC, "TRADING.OPTIONS.Delta");
         r.Register(Backend.VMC, "TRADING.OPTIONS.DeltaSpeed");
-        r.Register(Backend.VMC, "BLOCKCHAIN.DERIVEKEY");
         r.Register(Backend.VMC, "STATS.Describe");
         r.Register(Backend.VMC, "WINDOWS.DESKTOP");
         r.Register(Backend.VMC, "HTTP.DETECTCONTENTTYPE");
@@ -447,8 +436,6 @@ public sealed partial class BackendImplementationRegistry
         r.Register(Backend.VMC, "SPECIAL.ERFC");
         r.Register(Backend.VMC, "SPECIAL.ERFCINV");
         r.Register(Backend.VMC, "SPECIAL.ERFINV");
-        r.Register(Backend.VMC, "BLOCKCHAIN.ETHADDRCHECKSUM");
-        r.Register(Backend.VMC, "BLOCKCHAIN.ETHADDRFROMPUB");
         r.Register(Backend.VMC, "VECTOR.EUCLIDEA");
         r.Register(Backend.VMC, "VECTOR.EuclideanDistanceSquared");
         r.Register(Backend.VMC, "VECTORDB.EvalDiff");
@@ -560,7 +547,6 @@ public sealed partial class BackendImplementationRegistry
         r.Register(Backend.VMC, "STATS.GammaPdf");
         r.Register(Backend.VMC, "STATS.GammaPpf");
         r.Register(Backend.VMC, "TORCH.GELU");
-        r.Register(Backend.VMC, "BLOCKCHAIN.GENERATEMNEMONIC");
         r.Register(Backend.VMC, "AI.GenTest");
         r.Register(Backend.VMC, "TRADING.GeometricMeanReturn");
         r.Register(Backend.VMC, "STATS.GeometricPmf");
@@ -576,7 +562,6 @@ public sealed partial class BackendImplementationRegistry
         r.Register(Backend.VMC, "AI.GetKey");
         r.Register(Backend.VMC, "AI.GetModel");
         r.Register(Backend.VMC, "CONSOLE.GETPALETTECOLOR");
-        r.Register(Backend.VMC, "BLOCKCHAIN.GETPUBLICKEY");
         r.Register(Backend.VMC, "AI.GetTemp");
         r.Register(Backend.VMC, "CONSOLE.GETTEXTMETRICS");
         r.Register(Backend.VMC, "MATRIX.GETVALUE");
@@ -699,7 +684,6 @@ public sealed partial class BackendImplementationRegistry
         r.Register(Backend.VMC, "AUTH.JWTPAYLOAD");
         r.Register(Backend.VMC, "AUTH.JWTVERIFY");
         r.Register(Backend.VMC, "STRINGS.Kebab");
-        r.Register(Backend.VMC, "BLOCKCHAIN.KECCAK256");
         r.Register(Backend.VMC, "TRADING.PORTFOLIO.KELLYCRITERION");
         r.Register(Backend.VMC, "COMPUTER.Key");
         r.Register(Backend.VMC, "CRYPTOGRAPHY.KEYEXPORT");
@@ -831,7 +815,6 @@ public sealed partial class BackendImplementationRegistry
         r.Register(Backend.VMC, "FINANCE.MIRR");
         r.Register(Backend.VMC, "MEMORYMAP.MMAPPEEK");
         r.Register(Backend.VMC, "MEMORYMAP.MMAPREADBYTES");
-        r.Register(Backend.VMC, "BLOCKCHAIN.MNEMONICTOSEED");
         r.Register(Backend.VMC, "FINANCE.MNPV");
         r.Register(Backend.VMC, "STATS.Mode");
         r.Register(Backend.VMC, "TORCH.MODELCREATE");
@@ -1168,11 +1151,9 @@ public sealed partial class BackendImplementationRegistry
         r.Register(Backend.VMC, "TRADING.OPTIONS.Rho");
         r.Register(Backend.VMC, "OPTIMIZE.Ridder");
         r.Register(Backend.VMC, "STRINGS.Right");
-        r.Register(Backend.VMC, "BLOCKCHAIN.RIPEMD160");
         r.Register(Backend.VMC, "TRADING.PORTFOLIO.RISKPARITY");
         r.Register(Backend.VMC, "TRADING.RiskPremium");
         r.Register(Backend.VMC, "DBF.RLOCK");
-        r.Register(Backend.VMC, "BLOCKCHAIN.RLPENCODE");
         r.Register(Backend.VMC, "MATH.Rnd");
         r.Register(Backend.VMC, "AI.Rotate");
         r.Register(Backend.VMC, "TORCH.ROUGE");
@@ -1211,7 +1192,6 @@ public sealed partial class BackendImplementationRegistry
         r.Register(Backend.VMC, "OPTIMIZE.Secant");
         r.Register(Backend.VMC, "DATETIME.SECOND");
         r.Register(Backend.VMC, "DATETIME.SECONDS");
-        r.Register(Backend.VMC, "BLOCKCHAIN.SECP256K1SIGN");
         r.Register(Backend.VMC, "IO.SEEK");
         r.Register(Backend.VMC, "DBF.SELECTED");
         r.Register(Backend.VMC, "STRINGS.Sentence");
@@ -1299,11 +1279,9 @@ public sealed partial class BackendImplementationRegistry
         r.Register(Backend.VMC, "CRYPTOGRAPHY.STRHASHFILE");
         r.Register(Backend.VMC, "JSON.Stringify");
         r.Register(Backend.VMC, "CONVERT.Strip");
-        r.Register(Backend.VMC, "BLOCKCHAIN.STRKECCAK256");
         r.Register(Backend.VMC, "CRYPTOGRAPHY.STRMD5");
         r.Register(Backend.VMC, "GRAPH.StronglyConnected");
         r.Register(Backend.VMC, "SYSTEM.STRPTR");
-        r.Register(Backend.VMC, "BLOCKCHAIN.STRRIPEMD160");
         r.Register(Backend.VMC, "CRYPTOGRAPHY.STRSHA1");
         r.Register(Backend.VMC, "CRYPTOGRAPHY.STRSHA256");
         r.Register(Backend.VMC, "CRYPTOGRAPHY.STRSHA512");
@@ -1477,8 +1455,6 @@ public sealed partial class BackendImplementationRegistry
         r.Register(Backend.VMC, "TRADING.METRICS.ValueAtRisk");
         r.Register(Backend.VMC, "TRADING.OPTIONS.Vanna");
         r.Register(Backend.VMC, "LEDGER.VARIANCE");
-        r.Register(Backend.VMC, "BLOCKCHAIN.VARINTDECODE");
-        r.Register(Backend.VMC, "BLOCKCHAIN.VARINTENCODE");
         r.Register(Backend.VMC, "SYSTEM.VARPTR");
         r.Register(Backend.VMC, "AI.VaultAddFolder");
         r.Register(Backend.VMC, "AI.VaultCount");

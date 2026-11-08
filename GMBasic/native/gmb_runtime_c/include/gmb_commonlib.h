@@ -230,38 +230,6 @@ int gmb_keys_verify_raw_val(const uint8_t* data, size_t len, gmb_string_t sig, c
 int gmb_keys_verify_bytes(gmb_int_t handle, const uint8_t* data, size_t len, const uint8_t* sig, size_t siglen);
 int gmb_keys_verify_raw_bytes(const uint8_t* data, size_t len, const uint8_t* sig, size_t siglen, const char* pub_b64);
 
-/* ------------------------- blockchain (alto livello) ------------------------- */
-
-// BIP39: genera un mnemonic di n_words parole (dalla wordlist BIP39 italiana).
-// Restituisce stringa allocata "parola1 parola2 ...".
-char* gmb_bip39_generate_mnemonic(unsigned n_words);
-
-// BIP39: mnemonic + passphrase → seed 64 byte (PBKDF2-HMAC-SHA512, 2048 iter).
-void gmb_bip39_mnemonic_to_seed(const char* mnemonic, const char* passphrase, uint8_t seed[64]);
-
-// Variante che alloca il seed su heap e restituisce la lunghezza (per DIM x() = MNEMONICTOSEED).
-uint8_t* gmb_bip39_mnemonic_to_seed_alloc(const char* mnemonic, const char* passphrase, size_t* len_out);
-
-// BIP32: derivazione di una chiave privata (32 byte) dal seed (BIP32 master).
-// La chiave pubblica secp256k1 associata è in pub_out (33 byte, compressed).
-void gmb_bip32_master_from_seed(const uint8_t seed[64], uint8_t priv[32], uint8_t pub[33]);
-
-// secp256k1: calcola la chiave pubblica (33 byte compressed) da una privata (32 byte).
-void gmb_secp256k1_pubkey(const uint8_t priv[32], uint8_t pub[33]);
-
-// Ethereum: indirizzo da chiave pubblica (Keccak256 degli ultimi 64 byte) → 20 byte.
-void gmb_eth_address_from_pub(const uint8_t pub[33], uint8_t addr[20]);
-
-// BIP32 DERIVEKEY: popola il dict con {privateKey, publicKey, chainCode} come array di byte
-// boxed (gmb_make_val_bytes) — per `DIM d AS DICT = BLOCKCHAIN.DERIVEKEY(seed, path)`.
-void gmb_bip32_derive_key_dict(const uint8_t* seed, size_t seed_len, const char* path, gmb_dict_t* out);
-
-// ETHADDRFROMPUB(pub, len): indirizzo Ethereum come stringa hex "0x..." (allocata).
-char* gmb_eth_address_from_pub_hex(const uint8_t* pub, size_t len);
-
-// GETPUBLICKEY(priv, len): chiave pubblica (33 byte compressed) allocata.
-uint8_t* gmb_get_public_key(const uint8_t* priv, size_t len, size_t* len_out);
-
 #ifdef __cplusplus
 }
 #endif
@@ -283,16 +251,6 @@ char* gmb_abi_encode_vals(const char* signature, const gmb_val_t* args, int argc
 /* CHACHA20POLY1305ENCRYPT → dict {ciphertext, tag} (val boxed, parità VM case 354). */
 gmb_val_t gmb_chacha20poly1305_encrypt_val(const uint8_t* key, size_t klen, const uint8_t* nonce, size_t nlen,
                                            const uint8_t* pt, size_t plen, const uint8_t* aad, size_t alen);
-/* CONTRACT(addr, iface, rpc) → dict {address, interface, rpcUrl} (parità VM case 392). */
-gmb_val_t gmb_contract_proxy_val(const char* addr, const char* iface, const char* rpc);
-/* DERIVEKEY(seed, path) → dict {privateKey, publicKey, chainCode} boxed. */
-gmb_val_t gmb_bip32_derive_key_dict_val(const uint8_t* seed, size_t len, const char* path);
 
-char* gmb_eth_address_checksum(const char* address);
-char* gmb_btc_address_from_pub(const uint8_t* pub, size_t len, int testnet);
-char** gmb_abi_decode_words(const char* hex_in, int* count_out);
-/* ABIDECODE numerico (parità IlRuntime.AbiDecode): decodifica parole da 32 byte big-endian
- * a partire dall'offset 0 (niente skip del selettore) → double*, count_out = n parole. */
-double* gmb_abi_decode_doubles(const char* hex_in, int* count_out);
 
 uint8_t* gmb_ecdsa_sign_raw(const uint8_t* msg, size_t mlen, const uint8_t* priv, size_t privlen, size_t* out_len);

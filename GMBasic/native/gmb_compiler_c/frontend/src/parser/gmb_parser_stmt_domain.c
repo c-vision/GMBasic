@@ -244,6 +244,18 @@ gmb_stmt_t* gmb_p_parse_domain_stmt_ov(gmb_parser_t* p, int line, const char* ov
              * GMB_TOK_Identifier e non ha act_tk (il dispatch a valle usa mutex_action). */
             if (v->kind != GMB_TOK_Identifier) s->act_tk = (int)v->kind;
             gmb_p_adv(p);
+            /* AI LIST OPTIONS: il verbo `LIST` e' keyword, la parola `OPTIONS` NO (l'unica
+             * keyword e' OPTION, che serve a `AI SET OPTION`). La si riconosce UNA volta qui,
+             * nel parser, e si normalizza nel TokenKind dedicato: gli stadi a valle (emitter
+             * C99, compilatore bytecode) dispatchano SOLO per TokenKind, mai per lessema. */
+            if (s->win_name && strcasecmp(s->win_name, "AI") == 0 && v->kind == GMB_TOK_List) {
+                const gmb_token_t* nx = gmb_p_cur(p);
+                if (nx && nx->kind == GMB_TOK_Identifier && nx->length == 7
+                    && strncasecmp(nx->lexeme, "OPTIONS", 7) == 0) {
+                    gmb_p_adv(p);
+                    s->act_tk = GMB_TOK_AiListOptions;
+                }
+            }
             /* VECTOR ADD WRAP dest, src, min, max — verbo su DUE parole (canone C#
              * LinAlgVectorAddWrapCommand). Il lettore generico prende una sola parola:
              * senza questo WRAP diventava il primo argomento (dest) → C invalido. */

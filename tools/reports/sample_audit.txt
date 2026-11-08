@@ -1,13 +1,13 @@
 SAMPLE AUDIT — shared/samples/**/*.bas
-totale file: 1207   categorie: 79
+totale file: 1222   categorie: 80
 
 == per categoria ==
-  Ai                  148
+  Ai                  150
   Concurrency         87
   AiLLM               85
   Databases           84
   Clipper             68
-  graphics            60
+  graphics            67
   Controls            43
   include             34
   Types               33
@@ -35,11 +35,11 @@ totale file: 1207   categorie: 79
   Network             11
   Web                 11
   Team                10
+  packages            10
   Files               9
   Json                9
   Stricts             9
   Documents           8
-  packages            8
   Audio               7
   Branches            7
   GameDev             7
@@ -55,6 +55,7 @@ totale file: 1207   categorie: 79
   compression         5
   Exceptions          4
   Workflow            4
+  Wsp                 4
   Algebra             3
   Commands            3
   Datetime            3
@@ -85,12 +86,12 @@ totale file: 1207   categorie: 79
 == per classificazione (un file puo' avere piu' tag) ==
   SURFACE    35
   EXPECT     0
-  CORTO      151
-  ENV        488
+  CORTO      152
+  ENV        497
   DIDATTICO  195
   MODULO     15
   FIXTURE    1
-  PACKAGE    8
+  PACKAGE    10
 
 == SURFACE (drill di superficie) ==
   Ai/AiAgentUncoveredCoverage.bas                                        righe=29 import=1
@@ -111,13 +112,12 @@ totale file: 1207   categorie: 79
   Console/ConstantsModesCoverage.bas                                     righe=103 import=1
   Console/WidgetsFullCoverage.bas                                        righe=83 import=1
   Controls/ControlPropertiesCoverage.bas                                 righe=36 import=1
-  Crypto/CryptoFullCoverage.bas                                          righe=23 import=2
+  Crypto/CryptoFullCoverage.bas                                          righe=78 import=2
   Databases/RddCompleteCoverage.bas                                      righe=73 import=3
   Documents/ConvertFullCoverage.bas                                      righe=69 import=2
   Events/OnKeyUncoveredCoverage.bas                                      righe=66 import=1
   Files/FilesFullCoverage.bas                                            righe=95 import=1
   GameDev/JoystickUncoveredCoverage.bas                                  righe=45 import=1
-  graphics/GraphicsUncoveredCoverage.bas                                 righe=41 import=1
   Http/HttpStreaming.bas                                                 righe=75 import=1
   Network/NetworkFullCoverage.bas                                        righe=29 import=1
   System/SystemFullCoverage.bas                                          righe=25 import=2
@@ -128,6 +128,7 @@ totale file: 1207   categorie: 79
   Trading/TradingMetricsUncoveredCoverage.bas                            righe=65 import=1
   Trading/TradingPortfolioUncoveredCoverage.bas                          righe=50 import=1
   Workflow/WorkflowFullCoverage.bas                                      righe=26 import=1
+  graphics/GraphicsUncoveredCoverage.bas                                 righe=41 import=1
   (35 file)
 
 == EXPECT nei Sample (violazione del contratto) ==
@@ -143,12 +144,14 @@ totale file: 1207   categorie: 79
   Ai/AiArtifactStore.bas                                                 righe=15 import=1
   Ai/AiBrainGaps.bas                                                     righe=17 import=1
   Ai/AiCheckpointRecovery.bas                                            righe=13 import=1
+  Ai/AiConsoleOptions.bas                                                righe=19 import=1
   Ai/AiFleetMetrics.bas                                                  righe=17 import=1
   Ai/AiHandoff.bas                                                       righe=17 import=1
   Ai/AiHashline.bas                                                      righe=14 import=1
   Ai/AiImageClassify.bas                                                 righe=17 import=1
   Ai/AiImageCompare.bas                                                  righe=18 import=1
   Ai/AiImageDetect.bas                                                   righe=18 import=1
+  Ai/AiListOptions.bas                                                   righe=13 import=1
   Ai/AiMissingCoverage.bas                                               righe=12 import=1
   Ai/AiResourceManager.bas                                               righe=18 import=1
   Ai/AiRulesHierarchy.bas                                                righe=18 import=1
@@ -170,7 +173,6 @@ totale file: 1207   categorie: 79
   AiLLM/ModelCompilerMlxEmit.bas                                         righe=19 import=1
   AiLLM/ModelCompilerModules.bas                                         righe=12 import=0
   AiLLM/tmp_emit2.bas                                                    righe=15 import=2
-  Analysis/AnalysisCommonLibAdvanced.bas                                 righe=19 import=0
   Analysis/StatsCategoricalTests.bas                                     righe=17 import=1
   Arrays/ArraysInsGaps.bas                                               righe=14 import=1
   Branches/BranchesSwitchExpr.bas                                        righe=19 import=0
@@ -190,9 +192,9 @@ totale file: 1207   categorie: 79
   Commands/RunLineNumber.bas                                             righe=8 import=0
   Computer/ComputerScreenRecord.bas                                      righe=16 import=1
   Computer/ComputerType.bas                                              righe=13 import=1
-  Concurrency/ChannelBasics.bas                                          righe=12 import=0
   Concurrency/ChanTest.bas                                               righe=12 import=0
   Concurrency/ChanTestSendFirst.bas                                      righe=12 import=0
+  Concurrency/ChannelBasics.bas                                          righe=12 import=0
   Concurrency/GoSelectParkWake.bas                                       righe=17 import=0
   Concurrency/GpmV2AtomicSwap.bas                                        righe=16 import=2
   Concurrency/GpmV2ForEachChannel.bas                                    righe=17 import=1
@@ -218,28 +220,6 @@ totale file: 1207   categorie: 79
   FFI/MixedArrayScalar.bas                                               righe=14 import=0
   FFI/SystemFFIPacked.bas                                                righe=15 import=0
   Fixtures/AIVerifyFixtureOk.bas                                         righe=4 import=0
-  graph/GraphLouvainMaxFlow.bas                                          righe=19 import=1
-  graphics/GraphicsDrawText.bas                                          righe=12 import=0
-  graphics/GridDemo.bas                                                  righe=16 import=2
-  graphics/ProgressBars.bas                                              righe=17 import=3
-  graphics/StarRating.bas                                                righe=16 import=3
-  graphics/TreeFileDemo.bas                                              righe=18 import=2
-  include/avif_demo.bas                                                  righe=8 import=1
-  include/dom_demo.bas                                                   righe=17 import=1
-  include/duckdb_demo.bas                                                righe=8 import=1
-  include/heif_demo.bas                                                  righe=8 import=1
-  include/media/MediaCompressDemo.bas                                    righe=10 import=1
-  include/media/MediaLanczosDemo.bas                                     righe=9 import=1
-  include/media/MediaPaletteDemo.bas                                     righe=10 import=1
-  include/media/MediaRotateDemo.bas                                      righe=9 import=1
-  include/media/MediaShrinkDemo.bas                                      righe=14 import=1
-  include/media/MediaWebpDemo.bas                                        righe=11 import=1
-  include/media/rb.bas                                                   righe=8 import=1
-  include/mongo_demo.bas                                                 righe=11 import=1
-  include/optimize/OptimizeDemo.bas                                      righe=17 import=1
-  include/redis_demo.bas                                                 righe=8 import=1
-  include/video_demo.bas                                                 righe=8 import=1
-  include/webp_demo.bas                                                  righe=8 import=1
   Loops/ForEachMatrixDestruct.bas                                        righe=14 import=0
   Loops/ForEachMatrixRow.bas                                             righe=9 import=0
   Math/KdTreeSciPyParity.bas                                             righe=17 import=1
@@ -248,8 +228,8 @@ totale file: 1207   categorie: 79
   Math/TimeSeriesFiltersSciPyParity.bas                                  righe=16 import=1
   Math/VectorDistanceSciPyParity.bas                                     righe=15 import=1
   Math/VectorMiniTest.bas                                                righe=17 import=1
-  Modules/FolderResolution/chain/Chain.bas                               righe=10 import=1
   Modules/FolderResolution/Controls/LocalControl.bas                     righe=8 import=0
+  Modules/FolderResolution/chain/Chain.bas                               righe=10 import=1
   Modules/FolderResolution/deep/nested/Nested.bas                        righe=8 import=0
   Modules/FolderResolution/include/LocalInclude.bas                      righe=8 import=0
   Modules/FolderResolution/libs/helpers/Deep.bas                         righe=8 import=0
@@ -282,10 +262,32 @@ totale file: 1207   categorie: 79
   UI/UiType.bas                                                          righe=14 import=1
   VectorDB/VectordbPurgeDeprecated.bas                                   righe=14 import=1
   Web/Mvc/Z2InterfaceNamespace/InterfaceNamespaceDemo.bas                righe=15 import=1
+  graph/GraphLouvainMaxFlow.bas                                          righe=19 import=1
+  graphics/GraphicsDrawText.bas                                          righe=12 import=0
+  graphics/GridDemo.bas                                                  righe=16 import=2
+  graphics/ProgressBars.bas                                              righe=17 import=3
+  graphics/StarRating.bas                                                righe=16 import=3
+  graphics/TreeFileDemo.bas                                              righe=18 import=2
+  include/avif_demo.bas                                                  righe=8 import=1
+  include/dom_demo.bas                                                   righe=17 import=1
+  include/duckdb_demo.bas                                                righe=8 import=1
+  include/heif_demo.bas                                                  righe=8 import=1
+  include/media/MediaCompressDemo.bas                                    righe=10 import=1
+  include/media/MediaLanczosDemo.bas                                     righe=9 import=1
+  include/media/MediaPaletteDemo.bas                                     righe=10 import=1
+  include/media/MediaRotateDemo.bas                                      righe=9 import=1
+  include/media/MediaShrinkDemo.bas                                      righe=14 import=1
+  include/media/MediaWebpDemo.bas                                        righe=11 import=1
+  include/media/rb.bas                                                   righe=8 import=1
+  include/mongo_demo.bas                                                 righe=11 import=1
+  include/optimize/OptimizeDemo.bas                                      righe=17 import=1
+  include/redis_demo.bas                                                 righe=8 import=1
+  include/video_demo.bas                                                 righe=8 import=1
+  include/webp_demo.bas                                                  righe=8 import=1
   windows/SSel.bas                                                       righe=11 import=1
-  windows/WindowHeightWidth.bas                                          righe=15 import=1
   windows/WSel.bas                                                       righe=10 import=1
-  (151 file)
+  windows/WindowHeightWidth.bas                                          righe=15 import=1
+  (152 file)
 
 == ENV (rete/UI/modelli: oracolo non deterministico) ==
   Ai/AgentBasic.bas                                                      righe=37 import=1
@@ -320,6 +322,7 @@ totale file: 1207   categorie: 79
   Ai/AiBrainGaps.bas                                                     righe=17 import=1
   Ai/AiCategoryRouting.bas                                               righe=21 import=1
   Ai/AiCheckpointRecovery.bas                                            righe=13 import=1
+  Ai/AiConsoleOptions.bas                                                righe=19 import=1
   Ai/AiDbAdmin.bas                                                       righe=70 import=3
   Ai/AiDocExtract.bas                                                    righe=23 import=1
   Ai/AiDocFields.bas                                                     righe=20 import=1
@@ -341,6 +344,7 @@ totale file: 1207   categorie: 79
   Ai/AiImageManipulation.bas                                             righe=39 import=1
   Ai/AiImageResize.bas                                                   righe=23 import=1
   Ai/AiLifecycleHooks.bas                                                righe=34 import=1
+  Ai/AiListOptions.bas                                                   righe=13 import=1
   Ai/AiMissingCoverage.bas                                               righe=12 import=1
   Ai/AiNoteVault.bas                                                     righe=44 import=1
   Ai/AiOptions.bas                                                       righe=45 import=1
@@ -349,7 +353,6 @@ totale file: 1207   categorie: 79
   Ai/AiPlugins.bas                                                       righe=53 import=2
   Ai/AiProviders.bas                                                     righe=102 import=1
   Ai/AiResourceManager.bas                                               righe=18 import=1
-  Ai/AirlineBrainRag.bas                                                 righe=51 import=1
   Ai/AiRulesHierarchy.bas                                                righe=18 import=1
   Ai/AiSecondBrainVault.bas                                              righe=55 import=1
   Ai/AiSessionReplay.bas                                                 righe=19 import=1
@@ -365,6 +368,7 @@ totale file: 1207   categorie: 79
   Ai/AiVideoInfo.bas                                                     righe=20 import=1
   Ai/AiVideoSnapshot.bas                                                 righe=19 import=1
   Ai/AiVision.bas                                                        righe=50 import=1
+  Ai/AirlineBrainRag.bas                                                 righe=51 import=1
   Ai/BlackboardWorkersE2E.bas                                            righe=46 import=1
   Ai/BrainMultiBrain.bas                                                 righe=94 import=1
   Ai/BrowserAccessTree.bas                                               righe=9 import=1
@@ -373,9 +377,9 @@ totale file: 1207   categorie: 79
   Ai/BrowserProfileStart.bas                                             righe=11 import=1
   Ai/BrowserProviderPerAgent.bas                                         righe=53 import=1
   Ai/BrowserStealth.bas                                                  righe=15 import=1
+  Ai/CLMDecision.bas                                                     righe=27 import=1
   Ai/CanvasDemo.bas                                                      righe=61 import=3
   Ai/ChannelPubSub.bas                                                   righe=40 import=1
-  Ai/CLMDecision.bas                                                     righe=27 import=1
   Ai/ComputerInput.bas                                                   righe=89 import=1
   Ai/ComputerScreenRecord.bas                                            righe=37 import=1
   Ai/ComputerUse.bas                                                     righe=30 import=1
@@ -443,8 +447,8 @@ totale file: 1207   categorie: 79
   AiLLM/AiServerStartPort.bas                                            righe=39 import=4
   AiLLM/AiSpeculativeDflash2.bas                                         righe=50 import=2
   AiLLM/AsrTranscribe.bas                                                righe=14 import=1
-  AiLLM/CalibrationInspect.bas                                           righe=16 import=1
   AiLLM/CLMLocal.bas                                                     righe=42 import=1
+  AiLLM/CalibrationInspect.bas                                           righe=16 import=1
   AiLLM/CompareDense.bas                                                 righe=28 import=1
   AiLLM/DecideLocalThinking.bas                                          righe=48 import=1
   AiLLM/DecideVerbalizer.bas                                             righe=62 import=1
@@ -459,10 +463,7 @@ totale file: 1207   categorie: 79
   AiLLM/ExecPlanRuntime.bas                                              righe=33 import=2
   AiLLM/ExecPlanSkip.bas                                                 righe=23 import=2
   AiLLM/ExpertResidencyPolicy.bas                                        righe=31 import=2
-  AiLLM/gemma_4_31b_it_4bit.bas                                          righe=29 import=2
   AiLLM/GLM_4_5_Air_4bit.bas                                             righe=29 import=2
-  AiLLM/gpt_oss_120b_mxfp4_bf16.bas                                      righe=29 import=2
-  AiLLM/gpt_oss_20b_MXFP4_Q8.bas                                         righe=29 import=2
   AiLLM/Kimi_Linear_48B_A3B_Instruct_4bit.bas                            righe=29 import=2
   AiLLM/KvDagPrefetch.bas                                                righe=18 import=1
   AiLLM/KvFormatContract.bas                                             righe=21 import=1
@@ -498,29 +499,32 @@ totale file: 1207   categorie: 79
   AiLLM/MoestreamModels.bas                                              righe=107 import=2
   AiLLM/PromptBudgetReport.bas                                           righe=137 import=1
   AiLLM/QualityGguf.bas                                                  righe=35 import=2
+  AiLLM/Qwen38CompressPipeline.bas                                       righe=90 import=1
   AiLLM/Qwen3_5_122B_A10B_mxfp4.bas                                      righe=29 import=2
   AiLLM/Qwen3_5_27B_Claude_4_6_Opus_Distilled_MLX_6bit.bas               righe=29 import=2
   AiLLM/Qwen3_6_27B_4bit.bas                                             righe=29 import=2
   AiLLM/Qwen3_6_35B_A3B_OptiQ_4bit_textonly.bas                          righe=29 import=2
+  AiLLM/Qwen3_8B_4bit.bas                                                righe=29 import=2
   AiLLM/Qwen3_8_27B_8bit.bas                                             righe=29 import=2
   AiLLM/Qwen3_8_27B_DFlash2.bas                                          righe=29 import=2
   AiLLM/Qwen3_8_Flash_Next_tq4a_tq2e_g64.bas                             righe=29 import=2
-  AiLLM/Qwen3_8B_4bit.bas                                                righe=29 import=2
   AiLLM/Qwen3_Coder_30B_A3B_Instruct_8bit.bas                            righe=29 import=2
   AiLLM/Qwen3_Coder_Next_mxfp4_mlx.bas                                   righe=29 import=2
-  AiLLM/Qwen38CompressPipeline.bas                                       righe=90 import=1
   AiLLM/Ternary_Bonsai_4B_mlx_2bit.bas                                   righe=29 import=2
-  AiLLM/tmp_emit_rt.bas                                                  righe=20 import=2
-  AiLLM/tmp_emit2.bas                                                    righe=15 import=2
-  AiLLM/tmp_surg2.bas                                                    righe=21 import=2
-  AiLLM/TokenizerInspect.bas                                             righe=38 import=1
   AiLLM/TokenizeRoundTrip.bas                                            righe=45 import=1
+  AiLLM/TokenizerInspect.bas                                             righe=38 import=1
   AiLLM/TorchArtifacts.bas                                               righe=41 import=1
   AiLLM/TrainCommandsTour.bas                                            righe=155 import=3
   AiLLM/TrainDpo.bas                                                     righe=30 import=1
   AiLLM/TrainNamespace.bas                                               righe=41 import=2
   AiLLM/TrainRuns.bas                                                    righe=33 import=1
   AiLLM/TwoLocalModels.bas                                               righe=58 import=2
+  AiLLM/gemma_4_31b_it_4bit.bas                                          righe=29 import=2
+  AiLLM/gpt_oss_120b_mxfp4_bf16.bas                                      righe=29 import=2
+  AiLLM/gpt_oss_20b_MXFP4_Q8.bas                                         righe=29 import=2
+  AiLLM/tmp_emit2.bas                                                    righe=15 import=2
+  AiLLM/tmp_emit_rt.bas                                                  righe=20 import=2
+  AiLLM/tmp_surg2.bas                                                    righe=21 import=2
   Audio/AudioAdvanced.bas                                                righe=125 import=0
   Audio/AudioBasics.bas                                                  righe=28 import=0
   Audio/AudioControls.bas                                                righe=44 import=0
@@ -638,8 +642,6 @@ totale file: 1207   categorie: 79
   Controls/UserControlParentDemo.bas                                     righe=33 import=1
   Controls/UserControlPropsDemo.bas                                      righe=27 import=1
   Controls/WatchlistDemo.bas                                             righe=23 import=1
-  cua/AgentWorkflow.bas                                                  righe=45 import=2
-  cua/CuaDiagnostics.bas                                                 righe=55 import=4
   GameDev/JoystickTest.bas                                               righe=48 import=1
   GameDev/JoystickUncoveredCoverage.bas                                  righe=45 import=1
   GameDev/PacMan.bas                                                     righe=166 import=2
@@ -647,66 +649,6 @@ totale file: 1207   categorie: 79
   GameDev/Tetris.bas                                                     righe=209 import=2
   GameDev/TickGameLoop.bas                                               righe=48 import=0
   GameDev/TilemapDemo.bas                                                righe=77 import=0
-  graphics/AllControls.bas                                               righe=49 import=2
-  graphics/ButtonFirst.bas                                               righe=23 import=2
-  graphics/ButtonPropsDemo.bas                                           righe=27 import=2
-  graphics/ButtonStyles.bas                                              righe=42 import=2
-  graphics/ChartConfigDemo.bas                                           righe=63 import=1
-  graphics/ChartControlDemo.bas                                          righe=35 import=1
-  graphics/ChartDrawDemo.bas                                             righe=74 import=1
-  graphics/ChartFinancialDemo.bas                                        righe=37 import=1
-  graphics/ClipperGraphics.bas                                           righe=35 import=1
-  graphics/ConsoleModeSelect.bas                                         righe=55 import=0
-  graphics/ControlMethodsDemo.bas                                        righe=35 import=2
-  graphics/ControlPropsDemo.bas                                          righe=28 import=2
-  graphics/ControlsAllPixel.bas                                          righe=67 import=3
-  graphics/ControlsDashboard.bas                                         righe=57 import=2
-  graphics/ControlsFullDemo.bas                                          righe=139 import=2
-  graphics/ControlsMore.bas                                              righe=22 import=2
-  graphics/CoordsAndTextGaps.bas                                         righe=30 import=2
-  graphics/EventModelDemo.bas                                            righe=79 import=2
-  graphics/FkeybarSingle.bas                                             righe=35 import=3
-  graphics/FontCenterTest.bas                                            righe=56 import=1
-  graphics/FormButtonDemo.bas                                            righe=32 import=2
-  graphics/FormThemes.bas                                                righe=30 import=2
-  graphics/GraphicsBasics.bas                                            righe=100 import=0
-  graphics/GraphicsCellPixel.bas                                         righe=41 import=0
-  graphics/GraphicsColorPalette.bas                                      righe=23 import=0
-  graphics/GraphicsColors.bas                                            righe=140 import=0
-  graphics/GraphicsConsoleModes.bas                                      righe=65 import=0
-  graphics/GraphicsCosine.bas                                            righe=72 import=0
-  graphics/GraphicsDrawText.bas                                          righe=12 import=0
-  graphics/GraphicsDrawTextures.bas                                      righe=221 import=4
-  graphics/GraphicsFonts.bas                                             righe=129 import=0
-  graphics/GraphicsFullGfxTest.bas                                       righe=160 import=0
-  graphics/GraphicsLegacySyntax.bas                                      righe=199 import=0
-  graphics/GraphicsMandelbrot.bas                                        righe=117 import=0
-  graphics/GraphicsMinimal.bas                                           righe=95 import=0
-  graphics/GraphicsMultipleScreens.bas                                   righe=189 import=0
-  graphics/GraphicsPalette.bas                                           righe=61 import=1
-  graphics/GraphicsPlanesExplode.bas                                     righe=148 import=2
-  graphics/GraphicsPlotting.bas                                          righe=127 import=1
-  graphics/GraphicsPutsVsTextures.bas                                    righe=208 import=4
-  graphics/GraphicsPutsVsTexturesOld.bas                                 righe=218 import=4
-  graphics/GraphicsScreenSet.bas                                         righe=95 import=0
-  graphics/GraphicsScreenshot.bas                                        righe=52 import=0
-  graphics/GraphicsShowModes.bas                                         righe=55 import=0
-  graphics/GraphicsSpriteBatch.bas                                       righe=36 import=0
-  graphics/GraphicsSpriteNamespace.bas                                   righe=58 import=1
-  graphics/GraphicsTexturesBenchmark.bas                                 righe=114 import=4
-  graphics/GraphicsUncoveredCoverage.bas                                 righe=41 import=1
-  graphics/GraphicsUnloadResource.bas                                    righe=37 import=0
-  graphics/GraphicsWindows.bas                                           righe=133 import=4
-  graphics/GridDemo.bas                                                  righe=16 import=2
-  graphics/GuiControls.bas                                               righe=30 import=2
-  graphics/MenuPrinterDemo.bas                                           righe=21 import=2
-  graphics/MessageBoxDemo.bas                                            righe=33 import=2
-  graphics/PCodeGpmGraphicsReadback.bas                                  righe=59 import=2
-  graphics/PCodeGpmGraphicsTexture.bas                                   righe=55 import=2
-  graphics/ProgressBars.bas                                              righe=17 import=3
-  graphics/StarRating.bas                                                righe=16 import=3
-  graphics/TreeFileDemo.bas                                              righe=18 import=2
-  graphics/WidgetsDemo.bas                                               righe=27 import=2
   Http/BspModelAuthDemo.bas                                              righe=98 import=1
   Http/Http2Server.bas                                                   righe=51 import=1
   Http/HttpBodyJson.bas                                                  righe=61 import=2
@@ -759,8 +701,78 @@ totale file: 1207   categorie: 79
   Web/Mvc/Z4SetStatusPropagates/SetStatusDemo.bas                        righe=56 import=1
   Web/RegistryServer.bas                                                 righe=108 import=2
   Web/WebToMarkdown.bas                                                  righe=40 import=1
+  cua/AgentWorkflow.bas                                                  righe=45 import=2
+  cua/CuaDiagnostics.bas                                                 righe=55 import=4
+  graphics/AllControls.bas                                               righe=49 import=2
+  graphics/Bc1Lab.bas                                                    righe=38 import=1
+  graphics/ButtonFirst.bas                                               righe=23 import=2
+  graphics/ButtonPropsDemo.bas                                           righe=27 import=2
+  graphics/ButtonStyles.bas                                              righe=42 import=2
+  graphics/CanvasPlot.bas                                                righe=69 import=1
+  graphics/ChartConfigDemo.bas                                           righe=63 import=1
+  graphics/ChartControlDemo.bas                                          righe=35 import=1
+  graphics/ChartDrawDemo.bas                                             righe=74 import=1
+  graphics/ChartFinancialDemo.bas                                        righe=37 import=1
+  graphics/ClipperGraphics.bas                                           righe=35 import=1
+  graphics/ColorLab.bas                                                  righe=50 import=3
+  graphics/ConsoleModeSelect.bas                                         righe=55 import=0
+  graphics/ControlMethodsDemo.bas                                        righe=35 import=2
+  graphics/ControlPropsDemo.bas                                          righe=28 import=2
+  graphics/ControlsAllPixel.bas                                          righe=67 import=3
+  graphics/ControlsDashboard.bas                                         righe=57 import=2
+  graphics/ControlsFullDemo.bas                                          righe=139 import=2
+  graphics/ControlsMore.bas                                              righe=22 import=2
+  graphics/CoordsAndTextGaps.bas                                         righe=30 import=2
+  graphics/EventModelDemo.bas                                            righe=79 import=2
+  graphics/FkeybarSingle.bas                                             righe=35 import=3
+  graphics/FontCenterTest.bas                                            righe=56 import=1
+  graphics/FormButtonDemo.bas                                            righe=32 import=2
+  graphics/FormThemes.bas                                                righe=30 import=2
+  graphics/Gfx3dLab.bas                                                  righe=68 import=1
+  graphics/GraphicsBasics.bas                                            righe=100 import=0
+  graphics/GraphicsCellPixel.bas                                         righe=41 import=0
+  graphics/GraphicsColorPalette.bas                                      righe=23 import=0
+  graphics/GraphicsColors.bas                                            righe=140 import=0
+  graphics/GraphicsConsoleModes.bas                                      righe=65 import=0
+  graphics/GraphicsCosine.bas                                            righe=72 import=0
+  graphics/GraphicsDrawText.bas                                          righe=12 import=0
+  graphics/GraphicsDrawTextures.bas                                      righe=221 import=4
+  graphics/GraphicsFonts.bas                                             righe=129 import=0
+  graphics/GraphicsFullGfxTest.bas                                       righe=160 import=0
+  graphics/GraphicsLegacySyntax.bas                                      righe=199 import=0
+  graphics/GraphicsMandelbrot.bas                                        righe=117 import=0
+  graphics/GraphicsMinimal.bas                                           righe=95 import=0
+  graphics/GraphicsMultipleScreens.bas                                   righe=189 import=0
+  graphics/GraphicsPalette.bas                                           righe=61 import=1
+  graphics/GraphicsPlanesExplode.bas                                     righe=148 import=2
+  graphics/GraphicsPlotting.bas                                          righe=127 import=1
+  graphics/GraphicsPutsVsTextures.bas                                    righe=208 import=4
+  graphics/GraphicsPutsVsTexturesOld.bas                                 righe=218 import=4
+  graphics/GraphicsScreenSet.bas                                         righe=95 import=0
+  graphics/GraphicsScreenshot.bas                                        righe=52 import=0
+  graphics/GraphicsShowModes.bas                                         righe=55 import=0
+  graphics/GraphicsSpriteBatch.bas                                       righe=36 import=0
+  graphics/GraphicsSpriteNamespace.bas                                   righe=58 import=1
+  graphics/GraphicsTexturesBenchmark.bas                                 righe=114 import=4
+  graphics/GraphicsTour.bas                                              righe=364 import=6
+  graphics/GraphicsUncoveredCoverage.bas                                 righe=41 import=1
+  graphics/GraphicsUnloadResource.bas                                    righe=37 import=0
+  graphics/GraphicsWindows.bas                                           righe=133 import=4
+  graphics/GridDemo.bas                                                  righe=16 import=2
+  graphics/GuiControls.bas                                               righe=30 import=2
+  graphics/HeatmapLab.bas                                                righe=54 import=3
+  graphics/MenuPrinterDemo.bas                                           righe=21 import=2
+  graphics/MessageBoxDemo.bas                                            righe=33 import=2
+  graphics/PCodeGpmGraphicsReadback.bas                                  righe=59 import=2
+  graphics/PCodeGpmGraphicsTexture.bas                                   righe=55 import=2
+  graphics/ProgressBars.bas                                              righe=17 import=3
+  graphics/ShapeLab.bas                                                  righe=43 import=1
+  graphics/StarRating.bas                                                righe=16 import=3
+  graphics/TreeFileDemo.bas                                              righe=18 import=2
+  graphics/WidgetsDemo.bas                                               righe=27 import=2
   windows/ClipperWindow.bas                                              righe=30 import=1
   windows/SSel.bas                                                       righe=11 import=1
+  windows/WSel.bas                                                       righe=10 import=1
   windows/WindowColors.bas                                               righe=29 import=2
   windows/WindowContent.bas                                              righe=38 import=1
   windows/WindowContentGui.bas                                           righe=32 import=2
@@ -775,14 +787,13 @@ totale file: 1207   categorie: 79
   windows/WindowTuiGraphics.bas                                          righe=41 import=2
   windows/WindowTuiTest.bas                                              righe=58 import=1
   windows/WindowViewport.bas                                             righe=47 import=1
-  windows/WSel.bas                                                       righe=10 import=1
-  (488 file)
+  (497 file)
 
 == DIDATTICO (>=2 domini, >= 20 righe) ==
   Algebra/AlgebraVectorOperations.bas                                    righe=111 import=2
-  Analysis/AnalysisMiniTest.bas                                          righe=40 import=2
-  Analysis/AnalysisStatsDescriptive.bas                                  righe=77 import=2
-  Analysis/AnalysisTests.bas                                             righe=163 import=3
+  Analysis/AnalysisMiniTest.bas                                          righe=39 import=2
+  Analysis/AnalysisStatsDescriptive.bas                                  righe=79 import=3
+  Analysis/AnalysisTests.bas                                             righe=170 import=5
   Analysis/ControlloQualita.bas                                          righe=86 import=2
   Arrays/ArraysComprehensionFull.bas                                     righe=157 import=2
   Arrays/ArraysComprehensionString.bas                                   righe=49 import=2
@@ -820,9 +831,6 @@ totale file: 1207   categorie: 79
   Collections/CollectionsMembersExtra.bas                                righe=70 import=2
   Collections/CollectionsModern.bas                                      righe=350 import=2
   Collections/CollectionsSafeAccess.bas                                  righe=44 import=3
-  compression/BackupReport.bas                                           righe=58 import=2
-  compression/CompressionRoundTrip.bas                                   righe=36 import=2
-  compression/ZipUnzipDemo.bas                                           righe=57 import=2
   Concurrency/ConcurrencyAsync.bas                                       righe=89 import=2
   Concurrency/PCodeGpmAtomic.bas                                         righe=33 import=2
   Concurrency/PCodeGpmContext.bas                                        righe=38 import=2
@@ -832,10 +840,10 @@ totale file: 1207   categorie: 79
   Concurrency/PCodeGpmUdpInFinally.bas                                   righe=59 import=2
   Concurrency/PCodeGpmWebSocketInGoroutine.bas                           righe=50 import=3
   Concurrency/SyncMapDemo.bas                                            righe=45 import=2
-  Crypto/CryptoBlockchain.bas                                            righe=137 import=3
-  Crypto/CryptoERC20.bas                                                 righe=112 import=2
+  Crypto/CryptoBlockchain.bas                                            righe=104 import=2
+  Crypto/CryptoERC20.bas                                                 righe=54 import=2
   Crypto/CryptoFunctions.bas                                             righe=190 import=2
-  Crypto/CryptoWalletHD.bas                                              righe=127 import=4
+  Crypto/CryptoWalletHD.bas                                              righe=78 import=2
   Crypto/FirmaContratto.bas                                              righe=80 import=2
   Crypto/VerificaDownload.bas                                            righe=82 import=2
   Databases/AiLoadDocs.bas                                               righe=50 import=3
@@ -846,12 +854,6 @@ totale file: 1207   categorie: 79
   Databases/CustomerOrdersReport.bas                                     righe=86 import=3
   Databases/DbDbfBuffered.bas                                            righe=25 import=2
   Databases/DbDbfGroupCommit.bas                                         righe=27 import=2
-  Databases/DbfIndexCompound.bas                                         righe=45 import=2
-  Databases/DbfIndexCompoundMultiTag.bas                                 righe=55 import=2
-  Databases/DbfIndexCompoundWrite.bas                                    righe=41 import=2
-  Databases/DbfIndexNtxNdx.bas                                           righe=63 import=2
-  Databases/DbfMemoCrud.bas                                              righe=58 import=2
-  Databases/DbfRelationJoin.bas                                          righe=66 import=2
   Databases/DbIsamFullTests.bas                                          righe=675 import=6
   Databases/DbIsamNavAndModify.bas                                       righe=54 import=2
   Databases/DbIsamSpeedSelectFilter.bas                                  righe=52 import=2
@@ -862,6 +864,12 @@ totale file: 1207   categorie: 79
   Databases/DbVmMarshallerIsam.bas                                       righe=37 import=2
   Databases/DbVmMarshallerLedger.bas                                     righe=23 import=2
   Databases/DbVmMarshallerSpeed.bas                                      righe=38 import=2
+  Databases/DbfIndexCompound.bas                                         righe=45 import=2
+  Databases/DbfIndexCompoundMultiTag.bas                                 righe=55 import=2
+  Databases/DbfIndexCompoundWrite.bas                                    righe=41 import=2
+  Databases/DbfIndexNtxNdx.bas                                           righe=63 import=2
+  Databases/DbfMemoCrud.bas                                              righe=58 import=2
+  Databases/DbfRelationJoin.bas                                          righe=66 import=2
   Databases/ISAM_Minimal_Test.bas                                        righe=57 import=2
   Databases/ISAM_Simple_Test.bas                                         righe=64 import=2
   Databases/ISAM_Test.bas                                                righe=51 import=2
@@ -879,10 +887,10 @@ totale file: 1207   categorie: 79
   Databases/RDD_Omonime.bas                                              righe=51 import=2
   Databases/RDD_Relation.bas                                             righe=49 import=2
   Databases/RDD_ReplaceRealData.bas                                      righe=62 import=3
-  Databases/RDD_ScopeCommands.bas                                        righe=60 import=2
-  Databases/RDD_SetDeleted.bas                                           righe=45 import=3
   Databases/RDD_SQL_CRUD.bas                                             righe=81 import=3
   Databases/RDD_SQL_Demo.bas                                             righe=51 import=3
+  Databases/RDD_ScopeCommands.bas                                        righe=60 import=2
+  Databases/RDD_SetDeleted.bas                                           righe=45 import=3
   Databases/RddDriversComplete.bas                                       righe=51 import=3
   Databases/SqlAdvancedFeatures.bas                                      righe=72 import=2
   Databases/SqlAnalyticsFull.bas                                         righe=55 import=2
@@ -917,10 +925,6 @@ totale file: 1207   categorie: 79
   Functions/FunctionsLambdaInference.bas                                 righe=80 import=2
   Functions/FunctionsParams.bas                                          righe=94 import=2
   Functions/GeneratorExpr.bas                                            righe=63 import=2
-  graph/AirlineBrainGraph.bas                                            righe=50 import=2
-  graph/FinanceBrainGraph.bas                                            righe=52 import=2
-  graph/GraphAgentAsk.bas                                                righe=35 import=2
-  graph/GraphQueryMulti.bas                                              righe=30 import=2
   Json/ConfigurazioneNegozio.bas                                         righe=39 import=2
   Json/JsonApiComplete.bas                                               righe=142 import=3
   Json/JsonFiles.bas                                                     righe=108 import=2
@@ -933,6 +937,7 @@ totale file: 1207   categorie: 79
   Namespaces/NamespacesMain.bas                                          righe=108 import=3
   PackageRegistry/PackageServer.bas                                      righe=2021 import=5
   ParserStress.bas                                                       righe=192 import=9
+  SQL/SqlDataFrameG10.bas                                                righe=49 import=2
   Scopes/ScopesStatic.bas                                                righe=65 import=2
   Security/AuthFlowDemo.bas                                              righe=70 import=2
   Security/AuthMvcDemo.bas                                               righe=47 import=3
@@ -944,15 +949,14 @@ totale file: 1207   categorie: 79
   Security/OAuthPKCEFlowDemo.bas                                         righe=54 import=4
   Security/SecureTokens.bas                                              righe=37 import=2
   Security/ValidationFluentDemo.bas                                      righe=37 import=3
-  SQL/SqlDataFrameG10.bas                                                righe=49 import=2
   Strings/StringsExamples.bas                                            righe=239 import=3
   Strings/StringsInterpolation.bas                                       righe=102 import=2
   System/SettingsPaths.bas                                               righe=66 import=3
   System/SystemConstants.bas                                             righe=47 import=3
   System/SystemLowLevel.bas                                              righe=123 import=3
   System/SystemLowLevelCanon.bas                                         righe=53 import=3
-  TimeSeries/TimeSeriesAdvanced.bas                                      righe=80 import=2
-  TimeSeries/TimeSeriesTests.bas                                         righe=105 import=2
+  TimeSeries/TimeSeriesAdvanced.bas                                      righe=77 import=2
+  TimeSeries/TimeSeriesTests.bas                                         righe=106 import=2
   Torch/TorchDatasetChar.bas                                             righe=45 import=2
   Torch/TorchLoRA.bas                                                    righe=50 import=2
   Trading/FinanceExtendedFunctions.bas                                   righe=57 import=2
@@ -974,5 +978,12 @@ totale file: 1207   categorie: 79
   VectorDB/RagEvalE2eGentest.bas                                         righe=65 import=4
   VectorDB/RagEvalGenTest.bas                                            righe=61 import=2
   VectorDB/VectordbSq8.bas                                               righe=59 import=2
+  compression/BackupReport.bas                                           righe=58 import=2
+  compression/CompressionRoundTrip.bas                                   righe=36 import=2
+  compression/ZipUnzipDemo.bas                                           righe=57 import=2
+  graph/AirlineBrainGraph.bas                                            righe=50 import=2
+  graph/FinanceBrainGraph.bas                                            righe=52 import=2
+  graph/GraphAgentAsk.bas                                                righe=35 import=2
+  graph/GraphQueryMulti.bas                                              righe=30 import=2
   (195 file)
 

@@ -3789,23 +3789,6 @@ if (args.Length > 0 && args[0] is System.Collections.IList wts) { var w = new do
         
             // --- Distribuzioni di probabilita' (PDF/CDF continuo) ---
         },
-        [BuiltInFunction.BASE32DECODE] = (task, args) =>
-        {
-                // Runtime comune (IlRuntime): stessa logica — unica implementazione.
-                return Basic.IlBackend.IlRuntime.Base32Decode(ArgOr(args, 0)?.ToString() ?? "");
-        },
-        [BuiltInFunction.BASE32ENCODE] = (task, args) =>
-        {
-                return Basic.IlBackend.IlRuntime.Base32Encode(ArgOr(args, 0));
-        },
-        [BuiltInFunction.BASE58DECODE] = (task, args) =>
-        {
-                return Basic.IlBackend.IlRuntime.Base58Decode(ArgOr(args, 0)?.ToString() ?? "");
-        },
-        [BuiltInFunction.BASE58ENCODE] = (task, args) =>
-        {
-                return Basic.IlBackend.IlRuntime.Base58Encode(ArgOr(args, 0));
-        },
         [BuiltInFunction.BERNOULLIPMF] = (task, args) =>
         {
                 return Basic.StdLibRuntime.MathFunctions.BernoulliPmf(SafeDouble(args.Length > 1 ? args[1] : null), (int)SafeDouble(args.Length > 0 ? args[0] : null));

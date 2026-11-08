@@ -712,10 +712,10 @@ cnt = cnt + 1 : cn(cnt) = "DARK_VIOLET" : ci(cnt) = %DARK_VIOLET
 
 ### `%DECIDE` — valore `6`
 
-*uso reale in `shared/samples/AiLLM/DecideVerbalizer.bas:1`*
+*uso reale in `shared/samples/AiLLM/CLMLocal.bas:16`*
 
 ```basic
-' DecideVerbalizer.bas — provider %DECIDE distinguibile: kind "verbalizer".
+AI REGISTER "clm", %DECIDE, "clm", "{""head"":""~/ai/Models/CLM-v0.1-8B/clm_head.safetensors"",""encoder"":""~/ai/Models/Qwen3-8B""}"
 ```
 
 ### `%DEEP_PINK4` — valore `53`
@@ -2577,46 +2577,6 @@ PRINT "  %YESNOCANCEL"; TAB(24); %YESNOCANCEL
 
 ## Tipi e record
 
-### `__TempMacro`
-
-*definizione da `shared/samples/Clipper/ClipperMacro.bas`*
-
-```basic
-    TYPE __TempMacro
-        Nome AS STRING * 15
-        Citta AS STRING * 15
-        Valore1 AS INTEGER
-        Valore2 AS INTEGER
-        Attivo AS BIT
-    END TYPE
-```
-
-### `__TempStructure`
-
-*definizione da `shared/samples/Clipper/ClipperDbfLateBinding.bas`*
-
-```basic
-    TYPE __TempStructure
-        ID AS INTEGER
-        Nome AS STRING * 20
-        Citta AS STRING * 15
-        Saldo AS CURRENCY
-        Attivo AS BIT
-        UltimoOrdine AS DATE
-    END TYPE
-```
-
-### `__TempUpdate`
-
-*definizione da `shared/samples/Clipper/ClipperMacro.bas`*
-
-```basic
-    TYPE __TempUpdate
-        ID_Ext AS INTEGER
-        NuovoValore AS INTEGER
-    END TYPE
-```
-
 ### `Box`
 
 *definizione da `shared/minitests/types/udt_varlen.bas`*
@@ -2732,7 +2692,7 @@ END TYPE
 ```
 
 ```basic
-37:  DIM c AS Cliente
+38:  DIM c AS Cliente
 ```
 
 ### `CmdConfig`
@@ -2834,6 +2794,22 @@ END TYPE
 19:DIM c AS CustT
 ```
 
+### `DRec`
+
+*definizione da `shared/minitests/dbf/isam_double_roundtrip.bas`*
+
+```basic
+TYPE DRec
+    Code AS STRING * 8
+    Price AS DOUBLE
+    Qty AS LONG
+END TYPE
+```
+
+```basic
+13:DIM p AS DRec
+```
+
 ### `DatiCliente`
 
 *definizione da `shared/samples/Files/FilesIO.bas`*
@@ -2880,22 +2856,6 @@ END TYPE
 
 ```basic
 22:DIM d AS DelT
-```
-
-### `DRec`
-
-*definizione da `shared/minitests/dbf/isam_double_roundtrip.bas`*
-
-```basic
-TYPE DRec
-    Code AS STRING * 8
-    Price AS DOUBLE
-    Qty AS LONG
-END TYPE
-```
-
-```basic
-13:DIM p AS DRec
 ```
 
 ### `Employee`
@@ -2955,7 +2915,7 @@ END TYPE
 ```
 
 ```basic
-12:  DIM g AS Grande, h AS Grande
+13:  DIM g AS Grande, h AS Grande
 ```
 
 ### `HasCurrency`
@@ -3007,6 +2967,22 @@ END TYPE
 
 ```basic
 31:    DIM i1 AS Int2
+```
+
+### `Int3`
+
+*definizione da `shared/minitests/ffi/ffi_udt_multi.bas`*
+
+```basic
+TYPE Int3
+    A AS LONG
+    B AS LONG
+    C AS LONG
+END TYPE
+```
+
+```basic
+60:    DIM v AS Int3
 ```
 
 ### `Item`
@@ -3191,20 +3167,6 @@ END TYPE
 35:DIM lt AS LockT
 ```
 
-### `loop`
-
-*definizione da `shared/minitests/system/keyword_names.bas`*
-
-```basic
-TYPE loop
-  for AS INTEGER
-END TYPE
-```
-
-```basic
-36:  DIM v AS loop
-```
-
 ### `Misto`
 
 *definizione da `shared/minitests/io/random_udt_record.bas`*
@@ -3221,7 +3183,7 @@ END TYPE
 ```
 
 ```basic
-26:  DIM m AS Misto, n AS Misto
+27:  DIM m AS Misto, n AS Misto
 ```
 
 ### `MixT`
@@ -3237,6 +3199,22 @@ END TYPE
 
 ```basic
 25:DIM m AS MixT
+```
+
+### `Mixed3`
+
+*definizione da `shared/minitests/ffi/ffi_udt_multi.bas`*
+
+```basic
+TYPE Mixed3
+    A AS DOUBLE
+    B AS LONG
+    C AS DOUBLE
+END TYPE
+```
+
+```basic
+36:    DIM m AS Mixed3
 ```
 
 ### `MyPackedStruct`
@@ -3311,6 +3289,27 @@ END TYPE
 82:  DIM np AS NestPacked : PRINT SIZEOF(np)
 ```
 
+### `Oct8`
+
+*definizione da `shared/minitests/ffi/ffi_udt_multi.bas`*
+
+```basic
+TYPE Oct8
+    F0 AS DOUBLE
+    F1 AS DOUBLE
+    F2 AS DOUBLE
+    F3 AS DOUBLE
+    F4 AS DOUBLE
+    F5 AS DOUBLE
+    F6 AS DOUBLE
+    F7 AS DOUBLE
+END TYPE
+```
+
+```basic
+50:    DIM o AS Oct8
+```
+
 ### `Ord`
 
 *definizione da `shared/samples/Databases/DbfRelationJoin.bas`*
@@ -3320,23 +3319,6 @@ TYPE Ord
     CID AS STRING * 10
     ITEM AS STRING * 10
 END TYPE
-```
-
-### `Ordine`
-
-*definizione da `shared/minitests/speed/select.bas`*
-
-```basic
-TYPE Ordine
-  ID_Cliente AS LONG
-  ID_Ordine AS LONG
-  Descrizione AS STRING * 50
-  Importo AS CURRENCY
-END TYPE
-```
-
-```basic
-41:  DIM o AS Ordine
 ```
 
 ### `OrdT`
@@ -3353,6 +3335,23 @@ END TYPE
 
 ```basic
 34:DIM o AS OrdT
+```
+
+### `Ordine`
+
+*definizione da `shared/minitests/speed/select.bas`*
+
+```basic
+TYPE Ordine
+  ID_Cliente AS LONG
+  ID_Ordine AS LONG
+  Descrizione AS STRING * 50
+  Importo AS CURRENCY
+END TYPE
+```
+
+```basic
+42:  DIM o AS Ordine
 ```
 
 ### `Outer`
@@ -3415,6 +3414,22 @@ END TYPE
 12:  DIM p AS P
 ```
 
+### `PRec`
+
+*definizione da `shared/minitests/dbf/isam_filter_eof.bas`*
+
+```basic
+TYPE PRec
+    Code AS STRING * 8
+    Price AS DOUBLE
+    Qty AS LONG
+END TYPE
+```
+
+```basic
+16:DIM p AS PRec
+```
+
 ### `Pair`
 
 *definizione da `shared/samples/Types/TypesGenericType.bas`*
@@ -3464,17 +3479,13 @@ END TYPE
 
 ### `Point`
 
-*definizione da `shared/minitests/ffi/ffi_udt_struct.bas`*
+*definizione da `shared/minitests/zzprobe4/c3.bas`*
 
 ```basic
 TYPE Point
-    X AS DOUBLE
-    Y AS DOUBLE
+  X AS DOUBLE
+  Y AS DOUBLE
 END TYPE
-```
-
-```basic
-18:    DIM p1 AS Point
 ```
 
 ### `Point2D`
@@ -3497,22 +3508,6 @@ TYPE Points
   x AS INTEGER
   y AS INTEGER
 END TYPE
-```
-
-### `PRec`
-
-*definizione da `shared/minitests/dbf/isam_filter_eof.bas`*
-
-```basic
-TYPE PRec
-    Code AS STRING * 8
-    Price AS DOUBLE
-    Qty AS LONG
-END TYPE
-```
-
-```basic
-16:DIM p AS PRec
 ```
 
 ### `Prodotto`
@@ -3651,17 +3646,6 @@ TYPE Row
 END TYPE
 ```
 
-### `Sale`
-
-*definizione da `shared/minitests/dbf/bare_currency_y_print_str.bas`*
-
-```basic
-TYPE Sale
-    Code   AS STRING * 10
-    Amount AS CURRENCY
-END TYPE
-```
-
 ### `SRec`
 
 *definizione da `shared/minitests/dbf/isam_single_roundtrip.bas`*
@@ -3689,7 +3673,18 @@ END TYPE
 ```
 
 ```basic
-21:  DIM r1 AS SRow
+22:  DIM r1 AS SRow
+```
+
+### `Sale`
+
+*definizione da `shared/minitests/dbf/bare_currency_y_print_str.bas`*
+
+```basic
+TYPE Sale
+    Code   AS STRING * 10
+    Amount AS CURRENCY
+END TYPE
 ```
 
 ### `Stazione`
@@ -3815,17 +3810,6 @@ TYPE TC
 END TYPE
 ```
 
-### `TCli`
-
-*definizione da `shared/minitests/dbf/dbf_export_import.bas`*
-
-```basic
-TYPE TCli
-  ID AS INTEGER
-  Nome AS STRING * 10
-END TYPE
-```
-
 ### `TCLI`
 
 *definizione da `shared/minitests/dbf/dbf_join_multimatch.bas`*
@@ -3837,21 +3821,15 @@ TYPE TCLI
 END TYPE
 ```
 
-### `Tcliente`
+### `TCli`
 
-*definizione da `shared/minitests/dbf/isam_protocol41.bas`*
+*definizione da `shared/minitests/dbf/dbf_export_import.bas`*
 
 ```basic
-TYPE Tcliente
-    ID AS LONG
-    Nome AS STRING * 20
-    Saldo AS CURRENCY
-    Attivo AS BIT
+TYPE TCli
+  ID AS INTEGER
+  Nome AS STRING * 10
 END TYPE
-```
-
-```basic
-17:    DIM r AS Tcliente
 ```
 
 ### `TCliente`
@@ -3892,36 +3870,6 @@ TYPE TD
 END TYPE
 ```
 
-### `TestRecord`
-
-*definizione da `shared/samples/Files/FilesLocking.bas`*
-
-```basic
-TYPE TestRecord
-    ID AS LONG
-    Nome AS STRING * 30
-END TYPE
-```
-
-```basic
-52:    DIM rec AS TestRecord
-```
-
-### `TestUDT`
-
-*definizione da `shared/minitests/system/system_udtaligned.bas`*
-
-```basic
-TYPE TestUDT
-  a AS INTEGER
-  b AS DOUBLE
-END TYPE
-```
-
-```basic
-9:  DIM u AS TestUDT
-```
-
 ### `TF`
 
 *definizione da `shared/minitests/dbf/dbf_file_ops_for.bas`*
@@ -3945,21 +3893,6 @@ TYPE TGet
     ID AS INTEGER
     Nome AS STRING * 20
 END TYPE
-```
-
-### `Ticket`
-
-*definizione da `shared/minitests/types/udt_list_field.bas`*
-
-```basic
-TYPE Ticket
-  name AS STRING * 8
-  legs AS LIST OF Leg
-END TYPE
-```
-
-```basic
-12:  DIM t AS Ticket
 ```
 
 ### `TIx`
@@ -4039,23 +3972,6 @@ TYPE TPROD
     COD AS STRING * 5
     PREZZO AS DOUBLE
 END TYPE
-```
-
-### `TradeResult`
-
-*definizione da `shared/minitests/json/toobject_udt_fn.bas`*
-
-```basic
-TYPE TradeResult
-  retcode AS DOUBLE
-  order AS DOUBLE
-  deal AS DOUBLE
-  price AS DOUBLE
-END TYPE
-```
-
-```basic
-22:  DIM res AS TradeResult
 ```
 
 ### `TRdd`
@@ -4207,6 +4123,85 @@ TYPE TZ
 END TYPE
 ```
 
+### `Tcliente`
+
+*definizione da `shared/minitests/dbf/isam_protocol41.bas`*
+
+```basic
+TYPE Tcliente
+    ID AS LONG
+    Nome AS STRING * 20
+    Saldo AS CURRENCY
+    Attivo AS BIT
+END TYPE
+```
+
+```basic
+17:    DIM r AS Tcliente
+```
+
+### `TestRecord`
+
+*definizione da `shared/samples/Files/FilesLocking.bas`*
+
+```basic
+TYPE TestRecord
+    ID AS LONG
+    Nome AS STRING * 30
+END TYPE
+```
+
+```basic
+52:    DIM rec AS TestRecord
+```
+
+### `TestUDT`
+
+*definizione da `shared/minitests/system/system_udtaligned.bas`*
+
+```basic
+TYPE TestUDT
+  a AS INTEGER
+  b AS DOUBLE
+END TYPE
+```
+
+```basic
+9:  DIM u AS TestUDT
+```
+
+### `Ticket`
+
+*definizione da `shared/minitests/types/udt_list_field.bas`*
+
+```basic
+TYPE Ticket
+  name AS STRING * 8
+  legs AS LIST OF Leg
+END TYPE
+```
+
+```basic
+12:  DIM t AS Ticket
+```
+
+### `TradeResult`
+
+*definizione da `shared/minitests/json/toobject_udt_fn.bas`*
+
+```basic
+TYPE TradeResult
+  retcode AS DOUBLE
+  order AS DOUBLE
+  deal AS DOUBLE
+  price AS DOUBLE
+END TYPE
+```
+
+```basic
+22:  DIM res AS TradeResult
+```
+
 ### `UnpackedPoint`
 
 *definizione da `shared/samples/Types/TypesPackedUdt.bas`*
@@ -4337,5 +4332,1611 @@ END TYPE
 
 ```basic
 83:  DIM wa AS WithArray : PRINT SIZEOF(wa)
+```
+
+### `__TempMacro`
+
+*definizione da `shared/samples/Clipper/ClipperMacro.bas`*
+
+```basic
+    TYPE __TempMacro
+        Nome AS STRING * 15
+        Citta AS STRING * 15
+        Valore1 AS INTEGER
+        Valore2 AS INTEGER
+        Attivo AS BIT
+    END TYPE
+```
+
+### `__TempStructure`
+
+*definizione da `shared/samples/Clipper/ClipperDbfLateBinding.bas`*
+
+```basic
+    TYPE __TempStructure
+        ID AS INTEGER
+        Nome AS STRING * 20
+        Citta AS STRING * 15
+        Saldo AS CURRENCY
+        Attivo AS BIT
+        UltimoOrdine AS DATE
+    END TYPE
+```
+
+### `__TempUpdate`
+
+*definizione da `shared/samples/Clipper/ClipperMacro.bas`*
+
+```basic
+    TYPE __TempUpdate
+        ID_Ext AS INTEGER
+        NuovoValore AS INTEGER
+    END TYPE
+```
+
+### `loop`
+
+*definizione da `shared/minitests/system/keyword_names.bas`*
+
+```basic
+TYPE loop
+  for AS INTEGER
+END TYPE
+```
+
+```basic
+36:  DIM v AS loop
+```
+
+### `Int3`
+
+*definizione da `shared/minitests/ffi/ffi_udt_multi.bas`*
+
+```basic
+TYPE Int3
+    A AS LONG
+    B AS LONG
+    C AS LONG
+END TYPE
+```
+
+```basic
+60:    DIM v AS Int3
+```
+
+### `Item`
+
+*definizione da `shared/minitests/dbf/isam_replication.bas`*
+
+```basic
+TYPE Item
+    ID AS STRING * 8
+    Name AS STRING * 30
+END TYPE
+```
+
+```basic
+31:    DIM R AS Item
+```
+
+### `Labeled`
+
+*definizione da `shared/samples/FFI/NativeVec/NativeVec.bas`*
+
+```basic
+TYPE Labeled
+    V AS DOUBLE
+    N AS LONG
+END TYPE
+```
+
+```basic
+118:    DIM lab AS Labeled
+```
+
+### `LabeledDN`
+
+*definizione da `shared/minitests/ffi/ffi_udt_mixed_kind_return.bas`*
+
+```basic
+TYPE LabeledDN
+    V AS DOUBLE
+    N AS LONG
+END TYPE
+```
+
+```basic
+16:    DIM a AS LabeledDN
+```
+
+### `LabeledND`
+
+*definizione da `shared/minitests/ffi/ffi_udt_mixed_kind_return.bas`*
+
+```basic
+TYPE LabeledND
+    N AS LONG
+    V AS DOUBLE
+END TYPE
+```
+
+```basic
+21:    DIM b AS LabeledND
+```
+
+### `LedgerBalanceEntry`
+
+*definizione da `shared/samples/Databases/DbLedgerModernTests.bas`*
+
+```basic
+    TYPE LedgerBalanceEntry
+        Account AS STRING * 80
+        TotalAmount AS CURRENCY
+    END TYPE
+```
+
+### `LedgerEntryDetail`
+
+*definizione da `shared/samples/Databases/DbLedgerModernTests.bas`*
+
+```basic
+    TYPE LedgerEntryDetail
+        TransactionId AS LONG
+        Date AS DATE
+        Status AS STRING * 1
+        Description AS STRING * 100
+        Account AS STRING * 80
+        Amount AS CURRENCY
+        Comment AS STRING * 100
+        AmountIsExplicit AS BIT
+        Currency AS STRING * 3
+        ExchangeRate AS CURRENCY
+        BaseAmount AS CURRENCY
+    END TYPE
+```
+
+### `Leg`
+
+*definizione da `shared/minitests/types/udt_list_field.bas`*
+
+```basic
+TYPE Leg
+  side AS STRING * 6
+  strike AS DOUBLE
+END TYPE
+```
+
+```basic
+14:  DIM a AS Leg
+```
+
+### `Level1`
+
+*definizione da `shared/minitests/types/nested_udt_field.bas`*
+
+```basic
+TYPE Level1
+    A AS Level2
+END TYPE
+```
+
+```basic
+27:    DIM t AS Level1
+```
+
+### `Level2`
+
+*definizione da `shared/minitests/types/nested_udt_field.bas`*
+
+```basic
+TYPE Level2
+    B AS Level3
+END TYPE
+```
+
+### `Level3`
+
+*definizione da `shared/minitests/types/nested_udt_field.bas`*
+
+```basic
+TYPE Level3
+    C AS DOUBLE
+END TYPE
+```
+
+### `Linea`
+
+*definizione da `shared/samples/System/SystemSizeOfUdtLayout.bas`*
+
+```basic
+TYPE Linea
+  id AS LONG
+  label AS STRING * 8
+  amount AS DOUBLE
+END TYPE
+```
+
+### `LockRec`
+
+*definizione da `shared/samples/Databases/RDD_Complete.bas`*
+
+```basic
+TYPE LockRec
+    ID AS STRING * 8
+    Val AS LONG
+END TYPE
+```
+
+```basic
+65:DIM lr AS LockRec
+```
+
+### `LockT`
+
+*definizione da `shared/samples/Databases/RDD_Legacy.bas`*
+
+```basic
+TYPE LockT
+    ID AS STRING * 8
+    Val AS LONG
+END TYPE
+```
+
+```basic
+35:DIM lt AS LockT
+```
+
+### `Misto`
+
+*definizione da `shared/minitests/io/random_udt_record.bas`*
+
+```basic
+TYPE Misto
+  B AS BYTE
+  I AS INTEGER
+  S AS SINGLE
+  D AS DOUBLE
+  Q AS QUAD
+  T AS STRING * 3
+END TYPE
+```
+
+```basic
+27:  DIM m AS Misto, n AS Misto
+```
+
+### `MixT`
+
+*definizione da `shared/samples/Databases/RDD_Mixed_Demo.bas`*
+
+```basic
+TYPE MixT
+    ID AS STRING * 8
+    Val AS LONG
+END TYPE
+```
+
+```basic
+25:DIM m AS MixT
+```
+
+### `Mixed`
+
+*definizione da `shared/minitests/ffi/ffi_udt_layout.bas`*
+
+```basic
+TYPE Mixed
+    A AS LONG
+    B AS DOUBLE
+    C AS BYTE
+END TYPE
+```
+
+```basic
+48:    DIM m AS Mixed
+```
+
+### `Mixed3`
+
+*definizione da `shared/minitests/ffi/ffi_udt_multi.bas`*
+
+```basic
+TYPE Mixed3
+    A AS DOUBLE
+    B AS LONG
+    C AS DOUBLE
+END TYPE
+```
+
+```basic
+36:    DIM m AS Mixed3
+```
+
+### `MyPackedStruct`
+
+*definizione da `shared/samples/System/SystemLowLevel.bas`*
+
+```basic
+TYPE MyPackedStruct
+    B1 AS BYTE
+    L1 AS LONG
+    B2 AS BYTE
+END TYPE
+```
+
+```basic
+68:    DIM p AS MyPackedStruct
+```
+
+### `MySimpleStruct`
+
+*definizione da `shared/samples/System/SystemLowLevel.bas`*
+
+```basic
+TYPE MySimpleStruct
+    ID AS INTEGER
+    Value AS DOUBLE
+    Flag AS BIT
+END TYPE
+```
+
+```basic
+46:    DIM u AS MySimpleStruct
+```
+
+### `MyUdt`
+
+*definizione da `shared/samples/ParserStress.bas`*
+
+```basic
+    TYPE MyUdt
+        items(5) AS STRING * 10
+    END TYPE
+```
+
+```basic
+116:    DIM u AS MyUdt
+```
+
+### `N2`
+
+*definizione da `shared/minitests/system/system_sizeof_layout.bas`*
+
+```basic
+TYPE N2
+  a AS INTEGER
+  b AS INTEGER
+END TYPE
+```
+
+### `Named2`
+
+*definizione da `shared/minitests/ffi/ffi_udt_layout.bas`*
+
+```basic
+TYPE Named2
+    S AS STRING
+    N AS LONG
+END TYPE
+```
+
+```basic
+67:    DIM nm AS Named2
+```
+
+### `NamedVec`
+
+*definizione da `shared/minitests/ffi/ffi_udt_string_fieldarray.bas`*
+
+```basic
+TYPE NamedVec
+    NAME AS STRING
+    V(2) AS LONG
+END TYPE
+```
+
+```basic
+14:    DIM n AS NamedVec
+```
+
+### `NestPacked`
+
+*definizione da `shared/minitests/system/system_sizeof_layout.bas`*
+
+```basic
+TYPE NestPacked
+  p AS P2
+  d AS DOUBLE
+END TYPE
+```
+
+```basic
+82:  DIM np AS NestPacked : PRINT SIZEOF(np)
+```
+
+### `Oct8`
+
+*definizione da `shared/minitests/ffi/ffi_udt_multi.bas`*
+
+```basic
+TYPE Oct8
+    F0 AS DOUBLE
+    F1 AS DOUBLE
+    F2 AS DOUBLE
+    F3 AS DOUBLE
+    F4 AS DOUBLE
+    F5 AS DOUBLE
+    F6 AS DOUBLE
+    F7 AS DOUBLE
+END TYPE
+```
+
+```basic
+50:    DIM o AS Oct8
+```
+
+### `Ord`
+
+*definizione da `shared/samples/Databases/DbfRelationJoin.bas`*
+
+```basic
+TYPE Ord
+    CID AS STRING * 10
+    ITEM AS STRING * 10
+END TYPE
+```
+
+### `OrdT`
+
+*definizione da `shared/samples/Databases/RDD_Relation.bas`*
+
+```basic
+TYPE OrdT
+    OID AS STRING * 8
+    CustID AS STRING * 8
+    Amount AS DOUBLE
+END TYPE
+```
+
+```basic
+34:DIM o AS OrdT
+```
+
+### `Ordine`
+
+*definizione da `shared/minitests/speed/select.bas`*
+
+```basic
+TYPE Ordine
+  ID_Cliente AS LONG
+  ID_Ordine AS LONG
+  Descrizione AS STRING * 50
+  Importo AS CURRENCY
+END TYPE
+```
+
+```basic
+42:  DIM o AS Ordine
+```
+
+### `Outer`
+
+*definizione da `shared/minitests/types/nested_udt_field.bas`*
+
+```basic
+TYPE Outer
+    I AS Inner
+    Y AS LONG
+END TYPE
+```
+
+```basic
+22:    DIM o AS Outer
+```
+
+### `OuterOfPacked`
+
+*definizione da `shared/minitests/system/system_sizeof_forms.bas`*
+
+```basic
+TYPE OuterOfPacked
+  p AS InnerPacked
+  b AS BYTE
+END TYPE
+```
+
+```basic
+65:  DIM oq AS OuterOfPacked : PRINT SYSTEM.UDTPACKED(oq)
+```
+
+### `OuterPlain`
+
+*definizione da `shared/minitests/system/system_sizeof_forms.bas`*
+
+```basic
+TYPE OuterPlain
+  i AS Inner
+  d AS DOUBLE
+END TYPE
+```
+
+```basic
+76:  DIM op AS OuterPlain : PRINT SYSTEM.UDTPACKED(op)
+```
+
+### `P`
+
+*definizione da `shared/minitests/types/udt_keyword_member.bas`*
+
+```basic
+TYPE P
+  volume AS DOUBLE
+  qty AS DOUBLE
+END TYPE
+```
+
+```basic
+12:  DIM p AS P
+```
+
+### `PRec`
+
+*definizione da `shared/minitests/dbf/isam_filter_eof.bas`*
+
+```basic
+TYPE PRec
+    Code AS STRING * 8
+    Price AS DOUBLE
+    Qty AS LONG
+END TYPE
+```
+
+```basic
+16:DIM p AS PRec
+```
+
+### `Pair`
+
+*definizione da `shared/samples/Types/TypesGenericType.bas`*
+
+```basic
+TYPE Pair<T1, T2>
+    First AS T1
+    Second AS T2
+END TYPE
+```
+
+```basic
+37:DIM p AS Pair<INTEGER, STRING>
+```
+
+### `Person`
+
+*definizione da `shared/minitests/system/system_typeinfo_has.bas`*
+
+```basic
+TYPE Person
+    Nome AS STRING * 10
+    Eta AS INTEGER
+END TYPE
+```
+
+```basic
+14:    DIM u AS Person
+```
+
+### `Persona`
+
+*definizione da `shared/samples/Types/TypesUdtGlobal.bas`*
+
+```basic
+TYPE Persona
+  Nome AS STRING * 15
+  Cognome AS STRING * 20
+  Eta AS INTEGER
+  Attivo AS BIT
+END TYPE
+```
+
+```basic
+40:  DIM P AS Persona
+```
+
+### `Point`
+
+*definizione da `shared/minitests/ffi/ffi_udt_struct.bas`*
+
+```basic
+TYPE Point
+    X AS DOUBLE
+    Y AS DOUBLE
+END TYPE
+```
+
+```basic
+18:    DIM p1 AS Point
+```
+
+### `Point2D`
+
+*definizione da `shared/samples/graphics/GraphicsDrawTextures.bas`*
+
+```basic
+TYPE Point2D
+    X AS DOUBLE
+    Y AS DOUBLE
+END TYPE
+```
+
+### `Points`
+
+*definizione da `shared/minitests/system/system_sizeof_static.bas`*
+
+```basic
+TYPE Points
+  x AS INTEGER
+  y AS INTEGER
+END TYPE
+```
+
+### `Prodotto`
+
+*definizione da `shared/minitests/arrays/udt_higher_order.bas`*
+
+```basic
+TYPE Prodotto
+    Nome AS STRING * 20
+    Prezzo AS DOUBLE
+END TYPE
+```
+
+### `Product`
+
+*definizione da `shared/samples/Databases/RDD_Complete.bas`*
+
+```basic
+TYPE Product
+    Code AS STRING * 8
+    Name AS STRING * 32
+    Price AS DOUBLE
+    Qty AS LONG
+END TYPE
+```
+
+```basic
+33:DIM p AS Product
+```
+
+### `Pt2`
+
+*definizione da `shared/minitests/ffi/ffi_udt_combo.bas`*
+
+```basic
+TYPE Pt2
+    X AS DOUBLE
+    Y AS DOUBLE
+END TYPE
+```
+
+### `Punto`
+
+*definizione da `shared/minitests/arrays/local_array_udt_2d.bas`*
+
+```basic
+TYPE Punto
+  x AS INTEGER
+  y AS INTEGER
+END TYPE
+```
+
+### `R`
+
+*definizione da `shared/minitests/types/class_array_member_udt.bas`*
+
+```basic
+TYPE R
+  campo AS INTEGER
+  altro AS INTEGER
+END TYPE
+```
+
+### `Rec`
+
+*definizione da `shared/minitests/system/system_sizeof_layout.bas`*
+
+```basic
+TYPE Rec
+  id AS LONG
+  name AS STRING * 10
+  v AS DOUBLE
+END TYPE
+```
+
+```basic
+84:  DIM rc AS Rec : PRINT SIZEOF(rc)
+```
+
+### `Record`
+
+*definizione da `shared/samples/System/SystemSizeOfUdtLayout.bas`*
+
+```basic
+TYPE Record
+  h AS Header
+  l AS Linea
+  total AS CURRENCY
+  tag AS STRING * 4
+END TYPE
+```
+
+```basic
+130:  DIM r AS Record
+```
+
+### `Rettangolo`
+
+*definizione da `shared/minitests/constructs/types_interface.bas`*
+
+```basic
+TYPE Rettangolo IMPLEMENTS IShape
+    Larghezza AS DOUBLE
+    Altezza AS DOUBLE
+    FUNCTION Area() AS DOUBLE
+        AREA = SELF.Larghezza * SELF.Altezza
+    END FUNCTION
+    FUNCTION Describe() AS STRING
+        DESCRIBE = "Rect"
+    END FUNCTION
+END TYPE
+```
+
+```basic
+31:    DIM r AS Rettangolo
+```
+
+### `Riga`
+
+*definizione da `shared/minitests/speed/validate.bas`*
+
+```basic
+TYPE Riga
+  ID AS LONG
+  Nome AS STRING * 16
+END TYPE
+```
+
+### `RisultatoJoin`
+
+*definizione da `shared/minitests/speed/select.bas`*
+
+```basic
+TYPE RisultatoJoin
+  NomeCliente AS STRING * 50
+  TotaleImporto AS CURRENCY
+END TYPE
+```
+
+### `Row`
+
+*definizione da `shared/samples/Databases/DbDbfGroupCommit.bas`*
+
+```basic
+TYPE Row
+  Name AS STRING * 20
+END TYPE
+```
+
+### `SRec`
+
+*definizione da `shared/minitests/dbf/isam_single_roundtrip.bas`*
+
+```basic
+TYPE SRec
+    Code AS STRING * 8
+    Ratio AS SINGLE
+END TYPE
+```
+
+```basic
+10:DIM p AS SRec
+```
+
+### `SRow`
+
+*definizione da `shared/minitests/speed/setmany.bas`*
+
+```basic
+TYPE SRow
+  ID AS LONG
+  Name AS STRING * 32
+END TYPE
+```
+
+```basic
+22:  DIM r1 AS SRow
+```
+
+### `Sale`
+
+*definizione da `shared/minitests/dbf/bare_currency_y_print_str.bas`*
+
+```basic
+TYPE Sale
+    Code   AS STRING * 10
+    Amount AS CURRENCY
+END TYPE
+```
+
+### `Sample`
+
+*definizione da `shared/samples/Arrays/MultidimBounds.bas`*
+
+```basic
+TYPE Sample
+    Value AS DOUBLE
+    Label AS STRING
+END TYPE
+```
+
+### `Stazione`
+
+*definizione da `shared/minitests/types/udt_nested_2level.bas`*
+
+```basic
+TYPE Stazione
+  pos AS Coord
+  codice AS STRING * 6
+END TYPE
+```
+
+```basic
+14:  PUBLIC DIM stazione AS Stazione
+```
+
+### `T`
+
+*definizione da `shared/minitests/types/udt_constructor.bas`*
+
+```basic
+TYPE T
+  X AS LONG
+  Y AS LONG
+  SUB NEW(a AS LONG, b AS LONG)
+    SELF.X = a
+    SELF.Y = b
+  END SUB
+  FUNCTION Somma() AS LONG
+    FUNCTION = SELF.X + SELF.Y
+  END FUNCTION
+END TYPE
+```
+
+```basic
+18:  DIM t AS T = NEW T(7, 9)
+```
+
+### `TA`
+
+*definizione da `shared/minitests/dbf/mt41_append_for.bas`*
+
+```basic
+TYPE TA
+    Saldo AS INTEGER
+END TYPE
+```
+
+### `TAddetti`
+
+*definizione da `shared/samples/Databases/RDD_Buffering_Complete.bas`*
+
+```basic
+TYPE TAddetti
+    CODICE AS STRING * 8
+    NOME   AS STRING * 20
+    STIPENDIO AS DOUBLE
+    UFFICIO AS STRING * 8
+END TYPE
+```
+
+```basic
+33:    DIM a AS TAddetti
+```
+
+### `TArea`
+
+*definizione da `shared/minitests/dbf/dbf_selected_area.bas`*
+
+```basic
+TYPE TArea
+    K AS STRING * 3
+END TYPE
+```
+
+### `TB`
+
+*definizione da `shared/minitests/dbf/dbf_select.bas`*
+
+```basic
+TYPE TB
+    K AS STRING * 3
+END TYPE
+```
+
+### `TBit`
+
+*definizione da `shared/minitests/dbf/dbf_bit_replace.bas`*
+
+```basic
+TYPE TBit
+    ID AS INTEGER
+    Attivo AS BIT
+END TYPE
+```
+
+### `TBuf`
+
+*definizione da `shared/minitests/dbf/rdd_buffer.bas`*
+
+```basic
+TYPE TBuf
+    ID AS STRING * 8
+    Nome AS STRING * 32
+    Sal AS DOUBLE
+    Dip AS STRING * 16
+END TYPE
+```
+
+```basic
+24:    DIM e AS TBuf
+```
+
+### `TC`
+
+*definizione da `shared/minitests/dbf/mt41_index_composite.bas`*
+
+```basic
+TYPE TC
+    Citta AS STRING * 20
+    Nome AS STRING * 20
+END TYPE
+```
+
+### `TCLI`
+
+*definizione da `shared/minitests/dbf/dbf_join_multimatch.bas`*
+
+```basic
+TYPE TCLI
+    ID AS STRING * 5
+    NOME AS STRING * 10
+END TYPE
+```
+
+### `TCli`
+
+*definizione da `shared/minitests/dbf/dbf_export_import.bas`*
+
+```basic
+TYPE TCli
+  ID AS INTEGER
+  Nome AS STRING * 10
+END TYPE
+```
+
+### `TCliente`
+
+*definizione da `shared/samples/Databases/AnagraficaClienti.bas`*
+
+```basic
+TYPE TCliente
+    Nome AS STRING * 20
+    Citta AS STRING * 15
+    Saldo AS DOUBLE
+END TYPE
+```
+
+```basic
+25:    DIM r AS TCliente
+```
+
+### `TClienti`
+
+*definizione da `shared/samples/Databases/SelectAreas.bas`*
+
+```basic
+TYPE TClienti
+    ID AS STRING * 4
+    NOME AS STRING * 12
+END TYPE
+```
+
+### `TD`
+
+*definizione da `shared/minitests/dbf/mt41_delete_for.bas`*
+
+```basic
+TYPE TD
+    ID AS INTEGER
+    Saldo AS INTEGER
+END TYPE
+```
+
+### `TF`
+
+*definizione da `shared/minitests/dbf/dbf_file_ops_for.bas`*
+
+```basic
+TYPE TF
+    ID AS INTEGER
+    Nome AS STRING * 20
+    Citta AS STRING * 20
+    Saldo AS CURRENCY
+    Attivo AS BIT
+END TYPE
+```
+
+### `TGet`
+
+*definizione da `shared/minitests/dbf/dbf_get_var.bas`*
+
+```basic
+TYPE TGet
+    ID AS INTEGER
+    Nome AS STRING * 20
+END TYPE
+```
+
+### `TIx`
+
+*definizione da `shared/minitests/dbf/dbf_index_expr.bas`*
+
+```basic
+TYPE TIx
+    ID AS INTEGER
+    Nome AS STRING * 20
+    Citta AS STRING * 20
+    Saldo AS CURRENCY
+END TYPE
+```
+
+### `TL`
+
+*definizione da `shared/minitests/dbf/mt41_list_for.bas`*
+
+```basic
+TYPE TL
+    ID AS INTEGER
+    Citta AS STRING * 20
+END TYPE
+```
+
+### `TM`
+
+*definizione da `shared/minitests/dbf/mt41_join_lambda.bas`*
+
+```basic
+TYPE TM
+    Rif AS INTEGER
+    Imp AS INTEGER
+END TYPE
+```
+
+### `TMisc`
+
+*definizione da `shared/minitests/dbf/dbf_lock_filter.bas`*
+
+```basic
+TYPE TMisc
+    ID AS STRING * 10
+    NOME AS STRING * 10
+END TYPE
+```
+
+### `TORD`
+
+*definizione da `shared/minitests/dbf/dbf_join_multimatch.bas`*
+
+```basic
+TYPE TORD
+    ID AS STRING * 5
+    IDCLI AS STRING * 5
+END TYPE
+```
+
+### `TOrdini`
+
+*definizione da `shared/samples/Databases/SelectAreas.bas`*
+
+```basic
+TYPE TOrdini
+    CID AS STRING * 4
+    DESCR AS STRING * 12
+END TYPE
+```
+
+### `TPROD`
+
+*definizione da `shared/samples/Databases/DbfJoinSelectAdvanced.bas`*
+
+```basic
+TYPE TPROD
+    COD AS STRING * 5
+    PREZZO AS DOUBLE
+END TYPE
+```
+
+### `TRdd`
+
+*definizione da `shared/minitests/dbf/rdd_fields.bas`*
+
+```basic
+TYPE TRdd
+    ID AS STRING * 10
+    NOME AS STRING * 10
+END TYPE
+```
+
+### `TRddCov`
+
+*definizione da `shared/samples/Databases/RddCompleteCoverage.bas`*
+
+```basic
+TYPE TRddCov
+    ID AS STRING * 10
+    NOME AS STRING * 10
+    VAL AS DOUBLE
+END TYPE
+```
+
+### `TRddCur`
+
+*definizione da `shared/minitests/dbf/rdd_cursor_dates.bas`*
+
+```basic
+TYPE TRddCur
+    ID AS STRING * 10
+    NOME AS STRING * 10
+END TYPE
+```
+
+### `TRec`
+
+*definizione da `shared/minitests/dbf/replication_tcp.bas`*
+
+```basic
+TYPE TRec
+    Name AS STRING * 20
+END TYPE
+```
+
+### `TReport`
+
+*definizione da `shared/minitests/dbf/dbf_all.bas`*
+
+```basic
+TYPE TReport
+  ID AS INTEGER
+  Nome AS STRING * 10
+END TYPE
+```
+
+### `TRow`
+
+*definizione da `shared/minitests/dbf/dbf_replication.bas`*
+
+```basic
+TYPE TRow
+    Name AS STRING * 20
+END TYPE
+```
+
+```basic
+42:    DIM r AS TRow
+```
+
+### `TS`
+
+*definizione da `shared/minitests/dbf/mt41_sort_desc_for.bas`*
+
+```basic
+TYPE TS
+    Nome AS STRING * 10
+    Saldo AS INTEGER
+    Attivo AS INTEGER
+END TYPE
+```
+
+### `TSeek`
+
+*definizione da `shared/minitests/dbf/dbf_seek_order.bas`*
+
+```basic
+TYPE TSeek
+    ID AS INTEGER
+    Nome AS STRING * 10
+END TYPE
+```
+
+### `TStato`
+
+*definizione da `shared/minitests/dbf/dbf_state.bas`*
+
+```basic
+TYPE TStato
+    ID AS STRING * 10
+    NOME AS STRING * 10
+END TYPE
+```
+
+### `TT`
+
+*definizione da `shared/minitests/dbf/mt41_total_for.bas`*
+
+```basic
+TYPE TT
+    Citta AS STRING * 20
+    Saldo AS INTEGER
+    Attivo AS INTEGER
+END TYPE
+```
+
+### `TT2`
+
+*definizione da `shared/minitests/dbf/rdd_buffer_replace.bas`*
+
+```basic
+TYPE TT2
+    ID AS STRING * 10
+    NOME AS STRING * 10
+    SAL AS DOUBLE
+END TYPE
+```
+
+### `TUpd`
+
+*definizione da `shared/minitests/dbf/update_on.bas`*
+
+```basic
+TYPE TUpd
+    ID AS INTEGER
+    Nome AS STRING * 20
+    Saldo AS CURRENCY
+END TYPE
+```
+
+### `TZ`
+
+*definizione da `shared/minitests/dbf/mt41_close_all.bas`*
+
+```basic
+TYPE TZ
+    ID AS INTEGER
+END TYPE
+```
+
+### `Tcliente`
+
+*definizione da `shared/minitests/dbf/isam_protocol41.bas`*
+
+```basic
+TYPE Tcliente
+    ID AS LONG
+    Nome AS STRING * 20
+    Saldo AS CURRENCY
+    Attivo AS BIT
+END TYPE
+```
+
+```basic
+17:    DIM r AS Tcliente
+```
+
+### `TestRecord`
+
+*definizione da `shared/samples/Files/FilesLocking.bas`*
+
+```basic
+TYPE TestRecord
+    ID AS LONG
+    Nome AS STRING * 30
+END TYPE
+```
+
+```basic
+52:    DIM rec AS TestRecord
+```
+
+### `TestUDT`
+
+*definizione da `shared/minitests/system/system_udtaligned.bas`*
+
+```basic
+TYPE TestUDT
+  a AS INTEGER
+  b AS DOUBLE
+END TYPE
+```
+
+```basic
+9:  DIM u AS TestUDT
+```
+
+### `Ticket`
+
+*definizione da `shared/minitests/types/udt_list_field.bas`*
+
+```basic
+TYPE Ticket
+  name AS STRING * 8
+  legs AS LIST OF Leg
+END TYPE
+```
+
+```basic
+12:  DIM t AS Ticket
+```
+
+### `TradeResult`
+
+*definizione da `shared/minitests/json/toobject_udt_fn.bas`*
+
+```basic
+TYPE TradeResult
+  retcode AS DOUBLE
+  order AS DOUBLE
+  deal AS DOUBLE
+  price AS DOUBLE
+END TYPE
+```
+
+```basic
+22:  DIM res AS TradeResult
+```
+
+### `UUns`
+
+*definizione da `shared/minitests/ffi/ffi_udt_unsigned.bas`*
+
+```basic
+TYPE UUns
+    U16 AS UINTEGER
+    U32 AS ULONG
+    U64 AS UQUAD
+END TYPE
+```
+
+```basic
+14:    DIM v AS UUns
+```
+
+### `UnpackedPoint`
+
+*definizione da `shared/samples/Types/TypesPackedUdt.bas`*
+
+```basic
+TYPE UnpackedPoint
+    x AS INTEGER
+    y AS INTEGER
+END TYPE
+```
+
+```basic
+32:DIM up AS UnpackedPoint
+```
+
+### `UnpackedRecord`
+
+*definizione da `shared/minitests/system/system_sizeof_static.bas`*
+
+```basic
+TYPE UnpackedRecord
+  id AS LONG
+  flag AS BIT
+  value AS DOUBLE
+END TYPE
+```
+
+### `Utente`
+
+*definizione da `shared/samples/Databases/ISAM_Simple_Test.bas`*
+
+```basic
+TYPE Utente
+    ID AS STRING * 10
+    Nome AS STRING * 50
+    Eta AS INTEGER
+END TYPE
+```
+
+```basic
+18:DIM rec AS Utente
+```
+
+### `Vector2D`
+
+*definizione da `shared/samples/Classes/ClassesUdtAdvances.bas`*
+
+```basic
+TYPE Vector2D
+    ' --- CAMPI ---
+    ' I campi contengono i dati dell'istanza.
+    X AS DOUBLE
+    Y AS DOUBLE
+
+    ' --- COSTRUTTORE ---
+    ' Un costruttore speciale 'SUB NEW' che viene chiamato quando si crea un'istanza con NEW.
+    SUB NEW(x_val AS DOUBLE, y_val AS DOUBLE)
+        ' 'SELF' si riferisce all'istanza corrente dell'UDT.
+        SELF.X = x_val
+        SELF.Y = y_val
+    END SUB
+
+    ' --- PROPRIETÀ ---
+    ' Una proprietà calcolata di sola lettura (ha solo un blocco GET).
+    PUBLIC PROPERTY Magnitude AS DOUBLE
+        GET
+            ' Calcola e restituisce la lunghezza del vettore usando il teorema di Pitagora.
+            ' Utilizza la funzione SQR dal namespace MATH importato.
+            RETURN SQR(SELF.X ^ 2 + SELF.Y ^ 2)
+        END GET
+    END PROPERTY
+
+    ' --- METODI ---
+    ' Un metodo SUB che modifica lo stato interno dell'istanza.
+    PUBLIC SUB Normalize()
+        DIM mag AS DOUBLE = SELF.Magnitude ' Legge la proprietà calcolata.
+        IF mag > 0 THEN
+            ' Divide le componenti per la magnitudo per ottenere un vettore di lunghezza 1.
+```
+
+```basic
+121:    DIM v1 AS Vector2D = NEW Vector2D(3, 4)
+```
+
+### `Vendita`
+
+*definizione da `shared/samples/Arrays/ArraysComplexProcessing.bas`*
+
+```basic
+TYPE Vendita
+    ID AS LONG
+    Prodotto AS STRING * 30
+    Quantita AS INTEGER
+    PrezzoUnitario AS CURRENCY
+    Annullato AS BOOLEAN
+END TYPE
+```
+
+```basic
+128:    DIM v AS Vendita
+```
+
+### `W`
+
+*definizione da `shared/minitests/types/udt_keyword_member.bas`*
+
+```basic
+TYPE W
+  n AS DOUBLE
+  legs AS LIST OF P
+END TYPE
+```
+
+```basic
+21:  DIM w AS W
+```
+
+### `Wide`
+
+*definizione da `shared/minitests/ffi/ffi_udt_layout.bas`*
+
+```basic
+TYPE Wide
+    A AS UINTEGER
+    B AS ULONG
+    C AS UQUAD
+END TYPE
+```
+
+```basic
+71:    DIM w AS Wide
+```
+
+### `Wide16`
+
+*definizione da `shared/minitests/ffi/ffi_udt_wide16.bas`*
+
+```basic
+TYPE Wide16
+    A AS INTEGER
+    B AS LONG
+    C AS DOUBLE
+    D AS SINGLE
+    E AS QUAD
+    F AS BYTE
+    G AS DOUBLE
+    H AS LONG
+    I AS DOUBLE
+    J AS INTEGER
+    K AS DOUBLE
+    L AS LONG
+    M AS DOUBLE
+    N AS QUAD
+    O AS DOUBLE
+    P AS SINGLE
+END TYPE
+```
+
+```basic
+27:    DIM w AS Wide16
+```
+
+### `WithArray`
+
+*definizione da `shared/minitests/system/system_sizeof_layout.bas`*
+
+```basic
+TYPE WithArray
+  arr(4) AS LONG
+  n AS INTEGER
+END TYPE
+```
+
+```basic
+83:  DIM wa AS WithArray : PRINT SIZEOF(wa)
+```
+
+### `__TempMacro`
+
+*definizione da `shared/samples/Clipper/ClipperMacro.bas`*
+
+```basic
+    TYPE __TempMacro
+        Nome AS STRING * 15
+        Citta AS STRING * 15
+        Valore1 AS INTEGER
+        Valore2 AS INTEGER
+        Attivo AS BIT
+    END TYPE
+```
+
+### `__TempStructure`
+
+*definizione da `shared/samples/Clipper/ClipperDbfLateBinding.bas`*
+
+```basic
+    TYPE __TempStructure
+        ID AS INTEGER
+        Nome AS STRING * 20
+        Citta AS STRING * 15
+        Saldo AS CURRENCY
+        Attivo AS BIT
+        UltimoOrdine AS DATE
+    END TYPE
+```
+
+### `__TempUpdate`
+
+*definizione da `shared/samples/Clipper/ClipperMacro.bas`*
+
+```basic
+    TYPE __TempUpdate
+        ID_Ext AS INTEGER
+        NuovoValore AS INTEGER
+    END TYPE
+```
+
+### `loop`
+
+*definizione da `shared/minitests/system/keyword_names.bas`*
+
+```basic
+TYPE loop
+  for AS INTEGER
+END TYPE
+```
+
+```basic
+36:  DIM v AS loop
 ```
 

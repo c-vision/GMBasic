@@ -7,14 +7,20 @@ they were partial copies, and the canonical folder at the root stayed empty.
 
 ```
 tools/
-  basic/    gates and generators written in BASIC (28)   e.g. no_stub.bas, check_enum_ids.bas, gen_c_tokenkind.bas
-  c/        support tools written in C (5)               e.g. gmb_fixture_stats.c, brain_manifest.c
-sh/       wrappers, harnesses and shell gates (27)      e.g. check_file_size.sh, parity4, test_minitests_c99native
-data/     data read by the tools                       hf_causal_lm_models.txt, llm_arch_allowlist.tsv, base_commit.txt
-  fixtures/ minimal fixtures for the parity tests         *.bas + gmb_torch*.o
+  basic/    gates and generators written in BASIC (47)   e.g. no_stub.bas, check_enum_ids.bas, gen_c_tokenkind.bas
+  c/        support tools written in C (10)              e.g. gmb_fixture_stats.c, brain_manifest.c
+  sh/       wrappers, harnesses and shell gates (60)     e.g. check_file_size.sh, parity4, test_minitests_c99native
+  data/     data read by the tools (3)                   hf_causal_lm_models.txt, llm_arch_allowlist.tsv, base_commit.txt
+  fixtures/ minimal fixtures for the parity tests (3)    *.bas + gmb_torch*.o
   audit/    gmb_audit: builtin coverage per backend      Program.cs (legacy project ref: see README)
   registry-export/  registry exporter (.NET)             Program.cs + update.sh
 ```
+
+The parenthesised numbers are checked against the disk by `bash tools/sh/tools_verify.sh`
+(group `readme:conteggi`): `basic/` → `*.bas`, `c/` → `*.c`, `sh/` → `*.sh` + the extensionless
+harnesses (`parity4`, `test_minitests_c99native`), `data/` → files, `fixtures/` → `*.bas` (the
+`gmb_torch*.o` are build artifacts, not fixtures). A folder that declares a number without a
+counting rule fails the gate instead of passing silently.
 
 ## Rules
 
@@ -51,9 +57,32 @@ bash tools/sh/check_file_size.sh --quiet       # 1200-line threshold + escape ga
 tools/sh/parity4 <un-sample>.bas               # 4 legs on one sample
 tools/sh/test_minitests_c99native              # C99Native leg
 bash tools/sh/test_minitests_parity.sh --all   # 4 legs on all MiniTests
-bash tools/sh/tools_verify.sh                  # tools/ syntax + C99Native build
+bash tools/sh/tools_verify.sh                  # syntax + C99Native + packages + Structure counts
+bash tools/sh/vaultgate.sh --scope Guide/Tools  # vault: every note linked from an index (exit 1 on orphans)
 bash tools/sh/brains_publish_doc.sh --check     # brains index (BRAINS.md) from the manifest
 ```
+
+## Package cache and lib freshness
+
+`~/.gmbasic/packages` is a **copy** of `packages/`. When the copy lags behind, the symptom is not
+"old library" but errors that look like compiler bugs: an export reads as `non definito`, an old
+`.inc` lives next to the new one and emission fails with `la procedura 'X' con N parametri e' gia'
+definita`, samples run with semantics that differ from the repo. The same class comes from a `lib/`
+never rebuilt after its C sources changed: the BASIC API is there, the symbol is not.
+
+| tool | one-line use | what it does |
+|---|---|---|
+| `sh/gmb_pkg_cache_sync.sh` | `bash tools/sh/gmb_pkg_cache_sync.sh [--check] [--rebuild] [nome...]` | verified copy workspace → cache (`diff -r`, backup, idempotent); `--check` exits 1 on drift; `--rebuild` runs `packages/<n>/<v>/build.sh` on every lib `gmb_pkg_libcheck.sh` flags stale, then copies |
+| `sh/gmb_pkg_libcheck.sh` | `bash tools/sh/gmb_pkg_libcheck.sh [--quiet] [nome...]` | flags every `lib/<rid>/*` older than `src/*.c`/`include/*.h` (exit 1); `NOLIB` = sources without a built lib, not an error |
+| `sh/gmb_pkg_cache_hook.sh` | `bash tools/sh/gmb_pkg_cache_hook.sh install\|uninstall\|status\|run` | pre-commit hook block: on a commit touching `packages/` it runs the two checks above on the touched packages only (exit 1 + the fix command) |
+
+The order **build → copy** does not have to be remembered: `bash tools/sh/gmb_pkg_cache_sync.sh
+--rebuild` rebuilds the stale libs first and copies after; a failed build stops it with exit 2
+and the last lines of the log, instead of copying an old lib.
+
+Both checks are also groups of `tools/sh/tools_verify.sh` (`cache:pacchetti`, `dylib:pacchetti`),
+and the hook is installed in `.git/hooks/pre-commit` as a marked block (`install` keeps the rest of
+the hook, e.g. `no_python_guard`). Hook and gate call the same two tools: one implementation each.
 
 **Brains**: the `.gmbrain.zip` packages are **release assets** of `c-vision/GMBasicBrains`
 (never in the tree: `trading` is ~600 MB zipped, beyond the 100 MB per-file limit). The tree of that

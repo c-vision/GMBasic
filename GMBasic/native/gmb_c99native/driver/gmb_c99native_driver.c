@@ -1,3 +1,7 @@
+/* Prototipo del ponte registro->env (gmb_opts.c, compilato in questo eseguibile).
+ * NON si include gmb_runtime.h: quel mondo ha un gmb_types.h omonimo e diverso da
+ * frontend/include/gmb_types.h (clash di typedef). */
+extern const char* gmb_opt_env(const char* name);
 #include "gmb_lexer.h"
 #include "gmb_preprocess.h"   /* -D/--define: define BASE del preprocessore BASIC */
 #include "gmb_macro_expand.h"
@@ -585,20 +589,20 @@ int main(int argc, char** argv) {
             if (!pkg_cache_is_dir(pkgcache)) {
                 snprintf(pkgcache + pl, sizeof pkgcache - pl, "/../packages");
             }
-            gmb_pkg_set_cache_dir(pkgcache);
+            { const char* ov = gmb_opt_env("GMB_PKG_CACHE"); if (ov && *ov) snprintf(pkgcache, sizeof pkgcache, "%s", ov); gmb_pkg_set_cache_dir(pkgcache); }
         } else {
             /* CLIENT (nessun checkout sorgente): cache UTENTE ~/.gmbasic/packages, la stessa che
              * usa il PackageManager (`gmb pkg install`) e il loader FFI del runtime. */
             const char* home = getenv("HOME");
             if (home && *home) {
                 snprintf(pkgcache, sizeof pkgcache, "%s/.gmbasic/packages", home);
-                gmb_pkg_set_cache_dir(pkgcache);
+                { const char* ov = gmb_opt_env("GMB_PKG_CACHE"); if (ov && *ov) snprintf(pkgcache, sizeof pkgcache, "%s", ov); gmb_pkg_set_cache_dir(pkgcache); }
             }
         }
         if (pkgcache[0]) {
             /* La cache EFFETTIVA è GMB_PKG_CACHE se impostata (override documentato):
              * è quella da escludere dalla discovery degli IMPORT. */
-            const char* envc = getenv("GMB_PKG_CACHE");
+            const char* envc = gmb_opt_env("GMB_PKG_CACHE");
             gmb_inc_exclude_root((envc && *envc) ? envc : pkgcache);
             /* Anche il VENDOR di progetto (path fisso `<dir del .bas>/vendor`) è fuori dalla
              * discovery degli IMPORT: i suoi .inc arrivano dal REQUIRE del compilatore. */

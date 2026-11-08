@@ -713,7 +713,11 @@ int emit_control_stmt(ctx_t* c, gmb_stmt_t* s)
         sb_put(&c->out, "), (int)("); emit_expr_dflt(c, a[2], "200"); sb_put(&c->out, "), (int)__cmn); ");
         sb_put(&c->out, "gmb_context_menu_set_items(&_tui_cm, __cmi, __cmn); ");
         sb_put(&c->out, "gmb_tui_control_register(&_tui_cm.ctrl); ");
-        if (_iv && _iv->type != TY_STR) { sb_put(&c->out, "gmb_tui_bind_value(_tui_cm.ctrl.handle, (double*)&("); emit_ident(c, (char*)into_nm); sb_put(&c->out, ")); "); }
+        /* INTO = HANDLE del controllo (parità 4 backend), non l'indice voce. */
+        if (into_nm && _iv && _iv->type != TY_STR) {
+            emit_ident(c, (char*)into_nm);
+            sb_put(&c->out, " = (gmb_double_t)_tui_cm.ctrl.handle; ");
+        }
         sb_put(&c->out, "}\n");
     } else if (strcasecmp(cname, "LISTBOX") == 0 && na >= 5) {
         /* Factory polimorfica. Argomenti: x, y, w, h, items. Items: letterale/array/CSV. */
@@ -1129,6 +1133,11 @@ int emit_control_stmt(ctx_t* c, gmb_stmt_t* s)
         sb_put(&c->out, "), (int)("); emit_expr_dflt(c, a[2], "8"); sb_put(&c->out, "), (int)("); emit_expr_dflt(c, a[3], "200");
         sb_put(&c->out, "), (int)("); if (na >= 5) emit_expr_dflt(c, a[4], "0"); else sb_put(&c->out, "0"); sb_put(&c->out, ")); ");
         sb_put(&c->out, "gmb_tui_control_register(&_sp.ctrl); ");
+        /* INTO = HANDLE del controllo (parità 4 backend): prima non veniva assegnato (0). */
+        if (into_nm && _iv && _iv->type != TY_STR) {
+            emit_ident(c, (char*)into_nm);
+            sb_put(&c->out, " = (gmb_double_t)_sp.ctrl.handle; ");
+        }
         sb_put(&c->out, "}\n");
     } else if (strcasecmp(cname, "PANEL") == 0 && na >= 4) {
         ind(c); sb_put(&c->out, "{ gmb_form_add_panel((int)("); emit_expr_dflt(c, a[0], "0"); sb_put(&c->out, "), (int)("); emit_expr_dflt(c, a[1], "0");

@@ -10,8 +10,6 @@ public sealed partial class BackendImplementationRegistry
     {
         var r = new BackendImplementationRegistry();
         r.Register(Backend.PCodeVM, "ARRAYS.AADD");
-        r.Register(Backend.PCodeVM, "BLOCKCHAIN.ABIDECODE");
-        r.Register(Backend.PCodeVM, "BLOCKCHAIN.ABIENCODE");
         r.Register(Backend.PCodeVM, "ARRAYS.ABINARYSEARCH");
         r.Register(Backend.PCodeVM, "MATRIX.ABOVEMASK");
         r.Register(Backend.PCodeVM, "MATRIX.ABOVEMATRIX");
@@ -110,10 +108,6 @@ public sealed partial class BackendImplementationRegistry
         r.Register(Backend.PCodeVM, "CONTEXT.BACKGROUND");
         r.Register(Backend.PCodeVM, "AI.Backlinks");
         r.Register(Backend.PCodeVM, "LEDGER.BALANCE");
-        r.Register(Backend.PCodeVM, "BLOCKCHAIN.BASE32DECODE");
-        r.Register(Backend.PCodeVM, "BLOCKCHAIN.BASE32ENCODE");
-        r.Register(Backend.PCodeVM, "BLOCKCHAIN.BASE58DECODE");
-        r.Register(Backend.PCodeVM, "BLOCKCHAIN.BASE58ENCODE");
         r.Register(Backend.PCodeVM, "VECTORDB.Baseline");
         r.Register(Backend.PCodeVM, "OPTIMIZE.BasinHopping");
         r.Register(Backend.PCodeVM, "CONVERT.Batch");
@@ -161,10 +155,8 @@ public sealed partial class BackendImplementationRegistry
         r.Register(Backend.PCodeVM, "AI.BlackboardWrite");
         r.Register(Backend.PCodeVM, "TRADING.PORTFOLIO.BLACKLITTERMAN");
         r.Register(Backend.PCodeVM, "SIGNAL.BLACKMAN");
-        r.Register(Backend.PCodeVM, "BLOCKCHAIN.BLAKE2B256");
         r.Register(Backend.PCodeVM, "TORCH.BLEU");
         r.Register(Backend.PCodeVM, "MATRIX.BLOCKDIAG");
-        r.Register(Backend.PCodeVM, "BLOCKCHAIN.BLOCKDIFFICULTY");
         r.Register(Backend.PCodeVM, "DBF.BOF");
         r.Register(Backend.PCodeVM, "TRADING.BONDS.BondEquivalentYield");
         r.Register(Backend.PCodeVM, "TRADING.BONDS.BondPrice");
@@ -189,7 +181,6 @@ public sealed partial class BackendImplementationRegistry
         r.Register(Backend.PCodeVM, "OPTIMIZE.Brute");
         r.Register(Backend.PCodeVM, "TRADING.OPTIONS.BsCall");
         r.Register(Backend.PCodeVM, "TRADING.OPTIONS.BsPut");
-        r.Register(Backend.PCodeVM, "BLOCKCHAIN.BTCADDRFROMPUB");
         r.Register(Backend.PCodeVM, "RDD.BUFFER");
         r.Register(Backend.PCodeVM, "SIGNAL.BUTTER");
         r.Register(Backend.PCodeVM, "MOUSE.BUTTON");
@@ -312,7 +303,6 @@ public sealed partial class BackendImplementationRegistry
         r.Register(Backend.PCodeVM, "AI.ContextValid");
         r.Register(Backend.PCodeVM, "AI.ContextView");
         r.Register(Backend.PCodeVM, "AI.ContextViewDebug");
-        r.Register(Backend.PCodeVM, "BLOCKCHAIN.CONTRACT");
         r.Register(Backend.PCodeVM, "SPATIAL.CONVEXHULL");
         r.Register(Backend.PCodeVM, "SIGNAL.CONVOLVE");
         r.Register(Backend.PCodeVM, "SIGNAL.CORRELATE");
@@ -364,7 +354,6 @@ public sealed partial class BackendImplementationRegistry
         r.Register(Backend.PCodeVM, "DBF.DELETED");
         r.Register(Backend.PCodeVM, "TRADING.OPTIONS.Delta");
         r.Register(Backend.PCodeVM, "TRADING.OPTIONS.DeltaSpeed");
-        r.Register(Backend.PCodeVM, "BLOCKCHAIN.DERIVEKEY");
         r.Register(Backend.PCodeVM, "STATS.Describe");
         r.Register(Backend.PCodeVM, "WINDOWS.DESKTOP");
         r.Register(Backend.PCodeVM, "HTTP.DETECTCONTENTTYPE");
@@ -447,8 +436,6 @@ public sealed partial class BackendImplementationRegistry
         r.Register(Backend.PCodeVM, "SPECIAL.ERFC");
         r.Register(Backend.PCodeVM, "SPECIAL.ERFCINV");
         r.Register(Backend.PCodeVM, "SPECIAL.ERFINV");
-        r.Register(Backend.PCodeVM, "BLOCKCHAIN.ETHADDRCHECKSUM");
-        r.Register(Backend.PCodeVM, "BLOCKCHAIN.ETHADDRFROMPUB");
         r.Register(Backend.PCodeVM, "VECTOR.EUCLIDEA");
         r.Register(Backend.PCodeVM, "VECTOR.EuclideanDistanceSquared");
         r.Register(Backend.PCodeVM, "VECTORDB.EvalDiff");
@@ -560,7 +547,6 @@ public sealed partial class BackendImplementationRegistry
         r.Register(Backend.PCodeVM, "STATS.GammaPdf");
         r.Register(Backend.PCodeVM, "STATS.GammaPpf");
         r.Register(Backend.PCodeVM, "TORCH.GELU");
-        r.Register(Backend.PCodeVM, "BLOCKCHAIN.GENERATEMNEMONIC");
         r.Register(Backend.PCodeVM, "AI.GenTest");
         r.Register(Backend.PCodeVM, "TRADING.GeometricMeanReturn");
         r.Register(Backend.PCodeVM, "STATS.GeometricPmf");
@@ -576,7 +562,6 @@ public sealed partial class BackendImplementationRegistry
         r.Register(Backend.PCodeVM, "AI.GetKey");
         r.Register(Backend.PCodeVM, "AI.GetModel");
         r.Register(Backend.PCodeVM, "CONSOLE.GETPALETTECOLOR");
-        r.Register(Backend.PCodeVM, "BLOCKCHAIN.GETPUBLICKEY");
         r.Register(Backend.PCodeVM, "AI.GetTemp");
         r.Register(Backend.PCodeVM, "CONSOLE.GETTEXTMETRICS");
         r.Register(Backend.PCodeVM, "MATRIX.GETVALUE");
@@ -699,7 +684,6 @@ public sealed partial class BackendImplementationRegistry
         r.Register(Backend.PCodeVM, "AUTH.JWTPAYLOAD");
         r.Register(Backend.PCodeVM, "AUTH.JWTVERIFY");
         r.Register(Backend.PCodeVM, "STRINGS.Kebab");
-        r.Register(Backend.PCodeVM, "BLOCKCHAIN.KECCAK256");
         r.Register(Backend.PCodeVM, "TRADING.PORTFOLIO.KELLYCRITERION");
         r.Register(Backend.PCodeVM, "COMPUTER.Key");
         r.Register(Backend.PCodeVM, "CRYPTOGRAPHY.KEYEXPORT");
@@ -831,7 +815,6 @@ public sealed partial class BackendImplementationRegistry
         r.Register(Backend.PCodeVM, "FINANCE.MIRR");
         r.Register(Backend.PCodeVM, "MEMORYMAP.MMAPPEEK");
         r.Register(Backend.PCodeVM, "MEMORYMAP.MMAPREADBYTES");
-        r.Register(Backend.PCodeVM, "BLOCKCHAIN.MNEMONICTOSEED");
         r.Register(Backend.PCodeVM, "FINANCE.MNPV");
         r.Register(Backend.PCodeVM, "STATS.Mode");
         r.Register(Backend.PCodeVM, "TORCH.MODELCREATE");
@@ -1168,11 +1151,9 @@ public sealed partial class BackendImplementationRegistry
         r.Register(Backend.PCodeVM, "TRADING.OPTIONS.Rho");
         r.Register(Backend.PCodeVM, "OPTIMIZE.Ridder");
         r.Register(Backend.PCodeVM, "STRINGS.Right");
-        r.Register(Backend.PCodeVM, "BLOCKCHAIN.RIPEMD160");
         r.Register(Backend.PCodeVM, "TRADING.PORTFOLIO.RISKPARITY");
         r.Register(Backend.PCodeVM, "TRADING.RiskPremium");
         r.Register(Backend.PCodeVM, "DBF.RLOCK");
-        r.Register(Backend.PCodeVM, "BLOCKCHAIN.RLPENCODE");
         r.Register(Backend.PCodeVM, "MATH.Rnd");
         r.Register(Backend.PCodeVM, "AI.Rotate");
         r.Register(Backend.PCodeVM, "TORCH.ROUGE");
@@ -1211,7 +1192,6 @@ public sealed partial class BackendImplementationRegistry
         r.Register(Backend.PCodeVM, "OPTIMIZE.Secant");
         r.Register(Backend.PCodeVM, "DATETIME.SECOND");
         r.Register(Backend.PCodeVM, "DATETIME.SECONDS");
-        r.Register(Backend.PCodeVM, "BLOCKCHAIN.SECP256K1SIGN");
         r.Register(Backend.PCodeVM, "IO.SEEK");
         r.Register(Backend.PCodeVM, "DBF.SELECTED");
         r.Register(Backend.PCodeVM, "STRINGS.Sentence");
@@ -1299,11 +1279,9 @@ public sealed partial class BackendImplementationRegistry
         r.Register(Backend.PCodeVM, "CRYPTOGRAPHY.STRHASHFILE");
         r.Register(Backend.PCodeVM, "JSON.Stringify");
         r.Register(Backend.PCodeVM, "CONVERT.Strip");
-        r.Register(Backend.PCodeVM, "BLOCKCHAIN.STRKECCAK256");
         r.Register(Backend.PCodeVM, "CRYPTOGRAPHY.STRMD5");
         r.Register(Backend.PCodeVM, "GRAPH.StronglyConnected");
         r.Register(Backend.PCodeVM, "SYSTEM.STRPTR");
-        r.Register(Backend.PCodeVM, "BLOCKCHAIN.STRRIPEMD160");
         r.Register(Backend.PCodeVM, "CRYPTOGRAPHY.STRSHA1");
         r.Register(Backend.PCodeVM, "CRYPTOGRAPHY.STRSHA256");
         r.Register(Backend.PCodeVM, "CRYPTOGRAPHY.STRSHA512");
@@ -1477,8 +1455,6 @@ public sealed partial class BackendImplementationRegistry
         r.Register(Backend.PCodeVM, "TRADING.METRICS.ValueAtRisk");
         r.Register(Backend.PCodeVM, "TRADING.OPTIONS.Vanna");
         r.Register(Backend.PCodeVM, "LEDGER.VARIANCE");
-        r.Register(Backend.PCodeVM, "BLOCKCHAIN.VARINTDECODE");
-        r.Register(Backend.PCodeVM, "BLOCKCHAIN.VARINTENCODE");
         r.Register(Backend.PCodeVM, "SYSTEM.VARPTR");
         r.Register(Backend.PCodeVM, "AI.VaultAddFolder");
         r.Register(Backend.PCodeVM, "AI.VaultCount");

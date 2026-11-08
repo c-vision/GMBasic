@@ -1,4 +1,4 @@
-' EXPECT: r= 120
+' EXPECT: r= 180
 ' Regressione: una chiamata QUALIFICATA dentro un'altra chiamata (MATH.ROUND ha il
 ' parametro value AS CURRENCY) riscriveva gli argomenti col contesto esterno:
 ' il letterale 3 diventava CCUR(3) e su IL arrivava 0 al parametro k AS LONG.

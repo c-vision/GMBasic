@@ -10,8 +10,6 @@ public sealed partial class BackendImplementationRegistry
     {
         var r = new BackendImplementationRegistry();
         r.Register(Backend.IL, "ARRAYS.AADD");
-        r.Register(Backend.IL, "BLOCKCHAIN.ABIDECODE");
-        r.Register(Backend.IL, "BLOCKCHAIN.ABIENCODE");
         r.Register(Backend.IL, "ARRAYS.ABINARYSEARCH");
         r.Register(Backend.IL, "MATRIX.ABOVEMASK");
         r.Register(Backend.IL, "MATRIX.ABOVEMATRIX");
@@ -110,10 +108,6 @@ public sealed partial class BackendImplementationRegistry
         r.Register(Backend.IL, "CONTEXT.BACKGROUND");
         r.Register(Backend.IL, "AI.Backlinks");
         r.Register(Backend.IL, "LEDGER.BALANCE");
-        r.Register(Backend.IL, "BLOCKCHAIN.BASE32DECODE");
-        r.Register(Backend.IL, "BLOCKCHAIN.BASE32ENCODE");
-        r.Register(Backend.IL, "BLOCKCHAIN.BASE58DECODE");
-        r.Register(Backend.IL, "BLOCKCHAIN.BASE58ENCODE");
         r.Register(Backend.IL, "VECTORDB.Baseline");
         r.Register(Backend.IL, "OPTIMIZE.BasinHopping");
         r.Register(Backend.IL, "CONVERT.Batch");
@@ -161,10 +155,8 @@ public sealed partial class BackendImplementationRegistry
         r.Register(Backend.IL, "AI.BlackboardWrite");
         r.Register(Backend.IL, "TRADING.PORTFOLIO.BLACKLITTERMAN");
         r.Register(Backend.IL, "SIGNAL.BLACKMAN");
-        r.Register(Backend.IL, "BLOCKCHAIN.BLAKE2B256");
         r.Register(Backend.IL, "TORCH.BLEU");
         r.Register(Backend.IL, "MATRIX.BLOCKDIAG");
-        r.Register(Backend.IL, "BLOCKCHAIN.BLOCKDIFFICULTY");
         r.Register(Backend.IL, "DBF.BOF");
         r.Register(Backend.IL, "TRADING.BONDS.BondEquivalentYield");
         r.Register(Backend.IL, "TRADING.BONDS.BondPrice");
@@ -189,7 +181,6 @@ public sealed partial class BackendImplementationRegistry
         r.Register(Backend.IL, "OPTIMIZE.Brute");
         r.Register(Backend.IL, "TRADING.OPTIONS.BsCall");
         r.Register(Backend.IL, "TRADING.OPTIONS.BsPut");
-        r.Register(Backend.IL, "BLOCKCHAIN.BTCADDRFROMPUB");
         r.Register(Backend.IL, "RDD.BUFFER");
         r.Register(Backend.IL, "SIGNAL.BUTTER");
         r.Register(Backend.IL, "MOUSE.BUTTON");
@@ -314,7 +305,6 @@ public sealed partial class BackendImplementationRegistry
         r.Register(Backend.IL, "AI.ContextValid");
         r.Register(Backend.IL, "AI.ContextView");
         r.Register(Backend.IL, "AI.ContextViewDebug");
-        r.Register(Backend.IL, "BLOCKCHAIN.CONTRACT");
         r.Register(Backend.IL, "SPATIAL.CONVEXHULL");
         r.Register(Backend.IL, "SIGNAL.CONVOLVE");
         r.Register(Backend.IL, "SIGNAL.CORRELATE");
@@ -368,7 +358,6 @@ public sealed partial class BackendImplementationRegistry
         r.Register(Backend.IL, "DBF.DELETED");
         r.Register(Backend.IL, "TRADING.OPTIONS.Delta");
         r.Register(Backend.IL, "TRADING.OPTIONS.DeltaSpeed");
-        r.Register(Backend.IL, "BLOCKCHAIN.DERIVEKEY");
         r.Register(Backend.IL, "STATS.Describe");
         r.Register(Backend.IL, "WINDOWS.DESKTOP");
         r.Register(Backend.IL, "HTTP.DETECTCONTENTTYPE");
@@ -452,8 +441,6 @@ public sealed partial class BackendImplementationRegistry
         r.Register(Backend.IL, "SPECIAL.ERFC");
         r.Register(Backend.IL, "SPECIAL.ERFCINV");
         r.Register(Backend.IL, "SPECIAL.ERFINV");
-        r.Register(Backend.IL, "BLOCKCHAIN.ETHADDRCHECKSUM");
-        r.Register(Backend.IL, "BLOCKCHAIN.ETHADDRFROMPUB");
         r.Register(Backend.IL, "VECTOR.EUCLIDEA");
         r.Register(Backend.IL, "VECTOR.EuclideanDistanceSquared");
         r.Register(Backend.IL, "VECTORDB.EvalDiff");
@@ -565,7 +552,6 @@ public sealed partial class BackendImplementationRegistry
         r.Register(Backend.IL, "STATS.GammaPdf");
         r.Register(Backend.IL, "STATS.GammaPpf");
         r.Register(Backend.IL, "TORCH.GELU");
-        r.Register(Backend.IL, "BLOCKCHAIN.GENERATEMNEMONIC");
         r.Register(Backend.IL, "AI.GenTest");
         r.Register(Backend.IL, "TRADING.GeometricMeanReturn");
         r.Register(Backend.IL, "STATS.GeometricPmf");
@@ -581,7 +567,6 @@ public sealed partial class BackendImplementationRegistry
         r.Register(Backend.IL, "AI.GetKey");
         r.Register(Backend.IL, "AI.GetModel");
         r.Register(Backend.IL, "CONSOLE.GETPALETTECOLOR");
-        r.Register(Backend.IL, "BLOCKCHAIN.GETPUBLICKEY");
         r.Register(Backend.IL, "AI.GetTemp");
         r.Register(Backend.IL, "CONSOLE.GETTEXTMETRICS");
         r.Register(Backend.IL, "MATRIX.GETVALUE");
@@ -705,7 +690,6 @@ public sealed partial class BackendImplementationRegistry
         r.Register(Backend.IL, "AUTH.JWTPAYLOAD");
         r.Register(Backend.IL, "AUTH.JWTVERIFY");
         r.Register(Backend.IL, "STRINGS.Kebab");
-        r.Register(Backend.IL, "BLOCKCHAIN.KECCAK256");
         r.Register(Backend.IL, "TRADING.PORTFOLIO.KELLYCRITERION");
         r.Register(Backend.IL, "COMPUTER.Key");
         r.Register(Backend.IL, "CRYPTOGRAPHY.KEYEXPORT");
@@ -839,7 +823,6 @@ public sealed partial class BackendImplementationRegistry
         r.Register(Backend.IL, "FINANCE.MIRR");
         r.Register(Backend.IL, "MEMORYMAP.MMAPPEEK");
         r.Register(Backend.IL, "MEMORYMAP.MMAPREADBYTES");
-        r.Register(Backend.IL, "BLOCKCHAIN.MNEMONICTOSEED");
         r.Register(Backend.IL, "FINANCE.MNPV");
         r.Register(Backend.IL, "STATS.Mode");
         r.Register(Backend.IL, "TORCH.MODELCREATE");
@@ -1179,11 +1162,9 @@ public sealed partial class BackendImplementationRegistry
         r.Register(Backend.IL, "TRADING.OPTIONS.Rho");
         r.Register(Backend.IL, "OPTIMIZE.Ridder");
         r.Register(Backend.IL, "STRINGS.Right");
-        r.Register(Backend.IL, "BLOCKCHAIN.RIPEMD160");
         r.Register(Backend.IL, "TRADING.PORTFOLIO.RISKPARITY");
         r.Register(Backend.IL, "TRADING.RiskPremium");
         r.Register(Backend.IL, "DBF.RLOCK");
-        r.Register(Backend.IL, "BLOCKCHAIN.RLPENCODE");
         r.Register(Backend.IL, "MATH.Rnd");
         r.Register(Backend.IL, "AI.Rotate");
         r.Register(Backend.IL, "TORCH.ROUGE");
@@ -1222,7 +1203,6 @@ public sealed partial class BackendImplementationRegistry
         r.Register(Backend.IL, "OPTIMIZE.Secant");
         r.Register(Backend.IL, "DATETIME.SECOND");
         r.Register(Backend.IL, "DATETIME.SECONDS");
-        r.Register(Backend.IL, "BLOCKCHAIN.SECP256K1SIGN");
         r.Register(Backend.IL, "IO.SEEK");
         r.Register(Backend.IL, "DBF.SELECTED");
         r.Register(Backend.IL, "STRINGS.Sentence");
@@ -1310,11 +1290,9 @@ public sealed partial class BackendImplementationRegistry
         r.Register(Backend.IL, "CRYPTOGRAPHY.STRHASHFILE");
         r.Register(Backend.IL, "JSON.Stringify");
         r.Register(Backend.IL, "CONVERT.Strip");
-        r.Register(Backend.IL, "BLOCKCHAIN.STRKECCAK256");
         r.Register(Backend.IL, "CRYPTOGRAPHY.STRMD5");
         r.Register(Backend.IL, "GRAPH.StronglyConnected");
         r.Register(Backend.IL, "SYSTEM.STRPTR");
-        r.Register(Backend.IL, "BLOCKCHAIN.STRRIPEMD160");
         r.Register(Backend.IL, "CRYPTOGRAPHY.STRSHA1");
         r.Register(Backend.IL, "CRYPTOGRAPHY.STRSHA256");
         r.Register(Backend.IL, "CRYPTOGRAPHY.STRSHA512");
@@ -1488,8 +1466,6 @@ public sealed partial class BackendImplementationRegistry
         r.Register(Backend.IL, "TRADING.METRICS.ValueAtRisk");
         r.Register(Backend.IL, "TRADING.OPTIONS.Vanna");
         r.Register(Backend.IL, "LEDGER.VARIANCE");
-        r.Register(Backend.IL, "BLOCKCHAIN.VARINTDECODE");
-        r.Register(Backend.IL, "BLOCKCHAIN.VARINTENCODE");
         r.Register(Backend.IL, "SYSTEM.VARPTR");
         r.Register(Backend.IL, "AI.VaultAddFolder");
         r.Register(Backend.IL, "AI.VaultCount");

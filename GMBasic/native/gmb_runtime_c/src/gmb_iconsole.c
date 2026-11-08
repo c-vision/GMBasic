@@ -523,9 +523,9 @@ static gmb_screen_config_t iconsole_build_config(int mode)
     if (gmb_settings_console_int(mode, "charGridWidth", &gw) && gw > 0) cfg.char_grid_width = gw;
     if (gmb_settings_console_int(mode, "charGridHeight", &gh) && gh > 0) cfg.char_grid_height = gh;
     /* -size/-font (env) sovrascrivono i settings (Arguments.cs). */
-    const char* sz = getenv("GMB_CONSOLE_SIZE");
+    const char* sz = gmb_opt_env("GMB_CONSOLE_SIZE");
     if (sz && *sz) { int w = 0, h = 0; if (sscanf(sz, "%d,%d", &w, &h) == 2) { if (w > 0) cfg.char_grid_width = w; if (h > 0) cfg.char_grid_height = h; } }
-    const char* fn = getenv("GMB_CONSOLE_FONT");
+    const char* fn = gmb_opt_env("GMB_CONSOLE_FONT");
     if (fn && *fn) { char nm[128] = {0}; int fs = 0;
         if (sscanf(fn, "%127[^,],%d", nm, &fs) >= 1) { if (nm[0]) cfg.font_path = strdup(nm); if (fs > 0) cfg.font_size = fs; } }
     return cfg;

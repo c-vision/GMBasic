@@ -1,6 +1,6 @@
 SAMPLE → MINITEST: casi d'uso non previsti dai canonici
 
-casi: 50   sample SURFACE: 35
+casi: 49   sample SURFACE: 35
 
 == ARITA (stessa funzione, arità diversa nel canonico) ==
   samples/Ai/AiFullSurfaceCoverage.bas                           AI.search(5)  canonico: 9
@@ -25,7 +25,6 @@ casi: 50   sample SURFACE: 35
   samples/Ai/TypeInfoFullCoverage.bas                            X.value(1)
   samples/Console/WidgetsFullCoverage.bas                        CONTROLS.cs(1)
   samples/Controls/ControlPropertiesCoverage.bas                 CONTROL.md(1)
-  samples/Crypto/CryptoFullCoverage.bas                          BLOCKCHAIN.abidecode(2)
   samples/Databases/RddCompleteCoverage.bas                      RDD.replace(4)
   samples/Databases/RddCompleteCoverage.bas                      RDD.delete(2)
   samples/Databases/RddCompleteCoverage.bas                      RDD.recall(2)

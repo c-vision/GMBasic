@@ -75,6 +75,8 @@ int  gmb_winstmt_desktop_get(void);
 int  gmb_winstmt_edit_get(const char* name);
 int  gmb_winstmt_shadow_get(const char* name);
 int  gmb_winstmt_frame_get(const char* name);
+/* 1 se la finestra e' PIXEL (rect in PIXEL logici), 0 = TUI a celle. */
+int  gmb_winstmt_is_pixel(const char* name);
 int  gmb_winstmt_is_minimized(const char* name);
 /* render esplicito (di norma automatico a ogni operazione) */
 void gmb_winstmt_render(const char* name);

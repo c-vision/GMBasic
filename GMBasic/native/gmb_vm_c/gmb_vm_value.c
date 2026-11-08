@@ -8,25 +8,7 @@
 #include "gmb_collections.h"   /* gmb_coll_bag_to_json (JSON del BAG, §0bis: una sola sorgente) */
 #include <stdlib.h>
 #include <stdio.h>
-#include <execinfo.h>
 #include <string.h>
-
-/* Diagnostica GMB_RC_DEBUG=1: un release su un oggetto VM (release_fn != NULL) con refcount GIA' 0 e' un
- * over-release (double free / use-after-free in arrivo) → stampa il backtrace e abortisce. I box del
- * runtime (release_fn NULL, refcount 0 per costruzione) sono esclusi: per loro il decremento a 0 e' lecito. */
-static int rc_debug_enabled(void)
-{
-    static int v = -1;
-    if (v < 0) { const char* e = getenv("GMB_RC_DEBUG"); v = (e && *e && *e != '0') ? 1 : 0; }
-    return v;
-}
-static void rc_underflow_abort(const char* what)
-{
-    fprintf(stderr, "[GMB_RC_DEBUG] over-release: %s con refcount 0\n", what);
-    void* bt[24]; int n = backtrace(bt, 24); backtrace_symbols_fd(bt, n, 2);
-    abort();
-}
-
 
 static void string_release_fn(struct gmb_obj* o)
 {
@@ -89,7 +71,6 @@ void gmb_str_retain(gmb_obj_string_t* s)
 void gmb_str_release(gmb_obj_string_t* s)
 {
     if (!s) return;
-    if (s->header.refcount == 0 && s->header.release_fn && rc_debug_enabled()) rc_underflow_abort("gmb_str_release");
     if (--s->header.refcount == 0)
     {
         if (s->header.release_fn) s->header.release_fn((struct gmb_obj*)s);
@@ -107,7 +88,6 @@ void gmb_obj_retain(gmb_obj_t* o) { if (o) o->refcount++; }
 void gmb_obj_release(gmb_obj_t* o)
 {
     if (!o) return;
-    if (o->refcount == 0 && o->release_fn && rc_debug_enabled()) rc_underflow_abort("gmb_obj_release");
     if (--o->refcount == 0)
     {
         if (o->release_fn) o->release_fn(o);

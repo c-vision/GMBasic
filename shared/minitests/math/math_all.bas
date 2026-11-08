@@ -41,7 +41,9 @@ SUB Main()
 
   ' ── angoli e geometria ───────────────────────────────────────────────────
   PRINT "deg2rad="; ROUND(DEG2RAD(180), 10); "|rad2deg="; ROUND(RAD2DEG(PI()), 6)
-  PRINT "dist2d="; ROUND(DIST2D(0, 0, 3, 4), 6); "|dist3d="; ROUND(DIST3D(0, 0, 0, 0, 0, 5), 6)
+  ' DIST2D/DIST3D sono passate al namespace VECTOR (tassonomia math/stats/timeseries):
+  ' unqualified non sono più risolte; la forma qualificata è quella canonica.
+  PRINT "dist2d="; ROUND(VECTOR.DIST2D(0, 0, 3, 4), 6); "|dist3d="; ROUND(VECTOR.DIST3D(0, 0, 0, 0, 0, 5), 6)
   PRINT "angle2d="; ROUND(ANGLE2D(0, 0, 1, 0), 6); "|polarx="; ROUND(POLAR_X(2, 0), 6); "|polary="; ROUND(POLAR_Y(2, 0), 6); "|angle90="; ROUND(ANGLE2D(0, 0, 0, 1), 6)
 
   ' ── predicato numerico ───────────────────────────────────────────────────

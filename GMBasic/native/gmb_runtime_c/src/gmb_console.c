@@ -134,6 +134,10 @@ void gmb_tui_screen_flush(void)
     if (!st || !st->buffer) return;
     /* SdlConsole attiva: rende lei (RenderBuffer); niente dump ANSI su stdout. */
     if (gmb_iconsole_sdl_active()) return;
+    /* SDLConsole dell'APP (gmb_tui_sdl_start: finestra a celle posseduta da gmb_tui_app):
+     * rende gmb_tui_sdl_present(); senza questo return il flush dell'ANSI finiva su stdout
+     * a ogni frame sopra la finestra SDL. */
+    { extern int gmb_tui_sdl_active(void); if (gmb_tui_sdl_active()) return; }
     /* Screen grafico attivo: il buffer TUI verrà presentato sulla finestra dal pump
      * del main thread (gmb_gpm_start). Qui NON si tocca SDL (siamo su un worker) e NON
      * si scrive ANSI su stdout. SDLConsole/TUI (screen spento): ANSI come prima. */
@@ -1457,7 +1461,7 @@ static int g_console_env_applied = 0;
 int gmb_console_mode_get(void)
 {
     if (g_console_mode < 0) {
-        const char* e = getenv("GMB_CONSOLE");
+        const char* e = gmb_opt_env("GMB_CONSOLE");
         g_console_mode = (e && *e) ? atoi(e) : 0;
     }
     return g_console_mode;
@@ -1469,7 +1473,7 @@ void gmb_console_apply_env_once(void)
 {
     if (g_console_env_applied) return;
     g_console_env_applied = 1;
-    const char* e = getenv("GMB_CONSOLE");
+    const char* e = gmb_opt_env("GMB_CONSOLE");
     if (!e || !*e) return;
     gmb_console_select(atoi(e));
 }

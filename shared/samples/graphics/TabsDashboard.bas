@@ -18,6 +18,7 @@ DIM v11 AS INTEGER, v12 AS INTEGER, v13 AS INTEGER, v14 AS INTEGER, v15 AS INTEG
 DIM v16 AS INTEGER, v17 AS INTEGER, v18 AS INTEGER, v19 AS INTEGER, v20 AS INTEGER
 DIM s AS STRING, s3 AS STRING, s4 AS STRING, s5 AS STRING, ps AS STRING
 DIM nct AS INTEGER, viol AS INTEGER
+DIM curpage AS INTEGER, switchok AS INTEGER
 DIM badmsg AS STRING
 DIM ctl$(120) AS STRING
 DIM ctlp(120) AS INTEGER
@@ -299,9 +300,10 @@ CALL Reg("p5_k", 5)
 RICHTEXT 968, 688, 276, 180, "Deploy completato su 3 nodi|Nessun errore|Rollback disponibile" NAME "p5_l"
 CALL Reg("p5_l", 5)
 
-' ── 5 schede: mostra, verifica, salva ───────────────────────────────────
+' ── 5 schede: mostra, verifica, salva (fase automatica) ─────────────────
 FOR pg = 1 TO 5
   CALL ShowPage(pg)
+  curpage = pg
   FOR i = 1 TO 24 : WINDOW PUMP 16 : NEXT
   IF pg = 1 THEN SAVE SCREEN "work/tab1.png"
   IF pg = 2 THEN SAVE SCREEN "work/tab2.png"
@@ -313,12 +315,42 @@ NEXT pg
 ' ── check layout su ogni pagina (solo i controlli VISIBILI della pagina) ─
 FOR pg = 1 TO 5
   CALL ShowPage(pg)
+  curpage = pg
   FOR i = 1 TO 4 : WINDOW PUMP 16 : NEXT
   k = CheckLayout(pg)
   viol = viol + k
 NEXT pg
 
+' ── CAMBIO SCHEDA: il valore del TAB (0..4) è la pagina. È lo stesso percorso
+'    che fa il CLICK sulla scheda, quindi la pagina cambia davvero in finestra. ──
+SUB PumpPages(n AS INTEGER)
+  DIM z AS INTEGER, np AS INTEGER
+  FOR z = 1 TO n
+    WINDOW PUMP 16
+    np = INT(nt + 0.5) + 1
+    IF np >= 1 AND np <= 5 THEN
+      IF np <> curpage THEN
+        curpage = np
+        CALL ShowPage(np)
+      END IF
+    END IF
+    IF WINDOWCLOSED() <> 0 THEN EXIT FOR
+  NEXT z
+END SUB
+
+' prova headless del cambio pagina: come un click sulla terza scheda
+CALL ShowPage(1)
+curpage = 1
+CONTROL SET "p0_d", "value", 2
+CALL PumpPages(60)
+IF curpage = 3 THEN switchok = 1
+SAVE SCREEN "work/tab_switch.png"
+
+' ── finestra INTERATTIVA: clic sulle schede, fino a chiusura o ~30 s ────
+CALL PumpPages(1800)
+
 SCREEN 0
 PRINT "CONTROLLI="; nct
+PRINT "SWITCH-OK="; switchok
 IF viol = 0 THEN PRINT "LAYOUT-TOTAL=0" ELSE PRINT "LAYOUT-TOTAL="; viol; badmsg
 PRINT "TABS-OK"

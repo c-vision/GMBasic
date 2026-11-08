@@ -2591,3 +2591,24 @@ CLEAR top, left, bottom, right
 ## Gates
 
 <!-- END SURFACE -->
+
+## Forme posizionali e frecce attaccate al campo
+
+`CHECKBOX` e `COMBOBOX` accettano due forme posizionali: con e senza larghezza.
+
+```basic
+CHECKBOX 2, 2, "notify" INTO v            ' posizione + caption
+CHECKBOX 2, 4, 24, "notify" INTO v        ' posizione + larghezza + caption
+COMBOBOX 2, 6, 20, voci INTO s            ' posizione + larghezza + lista
+COMBOBOX 2, 8, voci INTO s                ' posizione + lista
+```
+
+Il caption è sempre il testo, mai il numero della larghezza: una forma non riconosciuta
+lascia il quadratino senza etichetta. Il MiniTest `controls/control_arity_forms.bas`
+verifica le quattro forme sui quattro backend.
+
+Nei controlli con frecce (select e selettore data) la freccia vive in una fascia
+**separata ma attaccata** al campo: nessuno spazio fra il testo dell'input e la freccia,
+nessun margine fra la fascia e il bordo destro. Il select risponde anche da tastiera:
+`Invio`/`Giù` apre l'elenco, `Su`/`Giù` sposta l'evidenziazione, `Invio` conferma e scrive
+il valore `INTO`, `Esc` chiude senza cambiare nulla.

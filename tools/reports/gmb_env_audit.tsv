@@ -1,34 +1,146 @@
-nome	classe	n_letture	lettori(file:line,...)
-GMB_BENCH_FINANCE_DIR	funzionamento	1	GMBasicSharp/tests/AI.Tests/VaultScaleBenchmarkTests.cs:20
-GMB_DBG_WG	diagnostica	1	GMBasicSharp/common/BRT/Gpm/PCodeWaitGroup.cs:22
-GMB_DEBUG_SEMANTIC	diagnostica	3	GMBasicSharp/common/AI/Graph/GraphSemanticExtractor.cs:81,GMBasicSharp/common/AI/Graph/GraphSemanticExtractor.cs:125,GMBasicSharp/common/AI/Graph/GraphSemanticExtractor.cs:132
-GMB_DEBUG_V2	diagnostica	19	GMBasicSharp/common/IlBackendCodegen/Gpm/Ir/IlCoroutineEmitter.cs:93,GMBasicSharp/common/IlBackendCodegen/Gpm/Ir/IlCoroutineEmitter.cs:130,GMBasicSharp/common/IlBackendCodegen/Gpm/Ir/IlCoroutineEmitter.cs:260,GMBasicSharp/common/IlBackendCodegen/Gpm/Ir/IlCoroutineEmitter.MethodEmitter.Control.cs:1097,GMBasicSharp/common/IlBackendCodegen/Gpm/Ir/IlCoroutineEmitter.MethodEmitter.Control.cs:1101,GMBasicSharp/common/IlBackendRuntime/Gpm/IlGpmV2.Driver.cs:349,GMBasicSharp/common/IlBackendRuntime/Gpm/IlGpmV2.Driver.cs:441,GMBasicSharp/common/IlBackendRuntime/Gpm/IlGpmV2.Driver.cs:478,…(+11)
-GMB_DEBUG_WS	diagnostica	3	GMBasicSharp/common/IlBackendRuntime/IlRuntime.cs:19818,GMBasicSharp/common/IlBackendRuntime/IlRuntime.cs:19888,GMBasicSharp/common/IlBackendRuntime/IlWebSocketHandle.cs:65
-GMB_DS4_GGUF	funzionamento	1	GMBasicSharp/tests/AI.Tests/Ds4MlxRoutingTests.cs:14
-GMB_DUMP_CHUNK	diagnostica	1	tools/runners/GMBASIC.Conformance/VmBridgeTest.cs:37
-GMB_DUMP_PROMPT	diagnostica	4	GMBasicSharp/common/AI/Providers/MlxProviders.cs:802,GMBasicSharp/common/AI/Providers/MlxProviders.cs:805,GMBasicSharp/common/AI/Providers/MlxProviders.cs:915,GMBasicSharp/common/AI/Providers/MlxProviders.cs:955
-GMB_GFX_C	funzionamento	1	GMBasicSharp/common/BRT/Services/CGfxGraphicsService.cs:757
-GMB_INJECT_KEY	funzionamento	1	tools/runners/test_ilrun/Program.cs:207
-GMB_MINI_ONLY	diagnostica	1	GMBasicSharp/tests/GMBASIC.IlBackend.Tests/MiniTestsParityTests.cs:484
-GMB_MINI_WRITE_EXPECT	funzionamento	1	GMBasicSharp/tests/GMBASIC.IlBackend.Tests/MiniTestsParityTests.cs:549
-GMB_NO_ILOPTIM	funzionamento	1	GMBasicSharp/common/IlBackendCodegen/Partial/IlProgramCompiler.Host.cs:58
-GMB_PCODE_TIMEOUT_S	diagnostica	1	tools/runners/test_pcode/Program.cs:79
-GMB_PKG_CACHE	test/progetto	6	GMBasicSharp/common/BRT/Services/FfiService.cs:322,GMBasicSharp/Executor/Orchestrator.cs:225,GMBasic/native/gmb_runtime_c/src/gmb_ffi_dl.c:276,GMBasic/native/gmb_runtime_c/src/gmb_ffi_dl.c:423,GMBasic/native/gmb_bytecode/src/gmb_compiler.c:7675,GMBasic/native/gmb_c99native/driver/gmb_c99native_driver.c:539
-GMB_RUN_ALL	funzionamento	1	GMBasicSharp/tests/GMBASIC.IlBackend.Tests/MiniTestsParityTests.cs:485
-GMB_RUN_HEAVY	funzionamento	1	GMBasicSharp/tests/GMBASIC.IlBackend.Tests/MiniTestsParityTests.cs:323
-GMB_RUN_INTERACTIVE	funzionamento	1	GMBasicSharp/tests/GMBASIC.IlBackend.Tests/MiniTestsParityTests.cs:300
-GMB_SAMPLE_DIR	funzionamento	1	GMBasicSharp/tests/GMBASIC.IlBackend.Tests/MiniTestsParityTests.cs:673
-GMB_SAMPLE_ONLY	funzionamento	1	GMBasicSharp/tests/GMBASIC.IlBackend.Tests/MiniTestsParityTests.cs:682
-GMB_SCREEN_DUMP	diagnostica	1	tools/runners/test_ilrun/Program.cs:218
-GMB_SPECBENCH_DRAFT	funzionamento	1	GMBasicSharp/tests/AI.Tests/MlxSpeculativeBatchBenchTests.cs:41
-GMB_SPECBENCH_N	funzionamento	1	GMBasicSharp/tests/AI.Tests/MlxSpeculativeBatchBenchTests.cs:82
-GMB_SPECBENCH_PROMPT	funzionamento	1	GMBasicSharp/tests/AI.Tests/MlxSpeculativeBatchBenchTests.cs:27
-GMB_SPECBENCH_SPEC	funzionamento	1	GMBasicSharp/tests/AI.Tests/MlxSpeculativeBatchBenchTests.cs:39
-GMB_SPECBENCH_T	funzionamento	1	GMBasicSharp/tests/AI.Tests/MlxSpeculativeBatchBenchTests.cs:83
-GMB_SQL_CSV_DEBUG	diagnostica	1	GMBasicSharp/common/Databases/SQLite/SqlCsvExtension.cs:31
-GMB_TEST_KEYS	diagnostica	1	tools/runners/test_pcode/Program.cs:115
-GMB_TEST_MOUSE	diagnostica	1	tools/runners/test_pcode/Program.cs:116
-GMB_TEST_PNG	diagnostica	1	tools/runners/test_pcode/Program.cs:149
-GMB_TORCH_PATH	funzionamento	1	tools/runners/test_vmrun/Program.cs:177
-GMB_TUI_SCRIPT	funzionamento	3	GMBasicSharp/common/BRT/HeadlessRuntimeHost.cs:115,GMBasicSharp/common/BRT/Services/NativeTui.cs:49,GMBasicSharp/common/IlBackendRuntime/IlRuntime.cs:15429
-GMB_VMC_DIAG_TIMEOUT_MS	diagnostica	1	tools/runners/test_ilrun/Program.cs:152
+nome	classe	n_letture	ponte	diretto	via	lettori(file:line,...)
+BROWSER_PROVIDER	funzionamento	1	0	1	diretto	GMBasicSharp/common/AI/Browser/BrowserProviderRegistry.cs:22
+COLORTERM	sistema	2	0	2	diretto	GMBasic/native/gmb_runtime_c/src/gmb_tui_colors.c:440,GMBasicSharp/common/ClipperLib/Controls/Colors.cs:577
+COLUMNS	sistema	1	0	1	diretto	GMBasic/native/gmb_runtime_c/src/gmb_tui_console.c:114
+DYLD_LIBRARY_PATH	sistema	2	0	2	diretto	GMBasicSharp/tests/GMBASIC.IlBackend.Tests/MiniTestsParityTests.cs:454,tools/runners/test_vmrun/Program.cs:181
+FORCE_COLOR	sistema	2	0	2	diretto	GMBasic/native/gmb_runtime_c/src/gmb_tui_colors.c:444,GMBasicSharp/common/ClipperLib/Controls/Colors.cs:580
+GAI_KEEP	funzionamento	1	0	1	diretto	tools/runners/test_ilrun/Program.cs:268
+GAI_METHOD	funzionamento	1	0	1	diretto	tools/runners/test_ilrun/Program.cs:58
+GAI_NO_ILOPT	funzionamento	1	0	1	diretto	tools/runners/test_ilrun/Program.cs:57
+GMBASIC_AB_GGUF	funzionamento	1	0	1	diretto	GMBasicSharp/tests/AI.Tests/LlamaCppProviderTests.cs:718
+GMBASIC_AB_OLLAMA	funzionamento	1	0	1	diretto	GMBasicSharp/tests/AI.Tests/LlamaCppProviderTests.cs:719
+GMBASIC_AB_OLLAMA_URL	funzionamento	1	0	1	diretto	GMBasicSharp/tests/AI.Tests/LlamaCppProviderTests.cs:723
+GMBASIC_APPLE_VISION_IMAGE	funzionamento	1	0	1	diretto	GMBasicSharp/tests/AI.Tests/LlamaCppProviderTests.cs:764
+GMBASIC_BENCH_PROBLEMS	funzionamento	1	0	1	diretto	GMBasicSharp/tests/AI.Tests/RecursiveMasGateTests.cs:133
+GMBASIC_CDP_PORT	funzionamento	4	0	4	diretto	GMBasic/native/gmb_runtime_c/src/gmb_observe_sources.c:109,GMBasic/native/gmb_agent_runtime/gmb_browser_cdp.c:424,GMBasic/native/gmb_agent_runtime/gmb_cua_runtime.c:727,GMBasicSharp/common/AI/Browser/BrowserRuntime.cs:19
+GMBASIC_CDP_TIMEOUT_MS	funzionamento	1	0	1	diretto	GMBasic/native/gmb_agent_runtime/gmb_browser_cdp.c:155
+GMBASIC_CONNECTOR_MARKETPLACE_URL	funzionamento	1	0	1	diretto	GMBasicSharp/common/AI/Connectors/ConnectorMarketplace.cs:154
+GMBASIC_GOMAXPROCS	funzionamento	16	0	16	diretto	GMBasic/native/gmb_runtime_c/src/gmb_c99gpm.c:585,GMBasic/native/gmb_runtime_c/src/gmb_c99gpm.c:625,GMBasic/native/gmb_vm_c/gmb_vm_core.c:17335,GMBasicSharp/tests/GMBASIC.IlBackend.Tests/BlackboardWaitParkPCodeTests.cs:54,GMBasicSharp/tests/GMBASIC.IlBackend.Tests/PCodeComplexConcurrencySampleTests.cs:83,GMBasicSharp/tests/GMBASIC.IlBackend.Tests/PCodeComplexConcurrencySampleTests.cs:217,GMBasicSharp/tests/GMBASIC.IlBackend.Tests/PCodeComplexConcurrencySampleTests.cs:256,GMBasicSharp/tests/GMBASIC.IlBackend.Tests/PCodeComplexConcurrencySampleTests.cs:380,…(+8)
+GMBASIC_GOROUTINE_STACK	funzionamento	1	0	1	diretto	GMBasic/native/gmb_runtime_c/src/gmb_c99gpm.c:218
+GMBASIC_HEADLESS	funzionamento	11	0	11	diretto	GMBasic/native/gmb_runtime_c/src/gmb_dict.c:1488,GMBasic/native/gmb_runtime_c/src/gmb_iconsole.c:493,GMBasic/native/gmb_runtime_c/src/gmb_iconsole.c:540,GMBasic/native/gmb_vm_c/gmb_vm_host.c:476,GMBasicSharp/common/CommonGraphics/Graphics/Manager.cs:411,GMBasicSharp/common/CommonGraphics/Consoles/SdlManager.cs:38,GMBasicSharp/common/IlBackendRuntime/IlConsoleKeyFeeder.cs:45,GMBasicSharp/common/IlBackendRuntime/IlRuntime.cs:7929,…(+3)
+GMBASIC_HOME	funzionamento	1	0	1	diretto	GMBasic/native/gmb_agent_runtime/gmb_brain_mlx.c:137
+GMBASIC_IL_GPM_V2	funzionamento	1	0	1	diretto	GMBasicSharp/common/IlBackendRuntime/Gpm/IlGpmV2.cs:22
+GMBASIC_LLAMACPP_AUDIO_FILE	funzionamento	1	0	1	diretto	GMBasicSharp/tests/AI.Tests/LlamaCppProviderTests.cs:680
+GMBASIC_LLAMACPP_AUDIO_MMPROJ	funzionamento	1	0	1	diretto	GMBasicSharp/tests/AI.Tests/LlamaCppProviderTests.cs:679
+GMBASIC_LLAMACPP_AUDIO_MODEL	funzionamento	1	0	1	diretto	GMBasicSharp/tests/AI.Tests/LlamaCppProviderTests.cs:678
+GMBASIC_LLAMACPP_CTX	funzionamento	11	0	11	diretto	GMBasicSharp/tests/AI.Tests/RecursiveMasExtensionsTests.cs:196,GMBasicSharp/tests/AI.Tests/TeamBenchmarkTests.cs:133,GMBasicSharp/tests/AI.Tests/RecursiveMasGateTests.cs:112,GMBasicSharp/tests/AI.Tests/LlamaCppProviderTests.cs:31,GMBasicSharp/tests/AI.Tests/LlamaCppProviderTests.cs:180,GMBasicSharp/tests/AI.Tests/LlamaCppProviderTests.cs:221,GMBasicSharp/tests/AI.Tests/LlamaCppProviderTests.cs:265,GMBasicSharp/tests/AI.Tests/LlamaCppProviderTests.cs:335,…(+3)
+GMBASIC_LLAMACPP_KVQUANT_CTX	funzionamento	1	0	1	diretto	GMBasicSharp/tests/AI.Tests/LlamaCppProviderTests.cs:580
+GMBASIC_LLAMACPP_KVQUANT_MODEL	funzionamento	1	0	1	diretto	GMBasicSharp/tests/AI.Tests/LlamaCppProviderTests.cs:568
+GMBASIC_LLAMACPP_MODEL	funzionamento	4	0	4	diretto	GMBasicSharp/tests/AI.Tests/RecursiveMasExtensionsTests.cs:189,GMBasicSharp/tests/AI.Tests/TeamBenchmarkTests.cs:37,GMBasicSharp/tests/AI.Tests/RecursiveMasGateTests.cs:94,GMBasicSharp/tests/AI.Tests/LlamaCppProviderTests.cs:19
+GMBASIC_LLAMACPP_VISION_IMAGE	funzionamento	1	0	1	diretto	GMBasicSharp/tests/AI.Tests/LlamaCppProviderTests.cs:644
+GMBASIC_LLAMACPP_VISION_MMPROJ	funzionamento	1	0	1	diretto	GMBasicSharp/tests/AI.Tests/LlamaCppProviderTests.cs:643
+GMBASIC_LLAMACPP_VISION_MODEL	funzionamento	1	0	1	diretto	GMBasicSharp/tests/AI.Tests/LlamaCppProviderTests.cs:642
+GMBASIC_LLM_SERVER	funzionamento	2	0	2	diretto	GMBasic/native/gmb_runtime_c/src/gmb_ai_server.c:59,GMBasicSharp/common/AI/AiServerManager.cs:39
+GMBASIC_MLX_27B_DIR	funzionamento	1	0	1	diretto	GMBasicSharp/tests/AI.Tests/Qwen38TargetSmokeTests.cs:17
+GMBASIC_MLX_DFLASH_DRAFT	funzionamento	1	0	1	diretto	GMBasicSharp/tests/AI.Tests/DFlash2NativeTests.cs:24
+GMBASIC_MLX_DFLASH_MODEL	funzionamento	1	0	1	diretto	GMBasicSharp/tests/AI.Tests/DFlash2NativeTests.cs:23
+GMBASIC_MLX_MODEL_DIR	funzionamento	9	0	9	diretto	GMBasicSharp/tests/AI.Tests/AgentInputTokensTests.cs:27,GMBasicSharp/tests/AI.Tests/MlxDraftForwardTests.cs:22,GMBasicSharp/tests/AI.Tests/MlxDraftForwardTests.cs:50,GMBasicSharp/tests/AI.Tests/MlxSpeculativeBatchBenchTests.cs:79,GMBasicSharp/tests/AI.Tests/MlxSpeculativeParityTests.cs:26,GMBasicSharp/tests/AI.Tests/RecursiveMasGateTests.cs:93,GMBasicSharp/tests/AI.Tests/MlxProviderTests.cs:33,GMBasicSharp/tests/AI.Tests/MlxPrefixCacheTests.cs:21,…(+1)
+GMBASIC_MODEL_DOWNLOAD_LIVE_TEST	diagnostica	3	0	3	diretto	GMBasicSharp/tests/AI.Tests/ModelDownloaderTests.cs:18,GMBasicSharp/tests/AI.Tests/ModelDownloaderTests.cs:50,GMBasicSharp/tests/AI.Tests/ModelDownloaderTests.cs:71
+GMBASIC_OCR_MMPROJ	funzionamento	1	0	1	diretto	GMBasic/native/gmb_runtime_c/src/gmb_ai.c:2328
+GMBASIC_OCR_MODEL	funzionamento	1	0	1	diretto	GMBasic/native/gmb_runtime_c/src/gmb_ai.c:2327
+GMBASIC_ONNX_DIMS	funzionamento	2	0	2	diretto	GMBasicSharp/tests/AI.Tests/OnnxEmbeddingProviderTests.cs:29,GMBasicSharp/common/AI/Providers/ProviderServer.cs:1176
+GMBASIC_ONNX_MODEL	funzionamento	3	0	3	diretto	GMBasicSharp/tests/AI.Tests/OnnxEmbeddingProviderTests.cs:14,GMBasicSharp/tests/AI.Tests/OnnxEmbeddingProviderTests.cs:25,GMBasicSharp/common/AI/Providers/ProviderServer.cs:1161
+GMBASIC_ONNX_VERSION	funzionamento	2	0	2	diretto	GMBasicSharp/tests/AI.Tests/OnnxEmbeddingProviderTests.cs:32,GMBasicSharp/common/AI/Providers/ProviderServer.cs:1167
+GMBASIC_ONNX_VOCAB	funzionamento	2	0	2	diretto	GMBasicSharp/tests/AI.Tests/OnnxEmbeddingProviderTests.cs:31,GMBasicSharp/common/AI/Providers/ProviderServer.cs:1172
+GMBASIC_PCODE_BLOCKING_THREADS	funzionamento	1	0	1	diretto	GMBasicSharp/common/IlBackendRuntime/PCode/PCodeProcessor.Syscalls.cs:55
+GMBASIC_PCODE_MAX_STACK	funzionamento	4	0	4	diretto	GMBasic/native/gmb_vm_c/gmb_gpm.c:35,GMBasicSharp/tests/GMBASIC.IlBackend.Tests/PCodeComplexConcurrencySampleTests.cs:162,GMBasicSharp/common/BRT/Gpm/GpmCore.cs:1081,tools/runners/test_pcode/Program.cs:71
+GMBASIC_PCODE_QUANTUM	funzionamento	2	0	2	diretto	GMBasic/native/gmb_vm_c/gmb_vm_core.c:279,GMBasicSharp/common/IlBackendRuntime/PCode/PCodeVm.cs:232
+GMBASIC_RERANKER_MODEL	funzionamento	1	0	1	diretto	GMBasicSharp/common/AI/Providers/ProviderServer.cs:1185
+GMBASIC_RERANKER_VERSION	funzionamento	1	0	1	diretto	GMBasicSharp/common/AI/Providers/ProviderServer.cs:1192
+GMBASIC_RERANKER_VOCAB	funzionamento	1	0	1	diretto	GMBasicSharp/common/AI/Providers/ProviderServer.cs:1196
+GMBASIC_ROOT	funzionamento	4	0	4	diretto	GMBasic/native/gmb_runtime_c/src/gmb_abi.c:258,GMBasic/native/gmb_runtime_c/src/gmb_abi.c:258,GMBasic/native/gmb_runtime_c/src/gmb_paths.c:225,GMBasic/native/gmb_compiler_c/frontend/src/gmb_inc_resolve.c:198
+GMBASIC_TEST_FIXTURES	diagnostica	1	0	1	diretto	GMBasic/native/gmb_vm_c/gmb_vm_host.c:183
+GMBASIC_TEST_FIXTURE_EMBEDDING	diagnostica	1	0	1	diretto	GMBasicSharp/common/IlBackendRuntime/IlRuntime.cs:230
+GMBASIC_V2_TIMEOUT_MS	funzionamento	1	0	1	diretto	GMBasicSharp/common/IlBackendRuntime/IlGpmRuntime.cs:1569
+GMBASIC_VISION_LIB	funzionamento	1	0	1	diretto	GMBasic/native/gmb_doc_c/src/gmb_doc_ocr.c:148
+GMBASIC_VM_CANCEL_MS	funzionamento	1	0	1	diretto	GMBasic/native/gmb_vm_c/gmb_vm_core.c:17363
+GMBASIC_VM_HOST	funzionamento	2	0	2	diretto	GMBasicSharp/tests/GMBASIC.IlBackend.Tests/MiniTestsParityTests.cs:394,tools/runners/GMBASIC.Conformance/VmBridgeTest.cs:142
+GMB_ABI_AUTOINSTALL	funzionamento	1	0	1	diretto	GMBasic/native/gmb_runtime_c/src/gmb_abi.c:307
+GMB_AGENT_MODE	funzionamento	3	3	0	ponte	GMBasic/native/gmb_agent_runtime/gmb_agent_loop.c:120,GMBasicSharp/common/AI/Agents/AgentServer.cs:909,GMBasicSharp/common/AI/Agents/AgentServer.cs:939
+GMB_AI_LIB_DIR	funzionamento	1	1	0	ponte	GMBasic/native/gmb_runtime_c/src/gmb_finetune.c:25
+GMB_BENCH_FINANCE_DIR	funzionamento	1	0	1	diretto	GMBasicSharp/tests/AI.Tests/VaultScaleBenchmarkTests.cs:20
+GMB_BRAIN_MODEL	funzionamento	1	1	0	ponte	GMBasic/native/gmb_agent_runtime/gmb_brain_http.c:20
+GMB_BRAIN_TIMEOUT_MS	funzionamento	1	1	0	ponte	GMBasic/native/gmb_agent_runtime/gmb_brain_http.c:21
+GMB_BRAIN_URL	funzionamento	3	3	0	ponte	GMBasic/native/gmb_agent_runtime/gmb_brain_http.c:19,GMBasic/native/gmb_agent_runtime/gmb_agent_loop.c:232,GMBasic/native/gmb_agent_runtime/gmb_agent_loop.c:534
+GMB_BSP_BACKEND	funzionamento	1	1	0	ponte	GMBasicSharp/common/IlBackendRuntime/PCode/BspDispatch.cs:124
+GMB_CONSOLE	funzionamento	4	4	0	ponte	GMBasic/native/gmb_runtime_c/src/gmb_console.c:1458,GMBasic/native/gmb_runtime_c/src/gmb_console.c:1470,GMBasic/native/gmb_runtime_c/src/gmb_settings.c:60,GMBasic/native/gmb_runtime_c/src/gmb_graphics_text.c:382
+GMB_CONSOLE_FONT	funzionamento	1	1	0	ponte	GMBasic/native/gmb_runtime_c/src/gmb_iconsole.c:528
+GMB_CONSOLE_SIZE	funzionamento	1	1	0	ponte	GMBasic/native/gmb_runtime_c/src/gmb_iconsole.c:526
+GMB_DECIDE_GROUP_OFF	funzionamento	1	0	1	diretto	GMBasic/native/gmb_runtime_c/src/gmb_ai_decide.c:1229
+GMB_DECIDE_GROUP_PREFIX	funzionamento	1	0	1	diretto	GMBasic/native/gmb_runtime_c/src/gmb_ai_decide_local.c:763
+GMB_DS4_GGUF	funzionamento	1	0	1	diretto	GMBasicSharp/tests/AI.Tests/Ds4MlxRoutingTests.cs:14
+GMB_DUMP_CHUNK	diagnostica	1	0	1	diretto	tools/runners/GMBASIC.Conformance/VmBridgeTest.cs:63
+GMB_EXECUTOR_NATIVE	funzionamento	1	1	0	ponte	GMBasic/native/gmb_agent_runtime/gmb_code_exec.c:14
+GMB_FFI_NO_LIBS_SCAN	funzionamento	2	2	0	ponte	GMBasic/native/gmb_runtime_c/src/gmb_ffi_dl.c:122,GMBasicSharp/common/BRT/Services/FfiService.cs:125
+GMB_FFI_NO_PKGCACHE_SCAN	funzionamento	2	2	0	ponte	GMBasic/native/gmb_runtime_c/src/gmb_ffi_dl.c:265,GMBasicSharp/common/BRT/Services/FfiService.cs:313
+GMB_FIXTURE_EMBED	funzionamento	1	1	0	ponte	GMBasic/native/gmb_runtime_c/src/gmb_rag.c:562
+GMB_FONT_PATH	funzionamento	4	4	0	ponte	GMBasic/native/gmb_runtime_c/tests/tui_widgets_selfcheck.c:809,GMBasic/native/gmb_runtime_c/tests/tui_widgets_selfcheck.c:823,GMBasic/native/gmb_runtime_c/tests/tui_widgets_selfcheck.c:847,GMBasic/native/gmb_runtime_c/src/gmb_graphics_text.c:375
+GMB_FORCE_PLAIN_APPEND	funzionamento	1	1	0	ponte	GMBasicSharp/common/AI/Providers/MlxProviders.cs:1315
+GMB_FORCE_REPREFILL	funzionamento	1	1	0	ponte	GMBasicSharp/common/AI/Providers/MlxProviders.cs:1291
+GMB_FORM_AUTOCLICK	funzionamento	1	1	0	ponte	GMBasic/native/gmb_runtime_c/src/gmb_gfx_present_sdl.c:356
+GMB_FORM_AUTOKEY	funzionamento	1	1	0	ponte	GMBasic/native/gmb_runtime_c/src/gmb_form.c:2792
+GMB_FORM_SHOT	funzionamento	2	2	0	ponte	GMBasic/native/gmb_runtime_c/src/gmb_form.c:2278,GMBasic/native/gmb_runtime_c/src/gmb_form.c:2750
+GMB_FORM_SHOT_FRAME	funzionamento	2	2	0	ponte	GMBasic/native/gmb_runtime_c/src/gmb_form.c:2278,GMBasic/native/gmb_runtime_c/src/gmb_form.c:2751
+GMB_GFX_BACKEND	funzionamento	1	1	0	ponte	GMBasic/native/gmb_runtime_c/src/gmb_gfx_present_sdl.c:96
+GMB_GFX_C	funzionamento	1	0	1	diretto	GMBasicSharp/common/BRT/Services/CGfxGraphicsService.cs:758
+GMB_GFX_NULL	funzionamento	1	1	0	ponte	GMBasic/native/gmb_runtime_c/src/gmb_graphics.c:310
+GMB_GFX_SCALE	funzionamento	3	3	0	ponte	GMBasic/native/gmb_runtime_c/src/gmb_gfx_present_sdl.c:277,GMBasic/native/gmb_runtime_c/src/gmb_gfx_present_sdl.c:337,GMBasic/native/gmb_runtime_c/src/gmb_graphics.c:333
+GMB_GFX_SHOT	funzionamento	1	1	0	ponte	GMBasic/native/gmb_runtime_c/src/gmb_tui_surface.c:123
+GMB_HOST_AI_LIB	funzionamento	1	1	0	ponte	GMBasic/native/gmb_vm_c/gmb_vm_host.c:74
+GMB_INJECT_KEY	funzionamento	1	0	1	diretto	tools/runners/test_ilrun/Program.cs:218
+GMB_MAX_ACTIVE	funzionamento	2	2	0	ponte	GMBasic/native/gmb_llm_server/gmb_llm_server.c:1102,GMBasicSharp/common/AI/OpenAiServer.cs:84
+GMB_MINI_ONLY	diagnostica	1	0	1	diretto	GMBasicSharp/tests/GMBASIC.IlBackend.Tests/MiniTestsParityTests.cs:487
+GMB_MINI_WRITE_EXPECT	funzionamento	1	0	1	diretto	GMBasicSharp/tests/GMBASIC.IlBackend.Tests/MiniTestsParityTests.cs:552
+GMB_MLX_EOS	funzionamento	1	1	0	ponte	GMBasic/native/gmb_agent_runtime/gmb_brain_mlx.c:236
+GMB_MLX_LIB_DIR	funzionamento	1	1	0	ponte	GMBasic/native/gmb_agent_runtime/gmb_brain_mlx.c:134
+GMB_MLX_MODEL_DIR	funzionamento	1	1	0	ponte	GMBasic/native/gmb_agent_runtime/gmb_agent_loop.c:45
+GMB_ML_DEVICE	funzionamento	1	1	0	ponte	GMBasic/native/gmb_torch/src/gmb_torch.c:345
+GMB_MOESTREAM_LIB	funzionamento	1	1	0	ponte	GMBasic/native/gmb_runtime_c/src/gmb_moestream.c:82
+GMB_MOUSE_SCRIPT	funzionamento	1	1	0	ponte	GMBasic/native/gmb_runtime_c/src/gmb_tui_windowstmt.c:1111
+GMB_NORUNSUSPEND	funzionamento	1	1	0	ponte	GMBasicSharp/common/IlBackendRuntime/Gpm/IlGpmV2.Driver.cs:69
+GMB_NO_ILOPTIM	funzionamento	1	0	1	diretto	GMBasicSharp/common/IlBackendCodegen/Partial/IlProgramCompiler.Host.cs:58
+GMB_PCODE_TIMEOUT_S	funzionamento	1	0	1	diretto	tools/runners/test_pcode/Program.cs:79
+GMB_PKG_CACHE	funzionamento	9	9	0	ponte	GMBasic/native/gmb_runtime_c/src/gmb_ffi_dl.c:276,GMBasic/native/gmb_runtime_c/src/gmb_ffi_dl.c:423,GMBasic/native/gmb_c99native/driver/gmb_c99native_driver.c:592,GMBasic/native/gmb_c99native/driver/gmb_c99native_driver.c:599,GMBasic/native/gmb_c99native/driver/gmb_c99native_driver.c:605,GMBasic/native/gmb_bytecode/driver/gmb_chunk_driver.c:104,GMBasic/native/gmb_bytecode/driver/gmb_chunk_driver.c:113,GMBasicSharp/common/BRT/Services/FfiService.cs:322,…(+1)
+GMB_PREFIX_MIN_MATCH	funzionamento	3	3	0	ponte	GMBasic/native/gmb_llm_server/gmb_llm_server.c:664,GMBasic/native/gmb_llm_server/gmb_llm_server.c:804,GMBasicSharp/common/AI/Providers/MlxProviders.cs:1307
+GMB_PREFIX_MIN_SAVE_LEN	funzionamento	2	2	0	ponte	GMBasic/native/gmb_llm_server/gmb_llm_server.c:979,GMBasicSharp/common/AI/Providers/MlxProviders.cs:1474
+GMB_REGISTRY	funzionamento	2	2	0	ponte	GMBasicSharp/common/Parser/PackageManagerHost.cs:45,GMBasicSharp/common/Parser/PackageModel.cs:190
+GMB_RUN_ALL	funzionamento	1	0	1	diretto	GMBasicSharp/tests/GMBASIC.IlBackend.Tests/MiniTestsParityTests.cs:488
+GMB_RUN_HEAVY	funzionamento	1	0	1	diretto	GMBasicSharp/tests/GMBASIC.IlBackend.Tests/MiniTestsParityTests.cs:326
+GMB_RUN_INTERACTIVE	funzionamento	1	0	1	diretto	GMBasicSharp/tests/GMBASIC.IlBackend.Tests/MiniTestsParityTests.cs:303
+GMB_SAMPLE_DIR	funzionamento	1	0	1	diretto	GMBasicSharp/tests/GMBASIC.IlBackend.Tests/MiniTestsParityTests.cs:676
+GMB_SAMPLE_ONLY	funzionamento	1	0	1	diretto	GMBasicSharp/tests/GMBASIC.IlBackend.Tests/MiniTestsParityTests.cs:685
+GMB_SCREEN_DUMP	diagnostica	1	0	1	diretto	tools/runners/test_ilrun/Program.cs:229
+GMB_SDLCONSOLE	funzionamento	2	2	0	ponte	GMBasic/native/gmb_runtime_c/src/gmb_tui_surface.c:146,GMBasic/native/gmb_runtime_c/src/gmb_tui_surface.c:169
+GMB_SERVER_BATCH	funzionamento	2	2	0	ponte	GMBasic/native/gmb_llm_server/gmb_llm_server.c:1104,GMBasicSharp/common/AI/OpenAiServer.cs:86
+GMB_SPECBENCH_DRAFT	funzionamento	1	0	1	diretto	GMBasicSharp/tests/AI.Tests/MlxSpeculativeBatchBenchTests.cs:41
+GMB_SPECBENCH_N	funzionamento	1	0	1	diretto	GMBasicSharp/tests/AI.Tests/MlxSpeculativeBatchBenchTests.cs:82
+GMB_SPECBENCH_PROMPT	funzionamento	1	0	1	diretto	GMBasicSharp/tests/AI.Tests/MlxSpeculativeBatchBenchTests.cs:27
+GMB_SPECBENCH_SPEC	funzionamento	1	0	1	diretto	GMBasicSharp/tests/AI.Tests/MlxSpeculativeBatchBenchTests.cs:39
+GMB_SPECBENCH_T	funzionamento	1	0	1	diretto	GMBasicSharp/tests/AI.Tests/MlxSpeculativeBatchBenchTests.cs:83
+GMB_SPEC_BATCH_STRONG_DRAFTER	funzionamento	1	1	0	ponte	GMBasicSharp/common/AI/Providers/MlxProviders.cs:1496
+GMB_TEST_KEYS	diagnostica	1	0	1	diretto	tools/runners/test_pcode/Program.cs:115
+GMB_TEST_MOUSE	diagnostica	1	0	1	diretto	tools/runners/test_pcode/Program.cs:116
+GMB_TEST_PNG	diagnostica	1	0	1	diretto	tools/runners/test_pcode/Program.cs:149
+GMB_TORCH_LOCAL	funzionamento	1	1	0	ponte	GMBasicSharp/common/AI/ModelDownload/FetchTorchLib.cs:254
+GMB_TORCH_PATH	funzionamento	1	1	0	ponte	GMBasic/native/gmb_torch/src/gmb_torch.c:208
+GMB_TUI_SCRIPT	funzionamento	11	11	0	ponte	GMBasic/native/gmb_runtime_c/src/gmb_tui_io.c:457,GMBasic/native/gmb_runtime_c/src/gmb_console.c:506,GMBasic/native/gmb_runtime_c/src/gmb_console.c:541,GMBasic/native/gmb_runtime_c/src/gmb_console.c:560,GMBasic/native/gmb_runtime_c/src/gmb_console.c:637,GMBasic/native/gmb_runtime_c/src/gmb_console.c:697,GMBasic/native/gmb_runtime_c/src/gmb_input_feeder.c:59,GMBasic/native/gmb_vm_c/gmb_vm_host.c:162,…(+3)
+GMB_UI_FONT_SIZE	funzionamento	1	1	0	ponte	GMBasic/native/gmb_runtime_c/src/gmb_gfx_present_sdl.c:280
+GMB_VMC_DIAG_TIMEOUT_MS	funzionamento	1	0	1	diretto	tools/runners/test_ilrun/Program.cs:164
+GMB_WORK	funzionamento	1	1	0	ponte	GMBasic/native/gmb_agent_runtime/gmb_code_exec.c:29
+HF_TOKEN	sistema	2	0	2	diretto	GMBasicSharp/common/AI/ModelDownload/ModelDownloader.cs:278,GMBasicSharp/common/AI/Recursive/RecursiveMasMarketplace.cs:27
+HOME	sistema	27	0	27	diretto	GMBasic/native/gmb_runtime_c/src/gmb_brains.c:430,GMBasic/native/gmb_runtime_c/src/gmb_abi.c:280,GMBasic/native/gmb_runtime_c/src/gmb_paths.c:145,GMBasic/native/gmb_runtime_c/src/gmb_paths.c:659,GMBasic/native/gmb_runtime_c/src/gmb_paths.c:758,GMBasic/native/gmb_runtime_c/src/gmb_paths.c:808,GMBasic/native/gmb_runtime_c/src/gmb_paths.c:866,GMBasic/native/gmb_runtime_c/src/gmb_ai_decide_local.c:132,…(+19)
+HUGGINGFACE_TOKEN	sistema	1	0	1	diretto	GMBasicSharp/common/AI/Recursive/RecursiveMasMarketplace.cs:26
+ISAM_SLOW_OP_MS	funzionamento	2	0	2	diretto	GMBasic/native/gmb_db_c/src/isam/IsamSlowOpLog.c:36,GMBasicSharp/modules/Database/ISAM/IsamSlowOpLog.cs:30
+LINES	sistema	1	0	1	diretto	GMBasic/native/gmb_runtime_c/src/gmb_tui_console.c:115
+LLMCODEC_GGUF_LAYERS	funzionamento	1	0	1	diretto	GMBasic/gmbllm/src/llmcodec_gguf_mlx.c:385
+LLMCODEC_GGUF_NO_EXPERTS	funzionamento	1	0	1	diretto	GMBasic/gmbllm/src/llmcodec_gguf_mlx.c:400
+LLM_ROOT	funzionamento	2	0	2	diretto	GMBasic/native/gmb_runtime_c/src/gmb_paths.c:359,GMBasic/native/gmb_compiler_c/frontend/src/gmb_inc_resolve.c:237
+MAXXLIB_GRAPHICS	funzionamento	1	1	0	ponte	GMBasic/native/gmb_runtime_c/src/gmb_tui_graphics.c:19
+NOCONCURRENCY	funzionamento	1	0	1	diretto	tools/runners/test_pcode/Program.cs:89
+NO_COLOR	sistema	2	0	2	diretto	GMBasic/native/gmb_runtime_c/src/gmb_tui_colors.c:441,GMBasicSharp/common/ClipperLib/Controls/Colors.cs:578
+OPENROUTER_API_KEY	funzionamento	1	0	1	diretto	tools/runners/AI.Eval/Program.cs:98
+PATH	sistema	6	0	6	diretto	GMBasic/native/gmbadmin/gmbadminpkg2.c:657,GMBasic/native/gmbadmin/gmbadmindaemon.c:74,GMBasic/native/gmb_compiler_c/src/cli/gmb_cli_doctor.c:152,GMBasic/native/gmb_compiler_c/src/cli/gmb_cli_admin.c:44,GMBasic/native/gmb_compiler_c/src/cli/gmb_cli_engine.c:28,GMBasicSharp/common/AI/ModelDownload/ModelDownloader.cs:299
+SDL_VIDEODRIVER	sistema	6	0	6	diretto	GMBasic/native/gmb_runtime_c/src/gmb_sdl_context.c:27,GMBasicSharp/common/CommonGraphics/Graphics/Internals.cs:531,GMBasicSharp/common/CommonGraphics/Graphics/Internals.cs:1355,GMBasicSharp/common/CommonGraphics/Graphics/Sprites.cs:647,GMBasicSharp/common/CommonGraphics/Consoles/SdlContext.cs:56,GMBasicSharp/common/CommonGraphics/Consoles/SdlManager.cs:39
+TEMP	sistema	2	0	2	diretto	GMBasic/native/gmb_runtime_c/tests/gmb_fetch_selfcheck.c:696,GMBasic/native/gmb_runtime_c/src/gmb_file.c:1445
+TERM	sistema	3	0	3	diretto	GMBasic/native/gmb_runtime_c/src/gmb_tui_colors.c:439,GMBasic/native/gmb_runtime_c/src/gmb_tui_graphics.c:29,GMBasicSharp/common/ClipperLib/Controls/Colors.cs:576
+TMPDIR	sistema	13	0	13	diretto	GMBasic/native/gmb_runtime_c/tests/gmb_fixtures_selfcheck.c:77,GMBasic/native/gmb_runtime_c/tests/gmb_fetch_selfcheck.c:694,GMBasic/native/gmb_runtime_c/tests/test_abi_settings.c:56,GMBasic/native/gmb_runtime_c/tests/test_abi_settings.c:56,GMBasic/native/gmb_runtime_c/tests/gmb_fetch_http_selfcheck.c:221,GMBasic/native/gmb_runtime_c/tests/gmb_brains_selfcheck.c:107,GMBasic/native/gmb_runtime_c/src/gmb_brain_tools.c:1034,GMBasic/native/gmb_runtime_c/src/gmb_brain_tools.c:1225,…(+5)

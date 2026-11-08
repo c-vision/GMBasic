@@ -18,6 +18,7 @@
 #include "gmb_tui_widgets.h"
 #include "gmb_tui_drawapi.h"
 #include "gmb_form.h"
+#include "gmb_gfx_present.h"
 #include "gmb_sdl_console.h"
 #include "gmb_screen_config.h"
 
@@ -197,9 +198,35 @@ int main(int argc, char** argv)
 {
     const char* mode = argc > 1 ? argv[1] : "tui";
     const char* out = argc > 2 ? argv[2] : "tui_gallery.png";
+    const char* theme = (argc > 3 && strcmp(argv[3], "dump") != 0) ? argv[3] : "turbovision";
     int dump = (argc > 3 && strcmp(argv[3], "dump") == 0);
+
+    /* `show`: FINESTRA REALE (nessun dummy). Le altre modalità sono headless. */
+    if (strcmp(mode, "show") == 0)
+    {
+        int seconds = argc > 2 ? atoi(argv[2]) : 45;
+        if (seconds <= 0) seconds = 45;
+        gmb_ui_set_theme_name(theme);
+        gmb_gfx_present_init_main_thread();
+        gmb_gfx_screen(12, 1400, 900, 32);
+        gmb_theme_t th = gmb_ui_theme();
+        gmb_gfx_cls((th.desktop_bg.r << 16) | (th.desktop_bg.g << 8) | th.desktop_bg.b);
+        gfx_window();
+        gmb_gfx_present_tick();
+        int frames = seconds * 60;   /* ~16 ms per frame */
+        for (int i = 0; i < frames; i++)
+        {
+            if (gmb_gfx_present_should_quit()) break;
+            gmb_tui_draw_px_all();
+            gmb_gfx_present_tick();
+            gmb_sleep_ms(16);
+        }
+        gmb_gfx_present_stop();
+        return 0;
+    }
+
     setenv("SDL_VIDEODRIVER", "dummy", 1);   /* headless: nessuna finestra reale */
-    gmb_ui_set_theme_name("turbovision");
+    gmb_ui_set_theme_name(theme);
 
     if (strcmp(mode, "tui") == 0)
     {

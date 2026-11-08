@@ -1,5 +1,5 @@
 ' UDT con campo STRING (char*) + campo ARRAY: parametro e ritorno (S1 + S3b).
-' EXPECT: sz= 24|s= 106|rn= xyz|rv= 3
+' EXPECT: sz= 24|s= 106|rn=xyz|rv= 3
 TYPE NamedVec
     NAME AS STRING
     V(2) AS LONG

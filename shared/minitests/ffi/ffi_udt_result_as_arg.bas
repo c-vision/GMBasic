@@ -1,5 +1,5 @@
 ' Argomento UDT che e' il risultato di un'altra chiamata FFI, e DOUBLE dopo due UDT da 16 byte per valore.
-' EXPECT: eq= 1 |eqv= 1 |tol= 1 |tolno= 0 |tolres= 1
+' EXPECT: eq= 1|eqv= 1|tol= 1|tolno= 0|tolres= 1
 TYPE Cplx16
     Re AS DOUBLE
     Im AS DOUBLE

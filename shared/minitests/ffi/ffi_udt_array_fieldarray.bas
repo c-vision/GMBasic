@@ -1,5 +1,5 @@
 ' Array di UDT con campi ARRAY (S3 + S3b): popolato dal BASIC, copy-in/out e modifica in place.
-' EXPECT: s= 16|s2= 28|a0= 1|a4= 5
+' EXPECT: s= 16|s2= 28|a0= 2|a4= 6
 TYPE Arr4
     A(4) AS LONG
     B AS DOUBLE

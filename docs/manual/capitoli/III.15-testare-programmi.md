@@ -192,7 +192,7 @@ dotnet run --project tools/runners/GMBASIC.Conformance -- vmtest <file.bas> [<ho
 ## 1. La mappa dei test_* (runner)
 | Runner | Path | Backend | Scopo | Comando | Note |
 |---|---|---|---|---|---|
-| `test_ilrun` | `test_ilrun/` (root, g-i) | **IL** (default) · `--engine=pcode` | esegue UN sample | `dotnet run --project test_ilrun -- shared/samples/...` | env `GAI_NO_ILOPT`/`GAI_DBG`/`GAI_METHOD` |
+| `test_ilrun` | `test_ilrun/` (root, g-i) | **IL** (default) · `--engine=pcode` | esegue UN sample | `dotnet run --project test_ilrun -- shared/samples/...` | env `GAI_NO_ILOPT`/`GAI_METHOD` |
 | `test_pcode` | `test_pcode/` (root, g-i) | **PCodeVM C#** | esegue UN sample | `dotnet run --project test_pcode -- <sample>` | default `PCodeGpmRwMutex.bas`; plugin-cmd/mkt/test |
 | `test_mlx_bench` | `test_mlx_bench/` (root, g-i) | **MLX nativo** (P/Invoke) | **benchmark prefill/decode** dei modelli embedded MLX | `dotnet run --project test_mlx_bench -- <modelDir> prefill <chunk> <N> \| decode <Ngen>` | linkato a GMBasic.sln (file untracked); es. `-- ~/ai/Models/Llama-3.2-1B-Instruct-4bit prefill 2048 8192`; baseline documentata nel Program.cs |
 | `test_ilrun-sweep` | `test_ilrun-sweep/` (root, g-i) | **IL** | sweep con filtro | `dotnet run --project test_ilrun-sweep -- <filtro>` | **filtro obbligatorio**; timeout 5s; iniezione input (`.input`/QueueInkey); `SWEEP_SKIP` |

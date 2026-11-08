@@ -1457,9 +1457,6 @@ public static partial class Linker
                 return new ArrayType(new ByteType());
             case TokenKind.DirFunc:
                 return new ArrayType(new StringType());
-            // FIX: CONTRACT restituisce un proxy dinamico (ANY), non deve inferire dal primo argomento (indirizzo stringa).
-            case TokenKind.Contract:
-                return new AnyType();
         }
 
         var declaredReturnType = resolvedProc.ReturnType;

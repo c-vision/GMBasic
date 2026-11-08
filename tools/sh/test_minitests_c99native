@@ -219,7 +219,9 @@ RT_HDRS="$(find $RT_HDR_DIRS -type f -name '*.h' 2>/dev/null | tr '\n' ' ')"
 # (simbolo `gmb_graphics_trace_load`) rimasta in un oggetto in cache mentre nei sorgenti era già
 # stata rimossa → ogni MiniTest C99Native stampava quella traccia, invisibile con `grep` sul codice.
 # Con l'hash del contenuto, qualunque modifica (anche un revert nello stesso secondo) invalida la cache.
-STAMP="$( ( for s in $RT_SRCS $RT_HDRS; do printf '%s\n' "$s"; shasum -a 1 "$s" 2>/dev/null | cut -d' ' -f1; done ) | shasum | cut -c1-16)"
+# I FLAG di compilazione fanno parte della cache: senza, cambiare -DGMB_WITH_UI (o OpenSSL/ZSTD)
+# riuserebbe un archivio costruito con un'altra configurazione.
+STAMP="$( ( printf '%s\n' "GMB_WITH_UI=1 HAVE_OPENSSL GMB_PARQUET_HAVE_ZSTD"; for s in $RT_SRCS $RT_HDRS; do printf '%s\n' "$s"; shasum -a 1 "$s" 2>/dev/null | cut -d' ' -f1; done ) | shasum | cut -c1-16)"
 mkdir -p "$RT_CACHE_DIR"
 if [ "${GMB_RT_REBUILD:-}" != "1" ] && [ -f "$RT_CACHE" ] && [ -f "$RT_STAMP" ] && [ "$(cat "$RT_STAMP")" = "$STAMP" ]; then
   echo "runtime C: cache valida ($RT_CACHE)"
@@ -229,7 +231,7 @@ else
   RT_O=0; OBJS=""
   for s in $RT_SRCS; do
     RT_O=$((RT_O+1))
-    cc -c "$s" -o "$WORK/rt_$RT_O.o" $INC_RT -I"$INC_CHART" -I"$ROOT/native/gmb_runtime_c/build" -I"$ROOT/native/gmb_agent_runtime" -I"$ROOT/native/gmb_doc_c/include" -I"$ROOT/native/gmb_db_c/include" -I"$ROOT/native/gmb_torch/include" $LLM_INC -I"$ZSTD_INC" $CODEC_INC $INC_EXTRA -O2 -ffunction-sections -fdata-sections -w -ffp-contract=off -DHAVE_OPENSSL -DGMB_PARQUET_HAVE_ZSTD || exit 1
+    cc -c "$s" -o "$WORK/rt_$RT_O.o" $INC_RT -I"$INC_CHART" -I"$ROOT/native/gmb_runtime_c/build" -I"$ROOT/native/gmb_agent_runtime" -I"$ROOT/native/gmb_doc_c/include" -I"$ROOT/native/gmb_db_c/include" -I"$ROOT/native/gmb_torch/include" $LLM_INC -I"$ZSTD_INC" $CODEC_INC $INC_EXTRA -O2 -ffunction-sections -fdata-sections -w -ffp-contract=off -DHAVE_OPENSSL -DGMB_PARQUET_HAVE_ZSTD -DGMB_WITH_UI=1 || exit 1
     OBJS="$OBJS $WORK/rt_$RT_O.o"
   done
   ar rcs "$RT_CACHE.tmp" $OBJS && mv "$RT_CACHE.tmp" "$RT_CACHE"
@@ -382,7 +384,7 @@ for f in "$MINI"/**/*.bas "$MINI"/*.bas; do
   LINK_IN=( "$RT_LIB" $AGENT $COMPILER "$DB_LIB" "$MOE_LIB" "${MIO[@]}" "$PLG" "$MDS" $DOC_SRCS $TORCH_SRCS )
   LINK_FLAGS=( $INC_RT -I"$ROOT/native/gmb_agent_runtime" -I"$LLMENV/LLMJinja" -I"$LLMENV/LLMEngine/mlx"
     -I"$ROOT/native/gmb_compiler_c/include" $CODEC_INC $DB_INC $LLM_INC $INC_EXTRA $FRAMEWORKS
-    -lm -w -ffp-contract=off -Wl,-dead_strip $CODEC_LIB "$TOK" -Wl,-rpath,"$(dirname "$TOK")"
+    -lm -w -ffp-contract=off -DGMB_WITH_UI=1 -Wl,-dead_strip $CODEC_LIB "$TOK" -Wl,-rpath,"$(dirname "$TOK")"
     -lcompression -lz $EXT )
   # LIBRARY (marker header `' TAG: library`): il prodotto e' una LIBRERIA condivisa, e per
   # contratto NON ha entry point (Guide/utente/LIBRARY-gmblib-Guide.md §1). Linkare `-o bin`

@@ -1096,36 +1096,6 @@ public sealed partial class IlProgramCompiler
         return [.. expr.Args[fixedPrefix..]];
     }
 
-    private void EmitAbiEncodeCall(BuiltinFunctionCallExpr expr)
-    {
-        if (expr.Args.Length < 2) throw new NotSupportedException("Backend IL: ABIENCODE richiede signature e args.");
-        EmitStringArgument(expr.Args[0]);
-        var values = ExtractVariadicValues(expr, 1);
-        _il.Emit(OpCodes.Ldc_I4, values.Length);
-        _il.Emit(OpCodes.Newarr, _types.Object);
-        for (var i = 0; i < values.Length; i++)
-        {
-            _il.Emit(OpCodes.Dup);
-            _il.Emit(OpCodes.Ldc_I4, i);
-            EmitExpression(values[i]);
-            var clr = DataTypeMapper.Map(NormalizeInferredType(InferType(values[i])), _types, _classTypes);
-            if (clr.IsValueType) _il.Emit(OpCodes.Box, clr);
-            _il.Emit(OpCodes.Stelem_Ref);
-        }
-        _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.AbiEncode), typeof(string), typeof(object[])));
-    }
-
-    private void EmitAbiDecodeCall(BuiltinFunctionCallExpr expr)
-    {
-        if (expr.Args.Length != 2) throw new NotSupportedException("Backend IL: ABIDECODE richiede hex e types.");
-        EmitStringArgument(expr.Args[0]);
-        EmitStringArrayArgument(expr.Args[1]);
-        _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.AbiDecode), typeof(string), typeof(string[])));
-        /* AbiDecode ritorna object[] (tipi ABI misti); il DIM del target e' un array
-         * numerico (double[]) → converti con l'helper condiviso (parita' PCode/C99). */
-        _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.ArrayToDoubleArray), typeof(object)));
-    }
-
     private void EmitStringArrayArgument(Expr expr) => EmitExpression(expr);
 
     private void EmitAnalysisMatrixCall(BuiltinFunctionCallExpr expr, string methodName)

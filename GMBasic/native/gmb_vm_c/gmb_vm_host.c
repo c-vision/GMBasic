@@ -159,7 +159,7 @@ int main(int argc, char** argv)
     gmb_iconsole_boot();   /* startup console: replica Executor.Startup.cs (GMB_CONSOLE/GMBASIC_HEADLESS) */
     {   /* Input scriptato dai test (stessa variabile della gamba C99): typeahead TUI. */
         extern void gmb_tui_inject_keys(const char*);
-        const char* _scr = getenv("GMB_TUI_SCRIPT");
+        const char* _scr = gmb_opt_env("GMB_TUI_SCRIPT");
         if (_scr && *_scr) gmb_tui_inject_keys(_scr);
     }
     gmb_vm_host_register_ai_backends();

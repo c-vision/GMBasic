@@ -129,6 +129,9 @@ stirpe Clipper. Il dettaglio delle colonne, del sort e del filtro è nella refer
 - **IV.18** — colori, stili e temi, dal terminale alla finestra.
 - **IV.19** — quando la console non basta: finestre ed eventi.
 - **II.7** — cicli e `DO WHILE` per un menu TUI.
+- **VI.38 §7bis** — le opzioni del registro che regolano console e font (`GMB_CONSOLE`,
+  `GMB_CONSOLE_SIZE`, `GMB_CONSOLE_FONT`, `GMB_SDLCONSOLE`, `GMB_FONT_PATH`) e le impostazioni
+  `consoleConfiguration` che le sostituiscono.
 
 
 

@@ -430,6 +430,25 @@ END SUB
 m = TORCH.MODELCREATE("linear", "{""in"":2,""out"":1}")   ' linear 2 -> 1
 
 
+### `MODELCREATE("mlp", cfgJson)` → Long — MLP con attivazioni per strato
+
+| Chiave | Tipo | Default | Significato |
+|---|---|---|---|
+| `in` | numero | — | dimensione d'ingresso |
+| `hidden` | lista | `[8]` | dimensioni degli strati nascosti |
+| `out` | numero | — | dimensione d'uscita |
+| `acts` | stringa | `"relu"` | attivazione degli strati nascosti: una per tutti (`"tanh"`) o lista (`"tanh,relu"`); valori `relu`, `tanh`, `sigmoid`, `leaky`, `linear`/`none` |
+
+```basic
+m = TORCH.MODELCREATE("mlp", "{""in"":4,""hidden"":[8,6],""out"":2,""acts"":""tanh,relu""}")
+' 4->8 + 8->6 + 6->2 = 108 parametri
+```
+
+`acts` copre la scelta per-layer di `gmbneural` (`gn_net`) senza una seconda API di modelli:
+copy/merge dei pesi sono composizione di `DENSEPARAMS`/`DENSESETPARAMS`, save/load sono
+`MODELSAVE`/`MODELLOAD`.
+
+
 ### `MODELCREATE("lora", cfgJson)` → Long — iperparametri LoRA (L1)
 | Chiave | Tipo | Default | Significato |
 |---|---|---|---|
@@ -486,7 +505,23 @@ NEXT
 
 ### `MODELFREE(model)`
 
-### `MODELSAVE(model, path)` / `MODELRESET(model)`
+### `MODELSAVE(model, path)` / `MODELLOAD(model, path)` / `MODELRESET(model)`
+
+Il salvataggio è un **tensore flat** con la sequenza dei parametri; non contiene l'architettura.
+`MODELLOAD` ricopia quel tensore nei parametri di un modello creato con la stessa architettura
+e le stesse dimensioni, quindi il flusso è sempre `MODELCREATE` → `MODELLOAD` (non esiste un
+"apri modello dal file"). Ritorna `0` se il caricamento riesce, un valore diverso da `0` se
+l'handle non è valido, il file non è leggibile o il numero di parametri non coincide. Dopo il
+caricamento il forward è identico a quello del modello di origine; `MODELRESET` azzera
+ottimizzatore ed epochs.
+
+```basic
+m1 = TORCH.MODELCREATE("linear", "{""in"":2,""out"":1}")
+' ... training ...
+TORCH.MODELSAVE(m1, "/tmp/ckpt.pt")
+m2 = TORCH.MODELCREATE("linear", "{""in"":2,""out"":1}")
+PRINT TORCH.MODELLOAD(m2, "/tmp/ckpt.pt")      ' 0
+```
 
 ### `MODELINPUT(model)` / `MODELOUTPUT(model)` → Long
 
@@ -703,7 +738,7 @@ r = TORCH.RELU(a)
 | `TORCH.MODELLOSS(m, x, y)` | loss corrente |
 | `TORCH.MODELTRAINSTEP(m, x, y, opt, loss, lr)` | un passo di training |
 | `TORCH.MODELSTATE(m)` | stato JSON (epochs, loss, device, opt) |
-| `TORCH.MODELSAVE(m, path)` / `MODELRESET(m)` | salva / resetta |
+| `TORCH.MODELSAVE(m, path)` / `MODELLOAD(m, path)` / `MODELRESET(m)` | salva i pesi / li ricarica in un modello con la stessa architettura / resetta |
 | `TORCH.MODELFREE(m)` | libera l'handle |
 
 IMPORT TORCH
