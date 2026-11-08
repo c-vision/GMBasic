@@ -268,10 +268,19 @@ gmb_val_t gmb_anova(gmb_val_t groups_val) {
     free(group_means);
     free(group_ns);
     
-    return gmb_make_dict(3,
+    /* STATS.ANOVA e STATS.Anova sono lo stesso identificatore: il dict è il SUPERSET dei
+     * due contratti (HypothesisResult + AnovaResult), con gli stessi valori. */
+    return gmb_make_dict(10,
         "Statistic", gmb_make_val_double(f_stat),
         "PValue", gmb_make_val_double(p_value),
-        "DegreesOfFreedom", gmb_make_val_double(df_within));
+        "DegreesOfFreedom", gmb_make_val_double(df_within),
+        "FValue", gmb_make_val_double(f_stat),
+        "DFBetween", gmb_make_val_double(df_between),
+        "DFWithin", gmb_make_val_double(df_within),
+        "SSBetween", gmb_make_val_double(ss_between),
+        "SSWithin", gmb_make_val_double(ss_within),
+        "MSBetween", gmb_make_val_double(ms_between),
+        "MSWithin", gmb_make_val_double(ms_within));
 }
 
 /* STATS.Anova → STATS.AnovaResult: dict ESTESO (canone IlRuntime.Anova) con
@@ -312,7 +321,7 @@ gmb_val_t gmb_anova_result(gmb_val_t groups_val) {
     double fv = (msw == 0) ? INFINITY : msb / msw;
     double pv = 1.0 - f_distribution_cdf(fv, dfb, dfw);
     free(gmeans); free(gns);
-    return gmb_make_dict(8,
+    return gmb_make_dict(10,
         "FValue", gmb_make_val_double(fv),
         "PValue", gmb_make_val_double(pv),
         "DFBetween", gmb_make_val_double(dfb),
@@ -320,7 +329,9 @@ gmb_val_t gmb_anova_result(gmb_val_t groups_val) {
         "SSBetween", gmb_make_val_double(ssb),
         "SSWithin", gmb_make_val_double(ssw),
         "MSBetween", gmb_make_val_double(msb),
-        "MSWithin", gmb_make_val_double(msw));
+        "MSWithin", gmb_make_val_double(msw),
+        "Statistic", gmb_make_val_double(fv),
+        "DegreesOfFreedom", gmb_make_val_double(dfw));
 }
 
 /* ============================================================================
@@ -1202,7 +1213,21 @@ gmb_val_t gmb_anova_flat(const double* data, const int* sizes, int k)
     double x = dfb * f / (dfb * f + dfw);
     double p = 1.0 - gmb_incbeta(0.5 * dfb, 0.5 * dfw, x);
     free(gmeans); free(gns);
-    return gmb_make_dict(3, "Statistic", gmb_make_val_double(f), "PValue", gmb_make_val_double(p), "DegreesOfFreedom", gmb_make_val_double(dfw));
+    /* Superset dei due contratti (STATS.ANOVA e STATS.Anova sono lo stesso identificatore):
+     * HypothesisResult (Statistic/PValue/DegreesOfFreedom) + AnovaResult (FValue/DF.../MS...). */
+    double msb = dfb > 0 ? ssb / dfb : 0;
+    double msw = dfw > 0 ? ssw / dfw : 0;
+    return gmb_make_dict(10,
+        "Statistic", gmb_make_val_double(f),
+        "PValue", gmb_make_val_double(p),
+        "DegreesOfFreedom", gmb_make_val_double(dfw),
+        "FValue", gmb_make_val_double(f),
+        "DFBetween", gmb_make_val_double(dfb),
+        "DFWithin", gmb_make_val_double(dfw),
+        "SSBetween", gmb_make_val_double(ssb),
+        "SSWithin", gmb_make_val_double(ssw),
+        "MSBetween", gmb_make_val_double(msb),
+        "MSWithin", gmb_make_val_double(msw));
 }
 
 /* STATS.ANOVA(groups) con matrice jagged (gmb_double_t* rows[k]): appiattisce le righe
@@ -1334,7 +1359,7 @@ gmb_val_t gmb_anova_result_flat(const double* data, const int* sizes, int k)
     double x = dfb * fv / (dfb * fv + dfw);
     double pv = 1.0 - gmb_incbeta(0.5 * dfb, 0.5 * dfw, x);
     free(gmeans); free(gns);
-    return gmb_make_dict(8,
+    return gmb_make_dict(10,
         "FValue", gmb_make_val_double(fv),
         "PValue", gmb_make_val_double(pv),
         "DFBetween", gmb_make_val_double(dfb),
@@ -1342,7 +1367,9 @@ gmb_val_t gmb_anova_result_flat(const double* data, const int* sizes, int k)
         "SSBetween", gmb_make_val_double(ssb),
         "SSWithin", gmb_make_val_double(ssw),
         "MSBetween", gmb_make_val_double(msb),
-        "MSWithin", gmb_make_val_double(msw));
+        "MSWithin", gmb_make_val_double(msw),
+        "Statistic", gmb_make_val_double(fv),
+        "DegreesOfFreedom", gmb_make_val_double(dfw));
 }
 
 gmb_val_t gmb_anova_result_jagged(const double* const* rows, const int* sizes, int k)

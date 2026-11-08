@@ -3,6 +3,7 @@
  * Rende le celle di una gmb_screen_buffer_t sulla pagina gfx attiva, così i
  * widget (che usano gmb_screen_*) disegnano in grafica senza modifiche.
  * ============================================================================ */
+#include "gmb_runtime.h"
 #include "gmb_tui.h"
 #include "gmb_graphics.h"
 #include <pthread.h>
@@ -119,7 +120,7 @@ void gmb_surface_autoattach(gmb_screen_buffer_t* b)
 static void maybe_shot(void)
 {
     static int done = 0; static int frames = 0;
-    const char* p = getenv("GMB_GFX_SHOT");
+    const char* p = gmb_opt_env("GMB_GFX_SHOT");
     if (!p || !*p || done) return;
     { extern int gmb_winstmt_count(void);
       frames++;
@@ -132,22 +133,17 @@ static void maybe_shot(void)
 
 void gmb_tui_present_gfx(void)
 {
-    { static int _dbg=0; extern int gmb_form_active(void); extern int gmb_gfx_screen_on(void); extern int gmb_gfx_present_on_main_thread(void);
-      if(_dbg<8 && getenv("GMB_GFX_DBG")){ _dbg++; extern gmb_window_manager_t* gmb_window_manager_static(void);
-        fprintf(stderr,"[present] on=%d main=%d wm=%d form=%d\n", gmb_gfx_screen_on(), gmb_gfx_present_on_main_thread(), gmb_window_manager_static()?gmb_window_manager_static()->count:-1, gmb_form_active()); } }
 #ifdef GMB_GFX_SDL_PRESENT
     if (!gmb_gfx_screen_on()) return;
     if (!gmb_gfx_present_on_main_thread()) return;
 #ifdef GMB_GFX_SDL_PRESENT
     gmb_gfx_present_start();   /* idempotente, main thread */
-    { static int _pd=0; extern int gmb_form_active(void);
-      if(_pd<6 && getenv("GMB_GFX_DBG")){ _pd++; fprintf(stderr,"[present-pass] form=%d\n", gmb_form_active()); } }
 #endif
     /* Finestre WINDOW (anche tutte chiuse): compositor pixel nativo del desktop,
      * MAI fallback a celle (che mostrerebbe una "gui testuale"). Il WM conserva le
      * finestre anche dopo Close, quindi resta la modalita' compositor. */
     {
-        const char* sdlcon = getenv("GMB_SDLCONSOLE");
+        const char* sdlcon = gmb_opt_env("GMB_SDLCONSOLE");
         int force_tui = (sdlcon && sdlcon[0] && strcmp(sdlcon, "0") != 0);
         gmb_window_manager_t* wm = gmb_window_manager_static();
         if (!force_tui && wm && wm->count > 0)
@@ -170,7 +166,7 @@ void gmb_tui_present_gfx(void)
       if (gmb_form_active()) { maybe_shot(); gmb_gfx_present_tick(); return; } }
     /* GUI grafica (non SDLConsole): NON blittare il buffer clipper (era la "console
      * TUI" che si sovrapponeva al form). Solo se GMB_SDLCONSOLE si usa il blit a celle. */
-    { const char* sdlc = getenv("GMB_SDLCONSOLE");
+    { const char* sdlc = gmb_opt_env("GMB_SDLCONSOLE");
       if (!(sdlc && sdlc[0] && strcmp(sdlc, "0") != 0)) { maybe_shot(); gmb_gfx_present_tick(); return; } }
     gmb_clipper_state_t* st = gmb_clipper_peek_state();
     if (st && st->buffer)

@@ -1,3 +1,4 @@
+#include "gmb_runtime.h"
 /* ============================================================================
  * gmb_tui_graphics.c — gmb_tui_graphics. Porting del runtime C (specchio ClipperLib).
  * File per-modulo: piccolo, verificabile e committabile singolarmente.
@@ -15,7 +16,7 @@ char* gmb_base64_encode(const uint8_t* data, size_t len);
 
 int gmb_graphics_detect(void)
 {
-    const char* env = getenv("MAXXLIB_GRAPHICS");
+    const char* env = gmb_opt_env("MAXXLIB_GRAPHICS");
     if (env)
     {
         char e[32];

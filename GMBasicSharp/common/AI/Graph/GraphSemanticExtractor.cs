@@ -78,8 +78,6 @@ public static class GraphSemanticExtractor
                 var to = ResolveNode(e.To);
                 if (from is null || to is null)
                 {
-                    if (Environment.GetEnvironmentVariable("GMB_DEBUG_SEMANTIC") == "1")
-                        Console.Error.WriteLine($"[SEMANTIC DEBUG] edge scartato path non nel grafo: '{e.From}' → '{e.To}' (rel {e.Relation})");
                     continue;
                 }
                 if (from == to) continue;
@@ -122,15 +120,11 @@ public static class GraphSemanticExtractor
         var block = ExtractJsonBlock(json);
         if (block is null)
         {
-            if (Environment.GetEnvironmentVariable("GMB_DEBUG_SEMANTIC") == "1")
-                Console.Error.WriteLine($"[SEMANTIC DEBUG] risposta LLM non-JSON ({llm.ModelName}): {Truncate(json, 500)}");
             return null;
         }
         var edges = ParseEdges(block);
         if (edges is null)
         {
-            if (Environment.GetEnvironmentVariable("GMB_DEBUG_SEMANTIC") == "1")
-                Console.Error.WriteLine($"[SEMANTIC DEBUG] parse JSON fallito ({llm.ModelName}) — blocco: {Truncate(block, 500)}");
             return null;
         }
         return edges;
@@ -233,7 +227,4 @@ public static class GraphSemanticExtractor
         if (e <= s) return null;
         return text[s..(e + 1)];
     }
-
-    private static string Truncate(string s, int max) =>
-        s is null ? "" : s.Length <= max ? s : s[..max] + "…";
 }

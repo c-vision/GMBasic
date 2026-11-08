@@ -1,4 +1,4 @@
-' EXPECT: kstat= 0.105418|kbw= 3|kcrit5= 0.146|dstat= -1.874815|dobs= 58|qt= 7|qtl= 3.5|qbest= 1|fwd= -4.723182
+' EXPECT: kstat= 0.105418|kbw= 3|kcrit5= 0.146|dstat=-1.874815|dobs= 58|qt= 7|qtl= 3.5|qbest= 1|fwd=-4.723182
 IMPORT TIMESERIES
 SUB Main()
   DIM x(59) AS DOUBLE

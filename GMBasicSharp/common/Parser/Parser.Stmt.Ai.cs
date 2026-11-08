@@ -138,6 +138,25 @@ public partial class Parser
             };
         }
 
+        // AI LIST OPTIONS — comando-query (§1): stampa le voci DICHIARATE del registro
+        // opzioni (nome, descrizione, valore corrente). `OPTIONS` non è una keyword (l'unica
+        // è OPTION, per `AI SET OPTION`): la parola si riconosce qui, una volta sola, e la
+        // catena a valle riceve il TokenKind dedicato (mai il lessema).
+        if (commandToken.Kind == TokenKind.List
+            && parser.At(1).Kind == TokenKind.Identifier
+            && parser.At(1).Lexeme.Equals("OPTIONS", System.StringComparison.OrdinalIgnoreCase))
+        {
+            parser.Advance();   // LIST
+            parser.Advance();   // OPTIONS
+            var optNsTok = new Token(TokenKind.Identifier, "AI", null, commandToken.Position);
+            var optCall = new BuiltinFunctionCallExpr(optNsTok,
+                new Token(TokenKind.AiListOptions, "LISTOPTIONS", null, commandToken.Position),
+                ImmutableArray<Expr>.Empty, new StringType());
+            // Comando-query §1: la catena a valle STAMPA il valore del builtin (PRINT), come
+            // i comandi-query TRAIN (Parser.Stmt.Train.cs) — una sola strada per IL/PCodeVM/VM-C.
+            return new PrintStmt(ImmutableArray.Create(new PrintArg(optCall, null)), commandToken);
+        }
+
         // §4.10 write-side `AI PATCH … END PATCH`: SPOSTATO nel namespace LLM (`LLM PATCH`).
 
         return commandToken.Kind switch

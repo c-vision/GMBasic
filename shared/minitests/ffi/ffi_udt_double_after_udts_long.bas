@@ -1,5 +1,5 @@
 ' Due UDT da 16 byte (2 DOUBLE, HFA) per valore + tolleranza DOUBLE, ritorno LONG (forma di COMPLEX.EQ).
-' EXPECT: tol= 1 |tolno= 0|tolzero= 0
+' EXPECT: tol= 1|tolno= 0|tolzero= 0
 TYPE Cplx16
     Re AS DOUBLE
     Im AS DOUBLE

@@ -1,4 +1,4 @@
-' EXPECT: fwd= -4.723182|vll= -3.247275|p0= 0 p1= 1 p2= 1|pi0= 0|a00= 0.893468|m00= 0.940789|c00= 0.087935
+' EXPECT: fwd=-4.723182|vll=-3.247275|p0= 0 p1= 1 p2= 1|pi0= 0|a00= 0.893468|m00= 0.940789|c00= 0.087935
 ' HMM: forward/Viterbi/fit tutti via TIMESERIES (FFI, libgmbstats).
 IMPORT TIMESERIES
 SUB Main()

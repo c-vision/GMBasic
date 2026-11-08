@@ -293,8 +293,6 @@ int gmb_brain_mlx_complete(void* ctx, const char* transcript, char* out, size_t 
         }
     }
     if (pl <= 0 || pl >= (int)sizeof(prompt)) return -1;
-    /* Diagnostica parità C#/C (branch-first): GMB_DUMP_PROMPT=1 stampa su stderr il prompt RESO
-     * finale. Il lato C# fa lo stesso in MlxProviders.AppendMessage. */
     int32_t ids[MAX_IDS];
     int n = b->tok_enc(b->tok, prompt, ids, MAX_IDS);
     if (n <= 0) return -1;

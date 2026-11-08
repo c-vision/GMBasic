@@ -1158,11 +1158,7 @@ internal sealed class MlxLlmCompleter : ILlmCompleter, ISessionAwareLlmCompleter
             if (!string.IsNullOrEmpty(systemWithEffort)) state.Messages.Add(("system", systemWithEffort));
             state.Messages.Add(("user", userPrompt));
             var formatted = _buildChatTranscript(state.Messages, addAssistantOpener: true);
-            if (Environment.GetEnvironmentVariable("GMB_DUMP_PROMPT") is { Length: > 0 })
-                Console.Error.WriteLine($"[GMB_DUMP_PROMPT c#] complete len={formatted.Length}\n{formatted}\n--end--");
             var ids = Encode(formatted);
-            if (Environment.GetEnvironmentVariable("GMB_DUMP_PROMPT") is { Length: > 0 })
-                Console.Error.WriteLine($"[GMB_DUMP_PROMPT c#ids] n={ids.Length} first={string.Join(",", ids.Take(24))}");
             if (ids.Length > 0)
             {
                 var appendRc = RunBigStack(() => MlxEngineNative.llm_ai_mlx_session_append(state.NativeHandle, ids, ids.Length));
@@ -1268,12 +1264,6 @@ internal sealed class MlxLlmCompleter : ILlmCompleter, ISessionAwareLlmCompleter
         var addAssistantOpener = role is "user" or "tool";
         var formatted = _buildChatTranscript(state.Messages, addAssistantOpener);
 
-        // Diagnostica parità C#/C (branch-first): GMB_DUMP_PROMPT=1 stampa su stderr il transcript
-        // RESO dopo ogni append. Il lato C fa lo stesso in gmb_brain_mlx_complete. Per un diff byte
-        // esatto del prompt fra i due mondi (usato per il bug qwen3_moe).
-        if (Environment.GetEnvironmentVariable("GMB_DUMP_PROMPT") is { Length: > 0 })
-            Console.Error.WriteLine($"[GMB_DUMP_PROMPT c#] role={role} len={formatted.Length}\n{formatted}\n--end--");
-
         // PARITÀ CON LE GAMBE C (branch-first, bug qwen3_moe): il C rende l'INTERO transcript
         // [system, user] e fa UN SOLO sess_append = UN prefill. Il C# appendeva il turno SYSTEM da
         // solo (prefill 1) e poi lo user (prefill 2): STESSO testo, ma il KV ha arrotondamenti
@@ -1311,8 +1301,6 @@ internal sealed class MlxLlmCompleter : ILlmCompleter, ISessionAwareLlmCompleter
         if (delta.Length == 0) return; // e.g. a role that doesn't change add_ass and adds no new markup
 
         var deltaIds = Encode(delta);
-        if (Environment.GetEnvironmentVariable("GMB_DUMP_PROMPT") is { Length: > 0 })
-            Console.Error.WriteLine($"[GMB_DUMP_PROMPT c#ids] role={role} n={deltaIds.Length} first={string.Join(",", deltaIds.Take(24))}");
         if (deltaIds.Length == 0) return;
 
         // Fase 4: riuso prefix cache (radix) — lookup automatico con soglia 8 token (come probe: 2.16x–28.80x)

@@ -2,6 +2,7 @@
  * tui_widgets_selfcheck.c — parita' TUI C vs C# (Control/ApplyCase, Button,
  * TextInput, ComboBox box/popup/tasti/click, FocusManager.HandleEvent).
  * ============================================================================ */
+#include "gmb_runtime.h"
 #include "gmb_tui_widgets.h"
 #include "gmb_graphics.h"
 #ifdef GMB_GFX_SDL_PRESENT
@@ -811,7 +812,7 @@ int main(void)
 
     /* 31) Probe font (headless): monospace? box-drawing? */
     {
-        const char* fp = getenv("GMB_FONT_PATH");
+        const char* fp = gmb_opt_env("GMB_FONT_PATH");
         gmb_gfx_init();
         gmb_gfx_screen(13, 640, 480, 32);
         gmb_gfx_set_render_scale(1.0f);
@@ -825,7 +826,7 @@ int main(void)
 
     /* 32) Probe render celle->pixel: span glifi e gap */
     {
-        const char* fp = getenv("GMB_FONT_PATH");
+        const char* fp = gmb_opt_env("GMB_FONT_PATH");
         gmb_gfx_init();
         gmb_gfx_screen(13, 128, 64, 32);
         gmb_gfx_set_render_scale(1.0f);
@@ -849,7 +850,7 @@ int main(void)
 
     /* 33) Dump PNG del render celle->pixel (ispezione visiva headless) */
     {
-        const char* fp = getenv("GMB_FONT_PATH");
+        const char* fp = gmb_opt_env("GMB_FONT_PATH");
         gmb_gfx_init();
         gmb_gfx_screen(13, 640, 480, 32);
         gmb_gfx_set_render_scale(2.0f);           /* come il run reale su Retina */

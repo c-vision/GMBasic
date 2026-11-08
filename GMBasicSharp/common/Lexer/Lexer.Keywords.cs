@@ -1342,41 +1342,13 @@ public sealed partial class Lexer
         { "SHA1", TokenKind.Sha1 },
         { "SHA256", TokenKind.Sha256 },
         { "SHA512", TokenKind.Sha512 },
-        { "RIPEMD160", TokenKind.RipeMd160 },
-        { "KECCAK256", TokenKind.Keccak256 },
         { "HASHFILE", TokenKind.HashFile },
         { "STRMD5", TokenKind.StrMd5 },
         { "STRSHA1", TokenKind.StrSha1 },
         { "STRSHA256", TokenKind.StrSha256 },
         { "STRSHA512", TokenKind.StrSha512 },
-        { "STRRIPEMD160", TokenKind.StrRipeMd160 },
-        { "STRKECCAK256", TokenKind.StrKeccak256 },
         { "STRHASHFILE", TokenKind.StrHashFile },
 
-        // ========================================================================
-        // --- KEYWORD PER FUNZIONI BLOCKCHAIN ---
-        // ========================================================================
-        { "BLAKE2B256", TokenKind.Blake2b256 },
-        { "BASE58ENCODE", TokenKind.Base58Encode },
-        { "BASE58DECODE", TokenKind.Base58Decode },
-        { "BASE32ENCODE", TokenKind.Base32Encode },
-        { "BASE32DECODE", TokenKind.Base32Decode },
-        { "RLPENCODE", TokenKind.RlpEncode },
-        { "VARINTENCODE", TokenKind.VarIntEncode },
-        { "VARINTDECODE", TokenKind.VarIntDecode },
-        { "ETHADDRFROMPUB", TokenKind.EthAddressFromPub },
-        { "ETHADDRCHECKSUM", TokenKind.EthAddressChecksum },
-        { "BTCADDRFROMPUB", TokenKind.BtcAddressFromPub },
-        { "BLOCKDIFFICULTY", TokenKind.BlockDifficulty },
-        { "SECP256K1SIGN", TokenKind.EcdsaSecp256k1Sign },
-        { "GENERATEMNEMONIC", TokenKind.GenerateMnemonic },
-        { "MNEMONICTOSEED", TokenKind.MnemonicToSeed },
-        { "DERIVEKEY", TokenKind.DeriveKey },
-        { "GETPUBLICKEY", TokenKind.GetPublicKey },
-        { "CONTRACT", TokenKind.Contract },
-        { "ABIDECODE", TokenKind.AbiDecode },
-        { "ABIENCODE", TokenKind.AbiEncode },
-        
         // ========================================================================
         // --- KEYWORD PER CRITTOGRAFIA E UTILITY ---
         // ========================================================================

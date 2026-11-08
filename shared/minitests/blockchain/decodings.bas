@@ -1,7 +1,15 @@
 ' EXPECT: b32d=68656c6c6f|b58d=68656c6c6f
+' MiniTest BLOCKCHAIN (pacchetto FFI): BASE32/BASE58 decode in un buffer BYTE dimensionato
+' dal chiamante; la lunghezza scritta la restituisce la funzione (n).
+REQUIRE "blockchain"
 IMPORT BLOCKCHAIN
 IMPORT CRYPTOGRAPHY
+
 SUB Main()
-  PRINT "b32d="; TOHEX(BASE32DECODE("NBSWY3DP"))
-  PRINT "b58d="; TOHEX(BASE58DECODE("Cn8eVZg"))
+  DIM o(63) AS BYTE
+  DIM n AS LONG
+  n = BASE32DECODE("NBSWY3DP", o)
+  PRINT "b32d="; LEFT(TOHEX(o), n * 2)
+  n = BASE58DECODE("Cn8eVZg", o)
+  PRINT "b58d="; LEFT(TOHEX(o), n * 2)
 END SUB

@@ -9102,7 +9102,7 @@ static int aimo_llm_tensor_out(ctx_t* c, gmb_expr_t** a, int n, int line) {
     emit_str_operand(c, a[0]); sb_put(&c->out, ".data, ");
     emit_str_operand(c, a[1]); sb_put(&c->out, ".data, ");
     if (n >= 3) { emit_str_operand(c, a[2]); sb_put(&c->out, ".data, "); } else sb_put(&c->out, "\"\", ");
-    if (n >= 4) { emit_str_operand(c, a[3]); sb_put(&c->out, ".data)"); } else sb_put(&c->out, "\"\"");
+    if (n >= 4) { emit_str_operand(c, a[3]); sb_put(&c->out, ".data)"); } else sb_put(&c->out, "\"\")");
     sb_put(&c->out, ", \"LLM.TENSOR\", ");
     { char lb[16]; snprintf(lb, sizeof lb, "%d", line); sb_put(&c->out, lb); }
     sb_put(&c->out, "))");
@@ -9115,7 +9115,7 @@ static int aimo_llm_policy_out(ctx_t* c, gmb_expr_t** a, int n, int line) {
     emit_str_operand(c, a[0]); sb_put(&c->out, ".data, ");
     if (n >= 2) { emit_str_operand(c, a[1]); sb_put(&c->out, ".data, "); } else sb_put(&c->out, "\"\", ");
     if (n >= 3) { emit_str_operand(c, a[2]); sb_put(&c->out, ".data, "); } else sb_put(&c->out, "\"\", ");
-    if (n >= 4) { emit_str_operand(c, a[3]); sb_put(&c->out, ".data)"); } else sb_put(&c->out, "\"\"");
+    if (n >= 4) { emit_str_operand(c, a[3]); sb_put(&c->out, ".data)"); } else sb_put(&c->out, "\"\")");
     sb_put(&c->out, ", \"LLM.POLICYOUT\", ");
     { char lb[16]; snprintf(lb, sizeof lb, "%d", line); sb_put(&c->out, lb); }
     sb_put(&c->out, "))");
@@ -9128,7 +9128,7 @@ static int aimo_llm_arch_out(ctx_t* c, gmb_expr_t** a, int n, int line) {
     emit_str_operand(c, a[0]); sb_put(&c->out, ".data, ");
     if (n >= 2) { emit_str_operand(c, a[1]); sb_put(&c->out, ".data, "); } else sb_put(&c->out, "\"\", ");
     if (n >= 3) { emit_str_operand(c, a[2]); sb_put(&c->out, ".data, "); } else sb_put(&c->out, "\"\", ");
-    if (n >= 4) { emit_str_operand(c, a[3]); sb_put(&c->out, ".data)"); } else sb_put(&c->out, "\"\"");
+    if (n >= 4) { emit_str_operand(c, a[3]); sb_put(&c->out, ".data)"); } else sb_put(&c->out, "\"\")");
     sb_put(&c->out, ", \"LLM.POLICYOUT\", ");
     { char lb[16]; snprintf(lb, sizeof lb, "%d", line); sb_put(&c->out, lb); }
     sb_put(&c->out, "))");
@@ -9141,7 +9141,7 @@ static int aimo_llm_module_out(ctx_t* c, gmb_expr_t** a, int n, int line) {
     emit_str_operand(c, a[0]); sb_put(&c->out, ".data, ");
     if (n >= 2) { emit_str_operand(c, a[1]); sb_put(&c->out, ".data, "); } else sb_put(&c->out, "\"\", ");
     if (n >= 3) { emit_str_operand(c, a[2]); sb_put(&c->out, ".data, "); } else sb_put(&c->out, "\"\", ");
-    if (n >= 4) { emit_str_operand(c, a[3]); sb_put(&c->out, ".data)"); } else sb_put(&c->out, "\"\"");
+    if (n >= 4) { emit_str_operand(c, a[3]); sb_put(&c->out, ".data)"); } else sb_put(&c->out, "\"\")");
     sb_put(&c->out, ", \"LLM.POLICYOUT\", ");
     { char lb[16]; snprintf(lb, sizeof lb, "%d", line); sb_put(&c->out, lb); }
     sb_put(&c->out, "))");
@@ -9154,7 +9154,7 @@ static int aimo_llm_kernel_out(ctx_t* c, gmb_expr_t** a, int n, int line) {
     emit_str_operand(c, a[0]); sb_put(&c->out, ".data, ");
     if (n >= 2) { emit_str_operand(c, a[1]); sb_put(&c->out, ".data, "); } else sb_put(&c->out, "\"\", ");
     if (n >= 3) { emit_str_operand(c, a[2]); sb_put(&c->out, ".data, "); } else sb_put(&c->out, "\"\", ");
-    if (n >= 4) { emit_str_operand(c, a[3]); sb_put(&c->out, ".data)"); } else sb_put(&c->out, "\"\"");
+    if (n >= 4) { emit_str_operand(c, a[3]); sb_put(&c->out, ".data)"); } else sb_put(&c->out, "\"\")");
     sb_put(&c->out, ", \"LLM.POLICYOUT\", ");
     { char lb[16]; snprintf(lb, sizeof lb, "%d", line); sb_put(&c->out, lb); }
     sb_put(&c->out, "))");
@@ -9167,7 +9167,7 @@ static int aimo_llm_kv_out(ctx_t* c, gmb_expr_t** a, int n, int line) {
     emit_str_operand(c, a[0]); sb_put(&c->out, ".data, ");
     if (n >= 2) { emit_str_operand(c, a[1]); sb_put(&c->out, ".data, "); } else sb_put(&c->out, "\"\", ");
     if (n >= 3) { emit_str_operand(c, a[2]); sb_put(&c->out, ".data, "); } else sb_put(&c->out, "\"\", ");
-    if (n >= 4) { emit_str_operand(c, a[3]); sb_put(&c->out, ".data)"); } else sb_put(&c->out, "\"\"");
+    if (n >= 4) { emit_str_operand(c, a[3]); sb_put(&c->out, ".data)"); } else sb_put(&c->out, "\"\")");
     sb_put(&c->out, ", \"LLM.POLICYOUT\", ");
     { char lb[16]; snprintf(lb, sizeof lb, "%d", line); sb_put(&c->out, lb); }
     sb_put(&c->out, "))");

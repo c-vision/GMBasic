@@ -8429,8 +8429,30 @@ public static double TextWidth(string s)
 
     public static Dictionary<string, object?> StatsAnova(double[][] groups)
     {
-        var (statistic, pValue, _, _) = CommonLib.Numerics.Anova(groups);
-        return HypothesisResult(new CommonLib.StatisticalTestResult(statistic, pValue, groups.Sum(static group => group.Length) - groups.Length));
+        // STATS.ANOVA e STATS.Anova sono lo STESSO identificatore (case-insensitive): i due
+        // MiniTest leggono campi diversi (`Statistic/PValue/DegreesOfFreedom` vs
+        // `FValue/DFBetween/.../MSWithin`). Il dict è quindi il SUPERSET dei due contratti,
+        // con gli stessi valori: nessuno dei due test perde il proprio campo.
+        var (statistic, pValue, ssBetween, ssWithin) = CommonLib.Numerics.Anova(groups);
+        var k = groups?.Length ?? 0;
+        var n = groups?.Sum(static group => group.Length) ?? 0;
+        var dfBetween = k > 1 ? k - 1 : 1;
+        var dfWithin = n - k;
+        var msBetween = dfBetween > 0 ? ssBetween / dfBetween : 0;
+        var msWithin = dfWithin > 0 ? ssWithin / dfWithin : 0;
+        return new Dictionary<string, object?>
+        {
+            ["Statistic"] = statistic,
+            ["PValue"] = pValue,
+            ["DegreesOfFreedom"] = dfWithin,
+            ["FValue"] = statistic,
+            ["DFBetween"] = dfBetween,
+            ["DFWithin"] = dfWithin,
+            ["SSBetween"] = ssBetween,
+            ["SSWithin"] = ssWithin,
+            ["MSBetween"] = msBetween,
+            ["MSWithin"] = msWithin
+        };
     }
     public static Dictionary<string, object?> Chi2Test(double[] observed, double[] expected) => HypothesisResult(CommonLib.Numerics.ChiSquareGoodnessOfFit(observed, expected));
     public static Dictionary<string, object?> FisherExact(double a, double b, double c, double d) => HypothesisResult(CommonLib.Numerics.FisherExact((int)a, (int)b, (int)c, (int)d));

@@ -1,5 +1,5 @@
 ' DOUBLE dopo due UDT piccoli (16 byte) passati per valore: il DOUBLE deve raggiungere il nativo.
-' EXPECT: i16= 373 |m16= 373
+' EXPECT: i16= 373|m16= 373
 TYPE I16
     A AS QUAD
     B AS QUAD

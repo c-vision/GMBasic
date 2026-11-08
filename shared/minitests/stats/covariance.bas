@@ -1,4 +1,4 @@
-' EXPECT: cov= 3.333333|neg= -3.333333
+' EXPECT: cov= 3.333333|neg=-3.333333
 IMPORT STATSX
 SUB Main()
   DIM x() = {1, 2, 3, 4}

@@ -174,7 +174,7 @@ if (forwardStdin)
     var mlDir = Path.Combine(libsCache, "ml", rid);
     var libsDir = Path.Combine(libsCache, rid);
     var buildDir = Path.Combine(root, "GMBasic", "build", "libs", rid);
-    psi.Environment["GMB_TORCH_PATH"] = Environment.GetEnvironmentVariable("GMB_TORCH_PATH") ?? mlDir;
+    if (!psi.Environment.ContainsKey("GMB_TORCH_PATH")) psi.Environment["GMB_TORCH_PATH"] = mlDir;
     if (OperatingSystem.IsMacOS())
     {
         var dirs = new[] { mlDir, libsDir, buildDir }.Where(Directory.Exists);

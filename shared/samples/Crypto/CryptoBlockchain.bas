@@ -1,137 +1,103 @@
 ' FILE: Crypto/CryptoBlockchain.bas
 ' =================================================================================================
-'       GUIDA TEORICA: PRIMITIVE CRITTOGRAFICHE PER BLOCKCHAIN
+'       GUIDA TEORICA: PRIMITIVE CRITTOGRAFICHE PER BLOCKCHAIN (pacchetto `blockchain`)
 ' =================================================================================================
 '
-' Questo test copre le funzioni specialistiche del namespace `BLOCKCHAIN`, essenziali per
-' interagire con protocolli come Bitcoin, Ethereum e altri registri distribuiti.
+' Il dominio `BLOCKCHAIN` non e' piu' un builtin C#: e' una LIBRERIA C (sorgenti in
+' gmbsuite/gmbblockchain) distribuita come pacchetto del package manager, perche' richiede
+' OpenSSL (`libcrypto`) per secp256k1 e i BIGNUM della difficolta'.
+'
+'   REQUIRE "blockchain"        ' risolve il pacchetto e include blockchain.inc
+'   IMPORT BLOCKCHAIN           ' porta il dominio in scope
+'
+' ABI: i dati binari sono ARRAY DI BYTE.
+'   - il bridge FFI passa ogni elemento come intero a 8 byte (valori 0..255) nello scratch;
+'   - i buffer di uscita li dimensiona il CHIAMANTE (`DIM h(31) AS BYTE`) e i wrapper
+'     deducono le lunghezze con UBOUND (capienza) e dal valore di ritorno (scritti).
 '
 ' 1. HASHING SPECIALIZZATO
-'    Le blockchain utilizzano algoritmi di hash specifici, diversi dai classici MD5/SHA256:
-'    - `KECCAK256`: L'algoritmo nativo di Ethereum (precursore di SHA-3 ma matematicamente diverso).
-'    - `RIPEMD160`: Usato da Bitcoin per generare indirizzi più corti (HASH160).
-'    - `BLAKE2B`: Un hash ad alte prestazioni usato da Zcash e altre chain moderne.
-'
-' 2. ENCODING (BASE58 e BASE32)
-'    Per rappresentare dati binari (come indirizzi e chiavi) in modo leggibile e sicuro:
-'    - `BASE58`: Simile al Base64 ma rimuove caratteri ambigui (0, O, I, l, +, /). Standard di Bitcoin.
-'    - `BASE32`: Encoding case-insensitive usato in indirizzi Bech32 (SegWit) e altri protocolli.
-'
-' 3. DERIVAZIONE INDIRIZZI E CHIAVI
-'    Funzioni per trasformare chiavi pubbliche grezze (punti sulla curva ellittica) in indirizzi utilizzabili:
-'    - `ETHADDRFROMPUB`: Deriva l'indirizzo Ethereum (ultimi 20 byte dell'hash Keccak della pubkey).
-'    - `ETHADDRCHECKSUM`: Implementa lo standard EIP-55 per la validazione delle maiuscole/minuscole.
-'    - `BTCADDRFROMPUB`: Deriva indirizzi Bitcoin (P2PKH) gestendo il versioning (Mainnet vs Testnet).
-'
-' 4. SERIALIZZAZIONE E UTILITÀ
-'    - `RLP` (Recursive Length Prefix): Il formato di serializzazione standard di Ethereum.
-'    - `VARINT`: Codifica di interi a lunghezza variabile (usato in Bitcoin per risparmiare spazio).
-'    - `SECP256K1`: La curva ellittica standard. La funzione di firma genera la prova crittografica.
-'
+'    - KECCAK256: l'algoritmo nativo di Ethereum (precursore di SHA-3 ma diverso).
+'    - RIPEMD160: usato da Bitcoin per gli indirizzi corti (HASH160).
+'    - BLAKE2B256: hash ad alte prestazioni (Zcash e altre chain).
+' 2. ENCODING (BASE58 / BASE32)
+' 3. INDIRIZZI ETH (EIP-55) E BTC (P2PKH mainnet/testnet)
+' 4. SERIALIZZAZIONE: RLP, VARINT, ABI EVM, firma ECDSA secp256k1
 ' =================================================================================================
 
-IMPORT STRINGS
-IMPORT CRYPTOGRAPHY ' Necessario per le funzioni helper FROMHEX e TOHEX
+REQUIRE "blockchain"
 IMPORT BLOCKCHAIN
+IMPORT CRYPTOGRAPHY
 
 SUB Main()
     CLS
-    PRINT "╔════════════════════════════════════════════════════════════════╗"
-    PRINT "║ CryptoBlockchain - Test per le Funzionalità Blockchain         ║"
-    PRINT "╚════════════════════════════════════════════════════════════════╝"
+    PRINT "=================================================================="
+    PRINT " CryptoBlockchain - primitive blockchain via pacchetto FFI"
+    PRINT "=================================================================="
     PRINT
 
-    ' Setup dei dati di test (stringa e array di byte corrispondente)
-    DIM data$ = "gm-basic blockchain"
-    DIM dataBytes() = FROMHEX("676d2d626173696320626c6f636b636861696e")
+    ' "gm-basic blockchain" in byte
+    DIM data() AS BYTE = FROMHEX("676d2d626173696320626c6f636b636861696e")
 
-    ' --- 1. Test di Hashing Specifici per Blockchain ---
-    PRINT "--- 1. Test di Hashing ---"
-    ' Keccak-256 (Ethereum)
-    PRINT "STRKECCAK256(data$):    "; STRKECCAK256(data$)
-    PRINT "KECCAK256(bytes):   "; TOHEX(KECCAK256(dataBytes()))
-    ' RIPEMD-160 (Bitcoin)
-    PRINT "STRRIPEMD160(data$):   "; STRRIPEMD160(data$)
-    PRINT "RIPEMD160(bytes): "; TOHEX(RIPEMD160(dataBytes()))
-    ' Blake2b-256
-    PRINT "BLAKE2B256(bytes):"; TOHEX(BLAKE2B256(dataBytes()))
-    PRINT
-
-    ' --- 2. Test di Encoding (Base58, Base32) ---
-    PRINT "--- 2. Test di Encoding ---"
-    ' Base58 (Bitcoin)
-    DIM b58_source() = FROMHEX("00010966776006953D5567439E5E39F86A0D273BEED61967F6")
-    DIM b58_encoded$ = BASE58ENCODE(b58_source())
-    PRINT "Base58 Encode: "; b58_encoded$
-    
-    DIM b58_decoded() = BASE58DECODE("16UwLL9Risc3QfPqBUvKofHmBQ7wMtjvM")
-    PRINT "Base58 Decode (HEX): "; TOHEX(b58_decoded())
-    PRINT
-    
-    ' Base32
-    DIM b32_encoded$ = BASE32ENCODE(dataBytes())
-    PRINT "Base32 Encode: "; b32_encoded$
-    DIM b32_decoded() = BASE32DECODE(b32_encoded$)
-    PRINT "Base32 Decode (HEX): "; TOHEX(b32_decoded())
+    PRINT "--- 1. Hashing ---"
+    DIM k(31) AS BYTE
+    KECCAK256(data, k)
+    PRINT "Keccak-256:  "; TOHEX(k)
+    DIM r(19) AS BYTE
+    RIPEMD160(data, r)
+    PRINT "RIPEMD-160:  "; TOHEX(r)
+    DIM b(31) AS BYTE
+    BLAKE2B256(data, b)
+    PRINT "BLAKE2b-256: "; TOHEX(b)
     PRINT
 
-    ' --- 3. Test Utility Ethereum & Bitcoin ---
-    PRINT "--- 3. Test Utility Crypto ---"
-    ' Chiave pubblica non compressa (65 bytes, inizia con 04)
-    DIM pubKeyHex$ = "0479BE667EF9DCBBAC55A06295CE870B07029BFCDB2DCE28D959F2815B16F81798483ADA7726A3C4655DA4FBFC0E1108A8FD17B448A68554199C47D08FFB10D4B8"
-    DIM pubKeyBytes() = FROMHEX(pubKeyHex$)
-    
-    ' Derivazione indirizzo Ethereum
-    DIM ethAddress$ = ETHADDRFROMPUB(pubKeyBytes())
-    PRINT "Indirizzo Ethereum da chiave pubblica: "; ethAddress$
-    ' Calcolo Checksum EIP-55 (capitalizzazione mista per validità)
-    PRINT "Indirizzo ETH con Checksum:          "; ETHADDRCHECKSUM(ethAddress$)
-    PRINT
-    
-    ' Chiave pubblica compressa (33 bytes, inizia con 02 o 03)
-    DIM btcPubKeyHex$ = "0279BE667EF9DCBBAC55A06295CE870B07029BFCDB2DCE28D959F2815B16F81798"
-    DIM btcPubKeyBytes() = FROMHEX(btcPubKeyHex$)
-    
-    ' Derivazione indirizzi Bitcoin (Mainnet vs Testnet)
-    PRINT "Indirizzo Bitcoin da chiave pubblica (mainnet): "; BTCADDRFROMPUB(btcPubKeyBytes(), FALSE)
-    PRINT "Indirizzo Bitcoin da chiave pubblica (testnet): "; BTCADDRFROMPUB(btcPubKeyBytes(), TRUE)
+    PRINT "--- 2. Encoding ---"
+    PRINT "Base32: "; BASE32ENCODE(data)
+    PRINT "Base58: "; BASE58ENCODE(data)
+    DIM back(63) AS BYTE
+    DIM n AS LONG
+    n = BASE32DECODE(BASE32ENCODE(data), back)
+    PRINT "Base32 round-trip: "; LEFT(TOHEX(back), n * 2)
+    n = BASE58DECODE(BASE58ENCODE(data), back)
+    PRINT "Base58 round-trip: "; LEFT(TOHEX(back), n * 2)
     PRINT
 
-    ' --- 4. Test Utility Varie Blockchain ---
-    PRINT "--- 4. Test Utility Varie Blockchain ---"
-    ' Serializzazione RLP (Ethereum) - Codifica di una lista ["abc", "def"]
-    DIM rlp_test() = RLPENCODE(FROMHEX("c88361626383646566"))
-    PRINT "RLP Encode (HEX): "; TOHEX(rlp_test())
-    
-    ' Codifica VarInt (Bitcoin)
-    DIM varint_test() = VARINTENCODE(300)
-    PRINT "VarInt Encode 300 (HEX): "; TOHEX(varint_test()) ' Dovrebbe essere fd2c01 (little endian marker)
-    PRINT "VarInt Decode: "; VARINTDECODE(varint_test())
-    
-    ' Test calcolo difficoltà (Proof of Work)
-    DIM diffHeader() = RANDOMBYTES(32)
-    DIM difficulty = BLOCKDIFFICULTY(diffHeader(), 486604799)
-    PRINT "Calcolo difficoltà blocco (esempio): "; difficulty
-    
-    ' Test Firma Digitale ECDSA (Secp256k1)
-    DIM msg_hash() = SHA256("test")
-    DIM pvt_key() = RANDOMBYTES(32)
-    DIM signature() = SECP256K1SIGN(msg_hash(), pvt_key())
-    PRINT "Firma SECP256K1 (HEX, primi 16 byte): "; LEFT(TOHEX(signature()), 32)
+    PRINT "--- 3. Indirizzi ---"
+    ' chiave pubblica NON compressa (65 byte, inizio 0x04): e' quella che hasha ETHADDRFROMPUB
+    DIM pubFull() AS BYTE = FROMHEX("0479be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798483ada7726a3c4655da4fbfc0e1108a8fd17b448a68554199c47d08ffb10d4b8")
+    DIM eth$ AS STRING
+    eth$ = ETHADDRFROMPUB(pubFull)
+    PRINT "Ethereum:        "; eth$
+    PRINT "Ethereum (EIP55): "; ETHADDRCHECKSUM(eth$)
+    ' chiave pubblica COMPRESSA (33 byte) per l'indirizzo Bitcoin
+    DIM pubCmp() AS BYTE = FROMHEX("0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798")
+    PRINT "Bitcoin mainnet: "; BTCADDRFROMPUB(pubCmp, FALSE)
+    PRINT "Bitcoin testnet: "; BTCADDRFROMPUB(pubCmp, TRUE)
     PRINT
 
+    PRINT "--- 4. Serializzazione e utilità ---"
+    DIM o(63) AS BYTE
+    DIM dog() AS BYTE = FROMHEX("646f67")
+    n = RLPENCODE(dog, o)
+    PRINT "RLP(dog):        "; LEFT(TOHEX(o), n * 2)
+    n = VARINTENCODE(300, o)
+    PRINT "VarInt(300):     "; LEFT(TOHEX(o), n * 2)
+    DIM vi() AS BYTE = FROMHEX("ac02")
+    PRINT "VarInt decode:   "; VARINTDECODE(vi)
+    DIM hdr() AS BYTE = FROMHEX("0000000000000000000000000000000000000000000000000000000000000000")
+    PRINT "Difficoltà:      "; BLOCKDIFFICULTY(hdr, 553648127)
+    PRINT
+
+    PRINT "--- 5. Chiavi e firma (secp256k1) ---"
+    DIM priv(31) AS BYTE
+    priv(31) = 1
+    DIM pub(63) AS BYTE
+    n = GETPUBLICKEY(priv, pub)
+    PRINT "Pubkey(1):       "; LEFT(TOHEX(pub), n * 2)
+    DIM msg() AS BYTE = FROMHEX("00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff")
+    DIM sig(79) AS BYTE
+    n = SECP256K1SIGN(msg, priv, sig)
+    PRINT "Firma DER (byte):"; n
+    PRINT "Firma DER (hex): "; LEFT(TOHEX(sig), n * 2)
+    PRINT
     PRINT "--- TEST COMPLETATO ---"
 END SUB
-
-' =================================================================================================
-' VERIFICA DI COMPLETEZZA
-' =================================================================================================
-'
-' - Hashing: Coperti tutti gli algoritmi specifici (KECCAK, RIPEMD, BLAKE2B) sia in versione stringa che byte.
-' - Encoding: Coperti BASE58 e BASE32 (encode/decode).
-' - Indirizzi: Coperta la generazione per ETH (incluso checksum EIP-55) e BTC (mainnet/testnet).
-' - Utility: Coperte RLP, VarInt, BlockDifficulty e Secp256k1Sign.
-'
-' Il file di test copre il 100% delle funzioni esposte dal namespace BLOCKCHAIN.
-'
-' =================================================================================================

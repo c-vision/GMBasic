@@ -54,9 +54,9 @@
 │BLACKBOARDWRITE             │x = AI.BLACKBOARDWRITE(key, value)                                │-> DOUBLE · arg key, value                │
 │BRAINDETACH                 │x = AI.BRAINDETACH(name)                                          │-> DOUBLE · arg name                      │
 │BRAININFO                   │x = AI.BRAININFO(name)                                            │-> STRING · arg name                      │
-│BRAININSTALL                │x = AI.BRAININSTALL()                                             │Funzione AI.BRAININSTALL.                 │
+│BRAININSTALL                │x = AI.BRAININSTALL(name [, source])                              │-> LONG · arg name, source?               │
 │BRAINLIST                   │x = AI.BRAINLIST()                                                │Brain (Second Brain L6: actions are the AI│
-│BRAINUNINSTALL              │x = AI.BRAINUNINSTALL()                                           │Funzione AI.BRAINUNINSTALL.               │
+│BRAINUNINSTALL              │x = AI.BRAINUNINSTALL(name)                                       │-> LONG · arg name                        │
 │BRAINUSE                    │x = AI.BRAINUSE(names)                                            │-> LONG · arg names                       │
 │BRAINUSED                   │x = AI.BRAINUSED()                                                │-> STRING                                 │
 │BRAINVAULTBUILD             │x = AI.BRAINVAULTBUILD(outputDir)                                 │BrainVault (§2): AI.BRAINVAULTBUILD(output│
@@ -295,64 +295,6 @@
 └────────────────────────────┴──────────────────────────────────────────────────────────────────┴──────────────────────────────────────────┘
 
 ┌──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
-│Namespace ANALYSIS                                                                                                                        │
-├────────────────────────────┬──────────────────────────────────────────────────────────────────┬──────────────────────────────────────────┤
-│NAME                        │SYNTAX / EXAMPLE                                                  │DESCRIPTION                               │
-├────────────────────────────┼──────────────────────────────────────────────────────────────────┼──────────────────────────────────────────┤
-│ADFTEST                     │x = ANALYSIS.ADFTEST(a1)                                          │ADF stationarity test -> ANY.             │
-│ANOVA                       │x = ANALYSIS.ANOVA(a1)                                            │Analysis of variance -> ANY.              │
-│ARIMA                       │x = ANALYSIS.ARIMA(a1, a2, a3, a4)                                │ARIMA model -> ANY.                       │
-│CORRELATION                 │x = ANALYSIS.CORRELATION(a1, a2)                                  │Correlation -> DOUBLE.                    │
-│CUBICSPLINE                 │x = ANALYSIS.CUBICSPLINE(a1, a2, a3)                              │Cubic interpolation -> DOUBLE.            │
-│CUMTRAPEZOID                │x = ANALYSIS.CUMTRAPEZOID(a1, a2)                                 │Cumulative integral -> ARRAY.             │
-│DIFFERENTIATE               │x = ANALYSIS.DIFFERENTIATE(a1, a2)                                │Numerical derivative -> ARRAY.            │
-│EUCLIDEANDISTANCESQUARED    │x = ANALYSIS.EUCLIDEANDISTANCESQUARED(a1, a2)                     │Squared Euclidean distance -> DOUBLE.     │
-│FFT                         │x = ANALYSIS.FFT(a1)                                              │Fourier transform -> ARRAY.               │
-│FFTCOMPLEX                  │x = ANALYSIS.FFTCOMPLEX(a1, a2)                                   │Complex FFT -> ARRAY.                     │
-│FFTFREQ                     │x = ANALYSIS.FFTFREQ(n, d)                                        │FFT frequencies -> ARRAY.                 │
-│FFTSHIFT                    │x = ANALYSIS.FFTSHIFT(a1)                                         │FFT frequency shift -> ARRAY.             │
-│HOLTWINTERS                 │x = ANALYSIS.HOLTWINTERS(a1, a2, a3, a4, a5)                      │Holt-Winters smoothing -> ANY.            │
-│IFFT                        │x = ANALYSIS.IFFT(a1)                                             │Inverse Fourier -> ARRAY.                 │
-│IFFTCOMPLEX                 │x = ANALYSIS.IFFTCOMPLEX(a1, a2)                                  │Complex inverse FFT -> ARRAY.             │
-│IFFTSHIFT                   │x = ANALYSIS.IFFTSHIFT(a1)                                        │Inverse frequency shift -> ARRAY.         │
-│INTEGRATE                   │x = ANALYSIS.INTEGRATE(a1, a2, a3)                                │Definite integral -> DOUBLE.              │
-│INTERPOLATECLAMP            │x = ANALYSIS.INTERPOLATECLAMP(a1, a2, a3)                         │Clamped interpolation -> DOUBLE.          │
-│INTERPOLATEGENERIC          │x = ANALYSIS.INTERPOLATEGENERIC(a1, a2, a3, a4)                   │Generic interpolation -> DOUBLE.          │
-│INTERPOLATELINEAR           │x = ANALYSIS.INTERPOLATELINEAR(a1, a2, a3)                        │Linear interpolation -> DOUBLE.           │
-│INTERPOLATEPCHIP            │x = ANALYSIS.INTERPOLATEPCHIP(a1, a2, a3)                         │PCHIP interpolation -> DOUBLE.            │
-│INTERPOLATEPOLYNOMIAL       │x = ANALYSIS.INTERPOLATEPOLYNOMIAL(a1, a2, a3)                    │Polynomial interpolation -> DOUBLE.       │
-│INTERPOLATESPLINE           │x = ANALYSIS.INTERPOLATESPLINE(a1, a2, a3)                        │Spline interpolation -> DOUBLE.           │
-│INTERPOLATESTEP             │x = ANALYSIS.INTERPOLATESTEP(a1, a2, a3)                          │Step interpolation -> DOUBLE.             │
-│IRFFT                       │x = ANALYSIS.IRFFT(a1, a2)                                        │Inverse of the real FFT -> ARRAY.         │
-│KMEANS                      │x = ANALYSIS.KMEANS(a1, a2)                                       │k-means clustering -> ANY.                │
-│KURTOSIS                    │x = ANALYSIS.KURTOSIS(a1)                                         │Kurtosis -> DOUBLE.                       │
-│MACOEFFICIENTS              │x = ANALYSIS.MACOEFFICIENTS(a1, a2)                               │MA coefficients -> ARRAY.                 │
-│MAD                         │x = ANALYSIS.MAD(a1)                                              │Median absolute deviation -> DOUBLE.      │
-│MEAN                        │x = ANALYSIS.MEAN(a1)                                             │Mean -> DOUBLE.                           │
-│MEDIAN                      │x = ANALYSIS.MEDIAN(a1)                                           │Median -> DOUBLE.                         │
-│PCA                         │x = ANALYSIS.PCA(a1)                                              │Principal component analysis -> ANY.      │
-│REGRESS                     │x = ANALYSIS.REGRESS(a1, a2)                                      │Regression -> ANY.                        │
-│RFFT                        │x = ANALYSIS.RFFT(a1)                                             │FFT of a real signal -> ARRAY.            │
-│SIMPSON                     │x = ANALYSIS.SIMPSON(a1, a2, a3, a4)                              │Simpson integral -> DOUBLE.               │
-│SKEWNESS                    │x = ANALYSIS.SKEWNESS(a1)                                         │Skewness -> DOUBLE.                       │
-│SOLVEIVP                    │x = ANALYSIS.SOLVEIVP(a1, a2, a3, a4)                             │Solves initial value problem -> ARR       │
-│SOLVEODE                    │x = ANALYSIS.SOLVEODE(a1, a2, a3, a4, a5)                         │Solves ODE -> ARRAY.                      │
-│SPLEV                       │x = ANALYSIS.SPLEV(a1, a2)                                        │Evaluates a spline -> ARRAY.              │
-│SPLREP                      │x = ANALYSIS.SPLREP(a1, a2)                                       │Builds a spline -> LONG.                  │
-│STDDEV                      │x = ANALYSIS.STDDEV(a1)                                           │Standard deviation -> DOUBLE.             │
-│TRAPEZOID                   │x = ANALYSIS.TRAPEZOID(a1, a2)                                    │Trapezoid integral -> DOUBLE.             │
-│VARIANCE                    │x = ANALYSIS.VARIANCE(a1)                                         │Variance -> DOUBLE.                       │
-│YULEWALKER                  │x = ANALYSIS.YULEWALKER(a1, a2)                                   │AR coefficients with Yule-Walker -> ARRAY.│
-│TYPE:ADFTESTRESULTTYPE      │TYPE AdfTestResultType                                            │Fields: Statistic, PValue                 │
-│TYPE:ANOVARESULTTYPE        │TYPE AnovaResultType                                              │Fields: FValue, PValue, DFBetween         │
-│TYPE:ARIMARESULTTYPE        │TYPE ArimaResultType                                              │Fields: ArCoeffs, MaCoeffs, AIC, Fitted   │
-│TYPE:HOLTWINTERSRESULTTYPE  │TYPE HoltWintersResultType                                        │Fields: Forecast, Mse                     │
-│TYPE:KMEANSRESULTTYPE       │TYPE KMeansResultType                                             │Fields: Centroids, Assignments, Iterations│
-│TYPE:PCARESULTTYPE          │TYPE PcaResultType                                                │Fields: EigenValues, EigenVectors         │
-│TYPE:REGRESSIONRESULTTYPE   │TYPE RegressionResultType                                         │Fields: Slope, Intercept, R2              │
-└────────────────────────────┴──────────────────────────────────────────────────────────────────┴──────────────────────────────────────────┘
-
-┌──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
 │Namespace ARRAYS                                                                                                                          │
 ├────────────────────────────┬──────────────────────────────────────────────────────────────────┬──────────────────────────────────────────┤
 │NAME                        │SYNTAX / EXAMPLE                                                  │DESCRIPTION                               │
@@ -453,35 +395,35 @@
 └────────────────────────────┴──────────────────────────────────────────────────────────────────┴──────────────────────────────────────────┘
 
 ┌──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
-│Namespace BLOCKCHAIN                                                                                                                      │
+│Namespace BRAINS                                                                                                                          │
 ├────────────────────────────┬──────────────────────────────────────────────────────────────────┬──────────────────────────────────────────┤
 │NAME                        │SYNTAX / EXAMPLE                                                  │DESCRIPTION                               │
 ├────────────────────────────┼──────────────────────────────────────────────────────────────────┼──────────────────────────────────────────┤
-│ABIDECODE                   │x = BLOCKCHAIN.ABIDECODE(a1, a2)                                  │Decodes ABI -> ARRAY.                     │
-│ABIENCODE                   │x = BLOCKCHAIN.ABIENCODE(a1, ...)                                 │Encodes ABI payload -> HEX.               │
-│BASE32DECODE                │x = BLOCKCHAIN.BASE32DECODE(base32_string)                        │Base32 decoding -> ARRAY BYTE.            │
-│BASE32ENCODE                │x = BLOCKCHAIN.BASE32ENCODE(data)                                 │Base32 encoding -> STRINGA.               │
-│BASE58DECODE                │x = BLOCKCHAIN.BASE58DECODE(base58_string)                        │Base58 decoding -> ARRAY BYTE.            │
-│BASE58ENCODE                │x = BLOCKCHAIN.BASE58ENCODE(data)                                 │Base58 encoding -> STRINGA.               │
-│BLAKE2B256                  │x = BLOCKCHAIN.BLAKE2B256(data)                                   │BLAKE2b-256 hash -> ARRAY BYTE.           │
-│BLOCKDIFFICULTY             │x = BLOCKCHAIN.BLOCKDIFFICULTY(header, bits)                      │Block difficulty.                         │
-│BTCADDRFROMPUB              │x = BLOCKCHAIN.BTCADDRFROMPUB(public_key, is_testnet)             │BTC address from public key.              │
-│CONTRACT                    │x = BLOCKCHAIN.CONTRACT(address, interfaceName, rpcUrl, privateKey│Proxy to EVM smart contract.              │
-│DERIVEKEY                   │x = BLOCKCHAIN.DERIVEKEY(seed, path)                              │Derives BIP32/BIP44 keys.                 │
-│ETHADDRCHECKSUM             │x = BLOCKCHAIN.ETHADDRCHECKSUM(address)                           │ETH address with checksum.                │
-│ETHADDRFROMPUB              │x = BLOCKCHAIN.ETHADDRFROMPUB(public_key)                         │ETH address from public key.              │
-│GENERATEMNEMONIC            │x = BLOCKCHAIN.GENERATEMNEMONIC(wordCount)                        │Generates BIP39 mnemonic.                 │
-│GETPUBLICKEY                │x = BLOCKCHAIN.GETPUBLICKEY(privateKey)                           │Public key from private.                  │
-│KECCAK256                   │x = BLOCKCHAIN.KECCAK256(data)                                    │Keccak-256 hash -> ARRAY DI BYTE.         │
-│MNEMONICTOSEED              │x = BLOCKCHAIN.MNEMONICTOSEED(mnemonic, passphrase)               │Seed from BIP39 mnemonic.                 │
-│RIPEMD160                   │x = BLOCKCHAIN.RIPEMD160(data)                                    │RIPEMD-160 hash -> ARRAY DI BYTE.         │
-│RLPENCODE                   │x = BLOCKCHAIN.RLPENCODE(data)                                    │RLP encoding -> ARRAY DI BYTE.            │
-│SECP256K1SIGN               │x = BLOCKCHAIN.SECP256K1SIGN(message_hash, private_key)           │SECP256K1 signature (Ecdsa).              │
-│STRKECCAK256                │x = BLOCKCHAIN.STRKECCAK256(data)                                 │Keccak-256 hash -> STRINGA.               │
-│STRRIPEMD160                │x = BLOCKCHAIN.STRRIPEMD160(data)                                 │RIPEMD-160 hash -> STRINGA.               │
-│VARINTDECODE                │x = BLOCKCHAIN.VARINTDECODE(data)                                 │VarInt decoding -> LONG.                  │
-│VARINTENCODE                │x = BLOCKCHAIN.VARINTENCODE(value)                                │VarInt encoding -> ARRAY BYTE.            │
-│TYPE:IERC20                 │TYPE IERC20                                                       │methods: TotalSupply, BalanceOf, Transfer │
+│BETWEENNESS                 │x = BRAINS.BETWEENNESS(brain)                                     │-> STRING · arg brain                     │
+│BFS                         │x = BRAINS.BFS(brain, root)                                       │-> STRING · arg brain, root               │
+│BIPARTITE                   │x = BRAINS.BIPARTITE(brain)                                       │-> STRING · arg brain                     │
+│BYFOLDER                    │x = BRAINS.BYFOLDER(brain, folder)                                │-> STRING · arg brain, folder             │
+│BYTAG                       │x = BRAINS.BYTAG(brain, tag)                                      │-> STRING · arg brain, tag                │
+│CLUSTERING                  │x = BRAINS.CLUSTERING(brain, node)                                │-> STRING · arg brain, node               │
+│CONNECTED                   │x = BRAINS.CONNECTED(brain)                                       │-> STRING · arg brain                     │
+│DFS                         │x = BRAINS.DFS(brain, root)                                       │-> STRING · arg brain, root               │
+│DIAMETER                    │x = BRAINS.DIAMETER(brain)                                        │-> STRING · arg brain                     │
+│DIJKSTRA                    │x = BRAINS.DIJKSTRA(brain, from, to)                              │-> STRING · arg brain, from, to           │
+│DOT                         │x = BRAINS.DOT(brain)                                             │dot / subgraph / isValid.                 │
+│ECCENTRICITY                │x = BRAINS.ECCENTRICITY(brain, node)                              │-> STRING · arg brain, node               │
+│HASCYCLE                    │x = BRAINS.HASCYCLE(brain)                                        │-> DOUBLE · arg brain                     │
+│ISVALID                     │x = BRAINS.ISVALID(brain)                                         │dot / subgraph / isValid.                 │
+│LOUVAIN                     │x = BRAINS.LOUVAIN(brain)                                         │-> STRING · arg brain                     │
+│MAXFLOW                     │x = BRAINS.MAXFLOW(brain, from, to)                               │-> STRING · arg brain, from, to           │
+│MST                         │x = BRAINS.MST(brain)                                             │-> STRING · arg brain                     │
+│NEIGHBORS                   │x = BRAINS.NEIGHBORS(brain, node)                                 │-> STRING · arg brain, node               │
+│PAGERANK                    │x = BRAINS.PAGERANK(brain [, topK])                               │-> STRING · arg brain, topK:PARAMETER?    │
+│PATH                        │x = BRAINS.PATH(json_object, path)                                │scrive un ARRAY DI BYTE su file in modo   │
+│QUERYMULTI                  │x = BRAINS.QUERYMULTI(query [, brains])                           │-> STRING · arg query, brains?            │
+│STATS                       │x = BRAINS.STATS(brain)                                           │Interpreter.StdLib.Stats.cs               │
+│STRONGLYCONNECTED           │x = BRAINS.STRONGLYCONNECTED(brain)                               │-> STRING · arg brain                     │
+│SUBGRAPH                    │x = BRAINS.SUBGRAPH(brain, root [, depth])                        │dot / subgraph / isValid.                 │
+│TOPOSORT                    │x = BRAINS.TOPOSORT(brain)                                        │-> STRING · arg brain                     │
 └────────────────────────────┴──────────────────────────────────────────────────────────────────┴──────────────────────────────────────────┘
 
 ┌──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
@@ -733,6 +675,7 @@
 │COSTANTE:%DARK_SLATE_GRAY3  │%DARK_SLATE_GRAY3                                                 │= 116                                     │
 │COSTANTE:%DARK_TURQUOISE    │%DARK_TURQUOISE                                                   │= 44                                      │
 │COSTANTE:%DARK_VIOLET       │%DARK_VIOLET                                                      │= 92                                      │
+│COSTANTE:%DECIDE            │%DECIDE                                                           │= 6                                       │
 │COSTANTE:%DEEP_PINK4        │%DEEP_PINK4                                                       │= 53                                      │
 │COSTANTE:%DEEP_PINK4_2      │%DEEP_PINK4_2                                                     │= 89                                      │
 │COSTANTE:%DEEP_SKY_BLUE1    │%DEEP_SKY_BLUE1                                                   │= 39                                      │
@@ -765,118 +708,232 @@
 │COSTANTE:%GRAY3             │%GRAY3                                                            │= 233                                     │
 │COSTANTE:%GRAY30            │%GRAY30                                                           │= 240                                     │
 │COSTANTE:%GRAY35            │%GRAY35                                                           │= 241                                     │
+│COSTANTE:%GRAY35            │%GRAY35                                                           │= 241                                     │
+│COSTANTE:%GRAY37            │%GRAY37                                                           │= 59                                      │
 │COSTANTE:%GRAY37            │%GRAY37                                                           │= 59                                      │
 │COSTANTE:%GRAY39            │%GRAY39                                                           │= 242                                     │
+│COSTANTE:%GRAY39            │%GRAY39                                                           │= 242                                     │
+│COSTANTE:%GRAY42            │%GRAY42                                                           │= 243                                     │
 │COSTANTE:%GRAY42            │%GRAY42                                                           │= 243                                     │
 │COSTANTE:%GRAY46            │%GRAY46                                                           │= 244                                     │
+│COSTANTE:%GRAY46            │%GRAY46                                                           │= 244                                     │
+│COSTANTE:%GRAY50            │%GRAY50                                                           │= 245                                     │
 │COSTANTE:%GRAY50            │%GRAY50                                                           │= 245                                     │
 │COSTANTE:%GRAY53            │%GRAY53                                                           │= 102                                     │
+│COSTANTE:%GRAY53            │%GRAY53                                                           │= 102                                     │
+│COSTANTE:%GRAY54            │%GRAY54                                                           │= 246                                     │
 │COSTANTE:%GRAY54            │%GRAY54                                                           │= 246                                     │
 │COSTANTE:%GRAY58            │%GRAY58                                                           │= 247                                     │
+│COSTANTE:%GRAY58            │%GRAY58                                                           │= 247                                     │
+│COSTANTE:%GRAY62            │%GRAY62                                                           │= 248                                     │
 │COSTANTE:%GRAY62            │%GRAY62                                                           │= 248                                     │
 │COSTANTE:%GRAY66            │%GRAY66                                                           │= 249                                     │
+│COSTANTE:%GRAY66            │%GRAY66                                                           │= 249                                     │
+│COSTANTE:%GRAY7             │%GRAY7                                                            │= 234                                     │
 │COSTANTE:%GRAY7             │%GRAY7                                                            │= 234                                     │
 │COSTANTE:%GRAY70            │%GRAY70                                                           │= 250                                     │
+│COSTANTE:%GRAY70            │%GRAY70                                                           │= 250                                     │
+│COSTANTE:%GRAY74            │%GRAY74                                                           │= 251                                     │
 │COSTANTE:%GRAY74            │%GRAY74                                                           │= 251                                     │
 │COSTANTE:%GRAY78            │%GRAY78                                                           │= 252                                     │
+│COSTANTE:%GRAY78            │%GRAY78                                                           │= 252                                     │
+│COSTANTE:%GRAY82            │%GRAY82                                                           │= 253                                     │
 │COSTANTE:%GRAY82            │%GRAY82                                                           │= 253                                     │
 │COSTANTE:%GRAY85            │%GRAY85                                                           │= 254                                     │
+│COSTANTE:%GRAY85            │%GRAY85                                                           │= 254                                     │
+│COSTANTE:%GRAY89            │%GRAY89                                                           │= 255                                     │
 │COSTANTE:%GRAY89            │%GRAY89                                                           │= 255                                     │
 │COSTANTE:%GREEN             │%GREEN                                                            │= 2                                       │
+│COSTANTE:%GREEN             │%GREEN                                                            │= 2                                       │
+│COSTANTE:%GREEN1            │%GREEN1                                                           │= 46                                      │
 │COSTANTE:%GREEN1            │%GREEN1                                                           │= 46                                      │
 │COSTANTE:%GREEN3            │%GREEN3                                                           │= 34                                      │
+│COSTANTE:%GREEN3            │%GREEN3                                                           │= 34                                      │
+│COSTANTE:%GREEN3_2          │%GREEN3_2                                                         │= 40                                      │
 │COSTANTE:%GREEN3_2          │%GREEN3_2                                                         │= 40                                      │
 │COSTANTE:%GREEN4            │%GREEN4                                                           │= 28                                      │
+│COSTANTE:%GREEN4            │%GREEN4                                                           │= 28                                      │
+│COSTANTE:%IGNORE            │%IGNORE                                                           │= 5                                       │
 │COSTANTE:%IGNORE            │%IGNORE                                                           │= 5                                       │
 │COSTANTE:%JOYBUTTON2        │%JOYBUTTON2                                                       │= 32                                      │
+│COSTANTE:%JOYBUTTON2        │%JOYBUTTON2                                                       │= 32                                      │
+│COSTANTE:%JOYDOWN           │%JOYDOWN                                                          │= 2                                       │
 │COSTANTE:%JOYDOWN           │%JOYDOWN                                                          │= 2                                       │
 │COSTANTE:%JOYFIRE           │%JOYFIRE                                                          │= 16                                      │
+│COSTANTE:%JOYFIRE           │%JOYFIRE                                                          │= 16                                      │
+│COSTANTE:%JOYLEFT           │%JOYLEFT                                                          │= 4                                       │
 │COSTANTE:%JOYLEFT           │%JOYLEFT                                                          │= 4                                       │
 │COSTANTE:%JOYRIGHT          │%JOYRIGHT                                                         │= 8                                       │
+│COSTANTE:%JOYRIGHT          │%JOYRIGHT                                                         │= 8                                       │
+│COSTANTE:%JOYUP             │%JOYUP                                                            │= 1                                       │
 │COSTANTE:%JOYUP             │%JOYUP                                                            │= 1                                       │
 │COSTANTE:%K_0               │%K_0                                                              │= ConsoleKey.D0                           │
+│COSTANTE:%K_0               │%K_0                                                              │= ConsoleKey.D0                           │
+│COSTANTE:%K_1               │%K_1                                                              │= ConsoleKey.D1                           │
 │COSTANTE:%K_1               │%K_1                                                              │= ConsoleKey.D1                           │
 │COSTANTE:%K_2               │%K_2                                                              │= ConsoleKey.D2                           │
+│COSTANTE:%K_2               │%K_2                                                              │= ConsoleKey.D2                           │
+│COSTANTE:%K_3               │%K_3                                                              │= ConsoleKey.D3                           │
 │COSTANTE:%K_3               │%K_3                                                              │= ConsoleKey.D3                           │
 │COSTANTE:%K_4               │%K_4                                                              │= ConsoleKey.D4                           │
+│COSTANTE:%K_4               │%K_4                                                              │= ConsoleKey.D4                           │
+│COSTANTE:%K_5               │%K_5                                                              │= ConsoleKey.D5                           │
 │COSTANTE:%K_5               │%K_5                                                              │= ConsoleKey.D5                           │
 │COSTANTE:%K_6               │%K_6                                                              │= ConsoleKey.D6                           │
+│COSTANTE:%K_6               │%K_6                                                              │= ConsoleKey.D6                           │
+│COSTANTE:%K_7               │%K_7                                                              │= ConsoleKey.D7                           │
 │COSTANTE:%K_7               │%K_7                                                              │= ConsoleKey.D7                           │
 │COSTANTE:%K_8               │%K_8                                                              │= ConsoleKey.D8                           │
+│COSTANTE:%K_8               │%K_8                                                              │= ConsoleKey.D8                           │
+│COSTANTE:%K_9               │%K_9                                                              │= ConsoleKey.D9                           │
 │COSTANTE:%K_9               │%K_9                                                              │= ConsoleKey.D9                           │
 │COSTANTE:%K_A               │%K_A                                                              │= ConsoleKey.A                            │
+│COSTANTE:%K_A               │%K_A                                                              │= ConsoleKey.A                            │
+│COSTANTE:%K_ALT             │%K_ALT                                                            │= ConsoleModifiers.Alt                    │
 │COSTANTE:%K_ALT             │%K_ALT                                                            │= ConsoleModifiers.Alt                    │
 │COSTANTE:%K_B               │%K_B                                                              │= ConsoleKey.B                            │
+│COSTANTE:%K_B               │%K_B                                                              │= ConsoleKey.B                            │
+│COSTANTE:%K_BS              │%K_BS                                                             │= ConsoleKey.Backspace                    │
 │COSTANTE:%K_BS              │%K_BS                                                             │= ConsoleKey.Backspace                    │
 │COSTANTE:%K_C               │%K_C                                                              │= ConsoleKey.C                            │
+│COSTANTE:%K_C               │%K_C                                                              │= ConsoleKey.C                            │
+│COSTANTE:%K_CTRL            │%K_CTRL                                                           │= ConsoleModifiers.Control                │
 │COSTANTE:%K_CTRL            │%K_CTRL                                                           │= ConsoleModifiers.Control                │
 │COSTANTE:%K_CTRL_BRK        │%K_CTRL_BRK                                                       │= -1.0                                    │
+│COSTANTE:%K_CTRL_BRK        │%K_CTRL_BRK                                                       │= -1.0                                    │
+│COSTANTE:%K_CTRL_C          │%K_CTRL_C                                                         │= -1.0                                    │
 │COSTANTE:%K_CTRL_C          │%K_CTRL_C                                                         │= -1.0                                    │
 │COSTANTE:%K_D               │%K_D                                                              │= ConsoleKey.D                            │
+│COSTANTE:%K_D               │%K_D                                                              │= ConsoleKey.D                            │
+│COSTANTE:%K_DEL             │%K_DEL                                                            │= ConsoleKey.Delete                       │
 │COSTANTE:%K_DEL             │%K_DEL                                                            │= ConsoleKey.Delete                       │
 │COSTANTE:%K_DOWN            │%K_DOWN                                                           │= ConsoleKey.DownArrow                    │
+│COSTANTE:%K_DOWN            │%K_DOWN                                                           │= ConsoleKey.DownArrow                    │
+│COSTANTE:%K_E               │%K_E                                                              │= ConsoleKey.E                            │
 │COSTANTE:%K_E               │%K_E                                                              │= ConsoleKey.E                            │
 │COSTANTE:%K_END             │%K_END                                                            │= ConsoleKey.End                          │
+│COSTANTE:%K_END             │%K_END                                                            │= ConsoleKey.End                          │
+│COSTANTE:%K_ENTER           │%K_ENTER                                                          │= ConsoleKey.Enter                        │
 │COSTANTE:%K_ENTER           │%K_ENTER                                                          │= ConsoleKey.Enter                        │
 │COSTANTE:%K_ESC             │%K_ESC                                                            │= ConsoleKey.Escape                       │
+│COSTANTE:%K_ESC             │%K_ESC                                                            │= ConsoleKey.Escape                       │
+│COSTANTE:%K_F               │%K_F                                                              │= ConsoleKey.F                            │
 │COSTANTE:%K_F               │%K_F                                                              │= ConsoleKey.F                            │
 │COSTANTE:%K_F1              │%K_F1                                                             │= ConsoleKey.F1                           │
+│COSTANTE:%K_F1              │%K_F1                                                             │= ConsoleKey.F1                           │
+│COSTANTE:%K_F10             │%K_F10                                                            │= ConsoleKey.F10                          │
 │COSTANTE:%K_F10             │%K_F10                                                            │= ConsoleKey.F10                          │
 │COSTANTE:%K_F11             │%K_F11                                                            │= ConsoleKey.F11                          │
+│COSTANTE:%K_F11             │%K_F11                                                            │= ConsoleKey.F11                          │
+│COSTANTE:%K_F12             │%K_F12                                                            │= ConsoleKey.F12                          │
 │COSTANTE:%K_F12             │%K_F12                                                            │= ConsoleKey.F12                          │
 │COSTANTE:%K_F2              │%K_F2                                                             │= ConsoleKey.F2                           │
+│COSTANTE:%K_F2              │%K_F2                                                             │= ConsoleKey.F2                           │
+│COSTANTE:%K_F3              │%K_F3                                                             │= ConsoleKey.F3                           │
 │COSTANTE:%K_F3              │%K_F3                                                             │= ConsoleKey.F3                           │
 │COSTANTE:%K_F4              │%K_F4                                                             │= ConsoleKey.F4                           │
+│COSTANTE:%K_F4              │%K_F4                                                             │= ConsoleKey.F4                           │
+│COSTANTE:%K_F5              │%K_F5                                                             │= ConsoleKey.F5                           │
 │COSTANTE:%K_F5              │%K_F5                                                             │= ConsoleKey.F5                           │
 │COSTANTE:%K_F6              │%K_F6                                                             │= ConsoleKey.F6                           │
+│COSTANTE:%K_F6              │%K_F6                                                             │= ConsoleKey.F6                           │
+│COSTANTE:%K_F7              │%K_F7                                                             │= ConsoleKey.F7                           │
 │COSTANTE:%K_F7              │%K_F7                                                             │= ConsoleKey.F7                           │
 │COSTANTE:%K_F8              │%K_F8                                                             │= ConsoleKey.F8                           │
+│COSTANTE:%K_F8              │%K_F8                                                             │= ConsoleKey.F8                           │
+│COSTANTE:%K_F9              │%K_F9                                                             │= ConsoleKey.F9                           │
 │COSTANTE:%K_F9              │%K_F9                                                             │= ConsoleKey.F9                           │
 │COSTANTE:%K_G               │%K_G                                                              │= ConsoleKey.G                            │
+│COSTANTE:%K_G               │%K_G                                                              │= ConsoleKey.G                            │
+│COSTANTE:%K_H               │%K_H                                                              │= ConsoleKey.H                            │
 │COSTANTE:%K_H               │%K_H                                                              │= ConsoleKey.H                            │
 │COSTANTE:%K_HOME            │%K_HOME                                                           │= ConsoleKey.Home                         │
+│COSTANTE:%K_HOME            │%K_HOME                                                           │= ConsoleKey.Home                         │
+│COSTANTE:%K_I               │%K_I                                                              │= ConsoleKey.I                            │
 │COSTANTE:%K_I               │%K_I                                                              │= ConsoleKey.I                            │
 │COSTANTE:%K_INS             │%K_INS                                                            │= ConsoleKey.Insert                       │
+│COSTANTE:%K_INS             │%K_INS                                                            │= ConsoleKey.Insert                       │
+│COSTANTE:%K_J               │%K_J                                                              │= ConsoleKey.J                            │
 │COSTANTE:%K_J               │%K_J                                                              │= ConsoleKey.J                            │
 │COSTANTE:%K_K               │%K_K                                                              │= ConsoleKey.K                            │
+│COSTANTE:%K_K               │%K_K                                                              │= ConsoleKey.K                            │
+│COSTANTE:%K_L               │%K_L                                                              │= ConsoleKey.L                            │
 │COSTANTE:%K_L               │%K_L                                                              │= ConsoleKey.L                            │
 │COSTANTE:%K_LEFT            │%K_LEFT                                                           │= ConsoleKey.LeftArrow                    │
+│COSTANTE:%K_LEFT            │%K_LEFT                                                           │= ConsoleKey.LeftArrow                    │
+│COSTANTE:%K_M               │%K_M                                                              │= ConsoleKey.M                            │
 │COSTANTE:%K_M               │%K_M                                                              │= ConsoleKey.M                            │
 │COSTANTE:%K_N               │%K_N                                                              │= ConsoleKey.N                            │
+│COSTANTE:%K_N               │%K_N                                                              │= ConsoleKey.N                            │
+│COSTANTE:%K_N0              │%K_N0                                                             │= ConsoleKey.NumPad0                      │
 │COSTANTE:%K_N0              │%K_N0                                                             │= ConsoleKey.NumPad0                      │
 │COSTANTE:%K_N1              │%K_N1                                                             │= ConsoleKey.NumPad1                      │
+│COSTANTE:%K_N1              │%K_N1                                                             │= ConsoleKey.NumPad1                      │
+│COSTANTE:%K_N2              │%K_N2                                                             │= ConsoleKey.NumPad2                      │
 │COSTANTE:%K_N2              │%K_N2                                                             │= ConsoleKey.NumPad2                      │
 │COSTANTE:%K_N3              │%K_N3                                                             │= ConsoleKey.NumPad3                      │
+│COSTANTE:%K_N3              │%K_N3                                                             │= ConsoleKey.NumPad3                      │
+│COSTANTE:%K_N4              │%K_N4                                                             │= ConsoleKey.NumPad4                      │
 │COSTANTE:%K_N4              │%K_N4                                                             │= ConsoleKey.NumPad4                      │
 │COSTANTE:%K_N5              │%K_N5                                                             │= ConsoleKey.NumPad5                      │
+│COSTANTE:%K_N5              │%K_N5                                                             │= ConsoleKey.NumPad5                      │
+│COSTANTE:%K_N6              │%K_N6                                                             │= ConsoleKey.NumPad6                      │
 │COSTANTE:%K_N6              │%K_N6                                                             │= ConsoleKey.NumPad6                      │
 │COSTANTE:%K_N7              │%K_N7                                                             │= ConsoleKey.NumPad7                      │
+│COSTANTE:%K_N7              │%K_N7                                                             │= ConsoleKey.NumPad7                      │
+│COSTANTE:%K_N8              │%K_N8                                                             │= ConsoleKey.NumPad8                      │
 │COSTANTE:%K_N8              │%K_N8                                                             │= ConsoleKey.NumPad8                      │
 │COSTANTE:%K_N9              │%K_N9                                                             │= ConsoleKey.NumPad9                      │
+│COSTANTE:%K_N9              │%K_N9                                                             │= ConsoleKey.NumPad9                      │
+│COSTANTE:%K_NADD            │%K_NADD                                                           │= ConsoleKey.Add                          │
 │COSTANTE:%K_NADD            │%K_NADD                                                           │= ConsoleKey.Add                          │
 │COSTANTE:%K_NDEC            │%K_NDEC                                                           │= ConsoleKey.Decimal                      │
+│COSTANTE:%K_NDEC            │%K_NDEC                                                           │= ConsoleKey.Decimal                      │
+│COSTANTE:%K_NDIV            │%K_NDIV                                                           │= ConsoleKey.Divide                       │
 │COSTANTE:%K_NDIV            │%K_NDIV                                                           │= ConsoleKey.Divide                       │
 │COSTANTE:%K_NMUL            │%K_NMUL                                                           │= ConsoleKey.Multiply                     │
+│COSTANTE:%K_NMUL            │%K_NMUL                                                           │= ConsoleKey.Multiply                     │
+│COSTANTE:%K_NSUB            │%K_NSUB                                                           │= ConsoleKey.Subtract                     │
 │COSTANTE:%K_NSUB            │%K_NSUB                                                           │= ConsoleKey.Subtract                     │
 │COSTANTE:%K_O               │%K_O                                                              │= ConsoleKey.O                            │
+│COSTANTE:%K_O               │%K_O                                                              │= ConsoleKey.O                            │
+│COSTANTE:%K_P               │%K_P                                                              │= ConsoleKey.P                            │
 │COSTANTE:%K_P               │%K_P                                                              │= ConsoleKey.P                            │
 │COSTANTE:%K_PAUSE           │%K_PAUSE                                                          │= ConsoleKey.Pause                        │
+│COSTANTE:%K_PAUSE           │%K_PAUSE                                                          │= ConsoleKey.Pause                        │
+│COSTANTE:%K_PGDN            │%K_PGDN                                                           │= ConsoleKey.PageDown                     │
 │COSTANTE:%K_PGDN            │%K_PGDN                                                           │= ConsoleKey.PageDown                     │
 │COSTANTE:%K_PGUP            │%K_PGUP                                                           │= ConsoleKey.PageUp                       │
+│COSTANTE:%K_PGUP            │%K_PGUP                                                           │= ConsoleKey.PageUp                       │
+│COSTANTE:%K_PRTSC           │%K_PRTSC                                                          │= ConsoleKey.PrintScreen                  │
 │COSTANTE:%K_PRTSC           │%K_PRTSC                                                          │= ConsoleKey.PrintScreen                  │
 │COSTANTE:%K_Q               │%K_Q                                                              │= ConsoleKey.Q                            │
+│COSTANTE:%K_Q               │%K_Q                                                              │= ConsoleKey.Q                            │
+│COSTANTE:%K_R               │%K_R                                                              │= ConsoleKey.R                            │
 │COSTANTE:%K_R               │%K_R                                                              │= ConsoleKey.R                            │
 │COSTANTE:%K_RIGHT           │%K_RIGHT                                                          │= ConsoleKey.RightArrow                   │
+│COSTANTE:%K_RIGHT           │%K_RIGHT                                                          │= ConsoleKey.RightArrow                   │
+│COSTANTE:%K_S               │%K_S                                                              │= ConsoleKey.S                            │
 │COSTANTE:%K_S               │%K_S                                                              │= ConsoleKey.S                            │
 │COSTANTE:%K_SHIFT           │%K_SHIFT                                                          │= ConsoleModifiers.Shift                  │
+│COSTANTE:%K_SHIFT           │%K_SHIFT                                                          │= ConsoleModifiers.Shift                  │
+│COSTANTE:%K_SHIFT_TAB       │%K_SHIFT_TAB                                                      │= -1.0                                    │
 │COSTANTE:%K_SHIFT_TAB       │%K_SHIFT_TAB                                                      │= -1.0                                    │
 │COSTANTE:%K_SPC             │%K_SPC                                                            │= ConsoleKey.Spacebar                     │
+│COSTANTE:%K_SPC             │%K_SPC                                                            │= ConsoleKey.Spacebar                     │
+│COSTANTE:%K_T               │%K_T                                                              │= ConsoleKey.T                            │
 │COSTANTE:%K_T               │%K_T                                                              │= ConsoleKey.T                            │
 │COSTANTE:%K_TAB             │%K_TAB                                                            │= ConsoleKey.Tab                          │
+│COSTANTE:%K_TAB             │%K_TAB                                                            │= ConsoleKey.Tab                          │
+│COSTANTE:%K_U               │%K_U                                                              │= ConsoleKey.U                            │
 │COSTANTE:%K_U               │%K_U                                                              │= ConsoleKey.U                            │
 │COSTANTE:%K_UP              │%K_UP                                                             │= ConsoleKey.UpArrow                      │
+│COSTANTE:%K_UP              │%K_UP                                                             │= ConsoleKey.UpArrow                      │
+│COSTANTE:%K_V               │%K_V                                                              │= ConsoleKey.V                            │
 │COSTANTE:%K_V               │%K_V                                                              │= ConsoleKey.V                            │
 │COSTANTE:%K_W               │%K_W                                                              │= ConsoleKey.W                            │
+│COSTANTE:%K_W               │%K_W                                                              │= ConsoleKey.W                            │
+│COSTANTE:%K_X               │%K_X                                                              │= ConsoleKey.X                            │
 │COSTANTE:%K_X               │%K_X                                                              │= ConsoleKey.X                            │
 │COSTANTE:%K_Y               │%K_Y                                                              │= ConsoleKey.Y                            │
 │COSTANTE:%K_Z               │%K_Z                                                              │= ConsoleKey.Z                            │
@@ -959,6 +1016,7 @@
 │COSTANTE:%TURQUOISE4        │%TURQUOISE4                                                       │= 30                                      │
 │COSTANTE:%WHEAT4            │%WHEAT4                                                           │= 101                                     │
 │COSTANTE:%WHITE             │%WHITE                                                            │= 15                                      │
+│COSTANTE:%Y30               │%Y30                                                              │Costante %Y30.                            │
 │COSTANTE:%YELLOW            │%YELLOW                                                           │= 11                                      │
 │COSTANTE:%YELLOW4           │%YELLOW4                                                          │= 100                                     │
 │COSTANTE:%YELLOW4_2         │%YELLOW4_2                                                        │= 106                                     │
@@ -1180,6 +1238,15 @@
 └────────────────────────────┴──────────────────────────────────────────────────────────────────┴──────────────────────────────────────────┘
 
 ┌──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+│Namespace ENV                                                                                                                             │
+├────────────────────────────┬──────────────────────────────────────────────────────────────────┬──────────────────────────────────────────┤
+│NAME                        │SYNTAX / EXAMPLE                                                  │DESCRIPTION                               │
+├────────────────────────────┼──────────────────────────────────────────────────────────────────┼──────────────────────────────────────────┤
+│ENV                         │x = ENV.ENV(name)                                                 │lettura ESPLICITA dell'ambiente di        │
+│HAS                         │x = ENV.HAS(name)                                                 │-1 se presente, 0 se assente (convenzione │
+└────────────────────────────┴──────────────────────────────────────────────────────────────────┴──────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
 │Namespace FINANCE                                                                                                                         │
 ├────────────────────────────┬──────────────────────────────────────────────────────────────────┬──────────────────────────────────────────┤
 │NAME                        │SYNTAX / EXAMPLE                                                  │DESCRIPTION                               │
@@ -1210,35 +1277,13 @@
 └────────────────────────────┴──────────────────────────────────────────────────────────────────┴──────────────────────────────────────────┘
 
 ┌──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
-│Namespace GRAPH                                                                                                                           │
+│Namespace FONTS                                                                                                                           │
 ├────────────────────────────┬──────────────────────────────────────────────────────────────────┬──────────────────────────────────────────┤
 │NAME                        │SYNTAX / EXAMPLE                                                  │DESCRIPTION                               │
 ├────────────────────────────┼──────────────────────────────────────────────────────────────────┼──────────────────────────────────────────┤
-│BETWEENNESS                 │x = GRAPH.BETWEENNESS(brain)                                      │-> STRING · arg brain                     │
-│BFS                         │x = GRAPH.BFS(brain, root)                                        │-> STRING · arg brain, root               │
-│BIPARTITE                   │x = GRAPH.BIPARTITE(brain)                                        │-> STRING · arg brain                     │
-│BYFOLDER                    │x = GRAPH.BYFOLDER(brain, folder)                                 │-> STRING · arg brain, folder             │
-│BYTAG                       │x = GRAPH.BYTAG(brain, tag)                                       │-> STRING · arg brain, tag                │
-│CLUSTERING                  │x = GRAPH.CLUSTERING(brain, node)                                 │-> STRING · arg brain, node               │
-│CONNECTED                   │x = GRAPH.CONNECTED(brain)                                        │-> STRING · arg brain                     │
-│DFS                         │x = GRAPH.DFS(brain, root)                                        │-> STRING · arg brain, root               │
-│DIAMETER                    │x = GRAPH.DIAMETER(brain)                                         │-> STRING · arg brain                     │
-│DIJKSTRA                    │x = GRAPH.DIJKSTRA(brain, from, to)                               │-> STRING · arg brain, from, to           │
-│DOT                         │x = GRAPH.DOT(brain)                                              │Extended exports (F7 P1): dot / subgraph /│
-│ECCENTRICITY                │x = GRAPH.ECCENTRICITY(brain, node)                               │-> STRING · arg brain, node               │
-│HASCYCLE                    │x = GRAPH.HASCYCLE(brain)                                         │-> DOUBLE · arg brain                     │
-│ISVALID                     │x = GRAPH.ISVALID(brain)                                          │-> DOUBLE · arg brain                     │
-│LOUVAIN                     │x = GRAPH.LOUVAIN(brain)                                          │-> STRING · arg brain                     │
-│MAXFLOW                     │x = GRAPH.MAXFLOW(brain, from, to)                                │-> STRING · arg brain, from, to           │
-│MST                         │x = GRAPH.MST(brain)                                              │-> STRING · arg brain                     │
-│NEIGHBORS                   │x = GRAPH.NEIGHBORS(brain, node)                                  │-> STRING · arg brain, node               │
-│PAGERANK                    │x = GRAPH.PAGERANK(brain [, topK])                                │-> STRING · arg brain, topK:LONG?         │
-│PATH                        │x = GRAPH.PATH(brain, from, to)                                   │-> STRING · arg brain, from, to           │
-│QUERYMULTI                  │x = GRAPH.QUERYMULTI(query [, brains])                            │-> STRING · arg query, brains?            │
-│STATS                       │x = GRAPH.STATS(brain)                                            │-> STRING · arg brain                     │
-│STRONGLYCONNECTED           │x = GRAPH.STRONGLYCONNECTED(brain)                                │-> STRING · arg brain                     │
-│SUBGRAPH                    │x = GRAPH.SUBGRAPH(brain, root [, depth])                         │-> STRING · arg brain, root, depth:LONG?  │
-│TOPOSORT                    │x = GRAPH.TOPOSORT(brain)                                         │-> STRING · arg brain                     │
+│TTGLYPHS                    │x = FONTS.TTGLYPHS(path)                                          │-> ARRAY · arg path:PARAMETER             │
+│TTMETRICS                   │x = FONTS.TTMETRICS(path, size, codepoint)                        │-> ARRAY · arg path:PARAMETER             │
+│TTRENDER                    │x = FONTS.TTRENDER(path, size, codepoint)                         │copertura alpha 0..255,                   │
 └────────────────────────────┴──────────────────────────────────────────────────────────────────┴──────────────────────────────────────────┘
 
 ┌──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
@@ -1248,6 +1293,7 @@
 ├────────────────────────────┼──────────────────────────────────────────────────────────────────┼──────────────────────────────────────────┤
 │BLOAD                       │BLOAD file$ [, (x!,y!)]                                           │Loads an image from file.                 │
 │BSAVE                       │GRAPHICS BSAVE                                                    │forced remain CSAVESCREEN/CRESTORESCREEN  │
+│CANVAS                      │GRAPHICS CANVAS                                                   │Comando GRAPHICS.CANVAS.                  │
 │CCLS                        │GRAPHICS CCLS                                                     │without C (CLS/COLOR/LOCATE/PRINT/SAVESCRE│
 │CIRCLE                      │CIRCLE (x!, y!), r! [, col%]                                      │Draws a circle.                           │
 │CLEAR                       │GRAPHICS CLEAR                                                    │Polymorphic: same verb in CHART, WINDOWS. │
@@ -1415,6 +1461,7 @@
 │SEEK                        │x = IO.SEEK(fileNumber)                                           │Positions the pointer.                    │
 │TEMPDIR                     │x = IO.TEMPDIR()                                                  │Temporary directory -> STRING.            │
 │TEMPFILE                    │x = IO.TEMPFILE()                                                 │Temporary file -> STRING.                 │
+│WRITEBYTES                  │x = IO.WRITEBYTES(path, bytes)                                    │scrive un ARRAY DI BYTE su file in modo   │
 └────────────────────────────┴──────────────────────────────────────────────────────────────────┴──────────────────────────────────────────┘
 
 ┌──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
@@ -1516,6 +1563,51 @@
 └────────────────────────────┴──────────────────────────────────────────────────────────────────┴──────────────────────────────────────────┘
 
 ┌──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+│Namespace LINALG                                                                                                                          │
+├────────────────────────────┬──────────────────────────────────────────────────────────────────┬──────────────────────────────────────────┤
+│NAME                        │SYNTAX / EXAMPLE                                                  │DESCRIPTION                               │
+├────────────────────────────┼──────────────────────────────────────────────────────────────────┼──────────────────────────────────────────┤
+│CHOLESKY                    │x = LINALG.CHOLESKY(handle)                                       │-> CHOLESKYDECOMPOSITION · arg            │
+│COND                        │x = LINALG.COND(handle)                                           │-> DOUBLE · arg handle:PARAMETER          │
+│COSM                        │x = LINALG.COSM(handle)                                           │-> LONG · arg handle:PARAMETER            │
+│DETERMINANT                 │x = LINALG.DETERMINANT(handle)                                    │-> DOUBLE · arg handle:PARAMETER          │
+│EIG                         │x = LINALG.EIG(handle)                                            │funzioni matriciali, SVD, costruttori     │
+│EVD                         │x = LINALG.EVD(handle)                                            │-> EVDDECOMPOSITION · arg handle:PARAMETER│
+│EXPM                        │x = LINALG.EXPM(handle)                                           │-> LONG · arg handle:PARAMETER            │
+│FACTOR                      │x = LINALG.FACTOR(cost, salvage, life, period, factor)            │-> DOUBLE · arg cost:PARAMETER            │
+│FRACTIONALPOWER             │x = LINALG.FRACTIONALPOWER(handle, p)                             │-> LONG · arg handle:PARAMETER            │
+│FROBENIUSNORM               │x = LINALG.FROBENIUSNORM()                                        │-> DOUBLE · arg                           │
+│HESSENBERG                  │x = LINALG.HESSENBERG(handle)                                     │funzioni matriciali (SQRTM/LOGM/HESSENBERG│
+│INFINITYNORM                │x = LINALG.INFINITYNORM()                                         │-> DOUBLE · arg                           │
+│INVERSE                     │x = LINALG.INVERSE(handle)                                        │quantili e valori critici (scipy.stats)   │
+│LOGM                        │x = LINALG.LOGM(handle)                                           │funzioni matriciali (SQRTM/LOGM/HESSENBERG│
+│LU                          │x = LINALG.LU(handle)                                             │-> LUDECOMPOSITION · arg handle:PARAMETER │
+│NORM                        │x = LINALG.NORM(handle)                                           │-> DOUBLE · arg handle:PARAMETER          │
+│NUCLEARNORM                 │x = LINALG.NUCLEARNORM(handle)                                    │-> DOUBLE · arg handle:PARAMETER          │
+│NULLSPACE                   │x = LINALG.NULLSPACE(handle)                                      │funzioni matriciali (SQRTM/LOGM/HESSENBERG│
+│ONENORM                     │x = LINALG.ONENORM()                                              │-> DOUBLE · arg                           │
+│ORTH                        │x = LINALG.ORTH(handle)                                           │-> LONG · arg handle:PARAMETER            │
+│PINVERSE                    │x = LINALG.PINVERSE(handle)                                       │-> LONG · arg handle:PARAMETER            │
+│POLAR                       │x = LINALG.POLAR(handle)                                          │-> LONG · arg handle:PARAMETER            │
+│QR                          │x = LINALG.QR(handle)                                             │-> QRDECOMPOSITION · arg handle:PARAMETER │
+│RANK                        │x = LINALG.RANK(handle)                                           │lettore imatrix (sensibilita' per-layer) +│
+│SCHUR                       │x = LINALG.SCHUR(handle)                                          │funzioni matriciali, SVD, costruttori     │
+│SIGNM                       │x = LINALG.SIGNM(handle)                                          │-> LONG · arg handle:PARAMETER            │
+│SINM                        │x = LINALG.SINM(handle)                                           │-> LONG · arg handle:PARAMETER            │
+│SOLVE                       │x = LINALG.SOLVE(matrixHandle, vectorHandle)                      │-> ARRAY · arg matrixHandle:PARAMETER     │
+│SOLVETRIANGULAR             │x = LINALG.SOLVETRIANGULAR(handleA, handleB, lower)               │-> ARRAY · arg handleA:PARAMETER          │
+│SQRTM                       │x = LINALG.SQRTM(handle)                                          │funzioni matriciali (SQRTM/LOGM/HESSENBERG│
+│SUBSPACEANGLES              │x = LINALG.SUBSPACEANGLES(handle1, handle2)                       │-> ARRAY · arg handle1:PARAMETER          │
+│SVD                         │x = LINALG.SVD(handle)                                            │funzioni matriciali, SVD, costruttori     │
+│TANM                        │x = LINALG.TANM(handle)                                           │-> LONG · arg handle:PARAMETER            │
+│TYPE:CHOLESKYDECOMPOSITION  │TYPE CholeskyDecomposition                                        │Tipo definito dal runtime.                │
+│TYPE:EVDDECOMPOSITION       │TYPE EvdDecomposition                                             │Tipo definito dal runtime.                │
+│TYPE:LUDECOMPOSITION        │TYPE LuDecomposition                                              │Tipo definito dal runtime.                │
+│TYPE:QRDECOMPOSITION        │TYPE QrDecomposition                                              │Tipo definito dal runtime.                │
+│TYPE:SVDDECOMPOSITION       │TYPE SvdDecomposition                                             │Tipo definito dal runtime.                │
+└────────────────────────────┴──────────────────────────────────────────────────────────────────┴──────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
 │Namespace LLM                                                                                                                             │
 ├────────────────────────────┬──────────────────────────────────────────────────────────────────┬──────────────────────────────────────────┤
 │NAME                        │SYNTAX / EXAMPLE                                                  │DESCRIPTION                               │
@@ -1590,7 +1682,6 @@
 ├────────────────────────────┼──────────────────────────────────────────────────────────────────┼──────────────────────────────────────────┤
 │ABS                         │x = MATH.ABS(value)                                               │Absolute value -> DOUBLE.                 │
 │ACOS                        │x = MATH.ACOS(value)                                              │Arccosine -> DOUBLE.                      │
-│ANGLE2D                     │x = MATH.ANGLE2D(x1, y1, x2, y2)                                  │Angle between two points -> DOUBLE.       │
 │ASIN                        │x = MATH.ASIN(value)                                              │Arcsine -> DOUBLE.                        │
 │ATN                         │x = MATH.ATN(value, x)                                            │Arctangent -> DOUBLE.                     │
 │AVG                         │x = MATH.AVG()                                                    │Mean -> DOUBLE.                           │
@@ -1600,8 +1691,6 @@
 │COS                         │x = MATH.COS(angleRadians)                                        │Cosine -> DOUBLE.                         │
 │COSH                        │x = MATH.COSH(value)                                              │Hyperbolic cosine -> DOUBLE.              │
 │DEG2RAD                     │x = MATH.DEG2RAD(degrees)                                         │Converts degrees to radians -> DOUBLE.    │
-│DIST2D                      │x = MATH.DIST2D(x1, y1, x2, y2)                                   │2D distance -> DOUBLE.                    │
-│DIST3D                      │x = MATH.DIST3D(x1, y1, z1, x2, y2, z2)                           │3D distance -> DOUBLE.                    │
 │EXP                         │x = MATH.EXP(value)                                               │Exponential e^x -> DOUBLE.                │
 │FACT                        │x = MATH.FACT(n)                                                  │Factorial -> LONG.                        │
 │FIX                         │x = MATH.FIX(value)                                               │Integer part -> LONG.                     │
@@ -1615,8 +1704,6 @@
 │MIN                         │x = MATH.MIN()                                                    │Minimum -> DOUBLE.                        │
 │PERM                        │x = MATH.PERM(n, k)                                               │Permutations -> LONG.                     │
 │PI                          │x = MATH.PI()                                                     │Pi constant -> DOUBLE.                    │
-│POLAR_X                     │x = MATH.POLAR_X(angleRadians, radius)                            │Polar X coordinate -> DOUBLE.             │
-│POLAR_Y                     │x = MATH.POLAR_Y(angleRadians, radius)                            │Polar Y coordinate -> DOUBLE.             │
 │PYTHAGORAS                  │x = MATH.PYTHAGORAS(a, b)                                         │Pythagorean theorem -> DOUBLE.            │
 │RAD2DEG                     │x = MATH.RAD2DEG(radians)                                         │Converts radians to degrees -> DOUBLE.    │
 │RANGE                       │x = MATH.RANGE()                                                  │Range (max-min) -> DOUBLE.                │
@@ -1656,7 +1743,6 @@
 │ASCSV                       │x = MATRIX.ASCSV(a1)                                              │Exports as CSV -> STRING.                 │
 │ASJSON                      │x = MATRIX.ASJSON(a1)                                             │Exports as JSON -> STRING.                │
 │BLOCKDIAG                   │x = MATRIX.BLOCKDIAG(handle1, handle2)                            │Block diagonal matrix                     │
-│CHOLESKY                    │x = MATRIX.CHOLESKY(handle)                                       │Cholesky decomposition -> LONG.           │
 │CIRCULANT                   │x = MATRIX.CIRCULANT(a1)                                          │Circulant matrix                          │
 │CLONEMATRIX                 │x = MATRIX.CLONEMATRIX(a1)                                        │Clones the matrix -> LONG.                │
 │COLMEANS                    │x = MATRIX.COLMEANS(a1)                                           │Column means -> ARRAY.                    │
@@ -1665,21 +1751,9 @@
 │COLVARIANCES                │x = MATRIX.COLVARIANCES(a1)                                       │Column variances -> ARRAY.                │
 │CONCATCOLS                  │x = MATRIX.CONCATCOLS(a1, a2)                                     │Concatenates by columns -> LONG.          │
 │CONCATROWS                  │x = MATRIX.CONCATROWS(a1, a2)                                     │Concatenates by rows -> LONG.             │
-│COND                        │x = MATRIX.COND(handle)                                           │Condition number (norm 2).                │
-│COSM                        │x = MATRIX.COSM(handle)                                           │Matrix cosine -> LONG.                    │
 │CREATE                      │x = MATRIX.CREATE(rows, cols)                                     │Creates matrix -> LONG.                   │
-│DETERMINANT                 │x = MATRIX.DETERMINANT(handle)                                    │Determinant -> DOUBLE.                    │
-│EIG                         │x = MATRIX.EIG(handle)                                            │General eigenvalues/eigenvectors          │
-│EVD                         │x = MATRIX.EVD(handle)                                            │Eigenvalue decomposition -> LONG.         │
-│EXPM                        │x = MATRIX.EXPM(handle)                                           │Matrix exponential (handle).              │
-│FACTOR                      │x = MATRIX.FACTOR(decompositionObject, factorName)                │Factorization -> LONG.                    │
-│FRACTIONALPOWER             │x = MATRIX.FRACTIONALPOWER(handle, p)                             │Fractional power                          │
-│FROBENIUSNORM               │x = MATRIX.FROBENIUSNORM(a1)                                      │Frobenius norm -> DOUBLE.                 │
 │GETVALUE                    │x = MATRIX.GETVALUE(handle, row, col)                             │Reads the element row r, column c (0-bas) │
 │HANKEL                      │x = MATRIX.HANKEL(a1, a2)                                         │Hankel matrix                             │
-│HESSENBERG                  │x = MATRIX.HESSENBERG(handle)                                     │Upper Hessenberg form                     │
-│INFINITYNORM                │x = MATRIX.INFINITYNORM(a1)                                       │Infinity norm -> DOUBLE.                  │
-│INVERSE                     │x = MATRIX.INVERSE(handle)                                        │Inverse -> LONG.                          │
 │ISLOWERTRIANGULAR           │x = MATRIX.ISLOWERTRIANGULAR(a1)                                  │Is it lower triangular? -> BIT.           │
 │ISORTHOGONAL                │x = MATRIX.ISORTHOGONAL(a1)                                       │Is it orthogonal? -> BIT.                 │
 │ISSYMMETRIC                 │x = MATRIX.ISSYMMETRIC(a1)                                        │Is it symmetric? -> BIT.                  │
@@ -1687,46 +1761,21 @@
 │KRONECKER                   │x = MATRIX.KRONECKER(handle1, handle2)                            │Kronecker product A⊗B.                    │
 │LOADCSV                     │x = MATRIX.LOADCSV(path)                                          │Loads from CSV -> LONG.                   │
 │LOADJSON                    │x = MATRIX.LOADJSON(path)                                         │Loads from JSON -> LONG.                  │
-│LOGM                        │x = MATRIX.LOGM(handle)                                           │Natural logarithm of matrix               │
-│LU                          │x = MATRIX.LU(handle)                                             │LU decomposition -> LONG.                 │
 │MAXVALUE                    │x = MATRIX.MAXVALUE(a1)                                           │Maximum value -> DOUBLE.                  │
 │MINVALUE                    │x = MATRIX.MINVALUE(a1)                                           │Minimum value -> DOUBLE.                  │
 │MULTIPLY                    │x = MATRIX.MULTIPLY(handle1, handle2)                             │Multiplies the current matrix.            │
 │MULTIPLYLEFTVECTOR          │x = MATRIX.MULTIPLYLEFTVECTOR(a1, a2)                             │Vector-matrix product -> ARRAY.           │
 │MULTIPLYVECTOR              │x = MATRIX.MULTIPLYVECTOR(a1, a2)                                 │Matrix-vector product -> ARRAY.           │
-│NORM                        │x = MATRIX.NORM(handle)                                           │Norm -> DOUBLE.                           │
-│NUCLEARNORM                 │x = MATRIX.NUCLEARNORM(handle)                                    │Nuclear norm (sum of singular values).    │
-│NULLSPACE                   │x = MATRIX.NULLSPACE(handle)                                      │Null space -> LONG.                       │
-│ONENORM                     │x = MATRIX.ONENORM(a1)                                            │Norm 1 -> DOUBLE.                         │
-│ORTH                        │x = MATRIX.ORTH(handle)                                           │Orthonormal basis of the range            │
-│PINVERSE                    │x = MATRIX.PINVERSE(handle)                                       │Pseudo-inverse -> LONG.                   │
-│POLAR                       │x = MATRIX.POLAR(handle)                                          │Polar decomp. A=U·P (U/P factors)         │
-│QR                          │x = MATRIX.QR(handle)                                             │QR decomposition -> LONG.                 │
-│RANK                        │x = MATRIX.RANK(handle)                                           │Rank -> LONG.                             │
 │RESHAPE                     │x = MATRIX.RESHAPE(a1, a2, a3)                                    │Resizes -> LONG.                          │
 │ROWCOUNT                    │x = MATRIX.ROWCOUNT(a1)                                           │Row count -> LONG.                        │
 │ROWMEANS                    │x = MATRIX.ROWMEANS(a1)                                           │Row means -> ARRAY.                       │
 │ROWSUMS                     │x = MATRIX.ROWSUMS(a1)                                            │Row sums -> ARRAY.                        │
 │ROWVARIANCES                │x = MATRIX.ROWVARIANCES(a1)                                       │Row variances -> ARRAY.                   │
-│SCHUR                       │x = MATRIX.SCHUR(handle)                                          │Real Schur form (T/Z factors).            │
 │SETVALUE                    │x = MATRIX.SETVALUE(handle, row, col, value)                      │Writes v at row r, column c (0-based).    │
-│SIGNM                       │x = MATRIX.SIGNM(handle)                                          │Matrix sign -> LONG.                      │
-│SINM                        │x = MATRIX.SINM(handle)                                           │Matrix sine -> LONG.                      │
 │SLICE                       │x = MATRIX.SLICE(a1, a2, a3, a4, a5)                              │Sub-matrix -> LONG.                       │
-│SOLVE                       │x = MATRIX.SOLVE(matrixHandle, vectorHandle)                      │Solves a linear system -> LONG.           │
-│SOLVETRIANGULAR             │x = MATRIX.SOLVETRIANGULAR(handleA, handleB, lower)               │Solves triangular system.                 │
-│SQRTM                       │x = MATRIX.SQRTM(handle)                                          │Matrix square root                        │
-│SUBSPACEANGLES              │x = MATRIX.SUBSPACEANGLES(handle1, handle2)                       │Angles between subspaces                  │
-│SVD                         │x = MATRIX.SVD(handle)                                            │SVD decomposition -> LONG.                │
-│TANM                        │x = MATRIX.TANM(handle)                                           │Matrix tangent -> LONG.                   │
 │TOEPLITZ                    │x = MATRIX.TOEPLITZ(a1, a2)                                       │Toeplitz matrix                           │
 │TRACE                       │x = MATRIX.TRACE(handle)                                          │Trace -> DOUBLE.                          │
 │TRANSPOSE                   │x = MATRIX.TRANSPOSE(handle)                                      │Transpose -> LONG.                        │
-│TYPE:CHOLESKYDECOMPOSITION  │TYPE CholeskyDecomposition                                        │Type defined by the runtime.              │
-│TYPE:EVDDECOMPOSITION       │TYPE EvdDecomposition                                             │Type defined by the runtime.              │
-│TYPE:LUDECOMPOSITION        │TYPE LuDecomposition                                              │Type defined by the runtime.              │
-│TYPE:QRDECOMPOSITION        │TYPE QrDecomposition                                              │Type defined by the runtime.              │
-│TYPE:SVDDECOMPOSITION       │TYPE SvdDecomposition                                             │Type defined by the runtime.              │
 └────────────────────────────┴──────────────────────────────────────────────────────────────────┴──────────────────────────────────────────┘
 
 ┌──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
@@ -1795,44 +1844,36 @@
 └────────────────────────────┴──────────────────────────────────────────────────────────────────┴──────────────────────────────────────────┘
 
 ┌──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
-│Namespace OPTIMIZE                                                                                                                        │
+│Namespace NUMERICAL                                                                                                                       │
 ├────────────────────────────┬──────────────────────────────────────────────────────────────────┬──────────────────────────────────────────┤
 │NAME                        │SYNTAX / EXAMPLE                                                  │DESCRIPTION                               │
 ├────────────────────────────┼──────────────────────────────────────────────────────────────────┼──────────────────────────────────────────┤
-│BASINHOPPING                │x = OPTIMIZE.BASINHOPPING(a1, a2, ...)                            │Global optimization -> ARRAY.             │
-│BFGS                        │x = OPTIMIZE.BFGS(a1, a2)                                         │BFGS optimization -> ARRAY.               │
-│BISECTION                   │x = OPTIMIZE.BISECTION(a1, a2, a3)                                │Bisection root -> DOUBLE.                 │
-│BRENT                       │x = OPTIMIZE.BRENT(a1, a2, a3)                                    │Brent minimum/root -> DOUBLE.             │
-│BRENTH                      │x = OPTIMIZE.BRENTH(a1, a2, a3)                                   │Brent root (hyperbolic) -> DOUBLE.        │
-│BRENTMIN                    │x = OPTIMIZE.BRENTMIN(a1, a2, a3)                                 │Brent minimum -> DOUBLE.                  │
-│BRENTQ                      │x = OPTIMIZE.BRENTQ(a1, a2, a3)                                   │Brent root (bracket) -> DOUBLE.           │
-│BROYDEN                     │x = OPTIMIZE.BROYDEN(a1, a2)                                      │Broyden root -> ARRAY.                    │
-│BRUTE                       │x = OPTIMIZE.BRUTE(a1, a2, ...)                                   │Brute force search -> ARRAY.              │
-│CHOLESKYSOLVE               │x = OPTIMIZE.CHOLESKYSOLVE(a1, a2)                                │Solves with Cholesky -> ARRAY.            │
-│COBYLA                      │x = OPTIMIZE.COBYLA(a1, a2, ...)                                  │COBYLA minimization -> ARRAY.             │
-│CONJUGATEGRADIENT           │x = OPTIMIZE.CONJUGATEGRADIENT(a1, a2)                            │Conjugate gradient optimization -> ARRA   │
-│CURVEFIT                    │x = OPTIMIZE.CURVEFIT(a1, a2, a3, a4)                             │Curve fitting -> ARRAY.                   │
-│DIFFERENTIALEVOLUTION       │x = OPTIMIZE.DIFFERENTIALEVOLUTION(a1, a2)                        │Differential evolution -> ARRAY.          │
-│DUALANNEALING               │x = OPTIMIZE.DUALANNEALING(a1, a2, ...)                           │Simulated annealing -> ARRAY.             │
-│FSOLVE                      │x = OPTIMIZE.FSOLVE(a1, a2)                                       │Multivariate root -> ARRAY.               │
-│GOLDENSECTION               │x = OPTIMIZE.GOLDENSECTION(a1, a2, a3)                            │Golden section minimum -> DOUBLE.         │
-│LBFGS                       │x = OPTIMIZE.LBFGS(a1, a2)                                        │L-BFGS optimization -> ARRAY.             │
-│LEASTSQUARES                │x = OPTIMIZE.LEASTSQUARES(a1, a2)                                 │Least squares -> ARRAY.                   │
-│LEASTSQUARESFIT             │x = OPTIMIZE.LEASTSQUARESFIT(a1, a2, ...)                         │Least squares fit -> ARRAY.               │
-│LEVENBERGMARQUARDT          │x = OPTIMIZE.LEVENBERGMARQUARDT(a1, a2, a3, a4)                   │Levenberg-Marquardt fitting -> ARRAY.     │
-│LEVENBERGMARQUARDTVEC       │x = OPTIMIZE.LEVENBERGMARQUARDTVEC(a1, a2, a3, a4)                │Vector LM fitting -> ARRAY.               │
-│LINPROG                     │x = OPTIMIZE.LINPROG(a1, ...)                                     │Linear programming -> ARRAY.              │
-│MINIMIZE                    │x = OPTIMIZE.MINIMIZE(a1, a2, ...)                                │Multivariate minimization -> ARRAY.       │
-│MINIMIZESCALAR              │x = OPTIMIZE.MINIMIZESCALAR(a1, a2, a3, ...)                      │Scalar minimization -> DOUBLE.            │
-│NELDERMEAD                  │x = OPTIMIZE.NELDERMEAD(a1, a2)                                   │Nelder-Mead optimization -> ARRAY.        │
-│NEWTON                      │x = OPTIMIZE.NEWTON(a1, a2)                                       │Newton root -> DOUBLE.                    │
-│POWELL                      │x = OPTIMIZE.POWELL(a1, a2)                                       │Powell minimization -> ARRAY.             │
-│RIDDER                      │x = OPTIMIZE.RIDDER(a1, a2, a3)                                   │Ridder root -> DOUBLE.                    │
-│SECANT                      │x = OPTIMIZE.SECANT(a1, a2, a3)                                   │Secant root -> DOUBLE.                    │
-│SIMPLEX                     │x = OPTIMIZE.SIMPLEX(a1, a2, a3)                                  │Simplex optimization -> ARRAY.            │
-│SLSQP                       │x = OPTIMIZE.SLSQP(a1, a2, ...)                                   │SLSQP minimization -> ARRAY.              │
-│TNC                         │x = OPTIMIZE.TNC(a1, a2, ...)                                     │TNC minimization -> ARRAY.                │
-│TOMS748                     │x = OPTIMIZE.TOMS748(a1, a2, a3)                                  │TOMS748 root -> DOUBLE.                   │
+│CUBICSPLINE                 │x = NUMERICAL.CUBICSPLINE(x_new)                                  │-> DOUBLE · arg , , x_new:PARAMETER       │
+│CUMTRAPEZOID                │x = NUMERICAL.CUMTRAPEZOID()                                      │-> ARRAY · arg ,                          │
+│DIFFERENTIATE               │x = NUMERICAL.DIFFERENTIATE(x)                                    │-> DOUBLE · arg , x:PARAMETER             │
+│FFT                         │x = NUMERICAL.FFT()                                               │splrep/splev; scipy.fft P1: rfft/irfft.   │
+│FFTCOMPLEX                  │x = NUMERICAL.FFTCOMPLEX()                                        │-> ARRAY · arg ,                          │
+│FFTFREQ                     │x = NUMERICAL.FFTFREQ(n, d)                                       │-> ARRAY · arg n:PARAMETER, d:PARAMETER   │
+│FFTSHIFT                    │x = NUMERICAL.FFTSHIFT()                                          │-> ARRAY · arg                            │
+│IFFT                        │x = NUMERICAL.IFFT()                                              │-> ARRAY · arg                            │
+│IFFTCOMPLEX                 │x = NUMERICAL.IFFTCOMPLEX()                                       │-> ARRAY · arg ,                          │
+│IFFTSHIFT                   │x = NUMERICAL.IFFTSHIFT()                                         │-> ARRAY · arg                            │
+│INTEGRATE                   │x = NUMERICAL.INTEGRATE(a, b)                                     │f(t, y[]) → y'[], traiettoria matrice.    │
+│INTERPOLATECLAMP            │x = NUMERICAL.INTERPOLATECLAMP(x_new)                             │-> DOUBLE · arg , , x_new:PARAMETER       │
+│INTERPOLATEGENERIC          │x = NUMERICAL.INTERPOLATEGENERIC(method, , , x_new)               │-> DOUBLE · arg method:PARAMETER          │
+│INTERPOLATELINEAR           │x = NUMERICAL.INTERPOLATELINEAR(x_new)                            │-> DOUBLE · arg , , x_new:PARAMETER       │
+│INTERPOLATEPCHIP            │x = NUMERICAL.INTERPOLATEPCHIP(x_new)                             │-> DOUBLE · arg , , x_new:PARAMETER       │
+│INTERPOLATEPOLYNOMIAL       │x = NUMERICAL.INTERPOLATEPOLYNOMIAL(x_new)                        │-> DOUBLE · arg , , x_new:PARAMETER       │
+│INTERPOLATESPLINE           │x = NUMERICAL.INTERPOLATESPLINE(x_new)                            │-> DOUBLE · arg , , x_new:PARAMETER       │
+│INTERPOLATESTEP             │x = NUMERICAL.INTERPOLATESTEP(x_new)                              │-> DOUBLE · arg , , x_new:PARAMETER       │
+│IRFFT                       │x = NUMERICAL.IRFFT()                                             │splrep/splev; scipy.fft P1: rfft/irfft.   │
+│RFFT                        │x = NUMERICAL.RFFT()                                              │splrep/splev; scipy.fft P1: rfft/irfft.   │
+│SIMPSON                     │x = NUMERICAL.SIMPSON(a, b, n)                                    │-> DOUBLE · arg , a:PARAMETER             │
+│SOLVEIVP                    │x = NUMERICAL.SOLVEIVP(ode_function, y0, t0, t1)                  │-> LONG · arg , ode_function:PARAMETER    │
+│SOLVEODE                    │x = NUMERICAL.SOLVEODE(ode_function, y0, t0, t1, steps)           │-> ARRAY · arg ode_function:PARAMETER     │
+│SPLEV                       │x = NUMERICAL.SPLEV(spline, xq)                                   │splrep/splev; scipy.fft P1: rfft/irfft.   │
+│SPLREP                      │x = NUMERICAL.SPLREP()                                            │splrep/splev; scipy.fft P1: rfft/irfft.   │
+│TRAPEZOID                   │x = NUMERICAL.TRAPEZOID()                                         │-> DOUBLE · arg ,                         │
 └────────────────────────────┴──────────────────────────────────────────────────────────────────┴──────────────────────────────────────────┘
 
 ┌──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
@@ -1875,6 +1916,15 @@
 └────────────────────────────┴──────────────────────────────────────────────────────────────────┴──────────────────────────────────────────┘
 
 ┌──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+│Namespace REGRESSION                                                                                                                      │
+├────────────────────────────┬──────────────────────────────────────────────────────────────────┬──────────────────────────────────────────┤
+│NAME                        │SYNTAX / EXAMPLE                                                  │DESCRIPTION                               │
+├────────────────────────────┼──────────────────────────────────────────────────────────────────┼──────────────────────────────────────────┤
+│REGRESS                     │x = REGRESSION.REGRESS()                                          │-> REGRESSIONRESULT · arg ,               │
+│TYPE:REGRESSIONRESULT       │TYPE RegressionResult                                             │Tipo definito dal runtime.                │
+└────────────────────────────┴──────────────────────────────────────────────────────────────────┴──────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
 │Namespace SIGNAL                                                                                                                          │
 ├────────────────────────────┬──────────────────────────────────────────────────────────────────┬──────────────────────────────────────────┤
 │NAME                        │SYNTAX / EXAMPLE                                                  │DESCRIPTION                               │
@@ -1908,32 +1958,6 @@
 │CONVEXHULL                  │x = SPATIAL.CONVEXHULL(a1)                                        │2D convex hull (vertex indices).          │
 │DISTANCEMATRIX              │x = SPATIAL.DISTANCEMATRIX(a1, a2)                                │Euclidean distance matrix.                │
 │PDIST                       │x = SPATIAL.PDIST(a1, a2)                                         │Condensed distances (upper triangle).     │
-└────────────────────────────┴──────────────────────────────────────────────────────────────────┴──────────────────────────────────────────┘
-
-┌──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
-│Namespace SPECIAL                                                                                                                         │
-├────────────────────────────┬──────────────────────────────────────────────────────────────────┬──────────────────────────────────────────┤
-│NAME                        │SYNTAX / EXAMPLE                                                  │DESCRIPTION                               │
-├────────────────────────────┼──────────────────────────────────────────────────────────────────┼──────────────────────────────────────────┤
-│BESSELI                     │x = SPECIAL.BESSELI(v, x)                                         │Modified Bessel I_v(x).                   │
-│BESSELJ                     │x = SPECIAL.BESSELJ(v, x)                                         │Bessel of the first kind J_v(x).          │
-│BESSELK                     │x = SPECIAL.BESSELK(v, x)                                         │Modified Bessel K_v(x).                   │
-│BESSELY                     │x = SPECIAL.BESSELY(v, x)                                         │Bessel of the second kind Y_v(x).         │
-│BETA                        │x = SPECIAL.BETA(a, b)                                            │Beta function B(a,b).                     │
-│BETAINC                     │x = SPECIAL.BETAINC(a, b, x)                                      │Regularized incomplete beta I_x(a,b).     │
-│BETAINCINV                  │x = SPECIAL.BETAINCINV(a, b, y)                                   │Inverse of betainc.                       │
-│BETALN                      │x = SPECIAL.BETALN(a, b)                                          │Logarithm of the Beta function.           │
-│DIGAMMA                     │x = SPECIAL.DIGAMMA(x)                                            │Digamma function ψ(x).                    │
-│ERF                         │x = SPECIAL.ERF(x)                                                │Error function erf(x).                    │
-│ERFC                        │x = SPECIAL.ERFC(x)                                               │Complementary 1-erf(x).                   │
-│ERFCINV                     │x = SPECIAL.ERFCINV(x)                                            │Inverse of erfc(x).                       │
-│ERFINV                      │x = SPECIAL.ERFINV(x)                                             │Inverse of erf(x).                        │
-│GAMMA                       │x = SPECIAL.GAMMA(x)                                              │Complete Gamma function Γ(x).             │
-│GAMMAINC                    │x = SPECIAL.GAMMAINC(a, x)                                        │Lower regularized incomplete P(a,x).      │
-│GAMMAINCC                   │x = SPECIAL.GAMMAINCC(a, x)                                       │Upper regularized incomplete Q(a,x).      │
-│GAMMAINCCINV                │x = SPECIAL.GAMMAINCCINV(a, y)                                    │Inverse of gammaincc.                     │
-│GAMMAINCINV                 │x = SPECIAL.GAMMAINCINV(a, y)                                     │Inverse of gammainc.                      │
-│LGAMMA                      │x = SPECIAL.LGAMMA(x)                                             │Logarithm of Γ(x).                        │
 └────────────────────────────┴──────────────────────────────────────────────────────────────────┴──────────────────────────────────────────┘
 
 ┌──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
@@ -1976,86 +2000,134 @@
 │ANOVA                       │x = STATS.ANOVA(a1)                                               │Analysis of variance.                     │
 │BERNOULLIPMF                │x = STATS.BERNOULLIPMF(a1, a2)                                    │Bernoulli PMF -> DOUBLE.                  │
 │BETACDF                     │x = STATS.BETACDF(a1, a2, a3)                                     │Beta CDF -> DOUBLE.                       │
+│BETAISF                     │x = STATS.BETAISF(a, b)                                           │-> DOUBLE · arg , a:PARAMETER, b:PARAMETER│
 │BETAPDF                     │x = STATS.BETAPDF(a1, a2, a3)                                     │Beta density -> DOUBLE.                   │
 │BETAPPF                     │x = STATS.BETAPPF(a1, a2, a3)                                     │Beta quantile -> DOUBLE.                  │
+│BETASF                      │x = STATS.BETASF(alpha, beta)                                     │-> DOUBLE · arg , alpha:PARAMETER         │
 │BINOMIALPMF                 │x = STATS.BINOMIALPMF(a1, a2, a3)                                 │Binomial PMF -> DOUBLE.                   │
 │CHI2                        │x = STATS.CHI2(a1, a2)                                            │Chi-square test.                          │
 │CHI2CON                     │x = STATS.CHI2CON(a1)                                             │Chi-square independence test.             │
 │CHICDF                      │x = STATS.CHICDF(a1, a2)                                          │Chi CDF -> DOUBLE.                        │
+│CHIISF                      │x = STATS.CHIISF(k)                                               │-> DOUBLE · arg , k:PARAMETER             │
 │CHIPDF                      │x = STATS.CHIPDF(a1, a2)                                          │Chi density -> DOUBLE.                    │
 │CHIPPF                      │x = STATS.CHIPPF(a1, a2)                                          │Chi quantile -> DOUBLE.                   │
+│CHISF                       │x = STATS.CHISF(k)                                                │-> DOUBLE · arg , k:PARAMETER             │
 │CHISQUAREDCDF               │x = STATS.CHISQUAREDCDF(a1, a2)                                   │Chi-square CDF -> DOUBLE.                 │
 │CHISQUAREDISF               │x = STATS.CHISQUAREDISF(a1, a2)                                   │Chi-square survival function -> DOUBLE.   │
 │CHISQUAREDPDF               │x = STATS.CHISQUAREDPDF(a1, a2)                                   │Chi-square density -> DOUBLE.             │
 │CHISQUAREDPPF               │x = STATS.CHISQUAREDPPF(a1, a2)                                   │Chi-square quantile -> DOUBLE.            │
-│CORRELATION                 │x = STATS.CORRELATION(a1, a2)                                     │Correlation -> DOUBLE.                    │
+│CHISQUAREDSF                │x = STATS.CHISQUAREDSF(k)                                         │-> DOUBLE · arg , k:PARAMETER             │
 │DESCRIBE                    │x = STATS.DESCRIBE(a1)                                            │Descriptive statistics.                   │
 │EXPONENTIALCDF              │x = STATS.EXPONENTIALCDF(a1, a2)                                  │Exponential CDF -> DOUBLE.                │
 │EXPONENTIALISF              │x = STATS.EXPONENTIALISF(a1, a2)                                  │Exponential survival function -> DOUBLE.  │
 │EXPONENTIALPDF              │x = STATS.EXPONENTIALPDF(a1, a2)                                  │Exponential density -> DOUBLE.            │
 │EXPONENTIALPPF              │x = STATS.EXPONENTIALPPF(a1, a2)                                  │Exponential quantile -> DOUBLE.           │
+│EXPONENTIALSF               │x = STATS.EXPONENTIALSF(rate)                                     │-> DOUBLE · arg , rate:PARAMETER          │
 │FCDF                        │x = STATS.FCDF(a1, a2, a3)                                        │F CDF -> DOUBLE.                          │
 │FISF                        │x = STATS.FISF(a1, a2, a3)                                        │F survival function -> DOUBLE.            │
 │FISHER                      │x = STATS.FISHER(a, b, c, d)                                      │Fisher exact test.                        │
 │FPDF                        │x = STATS.FPDF(a1, a2, a3)                                        │F density -> DOUBLE.                      │
 │FPPF                        │x = STATS.FPPF(a1, a2, a3)                                        │F quantile -> DOUBLE.                     │
+│FSF                         │x = STATS.FSF(d1, d2)                                             │-> DOUBLE · arg , d1:PARAMETER            │
+│FTEST                       │x = STATS.FTEST()                                                 │-> ANY · arg ,                            │
 │GAMMACDF                    │x = STATS.GAMMACDF(shape, scale, x)                               │Gamma CDF -> DOUBLE.                      │
 │GAMMAISF                    │x = STATS.GAMMAISF(shape, scale, p)                               │Gamma survival function -> DOUBLE.        │
 │GAMMAPDF                    │x = STATS.GAMMAPDF(shape, scale, x)                               │Gamma density -> DOUBLE.                  │
 │GAMMAPPF                    │x = STATS.GAMMAPPF(shape, scale, p)                               │Gamma quantile -> DOUBLE.                 │
+│GAMMASF                     │x = STATS.GAMMASF(shape, scale, x)                                │-> DOUBLE · arg shape:PARAMETER           │
 │GEOMETRICPMF                │x = STATS.GEOMETRICPMF(a1, a2)                                    │Geometric PMF -> DOUBLE.                  │
 │HYPERGEOMETRICPMF           │x = STATS.HYPERGEOMETRICPMF(a1, a2, a3, a4)                       │Hypergeometric PMF -> DOUBLE.             │
 │IQR                         │x = STATS.IQR(a1)                                                 │Interquartile range -> DOUBLE.            │
 │JARQUEBERA                  │x = STATS.JARQUEBERA(a1)                                          │Jarque-Bera normality test.               │
+│KENDALLTAU                  │x = STATS.KENDALLTAU()                                            │-> ANY · arg ,                            │
+│KRUSKAL                     │x = STATS.KRUSKAL(groups)                                         │-> ANY · arg groups:PARAMETER             │
 │KS                          │x = STATS.KS(a1, a2)                                              │Kolmogorov-Smirnov test.                  │
-│KURTOSIS                    │x = STATS.KURTOSIS(a1)                                            │Kurtosis -> DOUBLE.                       │
 │KURTOSISTEST                │x = STATS.KURTOSISTEST(a1)                                        │Kurtosis test.                            │
 │LINREGRESS                  │x = STATS.LINREGRESS(a1, a2)                                      │Linear regression.                        │
+│LOGISTICCDF                 │x = STATS.LOGISTICCDF([, location, scale])                        │-> DOUBLE · arg , location:PARAMETER?     │
+│LOGISTICISF                 │x = STATS.LOGISTICISF(location, scale)                            │-> DOUBLE · arg , location:PARAMETER      │
 │LOGISTICPDF                 │x = STATS.LOGISTICPDF(a1, a2, a3)                                 │Logistic density -> DOUBLE.               │
 │LOGISTICPPF                 │x = STATS.LOGISTICPPF(a1, a2, a3)                                 │Logistic quantile -> DOUBLE.              │
+│LOGISTICSF                  │x = STATS.LOGISTICSF([, location, scale])                         │-> DOUBLE · arg , location:PARAMETER?     │
 │LOGNORMALCDF                │x = STATS.LOGNORMALCDF(a1, ...)                                   │Log-normal CDF -> DOUBLE.                 │
+│LOGNORMALISF                │x = STATS.LOGNORMALISF([, mu, sigma])                             │-> DOUBLE · arg , mu:PARAMETER?           │
 │LOGNORMALPDF                │x = STATS.LOGNORMALPDF(a1, ...)                                   │Log-normal density -> DOUBLE.             │
 │LOGNORMALPPF                │x = STATS.LOGNORMALPPF(a1, ...)                                   │Log-normal quantile -> DOUBLE.            │
-│MAD                         │x = STATS.MAD(a1)                                                 │Median absolute deviation -> DOUBLE.      │
+│LOGNORMALSF                 │x = STATS.LOGNORMALSF([, mu, sigma])                              │-> DOUBLE · arg , mu:PARAMETER?           │
 │MANNWHITNEY                 │x = STATS.MANNWHITNEY(a1, a2)                                     │Mann-Whitney U test.                      │
-│MEAN                        │x = STATS.MEAN(a1)                                                │Mean -> DOUBLE.                           │
-│MEDIAN                      │x = STATS.MEDIAN(a1)                                              │Median -> DOUBLE.                         │
 │MODE                        │x = STATS.MODE(a1)                                                │Mode -> DOUBLE.                           │
 │MOMENT                      │x = STATS.MOMENT(a1, a2)                                          │Moment -> DOUBLE.                         │
+│NCBETACDF                   │x = STATS.NCBETACDF(a, b, nc)                                     │-> DOUBLE · arg , a:PARAMETER             │
+│NCBETAISF                   │x = STATS.NCBETAISF(a, b, nc)                                     │-> DOUBLE · arg , a:PARAMETER             │
+│NCBETAPDF                   │x = STATS.NCBETAPDF(a, b, nc)                                     │-> DOUBLE · arg , a:PARAMETER             │
+│NCBETAPPF                   │x = STATS.NCBETAPPF(a, b, nc)                                     │-> DOUBLE · arg , a:PARAMETER             │
+│NCBETASF                    │x = STATS.NCBETASF(a, b, nc)                                      │-> DOUBLE · arg , a:PARAMETER             │
+│NCCHI2CDF                   │x = STATS.NCCHI2CDF(df, nc)                                       │-> DOUBLE · arg , df:PARAMETER            │
+│NCCHI2ISF                   │x = STATS.NCCHI2ISF(df, nc)                                       │-> DOUBLE · arg , df:PARAMETER            │
+│NCCHI2PDF                   │x = STATS.NCCHI2PDF(df, nc)                                       │-> DOUBLE · arg , df:PARAMETER            │
+│NCCHI2PPF                   │x = STATS.NCCHI2PPF(df, nc)                                       │-> DOUBLE · arg , df:PARAMETER            │
+│NCCHI2SF                    │x = STATS.NCCHI2SF(df, nc)                                        │-> DOUBLE · arg , df:PARAMETER            │
+│NCFCDF                      │x = STATS.NCFCDF(d1, d2, nc)                                      │-> DOUBLE · arg , d1:PARAMETER            │
+│NCFISF                      │x = STATS.NCFISF(d1, d2, nc)                                      │-> DOUBLE · arg , d1:PARAMETER            │
+│NCFPDF                      │x = STATS.NCFPDF(d1, d2, nc)                                      │-> DOUBLE · arg , d1:PARAMETER            │
+│NCFPPF                      │x = STATS.NCFPPF(d1, d2, nc)                                      │-> DOUBLE · arg , d1:PARAMETER            │
+│NCFSF                       │x = STATS.NCFSF(d1, d2, nc)                                       │-> DOUBLE · arg , d1:PARAMETER            │
+│NCGAMMACDF                  │x = STATS.NCGAMMACDF(shape, nc)                                   │-> DOUBLE · arg , shape:PARAMETER         │
+│NCGAMMAISF                  │x = STATS.NCGAMMAISF(shape, nc)                                   │-> DOUBLE · arg , shape:PARAMETER         │
+│NCGAMMAPDF                  │x = STATS.NCGAMMAPDF(shape, nc)                                   │-> DOUBLE · arg , shape:PARAMETER         │
+│NCGAMMAPPF                  │x = STATS.NCGAMMAPPF(shape, nc)                                   │-> DOUBLE · arg , shape:PARAMETER         │
+│NCGAMMASF                   │x = STATS.NCGAMMASF(shape, nc)                                    │-> DOUBLE · arg , shape:PARAMETER         │
+│NCTCDF                      │x = STATS.NCTCDF(df, nc)                                          │-> DOUBLE · arg , df:PARAMETER            │
+│NCTISF                      │x = STATS.NCTISF(df, nc)                                          │-> DOUBLE · arg , df:PARAMETER            │
+│NCTPDF                      │x = STATS.NCTPDF(df, nc)                                          │-> DOUBLE · arg , df:PARAMETER            │
+│NCTPPF                      │x = STATS.NCTPPF(df, nc)                                          │-> DOUBLE · arg , df:PARAMETER            │
+│NCTSF                       │x = STATS.NCTSF(df, nc)                                           │-> DOUBLE · arg , df:PARAMETER            │
 │NEGATIVEBINOMIALPMF         │x = STATS.NEGATIVEBINOMIALPMF(a1, a2, a3)                         │Negative binomial PMF -> DOUBLE.          │
 │NORMALCDF                   │x = STATS.NORMALCDF(a1, ...)                                      │Normal CDF -> DOUBLE.                     │
 │NORMALISF                   │x = STATS.NORMALISF(a1, ...)                                      │Normal survival function -> DOUBLE.       │
 │NORMALPDF                   │x = STATS.NORMALPDF(a1, ...)                                      │Normal density -> DOUBLE.                 │
 │NORMALPPF                   │x = STATS.NORMALPPF(a1, ...)                                      │Normal quantile -> DOUBLE.                │
+│NORMALSF                    │x = STATS.NORMALSF([, mu, sigma])                                 │-> DOUBLE · arg , mu:PARAMETER?           │
 │NORMALTEST                  │x = STATS.NORMALTEST(a1)                                          │Omnibus normality test.                   │
+│PARETOCDF                   │x = STATS.PARETOCDF(scale, shape)                                 │-> DOUBLE · arg , scale:PARAMETER         │
+│PARETOISF                   │x = STATS.PARETOISF(scale, shape)                                 │-> DOUBLE · arg , scale:PARAMETER         │
 │PARETOPDF                   │x = STATS.PARETOPDF(a1, a2, a3)                                   │Pareto density -> DOUBLE.                 │
 │PARETOPPF                   │x = STATS.PARETOPPF(a1, a2, a3)                                   │Pareto quantile -> DOUBLE.                │
+│PARETOSF                    │x = STATS.PARETOSF(scale, shape)                                  │-> DOUBLE · arg , scale:PARAMETER         │
 │PEARSONR                    │x = STATS.PEARSONR(a1, a2)                                        │Pearson correlation.                      │
-│PERCENTILE                  │x = STATS.PERCENTILE(a1, a2)                                      │Percentile -> DOUBLE.                     │
 │POISSONPMF                  │x = STATS.POISSONPMF(a1, a2)                                      │Poisson PMF -> DOUBLE.                    │
 │SHAPIRO                     │x = STATS.SHAPIRO(a1)                                             │Shapiro-Wilk normality test.              │
 │SKEWEDNORMALPDF             │x = STATS.SKEWEDNORMALPDF(a1, ...)                                │Skew-normal density -> DOUBLE.            │
-│SKEWNESS                    │x = STATS.SKEWNESS(a1)                                            │Skewness -> DOUBLE.                       │
 │SKEWTEST                    │x = STATS.SKEWTEST(a1)                                            │Skewness test.                            │
 │SPEARMANR                   │x = STATS.SPEARMANR(a1, a2)                                       │Spearman correlation.                     │
-│STDDEV                      │x = STATS.STDDEV(a1)                                              │Standard deviation -> DOUBLE.             │
 │STUDENTTCDF                 │x = STATS.STUDENTTCDF(a1, a2)                                     │Student t CDF -> DOUBLE.                  │
 │STUDENTTISF                 │x = STATS.STUDENTTISF(a1, a2)                                     │Student t survival function -> DOUBLE.    │
 │STUDENTTPDF                 │x = STATS.STUDENTTPDF(a1, a2)                                     │Student t density -> DOUBLE.              │
 │STUDENTTPPF                 │x = STATS.STUDENTTPPF(a1, a2)                                     │Student t quantile -> DOUBLE.             │
+│STUDENTTSF                  │x = STATS.STUDENTTSF(nu)                                          │-> DOUBLE · arg , nu:PARAMETER            │
+│TRIANGULARCDF               │x = STATS.TRIANGULARCDF([, min, mode, max])                       │-> DOUBLE · arg , min:PARAMETER?          │
+│TRIANGULARISF               │x = STATS.TRIANGULARISF([, min, mode, max])                       │-> DOUBLE · arg , min:PARAMETER?          │
 │TRIANGULARPDF               │x = STATS.TRIANGULARPDF(a1, ...)                                  │Triangular density -> DOUBLE.             │
 │TRIANGULARPPF               │x = STATS.TRIANGULARPPF(a1, ...)                                  │Triangular quantile -> DOUBLE.            │
+│TRIANGULARSF                │x = STATS.TRIANGULARSF([, min, mode, max])                        │-> DOUBLE · arg , min:PARAMETER?          │
 │TTEST                       │x = STATS.TTEST(a1, a2)                                           │Two-sample T-test.                        │
 │TTESTONESAMPLE              │x = STATS.TTESTONESAMPLE(a1, a2)                                  │One-sample T-test.                        │
 │TTESTPAIRED                 │x = STATS.TTESTPAIRED(a1, a2)                                     │Paired T-test.                            │
+│UNIFORMCDF                  │x = STATS.UNIFORMCDF(a, b)                                        │-> DOUBLE · arg , a:PARAMETER, b:PARAMETER│
+│UNIFORMISF                  │x = STATS.UNIFORMISF([, a, b])                                    │-> DOUBLE · arg , a:PARAMETER?            │
 │UNIFORMPDF                  │x = STATS.UNIFORMPDF(a1, ...)                                     │Uniform density -> DOUBLE.                │
 │UNIFORMPPF                  │x = STATS.UNIFORMPPF(a1, ...)                                     │Uniform quantile -> DOUBLE.               │
-│VARIANCE                    │x = STATS.VARIANCE(a1)                                            │Variance -> DOUBLE.                       │
+│UNIFORMSF                   │x = STATS.UNIFORMSF(a, b)                                         │-> DOUBLE · arg , a:PARAMETER, b:PARAMETER│
 │WEIBULLCDF                  │x = STATS.WEIBULLCDF(a1, a2, a3)                                  │Weibull CDF -> DOUBLE.                    │
+│WEIBULLISF                  │x = STATS.WEIBULLISF(shape, scale)                                │-> DOUBLE · arg , shape:PARAMETER         │
 │WEIBULLPDF                  │x = STATS.WEIBULLPDF(a1, a2, a3)                                  │Weibull density -> DOUBLE.                │
 │WEIBULLPPF                  │x = STATS.WEIBULLPPF(a1, a2, a3)                                  │Weibull quantile -> DOUBLE.               │
+│WEIBULLSF                   │x = STATS.WEIBULLSF(shape, scale)                                 │-> DOUBLE · arg , shape:PARAMETER         │
 │WILCOXON                    │x = STATS.WILCOXON(a1, a2)                                        │Wilcoxon test.                            │
 │ZTEST                       │x = STATS.ZTEST(a1, a2, a3)                                       │Z-test.                                   │
+│ZTPOISSONCDF                │x = STATS.ZTPOISSONCDF(lambda)                                    │-> DOUBLE · arg , lambda:PARAMETER        │
+│ZTPOISSONPMF                │x = STATS.ZTPOISSONPMF(lambda)                                    │-> DOUBLE · arg , lambda:PARAMETER        │
+│TYPE:ANOVARESULT            │TYPE AnovaResult                                                  │Tipo definito dal runtime.                │
 └────────────────────────────┴──────────────────────────────────────────────────────────────────┴──────────────────────────────────────────┘
 
 ┌──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
@@ -2162,45 +2234,6 @@
 │VALTYPE                     │x = SYSTEM.VALTYPE(variable)                                      │Value type.                               │
 │VARPTR                      │x = SYSTEM.VARPTR(variable)                                       │Variable pointer.                         │
 │TYPE:ERRTYPE                │TYPE ErrType                                                      │Fields: Number, Description, LineNumber   │
-└────────────────────────────┴──────────────────────────────────────────────────────────────────┴──────────────────────────────────────────┘
-
-┌──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
-│Namespace TIMESERIES                                                                                                                      │
-├────────────────────────────┬──────────────────────────────────────────────────────────────────┬──────────────────────────────────────────┤
-│NAME                        │SYNTAX / EXAMPLE                                                  │DESCRIPTION                               │
-├────────────────────────────┼──────────────────────────────────────────────────────────────────┼──────────────────────────────────────────┤
-│TSAUTOCORR                  │x = TIMESERIES.TSAUTOCORR(a1, a2)                                 │Autocorrelation -> DOUBLE.                │
-│TSBANDPASS                  │x = TIMESERIES.TSBANDPASS(a1, a2, a3, a4)                         │Butterworth bandpass filter.              │
-│TSBANDSTOP                  │x = TIMESERIES.TSBANDSTOP(a1, a2, a3, a4)                         │Butterworth bandstop filter.              │
-│TSCOVARIANCEMATRIX          │x = TIMESERIES.TSCOVARIANCEMATRIX(a1)                             │Covariance matrix -> ARRAY.               │
-│TSDECOMPOSE                 │x = TIMESERIES.TSDECOMPOSE(a1, a2)                                │Decomposes series -> ARRAY.               │
-│TSDESEASONALIZE             │x = TIMESERIES.TSDESEASONALIZE(a1, a2)                            │Deseasonalizes -> ARRAY.                  │
-│TSDIFFERENCE                │x = TIMESERIES.TSDIFFERENCE(a1, a2)                               │Differencing -> ARRAY.                    │
-│TSEMA                       │x = TIMESERIES.TSEMA(a1, a2)                                      │Exp. moving average -> ARRAY.             │
-│TSHIGHPASS                  │x = TIMESERIES.TSHIGHPASS(a1, a2, a3)                             │Butterworth highpass filter.              │
-│TSLOWPASS                   │x = TIMESERIES.TSLOWPASS(a1, a2, a3)                              │Butterworth lowpass filter.               │
-│TSMA                        │x = TIMESERIES.TSMA(a1, a2)                                       │Moving average -> ARRAY.                  │
-│TSMINMAX                    │x = TIMESERIES.TSMINMAX(a1)                                       │Minimum and maximum -> ARRAY.             │
-│TSOUTLIERS                  │x = TIMESERIES.TSOUTLIERS(a1, a2)                                 │Outlier indices -> ARRAY.                 │
-│TSRETURNS                   │x = TIMESERIES.TSRETURNS(a1)                                      │Returns -> ARRAY.                         │
-│TSROLLAUTOCORR              │x = TIMESERIES.TSROLLAUTOCORR(a1, a2, a3)                         │Rolling autocorr. -> ARRAY.               │
-│TSROLLCORR                  │x = TIMESERIES.TSROLLCORR(a1, a2, a3)                             │Rolling correlation -> ARRAY.             │
-│TSROLLCOVARIANCE            │x = TIMESERIES.TSROLLCOVARIANCE(a1, a2, a3)                       │Rolling covariance -> ARRAY.              │
-│TSROLLDELTA                 │x = TIMESERIES.TSROLLDELTA(a1, a2)                                │Rolling delta -> ARRAY.                   │
-│TSROLLKURTOSIS              │x = TIMESERIES.TSROLLKURTOSIS(a1, a2)                             │Rolling kurtosis -> ARRAY.                │
-│TSROLLMAD                   │x = TIMESERIES.TSROLLMAD(a1, a2)                                  │Rolling MAD -> ARRAY.                     │
-│TSROLLMEAN                  │x = TIMESERIES.TSROLLMEAN(a1, a2)                                 │Moving average -> ARRAY.                  │
-│TSROLLMEDIAN                │x = TIMESERIES.TSROLLMEDIAN(a1, a2)                               │Rolling median -> ARRAY.                  │
-│TSROLLMINMAX                │x = TIMESERIES.TSROLLMINMAX(a1, a2)                               │Rolling min/max -> ARRAY.                 │
-│TSROLLQUANTILE              │x = TIMESERIES.TSROLLQUANTILE(a1, a2, a3)                         │Rolling quantile -> ARRAY.                │
-│TSROLLREGRESSION            │x = TIMESERIES.TSROLLREGRESSION(a1, a2, a3)                       │Rolling regression -> ARRAY.              │
-│TSROLLREGRESSIONSINGLE      │x = TIMESERIES.TSROLLREGRESSIONSINGLE(a1, a2)                     │Single rolling regression -> ARRAY.       │
-│TSROLLSHARPE                │x = TIMESERIES.TSROLLSHARPE(a1, a2, a3)                           │Rolling Sharpe -> ARRAY.                  │
-│TSROLLSKEWNESS              │x = TIMESERIES.TSROLLSKEWNESS(a1, a2)                             │Rolling skewness -> ARRAY.                │
-│TSROLLSORTINO               │x = TIMESERIES.TSROLLSORTINO(a1, a2, a3, a4)                      │Rolling Sortino -> ARRAY.                 │
-│TSROLLSTDDEV                │x = TIMESERIES.TSROLLSTDDEV(a1, a2)                               │Rolling std. dev. -> ARRAY.               │
-│TSROLLZSCORE                │x = TIMESERIES.TSROLLZSCORE(a1, a2)                               │Rolling z-score -> ARRAY.                 │
-│TSVOLATILITY                │x = TIMESERIES.TSVOLATILITY(a1)                                   │Volatility -> DOUBLE.                     │
 └────────────────────────────┴──────────────────────────────────────────────────────────────────┴──────────────────────────────────────────┘
 
 ┌──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
@@ -2484,13 +2517,32 @@
 │MUL                         │VECTOR MUL v, 2                                                   │Multiplies by value or vector.            │
 │SET                         │VECTOR SET v, 0, 10                                               │Sets a vector element.                    │
 │WRAP                        │VECTOR WRAP v                                                     │Brings the values back into range.        │
+│ANGLE2D                     │x = VECTOR.ANGLE2D(x1, y1, x2, y2)                                │-> DOUBLE · arg x1:PARAMETER              │
 │CHEBYSHEV                   │x = VECTOR.CHEBYSHEV(handle1, handle2)                            │L∞ distance between vectors (handle).     │
 │COSINE                      │x = VECTOR.COSINE(handle1, handle2)                               │Cosine distance 1-similarity.             │
 │CREATE                      │x = VECTOR.CREATE(x, y, z, w)                                     │Creates vector -> LONG.                   │
+│DIST2D                      │x = VECTOR.DIST2D(x1, y1, x2, y2)                                 │-> DOUBLE · arg x1:PARAMETER              │
+│DIST3D                      │x = VECTOR.DIST3D(x1, y1, z1, x2, y2, z2)                         │-> DOUBLE · arg x1:PARAMETER              │
 │EUCLIDEA                    │x = VECTOR.EUCLIDEA(handle)                                       │Euclidean distance -> DOUBLE.             │
+│EUCLIDEANDISTANCESQUARED    │x = VECTOR.EUCLIDEANDISTANCESQUARED()                             │-> DOUBLE · arg ,                         │
 │MANHATTAN                   │x = VECTOR.MANHATTAN(handle1, handle2)                            │L1 distance between vectors (handle).     │
 │MINKOWSKI                   │x = VECTOR.MINKOWSKI(handle1, handle2, p)                         │Minkowski distance of order p.            │
+│POLAR_X                     │x = VECTOR.POLAR_X(radius, angleDegrees)                          │-> DOUBLE · arg radius:PARAMETER          │
+│POLAR_Y                     │x = VECTOR.POLAR_Y(radius, angleDegrees)                          │-> DOUBLE · arg radius:PARAMETER          │
 │PRODUCT                     │x = VECTOR.PRODUCT(handle1, handle2)                              │Product -> DOUBLE.                        │
+│VADD                        │x = VECTOR.VADD(a, b)                                             │-> LONG · arg a:PARAMETER, b:PARAMETER    │
+│VANGLE                      │x = VECTOR.VANGLE(a, b)                                           │-> DOUBLE · arg a:PARAMETER, b:PARAMETER  │
+│VCROSS                      │x = VECTOR.VCROSS(a, b)                                           │-> LONG · arg a:PARAMETER, b:PARAMETER    │
+│VDIST                       │x = VECTOR.VDIST(a, b)                                            │-> DOUBLE · arg a:PARAMETER, b:PARAMETER  │
+│VDIV                        │x = VECTOR.VDIV(a, b)                                             │-> LONG · arg a:PARAMETER, b:PARAMETER    │
+│VGET                        │x = VECTOR.VGET(handle, index)                                    │-> DOUBLE · arg handle:PARAMETER          │
+│VLERP                       │x = VECTOR.VLERP(a, b, t)                                         │-> LONG · arg a:PARAMETER, b:PARAMETER    │
+│VMAX                        │x = VECTOR.VMAX(a, b)                                             │-> LONG · arg a:PARAMETER, b:PARAMETER    │
+│VMIN                        │x = VECTOR.VMIN(a, b)                                             │-> LONG · arg a:PARAMETER, b:PARAMETER    │
+│VMUL                        │x = VECTOR.VMUL(a, b)                                             │-> LONG · arg a:PARAMETER, b:PARAMETER    │
+│VNORM                       │x = VECTOR.VNORM(handle)                                          │-> LONG · arg handle:PARAMETER            │
+│VSCALE                      │x = VECTOR.VSCALE(handle, s)                                      │-> LONG · arg handle:PARAMETER            │
+│VSUB                        │x = VECTOR.VSUB(a, b)                                             │-> LONG · arg a:PARAMETER, b:PARAMETER    │
 └────────────────────────────┴──────────────────────────────────────────────────────────────────┴──────────────────────────────────────────┘
 
 ┌──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
@@ -3010,10 +3062,10 @@
 ├────────────────────────────┬──────────────────────────────────────────────────────────────────┬──────────────────────────────────────────┤
 │NAME                        │SYNTAX / EXAMPLE                                                  │DESCRIPTION                               │
 ├────────────────────────────┼──────────────────────────────────────────────────────────────────┼──────────────────────────────────────────┤
-│COMMANDS                    │174                                                               │Language commands                         │
-│FUNCTIONS                   │1533                                                              │Language functions                        │
-│TYPES                       │78                                                                │Language types                            │
-│CONSTANTS                   │284                                                               │Language constants                        │
+│COMMANDS                    │175                                                               │Language commands                         │
+│FUNCTIONS                   │1474                                                              │Language functions                        │
+│TYPES                       │72                                                                │Language types                            │
+│CONSTANTS                   │400                                                               │Language constants                        │
 ├────────────────────────────┬──────────────────────────────────────────────────────────────────┬──────────────────────────────────────────┤
-│TOTAL                       │2069                                                              │Entries overall                           │
+│TOTAL                       │2121                                                              │Entries overall                           │
 └────────────────────────────┴──────────────────────────────────────────────────────────────────┴──────────────────────────────────────────┘

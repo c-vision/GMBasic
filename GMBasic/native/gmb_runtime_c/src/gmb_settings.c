@@ -57,7 +57,7 @@ int gmb_settings_int(const char* file, const char* key, int* out)
 void gmb_settings_apply_console_default(void)
 {
     int idx = 0;
-    const char* env = getenv("GMB_CONSOLE"); if (env && *env) idx = atoi(env);
+    const char* env = gmb_opt_env("GMB_CONSOLE"); if (env && *env) idx = atoi(env);
     int gw = 0, gh = 0, lw = 0, lh = 0;
     gmb_settings_console_int(idx, "charGridWidth", &gw);
     gmb_settings_console_int(idx, "charGridHeight", &gh);

@@ -1,9 +1,17 @@
 ' EXPECT: k=1c8aff950685c2ed4bc3174f3472287b56d9517b9c948127319a09a7a36deac8|r=108f07b8382412612c048d07d13f814118445acd|b32=NBSWY3DP|b58=Cn8eVZg
+' MiniTest BLOCKCHAIN (pacchetto `blockchain`, ABI a array di BYTE): hash e encoding di "hello".
+REQUIRE "blockchain"
 IMPORT BLOCKCHAIN
+IMPORT CRYPTOGRAPHY
+
 SUB Main()
-  DIM s$ = "hello"
-  PRINT "k="; STRKECCAK256(s$)
-  PRINT "r="; STRRIPEMD160(s$)
-  PRINT "b32="; BASE32ENCODE(s$)
-  PRINT "b58="; BASE58ENCODE(s$)
+  DIM d() AS BYTE = FROMHEX("68656c6c6f")
+  DIM h(31) AS BYTE
+  KECCAK256(d, h)
+  PRINT "k="; TOHEX(h)
+  DIM r(19) AS BYTE
+  RIPEMD160(d, r)
+  PRINT "r="; TOHEX(r)
+  PRINT "b32="; BASE32ENCODE(d)
+  PRINT "b58="; BASE58ENCODE(d)
 END SUB

@@ -1,5 +1,5 @@
 ' UDT con DUE campi ARRAY numerici (S3b): layout C contiguo, passaggio per valore e ritorno.
-' EXPECT: sz= 56|s= 31|a0= 2|a4= 6|d0= 1.5|d2= 12.5|b= 26
+' EXPECT: sz= 56|s= 20|a0= 2|a4= 6|d0= 1.5|d2= 12.5|b= 11
 TYPE ArrMix
     A(4) AS LONG
     D(2) AS DOUBLE

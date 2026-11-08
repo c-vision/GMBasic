@@ -62,8 +62,6 @@ public sealed class IlWebSocketHandle
     {
         try
         {
-            if (Environment.GetEnvironmentVariable("GMB_DEBUG_WS") == "1")
-                System.Console.WriteLine($"[WS.SEND] socketNull={Socket is null} len={text?.Length}");
             if (Socket is null) return;
             Socket.SendAsync(Encoding.UTF8.GetBytes(text ?? ""), WebSocketMessageType.Text, true, CancellationToken.None)
                 .GetAwaiter().GetResult();

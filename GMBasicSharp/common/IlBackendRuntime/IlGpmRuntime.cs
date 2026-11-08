@@ -943,7 +943,7 @@ public static class IlGpmRuntime
     /// Senza questo, un DONE esplicito + il Done implicito a fine task decrementano DUE volte
     /// per una singola goroutine: con 2+ goroutine sullo stesso WAITGROUP il contatore tocca
     /// zero dopo UNA sola di esse (2 decrementi anziché 1) e WAIT ritorna prematuramente, prima
-    /// che le altre goroutine abbiano finito (bug reale, misurato con GMB_DBG_WG: DoneAndWake
+    /// che le altre goroutine abbiano finito (bug reale, misurato sul contatore: DoneAndWake
     /// chiamato 2 volte per ogni singolo statement `DONE wg` —
     /// Bugs/(open) - WaitGroup-Wait-Non-Attende-Tutte-Goroutine-Multiple.md). Se `wg` è un
     /// WaitGroup DIVERSO da task.WaitGroup (DONE su un gruppo non quello di spawn — caso raro

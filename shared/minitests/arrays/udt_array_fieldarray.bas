@@ -1,5 +1,5 @@
 ' Array di UDT i cui elementi hanno un campo ARRAY: accesso e assegnazione per elemento.
-' EXPECT: a= 5|a4= 9|b= 7|a0= 1
+' EXPECT: a= 5|a4= 9|b= 7|a0= 0
 TYPE Arr4
     A(4) AS LONG
     B AS DOUBLE

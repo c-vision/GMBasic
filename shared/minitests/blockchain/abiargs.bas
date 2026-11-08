@@ -1,9 +1,16 @@
 ' EXPECT: enc=0x70a082310000000000000000000000000000000000000000000000000000000000000001|dec= 1
-' MiniTest BLOCKCHAIN: ABIENCODE con argomento uint256 + ABIDECODE della parola singola — oracolo IL/PCode (la VM/C codifica parole da 16 byte e salta il selettore in decode: gap noto).
+' MiniTest BLOCKCHAIN (pacchetto FFI): ABIENCODE con un argomento uint256 (array DOUBLE)
+' + ABIDECODE di una parola da 32 byte in un buffer DOUBLE.
+REQUIRE "blockchain"
 IMPORT BLOCKCHAIN
+
 SUB Main()
-  PRINT "enc="; ABIENCODE("balanceOf(address)", 1)
-  DIM w$ = "0x0000000000000000000000000000000000000000000000000000000000000001"
-  DIM r = ABIDECODE(w$, {"uint256"})
-  PRINT "dec="; r(0)
+  DIM nums(0) AS DOUBLE
+  nums(0) = 1
+  PRINT "enc="; ABIENCODE("balanceOf(address)", nums)
+  DIM w$ AS STRING = "0x0000000000000000000000000000000000000000000000000000000000000001"
+  DIM out(9) AS DOUBLE
+  DIM n AS LONG
+  n = ABIDECODE(w$, out)
+  PRINT "dec="; out(0)
 END SUB

@@ -1,3 +1,7 @@
+/* Prototipo del ponte registro->env (gmb_opts.c, compilato in questo eseguibile).
+ * NON si include gmb_runtime.h: quel mondo ha un gmb_types.h omonimo e diverso da
+ * frontend/include/gmb_types.h (clash di typedef). */
+extern const char* gmb_opt_env(const char* name);
 /* native/gmb_compiler_c/driver/gmb_chunk_driver.c — compila un .bas in chunk A1/GMBC con il
  * pipeline 100% C (lexer -> macro -> parser -> gmb_compile). Specchio minimale della
  * compilazione chunk di native/executor (gmb_compile_c_chunk), senza aggregazione progetto.
@@ -97,7 +101,7 @@ int main(int argc, char** argv) {
             if (!pkg_cache_is_dir(pkgcache)) {
                 snprintf(pkgcache + pl, sizeof pkgcache - pl, "/../packages");
             }
-            gmb_pkg_set_cache_dir(pkgcache);
+            { const char* ov = gmb_opt_env("GMB_PKG_CACHE"); if (ov && *ov) snprintf(pkgcache, sizeof pkgcache, "%s", ov); gmb_pkg_set_cache_dir(pkgcache); }
         } else {
             /* CLIENT (nessun checkout sorgente): cache utente ~/.gmbasic/packages — RADICE UNICA
              * dei dati utente. Qui c'era `~/.gmb/packages`: con quella radice un pacchetto
@@ -106,7 +110,7 @@ int main(int argc, char** argv) {
             const char* home = getenv("HOME");
             if (home && *home) {
                 snprintf(pkgcache, sizeof pkgcache, "%s/.gmbasic/packages", home);
-                gmb_pkg_set_cache_dir(pkgcache);
+                { const char* ov = gmb_opt_env("GMB_PKG_CACHE"); if (ov && *ov) snprintf(pkgcache, sizeof pkgcache, "%s", ov); gmb_pkg_set_cache_dir(pkgcache); }
             }
         }
     }

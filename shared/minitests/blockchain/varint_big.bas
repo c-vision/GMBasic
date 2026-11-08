@@ -1,12 +1,18 @@
 ' EXPECT: e150=9601|e300=ac02|d150= 150|d300= 300
-' MiniTest BLOCKCHAIN: VARINT LEB128 multibyte — oracolo IL/PCode (la VM/C usa il varint compatto Bitcoin: gap noto).
+' MiniTest BLOCKCHAIN (pacchetto FFI): VARINT LEB128 multibyte (2 byte).
+REQUIRE "blockchain"
 IMPORT BLOCKCHAIN
 IMPORT CRYPTOGRAPHY
+
 SUB Main()
-  PRINT "e150="; TOHEX(VARINTENCODE(150))
-  PRINT "e300="; TOHEX(VARINTENCODE(300))
-  DIM a() = FROMHEX("9601")
-  DIM c() = FROMHEX("ac02")
-  PRINT "d150="; VARINTDECODE(a())
-  PRINT "d300="; VARINTDECODE(c())
+  DIM o(9) AS BYTE
+  DIM n AS LONG
+  n = VARINTENCODE(150, o)
+  PRINT "e150="; LEFT(TOHEX(o), n * 2)
+  n = VARINTENCODE(300, o)
+  PRINT "e300="; LEFT(TOHEX(o), n * 2)
+  DIM a() AS BYTE = FROMHEX("9601")
+  PRINT "d150="; VARINTDECODE(a)
+  DIM c() AS BYTE = FROMHEX("ac02")
+  PRINT "d300="; VARINTDECODE(c)
 END SUB

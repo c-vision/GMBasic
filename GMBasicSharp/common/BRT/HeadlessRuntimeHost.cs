@@ -112,7 +112,7 @@ public sealed class HeadlessRuntimeHost : IRuntimeHost
         // Input scriptato dai test/CI (stessa variabile della gamba C99/VM-C):
         // ogni carattere diventa un tasto; \n / \r -> INVIO.
         Basic.Runtime.Services.NativeTui.InjectScriptFromEnv();
-        { var script = System.Environment.GetEnvironmentVariable("GMB_TUI_SCRIPT");
+        { var script = Basic.Providers.GmbEnv.Get("GMB_TUI_SCRIPT");
           if (!string.IsNullOrEmpty(script))
               foreach (var ch in script)
                   _headlessKeyboard.QueueKey(ch == '\n' ? '\r' : ch); }

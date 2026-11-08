@@ -46,7 +46,7 @@ public static class NativeTui
     /// variabile GMB_TUI_SCRIPT usata dalle gambe C99/VM-C).</summary>
     public static void InjectScriptFromEnv()
     {
-        var script = System.Environment.GetEnvironmentVariable("GMB_TUI_SCRIPT");
+        var script = Basic.Providers.GmbEnv.Get("GMB_TUI_SCRIPT");
         if (string.IsNullOrEmpty(script)) return;
         try { CGfxNative.EnsureResolver(); GInjectKeys(script); } catch { }
     }

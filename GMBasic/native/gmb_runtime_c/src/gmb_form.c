@@ -1659,6 +1659,8 @@ static const char* tui_ctrl_text(gmb_control_t* c)
     static char _buf[256]; void* u = c->user; _buf[0] = 0;
     switch (c->ctrl_kind) {
         case GMB_CK_CHECKBOX: snprintf(_buf, sizeof(_buf), "%s", ((gmb_checkbox_t*)u)->label); break;
+        case GMB_CK_BUTTON:   snprintf(_buf, sizeof(_buf), "%s", ((gmb_button_t*)u)->label); break;
+        case GMB_CK_TEXTBOX:  snprintf(_buf, sizeof(_buf), "%s", ((gmb_text_input_t*)u)->text); break;
         case GMB_CK_TOGGLE:   snprintf(_buf, sizeof(_buf), "%s", ((gmb_toggle_button_t*)u)->caption); break;
         case GMB_CK_STATUSBAR:snprintf(_buf, sizeof(_buf), "%s", ((gmb_status_bar_t*)u)->text); break;
         case GMB_CK_LABEL:    snprintf(_buf, sizeof(_buf), "%s", ((gmb_label_t*)u)->text); break;
@@ -1672,6 +1674,8 @@ static void tui_ctrl_set_text(gmb_control_t* c, const char* str)
     void* u = c->user;
     switch (c->ctrl_kind) {
         case GMB_CK_CHECKBOX: snprintf(((gmb_checkbox_t*)u)->label, sizeof(((gmb_checkbox_t*)u)->label), "%s", str); break;
+        case GMB_CK_BUTTON:   snprintf(((gmb_button_t*)u)->label, sizeof(((gmb_button_t*)u)->label), "%s", str); break;
+        case GMB_CK_TEXTBOX:  snprintf(((gmb_text_input_t*)u)->text, sizeof(((gmb_text_input_t*)u)->text), "%s", str); break;
         case GMB_CK_TOGGLE:   snprintf(((gmb_toggle_button_t*)u)->caption, sizeof(((gmb_toggle_button_t*)u)->caption), "%s", str); break;
         case GMB_CK_STATUSBAR:snprintf(((gmb_status_bar_t*)u)->text, sizeof(((gmb_status_bar_t*)u)->text), "%s", str); break;
         case GMB_CK_LABEL:    snprintf(((gmb_label_t*)u)->text, sizeof(((gmb_label_t*)u)->text), "%s", str); break;
@@ -2266,6 +2270,19 @@ int gmb_form_add_tree(int x, int y, int w, int h, const char* items, double* var
  * `strptr` e' un gmb_string_t* del programma (INTO var$): il testo vive li'. */
 int gmb_form_add_textbox(int x, int y, int w, int h, void* strptr)
 {
+    /* TEXT mode (headless/TUI): il TEXTBOX è un controllo TUI registrato, come checkbox e
+     * button. Prima finiva in g_wid (handle 0) e il registry TUI veniva sovrascritto: CONTROL
+     * GET/GETS per nome non trovavano più il controllo (handle collision fra i due registry). */
+    if (!GMB_GFX_SCREEN_ON())
+    {
+        extern gmb_control_t* gmb_tui_add_textinput(int, int, int, const char*);
+        const char* init = strptr ? ((gmb_string_t*)strptr)->data : "";
+        gmb_control_t* c = gmb_tui_add_textinput(x, y, w, init ? init : "");
+        if (!c) return -1;
+        if (strptr) gmb_tui_bind_str(c->handle, (gmb_string_t*)strptr);
+        gmb_form_note_handle(c->handle);
+        return c->handle;
+    }
     int i = form_add_widget(W_TEXT, x, y, w, h, NULL, NULL);
     if (i >= 0) { g_wid[i].strptr = strptr; g_wid[i].tcur = strptr ? (int)strlen(((gmb_string_t*)strptr)->data ? ((gmb_string_t*)strptr)->data : "") : 0; }
     return i;

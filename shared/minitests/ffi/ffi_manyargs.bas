@@ -1,4 +1,4 @@
-' EXPECT: s64= 2080|s9= 45|s12= 78|s16= 136|s20= 210|s40= 820|i12= 78|m12= 81|m9= 47|mret= 31|arr= 55
+' EXPECT: s9= 45|s12= 78|s16= 136|s20= 210|s40= 820|s64= 2080|i12= 78|m12= 81|m9= 47|mret= 31|arr= 55
 ' FFI: firme con più di 8 argomenti (9/12/16), miste, con array in coda.
 ' Richiede libffitest (shared/libs/ffitest/build.sh). Parità 4 backend.
 DECLARE FUNCTION FT_SUM9 LIB "ffitest" ALIAS "ft_sum9" (a1 AS DOUBLE, a2 AS DOUBLE, a3 AS DOUBLE, a4 AS DOUBLE, a5 AS DOUBLE, a6 AS DOUBLE, a7 AS DOUBLE, a8 AS DOUBLE, a9 AS DOUBLE) AS DOUBLE

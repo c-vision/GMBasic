@@ -787,13 +787,6 @@ int gmb_ai_decide_local_run_group(const char* state, const gmb_decision_domain_t
             }
         }
     }
-    {   /* Diagnostica opt-in. */
-        const char* dbg = getenv("GMB_DECIDE_GROUP_DEBUG");
-        if (dbg && *dbg)
-            fprintf(stderr, "[decide-group-c] n=%d common=%d usePrefix=%d\n",
-                    n_domains, common, use_prefix);
-    }
-
     /* Fase 3: readout per dominio (lineare o KV riusata). */
     for (int i = 0; i < n_domains; i++) {
         gmb_decision_option_t* ei = eff + (size_t)i * GMB_DECISION_MAX_OPTIONS;

@@ -40,6 +40,7 @@ internal sealed partial class PCodeProcessor
         BuiltInFunction.AISETHFTOKEN,
         BuiltInFunction.AISETOPTION,
         BuiltInFunction.AIOPTION,
+        BuiltInFunction.AILISTOPTIONS,
         BuiltInFunction.AITEMP,
         BuiltInFunction.AITRANSCRIBE,
         BuiltInFunction.AIVERIFY,
@@ -489,6 +490,10 @@ internal sealed partial class PCodeProcessor
         [BuiltInFunction.AIOPTION] = (task, args) =>
         {
                 return Basic.IlBackend.IlRuntime.AiOption(args.Length >= 1 ? args[0]?.ToString() ?? "" : "");
+        },
+        [BuiltInFunction.AILISTOPTIONS] = (task, args) =>
+        {
+                return Basic.IlBackend.IlRuntime.AiListOptions();
         },
         [BuiltInFunction.AIHFREPO] = (task, args) =>
         {
