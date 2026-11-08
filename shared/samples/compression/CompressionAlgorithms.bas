@@ -1,6 +1,7 @@
 ' FILE: compression/CompressionAlgorithms.bas
 ' COMPRESSION — algoritmi aggiunti (2026-10-10): ZSTD/UNZSTD, LZ4/UNLZ4, XZ/UNXZ.
 ' Round-trip di ciascun algoritmo + verifica via COMPRESS/DECOMPRESS per nome.
+REQUIRE "compression"
 IMPORT COMPRESSION AS C
 
 SUB Main()

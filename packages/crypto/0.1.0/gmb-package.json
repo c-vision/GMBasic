@@ -1,0 +1,25 @@
+{
+  "name": "crypto",
+  "version": "0.1.0",
+  "description": "Dominio CRYPTOGRAPHY via FFI: hash (SHA-1/256/384/512, SHA-3, MD5, RIPEMD-160), HMAC, PBKDF2/HKDF, AES-GCM, ChaCha20-Poly1305, password hash, checksum (CRC32, CRC32C, CRC16, CRC64, Adler-32, Fletcher-32), encoding hex/base64/base64url. Sorgenti canonici in gmbsuite/gmbcrypto, copia self-contained qui.",
+  "contentType": "c-ffi-source",
+  "exports": ["crypto.inc"],
+  "samples": ["samples"],
+  "build": {
+    "command": "bash build.sh",
+    "cwd": ".",
+    "tool": "cc",
+    "outputs": ["lib/{platform}/libgmbcrypto.dylib"]
+  },
+  "ffi": {
+    "api": "c-abi",
+    "headers": ["include/gmbcrypto.h"],
+    "libs": { "osx-arm64": "lib/osx-arm64/libgmbcrypto.dylib" },
+    "link": "-lcrypto",
+    "declareExample": "DECLARE FUNCTION CRC32RAW LIB \"gmbcrypto\" ALIAS \"ofx_crypto_crc32\" (data() AS BYTE, n AS LONG) AS LONG"
+  },
+  "nativeRequirements": {
+    "libcrypto": ">=3.0 (OpenSSL 3; brew install openssl@3). Non e' un pacchetto del package manager: la lib e' linkata a runtime (ffi.link = -lcrypto)."
+  },
+  "dependencies": {}
+}

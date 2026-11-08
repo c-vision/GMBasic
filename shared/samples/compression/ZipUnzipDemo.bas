@@ -2,7 +2,7 @@
 ' ============================================================================================================
 ' COMPRESSION — ZIP / UNZIP (statement legacy e funzioni qualificate)
 ' ============================================================================================================
-IMPORT COMPRESSION WITH ALIAS
+IMPORT ARCHIVE WITH ALIAS
 IMPORT IO WITH ALIAS
 
 SUB Main()
@@ -24,14 +24,14 @@ SUB Main()
     PRINT "UNZIP legacy completato in: estratto1"
     PRINT
 
-    ' --- 3. Funzione qualificata: COMPRESSION.ZIP(sources, dest) ---
-    DIM ok1 = COMPRESSION.ZIP("b.txt", "archivio2.zip")
-    PRINT "COMPRESSION.ZIP ok: "; ok1
+    ' --- 3. Funzione qualificata: ARCHIVE.ZIP(sources, dest) ---
+    DIM ok1 = ARCHIVE.ZIP("b.txt", "archivio2.zip")
+    PRINT "ARCHIVE.ZIP ok: "; ok1
     PRINT
 
-    ' --- 4. Funzione qualificata: COMPRESSION.UNZIP(archive, dir) ---
-    DIM ok2 = COMPRESSION.UNZIP("archivio2.zip", "estratto2")
-    PRINT "COMPRESSION.UNZIP ok: "; ok2
+    ' --- 4. Funzione qualificata: ARCHIVE.UNZIP(archive, dir) ---
+    DIM ok2 = ARCHIVE.UNZIP("archivio2.zip", "estratto2")
+    PRINT "ARCHIVE.UNZIP ok: "; ok2
     PRINT
 
     ' --- 5. Verifica: i file estratti esistono? ---

@@ -1273,6 +1273,8 @@ PRINT AI RAG SEARCH ":memory:", "products", "notebook", 3
 
 <!-- END SURFACE -->
 
+
+
 <!-- BEGIN DOMAIN TABLE -->
 ## Tavola sinottica del dominio
 
@@ -1299,15 +1301,28 @@ nel corpus di test e sample `.bas`/`.inc`: dove il corpus non usa il simbolo è 
 - **VECTOR.CHEBYSHEV(x1, x2)** — `PRINT "chebyshev  ="; VECTOR.CHEBYSHEV(h1, h2)` (shared/samples/Math/VectorDistanceSciPyParity.bas:11)
 - **VECTOR.COSINE(x1, x2)** — `PRINT "cosine     ="; VECTOR.COSINE(h1, h2)` (shared/samples/Math/VectorDistanceSciPyParity.bas:12)
 - **VECTOR.CREATE(x1, x2, x3)** — `h1 = VECTOR.CREATE(1, 2, 3)` (shared/samples/Math/VectorDistanceSciPyParity.bas:8)
-- **VECTOR.DIST2D(x1, x2, x3, x4)** — `830 PRINT "DIST2D(0, 0, 3, 4) =", DIST2D(0, 0, 3, 4); "(Atteso: 5)"` (shared/samples/Types/TypesConversions.bas:136)
-- **VECTOR.DIST3D(x1, x2, x3, x4, x5, x6)** — `840 PRINT "DIST3D(0, 0, 0, 1, 2, 2) =", DIST3D(0, 0, 0, 1, 2, 2); "(Atteso: 3)"` (shared/samples/Types/TypesConversions.bas:137)
+- **VECTOR.DIST2D(x1, x2, x3, x4)** — `PRINT "dist2d="; ROUND(VECTOR.DIST2D(0, 0, 3, 4), 6); "|dist3d="; ROUND(VECTOR.DIST3D(0, 0, 0, 0, 0,…` (shared/minitests/math/math_all.bas:46)
+- **VECTOR.DIST3D(x1, x2, x3, x4, x5, x6)** — `PRINT "dist2d="; ROUND(VECTOR.DIST2D(0, 0, 3, 4), 6); "|dist3d="; ROUND(VECTOR.DIST3D(0, 0, 0, 0, 0,…` (shared/minitests/math/math_all.bas:46)
 - **VECTOR.EUCLIDEA(x1)** — `DIM eu = VECTOR.EUCLIDEA(v)         : PRINT "euclidea   ok"` (shared/samples/Math/VectorMiniTest.bas:14)
-- **VECTOR.EUCLIDEANDISTANCESQUARED(x1, x2)** — `PRINT "euclid: "; VECTOR.EuclideanDistanceSquared(x, y)` (shared/samples/Analysis/AnalysisInterpReal.bas:15)
+- **VECTOR.EUCLIDEANDISTANCESQUARED(x1, x2)** — `PRINT "euclid: "; VECTOR.EuclideanDistanceSquared(x, y)` (shared/samples/Analysis/AnalysisInterpReal.bas:16)
 - **VECTOR.MANHATTAN(x1, x2)** — `PRINT "manhattan  ="; VECTOR.MANHATTAN(h1, h2)` (shared/samples/Math/VectorDistanceSciPyParity.bas:10)
 - **VECTOR.MINKOWSKI(x1, x2, x3)** — `PRINT "minkowski  ="; VECTOR.MINKOWSKI(h1, h2, 3)` (shared/samples/Math/VectorDistanceSciPyParity.bas:13)
 - **VECTOR.POLAR_X(x1, x2)** — `DIM x = VECTOR.POLAR_X(raggio, angoloDeg)` (shared/samples/Math/MathCombinatorics.bas:49)
 - **VECTOR.POLAR_Y(x1, x2)** — `DIM y = VECTOR.POLAR_Y(raggio, angoloDeg)` (shared/samples/Math/MathCombinatorics.bas:50)
 - **VECTOR.PRODUCT(x1, x2)** — `DIM dp = VECTOR.PRODUCT(h1, h2)     : PRINT "dot        ok"` (shared/samples/Math/VectorMiniTest.bas:12)
+- **VECTOR.VADD(x1, x2)** — `DIM s = VECTOR.VADD(a, b)` (shared/minitests/stats/vector_ops.bas:6)
+- **VECTOR.VANGLE(x1, x2)** — `PRINT "ang="; MATH.ROUND(VECTOR.VANGLE(VECTOR.CREATE(1, 0, 0), VECTOR.CREATE(0, 1, 0)), 6)` (shared/minitests/stats/vector_ops.bas:18)
+- **VECTOR.VCROSS(x1, x2)** — `DIM c = VECTOR.VCROSS(VECTOR.CREATE(1, 0, 0), VECTOR.CREATE(0, 1, 0))` (shared/minitests/stats/vector_ops.bas:16)
+- **VECTOR.VDIST(x1, x2)** — `PRINT "dist="; MATH.ROUND(VECTOR.VDIST(VECTOR.CREATE(1, 1, 1), VECTOR.CREATE(1, 1, 4)), 6)` (shared/minitests/stats/vector_ops.bas:19)
+- **VECTOR.VDIV(x1, x2)** — nessun uso nel corpus
+- **VECTOR.VGET(x1, x2)** — `PRINT "add="; VECTOR.VGET(s, 0); VECTOR.VGET(s, 1); VECTOR.VGET(s, 2)` (shared/minitests/stats/vector_ops.bas:7)
+- **VECTOR.VLERP(x1, x2, x3)** — `DIM l = VECTOR.VLERP(VECTOR.CREATE(0, 0, 0), VECTOR.CREATE(10, 10, 10), 0.25)` (shared/minitests/stats/vector_ops.bas:20)
+- **VECTOR.VMAX(x1, x2)** — nessun uso nel corpus
+- **VECTOR.VMIN(x1, x2)** — nessun uso nel corpus
+- **VECTOR.VMUL(x1, x2)** — `DIM m = VECTOR.VMUL(a, b)` (shared/minitests/stats/vector_ops.bas:10)
+- **VECTOR.VNORM(x1)** — `DIM n = VECTOR.VNORM(VECTOR.CREATE(3, 4, 0))` (shared/minitests/stats/vector_ops.bas:14)
+- **VECTOR.VSCALE(x1, x2)** — `DIM q = VECTOR.VSCALE(a, 2.0)` (shared/minitests/stats/vector_ops.bas:12)
+- **VECTOR.VSUB(x1, x2)** — `DIM d = VECTOR.VSUB(b, a)` (shared/minitests/stats/vector_ops.bas:8)
 - **VECTORDB.ABTEST(x1, x2)** — `DIM ab$ = VECTORDB.ABTEST(va$, vb$)` (shared/samples/VectorDB/RagEvalAdvanced.bas:88)
 - **VECTORDB.BASELINE(x1)** — `DIM bl$ = VECTORDB.BASELINE(sample$)` (shared/samples/VectorDB/RagEvalAdvanced.bas:63)
 - **VECTORDB.CALIBRATE(x1)** — `DIM cal$ = VECTORDB.CALIBRATE(cases$)` (shared/samples/VectorDB/RagEvalAdvanced.bas:41)

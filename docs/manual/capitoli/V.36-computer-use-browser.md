@@ -104,46 +104,6 @@ mondo reale. Il capitolo cita il codice e i sample; non simula un risultato.
 
 
 
-<!-- BEGIN DOMAIN TABLE -->
-## Tavola sinottica del dominio
-
-Ogni riga riporta la firma canonica (dal registry) e il primo uso reale trovato
-nel corpus di test e sample `.bas`/`.inc`: dove il corpus non usa il simbolo è dichiarato.
-
-- **BROWSER.ACCESSTREE()** — `PRINT "ax="; BROWSER.ACCESSTREE()` (shared/samples/Ai/BrowserAccessTreeClickFill.bas:12)
-- **BROWSER.AUTH(x1, x2)** — `DIM list0$ = BROWSER.AUTH("list", "")` (shared/samples/Browser/BrowserGovernanceDemo.bas:53)
-- **BROWSER.CLEARCOOKIES()** — `PRINT "clearcookies="; BROWSER.CLEARCOOKIES()` (shared/samples/Ai/BrowserActions.bas:34)
-- **BROWSER.CLICK(x1)** — `DIM clickRes$ = BROWSER.CLICK("#btn1")` (shared/samples/Browser/BrowserGovernanceDemo.bas:36)
-- **BROWSER.CONSOLE()** — `DIM con$ = BROWSER.CONSOLE(TRUE)` (shared/samples/Browser/BrowserGovernanceDemo.bas:47)
-- **BROWSER.EVALUATE(x1)** — `PRINT "title: "; BROWSER.EVALUATE("document.title")` (shared/samples/Browser/BrowserGovernanceDemo.bas:38)
-- **BROWSER.FILL(x1, x2)** — `PRINT "fill="; BROWSER.FILL("@e3","hello")` (shared/samples/Ai/BrowserAccessTreeClickFill.bas:16)
-- **BROWSER.FIND(x1)** — `DIM f1$ = BROWSER.FIND("Hello GMBasic")` (shared/samples/Browser/BrowserGovernanceDemo.bas:29)
-- **BROWSER.GETCOOKIES()** — `PRINT "=== BROWSER.GETCOOKIES ==="` (shared/samples/Browser/BrowserGetCookies.bas:11)
-- **BROWSER.HUMANCLICK(x1)** — `DIM s9$ = BROWSER.HUMANCLICK("#id")` (shared/minitests/browser/browser_missing_symbols.bas:17)
-- **BROWSER.HUMANFILL(x1, x2)** — `PRINT "humanfill="; BROWSER.HUMANFILL("input#non-esiste", "ciao")` (shared/samples/Ai/BrowserActions.bas:35)
-- **BROWSER.HUMANSCROLL(x1)** — `PRINT BROWSER.HUMANSCROLL("")` (shared/minitests/browser/gen_BROWSER_HumanScroll.bas:4)
-- **BROWSER.NAVIGATE(x1)** — `BROWSER.NAVIGATE("file://../../../samples/Fixtures/browser-eval/test_basic.html")` (shared/samples/Browser/BrowserGovernanceDemo.bas:20)
-- **BROWSER.NETLOG()** — `DIM net$ = BROWSER.NETLOG(TRUE)` (shared/samples/Browser/BrowserGovernanceDemo.bas:45)
-- **BROWSER.OBSERVE()** — `DIM obs$ = BROWSER.OBSERVE()` (shared/samples/Browser/BrowserGovernanceDemo.bas:23)
-- **BROWSER.SCREENSHOT()** — `shot$ = COMPUTER.SCREENSHOT("work/computer_shot.png")` (shared/samples/Ai/ComputerUse.bas:15)
-- **BROWSER.SETCOOKIE(x1, x2)** — `DIM s6$ = BROWSER.SETCOOKIE("n", "v", "http://localhost/")` (shared/minitests/browser/browser_missing_symbols.bas:14)
-- **BROWSER.SETHEADER(x1, x2)** — `res.SetHeader("Content-Type", contentType)` (shared/samples/Security/HttpController.inc:46)
-- **BROWSER.SETUSERAGENT(x1)** — `PRINT "=== BROWSER.SETUSERAGENT ==="` (shared/samples/Browser/BrowserSetUserAgent.bas:10)
-- **BROWSER.SNAPSHOT()** — `snap$ = BROWSER.SNAPSHOT()` (shared/samples/Ai/BrowserActions.bas:28)
-- **BROWSER.START()** — `BROWSER.START(%AUTO, 9222)` (shared/samples/Browser/BrowserGovernanceDemo.bas:17)
-- **COMPUTER.CLICK(x1, x2)** — `PRINT "tools_computer="; Has(tc, "computer.click") <> 0` (shared/samples/cua/CuaDiagnostics.bas:38)
-- **COMPUTER.DOUBLECLICK(x1, x2)** — `d = COMPUTER.DOUBLECLICK(0, 0)` (shared/samples/Ai/ComputerInput.bas:44)
-- **COMPUTER.HOTKEY(x1)** — `r1 = COMPUTER.HOTKEY("hyper+z")` (shared/samples/Ai/ComputerInput.bas:52)
-- **COMPUTER.KEY(x1)** — `PRINT COMPUTER.KEY("")` (shared/minitests/computer/gen_COMPUTER_Key.bas:5)
-- **COMPUTER.MOVE(x1, x2)** — `PRINT COMPUTER.MOVE(0, 0)` (shared/minitests/computer/gen_COMPUTER_Move.bas:5)
-- **COMPUTER.SCREENRECORD()** — `PRINT "=== COMPUTER.SCREENRECORD ==="` (shared/samples/Computer/ComputerScreenRecord.bas:10)
-- **COMPUTER.SCREENRECORDSTART(x1)** — `DIM start$ AS STRING = COMPUTER.SCREENRECORDSTART(path$, fps)` (shared/samples/Ai/ComputerScreenRecord.bas:14)
-- **COMPUTER.SCREENRECORDSTATUS()** — `DIM st$ AS STRING = COMPUTER.SCREENRECORDSTATUS()` (shared/samples/Ai/ComputerScreenRecord.bas:25)
-- **COMPUTER.SCREENRECORDSTOP()** — `DIM stop$ AS STRING = COMPUTER.SCREENRECORDSTOP()` (shared/samples/Ai/ComputerScreenRecord.bas:21)
-- **COMPUTER.SCREENSHOT()** — `shot$ = COMPUTER.SCREENSHOT("work/computer_shot.png")` (shared/samples/Ai/ComputerUse.bas:15)
-- **COMPUTER.TYPE(x1)** — `PRINT "=== COMPUTER.TYPE ==="` (shared/samples/Computer/ComputerType.bas:9)
-- **COMPUTER.WINDOWS()** — `win = COMPUTER.WINDOWS()` (shared/samples/cua/AgentWorkflow.bas:31)
-<!-- END DOMAIN TABLE -->
 
 <!-- BEGIN SURFACE (generato da tools/sh/manual_surface.sh — non modificare a mano) -->
 
@@ -625,3 +585,45 @@ PRINT TOOL.SEARCH("browser")   ' JSON [{name,description,provider,risk}]
 ## 11. Debug e limiti noti
 
 <!-- END SURFACE -->
+
+
+<!-- BEGIN DOMAIN TABLE -->
+## Tavola sinottica del dominio
+
+Ogni riga riporta la firma canonica (dal registry) e il primo uso reale trovato
+nel corpus di test e sample `.bas`/`.inc`: dove il corpus non usa il simbolo è dichiarato.
+
+- **BROWSER.ACCESSTREE()** — `PRINT "ax="; BROWSER.ACCESSTREE()` (shared/samples/Ai/BrowserAccessTreeClickFill.bas:12)
+- **BROWSER.AUTH(x1, x2)** — `DIM list0$ = BROWSER.AUTH("list", "")` (shared/samples/Browser/BrowserGovernanceDemo.bas:53)
+- **BROWSER.CLEARCOOKIES()** — `PRINT "clearcookies="; BROWSER.CLEARCOOKIES()` (shared/samples/Ai/BrowserActions.bas:34)
+- **BROWSER.CLICK(x1)** — `DIM clickRes$ = BROWSER.CLICK("#btn1")` (shared/samples/Browser/BrowserGovernanceDemo.bas:36)
+- **BROWSER.CONSOLE()** — `DIM con$ = BROWSER.CONSOLE(TRUE)` (shared/samples/Browser/BrowserGovernanceDemo.bas:47)
+- **BROWSER.EVALUATE(x1)** — `PRINT "title: "; BROWSER.EVALUATE("document.title")` (shared/samples/Browser/BrowserGovernanceDemo.bas:38)
+- **BROWSER.FILL(x1, x2)** — `PRINT "fill="; BROWSER.FILL("@e3","hello")` (shared/samples/Ai/BrowserAccessTreeClickFill.bas:16)
+- **BROWSER.FIND(x1)** — `DIM f1$ = BROWSER.FIND("Hello GMBasic")` (shared/samples/Browser/BrowserGovernanceDemo.bas:29)
+- **BROWSER.GETCOOKIES()** — `PRINT "=== BROWSER.GETCOOKIES ==="` (shared/samples/Browser/BrowserGetCookies.bas:11)
+- **BROWSER.HUMANCLICK(x1)** — `DIM s9$ = BROWSER.HUMANCLICK("#id")` (shared/minitests/browser/browser_missing_symbols.bas:17)
+- **BROWSER.HUMANFILL(x1, x2)** — `PRINT "humanfill="; BROWSER.HUMANFILL("input#non-esiste", "ciao")` (shared/samples/Ai/BrowserActions.bas:35)
+- **BROWSER.HUMANSCROLL(x1)** — `PRINT BROWSER.HUMANSCROLL("")` (shared/minitests/browser/gen_BROWSER_HumanScroll.bas:4)
+- **BROWSER.NAVIGATE(x1)** — `BROWSER.NAVIGATE("file://../../../samples/Fixtures/browser-eval/test_basic.html")` (shared/samples/Browser/BrowserGovernanceDemo.bas:20)
+- **BROWSER.NETLOG()** — `DIM net$ = BROWSER.NETLOG(TRUE)` (shared/samples/Browser/BrowserGovernanceDemo.bas:45)
+- **BROWSER.OBSERVE()** — `DIM obs$ = BROWSER.OBSERVE()` (shared/samples/Browser/BrowserGovernanceDemo.bas:23)
+- **BROWSER.SCREENSHOT()** — `_b16 = BROWSER.Screenshot("")` (shared/minitests/browser/browser_all.bas:30)
+- **BROWSER.SETCOOKIE(x1, x2)** — `DIM s6$ = BROWSER.SETCOOKIE("n", "v", "http://localhost/")` (shared/minitests/browser/browser_missing_symbols.bas:14)
+- **BROWSER.SETHEADER(x1, x2)** — `_b18 = BROWSER.SetHeader("", "")` (shared/minitests/browser/browser_all.bas:32)
+- **BROWSER.SETUSERAGENT(x1)** — `PRINT "=== BROWSER.SETUSERAGENT ==="` (shared/samples/Browser/BrowserSetUserAgent.bas:10)
+- **BROWSER.SNAPSHOT()** — `snap$ = BROWSER.SNAPSHOT()` (shared/samples/Ai/BrowserActions.bas:28)
+- **BROWSER.START()** — `BROWSER.START(%AUTO, 9222)` (shared/samples/Browser/BrowserGovernanceDemo.bas:17)
+- **COMPUTER.CLICK(x1, x2)** — `PRINT "tools_computer="; Has(tc, "computer.click") <> 0` (shared/samples/cua/CuaDiagnostics.bas:38)
+- **COMPUTER.DOUBLECLICK(x1, x2)** — `d = COMPUTER.DOUBLECLICK(0, 0)` (shared/samples/Ai/ComputerInput.bas:44)
+- **COMPUTER.HOTKEY(x1)** — `r1 = COMPUTER.HOTKEY("hyper+z")` (shared/samples/Ai/ComputerInput.bas:52)
+- **COMPUTER.KEY(x1)** — `PRINT COMPUTER.KEY("")` (shared/minitests/computer/gen_COMPUTER_Key.bas:5)
+- **COMPUTER.MOVE(x1, x2)** — `PRINT COMPUTER.MOVE(0, 0)` (shared/minitests/computer/gen_COMPUTER_Move.bas:5)
+- **COMPUTER.SCREENRECORD()** — `PRINT "=== COMPUTER.SCREENRECORD ==="` (shared/samples/Computer/ComputerScreenRecord.bas:10)
+- **COMPUTER.SCREENRECORDSTART(x1)** — `DIM start$ AS STRING = COMPUTER.SCREENRECORDSTART(path$, fps)` (shared/samples/Ai/ComputerScreenRecord.bas:14)
+- **COMPUTER.SCREENRECORDSTATUS()** — `DIM st$ AS STRING = COMPUTER.SCREENRECORDSTATUS()` (shared/samples/Ai/ComputerScreenRecord.bas:25)
+- **COMPUTER.SCREENRECORDSTOP()** — `DIM stop$ AS STRING = COMPUTER.SCREENRECORDSTOP()` (shared/samples/Ai/ComputerScreenRecord.bas:21)
+- **COMPUTER.SCREENSHOT()** — `shot$ = COMPUTER.SCREENSHOT("work/computer_shot.png")` (shared/samples/Ai/ComputerUse.bas:15)
+- **COMPUTER.TYPE(x1)** — `PRINT "=== COMPUTER.TYPE ==="` (shared/samples/Computer/ComputerType.bas:9)
+- **COMPUTER.WINDOWS()** — `win = COMPUTER.WINDOWS()` (shared/samples/cua/AgentWorkflow.bas:31)
+<!-- END DOMAIN TABLE -->

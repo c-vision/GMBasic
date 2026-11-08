@@ -1168,7 +1168,11 @@ public sealed partial class Parser
     /// namespace (X/Y/WIDTH…) restano visibili solo con l'import, quindi non si crea ambiguità
     /// con MOUSE.X/MOUSE.Y.</summary>
     private static bool IsLegacyGlobalCommand(TokenKind kind, string? providingNamespace) =>
-        kind == TokenKind.Window && string.Equals(providingNamespace, "WINDOWS", StringComparison.OrdinalIgnoreCase);
+        kind == TokenKind.Window && string.Equals(providingNamespace, "WINDOWS", StringComparison.OrdinalIgnoreCase)
+        // ZIP/UNZIP sono comandi di linguaggio sempre disponibili (archivi builtin): non
+        // dipendono dall'import del namespace ARCHIVE che li fornisce.
+        || ((kind == TokenKind.Zip || kind == TokenKind.Unzip)
+            && string.Equals(providingNamespace, "ARCHIVE", StringComparison.OrdinalIgnoreCase));
 
     private Stmt? DispatchRegisteredCommand()
     {

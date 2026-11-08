@@ -2,6 +2,7 @@
 ' Path assoluti (la CWD differisce tra i backend).
 ' EXPECT: lines:  1|content: hello zip
 IMPORT IO
+REQUIRE "compression"
 IMPORT COMPRESSION AS C
 
 SUB Main()

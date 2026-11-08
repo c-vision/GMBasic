@@ -1,0 +1,34 @@
+{
+  "name": "compression",
+  "version": "0.1.0",
+  "description": "Dominio COMPRESSION (GZIP/DEFLATE/ZLIB/BZIP2/BROTLI/ZSTD/LZ4/XZ) via FFI. ZIP/UNZIP restano builtin del runtime (archivi) e non sono in questo pacchetto.",
+  "contentType": "c-ffi-source",
+  "exports": ["compression.inc"],
+  "samples": ["samples"],
+  "build": {
+    "command": "bash build.sh",
+    "cwd": ".",
+    "tool": "cc",
+    "outputs": ["lib/{platform}/libgmbcompression.dylib", "lib/{platform}/libgmbcompression.so"]
+  },
+  "ffi": {
+    "api": "c-abi",
+    "headers": ["include/gmbcompression.h"],
+    "libs": {
+      "osx-arm64": "lib/osx-arm64/libgmbcompression.dylib",
+      "osx-x64": "lib/osx-x64/libgmbcompression.dylib",
+      "linux-x64": "lib/linux-x64/libgmbcompression.so",
+      "linux-arm64": "lib/linux-arm64/libgmbcompression.so"
+    },
+    "link": "-lz -lzstd -llz4 -llzma -lbz2 -lbrotlienc -lbrotlidec -lbrotlicommon",
+    "declareExample": "DECLARE NATIVE FUNCTION CPCOMPRESSB64 LIB \"gmbcompression\" ALIAS \"ofx_cp_compress_b64\" (data AS STRING, algo AS STRING) AS STRING"
+  },
+  "nativeRequirements": {
+    "zlib": "di sistema (macOS/Linux)",
+    "zstd": "brew install zstd",
+    "lz4": "brew install lz4",
+    "xz": "brew install xz (liblzma)",
+    "bzip2": "brew install bzip2 (o libbz2 di sistema)",
+    "brotli": "brew install brotli"
+  }
+}

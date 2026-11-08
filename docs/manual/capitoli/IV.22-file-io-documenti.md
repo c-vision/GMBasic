@@ -142,54 +142,6 @@ producono un file corrotto, non un errore.
 
 
 
-<!-- BEGIN DOMAIN TABLE -->
-## Tavola sinottica del dominio
-
-Ogni riga riporta la firma canonica (dal registry) e il primo uso reale trovato
-nel corpus di test e sample `.bas`/`.inc`: dove il corpus non usa il simbolo è dichiarato.
-
-- **IO.APPPATH()** — `PRINT "AppPath: "; LEN(IO.AppPath()) > 0` (shared/samples/Files/FilesFullCoverage.bas:49)
-- **IO.BINPATH()** — `PRINT "BinPath: "; LEN(IO.BinPath()) > 0` (shared/samples/Files/FilesFullCoverage.bas:52)
-- **IO.COUNTLINES(x1)** — `PRINT "CountLines: "; IO.CountLines(seq)` (shared/samples/Files/FilesFullCoverage.bas:67)
-- **IO.CWD()** — `registryRoot = IO.NORMALIZEPATH(IO.CWD() + "/" + registryRoot)` (shared/samples/PackageRegistry/PackageServer.bas:84)
-- **IO.DIR(x1)** — `entries = IO.DIR(registryRoot + "/")` (shared/samples/PackageRegistry/PackageServer.bas:157)
-- **IO.DIREXISTS(x1)** — `IF NOT IO.DIREXISTS(g_work) THEN MKDIR g_work` (shared/samples/Crypto/CryptoUncoveredCoverage.bas:18)
-- **IO.EOF(x1)** — `230 WHILE NOT IO.EOF(1)` (shared/samples/Files/FilesIO.bas:80)
-- **IO.FCLOSE(x1)** — `IO.FCLOSE(lResult)` (shared/samples/Databases/DbIsamFullTests.bas:558)
-- **IO.FCREATE(x1)** — `lResult = IO.FCREATE(g_work + "/temp_import.csv")` (shared/samples/Databases/DbIsamFullTests.bas:554)
-- **IO.FERROR()** — `PRINT "-- IO.FERROR --"` (shared/samples/Files/IoUncoveredCoverage.bas:58)
-- **IO.FINPUT(x1, x2)** — `PRINT "FINPUT(0) len: "; LEN(IO.FINPUT(1, 0))` (shared/samples/System/SystemFullCoverage.bas:19)
-- **IO.FOPEN(x1)** — `DIM r = IO.FOPEN(tmp)` (shared/samples/Math/MathAtnVectorAngle.bas:97)
-- **IO.FREAD(x1)** — `PRINT "riletto         = "; IO.FREAD(r)` (shared/samples/Math/MathAtnVectorAngle.bas:98)
-- **IO.FSEEK(x1, x2)** — `IO.FSeek(h, 0)` (shared/samples/Files/FilesFullCoverage.bas:36)
-- **IO.FWRITE(x1, x2)** — `IO.FWRITE(lResult, "ID,Nome,Citta,Saldo,Attivo,UltimoOrdine" + CHR(13) + CHR(10))` (shared/samples/Databases/DbIsamFullTests.bas:555)
-- **IO.FILEEXISTS(x1)** — `IF IO.FILEEXISTS("work/thread.db") THEN KILL "work/thread.db"` (shared/samples/Databases/SqlTimeBucketOhlcv.bas:10)
-- **IO.FOLDERSIZE(x1)** — `PRINT "FolderSize: "; IO.FolderSize(".") >= 0` (shared/samples/Files/FilesFullCoverage.bas:28)
-- **IO.FREEFILE()** — `760 PRINT "Prossimo handle libero (IO.FREEFILE):"; IO.FREEFILE()` (shared/samples/Files/FilesIO.bas:132)
-- **IO.GETTEMPDIR()** — `DIM dir = IO.GETTEMPDIR()` (shared/samples/Math/MathAtnVectorAngle.bas:90)
-- **IO.GETTEMPFILE()** — `DIM tmp = IO.GETTEMPFILE()` (shared/samples/Math/MathAtnVectorAngle.bas:91)
-- **IO.GETFOLDERPATH(x1)** — `PRINT "GetFolderPath: "; IO.DirExists(IO.GetFolderPath("."))` (shared/samples/Files/FilesFullCoverage.bas:26)
-- **IO.LOF(x1)** — `720 PRINT "IO.LOF('"; FILE_SEQ$; "') ="; IO.LOF(1); "bytes"` (shared/samples/Files/FilesIO.bas:126)
-- **IO.NORMALIZEPATH(x1)** — `registryRoot = IO.NORMALIZEPATH(IO.CWD() + "/" + registryRoot)` (shared/samples/PackageRegistry/PackageServer.bas:84)
-- **IO.PARENTDIR(x1)** — `PRINT "ParentDir: "; IO.DirExists(IO.ParentDir(seq))` (shared/samples/Files/FilesFullCoverage.bas:53)
-- **IO.PROJECTFOLDER()** — `g_work = PROJECTFOLDER() + "/work"` (shared/samples/Crypto/CryptoUncoveredCoverage.bas:17)
-- **IO.READBYTES(x1)** — `DIM bytes() = IO.ReadBytes(seq)` (shared/samples/Files/FilesFullCoverage.bas:59)
-- **IO.READFILE(x1)** — `whole = IO.ReadFile(seq)` (shared/samples/Files/FilesFullCoverage.bas:64)
-- **IO.READLINES(x1)** — `DIM lines = IO.READLINES("/tmp/gmb_compression_sample_out/gmb_compression_sample.txt")` (shared/samples/compression/CompressionRoundTrip.bas:32)
-- **IO.RESOLVEFILEPATH(x1)** — `PRINT "ResolveFilePath: "; IO.FileExists(IO.ResolveFilePath(seq))` (shared/samples/Files/FilesFullCoverage.bas:54)
-- **IO.SEEK(x1)** — `560 PRINT "Posizione dopo scrittura (IO.SEEK(1)):"; IO.SEEK(1); "(Atteso 11)"` (shared/samples/Files/FilesIO.bas:112)
-- **IO.TEMPDIR()** — `PRINT "TempDir: "; LEN(IO.TempDir()) > 0` (shared/samples/Files/FilesFullCoverage.bas:51)
-- **IO.TEMPFILE()** — `PRINT "TempFile: "; LEN(IO.TempFile()) > 0` (shared/samples/Files/FilesFullCoverage.bas:50)
-- **JSON.EXTRACT(x1, x2)** — `250 PRINT "Integrity valid: "; JSON.EXTRACT(checkJson, "valid")` (shared/samples/Databases/QueryPhaseD.bas:39)
-- **JSON.KEYS(x1)** — `FOR EACH k IN JSON.KEYS(gPackages)` (shared/samples/PackageRegistry/PackageServer.bas:344)
-- **JSON.LOAD(x1)** — `380 PRINT "--- 6. Caricamento da file con JSON.Load ---"` (shared/samples/Types/TypesJson.bas:96)
-- **JSON.PARSE(x1)** — `230 ' INTEGRITY ritorna il TESTO JSON: si tiene in una stringa e si converte con JSON.PARSE` (shared/samples/Databases/QueryPhaseD.bas:34)
-- **JSON.READSECTION(x1)** — `DIM keys AS JSON = JSON.ReadSection(settingsPath$, "paths")` (shared/samples/System/SettingsPaths.bas:49)
-- **JSON.READVALUE(x1)** — `PRINT "configDir   = "; JSON.ReadValue(settingsPath$, "paths", "configDir")` (shared/samples/System/SettingsPaths.bas:36)
-- **JSON.STRINGIFY(x1)** — `1120 PRINT "Registro Legacy (Spese:Libri): " + JSON.Stringify(tuttiConti$)` (shared/samples/Databases/DbLedgerFullTests.bas:159)
-- **JSON.TOJSON(x1)** — `PRINT "-- JSON.ToJson --"` (shared/samples/Json/JsonFullCoverage.bas:14)
-- **JSON.TOOBJECT(x1, x2)** — `DIM NewUdt AS ConfigData = JSON.ToObject(ConfigData, UdtAsJson)` (shared/samples/Json/JsonFullTests.bas:127)
-<!-- END DOMAIN TABLE -->
 
 <!-- BEGIN SURFACE (generato da tools/sh/manual_surface.sh — non modificare a mano) -->
 
@@ -1251,3 +1203,54 @@ PRINT JSON.TOJSON(list)     ' [1,2,3]
 ## Vedi anche
 
 <!-- END SURFACE -->
+
+
+<!-- BEGIN DOMAIN TABLE -->
+## Tavola sinottica del dominio
+
+Ogni riga riporta la firma canonica (dal registry) e il primo uso reale trovato
+nel corpus di test e sample `.bas`/`.inc`: dove il corpus non usa il simbolo è dichiarato.
+
+- **IO.APPPATH()** — `PRINT "AppPath: "; LEN(IO.AppPath()) > 0` (shared/samples/Files/FilesFullCoverage.bas:50)
+- **IO.BINPATH()** — `PRINT "BinPath: "; LEN(IO.BinPath()) > 0` (shared/samples/Files/FilesFullCoverage.bas:53)
+- **IO.COUNTLINES(x1)** — `PRINT "CountLines: "; IO.CountLines(seq)` (shared/samples/Files/FilesFullCoverage.bas:68)
+- **IO.CWD()** — `registryRoot = IO.NORMALIZEPATH(IO.CWD() + "/" + registryRoot)` (shared/samples/PackageRegistry/PackageServer.bas:84)
+- **IO.DIR(x1)** — `entries = IO.DIR(registryRoot + "/")` (shared/samples/PackageRegistry/PackageServer.bas:157)
+- **IO.DIREXISTS(x1)** — `IF IO.DirExists(GMBWORK$) = 0 THEN MKDIR GMBWORK$` (shared/samples/Wsp/Derive.bas:12)
+- **IO.EOF(x1)** — `230 WHILE NOT IO.EOF(1)` (shared/samples/Files/FilesIO.bas:80)
+- **IO.FCLOSE(x1)** — `IO.FCLOSE(h)` (shared/samples/Crypto/VerificaDownload.bas:25)
+- **IO.FCREATE(x1)** — `h = IO.FCREATE("work/pacchetto.zip.txt")` (shared/samples/Crypto/VerificaDownload.bas:23)
+- **IO.FERROR()** — `PRINT "nessun errore: "; (IO.FERROR() = 0)` (shared/samples/Files/ArchivioDocumenti.bas:51)
+- **IO.FINPUT(x1, x2)** — `PRINT "FINPUT(0) len: "; LEN(IO.FINPUT(1, 0))` (shared/samples/System/SystemFullCoverage.bas:20)
+- **IO.FOPEN(x1)** — `DIM r = IO.FOPEN(tmp)` (shared/samples/Math/MathAtnVectorAngle.bas:96)
+- **IO.FREAD(x1)** — `PRINT "riletto         = "; IO.FREAD(r)` (shared/samples/Math/MathAtnVectorAngle.bas:97)
+- **IO.FSEEK(x1, x2)** — `IO.FSeek(h, 0)` (shared/samples/Files/FilesFullCoverage.bas:37)
+- **IO.FWRITE(x1, x2)** — `IO.FWRITE(h, contenuto)` (shared/samples/Crypto/VerificaDownload.bas:24)
+- **IO.FILEEXISTS(x1)** — `IF IO.FILEEXISTS("work/thread.db") THEN KILL "work/thread.db"` (shared/samples/Databases/SqlTimeBucketOhlcv.bas:10)
+- **IO.FOLDERSIZE(x1)** — `PRINT "FolderSize: "; IO.FolderSize(".") >= 0` (shared/samples/Files/FilesFullCoverage.bas:29)
+- **IO.FREEFILE()** — `760 PRINT "Prossimo handle libero (IO.FREEFILE):"; IO.FREEFILE()` (shared/samples/Files/FilesIO.bas:132)
+- **IO.GETTEMPDIR()** — `DIM dir = IO.GETTEMPDIR()` (shared/samples/Math/MathAtnVectorAngle.bas:89)
+- **IO.GETTEMPFILE()** — `DIM tmp = IO.GETTEMPFILE()` (shared/samples/Math/MathAtnVectorAngle.bas:90)
+- **IO.GETFOLDERPATH(x1)** — `PRINT "GetFolderPath: "; IO.DirExists(IO.GetFolderPath("."))` (shared/samples/Files/FilesFullCoverage.bas:27)
+- **IO.LOF(x1)** — `720 PRINT "IO.LOF('"; FILE_SEQ$; "') ="; IO.LOF(1); "bytes"` (shared/samples/Files/FilesIO.bas:126)
+- **IO.NORMALIZEPATH(x1)** — `registryRoot = IO.NORMALIZEPATH(IO.CWD() + "/" + registryRoot)` (shared/samples/PackageRegistry/PackageServer.bas:84)
+- **IO.PARENTDIR(x1)** — `PRINT "ParentDir: "; IO.DirExists(IO.ParentDir(seq))` (shared/samples/Files/FilesFullCoverage.bas:54)
+- **IO.PROJECTFOLDER()** — `PRINT "app="; (LEN(IO.APPPATH()) > 0); "|bin="; (LEN(IO.BINPATH()) > 0); "|proj="; (LEN(IO.PROJECTFO…` (shared/minitests/io/io_all.bas:56)
+- **IO.READBYTES(x1)** — `DIM bytes() = IO.ReadBytes(seq)` (shared/samples/Files/FilesFullCoverage.bas:60)
+- **IO.READFILE(x1)** — `ripristinato = IO.READFILE("work/backup_out/report.txt")` (shared/samples/compression/BackupReport.bas:41)
+- **IO.READLINES(x1)** — `DIM lines = IO.READLINES("/tmp/gmb_compression_sample_out/gmb_compression_sample.txt")` (shared/samples/compression/CompressionRoundTrip.bas:33)
+- **IO.RESOLVEFILEPATH(x1)** — `PRINT "ResolveFilePath: "; IO.FileExists(IO.ResolveFilePath(seq))` (shared/samples/Files/FilesFullCoverage.bas:55)
+- **IO.SEEK(x1)** — `560 PRINT "Posizione dopo scrittura (IO.SEEK(1)):"; IO.SEEK(1); "(Atteso 11)"` (shared/samples/Files/FilesIO.bas:112)
+- **IO.TEMPDIR()** — `PRINT "TempDir: "; LEN(IO.TempDir()) > 0` (shared/samples/Files/FilesFullCoverage.bas:52)
+- **IO.TEMPFILE()** — `PRINT "TempFile: "; LEN(IO.TempFile()) > 0` (shared/samples/Files/FilesFullCoverage.bas:51)
+- **IO.WRITEBYTES(x1, x2)** — `PRINT "writebytes="; IO.WRITEBYTES("/tmp/gmb_mt_io_all_wb.bin", wb)` (shared/minitests/io/io_all.bas:83)
+- **JSON.EXTRACT(x1, x2)** — `250 PRINT "Integrity valid: "; JSON.EXTRACT(checkJson, "valid")` (shared/samples/Databases/QueryPhaseD.bas:39)
+- **JSON.KEYS(x1)** — `FOR EACH k IN JSON.KEYS(gPackages)` (shared/samples/PackageRegistry/PackageServer.bas:344)
+- **JSON.LOAD(x1)** — `380 PRINT "--- 6. Caricamento da file con JSON.Load ---"` (shared/samples/Types/TypesJson.bas:96)
+- **JSON.PARSE(x1)** — `230 ' INTEGRITY ritorna il TESTO JSON: si tiene in una stringa e si converte con JSON.PARSE` (shared/samples/Databases/QueryPhaseD.bas:34)
+- **JSON.READSECTION(x1)** — `DIM keys AS JSON = JSON.ReadSection(settingsPath$, "paths")` (shared/samples/System/SettingsPaths.bas:49)
+- **JSON.READVALUE(x1)** — `PRINT "configDir   = "; JSON.ReadValue(settingsPath$, "paths", "configDir")` (shared/samples/System/SettingsPaths.bas:36)
+- **JSON.STRINGIFY(x1)** — `1120 PRINT "Registro Legacy (Spese:Libri): " + JSON.Stringify(tuttiConti$)` (shared/samples/Databases/DbLedgerFullTests.bas:159)
+- **JSON.TOJSON(x1)** — `DIM UdtAsJson AS JSON = JSON.ToJson(MyUdt)` (shared/samples/Json/JsonFullTests.bas:124)
+- **JSON.TOOBJECT(x1, x2)** — `DIM NewUdt AS ConfigData = JSON.ToObject(ConfigData, UdtAsJson)` (shared/samples/Json/JsonFullTests.bas:127)
+<!-- END DOMAIN TABLE -->

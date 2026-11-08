@@ -108,49 +108,6 @@ va giustificato, e ogni differenza fra piattaforme va documentata.
 
 
 
-<!-- BEGIN DOMAIN TABLE -->
-## Tavola sinottica del dominio
-
-Ogni riga riporta la firma canonica (dal registry) e il primo uso reale trovato
-nel corpus di test e sample `.bas`/`.inc`: dove il corpus non usa il simbolo è dichiarato.
-
-- **DATETIME.CDOW(x1)** — `PRINT DATETIME.CDOW(d)` (shared/minitests/datetime/cdow_cmonth.bas:3)
-- **DATETIME.CMONTH(x1)** — `PRINT DATETIME.CMONTH(d)` (shared/minitests/datetime/cdow_cmonth.bas:4)
-- **DATETIME.CTOD(x1)** — `d = DATETIME.CTOD("2020-03-15")` (shared/minitests/datetime/dtoc.bas:3)
-- **DATETIME.DATEADD(x1, x2, x3)** — `dDate = DATETIME.DATEADD("D", 5, dDate)` (shared/samples/Databases/DbLedgerModernTests.bas:127)
-- **DATETIME.DATEDIFF(x1, x2, x3)** — `PRINT DATETIME.DATEDIFF("M", DATETIME.DATEVALUE("2000-01-15"), DATETIME.DATEVALUE("2000-03-15"))` (shared/minitests/datetime/datedge2.bas:14)
-- **DATETIME.DATEFROMUNIX(x1)** — `d2 = DATETIME.DATEFROMUNIX(1584230400)` (shared/minitests/datetime/cdow_cmonth.bas:5)
-- **DATETIME.DATESERIAL(x1, x2, x3)** — `d = DATETIME.DATESERIAL(2026, 1, 2) + DATETIME.TIMESERIAL(3, 4, 5)` (shared/minitests/datetime/format_datetime.bas:14)
-- **DATETIME.DATEVALUE(x1)** — `dDate = DATETIME.DATEVALUE("2023-01-01")` (shared/samples/Databases/DbLedgerModernTests.bas:114)
-- **DATETIME.DAY(x1)** — `PRINT DATETIME.DAY(d)` (shared/minitests/datetime/ymd.bas:5)
-- **DATETIME.DAYSINMONTH(x1)** — `PRINT DATETIME.DAYSINMONTH(DATETIME.DATEVALUE("2000-02-15"))` (shared/minitests/datetime/dow_leap.bas:3)
-- **DATETIME.DOW(x1)** — `PRINT DATETIME.DOW(DATETIME.DATEVALUE("1999-12-26"))` (shared/minitests/datetime/dow_leap.bas:2)
-- **DATETIME.DTOC(x1)** — `PRINT "dtoc="; DATETIME.DTOC(DATETIME.DATEVALUE("2026-01-02"))` (shared/minitests/datetime/format_datetime.bas:34)
-- **DATETIME.DTOS(x1)** — `PRINT "  Data: " + DATETIME.DTOS(registerResults(i).Date) + ", Desc: " + registerResults(i).Descript…` (shared/samples/Databases/DbLedgerModernTests.bas:206)
-- **DATETIME.DATE()** — `PRINT "=== DATETIME.DATE ==="` (shared/samples/Datetime/DateTimeDate.bas:9)
-- **DATETIME.EOMONTH(x1)** — `PRINT "month-end="; FORMAT(DATETIME.EOMONTH(DATETIME.DATEVALUE("2026-01-15")), "dd/MM/yyyy")` (shared/minitests/datetime/format_datetime.bas:31)
-- **DATETIME.FIRSTDAYOFMONTH(x1)** — `r = DATETIME.FIRSTDAYOFMONTH(DATETIME.DATEVALUE("2020-03-15"))` (shared/minitests/datetime/fdom.bas:2)
-- **DATETIME.HOUR(x1)** — `PRINT "TIMESERIAL(23,45,30): H="; DATETIME.HOUR(d); " M="; DATETIME.MINUTE(d); " S="; DATETIME.SECON…` (shared/samples/Datetime/TimeNow.bas:32)
-- **DATETIME.ISDATE(x1)** — `PRINT "ISDATE(2024-01-15) = "; DATETIME.ISDATE("2024-01-15")` (shared/samples/graphics/CoordsAndTextGaps.bas:23)
-- **DATETIME.ISLEAPYEAR(x1)** — `PRINT DATETIME.ISLEAPYEAR(DATETIME.DATEVALUE("2000-02-15"))` (shared/minitests/misc/bool.bas:10)
-- **DATETIME.ISOWEEKOFYEAR(x1)** — `PRINT DATETIME.ISOWEEKOFYEAR(d0)` (shared/minitests/datetime/isoweek.bas:3)
-- **DATETIME.MINUTE(x1)** — `PRINT "TIMESERIAL(23,45,30): H="; DATETIME.HOUR(d); " M="; DATETIME.MINUTE(d); " S="; DATETIME.SECON…` (shared/samples/Datetime/TimeNow.bas:32)
-- **DATETIME.MONTH(x1)** — `PRINT DATETIME.MONTH(d)` (shared/minitests/datetime/ymd.bas:4)
-- **DATETIME.NOW()** — `IF DATETIME.NOW() > 0 THEN PRINT "now-ok"` (shared/minitests/datetime/date_time_now.bas:6)
-- **DATETIME.SECOND(x1)** — `PRINT "TIMESERIAL(23,45,30): H="; DATETIME.HOUR(d); " M="; DATETIME.MINUTE(d); " S="; DATETIME.SECON…` (shared/samples/Datetime/TimeNow.bas:32)
-- **DATETIME.SECONDS()** — `DIM s = DATETIME.SECONDS()` (shared/samples/Datetime/TimeNow.bas:17)
-- **DATETIME.STOD(x1)** — `d2 = DATETIME.STOD("19991231")` (shared/minitests/datetime/dtos_stod.bas:4)
-- **DATETIME.STRDATE()** — `PRINT "Current date (text):   "; DATETIME.STRDATE()` (shared/samples/Datetime/DateTimeDate.bas:12)
-- **DATETIME.STRTI()** — `IF LEN(DATETIME.STRTI()) > 0 THEN PRINT "strti-ok"` (shared/minitests/datetime/strti.bas:4)
-- **DATETIME.STRTIME()** — `PRINT "STRTIME() = "; DATETIME.STRTIME()` (shared/samples/Datetime/TimeNow.bas:22)
-- **DATETIME.TI()** — `DIM t = DATETIME.TI()` (shared/samples/Datetime/TimeNow.bas:25)
-- **DATETIME.TIMESERIAL(x1, x2, x3)** — `DIM d = DATETIME.TIMESERIAL(23, 45, 30)` (shared/samples/Datetime/TimeNow.bas:30)
-- **DATETIME.TODAY()** — `dDate = DATETIME.TODAY()` (shared/samples/Databases/DbLedgerModernTests.bas:356)
-- **DATETIME.TIME()** — `IF DATETIME.TIME() >= 0 THEN PRINT "time-ok"` (shared/minitests/datetime/date_time_now.bas:5)
-- **DATETIME.UNIXTIMESTAMP(x1)** — `PRINT DATETIME.UNIXTIMESTAMP(d)` (shared/minitests/datetime/unixts.bas:3)
-- **DATETIME.WEEKDAY(x1)** — `PRINT DATETIME.WEEKDAY(d)` (shared/minitests/datetime/dow.bas:4)
-- **DATETIME.YEAR(x1)** — `PRINT DATETIME.YEAR(d)` (shared/minitests/datetime/ymd.bas:3)
-<!-- END DOMAIN TABLE -->
 
 <!-- BEGIN SURFACE (generato da tools/sh/manual_surface.sh — non modificare a mano) -->
 
@@ -652,3 +609,48 @@ END IF
 ## Test ed esempi
 
 <!-- END SURFACE -->
+
+
+<!-- BEGIN DOMAIN TABLE -->
+## Tavola sinottica del dominio
+
+Ogni riga riporta la firma canonica (dal registry) e il primo uso reale trovato
+nel corpus di test e sample `.bas`/`.inc`: dove il corpus non usa il simbolo è dichiarato.
+
+- **DATETIME.CDOW(x1)** — `DATETIME.CDOW(dataRata); "  "; _` (shared/samples/System/ScadenzeRate.bas:45)
+- **DATETIME.CMONTH(x1)** — `DATETIME.CMONTH(dataRata); "  "; _` (shared/samples/System/ScadenzeRate.bas:46)
+- **DATETIME.CTOD(x1)** — `partenza = DATETIME.CTOD("2026-01-15")` (shared/samples/System/ScadenzeRate.bas:29)
+- **DATETIME.DATEADD(x1, x2, x3)** — `dDate = DATETIME.DATEADD("D", 5, dDate)` (shared/samples/Databases/DbLedgerModernTests.bas:127)
+- **DATETIME.DATEDIFF(x1, x2, x3)** — `giorni = DATETIME.DATEDIFF("D", partenza, ultima)` (shared/samples/System/ScadenzeRate.bas:62)
+- **DATETIME.DATEFROMUNIX(x1)** — `u = DATETIME.DATEFROMUNIX(1584230400)` (shared/minitests/datetime/datetime_all.bas:48)
+- **DATETIME.DATESERIAL(x1, x2, x3)** — `d = DATETIME.DATESERIAL(2026, 1, 2) + DATETIME.TIMESERIAL(3, 4, 5)` (shared/minitests/datetime/format_datetime.bas:14)
+- **DATETIME.DATEVALUE(x1)** — `settle = DATETIME.DATEVALUE("2024-01-01")` (shared/samples/Quant/QuantLab.bas:121)
+- **DATETIME.DAY(x1)** — `PRINT DATETIME.DAY(d)` (shared/minitests/datetime/ymd.bas:5)
+- **DATETIME.DAYSINMONTH(x1)** — `PRINT "giorni di febbraio: "; DATETIME.DAYSINMONTH(DATETIME.CTOD("2026-02-01"))` (shared/samples/System/ScadenzeRate.bas:68)
+- **DATETIME.DOW(x1)** — `g = DATETIME.DOW(d)` (shared/samples/System/ScadenzeRate.bas:15)
+- **DATETIME.DTOC(x1)** — `PRINT "dtoc="; DATETIME.DTOC(DATETIME.DATEVALUE("2026-01-02"))` (shared/minitests/datetime/format_datetime.bas:34)
+- **DATETIME.DTOS(x1)** — `PRINT "  Data: " + DATETIME.DTOS(registerResults(i).Date) + ", Desc: " + registerResults(i).Descript…` (shared/samples/Databases/DbLedgerModernTests.bas:206)
+- **DATETIME.DATE()** — `PRINT "=== DATETIME.DATE ==="` (shared/samples/Datetime/DateTimeDate.bas:9)
+- **DATETIME.EOMONTH(x1)** — `PRINT "fine mese partenza: "; DAY(DATETIME.EOMONTH(partenza))` (shared/samples/System/ScadenzeRate.bas:55)
+- **DATETIME.FIRSTDAYOFMONTH(x1)** — `PRINT "inizio mese dopo:   "; DAY(DATETIME.FIRSTDAYOFMONTH(DATETIME.DATEADD("M", 1, partenza)))` (shared/samples/System/ScadenzeRate.bas:56)
+- **DATETIME.HOUR(x1)** — `PRINT "TIMESERIAL(23,45,30): H="; DATETIME.HOUR(d); " M="; DATETIME.MINUTE(d); " S="; DATETIME.SECON…` (shared/samples/Datetime/TimeNow.bas:32)
+- **DATETIME.ISDATE(x1)** — `PRINT "ISDATE(2024-01-15) = "; DATETIME.ISDATE("2024-01-15")` (shared/samples/graphics/CoordsAndTextGaps.bas:23)
+- **DATETIME.ISLEAPYEAR(x1)** — `PRINT "2026 bisestile:     "; DATETIME.ISLEAPYEAR(partenza)` (shared/samples/System/ScadenzeRate.bas:67)
+- **DATETIME.ISOWEEKOFYEAR(x1)** — `DATETIME.ISOWEEKOFYEAR(dataRata); "        "; _` (shared/samples/System/ScadenzeRate.bas:47)
+- **DATETIME.MINUTE(x1)** — `PRINT "TIMESERIAL(23,45,30): H="; DATETIME.HOUR(d); " M="; DATETIME.MINUTE(d); " S="; DATETIME.SECON…` (shared/samples/Datetime/TimeNow.bas:32)
+- **DATETIME.MONTH(x1)** — `PRINT DATETIME.MONTH(d)` (shared/minitests/datetime/ymd.bas:4)
+- **DATETIME.NOW()** — `IF DATETIME.NOW() > 0 THEN PRINT "now-ok"` (shared/minitests/datetime/date_time_now.bas:6)
+- **DATETIME.SECOND(x1)** — `PRINT "TIMESERIAL(23,45,30): H="; DATETIME.HOUR(d); " M="; DATETIME.MINUTE(d); " S="; DATETIME.SECON…` (shared/samples/Datetime/TimeNow.bas:32)
+- **DATETIME.SECONDS()** — `DIM s = DATETIME.SECONDS()` (shared/samples/Datetime/TimeNow.bas:17)
+- **DATETIME.STOD(x1)** — `PRINT "stod="; YEAR(DATETIME.STOD("19991231"))` (shared/minitests/datetime/datetime_all.bas:22)
+- **DATETIME.STRDATE()** — `PRINT "Current date (text):   "; DATETIME.STRDATE()` (shared/samples/Datetime/DateTimeDate.bas:12)
+- **DATETIME.STRTI()** — `IF LEN(DATETIME.STRTI()) > 0 THEN PRINT "strti-ok"` (shared/minitests/datetime/strti.bas:4)
+- **DATETIME.STRTIME()** — `PRINT "STRTIME() = "; DATETIME.STRTIME()` (shared/samples/Datetime/TimeNow.bas:22)
+- **DATETIME.TI()** — `DIM t = DATETIME.TI()` (shared/samples/Datetime/TimeNow.bas:25)
+- **DATETIME.TIMESERIAL(x1, x2, x3)** — `DIM d = DATETIME.TIMESERIAL(23, 45, 30)` (shared/samples/Datetime/TimeNow.bas:30)
+- **DATETIME.TODAY()** — `dDate = DATETIME.TODAY()` (shared/samples/Databases/DbLedgerModernTests.bas:356)
+- **DATETIME.TIME()** — `IF DATETIME.TIME() >= 0 THEN PRINT "time-ok"` (shared/minitests/datetime/date_time_now.bas:5)
+- **DATETIME.UNIXTIMESTAMP(x1)** — `PRINT DATETIME.UNIXTIMESTAMP(d)` (shared/minitests/datetime/unixts.bas:3)
+- **DATETIME.WEEKDAY(x1)** — `PRINT DATETIME.WEEKDAY(d)` (shared/minitests/datetime/dow.bas:4)
+- **DATETIME.YEAR(x1)** — `PRINT DATETIME.YEAR(d)` (shared/minitests/datetime/ymd.bas:3)
+<!-- END DOMAIN TABLE -->

@@ -1,10 +1,10 @@
 {
   "backend": "IL",
   "superficie": "TokenKind (funzioni mappate dal Compiler)",
-  "totale": 1766,
-  "implementate": 1625,
+  "totale": 1706,
+  "implementate": 1565,
   "non_coperte": 141,
-  "percentuale": 92,
+  "percentuale": 91.7,
   "non_coperte_lista": [
     "AdfTest",
     "Arima",

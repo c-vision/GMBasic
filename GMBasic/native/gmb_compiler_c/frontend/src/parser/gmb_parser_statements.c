@@ -1785,9 +1785,7 @@ if (gmb_tk_rem_vari_in(t->kind)) {
     }
     /* SCROLLMODE mode: regione scroll (parity PCode CONSOLE_SCROLLMODE) — NON REM. */
     if (t->kind == GMB_TOK_ScrollMode) { gmb_p_adv(p); return gmb_p_parse_scrollmode(p, line); }
-    if (t->kind == GMB_TOK_StatusBar || t->kind == GMB_TOK_KeyGen || t->kind == GMB_TOK_KeyClose
-        || t->kind == GMB_TOK_KeyImport || t->kind == GMB_TOK_KeyExport) {
-        gmb_p_adv(p);
+    if (t->kind == GMB_TOK_StatusBar) {
         gmb_p_consume_statement(p);
         return gmb_stmt_new(GMB_STMT_REM, line);
     }

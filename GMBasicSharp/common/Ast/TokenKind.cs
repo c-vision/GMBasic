@@ -1064,61 +1064,25 @@ public enum TokenKind
     Tab,
 
     // --- FUNZIONI CRITTOGRAFICHE ---
-    Md5,
-    Sha1,
-    Sha256,
-    Sha512,
-    HashFile,
-    ChaCha20Encrypt,
-    ChaCha20Decrypt,
-    ChaCha20Poly1305Encrypt,
-    ChaCha20Poly1305Decrypt,
     // ---HASHING DI PASSWORD ---
-    PasswordHash,
-    PasswordVerify,
     
     // NUOVI TOKEN PER LE VERSIONI STRINGA ($)
-    StrMd5,
-    StrSha1,
-    StrSha256,
-    StrSha512,
-    StrHashFile,
 
     // ========================================================================
     // --- NUOVI TOKEN PER CRITTOGRAFIA E UTILITY ---
     // ========================================================================
     // Cifratura Simmetrica
-    AesEncrypt,
-    AesDecrypt,
 
     // Gestione Chiavi Asimmetriche
-    KeyGen,
-    KeyExport,
-    KeyImport,
-    KeyClose,
 
     // Firma Digitale
-    Sign,
-    Verify,
     VerifyRaw,   // VERIFYRAW(firma, dati, chiavePubblicaB64): verifica Ed25519 con chiave raw
 
     // Cifratura Asimmetrica
-    EncryptAsym,
-    DecryptAsym,
 
     // Utility
-    RandomBytes,
-    ToBase64,
-    FromBase64,
-    ToHex,
-    FromHex,
 
     // Security (2026-09-02): HMAC + base64url (JWT) — coda, mai rinumero
-    HmacSha256,
-    HmacSha384,
-    HmacSha512,
-    ToBase64Url,
-    FromBase64Url,
     // Security encoding (2026-09-02, STRINGS): HTML/URL encode — coda, mai rinumero
     HtmlEncode,
     UrlEncode,
@@ -1139,15 +1103,13 @@ public enum TokenKind
     SessionCreate,
 
     // Funzioni randomistiche (NUOVI TOKEN)
-    RandomInt,
-    RandomDouble,
-    RandomNormal,
-    RandomCryptoBytes,
     
     
     // ========================================================================
     // --- NUOVE KEYWORD E FUNZIONI PER ARRAY (Stile Clipper) ---
     // ========================================================================
+    Sign,
+    Verify,
     AAdd,
     AIns,
     ADel,

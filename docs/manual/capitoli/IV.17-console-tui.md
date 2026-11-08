@@ -145,25 +145,6 @@ stirpe Clipper. Il dettaglio delle colonne, del sort e del filtro è nella refer
 
 
 
-<!-- BEGIN DOMAIN TABLE -->
-## Tavola sinottica del dominio
-
-Ogni riga riporta la firma canonica (dal registry) e il primo uso reale trovato
-nel corpus di test e sample `.bas`/`.inc`: dove il corpus non usa il simbolo è dichiarato.
-
-- **CONSOLE.ALERT(x1)** — `PRINT "alert="; CONSOLE.ALERT("a")` (shared/minitests/misc/console_domain.bas:27)
-- **CONSOLE.BGRGB(x1, x2, x3, x4)** — `PRINT "bg="; CONSOLE.BGRGB("Y", 10, 20, 30)` (shared/minitests/misc/console_domain.bas:17)
-- **CONSOLE.CELL(x1, x2, x3)** — `LOCATE CONSOLE.CELL(20, 1, 0), 1` (shared/samples/graphics/GraphicsLegacySyntax.bas:105)
-- **CONSOLE.CELLSTR(x1, x2)** — `DIM C$ = CONSOLE.CELLSTR(20, 8) ' Accesso qualificato alla funzione` (shared/samples/graphics/GraphicsLegacySyntax.bas:112)
-- **CONSOLE.CONFIRM(x1)** — `PRINT "confirm="; CONSOLE.CONFIRM("c")` (shared/minitests/misc/console_domain.bas:28)
-- **CONSOLE.FGRGB(x1, x2, x3, x4)** — `PRINT "fg="; CONSOLE.FGRGB("X", 255, 128, 0)` (shared/minitests/misc/console_domain.bas:16)
-- **CONSOLE.GETCURSORPOS()** — `pos = CONSOLE.GETCURSORPOS()` (shared/samples/Console/ConsoleSetAndGet.bas:58)
-- **CONSOLE.GETPALETTECOLOR(x1)** — `pal = CONSOLE.GETPALETTECOLOR(1)` (shared/samples/Console/ConsoleSetAndGet.bas:66)
-- **CONSOLE.GETTEXTMETRICS()** — `met = CONSOLE.GETTEXTMETRICS()` (shared/samples/Console/ConsoleSetAndGet.bas:62)
-- **CONSOLE.INKEY()** — `PRINT "inkey=["; CONSOLE.INKEY(); "]"` (shared/minitests/misc/console_domain.bas:18)
-- **CONSOLE.MESSAGE()** — `PRINT "=== CONSOLE.MESSAGE ==="` (shared/samples/Console/ConsoleMessagePoint.bas:11)
-- **CONSOLE.POINT(x1, x2)** — `PRINT "=== CONSOLE.POINT ==="` (shared/samples/Console/ConsoleMessagePoint.bas:18)
-<!-- END DOMAIN TABLE -->
 
 <!-- BEGIN SURFACE (generato da tools/sh/manual_surface.sh — non modificare a mano) -->
 
@@ -1005,3 +986,24 @@ END SELECT
 | Output invariato dopo `TEXTMODE` | Nessuna superficie grafica attiva (`SCREEN 0`): ridisegno non necessario. |
 
 <!-- END SURFACE -->
+
+
+<!-- BEGIN DOMAIN TABLE -->
+## Tavola sinottica del dominio
+
+Ogni riga riporta la firma canonica (dal registry) e il primo uso reale trovato
+nel corpus di test e sample `.bas`/`.inc`: dove il corpus non usa il simbolo è dichiarato.
+
+- **CONSOLE.ALERT(x1)** — `PRINT "alert="; CONSOLE.ALERT("a")` (shared/minitests/misc/console_domain.bas:27)
+- **CONSOLE.BGRGB(x1, x2, x3, x4)** — `PRINT "bg="; CONSOLE.BGRGB("Y", 10, 20, 30)` (shared/minitests/misc/console_domain.bas:17)
+- **CONSOLE.CELL(x1, x2, x3)** — `LOCATE CONSOLE.CELL(20, 1, 0), 1` (shared/samples/graphics/GraphicsLegacySyntax.bas:105)
+- **CONSOLE.CELLSTR(x1, x2)** — `DIM C$ = CONSOLE.CELLSTR(20, 8) ' Accesso qualificato alla funzione` (shared/samples/graphics/GraphicsLegacySyntax.bas:112)
+- **CONSOLE.CONFIRM(x1)** — `PRINT "confirm="; CONSOLE.CONFIRM("c")` (shared/minitests/misc/console_domain.bas:28)
+- **CONSOLE.FGRGB(x1, x2, x3, x4)** — `PRINT "fg="; CONSOLE.FGRGB("X", 255, 128, 0)` (shared/minitests/misc/console_domain.bas:16)
+- **CONSOLE.GETCURSORPOS()** — `pos = CONSOLE.GETCURSORPOS()` (shared/samples/Console/ConsoleSetAndGet.bas:58)
+- **CONSOLE.GETPALETTECOLOR(x1)** — `pal = CONSOLE.GETPALETTECOLOR(1)` (shared/samples/Console/ConsoleSetAndGet.bas:66)
+- **CONSOLE.GETTEXTMETRICS()** — `met = CONSOLE.GETTEXTMETRICS()` (shared/samples/Console/ConsoleSetAndGet.bas:62)
+- **CONSOLE.INKEY()** — `PRINT "inkey=["; CONSOLE.INKEY(); "]"` (shared/minitests/misc/console_domain.bas:18)
+- **CONSOLE.MESSAGE()** — `PRINT "=== CONSOLE.MESSAGE ==="` (shared/samples/Console/ConsoleMessagePoint.bas:11)
+- **CONSOLE.POINT(x1, x2)** — `PRINT "=== CONSOLE.POINT ==="` (shared/samples/Console/ConsoleMessagePoint.bas:18)
+<!-- END DOMAIN TABLE -->

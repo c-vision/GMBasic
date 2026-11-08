@@ -119,29 +119,6 @@ capitolo IV.19. Il codice citato è quello reale dei sample, non una ricostruzio
 
 
 
-<!-- BEGIN DOMAIN TABLE -->
-## Tavola sinottica del dominio
-
-Ogni riga riporta la firma canonica (dal registry) e il primo uso reale trovato
-nel corpus di test e sample `.bas`/`.inc`: dove il corpus non usa il simbolo è dichiarato.
-
-- **CLIP.GET()** — `PRINT "-- CLIP.GET --"` (shared/samples/Console/ClipboardUncoveredCoverage.bas:30)
-- **CONTROLS.CHANGED()** — `PRINT "CH0="; CONTROLS.CHANGED()` (shared/minitests/controls/clicked_optional_handle.bas:17)
-- **CONTROLS.CLICKED()** — `a = CONTROLS.CLICKED()` (shared/minitests/controls/clicked_optional_handle.bas:14)
-- **CONTROLS.CTRLGETPROP(x1, x2)** — `posizione = CTRLGETPROP("btn1", "Left")` (shared/samples/Controls/ControlPropertiesCoverage.bas:22)
-- **CONTROLS.CTRLGETPROPS(x1, x2)** — `didascalia = CTRLGETPROPS("btn1", "Caption")` (shared/samples/Controls/ControlPropertiesCoverage.bas:23)
-- **CONTROLS.DOUBLECLICKED()** — `PRINT "DBL0="; CONTROLS.DOUBLECLICKED()` (shared/minitests/controls/clicked_optional_handle.bas:18)
-- **CONTROLS.GOTFOCUSED()** — `PRINT "gotfocus=";  GOTFOCUSED(hChk)` (shared/samples/graphics/EventModelDemo.bas:46)
-- **CONTROLS.KEYPRESSED()** — `PRINT "key=";       KEYPRESSED()` (shared/samples/graphics/EventModelDemo.bas:51)
-- **CONTROLS.LOSTFOCUSED()** — `PRINT "lostfocus="; LOSTFOCUSED(hChk)` (shared/samples/graphics/EventModelDemo.bas:47)
-- **CONTROLS.MOUSECLICKED()** — `PRINT "mouse=";     MOUSECLICKED()` (shared/samples/graphics/EventModelDemo.bas:48)
-- **CONTROLS.MOUSEDBLCLICKED()** — `PRINT "mousedbl=";  MOUSEDBLCLICKED()` (shared/samples/graphics/EventModelDemo.bas:49)
-- **CONTROLS.MOUSEPRESSED()** — `PRINT "pressed=";   MOUSEPRESSED()` (shared/samples/graphics/EventModelDemo.bas:50)
-- **UI.CLICK(x1)** — `PRINT "click: "; UI.CLICK("gmb-elemento-inesistente-xyz")` (shared/samples/UI/UiAutomation.bas:22)
-- **UI.FIND(x1)** — `PRINT "find: "; UI.FIND("")` (shared/samples/UI/UiAutomation.bas:19)
-- **UI.FINDALL(x1)** — `PRINT "findall: "; UI.FINDALL("")` (shared/samples/UI/UiAutomation.bas:20)
-- **UI.TYPE(x1, x2)** — `PRINT "type: "; UI.TYPE("", "")` (shared/samples/UI/UiAutomation.bas:23)
-<!-- END DOMAIN TABLE -->
 
 <!-- BEGIN SURFACE (generato da tools/sh/manual_surface.sh — non modificare a mano) -->
 
@@ -2612,3 +2589,28 @@ Nei controlli con frecce (select e selettore data) la freccia vive in una fascia
 nessun margine fra la fascia e il bordo destro. Il select risponde anche da tastiera:
 `Invio`/`Giù` apre l'elenco, `Su`/`Giù` sposta l'evidenziazione, `Invio` conferma e scrive
 il valore `INTO`, `Esc` chiude senza cambiare nulla.
+
+
+<!-- BEGIN DOMAIN TABLE -->
+## Tavola sinottica del dominio
+
+Ogni riga riporta la firma canonica (dal registry) e il primo uso reale trovato
+nel corpus di test e sample `.bas`/`.inc`: dove il corpus non usa il simbolo è dichiarato.
+
+- **CLIP.GET()** — `clipText$ = CLIP.GET()` (shared/samples/Console/ConsoleControls.bas:58)
+- **CONTROLS.CHANGED()** — `PRINT "CH0="; CONTROLS.CHANGED()` (shared/minitests/controls/clicked_optional_handle.bas:17)
+- **CONTROLS.CLICKED()** — `a = CONTROLS.CLICKED()` (shared/minitests/controls/clicked_optional_handle.bas:14)
+- **CONTROLS.CTRLGETPROP(x1, x2)** — `PRINT "prop="; CONTROLS.CTRLGETPROP("nope", "text")` (shared/minitests/controls/controls_all.bas:17)
+- **CONTROLS.CTRLGETPROPS(x1, x2)** — `PRINT "props=["; CONTROLS.CTRLGETPROPS("nope", "text"); "]"` (shared/minitests/controls/controls_all.bas:18)
+- **CONTROLS.DOUBLECLICKED()** — `PRINT "DBL0="; CONTROLS.DOUBLECLICKED()` (shared/minitests/controls/clicked_optional_handle.bas:18)
+- **CONTROLS.GOTFOCUSED()** — `PRINT "got="; CONTROLS.GOTFOCUSED()` (shared/minitests/controls/controls_all.bas:11)
+- **CONTROLS.KEYPRESSED()** — `PRINT "key="; CONTROLS.KEYPRESSED()` (shared/minitests/controls/controls_all.bas:13)
+- **CONTROLS.LOSTFOCUSED()** — `PRINT "lost="; CONTROLS.LOSTFOCUSED()` (shared/minitests/controls/controls_all.bas:12)
+- **CONTROLS.MOUSECLICKED()** — `PRINT "mc="; CONTROLS.MOUSECLICKED()` (shared/minitests/controls/controls_all.bas:14)
+- **CONTROLS.MOUSEDBLCLICKED()** — `PRINT "mdc="; CONTROLS.MOUSEDBLCLICKED()` (shared/minitests/controls/controls_all.bas:15)
+- **CONTROLS.MOUSEPRESSED()** — `PRINT "mp="; CONTROLS.MOUSEPRESSED()` (shared/minitests/controls/controls_all.bas:16)
+- **UI.CLICK(x1)** — `PRINT "click: "; UI.CLICK("gmb-elemento-inesistente-xyz")` (shared/samples/UI/UiAutomation.bas:22)
+- **UI.FIND(x1)** — `PRINT "find: "; UI.FIND("")` (shared/samples/UI/UiAutomation.bas:19)
+- **UI.FINDALL(x1)** — `PRINT "findall: "; UI.FINDALL("")` (shared/samples/UI/UiAutomation.bas:20)
+- **UI.TYPE(x1, x2)** — `PRINT "type: "; UI.TYPE("", "")` (shared/samples/UI/UiAutomation.bas:23)
+<!-- END DOMAIN TABLE -->

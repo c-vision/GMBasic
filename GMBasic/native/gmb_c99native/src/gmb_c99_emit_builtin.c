@@ -2147,37 +2147,10 @@ int emit_bf_kmeans(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t t
         if (KM_TBL[i].tk == tk) return KM_TBL[i].sp(c, args, nargs, line);
     return 0;
 }
-/* ── dominio: compression (delegazione §0quater) ── */
+/* ── dominio: compression (delegazione §0quater) ──
+ * ZIP/UNZIP restano builtin. La compressione stream/algoritmi (GZIP/ZSTD/...) è
+ * nel pacchetto `compression` via FFI: nessun emettitore qui. */
 typedef struct { gmb_tokenkind_t tk; ma_sp sp; } cp_row;
-static int cp_zstream(ctx_t* c, gmb_expr_t** a, int n, const char* algo, int compr) {
-    if (n < 1) return 0;
-    sb_printf(&c->out, "%s(\"%s\", ", compr ? "gmb_compress_string" : "gmb_decompress_string", algo);
-    emit_str_operand(c, a[0]);
-    sb_put(&c->out, ")");
-    return 1;
-}
-static int cp_gzip(ctx_t* c, gmb_expr_t** a, int n) { return cp_zstream(c, a, n, "gzip", 1); }
-static int cp_ungzip(ctx_t* c, gmb_expr_t** a, int n) { return cp_zstream(c, a, n, "gzip", 0); }
-static int cp_zlib(ctx_t* c, gmb_expr_t** a, int n) { return cp_zstream(c, a, n, "zlib", 1); }
-static int cp_unzlib(ctx_t* c, gmb_expr_t** a, int n) { return cp_zstream(c, a, n, "zlib", 0); }
-static int cp_deflate(ctx_t* c, gmb_expr_t** a, int n) { return cp_zstream(c, a, n, "deflate", 1); }
-static int cp_undeflate(ctx_t* c, gmb_expr_t** a, int n) { return cp_zstream(c, a, n, "deflate", 0); }
-static int cp_bzip2(ctx_t* c, gmb_expr_t** a, int n) { return cp_zstream(c, a, n, "bzip2", 1); }
-static int cp_unbzip2(ctx_t* c, gmb_expr_t** a, int n) { return cp_zstream(c, a, n, "bzip2", 0); }
-static int cp_brotli(ctx_t* c, gmb_expr_t** a, int n) { return cp_zstream(c, a, n, "brotli", 1); }
-static int cp_unbrotli(ctx_t* c, gmb_expr_t** a, int n) { return cp_zstream(c, a, n, "brotli", 0); }
-static int cp_zstd(ctx_t* c, gmb_expr_t** a, int n) { return cp_zstream(c, a, n, "zstd", 1); }
-static int cp_unzstd(ctx_t* c, gmb_expr_t** a, int n) { return cp_zstream(c, a, n, "zstd", 0); }
-static int cp_lz4(ctx_t* c, gmb_expr_t** a, int n) { return cp_zstream(c, a, n, "lz4", 1); }
-static int cp_unlz4(ctx_t* c, gmb_expr_t** a, int n) { return cp_zstream(c, a, n, "lz4", 0); }
-static int cp_xz(ctx_t* c, gmb_expr_t** a, int n) { return cp_zstream(c, a, n, "xz", 1); }
-static int cp_unxz(ctx_t* c, gmb_expr_t** a, int n) { return cp_zstream(c, a, n, "xz", 0); }
-static int cp_algorithms(ctx_t* c, gmb_expr_t** a, int n) {
-    (void)a; if (n != 0) return 0;
-    /* canone IL/CommonLib.CompressionUtils.SupportedAlgorithms (maiuscolo, virgola). */
-    sb_put(&c->out, "gmb_string_alloc(\"GZIP,DEFLATE,BROTLI,ZLIB,BZIP2,ZSTD,LZ4,XZ\")");
-    return 1;
-}
 static int cp_zip(ctx_t* c, gmb_expr_t** a, int n) {
     if (n < 2) return 0;
     if (a[0]->kind == GMB_EXPR_VAR && a[0]->var) {
@@ -2222,17 +2195,7 @@ static int cp_unzip(ctx_t* c, gmb_expr_t** a, int n) {
     return 1;
 }
 static const cp_row CP_TBL[] = {
-    { GMB_TOK_Gzip, cp_gzip }, { GMB_TOK_Ungzip, cp_ungzip },
-    { GMB_TOK_Zlib, cp_zlib }, { GMB_TOK_Unzlib, cp_unzlib },
-    { GMB_TOK_Deflate, cp_deflate }, { GMB_TOK_Undeflate, cp_undeflate },
-    { GMB_TOK_Bzip2, cp_bzip2 },
-    { GMB_TOK_Unbzip2, cp_unbzip2 },
-    { GMB_TOK_Brotli, cp_brotli }, { GMB_TOK_Unbrotli, cp_unbrotli },
-    { GMB_TOK_Zstd, cp_zstd }, { GMB_TOK_Unzstd, cp_unzstd },
-    { GMB_TOK_Lz4, cp_lz4 }, { GMB_TOK_Unlz4, cp_unlz4 },
-    { GMB_TOK_Xz, cp_xz }, { GMB_TOK_Unxz, cp_unxz },
-    { GMB_TOK_Compress, cp_gzip }, { GMB_TOK_Decompress, cp_ungzip },
-    { GMB_TOK_Algorithms, cp_algorithms }, { GMB_TOK_Zip, cp_zip }, { GMB_TOK_Unzip, cp_unzip },
+    { GMB_TOK_Zip, cp_zip }, { GMB_TOK_Unzip, cp_unzip },
 };
 int emit_bf_compression(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk, gmb_expr_t** args, int nargs, int line) {
     (void)name; (void)ns; (void)line;
@@ -5279,10 +5242,6 @@ static int hs_strsha1(ctx_t* c, gmb_expr_t** a, int n) { return hs_h(c, a, n, "g
 static int hs_strsha512(ctx_t* c, gmb_expr_t** a, int n) { return hs_h(c, a, n, "gmb_sha512_hex"); }
 typedef struct { gmb_tokenkind_t tk; ma_sp sp; } hs_row;
 static const hs_row HASH_TBL[] = {
-    { GMB_TOK_Md5, hs_md5 }, { GMB_TOK_Sha1, hs_sha1 },
-    { GMB_TOK_Sha256, hs_sha256 }, { GMB_TOK_Sha512, hs_sha512 },
-    { GMB_TOK_StrMd5, hs_strmd5 }, { GMB_TOK_StrSha256, hs_strsha256 },
-    { GMB_TOK_StrSha1, hs_strsha1 }, { GMB_TOK_StrSha512, hs_strsha512 },
 };
 int emit_bf_hash(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk, gmb_expr_t** args, int nargs, int line) {
     (void)name; (void)ns; (void)line;
@@ -5799,24 +5758,6 @@ static void emit_bytes_operand(ctx_t* c, gmb_expr_t* a) {
             return;
         }
     }
-    if (a && a->kind == GMB_EXPR_CALL && a->var) {
-        /* RANDOMBYTES/RANDOMCRYPTOBYTES ritornano già gmb_string_t binaria: emetti la
-         * chiamata così com'è (il chiamante appende .data/.length). */
-        if (a->tk == GMB_TOK_RandomBytes || a->tk == GMB_TOK_RandomCryptoBytes) {
-            emit_expr(c, a);
-            return;
-        }
-        int algo = a->tk == GMB_TOK_Md5 ? 0 : a->tk == GMB_TOK_Sha1 ? 1
-                 : a->tk == GMB_TOK_Sha256 ? 2 : a->tk == GMB_TOK_Sha512 ? 3 : -1;
-        if (algo >= 0 && a->nargs >= 1 && a->args[0]) {
-            sb_printf(&c->out, "gmb_digest_raw(%d, (const uint8_t*)(", algo);
-            emit_bytes_operand(c, a->args[0]);
-            sb_put(&c->out, ").data, (size_t)(");
-            emit_bytes_operand(c, a->args[0]);
-            sb_put(&c->out, ").length)");
-            return;
-        }
-    }
     emit_str_operand(c, a);
 }
 static int en_encode(ctx_t* c, gmb_expr_t** a, int n, const char* fn) {
@@ -5878,9 +5819,6 @@ static int en_tohex(ctx_t* c, gmb_expr_t** a, int n) {
 }
 static int en_fromhex(ctx_t* c, gmb_expr_t** a, int n) { if (n < 1) return 0; sb_put(&c->out, "gmb_bytes_fromhex("); emit_str_operand(c, a[0]); sb_put(&c->out, ")"); return 1; }
 static const en_row EN_TBL[] = {
-    { GMB_TOK_ToBase64, en_tobase64 },
-    { GMB_TOK_FromBase64, en_frombase64 }, { GMB_TOK_ToHex, en_tohex }, { GMB_TOK_FromHex, en_fromhex },
-    { GMB_TOK_FromBase64Url, en_frombase64url },
 };
 int emit_bf_encoding(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk, gmb_expr_t** args, int nargs, int line) {
     (void)name; (void)ns; (void)line;
@@ -6313,23 +6251,8 @@ static int se_decryptasym(ctx_t* c, gmb_expr_t** a, int n) {
     return 1;
 }
 static const sec_tok_row SEC_TOK_TBL[] = {
-    { GMB_TOK_HmacSha256, se_hmac256 }, { GMB_TOK_HmacSha384, se_hmac384 },
-    { GMB_TOK_HmacSha512, se_hmac512 }, { GMB_TOK_ToBase64Url, se_tob64url },
-    { GMB_TOK_AesEncrypt, se_aesenc }, { GMB_TOK_AesDecrypt, se_aesdec },
-    { GMB_TOK_ChaCha20Encrypt, se_chacha }, { GMB_TOK_ChaCha20Decrypt, se_chacha },
-    { GMB_TOK_ChaCha20Poly1305Encrypt, se_ccp1305enc },
-    { GMB_TOK_ChaCha20Poly1305Decrypt, se_ccp1305dec },
-    { GMB_TOK_HashFile, se_hashfile }, { GMB_TOK_StrHashFile, se_strhashfile },
-    { GMB_TOK_KeyGen, se_keygen }, { GMB_TOK_KeyExport, se_keyexport },
-    { GMB_TOK_KeyImport, se_keyimport }, { GMB_TOK_Sign, se_sign },
-    { GMB_TOK_Verify, se_verify }, { GMB_TOK_VerifyRaw, se_verifyraw },
-    { GMB_TOK_EncryptAsym, se_encryptasym }, { GMB_TOK_DecryptAsym, se_decryptasym },
-    { GMB_TOK_PasswordHash, se_pwhash }, { GMB_TOK_PasswordVerify, se_pwverify },
     { GMB_TOK_JwtCreate, se_jwtcreate }, { GMB_TOK_JwtVerify, se_jwtverify },
     { GMB_TOK_JwtPayload, se_jwtpayload },
-    { GMB_TOK_RandomInt, se_randint }, { GMB_TOK_RandomDouble, se_randdouble },
-    { GMB_TOK_RandomNormal, se_randnormal }, { GMB_TOK_RandomBytes, se_randbytes },
-    { GMB_TOK_RandomCryptoBytes, se_randcryptobytes },
     { GMB_TOK_HtmlEncode, se_html }, { GMB_TOK_UrlEncode, se_urlenc },
     { GMB_TOK_JsEncode, se_js }, { GMB_TOK_IsRequired, se_required },
     { GMB_TOK_IsEmail, se_email }, { GMB_TOK_IsUrl, se_url },

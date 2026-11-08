@@ -1,5 +1,6 @@
 ' MiniTest: COMPRESSION.ZSTD/UNZSTD, LZ4/UNLZ4, XZ/UNXZ — round-trip (parita' 4 backend).
 ' EXPECT: zstd-ok|lz4-ok|xz-ok|zstd-rt|lz4-rt|xz-rt
+REQUIRE "compression"
 IMPORT COMPRESSION AS C
 
 SUB Main

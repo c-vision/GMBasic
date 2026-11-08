@@ -1,0 +1,95 @@
+' compression.inc — namespace COMPRESSION via FFI (pacchetto `compression`, lib gmbcompression).
+'
+' Copre le 19 funzioni di compressione/stream: COMPRESS/DECOMPRESS generici,
+' GZIP/UNGZIP, ZLIB/UNZLIB, DEFLATE/UNDEFLATE, BZIP2/UNBZIP2, BROTLI/UNBROTLI,
+' ZSTD/UNZSTD, LZ4/UNLZ4, XZ/UNXZ e ALGORITHMS.
+'
+' ZIP e UNZIP NON sono qui: restano builtin del runtime (archivi STORE, usati anche
+' da pkg/brains) — una sola implementazione, nessun duplicato.
+'
+' Formato: le funzioni di compressione restituiscono il flusso compresso in BASE64;
+' le UN- prendono in ingresso la BASE64 prodotta dalla corrispondente funzione.
+'
+' Uso: REQUIRE "compression"  →  IMPORT COMPRESSION
+'
+' Nota d'uso: niente TokenKind per questi nomi (la superficie di linguaggio è stata
+' rimossa), quindi GZIP, ZSTD, ... sono normali identificatori del namespace.
+
+NAMESPACE COMPRESSION
+
+DECLARE NATIVE FUNCTION CPCOMPRESSB64 LIB "gmbcompression" ALIAS "ofx_cp_compress_b64" (data AS STRING, algo AS STRING) AS STRING
+DECLARE NATIVE FUNCTION CPDECOMPRESSB64 LIB "gmbcompression" ALIAS "ofx_cp_decompress_b64" (data AS STRING, algo AS STRING) AS STRING
+DECLARE NATIVE FUNCTION CPALGORITHMS LIB "gmbcompression" ALIAS "ofx_cp_algorithms" (dummy AS LONG) AS STRING
+
+' ── generiche ────────────────────────────────────────────────────────────────
+' COMPRESS(data$, algo$) -> base64 del flusso compresso.
+PUBLIC FUNCTION COMPRESS(data AS STRING, algorithm AS STRING) AS STRING
+    RETURN CPCOMPRESSB64(data, algorithm)
+END FUNCTION
+
+' DECOMPRESS(base64$, algo$) -> testo decompresso.
+PUBLIC FUNCTION DECOMPRESS(data AS STRING, algorithm AS STRING) AS STRING
+    RETURN CPDECOMPRESSB64(data, algorithm)
+END FUNCTION
+
+' ── algoritmi (coppia compress/decompress per nome) ──────────────────────────
+PUBLIC FUNCTION GZIP(data AS STRING) AS STRING
+    RETURN CPCOMPRESSB64(data, "GZIP")
+END FUNCTION
+PUBLIC FUNCTION UNGZIP(data AS STRING) AS STRING
+    RETURN CPDECOMPRESSB64(data, "GZIP")
+END FUNCTION
+
+PUBLIC FUNCTION ZLIB(data AS STRING) AS STRING
+    RETURN CPCOMPRESSB64(data, "ZLIB")
+END FUNCTION
+PUBLIC FUNCTION UNZLIB(data AS STRING) AS STRING
+    RETURN CPDECOMPRESSB64(data, "ZLIB")
+END FUNCTION
+
+PUBLIC FUNCTION DEFLATE(data AS STRING) AS STRING
+    RETURN CPCOMPRESSB64(data, "DEFLATE")
+END FUNCTION
+PUBLIC FUNCTION UNDEFLATE(data AS STRING) AS STRING
+    RETURN CPDECOMPRESSB64(data, "DEFLATE")
+END FUNCTION
+
+PUBLIC FUNCTION BZIP2(data AS STRING) AS STRING
+    RETURN CPCOMPRESSB64(data, "BZIP2")
+END FUNCTION
+PUBLIC FUNCTION UNBZIP2(data AS STRING) AS STRING
+    RETURN CPDECOMPRESSB64(data, "BZIP2")
+END FUNCTION
+
+PUBLIC FUNCTION BROTLI(data AS STRING) AS STRING
+    RETURN CPCOMPRESSB64(data, "BROTLI")
+END FUNCTION
+PUBLIC FUNCTION UNBROTLI(data AS STRING) AS STRING
+    RETURN CPDECOMPRESSB64(data, "BROTLI")
+END FUNCTION
+
+PUBLIC FUNCTION ZSTD(data AS STRING) AS STRING
+    RETURN CPCOMPRESSB64(data, "ZSTD")
+END FUNCTION
+PUBLIC FUNCTION UNZSTD(data AS STRING) AS STRING
+    RETURN CPDECOMPRESSB64(data, "ZSTD")
+END FUNCTION
+
+PUBLIC FUNCTION LZ4(data AS STRING) AS STRING
+    RETURN CPCOMPRESSB64(data, "LZ4")
+END FUNCTION
+PUBLIC FUNCTION UNLZ4(data AS STRING) AS STRING
+    RETURN CPDECOMPRESSB64(data, "LZ4")
+END FUNCTION
+
+PUBLIC FUNCTION XZ(data AS STRING) AS STRING
+    RETURN CPCOMPRESSB64(data, "XZ")
+END FUNCTION
+PUBLIC FUNCTION UNXZ(data AS STRING) AS STRING
+    RETURN CPDECOMPRESSB64(data, "XZ")
+END FUNCTION
+
+' ALGORITHMS() -> elenco (stringa, virgole): GZIP,DEFLATE,BROTLI,ZLIB,BZIP2,ZSTD,LZ4,XZ
+PUBLIC FUNCTION ALGORITHMS() AS STRING
+    RETURN CPALGORITHMS(0)
+END FUNCTION

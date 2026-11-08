@@ -203,7 +203,6 @@ public sealed partial class StdLib : IParserRegistry
         CreateConnectorNamespace();
         CreateAgentNamespace();
         CreatePolymorphicCommands();
-        CreateCryptographyNamespace();
         CreateAuthNamespace();
         CreateMouseNamespace();
         CreateControlsNamespace();

@@ -102,6 +102,8 @@ public sealed partial class Lexer
     private static readonly Dictionary<string, TokenKind> Keywords = new(StringComparer.OrdinalIgnoreCase)
     {
         // --- Direttive Pre-processore ---
+        { "SIGN", TokenKind.Sign },
+        { "VERIFY", TokenKind.Verify },
         { "#DEF", TokenKind.Define },
         { "DEFINE", TokenKind.Define },
         { "#UNDEF", TokenKind.Undef },
@@ -1256,51 +1258,12 @@ public sealed partial class Lexer
         // ========================================================================
         // --- KEYWORD PER FUNZIONI CRITTOGRAFICHE (HASHING) ---
         // ========================================================================
-        { "MD5", TokenKind.Md5 },
-        { "SHA1", TokenKind.Sha1 },
-        { "SHA256", TokenKind.Sha256 },
-        { "SHA512", TokenKind.Sha512 },
-        { "HASHFILE", TokenKind.HashFile },
-        { "STRMD5", TokenKind.StrMd5 },
-        { "STRSHA1", TokenKind.StrSha1 },
-        { "STRSHA256", TokenKind.StrSha256 },
-        { "STRSHA512", TokenKind.StrSha512 },
-        { "STRHASHFILE", TokenKind.StrHashFile },
 
         // ========================================================================
         // --- KEYWORD PER CRITTOGRAFIA E UTILITY ---
         // ========================================================================
-        { "AESENCRYPT", TokenKind.AesEncrypt },
-        { "AESDECRYPT", TokenKind.AesDecrypt },
-        { "KEYGEN", TokenKind.KeyGen },
-        { "KEYEXPORT", TokenKind.KeyExport },
-        { "KEYIMPORT", TokenKind.KeyImport },
-        { "KEYCLOSE", TokenKind.KeyClose },
-        { "SIGN", TokenKind.Sign },
-        { "VERIFY", TokenKind.Verify },
-        { "VERIFYRAW", TokenKind.VerifyRaw },
         { "COMPILE", TokenKind.Compile },
         { "MAXRETRIES", TokenKind.MaxRetries },
-        { "ENCRYPTASYM", TokenKind.EncryptAsym },
-        { "DECRYPTASYM", TokenKind.DecryptAsym },
-        { "RANDOMBYTES", TokenKind.RandomBytes },
-        { "TOBASE64", TokenKind.ToBase64 },
-        { "FROMBASE64", TokenKind.FromBase64 },
-        { "TOHEX", TokenKind.ToHex },
-        { "FROMHEX", TokenKind.FromHex },
-        { "RANDOMINT", TokenKind.RandomInt },
-        { "RANDOMDOUBLE", TokenKind.RandomDouble },
-        { "RANDOMNORMAL", TokenKind.RandomNormal },
-        { "RANDOMCRYPTOBYTES", TokenKind.RandomCryptoBytes },
-        { "CHACHA20ENCRYPT", TokenKind.ChaCha20Encrypt },
-        { "CHACHA20DECRYPT", TokenKind.ChaCha20Decrypt },
-        { "CHACHA20POLY1305ENCRYPT", TokenKind.ChaCha20Poly1305Encrypt },
-        { "CHACHA20POLY1305DECRYPT", TokenKind.ChaCha20Poly1305Decrypt },
-        { "HMACSHA256", TokenKind.HmacSha256 },
-        { "HMACSHA384", TokenKind.HmacSha384 },
-        { "HMACSHA512", TokenKind.HmacSha512 },
-        { "TOBASE64URL", TokenKind.ToBase64Url },
-        { "FROMBASE64URL", TokenKind.FromBase64Url },
         { "HTMLENCODE", TokenKind.HtmlEncode },
         { "URLENCODE", TokenKind.UrlEncode },
         { "JSENCODE", TokenKind.JsEncode },
@@ -1319,8 +1282,6 @@ public sealed partial class Lexer
         // ========================================================================
         // --- KEYWORD PER PASSWORD HASHING ---
         // ========================================================================
-        { "PASSWORDHASH", TokenKind.PasswordHash },
-        { "PASSWORDVERIFY", TokenKind.PasswordVerify },
         
         // --- NUOVE FUNZIONI DI RETE ---
         { "CONN", TokenKind.Conn },
@@ -1445,25 +1406,10 @@ public sealed partial class Lexer
         { "WINDOWED", TokenKind.Windowed },
         { "ZIP", TokenKind.Zip },
         { "UNZIP", TokenKind.Unzip },
-        { "COMPRESS", TokenKind.Compress },
-        { "DECOMPRESS", TokenKind.Decompress },
-        { "GZIP", TokenKind.Gzip },
-        { "UNGZIP", TokenKind.Ungzip },
-        { "BROTLI", TokenKind.Brotli },
-        { "ZLIB", TokenKind.Zlib },
-        { "BZIP2", TokenKind.Bzip2 },
-        { "DEFLATE", TokenKind.Deflate },
-        { "ALGORITHMS", TokenKind.Algorithms },
-        { "UNBROTLI", TokenKind.Unbrotli },
-        { "UNZLIB", TokenKind.Unzlib },
-        { "UNBZIP2", TokenKind.Unbzip2 },
-        { "UNDEFLATE", TokenKind.Undeflate },
-        { "ZSTD", TokenKind.Zstd },
-        { "UNZSTD", TokenKind.Unzstd },
-        { "LZ4", TokenKind.Lz4 },
-        { "UNLZ4", TokenKind.Unlz4 },
-        { "XZ", TokenKind.Xz },
-        { "UNXZ", TokenKind.Unxz },
+
+        // Compressione stream/algoritmi: superficie di linguaggio RIMOSSA (pacchetto
+        // `compression` via FFI). I TokenKind restano nell'enum per non spostare i
+        // valori, ma i nomi non sono più keyword: sono identificatori del namespace.
 
         // Comandi CONSOLE ibridi (2026-08-06).
 

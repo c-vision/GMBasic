@@ -128,56 +128,6 @@ verifica della password si fa **solo** con la funzione dedicata, mai confrontand
 
 
 
-<!-- BEGIN DOMAIN TABLE -->
-## Tavola sinottica del dominio
-
-Ogni riga riporta la firma canonica (dal registry) e il primo uso reale trovato
-nel corpus di test e sample `.bas`/`.inc`: dove il corpus non usa il simbolo è dichiarato.
-
-- **AUTH.JWTCREATE(x1, x2)** — `DIM token$ = AUTH.JWTCREATE(claims$, "s3cret")` (shared/samples/Security/JwtDemo.bas:15)
-- **AUTH.JWTPAYLOAD(x1)** — `DIM p$ = AUTH.JWTPAYLOAD(token$)` (shared/samples/Security/JwtDemo.bas:31)
-- **AUTH.JWTVERIFY(x1, x2)** — `IF AUTH.JWTVERIFY(token$, "s3cret") THEN` (shared/samples/Security/JwtDemo.bas:17)
-- **CRYPTOGRAPHY.AESDECRYPT(x1, x2)** — `DIM dec() AS BYTE = CRYPTOGRAPHY.AESDECRYPT(enc, "0123456789abcdef")` (shared/minitests/cryptography/aes.bas:6)
-- **CRYPTOGRAPHY.AESENCRYPT(x1, x2)** — `DIM enc() AS BYTE = CRYPTOGRAPHY.AESENCRYPT("hello world", "0123456789abcdef")` (shared/minitests/cryptography/aes.bas:5)
-- **CRYPTOGRAPHY.CHACHA20DECRYPT(x1, x2, x3)** — `DIM dec() AS BYTE = CRYPTOGRAPHY.CHACHA20DECRYPT(enc, key, nonce)` (shared/minitests/cryptography/chacha20.bas:8)
-- **CRYPTOGRAPHY.CHACHA20ENCRYPT(x1, x2, x3)** — `DIM enc() AS BYTE = CRYPTOGRAPHY.CHACHA20ENCRYPT("hello", key, nonce)` (shared/minitests/cryptography/chacha20.bas:7)
-- **CRYPTOGRAPHY.CHACHA20POLY1305DECRYPT(x1, x2, x3, x4)** — `PRINT CRYPTOGRAPHY.CHACHA20POLY1305DECRYPT(r("ciphertext"), r("tag"), key, nonce, aad)` (shared/minitests/cryptography/chacha20poly1305.bas:11)
-- **CRYPTOGRAPHY.CHACHA20POLY1305ENCRYPT(x1, x2, x3)** — `DIM r = CRYPTOGRAPHY.CHACHA20POLY1305ENCRYPT("hello", key, nonce, aad)` (shared/minitests/cryptography/chacha20poly1305.bas:8)
-- **CRYPTOGRAPHY.DECRYPTASYM(x1, x2)** — `DIM dec() AS BYTE = CRYPTOGRAPHY.DECRYPTASYM(enc, keys(0))` (shared/minitests/cryptography/encryptasym.bas:7)
-- **CRYPTOGRAPHY.ENCRYPTASYM(x1, x2)** — `DIM enc() AS BYTE = CRYPTOGRAPHY.ENCRYPTASYM("hello", keys(1))` (shared/minitests/cryptography/encryptasym.bas:6)
-- **CRYPTOGRAPHY.FROMBASE64(x1)** — `rawM = CRYPTOGRAPHY.FROMBASE64(b64M)` (shared/samples/PackageRegistry/PackageServer.bas:1331)
-- **CRYPTOGRAPHY.FROMBASE64URL(x1)** — `DIM bytes() = CRYPTOGRAPHY.FROMBASE64URL("aGVsbG8")` (shared/samples/Security/HmacAndBase64Url.bas:29)
-- **CRYPTOGRAPHY.FROMHEX(x1)** — `DIM key() AS BYTE = CRYPTOGRAPHY.FROMHEX("000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c…` (shared/minitests/cryptography/chacha20poly1305.bas:5)
-- **CRYPTOGRAPHY.HASHFILE(x1)** — `digest() = CRYPTOGRAPHY.HASHFILE("SHA256", g_work + "/hashme.txt")` (shared/samples/Crypto/CryptoUncoveredCoverage.bas:34)
-- **CRYPTOGRAPHY.HMACSHA256(x1, x2)** — `PRINT "HMAC-SHA256: "; CRYPTOGRAPHY.HMACSHA256(msg$, "key")` (shared/samples/Security/HmacAndBase64Url.bas:15)
-- **CRYPTOGRAPHY.HMACSHA384(x1, x2)** — `PRINT "HMAC-SHA384: "; CRYPTOGRAPHY.HMACSHA384(msg$, "key")` (shared/samples/Security/HmacAndBase64Url.bas:16)
-- **CRYPTOGRAPHY.HMACSHA512(x1, x2)** — `PRINT "HMAC-SHA512: "; CRYPTOGRAPHY.HMACSHA512(msg$, "key")` (shared/samples/Security/HmacAndBase64Url.bas:17)
-- **CRYPTOGRAPHY.KEYEXPORT(x1)** — `pem$ = CRYPTOGRAPHY.KEYEXPORT(keys(0))` (shared/minitests/cryptography/asym_sign.bas:9)
-- **CRYPTOGRAPHY.KEYGEN(x1)** — `DIM keys = CRYPTOGRAPHY.KEYGEN("ECDSA", 256)` (shared/minitests/cryptography/asym_sign.bas:5)
-- **CRYPTOGRAPHY.KEYIMPORT(x1, x2)** — `imported = CRYPTOGRAPHY.KEYIMPORT(pem$, 0)` (shared/minitests/cryptography/keyimport.bas:7)
-- **CRYPTOGRAPHY.MD5(x1)** — `PRINT CRYPTOGRAPHY.MD5("hello")` (shared/minitests/cryptography/hashes.bas:5)
-- **CRYPTOGRAPHY.PASSWORDHASH(x1)** — `DIM adminHash$ = CRYPTOGRAPHY.PASSWORDHASH("admin-pw")` (shared/samples/Security/AuthFlowDemo.bas:62)
-- **CRYPTOGRAPHY.PASSWORDVERIFY(x1, x2)** — `IF CRYPTOGRAPHY.PASSWORDVERIFY(password$, storedHash$) = FALSE THEN` (shared/samples/Security/AuthFlowDemo.bas:35)
-- **CRYPTOGRAPHY.RANDOMBYTES(x1)** — `IF LEN(CRYPTOGRAPHY.TOHEX(CRYPTOGRAPHY.RANDOMBYTES(8))) = 16 THEN PRINT "bytes: ok" ELSE PRINT "byte…` (shared/minitests/cryptography/random.bas:11)
-- **CRYPTOGRAPHY.RANDOMCRYPTOBYTES(x1)** — `DIM bytes() = CRYPTOGRAPHY.RANDOMCRYPTOBYTES(length)` (shared/include/OAuthClient.inc:19)
-- **CRYPTOGRAPHY.RANDOMDOUBLE()** — `d = CRYPTOGRAPHY.RANDOMDOUBLE(0, 1)` (shared/minitests/cryptography/random.bas:7)
-- **CRYPTOGRAPHY.RANDOMINT(x1)** — `i = CRYPTOGRAPHY.RANDOMINT(1, 10)` (shared/minitests/cryptography/random.bas:5)
-- **CRYPTOGRAPHY.RANDOMNORMAL()** — `n = CRYPTOGRAPHY.RANDOMNORMAL(0, 1)` (shared/minitests/cryptography/random.bas:9)
-- **CRYPTOGRAPHY.SHA1(x1)** — `PRINT CRYPTOGRAPHY.SHA1("hello")` (shared/minitests/cryptography/hashes.bas:6)
-- **CRYPTOGRAPHY.SHA256(x1)** — `RETURN CRYPTOGRAPHY.TOBASE64URL(CRYPTOGRAPHY.SHA256(verifier))` (shared/include/OAuthClient.inc:30)
-- **CRYPTOGRAPHY.SHA512(x1)** — `PRINT CRYPTOGRAPHY.SHA512("hello")` (shared/minitests/cryptography/hashes.bas:8)
-- **CRYPTOGRAPHY.SIGN(x1, x2)** — `DIM sig = CRYPTOGRAPHY.SIGN("hello", keys(0))` (shared/minitests/cryptography/asym_sign.bas:6)
-- **CRYPTOGRAPHY.STRHASHFILE(x1)** — `PRINT "=== CRYPTOGRAPHY.STRHASHFILE ==="` (shared/samples/Crypto/CryptoStrHashFile.bas:9)
-- **CRYPTOGRAPHY.STRMD5(x1)** — `PRINT CRYPTOGRAPHY.STRMD5("hello")` (shared/minitests/cryptography/strhash.bas:5)
-- **CRYPTOGRAPHY.STRSHA1(x1)** — `PRINT CRYPTOGRAPHY.STRSHA1("hello")` (shared/minitests/cryptography/strhash.bas:6)
-- **CRYPTOGRAPHY.STRSHA256(x1)** — `PRINT CRYPTOGRAPHY.STRSHA256("hello")` (shared/minitests/cryptography/strhash.bas:7)
-- **CRYPTOGRAPHY.STRSHA512(x1)** — `PRINT CRYPTOGRAPHY.STRSHA512("hello")` (shared/minitests/cryptography/strhash.bas:8)
-- **CRYPTOGRAPHY.TOBASE64(x1)** — `b64$ = CRYPTOGRAPHY.TOBASE64("hello")` (shared/minitests/cryptography/encoding.bas:5)
-- **CRYPTOGRAPHY.TOBASE64URL(x1)** — `PRINT "TOBASE64URL(hello): "; CRYPTOGRAPHY.TOBASE64URL("hello")` (shared/samples/Security/HmacAndBase64Url.bas:26)
-- **CRYPTOGRAPHY.TOHEX(x1)** — `DIM roundtrip$ = CRYPTOGRAPHY.TOHEX(bytes())` (shared/samples/Security/HmacAndBase64Url.bas:30)
-- **CRYPTOGRAPHY.VERIFY(x1, x2, x3)** — `IF CRYPTOGRAPHY.VERIFY(sig, "hello", keys(1)) THEN PRINT "verify: ok" ELSE PRINT "verify: fail"` (shared/minitests/cryptography/asym_sign.bas:7)
-- **CRYPTOGRAPHY.VERIFYRAW(x1, x2, x3)** — `IF CRYPTOGRAPHY.VERIFYRAW(sigBytes, manifestBytes, pkIn) THEN sigOk = 1` (shared/samples/PackageRegistry/PackageServer.bas:1838)
-<!-- END DOMAIN TABLE -->
 
 <!-- BEGIN SURFACE (generato da tools/sh/manual_surface.sh — non modificare a mano) -->
 
@@ -383,3 +333,15 @@ SUB Login(req AS HTTPREQUEST, res AS HTTPRESPONSE)
 ## 6. Gap noti
 
 <!-- END SURFACE -->
+
+
+<!-- BEGIN DOMAIN TABLE -->
+## Tavola sinottica del dominio
+
+Ogni riga riporta la firma canonica (dal registry) e il primo uso reale trovato
+nel corpus di test e sample `.bas`/`.inc`: dove il corpus non usa il simbolo è dichiarato.
+
+- **AUTH.JWTCREATE(x1, x2)** — `DIM token$ = AUTH.JWTCREATE(claims$, "s3cret")` (shared/samples/Security/JwtDemo.bas:15)
+- **AUTH.JWTPAYLOAD(x1)** — `DIM p$ = AUTH.JWTPAYLOAD(token$)` (shared/samples/Security/JwtDemo.bas:31)
+- **AUTH.JWTVERIFY(x1, x2)** — `IF AUTH.JWTVERIFY(token$, "s3cret") THEN` (shared/samples/Security/JwtDemo.bas:17)
+<!-- END DOMAIN TABLE -->

@@ -53,7 +53,7 @@ chapter_for() {
     CRYPTOGRAPHY|CRYPTO|HASH|SECURITY) echo IV.26-sicurezza-crittografia.md ;;
     TORCH) echo V.31-torch.md ;;
     DBF|ISAM|SPEED|RDD|LEDGER|SQL) echo IV.23-database.md ;;
-    COMPRESSION|BITS|BINARY) echo V.30-compressione-binario.md ;;
+    COMPRESSION|ARCHIVE|BITS|BINARY) echo V.30-compressione-binario.md ;;
     LLM|TRAIN|MODEL) echo V.35-llm-locale.md ;;
     GRAPHICS|SPRITE|CHART|POLYGON|GAME|SOUND|AUDIO) echo IV.21-grafica-suono-giochi.md ;;
     CONTROLS|CONTROL) echo IV.20-controlli-utente.md ;;

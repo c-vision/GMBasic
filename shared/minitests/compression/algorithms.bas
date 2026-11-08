@@ -1,5 +1,6 @@
 ' MiniTest: COMPRESSION.ALGORITHMS — elenco algoritmi disponibili (parita' 4 backend).
 ' EXPECT: GZIP,DEFLATE,BROTLI,ZLIB,BZIP2,ZSTD,LZ4,XZ
+REQUIRE "compression"
 IMPORT COMPRESSION AS C
 
 SUB Main

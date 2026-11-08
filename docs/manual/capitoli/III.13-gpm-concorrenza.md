@@ -133,37 +133,6 @@ Non sono difetti e non vanno "corrette":
 
 
 
-<!-- BEGIN DOMAIN TABLE -->
-## Tavola sinottica del dominio
-
-Ogni riga riporta la firma canonica (dal registry) e il primo uso reale trovato
-nel corpus di test e sample `.bas`/`.inc`: dove il corpus non usa il simbolo è dichiarato.
-
-- **ATOMIC.COMPARESWAP(x1, x2, x3)** — `sw = ATOMIC.COMPARESWAP(c, 42, 7)` (shared/samples/Concurrency/PCodeGpmAtomic.bas:26)
-- **ATOMIC.FETCHVALUE(x1)** — `v = ATOMIC.FETCHVALUE(c)` (shared/samples/Concurrency/PCodeGpmAtomic.bas:24)
-- **ATOMIC.INCREMENT(x1, x2)** — `ATOMIC.INCREMENT(c, 1)` (shared/samples/Concurrency/PCodeGpmAtomic.bas:10)
-- **ATOMIC.STORE(x1, x2)** — `ATOMIC.STORE(c, 42)` (shared/samples/Concurrency/PCodeGpmAtomic.bas:25)
-- **ATOMIC.SWAP(x1, x2)** — `prev = ATOMIC.SWAP(c, 7)` (shared/samples/Concurrency/GpmV2AtomicSwap.bas:9)
-- **CONCURRENCY.SLEEPASYNC(x1)** — `AWAIT CONCURRENCY.SLEEPASYNC(20)` (shared/samples/Concurrency/AsyncHelpers.bas:12)
-- **CONCURRENCY.TASKYIELD()** — `AWAIT CONCURRENCY.TASKYIELD()` (shared/samples/Concurrency/AsyncHelpers.bas:13)
-- **CONTEXT.BACKGROUND()** — `root = CONTEXT.BACKGROUND()` (shared/samples/Concurrency/PCodeGpmContext.bas:26)
-- **CONTEXT.CANCEL(x1)** — `CONTEXT.CANCEL(child)` (shared/samples/Concurrency/PCodeGpmContext.bas:30)
-- **CONTEXT.CANCELLED(x1)** — `IF ok = 0 AND CONTEXT.CANCELLED(ctx) = 1 THEN` (shared/samples/Concurrency/PCodeGpmContext.bas:14)
-- **CONTEXT.DONE(x1)** — `done = CONTEXT.DONE(ctx)` (shared/samples/Concurrency/PCodeGpmContext.bas:12)
-- **CONTEXT.WITHCANCEL(x1)** — `child = CONTEXT.WITHCANCEL(root)` (shared/samples/Concurrency/PCodeGpmContext.bas:27)
-- **MEMORY.DELETE(x1)** — `MEMORY.DELETE("api-key-config")` (shared/samples/Ai/MemoryDemo.bas:39)
-- **MEMORY.LIST()** — `DIM allKeys$ = MEMORY.LIST()` (shared/samples/Ai/MemoryDemo.bas:34)
-- **MEMORY.LOAD(x1)** — `DIM nome$ = MEMORY.LOAD("user-name")` (shared/samples/Ai/MemoryDemo.bas:19)
-- **MEMORY.SEARCH(x1)** — `DIM results$ = MEMORY.SEARCH("user")` (shared/samples/Ai/MemoryDemo.bas:28)
-- **MEMORY.STORE(x1, x2, x3)** — `MEMORY.STORE("user-name", "Mario Rossi", 0)` (shared/samples/Ai/MemoryDemo.bas:13)
-- **MUTEX.TRYLOCK(x1)** — `DIM preso = MUTEX.TRYLOCK(mu)` (shared/samples/Math/MathAtnVectorAngle.bas:82)
-- **POOL.GET(x1)** — `v = POOL.GET(p)` (shared/samples/Concurrency/GpmV2Pool.bas:10)
-- **POOL.PUT(x1, x2)** — `POOL.PUT(p, "risorsa")` (shared/samples/Concurrency/GpmV2Pool.bas:9)
-- **SYNCMAP.DELETE(x1, x2)** — `d = SYNCMAP.DELETE(m, "chiave")` (shared/samples/Concurrency/GpmV2SyncMap.bas:12)
-- **SYNCMAP.LOAD(x1, x2)** — `v = SYNCMAP.LOAD(m, "chiave")` (shared/samples/Concurrency/GpmV2SyncMap.bas:10)
-- **SYNCMAP.LOADORSTORE(x1, x2, x3)** — `v = SYNCMAP.LOADORSTORE(m, "chiave", "nuovo")` (shared/samples/Concurrency/SyncMapDemo.bas:28)
-- **SYNCMAP.STORE(x1, x2, x3)** — `SYNCMAP.STORE(m, "chiave", "valore")` (shared/samples/Concurrency/GpmV2SyncMap.bas:9)
-<!-- END DOMAIN TABLE -->
 
 <!-- BEGIN SURFACE (generato da tools/sh/manual_surface.sh — non modificare a mano) -->
 
@@ -1246,3 +1215,36 @@ ASYNC SUB Starter(wg AS WAITGROUP)
 ## 9. Comandi correlati
 
 <!-- END SURFACE -->
+
+
+<!-- BEGIN DOMAIN TABLE -->
+## Tavola sinottica del dominio
+
+Ogni riga riporta la firma canonica (dal registry) e il primo uso reale trovato
+nel corpus di test e sample `.bas`/`.inc`: dove il corpus non usa il simbolo è dichiarato.
+
+- **ATOMIC.COMPARESWAP(x1, x2, x3)** — `sw = ATOMIC.COMPARESWAP(c, 42, 7)` (shared/samples/Concurrency/PCodeGpmAtomic.bas:26)
+- **ATOMIC.FETCHVALUE(x1)** — `v = ATOMIC.FETCHVALUE(c)` (shared/samples/Concurrency/PCodeGpmAtomic.bas:24)
+- **ATOMIC.INCREMENT(x1, x2)** — `ATOMIC.INCREMENT(c, 1)` (shared/samples/Concurrency/PCodeGpmAtomic.bas:10)
+- **ATOMIC.STORE(x1, x2)** — `ATOMIC.STORE(c, 42)` (shared/samples/Concurrency/PCodeGpmAtomic.bas:25)
+- **ATOMIC.SWAP(x1, x2)** — `prev = ATOMIC.SWAP(c, 7)` (shared/samples/Concurrency/GpmV2AtomicSwap.bas:9)
+- **CONCURRENCY.SLEEPASYNC(x1)** — `AWAIT CONCURRENCY.SLEEPASYNC(20)` (shared/samples/Concurrency/AsyncHelpers.bas:12)
+- **CONCURRENCY.TASKYIELD()** — `AWAIT CONCURRENCY.TASKYIELD()` (shared/samples/Concurrency/AsyncHelpers.bas:13)
+- **CONTEXT.BACKGROUND()** — `root = CONTEXT.BACKGROUND()` (shared/samples/Concurrency/PCodeGpmContext.bas:26)
+- **CONTEXT.CANCEL(x1)** — `CONTEXT.CANCEL(child)` (shared/samples/Concurrency/PCodeGpmContext.bas:30)
+- **CONTEXT.CANCELLED(x1)** — `IF ok = 0 AND CONTEXT.CANCELLED(ctx) = 1 THEN` (shared/samples/Concurrency/PCodeGpmContext.bas:14)
+- **CONTEXT.DONE(x1)** — `done = CONTEXT.DONE(ctx)` (shared/samples/Concurrency/PCodeGpmContext.bas:12)
+- **CONTEXT.WITHCANCEL(x1)** — `child = CONTEXT.WITHCANCEL(root)` (shared/samples/Concurrency/PCodeGpmContext.bas:27)
+- **MEMORY.DELETE(x1)** — `MEMORY.DELETE("api-key-config")` (shared/samples/Ai/MemoryDemo.bas:39)
+- **MEMORY.LIST()** — `DIM allKeys$ = MEMORY.LIST()` (shared/samples/Ai/MemoryDemo.bas:34)
+- **MEMORY.LOAD(x1)** — `DIM nome$ = MEMORY.LOAD("user-name")` (shared/samples/Ai/MemoryDemo.bas:19)
+- **MEMORY.SEARCH(x1)** — `DIM results$ = MEMORY.SEARCH("user")` (shared/samples/Ai/MemoryDemo.bas:28)
+- **MEMORY.STORE(x1, x2, x3)** — `MEMORY.STORE("user-name", "Mario Rossi", 0)` (shared/samples/Ai/MemoryDemo.bas:13)
+- **MUTEX.TRYLOCK(x1)** — `DIM preso = MUTEX.TRYLOCK(mu)` (shared/samples/Math/MathAtnVectorAngle.bas:81)
+- **POOL.GET(x1)** — `v = POOL.GET(p)` (shared/samples/Concurrency/GpmV2Pool.bas:10)
+- **POOL.PUT(x1, x2)** — `POOL.PUT(p, "risorsa")` (shared/samples/Concurrency/GpmV2Pool.bas:9)
+- **SYNCMAP.DELETE(x1, x2)** — `d = SYNCMAP.DELETE(m, "chiave")` (shared/samples/Concurrency/GpmV2SyncMap.bas:12)
+- **SYNCMAP.LOAD(x1, x2)** — `v = SYNCMAP.LOAD(m, "chiave")` (shared/samples/Concurrency/GpmV2SyncMap.bas:10)
+- **SYNCMAP.LOADORSTORE(x1, x2, x3)** — `v = SYNCMAP.LOADORSTORE(m, "chiave", "nuovo")` (shared/samples/Concurrency/SyncMapDemo.bas:28)
+- **SYNCMAP.STORE(x1, x2, x3)** — `SYNCMAP.STORE(m, "chiave", "valore")` (shared/samples/Concurrency/GpmV2SyncMap.bas:9)
+<!-- END DOMAIN TABLE -->

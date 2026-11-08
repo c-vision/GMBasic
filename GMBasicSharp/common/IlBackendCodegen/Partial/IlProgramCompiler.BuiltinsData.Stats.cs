@@ -234,17 +234,8 @@ public sealed partial class IlProgramCompiler
         _il.Emit(OpCodes.Call, method);
     }
 
-    private void EmitCompressionCall(BuiltinFunctionCallExpr expr, MethodInfo method, string? fixedAlgorithm)
-    {
-        if (expr.Args.Length < 1 || (fixedAlgorithm == null && expr.Args.Length < 2))
-            throw new NotSupportedException($"Backend IL: {expr.OriginalToken.Lexeme} richiede {(fixedAlgorithm == null ? 2 : 1)} argomento(i).");
-        EmitStringArgument(expr.Args[0]);
-        if (fixedAlgorithm != null) _il.Emit(OpCodes.Ldstr, fixedAlgorithm);
-        else EmitStringArgument(expr.Args[1]);
-        _il.Emit(OpCodes.Call, method);
-    }
-
-    // ZIP(sources, dest) / UNZIP(archive, dir) — funzioni qualificate COMPRESSION.ZIP/UNZIP.
+    // Compressione stream/algoritmi (COMPRESS/GZIP/ZSTD/...): superficie RIMOSSA,
+    // il dominio vive nel pacchetto `compression` via FFI. Restano ZIP/UNZIP.
     private void EmitZipCall(BuiltinFunctionCallExpr expr, bool isZip)
     {
         if (expr.Args.Length != 2)

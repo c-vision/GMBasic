@@ -1,5 +1,6 @@
 ' MiniTest: COMPRESSION.ZLIB/UNZLIB — round-trip (parita' 4 backend).
 ' EXPECT: hello world hello world hello world
+REQUIRE "compression"
 IMPORT COMPRESSION AS C
 
 SUB Main

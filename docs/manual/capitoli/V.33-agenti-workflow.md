@@ -112,14 +112,6 @@ La Parte V dichiara questa lacuna invece di simularla — è la stessa scelta de
 
 
 
-<!-- BEGIN DOMAIN TABLE -->
-## Tavola sinottica del dominio
-
-Ogni riga riporta la firma canonica (dal registry) e il primo uso reale trovato
-nel corpus di test e sample `.bas`/`.inc`: dove il corpus non usa il simbolo è dichiarato.
-
-- **AGENT.RUN(x1)** — `ag = AGENT.RUN("test", 1)` (shared/samples/cua/CuaDiagnostics.bas:50)
-<!-- END DOMAIN TABLE -->
 
 <!-- BEGIN SURFACE (generato da tools/sh/manual_surface.sh — non modificare a mano) -->
 
@@ -935,3 +927,13 @@ dotnet test --filter "Category=Fast" --verbosity minimal      # 439/439
 ## 4. Riferimenti
 
 <!-- END SURFACE -->
+
+
+<!-- BEGIN DOMAIN TABLE -->
+## Tavola sinottica del dominio
+
+Ogni riga riporta la firma canonica (dal registry) e il primo uso reale trovato
+nel corpus di test e sample `.bas`/`.inc`: dove il corpus non usa il simbolo è dichiarato.
+
+- **AGENT.RUN(x1)** — `ag = AGENT.RUN("test", 1)` (shared/samples/cua/CuaDiagnostics.bas:50)
+<!-- END DOMAIN TABLE -->

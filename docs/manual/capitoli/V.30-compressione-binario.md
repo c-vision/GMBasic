@@ -87,55 +87,6 @@ bit a bit di `BITS` sono il livello sotto. Il capitolo IV.22 spiega come si scri
 
 
 
-<!-- BEGIN DOMAIN TABLE -->
-## Tavola sinottica del dominio
-
-Ogni riga riporta la firma canonica (dal registry) e il primo uso reale trovato
-nel corpus di test e sample `.bas`/`.inc`: dove il corpus non usa il simbolo è dichiarato.
-
-- **BITS.BITCLEAR(x1, x2)** — `RETURN BITS.BITCLEAR(perm, bit)` (shared/samples/Bits/BitsFullCoverage.bas:32)
-- **BITS.BITCOUNT(x1)** — `PRINT "accesi="; BITS.BITCOUNT(perm)            ' 2` (shared/samples/Bits/BitsFullCoverage.bas:62)
-- **BITS.BITDEINTERLEAVE(x1, x2)** — `IF BITS.BITDEINTERLEAVE(morton, 0) <> gx THEN morton_bad = morton_bad + 1` (shared/samples/Bits/BitsFullCoverage.bas:124)
-- **BITS.BITFIELD(x1, x2, x3)** — `RETURN BITS.BITFIELD(h, lo, hi)` (shared/samples/Bits/BitsFullCoverage.bas:42)
-- **BITS.BITGET(x1, x2)** — `PRINT "bit3="; BITS.BITGET(perm, 3)             ' 0` (shared/samples/Bits/BitsFullCoverage.bas:55)
-- **BITS.BITINTERLEAVE(x1, x2)** — `morton = BITS.BITINTERLEAVE(gx, gy)` (shared/samples/Bits/BitsFullCoverage.bas:123)
-- **BITS.BITREVERSE(x1, x2)** — `cipher = BITS.BITROTATEL(BITS.BITREVERSE(clear, 8), 3, 8)` (shared/samples/Bits/BitsFullCoverage.bas:137)
-- **BITS.BITROTATEL(x1, x2, x3)** — `cipher = BITS.BITROTATEL(BITS.BITREVERSE(clear, 8), 3, 8)` (shared/samples/Bits/BitsFullCoverage.bas:137)
-- **BITS.BITROTATER(x1, x2, x3)** — `back = BITS.BITREVERSE(BITS.BITROTATER(cipher, 3, 8), 8)` (shared/samples/Bits/BitsFullCoverage.bas:139)
-- **BITS.BITSCANFWD(x1)** — `PRINT "lsb="; BITS.BITSCANFWD(40)                ' 3 (40 = 0b101000)` (shared/samples/Bits/BitsFullCoverage.bas:155)
-- **BITS.BITSCANREV(x1)** — `PRINT "msb="; BITS.BITSCANREV(40)                ' 5` (shared/samples/Bits/BitsFullCoverage.bas:156)
-- **BITS.BITSET(x1, x2)** — `RETURN BITS.BITSET(perm, bit)` (shared/samples/Bits/BitsFullCoverage.bas:30)
-- **BITS.BITTEST(x1, x2)** — `RETURN BITS.BITTEST(perm, bit)` (shared/samples/Bits/BitsFullCoverage.bas:24)
-- **BITS.BITTOGGLE(x1, x2)** — `perm = BITS.BITTOGGLE(perm, 2)                  ' revoca ESECUZIONE` (shared/samples/Bits/BitsFullCoverage.bas:56)
-- **BITS.BYTESWAP(x1)** — `PRINT "byteswap2="; BITS.BYTESWAP(BITS.BYTESWAP(12345))   ' 12345` (shared/samples/Bits/BitsFullCoverage.bas:144)
-- **BITS.FROMGRAY(x1)** — `IF BITS.FROMGRAY(BITS.GRAYCODE(k)) <> k THEN viol = viol + 1` (shared/samples/Bits/BitsFullCoverage.bas:108)
-- **BITS.GRAYCODE(x1)** — `IF BITS.FROMGRAY(BITS.GRAYCODE(k)) <> k THEN viol = viol + 1` (shared/samples/Bits/BitsFullCoverage.bas:108)
-- **BITS.HAMMINGDIST(x1, x2)** — `hamsum = hamsum + BITS.HAMMINGDIST(headers(k), headers(k + 1))` (shared/samples/Bits/BitsFullCoverage.bas:97)
-- **BITS.ISPOW2(x1)** — `PRINT "cap_ispow="; BITS.ISPOW2(cap)             ' -1` (shared/samples/Bits/BitsFullCoverage.bas:153)
-- **BITS.NEXTPOW2(x1)** — `cap = BITS.NEXTPOW2(need)` (shared/samples/Bits/BitsFullCoverage.bas:151)
-- **BITS.PARITY(x1)** — `par = par + BITS.PARITY(headers(k))` (shared/samples/Bits/BitsFullCoverage.bas:96)
-- **COMPRESSION.ALGORITHMS()** — `PRINT "Algoritmi supportati: "; COMPRESSION.ALGORITHMS()` (shared/samples/compression/CompressionBasics.bas:49)
-- **COMPRESSION.BROTLI(x1)** — `DIM br$ = COMPRESSION.BROTLI(testo$)` (shared/samples/compression/CompressionBasics.bas:26)
-- **COMPRESSION.BZIP2(x1)** — `DIM bz$ = COMPRESSION.BZIP2(testo$)` (shared/samples/compression/CompressionBasics.bas:38)
-- **COMPRESSION.COMPRESS(x1, x2)** — `DIM c1$ = COMPRESSION.COMPRESS(testo$, "GZIP")` (shared/samples/compression/CompressionBasics.bas:44)
-- **COMPRESSION.DECOMPRESS(x1, x2)** — `PRINT "COMPRESS(.., 'GZIP') roundtrip: "; COMPRESSION.DECOMPRESS(c1$, "GZIP") = testo$` (shared/samples/compression/CompressionBasics.bas:45)
-- **COMPRESSION.DEFLATE(x1)** — `DIM df$ = COMPRESSION.DEFLATE(testo$)` (shared/samples/compression/CompressionBasics.bas:20)
-- **COMPRESSION.GZIP(x1)** — `DIM gz$ = COMPRESSION.GZIP(testo$)` (shared/samples/compression/CompressionBasics.bas:14)
-- **COMPRESSION.LZ4(x1)** — `PRINT "LZ4   compresso: "; LEN(C.LZ4(testo)); " byte  round-trip: "; C.UNLZ4(C.LZ4(testo)) = testo` (shared/samples/compression/CompressionAlgorithms.bas:16)
-- **COMPRESSION.UNBROTLI(x1)** — `PRINT "  roundtrip: "; COMPRESSION.UNBROTLI(br$) = testo$` (shared/samples/compression/CompressionBasics.bas:28)
-- **COMPRESSION.UNBZIP2(x1)** — `PRINT "  roundtrip: "; COMPRESSION.UNBZIP2(bz$) = testo$` (shared/samples/compression/CompressionBasics.bas:40)
-- **COMPRESSION.UNDEFLATE(x1)** — `PRINT "  roundtrip: "; COMPRESSION.UNDEFLATE(df$) = testo$` (shared/samples/compression/CompressionBasics.bas:22)
-- **COMPRESSION.UNGZIP(x1)** — `PRINT "  roundtrip: "; COMPRESSION.UNGZIP(gz$) = testo$` (shared/samples/compression/CompressionBasics.bas:16)
-- **COMPRESSION.UNLZ4(x1)** — `PRINT "LZ4   compresso: "; LEN(C.LZ4(testo)); " byte  round-trip: "; C.UNLZ4(C.LZ4(testo)) = testo` (shared/samples/compression/CompressionAlgorithms.bas:16)
-- **COMPRESSION.UNXZ(x1)** — `PRINT "XZ    compresso: "; LEN(C.XZ(testo)); " byte  round-trip: "; C.UNXZ(C.XZ(testo)) = testo` (shared/samples/compression/CompressionAlgorithms.bas:17)
-- **COMPRESSION.UNZIP(x1, x2)** — `COMPRESSION.UNZIP(tmpZip, staging)` (shared/samples/PackageRegistry/PackageServer.bas:1789)
-- **COMPRESSION.UNZLIB(x1)** — `PRINT "  roundtrip: "; COMPRESSION.UNZLIB(zl$) = testo$` (shared/samples/compression/CompressionBasics.bas:34)
-- **COMPRESSION.UNZSTD(x1)** — `PRINT "ZSTD  compresso: "; LEN(z); " byte  round-trip: "; C.UNZSTD(z) = testo` (shared/samples/compression/CompressionAlgorithms.bas:15)
-- **COMPRESSION.XZ(x1)** — `PRINT "XZ    compresso: "; LEN(C.XZ(testo)); " byte  round-trip: "; C.UNXZ(C.XZ(testo)) = testo` (shared/samples/compression/CompressionAlgorithms.bas:17)
-- **COMPRESSION.ZIP(x1, x2)** — `ok = COMPRESSION.ZIP(srcs, tmp)` (shared/samples/PackageRegistry/PackageServer.bas:487)
-- **COMPRESSION.ZLIB(x1)** — `DIM zl$ = COMPRESSION.ZLIB(testo$)` (shared/samples/compression/CompressionBasics.bas:32)
-- **COMPRESSION.ZSTD(x1)** — `z = C.ZSTD(testo)` (shared/samples/compression/CompressionAlgorithms.bas:14)
-<!-- END DOMAIN TABLE -->
 
 <!-- BEGIN SURFACE (generato da tools/sh/manual_surface.sh — non modificare a mano) -->
 
@@ -150,14 +101,25 @@ nel corpus di test e sample `.bas`/`.inc`: dove il corpus non usa il simbolo è 
 *Fonte: `COMPRESSION-Guida-Utente`*
 
 
-## 1. Funzioni (namespace `COMPRESSION`)
+## 1. Installazione e import
+
+gmb pkg install --local packages/compression/0.1.0    # sviluppo
+gmb pkg install compression                            # dal registry
+
+
+REQUIRE "compression"      ' porta export + libreria del pacchetto
+IMPORT COMPRESSION         ' funzioni stream/algoritmi
+IMPORT ARCHIVE             ' solo se servono ZIP/UNZIP in forma funzione
+
+
+## 2. Funzioni di compressione (namespace `COMPRESSION`, pacchetto)
 
 ### Generiche
 | funzione | parametri | ritorno |
 |---|---|---|
 | `COMPRESSION.COMPRESS(data$, algorithm$)` | `data$` testo, `algorithm$` nome algoritmo | STRING (Base64) |
 | `COMPRESSION.DECOMPRESS(data$, algorithm$)` | `data$` Base64, `algorithm$` nome | STRING (testo) |
-| `COMPRESSION.ALGORITHMS()` | — | STRING (elenco separato da virgole) |
+| `COMPRESSION.ALGORITHMS()` | — | STRING `GZIP,DEFLATE,BROTLI,ZLIB,BZIP2,ZSTD,LZ4,XZ` |
 
 ### Coppie dedicate (comprimi/decomprimi)
 | comprimi | decomprimi | libreria |
@@ -167,21 +129,25 @@ nel corpus di test e sample `.bas`/`.inc`: dove il corpus non usa il simbolo è 
 | `COMPRESSION.DEFLATE(data$)` | `COMPRESSION.UNDEFLATE(data$)` | zlib |
 | `COMPRESSION.BZIP2(data$)` | `COMPRESSION.UNBZIP2(data$)` | libbz2 |
 | `COMPRESSION.BROTLI(data$)` | `COMPRESSION.UNBROTLI(data$)` | brotli |
-| **`COMPRESSION.ZSTD(data$)`** | **`COMPRESSION.UNZSTD(data$)`** | libzstd |
-| **`COMPRESSION.LZ4(data$)`** | **`COMPRESSION.UNLZ4(data$)`** | liblz4 |
-| **`COMPRESSION.XZ(data$)`** | **`COMPRESSION.UNXZ(data$)`** | liblzma |
-
-### Archivi ZIP
-| comando | parametri | effetto |
-|---|---|---|
-| `COMPRESSION.ZIP(sources$, dest$)` | `sources$` percorsi (`;` o array), `dest$` | crea archivio ZIP (STORE) → BIT |
-| `COMPRESSION.UNZIP(archive$, dir$)` | `archive$`, `dir$` destinazione | estrae → BIT |
+| `COMPRESSION.ZSTD(data$)` | `COMPRESSION.UNZSTD(data$)` | libzstd |
+| `COMPRESSION.LZ4(data$)` | `COMPRESSION.UNLZ4(data$)` | liblz4 |
+| `COMPRESSION.XZ(data$)` | `COMPRESSION.UNXZ(data$)` | liblzma |
 
 ### Parametri (dettaglio)
 
-### Esempio
+## 3. Archivi ZIP/UNZIP (namespace `ARCHIVE`, builtin)
+| forma | sintassi | effetto |
+|---|---|---|
+| comando | `ZIP sources TO dest` | crea archivio ZIP (STORE) |
+| comando | `UNZIP archive TO dir` | estrae l'archivio |
+| funzione | `ARCHIVE.ZIP(sources$, dest$)` | crea → BIT (-1 vero / 0 errore) |
+| funzione | `ARCHIVE.UNZIP(archive$, dir$)` | estrae → BIT |
 
-IMPORT COMPRESSION AS C
+## 4. Esempio
+
+REQUIRE "compression"
+IMPORT COMPRESSION
+IMPORT ARCHIVE
 
 SUB Main()
     DIM s AS STRING
@@ -189,21 +155,19 @@ SUB Main()
 
     ' generico
     DIM z AS STRING
-    z = C.COMPRESS(s, "zstd")
-    PRINT "round-trip: "; C.DECOMPRESS(z, "zstd") = s
+    z = COMPRESS(s, "zstd")
+    PRINT "round-trip: "; DECOMPRESS(z, "zstd") = s
 
     ' dedicato
-    PRINT "zstd: "; C.UNZSTD(C.ZSTD(s)) = s
-    PRINT "lz4:  "; C.UNLZ4(C.LZ4(s)) = s
-    PRINT "xz:   "; C.UNXZ(C.XZ(s)) = s
-
+    PRINT "zstd: "; UNZSTD(ZSTD(s)) = s
+    PRINT "lz4:  "; UNLZ4(LZ4(s)) = s
 
 
 ### Polimorfismo / console-aware
 
-## 2. Note implementative
+## 5. Note implementative
 
-## 3. Riferimenti
+## 6. Riferimenti
 
 ### Compression-Guida-Utente
 
@@ -278,3 +242,35 @@ END SUB
 ## 6. MiniTest e sample
 
 <!-- END SURFACE -->
+
+
+<!-- BEGIN DOMAIN TABLE -->
+## Tavola sinottica del dominio
+
+Ogni riga riporta la firma canonica (dal registry) e il primo uso reale trovato
+nel corpus di test e sample `.bas`/`.inc`: dove il corpus non usa il simbolo è dichiarato.
+
+- **ARCHIVE.UNZIP(x1, x2)** — `ARCHIVE.UNZIP(tmpZip, staging)` (shared/samples/PackageRegistry/PackageServer.bas:1789)
+- **ARCHIVE.ZIP(x1, x2)** — `ok = ARCHIVE.ZIP(srcs, tmp)` (shared/samples/PackageRegistry/PackageServer.bas:487)
+- **BITS.BITCLEAR(x1, x2)** — `RETURN BITS.BITCLEAR(mask, bit)` (shared/samples/Bits/PermessiUtente.bas:20)
+- **BITS.BITCOUNT(x1)** — `PRINT "ospite:    "; ospite; "    permessi attivi: "; BITS.BITCOUNT(ospite)` (shared/samples/Bits/PermessiUtente.bas:60)
+- **BITS.BITDEINTERLEAVE(x1, x2)** — `IF BITS.BITDEINTERLEAVE(indice, 0) <> x THEN errori = errori + 1` (shared/samples/Bits/ProtocolloPacchetti.bas:85)
+- **BITS.BITFIELD(x1, x2, x3)** — `RETURN BITS.BITFIELD(header, da, a)` (shared/samples/Bits/ProtocolloPacchetti.bas:23)
+- **BITS.BITGET(x1, x2)** — `PRINT "admin può cancellare (BITGET): "; BITS.BITGET(admin, 3)` (shared/samples/Bits/PermessiUtente.bas:103)
+- **BITS.BITINTERLEAVE(x1, x2)** — `indice = BITS.BITINTERLEAVE(x, y)` (shared/samples/Bits/ProtocolloPacchetti.bas:84)
+- **BITS.BITREVERSE(x1, x2)** — `cifrato = BITS.BITROTATEL(BITS.BITREVERSE(chiaro, 8), 3, 8)` (shared/samples/Bits/ProtocolloPacchetti.bas:100)
+- **BITS.BITROTATEL(x1, x2, x3)** — `cifrato = BITS.BITROTATEL(BITS.BITREVERSE(chiaro, 8), 3, 8)` (shared/samples/Bits/ProtocolloPacchetti.bas:100)
+- **BITS.BITROTATER(x1, x2, x3)** — `decifrato = BITS.BITREVERSE(BITS.BITROTATER(cifrato, 3, 8), 8)` (shared/samples/Bits/ProtocolloPacchetti.bas:102)
+- **BITS.BITSCANFWD(x1)** — `PRINT "bit più basso di 40: "; BITS.BITSCANFWD(40); _` (shared/samples/Bits/ProtocolloPacchetti.bas:118)
+- **BITS.BITSCANREV(x1)** — `", più alto: "; BITS.BITSCANREV(40)` (shared/samples/Bits/ProtocolloPacchetti.bas:119)
+- **BITS.BITSET(x1, x2)** — `RETURN BITS.BITSET(mask, bit)` (shared/samples/Bits/PermessiUtente.bas:16)
+- **BITS.BITTEST(x1, x2)** — `RETURN BITS.BITTEST(mask, bit)` (shared/samples/Bits/PermessiUtente.bas:24)
+- **BITS.BITTOGGLE(x1, x2)** — `impiegato = BITS.BITTOGGLE(impiegato, 3)` (shared/samples/Bits/PermessiUtente.bas:95)
+- **BITS.BYTESWAP(x1)** — `PRINT "byteswap due volte è l'identità: "; (BITS.BYTESWAP(BITS.BYTESWAP(12345)) = 12345)` (shared/samples/Bits/ProtocolloPacchetti.bas:105)
+- **BITS.FROMGRAY(x1)** — `IF BITS.FROMGRAY(BITS.GRAYCODE(i)) <> i THEN violazioni = violazioni + 1` (shared/samples/Bits/ProtocolloPacchetti.bas:67)
+- **BITS.GRAYCODE(x1)** — `IF BITS.FROMGRAY(BITS.GRAYCODE(i)) <> i THEN violazioni = violazioni + 1` (shared/samples/Bits/ProtocolloPacchetti.bas:67)
+- **BITS.HAMMINGDIST(x1, x2)** — `PRINT "distanza di Hamming fra i due ruoli: "; BITS.HAMMINGDIST(admin, ospite)` (shared/samples/Bits/PermessiUtente.bas:113)
+- **BITS.ISPOW2(x1)** — `PRINT "buffer: "; capacita; " byte (potenza di 2: "; BITS.ISPOW2(capacita); ")"` (shared/samples/Bits/ProtocolloPacchetti.bas:116)
+- **BITS.NEXTPOW2(x1)** — `capacita = BITS.NEXTPOW2(bisogno)` (shared/samples/Bits/ProtocolloPacchetti.bas:115)
+- **BITS.PARITY(x1)** — `parita = parita + BITS.PARITY(pacchetti(i))` (shared/samples/Bits/ProtocolloPacchetti.bas:53)
+<!-- END DOMAIN TABLE -->

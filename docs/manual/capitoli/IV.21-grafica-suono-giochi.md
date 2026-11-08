@@ -132,29 +132,6 @@ nulla sul comportamento — meglio dichiararlo che simulare una verifica che non
 
 
 
-<!-- BEGIN DOMAIN TABLE -->
-## Tavola sinottica del dominio
-
-Ogni riga riporta la firma canonica (dal registry) e il primo uso reale trovato
-nel corpus di test e sample `.bas`/`.inc`: dove il corpus non usa il simbolo è dichiarato.
-
-- **CHART.CREATE(x1)** — `h = CHART.CREATE("Disegni", "tempo", "prezzo")` (shared/samples/graphics/ChartDrawDemo.bas:31)
-- **GRAPHICS.C2PX(x1)** — `PRINT "C2PX(10)    = "; C2PX(10)` (shared/samples/graphics/CoordsAndTextGaps.bas:12)
-- **GRAPHICS.C2PY(x1)** — `PRINT "C2PY(5)     = "; C2PY(5)` (shared/samples/graphics/CoordsAndTextGaps.bas:13)
-- **GRAPHICS.CELL(x1, x2, x3)** — `PRINT "cell="; GRAPHICS.CELL(0, 0, 0)` (shared/minitests/graphics/graphics_all.bas:16)
-- **GRAPHICS.CELLSTR(x1, x2)** — `PRINT "cellstr=["; GRAPHICS.CELLSTR(0, 0); "]"` (shared/minitests/graphics/graphics_all.bas:17)
-- **GRAPHICS.COLLIDE(x1)** — `PRINT "collide="; GRAPHICS.COLLIDE(1, 2)` (shared/minitests/graphics/graphics_all.bas:19)
-- **GRAPHICS.COLLIDEBATCH(x1, x2, x3, x4)** — `CB = COLLIDEBATCH(X, Y, 14, 14)` (shared/samples/graphics/GraphicsPlanesExplode.bas:73)
-- **GRAPHICS.P2CX(x1)** — `PRINT "P2CX(160)   = "; P2CX(160)` (shared/samples/graphics/CoordsAndTextGaps.bas:14)
-- **GRAPHICS.P2CY(x1)** — `PRINT "P2CY(80)    = "; P2CY(80)` (shared/samples/graphics/CoordsAndTextGaps.bas:15)
-- **GRAPHICS.POINT(x1, x2)** — `PRINT "point="; GRAPHICS.POINT(1, 2)` (shared/minitests/graphics/graphics_all.bas:15)
-- **GRAPHICS.RGB(x1, x2, x3)** — `CLS RGB(0, 0, 255)` (shared/samples/Clipper/WindowPixelColorTest.bas:12)
-- **GRAPHICS.SCREEN()** — `PRINT "screen="; GRAPHICS.SCREEN()` (shared/minitests/graphics/graphics_all.bas:18)
-- **GRAPHICS.SCREENINFO()** — `70 PRINT "ModeID    : "; SCREENINFO().ModeID` (shared/samples/graphics/GraphicsShowModes.bas:47)
-- **GRAPHICS.SCREENS()** — `20 NUM_SCREENS = SCREENS()` (shared/samples/graphics/GraphicsShowModes.bas:43)
-- **GRAPHICS.TEXTHEIGHT()** — `DIM th = TEXTHEIGHT()          ' altezza logica del font corrente` (shared/samples/windows/WindowDemo.bas:14)
-- **GRAPHICS.TEXTWIDTH(x1)** — `LOCATE Y, (640 - TEXTWIDTH(Text$)) / 2` (shared/samples/graphics/GraphicsDrawTextures.bas:205)
-<!-- END DOMAIN TABLE -->
 
 ## Superfici offscreen: il comando `CANVAS`
 
@@ -1202,3 +1179,28 @@ FILTER voice, type, cutoff, resonance
 ## Gap residui (vs Commodore V2)
 
 <!-- END SURFACE -->
+
+
+<!-- BEGIN DOMAIN TABLE -->
+## Tavola sinottica del dominio
+
+Ogni riga riporta la firma canonica (dal registry) e il primo uso reale trovato
+nel corpus di test e sample `.bas`/`.inc`: dove il corpus non usa il simbolo è dichiarato.
+
+- **CHART.CREATE(x1)** — `h = CHART.CREATE("Disegni", "tempo", "prezzo")` (shared/samples/graphics/ChartDrawDemo.bas:31)
+- **GRAPHICS.C2PX(x1)** — `PRINT "C2PX(10)    = "; C2PX(10)` (shared/samples/graphics/CoordsAndTextGaps.bas:12)
+- **GRAPHICS.C2PY(x1)** — `PRINT "C2PY(5)     = "; C2PY(5)` (shared/samples/graphics/CoordsAndTextGaps.bas:13)
+- **GRAPHICS.CELL(x1, x2, x3)** — `PRINT "cell="; GRAPHICS.CELL(0, 0, 0)` (shared/minitests/graphics/graphics_all.bas:16)
+- **GRAPHICS.CELLSTR(x1, x2)** — `PRINT "cellstr=["; GRAPHICS.CELLSTR(0, 0); "]"` (shared/minitests/graphics/graphics_all.bas:17)
+- **GRAPHICS.COLLIDE(x1)** — `PRINT "collide="; GRAPHICS.COLLIDE(1, 2)` (shared/minitests/graphics/graphics_all.bas:19)
+- **GRAPHICS.COLLIDEBATCH(x1, x2, x3, x4)** — `CB = COLLIDEBATCH(X, Y, 14, 14)` (shared/samples/graphics/GraphicsPlanesExplode.bas:73)
+- **GRAPHICS.P2CX(x1)** — `PRINT "P2CX(160)   = "; P2CX(160)` (shared/samples/graphics/CoordsAndTextGaps.bas:14)
+- **GRAPHICS.P2CY(x1)** — `PRINT "P2CY(80)    = "; P2CY(80)` (shared/samples/graphics/CoordsAndTextGaps.bas:15)
+- **GRAPHICS.POINT(x1, x2)** — `PRINT "point="; GRAPHICS.POINT(1, 2)` (shared/minitests/graphics/graphics_all.bas:15)
+- **GRAPHICS.RGB(x1, x2, x3)** — `CLS RGB(0, 0, 255)` (shared/samples/Clipper/WindowPixelColorTest.bas:12)
+- **GRAPHICS.SCREEN()** — `PRINT "screen="; GRAPHICS.SCREEN()` (shared/minitests/graphics/graphics_all.bas:18)
+- **GRAPHICS.SCREENINFO()** — `70 PRINT "ModeID    : "; SCREENINFO().ModeID` (shared/samples/graphics/GraphicsShowModes.bas:47)
+- **GRAPHICS.SCREENS()** — `20 NUM_SCREENS = SCREENS()` (shared/samples/graphics/GraphicsShowModes.bas:43)
+- **GRAPHICS.TEXTHEIGHT()** — `DIM th = TEXTHEIGHT()          ' altezza logica del font corrente` (shared/samples/windows/WindowDemo.bas:14)
+- **GRAPHICS.TEXTWIDTH(x1)** — `LOCATE Y, (640 - TEXTWIDTH(Text$)) / 2` (shared/samples/graphics/GraphicsDrawTextures.bas:205)
+<!-- END DOMAIN TABLE -->

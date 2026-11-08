@@ -131,14 +131,6 @@ quando devi verificare il broker (persistenza, riconnessione, partizioni).
 
 
 
-<!-- BEGIN DOMAIN TABLE -->
-## Tavola sinottica del dominio
-
-Ogni riga riporta la firma canonica (dal registry) e il primo uso reale trovato
-nel corpus di test e sample `.bas`/`.inc`: dove il corpus non usa il simbolo è dichiarato.
-
-- **MESSAGE.DELIVERY(x1)** — `before = MESSAGE.DELIVERY(bus)` (shared/samples/Messaging/MessageDeliveryMonitor.bas:39)
-<!-- END DOMAIN TABLE -->
 
 <!-- BEGIN SURFACE (generato da tools/sh/manual_surface.sh — non modificare a mano) -->
 
@@ -457,3 +449,13 @@ PRINT GRPC.AVAILABLE()        ' 1 = libreria disponibile
 ## 7. Riferimenti
 
 <!-- END SURFACE -->
+
+
+<!-- BEGIN DOMAIN TABLE -->
+## Tavola sinottica del dominio
+
+Ogni riga riporta la firma canonica (dal registry) e il primo uso reale trovato
+nel corpus di test e sample `.bas`/`.inc`: dove il corpus non usa il simbolo è dichiarato.
+
+- **MESSAGE.DELIVERY(x1)** — `before = MESSAGE.DELIVERY(bus)` (shared/samples/Messaging/MessageDeliveryMonitor.bas:39)
+<!-- END DOMAIN TABLE -->

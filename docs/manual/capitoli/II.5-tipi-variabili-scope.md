@@ -182,55 +182,6 @@ Le tre lezioni, tutte visibili nei numeri:
 
 
 
-<!-- BEGIN DOMAIN TABLE -->
-## Tavola sinottica del dominio
-
-Ogni riga riporta la firma canonica (dal registry) e il primo uso reale trovato
-nel corpus di test e sample `.bas`/`.inc`: dove il corpus non usa il simbolo è dichiarato.
-
-- **CONVERSIONS.BIN(x1)** — `PRINT "  Binario (BIN):     "; CONVERSIONS.BIN(n)` (shared/samples/Math/MathExtended.bas:54)
-- **CONVERSIONS.CBYTE(x1)** — `MMAPPOKE handleMMap, i, CBYTE(i)` (shared/samples/Files/FilesMemoryMap.bas:94)
-- **CONVERSIONS.CCUR(x1)** — `140 PRINT "CCUR(987.654321) =", CCUR(987.654321)` (shared/samples/Types/TypesConversions.bas:64)
-- **CONVERSIONS.CDBL(x1)** — `130 PRINT "CDBL(S) =", CDBL(S)` (shared/samples/Types/TypesConversions.bas:63)
-- **CONVERSIONS.CINT(x1)** — `500 PRINT "CINT(123.7) ="; CINT(123.7); "(Atteso 124, arrotondamento)"` (shared/samples/Types/TypesNumerics.bas:120)
-- **CONVERSIONS.CLNG(x1)** — `190 PRINT "CLNG(987654.3) =", CLNG(987654.3); "(Atteso: 987654, arrotondamento standard)"` (shared/samples/Types/TypesConversions.bas:69)
-- **CONVERSIONS.CSNG(x1)** — `120 PRINT "CSNG(1.23456789) =", CSNG(1.23456789)` (shared/samples/Types/TypesConversions.bas:62)
-- **CONVERSIONS.CSTR(x1)** — `PRINT "  SPEED GET (Legacy): Letto ID " + CONVERSIONS.CSTR(clienteRec.ID)` (shared/samples/Databases/DbSpeedFullTests.bas:140)
-- **CONVERSIONS.HEX(x1)** — `PRINT "  Esadecimale (HEX): "; CONVERSIONS.HEX(n)` (shared/samples/Math/MathExtended.bas:52)
-- **CONVERSIONS.OCT(x1)** — `PRINT "  Ottale (OCT):      "; CONVERSIONS.OCT(n)` (shared/samples/Math/MathExtended.bas:53)
-- **CONVERSIONS.VAL(x1)** — `imp = VAL(RDD.GETFIELD(1, 3))` (shared/samples/Databases/CsvFinancialReport.bas:70)
-- **CONVERT.BATCH(x1)** — `PRINT "batchlen="; LEN(CONVERT.BATCH("work/fc_in", "md", 0))` (shared/samples/Documents/ConvertFullCoverage.bas:60)
-- **CONVERT.CLOSE(x1)** — `PRINT "close="; CONVERT.CLOSE(h)` (shared/samples/Documents/ConvertFullCoverage.bas:42)
-- **CONVERT.CODEBLOCKS(x1)** — `PRINT "codeblocks="; UBOUND(CONVERT.CODEBLOCKS(d)) + 1` (shared/samples/Documents/ConvertFullCoverage.bas:22)
-- **CONVERT.EXTRACT(x1)** — `PRINT "extract="; LEN(CONVERT.EXTRACT("../Fixtures/sample.pdf"))` (shared/samples/Documents/ConvertFullCoverage.bas:45)
-- **CONVERT.EXTRACTENGINE(x1)** — `PRINT "extractengine="; CONVERT.EXTRACTENGINE("../Fixtures/sample.pdf")` (shared/samples/Documents/ConvertFullCoverage.bas:46)
-- **CONVERT.FORMAT(x1)** — `PRINT "format="; CONVERT.FORMAT(d)` (shared/samples/Documents/ConvertFullCoverage.bas:27)
-- **CONVERT.FORMATS()** — `PRINT "formats="; CONVERT.FORMATS()` (shared/samples/Documents/ConvertFullCoverage.bas:30)
-- **CONVERT.HEADINGS(x1)** — `hsT = CONVERT.HEADINGS(d, 1)` (shared/samples/Documents/StaticSiteFromMarkdown.bas:68)
-- **CONVERT.HTML(x1)** — `PRINT "htmllen="; LEN(CONVERT.HTML(h))` (shared/samples/Documents/ConvertFullCoverage.bas:37)
-- **CONVERT.IMAGES(x1, x2)** — `PRINT "images="; CONVERT.IMAGES(h, 0, "work")` (shared/samples/Documents/ConvertFullCoverage.bas:40)
-- **CONVERT.LINKS(x1)** — `PRINT "links="; UBOUND(CONVERT.LINKS(d)) + 1` (shared/samples/Documents/ConvertFullCoverage.bas:19)
-- **CONVERT.MARKDOWN(x1)** — `PRINT "mdlen="; LEN(CONVERT.MARKDOWN(h))` (shared/samples/Documents/ConvertFullCoverage.bas:36)
-- **CONVERT.MDIMAGES(x1)** — `PRINT "mdimages="; UBOUND(CONVERT.MDIMAGES(d)) + 1` (shared/samples/Documents/ConvertFullCoverage.bas:20)
-- **CONVERT.METADATA(x1)** — `PRINT "metalen="; LEN(CONVERT.METADATA(h))` (shared/samples/Documents/ConvertFullCoverage.bas:38)
-- **CONVERT.OPEN(x1)** — `DIM h = CONVERT.OPEN("../Fixtures/sample.pdf")` (shared/samples/Documents/ConvertFullCoverage.bas:33)
-- **CONVERT.PAGECOUNT(x1)** — `PRINT "pagecount="; CONVERT.PAGECOUNT(h)` (shared/samples/Documents/ConvertFullCoverage.bas:34)
-- **CONVERT.PARSE(x1)** — `d = CONVERT.PARSE(text$)` (shared/samples/Documents/StaticSiteFromMarkdown.bas:66)
-- **CONVERT.QUERY(x1, x2)** — `PRINT "query="; UBOUND(CONVERT.QUERY(d, "heading[level=2]")) + 1` (shared/samples/Documents/ConvertFullCoverage.bas:23)
-- **CONVERT.RENDER(x1, x2, x3)** — `PRINT "render="; CONVERT.RENDER(h, 0, 100, "work/sample.png")` (shared/samples/Documents/ConvertFullCoverage.bas:41)
-- **CONVERT.RENDERHTML(x1)** — `html$ = CONVERT.RENDERHTML(d)` (shared/samples/Documents/StaticSiteFromMarkdown.bas:73)
-- **CONVERT.RENDERTEXT(x1)** — `PRINT "rendertext="; CONVERT.RENDERTEXT(d)` (shared/samples/Documents/ConvertFullCoverage.bas:26)
-- **CONVERT.SEARCH(x1, x2)** — `PRINT "search="; LEN(CONVERT.SEARCH(h, "the"))` (shared/samples/Documents/ConvertFullCoverage.bas:39)
-- **CONVERT.STRIP(x1)** — `PRINT "strip="; CONVERT.STRIP(md$)` (shared/samples/Documents/ConvertFullCoverage.bas:29)
-- **CONVERT.TABLES(x1)** — `PRINT "tables="; UBOUND(CONVERT.TABLES(d)) + 1` (shared/samples/Documents/ConvertFullCoverage.bas:21)
-- **CONVERT.TEXT(x1)** — `PRINT "textlen="; LEN(CONVERT.TEXT(h))` (shared/samples/Documents/ConvertFullCoverage.bas:35)
-- **CONVERT.TOHTML(x1)** — `mdResult = CONVERT.TOHTML(fx + "data.xlsx")` (shared/samples/Documents/ConvertBasics.bas:16)
-- **CONVERT.TOMD(x1)** — `mdResult = CONVERT.TOMD(fx + "report.docx")` (shared/samples/Documents/ConvertBasics.bas:12)
-- **CONVERT.TOTEXT(x1)** — `text = CONVERT.ToText(path)` (shared/samples/Browser/BrowserD4.bas:26)
-- **CONVERT.TREE(x1)** — `PRINT "tree="; CONVERT.TREE(d)` (shared/samples/Documents/ConvertFullCoverage.bas:24)
-- **CONVERT.VALIDATE(x1)** — `PRINT "validate="; CONVERT.VALIDATE(md$)` (shared/samples/Documents/ConvertFullCoverage.bas:28)
-- **CONVERT.WEB(x1)** — `PRINT "web="; CONVERT.WEB("http://127.0.0.1:1/x")` (shared/minitests/convert/convert_web.bas:8)
-<!-- END DOMAIN TABLE -->
 
 <!-- BEGIN SURFACE (generato da tools/sh/manual_surface.sh — non modificare a mano) -->
 
@@ -575,3 +526,54 @@ IF NOT (n HAS VALUE) THEN PRINT "rilasciato"
 ## Variabili omonime di funzioni builtin
 
 <!-- END SURFACE -->
+
+
+<!-- BEGIN DOMAIN TABLE -->
+## Tavola sinottica del dominio
+
+Ogni riga riporta la firma canonica (dal registry) e il primo uso reale trovato
+nel corpus di test e sample `.bas`/`.inc`: dove il corpus non usa il simbolo è dichiarato.
+
+- **CONVERSIONS.BIN(x1)** — `PRINT "  Binario (BIN):     "; CONVERSIONS.BIN(n)` (shared/samples/Math/MathExtended.bas:53)
+- **CONVERSIONS.CBYTE(x1)** — `MMAPPOKE handleMMap, i, CBYTE(i)` (shared/samples/Files/FilesMemoryMap.bas:94)
+- **CONVERSIONS.CCUR(x1)** — `140 PRINT "CCUR(987.654321) =", CCUR(987.654321)` (shared/samples/Types/TypesConversions.bas:63)
+- **CONVERSIONS.CDBL(x1)** — `130 PRINT "CDBL(S) =", CDBL(S)` (shared/samples/Types/TypesConversions.bas:62)
+- **CONVERSIONS.CINT(x1)** — `500 PRINT "CINT(123.7) ="; CINT(123.7); "(Atteso 124, arrotondamento)"` (shared/samples/Types/TypesNumerics.bas:119)
+- **CONVERSIONS.CLNG(x1)** — `190 PRINT "CLNG(987654.3) =", CLNG(987654.3); "(Atteso: 987654, arrotondamento standard)"` (shared/samples/Types/TypesConversions.bas:68)
+- **CONVERSIONS.CSNG(x1)** — `120 PRINT "CSNG(1.23456789) =", CSNG(1.23456789)` (shared/samples/Types/TypesConversions.bas:61)
+- **CONVERSIONS.CSTR(x1)** — `PRINT "  SPEED GET (Legacy): Letto ID " + CONVERSIONS.CSTR(clienteRec.ID)` (shared/samples/Databases/DbSpeedFullTests.bas:140)
+- **CONVERSIONS.HEX(x1)** — `PRINT "  Esadecimale (HEX): "; CONVERSIONS.HEX(n)` (shared/samples/Math/MathExtended.bas:51)
+- **CONVERSIONS.OCT(x1)** — `PRINT "  Ottale (OCT):      "; CONVERSIONS.OCT(n)` (shared/samples/Math/MathExtended.bas:52)
+- **CONVERSIONS.VAL(x1)** — `imp = VAL(RDD.GETFIELD(1, 3))` (shared/samples/Databases/CsvFinancialReport.bas:70)
+- **CONVERT.BATCH(x1)** — `PRINT "batchlen="; LEN(CONVERT.BATCH("work/fc_in", "md", 0))` (shared/samples/Documents/ConvertFullCoverage.bas:61)
+- **CONVERT.CLOSE(x1)** — `PRINT "close="; CONVERT.CLOSE(h)` (shared/samples/Documents/ConvertFullCoverage.bas:43)
+- **CONVERT.CODEBLOCKS(x1)** — `PRINT "codeblocks="; UBOUND(CONVERT.CODEBLOCKS(d)) + 1` (shared/samples/Documents/ConvertFullCoverage.bas:23)
+- **CONVERT.EXTRACT(x1)** — `PRINT "extract="; LEN(CONVERT.EXTRACT("../Fixtures/sample.pdf"))` (shared/samples/Documents/ConvertFullCoverage.bas:46)
+- **CONVERT.EXTRACTENGINE(x1)** — `PRINT "extractengine="; CONVERT.EXTRACTENGINE("../Fixtures/sample.pdf")` (shared/samples/Documents/ConvertFullCoverage.bas:47)
+- **CONVERT.FORMAT(x1)** — `PRINT "format="; CONVERT.FORMAT(d)` (shared/samples/Documents/ConvertFullCoverage.bas:28)
+- **CONVERT.FORMATS()** — `PRINT "formats="; CONVERT.FORMATS()` (shared/samples/Documents/ConvertFullCoverage.bas:31)
+- **CONVERT.HEADINGS(x1)** — `hsT = CONVERT.HEADINGS(d, 1)` (shared/samples/Documents/StaticSiteFromMarkdown.bas:68)
+- **CONVERT.HTML(x1)** — `PRINT "htmllen="; LEN(CONVERT.HTML(h))` (shared/samples/Documents/ConvertFullCoverage.bas:38)
+- **CONVERT.IMAGES(x1, x2)** — `PRINT "images="; CONVERT.IMAGES(h, 0, "work")` (shared/samples/Documents/ConvertFullCoverage.bas:41)
+- **CONVERT.LINKS(x1)** — `PRINT "links="; UBOUND(CONVERT.LINKS(d)) + 1` (shared/samples/Documents/ConvertFullCoverage.bas:20)
+- **CONVERT.MARKDOWN(x1)** — `PRINT "mdlen="; LEN(CONVERT.MARKDOWN(h))` (shared/samples/Documents/ConvertFullCoverage.bas:37)
+- **CONVERT.MDIMAGES(x1)** — `PRINT "mdimages="; UBOUND(CONVERT.MDIMAGES(d)) + 1` (shared/samples/Documents/ConvertFullCoverage.bas:21)
+- **CONVERT.METADATA(x1)** — `PRINT "metalen="; LEN(CONVERT.METADATA(h))` (shared/samples/Documents/ConvertFullCoverage.bas:39)
+- **CONVERT.OPEN(x1)** — `DIM h = CONVERT.OPEN("../Fixtures/sample.pdf")` (shared/samples/Documents/ConvertFullCoverage.bas:34)
+- **CONVERT.PAGECOUNT(x1)** — `PRINT "pagecount="; CONVERT.PAGECOUNT(h)` (shared/samples/Documents/ConvertFullCoverage.bas:35)
+- **CONVERT.PARSE(x1)** — `d = CONVERT.PARSE(text$)` (shared/samples/Documents/StaticSiteFromMarkdown.bas:66)
+- **CONVERT.QUERY(x1, x2)** — `PRINT "query="; UBOUND(CONVERT.QUERY(d, "heading[level=2]")) + 1` (shared/samples/Documents/ConvertFullCoverage.bas:24)
+- **CONVERT.RENDER(x1, x2, x3)** — `PRINT "render="; CONVERT.RENDER(h, 0, 100, "work/sample.png")` (shared/samples/Documents/ConvertFullCoverage.bas:42)
+- **CONVERT.RENDERHTML(x1)** — `html$ = CONVERT.RENDERHTML(d)` (shared/samples/Documents/StaticSiteFromMarkdown.bas:73)
+- **CONVERT.RENDERTEXT(x1)** — `PRINT "rendertext="; CONVERT.RENDERTEXT(d)` (shared/samples/Documents/ConvertFullCoverage.bas:27)
+- **CONVERT.SEARCH(x1, x2)** — `PRINT "search="; LEN(CONVERT.SEARCH(h, "the"))` (shared/samples/Documents/ConvertFullCoverage.bas:40)
+- **CONVERT.STRIP(x1)** — `PRINT "strip="; CONVERT.STRIP(md$)` (shared/samples/Documents/ConvertFullCoverage.bas:30)
+- **CONVERT.TABLES(x1)** — `PRINT "tables="; UBOUND(CONVERT.TABLES(d)) + 1` (shared/samples/Documents/ConvertFullCoverage.bas:22)
+- **CONVERT.TEXT(x1)** — `PRINT "textlen="; LEN(CONVERT.TEXT(h))` (shared/samples/Documents/ConvertFullCoverage.bas:36)
+- **CONVERT.TOHTML(x1)** — `mdResult = CONVERT.TOHTML(fx + "data.xlsx")` (shared/samples/Documents/ConvertBasics.bas:16)
+- **CONVERT.TOMD(x1)** — `mdResult = CONVERT.TOMD(fx + "report.docx")` (shared/samples/Documents/ConvertBasics.bas:12)
+- **CONVERT.TOTEXT(x1)** — `text = CONVERT.ToText(path)` (shared/samples/Browser/BrowserD4.bas:26)
+- **CONVERT.TREE(x1)** — `PRINT "tree="; CONVERT.TREE(d)` (shared/samples/Documents/ConvertFullCoverage.bas:25)
+- **CONVERT.VALIDATE(x1)** — `PRINT "validate="; CONVERT.VALIDATE(md$)` (shared/samples/Documents/ConvertFullCoverage.bas:29)
+- **CONVERT.WEB(x1)** — `PRINT "web="; CONVERT.WEB("http://127.0.0.1:1/x")` (shared/minitests/convert/convert_all.bas:82)
+<!-- END DOMAIN TABLE -->

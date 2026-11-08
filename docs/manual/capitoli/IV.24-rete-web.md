@@ -99,29 +99,6 @@ dimostra che il canale è bidirezionale.
 
 
 
-<!-- BEGIN DOMAIN TABLE -->
-## Tavola sinottica del dominio
-
-Ogni riga riporta la firma canonica (dal registry) e il primo uso reale trovato
-nel corpus di test e sample `.bas`/`.inc`: dove il corpus non usa il simbolo è dichiarato.
-
-- **HTTP.DELETE(x1)** — `PRINT "["; HTTP.DELETE("http://127.0.0.1:8197/del"); "]"` (shared/minitests/http/roundtrip.bas:31)
-- **HTTP.DETECTCONTENTTYPE(x1)** — `PRINT "type: "; HTTP.DETECTCONTENTTYPE("a")   ' nessun magic -> "" (stringa non binaria)` (shared/samples/Security/UploadValidationDemo.bas:24)
-- **HTTP.FETCH(x1)** — `70 DO WHILE SQL.FETCH(rs)` (shared/samples/Databases/SqlMinimalCrud.bas:15)
-- **HTTP.GET(x1)** — `PRINT "http.get: "; LEFT(httpCall$, 300)` (shared/samples/Connectors/ConnectorDatabaseHttp.bas:40)
-- **HTTP.POST(x1)** — `PRINT "http.post: "; LEFT(httpPost$, 300)` (shared/samples/Connectors/ConnectorDatabaseHttp.bas:43)
-- **HTTP.PUT(x1)** — `PRINT "["; HTTP.PUT("http://127.0.0.1:8197/echo", "xyz"); "]"` (shared/minitests/http/roundtrip.bas:30)
-- **HTTP.SAFEFILENAME(x1)** — `PRINT "safe: "; HTTP.SAFEFILENAME("../../etc/passwd.png")` (shared/samples/Security/UploadValidationDemo.bas:14)
-- **HTTP.SESSIONCREATE(x1, x2)** — `DIM cookie$ = HTTP.SESSIONCREATE(user$, "admin")` (shared/samples/Security/ServerAuthDemo.bas:32)
-- **NET.CONN(x1)** — `PRINT "NET.CONN(0):       "; NET.CONN(h)` (shared/samples/Network/NetConnIpRecv.bas:8)
-- **NET.GETHOSTIP(x1)** — `PRINT "NET.GETHOSTIP(127.0.0.1):  "; NET.GETHOSTIP("127.0.0.1")` (shared/samples/Network/NetConnIpRecv.bas:13)
-- **NET.LOCALHOST()** — `PRINT "LOCALHOST len: "; LEN(NET.LOCALHOST())` (shared/samples/Network/NetworkFullCoverage.bas:19)
-- **NET.LOCALPORT(x1)** — `PRINT "LOCALPORT: "; NET.LOCALPORT(0)` (shared/samples/Network/NetworkFullCoverage.bas:17)
-- **NET.PEEK(x1)** — `PRINT "PEEK len (handle invalido): "; LEN(NET.PEEK(0, 16))` (shared/samples/Network/NetworkFullCoverage.bas:23)
-- **NET.RECV(x1)** — `PRINT "NET.RECV(0):       "; NET.RECV(h)` (shared/samples/Network/NetConnIpRecv.bas:14)
-- **NET.REMOTEIP(x1)** — `PRINT "REMOTEIP len: "; LEN(NET.REMOTEIP(0))` (shared/samples/Network/NetworkFullCoverage.bas:13)
-- **NET.REMOTEPORT(x1)** — `PRINT "REMOTEPORT: "; NET.REMOTEPORT(0)` (shared/samples/Network/NetworkFullCoverage.bas:15)
-<!-- END DOMAIN TABLE -->
 
 <!-- BEGIN SURFACE (generato da tools/sh/manual_surface.sh — non modificare a mano) -->
 
@@ -1324,3 +1301,28 @@ curl -X POST http://localhost:8767/api/team/Squadra/broadcast \
 ## 13. Aggiornamento V1.2e–g — 2026-09-08 11:20 (workflows CRUD + Memory/Summary, 40 righe C#)
 
 <!-- END SURFACE -->
+
+
+<!-- BEGIN DOMAIN TABLE -->
+## Tavola sinottica del dominio
+
+Ogni riga riporta la firma canonica (dal registry) e il primo uso reale trovato
+nel corpus di test e sample `.bas`/`.inc`: dove il corpus non usa il simbolo è dichiarato.
+
+- **HTTP.DELETE(x1)** — `PRINT "["; HTTP.DELETE("http://127.0.0.1:8197/del"); "]"` (shared/minitests/http/roundtrip.bas:31)
+- **HTTP.DETECTCONTENTTYPE(x1)** — `PRINT "type: "; HTTP.DETECTCONTENTTYPE("a")   ' nessun magic -> "" (stringa non binaria)` (shared/samples/Security/UploadValidationDemo.bas:24)
+- **HTTP.FETCH(x1)** — `70 DO WHILE SQL.FETCH(rs)` (shared/samples/Databases/SqlMinimalCrud.bas:15)
+- **HTTP.GET(x1)** — `PRINT "http.get: "; LEFT(httpCall$, 300)` (shared/samples/Connectors/ConnectorDatabaseHttp.bas:40)
+- **HTTP.POST(x1)** — `PRINT "http.post: "; LEFT(httpPost$, 300)` (shared/samples/Connectors/ConnectorDatabaseHttp.bas:43)
+- **HTTP.PUT(x1)** — `PRINT "["; HTTP.PUT("http://127.0.0.1:8197/echo", "xyz"); "]"` (shared/minitests/http/roundtrip.bas:30)
+- **HTTP.SAFEFILENAME(x1)** — `PRINT "safe: "; HTTP.SAFEFILENAME("../../etc/passwd.png")` (shared/samples/Security/UploadValidationDemo.bas:14)
+- **HTTP.SESSIONCREATE(x1, x2)** — `DIM cookie$ = HTTP.SESSIONCREATE(user$, "admin")` (shared/samples/Security/ServerAuthDemo.bas:32)
+- **NET.CONN(x1)** — `PRINT "NET.CONN(0):       "; NET.CONN(h)` (shared/samples/Network/NetConnIpRecv.bas:8)
+- **NET.GETHOSTIP(x1)** — `PRINT "NET.GETHOSTIP(127.0.0.1):  "; NET.GETHOSTIP("127.0.0.1")` (shared/samples/Network/NetConnIpRecv.bas:13)
+- **NET.LOCALHOST()** — `PRINT "LOCALHOST len: "; LEN(NET.LOCALHOST())` (shared/samples/Network/NetworkFullCoverage.bas:20)
+- **NET.LOCALPORT(x1)** — `PRINT "LOCALPORT: "; NET.LOCALPORT(0)` (shared/samples/Network/NetworkFullCoverage.bas:18)
+- **NET.PEEK(x1)** — `PRINT "PEEK len (handle invalido): "; LEN(NET.PEEK(0, 16))` (shared/samples/Network/NetworkFullCoverage.bas:24)
+- **NET.RECV(x1)** — `PRINT "NET.RECV(0):       "; NET.RECV(h)` (shared/samples/Network/NetConnIpRecv.bas:14)
+- **NET.REMOTEIP(x1)** — `PRINT "REMOTEIP len: "; LEN(NET.REMOTEIP(0))` (shared/samples/Network/NetworkFullCoverage.bas:14)
+- **NET.REMOTEPORT(x1)** — `PRINT "REMOTEPORT: "; NET.REMOTEPORT(0)` (shared/samples/Network/NetworkFullCoverage.bas:16)
+<!-- END DOMAIN TABLE -->

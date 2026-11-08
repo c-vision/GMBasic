@@ -1,5 +1,6 @@
 ' MiniTest: COMPRESSION.XZ/UNXZ — round-trip (parita' 4 backend).
 ' EXPECT: xz-ok
+REQUIRE "compression"
 IMPORT COMPRESSION AS C
 
 SUB Main

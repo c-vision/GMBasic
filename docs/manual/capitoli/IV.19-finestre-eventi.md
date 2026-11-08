@@ -225,46 +225,6 @@ non averlo.
 - **IV.18** — temi e stili.
 - **III.13** — il GPM che esegue gli handler.
 
-<!-- BEGIN DOMAIN TABLE -->
-## Tavola sinottica del dominio
-
-Ogni riga riporta la firma canonica (dal registry) e il primo uso reale trovato
-nel corpus di test e sample `.bas`/`.inc`: dove il corpus non usa il simbolo è dichiarato.
-
-- **JOY.AVAILABLE(x1)** — `IF JOY.AVAILABLE(0) = 0 OR JOY.AVAILABLE(0) = -1 THEN PRINT "avail-ok"` (shared/minitests/joy/basic.bas:6)
-- **JOY.MASK(x1)** — `IF JOY.MASK(0) >= 0 THEN PRINT "mask-ok"` (shared/minitests/joy/basic.bas:9)
-- **JOY.NAME(x1)** — `DIM n$ = JOY.NAME(0)` (shared/minitests/joy/basic.bas:7)
-- **JOY.PORTS()** — `DIM p = JOY.PORTS()` (shared/minitests/joy/basic.bas:4)
-- **MOUSE.BUTTON()** — `IF MOUSE.BUTTON(3) <> 0 THEN` (shared/samples/Mouse/MouseGraphicPaint.bas:63)
-- **MOUSE.CLICK()** — `IF NOT MOUSE.CLICK() THEN PRINT "click0: si"` (shared/minitests/speed/gaps.bas:25)
-- **MOUSE.CLICK(x1, x2, x3, x4)** — `IF NOT MOUSE.CLICK() THEN PRINT "click0: si"` (shared/minitests/speed/gaps.bas:25)
-- **MOUSE.DBLCLICK()** — `PRINT "DBLCLICK:   "; MOUSE.DBLCLICK()` (shared/samples/Events/MouseGetters.bas:6)
-- **MOUSE.LEFT()** — `DIM left AS DOUBLE = MOUSE.LEFT()` (shared/samples/Mouse/MouseGraphicState.bas:38)
-- **MOUSE.MIDDLE()** — `DIM middle AS DOUBLE = MOUSE.MIDDLE()` (shared/samples/Mouse/MouseGraphicState.bas:40)
-- **MOUSE.MOVE()** — `DIM moving AS DOUBLE = MOUSE.MOVE()` (shared/samples/Mouse/MouseGraphicState.bas:41)
-- **MOUSE.PRESENT()** — `DIM present AS DOUBLE = MOUSE.PRESENT()` (shared/samples/Mouse/MouseGraphicState.bas:37)
-- **MOUSE.RIGHT()** — `DIM right AS DOUBLE = MOUSE.RIGHT()` (shared/samples/Mouse/MouseGraphicState.bas:39)
-- **MOUSE.WHEEL()** — `DIM wheel AS DOUBLE = MOUSE.WHEEL()` (shared/samples/Mouse/MouseGraphicState.bas:42)
-- **MOUSE.X()** — `PRINT "MOUSE.X()/Y() in pixel. Premi i tasti e muovi il mouse. ESC per uscire."` (shared/samples/Mouse/MouseGraphicState.bas:30)
-- **MOUSE.Y()** — `DIM py AS DOUBLE = MOUSE.Y()` (shared/samples/Mouse/MouseGraphicState.bas:36)
-- **TRAY.TRAYAVAILABLE()** — `PRINT "TRAYAVAILABLE="; TRAYAVAILABLE()` (shared/samples/Tray/TrayConsoleDemo.bas:20)
-- **TRAY.TRAYBACKEND()** — `PRINT "TRAYBACKEND="; TRAYBACKEND()` (shared/samples/Tray/TrayConsoleDemo.bas:19)
-- **TRAY.TRAYCREATE(x1, x2)** — `r = TRAYCREATE("", "TrayConsoleDemo")          ' icona default GMBasic` (shared/samples/Tray/TrayConsoleDemo.bas:27)
-- **TRAY.TRAYITEM(x1, x2)** — `r = TRAYITEM(1, "Stato")` (shared/samples/Tray/TrayConsoleDemo.bas:28)
-- **TRAY.TRAYLAST()** — `last = TRAYLAST()` (shared/samples/Tray/TrayConsoleDemo.bas:45)
-- **TRAY.TRAYPOLL()** — `r = TRAYPOLL()` (shared/samples/Tray/TrayConsoleDemo.bas:44)
-- **TRAY.TRAYREMOVE()** — `TRAYREMOVE()` (shared/samples/Tray/TrayConsoleDemo.bas:63)
-- **TRAY.TRAYSELFTEST()** — `PRINT "TRAYSELFTEST (prima)="; TRAYSELFTEST()` (shared/samples/Tray/TrayConsoleDemo.bas:21)
-- **TRAY.TRAYSEP()** — `r = TRAYSEP()` (shared/samples/Tray/TrayConsoleDemo.bas:30)
-- **TRAY.TRAYTOOLTIP(x1)** — `r = TRAYTOOLTIP("TrayConsoleDemo - avviato")` (shared/samples/Tray/TrayConsoleDemo.bas:32)
-- **WINDOWS.DESKTOP()** — `d = WINDOWS.DESKTOP()` (shared/samples/Clipper/WindowDesktops.bas:10)
-- **WINDOWS.HEIGHT()** — `DIM h = WINDOWS.HEIGHT()` (shared/samples/windows/WindowHeightWidth.bas:11)
-- **WINDOWS.THEME()** — `PRINT "Applicato tema: "; WINDOWS.THEME()` (shared/samples/Clipper/WindowThemesShowcase.bas:41)
-- **WINDOWS.WIDTH()** — `PRINT "=== WINDOWS.WIDTH / HEIGHT ==="` (shared/samples/windows/WindowHeightWidth.bas:9)
-- **WINDOWS.WINDOWCLOSED()** — `DO WHILE WINDOWCLOSED() = 0` (shared/samples/Clipper/WindowVisibilityDemo.bas:42)
-- **WINDOWS.X()** — `wx = WINDOWS.X()` (shared/samples/Clipper/WindowPixel.bas:26)
-- **WINDOWS.Y()** — `IF WINDOWS.Y() = -1 THEN PRINT "y=-1" ELSE PRINT "y=?"` (shared/minitests/windows/windows_getters.bas:7)
-<!-- END DOMAIN TABLE -->
 
 
 
@@ -690,3 +650,45 @@ END SUB
 ## Test di parità
 
 <!-- END SURFACE -->
+
+
+<!-- BEGIN DOMAIN TABLE -->
+## Tavola sinottica del dominio
+
+Ogni riga riporta la firma canonica (dal registry) e il primo uso reale trovato
+nel corpus di test e sample `.bas`/`.inc`: dove il corpus non usa il simbolo è dichiarato.
+
+- **JOY.AVAILABLE(x1)** — `IF JOY.AVAILABLE(0) = 0 OR JOY.AVAILABLE(0) = -1 THEN PRINT "avail-ok"` (shared/minitests/joy/basic.bas:6)
+- **JOY.MASK(x1)** — `IF JOY.MASK(0) >= 0 THEN PRINT "mask-ok"` (shared/minitests/joy/basic.bas:9)
+- **JOY.NAME(x1)** — `DIM n$ = JOY.NAME(0)` (shared/minitests/joy/basic.bas:7)
+- **JOY.PORTS()** — `DIM p = JOY.PORTS()` (shared/minitests/joy/basic.bas:4)
+- **MOUSE.BUTTON()** — `IF MOUSE.BUTTON(3) <> 0 THEN` (shared/samples/Mouse/MouseGraphicPaint.bas:63)
+- **MOUSE.CLICK()** — `IF NOT MOUSE.CLICK() THEN PRINT "click0: si"` (shared/minitests/speed/gaps.bas:26)
+- **MOUSE.CLICK(x1, x2, x3, x4)** — `IF NOT MOUSE.CLICK() THEN PRINT "click0: si"` (shared/minitests/speed/gaps.bas:26)
+- **MOUSE.DBLCLICK()** — `PRINT "DBLCLICK:   "; MOUSE.DBLCLICK()` (shared/samples/Events/MouseGetters.bas:6)
+- **MOUSE.LEFT()** — `DIM left AS DOUBLE = MOUSE.LEFT()` (shared/samples/Mouse/MouseGraphicState.bas:38)
+- **MOUSE.MIDDLE()** — `DIM middle AS DOUBLE = MOUSE.MIDDLE()` (shared/samples/Mouse/MouseGraphicState.bas:40)
+- **MOUSE.MOVE()** — `DIM moving AS DOUBLE = MOUSE.MOVE()` (shared/samples/Mouse/MouseGraphicState.bas:41)
+- **MOUSE.PRESENT()** — `DIM present AS DOUBLE = MOUSE.PRESENT()` (shared/samples/Mouse/MouseGraphicState.bas:37)
+- **MOUSE.RIGHT()** — `DIM right AS DOUBLE = MOUSE.RIGHT()` (shared/samples/Mouse/MouseGraphicState.bas:39)
+- **MOUSE.WHEEL()** — `DIM wheel AS DOUBLE = MOUSE.WHEEL()` (shared/samples/Mouse/MouseGraphicState.bas:42)
+- **MOUSE.X()** — `PRINT "MOUSE.X()/Y() in pixel. Premi i tasti e muovi il mouse. ESC per uscire."` (shared/samples/Mouse/MouseGraphicState.bas:30)
+- **MOUSE.Y()** — `DIM py AS DOUBLE = MOUSE.Y()` (shared/samples/Mouse/MouseGraphicState.bas:36)
+- **TRAY.TRAYAVAILABLE()** — `PRINT "TRAYAVAILABLE="; TRAYAVAILABLE()` (shared/samples/Tray/TrayConsoleDemo.bas:20)
+- **TRAY.TRAYBACKEND()** — `PRINT "TRAYBACKEND="; TRAYBACKEND()` (shared/samples/Tray/TrayConsoleDemo.bas:19)
+- **TRAY.TRAYCREATE(x1, x2)** — `r = TRAYCREATE("", "TrayConsoleDemo")          ' icona default GMBasic` (shared/samples/Tray/TrayConsoleDemo.bas:27)
+- **TRAY.TRAYITEM(x1, x2)** — `r = TRAYITEM(1, "Stato")` (shared/samples/Tray/TrayConsoleDemo.bas:28)
+- **TRAY.TRAYLAST()** — `last = TRAYLAST()` (shared/samples/Tray/TrayConsoleDemo.bas:45)
+- **TRAY.TRAYPOLL()** — `r = TRAYPOLL()` (shared/samples/Tray/TrayConsoleDemo.bas:44)
+- **TRAY.TRAYREMOVE()** — `TRAYREMOVE()` (shared/samples/Tray/TrayConsoleDemo.bas:63)
+- **TRAY.TRAYSELFTEST()** — `PRINT "TRAYSELFTEST (prima)="; TRAYSELFTEST()` (shared/samples/Tray/TrayConsoleDemo.bas:21)
+- **TRAY.TRAYSEP()** — `r = TRAYSEP()` (shared/samples/Tray/TrayConsoleDemo.bas:30)
+- **TRAY.TRAYTOOLTIP(x1)** — `r = TRAYTOOLTIP("TrayConsoleDemo - avviato")` (shared/samples/Tray/TrayConsoleDemo.bas:32)
+- **WINDOWS.DESKTOP()** — `d = WINDOWS.DESKTOP()` (shared/samples/Clipper/WindowDesktops.bas:10)
+- **WINDOWS.HEIGHT()** — `DIM h = WINDOWS.HEIGHT()` (shared/samples/windows/WindowHeightWidth.bas:11)
+- **WINDOWS.THEME()** — `PRINT "Applicato tema: "; WINDOWS.THEME()` (shared/samples/Clipper/WindowThemesShowcase.bas:41)
+- **WINDOWS.WIDTH()** — `PRINT "=== WINDOWS.WIDTH / HEIGHT ==="` (shared/samples/windows/WindowHeightWidth.bas:9)
+- **WINDOWS.WINDOWCLOSED()** — `PRINT "wclosed="; WINDOWS.WINDOWCLOSED()` (shared/minitests/windows/windows_all.bas:25)
+- **WINDOWS.X()** — `wx = WINDOWS.X()` (shared/samples/Clipper/WindowPixel.bas:26)
+- **WINDOWS.Y()** — `IF WINDOWS.Y() = -1 THEN PRINT "y=-1" ELSE PRINT "y=?"` (shared/minitests/windows/windows_all.bas:12)
+<!-- END DOMAIN TABLE -->
