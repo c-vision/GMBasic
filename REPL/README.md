@@ -13,7 +13,7 @@ continua a funzionare identica per il mondo C.
 
 ## Stato
 
-- [x] `helps/` — i JSON dell'help (54 file) vivono **qui** (non più in `shared/helps`).
+- [x] `helps/` — i JSON dell'help (47 file) vivono **qui** (non più in `shared/helps`).
 - [x] **Motore C completo** (F0–F3): AST/DASM/PRGINFO/COMPILE/EVAL/RUN via `gmb`,
       `FIXTURES`/`SETUP`/`LLM`, e i comandi di pacchetto (`ADD`/`REMOVE`/`BUMP`/`RESTORE`/
       `UPDATE`/`ROLLBACK`/`TRUST`/`CACHE`) sul runtime C.
