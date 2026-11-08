@@ -1196,7 +1196,7 @@ void gmb_tui_dispatch_mouse_px(int type, int x, int y, int button, int wheel)
           { extern void gmb_control_paint_rect(gmb_control_t*, int*, int*, int*, int*);
             gmb_control_paint_rect(cc, &rx, &ry, &rw, &rh); }
           if (x >= rx && x < rx + rw && y >= ry && y < ry + rh)
-          { extern void gmb_form_invalidate(int,int,int,int); gmb_form_invalidate(rx, ry, rw, rh); }
+          { extern void gmb_control_invalidate_paint(gmb_control_t*); gmb_control_invalidate_paint(cc); }
       } }
     g_evt_px = 1;
     s_px_dirty = 1;
