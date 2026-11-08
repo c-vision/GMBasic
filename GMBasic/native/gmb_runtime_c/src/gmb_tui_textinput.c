@@ -129,7 +129,7 @@ static void textinput_draw_px(void* u, gmb_control_t* c)
             /* Caret a LINEA sottile: con font proporzionale il blocco non
              * rispecchia la larghezza del carattere. */
             /* Altezza del caret = altezza dei glifi MA dentro la card. */
-            int th = 16; extern int gmb_gfx_text_height(void); th = gmb_gfx_text_height();
+            int th = 16; { extern int gmb_gfx_text_height_logical(void); th = gmb_gfx_text_height_logical(); }   /* LOGICO */
             if (th > h - 8) th = h - 8;
             if (th < 8) th = 8;
             int cy = y + (h - th) / 2;

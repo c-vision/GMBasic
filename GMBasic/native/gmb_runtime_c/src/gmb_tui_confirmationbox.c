@@ -50,7 +50,11 @@ static void confirmationbox_draw_px(void* u, gmb_control_t* c)
     gmb_confirmation_box_t* cb = (gmb_confirmation_box_t*)u;
     gmb_widget_style_t st = gmb_widget_style_current();
     int x = c->x, y = c->y, w = c->width, h = c->height;
-    int tl = (int)gmb_gfx_text_height(); if (tl <= 0) tl = 14;
+    /* Metrica LOGICA: c->x/y/w/h sono in unita. logiche, mentre
+     * gmb_gfx_text_height()/text_width() sono NATIVE (gia. moltiplicate per la
+     * render-scale). Su Retina la barra del titolo e i pulsanti raddoppiavano e
+     * finivano SOPRA gli altri controlli. */
+    int tl = gmb_gfx_text_height_logical(); if (tl <= 0) tl = 14;
     gmb_gfx_fill_rounded_rect(x, y, w, h, 6, st.fill);
     int th = tl + 8;
     gmb_gfx_fill_rounded_rect(x, y, w, th, 6, st.title_bg);
@@ -61,10 +65,10 @@ static void confirmationbox_draw_px(void* u, gmb_control_t* c)
     btns[nb++] = cb->cancel_label[0] ? cb->cancel_label : "Annulla";
     if (cb->has_retry) btns[nb++] = cb->retry_label[0] ? cb->retry_label : "Riprova";
     int bh = tl + 8, gap = 8, totw = gap * (nb - 1);
-    for (int i = 0; i < nb; i++) { int bw = gmb_gfx_text_width(btns[i]) + 24; if (bw < 60) bw = 60; totw += bw; }
+    for (int i = 0; i < nb; i++) { int bw = gmb_gfx_text_width_logical(btns[i]) + 24; if (bw < 60) bw = 60; totw += bw; }
     int bx = x + w - totw - 10, by = y + h - bh - 8;
     for (int i = 0; i < nb; i++) {
-        int bw = gmb_gfx_text_width(btns[i]) + 24; if (bw < 60) bw = 60;
+        int bw = gmb_gfx_text_width_logical(btns[i]) + 24; if (bw < 60) bw = 60;
         gmb_gfx_fill_rounded_rect(bx, by, bw, bh, 4, i == 0 ? st.fill_hover : st.fill);
         gmb_gfx_stroke_rounded_rect(bx, by, bw, bh, 4, st.border);
         gmb_gfx_draw_text(btns[i], bx + bw / 2, by + (bh - tl) / 2, 1, (int)st.text);

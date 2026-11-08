@@ -103,6 +103,71 @@ static int g_nwid = 0;
 static int g_last_handle = -1;   /* ID handle del controllo appena creato (widget=i, button=1000+i) */
 static int g_last_is_tui = 0;    /* 1 = l'ultimo controllo creato vive nel registry TUI (handle 0..63) */
 
+/* ── DAMAGE REGION / REPAINT INCREMENTALE ─────────────────────────────────────
+ * Come in una UI toolkit vera: chi cambia si INVALIDA (rettangolo), e il frame
+ * ridipinge SOLO i rettangoli sporchi — non tutta la pagina. Senza questo ogni
+ * singolo cambiamento (hover, click, valore) ridisegnava l'intero schermo: con
+ * 96 controlli e le ombre a 2x era la causa del "cambio scheda lentissimo".
+ * `g_dam_full` = ridisegno totale (primo frame, cambio scala, CLS, resize). */
+#define GMB_DAMAGE_MAX 64
+typedef struct { int x, y, w, h; } gmb_dam_t;
+static gmb_dam_t g_dam[GMB_DAMAGE_MAX];
+static int g_ndam = 0;
+static int g_dam_full = 1;
+/* margine per ombre/glow: il rettangolo invalidato deve coprire l'ombra */
+#define GMB_DAM_MARGIN 16
+
+void gmb_form_invalidate_all(void) { g_dam_full = 1; g_ndam = 0; g_dirty = 1; }
+int  gmb_form_damage_active(void) { return (g_dam_full || g_ndam > 0) ? 1 : 0; }
+static int g_in_form_draw = 0;
+int  gmb_form_in_form_draw(void) { return g_in_form_draw; }
+
+void gmb_form_invalidate(int x, int y, int w, int h)
+{
+    if (w <= 0 || h <= 0) return;
+    if (g_dam_full) return;                    /* già tutto sporco */
+    x -= GMB_DAM_MARGIN; y -= GMB_DAM_MARGIN;
+    w += 2 * GMB_DAM_MARGIN; h += 2 * GMB_DAM_MARGIN;
+    int sw = GMB_GFX_SCREEN_W(), sh = GMB_GFX_SCREEN_H();
+    if (x < 0) { w += x; x = 0; }
+    if (y < 0) { h += y; y = 0; }
+    if (sw > 0 && x + w > sw) w = sw - x;
+    if (sh > 0 && y + h > sh) h = sh - y;
+    if (w <= 0 || h <= 0) return;
+    for (int i = 0; i < g_ndam; i++)
+    {
+        gmb_dam_t* d = &g_dam[i];
+        if (x < d->x + d->w && x + w > d->x && y < d->y + d->h && y + h > d->y)
+        {
+            int x2 = d->x + d->w, y2 = d->y + d->h;
+            if (x < d->x) d->x = x;
+            if (y < d->y) d->y = y;
+            if (x + w > x2) x2 = x + w;
+            if (y + h > y2) y2 = y + h;
+            d->w = x2 - d->x; d->h = y2 - d->y;
+            g_dirty = 1;
+            return;
+        }
+    }
+    if (g_ndam < GMB_DAMAGE_MAX) { g_dam[g_ndam].x = x; g_dam[g_ndam].y = y; g_dam[g_ndam].w = w; g_dam[g_ndam].h = h; g_ndam++; }
+    else { gmb_form_invalidate_all(); return; }
+    g_dirty = 1;
+}
+
+/* 1 se il rettangolo interseca la zona sporca (o se è tutto sporco). */
+int gmb_form_damage_hits(int x, int y, int w, int h)
+{
+    if (g_dam_full) return 1;
+    if (w <= 0 || h <= 0) return 1;
+    for (int i = 0; i < g_ndam; i++)
+    {
+        const gmb_dam_t* d = &g_dam[i];
+        if (x < d->x + d->w && x + w > d->x && y < d->y + d->h && y + h > d->y) return 1;
+    }
+    return 0;
+}
+
+
 static void set_focus_wid(int i);
 static const char* form_stristr(const char* h, const char* n)
 {
@@ -1197,7 +1262,17 @@ void gmb_px_draw_ex(int wkind, int x, int y, int w, int h, const char* label,
     draw_one_widget(&wd, sc);
 }
 
-static void draw_widgets(float sc) { for (int i = 0; i < g_nwid; i++) { if (!g_wid[i].base.visible) continue; draw_one_widget(&g_wid[i], sc); } }
+static int g_draw_full = 1;   /* il frame corrente e. totale (nessun damage) */
+static void draw_widgets(float sc)
+{
+    for (int i = 0; i < g_nwid; i++)
+    {
+        if (!g_wid[i].base.visible) continue;
+        /* skip dei widget che non toccano la zona sporca (repaint incrementale) */
+        if (!g_draw_full && !gmb_form_damage_hits(g_wid[i].base.x, g_wid[i].base.y, g_wid[i].base.width, g_wid[i].base.height)) continue;
+        draw_one_widget(&g_wid[i], sc);
+    }
+}
 /* Popup dei dropdown aperti: disegnato per ULTIMO (sopra ogni altro controllo). */
 static void draw_open_dropdowns(float sc)
 {
@@ -1283,9 +1358,19 @@ static void form_control_px_rect(gmb_control_t* c, int* x, int* y, int* w, int* 
 static void form_draw(void)
 {
     if (!GMB_GFX_SCREEN_ON()) return;
-    /* Sfondo del form = colore di background corrente (`COLOR fg,bg` → `g_gfx.bg`).
-     * Prima `GMB_GFX_CLS(0)` forzava il NERO, ignorando COLOR/CLS. */
-    GMB_GFX_CLS(-1);
+    g_in_form_draw = 1;
+    /* Repaint INCREMENTALE: se ci sono zone sporche si ripuliscono e ridisegnano
+     * solo quelle; altrimenti (primo frame, cambio scala, CLS) si ripulisce tutto.
+     * Il colore di sfondo è quello di pagina (stesso di CLS senza argomento). */
+    int full = (g_dam_full || g_ndam <= 0) ? 1 : 0;
+    if (full) GMB_GFX_CLS(-1);
+    else
+    {
+        int bg = (int)(0xFF000000u | ((unsigned)gmb_gfx_page_bg_color() & 0xFFFFFFu));
+        for (int i = 0; i < g_ndam; i++)
+            gmb_gfx_clear_rect(g_dam[i].x, g_dam[i].y, g_dam[i].x + g_dam[i].w - 1,
+                               g_dam[i].y + g_dam[i].h - 1, bg);
+    }
     float sc = GMB_GFX_RENDER_SCALE(); if (sc <= 0.0f) sc = 1.0f;
     const char* op = GMB_GFX_FONT_PATH(); char ops[160]; snprintf(ops, sizeof(ops), "%s", op ? op : "");
     int os = GMB_GFX_FONT_SIZE(); int fc = 0;
@@ -1308,15 +1393,23 @@ static void form_draw(void)
         sbx[i] = c->x; sby[i] = c->y; sbw[i] = c->width; sbh[i] = c->height;
         if (conv) { c->x = nx; c->y = ny; c->width = nw; c->height = nh; }
     }
+    g_draw_full = full;
     draw_widgets(sc);
     /* Bottoni SOPRA i widget: il pannello-card (draw_widgets) copriva i bottoni
      * aggiunti prima di lui. Le dropdown restano l'overlay più alto. */
-    for (int i = 0; i < g_nbtn; i++) { if (!g_btns[i].base.visible) continue; if (g_btns[i].style.font_size > 0) fc = 1; draw_button_body(&g_btns[i], sc); }
+    for (int i = 0; i < g_nbtn; i++)
+    {
+        if (!g_btns[i].base.visible) continue;
+        if (!full && !gmb_form_damage_hits(g_btns[i].base.x, g_btns[i].base.y, g_btns[i].base.width, g_btns[i].base.height)) continue;
+        if (g_btns[i].style.font_size > 0) fc = 1;
+        draw_button_body(&g_btns[i], sc);
+    }
     draw_open_dropdowns(sc);
     /* Ripristino le coordinate DICHIARATE (il controllo resta nella sua metrica). */
     for (int i = 0; i < g_nwid; i++) { g_wid[i].base.x = sx[i]; g_wid[i].base.y = sy[i]; g_wid[i].base.width = sw[i]; g_wid[i].base.height = sh[i]; }
     for (int i = 0; i < g_nbtn; i++) { g_btns[i].base.x = sbx[i]; g_btns[i].base.y = sby[i]; g_btns[i].base.width = sbw[i]; g_btns[i].base.height = sbh[i]; }
     if (fc) GMB_GFX_FONT(ops, os);
+    g_in_form_draw = 0;
 }
 
 int gmb_form_poll_mouse(int* type, int* x, int* y, int* button, int* wheel)
@@ -1626,6 +1719,19 @@ static double tui_ctrl_value(gmb_control_t* c)
         default: return 0.0;
     }
 }
+void gmb_control_paint_rect(gmb_control_t* c, int* x, int* y, int* w, int* h)
+{
+    int px = (c->px_w > 0) ? c->px_x : c->x;
+    int py = (c->px_h > 0) ? c->px_y : c->y;
+    int pw = (c->px_w > 0) ? c->px_w : c->width;
+    int ph = (c->px_h > 0) ? c->px_h : c->height;
+    int th = gmb_gfx_text_height_logical(); if (th <= 0) th = 16;
+    /* LABEL/BIGTEXT hanno height=1 ma dipingono il testo: il rect "vero" e. alto
+     * almeno una riga di testo, altrimenti il repaint incrementale li salta. */
+    if (ph < th + 6) ph = th + 6;
+    if (pw <= 0) pw = 8;
+    *x = px - 2; *y = py - 4; *w = pw + 4; *h = ph + 8;
+}
 static void tui_ctrl_set_value(gmb_control_t* c, double v)
 {
     void* u = c->user;
@@ -1711,7 +1817,11 @@ static const char* control_extra_get(gmb_control_t* c, const char* key)
 
 static void tui_ctrl_set(const char* name, const char* prop, double num, const char* str)
 {
-    gmb_control_t* c = gmb_tui_control_find_by_name(name); if (!c || !prop) return;    if (!strcasecmp(prop,"left")||!strcasecmp(prop,"x")) c->x=(int)num;
+    gmb_control_t* c = gmb_tui_control_find_by_name(name); if (!c || !prop) return;
+    /* rect PRIMA della modifica: se il controllo si sposta/nasconde va ripulito anche
+     * il vecchio rettangolo (repaint incrementale). */
+    int ox0, oy0, ow0, oh0; gmb_control_paint_rect(c, &ox0, &oy0, &ow0, &oh0);
+    if (!strcasecmp(prop,"left")||!strcasecmp(prop,"x")) c->x=(int)num;
     else if (!strcasecmp(prop,"top")||!strcasecmp(prop,"y")) c->y=(int)num;
     else if (!strcasecmp(prop,"width")||!strcasecmp(prop,"w")) c->width=(int)num;
     else if (!strcasecmp(prop,"height")||!strcasecmp(prop,"h")) c->height=(int)num;
@@ -1803,6 +1913,10 @@ static void tui_ctrl_set(const char* name, const char* prop, double num, const c
      * g_dirty fa anche ripulire la pagina dal form (altrimenti restano i pixel del controllo). */
     g_dirty = 1;
     { extern void gmb_tui_mark_dirty(void); gmb_tui_mark_dirty(); }
+    /* Sporca SOLO il rettangolo del controllo (prima e dopo): non tutto lo schermo. */
+    { int nx0, ny0, nw0, nh0; gmb_control_paint_rect(c, &nx0, &ny0, &nw0, &nh0);
+      gmb_form_invalidate(ox0, oy0, ow0, oh0);
+      gmb_form_invalidate(nx0, ny0, nw0, nh0); }
 }
 static double tui_ctrl_get(const char* name, const char* prop)
 {
@@ -1888,7 +2002,11 @@ static const char* tui_ctrl_get_str(const char* name, const char* prop)
 
 void gmb_form_control_set(const char* name, const char* prop, double num, const char* str)
 {
-    int b; int i = ctrl_find(name, &b); if (i < 0) { tui_ctrl_set(name, prop, num, str); return; } if (!prop) return;
+    int b; int i = ctrl_find(name, &b);
+    if (i < 0) { tui_ctrl_set(name, prop, num, str); return; }
+    if (!prop) return;
+    /* rect prima della modifica (per il repaint incrementale) */
+    int ox0, oy0, ow0, oh0; form_control_px_rect(b ? &g_btns[i].base : &g_wid[i].base, &ox0, &oy0, &ow0, &oh0);
     gmb_pix_widget_t* w = b ? NULL : &g_wid[i];
     gmb_form_btn_t* t = b ? &g_btns[i] : NULL;
     if      (!strcasecmp(prop, "left") || !strcasecmp(prop, "x"))      { if (w) w->base.x = (int)num; else t->base.x = (int)num; }
@@ -1925,6 +2043,12 @@ void gmb_form_control_set(const char* name, const char* prop, double num, const 
     else if (!strcasecmp(prop, "valid") || !strcasecmp(prop, "isvalid")) { if (w) w->is_valid = (num != 0); }
     else control_extra_set(w ? &w->base : &t->base, prop, num, str);
     g_dirty = 1;
+    /* Sporca il controllo modificato (prima e dopo): senza, un cambio di valore/
+     * visibilita. su un widget FORM non veniva ridipinto quando il frame era
+     * incrementale (es. la pillola del TAB restava sulla scheda vecchia). */
+    { int nx0, ny0, nw0, nh0; form_control_px_rect(b ? &g_btns[i].base : &g_wid[i].base, &nx0, &ny0, &nw0, &nh0);
+      gmb_form_invalidate(ox0, oy0, ow0, oh0);
+      gmb_form_invalidate(nx0, ny0, nw0, nh0); }
 }
 
 double gmb_form_control_get(const char* name, const char* prop)
@@ -2741,6 +2865,8 @@ static void widget_mouse(int type, int x, int y, float sc)
     for (int i = 0; i < g_nwid; i++) {
         gmb_pix_widget_t* wd = &g_wid[i];
         int X = wd->base.x, Y = wd->base.y, W = wd->base.width, H = wd->base.height;
+        /* repaint incrementale: il widget sotto il puntatore e. sporco */
+        if (x >= X && x < X + W && y >= Y && y < Y + H) gmb_form_invalidate(X, Y, W, H);
         {   /* eventi comuni VB6 (MouseMove/Down/Up/Click/DblClick) */
             int inW = (x >= X && x < X + W && y >= Y && y < Y + H);
             if (inW && type == GMB_GFX_MOUSE_MOVE) {
@@ -2939,6 +3065,7 @@ void gmb_form_dispatch_mouse_px(int type, int x, int y, int button, int wheel)
         if (!b->base.visible) continue;
         int bx, by, bw, bh; form_control_px_rect(&b->base, &bx, &by, &bw, &bh);
         int hit = b->base.enabled && (x >= bx && x < bx + bw && y >= by && y < by + bh);
+        if (hit) gmb_form_invalidate(bx, by, bw, bh);
         if (type == GMB_GFX_MOUSE_MOVE) {
             if (b->hover != hit) { b->hover = hit; g_dirty = 1; }
         } else if (type == GMB_GFX_MOUSE_DOWN && hit) {
@@ -3143,15 +3270,26 @@ void gmb_form_render_if_dirty(void)
             /* Pagina = sfondo del tema (non nero): il form e una finestra. */
             gmb_widget_style_t st = gmb_widget_style_current();
             GMB_GFX_FILL_RRECT(0, 0, GMB_GFX_SCREEN_W(), GMB_GFX_SCREEN_H(), 0, st.body);
-            g_dirty = 1;
+            gmb_form_invalidate_all();
         }
         s_last_scale = sc;
     }
-    if (gmb_form_active() && g_dirty) { form_draw(); g_dirty = 0; }
+    if (gmb_form_active() && (g_dirty || g_dam_full || g_ndam > 0))
+    {
+        form_draw();      /* pulisce SOLO le zone sporche + ridisegna i widget che le toccano */
+        g_dirty = 0;
+        /* I controlli del registry TUI vanno ridisegnati nello stesso frame (il form ha
+         * ripulito o ridisegnato la pagina). La lista di damage resta valida fino a
+         * fine frame: serve anche a loro per saltare ciò che non è sporco. */
+        { extern void gmb_tui_mark_dirty(void); gmb_tui_mark_dirty(); }
+    }
     /* INTO dei controlli: in GRAFICA il frame TUI non gira, quindi la sincronizzazione
      * va fatta qui — senza, un clic cambiava il controllo ma NON la variabile BASIC. */
     { extern void gmb_tui_sync_bindings(void); gmb_tui_sync_bindings(); }
     { extern void gmb_tui_draw_px_all(void); gmb_tui_draw_px_all(); }
+    /* Frame consumato: le zone sporche ripartono vuote. */
+    g_ndam = 0;
+    g_dam_full = 0;
 
     if (sp && *sp && sframes == want) GMB_GFX_SAVE_PNG(sp);
 }
@@ -3202,6 +3340,10 @@ void gmb_form_frame(int frame_ms)
 {
     gmb_form_autokey_tick();
     gmb_form_poll();
+    /* DOEVENTS (= frame 0) e. UN FRAME VERO: con una finestra reale si attende il
+     * refresh (~16 ms), cosi. il ciclo BASIC `DO WHILE ... : DOEVENTS : LOOP` non
+     * brucia la CPU (prima girava al 100%%). In headless resta non bloccante. */
+    if (frame_ms <= 0 && GMB_GFX_VIDEO_REAL()) frame_ms = 16;
     form_park(frame_ms);
 }
 

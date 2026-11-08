@@ -11,13 +11,15 @@ static void px_alertbox(void* u, gmb_control_t* c)
     gmb_alert_box_t* a = (gmb_alert_box_t*)u;
     gmb_widget_style_t st = gmb_widget_style_current();
     int x = c->x, y = c->y, w = c->width, h = c->height;
-    int tl = (int)gmb_gfx_text_height(); if (tl <= 0) tl = 14;
+    /* Metrica LOGICA (c->x/y/w/h sono logici; text_height() e. NATIVO): su Retina
+     * il titolo e il pulsante OK raddoppiavano e finivano sopra altri controlli. */
+    int tl = gmb_gfx_text_height_logical(); if (tl <= 0) tl = 14;
     gmb_gfx_fill_rounded_rect(x, y, w, h, 6, st.fill);
     int th = tl + 8;
     gmb_gfx_fill_rounded_rect(x, y, w, th, 6, st.title_bg);
     gmb_gfx_draw_text(a->title[0] ? a->title : "Avviso", x + 8, y + 4, 0, (int)st.title_fg);
     gmb_gfx_draw_text(a->message, x + 10, y + th + 8, 0, (int)st.text);
-    int bh = tl + 8, bw = gmb_gfx_text_width(a->ok_label[0] ? a->ok_label : "OK") + 24; if (bw < 60) bw = 60;
+    int bh = tl + 8, bw = gmb_gfx_text_width_logical(a->ok_label[0] ? a->ok_label : "OK") + 24; if (bw < 60) bw = 60;
     int bx = x + w - bw - 10, by = y + h - bh - 8;
     gmb_gfx_fill_rounded_rect(bx, by, bw, bh, 4, st.fill_hover);
     gmb_gfx_stroke_rounded_rect(bx, by, bw, bh, 4, st.border);
@@ -43,7 +45,7 @@ static void px_spinner(void* u, gmb_control_t* c)
     int idx = s->index % s->frames_count; if (idx < 0) idx = 0;
     const char* fr = s->frames[idx];
     if (!fr || !*fr) return;
-    int th = gmb_gfx_text_height();
+    int th = gmb_gfx_text_height_logical();
     unsigned col = (st.accent & 0xFFFFFFu) ? st.accent : st.text;
     gmb_gfx_draw_text(fr, c->x + c->width / 2, c->y + (c->height - th) / 2, 1,
                       (int)(0x40000000u | (col & 0xFFFFFFu)));

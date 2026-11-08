@@ -67,7 +67,7 @@ static void progress_draw_px(void* u, gmb_control_t* c)
     {
         char pb[16];
         snprintf(pb, sizeof(pb), "%d%%", (int)(ratio * 100.0 + 0.5));
-        int th = gmb_gfx_text_height();
+        int th = gmb_gfx_text_height_logical();   /* LOGICO: x/y/w/h sono logici */
         if (th <= 0) th = 16;
         unsigned lbl = s.text;
         if (w / 2 < fw) lbl = prog_lum(fill) < 128 ? 0xFFFFFFu : 0x000000u;
