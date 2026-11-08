@@ -5747,65 +5747,6 @@
       ]
     },
     {
-      "ns": "AUTH",
-      "name": "JWTCREATE",
-      "fn": true,
-      "return": "string",
-      "params": [
-        {
-          "name": "claims",
-          "type": "string",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        },
-        {
-          "name": "secret",
-          "type": "string",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        }
-      ]
-    },
-    {
-      "ns": "AUTH",
-      "name": "JWTPAYLOAD",
-      "fn": true,
-      "return": "string",
-      "params": [
-        {
-          "name": "token",
-          "type": "string",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        }
-      ]
-    },
-    {
-      "ns": "AUTH",
-      "name": "JWTVERIFY",
-      "fn": true,
-      "return": "bool",
-      "params": [
-        {
-          "name": "token",
-          "type": "string",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        },
-        {
-          "name": "secret",
-          "type": "string",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        }
-      ]
-    },
-    {
       "ns": "BITS",
       "name": "BITCLEAR",
       "fn": true,

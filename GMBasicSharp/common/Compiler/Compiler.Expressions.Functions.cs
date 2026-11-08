@@ -382,8 +382,7 @@ public sealed partial class Compiler
         { TokenKind.IsRequired, BuiltInFunction.ISREQUIRED }, { TokenKind.IsEmail, BuiltInFunction.ISEMAIL },
         { TokenKind.IsUrl, BuiltInFunction.ISURL }, { TokenKind.IsCreditCard, BuiltInFunction.ISCREDITCARD },
         { TokenKind.IsLength, BuiltInFunction.ISLENGTH },
-        { TokenKind.JwtCreate, BuiltInFunction.JWTCREATE }, { TokenKind.JwtVerify, BuiltInFunction.JWTVERIFY },
-        { TokenKind.JwtPayload, BuiltInFunction.JWTPAYLOAD },
+        // JWT: superficie RIMOSSA (lib `auth` via FFI).
         { TokenKind.SafeFileName, BuiltInFunction.HTTP_SAFEFILENAME },
         { TokenKind.DetectContentType, BuiltInFunction.HTTP_DETECTCONTENTTYPE },
         { TokenKind.SessionCreate, BuiltInFunction.HTTP_SESSIONCREATE },

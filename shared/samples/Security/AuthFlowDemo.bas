@@ -9,6 +9,7 @@
 ' Serve da modello per i controller MVC/BSP (route protette, AUTHORIZE) senza server.
 ' Eseguibile su IL, PCodeVM e VM/C (C99Native: gap dichiarato 2026-09-02).
 
+REQUIRE "crypto"
 IMPORT CRYPTOGRAPHY
 IMPORT AUTH
 

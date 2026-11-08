@@ -204,7 +204,7 @@ public sealed partial class StdLib : IParserRegistry
         CreateConnectorNamespace();
         CreateAgentNamespace();
         CreatePolymorphicCommands();
-        CreateAuthNamespace();
+        // AUTH: namespace migrato a FFI (shared/libs/auth, libgmbauth) il 2026-11-08.
         CreateMouseNamespace();
         CreateControlsNamespace();
         

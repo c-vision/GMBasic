@@ -308,9 +308,6 @@ procedure,ATOMIC,FETCHVALUE,AtomicFetchValue
 procedure,ATOMIC,INCREMENT,AtomicIncrement
 procedure,ATOMIC,STORE,AtomicStore
 procedure,ATOMIC,SWAP,AtomicSwap
-procedure,AUTH,JWTCREATE,JwtCreate
-procedure,AUTH,JWTPAYLOAD,JwtPayload
-procedure,AUTH,JWTVERIFY,JwtVerify
 procedure,BITS,BITCLEAR,BitClear
 procedure,BITS,BITCOUNT,BitCount
 procedure,BITS,BITDEINTERLEAVE,BitDeinterleave

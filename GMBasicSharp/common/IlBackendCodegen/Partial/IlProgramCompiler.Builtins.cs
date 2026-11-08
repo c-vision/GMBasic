@@ -243,9 +243,7 @@ public sealed partial class IlProgramCompiler
             case TokenKind.IsUrl: EmitStringUnaryBuiltinCall(expr, RuntimeMethod(nameof(IlRuntime.IsValidUrl))); break;
             case TokenKind.IsCreditCard: EmitStringUnaryBuiltinCall(expr, RuntimeMethod(nameof(IlRuntime.IsValidCreditCard))); break;
             case TokenKind.IsLength: EmitValidationLengthCall(expr); break;
-            case TokenKind.JwtCreate: EmitStringBinaryBuiltinCall(expr, RuntimeMethod(nameof(IlRuntime.JwtCreate))); break;
-            case TokenKind.JwtVerify: EmitStringBinaryBuiltinCall(expr, RuntimeMethod(nameof(IlRuntime.JwtVerify))); break;
-            case TokenKind.JwtPayload: EmitStringUnaryBuiltinCall(expr, RuntimeMethod(nameof(IlRuntime.JwtPayload))); break;
+            // JWT: superficie RIMOSSA (lib `auth` via FFI).
             case TokenKind.SafeFileName: EmitStringUnaryBuiltinCall(expr, RuntimeMethod(nameof(IlRuntime.HttpSafeFileName))); break;
             case TokenKind.DetectContentType: EmitCryptoObjectUnaryCall(expr, nameof(IlRuntime.HttpDetectContentType)); break;
             case TokenKind.SessionCreate: EmitStringBinaryBuiltinCall(expr, RuntimeMethod(nameof(IlRuntime.HttpSessionCreate))); break;

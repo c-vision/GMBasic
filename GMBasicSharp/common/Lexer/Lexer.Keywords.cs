@@ -1272,9 +1272,7 @@ public sealed partial class Lexer
         { "ISURL", TokenKind.IsUrl },
         { "ISCREDITCARD", TokenKind.IsCreditCard },
         { "ISLENGTH", TokenKind.IsLength },
-        { "JWTCREATE", TokenKind.JwtCreate },
-        { "JWTVERIFY", TokenKind.JwtVerify },
-        { "JWTPAYLOAD", TokenKind.JwtPayload },
+        // JWT: superficie RIMOSSA (lib `auth` via FFI, shared/libs/auth).
         { "SAFEFILENAME", TokenKind.SafeFileName },
         { "DETECTCONTENTTYPE", TokenKind.DetectContentType },
         { "SESSIONCREATE", TokenKind.SessionCreate },

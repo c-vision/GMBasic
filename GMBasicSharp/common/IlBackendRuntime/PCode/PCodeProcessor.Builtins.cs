@@ -3749,18 +3749,7 @@ if (args.Length >= 3) { var file = args[0]?.ToString() ?? ""; var section = args
         {
                 return Basic.IlBackend.IlRuntime.JsEncode(ArgOr(args, 0)?.ToString() ?? "");
         },
-        [BuiltInFunction.JWTCREATE] = (task, args) =>
-        {
-                return Basic.IlBackend.IlRuntime.JwtCreate(ArgOr(args, 0)?.ToString() ?? "", ArgOr(args, 1)?.ToString() ?? "");
-        },
-        [BuiltInFunction.JWTVERIFY] = (task, args) =>
-        {
-                return Basic.IlBackend.IlRuntime.JwtVerify(ArgOr(args, 0)?.ToString() ?? "", ArgOr(args, 1)?.ToString() ?? "");
-        },
-        [BuiltInFunction.JWTPAYLOAD] = (task, args) =>
-        {
-                return Basic.IlBackend.IlRuntime.JwtPayload(ArgOr(args, 0)?.ToString() ?? "");
-        },
+        // JWT: superficie RIMOSSA (lib `auth` via FFI, shared/libs/auth).
         [BuiltInFunction.HTTP_SAFEFILENAME] = (task, args) =>
         {
                 return Basic.IlBackend.IlRuntime.HttpSafeFileName(ArgOr(args, 0)?.ToString() ?? "");
