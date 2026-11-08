@@ -2063,7 +2063,10 @@ public sealed partial class IlProgramCompiler
             _il.Emit(OpCodes.Ldc_I8, (long)stringMask);
             _il.Emit(OpCodes.Ldc_I8, (long)byrefScalarMask);
             _il.Emit(OpCodes.Ldc_I8, (long)byrefScalarElemIntMask);
-            _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.FfiCallTypedArrStr), typeof(string), typeof(string), typeof(object[]), typeof(int), typeof(long), typeof(long), typeof(long), typeof(long), typeof(long)));
+            // kind per-argomento (scalari LONG/DOUBLE misti): senza, con ritorno STRING ogni
+            // scalare viaggiava come double (n di BTCADDRFROMPUB = 4.6e18 → SIGBUS).
+            _il.Emit(OpCodes.Ldc_I8, (long)scalarKindMask);
+            _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.FfiCallTypedArrStr), typeof(string), typeof(string), typeof(object[]), typeof(int), typeof(long), typeof(long), typeof(long), typeof(long), typeof(long), typeof(long)));
             EmitByRefScalarWriteback();
             EmitByRefUdtWriteback();
             EmitCallbackKeepAliveIfAny();
