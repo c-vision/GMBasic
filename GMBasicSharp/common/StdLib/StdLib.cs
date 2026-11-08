@@ -196,12 +196,6 @@ public sealed partial class StdLib : IParserRegistry
         CreateSpatialNamespace();
         CreateTorchNamespace();
         CreateFinanceNamespace();
-        CreateTradingNamespace();
-        CreateTradingOptionsNamespace();
-        CreateTradingBondsNamespace();
-        CreateTradingPortfolioNamespace();
-        CreateTradingBacktestsNamespace();
-        CreateTradingMetricsNamespace();
         CreateToolNamespace();
         CreateUiNamespace();
         CreateBrowserNamespace();

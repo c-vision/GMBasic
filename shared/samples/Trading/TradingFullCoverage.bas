@@ -4,7 +4,7 @@
 ' I risultati di PORTFOLIO sono ARRAY: [rendimento, volatilita', Sharpe, pesi...].
 IMPORT PORTFOLIO AS TP
 IMPORT METRICS AS TM
-IMPORT TRADING_CORE
+IMPORT TRADING
 
 SUB Main()
     CLS
@@ -52,13 +52,13 @@ SUB Main()
 
     ' --- Metriche singole ---
     PRINT "-- Metriche --"
-    PRINT "RISKPREMIUM: "; TRADING_CORE.RiskPremium(0.08, 0.02)
-    PRINT "CAPITALGAINSYIELD: "; TRADING_CORE.CapitalGainsYield(100, 110)
-    PRINT "HOLDINGPERIODRETURN: "; TRADING_CORE.HoldingPeriodReturn(rets)
-    PRINT "GEOMETRICMEANRETURN: "; TRADING_CORE.GeometricMeanReturn(rets)
-    PRINT "GROWTHRATE: "; TRADING_CORE.GrowthRate(0.5, 0.15)
-    PRINT "BIDASKSPREAD: "; TRADING_CORE.BidAskSpread(99.5, 100.5)
-    PRINT "TAXEQUIVALENTYIELD: "; TRADING_CORE.TaxEquivalentYield(0.05, 0.30)
+    PRINT "RISKPREMIUM: "; TRADING.RiskPremium(0.08, 0.02)
+    PRINT "CAPITALGAINSYIELD: "; TRADING.CapitalGainsYield(100, 110)
+    PRINT "HOLDINGPERIODRETURN: "; TRADING.HoldingPeriodReturn(rets)
+    PRINT "GEOMETRICMEANRETURN: "; TRADING.GeometricMeanReturn(rets)
+    PRINT "GROWTHRATE: "; TRADING.GrowthRate(0.5, 0.15)
+    PRINT "BIDASKSPREAD: "; TRADING.BidAskSpread(99.5, 100.5)
+    PRINT "TAXEQUIVALENTYIELD: "; TRADING.TaxEquivalentYield(0.05, 0.30)
     PRINT
 
     PRINT "Test Completato."

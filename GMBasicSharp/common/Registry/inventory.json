@@ -1,10 +1,9 @@
 {
-  "count": 1511,
-  "namespaces": 73,
-  "distinctTokenKinds": 1407,
-  "namesInMultipleNamespaces": 90,
+  "count": 1422,
+  "namespaces": 67,
+  "distinctTokenKinds": 1318,
+  "namesInMultipleNamespaces": 88,
   "namesInMultipleNamespacesSample": [
-    "Run",
     "Count",
     "Embed",
     "EnsureCollection",
@@ -23,7 +22,8 @@
     "STORE",
     "Click",
     "Find",
-    "Screenshot"
+    "Screenshot",
+    "CREATE"
   ],
   "sameNsNameDifferentKinds": []
 }

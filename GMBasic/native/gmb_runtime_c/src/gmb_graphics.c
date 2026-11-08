@@ -529,6 +529,11 @@ void gmb_gfx_cls(int color)
 {
     gmb_gfx_page_t* p = active_page();
     if (!p) return;
+    /* CLS da BASIC: la pagina e. ripulita, quindi il form deve ridisegnare TUTTO
+     * (il repaint incrementale ripulirebbe solo le zone sporche). */
+    { extern int gmb_form_active(void); extern int gmb_form_in_form_draw(void);
+      extern void gmb_form_invalidate_all(void);
+      if (gmb_form_active() && !gmb_form_in_form_draw()) gmb_form_invalidate_all(); }
     /* CLS senza colore → sfondo (bg), parità ClearInternal(null) del motore C#;
      * resolve_color(-1) userebbe il FOREGROUND (white dopo COLOR 15,0) → pagina bianca. */
     uint32_t c = (color < 0) ? (g_page_bg_rgb ? (g_page_bg_rgb & 0xFFFFFFu) : palette_rgb(g_gfx.bg)) : resolve_color(color);
@@ -555,6 +560,12 @@ void gmb_gfx_cls(int color)
 
 int gmb_gfx_fg(void) { return g_gfx.fg; }
 int gmb_gfx_bg(void) { return g_gfx.bg; }
+/* RGB dello sfondo di pagina (stesso colore che usa CLS senza argomento): serve al
+ * repaint incrementale per ripulire solo le zone sporche con il colore giusto. */
+int gmb_gfx_page_bg_color(void)
+{
+    return (int)(g_page_bg_rgb ? (g_page_bg_rgb & 0xFFFFFFu) : palette_rgb(g_gfx.bg));
+}
 
 void put_pixel(gmb_gfx_page_t* p, int x, int y, uint32_t c)
 {

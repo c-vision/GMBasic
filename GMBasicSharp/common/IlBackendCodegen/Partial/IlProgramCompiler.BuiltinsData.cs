@@ -1074,7 +1074,7 @@ public sealed partial class IlProgramCompiler
         EmitReturnsArgument(expr.Args[0]);
         if (expr.Args.Length == 3) EmitDoubleArgument(expr.Args[2]);
         else if (expr.Args.Length == 2) EmitDoubleArgument(expr.Args[1]);
-        else _il.Emit(OpCodes.Ldc_R8, expr.Name.Kind == TokenKind.PortfolioSemiMad ? 0.0 : 0.95);
+        else _il.Emit(OpCodes.Ldc_R8, 0.95);
         _il.Emit(OpCodes.Call, RuntimeMethod(methodName, typeof(object), typeof(double)));
     }
 

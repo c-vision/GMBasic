@@ -14,7 +14,7 @@ REM FILE: TradingPortfolioCalculations.bas
 ' - ISLONGONLY: Verifica se un vettore di pesi e' "Long Only" (tutti positivi).
 ' =================================================================================================
 IMPORT PORTFOLIO AS TP
-IMPORT TRADING_CORE
+IMPORT TRADING
 
 SUB Main()
     CLS
@@ -103,9 +103,9 @@ SUB Main()
 
     PRINT
     PRINT "--- TRADING Generale ---"
-    PRINT "PreferredStockValue(5,0.08)="; TRADING_CORE.PREFERREDSTOCKVALUE(5, 0.08)
-    PRINT "StockValueZeroGrowth(5,0.08)="; TRADING_CORE.STOCKVALUEZEROGROWTH(5, 0.08)
-    PRINT "BidAskSpread(99.5,100)="; TRADING_CORE.BIDASKSPREAD(99.5, 100)
+    PRINT "PreferredStockValue(5,0.08)="; TRADING.PREFERREDSTOCKVALUE(5, 0.08)
+    PRINT "StockValueZeroGrowth(5,0.08)="; TRADING.STOCKVALUEZEROGROWTH(5, 0.08)
+    PRINT "BidAskSpread(99.5,100)="; TRADING.BIDASKSPREAD(99.5, 100)
     PRINT
     PRINT "Test Completato."
 END SUB

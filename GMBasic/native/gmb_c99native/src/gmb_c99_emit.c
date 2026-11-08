@@ -1488,8 +1488,7 @@ static int dim_arr_init_kind(ctx_t* c, const gmb_expr_t* e) {
         { GMB_TOK_AMap, 1, 1 }, { GMB_TOK_AFilter, 1, 1 }, { GMB_TOK_AReverse, 1, 1 },
         { GMB_TOK_ASort, 1, 1 }, { GMB_TOK_APad, 1, 2 }, { GMB_TOK_AClone, 1, 1 }, { GMB_TOK_AUnique, 1, 1 },
         { GMB_TOK_GetCursorPos, 1, 0 }, { GMB_TOK_GetTextMetrics, 1, 0 }, { GMB_TOK_GetPaletteColor, 1, 1 },
-        { GMB_TOK_JarqueBeraTest, 1, 1 },
-        { GMB_TOK_Solve, 1, 2 }, { GMB_TOK_MatrixSolveTriangular, 1, 3 },
+                { GMB_TOK_Solve, 1, 2 }, { GMB_TOK_MatrixSolveTriangular, 1, 3 },
         { GMB_TOK_KdTreeQuery, 1, 3 }, { GMB_TOK_KdTreeQueryDist, 1, 3 },
         { GMB_TOK_KdTreeQueryBall, 1, 3 },
         { GMB_TOK_MatrixSubspaceAngles, 1, 2 },
@@ -1541,26 +1540,6 @@ static int dim_val_init_kind(ctx_t* c, const gmb_expr_t* e) {
     if (e->tk == GMB_TOK_JsonToObject) return 1;
     /* CONVERT.PARSE(md$) → AST markdown boxed gmb_val_t (gmb_md_parse). */
     if (e->tk == GMB_TOK_MdParse) return 1;
-    /* TRADING.PORTFOLIO: i risultati di ottimizzazione (MAXSHARPE/MEANVARIANCE/
-     * MINVOLATILITY/RISKPARITY/EQUALLYWEIGHTED) e PortfolioResult (MAXRETURN/
-     * KELLYCRITERION/MINCVAR/MINCDAR) sono dict boxed gmb_val_t (parity emitter C#). */
-    if (e->tk == GMB_TOK_MaxSharpe || e->tk == GMB_TOK_MeanVariance
-        || e->tk == GMB_TOK_MinVolatility || e->tk == GMB_TOK_RiskParity
-        || e->tk == GMB_TOK_EquallyWeighted || e->tk == GMB_TOK_MaxReturn
-        || e->tk == GMB_TOK_KellyCriterion || e->tk == GMB_TOK_MinCvar
-        || e->tk == GMB_TOK_MinCdar) return 1;
-    /* TRADING.PORTFOLIO.BLACKLITTERMAN → PortfolioResult (dict boxed gmb_val_t): il DIM/ANY
-     * lo marca boxed e l'emissione è gmb_blacklitterman(...) RAW (gmb_val_t). */
-    if (e->tk == GMB_TOK_BlackLitterman) return 1;
-    /* TRADING.PORTFOLIO.EVOLVE → idem (il DIM lo marca già boxed; senza questa voce
-     * l'assegnazione avvolgeva gmb_port_evolve in gmb_make_val_double = val→double,
-     * trading.portfolio/gen_TRADING.PORTFOLIO_EVOLVE.bas). */
-    if (e->tk == GMB_TOK_Evolve) return 1;
-    /* TRADING.BACKTESTS.RUN(data2D, …) → BACKTESTRESULT boxed (gmb_val_t dict). Il TokenKind
-     * RUN è CONDIVISO con altri domini: la forma boxed vale solo nel namespace BACKTESTS
-     * (l'emissione gmb_tm_backtest_matrix lavora su un array 2-D). */
-    if (e->tk == GMB_TOK_Run && e->nargs >= 1 && e->args[0] && e->ns
-        && strstr(e->ns, "BACKTESTS")) return 1;
     /* STATS test d'ipotesi → dict boxed gmb_val_t (gmb_stats.c): TTEST/.../DESCRIBE.
      * Ritorna 2: boxed_val + stats_val (membri SCALARI numerici). */
     if (e->tk == GMB_TOK_TTest || e->tk == GMB_TOK_TTestPaired || e->tk == GMB_TOK_TTestOneSample
@@ -3838,9 +3817,6 @@ if (s->dim_var) {            int ty = suffix_type(s->dim_var);
                     v->gkind = GK_LIST; v->elem_str = es; if (es) v->type = TY_STR;
                     if (tk_is_md_list(s->dim_init->tk)) v->elem_boxed = 1;
                 }
-                /* TRADING.PORTFOLIO.EVOLVE/BLACKLITTERMAN → PortfolioResult (oggetto boxed). */
-                if (s->dim_init->tk == GMB_TOK_Evolve || s->dim_init->tk == GMB_TOK_BlackLitterman)
-                { v->boxed_val = 1; v->type = TY_NUM; }
                 /* ARRAYS.AFLAT/ACHUNK/AZIP → gmb_list_t (lista di sotto-liste/tuple). AFLAT
                  * su array di stringhe eredita elem_str (elementi stringa). */
                 if (s->dim_init->tk == GMB_TOK_AFlat || s->dim_init->tk == GMB_TOK_AChunk
@@ -6869,8 +6845,7 @@ static const gmb_bf_row_t gmb_bf_composite[] = {
     { NULL, GMB_TOK_Yield, emit_bf_math },
     { NULL, GMB_TOK_Sleep, emit_bf_math },
     { NULL, GMB_TOK_Format, emit_bf_math },
-    { NULL, GMB_TOK_Beta, emit_bf_metrics },
-    
+        
     
     
     
@@ -7099,40 +7074,9 @@ static const gmb_bf_row_t gmb_bf_composite[] = {
     { NULL, GMB_TOK_Join, emit_bf_bounds },
     
     /* TRADING.METRICS (2026-09-08): array→scalar, runtime condivisa gmb_tm_* */
-    { NULL, GMB_TOK_MaxDrawdown, emit_bf_metrics }, { NULL, GMB_TOK_AnnualizedReturn, emit_bf_metrics },
-    { NULL, GMB_TOK_AnnualizedVolatility, emit_bf_metrics }, { NULL, GMB_TOK_CalmarRatio, emit_bf_metrics },
-    { NULL, GMB_TOK_SharpeRatio, emit_bf_metrics }, { NULL, GMB_TOK_SortinoRatio, emit_bf_metrics },
-    { NULL, GMB_TOK_UlcerIndex, emit_bf_metrics }, { NULL, GMB_TOK_DownsideDeviation, emit_bf_metrics },
-    { NULL, GMB_TOK_ValueAtRisk, emit_bf_metrics },
-    { NULL, GMB_TOK_ConditionalValueAtRisk, emit_bf_metrics },
-    { NULL, GMB_TOK_AnnualizedTrackingError, emit_bf_metrics },
-    { NULL, GMB_TOK_AnnualizedDownsideDeviation, emit_bf_metrics },
-    { NULL, GMB_TOK_ReturnsSkewness, emit_bf_metrics }, { NULL, GMB_TOK_OmegaRatio, emit_bf_metrics },
-    { NULL, GMB_TOK_TotalReturn, emit_bf_metrics },
-    { NULL, GMB_TOK_ReturnsKurtosis, emit_bf_metrics }, { NULL, GMB_TOK_Alpha, emit_bf_metrics },
-    { NULL, GMB_TOK_TreynorRatio, emit_bf_metrics }, { NULL, GMB_TOK_InformationRatio, emit_bf_metrics },
-    /* TRADING.GEOMETRICMEANRETURN/HOLDINGPERIODRETURN: handler presente in TM_TBL ma il
+                                                    /* TRADING.GEOMETRICMEANRETURN/HOLDINGPERIODRETURN: handler presente in TM_TBL ma il
      * TokenKind non era nel dispatch → "simbolo non trovato" (trading/gen_TRADING_*.bas). */
-    { NULL, GMB_TOK_GeometricMeanReturn, emit_bf_metrics },
-    { NULL, GMB_TOK_HoldingPeriodReturn, emit_bf_metrics },
-    { NULL, GMB_TOK_PortfolioExpectedReturn, emit_bf_metrics },
-    { NULL, GMB_TOK_PortfolioSharpeRatio, emit_bf_metrics },
-    { NULL, GMB_TOK_MaxReturn, emit_bf_metrics },
-    { NULL, GMB_TOK_KellyCriterion, emit_bf_metrics },
-    { NULL, GMB_TOK_MinCvar, emit_bf_metrics },
-    { NULL, GMB_TOK_MinCdar, emit_bf_metrics },
-    { NULL, GMB_TOK_MaxSharpe, emit_bf_metrics },
-    { NULL, GMB_TOK_MeanVariance, emit_bf_metrics },
-    { NULL, GMB_TOK_MinVolatility, emit_bf_metrics },
-    { NULL, GMB_TOK_RiskParity, emit_bf_metrics },
-    { NULL, GMB_TOK_EquallyWeighted, emit_bf_metrics },
-    { NULL, GMB_TOK_PortfolioMad, emit_bf_metrics },
-    { NULL, GMB_TOK_PortfolioSemiMad, emit_bf_metrics },
-    { NULL, GMB_TOK_PortfolioStDev, emit_bf_metrics },
-    { NULL, GMB_TOK_PortfolioVar, emit_bf_metrics },
-    { NULL, GMB_TOK_PortfolioCVar, emit_bf_metrics },
-    { NULL, GMB_TOK_IsLongOnly, emit_bf_metrics },
-     
+                                                                                 
      
     
     { NULL, GMB_TOK_Avg, emit_bf_stats_arr },
@@ -7270,48 +7214,11 @@ static const gmb_bf_row_t gmb_bf_composite[] = {
     
     
     
-    { NULL, GMB_TOK_BookValuePerShare, emit_bf_finance },
-    { NULL, GMB_TOK_BsCall, emit_bf_finance },
-    { NULL, GMB_TOK_BsPut, emit_bf_finance },
-    { NULL, GMB_TOK_BinomialOption, emit_bf_finance },
-    { NULL, GMB_TOK_DeltaSpeed, emit_bf_finance },
-    { NULL, GMB_TOK_DPS, emit_bf_finance },
-    { NULL, GMB_TOK_Duration, emit_bf_finance },
-    { NULL, GMB_TOK_EquityMultiplier, emit_bf_finance },
-    { NULL, GMB_TOK_Gamma, emit_bf_finance },
-    { NULL, GMB_TOK_GammaColor, emit_bf_finance },
-    { NULL, GMB_TOK_MertonCall, emit_bf_finance },
-    { NULL, GMB_TOK_MertonPut, emit_bf_finance },
-    { NULL, GMB_TOK_NAV, emit_bf_finance },
-    { NULL, GMB_TOK_PreferredStockValue, emit_bf_finance },
-    { NULL, GMB_TOK_Sln, emit_bf_finance },
-    { NULL, GMB_TOK_StockValueZeroGrowth, emit_bf_finance },
-    { NULL, GMB_TOK_Syd, emit_bf_finance },
-    { NULL, GMB_TOK_Vanna, emit_bf_finance },
-    { NULL, GMB_TOK_Vega, emit_bf_finance },
-    { NULL, GMB_TOK_Volga, emit_bf_finance },
-    { NULL, GMB_TOK_YieldToMaturity, emit_bf_finance },
-    { NULL, GMB_TOK_ZeroCouponBondValue, emit_bf_finance },
-    { NULL, GMB_TOK_ZeroCouponBondYield, emit_bf_finance },
-    { NULL, GMB_TOK_Zomma, emit_bf_finance },
-    { NULL, GMB_TOK_CAPM, emit_bf_finance }, { NULL, GMB_TOK_StockValueConstGrowth, emit_bf_finance },
-    { NULL, GMB_TOK_TaxEquivalentYield, emit_bf_finance }, { NULL, GMB_TOK_RiskPremium, emit_bf_finance },
-    { NULL, GMB_TOK_TotalStockReturn, emit_bf_finance }, { NULL, GMB_TOK_CapitalGainsYield, emit_bf_finance },
-    { NULL, GMB_TOK_GrowthRate, emit_bf_finance }, { NULL, GMB_TOK_BidAskSpread, emit_bf_finance },
-    { NULL, GMB_TOK_HoldingPeriodReturn, emit_bf_finance }, { NULL, GMB_TOK_GeometricMeanReturn, emit_bf_finance },
-    { NULL, GMB_TOK_BondEquivalentYield, emit_bf_finance }, { NULL, GMB_TOK_CurrentYield, emit_bf_finance },
-    { NULL, GMB_TOK_Delta, emit_bf_finance }, { NULL, GMB_TOK_Rho, emit_bf_finance }, { NULL, GMB_TOK_Theta, emit_bf_finance }, { NULL, GMB_TOK_Charm, emit_bf_finance },
-    { NULL, GMB_TOK_EPS, emit_bf_finance }, { NULL, GMB_TOK_DilutedEPS, emit_bf_finance }, { NULL, GMB_TOK_DividendPayoutRatio, emit_bf_finance },
-    { NULL, GMB_TOK_DividendYield, emit_bf_finance },
-    { NULL, GMB_TOK_PERatio, emit_bf_finance },
-    { NULL, GMB_TOK_PSRatio, emit_bf_finance }, { NULL, GMB_TOK_PBRatio, emit_bf_finance },
-
+                                                            { NULL, GMB_TOK_Sln, emit_bf_finance },
+        { NULL, GMB_TOK_Syd, emit_bf_finance },
+                                                                        
     { NULL, GMB_TOK_Days360, emit_bf_finance_defaults },
-    { NULL, GMB_TOK_PriceSimple, emit_bf_finance_scalar },
-    { NULL, GMB_TOK_BondPrice, emit_bf_finance_scalar },
-    { NULL, GMB_TOK_BondYield, emit_bf_finance_scalar },
-    { NULL, GMB_TOK_BondEquivalentYield, emit_bf_finance_defaults },
-    { NULL, GMB_TOK_Price, emit_bf_finance_scalar },
+                    { NULL, GMB_TOK_Price, emit_bf_finance_scalar },
     { NULL, GMB_TOK_PvExt, emit_bf_finance_defaults },
     { NULL, GMB_TOK_NperExt, emit_bf_finance_defaults },
     { NULL, GMB_TOK_YearFrac, emit_bf_finance_defaults },
@@ -8345,59 +8252,6 @@ static int emit_builtin(ctx_t* c, const char* name, const char* ns, gmb_tokenkin
         else sb_put(&c->out, "(gmb_double_t)1");
         return 1;
     }
-    /* TRADING.BACKTESTS.RUN(data, strategia[, portfolio]): data è un array 2-D rettangolare.
-     * Il backend emette un flat pointer + `<v>__b0`/`<v>__b1` (upper bound per dimensione);
-     * rows = __b0+1, cols = __b1+1 → media per riga poi metriche backtest. Parità
-     * IL/PCode/VM-C. */
-    if (tk == GMB_TOK_Run && nargs >= 1 && args[0]->kind == GMB_EXPR_VAR && args[0]->var) {
-        const char* rv = args[0]->var;
-        sb_put(&c->out, "gmb_tm_backtest_matrix((const gmb_double_t*)(");
-        sb_ident(&c->out, rv);
-        sb_put(&c->out, "), (int)(");
-        sb_ident(&c->out, rv);
-        sb_put(&c->out, "__b0 + 1), (int)(");
-        sb_ident(&c->out, rv);
-        sb_put(&c->out, "__b1 + 1))");
-        return 1;
-    }
-    /* TRADING.PORTFOLIO.EVOLVE(rets, cov, GA): cov è jagged (gmb_double_t** cov, cov__b0/cov__cols);
-     * rets è flat (r__b0). Parità IL/PCode/VM-C. */
-    if (tk == GMB_TOK_Evolve && nargs >= 2 && args[0]->kind == GMB_EXPR_VAR && args[0]->var
-        && args[1]->kind == GMB_EXPR_VAR && args[1]->var) {
-        const char* rn = args[0]->var;
-        const char* cn = args[1]->var;
-        sb_put(&c->out, "gmb_port_evolve((gmb_double_t**)(");
-        sb_ident(&c->out, cn);
-        sb_put(&c->out, "), (int)(");
-        sb_ident(&c->out, cn);
-        sb_put(&c->out, "__b0 + 1), (const gmb_double_t*)(");
-        sb_ident(&c->out, rn);
-        sb_put(&c->out, "), (int)(");
-        sb_ident(&c->out, rn);
-        sb_put(&c->out, "__b0 + 1), 0.0)");
-        return 1;
-    }
-    /* TRADING.PORTFOLIO.BLACKLITTERMAN(caps, cov, λ, τ, P, Q, Ω, rf): cov/P/Ω jagged
-     * (gmb_double_t** __b0). Parità IL/PCode/VM-C. */
-    if (tk == GMB_TOK_BlackLitterman && nargs >= 8
-        && args[0]->kind == GMB_EXPR_VAR && args[0]->var
-        && args[1]->kind == GMB_EXPR_VAR && args[1]->var
-        && args[4]->kind == GMB_EXPR_VAR && args[4]->var
-        && args[5]->kind == GMB_EXPR_VAR && args[5]->var
-        && args[6]->kind == GMB_EXPR_VAR && args[6]->var) {
-        const char* aN = args[0]->var; const char* vN = args[1]->var;
-        const char* pN = args[4]->var; const char* qN = args[5]->var; const char* oN = args[6]->var;
-        sb_put(&c->out, "gmb_blacklitterman((const double*)("); sb_ident(&c->out, aN);
-        sb_put(&c->out, "), (int)("); sb_ident(&c->out, aN); sb_put(&c->out, "__b0 + 1), (gmb_double_t**)(");
-        sb_ident(&c->out, vN); sb_put(&c->out, "), ");
-        emit_expr(c, args[2]); sb_put(&c->out, ", "); emit_expr(c, args[3]);
-        sb_put(&c->out, ", (gmb_double_t**)("); sb_ident(&c->out, pN);
-        sb_put(&c->out, "), (int)("); sb_ident(&c->out, pN); sb_put(&c->out, "__b0 + 1), (const double*)(");
-        sb_ident(&c->out, qN);
-        sb_put(&c->out, "), (gmb_double_t**)("); sb_ident(&c->out, oN); sb_put(&c->out, "), ");
-        emit_expr(c, args[7]); sb_put(&c->out, ")");
-        return 1;
-    }
     /* dispatch composito (ns?, tk): primo match che la handler gestisce */
     for (size_t i = 0; i < GMB_BF_COMPOSITE_COUNT; i++) {
         const gmb_bf_row_t* r = &gmb_bf_composite[i];
@@ -8590,7 +8444,6 @@ static int dim_arr_analysis1d(ctx_t* c, gmb_stmt_t* s, gmb_expr_t* init);
 static int dim_arr_timeseries1d(ctx_t* c, gmb_stmt_t* s, gmb_expr_t* init);
 static int dim_arr_timeseries_matrix(ctx_t* c, gmb_stmt_t* s, gmb_expr_t* init);
 static int dim_arr_console1d(ctx_t* c, gmb_stmt_t* s, gmb_expr_t* init);
-static int dim_arr_metrics1d(ctx_t* c, gmb_stmt_t* s, gmb_expr_t* init);
 static int dim_arr_kdtree(ctx_t* c, gmb_stmt_t* s, gmb_expr_t* init);
 static int an1d_arr(ctx_t* c, gmb_expr_t* a, var_t** out);
 static void emit_dict_key(ctx_t* c, gmb_expr_t* e);   /* definita più sotto in questo file */
@@ -9404,7 +9257,6 @@ static void emit_dim_arr_init(ctx_t* c, gmb_stmt_t* s) {
     if (dim_arr_timeseries1d(c, s, init)) return;
     if (dim_arr_analysis1d(c, s, init)) return;
     if (dim_arr_console1d(c, s, init)) return;
-    if (dim_arr_metrics1d(c, s, init)) return;
     /* KDTREE array-returning (QUERY/QUERYDIST/QUERYBALL) */
     if (dim_arr_kdtree(c, s, init)) return;
     /* NUMERICAL.Fft/IFFT: matrice n×2 (re/im per riga) */
@@ -9592,25 +9444,6 @@ static int implicit_analysis_assign(ctx_t* c, const char* target, gmb_expr_t* va
     gmb_stmt_t tmp; memset(&tmp, 0, sizeof tmp);
     tmp.dim_var = (char*)target;
     return dim_arr_analysis1d(c, &tmp, value);
-}
-
-/* (b4quinquies): DIM x() = TRADING.METRICS array-returning (JARQUEBERATEST):
- * gmb_tm_jarque_bera(r, n, &out_len) → double* [statistica, p-value]. */
-static int dim_arr_metrics1d(ctx_t* c, gmb_stmt_t* s, gmb_expr_t* init) {
-    if (c->error[0]) return 0;
-    var_t* v = lookup_var(c, s->dim_var);
-    if (!v || !init || init->kind != GMB_EXPR_CALL || !init->var) return 0;
-    if (init->tk != GMB_TOK_JarqueBeraTest) return 0;
-    if (init->nargs < 1) return 0;
-    var_t* va = NULL;
-    if (!an1d_arr(c, init->args[0], &va)) return 0;
-    ind(c);
-    emit_ident(c, v->name);
-    sb_put(&c->out, " = gmb_tm_jarque_bera((const double*)");
-    emit_var_ref(c, va);
-    sb_put(&c->out, ", (int)("); emit_arr_len_of(c, va); sb_put(&c->out, ")");
-    sb_put(&c->out, ", &"); emit_ident(c, v->name); sb_put(&c->out, "_len);\n");
-    return 1;
 }
 
 /* (b4ter): DIM x() = TIMESERIES array-returning 1-D — TSMA/TSEMA/filtri Butterworth
@@ -16749,25 +16582,6 @@ static void emit_arr_literal_assign(ctx_t* c, const char* target, gmb_expr_t* li
                }
            }
        }
-      /* TRADING.METRICS.JARQUEBERATEST(r) → [stat, pval] su array nativo double* +
-         <name>_len (forma ad assegnazione: DIM x() AS DOUBLE : x = TM.JarqueBeraTest(r)). */
-      if (target && value && value->kind == GMB_EXPR_CALL
-          && (value->tk == GMB_TOK_JarqueBeraTest
-              || (value->var && strstr(value->var, "JarqueBeraTest")))) {
-          var_t* jv = lookup_var(c, target);
-          if (jv && jv->is_array && jv->type != TY_STR) {
-              var_t* ja = NULL;
-              if (value->nargs < 1 || !an1d_arr(c, value->args[0], &ja)) {
-                  c99_fail(c, line, "JARQUEBERATEST richiede un array 1-D"); return;
-              }
-              ind(c); sb_ident(&c->out, jv->name);
-              sb_put(&c->out, " = gmb_tm_jarque_bera((const double*)");
-              emit_var_ref(c, ja);
-              sb_put(&c->out, ", (int)("); emit_arr_len_of(c, ja); sb_put(&c->out, ")");
-              sb_put(&c->out, ", &"); sb_ident(&c->out, jv->name); sb_put(&c->out, "_len);\n");
-              return;
-          }
-      }
      /* AREVERSE/ACLONE/AUNIQUE/APAD(src, ...) su array nativo dinamico (DIM x() / DIM x$()):
         assegnamento intera-array con copia runtime + update di <name>_len
         (parity IL/PCodeVM/VM-C; stessa forma del blocco SPLIT/ATOKENS sopra). */
@@ -18195,30 +18009,7 @@ static int is_json_path_member(ctx_t* c, gmb_expr_t* e, var_t** out_bv, const ch
                  if (s->print_comma && s->print_comma[i]) { ind(c); sb_put(&c->out, "gmb_print_tab_zone();\n"); }
                  continue;
              }
-             /* TRADING.METRICS.JARQUEBERATEST(r) → double* [statistica, p-value]: PRINT come
-             * lista "[stat, pval]" (parità IL/PCode). `dim_arr_metrics1d` copre solo la forma
-             * `DIM x() = ...`; senza questo ramo il PRINT diretto falliva con "simbolo non
-             * trovato" (trading.metrics/gen_TRADING.METRICS_JarqueBeraTest.bas). Argomento
-             * scalare: coercizione a [valore], come il canone IL (ToDoubleArray). */
-            if (s->print_args[i] && s->print_args[i]->kind == GMB_EXPR_CALL
-                && s->print_args[i]->tk == GMB_TOK_JarqueBeraTest && s->print_args[i]->nargs >= 1) {
-                gmb_expr_t* ja = s->print_args[i]->args[0];
-                var_t* jv = NULL;
-                int jok = (ja != NULL) && an1d_arr(c, ja, &jv);
-                sb_put(&c->out, "gmb_print_val(gmb_make_val_list(({ gmb_int_t _jb_n = 0; double* _jb_p = gmb_tm_jarque_bera(");
-                if (jok) {
-                    sb_put(&c->out, "(const double*)"); emit_var_ref(c, jv);
-                    sb_put(&c->out, ", (int)("); emit_arr_len_of(c, jv); sb_put(&c->out, ")");
-                } else {
-                    sb_put(&c->out, "(const double[]){ (double)("); emit_expr(c, ja); sb_put(&c->out, ") }, 1");
-                }
-                sb_put(&c->out, ", &_jb_n); gmb_list_t _jb_l = gmb_list_new();");
-                sb_put(&c->out, " for (gmb_int_t _jb_i = 0; _jb_i < _jb_n; _jb_i++) gmb_list_add(&_jb_l, gmb_make_val_double(_jb_p[_jb_i]));");
-                sb_put(&c->out, " free(_jb_p); _jb_l; })));\n");
-                if (s->print_comma && s->print_comma[i]) { ind(c); sb_put(&c->out, "gmb_print_tab_zone();\n"); }
-                continue;
-            }
-            /* AI.LIST(role) → gmb_list_t di nomi (parità string[] C#): PRINT come "[a, b]"
+             /* AI.LIST(role) → gmb_list_t di nomi (parità string[] C#): PRINT come "[a, b]"
               * via display (stessa forma dei blocchi AiVectorEmbed/AiImageEmbed sopra).
               * Il ruolo viaggia grezzo (%CHAT incluso): normalizza il runtime. */
              if (s->print_args[i] && s->print_args[i]->kind == GMB_EXPR_CALL
