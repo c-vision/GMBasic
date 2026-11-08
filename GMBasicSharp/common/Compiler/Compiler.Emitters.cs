@@ -128,15 +128,24 @@ public sealed partial class Compiler
     /// </summary>
     private void EmitValidPredicateSubroutines()
     {
+        /* Le subroutine emesse qui sono CONSUMATE: senza rimuoverle, il predicato di una
+         * procedura veniva ri-emesso una seconda volta da CompileMainBodyAndSubroutines
+         * (dove _currentProcedureName è ancora "Main" ma i locali della SUB sono già
+         * chiusi): la seconda passata riscriveva l'indirizzo e, non trovando il locale,
+         * emetteva `PUSH_CONST 0` al posto di `LOAD_LOCAL` → predicato sempre falso
+         * (VALID che ripropone il campo all'infinito, WHEN che salta sempre). */
+        var remaining = new List<(int constIndex, string? procName, Expr expr, List<object?> pool)>();
         for (var i = 0; i < _pendingValidPredicates.Count; i++)
         {
             var (ci, procName, expr, pool) = _pendingValidPredicates[i];
-            if (procName != _currentProcedureName) continue;
+            if (procName != _currentProcedureName) { remaining.Add(_pendingValidPredicates[i]); continue; }
             var addr = _chunk.Code.Count;
             pool[ci] = (double)addr;
             VisitExpression(expr);
             EmitByte((byte)OpCode.OP_END_VALID);
         }
+        _pendingValidPredicates.Clear();
+        _pendingValidPredicates.AddRange(remaining);
     }
 
     /// <summary>
