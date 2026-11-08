@@ -407,11 +407,12 @@ int gmb_gfx_font_default(int size)
     (void)size;   /* il "size" del chiamante non decide il corpo della UI (vedi sopra) */
     if (g_font_loaded) return 1;
     char fpath[1200] = {0};
-    int fsize = 13;   /* UI: 13px logici = corpo standard macOS */
+    int fsize = 11;   /* UI: 11px logici (Helvetica Neue) — testo compatto da app nativa */
     gfx_ui_settings(fpath, sizeof(fpath), &fsize);
     if (fpath[0]) { gmb_gfx_font(fpath, fsize); if (g_font_loaded) return 1; }
-    const char* cands[] = { "/System/Library/Fonts/SFNS.ttf",
+    const char* cands[] = { "/System/Library/Fonts/HelveticaNeue.ttc",
                             "/System/Library/Fonts/Helvetica.ttc",
+                            "/System/Library/Fonts/SFNS.ttf",
                             "/System/Library/Fonts/Supplemental/Arial.ttf",
                             "/System/Library/Fonts/Supplemental/Helvetica.ttf",
                             "/System/Library/Fonts/Geneva.ttf",
