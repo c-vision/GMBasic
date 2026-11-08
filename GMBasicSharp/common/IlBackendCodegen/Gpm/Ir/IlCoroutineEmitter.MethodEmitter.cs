@@ -261,8 +261,8 @@ internal sealed partial class MethodEmitter
             typeof(IlGpmRuntime).GetMethod(nameof(IlGpmRuntime.ReadNativeSetError))!;
         private static readonly MethodInfo ReadSequentialFieldMethod =
             typeof(IlGpmRuntime).GetMethod(nameof(IlGpmRuntime.ReadSequentialField))!;
-        private static readonly MethodInfo ReadNativeResumeMethod =
-            typeof(IlGpmRuntime).GetMethod(nameof(IlGpmRuntime.ReadNativeResume))!;
+        private static readonly MethodInfo ReadNativeResetMethod =
+            typeof(IlGpmRuntime).GetMethod(nameof(IlGpmRuntime.ReadNativeReset))!;
 
         private static readonly MethodInfo ReadBeginMethod =
             typeof(IlGpmRuntime).GetMethod(nameof(IlGpmRuntime.ReadBegin))!;

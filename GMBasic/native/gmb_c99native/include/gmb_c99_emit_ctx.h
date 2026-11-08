@@ -165,6 +165,11 @@ typedef struct {
     int n_dim_names;
     /* READ unificato (C): campi @GET pendenti (var + is_str) per il loop inline al READ. */
     char read_vars[64][48]; int read_is_str[64]; int n_read_vars;
+    /* VALID dei campi @GET su target NON dinamico (DIM/STATIC): il predicato non può
+     * essere una funzione a file scope (non vede i locali) e la gamba C non lo registra
+     * nel loop READ: si rivaluta DOPO il READ e, se falso, il READ riparte dal campo
+     * rifiutato (ri-prompt). */
+    const void* read_valids[64]; int read_valid_idx[64]; int n_read_valids;
     /* JSON.ToObject: nome del TARGET dell'assegnamento in corso (NULL fuori) — serve a
      * js_to_object per scegliere la FORMA del ramo non-UDT: target LISTA -> gmb_val_as_list;
      * target BOXED (gmb_val_t, es. DIM x AS JSON) -> gmb_json_parse. Il parser C appiattisce

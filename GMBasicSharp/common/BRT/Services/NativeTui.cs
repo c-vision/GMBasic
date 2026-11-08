@@ -34,8 +34,6 @@ public static class NativeTui
     { try { CGfxNative.EnsureResolver(); GReadSetError(-1, text ?? ""); } catch { } }
     [DllImport(CGfxNative.Lib, EntryPoint = "gmb_read_skip_field", CallingConvention = CallingConvention.Cdecl)]
     private static extern void GReadSkipField(int idx);
-    [DllImport(CGfxNative.Lib, EntryPoint = "gmb_read_resume", CallingConvention = CallingConvention.Cdecl)]
-    private static extern void GReadResume(int idx);
     [DllImport(CGfxNative.Lib, EntryPoint = "gmb_read_native_reset", CallingConvention = CallingConvention.Cdecl)]
     private static extern void GReadReset();
 
@@ -63,8 +61,6 @@ public static class NativeTui
     public static string ReadValue(int idx)
     { try { CGfxNative.EnsureResolver(); var p = GReadValue(idx); return p == IntPtr.Zero ? "" : (Marshal.PtrToStringUTF8(p) ?? ""); } catch { return ""; } }
     public static void ReadReset() { try { CGfxNative.EnsureResolver(); GReadReset(); } catch { } }
-    /// <summary>Riprende il loop READ dal campo idx senza azzerare i buffer (ri-prompt VALID).</summary>
-    public static void ReadResume(int idx) { try { CGfxNative.EnsureResolver(); GReadResume(idx); } catch { } }
     /// <summary>WHEN .F.: il campo non riceve il fuoco nel loop READ (skip, nessun park).</summary>
     public static void ReadSkipField(int idx) { try { CGfxNative.EnsureResolver(); GReadSkipField(idx); } catch { } }
     [DllImport(CGfxNative.Lib, EntryPoint = "gmb_read_set_when_fn", CallingConvention = CallingConvention.Cdecl)]

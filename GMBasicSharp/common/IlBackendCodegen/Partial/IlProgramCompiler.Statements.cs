@@ -678,9 +678,10 @@ public sealed partial class IlProgramCompiler
     /// WHEN(.F.→skip) ; read ; assign ; VALID(.F.→re-read). Nessun delegate.</summary>
     private void EmitPendingReadAssignments()
     {
-        /* Blocchi con WHEN: esecuzione SEQUENZIALE via helper (nessuna label/branch), cosi'
-         * il predicato vede i valori confermati dai campi precedenti dello stesso READ. */
-        if (_pendingReadFields.Exists(x => x.When is not null))
+        /* Blocchi con WHEN o VALID: esecuzione SEQUENZIALE via helper (nessuna label/branch),
+         * cosi' il predicato vede i valori confermati dai campi precedenti dello stesso READ
+         * e il ri-prompt VALID riguarda solo il campo rifiutato. */
+        if (_pendingReadFields.Exists(x => x.When is not null || x.Valid is not null))
         {
             for (var i = 0; i < _pendingReadFields.Count; i++)
             {
@@ -726,7 +727,12 @@ public sealed partial class IlProgramCompiler
             _pendingReadFields.Clear();
             return;
         }
-        // READ NATIVO (unica implementazione condivisa): add dei campi, run, assegnazione.
+        // READ NATIVO (unica implementazione condivisa): reset del contesto, add dei campi,
+        // run, assegnazione. Il ri-prompt VALID torna qui: il reset impedisce che i campi
+        // si accumulino a ogni giro.
+        var again = _il.DefineLabel();
+        _il.MarkLabel(again);
+        _il.Emit(OpCodes.Call, IlRuntimeReadNativeResetMethod);
         for (var i = 0; i < _pendingReadFields.Count; i++)
         {
             var f = _pendingReadFields[i];
@@ -749,8 +755,6 @@ public sealed partial class IlProgramCompiler
             if (f.Error is not null)
             { EmitExpression(f.Error); _il.Emit(OpCodes.Call, IlRuntimeReadSetErrorMethod); }
         }
-        var again = _il.DefineLabel();
-        _il.MarkLabel(again);
         _il.Emit(OpCodes.Call, IlRuntimeReadNativeRunMethod);
         _il.Emit(OpCodes.Pop);
         for (var i = 0; i < _pendingReadFields.Count; i++)
@@ -771,8 +775,6 @@ public sealed partial class IlProgramCompiler
             var ok = _il.DefineLabel();
             EmitConditionBool(f.Valid);
             _il.Emit(OpCodes.Brtrue, ok);
-            _il.Emit(OpCodes.Ldc_I4, i);
-            _il.Emit(OpCodes.Call, IlRuntimeReadNativeResumeMethod);
             _il.Emit(OpCodes.Br, again);
             _il.MarkLabel(ok);
         }
