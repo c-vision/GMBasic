@@ -1368,6 +1368,16 @@ static const char* fn_ret_ctype(ctx_t* c, const fn_info_t* fn);
 static void lambda_synth(ctx_t* c, gmb_expr_t* e);
 int bi_is(const char* name, const char* base);
 
+/* 1 se `e` è una call QUALIFICATA (NS.FUNC) a una funzione utente/FFI dichiarata nello
+ * STESSO namespace: il TokenKind storico del nome nudo (es. LIST) non deve dettare il
+ * tipo/forma del risultato (caso reale MEMORY.LIST → DIM inferito come lista). */
+static int call_q_user_fn(ctx_t* c, gmb_expr_t* e) {
+    fn_info_t* f;
+    if (!e || e->kind != GMB_EXPR_CALL || !e->ns || !e->ns[0] || !e->var) return 0;
+    f = find_fn_arity(c, e->var, e->nargs, e->ns);
+    return f && f->stmt && f->stmt->func_ns && !strcasecmp(f->stmt->func_ns, e->ns);
+}
+
 /* Pre-scan frame-propagation (parity PCodeVM): le funzioni lanciate con GO FUNCTION ...
  * INTO girano DENTRO il wrapper gmb_gofn_* che ha un setjmp attivo → un ERROR nel loro
  * body deve SOLLEVARE (gmb_raise_error), non stampare-e-basta: il wrapper lo cattura e
@@ -2438,6 +2448,17 @@ int etype(ctx_t* c, gmb_expr_t* e) {
         && (e->tk == GMB_TOK_Extract || e->tk == GMB_TOK_Stringify
             || e->tk == GMB_TOK_ObjectToJson)) return TY_STR;
     if (e->kind == GMB_EXPR_CALL && e->var && strcasecmp(e->var, "STRINGIFY") == 0) return TY_STR;
+    /* Call QUALIFICATA a una funzione UTENTE/FFI del namespace: vale il tipo di ritorno
+     * dichiarato nell'.inc (STRING), NON il keyword omonimo. Caso reale MEMORY.LIST —
+     * LIST è una keyword: senza questa regola `DIM k = MEMORY.LIST()` inferiva un tipo
+     * lista e il C non compilava ("assigning to gmb_list_t from gmb_string_t"). */
+    if (e->kind == GMB_EXPR_CALL && e->ns && e->ns[0] && e->var) {
+        fn_info_t* _uf = find_fn_arity(c, e->var, e->nargs, e->ns);
+        if (_uf && _uf->stmt && _uf->stmt->func_ns && _uf->stmt->func_ret_type
+            && !strcasecmp(_uf->stmt->func_ns, e->ns)
+            && !strcasecmp(_uf->stmt->func_ret_type, "STRING"))
+            return TY_STR;
+    }
     /* Metodi di CONTENITORE con tipo di ritorno noto. La chiamata di metodo su variabile è
      * rappresentata come `var = "Ricevente.Metodo"` (ns vuoto): `L.Join(sep)` → gmb_string_t,
      * `S.Contains(x)`/`IndexOf` → int. Senza questa regola `etype` ricade su TY_VAL e PRINT
@@ -3794,7 +3815,7 @@ if (s->dim_var) {            int ty = suffix_type(s->dim_var);
              * L'inferenza esisteva gia' per la forma assegnazione, ma non per DIM. */
             if (!s->array_size && s->dim_init && s->dim_init->kind == GMB_EXPR_CALL) {
                 int es = 0;
-                if (tk_returns_list(s->dim_init->tk, &es)) {
+                if (!call_q_user_fn(c, s->dim_init) && tk_returns_list(s->dim_init->tk, &es)) {
                     v->gkind = GK_LIST; v->elem_str = es; if (es) v->type = TY_STR;
                     if (tk_is_md_list(s->dim_init->tk)) v->elem_boxed = 1;
                 }
@@ -6372,7 +6393,6 @@ int emit_bf_console(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t 
 int emit_bf_net(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk, gmb_expr_t** args, int nargs, int line);
 int emit_bf_connector(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk, gmb_expr_t** args, int nargs, int line); /* gmb_c99_emit_console.c */
 int emit_bf_security_tok(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk, gmb_expr_t** args, int nargs, int line);
-int emit_bf_memory(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk, gmb_expr_t** args, int nargs, int line);
 int emit_bf_convert(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk, gmb_expr_t** args, int nargs, int line); /* gmb_c99_emit_builtin.c */
 static int emit_bf_cua(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk, gmb_expr_t** args, int nargs, int line);
 int emit_bf_ai_agent(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk, gmb_expr_t** args, int nargs, int line);
@@ -7657,11 +7677,6 @@ static const gmb_bf_row_t gmb_bf_composite[] = {
     { NULL, GMB_TOK_MvGamblerDur, emit_bf_mv },
     { NULL, GMB_TOK_MvAteIpw, emit_bf_mv },
     { NULL, GMB_TOK_MvAteMatching, emit_bf_mv },
-    { NULL, GMB_TOK_MemoryStore, emit_bf_memory },
-    { NULL, GMB_TOK_MemoryLoad, emit_bf_memory },
-    { NULL, GMB_TOK_MemoryDelete, emit_bf_memory },
-    { NULL, GMB_TOK_MemoryList, emit_bf_memory },
-    { NULL, GMB_TOK_MemorySearch, emit_bf_memory },
     { NULL, GMB_TOK_Pmt, emit_bf_finance_scalar },
     { NULL, GMB_TOK_PmtExt, emit_bf_finance_scalar },
     { NULL, GMB_TOK_Fv, emit_bf_finance_scalar },

@@ -49,7 +49,6 @@ static const char* const gmb_ns_names[] = {
     "LEDGER",
     "MATH",
     "MATRIX",
-    "MEMORY",
     "MEMORYMAP",
     "MOUSE",
     "MUTEX",

@@ -1,8 +1,8 @@
 {
-  "count": 1360,
-  "namespaces": 64,
-  "distinctTokenKinds": 1256,
-  "namesInMultipleNamespaces": 87,
+  "count": 1355,
+  "namespaces": 62,
+  "distinctTokenKinds": 1251,
+  "namesInMultipleNamespaces": 86,
   "namesInMultipleNamespacesSample": [
     "Count",
     "Embed",
@@ -11,7 +11,6 @@
     "IndexMeta",
     "IndexText",
     "Info",
-    "List",
     "ListCollections",
     "Load",
     "LoadDocuments",
@@ -23,7 +22,8 @@
     "Click",
     "Find",
     "Screenshot",
-    "CREATE"
+    "CREATE",
+    "GET"
   ],
   "sameNsNameDifferentKinds": []
 }

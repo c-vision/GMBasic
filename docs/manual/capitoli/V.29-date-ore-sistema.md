@@ -109,6 +109,12 @@ va giustificato, e ogni differenza fra piattaforme va documentata.
 
 
 
+
+
+
+
+
+
 <!-- BEGIN SURFACE (generato da tools/sh/manual_surface.sh — non modificare a mano) -->
 
 ## Riferimento completo: comandi, funzioni, parametri
@@ -196,102 +202,29 @@ n  = SYSTEM.COMMANDCOUNT()     ' numero di argomenti utente (escluso il programm
 a$ = SYSTEM.COMMAND(1)         ' primo argomento utente
 
 
-### `ENV$` / `ENV.HAS` — ambiente di processo (sola lettura)
+### `ENV$` / `SYSTEM.HAS` — ambiente di processo (sola lettura)
+| Forma | Arità | Parametro | Tipo | Ritorno | Semantica |
+|---|---:|---|---|---|---|
+| `ENV$(name)` | 1 | `name` | `STRING` | `STRING` | valore corrente della variabile; `""` se assente o `name` vuoto |
+| `SYSTEM.HAS(name)` | 1 | `name` | `STRING` | `-1`/`0` | `-1` se la variabile è definita, `0` se assente o `name` vuoto |
 
-Il namespace `ENV` espone una lettura **esplicita** dell'ambiente del processo al programma
-BASIC. È una API di linguaggio: il valore viene letto quando la funzione viene valutata e
-non viene memorizzato dal runtime. Il motore continua a usare il **registro opzioni**
-(`system.settings.json`, `gmb_opts`, `AI SET OPTION`) per i propri parametri; `ENV$` non è
-un canale di configurazione del motore.
 
-Richiede `IMPORT ENV`.
+PRINT "PATH presente: "; SYSTEM.HAS("PATH")      ' -1
+PRINT "PATH: "; ENV$("PATH")                 ' valore (o "")
+PRINT "assente: ["; ENV$("NON_ESISTE"); "]"  ' []
+PRINT "vuoto: ["; ENV$(""); "]"              ' []
 
-#### Firme
-
-| Forma | Arità | Parametro | Tipo parametro | Ritorno |
-|---|---:|---|---|---|
-| `ENV$(name)` | 1 | `name` — nome della variabile d'ambiente | `STRING` | `STRING` |
-| `ENV.HAS(name)` | 1 | `name` — nome della variabile d'ambiente | `STRING` | `-1` / `0` |
-
-Le due funzioni sono **pure** rispetto allo stato BASIC: non modificano variabili, aree o
-configurazione. Non esiste `ENV SET`: l'ambiente si modifica dal processo chiamante (shell,
-`export`, service manager) prima dell'avvio.
-
-#### Semantica di `ENV$(name)`
-
-- Restituisce il valore corrente della variabile `name` come stringa.
-- Se `name` è vuoto (`""`), la variabile non esiste o non ha valore, restituisce `""`.
-- Il valore è restituito **senza trasformazioni**: non viene trimato, non viene interpretato
-  come numero e non viene normalizzato.
-- Il nome è passato al sistema operativo così com'è: su piattaforme POSIX i nomi sono
-  **case-sensitive** (`PATH` ≠ `path`); su Windows sono case-insensitive. Il programma non
-  deve assumere una policy uniforme.
-- Una variabile presente ma vuota (`NAME=`) è indistinguibile da una variabile assente per
-  `ENV$` (entrambe restituiscono `""`); per distinguerle usare `ENV.HAS`, che per una
-  variabile presente con valore vuoto restituisce comunque `-1`.
-
-#### Semantica di `ENV.HAS(name)`
-
-- Restituisce `-1` (vero BASIC) se la variabile è **definita** nel processo, `0` (falso) se
-  non lo è.
-- `name = ""` → `0`.
-- È la forma consigliata nei test di presenza e nelle configurazioni con fallback:
-  ```basic
-  IF ENV.HAS("APP_MODE") THEN
-      mode = ENV$("APP_MODE")
-  ELSE
-      mode = "default"
-  END IF
-  ```
-- Il risultato segue la convenzione booleana del linguaggio: `-1`/`0`, utilizzabile
-  direttamente in `IF`, `AND`, `OR`, `NOT`.
-
-#### Parametri, arità e diagnostica
-
-- Entrambe le funzioni richiedono **esattamente un argomento**. Chiamate con zero o due
-  argomenti sono **rifiutate in compilazione** su tutti i backend:
-  `ENV$()` / `ENV$("A","B")` non producono un programma eseguibile.
-- L'argomento è tipizzato `STRING`; un valore non stringa viene convertito secondo le regole
-  di chiamata dei builtin (un numero diventa la sua rappresentazione testuale). Per un nome
-  dinamico costruire la stringa esplicitamente (`n = "APP_" + suffix`).
-- Nomi con caratteri speciali (`=`, spazi, `-`) sono passati al sistema operativo; la
-  validità dipende dalla piattaforma. Nomi non validi si comportano come assenti.
-
-#### Esempi
-
-```basic
-IMPORT ENV
-
-' Presenza e valore
-PRINT ENV.HAS("PATH")          ' -1 sui processi normali
-PRINT ENV$("PATH")             ' valore corrente (stringa, anche molto lunga)
-PRINT "["; ENV$("NON_ESISTE"); "]"   ' []
-
-' Nome vuoto
-PRINT ENV.HAS("")              '  0
-PRINT "["; ENV$(""); "]"       ' []
-
-' Nome da variabile
 DIM n AS STRING
 n = "HOME"
-PRINT ENV.HAS(n); " "; LEN(ENV$(n))
-```
+IF SYSTEM.HAS(n) THEN
+    PRINT "HOME: "; LEN(ENV$(n))
+ELSE
+    PRINT "HOME assente"
+END IF
 
-#### Disponibilità e verifica
 
-Disponibile con semantica identica su **IL, PCodeVM, VM/C, C99Native**.
+IF SYSTEM.HAS("APP_MODE") THEN mode = ENV$("APP_MODE") ELSE mode = "default"
 
-- MiniTest: `shared/minitests/system/env_read.bas`
-  (`EXPECT: present=-1|missing= 0|emptyhas= 0|emptyval=[]|lenvar=-1`), che copre nome
-  letterale, nome in variabile, variabile assente, nome vuoto e lunghezza.
-- Sample completo: `shared/samples/System/EnvDemo.bas` (loop su più nomi, fallback di
-  configurazione, `ENV$`/`ENV.HAS`, nome vuoto).
-- Parità verificata con `tools/sh/parity4` sulle quattro gambe e con il gate MiniTest
-  xUnit/C99Native.
-
-Per gli **argomenti di riga di comando** il canone resta `SYSTEM.COMMANDCOUNT()` /
-`SYSTEM.COMMAND(i)` (1-based, `""` fuori range). Nei runner `--define NOME[=val]` seleziona i
-simboli compile-time (`#IFDEF`) senza ricompilare il sorgente a mano.
 
 ### `SYSTEM.TYPENAME` / `SYSTEM.VALTYPE` — nome e categoria di un valore
 
@@ -609,8 +542,6 @@ END IF
 ## Test ed esempi
 
 <!-- END SURFACE -->
-
-
 
 
 <!-- BEGIN DOMAIN TABLE -->

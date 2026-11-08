@@ -393,9 +393,8 @@ public sealed partial class Compiler
         { TokenKind.MouseMove, BuiltInFunction.MOUSEMOVE }, { TokenKind.MousePresent, BuiltInFunction.MOUSEPRESENT },
         { TokenKind.MouseLeft, BuiltInFunction.MOUSELEFT }, { TokenKind.MouseRight, BuiltInFunction.MOUSERIGHT },
         { TokenKind.MouseMiddle, BuiltInFunction.MOUSEMIDDLE },
-        { TokenKind.MemoryStore, BuiltInFunction.MEMORYSTORE }, { TokenKind.MemoryLoad, BuiltInFunction.MEMORYLOAD },
-        { TokenKind.MemorySearch, BuiltInFunction.MEMORYSEARCH }, { TokenKind.MemoryDelete, BuiltInFunction.MEMORYDELETE },
-        { TokenKind.MemoryList, BuiltInFunction.MEMORYLIST },
+        // MEMORY.*: superficie RIMOSSA (shared/libs/memory via FFI). I TokenKind restano:
+        // LOAD/DELETE/SEARCH/LIST sono keyword generiche usate anche altrove.
         { TokenKind.ProviderRegister, BuiltInFunction.PROVIDERREGISTER }, { TokenKind.ProviderRegisterLocal, BuiltInFunction.PROVIDERREGISTERLOCAL }, { TokenKind.ProviderConfigure, BuiltInFunction.PROVIDERCONFIGURE },
         { TokenKind.ProviderSetActive, BuiltInFunction.PROVIDERSETACTIVE }, { TokenKind.ProviderRotate, BuiltInFunction.PROVIDERROTATE },
         { TokenKind.ProviderActive, BuiltInFunction.PROVIDERACTIVE }, { TokenKind.ProviderList, BuiltInFunction.PROVIDERLIST },

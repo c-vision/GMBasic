@@ -8833,53 +8833,6 @@ void gmb_bf_499(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, 
             else { bout->is_num = 0; bout->result_ref = NULL; }
         }
 }
-static void gmb_bf_404(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
-{
-        {
-            const char* key = (argc >= 1 && args[0].type == 2 && args[0].ref && args[0].ref->kind == GMB_OBJ_STRING) ? ((gmb_obj_string_t*)args[0].ref)->data : "";
-            const char* val = (argc >= 2 && args[1].type == 2 && args[1].ref && args[1].ref->kind == GMB_OBJ_STRING) ? ((gmb_obj_string_t*)args[1].ref)->data : "";
-            bout->result = gmb_mem_store(key, val, argc >= 3 && args[2].num != 0) ? -1 : 0;
-        }
-}
-static void gmb_bf_405(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
-{
-        {
-            const char* key = (argc >= 1 && args[0].type == 2 && args[0].ref && args[0].ref->kind == GMB_OBJ_STRING) ? ((gmb_obj_string_t*)args[0].ref)->data : "";
-            if (bsp_hook_str("memory.load", key, NULL, bout)) return;
-            char* v = gmb_mem_load(key);
-            gmb_obj_string_t* r = gmb_str_cstr(v ? v : "");
-            free(v);
-            bout->is_num = 0; bout->result_ref = (gmb_obj_t*)r; bout->result_ref_bt = GMB_BT_STRING;
-        }
-}
-static void gmb_bf_406(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
-{
-        {
-            const char* pat = (argc >= 1 && args[0].type == 2 && args[0].ref && args[0].ref->kind == GMB_OBJ_STRING) ? ((gmb_obj_string_t*)args[0].ref)->data : "";
-            if (bsp_hook_str("memory.search", pat, NULL, bout)) return;
-            char* s = gmb_mem_search(pat);
-            gmb_obj_string_t* r = gmb_str_cstr(s ? s : "");
-            free(s);
-            bout->is_num = 0; bout->result_ref = (gmb_obj_t*)r; bout->result_ref_bt = GMB_BT_STRING;
-        }
-}
-static void gmb_bf_407(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
-{
-        {
-            const char* key = (argc >= 1 && args[0].type == 2 && args[0].ref && args[0].ref->kind == GMB_OBJ_STRING) ? ((gmb_obj_string_t*)args[0].ref)->data : "";
-            bout->result = gmb_mem_delete(key) ? -1 : 0;
-        }
-}
-static void gmb_bf_408(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
-{
-        {
-            if (bsp_hook_str("memory.list", NULL, NULL, bout)) return;
-            char* s = gmb_mem_list();
-            gmb_obj_string_t* r = gmb_str_cstr(s ? s : "");
-            free(s);
-            bout->is_num = 0; bout->result_ref = (gmb_obj_t*)r; bout->result_ref_bt = GMB_BT_STRING;
-        }
-}
 static void gmb_bf_409(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
 {
         {
@@ -16909,11 +16862,6 @@ static const gmb_bf_impl_t gmb_bf_impl_core[] = {
     { 3760, gmb_bf_strdate_c3760 },
     { 1228, gmb_bf_1228 },
     { 493, gmb_bf_493 },
-    { 404, gmb_bf_404 },
-    { 405, gmb_bf_405 },
-    { 406, gmb_bf_406 },
-    { 407, gmb_bf_407 },
-    { 408, gmb_bf_408 },
     { 409, gmb_bf_409 },
     { 410, gmb_bf_410 },
     { 411, gmb_bf_411 },

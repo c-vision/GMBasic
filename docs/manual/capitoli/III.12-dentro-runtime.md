@@ -1734,6 +1734,9 @@ GMBASIC_GOMAXPROCS=1 ./native/gmb_vm_c/build_debug/gmb_vm_host file.chunk --mt
 <!-- END SURFACE -->
 
 
+
+
+
 <!-- BEGIN DOMAIN TABLE -->
 ## Tavola sinottica del dominio
 
@@ -1749,8 +1752,6 @@ nel corpus di test e sample `.bas`/`.inc`: dove il corpus non usa il simbolo è 
 - **BRAINS.PATH(x1, x2, x3)** — `r = BRAINS.PATH("graph-vault", "index.md", "trading/momentum.md")` (shared/minitests/graph/graph_all.bas:34)
 - **BRAINS.QUERYMULTI(x1)** — `DIM g1$ = BRAINS.QUERYMULTI("BlackScholes", "finance")` (shared/samples/graph/FinanceBrainGraph.bas:33)
 - **BRAINS.STATS(x1)** — `r = BRAINS.STATS("graph-vault")` (shared/minitests/graph/graph_all.bas:36)
-- **ENV.ENV(x1)** — nessun uso nel corpus
-- **ENV.HAS(x1)** — `PRINT names(i); " present="; ENV.HAS(names(i))` (shared/samples/System/EnvDemo.bas:20)
 - **FONTS.TTGLYPHS(x1)** — `g = FONTS.TTGLYPHS("/tmp/gmb_fonts_non_esiste.ttf")` (shared/minitests/fonts/tt_functions.bas:18)
 - **FONTS.TTMETRICS(x1, x2, x3)** — `m = FONTS.TTMETRICS("/tmp/gmb_fonts_non_esiste.ttf", 16, 65)` (shared/minitests/fonts/tt_functions.bas:10)
 - **FONTS.TTRENDER(x1, x2, x3)** — `b = FONTS.TTRENDER("/tmp/gmb_fonts_non_esiste.ttf", 16, 65)` (shared/minitests/fonts/tt_functions.bas:14)
@@ -1819,7 +1820,9 @@ nel corpus di test e sample `.bas`/`.inc`: dove il corpus non usa il simbolo è 
 - **SYSTEM.CTYPE(x1, x2)** — `PRINT "=== Coercizione SYSTEM.CTYPE ==="` (shared/samples/System/SystemUdtIntrospection.bas:28)
 - **SYSTEM.COUNT(x1, x2)** — `IF SYSTEM.COMMANDCOUNT() >= 0 THEN PRINT "system.count ok"` (shared/samples/Commands/DirectCastCommandProbe.bas:28)
 - **SYSTEM.EMPTY(x1)** — `PRINT "EMPTY(nonInit):   "; SYSTEM.EMPTY(nonInit)` (shared/samples/System/SystemLowLevel.bas:92)
+- **SYSTEM.ENV(x1)** — nessun uso nel corpus
 - **SYSTEM.GOMAXPROCS()** — `SYSTEM.GOMAXPROCS(4)` (shared/samples/Concurrency/PCodeGpmGoMaxProcsResizeStress.bas:30)
+- **SYSTEM.HAS(x1)** — `PRINT names(i); " present="; SYSTEM.HAS(names(i))` (shared/samples/System/EnvDemo.bas:19)
 - **SYSTEM.IIF(x1, x2, x3)** — `DIM res$ = SYSTEM.IIF(val > 5, "Maggiore (IIF)", "Minore (IIF)")` (shared/samples/System/SystemLowLevel.bas:80)
 - **SYSTEM.LBOUND(x1)** — `PRINT "lbound="; SYSTEM.LBOUND(a)` (shared/minitests/system/runtime.bas:6)
 - **SYSTEM.NUMCPU()** — `nc = SYSTEM.NUMCPU()` (shared/samples/Concurrency/GpmV2NumGoroutine.bas:15)

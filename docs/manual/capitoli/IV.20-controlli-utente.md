@@ -2593,6 +2593,9 @@ il valore `INTO`, `Esc` chiude senza cambiare nulla.
 
 
 
+
+
+
 <!-- BEGIN DOMAIN TABLE -->
 ## Tavola sinottica del dominio
 

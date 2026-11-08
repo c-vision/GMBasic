@@ -527,8 +527,6 @@ procedure,DBF,SETREPLICATION,DbfSetReplication
 procedure,DBF,SETREPLICATION,DbfSetReplication
 procedure,DBF,SETREPLICATION,DbfSetReplication
 procedure,DBF,USED,Used
-procedure,ENV,ENV,EnvGet
-procedure,ENV,HAS,EnvHas
 procedure,FINANCE,CUMIPMT,Cumipmt
 procedure,FINANCE,CUMPRINC,Cumprinc
 procedure,FINANCE,DAYS360,Days360
@@ -862,11 +860,6 @@ procedure,MATRIX,SLICE,MatrixSlice
 procedure,MATRIX,TOEPLITZ,MatrixToeplitz
 procedure,MATRIX,TRACE,MatrixTrace
 procedure,MATRIX,TRANSPOSE,Transpose
-procedure,MEMORY,DELETE,MemoryDelete
-procedure,MEMORY,LIST,MemoryList
-procedure,MEMORY,LOAD,MemoryLoad
-procedure,MEMORY,SEARCH,MemorySearch
-procedure,MEMORY,STORE,MemoryStore
 procedure,MEMORYMAP,MEMORYMAP,MemoryMap
 procedure,MEMORYMAP,MMAPPEEK,MemoryMapPeek
 procedure,MEMORYMAP,MMAPREADBYTES,MemoryMapReadBytes
@@ -1181,7 +1174,9 @@ procedure,SYSTEM,COMMANDCOUNT,CommandCount
 procedure,SYSTEM,CTYPE,CType
 procedure,SYSTEM,Count,Count
 procedure,SYSTEM,EMPTY,Empty
+procedure,SYSTEM,ENV,EnvGet
 procedure,SYSTEM,GOMAXPROCS,GoMaxProcs
+procedure,SYSTEM,HAS,EnvHas
 procedure,SYSTEM,IIF,Iif
 procedure,SYSTEM,LBOUND,LBound
 procedure,SYSTEM,NUMCPU,NumCpu

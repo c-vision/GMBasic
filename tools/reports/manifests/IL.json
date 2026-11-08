@@ -1,8 +1,8 @@
 {
   "backend": "IL",
   "superficie": "TokenKind (funzioni mappate dal Compiler)",
-  "totale": 1703,
-  "implementate": 1562,
+  "totale": 1698,
+  "implementate": 1557,
   "non_coperte": 141,
   "percentuale": 91.7,
   "non_coperte_lista": [

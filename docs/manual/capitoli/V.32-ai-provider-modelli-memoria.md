@@ -337,6 +337,14 @@ quello canonico del linguaggio: trattalo come sintassi, non come risultato.
 
 
 
+
+
+
+
+
+
+
+
 <!-- BEGIN SURFACE (generato da tools/sh/manual_surface.sh — non modificare a mano) -->
 
 ## Riferimento completo: comandi, funzioni, parametri
@@ -502,14 +510,13 @@ AI EVAL VALIDATE "il sistema supporta il login e calcola il totale" AGAINST VAUL
 PRINT json     ' {"ok":true,...}
 
 
-### 2.9bis `AI DECIDE` — decision layer JEV/SystemOne (v0, 2026-11-02)
+### 2.9bis `AI DECIDE` — decision layer JEV/SystemOne (stato: completo, 4 backend)
 | Sintassi | Significato |
 |---|---|
-| `AI DECIDE <state>, "NOUL" [INTO <var$>]` | decisione booleana `false`/`true` |
-| `AI DECIDE <state>, "SCORE" [INTO <var$>]` | score `0..5` |
-| `AI DECIDE <state>, "CHOICE" [INTO <var$>]` | scelta negli slot `A..P` |
-| `AI DECIDE <state>, "CHOICE:label1|label2|..." [INTO <var$>]` | dominio libero: le label mappano gli slot `A..P` (max 16); il JSON riporta `value` = label |
-| `AI DECIDE <state>, "<KIND>", "rules"|"mock" [INTO <var$>]` | provider esplicito (v0: `rules` deterministico, `mock` prima opzione a 1.0) |
+| `AI DECIDE <stato>, "<NOUL|SCORE|CHOICE[:etichette]|SCORE:0:10>" [USING "<provider>"] [FALLBACK "p1","p2"] [INTO d]` | decisione singola |
+| `DIM d AS DECISION` / `DECISION<NOUL>` | risultato tipizzato (`.OPTION`, `.VALUE`, `.PROBABILITY`, `.CONFIDENCE`, `.CALIBRATED`, `.KIND`) |
+| `AI DECIDE VERIFY <stato>, "<kind>", "p1|p2" [INTO r$]` | confronto multi-provider (accordo/drift) |
+| `AI AGENT SET "<nome>", "decide", "off|on|auto|<alias>"` | routing dell'agente via decisione |
 
 IMPORT AI
 DIM r AS STRING
@@ -1062,17 +1069,8 @@ AI MEMORY FORGET "12"
 | Funzione | Ritorna | Esempio |
 |---|---|---|
 | `AI.MEMORYASK(query [, topK])` | stringa JSON | `r$ = AI.MEMORYASK("linguaggio preferito?", 5)` |
-| `MEMORY.SEARCH(query, topK)` | lista | `MEMORY.SEARCH("gpm", 5)` (legacy) |
-| `MEMORY.LIST()` / `STORE` / `LOAD` / `DELETE` | — | alias legacy |
 
-### Namespace `MEMORY` (KV legacy — tabella sotto)
-| Funzione | Parametri | Ritorna | Note |
-|---|---|---|---|
-| `MEMORY.STORE(key$, value, isLongTerm)` | `key` chiave (string); `value` valore; `isLongTerm` `-1`/`0` (memoria a lungo termine) | **`-1` (ok) / `0`** (booleano canonico) | inserisce o sovrascrive |
-| `MEMORY.LOAD(key$)` | `key` | stringa (valore, `""` se assente) | |
-| `MEMORY.SEARCH(pattern$)` | `pattern` | stringa (nomi chiave separati da newline) | cerca sui **nomi delle chiavi** |
-| `MEMORY.LIST()` | — | stringa (nomi chiave separati da newline) | |
-| `MEMORY.DELETE(key$)` | `key` | **`-1` (ok) / `0`** | |
+### Namespace `MEMORY` (KV del programma)
 
 IMPORT MEMORY
 MEMORY.STORE("utente", "Ada", 0)
@@ -1097,6 +1095,59 @@ Main()
 
 
 ## 4. Riferimenti
+
+### MEMORY-Guida-Utente
+
+*Fonte: `MEMORY-Guida-Utente`*
+
+
+## 1. Import
+
+IMPORT MEMORY
+
+
+## 2. Funzioni
+| funzione | parametri | ritorno |
+|---|---|---|
+| `MEMORY.STORE(key$, value$, longTerm)` | chiave, **testo** del valore, flag 0/1 | BIT: −1 scritto, 0 no |
+| `MEMORY.LOAD(key$)` | chiave | STRING: valore (`""` se assente) |
+| `MEMORY.SEARCH(pattern$)` | sottostringa della **chiave** | STRING: chiavi trovate, separate da `CHR(10)` |
+| `MEMORY.LIST()` | — | STRING: tutte le chiavi ordinate, separate da `CHR(10)` |
+| `MEMORY.DELETE(key$)` | chiave | BIT: −1 eliminata, 0 non presente |
+
+### Parametri (dettaglio)
+
+## 3. Semantica e limiti (importante)
+
+## 4. Esempio
+
+IMPORT MEMORY
+
+SUB Main()
+    MEMORY.DELETE("user-name")                       ' idempotente
+    PRINT MEMORY.STORE("user-name", "Mario Rossi", 0) ' -1
+    PRINT MEMORY.LOAD("user-name")                    ' Mario Rossi
+
+    PRINT MEMORY.STORE("user-email", "mario@example.com", 1)
+    PRINT MEMORY.SEARCH("user")                       ' user-email / user-name su righe
+    PRINT MEMORY.LIST()
+    PRINT MEMORY.DELETE("user-name")                  ' -1
+    PRINT "["; MEMORY.LOAD("user-name"); "]"          ' []
+END SUB
+
+
+## 5. Errori e diagnosi
+| sintomo | causa |
+|---|---|
+| `STORE` = 0 | chiave vuota, oppure DB non apribile (SQLite assente: errore di caricamento lib) |
+| `LOAD` = `""` | chiave assente (o valore mai scritto come stringa) |
+| `SEARCH` = `""` | nessuna **chiave** contiene il pattern (attenzione: non cerca nei valori) |
+| `DELETE` = 0 | chiave non presente |
+| risultati in ordine inatteso | `LIST`/`SEARCH` sono sempre `ORDER BY key` |
+
+## 6. Parità fra i backend
+
+## 7. Riferimenti
 
 ### AI-OCR-Audio-Guide
 
@@ -2276,9 +2327,6 @@ PRINT r$
 
 
 <!-- END SURFACE -->
-
-
-
 
 <!-- BEGIN DOMAIN TABLE -->
 ## Tavola sinottica del dominio

@@ -6249,51 +6249,6 @@ int emit_bf_security_tok(ctx_t* c, const char* name, const char* ns, gmb_tokenki
         if (SEC_TOK_TBL[i].tk == tk) return SEC_TOK_TBL[i].fn(c, args, nargs);
     return 0;
 }
-/* ── dominio: memory (2026-09-02) — MEMORY.STORE/LOAD/DELETE/LIST/SEARCH (gmb_ai.c engine) ── */
-typedef struct { gmb_tokenkind_t tk; ma_sp sp; } mem_row;
-static int me_str1(ctx_t* c, gmb_expr_t** a, int n, const char* fn) {
-    if (n != 1) return 0;
-    sb_printf(&c->out, "gmb_string_alloc(%s(", fn);
-    emit_str_operand(c, a[0]);
-    sb_put(&c->out, ".data))");
-    return 1;
-}
-static int me_store(ctx_t* c, gmb_expr_t** a, int n) {
-    if (n < 2) return 0;
-    sb_put(&c->out, "((gmb_double_t)(gmb_mem_store(");
-    emit_str_operand(c, a[0]); sb_put(&c->out, ".data, ");
-    emit_str_operand(c, a[1]); sb_put(&c->out, ".data, ");
-    if (n >= 3) { sb_put(&c->out, "(int)("); emit_expr(c, a[2]); sb_put(&c->out, ")"); }
-    else sb_put(&c->out, "0");
-    sb_put(&c->out, ") ? -1.0 : 0.0))");
-    return 1;
-}
-static int me_delete(ctx_t* c, gmb_expr_t** a, int n) {
-    if (n != 1) return 0;
-    sb_put(&c->out, "((gmb_double_t)(gmb_mem_delete(");
-    emit_str_operand(c, a[0]);
-    sb_put(&c->out, ".data) ? -1.0 : 0.0))");
-    return 1;
-}
-static int me_load(ctx_t* c, gmb_expr_t** a, int n) { return me_str1(c, a, n, "gmb_mem_load"); }
-static int me_search(ctx_t* c, gmb_expr_t** a, int n) { return me_str1(c, a, n, "gmb_mem_search"); }
-static int me_list(ctx_t* c, gmb_expr_t** a, int n) {
-    (void)a; if (n != 0) return 0;
-    sb_put(&c->out, "gmb_string_alloc(gmb_mem_list())");
-    return 1;
-}
-static const mem_row MEM_TBL[] = {
-    { GMB_TOK_MemoryStore, me_store }, { GMB_TOK_MemoryLoad, me_load },
-    { GMB_TOK_MemoryDelete, me_delete }, { GMB_TOK_MemoryList, me_list },
-    { GMB_TOK_MemorySearch, me_search },
-};
-int emit_bf_memory(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk, gmb_expr_t** args, int nargs, int line) {
-    (void)name; (void)ns; (void)line;
-    for (size_t i = 0; i < sizeof(MEM_TBL) / sizeof(MEM_TBL[0]); i++)
-        if (MEM_TBL[i].tk == tk) return MEM_TBL[i].sp(c, args, nargs);
-    return 0;
-}
-
 /* ============================================================================
  * dominio: convert (CONVERT/DOCUMENT — gmb_doc_c + gmb_runtime_c/src/gmb_md.c).
  * Riferimento semantico: C99CodeEmitter.Builtin.Convert.cs.

@@ -1219,6 +1219,9 @@ ASYNC SUB Starter(wg AS WAITGROUP)
 
 
 
+
+
+
 <!-- BEGIN DOMAIN TABLE -->
 ## Tavola sinottica del dominio
 
@@ -1237,11 +1240,6 @@ nel corpus di test e sample `.bas`/`.inc`: dove il corpus non usa il simbolo è 
 - **CONTEXT.CANCELLED(x1)** — `IF ok = 0 AND CONTEXT.CANCELLED(ctx) = 1 THEN` (shared/samples/Concurrency/PCodeGpmContext.bas:14)
 - **CONTEXT.DONE(x1)** — `done = CONTEXT.DONE(ctx)` (shared/samples/Concurrency/PCodeGpmContext.bas:12)
 - **CONTEXT.WITHCANCEL(x1)** — `child = CONTEXT.WITHCANCEL(root)` (shared/samples/Concurrency/PCodeGpmContext.bas:27)
-- **MEMORY.DELETE(x1)** — `MEMORY.DELETE("api-key-config")` (shared/samples/Ai/MemoryDemo.bas:39)
-- **MEMORY.LIST()** — `DIM allKeys$ = MEMORY.LIST()` (shared/samples/Ai/MemoryDemo.bas:34)
-- **MEMORY.LOAD(x1)** — `DIM nome$ = MEMORY.LOAD("user-name")` (shared/samples/Ai/MemoryDemo.bas:19)
-- **MEMORY.SEARCH(x1)** — `DIM results$ = MEMORY.SEARCH("user")` (shared/samples/Ai/MemoryDemo.bas:28)
-- **MEMORY.STORE(x1, x2, x3)** — `MEMORY.STORE("user-name", "Mario Rossi", 0)` (shared/samples/Ai/MemoryDemo.bas:13)
 - **MUTEX.TRYLOCK(x1)** — `DIM preso = MUTEX.TRYLOCK(mu)` (shared/samples/Math/MathAtnVectorAngle.bas:81)
 - **POOL.GET(x1)** — `v = POOL.GET(p)` (shared/samples/Concurrency/GpmV2Pool.bas:10)
 - **POOL.PUT(x1, x2)** — `POOL.PUT(p, "risorsa")` (shared/samples/Concurrency/GpmV2Pool.bas:9)

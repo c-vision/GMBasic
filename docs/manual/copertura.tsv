@@ -527,8 +527,6 @@ DBF.SETREPLICATION	funzione	1-1	si	no	shared/minitests/dbf/dbf_replication.bas:2
 DBF.SETREPLICATION	funzione	2-2	si	no	shared/minitests/dbf/dbf_replication.bas:28
 DBF.SETREPLICATION	funzione	2-2	si	no	shared/minitests/dbf/dbf_replication.bas:28
 DBF.USED	funzione	0-1	si	si	shared/minitests/dbf/dbf_all.bas:45
-ENV.ENV	funzione	1-1	si	no	-
-ENV.HAS	funzione	1-1	si	si	shared/minitests/system/env_read.bas:1
 FINANCE.CUMIPMT	funzione	6-6	si	no	shared/minitests/finance/finance_all.bas:27
 FINANCE.CUMPRINC	funzione	6-6	si	no	shared/minitests/finance/finance_all.bas:28
 FINANCE.DAYS360	funzione	2-3	si	no	shared/minitests/finance/finance_all.bas:53
@@ -862,11 +860,6 @@ MATRIX.SLICE	funzione	5-5	si	no	shared/minitests/matrix/slice.bas:5
 MATRIX.TOEPLITZ	funzione	2-2	si	no	shared/minitests/matrix/matrix_all.bas:395
 MATRIX.TRACE	funzione	1-1	si	no	shared/minitests/matrix/handles.bas:7
 MATRIX.TRANSPOSE	funzione	1-1	si	no	shared/minitests/matrix/matrix_all.bas:407
-MEMORY.DELETE	funzione	1-1	si	no	shared/minitests/memory/memory_all.bas:10
-MEMORY.LIST	funzione	0-0	si	no	shared/minitests/memory/memory_all.bas:16
-MEMORY.LOAD	funzione	1-1	si	no	shared/minitests/memory/memory_all.bas:14
-MEMORY.SEARCH	funzione	1-1	si	no	shared/minitests/memory/memory_all.bas:15
-MEMORY.STORE	funzione	3-3	si	no	shared/minitests/memory/memory_all.bas:13
 MEMORYMAP.MEMORYMAP	funzione	1-1	si	no	shared/minitests/memorymap/memorymap_all.bas:13
 MEMORYMAP.MMAPPEEK	funzione	2-2	si	no	shared/minitests/memorymap/memorymap_all.bas:16
 MEMORYMAP.MMAPREADBYTES	funzione	3-3	si	no	shared/minitests/memorymap/memorymap_all.bas:17
@@ -1181,7 +1174,9 @@ SYSTEM.COMMANDCOUNT	funzione	0-0	si	no	shared/minitests/system/commands.bas:4
 SYSTEM.CTYPE	funzione	2-2	si	no	shared/minitests/system/system_all.bas:54
 SYSTEM.Count	funzione	2-2	si	no	shared/minitests/system/system_all.bas:58
 SYSTEM.EMPTY	funzione	1-1	si	no	shared/samples/System/SystemLowLevel.bas:92
+SYSTEM.ENV	funzione	1-1	si	no	shared/minitests/system/env_read.bas:1
 SYSTEM.GOMAXPROCS	funzione	0-1	si	no	shared/minitests/system/system_gomaxprocs_park.bas:25
+SYSTEM.HAS	funzione	1-1	si	no	shared/minitests/system/env_read.bas:1
 SYSTEM.IIF	funzione	3-3	si	no	shared/minitests/system/iif.bas:2
 SYSTEM.LBOUND	funzione	1-2	si	no	shared/minitests/system/runtime.bas:6
 SYSTEM.NUMCPU	funzione	0-0	si	no	shared/minitests/system/runtime.bas:4

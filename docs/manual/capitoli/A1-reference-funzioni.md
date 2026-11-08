@@ -3174,18 +3174,6 @@ DBF.SETREPLICATION   ' dal codice del progetto: shared/minitests/dbf/dbf_replica
 DBF.USED   ' dal codice del progetto: shared/minitests/dbf/dbf_all.bas:45
 ```
 
-#### `ENV.ENV` — arita 1-1
-
-```basic
-' ENV.ENV(...) — esempio sintetico: firma con arita 1-1, nessun uso nel corpus ne nelle guide
-```
-
-#### `ENV.HAS` — arita 1-1
-
-```basic
-ENV.HAS   ' dal codice del progetto: shared/minitests/system/env_read.bas:1
-```
-
 #### `FINANCE.CUMIPMT` — arita 6-6
 
 ```basic
@@ -5184,36 +5172,6 @@ MATRIX.TRACE   ' dal codice del progetto: shared/minitests/matrix/handles.bas:7
 MATRIX.TRANSPOSE   ' dal codice del progetto: shared/minitests/matrix/matrix_all.bas:407
 ```
 
-#### `MEMORY.DELETE` — arita 1-1
-
-```basic
-MEMORY.DELETE   ' dal codice del progetto: shared/minitests/memory/memory_all.bas:10
-```
-
-#### `MEMORY.LIST` — arita 0-0
-
-```basic
-MEMORY.LIST   ' dal codice del progetto: shared/minitests/memory/memory_all.bas:16
-```
-
-#### `MEMORY.LOAD` — arita 1-1
-
-```basic
-MEMORY.LOAD   ' dal codice del progetto: shared/minitests/memory/memory_all.bas:14
-```
-
-#### `MEMORY.SEARCH` — arita 1-1
-
-```basic
-MEMORY.SEARCH   ' dal codice del progetto: shared/minitests/memory/memory_all.bas:15
-```
-
-#### `MEMORY.STORE` — arita 3-3
-
-```basic
-MEMORY.STORE   ' dal codice del progetto: shared/minitests/memory/memory_all.bas:13
-```
-
 #### `MEMORYMAP.MEMORYMAP` — arita 1-1
 
 ```basic
@@ -7098,10 +7056,22 @@ SYSTEM.COUNT   ' dal codice del progetto: shared/minitests/system/system_all.bas
 SYSTEM.EMPTY   ' dal codice del progetto: shared/samples/System/SystemLowLevel.bas:92
 ```
 
+#### `SYSTEM.ENV` — arita 1-1
+
+```basic
+SYSTEM.ENV   ' dal codice del progetto: shared/minitests/system/env_read.bas:1
+```
+
 #### `SYSTEM.GOMAXPROCS` — arita 0-1
 
 ```basic
 SYSTEM.GOMAXPROCS   ' dal codice del progetto: shared/minitests/system/system_gomaxprocs_park.bas:25
+```
+
+#### `SYSTEM.HAS` — arita 1-1
+
+```basic
+SYSTEM.HAS   ' dal codice del progetto: shared/minitests/system/env_read.bas:1
 ```
 
 #### `SYSTEM.IIF` — arita 3-3

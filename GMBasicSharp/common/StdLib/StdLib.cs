@@ -128,7 +128,6 @@ public sealed partial class StdLib : IParserRegistry
                 .OrdinalIgnoreCase);
         
         CreateSystemNamespace();
-        CreateEnvNamespace();
         CreateJsonNamespace();
         CreateConsoleNamespace();
         CreateClipNamespace();
@@ -176,7 +175,6 @@ public sealed partial class StdLib : IParserRegistry
         // namespace AI (funzioni AI.X col ritorno + comandi AI ... a spazio). Vedi StdLib.AI.cs.
         // CreateAiVectorNamespace();  // fusa nel namespace AI (2026-08-19)
         CreateTypeInfoNamespace();
-        CreateMemoryNamespace();
         // CreateWorkflowNamespace();  // fuso nel namespace AI (2026-08-28): comandi AI WORKFLOW ...
         CreateConstantsNamespace();
         // CreateMcpNamespace();   // fusa nel namespace AI (2026-08-19): non esiste un namespace MCP

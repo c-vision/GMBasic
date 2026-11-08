@@ -393,6 +393,7 @@ assorbita (non si stampa due volte).
 - `AI-Documenti-Guide` — sezione
 - `AI-Immagini-Guide` — sezione
 - `AI-Memory-Guide` — sezione
+- `MEMORY-Guida-Utente` — sezione
 - `AI-OCR-Audio-Guide` — sezione
 - `AI-Providers-Guide` — sezione
 - `AI-Skills-Plugins-MCP-Guide` — sezione
