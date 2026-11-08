@@ -58,9 +58,12 @@ SUB Main()
   PRINT "|pcvar="; FORMAT(PORTFOLIO.CVAR(hist, w, 0.95), "#.######")
 
   ' BACKTEST: due periodi x due asset; rendimento per periodo = media della riga.
-  DIM data(1) AS ARRAY OF DOUBLE
-  data(0) = {0.01, 0.03} : data(1) = {0.02, 0.04}
-  o = BACKTEST.RUN(data, "")
-  PRINT "|bt="; FORMAT(o(0), "#.######"); ":"; FORMAT(o(1), "#.######"); ":"; FORMAT(o(3), "#.######"); ":"; o(4); ":"; FORMAT(o(6), "#.######"); ":"; FORMAT(o(7), "#.######")
+  DIM data(1, 1) AS DOUBLE
+  data(0, 0) = 0.01 : data(0, 1) = 0.03
+  data(1, 0) = 0.02 : data(1, 1) = 0.04
+  DIM bo(7) AS DOUBLE
+  DIM kb AS LONG
+  kb = BACKTEST.SIMULATE(data, bo)
+  PRINT "|bt="; FORMAT(bo(0), "#.######"); ":"; FORMAT(bo(1), "#.######"); ":"; FORMAT(bo(3), "#.######"); ":"; bo(4); ":"; FORMAT(bo(6), "#.######"); ":"; FORMAT(bo(7), "#.######")
   PRINT "|f=0"
 END SUB

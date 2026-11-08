@@ -453,3 +453,12 @@ int64_t ofx_q_bt_run(const double *data, int64_t n, int64_t cols, double *out, i
     int periods = (int)(n / cols);
     return (int64_t)gq_backtest_run(data, periods, (int)cols, out);
 }
+
+/* Variante con dimensioni ESPLICITE per l'FFI che riceve una matrice 2-D (NATIVE: il
+ * buffer e' contiguo row-major, rows*cols elementi). Stesso risultato di ofx_q_bt_run. */
+int64_t ofx_q_bt_run2(const double *data, int64_t rows, int64_t cols, double *out, int64_t nout)
+{
+    (void)nout;
+    if (!data || rows <= 0 || cols <= 0) return 0;
+    return (int64_t)gq_backtest_run(data, (int)rows, (int)cols, out);
+}

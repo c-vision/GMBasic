@@ -23,7 +23,7 @@ FFI, le funzioni della superficie `TRADING.*` della StdLib.
 | `bonds.inc` | `BONDS` | 9 (prezzo/rendimento, duration, BEY, current yield, YTM, ZCB) |
 | `derivatives.inc` | `DERIVATIVES` | 16 (Black-Scholes/Merton, binomiale, 11 greche) |
 | `portfolio.inc` | `PORTFOLIO` | 19 (metriche multi-asset, min-var/max-Sharpe/risk-parity, Kelly, BL, CVaR/CDaR) |
-| `backtest.inc` | `BACKTEST` | 1 (`RUN`, pesi uguali) |
+| `backtest.inc` | `BACKTEST` | 1 (`SIMULATE` su matrice 2-D + `RUNFLAT`, pesi uguali) |
 
 `TRADING_CORE` è il nome di transizione: quando i builtin `TRADING.*` saranno rimossi
 il namespace prenderà il nome `TRADING` (vedi `Guide/utente/Quant-Guida-Utente.md`).

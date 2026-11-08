@@ -796,11 +796,15 @@ funzioni ritornano un `ARRAY OF DOUBLE`. Il layout è
 `[rendimento atteso, volatilità, Sharpe, pesi 0..n−1]` per gli ottimizzatori
 (`MINVOLATILITY`, `MAXSHARPE`, `MEANVARIANCE`, `RISKPARITY`, `EQUALLYWEIGHTED`,
 `MAXRETURN`, `EVOLVE`, `BLACKLITTERMAN`); `[metrica, 0, 0, peso]` per
-`KELLYCRITERION`/`MINCVAR`/`MINCDAR`; `[TotalReturn%, AnnualizedReturn%, MaxDrawdown,
-Sharpe, TradesCount, Turnover, curva...]` per `BACKTEST.RUN`. Le matrici di covarianza
-sono **jagged** (`DIM cov(2) AS ARRAY OF DOUBLE`, righe di pari lunghezza); una matrice
-2-D (`DIM cov(2,2)`) non va passata a un parametro FFI 1-D o jagged, perché il
-marshalling la interpreta male.
+`KELLYCRITERION`/`MINCVAR`/`MINCDAR`; per il backtest `SIMULATE` scrive in un buffer
+fornito dal chiamante `[TotalReturn%, AnnualizedReturn%, MaxDrawdown, Sharpe,
+TradesCount, Turnover, curva...]` e `RUNFLAT` lo ritorna come `ARRAY`. Le matrici di
+covarianza possono essere **jagged** (`DIM cov(2) AS ARRAY OF DOUBLE`, righe di pari
+lunghezza) — il marshaller le appiattisce — oppure una matrice 2-D rettangolare
+(`DIM m(periodi, asset)`) passata direttamente a una `DECLARE` come `BACKTEST.SIMULATE`:
+il buffer è contiguo row-major e le dimensioni arrivano esplicite (`d0`, `d1`). Un wrapper
+BASIC ha invece parametri array di rango 1 su IL, quindi gli ingressi matrice sono
+`DECLARE` dirette con buffer di uscita.
 
 Le formule chiuse di `MAXSHARPE`, `MEANVARIANCE` e `BLACKLITTERMAN` non impongono il
 vincolo long-only: con correlazioni forti possono uscire pesi negativi, come nei builtin.
@@ -917,11 +921,13 @@ sui valori `< target`; `MINVOLATILITY(Σ)`; `MAXSHARPE(μ, Σ, rf)`; `MEANVARIAN
 `PVAR(hist, w, conf)` in percentuale e `CVAR(hist, w, conf)` in frazione, entrambi sul
 buffer appiattito con `w` ignorato.
 
-`BACKTEST` (1): `RUN(data[, strategia])` e `RUNFLAT(flat, periodi, asset)`. Il rendimento
+`BACKTEST` (1): `SIMULATE(data, out)` su una matrice 2-D `DIM data(periodi, asset)` e
+`RUNFLAT(flat, periodi, asset)` su un buffer piatto. Il rendimento
 di ogni periodo è la media degli asset della riga (pesi uguali, nessun ribilanciamento);
 `TotalReturn` e `AnnualizedReturn` sono in percentuale, `Sharpe` usa 252 periodi/anno,
 `MaxDrawdown` è calcolato sul cumulato additivo dei rendimenti, `TradesCount` è il numero
-di periodi.
+di periodi. Il nome `RUN` non si usa perché è una parola chiave del linguaggio: su
+C99/VM-C la chiamata verrebbe instradata sul builtin omonimo.
 
 ### 17.3 Esempio eseguito
 

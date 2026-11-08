@@ -219,17 +219,18 @@ SUB Main()
   ' ══════════════════════════════════════════════════════════════════════════
   ' H) BACKTEST
   '    quattro mesi, due asset; rendimento di periodo = media degli asset.
-  '    RUN ritorna [TotalReturn%, AnnualizedReturn%, MaxDrawdown, Sharpe,
-  '    TradesCount, Turnover, curva dei rendimenti...].
+  '    SIMULATE scrive in un buffer [TotalReturn%, AnnualizedReturn%, MaxDrawdown,
+  '    Sharpe, TradesCount, Turnover, curva dei rendimenti...].
   ' ══════════════════════════════════════════════════════════════════════════
   PRINT "H) backtest (4 mesi, 2 asset, pesi uguali)"
-  DIM mesi(3) AS ARRAY OF DOUBLE
-  mesi(0) = {0.010, 0.020}
-  mesi(1) = {-0.005, 0.010}
-  mesi(2) = {0.015, -0.005}
-  mesi(3) = {0.020, 0.030}
-  DIM bt() AS DOUBLE
-  bt = BACKTEST.RUN(mesi, "")
+  DIM mesi(3, 1) AS DOUBLE
+  mesi(0, 0) = 0.010 : mesi(0, 1) = 0.020
+  mesi(1, 0) = -0.005 : mesi(1, 1) = 0.010
+  mesi(2, 0) = 0.015 : mesi(2, 1) = -0.005
+  mesi(3, 0) = 0.020 : mesi(3, 1) = 0.030
+  DIM bt(9) AS DOUBLE
+  DIM kb AS LONG
+  kb = BACKTEST.SIMULATE(mesi, bt)
   PRINT " TotalReturn / Annualized        = "; FORMAT(bt(0), "#.000000"); " % / "; FORMAT(bt(1), "#.000000"); " %"
   PRINT " MaxDrawdown / Sharpe            = "; FORMAT(bt(2), "#.000000"); " / "; FORMAT(bt(3), "#.000000")
   PRINT " periodi / turnover              = "; bt(4); " / "; FORMAT(bt(5), "#.000000")
