@@ -313,6 +313,23 @@ int main(void)
         report("datepicker", opened && !dp.open && dp.day == 20, "campo apre, giorno 20 scelto");
     }
 
+    /* ── PROPERTYGRID: click su una riga (geometria pixel) ─────────────── */
+    {
+        static gmb_property_grid_t pg;
+        gmb_property_grid_init(&pg, 40, 760, 260, 90);
+        gmb_property_grid_add(&pg, "policy", "rolling");
+        gmb_property_grid_add(&pg, "window", "5m");
+        gmb_property_grid_add(&pg, "strategy", "canary");
+        gmb_tui_control_register(&pg.ctrl);
+        render_frame();
+        { gmb_widget_style_t st = gmb_widget_style_current();
+          int rowh = st.row_h > 0 ? st.row_h : 24;
+          int soft = (st.shape == 1 && st.radius >= 12);
+          int top = 760 + (soft ? 4 : 0);
+          click_at(40 + 40, top + rowh + rowh / 2); }        /* riga 2 */
+        report("propertygrid", pg.selected_index == 1, "riga 2 selezionata");
+    }
+
     printf("\nTOTALE: %d PASS, %d FAIL\n", g_pass, g_fail);
     return g_fail;
 }

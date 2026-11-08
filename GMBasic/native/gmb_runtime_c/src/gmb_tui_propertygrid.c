@@ -99,10 +99,26 @@ static bool propertygrid_click(void* u, gmb_control_t* c, int x, int y)
 {
     gmb_property_grid_t* p = (gmb_property_grid_t*)u;
     if (!c->enabled) return false;
-    gmb_rect_t r = gmb_control_rect(c);
-    if (!rect_contains(r, x, y)) return false;
+    /* In GRAFICA il rect e' in PIXEL (px_*) e le righe hanno il passo del tema;
+     * in TEXT si ragiona a celle. La formula a celle in pixel selezionava righe
+     * inesistenti (prima riga sempre, o niente). */
+    int rx = c->px_w > 0 ? c->px_x : c->x;
+    int ry = c->px_h > 0 ? c->px_y : c->y;
+    int rw = c->px_w > 0 ? c->px_w : c->width;
+    int rh = c->px_h > 0 ? c->px_h : c->height;
+    if (x < rx || x >= rx + rw || y < ry || y >= ry + rh) return false;
     c->focused = true;
-    int idx = (y - c->y) + p->scroll_offset;
+    int idx;
+    if (c->px_h > 0)
+    {
+        gmb_widget_style_t st = gmb_widget_style_current();
+        int soft = (st.shape == 1 && st.radius >= 12);
+        int rowh = (st.row_h > 0 ? st.row_h : 24);
+        int top = ry + (soft ? 4 : 0);
+        idx = (y - top) / (rowh > 0 ? rowh : 1);
+    }
+    else idx = (y - c->y);
+    idx += p->scroll_offset;
     if (idx >= 0 && idx < p->items_count)
     {
         p->selected_index = idx;
