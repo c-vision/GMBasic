@@ -1,7 +1,7 @@
 ' QUANT (FFI, libgmbquant) — PORTFOLIO (19) + BACKTEST (1).
 ' Portafoglio a 3 asset: cov definita positiva, rendimenti attesi {0.10,0.05,0.02}.
 ' I risultati composti sono ARRAY: [rendimento, volatilita', Sharpe, pesi...].
-' EXPECT: er=0.069000||sd=0.111803||sh=0.590000||lo=-1||mad=0.026667||smad=0.015000||mv=0.026316:0.184211:0.789474||ms=0.040000:1.000000||mvar=1.000000||rp=1.000000||ew=0.333333||mr=0.100000: 1  0  0||kelly=0.000000||mcvar=-0.020000: 1||mcdar=0.000000: 1||ev=1.000000||bl=1.000000:0.092964||pvar=2.000000||pcvar=0.020000||bt=5.060000:34.469682:56.124861: 2 :0.020000:0.030000||f=0
+' EXPECT: er=0.069000||sd=0.111803||sh=0.590000||lo=-1||mad=0.026667||smad=0.015000||mv=0.026316:0.184211:0.789474||ms=0.040000:1.000000||mvar=1.000000||rp=1.000000||ew=0.333333||mr=0.100000: 1  0  0||kelly=0.000000||mcvar=-0.020000: 1||mcdar=0.000000: 1||ev=1.000000||bl=1.000000:0.092964||pvar=2.000000||pcvar=0.020000||bt=5.060000:34.469682:56.124861: 2 :0.020000:0.030000||btf=5.060000||f=0
 IMPORT PORTFOLIO
 IMPORT BACKTEST
 
@@ -65,5 +65,10 @@ SUB Main()
   DIM kb AS LONG
   kb = BACKTEST.SIMULATE(data, bo)
   PRINT "|bt="; FORMAT(bo(0), "#.######"); ":"; FORMAT(bo(1), "#.######"); ":"; FORMAT(bo(3), "#.######"); ":"; bo(4); ":"; FORMAT(bo(6), "#.######"); ":"; FORMAT(bo(7), "#.######")
+  DIM flat(3) AS DOUBLE
+  flat(0) = 0.01 : flat(1) = 0.03 : flat(2) = 0.02 : flat(3) = 0.04
+  DIM fr() AS DOUBLE
+  fr = BACKTEST.RUNFLAT(flat, 2, 2)
+  PRINT "|btf="; FORMAT(fr(0), "#.######")
   PRINT "|f=0"
 END SUB
