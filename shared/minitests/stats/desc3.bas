@@ -1,4 +1,4 @@
-IMPORT STATS AS S
+IMPORT STATSX AS S
 SUB Main()
   DIM d(4) AS DOUBLE = {5, 2, 9, 1, 7}
   DIM e(4) AS DOUBLE = {9, 4, 3, 6, 8}
