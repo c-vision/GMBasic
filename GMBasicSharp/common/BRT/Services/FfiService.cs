@@ -465,7 +465,7 @@ public class FfiService : IFfiService
         return kind == 1 ? Convert.ToDouble(result ?? 0L) : result;
     }
 
-    private readonly Dictionary<(IntPtr, int, int, long, long, long, long, string, long), Delegate> _typedArrDelegateCache = new();
+    private readonly Dictionary<(IntPtr, int, int, long, long, long, long, string, long, bool), Delegate> _typedArrDelegateCache = new();
     // Struct/UDT (2026-09-28): cache dei VALUE TYPE CLR costruiti a runtime per una "forma"
     // UDT (kind + numero di campi) — riusata sia per parametri sia per ritorni, e tra chiamate
     // diverse con la stessa forma (es. due UDT distinti con lo stesso numero di campi/kind
@@ -988,7 +988,10 @@ public class FfiService : IFfiService
             string.Join(",", (udtParams ?? Array.Empty<FfiUdtShape?>()).Select(ShapeSig)) + "|" + ShapeSig(udtReturn) +
             "|" + string.Join(",", (udtParamClrTypes ?? Array.Empty<Type?>()).Select(t => t?.FullName ?? "")) + "|" + (udtReturnClrType?.FullName ?? "") +
             "|" + string.Join(",", udtShapeStrs ?? Array.Empty<string>()) + "|" + (udtReturnShapeStr ?? "");
-        var key = (function, n, kind, arrayMask, stringMask, byrefScalarMask, scalarKindMask, udtShapeKey, byrefUdtMask);
+        // `retIsString` fa parte della chiave: stessa firma di argomenti con ritorno stringa o
+        // numerico sono DUE delegate diversi (IntPtr vs double) e riusare quello sbagliato
+        // trasformava il puntatore in un double → crash nativo su PtrToStringUTF8.
+        var key = (function, n, kind, arrayMask, stringMask, byrefScalarMask, scalarKindMask, udtShapeKey, byrefUdtMask, retIsString);
         if (!_typedArrDelegateCache.TryGetValue(key, out var del))
         {
             var paramTypes = new Type[n];
@@ -1037,6 +1040,10 @@ public class FfiService : IFfiService
                 ? BuildFfiTypeFromShape(ParseUdtShape(udtReturnShapeStr).Fields)
                 : udtReturnClrType ?? (udtReturn != null
                     ? GetOrBuildUdtShapeType(udtReturn.FieldTypes, udtReturn.FieldIsInt, udtReturn.FieldOffsets)
+                    // Ritorno STRINGA: il nativo restituisce `char*` → il delegate deve tornare
+                    // IntPtr (non double: il puntatore reinterpretato come double, poi
+                    // Convert.ToInt64, dava un indirizzo invalido → crash nativo).
+                    : retIsString ? typeof(IntPtr)
                     : kind == 1 ? typeof(long) : typeof(double));
             del = CreateDelegate(function, returnType, paramTypes);
             _typedArrDelegateCache[key] = del;
@@ -1542,7 +1549,11 @@ public class FfiService : IFfiService
             }
             if (retIsString)
             {
-                var ptr = (IntPtr)Convert.ToInt64(result ?? 0L);
+                // Il delegate torna IntPtr (vedi returnType); accetta anche long per i
+                // percorsi storici che restituiscono un intero.
+                var ptr = result is IntPtr ip ? ip
+                    : result is null ? IntPtr.Zero
+                    : (IntPtr)Convert.ToInt64(result);
                 return ptr == IntPtr.Zero ? "" : (Marshal.PtrToStringUTF8(ptr) ?? "");
             }
             // Copy-out degli array di UDT (S3): la funzione nativa può aver modificato il buffer.

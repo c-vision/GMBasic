@@ -57,12 +57,16 @@ public static partial class IlRuntime
     /// un metodo runtime a parte che ritorna string invece di double (FfiService fa il
     /// copy-out UTF-8 del puntatore nativo prima di tornare — vedi
     /// FfiService.CallFunctionTypedArr). PCodeVM non ne ha bisogno: task.PushRef è già generico.</summary>
-    public static string FfiCallTypedArrStr(string lib, string symbol, object?[] args, int kind, long arrayMask, long arrayElemIntMask, long stringMask, long byrefScalarMask = 0, long byrefScalarElemIntMask = 0)
+    public static string FfiCallTypedArrStr(string lib, string symbol, object?[] args, int kind, long arrayMask, long arrayElemIntMask, long stringMask, long byrefScalarMask = 0, long byrefScalarElemIntMask = 0, long scalarKindMask = 0)
     {
         var ffi = Current.Ffi;
         var handle = ffi.LoadLibrary(lib);
         var fnPtr = ffi.GetFunction(handle, symbol);
-        var result = ffi.CallFunctionTypedArr(fnPtr, args, kind, arrayMask, arrayElemIntMask, stringMask, retIsString: true, byrefScalarMask, byrefScalarElemIntMask, scalarKindMask: (kind == 1 ? 0xFFFF : 0));
+        // scalarKindMask dal COMPILATORE: la vecchia scorciatoia `kind == 1 ? 0xFFFF : 0`
+        // passava come DOUBLE ogni scalare LONG quando kind=0 (firma con ritorno STRING:
+        // es. BTCADDRFROMPUB(pub AS BYTE, n AS LONG) → n = bit di 33.0 = 4.6e18 → overread
+        // e SIGBUS nella lib nativa).
+        var result = ffi.CallFunctionTypedArr(fnPtr, args, kind, arrayMask, arrayElemIntMask, stringMask, retIsString: true, byrefScalarMask, byrefScalarElemIntMask, scalarKindMask: scalarKindMask);
         return result as string ?? "";
     }
 
