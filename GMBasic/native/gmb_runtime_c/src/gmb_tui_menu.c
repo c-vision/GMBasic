@@ -3,6 +3,7 @@
  * File per-modulo: piccolo, verificabile e committabile singolarmente.
  * ============================================================================ */
 #include "gmb_tui_widgets.h"
+#include "gmb_ui_gfx.h"
 #include "gmb_graphics.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -84,10 +85,13 @@ int gmb_tui_menu_covers(int x, int y)
 }
 
 /* Mouse: click sulla barra apre la voce sotto il cursore; click su una sottovoce la attiva. */
+static bool menu_click(void* u, gmb_control_t* c, int x, int y);
 static bool menu_mouse(void* u, gmb_control_t* c, const gmb_mouse_action_t* a)
 {
     gmb_menu_t* m = (gmb_menu_t*)u;
     if (!c || !c->enabled || !a || m->items_count == 0) return false;
+    /* GRAFICA: hit-test pixel (chip e dropdown), stessa geometria del renderer. */
+    if (GMB_GFX_SCREEN_ON() && a->kind == GMB_MA_CLICK) return menu_click(u, c, a->x, a->y);
     /* Hover sulla barra (menu aperto): cambia il menu aperto SENZA clic (TV). */
     if (a->kind == GMB_MA_MOVE)
     {
@@ -254,11 +258,123 @@ static bool menu_key(void* u, gmb_control_t* c, int key)
     return false;
 }
 
+/* ── Geometria PIXEL del menubar (UNICA fonte per render e hit-test) ────── */
+typedef struct {
+    int x, y, w, h;                 /* barra */
+    int th, pad, gap;
+    int n;
+    int cx[16], cw[16];             /* chip */
+    int dd_x, dd_y, dd_w, dd_h;     /* dropdown (se aperto e con sotto-voci) */
+} menu_px_t;
+
+static void menu_px_geom(gmb_menu_t* m, gmb_control_t* c, menu_px_t* g)
+{
+    gmb_widget_style_t st = gmb_widget_style_current();
+    memset(g, 0, sizeof(*g));
+    g->x = (c->px_w > 0) ? c->px_x : c->x;
+    g->y = (c->px_h > 0) ? c->px_y : c->y;
+    g->w = (c->px_w > 0) ? c->px_w : c->width;
+    g->th = gmb_gfx_text_height_logical(); if (g->th <= 0) g->th = 16;
+    g->h = st.row_h > 0 ? st.row_h : g->th + 10;
+    g->pad = 10; g->gap = 2;
+    g->n = m->items_count > 16 ? 16 : m->items_count;
+    int x = g->x;
+    for (int i = 0; i < g->n; i++)
+    {
+        int tw = gmb_gfx_text_width_logical(m->items[i].label) + 2 * g->pad;
+        g->cx[i] = x; g->cw[i] = tw;
+        x += tw + g->gap;
+    }
+    /* dropdown del menù selezionato, se ha sotto-voci */
+    g->dd_x = g->dd_y = g->dd_w = g->dd_h = 0;
+    if (m->is_open && m->selected_index >= 0 && m->selected_index < g->n)
+    {
+        gmb_menu_item_t* it = &m->items[m->selected_index];
+        if (it->sub_count > 0)
+        {
+            int rh = st.row_h > 0 ? st.row_h : g->th + 10;
+            g->dd_x = g->cx[m->selected_index];
+            g->dd_y = g->y + g->h + 2;
+            g->dd_w = 180;
+            g->dd_h = it->sub_count * rh + 8;
+        }
+    }
+}
+
 static void menu_draw_px(void* u, gmb_control_t* c)
 {
     gmb_menu_t* m = (gmb_menu_t*)u;
-    const char* _it[16]; for (int i = 0; i < m->items_count && i < 16; i++) _it[i] = m->items[i].label;
-    gmb_px_draw_ex(GMB_PX_MENUBAR, c->x, c->y, c->width, c->height, NULL, _it, m->items_count, m->selected_index, 0, 0, NULL, 0, NULL, 0);
+    menu_px_t g; menu_px_geom(m, c, &g);
+    gmb_widget_style_t st = gmb_widget_style_current();
+    unsigned acc = (st.accent & 0xFFFFFFu) ? st.accent : st.fill_press;
+
+    for (int i = 0; i < g.n; i++)
+    {
+        int sel = (i == m->selected_index);
+        if (sel)
+            gmb_gfx_fill_rounded_rect(g.cx[i], g.y, g.cw[i], g.h, (st.shape == 1) ? g.h / 2 : 4,
+                                      (acc & 0xFFFFFFu) | 0x55000000u);
+        gmb_gfx_draw_text(m->items[i].label, g.cx[i] + g.pad, g.y + (g.h - g.th) / 2, 0,
+                          (int)(0x40000000u | ((sel ? 0xFFFFFFu : (st.text & 0xFFFFFFu)))));
+    }
+    if (g.dd_h <= 0) return;
+
+    /* dropdown OPACO sopra la pagina (il popup e' disegnato per ultimo dal livello TUI) */
+    unsigned base = 0xFF000000u | (st.fill & 0xFFFFFFu);
+    gmb_gfx_fill_rounded_rect(g.dd_x, g.dd_y, g.dd_w, g.dd_h, 8, base);
+    gmb_gfx_stroke_rounded_rect(g.dd_x, g.dd_y, g.dd_w, g.dd_h, 8, st.border);
+    gmb_menu_item_t* it = &m->items[m->selected_index];
+    int rh = (g.dd_h - 8) / (it->sub_count > 0 ? it->sub_count : 1);
+    for (int i = 0; i < it->sub_count; i++)
+    {
+        int iy = g.dd_y + 4 + i * rh;
+        if (i == m->sub_selected_index)
+            gmb_gfx_fill_rounded_rect(g.dd_x + 2, iy, g.dd_w - 4, rh - 1, 5,
+                                      (acc & 0xFFFFFFu) | 0x44000000u);
+        gmb_gfx_draw_text(it->sub[i].label, g.dd_x + 12, iy + (rh - g.th) / 2, 0,
+                          (int)(0x40000000u | (st.text & 0xFFFFFFu)));
+    }
+}
+
+static bool menu_click(void* u, gmb_control_t* c, int x, int y)
+{
+    gmb_menu_t* m = (gmb_menu_t*)u;
+    if (!c->enabled) return false;
+    menu_px_t g; menu_px_geom(m, c, &g);
+
+    /* dropdown aperto: scelta voce */
+    if (g.dd_h > 0 && x >= g.dd_x && x < g.dd_x + g.dd_w && y >= g.dd_y && y < g.dd_y + g.dd_h)
+    {
+        gmb_menu_item_t* it = &m->items[m->selected_index];
+        int rh = (g.dd_h - 8) / (it->sub_count > 0 ? it->sub_count : 1);
+        int r = (y - g.dd_y - 4) / (rh > 0 ? rh : 1);
+        if (r >= 0 && r < it->sub_count)
+        {
+            m->sub_selected_index = r;
+            m->is_open = false;
+            if (it->sub[r].action) it->sub[r].action(it->sub[r].action_ctx);
+            { extern void gmb_tui_fire(int, int); gmb_tui_fire(c->handle, GMB_EV_CLICK); }
+        }
+        else m->is_open = false;
+        return true;
+    }
+    /* barra: seleziona la voce (e apre il dropdown se ha sotto-voci) */
+    if (y >= g.y && y < g.y + g.h)
+    {
+        for (int i = 0; i < g.n; i++)
+        {
+            if (x >= g.cx[i] && x < g.cx[i] + g.cw[i])
+            {
+                m->selected_index = i;
+                m->sub_selected_index = 0;
+                m->is_open = (m->items[i].sub_count > 0);
+                { extern void gmb_tui_fire(int, int); gmb_tui_fire(c->handle, GMB_EV_CLICK); }
+                return true;
+            }
+        }
+    }
+    if (m->is_open) { m->is_open = false; return true; }
+    return false;
 }
 void gmb_menu_init(gmb_menu_t* m, int x, int y, int w)
 {

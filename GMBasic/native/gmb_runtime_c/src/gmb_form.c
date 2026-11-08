@@ -1844,9 +1844,12 @@ static int popup_area(gmb_control_t* c, int only_if_open, int* x, int* y, int* w
         {
             gmb_menu_t* m = (gmb_menu_t*)c->user;
             if (only_if_open && !m->is_open) return 0;
-            int n = m->items_count;
-            if (n <= 0) return 0;
-            *x = rx; *y = ry + row; *w = rw; *h = row * n;
+            if (m->items_count <= 0) return 0;
+            /* dropdown del menu selezionato (sotto la barra) */
+            int idx = (m->selected_index >= 0 && m->selected_index < m->items_count) ? m->selected_index : 0;
+            int nsub = m->items[idx].sub_count;
+            if (nsub <= 0) return 0;
+            *x = rx; *y = ry + row + 2; *w = 180; *h = row * nsub + 8;
             return 1;
         }
         case GMB_CK_DATEPICKER:
