@@ -2,6 +2,7 @@
 ' ============================================================================================================
 ' COMPRESSION — compressione stringhe con TUTTI gli algoritmi (GZIP, DEFLATE, BROTLI, ZLIB, BZIP2)
 ' ============================================================================================================
+REQUIRE "compression"
 IMPORT COMPRESSION WITH ALIAS
 
 SUB Main()

@@ -392,7 +392,6 @@ public sealed partial class IlProgramCompiler
         BuiltinFunctionCallExpr f when f.Name.Kind == TokenKind.StackPush => new VoidType(),
         // KEYIMPORT(pem, target) — forma COMANDO: il 2° arg è il target, il risultato è
         // già stoccato lì → void (il chiamante statement non deve popare).
-        BuiltinFunctionCallExpr f when f.Name.Kind == TokenKind.KeyImport && f.Args.Length == 2 && f.Args[1] is VariableExpr => new VoidType(),
         BuiltinFunctionCallExpr f when f.Name.Kind == TokenKind.StackPop && f.Args.Length > 0 => CollectionElementType(InferType(f.Args[0])),
         BuiltinFunctionCallExpr f when f.Name.Kind is TokenKind.Dequeue or TokenKind.First or TokenKind.Last && f.Args.Length == 1
             && NormalizeInferredType(InferType(f.Args[0])) is RingBufferType or CacheType or TreeType or AVLTreeType or RedBlackTreeType

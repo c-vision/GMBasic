@@ -3,6 +3,7 @@
 ' Esempio per il namespace COMPRESSION (GZIP/BROTLI/ZLIB/BZIP2/DEFLATE + ZIP).
 ' Path assoluti: la CWD differisce tra i backend.
 ' ============================================================================
+REQUIRE "compression"
 IMPORT COMPRESSION AS C
 IMPORT IO
 

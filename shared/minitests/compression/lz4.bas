@@ -1,5 +1,6 @@
 ' MiniTest: COMPRESSION.LZ4/UNLZ4 — round-trip (parita' 4 backend).
 ' EXPECT: lz4-ok
+REQUIRE "compression"
 IMPORT COMPRESSION AS C
 
 SUB Main

@@ -7309,77 +7309,6 @@ static void gmb_bf_677(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func
                                         args[2].num, (int)args[5].num, (int)args[6].num);
         }
 }
-static void gmb_bf_658(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
-{
-        {
-            /* COMPRESS(data, algorithm) — canone StdLib (data PRIMO, algoritmo SECONDO). */
-            const char* algo = (argc >= 2 && args[1].type == 2 && args[1].ref) ? ((gmb_obj_string_t*)args[1].ref)->data : "deflate";
-            if (argc >= 2 && args[0].type == 2 && args[0].ref)
-            {
-                gmb_obj_string_t* s = (gmb_obj_string_t*)args[0].ref;
-                size_t olen = 0;
-                unsigned char* out = gmb_compress_data(algo, (const unsigned char*)s->data, s->length, &olen);
-                if (out)
-                {
-                    gmb_obj_string_t* r = gmb_str_alloc((const char*)out, (uint32_t)olen);
-                    free(out);
-                    bout->is_num = 0; bout->result_ref = (gmb_obj_t*)r; bout->result_ref_bt = GMB_BT_STRING;
-                }
-                else { bout->is_num = 0; bout->result_ref = NULL; }
-            }
-            else { bout->is_num = 0; bout->result_ref = NULL; }
-        }
-}
-static void gmb_bf_659(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
-{
-        {
-            /* DECOMPRESS(data, algorithm) — canone StdLib (data PRIMO, algoritmo SECONDO). */
-            const char* algo = (argc >= 2 && args[1].type == 2 && args[1].ref) ? ((gmb_obj_string_t*)args[1].ref)->data : "deflate";
-            if (argc >= 2 && args[0].type == 2 && args[0].ref)
-            {
-                gmb_obj_string_t* s = (gmb_obj_string_t*)args[0].ref;
-                size_t olen = 0;
-                unsigned char* out = gmb_decompress_data(algo, (const unsigned char*)s->data, s->length, &olen);
-                if (out)
-                {
-                    gmb_obj_string_t* r = gmb_str_alloc((const char*)out, (uint32_t)olen);
-                    free(out);
-                    bout->is_num = 0; bout->result_ref = (gmb_obj_t*)r; bout->result_ref_bt = GMB_BT_STRING;
-                }
-                else { bout->is_num = 0; bout->result_ref = NULL; }
-            }
-            else { bout->is_num = 0; bout->result_ref = NULL; }
-        }
-}
-static void gmb_bf_660(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
-{
-        {
-            /* GZIP(660)/UNGZIP(661)/BROTLI(662)/UNBROTLI(663)/ZLIB(664)/UNZLIB(665)/
-             * BZIP2(666)/UNBZIP2(667)/DEFLATE(668)/UNDEFLATE(669). algo = func_code-659 (1..10);
-             * i codici runtime sono 0=gzip 1=zlib 2=deflate 3=bzip2 4=brotli. I codici DISPARI
-             * (660,662,...) comprimono, i PARI decomprimono. */
-            int algo = func_code - 659;
-            static const int codes[11] = { -1, 0, 0, 4, 4, 1, 1, 3, 3, 2, 2 };
-            int compress = (algo % 2 == 1);
-            int c = (algo >= 1 && algo <= 10) ? codes[algo] : 2;
-            if (argc >= 1 && args[0].type == 2 && args[0].ref)
-            {
-                gmb_obj_string_t* s = (gmb_obj_string_t*)args[0].ref;
-                size_t olen = 0;
-                unsigned char* out = compress
-                    ? gmb_compress_algo(c, (const unsigned char*)s->data, s->length, &olen)
-                    : gmb_decompress_algo(c, (const unsigned char*)s->data, s->length, &olen);
-                if (out)
-                {
-                    gmb_obj_string_t* r = gmb_str_alloc((const char*)out, (uint32_t)olen);
-                    free(out);
-                    bout->is_num = 0; bout->result_ref = (gmb_obj_t*)r; bout->result_ref_bt = GMB_BT_STRING;
-                }
-                else { bout->is_num = 0; bout->result_ref = NULL; }
-            }
-            else { bout->is_num = 0; bout->result_ref = NULL; }
-        }
-}
 static void gmb_bf_3802(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
 {
         {
@@ -7426,41 +7355,6 @@ static void gmb_bf_3815(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int fun
                     bout->is_num = 0; bout->result_ref = (gmb_obj_t*)r; bout->result_ref_bt = GMB_BT_STRING;
                 }
             }
-        }
-}
-static void gmb_bf_670(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
-{
-        {
-            /* ALGORITHMS() — canone IL/CommonLib.CompressionUtils.SupportedAlgorithms (STRINGA). */
-            const char* a = "GZIP,DEFLATE,BROTLI,ZLIB,BZIP2,ZSTD,LZ4,XZ";
-            gmb_obj_string_t* r = gmb_str_alloc(a, (uint32_t)strlen(a));
-            bout->is_num = 0; bout->result_ref = (gmb_obj_t*)r; bout->result_ref_bt = GMB_BT_STRING;
-        }
-}
-static void gmb_bf_3796(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
-{
-        {
-            /* ZSTD(3796)/UNZSTD(3797)/LZ4(3798)/UNLZ4(3799)/XZ(3800)/UNXZ(3801).
-             * algo runtime: 5=zstd 6=lz4 7=xz. I DISPARI comprimono, i PARI decomprimono. */
-            int idx = func_code - 3795;       /* 1..6 */
-            int compress = (idx % 2 == 1);
-            int c = 4 + (idx + 1) / 2;        /* 5,5,6,6,7,7 */
-            if (argc >= 1 && args[0].type == 2 && args[0].ref)
-            {
-                gmb_obj_string_t* s = (gmb_obj_string_t*)args[0].ref;
-                size_t olen = 0;
-                unsigned char* out = compress
-                    ? gmb_compress_algo(c, (const unsigned char*)s->data, s->length, &olen)
-                    : gmb_decompress_algo(c, (const unsigned char*)s->data, s->length, &olen);
-                if (out)
-                {
-                    gmb_obj_string_t* r = gmb_str_alloc((const char*)out, (uint32_t)olen);
-                    free(out);
-                    bout->is_num = 0; bout->result_ref = (gmb_obj_t*)r; bout->result_ref_bt = GMB_BT_STRING;
-                }
-                else { bout->is_num = 0; bout->result_ref = NULL; }
-            }
-            else { bout->is_num = 0; bout->result_ref = NULL; }
         }
 }
 static void gmb_bf_127(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
@@ -16953,30 +16847,11 @@ static const gmb_bf_impl_t gmb_bf_impl_core[] = {
     { 159, gmb_bf_159 },
     { 161, gmb_bf_161 },
     { 677, gmb_bf_677 },
-    { 658, gmb_bf_658 },
-    { 659, gmb_bf_659 },
-    { 660, gmb_bf_660 },
-    { 661, gmb_bf_660 },
-    { 662, gmb_bf_660 },
-    { 663, gmb_bf_660 },
-    { 664, gmb_bf_660 },
-    { 665, gmb_bf_660 },
-    { 666, gmb_bf_660 },
-    { 667, gmb_bf_660 },
-    { 668, gmb_bf_660 },
-    { 669, gmb_bf_660 },
-    { 3796, gmb_bf_3796 },
-    { 3797, gmb_bf_3796 },
-    { 3798, gmb_bf_3796 },
-    { 3799, gmb_bf_3796 },
-    { 3800, gmb_bf_3796 },
-    { 3801, gmb_bf_3796 },
     { 3802, gmb_bf_3802 },
     { 3803, gmb_bf_3802 },
     { 3804, gmb_bf_3802 },
     { 3815, gmb_bf_3815 },   /* MESSAGE.DELIVERY (BuiltInFunction.MESSAGEDELIVERY) */
     { 3816, gmb_bf_3816 },   /* LENB (BuiltInFunction.LENB): BYTE UTF-8 */
-    { 670, gmb_bf_670 },
     { 127, gmb_bf_127 },
     { 515, gmb_bf_515 },
     { 516, gmb_bf_515 },

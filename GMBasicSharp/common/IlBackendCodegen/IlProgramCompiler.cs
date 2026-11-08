@@ -259,14 +259,11 @@ public sealed partial class IlProgramCompiler
     private static readonly MethodInfo IlRuntimeDtocMethod = typeof(IlRuntime).GetMethod(nameof(IlRuntime.Dtoc))!;
     private static readonly MethodInfo IlRuntimeCmonthMethod = typeof(IlRuntime).GetMethod(nameof(IlRuntime.Cmonth))!;
     private static readonly MethodInfo IlRuntimeDateDiffMethod = typeof(IlRuntime).GetMethod(nameof(IlRuntime.DateDiff))!;
-    private static readonly MethodInfo IlCompressionCompressMethod = typeof(CommonLib.CompressionUtils).GetMethod(nameof(CommonLib.CompressionUtils.CompressString))!;
-    private static readonly MethodInfo IlCompressionDecompressMethod = typeof(CommonLib.CompressionUtils).GetMethod(nameof(CommonLib.CompressionUtils.DecompressString))!;
     private static readonly MethodInfo IlGrepMatchesMethod = typeof(NativeGrep).GetMethod(nameof(NativeGrep.MatchesArray))!;
     private static readonly MethodInfo IlGrepFilesMethod = typeof(NativeGrep).GetMethod(nameof(NativeGrep.FilesArray))!;
     private static readonly MethodInfo IlGrepCountMethod = typeof(NativeGrep).GetMethod(nameof(NativeGrep.Count))!;
     private static readonly MethodInfo IlRuntimeZipMethod = typeof(IlRuntime).GetMethod(nameof(IlRuntime.Zip))!;
     private static readonly MethodInfo IlRuntimeUnzipMethod = typeof(IlRuntime).GetMethod(nameof(IlRuntime.Unzip))!;
-    private static readonly MethodInfo IlRuntimeAlgorithmsMethod = typeof(IlRuntime).GetMethod(nameof(IlRuntime.Algorithms))!;
     private static readonly MethodInfo IlRuntimeHostMethod = typeof(IlRuntime).GetMethod(nameof(IlRuntime.Host))!;
     private static readonly MethodInfo IlRuntimeTempDirMethod = typeof(IlRuntime).GetMethod(nameof(IlRuntime.TempDir))!;
     private static readonly MethodInfo IlRuntimeGetHostIpMethod = typeof(IlRuntime).GetMethod(nameof(IlRuntime.GetHostIp))!;
@@ -823,8 +820,6 @@ public sealed partial class IlProgramCompiler
             case RestoreStmt restore: EmitRestoreStatement(restore); break;
             case RandomizeStmt randomize: EmitRandomizeStatement(randomize); break;
             case SystemShellStmt shell: EmitSystemShellStatement(shell); break;
-            case KeyGenStmt keyGen: EmitKeyGenStatement(keyGen); break;
-            case KeyCloseStmt keyClose: EmitKeyCloseStatement(keyClose); break;
             case DeclarationStmt d: EmitDeclarationStatement(d); break;
             case RedimStmt r: EmitRedimStatement(r); break;
             case AAddStmt aadd: EmitAAddStatement(aadd); break;

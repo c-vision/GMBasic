@@ -275,40 +275,6 @@ public sealed partial class Parser
     }
 
     /// <summary>
-    /// [FASE 1] Parsa un'istruzione KEYGEN.
-    /// </summary>
-    public static KeyGenStmt ParseKeyGenStatement(Parser parser, string expectedNamespace)
-    {
-        var keygenToken = parser.Consume(TokenKind.KeyGen, "Expected 'KEYGEN'.");
-        var algorithm = parser.ParseExpression();
-        parser.Consume(TokenKind.Comma, "Expected ',' after algorithm expression.");
-        var privateHandle = parser.ParseTarget();
-        parser.Consume(TokenKind.Comma, "Expected ',' after private key handle variable.");
-        var publicHandle = parser.ParseTarget();
-
-        Expr? keySize = null;
-        if (parser.Match(TokenKind.Comma))
-        {
-            keySize = parser.ParseExpression();
-        }
-
-        return new KeyGenStmt(algorithm, privateHandle, publicHandle, keySize, keygenToken);
-    }
-
-    /// <summary>
-    /// [FASE 1] Parsa un'istruzione KEYCLOSE.
-    /// </summary>
-    public static KeyCloseStmt ParseKeyCloseStatement(Parser parser, string? ns)
-    {
-        var keyCloseToken = parser.Consume(TokenKind.KeyClose, "Internal parser error: Expected 'KEYCLOSE' token.");
-        Expr keyHandle;
-        // Sintassi unificata (legacy e qualificata fusa): KEYCLOSE handle
-        keyHandle = parser.ParseExpression();
-
-        return new KeyCloseStmt(keyHandle, keyCloseToken);
-    }
-
-    /// <summary>
     /// [FASE 1] Parsa un'istruzione di controllo audio (es. SOUND STOP "bgm").
     /// </summary>
     private static AudioControlStmt ParseAudioControlStatement(Parser parser)

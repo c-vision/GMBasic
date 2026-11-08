@@ -22,7 +22,7 @@
 IMPORT HTTP
 IMPORT IO
 IMPORT JSON
-IMPORT COMPRESSION
+IMPORT ARCHIVE
 IMPORT CRYPTOGRAPHY
 
 ' --- Configurazione da file di settings (package-registry.json, accanto al server) ---
@@ -288,7 +288,7 @@ autoStop = 0
 IF cfg.autoStopSeconds > 0 THEN autoStop = cfg.autoStopSeconds
 
 ' Configura il server HTTP: timeout richiesta esteso (default 5 min) così il download
-' (COMPRESSION.ZIP + SendFile) di pacchetti grandi non finisce in 504 Gateway Timeout
+' (ARCHIVE.ZIP + SendFile) di pacchetti grandi non finisce in 504 Gateway Timeout
 ' (RequestTimeoutMs di default = 30s). Sovrascrivibile con cfg.requestTimeoutMs.
 DIM httpTimeoutMs AS LONG
 httpTimeoutMs = 300000
@@ -484,9 +484,9 @@ SUB HandleDownload(req AS HTTPREQUEST, res AS HTTPRESPONSE)
       srcs = srcs + pkgDir + "/" + e + ";"
     NEXT
     srcs = srcs + pkgDir + "/lib/" + plat
-    ok = COMPRESSION.ZIP(srcs, tmp)
+    ok = ARCHIVE.ZIP(srcs, tmp)
   ELSE
-    ok = COMPRESSION.ZIP(pkgDir + ";", tmp)
+    ok = ARCHIVE.ZIP(pkgDir + ";", tmp)
   END IF
 
   res.SendFile(tmp)
@@ -1786,7 +1786,7 @@ SUB HandleApiPublish(req AS HTTPREQUEST, res AS HTTPRESPONSE)
   DIM staging AS STRING
   staging = "./.publish-x-" + stamp
   MKDIR staging
-  COMPRESSION.UNZIP(tmpZip, staging)
+  ARCHIVE.UNZIP(tmpZip, staging)
 
   ' --- Verifica firma (#3): se l'owner ha una chiave pubblica in config, il pacchetto DEVE
   ' essere firmato con quella chiave (.gmbpkg.sig + .gmbpkg.pub dentro il gmbpkg). ---
@@ -1850,7 +1850,7 @@ SUB HandleApiPublish(req AS HTTPREQUEST, res AS HTTPRESPONSE)
   destDir = registryRoot + "/" + pname + "/" + pver
   IF IO.DirExists(registryRoot + "/" + pname) = 0 THEN MKDIR registryRoot + "/" + pname
   MKDIR destDir
-  COMPRESSION.UNZIP(tmpZip, destDir)
+  ARCHIVE.UNZIP(tmpZip, destDir)
   KILL tmpZip
   RMDIR staging
 

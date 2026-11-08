@@ -975,19 +975,6 @@ public enum BuiltInFunction : ushort
     NEXT = 655,
     COMMANDCOUNT = 656,
     COMMAND = 657,
-    COMPRESSIONCOMPRESS = 658,
-    COMPRESSIONDECOMPRESS = 659,
-    COMPRESSIONGZIP = 660,
-    COMPRESSIONUNGZIP = 661,
-    COMPRESSIONBROTLI = 662,
-    COMPRESSIONUNBROTLI = 663,
-    COMPRESSIONZLIB = 664,
-    COMPRESSIONUNZLIB = 665,
-    COMPRESSIONBZIP2 = 666,
-    COMPRESSIONUNBZIP2 = 667,
-    COMPRESSIONDEFLATE = 668,
-    COMPRESSIONUNDEFLATE = 669,
-    COMPRESSIONALGORITHMS = 670,
     COMPRESSIONZIP = 671,
     COMPRESSIONUNZIP = 672,
     // Comandi CONSOLE ibridi (2026-08-06).
@@ -1632,14 +1619,9 @@ MCPSERVERMARKETPLACELIST = 730, MCPSERVERMARKETPLACEGET = 731, MCPLISTTOOLSSERVE
     SQLCOL = 3793,
     SQLTOCSV = 3794,
     SQLFROMCSV = 3795,
-    // Compressione — nuovi algoritmi (2026-10-10): in FONDO all'enum (gli indici sono
-    // emessi come ushort numerici; non inserire nel mezzo o si sposta il dispatch VM).
-    COMPRESSIONZSTD = 3796,
-    COMPRESSIONUNZSTD = 3797,
-    COMPRESSIONLZ4 = 3798,
-    COMPRESSIONUNLZ4 = 3799,
-    COMPRESSIONXZ = 3800,
-    COMPRESSIONUNXZ = 3801,
+    // Compressione stream/algoritmi: superficie RIMOSSA (pacchetto `compression` via
+    // FFI). ZIP/UNZIP restano builtin (671/672). I codici 3796-3801 sono liberi.
+
     // GREP (2026-10-10): superficie di linguaggio. In coda.
     GREPMATCHES = 3802,
     GREPCOUNT = 3803,

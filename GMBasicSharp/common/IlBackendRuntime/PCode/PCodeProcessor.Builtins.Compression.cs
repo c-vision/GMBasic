@@ -1,128 +1,31 @@
-// FILE: Basic.IlBackend.PCode.PCodeProcessor.Builtins.cs
-// P-CODE VM: ExecuteBuiltIn — refactored from PCodeProcessor.cs (2026-08-03)
+// FILE: Basic.IlBackend.PCode.PCodeProcessor.Builtins.Compression.cs
+//
+// COMPRESSION: dopo la migrazione a pacchetto FFI (`compression`) restano QUI
+// solo ZIP/UNZIP — archivi STORE del runtime condiviso (usati anche da package
+// manager e brains). Una sola implementazione per funzione: nessun handler
+// builtin per COMPRESS/GZIP/ZSTD/... (vivono in libgmbcompression).
 
 using Basic.Runtime;
 using Basic.Runtime.Gpm;
 using Compiler;
-using Microsoft.Data.Sqlite;
-using Basic.AI.Rag;
-using Basic.Databases.Rdd;
-using Basic.IlBackend.PCode.Http;
-using CommonLib.Http;
 
 namespace Basic.IlBackend.PCode;
 
 internal sealed partial class PCodeProcessor
 {
-    /// <summary>COMPRESSION: delegazione dominio — case contigui estratti
-    /// da PCodeProcessor.Builtins.cs (refactor B, de-mescolamento per dominio).</summary>
+    /// <summary>COMPRESSION: restano solo i builtin ZIP/UNZIP (archivi).</summary>
     private static readonly HashSet<BuiltInFunction> COMPRESSIONBuiltInFunctions = new HashSet<BuiltInFunction>
     {
-        BuiltInFunction.COMPRESSIONCOMPRESS,
-        BuiltInFunction.COMPRESSIONDECOMPRESS,
-        BuiltInFunction.COMPRESSIONGZIP,
-        BuiltInFunction.COMPRESSIONUNGZIP,
-        BuiltInFunction.COMPRESSIONBROTLI,
-        BuiltInFunction.COMPRESSIONUNBROTLI,
-        BuiltInFunction.COMPRESSIONZLIB,
-        BuiltInFunction.COMPRESSIONUNZLIB,
-        BuiltInFunction.COMPRESSIONBZIP2,
-        BuiltInFunction.COMPRESSIONUNBZIP2,
-        BuiltInFunction.COMPRESSIONDEFLATE,
-        BuiltInFunction.COMPRESSIONUNDEFLATE,
-        BuiltInFunction.COMPRESSIONALGORITHMS,
         BuiltInFunction.COMPRESSIONZIP,
         BuiltInFunction.COMPRESSIONUNZIP,
-        BuiltInFunction.COMPRESSIONZSTD,
-        BuiltInFunction.COMPRESSIONUNZSTD,
-        BuiltInFunction.COMPRESSIONLZ4,
-        BuiltInFunction.COMPRESSIONUNLZ4,
-        BuiltInFunction.COMPRESSIONXZ,
-        BuiltInFunction.COMPRESSIONUNXZ,
     };
 
-    /// <summary>Compression: dispatch per BuiltInFunction a TABELLA (Dictionary), non switch (refactor §18).</summary>
+    /// <summary>Compression: dispatch per BuiltInFunction a TABELLA (Dictionary), non switch.</summary>
     private Dictionary<BuiltInFunction, Func<PCodeTask, object?[], object?>>? _compressionDispatch;
     private Dictionary<BuiltInFunction, Func<PCodeTask, object?[], object?>> COMPRESSIONDispatch
         => _compressionDispatch ??= BuildCompressionDispatch();
     private Dictionary<BuiltInFunction, Func<PCodeTask, object?[], object?>> BuildCompressionDispatch() => new()
     {
-        [BuiltInFunction.COMPRESSIONCOMPRESS] = (task, args) =>
-        {
-                    return CommonLib.CompressionUtils.CompressString(ArgOr(args, 0)?.ToString() ?? "", ArgOr(args, 1)?.ToString() ?? "");
-        },
-        [BuiltInFunction.COMPRESSIONDECOMPRESS] = (task, args) =>
-        {
-                    return CommonLib.CompressionUtils.DecompressString(ArgOr(args, 0)?.ToString() ?? "", ArgOr(args, 1)?.ToString() ?? "");
-        },
-        [BuiltInFunction.COMPRESSIONGZIP] = (task, args) =>
-        {
-                    return CommonLib.CompressionUtils.CompressString(ArgOr(args, 0)?.ToString() ?? "", "GZIP");
-        },
-        [BuiltInFunction.COMPRESSIONUNGZIP] = (task, args) =>
-        {
-                    return CommonLib.CompressionUtils.DecompressString(ArgOr(args, 0)?.ToString() ?? "", "GZIP");
-        },
-        [BuiltInFunction.COMPRESSIONBROTLI] = (task, args) =>
-        {
-                    return CommonLib.CompressionUtils.CompressString(ArgOr(args, 0)?.ToString() ?? "", "BROTLI");
-        },
-        [BuiltInFunction.COMPRESSIONUNBROTLI] = (task, args) =>
-        {
-                    return CommonLib.CompressionUtils.DecompressString(ArgOr(args, 0)?.ToString() ?? "", "BROTLI");
-        },
-        [BuiltInFunction.COMPRESSIONZLIB] = (task, args) =>
-        {
-                    return CommonLib.CompressionUtils.CompressString(ArgOr(args, 0)?.ToString() ?? "", "ZLIB");
-        },
-        [BuiltInFunction.COMPRESSIONUNZLIB] = (task, args) =>
-        {
-                    return CommonLib.CompressionUtils.DecompressString(ArgOr(args, 0)?.ToString() ?? "", "ZLIB");
-        },
-        [BuiltInFunction.COMPRESSIONBZIP2] = (task, args) =>
-        {
-                    return CommonLib.CompressionUtils.CompressString(ArgOr(args, 0)?.ToString() ?? "", "BZIP2");
-        },
-        [BuiltInFunction.COMPRESSIONUNBZIP2] = (task, args) =>
-        {
-                    return CommonLib.CompressionUtils.DecompressString(ArgOr(args, 0)?.ToString() ?? "", "BZIP2");
-        },
-        [BuiltInFunction.COMPRESSIONDEFLATE] = (task, args) =>
-        {
-                    return CommonLib.CompressionUtils.CompressString(ArgOr(args, 0)?.ToString() ?? "", "DEFLATE");
-        },
-        [BuiltInFunction.COMPRESSIONUNDEFLATE] = (task, args) =>
-        {
-                    return CommonLib.CompressionUtils.DecompressString(ArgOr(args, 0)?.ToString() ?? "", "DEFLATE");
-        },
-        [BuiltInFunction.COMPRESSIONZSTD] = (task, args) =>
-        {
-                    return CommonLib.CompressionUtils.CompressString(ArgOr(args, 0)?.ToString() ?? "", "ZSTD");
-        },
-        [BuiltInFunction.COMPRESSIONUNZSTD] = (task, args) =>
-        {
-                    return CommonLib.CompressionUtils.DecompressString(ArgOr(args, 0)?.ToString() ?? "", "ZSTD");
-        },
-        [BuiltInFunction.COMPRESSIONLZ4] = (task, args) =>
-        {
-                    return CommonLib.CompressionUtils.CompressString(ArgOr(args, 0)?.ToString() ?? "", "LZ4");
-        },
-        [BuiltInFunction.COMPRESSIONUNLZ4] = (task, args) =>
-        {
-                    return CommonLib.CompressionUtils.DecompressString(ArgOr(args, 0)?.ToString() ?? "", "LZ4");
-        },
-        [BuiltInFunction.COMPRESSIONXZ] = (task, args) =>
-        {
-                    return CommonLib.CompressionUtils.CompressString(ArgOr(args, 0)?.ToString() ?? "", "XZ");
-        },
-        [BuiltInFunction.COMPRESSIONUNXZ] = (task, args) =>
-        {
-                    return CommonLib.CompressionUtils.DecompressString(ArgOr(args, 0)?.ToString() ?? "", "XZ");
-        },
-        [BuiltInFunction.COMPRESSIONALGORITHMS] = (task, args) =>
-        {
-                    return CommonLib.CompressionUtils.SupportedAlgorithms;
-        },
         [BuiltInFunction.COMPRESSIONZIP] = (task, args) =>
         {
                 {

@@ -805,33 +805,6 @@ public sealed partial class IlProgramCompiler
     { if (expr.Args.Length != 3) throw new NotSupportedException($"Backend IL: {expr.OriginalToken.Lexeme} richiede 3 argomenti."); foreach (var argument in expr.Args) EmitCryptoObjectArgument(argument); _il.Emit(OpCodes.Call, RuntimeMethod(methodName)); }
     private void EmitCryptoHashFileCall(BuiltinFunctionCallExpr expr, string methodName)
     { if (expr.Args.Length is < 1 or > 2) throw new NotSupportedException($"Backend IL: {expr.OriginalToken.Lexeme} richiede 1 o 2 argomenti."); EmitExpression(expr.Args[0]); if (expr.Args.Length == 2) EmitExpression(expr.Args[1]); else _il.Emit(OpCodes.Ldstr, "SHA256"); _il.Emit(OpCodes.Call, RuntimeMethod(methodName)); }
-    private void EmitCryptoRandomIntCall(BuiltinFunctionCallExpr expr)
-    { if (expr.Args.Length is < 1 or > 2) throw new NotSupportedException("Backend IL: RANDOMINT richiede max oppure min e max."); if (expr.Args.Length == 1) { _il.Emit(OpCodes.Ldc_I4_0); _il.Emit(OpCodes.Conv_I8); } else EmitInt64Argument(expr.Args[0]); EmitInt64Argument(expr.Args[^1]); _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.RandomInt))); }
-    private void EmitCryptoRandomDoubleCall(BuiltinFunctionCallExpr expr, string methodName)
-    { if (expr.Args.Length is < 0 or > 2) throw new NotSupportedException($"Backend IL: {expr.OriginalToken.Lexeme} richiede al massimo 2 argomenti."); if (expr.Args.Length > 0) EmitDoubleArgument(expr.Args[0]); else _il.Emit(OpCodes.Ldc_R8, 0d); if (expr.Args.Length > 1) EmitDoubleArgument(expr.Args[1]); else _il.Emit(OpCodes.Ldc_R8, methodName == nameof(IlRuntime.RandomNormal) ? 1d : 1d); _il.Emit(OpCodes.Call, RuntimeMethod(methodName)); }
-    private void EmitCryptoKeyGenCall(BuiltinFunctionCallExpr expr)
-    { if (expr.Args.Length is < 1 or > 2) throw new NotSupportedException("Backend IL: KEYGEN richiede algoritmo e dimensione opzionale."); EmitExpression(expr.Args[0]); if (expr.Args.Length == 2) EmitInt64Argument(expr.Args[1]); else _il.Emit(OpCodes.Ldc_I4, 2048); _il.Emit(OpCodes.Conv_I8); _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.KeyGen))); }
-    private void EmitCryptoKeyImportCall(BuiltinFunctionCallExpr expr)
-    {
-        if (expr.Args.Length != 2) throw new NotSupportedException("Backend IL: KEYIMPORT richiede PEM e handle.");
-        // KEYIMPORT(pem, keyHandle) è una FUNZIONE (StdLib: ritorna LongType): ritorna il
-        // nuovo handle. Il 2° argomento è l'handle/target (il runtime lo ignora).
-        EmitExpression(expr.Args[0]);
-        EmitInt64Argument(expr.Args[1]);
-        _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.KeyImport)));
-    }
-    private void EmitCryptoObjectInt64Call(BuiltinFunctionCallExpr expr, string methodName)
-    { if (expr.Args.Length != 2) throw new NotSupportedException($"Backend IL: {expr.OriginalToken.Lexeme} richiede 2 argomenti."); EmitCryptoObjectArgument(expr.Args[0]); EmitInt64Argument(expr.Args[1]); _il.Emit(OpCodes.Call, RuntimeMethod(methodName)); }
-    private void EmitCryptoObjectObjectInt64Call(BuiltinFunctionCallExpr expr, string methodName)
-    { if (expr.Args.Length != 3) throw new NotSupportedException($"Backend IL: {expr.OriginalToken.Lexeme} richiede 3 argomenti."); EmitCryptoObjectArgument(expr.Args[0]); EmitCryptoObjectArgument(expr.Args[1]); EmitInt64Argument(expr.Args[2]); _il.Emit(OpCodes.Call, RuntimeMethod(methodName)); }
-    private void EmitCryptoObjectObjectStringCall(BuiltinFunctionCallExpr expr, string methodName)
-    { if (expr.Args.Length != 3) throw new NotSupportedException($"Backend IL: {expr.OriginalToken.Lexeme} richiede 3 argomenti."); EmitCryptoObjectArgument(expr.Args[0]); EmitCryptoObjectArgument(expr.Args[1]); EmitStringArgument(expr.Args[2]); _il.Emit(OpCodes.Call, RuntimeMethod(methodName)); }
-    private void EmitCryptoObjectBoolCall(BuiltinFunctionCallExpr expr, string methodName, bool defaultValue)
-    { if (expr.Args.Length is < 1 or > 2) throw new NotSupportedException($"Backend IL: {expr.OriginalToken.Lexeme} richiede 1 o 2 argomenti."); EmitCryptoObjectArgument(expr.Args[0]); if (expr.Args.Length == 2) EmitExpression(expr.Args[1]); else _il.Emit(defaultValue ? OpCodes.Ldc_I4_1 : OpCodes.Ldc_I4_0); _il.Emit(OpCodes.Call, RuntimeMethod(methodName)); }
-    private void EmitCryptoPolyEncryptCall(BuiltinFunctionCallExpr expr)
-    { if (expr.Args.Length is < 3 or > 4) throw new NotSupportedException("Backend IL: CHACHA20POLY1305ENCRYPT richiede da 3 a 4 argomenti."); EmitCryptoObjectArgument(expr.Args[0]); EmitCryptoObjectArgument(expr.Args[1]); EmitCryptoObjectArgument(expr.Args[2]); if (expr.Args.Length == 4) EmitCryptoObjectArgument(expr.Args[3]); else _il.Emit(OpCodes.Ldnull); _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.ChaCha20Poly1305Encrypt))); }
-    private void EmitCryptoPolyDecryptCall(BuiltinFunctionCallExpr expr)
-    { if (expr.Args.Length is < 4 or > 5) throw new NotSupportedException("Backend IL: CHACHA20POLY1305DECRYPT richiede da 4 a 5 argomenti."); for (var i = 0; i < 4; i++) EmitCryptoObjectArgument(expr.Args[i]); if (expr.Args.Length == 5) EmitCryptoObjectArgument(expr.Args[4]); else _il.Emit(OpCodes.Ldnull); _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.ChaCha20Poly1305Decrypt))); }
     private void EmitInterpolationCall(BuiltinFunctionCallExpr expr, string methodName)
     { if (expr.Args.Length != 3) throw new NotSupportedException($"Backend IL: {expr.OriginalToken.Lexeme} richiede X, Y e il punto target."); EmitDoubleArrayArgument(expr.Args[0]); EmitDoubleArrayArgument(expr.Args[1]); EmitDoubleArgument(expr.Args[2]); _il.Emit(OpCodes.Call, RuntimeMethod(methodName)); }
     private void EmitIoCountHandleCall(BuiltinFunctionCallExpr expr, string methodName)

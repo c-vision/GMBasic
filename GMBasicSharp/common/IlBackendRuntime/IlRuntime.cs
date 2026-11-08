@@ -90,7 +90,6 @@ public static partial class IlRuntime
     // consumino reciprocamente i dati; BeginData lo reinizializza sempre prima di Main.
     [ThreadStatic] private static object?[]? _data;
     [ThreadStatic] private static int _dataPointer;
-    private static long _nextCryptoHandle;
     private static readonly System.Collections.Concurrent.ConcurrentDictionary<long, AsymmetricKeyParameter> CryptoKeys = new();
     private static long _nextFileHandle;
     private static readonly System.Collections.Concurrent.ConcurrentDictionary<long, FileStream> OpenFiles = new();
@@ -2413,41 +2412,6 @@ public static partial class IlRuntime
     }
     private static byte[] CryptoBytes(object? value) => value switch { null => [], byte[] bytes => bytes, string text => System.Text.Encoding.UTF8.GetBytes(text), Array arr => CryptoArrayBytes(arr), _ => System.Text.Encoding.UTF8.GetBytes(Convert.ToString(value, CultureInfo.InvariantCulture) ?? string.Empty) };
     // Le 18 funzioni Pure (Fase 10, docs/StdLib-Runtime-Plan.md) forward a
-    // Basic.StdLibRuntime.CryptographyFunctions, che a sua volta chiama CommonLib.CryptoUtils —
-    // stessi metodi che questi wrapper chiamavano già direttamente (nessun cambio di libreria per
-    // MD5/SHA*/Base64/Hex/PasswordVerify/AesDecrypt), TRANNE ChaCha20Encrypt/Decrypt/
-    // Poly1305Encrypt/Decrypt: usavano un motore duplicato (BouncyCastle ChaCha7539Engine "a mano"
-    // per lo stream cipher semplice, System.Security.Cryptography.ChaCha20Poly1305 del BCL per
-    // l'AEAD) invece di CommonLib.CryptoUtils.CoreChaCha20* (BouncyCastle, usato da PCodeVm).
-    // Verificato empiricamente (RFC 8439 test vector, 32 byte key/12 byte nonce) che le due
-    // implementazioni ChaCha20 producevano già lo STESSO output byte-per-byte prima di questo
-    // cambio (algoritmo standard, deterministico) — nessuna regressione attesa. La forma AEAD
-    // (Dict-returning) non era comunque mai raggiungibile via compilazione nativa (limite
-    // pre-esistente e scorrelato: "tipo AnyType non ancora mappato a un tipo CLR" nell'emitter),
-    // quindi un eventuale cambio di comportamento qui non era comunque osservabile prima d'ora.
-    public static byte[] Md5(object? value) => Basic.StdLibRuntime.CryptographyFunctions.Md5(CryptoBytes(value));
-    public static byte[] Sha1(object? value) => Basic.StdLibRuntime.CryptographyFunctions.Sha1(CryptoBytes(value));
-    public static byte[] Sha256(object? value) => Basic.StdLibRuntime.CryptographyFunctions.Sha256(CryptoBytes(value));
-    public static byte[] Sha512(object? value) => Basic.StdLibRuntime.CryptographyFunctions.Sha512(CryptoBytes(value));
-    // HASHFILE(path, algorithm) — canone StdLib/VM-C/C99: path PRIMO, algoritmo SECONDO.
-    public static byte[] HashFile(string path, string algorithm) => CommonLib.CryptoUtils.CoreHashFile(algorithm, path);
-    public static string StrMd5(object? value) => Basic.StdLibRuntime.CryptographyFunctions.StrMd5(CryptoBytes(value));
-    public static string StrSha1(object? value) => Basic.StdLibRuntime.CryptographyFunctions.StrSha1(CryptoBytes(value));
-    public static string StrSha256(object? value) => Basic.StdLibRuntime.CryptographyFunctions.StrSha256(CryptoBytes(value));
-    public static string StrSha512(object? value) => Basic.StdLibRuntime.CryptographyFunctions.StrSha512(CryptoBytes(value));
-    public static string StrHashFile(string path, string algorithm) => CommonLib.CryptoUtils.CoreToHexString(HashFile(path, algorithm));
-    public static byte[] AesEncrypt(object? data, object? key) => CommonLib.CryptoUtils.CoreAesEncrypt(CryptoBytes(data), Convert.ToString(key, CultureInfo.InvariantCulture) ?? string.Empty);
-    public static byte[] AesDecrypt(object? data, object? key) => Basic.StdLibRuntime.CryptographyFunctions.AesDecrypt(CryptoBytes(data), Convert.ToString(key, CultureInfo.InvariantCulture) ?? string.Empty);
-    public static byte[] RandomBytes(long count) => CommonLib.CryptoUtils.CoreGetRandomBytes(checked((int)count));
-    public static string ToBase64(object? value) => Basic.StdLibRuntime.CryptographyFunctions.ToBase64(CryptoBytes(value));
-    public static byte[] FromBase64(string value) => Basic.StdLibRuntime.CryptographyFunctions.FromBase64(value);
-    public static string ToHex(object? value) => Basic.StdLibRuntime.CryptographyFunctions.ToHex(CryptoBytes(value));
-    public static byte[] FromHex(string value) => Basic.StdLibRuntime.CryptographyFunctions.FromHex(value);
-    public static string HmacSha256(object? data, object? key) => Basic.StdLibRuntime.CryptographyFunctions.HmacSha256(CryptoBytes(data), CryptoBytes(key));
-    public static string HmacSha384(object? data, object? key) => Basic.StdLibRuntime.CryptographyFunctions.HmacSha384(CryptoBytes(data), CryptoBytes(key));
-    public static string HmacSha512(object? data, object? key) => Basic.StdLibRuntime.CryptographyFunctions.HmacSha512(CryptoBytes(data), CryptoBytes(key));
-    public static string ToBase64Url(object? value) => Basic.StdLibRuntime.CryptographyFunctions.ToBase64Url(CryptoBytes(value));
-    public static byte[] FromBase64Url(string value) => Basic.StdLibRuntime.CryptographyFunctions.FromBase64Url(value);
     public static string HtmlEncode(string value) => CommonLib.WebEncoding.CoreHtmlEncode(value ?? string.Empty);
     public static string UrlEncode(string value) => CommonLib.WebEncoding.CoreUrlEncode(value ?? string.Empty);
     public static string JsEncode(string value) => CommonLib.WebEncoding.CoreJsEncode(value ?? string.Empty);
@@ -2474,61 +2438,6 @@ public static partial class IlRuntime
     public static bool IsValidCreditCard(string value) => CommonLib.SecurityValidation.IsCreditCard(value);
     public static bool IsValidLength(string value, double minLength, double maxLength)
         => CommonLib.SecurityValidation.IsLengthBetween(value, (int)minLength, (int)maxLength);
-    public static long RandomInt(long min, long max) => CommonLib.CryptoUtils.CoreRandomInt(checked((int)min), checked((int)max));
-    public static double RandomDouble(double min, double max) => CommonLib.CryptoUtils.CoreRandomDouble(min, max);
-    public static double RandomNormal(double mean, double stddev) => CommonLib.CryptoUtils.CoreRandomNormal(mean, stddev);
-    public static byte[] RandomCryptoBytes(long count) => CommonLib.CryptoUtils.CoreRandomCryptoBytes(checked((int)count));
-    public static string PasswordHash(string password) => CommonLib.CryptoUtils.CorePasswordHash(password);
-    public static bool PasswordVerify(string password, string hash) => Basic.StdLibRuntime.CryptographyFunctions.PasswordVerify(password, hash);
-    private static long StoreCryptoKey(AsymmetricKeyParameter key) { var handle = Interlocked.Increment(ref _nextCryptoHandle); CryptoKeys[handle] = key; return handle; }
-    private static AsymmetricKeyParameter GetCryptoKey(long handle) => CryptoKeys.TryGetValue(handle, out var key) ? key : throw new ArgumentException("Handle chiave non valido.", nameof(handle));
-    public static long[] KeyGen(string algorithm, long size) { var pair = CommonLib.CryptoUtils.GenerateKeyPair(algorithm, (int)size); return [StoreCryptoKey(pair.privateKey), StoreCryptoKey(pair.publicKey)]; }
-    public static string KeyExport(long handle) => CommonLib.CryptoUtils.ExportKeyToPem(GetCryptoKey(handle), GetCryptoKey(handle).IsPrivate);
-    public static long KeyImport(string pem, long ignoredHandle) => StoreCryptoKey(CommonLib.CryptoUtils.ImportKeyFromPem(pem)[0]);
-    public static void KeyClose(long handle) => CryptoKeys.TryRemove(handle, out _);
-    public static byte[] Sign(object? data, long privateHandle)
-    {
-        var key = GetCryptoKey(privateHandle);
-        var alg = SignAlgorithmFor(key);
-        return CommonLib.CryptoUtils.SignData(CryptoBytes(data), key, alg);
-    }
-
-    public static bool Verify(object? signature, object? data, long publicHandle)
-    {
-        var key = GetCryptoKey(publicHandle);
-        var alg = SignAlgorithmFor(key);
-        return CommonLib.CryptoUtils.VerifySignature(CryptoBytes(data), CryptoBytes(signature), key, alg);
-    }
-
-    /// <summary>VERIFYRAW(signature, data, publicKeyB64): verifica una firma Ed25519 (o ECDSA P-256)
-    /// con chiave pubblica RAW (base64 32B) invece che handle PEM. Stessa logica di
-    /// PackageBuilder.VerifyData — unica implementazione (coerente con §0bis).</summary>
-    public static bool VerifyRaw(object? signature, object? data, string publicKeyB64)
-    {
-        try
-        {
-            return Basic.PackageBuilder.VerifyData(CryptoBytes(data), publicKeyB64, Convert.ToBase64String(CryptoBytes(signature)));
-        }
-        catch { return false; }
-    }
-
-    /// <summary>Sceglie l'algoritmo di firma in base al tipo di chiave: RSA → SHA256withRSA,
-    /// ECDSA/EC → SHA256withECDSA (prima 'SHA256withRSA' fisso falliva con 'Not an RSA key').</summary>
-    private static string SignAlgorithmFor(AsymmetricKeyParameter key)
-        => key is Org.BouncyCastle.Crypto.Parameters.ECKeyParameters ? "SHA256withECDSA" : "SHA256withRSA";
-    public static byte[] EncryptAsym(object? data, long publicHandle) => CommonLib.CryptoUtils.EncryptAsymmetric(CryptoBytes(data), GetCryptoKey(publicHandle));
-    public static byte[] DecryptAsym(object? data, long privateHandle) => CommonLib.CryptoUtils.DecryptAsymmetric(CryptoBytes(data), GetCryptoKey(privateHandle));
-
-    public static byte[] ChaCha20Encrypt(object? data, object? key, object? nonce) => Basic.StdLibRuntime.CryptographyFunctions.ChaCha20Encrypt(CryptoBytes(data), CryptoBytes(key), CryptoBytes(nonce));
-    public static byte[] ChaCha20Decrypt(object? data, object? key, object? nonce) => Basic.StdLibRuntime.CryptographyFunctions.ChaCha20Decrypt(CryptoBytes(data), CryptoBytes(key), CryptoBytes(nonce));
-    public static Dictionary<string, byte[]> ChaCha20Poly1305Encrypt(object? plaintext, object? key, object? nonce, object? aad)
-    {
-        var (ciphertext, tag) = Basic.StdLibRuntime.CryptographyFunctions.ChaCha20Poly1305Encrypt(CryptoBytes(plaintext), CryptoBytes(key), CryptoBytes(nonce), CryptoBytes(aad));
-        return new Dictionary<string, byte[]> { ["ciphertext"] = ciphertext, ["tag"] = tag };
-    }
-    public static byte[] ChaCha20Poly1305Decrypt(object? ciphertext, object? tag, object? key, object? nonce, object? aad) =>
-        Basic.StdLibRuntime.CryptographyFunctions.ChaCha20Poly1305Decrypt(CryptoBytes(ciphertext), CryptoBytes(tag), CryptoBytes(key), CryptoBytes(nonce), CryptoBytes(aad))
-        ?? Array.Empty<byte>();
 
     // ANALYSIS: interpolazioni scalar-pure — Fase 9, vedi commento sopra su TIMESERIES.
     public static double InterpolateLinear(double[] x, double[] y, double target) => Basic.StdLibRuntime.TimeSeriesFunctions.InterpolateLinear(x, y, target);
@@ -7801,7 +7710,7 @@ public static partial class IlRuntime
         try { return CommonLib.CompressionUtils.ExtractZip(archive ?? "", dir ?? "") ? -1.0 : 0.0; }
         catch { return 0.0; }
     }
-    public static string Algorithms() => CommonLib.CompressionUtils.SupportedAlgorithms;
+    // ALGORITHMS: superficie rimossa (pacchetto `compression`).
     // --- Categoria 6: CONSOLE blocco 2 (colori ANSI + metrics console) ---
     // ANSI true-color solo su tty reale (parita' runtime C gmb_ansi_color): su stdout
     // redirect/headless niente escape (oracoli MiniTest deterministici).

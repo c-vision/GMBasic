@@ -1526,10 +1526,6 @@ static int dim_val_init_kind(ctx_t* c, const gmb_expr_t* e) {
     }
     if (e->tk == GMB_TOK_KMeans) return e->nargs >= 2 ? 1 : 0;
     if (e->tk == GMB_TOK_Fetch) return e->nargs >= 1 ? 1 : 0;
-    /* CHACHA20POLY1305ENCRYPT → dict val (gmb_val_t) con ciphertext/tag. */
-    if (e->tk == GMB_TOK_ChaCha20Poly1305Encrypt) return 1;
-    /* KEYGEN → long[] [priv, pub] (gmb_val_t lista). */
-    if (e->tk == GMB_TOK_KeyGen) return 1;
     /* JSON.Parse/Load/ReadSection → oggetto JSON boxed gmb_val_t (parity emitter C#). */
     if (e->tk == GMB_TOK_Parse || e->tk == GMB_TOK_Load || e->tk == GMB_TOK_ReadSection) return 1;
     /* JSON.TOOBJECT(Tipo, json) con TARGET boxed (`DIM x AS JSON`): js_to_object emette
@@ -3136,21 +3132,6 @@ int etype(ctx_t* c, gmb_expr_t* e) {
         if (gmb_tk_in(e->tk, gmb_tk_dbf_str, (unsigned)(sizeof(gmb_tk_dbf_str)/sizeof(gmb_tk_dbf_str[0])))) return TY_STR;
         if (gmb_tk_in(e->tk, gmb_tk_dbf_num, (unsigned)(sizeof(gmb_tk_dbf_num)/sizeof(gmb_tk_dbf_num[0])))) return TY_NUM;
         if (gmb_tk_in(e->tk, gmb_tk_rdd_str, (unsigned)(sizeof(gmb_tk_rdd_str)/sizeof(gmb_tk_rdd_str[0])))) return TY_STR;
-        /* encoder/digest che producono byte-string (gmb_string_t binaria) o testo esadecimale:
-         * FROMHEX/MD5/SHA* → DIM x() = ... AS BYTES (is_bytes) e operandi TOHEX/MD5 raw. */
-        if (e->tk == GMB_TOK_FromHex || e->tk == GMB_TOK_ToHex || e->tk == GMB_TOK_FromBase64
-            || e->tk == GMB_TOK_ToBase64 || e->tk == GMB_TOK_Md5 || e->tk == GMB_TOK_Sha1
-            || e->tk == GMB_TOK_Sha256 || e->tk == GMB_TOK_Sha512
-            || e->tk == GMB_TOK_FromBase64Url || e->tk == GMB_TOK_ToBase64Url
-            || e->tk == GMB_TOK_HmacSha256 || e->tk == GMB_TOK_HmacSha384 || e->tk == GMB_TOK_HmacSha512
-            || e->tk == GMB_TOK_StrMd5 || e->tk == GMB_TOK_StrSha1 || e->tk == GMB_TOK_StrSha256
-            || e->tk == GMB_TOK_StrSha512 || e->tk == GMB_TOK_PasswordHash
-            || e->tk == GMB_TOK_AesEncrypt || e->tk == GMB_TOK_AesDecrypt
-            || e->tk == GMB_TOK_ChaCha20Encrypt || e->tk == GMB_TOK_ChaCha20Decrypt
-            || e->tk == GMB_TOK_HashFile || e->tk == GMB_TOK_StrHashFile
-            || e->tk == GMB_TOK_Sign || e->tk == GMB_TOK_KeyExport
-            || e->tk == GMB_TOK_EncryptAsym || e->tk == GMB_TOK_DecryptAsym)
-            return TY_STR;
         /* chiamata INDIRETTA su variabile function-typed con ritorno STRING (es.
          * `saluta(...)` con DIM saluta AS FUNCTION(...) AS STRING) → tipo stringa */
         if (e->var) {
@@ -7596,34 +7577,8 @@ static const gmb_bf_row_t gmb_bf_composite[] = {
     { NULL, GMB_TOK_WeibullCdf, emit_bf_dist },
     { NULL, GMB_TOK_WeibullPdf, emit_bf_dist },
     { NULL, GMB_TOK_WeibullPpf, emit_bf_dist },
-    { NULL, GMB_TOK_Md5, emit_bf_hash },
-    { NULL, GMB_TOK_StrMd5, emit_bf_hash }, { NULL, GMB_TOK_StrSha256, emit_bf_hash },
-    { NULL, GMB_TOK_StrSha1, emit_bf_hash }, { NULL, GMB_TOK_StrSha512, emit_bf_hash },
-    { NULL, GMB_TOK_Sha1, emit_bf_hash },
-    { NULL, GMB_TOK_Sha256, emit_bf_hash },
-    { NULL, GMB_TOK_Sha512, emit_bf_hash },
-    { NULL, GMB_TOK_HmacSha256, emit_bf_security_tok },
-    { NULL, GMB_TOK_HmacSha384, emit_bf_security_tok },
-    { NULL, GMB_TOK_HmacSha512, emit_bf_security_tok },
-    { NULL, GMB_TOK_ToBase64Url, emit_bf_security_tok },
-    { NULL, GMB_TOK_AesEncrypt, emit_bf_security_tok },
-    { NULL, GMB_TOK_AesDecrypt, emit_bf_security_tok },
-    { NULL, GMB_TOK_ChaCha20Encrypt, emit_bf_security_tok },
-    { NULL, GMB_TOK_ChaCha20Decrypt, emit_bf_security_tok },
-    { NULL, GMB_TOK_ChaCha20Poly1305Encrypt, emit_bf_security_tok },
-    { NULL, GMB_TOK_ChaCha20Poly1305Decrypt, emit_bf_security_tok },
-    { NULL, GMB_TOK_HashFile, emit_bf_security_tok },
-    { NULL, GMB_TOK_StrHashFile, emit_bf_security_tok },
-    { NULL, GMB_TOK_KeyGen, emit_bf_security_tok },
-    { NULL, GMB_TOK_KeyExport, emit_bf_security_tok },
-    { NULL, GMB_TOK_KeyImport, emit_bf_security_tok },
     { NULL, GMB_TOK_Sign, emit_bf_security_tok },
     { NULL, GMB_TOK_Verify, emit_bf_security_tok },
-    { NULL, GMB_TOK_VerifyRaw, emit_bf_security_tok },
-    { NULL, GMB_TOK_EncryptAsym, emit_bf_security_tok },
-    { NULL, GMB_TOK_DecryptAsym, emit_bf_security_tok },
-    { NULL, GMB_TOK_PasswordHash, emit_bf_security_tok },
-    { NULL, GMB_TOK_PasswordVerify, emit_bf_security_tok },
     { NULL, GMB_TOK_JwtCreate, emit_bf_security_tok },
     { NULL, GMB_TOK_JwtVerify, emit_bf_security_tok },
     { NULL, GMB_TOK_JwtPayload, emit_bf_security_tok },
@@ -7638,11 +7593,6 @@ static const gmb_bf_row_t gmb_bf_composite[] = {
     { NULL, GMB_TOK_SafeFileName, emit_bf_security_tok },
     { NULL, GMB_TOK_SessionCreate, emit_bf_security_tok },
     { NULL, GMB_TOK_DetectContentType, emit_bf_security_tok },
-    { NULL, GMB_TOK_RandomInt, emit_bf_security_tok },
-    { NULL, GMB_TOK_RandomDouble, emit_bf_security_tok },
-    { NULL, GMB_TOK_RandomNormal, emit_bf_security_tok },
-    { NULL, GMB_TOK_RandomBytes, emit_bf_security_tok },
-    { NULL, GMB_TOK_RandomCryptoBytes, emit_bf_security_tok },
     { NULL, GMB_TOK_Autocorrelation, emit_bf_ts },
     { NULL, GMB_TOK_Volatility, emit_bf_ts },
     { NULL, GMB_TOK_TsHurst, emit_bf_ts },
@@ -7710,11 +7660,6 @@ static const gmb_bf_row_t gmb_bf_composite[] = {
     { NULL, GMB_TOK_MvGamblerDur, emit_bf_mv },
     { NULL, GMB_TOK_MvAteIpw, emit_bf_mv },
     { NULL, GMB_TOK_MvAteMatching, emit_bf_mv },
-    { NULL, GMB_TOK_ToBase64, emit_bf_encoding },
-    { NULL, GMB_TOK_FromBase64, emit_bf_encoding },
-    { NULL, GMB_TOK_FromBase64Url, emit_bf_encoding },
-    { NULL, GMB_TOK_FromHex, emit_bf_encoding },
-    { NULL, GMB_TOK_ToHex, emit_bf_encoding },
     { NULL, GMB_TOK_MemoryStore, emit_bf_memory },
     { NULL, GMB_TOK_MemoryLoad, emit_bf_memory },
     { NULL, GMB_TOK_MemoryDelete, emit_bf_memory },
@@ -16419,27 +16364,6 @@ static void emit_arr_literal_assign(ctx_t* c, const char* target, gmb_expr_t* li
              }
          }
      }
-     /* (2026-09-07) byte-array var = digest(MD5/SHA*) → conserva i BYTE GREZZI del digest
-      * (parity IL/PCodeVM/VM-C: MD5 ritorna byte[]; poi TOHEX(md()) esadecimalizza i byte). */
-      if (target && value && value->kind == GMB_EXPR_CALL && value->var && !strchr(target, '.')) {
-          const char* nm = value->var;
-          /* digest per DispatchToken (Md5/Sha1/Sha256/Sha512 — chiave canonica, mai lexeme) */
-          int algo = value->tk == GMB_TOK_Md5 ? 0 : value->tk == GMB_TOK_Sha1 ? 1
-                   : value->tk == GMB_TOK_Sha256 ? 2 : value->tk == GMB_TOK_Sha512 ? 3 : -1;
-          if (algo >= 0) {
-             var_t* bv = lookup_var(c, target);
-             if (bv && bv->is_bytes) {
-                 if (value->nargs < 1 || !value->args[0]) { c99_fail(c, line, "%s: argomento mancante", nm); return; }
-                 ind(c); sb_ident(&c->out, bv->name);
-                 sb_printf(&c->out, " = gmb_digest_raw(%d, (const uint8_t*)(", algo);
-                 emit_str_operand(c, value->args[0]);
-                 sb_put(&c->out, ").data, (size_t)(");
-                 emit_str_operand(c, value->args[0]);
-                 sb_put(&c->out, ").length);\n");
-                 return;
-             }
-         }
-     }
      /* (bug AI.SKILLSLIST) DIM x() AS STRING (dinamica) = AI.SKILLSLIST()/AI.SKILLSPATHS():
         riempie l'array nativo gmb_string* dal runtime con out-count (<v>_len). */
      if (target && value && value->kind == GMB_EXPR_CALL && value->var && !strchr(target, '.')) {
@@ -17769,16 +17693,7 @@ static int is_byte_expr(ctx_t* c, gmb_expr_t* e) {
     if (e->kind == GMB_EXPR_VAR && e->var) { var_t* v = lookup_var(c, e->var); return v && v->is_bytes; }
     if (e->kind == GMB_EXPR_CALL && e->var) {
         if (e->nargs == 0) { var_t* v = lookup_var(c, e->var); if (v && v->is_bytes) return 1; }
-        /* digest/byte-returning per DispatchToken (mai lexeme) */
-        return e->tk == GMB_TOK_Md5 || e->tk == GMB_TOK_Sha1 || e->tk == GMB_TOK_Sha256
-            || e->tk == GMB_TOK_Sha512 || e->tk == GMB_TOK_FromHex || e->tk == GMB_TOK_FromBase64
-            || e->tk == GMB_TOK_FromBase64Url || e->tk == GMB_TOK_RandomBytes
-            || e->tk == GMB_TOK_RandomCryptoBytes
-            || e->tk == GMB_TOK_AesEncrypt || e->tk == GMB_TOK_AesDecrypt
-            || e->tk == GMB_TOK_ChaCha20Encrypt || e->tk == GMB_TOK_ChaCha20Decrypt
-            || e->tk == GMB_TOK_ChaCha20Poly1305Decrypt
-            || e->tk == GMB_TOK_HashFile
-            || e->tk == GMB_TOK_Sign || e->tk == GMB_TOK_EncryptAsym || e->tk == GMB_TOK_DecryptAsym;
+        return 0;
     }
     return 0;
 }

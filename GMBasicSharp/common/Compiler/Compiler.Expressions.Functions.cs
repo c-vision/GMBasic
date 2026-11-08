@@ -388,30 +388,6 @@ public sealed partial class Compiler
         { TokenKind.DetectContentType, BuiltInFunction.HTTP_DETECTCONTENTTYPE },
         { TokenKind.SessionCreate, BuiltInFunction.HTTP_SESSIONCREATE },
         { TokenKind.Tab, BuiltInFunction.TAB },
-        // --- Funzioni Crittografiche & Random (32) ---
-        { TokenKind.Md5, BuiltInFunction.MD5 }, { TokenKind.Sha1, BuiltInFunction.SHA1 },
-        { TokenKind.Sha256, BuiltInFunction.SHA256 }, { TokenKind.Sha512, BuiltInFunction.SHA512 },
-        { TokenKind.HashFile, BuiltInFunction.HASHFILE }, { TokenKind.StrMd5, BuiltInFunction.MD5STRING },
-        { TokenKind.StrSha1, BuiltInFunction.SHA1STRING }, { TokenKind.StrSha256, BuiltInFunction.SHA256STRING },
-        { TokenKind.StrSha512, BuiltInFunction.SHA512STRING },
-        { TokenKind.StrHashFile, BuiltInFunction.HASHFILESTRING },
-        { TokenKind.AesEncrypt, BuiltInFunction.AESENCRYPT }, { TokenKind.AesDecrypt, BuiltInFunction.AESDECRYPT },
-        { TokenKind.ChaCha20Encrypt, BuiltInFunction.CHACHA20ENCRYPT }, { TokenKind.ChaCha20Decrypt, BuiltInFunction.CHACHA20DECRYPT },
-        { TokenKind.ChaCha20Poly1305Encrypt, BuiltInFunction.CHACHA20POLY1305ENCRYPT }, { TokenKind.ChaCha20Poly1305Decrypt, BuiltInFunction.CHACHA20POLY1305DECRYPT },
-        { TokenKind.PasswordHash, BuiltInFunction.PASSWORDHASH }, { TokenKind.PasswordVerify, BuiltInFunction.PASSWORDVERIFY },
-        { TokenKind.KeyExport, BuiltInFunction.KEYEXPORT }, { TokenKind.KeyImport, BuiltInFunction.KEYIMPORT },
-        { TokenKind.KeyClose, BuiltInFunction.KEY_CLOSE }, { TokenKind.Sign, BuiltInFunction.SIGN },
-        { TokenKind.Verify, BuiltInFunction.VERIFY }, { TokenKind.VerifyRaw, BuiltInFunction.VERIFYRAW },
-        { TokenKind.EncryptAsym, BuiltInFunction.ENCRYPTASYM },
-        { TokenKind.DecryptAsym, BuiltInFunction.DECRYPTASYM }, { TokenKind.RandomBytes, BuiltInFunction.RANDOMBYTES },
-        { TokenKind.ToBase64, BuiltInFunction.TOBASE64 }, { TokenKind.FromBase64, BuiltInFunction.FROMBASE64 },
-        { TokenKind.ToHex, BuiltInFunction.TOHEX }, { TokenKind.FromHex, BuiltInFunction.FROMHEX },
-        { TokenKind.HmacSha256, BuiltInFunction.HMACSHA256 }, { TokenKind.HmacSha384, BuiltInFunction.HMACSHA384 },
-        { TokenKind.HmacSha512, BuiltInFunction.HMACSHA512 },
-        { TokenKind.ToBase64Url, BuiltInFunction.TOBASE64URL }, { TokenKind.FromBase64Url, BuiltInFunction.FROMBASE64URL },
-        { TokenKind.RandomInt, BuiltInFunction.RANDOMINT }, { TokenKind.RandomDouble, BuiltInFunction.RANDOMDOUBLE },
-        { TokenKind.RandomNormal, BuiltInFunction.RANDOMNORMAL },
-        { TokenKind.RandomCryptoBytes, BuiltInFunction.RANDOMCRYPTOBYTES },
         { TokenKind.MouseX, BuiltInFunction.MOUSEX }, { TokenKind.MouseY, BuiltInFunction.MOUSEY },
         { TokenKind.MouseButton, BuiltInFunction.MOUSEBUTTON }, { TokenKind.MouseWheel, BuiltInFunction.MOUSEWHEEL },
         { TokenKind.MouseClick, BuiltInFunction.MOUSECLICK }, { TokenKind.MouseDblClick, BuiltInFunction.MOUSEDBLCLICK },
@@ -980,16 +956,7 @@ public sealed partial class Compiler
         { TokenKind.FSeek, BuiltInFunction.FSEEK }, { TokenKind.Seek, BuiltInFunction.FSEEK }, { TokenKind.FWrite, BuiltInFunction.FWRITE },
         { TokenKind.FileInput, BuiltInFunction.FILEINPUT }, { TokenKind.FreeFile, BuiltInFunction.FREEFILE },
         { TokenKind.Lof, BuiltInFunction.LOF }, { TokenKind.Stod, BuiltInFunction.STOD },
-        { TokenKind.Compress, BuiltInFunction.COMPRESSIONCOMPRESS }, { TokenKind.Decompress, BuiltInFunction.COMPRESSIONDECOMPRESS },
-        { TokenKind.Gzip, BuiltInFunction.COMPRESSIONGZIP }, { TokenKind.Ungzip, BuiltInFunction.COMPRESSIONUNGZIP },
-        { TokenKind.Brotli, BuiltInFunction.COMPRESSIONBROTLI }, { TokenKind.Zlib, BuiltInFunction.COMPRESSIONZLIB },
-        { TokenKind.Bzip2, BuiltInFunction.COMPRESSIONBZIP2 }, { TokenKind.Deflate, BuiltInFunction.COMPRESSIONDEFLATE },
-        { TokenKind.Algorithms, BuiltInFunction.COMPRESSIONALGORITHMS },
-        { TokenKind.Unbrotli, BuiltInFunction.COMPRESSIONUNBROTLI }, { TokenKind.Unzlib, BuiltInFunction.COMPRESSIONUNZLIB },
-        { TokenKind.Unbzip2, BuiltInFunction.COMPRESSIONUNBZIP2 }, { TokenKind.Undeflate, BuiltInFunction.COMPRESSIONUNDEFLATE },
-        { TokenKind.Zstd, BuiltInFunction.COMPRESSIONZSTD }, { TokenKind.Unzstd, BuiltInFunction.COMPRESSIONUNZSTD },
-        { TokenKind.Lz4, BuiltInFunction.COMPRESSIONLZ4 }, { TokenKind.Unlz4, BuiltInFunction.COMPRESSIONUNLZ4 },
-        { TokenKind.Xz, BuiltInFunction.COMPRESSIONXZ }, { TokenKind.Unxz, BuiltInFunction.COMPRESSIONUNXZ },
+        // Compressione stream/algoritmi: nessun BuiltInFunction (pacchetto `compression` via FFI).
         { TokenKind.GrepMatches, BuiltInFunction.GREPMATCHES }, { TokenKind.GrepCount, BuiltInFunction.GREPCOUNT },
         { TokenKind.GrepFiles, BuiltInFunction.GREPFILES },
         // MESSAGE.DELIVERY(bus) — contatori di consegna (PCode: handle = NOME del bus, come i comandi).
@@ -1065,7 +1032,6 @@ public sealed partial class Compiler
         // GAP VM chiusi 2026-08-29 (funzioni StdLib senza BuiltInFunction)
         { TokenKind.Eof, BuiltInFunction.LEDGER_EOF },          // LEDGER.EOF
         { TokenKind.Multiply, BuiltInFunction.MATRIXMULTIPLY }, // MATRIX.MULTIPLY
-        { TokenKind.KeyGen, BuiltInFunction.KEYGEN },           // CRYPTOGRAPHY.KEYGEN
         { TokenKind.Sleep, BuiltInFunction.SLEEP },             // CONCURRENCY.SleepAsync
         { TokenKind.Recno, BuiltInFunction.RECNO },               // DBF.RECNO / LEDGER.RECNO
         { TokenKind.LUpdate, BuiltInFunction.LUPDATE },           // DBF.LUPDATE

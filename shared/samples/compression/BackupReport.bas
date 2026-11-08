@@ -1,13 +1,15 @@
 ' FILE: compression/BackupReport.bas
 ' SCENARIO DIDATTICO — backup compresso di un report testuale.
 '
-' Il programma genera un report, lo salva su file, crea un archivio ZIP con COMPRESSION.ZIP,
+' Il programma genera un report, lo salva su file, crea un archivio ZIP con ARCHIVE.ZIP,
 ' lo estrae in una cartella separata con UNZIP e verifica che il contenuto riletto sia
 ' identico all'originale. Mostra anche un round-trip in memoria (DEFLATE/INFLATE) per
 ' confrontare le due modalità d'uso.
 '
 ' Domini: COMPRESSION + IO. File di lavoro in work/ (cancellati a fine scenario).
+REQUIRE "compression"
 IMPORT COMPRESSION
+IMPORT ARCHIVE
 IMPORT IO
 
 SUB Main()
@@ -27,9 +29,9 @@ SUB Main()
 
     ' 2) Archivio ZIP della cartella e ripristino in un'altra cartella.
     DIM okZip AS BIT
-    okZip = COMPRESSION.ZIP("work/backup_in/report.txt", "work/report.zip")
+    okZip = ARCHIVE.ZIP("work/backup_in/report.txt", "work/report.zip")
     DIM okUnzip AS BIT
-    okUnzip = COMPRESSION.UNZIP("work/report.zip", "work/backup_out")
+    okUnzip = ARCHIVE.UNZIP("work/report.zip", "work/backup_out")
     PRINT "zip: "; okZip; " unzip: "; okUnzip
 
     ' Il layout dell'archivio dipende dal backend: alcuni conservano il path relativo

@@ -88,23 +88,7 @@ public sealed partial class IlProgramCompiler
         _il.Emit(OpCodes.Pop); // SystemShell ritorna double: scarta
     }
 
-    private void EmitKeyGenStatement(KeyGenStmt stmt)
-    {
-        var handles = _il.DeclareLocal(typeof(long[]));
-        EmitExpression(stmt.Algorithm);
-        if (stmt.KeySize is not null) EmitInt64Argument(stmt.KeySize);
-        else { _il.Emit(OpCodes.Ldc_I4, 2048); _il.Emit(OpCodes.Conv_I8); }
-        _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.KeyGen)));
-        _il.Emit(OpCodes.Stloc, handles);
-        EmitKeyHandleStore(stmt.PrivateKeyHandle, () => { _il.Emit(OpCodes.Ldloc, handles); _il.Emit(OpCodes.Ldc_I4_0); _il.Emit(OpCodes.Ldelem_I8); });
-        EmitKeyHandleStore(stmt.PublicKeyHandle, () => { _il.Emit(OpCodes.Ldloc, handles); _il.Emit(OpCodes.Ldc_I4_1); _il.Emit(OpCodes.Ldelem_I8); });
-    }
 
-    private void EmitKeyCloseStatement(KeyCloseStmt stmt)
-    {
-        EmitInt64Argument(stmt.KeyHandle);
-        _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.KeyClose)));
-    }
 
     private void EmitKeyHandleStore(Target target, Action emitValue)
     {

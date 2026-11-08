@@ -409,116 +409,6 @@ private static double[] ToDoubleArr(object? arg) => Basic.IlBackend.RuntimeFlatt
         [BuiltInFunction.UDT_ALIGNED] = (task, args) =>
         {
 if (args.Length > 0) { try { var sizes = new List<int>(); foreach (var a in args) { var arr = a as System.Collections.IList; if (arr != null) { for (int i = 0; i < arr.Count; i++) sizes.Add((int)SafeDouble(arr[i])); } else sizes.Add((int)SafeDouble(a)); } return (double)CommonLib.UdtUtils.UdtAligned(sizes.ToArray()); } catch { } } return 1.0;
-            // --- Crypto ---
-            // MD5/SHA1/SHA256/SHA512 (Fase 10, docs/StdLib-Runtime-Plan.md): prima passavano per
-            // _runtime.Crypto.HashX (servizio host, stringa hex→Convert.FromHexString — bug di
-            // tipo pre-esistente, "la VM stampava 0"), un'implementazione DUPLICATA e divergente
-            // da CommonLib.CryptoUtils.CoreHashData già usata da IlBackend/IlRuntime.cs. Ora
-            // entrambi i motori chiamano la stessa Basic.StdLibRuntime.CryptographyFunctions.
-        },
-        [BuiltInFunction.MD5] = (task, args) =>
-        {
-                // Runtime comune (IlRuntime): stessa logica — unica implementazione.
-                return Basic.IlBackend.IlRuntime.Md5(ArgOr(args, 0));
-        },
-        [BuiltInFunction.SHA1] = (task, args) =>
-        {
-                return Basic.IlBackend.IlRuntime.Sha1(ArgOr(args, 0));
-        },
-        [BuiltInFunction.SHA256] = (task, args) =>
-        {
-                return Basic.IlBackend.IlRuntime.Sha256(ArgOr(args, 0));
-        },
-        [BuiltInFunction.SHA512] = (task, args) =>
-        {
-                return Basic.IlBackend.IlRuntime.Sha512(ArgOr(args, 0));
-            // AESENCRYPT/AESDECRYPT: erano su _runtime.Crypto.EncryptAES/DecryptAES(string,string) —
-            // .ToString() su un array BASIC (data) produceva "System.Object[]" invece dei byte reali,
-            // rompendo qualunque round-trip su dati binari. Portate su CommonLib.CryptoUtils.CoreAesEncrypt/
-            // CoreAesDecrypt (byte[]-based, AES-256-GCM con salt+nonce+tag), la stessa coppia già usata
-            // dal backend IL nativo — mantenute appaiate qui per non rompere di nuovo il round-trip.
-        },
-        [BuiltInFunction.AESENCRYPT] = (task, args) =>
-        {
-            {
-                var data = ToBytes(ArgOr(args, 0));
-                var key = args.Length > 1 ? args[1]?.ToString() ?? "" : "";
-                try { return CommonLib.CryptoUtils.CoreAesEncrypt(data, key); } catch { return Array.Empty<byte>(); }
-            }
-        },
-        [BuiltInFunction.AESDECRYPT] = (task, args) =>
-        {
-            {
-                var data = ToBytes(ArgOr(args, 0));
-                var key = args.Length > 1 ? args[1]?.ToString() ?? "" : "";
-                try { return CommonLib.CryptoUtils.CoreAesDecrypt(data, key); } catch { return Array.Empty<byte>(); }
-            }
-        },
-        [BuiltInFunction.CHACHA20POLY1305ENCRYPT] = (task, args) =>
-        {
-            {
-                try
-                {
-                    var pt = ToBytes(ArgOr(args, 0));
-                    var key = ToBytes(ArgOr(args, 1));
-                    var nonce = ToBytes(ArgOr(args, 2));
-                    var aad = args.Length > 3 ? ToBytes(args[3]) : null;
-                    var (ct, tag) = Basic.StdLibRuntime.CryptographyFunctions.ChaCha20Poly1305Encrypt(pt, key, nonce, aad);
-                    return new System.Collections.Generic.Dictionary<string, object?>
-                    {
-                        ["ciphertext"] = ct,
-                        ["tag"] = tag
-                    };
-                }
-                catch { return new System.Collections.Generic.Dictionary<string, object?>(); }
-            }
-        },
-        [BuiltInFunction.CHACHA20POLY1305DECRYPT] = (task, args) =>
-        {
-            {
-                try
-                {
-                    var ct = ToBytes(ArgOr(args, 0));
-                    var tag = ToBytes(ArgOr(args, 1));
-                    var key = ToBytes(ArgOr(args, 2));
-                    var nonce = ToBytes(ArgOr(args, 3));
-                    var aad = args.Length > 4 ? ToBytes(args[4]) : null;
-                    var pt = Basic.StdLibRuntime.CryptographyFunctions.ChaCha20Poly1305Decrypt(ct, tag, key, nonce, aad);
-                    return pt ?? Array.Empty<byte>();
-                }
-                catch { return Array.Empty<byte>(); }
-            }
-        },
-        [BuiltInFunction.PASSWORDHASH] = (task, args) =>
-        {
-                // Runtime comune (IlRuntime): stessa logica — unica implementazione.
-                return Basic.IlBackend.IlRuntime.PasswordHash(args.Length > 0 ? args[0]?.ToString() ?? "" : "");
-        },
-        [BuiltInFunction.PASSWORDVERIFY] = (task, args) =>
-        {
-                return args.Length >= 2 && Basic.IlBackend.IlRuntime.PasswordVerify(args[0]?.ToString() ?? "", args[1]?.ToString() ?? "") ? -1.0 : 0.0;
-        },
-        [BuiltInFunction.RANDOMCRYPTOBYTES] = (task, args) =>
-        {
-                // Runtime comune (IlRuntime): stessa logica — unica implementazione.
-                return Basic.IlBackend.IlRuntime.RandomCryptoBytes(args.Length > 0 ? Convert.ToInt32(args[0] ?? 32) : 32);
-        },
-        [BuiltInFunction.HASHFILE] = (task, args) =>
-        {
-                /* HASHFILE(path, algorithm) → byte[] (StdLib byteArrayType). */
-                if (args.Length >= 1) return Basic.IlBackend.IlRuntime.HashFile(
-                    args[0]?.ToString() ?? "",
-                    args.Length > 1 ? args[1]?.ToString()?.ToUpperInvariant() ?? "SHA256" : "SHA256");
-                return Array.Empty<byte>();
-        },
-        [BuiltInFunction.ENCRYPTASYM] = (task, args) =>
-        {
-                // Runtime comune (IlRuntime): registry handle unico (§0bis).
-                return Basic.IlBackend.IlRuntime.EncryptAsym(ArgOr(args, 0), (long)SafeDouble(ArgOr(args, 1)));
-        },
-        [BuiltInFunction.DECRYPTASYM] = (task, args) =>
-        {
-                return Basic.IlBackend.IlRuntime.DecryptAsym(ArgOr(args, 0), (long)SafeDouble(ArgOr(args, 1)));
         },
         [BuiltInFunction.INKEY] = (task, args) =>
         {
@@ -3507,50 +3397,14 @@ if (args.Length >= 3) { var file = args[0]?.ToString() ?? ""; var section = args
         {
                 return Basic.StdLibRuntime.MathFunctions.FPdf(SafeDouble(args.Length > 2 ? args[1] : null), SafeDouble(args.Length > 2 ? args[2] : null), SafeDouble(args.Length > 0 ? args[0] : null));
         },
-        [BuiltInFunction.FROMBASE64] = (task, args) =>
-        {
-                // Runtime comune (IlRuntime): stessa logica — unica implementazione.
-                return Basic.IlBackend.IlRuntime.FromBase64(ArgOr(args, 0)?.ToString() ?? "");
-        },
-        [BuiltInFunction.FROMHEX] = (task, args) =>
-        {
-                return Basic.IlBackend.IlRuntime.FromHex(ArgOr(args, 0)?.ToString() ?? "");
-        },
         [BuiltInFunction.GEOMETRICPMF] = (task, args) =>
         {
                 return Basic.StdLibRuntime.MathFunctions.GeometricPmf(SafeDouble(args.Length > 1 ? args[1] : null), (int)SafeDouble(args.Length > 0 ? args[0] : null));
-        },
-        [BuiltInFunction.HASHFILESTRING] = (task, args) =>
-        {
-                return ToHexStr(CommonLib.CryptoUtils.CoreHashFile(ArgOr(args, 1)?.ToString() ?? "SHA256", ArgOr(args, 0)?.ToString() ?? ""));
         },
         [BuiltInFunction.HYPERGEOMETRICPMF] = (task, args) =>
         {
                 return Basic.StdLibRuntime.MathFunctions.HypergeometricPmf((int)SafeDouble(args.Length > 1 ? args[1] : null), (int)SafeDouble(args.Length > 2 ? args[2] : null), (int)SafeDouble(args.Length > 3 ? args[3] : null), (int)SafeDouble(args.Length > 0 ? args[0] : null));
             // --- INTERPOLATE: delegato a ExecuteBuiltInInterpolate (PCodeProcessor.Builtins.Interpolate.cs) ---
-        },
-        [BuiltInFunction.KEYEXPORT] = (task, args) =>
-        {
-                // Runtime comune (IlRuntime): stessa logica — unica implementazione.
-                return Basic.IlBackend.IlRuntime.KeyExport((long)SafeDouble(ArgOr(args, 0)));
-        },
-        [BuiltInFunction.KEYIMPORT] = (task, args) =>
-        {
-                if (args.Length > 0) return Basic.IlBackend.IlRuntime.KeyImport(ArgOr(args, 0)?.ToString() ?? "", 0);
-                return 0.0;
-        },
-        [BuiltInFunction.KEYGEN] = (task, args) =>
-        {
-                // Runtime comune (IlRuntime): stessa logica — unica implementazione (genera
-                // una coppia di chiavi e registra i due handle nel registry). IlRuntime.
-                return Basic.IlBackend.IlRuntime.KeyGen(
-                    ArgOr(args, 0)?.ToString() ?? "RSA",
-                    (long)SafeDouble(ArgOr(args, 1, 2048)));
-        },
-        [BuiltInFunction.KEY_CLOSE] = (task, args) =>
-        {
-                if (args.Length > 0) Basic.Runtime.Crypto.CryptoKeyRegistry.Close((long)SafeDouble(args[0]));
-                return null;
         },
         [BuiltInFunction.KEY_MAKE] = (task, args) =>
         {
@@ -3572,10 +3426,6 @@ if (args.Length >= 3) { var file = args[0]?.ToString() ?? ""; var section = args
         [BuiltInFunction.LOGNORMALPDF] = (task, args) =>
         {
                 return Basic.StdLibRuntime.MathFunctions.LognormalPdf(SafeDouble(args.Length > 1 ? args[1] : 0.0), SafeDouble(args.Length > 2 ? args[2] : 1.0), SafeDouble(args[0]));
-        },
-        [BuiltInFunction.MD5STRING] = (task, args) =>
-        {
-                return Basic.StdLibRuntime.CryptographyFunctions.StrMd5(ToBytes(ArgOr(args, 0)));
         },
         [BuiltInFunction.MOVINGAVERAGE] = (task, args) =>
         {
@@ -3730,23 +3580,6 @@ if (args.Length >= 3) { var file = args[0]?.ToString() ?? ""; var section = args
         {
                 return Basic.StdLibRuntime.FinanceFunctions.Price(ToDateTime(ArgOr(args, 0)), ToDateTime(ArgOr(args, 1)), SafeDouble(ArgOr(args, 2)), SafeDouble(ArgOr(args, 3)), SafeDouble(ArgOr(args, 4)), (int)SafeDouble(ArgOr(args, 5)), (int)SafeDouble(ArgOr(args, 6)));
         },
-        [BuiltInFunction.RANDOMBYTES] = (task, args) =>
-        {
-                return CommonLib.CryptoUtils.CoreGetRandomBytes((int)SafeDouble(ArgOr(args, 0)));
-        },
-        [BuiltInFunction.RANDOMDOUBLE] = (task, args) =>
-        {
-                // Runtime comune (IlRuntime): stessa logica — unica implementazione.
-                return Basic.IlBackend.IlRuntime.RandomDouble(SafeDouble(ArgOr(args, 0)), SafeDouble(ArgOr(args, 1)));
-        },
-        [BuiltInFunction.RANDOMINT] = (task, args) =>
-        {
-                return (double)Basic.IlBackend.IlRuntime.RandomInt((long)SafeDouble(ArgOr(args, 0)), (long)SafeDouble(ArgOr(args, 1)));
-        },
-        [BuiltInFunction.RANDOMNORMAL] = (task, args) =>
-        {
-                return Basic.IlBackend.IlRuntime.RandomNormal(SafeDouble(ArgOr(args, 0)), SafeDouble(ArgOr(args, 1)));
-        },
         [BuiltInFunction.RETURNS] = (task, args) =>
         {
                 return Basic.StdLibRuntime.TimeSeriesFunctions.Returns(ToDoubleArr(ArgOr(args, 0)));
@@ -3778,23 +3611,6 @@ if (args.Length >= 3) { var file = args[0]?.ToString() ?? ""; var section = args
         [BuiltInFunction.ROLLINGZSCORE] = (task, args) =>
         {
                 return Basic.StdLibRuntime.TimeSeriesFunctions.RollingZScore(ToDoubleArr(ArgOr(args, 0)), (int)SafeDouble(ArgOr(args, 1)));
-        },
-        [BuiltInFunction.SHA1STRING] = (task, args) =>
-        {
-                return Basic.StdLibRuntime.CryptographyFunctions.StrSha1(ToBytes(ArgOr(args, 0)));
-        },
-        [BuiltInFunction.SHA256STRING] = (task, args) =>
-        {
-                return Basic.StdLibRuntime.CryptographyFunctions.StrSha256(ToBytes(ArgOr(args, 0)));
-        },
-        [BuiltInFunction.SHA512STRING] = (task, args) =>
-        {
-                return Basic.StdLibRuntime.CryptographyFunctions.StrSha512(ToBytes(ArgOr(args, 0)));
-        },
-        [BuiltInFunction.SIGN] = (task, args) =>
-        {
-                // Runtime comune (IlRuntime): registry handle unico (§0bis).
-                return Basic.IlBackend.IlRuntime.Sign(ArgOr(args, 0), (long)SafeDouble(ArgOr(args, 1)));
         },
         [BuiltInFunction.SKEWEDNORMALPDF] = (task, args) =>
         {
@@ -3921,36 +3737,6 @@ if (args.Length >= 3) { var file = args[0]?.ToString() ?? ""; var section = args
                 // Runtime comune (IlRuntime): stessa logica — unica implementazione.
                 return Basic.IlBackend.IlRuntime.Ti();
         },
-        [BuiltInFunction.TOBASE64] = (task, args) =>
-        {
-                // Runtime comune (IlRuntime): stessa logica — unica implementazione.
-                return Basic.IlBackend.IlRuntime.ToBase64(ArgOr(args, 0));
-        },
-        [BuiltInFunction.TOHEX] = (task, args) =>
-        {
-                return Basic.IlBackend.IlRuntime.ToHex(ArgOr(args, 0));
-        },
-        [BuiltInFunction.HMACSHA256] = (task, args) =>
-        {
-                // Runtime comune (IlRuntime): stessa logica — unica implementazione.
-                return Basic.IlBackend.IlRuntime.HmacSha256(ArgOr(args, 0), ArgOr(args, 1));
-        },
-        [BuiltInFunction.HMACSHA384] = (task, args) =>
-        {
-                return Basic.IlBackend.IlRuntime.HmacSha384(ArgOr(args, 0), ArgOr(args, 1));
-        },
-        [BuiltInFunction.HMACSHA512] = (task, args) =>
-        {
-                return Basic.IlBackend.IlRuntime.HmacSha512(ArgOr(args, 0), ArgOr(args, 1));
-        },
-        [BuiltInFunction.TOBASE64URL] = (task, args) =>
-        {
-                return Basic.IlBackend.IlRuntime.ToBase64Url(ArgOr(args, 0));
-        },
-        [BuiltInFunction.FROMBASE64URL] = (task, args) =>
-        {
-                return Basic.IlBackend.IlRuntime.FromBase64Url(ArgOr(args, 0)?.ToString() ?? "");
-        },
         [BuiltInFunction.HTMLENCODE] = (task, args) =>
         {
                 return Basic.IlBackend.IlRuntime.HtmlEncode(ArgOr(args, 0)?.ToString() ?? "");
@@ -4025,16 +3811,6 @@ if (args.Length >= 3) { var file = args[0]?.ToString() ?? ""; var section = args
         [BuiltInFunction.UNIFORMPDF] = (task, args) =>
         {
                 return Basic.StdLibRuntime.MathFunctions.UniformPdf(SafeDouble(args.Length > 1 ? args[1] : 0.0), SafeDouble(args.Length > 2 ? args[2] : 1.0), SafeDouble(args[0]));
-        },
-        [BuiltInFunction.VERIFY] = (task, args) =>
-        {
-                // Runtime comune (IlRuntime): registry handle unico (§0bis).
-                return Basic.IlBackend.IlRuntime.Verify(ArgOr(args, 0), ArgOr(args, 1), (long)SafeDouble(ArgOr(args, 2))) ? -1.0 : 0.0;
-        },
-        [BuiltInFunction.VERIFYRAW] = (task, args) =>
-        {
-                // Runtime comune (IlRuntime): verifica Ed25519 con chiave pubblica raw (base64).
-                return Basic.IlBackend.IlRuntime.VerifyRaw(ArgOr(args, 0), ArgOr(args, 1), args.Length > 2 ? (ArgOr(args, 2)?.ToString() ?? "") : "") ? -1.0 : 0.0;
         },
         [BuiltInFunction.VOLATILITY] = (task, args) =>
         {
@@ -4565,22 +4341,6 @@ if (args.Length >= 3) { var file = args[0]?.ToString() ?? ""; var section = args
             // --- RDD: delegato a ExecuteBuiltInRdd (PCodeProcessor.Builtins.Rdd.cs) ---
         },
 
-        [BuiltInFunction.CHACHA20ENCRYPT] = (task, args) =>
-        {
-            try
-            {
-                return Basic.IlBackend.IlRuntime.ChaCha20Encrypt(ArgOr(args, 0), ArgOr(args, 1), ArgOr(args, 2));
-            }
-            catch { return Array.Empty<byte>(); }
-        },
-        [BuiltInFunction.CHACHA20DECRYPT] = (task, args) =>
-        {
-            try
-            {
-                return Basic.IlBackend.IlRuntime.ChaCha20Decrypt(ArgOr(args, 0), ArgOr(args, 1), ArgOr(args, 2));
-            }
-            catch { return Array.Empty<byte>(); }
-        },
         [BuiltInFunction.METHODINFO] = (task, args) =>
         {
             return Basic.IlBackend.IlRuntime.MethodInfo(

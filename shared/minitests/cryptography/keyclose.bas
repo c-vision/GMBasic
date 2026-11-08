@@ -1,11 +1,12 @@
-' MiniTest: KEYCLOSE handle (statement senza namespace) — chiude l'handle di chiave crypto.
-' Verifica i valori: solo completamento + stampa (il registro chiavi e' interno).
+' MiniTest: CRYPTOGRAPHY.KEYCLOSE — chiude l'handle di chiave.
 ' EXPECT: closed
+REQUIRE "crypto"
 IMPORT CRYPTOGRAPHY
 SUB Main()
-  DIM keys = CRYPTOGRAPHY.KEYGEN("ECDSA", 256)
+  DIM keys(1) AS LONG
+  CALL CRYPTOGRAPHY.KEYGEN("ECDSA", 256, keys)
   pem$ = CRYPTOGRAPHY.KEYEXPORT(keys(0))
-  imported = CRYPTOGRAPHY.KEYIMPORT(pem$, 0)
-  KEYCLOSE imported
+  imported = CRYPTOGRAPHY.KEYIMPORT(pem$)
+  CALL CRYPTOGRAPHY.KEYCLOSE(imported)
   PRINT "closed"
 END SUB

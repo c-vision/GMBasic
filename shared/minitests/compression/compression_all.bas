@@ -3,6 +3,7 @@
 ' più ZIP/UNZIP su file temporanei. Nessun alias di namespace: chiamate qualificate
 ' per esteso (PCodeVM non risolve `IMPORT ... AS`).
 ' EXPECT: algorithms_gzip=-1|gzip=ok|zlib=ok|deflate=ok|brotli=ok|lz4=ok|xz=ok|zstd=ok|bzip2=ok|generic=ok|zipfn=ok|zip_lines= 1|zip_content=hello compression
+REQUIRE "compression"
 IMPORT COMPRESSION
 IMPORT IO
 
@@ -40,11 +41,11 @@ SUB Main()
   IO.FWRITE(h, "hello compression" + CHR(10))
   IO.FCLOSE(h)
 
-  DIM okz AS BIT
-  okz = COMPRESSION.ZIP(src, arc)
-  DIM oku AS BIT
-  oku = COMPRESSION.UNZIP(arc, outdir)
-  IF okz <> 0 AND oku <> 0 THEN PRINT "zipfn=ok" ELSE PRINT "zipfn=ko"
+  ' ZIP/UNZIP restano builtin in forma COMANDO. La forma funzione COMPRESSION.ZIP/UNZIP
+  ' è stata rimossa con la superficie del namespace (COMPRESSION ora è del pacchetto FFI).
+  ZIP src TO arc
+  UNZIP arc TO outdir
+  IF IO.FILEEXISTS(outdir + "/src.txt") <> 0 THEN PRINT "zipfn=ok" ELSE PRINT "zipfn=ko"
   DIM lines = IO.READLINES(outdir + "/src.txt")
   PRINT "zip_lines="; UBOUND(lines) + 1
   PRINT "zip_content="; lines(0)
