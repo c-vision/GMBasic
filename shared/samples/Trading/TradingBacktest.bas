@@ -26,12 +26,13 @@ SUB Main()
     DIM N_Asset = 2
     DIM N_Periodi = 60
 
-    DIM Returns(59) AS ARRAY OF DOUBLE
+    DIM Returns(59, 1) AS DOUBLE
 
     FOR i = 0 TO 59
         DIM retA = (0.06 * SIN(i / 5.0)) - 0.005
         DIM retB = (0.02 * SIN(i / 7.0)) + 0.002
-        Returns(i) = {retA, retB}
+        Returns(i, 0) = retA
+        Returns(i, 1) = retB
     NEXT i
 
     PRINT "Dati storici generati: "; N_Periodi; " periodi, "; N_Asset; " asset."
@@ -40,8 +41,9 @@ SUB Main()
     ' --- 2. ESECUZIONE BACKTEST ---
     PRINT "--- Esecuzione Backtest (RUN) ---"
 
-    DIM Result() AS DOUBLE
-    Result = BT.RUN(Returns, "EQUALWEIGHT")
+    DIM Result(65) AS DOUBLE
+    DIM k AS LONG
+    k = BT.SIMULATE(Returns, Result)
 
     PRINT "Backtest completato."
     PRINT

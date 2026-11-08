@@ -1,7 +1,7 @@
 ' ==============================================================================
-' TradingPortfolioAdvanced.bas — BACKTEST.RUN + PORTFOLIO.EVOLVE/BLACKLITTERMAN
+' TradingPortfolioAdvanced.bas — BACKTEST.SIMULATE + PORTFOLIO.EVOLVE/BLACKLITTERMAN
 ' ==============================================================================
-' Copre: BACKTEST.RUN (media per periodo, pesi uguali),
+' Copre: BACKTEST.SIMULATE (matrice 2-D, media per periodo, pesi uguali),
 '        PORTFOLIO.EVOLVE, PORTFOLIO.BLACKLITTERMAN.
 ' I risultati sono ARRAY: [rendimento, volatilita', Sharpe, pesi...].
 ' ==============================================================================
@@ -11,12 +11,13 @@ IMPORT PORTFOLIO AS TP
 SUB Main()
     PRINT "=== TRADING avanzato ==="
 
-    ' BACKTEST.RUN: array JAGGED [periodo][asset], rendimento per periodo = media degli asset.
-    DIM data(1) AS ARRAY OF DOUBLE
-    data(0) = {0.01, 0.03}
-    data(1) = {0.02, 0.04}
-    DIM bt() AS DOUBLE
-    bt = BACKTEST.RUN(data, "")
+    ' BACKTEST.SIMULATE: matrice 2-D [periodo][asset], rendimento per periodo = media degli asset.
+    DIM data(1, 1) AS DOUBLE
+    data(0, 0) = 0.01 : data(0, 1) = 0.03
+    data(1, 0) = 0.02 : data(1, 1) = 0.04
+    DIM bt(7) AS DOUBLE
+    DIM kb AS LONG
+    kb = BACKTEST.SIMULATE(data, bt)
     PRINT "TotalReturn:    "; ROUND(bt(0), 4)
     PRINT "MaxDrawdown:    "; ROUND(bt(2), 4)
     PRINT "Sharpe:         "; ROUND(bt(3), 4)
