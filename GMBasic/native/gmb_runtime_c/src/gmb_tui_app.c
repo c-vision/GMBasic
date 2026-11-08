@@ -915,7 +915,10 @@ void gmb_tui_draw_px_all(void)
             if (cc->px_h <= 2) { gmb_widget_style_t st = gmb_widget_style_current();
                                  if (st.row_h > 0) cc->px_h = st.row_h; }
             if (filt) { extern int gmb_form_damage_hits(int,int,int,int);
-                        if (!gmb_form_damage_hits(cc->px_x, cc->px_y, cc->px_w, cc->px_h)) continue; }
+                        int dx, dy, dw, dh;
+                        { extern void gmb_control_paint_rect(gmb_control_t*, int*, int*, int*, int*);
+                          gmb_control_paint_rect(cc, &dx, &dy, &dw, &dh); }
+                        if (!gmb_form_damage_hits(dx, dy, dw, dh)) continue; }
             if (cc->draw_px_fn) cc->draw_px_fn(cc->user, cc);
             else draw_cells_px_fallback(cc, cw, ch);
         }}
@@ -1140,10 +1143,9 @@ void gmb_tui_dispatch_mouse_px(int type, int x, int y, int button, int wheel)
       {
           gmb_control_t* cc = g_reg_ctrl[i];
           if (!cc || !cc->visible) continue;
-          int rx = (cc->px_w > 0) ? cc->px_x : cc->x;
-          int ry = (cc->px_h > 0) ? cc->px_y : cc->y;
-          int rw = (cc->px_w > 0) ? cc->px_w : cc->width;
-          int rh = (cc->px_h > 0) ? cc->px_h : cc->height;
+          int rx, ry, rw, rh;
+          { extern void gmb_control_paint_rect(gmb_control_t*, int*, int*, int*, int*);
+            gmb_control_paint_rect(cc, &rx, &ry, &rw, &rh); }
           if (x >= rx && x < rx + rw && y >= ry && y < ry + rh)
           { extern void gmb_form_invalidate(int,int,int,int); gmb_form_invalidate(rx, ry, rw, rh); }
       } }

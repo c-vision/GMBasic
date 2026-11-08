@@ -110,7 +110,7 @@ static void fkeybar_ctrl_draw_px(void* u, gmb_control_t* c)
     {
         const char* key = f->bar.keys[i];
         if (!key || !*key) continue;
-        int tw = (int)gmb_gfx_text_width(key);
+        int tw = gmb_gfx_text_width_logical(key);   /* LOGICO: i chip vivono in unita. logiche */
         int cw = tw + 18; if (cw < 30) cw = 30;
         cwl[k++] = cw; total += cw;
     }

@@ -32,6 +32,8 @@ SUB Reg(nm AS STRING, p AS INTEGER)
 END SUB
 
 ' ── commutazione scheda (pagina 0 = cornice, sempre visibile) ────────────
+' NON tocca il TAB: la scheda la sceglie l'utente (o il demo), e il valore del TAB
+' è solo la CONSEGUENZA. Così non c'è ricorsione evento → ShowPage → evento.
 SUB ShowPage(p AS INTEGER)
   DIM q AS INTEGER
   FOR q = 0 TO nct - 1
@@ -41,7 +43,19 @@ SUB ShowPage(p AS INTEGER)
       CONTROL SET ctl$(q), "visible", 0
     END IF
   NEXT q
-  CONTROL SET "p0_d", "value", p - 1
+  curpage = p
+END SUB
+
+' ── EVENTO CHANGE del TAB: il valore (0..4) È la pagina ──────────────────
+' Il click sulla scheda aggiorna il valore e il runtime chiama QUESTO gestore:
+' nessun polling nel ciclo dei frame, nessun timer. Il cambio pagina avviene
+' dentro la gestione dell'evento, quindi nello stesso frame del click.
+SUB OnTabChange()
+  DIM p AS INTEGER
+  p = INT(nt + 0.5) + 1
+  IF p < 1 THEN p = 1
+  IF p > 5 THEN p = 5
+  IF p <> curpage THEN CALL ShowPage(p)
 END SUB
 
 ' ── verifica geometrica della pagina: 0 = tutto a posto ──────────────────
@@ -97,7 +111,7 @@ BIGTEXT 20, 8, "GMBASIC · Dashboard" STYLE "font=22" NAME "p0_b"
 CALL Reg("p0_b", 0)
 LABEL 20, 43, 900, "tutte le famiglie di controlli · tema glass · font di sistema" NAME "p0_c"
 CALL Reg("p0_c", 0)
-TAB 20, 72, 1240, "Overview|Data|Files & Print|Clipper|Charts" INTO nt NAME "p0_d"
+TAB 20, 72, 1240, "Overview|Data|Files & Print|Clipper|Charts" INTO nt ON CHANGE OnTabChange NAME "p0_d"
 CALL Reg("p0_d", 0)
 STATUSBAR 20, 892, 1240, "ready · 5 schede · 96 controlli" NAME "p0_e"
 CALL Reg("p0_e", 0)
@@ -269,9 +283,9 @@ LABEL 812, 606, 432, "ALERTBOX / CONFIRMATIONBOX" NAME "p4_l"
 CALL Reg("p4_l", 4)
 PANEL 20, 696, 1232, 188, "FUNCTION KEY BAR · COLOR PICKER" NAME "p4_m"
 CALL Reg("p4_m", 4)
-FUNCTIONKEYBAR 730, 36, 1200, "F1 Aiuto|F2 Salva|F3 Annulla|F4 Esci" NAME "p4_n"
+FUNCTIONKEYBAR 744, 36, 1200, "F1 Aiuto|F2 Salva|F3 Annulla|F4 Esci" NAME "p4_n"
 CALL Reg("p4_n", 4)
-COLORPICKER 36, 780, 300, 48 INTO v18 NAME "p4_o"
+COLORPICKER 36, 796, 300, 48 INTO v18 NAME "p4_o"
 CALL Reg("p4_o", 4)
 
 ' ══ PAGINA 5 · CHARTS ══════════════════════════════════════════════════
@@ -302,8 +316,8 @@ CALL Reg("p5_l", 5)
 
 ' ── 5 schede: mostra, verifica, salva (fase automatica) ─────────────────
 FOR pg = 1 TO 5
+  CONTROL SET "p0_d", "value", pg - 1
   CALL ShowPage(pg)
-  curpage = pg
   FOR i = 1 TO 24 : WINDOW PUMP 16 : NEXT
   IF pg = 1 THEN SAVE SCREEN "work/tab1.png"
   IF pg = 2 THEN SAVE SCREEN "work/tab2.png"
@@ -315,42 +329,36 @@ NEXT pg
 ' ── check layout su ogni pagina (solo i controlli VISIBILI della pagina) ─
 FOR pg = 1 TO 5
   CALL ShowPage(pg)
-  curpage = pg
   FOR i = 1 TO 4 : WINDOW PUMP 16 : NEXT
   k = CheckLayout(pg)
   viol = viol + k
 NEXT pg
 
-' ── CAMBIO SCHEDA: il valore del TAB (0..4) è la pagina. È lo stesso percorso
-'    che fa il CLICK sulla scheda, quindi la pagina cambia davvero in finestra. ──
-SUB PumpPages(n AS INTEGER)
-  DIM z AS INTEGER, np AS INTEGER
-  FOR z = 1 TO n
-    WINDOW PUMP 16
-    np = INT(nt + 0.5) + 1
-    IF np >= 1 AND np <= 5 THEN
-      IF np <> curpage THEN
-        curpage = np
-        CALL ShowPage(np)
-      END IF
-    END IF
-    IF WINDOWCLOSED() <> 0 THEN EXIT FOR
-  NEXT z
-END SUB
-
-' prova headless del cambio pagina: come un click sulla terza scheda
+' ── prova del GESTORE dell'evento (fase automatica) ─────────────────────
+' Il click sulla scheda imposta il valore del TAB e il runtime chiama
+' OnTabChange; qui si chiama il gestore direttamente, con lo stesso valore
+' che il runtime gli passerebbe, per verificarne la logica anche headless.
 CALL ShowPage(1)
-curpage = 1
 CONTROL SET "p0_d", "value", 2
-CALL PumpPages(60)
+CALL OnTabChange()
 IF curpage = 3 THEN switchok = 1
 SAVE SCREEN "work/tab_switch.png"
-
-' ── finestra INTERATTIVA: clic sulle schede, fino a chiusura o ~30 s ────
-CALL PumpPages(1800)
 
 SCREEN 0
 PRINT "CONTROLLI="; nct
 PRINT "SWITCH-OK="; switchok
 IF viol = 0 THEN PRINT "LAYOUT-TOTAL=0" ELSE PRINT "LAYOUT-TOTAL="; viol; badmsg
 PRINT "TABS-OK"
+
+' ── finestra INTERATTIVA: SOLO eventi, nessun polling e nessun timer.
+'    Il click su una scheda entra in OnTabChange (ON CHANGE) e cambia pagina nello
+'    stesso frame. `DOEVENTS` è l'unica cosa che serve: consegna la coda al runtime
+'    (input + repaint incrementale). Il contatore di frame serve solo a chiudere il
+'    demo automatico: senza finestra non arriva mai un evento di chiusura.
+SCREEN 12, 1280, 940, 32
+CALL ShowPage(1)
+CONTROL SET "p0_d", "value", 0
+FOR i = 1 TO 1500
+  DOEVENTS
+  IF WINDOWCLOSED() <> 0 THEN EXIT FOR
+NEXT i

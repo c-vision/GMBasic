@@ -45,6 +45,10 @@ static void render_frame(void)
 static int g_btn_fired = 0;
 static void btn_cb(void) { g_btn_fired = 1; }
 
+/* Evento CHANGE (usato dalle schede): il gestore deve essere CHIAMATO dal runtime. */
+static int g_chg_fired = 0;
+static void chg_cb(void) { g_chg_fired = 1; }
+
 static void click_at(int x, int y)
 {
     gmb_form_dispatch_mouse_px(GMB_GFX_MOUSE_DOWN, x, y, 1, 0);
@@ -100,9 +104,11 @@ int main(void)
     {
         double v = 0;
         gmb_form_add_tabs(40, 330, "A|B|C", &v);
+        gmb_form_set_event(GMB_EV_CHANGE, (gmb_form_cb)chg_cb);   /* come ON CHANGE */
         render_frame();
         click_at(40 + 110, 330 + 13);
         report("tabs", v != 0, "scheda selezionata");
+        report("tabs-event", g_chg_fired != 0, "gestore CHANGE chiamato dal click");
     }
 
     /* ── BUTTON (callback) ─────────────────────────────────────────────── */
