@@ -21,6 +21,10 @@ GMBasicSharp/Resources/bin/
 GMBasicSharp/Resources/libs/
 graphs/
 rag/
+# Eccezione: i SORGENTI C# del runtime (non i dati RAG pesanti). La regola `rag/`
+# e' case-insensitive su macOS e ignorava per errore GMBasicSharp/common/AI/Rag,
+# rendendo la build da checkout pulito impossibile.
+!GMBasicSharp/common/AI/Rag/
 docs/graphify/
 .DS_Store
 # Storia/artefatti delle sessioni AI nei campioni (`support.agent.json.hist`, `.hist`):
