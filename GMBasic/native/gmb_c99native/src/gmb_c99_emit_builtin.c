@@ -2646,36 +2646,7 @@ static int sa_stat(ctx_t* c, gmb_expr_t** a, int n, const char* fn) {
     }
     return 0;
 }
-static int sa_mean(ctx_t* c, gmb_expr_t** a, int n) { return sa_stat(c, a, n, "gmb_mean"); }
-static int sa_median(ctx_t* c, gmb_expr_t** a, int n) { return sa_stat(c, a, n, "gmb_median"); }
-static int sa_stddev(ctx_t* c, gmb_expr_t** a, int n) { return sa_stat(c, a, n, "gmb_stddev"); }
 static int sa_variance(ctx_t* c, gmb_expr_t** a, int n) { return sa_stat(c, a, n, "gmb_variance"); }
-static int sa_kurtosis(ctx_t* c, gmb_expr_t** a, int n) { return sa_stat(c, a, n, "gmb_kurtosis"); }
-static int sa_mad(ctx_t* c, gmb_expr_t** a, int n) { return sa_stat(c, a, n, "gmb_mad"); }
-static int sa_skewness(ctx_t* c, gmb_expr_t** a, int n) { return sa_stat(c, a, n, "gmb_skewness"); }
-static int sa_correlation(ctx_t* c, gmb_expr_t** a, int n) {
-    if (n != 2) return 0;
-    if (!a[0] || a[0]->kind != GMB_EXPR_VAR || !a[1] || a[1]->kind != GMB_EXPR_VAR) return 0;
-    var_t* xv = lookup_var(c, a[0]->var);
-    var_t* yv = lookup_var(c, a[1]->var);
-    if (!xv || !yv || !xv->is_array || !yv->is_array || xv->matrix || yv->matrix) return 0;
-    sb_put(&c->out, "gmb_correlation("); emit_var_ref(c, xv);
-    sb_put(&c->out, ", "); emit_var_ref(c, yv);
-    sb_put(&c->out, ", (int)("); emit_arr_len_of(c, xv); sb_put(&c->out, "))");
-    return 1;
-}
-static int sa_covariance(ctx_t* c, gmb_expr_t** a, int n) {
-    if (n != 2) return 0;
-    if (!a[0] || a[0]->kind != GMB_EXPR_VAR || !a[1] || a[1]->kind != GMB_EXPR_VAR) return 0;
-    var_t* xv = lookup_var(c, a[0]->var);
-    var_t* yv = lookup_var(c, a[1]->var);
-    if (!xv || !yv || !xv->is_array || !yv->is_array || xv->matrix || yv->matrix) return 0;
-    sb_put(&c->out, "gmb_covariance("); emit_var_ref(c, xv);
-    sb_put(&c->out, ", "); emit_var_ref(c, yv);
-    sb_put(&c->out, ", (int)("); emit_arr_len_of(c, xv); sb_put(&c->out, "))");
-    return 1;
-}
-static int sa_range(ctx_t* c, gmb_expr_t** a, int n) { return sa_stat(c, a, n, "gmb_range_arr"); }
 static int sa_amax(ctx_t* c, gmb_expr_t** a, int n) { return sa_stat(c, a, n, "gmb_max_arr"); }
 static int sa_amin(ctx_t* c, gmb_expr_t** a, int n) { return sa_stat(c, a, n, "gmb_min_arr"); }
 static int sa_asum(ctx_t* c, gmb_expr_t** a, int n) { return sa_stat(c, a, n, "gmb_sum_arr"); }
@@ -2690,18 +2661,6 @@ static int sa_moment(ctx_t* c, gmb_expr_t** a, int n) {
         sb_put(&c->out, ", (int)("); emit_arr_len_of(c, av); sb_put(&c->out, "), (int)(");
         emit_expr(c, a[1]); sb_put(&c->out, "))");
         return 1;
-    }
-    return 0;
-}
-static int sa_percentile(ctx_t* c, gmb_expr_t** a, int n) {
-    if (n < 1) return 0;
-    if (!a[0] || a[0]->kind != GMB_EXPR_VAR || !a[0]->var) return 0;
-    var_t* av = lookup_var(c, a[0]->var);
-    if (av && av->is_array && !av->matrix && !av->vclass[0]) {
-        sb_put(&c->out, "gmb_percentile("); emit_var_ref(c, av);
-        sb_put(&c->out, ", (int)("); emit_arr_len_of(c, av); sb_put(&c->out, "), ");
-        if (n >= 2) emit_expr(c, a[1]); else sb_put(&c->out, "50");
-        sb_put(&c->out, ")"); return 1;
     }
     return 0;
 }
@@ -2736,205 +2695,6 @@ int emit_bf_stats_arr(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_
     (void)name; (void)ns; (void)line;
     for (size_t i = 0; i < sizeof(SA_TBL) / sizeof(SA_TBL[0]); i++)
         if (SA_TBL[i].tk == tk) return SA_TBL[i].sp(c, args, nargs);
-    return 0;
-}
-/* ── dominio: trading metrics (delegazione §0quater) ──
- * TRADING.METRICS array→scalar: la runtime condivisa gmb_tm_... (mai inline, §0bis).
- * Il primo argomento è una variabile array; gli extra sono scalari passati in ordine. */
-typedef struct { gmb_tokenkind_t tk; ma_sp sp; } tm_row;
-static int tm_ret(ctx_t* c, gmb_expr_t** a, int n, const char* fn, int min_extra) {
-    if (n < 1 + min_extra) return 0;
-    if (!a[0]) return 0;
-    if (a[0]->kind == GMB_EXPR_VAR && a[0]->var) {
-        var_t* av = lookup_var(c, a[0]->var);
-        if (!av || !av->is_array || av->matrix || av->vclass[0]) return 0;
-        sb_put(&c->out, fn); sb_put(&c->out, "(");
-        emit_var_ref(c, av);
-        sb_put(&c->out, ", (int)("); emit_arr_len_of(c, av); sb_put(&c->out, ")");
-        for (int i = 1; i < n; i++) { sb_put(&c->out, ", "); emit_expr(c, a[i]); }
-        sb_put(&c->out, ")"); return 1;
-    }
-    /* Argomento SCALARE dove la StdLib attende una serie: il canone IL (ToDoubleArray)
-     * lo coercisce a [valore] — stessa semantica del helper VM gmb_vm_list_to_dbl
-     * (type==1 → [num]). Serve ai builtin TRADING.GEOMETRICMEANRETURN/HOLDINGPERIODRETURN
-     * chiamati con un letterale (trading/gen_TRADING_*.bas). */
-    if (etype(c, a[0]) == TY_STR) return 0;
-    sb_put(&c->out, fn); sb_put(&c->out, "((const double[]){ (double)(");
-    emit_expr(c, a[0]);
-    sb_put(&c->out, ") }, 1");
-    for (int i = 1; i < n; i++) { sb_put(&c->out, ", "); emit_expr(c, a[i]); }
-    sb_put(&c->out, ")"); return 1;
-}
-/* funzioni con due array di input (asset, benchmark) */
-static int tm_ab(ctx_t* c, gmb_expr_t** a, int n, const char* fn, int min_extra) {
-    if (n < 2 + min_extra) return 0;
-    if (!a[0] || a[0]->kind != GMB_EXPR_VAR || !a[1] || a[1]->kind != GMB_EXPR_VAR) return 0;
-    var_t* av = lookup_var(c, a[0]->var);
-    var_t* bv = lookup_var(c, a[1]->var);
-    if (!av || !bv || !av->is_array || !bv->is_array || av->matrix || bv->matrix || av->vclass[0] || bv->vclass[0]) return 0;
-    sb_put(&c->out, fn); sb_put(&c->out, "(");
-    emit_var_ref(c, av); sb_put(&c->out, ", "); emit_var_ref(c, bv);
-    sb_put(&c->out, ", (int)("); emit_arr_len_of(c, av); sb_put(&c->out, ")");
-    for (int i = 2; i < n; i++) { sb_put(&c->out, ", "); emit_expr(c, a[i]); }
-    sb_put(&c->out, ")"); return 1;
-}
-static int tm_maxdd(ctx_t* c, gmb_expr_t** a, int n) { return tm_ret(c, a, n, "gmb_tm_max_drawdown", 0); }
-static int tm_beta(ctx_t* c, gmb_expr_t** a, int n) { return tm_ab(c, a, n, "gmb_trd_beta", 0); }
-static int tm_annret(ctx_t* c, gmb_expr_t** a, int n) { return tm_ret(c, a, n, "gmb_tm_annualized_return", 1); }
-static int tm_annvol(ctx_t* c, gmb_expr_t** a, int n) { return tm_ret(c, a, n, "gmb_tm_annualized_volatility", 1); }
-static int tm_calmar(ctx_t* c, gmb_expr_t** a, int n) { return tm_ret(c, a, n, "gmb_tm_calmar_ratio", 1); }
-/* SHARPERATIO canone BASIC: IlRuntime.SharpeRatio(arr) = mean(rf=0)/sample_sd * sqrt(252).
- * Il riskfree opzionale del registro NON è applicato dal canone IL — emetto rf=0 e ppy=252. */
-static int tm_sharpe(ctx_t* c, gmb_expr_t** a, int n) {
-    if (n < 1) return 0;
-    if (!a[0] || a[0]->kind != GMB_EXPR_VAR || !a[0]->var) return 0;
-    var_t* av = lookup_var(c, a[0]->var);
-    if (!av || !av->is_array || av->matrix || av->vclass[0]) return 0;
-    sb_put(&c->out, "gmb_tm_sharpe_ratio("); emit_var_ref(c, av);
-    sb_put(&c->out, ", (int)("); emit_arr_len_of(c, av);
-    sb_put(&c->out, "), 0, 252)");
-    return 1;
-}
-static int tm_sortino(ctx_t* c, gmb_expr_t** a, int n) { return tm_ret(c, a, n, "gmb_tm_sortino_ratio", 2); }
-static int tm_ulcer(ctx_t* c, gmb_expr_t** a, int n) { return tm_ret(c, a, n, "gmb_trd_ulcer", 0); }
-static int tm_downside(ctx_t* c, gmb_expr_t** a, int n) { return tm_ret(c, a, n, "gmb_tm_downside_deviation", 1); }
-static int tm_var(ctx_t* c, gmb_expr_t** a, int n) { return tm_ret(c, a, n, "gmb_tm_value_at_risk", 1); }
-static int tm_cvar(ctx_t* c, gmb_expr_t** a, int n) { return tm_ret(c, a, n, "gmb_trd_cvar", 1); }
-static int tm_rskew(ctx_t* c, gmb_expr_t** a, int n) { return tm_ret(c, a, n, "gmb_tm_returns_skewness", 0); }
-static int tm_omega(ctx_t* c, gmb_expr_t** a, int n) { return tm_ret(c, a, n, "gmb_tm_omega_ratio", 1); }
-static int tm_aterr(ctx_t* c, gmb_expr_t** a, int n) { return tm_ab(c, a, n, "gmb_tm_annualized_tracking_error", 1); }
-static int tm_geomret(ctx_t* c, gmb_expr_t** a, int n) { return tm_ret(c, a, n, "gmb_tm_geometric_mean_return", 0); }
-static int tm_holdret(ctx_t* c, gmb_expr_t** a, int n) { return tm_ret(c, a, n, "gmb_tm_holding_period_return", 0); }
-static int tm_addd(ctx_t* c, gmb_expr_t** a, int n) { return tm_ret(c, a, n, "gmb_tm_annualized_downside_dev", 2); }
-static int tm_totret(ctx_t* c, gmb_expr_t** a, int n) { return tm_ret(c, a, n, "gmb_trd_total_return", 0); }
-static int tm_rkurt(ctx_t* c, gmb_expr_t** a, int n) { return tm_ret(c, a, n, "gmb_kurtosis", 0); }
-static int tm_alpha(ctx_t* c, gmb_expr_t** a, int n) { return tm_ab(c, a, n, "gmb_trd_alpha", 2); }
-static int pf_expret(ctx_t* c, gmb_expr_t** a, int n) { return tm_ab(c, a, n, "gmb_tm_expected_return", 0); }
-static int pf_long(ctx_t* c, gmb_expr_t** a, int n) { return tm_ret(c, a, n, "gmb_tm_is_long_only", 0); }
-static int pf_sharpe3(ctx_t* c, gmb_expr_t** a, int n) {
-    if (n != 3) return 0;
-    sb_put(&c->out, "gmb_fin_portfolio_sharpe(");
-    for (int i = 0; i < 3; i++) { if (i) sb_put(&c->out, ", "); emit_expr(c, a[i]); }
-    sb_put(&c->out, ")"); return 1;
-}
-/* PortfolioResult come dict boxed (parity emitter C# EmitPortfolioResultCall):
- * gmb_tm_portfolio_result(rets, n, kind) → gmb_val_t. kind: 0=MAXRETURN,
- * 1=KELLYCRITERION, 2=MINCVAR, 3=MINCDAR. */
-static int pf_result(ctx_t* c, gmb_expr_t** a, int n, int kind) {
-    if (n < 1 || !a[0] || a[0]->kind != GMB_EXPR_VAR) return 0;
-    var_t* av = lookup_var(c, a[0]->var);
-    if (!av || !av->is_array || av->matrix || av->vclass[0]) return 0;
-    sb_put(&c->out, "gmb_tm_portfolio_result((gmb_double_t*)");
-    emit_var_ref(c, av);
-    sb_put(&c->out, ", (int)(");
-    /* jagged (DIM x(n) AS ARRAY OF DOUBLE): niente _len, il bound __b0 è l'indice max →
-     * n = __b0 + 1 (parity emitter C# _arraySizes = BoundValue + 1). */
-    if (av->jagged) { sb_bound_var(&c->out, av, 0); sb_put(&c->out, " + 1"); }
-    else emit_arr_len_of(c, av);
-    sb_printf(&c->out, "), %d)", kind);
-    return 1;
-}
-static int pf_maxret(ctx_t* c, gmb_expr_t** a, int n) { return pf_result(c, a, n, 0); }
-static int pf_kelly(ctx_t* c, gmb_expr_t** a, int n) { return pf_result(c, a, n, 1); }
-static int pf_mincvar(ctx_t* c, gmb_expr_t** a, int n) { return pf_result(c, a, n, 2); }
-static int pf_mincdar(ctx_t* c, gmb_expr_t** a, int n) { return pf_result(c, a, n, 3); }
-/* Portfolio optimization: gmb_tm_portfolio_optimize(cov, n, rets, rets_n, rf, kind).
- * kind: 0=MINVOLATILITY, 1=MAXSHARPE, 2=RISKPARITY, 3=EQUALLYWEIGHTED, 4=MEANVARIANCE. */
-static int pf_optimize(ctx_t* c, gmb_expr_t** a, int n, int kind) {
-    if (kind == 3) {
-        if (n < 1) return 0;
-        sb_put(&c->out, "gmb_tm_portfolio_optimize(NULL, (int)(");
-        emit_expr(c, a[0]);
-        sb_put(&c->out, "), NULL, 0, 0, 3)");
-        return 1;
-    }
-    int covIdx = (kind == 1 || kind == 4) ? 1 : 0;
-    if (n <= covIdx || !a[covIdx] || a[covIdx]->kind != GMB_EXPR_VAR) return 0;
-    var_t* cv = lookup_var(c, a[covIdx]->var);
-    if (!cv || !cv->jagged) return 0;
-    sb_put(&c->out, "gmb_tm_portfolio_optimize((gmb_double_t**)");
-    emit_var_ref(c, cv);
-    sb_put(&c->out, ", (int)(");
-    sb_bound_var(&c->out, cv, 0);
-    /* il bound __b0 è l'INDICE massimo (DIM cov(2) → 2): n = __b0 + 1 (parity emitter C#
-     * _arraySizes = BoundValue + 1). */
-    sb_put(&c->out, " + 1), ");
-    if ((kind == 1 || kind == 4) && n >= 1 && a[0] && a[0]->kind == GMB_EXPR_VAR) {
-        var_t* rv = lookup_var(c, a[0]->var);
-        if (rv && rv->is_array && !rv->jagged) {
-            sb_put(&c->out, "(const double*)");
-            emit_var_ref(c, rv);
-            sb_put(&c->out, ", (int)(");
-            emit_arr_len_of(c, rv);
-            sb_put(&c->out, "), ");
-        } else sb_put(&c->out, "NULL, 0, ");
-    } else sb_put(&c->out, "NULL, 0, ");
-    if (kind == 1 && n >= 3) emit_expr(c, a[2]); else sb_put(&c->out, "0");
-    sb_printf(&c->out, ", %d)", kind);
-    return 1;
-}
-static int pf_maxsharpe(ctx_t* c, gmb_expr_t** a, int n) { return pf_optimize(c, a, n, 1); }
-static int pf_meanvar(ctx_t* c, gmb_expr_t** a, int n) { return pf_optimize(c, a, n, 4); }
-static int pf_minvol(ctx_t* c, gmb_expr_t** a, int n) { return pf_optimize(c, a, n, 0); }
-static int pf_riskparity(ctx_t* c, gmb_expr_t** a, int n) { return pf_optimize(c, a, n, 2); }
-static int pf_equally(ctx_t* c, gmb_expr_t** a, int n) { return pf_optimize(c, a, n, 3); }
-/* PVAR/CVAR(storici[][], pesi, conf): i pesi sono IGNORATI (parità IL/VM/C); lo storico
- * jagged (righe uniformi) viene appiattito e passato a gmb_trd_{var,cvar} (CVaR assoluto). */
-static int pf_risk_jagged(ctx_t* c, gmb_expr_t** a, int n, int is_cvar) {
-    if (n < 1 || !a[0] || a[0]->kind != GMB_EXPR_VAR) return 0;
-    var_t* hv = lookup_var(c, a[0]->var);
-    if (!hv || !hv->jagged) return 0;
-    sb_printf(&c->out, "gmb_trd_portfolio_%s_jagged((double**)", is_cvar ? "cvar" : "var");
-    emit_var_ref(c, hv);
-    sb_put(&c->out, ", (int)(");
-    sb_bound_var(&c->out, hv, 0); sb_put(&c->out, " + 1), (int)(");
-    emit_ident(c, hv->name); sb_put(&c->out, "__cols), ");
-    if (n >= 3) emit_expr(c, a[2]);
-    else if (n >= 2) emit_expr(c, a[1]);
-    else sb_put(&c->out, "0.95");
-    sb_put(&c->out, ")");
-    return 1;
-}
-static int pf_pvar(ctx_t* c, gmb_expr_t** a, int n) { return pf_risk_jagged(c, a, n, 0); }
-static int pf_pcvar(ctx_t* c, gmb_expr_t** a, int n) { return pf_risk_jagged(c, a, n, 1); }
-static int pf_mad(ctx_t* c, gmb_expr_t** a, int n) { return tm_ret(c, a, n, "gmb_tm_portfolio_mad", 0); }
-static int pf_semimad(ctx_t* c, gmb_expr_t** a, int n) {
-    if (n < 1 || !a[0] || a[0]->kind != GMB_EXPR_VAR) return 0;
-    var_t* av = lookup_var(c, a[0]->var);
-    if (!av || !av->is_array || av->matrix || av->vclass[0]) return 0;
-    sb_put(&c->out, "gmb_tm_portfolio_semimad(");
-    emit_var_ref(c, av);
-    sb_put(&c->out, ", (int)("); emit_arr_len_of(c, av); sb_put(&c->out, "), ");
-    if (n >= 2) emit_expr(c, a[1]); else sb_put(&c->out, "0");
-    sb_put(&c->out, ")");
-    return 1;
-}
-/* STDEV(pesi[], covarianza[][]) = sqrt(wᵀ·cov·w) — cov jagged, n = __b0 + 1. */
-static int pf_stdev(ctx_t* c, gmb_expr_t** a, int n) {
-    if (n < 2 || !a[0] || a[0]->kind != GMB_EXPR_VAR || !a[1] || a[1]->kind != GMB_EXPR_VAR) return 0;
-    var_t* wv = lookup_var(c, a[0]->var);
-    var_t* cv = lookup_var(c, a[1]->var);
-    if (!wv || !wv->is_array || !cv || !cv->jagged) return 0;
-    sb_put(&c->out, "({ const double* _sw = (const double*)");
-    emit_var_ref(c, wv);
-    sb_put(&c->out, "; const double* const* _sm = (const double* const*)");
-    emit_var_ref(c, cv);
-    sb_put(&c->out, "; int _sn = (int)(");
-    sb_bound_var(&c->out, cv, 0); sb_put(&c->out, " + 1");
-    sb_put(&c->out, "); double _ss = 0; for (int _i = 0; _i < _sn; _i++) for (int _j = 0; _j < _sn; _j++) _ss += _sw[_i] * _sm[_i][_j] * _sw[_j]; sqrt(_ss); })");
-    return 1;
-}
-static int tm_treynor(ctx_t* c, gmb_expr_t** a, int n) { return tm_ab(c, a, n, "gmb_tm_treynor_ratio", 2); }
-static int tm_infratio(ctx_t* c, gmb_expr_t** a, int n) { return tm_ab(c, a, n, "gmb_tm_information_ratio", 1); }
-static const tm_row TM_TBL[] = {
-                                                            /* TRADING array→scalar mancanti: le funzioni esistono già nel runtime condiviso
-     * (gmb_tm_geometric_mean_return / gmb_tm_holding_period_return, §0bis). */
-            /* TRADING.PORTFOLIO scalar (array→scalar, runtime condivisa) */
-                                                                    };
-int emit_bf_metrics(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk, gmb_expr_t** args, int nargs, int line) {
-    (void)name; (void)ns; (void)line;
-    for (size_t i = 0; i < sizeof(TM_TBL) / sizeof(TM_TBL[0]); i++)
-        if (TM_TBL[i].tk == tk) return TM_TBL[i].sp(c, args, nargs);
     return 0;
 }
 /* ── dominio: signal (design IIR handle-based + welch) ──
@@ -3269,34 +3029,6 @@ static int an_solveivp(ctx_t* c, gmb_expr_t** a, int n) {
     emit_expr(c, a[2]); sb_put(&c->out, ", "); emit_expr(c, a[3]); sb_put(&c->out, ")");
     return 1;
 }
-/* ADFTEST/HOLTWINTERS/ARIMA: risultato UDT boxed (gmb_val_t dict), parity col ramo
- * assegnazione (gmb_*_result). Servono al DIM: `DIM x = TIMESERIES.AdfTest(...)`. */
-static int an_adftest(ctx_t* c, gmb_expr_t** a, int n) {
-    if (n < 1) return 0;
-    var_t* x = NULL;
-    if (!an_arr_is(c, a[0], &x)) return 0;
-    sb_put(&c->out, "gmb_adf_test_result((const double*)");
-    emit_var_ref(c, x); sb_put(&c->out, ", (int)("); emit_arr_len_of(c, x); sb_put(&c->out, "))");
-    return 1;
-}
-static int an_arima(ctx_t* c, gmb_expr_t** a, int n) {
-    if (n < 4) return 0;
-    var_t* x = NULL;
-    if (!an_arr_is(c, a[0], &x)) return 0;
-    sb_put(&c->out, "gmb_arima_result((const double*)");
-    emit_var_ref(c, x); sb_put(&c->out, ", (int)("); emit_arr_len_of(c, x); sb_put(&c->out, ")");
-    for (int i = 1; i <= 3; i++) { sb_put(&c->out, ", (int)("); emit_expr(c, a[i]); sb_put(&c->out, ")"); }
-    sb_put(&c->out, ")"); return 1;
-}
-static int an_holtwinters(ctx_t* c, gmb_expr_t** a, int n) {
-    if (n < 5) return 0;
-    var_t* x = NULL;
-    if (!an_arr_is(c, a[0], &x)) return 0;
-    sb_put(&c->out, "gmb_holt_winters_result((const double*)");
-    emit_var_ref(c, x); sb_put(&c->out, ", (int)("); emit_arr_len_of(c, x); sb_put(&c->out, ")");
-    for (int i = 1; i <= 4; i++) { sb_put(&c->out, ", "); emit_expr(c, a[i]); }
-    sb_put(&c->out, ")"); return 1;
-}
 static const sa_row AN_TBL[] = {
     
     
@@ -3326,49 +3058,6 @@ int emit_bf_analysis(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t
 /* ── dominio: finance (delegazione §0quater) ── */
 static int fd_duration(ctx_t* c, gmb_expr_t** a, int n);
 static int fd_yearfrac(ctx_t* c, gmb_expr_t** a, int n);
-/* TRADING su array di rendimenti: gmb_tm_holding_period_return/
- * gmb_tm_geometric_mean_return richiedono (const double*, int). */
-static int fd_ret_stat(ctx_t* c, gmb_expr_t** a, int n, const char* fn) {
-    if (n != 1 || !a[0] || a[0]->kind != GMB_EXPR_VAR || !a[0]->var) return 0;
-    var_t* av = lookup_var(c, a[0]->var);
-    if (!(av && av->is_array && !av->matrix && !av->vclass[0])) return 0;
-    sb_put(&c->out, fn); sb_put(&c->out, "("); emit_var_ref(c, av);
-    sb_put(&c->out, ", (int)("); emit_arr_len_of(c, av); sb_put(&c->out, "))");
-    return 1;
-}
-static int fd_holding(ctx_t* c, gmb_expr_t** a, int n) { return fd_ret_stat(c, a, n, "gmb_tm_holding_period_return"); }
-static int fd_geomean(ctx_t* c, gmb_expr_t** a, int n) { return fd_ret_stat(c, a, n, "gmb_tm_geometric_mean_return"); }
-/* Merton: il registro BASIC ordina (S,K,T,r,v,q) — 5°=vol, 6°=dividend yield — mentre la
- * firma gmb_fin_merton_* è (s,k,t,r,q,v). Gli handler scambiano i due argomenti. */
-static int ma_merton_call(ctx_t* c, gmb_expr_t** a, int n) { if (n != 6) return 0; sb_put(&c->out, "gmb_fin_merton_call("); for (int i = 0; i < 6; i++) { if (i) sb_put(&c->out, ", "); emit_expr(c, a[i == 4 ? 5 : i == 5 ? 4 : i]); } sb_put(&c->out, ")"); return 1; }
-static int ma_merton_put(ctx_t* c, gmb_expr_t** a, int n) { if (n != 6) return 0; sb_put(&c->out, "gmb_fin_merton_put("); for (int i = 0; i < 6; i++) { if (i) sb_put(&c->out, ", "); emit_expr(c, a[i == 4 ? 5 : i == 5 ? 4 : i]); } sb_put(&c->out, ")"); return 1; }
-/* BINOMIALOPTION: canone IL BinomialOption(...,steps,string type) → isPut = type=="PUT"
- * (CommonLib europeo, isAmerican=false). Il BASIC converte i numerici a stringa → mai PUT:
- * is_put=1 SOLO se il 7° argomento è il letterale "PUT" (rilevato a compile-time). */
-static int ma_binopt(ctx_t* c, gmb_expr_t** a, int n) {
-    if (n != 7) return 0;
-    int is_put = 0;
-    if (a[6] && a[6]->kind == GMB_EXPR_STR && a[6]->str && !strcasecmp(a[6]->str, "PUT")) is_put = 1;
-    sb_put(&c->out, "gmb_fin_binomial(");
-    for (int i = 0; i < 5; i++) { if (i) sb_put(&c->out, ", "); emit_expr(c, a[i]); }
-    sb_put(&c->out, ", (int)("); emit_expr(c, a[5]);     sb_printf(&c->out, "), %d, 0)", is_put);
-    return 1;
-}
-/* DELTA/RHO/THETA/CHARM: canone IL (...,string type) → isPut = type=="PUT". Il BASIC
- * converte i numerici a stringa (es. 1 → "1") → mai PUT: is_put=1 SOLO per il letterale
- * "PUT" (rilevato a compile-time), come ma_binopt. */
-static int ma_isput_last(ctx_t* c, gmb_expr_t** a, int n, const char* fn) {
-    if (n != 6) return 0;
-    int is_put = (a[5] && a[5]->kind == GMB_EXPR_STR && a[5]->str && !strcasecmp(a[5]->str, "PUT")) ? 1 : 0;
-    sb_put(&c->out, fn); sb_put(&c->out, "(");
-    for (int i = 0; i < 5; i++) { if (i) sb_put(&c->out, ", "); emit_expr(c, a[i]); }
-    sb_printf(&c->out, ", %d)", is_put);
-    return 1;
-}
-static int ma_delta(ctx_t* c, gmb_expr_t** a, int n) { return ma_isput_last(c, a, n, "gmb_fin_delta"); }
-static int ma_rho(ctx_t* c, gmb_expr_t** a, int n) { return ma_isput_last(c, a, n, "gmb_fin_rho"); }
-static int ma_theta(ctx_t* c, gmb_expr_t** a, int n) { return ma_isput_last(c, a, n, "gmb_fin_theta"); }
-static int ma_charm(ctx_t* c, gmb_expr_t** a, int n) { return ma_isput_last(c, a, n, "gmb_fin_charm"); }
 static const ma_row FN_TBL[] = {
                                                                 { GMB_TOK_Sln, 3, "gmb_fin_sln", NULL },
         { GMB_TOK_Syd, 4, "gmb_fin_syd", NULL },
@@ -3391,45 +3080,6 @@ static int fd_days360(ctx_t* c, gmb_expr_t** a, int n) {
     if (n >= 3) { sb_put(&c->out, "(int)("); emit_expr(c, a[2]); sb_put(&c->out, ")"); }
     else sb_put(&c->out, "0");
     sb_put(&c->out, ")"); return 1;
-}
-static int fd_pricesimple(ctx_t* c, gmb_expr_t** a, int n) {
-    if (n < 5) return 0;
-    sb_put(&c->out, "gmb_fin_price_simple(");
-    for (int i = 0; i < 5; i++) { if (i) sb_put(&c->out, ", "); emit_expr(c, a[i]); }
-    sb_put(&c->out, ", ");
-    if (n >= 6) { sb_put(&c->out, "(int)("); emit_expr(c, a[5]); sb_put(&c->out, ")"); }
-    else sb_put(&c->out, "1");
-    sb_put(&c->out, ")"); return 1;
-}
-static int fd_bondprice(ctx_t* c, gmb_expr_t** a, int n) {
-    if (n < 6) return 0;
-    /* BondPrice(settle,mat,rate,yld,redemp,freq[,model]): model 0=trading, 1=numerics */
-    sb_put(&c->out, "((int)(");
-    if (n > 6) emit_expr(c, a[6]); else sb_put(&c->out, "0");
-    sb_put(&c->out, ") == 1 ? gmb_fin_bond_price(");
-    for (int i = 0; i < 5; i++) { if (i) sb_put(&c->out, ", "); emit_expr(c, a[i]); }
-    sb_put(&c->out, ", (int)("); emit_expr(c, a[5]); sb_put(&c->out, "), 0) : gmb_trd_bond_price(");
-    for (int i = 0; i < 5; i++) { if (i) sb_put(&c->out, ", "); emit_expr(c, a[i]); }
-    sb_put(&c->out, ", (int)("); emit_expr(c, a[5]); sb_put(&c->out, ")))"); return 1;
-}
-static int fd_bondyield(ctx_t* c, gmb_expr_t** a, int n) {
-    if (n < 6) return 0;
-    /* BondYield(settle,mat,rate,price,redemp,freq[,model]): numerics ordina
-     * gmb_fin_bond_yield(settle,mat,price,redemption,rate,freq,basis); trading diretto. */
-    sb_put(&c->out, "((int)(");
-    if (n > 6) emit_expr(c, a[6]); else sb_put(&c->out, "0");
-    sb_put(&c->out, ") == 1 ? gmb_fin_bond_yield(");
-    emit_expr(c, a[0]); sb_put(&c->out, ", "); emit_expr(c, a[1]); sb_put(&c->out, ", ");
-    emit_expr(c, a[3]); sb_put(&c->out, ", "); emit_expr(c, a[4]); sb_put(&c->out, ", ");
-    emit_expr(c, a[2]); sb_put(&c->out, ", (int)("); emit_expr(c, a[5]); sb_put(&c->out, "), 0) : gmb_trd_bond_yield(");
-    for (int i = 0; i < 5; i++) { if (i) sb_put(&c->out, ", "); emit_expr(c, a[i]); }
-    sb_put(&c->out, ", (int)("); emit_expr(c, a[5]); sb_put(&c->out, ")))"); return 1;
-}
-static int fd_bondequivyield(ctx_t* c, gmb_expr_t** a, int n) {
-    if (n < 2) return 0;
-    sb_put(&c->out, "gmb_fin_bond_yield("); emit_expr(c, a[0]);
-    sb_put(&c->out, ", "); emit_expr(c, a[1]);
-    sb_put(&c->out, ", 100, 100, 0, 1, 0)"); return 1;
 }
 static int fd_price(ctx_t* c, gmb_expr_t** a, int n) {
     if (n < 7) return 0;
@@ -4714,12 +4364,6 @@ static int db_deleted(ctx_t* c, gmb_expr_t** a, int n) {
     sb_put(&c->out, "((gmb_double_t)((gmb_rdd_used() ? gmb_rdd_deleted() : gmb_db_dbf_deleted(gmb_db_current_isam() > 0 ? gmb_db_current_isam() : gmb_db_current_dbf())) ? -1.0 : 0.0))");
     return 1;
 }
-static int db_num1(ctx_t* c, gmb_expr_t** a, int n, const char* fn) {
-    (void)a; (void)n;
-    sb_put(&c->out, "((gmb_double_t)"); sb_put(&c->out, fn);
-    sb_put(&c->out, "(gmb_db_current_dbf()))");
-    return 1;
-}
 static int db_lastrec(ctx_t* c, gmb_expr_t** a, int n) {
     (void)a; (void)n;
     /* ISAM.LASTREC(alias): se il primo argomento è un identificatore (alias area ISAM),
@@ -5949,32 +5593,6 @@ static int mv_ate(ctx_t* c, gmb_expr_t** a, int n, const char* fn) {
     sb_put(&c->out, ", (int)("); emit_arr_len_of(c, t); sb_put(&c->out, "))");
     return 1;
 }
-static int mv_boost_predict(ctx_t* c, gmb_expr_t** a, int n) {
-    var_t *m, *x;
-    if (n < 2 || !mv_arr(c, a[0], &m) || !mv_arr(c, a[1], &x)) return 0;
-    sb_put(&c->out, "gmb_mv_boost_predict((const double*)"); emit_var_ref(c, m);
-    sb_put(&c->out, ", (int)("); emit_arr_len_of(c, m);
-    sb_put(&c->out, "), (const double*)"); emit_var_ref(c, x); sb_put(&c->out, ")");
-    return 1;
-}
-static int mv_boost_score(ctx_t* c, gmb_expr_t** a, int n) {
-    var_t *m, *X, *y;
-    if (n < 3 || !mv_arr(c, a[0], &m) || !mv_arr(c, a[2], &y)) return 0;
-    if (!a[1] || a[1]->kind != GMB_EXPR_VAR || !a[1]->var) return 0;
-    X = lookup_var(c, a[1]->var);
-    if (!X || !X->is_array) return 0;
-    sb_put(&c->out, "gmb_mv_boost_score((const double*)"); emit_var_ref(c, m);
-    sb_put(&c->out, ", (int)("); emit_arr_len_of(c, m);
-    sb_put(&c->out, "), (const double*)"); emit_var_ref(c, X);
-    sb_put(&c->out, ", (int)("); emit_arr_len_of(c, y);
-    if (X->jagged) {
-        sb_put(&c->out, "), (int)("); emit_ident(c, X->name); sb_put(&c->out, "__cols)");
-    } else if (X->matrix || X->ndims >= 2) {
-        sb_put(&c->out, "), (int)("); sb_bound_var(&c->out, X, 1); sb_put(&c->out, " + 1)");
-    } else return 0;
-    sb_put(&c->out, ", (const double*)"); emit_var_ref(c, y); sb_put(&c->out, ")");
-    return 1;
-}
 static int mv_svm_predict(ctx_t* c, gmb_expr_t** a, int n) {
     var_t *W, *x;
     if (n < 4 || !mv_arr(c, a[0], &W) || !mv_arr(c, a[1], &x)) return 0;
@@ -6058,51 +5676,6 @@ int emit_bf_mv(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk, g
     if (tk == GMB_TOK_MvAteIpw) return mv_ate(c, args, nargs, "gmb_mv_ate_ipw");
     if (tk == GMB_TOK_MvAteMatching) return mv_ate(c, args, nargs, "gmb_mv_ate_matching");
     return 0;
-}
-
-/* ── dominio: FITTING (curve fitting) ── */
-static int fit_polyfit(ctx_t* c, gmb_expr_t** a, int n) {
-    var_t *x, *y;
-    if (n < 3 || !mv_arr(c, a[0], &x) || !mv_arr(c, a[1], &y)) return 0;
-    sb_put(&c->out, "gmb_fit_polyfit_dict((const double*)"); emit_var_ref(c, x);
-    sb_put(&c->out, ", (const double*)"); emit_var_ref(c, y);
-    sb_put(&c->out, ", (int)("); emit_arr_len_of(c, x);
-    sb_put(&c->out, "), (int)("); emit_expr(c, a[2]); sb_put(&c->out, "))");
-    return 1;
-}
-static int fit_eval1(ctx_t* c, gmb_expr_t** a, int n, const char* fn, int minus_one) {
-    var_t* coef;
-    if (n < 2 || !mv_arr(c, a[1], &coef)) return 0;
-    sb_put(&c->out, fn); sb_put(&c->out, "((double)("); emit_expr(c, a[0]);
-    sb_put(&c->out, "), (const double*)"); emit_var_ref(c, coef);
-    sb_put(&c->out, ", (int)("); emit_arr_len_of(c, coef);
-    if (minus_one) sb_put(&c->out, " - 1");
-    sb_put(&c->out, "))");
-    return 1;
-}
-static int fit_padeeval(ctx_t* c, gmb_expr_t** a, int n) {
-    var_t *pa, *pb;
-    if (n < 3 || !mv_arr(c, a[1], &pa) || !mv_arr(c, a[2], &pb)) return 0;
-    sb_put(&c->out, "gmb_fit_pade_eval((double)("); emit_expr(c, a[0]);
-    sb_put(&c->out, "), (const double*)"); emit_var_ref(c, pa);
-    sb_put(&c->out, ", (int)("); emit_arr_len_of(c, pa);
-    sb_put(&c->out, "), (const double*)"); emit_var_ref(c, pb);
-    sb_put(&c->out, ", (int)("); emit_arr_len_of(c, pb); sb_put(&c->out, " - 1))");
-    return 1;
-}
-static int fit_rsq(ctx_t* c, gmb_expr_t** a, int n) {
-    var_t* v;
-    if (n < 1 || !mv_arr(c, a[0], &v)) return 0;
-    sb_put(&c->out, "gmb_fit_rsquared_dict((const double*)"); emit_var_ref(c, v);
-    sb_put(&c->out, ", (int)("); emit_arr_len_of(c, v); sb_put(&c->out, "))");
-    return 1;
-}
-static int fit_rsq_test(ctx_t* c, gmb_expr_t** a, int n) {
-    var_t* v;
-    if (n < 1 || !mv_arr(c, a[0], &v)) return 0;
-    sb_put(&c->out, "gmb_fit_rsquared_test((const double*)"); emit_var_ref(c, v);
-    sb_put(&c->out, ", (int)("); emit_arr_len_of(c, v); sb_put(&c->out, "))");
-    return 1;
 }
 int emit_bf_fit(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk, gmb_expr_t** args, int nargs, int line) {
     (void)name; (void)ns; (void)line;

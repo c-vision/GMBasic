@@ -607,18 +607,6 @@ public sealed partial class IlProgramCompiler
         _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.Days360)));
     }
 
-    private void EmitBondCall(BuiltinFunctionCallExpr expr, string methodName)
-    {
-        if (expr.Args.Length is < 6 or > 7)
-            throw new NotSupportedException($"Backend IL: {expr.OriginalToken.Lexeme} richiede 6 o 7 argomenti.");
-        EmitExpression(expr.Args[0]);
-        EmitExpression(expr.Args[1]);
-        for (var index = 2; index < 5; index++) EmitDoubleArgument(expr.Args[index]);
-        EmitInt16Argument(expr.Args[5]);
-        if (expr.Args.Length == 7) EmitInt32Argument(expr.Args[6]);
-        else _il.Emit(OpCodes.Ldc_I4_0);
-        _il.Emit(OpCodes.Call, RuntimeMethod(methodName));
-    }
 
     private void EmitTimeSeriesDoubleArrayDoubleCall(BuiltinFunctionCallExpr expr, string methodName)
     { if (expr.Args.Length != 3) throw new NotSupportedException($"Backend IL: {expr.OriginalToken.Lexeme} richiede 3 argomenti."); EmitDoubleArgument(expr.Args[0]); EmitDoubleArrayArgument(expr.Args[1]); EmitDoubleArgument(expr.Args[2]); _il.Emit(OpCodes.Call, RuntimeMethod(methodName)); }
@@ -719,32 +707,6 @@ public sealed partial class IlProgramCompiler
     { if (expr.Args.Length != 3) throw new NotSupportedException($"Backend IL: {expr.OriginalToken.Lexeme} richiede 3 argomenti."); EmitDoubleArrayArgument(expr.Args[0]); EmitInt64Argument(expr.Args[1]); EmitDoubleArgument(expr.Args[2]); _il.Emit(OpCodes.Call, RuntimeMethod(methodName)); }
     private void EmitTimeSeriesArrayLongDoubleDoubleCall(BuiltinFunctionCallExpr expr, string methodName)
     { if (expr.Args.Length != 4) throw new NotSupportedException($"Backend IL: {expr.OriginalToken.Lexeme} richiede 4 argomenti."); EmitDoubleArrayArgument(expr.Args[0]); EmitInt64Argument(expr.Args[1]); EmitDoubleArgument(expr.Args[2]); EmitDoubleArgument(expr.Args[3]); _il.Emit(OpCodes.Call, RuntimeMethod(methodName)); }
-    private void EmitTradingArrayDoubleLongCall(BuiltinFunctionCallExpr expr, string methodName)
-    { if (expr.Args.Length != 3) throw new NotSupportedException($"Backend IL: {expr.OriginalToken.Lexeme} richiede 3 argomenti."); EmitDoubleArrayArgument(expr.Args[0]); EmitDoubleArgument(expr.Args[1]); EmitInt64Argument(expr.Args[2]); _il.Emit(OpCodes.Call, RuntimeMethod(methodName)); }
-    private void EmitTradingTwoArrayCall(BuiltinFunctionCallExpr expr, string methodName)
-    { if (expr.Args.Length != 2) throw new NotSupportedException($"Backend IL: {expr.OriginalToken.Lexeme} richiede 2 argomenti."); EmitDoubleArrayArgument(expr.Args[0]); EmitDoubleArrayArgument(expr.Args[1]); _il.Emit(OpCodes.Call, RuntimeMethod(methodName, typeof(double[]), typeof(double[]))); }
-    private void EmitTradingTwoArrayDoubleLongCall(BuiltinFunctionCallExpr expr, string methodName)
-    { if (expr.Args.Length != 4) throw new NotSupportedException($"Backend IL: {expr.OriginalToken.Lexeme} richiede 4 argomenti."); EmitDoubleArrayArgument(expr.Args[0]); EmitDoubleArrayArgument(expr.Args[1]); EmitDoubleArgument(expr.Args[2]); EmitInt64Argument(expr.Args[3]); _il.Emit(OpCodes.Call, RuntimeMethod(methodName)); }
-    private void EmitTradingOptionNumericCall(BuiltinFunctionCallExpr expr, string methodName, int maximumArity, params double[] defaults)
-    {
-        var minimumArity = maximumArity - defaults.Length;
-        if (expr.Args.Length < minimumArity || expr.Args.Length > maximumArity) throw new NotSupportedException($"Backend IL: {expr.OriginalToken.Lexeme} richiede da {minimumArity} a {maximumArity} argomenti.");
-        foreach (var argument in expr.Args) EmitDoubleArgument(argument);
-        for (var index = expr.Args.Length - minimumArity; index < defaults.Length; index++) _il.Emit(OpCodes.Ldc_R8, defaults[index]);
-        _il.Emit(OpCodes.Call, RuntimeMethod(methodName, TradingOptionTypes(maximumArity)));
-    }
-    private void EmitTradingOptionStringCall(BuiltinFunctionCallExpr expr, string methodName, int numericArity)
-    {
-        if (expr.Args.Length != numericArity + 1) throw new NotSupportedException($"Backend IL: {expr.OriginalToken.Lexeme} richiede {numericArity + 1} argomenti.");
-        for (var index = 0; index < numericArity; index++) EmitDoubleArgument(expr.Args[index]);
-        // L'ultimo argomento è il tipo "CALL"/"PUT" (o FALSE/TRUE per compat): il metodo
-        // IlRuntime.Delta/Theta/Rho vuole string — converti come fa il VM
-        // (PCodeProcessor: (ArgOr(args,5)?.ToString() ?? "CALL")), mai emesso raw:
-        // un FALSE (Boolean) su un parametro string → stack imbalance → InvalidProgram
-        // (TradingOptionsAndBonds.bas, fix 2026-08-11).
-        EmitStringArg(expr.Args[numericArity]);
-        _il.Emit(OpCodes.Call, RuntimeMethod(methodName));
-    }
     private void EmitCryptoObjectArgument(Expr argument)
     {
         var type = NormalizeInferredType(InferType(argument));
@@ -996,53 +958,10 @@ public sealed partial class IlProgramCompiler
     private void EmitLinAlgVectorCreateCall(BuiltinFunctionCallExpr expr)
     { if (expr.Args.Length is < 3 or > 4) throw new NotSupportedException("Backend IL: VECTOR.CREATE richiede 3 o 4 componenti."); foreach (var argument in expr.Args) EmitDoubleArgument(argument); if (expr.Args.Length == 3) _il.Emit(OpCodes.Ldc_R8, 0d); _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.VectorCreate))); }
 
-    private void EmitPortfolioCovCall(BuiltinFunctionCallExpr expr)
-    {
-        if (expr.Args.Length != 1) throw new NotSupportedException($"Backend IL: {expr.OriginalToken.Lexeme} richiede 1 argomento (covarianza).");
-        EmitDoubleArrayArrayArgument(expr.Args[0]);
-        _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.MinVolatility), typeof(double[][])));
-    }
 
-    private void EmitPortfolioMaxSharpeCall(BuiltinFunctionCallExpr expr)
-    {
-        if (expr.Args.Length != 3) throw new NotSupportedException("Backend IL: MAXSHARPE richiede 3 argomenti.");
-        EmitDoubleArrayArgument(expr.Args[0]);
-        EmitDoubleArrayArrayArgument(expr.Args[1]);
-        EmitDoubleArgument(expr.Args[2]);
-        _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.MaxSharpe), typeof(double[]), typeof(double[][]), typeof(double)));
-    }
 
-    private void EmitPortfolioMeanVarianceCall(BuiltinFunctionCallExpr expr)
-    {
-        if (expr.Args.Length != 3) throw new NotSupportedException("Backend IL: MEANVARIANCE richiede 3 argomenti.");
-        EmitDoubleArrayArgument(expr.Args[0]);
-        EmitDoubleArrayArrayArgument(expr.Args[1]);
-        EmitExpression(expr.Args[2]); // vincoli (ignorati: null passato nel runtime)
-        _il.Emit(OpCodes.Pop);
-        _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.MeanVariance), typeof(double[]), typeof(double[][])));
-    }
 
-    private void EmitPortfolioEquallyWeightedCall(BuiltinFunctionCallExpr expr)
-    {
-        if (expr.Args.Length != 1) throw new NotSupportedException("Backend IL: EQUALLYWEIGHTED richiede 1 argomento.");
-        EmitDoubleArgument(expr.Args[0]);
-        _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.EquallyWeighted), typeof(double)));
-    }
 
-    private void EmitPortfolioBlackLittermanCall(BuiltinFunctionCallExpr expr)
-    {
-        if (expr.Args.Length != 8) throw new NotSupportedException("Backend IL: BLACKLITTERMAN richiede 8 argomenti.");
-        EmitDoubleArrayArgument(expr.Args[0]);
-        EmitDoubleArrayArrayArgument(expr.Args[1]);
-        EmitDoubleArgument(expr.Args[2]);
-        EmitDoubleArgument(expr.Args[3]);
-        EmitDoubleArrayArrayArgument(expr.Args[4]);
-        EmitDoubleArrayArgument(expr.Args[5]);
-        EmitDoubleArrayArrayArgument(expr.Args[6]);
-        EmitDoubleArgument(expr.Args[7]);
-        _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.BlackLitterman), typeof(double[]), typeof(double[][]),
-            typeof(double), typeof(double), typeof(double[][]), typeof(double[]), typeof(double[][]), typeof(double)));
-    }
 
     private void EmitDoubleArrayArrayArgument(Expr expr)
     {

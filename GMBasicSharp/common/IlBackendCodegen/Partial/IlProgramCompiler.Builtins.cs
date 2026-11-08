@@ -676,14 +676,11 @@ public sealed partial class IlProgramCompiler
             case TokenKind.Make: EmitDoubleArityBuiltinCall(expr, RuntimeMethod(nameof(IlRuntime.KeyMake)), 2); break;
 
             // --- Categoria 6: TRADING/STAT blocco 1 ---
-            // --- Categoria 6: PORTFOLIO (ottimizzazioni -> dict campi BASIC) ---
             case TokenKind.FvExt: EmitFinanceNumericCall(expr, nameof(IlRuntime.FvExt), 5, 0, 0); break;
             case TokenKind.PvExt: EmitFinanceNumericCall(expr, nameof(IlRuntime.PvExt), 5, 0, 0); break;
             case TokenKind.PmtExt: EmitFinanceNumericCall(expr, nameof(IlRuntime.PmtExt), 5, 0, 0); break;
             case TokenKind.NperExt: EmitFinanceNumericCall(expr, nameof(IlRuntime.NperExt), 5, 0, 0); break;
             case TokenKind.Mnpv: EmitMnpvCall(expr); break;
-
-            // --- Importato da GMBasic (COLL/STR — 13 funzioni lista/dict, semantica case VM) ---
             case TokenKind.Enqueue: EmitObjectArgsCall(expr, nameof(IlRuntime.Enqueue), 2); break;
             case TokenKind.Dequeue: EmitObjectArgsCall(expr, nameof(IlRuntime.Dequeue), 1); break;
             case TokenKind.First: EmitObjectArgsCall(expr, nameof(IlRuntime.First), 1); break;
@@ -1355,19 +1352,6 @@ public sealed partial class IlProgramCompiler
             case TokenKind.Extract: EmitExtractCall(expr); break;
             // --- Blocco pass-through CommonLib (parità VM) ---
             case TokenKind.Add: EmitDictAddCall(expr); break;
-                // SHARPERATIO(rendimento, rischio, riskFree) — forma a 3 SCALARI (la StdLib
-                // la dichiara cosi; la VM torna 0.0 perché attende liste). Forma a 2 array
-                // (pesi, rendimenti) per la variante matriciale.
-                if (expr.Args.Length == 3
-                    && expr.Args.All(a => NormalizeInferredType(InferType(a)) is DoubleType))
-                {
-                    EmitDoubleArgument(expr.Args[0]);
-                    EmitDoubleArgument(expr.Args[1]);
-                    EmitDoubleArgument(expr.Args[2]);
-                    _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.SharpeRatio3), typeof(double), typeof(double), typeof(double)));
-                }
-                else EmitPortfolioTwoArrayCall(expr, nameof(IlRuntime.PortfolioSharpeRatio));
-                break;
             case TokenKind.Conn: EmitObjectArgCall(expr, RuntimeMethod(nameof(IlRuntime.Conn))); break;
             case TokenKind.MemoryList: EmitNoArgBuiltinCall(expr, RuntimeMethod(nameof(IlRuntime.MemoryList))); break;
             case TokenKind.MemoryStore: EmitMemoryStoreCall(expr); break;

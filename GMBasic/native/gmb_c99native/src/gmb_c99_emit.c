@@ -4409,7 +4409,7 @@ if (s->dim_var) {            int ty = suffix_type(s->dim_var);
                     snprintf(v->vclass, sizeof(v->vclass), "AnalysisResult");
                 }
                 /* TRADING.PORTFOLIO.PortfolioResult: a runtime è un DICT boxed
-                 * (gmb_val_t) — parity emitter C# (gmb_tm_portfolio_result + gmb_dict_get). */
+                 * (gmb_val_t + gmb_dict_get). */
                 if (s->dim_type && strstr(s->dim_type, "PortfolioResult")) {
                     v->boxed_val = 1; v->type = TY_NUM;
                 }
@@ -6162,7 +6162,6 @@ int emit_bf_torch(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk
 int emit_bf_spatial(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk, gmb_expr_t** args, int nargs, int line);
 int emit_bf_kdtree(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk, gmb_expr_t** args, int nargs, int line);
 int emit_bf_bits(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk, gmb_expr_t** args, int nargs, int line);
-int emit_bf_metrics(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk, gmb_expr_t** args, int nargs, int line);
 int emit_bf_analysis(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk, gmb_expr_t** args, int nargs, int line);
 int emit_bf_vector(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk, gmb_expr_t** args, int nargs, int line);
 int emit_bf_finance(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk, gmb_expr_t** args, int nargs, int line);

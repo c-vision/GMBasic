@@ -1433,26 +1433,6 @@ void gmb_kmeans(const double* data, int n, int k, double* centroids_out);
  * *aic, fitted[0..n-d) (serie differenziata). Ritorna 0 ok, -1 serie troppo corta. */
 int gmb_arima_fit(const double* y, int n, int p, int d, int q,
                   double* ar_c, double* ma_c, double* aic, double* fitted);
-
-/* --- Trading metrics & portfolio (gmb_math.c) --- */
-double gmb_tm_calmar_ratio(const double* r, int n, int ppy);
-double gmb_tm_information_ratio(const double* p, const double* b, int n, int ppy);
-double gmb_tm_treynor_ratio(const double* r, const double* b, int n, double rf, int ppy);
-double gmb_tm_sharpe_ratio(const double* r, int n, double rf, int ppy);
-double gmb_tm_returns_skewness(const double* r, int n);
-double gmb_tm_annualized_tracking_error(const double* p, const double* b, int n, int ppy);
-double gmb_tm_annualized_downside_dev(const double* r, int n, double thr, int ppy);
-double gmb_tm_diluted_eps(double ni, double shares, double other);
-double gmb_tm_ps_ratio(double price, double sps);
-double gmb_tm_pb_ratio(double price, double bv);
-double gmb_tm_dividend_payout(double div, double ni);
-double gmb_tm_total_stock_return(double p0, double p1, double div);
-double gmb_tm_annualized_return(const double* r, int n, int ppy);
-double gmb_tm_annualized_volatility(const double* r, int n, int ppy);
-double gmb_tm_max_drawdown(const double* r, int n);
-double gmb_tm_downside_deviation(const double* r, int n, double thr);
-double gmb_tm_value_at_risk(const double* r, int n, double conf);
-double gmb_tm_sortino_ratio(const double* r, int n, double rf, int ppy);
 double gmb_fin_current_yield(double coupons, double price);
 double gmb_fin_ytm(double coupon, double fv, double price, double years);
 double gmb_fin_zcb_value(double fv, double rate, double time);
@@ -1468,12 +1448,6 @@ double gmb_fin_diluted_eps(double netIncome, double shares, double instruments);
 double gmb_fin_ps_ratio(double price, double salesPerShare);
 double gmb_fin_pb_ratio(double price, double bookValue);
 double gmb_fin_dividend_payout_ratio(double dividends, double netIncome);
-void gmb_port_min_vol(const double* cov, int n, double* weights);
-void gmb_port_max_sharpe(const double* rets, const double* cov, int n, double rf, double* weights);
-void gmb_port_risk_parity(const double* cov, int n, double* weights);
-void gmb_port_equally_weighted(int n, double* weights);
-void gmb_port_black_litterman(const double* caps, const double* cov, int n, double riskAversion, double tau,
-                              const double* Q, double* weights, double* posterior);
 int gmb_cholesky_solve(const double* a, const double* b, int n, double* x);
 int gmb_cholesky_solve_jagged(const double* const* a, const double* b, int n, double* x);
 /* --- Trading QLNet wrapper (common/CommonLib/Trading/QLNet.cs:256) — math pura, no QLNet C# lib --- */
@@ -1532,34 +1506,7 @@ gmb_double_t* gmb_ts_rolling_regression(gmb_double_t* x, gmb_double_t* y, gmb_in
 gmb_double_t* gmb_ts_decompose_trend(gmb_double_t* data, gmb_int_t n, gmb_int_t period, gmb_int_t* out_len);
 gmb_double_t* gmb_ts_decompose_seasonal(gmb_double_t* data, gmb_int_t n, gmb_int_t period, gmb_int_t* out_len);
 gmb_double_t* gmb_ts_decompose_matrix(gmb_double_t* data, gmb_int_t n, gmb_int_t period, gmb_int_t* out_len);
-
-double gmb_tm_max_return(const double* r, int n);
 double gmb_tm_min_semivariance(const double* r, int n, double thr);
-double gmb_tm_kelly_criterion(const double* r, int n);
-gmb_val_t gmb_tm_portfolio_result(const double* r, int n, int metric_kind);
-gmb_val_t gmb_tm_backtest(const double* r, int n);
-/* TRADING.BACKTESTS.RUN su array 2-D rettangolare (flat rows×cols): media per RIGA →
- * metriche backtest (parità IL/PCode/VM-C: rendimenti per periodo = media degli asset). */
-gmb_val_t gmb_tm_backtest_matrix(const double* flat, int rows, int cols);
-gmb_val_t gmb_tm_portfolio_optimize(gmb_double_t** cov, int n, const double* rets, int rets_n, double rf, int kind);
-/* TRADING.PORTFOLIO.EVOLVE(rets, cov[, GA]): min-varianza (proxy deterministico del GA IL) →
- * dict PortfolioResult (ExpectedReturn/Volatility/SharpeRatio/Weights). cov JAGGED. */
-gmb_val_t gmb_port_evolve(gmb_double_t** cov, int n, const double* rets, int rets_n, double rf);
-/* TRADING.PORTFOLIO.BLACKLITTERMAN(caps, cov, riskAversion, tau, P, Q, omega, rf) → PortfolioResult.
- * cov/P/omega JAGGED; k = numero di view. Formula completa (Π + PᵀΩ⁻¹Q). */
-gmb_val_t gmb_blacklitterman(const double* caps, int n, gmb_double_t** cov,
-                             double riskAversion, double tau,
-                             gmb_double_t** P, int k, const double* Q,
-                             gmb_double_t** omega, double rf);
-double gmb_tm_risk_premium(double asset, double rf);
-double gmb_tm_capital_gains_yield(double p0, double p1);
-double gmb_tm_holding_period_return(const double* r, int n);
-double gmb_tm_geometric_mean_return(const double* r, int n);
-double gmb_tm_growth_rate(double retention, double roe);
-double gmb_tm_bid_ask_spread(double bid, double ask);
-double gmb_tm_tax_equivalent_yield(double tfy, double rate);
-double gmb_tm_min_cvar(const double* r, int n, double conf);
-double gmb_tm_min_cdar(const double* r, int n, double conf);
 
 int gmb_agent_create(const char* name);
 int gmb_agent_exists(const char* name);
@@ -2312,21 +2259,7 @@ gmb_double_t gmb_window_width(void);
 gmb_double_t gmb_window_height(void);
 gmb_double_t gmb_window_desktop(void);
 const char* gmb_window_theme(void);
-double gmb_tm_ulcer_index(const double* r, int n);
-double* gmb_tm_jarque_bera(const double* r, int n, gmb_int_t* out_len); /* [stat, pval] */
-double gmb_tm_expected_return(const double* w, const double* r, int n);
-double gmb_tm_is_long_only(const double* w, int n);
 double gmb_fin_portfolio_sharpe(double portfolio_return, double portfolio_stdev, double risk_free);
-double gmb_tm_mad(const double* r, int n);
-double gmb_tm_semimad(const double* r, int n);
-/* TRADING.PORTFOLIO.MAD/SEMIMAD: scarto medio assoluto dalla MEDIANA (parità IL
- * PortfolioMad/PortfolioSemiMad, VM/C gmb_bf_196). Diverso da gmb_tm_mad (media). */
-double gmb_tm_portfolio_mad(const double* r, int n);
-double gmb_tm_portfolio_semimad(const double* r, int n, double target);
-double gmb_tm_binomial_option(double s, double k, double t, double r, double v, int steps, int is_call);
-double gmb_tm_omega_ratio(const double* r, int n, double threshold);
-double gmb_tm_portfolio_var(const double* const* hist, int assets, int periods, const double* w, double conf);
-double gmb_tm_portfolio_cvar(const double* const* hist, int assets, int periods, const double* w, double conf);
 /* Analisi (dict val-returning, una sorgente per l'emitter C99): costruiscono il dict
    risultato nel runtime, niente statement-expr inline nel transpiler. */
 gmb_val_t gmb_adf_test_result(const double* data, int n);

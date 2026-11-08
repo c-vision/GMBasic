@@ -290,17 +290,6 @@ public sealed partial class IlProgramCompiler
         _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.MouseButton), typeof(double)));
     }
 
-    private void EmitPortfolioTwoArrayCall(BuiltinFunctionCallExpr expr, string methodName)
-    {
-        // EXPECTEDRETURN/SHARPERATIO/STDEV(pesi, rendimenti): il secondo argomento può
-        // essere una MATRICE 2D (double[][]) — il runtime appiattisce (FlattenReturns),
-        // come la ToDoubleArray della VM.
-        if (expr.Args.Length != 2)
-            throw new NotSupportedException($"Backend IL: {expr.OriginalToken.Lexeme} richiede 2 argomenti (weights, returns).");
-        EmitReturnsArgument(expr.Args[0]);
-        EmitReturnsArgument(expr.Args[1]);
-        _il.Emit(OpCodes.Call, RuntimeMethod(methodName, typeof(object), typeof(object)));
-    }
 
     /// <summary>Accetta double[] OPPURE double[][] (matrice di storici) — il runtime appiattisce.</summary>
     private void EmitReturnsArgument(Expr argument)
@@ -1040,51 +1029,8 @@ public sealed partial class IlProgramCompiler
         _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.MemoryStore), typeof(string), typeof(object), typeof(double)));
     }
 
-    private void EmitBacktestRunCall(BuiltinFunctionCallExpr expr)
-    {
-        // TRADING.BACKTESTS.RUN(rendimenti[][], strategia, [portfolioOttimo]):
-        // il VM ignora la strategia e calcola i metriche dai rendimenti per periodo
-        // (media degli asset). Il risultato è un Dictionary<string,object> (i campi
-        // Result.TotalReturn ecc. leggono via JsonFieldGet).
-        if (expr.Args.Length is < 2 or > 3)
-            throw new NotSupportedException("Backend IL: BACKTESTS.RUN richiede 2 o 3 argomenti (rendimenti, strategia[, portfolio]).");
-        var btArgT = NormalizeInferredType(InferType(expr.Args[0]));
-        // Il linguaggio rappresenta `DIM data(1,1) AS DOUBLE` come array RETTANGOLARE (ARRAY OF
-        // DOUBLE), non come jagged ArrayType(ArrayType(Double)): il check storico (solo nested)
-        // rifiutava l'input reale. Accettiamo entrambe le forme; il runtime adatta (vedi
-        // IlRuntime.BacktestRun).
-        if (btArgT is not (ArrayType { ElementType: ArrayType { ElementType: DoubleType } } or ArrayType { ElementType: DoubleType }))
-            throw new NotSupportedException($"Backend IL: BACKTESTS.RUN atteso un array 2D di DOUBLE (tipo inferito: {btArgT}).");
-        EmitExpression(expr.Args[0]);
-        EmitExpression(expr.Args[1]);
-        var stratClr = DataTypeMapper.Map(NormalizeInferredType(InferType(expr.Args[1])), _types, _classTypes);
-        if (stratClr.IsValueType) _il.Emit(OpCodes.Box, stratClr);
-        if (expr.Args.Length == 3) EmitDoubleArrayArgument(expr.Args[2]);
-        else _il.Emit(OpCodes.Ldnull);
-        _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.BacktestRun), typeof(object), typeof(object), typeof(double[])));
-    }
 
-    private void EmitPortfolioRiskCall(BuiltinFunctionCallExpr expr, string methodName)
-    {
-        // PVAR/CVAR(rendimenti[][], pesi, conf) — la StdLib dichiara 3 parametri
-        // (storici, pesi, livello): i pesi sono IGNORATI (come la VM, che legge solo
-        // args[0] e il conf); per la forma a 2 argomenti conf = args[1].
-        if (expr.Args.Length is < 1 or > 3)
-            throw new NotSupportedException($"Backend IL: {expr.OriginalToken.Lexeme} richiede 1, 2 o 3 argomenti (returns[, conf/target]).");
-        EmitReturnsArgument(expr.Args[0]);
-        if (expr.Args.Length == 3) EmitDoubleArgument(expr.Args[2]);
-        else if (expr.Args.Length == 2) EmitDoubleArgument(expr.Args[1]);
-        else _il.Emit(OpCodes.Ldc_R8, 0.95);
-        _il.Emit(OpCodes.Call, RuntimeMethod(methodName, typeof(object), typeof(double)));
-    }
 
-    private void EmitPriceSimpleCall(BuiltinFunctionCallExpr expr)
-    {
-        if (expr.Args.Length != 6)
-            throw new NotSupportedException("Backend IL: PRICESIMPLE richiede 6 argomenti (settlement, maturity, rate, yield, redemption, frequency).");
-        for (var i = 0; i < 6; i++) EmitDoubleArgument(expr.Args[i]);
-        _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.PriceSimple), typeof(double), typeof(double), typeof(double), typeof(double), typeof(double), typeof(double)));
-    }
 
     private void EmitExtractCall(BuiltinFunctionCallExpr expr)
     {

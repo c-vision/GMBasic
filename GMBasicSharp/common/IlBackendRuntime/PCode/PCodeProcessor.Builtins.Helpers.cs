@@ -36,56 +36,6 @@ internal sealed partial class PCodeProcessor
         Flatten(val);
         return flat2.ToArray();
     }
-
-    private static double[,]? ToDoubleMatrix2D(object? value)
-    {
-        if (value is not System.Collections.IList outer || outer.Count == 0) return null;
-        int rows = outer.Count, cols = 0;
-        foreach (var r in outer) if (r is System.Collections.IList rr) cols = Math.Max(cols, rr.Count);
-        if (cols == 0) return null;
-        var m = new double[rows, cols];
-        for (int i = 0; i < rows; i++)
-            if (outer[i] is System.Collections.IList rr2)
-                for (int j = 0; j < rr2.Count; j++) m[i, j] = SafeDouble(rr2[j]);
-        return m;
-    }
-
-    private static object? OptimizePortfolioToDict(CommonLib.Trading.PortfolioResult r) =>
-        new System.Collections.Generic.Dictionary<string, object?>
-        {
-            ["ExpectedReturn"] = r.Return,
-            ["Volatility"] = r.StDev,
-            ["SharpeRatio"] = r.SharpeRatio,
-            ["Weights"] = r.Weights
-        };
-
-    // MINCVAR: media delle perdite oltre il quantile (CVaR / Expected Shortfall). Porting da VM/C.
-    private static double MinCvar(double[] r, double conf)
-    {
-        if (r.Length == 0) return 0;
-        var sorted = r.OrderBy(x => x).ToArray();
-        int tail = Math.Max(1, (int)((1 - conf) * r.Length));
-        double sum = 0;
-        for (int i = 0; i < tail; i++) sum += sorted[i];
-        return -sum / tail;
-    }
-
-    // MINCDAR: CVaR sul drawdown cumulato. Porting da VM/C.
-    private static double MinCdar(double[] r, double conf)
-    {
-        if (r.Length == 0) return 0;
-        var dd = new double[r.Length];
-        double cum = 0, peak = 0;
-        for (int i = 0; i < r.Length; i++) { cum += r[i]; if (cum > peak) peak = cum; dd[i] = peak - cum; }
-        var sorted = dd.OrderBy(x => x).ToArray();
-        int tail = Math.Max(1, (int)((1 - conf) * r.Length));
-        double sum = 0;
-        for (int i = r.Length - tail; i < r.Length; i++) sum += sorted[i];
-        return tail > 0 ? sum / tail : 0;
-    }
-
-    // Converte una matrice (zigzag IList oppure System.Array multidimensionale Rank=2)
-    // in una double[,]. Restituisce null se il valore NON è una matrice 2D.
     // ---- MEMORY namespace: store key-value persistente di processo (SQLite in-memory) ----
     private static Basic.AgentMemoryStore? _memoryStore;
     private static Basic.AgentMemoryStore MemoryStore()
