@@ -12,18 +12,18 @@
 
 /* ===================== HexView ===================== */
 
-static int hex_addr_cols(gmb_hex_view_t* h)
+static int hex_addr_cols(gmb_widget_t* h)
 {
     return h->address_format == 0 ? 8 : 5;
 }
-static int hex_hex_cols(gmb_hex_view_t* h)
+static int hex_hex_cols(gmb_widget_t* h)
 {
     int groups = (h->bytes_per_row + h->bytes_per_group - 1) / h->bytes_per_group;
     return h->bytes_per_row * 2 + (groups - 1) * (int)strlen(h->group_separator);
 }
 static void hexview_draw(void* u, gmb_control_t* c, gmb_screen_buffer_t* buf)
 {
-    gmb_hex_view_t* h = (gmb_hex_view_t*)u;
+    gmb_widget_t* h = (gmb_widget_t*)u;
     gmb_cell_color_t fg, bg;
     gmb_control_style_effective(&c->style, c->focused, false, false, &fg, &bg);
     gmb_screen_sink_t* sk = gmb_screen_get_sink(buf);
@@ -32,9 +32,9 @@ static void hexview_draw(void* u, gmb_control_t* c, gmb_screen_buffer_t* buf)
         gmb_surface_rounded_rect(buf, c->x, c->y, c->width, c->height, 4, fg, bg, 1);
         for (int i = 0; i < c->height; i++)
         {
-            int row = h->offset + i;
+            int row = h->first + i;
             int start_byte = row * h->bytes_per_row;
-            if (start_byte >= h->data_len) break;
+            if (start_byte >= h->payload_len) break;
             char line[256];
             gmb_hex_view_render_line(h, row, line, (int)sizeof(line));
             gmb_gfx_draw_text(line, sk->origin_x + c->x * sk->cell_w,
@@ -44,9 +44,9 @@ static void hexview_draw(void* u, gmb_control_t* c, gmb_screen_buffer_t* buf)
     }
     for (int i = 0; i < c->height; i++)
     {
-        int row = h->offset + i;
+        int row = h->first + i;
         int start_byte = row * h->bytes_per_row;
-        if (start_byte >= h->data_len) break;
+        if (start_byte >= h->payload_len) break;
         char line[256];
         gmb_hex_view_render_line(h, row, line, (int)sizeof(line));
         gmb_screen_setstring(buf, c->x, c->y + i, line, fg, bg);
@@ -65,7 +65,7 @@ static void hexview_draw(void* u, gmb_control_t* c, gmb_screen_buffer_t* buf)
             for (int b = 0; b < h->bytes_per_row; b++)
             {
                 int idx = start_byte + b;
-                char ch = idx < h->data_len ? (char)h->data[idx] : ' ';
+                char ch = idx < h->payload_len ? (char)((unsigned char*)h->payload)[idx] : ' ';
                 if (ch < 32 || ch >= 127) ch = '.';
                 gmb_screen_setchar(buf, c->x + ascii_start + b, c->y + i, (unsigned char)ch, GMB_CELLCOLOR_GREEN, bg);
             }
@@ -74,34 +74,34 @@ static void hexview_draw(void* u, gmb_control_t* c, gmb_screen_buffer_t* buf)
 }
 static bool hexview_key(void* u, gmb_control_t* c, int key)
 {
-    gmb_hex_view_t* h = (gmb_hex_view_t*)u;
+    gmb_widget_t* h = (gmb_widget_t*)u;
     if (!c->enabled) return false;
-    int max_row = (h->data_len + h->bytes_per_row - 1) / h->bytes_per_row - c->height;
+    int max_row = (h->payload_len + h->bytes_per_row - 1) / h->bytes_per_row - c->height;
     if (max_row < 0) max_row = 0;
     switch (key)
     {
-        case GMB_K_UP: if (h->offset > 0) h->offset--; return true;
-        case GMB_K_DOWN: if (h->offset < max_row) h->offset++; return true;
-        case GMB_K_PGUP: h->offset -= c->height; if (h->offset < 0) h->offset = 0; return true;
-        case GMB_K_PGDN: h->offset += c->height; if (h->offset > max_row) h->offset = max_row; return true;
-        case GMB_K_HOME: h->offset = 0; return true;
-        case GMB_K_END: h->offset = max_row; return true;
+        case GMB_K_UP: if (h->first > 0) h->first--; return true;
+        case GMB_K_DOWN: if (h->first < max_row) h->first++; return true;
+        case GMB_K_PGUP: h->first -= c->height; if (h->first < 0) h->first = 0; return true;
+        case GMB_K_PGDN: h->first += c->height; if (h->first > max_row) h->first = max_row; return true;
+        case GMB_K_HOME: h->first = 0; return true;
+        case GMB_K_END: h->first = max_row; return true;
     }
     return false;
 }
 static bool hexview_mouse(void* u, gmb_control_t* c, const gmb_mouse_action_t* a)
 {
-    gmb_hex_view_t* h = (gmb_hex_view_t*)u;
+    gmb_widget_t* h = (gmb_widget_t*)u;
     if (!c->enabled) return false;
-    int max_row = (h->data_len + h->bytes_per_row - 1) / h->bytes_per_row - c->height;
+    int max_row = (h->payload_len + h->bytes_per_row - 1) / h->bytes_per_row - c->height;
     if (max_row < 0) max_row = 0;
-    if (a->kind == GMB_MA_SCROLLUP) { if (h->offset > 0) h->offset--; return true; }
-    if (a->kind == GMB_MA_SCROLLDOWN) { if (h->offset < max_row) h->offset++; return true; }
+    if (a->kind == GMB_MA_SCROLLUP) { if (h->first > 0) h->first--; return true; }
+    if (a->kind == GMB_MA_SCROLLDOWN) { if (h->first < max_row) h->first++; return true; }
     return false;
 }
 static void hexview_draw_px(void* u, gmb_control_t* c)
 {
-    gmb_hex_view_t* hv = (gmb_hex_view_t*)u;
+    gmb_widget_t* hv = (gmb_widget_t*)u;
     gmb_widget_style_t st = gmb_widget_style_current();
     int x = c->x, y = c->y, w = c->width, h = c->height;
     int soft = (st.shape == 1 && st.radius >= 12);
@@ -114,12 +114,12 @@ static void hexview_draw_px(void* u, gmb_control_t* c)
     int pad = soft ? 4 : 0;
     int vis = hrh > 0 ? (h - pad * 2) / hrh : 0;
     int bpr = hv->bytes_per_row > 0 ? hv->bytes_per_row : 16;
-    int start = hv->offset; if (start < 0) start = 0;
+    int start = hv->first; if (start < 0) start = 0;
     for (int r = 0; r < vis; r++) {
-        int base = (start + r) * bpr; if (base >= hv->data_len) break;
+        int base = (start + r) * bpr; if (base >= hv->payload_len) break;
         char line[256]; int o = 0;
         o += snprintf(line + o, sizeof(line) - o, "%04lX  ", hv->start_addr + (unsigned long)base);
-        for (int k = 0; k < bpr; k++) { int idx = base + k; if (idx < hv->data_len) o += snprintf(line + o, sizeof(line) - o, "%02X ", (unsigned)hv->data[idx]); else o += snprintf(line + o, sizeof(line) - o, "   "); }
+        for (int k = 0; k < bpr; k++) { int idx = base + k; if (idx < hv->payload_len) o += snprintf(line + o, sizeof(line) - o, "%02X ", (unsigned)((unsigned char*)hv->payload)[idx]); else o += snprintf(line + o, sizeof(line) - o, "   "); }
         {   /* clip: la riga hex non deve uscire dalla card */
             int cw1 = (int)(gmb_gfx_text_width("0") / (gmb_gfx_render_scale() > 0 ? gmb_gfx_render_scale() : 1.0f));
             if (cw1 < 1) cw1 = 8;
@@ -130,29 +130,37 @@ static void hexview_draw_px(void* u, gmb_control_t* c)
                           (int)(0x40000000u | (st.text & 0xFFFFFFu)));
     }
 }
-void gmb_hex_view_init(gmb_hex_view_t* h, int x, int y, int w, int hgt)
+void gmb_hex_view_init(gmb_hex_view_t* hv, int x, int y, int w, int hgt)
 {
+    gmb_widget_t* h = (gmb_widget_t*)hv;
     memset(h, 0, sizeof(*h));
-    gmb_control_init(&h->ctrl, "", x, y, w, hgt, hexview_draw, hexview_key);
-    h->ctrl.ctrl_kind = GMB_CK_HEXVIEW;
-    h->ctrl.draw_px_fn = hexview_draw_px;
-    h->ctrl.handle_mouse_fn = hexview_mouse;
-    h->ctrl.user = h;
+    gmb_control_init(&h->base, "", x, y, w, hgt, hexview_draw, hexview_key);
+    h->base.ctrl_kind = GMB_CK_HEXVIEW;
+    h->base.draw_px_fn = hexview_draw_px;
+    h->base.handle_mouse_fn = hexview_mouse;
+    h->base.user = h;
+    h->kind = W_GRID;
     h->bytes_per_row = 16;
     h->bytes_per_group = 2;
     h->group_separator = " ";
-    h->show_address = true;
-    h->show_ascii = true;
+    h->show_address = 1;
+    h->show_ascii = 1;
+    h->payload = calloc(1, 1024);
+    h->payload_cap = h->payload ? 1024 : 0;
 }
-void gmb_hex_view_set_data(gmb_hex_view_t* h, const unsigned char* data, int len)
+void gmb_hex_view_set_data(gmb_hex_view_t* hv, const unsigned char* data, int len)
 {
-    h->data_len = len < 1024 ? len : 1024;
-    for (int i = 0; i < h->data_len; i++) h->data[i] = data[i];
+    gmb_widget_t* h = (gmb_widget_t*)hv;
+    if (!h->payload) { h->payload = calloc(1, 1024); h->payload_cap = h->payload ? 1024 : 0; }
+    if (!h->payload) return;
+    h->payload_len = len < 1024 ? len : 1024;
+    for (int i = 0; i < h->payload_len; i++) ((unsigned char*)h->payload)[i] = data[i];
 }
-int gmb_hex_view_render_line(gmb_hex_view_t* h, int row, char* out, int cap)
+int gmb_hex_view_render_line(gmb_hex_view_t* hv, int row, char* out, int cap)
 {
-    int start_byte = (h->offset + row) * h->bytes_per_row;
-    if (start_byte >= h->data_len) { out[0] = '\0'; return 0; }
+    gmb_widget_t* h = (gmb_widget_t*)hv;
+    int start_byte = (h->first + row) * h->bytes_per_row;
+    if (start_byte >= h->payload_len) { out[0] = '\0'; return 0; }
     int o = 0;
     if (h->show_address)
     {
@@ -169,8 +177,8 @@ int gmb_hex_view_render_line(gmb_hex_view_t* h, int row, char* out, int cap)
         int idx = start_byte + b;
         if (b > 0 && b % h->bytes_per_group == 0 && b < h->bytes_per_row)
             for (const char* p = h->group_separator; *p && o < cap - 1; p++) out[o++] = *p;
-        if (idx < h->data_len)
-            o += snprintf(out + o, cap - o, "%02X", h->data[idx]);
+        if (idx < h->payload_len)
+            o += snprintf(out + o, cap - o, "%02X", ((unsigned char*)h->payload)[idx]);
         else
         {
             out[o++] = ' '; out[o++] = ' ';
@@ -182,13 +190,13 @@ int gmb_hex_view_render_line(gmb_hex_view_t* h, int row, char* out, int cap)
         for (int b = 0; b < h->bytes_per_row; b++)
         {
             int idx = start_byte + b;
-            char ch = idx < h->data_len ? (char)h->data[idx] : ' ';
+            char ch = idx < h->payload_len ? (char)((unsigned char*)h->payload)[idx] : ' ';
             if (ch < 32 || ch >= 127) ch = '.';
             if (o < cap - 1) out[o++] = ch;
         }
     }
-    if (o > h->ctrl.width) o = h->ctrl.width;
-    else for (int i = o; i < h->ctrl.width && i < cap - 1; i++) out[o++] = ' ';
+    if (o > h->base.width) o = h->base.width;
+    else for (int i = o; i < h->base.width && i < cap - 1; i++) out[o++] = ' ';
     out[o] = '\0';
     return o;
 }

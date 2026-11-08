@@ -11,7 +11,7 @@
 
 static void progress_draw(void* u, gmb_control_t* c, gmb_screen_buffer_t* buf)
 {
-    gmb_progress_bar_t* p = (gmb_progress_bar_t*)u;
+    gmb_widget_t* p = (gmb_widget_t*)u;
     gmb_cell_color_t fg, bg;
     gmb_control_style_effective(&c->style, c->focused, false, false, &fg, &bg);
     gmb_screen_sink_t* sk = gmb_screen_get_sink(buf);
@@ -46,7 +46,7 @@ static void progress_draw_px(void* u, gmb_control_t* c)
     /* Renderer PIXEL guidato dal tema: pill (shape/radius), traccia fill, riempimento
      * con accent (fallback head_bg/title_bg se coinciderebbe con la traccia, es. Turbo),
      * bordo del tema e percentuale centrata con colore a contrasto. */
-    gmb_progress_bar_t* p = (gmb_progress_bar_t*)u;
+    gmb_widget_t* p = (gmb_widget_t*)u;
     gmb_widget_style_t s = gmb_widget_style_current();
     int x = c->x, y = c->y, w = c->width, h = c->height;
     if (w < 8 || h < 4) return;
@@ -56,8 +56,8 @@ static void progress_draw_px(void* u, gmb_control_t* c)
     if (!(fill & 0xFFFFFFu) || prog_close(fill, s.fill)) fill = s.title_bg;
     if (!(fill & 0xFFFFFFu) || prog_close(fill, s.fill)) fill = s.sel_bg;
     gmb_gfx_fill_rounded_rect(x, y, w, h, rad, s.fill);
-    int range = p->max - p->min;
-    double ratio = range > 0 ? (double)(p->value - p->min) / (double)range : 0.0;
+    int range = (int)p->vmax - (int)p->vmin;
+    double ratio = range > 0 ? ((int)p->ival - (int)p->vmin) / (double)range : 0.0;
     if (ratio < 0.0) ratio = 0.0;
     if (ratio > 1.0) ratio = 1.0;
     int fw = (int)(w * ratio + 0.5);
@@ -75,32 +75,38 @@ static void progress_draw_px(void* u, gmb_control_t* c)
                           (int)(0x40000000u | (lbl & 0xFFFFFFu)));
     }
 }
-void gmb_progress_bar_init(gmb_progress_bar_t* p, int x, int y, int w)
+void gmb_progress_bar_init(gmb_progress_bar_t* pb, int x, int y, int w)
 {
+    gmb_widget_t* p = (gmb_widget_t*)pb;
     memset(p, 0, sizeof(*p));
-    gmb_control_init(&p->ctrl, "", x, y, w, 1, progress_draw, NULL);
-    p->ctrl.draw_px_fn = progress_draw_px;
-    p->ctrl.user = p;
-    p->min = 0;
-    p->max = 100;
-    p->show_percent = true;
+    gmb_control_init(&p->base, "", x, y, w, 1, progress_draw, NULL);
+    p->base.draw_px_fn = progress_draw_px;
+    p->base.user = p;
+    p->kind = W_PROGRESS;
+    p->vmin = 0;
+    p->vmax = 100;
+    p->show_percent = 1;
 }
-void gmb_progress_bar_set(gmb_progress_bar_t* p, int value)
+void gmb_progress_bar_set(gmb_progress_bar_t* pb, int value)
 {
-    p->value = value < p->min ? p->min : (value > p->max ? p->max : value);
+    gmb_widget_t* p = (gmb_widget_t*)pb;
+    int vmin = (int)p->vmin, vmax = (int)p->vmax;
+    p->ival = value < vmin ? vmin : (value > vmax ? vmax : value);
 }
-void gmb_progress_bar_set_percentage(gmb_progress_bar_t* p, int pct)
+void gmb_progress_bar_set_percentage(gmb_progress_bar_t* pb, int pct)
 {
+    gmb_widget_t* p = (gmb_widget_t*)pb;
     int c = pct < 0 ? 0 : (pct > 100 ? 100 : pct);
-    p->value = p->min + (p->max - p->min) * c / 100;
+    p->ival = (int)p->vmin + ((int)p->vmax - (int)p->vmin) * c / 100;
 }
 int gmb_progress_bar_render_line(gmb_progress_bar_t* p, char* out, int cap)
 {
-    int range = p->max - p->min;
-    int pct = range > 0 ? (p->value - p->min) * 100 / range : 0;
-    int inner = p->ctrl.width - 2;
+    int vmin = (int)p->vmin, vmax = (int)p->vmax, value = (int)p->ival;
+    int range = vmax - vmin;
+    int pct = range > 0 ? (value - vmin) * 100 / range : 0;
+    int inner = p->base.width - 2;
     if (inner < 0) inner = 0;
-    int filled = range > 0 ? (p->value - p->min) * inner / range : 0;
+    int filled = range > 0 ? (value - vmin) * inner / range : 0;
     if (filled < 0) filled = 0;
     if (filled > inner) filled = inner;
     int o = 0;
@@ -114,8 +120,8 @@ int gmb_progress_bar_render_line(gmb_progress_bar_t* p, char* out, int cap)
         int pn = snprintf(per, sizeof(per), " %d%%", pct);
         for (int i = 0; i < pn && o < cap - 1; i++) out[o++] = per[i];
     }
-    if (o > p->ctrl.width) o = p->ctrl.width;
-    else for (int i = o; i < p->ctrl.width && i < cap - 1; i++) out[o++] = ' ';
+    if (o > p->base.width) o = p->base.width;
+    else for (int i = o; i < p->base.width && i < cap - 1; i++) out[o++] = ' ';
     out[o] = '\0';
     return o;
 }

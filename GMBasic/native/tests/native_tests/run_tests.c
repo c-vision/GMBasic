@@ -1181,7 +1181,7 @@ int main(void)
         gmb_checkbox_render_line(&cb, line, sizeof(line));
         CHECK_STR(line, "[X] Tutto ");
         CHECK(gmb_control_handle_key(&cb.ctrl, ' '));
-        CHECK(!cb.checked);
+        CHECK(cb.ival == 0);
 
         gmb_label_t lbl;
         gmb_label_init(&lbl, 0, 0, 10, "abc");
@@ -1199,13 +1199,13 @@ int main(void)
         gmb_numeric_updown_init(&nu, 0, 0, 10);
         gmb_numeric_updown_set_range(&nu, 0, 100);
         gmb_numeric_updown_set_value(&nu, 5);
-        CHECK(nu.value == 5);
+        CHECK((int)nu.ival == 5);
         CHECK(gmb_control_handle_key(&nu.ctrl, GMB_K_UP));
-        CHECK(nu.value == 6);
+        CHECK((int)nu.ival == 6);
         CHECK(gmb_control_handle_key(&nu.ctrl, GMB_K_LEFT));
-        CHECK(nu.value == 5);
+        CHECK((int)nu.ival == 5);
         CHECK(gmb_control_handle_key(&nu.ctrl, '5'));
-        CHECK(nu.value == 55);
+        CHECK((int)nu.ival == 55);
 
         gmb_radio_group_t rg;
         gmb_radio_group_init(&rg, 0, 0, 12, 3);
@@ -1236,7 +1236,7 @@ int main(void)
         gmb_tab_init(&tab, 0, 0, 20);
         gmb_tab_set_tabs(&tab, opts, 3);
         CHECK(gmb_control_handle_key(&tab.ctrl, GMB_K_RIGHT));
-        CHECK(tab.selected == 1);
+        CHECK((int)tab.ival == 1);
 
         gmb_panel_t panel;
         gmb_panel_init(&panel, 1, 1, 10, 5, "Titolo");
@@ -1333,24 +1333,24 @@ int main(void)
         gmb_menu_sub_item_t* open_ = gmb_menu_item_add_sub(file, "Open");
         gmb_menu_item_add_sub(file, "Save");
         gmb_menu_item_add_sub(edit, "Cut");
-        CHECK(menu.items_count == 2);
+        CHECK(menu.nitems == 2);
         CHECK(file->sub_count == 2);
         CHECK(gmb_menu_compute_width(&menu) >= 4);
         CHECK(gmb_control_handle_key(&menu.ctrl, GMB_K_ENTER));
-        CHECK(menu.is_open);
+        CHECK(menu.open);
         CHECK(gmb_control_handle_key(&menu.ctrl, GMB_K_DOWN));
-        CHECK(menu.sub_selected_index == 1);
+        CHECK(menu.sub_sel == 1);
         CHECK(gmb_control_handle_key(&menu.ctrl, GMB_K_RIGHT));
-        CHECK(menu.selected_index == 1);
+        CHECK((int)menu.ival == 1);
         CHECK(gmb_control_handle_key(&menu.ctrl, GMB_K_DOWN));
         CHECK_STR(gmb_menu_get_selected_label(&menu), "Cut");
         CHECK(gmb_control_handle_key(&menu.ctrl, GMB_K_ESC));
-        CHECK(!menu.is_open);
+        CHECK(!menu.open);
         gmb_menu_sub_item_set_action(open_, NULL, NULL);
         /* draw senza crash */
         gmb_screen_buffer_t* buf = gmb_screen_new(40, 12);
-        menu.is_open = true;
-        menu.selected_index = 0;
+        menu.open = 1;
+        menu.ival = 0;
         gmb_control_draw(&menu.ctrl, buf);
         gmb_screen_free(buf);
     }
@@ -1467,40 +1467,40 @@ int main(void)
         char line[256];
         gmb_star_rating_t sr;
         gmb_star_rating_init(&sr, 0, 0, 8);
-        sr.max = 5;
+        sr.vmax = 5;
         gmb_star_rating_render_line(&sr, line, sizeof(line));
         CHECK((unsigned char)line[0] == 0xE2);
         CHECK(gmb_control_handle_key(&sr.ctrl, GMB_K_RIGHT));
-        CHECK(sr.value == 1);
+        CHECK((int)sr.ival == 1);
         CHECK(gmb_control_handle_key(&sr.ctrl, GMB_K_RIGHT));
-        CHECK(sr.value == 2);
+        CHECK((int)sr.ival == 2);
 
         gmb_spinner_t spin;
         gmb_spinner_init(&spin, 0, 0, 4);
         CHECK(spin.frames_count == 4);
         CHECK_STR(spin.frames[0], "|");
         gmb_spinner_tick(&spin);
-        CHECK(spin.index == 1);
+        CHECK((int)spin.ival == 1);
         gmb_spinner_set_preset(&spin, "dots");
         CHECK(spin.frames_count == 6);
         gmb_spinner_tick(&spin);
-        CHECK(spin.index == 1);
+        CHECK((int)spin.ival == 1);
 
         gmb_slider_t sl;
         gmb_slider_init(&sl, 0, 0, 14);
         gmb_slider_set_range(&sl, 0, 100);
         gmb_slider_set_value(&sl, 50);
-        CHECK(sl.value == 50);
+        CHECK((int)sl.ival == 50);
         CHECK(gmb_control_handle_key(&sl.ctrl, GMB_K_RIGHT));
-        CHECK(sl.value == 51);
+        CHECK((int)sl.ival == 51);
         CHECK(gmb_control_handle_key(&sl.ctrl, GMB_K_HOME));
-        CHECK(sl.value == 0);
+        CHECK((int)sl.ival == 0);
         gmb_slider_render_line(&sl, line, sizeof(line));
         CHECK(strchr(line, '[') != NULL);
         gmb_mouse_action_t ma;
         ma.kind = GMB_MA_CLICK; ma.x = 8; ma.y = 0;
         CHECK(gmb_control_handle_mouse(&sl.ctrl, &ma));
-        CHECK(sl.value > 0);
+        CHECK((int)sl.ival > 0);
 
         gmb_dashboard_t dash;
         gmb_dashboard_init(&dash, 0, 0, 20, 3);
@@ -1693,11 +1693,11 @@ int main(void)
         CHECK(gmb_color_picker_cell_at(&cp, 0, 0) != NULL);
         CHECK(gmb_color_picker_is_cell_selected(&cp, 0, 0));
         CHECK(gmb_control_handle_key(&cp.ctrl, GMB_K_RIGHT));
-        CHECK(cp.selected_index == 1);
+        CHECK((int)cp.ival == 1);
         CHECK(gmb_control_handle_key(&cp.ctrl, GMB_K_DOWN));
-        CHECK(cp.selected_index == 17);
+        CHECK((int)cp.ival == 17);
         CHECK(gmb_control_handle_key(&cp.ctrl, GMB_K_HOME));
-        CHECK(cp.selected_index == 0);
+        CHECK((int)cp.ival == 0);
         gmb_color_picker_render_line(&cp, 0, line, sizeof(line));
 
         gmb_text_align_align("ab", 6, GMB_HALIGN_RIGHT, line, sizeof(line));

@@ -66,6 +66,9 @@ gmb_control_t* gmb_tui_add_button(int x, int y, int w, const char* label)
 gmb_control_t* gmb_tui_add_checkbox(int x, int y, int w, const char* label)
 { gmb_checkbox_t* c = (gmb_checkbox_t*)calloc(1, sizeof(*c)); if (!c) return NULL; gmb_checkbox_init(c, x, y, w, label); c->ctrl.ctrl_kind = GMB_CK_CHECKBOX; gmb_tui_control_add(&c->ctrl); return &c->ctrl; }
 
+gmb_control_t* gmb_tui_add_statusbar(int x, int y, int w, const char* text)
+{ gmb_widget_t* c = (gmb_widget_t*)calloc(1, sizeof(*c)); if (!c) return NULL; gmb_status_bar_init(c, x, y, w); gmb_status_bar_set_text(c, text ? text : ""); c->ctrl.ctrl_kind = GMB_CK_STATUSBAR; gmb_tui_control_add(&c->ctrl); return &c->ctrl; }
+
 gmb_control_t* gmb_tui_add_toggle(int x, int y, int w, const char* caption)
 { gmb_toggle_button_t* c = (gmb_toggle_button_t*)calloc(1, sizeof(*c)); if (!c) return NULL; gmb_toggle_button_init(c, x, y, w, caption); c->ctrl.ctrl_kind = GMB_CK_TOGGLE; gmb_tui_control_add(&c->ctrl); return &c->ctrl; }
 
@@ -118,8 +121,6 @@ gmb_control_t* gmb_tui_add_fileexplorer(int x, int y, int w, int h, const char* 
 gmb_control_t* gmb_tui_add_dashboard(int x, int y, int w, int h, const char* csv)
 { gmb_dashboard_t* c = (gmb_dashboard_t*)calloc(1, sizeof(*c)); if (!c) return NULL; gmb_dashboard_init(c, x, y, w, h); char tmp[128][64]; int n = tui_split(csv, tmp, 128); for (int i = 0; i + 3 < n; i += 4) gmb_dashboard_add_metric(c, tmp[i], (float)atof(tmp[i + 1]), (float)atof(tmp[i + 2]), tmp[i + 3]); c->ctrl.ctrl_kind = GMB_CK_DASHBOARD; gmb_tui_control_add(&c->ctrl); return &c->ctrl; }
 
-gmb_control_t* gmb_tui_add_statusbar(int x, int y, int w, const char* text)
-{ gmb_status_bar_t* c = (gmb_status_bar_t*)calloc(1, sizeof(*c)); if (!c) return NULL; gmb_status_bar_init(c, x, y, w); gmb_status_bar_set_text(c, text ? text : ""); c->ctrl.ctrl_kind = GMB_CK_STATUSBAR; gmb_tui_control_add(&c->ctrl); return &c->ctrl; }
 
 /* Getter testo (CodeArea/TextField) del controllo registrato all'indice i. Ritorna len. */
 int gmb_tui_control_text(int i, char* out, int cap)
@@ -143,7 +144,7 @@ int gmb_tui_control_text(int i, char* out, int cap)
     }
     else if (c->ctrl_kind == GMB_CK_TEXTBOX)
     {
-        const char* tv = ((gmb_text_input_t*)c)->text;
+        const char* tv = ((gmb_widget_t*)c)->itext;
         if (tv) { int ln = (int)strlen(tv); if (ln < cap) { memcpy(out, tv, (size_t)ln); w = ln; } }
     }
     out[w] = 0;
@@ -155,7 +156,7 @@ long long gmb_tui_control_value(int i)
 {
     gmb_control_t* c = gmb_tui_control_at(i);
     if (!c) return -1;
-    if (c->ctrl_kind == GMB_CK_TAB) return ((gmb_tab_t*)c)->selected;
+    if (c->ctrl_kind == GMB_CK_TAB) return (int)((gmb_widget_t*)c)->ival;
     return -1;
 }
 
@@ -217,7 +218,7 @@ void gmb_tui_control_set_text(int i, const char* text)
     }
     else if (c->ctrl_kind == GMB_CK_STATUSBAR)
     {
-        gmb_status_bar_set_text((gmb_status_bar_t*)c, text);
+        snprintf(((gmb_widget_t*)c)->label, sizeof(((gmb_widget_t*)c)->label), "%s", text ? text : "");
     }
     else if (c->ctrl_kind == GMB_CK_LABEL)
     {

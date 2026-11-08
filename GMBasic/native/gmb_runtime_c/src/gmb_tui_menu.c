@@ -13,6 +13,31 @@
 #include "gmb_tui_app.h"
 
 /* ===================== Menu ===================== */
+/* Voci del menu: dato di dominio del controllo, vive nel `payload` del modello. */
+#define MENU_MAX_ITEMS 16
+static gmb_menu_item_t* menu_items(gmb_widget_t* m)
+{
+    if (!m->payload)
+    {
+        m->payload = calloc(MENU_MAX_ITEMS, sizeof(gmb_menu_item_t));
+        m->payload_cap = m->payload ? MENU_MAX_ITEMS : 0;
+    }
+    return (gmb_menu_item_t*)m->payload;
+}
+#define M_ITEMS(m) menu_items((gmb_widget_t*)(m))
+gmb_menu_item_t* gmb_menu_last_item(gmb_menu_t* mm)
+{
+    gmb_widget_t* m = (gmb_widget_t*)mm;
+    if (!m || m->nitems <= 0) return NULL;
+    return &M_ITEMS(m)[m->nitems - 1];
+}
+gmb_menu_item_t* gmb_menu_item_at(gmb_menu_t* mm, int i)
+{
+    gmb_widget_t* m = (gmb_widget_t*)mm;
+    if (!m || i < 0 || i >= m->nitems) return NULL;
+    return &M_ITEMS(m)[i];
+}
+
 
 static long long g_menu_activated = -1;   /* ultima voce attivata: top*100+sub, -1 se nessuna */
 
@@ -20,12 +45,12 @@ void gmb_tui_menu_set(int idx, const char* spec)
 {
     gmb_control_t* c = gmb_tui_control_at(idx);
     if (!c || c->ctrl_kind != GMB_CK_MENU || !spec) return;
-    gmb_menu_t* m = (gmb_menu_t*)c;
-    m->items_count = 0; m->selected_index = 0; m->sub_selected_index = 0; m->is_open = false;
+    gmb_widget_t* m = (gmb_widget_t*)c;
+    m->nitems = 0; m->ival = 0; m->sub_sel = 0; m->open = false;
     /* spec = "Top:sub|sub;Top2:sub|sub;..." */
     char buf[1024]; snprintf(buf, sizeof(buf), "%s", spec);
     char* save1 = NULL;
-    for (char* top = strtok_r(buf, ";", &save1); top && m->items_count < 16; top = strtok_r(NULL, ";", &save1))
+    for (char* top = strtok_r(buf, ";", &save1); top && m->nitems < 16; top = strtok_r(NULL, ";", &save1))
     {
         char* colon = strchr(top, ':');
         char* subs = NULL;
@@ -46,7 +71,7 @@ int gmb_tui_menu_any_open(void)
     for (int i = 0; i < gmb_tui_control_count(); i++)
     {
         gmb_control_t* c = gmb_tui_control_at(i);
-        if (c && c->ctrl_kind == GMB_CK_MENU && ((gmb_menu_t*)c)->is_open) return 1;
+        if (c && c->ctrl_kind == GMB_CK_MENU && ((gmb_widget_t*)c)->open) return 1;
     }
     return 0;
 }
@@ -57,7 +82,7 @@ void gmb_tui_menu_close_all(void)
     for (int i = 0; i < gmb_tui_control_count(); i++)
     {
         gmb_control_t* c = gmb_tui_control_at(i);
-        if (c && c->ctrl_kind == GMB_CK_MENU) ((gmb_menu_t*)c)->is_open = false;
+        if (c && c->ctrl_kind == GMB_CK_MENU) ((gmb_widget_t*)c)->open = false;
     }
 }
 
@@ -68,12 +93,12 @@ int gmb_tui_menu_covers(int x, int y)
     {
         gmb_control_t* c = gmb_tui_control_at(i);
         if (!c || c->ctrl_kind != GMB_CK_MENU) continue;
-        gmb_menu_t* m = (gmb_menu_t*)c;
-        if (!m->is_open || m->selected_index < 0 || m->selected_index >= m->items_count) continue;
-        gmb_menu_item_t* it = &m->items[m->selected_index];
+        gmb_widget_t* m = (gmb_widget_t*)c;
+        if (!m->open || (int)m->ival < 0 || (int)m->ival >= m->nitems) continue;
+        gmb_menu_item_t* it = &M_ITEMS(m)[(int)m->ival];
         if (it->sub_count == 0) continue;
         int px = c->x;
-        for (int k = 0; k < m->selected_index; k++) px += (int)strlen(m->items[k].label) + 2;
+        for (int k = 0; k < (int)m->ival; k++) px += (int)strlen(M_ITEMS(m)[k].label) + 2;
         int wmax = 0;
         for (int k = 0; k < it->sub_count; k++) { int l = (int)strlen(it->sub[k].label); if (l > wmax) wmax = l; }
         int innerW = wmax + 3;
@@ -88,19 +113,19 @@ int gmb_tui_menu_covers(int x, int y)
 static bool menu_click(void* u, gmb_control_t* c, int x, int y);
 static bool menu_mouse(void* u, gmb_control_t* c, const gmb_mouse_action_t* a)
 {
-    gmb_menu_t* m = (gmb_menu_t*)u;
-    if (!c || !c->enabled || !a || m->items_count == 0) return false;
+    gmb_widget_t* m = (gmb_widget_t*)u;
+    if (!c || !c->enabled || !a || m->nitems == 0) return false;
     /* GRAFICA: hit-test pixel (chip e dropdown), stessa geometria del renderer. */
     if (GMB_GFX_SCREEN_ON() && a->kind == GMB_MA_CLICK) return menu_click(u, c, a->x, a->y);
     /* Hover sulla barra (menu aperto): cambia il menu aperto SENZA clic (TV). */
     if (a->kind == GMB_MA_MOVE)
     {
-        if (!m->is_open || a->y != c->y) return false;
+        if (!m->open || a->y != c->y) return false;
         int x = c->x;
-        for (int i = 0; i < m->items_count; i++)
+        for (int i = 0; i < m->nitems; i++)
         {
-            int w = (int)strlen(m->items[i].label) + 2;
-            if (a->x >= x && a->x < x + w) { if (m->selected_index != i) { m->selected_index = i; m->sub_selected_index = 0; } return true; }
+            int w = (int)strlen(M_ITEMS(m)[i].label) + 2;
+            if (a->x >= x && a->x < x + w) { if ((int)m->ival != i) { m->ival = i; m->sub_sel = 0; } return true; }
             x += w;
         }
         return false;
@@ -109,27 +134,27 @@ static bool menu_mouse(void* u, gmb_control_t* c, const gmb_mouse_action_t* a)
     if (a->y == c->y)
     {
         int x = c->x;
-        for (int i = 0; i < m->items_count; i++)
+        for (int i = 0; i < m->nitems; i++)
         {
-            int w = (int)strlen(m->items[i].label) + 2;
-            if (a->x >= x && a->x < x + w) { m->selected_index = i; m->sub_selected_index = 0; m->is_open = true; return true; }
+            int w = (int)strlen(M_ITEMS(m)[i].label) + 2;
+            if (a->x >= x && a->x < x + w) { m->ival = i; m->sub_sel = 0; m->open = true; return true; }
             x += w;
         }
         return false;
     }
-    if (m->is_open && a->y > c->y)
+    if (m->open && a->y > c->y)
     {
         /* Le voci della dropdown stanno a y = c->y + 2 + i (bordo a c->y+1). */
         int si = a->y - c->y - 2;
-        gmb_menu_item_t* it = &m->items[m->selected_index];
-        if (si >= 0 && si < it->sub_count) { m->sub_selected_index = si; g_menu_activated = m->selected_index * 100 + si; m->is_open = false; return true; }
+        gmb_menu_item_t* it = &M_ITEMS(m)[(int)m->ival];
+        if (si >= 0 && si < it->sub_count) { m->sub_sel = si; g_menu_activated = (int)m->ival * 100 + si; m->open = false; return true; }
     }
     return false;
 }
 
 static void menu_draw(void* u, gmb_control_t* c, gmb_screen_buffer_t* buf)
 {
-    gmb_menu_t* m = (gmb_menu_t*)u;
+    gmb_widget_t* m = (gmb_widget_t*)u;
     gmb_cell_color_t fg, bg;
     gmb_control_style_effective(&c->style, c->focused, false, false, &fg, &bg);
     { gmb_theme_t th_ = gmb_ui_theme(); gmb_cell_color_t tf, tb; gmb_theme_kind(&th_, 1, &tf, &tb); if (!c->style.has_fg || gmb_cellcolor_eq(c->style.fg, th_.text)) fg = tf; if (!c->style.has_bg || gmb_cellcolor_eq(c->style.bg, th_.window_bg)) bg = tb; }
@@ -138,10 +163,10 @@ static void menu_draw(void* u, gmb_control_t* c, gmb_screen_buffer_t* buf)
       for (int xx = 0; xx < bw; xx++) gmb_screen_setchar(buf, xx, c->y, ' ', fg, bg); }
     gmb_cell_color_t red = { 170, 0, 0, 0 };   /* HotkeyRed (Menu.cs) */
     int x = c->x;
-    for (int i = 0; i < m->items_count; i++)
+    for (int i = 0; i < m->nitems; i++)
     {
-        const char* it = m->items[i].label;
-        int sel = (m->is_open && i == m->selected_index);
+        const char* it = M_ITEMS(m)[i].label;
+        int sel = (m->open && i == (int)m->ival);
         gmb_cell_color_t ef = sel ? bg : fg, eb = sel ? fg : bg;
         char lbl[160];
         if (it[0]) snprintf(lbl, sizeof(lbl), " ~%c~%s ", it[0], it + 1);
@@ -151,13 +176,13 @@ static void menu_draw(void* u, gmb_control_t* c, gmb_screen_buffer_t* buf)
         gmb_draw_string_keys(buf, x, c->y, clbl, (int)strlen(clbl), ef, eb, sel ? ef : red);
         x += (int)strlen(it) + 2;
     }
-    if (!m->is_open || m->selected_index < 0 || m->selected_index >= m->items_count) return;
-    gmb_menu_item_t* item = &m->items[m->selected_index];
+    if (!m->open || (int)m->ival < 0 || (int)m->ival >= m->nitems) return;
+    gmb_menu_item_t* item = &M_ITEMS(m)[(int)m->ival];
     if (item->sub_count == 0) return;
 
     /* px = X + somma(label+2) delle voci precedenti (specchio Menu.cs). */
     int px = c->x;
-    for (int i = 0; i < m->selected_index; i++) px += (int)strlen(m->items[i].label) + 2;
+    for (int i = 0; i < (int)m->ival; i++) px += (int)strlen(M_ITEMS(m)[i].label) + 2;
     int wmax = 0;
     for (int i = 0; i < item->sub_count; i++) { int l = (int)strlen(item->sub[i].label); if (l > wmax) wmax = l; }
     int innerW = wmax + 3;
@@ -174,7 +199,7 @@ static void menu_draw(void* u, gmb_control_t* c, gmb_screen_buffer_t* buf)
     for (int i = 0; i < item->sub_count; i++)
     {
         int iy = sy + 1 + i;
-        int isSel = (i == m->sub_selected_index);
+        int isSel = (i == m->sub_sel);
         gmb_cell_color_t sf = isSel ? BB : BF;
         gmb_cell_color_t sb = isSel ? BF : BB;
         gmb_screen_setchar(buf, px, iy, 0x2502u, BF, BB);
@@ -201,58 +226,58 @@ static void menu_draw(void* u, gmb_control_t* c, gmb_screen_buffer_t* buf)
 static bool menu_key(void* u, gmb_control_t* c, int key)
 {
     (void)c;
-    gmb_menu_t* m = (gmb_menu_t*)u;
-    if (!m->items_count) return false;
+    gmb_widget_t* m = (gmb_widget_t*)u;
+    if (!m->nitems) return false;
     switch (key)
     {
         case GMB_K_ENTER:
-            if (m->is_open && m->items_count > 0)
+            if (m->open && m->nitems > 0)
             {
                 /* Attiva la sottovoce corrente: salva (top, sub) per l'host e chiudi. */
-                int ti = m->selected_index;
-                int si = m->sub_selected_index;
-                if (ti < 0) ti = 0; if (ti >= m->items_count) ti = m->items_count - 1;
+                int ti = (int)m->ival;
+                int si = m->sub_sel;
+                if (ti < 0) ti = 0; if (ti >= m->nitems) ti = m->nitems - 1;
                 g_menu_activated = ti * 100 + si;
-                m->is_open = false;
+                m->open = false;
                 return true;
             }
-            m->is_open = !m->is_open;
-            m->sub_selected_index = 0;
+            m->open = !m->open;
+            m->sub_sel = 0;
             return true;
         case GMB_K_DOWN:
             /* Giù: apre il menu chiuso (TV); se aperto scorre le voci. */
-            if (!m->is_open) { m->is_open = true; m->sub_selected_index = 0; return true; }
+            if (!m->open) { m->open = true; m->sub_sel = 0; return true; }
             {
-                int n = m->items[m->selected_index].sub_count;
+                int n = M_ITEMS(m)[(int)m->ival].sub_count;
                 if (n > 0)
                 {
-                    m->sub_selected_index++;
-                    if (m->sub_selected_index >= n) m->sub_selected_index = 0;
+                    m->sub_sel++;
+                    if (m->sub_sel >= n) m->sub_sel = 0;
                 }
                 return true;
             }
         case GMB_K_UP:
             /* Su: chiude il menu aperto (TV). */
-            if (m->is_open) { m->is_open = false; return true; }
+            if (m->open) { m->open = false; return true; }
             return false;
         case GMB_K_RIGHT:
-            if (m->is_open)
+            if (m->open)
             {
-                m->selected_index++;
-                if (m->selected_index >= m->items_count) m->selected_index = 0;
-                m->sub_selected_index = 0;
+                m->ival = (int)m->ival + 1;
+                if ((int)m->ival >= m->nitems) m->ival = 0;
+                m->sub_sel = 0;
                 return true;
             }
-            m->selected_index++;
-            if (m->selected_index >= m->items_count) m->selected_index = 0;
+            m->ival = (int)m->ival + 1;
+            if ((int)m->ival >= m->nitems) m->ival = 0;
             return true;
         case GMB_K_LEFT:
-            m->selected_index--;
-            if (m->selected_index < 0) m->selected_index = m->items_count - 1;
-            m->sub_selected_index = 0;
+            m->ival = (int)m->ival - 1;
+            if ((int)m->ival < 0) m->ival = m->nitems - 1;
+            m->sub_sel = 0;
             return true;
         case GMB_K_ESC:
-            m->is_open = false;
+            m->open = false;
             return true;
     }
     return false;
@@ -277,23 +302,23 @@ static void menu_px_geom(gmb_menu_t* m, gmb_control_t* c, menu_px_t* g)
     g->th = gmb_gfx_text_height_logical(); if (g->th <= 0) g->th = 16;
     g->h = st.row_h > 0 ? st.row_h : g->th + 10;
     g->pad = 10; g->gap = 2;
-    g->n = m->items_count > 16 ? 16 : m->items_count;
+    g->n = m->nitems > 16 ? 16 : m->nitems;
     int x = g->x;
     for (int i = 0; i < g->n; i++)
     {
-        int tw = gmb_gfx_text_width_logical(m->items[i].label) + 2 * g->pad;
+        int tw = gmb_gfx_text_width_logical(M_ITEMS(m)[i].label) + 2 * g->pad;
         g->cx[i] = x; g->cw[i] = tw;
         x += tw + g->gap;
     }
     /* dropdown del menù selezionato, se ha sotto-voci */
     g->dd_x = g->dd_y = g->dd_w = g->dd_h = 0;
-    if (m->is_open && m->selected_index >= 0 && m->selected_index < g->n)
+    if (m->open && (int)m->ival >= 0 && (int)m->ival < g->n)
     {
-        gmb_menu_item_t* it = &m->items[m->selected_index];
+        gmb_menu_item_t* it = &M_ITEMS(m)[(int)m->ival];
         if (it->sub_count > 0)
         {
             int rh = st.row_h > 0 ? st.row_h : g->th + 10;
-            g->dd_x = g->cx[m->selected_index];
+            g->dd_x = g->cx[(int)m->ival];
             g->dd_y = g->y + g->h + 2;
             g->dd_w = 180;
             g->dd_h = it->sub_count * rh + 8;
@@ -303,18 +328,18 @@ static void menu_px_geom(gmb_menu_t* m, gmb_control_t* c, menu_px_t* g)
 
 static void menu_draw_px(void* u, gmb_control_t* c)
 {
-    gmb_menu_t* m = (gmb_menu_t*)u;
+    gmb_widget_t* m = (gmb_widget_t*)u;
     menu_px_t g; menu_px_geom(m, c, &g);
     gmb_widget_style_t st = gmb_widget_style_current();
     unsigned acc = (st.accent & 0xFFFFFFu) ? st.accent : st.fill_press;
 
     for (int i = 0; i < g.n; i++)
     {
-        int sel = (i == m->selected_index);
+        int sel = (i == (int)m->ival);
         if (sel)
             gmb_gfx_fill_rounded_rect(g.cx[i], g.y, g.cw[i], g.h, (st.shape == 1) ? g.h / 2 : 4,
                                       (acc & 0xFFFFFFu) | 0x55000000u);
-        gmb_gfx_draw_text(m->items[i].label, g.cx[i] + g.pad, g.y + (g.h - g.th) / 2, 0,
+        gmb_gfx_draw_text(M_ITEMS(m)[i].label, g.cx[i] + g.pad, g.y + (g.h - g.th) / 2, 0,
                           (int)(0x40000000u | ((sel ? 0xFFFFFFu : (st.text & 0xFFFFFFu)))));
     }
     if (g.dd_h <= 0) return;
@@ -323,12 +348,12 @@ static void menu_draw_px(void* u, gmb_control_t* c)
     unsigned base = 0xFF000000u | (st.fill & 0xFFFFFFu);
     gmb_gfx_fill_rounded_rect(g.dd_x, g.dd_y, g.dd_w, g.dd_h, 8, base);
     gmb_gfx_stroke_rounded_rect(g.dd_x, g.dd_y, g.dd_w, g.dd_h, 8, st.border);
-    gmb_menu_item_t* it = &m->items[m->selected_index];
+    gmb_menu_item_t* it = &M_ITEMS(m)[(int)m->ival];
     int rh = (g.dd_h - 8) / (it->sub_count > 0 ? it->sub_count : 1);
     for (int i = 0; i < it->sub_count; i++)
     {
         int iy = g.dd_y + 4 + i * rh;
-        if (i == m->sub_selected_index)
+        if (i == m->sub_sel)
             gmb_gfx_fill_rounded_rect(g.dd_x + 2, iy, g.dd_w - 4, rh - 1, 5,
                                       (acc & 0xFFFFFFu) | 0x44000000u);
         gmb_gfx_draw_text(it->sub[i].label, g.dd_x + 12, iy + (rh - g.th) / 2, 0,
@@ -338,24 +363,24 @@ static void menu_draw_px(void* u, gmb_control_t* c)
 
 static bool menu_click(void* u, gmb_control_t* c, int x, int y)
 {
-    gmb_menu_t* m = (gmb_menu_t*)u;
+    gmb_widget_t* m = (gmb_widget_t*)u;
     if (!c->enabled) return false;
     menu_px_t g; menu_px_geom(m, c, &g);
 
     /* dropdown aperto: scelta voce */
     if (g.dd_h > 0 && x >= g.dd_x && x < g.dd_x + g.dd_w && y >= g.dd_y && y < g.dd_y + g.dd_h)
     {
-        gmb_menu_item_t* it = &m->items[m->selected_index];
+        gmb_menu_item_t* it = &M_ITEMS(m)[(int)m->ival];
         int rh = (g.dd_h - 8) / (it->sub_count > 0 ? it->sub_count : 1);
         int r = (y - g.dd_y - 4) / (rh > 0 ? rh : 1);
         if (r >= 0 && r < it->sub_count)
         {
-            m->sub_selected_index = r;
-            m->is_open = false;
+            m->sub_sel = r;
+            m->open = false;
             if (it->sub[r].action) it->sub[r].action(it->sub[r].action_ctx);
             { extern void gmb_tui_fire(int, int); gmb_tui_fire(c->handle, GMB_EV_CLICK); }
         }
-        else m->is_open = false;
+        else m->open = false;
         return true;
     }
     /* barra: seleziona la voce (e apre il dropdown se ha sotto-voci) */
@@ -365,15 +390,15 @@ static bool menu_click(void* u, gmb_control_t* c, int x, int y)
         {
             if (x >= g.cx[i] && x < g.cx[i] + g.cw[i])
             {
-                m->selected_index = i;
-                m->sub_selected_index = 0;
-                m->is_open = (m->items[i].sub_count > 0);
+                m->ival = i;
+                m->sub_sel = 0;
+                m->open = (M_ITEMS(m)[i].sub_count > 0);
                 { extern void gmb_tui_fire(int, int); gmb_tui_fire(c->handle, GMB_EV_CLICK); }
                 return true;
             }
         }
     }
-    if (m->is_open) { m->is_open = false; return true; }
+    if (m->open) { m->open = false; return true; }
     return false;
 }
 void gmb_menu_init(gmb_menu_t* m, int x, int y, int w)
@@ -384,13 +409,13 @@ void gmb_menu_init(gmb_menu_t* m, int x, int y, int w)
     m->ctrl.handle_mouse_fn = menu_mouse;
     m->ctrl.draw_px_fn = menu_draw_px;
     m->ctrl.user = m;
-    m->is_open = false;
+    m->open = false;
 }
 
 gmb_menu_item_t* gmb_menu_add_item(gmb_menu_t* m, const char* label)
 {
-    if (m->items_count >= 16) return NULL;
-    gmb_menu_item_t* it = &m->items[m->items_count++];
+    if (m->nitems >= 16) return NULL;
+    gmb_menu_item_t* it = &M_ITEMS(m)[m->nitems++];
     memset(it, 0, sizeof(*it));
     snprintf(it->label, sizeof(it->label), "%s", label ? label : "");
     return it;
@@ -419,27 +444,27 @@ void gmb_menu_sub_item_set_action(gmb_menu_sub_item_t* item, void (*fn)(void* ct
 int gmb_menu_compute_width(gmb_menu_t* m)
 {
     int w = 0;
-    for (int i = 0; i < m->items_count; i++)
-        w += (int)strlen(m->items[i].label) + 2;
+    for (int i = 0; i < m->nitems; i++)
+        w += (int)strlen(M_ITEMS(m)[i].label) + 2;
     return w;
 }
 int gmb_menu_submenu_width(gmb_menu_t* m)
 {
     int w = 0;
-    if (m->selected_index >= 0 && m->selected_index < m->items_count)
-        for (int i = 0; i < m->items[m->selected_index].sub_count; i++)
+    if ((int)m->ival >= 0 && (int)m->ival < m->nitems)
+        for (int i = 0; i < M_ITEMS(m)[(int)m->ival].sub_count; i++)
         {
-            int l = (int)strlen(m->items[m->selected_index].sub[i].label) + 2;
+            int l = (int)strlen(M_ITEMS(m)[(int)m->ival].sub[i].label) + 2;
             if (l > w) w = l;
         }
     return w;
 }
 const char* gmb_menu_get_selected_label(gmb_menu_t* m)
 {
-    if (m->selected_index < 0 || m->selected_index >= m->items_count) return "";
-    gmb_menu_item_t* it = &m->items[m->selected_index];
+    if ((int)m->ival < 0 || (int)m->ival >= m->nitems) return "";
+    gmb_menu_item_t* it = &M_ITEMS(m)[(int)m->ival];
     if (it->sub_count == 0) return it->label;
-    if (m->sub_selected_index >= 0 && m->sub_selected_index < it->sub_count)
-        return it->sub[m->sub_selected_index].label;
+    if (m->sub_sel >= 0 && m->sub_sel < it->sub_count)
+        return it->sub[m->sub_sel].label;
     return it->label;
 }

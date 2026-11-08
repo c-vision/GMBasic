@@ -191,6 +191,7 @@ set(GMB_ALL_SRCS
     src/gmb_events.c
     src/gmb_ide.c
     src/gmb_form.c
+    src/gmb_widget_model.c
     src/gmb_form_read.c
     src/gmb_msg.c
     # Bus dei segnali (namespace SIGNAL): filtro strutturato + consegna agli handler.

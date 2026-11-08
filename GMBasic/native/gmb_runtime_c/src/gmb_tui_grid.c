@@ -1,6 +1,9 @@
 /* ============================================================================
- * gmb_tui_grid.c — gmb_tui_grid. Porting del runtime C (specchio ClipperLib).
- * File per-modulo: piccolo, verificabile e committabile singolarmente.
+ * gmb_tui_grid.c — Grid (porting del runtime C, specchio ClipperLib).
+ *
+ * MODELLO UNICO: una griglia è un gmb_widget_t (W_GRID); celle in `cells`
+ * (riga-major), colonne in `cols`, riga scelta in `ival`, cursore in
+ * cursor_row/cursor_col.
  * ============================================================================ */
 #include "gmb_tui_widgets.h"
 #include "gmb_graphics.h"
@@ -10,26 +13,9 @@
 #include <strings.h>
 #include "gmb_form.h"
 
-/* ===================== Grid ===================== */
-
-static void grid_draw(void* u, gmb_control_t* c, gmb_screen_buffer_t* buf)
-{
-    gmb_grid_t* g = (gmb_grid_t*)u;
-    gmb_cell_color_t fg, bg, sf, sb;
-    gmb_control_style_effective(&c->style, c->focused, c->has_error, false, &fg, &bg);
-    gmb_control_style_effective(&c->style, false, false, true, &sf, &sb);
-    /* Surface gfx: base rounded + highlight riga cursore + testo nativo. */
-    for (int r = 0; r < c->height; r++)
-    {
-        char line[256];
-        gmb_grid_render_line(g, r, line, (int)sizeof(line));
-        if (r == g->cursor_row) gmb_screen_setstring(buf, c->x, c->y + r, line, sf, sb);
-        else gmb_screen_setstring(buf, c->x, c->y + r, line, fg, bg);
-    }
-}
 static bool grid_key(void* u, gmb_control_t* c, int key)
 {
-    gmb_grid_t* g = (gmb_grid_t*)u;
+    gmb_widget_t* g = (gmb_widget_t*)u;
     if (!c->enabled) return false;
     int rows = g->cols > 0 ? (g->cells_count + g->cols - 1) / g->cols : 0;
     switch (key)
@@ -41,8 +27,8 @@ static bool grid_key(void* u, gmb_control_t* c, int key)
         case GMB_K_HOME: g->cursor_col = 0; return true;
         case GMB_K_END: g->cursor_col = g->cols - 1; return true;
         case GMB_K_ENTER:
-            g->has_selected = true;
-            g->sel_row = g->cursor_row;
+            g->has_selected = 1;
+            g->ival = g->cursor_row;
             g->sel_col = g->cursor_col;
             return true;
     }
@@ -50,7 +36,7 @@ static bool grid_key(void* u, gmb_control_t* c, int key)
 }
 static bool grid_click(void* u, gmb_control_t* c, int x, int y)
 {
-    gmb_grid_t* g = (gmb_grid_t*)u;
+    gmb_widget_t* g = (gmb_widget_t*)u;
     if (!c->enabled) return false;
     gmb_rect_t r = gmb_control_rect(c);
     if (!rect_contains(r, x, y)) return false;
@@ -61,36 +47,22 @@ static bool grid_click(void* u, gmb_control_t* c, int x, int y)
     g->cursor_col = (x - c->x) / (col_width + 1);
     if (g->cursor_col < 0) g->cursor_col = 0;
     if (g->cursor_col >= g->cols) g->cursor_col = g->cols - 1;
-    g->has_selected = true;
-    g->sel_row = g->cursor_row;
+    g->has_selected = 1;
+    g->ival = g->cursor_row;
     g->sel_col = g->cursor_col;
     return true;
 }
-static void grid_draw_px(void* u, gmb_control_t* c)
-{
-    gmb_grid_t* g = (gmb_grid_t*)u;
-    int x = (c->px_w > 0) ? c->px_x : c->x, y = (c->px_h > 0) ? c->px_y : c->y;
-    int w = (c->px_w > 0) ? c->px_w : c->width, h = (c->px_h > 0) ? c->px_h : c->height;
-    int cols = g->cols > 0 ? g->cols : 1;
-    int rows = g->cells_count / cols;
-    char data[2048]; int o = 0;
-    for (int r = 0; r < rows && o < 2000; r++)
-    {
-        if (r && o < 2000) data[o++] = ';';
-        for (int cc = 0; cc < cols && o < 2000; cc++)
-            o += snprintf(data + o, sizeof(data) - (size_t)o, "%s%s", cc ? "|" : "", g->cells[r * cols + cc]);
-    }
-    gmb_form_paint_grid_px(x, y, w, h, NULL, data, g->sel_row);
-}
 void gmb_grid_init(gmb_grid_t* g, int x, int y, int w, int h)
 {
-    memset(g, 0, sizeof(*g));
-    gmb_control_init(&g->ctrl, "", x, y, w, h, grid_draw, grid_key);
-    g->ctrl.draw_px_fn = grid_draw_px;
-    g->ctrl.ctrl_kind = GMB_CK_GRID;
-    g->ctrl.handle_click_fn = grid_click;
-    g->ctrl.user = g;
-    g->cols = 1;
+    gmb_widget_t* m = (gmb_widget_t*)g;
+    memset(m, 0, sizeof(*m));
+    gmb_control_init(&m->base, "", x, y, w, h, gmb_widget_draw_cells, grid_key);
+    m->base.draw_px_fn = gmb_widget_draw_px;
+    m->base.ctrl_kind = GMB_CK_GRID;
+    m->base.handle_click_fn = grid_click;
+    m->base.user = m;
+    m->kind = W_GRID;
+    m->cols = 1;
 }
 void gmb_grid_set_cols(gmb_grid_t* g, int cols) { g->cols = cols > 0 ? cols : 1; }
 void gmb_grid_set_cells(gmb_grid_t* g, const char* const* cells, int count)
@@ -102,7 +74,7 @@ void gmb_grid_set_cells(gmb_grid_t* g, const char* const* cells, int count)
 int gmb_grid_render_line(gmb_grid_t* g, int r, char* out, int cap)
 {
     int cols = g->cols > 0 ? g->cols : 1;
-    int col_w = g->ctrl.width / cols;
+    int col_w = g->base.width / cols;
     if (col_w < 1) col_w = 1;
     int o = 0;
     for (int c = 0; c < cols; c++)
@@ -114,8 +86,8 @@ int gmb_grid_render_line(gmb_grid_t* g, int r, char* out, int cap)
         for (int i = vl; i < col_w && o < cap - 1; i++) out[o++] = ' ';
         if (c < cols - 1 && o < cap - 1) out[o++] = ' ';
     }
-    if (o > g->ctrl.width) o = g->ctrl.width;
-    else for (int i = o; i < g->ctrl.width && i < cap - 1; i++) out[o++] = ' ';
+    if (o > g->base.width) o = g->base.width;
+    else for (int i = o; i < g->base.width && i < cap - 1; i++) out[o++] = ' ';
     out[o] = '\0';
     return o;
 }

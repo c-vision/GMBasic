@@ -26,14 +26,14 @@ static int dp2_days_in_month(int y, int m)
     switch (m) { case 2: return dp2_is_leap(y) ? 29 : 28; case 4: case 6: case 9: case 11: return 30; default: return 31; }
 }
 
-static void dp2_draw_popup(gmb_date_picker_t* d, gmb_screen_buffer_t* buf, gmb_cell_color_t fg, gmb_cell_color_t bg, int focused)
+static void dp2_draw_popup(gmb_widget_t* d, gmb_screen_buffer_t* buf, gmb_cell_color_t fg, gmb_cell_color_t bg, int focused)
 {
     if (!d->open) return;
-    int cal_w = d->ctrl.width;
+    int cal_w = d->base.width;
     int cal_h = d->popup_height;
-    int py = d->ctrl.y - cal_h;
-    if (py < 0) py = d->ctrl.y + 1;
-    int px = d->ctrl.x;
+    int py = d->base.y - cal_h;
+    if (py < 0) py = d->base.y + 1;
+    int px = d->base.x;
     for (int ry = py; ry < py + cal_h; ry++)
         for (int rx = px; rx < px + cal_w; rx++)
             gmb_screen_setchar(buf, rx, ry, ' ', GMB_CELLCOLOR_DEFAULT, bg);
@@ -55,7 +55,7 @@ static void dp2_draw_popup(gmb_date_picker_t* d, gmb_screen_buffer_t* buf, gmb_c
         gmb_screen_setchar(buf, px + cal_w - 1, py + i, 0x2502, bfg, bbg);
     }
     char title[64];
-    snprintf(title, sizeof(title), " %s %d ", DP_MONTHS2[d->month >= 1 && d->month <= 12 ? d->month - 1 : 0], d->year);
+    snprintf(title, sizeof(title), " %s %d ", DP_MONTHS2[d->sm >= 1 && d->sm <= 12 ? d->sm - 1 : 0], d->sy);
     int max_title = (int)strlen(title) < cal_w - 2 ? (int)strlen(title) : cal_w - 2;
     title[max_title] = '\0';
     gmb_screen_setstring(buf, px + 1, py, title, bfg, bbg);
@@ -64,12 +64,12 @@ static void dp2_draw_popup(gmb_date_picker_t* d, gmb_screen_buffer_t* buf, gmb_c
     int max_hdr = (int)strlen(hdr) < cal_w - 2 ? (int)strlen(hdr) : cal_w - 2;
     hdr[max_hdr] = '\0';
     gmb_screen_setstring(buf, px + 1, py + 1, hdr, fg, bg);
-    int dow = (gmb_dates_weekday(d->year, d->month, 1) + 6) % 7;
-    int days = dp2_days_in_month(d->year, d->month);
+    int dow = (gmb_dates_weekday(d->sy, d->sm, 1) + 6) % 7;
+    int days = dp2_days_in_month(d->sy, d->sm);
     int dy = py + 2;
     for (int dnum = 1; dnum <= days; dnum++)
     {
-        bool is_sel = dnum == d->day;
+        bool is_sel = dnum == d->sd;
         gmb_cell_color_t f = is_sel ? GMB_CELLCOLOR_WHITE : fg;
         gmb_cell_color_t b = is_sel ? GMB_CELLCOLOR_BLUE : bg;
         char lbl[8];
@@ -80,21 +80,21 @@ static void dp2_draw_popup(gmb_date_picker_t* d, gmb_screen_buffer_t* buf, gmb_c
         if (dow >= 7) { dow = 0; dy++; }
     }
 }
-void gmb_date_picker_draw_popup(gmb_date_picker_t* d, gmb_screen_buffer_t* buffer)
+void gmb_date_picker_draw_popup(gmb_widget_t* d, gmb_screen_buffer_t* buffer)
 {
     if (!d->open) return;
     gmb_cell_color_t fg, bg;
-    gmb_control_style_effective(&d->ctrl.style, d->ctrl.focused, d->ctrl.has_error, false, &fg, &bg);
-    dp2_draw_popup(d, buffer, fg, bg, d->ctrl.focused);
+    gmb_control_style_effective(&d->base.style, d->base.focused, d->base.has_error, false, &fg, &bg);
+    dp2_draw_popup(d, buffer, fg, bg, d->base.focused);
 }
 static void datepicker_draw(void* u, gmb_control_t* c, gmb_screen_buffer_t* buf)
 {
-    gmb_date_picker_t* d = (gmb_date_picker_t*)u;
+    gmb_widget_t* d = (gmb_widget_t*)u;
     if (!c->enabled) return;
     gmb_cell_color_t fg, bg;
     gmb_control_style_effective(&c->style, c->focused, c->has_error, false, &fg, &bg);
     char label[32];
-    snprintf(label, sizeof(label), "%02d/%02d/%d", d->day, d->month, d->year);
+    snprintf(label, sizeof(label), "%02d/%02d/%d", d->sd, d->sm, d->sy);
     gmb_screen_setstring(buf, c->x, c->y, label, fg, bg);
     int arrow_x = c->x + (int)strlen(label) + 1;
     if (arrow_x < c->x + c->width)
@@ -103,42 +103,42 @@ static void datepicker_draw(void* u, gmb_control_t* c, gmb_screen_buffer_t* buf)
 }
 static bool datepicker_key(void* u, gmb_control_t* c, int key)
 {
-    gmb_date_picker_t* d = (gmb_date_picker_t*)u;
+    gmb_widget_t* d = (gmb_widget_t*)u;
     if (!c->enabled) return false;
     if (d->open)
     {
         switch (key)
         {
             case GMB_K_LEFT:
-                d->day--;
-                if (d->day < 1) { d->month--; if (d->month < 1) { d->month = 12; d->year--; } d->day = dp2_days_in_month(d->year, d->month); }
+                d->sd--;
+                if (d->sd < 1) { d->sm--; if (d->sm < 1) { d->sm = 12; d->sy--; } d->sd = dp2_days_in_month(d->sy, d->sm); }
                 return true;
             case GMB_K_RIGHT:
-                d->day++;
-                if (d->day > dp2_days_in_month(d->year, d->month)) { d->day = 1; d->month++; if (d->month > 12) { d->month = 1; d->year++; } }
+                d->sd++;
+                if (d->sd > dp2_days_in_month(d->sy, d->sm)) { d->sd = 1; d->sm++; if (d->sm > 12) { d->sm = 1; d->sy++; } }
                 return true;
             case GMB_K_UP:
-                d->day -= 7;
-                if (d->day < 1) { d->month--; if (d->month < 1) { d->month = 12; d->year--; } d->day += dp2_days_in_month(d->year, d->month); }
+                d->sd -= 7;
+                if (d->sd < 1) { d->sm--; if (d->sm < 1) { d->sm = 12; d->sy--; } d->sd += dp2_days_in_month(d->sy, d->sm); }
                 return true;
             case GMB_K_DOWN:
             {
-                int max_d = dp2_days_in_month(d->year, d->month);
-                d->day += 7;
-                if (d->day > max_d) { d->day -= max_d; d->month++; if (d->month > 12) { d->month = 1; d->year++; } }
+                int max_d = dp2_days_in_month(d->sy, d->sm);
+                d->sd += 7;
+                if (d->sd > max_d) { d->sd -= max_d; d->sm++; if (d->sm > 12) { d->sm = 1; d->sy++; } }
                 return true;
             }
             case GMB_K_ESC:
-                d->open = false;
+                d->open = 0;
                 return true;
             case GMB_K_ENTER:
-                d->open = false;
-                if (d->on_date_selected) d->on_date_selected(d->date_ctx, d->year, d->month, d->day);
+                d->open = 0;
+                if (d->on_date_selected) d->on_date_selected(d->date_ctx, d->sy, d->sm, d->sd);
                 return true;
         }
         return false;
     }
-    if (key == GMB_K_ENTER) { d->open = true; return true; }
+    if (key == GMB_K_ENTER) { d->open = 1; return true; }
     return false;
 }
 /* ── Geometria PIXEL del calendario (UNICA fonte per render e hit-test) ─── */
@@ -148,7 +148,7 @@ typedef struct {
     int cal_x, cal_y, cal_w, cal_h, head_h;
 } dp_px_t;
 
-static void dp_px_geom(gmb_date_picker_t* d, gmb_control_t* c, dp_px_t* g)
+static void dp_px_geom(gmb_widget_t* d, gmb_control_t* c, dp_px_t* g)
 {
     (void)d;
     g->x = (c->px_w > 0) ? c->px_x : c->x;
@@ -170,7 +170,7 @@ static void dp_px_geom(gmb_date_picker_t* d, gmb_control_t* c, dp_px_t* g)
 
 static bool datepicker_mouse(void* u, gmb_control_t* c, const gmb_mouse_action_t* a)
 {
-    gmb_date_picker_t* d = (gmb_date_picker_t*)u;
+    gmb_widget_t* d = (gmb_widget_t*)u;
     if (!c->enabled) return false;
     if (a->kind != GMB_MA_CLICK && a->kind != GMB_MA_DOUBLECLICK) return false;
 
@@ -183,12 +183,12 @@ static bool datepicker_mouse(void* u, gmb_control_t* c, const gmb_mouse_action_t
         if (!d->open)
         {
             if (a->x >= g.x && a->x < g.x + g.w && a->y >= g.y && a->y < g.y + g.h)
-            { d->open = true; return true; }
+            { d->open = 1; return true; }
             return false;
         }
         /* aperto: campo = chiude; frecce = mese; giorno = seleziona e chiude. */
         if (a->x >= g.x && a->x < g.x + g.w && a->y >= g.y && a->y < g.y + g.h)
-        { d->open = false; return true; }
+        { d->open = 0; return true; }
         if (a->x >= g.cal_x && a->x < g.cal_x + g.cal_w && a->y >= g.cal_y && a->y < g.cal_y + g.cal_h)
         {
             if (a->y < g.cal_y + g.head_h)
@@ -197,11 +197,11 @@ static bool datepicker_mouse(void* u, gmb_control_t* c, const gmb_mouse_action_t
                 int prev = (a->x < g.cal_x + 32), next = (a->x > g.cal_x + g.cal_w - 32);
                 if (prev || next)
                 {
-                    d->month += next ? 1 : -1;
-                    if (d->month > 12) { d->month = 1; d->year++; }
-                    if (d->month < 1) { d->month = 12; d->year--; }
-                    int maxd = dp2_days_in_month(d->year, d->month);
-                    if (d->day > maxd) d->day = maxd;
+                    d->sm += next ? 1 : -1;
+                    if (d->sm > 12) { d->sm = 1; d->sy++; }
+                    if (d->sm < 1) { d->sm = 12; d->sy--; }
+                    int maxd = dp2_days_in_month(d->sy, d->sm);
+                    if (d->sd > maxd) d->sd = maxd;
                 }
                 (void)mid;
                 return true;
@@ -211,37 +211,37 @@ static bool datepicker_mouse(void* u, gmb_control_t* c, const gmb_mouse_action_t
             {
                 int ccol = (a->x - (g.cal_x + 4)) / (g.cell > 0 ? g.cell : 1);
                 int r = (a->y - gy) / (g.cell > 0 ? g.cell : 1);
-                int dow = (gmb_dates_weekday(d->year, d->month, 1) + 6) % 7;
-                int days = dp2_days_in_month(d->year, d->month);
+                int dow = (gmb_dates_weekday(d->sy, d->sm, 1) + 6) % 7;
+                int days = dp2_days_in_month(d->sy, d->sm);
                 int idx = r * 7 + ccol;
                 int dn = idx - dow + 1;
                 if (ccol >= 0 && ccol < 7 && dn >= 1 && dn <= days)
                 {
-                    d->day = dn;
-                    d->open = false;
+                    d->sd = dn;
+                    d->open = 0;
                     return true;
                 }
             }
             return true;   /* click nel calendario ma non su un giorno */
         }
-        d->open = false;   /* click fuori: chiude */
+        d->open = 0;   /* click fuori: chiude */
         return true;
     }
 
     if (d->open)
     {
-        if (!gmb_date_picker_contains_point(d, a->x, a->y)) { d->open = false; return true; }
+        if (!gmb_date_picker_contains_point(d, a->x, a->y)) { d->open = 0; return true; }
     }
     else
     {
         gmb_rect_t r = gmb_control_rect(c);
-        if (rect_contains(r, a->x, a->y)) { d->open = true; return true; }
+        if (rect_contains(r, a->x, a->y)) { d->open = 1; return true; }
     }
     return false;
 }
 static void datepicker_draw_px(void* u, gmb_control_t* c)
 {
-    gmb_date_picker_t* d = (gmb_date_picker_t*)u;
+    gmb_widget_t* d = (gmb_widget_t*)u;
     gmb_widget_style_t st = gmb_widget_style_current();
     int x = (c->px_w > 0) ? c->px_x : c->x;
     int y = (c->px_h > 0) ? c->px_y : c->y;
@@ -254,7 +254,7 @@ static void datepicker_draw_px(void* u, gmb_control_t* c)
     c->px_x = x; c->px_y = y; c->px_w = w; c->px_h = h;   /* geometria usata dal click */
 
     char lbl[32];
-    snprintf(lbl, sizeof(lbl), "%02d/%02d/%04d", d->day, d->month, d->year);
+    snprintf(lbl, sizeof(lbl), "%02d/%02d/%04d", d->sd, d->sm, d->sy);
 
     /* Campo. */
     gmb_gfx_fill_rounded_rect(x, y, w, h, rr, st.fill);
@@ -275,7 +275,7 @@ static void datepicker_draw_px(void* u, gmb_control_t* c)
 
     /* Titolo:  ‹  Mese Anno  ›   (le frecce cambiano mese). */
     char title[64];
-    snprintf(title, sizeof(title), "%s %d", DP_MONTHS2[(d->month >= 1 && d->month <= 12) ? d->month - 1 : 0], d->year);
+    snprintf(title, sizeof(title), "%s %d", DP_MONTHS2[(d->sm >= 1 && d->sm <= 12) ? d->sm - 1 : 0], d->sy);
     int hh = g.head_h;
     gmb_gfx_fill_rounded_rect(g.cal_x + 1, g.cal_y + 1, g.cal_w - 2, hh, rr > 2 ? rr - 1 : 0, st.head_bg);
     gmb_gfx_draw_text(title, g.cal_x + g.cal_w / 2, g.cal_y + (hh - th) / 2, 1,
@@ -296,59 +296,59 @@ static void datepicker_draw_px(void* u, gmb_control_t* c)
     gy += g.cell;
 
     /* Griglia giorni: 6 righe x 7 colonne, con il giorno selezionato evidenziato. */
-    int dow = (gmb_dates_weekday(d->year, d->month, 1) + 6) % 7;
-    int days = dp2_days_in_month(d->year, d->month);
+    int dow = (gmb_dates_weekday(d->sy, d->sm, 1) + 6) % 7;
+    int days = dp2_days_in_month(d->sy, d->sm);
     for (int dn = 1; dn <= days; dn++)
     {
         int idx = dow + dn - 1, r = idx / 7, ccol = idx % 7;
         int dx = g.cal_x + 4 + ccol * g.cell, dy = gy + r * g.cell;
         char db[8]; snprintf(db, sizeof(db), "%d", dn);
-        int sel = (dn == d->day);
+        int sel = (dn == d->sd);
         if (sel) gmb_gfx_fill_rounded_rect(dx + 1, dy + 1, g.cell - 2, g.cell - 2, (g.cell - 2) / 2,
                                            (st.accent & 0xFFFFFFu) ? st.accent : st.fill_hover);
         gmb_gfx_draw_text(db, dx + (g.cell - gmb_gfx_text_width_logical(db)) / 2, dy + (g.cell - th) / 2, 0,
                           (int)(0x40000000u | ((sel ? 0xFFFFFFu : (st.text & 0xFFFFFFu)))));
     }
 }
-void gmb_date_picker_init(gmb_date_picker_t* d, int x, int y, int w)
+void gmb_date_picker_init(gmb_widget_t* d, int x, int y, int w)
 {
     memset(d, 0, sizeof(*d));
-    gmb_control_init(&d->ctrl, "", x, y, w, 24, datepicker_draw, datepicker_key);   /* altezza dichiarata: campo */
-    d->ctrl.draw_px_fn = datepicker_draw_px;
-    d->ctrl.ctrl_kind = GMB_CK_DATEPICKER;
-    d->ctrl.handle_mouse_fn = datepicker_mouse;
-    d->ctrl.user = d;
-    d->day = 1; d->month = 1; d->year = 2025;
+    gmb_control_init(&d->base, "", x, y, w, 24, datepicker_draw, datepicker_key);   /* altezza dichiarata: campo */
+    d->base.draw_px_fn = datepicker_draw_px;
+    d->base.ctrl_kind = GMB_CK_DATEPICKER;
+    d->base.handle_mouse_fn = datepicker_mouse;
+    d->base.user = d;
+    d->sd = 1; d->sm = 1; d->sy = 2025;
     d->popup_height = 10;
 }
-bool gmb_date_picker_contains_point(gmb_date_picker_t* d, int x, int y)
+bool gmb_date_picker_contains_point(gmb_widget_t* d, int x, int y)
 {
     if (!d->open) return false;
     int cal_h = d->popup_height;
-    int cal_w = d->ctrl.width;
-    int py = d->ctrl.y - cal_h;
-    if (py < 0) py = d->ctrl.y + 1;
-    return x >= d->ctrl.x && x < d->ctrl.x + cal_w && y >= py && y < py + cal_h;
+    int cal_w = d->base.width;
+    int py = d->base.y - cal_h;
+    if (py < 0) py = d->base.y + 1;
+    return x >= d->base.x && x < d->base.x + cal_w && y >= py && y < py + cal_h;
 }
-int gmb_date_picker_get_formatted(gmb_date_picker_t* d, gmb_clipper_state_t* st, char* out, int cap)
+int gmb_date_picker_get_formatted(gmb_widget_t* d, gmb_clipper_state_t* st, char* out, int cap)
 {
     const char* fmt = st ? st->set_date_format : "mm-dd-yyyy";
     bool century = st ? st->set_century : false;
-    int yy = century ? d->year : d->year % 100;
+    int yy = century ? d->sy : d->sy % 100;
     char f2[16];
     snprintf(f2, sizeof(f2), "%s", fmt);
     for (char* p = f2; *p; p++) if (*p >= 'A' && *p <= 'Z') *p = (char)(*p + 32);
-    if (strcmp(f2, "dd/mm/yyyy") == 0) snprintf(out, cap, "%02d/%02d/%d", d->day, d->month, d->year);
-    else if (strcmp(f2, "dd/mm/yy") == 0) snprintf(out, cap, "%02d/%02d/%02d", d->day, d->month, yy);
-    else if (strcmp(f2, "mm/dd/yyyy") == 0) snprintf(out, cap, "%02d/%02d/%d", d->month, d->day, d->year);
-    else if (strcmp(f2, "mm/dd/yy") == 0) snprintf(out, cap, "%02d/%02d/%02d", d->month, d->day, yy);
-    else if (strcmp(f2, "yyyy-mm-dd") == 0) snprintf(out, cap, "%d-%02d-%02d", d->year, d->month, d->day);
-    else if (strcmp(f2, "yy-mm-dd") == 0) snprintf(out, cap, "%02d-%02d-%02d", yy, d->month, d->day);
-    else if (strcmp(f2, "dd-mm-yyyy") == 0) snprintf(out, cap, "%02d-%02d-%d", d->day, d->month, d->year);
-    else if (strcmp(f2, "dd-mm-yy") == 0) snprintf(out, cap, "%02d-%02d-%02d", d->day, d->month, yy);
-    else if (strcmp(f2, "mm-dd-yyyy") == 0) snprintf(out, cap, "%02d-%02d-%d", d->month, d->day, d->year);
-    else if (strcmp(f2, "mm-dd-yy") == 0) snprintf(out, cap, "%02d-%02d-%02d", d->month, d->day, yy);
-    else snprintf(out, cap, "%02d/%02d/%d", d->month, d->day, d->year);
+    if (strcmp(f2, "dd/mm/yyyy") == 0) snprintf(out, cap, "%02d/%02d/%d", d->sd, d->sm, d->sy);
+    else if (strcmp(f2, "dd/mm/yy") == 0) snprintf(out, cap, "%02d/%02d/%02d", d->sd, d->sm, yy);
+    else if (strcmp(f2, "mm/dd/yyyy") == 0) snprintf(out, cap, "%02d/%02d/%d", d->sm, d->sd, d->sy);
+    else if (strcmp(f2, "mm/dd/yy") == 0) snprintf(out, cap, "%02d/%02d/%02d", d->sm, d->sd, yy);
+    else if (strcmp(f2, "yyyy-mm-dd") == 0) snprintf(out, cap, "%d-%02d-%02d", d->sy, d->sm, d->sd);
+    else if (strcmp(f2, "yy-mm-dd") == 0) snprintf(out, cap, "%02d-%02d-%02d", yy, d->sm, d->sd);
+    else if (strcmp(f2, "dd-mm-yyyy") == 0) snprintf(out, cap, "%02d-%02d-%d", d->sd, d->sm, d->sy);
+    else if (strcmp(f2, "dd-mm-yy") == 0) snprintf(out, cap, "%02d-%02d-%02d", d->sd, d->sm, yy);
+    else if (strcmp(f2, "mm-dd-yyyy") == 0) snprintf(out, cap, "%02d-%02d-%d", d->sm, d->sd, d->sy);
+    else if (strcmp(f2, "mm-dd-yy") == 0) snprintf(out, cap, "%02d-%02d-%02d", d->sm, d->sd, yy);
+    else snprintf(out, cap, "%02d/%02d/%d", d->sm, d->sd, d->sy);
     return (int)strlen(out);
 }
 

@@ -80,7 +80,7 @@ int main(void)
     gmb_combobox_init(&cb, 0, 0, 10);
     static const char* items[] = { "alpha", "beta", "gamma" };
     gmb_combobox_set_items(&cb, items, 3);
-    CHECK(cb.selected == 0 && cb.drop_down_height == 5, "combobox defaults (selected=0, h=5)");
+    CHECK(cb.ival == 0 && cb.drop_down_height == 5, "combobox defaults (selected=0, h=5)");
     gmb_screen_clear(buf, (gmb_cell_color_t){0, 0, 0}, (gmb_cell_color_t){0, 0, 0});
     gmb_control_draw(&cb.ctrl, buf);
     CHECK(cell_ch(buf, 0, 0) == 'a', "combobox box shows selected");
@@ -99,7 +99,7 @@ int main(void)
     gmb_control_handle_key(&cb.ctrl, GMB_K_ENTER);
     gmb_control_handle_key(&cb.ctrl, GMB_K_DOWN);
     gmb_control_handle_key(&cb.ctrl, GMB_K_ENTER);
-    CHECK(!cb.open && cb.selected == 1, "combobox ENTER selects highlight");
+    CHECK(!cb.open && cb.ival == 1, "combobox ENTER selects highlight");
     CHECK(strcmp(gmb_combobox_selected_value(&cb), "beta") == 0, "combobox selected value");
     /* click open-aware: apre ad (0,0), poi seleziona item a y+2 */
     gmb_mouse_action_t ma; memset(&ma, 0, sizeof(ma));
@@ -108,7 +108,7 @@ int main(void)
     CHECK(cb.open, "combobox click opens");
     ma.y = 2;
     gmb_control_handle_mouse(&cb.ctrl, &ma);
-    CHECK(!cb.open && cb.selected == 1, "combobox click selects item");
+    CHECK(!cb.open && cb.ival == 1, "combobox click selects item");
 
     /* 5) FocusManager.HandleEvent: Tab/BackTab e mouse */
     gmb_focus_manager_t fm;
@@ -132,33 +132,33 @@ int main(void)
     gmb_listbox_init(&lb, 0, 0, 10, 3);
     static const char* items2[] = { "a","b","c","d","e","f","g","h","i","j" };
     gmb_listbox_set_items(&lb, items2, 10);
-    lb.selected = 0;
+    lb.ival = 0;
     gmb_mouse_action_t m2; memset(&m2, 0, sizeof(m2));
     m2.kind = GMB_MA_SCROLLDOWN; gmb_control_handle_mouse(&lb.ctrl, &m2);
-    CHECK(lb.selected == 1, "listbox wheel down");
+    CHECK(lb.ival == 1, "listbox wheel down");
     m2.kind = GMB_MA_SCROLLUP; gmb_control_handle_mouse(&lb.ctrl, &m2);
-    CHECK(lb.selected == 0, "listbox wheel up");
+    CHECK(lb.ival == 0, "listbox wheel up");
     m2.kind = GMB_MA_CLICK; m2.x = 0; m2.y = 2;
     gmb_control_handle_mouse(&lb.ctrl, &m2);
-    CHECK(lb.selected == 2, "listbox click row2");
+    CHECK(lb.ival == 2, "listbox click row2");
 
     /* 7) Slider: tasti (incl. UP/DOWN), click/drag/release, render ─/█ */
     gmb_slider_t sl; memset(&sl, 0, sizeof(sl));
     gmb_slider_init(&sl, 0, 0, 11);
     gmb_slider_set_range(&sl, 0, 100);
-    gmb_control_handle_key(&sl.ctrl, GMB_K_RIGHT); CHECK(sl.value == 1, "slider RIGHT");
-    gmb_control_handle_key(&sl.ctrl, GMB_K_UP);    CHECK(sl.value == 2, "slider UP");
-    gmb_control_handle_key(&sl.ctrl, GMB_K_DOWN);  CHECK(sl.value == 1, "slider DOWN");
-    gmb_control_handle_key(&sl.ctrl, GMB_K_LEFT);  CHECK(sl.value == 0, "slider LEFT");
-    gmb_control_handle_key(&sl.ctrl, GMB_K_END);   CHECK(sl.value == 100, "slider END");
-    gmb_control_handle_key(&sl.ctrl, GMB_K_HOME);  CHECK(sl.value == 0, "slider HOME");
+    gmb_control_handle_key(&sl.ctrl, GMB_K_RIGHT); CHECK(sl.ival == 1, "slider RIGHT");
+    gmb_control_handle_key(&sl.ctrl, GMB_K_UP);    CHECK(sl.ival == 2, "slider UP");
+    gmb_control_handle_key(&sl.ctrl, GMB_K_DOWN);  CHECK(sl.ival == 1, "slider DOWN");
+    gmb_control_handle_key(&sl.ctrl, GMB_K_LEFT);  CHECK(sl.ival == 0, "slider LEFT");
+    gmb_control_handle_key(&sl.ctrl, GMB_K_END);   CHECK(sl.ival == 100, "slider END");
+    gmb_control_handle_key(&sl.ctrl, GMB_K_HOME);  CHECK(sl.ival == 0, "slider HOME");
     gmb_mouse_action_t m3; memset(&m3, 0, sizeof(m3));
     m3.kind = GMB_MA_CLICK; m3.x = 6; m3.y = 0;
     gmb_control_handle_mouse(&sl.ctrl, &m3);
-    CHECK(sl.value == 56 && sl.dragging, "slider click -> round(5/9*100)=56, dragging");
+    CHECK(sl.ival == 56 && sl.dragging, "slider click -> round(5/9*100)=56, dragging");
     m3.kind = GMB_MA_DRAG; m3.x = 10;
     gmb_control_handle_mouse(&sl.ctrl, &m3);
-    CHECK(sl.value == 100, "slider drag -> 100");
+    CHECK(sl.ival == 100, "slider drag -> 100");
     m3.kind = GMB_MA_RELEASE;
     gmb_control_handle_mouse(&sl.ctrl, &m3);
     CHECK(!sl.dragging, "slider release");
@@ -172,16 +172,16 @@ int main(void)
     gmb_tab_init(&tb, 0, 0, 20);
     static const char* tabs3[] = { "one", "two", "three" };
     gmb_tab_set_tabs(&tb, tabs3, 3);
-    gmb_control_handle_key(&tb.ctrl, GMB_K_END);   CHECK(tb.selected == 2, "tab END");
-    gmb_control_handle_key(&tb.ctrl, GMB_K_HOME);  CHECK(tb.selected == 0, "tab HOME");
-    gmb_control_handle_key(&tb.ctrl, GMB_K_RIGHT); CHECK(tb.selected == 1, "tab RIGHT");
-    gmb_control_handle_key(&tb.ctrl, GMB_K_LEFT);  CHECK(tb.selected == 0, "tab LEFT");
+    gmb_control_handle_key(&tb.ctrl, GMB_K_END);   CHECK(tb.ival == 2, "tab END");
+    gmb_control_handle_key(&tb.ctrl, GMB_K_HOME);  CHECK(tb.ival == 0, "tab HOME");
+    gmb_control_handle_key(&tb.ctrl, GMB_K_RIGHT); CHECK(tb.ival == 1, "tab RIGHT");
+    gmb_control_handle_key(&tb.ctrl, GMB_K_LEFT);  CHECK(tb.ival == 0, "tab LEFT");
     gmb_mouse_action_t m4; memset(&m4, 0, sizeof(m4));
     m4.kind = GMB_MA_CLICK; m4.y = 0;
     m4.x = 7; gmb_control_handle_mouse(&tb.ctrl, &m4);
-    CHECK(tb.selected == 1, "tab click on 'two'");
+    CHECK(tb.ival == 1, "tab click on 'two'");
     m4.x = 1; gmb_control_handle_mouse(&tb.ctrl, &m4);
-    CHECK(tb.selected == 0, "tab click on 'one'");
+    CHECK(tb.ival == 0, "tab click on 'one'");
     char tl2[64]; int tln = gmb_tab_render_line(&tb, tl2, (int)sizeof(tl2));
     CHECK(tln == 20 && strncmp(tl2, " one ", 5) == 0, "tab render_line padded");
 
@@ -425,7 +425,7 @@ int main(void)
     gmb_radio_group_init(&xr, 0, 1, 10, 2);
     static const char* xopts[] = { "x", "y" };
     gmb_radio_group_set_options(&xr, xopts, 2);
-    xr.selected = 1;
+    xr.ival = 1;
     xr.ctrl.style.sel_bg = (gmb_cell_color_t){0,255,0}; xr.ctrl.style.has_sel_bg = true;
     gmb_control_draw(&xr.ctrl, xb);
     found = 0; for (int yy=2*8; yy<3*8; yy++) for (int xx=0; xx<80; xx++) if (gpx[yy*gwx+xx]==0x0000FF00u) found=1;
@@ -450,10 +450,12 @@ int main(void)
     gmb_control_draw(&xn.ctrl, xb);
     found = 0; for (int yy=5*8; yy<6*8; yy++) for (int xx=0; xx<80; xx++) if (gpx[yy*gwx+xx]==0x00FF0000u) found=1;
     CHECK(found, "numeric chrome: stroke red");
-    gmb_status_bar_t xsb; memset(&xsb, 0, sizeof(xsb));
-    gmb_status_bar_init(&xsb, 0, 6, 10); gmb_status_bar_set_text(&xsb, "s");
-    xsb.ctrl.style.fg = (gmb_cell_color_t){255,0,0}; xsb.ctrl.style.has_fg = true;
-    gmb_control_draw(&xsb.ctrl, xb);
+    gmb_widget_t xsb; memset(&xsb, 0, sizeof(xsb));
+    xsb.kind = W_STATUSBAR; xsb.base.x = 0; xsb.base.y = 6; xsb.base.width = 10; xsb.base.height = 1;
+    xsb.base.visible = true; xsb.base.enabled = true; xsb.base.style = gmb_control_style_default();
+    snprintf(xsb.label, sizeof(xsb.label), "s");
+    xsb.base.style.fg = (gmb_cell_color_t){255,0,0}; xsb.base.style.has_fg = true;
+    gmb_widget_draw_cells(NULL, &xsb.base, xb);
     CHECK(gpx[(6*8)*gwx + 5*8] == 0x00FF0000u, "statusbar chrome: stroke red");
     gmb_screen_detach_sink(xb);
     gmb_screen_free(xb);

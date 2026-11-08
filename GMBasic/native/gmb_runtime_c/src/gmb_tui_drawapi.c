@@ -91,7 +91,7 @@ static int dk_draw(gmb_screen_buffer_t* buf, const gmb_draw_req_t* r)
         gmb_toggle_button_t* o = (gmb_toggle_button_t*)calloc(1, sizeof(*o));
         if (!o) return 0;
         gmb_toggle_button_init(o, r->x, r->y, r->w, text);
-        o->pressed = (r->state & GMB_DS_CHECKED) != 0;
+        o->ival = (r->state & GMB_DS_CHECKED) ? 1.0 : 0.0;
         dk_apply(&o->ctrl, r);
         dk_draw_and_free(&o->ctrl, buf);
         return 1;
@@ -110,7 +110,7 @@ static int dk_draw(gmb_screen_buffer_t* buf, const gmb_draw_req_t* r)
         if (!o) return 0;
         gmb_text_input_init(o, r->x, r->y, r->w);
         gmb_text_input_set_text(o, text);
-        if (r->sel > 0 && r->sel <= (int)strlen(o->text)) o->cursor = r->sel;
+        if (r->sel > 0 && r->sel <= (int)strlen(o->itext)) o->tcur = r->sel;
         o->read_only = (r->state & GMB_DS_READONLY) != 0;
         o->password_mode = (r->state & GMB_DS_PASSWORD) != 0;
         dk_apply(&o->ctrl, r);
@@ -125,8 +125,8 @@ static int dk_draw(gmb_screen_buffer_t* buf, const gmb_draw_req_t* r)
         int n = dk_split(buf_items, (int)sizeof(buf_items), '|', v, 64);
         gmb_listbox_init(o, r->x, r->y, r->w, r->h);
         gmb_listbox_set_items(o, (const char* const*)v, n);
-        o->selected = r->sel >= 0 && r->sel < n ? r->sel : (n > 0 ? 0 : -1);
-        if (o->selected >= 0 && r->h > 0 && o->selected >= r->h) o->scroll_offset = o->selected - r->h + 1;
+        o->ival = r->sel >= 0 && r->sel < n ? r->sel : (n > 0 ? 0 : -1);
+        if (o->ival >= 0 && r->h > 0 && o->ival >= r->h) o->first = (int)o->ival - r->h + 1;
         dk_apply(&o->ctrl, r);
         dk_draw_and_free(&o->ctrl, buf);
         return 1;
@@ -139,8 +139,8 @@ static int dk_draw(gmb_screen_buffer_t* buf, const gmb_draw_req_t* r)
         int n = dk_split(buf_items, (int)sizeof(buf_items), '|', v, 16);
         gmb_combobox_init(o, r->x, r->y, r->w);
         gmb_combobox_set_items(o, (const char* const*)v, n);
-        o->selected = r->sel >= 0 && r->sel < n ? r->sel : (n > 0 ? 0 : -1);
-        o->highlight = o->selected;
+        o->ival = r->sel >= 0 && r->sel < n ? r->sel : (n > 0 ? 0 : -1);
+        o->highlight = (int)o->ival;
         o->open = (r->state & GMB_DS_OPEN) != 0;
         dk_apply(&o->ctrl, r);
         dk_draw_and_free(&o->ctrl, buf);
@@ -154,7 +154,7 @@ static int dk_draw(gmb_screen_buffer_t* buf, const gmb_draw_req_t* r)
         int n = dk_split(buf_items, (int)sizeof(buf_items), '|', v, 16);
         gmb_radio_group_init(o, r->x, r->y, r->w, r->h);
         gmb_radio_group_set_options(o, (const char* const*)v, n);
-        o->selected = r->sel >= 0 && r->sel < n ? r->sel : (n > 0 ? 0 : -1);
+        o->ival = r->sel >= 0 && r->sel < n ? r->sel : (n > 0 ? 0 : -1);
         dk_apply(&o->ctrl, r);
         dk_draw_and_free(&o->ctrl, buf);
         return 1;
@@ -163,7 +163,7 @@ static int dk_draw(gmb_screen_buffer_t* buf, const gmb_draw_req_t* r)
         gmb_progress_bar_t* o = (gmb_progress_bar_t*)calloc(1, sizeof(*o));
         if (!o) return 0;
         gmb_progress_bar_init(o, r->x, r->y, r->w);
-        if (r->max > r->min) { o->min = r->min; o->max = r->max; }
+        if (r->max > r->min) { o->vmin = r->min; o->vmax = r->max; }
         gmb_progress_bar_set(o, (int)(r->value + 0.5));
         dk_apply(&o->ctrl, r);
         dk_draw_and_free(&o->ctrl, buf);
@@ -188,7 +188,7 @@ static int dk_draw(gmb_screen_buffer_t* buf, const gmb_draw_req_t* r)
         int n = dk_split(buf_items, (int)sizeof(buf_items), '|', v, 16);
         gmb_tab_init(o, r->x, r->y, r->w);
         gmb_tab_set_tabs(o, (const char* const*)v, n);
-        o->selected = r->sel >= 0 && r->sel < n ? r->sel : 0;
+        o->ival = r->sel >= 0 && r->sel < n ? r->sel : 0;
         dk_apply(&o->ctrl, r);
         dk_draw_and_free(&o->ctrl, buf);
         return 1;
@@ -222,12 +222,13 @@ static int dk_draw(gmb_screen_buffer_t* buf, const gmb_draw_req_t* r)
         return 1;
     }
     case GMB_DK_STATUSBAR: {
-        gmb_status_bar_t* o = (gmb_status_bar_t*)calloc(1, sizeof(*o));
-        if (!o) return 0;
-        gmb_status_bar_init(o, r->x, r->y, r->w);
-        gmb_status_bar_set_text(o, text);
-        dk_apply(&o->ctrl, r);
-        dk_draw_and_free(&o->ctrl, buf);
+        /* Modello unico: stesso controllo della GUI, reso a celle. */
+        gmb_widget_t o; memset(&o, 0, sizeof(o));
+        o.kind = W_STATUSBAR;
+        o.base.x = r->x; o.base.y = r->y; o.base.width = r->w; o.base.height = 1;
+        o.base.visible = true; o.base.enabled = true; o.base.style = gmb_control_style_default();
+        snprintf(o.label, sizeof(o.label), "%s", text ? text : "");
+        gmb_widget_draw_cells(NULL, &o.base, buf);
         return 1;
     }
     case GMB_DK_MENU: {
@@ -239,11 +240,11 @@ static int dk_draw(gmb_screen_buffer_t* buf, const gmb_draw_req_t* r)
         gmb_menu_init(o, r->x, r->y, r->w);
         for (int i = 0; i < n; i++)
         {
-            if (strcmp(v[i], "-") == 0) { gmb_menu_add_item(o, ""); o->items[o->items_count - 1].separator = true; }
+            if (strcmp(v[i], "-") == 0) { gmb_menu_add_item(o, ""); if (gmb_menu_last_item(o)) gmb_menu_last_item(o)->separator = true; }
             else gmb_menu_add_item(o, v[i]);
         }
-        o->selected_index = r->sel;
-        o->is_open = (r->state & GMB_DS_OPEN) != 0;
+        o->ival = r->sel;
+        o->open = (r->state & GMB_DS_OPEN) != 0;
         dk_apply(&o->ctrl, r);
         dk_draw_and_free(&o->ctrl, buf);
         return 1;
@@ -335,8 +336,8 @@ static int dk_draw(gmb_screen_buffer_t* buf, const gmb_draw_req_t* r)
         gmb_star_rating_t* o = (gmb_star_rating_t*)calloc(1, sizeof(*o));
         if (!o) return 0;
         gmb_star_rating_init(o, r->x, r->y, r->w);
-        o->value = (int)(r->value + 0.5);
-        o->max = r->max > 0 ? r->max : 5;
+        o->ival = (int)(r->value + 0.5);
+        o->vmax = r->max > 0 ? r->max : 5;
         dk_apply(&o->ctrl, r);
         dk_draw_and_free(&o->ctrl, buf);
         return 1;
@@ -402,9 +403,9 @@ static int dk_draw(gmb_screen_buffer_t* buf, const gmb_draw_req_t* r)
         snprintf(scratch, sizeof(scratch), "%s", text);
         int n = dk_split(scratch, (int)sizeof(scratch), '\n', v, 64);
         gmb_scroll_view_set_content(o, (const char* const*)v, n);
-        o->offset = r->sel > 0 ? r->sel : 0;
+        o->first = r->sel > 0 ? r->sel : 0;
         { int maxoff = n - (r->h > 0 ? r->h : 1); if (maxoff < 0) maxoff = 0;
-          if (o->offset > maxoff) o->offset = maxoff; }
+          if (o->first > maxoff) o->first = maxoff; }
         dk_apply(&o->ctrl, r);
         dk_draw_and_free(&o->ctrl, buf);
         return 1;

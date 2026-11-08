@@ -39,10 +39,10 @@ void gmb_px_renderers_install(void)
 
 static void px_spinner(void* u, gmb_control_t* c)
 {
-    gmb_spinner_t* s = (gmb_spinner_t*)u;
+    gmb_widget_t* s = (gmb_widget_t*)u;
     gmb_widget_style_t st = gmb_widget_style_current();
     if (!s || s->frames_count <= 0) return;
-    int idx = s->index % s->frames_count; if (idx < 0) idx = 0;
+    int idx = (int)s->ival % s->frames_count; if (idx < 0) idx = 0;
     const char* fr = s->frames[idx];
     if (!fr || !*fr) return;
     int th = gmb_gfx_text_height_logical();

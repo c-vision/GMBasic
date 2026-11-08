@@ -288,7 +288,7 @@ int main(void)
         static gmb_date_picker_t dp;
         gmb_date_picker_init(&dp, 700, 40, 160);
         gmb_tui_control_register(&dp.ctrl);
-        dp.year = 2026; dp.month = 3; dp.day = 10;
+        dp.sy = 2026; dp.sm = 3; dp.sd = 10;
         render_frame();
         /* stesse regole del renderer (oracolo indipendente) */
         int th = gmb_gfx_text_height_logical(); if (th <= 0) th = 16;
@@ -309,8 +309,8 @@ int main(void)
           int cx = 700 + 4 + (idx % 7) * cell + cell / 2;
           int cy = gy + (idx / 7) * cell + cell / 2;
           click_at(cx, cy); }                                /* giorno 20 */
-        { char b[96]; snprintf(b, sizeof b, "  (opened=%d open=%d day=%d)", opened, (int)dp.open, dp.day); printf("%s\n", b); }
-        report("datepicker", opened && !dp.open && dp.day == 20, "campo apre, giorno 20 scelto");
+        { char b[96]; snprintf(b, sizeof b, "  (opened=%d open=%d day=%d)", opened, (int)dp.open, dp.sd); printf("%s\n", b); }
+        report("datepicker", opened && !dp.open && dp.sd == 20, "campo apre, giorno 20 scelto");
     }
 
     /* ── PROPERTYGRID: click su una riga (geometria pixel) ─────────────── */
@@ -327,7 +327,7 @@ int main(void)
           int soft = (st.shape == 1 && st.radius >= 12);
           int top = 760 + (soft ? 4 : 0);
           click_at(40 + 40, top + rowh + rowh / 2); }        /* riga 2 */
-        report("propertygrid", pg.selected_index == 1, "riga 2 selezionata");
+        report("propertygrid", (int)pg.ival == 1, "riga 2 selezionata");
     }
 
     /* ── MENU (menubar): click su una voce la seleziona ────────────────── */
@@ -342,7 +342,7 @@ int main(void)
         { int x = 40 + (int)gmb_gfx_text_width_logical("File") + 20 + 12;   /* dentro "Edit" */
           int h = gmb_widget_style_current().row_h; if (h <= 0) h = 24;
           click_at(x, 800 + h / 2); }
-        report("menu", mn.selected_index == 1, "voce 2 selezionata dal click");
+        report("menu", (int)mn.ival == 1, "voce 2 selezionata dal click");
     }
 
     printf("\nTOTALE: %d PASS, %d FAIL\n", g_pass, g_fail);

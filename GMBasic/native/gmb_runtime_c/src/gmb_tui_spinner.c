@@ -22,7 +22,7 @@ static const char* spinner_presets[][12] = {
 
 static void spinner_draw(void* u, gmb_control_t* c, gmb_screen_buffer_t* buf)
 {
-    gmb_spinner_t* s = (gmb_spinner_t*)u;
+    gmb_widget_t* s = (gmb_widget_t*)u;
     gmb_cell_color_t fg, bg;
     gmb_control_style_effective(&c->style, c->focused, false, false, &fg, &bg);
     char line[64];
@@ -33,28 +33,31 @@ static bool spinner_click(void* u, gmb_control_t* c, int x, int y)
 {
     /* Click: meta' destra = frame successivo, meta' sinistra = precedente. */
     (void)y;
-    gmb_spinner_t* s = (gmb_spinner_t*)u;
+    gmb_widget_t* s = (gmb_widget_t*)u;
     if (!s || s->frames_count <= 0) return false;
     int right = (x - c->x) > c->width / 2;
-    s->index = right ? (s->index + 1) % s->frames_count
-                     : (s->index + s->frames_count - 1) % s->frames_count;
+    int idx = (int)s->ival;
+    s->ival = right ? (idx + 1) % s->frames_count
+                    : (idx + s->frames_count - 1) % s->frames_count;
     return true;
 }
-void gmb_spinner_init(gmb_spinner_t* s, int x, int y, int w)
+void gmb_spinner_init(gmb_spinner_t* sp, int x, int y, int w)
 {
+    gmb_widget_t* s = (gmb_widget_t*)sp;
     memset(s, 0, sizeof(*s));
-    memset(s, 0, sizeof(*s));
-    gmb_control_init(&s->ctrl, "", x, y, w, 1, spinner_draw, NULL);
-    s->ctrl.draw_px_fn = gmb_px_renderer_get(GMB_CK_SPINNER);
-    s->ctrl.handle_click_fn = spinner_click;
-    s->ctrl.ctrl_kind = GMB_CK_SPINNER;
-    s->ctrl.user = s;
-    gmb_spinner_set_preset(s, "line");
+    gmb_control_init(&s->base, "", x, y, w, 1, spinner_draw, NULL);
+    s->base.draw_px_fn = gmb_px_renderer_get(GMB_CK_SPINNER);
+    s->base.handle_click_fn = spinner_click;
+    s->base.ctrl_kind = GMB_CK_SPINNER;
+    s->base.user = s;
+    s->kind = W_SPINNER;
+    gmb_spinner_set_preset(sp, "line");
 }
-void gmb_spinner_set_preset(gmb_spinner_t* s, const char* name)
+void gmb_spinner_set_preset(gmb_spinner_t* sp, const char* name)
 {
+    gmb_widget_t* s = (gmb_widget_t*)sp;
     s->frames_count = 0;
-    s->index = 0;
+    s->ival = 0;
     if (!name || !*name) return;
     /* Lista di frame esplicita "a|b|c" (usata dal BASIC: SPINNER ..., "1|2|3" / CONTROL SET preset). */
     if (strchr(name, '|'))
@@ -95,16 +98,17 @@ void gmb_spinner_set_preset(gmb_spinner_t* s, const char* name)
         s->frames_count = 4;
     }
 }
-void gmb_spinner_tick(gmb_spinner_t* s)
+void gmb_spinner_tick(gmb_spinner_t* sp)
 {
+    gmb_widget_t* s = (gmb_widget_t*)sp;
     if (s->frames_count == 0) return;
-    s->index++;
-    if (s->index >= s->frames_count) s->index = 0;
+    s->ival = (int)s->ival + 1;
+    if ((int)s->ival >= s->frames_count) s->ival = 0;
 }
 int gmb_spinner_render_line(gmb_spinner_t* s, char* out, int cap)
 {
     if (s->frames_count == 0) { out[0] = '\0'; return 0; }
-    int idx = s->index;
+    int idx = (int)s->ival;
     if (idx < 0 || idx >= s->frames_count) idx = 0;
     return snprintf(out, (size_t)cap, "%s", s->frames[idx]);
 }

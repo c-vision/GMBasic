@@ -14,7 +14,7 @@
 
 static void reorderlistbox_draw(void* u, gmb_control_t* c, gmb_screen_buffer_t* buf)
 {
-    gmb_reorder_listbox_t* r = (gmb_reorder_listbox_t*)u;
+    gmb_widget_t* r = (gmb_widget_t*)u;
     gmb_cell_color_t fg, bg, sf, sb;
     gmb_control_style_effective(&c->style, c->focused, false, false, &fg, &bg);
     if (c->focused) { sf = bg; sb = fg; } else { sf = fg; sb = bg; }
@@ -24,9 +24,9 @@ static void reorderlistbox_draw(void* u, gmb_control_t* c, gmb_screen_buffer_t* 
         gmb_surface_rounded_rect(buf, c->x, c->y, c->width, c->height, 4, fg, bg, 1);
         for (int i = 0; i < c->height; i++)
         {
-            int idx = r->top + i;
-            if (idx >= r->items_count) break;
-            int sel2 = (r->has_selected && idx == r->selected);
+            int idx = r->first + i;
+            if (idx >= r->nitems) break;
+            int sel2 = (r->has_selected && idx == (int)r->ival);
             char line[256];
             gmb_reorder_listbox_render_line(r, idx, line, (int)sizeof(line));
             if (sel2) gmb_surface_rounded_rect(buf, c->x, c->y + i, c->width, 1, 2, sb, sb, 1);
@@ -38,112 +38,112 @@ static void reorderlistbox_draw(void* u, gmb_control_t* c, gmb_screen_buffer_t* 
     }
     for (int i = 0; i < c->height; i++)
     {
-        int idx = r->top + i;
-        if (idx >= r->items_count) break;
+        int idx = r->first + i;
+        if (idx >= r->nitems) break;
         char line[256];
         gmb_reorder_listbox_render_line(r, idx, line, (int)sizeof(line));
-        if (r->has_selected && idx == r->selected) gmb_screen_setstring(buf, c->x, c->y + i, line, sf, sb);
+        if (r->has_selected && idx == (int)r->ival) gmb_screen_setstring(buf, c->x, c->y + i, line, sf, sb);
         else gmb_screen_setstring(buf, c->x, c->y + i, line, fg, bg);
     }
 }
 static bool reorderlistbox_key(void* u, gmb_control_t* c, int key)
 {
-    gmb_reorder_listbox_t* r = (gmb_reorder_listbox_t*)u;
+    gmb_widget_t* r = (gmb_widget_t*)u;
     if (!c->enabled) return false;
     switch (key)
     {
         case GMB_K_UP:
-            if (r->ctrl_held && r->has_selected && r->selected > 0)
+            if (r->ctrl_held && r->has_selected && (int)r->ival > 0)
             {
                 char tmp[256];
-                snprintf(tmp, sizeof(tmp), "%s", r->items[r->selected]);
-                snprintf(r->items[r->selected], 256, "%s", r->items[r->selected - 1]);
-                snprintf(r->items[r->selected - 1], 256, "%s", tmp);
-                bool tc = r->checked[r->selected];
-                r->checked[r->selected] = r->checked[r->selected - 1];
-                r->checked[r->selected - 1] = tc;
-                r->selected--;
-                if (r->selected < r->top) r->top--;
+                snprintf(tmp, sizeof(tmp), "%s", r->items[(int)r->ival]);
+                snprintf(r->items[(int)r->ival], 256, "%s", r->items[(int)r->ival - 1]);
+                snprintf(r->items[(int)r->ival - 1], 256, "%s", tmp);
+                bool tc = r->selected_items[(int)r->ival];
+                r->selected_items[(int)r->ival] = r->selected_items[(int)r->ival - 1];
+                r->selected_items[(int)r->ival - 1] = tc;
+                r->ival = (int)r->ival - 1;
+                if ((int)r->ival < r->first) r->first--;
             }
-            else if (r->has_selected && r->selected > 0)
+            else if (r->has_selected && (int)r->ival > 0)
             {
-                r->selected--;
-                if (r->selected < r->top) r->top--;
+                r->ival = (int)r->ival - 1;
+                if ((int)r->ival < r->first) r->first--;
             }
             return true;
         case GMB_K_DOWN:
-            if (r->ctrl_held && r->has_selected && r->selected < r->items_count - 1)
+            if (r->ctrl_held && r->has_selected && (int)r->ival < r->nitems - 1)
             {
                 char tmp[256];
-                snprintf(tmp, sizeof(tmp), "%s", r->items[r->selected]);
-                snprintf(r->items[r->selected], 256, "%s", r->items[r->selected + 1]);
-                snprintf(r->items[r->selected + 1], 256, "%s", tmp);
-                bool tc = r->checked[r->selected];
-                r->checked[r->selected] = r->checked[r->selected + 1];
-                r->checked[r->selected + 1] = tc;
-                r->selected++;
-                if (r->selected >= r->top + c->height) r->top++;
+                snprintf(tmp, sizeof(tmp), "%s", r->items[(int)r->ival]);
+                snprintf(r->items[(int)r->ival], 256, "%s", r->items[(int)r->ival + 1]);
+                snprintf(r->items[(int)r->ival + 1], 256, "%s", tmp);
+                bool tc = r->selected_items[(int)r->ival];
+                r->selected_items[(int)r->ival] = r->selected_items[(int)r->ival + 1];
+                r->selected_items[(int)r->ival + 1] = tc;
+                r->ival = (int)r->ival + 1;
+                if ((int)r->ival >= r->first + c->height) r->first++;
             }
-            else if (r->has_selected && r->selected < r->items_count - 1)
+            else if (r->has_selected && (int)r->ival < r->nitems - 1)
             {
-                r->selected++;
-                if (r->selected >= r->top + c->height) r->top++;
+                r->ival = (int)r->ival + 1;
+                if ((int)r->ival >= r->first + c->height) r->first++;
             }
-            else if (!r->has_selected && r->items_count > 0)
+            else if (!r->has_selected && r->nitems > 0)
             {
                 r->has_selected = true;
-                r->selected = 0;
+                r->ival = 0;
             }
             return true;
         case ' ':
-            if (r->multi_select && r->has_selected && r->selected < r->items_count)
-                r->checked[r->selected] = !r->checked[r->selected];
+            if (r->multi_select && r->has_selected && (int)r->ival < r->nitems)
+                r->selected_items[(int)r->ival] = !r->selected_items[(int)r->ival];
             return true;
     }
     return false;
 }
 static bool reorderlistbox_click(void* u, gmb_control_t* c, int x, int y)
 {
-    gmb_reorder_listbox_t* r = (gmb_reorder_listbox_t*)u;
+    gmb_widget_t* r = (gmb_widget_t*)u;
     if (!c->enabled) return false;
     gmb_rect_t rr = gmb_control_rect(c);
     if (!rect_contains(rr, x, y)) return false;
     c->focused = true;
-    int clicked = (y - c->y) + r->top;
-    if (clicked >= 0 && clicked < r->items_count)
+    int clicked = (y - c->y) + r->first;
+    if (clicked >= 0 && clicked < r->nitems)
     {
         r->has_selected = true;
-        r->selected = clicked;
-        if (r->multi_select && clicked < r->items_count)
-            r->checked[clicked] = !r->checked[clicked];
+        r->ival = clicked;
+        if (r->multi_select && clicked < r->nitems)
+            r->selected_items[clicked] = !r->selected_items[clicked];
     }
     return true;
 }
 static bool reorderlistbox_mouse(void* u, gmb_control_t* c, const gmb_mouse_action_t* a)
 {
-    gmb_reorder_listbox_t* r = (gmb_reorder_listbox_t*)u;
+    gmb_widget_t* r = (gmb_widget_t*)u;
     if (!c->enabled) return false;
     switch (a->kind)
     {
         case GMB_MA_CLICK: case GMB_MA_DOUBLECLICK:
             return reorderlistbox_click(u, c, a->x, a->y);
         case GMB_MA_SCROLLUP:
-            if (r->has_selected && r->selected > 0)
+            if (r->has_selected && (int)r->ival > 0)
             {
-                r->selected--;
-                if (r->selected < r->top) r->top--;
+                r->ival = (int)r->ival - 1;
+                if ((int)r->ival < r->first) r->first--;
             }
             return true;
         case GMB_MA_SCROLLDOWN:
-            if (r->has_selected && r->selected < r->items_count - 1)
+            if (r->has_selected && (int)r->ival < r->nitems - 1)
             {
-                r->selected++;
-                if (r->selected >= r->top + c->height) r->top++;
+                r->ival = (int)r->ival + 1;
+                if ((int)r->ival >= r->first + c->height) r->first++;
             }
-            else if (!r->has_selected && r->items_count > 0)
+            else if (!r->has_selected && r->nitems > 0)
             {
                 r->has_selected = true;
-                r->selected = 0;
+                r->ival = 0;
             }
             return true;
     }
@@ -151,45 +151,49 @@ static bool reorderlistbox_mouse(void* u, gmb_control_t* c, const gmb_mouse_acti
 }
 static void reorderlistbox_draw_px(void* u, gmb_control_t* c)
 {
-    gmb_reorder_listbox_t* r = (gmb_reorder_listbox_t*)u;
+    gmb_widget_t* r = (gmb_widget_t*)u;
     const char* its[32];
-    int n = r->items_count; if (n > 32) n = 32;
+    int n = r->nitems; if (n > 32) n = 32;
     for (int i = 0; i < n; i++) its[i] = r->items[i];
-    gmb_px_draw_ex(GMB_PX_LISTBOX, c->x, c->y, c->width, c->height, NULL, its, n, r->selected, 0, n, NULL, r->top, NULL, 0);
+    gmb_px_draw_ex(GMB_PX_LISTBOX, c->x, c->y, c->width, c->height, NULL, its, n, (int)r->ival, 0, n, NULL, r->first, NULL, 0);
 }
-void gmb_reorder_listbox_init(gmb_reorder_listbox_t* r, int x, int y, int w, int h)
+void gmb_reorder_listbox_init(gmb_reorder_listbox_t* rl, int x, int y, int w, int h)
 {
+    gmb_widget_t* r = (gmb_widget_t*)rl;
     memset(r, 0, sizeof(*r));
-    gmb_control_init(&r->ctrl, "", x, y, w, h, reorderlistbox_draw, reorderlistbox_key);
-    r->ctrl.draw_px_fn = reorderlistbox_draw_px;
-    r->ctrl.handle_click_fn = reorderlistbox_click;
-    r->ctrl.handle_mouse_fn = reorderlistbox_mouse;
-    r->ctrl.user = r;
+    gmb_control_init(&r->base, "", x, y, w, h, reorderlistbox_draw, reorderlistbox_key);
+    r->base.draw_px_fn = reorderlistbox_draw_px;
+    r->base.handle_click_fn = reorderlistbox_click;
+    r->base.handle_mouse_fn = reorderlistbox_mouse;
+    r->base.user = r;
+    r->kind = W_LISTBOX;
 }
-void gmb_reorder_listbox_set_items(gmb_reorder_listbox_t* r, const char* const* items, int count)
+void gmb_reorder_listbox_set_items(gmb_reorder_listbox_t* rl, const char* const* items, int count)
 {
-    r->items_count = count < 32 ? count : 32;
-    for (int i = 0; i < r->items_count && items; i++)
+    gmb_widget_t* r = (gmb_widget_t*)rl;
+    r->nitems = count < 32 ? count : 32;
+    for (int i = 0; i < r->nitems && items; i++)
     {
         snprintf(r->items[i], sizeof(r->items[i]), "%s", items[i] ? items[i] : "");
-        r->checked[i] = false;
+        r->selected_items[i] = false;
     }
-    if (r->items_count > 0 && !r->has_selected) { r->has_selected = true; r->selected = 0; }
+    if (r->nitems > 0 && !r->has_selected) { r->has_selected = true; r->ival = 0; }
 }
-int gmb_reorder_listbox_render_line(gmb_reorder_listbox_t* r, int idx, char* out, int cap)
+int gmb_reorder_listbox_render_line(gmb_reorder_listbox_t* rl, int idx, char* out, int cap)
 {
-    const char* item = idx < r->items_count ? r->items[idx] : "";
-    const char* marker = (r->has_selected && idx == r->selected) ? ">" : " ";
+    gmb_widget_t* r = (gmb_widget_t*)rl;
+    const char* item = idx < r->nitems ? r->items[idx] : "";
+    const char* marker = (r->has_selected && idx == (int)r->ival) ? ">" : " ";
     const char* check = "";
     char chk[8] = "";
     if (r->multi_select)
     {
-        snprintf(chk, sizeof(chk), "%s", (idx < r->items_count && r->checked[idx]) ? "[X] " : "[ ] ");
+        snprintf(chk, sizeof(chk), "%s", (idx < r->nitems && r->selected_items[idx]) ? "[X] " : "[ ] ");
         check = chk;
     }
     int o = snprintf(out, cap, "%s%s%s", marker, check, item);
-    if (o > r->ctrl.width) o = r->ctrl.width;
-    else for (int i = o; i < r->ctrl.width && i < cap - 1; i++) out[o++] = ' ';
+    if (o > r->base.width) o = r->base.width;
+    else for (int i = o; i < r->base.width && i < cap - 1; i++) out[o++] = ' ';
     out[o] = '\0';
     return o;
 }

@@ -102,10 +102,10 @@ static void case_checkbox(int mode, uint32_t* h)
     gmb_checkbox_t* cb = (gmb_checkbox_t*)c->user;
     gmb_tui_draw_controls(B);
     click(c->x + 2, c->y);
-    CHECK(cb->checked == true, "checkbox: click attiva");
+    CHECK(cb->ival != 0, "checkbox: click attiva");
     gmb_tui_control_focus(0);
     key(" ");
-    CHECK(cb->checked == false, "checkbox: Space disattiva");
+    CHECK(cb->ival == 0, "checkbox: Space disattiva");
     gmb_tui_draw_controls(B);
     *h = hash_buf();
 }
@@ -117,10 +117,10 @@ static void case_toggle(int mode, uint32_t* h)
     gmb_toggle_button_t* t = (gmb_toggle_button_t*)c->user;
     gmb_tui_draw_controls(B);
     click(c->x + 2, c->y);
-    CHECK(t->pressed == true, "toggle: click");
+    CHECK(t->ival == true, "toggle: click");
     gmb_tui_control_focus(0);
     key(" ");
-    CHECK(t->pressed == false, "toggle: Space");
+    CHECK(t->ival == false, "toggle: Space");
     gmb_tui_draw_controls(B);
     *h = hash_buf();
 }
@@ -133,9 +133,9 @@ static void case_radio(int mode, uint32_t* h)
     gmb_tui_draw_controls(B);
     gmb_tui_control_focus(0);
     key("\x18");  /* DOWN */
-    CHECK(r->selected == 1, "radio: Down -> 1");
+    CHECK(r->ival == 1, "radio: Down -> 1");
     click(c->x + 2, c->y + 2);
-    CHECK(r->selected == 2, "radio: click riga 3 -> 2");
+    CHECK(r->ival == 2, "radio: click riga 3 -> 2");
     gmb_tui_draw_controls(B);
     *h = hash_buf();
 }
@@ -148,9 +148,9 @@ static void case_listbox(int mode, uint32_t* h)
     gmb_tui_draw_controls(B);
     gmb_tui_control_focus(0);
     key("\x18"); key("\x18");
-    CHECK(l->selected == 2, "listbox: Down x2 -> 2");
+    CHECK(l->ival == 2, "listbox: Down x2 -> 2");
     click(c->x + 1, c->y + 3);
-    CHECK(l->selected == 3, "listbox: click riga 4 -> 3");
+    CHECK(l->ival == 3, "listbox: click riga 4 -> 3");
     gmb_tui_draw_controls(B);
     *h = hash_buf();
 }
@@ -165,7 +165,7 @@ static void case_combo(int mode, uint32_t* h)
     CHECK(cb->open == true, "combo: click apre");
     key("\x18");   /* DOWN */
     key("\r");     /* Enter */
-    CHECK(cb->selected == 1 && !cb->open, "combo: Down+Enter seleziona e chiude");
+    CHECK(cb->ival == 1 && !cb->open, "combo: Down+Enter seleziona e chiude");
     gmb_tui_draw_controls(B);
     *h = hash_buf();
 }
@@ -205,7 +205,7 @@ static void case_tab(int mode, uint32_t* h)
     gmb_tui_draw_controls(B);
     gmb_tui_control_focus(0);
     key("\x04");  /* RIGHT */
-    CHECK(t->selected == 1, "tab: Right -> 1");
+    CHECK(t->ival == 1, "tab: Right -> 1");
     gmb_tui_draw_controls(B);
     *h = hash_buf();
 }
@@ -218,10 +218,10 @@ static void case_menu(int mode, uint32_t* h)
     gmb_tui_draw_controls(B);
     gmb_tui_control_focus(0);
     key("\x18");  /* DOWN apre */
-    { gmb_menu_t* m = (gmb_menu_t*)at(0)->user; CHECK(m->is_open == true, "menu: Down apre"); }
+    { gmb_menu_t* m = (gmb_menu_t*)at(0)->user; CHECK(m->open != 0, "menu: Down apre"); }
     key("\x18");  /* DOWN voce */
     key("\r");    /* Enter */
-    { gmb_menu_t* m = (gmb_menu_t*)at(0)->user; CHECK(m->is_open == false, "menu: Enter chiude"); }
+    { gmb_menu_t* m = (gmb_menu_t*)at(0)->user; CHECK(m->open == 0, "menu: Enter chiude"); }
     gmb_tui_draw_controls(B);
     *h = hash_buf();
 }
@@ -260,7 +260,7 @@ static void case_spinner(int mode, uint32_t* h)
     gmb_control_t* c = gmb_tui_add_spinner(3, 3, 12, "line");
     gmb_spinner_t* s = (gmb_spinner_t*)c->user;
     gmb_tui_draw_controls(B);
-    { int i0 = s->index; click(c->x + c->width - 1, c->y); CHECK(s->index != i0, "spinner: click avanza"); }
+    { int i0 = (int)s->ival; click(c->x + c->width - 1, c->y); CHECK((int)s->ival != i0, "spinner: click avanza"); }
     gmb_tui_draw_controls(B);
     *h = hash_buf();
 }

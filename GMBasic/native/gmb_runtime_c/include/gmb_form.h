@@ -118,13 +118,8 @@ int  gmb_control_add_scrollbar(int x, int y, int len, int mn, int mx, int val, d
 int  gmb_control_add_grid(int x, int y, int w, int h, const char* headers, const char* data, double* var);
 int  gmb_control_add_tree(int x, int y, int w, int h, const char* items, double* var);
 int  gmb_control_add_colorpicker(int x, int y, int w, const char* palette, double* var);
-/* Pittura PIXEL di un controllo non registrato, con lo STESSO renderer della GUI
- * (i controlli TUI devono avere parita. grafica, senza duplicare i renderer). */
-void gmb_form_paint_widget_px(const char* kind, int x, int y, int w, int h,
-                              const char* items_csv, int sel, int first,
-                              double vmin, double vmax, double value,
-                              const char* label, const char* colors_csv);
-void gmb_form_paint_grid_px(int x, int y, int w, int h, const char* headers, const char* data, int sel);
+/* Il renderer PIXEL dei controlli è gmb_widget_draw_px() (gmb_tui_widgets.h):
+ * opera sul modello unico gmb_widget_t, senza widget temporanei né conversioni. */
 int  gmb_control_add_tab(int x, int y, int w, const char* items, double* var);
 int  gmb_form_add_radio(int x, int y, const char* items, double* var);       /* items "a|b|c" */
 int  gmb_form_add_track(int x, int y, int w, double vmin, double vmax, double* var);

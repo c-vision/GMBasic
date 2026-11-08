@@ -384,13 +384,13 @@ static int tui_menu_cb(const gmb_ui_event_t* ev, void* ctx)
         if (ev->key == GMB_K_ENTER)
         {
             gmb_menu_t* mm = (gmb_menu_t*)mc->ctrl;
-            if (mm->is_open)
+            if (mm->open)
             {
                 const char* lbl = gmb_menu_get_selected_label(mm);
                 if (lbl && lbl[0])
                 {
-                    int si = mm->selected_index;
-                    gmb_menu_item_t* it = (si >= 0 && si < mm->items_count) ? &mm->items[si] : NULL;
+                    int si = (int)mm->ival;
+                    gmb_menu_item_t* it = gmb_menu_item_at(mm, si);
                     if (it && it->sub_count == 0)
                     {
                         mc->exit_key = GMB_K_ENTER;
@@ -406,7 +406,7 @@ static int tui_menu_cb(const gmb_ui_event_t* ev, void* ctx)
         if (ev->key == GMB_K_ESC)
         {
             gmb_menu_t* mm = (gmb_menu_t*)mc->ctrl;
-            if (mm->is_open) { gmb_control_handle_key(&mm->ctrl, ev->key); return 1; }
+            if (mm->open) { gmb_control_handle_key(&mm->ctrl, ev->key); return 1; }
             mc->exit_key = GMB_K_ESC;
             mc->result = -1;
             mc->done = true;

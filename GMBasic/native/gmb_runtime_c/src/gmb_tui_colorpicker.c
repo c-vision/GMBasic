@@ -1,6 +1,9 @@
 /* ============================================================================
- * gmb_tui_colorpicker.c — gmb_tui_colorpicker. Porting del runtime C (specchio ClipperLib).
- * File per-modulo: piccolo, verificabile e committabile singolarmente.
+ * gmb_tui_colorpicker.c — ColorPicker (porting del runtime C, specchio ClipperLib).
+ *
+ * MODELLO UNICO: un colorpicker è un gmb_widget_t (W_COLORPICKER); palette
+ * logica in `palette`, colonne in `columns`, prima riga in `top_row`, cella
+ * scelta in `ival`.
  * ============================================================================ */
 #include "gmb_tui_widgets.h"
 #include "gmb_graphics.h"
@@ -10,69 +13,43 @@
 #include <strings.h>
 #include "gmb_form.h"
 
-/* ===================== ColorPicker ===================== */
-
-static void colorpicker_draw(void* u, gmb_control_t* c, gmb_screen_buffer_t* buf)
-{
-    gmb_color_picker_t* p = (gmb_color_picker_t*)u;
-    (void)c;
-    int rows = gmb_color_picker_row_count(p);
-    for (int r = 0; r < c->height; r++)
-    {
-        int pr = p->top_row + r;
-        if (pr >= rows) break;
-        for (int cc = 0; cc < p->columns && cc < c->width; cc++)
-        {
-            int idx = pr * p->columns + cc;
-            if (idx >= 256) break;
-            gmb_cell_color_t swatch = p->palette[idx];
-            if (idx == p->selected_index)
-            {
-                int lum = swatch.r * 299 + swatch.g * 587 + swatch.b * 114;
-                gmb_cell_color_t mfg = lum > 140000 ? GMB_CELLCOLOR_BLACK : GMB_CELLCOLOR_WHITE;
-                gmb_screen_setchar(buf, c->x + cc, c->y + r, 0x25CF, mfg, swatch);
-            }
-            else
-            {
-                gmb_screen_setchar(buf, c->x + cc, c->y + r, 0x2588, swatch, swatch);
-            }
-        }
-    }
-}
 static bool colorpicker_key(void* u, gmb_control_t* c, int key)
 {
-    gmb_color_picker_t* p = (gmb_color_picker_t*)u;
+    gmb_widget_t* p = (gmb_widget_t*)u;
     if (!c->enabled) return false;
+    int sel = (int)p->ival;
     switch (key)
     {
         case GMB_K_UP:
-            if (p->selected_index >= p->columns) p->selected_index -= p->columns;
-            return true;
+            if (sel >= p->columns) sel -= p->columns;
+            break;
         case GMB_K_DOWN:
-            if (p->selected_index + p->columns < 256) p->selected_index += p->columns;
-            return true;
+            if (sel + p->columns < 256) sel += p->columns;
+            break;
         case GMB_K_LEFT:
-            if (p->selected_index > 0) p->selected_index--;
-            return true;
+            if (sel > 0) sel--;
+            break;
         case GMB_K_RIGHT:
-            if (p->selected_index < 255) p->selected_index++;
-            return true;
-        case GMB_K_HOME: p->selected_index = 0; return true;
-        case GMB_K_END: p->selected_index = 255; return true;
+            if (sel < 255) sel++;
+            break;
+        case GMB_K_HOME: sel = 0; break;
+        case GMB_K_END: sel = 255; break;
         case GMB_K_PGUP:
-            p->selected_index -= p->columns * c->height;
-            if (p->selected_index < 0) p->selected_index = 0;
-            return true;
+            sel -= p->columns * c->height;
+            if (sel < 0) sel = 0;
+            break;
         case GMB_K_PGDN:
-            p->selected_index += p->columns * c->height;
-            if (p->selected_index > 255) p->selected_index = 255;
-            return true;
+            sel += p->columns * c->height;
+            if (sel > 255) sel = 255;
+            break;
+        default: return false;
     }
-    return false;
+    p->ival = sel;
+    return true;
 }
 static bool colorpicker_click(void* u, gmb_control_t* c, int x, int y)
 {
-    gmb_color_picker_t* p = (gmb_color_picker_t*)u;
+    gmb_widget_t* p = (gmb_widget_t*)u;
     if (!c->enabled) return false;
     gmb_rect_t r = gmb_control_rect(c);
     if (!rect_contains(r, x, y)) return false;
@@ -82,64 +59,63 @@ static bool colorpicker_click(void* u, gmb_control_t* c, int x, int y)
     if (col >= 0 && col < p->columns)
     {
         int idx = row * p->columns + col;
-        if (idx < 256) p->selected_index = idx;
+        if (idx < 256) p->ival = idx;
     }
     return true;
 }
-static void colorpicker_draw_px(void* u, gmb_control_t* c)
-{
-    gmb_color_picker_t* p = (gmb_color_picker_t*)u;
-    int x = (c->px_w > 0) ? c->px_x : c->x, y = (c->px_h > 0) ? c->px_y : c->y;
-    int w = (c->px_w > 0) ? c->px_w : c->width, h = (c->px_h > 0) ? c->px_h : c->height;
-    char csv[512]; int o = 0;
-    /* Palette: si usa quella di DEFAULT del renderer GUI (parita. visiva). La palette
-     * della struct TUI resta il modello logico del controllo. */
-    (void)p; csv[0] = 0;
-    gmb_form_paint_widget_px("colorpicker", x, y, w, h, NULL, 0, 0, 0, 0, 0, NULL, csv);
-}
 void gmb_color_picker_init(gmb_color_picker_t* p, int x, int y, int w, int h)
 {
-    memset(p, 0, sizeof(*p));
-    gmb_control_init(&p->ctrl, "", x, y, w, h, colorpicker_draw, colorpicker_key);
-    p->ctrl.draw_px_fn = colorpicker_draw_px;
-    p->ctrl.ctrl_kind = GMB_CK_COLORPICKER;
-    p->ctrl.handle_click_fn = colorpicker_click;
-    p->ctrl.user = p;
-    p->columns = 16;
+    gmb_widget_t* g = (gmb_widget_t*)p;
+    memset(g, 0, sizeof(*g));
+    gmb_control_init(&g->base, "", x, y, w, h, gmb_widget_draw_cells, colorpicker_key);
+    g->base.draw_px_fn = gmb_widget_draw_px;
+    g->base.ctrl_kind = GMB_CK_COLORPICKER;
+    g->base.handle_click_fn = colorpicker_click;
+    g->base.user = g;
+    g->kind = W_COLORPICKER;
+    g->columns = 16;
     for (int i = 0; i < 256; i++)
     {
         int rr = i / 36 * 85; if (rr > 255) rr = 255;
         int gg = i / 6 % 6 * 51; if (gg > 255) gg = 255;
         int bb = i % 6 * 51; if (bb > 255) bb = 255;
-        p->palette[i].r = (uint8_t)rr;
-        p->palette[i].g = (uint8_t)gg;
-        p->palette[i].b = (uint8_t)bb;
-        p->palette[i].is_default = false;
+        g->palette[i].r = (uint8_t)rr;
+        g->palette[i].g = (uint8_t)gg;
+        g->palette[i].b = (uint8_t)bb;
+        g->palette[i].is_default = false;
     }
+    /* Swatch del renderer grafico (primi 16): stessa palette di default della
+     * GUI — il modello è uno, qui si popola ciò che il renderer usa. */
+    { unsigned int def[8] = { 0xFF000000u,0xFFFFFFFFu,0xFFFF0000u,0xFF00C000u,0xFF3060FFu,0xFFFFD400u,0xFFFF00FFu,0xFF00E5FFu };
+      for (int k = 0; k < 8; k++) g->colors[g->ncolors++] = def[k]; }
 }
 int gmb_color_picker_row_count(gmb_color_picker_t* p)
 {
-    return (256 + p->columns - 1) / p->columns;
+    gmb_widget_t* g = (gmb_widget_t*)p;
+    return (256 + g->columns - 1) / (g->columns > 0 ? g->columns : 1);
 }
 const gmb_cell_color_t* gmb_color_picker_cell_at(gmb_color_picker_t* p, int row, int col)
 {
-    int idx = row * p->columns + col;
-    return idx < 256 ? &p->palette[idx] : NULL;
+    gmb_widget_t* g = (gmb_widget_t*)p;
+    int idx = row * g->columns + col;
+    return idx < 256 ? &g->palette[idx] : NULL;
 }
 bool gmb_color_picker_is_cell_selected(gmb_color_picker_t* p, int row, int col)
 {
-    return row * p->columns + col == p->selected_index;
+    gmb_widget_t* g = (gmb_widget_t*)p;
+    return row * g->columns + col == (int)g->ival;
 }
 int gmb_color_picker_render_line(gmb_color_picker_t* p, int row, char* out, int cap)
 {
+    gmb_widget_t* g = (gmb_widget_t*)p;
     int o = 0;
-    for (int c = 0; c < p->columns && c < p->ctrl.width; c++)
+    for (int c = 0; c < g->columns && c < g->base.width; c++)
     {
-        int idx = (p->top_row + row) * p->columns + c;
+        int idx = (g->top_row + row) * g->columns + c;
         out[o++] = idx < 256 ? 0xE2 : ' ';
         if (idx < 256) { out[o++] = 0x96; out[o++] = 0x88; }
     }
-    for (int i = o; i < p->ctrl.width && i < cap - 1; i++) out[o++] = ' ';
+    for (int i = o; i < g->base.width && i < cap - 1; i++) out[o++] = ' ';
     out[o] = '\0';
     return o;
 }
