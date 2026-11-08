@@ -15,7 +15,7 @@
 ' (vedi vault Bugs/(open) - JwtRouteDemo-Non-Compila-Req-Session): per lo stato di login
 ' lato server usare HTTP.SESSIONCREATE (pattern in ServerAuthDemo.bas). Qui l'autorizzazione
 ' è stateless via Bearer token.
-' Eseguibile su IL e PCodeVM.
+' Eseguibile e identico su IL, PCodeVM e VM/C (il C99Native non esegue il server in-process).
 
 IMPORT HTTP
 IMPORT AUTH

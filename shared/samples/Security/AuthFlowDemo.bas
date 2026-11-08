@@ -7,7 +7,7 @@
 '   2) LOGIN: PASSWORDVERIFY -> se ok emette JWT HS256 con claims {sub, role}
 '   3) AUTORIZZAZIONE: JWTVERIFY (integrita'/firma) + estrazione ruolo dal payload
 ' Serve da modello per i controller MVC/BSP (route protette, AUTHORIZE) senza server.
-' Eseguibile su IL, PCodeVM e VM/C (C99Native: gap dichiarato 2026-09-02).
+' Eseguibile e identico su IL, PCodeVM, VM/C e C99Native (AUTH e CRYPTOGRAPHY via FFI).
 
 REQUIRE "crypto"
 IMPORT CRYPTOGRAPHY

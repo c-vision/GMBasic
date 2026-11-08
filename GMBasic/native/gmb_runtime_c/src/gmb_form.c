@@ -2215,11 +2215,14 @@ void gmb_form_control_set(const char* name, const char* prop, double num, const 
     else if (!strcasecmp(prop, "value") || !strcasecmp(prop, "listindex")) { if (w) wd_set_num(w, num); }
     else if (!strcasecmp(prop, "selected") || !strcasecmp(prop, "index")) { if (w) wd_set_num(w, num); }
     else if ((!strcasecmp(prop, "items") || !strcasecmp(prop, "list")) && str && w) {
-        char buf[1536], *save = NULL; int n = 0;
+        /* Stessa capacità del modello (items[64][256]): la lista di un controllo
+         * FORM non si tronca più a 8 voci (era una divergenza col percorso TUI). */
+        char buf[8192], *save = NULL; int n = 0;
         snprintf(buf, sizeof(buf), "%s", str);
-        for (char* tk = strtok_r(buf, "|", &save); tk && n < 8; tk = strtok_r(NULL, "|", &save))
+        for (char* tk = strtok_r(buf, "|", &save); tk && n < (int)(sizeof(w->items) / sizeof(w->items[0])); tk = strtok_r(NULL, "|", &save))
             snprintf(w->items[n++], sizeof(w->items[0]), "%s", tk);
         w->nitems = n;
+        wd_set_num(w, 0);
     }
     else if (!strcasecmp(prop, "caption") || !strcasecmp(prop, "text") || !strcasecmp(prop, "label")) {
         if (str) { if (w) { snprintf(w->label, sizeof(w->label), "%s", str); if (w->strptr || w->kind == W_TEXT) wd_set_str(w, str); } else snprintf(t->label, sizeof(t->label), "%s", str); } }
