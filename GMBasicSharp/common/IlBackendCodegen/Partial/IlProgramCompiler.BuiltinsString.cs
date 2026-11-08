@@ -1000,9 +1000,7 @@ public sealed partial class IlProgramCompiler
     {
         if (expr.Args.Length != 1) throw new NotSupportedException($"Backend IL: {expr.OriginalToken.Lexeme} richiede 1 argomento (covarianza).");
         EmitDoubleArrayArrayArgument(expr.Args[0]);
-        _il.Emit(OpCodes.Call, expr.Name.Kind == TokenKind.RiskParity
-            ? RuntimeMethod(nameof(IlRuntime.RiskParity), typeof(double[][]))
-            : RuntimeMethod(nameof(IlRuntime.MinVolatility), typeof(double[][])));
+        _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.MinVolatility), typeof(double[][])));
     }
 
     private void EmitPortfolioMaxSharpeCall(BuiltinFunctionCallExpr expr)

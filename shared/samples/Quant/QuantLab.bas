@@ -1,7 +1,7 @@
 ' FILE: Quant/QuantLab.bas
 ' SCENARIO DIDATTICO — analisi quantitativa di un titolo e di un fondo:
 '
-'   A) valutazione azionaria (TRADING_CORE): dividend discount model (crescita zero
+'   A) valutazione azionaria (TRADING): dividend discount model (crescita zero
 '      e Gordon), azione privilegiata, CAPM, premio al rischio, rendimento totale,
 '      capital gain, holding period return, media geometrica, crescita sostenibile,
 '      rendimento equivalente tassabile, spread bid-ask.
@@ -21,9 +21,9 @@
 ' 2, crescita 3%, risk-free 3%, mercato 10%; fondo con 5 rendimenti periodici contro
 ' un benchmark; obbligazione 2 anni al 5%; opzione ATM 1 anno, vol 20%.
 '
-' Domini: TRADING_CORE, METRICS, VOLATILITY, FUNDAMENTALS, BONDS, DERIVATIVES.
+' Domini: TRADING, METRICS, VOLATILITY, FUNDAMENTALS, BONDS, DERIVATIVES.
 ' Output deterministico.
-IMPORT TRADING_CORE
+IMPORT TRADING
 IMPORT METRICS
 IMPORT VOLATILITY
 IMPORT FUNDAMENTALS
@@ -47,18 +47,18 @@ SUB Main()
   '    titolo: prezzo 50, dividendo 2, required return 10%, crescita 3%
   ' ══════════════════════════════════════════════════════════════════════════
   PRINT "A) valutazione azionaria"
-  PRINT " DDM crescita zero (2/0.10)      = "; FORMAT(TRADING_CORE.StockValueZeroGrowth(2, 0.10), "#.000000")
-  PRINT " DDM Gordon (2/(0.10-0.03))      = "; FORMAT(TRADING_CORE.StockValueConstGrowth(2, 0.10, 0.03), "#.000000")
-  PRINT " privilegiata (2/0.10)           = "; FORMAT(TRADING_CORE.PreferredStockValue(2, 0.10), "#.000000")
-  PRINT " CAPM (3% + 1.2*(10%-3%))        = "; FORMAT(TRADING_CORE.CAPM(0.03, 1.2, 0.10), "#.000000")
-  PRINT " premio al rischio (10%-3%)      = "; FORMAT(TRADING_CORE.RiskPremium(0.10, 0.03), "#.000000")
-  PRINT " rendimento totale (100->110+2)  = "; FORMAT(TRADING_CORE.TotalStockReturn(100, 110, 2), "#.000000")
-  PRINT " capital gain (100->110)         = "; FORMAT(TRADING_CORE.CapitalGainsYield(100, 110), "#.000000")
-  PRINT " holding period (5,-2,3%)        = "; FORMAT(TRADING_CORE.HoldingPeriodReturn(g), "#.000000")
-  PRINT " media geometrica                = "; FORMAT(TRADING_CORE.GeometricMeanReturn(g), "#.000000")
-  PRINT " crescita sostenibile (0.6*15%)  = "; FORMAT(TRADING_CORE.GrowthRate(0.6, 0.15), "#.000000")
-  PRINT " rend. equiv. tassabile (6%,25%) = "; FORMAT(TRADING_CORE.TaxEquivalentYield(0.06, 0.25), "#.000000")
-  PRINT " spread bid-ask (99.5/100)       = "; FORMAT(TRADING_CORE.BidAskSpread(99.5, 100), "#.000000")
+  PRINT " DDM crescita zero (2/0.10)      = "; FORMAT(TRADING.StockValueZeroGrowth(2, 0.10), "#.000000")
+  PRINT " DDM Gordon (2/(0.10-0.03))      = "; FORMAT(TRADING.StockValueConstGrowth(2, 0.10, 0.03), "#.000000")
+  PRINT " privilegiata (2/0.10)           = "; FORMAT(TRADING.PreferredStockValue(2, 0.10), "#.000000")
+  PRINT " CAPM (3% + 1.2*(10%-3%))        = "; FORMAT(TRADING.CAPM(0.03, 1.2, 0.10), "#.000000")
+  PRINT " premio al rischio (10%-3%)      = "; FORMAT(TRADING.RiskPremium(0.10, 0.03), "#.000000")
+  PRINT " rendimento totale (100->110+2)  = "; FORMAT(TRADING.TotalStockReturn(100, 110, 2), "#.000000")
+  PRINT " capital gain (100->110)         = "; FORMAT(TRADING.CapitalGainsYield(100, 110), "#.000000")
+  PRINT " holding period (5,-2,3%)        = "; FORMAT(TRADING.HoldingPeriodReturn(g), "#.000000")
+  PRINT " media geometrica                = "; FORMAT(TRADING.GeometricMeanReturn(g), "#.000000")
+  PRINT " crescita sostenibile (0.6*15%)  = "; FORMAT(TRADING.GrowthRate(0.6, 0.15), "#.000000")
+  PRINT " rend. equiv. tassabile (6%,25%) = "; FORMAT(TRADING.TaxEquivalentYield(0.06, 0.25), "#.000000")
+  PRINT " spread bid-ask (99.5/100)       = "; FORMAT(TRADING.BidAskSpread(99.5, 100), "#.000000")
 
   ' ══════════════════════════════════════════════════════════════════════════
   ' B) PERFORMANCE E RISCHIO DEL FONDO

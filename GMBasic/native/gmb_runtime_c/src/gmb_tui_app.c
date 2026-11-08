@@ -876,6 +876,9 @@ void gmb_tui_draw_px_all(void)
      * ripristina dopo la chiamata (draw_px_fn lavora in pixel, es. gmb_px_draw_ex). */
     extern int gmb_winstmt_content_origin(const char* name, int* out_x, int* out_y);
     int cw = 8, ch = 16;
+    int filt = 0;
+    { extern int gmb_form_damage_active(void); extern int gmb_form_damage_hits(int,int,int,int);
+      filt = gmb_form_damage_active(); (void)gmb_form_damage_hits; }
     { extern gmb_clipper_state_t* gmb_clipper_peek_state(void);
       gmb_clipper_state_t* st = gmb_clipper_peek_state();
       if (st && st->buffer) {
@@ -911,6 +914,8 @@ void gmb_tui_draw_px_all(void)
              * Si usa l'altezza riga del tema. */
             if (cc->px_h <= 2) { gmb_widget_style_t st = gmb_widget_style_current();
                                  if (st.row_h > 0) cc->px_h = st.row_h; }
+            if (filt) { extern int gmb_form_damage_hits(int,int,int,int);
+                        if (!gmb_form_damage_hits(cc->px_x, cc->px_y, cc->px_w, cc->px_h)) continue; }
             if (cc->draw_px_fn) cc->draw_px_fn(cc->user, cc);
             else draw_cells_px_fallback(cc, cw, ch);
         }}
@@ -1128,6 +1133,20 @@ void gmb_tui_dispatch_mouse_px(int type, int x, int y, int button, int wheel)
     else ma.kind = GMB_MA_MOVE;
     (void)cw; (void)ch;
     ma.x = x; ma.y = y;   /* PIXEL: il render dei controlli e in pixel (draw_px_fn) */
+    /* Repaint incrementale: sporca solo i controlli TUI sotto il puntatore (quello
+     * che riceve l'evento). Senza, ogni movimento/click ridisegnava tutto il livello. */
+    { extern int gmb_form_damage_hits(int,int,int,int);
+      for (int i = 0; i < g_reg_n; i++)
+      {
+          gmb_control_t* cc = g_reg_ctrl[i];
+          if (!cc || !cc->visible) continue;
+          int rx = (cc->px_w > 0) ? cc->px_x : cc->x;
+          int ry = (cc->px_h > 0) ? cc->px_y : cc->y;
+          int rw = (cc->px_w > 0) ? cc->px_w : cc->width;
+          int rh = (cc->px_h > 0) ? cc->px_h : cc->height;
+          if (x >= rx && x < rx + rw && y >= ry && y < ry + rh)
+          { extern void gmb_form_invalidate(int,int,int,int); gmb_form_invalidate(rx, ry, rw, rh); }
+      } }
     g_evt_px = 1;
     s_px_dirty = 1;
     tui_process_mouse(&ma);

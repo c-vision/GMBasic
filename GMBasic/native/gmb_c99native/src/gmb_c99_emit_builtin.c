@@ -1798,8 +1798,7 @@ static const ma_row MATH_TBL[] = {
      
      
      
-    { GMB_TOK_Fact, 1, "gmb_fact", NULL }, { GMB_TOK_Gamma, 1, "gmb_gamma", NULL },
-     
+    { GMB_TOK_Fact, 1, "gmb_fact", NULL },      
      
     /* scipy.special P1: LGamma/Digamma/Bessel (canone CommonLib.Numerics.Special; runtime condiviso). */
     
@@ -2928,43 +2927,10 @@ static int pf_stdev(ctx_t* c, gmb_expr_t** a, int n) {
 static int tm_treynor(ctx_t* c, gmb_expr_t** a, int n) { return tm_ab(c, a, n, "gmb_tm_treynor_ratio", 2); }
 static int tm_infratio(ctx_t* c, gmb_expr_t** a, int n) { return tm_ab(c, a, n, "gmb_tm_information_ratio", 1); }
 static const tm_row TM_TBL[] = {
-    { GMB_TOK_MaxDrawdown, tm_maxdd }, { GMB_TOK_AnnualizedReturn, tm_annret },
-    { GMB_TOK_AnnualizedVolatility, tm_annvol }, { GMB_TOK_CalmarRatio, tm_calmar },
-    { GMB_TOK_SharpeRatio, tm_sharpe }, { GMB_TOK_SortinoRatio, tm_sortino },
-    { GMB_TOK_UlcerIndex, tm_ulcer }, { GMB_TOK_DownsideDeviation, tm_downside },
-    { GMB_TOK_ValueAtRisk, tm_var },
-    { GMB_TOK_ConditionalValueAtRisk, tm_cvar },
-    { GMB_TOK_AnnualizedTrackingError, tm_aterr },
-    { GMB_TOK_AnnualizedDownsideDeviation, tm_addd },
-    { GMB_TOK_ReturnsSkewness, tm_rskew }, { GMB_TOK_OmegaRatio, tm_omega },
-    { GMB_TOK_TotalReturn, tm_totret },
-    { GMB_TOK_ReturnsKurtosis, tm_rkurt },
-    { GMB_TOK_Alpha, tm_alpha },
-    { GMB_TOK_TreynorRatio, tm_treynor }, { GMB_TOK_InformationRatio, tm_infratio },
-    { GMB_TOK_Beta, tm_beta },
-    /* TRADING array→scalar mancanti: le funzioni esistono già nel runtime condiviso
+                                                            /* TRADING array→scalar mancanti: le funzioni esistono già nel runtime condiviso
      * (gmb_tm_geometric_mean_return / gmb_tm_holding_period_return, §0bis). */
-    { GMB_TOK_GeometricMeanReturn, tm_geomret },
-    { GMB_TOK_HoldingPeriodReturn, tm_holdret },
-    /* TRADING.PORTFOLIO scalar (array→scalar, runtime condivisa) */
-    { GMB_TOK_PortfolioExpectedReturn, pf_expret },
-    { GMB_TOK_PortfolioSharpeRatio, pf_sharpe3 },
-    { GMB_TOK_MaxReturn, pf_maxret },
-    { GMB_TOK_KellyCriterion, pf_kelly },
-    { GMB_TOK_MinCvar, pf_mincvar },
-    { GMB_TOK_MinCdar, pf_mincdar },
-    { GMB_TOK_MaxSharpe, pf_maxsharpe },
-    { GMB_TOK_MeanVariance, pf_meanvar },
-    { GMB_TOK_MinVolatility, pf_minvol },
-    { GMB_TOK_RiskParity, pf_riskparity },
-    { GMB_TOK_EquallyWeighted, pf_equally },
-    { GMB_TOK_PortfolioMad, pf_mad },
-    { GMB_TOK_PortfolioSemiMad, pf_semimad },
-    { GMB_TOK_PortfolioStDev, pf_stdev },
-    { GMB_TOK_PortfolioVar, pf_pvar },
-    { GMB_TOK_PortfolioCVar, pf_pcvar },
-    { GMB_TOK_IsLongOnly, pf_long },
-};
+            /* TRADING.PORTFOLIO scalar (array→scalar, runtime condivisa) */
+                                                                    };
 int emit_bf_metrics(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk, gmb_expr_t** args, int nargs, int line) {
     (void)name; (void)ns; (void)line;
     for (size_t i = 0; i < sizeof(TM_TBL) / sizeof(TM_TBL[0]); i++)
@@ -3404,56 +3370,11 @@ static int ma_rho(ctx_t* c, gmb_expr_t** a, int n) { return ma_isput_last(c, a, 
 static int ma_theta(ctx_t* c, gmb_expr_t** a, int n) { return ma_isput_last(c, a, n, "gmb_fin_theta"); }
 static int ma_charm(ctx_t* c, gmb_expr_t** a, int n) { return ma_isput_last(c, a, n, "gmb_fin_charm"); }
 static const ma_row FN_TBL[] = {
-    { GMB_TOK_BookValuePerShare, 2, "gmb_fin_bvps", NULL },
-    { GMB_TOK_BsCall, 5, "gmb_fin_bs_call", NULL },
-    { GMB_TOK_BsPut, 5, "gmb_fin_bs_put", NULL },
-    { GMB_TOK_BinomialOption, 7, NULL, ma_binopt },
-    { GMB_TOK_Charm, 6, NULL, ma_charm },
-    { GMB_TOK_DeltaSpeed, 5, "gmb_fin_speed", NULL },
-    { GMB_TOK_DPS, 2, "gmb_fin_dps", NULL },
-    { GMB_TOK_Duration, 0, NULL, fd_duration },
-    { GMB_TOK_EquityMultiplier, 2, "gmb_fin_equity_multiplier", NULL },
-    { GMB_TOK_Gamma, 5, "gmb_fin_gamma", NULL },
-    { GMB_TOK_GammaColor, 5, "gmb_fin_color", NULL },
-    { GMB_TOK_MertonCall, 6, "gmb_fin_merton_call", ma_merton_call },
-    { GMB_TOK_MertonPut, 6, "gmb_fin_merton_put", ma_merton_put },
-    { GMB_TOK_NAV, 3, "gmb_fin_nav", NULL },
-    { GMB_TOK_PreferredStockValue, 2, "gmb_fin_preferred_value", NULL },
-    { GMB_TOK_Sln, 3, "gmb_fin_sln", NULL },
-    { GMB_TOK_StockValueZeroGrowth, 2, "gmb_fin_stock_zero_growth", NULL },
-    { GMB_TOK_Syd, 4, "gmb_fin_syd", NULL },
-    { GMB_TOK_Vanna, 5, "gmb_fin_vanna", NULL },
-    { GMB_TOK_Vega, 5, "gmb_fin_vega", NULL },
-    { GMB_TOK_Volga, 5, "gmb_fin_volga", NULL },
-    { GMB_TOK_YieldToMaturity, 4, "gmb_fin_ytm", NULL },
-    { GMB_TOK_ZeroCouponBondValue, 3, "gmb_fin_zcb_value", NULL },
-    { GMB_TOK_ZeroCouponBondYield, 3, "gmb_fin_zcb_yield", NULL },
-    { GMB_TOK_Zomma, 5, "gmb_fin_zomma", NULL },
-    /* TRADING azioni/rendimenti (2026-09): equity + metriche scalari */
-    { GMB_TOK_StockValueConstGrowth, 3, "gmb_trd_stock_const_growth", NULL },
-    { GMB_TOK_CAPM, 3, "gmb_trd_capm", NULL },
-    { GMB_TOK_TaxEquivalentYield, 2, "gmb_tm_tax_equivalent_yield", NULL },
-    { GMB_TOK_RiskPremium, 2, "gmb_tm_risk_premium", NULL },
-    { GMB_TOK_TotalStockReturn, 3, "gmb_tm_total_stock_return", NULL },
-    { GMB_TOK_CapitalGainsYield, 2, "gmb_tm_capital_gains_yield", NULL },
-    { GMB_TOK_GrowthRate, 2, "gmb_tm_growth_rate", NULL },
-    { GMB_TOK_BidAskSpread, 2, "gmb_tm_bid_ask_spread", NULL },
-    { GMB_TOK_HoldingPeriodReturn, 0, NULL, fd_holding },
-    { GMB_TOK_GeometricMeanReturn, 0, NULL, fd_geomean },
-    { GMB_TOK_BondEquivalentYield, 3, "gmb_trd_bond_equiv_yield", NULL },
-    { GMB_TOK_CurrentYield, 2, "gmb_trd_current_yield", NULL },
-    { GMB_TOK_Delta, 6, NULL, ma_delta },
-    { GMB_TOK_Rho, 6, NULL, ma_rho },
-    { GMB_TOK_Theta, 6, NULL, ma_theta },
-    /* TRADING.METRICS scalari (2026-09) */
-    { GMB_TOK_EPS, 2, "gmb_fin_eps", NULL },
-    { GMB_TOK_PERatio, 2, "gmb_trd_pe_ratio", NULL },
-    { GMB_TOK_DilutedEPS, 3, "gmb_fin_diluted_eps", NULL },
-    { GMB_TOK_DividendPayoutRatio, 2, "gmb_fin_dividend_payout_ratio", NULL },
-    { GMB_TOK_DividendYield, 2, "gmb_trd_dividend_yield", NULL },
-    { GMB_TOK_PSRatio, 2, "gmb_fin_ps_ratio", NULL },
-    { GMB_TOK_PBRatio, 2, "gmb_fin_pb_ratio", NULL },
-};
+                                                                { GMB_TOK_Sln, 3, "gmb_fin_sln", NULL },
+        { GMB_TOK_Syd, 4, "gmb_fin_syd", NULL },
+                                /* TRADING azioni/rendimenti (2026-09): equity + metriche scalari */
+                                                                /* TRADING.METRICS scalari (2026-09) */
+                            };
 int emit_bf_finance(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk, gmb_expr_t** args, int nargs, int line) {
     (void)name; (void)ns; (void)line;
     for (size_t i = 0; i < sizeof(FN_TBL) / sizeof(FN_TBL[0]); i++)
@@ -3881,11 +3802,7 @@ static int fd_worker_spend(ctx_t* c, gmb_expr_t** a, int n) {
 }
 static const fd_row FD_TBL[] = {
     { NULL, GMB_TOK_Days360, fd_days360 },
-    { NULL, GMB_TOK_PriceSimple, fd_pricesimple },
-    { NULL, GMB_TOK_BondPrice, fd_bondprice },
-    { NULL, GMB_TOK_BondYield, fd_bondyield },
-    { NULL, GMB_TOK_BondEquivalentYield, fd_bondequivyield },
-    { NULL, GMB_TOK_Price, fd_price },
+                    { NULL, GMB_TOK_Price, fd_price },
     { NULL, GMB_TOK_PvExt, fd_pvext },
     { NULL, GMB_TOK_NperExt, fd_nperext },
     { NULL, GMB_TOK_YearFrac, fd_yearfrac },
@@ -6467,9 +6384,7 @@ static const fs_row FS_TBL[] = {
     { GMB_TOK_Db, fs_db }, { GMB_TOK_Ddb, fs_ddb }, { GMB_TOK_FvExt, fs_fvext },
     { GMB_TOK_YearFrac, fd_yearfrac }, { GMB_TOK_Days360, fd_days360 }, { GMB_TOK_NperExt, fd_nperext },
     /* TRADING.BONDS scalari con default (promossi da FD_TBL ns-first → token-first) */
-    { GMB_TOK_BondPrice, fd_bondprice }, { GMB_TOK_BondYield, fd_bondyield },
-    { GMB_TOK_PriceSimple, fd_pricesimple }, { GMB_TOK_BondEquivalentYield, fd_bondequivyield },
-    { GMB_TOK_Price, fd_price },
+            { GMB_TOK_Price, fd_price },
 };
 int emit_bf_finance_scalar(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk, gmb_expr_t** args, int nargs, int line) {
     (void)name; (void)ns; (void)line;

@@ -16,7 +16,7 @@ FFI, le funzioni della superficie `TRADING.*` della StdLib.
 
 | `.inc` | namespace | funzioni |
 |---|---|---|
-| `trading.inc` | `TRADING_CORE` | 12 (valutazione azionaria, CAPM, rendimenti) |
+| `trading.inc` | `TRADING` | 12 (valutazione azionaria, CAPM, rendimenti) |
 | `metrics.inc` | `METRICS` | 18 (performance e rischio) |
 | `volatility.inc` | `VOLATILITY` | 3 (volatilità, downside) |
 | `fundamentals.inc` | `FUNDAMENTALS` | 11 (EPS/DPS/NAV, P/E, P/B, P/S, payout, yield) |
@@ -25,7 +25,7 @@ FFI, le funzioni della superficie `TRADING.*` della StdLib.
 | `portfolio.inc` | `PORTFOLIO` | 19 (metriche multi-asset, min-var/max-Sharpe/risk-parity, Kelly, BL, CVaR/CDaR) |
 | `backtest.inc` | `BACKTEST` | 1 (`SIMULATE` su matrice 2-D + `RUNFLAT`, pesi uguali) |
 
-`TRADING_CORE` è il nome di transizione: quando i builtin `TRADING.*` saranno rimossi
+`TRADING` è il nome di transizione: quando i builtin `TRADING.*` saranno rimossi
 il namespace prenderà il nome `TRADING` (vedi `Guide/utente/Quant-Guida-Utente.md`).
 
 `PORTFOLIO` e `BACKTEST` restituiscono **ARRAY** (non più il `PortfolioResult`/`BacktestResult`):

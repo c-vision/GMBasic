@@ -1,7 +1,7 @@
 ' QUANT (FFI, libgmbquant) — 44 funzioni: general, metrics, volatility, fundamentals.
 ' Valori esatti verificabili: formule chiuse su serie corte e costanti note.
 ' EXPECT: zero=20.000000||gordon=28.571429||pref=20.000000||capm=0.114000||prem=0.070000||tsr=0.120000||cgy=0.100000||hpr=0.059870||gmr=0.019571||growth=0.090000||tey=0.080000||spread=0.500000||total=0.034786||ann=0.085530||sharpe=5.982583||sortino=5.556078||calmar=230.185794||info=4.186936||treynor=2.790131||mdd=-0.020000||var=0.000000||cvar=-0.010000||beta=1.650000||alpha=0.526901||skew=-0.475961||kurt=0.589162||jb=0.261097,0.877614||track=0.120374||omega=4.000000||ulcer=1.154701||vol=0.294856||down=0.020000||adown=0.317490||bvps=4.000000||deps=1.000000||payout=0.400000||dy=5.000000||dps=1.000000||eps=2.000000||em=2.000000||nav=3.000000||pb=2.000000||pe=25.000000||ps=5.000000||f=0
-IMPORT TRADING_CORE
+IMPORT TRADING
 IMPORT METRICS
 IMPORT VOLATILITY
 IMPORT FUNDAMENTALS
@@ -17,18 +17,18 @@ SUB Main()
   g(0) = 0.05 : g(1) = -0.02 : g(2) = 0.03
 
   ' ── general ───────────────────────────────────────────────────────────────
-  PRINT "zero="; FORMAT(TRADING_CORE.StockValueZeroGrowth(2, 0.10), "#.000000")
-  PRINT "|gordon="; FORMAT(TRADING_CORE.StockValueConstGrowth(2, 0.10, 0.03), "#.000000")
-  PRINT "|pref="; FORMAT(TRADING_CORE.PreferredStockValue(2, 0.10), "#.000000")
-  PRINT "|capm="; FORMAT(TRADING_CORE.CAPM(0.03, 1.2, 0.10), "#.000000")
-  PRINT "|prem="; FORMAT(TRADING_CORE.RiskPremium(0.10, 0.03), "#.000000")
-  PRINT "|tsr="; FORMAT(TRADING_CORE.TotalStockReturn(100, 110, 2), "#.000000")
-  PRINT "|cgy="; FORMAT(TRADING_CORE.CapitalGainsYield(100, 110), "#.000000")
-  PRINT "|hpr="; FORMAT(TRADING_CORE.HoldingPeriodReturn(g), "#.000000")
-  PRINT "|gmr="; FORMAT(TRADING_CORE.GeometricMeanReturn(g), "#.000000")
-  PRINT "|growth="; FORMAT(TRADING_CORE.GrowthRate(0.6, 0.15), "#.000000")
-  PRINT "|tey="; FORMAT(TRADING_CORE.TaxEquivalentYield(0.06, 0.25), "#.000000")
-  PRINT "|spread="; FORMAT(TRADING_CORE.BidAskSpread(99.5, 100), "#.000000")
+  PRINT "zero="; FORMAT(TRADING.StockValueZeroGrowth(2, 0.10), "#.000000")
+  PRINT "|gordon="; FORMAT(TRADING.StockValueConstGrowth(2, 0.10, 0.03), "#.000000")
+  PRINT "|pref="; FORMAT(TRADING.PreferredStockValue(2, 0.10), "#.000000")
+  PRINT "|capm="; FORMAT(TRADING.CAPM(0.03, 1.2, 0.10), "#.000000")
+  PRINT "|prem="; FORMAT(TRADING.RiskPremium(0.10, 0.03), "#.000000")
+  PRINT "|tsr="; FORMAT(TRADING.TotalStockReturn(100, 110, 2), "#.000000")
+  PRINT "|cgy="; FORMAT(TRADING.CapitalGainsYield(100, 110), "#.000000")
+  PRINT "|hpr="; FORMAT(TRADING.HoldingPeriodReturn(g), "#.000000")
+  PRINT "|gmr="; FORMAT(TRADING.GeometricMeanReturn(g), "#.000000")
+  PRINT "|growth="; FORMAT(TRADING.GrowthRate(0.6, 0.15), "#.000000")
+  PRINT "|tey="; FORMAT(TRADING.TaxEquivalentYield(0.06, 0.25), "#.000000")
+  PRINT "|spread="; FORMAT(TRADING.BidAskSpread(99.5, 100), "#.000000")
 
   ' ── metrics ───────────────────────────────────────────────────────────────
   PRINT "|total="; FORMAT(METRICS.TotalReturn(r), "#.000000")

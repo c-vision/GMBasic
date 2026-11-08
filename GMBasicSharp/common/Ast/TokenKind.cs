@@ -968,109 +968,22 @@ public enum TokenKind
     Cumprinc, // Capitale cumulato tra periodi (CUMPRINC)
 
     Price, // Prezzo obbligazione (PRICE)
-    Duration, // Durata obbligazione (DURATION)
     Rate, // Tasso implicito (RATE)
 
     Days360, // Giorni finanziari (DAYS360)
     YearFrac, // Frazione di anno finanziaria (YEARFRAC)
 
     // --- NUOVE FUNZIONI PER TITOLI E OPZIONI ---
-    BondPrice,
-    BondYield,
-    BsCall,
-    BsPut,
-    MertonCall,
-    MertonPut,
-    BinomialOption,
-    Delta,
-    Gamma,
-    Theta,
-    Vega,
-    Rho,
-    Vanna,
-    Volga,
-    Charm,
-    Zomma,
-    DeltaSpeed,
-    GammaColor,
     
 
     // --- Namespace TRADING.PORTFOLIO (Funzioni di Ottimizzazione) ---
-    MeanVariance,
-    MinVolatility,
-    MaxSharpe,
-    BlackLitterman,
     MinSemiVariance,
-    MinCvar,
-    MinCdar,
-    KellyCriterion,
-    RiskParity,
-    Evolve,
-    EquallyWeighted,
-    MaxReturn,
-    PortfolioVar,         // Value-at-Risk portafoglio
-    PortfolioCVar,        // Conditional Value-at-Risk portafoglio (Expected Shortfall)
-    PortfolioMad, // Linear Optimization by Median Absolute Deviation portafoglio
-    PortfolioSemiMad, // Linear Optimization by Median Absolute Deviation portafoglio
-    IsLongOnly,  // Verifica se il portafoglio è long-only
     
     // --- Namespace TRADING.PORTFOLIO (Funzioni di Calcolo Base) ---
-    PortfolioExpectedReturn,
-    PortfolioStDev,
-    PortfolioSharpeRatio,
 
     // --- Namespace TRADING.METRICS (Funzioni di Analisi) ---
-    TotalReturn,
-    AnnualizedReturn,
-    SharpeRatio,
-    SortinoRatio,
-    MaxDrawdown,
-    CalmarRatio,
-    InformationRatio,
-    Alpha,
-    Beta,
-    TreynorRatio,
-    ValueAtRisk,
-    ConditionalValueAtRisk,
-    DownsideDeviation,
-    ReturnsSkewness,
-    ReturnsKurtosis,
-    JarqueBeraTest,
-    AnnualizedVolatility,
-    AnnualizedTrackingError,
-    AnnualizedDownsideDeviation,
-    OmegaRatio,
-    UlcerIndex,
 
     // --- NUOVE FUNZIONI PER AZIONI E VALUTAZIONI ---
-    BookValuePerShare,
-    EPS,
-    DilutedEPS,
-    DPS,
-    EquityMultiplier,
-    NAV,
-    StockValueZeroGrowth,
-    StockValueConstGrowth,
-    PreferredStockValue,
-    PERatio,
-    PSRatio,
-    PBRatio,
-    DividendPayoutRatio,
-    CAPM,
-    RiskPremium,
-    TotalStockReturn,
-    CapitalGainsYield,
-    DividendYield,
-    HoldingPeriodReturn,
-    GeometricMeanReturn,
-    GrowthRate,
-    BidAskSpread,
-    BondEquivalentYield,
-    CurrentYield,
-    TaxEquivalentYield,
-    YieldToMaturity,
-    ZeroCouponBondValue,
-    ZeroCouponBondYield,
 
     // --- Funzioni di Algebra Lineare (per namespace MATRIX e VECTOR) ---
     // Nota: CREATE e MULTIPLY sono gestiti come Identifier dal parser
@@ -1922,7 +1835,6 @@ public enum TokenKind
 
     // FINANCE varianti (2026-08-06): PRICESIMPLE (PmtExt/FvExt/PvExt/NperExt gia' presenti;
     // YIELD riusa TokenKind.Yield).
-    PriceSimple,
 
     // SET legacy Clipper (2026-08-06): attributi non ancora esposti (Wrap esisteva; Message usa TeamMessage).
     Escape,

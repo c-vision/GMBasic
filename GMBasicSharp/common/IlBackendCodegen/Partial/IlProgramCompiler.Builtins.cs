@@ -539,7 +539,6 @@ public sealed partial class IlProgramCompiler
             case TokenKind.Xnpv: EmitFinanceXnpvCall(expr); break;
             case TokenKind.Xirr: EmitFinanceXirrCall(expr); break;
             case TokenKind.Price: EmitFinanceDateDateNumericCall(expr, nameof(IlRuntime.Price), 4, 0); break;
-            case TokenKind.Duration: EmitDurationCall(expr); break;
             case TokenKind.YearFrac: EmitFinanceDateDateNumericCall(expr, nameof(IlRuntime.YearFrac), 0, 0); break;
             case TokenKind.Days360: EmitDays360Call(expr); break;
             case TokenKind.MovingAverage: EmitTimeSeriesArrayLongCall(expr, nameof(IlRuntime.MovingAverage)); break;
@@ -650,18 +649,6 @@ public sealed partial class IlProgramCompiler
             case TokenKind.RollingSharpe: EmitTimeSeriesArrayLongDoubleCall(expr, nameof(IlRuntime.RollingSharpe)); break;
             case TokenKind.RollingSortino: EmitTimeSeriesArrayLongDoubleDoubleCall(expr, nameof(IlRuntime.RollingSortino)); break;
             case TokenKind.RollingMinMax: EmitTimeSeriesArrayLongCall(expr, nameof(IlRuntime.RollingMinMax)); break;
-            case TokenKind.TotalReturn: EmitTimeSeriesArrayOnlyCall(expr, nameof(IlRuntime.TotalReturn)); break;
-            case TokenKind.AnnualizedReturn: EmitTimeSeriesArrayLongCall(expr, nameof(IlRuntime.AnnualizedReturn)); break;
-            case TokenKind.SortinoRatio: EmitTradingArrayDoubleLongCall(expr, nameof(IlRuntime.SortinoRatio)); break;
-            case TokenKind.MaxDrawdown: EmitTimeSeriesArrayOnlyCall(expr, nameof(IlRuntime.MaxDrawdown)); break;
-            case TokenKind.CalmarRatio: EmitTimeSeriesArrayLongCall(expr, nameof(IlRuntime.CalmarRatio)); break;
-            case TokenKind.InformationRatio: EmitTimeSeriesTwoArrayLongCall(expr, nameof(IlRuntime.InformationRatio)); break;
-            case TokenKind.Alpha: EmitTradingTwoArrayDoubleLongCall(expr, nameof(IlRuntime.Alpha)); break;
-            case TokenKind.Beta: EmitTradingTwoArrayCall(expr, nameof(IlRuntime.Beta)); break;
-            case TokenKind.TreynorRatio: EmitTradingTwoArrayDoubleLongCall(expr, nameof(IlRuntime.TreynorRatio)); break;
-            case TokenKind.ValueAtRisk: EmitTimeSeriesArrayDoubleCall(expr, nameof(IlRuntime.ValueAtRisk)); break;
-            case TokenKind.ConditionalValueAtRisk: EmitTimeSeriesArrayDoubleCall(expr, nameof(IlRuntime.ConditionalValueAtRisk)); break;
-            case TokenKind.DownsideDeviation: EmitTimeSeriesArrayDoubleCall(expr, nameof(IlRuntime.DownsideDeviation)); break;
             case TokenKind.FgRgb: EmitFgBgRgbCall(expr, true); break;
             case TokenKind.BgRgb: EmitFgBgRgbCall(expr, false); break;
             case TokenKind.GetCursorPos: EmitNoArgBuiltinCall(expr, RuntimeMethod(nameof(IlRuntime.GetCursorPos))); break;
@@ -689,25 +676,12 @@ public sealed partial class IlProgramCompiler
             case TokenKind.Make: EmitDoubleArityBuiltinCall(expr, RuntimeMethod(nameof(IlRuntime.KeyMake)), 2); break;
 
             // --- Categoria 6: TRADING/STAT blocco 1 ---
-            case TokenKind.SharpeRatio: EmitStatsArrayCall(expr, RuntimeMethod(nameof(IlRuntime.SharpeRatio))); break;
             // --- Categoria 6: PORTFOLIO (ottimizzazioni -> dict campi BASIC) ---
-            case TokenKind.MinVolatility: EmitPortfolioCovCall(expr); break;
-            case TokenKind.MaxSharpe: EmitPortfolioMaxSharpeCall(expr); break;
-            case TokenKind.MeanVariance: EmitPortfolioMeanVarianceCall(expr); break;
-            case TokenKind.RiskParity: EmitPortfolioCovCall(expr); break;
-            case TokenKind.EquallyWeighted: EmitPortfolioEquallyWeightedCall(expr); break;
-            case TokenKind.BlackLitterman: EmitPortfolioBlackLittermanCall(expr); break;
-            case TokenKind.PBRatio: EmitDoubleArityBuiltinCall(expr, RuntimeMethod(nameof(IlRuntime.PbRatio)), 2); break;
-            case TokenKind.PSRatio: EmitDoubleArityBuiltinCall(expr, RuntimeMethod(nameof(IlRuntime.PsRatio)), 2); break;
-            case TokenKind.IsLongOnly: EmitStatsArrayCall(expr, RuntimeMethod(nameof(IlRuntime.IsLongOnly))); break;
             case TokenKind.FvExt: EmitFinanceNumericCall(expr, nameof(IlRuntime.FvExt), 5, 0, 0); break;
             case TokenKind.PvExt: EmitFinanceNumericCall(expr, nameof(IlRuntime.PvExt), 5, 0, 0); break;
             case TokenKind.PmtExt: EmitFinanceNumericCall(expr, nameof(IlRuntime.PmtExt), 5, 0, 0); break;
             case TokenKind.NperExt: EmitFinanceNumericCall(expr, nameof(IlRuntime.NperExt), 5, 0, 0); break;
             case TokenKind.Mnpv: EmitMnpvCall(expr); break;
-            case TokenKind.DividendPayoutRatio: EmitDoubleArityBuiltinCall(expr, RuntimeMethod(nameof(IlRuntime.DividendPayoutRatio)), 2); break;
-            case TokenKind.ReturnsSkewness: EmitTimeSeriesArrayOnlyCall(expr, nameof(IlRuntime.ReturnsSkewness)); break;
-            case TokenKind.ReturnsKurtosis: EmitTimeSeriesArrayOnlyCall(expr, nameof(IlRuntime.ReturnsKurtosis)); break;
 
             // --- Importato da GMBasic (COLL/STR — 13 funzioni lista/dict, semantica case VM) ---
             case TokenKind.Enqueue: EmitObjectArgsCall(expr, nameof(IlRuntime.Enqueue), 2); break;
@@ -784,59 +758,12 @@ public sealed partial class IlProgramCompiler
                 EmitDoubleBinaryBuiltinCall(expr, RuntimeMethod(nameof(IlRuntime.Point)));
                 break;
             // --- Importato da GMBasic (CRYPTO ABI: ABIENCODE/ABIDECODE) ---
-            case TokenKind.JarqueBeraTest: EmitTimeSeriesArrayOnlyCall(expr, nameof(IlRuntime.JarqueBeraTest)); break;
-            case TokenKind.AnnualizedVolatility: EmitTimeSeriesArrayLongCall(expr, nameof(IlRuntime.AnnualizedVolatility)); break;
-            case TokenKind.AnnualizedTrackingError: EmitTimeSeriesTwoArrayLongCall(expr, nameof(IlRuntime.AnnualizedTrackingError)); break;
-            case TokenKind.AnnualizedDownsideDeviation: EmitTradingArrayDoubleLongCall(expr, nameof(IlRuntime.AnnualizedDownsideDeviation)); break;
-            case TokenKind.OmegaRatio: EmitTimeSeriesArrayDoubleCall(expr, nameof(IlRuntime.OmegaRatio)); break;
-            case TokenKind.UlcerIndex: EmitTimeSeriesArrayOnlyCall(expr, nameof(IlRuntime.UlcerIndex)); break;
-            case TokenKind.StockValueZeroGrowth: EmitDoubleBinaryBuiltinCall(expr, RuntimeMethod(nameof(IlRuntime.StockValueZeroGrowth))); break;
-            case TokenKind.StockValueConstGrowth: EmitDoubleArityBuiltinCall(expr, RuntimeMethod(nameof(IlRuntime.StockValueConstGrowth)), 3); break;
-            case TokenKind.PreferredStockValue: EmitDoubleBinaryBuiltinCall(expr, RuntimeMethod(nameof(IlRuntime.PreferredStockValue))); break;
-            case TokenKind.CAPM: EmitDoubleArityBuiltinCall(expr, RuntimeMethod(nameof(IlRuntime.Capm)), 3); break;
-            case TokenKind.TaxEquivalentYield: EmitDoubleBinaryBuiltinCall(expr, RuntimeMethod(nameof(IlRuntime.TaxEquivalentYield))); break;
-            case TokenKind.RiskPremium: EmitDoubleBinaryBuiltinCall(expr, RuntimeMethod(nameof(IlRuntime.RiskPremium))); break;
-            case TokenKind.BondPrice: EmitBondCall(expr, nameof(IlRuntime.BondPrice)); break;
-            case TokenKind.BondYield: EmitBondCall(expr, nameof(IlRuntime.BondYield)); break;
-            case TokenKind.BondEquivalentYield: EmitDoubleArityBuiltinCall(expr, RuntimeMethod(nameof(IlRuntime.BondEquivalentYield)), 3); break;
-            case TokenKind.CurrentYield: EmitDoubleBinaryBuiltinCall(expr, RuntimeMethod(nameof(IlRuntime.CurrentYield))); break;
-            case TokenKind.YieldToMaturity: EmitDoubleArityBuiltinCall(expr, RuntimeMethod(nameof(IlRuntime.YieldToMaturity)), 4); break;
             case TokenKind.Yield:
                 // TaskYield() — AWAIT TaskYield(): cede il controllo allo scheduler cooperativo.
                 // In IL la call è sincrona (niente scheduler): no-op headless (come la VM).
                 foreach (var a in expr.Args) { EmitExpression(a); _il.Emit(OpCodes.Pop); }
                 _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.TaskYield)));
                 break;
-            case TokenKind.ZeroCouponBondValue: EmitDoubleArityBuiltinCall(expr, RuntimeMethod(nameof(IlRuntime.ZeroCouponBondValue)), 3); break;
-            case TokenKind.ZeroCouponBondYield: EmitDoubleArityBuiltinCall(expr, RuntimeMethod(nameof(IlRuntime.ZeroCouponBondYield)), 3); break;
-            case TokenKind.TotalStockReturn: EmitDoubleArityBuiltinCall(expr, RuntimeMethod(nameof(IlRuntime.TotalStockReturn)), 3); break;
-            case TokenKind.CapitalGainsYield: EmitDoubleBinaryBuiltinCall(expr, RuntimeMethod(nameof(IlRuntime.CapitalGainsYield))); break;
-            case TokenKind.HoldingPeriodReturn: EmitTimeSeriesArrayOnlyCall(expr, nameof(IlRuntime.HoldingPeriodReturn)); break;
-            case TokenKind.GeometricMeanReturn: EmitTimeSeriesArrayOnlyCall(expr, nameof(IlRuntime.GeometricMeanReturn)); break;
-            case TokenKind.GrowthRate: EmitDoubleBinaryBuiltinCall(expr, RuntimeMethod(nameof(IlRuntime.GrowthRate))); break;
-            case TokenKind.BidAskSpread: EmitDoubleBinaryBuiltinCall(expr, RuntimeMethod(nameof(IlRuntime.BidAskSpread))); break;
-            case TokenKind.BookValuePerShare: EmitDoubleBinaryBuiltinCall(expr, RuntimeMethod(nameof(IlRuntime.BookValuePerShare))); break;
-            case TokenKind.EPS: EmitDoubleBinaryBuiltinCall(expr, RuntimeMethod(nameof(IlRuntime.Eps))); break;
-            case TokenKind.DilutedEPS: EmitDoubleArityBuiltinCall(expr, RuntimeMethod(nameof(IlRuntime.DilutedEps)), 3); break;
-            case TokenKind.DPS: EmitDoubleBinaryBuiltinCall(expr, RuntimeMethod(nameof(IlRuntime.Dps))); break;
-            case TokenKind.EquityMultiplier: EmitDoubleBinaryBuiltinCall(expr, RuntimeMethod(nameof(IlRuntime.EquityMultiplier))); break;
-            case TokenKind.NAV: EmitDoubleArityBuiltinCall(expr, RuntimeMethod(nameof(IlRuntime.Nav)), 3); break;
-            case TokenKind.BsCall: EmitTradingOptionNumericCall(expr, nameof(IlRuntime.BsCall), 6, 0); break;
-            case TokenKind.BsPut: EmitTradingOptionNumericCall(expr, nameof(IlRuntime.BsPut), 6, 0); break;
-            case TokenKind.MertonCall: EmitTradingOptionNumericCall(expr, nameof(IlRuntime.MertonCall), 6, 0); break;
-            case TokenKind.MertonPut: EmitTradingOptionNumericCall(expr, nameof(IlRuntime.MertonPut), 6, 0); break;
-            case TokenKind.BinomialOption: EmitTradingOptionStringCall(expr, nameof(IlRuntime.BinomialOption), 6); break;
-            case TokenKind.Delta: EmitTradingOptionStringCall(expr, nameof(IlRuntime.Delta), 5); break;
-            case TokenKind.Gamma: EmitTradingOptionNumericCall(expr, nameof(IlRuntime.Gamma), 5); break;
-            case TokenKind.Theta: EmitTradingOptionStringCall(expr, nameof(IlRuntime.Theta), 5); break;
-            case TokenKind.Vega: EmitTradingOptionNumericCall(expr, nameof(IlRuntime.Vega), 5); break;
-            case TokenKind.Rho: EmitTradingOptionStringCall(expr, nameof(IlRuntime.Rho), 5); break;
-            case TokenKind.Vanna: EmitTradingOptionNumericCall(expr, nameof(IlRuntime.Vanna), 5); break;
-            case TokenKind.Volga: EmitTradingOptionNumericCall(expr, nameof(IlRuntime.Volga), 5); break;
-            case TokenKind.Charm: EmitTradingOptionStringCall(expr, nameof(IlRuntime.Charm), 5); break;
-            case TokenKind.Zomma: EmitTradingOptionNumericCall(expr, nameof(IlRuntime.Zomma), 5); break;
-            case TokenKind.DeltaSpeed: EmitTradingOptionNumericCall(expr, nameof(IlRuntime.DeltaSpeed), 5); break;
-            case TokenKind.GammaColor: EmitTradingOptionNumericCall(expr, nameof(IlRuntime.GammaColor), 5); break;
             case TokenKind.Md5: EmitCryptoObjectUnaryCall(expr, nameof(IlRuntime.Md5)); break;
             case TokenKind.Sha1: EmitCryptoObjectUnaryCall(expr, nameof(IlRuntime.Sha1)); break;
             case TokenKind.Sha256: EmitCryptoObjectUnaryCall(expr, nameof(IlRuntime.Sha256)); break;
@@ -1428,13 +1355,6 @@ public sealed partial class IlProgramCompiler
             case TokenKind.Extract: EmitExtractCall(expr); break;
             // --- Blocco pass-through CommonLib (parità VM) ---
             case TokenKind.Add: EmitDictAddCall(expr); break;
-            case TokenKind.DividendYield: EmitDoubleBinaryBuiltinCall(expr, RuntimeMethod(nameof(IlRuntime.DividendYield))); break;
-            case TokenKind.KellyCriterion: EmitArrayDoubleCall(expr, nameof(IlRuntime.PortfolioKellyCriterion)); break;
-            case TokenKind.MinCvar: EmitArrayTwoDoublesCall(expr, nameof(IlRuntime.MinCvar)); break;
-            case TokenKind.MinCdar: EmitArrayTwoDoublesCall(expr, nameof(IlRuntime.MinCdar)); break;
-            case TokenKind.MaxReturn: EmitArrayCall(expr, nameof(IlRuntime.PortfolioMaxReturn)); break;
-            case TokenKind.PortfolioExpectedReturn: EmitPortfolioTwoArrayCall(expr, nameof(IlRuntime.PortfolioExpectedReturn)); break;
-            case TokenKind.PortfolioSharpeRatio:
                 // SHARPERATIO(rendimento, rischio, riskFree) — forma a 3 SCALARI (la StdLib
                 // la dichiara cosi; la VM torna 0.0 perché attende liste). Forma a 2 array
                 // (pesi, rendimenti) per la variante matriciale.
@@ -1448,13 +1368,6 @@ public sealed partial class IlProgramCompiler
                 }
                 else EmitPortfolioTwoArrayCall(expr, nameof(IlRuntime.PortfolioSharpeRatio));
                 break;
-            case TokenKind.PortfolioStDev: EmitPortfolioTwoArrayCall(expr, nameof(IlRuntime.PortfolioStDev)); break;
-            case TokenKind.PriceSimple: EmitPriceSimpleCall(expr); break;
-            case TokenKind.PortfolioVar: EmitPortfolioRiskCall(expr, nameof(IlRuntime.PortfolioVar)); break;
-            case TokenKind.PortfolioCVar: EmitPortfolioRiskCall(expr, nameof(IlRuntime.PortfolioCVar)); break;
-            case TokenKind.PortfolioMad: EmitPortfolioRiskCall(expr, nameof(IlRuntime.PortfolioMad)); break;
-            case TokenKind.PortfolioSemiMad: EmitPortfolioRiskCall(expr, nameof(IlRuntime.PortfolioSemiMad)); break;
-            case TokenKind.Run: EmitBacktestRunCall(expr); break;
             case TokenKind.Conn: EmitObjectArgCall(expr, RuntimeMethod(nameof(IlRuntime.Conn))); break;
             case TokenKind.MemoryList: EmitNoArgBuiltinCall(expr, RuntimeMethod(nameof(IlRuntime.MemoryList))); break;
             case TokenKind.MemoryStore: EmitMemoryStoreCall(expr); break;
@@ -2077,7 +1990,6 @@ case TokenKind.MemoryWatch: EmitStringUnaryBuiltinCall(expr, RuntimeMethod(nameo
              case TokenKind.Get: EmitDictGetCall(expr); break;
             case TokenKind.Set: EmitDictSetCall(expr); break;
             case TokenKind.Range: EmitRangeCall(expr); break;
-            case TokenKind.PERatio: EmitDoubleBinaryBuiltinCall(expr, RuntimeMethod(nameof(IlRuntime.PeRatio))); break;
             case TokenKind.KeyClose: EmitInt64UnaryBuiltinCall(expr, RuntimeMethod(nameof(IlRuntime.KeyClose))); break;
             case TokenKind.ReadValue: EmitReadValueCall(expr); break;
             case TokenKind.ReadSection: EmitReadSectionCall(expr); break;
@@ -2377,7 +2289,6 @@ case TokenKind.MemoryWatch: EmitStringUnaryBuiltinCall(expr, RuntimeMethod(nameo
              case TokenKind.ACopy: EmitArrayTypedCall(expr, nameof(IlRuntime.ACopy)); break;
              case TokenKind.AEval: EmitAEvalCall(expr); break;
              case TokenKind.Recv: EmitTypedRuntimeCall(expr, RuntimeMethod(nameof(IlRuntime.NetRecv), typeof(object))); break;
-             case TokenKind.Evolve: EmitTypedRuntimeCall(expr, RuntimeMethod(nameof(IlRuntime.PortfolioEvolve), typeof(double[]), typeof(double[][]), typeof(object))); break;
              default:
                 throw new NotSupportedException(
                     $"Backend IL: funzione builtin '{expr.OriginalToken.Lexeme}' non ancora supportata.");

@@ -1,9 +1,5 @@
 // FILE: Interpreter.Compiler.Compiler.Expressions.Functions.cs
-
-
-
 namespace Compiler;
-
 public sealed partial class Compiler
 {
     // La mappa completa delle funzioni predefinite.
@@ -20,7 +16,6 @@ public sealed partial class Compiler
         { TokenKind.Int, BuiltInFunction.INT },
         { TokenKind.Hex, BuiltInFunction.HEX }, { TokenKind.Oct, BuiltInFunction.OCT },
         { TokenKind.Bin, BuiltInFunction.BIN },
-
         // --- Funzioni Matematiche (36) ---
         { TokenKind.IsNumeric, BuiltInFunction.ISNUMERIC }, { TokenKind.Abs, BuiltInFunction.ABS },
         { TokenKind.Asc, BuiltInFunction.ASC }, { TokenKind.Atn, BuiltInFunction.ATN },
@@ -84,7 +79,6 @@ public sealed partial class Compiler
         { TokenKind.PolarY, BuiltInFunction.POLARY }, { TokenKind.Angle2d, BuiltInFunction.ANGLE2D },
         { TokenKind.Pythagoras, BuiltInFunction.PYTHAGORAS }, { TokenKind.Fact, BuiltInFunction.FACT },
         { TokenKind.Comb, BuiltInFunction.COMB }, { TokenKind.Perm, BuiltInFunction.PERM },
-
         // --- Funzioni Statistiche (54) ---
         { TokenKind.Mean, BuiltInFunction.MEAN }, { TokenKind.Median, BuiltInFunction.MEDIAN },
         { TokenKind.Variance, BuiltInFunction.VARIANCE }, { TokenKind.StdDev, BuiltInFunction.STDDEV },
@@ -226,7 +220,6 @@ public sealed partial class Compiler
         { TokenKind.TorchAccuracy, BuiltInFunction.TORCH_ACCURACY }, { TokenKind.TorchModelInput, BuiltInFunction.TORCH_MODELINPUT },
         { TokenKind.TorchModelOutput, BuiltInFunction.TORCH_MODELOUTPUT },
         { TokenKind.KolmogorovSmirnov, BuiltInFunction.KOLMOGOROVSMIRNOV },
-
         // --- Funzioni Finanziarie (36 + 25 = 61) ---
         { TokenKind.Pmt, BuiltInFunction.PMT }, { TokenKind.Fv, BuiltInFunction.FV },
         { TokenKind.Pv, BuiltInFunction.PV }, { TokenKind.Nper, BuiltInFunction.NPER },
@@ -236,41 +229,8 @@ public sealed partial class Compiler
         { TokenKind.Xnpv, BuiltInFunction.XNPV }, { TokenKind.Xirr, BuiltInFunction.XIRR },
         { TokenKind.Mirr, BuiltInFunction.MIRR }, { TokenKind.Mnpv, BuiltInFunction.MNPV },
         { TokenKind.Cumipmt, BuiltInFunction.CUMIPMT }, { TokenKind.Cumprinc, BuiltInFunction.CUMPRINC },
-        { TokenKind.Price, BuiltInFunction.PRICE }, { TokenKind.Duration, BuiltInFunction.DURATION },
-        { TokenKind.Rate, BuiltInFunction.RATE }, { TokenKind.Days360, BuiltInFunction.DAYS360 },
+        { TokenKind.Price, BuiltInFunction.PRICE },         { TokenKind.Rate, BuiltInFunction.RATE }, { TokenKind.Days360, BuiltInFunction.DAYS360 },
         { TokenKind.YearFrac, BuiltInFunction.YEARFRAC },
-        { TokenKind.BookValuePerShare, BuiltInFunction.BOOKVALUEPERSHARE },
-        { TokenKind.EPS, BuiltInFunction.EPS }, { TokenKind.DilutedEPS, BuiltInFunction.DILUTEDEPS },
-        { TokenKind.DPS, BuiltInFunction.DPS }, { TokenKind.EquityMultiplier, BuiltInFunction.EQUITYMULTIPLIER },
-        { TokenKind.NAV, BuiltInFunction.NAV },
-        { TokenKind.StockValueZeroGrowth, BuiltInFunction.STOCKVALUEZEROGROWTH },
-        { TokenKind.StockValueConstGrowth, BuiltInFunction.STOCKVALUECONSTGROWTH },
-        { TokenKind.PreferredStockValue, BuiltInFunction.PREFERREDSTOCKVALUE },
-        { TokenKind.PERatio, BuiltInFunction.PERATIO }, { TokenKind.PSRatio, BuiltInFunction.PSRATIO },
-        { TokenKind.PBRatio, BuiltInFunction.PBRATIO },
-        { TokenKind.DividendPayoutRatio, BuiltInFunction.DIVIDENDPAYOUTRATIO },
-        { TokenKind.DividendYield, BuiltInFunction.DIVIDENDYIELD }, { TokenKind.CAPM, BuiltInFunction.CAPM },
-        { TokenKind.BidAskSpread, BuiltInFunction.BIDASKSPREAD }, { TokenKind.RiskPremium, BuiltInFunction.RISKPREMIUM },
-        { TokenKind.TotalStockReturn, BuiltInFunction.TOTALSTOCKRETURN },
-        { TokenKind.CapitalGainsYield, BuiltInFunction.CAPITALGAINSYIELD },
-        { TokenKind.HoldingPeriodReturn, BuiltInFunction.HOLDINGPERIODRETURN },
-        { TokenKind.GeometricMeanReturn, BuiltInFunction.GEOMETRICMEANRETURN },
-        { TokenKind.GrowthRate, BuiltInFunction.GROWTHRATE },
-        { TokenKind.TaxEquivalentYield, BuiltInFunction.TAXEQUIVALENTYIELD },
-        { TokenKind.BsCall, BuiltInFunction.BSCALL }, { TokenKind.BsPut, BuiltInFunction.BSPUT },
-        { TokenKind.MertonCall, BuiltInFunction.MERTONCALL }, { TokenKind.MertonPut, BuiltInFunction.MERTONPUT },
-        { TokenKind.BinomialOption, BuiltInFunction.BINOMIALOPTION },
-        { TokenKind.Delta, BuiltInFunction.DELTA }, { TokenKind.Gamma, BuiltInFunction.GAMMA },
-        { TokenKind.Theta, BuiltInFunction.THETA }, { TokenKind.Vega, BuiltInFunction.VEGA },
-        { TokenKind.Rho, BuiltInFunction.RHO }, { TokenKind.Vanna, BuiltInFunction.VANNA },
-        { TokenKind.Volga, BuiltInFunction.VOLGA }, { TokenKind.Charm, BuiltInFunction.CHARM },
-        { TokenKind.DeltaSpeed, BuiltInFunction.DELTASPEED }, { TokenKind.GammaColor, BuiltInFunction.GAMMACOLOR },
-        { TokenKind.BondPrice, BuiltInFunction.BONDPRICE }, { TokenKind.BondYield, BuiltInFunction.BONDYIELD },
-        { TokenKind.BondEquivalentYield, BuiltInFunction.BONDEQUIVALENTYIELD },
-        { TokenKind.YieldToMaturity, BuiltInFunction.YIELDTOMATURITY },
-        { TokenKind.ZeroCouponBondValue, BuiltInFunction.ZEROCOUPONBONDVALUE },
-        { TokenKind.ZeroCouponBondYield, BuiltInFunction.ZEROCOUPONBONDYIELD },
-
         // --- Funzioni di Algebra Lineare (16) ---
         { TokenKind.LinAlgMatrixCreateFunc, BuiltInFunction.LINALGMATRIXCREATEFUNC },
         { TokenKind.LinAlgVectorCreateFunc, BuiltInFunction.LINALGVECTORCREATEFUNC },
@@ -311,7 +271,6 @@ public sealed partial class Compiler
         { TokenKind.LinAlgQrFunc, BuiltInFunction.LINALGQRFUNC },
         { TokenKind.LinAlgSvdFunc, BuiltInFunction.LINALGSVDFUNC },
         { TokenKind.LinAlgDecompGetFactorFunc, BuiltInFunction.LINALGDECOMPGETFACTORFUNC },
-
         // --- Funzioni di Time Series (17) ---
         { TokenKind.MovingAverage, BuiltInFunction.MOVINGAVERAGE }, { TokenKind.EMA, BuiltInFunction.EMA },
         { TokenKind.TsLowPass, BuiltInFunction.TS_LOWPASS }, { TokenKind.TsHighPass, BuiltInFunction.TS_HIGHPASS },
@@ -377,7 +336,6 @@ public sealed partial class Compiler
         { TokenKind.MatrixMultiplyLeftVector, BuiltInFunction.MATRIXMULTIPLYLEFTVECTOR },
         { TokenKind.MatrixLoadCsv, BuiltInFunction.MATRIXLOADCSV },
         { TokenKind.MatrixLoadJson, BuiltInFunction.MATRIXLOADJSON },
-
         // --- Funzioni Data e Ora (27) ---
         { TokenKind.Now, BuiltInFunction.NOW }, { TokenKind.Today, BuiltInFunction.TODAY },
         { TokenKind.Date, BuiltInFunction.DATE_FUNC }, { TokenKind.Time, BuiltInFunction.TIME_FUNC },
@@ -398,7 +356,6 @@ public sealed partial class Compiler
         { TokenKind.IsoWeekOfYear, BuiltInFunction.ISOWEEKYEAR },
         { TokenKind.DateFromUnix, BuiltInFunction.DATEFROMUNIX },
         { TokenKind.UnixTimestamp, BuiltInFunction.UNIXTIMESTAMP },
-
         // --- Funzioni Stringa (32) ---
         { TokenKind.Format, BuiltInFunction.FORMAT }, { TokenKind.Left, BuiltInFunction.LEFT },
         { TokenKind.Right, BuiltInFunction.RIGHT }, { TokenKind.Mid, BuiltInFunction.MID },
@@ -431,7 +388,6 @@ public sealed partial class Compiler
         { TokenKind.DetectContentType, BuiltInFunction.HTTP_DETECTCONTENTTYPE },
         { TokenKind.SessionCreate, BuiltInFunction.HTTP_SESSIONCREATE },
         { TokenKind.Tab, BuiltInFunction.TAB },
-
         // --- Funzioni Crittografiche & Random (32) ---
         { TokenKind.Md5, BuiltInFunction.MD5 }, { TokenKind.Sha1, BuiltInFunction.SHA1 },
         { TokenKind.Sha256, BuiltInFunction.SHA256 }, { TokenKind.Sha512, BuiltInFunction.SHA512 },
@@ -456,7 +412,6 @@ public sealed partial class Compiler
         { TokenKind.RandomInt, BuiltInFunction.RANDOMINT }, { TokenKind.RandomDouble, BuiltInFunction.RANDOMDOUBLE },
         { TokenKind.RandomNormal, BuiltInFunction.RANDOMNORMAL },
         { TokenKind.RandomCryptoBytes, BuiltInFunction.RANDOMCRYPTOBYTES },
-
         { TokenKind.MouseX, BuiltInFunction.MOUSEX }, { TokenKind.MouseY, BuiltInFunction.MOUSEY },
         { TokenKind.MouseButton, BuiltInFunction.MOUSEBUTTON }, { TokenKind.MouseWheel, BuiltInFunction.MOUSEWHEEL },
         { TokenKind.MouseClick, BuiltInFunction.MOUSECLICK }, { TokenKind.MouseDblClick, BuiltInFunction.MOUSEDBLCLICK },
@@ -843,9 +798,7 @@ public sealed partial class Compiler
         { TokenKind.ShareEncrypt, BuiltInFunction.AISHAREENCRYPT }, { TokenKind.ShareDecrypt, BuiltInFunction.AISHAREDECRYPT },
         { TokenKind.BrainVaultBuild, BuiltInFunction.AIBRAINVAULTBUILD }, { TokenKind.BrainVaultQuery, BuiltInFunction.AIBRAINVAULTQUERY },
         { TokenKind.BrainVaultWrite, BuiltInFunction.AIBRAINVAULTWRITE },
-
         { TokenKind.Make, BuiltInFunction.KEY_MAKE },
-
         // --- Funzioni Array (16) ---
         { TokenKind.AAdd, BuiltInFunction.AADD }, { TokenKind.AIns, BuiltInFunction.AINS },
         { TokenKind.ADel, BuiltInFunction.ADEL }, { TokenKind.ASort, BuiltInFunction.ASORT },
@@ -859,7 +812,6 @@ public sealed partial class Compiler
         { TokenKind.AFlat, BuiltInFunction.AFLAT },
         { TokenKind.AMax, BuiltInFunction.MAX }, { TokenKind.AMin, BuiltInFunction.MIN },
         { TokenKind.AJoin, BuiltInFunction.JOIN }, { TokenKind.ASum, BuiltInFunction.SUM },
-
         // --- Funzioni I/O su File (6) ---
         { TokenKind.CwdFunc, BuiltInFunction.CWDFUNC }, { TokenKind.FileExistsFunc, BuiltInFunction.FILEEXISTSFUNC },
         { TokenKind.DirExistsFunc, BuiltInFunction.DIREXISTSFUNC },
@@ -883,7 +835,6 @@ public sealed partial class Compiler
         { TokenKind.ReadLinesFunc, BuiltInFunction.READLINESFUNC },
         { TokenKind.ReadFileFunc, BuiltInFunction.READFILEFUNC },
         { TokenKind.CountLinesFunc, BuiltInFunction.COUNTLINESFUNC },
-
         // --- Funzioni di Rete (9) ---
         { TokenKind.Conn, BuiltInFunction.CONN }, { TokenKind.Recv, BuiltInFunction.RECV },
         { TokenKind.Alert, BuiltInFunction.ALERT }, { TokenKind.Confirm, BuiltInFunction.CONFIRM },
@@ -893,7 +844,6 @@ public sealed partial class Compiler
         { TokenKind.Fetch, BuiltInFunction.FETCH },
         { TokenKind.HttpGet, BuiltInFunction.HTTPGET }, { TokenKind.HttpPost, BuiltInFunction.HTTPPOST },
         { TokenKind.HttpPut, BuiltInFunction.HTTPPUT }, { TokenKind.HttpDelete, BuiltInFunction.HTTPDELETE },
-
         // --- Funzioni Grafiche e Console (7) ---
         { TokenKind.TextWidth, BuiltInFunction.TEXTWIDTH }, { TokenKind.TextHeight, BuiltInFunction.TEXTHEIGHT },
         { TokenKind.Point, BuiltInFunction.POINT }, { TokenKind.Screens, BuiltInFunction.SCREENS },
@@ -947,7 +897,6 @@ public sealed partial class Compiler
         { TokenKind.AiSetKey, BuiltInFunction.AIKEY }, { TokenKind.AiGetKey, BuiltInFunction.AIKEY },
         { TokenKind.AiSetTemp, BuiltInFunction.AITEMP }, { TokenKind.AiGetTemp, BuiltInFunction.AITEMP },
         { TokenKind.AiSetBase, BuiltInFunction.AIBASE }, { TokenKind.AiGetBase, BuiltInFunction.AIBASE },
-
         // --- Funzioni di Sistema e Utilità (8) ---
         { TokenKind.Sys, BuiltInFunction.SYS }, { TokenKind.SizeOf, BuiltInFunction.SIZEOF },
         { TokenKind.Shell, BuiltInFunction.SHELL }, { TokenKind.ShellOut, BuiltInFunction.SHELLOUT },
@@ -982,7 +931,6 @@ public sealed partial class Compiler
         { TokenKind.FgRgb, BuiltInFunction.FGRGB }, { TokenKind.BgRgb, BuiltInFunction.BGRGB },
         { TokenKind.UdtPacked, BuiltInFunction.UDT_PACKED }, { TokenKind.UdtAligned, BuiltInFunction.UDT_ALIGNED },
         { TokenKind.Empty, BuiltInFunction.EMPTY }, { TokenKind.Iif, BuiltInFunction.IIF },
-
         // --- Funzioni JSON (8) ---
         { TokenKind.Parse, BuiltInFunction.PARSE }, { TokenKind.Stringify, BuiltInFunction.STRINGIFY },
         { TokenKind.Load, BuiltInFunction.LOAD },
@@ -990,50 +938,7 @@ public sealed partial class Compiler
         { TokenKind.ObjectToJson, BuiltInFunction.OBJECTTOJSON },
         { TokenKind.ReadValue, BuiltInFunction.READVALUE },
         { TokenKind.ReadSection, BuiltInFunction.READSECTION }, { TokenKind.Extract, BuiltInFunction.EXTRACT },
-        
         // --- Trading (40+) ---
-        { TokenKind.TotalReturn, BuiltInFunction.TOTALRETURN },
-        { TokenKind.AnnualizedReturn, BuiltInFunction.ANNUALIZEDRETURN },
-        { TokenKind.MaxDrawdown, BuiltInFunction.MAXDRAWDOWN },
-        { TokenKind.SharpeRatio, BuiltInFunction.SHARPERATIO },
-        { TokenKind.SortinoRatio, BuiltInFunction.SORTINORATIO },
-        { TokenKind.CalmarRatio, BuiltInFunction.CALMARRATIO },
-        { TokenKind.MaxSharpe, BuiltInFunction.MAXSHARPE },
-        { TokenKind.PortfolioExpectedReturn, BuiltInFunction.PORTFOLIOEXPECTEDRETURN },
-        { TokenKind.PortfolioStDev, BuiltInFunction.PORTFOLIOSTDEV },
-        { TokenKind.PortfolioSharpeRatio, BuiltInFunction.PORTFOLIOSHARPERATIO },
-        { TokenKind.ValueAtRisk, BuiltInFunction.VALUEATRISK },
-        { TokenKind.ConditionalValueAtRisk, BuiltInFunction.CONDITIONALVALUEATRISK },
-        { TokenKind.MaxReturn, BuiltInFunction.MAXRETURN },
-        { TokenKind.MinVolatility, BuiltInFunction.MINVOLATILITY },
-        { TokenKind.EquallyWeighted, BuiltInFunction.EQUALLYWEIGHTED },
-        { TokenKind.RiskParity, BuiltInFunction.RISKPARITY },
-        { TokenKind.MeanVariance, BuiltInFunction.MEANVARIANCE },
-        { TokenKind.MinCvar, BuiltInFunction.MINCVAR },
-        { TokenKind.MinCdar, BuiltInFunction.MINCDAR },
-        { TokenKind.BlackLitterman, BuiltInFunction.BLACKLITTERMAN },
-        { TokenKind.Evolve, BuiltInFunction.EVOLVE },
-        { TokenKind.IsLongOnly, BuiltInFunction.ISLONGONLY },
-        { TokenKind.Run, BuiltInFunction.RUN },
-        { TokenKind.Beta, BuiltInFunction.BETA },
-        { TokenKind.Alpha, BuiltInFunction.ALPHA },
-        { TokenKind.TreynorRatio, BuiltInFunction.TREYNORRATIO },
-        { TokenKind.OmegaRatio, BuiltInFunction.OMEGARATIO },
-        { TokenKind.UlcerIndex, BuiltInFunction.ULCERINDEX },
-        { TokenKind.AnnualizedVolatility, BuiltInFunction.ANNUALIZEDVOLATILITY },
-        { TokenKind.DownsideDeviation, BuiltInFunction.DOWNSIDEDEVIATION },
-        { TokenKind.InformationRatio, BuiltInFunction.INFORMATIONRATIO },
-        { TokenKind.KellyCriterion, BuiltInFunction.KELLYCRITERION },
-        { TokenKind.JarqueBeraTest, BuiltInFunction.JARQUEBERATEST },
-        { TokenKind.AnnualizedTrackingError, BuiltInFunction.ANNUALIZEDTRACKINGERROR },
-        { TokenKind.AnnualizedDownsideDeviation, BuiltInFunction.ANNUALIZEDDOWNSIDEDEVIATION },
-        { TokenKind.ReturnsSkewness, BuiltInFunction.RETURNSSKEWNESS },
-        { TokenKind.ReturnsKurtosis, BuiltInFunction.RETURNKURTOSIS },
-        { TokenKind.CurrentYield, BuiltInFunction.CURRENTYIELD },
-        { TokenKind.PortfolioVar, BuiltInFunction.PORTFOLIOVAR },
-        { TokenKind.PortfolioCVar, BuiltInFunction.PORTFOLIOCVAR },
-        { TokenKind.PortfolioMad, BuiltInFunction.PORTFOLIOMAD },
-        { TokenKind.PortfolioSemiMad, BuiltInFunction.PORTFOLIOSEMIMAD },
         { TokenKind.Enqueue, BuiltInFunction.ENQUEUE },
         { TokenKind.Dequeue, BuiltInFunction.DEQUEUE },
         { TokenKind.StackPush, BuiltInFunction.STACKPUSH },
@@ -1061,7 +966,6 @@ public sealed partial class Compiler
         { TokenKind.MethodInfo, BuiltInFunction.METHODINFO }, { TokenKind.PropertyInfo, BuiltInFunction.PROPERTYINFO },
         { TokenKind.CType, BuiltInFunction.CTYPE },
         { TokenKind.Next, BuiltInFunction.NEXT },
-
         // --- Funzioni di Sistema (10) ---
         { TokenKind.CommandCount, BuiltInFunction.COMMANDCOUNT },
         { TokenKind.EnvGet, BuiltInFunction.ENVGET },
@@ -1076,8 +980,6 @@ public sealed partial class Compiler
         { TokenKind.FSeek, BuiltInFunction.FSEEK }, { TokenKind.Seek, BuiltInFunction.FSEEK }, { TokenKind.FWrite, BuiltInFunction.FWRITE },
         { TokenKind.FileInput, BuiltInFunction.FILEINPUT }, { TokenKind.FreeFile, BuiltInFunction.FREEFILE },
         { TokenKind.Lof, BuiltInFunction.LOF }, { TokenKind.Stod, BuiltInFunction.STOD },
-        { TokenKind.Zomma, BuiltInFunction.ZOMMA },
-
         { TokenKind.Compress, BuiltInFunction.COMPRESSIONCOMPRESS }, { TokenKind.Decompress, BuiltInFunction.COMPRESSIONDECOMPRESS },
         { TokenKind.Gzip, BuiltInFunction.COMPRESSIONGZIP }, { TokenKind.Ungzip, BuiltInFunction.COMPRESSIONUNGZIP },
         { TokenKind.Brotli, BuiltInFunction.COMPRESSIONBROTLI }, { TokenKind.Zlib, BuiltInFunction.COMPRESSIONZLIB },
@@ -1099,8 +1001,7 @@ public sealed partial class Compiler
         // statement-only via ParseYieldStatement, nessun conflitto con la funzione qualificata).
         { TokenKind.PmtExt, BuiltInFunction.PMTEXT }, { TokenKind.FvExt, BuiltInFunction.FVEXT },
         { TokenKind.PvExt, BuiltInFunction.PVEXT }, { TokenKind.NperExt, BuiltInFunction.NPEREXT },
-        { TokenKind.Yield, BuiltInFunction.YIELD }, { TokenKind.PriceSimple, BuiltInFunction.PRICESIMPLE },
-        // MESSAGE() — TokenKind.Message riusato: il comando TEAM.MESSAGE e' statement-only
+        { TokenKind.Yield, BuiltInFunction.YIELD },         // MESSAGE() — TokenKind.Message riusato: il comando TEAM.MESSAGE e' statement-only
         // (RegisterCommand con ParseTeamMessageStatement), la chiamata MESSAGE()/CONSOLE.MESSAGE()
         // passa dalla mappa builtin -> getter ClipperSet.Message().
         { TokenKind.Message, BuiltInFunction.MESSAGE },

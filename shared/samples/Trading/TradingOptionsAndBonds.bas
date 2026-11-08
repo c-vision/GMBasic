@@ -2,7 +2,7 @@ REM FILE: TradingOptionsAndBonds.bas
 
 ' FILE: Trading/TradingOptionsAndBonds.bas
 ' =================================================================================================
-' TEST UNITARIO: TRADING_CORE.OPTIONS e TRADING_CORE.BONDS
+' TEST UNITARIO: TRADING.OPTIONS e TRADING.BONDS
 ' =================================================================================================
 ' Questo test verifica le funzioni per la valutazione di derivati e titoli a reddito fisso.
 '

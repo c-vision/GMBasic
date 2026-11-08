@@ -1,4 +1,4 @@
-' trading.inc — namespace TRADING_CORE: valutazione azionaria e rendimenti (FFI, libgmbquant).
+' trading.inc — namespace TRADING: valutazione azionaria e rendimenti (FFI, libgmbquant).
 '
 ' Le 12 funzioni generali del vecchio namespace TRADING, ora nella libreria C
 ' `gmbquant` (sorgenti: shared/libs/quant, gmbsuite/gmbquant). Stessi nomi e stessi
@@ -18,7 +18,7 @@
 '   BidAskSpread(bid, ask)                              ask-bid
 '
 ' Input non valido (denominatore zero, serie vuota) -> 0 (nessuna eccezione).
-NAMESPACE TRADING_CORE
+NAMESPACE TRADING
 
 DECLARE FUNCTION StockValueZeroGrowth LIB "gmbquant" ALIAS "ofx_q_stock_zero_growth" (dividend AS DOUBLE, requiredRate AS DOUBLE) AS DOUBLE
 DECLARE FUNCTION StockValueConstGrowth LIB "gmbquant" ALIAS "ofx_q_stock_const_growth" (nextDividend AS DOUBLE, rate AS DOUBLE, growth AS DOUBLE) AS DOUBLE
