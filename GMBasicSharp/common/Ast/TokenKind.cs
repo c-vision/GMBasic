@@ -752,7 +752,7 @@ public enum TokenKind
     Cosh,
     Tanh,
     // Nucleo scipy.special (SPECIAL namespace) — nomi con prefisso per evitare collisioni
-    // con TokenKind.Gamma/Beta (FINANCE: opzioni greche).
+    // con i TokenKind di altri domini.
     SpecialGamma,
     SpecialLGamma,
     SpecialBeta,
