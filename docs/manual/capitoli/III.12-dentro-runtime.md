@@ -139,6 +139,9 @@ blocca in modo intermittente — un caso reale del 2026, risolto proprio così.
 > `shared/include/special.inc`. Le chiamate `SPECIAL.*` restano identiche.
 
 
+
+
+
 <!-- BEGIN SURFACE (generato da tools/sh/manual_surface.sh — non modificare a mano) -->
 
 ## Riferimento completo: comandi, funzioni, parametri
@@ -1730,7 +1733,6 @@ GMBASIC_GOMAXPROCS=1 ./native/gmb_vm_c/build_debug/gmb_vm_host file.chunk --mt
 
 <!-- END SURFACE -->
 
-
 <!-- BEGIN DOMAIN TABLE -->
 ## Tavola sinottica del dominio
 
@@ -1786,7 +1788,7 @@ nel corpus di test e sample `.bas`/`.inc`: dove il corpus non usa il simbolo è 
 - **LINALG.TANM(x1)** — `tn = LINALG.TANM(h)` (shared/samples/Math/MatrixFunctionsSciPyParity2.bas:15)
 - **NUMERICAL.CUBICSPLINE(x1, x2, x3)** — `PRINT xn; "  "; NUMERICAL.InterpolateLinear(x, y, xn); "  "; NUMERICAL.CubicSpline(x, y, xn); "  "; …` (shared/samples/Analysis/AnalysisInterpReal.bas:13)
 - **NUMERICAL.CUMTRAPEZOID(x1, x2)** — `DIM ct() = NUMERICAL.CumTrapezoid(yy, xx)` (shared/samples/Math/IntegrateInterpFftSciPyParity.bas:14)
-- **NUMERICAL.DIFFERENTIATE(x1, x2)** — `DIM Derivata = NUMERICAL.Differentiate(FN(x) => x*x, 2)` (shared/samples/Analysis/AnalysisTests.bas:132)
+- **NUMERICAL.DIFFERENTIATE(x1, x2)** — `DIM Derivata = NUMERICAL.Differentiate(FN(x) => x*x, 2)` (shared/samples/Analysis/AnalysisTests.bas:131)
 - **NUMERICAL.FFT(x1)** — `DIM spettro = NUMERICAL.Fft(segnale)` (shared/samples/Analysis/ControlloQualita.bas:60)
 - **NUMERICAL.FFTCOMPLEX(x1, x2)** — `DIM f() = NUMERICAL.FftComplex(x, imz)` (shared/minitests/analysis/fftc.bas:4)
 - **NUMERICAL.FFTFREQ(x1, x2)** — `DIM f6() = NUMERICAL.FftFreq(6, 1)` (shared/samples/Math/IntegrateInterpFftSciPyParity.bas:22)
@@ -1794,9 +1796,9 @@ nel corpus di test e sample `.bas`/`.inc`: dove il corpus non usa il simbolo è 
 - **NUMERICAL.IFFT(x1)** — `DIM ricostruito = NUMERICAL.Ifft(spettro)` (shared/samples/Analysis/ControlloQualita.bas:81)
 - **NUMERICAL.IFFTCOMPLEX(x1, x2)** — `DIM r() = NUMERICAL.IfftComplex(x, imz)` (shared/minitests/analysis/fftc.bas:6)
 - **NUMERICAL.IFFTSHIFT(x1)** — `DIM ifs() = NUMERICAL.IfftShift(a6)` (shared/samples/Math/IntegrateInterpFftSciPyParity.bas:27)
-- **NUMERICAL.INTEGRATE(x1, x2, x3)** — `DIM Integrale = NUMERICAL.Integrate(FN(x) => x*x, 0, 1)` (shared/samples/Analysis/AnalysisTests.bas:128)
-- **NUMERICAL.INTERPOLATECLAMP(x1, x2, x3)** — `DIM y_clamp = NUMERICAL.InterpolateClamp(DatiX, DatiY, x_new)` (shared/samples/Analysis/AnalysisTests.bas:118)
-- **NUMERICAL.INTERPOLATEGENERIC(x1, x2, x3, x4)** — `DIM y_gen = NUMERICAL.InterpolateGeneric("linear", DatiX, DatiY, x_new)` (shared/samples/Analysis/AnalysisTests.bas:119)
+- **NUMERICAL.INTEGRATE(x1, x2, x3)** — `DIM Integrale = NUMERICAL.Integrate(FN(x) => x*x, 0, 1)` (shared/samples/Analysis/AnalysisTests.bas:127)
+- **NUMERICAL.INTERPOLATECLAMP(x1, x2, x3)** — `DIM y_clamp = NUMERICAL.InterpolateClamp(DatiX, DatiY, x_new)` (shared/samples/Analysis/AnalysisTests.bas:117)
+- **NUMERICAL.INTERPOLATEGENERIC(x1, x2, x3, x4)** — `DIM y_gen = NUMERICAL.InterpolateGeneric("linear", DatiX, DatiY, x_new)` (shared/samples/Analysis/AnalysisTests.bas:118)
 - **NUMERICAL.INTERPOLATELINEAR(x1, x2, x3)** — `PRINT xn; "  "; NUMERICAL.InterpolateLinear(x, y, xn); "  "; NUMERICAL.CubicSpline(x, y, xn); "  "; …` (shared/samples/Analysis/AnalysisInterpReal.bas:13)
 - **NUMERICAL.INTERPOLATEPCHIP(x1, x2, x3)** — `PRINT xn; "  "; NUMERICAL.InterpolateLinear(x, y, xn); "  "; NUMERICAL.CubicSpline(x, y, xn); "  "; …` (shared/samples/Analysis/AnalysisInterpReal.bas:13)
 - **NUMERICAL.INTERPOLATEPOLYNOMIAL(x1, x2, x3)** — `PRINT xn; "  "; NUMERICAL.InterpolateLinear(x, y, xn); "  "; NUMERICAL.CubicSpline(x, y, xn); "  "; …` (shared/samples/Analysis/AnalysisInterpReal.bas:13)
@@ -1810,7 +1812,6 @@ nel corpus di test e sample `.bas`/`.inc`: dove il corpus non usa il simbolo è 
 - **NUMERICAL.SPLEV(x1, x2)** — `DIM sv() = NUMERICAL.Splev(sp, xq)` (shared/samples/Analysis/AnalysisParityP0.bas:29)
 - **NUMERICAL.SPLREP(x1, x2)** — `DIM sp = NUMERICAL.Splrep(xs, ys)` (shared/samples/Analysis/AnalysisParityP0.bas:26)
 - **NUMERICAL.TRAPEZOID(x1, x2)** — `PRINT "trapezoid   ="; NUMERICAL.Trapezoid(yy, xx)` (shared/samples/Math/IntegrateInterpFftSciPyParity.bas:13)
-- **REGRESSION.REGRESS(x1, x2)** — `RegRes = REGRESSION.Regress(DatiX, DatiY)` (shared/samples/Analysis/AnalysisTests.bas:47)
 - **SYSTEM.CHOOSE(x1)** — `PRINT SYSTEM.CHOOSE(1, 5, 6, 7)` (shared/minitests/system/choose.bas:9)
 - **SYSTEM.COMMAND(x1)** — `PRINT "COMMAND(1) len: "; LEN(SYSTEM.COMMAND(1))` (shared/samples/System/SystemFullCoverage.bas:18)
 - **SYSTEM.COMMANDCOUNT()** — `IF SYSTEM.COMMANDCOUNT() >= 0 THEN PRINT "system.count ok"` (shared/samples/Commands/DirectCastCommandProbe.bas:28)

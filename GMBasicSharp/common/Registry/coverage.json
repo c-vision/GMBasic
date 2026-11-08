@@ -9512,16 +9512,6 @@
     },
     {
       "id": 947,
-      "ns": "REGRESSION",
-      "name": "Regress",
-      "kind": "Regress",
-      "IL": false,
-      "PCodeVM": false,
-      "VMC": false,
-      "C99Native": false
-    },
-    {
-      "id": 948,
       "ns": "SIGNAL",
       "name": "BLACKMAN",
       "kind": "SignalBlackman",
@@ -9531,7 +9521,7 @@
       "C99Native": false
     },
     {
-      "id": 949,
+      "id": 948,
       "ns": "SIGNAL",
       "name": "BUTTER",
       "kind": "SignalButter",
@@ -9541,7 +9531,7 @@
       "C99Native": false
     },
     {
-      "id": 950,
+      "id": 949,
       "ns": "SIGNAL",
       "name": "CHEBY1",
       "kind": "SignalCheby1",
@@ -9551,7 +9541,7 @@
       "C99Native": false
     },
     {
-      "id": 951,
+      "id": 950,
       "ns": "SIGNAL",
       "name": "CHEBY2",
       "kind": "SignalCheby2",
@@ -9561,7 +9551,7 @@
       "C99Native": false
     },
     {
-      "id": 952,
+      "id": 951,
       "ns": "SIGNAL",
       "name": "CONVOLVE",
       "kind": "SignalConvolve",
@@ -9571,7 +9561,7 @@
       "C99Native": false
     },
     {
-      "id": 953,
+      "id": 952,
       "ns": "SIGNAL",
       "name": "CORRELATE",
       "kind": "SignalCorrelate",
@@ -9581,7 +9571,7 @@
       "C99Native": false
     },
     {
-      "id": 954,
+      "id": 953,
       "ns": "SIGNAL",
       "name": "DECIMATE",
       "kind": "SignalDecimate",
@@ -9591,7 +9581,7 @@
       "C99Native": false
     },
     {
-      "id": 955,
+      "id": 954,
       "ns": "SIGNAL",
       "name": "ELLIP",
       "kind": "SignalEllip",
@@ -9601,7 +9591,7 @@
       "C99Native": false
     },
     {
-      "id": 956,
+      "id": 955,
       "ns": "SIGNAL",
       "name": "FILTFILT",
       "kind": "SignalFiltfilt",
@@ -9611,7 +9601,7 @@
       "C99Native": false
     },
     {
-      "id": 957,
+      "id": 956,
       "ns": "SIGNAL",
       "name": "FINDPEAKS",
       "kind": "SignalFindPeaks",
@@ -9621,7 +9611,7 @@
       "C99Native": false
     },
     {
-      "id": 958,
+      "id": 957,
       "ns": "SIGNAL",
       "name": "FIRWIN",
       "kind": "SignalFirwin",
@@ -9631,7 +9621,7 @@
       "C99Native": false
     },
     {
-      "id": 959,
+      "id": 958,
       "ns": "SIGNAL",
       "name": "FREQZ",
       "kind": "SignalFreqz",
@@ -9641,7 +9631,7 @@
       "C99Native": false
     },
     {
-      "id": 960,
+      "id": 959,
       "ns": "SIGNAL",
       "name": "HAMMING",
       "kind": "SignalHamming",
@@ -9651,7 +9641,7 @@
       "C99Native": false
     },
     {
-      "id": 961,
+      "id": 960,
       "ns": "SIGNAL",
       "name": "HANN",
       "kind": "SignalHann",
@@ -9661,7 +9651,7 @@
       "C99Native": false
     },
     {
-      "id": 962,
+      "id": 961,
       "ns": "SIGNAL",
       "name": "LFILTER",
       "kind": "SignalLfilter",
@@ -9671,7 +9661,7 @@
       "C99Native": false
     },
     {
-      "id": 963,
+      "id": 962,
       "ns": "SIGNAL",
       "name": "RESAMPLE",
       "kind": "SignalResample",
@@ -9681,7 +9671,7 @@
       "C99Native": false
     },
     {
-      "id": 964,
+      "id": 963,
       "ns": "SIGNAL",
       "name": "SAVGOLFILTER",
       "kind": "SignalSavgolFilter",
@@ -9691,7 +9681,7 @@
       "C99Native": false
     },
     {
-      "id": 965,
+      "id": 964,
       "ns": "SIGNAL",
       "name": "WELCH",
       "kind": "SignalWelch",
@@ -9701,7 +9691,7 @@
       "C99Native": false
     },
     {
-      "id": 966,
+      "id": 965,
       "ns": "SPATIAL",
       "name": "CDIST",
       "kind": "SpatialCdist",
@@ -9711,7 +9701,7 @@
       "C99Native": false
     },
     {
-      "id": 967,
+      "id": 966,
       "ns": "SPATIAL",
       "name": "CONVEXHULL",
       "kind": "SpatialConvexHull",
@@ -9721,7 +9711,7 @@
       "C99Native": false
     },
     {
-      "id": 968,
+      "id": 967,
       "ns": "SPATIAL",
       "name": "DISTANCEMATRIX",
       "kind": "SpatialDistanceMatrix",
@@ -9731,10 +9721,20 @@
       "C99Native": false
     },
     {
-      "id": 969,
+      "id": 968,
       "ns": "SPATIAL",
       "name": "PDIST",
       "kind": "SpatialPdist",
+      "IL": false,
+      "PCodeVM": false,
+      "VMC": false,
+      "C99Native": false
+    },
+    {
+      "id": 969,
+      "ns": "SPEED",
+      "name": "BEGINGROUPCOMMIT",
+      "kind": "SpeedBeginGroupCommit",
       "IL": false,
       "PCodeVM": false,
       "VMC": false,
@@ -9753,8 +9753,8 @@
     {
       "id": 971,
       "ns": "SPEED",
-      "name": "BEGINGROUPCOMMIT",
-      "kind": "SpeedBeginGroupCommit",
+      "name": "ENDGROUPCOMMIT",
+      "kind": "SpeedEndGroupCommit",
       "IL": false,
       "PCodeVM": false,
       "VMC": false,
@@ -9773,8 +9773,8 @@
     {
       "id": 973,
       "ns": "SPEED",
-      "name": "ENDGROUPCOMMIT",
-      "kind": "SpeedEndGroupCommit",
+      "name": "EOF",
+      "kind": "EofFunc",
       "IL": false,
       "PCodeVM": false,
       "VMC": false,
@@ -9783,8 +9783,8 @@
     {
       "id": 974,
       "ns": "SPEED",
-      "name": "EOF",
-      "kind": "EofFunc",
+      "name": "FLUSHDURABILITY",
+      "kind": "SpeedFlushDurability",
       "IL": false,
       "PCodeVM": false,
       "VMC": false,
@@ -9803,8 +9803,8 @@
     {
       "id": 976,
       "ns": "SPEED",
-      "name": "FLUSHDURABILITY",
-      "kind": "SpeedFlushDurability",
+      "name": "INFO",
+      "kind": "SpeedInfo",
       "IL": false,
       "PCodeVM": false,
       "VMC": false,
@@ -9823,8 +9823,8 @@
     {
       "id": 978,
       "ns": "SPEED",
-      "name": "INFO",
-      "kind": "SpeedInfo",
+      "name": "SELECTED",
+      "kind": "Selected",
       "IL": false,
       "PCodeVM": false,
       "VMC": false,
@@ -9843,8 +9843,8 @@
     {
       "id": 980,
       "ns": "SPEED",
-      "name": "SELECTED",
-      "kind": "Selected",
+      "name": "SETDURABILITY",
+      "kind": "SpeedSetDurability",
       "IL": false,
       "PCodeVM": false,
       "VMC": false,
@@ -9863,8 +9863,8 @@
     {
       "id": 982,
       "ns": "SPEED",
-      "name": "SETDURABILITY",
-      "kind": "SpeedSetDurability",
+      "name": "SETMANY",
+      "kind": "SpeedSetMany",
       "IL": false,
       "PCodeVM": false,
       "VMC": false,
@@ -9883,8 +9883,8 @@
     {
       "id": 984,
       "ns": "SPEED",
-      "name": "SETMANY",
-      "kind": "SpeedSetMany",
+      "name": "VALIDATE",
+      "kind": "SpeedValidate",
       "IL": false,
       "PCodeVM": false,
       "VMC": false,
@@ -9922,16 +9922,6 @@
     },
     {
       "id": 988,
-      "ns": "SPEED",
-      "name": "VALIDATE",
-      "kind": "SpeedValidate",
-      "IL": false,
-      "PCodeVM": false,
-      "VMC": false,
-      "C99Native": false
-    },
-    {
-      "id": 989,
       "ns": "SQL",
       "name": "CHANGES",
       "kind": "SqlChanges",
@@ -9941,7 +9931,7 @@
       "C99Native": false
     },
     {
-      "id": 990,
+      "id": 989,
       "ns": "SQL",
       "name": "COL",
       "kind": "SqlCol",
@@ -9951,7 +9941,7 @@
       "C99Native": false
     },
     {
-      "id": 991,
+      "id": 990,
       "ns": "SQL",
       "name": "DFSCHEMA",
       "kind": "SqlDfSchema",
@@ -9961,7 +9951,7 @@
       "C99Native": false
     },
     {
-      "id": 992,
+      "id": 991,
       "ns": "SQL",
       "name": "EXEC",
       "kind": "SqlExec",
@@ -9971,7 +9961,7 @@
       "C99Native": false
     },
     {
-      "id": 993,
+      "id": 992,
       "ns": "SQL",
       "name": "FETCH",
       "kind": "SqlFetch",
@@ -9981,7 +9971,7 @@
       "C99Native": false
     },
     {
-      "id": 994,
+      "id": 993,
       "ns": "SQL",
       "name": "FROMCSV",
       "kind": "SqlFromCsv",
@@ -9991,7 +9981,7 @@
       "C99Native": false
     },
     {
-      "id": 995,
+      "id": 994,
       "ns": "SQL",
       "name": "LASTINSERTROWID",
       "kind": "SqlLastInsertRowId",
@@ -10001,7 +9991,7 @@
       "C99Native": false
     },
     {
-      "id": 996,
+      "id": 995,
       "ns": "SQL",
       "name": "TOCSV",
       "kind": "SqlToCsv",
@@ -10011,7 +10001,7 @@
       "C99Native": false
     },
     {
-      "id": 997,
+      "id": 996,
       "ns": "STATS",
       "name": "Anova",
       "kind": "StatsAnova",
@@ -10021,7 +10011,7 @@
       "C99Native": false
     },
     {
-      "id": 998,
+      "id": 997,
       "ns": "STATS",
       "name": "BernoulliPmf",
       "kind": "BernoulliPmf",
@@ -10031,7 +10021,7 @@
       "C99Native": false
     },
     {
-      "id": 999,
+      "id": 998,
       "ns": "STATS",
       "name": "BetaCdf",
       "kind": "BetaCdf",
@@ -10041,7 +10031,7 @@
       "C99Native": false
     },
     {
-      "id": 1000,
+      "id": 999,
       "ns": "STATS",
       "name": "BetaIsf",
       "kind": "StatsBetaIsf",
@@ -10051,7 +10041,7 @@
       "C99Native": false
     },
     {
-      "id": 1001,
+      "id": 1000,
       "ns": "STATS",
       "name": "BetaPdf",
       "kind": "BetaPdf",
@@ -10061,7 +10051,7 @@
       "C99Native": false
     },
     {
-      "id": 1002,
+      "id": 1001,
       "ns": "STATS",
       "name": "BetaPpf",
       "kind": "BetaPpf",
@@ -10071,7 +10061,7 @@
       "C99Native": false
     },
     {
-      "id": 1003,
+      "id": 1002,
       "ns": "STATS",
       "name": "BetaSf",
       "kind": "StatsBetaSf",
@@ -10081,7 +10071,7 @@
       "C99Native": false
     },
     {
-      "id": 1004,
+      "id": 1003,
       "ns": "STATS",
       "name": "BinomialPmf",
       "kind": "BinomialPmf",
@@ -10091,7 +10081,7 @@
       "C99Native": false
     },
     {
-      "id": 1005,
+      "id": 1004,
       "ns": "STATS",
       "name": "Chi2",
       "kind": "Chi2Test",
@@ -10101,7 +10091,7 @@
       "C99Native": false
     },
     {
-      "id": 1006,
+      "id": 1005,
       "ns": "STATS",
       "name": "Chi2Con",
       "kind": "StatsChi2Contingency",
@@ -10111,7 +10101,7 @@
       "C99Native": false
     },
     {
-      "id": 1007,
+      "id": 1006,
       "ns": "STATS",
       "name": "ChiCdf",
       "kind": "ChiCdf",
@@ -10121,7 +10111,7 @@
       "C99Native": false
     },
     {
-      "id": 1008,
+      "id": 1007,
       "ns": "STATS",
       "name": "ChiIsf",
       "kind": "StatsChiIsf",
@@ -10131,7 +10121,7 @@
       "C99Native": false
     },
     {
-      "id": 1009,
+      "id": 1008,
       "ns": "STATS",
       "name": "ChiPdf",
       "kind": "ChiPdf",
@@ -10141,7 +10131,7 @@
       "C99Native": false
     },
     {
-      "id": 1010,
+      "id": 1009,
       "ns": "STATS",
       "name": "ChiPpf",
       "kind": "ChiPpf",
@@ -10151,7 +10141,7 @@
       "C99Native": false
     },
     {
-      "id": 1011,
+      "id": 1010,
       "ns": "STATS",
       "name": "ChiSf",
       "kind": "StatsChiSf",
@@ -10161,7 +10151,7 @@
       "C99Native": false
     },
     {
-      "id": 1012,
+      "id": 1011,
       "ns": "STATS",
       "name": "ChiSquaredCdf",
       "kind": "ChiSquaredCdf",
@@ -10171,7 +10161,7 @@
       "C99Native": false
     },
     {
-      "id": 1013,
+      "id": 1012,
       "ns": "STATS",
       "name": "ChiSquaredIsf",
       "kind": "ChiSquaredIsf",
@@ -10181,7 +10171,7 @@
       "C99Native": false
     },
     {
-      "id": 1014,
+      "id": 1013,
       "ns": "STATS",
       "name": "ChiSquaredPdf",
       "kind": "ChiSquaredPdf",
@@ -10191,7 +10181,7 @@
       "C99Native": false
     },
     {
-      "id": 1015,
+      "id": 1014,
       "ns": "STATS",
       "name": "ChiSquaredPpf",
       "kind": "ChiSquaredPpf",
@@ -10201,7 +10191,7 @@
       "C99Native": false
     },
     {
-      "id": 1016,
+      "id": 1015,
       "ns": "STATS",
       "name": "ChiSquaredSf",
       "kind": "StatsChiSquaredSf",
@@ -10211,7 +10201,7 @@
       "C99Native": false
     },
     {
-      "id": 1017,
+      "id": 1016,
       "ns": "STATS",
       "name": "Describe",
       "kind": "StatsDescribe",
@@ -10221,7 +10211,7 @@
       "C99Native": false
     },
     {
-      "id": 1018,
+      "id": 1017,
       "ns": "STATS",
       "name": "ExponentialCdf",
       "kind": "ExponentialCdf",
@@ -10231,7 +10221,7 @@
       "C99Native": false
     },
     {
-      "id": 1019,
+      "id": 1018,
       "ns": "STATS",
       "name": "ExponentialIsf",
       "kind": "ExponentialIsf",
@@ -10241,7 +10231,7 @@
       "C99Native": false
     },
     {
-      "id": 1020,
+      "id": 1019,
       "ns": "STATS",
       "name": "ExponentialPdf",
       "kind": "ExponentialPdf",
@@ -10251,7 +10241,7 @@
       "C99Native": false
     },
     {
-      "id": 1021,
+      "id": 1020,
       "ns": "STATS",
       "name": "ExponentialPpf",
       "kind": "ExponentialPpf",
@@ -10261,7 +10251,7 @@
       "C99Native": false
     },
     {
-      "id": 1022,
+      "id": 1021,
       "ns": "STATS",
       "name": "ExponentialSf",
       "kind": "StatsExpSf",
@@ -10271,7 +10261,7 @@
       "C99Native": false
     },
     {
-      "id": 1023,
+      "id": 1022,
       "ns": "STATS",
       "name": "FCdf",
       "kind": "FCdf",
@@ -10281,7 +10271,7 @@
       "C99Native": false
     },
     {
-      "id": 1024,
+      "id": 1023,
       "ns": "STATS",
       "name": "FIsf",
       "kind": "FIsf",
@@ -10291,7 +10281,7 @@
       "C99Native": false
     },
     {
-      "id": 1025,
+      "id": 1024,
       "ns": "STATS",
       "name": "FPdf",
       "kind": "FPdf",
@@ -10301,7 +10291,7 @@
       "C99Native": false
     },
     {
-      "id": 1026,
+      "id": 1025,
       "ns": "STATS",
       "name": "FPpf",
       "kind": "FPpf",
@@ -10311,7 +10301,7 @@
       "C99Native": false
     },
     {
-      "id": 1027,
+      "id": 1026,
       "ns": "STATS",
       "name": "FSf",
       "kind": "StatsFSf",
@@ -10321,7 +10311,7 @@
       "C99Native": false
     },
     {
-      "id": 1028,
+      "id": 1027,
       "ns": "STATS",
       "name": "FTest",
       "kind": "StatsFTest",
@@ -10331,7 +10321,7 @@
       "C99Native": false
     },
     {
-      "id": 1029,
+      "id": 1028,
       "ns": "STATS",
       "name": "Fisher",
       "kind": "FisherExact",
@@ -10341,7 +10331,7 @@
       "C99Native": false
     },
     {
-      "id": 1030,
+      "id": 1029,
       "ns": "STATS",
       "name": "GammaCdf",
       "kind": "StatsGammaCdf",
@@ -10351,7 +10341,7 @@
       "C99Native": false
     },
     {
-      "id": 1031,
+      "id": 1030,
       "ns": "STATS",
       "name": "GammaIsf",
       "kind": "StatsGammaIsf",
@@ -10361,7 +10351,7 @@
       "C99Native": false
     },
     {
-      "id": 1032,
+      "id": 1031,
       "ns": "STATS",
       "name": "GammaPdf",
       "kind": "StatsGammaPdf",
@@ -10371,7 +10361,7 @@
       "C99Native": false
     },
     {
-      "id": 1033,
+      "id": 1032,
       "ns": "STATS",
       "name": "GammaPpf",
       "kind": "StatsGammaPpf",
@@ -10381,7 +10371,7 @@
       "C99Native": false
     },
     {
-      "id": 1034,
+      "id": 1033,
       "ns": "STATS",
       "name": "GammaSf",
       "kind": "StatsGammaSf",
@@ -10391,7 +10381,7 @@
       "C99Native": false
     },
     {
-      "id": 1035,
+      "id": 1034,
       "ns": "STATS",
       "name": "GeometricPmf",
       "kind": "GeometricPmf",
@@ -10401,7 +10391,7 @@
       "C99Native": false
     },
     {
-      "id": 1036,
+      "id": 1035,
       "ns": "STATS",
       "name": "HypergeometricPmf",
       "kind": "HypergeometricPmf",
@@ -10411,7 +10401,7 @@
       "C99Native": false
     },
     {
-      "id": 1037,
+      "id": 1036,
       "ns": "STATS",
       "name": "Iqr",
       "kind": "StatsIqr",
@@ -10421,7 +10411,7 @@
       "C99Native": false
     },
     {
-      "id": 1038,
+      "id": 1037,
       "ns": "STATS",
       "name": "JarqueBera",
       "kind": "StatsJarqueBera",
@@ -10431,7 +10421,7 @@
       "C99Native": false
     },
     {
-      "id": 1039,
+      "id": 1038,
       "ns": "STATS",
       "name": "KendallTau",
       "kind": "StatsKendallTau",
@@ -10441,7 +10431,7 @@
       "C99Native": false
     },
     {
-      "id": 1040,
+      "id": 1039,
       "ns": "STATS",
       "name": "Kruskal",
       "kind": "StatsKruskal",
@@ -10451,7 +10441,7 @@
       "C99Native": false
     },
     {
-      "id": 1041,
+      "id": 1040,
       "ns": "STATS",
       "name": "Ks",
       "kind": "KolmogorovSmirnov",
@@ -10461,7 +10451,7 @@
       "C99Native": false
     },
     {
-      "id": 1042,
+      "id": 1041,
       "ns": "STATS",
       "name": "KurtosisTest",
       "kind": "StatsKurtosisTest",
@@ -10471,7 +10461,7 @@
       "C99Native": false
     },
     {
-      "id": 1043,
+      "id": 1042,
       "ns": "STATS",
       "name": "LinRegress",
       "kind": "StatsLinRegress",
@@ -10481,7 +10471,7 @@
       "C99Native": false
     },
     {
-      "id": 1044,
+      "id": 1043,
       "ns": "STATS",
       "name": "LogisticCdf",
       "kind": "StatsLogisticCdf",
@@ -10491,7 +10481,7 @@
       "C99Native": false
     },
     {
-      "id": 1045,
+      "id": 1044,
       "ns": "STATS",
       "name": "LogisticIsf",
       "kind": "StatsLogisticIsf",
@@ -10501,7 +10491,7 @@
       "C99Native": false
     },
     {
-      "id": 1046,
+      "id": 1045,
       "ns": "STATS",
       "name": "LogisticPdf",
       "kind": "LogisticPdf",
@@ -10511,7 +10501,7 @@
       "C99Native": false
     },
     {
-      "id": 1047,
+      "id": 1046,
       "ns": "STATS",
       "name": "LogisticPpf",
       "kind": "LogisticPpf",
@@ -10521,7 +10511,7 @@
       "C99Native": false
     },
     {
-      "id": 1048,
+      "id": 1047,
       "ns": "STATS",
       "name": "LogisticSf",
       "kind": "StatsLogisticSf",
@@ -10531,7 +10521,7 @@
       "C99Native": false
     },
     {
-      "id": 1049,
+      "id": 1048,
       "ns": "STATS",
       "name": "LognormalCdf",
       "kind": "LognormalCdf",
@@ -10541,7 +10531,7 @@
       "C99Native": false
     },
     {
-      "id": 1050,
+      "id": 1049,
       "ns": "STATS",
       "name": "LognormalIsf",
       "kind": "StatsLognormalIsf",
@@ -10551,7 +10541,7 @@
       "C99Native": false
     },
     {
-      "id": 1051,
+      "id": 1050,
       "ns": "STATS",
       "name": "LognormalPdf",
       "kind": "LognormalPdf",
@@ -10561,7 +10551,7 @@
       "C99Native": false
     },
     {
-      "id": 1052,
+      "id": 1051,
       "ns": "STATS",
       "name": "LognormalPpf",
       "kind": "LognormalPpf",
@@ -10571,7 +10561,7 @@
       "C99Native": false
     },
     {
-      "id": 1053,
+      "id": 1052,
       "ns": "STATS",
       "name": "LognormalSf",
       "kind": "StatsLognormalSf",
@@ -10581,7 +10571,7 @@
       "C99Native": false
     },
     {
-      "id": 1054,
+      "id": 1053,
       "ns": "STATS",
       "name": "MannWhitney",
       "kind": "StatsMannWhitney",
@@ -10591,7 +10581,7 @@
       "C99Native": false
     },
     {
-      "id": 1055,
+      "id": 1054,
       "ns": "STATS",
       "name": "Mode",
       "kind": "StatsMode",
@@ -10601,7 +10591,7 @@
       "C99Native": false
     },
     {
-      "id": 1056,
+      "id": 1055,
       "ns": "STATS",
       "name": "Moment",
       "kind": "StatsMoment",
@@ -10611,7 +10601,7 @@
       "C99Native": false
     },
     {
-      "id": 1057,
+      "id": 1056,
       "ns": "STATS",
       "name": "NcBetaCdf",
       "kind": "StatsNcBetaCdf",
@@ -10621,7 +10611,7 @@
       "C99Native": false
     },
     {
-      "id": 1058,
+      "id": 1057,
       "ns": "STATS",
       "name": "NcBetaIsf",
       "kind": "StatsNcBetaIsf",
@@ -10631,7 +10621,7 @@
       "C99Native": false
     },
     {
-      "id": 1059,
+      "id": 1058,
       "ns": "STATS",
       "name": "NcBetaPdf",
       "kind": "StatsNcBetaPdf",
@@ -10641,7 +10631,7 @@
       "C99Native": false
     },
     {
-      "id": 1060,
+      "id": 1059,
       "ns": "STATS",
       "name": "NcBetaPpf",
       "kind": "StatsNcBetaPpf",
@@ -10651,7 +10641,7 @@
       "C99Native": false
     },
     {
-      "id": 1061,
+      "id": 1060,
       "ns": "STATS",
       "name": "NcBetaSf",
       "kind": "StatsNcBetaSf",
@@ -10661,7 +10651,7 @@
       "C99Native": false
     },
     {
-      "id": 1062,
+      "id": 1061,
       "ns": "STATS",
       "name": "NcChi2Cdf",
       "kind": "StatsNcChi2Cdf",
@@ -10671,7 +10661,7 @@
       "C99Native": false
     },
     {
-      "id": 1063,
+      "id": 1062,
       "ns": "STATS",
       "name": "NcChi2Isf",
       "kind": "StatsNcChi2Isf",
@@ -10681,7 +10671,7 @@
       "C99Native": false
     },
     {
-      "id": 1064,
+      "id": 1063,
       "ns": "STATS",
       "name": "NcChi2Pdf",
       "kind": "StatsNcChi2Pdf",
@@ -10691,7 +10681,7 @@
       "C99Native": false
     },
     {
-      "id": 1065,
+      "id": 1064,
       "ns": "STATS",
       "name": "NcChi2Ppf",
       "kind": "StatsNcChi2Ppf",
@@ -10701,7 +10691,7 @@
       "C99Native": false
     },
     {
-      "id": 1066,
+      "id": 1065,
       "ns": "STATS",
       "name": "NcChi2Sf",
       "kind": "StatsNcChi2Sf",
@@ -10711,7 +10701,7 @@
       "C99Native": false
     },
     {
-      "id": 1067,
+      "id": 1066,
       "ns": "STATS",
       "name": "NcFCdf",
       "kind": "StatsNcFCdf",
@@ -10721,7 +10711,7 @@
       "C99Native": false
     },
     {
-      "id": 1068,
+      "id": 1067,
       "ns": "STATS",
       "name": "NcFIsf",
       "kind": "StatsNcFIsf",
@@ -10731,7 +10721,7 @@
       "C99Native": false
     },
     {
-      "id": 1069,
+      "id": 1068,
       "ns": "STATS",
       "name": "NcFPdf",
       "kind": "StatsNcFPdf",
@@ -10741,7 +10731,7 @@
       "C99Native": false
     },
     {
-      "id": 1070,
+      "id": 1069,
       "ns": "STATS",
       "name": "NcFPpf",
       "kind": "StatsNcFPpf",
@@ -10751,7 +10741,7 @@
       "C99Native": false
     },
     {
-      "id": 1071,
+      "id": 1070,
       "ns": "STATS",
       "name": "NcFSf",
       "kind": "StatsNcFSf",
@@ -10761,7 +10751,7 @@
       "C99Native": false
     },
     {
-      "id": 1072,
+      "id": 1071,
       "ns": "STATS",
       "name": "NcGammaCdf",
       "kind": "StatsNcGammaCdf",
@@ -10771,7 +10761,7 @@
       "C99Native": false
     },
     {
-      "id": 1073,
+      "id": 1072,
       "ns": "STATS",
       "name": "NcGammaIsf",
       "kind": "StatsNcGammaIsf",
@@ -10781,7 +10771,7 @@
       "C99Native": false
     },
     {
-      "id": 1074,
+      "id": 1073,
       "ns": "STATS",
       "name": "NcGammaPdf",
       "kind": "StatsNcGammaPdf",
@@ -10791,7 +10781,7 @@
       "C99Native": false
     },
     {
-      "id": 1075,
+      "id": 1074,
       "ns": "STATS",
       "name": "NcGammaPpf",
       "kind": "StatsNcGammaPpf",
@@ -10801,7 +10791,7 @@
       "C99Native": false
     },
     {
-      "id": 1076,
+      "id": 1075,
       "ns": "STATS",
       "name": "NcGammaSf",
       "kind": "StatsNcGammaSf",
@@ -10811,7 +10801,7 @@
       "C99Native": false
     },
     {
-      "id": 1077,
+      "id": 1076,
       "ns": "STATS",
       "name": "NcTCdf",
       "kind": "StatsNcTCdf",
@@ -10821,7 +10811,7 @@
       "C99Native": false
     },
     {
-      "id": 1078,
+      "id": 1077,
       "ns": "STATS",
       "name": "NcTIsf",
       "kind": "StatsNcTIsf",
@@ -10831,7 +10821,7 @@
       "C99Native": false
     },
     {
-      "id": 1079,
+      "id": 1078,
       "ns": "STATS",
       "name": "NcTPdf",
       "kind": "StatsNcTPdf",
@@ -10841,7 +10831,7 @@
       "C99Native": false
     },
     {
-      "id": 1080,
+      "id": 1079,
       "ns": "STATS",
       "name": "NcTPpf",
       "kind": "StatsNcTPpf",
@@ -10851,7 +10841,7 @@
       "C99Native": false
     },
     {
-      "id": 1081,
+      "id": 1080,
       "ns": "STATS",
       "name": "NcTSf",
       "kind": "StatsNcTSf",
@@ -10861,7 +10851,7 @@
       "C99Native": false
     },
     {
-      "id": 1082,
+      "id": 1081,
       "ns": "STATS",
       "name": "NegativeBinomialPmf",
       "kind": "NegativeBinomialPmf",
@@ -10871,7 +10861,7 @@
       "C99Native": false
     },
     {
-      "id": 1083,
+      "id": 1082,
       "ns": "STATS",
       "name": "NormalCdf",
       "kind": "NormalCdf",
@@ -10881,7 +10871,7 @@
       "C99Native": false
     },
     {
-      "id": 1084,
+      "id": 1083,
       "ns": "STATS",
       "name": "NormalIsf",
       "kind": "NormalIsf",
@@ -10891,7 +10881,7 @@
       "C99Native": false
     },
     {
-      "id": 1085,
+      "id": 1084,
       "ns": "STATS",
       "name": "NormalPdf",
       "kind": "NormalPdf",
@@ -10901,7 +10891,7 @@
       "C99Native": false
     },
     {
-      "id": 1086,
+      "id": 1085,
       "ns": "STATS",
       "name": "NormalPpf",
       "kind": "NormalPpf",
@@ -10911,7 +10901,7 @@
       "C99Native": false
     },
     {
-      "id": 1087,
+      "id": 1086,
       "ns": "STATS",
       "name": "NormalSf",
       "kind": "StatsNormalSf",
@@ -10921,7 +10911,7 @@
       "C99Native": false
     },
     {
-      "id": 1088,
+      "id": 1087,
       "ns": "STATS",
       "name": "NormalTest",
       "kind": "NormalTest",
@@ -10931,7 +10921,7 @@
       "C99Native": false
     },
     {
-      "id": 1089,
+      "id": 1088,
       "ns": "STATS",
       "name": "ParetoCdf",
       "kind": "StatsParetoCdf",
@@ -10941,7 +10931,7 @@
       "C99Native": false
     },
     {
-      "id": 1090,
+      "id": 1089,
       "ns": "STATS",
       "name": "ParetoIsf",
       "kind": "StatsParetoIsf",
@@ -10951,7 +10941,7 @@
       "C99Native": false
     },
     {
-      "id": 1091,
+      "id": 1090,
       "ns": "STATS",
       "name": "ParetoPdf",
       "kind": "ParetoPdf",
@@ -10961,7 +10951,7 @@
       "C99Native": false
     },
     {
-      "id": 1092,
+      "id": 1091,
       "ns": "STATS",
       "name": "ParetoPpf",
       "kind": "ParetoPpf",
@@ -10971,7 +10961,7 @@
       "C99Native": false
     },
     {
-      "id": 1093,
+      "id": 1092,
       "ns": "STATS",
       "name": "ParetoSf",
       "kind": "StatsParetoSf",
@@ -10981,7 +10971,7 @@
       "C99Native": false
     },
     {
-      "id": 1094,
+      "id": 1093,
       "ns": "STATS",
       "name": "PearsonR",
       "kind": "StatsPearsonR",
@@ -10991,10 +10981,20 @@
       "C99Native": false
     },
     {
-      "id": 1095,
+      "id": 1094,
       "ns": "STATS",
       "name": "PoissonPmf",
       "kind": "PoissonPmf",
+      "IL": false,
+      "PCodeVM": false,
+      "VMC": false,
+      "C99Native": false
+    },
+    {
+      "id": 1095,
+      "ns": "STATS",
+      "name": "Regress",
+      "kind": "Regress",
       "IL": false,
       "PCodeVM": false,
       "VMC": false,

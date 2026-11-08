@@ -2724,6 +2724,7 @@ PRINT ISAM.APPLYREPLICATION(S, "isam_repl.isdb.repl")
 <!-- END SURFACE -->
 
 
+
 <!-- BEGIN DOMAIN TABLE -->
 ## Tavola sinottica del dominio
 

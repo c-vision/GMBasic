@@ -184,7 +184,8 @@ public sealed partial class StdLib : IParserRegistry
         CreateNumericalNamespace();
         // FITTING: namespace LIBERATO — ri-esposto via FFI (shared/include/fitting.inc, libgmbstats).
         // SIMULATION: namespace LIBERATO — ri-esposto via FFI (shared/include/simulation.inc, libgmbstats).
-        CreateRegressionNamespace();
+        // REGRESSION: namespace eliminato 2026-11-08 — REGRESS vive in STATS
+        // (STATS.REGRESS, one-pass; distinto da STATS.LINREGRESS).
         RegisterAnalysisResultTypeSchemas();
         // CreateOptimizeNamespace();  // DEPRECATO 2026-11-03: namespace OPTIMIZE dismesso,
         // sostituito dal pacchetto FFI `OPT` (libgmbopt). Copia archiviata in

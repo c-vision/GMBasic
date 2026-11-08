@@ -1,11 +1,10 @@
 IMPORT MULTIVARIATE
 IMPORT MULTIVARIATE
-IMPORT REGRESSION
 SUB Main()
   DIM x(3) AS DOUBLE = {1, 2, 3, 4}
   DIM y(3) AS DOUBLE = {2.1, 4.2, 6.1, 8.0}
-  DIM r AS REGRESSION.RegressionResult
-  r = REGRESSION.Regress(x, y)
+  DIM r AS STATS.RegressionResult
+  r = STATS.Regress(x, y)
   PRINT r.Slope
   PRINT r.Intercept
   PRINT r.R2

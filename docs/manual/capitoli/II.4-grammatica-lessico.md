@@ -733,6 +733,7 @@ TEXTMODE %SDL     ' riporta la console alla modalita' SDL
 <!-- END SURFACE -->
 
 
+
 <!-- BEGIN DOMAIN TABLE -->
 ## Tavola sinottica del dominio
 

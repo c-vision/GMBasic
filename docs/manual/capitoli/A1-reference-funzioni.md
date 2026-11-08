@@ -1656,6 +1656,18 @@ AI.WORKFLOWSTATUS   ' dal codice del progetto: shared/minitests/ai/gen_AI_Workfl
 AI.WORKFLOWSTEPS   ' dal codice del progetto: shared/minitests/ai/ai_all.bas:291
 ```
 
+#### `ARCHIVE.UNZIP` — arita 2-2
+
+```basic
+ARCHIVE.UNZIP   ' dal codice del progetto: shared/samples/PackageRegistry/PackageServer.bas:1789
+```
+
+#### `ARCHIVE.ZIP` — arita 2-2
+
+```basic
+ARCHIVE.ZIP   ' dal codice del progetto: shared/samples/PackageRegistry/PackageServer.bas:291
+```
+
 #### `ARRAYS.AADD` — arita 2-2
 
 ```basic
@@ -1995,55 +2007,55 @@ BITS.PARITY   ' dal codice del progetto: shared/minitests/bits/bits_all.bas:26
 #### `BRAINS.Adjacency` — arita 1-1
 
 ```basic
-BRAINS.ADJACENCY' dal codice del progetto: shared/minitests/graph/adjacency.bas:13
+BRAINS.ADJACENCY   ' dal codice del progetto: shared/minitests/graph/adjacency.bas:1
 ```
 
 #### `BRAINS.ByFolder` — arita 2-2
 
 ```basic
-BRAINS.BYFOLDER' dal codice del progetto: shared/minitests/graph/graph_all.bas:42
+BRAINS.BYFOLDER   ' dal codice del progetto: shared/minitests/graph/graph_all.bas:42
 ```
 
 #### `BRAINS.ByTag` — arita 2-2
 
 ```basic
-BRAINS.BYTAG' dal codice del progetto: shared/minitests/graph/graph_all.bas:40
+BRAINS.BYTAG   ' dal codice del progetto: shared/minitests/graph/graph_all.bas:40
 ```
 
 #### `BRAINS.Dot` — arita 1-1
 
 ```basic
-BRAINS.DOT' dal codice del progetto: shared/minitests/graph/graph_all.bas:38
+BRAINS.DOT   ' dal codice del progetto: shared/minitests/graph/graph_all.bas:38
 ```
 
 #### `BRAINS.IsValid` — arita 1-1
 
 ```basic
-BRAINS.ISVALID' dal codice del progetto: shared/minitests/graph/graph_all.bas:44
+BRAINS.ISVALID   ' dal codice del progetto: shared/minitests/graph/graph_all.bas:44
 ```
 
 #### `BRAINS.Neighbors` — arita 2-2
 
 ```basic
-BRAINS.NEIGHBORS' dal codice del progetto: shared/minitests/graph/graph_all.bas:32
+BRAINS.NEIGHBORS   ' dal codice del progetto: shared/minitests/graph/graph_all.bas:32
 ```
 
 #### `BRAINS.Path` — arita 3-3
 
 ```basic
-BRAINS.PATH' dal codice del progetto: shared/minitests/graph/graph_all.bas:34
+BRAINS.PATH   ' dal codice del progetto: shared/minitests/graph/graph_all.bas:34
 ```
 
 #### `BRAINS.QueryMulti` — arita 1-2
 
 ```basic
-BRAINS.QUERYMULTI' dal codice del progetto: shared/minitests/graph/graph_all.bas:46
+BRAINS.QUERYMULTI   ' dal codice del progetto: shared/minitests/graph/graph_all.bas:46
 ```
 
 #### `BRAINS.Stats` — arita 1-1
 
 ```basic
-BRAINS.STATS' dal codice del progetto: shared/minitests/graph/graph_all.bas:36
+BRAINS.STATS   ' dal codice del progetto: shared/minitests/graph/graph_all.bas:36
 ```
 
 #### `BROWSER.AccessTree` — arita 0-0
@@ -2182,132 +2194,6 @@ CHART.CREATE   ' dal codice del progetto: shared/minitests/chart/chart_all.bas:9
 
 ```basic
 CLIP.GET   ' dal codice del progetto: shared/minitests/clip/clip_all.bas:9
-```
-
-#### `COMPRESSION.ALGORITHMS` — arita 0-0
-
-```basic
-COMPRESSION.ALGORITHMS   ' dal codice del progetto: shared/minitests/compression/algorithms.bas:1
-```
-
-#### `COMPRESSION.BROTLI` — arita 1-1
-
-```basic
-COMPRESSION.BROTLI   ' dal codice del progetto: shared/minitests/compression/brotli.bas:1
-```
-
-#### `COMPRESSION.BZIP2` — arita 1-1
-
-```basic
-COMPRESSION.BZIP2   ' dal codice del progetto: shared/minitests/compression/bzip2.bas:1
-```
-
-#### `COMPRESSION.COMPRESS` — arita 2-2
-
-```basic
-COMPRESSION.COMPRESS   ' dal codice del progetto: shared/minitests/compression/compress.bas:1
-```
-
-#### `COMPRESSION.DECOMPRESS` — arita 2-2
-
-```basic
-COMPRESSION.DECOMPRESS   ' dal codice del progetto: shared/minitests/compression/compression_all.bas:29
-```
-
-#### `COMPRESSION.DEFLATE` — arita 1-1
-
-```basic
-COMPRESSION.DEFLATE   ' dal codice del progetto: shared/minitests/compression/deflate.bas:1
-```
-
-#### `COMPRESSION.GZIP` — arita 1-1
-
-```basic
-COMPRESSION.GZIP   ' dal codice del progetto: shared/minitests/compression/gzip.bas:1
-```
-
-#### `COMPRESSION.LZ4` — arita 1-1
-
-```basic
-COMPRESSION.LZ4   ' dal codice del progetto: shared/minitests/compression/lz4.bas:1
-```
-
-#### `COMPRESSION.UNBROTLI` — arita 1-1
-
-```basic
-COMPRESSION.UNBROTLI   ' dal codice del progetto: shared/minitests/compression/compression_all.bas:21
-```
-
-#### `COMPRESSION.UNBZIP2` — arita 1-1
-
-```basic
-COMPRESSION.UNBZIP2   ' dal codice del progetto: shared/minitests/compression/compression_all.bas:25
-```
-
-#### `COMPRESSION.UNDEFLATE` — arita 1-1
-
-```basic
-COMPRESSION.UNDEFLATE   ' dal codice del progetto: shared/minitests/compression/compression_all.bas:20
-```
-
-#### `COMPRESSION.UNGZIP` — arita 1-1
-
-```basic
-COMPRESSION.UNGZIP   ' dal codice del progetto: shared/minitests/compression/compression_all.bas:18
-```
-
-#### `COMPRESSION.UNLZ4` — arita 1-1
-
-```basic
-COMPRESSION.UNLZ4   ' dal codice del progetto: shared/minitests/compression/compression_all.bas:22
-```
-
-#### `COMPRESSION.UNXZ` — arita 1-1
-
-```basic
-COMPRESSION.UNXZ   ' dal codice del progetto: shared/minitests/compression/compression_all.bas:23
-```
-
-#### `COMPRESSION.UNZIP` — arita 2-2
-
-```basic
-COMPRESSION.UNZIP   ' dal codice del progetto: shared/minitests/compression/zip_fn.bas:3
-```
-
-#### `COMPRESSION.UNZLIB` — arita 1-1
-
-```basic
-COMPRESSION.UNZLIB   ' dal codice del progetto: shared/minitests/compression/compression_all.bas:19
-```
-
-#### `COMPRESSION.UNZSTD` — arita 1-1
-
-```basic
-COMPRESSION.UNZSTD   ' dal codice del progetto: shared/minitests/compression/compression_all.bas:24
-```
-
-#### `COMPRESSION.XZ` — arita 1-1
-
-```basic
-COMPRESSION.XZ   ' dal codice del progetto: shared/minitests/compression/xz.bas:1
-```
-
-#### `COMPRESSION.ZIP` — arita 2-2
-
-```basic
-COMPRESSION.ZIP   ' dal codice del progetto: shared/minitests/compression/zip_fn.bas:1
-```
-
-#### `COMPRESSION.ZLIB` — arita 1-1
-
-```basic
-COMPRESSION.ZLIB   ' dal codice del progetto: shared/minitests/compression/zlib.bas:1
-```
-
-#### `COMPRESSION.ZSTD` — arita 1-1
-
-```basic
-COMPRESSION.ZSTD   ' dal codice del progetto: shared/minitests/compression/compression_all.bas:24
 ```
 
 #### `COMPUTER.Click` — arita 2-2
@@ -2812,246 +2698,6 @@ CONVERT.VALIDATE   ' dal codice del progetto: shared/minitests/convert/zz_probe_
 
 ```basic
 CONVERT.WEB   ' dal codice del progetto: shared/minitests/convert/convert_all.bas:82
-```
-
-#### `CRYPTOGRAPHY.AESDECRYPT` — arita 2-3
-
-```basic
-CRYPTOGRAPHY.AESDECRYPT   ' dal codice del progetto: shared/minitests/cryptography/aes.bas:6
-```
-
-#### `CRYPTOGRAPHY.AESENCRYPT` — arita 2-3
-
-```basic
-CRYPTOGRAPHY.AESENCRYPT   ' dal codice del progetto: shared/minitests/cryptography/aes.bas:1
-```
-
-#### `CRYPTOGRAPHY.CHACHA20DECRYPT` — arita 3-3
-
-```basic
-CRYPTOGRAPHY.CHACHA20DECRYPT   ' dal codice del progetto: shared/minitests/cryptography/chacha20.bas:8
-```
-
-#### `CRYPTOGRAPHY.CHACHA20ENCRYPT` — arita 3-3
-
-```basic
-CRYPTOGRAPHY.CHACHA20ENCRYPT   ' dal codice del progetto: shared/minitests/cryptography/chacha20.bas:1
-```
-
-#### `CRYPTOGRAPHY.CHACHA20POLY1305DECRYPT` — arita 4-5
-
-```basic
-CRYPTOGRAPHY.CHACHA20POLY1305DECRYPT   ' dal codice del progetto: shared/minitests/cryptography/chacha20poly1305.bas:11
-```
-
-#### `CRYPTOGRAPHY.CHACHA20POLY1305ENCRYPT` — arita 3-4
-
-```basic
-CRYPTOGRAPHY.CHACHA20POLY1305ENCRYPT   ' dal codice del progetto: shared/minitests/cryptography/chacha20poly1305.bas:1
-```
-
-#### `CRYPTOGRAPHY.DECRYPTASYM` — arita 2-2
-
-```basic
-CRYPTOGRAPHY.DECRYPTASYM   ' dal codice del progetto: shared/minitests/cryptography/encryptasym.bas:7
-```
-
-#### `CRYPTOGRAPHY.ENCRYPTASYM` — arita 2-2
-
-```basic
-CRYPTOGRAPHY.ENCRYPTASYM   ' dal codice del progetto: shared/minitests/cryptography/encryptasym.bas:1
-```
-
-#### `CRYPTOGRAPHY.FROMBASE64` — arita 1-1
-
-```basic
-CRYPTOGRAPHY.FROMBASE64   ' dal codice del progetto: shared/minitests/cryptography/encoding.bas:7
-```
-
-#### `CRYPTOGRAPHY.FROMBASE64URL` — arita 1-1
-
-```basic
-CRYPTOGRAPHY.FROMBASE64URL   ' dal codice del progetto: shared/minitests/cryptography/gen_CRYPTOGRAPHY_FROMBASE64URL.bas:5
-```
-
-#### `CRYPTOGRAPHY.FROMHEX` — arita 1-1
-
-```basic
-CRYPTOGRAPHY.FROMHEX   ' dal codice del progetto: shared/minitests/cryptography/chacha20poly1305.bas:5
-```
-
-#### `CRYPTOGRAPHY.HASHFILE` — arita 1-2
-
-```basic
-CRYPTOGRAPHY.HASHFILE   ' dal codice del progetto: shared/minitests/cryptography/hashfile.bas:1
-```
-
-#### `CRYPTOGRAPHY.HMACSHA256` — arita 2-2
-
-```basic
-CRYPTOGRAPHY.HMACSHA256   ' dal codice del progetto: shared/minitests/cryptography/hmac.bas:1
-```
-
-#### `CRYPTOGRAPHY.HMACSHA384` — arita 2-2
-
-```basic
-CRYPTOGRAPHY.HMACSHA384   ' dal codice del progetto: shared/minitests/cryptography/hmac.bas:6
-```
-
-#### `CRYPTOGRAPHY.HMACSHA512` — arita 2-2
-
-```basic
-CRYPTOGRAPHY.HMACSHA512   ' dal codice del progetto: shared/minitests/cryptography/hmac.bas:7
-```
-
-#### `CRYPTOGRAPHY.KEYEXPORT` — arita 1-1
-
-```basic
-CRYPTOGRAPHY.KEYEXPORT   ' dal codice del progetto: shared/minitests/cryptography/asym_sign.bas:9
-```
-
-#### `CRYPTOGRAPHY.KEYGEN` — arita 1-2
-
-```basic
-CRYPTOGRAPHY.KEYGEN   ' dal codice del progetto: shared/minitests/cryptography/asym_sign.bas:1
-```
-
-#### `CRYPTOGRAPHY.KEYIMPORT` — arita 2-2
-
-```basic
-CRYPTOGRAPHY.KEYIMPORT   ' dal codice del progetto: shared/minitests/cryptography/keyimport.bas:1
-```
-
-#### `CRYPTOGRAPHY.MD5` — arita 1-1
-
-```basic
-CRYPTOGRAPHY.MD5   ' dal codice del progetto: shared/minitests/cryptography/hashes.bas:1
-```
-
-#### `CRYPTOGRAPHY.PASSWORDHASH` — arita 1-1
-
-```basic
-CRYPTOGRAPHY.PASSWORDHASH   ' dal codice del progetto: shared/minitests/cryptography/password.bas:1
-```
-
-#### `CRYPTOGRAPHY.PASSWORDVERIFY` — arita 2-2
-
-```basic
-CRYPTOGRAPHY.PASSWORDVERIFY   ' dal codice del progetto: shared/minitests/cryptography/password.bas:7
-```
-
-#### `CRYPTOGRAPHY.RANDOMBYTES` — arita 1-1
-
-```basic
-CRYPTOGRAPHY.RANDOMBYTES   ' dal codice del progetto: shared/minitests/cryptography/random.bas:11
-```
-
-#### `CRYPTOGRAPHY.RANDOMCRYPTOBYTES` — arita 1-1
-
-```basic
-CRYPTOGRAPHY.RANDOMCRYPTOBYTES   ' dal codice del progetto: shared/minitests/cryptography/random.bas:12
-```
-
-#### `CRYPTOGRAPHY.RANDOMDOUBLE` — arita 0-2
-
-```basic
-CRYPTOGRAPHY.RANDOMDOUBLE   ' dal codice del progetto: shared/minitests/cryptography/random.bas:7
-```
-
-#### `CRYPTOGRAPHY.RANDOMINT` — arita 1-2
-
-```basic
-CRYPTOGRAPHY.RANDOMINT   ' dal codice del progetto: shared/minitests/cryptography/random.bas:5
-```
-
-#### `CRYPTOGRAPHY.RANDOMNORMAL` — arita 0-2
-
-```basic
-CRYPTOGRAPHY.RANDOMNORMAL   ' dal codice del progetto: shared/minitests/cryptography/random.bas:9
-```
-
-#### `CRYPTOGRAPHY.SHA1` — arita 1-1
-
-```basic
-CRYPTOGRAPHY.SHA1   ' dal codice del progetto: shared/minitests/cryptography/hashes.bas:6
-```
-
-#### `CRYPTOGRAPHY.SHA256` — arita 1-1
-
-```basic
-CRYPTOGRAPHY.SHA256   ' dal codice del progetto: shared/minitests/cryptography/hashes.bas:7
-```
-
-#### `CRYPTOGRAPHY.SHA512` — arita 1-1
-
-```basic
-CRYPTOGRAPHY.SHA512   ' dal codice del progetto: shared/minitests/cryptography/hashes.bas:8
-```
-
-#### `CRYPTOGRAPHY.SIGN` — arita 2-2
-
-```basic
-CRYPTOGRAPHY.SIGN   ' dal codice del progetto: shared/minitests/cryptography/asym_sign.bas:6
-```
-
-#### `CRYPTOGRAPHY.STRHASHFILE` — arita 1-2
-
-```basic
-CRYPTOGRAPHY.STRHASHFILE   ' dal codice del progetto: shared/minitests/cryptography/hashfile.bas:10
-```
-
-#### `CRYPTOGRAPHY.STRMD5` — arita 1-1
-
-```basic
-CRYPTOGRAPHY.STRMD5   ' dal codice del progetto: shared/minitests/cryptography/strhash.bas:1
-```
-
-#### `CRYPTOGRAPHY.STRSHA1` — arita 1-1
-
-```basic
-CRYPTOGRAPHY.STRSHA1   ' dal codice del progetto: shared/minitests/cryptography/strhash.bas:6
-```
-
-#### `CRYPTOGRAPHY.STRSHA256` — arita 1-1
-
-```basic
-CRYPTOGRAPHY.STRSHA256   ' dal codice del progetto: shared/minitests/cryptography/strhash.bas:7
-```
-
-#### `CRYPTOGRAPHY.STRSHA512` — arita 1-1
-
-```basic
-CRYPTOGRAPHY.STRSHA512   ' dal codice del progetto: shared/minitests/cryptography/strhash.bas:8
-```
-
-#### `CRYPTOGRAPHY.TOBASE64` — arita 1-1
-
-```basic
-CRYPTOGRAPHY.TOBASE64   ' dal codice del progetto: shared/minitests/cryptography/encoding.bas:5
-```
-
-#### `CRYPTOGRAPHY.TOBASE64URL` — arita 1-1
-
-```basic
-CRYPTOGRAPHY.TOBASE64URL   ' dal codice del progetto: shared/minitests/cryptography/encoding.bas:8
-```
-
-#### `CRYPTOGRAPHY.TOHEX` — arita 1-1
-
-```basic
-CRYPTOGRAPHY.TOHEX   ' dal codice del progetto: shared/minitests/cryptography/random.bas:11
-```
-
-#### `CRYPTOGRAPHY.VERIFY` — arita 3-3
-
-```basic
-CRYPTOGRAPHY.VERIFY   ' dal codice del progetto: shared/minitests/cryptography/asym_sign.bas:7
-```
-
-#### `CRYPTOGRAPHY.VERIFYRAW` — arita 3-3
-
-```basic
-CRYPTOGRAPHY.VERIFYRAW   ' dal codice del progetto: shared/minitests/cryptography/verifyraw.bas:1
 ```
 
 #### `DATETIME.CDOW` — arita 1-1
@@ -3915,13 +3561,13 @@ IO.EOF   ' dal codice del progetto: shared/minitests/io/input_file_string_implic
 #### `IO.FClose` — arita 1-1
 
 ```basic
-IO.FCLOSE   ' dal codice del progetto: shared/minitests/cryptography/cryptography_all.bas:95
+IO.FCLOSE   ' dal codice del progetto: shared/minitests/cryptography/hashfile.bas:10
 ```
 
 #### `IO.FCreate` — arita 1-1
 
 ```basic
-IO.FCREATE   ' dal codice del progetto: shared/minitests/cryptography/cryptography_all.bas:93
+IO.FCREATE   ' dal codice del progetto: shared/minitests/cryptography/hashfile.bas:8
 ```
 
 #### `IO.FError` — arita 0-0
@@ -3957,7 +3603,7 @@ IO.FSEEK   ' dal codice del progetto: shared/minitests/io/io_all.bas:26
 #### `IO.FWrite` — arita 2-2
 
 ```basic
-IO.FWRITE   ' dal codice del progetto: shared/minitests/cryptography/cryptography_all.bas:94
+IO.FWRITE   ' dal codice del progetto: shared/minitests/cryptography/hashfile.bas:9
 ```
 
 #### `IO.FileExists` — arita 1-1
@@ -5085,7 +4731,7 @@ LLM.VERIFY   ' dal codice del progetto: shared/minitests/llm/llm_all.bas:83
 #### `MATH.Abs` — arita 1-1
 
 ```basic
-MATH.ABS   ' dal codice del progetto: shared/minitests/constructs/iloptim_neg_after_builtin.bas:11
+MATH.ABS   ' dal codice del progetto: shared/minitests/special/special_ellip_airy.bas:27
 ```
 
 #### `MATH.Acos` — arita 1-1
@@ -5139,7 +4785,7 @@ MATH.COMB   ' dal codice del progetto: shared/samples/Math/MathCombinatorics.bas
 #### `MATH.Cos` — arita 1-1
 
 ```basic
-MATH.COS   ' dal codice del progetto: shared/samples/Math/MathTrigonometry.bas:33
+MATH.COS   ' dal codice del progetto: shared/minitests/veccalc/veccalc_core.bas:38
 ```
 
 #### `MATH.Deg2Rad` — arita 1-1
@@ -5271,13 +4917,13 @@ MATH.SGN   ' dal codice del progetto: shared/samples/Math/MathLogarithms.bas:75
 #### `MATH.Sin` — arita 1-1
 
 ```basic
-MATH.SIN   ' dal codice del progetto: shared/samples/Math/MathTrigonometry.bas:32
+MATH.SIN   ' dal codice del progetto: shared/minitests/veccalc/veccalc_core.bas:39
 ```
 
 #### `MATH.Sqr` — arita 1-1
 
 ```basic
-MATH.SQR   ' dal codice del progetto: shared/samples/Math/MathLogarithms.bas:43
+MATH.SQR   ' dal codice del progetto: shared/minitests/quad/quad_core.bas:20
 ```
 
 #### `MATH.Sum` — arita 0-1
@@ -5847,7 +5493,7 @@ NUMERICAL.INTERPOLATESTEP   ' dal codice del progetto: shared/minitests/analysis
 #### `NUMERICAL.Irfft` — arita 2-2
 
 ```basic
-NUMERICAL.IRFFT   ' dal codice del progetto: shared/minitests/analysis/analysis_all.bas:205
+NUMERICAL.IRFFT   ' dal codice del progetto: shared/minitests/analysis/analysis_all.bas:204
 ```
 
 #### `NUMERICAL.Rfft` — arita 1-1
@@ -6034,12 +5680,6 @@ RDD.TODAY   ' dal codice del progetto: shared/minitests/dbf/rdd_fields.bas:30
 
 ```basic
 RDD.VALTYPE   ' dal codice del progetto: shared/minitests/dbf/rdd_fields.bas:28
-```
-
-#### `REGRESSION.Regress` — arita 2-2
-
-```basic
-REGRESSION.REGRESS   ' dal codice del progetto: shared/minitests/analysis/udt.bas:8
 ```
 
 #### `SIGNAL.BLACKMAN` — arita 1-1
@@ -6930,6 +6570,12 @@ STATS.PEARSONR   ' dal codice del progetto: shared/minitests/stats/pearsonr.bas:
 STATS.POISSONPMF   ' dal codice del progetto: shared/minitests/stats/stats_all.bas:277
 ```
 
+#### `STATS.Regress` — arita 2-2
+
+```basic
+STATS.REGRESS   ' dal codice del progetto: shared/minitests/analysis/udt.bas:7
+```
+
 #### `STATS.Shapiro` — arita 1-1
 
 ```basic
@@ -7155,7 +6801,7 @@ STRINGS.ENDSWITH   ' nel codice a nome nudo: shared/minitests/strings/strings_al
 #### `STRINGS.Format` — arita 2-2
 
 ```basic
-STRINGS.FORMAT   ' nel codice a nome nudo: shared/minitests/mathprogffi/mathprog2.bas:22
+STRINGS.FORMAT   ' nel codice a nome nudo: shared/minitests/quant/quant_bonds_derivatives.bas:14
 ```
 
 #### `STRINGS.HTMLENCODE` — arita 1-1
@@ -7842,6 +7488,12 @@ TORCH.MODELFREE   ' dal codice del progetto: shared/minitests/torch/dataset_toy.
 TORCH.MODELINPUT   ' dal codice del progetto: shared/minitests/torch/modelcreate.bas:6
 ```
 
+#### `TORCH.MODELLOAD` — arita 2-2
+
+```basic
+TORCH.MODELLOAD   ' dal codice del progetto: shared/minitests/torch/modelload.bas:1
+```
+
 #### `TORCH.MODELLOSS` — arita 3-3
 
 ```basic
@@ -7869,7 +7521,7 @@ TORCH.MODELRESET   ' dal codice del progetto: shared/minitests/torch/modelreset.
 #### `TORCH.MODELSAVE` — arita 2-2
 
 ```basic
-TORCH.MODELSAVE   ' dal codice del progetto: shared/minitests/torch/lora_alpha.bas:74
+TORCH.MODELSAVE   ' dal codice del progetto: shared/minitests/torch/modelload.bas:40
 ```
 
 #### `TORCH.MODELSTATE` — arita 1-1
@@ -8058,540 +7710,6 @@ TORCH.TRANSPOSE   ' dal codice del progetto: shared/minitests/torch/shape_ops.ba
 TORCH.ZEROS   ' dal codice del progetto: shared/minitests/torch/shape_ops.bas:5
 ```
 
-#### `TRADING.BidAskSpread` — arita 2-2
-
-```basic
-TRADING.BIDASKSPREAD   ' dal codice del progetto: shared/minitests/trading/gen_TRADING_BidAskSpread.bas:5
-```
-
-#### `TRADING.CAPM` — arita 3-3
-
-```basic
-TRADING.CAPM   ' dal codice del progetto: shared/minitests/trading/gen_TRADING_CAPM.bas:5
-```
-
-#### `TRADING.CapitalGainsYield` — arita 2-2
-
-```basic
-TRADING.CAPITALGAINSYIELD   ' dal codice del progetto: shared/minitests/trading/gen_TRADING_CapitalGainsYield.bas:4
-```
-
-#### `TRADING.GeometricMeanReturn` — arita 1-1
-
-```basic
-TRADING.GEOMETRICMEANRETURN   ' dal codice del progetto: shared/minitests/trading/trading_all.bas:19
-```
-
-#### `TRADING.GrowthRate` — arita 2-2
-
-```basic
-TRADING.GROWTHRATE   ' dal codice del progetto: shared/minitests/trading/trading_all.bas:15
-```
-
-#### `TRADING.HoldingPeriodReturn` — arita 1-1
-
-```basic
-TRADING.HOLDINGPERIODRETURN   ' dal codice del progetto: shared/minitests/trading/gen_TRADING_HoldingPeriodReturn.bas:4
-```
-
-#### `TRADING.PreferredStockValue` — arita 2-2
-
-```basic
-TRADING.PREFERREDSTOCKVALUE   ' dal codice del progetto: shared/minitests/trading/gen_TRADING_PreferredStockValue.bas:4
-```
-
-#### `TRADING.RiskPremium` — arita 2-2
-
-```basic
-TRADING.RISKPREMIUM   ' dal codice del progetto: shared/minitests/trading/gen_TRADING_RiskPremium.bas:5
-```
-
-#### `TRADING.StockValueConstGrowth` — arita 3-3
-
-```basic
-TRADING.STOCKVALUECONSTGROWTH   ' dal codice del progetto: shared/minitests/trading/gen_TRADING_StockValueConstGrowth.bas:4
-```
-
-#### `TRADING.StockValueZeroGrowth` — arita 2-2
-
-```basic
-TRADING.STOCKVALUEZEROGROWTH   ' dal codice del progetto: shared/minitests/trading/gen_TRADING_StockValueZeroGrowth.bas:4
-```
-
-#### `TRADING.TaxEquivalentYield` — arita 2-2
-
-```basic
-TRADING.TAXEQUIVALENTYIELD   ' dal codice del progetto: shared/minitests/trading/gen_TRADING_TaxEquivalentYield.bas:5
-```
-
-#### `TRADING.TotalStockReturn` — arita 3-3
-
-```basic
-TRADING.TOTALSTOCKRETURN   ' dal codice del progetto: shared/minitests/trading/gen_TRADING_TotalStockReturn.bas:4
-```
-
-#### `TRADING.BACKTESTS.RUN` — arita 2-3
-
-```basic
-TRADING.BACKTESTS.RUN   ' dal codice del progetto: shared/minitests/trading.backtests/trading_backtests_all.bas:9
-```
-
-#### `TRADING.BONDS.BondEquivalentYield` — arita 3-3
-
-```basic
-TRADING.BONDS.BONDEQUIVALENTYIELD   ' dal codice del progetto: shared/minitests/trading.bonds/trading_bonds_all.bas:16
-```
-
-#### `TRADING.BONDS.BondPrice` — arita 6-7
-
-```basic
-TRADING.BONDS.BONDPRICE   ' dal codice del progetto: shared/minitests/trading.bonds/trading_bonds_all.bas:9
-```
-
-#### `TRADING.BONDS.BondYield` — arita 6-7
-
-```basic
-TRADING.BONDS.BONDYIELD   ' dal codice del progetto: shared/minitests/trading.bonds/trading_bonds_all.bas:11
-```
-
-#### `TRADING.BONDS.CurrentYield` — arita 2-2
-
-```basic
-TRADING.BONDS.CURRENTYIELD   ' dal codice del progetto: shared/minitests/trading.bonds/trading_bonds_all.bas:17
-```
-
-#### `TRADING.BONDS.DURATION` — arita 7-7
-
-```basic
-TRADING.BONDS.DURATION   ' dal codice del progetto: shared/minitests/trading.bonds/trading_bonds_all.bas:24
-```
-
-#### `TRADING.BONDS.PRICESIMPLE` — arita 6-6
-
-```basic
-TRADING.BONDS.PRICESIMPLE   ' dal codice del progetto: shared/minitests/trading.bonds/trading_bonds_all.bas:28
-```
-
-#### `TRADING.BONDS.YieldToMaturity` — arita 4-4
-
-```basic
-TRADING.BONDS.YIELDTOMATURITY   ' dal codice del progetto: shared/minitests/trading.bonds/gen_TRADING.BONDS_YieldToMaturity.bas:4
-```
-
-#### `TRADING.BONDS.ZeroCouponBondValue` — arita 3-3
-
-```basic
-TRADING.BONDS.ZEROCOUPONBONDVALUE   ' dal codice del progetto: shared/minitests/trading.bonds/trading_bonds_all.bas:19
-```
-
-#### `TRADING.BONDS.ZeroCouponBondYield` — arita 3-3
-
-```basic
-TRADING.BONDS.ZEROCOUPONBONDYIELD   ' dal codice del progetto: shared/minitests/trading.bonds/trading_bonds_all.bas:20
-```
-
-#### `TRADING.METRICS.Alpha` — arita 4-4
-
-```basic
-TRADING.METRICS.ALPHA   ' dal codice del progetto: shared/minitests/trading.metrics/trading_metrics_all.bas:131
-```
-
-#### `TRADING.METRICS.AnnualizedDownsideDeviation` — arita 3-3
-
-```basic
-TRADING.METRICS.ANNUALIZEDDOWNSIDEDEVIATION   ' dal codice del progetto: shared/minitests/trading/annualizeddownsidedeviation.bas:1
-```
-
-#### `TRADING.METRICS.AnnualizedReturn` — arita 2-2
-
-```basic
-TRADING.METRICS.ANNUALIZEDRETURN   ' dal codice del progetto: shared/minitests/trading/annualizedreturn.bas:1
-```
-
-#### `TRADING.METRICS.AnnualizedTrackingError` — arita 3-3
-
-```basic
-TRADING.METRICS.ANNUALIZEDTRACKINGERROR   ' dal codice del progetto: shared/minitests/trading/annualizedtrackingerror.bas:1
-```
-
-#### `TRADING.METRICS.AnnualizedVolatility` — arita 2-2
-
-```basic
-TRADING.METRICS.ANNUALIZEDVOLATILITY   ' dal codice del progetto: shared/minitests/trading/annualizedvolatility.bas:1
-```
-
-#### `TRADING.METRICS.Beta` — arita 2-2
-
-```basic
-TRADING.METRICS.BETA   ' dal codice del progetto: shared/minitests/trading.metrics/trading_metrics_all.bas:137
-```
-
-#### `TRADING.METRICS.BookValuePerShare` — arita 2-2
-
-```basic
-TRADING.METRICS.BOOKVALUEPERSHARE   ' dal codice del progetto: shared/minitests/trading.metrics/trading_metrics_all.bas:117
-```
-
-#### `TRADING.METRICS.CalmarRatio` — arita 2-2
-
-```basic
-TRADING.METRICS.CALMARRATIO   ' dal codice del progetto: shared/minitests/trading.metrics/trading_metrics_all.bas:30
-```
-
-#### `TRADING.METRICS.ConditionalValueAtRisk` — arita 2-2
-
-```basic
-TRADING.METRICS.CONDITIONALVALUEATRISK   ' dal codice del progetto: shared/minitests/trading/conditionalvalueatrisk.bas:1
-```
-
-#### `TRADING.METRICS.DPS` — arita 2-2
-
-```basic
-TRADING.METRICS.DPS   ' dal codice del progetto: shared/minitests/trading.metrics/trading_metrics_all.bas:120
-```
-
-#### `TRADING.METRICS.DilutedEPS` — arita 3-3
-
-```basic
-TRADING.METRICS.DILUTEDEPS   ' dal codice del progetto: shared/minitests/trading.metrics/trading_metrics_all.bas:119
-```
-
-#### `TRADING.METRICS.DividendPayoutRatio` — arita 2-2
-
-```basic
-TRADING.METRICS.DIVIDENDPAYOUTRATIO   ' dal codice del progetto: shared/minitests/trading.metrics/trading_metrics_all.bas:125
-```
-
-#### `TRADING.METRICS.DividendYield` — arita 2-2
-
-```basic
-TRADING.METRICS.DIVIDENDYIELD   ' dal codice del progetto: shared/minitests/trading/dividendyield.bas:1
-```
-
-#### `TRADING.METRICS.DownsideDeviation` — arita 2-2
-
-```basic
-TRADING.METRICS.DOWNSIDEDEVIATION   ' dal codice del progetto: shared/minitests/trading/downsidedeviation.bas:1
-```
-
-#### `TRADING.METRICS.EPS` — arita 2-2
-
-```basic
-TRADING.METRICS.EPS   ' dal codice del progetto: shared/minitests/trading.metrics/trading_metrics_all.bas:118
-```
-
-#### `TRADING.METRICS.EquityMultiplier` — arita 2-2
-
-```basic
-TRADING.METRICS.EQUITYMULTIPLIER   ' dal codice del progetto: shared/minitests/trading.metrics/gen_TRADING.METRICS_EquityMultiplier.bas:4
-```
-
-#### `TRADING.METRICS.InformationRatio` — arita 3-3
-
-```basic
-TRADING.METRICS.INFORMATIONRATIO   ' dal codice del progetto: shared/minitests/trading/informationratio.bas:1
-```
-
-#### `TRADING.METRICS.JarqueBeraTest` — arita 1-1
-
-```basic
-TRADING.METRICS.JARQUEBERATEST   ' dal codice del progetto: shared/minitests/trading/jarqueberatest.bas:1
-```
-
-#### `TRADING.METRICS.MaxDrawdown` — arita 1-1
-
-```basic
-TRADING.METRICS.MAXDRAWDOWN   ' dal codice del progetto: shared/minitests/trading/maxdrawdown.bas:1
-```
-
-#### `TRADING.METRICS.NAV` — arita 3-3
-
-```basic
-TRADING.METRICS.NAV   ' dal codice del progetto: shared/minitests/trading.metrics/trading_metrics_all.bas:122
-```
-
-#### `TRADING.METRICS.OmegaRatio` — arita 2-2
-
-```basic
-TRADING.METRICS.OMEGARATIO   ' dal codice del progetto: shared/minitests/trading/omegaratio.bas:1
-```
-
-#### `TRADING.METRICS.PBRatio` — arita 2-2
-
-```basic
-TRADING.METRICS.PBRATIO   ' dal codice del progetto: shared/minitests/trading.metrics/trading_metrics_all.bas:124
-```
-
-#### `TRADING.METRICS.PERatio` — arita 2-2
-
-```basic
-TRADING.METRICS.PERATIO   ' dal codice del progetto: shared/minitests/trading/peratio.bas:1
-```
-
-#### `TRADING.METRICS.PSRatio` — arita 2-2
-
-```basic
-TRADING.METRICS.PSRATIO   ' dal codice del progetto: shared/minitests/trading.metrics/trading_metrics_all.bas:123
-```
-
-#### `TRADING.METRICS.ReturnsKurtosis` — arita 1-1
-
-```basic
-TRADING.METRICS.RETURNSKURTOSIS   ' dal codice del progetto: shared/minitests/trading/returnskurtosis.bas:1
-```
-
-#### `TRADING.METRICS.ReturnsSkewness` — arita 1-1
-
-```basic
-TRADING.METRICS.RETURNSSKEWNESS   ' dal codice del progetto: shared/minitests/trading/returnsskewness.bas:1
-```
-
-#### `TRADING.METRICS.SHARPERATIO` — arita 1-1
-
-```basic
-TRADING.METRICS.SHARPERATIO   ' dal codice del progetto: shared/minitests/trading/sharperatio.bas:1
-```
-
-#### `TRADING.METRICS.SortinoRatio` — arita 3-3
-
-```basic
-TRADING.METRICS.SORTINORATIO   ' dal codice del progetto: shared/minitests/trading/sortinoratio.bas:1
-```
-
-#### `TRADING.METRICS.TotalReturn` — arita 1-1
-
-```basic
-TRADING.METRICS.TOTALRETURN   ' dal codice del progetto: shared/minitests/trading/totalreturn.bas:1
-```
-
-#### `TRADING.METRICS.TreynorRatio` — arita 4-4
-
-```basic
-TRADING.METRICS.TREYNORRATIO   ' dal codice del progetto: shared/minitests/trading/treynorratio.bas:1
-```
-
-#### `TRADING.METRICS.UlcerIndex` — arita 1-1
-
-```basic
-TRADING.METRICS.ULCERINDEX   ' dal codice del progetto: shared/minitests/trading/ulcerindex.bas:1
-```
-
-#### `TRADING.METRICS.ValueAtRisk` — arita 2-2
-
-```basic
-TRADING.METRICS.VALUEATRISK   ' dal codice del progetto: shared/minitests/trading/valueatrisk.bas:1
-```
-
-#### `TRADING.OPTIONS.BinomialOption` — arita 7-7
-
-```basic
-TRADING.OPTIONS.BINOMIALOPTION   ' dal codice del progetto: shared/minitests/trading/binomialoption.bas:1
-```
-
-#### `TRADING.OPTIONS.BsCall` — arita 5-6
-
-```basic
-TRADING.OPTIONS.BSCALL   ' dal codice del progetto: shared/minitests/trading.options/trading_options_all.bas:8
-```
-
-#### `TRADING.OPTIONS.BsPut` — arita 5-6
-
-```basic
-TRADING.OPTIONS.BSPUT   ' dal codice del progetto: shared/minitests/trading.options/trading_options_all.bas:9
-```
-
-#### `TRADING.OPTIONS.Charm` — arita 6-6
-
-```basic
-TRADING.OPTIONS.CHARM   ' dal codice del progetto: shared/minitests/trading/charm.bas:1
-```
-
-#### `TRADING.OPTIONS.Delta` — arita 6-6
-
-```basic
-TRADING.OPTIONS.DELTA   ' dal codice del progetto: shared/minitests/trading.options/gen_TRADING.OPTIONS_Delta.bas:5
-```
-
-#### `TRADING.OPTIONS.DeltaSpeed` — arita 5-5
-
-```basic
-TRADING.OPTIONS.DELTASPEED   ' dal codice del progetto: shared/minitests/trading/deltaspeed.bas:1
-```
-
-#### `TRADING.OPTIONS.Gamma` — arita 5-5
-
-```basic
-TRADING.OPTIONS.GAMMA   ' dal codice del progetto: shared/minitests/trading.options/gen_TRADING.OPTIONS_Gamma.bas:5
-```
-
-#### `TRADING.OPTIONS.GammaColor` — arita 5-5
-
-```basic
-TRADING.OPTIONS.GAMMACOLOR   ' dal codice del progetto: shared/minitests/trading/gammacolor.bas:1
-```
-
-#### `TRADING.OPTIONS.MertonCall` — arita 5-6
-
-```basic
-TRADING.OPTIONS.MERTONCALL   ' dal codice del progetto: shared/minitests/trading/mertoncall.bas:1
-```
-
-#### `TRADING.OPTIONS.MertonPut` — arita 5-6
-
-```basic
-TRADING.OPTIONS.MERTONPUT   ' dal codice del progetto: shared/minitests/trading/mertonput.bas:1
-```
-
-#### `TRADING.OPTIONS.Rho` — arita 6-6
-
-```basic
-TRADING.OPTIONS.RHO   ' dal codice del progetto: shared/minitests/trading.options/gen_TRADING.OPTIONS_Rho.bas:5
-```
-
-#### `TRADING.OPTIONS.Theta` — arita 6-6
-
-```basic
-TRADING.OPTIONS.THETA   ' dal codice del progetto: shared/minitests/trading/theta.bas:1
-```
-
-#### `TRADING.OPTIONS.Vanna` — arita 5-5
-
-```basic
-TRADING.OPTIONS.VANNA   ' dal codice del progetto: shared/minitests/trading/vanna.bas:1
-```
-
-#### `TRADING.OPTIONS.Vega` — arita 5-5
-
-```basic
-TRADING.OPTIONS.VEGA   ' dal codice del progetto: shared/minitests/trading.options/trading_options_all.bas:12
-```
-
-#### `TRADING.OPTIONS.Volga` — arita 5-5
-
-```basic
-TRADING.OPTIONS.VOLGA   ' dal codice del progetto: shared/minitests/trading/volga.bas:1
-```
-
-#### `TRADING.OPTIONS.Zomma` — arita 5-5
-
-```basic
-TRADING.OPTIONS.ZOMMA   ' dal codice del progetto: shared/minitests/trading/zomma.bas:1
-```
-
-#### `TRADING.PORTFOLIO.BLACKLITTERMAN` — arita 8-8
-
-```basic
-TRADING.PORTFOLIO.BLACKLITTERMAN   ' dal codice del progetto: shared/minitests/trading.portfolio/blacklitterman.bas:1
-```
-
-#### `TRADING.PORTFOLIO.CVAR` — arita 3-3
-
-```basic
-TRADING.PORTFOLIO.CVAR   ' dal codice del progetto: shared/minitests/trading.portfolio/cvar.bas:1
-```
-
-#### `TRADING.PORTFOLIO.EQUALLYWEIGHTED` — arita 1-1
-
-```basic
-TRADING.PORTFOLIO.EQUALLYWEIGHTED   ' dal codice del progetto: shared/minitests/trading.portfolio/trading_portfolio_all.bas:36
-```
-
-#### `TRADING.PORTFOLIO.EVOLVE` — arita 3-3
-
-```basic
-TRADING.PORTFOLIO.EVOLVE   ' dal codice del progetto: shared/minitests/trading.portfolio/trading_portfolio_all.bas:197
-```
-
-#### `TRADING.PORTFOLIO.EXPECTEDRETURN` — arita 2-2
-
-```basic
-TRADING.PORTFOLIO.EXPECTEDRETURN   ' dal codice del progetto: shared/minitests/trading.portfolio/trading_portfolio_all.bas:47
-```
-
-#### `TRADING.PORTFOLIO.ISLONGONLY` — arita 1-1
-
-```basic
-TRADING.PORTFOLIO.ISLONGONLY   ' dal codice del progetto: shared/minitests/trading.portfolio/trading_portfolio_all.bas:57
-```
-
-#### `TRADING.PORTFOLIO.KELLYCRITERION` — arita 2-2
-
-```basic
-TRADING.PORTFOLIO.KELLYCRITERION   ' dal codice del progetto: shared/minitests/trading.portfolio/kellycriterion.bas:1
-```
-
-#### `TRADING.PORTFOLIO.MAXRETURN` — arita 1-1
-
-```basic
-TRADING.PORTFOLIO.MAXRETURN   ' dal codice del progetto: shared/minitests/trading.portfolio/trading_portfolio_all.bas:78
-```
-
-#### `TRADING.PORTFOLIO.MAXSHARPE` — arita 3-3
-
-```basic
-TRADING.PORTFOLIO.MAXSHARPE   ' dal codice del progetto: shared/minitests/trading.portfolio/maxsharpe.bas:1
-```
-
-#### `TRADING.PORTFOLIO.MEANVARIANCE` — arita 3-3
-
-```basic
-TRADING.PORTFOLIO.MEANVARIANCE   ' dal codice del progetto: shared/minitests/trading.portfolio/meanvariance.bas:1
-```
-
-#### `TRADING.PORTFOLIO.MINCDAR` — arita 3-3
-
-```basic
-TRADING.PORTFOLIO.MINCDAR   ' dal codice del progetto: shared/minitests/trading.portfolio/trading_portfolio_all.bas:111
-```
-
-#### `TRADING.PORTFOLIO.MINCVAR` — arita 3-3
-
-```basic
-TRADING.PORTFOLIO.MINCVAR   ' dal codice del progetto: shared/minitests/trading.portfolio/trading_portfolio_all.bas:122
-```
-
-#### `TRADING.PORTFOLIO.MINVOLATILITY` — arita 1-1
-
-```basic
-TRADING.PORTFOLIO.MINVOLATILITY   ' dal codice del progetto: shared/minitests/trading.portfolio/trading_portfolio_all.bas:133
-```
-
-#### `TRADING.PORTFOLIO.PORTFOLIOMAD` — arita 1-1
-
-```basic
-TRADING.PORTFOLIO.PORTFOLIOMAD   ' dal codice del progetto: shared/minitests/trading.portfolio/trading_portfolio_all.bas:144
-```
-
-#### `TRADING.PORTFOLIO.PORTFOLIOSEMIMAD` — arita 1-2
-
-```basic
-TRADING.PORTFOLIO.PORTFOLIOSEMIMAD   ' dal codice del progetto: shared/minitests/trading.portfolio/portfoliosemimad.bas:1
-```
-
-#### `TRADING.PORTFOLIO.PVAR` — arita 3-3
-
-```basic
-TRADING.PORTFOLIO.PVAR   ' dal codice del progetto: shared/minitests/trading.portfolio/trading_portfolio_all.bas:164
-```
-
-#### `TRADING.PORTFOLIO.RISKPARITY` — arita 1-1
-
-```basic
-TRADING.PORTFOLIO.RISKPARITY   ' dal codice del progetto: shared/minitests/trading.portfolio/trading_portfolio_all.bas:174
-```
-
-#### `TRADING.PORTFOLIO.SHARPERATIO` — arita 3-3
-
-```basic
-TRADING.PORTFOLIO.SHARPERATIO   ' dal codice del progetto: shared/minitests/trading.portfolio/trading_portfolio_all.bas:180
-```
-
-#### `TRADING.PORTFOLIO.STDEV` — arita 2-2
-
-```basic
-TRADING.PORTFOLIO.STDEV   ' dal codice del progetto: shared/minitests/trading.portfolio/trading_portfolio_all.bas:190
-```
-
 #### `TRAY.TRAYAVAILABLE` — arita 0-0
 
 ```basic
@@ -8727,13 +7845,13 @@ VECTOR.CREATE   ' dal codice del progetto: shared/minitests/vector/vector_all.ba
 #### `VECTOR.Dist2d` — arita 4-4
 
 ```basic
-VECTOR.DIST2D   ' nel codice a nome nudo: shared/minitests/math/math_all.bas:44
+VECTOR.DIST2D   ' dal codice del progetto: shared/minitests/math/math_all.bas:46
 ```
 
 #### `VECTOR.Dist3d` — arita 6-6
 
 ```basic
-VECTOR.DIST3D   ' nel codice a nome nudo: shared/minitests/math/math_all.bas:44
+VECTOR.DIST3D   ' dal codice del progetto: shared/minitests/math/math_all.bas:46
 ```
 
 #### `VECTOR.EUCLIDEA` — arita 1-1
@@ -9165,10 +8283,6 @@ WINDOWS.Y   ' dal codice del progetto: shared/minitests/windows/windows_all.bas:
 #### `INPUT` (comando)
 
 #### `JSON` (comando)
-
-#### `KEYCLOSE` (comando)
-
-#### `KEYGEN` (comando)
 
 #### `KILL` (comando)
 

@@ -2591,6 +2591,7 @@ nessun margine fra la fascia e il bordo destro. Il select risponde anche da tast
 il valore `INTO`, `Esc` chiude senza cambiare nulla.
 
 
+
 <!-- BEGIN DOMAIN TABLE -->
 ## Tavola sinottica del dominio
 

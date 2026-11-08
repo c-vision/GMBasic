@@ -1181,6 +1181,7 @@ FILTER voice, type, cutoff, resonance
 <!-- END SURFACE -->
 
 
+
 <!-- BEGIN DOMAIN TABLE -->
 ## Tavola sinottica del dominio
 

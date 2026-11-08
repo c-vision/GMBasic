@@ -1205,6 +1205,7 @@ PRINT JSON.TOJSON(list)     ' [1,2,3]
 <!-- END SURFACE -->
 
 
+
 <!-- BEGIN DOMAIN TABLE -->
 ## Tavola sinottica del dominio
 
