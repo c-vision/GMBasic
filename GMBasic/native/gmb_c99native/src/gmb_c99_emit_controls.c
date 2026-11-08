@@ -1123,7 +1123,7 @@ int emit_control_stmt(ctx_t* c, gmb_stmt_t* s)
         sb_put(&c->out, "gmb_tui_control_register(&_tui_sp.ctrl); ");
         if (_iv) { emit_net_lhs(c, _iv);
             if (_iv->type == TY_STR) sb_put(&c->out, " = gmb_string_alloc(\"0\"); ");
-            else sb_put(&c->out, " = (gmb_double_t)_tui_sp.index; ");
+            else sb_put(&c->out, " = (gmb_double_t)(int)_tui_sp.ival; ");
         }
         sb_put(&c->out, "}\n");
     } else if (strcasecmp(cname, "SPLITTER") == 0 && na >= 4) {

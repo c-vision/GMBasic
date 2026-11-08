@@ -1,6 +1,7 @@
 #include "gmb_runtime.h"
 /* gmb_form.c — vedi gmb_form.h per il contratto GPM. */
 #include "gmb_form.h"
+#include "gmb_tui_widgets.h"
 #include "gmb_graphics.h"
 #include "gmb_gfx_input.h"
 #include "gmb_ui_gfx.h"
@@ -77,31 +78,9 @@ void gmb_form_set_exclusive(int on) { g_form_exclusive = on; }
 
 /* ---- Widget pixel (checkbox/radio/track/dropdown/progress) ---- */
 #define GMB_FORM_MAX_WIDGETS 256
-enum { W_CHECK = 1, W_RADIO, W_TRACK, W_DROPDOWN, W_PROGRESS,
-       W_TOGGLE, W_SPINNER, W_STATUSBAR, W_TABS, W_LISTBOX, W_COLORPICKER, W_DATE, W_GRID, W_FILE, W_TREE, W_MENUBAR, W_TEXT,
-       W_CANVAS, W_IMAGE, W_IMAGEBUTTON, W_QR, W_RICHTEXT, W_HALFBLOCK, W_TILING, W_PANEL };
-typedef struct {
-    gmb_control_t base;         /* base Control UNICA (geometry/eventi/handle) */
-    int kind;
-    char name[32];                 /* Name (VB) */
-    char tag[32], tooltip[64];
-    char label[64];               /* Caption/Text */
-    char items[8][40]; int nitems;
-    unsigned int colors[16]; int ncolors;   /* colorpicker */
-    double* var; double vmin, vmax, vstep; double ival; char itext[256];   /* valore interno (accesso per nome quando var==NULL, gambe gestite) */
-    void* strptr; int dy, dm, dday, sy, sm, sd; char dfmt[16]; char dmask[16]; int dcur;   /* datepicker */
-    char ghead[8][40]; int gnc;   /* grid: headers */
-    char gdata[1536]; int gnr, gsort_col, gsort_dir; int gorder[64];  /* grid: dati + ordine */
-    char big[64][56]; int nbig; int bsel, bfirst;   /* file list */
-    int tdepth[64];   /* tree: profondita' */ int tcol[64];   /* tree: nodi collassati */
-    int hover, press, open; int tcur;   /* textbox: cursore (indice char) */
-    int show_percent; char bar_style[16]; int align; int is_valid;   /* progress: show_percent/bar_style; align generico; textbox: valid */
-    int first;                 /* listbox: prima riga visibile */
-    gmb_widget_style_t style;
-    int dbl_ms;                     /* ultimo click per dblclick */
-} gmb_pix_widget_t;
-static int grid_cell(const gmb_pix_widget_t* wd, int r, int c, char* out, int cap);
-static gmb_pix_widget_t g_wid[GMB_FORM_MAX_WIDGETS];
+
+static int grid_cell(const gmb_widget_t* wd, int r, int c, char* out, int cap);
+static gmb_widget_t g_wid[GMB_FORM_MAX_WIDGETS];
 static int g_nwid = 0;
 static int g_last_handle = -1;   /* ID handle del controllo appena creato (widget=i, button=1000+i) */
 static int g_last_is_tui = 0;    /* 1 = l'ultimo controllo creato vive nel registry TUI (handle 0..63) */
@@ -253,15 +232,15 @@ static const char* form_stristr(const char* h, const char* n)
     for (; *h; h++) if (strncasecmp(h, n, nl) == 0) return h;
     return NULL;
 }
-static void apply_base_props(gmb_pix_widget_t* wd, const char* spec, int idx);
+static void apply_base_props(gmb_widget_t* wd, const char* spec, int idx);
 
 static void fire_ev(int widx, int ev);
 /* ---- valore interno + coda eventi (pull) per le gambe gestite ---- */
-static double wd_num(const gmb_pix_widget_t* wd) { return wd->var ? *(wd->var) : wd->ival; }
-static const char* wd_str(const gmb_pix_widget_t* wd) { if (wd->strptr && ((gmb_string_t*)wd->strptr)->data) return ((gmb_string_t*)wd->strptr)->data; return wd->itext; }
-static void wd_set_num(gmb_pix_widget_t* wd, double v) { wd->ival = v; if (wd->var) *(wd->var) = v; }
-static void wd_add_num(gmb_pix_widget_t* wd, double d) { wd->ival += d; if (wd->var) *(wd->var) = wd->ival; }
-static void wd_set_str(gmb_pix_widget_t* wd, const char* s) { snprintf(wd->itext, sizeof(wd->itext), "%s", s ? s : ""); if (wd->strptr) *(gmb_string_t*)wd->strptr = gmb_string_alloc(wd->itext); }
+static double wd_num(const gmb_widget_t* wd) { return wd->var ? *(wd->var) : wd->ival; }
+static const char* wd_str(const gmb_widget_t* wd) { if (wd->strptr && ((gmb_string_t*)wd->strptr)->data) return ((gmb_string_t*)wd->strptr)->data; return wd->itext; }
+static void wd_set_num(gmb_widget_t* wd, double v) { wd->ival = v; if (wd->var) *(wd->var) = v; }
+static void wd_add_num(gmb_widget_t* wd, double d) { wd->ival += d; if (wd->var) *(wd->var) = wd->ival; }
+static void wd_set_str(gmb_widget_t* wd, const char* s) { snprintf(wd->itext, sizeof(wd->itext), "%s", s ? s : ""); if (wd->strptr) *(gmb_string_t*)wd->strptr = gmb_string_alloc(wd->itext); }
 #define GMB_FORM_EVQ 512
 static int g_evq_ev[GMB_FORM_EVQ], g_evq_wid[GMB_FORM_EVQ];
 static int g_evq_head = 0, g_evq_tail = 0;
@@ -277,9 +256,9 @@ int gmb_form_poll_event(int* ev, int* widx) {
 static int tree_depth(const char* p){ int d=0; for(const char* s=p; s&&*s; s++) if(*s=='/') d++; return d; }
 static const char* tree_name(const char* p){ const char* s=strrchr(p,'/'); return s? s+1 : p; }
 static int tree_pfx(const char* a, const char* b){ size_t la=strlen(a); return strncmp(a,b,la)==0 && (b[la]==0 || b[la]=='/'); }
-static int tree_has_children(const gmb_pix_widget_t* wd, int j){ for(int k=0;k<wd->nitems;k++){ if(k==j) continue; if(strlen(wd->items[k])>strlen(wd->items[j]) && tree_pfx(wd->items[j], wd->items[k])) return 1; } return 0; }
-static int tree_hidden(const gmb_pix_widget_t* wd, int j){ for(int k=0;k<wd->nitems;k++){ if(k==j) continue; if(strlen(wd->items[k])<strlen(wd->items[j]) && wd->tcol[k] && tree_pfx(wd->items[k], wd->items[j])) return 1; } return 0; }
-static int tree_row_at(gmb_pix_widget_t* wd, int ly, int rh){ if(rh<=0) return -1; int vr=ly/rh, seen=0; for(int j=0;j<wd->nitems;j++){ if(tree_hidden(wd,j)) continue; if(seen==vr) return j; seen++; } return -1; }
+static int tree_has_children(const gmb_widget_t* wd, int j){ for(int k=0;k<wd->nitems;k++){ if(k==j) continue; if(strlen(wd->items[k])>strlen(wd->items[j]) && tree_pfx(wd->items[j], wd->items[k])) return 1; } return 0; }
+static int tree_hidden(const gmb_widget_t* wd, int j){ for(int k=0;k<wd->nitems;k++){ if(k==j) continue; if(strlen(wd->items[k])<strlen(wd->items[j]) && wd->tcol[k] && tree_pfx(wd->items[k], wd->items[j])) return 1; } return 0; }
+static int tree_row_at(gmb_widget_t* wd, int ly, int rh){ if(rh<=0) return -1; int vr=ly/rh, seen=0; for(int j=0;j<wd->nitems;j++){ if(tree_hidden(wd,j)) continue; if(seen==vr) return j; seen++; } return -1; }
 
 static void date_format(const char* fmt, int y, int m, int d, char* out, int cap)
 {
@@ -304,7 +283,7 @@ static void date_mask(const char* fmt, char* out, int cap)
     }
     out[j] = 0;
 }
-static void date_mask_fill(gmb_pix_widget_t* wd)
+static void date_mask_fill(gmb_widget_t* wd)
 {
     date_mask(wd->dfmt, wd->dmask, sizeof(wd->dmask));
     char fv[32]; date_format(wd->dfmt, wd->sy, wd->sm, wd->sd, fv, sizeof(fv));
@@ -312,7 +291,7 @@ static void date_mask_fill(gmb_pix_widget_t* wd)
     wd->dcur = 0;
 }
 static int date_dim(int y, int m);
-static int date_mask_valid(const gmb_pix_widget_t* wd)
+static int date_mask_valid(const gmb_widget_t* wd)
 {
     int dd = 0, mm = 0, yy = 0;
     const char* f = wd->dfmt;
@@ -331,7 +310,7 @@ static int date_mask_valid(const gmb_pix_widget_t* wd)
     return 1;
 }
 static int date_mask_complete(const char* m) { for (const char* p = m; *p; p++) if (*p == '_') return 0; return 1; }
-static void date_from_mask(gmb_pix_widget_t* wd)
+static void date_from_mask(gmb_widget_t* wd)
 {
     int dd = 0, mm = 0, yy = 0;
     const char* f = wd->dfmt;
@@ -352,12 +331,12 @@ static void date_from_mask(gmb_pix_widget_t* wd)
 static int date_dim(int y, int m) { static const int d[] = {31,28,31,30,31,30,31,31,30,31,30,31}; if(m==2 && ((y%4==0&&y%100!=0)||y%400==0)) return 29; return d[m-1]; }
 static int date_first_wday(int y, int m) { struct tm t; memset(&t,0,sizeof t); t.tm_year=y-1900; t.tm_mon=m-1; t.tm_mday=1; t.tm_hour=12; mktime(&t); return (t.tm_wday+6)%7; }
 
-static int form_split_items(const char* items, char out[][40], int cap)
+static int form_split_items(const char* items, char out[][256], int cap)
 {
     int n = 0; const char* p = items ? items : "";
     while (*p && n < cap) {
         const char* s = p; while (*p && *p != '|') p++;
-        int l = (int)(p - s); if (l > 39) l = 39;
+        int l = (int)(p - s); if (l > 255) l = 255;
         memcpy(out[n], s, (size_t)l); out[n][l] = 0; n++;
         if (*p == '|') p++;
     }
@@ -853,7 +832,7 @@ static void draw_button_body(gmb_form_btn_t* b, float sc)
     }
 }
 
-static void grid_sort(gmb_pix_widget_t* wd, int col)
+static void grid_sort(gmb_widget_t* wd, int col)
 {
     if (wd->gsort_col == col) wd->gsort_dir = !wd->gsort_dir; else { wd->gsort_col = col; wd->gsort_dir = 0; }
     for (int i = 0; i < wd->gnr; i++) for (int j = i + 1; j < wd->gnr; j++) {
@@ -926,12 +905,12 @@ static void px_draw_arrow_band(int x, int y, int w, int h, int tl,
 }
 
 /* Disegna i widget pixel (checkbox/radio/track/dropdown/progress). */
-static void draw_one_widget(gmb_pix_widget_t* wd, float sc)
+static void draw_one_widget(gmb_widget_t* wd, float sc)
 {
     int tl = (int)(GMB_GFX_TEXT_H() / sc + 0.5f); if (tl <= 0) tl = 14;
     int cwl = GMB_GFX_TEXT_END_X("M", 0, 0); if (cwl <= 0) cwl = 8;
     {
-        int i = (int)(wd - g_wid);   /* per i confronti con g_focus_wid */
+        int i = (wd >= g_wid && wd < g_wid + GMB_FORM_MAX_WIDGETS) ? (int)(wd - g_wid) : -1;   /* solo per i confronti con g_focus_wid */
         wd->style = gmb_widget_style_current();   /* tema corrente (row_h, radius... sempre aggiornati) */
         gmb_widget_style_t* s = &wd->style;
         int x = wd->base.x, y = wd->base.y, w = wd->base.width, h = wd->base.height;
@@ -1326,7 +1305,7 @@ void gmb_px_draw_ex(int wkind, int x, int y, int w, int h, const char* label,
                     const char* const* items, int nitems, double value, double vmin, double vmax,
                     const double* var, int first, const unsigned* colors, int ncolors)
 {
-    gmb_pix_widget_t wd; memset(&wd, 0, sizeof(wd));
+    gmb_widget_t wd; memset(&wd, 0, sizeof(wd));
     wd.kind = wkind;
     wd.base.x = x; wd.base.y = y; wd.base.width = w; wd.base.height = h;
     if (label) snprintf(wd.label, sizeof(wd.label), "%s", label);
@@ -1362,7 +1341,7 @@ static void draw_open_dropdowns(float sc)
 {
     int tl = (int)(GMB_GFX_TEXT_H() / sc + 0.5f); if (tl <= 0) tl = 14;
     for (int i = 0; i < g_nwid; i++) {
-        gmb_pix_widget_t* wd = &g_wid[i];
+        gmb_widget_t* wd = &g_wid[i];
         if (wd->kind == W_DATE && wd->open) {
             gmb_widget_style_t* s = &wd->style;
             int x = wd->base.x, y = wd->base.y, h = wd->base.height, cell = tl + 6;
@@ -1706,7 +1685,7 @@ void gmb_form_set_last_style(const char* spec)
 
 /* Proprieta' base VB (Name/Tag/ToolTip/Visible/Enabled/TabIndex/TabStop/Focus) passate
  * nella STESSA spec CSS-like dello stile: "name=OkButton visible=1 tabindex=2 focus". */
-static void apply_base_props(gmb_pix_widget_t* wd, const char* spec, int idx)
+static void apply_base_props(gmb_widget_t* wd, const char* spec, int idx)
 {
     if (!wd || !spec) return;
     static const char* keys[] = { "name", "tag", "tooltip", "visible", "enabled", "tabindex", "tabstop", "metric", "font", NULL };
@@ -1785,27 +1764,27 @@ static double tui_ctrl_value(gmb_control_t* c)
 {
     void* u = c->user;
     switch (c->ctrl_kind) {
-        case GMB_CK_CHECKBOX:    return ((gmb_checkbox_t*)u)->checked ? 1.0 : 0.0;
-        case GMB_CK_TOGGLE:      return ((gmb_toggle_button_t*)u)->pressed ? 1.0 : 0.0;
-        case GMB_CK_RADIO:       return (double)((gmb_radio_group_t*)u)->selected;
-        case GMB_CK_SLIDER:      return (double)((gmb_slider_t*)u)->value;
-        case GMB_CK_COMBOBOX:    return (double)((gmb_combobox_t*)u)->selected;
-        case GMB_CK_LISTBOX:     return (double)((gmb_listbox_t*)u)->selected;
-        case GMB_CK_SPINNER:     return (double)((gmb_spinner_t*)u)->index;
-        case GMB_CK_TAB:         return (double)((gmb_tab_t*)u)->selected;
-        case GMB_CK_GRID:        return (double)((gmb_grid_t*)u)->sel_row;
-        case GMB_CK_TREE:        return (double)((gmb_tree_view_t*)u)->selected_index;
-        case GMB_CK_COLORPICKER: return (double)((gmb_color_picker_t*)u)->selected_index;
-        case GMB_CK_NUMERICUPDOWN: return (double)((gmb_numeric_updown_t*)u)->value;
-        case GMB_CK_STARRATING:    return (double)((gmb_star_rating_t*)u)->value;
-        case GMB_CK_SCROLLBAR:     return (double)((gmb_scrollbar_t*)u)->value;
-        case GMB_CK_SCROLLVIEW:    return (double)((gmb_scroll_view_t*)u)->offset;
-        case GMB_CK_DATALIST:      return (double)((gmb_data_list_t*)u)->selected_index;
-        case GMB_CK_REORDERLISTBOX:return (double)((gmb_reorder_listbox_t*)u)->selected;
-        case GMB_CK_HEXVIEW:       return (double)((gmb_hex_view_t*)u)->offset;
-        case GMB_CK_LOGVIEW:       return (double)((gmb_log_view_t*)u)->offset;
-        case GMB_CK_DASHBOARD:     return (double)((gmb_dashboard_t*)u)->selected_index;
-        case GMB_CK_PROPERTYGRID:  return (double)((gmb_property_grid_t*)u)->selected_index;
+        case GMB_CK_CHECKBOX:    return ((gmb_widget_t*)u)->ival != 0 ? 1.0 : 0.0;
+        case GMB_CK_TOGGLE:      return ((gmb_widget_t*)u)->ival != 0 ? 1.0 : 0.0;
+        case GMB_CK_RADIO:       return (double)(int)((gmb_widget_t*)u)->ival;
+        case GMB_CK_SLIDER:      return ((gmb_widget_t*)u)->ival;
+        case GMB_CK_COMBOBOX:    return (double)(int)((gmb_widget_t*)u)->ival;
+        case GMB_CK_LISTBOX:     return (double)(int)((gmb_widget_t*)u)->ival;
+        case GMB_CK_SPINNER:     return (double)(int)(((gmb_widget_t*)u)->ival);
+        case GMB_CK_TAB:         return (double)(int)((gmb_widget_t*)u)->ival;
+        case GMB_CK_GRID:        return (double)(int)((gmb_widget_t*)u)->ival;
+        case GMB_CK_TREE:        return (double)(int)((gmb_widget_t*)u)->ival;
+        case GMB_CK_COLORPICKER: return (double)(int)((gmb_widget_t*)u)->ival;
+        case GMB_CK_NUMERICUPDOWN: return ((gmb_widget_t*)u)->ival;
+        case GMB_CK_STARRATING:    return ((gmb_widget_t*)u)->ival;
+        case GMB_CK_SCROLLBAR:     return ((gmb_widget_t*)u)->ival;
+        case GMB_CK_SCROLLVIEW:    return (double)((gmb_widget_t*)u)->first;
+        case GMB_CK_DATALIST:      return (double)(int)((gmb_widget_t*)u)->ival;
+        case GMB_CK_REORDERLISTBOX:return (double)(int)((gmb_widget_t*)u)->ival;
+        case GMB_CK_HEXVIEW:       return (double)((gmb_widget_t*)u)->first;
+        case GMB_CK_LOGVIEW:       return (double)((gmb_widget_t*)u)->first;
+        case GMB_CK_DASHBOARD:     return (double)(int)((gmb_widget_t*)u)->ival;
+        case GMB_CK_PROPERTYGRID:  return (double)(int)((gmb_widget_t*)u)->ival;
         default: return 0.0;
     }
 }
@@ -1827,9 +1806,9 @@ static int popup_area(gmb_control_t* c, int only_if_open, int* x, int* y, int* w
         case GMB_CK_COMBOBOX:
         {
             gmb_combobox_t* cb = (gmb_combobox_t*)c->user;
-            if ((only_if_open && !cb->open) || cb->items_count <= 0) return 0;
-            int n = cb->drop_down_height > 0 ? cb->drop_down_height : cb->items_count;
-            if (n > cb->items_count) n = cb->items_count;
+            if ((only_if_open && !cb->open) || cb->nitems <= 0) return 0;
+            int n = cb->drop_down_height > 0 ? cb->drop_down_height : cb->nitems;
+            if (n > cb->nitems) n = cb->nitems;
             *x = rx; *y = ry + rh0; *w = rw; *h = row * n;
             return 1;
         }
@@ -1842,12 +1821,13 @@ static int popup_area(gmb_control_t* c, int only_if_open, int* x, int* y, int* w
         }
         case GMB_CK_MENU:
         {
-            gmb_menu_t* m = (gmb_menu_t*)c->user;
-            if (only_if_open && !m->is_open) return 0;
-            if (m->items_count <= 0) return 0;
+            gmb_widget_t* m = (gmb_widget_t*)c->user;
+            if (only_if_open && !m->open) return 0;
+            if (m->nitems <= 0) return 0;
             /* dropdown del menu selezionato (sotto la barra) */
-            int idx = (m->selected_index >= 0 && m->selected_index < m->items_count) ? m->selected_index : 0;
-            int nsub = m->items[idx].sub_count;
+            int idx = ((int)m->ival >= 0 && (int)m->ival < m->nitems) ? (int)m->ival : 0;
+            gmb_menu_item_t* mit = gmb_menu_item_at((gmb_menu_t*)m, idx);
+            int nsub = mit ? mit->sub_count : 0;
             if (nsub <= 0) return 0;
             *x = rx; *y = ry + row + 2; *w = 180; *h = row * nsub + 8;
             return 1;
@@ -1945,39 +1925,41 @@ static void tui_ctrl_set_value(gmb_control_t* c, double v)
 {
     void* u = c->user;
     switch (c->ctrl_kind) {
-        case GMB_CK_CHECKBOX:    ((gmb_checkbox_t*)u)->checked = (v != 0.0); break;
-        case GMB_CK_TOGGLE:      ((gmb_toggle_button_t*)u)->pressed = (v != 0.0); break;
-        case GMB_CK_RADIO:       ((gmb_radio_group_t*)u)->selected = (int)v; break;
-        case GMB_CK_SLIDER:      ((gmb_slider_t*)u)->value = (int)v; break;
-        case GMB_CK_COMBOBOX:    ((gmb_combobox_t*)u)->selected = (int)v; break;
-        case GMB_CK_LISTBOX:     ((gmb_listbox_t*)u)->selected = (int)v; break;
-        case GMB_CK_SPINNER:     ((gmb_spinner_t*)u)->index = (int)v; break;
-        case GMB_CK_TAB:         ((gmb_tab_t*)u)->selected = (int)v; break;
-        case GMB_CK_GRID:        ((gmb_grid_t*)u)->sel_row = (int)v; break;
-        case GMB_CK_TREE:        ((gmb_tree_view_t*)u)->selected_index = (int)v; break;
-        case GMB_CK_COLORPICKER: ((gmb_color_picker_t*)u)->selected_index = (int)v; break;
-        case GMB_CK_NUMERICUPDOWN: ((gmb_numeric_updown_t*)u)->value = (int)v; break;
-        case GMB_CK_STARRATING:    ((gmb_star_rating_t*)u)->value = (int)v; break;
-        case GMB_CK_SCROLLBAR:     ((gmb_scrollbar_t*)u)->value = (int)v; break;
-        case GMB_CK_SCROLLVIEW:    ((gmb_scroll_view_t*)u)->offset = (int)v; break;
-        case GMB_CK_DATALIST:      ((gmb_data_list_t*)u)->selected_index = (int)v; break;
-        case GMB_CK_REORDERLISTBOX:((gmb_reorder_listbox_t*)u)->selected = (int)v; break;
-        case GMB_CK_HEXVIEW:       ((gmb_hex_view_t*)u)->offset = (int)v; break;
-        case GMB_CK_LOGVIEW:       ((gmb_log_view_t*)u)->offset = (int)v; break;
-        case GMB_CK_DASHBOARD:     ((gmb_dashboard_t*)u)->selected_index = (int)v; break;
-        case GMB_CK_PROPERTYGRID:  ((gmb_property_grid_t*)u)->selected_index = (int)v; break;
+        case GMB_CK_CHECKBOX:    ((gmb_widget_t*)u)->ival = (v != 0.0) ? 1.0 : 0.0; break;
+        case GMB_CK_TOGGLE:      ((gmb_widget_t*)u)->ival = (v != 0.0) ? 1.0 : 0.0; break;
+        case GMB_CK_RADIO:       ((gmb_widget_t*)u)->ival = (int)v; break;
+        case GMB_CK_SLIDER:      ((gmb_widget_t*)u)->ival = (int)v; break;
+        case GMB_CK_COMBOBOX:    ((gmb_widget_t*)u)->ival = (int)v; break;
+        case GMB_CK_LISTBOX:     ((gmb_widget_t*)u)->ival = (int)v; break;
+        case GMB_CK_SPINNER:     ((gmb_widget_t*)u)->ival = (int)v; break;
+        case GMB_CK_TAB:         ((gmb_widget_t*)u)->ival = (int)v; break;
+        case GMB_CK_GRID:        ((gmb_widget_t*)u)->ival = (int)v; break;
+        case GMB_CK_TREE:        ((gmb_widget_t*)u)->ival = (int)v; break;
+        case GMB_CK_COLORPICKER: ((gmb_widget_t*)u)->ival = (int)v; break;
+        case GMB_CK_NUMERICUPDOWN: ((gmb_widget_t*)u)->ival = (int)v; break;
+        case GMB_CK_STARRATING:    ((gmb_widget_t*)u)->ival = (int)v; break;
+        case GMB_CK_SCROLLBAR:     ((gmb_widget_t*)u)->ival = (int)v; break;
+        case GMB_CK_SCROLLVIEW:    ((gmb_widget_t*)u)->first = (int)v; break;
+        case GMB_CK_DATALIST:      ((gmb_widget_t*)u)->ival = (int)v; break;
+        case GMB_CK_REORDERLISTBOX:((gmb_widget_t*)u)->ival = (int)v; break;
+        case GMB_CK_HEXVIEW:       ((gmb_widget_t*)u)->first = (int)v; break;
+        case GMB_CK_LOGVIEW:       ((gmb_widget_t*)u)->first = (int)v; break;
+        case GMB_CK_DASHBOARD:     ((gmb_widget_t*)u)->ival = (int)v; break;
+        case GMB_CK_PROPERTYGRID:  ((gmb_widget_t*)u)->ival = (int)v; break;
         default: break;
     }
 }
+static int is_model_ctrl(gmb_control_t* c)
+{ return c && c->draw_fn == gmb_widget_draw_cells; }
 static const char* tui_ctrl_text(gmb_control_t* c)
 {
     static char _buf[256]; void* u = c->user; _buf[0] = 0;
+    if (is_model_ctrl(c)) return ((gmb_widget_t*)c)->label;
     switch (c->ctrl_kind) {
         case GMB_CK_CHECKBOX: snprintf(_buf, sizeof(_buf), "%s", ((gmb_checkbox_t*)u)->label); break;
         case GMB_CK_BUTTON:   snprintf(_buf, sizeof(_buf), "%s", ((gmb_button_t*)u)->label); break;
-        case GMB_CK_TEXTBOX:  snprintf(_buf, sizeof(_buf), "%s", ((gmb_text_input_t*)u)->text); break;
+        case GMB_CK_TEXTBOX:  snprintf(_buf, sizeof(_buf), "%s", ((gmb_widget_t*)u)->itext); break;
         case GMB_CK_TOGGLE:   snprintf(_buf, sizeof(_buf), "%s", ((gmb_toggle_button_t*)u)->caption); break;
-        case GMB_CK_STATUSBAR:snprintf(_buf, sizeof(_buf), "%s", ((gmb_status_bar_t*)u)->text); break;
         case GMB_CK_LABEL:    snprintf(_buf, sizeof(_buf), "%s", ((gmb_label_t*)u)->text); break;
         case GMB_CK_BIGTEXT:  snprintf(_buf, sizeof(_buf), "%s", ((gmb_big_text_t*)u)->text); break;
         default: return "";
@@ -1986,13 +1968,13 @@ static const char* tui_ctrl_text(gmb_control_t* c)
 }
 static void tui_ctrl_set_text(gmb_control_t* c, const char* str)
 {
+    if (is_model_ctrl(c)) { snprintf(((gmb_widget_t*)c)->label, sizeof(((gmb_widget_t*)c)->label), "%s", str ? str : ""); g_dirty = 1; return; }
     void* u = c->user;
     switch (c->ctrl_kind) {
         case GMB_CK_CHECKBOX: snprintf(((gmb_checkbox_t*)u)->label, sizeof(((gmb_checkbox_t*)u)->label), "%s", str); break;
         case GMB_CK_BUTTON:   snprintf(((gmb_button_t*)u)->label, sizeof(((gmb_button_t*)u)->label), "%s", str); break;
-        case GMB_CK_TEXTBOX:  snprintf(((gmb_text_input_t*)u)->text, sizeof(((gmb_text_input_t*)u)->text), "%s", str); break;
+        case GMB_CK_TEXTBOX:  snprintf(((gmb_widget_t*)u)->itext, sizeof(((gmb_widget_t*)u)->itext), "%s", str); ((gmb_widget_t*)u)->tcur = (int)strlen(((gmb_widget_t*)u)->itext); break;
         case GMB_CK_TOGGLE:   snprintf(((gmb_toggle_button_t*)u)->caption, sizeof(((gmb_toggle_button_t*)u)->caption), "%s", str); break;
-        case GMB_CK_STATUSBAR:snprintf(((gmb_status_bar_t*)u)->text, sizeof(((gmb_status_bar_t*)u)->text), "%s", str); break;
         case GMB_CK_LABEL:    snprintf(((gmb_label_t*)u)->text, sizeof(((gmb_label_t*)u)->text), "%s", str); break;
         case GMB_CK_BIGTEXT:  snprintf(((gmb_big_text_t*)u)->text, sizeof(((gmb_big_text_t*)u)->text), "%s", str); break;
         case GMB_CK_SPINNER:  if (str) gmb_spinner_set_preset((gmb_spinner_t*)u, str); break;
@@ -2074,31 +2056,31 @@ static void tui_ctrl_set(const char* name, const char* prop, double num, const c
     else if (!strcasecmp(prop,"errorcolor")) { if (str) { char b[160]; snprintf(b,sizeof(b),"errorcolor=%s",str); gmb_control_apply_style(c,b); } }
     else if (!strcasecmp(prop,"forecolor")||!strcasecmp(prop,"fg")||!strcasecmp(prop,"foreground")) { if (str) { char b[160]; snprintf(b,sizeof(b),"fg=%s",str); gmb_control_apply_style(c,b); } }
     else if (!strcasecmp(prop,"backcolor")||!strcasecmp(prop,"bg")||!strcasecmp(prop,"background")) { if (str) { char b[160]; snprintf(b,sizeof(b),"bg=%s",str); gmb_control_apply_style(c,b); } }
-    else if (!strcasecmp(prop,"min")||!strcasecmp(prop,"minvalue")) { if (c->ctrl_kind==GMB_CK_SLIDER) ((gmb_slider_t*)c->user)->min=(int)num; else if (c->ctrl_kind==GMB_CK_NUMERICUPDOWN) ((gmb_numeric_updown_t*)c->user)->min=(int)num; else if (c->ctrl_kind==GMB_CK_SCROLLBAR) ((gmb_scrollbar_t*)c->user)->min=(int)num; }
-    else if (!strcasecmp(prop,"max")||!strcasecmp(prop,"maxvalue")) { if (c->ctrl_kind==GMB_CK_SLIDER) ((gmb_slider_t*)c->user)->max=(int)num; else if (c->ctrl_kind==GMB_CK_NUMERICUPDOWN) ((gmb_numeric_updown_t*)c->user)->max=(int)num; else if (c->ctrl_kind==GMB_CK_STARRATING) ((gmb_star_rating_t*)c->user)->max=(int)num; else if (c->ctrl_kind==GMB_CK_SCROLLBAR) ((gmb_scrollbar_t*)c->user)->max=(int)num; }
-    else if (!strcasecmp(prop,"step")) { if (c->ctrl_kind==GMB_CK_SLIDER) ((gmb_slider_t*)c->user)->step=(int)num; else if (c->ctrl_kind==GMB_CK_NUMERICUPDOWN) ((gmb_numeric_updown_t*)c->user)->step=(int)num; }
-    else if (!strcasecmp(prop,"toprow")) { if (c->ctrl_kind==GMB_CK_LISTBOX) ((gmb_listbox_t*)c->user)->scroll_offset=(int)num; else if (c->ctrl_kind==GMB_CK_REORDERLISTBOX) ((gmb_reorder_listbox_t*)c->user)->top=(int)num; else if (c->ctrl_kind==GMB_CK_TBROWSE) ((gmb_browse_t*)c->user)->top_row=(int)num; }
-    else if (!strcasecmp(prop,"multi")||!strcasecmp(prop,"multiselect")) { if (c->ctrl_kind==GMB_CK_DATALIST) ((gmb_data_list_t*)c->user)->multi_select=(num!=0); else if (c->ctrl_kind==GMB_CK_REORDERLISTBOX) ((gmb_reorder_listbox_t*)c->user)->multi_select=(num!=0); }
-    else if (!strcasecmp(prop,"searchable")) { if (c->ctrl_kind==GMB_CK_DATALIST) ((gmb_data_list_t*)c->user)->searchable=(num!=0); }
-    else if (!strcasecmp(prop,"scrolloffset")) { if (c->ctrl_kind==GMB_CK_DATALIST) ((gmb_data_list_t*)c->user)->scroll_offset=(int)num; else if (c->ctrl_kind==GMB_CK_PROPERTYGRID) ((gmb_property_grid_t*)c->user)->scroll_offset=(int)num; else if (c->ctrl_kind==GMB_CK_TREE) ((gmb_tree_view_t*)c->user)->scroll_offset=(int)num; }
-    else if (!strcasecmp(prop,"open")) { if (c->ctrl_kind==GMB_CK_MENU) ((gmb_menu_t*)c->user)->is_open=(num!=0); else if (c->ctrl_kind==GMB_CK_COMBOBOX) ((gmb_combobox_t*)c->user)->open=(num!=0); else if (c->ctrl_kind==GMB_CK_DATEPICKER) ((gmb_date_picker_t*)c->user)->open=(num!=0); else if (c->ctrl_kind==GMB_CK_CONTEXTMENU) ((gmb_context_menu_t*)c->user)->open=(num!=0); }
-    else if (!strcasecmp(prop,"subselected")||!strcasecmp(prop,"subselectedindex")) { if (c->ctrl_kind==GMB_CK_MENU) ((gmb_menu_t*)c->user)->sub_selected_index=(int)num; }
-    else if (!strcasecmp(prop,"columns")) { if (c->ctrl_kind==GMB_CK_COLORPICKER) ((gmb_color_picker_t*)c->user)->columns=(int)num; }
-    else if (!strcasecmp(prop,"highlight")) { if (c->ctrl_kind==GMB_CK_COMBOBOX) ((gmb_combobox_t*)c->user)->highlight=(int)num; }
-    else if (!strcasecmp(prop,"dropdownheight")) { if (c->ctrl_kind==GMB_CK_COMBOBOX) ((gmb_combobox_t*)c->user)->drop_down_height=(int)num; }
-    else if (!strcasecmp(prop,"day")) { if (c->ctrl_kind==GMB_CK_DATEPICKER) ((gmb_date_picker_t*)c->user)->day=(int)num; }
-    else if (!strcasecmp(prop,"month")) { if (c->ctrl_kind==GMB_CK_DATEPICKER) ((gmb_date_picker_t*)c->user)->month=(int)num; }
-    else if (!strcasecmp(prop,"year")) { if (c->ctrl_kind==GMB_CK_DATEPICKER) ((gmb_date_picker_t*)c->user)->year=(int)num; }
-    else if (!strcasecmp(prop,"bytesperrow")) { if (c->ctrl_kind==GMB_CK_HEXVIEW) ((gmb_hex_view_t*)c->user)->bytes_per_row=(int)num; }
+    else if (!strcasecmp(prop,"min")||!strcasecmp(prop,"minvalue")) { if (c->ctrl_kind==GMB_CK_SLIDER) ((gmb_widget_t*)c->user)->vmin=(double)(int)num; else if (c->ctrl_kind==GMB_CK_NUMERICUPDOWN) ((gmb_widget_t*)c->user)->vmin=(double)(int)num; else if (c->ctrl_kind==GMB_CK_SCROLLBAR) ((gmb_widget_t*)c->user)->vmin=(double)(int)num; }
+    else if (!strcasecmp(prop,"max")||!strcasecmp(prop,"maxvalue")) { if (c->ctrl_kind==GMB_CK_SLIDER) ((gmb_widget_t*)c->user)->vmax=(double)(int)num; else if (c->ctrl_kind==GMB_CK_NUMERICUPDOWN) ((gmb_widget_t*)c->user)->vmax=(double)(int)num; else if (c->ctrl_kind==GMB_CK_STARRATING) ((gmb_widget_t*)c->user)->vmax=(int)num; else if (c->ctrl_kind==GMB_CK_SCROLLBAR) ((gmb_widget_t*)c->user)->vmax=(double)(int)num; }
+    else if (!strcasecmp(prop,"step")) { if (c->ctrl_kind==GMB_CK_SLIDER) ((gmb_widget_t*)c->user)->vstep=(double)(int)num; else if (c->ctrl_kind==GMB_CK_NUMERICUPDOWN) ((gmb_widget_t*)c->user)->vstep=(double)(int)num; }
+    else if (!strcasecmp(prop,"toprow")) { if (c->ctrl_kind==GMB_CK_LISTBOX) ((gmb_widget_t*)c->user)->first=(int)num; else if (c->ctrl_kind==GMB_CK_REORDERLISTBOX) ((gmb_widget_t*)c->user)->first=(int)num; else if (c->ctrl_kind==GMB_CK_TBROWSE) ((gmb_browse_t*)c->user)->top_row=(int)num; }
+    else if (!strcasecmp(prop,"multi")||!strcasecmp(prop,"multiselect")) { if (c->ctrl_kind==GMB_CK_DATALIST) ((gmb_widget_t*)c->user)->multi_select=(num!=0); else if (c->ctrl_kind==GMB_CK_REORDERLISTBOX) ((gmb_widget_t*)c->user)->multi_select=(num!=0); }
+    else if (!strcasecmp(prop,"searchable")) { if (c->ctrl_kind==GMB_CK_DATALIST) ((gmb_widget_t*)c->user)->searchable=(num!=0); }
+    else if (!strcasecmp(prop,"scrolloffset")) { if (c->ctrl_kind==GMB_CK_DATALIST) ((gmb_widget_t*)c->user)->first=(int)num; else if (c->ctrl_kind==GMB_CK_PROPERTYGRID) ((gmb_widget_t*)c->user)->first=(int)num; else if (c->ctrl_kind==GMB_CK_TREE) ((gmb_widget_t*)c->user)->first=(int)num; }
+    else if (!strcasecmp(prop,"open")) { if (c->ctrl_kind==GMB_CK_MENU) ((gmb_widget_t*)c->user)->open=(num!=0); else if (c->ctrl_kind==GMB_CK_COMBOBOX) ((gmb_widget_t*)c->user)->open=(num!=0); else if (c->ctrl_kind==GMB_CK_DATEPICKER) ((gmb_date_picker_t*)c->user)->open=(num!=0); else if (c->ctrl_kind==GMB_CK_CONTEXTMENU) ((gmb_context_menu_t*)c->user)->open=(num!=0); }
+    else if (!strcasecmp(prop,"subselected")||!strcasecmp(prop,"subselectedindex")) { if (c->ctrl_kind==GMB_CK_MENU) ((gmb_widget_t*)c->user)->sub_sel=(int)num; }
+    else if (!strcasecmp(prop,"columns")) { if (c->ctrl_kind==GMB_CK_COLORPICKER) ((gmb_widget_t*)c->user)->columns=(int)num; }
+    else if (!strcasecmp(prop,"highlight")) { if (c->ctrl_kind==GMB_CK_COMBOBOX) ((gmb_widget_t*)c->user)->highlight=(int)num; }
+    else if (!strcasecmp(prop,"dropdownheight")) { if (c->ctrl_kind==GMB_CK_COMBOBOX) ((gmb_widget_t*)c->user)->drop_down_height=(int)num; }
+    else if (!strcasecmp(prop,"day")) { if (c->ctrl_kind==GMB_CK_DATEPICKER) ((gmb_widget_t*)c->user)->sd=(int)num; }
+    else if (!strcasecmp(prop,"month")) { if (c->ctrl_kind==GMB_CK_DATEPICKER) ((gmb_widget_t*)c->user)->sm=(int)num; }
+    else if (!strcasecmp(prop,"year")) { if (c->ctrl_kind==GMB_CK_DATEPICKER) ((gmb_widget_t*)c->user)->sy=(int)num; }
+    else if (!strcasecmp(prop,"bytesperrow")) { if (c->ctrl_kind==GMB_CK_HEXVIEW) ((gmb_widget_t*)c->user)->bytes_per_row=(int)num; }
     else if (!strcasecmp(prop,"showaddress")) { if (c->ctrl_kind==GMB_CK_HEXVIEW) ((gmb_hex_view_t*)c->user)->show_address=(num!=0); }
-    else if (!strcasecmp(prop,"showascii")) { if (c->ctrl_kind==GMB_CK_HEXVIEW) ((gmb_hex_view_t*)c->user)->show_ascii=(num!=0); }
-    else if (!strcasecmp(prop,"minlevel")) { if (c->ctrl_kind==GMB_CK_LOGVIEW) ((gmb_log_view_t*)c->user)->min_level=(int)num; }
-    else if (!strcasecmp(prop,"capacity")) { if (c->ctrl_kind==GMB_CK_LOGVIEW) ((gmb_log_view_t*)c->user)->capacity=(int)num; }
-    else if (!strcasecmp(prop,"barwidth")) { if (c->ctrl_kind==GMB_CK_DASHBOARD) ((gmb_dashboard_t*)c->user)->bar_width=(int)num; }
-    else if (!strcasecmp(prop,"ctrlheld")) { if (c->ctrl_kind==GMB_CK_REORDERLISTBOX) ((gmb_reorder_listbox_t*)c->user)->ctrl_held=(num!=0); }
+    else if (!strcasecmp(prop,"showascii")) { if (c->ctrl_kind==GMB_CK_HEXVIEW) ((gmb_widget_t*)c->user)->show_ascii=(num!=0); }
+    else if (!strcasecmp(prop,"minlevel")) { if (c->ctrl_kind==GMB_CK_LOGVIEW) ((gmb_widget_t*)c->user)->min_level=(int)num; }
+    else if (!strcasecmp(prop,"capacity")) { if (c->ctrl_kind==GMB_CK_LOGVIEW) ((gmb_widget_t*)c->user)->capacity=(int)num; }
+    else if (!strcasecmp(prop,"barwidth")) { if (c->ctrl_kind==GMB_CK_DASHBOARD) ((gmb_widget_t*)c->user)->bar_width=(int)num; }
+    else if (!strcasecmp(prop,"ctrlheld")) { if (c->ctrl_kind==GMB_CK_REORDERLISTBOX) ((gmb_widget_t*)c->user)->ctrl_held=(num!=0); }
     else if (!strcasecmp(prop,"leftcol")) { if (c->ctrl_kind==GMB_CK_TBROWSE) ((gmb_browse_t*)c->user)->left_col=(int)num; }
     else if (!strcasecmp(prop,"showheader")) { if (c->ctrl_kind==GMB_CK_TBROWSE) ((gmb_browse_t*)c->user)->show_header=(num!=0); }
-    else if (!strcasecmp(prop,"autolite")) { if (c->ctrl_kind==GMB_CK_TBROWSE) ((gmb_browse_t*)c->user)->auto_lite=(num!=0); else if (c->ctrl_kind==GMB_CK_GRID) ((gmb_grid_t*)c->user)->auto_lite=(num!=0); }
+    else if (!strcasecmp(prop,"autolite")) { if (c->ctrl_kind==GMB_CK_TBROWSE) ((gmb_browse_t*)c->user)->auto_lite=(num!=0); else if (c->ctrl_kind==GMB_CK_GRID) ((gmb_widget_t*)c->user)->auto_lite=(num!=0); }
     /* TBROWSE sort/filter: espone il motore già presente (gmb_browse_sort/set_filter).
        `sort` = colonna (col), `sortdir` = 0/1 asc/desc, `filter` = testo. */
     else if (!strcasecmp(prop,"sort")||!strcasecmp(prop,"sortcol")) { if (c->ctrl_kind==GMB_CK_TBROWSE) { gmb_browse_t* br=(gmb_browse_t*)c->user; gmb_browse_sort(br,(int)num,gmb_browse_sort_dir(br)); } }
@@ -2112,10 +2094,10 @@ static void tui_ctrl_set(const char* name, const char* prop, double num, const c
     else if (!strcasecmp(prop,"readonly")||!strcasecmp(prop,"read_only")) { if (c->ctrl_kind==GMB_CK_TEXTBOX) ((gmb_text_input_t*)c->user)->read_only=(num!=0); }
     else if (!strcasecmp(prop,"password")||!strcasecmp(prop,"passwordmode")) { if (c->ctrl_kind==GMB_CK_TEXTBOX) ((gmb_text_input_t*)c->user)->password_mode=(num!=0); }
     else if (!strcasecmp(prop,"maxlength")||!strcasecmp(prop,"max_length")) { if (c->ctrl_kind==GMB_CK_TEXTBOX) ((gmb_text_input_t*)c->user)->max_length=(int)num; }
-    else if (!strcasecmp(prop,"cursorrow")) { if (c->ctrl_kind==GMB_CK_GRID) ((gmb_grid_t*)c->user)->cursor_row=(int)num; }
-    else if (!strcasecmp(prop,"cursorcol")) { if (c->ctrl_kind==GMB_CK_GRID) ((gmb_grid_t*)c->user)->cursor_col=(int)num; }
-    else if (!strcasecmp(prop,"selrow")) { if (c->ctrl_kind==GMB_CK_GRID) { ((gmb_grid_t*)c->user)->sel_row=(int)num; ((gmb_grid_t*)c->user)->has_selected=true; } }
-    else if (!strcasecmp(prop,"selcol")) { if (c->ctrl_kind==GMB_CK_GRID) ((gmb_grid_t*)c->user)->sel_col=(int)num; }
+    else if (!strcasecmp(prop,"cursorrow")) { if (c->ctrl_kind==GMB_CK_GRID) ((gmb_widget_t*)c->user)->cursor_row=(int)num; }
+    else if (!strcasecmp(prop,"cursorcol")) { if (c->ctrl_kind==GMB_CK_GRID) ((gmb_widget_t*)c->user)->cursor_col=(int)num; }
+    else if (!strcasecmp(prop,"selrow")) { if (c->ctrl_kind==GMB_CK_GRID) { ((gmb_widget_t*)c->user)->ival=(int)num; ((gmb_grid_t*)c->user)->has_selected=true; } }
+    else if (!strcasecmp(prop,"selcol")) { if (c->ctrl_kind==GMB_CK_GRID) ((gmb_widget_t*)c->user)->sel_col=(int)num; }
     else if (!strcasecmp(prop, "modal")) {
         if (num != 0) gmb_form_modal_open(c);
         else if (gmb_form_modal_control() == c) gmb_form_modal_close();
@@ -2146,19 +2128,19 @@ static double tui_ctrl_get(const char* name, const char* prop)
     if (!strcasecmp(prop,"metric")||!strcasecmp(prop,"coordmode")) return c->coord_mode;
     if (!strcasecmp(prop,"value")||!strcasecmp(prop,"selected")||!strcasecmp(prop,"index")||!strcasecmp(prop,"listindex")) return tui_ctrl_value(c);
     if (!strcasecmp(prop,"listcount")) {
-        if (c->ctrl_kind==GMB_CK_LISTBOX) return (double)((gmb_listbox_t*)c->user)->items_count;
-        if (c->ctrl_kind==GMB_CK_COMBOBOX) return (double)((gmb_combobox_t*)c->user)->items_count;
+        if (c->ctrl_kind==GMB_CK_LISTBOX) return (double)((gmb_widget_t*)c->user)->nitems;
+        if (c->ctrl_kind==GMB_CK_COMBOBOX) return (double)((gmb_widget_t*)c->user)->nitems;
         return 0;
     }
     if (!strcasecmp(prop,"uppercase")) return c->uppercase;
     if (!strcasecmp(prop,"haserror")||!strcasecmp(prop,"error")) return c->has_error;
-    if (!strcasecmp(prop,"min")||!strcasecmp(prop,"minvalue")) { if (c->ctrl_kind==GMB_CK_SLIDER) return ((gmb_slider_t*)c->user)->min; if (c->ctrl_kind==GMB_CK_NUMERICUPDOWN) return ((gmb_numeric_updown_t*)c->user)->min; if (c->ctrl_kind==GMB_CK_SCROLLBAR) return ((gmb_scrollbar_t*)c->user)->min; return 0; }
-    if (!strcasecmp(prop,"max")||!strcasecmp(prop,"maxvalue")) { if (c->ctrl_kind==GMB_CK_SLIDER) return ((gmb_slider_t*)c->user)->max; if (c->ctrl_kind==GMB_CK_NUMERICUPDOWN) return ((gmb_numeric_updown_t*)c->user)->max; if (c->ctrl_kind==GMB_CK_STARRATING) return ((gmb_star_rating_t*)c->user)->max; if (c->ctrl_kind==GMB_CK_SCROLLBAR) return ((gmb_scrollbar_t*)c->user)->max; return 0; }
-    if (!strcasecmp(prop,"step")) { if (c->ctrl_kind==GMB_CK_SLIDER) return ((gmb_slider_t*)c->user)->step; if (c->ctrl_kind==GMB_CK_NUMERICUPDOWN) return ((gmb_numeric_updown_t*)c->user)->step; return 0; }
-    if (!strcasecmp(prop,"toprow")) { if (c->ctrl_kind==GMB_CK_LISTBOX) return ((gmb_listbox_t*)c->user)->scroll_offset; if (c->ctrl_kind==GMB_CK_REORDERLISTBOX) return ((gmb_reorder_listbox_t*)c->user)->top; if (c->ctrl_kind==GMB_CK_TBROWSE) return ((gmb_browse_t*)c->user)->top_row; return 0; }
+    if (!strcasecmp(prop,"min")||!strcasecmp(prop,"minvalue")) { if (c->ctrl_kind==GMB_CK_SLIDER) return ((gmb_widget_t*)c->user)->vmin; if (c->ctrl_kind==GMB_CK_NUMERICUPDOWN) return ((gmb_widget_t*)c->user)->vmin; if (c->ctrl_kind==GMB_CK_SCROLLBAR) return ((gmb_widget_t*)c->user)->vmin; return 0; }
+    if (!strcasecmp(prop,"max")||!strcasecmp(prop,"maxvalue")) { if (c->ctrl_kind==GMB_CK_SLIDER) return ((gmb_widget_t*)c->user)->vmax; if (c->ctrl_kind==GMB_CK_NUMERICUPDOWN) return ((gmb_widget_t*)c->user)->vmax; if (c->ctrl_kind==GMB_CK_STARRATING) return ((gmb_widget_t*)c->user)->vmax; if (c->ctrl_kind==GMB_CK_SCROLLBAR) return ((gmb_widget_t*)c->user)->vmax; return 0; }
+    if (!strcasecmp(prop,"step")) { if (c->ctrl_kind==GMB_CK_SLIDER) return ((gmb_widget_t*)c->user)->vstep; if (c->ctrl_kind==GMB_CK_NUMERICUPDOWN) return ((gmb_widget_t*)c->user)->vstep; return 0; }
+    if (!strcasecmp(prop,"toprow")) { if (c->ctrl_kind==GMB_CK_LISTBOX) return ((gmb_widget_t*)c->user)->first; if (c->ctrl_kind==GMB_CK_REORDERLISTBOX) return ((gmb_widget_t*)c->user)->first; if (c->ctrl_kind==GMB_CK_TBROWSE) return ((gmb_browse_t*)c->user)->top_row; return 0; }
     if (!strcasecmp(prop,"leftcol")) return c->ctrl_kind==GMB_CK_TBROWSE ? ((gmb_browse_t*)c->user)->left_col : 0;
     if (!strcasecmp(prop,"showheader")) return c->ctrl_kind==GMB_CK_TBROWSE ? ((gmb_browse_t*)c->user)->show_header : 0;
-    if (!strcasecmp(prop,"autolite")) { if (c->ctrl_kind==GMB_CK_TBROWSE) return ((gmb_browse_t*)c->user)->auto_lite; if (c->ctrl_kind==GMB_CK_GRID) return ((gmb_grid_t*)c->user)->auto_lite; return 0; }
+    if (!strcasecmp(prop,"autolite")) { if (c->ctrl_kind==GMB_CK_TBROWSE) return ((gmb_browse_t*)c->user)->auto_lite; if (c->ctrl_kind==GMB_CK_GRID) return ((gmb_widget_t*)c->user)->auto_lite; return 0; }
     if (!strcasecmp(prop,"sort")||!strcasecmp(prop,"sortcol")) return c->ctrl_kind==GMB_CK_TBROWSE ? gmb_browse_sort_col((gmb_browse_t*)c->user) : -1;
     if (!strcasecmp(prop,"sortdir")||!strcasecmp(prop,"sortdesc")) return c->ctrl_kind==GMB_CK_TBROWSE ? gmb_browse_sort_dir((gmb_browse_t*)c->user) : 0;
     if (!strcasecmp(prop,"align")||!strcasecmp(prop,"alignment")) { if (c->ctrl_kind==GMB_CK_LABEL) return ((gmb_label_t*)c->user)->align; if (c->ctrl_kind==GMB_CK_GRID) return ((gmb_grid_t*)c->user)->align; return 0; }
@@ -2166,18 +2148,18 @@ static double tui_ctrl_get(const char* name, const char* prop)
     if (!strcasecmp(prop,"readonly")||!strcasecmp(prop,"read_only")) return c->ctrl_kind==GMB_CK_TEXTBOX ? ((gmb_text_input_t*)c->user)->read_only : 0;
     if (!strcasecmp(prop,"password")||!strcasecmp(prop,"passwordmode")) return c->ctrl_kind==GMB_CK_TEXTBOX ? ((gmb_text_input_t*)c->user)->password_mode : 0;
     if (!strcasecmp(prop,"maxlength")||!strcasecmp(prop,"max_length")) return c->ctrl_kind==GMB_CK_TEXTBOX ? ((gmb_text_input_t*)c->user)->max_length : 0;
-    if (!strcasecmp(prop,"cursorrow")) return c->ctrl_kind==GMB_CK_GRID ? (double)((gmb_grid_t*)c->user)->cursor_row : 0;
-    if (!strcasecmp(prop,"cursorcol")) return c->ctrl_kind==GMB_CK_GRID ? (double)((gmb_grid_t*)c->user)->cursor_col : 0;
-    if (!strcasecmp(prop,"bytesperrow")) return c->ctrl_kind==GMB_CK_HEXVIEW ? ((gmb_hex_view_t*)c->user)->bytes_per_row : 0;
+    if (!strcasecmp(prop,"cursorrow")) return c->ctrl_kind==GMB_CK_GRID ? (double)((gmb_widget_t*)c->user)->cursor_row : 0;
+    if (!strcasecmp(prop,"cursorcol")) return c->ctrl_kind==GMB_CK_GRID ? (double)((gmb_widget_t*)c->user)->cursor_col : 0;
+    if (!strcasecmp(prop,"bytesperrow")) return c->ctrl_kind==GMB_CK_HEXVIEW ? ((gmb_widget_t*)c->user)->bytes_per_row : 0;
     if (!strcasecmp(prop,"showaddress")) return c->ctrl_kind==GMB_CK_HEXVIEW ? ((gmb_hex_view_t*)c->user)->show_address : 0;
-    if (!strcasecmp(prop,"showascii")) return c->ctrl_kind==GMB_CK_HEXVIEW ? ((gmb_hex_view_t*)c->user)->show_ascii : 0;
-    if (!strcasecmp(prop,"minlevel")) return c->ctrl_kind==GMB_CK_LOGVIEW ? ((gmb_log_view_t*)c->user)->min_level : 0;
-    if (!strcasecmp(prop,"barwidth")) return c->ctrl_kind==GMB_CK_DASHBOARD ? ((gmb_dashboard_t*)c->user)->bar_width : 0;
-    if (!strcasecmp(prop,"columns")) return c->ctrl_kind==GMB_CK_COLORPICKER ? ((gmb_color_picker_t*)c->user)->columns : 0;
-    if (!strcasecmp(prop,"highlight")) return c->ctrl_kind==GMB_CK_COMBOBOX ? ((gmb_combobox_t*)c->user)->highlight : 0;
-    if (!strcasecmp(prop,"day")) return c->ctrl_kind==GMB_CK_DATEPICKER ? ((gmb_date_picker_t*)c->user)->day : 0;
-    if (!strcasecmp(prop,"month")) return c->ctrl_kind==GMB_CK_DATEPICKER ? ((gmb_date_picker_t*)c->user)->month : 0;
-    if (!strcasecmp(prop,"year")) return c->ctrl_kind==GMB_CK_DATEPICKER ? ((gmb_date_picker_t*)c->user)->year : 0;
+    if (!strcasecmp(prop,"showascii")) return c->ctrl_kind==GMB_CK_HEXVIEW ? ((gmb_widget_t*)c->user)->show_ascii : 0;
+    if (!strcasecmp(prop,"minlevel")) return c->ctrl_kind==GMB_CK_LOGVIEW ? ((gmb_widget_t*)c->user)->min_level : 0;
+    if (!strcasecmp(prop,"barwidth")) return c->ctrl_kind==GMB_CK_DASHBOARD ? ((gmb_widget_t*)c->user)->bar_width : 0;
+    if (!strcasecmp(prop,"columns")) return c->ctrl_kind==GMB_CK_COLORPICKER ? ((gmb_widget_t*)c->user)->columns : 0;
+    if (!strcasecmp(prop,"highlight")) return c->ctrl_kind==GMB_CK_COMBOBOX ? ((gmb_widget_t*)c->user)->highlight : 0;
+    if (!strcasecmp(prop,"day")) return c->ctrl_kind==GMB_CK_DATEPICKER ? ((gmb_widget_t*)c->user)->sd : 0;
+    if (!strcasecmp(prop,"month")) return c->ctrl_kind==GMB_CK_DATEPICKER ? ((gmb_widget_t*)c->user)->sm : 0;
+    if (!strcasecmp(prop,"year")) return c->ctrl_kind==GMB_CK_DATEPICKER ? ((gmb_widget_t*)c->user)->sy : 0;
     { const char* extra = control_extra_get(c, prop); if (extra) return atof(extra); }
     return 0;
 }
@@ -2191,11 +2173,11 @@ static const char* tui_ctrl_get_str(const char* name, const char* prop)
     if (!strcasecmp(prop,"items")||!strcasecmp(prop,"list")) {
         static char _ib[4096]; _ib[0] = 0; void* u = c->user; int off = 0;
         if (c->ctrl_kind == GMB_CK_LISTBOX) { gmb_listbox_t* l = (gmb_listbox_t*)u;
-            for (int i = 0; i < l->items_count; i++) { if (i) off += snprintf(_ib + off, sizeof(_ib) - off, "|"); off += snprintf(_ib + off, sizeof(_ib) - off, "%s", l->items[i]); } return _ib; }
+            for (int i = 0; i < l->nitems; i++) { if (i) off += snprintf(_ib + off, sizeof(_ib) - off, "|"); off += snprintf(_ib + off, sizeof(_ib) - off, "%s", l->items[i]); } return _ib; }
         if (c->ctrl_kind == GMB_CK_COMBOBOX) { gmb_combobox_t* l = (gmb_combobox_t*)u;
-            for (int i = 0; i < l->items_count; i++) { if (i) off += snprintf(_ib + off, sizeof(_ib) - off, "|"); off += snprintf(_ib + off, sizeof(_ib) - off, "%s", l->items[i]); } return _ib; }
+            for (int i = 0; i < l->nitems; i++) { if (i) off += snprintf(_ib + off, sizeof(_ib) - off, "|"); off += snprintf(_ib + off, sizeof(_ib) - off, "%s", l->items[i]); } return _ib; }
         if (c->ctrl_kind == GMB_CK_TAB) { gmb_tab_t* l = (gmb_tab_t*)u;
-            for (int i = 0; i < l->tabs_count; i++) { if (i) off += snprintf(_ib + off, sizeof(_ib) - off, "|"); off += snprintf(_ib + off, sizeof(_ib) - off, "%s", l->tabs[i]); } return _ib; }
+            for (int i = 0; i < l->nitems; i++) { if (i) off += snprintf(_ib + off, sizeof(_ib) - off, "|"); off += snprintf(_ib + off, sizeof(_ib) - off, "%s", l->items[i]); } return _ib; }
         if (c->ctrl_kind == GMB_CK_GRID) { gmb_grid_t* l = (gmb_grid_t*)u;
             for (int i = 0; i < l->cells_count; i++) { if (i) off += snprintf(_ib + off, sizeof(_ib) - off, "|"); off += snprintf(_ib + off, sizeof(_ib) - off, "%s", l->cells[i]); } return _ib; }
         return "";
@@ -2219,7 +2201,7 @@ void gmb_form_control_set(const char* name, const char* prop, double num, const 
     if (!prop) return;
     /* rect prima della modifica (per il repaint incrementale) */
     int ox0, oy0, ow0, oh0; form_control_px_rect(b ? &g_btns[i].base : &g_wid[i].base, &ox0, &oy0, &ow0, &oh0);
-    gmb_pix_widget_t* w = b ? NULL : &g_wid[i];
+    gmb_widget_t* w = b ? NULL : &g_wid[i];
     gmb_form_btn_t* t = b ? &g_btns[i] : NULL;
     if      (!strcasecmp(prop, "left") || !strcasecmp(prop, "x"))      { if (w) w->base.x = (int)num; else t->base.x = (int)num; }
     else if (!strcasecmp(prop, "top") || !strcasecmp(prop, "y"))       { if (w) w->base.y = (int)num; else t->base.y = (int)num; }
@@ -2275,7 +2257,7 @@ void gmb_form_control_set(const char* name, const char* prop, double num, const 
 double gmb_form_control_get(const char* name, const char* prop)
 {
     int b; int i = ctrl_find(name, &b); if (i < 0) return tui_ctrl_get(name, prop); if (!prop) return 0;
-    gmb_pix_widget_t* w = b ? NULL : &g_wid[i];
+    gmb_widget_t* w = b ? NULL : &g_wid[i];
     gmb_form_btn_t* t = b ? &g_btns[i] : NULL;
     if      (!strcasecmp(prop, "left") || !strcasecmp(prop, "x"))   return w ? w->base.x : t->base.x;
     else if (!strcasecmp(prop, "top") || !strcasecmp(prop, "y"))    return w ? w->base.y : t->base.y;
@@ -2336,7 +2318,7 @@ void gmb_form_control_zorder(const char* name, int front)
 {
     int b; int i = ctrl_find(name, &b); if (i < 0) return;
     if (!b && g_nwid > 1) {
-        gmb_pix_widget_t tmp = g_wid[i];
+        gmb_widget_t tmp = g_wid[i];
         if (front) { for (int k = i; k < g_nwid - 1; k++) g_wid[k] = g_wid[k + 1]; g_wid[g_nwid - 1] = tmp; }
         else       { for (int k = i; k > 0; k--) g_wid[k] = g_wid[k - 1]; g_wid[0] = tmp; }
     } else if (b && g_nbtn > 1) {
@@ -2409,7 +2391,7 @@ static int form_add_widget(int kind, int x, int y, int w, int h, const char* ite
         if (!warned) { warned = 1; fprintf(stderr, "[gmb_form] registro PIENO: GMB_FORM_MAX_WIDGETS=%d (controllo ignorato)\n", GMB_FORM_MAX_WIDGETS); }
         return -1;
     }
-    gmb_pix_widget_t* wd = &g_wid[g_nwid];
+    gmb_widget_t* wd = &g_wid[g_nwid];
     memset(wd, 0, sizeof(*wd));
     wd->kind = kind; wd->base.x = x; wd->base.y = y; wd->base.width = w; wd->base.height = h; wd->var = var; wd->ival = var ? *var : 0.0;
     wd->base.visible = 1; wd->base.enabled = 1; wd->base.tab_stop = 1;
@@ -2425,7 +2407,7 @@ static int form_add_widget(int kind, int x, int y, int w, int h, const char* ite
         default: break;
     }
     wd->style = gmb_widget_style_current();
-    if (items) wd->nitems = form_split_items(items, wd->items, 8);
+    if (items) wd->nitems = form_split_items(items, wd->items, 32);
     g_dirty = 1;
     g_last_added = g_nwid;
     g_last_handle = g_nwid;   /* handle widget */
@@ -2547,7 +2529,7 @@ int gmb_form_add_qr(int x, int y, int w, int h, const char* text) { return gfx_a
 int gmb_form_add_richtext(int x, int y, int w, int h, const char* text) { return gfx_add_widget(W_RICHTEXT, x, y, w, h, text, text); }
 int gmb_form_add_halfblock(int x, int y, int w, int h, const char* label) { return gfx_add_widget(W_HALFBLOCK, x, y, w, h, label, NULL); }
 int gmb_form_add_tiling(int x, int y, int w, int h, const char* label) { return gfx_add_widget(W_TILING, x, y, w, h, label, NULL); }
-static int grid_cell(const gmb_pix_widget_t* wd, int r, int c, char* out, int cap)
+static int grid_cell(const gmb_widget_t* wd, int r, int c, char* out, int cap)
 {
     const char* p = wd->gdata; int row = 0;
     while (*p && row < r) { if (*p == ';') row++; p++; }
@@ -2558,90 +2540,50 @@ static int grid_cell(const gmb_pix_widget_t* wd, int r, int c, char* out, int ca
     int i = 0; while (*p && *p != ';' && *p != '|' && i < cap - 1) out[i++] = *p++;
     out[i] = 0; return 1;
 }
-/* ── PITTURA "COME LA GUI" DI UN CONTROLLO NON REGISTRATO ────────────────────
- * I controlli TUI hanno il loro stato (struct proprie) ma devono avere lo STESSO
- * aspetto grafico dei controlli GUI. Invece di duplicare dieci renderer, si
- * costruisce un widget FORM temporaneo e lo si dipinge con `draw_one_widget`:
- * unica fonte di verità per l'aspetto (AGENTS §0bis).
- * `kind` = W_TOGGLE/W_TABS/W_STATUSBAR/W_TRACK/W_RADIO/W_PANEL/W_LISTBOX/
- *          W_DROPDOWN/W_COLORPICKER. */
-static int paint_kind_from_name(const char* k)
+/* ── RENDERER PIXEL DEL MODELLO UNICO ───────────────────────────────────────
+ * Il controllo TUI *è* un gmb_widget_t: qui non si converte nulla e non si
+ * costruisce un widget temporaneo. Si dipinge lo stato esistente con
+ * draw_one_widget(), l'unico renderer grafico dei controlli. */
+void gmb_widget_draw_px(void* u, gmb_control_t* c)
 {
-    if (!k) return 0;
-    if (!strcasecmp(k, "toggle"))     return W_TOGGLE;
-    if (!strcasecmp(k, "tabs"))       return W_TABS;
-    if (!strcasecmp(k, "statusbar"))  return W_STATUSBAR;
-    if (!strcasecmp(k, "track"))      return W_TRACK;
-    if (!strcasecmp(k, "radio"))      return W_RADIO;
-    if (!strcasecmp(k, "panel"))      return W_PANEL;
-    if (!strcasecmp(k, "listbox"))    return W_LISTBOX;
-    if (!strcasecmp(k, "dropdown"))   return W_DROPDOWN;
-    if (!strcasecmp(k, "colorpicker"))return W_COLORPICKER;
-    if (!strcasecmp(k, "progress"))   return W_PROGRESS;
-    if (!strcasecmp(k, "check"))      return W_CHECK;
-    return 0;
-}
-
-void gmb_form_paint_widget_px(const char* kind, int x, int y, int w, int h,
-                              const char* items_csv, int sel, int first,
-                              double vmin, double vmax, double value,
-                              const char* label, const char* colors_csv)
-{
+    gmb_widget_t* g = (gmb_widget_t*)(u ? u : c);
+    if (!g || !c) return;
     float sc = GMB_GFX_RENDER_SCALE(); if (sc <= 0.0f) sc = 1.0f;
-    gmb_pix_widget_t wd;
-    memset(&wd, 0, sizeof(wd));
-    wd.kind = paint_kind_from_name(kind);
-    if (!wd.kind) return;
-    wd.base.x = x; wd.base.y = y; wd.base.width = w; wd.base.height = h;
-    wd.base.visible = 1; wd.base.enabled = 1;
-    wd.style = gmb_widget_style_current();
-    if (label) snprintf(wd.label, sizeof(wd.label), "%s", label);
-    if (items_csv && *items_csv) wd.nitems = form_split_items(items_csv, wd.items, 8);
-    wd.ival = value; wd.vmin = vmin; wd.vmax = vmax; wd.first = first;
-    if (wd.kind == W_COLORPICKER)
+    /* Le factory TUI posizionano in CELLE finché il frame non calcola il rect
+     * PIXEL: qui si usa il rect pixel, come ogni altro renderer grafico. La
+     * geometria LOGICA (dichiarata dal programma) si ripristina subito dopo:
+     * il transform del frame riparte sempre da x/y/w/h, mai dal pixel. */
+    int lx = c->x, ly = c->y, lw = c->width, lh = c->height;
+    if (c->px_w > 0) { g->base.x = c->px_x; g->base.y = c->px_y; g->base.width = c->px_w; g->base.height = c->px_h; }
+    if (g->kind == W_GRID)
     {
-        char buf[256]; snprintf(buf, sizeof(buf), "%s", colors_csv ? colors_csv : "");
-        char* sv = NULL;
-        for (char* tk = strtok_r(buf, ",", &sv); tk && wd.ncolors < 16; tk = strtok_r(NULL, ",", &sv))
+        /* La griglia TUI non ha intestazioni: se ne sintetizza una (vuota) per
+         * avere la STESSA struttura della griglia GUI (banda header + separatori
+         * di colonna). È una PROIEZIONE per il renderer, non uno stato parallelo.
+         * Le celle sono una lista (separatore `|`), come nel contratto TUI: si
+         * ricostruisce la stessa stringa che il renderer pixel interpreta
+         * (righe separate da `;` DENTRO il contenuto delle celle, come prima). */
+        if (g->cells_count > 0)   /* griglia TUI (le GUI usano gnc/gdata diretti) */
         {
-            unsigned int cc = (unsigned int)strtoul(tk, NULL, 16);
-            wd.colors[wd.ncolors++] = 0xFF000000u | (cc & 0xFFFFFFu);
+            char data[2048]; int o = 0; data[0] = 0;
+            for (int i = 0; i < g->cells_count && o < (int)sizeof(data) - 1; i++)
+                o += snprintf(data + o, sizeof(data) - (size_t)o, "%s%s", i ? "|" : "", g->cells[i]);
+            int cols = 1; { const char* p = data; while (*p && *p != ';') { if (*p == '|') cols++; p++; } }
+            static char hb[128]; int ho = 0;
+            for (int i = 0; i < cols && ho < 120; i++)
+                ho += snprintf(hb + ho, sizeof(hb) - (size_t)ho, "%s ", i ? "|" : "");
+            g->gnc = form_split_items(hb, g->ghead, 8);
+            snprintf(g->gdata, sizeof(g->gdata), "%s", data);
+            int r = 1; for (const char* p = g->gdata; *p; p++) if (*p == ';') r++;
+            g->gnr = r; if (g->gnr > 64) g->gnr = 64;
+            for (int k = 0; k < g->gnr; k++) g->gorder[k] = k;
+            g->gsort_col = -1;
+            g->first = 0;
         }
-        if (!wd.ncolors) { unsigned int def[8] = { 0xFF000000u,0xFFFFFFFFu,0xFFFF0000u,0xFF00C000u,0xFF3060FFu,0xFFFFD400u,0xFFFF00FFu,0xFF00E5FFu }; for (int k = 0; k < 8; k++) wd.colors[wd.ncolors++] = def[k]; }
     }
-    wd.ival = value;
-    draw_one_widget(&wd, sc);
+    draw_one_widget(g, sc);
+    g->base.x = lx; g->base.y = ly; g->base.width = lw; g->base.height = lh;
 }
-
-/* Griglia non registrata (headers "a|b", data "1|2;3|4"). */
-void gmb_form_paint_grid_px(int x, int y, int w, int h, const char* headers, const char* data, int sel)
-{
-    float sc = GMB_GFX_RENDER_SCALE(); if (sc <= 0.0f) sc = 1.0f;
-    gmb_pix_widget_t wd;
-    memset(&wd, 0, sizeof(wd));
-    wd.kind = W_GRID;
-    wd.base.x = x; wd.base.y = y; wd.base.width = w; wd.base.height = h;
-    wd.base.visible = 1; wd.base.enabled = 1;
-    wd.style = gmb_widget_style_current();
-    /* La griglia TUI non ha intestazioni: se ne sintetizza una (vuota) per avere la
-     * STESSA struttura della griglia GUI (banda header + separatori di colonna). */
-    if (!headers || !*headers)
-    {
-        int cols = 1; { const char* p = data ? data : ""; while (*p && *p != ';') { if (*p == '|') cols++; p++; } }
-        static char hb[128]; int o = 0;
-        for (int i = 0; i < cols && o < 120; i++) o += snprintf(hb + o, sizeof(hb) - (size_t)o, "%s ", i ? "|" : "");
-        headers = hb;
-    }
-    wd.gnc = form_split_items(headers, wd.ghead, 8);
-    snprintf(wd.gdata, sizeof(wd.gdata), "%s", data ? data : "");
-    int r = 1; for (const char* p = wd.gdata; *p; p++) if (*p == ';') r++;
-    wd.gnr = r; if (wd.gnr > 64) wd.gnr = 64;
-    for (int k = 0; k < wd.gnr; k++) wd.gorder[k] = k;
-    wd.gsort_col = -1;
-    wd.ival = sel;
-    draw_one_widget(&wd, sc);
-}
-
 int gmb_form_add_grid(int x, int y, int w, int h, const char* headers, const char* data, double* var)
 {
     if (!GMB_GFX_SCREEN_ON())
@@ -2657,7 +2599,7 @@ int gmb_form_add_grid(int x, int y, int w, int h, const char* headers, const cha
     }
     int i = form_add_widget(W_GRID, x, y, w, h, NULL, var);
     if (i >= 0) {
-        gmb_pix_widget_t* wd = &g_wid[i];
+        gmb_widget_t* wd = &g_wid[i];
         wd->gnc = form_split_items(headers, wd->ghead, 8);
         snprintf(wd->gdata, sizeof(wd->gdata), "%s", data ? data : "");
         int r = 1; for (const char* p = wd->gdata; *p; p++) if (*p == ';') r++;
@@ -2671,7 +2613,7 @@ int gmb_form_add_filedialog(int x, int y, int w, int h, const char* dir, void* s
 {
     int i = form_add_widget(W_FILE, x, y, w, h, NULL, NULL);
     if (i >= 0) {
-        gmb_pix_widget_t* wd = &g_wid[i];
+        gmb_widget_t* wd = &g_wid[i];
         wd->strptr = strptr;
         snprintf(wd->label, sizeof(wd->label), "%s", (dir && *dir) ? dir : ".");
         DIR* d = opendir(wd->label);
@@ -2720,7 +2662,7 @@ int gmb_form_add_datepicker(int x, int y, void* strptr, const char* fmt)
 {
     int i = form_add_widget(W_DATE, x, y, 150, 24, NULL, NULL);
     if (i >= 0) {
-        gmb_pix_widget_t* wd = &g_wid[i];
+        gmb_widget_t* wd = &g_wid[i];
         wd->strptr = strptr;
         const char* v = strptr ? ((gmb_string_t*)strptr)->data : "";
         snprintf(wd->dfmt, sizeof(wd->dfmt), "%s", (fmt && *fmt) ? fmt : "dd/mm/yyyy");
@@ -2827,7 +2769,7 @@ int gmb_form_add_colorpicker(int x, int y, const char* palette, double* var)
 {
     int i = form_add_widget(W_COLORPICKER, x, y, 0, 0, NULL, var);
     if (i >= 0) {
-        gmb_pix_widget_t* wd = &g_wid[i];
+        gmb_widget_t* wd = &g_wid[i];
         char buf[256]; snprintf(buf, sizeof(buf), "%s", palette ? palette : "");
         char* sv = NULL;
         for (char* tk = strtok_r(buf, ",", &sv); tk && wd->ncolors < 16; tk = strtok_r(NULL, ",", &sv)) {
@@ -3066,7 +3008,7 @@ int gmb_form_msgbox(const char* title, const char* msg, const char* buttons, con
     const char* p = (buttons && *buttons) ? buttons : "OK";
     while (*p && n < 3) {
         const char* s = p; while (*p && *p != '|') p++;
-        int l = (int)(p - s); if (l > 63) l = 63;
+        int l = (int)(p - s); if (l > 255) l = 255;
         memcpy(b[n], s, (size_t)l); b[n][l] = 0; n++;
         if (*p == '|') p++;
     }
@@ -3168,7 +3110,7 @@ gmb_string_t gmb_form_inputbox(const char* title, const char* prompt, const char
 static void widget_mouse(int type, int x, int y, float sc)
 {
     for (int i = 0; i < g_nwid; i++) {
-        gmb_pix_widget_t* wd = &g_wid[i];
+        gmb_widget_t* wd = &g_wid[i];
         if (!wd->base.visible) continue;   /* un widget nascosto non reagisce al mouse */
         int X = wd->base.x, Y = wd->base.y, W = wd->base.width, H = wd->base.height;
         /* repaint incrementale: il widget sotto il puntatore e. sporco */
@@ -3379,7 +3321,7 @@ void gmb_form_dispatch_mouse_px(int type, int x, int y, int button, int wheel)
     if (sc <= 0.0f) sc = 1.0f;
     if (type == GMB_GFX_MOUSE_DOWN) {   /* focus generico (base Control) */
         for (int fi = g_nwid - 1; fi >= 0; fi--) {
-            gmb_pix_widget_t* fw = &g_wid[fi];
+            gmb_widget_t* fw = &g_wid[fi];
             if (!fw->base.visible || !fw->base.enabled) continue;
             if (fw->kind == W_PROGRESS || fw->kind == W_STATUSBAR) continue;
             int fx, fy, fwd, fht; form_control_px_rect(&fw->base, &fx, &fy, &fwd, &fht);
@@ -3387,7 +3329,7 @@ void gmb_form_dispatch_mouse_px(int type, int x, int y, int button, int wheel)
         }
     }
     if (type == GMB_GFX_MOUSE_DOWN && g_focus_wid >= 0 && g_focus_wid < g_nwid && g_wid[g_focus_wid].kind == W_DATE) {
-        gmb_pix_widget_t* fd = &g_wid[g_focus_wid];
+        gmb_widget_t* fd = &g_wid[g_focus_wid];
         int inside = (x >= fd->base.x && x < fd->base.x + fd->base.width && y >= fd->base.y && y < fd->base.y + fd->base.height);
         if (!inside) { if (!date_mask_valid(fd)) { date_mask_fill(fd); } else { date_from_mask(fd); } set_focus_wid(-1); g_dirty = 1; }
     }
@@ -3447,7 +3389,7 @@ void gmb_form_dispatch_key(const char* key)
         fire_ev(g_focus_wid, GMB_EV_KEYUP);
     }
     if (g_focus_wid >= 0 && g_focus_wid < g_nwid && g_wid[g_focus_wid].kind == W_TEXT) {
-        gmb_pix_widget_t* wd = &g_wid[g_focus_wid];
+        gmb_widget_t* wd = &g_wid[g_focus_wid];
         char buf[256]; snprintf(buf, sizeof(buf), "%s", wd_str(wd));
         int L = (int)strlen(buf);
         if (c == 0x1b) { set_focus_wid(-1); }
@@ -3462,7 +3404,7 @@ void gmb_form_dispatch_key(const char* key)
     }
     else if (g_focus_wid >= 0 && g_focus_wid < g_nwid) {
         /* Tastiera sui widget "a valore" (spinner/check/listbox/track): frecce e spazio. */
-        gmb_pix_widget_t* wd = &g_wid[g_focus_wid];
+        gmb_widget_t* wd = &g_wid[g_focus_wid];
         if (wd->kind == W_SPINNER) {
             if (c == 0x1e || c == '+') { wd_add_num(wd, wd->vstep > 0 ? wd->vstep : 1); }
             else if (c == 0x1f || c == '-') { wd_add_num(wd, -(wd->vstep > 0 ? wd->vstep : 1)); }
@@ -3519,7 +3461,7 @@ void gmb_form_dispatch_key(const char* key)
         }
     }
     else if (g_focus_wid >= 0 && g_focus_wid < g_nwid && g_wid[g_focus_wid].kind == W_DATE) {
-        gmb_pix_widget_t* wd = &g_wid[g_focus_wid];
+        gmb_widget_t* wd = &g_wid[g_focus_wid];
         if (c == 0x1b) { set_focus_wid(-1); g_dirty = 1; return; }
         int L = (int)strlen(wd->dmask);
         if (c == '\r' || c == '\n') { if (date_mask_valid(wd)) { date_from_mask(wd); set_focus_wid(-1); } else { wd->open = 0; } g_dirty = 1; }
@@ -3773,3 +3715,4 @@ void gmb_form_win_run(gmb_form_win_t* w, void (*draw)(void* ctx),
     }
     win_fire(w, GMB_EV_UNLOAD);
 }
+

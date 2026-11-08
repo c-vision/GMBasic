@@ -12,7 +12,7 @@
 
 static void scrollbar_draw(void* u, gmb_control_t* c, gmb_screen_buffer_t* buf)
 {
-    gmb_scrollbar_t* s = (gmb_scrollbar_t*)u;
+    gmb_widget_t* s = (gmb_widget_t*)u;
     gmb_cell_color_t fg, bg;
     gmb_control_style_effective(&c->style, c->focused, false, false, &fg, &bg);
     char line[256];
@@ -42,7 +42,7 @@ static void scrollbar_draw(void* u, gmb_control_t* c, gmb_screen_buffer_t* buf)
 }
 static void scrollbar_draw_px(void* u, gmb_control_t* c)
 {
-    gmb_scrollbar_t* s = (gmb_scrollbar_t*)u;
+    gmb_widget_t* s = (gmb_widget_t*)u;
     gmb_widget_style_t st = gmb_widget_style_current();
     int x = (c->px_w > 0) ? c->px_x : c->x;
     int y = (c->px_h > 0) ? c->px_y : c->y;
@@ -59,8 +59,8 @@ static void scrollbar_draw_px(void* u, gmb_control_t* c)
     {
         int ty = y + (h - th) / 2;
         gmb_gfx_fill_rounded_rect(x, ty, w, th, 3, (st.border & 0xFFFFFFu) | 0x33000000u);
-        double span = (double)(s->max - s->min); if (span <= 0) span = 1;
-        double t = ((double)s->value - s->min) / span; if (t < 0) t = 0; if (t > 1) t = 1;
+        double span = (double)((int)s->vmax - (int)s->vmin); if (span <= 0) span = 1;
+        double t = ((double)(int)s->ival - (int)s->vmin) / span; if (t < 0) t = 0; if (t > 1) t = 1;
         int tw = w / 4; if (tw < 24) tw = 24; if (tw > w) tw = w;
         int pos = (int)(t * (w - tw));
         gmb_gfx_fill_rounded_rect(x + pos, ty, tw, th, 3, accent);
@@ -69,8 +69,8 @@ static void scrollbar_draw_px(void* u, gmb_control_t* c)
     {
         int tx = x + (w - th) / 2;
         gmb_gfx_fill_rounded_rect(tx, y, th, h, 3, (st.border & 0xFFFFFFu) | 0x33000000u);
-        double span = (double)(s->max - s->min); if (span <= 0) span = 1;
-        double t = ((double)s->value - s->min) / span; if (t < 0) t = 0; if (t > 1) t = 1;
+        double span = (double)((int)s->vmax - (int)s->vmin); if (span <= 0) span = 1;
+        double t = ((double)(int)s->ival - (int)s->vmin) / span; if (t < 0) t = 0; if (t > 1) t = 1;
         int tw = h / 4; if (tw < 24) tw = 24; if (tw > h) tw = h;
         int pos = (int)(t * (h - tw));
         gmb_gfx_fill_rounded_rect(tx, y + pos, th, tw, 3, accent);
@@ -79,42 +79,46 @@ static void scrollbar_draw_px(void* u, gmb_control_t* c)
 static bool scrollbar_click(void* u, gmb_control_t* c, int x, int y)
 {
     /* Click nella barra: salta al valore proporzionale alla posizione. */
-    gmb_scrollbar_t* s = (gmb_scrollbar_t*)u;
+    gmb_widget_t* s = (gmb_widget_t*)u;
     if (!s) return false;
     int len = s->orientation ? c->height : c->width;
     int pos = s->orientation ? (y - c->y) : (x - c->x);
-    if (len <= 1 || s->max <= s->min) return false;
+    if (len <= 1 || (int)s->vmax <= (int)s->vmin) return false;
     if (pos < 0) pos = 0;
     if (pos >= len) pos = len - 1;
-    s->value = s->min + (int)((double)pos * (s->max - s->min) / (len - 1) + 0.5);
+    s->ival = (int)s->vmin + (int)((double)pos * ((int)s->vmax - (int)s->vmin) / (len - 1) + 0.5);
     return true;
 }
-void gmb_scrollbar_init(gmb_scrollbar_t* s, int x, int y, int len, int orientation)
+void gmb_scrollbar_init(gmb_scrollbar_t* sb, int x, int y, int len, int orientation)
 {
+    gmb_widget_t* s = (gmb_widget_t*)sb;
     memset(s, 0, sizeof(*s));
-    if (orientation == 0) gmb_control_init(&s->ctrl, "", x, y, len, 1, scrollbar_draw, NULL);
-    else gmb_control_init(&s->ctrl, "", x, y, 1, len, scrollbar_draw, NULL);
-    s->ctrl.draw_px_fn = scrollbar_draw_px;
-    s->ctrl.handle_click_fn = scrollbar_click;
-    s->ctrl.user = s;
+    if (orientation == 0) gmb_control_init(&s->base, "", x, y, len, 1, scrollbar_draw, NULL);
+    else gmb_control_init(&s->base, "", x, y, 1, len, scrollbar_draw, NULL);
+    s->base.draw_px_fn = scrollbar_draw_px;
+    s->base.handle_click_fn = scrollbar_click;
+    s->base.user = s;
+    s->kind = W_SCROLLBAR;
     s->orientation = orientation;
 }
-void gmb_scrollbar_set(gmb_scrollbar_t* s, int value, int min, int max)
+void gmb_scrollbar_set(gmb_scrollbar_t* sb, int value, int min, int max)
 {
-    s->value = value;
-    s->min = min;
-    s->max = max;
+    gmb_widget_t* s = (gmb_widget_t*)sb;
+    s->ival = value;
+    s->vmin = min;
+    s->vmax = max;
 }
 int gmb_scrollbar_render_line(gmb_scrollbar_t* s, int index, char* out, int cap)
 {
     /* TV TScrollBar: vChars = {▲ 0x1E, ▼ 0x1F, ▒ 0xB1, ■ 0xFE, ▓ 0xB2}. */
-    int range = s->max - s->min;
-    int len = s->orientation == 0 ? s->ctrl.width : s->ctrl.height;
+    int vmin = (int)s->vmin, vmax = (int)s->vmax, value = (int)s->ival;
+    int range = vmax - vmin;
+    int len = s->orientation == 0 ? s->base.width : s->base.height;
     uint32_t ch;
     if (range <= 0) ch = 0x2593;                                  /* ▓ "no range" */
     else {
         int thumb = len > 4 ? len / 4 : 1;
-        int pos = (s->value - s->min) * (len - thumb) / range;
+        int pos = (value - vmin) * (len - thumb) / range;
         if (index >= pos && index < pos + thumb) ch = 0x25A0;     /* ■ thumb */
         else if (index == 0 && s->show_arrows) ch = 0x25B2;       /* ▲ */
         else if (index == len - 1 && s->show_arrows) ch = 0x25BC; /* ▼ */

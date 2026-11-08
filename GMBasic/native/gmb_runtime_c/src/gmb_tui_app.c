@@ -877,8 +877,8 @@ int gmb_control_popup_open(gmb_control_t* c)
     if (!c || !c->user) return 0;
     switch (c->ctrl_kind)
     {
-        case GMB_CK_COMBOBOX:    return ((gmb_combobox_t*)c->user)->open ? 1 : 0;
-        case GMB_CK_MENU:        return ((gmb_menu_t*)c->user)->is_open ? 1 : 0;
+        case GMB_CK_COMBOBOX:    return ((gmb_widget_t*)c->user)->open ? 1 : 0;
+        case GMB_CK_MENU:        return ((gmb_widget_t*)c->user)->open ? 1 : 0;
         case GMB_CK_CONTEXTMENU: return ((gmb_context_menu_t*)c->user)->open ? 1 : 0;
         case GMB_CK_DATEPICKER:  return ((gmb_date_picker_t*)c->user)->open ? 1 : 0;
         default: return 0;
@@ -1012,7 +1012,7 @@ static void tui_process_key(int k)
         for (int i = 0; i < g_reg_n; i++)
         {
             gmb_control_t* c = g_reg_ctrl[i];
-            if (c && c->ctrl_kind == GMB_CK_MENU && ((gmb_menu_t*)c)->is_open)
+            if (c && c->ctrl_kind == GMB_CK_MENU && ((gmb_widget_t*)c)->open)
             { if (gmb_control_handle_key(c, k)) return; break; }
         }
     }
@@ -1097,18 +1097,18 @@ static double tui_ctrl_value(gmb_control_t* c)
     if (!c) return 0.0;
     switch (c->ctrl_kind)
     {
-    case GMB_CK_CHECKBOX: return ((gmb_checkbox_t*)c)->checked ? 1.0 : 0.0;
-    case GMB_CK_TOGGLE:   return ((gmb_toggle_button_t*)c)->pressed ? 1.0 : 0.0;
-    case GMB_CK_SLIDER:   return (double)((gmb_slider_t*)c)->value;
-    case GMB_CK_COMBOBOX: return (double)((gmb_combobox_t*)c)->selected;
-    case GMB_CK_LISTBOX:  return (double)((gmb_listbox_t*)c)->selected;
-    case GMB_CK_SPINNER:  return (double)((gmb_spinner_t*)c)->index;
-    case GMB_CK_RADIO:    return (double)((gmb_radio_group_t*)c)->selected;
-    case GMB_CK_TAB:      return (double)((gmb_tab_t*)c)->selected;
-    case GMB_CK_NUMERICUPDOWN: return (double)((gmb_numeric_updown_t*)c)->value;
-    case GMB_CK_STARRATING:    return (double)((gmb_star_rating_t*)c)->value;
-    case GMB_CK_SCROLLBAR:     return (double)((gmb_scrollbar_t*)c)->value;
-    case GMB_CK_DATALIST:      return (double)((gmb_data_list_t*)c)->selected_index;
+    case GMB_CK_CHECKBOX: return ((gmb_widget_t*)c)->ival != 0 ? 1.0 : 0.0;
+    case GMB_CK_TOGGLE:   return ((gmb_widget_t*)c)->ival != 0 ? 1.0 : 0.0;
+    case GMB_CK_SLIDER:   return ((gmb_widget_t*)c)->ival;
+    case GMB_CK_COMBOBOX: return (double)(int)((gmb_widget_t*)c)->ival;
+    case GMB_CK_LISTBOX:  return (double)(int)((gmb_widget_t*)c)->ival;
+    case GMB_CK_SPINNER:  return (double)(int)((gmb_widget_t*)c)->ival;
+    case GMB_CK_RADIO:    return (double)(int)((gmb_widget_t*)c)->ival;
+    case GMB_CK_TAB:      return (double)(int)((gmb_widget_t*)c)->ival;
+    case GMB_CK_NUMERICUPDOWN: return ((gmb_widget_t*)c)->ival;
+    case GMB_CK_STARRATING:    return ((gmb_widget_t*)c)->ival;
+    case GMB_CK_SCROLLBAR:     return ((gmb_widget_t*)c)->ival;
+    case GMB_CK_DATALIST:      return (double)(int)((gmb_widget_t*)c)->ival;
     case GMB_CK_CONTEXTMENU:   return (double)((gmb_context_menu_t*)c)->chosen;
     default: return 0.0;
     }
@@ -1124,8 +1124,8 @@ static const char* tui_ctrl_text(gmb_control_t* c)
     case GMB_CK_LISTBOX:  return gmb_listbox_selected_value((gmb_listbox_t*)c);
     case GMB_CK_RADIO:    return gmb_radio_group_selected_value((gmb_radio_group_t*)c);
     case GMB_CK_MENU:     return gmb_menu_get_selected_label((gmb_menu_t*)c);
-    case GMB_CK_TAB: { gmb_tab_t* t = (gmb_tab_t*)c; return (t->selected >= 0 && t->selected < t->tabs_count) ? t->tabs[t->selected] : ""; }
-    case GMB_CK_DATALIST: { gmb_data_list_t* d = (gmb_data_list_t*)c; return (d->selected_index >= 0 && d->selected_index < d->items_count) ? d->items[d->selected_index] : ""; }
+    case GMB_CK_TAB: { gmb_widget_t* t = (gmb_widget_t*)c; int s = (int)t->ival; return (s >= 0 && s < t->nitems) ? t->items[s] : ""; }
+    case GMB_CK_DATALIST: { gmb_widget_t* d = (gmb_widget_t*)c; int si = (int)d->ival; return (si >= 0 && si < d->nitems) ? d->items[si] : ""; }
     default: return "";
     }
 }
@@ -1253,7 +1253,7 @@ void gmb_tui_draw_controls(gmb_screen_buffer_t* buf)
     {
         gmb_control_t* c = g_reg_ctrl[i];
         if (!c || !c->visible) continue;
-        if (c->ctrl_kind == GMB_CK_MENU && ((gmb_menu_t*)c)->is_open) continue;
+        if (c->ctrl_kind == GMB_CK_MENU && ((gmb_widget_t*)c)->open) continue;
         /* Spazio coordinate DICHIARATO: `USE PIXELS` (metric 2, o SCREEN USE PIXELS) su un
          * backend a celle → il controllo dichiara PIXEL e qui si riporta sulla griglia.
          * Default (metric 0 senza SCREEN) = celle: nessuna conversione. */
@@ -1273,7 +1273,7 @@ void gmb_tui_draw_controls(gmb_screen_buffer_t* buf)
     {
         gmb_control_t* c = g_reg_ctrl[i];
         if (!c) continue;
-        if (c->ctrl_kind == GMB_CK_MENU && ((gmb_menu_t*)c)->is_open)
+        if (c->ctrl_kind == GMB_CK_MENU && ((gmb_widget_t*)c)->open)
         {
             int tr = gmb_control_coord_transform(c);
             if (tr < 0)
@@ -1434,7 +1434,7 @@ void gmb_tui_handle_mouse_cell(int x, int y, int kind)
     {
         gmb_control_t* mo = NULL; int moi = -1;
         for (int i = g_reg_n - 1; i >= 0; i--)
-        { gmb_control_t* c = g_reg_ctrl[i]; if (c && c->ctrl_kind == GMB_CK_MENU && ((gmb_menu_t*)c)->is_open) { mo = c; moi = i; break; } }
+        { gmb_control_t* c = g_reg_ctrl[i]; if (c && c->ctrl_kind == GMB_CK_MENU && ((gmb_widget_t*)c)->open) { mo = c; moi = i; break; } }
         if (mo)
         {
             gmb_mouse_action_t ma; memset(&ma, 0, sizeof(ma));

@@ -240,6 +240,87 @@ typedef struct gmb_control {
     int extra_count;
 } gmb_control_t;
 
+/* ══════════════════════════════════════════════════════════════════════════
+ * gmb_widget_t — UN SOLO MODELLO di controllo (GUI e TUI).
+ *
+ * Lo stato di un controllo vive QUI, una volta. I due backend sono soltanto
+ * RENDERER dello stesso stato:
+ *   pagina grafica   → gmb_widget_draw_px()    (gmb_form.c, pixel)
+ *   schermo a celle  → gmb_widget_draw_cells() (gmb_widget_model.c)
+ * Le struct storiche dei controlli (gmb_toggle_button_t, gmb_tab_t,
+ * gmb_listbox_t, gmb_grid_t, ...) sono ALIAS di questo tipo: nessuna copia
+ * dello stato, nessun adattatore di conversione.
+ *
+ * `base` e `ctrl` sono lo STESSO campo (union anonima): il nome `ctrl` è quello
+ * storico delle TUI, `base` quello di gmb_control_t. Stessa memoria.
+ * ══════════════════════════════════════════════════════════════════════════ */
+enum { W_CHECK = 1, W_RADIO, W_TRACK, W_DROPDOWN, W_PROGRESS,
+       W_TOGGLE, W_SPINNER, W_STATUSBAR, W_TABS, W_LISTBOX, W_COLORPICKER, W_DATE, W_GRID, W_FILE, W_TREE, W_MENUBAR, W_TEXT,
+       W_CANVAS, W_IMAGE, W_IMAGEBUTTON, W_QR, W_RICHTEXT, W_HALFBLOCK, W_TILING, W_PANEL,
+       W_STAR, W_NUMERIC, W_SCROLLBAR };
+
+typedef struct gmb_widget {
+    union { gmb_control_t base; gmb_control_t ctrl; };
+    int kind;
+    char name[32];                 /* Name (VB) — ricerca per nome */
+    char tag[32], tooltip[64];
+    union { char label[64]; char caption[64]; char title[64]; char text[256]; };  /* Caption/Text/titolo panel */
+    char items[64][256]; int nitems;  /* voci di QUALSIASI lista (tabs/radio/listbox/combobox/tree/datalist/text area) */
+    union { double ival; double value; };   /* valore o indice selezionato (unica fonte) */
+    double vmin, vmax, vstep;      /* slider/progress: range */
+    int first;                     /* listbox/grid: prima riga visibile */
+    int open;                      /* popup aperto (combobox/date) */
+    int highlight;                 /* combobox: voce evidenziata */
+    int drop_down_height;          /* combobox: altezza lista (default 5) */
+    int columns, top_row;          /* colorpicker: colonne e prima riga visibile */
+    gmb_cell_color_t palette[256]; /* colorpicker: palette logica */
+    unsigned int colors[16]; int ncolors;   /* colorpicker: primi 16 swatch (render) */
+    char ghead[8][256]; int gnc;   /* grid: intestazioni */
+    char gdata[1536]; int gnr, gsort_col, gsort_dir; int gorder[64];   /* grid: dati + ordine */
+    char cells[128][256]; int cells_count; int cols;   /* grid: celle (riga-major) */
+    int cursor_row, cursor_col, sel_col; int has_selected;
+    char big[64][56]; int nbig, bsel, bfirst;   /* file list */
+    int tdepth[64]; int tcol[64];  /* tree */
+    int hover, press; int tcur;
+    int show_percent; char bar_style[16]; int align; int is_valid; int auto_lite;
+    int dragging;                  /* slider: drag in corso */
+    /* ── stato dei controlli semplici (un solo modello, tutte le superfici) ── */
+    void (*on_click)(void* ctx); void* click_ctx;   /* button / imagebutton */
+    char icon[32];                 /* imagebutton */
+    char frames[12][16]; int frames_count;          /* spinner */
+    int orientation, show_arrows;  /* scrollbar */
+    int max_length, read_only, blink_on, password_mode; char format[32];   /* textinput */
+    bool (*validator)(void* ctx, const char* text); void* validator_ctx;
+    int has_color, has_bg; gmb_cell_color_t color, bg;   /* big text: colori espliciti */
+    /* ── collezioni (data list / reorder / tree / text area / dashboard / property) ── */
+    int multi_select, searchable, ctrl_held, modified, editing;
+    bool selected_items[32];
+    char search_buffer[64];
+    gmb_cell_color_t sel_fg, sel_bg;
+    char pvalues[32][128]; char edited_value[128];   /* property grid: valori */
+    char metrics[16][64]; float metric_v[16], metric_m[16]; int metrics_count;   /* dashboard */
+    unsigned char tnode_flags[64]; /* tree: bit0 figli, bit1 espanso */
+    int bytes_per_row, bytes_per_group, show_address, show_ascii, address_format; unsigned long start_addr;   /* hex view */
+    const char* group_separator;   /* hex view */
+    int min_level, capacity;       /* log view */
+    char metric_u[16][8];          /* dashboard: unita' */
+    int bar_width;                 /* dashboard: larghezza barra */
+    int popup_height;              /* datepicker: altezza calendario */
+    int sub_sel;                   /* menu: indice del sottomenu evidenziato */
+    void (*on_date_selected)(void* ctx, int year, int month, int day); void* date_ctx;
+    void* payload;                 /* dati di dominio su heap (log records, hex dump) */
+    int payload_len, payload_cap;
+    double* var; char itext[512]; void* strptr;   /* testo del campo (TEXTBOX/TEXTINPUT) */
+    int dy, dm, dday, sy, sm, sd; char dfmt[16]; char dmask[16]; int dcur;   /* datepicker */
+    int border, draggable, is_dragging, drag_off_x, drag_off_y;   /* panel */
+    gmb_widget_style_t style;
+    int dbl_ms;                    /* ultimo click per dblclick */
+} gmb_widget_t;
+
+/* Renderer del modello unico (la creazione la fa l'init del controllo). */
+void gmb_widget_draw_cells(void* u, gmb_control_t* c, gmb_screen_buffer_t* buf);
+void gmb_widget_draw_px(void* u, gmb_control_t* c);
+
 void gmb_control_apply_style(gmb_control_t* c, const char* spec);
 
 void gmb_control_init(gmb_control_t* c, const char* id, int x, int y, int w, int h,
@@ -422,21 +503,14 @@ int gmb_tui_pump_event_handler(gmb_ctrl_event_handler_t* h, int cell_w, int cell
  * Tab/Panel). Ogni widget estende gmb_control_t (primo campo).
  * ============================================================================ */
 
-typedef struct gmb_button {
-    gmb_control_t ctrl;
-    char label[64];
-    void (*on_click)(void* ctx);
-    void* click_ctx;
-} gmb_button_t;
+/* Modello unico: button = gmb_widget_t (etichetta + callback). */
+typedef gmb_widget_t gmb_button_t;
 void gmb_button_init(gmb_button_t* b, int x, int y, int w, const char* label);
 void gmb_button_set_onclick(gmb_button_t* b, void (*fn)(void* ctx), void* ctx);
 int  gmb_button_render_line(gmb_button_t* b, char* out, int cap);
 
-typedef struct gmb_checkbox {
-    gmb_control_t ctrl;
-    bool checked;
-    char label[64];
-} gmb_checkbox_t;
+/* Modello unico: checkbox = gmb_widget_t (spunta in `ival`). */
+typedef gmb_widget_t gmb_checkbox_t;
 void gmb_checkbox_init(gmb_checkbox_t* c, int x, int y, int w, const char* label);
 void gmb_checkbox_set_checked(gmb_checkbox_t* c, bool v);
 int  gmb_checkbox_render_line(gmb_checkbox_t* c, char* out, int cap);
@@ -467,47 +541,39 @@ typedef struct {
 void gmb_context_menu_init(gmb_context_menu_t* m, int x, int y, int w, int h);
 void gmb_context_menu_set_items(gmb_context_menu_t* m, const char** items, int n);
 
-typedef struct gmb_toggle_button {
-    gmb_control_t ctrl;
-    char caption[64];
-    bool pressed;
-} gmb_toggle_button_t;
+/* Modello unico: statusbar = gmb_widget_t (W_STATUSBAR; testo in `label`). */
+typedef gmb_widget_t gmb_status_bar_t;
+void gmb_status_bar_init(gmb_status_bar_t* s, int x, int y, int w);
+void gmb_status_bar_set_text(gmb_status_bar_t* s, const char* text);
+int  gmb_status_bar_render_line(gmb_status_bar_t* s, char* out, int cap);
+
+/* Modello unico: toggle = gmb_widget_t (W_TOGGLE; on/off in `ival`). */
+typedef gmb_widget_t gmb_toggle_button_t;
 void gmb_toggle_button_init(gmb_toggle_button_t* t, int x, int y, int w, const char* caption);
 
-typedef struct gmb_label {
-    gmb_control_t ctrl;
-    char text[128];
-    int align;             /* 0=left 1=center 2=right */
-} gmb_label_t;
+/* Modello unico: label = gmb_widget_t (testo in `text`). */
+typedef gmb_widget_t gmb_label_t;
 void gmb_label_init(gmb_label_t* l, int x, int y, int w, const char* text);
 void gmb_label_set_text(gmb_label_t* l, const char* text);
 int  gmb_label_render_line(gmb_label_t* l, char* out, int cap);
 
-typedef struct gmb_hline {
-    gmb_control_t ctrl;
-    char label[64];
-} gmb_hline_t;
+/* Modello unico: linea orizzontale = gmb_widget_t. */
+typedef gmb_widget_t gmb_hline_t;
 void gmb_hline_init(gmb_hline_t* h, int x, int y, int w, const char* label);
 
-typedef struct gmb_vline {
-    gmb_control_t ctrl;
-} gmb_vline_t;
+/* Modello unico: linea verticale = gmb_widget_t. */
+typedef gmb_widget_t gmb_vline_t;
 void gmb_vline_init(gmb_vline_t* v, int x, int y, int h);
 
-typedef struct gmb_progress_bar {
-    gmb_control_t ctrl;
-    int min, max, value;
-    bool show_percent;
-} gmb_progress_bar_t;
+/* Modello unico: progress = gmb_widget_t (range vmin/vmax, valore `ival`). */
+typedef gmb_widget_t gmb_progress_bar_t;
 void gmb_progress_bar_init(gmb_progress_bar_t* p, int x, int y, int w);
 void gmb_progress_bar_set(gmb_progress_bar_t* p, int value);
 void gmb_progress_bar_set_percentage(gmb_progress_bar_t* p, int pct);
 int  gmb_progress_bar_render_line(gmb_progress_bar_t* p, char* out, int cap);
 
-typedef struct gmb_numeric_updown {
-    gmb_control_t ctrl;
-    int value, min, max, step;
-} gmb_numeric_updown_t;
+/* Modello unico: numeric up/down = gmb_widget_t. */
+typedef gmb_widget_t gmb_numeric_updown_t;
 void gmb_numeric_updown_init(gmb_numeric_updown_t* n, int x, int y, int w);
 void gmb_numeric_updown_set_range(gmb_numeric_updown_t* n, int min, int max);
 void gmb_numeric_updown_set_value(gmb_numeric_updown_t* n, int value);
@@ -526,59 +592,35 @@ void gmb_candlestick_init(gmb_candlestick_t* k, int x, int y, int w, int h);
 void gmb_candlestick_set_candles(gmb_candlestick_t* k, const gmb_candle_t* candles, int n);
 int  gmb_candlestick_cursor(const gmb_candlestick_t* k);
 
-typedef struct gmb_radio_group {
-    gmb_control_t ctrl;
-    char options[16][64];
-    int options_count;
-    int selected;
-} gmb_radio_group_t;
+/* Modello unico: radio group = gmb_widget_t (W_RADIO; voci in `items`, scelta in `ival`). */
+typedef gmb_widget_t gmb_radio_group_t;
 void gmb_radio_group_init(gmb_radio_group_t* r, int x, int y, int w, int h);
 void gmb_radio_group_set_options(gmb_radio_group_t* r, const char* const* options, int count);
 const char* gmb_radio_group_selected_value(gmb_radio_group_t* r);
 int  gmb_radio_group_render_line(gmb_radio_group_t* r, int idx, char* out, int cap);
 
-typedef struct gmb_combobox {
-    gmb_control_t ctrl;
-    char items[16][64];
-    int items_count;
-    int selected;
-    bool open;
-    int highlight;          /* ComboBox.Highlight */
-    int drop_down_height;   /* ComboBox.DropDownHeight (default 5) */
-} gmb_combobox_t;
+/* Modello unico: combobox = gmb_widget_t (W_DROPDOWN). */
+typedef gmb_widget_t gmb_combobox_t;
 void gmb_combobox_init(gmb_combobox_t* c, int x, int y, int w);
 void gmb_combobox_set_items(gmb_combobox_t* c, const char* const* items, int count);
 const char* gmb_combobox_selected_value(gmb_combobox_t* c);
 int  gmb_combobox_render_line(gmb_combobox_t* c, char* out, int cap);
 
-typedef struct gmb_listbox {
-    gmb_control_t ctrl;
-    char items[32][64];
-    int items_count;
-    int selected;
-    int scroll_offset;
-} gmb_listbox_t;
+/* Modello unico: listbox = gmb_widget_t (W_LISTBOX; scelta in `ival`, top in `first`). */
+typedef gmb_widget_t gmb_listbox_t;
 void gmb_listbox_init(gmb_listbox_t* l, int x, int y, int w, int h);
 void gmb_listbox_set_items(gmb_listbox_t* l, const char* const* items, int count);
 const char* gmb_listbox_selected_value(gmb_listbox_t* l);
 int  gmb_listbox_render_line(gmb_listbox_t* l, int idx, char* out, int cap);
 
-typedef struct gmb_scrollbar {
-    gmb_control_t ctrl;
-    int min, max, value;
-    int orientation;     /* 0=orizzontale 1=verticale */
-    bool show_arrows;
-} gmb_scrollbar_t;
+/* Modello unico: scrollbar = gmb_widget_t. */
+typedef gmb_widget_t gmb_scrollbar_t;
 void gmb_scrollbar_init(gmb_scrollbar_t* s, int x, int y, int len, int orientation);
 void gmb_scrollbar_set(gmb_scrollbar_t* s, int value, int min, int max);
 int  gmb_scrollbar_render_line(gmb_scrollbar_t* s, int index, char* out, int cap);
 
-typedef struct gmb_tab {
-    gmb_control_t ctrl;
-    char tabs[16][64];
-    int tabs_count;
-    int selected;
-} gmb_tab_t;
+/* Modello unico: tabs = gmb_widget_t (W_TABS; schede in `items`, attiva in `ival`). */
+typedef gmb_widget_t gmb_tab_t;
 void gmb_tab_init(gmb_tab_t* t, int x, int y, int w);
 void gmb_tab_set_tabs(gmb_tab_t* t, const char* const* tabs, int count);
 int  gmb_tab_render_line(gmb_tab_t* t, char* out, int cap);
@@ -586,15 +628,8 @@ int  gmb_tab_render_line(gmb_tab_t* t, char* out, int cap);
 enum { GMB_PB_SINGLE = 0, GMB_PB_DOUBLE, GMB_PB_ROUNDED, GMB_PB_NONE };
 void gmb_border_chars(int border, uint32_t out[8]);
 gmb_rect_t gmb_panel_inner(gmb_control_t* c, int border);
-typedef struct gmb_panel {
-    gmb_control_t ctrl;
-    char title[64];
-    int border;
-    bool draggable;
-    bool is_dragging;
-    int drag_off_x;
-    int drag_off_y;
-} gmb_panel_t;
+/* Modello unico: panel = gmb_widget_t (W_PANEL; titolo in `title`). */
+typedef gmb_widget_t gmb_panel_t;
 void gmb_panel_init(gmb_panel_t* p, int x, int y, int w, int h, const char* title);
 void gmb_panel_with_title(gmb_panel_t* p, const char* title);
 void gmb_panel_with_border(gmb_panel_t* p, int border);
@@ -627,12 +662,8 @@ bool gmb_window_title_bar_contains(gmb_window_t* w, int cx, int cy);
 bool gmb_window_close_button_contains(gmb_window_t* w, int cx, int cy);
 
 /* ---- ScrollView (specchio ScrollView.cs) ---- */
-typedef struct gmb_scroll_view {
-    gmb_control_t ctrl;
-    char content[64][256];
-    int content_count;
-    int offset;
-} gmb_scroll_view_t;
+/* Modello unico: scroll view = gmb_widget_t (righe in `items`, top in `first`). */
+typedef gmb_widget_t gmb_scroll_view_t;
 void gmb_scroll_view_init(gmb_scroll_view_t* s, int x, int y, int w, int h);
 void gmb_scroll_view_set_content(gmb_scroll_view_t* s, const char* const* lines, int count);
 void gmb_scroll_view_push(gmb_scroll_view_t* s, const char* line);
@@ -658,13 +689,6 @@ const char* gmb_form_widget_get_value(gmb_form_widget_t* f, int idx);
 int  gmb_form_widget_render_line(gmb_form_widget_t* f, int idx, char* out, int cap);
 
 /* ---- StatusBar (specchio StatusBar.cs) ---- */
-typedef struct gmb_status_bar {
-    gmb_control_t ctrl;
-    char text[256];
-} gmb_status_bar_t;
-void gmb_status_bar_init(gmb_status_bar_t* s, int x, int y, int w);
-void gmb_status_bar_set_text(gmb_status_bar_t* s, const char* text);
-int  gmb_status_bar_render_line(gmb_status_bar_t* s, char* out, int cap);
 
 /* ---- ClipboardUtils (specchio Clipboard.cs) ---- */
 bool gmb_clipboard_is_image_path(const char* path);
@@ -697,17 +721,13 @@ typedef struct gmb_menu_item {
     char hotkey[16];
 } gmb_menu_item_t;
 
-typedef struct gmb_menu {
-    gmb_control_t ctrl;
-    gmb_menu_item_t items[16];
-    int items_count;
-    int selected_index;
-    bool is_open;
-    int sub_selected_index;
-} gmb_menu_t;
+/* Modello unico: menu = gmb_widget_t (voci in `payload`, voce attiva in `ival`). */
+typedef gmb_widget_t gmb_menu_t;
 
 void gmb_menu_init(gmb_menu_t* m, int x, int y, int w);
 gmb_menu_item_t* gmb_menu_add_item(gmb_menu_t* m, const char* label);
+gmb_menu_item_t* gmb_menu_last_item(gmb_menu_t* m);
+gmb_menu_item_t* gmb_menu_item_at(gmb_menu_t* m, int i);
 gmb_menu_sub_item_t* gmb_menu_item_add_sub(gmb_menu_item_t* item, const char* label);
 void gmb_menu_item_set_action(gmb_menu_item_t* item, void (*fn)(void* ctx), void* ctx);
 void gmb_menu_sub_item_set_action(gmb_menu_sub_item_t* item, void (*fn)(void* ctx), void* ctx);
@@ -763,12 +783,8 @@ gmb_rect_t gmb_box_widget_inner(gmb_box_widget_t* b);
 void gmb_box_widget_draw(gmb_box_widget_t* b, gmb_screen_buffer_t* buffer);
 
 /* ---- BigText (specchio BigText.cs, font ASCII art 7x5) ---- */
-typedef struct gmb_big_text {
-    gmb_control_t ctrl;
-    char text[256];
-    bool has_color, has_bg;
-    gmb_cell_color_t color, bg;
-} gmb_big_text_t;
+/* Modello unico: big text = gmb_widget_t. */
+typedef gmb_widget_t gmb_big_text_t;
 
 void gmb_big_text_init(gmb_big_text_t* b, int x, int y);
 void gmb_big_text_set_text(gmb_big_text_t* b, const char* text);
@@ -787,31 +803,22 @@ void gmb_big_text_render(gmb_big_text_t* b, gmb_screen_buffer_t* buffer, int x, 
 void gmb_big_text_dimensions(gmb_big_text_t* b, int* w, int* h);
 
 /* ---- StarRating (specchio StarRating.cs) ---- */
-typedef struct gmb_star_rating {
-    gmb_control_t ctrl;
-    int value, max;
-} gmb_star_rating_t;
+/* Modello unico: star rating = gmb_widget_t. */
+typedef gmb_widget_t gmb_star_rating_t;
 void gmb_star_rating_init(gmb_star_rating_t* s, int x, int y, int w);
 int  gmb_star_rating_render_line(gmb_star_rating_t* s, char* out, int cap);
 
 /* ---- Spinner (specchio Spinner.cs) ---- */
-typedef struct gmb_spinner {
-    gmb_control_t ctrl;
-    char frames[12][16];
-    int frames_count;
-    int index;
-} gmb_spinner_t;
+/* Modello unico: spinner = gmb_widget_t (frame in `frames`, indice in `ival`). */
+typedef gmb_widget_t gmb_spinner_t;
 void gmb_spinner_init(gmb_spinner_t* s, int x, int y, int w);
 void gmb_spinner_set_preset(gmb_spinner_t* s, const char* name);
 void gmb_spinner_tick(gmb_spinner_t* s);
 int  gmb_spinner_render_line(gmb_spinner_t* s, char* out, int cap);
 
 /* ---- Slider (specchio Slider.cs) ---- */
-typedef struct gmb_slider {
-    gmb_control_t ctrl;
-    int min, max, value, step;
-    bool dragging;
-} gmb_slider_t;
+/* Modello unico: slider = gmb_widget_t (W_TRACK; range in vmin/vmax, valore in `ival`). */
+typedef gmb_widget_t gmb_slider_t;
 void gmb_slider_init(gmb_slider_t* s, int x, int y, int w);
 void gmb_slider_set_range(gmb_slider_t* s, int min, int max);
 void gmb_slider_set_value(gmb_slider_t* s, int value);
@@ -824,15 +831,10 @@ typedef struct gmb_metric {
     char unit[8];
 } gmb_metric_t;
 
-typedef struct gmb_dashboard {
-    gmb_control_t ctrl;
-    gmb_metric_t metrics[16];
-    int metrics_count;
-    int selected_index;
-    int bar_width;
-} gmb_dashboard_t;
+/* Modello unico: dashboard = gmb_widget_t (etichette `metrics`, valori metric_v/m). */
+typedef gmb_widget_t gmb_dashboard_t;
 void gmb_dashboard_init(gmb_dashboard_t* d, int x, int y, int w, int h);
-gmb_metric_t* gmb_dashboard_add_metric(gmb_dashboard_t* d, const char* label, float value, float max, const char* unit);
+int gmb_dashboard_add_metric(gmb_dashboard_t* d, const char* label, float value, float max, const char* unit);
 int  gmb_dashboard_render_line(gmb_dashboard_t* d, int idx, char* out, int cap);
 
 /* ---- Validator (specchio Validator.cs) ---- */
@@ -937,13 +939,8 @@ void gmb_text_measurer_render_boxed(gmb_box_style_t style, char lines[][256], in
                                     gmb_screen_buffer_t* buffer, int x, int y, int w, int h);
 
 /* ---- ColorPicker (specchio ColorPicker.cs) ---- */
-typedef struct gmb_color_picker {
-    gmb_control_t ctrl;
-    gmb_cell_color_t palette[256];
-    int columns;
-    int selected_index;
-    int top_row;
-} gmb_color_picker_t;
+/* Modello unico: colorpicker = gmb_widget_t (W_COLORPICKER; cella scelta in `ival`). */
+typedef gmb_widget_t gmb_color_picker_t;
 void gmb_color_picker_init(gmb_color_picker_t* p, int x, int y, int w, int h);
 int gmb_color_picker_row_count(gmb_color_picker_t* p);
 const gmb_cell_color_t* gmb_color_picker_cell_at(gmb_color_picker_t* p, int row, int col);
@@ -952,38 +949,15 @@ int gmb_color_picker_render_line(gmb_color_picker_t* p, int row, char* out, int 
 
 /* ---- DataList (specchio DataList.cs) ---- */
 #define GMB_DL_MAX_ITEMS 32
-typedef struct gmb_data_list {
-    gmb_control_t ctrl;
-    char items[GMB_DL_MAX_ITEMS][256];
-    int items_count;
-    int selected_index;
-    int scroll_offset;
-    bool multi_select;
-    bool selected_items[GMB_DL_MAX_ITEMS];
-    bool searchable;
-    char search_buffer[64];
-    gmb_cell_color_t sel_fg;
-    gmb_cell_color_t sel_bg;
-    int selected;
-} gmb_data_list_t;
+/* Modello unico: data list = gmb_widget_t. */
+typedef gmb_widget_t gmb_data_list_t;
 void gmb_data_list_init(gmb_data_list_t* d, int x, int y, int w, int h);
 void gmb_data_list_set_items(gmb_data_list_t* d, const char* const* items, int count);
 int  gmb_data_list_render_line(gmb_data_list_t* d, int idx, char* out, int cap);
 
 /* ---- Grid (specchio Grid.cs) ---- */
-typedef struct gmb_grid {
-    gmb_control_t ctrl;
-    char cells[128][256];
-    int cells_count;
-    int cols;
-    int cursor_row;
-    int cursor_col;
-    int sel_row;
-    int sel_col;
-    bool has_selected;
-    int align;        /* ALIGN (0 default/left, 1 center, 2 right) — compat Clipper Grid.Align */
-    bool auto_lite;   /* AUTOLITE (sfondo evidenziato sulla cella corrente) */
-} gmb_grid_t;
+/* Modello unico: grid = gmb_widget_t (W_GRID; celle in `cells`, riga scelta in `ival`). */
+typedef gmb_widget_t gmb_grid_t;
 void gmb_grid_init(gmb_grid_t* g, int x, int y, int w, int h);
 void gmb_grid_set_cols(gmb_grid_t* g, int cols);
 void gmb_grid_set_cells(gmb_grid_t* g, const char* const* cells, int count);
@@ -996,14 +970,8 @@ typedef struct gmb_log_record {
     char target[64];
     char message[256];
 } gmb_log_record_t;
-typedef struct gmb_log_view {
-    gmb_control_t ctrl;
-    gmb_log_record_t records[256];
-    int records_count;
-    int capacity;
-    int min_level;
-    int offset;
-} gmb_log_view_t;
+/* Modello unico: log view = gmb_widget_t (record in `payload`, conteggi nel modello). */
+typedef gmb_widget_t gmb_log_view_t;
 void gmb_log_view_init(gmb_log_view_t* l, int x, int y, int w, int h);
 void gmb_log_view_push(gmb_log_view_t* l, int level, const char* target, const char* message);
 int  gmb_log_view_filtered_count(gmb_log_view_t* l);
@@ -1011,16 +979,8 @@ int  gmb_log_view_render_line(gmb_log_view_t* l, int idx, char* out, int cap);
 double gmb_log_view_scroll_fraction(gmb_log_view_t* l);
 
 /* ---- TextArea (specchio TextArea.cs) ---- */
-typedef struct gmb_text_area {
-    gmb_control_t ctrl;
-    char lines[64][256];
-    int lines_count;
-    int cursor_line;
-    int cursor_col;
-    int scroll_offset;
-    bool modified;
-    bool blink_on;
-} gmb_text_area_t;
+/* Modello unico: text area = gmb_widget_t (righe in `items`, cursore row/col). */
+typedef gmb_widget_t gmb_text_area_t;
 void gmb_text_area_init(gmb_text_area_t* t, int x, int y, int w, int h);
 void gmb_text_area_set_lines(gmb_text_area_t* t, const char* const* lines, int count);
 void gmb_text_area_scroll_up(gmb_text_area_t* t, int lines);
@@ -1034,15 +994,10 @@ typedef struct gmb_tree_node {
     bool expanded;
     bool has_children;
 } gmb_tree_node_t;
-typedef struct gmb_tree_view {
-    gmb_control_t ctrl;
-    gmb_tree_node_t nodes[64];
-    int nodes_count;
-    int selected_index;
-    int scroll_offset;
-} gmb_tree_view_t;
+/* Modello unico: tree view = gmb_widget_t (nodi in `items`, profondita' in `tdepth`). */
+typedef gmb_widget_t gmb_tree_view_t;
 void gmb_tree_view_init(gmb_tree_view_t* t, int x, int y, int w, int h);
-gmb_tree_node_t* gmb_tree_view_add_node(gmb_tree_view_t* t, const char* label, int depth, bool has_children);
+int gmb_tree_view_add_node(gmb_tree_view_t* t, const char* label, int depth, bool has_children);
 int gmb_tree_view_visible_indices(gmb_tree_view_t* t, int* out, int cap);
 int gmb_tree_view_render_line(gmb_tree_view_t* t, int vi, char* out, int cap);
 
@@ -1065,19 +1020,8 @@ bool gmb_table_columns_reorder(gmb_table_columns_t* c, int from, int to);
 gmb_table_column_t* gmb_table_columns_get(gmb_table_columns_t* c, int i);
 
 /* ---- HexView (specchio HexView.cs) ---- */
-typedef struct gmb_hex_view {
-    gmb_control_t ctrl;
-    unsigned char data[1024];
-    int data_len;
-    int bytes_per_row;
-    int bytes_per_group;
-    const char* group_separator;
-    bool show_address;
-    bool show_ascii;
-    int address_format;
-    unsigned long start_addr;
-    int offset;
-} gmb_hex_view_t;
+/* Modello unico: hex view = gmb_widget_t (byte nel `payload`). */
+typedef gmb_widget_t gmb_hex_view_t;
 void gmb_hex_view_init(gmb_hex_view_t* h, int x, int y, int w, int hgt);
 void gmb_hex_view_set_data(gmb_hex_view_t* h, const unsigned char* data, int len);
 int  gmb_hex_view_render_line(gmb_hex_view_t* h, int row, char* out, int cap);
@@ -1132,13 +1076,8 @@ bool gmb_function_key_bar_handle_key(gmb_function_key_bar_t* b, int key);
 int  gmb_function_key_bar_get_command(gmb_function_key_bar_t* b, int key);
 
 /* ---- ImageButton (specchio ImageButton.cs) ---- */
-typedef struct gmb_image_button {
-    gmb_control_t ctrl;
-    char icon[32];
-    char label[64];
-    void (*on_click)(void* ctx);
-    void* click_ctx;
-} gmb_image_button_t;
+/* Modello unico: image button = gmb_widget_t. */
+typedef gmb_widget_t gmb_image_button_t;
 void gmb_image_button_init(gmb_image_button_t* b, int x, int y, int w);
 int  gmb_image_button_render_line(gmb_image_button_t* b, char* out, int cap);
 
@@ -1160,32 +1099,16 @@ int gmb_bar_render_with_percent(gmb_bar_builder_t b, double fraction, char* out,
 int gmb_byte_bar_render(long done, long total, int width, char* out, int cap);
 
 /* ---- PropertyGrid (specchio PropertyGrid.cs) ---- */
-typedef struct gmb_property_grid {
-    gmb_control_t ctrl;
-    char names[32][64];
-    char values[32][128];
-    char edited_value[128];
-    int items_count;
-    int selected_index;
-    int scroll_offset;
-    bool editing;
-} gmb_property_grid_t;
+/* Modello unico: property grid = gmb_widget_t (nomi in `items`, valori in `pvalues`). */
+typedef gmb_widget_t gmb_property_grid_t;
 void gmb_property_grid_init(gmb_property_grid_t* p, int x, int y, int w, int h);
 void gmb_property_grid_add(gmb_property_grid_t* p, const char* name, const char* value);
 void gmb_property_grid_add_kv(gmb_property_grid_t* p, const char* kv);
 int  gmb_property_grid_render_line(gmb_property_grid_t* p, int idx, char* out, int cap);
 
 /* ---- DatePicker (specchio DatePicker.cs) ---- */
-typedef struct gmb_date_picker {
-    gmb_control_t ctrl;
-    int day;
-    int month;
-    int year;
-    bool open;
-    int popup_height;
-    void (*on_date_selected)(void* ctx, int year, int month, int day);
-    void* date_ctx;
-} gmb_date_picker_t;
+/* Modello unico: datepicker = gmb_widget_t (data in sy/sm/sd, popup in `open`). */
+typedef gmb_widget_t gmb_date_picker_t;
 void gmb_date_picker_init(gmb_date_picker_t* d, int x, int y, int w);
 void gmb_date_picker_draw_popup(gmb_date_picker_t* d, gmb_screen_buffer_t* buffer);
 bool gmb_date_picker_contains_point(gmb_date_picker_t* d, int x, int y);
@@ -1253,35 +1176,15 @@ bool gmb_confirmation_box_handle_key(gmb_confirmation_box_t* c, int key);
 bool gmb_confirmation_box_handle_click(gmb_confirmation_box_t* c, int x, int y);
 
 /* ---- ReorderListBox (specchio ReorderListBox.cs) ---- */
-typedef struct gmb_reorder_listbox {
-    gmb_control_t ctrl;
-    char items[32][256];
-    bool checked[32];
-    int items_count;
-    int top;
-    int selected;
-    bool has_selected;
-    bool multi_select;
-    bool ctrl_held;
-} gmb_reorder_listbox_t;
+/* Modello unico: reorder listbox = gmb_widget_t (spunte in `selected_items`). */
+typedef gmb_widget_t gmb_reorder_listbox_t;
 void gmb_reorder_listbox_init(gmb_reorder_listbox_t* r, int x, int y, int w, int h);
 void gmb_reorder_listbox_set_items(gmb_reorder_listbox_t* r, const char* const* items, int count);
 int  gmb_reorder_listbox_render_line(gmb_reorder_listbox_t* r, int idx, char* out, int cap);
 
 /* ---- TextInput (specchio TextInput.cs) ---- */
-typedef struct gmb_text_input {
-    gmb_control_t ctrl;
-    char text[512];
-    int cursor;
-    int max_length;
-    bool read_only;
-    bool blink_on;
-    bool password_mode;
-    char format[32];       /* FORMAT (Picture/mask Clipper) — proprietá di compatibilitá */
-    bool is_valid;         /* VALID/ISVALID: esito dell'ultima validazione */
-    bool (*validator)(void* ctx, const char* text);
-    void* validator_ctx;
-} gmb_text_input_t;
+/* Modello unico: text input = gmb_widget_t (testo in `itext`, cursore in `tcur`). */
+typedef gmb_widget_t gmb_text_input_t;
 void gmb_text_input_init(gmb_text_input_t* t, int x, int y, int w);
 void gmb_text_input_set_text(gmb_text_input_t* t, const char* text);
 bool gmb_text_input_is_valid(gmb_text_input_t* t);

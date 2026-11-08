@@ -1,5 +1,8 @@
 /* ============================================================================
- * gmb_tui_toggle.c — ToggleButton.cs (specchio ClipperLib/Controls).
+ * gmb_tui_toggle.c — ToggleButton (specchio ClipperLib/Controls).
+ *
+ * MODELLO UNICO: un toggle è un gmb_widget_t (W_TOGGLE). On/off = `ival`,
+ * etichetta = `caption`. Non esiste una struct parallela per la TUI.
  * ============================================================================ */
 #include "gmb_tui_widgets.h"
 #include "gmb_graphics.h"
@@ -9,56 +12,34 @@
 #include <strings.h>
 #include "gmb_form.h"
 
-static void toggle_draw(void* u, gmb_control_t* c, gmb_screen_buffer_t* buf)
-{
-    gmb_toggle_button_t* t = (gmb_toggle_button_t*)u;
-    gmb_cell_color_t fg, bg;
-    gmb_control_style_effective(&c->style, c->focused, c->has_error, false, &fg, &bg);
-    char line[128];
-    snprintf(line, sizeof(line), "%s %s", t->pressed ? "[X]" : "[ ]", t->caption);
-    int l = (int)strlen(line);
-    if (l > c->width) line[c->width] = '\0';
-    else for (int i = l; i < c->width && i < 127; i++) line[i] = ' ';
-    if (l < c->width) line[c->width < 127 ? c->width : 127] = '\0';
-    char cased[160];
-    gmb_control_apply_case(c, line, cased, (int)sizeof(cased));
-    gmb_screen_setstring(buf, c->x, c->y, cased, fg, bg);
-}
 static bool toggle_key(void* u, gmb_control_t* c, int key)
 {
-    gmb_toggle_button_t* t = (gmb_toggle_button_t*)u;
+    gmb_widget_t* g = (gmb_widget_t*)u;
     if (!c->enabled) return false;
-    if (key == GMB_K_ENTER || key == ' ') { t->pressed = !t->pressed; return true; }
+    if (key == GMB_K_ENTER || key == ' ') { g->ival = g->ival != 0 ? 0.0 : 1.0; return true; }
     return false;
 }
 static bool toggle_click(void* u, gmb_control_t* c, int x, int y)
 {
-    gmb_toggle_button_t* t = (gmb_toggle_button_t*)u;
+    gmb_widget_t* g = (gmb_widget_t*)u;
     if (!c->enabled) return false;
     gmb_rect_t r = gmb_control_rect(c);
     if (!rect_contains(r, x, y)) return false;
     c->focused = true;
-    t->pressed = !t->pressed;
+    g->ival = g->ival != 0 ? 0.0 : 1.0;
     return true;
-}
-static void toggle_draw_px(void* u, gmb_control_t* c)
-{
-    gmb_toggle_button_t* t = (gmb_toggle_button_t*)u;
-    int x = (c->px_w > 0) ? c->px_x : c->x, y = (c->px_h > 0) ? c->px_y : c->y;
-    int w = (c->px_w > 0) ? c->px_w : c->width, h = (c->px_h > 0) ? c->px_h : c->height;
-    /* Parita' GUI: si dipinge con il renderer dei controlli grafici (una sola fonte). */
-    gmb_form_paint_widget_px("toggle", x, y, w, h, NULL, 0, 0, 0, 0,
-                             t->pressed ? 1.0 : 0.0, t->caption, NULL);
 }
 void gmb_toggle_button_init(gmb_toggle_button_t* t, int x, int y, int w, const char* caption)
 {
-    memset(t, 0, sizeof(*t));
-    gmb_control_init(&t->ctrl, "", x, y, w, 1, toggle_draw, toggle_key);
-    t->ctrl.draw_px_fn = toggle_draw_px;
-    t->ctrl.ctrl_kind = GMB_CK_TOGGLE;
-    t->ctrl.handle_click_fn = toggle_click;
-    t->ctrl.user = t;
-    snprintf(t->caption, sizeof(t->caption), "%s", caption ? caption : "");
+    gmb_widget_t* g = (gmb_widget_t*)t;
+    memset(g, 0, sizeof(*g));
+    gmb_control_init(&g->base, "", x, y, w, 1, gmb_widget_draw_cells, toggle_key);
+    g->base.draw_px_fn = gmb_widget_draw_px;
+    g->base.ctrl_kind = GMB_CK_TOGGLE;
+    g->base.handle_click_fn = toggle_click;
+    g->base.user = g;
+    g->kind = W_TOGGLE;
+    snprintf(g->caption, sizeof(g->caption), "%s", caption ? caption : "");
 }
 
 /* ---- Label ---- */

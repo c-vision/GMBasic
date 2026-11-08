@@ -12840,7 +12840,7 @@ void gmb_bf_tui_control_c3610(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, i
     const char* cap = argc >= 3 ? vm_builtin_sarg(args, argc, 2) : "";
     gmb_checkbox_init(&cb, x, y, (int)strlen(cap) + 6, cap);
     gmb_tui_run_control_modal(&cb.ctrl);
-    bout->is_num = 1; bout->result = cb.checked ? 1.0 : 0.0;
+    bout->is_num = 1; bout->result = cb.ival != 0 ? 1.0 : 0.0;
 }
 void gmb_bf_tui_toggle_c3611(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task) {
     (void)vm; (void)task; (void)func_code;
@@ -12851,7 +12851,7 @@ void gmb_bf_tui_toggle_c3611(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, in
     const char* cap = argc >= 3 ? vm_builtin_sarg(args, argc, 2) : "";
     gmb_toggle_button_init(&tg, x, y, (int)strlen(cap) + 6, cap);
     gmb_tui_run_control_modal(&tg.ctrl);
-    bout->is_num = 1; bout->result = tg.pressed ? 1.0 : 0.0;
+    bout->is_num = 1; bout->result = tg.ival != 0 ? 1.0 : 0.0;
 }
 void gmb_bf_tui_menu_c3612(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task) {
     (void)vm; (void)task; (void)func_code;

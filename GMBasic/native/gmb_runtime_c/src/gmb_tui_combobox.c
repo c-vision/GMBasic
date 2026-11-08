@@ -1,5 +1,8 @@
 /* ============================================================================
- * gmb_tui_combobox.c — ComboBox.cs (specchio ClipperLib/Controls).
+ * gmb_tui_combobox.c — ComboBox (specchio ClipperLib/Controls).
+ *
+ * MODELLO UNICO: una combobox è un gmb_widget_t (W_DROPDOWN); voci in `items`,
+ * scelta in `ival`, stato della lista in open/highlight/drop_down_height.
  * ============================================================================ */
 #include "gmb_tui_widgets.h"
 #include "gmb_graphics.h"
@@ -9,47 +12,9 @@
 #include <strings.h>
 #include "gmb_form.h"
 
-static void combobox_draw(void* u, gmb_control_t* c, gmb_screen_buffer_t* buf)
-{
-    gmb_combobox_t* cb = (gmb_combobox_t*)u;
-    gmb_cell_color_t fg, bg;
-    gmb_control_style_effective(&c->style, c->focused, c->has_error, false, &fg, &bg);
-    char line[128];
-    gmb_combobox_render_line(cb, line, (int)sizeof(line));
-    gmb_screen_setstring(buf, c->x, c->y, line, fg, bg);
-    /* TV THistory: icona `▐↓▌` (tre celle); `↓` se lo spazio è ridotto. */
-    if (c->width >= 4) {
-        gmb_screen_setchar(buf, c->x + c->width - 3, c->y, 0x2590, fg, bg);  /* ▐ */
-        gmb_screen_setchar(buf, c->x + c->width - 2, c->y, 0x2193, fg, bg);  /* ↓ */
-        gmb_screen_setchar(buf, c->x + c->width - 1, c->y, 0x258C, fg, bg);  /* ▌ */
-    } else if (c->width >= 1) {
-        gmb_screen_setchar(buf, c->x + c->width - 1, c->y, 0x2193, fg, bg);
-    }
-
-    if (cb->open && cb->items_count > 0)
-    {
-        gmb_cell_color_t popFg, popBg, selFg, selBg;
-        gmb_control_style_effective(&c->style, false, false, false, &popFg, &popBg);
-        gmb_control_style_effective(&c->style, false, false, true, &selFg, &selBg);
-        int maxH = cb->drop_down_height < cb->items_count ? cb->drop_down_height : cb->items_count;
-        for (int i = 0; i < maxH; i++)
-        {
-            const char* it = cb->items[i];
-            int il = (int)strlen(it);
-            char tmp[128], item[160];
-            if (il > c->width) snprintf(tmp, sizeof(tmp), "%.*s", c->width, it);
-            else snprintf(tmp, sizeof(tmp), "%-*s", c->width, it);
-            gmb_control_apply_case(c, tmp, item, (int)sizeof(item));
-            gmb_cell_color_t f = (i == cb->highlight) ? selFg : popFg;
-            gmb_cell_color_t b = (i == cb->highlight) ? selBg : popBg;
-            gmb_screen_setstring(buf, c->x, c->y + 1 + i, item, f, b);
-        }
-    }
-}
-
 static bool combobox_key(void* u, gmb_control_t* c, int key)
 {
-    gmb_combobox_t* cb = (gmb_combobox_t*)u;
+    gmb_widget_t* cb = (gmb_widget_t*)u;
     if (!c->enabled) return false;
     if (cb->open)
     {
@@ -59,17 +24,17 @@ static bool combobox_key(void* u, gmb_control_t* c, int key)
                 if (cb->highlight > 0) cb->highlight--;
                 return true;
             case GMB_K_DOWN:
-                if (cb->highlight < cb->items_count - 1) cb->highlight++;
+                if (cb->highlight < cb->nitems - 1) cb->highlight++;
                 return true;
             case GMB_K_ENTER:
-                if (cb->highlight >= 0 && cb->highlight < cb->items_count)
+                if (cb->highlight >= 0 && cb->highlight < cb->nitems)
                 {
-                    cb->selected = cb->highlight;
-                    cb->open = false;
+                    cb->ival = cb->highlight;
+                    cb->open = 0;
                 }
                 return true;
             case GMB_K_ESC:
-                cb->open = false;
+                cb->open = 0;
                 return true;
         }
     }
@@ -79,10 +44,10 @@ static bool combobox_key(void* u, gmb_control_t* c, int key)
         {
             case GMB_K_ENTER:
             case GMB_K_DOWN:
-                if (cb->items_count > 0)
+                if (cb->nitems > 0)
                 {
-                    cb->open = true;
-                    cb->highlight = cb->selected >= 0 ? cb->selected : 0;
+                    cb->open = 1;
+                    cb->highlight = cb->ival >= 0 ? (int)cb->ival : 0;
                 }
                 return true;
             case GMB_K_ESC:
@@ -94,7 +59,7 @@ static bool combobox_key(void* u, gmb_control_t* c, int key)
 
 static bool combobox_click(void* u, gmb_control_t* c, int x, int y)
 {
-    gmb_combobox_t* cb = (gmb_combobox_t*)u;
+    gmb_widget_t* cb = (gmb_widget_t*)u;
     if (!c->enabled) return false;
     gmb_rect_t r = gmb_control_rect(c);
     r.h = cb->open ? cb->drop_down_height + 1 : 1;
@@ -103,72 +68,69 @@ static bool combobox_click(void* u, gmb_control_t* c, int x, int y)
     if (cb->open)
     {
         int itemIdx = y - (c->y + 1);
-        int maxH = cb->drop_down_height < cb->items_count ? cb->drop_down_height : cb->items_count;
+        int maxH = cb->drop_down_height < cb->nitems ? cb->drop_down_height : cb->nitems;
         if (itemIdx >= 0 && itemIdx < maxH)
         {
-            cb->selected = cb->highlight = itemIdx;
-            cb->open = false;
+            cb->ival = itemIdx;
+            cb->highlight = itemIdx;
+            cb->open = 0;
         }
         else
         {
-            cb->open = false;
+            cb->open = 0;
         }
     }
     else
     {
-        cb->open = true;
-        cb->highlight = cb->selected >= 0 ? cb->selected : 0;
+        cb->open = 1;
+        cb->highlight = cb->ival >= 0 ? (int)cb->ival : 0;
     }
     return true;
 }
 
-static void combobox_draw_px(void* u, gmb_control_t* c)
-{
-    gmb_combobox_t* cb = (gmb_combobox_t*)u;
-    int x = (c->px_w > 0) ? c->px_x : c->x, y = (c->px_h > 0) ? c->px_y : c->y;
-    int w = (c->px_w > 0) ? c->px_w : c->width, h = (c->px_h > 0) ? c->px_h : c->height;
-    char csv[1024]; int o = 0;
-    for (int i = 0; i < cb->items_count && o < 1000; i++)
-        o += snprintf(csv + o, sizeof(csv) - (size_t)o, "%s%s", i ? "|" : "", cb->items[i]);
-    gmb_form_paint_widget_px("dropdown", x, y, w, h, csv, cb->selected, 0, 0, 0, 0, NULL, NULL);
-}
 void gmb_combobox_init(gmb_combobox_t* c, int x, int y, int w)
 {
-    memset(c, 0, sizeof(*c));
-    gmb_control_init(&c->ctrl, "", x, y, w, 1, combobox_draw, combobox_key);
-    c->ctrl.handle_click_fn = combobox_click;
-    c->ctrl.user = c;
-    c->ctrl.draw_px_fn = combobox_draw_px;
-    c->ctrl.ctrl_kind = GMB_CK_COMBOBOX;
-    c->items_count = 0;
-    c->selected = -1;
-    c->open = false;
-    c->highlight = 0;
-    c->drop_down_height = 5;
+    gmb_widget_t* g = (gmb_widget_t*)c;
+    memset(g, 0, sizeof(*g));
+    gmb_control_init(&g->base, "", x, y, w, 1, gmb_widget_draw_cells, combobox_key);
+    g->base.handle_click_fn = combobox_click;
+    g->base.user = g;
+    g->base.draw_px_fn = gmb_widget_draw_px;
+    g->base.ctrl_kind = GMB_CK_COMBOBOX;
+    g->kind = W_DROPDOWN;
+    g->nitems = 0;
+    g->ival = -1;
+    g->open = 0;
+    g->highlight = 0;
+    g->drop_down_height = 5;
 }
 
 void gmb_combobox_set_items(gmb_combobox_t* c, const char* const* items, int count)
 {
-    c->items_count = count < 16 ? count : 16;
-    for (int i = 0; i < c->items_count && items; i++)
-        snprintf(c->items[i], sizeof(c->items[i]), "%s", items[i] ? items[i] : "");
-    if (c->items_count > 0 && c->selected < 0) { c->selected = 0; c->highlight = 0; }
+    gmb_widget_t* g = (gmb_widget_t*)c;
+    g->nitems = count < 32 ? count : 32;
+    for (int i = 0; i < g->nitems && items; i++)
+        snprintf(g->items[i], sizeof(g->items[i]), "%s", items[i] ? items[i] : "");
+    if (g->nitems > 0 && g->ival < 0) { g->ival = 0; g->highlight = 0; }
 }
 
 const char* gmb_combobox_selected_value(gmb_combobox_t* c)
 {
-    if (c->selected >= 0 && c->selected < c->items_count) return c->items[c->selected];
+    gmb_widget_t* g = (gmb_widget_t*)c;
+    int sel = (int)g->ival;
+    if (sel >= 0 && sel < g->nitems) return g->items[sel];
     return NULL;
 }
 
 int gmb_combobox_render_line(gmb_combobox_t* c, char* out, int cap)
 {
+    gmb_widget_t* g = (gmb_widget_t*)c;
     const char* val = gmb_combobox_selected_value(c);
     /* TV THistory: icona a 3 celle (`▐↓▌`), quindi il testo si ferma a Width-3. */
-    int maxw = c->ctrl.width - (c->ctrl.width >= 4 ? 3 : 1);
+    int maxw = g->base.width - (g->base.width >= 4 ? 3 : 1);
     if (maxw < 0) maxw = 0;
     int o = snprintf(out, cap, "%.*s", maxw, val ? val : "");
-    for (int i = o; i < c->ctrl.width && i < cap - 1; i++) out[o++] = ' ';
+    for (int i = o; i < g->base.width && i < cap - 1; i++) out[o++] = ' ';
     out[o] = '\0';
     return o;
 }

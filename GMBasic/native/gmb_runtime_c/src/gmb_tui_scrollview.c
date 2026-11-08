@@ -13,7 +13,7 @@
 
 static void scrollview_draw(void* u, gmb_control_t* c, gmb_screen_buffer_t* buf)
 {
-    gmb_scroll_view_t* s = (gmb_scroll_view_t*)u;
+    gmb_widget_t* s = (gmb_widget_t*)u;
     gmb_cell_color_t fg, bg;
     gmb_control_style_effective(&c->style, c->focused, false, false, &fg, &bg);
     gmb_screen_sink_t* sk = gmb_screen_get_sink(buf);
@@ -22,8 +22,8 @@ static void scrollview_draw(void* u, gmb_control_t* c, gmb_screen_buffer_t* buf)
         gmb_surface_rounded_rect(buf, c->x, c->y, c->width, c->height, 4, fg, bg, 1);
         for (int i = 0; i < c->height; i++)
         {
-            int idx = s->offset + i;
-            if (idx >= s->content_count) break;
+            int idx = s->first + i;
+            if (idx >= s->nitems) break;
             char line[256];
             gmb_scroll_view_render_line(s, idx, line, (int)sizeof(line));
             gmb_gfx_draw_text(line, sk->origin_x + c->x * sk->cell_w,
@@ -33,8 +33,8 @@ static void scrollview_draw(void* u, gmb_control_t* c, gmb_screen_buffer_t* buf)
     }
     for (int i = 0; i < c->height; i++)
     {
-        int idx = s->offset + i;
-        if (idx >= s->content_count) break;
+        int idx = s->first + i;
+        if (idx >= s->nitems) break;
         char line[256];
         gmb_scroll_view_render_line(s, idx, line, (int)sizeof(line));
         gmb_screen_setstring(buf, c->x, c->y + i, line, fg, bg);
@@ -42,39 +42,39 @@ static void scrollview_draw(void* u, gmb_control_t* c, gmb_screen_buffer_t* buf)
 }
 static bool scrollview_key(void* u, gmb_control_t* c, int key)
 {
-    gmb_scroll_view_t* s = (gmb_scroll_view_t*)u;
+    gmb_widget_t* s = (gmb_widget_t*)u;
     if (!c->enabled) return false;
-    int max_offset = s->content_count - c->height;
+    int max_offset = s->nitems - c->height;
     if (max_offset < 0) max_offset = 0;
     switch (key)
     {
         case GMB_K_UP:
-            if (s->offset > 0) s->offset--;
+            if (s->first > 0) s->first--;
             return true;
         case GMB_K_DOWN:
-            if (s->offset < max_offset) s->offset++;
+            if (s->first < max_offset) s->first++;
             return true;
         case GMB_K_PGUP:
-            s->offset -= c->height;
-            if (s->offset < 0) s->offset = 0;
+            s->first -= c->height;
+            if (s->first < 0) s->first = 0;
             return true;
         case GMB_K_PGDN:
-            s->offset += c->height;
-            if (s->offset > max_offset) s->offset = max_offset;
+            s->first += c->height;
+            if (s->first > max_offset) s->first = max_offset;
             return true;
-        case GMB_K_HOME: s->offset = 0; return true;
-        case GMB_K_END: s->offset = max_offset; return true;
+        case GMB_K_HOME: s->first = 0; return true;
+        case GMB_K_END: s->first = max_offset; return true;
     }
     return false;
 }
 static bool scrollview_mouse(void* u, gmb_control_t* c, const gmb_mouse_action_t* a)
 {
-    gmb_scroll_view_t* s = (gmb_scroll_view_t*)u;
+    gmb_widget_t* s = (gmb_widget_t*)u;
     if (!c->enabled) return false;
-    int max_offset = s->content_count - c->height;
+    int max_offset = s->nitems - c->height;
     if (max_offset < 0) max_offset = 0;
-    if (a->kind == GMB_MA_SCROLLUP) { if (s->offset > 0) s->offset--; return true; }
-    if (a->kind == GMB_MA_SCROLLDOWN) { if (s->offset < max_offset) s->offset++; return true; }
+    if (a->kind == GMB_MA_SCROLLUP) { if (s->first > 0) s->first--; return true; }
+    if (a->kind == GMB_MA_SCROLLDOWN) { if (s->first < max_offset) s->first++; return true; }
     return false;
 }
 /* Renderer PIXEL della SCROLLVIEW — riscritto per la grafica (niente righe a celle):
@@ -83,7 +83,7 @@ static bool scrollview_mouse(void* u, gmb_control_t* c, const gmb_mouse_action_t
  * è il percorso a celle adattato alla grafica. */
 static void scrollview_draw_px(void* u, gmb_control_t* c)
 {
-    gmb_scroll_view_t* s = (gmb_scroll_view_t*)u;
+    gmb_widget_t* s = (gmb_widget_t*)u;
     gmb_widget_style_t st = gmb_widget_style_current();
     int x = (c->px_w > 0) ? c->px_x : c->x;
     int y = (c->px_h > 0) ? c->px_y : c->y;
@@ -101,17 +101,17 @@ static void scrollview_draw_px(void* u, gmb_control_t* c)
 
     int top = y + 6;
     int rows = (h - 12) / rh; if (rows < 1) rows = 1;
-    int n = s->content_count > 64 ? 64 : s->content_count;
+    int n = s->nitems > 64 ? 64 : s->nitems;
     int rail = (n > rows) ? 8 : 0;
 
     char line[512];
     for (int r = 0; r < rows; r++)
     {
-        int idx = s->offset + r;
+        int idx = s->first + r;
         if (idx >= n) break;
         int ry = top + r * rh;
         if (r & 1) gmb_gfx_fill_rounded_rect(x + 2, ry, w - 4, rh, 0, (st.border & 0xFFFFFFu) | 0x14000000u);
-        snprintf(line, sizeof(line), "%s", s->content[idx] ? s->content[idx] : "");
+        snprintf(line, sizeof(line), "%s", s->items[idx] ? s->items[idx] : "");
         int avail = w - 2 * pad - rail;
         int len = (int)strlen(line);
         while (len > 0 && gmb_gfx_text_width_logical(line) > avail) line[--len] = 0;
@@ -123,52 +123,57 @@ static void scrollview_draw_px(void* u, gmb_control_t* c)
         gmb_gfx_fill_rounded_rect(rx, ry2, 4, rh2, 2, (st.border & 0xFFFFFFu) | 0x33000000u);
         int th2 = rh2 * rows / n; if (th2 < 16) th2 = 16;
         int maxo = n - rows; if (maxo < 1) maxo = 1;
-        int off = s->offset > maxo ? maxo : s->offset;
+        int off = s->first > maxo ? maxo : s->first;
         int ty2 = ry2 + (rh2 - th2) * off / maxo;
         gmb_gfx_fill_rounded_rect(rx, ty2, 4, th2, 2, (st.accent & 0xFFFFFFu) ? st.accent : st.fill_hover);
     }
     if (c->focused) gmb_gfx_stroke_rounded_rect(x, y, w, h, rr, st.accent);
 }
-void gmb_scroll_view_init(gmb_scroll_view_t* s, int x, int y, int w, int h)
+void gmb_scroll_view_init(gmb_scroll_view_t* sv, int x, int y, int w, int h)
 {
+    gmb_widget_t* s = (gmb_widget_t*)sv;
     memset(s, 0, sizeof(*s));
-    gmb_control_init(&s->ctrl, "", x, y, w, h, scrollview_draw, scrollview_key);
-    s->ctrl.draw_px_fn = scrollview_draw_px;
-    s->ctrl.handle_mouse_fn = scrollview_mouse;
-    s->ctrl.user = s;
+    gmb_control_init(&s->base, "", x, y, w, h, scrollview_draw, scrollview_key);
+    s->base.draw_px_fn = scrollview_draw_px;
+    s->base.handle_mouse_fn = scrollview_mouse;
+    s->base.user = s;
+    s->kind = W_LISTBOX;
 }
-void gmb_scroll_view_set_content(gmb_scroll_view_t* s, const char* const* lines, int count)
+void gmb_scroll_view_set_content(gmb_scroll_view_t* sv, const char* const* lines, int count)
 {
-    s->content_count = count < 64 ? count : 64;
-    for (int i = 0; i < s->content_count && lines; i++)
-        snprintf(s->content[i], sizeof(s->content[i]), "%s", lines[i] ? lines[i] : "");
+    gmb_widget_t* s = (gmb_widget_t*)sv;
+    s->nitems = count < 64 ? count : 64;
+    for (int i = 0; i < s->nitems && lines; i++)
+        snprintf(s->items[i], sizeof(s->items[i]), "%s", lines[i] ? lines[i] : "");
 }
-void gmb_scroll_view_push(gmb_scroll_view_t* s, const char* line)
+void gmb_scroll_view_push(gmb_scroll_view_t* sv, const char* line)
 {
-    if (s->content_count >= 64) return;
-    snprintf(s->content[s->content_count++], sizeof(s->content[0]), "%s", line ? line : "");
-    int max_off = s->content_count - s->ctrl.height;
+    gmb_widget_t* s = (gmb_widget_t*)sv;
+    if (s->nitems >= 64) return;
+    snprintf(s->items[s->nitems++], sizeof(s->items[0]), "%s", line ? line : "");
+    int max_off = s->nitems - s->base.height;
     if (max_off < 0) max_off = 0;
-    if (s->offset > max_off) s->offset = max_off;
+    if (s->first > max_off) s->first = max_off;
 }
 int gmb_scroll_view_render_line(gmb_scroll_view_t* s, int idx, char* out, int cap)
 {
-    if (idx < 0 || idx >= s->content_count)
+    if (idx < 0 || idx >= s->nitems)
     {
-        for (int i = 0; i < s->ctrl.width && i < cap - 1; i++) out[i] = ' ';
-        out[s->ctrl.width < cap - 1 ? s->ctrl.width : cap - 1] = '\0';
-        return s->ctrl.width;
+        for (int i = 0; i < s->base.width && i < cap - 1; i++) out[i] = ' ';
+        out[s->base.width < cap - 1 ? s->base.width : cap - 1] = '\0';
+        return s->base.width;
     }
-    int o = snprintf(out, cap, "%.*s", s->ctrl.width, s->content[idx]);
-    if (o > s->ctrl.width) o = s->ctrl.width;
-    else for (int i = o; i < s->ctrl.width && i < cap - 1; i++) out[o++] = ' ';
+    int o = snprintf(out, cap, "%.*s", s->base.width, s->items[idx]);
+    if (o > s->base.width) o = s->base.width;
+    else for (int i = o; i < s->base.width && i < cap - 1; i++) out[o++] = ' ';
     out[o] = '\0';
     return o;
 }
-double gmb_scroll_view_scroll_fraction(gmb_scroll_view_t* s)
+double gmb_scroll_view_scroll_fraction(gmb_scroll_view_t* sv)
 {
-    int denom = s->content_count - s->ctrl.height;
-    return denom > 0 ? (double)s->offset / denom : 0.0;
+    gmb_widget_t* s = (gmb_widget_t*)sv;
+    int denom = s->nitems - s->base.height;
+    return denom > 0 ? (double)s->first / denom : 0.0;
 }
 
 /* ===================== Form widget ===================== */
