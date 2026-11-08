@@ -6,7 +6,7 @@
 '   - CRYPTOGRAPHY.PASSWORDHASH/VERIFY (PBKDF2-HMAC-SHA256, formato b64(salt).b64(hash))
 '   - AUTH.JWTCREATE/JWTVERIFY/JWTPAYLOAD (HS256)
 '   - CRYPTOGRAPHY.HMACSHA256 (firma)
-' Eseguibile su IL, PCodeVM e VM/C (C99Native: gap dichiarato 2026-09-02).
+' Eseguibile e identico su IL, PCodeVM, VM/C e C99Native (AUTH e CRYPTOGRAPHY via FFI).
 
 REQUIRE "crypto"
 IMPORT CRYPTOGRAPHY

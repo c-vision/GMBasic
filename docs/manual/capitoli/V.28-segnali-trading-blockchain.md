@@ -791,6 +791,7 @@ IF h > 0 THEN PRINT "ok"
 
 
 
+
 <!-- BEGIN DOMAIN TABLE -->
 ## Tavola sinottica del dominio
 

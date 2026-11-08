@@ -129,6 +129,20 @@ verifica della password si fa **solo** con la funzione dedicata, mai confrontand
 
 
 
+
+
+
+<!-- BEGIN DOMAIN TABLE -->
+## Tavola sinottica del dominio
+
+Ogni riga riporta la firma canonica (dal registry) e il primo uso reale trovato
+nel corpus di test e sample `.bas`/`.inc`: dove il corpus non usa il simbolo è dichiarato.
+
+- **AUTH.JWTCREATE(x1, x2)** — `DIM token$ = AUTH.JWTCREATE(claims$, "s3cret")` (shared/samples/Security/JwtDemo.bas:15)
+- **AUTH.JWTPAYLOAD(x1)** — `DIM p$ = AUTH.JWTPAYLOAD(token$)` (shared/samples/Security/JwtDemo.bas:31)
+- **AUTH.JWTVERIFY(x1, x2)** — `IF AUTH.JWTVERIFY(token$, "s3cret") THEN` (shared/samples/Security/JwtDemo.bas:17)
+<!-- END DOMAIN TABLE -->
+
 <!-- BEGIN SURFACE (generato da tools/sh/manual_surface.sh — non modificare a mano) -->
 
 ## Riferimento completo: comandi, funzioni, parametri
@@ -195,6 +209,65 @@ HTTP CONFIG config
 ## 8. Checklist rapida
 
 ## Gap dichiarati (2026-09-02)
+
+### AUTH-Guida-Utente
+
+*Fonte: `AUTH-Guida-Utente`*
+
+
+## 1. Import
+
+IMPORT AUTH
+
+
+## 2. Funzioni
+| funzione | parametri | ritorno |
+|---|---|---|
+| `AUTH.JWTCREATE(claims$, secret$)` | `claims$` payload JSON (testo), `secret$` chiave HMAC | STRING: token `header.payload.firma` |
+| `AUTH.JWTVERIFY(token$, secret$)` | `token$` JWT, `secret$` chiave HMAC | BIT: **−1** firma valida, **0** firma errata o token malformato |
+| `AUTH.JWTPAYLOAD(token$)` | `token$` JWT | STRING: payload JSON decodificato (`""` se il token è malformato) |
+
+### Parametri (dettaglio)
+
+### Formato del token
+
+base64url({"alg":"HS256","typ":"JWT"}) . base64url(claims) . base64url(HMAC-SHA256(primo.secondo, secret))
+
+
+## 3. Semantica e limiti (importante)
+
+## 4. Esempio
+
+IMPORT AUTH
+
+SUB Main()
+    DIM q AS STRING
+    q = CHR$(34)
+    DIM claims AS STRING
+    claims = "{" + q + "sub" + q + ":" + q + "123" + q + "," + q + "role" + q + ":" + q + "admin" + q + "}"
+
+    DIM token AS STRING
+    token = AUTH.JWTCREATE(claims, "s3cret")
+    PRINT token
+
+    IF AUTH.JWTVERIFY(token, "s3cret") <> 0 THEN
+        PRINT "firma valida"
+    END IF
+    PRINT "payload: "; AUTH.JWTPAYLOAD(token)
+
+
+## 5. Errori e diagnosi
+| sintomo | causa |
+|---|---|
+| `JWTVERIFY` = 0 con token appena creato | segreto diverso da quello usato in `JWTCREATE` |
+| `JWTVERIFY` = 0 su token ricevuto | token manomesso, troncato o con un `.` in più |
+| `JWTPAYLOAD` = `""` | token senza i due punti o firma vuota: non è un JWT |
+| payload decodificato diverso dall'originale | claims costruite con escaping errato (virgolette JSON) |
+| `name AUTH ... not found` | manca l'export in `shared/include/auth.inc` o la lib non è nel percorso FFI |
+
+## 6. Parità fra i backend
+
+## 7. Riferimenti
 
 ### Cryptography-Guida-Utente
 
@@ -333,16 +406,3 @@ SUB Login(req AS HTTPREQUEST, res AS HTTPRESPONSE)
 ## 6. Gap noti
 
 <!-- END SURFACE -->
-
-
-
-<!-- BEGIN DOMAIN TABLE -->
-## Tavola sinottica del dominio
-
-Ogni riga riporta la firma canonica (dal registry) e il primo uso reale trovato
-nel corpus di test e sample `.bas`/`.inc`: dove il corpus non usa il simbolo è dichiarato.
-
-- **AUTH.JWTCREATE(x1, x2)** — `DIM token$ = AUTH.JWTCREATE(claims$, "s3cret")` (shared/samples/Security/JwtDemo.bas:15)
-- **AUTH.JWTPAYLOAD(x1)** — `DIM p$ = AUTH.JWTPAYLOAD(token$)` (shared/samples/Security/JwtDemo.bas:31)
-- **AUTH.JWTVERIFY(x1, x2)** — `IF AUTH.JWTVERIFY(token$, "s3cret") THEN` (shared/samples/Security/JwtDemo.bas:17)
-<!-- END DOMAIN TABLE -->

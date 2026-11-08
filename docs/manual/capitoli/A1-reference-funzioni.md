@@ -1860,24 +1860,6 @@ ATOMIC.STORE   ' dal codice del progetto: shared/minitests/atomic/atomic_all.bas
 ATOMIC.SWAP   ' dal codice del progetto: shared/minitests/atomic/atomic_all.bas:19
 ```
 
-#### `AUTH.JWTCREATE` — arita 2-2
-
-```basic
-AUTH.JWTCREATE   ' dal codice del progetto: shared/minitests/auth/gen_AUTH_JWTCREATE.bas:5
-```
-
-#### `AUTH.JWTPAYLOAD` — arita 1-1
-
-```basic
-AUTH.JWTPAYLOAD   ' dal codice del progetto: shared/minitests/auth/gen_AUTH_JWTPAYLOAD.bas:4
-```
-
-#### `AUTH.JWTVERIFY` — arita 2-2
-
-```basic
-AUTH.JWTVERIFY   ' dal codice del progetto: shared/minitests/auth/auth_all.bas:7
-```
-
 #### `BITS.BITCLEAR` — arita 2-2
 
 ```basic
@@ -6573,7 +6555,7 @@ STATS.POISSONPMF   ' dal codice del progetto: shared/minitests/stats/stats_all.b
 #### `STATS.Regress` — arita 2-2
 
 ```basic
-STATS.REGRESS   ' dal codice del progetto: shared/minitests/analysis/udt.bas:7
+STATS.REGRESS   ' dal codice del progetto: shared/minitests/analysis/udt.bas:8
 ```
 
 #### `STATS.Shapiro` — arita 1-1

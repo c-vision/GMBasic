@@ -1,5 +1,6 @@
+' EXPECT: []
 IMPORT AUTH
 
 SUB Main()
-    PRINT AUTH.JWTPAYLOAD("")
+    PRINT "["; AUTH.JWTPAYLOAD(""); "]"
 END SUB

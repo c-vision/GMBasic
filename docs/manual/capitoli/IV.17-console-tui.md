@@ -989,6 +989,7 @@ END SELECT
 
 
 
+
 <!-- BEGIN DOMAIN TABLE -->
 ## Tavola sinottica del dominio
 

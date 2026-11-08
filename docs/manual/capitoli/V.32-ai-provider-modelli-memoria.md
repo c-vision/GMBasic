@@ -2279,6 +2279,7 @@ PRINT r$
 
 
 
+
 <!-- BEGIN DOMAIN TABLE -->
 ## Tavola sinottica del dominio
 

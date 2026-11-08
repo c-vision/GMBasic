@@ -930,6 +930,7 @@ dotnet test --filter "Category=Fast" --verbosity minimal      # 439/439
 
 
 
+
 <!-- BEGIN DOMAIN TABLE -->
 ## Tavola sinottica del dominio
 

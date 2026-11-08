@@ -308,9 +308,6 @@ ATOMIC.FETCHVALUE	comando-qualificato	1-1	si	no	shared/minitests/atomic/atomic_a
 ATOMIC.INCREMENT	comando-qualificato	2-2	si	no	shared/minitests/atomic/atomic_all.bas:11
 ATOMIC.STORE	funzione	2-2	si	no	shared/minitests/atomic/atomic_all.bas:15
 ATOMIC.SWAP	comando-qualificato	2-2	si	no	shared/minitests/atomic/atomic_all.bas:19
-AUTH.JWTCREATE	funzione	2-2	si	no	shared/minitests/auth/gen_AUTH_JWTCREATE.bas:5
-AUTH.JWTPAYLOAD	funzione	1-1	si	no	shared/minitests/auth/gen_AUTH_JWTPAYLOAD.bas:4
-AUTH.JWTVERIFY	funzione	2-2	si	no	shared/minitests/auth/auth_all.bas:7
 BITS.BITCLEAR	funzione	2-2	si	no	shared/minitests/bits/bits_all.bas:14
 BITS.BITCOUNT	funzione	1-1	si	no	shared/minitests/bits/bitcount.bas:1
 BITS.BITDEINTERLEAVE	funzione	2-2	si	no	shared/minitests/bits/bits_all.bas:38
@@ -1093,7 +1090,7 @@ STATS.ParetoPpf	funzione	3-3	si	no	shared/minitests/stats/stats_all.bas:276
 STATS.ParetoSf	funzione	3-3	si	no	shared/minitests/stats/pareto_cdf_sf.bas:4
 STATS.PearsonR	funzione	2-2	si	no	shared/minitests/stats/pearsonr.bas:1
 STATS.PoissonPmf	funzione	2-2	si	no	shared/minitests/stats/stats_all.bas:277
-STATS.Regress	funzione	2-2	si	no	shared/minitests/analysis/udt.bas:7
+STATS.Regress	funzione	2-2	si	no	shared/minitests/analysis/udt.bas:8
 STATS.Shapiro	funzione	1-1	si	no	shared/minitests/stats/shapiro.bas:1
 STATS.SkewTest	funzione	1-1	si	no	shared/minitests/stats/stats_all.bas:104
 STATS.SkewedNormalPdf	funzione	1-4	si	no	shared/minitests/stats/stats_all.bas:289
