@@ -190,7 +190,7 @@ SUB Main()
   pr = PORTFOLIO.MAXRETURN(mu)
   PRINT " max-return: 100% su asset 0     = "; pr(3); " "; pr(4); " "; pr(5)
   DIM rr(5) AS DOUBLE : rr = {0.02, -0.01, 0.03, 0.01, -0.02, 0.015}
-  DIM hr(0) AS ARRAY OF DOUBLE : hr(0) = rr
+  DIM hr(0) AS ARRAY OF DOUBLE : hr(0) = {0.02, -0.01, 0.03, 0.01, -0.02, 0.015}
   pr = PORTFOLIO.KELLYCRITERION(hr, 0.02)
   PRINT " Kelly su serie con perdite      = "; FORMAT(pr(0), "#.000000")
   pr = PORTFOLIO.MINCVAR(hr, 0.95, 0.02)
