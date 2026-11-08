@@ -9,7 +9,6 @@ using Basic.AI.Rag;
 using Basic.Databases.Rdd;
 using Basic.IlBackend.PCode.Http;
 using CommonLib.Http;
-using CommonLib.Trading;
 
 namespace Basic.IlBackend.PCode;
 
@@ -643,19 +642,6 @@ if (args.Length > 0) { try { var sizes = new List<int>(); foreach (var a in args
                     return ClipperLib.Clipper.ClipperSet.Message();
                 }
                 catch { return ""; }
-        },
-        [BuiltInFunction.PRICESIMPLE] = (task, args) =>
-        {
-            {
-                var settlement = DateTime.FromOADate(SafeDouble(args.Length > 0 ? args[0] : 0));
-                var maturity = DateTime.FromOADate(SafeDouble(args.Length > 1 ? args[1] : 0));
-                var rate = args.Length > 2 ? SafeDouble(args[2] ?? 0) : 0;
-                var yld = args.Length > 3 ? SafeDouble(args[3] ?? 0) : 0;
-                var redemption = args.Length > 4 ? SafeDouble(args[4] ?? 0) : 0;
-                var frequency = args.Length > 5 ? (int)SafeDouble(args[5] ?? 0) : 1;
-                try { return CommonLib.Numerics.PriceSimple(settlement, maturity, rate, yld, redemption, frequency); } catch { return 0.0; }
-            }
-        
         },
         [BuiltInFunction.FV] = (task, args) =>
         {
@@ -1557,18 +1543,6 @@ if (args.Length >= 2) { var file = args[0]?.ToString() ?? ""; var section = args
                 }
                 return null;
         },
-        [BuiltInFunction.DIVIDENDPAYOUTRATIO] = (task, args) =>
-        {
-                if (args.Length >= 2) { try { return CommonLib.Trading.General.DividendPayoutRatio(SafeDouble(args[0]), SafeDouble(args[1])); } catch { } } return 0.0;
-        },
-        [BuiltInFunction.PBRATIO] = (task, args) =>
-        {
-                if (args.Length >= 2) { try { return CommonLib.Trading.General.PbRatio(SafeDouble(args[0]), SafeDouble(args[1])); } catch { } } return 0.0;
-        },
-        [BuiltInFunction.PERATIO] = (task, args) =>
-        {
-                if (args.Length >= 2) { try { return CommonLib.Trading.General.PeRatio(SafeDouble(args[0]), SafeDouble(args[1])); } catch { } } return 0.0;
-        },
         [BuiltInFunction.FVEXT] = (task, args) =>
         {
                 if (args.Length >= 1) return (double)CommonLib.Numerics.FvExt((decimal)SafeDouble(args[0]), (decimal)SafeDouble(ArgOr(args,1)), (decimal)SafeDouble(ArgOr(args,2)), (decimal)SafeDouble(ArgOr(args,3)), (int)SafeDouble(ArgOr(args,4)));
@@ -1705,14 +1679,6 @@ if (args.Length >= 2) { var file = args[0]?.ToString() ?? ""; var section = args
                 // un PATH passato come argomento e rispondeva 0 → IL/PCode divergevano,
                 // § MiniTests/dbf/zz_a).
                 return Basic.IlBackend.IlRuntime.DbfLupdate(null);
-        },
-        [BuiltInFunction.MAXRETURN] = (task, args) =>
-        {
-                // MAXRETURN(rendimenti) del namespace TRADING.PORTFOLIO → PortfolioResult dict
-                // (parità VM/C case 193 e StdLib PortfolioResultType). Prima ritornava il
-                // double numerics: incoerente col tipo dichiarato.
-                if (args.Length > 0 && args[0] is System.Collections.IList mrx) return Basic.IlBackend.IlRuntime.PortfolioMaxReturn(ToDoubleArray(mrx));
-                return new Dictionary<string, object?>();
         },
         [BuiltInFunction.MINSEMIVARIANCE] = (task, args) =>
         {
@@ -1970,10 +1936,6 @@ if (args.Length >= 3) { var file = args[0]?.ToString() ?? ""; var section = args
                 }
                 return 0.0;
         },
-        [BuiltInFunction.ZOMMA] = (task, args) =>
-        {
-                if (args.Length >= 5) { try { return CommonLib.Trading.Options.Zomma(SafeDouble(args[0]), SafeDouble(args[1]), SafeDouble(args[2]), SafeDouble(args[3]), SafeDouble(args[4])); } catch { } } return 0.0;
-        },
         [BuiltInFunction.KMEANS] = (task, args) =>
         {
                 if (args.Length >= 2 && args[0] is System.Collections.IList kmData) {
@@ -2041,30 +2003,6 @@ if (args.Length >= 3) { var file = args[0]?.ToString() ?? ""; var section = args
         [BuiltInFunction.IFFTSHIFT] = (task, args) =>
         {
                 return Basic.IlBackend.IlRuntime.IfftShift(ToDoubleArr(ArgOr(args, 0)));
-        },
-        [BuiltInFunction.MAXSHARPE] = (task, args) =>
-        {
-            {
-                // MAXSHARPE(rendimenti, covarianza, riskFree) -> PortfolioResult (dictionary
-                // coi campi BASIC ExpectedReturn/Volatility/SharpeRatio/Weights) via
-                // CommonLib.Portfolio.OptimizeMeanVariance("MAXSHARPE").
-                if (args.Length >= 2)
-                {
-                    var r = ToDoubleArray(args[0]);
-                    var cov = ToDoubleMatrix2D(args[1]);
-                    var rf = args.Length > 2 ? SafeDouble(args[2]) : 0.0;
-                    if (r.Length > 0 && cov != null)
-                    {
-                        // Solver closed-form condiviso (IlRuntime.MaxSharpe) — parità IL/VM-C.
-                        int rows = cov.GetLength(0);
-                        var jag = new double[rows][];
-                        for (int i = 0; i < rows; i++) { jag[i] = new double[cov.GetLength(1)]; for (int j = 0; j < cov.GetLength(1); j++) jag[i][j] = cov[i, j]; }
-                        return Basic.IlBackend.IlRuntime.MaxSharpe(r, jag, rf);
-                    }
-                }
-                return null;
-            }
-        
         },
         [BuiltInFunction.ISDATE] = (task, args) =>
         {
@@ -2858,365 +2796,6 @@ if (args.Length >= 3) { var file = args[0]?.ToString() ?? ""; var section = args
                 if (args.Length >= 1) return Basic.IlBackend.IlRuntime.ToDict(args[0]);
                 return null;
         },
-        [BuiltInFunction.RUN] = (task, args) =>
-        {
-            {
-                // Metriche dal runtime comune (IlRuntime.BacktestRun): gestisce array
-                // rettangolare double[,] (rappresentazione del linguaggio) e jagged, evita la
-                // doppia implementazione divergente.
-                var metrics = Basic.IlBackend.IlRuntime.BacktestRun(
-                    args.Length > 0 ? args[0] : null,
-                    args.Length > 1 ? args[1] : null,
-                    null);
-                var totalRet = SafeDouble(metrics["TotalReturn"]);
-                var annRet = SafeDouble(metrics["AnnualizedReturn"]);
-                var maxDD = SafeDouble(metrics["MaxDrawdown"]);
-                var sharpe = SafeDouble(metrics["SharpeRatio"]);
-                var trades = SafeDouble(metrics["TradesCount"]);
-                var eq = metrics["EquityCurve"];
-                var dict = new System.Collections.Generic.Dictionary<string, object?>(System.StringComparer.OrdinalIgnoreCase)
-                {
-                    ["TotalReturn"] = totalRet,
-                    ["AnnualizedReturn"] = annRet,
-                    ["MaxDrawdown"] = maxDD,
-                    ["SharpeRatio"] = sharpe,
-                    ["TradesCount"] = trades,
-                    ["Turnover"] = 0.0,
-                    ["EquityCurve"] = eq,
-                };
-                // Build class descriptor for field access
-                var fieldNames = new System.Collections.Generic.Dictionary<int, string> { {0,"TotalReturn"}, {1,"AnnualizedReturn"}, {2,"MaxDrawdown"}, {3,"SharpeRatio"}, {4,"TradesCount"}, {5,"Turnover"}, {6,"EquityCurve"} };
-                var cd = new System.Collections.Generic.Dictionary<string, object?> { ["FieldNames"] = fieldNames };
-                dict["__class__"] = cd;
-                // Also add __field_N for fallback (no enumeration, direct assignment)
-                dict["__field_0"] = totalRet;
-                dict["__field_1"] = annRet;
-                dict["__field_2"] = maxDD;
-                dict["__field_3"] = sharpe;
-                dict["__field_4"] = trades;
-                dict["__field_5"] = 0.0;
-                dict["__field_6"] = eq;
-                return dict;
-            }
-        },
-        [BuiltInFunction.MINVOLATILITY] = (task, args) =>
-        {
-            {
-                // MINVOLATILITY(covarianza) -> PortfolioResult via OptimizeMeanVariance("MINVOLATILITY").
-                var cov = args.Length > 0 ? ToDoubleMatrix2D(args[0]) : null;
-                if (cov != null)
-                {
-                    var n = cov.GetLength(0);
-                    var r = new double[n];
-                    for (int i = 0; i < n; i++) r[i] = 0;
-                    try { return OptimizePortfolioToDict(CommonLib.Trading.Portfolio.OptimizeMeanVariance(r, cov, "MINVOLATILITY", 0, null)); }
-                    catch { return null; }
-                }
-                return null;
-            }
-        },
-        [BuiltInFunction.EQUALLYWEIGHTED] = (task, args) =>
-        {
-            {
-                // EQUALLYWEIGHTED(numeroAsset) -> PortfolioResult via CommonLib.
-                if (args.Length > 0)
-                {
-                    try { return OptimizePortfolioToDict(CommonLib.Trading.Portfolio.EquallyWeighted((int)SafeDouble(args[0]))); }
-                    catch { return null; }
-                }
-                return null;
-            }
-        },
-        [BuiltInFunction.RISKPARITY] = (task, args) =>
-        {
-            {
-                // RISKPARITY(covarianza) -> PortfolioResult via CommonLib.
-                var cov = args.Length > 0 ? ToDoubleMatrix2D(args[0]) : null;
-                if (cov != null)
-                {
-                    try { return OptimizePortfolioToDict(CommonLib.Trading.Portfolio.RiskParity(cov)); }
-                    catch { return null; }
-                }
-                return null;
-            }
-        },
-        [BuiltInFunction.MEANVARIANCE] = (task, args) =>
-        {
-            {
-                // MEANVARIANCE(rendimenti, covarianza [, vincoli]) -> PortfolioResult via
-                // OptimizeMeanVariance (max Sharpe con rf 0 per il caso senza vincoli).
-                if (args.Length >= 2)
-                {
-                    var r = ToDoubleArray(args[0]);
-                    var cov = ToDoubleMatrix2D(args[1]);
-                    if (r.Length > 0 && cov != null)
-                    {
-                        // Solver closed-form condiviso (IlRuntime.MeanVariance) — parità IL/VM-C.
-                        int rows = cov.GetLength(0);
-                        var jag = new double[rows][];
-                        for (int i = 0; i < rows; i++) { jag[i] = new double[cov.GetLength(1)]; for (int j = 0; j < cov.GetLength(1); j++) jag[i][j] = cov[i, j]; }
-                        return Basic.IlBackend.IlRuntime.MeanVariance(r, jag);
-                    }
-                }
-                return null;
-            }
-        },
-        [BuiltInFunction.BLACKLITTERMAN] = (task, args) =>
-        {
-            {
-                // BLACKLITTERMAN(marketCaps, cov, riskAversion, tau, P, Q, omega, riskFree)
-                // -> PortfolioResult via CommonLib (firma allineata alla dichiarazione).
-                if (args.Length >= 8)
-                {
-                    var caps = ToDoubleArray(args[0]);
-                    var cov = ToDoubleMatrix2D(args[1]);
-                    var riskAversion = SafeDouble(args[2]);
-                    var tau = SafeDouble(args[3]);
-                    var P = ToDoubleMatrix2D(args[4]);
-                    var Q = ToDoubleArray(args[5]);
-                    var omega = ToDoubleMatrix2D(args[6]);
-                    var rf = SafeDouble(args[7]);
-                    if (caps.Length > 0 && cov != null && P != null && omega != null)
-                    {
-                        try { return OptimizePortfolioToDict(CommonLib.Trading.Portfolio.BlackLitterman(caps, cov, riskAversion, tau, P, Q, omega, rf)); }
-                        catch { return null; }
-                    }
-                }
-                return null;
-            }
-        },
-        [BuiltInFunction.EVOLVE] = (task, args) =>
-        {
-                // Parità IlRuntime.PortfolioEvolve(rendimentiAttesi, matriceCovarianza, parametriGA):
-                // prima il handler usava la vecchia firma (popolazione, closure fitness, generazioni)
-                // → `EVOLVE(r, cov, NULL)` ritornava sempre null/0 (bug PORTFOLIO_EVOLVE).
-                if (args.Length >= 2 && args[0] is System.Collections.IList)
-                {
-                    try
-                    {
-                        var evr = ToDoubleArray(args[0]);
-                        var evc = ToDoubleMatrix(args[1]);
-                        var evres = Basic.IlBackend.IlRuntime.PortfolioEvolve(evr, evc, args.Length > 2 ? args[2] : null) as CommonLib.Trading.PortfolioResult;
-                        return evres is null ? null : OptimizePortfolioToDict(evres);
-                    }
-                    catch { return null; }
-                }
-                return null;
-        },
-        [BuiltInFunction.ISLONGONLY] = (task, args) =>
-        {
-if (args.Length > 0 && args[0] is System.Collections.IList wts) { var w = new double[wts.Count]; for (int i = 0; i < wts.Count; i++) w[i] = SafeDouble(wts[i]); return CommonLib.Numerics.IsLongOnly(w) ? -1.0 : 0.0; } return 0.0;
-        },
-        [BuiltInFunction.TOTALRETURN] = (task, args) =>
-        {
-                // Runtime comune (IlRuntime): CommonLib.Trading.Metrics (frazione, non x100).
-                if (args.Length > 0) return Basic.IlBackend.IlRuntime.TotalReturn(ToDoubleArr(args[0]));
-                return 0.0;
-        },
-        [BuiltInFunction.ANNUALIZEDRETURN] = (task, args) =>
-        {
-                // Runtime comune (IlRuntime): CommonLib.Trading.Metrics (frazione, non x100).
-                if (args.Length > 0) return Basic.IlBackend.IlRuntime.AnnualizedReturn(
-                    ToDoubleArr(args[0]), args.Length > 1 ? (long)SafeDouble(args[1] ?? 12) : 12L);
-                return 0.0;
-        },
-        [BuiltInFunction.MAXDRAWDOWN] = (task, args) =>
-        {
-                // Runtime comune (IlRuntime): CommonLib.Trading.Metrics (frazione, es. -0.25
-                // per -25% — il PCode ritornava percentuale x100, unità diversa). Unica impl.
-                if (args.Length > 0) return Basic.IlBackend.IlRuntime.MaxDrawdown(ToDoubleArr(args[0]));
-                return 0.0;
-        },
-        [BuiltInFunction.SHARPERATIO] = (task, args) =>
-        {
-                // Runtime comune (IlRuntime): stessa formula (senza riskfree) — unica impl.
-                if (args.Length > 0) return Basic.IlBackend.IlRuntime.SharpeRatio(ToDoubleArr(args[0]));
-                return 0.0;
-        },
-        [BuiltInFunction.SORTINORATIO] = (task, args) =>
-        {
-                // Firma canonica (StdLib): (values, riskfree, periodi) → IlRuntime.
-                if (args.Length > 0) return Basic.IlBackend.IlRuntime.SortinoRatio(
-                    ToDoubleArr(args[0]), args.Length > 1 ? SafeDouble(args[1]) : 0.0,
-                    args.Length > 2 ? (long)SafeDouble(args[2]) : 252L);
-                return 0.0;
-        },
-        [BuiltInFunction.CALMARRATIO] = (task, args) =>
-        {
-                // Runtime comune (IlRuntime): AnnualizedReturn/|MaxDrawdown| — unica impl.
-                if (args.Length > 0) return Basic.IlBackend.IlRuntime.CalmarRatio(
-                    ToDoubleArr(args[0]), args.Length > 1 ? (long)SafeDouble(args[1]) : 12L);
-                return 0.0;
-        },
-        [BuiltInFunction.VALUEATRISK] = (task, args) =>
-        {
-                // Runtime comune (IlRuntime): CommonLib.Trading.Metrics (percentile, senza x100
-                // — il PCode ritornava -val*100). Unica implementazione.
-                if (args.Length > 0) return Basic.IlBackend.IlRuntime.ValueAtRisk(
-                    ToDoubleArr(args[0]), args.Length > 1 ? SafeDouble(args[1] ?? 0.95) : 0.95);
-                return 0.0;
-        },
-        [BuiltInFunction.ANNUALIZEDVOLATILITY] = (task, args) =>
-        {
-                // Runtime comune (IlRuntime): CommonLib.Trading.Metrics (frazione, non x100).
-                if (args.Length > 0) return Basic.IlBackend.IlRuntime.AnnualizedVolatility(
-                    ToDoubleArr(args[0]), args.Length > 1 ? (long)SafeDouble(args[1]) : 252L);
-                return 0.0;
-        },
-        [BuiltInFunction.DOWNSIDEDEVIATION] = (task, args) =>
-        {
-                // Runtime comune (IlRuntime): CommonLib.Trading.Metrics (Average, senza x100 —
-                // il PCode divideva per n-1 e moltiplicava per 100). Unica implementazione.
-                if (args.Length > 0) return Basic.IlBackend.IlRuntime.DownsideDeviation(
-                    ToDoubleArr(args[0]), args.Length > 1 ? SafeDouble(args[1] ?? 0) : 0.0);
-                return 0.0;
-        },
-        [BuiltInFunction.BETA] = (task, args) =>
-        {
-                // Runtime comune (IlRuntime): CommonLib.Trading.Metrics — unica implementazione.
-                if (args.Length >= 2) return Basic.IlBackend.IlRuntime.Beta(ToDoubleArr(args[0]), ToDoubleArr(args[1]));
-                return 0.0;
-        },
-        [BuiltInFunction.ALPHA] = (task, args) =>
-        {
-                // Runtime comune (IlRuntime): firma canonica (asset, benchmark, riskfree, periodi)
-                // — il PCode prima calcolava senza riskfree (semplificazione incompleta).
-                if (args.Length >= 2) return Basic.IlBackend.IlRuntime.Alpha(
-                    ToDoubleArr(args[0]), ToDoubleArr(args[1]),
-                    args.Length > 2 ? SafeDouble(args[2]) : 0.0,
-                    args.Length > 3 ? (long)SafeDouble(args[3]) : 252L);
-                return 0.0;
-        },
-        [BuiltInFunction.TREYNORRATIO] = (task, args) =>
-        {
-                // Firma canonica (StdLib): (asset, benchmark, riskfree, periodi) → IlRuntime.
-                if (args.Length >= 2) return Basic.IlBackend.IlRuntime.TreynorRatio(
-                    ToDoubleArr(args[0]), ToDoubleArr(args[1]),
-                    args.Length > 2 ? SafeDouble(args[2]) : 0.0,
-                    args.Length > 3 ? (long)SafeDouble(args[3]) : 252L);
-                // Legacy 1-arg (semplificato, senza benchmark/riskfree): mantiene il comportamento.
-                if (args.Length > 0 && args[0] is System.Collections.IList trRets) { var r = ToDoubleArray(trRets); if (r.Length < 2) return 0.0; var avg = r.Average(); var std = Math.Sqrt(r.Sum(x => Math.Pow(x - avg, 2)) / (r.Length - 1)); return std > 0 ? (avg / std) * Math.Sqrt(252) : 0; } return 0.0;
-        },
-        [BuiltInFunction.OMEGARATIO] = (task, args) =>
-        {
-                // Runtime comune (IlRuntime): TradingFunctions — unica implementazione.
-                if (args.Length > 0) return Basic.IlBackend.IlRuntime.OmegaRatio(
-                    ToDoubleArr(args[0]), args.Length > 1 ? SafeDouble(args[1]) : 0.0);
-                return 0.0;
-        },
-        [BuiltInFunction.ULCERINDEX] = (task, args) =>
-        {
-                if (args.Length > 0) return Basic.IlBackend.IlRuntime.UlcerIndex(ToDoubleArr(args[0]));
-                return 0.0;
-        },
-        [BuiltInFunction.INFORMATIONRATIO] = (task, args) =>
-        {
-                // Firma canonica (StdLib): (asset, benchmark, periodi) → IlRuntime.
-                if (args.Length >= 2) return Basic.IlBackend.IlRuntime.InformationRatio(
-                    ToDoubleArr(args[0]), ToDoubleArr(args[1]),
-                    args.Length > 2 ? (long)SafeDouble(args[2]) : 252L);
-                return 0.0;
-        },
-        [BuiltInFunction.KELLYCRITERION] = (task, args) =>
-        {
-                // KELLYCRITERION(rendimenti, riskFree) → PortfolioResult dict (parità VM/C
-                // case 189 e StdLib PortfolioResultType). Prima ritornava il double.
-                if (args.Length > 0)
-                    return args.Length > 1
-                        ? Basic.IlBackend.IlRuntime.PortfolioKellyCriterion(ToDoubleArr(args[0]), SafeDouble(args[1]))
-                        : Basic.IlBackend.IlRuntime.PortfolioKellyCriterion(ToDoubleArr(args[0]), 0.0);
-                return new Dictionary<string, object?>();
-        },
-        [BuiltInFunction.JARQUEBERATEST] = (task, args) =>
-        {
-                // Runtime comune (IlRuntime): TradingFunctions.JarqueBeraTest — unica impl.
-                if (args.Length > 0) return Basic.IlBackend.IlRuntime.JarqueBeraTest(ToDoubleArr(args[0]));
-                return 0.0;
-        },
-        [BuiltInFunction.ANNUALIZEDTRACKINGERROR] = (task, args) =>
-        {
-                // Runtime comune (IlRuntime): firma (asset, benchmark, periodi), frazione.
-                if (args.Length >= 2) return Basic.IlBackend.IlRuntime.AnnualizedTrackingError(
-                    ToDoubleArr(args[0]), ToDoubleArr(args[1]), args.Length > 2 ? (long)SafeDouble(args[2]) : 252L);
-                return 0.0;
-        },
-        [BuiltInFunction.ANNUALIZEDDOWNSIDEDEVIATION] = (task, args) =>
-        {
-                // Runtime comune (IlRuntime): firma (rets, threshold, periodi), frazione.
-                if (args.Length > 0) return Basic.IlBackend.IlRuntime.AnnualizedDownsideDeviation(
-                    ToDoubleArr(args[0]), args.Length > 1 ? SafeDouble(args[1]) : 0.0,
-                    args.Length > 2 ? (long)SafeDouble(args[2]) : 252L);
-                return 0.0;
-        },
-        [BuiltInFunction.RETURNKURTOSIS] = (task, args) =>
-        {
-                // Runtime comune (IlRuntime): TradingFunctions — unica implementazione.
-                if (args.Length > 0) return Basic.IlBackend.IlRuntime.ReturnsKurtosis(ToDoubleArr(args[0]));
-                return 0.0;
-        },
-        [BuiltInFunction.RETURNSSKEWNESS] = (task, args) =>
-        {
-                if (args.Length > 0) return Basic.IlBackend.IlRuntime.ReturnsSkewness(ToDoubleArr(args[0]));
-                return 0.0;
-        },
-        [BuiltInFunction.DIVIDENDYIELD] = (task, args) =>
-        {
-                // Runtime comune (IlRuntime): stessa logica (*100) — unica implementazione.
-                if (args.Length >= 2) return Basic.IlBackend.IlRuntime.DividendYield(SafeDouble(args[0]), SafeDouble(args[1]));
-                return 0.0;
-        },
-        [BuiltInFunction.CURRENTYIELD] = (task, args) =>
-        {
-                // Runtime comune (IlRuntime): Bonds.CurrentYield (frazione, non x100) — unica impl.
-                if (args.Length >= 2) return Basic.IlBackend.IlRuntime.CurrentYield(SafeDouble(args[0]), SafeDouble(args[1]));
-                return 0.0;
-        },
-        [BuiltInFunction.PORTFOLIOEXPECTEDRETURN] = (task, args) =>
-        {
-                // Runtime comune (IlRuntime): stessa logica — unica implementazione.
-                if (args.Length >= 2) return Basic.IlBackend.IlRuntime.PortfolioExpectedReturn(args[0]!, args[1]!);
-                return 0.0;
-        },
-        [BuiltInFunction.PORTFOLIOVAR] = (task, args) =>
-        {
-                // PVAR(storici, pesi, conf) — 3 arg (StdLib): conf = args[2] (i pesi sono
-                // ignorati, come IL/VM-C). Forma a 2 arg: conf = args[1].
-                if (args.Length > 0) return Basic.IlBackend.IlRuntime.PortfolioVar(
-                    args[0]!, args.Length >= 3 ? SafeDouble(args[2]) : (args.Length > 1 ? SafeDouble(args[1]) : 0.95));
-                return 0.0;
-        },
-        [BuiltInFunction.PORTFOLIOCVAR] = (task, args) =>
-        {
-                if (args.Length > 0) return Basic.IlBackend.IlRuntime.PortfolioCVar(
-                    args[0]!, args.Length >= 3 ? SafeDouble(args[2]) : (args.Length > 1 ? SafeDouble(args[1]) : 0.95));
-                return 0.0;
-        },
-        [BuiltInFunction.PORTFOLIOMAD] = (task, args) =>
-        {
-                // Runtime comune (IlRuntime): supporta matrice 2D via MadSolver — unica implementazione.
-                if (args.Length > 0) return Basic.IlBackend.IlRuntime.PortfolioMad(
-                    args[0]!, args.Length > 1 ? SafeDouble(args[1]) : 0);
-                return 0.0;
-        },
-        [BuiltInFunction.PSRATIO] = (task, args) =>
-        {
-                if (args.Length >= 2) { try { return CommonLib.Trading.General.PsRatio(SafeDouble(args[0]), SafeDouble(args[1])); } catch { } } return 0.0;
-        },
-        [BuiltInFunction.PORTFOLIOSEMIMAD] = (task, args) =>
-        {
-                // Runtime comune (IlRuntime): supporta matrice 2D via MadSolver — unica implementazione.
-                if (args.Length > 0) return Basic.IlBackend.IlRuntime.PortfolioSemiMad(
-                    args[0]!, args.Length > 1 ? SafeDouble(args[1]) : 0);
-                return 0.0;
-        },
-        [BuiltInFunction.CONDITIONALVALUEATRISK] = (task, args) =>
-        {
-                // Runtime comune (IlRuntime): CommonLib.Trading.Metrics — unica impl.
-                if (args.Length > 0) return Basic.IlBackend.IlRuntime.ConditionalValueAtRisk(
-                    ToDoubleArr(args[0]), args.Length > 1 ? SafeDouble(args[1]) : 0.95);
-                return 0.0;
-        
-        },
         [BuiltInFunction.AADD] = (task, args) =>
         {
                 // AADD array, valore — statement in-place (il compiler fa OP_POP, il risultato
@@ -3801,60 +3380,9 @@ if (args.Length > 0 && args[0] is System.Collections.IList wts) { var w = new do
         {
                 return Basic.StdLibRuntime.MathFunctions.BetaPdf(SafeDouble(args.Length > 2 ? args[1] : null), SafeDouble(args.Length > 2 ? args[2] : null), SafeDouble(args.Length > 0 ? args[0] : null));
         },
-        [BuiltInFunction.BIDASKSPREAD] = (task, args) =>
-        {
-                return Basic.StdLibRuntime.TradingFunctions.BidAskSpread(SafeDouble(ArgOr(args, 0)), SafeDouble(ArgOr(args, 1)));
-        },
-        [BuiltInFunction.BINOMIALOPTION] = (task, args) =>
-        {
-                return Basic.StdLibRuntime.TradingFunctions.BinomialOption(SafeDouble(ArgOr(args, 0)), SafeDouble(ArgOr(args, 1)), SafeDouble(ArgOr(args, 2)), SafeDouble(ArgOr(args, 3)), SafeDouble(ArgOr(args, 4)), (int)SafeDouble(ArgOr(args, 5)), (ArgOr(args, 6)?.ToString() ?? "CALL").Equals("PUT", StringComparison.OrdinalIgnoreCase));
-        },
         [BuiltInFunction.BINOMIALPMF] = (task, args) =>
         {
                 return Basic.StdLibRuntime.MathFunctions.BinomialPmf(SafeDouble(args.Length > 2 ? args[2] : null), (int)SafeDouble(args.Length > 1 ? args[1] : null), (int)SafeDouble(args.Length > 0 ? args[0] : null));
-        },
-        [BuiltInFunction.BONDEQUIVALENTYIELD] = (task, args) =>
-        {
-                return Basic.StdLibRuntime.TradingFunctions.BondEquivalentYield(SafeDouble(ArgOr(args, 0)), SafeDouble(ArgOr(args, 1)), SafeDouble(ArgOr(args, 2)));
-        },
-        [BuiltInFunction.BONDPRICE] = (task, args) =>
-        {
-                return Basic.StdLibRuntime.TradingFunctions.BondPrice(ToDateTime(ArgOr(args, 0)), ToDateTime(ArgOr(args, 1)), SafeDouble(ArgOr(args, 2)), SafeDouble(ArgOr(args, 3)), SafeDouble(ArgOr(args, 4)), (int)SafeDouble(ArgOr(args, 5)), args.Length > 6 ? (int)SafeDouble(ArgOr(args, 6)) : 0);
-        },
-        [BuiltInFunction.BONDYIELD] = (task, args) =>
-        {
-                return Basic.StdLibRuntime.TradingFunctions.BondYield(ToDateTime(ArgOr(args, 0)), ToDateTime(ArgOr(args, 1)), SafeDouble(ArgOr(args, 2)), SafeDouble(ArgOr(args, 3)), SafeDouble(ArgOr(args, 4)), (int)SafeDouble(ArgOr(args, 5)), args.Length > 6 ? (int)SafeDouble(ArgOr(args, 6)) : 0);
-        },
-        [BuiltInFunction.BOOKVALUEPERSHARE] = (task, args) =>
-        {
-                return Basic.StdLibRuntime.TradingFunctions.BookValuePerShare(SafeDouble(ArgOr(args, 0)), SafeDouble(ArgOr(args, 1)));
-        },
-        [BuiltInFunction.BSCALL] = (task, args) =>
-        {
-            {
-                var dy = SafeDouble(ArgOr(args, 5));
-                return dy == 0 ? Basic.StdLibRuntime.TradingFunctions.BsCall(SafeDouble(ArgOr(args, 0)), SafeDouble(ArgOr(args, 1)), SafeDouble(ArgOr(args, 2)), SafeDouble(ArgOr(args, 3)), SafeDouble(ArgOr(args, 4))) : Basic.StdLibRuntime.TradingFunctions.MertonCall(SafeDouble(ArgOr(args, 0)), SafeDouble(ArgOr(args, 1)), SafeDouble(ArgOr(args, 2)), SafeDouble(ArgOr(args, 3)), dy, SafeDouble(ArgOr(args, 4)));
-            }
-        },
-        [BuiltInFunction.BSPUT] = (task, args) =>
-        {
-            {
-                var dy = SafeDouble(ArgOr(args, 5));
-                return dy == 0 ? Basic.StdLibRuntime.TradingFunctions.BsPut(SafeDouble(ArgOr(args, 0)), SafeDouble(ArgOr(args, 1)), SafeDouble(ArgOr(args, 2)), SafeDouble(ArgOr(args, 3)), SafeDouble(ArgOr(args, 4))) : Basic.StdLibRuntime.TradingFunctions.MertonPut(SafeDouble(ArgOr(args, 0)), SafeDouble(ArgOr(args, 1)), SafeDouble(ArgOr(args, 2)), SafeDouble(ArgOr(args, 3)), dy, SafeDouble(ArgOr(args, 4)));
-            }
-        },
-        [BuiltInFunction.CAPITALGAINSYIELD] = (task, args) =>
-        {
-                return Basic.StdLibRuntime.TradingFunctions.CapitalGainsYield(SafeDouble(ArgOr(args, 0)), SafeDouble(ArgOr(args, 1)));
-        },
-        [BuiltInFunction.CAPM] = (task, args) =>
-        {
-                return Basic.StdLibRuntime.TradingFunctions.Capm(SafeDouble(ArgOr(args, 0)), SafeDouble(ArgOr(args, 1)), SafeDouble(ArgOr(args, 2)));
-        },
-        [BuiltInFunction.CHARM] = (task, args) =>
-        {
-                // Runtime comune (IlRuntime): stessa logica — unica implementazione.
-                return Basic.IlBackend.IlRuntime.Charm(SafeDouble(ArgOr(args, 0)), SafeDouble(ArgOr(args, 1)), SafeDouble(ArgOr(args, 2)), SafeDouble(ArgOr(args, 3)), SafeDouble(ArgOr(args, 4)), ArgOr(args, 5)?.ToString() ?? "CALL");
         },
         [BuiltInFunction.CHICDF] = (task, args) =>
         {
@@ -3912,15 +3440,6 @@ if (args.Length > 0 && args[0] is System.Collections.IList wts) { var w = new do
                 return result;
             }
         },
-        [BuiltInFunction.DELTA] = (task, args) =>
-        {
-                // Runtime comune (IlRuntime): stessa logica — unica implementazione.
-                return Basic.IlBackend.IlRuntime.Delta(SafeDouble(ArgOr(args, 0)), SafeDouble(ArgOr(args, 1)), SafeDouble(ArgOr(args, 2)), SafeDouble(ArgOr(args, 3)), SafeDouble(ArgOr(args, 4)), ArgOr(args, 5)?.ToString() ?? "CALL");
-        },
-        [BuiltInFunction.DELTASPEED] = (task, args) =>
-        {
-                return Basic.IlBackend.IlRuntime.DeltaSpeed(SafeDouble(ArgOr(args, 0)), SafeDouble(ArgOr(args, 1)), SafeDouble(ArgOr(args, 2)), SafeDouble(ArgOr(args, 3)), SafeDouble(ArgOr(args, 4)));
-        },
         [BuiltInFunction.DESEASONALIZE] = (task, args) =>
         {
                 return Basic.StdLibRuntime.TimeSeriesFunctions.Deseasonalize(ToDoubleArr(ArgOr(args, 0)), (int)SafeDouble(ArgOr(args, 1)));
@@ -3928,18 +3447,6 @@ if (args.Length > 0 && args[0] is System.Collections.IList wts) { var w = new do
         [BuiltInFunction.DIFFERENCE] = (task, args) =>
         {
                 return Basic.StdLibRuntime.TimeSeriesFunctions.Difference(ToDoubleArr(ArgOr(args, 0)), (int)SafeDouble(ArgOr(args, 1)));
-        },
-        [BuiltInFunction.DILUTEDEPS] = (task, args) =>
-        {
-                return Basic.StdLibRuntime.TradingFunctions.DilutedEps(SafeDouble(ArgOr(args, 0)), SafeDouble(ArgOr(args, 1)), SafeDouble(ArgOr(args, 2)));
-        },
-        [BuiltInFunction.DPS] = (task, args) =>
-        {
-                return Basic.StdLibRuntime.TradingFunctions.Dps(SafeDouble(ArgOr(args, 0)), SafeDouble(ArgOr(args, 1)));
-        },
-        [BuiltInFunction.DURATION] = (task, args) =>
-        {
-                return Basic.StdLibRuntime.FinanceFunctions.Duration(ToDateTime(ArgOr(args, 0)), ToDateTime(ArgOr(args, 1)), SafeDouble(ArgOr(args, 2)), SafeDouble(ArgOr(args, 3)), (int)SafeDouble(ArgOr(args, 4)), (int)SafeDouble(ArgOr(args, 5)));
         },
         [BuiltInFunction.EMA] = (task, args) =>
         {
@@ -3984,14 +3491,6 @@ if (args.Length > 0 && args[0] is System.Collections.IList wts) { var w = new do
                     ArgOr(args, 0)?.ToString() ?? "",
                     args.Length > 1 ? ArgOr(args, 1)?.ToString() : null);
         },
-        [BuiltInFunction.EPS] = (task, args) =>
-        {
-                return Basic.StdLibRuntime.TradingFunctions.Eps(SafeDouble(ArgOr(args, 0)), SafeDouble(ArgOr(args, 1)));
-        },
-        [BuiltInFunction.EQUITYMULTIPLIER] = (task, args) =>
-        {
-                return Basic.StdLibRuntime.TradingFunctions.EquityMultiplier(SafeDouble(ArgOr(args, 0)), SafeDouble(ArgOr(args, 1)));
-        },
         [BuiltInFunction.EXPONENTIALCDF] = (task, args) =>
         {
                 return Basic.StdLibRuntime.MathFunctions.ExponentialCdf(SafeDouble(args.Length > 1 ? args[1] : null), SafeDouble(args.Length > 0 ? args[0] : null));
@@ -4017,36 +3516,13 @@ if (args.Length > 0 && args[0] is System.Collections.IList wts) { var w = new do
         {
                 return Basic.IlBackend.IlRuntime.FromHex(ArgOr(args, 0)?.ToString() ?? "");
         },
-        [BuiltInFunction.GAMMA] = (task, args) =>
-        {
-                // Runtime comune (IlRuntime): stessa logica — unica implementazione.
-                return Basic.IlBackend.IlRuntime.Gamma(SafeDouble(ArgOr(args, 0)), SafeDouble(ArgOr(args, 1)), SafeDouble(ArgOr(args, 2)), SafeDouble(ArgOr(args, 3)), SafeDouble(ArgOr(args, 4)));
-        },
-        [BuiltInFunction.GAMMACOLOR] = (task, args) =>
-        {
-                return Basic.IlBackend.IlRuntime.GammaColor(SafeDouble(ArgOr(args, 0)), SafeDouble(ArgOr(args, 1)), SafeDouble(ArgOr(args, 2)), SafeDouble(ArgOr(args, 3)), SafeDouble(ArgOr(args, 4)));
-        
-            // --- Obbligazioni (Bonds) ---
-        },
-        [BuiltInFunction.GEOMETRICMEANRETURN] = (task, args) =>
-        {
-                return Basic.StdLibRuntime.TradingFunctions.GeometricMeanReturn(ToDoubleArr(ArgOr(args, 0)));
-        },
         [BuiltInFunction.GEOMETRICPMF] = (task, args) =>
         {
                 return Basic.StdLibRuntime.MathFunctions.GeometricPmf(SafeDouble(args.Length > 1 ? args[1] : null), (int)SafeDouble(args.Length > 0 ? args[0] : null));
         },
-        [BuiltInFunction.GROWTHRATE] = (task, args) =>
-        {
-                return Basic.StdLibRuntime.TradingFunctions.GrowthRate(SafeDouble(ArgOr(args, 0)), SafeDouble(ArgOr(args, 1)));
-        },
         [BuiltInFunction.HASHFILESTRING] = (task, args) =>
         {
                 return ToHexStr(CommonLib.CryptoUtils.CoreHashFile(ArgOr(args, 1)?.ToString() ?? "SHA256", ArgOr(args, 0)?.ToString() ?? ""));
-        },
-        [BuiltInFunction.HOLDINGPERIODRETURN] = (task, args) =>
-        {
-                return Basic.StdLibRuntime.TradingFunctions.HoldingPeriodReturn(ToDoubleArr(ArgOr(args, 0)));
         },
         [BuiltInFunction.HYPERGEOMETRICPMF] = (task, args) =>
         {
@@ -4101,22 +3577,6 @@ if (args.Length > 0 && args[0] is System.Collections.IList wts) { var w = new do
         {
                 return Basic.StdLibRuntime.CryptographyFunctions.StrMd5(ToBytes(ArgOr(args, 0)));
         },
-        [BuiltInFunction.MERTONCALL] = (task, args) =>
-        {
-                // Firma BASIC (StdLib.Trading.Options.cs): [S,K,T,r,v,q] — args[4]=volatilità,
-                // args[5]=dividend yield. TradingFunctions.MertonCall(s,k,t,r,q,v) vuole l'ordine
-                // POSIZIONALE inverso (q prima di v): senza lo scambio qui, args[4]/args[5]
-                // venivano legati ai parametri sbagliati — MERTONCALL(100,100,1,0.05,0.2,0.03)
-                // restituiva ~1.4E-07 invece del prezzo Black-Scholes-Merton atteso (~8), perché
-                // volatilità 0.2 e dividend yield 0.03 finivano scambiati. Stesso bug in MERTONPUT.
-                // Confrontare con il case BSCALL/BSPUT sopra, che già passa "dy" nella posizione
-                // corretta.
-                return Basic.StdLibRuntime.TradingFunctions.MertonCall(SafeDouble(ArgOr(args, 0)), SafeDouble(ArgOr(args, 1)), SafeDouble(ArgOr(args, 2)), SafeDouble(ArgOr(args, 3)), SafeDouble(ArgOr(args, 5)), SafeDouble(ArgOr(args, 4)));
-        },
-        [BuiltInFunction.MERTONPUT] = (task, args) =>
-        {
-                return Basic.StdLibRuntime.TradingFunctions.MertonPut(SafeDouble(ArgOr(args, 0)), SafeDouble(ArgOr(args, 1)), SafeDouble(ArgOr(args, 2)), SafeDouble(ArgOr(args, 3)), SafeDouble(ArgOr(args, 5)), SafeDouble(ArgOr(args, 4)));
-        },
         [BuiltInFunction.MOVINGAVERAGE] = (task, args) =>
         {
                 return Basic.StdLibRuntime.TimeSeriesFunctions.MovingAverage(ToDoubleArr(ArgOr(args, 0)), (int)SafeDouble(ArgOr(args, 1)));
@@ -4163,10 +3623,6 @@ if (args.Length > 0 && args[0] is System.Collections.IList wts) { var w = new do
         [BuiltInFunction.ROLLINGMINMAX] = (task, args) =>
         {
                 return CommonLib.Numerics.RollingMinMax(ToDoubleArr(ArgOr(args, 0)), (int)SafeDouble(ArgOr(args, 1))).Select(item => new[] { item.min, item.max }).ToArray();
-        },
-        [BuiltInFunction.NAV] = (task, args) =>
-        {
-                return Basic.StdLibRuntime.TradingFunctions.Nav(SafeDouble(ArgOr(args, 0)), SafeDouble(ArgOr(args, 1)), SafeDouble(ArgOr(args, 2)));
         },
         [BuiltInFunction.NEGATIVEBINOMIALPMF] = (task, args) =>
         {
@@ -4270,10 +3726,6 @@ if (args.Length > 0 && args[0] is System.Collections.IList wts) { var w = new do
         {
                 return Basic.StdLibRuntime.MathFunctions.PoissonPmf(SafeDouble(args.Length > 1 ? args[1] : null), (int)SafeDouble(args.Length > 0 ? args[0] : null));
         },
-        [BuiltInFunction.PREFERREDSTOCKVALUE] = (task, args) =>
-        {
-                return Basic.StdLibRuntime.TradingFunctions.PreferredStockValue(SafeDouble(ArgOr(args, 0)), SafeDouble(ArgOr(args, 1)));
-        },
         [BuiltInFunction.PRICE] = (task, args) =>
         {
                 return Basic.StdLibRuntime.FinanceFunctions.Price(ToDateTime(ArgOr(args, 0)), ToDateTime(ArgOr(args, 1)), SafeDouble(ArgOr(args, 2)), SafeDouble(ArgOr(args, 3)), SafeDouble(ArgOr(args, 4)), (int)SafeDouble(ArgOr(args, 5)), (int)SafeDouble(ArgOr(args, 6)));
@@ -4298,15 +3750,6 @@ if (args.Length > 0 && args[0] is System.Collections.IList wts) { var w = new do
         [BuiltInFunction.RETURNS] = (task, args) =>
         {
                 return Basic.StdLibRuntime.TimeSeriesFunctions.Returns(ToDoubleArr(ArgOr(args, 0)));
-        },
-        [BuiltInFunction.RHO] = (task, args) =>
-        {
-                // Runtime comune (IlRuntime): stessa logica — unica implementazione.
-                return Basic.IlBackend.IlRuntime.Rho(SafeDouble(ArgOr(args, 0)), SafeDouble(ArgOr(args, 1)), SafeDouble(ArgOr(args, 2)), SafeDouble(ArgOr(args, 3)), SafeDouble(ArgOr(args, 4)), ArgOr(args, 5)?.ToString() ?? "CALL");
-        },
-        [BuiltInFunction.RISKPREMIUM] = (task, args) =>
-        {
-                return Basic.StdLibRuntime.TradingFunctions.RiskPremium(SafeDouble(ArgOr(args, 0)), SafeDouble(ArgOr(args, 1)));
         },
         [BuiltInFunction.ROLLINGAUTOCORRELATION] = (task, args) =>
         {
@@ -4356,14 +3799,6 @@ if (args.Length > 0 && args[0] is System.Collections.IList wts) { var w = new do
         [BuiltInFunction.SKEWEDNORMALPDF] = (task, args) =>
         {
                 return Basic.StdLibRuntime.MathFunctions.SkewedNormalPdf(SafeDouble(args.Length > 1 ? args[1] : 0.0), SafeDouble(args.Length > 2 ? args[2] : 1.0), SafeDouble(args.Length > 3 ? args[3] : 0.0), SafeDouble(args[0]));
-        },
-        [BuiltInFunction.STOCKVALUECONSTGROWTH] = (task, args) =>
-        {
-                return Basic.StdLibRuntime.TradingFunctions.StockValueConstGrowth(SafeDouble(ArgOr(args, 0)), SafeDouble(ArgOr(args, 1)), SafeDouble(ArgOr(args, 2)));
-        },
-        [BuiltInFunction.STOCKVALUEZEROGROWTH] = (task, args) =>
-        {
-                return Basic.StdLibRuntime.TradingFunctions.StockValueZeroGrowth(SafeDouble(ArgOr(args, 0)), SafeDouble(ArgOr(args, 1)));
         },
         [BuiltInFunction.STOD] = (task, args) =>
         {
@@ -4481,17 +3916,6 @@ if (args.Length > 0 && args[0] is System.Collections.IList wts) { var w = new do
             // --- context.Context (parità Go) ---
             // --- CONTEXT: delegato a ExecuteBuiltInContext (PCodeProcessor.Builtins.Context.cs) ---
         },
-        [BuiltInFunction.TAXEQUIVALENTYIELD] = (task, args) =>
-        {
-                return Basic.StdLibRuntime.TradingFunctions.TaxEquivalentYield(SafeDouble(ArgOr(args, 0)), SafeDouble(ArgOr(args, 1)));
-        
-            // --- Opzioni (Black-Scholes / Merton / greche) ---
-        },
-        [BuiltInFunction.THETA] = (task, args) =>
-        {
-                // Runtime comune (IlRuntime): stessa logica — unica implementazione.
-                return Basic.IlBackend.IlRuntime.Theta(SafeDouble(ArgOr(args, 0)), SafeDouble(ArgOr(args, 1)), SafeDouble(ArgOr(args, 2)), SafeDouble(ArgOr(args, 3)), SafeDouble(ArgOr(args, 4)), ArgOr(args, 5)?.ToString() ?? "CALL");
-        },
         [BuiltInFunction.TI] = (task, args) =>
         {
                 // Runtime comune (IlRuntime): stessa logica — unica implementazione.
@@ -4587,10 +4011,6 @@ if (args.Length > 0 && args[0] is System.Collections.IList wts) { var w = new do
                 return Basic.IlBackend.IlRuntime.IsValidLength(ArgOr(args, 0)?.ToString() ?? "", _min, _max);
             }
         },
-        [BuiltInFunction.TOTALSTOCKRETURN] = (task, args) =>
-        {
-                return Basic.StdLibRuntime.TradingFunctions.TotalStockReturn(SafeDouble(ArgOr(args, 0)), SafeDouble(ArgOr(args, 1)), SafeDouble(ArgOr(args, 2)));
-        },
         [BuiltInFunction.TRIANGULARPDF] = (task, args) =>
         {
                 // BASIC: TRIANGULARPDF(x, min, mode, max) — args[0] è x, va spostato per ultimo
@@ -4605,16 +4025,6 @@ if (args.Length > 0 && args[0] is System.Collections.IList wts) { var w = new do
         [BuiltInFunction.UNIFORMPDF] = (task, args) =>
         {
                 return Basic.StdLibRuntime.MathFunctions.UniformPdf(SafeDouble(args.Length > 1 ? args[1] : 0.0), SafeDouble(args.Length > 2 ? args[2] : 1.0), SafeDouble(args[0]));
-        },
-        [BuiltInFunction.VANNA] = (task, args) =>
-        {
-                // Runtime comune (IlRuntime): stessa logica — unica implementazione.
-                return Basic.IlBackend.IlRuntime.Vanna(SafeDouble(ArgOr(args, 0)), SafeDouble(ArgOr(args, 1)), SafeDouble(ArgOr(args, 2)), SafeDouble(ArgOr(args, 3)), SafeDouble(ArgOr(args, 4)));
-        },
-        [BuiltInFunction.VEGA] = (task, args) =>
-        {
-                // Runtime comune (IlRuntime): stessa logica — unica implementazione.
-                return Basic.IlBackend.IlRuntime.Vega(SafeDouble(ArgOr(args, 0)), SafeDouble(ArgOr(args, 1)), SafeDouble(ArgOr(args, 2)), SafeDouble(ArgOr(args, 3)), SafeDouble(ArgOr(args, 4)));
         },
         [BuiltInFunction.VERIFY] = (task, args) =>
         {
@@ -4863,11 +4273,6 @@ if (args.Length > 0 && args[0] is System.Collections.IList wts) { var w = new do
         {
                 return Basic.IlBackend.IlRuntime.Lyapunov(ToDoubleArr(ArgOr(args, 0)), (long)SafeDouble(ArgOr(args, 1)), (long)SafeDouble(ArgOr(args, 2)));
         },
-        [BuiltInFunction.VOLGA] = (task, args) =>
-        {
-                // Runtime comune (IlRuntime): stessa logica — unica implementazione.
-                return Basic.IlBackend.IlRuntime.Volga(SafeDouble(ArgOr(args, 0)), SafeDouble(ArgOr(args, 1)), SafeDouble(ArgOr(args, 2)), SafeDouble(ArgOr(args, 3)), SafeDouble(ArgOr(args, 4)));
-        },
         [BuiltInFunction.WEIBULLCDF] = (task, args) =>
         {
                 return Basic.StdLibRuntime.MathFunctions.WeibullCdf(SafeDouble(args.Length > 2 ? args[1] : null), SafeDouble(args.Length > 2 ? args[2] : null), SafeDouble(args.Length > 0 ? args[0] : null));
@@ -4884,20 +4289,6 @@ if (args.Length > 0 && args[0] is System.Collections.IList wts) { var w = new do
                 var guess = SafeDouble(ArgOr(args, 2));
                 return Basic.StdLibRuntime.FinanceFunctions.Xirr(values, dates, guess);
             }
-        },
-        [BuiltInFunction.YIELDTOMATURITY] = (task, args) =>
-        {
-                return Basic.StdLibRuntime.TradingFunctions.YieldToMaturity(SafeDouble(ArgOr(args, 0)), SafeDouble(ArgOr(args, 1)), SafeDouble(ArgOr(args, 2)), SafeDouble(ArgOr(args, 3)));
-        },
-        [BuiltInFunction.ZEROCOUPONBONDVALUE] = (task, args) =>
-        {
-                return Basic.StdLibRuntime.TradingFunctions.ZeroCouponBondValue(SafeDouble(ArgOr(args, 0)), SafeDouble(ArgOr(args, 1)), SafeDouble(ArgOr(args, 2)));
-        },
-        [BuiltInFunction.ZEROCOUPONBONDYIELD] = (task, args) =>
-        {
-                return Basic.StdLibRuntime.TradingFunctions.ZeroCouponBondYield(SafeDouble(ArgOr(args, 0)), SafeDouble(ArgOr(args, 1)), SafeDouble(ArgOr(args, 2)));
-        
-            // --- COMPRESSION: delegato a ExecuteBuiltInCompression (PCodeProcessor.Builtins.Compression.cs) ---
         },
         [BuiltInFunction.CONVDOC] = (task, args) =>
         {
@@ -5209,58 +4600,6 @@ if (args.Length > 0 && args[0] is System.Collections.IList wts) { var w = new do
         [BuiltInFunction.TEXTWIDTH] = (task, args) =>
         {
             return Basic.IlBackend.IlRuntime.TextWidth(ArgOr(args, 0)?.ToString() ?? "");
-        },
-        [BuiltInFunction.PORTFOLIOSHARPERATIO] = (task, args) =>
-        {
-            // SHARPERATIO(rendimento, rischio, riskFree) — forma a 3 SCALARI (StdLib);
-            // forma a 2 array (pesi, rendimenti) per la variante matriciale. Parità IL.
-            if (args.Length == 3 && args[0] is not System.Collections.IList && args[1] is not System.Collections.IList)
-                return Basic.IlBackend.IlRuntime.SharpeRatio3(SafeDouble(args[0]), SafeDouble(args[1]), SafeDouble(args[2]));
-            if (args.Length >= 2)
-                return Basic.IlBackend.IlRuntime.PortfolioSharpeRatio(args[0]!, args[1]!);
-            return 0.0;
-        },
-        [BuiltInFunction.PORTFOLIOSTDEV] = (task, args) =>
-        {
-            if (args.Length >= 2)
-                return Basic.IlBackend.IlRuntime.PortfolioStDev(args[0]!, args[1]!);
-            return 0.0;
-        },
-        [BuiltInFunction.MINCVAR] = (task, args) =>
-        {
-            if (args.Length >= 1 && args[0] is System.Collections.IList mmr)
-            {
-                var r = ToDoubleArray(mmr);
-                if (r.Length == 0) return null;
-                var conf = args.Length > 1 ? SafeDouble(args[1]) : 0.95;
-                var result = new System.Collections.Generic.Dictionary<string, object?>
-                {
-                    ["ExpectedReturn"] = MinCvar(r, conf),
-                    ["Volatility"] = 0.0,
-                    ["SharpeRatio"] = 0.0,
-                    ["Weights"] = new double[] { 1.0 }
-                };
-                return result;
-            }
-            return null;
-        },
-        [BuiltInFunction.MINCDAR] = (task, args) =>
-        {
-            if (args.Length >= 1 && args[0] is System.Collections.IList mmr)
-            {
-                var r = ToDoubleArray(mmr);
-                if (r.Length == 0) return null;
-                var conf = args.Length > 1 ? SafeDouble(args[1]) : 0.95;
-                var result = new System.Collections.Generic.Dictionary<string, object?>
-                {
-                    ["ExpectedReturn"] = MinCdar(r, conf),
-                    ["Volatility"] = 0.0,
-                    ["SharpeRatio"] = 0.0,
-                    ["Weights"] = new double[] { 1.0 }
-                };
-                return result;
-            }
-            return null;
         },
 
         [BuiltInFunction.RECNO] = (task, args) =>

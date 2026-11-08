@@ -42,6 +42,7 @@
 | III.14 | Debug e diagnostica | 4 | 2 | 2/3 |
 | III.15 | Testare i propri programmi | 16 | 3 | 9/16 |
 | III.16 | FFI e librerie native | 15 | 3 | 28/29 |
+| III.17 | Blockchain: hashing, chiavi, indirizzi e ABI EVM | 9 | 3 | 22/22 |
 
 ## Parte IV — Applicazioni
 
@@ -201,6 +202,12 @@ assorbita (non si stampa due volte).
 - `FFI-Guida-Utente` — capitolo
 - `Resources-Native-Libs-SDL` — sezione
 - `FFI-Guida-Utente` — fuso
+
+### III.17 — Blockchain: hashing, chiavi, indirizzi e ABI EVM
+
+- `Blockchain-Guida-Utente` — capitolo
+- `blockchain_suite` (sample) — esempio completo
+- `blockchain` (MiniTest, 22 file) — sezione
 
 ### IV.17 — Console e TUI
 

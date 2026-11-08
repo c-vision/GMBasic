@@ -14,16 +14,6 @@
 #if defined(_WIN32) || defined(_WIN64)
 #include <windows.h>
 #endif
-
-/* ROUND(value, digits): arrotonda (MidpointRounding.ToEven, come .NET Math.Round). */
-static double gmb_round_toeven(double v) {
-    double f = floor(v);
-    double diff = v - f;
-    if (diff > 0.5) return f + 1.0;
-    if (diff < 0.5) return f;
-    /* esattamente 0.5: va al pari */
-    return (fmod(f, 2.0) == 0.0) ? f : f + 1.0;
-}
 static const unsigned long long gmb_pow10_ull[19] = {
     1ULL, 10ULL, 100ULL, 1000ULL, 10000ULL, 100000ULL, 1000000ULL, 10000000ULL,
     100000000ULL, 1000000000ULL, 10000000000ULL, 100000000000ULL, 1000000000000ULL,
@@ -510,23 +500,7 @@ double gmb_mad(const double* a, int n) {
     free(s); free(devs);
     return r;
 }/* Nelder-Mead (simplex): minimizza fn(v[0..n-1]) partendo da start. Ritorna il punto minimo. */
-/* TryToScaleSimplex MathNet: ricalcola il centroide (escluso il vertice high),
- * scala e valuta; sostituisce high se migliore; ritorna il nuovo valore. */
-static double gmb_nm_try_scale(double scale, double (*fn)(const double*, int, void*), void* ctx,
-                               double* simplex, double* vals, int n, int nv, int high)
-{
-    double centroid[64], newp[64];
-    for (int j = 0; j < n; j++)
-    {
-        double s = 0;
-        for (int i = 0; i < nv; i++) if (i != high) s += simplex[i * n + j];
-        centroid[j] = s / (double)(nv - 1);
-    }
-    for (int j = 0; j < n; j++) newp[j] = (simplex[high * n + j] - centroid[j]) * scale + centroid[j];
-    double ne = fn(newp, n, ctx);
-    if (ne < vals[high]) { for (int j = 0; j < n; j++) simplex[high * n + j] = newp[j]; vals[high] = ne; }
-    return ne;
-}/* ── F1: nucleo MathNet.Optimization (port fedele per parità col canone IL) ──
+/* ── F1: nucleo MathNet.Optimization (port fedele per parità col canone IL) ──
  * NumericalGradientObjective (forward difference H=1e-8), WeakWolfeLineSearch,
  * MinimizerBase.ExitCriteriaSatisfied. Riusato da BFGS/LBFGS/Powell/CG. */
 typedef struct {
@@ -537,106 +511,7 @@ typedef struct {
     double value;
     double* grad;
 } mn_obj_t;
-
-static void mn_init(mn_obj_t* o, double (*f)(const double*, int, void*), void* ctx, int n)
-{
-    o->f = f; o->ctx = ctx; o->n = n;
-    o->point = (double*)malloc(sizeof(double) * (size_t)n);
-    o->grad = (double*)malloc(sizeof(double) * (size_t)n);
-    o->value = 0.0;
-}
-static void mn_free(mn_obj_t* o) { free(o->point); free(o->grad); }
-static void mn_copy(mn_obj_t* dst, const mn_obj_t* src)
-{
-    for (int i = 0; i < src->n; i++) { dst->point[i] = src->point[i]; dst->grad[i] = src->grad[i]; }
-    dst->value = src->value;
-}
-/* NumericalGradientObjective.EvaluateAt: value=f(x), grad[i]=(f(x+H e_i)-value)/H */
-static void mn_evaluate(mn_obj_t* o, const double* x)
-{
-    const double H = 1e-8;
-    for (int i = 0; i < o->n; i++) o->point[i] = x[i];
-    o->value = o->f(x, o->n, o->ctx);
-    double* xt = (double*)malloc(sizeof(double) * (size_t)o->n);
-    for (int i = 0; i < o->n; i++) xt[i] = x[i];
-    for (int i = 0; i < o->n; i++)
-    {
-        double sv = xt[i]; xt[i] += H;
-        double fp = o->f(xt, o->n, o->ctx);
-        xt[i] = sv;
-        o->grad[i] = (fp - o->value) / H;
-    }
-    free(xt);
-}
-static double mn_dot(const double* a, const double* b, int n)
-{ double s = 0; for (int i = 0; i < n; i++) s += a[i] * b[i]; return s; }
-
-/* MinimizerBase.ExitCriteriaSatisfied (GetProjectedGradient = grad[ii]).
- * Ritorna 1 se UNA condizione di uscita è soddisfatta (ExitCondition != None). */
-static int mn_exit_satisfied(mn_obj_t* cand, mn_obj_t* last, int iterations,
-                             double gradTol, double paramTol, double funcTol)
-{
-    double relativeGradient = 0.0;
-    double normalizer = fmax(fabs(cand->value), 1.0);
-    for (int i = 0; i < cand->n; i++)
-    {
-        double tmp = cand->grad[i] * fmax(fabs(cand->point[i]), 1.0) / normalizer;
-        relativeGradient = fmax(relativeGradient, fabs(tmp));
-    }
-    if (relativeGradient < gradTol) return 1;
-    if (last)
-    {
-        double mostProgress = 0.0;
-        for (int i = 0; i < cand->n; i++)
-        {
-            double tmp = fabs(cand->point[i] - last->point[i]) / fmax(fabs(last->point[i]), 1.0);
-            mostProgress = fmax(mostProgress, tmp);
-        }
-        if (mostProgress < paramTol) return 1;
-        double functionChange = cand->value - last->value;
-        if (iterations > 500 && functionChange < 0 && fabs(functionChange) < funcTol) return 1;
-    }
-    return 0;
-}
-
-/* WolfeLineSearch.FindConformingStep (WeakWolfe): scrive l'ultima valutazione in out. */
-static void mn_wolfe(mn_obj_t* start, const double* dir, double initialStep, double upperBound,
-                     double c1, double c2, double paramTol, int maxIter, mn_obj_t* out, double* outStep)
-{
-    int n = start->n;
-    double lowerBound = 0.0, step = initialStep;
-    double initialValue = start->value;
-    double initialDd = mn_dot(dir, start->grad, n);
-    double* p = (double*)malloc(sizeof(double) * (size_t)n);
-    for (int ii = 0; ii < maxIter; ii++)
-    {
-        for (int j = 0; j < n; j++) p[j] = start->point[j] + dir[j] * step;
-        mn_evaluate(out, p);
-        double stepDd = mn_dot(dir, out->grad, n);
-        if (out->value > initialValue + c1 * step * initialDd)
-        {
-            upperBound = step; step = 0.5 * (lowerBound + upperBound);
-        }
-        else if (stepDd < c2 * initialDd)   /* WeakWolfeCondition */
-        {
-            lowerBound = step;
-            step = isinf(upperBound) ? 2 * lowerBound : 0.5 * (lowerBound + upperBound);
-        }
-        else break;
-        if (!isinf(upperBound))
-        {
-            double maxRelChange = 0.0;
-            for (int j = 0; j < n; j++)
-            {
-                double tmp = fabs(dir[j] * (upperBound - lowerBound)) / fmax(fabs(out->point[j]), 1.0);
-                maxRelChange = fmax(maxRelChange, tmp);
-            }
-            if (maxRelChange < paramTol) break;
-        }
-    }
-    if (outStep) *outStep = step;
-    free(p);
-}/* ==================== Distribuzioni statistiche (formule standard) ==================== */
+/* ==================== Distribuzioni statistiche (formule standard) ==================== */
 
 /* ── MathNet.Numerics 5.0.0 GammaLn/Gamma (Lanczos, Pugh 2004) — port fedele per
  * parità bit-esatta col canone C# (SpecialFunctions.GammaLn/Gamma). Sostituisce
@@ -688,31 +563,6 @@ double gmb_beta_fn(double a, double b)
 {
     if (isnan(a) || isnan(b) || a <= 0 || b <= 0) return NAN;
     return exp(gmb_mathnet_gammaln(a) + gmb_mathnet_gammaln(b) - gmb_mathnet_gammaln(a + b));
-}
-
-/* Continued fraction for I_x(a,b) (Numerical Recipes betacf). */
-static double gmb_betacf(double a, double b, double x)
-{
-    const double maxit = 200, eps = 3e-14, fmin = 1e-300;
-    double qab = a + b, qap = a + 1, qam = a - 1;
-    double c = 1.0, d = 1.0 - qab * x / qap;
-    if (fabs(d) < fmin) d = fmin;
-    d = 1.0 / d;
-    double h = d;
-    for (int m = 1; m <= maxit; m++)
-    {
-        int m2 = 2 * m;
-        double aa = m * (b - m) * x / ((qam + m2) * (a + m2));
-        d = 1.0 + aa * d; if (fabs(d) < fmin) d = fmin;
-        c = 1.0 + aa / c; if (fabs(c) < fmin) c = fmin;
-        d = 1.0 / d; h *= d * c;
-        aa = -(a + m) * (qab + m) * x / ((a + m2) * (qap + m2));
-        d = 1.0 + aa * d; if (fabs(d) < fmin) d = fmin;
-        c = 1.0 + aa / c; if (fabs(c) < fmin) c = fmin;
-        d = 1.0 / d; h *= d * c;
-        if (fabs(d * c - 1) < eps) break;
-    }
-    return h;
 }
 
 /* Regolarized incomplete beta I_x(a,b). */
@@ -937,14 +787,6 @@ double gmb_besseli(double v, double x)
 {
     if (x < 0) return gmb_bessel_series(v, -x, 1.0) * (fmod(v, 2.0) == 0 ? 1.0 : -1.0);
     return gmb_bessel_series(v, x, 1.0);
-}
-
-static double gmb_bessel_jneg(double v, double x)
-{
-    /* J_{-v}(x) per v intero: J_{-n}=(-1)^n J_n */
-    int n = (int)(v + 0.5);
-    if (fabs(v - n) < 1e-12) return (n % 2 == 0 ? 1.0 : -1.0) * gmb_besselj((double)n, x);
-    return gmb_bessel_series(-v, x, -1.0);
 }
 
 /* ── Bessel Y/K: AMOS (D. E. Amos) via f2c — bit-esatto con MathNet 5.0.0.
@@ -2186,125 +2028,6 @@ int gmb_arima_fit(const double* y, int n, int p, int d, int q,
 
 /* mean campionaria */
 static double gmb_stats_mean(const double* x, int n) { if (n<=0) return 0; double s=0; for(int i=0;i<n;i++) s+=x[i]; return s/n; }
-/* varianza campionaria (/n-1) */
-static double gmb_stats_var_sample(const double* x, int n) { if(n<=1) return 0; double m=gmb_stats_mean(x,n), s=0; for(int i=0;i<n;i++){ double d=x[i]-m; s+=d*d; } return s/(n-1); }
-static double gmb_stats_std_sample(const double* x, int n) { double v=gmb_stats_var_sample(x,n); return sqrt(v); }
-static double gmb_stats_cov_sample(const double* x, const double* y, int n) { if(n<=1) return 0; double mx=gmb_stats_mean(x,n), my=gmb_stats_mean(y,n), s=0; for(int i=0;i<n;i++) s+=(x[i]-mx)*(y[i]-my); return s/(n-1); }
-/* skewness campionaria (MathNet: bias-corrected) */
-static double gmb_stats_skew_sample(const double* x, int n)
-{
-    if (n < 3) return 0;
-    double m = gmb_stats_mean(x, n);
-    double s2 = 0, s3 = 0;
-    for (int i = 0; i < n; i++) { double d = x[i]-m; s2 += d*d; s3 += d*d*d; }
-    double var = s2 / n;
-    double std3 = pow(var, 1.5);
-    if (std3 == 0) return 0;
-    double skew = (s3 / n) / std3;
-    /* bias correction di Fisher: * sqrt(n(n-1))/(n-2) */
-    return skew * sqrt((double)n*(n-1)) / (n-2);
-}
-static double gmb_stats_total_return(const double* x, int n) { double t=1; for(int i=0;i<n;i++) t*=(1+x[i]); return t-1; }
-static double gmb_stats_annualized_return(const double* x, int n, int ppy) { if(n<=0) return 0; double tr=gmb_stats_total_return(x,n); return pow(1+tr, (double)ppy/n) - 1; }
-static double gmb_stats_max_drawdown(const double* x, int n)
-{
-    if (n <= 0) return 0;
-    double peak = 1 + x[0], maxdd = 0;
-    for (int i = 1; i < n; i++)
-    {
-        peak = (1 + x[i] > peak) ? 1 + x[i] : peak;
-        double dd = (peak - (1 + x[i])) / peak;
-        if (dd > maxdd) maxdd = dd;
-    }
-    return maxdd;
-}
-static double gmb_stats_downside_dev(const double* x, int n, double thr)
-{
-    if (n <= 0) return 0;
-    double sum = 0; int cnt = 0;
-    for (int i = 0; i < n; i++) if (x[i] < thr) { double d = x[i]-thr; sum += d*d; cnt++; }
-    return cnt > 0 ? sqrt(sum / cnt) : 0;
-}
-static double gmb_stats_beta(const double* x, const double* y, int n)
-{
-    double v = gmb_stats_var_sample(y, n);
-    if (v == 0) return 0;
-    return gmb_stats_cov_sample(x, y, n) / v;
-}
-
-/* Prototipo: gmb_tm_calmar_ratio la usa; la definizione sta nella sezione B3 più sotto. */
-double gmb_tm_max_drawdown(const double* r, int n);
-
-double gmb_tm_calmar_ratio(const double* r, int n, int ppy)
-{
-    /* canone Metrics.CalmarRatio = AnnualizedReturn / |MaxDrawdown|; MaxDrawdown = compound
-     * (gmb_tm_max_drawdown), NON gmb_stats_max_drawdown (peak-to-single-period, valore errato). */
-    double mdd = gmb_tm_max_drawdown(r, n);
-    if (mdd == 0) return 0;
-    return gmb_stats_annualized_return(r, n, ppy) / fabs(mdd);
-}
-double gmb_tm_information_ratio(const double* p, const double* b, int n, int ppy)
-{
-    if (n < 2) return 0;
-    double* d = (double*)malloc(n * sizeof(double));
-    for (int i = 0; i < n; i++) d[i] = p[i]-b[i];
-    double te = gmb_stats_std_sample(d, n);
-    double res = te == 0 ? 0 : sqrt((double)ppy) * gmb_stats_mean(d, n) / te;
-    free(d);
-    return res;
-}
-double gmb_tm_treynor_ratio(const double* r, const double* b, int n, double rf, int ppy)
-{
-    if (n < 2) return 0;
-    double beta = gmb_stats_beta(r, b, n);
-    if (fabs(beta) < 1e-9) return 0;
-    double ar = gmb_stats_annualized_return(r, n, ppy) - gmb_stats_annualized_return((double[1]){rf}, 1, ppy);
-    return ar / beta;
-}
-double gmb_tm_sharpe_ratio(const double* r, int n, double rf, int ppy)
-{
-    if (n < 2) return 0;
-    double* e = (double*)malloc(n * sizeof(double));
-    for (int i = 0; i < n; i++) e[i] = r[i]-rf;
-    double sd = gmb_stats_std_sample(e, n);
-    double res = sd == 0 ? 0 : sqrt((double)ppy) * gmb_stats_mean(e, n) / sd;
-    free(e);
-    return res;
-}
-double gmb_tm_returns_skewness(const double* r, int n) { return gmb_stats_skew_sample(r, n); }
-double gmb_tm_annualized_tracking_error(const double* p, const double* b, int n, int ppy)
-{
-    if (n < 2) return 0;
-    double* d = (double*)malloc(n * sizeof(double));
-    for (int i = 0; i < n; i++) d[i] = p[i]-b[i];
-    double te = gmb_stats_std_sample(d, n);
-    free(d);
-    return sqrt((double)ppy) * te;
-}
-double gmb_tm_annualized_downside_dev(const double* r, int n, double thr, int ppy)
-{
-    return sqrt((double)ppy) * gmb_stats_downside_dev(r, n, thr);
-}
-double gmb_tm_diluted_eps(double ni, double shares, double other) { double d = shares + other; if (d == 0) { gmb_fin_set_error("La somma delle azioni medie e degli strumenti convertibili non può essere zero."); return 0; } return ni / d; }
-double gmb_tm_ps_ratio(double price, double sps) { return sps == 0 ? 0 : price / sps; }
-double gmb_tm_pb_ratio(double price, double bv) { return bv == 0 ? 0 : price / bv; }
-double gmb_tm_dividend_payout(double div, double ni) { return ni == 0 ? 0 : div / ni; }
-double gmb_tm_total_stock_return(double p0, double p1, double div) { if (p0 == 0) { gmb_fin_set_error("Il prezzo iniziale non può essere zero."); return 0; } return ((p1-p0)+div)/p0; }
-
-/* ---- Portfolio optimization (formule chiuse/iterative) ---- */
-static void gmb_inv_sym_2x2(const double* m, double* out)
-{
-    double det = m[0]*m[3] - m[1]*m[2];
-    if (fabs(det) < 1e-15) { out[0]=out[1]=out[2]=out[3]=0; return; }
-    out[0] = m[3]/det; out[1] = -m[1]/det; out[2] = -m[2]/det; out[3] = m[0]/det;
-}
-static void gmb_solve_2x2(const double* a, const double* b, double* x)
-{
-    double det = a[0]*a[3] - a[1]*a[2];
-    if (fabs(det) < 1e-15) { x[0]=x[1]=0; return; }
-    x[0] = (b[0]*a[3] - a[1]*b[1]) / det;
-    x[1] = (a[0]*b[1] - b[0]*a[2]) / det;
-}
 
 /* Inversione di matrice generica (Gauss-Jordan), dimensione arbitraria (n×n
    row-major, buffer allocato dinamicamente). 1 = ok, 0 = singolare/memoria. */
@@ -2339,96 +2062,6 @@ static int gmb_mat_inv(const double* m, int n, double* out)
     }
     free(a);
     return 1;
-}
-
-/* MINVOLATILITY: w = (Σ⁻¹1)/(1ᵀΣ⁻¹1) — minima varianza globale (formula chiusa). */
-void gmb_port_min_vol(const double* cov, int n, double* weights)
-{
-    double *inv;
-    int i, j;
-    if (n <= 0) return;
-    inv = (double*)malloc((size_t)(n * n) * sizeof(double));
-    if (!inv) { for (i = 0; i < n; i++) weights[i] = 1.0/n; return; }
-    if (gmb_mat_inv(cov, n, inv))
-    {
-        double wsum = 0;
-        for (i = 0; i < n; i++) { double row = 0; for (j = 0; j < n; j++) row += inv[i*n+j]; weights[i] = row; wsum += row; }
-        if (wsum != 0) for (i = 0; i < n; i++) weights[i] /= wsum;
-        else for (i = 0; i < n; i++) weights[i] = 1.0/n;
-        free(inv);
-        return;
-    }
-    free(inv);
-    for (i = 0; i < n; i++) weights[i] = 1.0/n;
-}
-
-/* MAXSHARPE: w ∝ Σ⁻¹(μ − rf·1), normalizzato a somma 1. */
-void gmb_port_max_sharpe(const double* rets, const double* cov, int n, double rf, double* weights)
-{
-    double *inv, *m;
-    int i, j;
-    if (n <= 0) return;
-    inv = (double*)malloc((size_t)(n * n) * sizeof(double));
-    m = (double*)malloc((size_t)n * sizeof(double));
-    if (!inv || !m) { free(inv); free(m); for (i = 0; i < n; i++) weights[i] = 1.0/n; return; }
-    if (gmb_mat_inv(cov, n, inv))
-    {
-        double wsum = 0;
-        for (i = 0; i < n; i++) m[i] = rets[i] - rf;
-        for (i = 0; i < n; i++) { double row = 0; for (j = 0; j < n; j++) row += inv[i*n+j]*m[j]; weights[i] = row; wsum += row; }
-        if (wsum != 0) for (i = 0; i < n; i++) weights[i] /= wsum;
-        else for (i = 0; i < n; i++) weights[i] = 1.0/n;
-        free(inv); free(m);
-        return;
-    }
-    free(inv); free(m);
-    for (i = 0; i < n; i++) weights[i] = 1.0/n;
-}
-
-/* RISKPARITY (ERC): iterazione di Spinu. */
-void gmb_port_risk_parity(const double* cov, int n, double* weights)
-{
-    double *marg, *nw;
-    int i, j, iter;
-    if (n <= 0) return;
-    marg = (double*)malloc((size_t)n * sizeof(double));
-    nw = (double*)malloc((size_t)n * sizeof(double));
-    if (!marg || !nw) { free(marg); free(nw); for (i = 0; i < n; i++) weights[i] = 1.0/n; return; }
-    for (i = 0; i < n; i++) weights[i] = 1.0/n;
-    for (iter = 0; iter < 1000; iter++)
-    {
-        double pv = 0, sum = 0, diff = 0;
-        for (i = 0; i < n; i++)
-        {
-            marg[i] = 0;
-            for (j = 0; j < n; j++)
-                marg[i] += cov[i*n+j] * weights[j];
-        }
-        for (i = 0; i < n; i++) pv += weights[i]*marg[i];
-        if (pv <= 0) break;
-        for (i = 0; i < n; i++) { nw[i] = weights[i] * pv / (marg[i] != 0 ? fabs(marg[i])*n : 1e-12); sum += nw[i]; }
-        if (sum == 0) break;
-        for (i = 0; i < n; i++) { nw[i] /= sum; diff += fabs(nw[i]-weights[i]); }
-        for (i = 0; i < n; i++) weights[i] = nw[i];
-        if (diff < 1e-8) break;
-    }
-    free(marg); free(nw);
-}
-
-void gmb_port_equally_weighted(int n, double* weights) { for (int i = 0; i < n; i++) weights[i] = 1.0/n; }
-
-/* BLACKLITTERMAN semplificato: posteriori via vista di mercato. */
-void gmb_port_black_litterman(const double* caps, const double* cov, int n, double riskAversion, double tau,
-                              const double* Q, double* weights, double* posterior)
-{
-    double total = 0; for (int i = 0; i < n; i++) total += caps[i];
-    double wmkt[8];
-    for (int i = 0; i < n; i++) wmkt[i] = total > 0 ? caps[i]/total : 1.0/n;
-    /* Π = λ Σ w_mkt */
-    for (int i = 0; i < n; i++) { posterior[i] = 0; for (int j = 0; j < n; j++) posterior[i] += cov[i*n+j]*wmkt[j]; posterior[i] *= riskAversion; }
-    /* vista: posteriori = mercato + τ·vista (semplificato) */
-    for (int i = 0; i < n; i++) posterior[i] += tau * Q[i];
-    gmb_port_max_sharpe(posterior, cov, n, 0, weights);
 }
 
 /* Cholesky solve Ax=b (A SPD), ritorna soluzione o NULL. */
@@ -2608,264 +2241,30 @@ double gmb_stats_jarque_bera(const double* data, int n)
     double kurt = (s4 / n) / (var * var);
     return n / 6.0 * (skew * skew + (kurt - 3) * (kurt - 3) / 4.0);
 }
-
-/* Metriche trading aggiuntive (gruppo copertura completa) */
-double gmb_tm_max_return(const double* r, int n) { double m=0; for(int i=0;i<n;i++) if(r[i]>m)m=r[i]; return m; }
 double gmb_tm_min_semivariance(const double* r, int n, double thr) {
     double sum=0; int cnt=0;
     for(int i=0;i<n;i++) if(r[i]<thr){ double d=thr-r[i]; sum+=d*d; cnt++; }
     return cnt>0 ? sum/cnt : 0;
 }
-double gmb_tm_kelly_criterion(const double* r, int n) {
-    if(n<=0) return 0;
-    int wins=0; double sumW=0, sumL=0; int nW=0, nL=0;
-    for(int i=0;i<n;i++){ if(r[i]>0){ wins++; sumW+=r[i]; nW++; } else if(r[i]<0){ sumL+=fabs(r[i]); nL++; } }
-    double winRate = (double)wins/n;
-    double avgWin = nW>0 ? sumW/nW : 0;
-    double avgLoss = nL>0 ? sumL/nL : 0;
-    return avgLoss>0 && avgWin>0 ? winRate - (1-winRate)/(avgWin/avgLoss) : 0;
-}
-double gmb_tm_min_cvar(const double* r, int n, double conf);
-double gmb_tm_min_cdar(const double* r, int n, double conf);
-/* PortfolioResult come dict (contratto TP.MAXRETURN/KELLYCRITERION, come la VM/C case 193/189):
-   ExpectedReturn = metrica calcolata, Volatility=0, SharpeRatio=0, Weights = lista di n pesi
-   (1.0 sull'asset migliore per MAXRETURN, altrimenti 0; k per KELLY). */
-gmb_val_t gmb_tm_portfolio_result(const double* r, int n, int metric_kind) {
-    gmb_val_t nil = gmb_val_nil();
-    if (!r || n <= 0) return nil;
-    double metric = metric_kind == 0 ? gmb_tm_max_return(r, n) : metric_kind == 1 ? gmb_tm_kelly_criterion(r, n)
-        : metric_kind == 2 ? gmb_tm_min_cvar(r, n, 0.95) : gmb_tm_min_cdar(r, n, 0.95);
-    gmb_dict_t d = gmb_dict_new();
-    gmb_dict_set(&d, "ExpectedReturn", gmb_make_val_double(metric));
-    gmb_dict_set(&d, "Volatility", gmb_make_val_double(0));
-    gmb_dict_set(&d, "SharpeRatio", gmb_make_val_double(0));
-    gmb_list_t w = gmb_list_new();
-    if (metric_kind == 0) {
-        int bi = 0; for (int i = 0; i < n; i++) if (r[i] > r[bi]) bi = i;
-        for (int i = 0; i < n; i++) gmb_list_add(&w, gmb_make_val_double(i == bi ? 1.0 : 0.0));
-    } else if (metric_kind == 1) {
-        gmb_list_add(&w, gmb_make_val_double(metric));
-    } else {
-        gmb_list_add(&w, gmb_make_val_double(1.0));
-    }
-    gmb_dict_set(&d, "Weights", gmb_make_val_list_take(&w));
-    return gmb_make_val_dict_take(&d);
-}
 /* BACKTEST RUN(returns, strat) → dict {TotalReturn, AnnualizedReturn, MaxDrawdown,
    SharpeRatio, TradesCount, Turnover} (come la VM/C case 624). returns = lista di periodi
    (ogni periodo una lista di rendimenti asset) oppure lista piatta. */
-gmb_val_t gmb_tm_backtest(const double* r, int n) {
-    gmb_val_t nil = gmb_val_nil();
-    if (!r || n <= 0) return nil;
-    double totalRet = 1.0;
-    for (int i = 0; i < n; i++) totalRet *= (1 + r[i]);
-    totalRet = (totalRet - 1) * 100;
-    double annRet = n > 0 ? (pow(totalRet / 100 + 1, 12.0 / n) - 1) * 100 : 0;
-    double peak = 0, maxDD = 0, cum = 0;
-    for (int i = 0; i < n; i++) { cum += r[i]; if (cum > peak) peak = cum; double d = cum - peak; if (d < maxDD) maxDD = d; }
-    double mean = 0; for (int i = 0; i < n; i++) mean += r[i]; mean /= n;
-    double sd = 0; for (int i = 0; i < n; i++) sd += (r[i]-mean)*(r[i]-mean);
-    sd = n > 1 ? sqrt(sd / (n-1)) : 0;
-    gmb_dict_t d = gmb_dict_new();
-    gmb_dict_set(&d, "TotalReturn", gmb_make_val_double(totalRet));
-    gmb_dict_set(&d, "AnnualizedReturn", gmb_make_val_double(annRet));
-    gmb_dict_set(&d, "MaxDrawdown", gmb_make_val_double(maxDD));
-    gmb_dict_set(&d, "SharpeRatio", gmb_make_val_double(sd > 0 ? (mean / sd) * sqrt(252.0) : 0));
-    gmb_dict_set(&d, "TradesCount", gmb_make_val_double((double)n));
-    gmb_dict_set(&d, "Turnover", gmb_make_val_double(0.0));
-    gmb_list_t ec = gmb_list_new();
-    for (int i = 0; i < n; i++) gmb_list_add(&ec, gmb_make_val_double(r[i]));
-    gmb_dict_set(&d, "EquityCurve", gmb_make_val_list_take(&ec));
-    return gmb_make_val_dict_take(&d);
-}
 /* TRADING.BACKTESTS.RUN su array 2-D rettangolare (flat rows×cols): rendimento per periodo =
    media degli asset della riga, poi gmb_tm_backtest. Parità IlRuntime.BacktestRun /
    PCodeProcessor case RUN / VM/C gmb_bf_624. */
-gmb_val_t gmb_tm_backtest_matrix(const double* flat, int rows, int cols) {
-    if (!flat || rows <= 0 || cols <= 0) return gmb_val_nil();
-    if (rows > 512) rows = 512;
-    double r[512];
-    for (int i = 0; i < rows; i++) {
-        double s = 0;
-        for (int j = 0; j < cols; j++) s += flat[i * cols + j];
-        r[i] = s / cols;
-    }
-    return gmb_tm_backtest(r, rows);
-}
 /* PORTFOLIO OPTIMIZATION → dict PortfolioResult (OPT.MINVOLATILITY/MAXSHARPE/MEANVARIANCE/
    RISKPARITY/EQUALLYWEIGHTED, come VM case 183/184/190/192). cov è JAGGED (gmb_double_t*[n],
    righe irregolari); la funzione la compatta in contiguo n×n e chiama gmb_port_*.
    kind: 0=min_vol, 1=max_sharpe, 2=risk_parity, 3=equally_weighted, 4=mean_variance. */
-gmb_val_t gmb_tm_portfolio_optimize(gmb_double_t** cov, int n, const double* rets, int rets_n,
-                                    double rf, int kind) {
-    gmb_val_t nil = gmb_val_nil();
-    /* kind 3 (EQUALLYWEIGHTED): cov non serve (solo n) → cov NULL è valido. */
-    if (n <= 0) return nil;
-    if (!cov && kind != 3) return nil;
-    double *covn = (double*)calloc((size_t)(n * n), sizeof(double));
-    double *w = (double*)calloc((size_t)n, sizeof(double));
-    if (!covn || !w) { free(covn); free(w); return nil; }
-    if (cov)
-        for (int i = 0; i < n; i++)
-            if (cov[i])
-                for (int j = 0; j < n; j++) covn[i*n+j] = cov[i][j];
-    if (kind == 3) gmb_port_equally_weighted(n, w);
-    else if (kind == 2) gmb_port_risk_parity(covn, n, w);
-    else if (kind == 0) gmb_port_min_vol(covn, n, w);
-    else gmb_port_max_sharpe(rets, covn, n, rf, w); /* 1=max_sharpe, 4=mean_variance (rf=0) */
-    double pr = 0, pv = 0;
-    for (int i = 0; i < n; i++) pr += w[i] * (rets && i < rets_n ? rets[i] : 0);
-    for (int i = 0; i < n; i++) for (int j = 0; j < n; j++) pv += w[i] * covn[i*n+j] * w[j];
-    double sd = pv > 0 ? sqrt(pv) : 0;
-    double sh = sd > 0 ? (pr - rf) / sd : 0;
-    gmb_dict_t d = gmb_dict_new();
-    gmb_dict_set(&d, "ExpectedReturn", gmb_make_val_double(pr));
-    gmb_dict_set(&d, "Volatility", gmb_make_val_double(sd));
-    gmb_dict_set(&d, "SharpeRatio", gmb_make_val_double(sh));
-    gmb_list_t wl = gmb_list_new();
-    for (int i = 0; i < n; i++) gmb_list_add(&wl, gmb_make_val_double(w[i]));
-    gmb_dict_set(&d, "Weights", gmb_make_val_list_take(&wl));
-    free(covn); free(w);
-    return gmb_make_val_dict_take(&d);
-}
 /* TRADING.PORTFOLIO.EVOLVE(rets, cov, parametriGA) → dict PortfolioResult. L'IL minimizza la
    varianza del portafoglio con un GA (DifferentialEvolution); qui si usa gmb_port_min_vol
    (stesso obiettivo, deterministico) → weights/return/vol/sharpe. cov è JAGGED (gmb_double_t*[n]). */
-gmb_val_t gmb_port_evolve(gmb_double_t** cov, int n, const double* rets, int rets_n, double rf) {
-    if (n <= 0) return gmb_val_nil();
-    double *covn = (double*)calloc((size_t)(n * n), sizeof(double));
-    double *w = (double*)calloc((size_t)n, sizeof(double));
-    if (!covn || !w) { free(covn); free(w); return gmb_val_nil(); }
-    if (cov)
-        for (int i = 0; i < n; i++)
-            if (cov[i])
-                for (int j = 0; j < n; j++) covn[i*n+j] = cov[i][j];
-    gmb_port_min_vol(covn, n, w);
-    double pr = 0, pv = 0;
-    for (int i = 0; i < n; i++) pr += w[i] * (rets && i < rets_n ? rets[i] : 0);
-    for (int i = 0; i < n; i++) for (int j = 0; j < n; j++) pv += w[i] * covn[i*n+j] * w[j];
-    double sd = pv > 0 ? sqrt(pv) : 0;
-    double sh = sd > 0 ? (pr - rf) / sd : 0;
-    gmb_dict_t d = gmb_dict_new();
-    gmb_dict_set(&d, "ExpectedReturn", gmb_make_val_double(pr));
-    gmb_dict_set(&d, "Volatility", gmb_make_val_double(sd));
-    gmb_dict_set(&d, "SharpeRatio", gmb_make_val_double(sh));
-    gmb_list_t wl = gmb_list_new();
-    for (int i = 0; i < n; i++) gmb_list_add(&wl, gmb_make_val_double(w[i]));
-    gmb_dict_set(&d, "Weights", gmb_make_val_list_take(&wl));
-    free(covn); free(w);
-    return gmb_make_val_dict_take(&d);
-}
 /* TRADING.PORTFOLIO.BLACKLITTERMAN(marketCaps, cov, riskAversion, tau, P, Q, omega, riskFree)
    → PortfolioResult. Formula completa (parità CommonLib.Trading.Portfolio.BlackLitterman):
    Π = λ Σ w_mkt; posterior = [(τΣ)^-1 + Pᵀ Ω^-1 P]^-1 · [(τΣ)^-1 Π + Pᵀ Ω^-1 Q];
    poi MAXSHARPE(posterior, Σ, rf). cov/P/omega sono JAGGED (gmb_double_t**). */
-gmb_val_t gmb_blacklitterman(const double* caps, int n, gmb_double_t** cov,
-                             double riskAversion, double tau,
-                             gmb_double_t** P, int k, const double* Q,
-                             gmb_double_t** omega, double rf) {
-    if (n <= 0) return gmb_val_nil();
-    if (k < 0) k = 0;
-    double *Sigma = (double*)calloc((size_t)(n*n), sizeof(double));
-    double *wmkt = (double*)malloc((size_t)(n > 0 ? n : 1) * sizeof(double));
-    double *Pi = (double*)calloc((size_t)n, sizeof(double));
-    double *tSigma = (double*)malloc((size_t)(n*n) * sizeof(double));
-    double *tSigma_inv = (double*)malloc((size_t)(n*n) * sizeof(double));
-    double *Om = (double*)calloc((size_t)(k*k), sizeof(double));
-    double *Om_inv = (double*)calloc((size_t)(k*k), sizeof(double));
-    double *PtOmP = (double*)calloc((size_t)(n*n), sizeof(double));
-    double *PtOmQ = (double*)calloc((size_t)n, sizeof(double));
-    double *A = (double*)malloc((size_t)(n*n) * sizeof(double));
-    double *A_inv = (double*)malloc((size_t)(n*n) * sizeof(double));
-    double *bb = (double*)malloc((size_t)n * sizeof(double));
-    double *post = (double*)calloc((size_t)n, sizeof(double));
-    double *w = (double*)calloc((size_t)n, sizeof(double));
-#define GMB_BL_FREE() do { free(Sigma); free(wmkt); free(Pi); free(tSigma); free(tSigma_inv); \
-    free(Om); free(Om_inv); free(PtOmP); free(PtOmQ); free(A); free(A_inv); free(bb); free(post); free(w); } while (0)
-    if (!Sigma || !wmkt || !Pi || !tSigma || !tSigma_inv || !Om || !Om_inv || !PtOmP ||
-        !PtOmQ || !A || !A_inv || !bb || !post || !w) { GMB_BL_FREE(); return gmb_val_nil(); }
-    for (int i = 0; i < n; i++) if (cov && cov[i]) for (int j = 0; j < n; j++) Sigma[i*n+j] = cov[i][j];
-    double total = 0; for (int i = 0; i < n; i++) total += caps ? caps[i] : 0;
-    for (int i = 0; i < n; i++) wmkt[i] = total > 0 ? caps[i]/total : 1.0/n;
-    for (int i = 0; i < n; i++) { for (int j = 0; j < n; j++) Pi[i] += Sigma[i*n+j]*wmkt[j]; Pi[i] *= riskAversion; }
-    for (int i = 0; i < n*n; i++) tSigma[i] = tau * Sigma[i];
-    if (!gmb_mat_inv(tSigma, n, tSigma_inv)) { GMB_BL_FREE(); return gmb_val_nil(); }
-    for (int i = 0; i < k; i++) if (omega && omega[i]) for (int j = 0; j < k; j++) Om[i*k+j] = omega[i][j];
-    if (k > 0 && !gmb_mat_inv(Om, k, Om_inv)) { GMB_BL_FREE(); return gmb_val_nil(); }
-    for (int a = 0; a < n; a++) {
-        for (int b = 0; b < n; b++) {
-            double s = 0;
-            for (int u = 0; u < k; u++)
-                for (int v = 0; v < k; v++)
-                    s += (P && P[u] ? P[u][a] : 0) * Om_inv[u*k+v] * (P && P[v] ? P[v][b] : 0);
-            PtOmP[a*n+b] = s;
-        }
-        double s2 = 0;
-        for (int u = 0; u < k; u++)
-            for (int v = 0; v < k; v++)
-                s2 += (P && P[u] ? P[u][a] : 0) * Om_inv[u*k+v] * (Q ? Q[v] : 0);
-        PtOmQ[a] = s2;
-    }
-    for (int i = 0; i < n; i++) for (int j = 0; j < n; j++) A[i*n+j] = tSigma_inv[i*n+j] + PtOmP[i*n+j];
-    if (!gmb_mat_inv(A, n, A_inv)) { GMB_BL_FREE(); return gmb_val_nil(); }
-    for (int i = 0; i < n; i++) {
-        double s = 0;
-        for (int j = 0; j < n; j++) s += tSigma_inv[i*n+j]*Pi[j];
-        bb[i] = s + PtOmQ[i];
-    }
-    for (int i = 0; i < n; i++) { double s = 0; for (int j = 0; j < n; j++) s += A_inv[i*n+j]*bb[j]; post[i] = s; }
-    gmb_port_max_sharpe(post, Sigma, n, rf, w);
-    double pr = 0, pv = 0;
-    for (int i = 0; i < n; i++) pr += w[i]*post[i];
-    for (int i = 0; i < n; i++) for (int j = 0; j < n; j++) pv += w[i]*Sigma[i*n+j]*w[j];
-    double sd = pv > 0 ? sqrt(pv) : 0;
-    double sh = sd > 0 ? (pr - rf)/sd : 0;
-    gmb_dict_t d = gmb_dict_new();
-    gmb_dict_set(&d, "ExpectedReturn", gmb_make_val_double(pr));
-    gmb_dict_set(&d, "Volatility", gmb_make_val_double(sd));
-    gmb_dict_set(&d, "SharpeRatio", gmb_make_val_double(sh));
-    gmb_list_t wl = gmb_list_new();
-    for (int i = 0; i < n; i++) gmb_list_add(&wl, gmb_make_val_double(w[i]));
-    gmb_dict_set(&d, "Weights", gmb_make_val_list_take(&wl));
-    GMB_BL_FREE();
-#undef GMB_BL_FREE
-    return gmb_make_val_dict_take(&d);
-}
-double gmb_tm_risk_premium(double asset, double rf) { return asset-rf; }
-double gmb_tm_capital_gains_yield(double p0, double p1) { if (p0==0) { gmb_fin_set_error("Il prezzo iniziale non può essere zero."); return 0; } return (p1-p0)/p0; }
-double gmb_tm_holding_period_return(const double* r, int n) { double t=1; for(int i=0;i<n;i++) t*=(1+r[i]); return t-1; }
-double gmb_tm_geometric_mean_return(const double* r, int n) { if(n<=0) return 0; double p=1; for(int i=0;i<n;i++) p*=(1+r[i]); return pow(p, 1.0/n)-1; }
-double gmb_tm_growth_rate(double retention, double roe) { return retention*roe; }
-double gmb_tm_bid_ask_spread(double bid, double ask) { return ask-bid; }
-double gmb_tm_tax_equivalent_yield(double tfy, double rate) { return (rate>=1||rate<0)?0:tfy/(1-rate); }
 /* B3 (2026-08-25): rendimenti/volatilità/azioni/obbligazioni mancanti — formule
    allineate a CommonLib.Trading.Metrics/General/Bonds (parità IL/PCodeVM). */
-double gmb_tm_annualized_return(const double* r, int n, int ppy) { if(n<=0) return 0; double t=1; for(int i=0;i<n;i++) t*=(1+r[i]); return pow(t, (double)ppy/n) - 1; }
-double gmb_tm_annualized_volatility(const double* r, int n, int ppy) { if(n<=0) return 0; return sqrt((double)ppy) * gmb_stddev(r, n); }
-double gmb_tm_max_drawdown(const double* r, int n) { if(n<=0) return 0; double cum=1+r[0], peak=cum, mdd=0; for(int i=1;i<n;i++){ cum*=(1+r[i]); if(cum>peak) peak=cum; double dd=(cum-peak)/peak; if(dd<mdd) mdd=dd; } return mdd; }
-double gmb_tm_downside_deviation(const double* r, int n, double thr) { if(n<=0) return 0; double sum=0; int cnt=0; for(int i=0;i<n;i++) if(r[i]<thr){ double d=r[i]-thr; sum+=d*d; cnt++; } return cnt>0?sqrt(sum/cnt):0; }
-double gmb_tm_value_at_risk(const double* r, int n, double conf) {
-    if(n<=0) return 0;
-    int p=(int)round((1-conf)*100); if(p<0)p=0; if(p>100)p=100;
-    /* MathNet Statistics.Percentile(data, p) (usato da Metrics.ValueAtRisk): indice
-       NEAREST con Math.Round (banker's rounding) — NON l'interpolazione lineare di
-       gmb_percentile. idx = Math.Round(p/100.0 * (n-1)). */
-    double pos = (p/100.0) * (n-1);
-    double fl = floor(pos), diff = pos - fl;
-    long idx = (long)fl;
-    if (diff > 0.5) idx++;
-    else if (diff == 0.5 && ((long)fl % 2) != 0) idx++;
-    if (idx < 0) idx = 0;
-    if (idx >= n) idx = n-1;
-    double* tmp = (double*)malloc(sizeof(double)*n);
-    if (!tmp) return 0;
-    memcpy(tmp, r, sizeof(double)*n);
-    for (int i=1;i<n;i++) { double key=tmp[i]; int j=i-1; while(j>=0 && tmp[j]>key){tmp[j+1]=tmp[j];j--;} tmp[j+1]=key; }
-    double res = tmp[idx];
-    free(tmp);
-    return res;
-}
-double gmb_tm_sortino_ratio(const double* r, int n, double rf, int ppy) { if(n<2) return 0; double mean=0; for(int i=0;i<n;i++) mean+=r[i]-rf; mean/=n; double dd=gmb_tm_downside_deviation(r, n, rf); if(dd==0) return 0; return sqrt((double)ppy)*mean/dd; }
 double gmb_fin_current_yield(double coupons, double price) { return price==0?0:coupons/price; }
 double gmb_fin_ytm(double coupon, double fv, double price, double years) { double den=(fv+price)/2; if(years==0||den==0) return 0; return (coupon+(fv-price)/years)/den; }
 double gmb_fin_zcb_value(double fv, double rate, double time) { double base=1+rate; if(base==0) return 0; return fv/pow(base, time); }
@@ -2881,32 +2280,6 @@ double gmb_fin_diluted_eps(double netIncome, double shares, double instruments) 
 double gmb_fin_ps_ratio(double price, double salesPerShare) { return salesPerShare==0?0:price/salesPerShare; }
 double gmb_fin_pb_ratio(double price, double bookValue) { return bookValue==0?0:price/bookValue; }
 double gmb_fin_dividend_payout_ratio(double dividends, double netIncome) { return netIncome==0?0:dividends/netIncome; }
-/* MINCVAR: media dei perdite oltre il quantile (CVaR). */
-double gmb_tm_min_cvar(const double* r, int n, double conf) {
-    if(n<=0) return 0;
-    double* sorted=(double*)malloc(n*sizeof(double));
-    for(int i=0;i<n;i++) sorted[i]=r[i];
-    for(int i=0;i<n-1;i++) for(int j=i+1;j<n;j++) if(sorted[j]<sorted[i]){double t=sorted[i];sorted[i]=sorted[j];sorted[j]=t;}
-    int tail = (int)((1-conf)*n);
-    if(tail<1) tail=1;
-    double sum=0; for(int i=0;i<tail;i++) sum+=sorted[i];
-    free(sorted);
-    return -sum/tail;
-}
-/* MINCDAR: CVaR sul drawdown cumulato. */
-double gmb_tm_min_cdar(const double* r, int n, double conf) {
-    if(n<=0) return 0;
-    double* dd=(double*)malloc(n*sizeof(double));
-    double cum=0, peak=0;
-    for(int i=0;i<n;i++){ cum+=r[i]; if(cum>peak)peak=cum; dd[i]=peak-cum; }
-    double* sorted=(double*)malloc(n*sizeof(double));
-    for(int i=0;i<n;i++) sorted[i]=dd[i];
-    for(int i=0;i<n-1;i++) for(int j=i+1;j<n;j++) if(sorted[j]<sorted[i]){double t=sorted[i];sorted[i]=sorted[j];sorted[j]=t;}
-    int tail=(int)((1-conf)*n); if(tail<1) tail=1;
-    double sum=0; for(int i=n-tail;i<n;i++) sum+=sorted[i];
-    free(sorted); free(dd);
-    return tail>0 ? sum/tail : 0;
-}
 
 /* scipy.fft: rfft (componenti non negative) / irfft (ricostruzione Hermitiana). */
 double* gmb_rfft(const double* x, int n, gmb_int_t* outn)
@@ -2942,159 +2315,10 @@ double* gmb_irfft(const double* re, const double* im, int m, gmb_int_t* outn)
     return out;
 }
 
-double gmb_tm_ulcer_index(const double* r, int n)
-{
-    if (n < 1 || !r) return 0;
-    double peak = r[0], s = 0;
-    for (int i = 0; i < n; i++)
-    {
-        if (r[i] > peak) peak = r[i];
-        double dd = (r[i] - peak) / peak; if (dd < 0) dd = -dd;
-        s += dd * dd;
-    }
-    return sqrt(s / n);
-}
-
-double* gmb_tm_jarque_bera(const double* r, int n, gmb_int_t* out_len)
-{
-    *out_len = 2;
-    double* out = (double*)calloc(2, sizeof(double));
-    if (n < 4 || !r) { out[0] = 0.0; out[1] = 1.0; return out; }
-    /* Parità con il canone C# CommonLib.Trading.Metrics.JarqueBeraTest:
-     * skewness/kurtosis CAMPIONARIE (MathNet), non momenti di popolazione.
-     * stat = n/6 * (skew^2 + excessKurt^2/4), p-value = 1 - ChiSquared(2).CDF(stat). */
-    double s = gmb_tm_returns_skewness(r, n);
-    double k = gmb_kurtosis(r, n); /* eccesso campionario non distorto (MathNet/C#) */
-    double stat = ((double)n / 6.0) * (s * s + 0.25 * k * k);
-    out[0] = stat;
-    out[1] = 1.0 - gmb_gamma_p(1.0, stat / 2.0); /* p-value chi2(2) */
-    return out;
-}
-
-double gmb_tm_expected_return(const double* w, const double* r, int n)
-{
-    double s = 0; for (int i = 0; i < n; i++) s += w[i] * r[i]; return s;
-}
-
-double gmb_tm_is_long_only(const double* w, int n)
-{
-    /* BIT GMBasic (Clipper): true = -1 (parità IL/PCode/VM-C, EXPECT dei MiniTest). */
-    for (int i = 0; i < n; i++) if (w[i] < 0) return 0.0;
-    return -1.0;
-}
-
 double gmb_fin_portfolio_sharpe(double portfolio_return, double portfolio_stdev, double risk_free)
 {
     if (portfolio_stdev == 0) return 0;
     return (portfolio_return - risk_free) / portfolio_stdev;
-}
-
-double gmb_tm_mad(const double* r, int n)
-{
-    if (n < 1 || !r) return 0;
-    double m = 0; for (int i = 0; i < n; i++) m += r[i]; m /= n;
-    double s = 0; for (int i = 0; i < n; i++) s += fabs(r[i] - m);
-    return s / n;
-}
-
-double gmb_tm_semimad(const double* r, int n)
-{
-    if (n < 1 || !r) return 0;
-    double m = 0; for (int i = 0; i < n; i++) m += r[i]; m /= n;
-    double s = 0, c = 0; for (int i = 0; i < n; i++) if (r[i] < m) { s += m - r[i]; c++; }
-    return c > 0 ? s / c : 0;
-}
-
-/* TRADING.PORTFOLIO.MAD: scarto medio assoluto dalla MEDIANA (parità IL PortfolioMad,
- * VM/C gmb_bf_196: med = data[n/2] su array ordinato). */
-double gmb_tm_portfolio_mad(const double* r, int n)
-{
-    if (n < 1 || !r) return 0;
-    double* s = (double*)malloc(sizeof(double) * (size_t)n);
-    if (!s) return 0;
-    memcpy(s, r, sizeof(double) * (size_t)n);
-    for (int i = 1; i < n; i++) { double k = s[i]; int j = i - 1; while (j >= 0 && s[j] > k) { s[j+1] = s[j]; j--; } s[j+1] = k; }
-    double med = s[n / 2];
-    double sum = 0; for (int i = 0; i < n; i++) sum += fabs(r[i] - med);
-    free(s);
-    return sum / n;
-}
-
-/* TRADING.PORTFOLIO.SEMIMAD: solo i valori < target, scarto medio assoluto dalla loro
- * MEDIANA (parità IL PortfolioSemiMad, VM/C gmb_bf_197). target di default 0. */
-double gmb_tm_portfolio_semimad(const double* r, int n, double target)
-{
-    if (n < 1 || !r) return 0;
-    double* b = (double*)malloc(sizeof(double) * (size_t)n);
-    if (!b) return 0;
-    int bn = 0;
-    for (int i = 0; i < n; i++) if (r[i] < target) b[bn++] = r[i];
-    if (bn == 0) { free(b); return 0; }
-    for (int i = 1; i < bn; i++) { double k = b[i]; int j = i - 1; while (j >= 0 && b[j] > k) { b[j+1] = b[j]; j--; } b[j+1] = k; }
-    double med = b[bn / 2];
-    double sum = 0; for (int i = 0; i < bn; i++) sum += fabs(b[i] - med);
-    free(b);
-    return sum / bn;
-}
-
-double gmb_tm_binomial_option(double s, double k, double t, double r, double v, int steps, int is_call)
-{
-    if (steps <= 0) { gmb_fin_set_error("Il numero di passi deve essere positivo."); return 0; }
-    double dt = t / steps;
-    double u = exp(v * sqrt(dt)), d = 1.0 / u;
-    double p = (exp(r * dt) - d) / (u - d);
-    double* vals = (double*)calloc((size_t)(steps + 1), sizeof(double));
-    for (int i = 0; i <= steps; i++)
-    {
-        double price = s * pow(u, (double)(steps - i)) * pow(d, (double)i);
-        vals[i] = is_call ? fmax(price - k, 0) : fmax(k - price, 0);
-    }
-    for (int j = steps - 1; j >= 0; j--)
-        for (int i = 0; i <= j; i++)
-            vals[i] = exp(-r * dt) * (p * vals[i] + (1 - p) * vals[i + 1]);
-    double out = vals[0];
-    free(vals);
-    return out;
-}
-
-double gmb_tm_omega_ratio(const double* r, int n, double threshold)
-{
-    /* Parity Metrics.OmegaRatio (C#): array vuoto → 0; PERDITE nulle → +Infinity
-     * (prima si tornava 0, e gen_TRADING.METRICS_OmegaRatio si aspettava "Infinity"). */
-    if (!r || n <= 0) return 0;
-    double up = 0, down = 0;
-    for (int i = 0; i < n; i++) { double d = r[i] - threshold; if (d > 0) up += d; else down -= d; }
-    return down == 0.0 ? (1.0 / 0.0) : up / down;
-}
-
-static int gmb_dcmp2(const void* a, const void* b) { double x = *(const double*)a, y = *(const double*)b; return (x > y) - (x < y); }
-
-double gmb_tm_portfolio_var(const double* const* hist, int assets, int periods, const double* w, double conf)
-{
-    if (!hist || !w || assets <= 0 || periods <= 0) return 0;
-    double* pr = (double*)calloc((size_t)periods, sizeof(double));
-    for (int t = 0; t < periods; t++) { double s = 0; for (int i = 0; i < assets; i++) s += w[i] * hist[i][t]; pr[t] = s; }
-    double m = 0; for (int t = 0; t < periods; t++) m += pr[t]; m /= periods;
-    double v = 0; for (int t = 0; t < periods; t++) v += (pr[t] - m) * (pr[t] - m); v /= (periods - 1);
-    double sd = sqrt(v);
-    double z = gmb_dist_normal_ppf(0, 1, conf);
-    double out = -(m + z * sd);
-    free(pr);
-    return out;
-}
-
-double gmb_tm_portfolio_cvar(const double* const* hist, int assets, int periods, const double* w, double conf)
-{
-    if (!hist || !w || assets <= 0 || periods <= 0) return 0;
-    double* pr = (double*)calloc((size_t)periods, sizeof(double));
-    for (int t = 0; t < periods; t++) { double s = 0; for (int i = 0; i < assets; i++) s += w[i] * hist[i][t]; pr[t] = s; }
-    qsort(pr, (size_t)periods, sizeof(double), gmb_dcmp2);
-    int tail = (int)ceil((1.0 - conf) * periods);
-    if (tail < 1) tail = 1; if (tail > periods) tail = periods;
-    double s = 0; for (int i = 0; i < tail; i++) s += pr[i];
-    double out = -(s / tail);
-    free(pr);
-    return out;
 }
 
 static void gmb_pca_jacobi(double* a, int n, double* e, double* v)

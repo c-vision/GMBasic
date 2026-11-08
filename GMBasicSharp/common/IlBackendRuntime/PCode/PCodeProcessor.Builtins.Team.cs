@@ -9,7 +9,6 @@ using Basic.AI.Rag;
 using Basic.Databases.Rdd;
 using Basic.IlBackend.PCode.Http;
 using CommonLib.Http;
-using CommonLib.Trading;
 
 namespace Basic.IlBackend.PCode;
 

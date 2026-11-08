@@ -15,6 +15,7 @@ n	cap	parte	volume	titolo	note	fonte_primaria	sezioni	fusi	byte	pagine	esempi	es
 14	III.14	III	1	Debug e diagnostica	2	1	1	0	13886	4	3	2
 15	III.15	III	1	Testare i propri programmi	3	1	2	0	49873	16	16	9
 16	III.16	III	1	FFI e librerie native	3	1	1	1	48327	15	29	28
+17	III.17	III	1	Blockchain: hashing, chiavi, indirizzi e ABI EVM	3	1	1	0	8679	9	23	23
 17	IV.17	IV	1	Console e TUI	7	1	6	0	50552	16	27	26
 18	IV.18	IV	1	Colori, stili e temi	5	1	4	0	15053	5	6	5
 19	IV.19	IV	1	Finestre ed eventi	4	1	3	0	16886	5	7	7
