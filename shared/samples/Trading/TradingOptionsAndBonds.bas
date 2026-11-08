@@ -2,7 +2,7 @@ REM FILE: TradingOptionsAndBonds.bas
 
 ' FILE: Trading/TradingOptionsAndBonds.bas
 ' =================================================================================================
-' TEST UNITARIO: TRADING.OPTIONS e TRADING.BONDS
+' TEST UNITARIO: TRADING_CORE.OPTIONS e TRADING_CORE.BONDS
 ' =================================================================================================
 ' Questo test verifica le funzioni per la valutazione di derivati e titoli a reddito fisso.
 '
@@ -20,8 +20,8 @@ REM FILE: TradingOptionsAndBonds.bas
 ' COPERTURA GENERALE TRADING:
 ' - CAPM: Capital Asset Pricing Model.
 ' =================================================================================================
-IMPORT TRADING.OPTIONS AS OPT
-IMPORT TRADING.BONDS AS BND
+IMPORT DERIVATIVES AS OPT
+IMPORT BONDS AS BND
 ' CORREZIONE: Cambiato l'alias da GEN a TRD per evitare collisione con la keyword GENERATOR.
 IMPORT TRADING AS TRD
 IMPORT DATETIME AS DT

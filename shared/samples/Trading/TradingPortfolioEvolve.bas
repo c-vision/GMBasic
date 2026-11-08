@@ -1,13 +1,16 @@
-' FILE: Trading/TradingPortfolioEvolve.bas
+' FILE: TradingPortfolioEvolve.bas
 ' =================================================================================================
-' TRADING.PORTFOLIO.EVOLVE — ottimizzazione con Differential Evolution (GA parametri opzionali)
+' PORTFOLIO.EVOLVE — minimo di varianza (soluzione deterministica)
 ' =================================================================================================
-IMPORT TRADING.PORTFOLIO AS TP
+' Il vecchio EVOLVE usava un algoritmo genetico con GaParameters: l'FFI non ha il tipo
+' e usa la soluzione deterministica di minima varianza, la stessa del runtime condiviso.
+' =================================================================================================
+IMPORT PORTFOLIO AS TP
 
 SUB Main()
     CLS
     PRINT "============================================================"
-    PRINT "TRADING.PORTFOLIO — EVOLVE (Differential Evolution)"
+    PRINT "PORTFOLIO — EVOLVE (minima varianza deterministica)"
     PRINT "============================================================"
     PRINT
 
@@ -20,20 +23,16 @@ SUB Main()
     cov(1) = {0.005, 0.01, 0.0}
     cov(2) = {0.0, 0.0, 0.0025}
 
-    ' EVOLVE con parametri GA predefiniti (NULL)
-    DIM res1 = TP.EVOLVE(r, cov, NULL)
-    PRINT "--- Evolve (parametri default) ---"
-    PRINT "Weights: "; LEN(res1.Weights); " asset"
-    PRINT "Return : "; FORMAT(res1.Return, "0.00%")
-    PRINT "StDev  : "; FORMAT(res1.StDev, "0.00%")
-    PRINT "Sharpe : "; FORMAT(res1.SharpeRatio, "0.00")
+    ' Risultato: [rendimento, volatilita', Sharpe, pesi...]
+    DIM res1() AS DOUBLE
+    res1 = TP.EVOLVE(r, cov)
+    PRINT "--- Evolve ---"
+    PRINT "Weights: "; UBOUND(res1) - 2; " asset"
+    PRINT "Return : "; FORMAT(res1(0), "0.00%")
+    PRINT "StDev  : "; FORMAT(res1(1), "0.00%")
+    PRINT "Sharpe : "; FORMAT(res1(2), "0.00")
     PRINT
-
-    ' EVOLVE con parametri GA espliciti (se il tipo GaParameters è supportato)
-    PRINT "--- Evolve (parametri GA via NEW) ---"
-    PRINT "NOTA: se GaParameters non è mappato al costruttore BASIC, usare NULL."
-    ' DIM ga AS TP.GaParameters = NEW TP.GaParameters(100, 200, 0.8, 0.9, 1.0)
-    ' DIM res2 = TP.EVOLVE(r, cov, ga)
+    PRINT "Pesi:  "; FORMAT(res1(3), "0.0000"); " / "; FORMAT(res1(4), "0.0000"); " / "; FORMAT(res1(5), "0.0000")
 
     PRINT
     PRINT "Test EVOLVE completato."

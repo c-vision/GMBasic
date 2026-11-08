@@ -1,6 +1,6 @@
-' MiniTest: TRADING.PORTFOLIO.MAXSHARPE — parita' 4 backend.
+' MiniTest: PORTFOLIO.MAXSHARPE — parita' 4 backend.
 ' EXPECT: 3
-IMPORT TRADING.PORTFOLIO AS TP
+IMPORT PORTFOLIO AS TP
 
 SUB Main
   DIM w(2) AS DOUBLE : w = {0.5, 0.3, 0.2}
@@ -9,6 +9,7 @@ SUB Main
   cov(0) = {0.04, 0.005, 0.0} : cov(1) = {0.005, 0.01, 0.0} : cov(2) = {0.0, 0.0, 0.0025}
   DIM hist(2) AS ARRAY OF DOUBLE
   hist(0) = {0.02, -0.01, 0.03, 0.01, -0.02} : hist(1) = {0.01, 0.005, -0.005, 0.02, 0.01} : hist(2) = {0.005, 0.01, -0.01, 0.015, 0.005}
-  DIM x = TP.MAXSHARPE(r, cov, 0.01)
-  PRINT LEN(x.Weights)
+  DIM x() AS DOUBLE
+  x = TP.MAXSHARPE(r, cov, 0.01)
+  PRINT UBOUND(x) - 2
 END SUB

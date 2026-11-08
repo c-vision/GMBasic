@@ -1,4 +1,4 @@
-IMPORT TRADING.BONDS AS B
+IMPORT BONDS AS B
 SUB Main()
   PRINT ROUND(B.BondEquivalentYield(100, 96, 365), 6)
   PRINT ROUND(B.CurrentYield(5, 96), 6)

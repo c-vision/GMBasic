@@ -8,12 +8,14 @@
 '   TREYNORRATIO, CONDITIONALVALUEATRISK, RETURNSSKEWNESS, ANNUALIZEDTRACKINGERROR,
 '   ANNUALIZEDDOWNSIDEDEVIATION, OMEGARATIO, ULCERINDEX.
 ' =================================================================================================
-IMPORT TRADING.METRICS AS TM
+IMPORT METRICS AS TM
+IMPORT FUNDAMENTALS
+IMPORT VOLATILITY
 
 SUB Main()
     CLS
     PRINT "============================================================"
-    PRINT "TRADING.METRICS - Funzioni scoperte dagli esempi"
+    PRINT "METRICS - Funzioni scoperte dagli esempi"
     PRINT "============================================================"
     PRINT
 
@@ -33,7 +35,7 @@ SUB Main()
     ' argomenti -> funzioni inutilizzabili finche' la firma StdLib non viene corretta.
     ' Per questo si esegue solo DILUTEDEPS (firma 3 arg coerente) e si documenta.
     PRINT "-- Multipli fondamentali --"
-    PRINT "DILUTEDEPS(1000000, 500000, 0)   = "; TM.DILUTEDEPS(1000000, 500000, 0)
+    PRINT "DILUTEDEPS(1000000, 500000, 0)   = "; FUNDAMENTALS.DilutedEPS(1000000, 500000, 0)
     ' PSRATIO(50, 4): bug firma (0 arg in StdLib, 2 richiesti dal runtime)
     ' PBRATIO(50, 8): bug firma (idem)
     ' DIVIDENDPAYOUTRATIO(2, 4): bug firma (idem)
@@ -57,7 +59,7 @@ SUB Main()
     ' ---- Misure annualizzate e downside ----
     PRINT "-- Tracking / downside --"
     PRINT "ANNUALIZEDTRACKINGERROR(R,B,12)  = "; TM.ANNUALIZEDTRACKINGERROR(R, B, 12)
-    PRINT "ANNUALIZEDDOWNSIDEDEVIATION(R,0,12)= "; TM.ANNUALIZEDDOWNSIDEDEVIATION(R, 0, 12)
+    PRINT "ANNUALIZEDDOWNSIDEDEVIATION(R,0,12)= "; VOLATILITY.AnnualizedDownsideDeviation(R, 0, 12)
     PRINT "OMEGARATIO(R, 0.0)               = "; TM.OMEGARATIO(R, 0.0)
     PRINT
 

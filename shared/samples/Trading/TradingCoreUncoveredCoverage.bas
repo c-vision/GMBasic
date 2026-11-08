@@ -7,9 +7,9 @@
 '   TOTALSTOCKRETURN.
 '
 ' COPERTURA:
-' - TRADING.TOTALSTOCKRETURN(initialPrice, endPrice, dividends): rendimento totale azionario.
+' - TRADING_CORE.TOTALSTOCKRETURN(initialPrice, endPrice, dividends): rendimento totale azionario.
 ' =================================================================================================
-IMPORT TRADING
+IMPORT TRADING_CORE
 
 SUB Main()
     CLS
@@ -22,7 +22,7 @@ SUB Main()
     PRINT "-- TOTALSTOCKRETURN --"
     ' Acquisto a 100, vendita a 120, dividendi totali 5
     DIM ret AS DOUBLE
-    ret = TRADING.TOTALSTOCKRETURN(100.0, 120.0, 5.0)
+    ret = TRADING_CORE.TOTALSTOCKRETURN(100.0, 120.0, 5.0)
     PRINT "TOTALSTOCKRETURN(100, 120, 5) = "; ret
     PRINT
 

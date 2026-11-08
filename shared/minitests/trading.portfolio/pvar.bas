@@ -1,6 +1,6 @@
-' MiniTest: TRADING.PORTFOLIO.PVAR — parita' 4 backend.
+' MiniTest: PORTFOLIO.PVAR — parita' 4 backend.
 ' EXPECT: 2
-IMPORT TRADING.PORTFOLIO AS TP
+IMPORT PORTFOLIO AS TP
 
 SUB Main
   DIM w(2) AS DOUBLE : w = {0.5, 0.3, 0.2}

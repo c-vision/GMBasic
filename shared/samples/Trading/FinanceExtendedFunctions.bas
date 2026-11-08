@@ -1,5 +1,5 @@
 IMPORT FINANCE
-IMPORT TRADING.BONDS AS BND
+IMPORT BONDS AS BND
 ' ==============================================================================
 ' FILE: Trading/FinanceExtendedFunctions.bas
 ' Funzioni FINANCE estese (2026-08-06): PMTEXT/PVEXT/NPEREXT/FVEXT/YIELD/PRICESIMPLE

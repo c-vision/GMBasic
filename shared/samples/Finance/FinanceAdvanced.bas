@@ -11,7 +11,7 @@
 ' =================================================================================================
 
 IMPORT FINANCE
-IMPORT TRADING.BONDS AS BND
+IMPORT BONDS AS BND
 IMPORT DATETIME AS DT
 
 SUB Main()

@@ -777,10 +777,12 @@ viaggiano per riferimento con l'estensione automatica `d0..dN-1` (la `DECLARE` n
 elenca la lunghezza). `JarqueBeraTest` restituisce `ARRAY OF DOUBLE` `[statistica,
 p-value]`.
 
-Le funzioni di `BONDS` prendono le date come **`OADate`** — il seriale `DateTime` di
-GMBasic, giorni dal 1899-12-30 — e si passano direttamente da
-`DATETIME.DATEVALUE("AAAA-MM-GG")` (vocazione `DateTime`→`DOUBLE`, nessun tipo data
-nell'FFI). `frequency` vale 1, 2 o 4; `model` (`0` = `Trading.Bonds`, `1` =
+Le funzioni di `BONDS` prendono le date come **`DATETIME`** (come il builtin):
+`DATETIME.DATEVALUE("AAAA-MM-GG")` o una variabile `DIM d AS DATETIME`. Il wrapper
+converte in `OADate` (seriale delle `DateTime`, giorni dal 1899-12-30) e passa un
+`DOUBLE` alla lib: la conversione avviene nel BASIC, non al confine FFI (su IL un
+`DateTime` dato a un parametro FFI `DOUBLE` non viene convertito e il risultato è
+errato). `frequency` vale 1, 2 o 4; `model` (`0` = `Trading.Bonds`, `1` =
 `Numerics.Price` con basis 0) è opzionale e vale 0.
 
 Le funzioni di `DERIVATIVES` che distinguono la gamba prendono la stringa `type`
@@ -869,7 +871,7 @@ passivo, azioni)`, `PBRatio(prezzo, book)`, `PERatio(prezzo, eps)`, `PSRatio(pre
 | `BondPrice` | `(settle, maturity, rate, yld, redemption, frequency[, model])` | prezzo *dirty* (rateo incluso) |
 | `BondYield` | `(settle, maturity, rate, price, redemption, frequency[, model])` | YTM dal prezzo (Newton) |
 | `PRICESIMPLE` | `(settle, maturity, rate, yld, redemption, frequency)` | prezzo a periodi interi, senza rateo |
-| `DURATION` | `(settle, maturity, rate, yld, frequency, basis, calcMethod)` | Macaulay; `calcMethod 1` → modificata |
+| `DURATION` | `(settle, maturity, rate, yld, frequency, basis, calcMethod)` | Macaulay; `basis` e `calcMethod` ignorati (parità builtin) |
 | `BondEquivalentYield` | `(face, price, giorni)` | `((F−P)/P)·(365/giorni)` |
 | `CurrentYield` | `(cedoleAnnuali, price)` | `cedole/prezzo` |
 | `YieldToMaturity` | `(cedola, nominale, price, anni)` | `(C+(F−P)/t)/((F+P)/2)` |
@@ -948,7 +950,7 @@ D) fondamentali
  dividend yield = 5.000000 %          P/B = 2.000000
 E) obbligazioni (BTP 2024->2026, cedola 5%, y 5%)
  prezzo modello Bonds = 100.000000    prezzo modello Numerics = 95.680812
- duration = 1.952381                  duration modificata = 1.859410
+ duration = 1.952381                  con calcMethod 1 = 1.952381 (idem)
  yield a 96 = 0.072191                current yield = 0.050000
  YTM (5,100,105,10) = 0.043902        ZCB valore = 78.352617
 F) derivati (call ATM S=K=100, T=1, r=5%, vol=20%)

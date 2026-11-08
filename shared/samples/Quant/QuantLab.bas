@@ -117,7 +117,7 @@ SUB Main()
   '    Le date sono OADate (DATETIME.DATEVALUE -> DOUBLE).
   ' ══════════════════════════════════════════════════════════════════════════
   PRINT "E) obbligazioni (BTP 2024->2026, cedola 5%, y 5%, rimborso 100)"
-  DIM settle AS DOUBLE, maturity AS DOUBLE
+  DIM settle AS DATETIME, maturity AS DATETIME
   settle = DATETIME.DATEVALUE("2024-01-01")
   maturity = DATETIME.DATEVALUE("2026-01-01")
   PRINT " prezzo modello Bonds            = "; FORMAT(BONDS.BondPrice(settle, maturity, 0.05, 0.05, 100, 1), "#.000000")
@@ -125,7 +125,7 @@ SUB Main()
   PRINT " prezzo semplice (periodi interi)= "; FORMAT(BONDS.PRICESIMPLE(settle, maturity, 0.05, 0.05, 100, 1), "#.000000")
   PRINT " yield a 96 (modello Bonds)      = "; FORMAT(BONDS.BondYield(settle, maturity, 0.05, 96, 100, 1), "#.000000")
   PRINT " duration (Macaulay)             = "; FORMAT(BONDS.DURATION(settle, maturity, 0.05, 0.05, 1, 0, 0), "#.000000")
-  PRINT " duration modificata             = "; FORMAT(BONDS.DURATION(settle, maturity, 0.05, 0.05, 1, 0, 1), "#.000000")
+  PRINT " duration con calcMethod=1 (idem) = "; FORMAT(BONDS.DURATION(settle, maturity, 0.05, 0.05, 1, 0, 1), "#.000000")
   PRINT " rend. equivalente (100->98.5/180g)= "; FORMAT(BONDS.BondEquivalentYield(100, 98.5, 180), "#.000000")
   PRINT " current yield (5/100)           = "; FORMAT(BONDS.CurrentYield(5, 100), "#.000000")
   PRINT " YTM (5, 100, 105, 10 anni)      = "; FORMAT(BONDS.YieldToMaturity(5, 100, 105, 10), "#.000000")
@@ -190,11 +190,12 @@ SUB Main()
   pr = PORTFOLIO.MAXRETURN(mu)
   PRINT " max-return: 100% su asset 0     = "; pr(3); " "; pr(4); " "; pr(5)
   DIM rr(5) AS DOUBLE : rr = {0.02, -0.01, 0.03, 0.01, -0.02, 0.015}
-  pr = PORTFOLIO.KELLYCRITERION(rr, 0.02)
+  DIM hr(0) AS ARRAY OF DOUBLE : hr(0) = rr
+  pr = PORTFOLIO.KELLYCRITERION(hr, 0.02)
   PRINT " Kelly su serie con perdite      = "; FORMAT(pr(0), "#.000000")
-  pr = PORTFOLIO.MINCVAR(rr, 0.95, 0.02)
+  pr = PORTFOLIO.MINCVAR(hr, 0.95, 0.02)
   PRINT " min-CVaR 95%                    = "; FORMAT(pr(0), "#.000000")
-  pr = PORTFOLIO.MINCDAR(rr, 0.95, 0.02)
+  pr = PORTFOLIO.MINCDAR(hr, 0.95, 0.02)
   PRINT " min-CDaR 95%                    = "; FORMAT(pr(0), "#.000000")
   pr = PORTFOLIO.EVOLVE(mu, cov)
   PRINT " evolve (min-var deterministica) = "; FORMAT(pr(3) + pr(4) + pr(5), "#.000000"); " (somma pesi)"
