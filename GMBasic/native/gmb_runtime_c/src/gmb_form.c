@@ -1392,16 +1392,19 @@ static void draw_open_dropdowns(float sc)
         if (wd->kind != W_DROPDOWN || !wd->open || !wd->nitems) continue;
         gmb_widget_style_t* s = &wd->style;
         int x = wd->base.x, y = wd->base.y, w = wd->base.width, h = wd->base.height;
-        GMB_GFX_LINE(x, y + h, x + w - 1, y + h + h * wd->nitems - 1, GFX_RGB(s->fill), "BF");  /* sfondo opaco */
+        /* Sfondo OPACO della lista (il tema glass ha fill semitrasparente: la lista
+         * lasciava trasparire i controlli sotto e sembrava "in secondo piano"). */
+        { gmb_widget_style_t vs = gmb_widget_style_current();
+          unsigned base = 0xFF000000u | (vs.fill & 0xFFFFFFu);
+          gmb_gfx_fill_rounded_rect(x, y + h, w, h * wd->nitems, 8, base);
+          gmb_gfx_stroke_rounded_rect(x, y + h, w, h * wd->nitems, 8, vs.border); }
         for (int j = 0; j < wd->nitems; j++) {
             int iy = y + h + j * h;
             unsigned int bg = (j == wd->hover) ? s->fill_hover : s->fill;
-            GMB_GFX_LINE(x, iy, x + w - 1, iy + h - 1, GFX_RGB(bg), "BF");
+            if (j == wd->hover) { unsigned hb = 0xFF000000u | (bg & 0xFFFFFFu);
+                                  gmb_gfx_fill_rounded_rect(x + 2, iy, w - 4, h - 1, 5, hb); }
             GMB_GFX_DRAW_TEXT(wd->items[j], x + 8, iy + (h - tl) / 2, 0, GFX_RGB(s->text));
-            GMB_GFX_LINE(x, iy + h - 1, x + w - 1, iy + h - 1, GFX_RGB(s->border), "");
         }
-        GMB_GFX_LINE(x, y + h, x, y + h + h * wd->nitems - 1, GFX_RGB(s->border), "");
-        GMB_GFX_LINE(x + w - 1, y + h, x + w - 1, y + h + h * wd->nitems - 1, GFX_RGB(s->border), "");
     }
 }
 
@@ -1487,7 +1490,6 @@ static void form_draw(void)
         if (g_btns[i].style.font_size > 0) fc = 1;
         draw_button_body(&g_btns[i], sc);
     }
-    draw_open_dropdowns(sc);
     /* Ripristino le coordinate DICHIARATE (il controllo resta nella sua metrica). */
     for (int i = 0; i < g_nwid; i++) { g_wid[i].base.x = sx[i]; g_wid[i].base.y = sy[i]; g_wid[i].base.width = sw[i]; g_wid[i].base.height = sh[i]; }
     for (int i = 0; i < g_nbtn; i++) { g_btns[i].base.x = sbx[i]; g_btns[i].base.y = sby[i]; g_btns[i].base.width = sbw[i]; g_btns[i].base.height = sbh[i]; }
@@ -2125,6 +2127,7 @@ void gmb_form_control_set(const char* name, const char* prop, double num, const 
     else if (!strcasecmp(prop, "format"))  { if (str && w) snprintf(w->dfmt, sizeof(w->dfmt), "%s", str); }
     else if (!strcasecmp(prop, "mask"))    { if (str && w) snprintf(w->dmask, sizeof(w->dmask), "%s", str); }
     else if (!strcasecmp(prop, "showpercent")) { if (w) w->show_percent = (num != 0); }
+    else if (!strcasecmp(prop, "open")) { if (w) { w->open = (num != 0); g_dirty = 1; } }
     else if (!strcasecmp(prop, "barstyle")) { if (str && w) snprintf(w->bar_style, sizeof(w->bar_style), "%s", str); }
     else if (!strcasecmp(prop, "align") || !strcasecmp(prop, "alignment")) { if (w) w->align = (int)num; }
     else if (!strcasecmp(prop, "valid") || !strcasecmp(prop, "isvalid")) { if (w) w->is_valid = (num != 0); }
@@ -3102,6 +3105,7 @@ static void widget_mouse(int type, int x, int y, float sc)
                             int d = r * 7 + c2 - fw + 1;
                             if (d >= 1 && d <= dim) { wd->dday = d; wd->sy = wd->dy; wd->sm = wd->dm; wd->sd = d; char b[16]; snprintf(b, sizeof(b), "%04d-%02d-%02d", wd->dy, wd->dm, d); wd_set_str(wd, b); }
                             wd->open = 0; g_dirty = 1;
+                    gmb_form_invalidate(X, Y, W, H * (wd->nitems + 1));   /* la lista sparisce */
                         }
                     } else { wd->open = 0; g_dirty = 1; }
                 } else if (x >= X && x < X + W && y >= Y && y < Y + H) { if (x >= X + W - px_arrow_band_w((int)GMB_GFX_TEXT_END_X("M",0,0))) { wd->open = 1; wd->hover = 0; } else { set_focus_wid(i); date_mask_fill(wd); } g_dirty = 1; }
@@ -3116,6 +3120,7 @@ static void widget_mouse(int type, int x, int y, float sc)
                     wd->open = 0; g_dirty = 1;
                 } else if (x >= X && x < X + W && y >= Y && y < Y + H) {
                     wd->open = 1; wd->hover = -1; fire_ev(i, GMB_EV_DROPDOWN); g_dirty = 1;
+                    gmb_form_invalidate(X, Y, W, H * (wd->nitems + 1));   /* la lista copre sotto */
                 }
             } else if (type == GMB_GFX_MOUSE_MOVE && wd->open) {
                 if (x >= X && x < X + W && y >= listY && y < listY + listH) {
@@ -3372,6 +3377,15 @@ void gmb_form_poll(void)
  * la grafica sono leciti), tipicamente dal present. Ridisegna solo se dirty. La
  * finestra/renderScale si crea al primo present, DOPO il primo disegno (a scala 1):
  * quando la scala cambia si ripulisce la pagina una volta (evita la doppia immagine). */
+void gmb_form_draw_overlays(void)
+{
+    /* Overlay del FORM (lista aperta delle dropdown/date): va disegnato DOPO il livello
+     * TUI, altrimenti finisce SOTTO i controlli TUI (la select "appariva in secondo
+     * piano"). */
+    float sc = GMB_GFX_RENDER_SCALE(); if (sc <= 0.0f) sc = 1.0f;
+    draw_open_dropdowns(sc);
+}
+
 void gmb_form_render_if_dirty(void)
 {
     if (g_form_exclusive) return;   /* READ (form Clipper) disegna da sé: non cancellare */
@@ -3438,6 +3452,7 @@ void gmb_form_render_if_dirty(void)
      * va fatta qui — senza, un clic cambiava il controllo ma NON la variabile BASIC. */
     { extern void gmb_tui_sync_bindings(void); gmb_tui_sync_bindings(); }
     { extern void gmb_tui_draw_px_all(void); gmb_tui_draw_px_all(); }
+    if (gmb_form_active() && !g_modal) gmb_form_draw_overlays();   /* dropdown sopra il livello TUI */
     /* Frame consumato: le zone sporche ripartono vuote. */
     g_ndam = 0;
     g_dam_full = 0;

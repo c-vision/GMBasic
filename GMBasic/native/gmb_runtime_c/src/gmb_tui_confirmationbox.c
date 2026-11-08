@@ -5,6 +5,8 @@
 #include "gmb_tui_widgets.h"
 #include "gmb_graphics.h"
 #include "gmb_form.h"
+#include "gmb_ui_gfx.h"
+#include "gmb_tui_app.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -76,11 +78,56 @@ static void confirmationbox_draw_px(void* u, gmb_control_t* c)
     }
     gmb_gfx_stroke_rounded_rect(x, y, w, h, 6, st.border);
 }
+/* Click in GRAFICA: stessa geometria del renderer pixel (pulsanti in basso a destra).
+ * Prima la ConfirmationBox non aveva NESSUN handler del mouse: i pulsanti OK/Cancel
+ * erano solo disegnati. */
+static bool confirmationbox_mouse(void* u, gmb_control_t* c, const gmb_mouse_action_t* m)
+{
+    gmb_confirmation_box_t* cb = (gmb_confirmation_box_t*)u;
+    if (!c || !m) return false;
+    if (!GMB_GFX_SCREEN_ON()) return false;
+    if (m->kind != GMB_MA_CLICK) return false;
+    int x0 = (c->px_w > 0) ? c->px_x : c->x;
+    int y0 = (c->px_h > 0) ? c->px_y : c->y;
+    int w0 = (c->px_w > 0) ? c->px_w : c->width;
+    int h0 = (c->px_h > 0) ? c->px_h : c->height;
+    if (m->x < x0 || m->x >= x0 + w0 || m->y < y0 || m->y >= y0 + h0) return false;
+
+    int th = gmb_gfx_text_height_logical(); if (th <= 0) th = 14;
+    int bh = th + 8, gap = 8;
+    const char* btns[3]; int nb = 0;
+    btns[nb++] = cb->confirm_label[0] ? cb->confirm_label : "OK";
+    btns[nb++] = cb->cancel_label[0] ? cb->cancel_label : "Annulla";
+    if (cb->has_retry) btns[nb++] = cb->retry_label[0] ? cb->retry_label : "Riprova";
+    int totw = gap * (nb - 1);
+    for (int i = 0; i < nb; i++) { int bw = gmb_gfx_text_width_logical(btns[i]) + 24; if (bw < 60) bw = 60; totw += bw; }
+    int bx = x0 + w0 - totw - 10, by = y0 + h0 - bh - 8;
+    if (m->y >= by && m->y < by + bh)
+    {
+        for (int i = 0; i < nb; i++)
+        {
+            int bw = gmb_gfx_text_width_logical(btns[i]) + 24; if (bw < 60) bw = 60;
+            if (m->x >= bx && m->x < bx + bw)
+            {
+                cb->focused_choice = i;
+                /* result: 0 = OK, 1 = Cancel, 2 = Retry (ConfirmationChoice) */
+                cb->result = i;
+                gmb_tui_fire(c->handle, GMB_EV_CLICK);
+                if (gmb_form_modal_active() && gmb_form_modal_control() == c) gmb_form_modal_close();
+                return true;
+            }
+            bx += bw + gap;
+        }
+    }
+    return true;
+}
+
 void gmb_confirmation_box_init(gmb_confirmation_box_t* c, int x, int y, int w, int h)
 {
     memset(c, 0, sizeof(*c));
     gmb_control_init(&c->ctrl, "", x, y, w, h, confirmationbox_draw, NULL);
     c->ctrl.draw_px_fn = confirmationbox_draw_px;
+    c->ctrl.handle_mouse_fn = confirmationbox_mouse;
     c->ctrl.user = c;
     c->border = GMB_PB_DOUBLE;
     c->focused_choice = GMB_CONF_CONFIRM;

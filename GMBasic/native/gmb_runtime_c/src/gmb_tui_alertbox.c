@@ -5,6 +5,8 @@
 #include "gmb_tui_widgets.h"
 #include "gmb_graphics.h"
 #include "gmb_form.h"
+#include "gmb_ui_gfx.h"
+#include "gmb_tui_app.h"
 #include "gmb_px_renderer.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -84,6 +86,32 @@ static bool alertbox_mouse(void* u, gmb_control_t* c, const gmb_mouse_action_t* 
     gmb_alert_box_t* a = (gmb_alert_box_t*)u;
     if (!c || !m) return false;
     if (m->kind == GMB_MA_RELEASE) { a->dragging = 0; return true; }
+
+    /* GRAFICA: hit-test con la STESSA geometria del renderer pixel (px_alertbox).
+     * Prima si testava la riga di celle `c->y + height - 2`: in pixel il pulsante
+     * OK sta in basso a destra e quel confronto non era MAI vero — l'alert non
+     * rispondeva ai click. */
+    if (GMB_GFX_SCREEN_ON() && m->kind == GMB_MA_CLICK)
+    {
+        int x0 = (c->px_w > 0) ? c->px_x : c->x;
+        int y0 = (c->px_h > 0) ? c->px_y : c->y;
+        int w0 = (c->px_w > 0) ? c->px_w : c->width;
+        int h0 = (c->px_h > 0) ? c->px_h : c->height;
+        if (m->x < x0 || m->x >= x0 + w0 || m->y < y0 || m->y >= y0 + h0) return false;
+        int th = gmb_gfx_text_height_logical(); if (th <= 0) th = 14;
+        int bh = th + 8;
+        int bw = gmb_gfx_text_width_logical(a->ok_label[0] ? a->ok_label : "OK") + 24; if (bw < 60) bw = 60;
+        int bx = x0 + w0 - bw - 10, by = y0 + h0 - bh - 8;
+        if (m->x >= bx && m->x < bx + bw && m->y >= by && m->y < by + bh)
+        {
+            a->focused_button = 0;
+            a->result = 1;
+            gmb_tui_fire(c->handle, GMB_EV_CLICK);        /* ON CLICK sull'ALERTBOX */
+            if (gmb_form_modal_active() && gmb_form_modal_control() == c) gmb_form_modal_close();
+        }
+        return true;
+    }
+
     if (m->kind == GMB_MA_DRAG && a->dragging) { c->x = m->x - a->drag_off_x; c->y = m->y - a->drag_off_y; return true; }
     if (m->kind != GMB_MA_CLICK) return false;
     int n = a->buttons_count > 0 ? a->buttons_count : 1;
