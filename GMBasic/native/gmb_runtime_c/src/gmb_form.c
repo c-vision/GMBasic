@@ -1863,6 +1863,30 @@ static int popup_area(gmb_control_t* c, int only_if_open, int* x, int* y, int* w
 int gmb_control_popup_paint_rect(gmb_control_t* c, int* x, int* y, int* w, int* h)
 { return popup_area(c, 1, x, y, w, h); }
 
+/* Rect di HIT-TEST: rettangolo ∪ popup aperto (senza il padding del testo, che
+ * allargherebbe la zona di click e ruberebbe eventi ai controlli vicini).
+ * Stessa regola del disegno: l.area che il controllo puo. occupare. */
+void gmb_control_hit_rect(gmb_control_t* c, int* x, int* y, int* w, int* h)
+{
+    int px = (c->px_w > 0) ? c->px_x : c->x;
+    int py = (c->px_h > 0) ? c->px_y : c->y;
+    int pw = (c->px_w > 0) ? c->px_w : c->width;
+    int ph = (c->px_h > 0) ? c->px_h : c->height;
+    /* controlli dichiarati alti 1 (celle) ma disegnati in pixel: altezza = una riga */
+    { int _th = gmb_gfx_text_height_logical(); if (_th <= 0) _th = 16; if (ph <= 2) ph = _th + 8; }
+    *x = px; *y = py; *w = pw; *h = ph;
+    int ux, uy, uw, uh;
+    if (popup_area(c, 1, &ux, &uy, &uw, &uh))
+    {
+        int x2 = *x + *w, y2 = *y + *h, ux2 = ux + uw, uy2 = uy + uh;
+        if (ux < *x) *x = ux;
+        if (uy < *y) *y = uy;
+        if (ux2 > x2) x2 = ux2;
+        if (uy2 > y2) y2 = uy2;
+        *w = x2 - *x; *h = y2 - *y;
+    }
+}
+
 /* Sporca TUTTA l.area che il controllo puo. occupare: rettangolo + popup (anche se
  * chiuso). Si usa quando il popup si apre o si chiude: in quei due istanti l.area
  * cambia, e con una sola delle due si lasciano pixel vecchi (lista fantasma). */
@@ -1895,6 +1919,7 @@ void gmb_control_paint_rect(gmb_control_t* c, int* x, int* y, int* w, int* h)
     int pw = (c->px_w > 0) ? c->px_w : c->width;
     int ph = (c->px_h > 0) ? c->px_h : c->height;
     int th = gmb_gfx_text_height_logical(); if (th <= 0) th = 16;
+    if (ph <= 2) ph = th + 8;   /* height=1 in celle → una riga di testo */
     /* LABEL/BIGTEXT hanno height=1 ma dipingono il testo: il rect "vero" e. alto
      * almeno una riga di testo, altrimenti il repaint incrementale li salta. */
     if (ph < th + 6) ph = th + 6;

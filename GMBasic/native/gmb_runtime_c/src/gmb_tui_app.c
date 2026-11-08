@@ -1049,7 +1049,7 @@ static void tui_process_mouse(const gmb_mouse_action_t* ma)
     /* DUE PASSATE: prima i controlli con POPUP APERTO (sono disegnati sopra, quindi
      * devono ricevere per primi il click), poi gli altri. L'ordine dentro la passata
      * resta inverso alla registrazione (l'ultimo creato è il più in alto). */
-    for (int pass = 0; pass < 2; pass++)
+    for (int pass = 1; pass >= 0; pass--)   /* popup (1) PRIMA: sono disegnati sopra */
     for (int i = g_reg_n - 1; i >= 0; i--)
     {
         gmb_control_t* cc = g_reg_ctrl[i];
@@ -1068,12 +1068,10 @@ static void tui_process_mouse(const gmb_mouse_action_t* ma)
         int hx, hy, hw, hh;
         if (g_evt_px)                      /* evento in PIXEL */
         {
-            /* px_* è il rect GIÀ trasformato dal render pixel (stessa regola, cw/ch reali).
-             * Solo se il render non è ancora passato si ricade sulla conversione nominale. */
-            if (cc->px_w > 0) { hx = cc->px_x; hy = cc->px_y; hw = cc->px_w; hh = cc->px_h; }
-            else if (tr > 0)  { hx = cc->x * GMB_CELL_PX_W; hy = cc->y * GMB_CELL_PX_H;
-                                hw = cc->width * GMB_CELL_PX_W; hh = cc->height * GMB_CELL_PX_H; }
-            else              { hx = cc->x; hy = cc->y; hw = cc->width; hh = cc->height; }
+            /* AREA = rettangolo ∪ popup aperto (regola unica col render). */
+            { extern void gmb_control_hit_rect(gmb_control_t*, int*, int*, int*, int*);
+              gmb_control_hit_rect(cc, &hx, &hy, &hw, &hh); }
+
         }
         else                               /* evento in CELLE */
         {

@@ -10,6 +10,8 @@
 #include <string.h>
 #include <strings.h>
 #include "gmb_form.h"
+#include "gmb_ui_gfx.h"   /* GMB_GFX_SCREEN_ON/H: hit-test pixel del DatePicker */
+#include "gmb_ui_gfx.h"
 
 /* ===================== DatePicker ===================== */
 
@@ -139,34 +141,179 @@ static bool datepicker_key(void* u, gmb_control_t* c, int key)
     if (key == GMB_K_ENTER) { d->open = true; return true; }
     return false;
 }
+/* ── Geometria PIXEL del calendario (UNICA fonte per render e hit-test) ─── */
+typedef struct {
+    int x, y, w, h;                 /* campo */
+    int row, cell;                  /* passo */
+    int cal_x, cal_y, cal_w, cal_h, head_h;
+} dp_px_t;
+
+static void dp_px_geom(gmb_date_picker_t* d, gmb_control_t* c, dp_px_t* g)
+{
+    (void)d;
+    g->x = (c->px_w > 0) ? c->px_x : c->x;
+    g->y = (c->px_h > 0) ? c->px_y : c->y;
+    g->w = (c->px_w > 0) ? c->px_w : c->width;
+    g->h = (c->px_h > 0) ? c->px_h : c->height;
+    int th = gmb_gfx_text_height_logical(); if (th <= 0) th = 16;
+    g->row = gmb_widget_style_current().row_h; if (g->row < 18) g->row = th + 8;
+    if (g->h < g->row) g->h = g->row;
+    if (g->w < 130) g->w = 130;
+    g->cal_w = (g->w > 210) ? g->w : 210;   /* il calendario serve largo: 7 celle leggibili */
+    g->cell = (g->cal_w - 8) / 7; if (g->cell < 24) g->cell = 24;
+    g->head_h = g->row;
+    g->cal_h = g->head_h + 2 + g->cell + 6 * g->cell + 4;
+    g->cal_x = g->x;
+    g->cal_y = g->y + g->h + 2;
+    if (g->cal_y + g->cal_h > gmb_gfx_screen_height()) g->cal_y = g->y - g->cal_h - 2;
+}
+
 static bool datepicker_mouse(void* u, gmb_control_t* c, const gmb_mouse_action_t* a)
 {
     gmb_date_picker_t* d = (gmb_date_picker_t*)u;
     if (!c->enabled) return false;
-    if (a->kind == GMB_MA_CLICK || a->kind == GMB_MA_DOUBLECLICK)
+    if (a->kind != GMB_MA_CLICK && a->kind != GMB_MA_DOUBLECLICK) return false;
+
+    /* GRAFICA: hit-test con la geometria del renderer PIXEL (campo + calendario).
+     * Prima usava i rect a CELLE: il campo non si apriva e i giorni non si
+     * potevano scegliere. */
+    if (GMB_GFX_SCREEN_ON())
     {
-        if (d->open)
+        dp_px_t g; dp_px_geom(d, c, &g);
+        if (!d->open)
         {
-            if (!gmb_date_picker_contains_point(d, a->x, a->y)) { d->open = false; return true; }
+            if (a->x >= g.x && a->x < g.x + g.w && a->y >= g.y && a->y < g.y + g.h)
+            { d->open = true; return true; }
+            return false;
         }
-        else
+        /* aperto: campo = chiude; frecce = mese; giorno = seleziona e chiude. */
+        if (a->x >= g.x && a->x < g.x + g.w && a->y >= g.y && a->y < g.y + g.h)
+        { d->open = false; return true; }
+        if (a->x >= g.cal_x && a->x < g.cal_x + g.cal_w && a->y >= g.cal_y && a->y < g.cal_y + g.cal_h)
         {
-            gmb_rect_t r = gmb_control_rect(c);
-            if (rect_contains(r, a->x, a->y)) { d->open = true; return true; }
+            if (a->y < g.cal_y + g.head_h)
+            {
+                int mid = g.cal_x + g.cal_w / 2;
+                int prev = (a->x < g.cal_x + 32), next = (a->x > g.cal_x + g.cal_w - 32);
+                if (prev || next)
+                {
+                    d->month += next ? 1 : -1;
+                    if (d->month > 12) { d->month = 1; d->year++; }
+                    if (d->month < 1) { d->month = 12; d->year--; }
+                    int maxd = dp2_days_in_month(d->year, d->month);
+                    if (d->day > maxd) d->day = maxd;
+                }
+                (void)mid;
+                return true;
+            }
+            int gy = g.cal_y + g.head_h + 2 + g.cell;          /* inizio griglia giorni */
+            if (a->y >= gy)
+            {
+                int ccol = (a->x - (g.cal_x + 4)) / (g.cell > 0 ? g.cell : 1);
+                int r = (a->y - gy) / (g.cell > 0 ? g.cell : 1);
+                int dow = (gmb_dates_weekday(d->year, d->month, 1) + 6) % 7;
+                int days = dp2_days_in_month(d->year, d->month);
+                int idx = r * 7 + ccol;
+                int dn = idx - dow + 1;
+                if (ccol >= 0 && ccol < 7 && dn >= 1 && dn <= days)
+                {
+                    d->day = dn;
+                    d->open = false;
+                    return true;
+                }
+            }
+            return true;   /* click nel calendario ma non su un giorno */
         }
+        d->open = false;   /* click fuori: chiude */
+        return true;
+    }
+
+    if (d->open)
+    {
+        if (!gmb_date_picker_contains_point(d, a->x, a->y)) { d->open = false; return true; }
+    }
+    else
+    {
+        gmb_rect_t r = gmb_control_rect(c);
+        if (rect_contains(r, a->x, a->y)) { d->open = true; return true; }
     }
     return false;
 }
 static void datepicker_draw_px(void* u, gmb_control_t* c)
 {
     gmb_date_picker_t* d = (gmb_date_picker_t*)u;
-    char buf[32]; snprintf(buf, sizeof(buf), "%04d-%02d-%02d", d->year, d->month, d->day);
-    gmb_px_draw_ex(GMB_PX_DROPDOWN, c->x, c->y, c->width, c->height, buf, NULL, 0, 0, 0, 0, NULL, 0, NULL, 0);
+    gmb_widget_style_t st = gmb_widget_style_current();
+    int x = (c->px_w > 0) ? c->px_x : c->x;
+    int y = (c->px_h > 0) ? c->px_y : c->y;
+    int w = (c->px_w > 0) ? c->px_w : c->width;
+    int h = (c->px_h > 0) ? c->px_h : c->height;
+    int th = gmb_gfx_text_height_logical(); if (th <= 0) th = 16;
+    int rr = st.radius > 0 ? st.radius : 8;
+    if (h < th + 8) h = th + 8;
+    if (w < 130) w = 130;                         /* un campo data serve largo */
+    c->px_x = x; c->px_y = y; c->px_w = w; c->px_h = h;   /* geometria usata dal click */
+
+    char lbl[32];
+    snprintf(lbl, sizeof(lbl), "%02d/%02d/%04d", d->day, d->month, d->year);
+
+    /* Campo. */
+    gmb_gfx_fill_rounded_rect(x, y, w, h, rr, st.fill);
+    gmb_gfx_stroke_rounded_rect(x, y, w, h, rr, st.border);
+    gmb_gfx_draw_text(lbl, x + 12, y + (h - th) / 2, 0, (int)(0x40000000u | (st.text & 0xFFFFFFu)));
+    /* Chevron a destra (disegnato, non un glifo). */
+    { int cx = x + w - 16, cy = y + h / 2, a = 4, dd = 3, ac = (int)(0x40000000u | (st.text & 0xFFFFFFu));
+      if (d->open) { gmb_gfx_line(cx - a, cy + dd, cx, cy - dd, ac, ""); gmb_gfx_line(cx, cy - dd, cx + a, cy + dd, ac, ""); }
+      else { gmb_gfx_line(cx - a, cy - dd, cx, cy + dd, ac, ""); gmb_gfx_line(cx, cy + dd, cx + a, cy - dd, ac, ""); } }
+
+    if (!d->open) return;
+
+    /* Calendario: card OPACA (il tema glass e' semitrasparente). */
+    dp_px_t g; dp_px_geom(d, c, &g);
+    unsigned base = 0xFF000000u | (st.fill & 0xFFFFFFu);
+    gmb_gfx_fill_rounded_rect(g.cal_x, g.cal_y, g.cal_w, g.cal_h, rr, base);
+    gmb_gfx_stroke_rounded_rect(g.cal_x, g.cal_y, g.cal_w, g.cal_h, rr, st.border);
+
+    /* Titolo:  ‹  Mese Anno  ›   (le frecce cambiano mese). */
+    char title[64];
+    snprintf(title, sizeof(title), "%s %d", DP_MONTHS2[(d->month >= 1 && d->month <= 12) ? d->month - 1 : 0], d->year);
+    int hh = g.head_h;
+    gmb_gfx_fill_rounded_rect(g.cal_x + 1, g.cal_y + 1, g.cal_w - 2, hh, rr > 2 ? rr - 1 : 0, st.head_bg);
+    gmb_gfx_draw_text(title, g.cal_x + g.cal_w / 2, g.cal_y + (hh - th) / 2, 1,
+                      (int)(0x40000000u | (st.head_fg & 0xFFFFFFu)));
+    { int ac = (int)(0x40000000u | (st.head_fg & 0xFFFFFFu));
+      int lx = g.cal_x + 14, rx2 = g.cal_x + g.cal_w - 14, cy = g.cal_y + hh / 2, a = 4, dd = 4;
+      gmb_gfx_line(lx + a, cy - dd, lx - a, cy, ac, ""); gmb_gfx_line(lx - a, cy, lx + a, cy + dd, ac, "");
+      gmb_gfx_line(rx2 - a, cy - dd, rx2 + a, cy, ac, ""); gmb_gfx_line(rx2 + a, cy, rx2 - a, cy + dd, ac, ""); }
+
+    /* Intestazione giorni (lun..dom). */
+    static const char* WD = "LMMGVS D";
+    int gy = g.cal_y + hh + 2;
+    { int cw = g.cell;
+      for (int i = 0; i < 7; i++)
+      { char wdb[2] = { "LMMGVSD"[i], 0 };
+        gmb_gfx_draw_text(wdb, g.cal_x + 4 + i * cw + (cw - gmb_gfx_text_width_logical(wdb)) / 2,
+                          gy + (cw - th) / 2, 0, (int)(0x40000000u | (st.text_disabled & 0xFFFFFFu))); } }
+    gy += g.cell;
+
+    /* Griglia giorni: 6 righe x 7 colonne, con il giorno selezionato evidenziato. */
+    int dow = (gmb_dates_weekday(d->year, d->month, 1) + 6) % 7;
+    int days = dp2_days_in_month(d->year, d->month);
+    for (int dn = 1; dn <= days; dn++)
+    {
+        int idx = dow + dn - 1, r = idx / 7, ccol = idx % 7;
+        int dx = g.cal_x + 4 + ccol * g.cell, dy = gy + r * g.cell;
+        char db[8]; snprintf(db, sizeof(db), "%d", dn);
+        int sel = (dn == d->day);
+        if (sel) gmb_gfx_fill_rounded_rect(dx + 1, dy + 1, g.cell - 2, g.cell - 2, (g.cell - 2) / 2,
+                                           (st.accent & 0xFFFFFFu) ? st.accent : st.fill_hover);
+        gmb_gfx_draw_text(db, dx + (g.cell - gmb_gfx_text_width_logical(db)) / 2, dy + (g.cell - th) / 2, 0,
+                          (int)(0x40000000u | ((sel ? 0xFFFFFFu : (st.text & 0xFFFFFFu)))));
+    }
 }
 void gmb_date_picker_init(gmb_date_picker_t* d, int x, int y, int w)
 {
     memset(d, 0, sizeof(*d));
-    gmb_control_init(&d->ctrl, "", x, y, w, 1, datepicker_draw, datepicker_key);
+    gmb_control_init(&d->ctrl, "", x, y, w, 24, datepicker_draw, datepicker_key);   /* altezza dichiarata: campo */
     d->ctrl.draw_px_fn = datepicker_draw_px;
     d->ctrl.ctrl_kind = GMB_CK_DATEPICKER;
     d->ctrl.handle_mouse_fn = datepicker_mouse;

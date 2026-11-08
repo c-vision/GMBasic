@@ -18,6 +18,7 @@
 #include "gmb_tui_app.h"
 #include "gmb_tui_widgets.h"
 #include "gmb_tui_tbrowse.h"
+#include "gmb_tui_datatypes.h"
 #include "gmb_form.h"
 #include "gmb_gfx_input.h"
 
@@ -280,6 +281,36 @@ int main(void)
         int bx = 600 + 240 - totw - 10, by = 200 + 120 - bh - 8;
         click_at(bx + w0 + gap + w1 / 2, by + bh / 2);
         report("confirmationbox", cb.result == 1, "pulsante Cancel premuto");
+    }
+
+    /* ── DATEPICKER: campo apre, click su un giorno seleziona e chiude ──── */
+    {
+        static gmb_date_picker_t dp;
+        gmb_date_picker_init(&dp, 700, 40, 160);
+        gmb_tui_control_register(&dp.ctrl);
+        dp.year = 2026; dp.month = 3; dp.day = 10;
+        render_frame();
+        /* stesse regole del renderer (oracolo indipendente) */
+        int th = gmb_gfx_text_height_logical(); if (th <= 0) th = 16;
+        int w = (dp.ctrl.px_w > 0) ? dp.ctrl.px_w : dp.ctrl.width;
+        if (w < 130) w = 130;
+        int row = gmb_widget_style_current().row_h; if (row < 18) row = th + 8;
+        int cal_w = (w > 210) ? w : 210;
+        int cell = (cal_w - 8) / 7; if (cell < 24) cell = 24;
+        int cal_h = row + 2 + cell + 6 * cell + 4;
+        int cal_y = 40 + dp.ctrl.px_h + 2;   /* come il renderer: y + altezza campo + 2 */
+        if (cal_y + cal_h > gmb_gfx_screen_height()) cal_y = 40 - cal_h - 2;
+        int gy = cal_y + row + 2 + cell;
+        { char b[128]; snprintf(b, sizeof b, "  (rect px=%d,%d %dx%d row=%d clic=%d,%d)", dp.ctrl.px_x, dp.ctrl.px_y, dp.ctrl.px_w, dp.ctrl.px_h, row, 700 + w / 2, 40 + row / 2); printf("%s\\n", b); }
+        click_at(700 + w / 2, 40 + row / 2);                 /* apre il calendario */
+        int opened = dp.open;
+        { int dow = (gmb_dates_weekday(2026, 3, 1) + 6) % 7;
+          int idx = dow + (20 - 1);
+          int cx = 700 + 4 + (idx % 7) * cell + cell / 2;
+          int cy = gy + (idx / 7) * cell + cell / 2;
+          click_at(cx, cy); }                                /* giorno 20 */
+        { char b[96]; snprintf(b, sizeof b, "  (opened=%d open=%d day=%d)", opened, (int)dp.open, dp.day); printf("%s\n", b); }
+        report("datepicker", opened && !dp.open && dp.day == 20, "campo apre, giorno 20 scelto");
     }
 
     printf("\nTOTALE: %d PASS, %d FAIL\n", g_pass, g_fail);
