@@ -2296,9 +2296,6 @@ uint8_t* gmb_base64url_decode(const char* input, size_t* len_out);
 char* gmb_html_encode(const char* input);
 char* gmb_url_encode(const char* input);
 char* gmb_js_encode(const char* input);
-char* gmb_jwt_create(const char* claims, const char* secret);
-int gmb_jwt_verify(const char* token, const char* secret);
-char* gmb_jwt_payload(const char* token);
 char* gmb_upload_safe_name(const char* input);
 const char* gmb_upload_detect_type(const uint8_t* data, size_t len);
 /* Session store nativo (HTTP.SESSIONCREATE / GMBSESSION). */

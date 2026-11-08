@@ -8,6 +8,7 @@
 '   - CRYPTOGRAPHY.HMACSHA256 (firma)
 ' Eseguibile su IL, PCodeVM e VM/C (C99Native: gap dichiarato 2026-09-02).
 
+REQUIRE "crypto"
 IMPORT CRYPTOGRAPHY
 IMPORT AUTH
 

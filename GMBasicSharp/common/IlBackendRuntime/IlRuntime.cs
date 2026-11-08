@@ -2415,9 +2415,7 @@ public static partial class IlRuntime
     public static string HtmlEncode(string value) => CommonLib.WebEncoding.CoreHtmlEncode(value ?? string.Empty);
     public static string UrlEncode(string value) => CommonLib.WebEncoding.CoreUrlEncode(value ?? string.Empty);
     public static string JsEncode(string value) => CommonLib.WebEncoding.CoreJsEncode(value ?? string.Empty);
-    public static string JwtCreate(string claims, string secret) => CommonLib.Jwt.Create(claims ?? "", secret ?? "");
-    public static bool JwtVerify(string token, string secret) => CommonLib.Jwt.Verify(token ?? "", secret ?? "");
-    public static string JwtPayload(string token) => CommonLib.Jwt.Payload(token ?? "");
+    // JWT: superficie RIMOSSA (lib `auth` via FFI, shared/libs/auth).
     public static string HttpSafeFileName(string name) => CommonLib.Http.FileUpload.SecureFileName(name ?? "");
     public static string HttpDetectContentType(object? data) => CommonLib.Http.FileUpload.DetectContentType(CryptoBytes(data)) ?? "";
     public static string HttpSessionCreate(string user, string role)

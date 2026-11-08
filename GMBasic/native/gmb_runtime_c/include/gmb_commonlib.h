@@ -129,9 +129,6 @@ char* gmb_url_encode(const char* input);
 char* gmb_js_encode(const char* input);
 
 // JWT HS256 (Security P2, parità CommonLib.Jwt): create/verify/payload.
-char* gmb_jwt_create(const char* claims, const char* secret);
-int gmb_jwt_verify(const char* token, const char* secret);
-char* gmb_jwt_payload(const char* token);
 
 // Upload security (parità CommonLib.Http.FileUpload): nome file sicuro + magic-number.
 char* gmb_upload_safe_name(const char* input);

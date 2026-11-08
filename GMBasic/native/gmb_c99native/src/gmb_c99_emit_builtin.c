@@ -6009,21 +6009,6 @@ static int se_hmac(ctx_t* c, gmb_expr_t** a, int n, const char* fn) {
 static int se_hmac256(ctx_t* c, gmb_expr_t** a, int n) { return se_hmac(c, a, n, "gmb_hmac_sha256_hex"); }
 static int se_hmac384(ctx_t* c, gmb_expr_t** a, int n) { return se_hmac(c, a, n, "gmb_hmac_sha384_hex"); }
 static int se_hmac512(ctx_t* c, gmb_expr_t** a, int n) { return se_hmac(c, a, n, "gmb_hmac_sha512_hex"); }
-static int se_jwtcreate(ctx_t* c, gmb_expr_t** a, int n) {
-    if (n != 2) return 0;
-    sb_put(&c->out, "gmb_string_alloc(gmb_jwt_create(");
-    emit_str_operand(c, a[0]); sb_put(&c->out, ".data, "); emit_str_operand(c, a[1]);
-    sb_put(&c->out, ".data))");
-    return 1;
-}
-static int se_jwtpayload(ctx_t* c, gmb_expr_t** a, int n) { return se_cstr1(c, a, n, "gmb_jwt_payload"); }
-static int se_jwtverify(ctx_t* c, gmb_expr_t** a, int n) {
-    if (n != 2) return 0;
-    sb_put(&c->out, "(gmb_jwt_verify(");
-    emit_str_operand(c, a[0]); sb_put(&c->out, ".data, "); emit_str_operand(c, a[1]);
-    sb_put(&c->out, ".data) ? -1 : 0)");
-    return 1;
-}
 static int se_randint(ctx_t* c, gmb_expr_t** a, int n) {
     if (n < 1 || n > 2) return 0;
     sb_put(&c->out, "(gmb_double_t)gmb_rand_int(");
@@ -6251,8 +6236,6 @@ static int se_decryptasym(ctx_t* c, gmb_expr_t** a, int n) {
     return 1;
 }
 static const sec_tok_row SEC_TOK_TBL[] = {
-    { GMB_TOK_JwtCreate, se_jwtcreate }, { GMB_TOK_JwtVerify, se_jwtverify },
-    { GMB_TOK_JwtPayload, se_jwtpayload },
     { GMB_TOK_HtmlEncode, se_html }, { GMB_TOK_UrlEncode, se_urlenc },
     { GMB_TOK_JsEncode, se_js }, { GMB_TOK_IsRequired, se_required },
     { GMB_TOK_IsEmail, se_email }, { GMB_TOK_IsUrl, se_url },

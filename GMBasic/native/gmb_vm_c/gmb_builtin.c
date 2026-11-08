@@ -4950,33 +4950,6 @@ static void gmb_bf_1408(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int fun
     }
     else { free(out); bout->is_num = 0; bout->result_ref = NULL; }
 }
-static void gmb_bf_1412(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
-{
-    (void)vm; (void)task; (void)func_code;
-    const char* claims = (argc >= 1 && args[0].type == 2 && args[0].ref) ? ((gmb_obj_string_t*)args[0].ref)->data : "";
-    const char* secret = (argc >= 2 && args[1].type == 2 && args[1].ref) ? ((gmb_obj_string_t*)args[1].ref)->data : "";
-    char* out = gmb_jwt_create(claims, secret);
-    gmb_obj_string_t* r = gmb_str_cstr(out ? out : "");
-    if (out) free(out);
-    bout->is_num = 0; bout->result_ref = (gmb_obj_t*)r; bout->result_ref_bt = GMB_BT_STRING;
-}
-static void gmb_bf_1413(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
-{
-    (void)vm; (void)task; (void)func_code;
-    const char* token = (argc >= 1 && args[0].type == 2 && args[0].ref) ? ((gmb_obj_string_t*)args[0].ref)->data : "";
-    const char* secret = (argc >= 2 && args[1].type == 2 && args[1].ref) ? ((gmb_obj_string_t*)args[1].ref)->data : "";
-    bout->is_num = 1;
-    bout->result = gmb_jwt_verify(token, secret) ? -1.0 : 0.0;
-}
-static void gmb_bf_1414(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
-{
-    (void)vm; (void)task; (void)func_code;
-    const char* token = (argc >= 1 && args[0].type == 2 && args[0].ref) ? ((gmb_obj_string_t*)args[0].ref)->data : "";
-    char* out = gmb_jwt_payload(token);
-    gmb_obj_string_t* r = gmb_str_cstr(out ? out : "");
-    if (out) free(out);
-    bout->is_num = 0; bout->result_ref = (gmb_obj_t*)r; bout->result_ref_bt = GMB_BT_STRING;
-}
 static void gmb_bf_1415(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
 {
     (void)vm; (void)task; (void)func_code;
@@ -16680,9 +16653,6 @@ static const gmb_bf_impl_t gmb_bf_impl_core[] = {
     { 1409, gmb_bf_1409 },
     { 1410, gmb_bf_1409 },
     { 1411, gmb_bf_1409 },
-    { 1412, gmb_bf_1412 },
-    { 1413, gmb_bf_1413 },
-    { 1414, gmb_bf_1414 },
     { 1415, gmb_bf_1415 },
     { 1416, gmb_bf_1416 },
     { 1417, gmb_bf_1417 },
