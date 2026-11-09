@@ -189,7 +189,7 @@ public sealed partial class StdLib : IParserRegistry
         // sostituito dal pacchetto FFI `OPT` (libgmbopt). Copia archiviata in
         // GMBasicMonoRepo-Deprecated/optimize/StdLib.Optimize.cs.
         CreateKdTreeNamespace();
-        CreateBitsNamespace();
+        // BITS: namespace migrato a FFI (shared/libs/bits, libgmbbits) l'08-11-2026.
         CreateTrayNamespace();   // TRAY (2026-10-02): icona barra SO
         CreateMessageNamespace(); // MESSAGE (2026-10-05): messaging generico (bus) + ON MESSAGE
         CreateSpatialNamespace();

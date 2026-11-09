@@ -1532,28 +1532,7 @@ MCPSERVERMARKETPLACELIST = 730, MCPSERVERMARKETPLACEGET = 731, MCPLISTTOOLSSERVE
     AIOBSERVEDATABASE = 3601,
     AIOBSERVEPROCESS = 3602,
     AIOBSERVEBROWSER = 3603,
-    // ── BITS (2026-09-16): namespace manipolazione bit (append-only, ID stabili). ──
-    BITCOUNT = 3571,
-    BITGET = 3572,
-    BITSET = 3573,
-    BITCLEAR = 3574,
-    BITTOGGLE = 3575,
-    BITTEST = 3576,
-    BITFIELD = 3577,
-    BITREVERSE = 3578,
-    BITROTATEL = 3579,
-    BITROTATER = 3580,
-    GRAYCODE = 3581,
-    FROMGRAY = 3582,
-    BITPARITY = 3583,
-    BITSCANFWD = 3584,
-    BITSCANREV = 3585,
-    BYTESWAP = 3586,
-    HAMMINGDIST = 3587,
-    BITINTERLEAVE = 3588,
-    BITDEINTERLEAVE = 3589,
-    NEXTPOW2 = 3590,
-    ISPOW2 = 3591,
+    // ── BITS: superficie RIMOSSA (shared/libs/bits via FFI). 3571-3591 liberi. ──
     // ── MODEL COMPILER LLM (2026-09-23): verbi LLM (namespace LLM) eseguibili a runtime su
     // TUTTI i backend (prima solo l'emitter C99Native li conosceva). In FONDO: gli id viaggiano
     // nel chunk A1, mai inserire nel mezzo. Un solo builtin per ARCH (il sotto-verbo è un arg).

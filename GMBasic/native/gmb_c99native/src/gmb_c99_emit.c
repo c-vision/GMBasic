@@ -6163,7 +6163,6 @@ int emit_bf_signal(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t t
 int emit_bf_torch(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk, gmb_expr_t** args, int nargs, int line);
 int emit_bf_spatial(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk, gmb_expr_t** args, int nargs, int line);
 int emit_bf_kdtree(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk, gmb_expr_t** args, int nargs, int line);
-int emit_bf_bits(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk, gmb_expr_t** args, int nargs, int line);
 int emit_bf_analysis(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk, gmb_expr_t** args, int nargs, int line);
 int emit_bf_vector(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk, gmb_expr_t** args, int nargs, int line);
 int emit_bf_finance(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk, gmb_expr_t** args, int nargs, int line);
@@ -7024,27 +7023,6 @@ static const gmb_bf_row_t gmb_bf_composite[] = {
     { NULL, GMB_TOK_TrayAvailable, emit_bf_tray },
     { NULL, GMB_TOK_TrayLast, emit_bf_tray },
     /* BITS (2026-09-16): tabella nel file di dominio gmb_c99_emit_bits.c (§0quater). */
-    { NULL, GMB_TOK_BitCount, emit_bf_bits },
-    { NULL, GMB_TOK_BitGet, emit_bf_bits },
-    { NULL, GMB_TOK_BitSet, emit_bf_bits },
-    { NULL, GMB_TOK_BitClear, emit_bf_bits },
-    { NULL, GMB_TOK_BitToggle, emit_bf_bits },
-    { NULL, GMB_TOK_BitTest, emit_bf_bits },
-    { NULL, GMB_TOK_BitField, emit_bf_bits },
-    { NULL, GMB_TOK_BitReverse, emit_bf_bits },
-    { NULL, GMB_TOK_BitRotateLeft, emit_bf_bits },
-    { NULL, GMB_TOK_BitRotateRight, emit_bf_bits },
-    { NULL, GMB_TOK_GrayCode, emit_bf_bits },
-    { NULL, GMB_TOK_FromGray, emit_bf_bits },
-    { NULL, GMB_TOK_BitParity, emit_bf_bits },
-    { NULL, GMB_TOK_BitScanFwd, emit_bf_bits },
-    { NULL, GMB_TOK_BitScanRev, emit_bf_bits },
-    { NULL, GMB_TOK_ByteSwap, emit_bf_bits },
-    { NULL, GMB_TOK_HammingDist, emit_bf_bits },
-    { NULL, GMB_TOK_BitInterleave, emit_bf_bits },
-    { NULL, GMB_TOK_BitDeinterleave, emit_bf_bits },
-    { NULL, GMB_TOK_NextPow2, emit_bf_bits },
-    { NULL, GMB_TOK_IsPow2, emit_bf_bits },
     { NULL, GMB_TOK_KdTreeQuery, emit_bf_kdtree },
     { NULL, GMB_TOK_KdTreeQueryDist, emit_bf_kdtree },
     { NULL, GMB_TOK_KdTreeQueryBall, emit_bf_kdtree },
