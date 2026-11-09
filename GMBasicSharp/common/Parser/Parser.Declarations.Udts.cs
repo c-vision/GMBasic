@@ -60,8 +60,23 @@ public sealed partial class Parser
         // Parsa il tipo di dato base (es. STRING * 10, INTEGER)
         var baseDataType = ParseTypeClause(nameToken);
 
-        // Se sono state specificate le dimensioni, il tipo finale è un array.
-        var finalDataType = !dimensions.IsEmpty ? new ArrayType(baseDataType, dimensions.Length) : baseDataType;
+        // Se sono state specificate le dimensioni, il tipo finale è un array/matrice.
+        // `ARRAY OF ARRAY` è rimosso: le matrici usano `MATRIX OF (…, T)` o lo zucchero
+        // `DIM nome(n,m) AS T` (rank = numero di dimensioni).
+        DataType finalDataType;
+        if (baseDataType is ArrayType baseArray)
+        {
+            if (baseArray.ElementType is ArrayType)
+                throw CreateError(nameToken, "ARRAY OF ARRAY non è supportato: usa AS ARRAY OF T o AS MATRIX OF (assi…, T).");
+            if (!dimensions.IsEmpty && dimensions.Length != baseArray.Rank)
+                throw CreateError(nameToken,
+                    $"campo {nameToken.Lexeme}: {dimensions.Length} dimensioni dichiarate ma il tipo ha rank {baseArray.Rank}.");
+            finalDataType = baseArray;
+        }
+        else
+        {
+            finalDataType = !dimensions.IsEmpty ? new ArrayType(baseDataType, dimensions.Length) : baseDataType;
+        }
 
         // --- VALIDAZIONE ---
         // I campi a lunghezza variabile (STRING, LIST/DICT, ANY) sono LECITI in un TYPE.

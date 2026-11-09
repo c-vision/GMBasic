@@ -269,8 +269,8 @@ nel corpus di test e sample `.bas`/`.inc`: dove il corpus non usa il simbolo è 
 | forma | tipo | rappresentazione |
 |---|---|---|
 | vettore | `ARRAY OF DOUBLE` (rank 1) | flat `n` |
-| matrice rettangolare rank-2 | `DOUBLE(,)` / `DIM a(x,y)` | `n × m` row-major |
-| matrice rank-N | `DOUBLE(,,)` … `(,,,…)` / `DIM a(x,y,z)` | `n1 × n2 × …` row-major |
+| matrice rettangolare rank-2 | `MATRIX OF (INT, INT, DOUBLE)` / `DIM a(x,y) AS DOUBLE` | `n × m` row-major |
+| matrice rank-N | `MATRIX OF (INT, INT, INT, DOUBLE)` / `DIM a(x,y,z) AS DOUBLE` | `n1 × n2 × …` row-major |
 | jagged (array di array) | `ARRAY OF ARRAY OF DOUBLE` | righe indipendenti (rank 1 di array) |
 
 ## 1. Sintassi
@@ -282,7 +282,7 @@ DIM m(1, 1) AS DOUBLE       ' rank 2 (2×2)
 DIM t(1, 1, 1) AS DOUBLE    ' rank 3 (2×2×2)
 
 
-### Parametri di procedura: il numero di virgole è il rank
+### Parametri di procedura: il rank è nel tipo `MATRIX OF (…, T)`
 
 SUB Elabora(m(,) AS DOUBLE)         ' rank 2
 SUB Elabora3(t(,,) AS DOUBLE)       ' rank 3

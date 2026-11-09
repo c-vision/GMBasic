@@ -223,7 +223,34 @@ public sealed partial class Parser
                 : suffixType ?? DeduceTypeFromSuffix(originalNameToken.Lexeme);
             Log($"[ParseDeclSyntaxOnly]   -> Tipo base determinato: {baseDataType}", log);
 
-            var finalDataType = isArrayDeclaration ? new ArrayType(baseDataType, Math.Max(1, upperBounds.Count)) : baseDataType;
+            DataType finalDataType;
+            if (baseDataType is ArrayType baseArray)
+            {
+                /* Forma esplicita: `AS ARRAY OF T` (rank 1) oppure `AS MATRIX OF (I…, T)`.
+                 * `ARRAY OF ARRAY` non esiste più. Le parentesi sul nome, se presenti,
+                 * devono dichiarare lo stesso rank del tipo. */
+                if (baseArray.ElementType is ArrayType)
+                    throw CreateError(originalNameToken, "ARRAY OF ARRAY non è supportato: usa AS ARRAY OF T o AS MATRIX OF (assi…, T).");
+                if (baseArray.Rank == 1 && isArrayDeclaration)
+                {
+                    /* TRANSITORIO: `DIM x(n) AS ARRAY OF T` = jagged legacy (nested),
+                     * ancora accettato durante la migrazione del corpus a MATRIX OF. */
+                    finalDataType = new ArrayType(baseDataType, 1);
+                }
+                else
+                {
+                    if (isArrayDeclaration && upperBounds.Count > 0 && upperBounds.Count != baseArray.Rank)
+                        throw CreateError(originalNameToken,
+                            $"DIM {originalNameToken.Lexeme}: {upperBounds.Count} dimensioni dichiarate ma il tipo ha rank {baseArray.Rank}.");
+                    finalDataType = baseArray;
+                }
+            }
+            else
+            {
+                /* Zucchero BASIC: `DIM v(n) AS T` → ARRAY OF T; `DIM m(n,m) AS T` → MATRIX
+                 * rank-2 (assi interi impliciti). Il rank viene dalla DICHIARAZIONE. */
+                finalDataType = isArrayDeclaration ? new ArrayType(baseDataType, Math.Max(1, upperBounds.Count)) : baseDataType;
+            }
             Log($"[ParseDeclSyntaxOnly]   -> Tipo finale (considerando array): {finalDataType}", log);
 
             // Usa il nuovo costruttore di VariableDeclaration.

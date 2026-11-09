@@ -240,12 +240,11 @@ public sealed partial class Parser
             var normalizedNameToken = originalNameToken with { Lexeme = baseName };
             _declaredParameterNames.Add(baseName);   // vedi ParsePrimaryAtom: shadowing delle keyword a 0 argomenti
 
-            // 4. Controllo per array: parentesi `()` (rank 1) oppure `(,)`, `(,,)`... (rank N).
+            // 4. Controllo per array: parentesi vuote `()` = rank 1. Il rank delle matrici
+            // è nel tipo (`AS MATRIX OF (…, T)`), non nelle virgole dei parametri.
             var isArray = false;
-            var arrayRank = 1;
             if (Match(TokenKind.LeftParen))
             {
-                while (Match(TokenKind.Comma)) arrayRank++;
                 Consume(TokenKind.RightParen, "Expected ')' to close empty parentheses for array parameter.");
                 isArray = true;
             }
@@ -278,7 +277,24 @@ public sealed partial class Parser
                 baseDataType = DeduceTypeFromSuffix(originalNameToken.Lexeme);
             }
 
-            var finalDataType = isArray ? new ArrayType(baseDataType, arrayRank) : baseDataType;
+            DataType finalDataType;
+            if (baseDataType is ArrayType baseArray)
+            {
+                if (baseArray.ElementType is ArrayType)
+                    throw CreateError(originalNameToken,
+                        "ARRAY OF ARRAY non è supportato: usa AS ARRAY OF T o AS MATRIX OF (assi…, T).");
+                if (isArray)
+                {
+                    /* TRANSITORIO: `v() AS ARRAY OF T` = jagged legacy (nested),
+                     * ancora accettato durante la migrazione del corpus a MATRIX OF. */
+                    finalDataType = new ArrayType(baseArray, 1);
+                }
+                else finalDataType = baseArray;
+            }
+            else
+            {
+                finalDataType = isArray ? new ArrayType(baseDataType, 1) : baseDataType;
+            }
 
             // 6. Parsing del valore di default (vietato per PARAMARRAY).
             Expr? defaultValue = null;
