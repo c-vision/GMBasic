@@ -9782,6 +9782,21 @@ static void emit_arr_arg_lowers(ctx_t* c, fn_info_t* fn, int i, const var_t* tv)
 }
 
 static void emit_arr_call_arg(ctx_t* c, fn_info_t* fn, int i, gmb_expr_t* arg, int line) {
+    /* ADR-MATRIX §3 (F3-bis): un parametro matrice IN del chiamante non può essere passato
+     * a un parametro OUT/INOUT del callee (che può scriverlo). Gli array passano da qui. */
+    if (fn && fn->stmt && i >= 0 && i < fn->stmt->n_params
+        && fn->stmt->param_mode && fn->stmt->param_mode[i] != 0
+        && fn->stmt->param_ndims && fn->stmt->param_ndims[i] >= 2
+        && arg && arg->kind == GMB_EXPR_VAR && arg->var
+        && gmb_c99_param_is_in_matrix(c, arg->var)) {
+        c99_fail(c, line,
+                 "il parametro matrice '%s' è dichiarato IN (sola lettura) ma è passato al parametro "
+                 "OUT/INOUT '%s' di '%s', che può modificarlo: dichiaralo INOUT (o OUT) oppure passa "
+                 "una copia (MATRIX.CLONEMATRIX)",
+                 arg->var, fn->stmt->func_params && i < fn->stmt->n_params ? fn->stmt->func_params[i] : "?",
+                 fn->stmt->func_name ? fn->stmt->func_name : "?");
+        return;
+    }
     /* Array LITERAL come argomento (2026-11-03): `Somma({1, 2})`. Il parser rappresenta
      * `{…}` come CALL "_array_"; si materializza un array temporaneo C99 e si passa
      * (puntatore, bound n-1). */
@@ -10052,6 +10067,19 @@ static void emit_method_arr_args(ctx_t* c, fn_info_t* mf, int base,
 static void emit_eff_arg(ctx_t* c, gmb_stmt_t* fs, fn_info_t* f, gmb_expr_t** args, int nargs, int i) {
     gmb_expr_t* a = (i < nargs) ? args[i] : (fs->param_defaults ? fs->param_defaults[i] : NULL);
     if (a) {
+        /* ADR-MATRIX §3 (F3-bis): un parametro matrice IN del chiamante non può essere
+         * passato a un parametro OUT/INOUT del callee (che può scriverlo). */
+        if (fs && i >= 0 && i < fs->n_params && fs->param_mode && fs->param_mode[i] != 0
+            && fs->param_ndims && fs->param_ndims[i] >= 2
+            && a->kind == GMB_EXPR_VAR && a->var && gmb_c99_param_is_in_matrix(c, a->var)) {
+            c99_fail(c, c->cur_stmt_line,
+                     "il parametro matrice '%s' è dichiarato IN (sola lettura) ma è passato al parametro "
+                     "OUT/INOUT '%s' di '%s', che può modificarlo: dichiaralo INOUT (o OUT) oppure passa "
+                     "una copia (MATRIX.CLONEMATRIX)",
+                     a->var, fs->func_params && i < fs->n_params ? fs->func_params[i] : "?",
+                     fs->func_name ? fs->func_name : "?");
+            return;
+        }
         /* Parametro DINAMICO (boxed_val): AS ANY esplicito, oppure param IMPLICITO non tipato
          * promosso gmb_val_t perché usato con member access (`result.Statistic`) → boxa il
          * valore scalare in gmb_val_t (parità IL EmitObjectBoxedArgument). Un valore già boxed

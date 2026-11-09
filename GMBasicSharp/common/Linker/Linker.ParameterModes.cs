@@ -5,8 +5,9 @@
 // IN (default): il callee NON può modificare il parametro. OUT/INOUT: può.
 // Il passaggio è per descrittore condiviso (nessuna copia): il modo è un
 // contratto statico. Questo pass copre le scritture DIRETTE (assegnazione,
-// REDIM, AADD/AINS/ADEL/ASORT/AFILL/AEVAL) e MATRIX.SETVALUE; la propagazione
-// attraverso chiamate a procedure con parametri OUT/INOUT resta a F3-bis.
+// REDIM, AADD/AINS/ADEL/ASORT/AFILL/AEVAL) e MATRIX.SETVALUE, e la PROPAGAZIONE
+// attraverso le chiamate: un parametro IN non può essere passato a un parametro
+// OUT/INOUT di un'altra procedura. Il divieto di lettura degli OUT resta a F3-ter.
 
 using System.Collections.Immutable;
 
@@ -98,7 +99,15 @@ public static partial class Linker
                 CheckExpression(grouping.Expression, inMatrices, procedure);
                 break;
             case FunctionExpr function:
+                CheckCallArguments(function.Args, function.ResolvedDefinition, inMatrices, procedure);
                 foreach (var argument in function.Args) CheckExpression(argument, inMatrices, procedure);
+                break;
+            case MethodCallExpr method:
+                CheckCallArguments(method.Args, method.ResolvedDefinition, inMatrices, procedure);
+                foreach (var argument in method.Args) CheckExpression(argument, inMatrices, procedure);
+                break;
+            case NamedArgumentExpr named:
+                CheckExpression(named.Value, inMatrices, procedure);
                 break;
             case BuiltinFunctionCallExpr builtin:
                 foreach (var argument in builtin.Args) CheckExpression(argument, inMatrices, procedure);
@@ -108,6 +117,62 @@ public static partial class Linker
                     foreach (var index in access.Indices) CheckExpression(index, inMatrices, procedure);
                 break;
         }
+    }
+
+    /// <summary>Propagazione del contratto: un parametro matrice IN del chiamante non
+    /// può essere passato a un parametro OUT/INOUT (che il callee può scrivere) di
+    /// un'altra procedura. Gli argomenti nominali sono risolti per nome.</summary>
+    private static void CheckCallArguments(ImmutableArray<Expr> args, ProcedureDefinition? callee,
+        HashSet<int> inMatrices, ProcedureDefinition procedure)
+    {
+        if (callee is null || args.IsDefaultOrEmpty) return;
+        var parameters = callee.Parameters;
+        if (parameters.IsDefaultOrEmpty) return;
+        for (var i = 0; i < args.Length; i++)
+        {
+            var argument = args[i];
+            var parameterIndex = i;
+            if (argument is NamedArgumentExpr named)
+            {
+                parameterIndex = -1;
+                for (var k = 0; k < parameters.Length; k++)
+                {
+                    if (parameters[k].OriginalName.Lexeme.Equals(named.Name.Lexeme, StringComparison.OrdinalIgnoreCase)
+                        || parameters[k].Name.Lexeme.Equals(named.Name.Lexeme, StringComparison.OrdinalIgnoreCase))
+                    {
+                        parameterIndex = k;
+                        break;
+                    }
+                }
+                argument = named.Value;
+            }
+            if (parameterIndex < 0 || parameterIndex >= parameters.Length) continue;
+            var target = parameters[parameterIndex];
+            if (target.Mode == ParameterMode.In) continue;
+            if (target.DataType is not ArrayType { Rank: >= 2 }) continue;
+            var symbolId = argument switch
+            {
+                VariableExpr variable => variable.SymbolId,
+                ArrayAccessExpr access => access.SymbolId,
+                _ => -1
+            };
+            if (symbolId >= 0 && inMatrices.Contains(symbolId))
+                ThrowPropagationViolation(procedure, symbolId, target, callee, argument.Position);
+        }
+    }
+
+    private static void ThrowPropagationViolation(ProcedureDefinition caller, int symbolId,
+        Parameter target, ProcedureDefinition callee, SourcePosition position)
+    {
+        var name = caller.Parameters.FirstOrDefault(p => p.SymbolId == symbolId)?.OriginalName.Lexeme
+                   ?? caller.Parameters.FirstOrDefault(p => p.SymbolId == symbolId)?.Name.Lexeme
+                   ?? "?";
+        var mode = target.Mode == ParameterMode.Out ? "OUT" : "INOUT";
+        var token = new Token(TokenKind.Identifier, name, name, position);
+        throw CreateError(token,
+            $"Il parametro matrice '{name}' è dichiarato IN (sola lettura) ma è passato al parametro " +
+            $"'{target.OriginalName.Lexeme}' {mode} di '{callee.OriginalName.Lexeme}', che può modificarlo. " +
+            "Dichiaralo INOUT (o OUT) oppure passa una copia (MATRIX.CLONEMATRIX).");
     }
 
     private static void CheckTargetOfExpression(Expr expression, HashSet<int> inMatrices,
