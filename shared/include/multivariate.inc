@@ -96,7 +96,7 @@ DECLARE NATIVE FUNCTION MXF_PCA LIB "gmbstats" ALIAS "ofx_pca" (X AS MATRIX OF (
 DECLARE NATIVE FUNCTION MXF_GMM LIB "gmbstats" ALIAS "ofx_gmm_1d" (x() AS DOUBLE, n AS LONG, k AS LONG, iters AS LONG, out() AS DOUBLE) AS LONG
 DECLARE NATIVE FUNCTION MXF_GP LIB "gmbstats" ALIAS "ofx_gp" (x() AS DOUBLE, y() AS DOUBLE, n AS LONG, xs() AS DOUBLE, m AS LONG, l2 AS DOUBLE, noise AS DOUBLE, out() AS DOUBLE) AS LONG
 DECLARE NATIVE FUNCTION MXF_BONEXT LIB "gmbstats" ALIAS "ofx_bo_next" (x() AS DOUBLE, y() AS DOUBLE, cand() AS DOUBLE, n AS LONG, m AS LONG, hyper() AS DOUBLE, out() AS DOUBLE) AS LONG
-DECLARE NATIVE FUNCTION MXF_SVMFIT LIB "gmbstats" ALIAS "ofx_svm_fit" (X() AS DOUBLE, y() AS DOUBLE, n AS LONG, d AS LONG, k AS LONG, C AS DOUBLE, maxIter AS LONG, out() AS DOUBLE) AS LONG
+DECLARE NATIVE FUNCTION MXF_SVMFIT LIB "gmbstats" ALIAS "ofx_svm_fit" (X AS MATRIX OF (INT, INT, DOUBLE), y() AS DOUBLE, n AS LONG, d AS LONG, k AS LONG, C AS DOUBLE, maxIter AS LONG, out() AS DOUBLE) AS LONG
 DECLARE NATIVE FUNCTION MXF_SVMPRED LIB "gmbstats" ALIAS "ofx_svm_predict" (W() AS DOUBLE, x() AS DOUBLE, d AS LONG, k AS LONG) AS LONG
 
 ' KMeans 1D: out = centri(k) + assegnazioni(n).
@@ -134,16 +134,10 @@ PUBLIC FUNCTION BONEXT(x() AS DOUBLE, y() AS DOUBLE, cand() AS DOUBLE, l2 AS DOU
 END FUNCTION
 
 ' SVM multiclasse: X jagged (n x d); out = W(k*d).
-PUBLIC SUB SVMFIT(X() AS ARRAY OF DOUBLE, y() AS DOUBLE, k AS LONG, C AS DOUBLE, maxIter AS LONG, out() AS DOUBLE)
-    DIM n AS LONG = UBOUND(X) + 1
-    DIM d AS LONG = UBOUND(X(0)) + 1
-    DIM flat((n * d) - 1) AS DOUBLE
-    FOR i = 0 TO n - 1
-        FOR j = 0 TO d - 1
-            flat(i * d + j) = X(i)(j)
-        NEXT j
-    NEXT i
-    CALL MXF_SVMFIT(flat, y, n, d, k, C, maxIter, out)
+PUBLIC SUB SVMFIT(X AS MATRIX OF (INT, INT, DOUBLE), y() AS DOUBLE, k AS LONG, C AS DOUBLE, maxIter AS LONG, out() AS DOUBLE)
+    DIM n AS LONG = UBOUND(X, 1) + 1
+    DIM d AS LONG = UBOUND(X, 2) + 1
+    CALL MXF_SVMFIT(X, y, n, d, k, C, maxIter, out)
 END SUB
 
 PUBLIC FUNCTION SVMPREDICT(W() AS DOUBLE, x() AS DOUBLE) AS LONG
@@ -157,22 +151,16 @@ PUBLIC FUNCTION SVMPREDICT(W() AS DOUBLE, x() AS DOUBLE) AS LONG
 END FUNCTION
 
 ' ── Gradient boosting: modello opaco (handle LONG) ────────────────────────
-DECLARE NATIVE FUNCTION MXF_BOOSTFIT LIB "gmbstats" ALIAS "ofx_boost_fit" (X() AS DOUBLE, y() AS DOUBLE, n AS LONG, d AS LONG, engine AS LONG, nEst AS LONG, lr AS DOUBLE, maxDepth AS LONG) AS LONG
+DECLARE NATIVE FUNCTION MXF_BOOSTFIT LIB "gmbstats" ALIAS "ofx_boost_fit" (X AS MATRIX OF (INT, INT, DOUBLE), y() AS DOUBLE, n AS LONG, d AS LONG, engine AS LONG, nEst AS LONG, lr AS DOUBLE, maxDepth AS LONG) AS LONG
 DECLARE NATIVE FUNCTION MXF_BOOSTPRED LIB "gmbstats" ALIAS "ofx_boost_predict" (model AS LONG, x() AS DOUBLE, d AS LONG) AS DOUBLE
-DECLARE NATIVE FUNCTION MXF_BOOSTSCORE LIB "gmbstats" ALIAS "ofx_boost_score" (model AS LONG, X() AS DOUBLE, y() AS DOUBLE, n AS LONG, d AS LONG) AS DOUBLE
+DECLARE NATIVE FUNCTION MXF_BOOSTSCORE LIB "gmbstats" ALIAS "ofx_boost_score" (model AS LONG, X AS MATRIX OF (INT, INT, DOUBLE), y() AS DOUBLE, n AS LONG, d AS LONG) AS DOUBLE
 DECLARE SUB MXF_BOOSTFREE LIB "gmbstats" ALIAS "ofx_boost_free" (model AS LONG)
 
-PUBLIC FUNCTION BOOSTFIT(X() AS ARRAY OF DOUBLE, y() AS DOUBLE, engine AS LONG, nEst AS LONG, lr AS DOUBLE, maxDepth AS LONG) AS LONG
-    DIM n AS LONG = UBOUND(X) + 1
-    DIM d AS LONG = UBOUND(X(0)) + 1
-    DIM flat((n * d) - 1) AS DOUBLE
-    FOR i = 0 TO n - 1
-        FOR j = 0 TO d - 1
-            flat(i * d + j) = X(i)(j)
-        NEXT j
-    NEXT i
+PUBLIC FUNCTION BOOSTFIT(X AS MATRIX OF (INT, INT, DOUBLE), y() AS DOUBLE, engine AS LONG, nEst AS LONG, lr AS DOUBLE, maxDepth AS LONG) AS LONG
+    DIM n AS LONG = UBOUND(X, 1) + 1
+    DIM d AS LONG = UBOUND(X, 2) + 1
     DIM __h AS LONG
-    __h = MXF_BOOSTFIT(flat, y, n, d, engine, nEst, lr, maxDepth)
+    __h = MXF_BOOSTFIT(X, y, n, d, engine, nEst, lr, maxDepth)
     RETURN __h
 END FUNCTION
 
@@ -180,16 +168,10 @@ PUBLIC FUNCTION BOOSTPREDICT(model AS LONG, x() AS DOUBLE) AS DOUBLE
     RETURN MXF_BOOSTPRED(model, x, UBOUND(x) + 1)
 END FUNCTION
 
-PUBLIC FUNCTION BOOSTSCORE(model AS LONG, X() AS ARRAY OF DOUBLE, y() AS DOUBLE) AS DOUBLE
-    DIM n AS LONG = UBOUND(X) + 1
-    DIM d AS LONG = UBOUND(X(0)) + 1
-    DIM flat((n * d) - 1) AS DOUBLE
-    FOR i = 0 TO n - 1
-        FOR j = 0 TO d - 1
-            flat(i * d + j) = X(i)(j)
-        NEXT j
-    NEXT i
-    RETURN MXF_BOOSTSCORE(model, flat, y, n, d)
+PUBLIC FUNCTION BOOSTSCORE(model AS LONG, X AS MATRIX OF (INT, INT, DOUBLE), y() AS DOUBLE) AS DOUBLE
+    DIM n AS LONG = UBOUND(X, 1) + 1
+    DIM d AS LONG = UBOUND(X, 2) + 1
+    RETURN MXF_BOOSTSCORE(model, X, y, n, d)
 END FUNCTION
 
 PUBLIC SUB BOOSTFREE(model AS LONG)

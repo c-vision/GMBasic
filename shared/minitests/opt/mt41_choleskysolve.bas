@@ -5,8 +5,8 @@ IMPORT OPTIMIZE
 ' matrice SPD 2x2
 
 SUB Main()
-    DIM A(3) AS DOUBLE
-    A(0) = 4.0 : A(1) = 2.0 : A(2) = 2.0 : A(3) = 3.0
+    DIM A(1, 1) AS DOUBLE
+    A = {{4.0, 2.0}, {2.0, 3.0}}
     DIM b(1) AS DOUBLE
     b(0) = 10.0 : b(1) = 8.0
     DIM o(1) AS DOUBLE

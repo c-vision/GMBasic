@@ -19,14 +19,14 @@ SUB Main()
     PRINT "nm="; MATH.ROUND(n(0), 4); " , "; MATH.ROUND(n(1), 4)
     DIM s() = OPTIMIZE.FSOLVE(Sys, x0)
     PRINT "sys="; MATH.ROUND(s(0), 4); " , "; MATH.ROUND(s(1), 4)
-    DIM A(3) AS DOUBLE
-    A(0) = 4.0 : A(1) = 2.0 : A(2) = 2.0 : A(3) = 3.0
+    DIM A(1, 1) AS DOUBLE
+    A = {{4.0, 2.0}, {2.0, 3.0}}
     DIM bb(1) AS DOUBLE = {10.0, 8.0}
     DIM ch(1) AS DOUBLE
     CALL OPTIMIZE.CHOLESKYSOLVE(A, bb, ch)
     PRINT "ls="; MATH.ROUND(ch(0), 4); " , "; MATH.ROUND(ch(1), 4)
-    DIM Aub(3) AS DOUBLE
-    Aub(0) = 1.0 : Aub(1) = 2.0 : Aub(2) = 3.0 : Aub(3) = 2.0
+    DIM Aub(1, 1) AS DOUBLE
+    Aub = {{1.0, 2.0}, {3.0, 2.0}}
     DIM bub(1) AS DOUBLE = {4.0, 6.0}
     DIM lp(1) AS DOUBLE
     CALL OPTIMIZE.LINPROG(bb, Aub, bub, lp)

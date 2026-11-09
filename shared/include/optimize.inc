@@ -25,10 +25,10 @@ NAMESPACE OPTIMIZE
 ' Binding nativi (uso interno)
 ' ═══════════════════════════════════════════════════════════════════════════
 
-DECLARE NATIVE SUB OPTN_LEASTSQUARES LIB "gmbopt" ALIAS "gor_optb_least_squares" (A() AS DOUBLE, rows AS LONG, cols AS LONG, b() AS DOUBLE, out() AS DOUBLE)
-DECLARE NATIVE SUB OPTN_CHOLESKYSOLVE LIB "gmbopt" ALIAS "gor_optb_cholesky_solve" (A() AS DOUBLE, b() AS DOUBLE, n AS LONG, out() AS DOUBLE)
-DECLARE NATIVE SUB OPTN_SIMPLEX LIB "gmbopt" ALIAS "gor_optb_simplex" (c() AS DOUBLE, n AS LONG, A() AS DOUBLE, m AS LONG, b() AS DOUBLE, out() AS DOUBLE)
-DECLARE NATIVE SUB OPTN_LINPROG LIB "gmbopt" ALIAS "gor_optb_linprog" (c() AS DOUBLE, n AS LONG, A_ub() AS DOUBLE, m AS LONG, b_ub() AS DOUBLE, bounds() AS DOUBLE, out() AS DOUBLE)
+DECLARE NATIVE SUB OPTN_LEASTSQUARES LIB "gmbopt" ALIAS "gor_optb_least_squares" (A AS MATRIX OF (INT, INT, DOUBLE), rows AS LONG, cols AS LONG, b() AS DOUBLE, out() AS DOUBLE)
+DECLARE NATIVE SUB OPTN_CHOLESKYSOLVE LIB "gmbopt" ALIAS "gor_optb_cholesky_solve" (A AS MATRIX OF (INT, INT, DOUBLE), b() AS DOUBLE, n AS LONG, out() AS DOUBLE)
+DECLARE NATIVE SUB OPTN_SIMPLEX LIB "gmbopt" ALIAS "gor_optb_simplex" (c() AS DOUBLE, n AS LONG, A AS MATRIX OF (INT, INT, DOUBLE), m AS LONG, b() AS DOUBLE, out() AS DOUBLE)
+DECLARE NATIVE SUB OPTN_LINPROG LIB "gmbopt" ALIAS "gor_optb_linprog" (c() AS DOUBLE, n AS LONG, A_ub AS MATRIX OF (INT, INT, DOUBLE), m AS LONG, b_ub() AS DOUBLE, bounds() AS DOUBLE, out() AS DOUBLE)
 
 DECLARE NATIVE SUB OPTN_NELDERMEAD LIB "gmbopt" ALIAS "gor_optb_nelder_mead" (f AS FUNCTION(x() AS DOUBLE) AS DOUBLE, x0() AS DOUBLE, n AS LONG, out() AS DOUBLE)
 DECLARE NATIVE SUB OPTN_BFGS LIB "gmbopt" ALIAS "gor_optb_bfgs" (f AS FUNCTION(x() AS DOUBLE) AS DOUBLE, x0() AS DOUBLE, n AS LONG, out() AS DOUBLE)
@@ -87,9 +87,9 @@ PUBLIC DECLARE FUNCTION MINIMIZESCALARM LIB "gmbopt" ALIAS "gor_optb_minimize_sc
 ' ═══════════════════════════════════════════════════════════════════════════
 
 ' A (rows×cols, row-major), b[rows] -> out[cols].
-PUBLIC SUB LEASTSQUARES(A() AS DOUBLE, b() AS DOUBLE, out() AS DOUBLE)
-    DIM rows AS LONG = UBOUND(b) + 1
-    DIM cols AS LONG = (UBOUND(A) + 1) / rows
+PUBLIC SUB LEASTSQUARES(A AS MATRIX OF (INT, INT, DOUBLE), b() AS DOUBLE, out() AS DOUBLE)
+    DIM rows AS LONG = UBOUND(A, 1) + 1
+    DIM cols AS LONG = UBOUND(A, 2) + 1
     CALL OPTN_LEASTSQUARES(A, rows, cols, b, out)
 END SUB
 
@@ -120,21 +120,21 @@ PUBLIC SUB LINPROG(c() AS DOUBLE, A() AS DOUBLE, b() AS DOUBLE, out() AS DOUBLE)
     CALL OPTN_LINPROG(c, n, A, m, b, bnd, out)
 END SUB
 
-PUBLIC SUB LINPROGB(c() AS DOUBLE, A() AS DOUBLE, b() AS DOUBLE, bounds() AS DOUBLE, out() AS DOUBLE)
+PUBLIC SUB LINPROGB(c() AS DOUBLE, A AS MATRIX OF (INT, INT, DOUBLE), b() AS DOUBLE, bounds() AS DOUBLE, out() AS DOUBLE)
     DIM n AS LONG = UBOUND(c) + 1
-    DIM m AS LONG = UBOUND(b) + 1
+    DIM m AS LONG = UBOUND(A, 1) + 1
     CALL OPTN_LINPROG(c, n, A, m, b, bounds, out)
 END SUB
 ' LEASTSQUARESFIT con m DEDOTTO: la callback dichiara quanti residui restituisce.
 DECLARE NATIVE SUB OPTN_LEASTSQUARESFITAUTO LIB "gmbopt" ALIAS "gor_optb_least_squares_fit_auto" (f AS FUNCTION(x() AS DOUBLE) AS ARRAY, x0() AS DOUBLE, n AS LONG, bounds() AS DOUBLE, out() AS DOUBLE)
 
 ' Uguaglianze Ae x = be (me×n) espanse in due disuguaglianze.
-PUBLIC SUB LINPROGEQ(c() AS DOUBLE, A() AS DOUBLE, b() AS DOUBLE, Ae() AS DOUBLE, be() AS DOUBLE, out() AS DOUBLE)
+PUBLIC SUB LINPROGEQ(c() AS DOUBLE, A AS MATRIX OF (INT, INT, DOUBLE), b() AS DOUBLE, Ae AS MATRIX OF (INT, INT, DOUBLE), be() AS DOUBLE, out() AS DOUBLE)
     DIM n AS LONG = UBOUND(c) + 1
-    DIM m AS LONG = UBOUND(b) + 1
+    DIM m AS LONG = UBOUND(A, 1) + 1
     DIM me AS LONG = UBOUND(be) + 1
     DIM rows AS LONG = m + 2 * me
-    DIM flat(rows * n - 1) AS DOUBLE
+    DIM aug(rows - 1, n - 1) AS DOUBLE
     DIM bb(rows - 1) AS DOUBLE
     DIM bnd(2 * n - 1) AS DOUBLE
     DIM big AS DOUBLE = 10.0 ^ 30
@@ -145,18 +145,18 @@ PUBLIC SUB LINPROGEQ(c() AS DOUBLE, A() AS DOUBLE, b() AS DOUBLE, Ae() AS DOUBLE
     FOR i = 0 TO m - 1
         bb(i) = b(i)
         FOR j = 0 TO n - 1
-            flat(i * n + j) = A(i * n + j)
+            aug(i, j) = A(i, j)
         NEXT j
     NEXT i
     FOR i = 0 TO me - 1
         bb(m + 2 * i) = be(i)
         bb(m + 2 * i + 1) = -be(i)
         FOR j = 0 TO n - 1
-            flat((m + 2 * i) * n + j) = Ae(i * n + j)
-            flat((m + 2 * i + 1) * n + j) = -Ae(i * n + j)
+            aug(m + 2 * i, j) = Ae(i, j)
+            aug(m + 2 * i + 1, j) = -Ae(i, j)
         NEXT j
     NEXT i
-    CALL OPTN_LINPROG(c, n, flat, rows, bb, bnd, out)
+    CALL OPTN_LINPROG(c, n, aug, rows, bb, bnd, out)
 END SUB
 
 PUBLIC SUB LINPROGFULL(c() AS DOUBLE, A() AS DOUBLE, b() AS DOUBLE, Ae() AS DOUBLE, be() AS DOUBLE, bounds() AS DOUBLE, out() AS DOUBLE)
@@ -370,7 +370,7 @@ END SUB
 ' ═══════════════════════════════════════════════════════════════════════════
 
 ' out = soluzione (n valori) + obiettivo in coda (n+1 totali), come la SUB.
-PUBLIC FUNCTION LINPROGB(c() AS DOUBLE, A() AS DOUBLE, b() AS DOUBLE, bounds() AS DOUBLE) AS ARRAY OF DOUBLE
+PUBLIC FUNCTION LINPROGB(c() AS DOUBLE, A AS MATRIX OF (INT, INT, DOUBLE), b() AS DOUBLE, bounds() AS DOUBLE) AS ARRAY OF DOUBLE
     DIM n AS LONG = UBOUND(c) + 1
     DIM o(n - 1) AS DOUBLE
     CALL LINPROGB(c, A, b, bounds, o)
@@ -557,66 +557,39 @@ END FUNCTION
 ' ── Forme JAGGED (compatibili col builtin: nessuna dimensione esplicita) ────────────────
 ' Acceptano `DIM A(rows) AS ARRAY OF DOUBLE` come `OPTIMIZE.*` e appiattiscono qui dentro.
 
-PUBLIC FUNCTION LEASTSQUARES(A() AS ARRAY OF DOUBLE, b() AS DOUBLE) AS ARRAY OF DOUBLE
-    DIM rows AS LONG = UBOUND(A) + 1
-    DIM cols AS LONG = UBOUND(A(0)) + 1
-    DIM flat(rows * cols - 1) AS DOUBLE
-    DIM i AS LONG, j AS LONG
-    FOR i = 0 TO rows - 1
-        FOR j = 0 TO cols - 1
-            flat(i * cols + j) = A(i)(j)
-        NEXT j
-    NEXT i
+PUBLIC FUNCTION LEASTSQUARES(A AS MATRIX OF (INT, INT, DOUBLE), b() AS DOUBLE) AS ARRAY OF DOUBLE
+    DIM rows AS LONG = UBOUND(A, 1) + 1
+    DIM cols AS LONG = UBOUND(A, 2) + 1
     DIM o(cols - 1) AS DOUBLE
-    CALL OPTN_LEASTSQUARES(flat, rows, cols, b, o)
+    CALL OPTN_LEASTSQUARES(A, rows, cols, b, o)
     RETURN o
 END FUNCTION
 
-PUBLIC FUNCTION CHOLESKYSOLVE(A() AS ARRAY OF DOUBLE, b() AS DOUBLE) AS ARRAY OF DOUBLE
-    DIM n AS LONG = UBOUND(A) + 1
-    DIM flat(n * n - 1) AS DOUBLE
-    DIM i AS LONG, j AS LONG
-    FOR i = 0 TO n - 1
-        FOR j = 0 TO n - 1
-            flat(i * n + j) = A(i)(j)
-        NEXT j
-    NEXT i
+PUBLIC FUNCTION CHOLESKYSOLVE(A AS MATRIX OF (INT, INT, DOUBLE), b() AS DOUBLE) AS ARRAY OF DOUBLE
+    DIM n AS LONG = UBOUND(A, 1) + 1
     DIM o(n - 1) AS DOUBLE
-    CALL OPTN_CHOLESKYSOLVE(flat, b, n, o)
+    CALL OPTN_CHOLESKYSOLVE(A, b, n, o)
     RETURN o
 END FUNCTION
 
-PUBLIC FUNCTION SIMPLEX(c() AS DOUBLE, A() AS ARRAY OF DOUBLE, b() AS DOUBLE) AS ARRAY OF DOUBLE
+PUBLIC FUNCTION SIMPLEX(c() AS DOUBLE, A AS MATRIX OF (INT, INT, DOUBLE), b() AS DOUBLE) AS ARRAY OF DOUBLE
     DIM n AS LONG = UBOUND(c) + 1
-    DIM m AS LONG = UBOUND(A) + 1
-    DIM flat(m * n - 1) AS DOUBLE
-    DIM i AS LONG, j AS LONG
-    FOR i = 0 TO m - 1
-        FOR j = 0 TO n - 1
-            flat(i * n + j) = A(i)(j)
-        NEXT j
-    NEXT i
+    DIM m AS LONG = UBOUND(A, 1) + 1
     DIM o(n) AS DOUBLE
-    CALL OPTN_SIMPLEX(c, n, flat, m, b, o)
+    CALL OPTN_SIMPLEX(c, n, A, m, b, o)
     RETURN o
 END FUNCTION
 
-PUBLIC FUNCTION LINPROG(c() AS DOUBLE, A() AS ARRAY OF DOUBLE, b() AS DOUBLE) AS ARRAY OF DOUBLE
+PUBLIC FUNCTION LINPROG(c() AS DOUBLE, A AS MATRIX OF (INT, INT, DOUBLE), b() AS DOUBLE) AS ARRAY OF DOUBLE
     DIM n AS LONG = UBOUND(c) + 1
-    DIM m AS LONG = UBOUND(A) + 1
-    DIM flat(m * n - 1) AS DOUBLE
+    DIM m AS LONG = UBOUND(A, 1) + 1
     DIM bnd(2 * n - 1) AS DOUBLE
     DIM big AS DOUBLE = 10.0 ^ 30
-    DIM i AS LONG, j AS LONG
-    FOR i = 0 TO m - 1
-        FOR j = 0 TO n - 1
-            flat(i * n + j) = A(i)(j)
-        NEXT j
-    NEXT i
+    DIM i AS LONG
     FOR i = 0 TO n - 1
         bnd(2 * i) = 0.0 : bnd(2 * i + 1) = big
     NEXT i
     DIM o(n - 1) AS DOUBLE
-    CALL OPTN_LINPROG(c, n, flat, m, b, bnd, o)
+    CALL OPTN_LINPROG(c, n, A, m, b, bnd, o)
     RETURN o
 END FUNCTION

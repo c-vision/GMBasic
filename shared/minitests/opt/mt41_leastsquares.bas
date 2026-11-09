@@ -5,8 +5,8 @@ IMPORT OPTIMIZE
 ' A 3x2 (1,1) (1,2) (1,3); y = 1 + 2x
 
 SUB Main()
-    DIM A(5) AS DOUBLE
-    A(0) = 1.0 : A(1) = 1.0 : A(2) = 1.0 : A(3) = 2.0 : A(4) = 1.0 : A(5) = 3.0
+    DIM A(2, 1) AS DOUBLE
+    A = {{1.0, 1.0}, {1.0, 2.0}, {1.0, 3.0}}
     DIM b(2) AS DOUBLE
     b(0) = 3.0 : b(1) = 5.0 : b(2) = 7.0
     DIM o(1) AS DOUBLE

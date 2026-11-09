@@ -1,13 +1,13 @@
 ' EXPECT: w0=-0.416667|w1=-0.375|w2= 0.416667|cls= 2|p0= 0|p1= 1
 IMPORT MULTIVARIATE
 SUB Main()
-  DIM X(11) AS ARRAY OF DOUBLE
+  DIM X(11, 1) AS DOUBLE
   DIM y(11) AS DOUBLE
   FOR i = 0 TO 5
-    X(i) = {2 + 0.2 * i, 2 + 0.1 * i}: y(i) = 0
+    X(i,0) = 2 + 0.2 * i : X(i,1) = 2 + 0.1 * i : y(i) = 0
   NEXT i
   FOR i = 6 TO 11
-    X(i) = {8 + 0.2 * i, 8 + 0.1 * i}: y(i) = 1
+    X(i,0) = 8 + 0.2 * i : X(i,1) = 8 + 0.1 * i : y(i) = 1
   NEXT i
   DIM w(3) AS DOUBLE
   CALL MULTIVARIATE.SVMFIT(X, y, 2, 1.0, 100, w)

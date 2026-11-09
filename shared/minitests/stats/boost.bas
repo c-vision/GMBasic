@@ -2,11 +2,11 @@
 ' Gradient boosting via FFI: modello opaco (handle LONG) + BOOSTFREE.
 IMPORT MULTIVARIATE
 SUB Main()
-  DIM X(19) AS ARRAY OF DOUBLE
+  DIM X(19, 0) AS DOUBLE
   DIM y(19) AS DOUBLE
   FOR i = 0 TO 19
-    X(i) = {i * 0.1}
-    y(i) = SIN(X(i)(0)) + 0.1 * COS(i * 1.3)
+    X(i,0) = i * 0.1
+    y(i) = SIN(X(i,0)) + 0.1 * COS(i * 1.3)
   NEXT i
   DIM q(0) AS DOUBLE
   DIM m AS LONG = MULTIVARIATE.BOOSTFIT(X, y, 0, 10, 0.1, 2)

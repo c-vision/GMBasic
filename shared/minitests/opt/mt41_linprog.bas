@@ -7,8 +7,8 @@ IMPORT OPTIMIZE
 SUB Main()
     DIM c(1) AS DOUBLE
     c(0) = -1.0 : c(1) = -1.0
-    DIM A(3) AS DOUBLE
-    A(0) = 1.0 : A(1) = 1.0 : A(2) = 1.0 : A(3) = 0.0
+    DIM A(1, 1) AS DOUBLE
+    A = {{1.0, 1.0}, {1.0, 0.0}}
     DIM b(1) AS DOUBLE
     b(0) = 4.0 : b(1) = 2.0
     DIM o(1) AS DOUBLE
