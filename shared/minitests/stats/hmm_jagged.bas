@@ -1,9 +1,9 @@
 ' EXPECT: jpi0= 0|ja00= 0.893468|jm00= 0.940789
 IMPORT TIMESERIES
 SUB Main()
-  DIM x(19) AS ARRAY OF DOUBLE
+  DIM x(19, 1) AS DOUBLE
   FOR i = 0 TO 19
-    x(i) = {SIN(i * 0.35) + i * 0.05, COS(i * 0.35) * 0.8}
+    x(i,0) = SIN(i * 0.35) + i * 0.05 : x(i,1) = COS(i * 0.35) * 0.8
   NEXT i
   DIM o(17) AS DOUBLE
   CALL TIMESERIES.HMMFIT(x, 2, 8, o)

@@ -4,9 +4,8 @@
 IMPORT TIMESERIES AS TS
 SUB Main()
   DIM s(5) AS DOUBLE = {1,2,4,3,5,7}
-  DIM d(1) AS ARRAY OF DOUBLE
-  d(0) = {1.0, 2.0, 3.0, 4.0}
-  d(1) = {2.0, 4.0, 5.0, 8.0}
+  DIM d(1, 3) AS DOUBLE
+  d = {{1.0, 2.0, 3.0, 4.0}, {2.0, 4.0, 5.0, 8.0}}
   DIM rr() AS DOUBLE = TS.TSROLLREGRESSION(s, s, 3)
   DIM rs() AS DOUBLE = TS.TSROLLREGRESSIONSINGLE(s, 3)
   DIM mm() AS DOUBLE = TS.TSROLLMINMAX(s, 3)

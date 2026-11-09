@@ -87,9 +87,8 @@ SUB Main()
   DIM dec() AS DOUBLE = TIMESERIES.TSDECOMPOSE(s, 2)
   PRINT "decompose="; (UBOUND(dec) + 1) / (UBOUND(s) + 1)
 
-  DIM pair(1) AS ARRAY OF DOUBLE
-  pair(0) = {1.0, 2.0, 3.0, 4.0}
-  pair(1) = {2.0, 4.0, 5.0, 8.0}
+  DIM pair(1, 3) AS DOUBLE
+  pair = {{1.0, 2.0, 3.0, 4.0}, {2.0, 4.0, 5.0, 8.0}}
   DIM cv() AS DOUBLE = TIMESERIES.TSCOVARIANCEMATRIX(pair)
   PRINT "covmatrix="; ROUND(cv(1), 4)
 

@@ -72,7 +72,7 @@ DECLARE NATIVE FUNCTION RXF_DIFFERENCE LIB "gmbstats" ALIAS "ofx_ts_difference" 
 DECLARE NATIVE SUB RXF_RETURNS LIB "gmbstats" ALIAS "ofx_ts_returns" (x() AS DOUBLE, n AS LONG, out() AS DOUBLE)
 DECLARE NATIVE SUB RXF_DESEASONALIZE LIB "gmbstats" ALIAS "ofx_ts_deseasonalize" (x() AS DOUBLE, n AS LONG, period AS LONG, out() AS DOUBLE)
 DECLARE NATIVE SUB RXF_DECOMPOSE LIB "gmbstats" ALIAS "ofx_ts_decompose" (x() AS DOUBLE, n AS LONG, period AS LONG, trend() AS DOUBLE, seasonal() AS DOUBLE, resid() AS DOUBLE)
-DECLARE NATIVE SUB RXF_COVMATRIX LIB "gmbstats" ALIAS "ofx_ts_covmatrix" (data() AS DOUBLE, nobs AS LONG, m AS LONG, out() AS DOUBLE)
+DECLARE NATIVE SUB RXF_COVMATRIX LIB "gmbstats" ALIAS "ofx_ts_covmatrix" (data AS MATRIX OF (INT, INT, DOUBLE), nobs AS LONG, m AS LONG, out() AS DOUBLE)
 DECLARE NATIVE FUNCTION RXF_OUTLIERS LIB "gmbstats" ALIAS "ofx_ts_outliers" (x() AS DOUBLE, n AS LONG, threshold AS DOUBLE, idx() AS LONG) AS LONG
 
 DECLARE NATIVE SUB RXF_ROLL_MEAN LIB "gmbstats" ALIAS "ofx_roll_mean" (x() AS DOUBLE, n AS LONG, w AS LONG, out() AS DOUBLE)
@@ -158,17 +158,11 @@ PUBLIC FUNCTION TSDECOMPOSE(series() AS DOUBLE, period AS LONG) AS ARRAY OF DOUB
 END FUNCTION
 
 ' Matrice di covarianza: input jagged (osservazioni x variabili), output m*m row-major.
-PUBLIC FUNCTION TSCOVARIANCEMATRIX(data() AS ARRAY OF DOUBLE) AS ARRAY OF DOUBLE
-    DIM nobs AS LONG = UBOUND(data) + 1
-    DIM m AS LONG = UBOUND(data(0)) + 1
-    DIM flat((nobs * m) - 1) AS DOUBLE
-    FOR i = 0 TO nobs - 1
-        FOR j = 0 TO m - 1
-            flat(i * m + j) = data(i)(j)
-        NEXT j
-    NEXT i
+PUBLIC FUNCTION TSCOVARIANCEMATRIX(data AS MATRIX OF (INT, INT, DOUBLE)) AS ARRAY OF DOUBLE
+    DIM nobs AS LONG = UBOUND(data, 1) + 1
+    DIM m AS LONG = UBOUND(data, 2) + 1
     DIM o((m * m) - 1) AS DOUBLE
-    CALL RXF_COVMATRIX(flat, nobs, m, o)
+    CALL RXF_COVMATRIX(data, nobs, m, o)
     RETURN o
 END FUNCTION
 
@@ -451,18 +445,12 @@ END FUNCTION
 
 ' HMMFIT: data() jagged (osservazioni x dimensioni). out piatto:
 ' pi(K), A(K*K), means(K*d), covs(K*d*d).
-DECLARE NATIVE FUNCTION AXF_HMMFIT LIB "gmbstats" ALIAS "ofx_ts_hmmfit" (X() AS DOUBLE, n AS LONG, d AS LONG, K AS LONG, nIter AS LONG, out() AS DOUBLE) AS LONG
+DECLARE NATIVE FUNCTION AXF_HMMFIT LIB "gmbstats" ALIAS "ofx_ts_hmmfit" (X AS MATRIX OF (INT, INT, DOUBLE), n AS LONG, d AS LONG, K AS LONG, nIter AS LONG, out() AS DOUBLE) AS LONG
 
-PUBLIC SUB HMMFIT(data() AS ARRAY OF DOUBLE, nStates AS LONG, nIter AS LONG, out() AS DOUBLE)
-    DIM n AS LONG = UBOUND(data) + 1
-    DIM d AS LONG = UBOUND(data(0)) + 1
-    DIM flat((n * d) - 1) AS DOUBLE
-    FOR i = 0 TO n - 1
-        FOR j = 0 TO d - 1
-            flat(i * d + j) = data(i)(j)
-        NEXT j
-    NEXT i
-    CALL AXF_HMMFIT(flat, n, d, nStates, nIter, out)
+PUBLIC SUB HMMFIT(data AS MATRIX OF (INT, INT, DOUBLE), nStates AS LONG, nIter AS LONG, out() AS DOUBLE)
+    DIM n AS LONG = UBOUND(data, 1) + 1
+    DIM d AS LONG = UBOUND(data, 2) + 1
+    CALL AXF_HMMFIT(data, n, d, nStates, nIter, out)
 END SUB
 
 ' ═══════════════════════════════════════════════════════════════════════════
