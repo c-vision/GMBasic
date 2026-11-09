@@ -15215,9 +15215,28 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                 if (lib != NULL && fn != NULL && argc <= GMB_FFI_MAX_ARGS)
                 {
                     void* h = gmb_ffi_dl_open(lib);
+                    /* MAI un 0 silenzioso: un simbolo non risolto NON e' "la funzione ha
+                     * restituito 0" — con la writeback del caso out() l'esito era
+                     * indistinguibile da una chiamata riuscita (out() intatti, rc=0).
+                     * Caso reale: cache con libgmbgraphics precedente allo sweep NATIVE,
+                     * quindi senza `ofx_gfx_img_*__nat` → GFX2D azzerava tutto in silenzio. */
+                    if (h == NULL)
+                    {
+                        char fmsg[256];
+                        snprintf(fmsg, sizeof(fmsg), "[FFI] libreria non trovata: %s (simbolo %s)", lib, fn);
+                        vm_error(task, fmsg);
+                        return -1;
+                    }
                     if (h != NULL)
                     {
                         void* p = gmb_ffi_dl_sym(h, fn);
+                        if (p == NULL)
+                        {
+                            char fmsg[256];
+                            snprintf(fmsg, sizeof(fmsg), "[FFI] simbolo '%s' non trovato in '%s' (libreria non aggiornata?)", fn, lib);
+                            vm_error(task, fmsg);
+                            return -1;
+                        }
                         if (p != NULL)
                         {
                             if (argc == 0)
@@ -15548,9 +15567,25 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                 if (lib != NULL && fn != NULL && argc <= GMB_FFI_MAX_ARGS && !callbackError)
                 {
                     void* h = gmb_ffi_dl_open(lib);
+                    /* Idem OP_CALL_FFI: simbolo/libreria mancanti = errore esplicito, non un 0
+                     * silenzioso con gli out() intatti (vedi il commento gemello sopra). */
+                    if (h == NULL)
+                    {
+                        char fmsg[256];
+                        snprintf(fmsg, sizeof(fmsg), "[FFI] libreria non trovata: %s (simbolo %s)", lib, fn);
+                        vm_error(task, fmsg);
+                        return -1;
+                    }
                     if (h != NULL)
                     {
                         void* p = gmb_ffi_dl_sym(h, fn);
+                        if (p == NULL)
+                        {
+                            char fmsg[256];
+                            snprintf(fmsg, sizeof(fmsg), "[FFI] simbolo '%s' non trovato in '%s' (libreria non aggiornata?)", fn, lib);
+                            vm_error(task, fmsg);
+                            return -1;
+                        }
                         uint64_t fullMaskForArgc = argc >= 64 ? 0xFFFFFFFFFFFFFFFFull : ((1ull << argc) - 1ull);
                         /* 2026-11-02: slot puntatore (array/STRING/BYREF) presenti? Se sì il
                          * path "misto" scalare-puro non basta: serve il marshalling degli

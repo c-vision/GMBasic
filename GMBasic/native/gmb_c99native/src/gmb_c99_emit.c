@@ -32013,6 +32013,14 @@ static void emit_ffi_wrapper(ctx_t* c, fn_info_t* fn, const char* vkey) {
     c->indent = 1;
     ind(c);
     sb_put(&c->out, "}\n");
+    /* Lib o simbolo non risolti a runtime: PRIMA un errore esplicito (parità con VM/C, che
+     * solleva vm_error), POI il valore di fallback — che serve solo a rispettare il contratto
+     * di ritorno C se ON ERROR RESUME NEXT riprende. Prima era un 0 silenzioso indistinguibile
+     * da una chiamata riuscita (caso reale: cache con libgmbgraphics senza `*__nat`, GFX2D a 0). */
+    ind(c);
+    sb_printf(&c->out,
+              "gmb_raise_error(5, \"[FFI] simbolo '%s' non trovato in '%s' (libreria non aggiornata?)\", 0L);\n",
+              sym, lib);
     if (strcmp(retC, "void") != 0) {
         ind(c);
         /* Fallback (lib/simbolo non risolti a runtime): gmb_string_t e' uno STRUCT, non un
