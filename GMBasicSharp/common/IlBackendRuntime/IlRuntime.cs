@@ -1967,12 +1967,8 @@ public static partial class IlRuntime
     public static double MatrixGetValue(long handle, double r, double c)
         => Matrix(handle)[(int)r, (int)c];
 
-    // Nucleo scipy.signal (SIGNAL namespace)
-    public static double[] Convolve(double[] x, double[] k) => CommonLib.Numerics.SignalConvolve(x, k);
-    public static double[] Correlate(double[] x, double[] k) => CommonLib.Numerics.SignalCorrelate(x, k);
-    public static double[] Hann(int n) => CommonLib.Numerics.SignalHann(n);
-    public static double[] Hamming(int n) => CommonLib.Numerics.SignalHamming(n);
-    public static double[] Blackman(int n) => CommonLib.Numerics.SignalBlackman(n);
+    // Nucleo scipy.signal rimasto builtin: solo WELCH (handle matrice), più sotto.
+    // Finestre, convoluzione/correlazione, filtri e ricampionamento sono nella lib FFI `signal`.
     public static double Asin(double value) => Math.Asin(value);
     public static double Acos(double value) => Math.Acos(value);
     public static double Floor(double value) => Math.Floor(value);
@@ -8052,40 +8048,8 @@ public static double TextWidth(string s)
     public static double[] IfftShift(double[] arr)
         => CommonLib.Numerics.IfftShift(arr ?? Array.Empty<double>());
 
-    // --- Filtri IIR (SIGNAL): design → handle (pattern MATRIX) ---
-    private static readonly Dictionary<long, CommonLib.SignalFilter> FilterHandles = new();
-    private static long _nextFilterHandle = 5000;
-
-    private static long StoreFilter(CommonLib.SignalFilter f)
-    {
-        var h = Interlocked.Increment(ref _nextFilterHandle);
-        FilterHandles[h] = f;
-        return h;
-    }
-
-    private static CommonLib.SignalFilter GetFilter(double h)
-        => FilterHandles.TryGetValue((long)h, out var f) ? f : new CommonLib.SignalFilter();
-
-    public static long SignalButter(double n, double[] wn, string btype)
-        => StoreFilter(CommonLib.Numerics.Butter((int)n, wn ?? [0.3], string.IsNullOrEmpty(btype) ? "low" : btype));
-
-    public static long SignalCheby1(double n, double rp, double[] wn, string btype)
-        => StoreFilter(CommonLib.Numerics.Cheby1((int)n, rp, wn ?? [0.3], string.IsNullOrEmpty(btype) ? "low" : btype));
-
-    public static long SignalCheby2(double n, double rs, double[] wn, string btype)
-        => StoreFilter(CommonLib.Numerics.Cheby2((int)n, rs, wn ?? [0.3], string.IsNullOrEmpty(btype) ? "low" : btype));
-
-    public static long SignalEllip(double n, double rp, double rs, double[] wn, string btype)
-        => StoreFilter(CommonLib.Numerics.Ellip((int)n, rp, rs, wn ?? [0.3], string.IsNullOrEmpty(btype) ? "low" : btype));
-
-    public static double[] SignalLfilter(double h, double[] x)
-        => CommonLib.Numerics.LFilter(GetFilter(h), x ?? Array.Empty<double>());
-
-    public static double[] SignalFiltfilt(double h, double[] x)
-        => CommonLib.Numerics.FiltFilt(GetFilter(h), x ?? Array.Empty<double>());
-
-    public static double[] SignalFreqz(double h, double n)
-        => CommonLib.Numerics.Freqz(GetFilter(h), (int)n);
+    // --- Filtri IIR: il design/applicazione (BUTTER/CHEBY/ELLIP/LFILTER/FILTFILT/FREQZ) è
+    // nella lib FFI `signal`; qui resta solo il wrapper TIMESERIES qui sotto.
 
     // --- KDTree (scipy.spatial.KDTree): handle + query/query_ball ---
     private static readonly Dictionary<long, CommonLib.KdTree> KdTreeHandles = new();
@@ -8316,12 +8280,7 @@ public static double TextWidth(string s)
     // ---- scipy.signal P1 / interpolate P1 / spatial P1 / fft P1 ----
     public static long Welch(double[] x, int nperseg, double fs)
         => StoreMatrix(CommonLib.Numerics.Welch(x, nperseg, fs));
-    public static double[] SavgolFilter(double[] x, int windowLength, int polyorder)
-        => CommonLib.Numerics.SavgolFilter(x, windowLength, polyorder);
-    public static double[] Resample(double[] x, int num)
-        => CommonLib.Numerics.Resample(x, num);
-    public static double[] Decimate(double[] x, int q)
-        => CommonLib.Numerics.Decimate(x, q);
+    // SIGNAL.SAVGOLFILTER/RESAMPLE/DECIMATE: nella lib FFI `signal` (niente più wrapper IL).
     public static long Splrep(double[] x, double[] y)
         => StoreDecomposition(CommonLib.Numerics.Splrep(x, y));
     public static double[] Splev(long splineHandle, double[] xq)
@@ -8330,12 +8289,6 @@ public static double TextWidth(string s)
             return Array.Empty<double>();
         return CommonLib.Numerics.Splev(sp, xq);
     }
-    public static double[] Pdist(double[][] X, string metric)
-        => CommonLib.Numerics.Pdist(X ?? Array.Empty<double[]>(), metric ?? "euclidean", 2);
-    public static long Cdist(double[][] X, double[][] Y, string metric)
-        => StoreMatrix(CommonLib.Numerics.Cdist(X, Y, metric ?? "euclidean", 2));
-    public static long DistanceMatrix(double[][] X, double[][] Y)
-        => StoreMatrix(CommonLib.Numerics.DistanceMatrix(X, Y));
     public static long Rfft(double[] x)
     {
         var r = CommonLib.Numerics.Rfft(x);
@@ -8346,13 +8299,7 @@ public static double TextWidth(string s)
     }
     public static double[] Irfft(double[] re, double[] im)
         => CommonLib.Numerics.Irfft(re, im);
-    public static double[] ConvexHull(double[][] X)
-        => CommonLib.Numerics.ConvexHull(X);
     // ---- scipy.signal P0 / scipy.integrate P0 ----
-    public static double[] Firwin(int numtaps, double[] cutoff, string btype, string window)
-        => CommonLib.Numerics.Firwin(numtaps, cutoff ?? new[] { 0.25 }, btype ?? "lowpass", window ?? "hann");
-    public static double[] FindPeaks(double[] x, double distance)
-        => CommonLib.Numerics.FindPeaks(x ?? Array.Empty<double>(), distance);
     public static long SolveIvp(Func<double, double[], double[]> f, double[] y0, double t0, double t1)
         => StoreMatrix(CommonLib.Numerics.SolveIvpk45(f ?? ((_, _) => new[] { 0.0 }), y0 ?? new[] { 0.0 }, t0, t1));
     private static Dictionary<string, object?> HypothesisResult(CommonLib.StatisticalTestResult result) => new()

@@ -58,7 +58,6 @@ static const char* const gmb_ns_names[] = {
     "PROVIDER",
     "RDD",
     "SIGNAL",
-    "SPATIAL",
     "SPECIAL",
     "SPEED",
     "SQL",

@@ -124,7 +124,6 @@ public sealed partial class BackendImplementationRegistry
         r.Register(Backend.IL, "AI.BlackboardRead");
         r.Register(Backend.IL, "AI.BlackboardWait");
         r.Register(Backend.IL, "AI.BlackboardWrite");
-        r.Register(Backend.IL, "SIGNAL.BLACKMAN");
         r.Register(Backend.IL, "TORCH.BLEU");
         r.Register(Backend.IL, "MATRIX.BLOCKDIAG");
         r.Register(Backend.IL, "DBF.BOF");
@@ -142,7 +141,6 @@ public sealed partial class BackendImplementationRegistry
         r.Register(Backend.IL, "AI.BrainVaultQuery");
         r.Register(Backend.IL, "AI.BrainVaultWrite");
         r.Register(Backend.IL, "RDD.BUFFER");
-        r.Register(Backend.IL, "SIGNAL.BUTTER");
         r.Register(Backend.IL, "MOUSE.BUTTON");
         r.Register(Backend.IL, "BRAINS.ByFolder");
         r.Register(Backend.IL, "BRAINS.ByTag");
@@ -175,8 +173,6 @@ public sealed partial class BackendImplementationRegistry
         r.Register(Backend.IL, "AI.ChannelPublish");
         r.Register(Backend.IL, "AI.ChannelSubscribe");
         r.Register(Backend.IL, "AI.ChannelUnsubscribe");
-        r.Register(Backend.IL, "SIGNAL.CHEBY1");
-        r.Register(Backend.IL, "SIGNAL.CHEBY2");
         r.Register(Backend.IL, "VECTOR.CHEBYSHEV");
         r.Register(Backend.IL, "AI.Checkpoint");
         r.Register(Backend.IL, "AI.CheckpointClear");
@@ -257,8 +253,6 @@ public sealed partial class BackendImplementationRegistry
         r.Register(Backend.IL, "AI.ContextView");
         r.Register(Backend.IL, "AI.ContextViewDebug");
         r.Register(Backend.IL, "SPATIAL.CONVEXHULL");
-        r.Register(Backend.IL, "SIGNAL.CONVOLVE");
-        r.Register(Backend.IL, "SIGNAL.CORRELATE");
         r.Register(Backend.IL, "MATH.Cos");
         r.Register(Backend.IL, "MATH.COSH");
         r.Register(Backend.IL, "VECTOR.COSINE");
@@ -301,7 +295,6 @@ public sealed partial class BackendImplementationRegistry
         r.Register(Backend.IL, "MOUSE.DBLCLICK");
         r.Register(Backend.IL, "DBF.DBRELATION");
         r.Register(Backend.IL, "ISAM.DBRELATION");
-        r.Register(Backend.IL, "SIGNAL.DECIMATE");
         r.Register(Backend.IL, "LLM.DecodeStats");
         r.Register(Backend.IL, "MATH.Deg2Rad");
         r.Register(Backend.IL, "HTTP.DELETE");
@@ -354,7 +347,6 @@ public sealed partial class BackendImplementationRegistry
         r.Register(Backend.IL, "STRINGS.Dup");
         r.Register(Backend.IL, "LEDGER.EDIT");
         r.Register(Backend.IL, "LINALG.EIG");
-        r.Register(Backend.IL, "SIGNAL.ELLIP");
         r.Register(Backend.IL, "AI.Embed");
         r.Register(Backend.IL, "VECTORDB.Embed");
         r.Register(Backend.IL, "SYSTEM.EMPTY");
@@ -413,11 +405,9 @@ public sealed partial class BackendImplementationRegistry
         r.Register(Backend.IL, "LLM.FileOutline");
         r.Register(Backend.IL, "GREP.FILES");
         r.Register(Backend.IL, "BROWSER.Fill");
-        r.Register(Backend.IL, "SIGNAL.FILTFILT");
         r.Register(Backend.IL, "UI.Find");
         r.Register(Backend.IL, "BROWSER.Find");
         r.Register(Backend.IL, "UI.FindAll");
-        r.Register(Backend.IL, "SIGNAL.FINDPEAKS");
         r.Register(Backend.IL, "LLM.FindSymbol");
         r.Register(Backend.IL, "LLM.FinetuneBaseHold");
         r.Register(Backend.IL, "LLM.FinetuneBaseTrain");
@@ -431,7 +421,6 @@ public sealed partial class BackendImplementationRegistry
         r.Register(Backend.IL, "LLM.FinetuneStatus");
         r.Register(Backend.IL, "IO.FINPUT");
         r.Register(Backend.IL, "DATETIME.FIRSTDAYOFMONTH");
-        r.Register(Backend.IL, "SIGNAL.FIRWIN");
         r.Register(Backend.IL, "STATS.FIsf");
         r.Register(Backend.IL, "STATS.Fisher");
         r.Register(Backend.IL, "MATH.Fix");
@@ -460,7 +449,6 @@ public sealed partial class BackendImplementationRegistry
         r.Register(Backend.IL, "IO.FRead");
         r.Register(Backend.IL, "TORCH.FREE");
         r.Register(Backend.IL, "IO.FreeFile");
-        r.Register(Backend.IL, "SIGNAL.FREQZ");
         r.Register(Backend.IL, "LINALG.FROBENIUSNORM");
         r.Register(Backend.IL, "TORCH.FROM");
         r.Register(Backend.IL, "SQL.FROMCSV");
@@ -507,14 +495,12 @@ public sealed partial class BackendImplementationRegistry
         r.Register(Backend.IL, "SYSTEM.GOMAXPROCS");
         r.Register(Backend.IL, "CONTROLS.GOTFOCUSED");
         r.Register(Backend.IL, "VECTORDB.Hallucination");
-        r.Register(Backend.IL, "SIGNAL.HAMMING");
         r.Register(Backend.IL, "AI.Handoff");
         r.Register(Backend.IL, "AI.HandoffClear");
         r.Register(Backend.IL, "AI.HandoffComplete");
         r.Register(Backend.IL, "AI.HandoffList");
         r.Register(Backend.IL, "AI.HandoffStatus");
         r.Register(Backend.IL, "MATRIX.HANKEL");
-        r.Register(Backend.IL, "SIGNAL.HANN");
         r.Register(Backend.IL, "SYSTEM.HAS");
         r.Register(Backend.IL, "TYPEINFO.HAS");
         r.Register(Backend.IL, "AI.HashEdit");
@@ -629,7 +615,6 @@ public sealed partial class BackendImplementationRegistry
         r.Register(Backend.IL, "STRINGS.Len");
         r.Register(Backend.IL, "STRINGS.LenB");
         r.Register(Backend.IL, "AI.LexicalEntropy");
-        r.Register(Backend.IL, "SIGNAL.LFILTER");
         r.Register(Backend.IL, "TORCH.LIBPATH");
         r.Register(Backend.IL, "AI.LinkDangling");
         r.Register(Backend.IL, "AI.LinkJson");
@@ -938,7 +923,6 @@ public sealed partial class BackendImplementationRegistry
         r.Register(Backend.IL, "ISAM.REPLICATIONSHIP");
         r.Register(Backend.IL, "LLM.RepoMap");
         r.Register(Backend.IL, "AI.Rerank");
-        r.Register(Backend.IL, "SIGNAL.RESAMPLE");
         r.Register(Backend.IL, "AI.ResetFailed");
         r.Register(Backend.IL, "MATRIX.RESHAPE");
         r.Register(Backend.IL, "TORCH.RESHAPE");
@@ -981,7 +965,6 @@ public sealed partial class BackendImplementationRegistry
         r.Register(Backend.IL, "LLM.RunStop");
         r.Register(Backend.IL, "HTTP.SAFEFILENAME");
         r.Register(Backend.IL, "AI.Save");
-        r.Register(Backend.IL, "SIGNAL.SAVGOLFILTER");
         r.Register(Backend.IL, "LINALG.SCHUR");
         r.Register(Backend.IL, "GRAPHICS.SCREEN");
         r.Register(Backend.IL, "GRAPHICS.ScreenInfo");

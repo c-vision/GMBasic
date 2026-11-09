@@ -4429,7 +4429,6 @@ if (args.Length >= 3) { var file = args[0]?.ToString() ?? ""; var section = args
         (RDDBuiltInFunctions, (self, t, fn, a) => self.ExecuteBuiltInRdd(t, fn, a)),
         (SIGNALBuiltInFunctions, (self, t, fn, a) => self.ExecuteBuiltInSignal(t, fn, a)),
         (SOLVEBuiltInFunctions, (self, t, fn, a) => self.ExecuteBuiltInSolve(t, fn, a)),
-        (SPATIALBuiltInFunctions, (self, t, fn, a) => self.ExecuteBuiltInSpatial(t, fn, a)),
         (SPECIALBuiltInFunctions, (self, t, fn, a) => self.ExecuteBuiltInSpecial(t, fn, a)),
         (SPEEDBuiltInFunctions, (self, t, fn, a) => self.ExecuteBuiltInSpeed(t, fn, a)),
         (SQLBuiltInFunctions, (self, t, fn, a) => self.ExecuteBuiltInSql(t, fn, a)),

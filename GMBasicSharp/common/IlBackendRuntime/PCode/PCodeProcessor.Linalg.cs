@@ -236,9 +236,12 @@ internal sealed partial class PCodeProcessor
     {
         var rows = Convert.ToInt32(args.Length > 0 ? args[0] : 4);
         var cols = Convert.ToInt32(args.Length > 1 ? args[1] : 4);
-        var m = global::MathNet.Numerics.LinearAlgebra.Matrix<double>.Build.DenseIdentity(rows > cols ? rows : cols);
-        if (rows != cols)
-            m = m.SubMatrix(0, 0, rows, cols);
+        // Identita' rettangolare: diagonale 1 sui primi min(rows, cols) elementi.
+        // Prima si costruiva DenseIdentity(max) + SubMatrix(0, 0, rows, cols): la firma
+        // MathNet e' SubMatrix(rowIndex, rowCount, columnIndex, columnCount), quindi per
+        // matrici non quadrate il risultato era 0 righe (divergenza da IL/VM-C/C99).
+        var m = global::MathNet.Numerics.LinearAlgebra.Matrix<double>.Build.Dense(rows, cols, 0.0);
+        for (var i = 0; i < Math.Min(rows, cols); i++) m[i, i] = 1.0;
         var newId = Interlocked.Increment(ref _nextLinearMatrixId);
         _linMatrices[newId] = m;
         return HandleOf(newId);

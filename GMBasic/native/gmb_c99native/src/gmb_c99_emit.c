@@ -95,8 +95,6 @@ static const gmb_tokenkind_t gmb_tk_dict_val[] = { GMB_TOK_Values, GMB_TOK_ToDic
 static const gmb_tokenkind_t gmb_tk_list_setops[] = { GMB_TOK_Union, GMB_TOK_Intersect, GMB_TOK_Except, GMB_TOK_CollSymmetricExcept };
 static const gmb_tokenkind_t gmb_tk_pool_get[] = { GMB_TOK_PoolGet, GMB_TOK_SyncMapLoad, GMB_TOK_SyncMapDelete, GMB_TOK_SyncMapLoadOrStore };
 static const gmb_tokenkind_t gmb_tk_aeval[] = { GMB_TOK_AEval, GMB_TOK_AScan, GMB_TOK_AFilter, GMB_TOK_AMap };
-static const gmb_tokenkind_t gmb_tk_sig_arr[] = { GMB_TOK_SignalSavgolFilter, GMB_TOK_SignalResample, GMB_TOK_SignalDecimate };
-static const gmb_tokenkind_t gmb_tk_sig_win[] = { GMB_TOK_SignalHann, GMB_TOK_SignalHamming, GMB_TOK_SignalBlackman };
 static const gmb_tokenkind_t gmb_tk_roll[] = { GMB_TOK_RollingQuantile, GMB_TOK_RollingSharpe, GMB_TOK_RollingSortino };
 static const gmb_tokenkind_t gmb_tk_filter[] = { GMB_TOK_TsLowPass, GMB_TOK_TsHighPass, GMB_TOK_TsBandPass, GMB_TOK_TsBandStop };
 static const gmb_tokenkind_t gmb_tk_uncount[] = { GMB_TOK_UniqueCount, GMB_TOK_NodeCount, GMB_TOK_UniqueItems };
@@ -1454,16 +1452,9 @@ static int dim_arr_init_kind(ctx_t* c, const gmb_expr_t* e) {
     /* kind per DispatchToken (chiave canonica — mai lexeme): 1 = array 1-D con out-len,
      * 2 = matrice n×2 (FFT/IFFT). Solo i token qui elencati sono gestiti in emit_dim_arr_init. */
     static const struct { gmb_tokenkind_t tk; int kind; int minargs; } k[] = {
-        { GMB_TOK_SignalConvolve, 1, 2 }, { GMB_TOK_SignalCorrelate, 1, 2 },
-        { GMB_TOK_SignalSavgolFilter, 1, 2 }, { GMB_TOK_SignalResample, 1, 2 },
-        { GMB_TOK_SignalDecimate, 1, 2 }, { GMB_TOK_SignalFindPeaks, 1, 2 },
-        { GMB_TOK_SignalFirwin, 1, 4 },
-        { GMB_TOK_SignalLfilter, 1, 2 }, { GMB_TOK_SignalFiltfilt, 1, 2 }, { GMB_TOK_SignalFreqz, 1, 2 },
         { GMB_TOK_TorchShape, 1, 1 }, { GMB_TOK_TorchToArray, 1, 1 }, { GMB_TOK_TorchArgsort, 1, 1 },
         { GMB_TOK_TorchTopK, 1, 2 }, { GMB_TOK_TorchOneHot, 1, 2 }, { GMB_TOK_TorchClip, 1, 3 },
         { GMB_TOK_TorchNormalize, 1, 1 }, { GMB_TOK_TorchStandardize, 1, 1 },
-        { GMB_TOK_SpatialPdist, 1, 2 }, { GMB_TOK_SpatialConvexHull, 1, 1 },
-        { GMB_TOK_SignalHann, 1, 1 }, { GMB_TOK_SignalHamming, 1, 1 }, { GMB_TOK_SignalBlackman, 1, 1 },
         { GMB_TOK_Fft, 2, 1 }, { GMB_TOK_Ifft, 2, 1 },
         { GMB_TOK_FftComplex, 2, 1 }, { GMB_TOK_IfftComplex, 2, 1 },
         { GMB_TOK_FftFreq, 1, 1 }, { GMB_TOK_FftShift, 1, 1 }, { GMB_TOK_IfftShift, 1, 1 },
@@ -6161,7 +6152,6 @@ int emit_bf_rageval(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t 
 int emit_bf_uncertainty(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk, gmb_expr_t** args, int nargs, int line);
 int emit_bf_signal(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk, gmb_expr_t** args, int nargs, int line);
 int emit_bf_torch(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk, gmb_expr_t** args, int nargs, int line);
-int emit_bf_spatial(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk, gmb_expr_t** args, int nargs, int line);
 int emit_bf_kdtree(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk, gmb_expr_t** args, int nargs, int line);
 int emit_bf_analysis(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk, gmb_expr_t** args, int nargs, int line);
 int emit_bf_vector(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk, gmb_expr_t** args, int nargs, int line);
@@ -7000,12 +6990,6 @@ static const gmb_bf_row_t gmb_bf_composite[] = {
     { NULL, GMB_TOK_TorchModelLoss, emit_bf_torch },
     { NULL, GMB_TOK_TorchModelState, emit_bf_torch },
     { NULL, GMB_TOK_TorchModelTrainStep, emit_bf_torch },
-    { NULL, GMB_TOK_SpatialCdist, emit_bf_spatial },
-    { NULL, GMB_TOK_SpatialDistanceMatrix, emit_bf_spatial },
-    { NULL, GMB_TOK_SignalButter, emit_bf_signal },
-    { NULL, GMB_TOK_SignalCheby1, emit_bf_signal },
-    { NULL, GMB_TOK_SignalCheby2, emit_bf_signal },
-    { NULL, GMB_TOK_SignalEllip, emit_bf_signal },
     { NULL, GMB_TOK_SignalWelch, emit_bf_signal },
     { NULL, GMB_TOK_KdTreeCreate, emit_bf_kdtree },
     /* TRAY (2026-10-02): tabella nel file di dominio gmb_c99_emit_tray.c (§0quater). */
@@ -8980,126 +8964,6 @@ static void emit_dim_arr_init(ctx_t* c, gmb_stmt_t* s) {
             return;
         }
     }
-    if (init->tk == GMB_TOK_SignalConvolve || init->tk == GMB_TOK_SignalCorrelate) {
-        var_t* a0 = NULL; var_t* a1 = NULL;
-        if (init->nargs < 2 || init->args[0]->kind != GMB_EXPR_VAR || init->args[1]->kind != GMB_EXPR_VAR
-            || !(a0 = lookup_var(c, init->args[0]->var)) || !a0->is_array
-            || !(a1 = lookup_var(c, init->args[1]->var)) || !a1->is_array) {
-            c99_fail(c, s->line, "%s: attesi due array come argomenti", bn);
-            return;
-        }
-        ind(c);
-        emit_ident(c, v->name);
-        sb_printf(&c->out, " = %s((const double*)", init->tk == GMB_TOK_SignalConvolve ? "gmb_signal_convolve" : "gmb_signal_correlate");
-        emit_var_ref(c, a0);
-        sb_put(&c->out, ", (gmb_int_t)(");
-        emit_arr_len_of(c, a0);
-        sb_put(&c->out, "), (const double*)");
-        emit_var_ref(c, a1);
-        sb_put(&c->out, ", (gmb_int_t)(");
-        emit_arr_len_of(c, a1);
-        sb_put(&c->out, "), &");
-        emit_ident(c, v->name);
-        sb_put(&c->out, "_len);\n");
-        return;
-    }
-    /* SIGNAL array-returning 1-D per DispatchToken (SAVGOLFILTER/RESAMPLE/DECIMATE → runtime
-     * gmb_*_c99 con out-len compagna). Il token Signal* è univoco: niente controllo ns. */
-    if (gmb_tk_in(init->tk, gmb_tk_sig_arr, (unsigned)(sizeof(gmb_tk_sig_arr)/sizeof(gmb_tk_sig_arr[0])))) {
-        var_t* a0sig = NULL;
-        if (init->nargs < 1 || init->args[0]->kind != GMB_EXPR_VAR
-            || !(a0sig = lookup_var(c, init->args[0]->var)) || !a0sig->is_array) {
-            c99_fail(c, s->line, "%s: primo argomento non è un array", bn);
-            return;
-        }
-        const char* gfn = init->tk == GMB_TOK_SignalSavgolFilter ? "gmb_savgol_c99"
-                        : init->tk == GMB_TOK_SignalResample ? "gmb_resample_c99"
-                                                             : "gmb_decimate_c99";
-        int npar = init->tk == GMB_TOK_SignalSavgolFilter ? 2 : 1;
-        if (init->nargs < 1 + npar) { c99_fail(c, s->line, "%s: numero argomenti errato", bn); return; }
-        ind(c);
-        emit_ident(c, v->name);
-        sb_printf(&c->out, " = %s((const double*)", gfn);
-        emit_var_ref(c, a0sig);
-        sb_put(&c->out, ", (int)("); emit_arr_len_of(c, a0sig); sb_put(&c->out, ")");
-        for (int i = 1; i <= npar; i++) { sb_put(&c->out, ", (int)("); emit_expr(c, init->args[i]); sb_put(&c->out, ")"); }
-        sb_put(&c->out, ", &"); emit_ident(c, v->name); sb_put(&c->out, "_len);\n");
-        return;
-    }
-    /* FINDPEAKS(serie, distance) → gmb_find_peaks_alloc (indici picchi, distance double). */
-    if (init->tk == GMB_TOK_SignalFindPeaks) {
-        var_t* a0sig = NULL;
-        if (init->nargs < 1 || init->args[0]->kind != GMB_EXPR_VAR
-            || !(a0sig = lookup_var(c, init->args[0]->var)) || !a0sig->is_array) {
-            c99_fail(c, s->line, "%s: primo argomento non è un array", bn);
-            return;
-        }
-        ind(c);
-        emit_ident(c, v->name);
-        sb_put(&c->out, " = gmb_find_peaks_alloc((const double*)");
-        emit_var_ref(c, a0sig);
-        sb_put(&c->out, ", (int)("); emit_arr_len_of(c, a0sig); sb_put(&c->out, ")");
-        sb_put(&c->out, ", "); emit_expr(c, init->args[1]);
-        sb_put(&c->out, ", &"); emit_ident(c, v->name); sb_put(&c->out, "_len);\n");
-        return;
-    }
-    /* FIRWIN(numtaps, cutoff[], btype, window) → gmb_firwin_c99 (taps FIR).
-     * numtaps = arg int; cutoff = array; btype/window = stringhe. */
-    if (init->tk == GMB_TOK_SignalFirwin) {
-        if (init->nargs < 4) { c99_fail(c, s->line, "%s: richiede (numtaps, cutoff[], btype, window)", bn); return; }
-        var_t* cf = NULL;
-        if (init->args[1]->kind != GMB_EXPR_VAR
-            || !(cf = lookup_var(c, init->args[1]->var)) || !cf->is_array) {
-            c99_fail(c, s->line, "%s: cutoff non è un array", bn);
-            return;
-        }
-        ind(c);
-        emit_ident(c, v->name);
-        sb_put(&c->out, " = gmb_firwin_c99((int)(");
-        emit_expr(c, init->args[0]); sb_put(&c->out, "), (const double*)");
-        emit_var_ref(c, cf);
-        sb_put(&c->out, ", (int)("); emit_arr_len_of(c, cf); sb_put(&c->out, ")");
-        sb_put(&c->out, ", "); emit_str_operand(c, init->args[2]); sb_put(&c->out, ".data");
-        sb_put(&c->out, ", "); emit_str_operand(c, init->args[3]); sb_put(&c->out, ".data");
-        sb_put(&c->out, ", &"); emit_ident(c, v->name); sb_put(&c->out, "_len);\n");
-        return;
-    }
-    if (gmb_tk_in(init->tk, gmb_tk_sig_win, (unsigned)(sizeof(gmb_tk_sig_win)/sizeof(gmb_tk_sig_win[0])))) {
-        int kind = init->tk == GMB_TOK_SignalHamming ? 1 : (init->tk == GMB_TOK_SignalBlackman ? 2 : 0);
-        ind(c);
-        emit_ident(c, v->name);
-        sb_printf(&c->out, " = gmb_signal_window((gmb_int_t)(");
-        emit_expr(c, init->args[0]);
-        sb_printf(&c->out, "), %d, &", kind);
-        emit_ident(c, v->name);
-        sb_put(&c->out, "_len);\n");
-        return;
-    }
-    /* SIGNAL LFILTER/FILTFILT/FREQZ(handle, ...) → array runtime con out-len compagna.
-     * Il primo argomento è un handle scalare (da BUTTER/CHEBY/ELLIP). */
-    if (init->tk == GMB_TOK_SignalLfilter || init->tk == GMB_TOK_SignalFiltfilt || init->tk == GMB_TOK_SignalFreqz) {
-        if (init->nargs < 2) { c99_fail(c, s->line, "%s: numero argomenti errato", bn); return; }
-        ind(c);
-        emit_ident(c, v->name);
-        if (init->tk == GMB_TOK_SignalFreqz) {
-            sb_put(&c->out, " = gmb_filter_freqz((gmb_int_t)(");
-            emit_expr(c, init->args[0]);
-            sb_put(&c->out, "), (int)("); emit_expr(c, init->args[1]); sb_put(&c->out, "), &");
-            emit_ident(c, v->name); sb_put(&c->out, "_len);\n");
-        } else {
-            var_t* xv = NULL;
-            if (init->args[1]->kind != GMB_EXPR_VAR || !(xv = lookup_var(c, init->args[1]->var)) || !xv->is_array) {
-                c99_fail(c, s->line, "%s: secondo argomento non è un array", bn); return;
-            }
-            sb_printf(&c->out, " = %s((gmb_int_t)(", init->tk == GMB_TOK_SignalLfilter ? "gmb_filter_lfilter" : "gmb_filter_filtfilt");
-            emit_expr(c, init->args[0]);
-            sb_put(&c->out, "), (const double*)"); emit_var_ref(c, xv);
-            sb_put(&c->out, ", (int)("); emit_arr_len_of(c, xv); sb_put(&c->out, "), &");
-            emit_ident(c, v->name); sb_put(&c->out, "_len);\n");
-        }
-        return;
-    }
-    /* TORCH array-returning (SHAPE/TOARRAY/ARGSORT/TOPK/ONEHOT/CLIP/NORMALIZE/STANDARDIZE). */
     if (init->tk == GMB_TOK_TorchShape || init->tk == GMB_TOK_TorchToArray || init->tk == GMB_TOK_TorchArgsort
         || init->tk == GMB_TOK_TorchTopK || init->tk == GMB_TOK_TorchOneHot || init->tk == GMB_TOK_TorchClip
         || init->tk == GMB_TOK_TorchNormalize || init->tk == GMB_TOK_TorchStandardize) {
@@ -9128,30 +8992,6 @@ static void emit_dim_arr_init(ctx_t* c, gmb_stmt_t* s) {
                 sb_put(&c->out, "gmb_ml_tensor_clamp("); emit_expr(c, init->args[0]); sb_put(&c->out, ", "); emit_expr(c, init->args[1]); sb_put(&c->out, ", "); emit_expr(c, init->args[2]); sb_put(&c->out, ")");
             }
             sb_put(&c->out, ", &");
-        }
-        emit_ident(c, v->name); sb_put(&c->out, "_len);\n");
-        return;
-    }
-    /* SPATIAL array-returning (PDIST/CONVEXHULL): jagged → runtime *_c99; flat → *_flat. */
-    if (init->tk == GMB_TOK_SpatialPdist || init->tk == GMB_TOK_SpatialConvexHull) {
-        if (init->nargs < 1 || init->args[0]->kind != GMB_EXPR_VAR) { c99_fail(c, s->line, "%s: argomento non valido", bn); return; }
-        var_t* spv = lookup_var(c, init->args[0]->var);
-        if (!spv || !spv->is_array) { c99_fail(c, s->line, "%s: argomento non e' una matrice", bn); return; }
-        ind(c); emit_ident(c, v->name);
-        if (init->tk == GMB_TOK_SpatialPdist) {
-            sb_put(&c->out, spv->jagged ? " = gmb_pdist_c99(" : " = gmb_pdist_flat((const double*)");
-            emit_var_ref(c, spv);
-            sb_put(&c->out, ", (int)("); sb_bound_var(&c->out, spv, 0); sb_put(&c->out, " + 1), ");
-            if (spv->jagged) sb_put(&c->out, "2, ");
-            else { sb_put(&c->out, "(int)("); sb_bound_var(&c->out, spv, 1); sb_put(&c->out, " + 1), "); }
-            if (init->nargs >= 2) { emit_str_operand(c, init->args[1]); sb_put(&c->out, ".data, &"); }
-            else sb_put(&c->out, "\"euclidean\", &");
-        } else {
-            sb_put(&c->out, spv->jagged ? " = gmb_convex_hull_c99(" : " = gmb_convex_hull_flat((const double*)");
-            emit_var_ref(c, spv);
-            sb_put(&c->out, ", (int)("); sb_bound_var(&c->out, spv, 0); sb_put(&c->out, " + 1), ");
-            if (!spv->jagged) { sb_put(&c->out, "(int)("); sb_bound_var(&c->out, spv, 1); sb_put(&c->out, " + 1), "); }
-            sb_put(&c->out, "&");
         }
         emit_ident(c, v->name); sb_put(&c->out, "_len);\n");
         return;

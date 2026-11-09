@@ -2660,54 +2660,14 @@ int emit_bf_stats_arr(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_
         if (SA_TBL[i].tk == tk) return SA_TBL[i].sp(c, args, nargs);
     return 0;
 }
-/* ── dominio: signal (design IIR handle-based + welch) ──
- * Design: gmb_filter_{butter,cheby1,cheby2,ellip}(...) → handle scalare (parità IL
- * IlRuntime.Signal*). WELCH: gmb_welch_c99 → handle matrice (parità emitter C#). */
+/* ── dominio: signal — resta solo WELCH (handle matrice, parità emitter C#).
+ * Le altre 17 funzioni del dominio sono nella lib FFI `signal`
+ * (shared/libs/signal + shared/include/signal.inc), non più builtin. */
 static int sg_wn(ctx_t* c, gmb_expr_t* e, var_t** out) {
     if (!e || e->kind != GMB_EXPR_VAR || !e->var) return 0;
     var_t* v = lookup_var(c, e->var);
     if (!v || !v->is_array) return 0;
     *out = v; return 1;
-}
-static int sg_butter(ctx_t* c, gmb_expr_t** a, int n) {
-    if (n < 3) return 0;
-    var_t* wv = NULL; if (!sg_wn(c, a[1], &wv)) return 0;
-    sb_put(&c->out, "gmb_filter_butter((gmb_int_t)("); emit_expr(c, a[0]);
-    sb_put(&c->out, "), (const double*)"); emit_var_ref(c, wv);
-    sb_put(&c->out, ", (int)("); emit_arr_len_of(c, wv); sb_put(&c->out, "), ");
-    emit_str_operand(c, a[2]); sb_put(&c->out, ".data)");
-    return 1;
-}
-static int sg_cheby1(ctx_t* c, gmb_expr_t** a, int n) {
-    if (n < 4) return 0;
-    var_t* wv = NULL; if (!sg_wn(c, a[2], &wv)) return 0;
-    sb_put(&c->out, "gmb_filter_cheby1((gmb_int_t)("); emit_expr(c, a[0]);
-    sb_put(&c->out, "), "); emit_expr(c, a[1]);
-    sb_put(&c->out, ", (const double*)"); emit_var_ref(c, wv);
-    sb_put(&c->out, ", (int)("); emit_arr_len_of(c, wv); sb_put(&c->out, "), ");
-    emit_str_operand(c, a[3]); sb_put(&c->out, ".data)");
-    return 1;
-}
-static int sg_cheby2(ctx_t* c, gmb_expr_t** a, int n) {
-    if (n < 4) return 0;
-    var_t* wv = NULL; if (!sg_wn(c, a[2], &wv)) return 0;
-    sb_put(&c->out, "gmb_filter_cheby2((gmb_int_t)("); emit_expr(c, a[0]);
-    sb_put(&c->out, "), "); emit_expr(c, a[1]);
-    sb_put(&c->out, ", (const double*)"); emit_var_ref(c, wv);
-    sb_put(&c->out, ", (int)("); emit_arr_len_of(c, wv); sb_put(&c->out, "), ");
-    emit_str_operand(c, a[3]); sb_put(&c->out, ".data)");
-    return 1;
-}
-static int sg_ellip(ctx_t* c, gmb_expr_t** a, int n) {
-    if (n < 5) return 0;
-    var_t* wv = NULL; if (!sg_wn(c, a[3], &wv)) return 0;
-    sb_put(&c->out, "gmb_filter_ellip((gmb_int_t)("); emit_expr(c, a[0]);
-    sb_put(&c->out, "), "); emit_expr(c, a[1]);
-    sb_put(&c->out, ", "); emit_expr(c, a[2]);
-    sb_put(&c->out, ", (const double*)"); emit_var_ref(c, wv);
-    sb_put(&c->out, ", (int)("); emit_arr_len_of(c, wv); sb_put(&c->out, "), ");
-    emit_str_operand(c, a[4]); sb_put(&c->out, ".data)");
-    return 1;
 }
 static int sg_welch(ctx_t* c, gmb_expr_t** a, int n) {
     if (n < 3) return 0;
@@ -2719,10 +2679,6 @@ static int sg_welch(ctx_t* c, gmb_expr_t** a, int n) {
 }
 typedef struct { gmb_tokenkind_t tk; int (*sp)(ctx_t*, gmb_expr_t**, int); } sg_row;
 static const sg_row SG_TBL[] = {
-    { GMB_TOK_SignalButter, sg_butter },
-    { GMB_TOK_SignalCheby1, sg_cheby1 },
-    { GMB_TOK_SignalCheby2, sg_cheby2 },
-    { GMB_TOK_SignalEllip, sg_ellip },
     { GMB_TOK_SignalWelch, sg_welch },
 };
 /* ── dominio: torch (tensor ops + model, delegazione §0quater) ── */
@@ -2818,62 +2774,6 @@ int emit_bf_torch(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk
     for (size_t i = 0; i < sizeof(TORCH_TBL) / sizeof(TORCH_TBL[0]); i++)
         if (TORCH_TBL[i].tk == tk) return TORCH_TBL[i].fn(c, args, nargs);
     return 0;
-}
-
-/* SPATIAL — matrici 2D C99Native = flat gmb_double_t* con bound <v>__b0/__b1:
- * si usano le runtime *_flat (stesso risultato delle *_c99 jagged). */
-static var_t* sp_matrix_var(ctx_t* c, gmb_expr_t* e) {
-    if (!e || e->kind != GMB_EXPR_VAR) return NULL;
-    var_t* v = lookup_var(c, e->var);
-    return (v && v->is_array) ? v : NULL;
-}
-static void sp_flat_args(ctx_t* c, var_t* v, int rows, int cols) {
-    emit_var_ref(c, v);
-    if (rows) { sb_put(&c->out, ", (int)("); sb_bound_var(&c->out, v, 0); sb_put(&c->out, " + 1)"); }
-    if (cols) { sb_put(&c->out, ", (int)("); sb_bound_var(&c->out, v, 1); sb_put(&c->out, " + 1)"); }
-}
-static int sp_cdist_common(ctx_t* c, gmb_expr_t** a, int n, int euclid_only) {
-    if (n < 2) return 0;
-    var_t* xv = sp_matrix_var(c, a[0]);
-    var_t* yv = sp_matrix_var(c, a[1]);
-    if (!xv || !yv) return 0;
-    if (xv->jagged && yv->jagged) {
-        /* DIM X(n) AS ARRAY OF DOUBLE: jagged gmb_double_t** (2 colonne) → runtime *_c99. */
-        sb_put(&c->out, euclid_only ? "gmb_distance_matrix_c99(" : "gmb_cdist_c99(");
-        emit_var_ref(c, xv);
-        sb_put(&c->out, ", (int)("); sb_bound_var(&c->out, xv, 0); sb_put(&c->out, " + 1), 2, ");
-        emit_var_ref(c, yv);
-        sb_put(&c->out, ", (int)("); sb_bound_var(&c->out, yv, 0); sb_put(&c->out, " + 1), 2");
-        if (!euclid_only) {
-            sb_put(&c->out, ", ");
-            if (n >= 3) { emit_str_operand(c, a[2]); sb_put(&c->out, ".data"); }
-            else sb_put(&c->out, "\"euclidean\"");
-        }
-        sb_put(&c->out, ")");
-        return 1;
-    }
-    sb_put(&c->out, "({ gmb_int_t _r = 0, _cc = 0; double* _m = ");
-    sb_put(&c->out, euclid_only ? "gmb_distance_matrix_flat((const double*)" : "gmb_cdist_flat((const double*)");
-    sp_flat_args(c, xv, 1, 1);
-    sb_put(&c->out, ", (const double*)");
-    sp_flat_args(c, yv, 1, 1);
-    sb_put(&c->out, ", ");
-    if (!euclid_only) {
-        if (n >= 3) { emit_str_operand(c, a[2]); sb_put(&c->out, ".data, "); }
-        else sb_put(&c->out, "\"euclidean\", ");
-    }
-    sb_put(&c->out, "&_r, &_cc); gmb_int_t _h = gmb_matrix_create_from(_r, _cc, _m); free(_m); _h; })");
-    return 1;
-}
-static int sp_cdist(ctx_t* c, gmb_expr_t** a, int n) { return sp_cdist_common(c, a, n, 0); }
-static int sp_distancematrix(ctx_t* c, gmb_expr_t** a, int n) { return sp_cdist_common(c, a, n, 1); }
-int emit_bf_spatial(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk, gmb_expr_t** args, int nargs, int line) {
-    (void)name; (void)ns; (void)line;
-    switch (tk) {
-        case GMB_TOK_SpatialCdist: return sp_cdist(c, args, nargs);
-        case GMB_TOK_SpatialDistanceMatrix: return sp_distancematrix(c, args, nargs);
-        default: return 0;
-    }
 }
 
 int emit_bf_signal(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk, gmb_expr_t** args, int nargs, int line) {
