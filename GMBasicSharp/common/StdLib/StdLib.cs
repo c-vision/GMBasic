@@ -194,7 +194,6 @@ public sealed partial class StdLib : IParserRegistry
         CreateMessageNamespace(); // MESSAGE (2026-10-05): messaging generico (bus) + ON MESSAGE
         CreateSpatialNamespace();
         CreateTorchNamespace();
-        CreateFinanceNamespace();
         CreateToolNamespace();
         CreateUiNamespace();
         CreateBrowserNamespace();

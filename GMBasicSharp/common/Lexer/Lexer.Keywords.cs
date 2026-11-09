@@ -1019,30 +1019,7 @@ public sealed partial class Lexer
         { "HYPERGEOMETRICPMF", TokenKind.HypergeometricPmf },
 
         // --- Funzioni Finanziarie ---
-        { "PMT", TokenKind.Pmt },
-        { "PMTEXT", TokenKind.PmtExt },
-        { "FV", TokenKind.Fv },
-        { "FVEXT", TokenKind.FvExt },
-        { "PV", TokenKind.Pv },
-        { "PVEXT", TokenKind.PvExt },
-        { "NPER", TokenKind.Nper },
         { "NPER_EXT", TokenKind.NperExt },
-        { "NPV", TokenKind.Npv },
-        { "IRR", TokenKind.Irr },
-        { "SLN", TokenKind.Sln },
-        { "SYD", TokenKind.Syd },
-        { "DB", TokenKind.Db },
-        { "DDB", TokenKind.Ddb },
-        { "XNPV", TokenKind.Xnpv },
-        { "XIRR", TokenKind.Xirr },
-        { "MIRR", TokenKind.Mirr },
-        { "MNPV", TokenKind.Mnpv },
-        { "CUMIPMT", TokenKind.Cumipmt },
-        { "CUMPRINC", TokenKind.Cumprinc },
-        { "PRICE", TokenKind.Price },
-        { "RATE", TokenKind.Rate },
-        { "DAYS360", TokenKind.Days360 },
-        { "YEARFRAC", TokenKind.YearFrac },
 
         // --- NUOVE FUNZIONI PER TITOLI E OPZIONI ---
         
@@ -1416,7 +1393,6 @@ public sealed partial class Lexer
         { "GETPALETTECOLOR", TokenKind.GetPaletteColor },
 
         // FINANCE varianti (2026-08-06).
-        { "NPEREXT", TokenKind.NperExt },
 
         // SET legacy Clipper (2026-08-06).
         { "ESCAPE", TokenKind.Escape },

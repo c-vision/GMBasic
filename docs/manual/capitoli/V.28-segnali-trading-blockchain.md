@@ -128,6 +128,63 @@ quella la parte che si sbaglia.
 
 
 
+
+
+
+
+
+
+
+
+<!-- BEGIN DOMAIN TABLE -->
+## Tavola sinottica del dominio
+
+Ogni riga riporta la firma canonica (dal registry) e il primo uso reale trovato
+nel corpus di test e sample `.bas`/`.inc`: dove il corpus non usa il simbolo è dichiarato.
+
+- **FINANCE.CUMIPMT(x1, x2, x3, x4, x5, x6)** — `PRINT "CUMIPMT test:"; FINANCE.CUMIPMT(0.05, 360, 200000, 1, 12, 0)` (shared/samples/Finance/FinanceGeneralTests.bas:112)
+- **FINANCE.CUMPRINC(x1, x2, x3, x4, x5, x6)** — `PRINT "CUMPRINC test:"; FINANCE.CUMPRINC(0.05, 360, 200000, 1, 12, 0)` (shared/samples/Finance/FinanceGeneralTests.bas:113)
+- **FINANCE.DAYS360(x1, x2)** — `PRINT "Days360 (US):      "; FINANCE.DAYS360(StartD, EndD)` (shared/samples/Finance/FinanceGeneralTests.bas:108)
+- **FINANCE.DB(x1, x2, x3, x4, x5)** — `MATH.ROUND(FINANCE.DB(costo, valoreResiduo, anni, a, 12), 2); "    "; _` (shared/samples/Finance/InvestimentoFurgone.bas:34)
+- **FINANCE.DDB(x1, x2, x3, x4, x5)** — `MATH.ROUND(FINANCE.DDB(costo, valoreResiduo, anni, a, 2.0), 2)` (shared/samples/Finance/InvestimentoFurgone.bas:35)
+- **FINANCE.FV(x1, x2, x3)** — `fv = FINANCE.FV(0.03 / 12, 12, -media, 0, 0)` (shared/samples/Math/PianificazioneRisparmi.bas:40)
+- **FINANCE.FVEXT(x1, x2, x3)** — `PRINT "FVEXT test:"; FINANCE.FVEXT(0.05, 360, -1000)` (shared/samples/Finance/FinanceGeneralTests.bas:115)
+- **FINANCE.IRR(x1)** — `rendimento = FINANCE.IRR(flussi, 0.1)` (shared/samples/Finance/InvestimentoFurgone.bas:68)
+- **FINANCE.MIRR(x1, x2, x3)** — `mirr = FINANCE.MIRR(flussi, 0.06, 0.09)` (shared/samples/Finance/InvestimentoFurgone.bas:72)
+- **FINANCE.MNPV(x1, x2)** — `PRINT "MNPV test:"; FINANCE.MNPV(0.1, Flussi)` (shared/samples/Finance/FinanceGeneralTests.bas:116)
+- **FINANCE.NPER(x1, x2, x3)** — `mesi = FINANCE.NPER(0.027 / 12.0, rataB - 100.0, capitale, 0, 0)` (shared/samples/Finance/MutuoCasa.bas:62)
+- **FINANCE.NPEREXT(x1, x2, x3)** — `N = FINANCE.NPEREXT(0.005, -100, 0, 10000)` (shared/samples/Trading/FinanceExtendedFunctions.bas:40)
+- **FINANCE.NPV(x1)** — `attuale = FINANCE.NPV(0.08, flussiPositivi) - costo` (shared/samples/Finance/InvestimentoFurgone.bas:56)
+- **FINANCE.PMT(x1, x2, x3)** — `DIM Rata = FINANCE.PMT(TassoAnnuo/12, Anni*12, -Importo)` (shared/samples/Finance/FinanceGeneralTests.bas:36)
+- **FINANCE.PMTEXT(x1, x2, x3)** — `PMT = FINANCE.PMTEXT(RATE, 60, 10000)` (shared/samples/Trading/FinanceExtendedFunctions.bas:22)
+- **FINANCE.PV(x1, x2, x3)** — `PRINT ROUND(FINANCE.PV(0.01, 12, -100, 0), 2)` (shared/minitests/finance/pv.bas:3)
+- **FINANCE.PVEXT(x1, x2, x3)** — `PV = FINANCE.PVEXT(0.005, 60, -100)` (shared/samples/Trading/FinanceExtendedFunctions.bas:34)
+- **FINANCE.RATE(x1, x2, x3)** — `DIM TassoCalc = FINANCE.RATE(3*12, -300, 10000, 0, 0) * 12` (shared/samples/Finance/FinanceGeneralTests.bas:46)
+- **FINANCE.SLN(x1, x2, x3)** — `MATH.ROUND(FINANCE.SLN(costo, valoreResiduo, anni), 2); "   "; _` (shared/samples/Finance/InvestimentoFurgone.bas:32)
+- **FINANCE.SYD(x1, x2, x3, x4)** — `MATH.ROUND(FINANCE.SYD(costo, valoreResiduo, anni, a), 2); "   "; _` (shared/samples/Finance/InvestimentoFurgone.bas:33)
+- **FINANCE.XIRR(x1, x2)** — `xr = FINANCE.XIRR(flussi, dateFlussi, 0.1)` (shared/samples/Finance/InvestimentoFurgone.bas:84)
+- **FINANCE.XNPV(x1, x2, x3)** — `PRINT "XNPV @8%:          "; MATH.ROUND(FINANCE.XNPV(0.08, flussi, dateFlussi), 2); " EUR"` (shared/samples/Finance/InvestimentoFurgone.bas:86)
+- **FINANCE.YEARFRAC(x1, x2)** — `PRINT "YearFrac (30/360): "; MATH.ROUND(FINANCE.YEARFRAC(StartD, EndD, 0), 4)` (shared/samples/Finance/FinanceGeneralTests.bas:107)
+- **SIGNAL.BLACKMAN(x1)** — `DIM b() = SIGNAL.BLACKMAN(4)` (shared/samples/Math/SignalSciPyParity.bas:14)
+- **SIGNAL.BUTTER(x1, x2, x3)** — `h = SIGNAL.BUTTER(2, wn, "low")` (shared/samples/Math/SignalFiltersSciPyParity.bas:9)
+- **SIGNAL.CHEBY1(x1, x2, x3, x4)** — `h3 = SIGNAL.CHEBY1(2, 1.0, wn, "low")` (shared/samples/Math/SignalFiltersSciPyParity.bas:23)
+- **SIGNAL.CHEBY2(x1, x2, x3, x4)** — `h4 = SIGNAL.CHEBY2(2, 20.0, wn, "low")` (shared/samples/Math/SignalFiltersSciPyParity.bas:26)
+- **SIGNAL.CONVOLVE(x1, x2)** — `DIM c() = SIGNAL.CONVOLVE(x, k)` (shared/samples/Math/SignalSciPyParity.bas:10)
+- **SIGNAL.CORRELATE(x1, x2)** — `DIM r() = SIGNAL.CORRELATE(x, k)` (shared/samples/Math/SignalSciPyParity.bas:11)
+- **SIGNAL.DECIMATE(x1, x2)** — `DIM dc() = SIGNAL.DECIMATE(n, 4)` (shared/samples/Math/SciPyP1Parity.bas:27)
+- **SIGNAL.ELLIP(x1, x2, x3, x4, x5)** — `h2 = SIGNAL.ELLIP(3, 1.0, 20.0, wn, "low")` (shared/samples/Math/SignalFiltersSciPyParity.bas:18)
+- **SIGNAL.FILTFILT(x1, x2)** — `DIM z() = SIGNAL.FILTFILT(h, x)` (shared/samples/Math/SignalFiltersSciPyParity.bas:12)
+- **SIGNAL.FINDPEAKS(x1, x2)** — `DIM pk() = SIGNAL.FINDPEAKS(sig, 1)` (shared/samples/Math/SignalIntegrateP0Parity.bas:14)
+- **SIGNAL.FIRWIN(x1, x2, x3, x4)** — `DIM taps() = SIGNAL.FIRWIN(11, fc, "lowpass", "hann")` (shared/samples/Math/SignalIntegrateP0Parity.bas:8)
+- **SIGNAL.FREQZ(x1, x2)** — `DIM m() = SIGNAL.FREQZ(h, 8)` (shared/samples/Math/SignalFiltersSciPyParity.bas:14)
+- **SIGNAL.HAMMING(x1)** — `DIM m() = SIGNAL.HAMMING(4)` (shared/samples/Math/SignalSciPyParity.bas:13)
+- **SIGNAL.HANN(x1)** — `DIM h() = SIGNAL.HANN(4)` (shared/samples/Math/SignalSciPyParity.bas:12)
+- **SIGNAL.LFILTER(x1, x2)** — `DIM y() = SIGNAL.LFILTER(h, x)` (shared/samples/Math/SignalFiltersSciPyParity.bas:10)
+- **SIGNAL.RESAMPLE(x1, x2)** — `DIM rs() = SIGNAL.RESAMPLE(n, 128)` (shared/samples/Math/SciPyP1Parity.bas:23)
+- **SIGNAL.SAVGOLFILTER(x1, x2, x3)** — `DIM sg() = SIGNAL.SAVGOLFILTER(q, 9, 2)` (shared/samples/Math/SciPyP1Parity.bas:18)
+- **SIGNAL.WELCH(x1, x2, x3)** — `w = SIGNAL.WELCH(n, 64, 1.0)` (shared/samples/Math/SciPyP1Parity.bas:11)
+<!-- END DOMAIN TABLE -->
+
 <!-- BEGIN SURFACE (generato da tools/sh/manual_surface.sh — non modificare a mano) -->
 
 ## Riferimento completo: comandi, funzioni, parametri
@@ -190,51 +247,178 @@ SUB Main()
 *Fonte: `Blockchain-Guida-Utente`*
 
 
-## 1. Hashing
+## 1. Import e tipi
 
+REQUIRE "blockchain"
 IMPORT BLOCKCHAIN
 
-PRINT BLOCKCHAIN.STRKECCAK256("hello")     ' hash Keccak-256 (hex)
-PRINT BLOCKCHAIN.STRRIPEMD160("hello")     ' hash RIPEMD-160 (hex)
-DIM b() = FROMHEX("68656c6c6f")
-PRINT TOHEX(BLOCKCHAIN.KECCAK256(b()))     ' Keccak-256 su byte[] → byte[]
-PRINT TOHEX(BLOCKCHAIN.RIPEMD160(b()))     ' RIPEMD-160 su byte[] → byte[]
-PRINT TOHEX(BLOCKCHAIN.BLAKE2B256(b()))    ' BLAKE2b-256 su byte[] → byte[]
+
+## 2. Funzioni
+
+### 2.1 Hashing
+| Funzione | Parametri | Ritorno |
+|---|---|---|
+| `KECCAK256(data(), out())` | `data()` BYTE, `out()` BYTE (≥32) | — (scrive 32 byte) |
+| `RIPEMD160(data(), out())` | `out()` BYTE (≥20) | — (scrive 20 byte) |
+| `BLAKE2B256(data(), out())` | `out()` BYTE (≥32) | — (scrive 32 byte) |
+
+DIM d() AS BYTE = FROMHEX("68656c6c6f")     ' "hello"
+DIM h(31) AS BYTE
+KECCAK256(d, h)
+PRINT TOHEX(h)      ' 1c8aff95…36deac8
 
 
-## 2. Codifiche
+### 2.2 Encoding
+| Funzione | Parametri | Ritorno |
+|---|---|---|
+| `BASE58ENCODE(data())` | BYTE | STRING |
+| `BASE58DECODE(text, out())` | STRING, BYTE | LONG (byte scritti, -1 = errore) |
+| `BASE32ENCODE(data())` | BYTE | STRING |
+| `BASE32DECODE(text, out())` | STRING, BYTE | LONG |
+| `RLPENCODE(data(), out())` | BYTE, BYTE | LONG |
+| `VARINTENCODE(value, out())` | LONG, BYTE | LONG |
+| `VARINTDECODE(data())` | BYTE | LONG |
 
-PRINT BLOCKCHAIN.BASE32ENCODE("data")
-PRINT BLOCKCHAIN.BASE32DECODE("ORSXG5A=")
-PRINT BLOCKCHAIN.BASE58ENCODE("data")
-PRINT BLOCKCHAIN.BASE58DECODE("...")
-PRINT BLOCKCHAIN.RLPENCODE(data)           ' RLP (Ethereum)
-PRINT BLOCKCHAIN.VARINTENCODE(150)         ' varint
-PRINT BLOCKCHAIN.VARINTDECODE("...")
+### 2.3 Indirizzi
+| Funzione | Parametri | Note |
+|---|---|---|
+| `ETHADDRFROMPUB(pub())` | chiave **non compressa** (65 byte, `0x04‖X‖Y`) | `0x…` minuscolo |
+| `ETHADDRCHECKSUM(address)` | `0x…` | forma EIP-55 |
+| `BTCADDRFROMPUB(pub(), testnet)` | chiave **compressa** (33 byte), `testnet` 0/-1 | Base58Check |
+| `BLOCKDIFFICULTY(header(), bits)` | header BYTE, `bits` LONG | DOUBLE (difficoltà) |
+
+### 2.4 Firma e chiavi
+| Funzione | Parametri | Ritorno |
+|---|---|---|
+| `SECP256K1SIGN(hash(), priv(), out())` | hash SHA-256 (32), priv (32), `out()` ≥80 | LONG = lunghezza DER |
+| `GETPUBLICKEY(priv(), out())` | priv (32), `out()` ≥32 | LONG = 33 (compressa) |
+| `GETFULLPUBLICKEY(priv(), out())` | priv (32), `out()` ≥64 | LONG = 65 (non compressa) |
+
+### 2.5 HD wallet (BIP39/BIP32)
+| Funzione | Parametri | Ritorno |
+|---|---|---|
+| `GENERATEMNEMONIC(words)` | 12/15/18/21/24 | STRING |
+| `MNEMONICTOSEED(mnemonic, pass, out())` | `out()` ≥64 | LONG = 64 |
+| `DERIVEKEY(seed(), path, out())` | seed 64 byte, path STRING, `out()` ≥96 | LONG = 97 (`priv‖pub‖chainCode`) |
+
+### 2.6 ABI EVM
+| Funzione | Parametri | Ritorno |
+|---|---|---|
+| `ABIENCODE(signature, nums())` | firma testuale, array DOUBLE | STRING `0x…` |
+| `ABISELECTOR(signature)` | firma | STRING (4 byte) |
+| `ABIDECODE(hex, out())` | hex, array DOUBLE | LONG = parole decodificate |
+
+## 3. Esempio completo
+
+IMPORT BLOCKCHAIN
+IMPORT CRYPTOGRAPHY
+
+SUB Main()
+  DIM d() AS BYTE = FROMHEX("68656c6c6f")
+  DIM k(31) AS BYTE
+  KECCAK256(d, k)
+  PRINT "keccak="; TOHEX(k)
+
+  DIM priv(31) AS BYTE
+  priv(31) = 1
+  DIM pub(32) AS BYTE
+  PRINT "publen="; GETPUBLICKEY(priv, pub)
+
+  PRINT "btc="; BTCADDRFROMPUB(pub, 0)
+  PRINT "sel="; ABISELECTOR("transfer(address,uint256)")
 
 
-## 3. ABI (Ethereum)
+## 4. Disponibilità per backend
 
-PRINT BLOCKCHAIN.ABIENCODE(signature$, args)  ' codifica ABI
-PRINT BLOCKCHAIN.ABIDECODE(data$, types$)      ' decodifica ABI
-PRINT BLOCKCHAIN.IERC20(...)                   ' helper interfaccia ERC-20
-PRINT BLOCKCHAIN.CONTRACT(...)                 ' descrizione contratto
+## 5. Limiti e note
 
+## 6. Riferimenti
 
-## 4. Chiavi, indirizzi, wallet
+### FINANCE-Guida-Utente
 
-PRINT BLOCKCHAIN.GENERATEMNEMONIC()        ' frase mnemonica BIP-39
-PRINT BLOCKCHAIN.MNEMONICTOSEED(phrase$)   ' seed dal mnemonico
-PRINT BLOCKCHAIN.DERIVEKEY(seed, path$)    ' chiave derivata (BIP-32/44)
-PRINT BLOCKCHAIN.GETPUBLICKEY(privateKey)  ' chiave pubblica
-PRINT BLOCKCHAIN.BTCADDRFROMPUB(pubKey)    ' indirizzo Bitcoin
-PRINT BLOCKCHAIN.ETHADDRFROMPUB(pubKey)    ' indirizzo Ethereum
-PRINT BLOCKCHAIN.ETHADDRCHECKSUM(addr$)    ' checksum EIP-55
-PRINT BLOCKCHAIN.BLOCKDIFFICULTY(header, bits)  ' difficoltà (target/hash)
-PRINT BLOCKCHAIN.SECP256K1SIGN(msg, priv)  ' firma ECDSA (DER)
+*Fonte: `FINANCE-Guida-Utente`*
 
 
-## 5. Verifiche sui backend (2026-09-12)
+## 1. Import
+
+IMPORT FINANCE
+
+
+## 2. Funzioni
+
+### Rendite (time value of money)
+| funzione | parametri | ritorno | semantica |
+|---|---|---|---|
+| `PMT(rate, nper, pv[, fv, type])` | DOUBLE, DOUBLE, DOUBLE, DOUBLE=0, LONG=0 | DOUBLE | rata periodica di un prestito/rendita |
+| `PMTEXT(rate, nper, pv[, fv, type])` | idem | DOUBLE | alias storico di `PMT` |
+| `FV(rate, nper, pmt[, pv, type])` | DOUBLE, DOUBLE, DOUBLE, DOUBLE=0, LONG=0 | DOUBLE | valore futuro di una rendita |
+| `FVEXT(rate, nper, pmt[, pv, type])` | idem | DOUBLE | variante completa di `FV` |
+| `PV(rate, nper, pmt[, fv, type])` | DOUBLE, DOUBLE, DOUBLE, DOUBLE=0, LONG=0 | DOUBLE | valore attuale |
+| `PVEXT(rate, nper, pmt[, fv, type])` | idem | DOUBLE | variante completa di `PV` |
+| `NPER(rate, pmt, pv[, fv, type])` | DOUBLE, DOUBLE, DOUBLE, DOUBLE=0, LONG=0 | DOUBLE | numero di periodi |
+| `NPEREXT(rate, pmt, pv[, fv, type])` | idem | DOUBLE | variante completa di `NPER` |
+| `RATE(nper, pmt, pv[, fv, type, guess])` | DOUBLE, DOUBLE, DOUBLE, DOUBLE=0, LONG=0, DOUBLE=0.1 | DOUBLE | tasso per periodo (radice numerica) |
+| `CUMIPMT(rate, nper, pv, start, end, type)` | DOUBLE, DOUBLE, DOUBLE, LONG, LONG, LONG | DOUBLE | interessi cumulati tra due periodi |
+| `CUMPRINC(rate, nper, pv, start, end, type)` | idem | DOUBLE | quota capitale cumulata tra due periodi |
+
+### Ammortamenti
+| funzione | parametri | ritorno | semantica |
+|---|---|---|---|
+| `SLN(cost, salvage, life)` | DOUBLE, DOUBLE, DOUBLE | DOUBLE | quota costante (straight line) |
+| `SYD(cost, salvage, life, period)` | DOUBLE, DOUBLE, DOUBLE, DOUBLE | DOUBLE | somma delle cifre degli anni |
+| `DB(cost, salvage, life, period[, month])` | DOUBLE, DOUBLE, DOUBLE, DOUBLE, LONG=12 | DOUBLE | saldo decrescente fisso |
+| `DDB(cost, salvage, life, period[, factor])` | DOUBLE, DOUBLE, DOUBLE, DOUBLE, DOUBLE=2 | DOUBLE | saldo decrescente doppio |
+
+### Flussi di cassa
+| funzione | parametri | ritorno | semantica |
+|---|---|---|---|
+| `NPV(rate, values...)` | DOUBLE, PARAMARRAY DOUBLE | DOUBLE | VAN di flussi periodici (primo flusso = periodo 1) |
+| `MNPV(rate, cashFlows())` | DOUBLE, array DOUBLE | DOUBLE | VAN su array esplicito |
+| `IRR(values()[, guess])` | array DOUBLE, DOUBLE=0.1 | DOUBLE | tasso interno di rendimento |
+| `MIRR(values(), financeRate, reinvestRate)` | array DOUBLE, DOUBLE, DOUBLE | DOUBLE | IRR modificato |
+| `XIRR(values(), dates()[, guess])` | array DOUBLE, array DATETIME, DOUBLE=0.1 | DOUBLE | IRR con date reali |
+| `XNPV(rate, values(), dates())` | DOUBLE, array DOUBLE, array DATETIME | DOUBLE | VAN con date reali |
+
+### Date finanziarie
+| funzione | parametri | ritorno | semantica |
+|---|---|---|---|
+| `DAYS360(start, end[, european])` | DATETIME, DATETIME, LONG=0 | DOUBLE | giorni su base 30/360 (0 = US, 1 = europeo) |
+| `YEARFRAC(start, end[, basis])` | DATETIME, DATETIME, LONG=0 | DOUBLE | frazione d'anno tra due date |
+
+### Parametri (dettaglio)
+
+## 3. Esempio
+
+IMPORT FINANCE
+IMPORT DATETIME
+
+SUB Main()
+    ' mutuo: 200.000 €, 5% annuo, 30 anni
+    DIM rata AS DOUBLE
+    rata = FINANCE.PMT(0.05/12, 30*12, -200000)
+    PRINT "rata mensile: "; ROUND(rata, 2)
+
+    ' ammortamento
+    PRINT "SLN: "; FINANCE.SLN(10000, 1000, 5)
+    PRINT "SYD: "; FINANCE.SYD(10000, 1000, 5, 1)
+    PRINT "DDB: "; FINANCE.DDB(10000, 1000, 5, 1, 2)
+
+    ' progetto: -10.000 al tempo 0, incassi annuali
+    DIM flussi(3) AS DOUBLE = {-10000, 3000, 4200, 6800}
+
+
+## 4. Errori e diagnosi
+| sintomo | causa |
+|---|---|
+| `RATE`/`IRR`/`XIRR` restituisce un valore inatteso | flussi tutti dello stesso segno o nessuna radice nell'intervallo: il metodo iterativo non converge |
+| `IRR` = 0 | array vuoto o con meno di 2 flussi |
+| `XNPV`/`XIRR` = 0 | `dates()` non allineato a `values()` o date non crescenti |
+| risultati doppi rispetto all'atteso | `rate` passato in percentuale invece che come frazione (`5` invece di `0.05`) |
+| rata positiva dove ci si aspetta negativa | convenzione dei segni del flusso di cassa |
+
+## 5. Parità fra i backend
+
+## 6. Riferimenti
 
 ### Signals-Guida-Utente
 
@@ -788,59 +972,3 @@ IF h > 0 THEN PRINT "ok"
 ## 7. MiniTest e sample
 
 <!-- END SURFACE -->
-
-
-
-
-
-
-
-
-<!-- BEGIN DOMAIN TABLE -->
-## Tavola sinottica del dominio
-
-Ogni riga riporta la firma canonica (dal registry) e il primo uso reale trovato
-nel corpus di test e sample `.bas`/`.inc`: dove il corpus non usa il simbolo è dichiarato.
-
-- **FINANCE.CUMIPMT(x1, x2, x3, x4, x5, x6)** — `PRINT "CUMIPMT test:"; FINANCE.CUMIPMT(0.05, 360, 200000, 1, 12, 0)` (shared/samples/Finance/FinanceGeneralTests.bas:112)
-- **FINANCE.CUMPRINC(x1, x2, x3, x4, x5, x6)** — `PRINT "CUMPRINC test:"; FINANCE.CUMPRINC(0.05, 360, 200000, 1, 12, 0)` (shared/samples/Finance/FinanceGeneralTests.bas:113)
-- **FINANCE.DAYS360(x1, x2)** — `PRINT "Days360 (US):      "; FINANCE.DAYS360(StartD, EndD)` (shared/samples/Finance/FinanceGeneralTests.bas:108)
-- **FINANCE.DB(x1, x2, x3, x4, x5)** — `MATH.ROUND(FINANCE.DB(costo, valoreResiduo, anni, a, 12), 2); "    "; _` (shared/samples/Finance/InvestimentoFurgone.bas:34)
-- **FINANCE.DDB(x1, x2, x3, x4, x5)** — `MATH.ROUND(FINANCE.DDB(costo, valoreResiduo, anni, a, 2.0), 2)` (shared/samples/Finance/InvestimentoFurgone.bas:35)
-- **FINANCE.FV(x1, x2, x3)** — `fv = FINANCE.FV(0.03 / 12, 12, -media, 0, 0)` (shared/samples/Math/PianificazioneRisparmi.bas:40)
-- **FINANCE.FVEXT(x1, x2, x3)** — `PRINT "FVEXT test:"; FINANCE.FVEXT(0.05, 360, -1000)` (shared/samples/Finance/FinanceGeneralTests.bas:115)
-- **FINANCE.IRR(x1)** — `rendimento = FINANCE.IRR(flussi, 0.1)` (shared/samples/Finance/InvestimentoFurgone.bas:68)
-- **FINANCE.MIRR(x1, x2, x3)** — `mirr = FINANCE.MIRR(flussi, 0.06, 0.09)` (shared/samples/Finance/InvestimentoFurgone.bas:72)
-- **FINANCE.MNPV(x1, x2)** — `PRINT "MNPV test:"; FINANCE.MNPV(0.1, Flussi)` (shared/samples/Finance/FinanceGeneralTests.bas:116)
-- **FINANCE.NPER(x1, x2, x3)** — `mesi = FINANCE.NPER(0.027 / 12.0, rataB - 100.0, capitale, 0, 0)` (shared/samples/Finance/MutuoCasa.bas:62)
-- **FINANCE.NPEREXT(x1, x2, x3)** — `N = FINANCE.NPEREXT(0.005, -100, 0, 10000)` (shared/samples/Trading/FinanceExtendedFunctions.bas:40)
-- **FINANCE.NPV(x1)** — `attuale = FINANCE.NPV(0.08, flussiPositivi) - costo` (shared/samples/Finance/InvestimentoFurgone.bas:56)
-- **FINANCE.PMT(x1, x2, x3)** — `DIM Rata = FINANCE.PMT(TassoAnnuo/12, Anni*12, -Importo)` (shared/samples/Finance/FinanceGeneralTests.bas:36)
-- **FINANCE.PMTEXT(x1, x2, x3)** — `PMT = FINANCE.PMTEXT(RATE, 60, 10000)` (shared/samples/Trading/FinanceExtendedFunctions.bas:22)
-- **FINANCE.PV(x1, x2, x3)** — `PRINT ROUND(FINANCE.PV(0.01, 12, -100, 0), 2)` (shared/minitests/finance/pv.bas:3)
-- **FINANCE.PVEXT(x1, x2, x3)** — `PV = FINANCE.PVEXT(0.005, 60, -100)` (shared/samples/Trading/FinanceExtendedFunctions.bas:34)
-- **FINANCE.RATE(x1, x2, x3)** — `DIM TassoCalc = FINANCE.RATE(3*12, -300, 10000, 0, 0) * 12` (shared/samples/Finance/FinanceGeneralTests.bas:46)
-- **FINANCE.SLN(x1, x2, x3)** — `MATH.ROUND(FINANCE.SLN(costo, valoreResiduo, anni), 2); "   "; _` (shared/samples/Finance/InvestimentoFurgone.bas:32)
-- **FINANCE.SYD(x1, x2, x3, x4)** — `MATH.ROUND(FINANCE.SYD(costo, valoreResiduo, anni, a), 2); "   "; _` (shared/samples/Finance/InvestimentoFurgone.bas:33)
-- **FINANCE.XIRR(x1, x2)** — `xr = FINANCE.XIRR(flussi, dateFlussi, 0.1)` (shared/samples/Finance/InvestimentoFurgone.bas:84)
-- **FINANCE.XNPV(x1, x2, x3)** — `PRINT "XNPV @8%:          "; MATH.ROUND(FINANCE.XNPV(0.08, flussi, dateFlussi), 2); " EUR"` (shared/samples/Finance/InvestimentoFurgone.bas:86)
-- **FINANCE.YEARFRAC(x1, x2)** — `PRINT "YearFrac (30/360): "; MATH.ROUND(FINANCE.YEARFRAC(StartD, EndD, 0), 4)` (shared/samples/Finance/FinanceGeneralTests.bas:107)
-- **SIGNAL.BLACKMAN(x1)** — `DIM b() = SIGNAL.BLACKMAN(4)` (shared/samples/Math/SignalSciPyParity.bas:14)
-- **SIGNAL.BUTTER(x1, x2, x3)** — `h = SIGNAL.BUTTER(2, wn, "low")` (shared/samples/Math/SignalFiltersSciPyParity.bas:9)
-- **SIGNAL.CHEBY1(x1, x2, x3, x4)** — `h3 = SIGNAL.CHEBY1(2, 1.0, wn, "low")` (shared/samples/Math/SignalFiltersSciPyParity.bas:23)
-- **SIGNAL.CHEBY2(x1, x2, x3, x4)** — `h4 = SIGNAL.CHEBY2(2, 20.0, wn, "low")` (shared/samples/Math/SignalFiltersSciPyParity.bas:26)
-- **SIGNAL.CONVOLVE(x1, x2)** — `DIM c() = SIGNAL.CONVOLVE(x, k)` (shared/samples/Math/SignalSciPyParity.bas:10)
-- **SIGNAL.CORRELATE(x1, x2)** — `DIM r() = SIGNAL.CORRELATE(x, k)` (shared/samples/Math/SignalSciPyParity.bas:11)
-- **SIGNAL.DECIMATE(x1, x2)** — `DIM dc() = SIGNAL.DECIMATE(n, 4)` (shared/samples/Math/SciPyP1Parity.bas:27)
-- **SIGNAL.ELLIP(x1, x2, x3, x4, x5)** — `h2 = SIGNAL.ELLIP(3, 1.0, 20.0, wn, "low")` (shared/samples/Math/SignalFiltersSciPyParity.bas:18)
-- **SIGNAL.FILTFILT(x1, x2)** — `DIM z() = SIGNAL.FILTFILT(h, x)` (shared/samples/Math/SignalFiltersSciPyParity.bas:12)
-- **SIGNAL.FINDPEAKS(x1, x2)** — `DIM pk() = SIGNAL.FINDPEAKS(sig, 1)` (shared/samples/Math/SignalIntegrateP0Parity.bas:14)
-- **SIGNAL.FIRWIN(x1, x2, x3, x4)** — `DIM taps() = SIGNAL.FIRWIN(11, fc, "lowpass", "hann")` (shared/samples/Math/SignalIntegrateP0Parity.bas:8)
-- **SIGNAL.FREQZ(x1, x2)** — `DIM m() = SIGNAL.FREQZ(h, 8)` (shared/samples/Math/SignalFiltersSciPyParity.bas:14)
-- **SIGNAL.HAMMING(x1)** — `DIM m() = SIGNAL.HAMMING(4)` (shared/samples/Math/SignalSciPyParity.bas:13)
-- **SIGNAL.HANN(x1)** — `DIM h() = SIGNAL.HANN(4)` (shared/samples/Math/SignalSciPyParity.bas:12)
-- **SIGNAL.LFILTER(x1, x2)** — `DIM y() = SIGNAL.LFILTER(h, x)` (shared/samples/Math/SignalFiltersSciPyParity.bas:10)
-- **SIGNAL.RESAMPLE(x1, x2)** — `DIM rs() = SIGNAL.RESAMPLE(n, 128)` (shared/samples/Math/SciPyP1Parity.bas:23)
-- **SIGNAL.SAVGOLFILTER(x1, x2, x3)** — `DIM sg() = SIGNAL.SAVGOLFILTER(q, 9, 2)` (shared/samples/Math/SciPyP1Parity.bas:18)
-- **SIGNAL.WELCH(x1, x2, x3)** — `w = SIGNAL.WELCH(n, 64, 1.0)` (shared/samples/Math/SciPyP1Parity.bas:11)
-<!-- END DOMAIN TABLE -->

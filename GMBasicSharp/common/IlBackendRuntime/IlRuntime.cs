@@ -2061,38 +2061,6 @@ public static partial class IlRuntime
     // (Fase 1 del piano), verificato di nuovo qui prima di rimuovere il bypass: CommonLib ora
     // chiama NegativeBinomial.PMF(r, p, k) correttamente, stessa validazione (r>0, 0≤p≤1).
 
-    // FINANCE: ogni entry point riceve la forma completa della firma BASIC; il
-    // compilatore IL materializza i default opzionali prima della call diretta.
-    public static double Pmt(double rate, double nper, double pv, double fv, double type) => (double)CommonLib.Numerics.PmtExt((decimal)rate, (decimal)nper, (decimal)pv, (decimal)fv, (int)type);
-    public static double Fv(double rate, double nper, double pmt, double pv, double type) => (double)CommonLib.Numerics.FvExt((decimal)rate, (decimal)nper, (decimal)pmt, (decimal)pv, (int)type);
-    public static double Pv(double rate, double nper, double pmt, double fv, double type) => (double)CommonLib.Numerics.PvExt((decimal)rate, (decimal)nper, (decimal)pmt, (decimal)fv, (int)type);
-    public static double Nper(double rate, double pmt, double pv, double fv, double type) => CommonLib.Numerics.NperExt(rate, pmt, pv, fv, (int)type);
-    public static double Rate(double nper, double pmt, double pv, double fv, double type, double guess) => CommonLib.Numerics.Rate(nper, pmt, pv, fv, (int)type, guess);
-    // CUMIPMT/CUMPRINC/DB/XIRR/PRICE/DURATION (Fase 9): forward a
-    // Basic.StdLibRuntime.FinanceFunctions (stesso ordine argomenti, verificato — nessuna
-    // permutazione). Le altre funzioni FINANCE qui sotto (SLN/SYD/DDB/NPV/IRR/MIRR/XNPV) restano
-    // dispatchate direttamente su CommonLib.Numerics: non hanno un equivalente in StdLib.Runtime
-    // (erano già dispatchate inline nel main switch della VM prima di questo piano, non nel
-    // cluster dead-file — vedi testata StdLib.Runtime.Finance.cs).
-    public static double Cumipmt(double rate, double nper, double pv, double startPeriod, double endPeriod, double type) => (double)Basic.StdLibRuntime.FinanceFunctions.Cumipmt((decimal)rate, (decimal)nper, (decimal)pv, (int)startPeriod, (int)endPeriod, (int)type);
-    public static double Cumprinc(double rate, double nper, double pv, double startPeriod, double endPeriod, double type) => (double)Basic.StdLibRuntime.FinanceFunctions.Cumprinc((decimal)rate, (decimal)nper, (decimal)pv, (int)startPeriod, (int)endPeriod, (int)type);
-    public static double Sln(double cost, double salvage, double life) => (double)CommonLib.Numerics.Sln((decimal)cost, (decimal)salvage, (decimal)life);
-    public static double Syd(double cost, double salvage, double life, double period) => (double)CommonLib.Numerics.Syd((decimal)cost, (decimal)salvage, (decimal)life, (decimal)period);
-    public static double Db(double cost, double salvage, double life, double period, double month) => (double)Basic.StdLibRuntime.FinanceFunctions.Db((decimal)cost, (decimal)salvage, (decimal)life, (decimal)period, (int)month);
-    public static double Ddb(double cost, double salvage, double life, double period, double factor) => (double)CommonLib.Numerics.Ddb((decimal)cost, (decimal)salvage, (decimal)life, (decimal)period, factor);
-    public static double Npv(double rate, double[] values) => CommonLib.Numerics.Npv(rate, values);
-    public static double Irr(double[] values, double guess) => CommonLib.Numerics.Irr(values, guess);
-    public static double Mirr(double[] values, double financeRate, double reinvestRate) => CommonLib.Numerics.Mirr(values, financeRate, reinvestRate);
-    public static double Xnpv(double rate, double[] values, DateTime[] dates) => CommonLib.Numerics.Xnpv(rate, values, dates);
-    public static double Xirr(double[] values, DateTime[] dates, double guess) => Basic.StdLibRuntime.FinanceFunctions.Xirr(values, dates, guess);
-    public static double Price(DateTime settlement, DateTime maturity, double rate, double yld, double redemption, double frequency, double basis) => Basic.StdLibRuntime.FinanceFunctions.Price(settlement, maturity, rate, yld, redemption, (int)frequency, (int)basis);
-    public static double Duration(DateTime settlement, DateTime maturity, double coupon, double yld, double frequency, double basis) => Basic.StdLibRuntime.FinanceFunctions.Duration(settlement, maturity, coupon, yld, (int)frequency, (int)basis);
-    /// <summary>BND.DURATION (variante Bonds, 7 argomenti): l'ultimo è il calc-method, ignorato —
-    /// si delega alla funzione standard (il 7° non altera il calcolo per i metodi base).</summary>
-    public static double Duration7(DateTime settlement, DateTime maturity, double coupon, double yld, double frequency, double basis, double calcMethod)
-        => Basic.StdLibRuntime.FinanceFunctions.Duration(settlement, maturity, coupon, yld, (int)frequency, (int)basis);
-    public static double YearFrac(DateTime start, DateTime end, double basis) => CommonLib.Numerics.YearFrac(start, end, (int)basis);
-    public static double Days360(DateTime start, DateTime end, bool european) => CommonLib.Numerics.Days360(start, end, european);
 
     // TIMESERIES (Fase 9, docs/StdLib-Runtime-Plan.md): il calcolo vero ora vive in
     // Basic.StdLibRuntime.TimeSeriesFunctions (stessa firma/ordine argomenti di CommonLib.Numerics,
@@ -8434,20 +8402,6 @@ public static double TextWidth(string s)
         try { return Current.Graphics.Point((int)x, (int)y); } catch { return -1.0; }
     }
 
-    public static double FvExt(double rate, double nper, double pmt, double pv, double type) => (double)CommonLib.Numerics.FvExt((decimal)rate, (decimal)nper, (decimal)pmt, (decimal)pv, (int)type);
-    public static double PvExt(double rate, double nper, double pmt, double fv, double type) => (double)CommonLib.Numerics.PvExt((decimal)rate, (decimal)nper, (decimal)pmt, (decimal)fv, (int)type);
-    public static double PmtExt(double rate, double nper, double pv, double fv, double type) => (double)CommonLib.Numerics.PmtExt((decimal)rate, (decimal)nper, (decimal)pv, (decimal)fv, (int)type);
-    public static double NperExt(double rate, double pmt, double pv, double fv, double type) => CommonLib.Numerics.NperExt(rate, pmt, pv, fv, (int)type);
-
-    public static double Mnpv(double rate, double[] cashflows)
-    {
-        // Stessa implementazione del P-Code VM (case BuiltInFunction.MNPV).
-        if (cashflows is null) return 0.0;
-        double npv = 0;
-        for (int i = 0; i < cashflows.Length; i++) npv += cashflows[i] / Math.Pow(1 + rate, i + 1);
-        return npv;
-    }
-
     /// <summary>LEN su oggetto dinamico (campo FetchResult/JSON boxed): stringa → Length,
     /// IList/Array → Count, numerico → numero di cifre (come la VM).</summary>
     public static long Len(object? value)
@@ -8497,8 +8451,8 @@ public static double TextWidth(string s)
         else if (coll is System.Collections.IDictionary d) d.Add(key!, value);
     }
 
-    public static double PriceSimple(double settlement, double maturity, double rate, double yld, double redemption, double freq)
-    { try { return CommonLib.Numerics.PriceSimple(DateTime.FromOADate(settlement), DateTime.FromOADate(maturity), rate, yld, redemption, (int)freq); } catch { return 0.0; } }
+    // PriceSimple era il forward a CommonLib.Numerics.Finance (archiviato): la superficie
+    // PRICE è stata rimossa con la migrazione FINANCE/BONDS a FFI.
 
     // ── MEMORY interno (BSP state provider; NON è più la superficie MEMORY.*) ──
     // La superficie di linguaggio MEMORY.STORE/LOAD/SEARCH/LIST/DELETE è nella lib

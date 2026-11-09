@@ -29,7 +29,6 @@ static const gmb_ambiguous_t gmb_ambiguous[] = {
     { "DELETE", "HTTP, MEMORY, RDD, SYNCMAP" },
     { "DELETED", "DBF, ISAM" },
     { "DTOC", "DATETIME, RDD" },
-    { "DURATION", "FINANCE, TRADING.BONDS" },
     { "EMBED", "AI, VECTORDB" },
     { "ENDGROUPCOMMIT", "DBF, SPEED" },
     { "ENSURECOLLECTION", "AI, VECTORDB" },

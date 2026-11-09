@@ -502,25 +502,6 @@ public sealed partial class IlProgramCompiler
             // StdLib.Runtime.HypergeometricPmf(populationSize, successStates, draws, k=x) — TUTTI
             // e 4 i parametri sono int in StdLib.Runtime, non solo k.
             case TokenKind.HypergeometricPmf: EmitPmfBuiltinCall(expr, IlRuntimeHypergeometricPmfMethod, 4, [(1, true), (2, true), (3, true), (0, true)]); break;
-            case TokenKind.Pmt: EmitFinanceNumericCall(expr, nameof(IlRuntime.Pmt), 5, 0, 0); break;
-            case TokenKind.Fv: EmitFinanceNumericCall(expr, nameof(IlRuntime.Fv), 5, 0, 0); break;
-            case TokenKind.Pv: EmitFinanceNumericCall(expr, nameof(IlRuntime.Pv), 5, 0, 0); break;
-            case TokenKind.Nper: EmitFinanceNumericCall(expr, nameof(IlRuntime.Nper), 5, 0, 0); break;
-            case TokenKind.Rate: EmitFinanceNumericCall(expr, nameof(IlRuntime.Rate), 6, 0, 0, 0.1); break;
-            case TokenKind.Cumipmt: EmitFinanceNumericCall(expr, nameof(IlRuntime.Cumipmt), 6); break;
-            case TokenKind.Cumprinc: EmitFinanceNumericCall(expr, nameof(IlRuntime.Cumprinc), 6); break;
-            case TokenKind.Sln: EmitFinanceNumericCall(expr, nameof(IlRuntime.Sln), 3); break;
-            case TokenKind.Syd: EmitFinanceNumericCall(expr, nameof(IlRuntime.Syd), 4); break;
-            case TokenKind.Db: EmitFinanceNumericCall(expr, nameof(IlRuntime.Db), 5, 12); break;
-            case TokenKind.Ddb: EmitFinanceNumericCall(expr, nameof(IlRuntime.Ddb), 5, 2); break;
-            case TokenKind.Npv: EmitFinanceNpvCall(expr); break;
-            case TokenKind.Irr: EmitFinanceArrayDoubleCall(expr, nameof(IlRuntime.Irr), 0.1); break;
-            case TokenKind.Mirr: EmitFinanceArrayDoubleDoubleCall(expr, nameof(IlRuntime.Mirr)); break;
-            case TokenKind.Xnpv: EmitFinanceXnpvCall(expr); break;
-            case TokenKind.Xirr: EmitFinanceXirrCall(expr); break;
-            case TokenKind.Price: EmitFinanceDateDateNumericCall(expr, nameof(IlRuntime.Price), 4, 0); break;
-            case TokenKind.YearFrac: EmitFinanceDateDateNumericCall(expr, nameof(IlRuntime.YearFrac), 0, 0); break;
-            case TokenKind.Days360: EmitDays360Call(expr); break;
             case TokenKind.MovingAverage: EmitTimeSeriesArrayLongCall(expr, nameof(IlRuntime.MovingAverage)); break;
             case TokenKind.EMA: EmitTimeSeriesArrayLongCall(expr, nameof(IlRuntime.Ema)); break;
             case TokenKind.RollingStdDev: EmitTimeSeriesArrayLongCall(expr, nameof(IlRuntime.RollingStdDev)); break;
@@ -656,11 +637,6 @@ public sealed partial class IlProgramCompiler
             case TokenKind.Make: EmitDoubleArityBuiltinCall(expr, RuntimeMethod(nameof(IlRuntime.KeyMake)), 2); break;
 
             // --- Categoria 6: TRADING/STAT blocco 1 ---
-            case TokenKind.FvExt: EmitFinanceNumericCall(expr, nameof(IlRuntime.FvExt), 5, 0, 0); break;
-            case TokenKind.PvExt: EmitFinanceNumericCall(expr, nameof(IlRuntime.PvExt), 5, 0, 0); break;
-            case TokenKind.PmtExt: EmitFinanceNumericCall(expr, nameof(IlRuntime.PmtExt), 5, 0, 0); break;
-            case TokenKind.NperExt: EmitFinanceNumericCall(expr, nameof(IlRuntime.NperExt), 5, 0, 0); break;
-            case TokenKind.Mnpv: EmitMnpvCall(expr); break;
             case TokenKind.Enqueue: EmitObjectArgsCall(expr, nameof(IlRuntime.Enqueue), 2); break;
             case TokenKind.Dequeue: EmitObjectArgsCall(expr, nameof(IlRuntime.Dequeue), 1); break;
             case TokenKind.First: EmitObjectArgsCall(expr, nameof(IlRuntime.First), 1); break;

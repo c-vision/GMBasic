@@ -354,6 +354,7 @@ assorbita (non si stampa due volte).
 
 - `Signal-Manual` — capitolo
 - `Blockchain-Guida-Utente` — sezione
+- `FINANCE-Guida-Utente` — sezione
 - `Signals-Guida-Utente` — sezione
 - `TimeSeries-Guida-Utente` — sezione
 - `Trading-Bonds-Guida-Utente` — sezione

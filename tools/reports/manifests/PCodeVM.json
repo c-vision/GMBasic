@@ -3,10 +3,10 @@
   "superficie": "BuiltInFunction (enum, funzioni)",
   "file_enum": "common/Compiler/BuiltInFunction.cs",
   "file_dispatch": "common/IlBackendRuntime/PCode/PCodeProcessor.Builtins.cs",
-  "totale": 1725,
-  "implementate": 1551,
+  "totale": 1680,
+  "implementate": 1506,
   "non_coperte": 174,
-  "percentuale": 89.9,
+  "percentuale": 89.6,
   "non_coperte_lista": [
     "ADFTEST",
     "AESDECRYPT",

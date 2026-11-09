@@ -478,17 +478,6 @@ if (args.Length > 0) { try { var sizes = new List<int>(); foreach (var a in args
                 return scalarBytes > 0 ? scalarBytes : -1.0;
             // --- Finance ---
         },
-        [BuiltInFunction.PMT] = (task, args) =>
-        {
-                // Runtime comune (IlRuntime): CommonLib.Numerics — unica implementazione.
-                return Basic.IlBackend.IlRuntime.Pmt(
-                    args.Length > 0 ? SafeDouble(args[0] ?? 0) : 0,
-                    args.Length > 1 ? SafeDouble(args[1] ?? 0) : 0,
-                    args.Length > 2 ? SafeDouble(args[2] ?? 0) : 0,
-                    args.Length > 3 ? SafeDouble(args[3] ?? 0) : 0,
-                    args.Length > 4 ? SafeDouble(args[4] ?? 0) : 0);
-            // === FINANCE varianti (2026-08-06) ===
-        },
         [BuiltInFunction.YIELD] = (task, args) =>
         {
             {
@@ -501,14 +490,9 @@ if (args.Length > 0) { try { var sizes = new List<int>(); foreach (var a in args
                     task.YieldRequested = true;
                     return 0.0;
                 }
-                var settlement = DateTime.FromOADate(SafeDouble(args.Length > 0 ? args[0] : 0));
-                var maturity = DateTime.FromOADate(SafeDouble(args.Length > 1 ? args[1] : 0));
-                var price = args.Length > 2 ? SafeDouble(args[2] ?? 0) : 0;
-                var redemption = args.Length > 3 ? SafeDouble(args[3] ?? 0) : 0;
-                var rate = args.Length > 4 ? SafeDouble(args[4] ?? 0) : 0;
-                var frequency = args.Length > 5 ? (int)SafeDouble(args[5] ?? 0) : 1;
-                var basis = args.Length > 6 ? (int)SafeDouble(args[6] ?? 0) : 0;
-                try { return CommonLib.Numerics.Yield(settlement, maturity, price, redemption, rate, frequency, basis); } catch { return 0.0; }
+                // Il ramo bond-yield (YIELD con argomenti) è stato rimosso con la migrazione
+                // BONDS a FFI: resta solo lo YIELD() di cooperazione del GPM.
+                return 0.0;
             }
         
         },
@@ -532,103 +516,6 @@ if (args.Length > 0) { try { var sizes = new List<int>(); foreach (var a in args
                     return ClipperLib.Clipper.ClipperSet.Message();
                 }
                 catch { return ""; }
-        },
-        [BuiltInFunction.FV] = (task, args) =>
-        {
-                // Runtime comune (IlRuntime): CommonLib.Numerics — unica implementazione.
-                return Basic.IlBackend.IlRuntime.Fv(
-                    args.Length > 0 ? SafeDouble(args[0] ?? 0) : 0,
-                    args.Length > 1 ? SafeDouble(args[1] ?? 0) : 0,
-                    args.Length > 2 ? SafeDouble(args[2] ?? 0) : 0,
-                    args.Length > 3 ? SafeDouble(args[3] ?? 0) : 0,
-                    args.Length > 4 ? SafeDouble(args[4] ?? 0) : 0);
-        },
-        [BuiltInFunction.PV] = (task, args) =>
-        {
-                return Basic.IlBackend.IlRuntime.Pv(
-                    args.Length > 0 ? SafeDouble(args[0] ?? 0) : 0,
-                    args.Length > 1 ? SafeDouble(args[1] ?? 0) : 0,
-                    args.Length > 2 ? SafeDouble(args[2] ?? 0) : 0,
-                    args.Length > 3 ? SafeDouble(args[3] ?? 0) : 0,
-                    args.Length > 4 ? SafeDouble(args[4] ?? 0) : 0);
-        },
-        [BuiltInFunction.NPER] = (task, args) =>
-        {
-                return Basic.IlBackend.IlRuntime.Nper(
-                    args.Length > 0 ? SafeDouble(args[0] ?? 0) : 0,
-                    args.Length > 1 ? SafeDouble(args[1] ?? 0) : 0,
-                    args.Length > 2 ? SafeDouble(args[2] ?? 0) : 0,
-                    args.Length > 3 ? SafeDouble(args[3] ?? 0) : 0,
-                    args.Length > 4 ? SafeDouble(args[4] ?? 0) : 0);
-        },
-        [BuiltInFunction.RATE] = (task, args) =>
-        {
-                return Basic.IlBackend.IlRuntime.Rate(
-                    args.Length > 0 ? SafeDouble(args[0] ?? 0) : 0,
-                    args.Length > 1 ? SafeDouble(args[1] ?? 0) : 0,
-                    args.Length > 2 ? SafeDouble(args[2] ?? 0) : 0,
-                    args.Length > 3 ? SafeDouble(args[3] ?? 0) : 0,
-                    args.Length > 4 ? SafeDouble(args[4] ?? 0) : 0,
-                    args.Length > 5 ? SafeDouble(args[5] ?? 0.1) : 0.1);
-        },
-        [BuiltInFunction.IRR] = (task, args) =>
-        {
-                // Runtime comune (IlRuntime): CommonLib.Numerics — unica implementazione.
-                return Basic.IlBackend.IlRuntime.Irr(
-                    ToDoubleArr(args.Length > 0 ? args[0] : null),
-                    args.Length > 1 ? SafeDouble(args[1] ?? 0.1) : 0.1);
-        },
-        [BuiltInFunction.NPV] = (task, args) =>
-        {
-                return Basic.IlBackend.IlRuntime.Npv(
-                    args.Length > 0 ? SafeDouble(args[0] ?? 0) : 0,
-                    ToDoubleArr(args.Length > 1 ? args[1] : null));
-        },
-        [BuiltInFunction.XNPV] = (task, args) =>
-        {
-            {
-                // XNPV(rate, values, dates): le DATE venivano scartate (si chiamava Npv senza
-                // pesatura sulle date) — risultato diverso da IL/StdLib.
-                var xrate = args.Length > 0 ? SafeDouble(args[0] ?? 0) : 0;
-                var xvalues = ToDoubleArr(args.Length > 1 ? args[1] : null);
-                var xdates = new List<System.DateTime>();
-                if (args.Length > 2 && args[2] is System.Collections.IEnumerable dateEnum)
-                    foreach (var d in dateEnum) xdates.Add(ToDateTime(d));
-                return Basic.IlBackend.IlRuntime.Xnpv(xrate, xvalues, xdates.ToArray());
-            }
-        },
-        [BuiltInFunction.MIRR] = (task, args) =>
-        {
-                return Basic.IlBackend.IlRuntime.Mirr(
-                    ToDoubleArr(args.Length > 0 ? args[0] : null),
-                    args.Length > 1 ? SafeDouble(args[1] ?? 0) : 0,
-                    args.Length > 2 ? SafeDouble(args[2] ?? 0) : 0);
-        },
-        [BuiltInFunction.SLN] = (task, args) =>
-        {
-                return Basic.IlBackend.IlRuntime.Sln(
-                    args.Length > 0 ? SafeDouble(args[0] ?? 0) : 0,
-                    args.Length > 1 ? SafeDouble(args[1] ?? 0) : 0,
-                    args.Length > 2 ? SafeDouble(args[2] ?? 1) : 1);
-        },
-        [BuiltInFunction.SYD] = (task, args) =>
-        {
-                return Basic.IlBackend.IlRuntime.Syd(
-                    args.Length > 0 ? SafeDouble(args[0] ?? 0) : 0,
-                    args.Length > 1 ? SafeDouble(args[1] ?? 0) : 0,
-                    args.Length > 2 ? SafeDouble(args[2] ?? 1) : 1,
-                    args.Length > 3 ? SafeDouble(args[3] ?? 1) : 1);
-        },
-        [BuiltInFunction.DDB] = (task, args) =>
-        {
-                // Runtime comune (IlRuntime): CommonLib.Numerics — unica implementazione.
-                return Basic.IlBackend.IlRuntime.Ddb(
-                    args.Length > 0 ? SafeDouble(args[0] ?? 0) : 0,
-                    args.Length > 1 ? SafeDouble(args[1] ?? 0) : 0,
-                    args.Length > 2 ? SafeDouble(args[2] ?? 1) : 1,
-                    args.Length > 3 ? SafeDouble(args[3] ?? 1) : 1,
-                    args.Length > 4 ? SafeDouble(args[4] ?? 2) : 2);
-            // Conversioni numeriche
         },
         [BuiltInFunction.CINT] = (task, args) =>
         {
@@ -978,16 +865,6 @@ if (args.Length > 0) { try { var sizes = new List<int>(); foreach (var a in args
         {
                 if (args.Length > 0) { try { return Basic.IlBackend.IlRuntime.UnixTimestamp(DateTime.FromOADate(SafeDouble(args[0]))); } catch { return 0.0; } }
                 return Basic.IlBackend.IlRuntime.UnixTimestamp(DateTime.UtcNow);
-        },
-        [BuiltInFunction.DAYS360] = (task, args) =>
-        {
-                if (args.Length >= 2) { try { return Basic.IlBackend.IlRuntime.Days360(DateTime.FromOADate(SafeDouble(args[0])), DateTime.FromOADate(SafeDouble(args[1])), false); } catch { return 0.0; } }
-                return 0.0;
-        },
-        [BuiltInFunction.YEARFRAC] = (task, args) =>
-        {
-                if (args.Length >= 2) { try { return Basic.IlBackend.IlRuntime.YearFrac(DateTime.FromOADate(SafeDouble(args[0])), DateTime.FromOADate(SafeDouble(args[1])), args.Length > 2 ? SafeDouble(args[2]) : 0); } catch { return 0.0; } }
-                return 0.0;
         },
         [BuiltInFunction.APPPATHFUNC] = (task, args) =>
         {
@@ -1432,32 +1309,6 @@ if (args.Length >= 2) { var file = args[0]?.ToString() ?? ""; var section = args
                     }
                 }
                 return null;
-        },
-        [BuiltInFunction.FVEXT] = (task, args) =>
-        {
-                if (args.Length >= 1) return (double)CommonLib.Numerics.FvExt((decimal)SafeDouble(args[0]), (decimal)SafeDouble(ArgOr(args,1)), (decimal)SafeDouble(ArgOr(args,2)), (decimal)SafeDouble(ArgOr(args,3)), (int)SafeDouble(ArgOr(args,4)));
-                return 0.0;
-        },
-        [BuiltInFunction.PVEXT] = (task, args) =>
-        {
-                if (args.Length >= 1) return (double)CommonLib.Numerics.PvExt((decimal)SafeDouble(args[0]), (decimal)SafeDouble(ArgOr(args,1)), (decimal)SafeDouble(ArgOr(args,2)), (decimal)SafeDouble(ArgOr(args,3)), (int)SafeDouble(ArgOr(args,4)));
-                return 0.0;
-        },
-        [BuiltInFunction.PMTEXT] = (task, args) =>
-        {
-                if (args.Length >= 1) return (double)CommonLib.Numerics.PmtExt((decimal)SafeDouble(args[0]), (decimal)SafeDouble(ArgOr(args,1)), (decimal)SafeDouble(ArgOr(args,2)), (decimal)SafeDouble(ArgOr(args,3)), (int)SafeDouble(ArgOr(args,4)));
-                return 0.0;
-        },
-        [BuiltInFunction.NPEREXT] = (task, args) =>
-        {
-                if (args.Length >= 1) return CommonLib.Numerics.NperExt(SafeDouble(args[0]), SafeDouble(ArgOr(args,1)), SafeDouble(ArgOr(args,2)), SafeDouble(ArgOr(args,3)), (int)SafeDouble(ArgOr(args,4)));
-                return 0.0;
-        },
-        [BuiltInFunction.MNPV] = (task, args) =>
-        {
-                // Runtime comune (IlRuntime): stessa implementazione — unica soluzione.
-                if (args.Length >= 2 && args[1] is System.Collections.IList cf2) return Basic.IlBackend.IlRuntime.Mnpv(SafeDouble(args[0]), ToDoubleArr(cf2));
-                return 0.0;
         },
         [BuiltInFunction.CONN] = (task, args) =>
         {
@@ -3308,19 +3159,6 @@ if (args.Length >= 3) { var file = args[0]?.ToString() ?? ""; var section = args
         {
                 return Basic.IlBackend.IlRuntime.EnvHas(ArgOr(args, 0)?.ToString());
         },
-        [BuiltInFunction.CUMIPMT] = (task, args) =>
-        {
-                // Runtime comune (IlRuntime): stessa logica — unica implementazione.
-                return Basic.IlBackend.IlRuntime.Cumipmt(SafeDouble(ArgOr(args, 0)), SafeDouble(ArgOr(args, 1)), SafeDouble(ArgOr(args, 2)), SafeDouble(ArgOr(args, 3)), SafeDouble(ArgOr(args, 4)), SafeDouble(ArgOr(args, 5)));
-        },
-        [BuiltInFunction.CUMPRINC] = (task, args) =>
-        {
-                return Basic.IlBackend.IlRuntime.Cumprinc(SafeDouble(ArgOr(args, 0)), SafeDouble(ArgOr(args, 1)), SafeDouble(ArgOr(args, 2)), SafeDouble(ArgOr(args, 3)), SafeDouble(ArgOr(args, 4)), SafeDouble(ArgOr(args, 5)));
-        },
-        [BuiltInFunction.DB] = (task, args) =>
-        {
-                return (double)Basic.StdLibRuntime.FinanceFunctions.Db((decimal)SafeDouble(ArgOr(args, 0)), (decimal)SafeDouble(ArgOr(args, 1)), (decimal)SafeDouble(ArgOr(args, 2)), (decimal)SafeDouble(ArgOr(args, 3)), (int)SafeDouble(ArgOr(args, 4)));
-        },
         [BuiltInFunction.DECOMPOSE] = (task, args) =>
         {
             {
@@ -3575,10 +3413,6 @@ if (args.Length >= 3) { var file = args[0]?.ToString() ?? ""; var section = args
         [BuiltInFunction.POISSONPMF] = (task, args) =>
         {
                 return Basic.StdLibRuntime.MathFunctions.PoissonPmf(SafeDouble(args.Length > 1 ? args[1] : null), (int)SafeDouble(args.Length > 0 ? args[0] : null));
-        },
-        [BuiltInFunction.PRICE] = (task, args) =>
-        {
-                return Basic.StdLibRuntime.FinanceFunctions.Price(ToDateTime(ArgOr(args, 0)), ToDateTime(ArgOr(args, 1)), SafeDouble(ArgOr(args, 2)), SafeDouble(ArgOr(args, 3)), SafeDouble(ArgOr(args, 4)), (int)SafeDouble(ArgOr(args, 5)), (int)SafeDouble(ArgOr(args, 6)));
         },
         [BuiltInFunction.RETURNS] = (task, args) =>
         {
@@ -4045,15 +3879,6 @@ if (args.Length >= 3) { var file = args[0]?.ToString() ?? ""; var section = args
         [BuiltInFunction.WEIBULLPDF] = (task, args) =>
         {
                 return Basic.StdLibRuntime.MathFunctions.WeibullPdf(SafeDouble(args.Length > 2 ? args[1] : null), SafeDouble(args.Length > 2 ? args[2] : null), SafeDouble(args.Length > 0 ? args[0] : null));
-        },
-        [BuiltInFunction.XIRR] = (task, args) =>
-        {
-            {
-                var values = ToDoubleArr(ArgOr(args, 0));
-                var dates = ToDateTimeArr(ArgOr(args, 1));
-                var guess = SafeDouble(ArgOr(args, 2));
-                return Basic.StdLibRuntime.FinanceFunctions.Xirr(values, dates, guess);
-            }
         },
         [BuiltInFunction.CONVDOC] = (task, args) =>
         {

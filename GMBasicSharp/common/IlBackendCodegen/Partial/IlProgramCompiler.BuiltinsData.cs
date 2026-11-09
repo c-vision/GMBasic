@@ -223,23 +223,6 @@ public sealed partial class IlProgramCompiler
 
     /// <summary>MINCVAR(rets[], conf, rf): array di DOUBLE + due double.</summary>
 
-    /// <summary>DURATION: 5-6 argomenti (Finance) oppure 7 (variante BND/Bonds, ultimo = calcMethod).
-    /// Entrambe le varianti mappano su una firma runtime a 6 parametri; la 7a (calcMethod)
-    /// si ignora (i metodi base non la usano).</summary>
-    private void EmitDurationCall(BuiltinFunctionCallExpr expr)
-    {
-        if (expr.Args.Length is < 5 or > 7)
-            throw new NotSupportedException($"Backend IL: {expr.OriginalToken.Lexeme} richiede da 5 a 7 argomenti.");
-        var hasCalcMethod = expr.Args.Length == 7;
-        var methodName = hasCalcMethod ? nameof(IlRuntime.Duration7) : nameof(IlRuntime.Duration);
-        EmitExpression(expr.Args[0]);
-        EmitExpression(expr.Args[1]);
-        for (var i = 2; i < Math.Min(expr.Args.Length, 6); i++) EmitDoubleArgument(expr.Args[i]);
-        for (var i = expr.Args.Length; i < 6; i++) _il.Emit(OpCodes.Ldc_R8, 0.0);
-        if (hasCalcMethod) EmitDoubleArgument(expr.Args[6]);
-        _il.Emit(OpCodes.Call, RuntimeMethod(methodName));
-    }
-
     /// <summary>AIVECTOR.RERANK(query, resultsJson, topK): IlRuntime.AiVectorRerank(string, string, double).</summary>
     private void EmitAiVectorRerankCall(BuiltinFunctionCallExpr expr)
     {
