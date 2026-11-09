@@ -589,7 +589,8 @@ public sealed partial class IlProgramCompiler
         // (CbRef1D, firma T[]&) mentre IlRuntime.Tpe vuole Func<double[],double>.
         if (expr.Args[0] is FunctionReferenceExpr fr
             && _program.Symbols.GetSymbol(fr.SymbolId).DeclarationNode is FunctionDefinition fd
-            && TryRefDelegateType(fd) is { } refDel)
+            && TryRefDelegateType(fd) is { } refDel
+            && EmitsRefCallbackDelegate(fd))
             EmitRefCallbackAdapter(refDel);
         EmitDoubleArrayArgument(expr.Args[1]);
         EmitDoubleArrayArgument(expr.Args[2]);

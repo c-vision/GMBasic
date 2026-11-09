@@ -1248,7 +1248,8 @@ public sealed partial class IlProgramCompiler
                     if (expr.Args[i] is FunctionReferenceExpr frArg
                         && paramType is FunctionPointerType
                         && _program.Symbols.GetSymbol(frArg.SymbolId).DeclarationNode is FunctionDefinition fdArg
-                        && TryRefDelegateType(fdArg) is { } refDelArg)
+                        && TryRefDelegateType(fdArg) is { } refDelArg
+                        && EmitsRefCallbackDelegate(fdArg))
                         EmitRefCallbackAdapter(refDelArg);
                 }
                 // Coerce dell'argomento al tipo del PARAMETRO: n (double da un FOR EACH su
@@ -2128,20 +2129,20 @@ public sealed partial class IlProgramCompiler
     private void EmitFfiCallbackFunctionReference(FunctionReferenceExpr fre)
     {
         // Il percorso generico (EmitFunctionReference) sceglie automaticamente il delegate
-        // `ref` quando la FUNCTION ha parametri array: qui basta delegare.
-        EmitFunctionReference(fre);
+        // `ref` quando la FUNCTION ha parametri array: qui delega in modalità FFI (ABI C).
+        EmitFunctionReference(fre, ffiCallbackShape: true);
     }
 
     /// <summary>Delegate dedicato con parametri `ref` per una FUNCTION con array (null se la
     /// forma non e' una di quelle coperte).</summary>
     private Type? TryRefDelegateType(FunctionDefinition fd)
     {
-        int nArr = fd.Parameters.Count(p => p.Flags.HasFlag(SymbolFlags.IsArray));
+        int nArr = fd.Parameters.Count(p => p.Flags.HasFlag(SymbolFlags.IsArray) || p.DataType is ArrayType);
         if (nArr == 0 || nArr > 2) return null;
         int nSca = fd.Parameters.Length - nArr;
         var retClr = DataTypeMapper.Map(NormalizeInferredType(fd.ReturnType), _types, _classTypes);
         bool isLong = retClr == typeof(long) || retClr == typeof(int) || retClr == typeof(short);
-        bool isArr = retClr == typeof(double[]);
+        bool isArr = retClr.IsArray && retClr.GetElementType() == _types.Double;
         return (nArr, nSca, isLong, isArr) switch
         {
             (1, 0, false, false) => typeof(FfiRefCallbackTypes.CbRef1D),

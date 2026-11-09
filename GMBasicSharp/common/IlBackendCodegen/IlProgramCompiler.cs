@@ -31,6 +31,20 @@ namespace Basic.IlBackend;
 /// </summary>
 public sealed partial class IlProgramCompiler
 {
+    /// <summary>
+    /// TypeBuilder del tipo `GeneratedProgram` per il programma in compilazione. Serve a
+    /// definire i THUNK dei callback (vedi <see cref="CreateCallbackThunk"/>): una FUNCTION
+    /// BASIC con parametri array ha la firma `T[]&amp;` (BYREF implicito, parser) mentre i
+    /// delegate dei builtin (Func/Action) sono by-value. Il thunk ha la firma by-value del
+    /// delegate e inoltra per indirizzo al metodo reale. Weak table: la stessa istanza di
+    /// BasicProgram può essere ricompilata (REPL/BSP) e non deve trattenere il TypeBuilder.
+    /// </summary>
+    private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<BasicProgram, TypeBuilder>
+        _programTypeBuilders = new();
+
+    /// <summary>Contatore globale per i nomi dei thunk di callback (unici nel tipo).</summary>
+    private static int _callbackThunkSeq;
+
     private readonly BasicProgram _program;
     private readonly ILGenerator _il;
     private readonly IlTypeContext _types;

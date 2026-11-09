@@ -1482,7 +1482,22 @@ private void EmitBrowserHumanScrollCall(BuiltinFunctionCallExpr expr)
         throw new NotSupportedException($"Backend IL: FunctionReferenceExpr '{fre.OriginalToken.Lexeme}' (callback) non ancora supportata.");
     }
 
-    private void EmitFunctionReference(FunctionReferenceExpr expr)
+    /// <summary>True se <see cref="EmitFunctionReference"/> per questa FUNCTION emette il
+    /// delegate `ref` di FfiRefCallbackTypes (e non il thunk by-value/<c>Func</c>). Serve ai
+    /// call-site che applicano <see cref="EmitRefCallbackAdapter"/>: l'adattatore va emesso
+    /// SOLO se sullo stack c'è davvero il delegate `ref`.</summary>
+    private bool EmitsRefCallbackDelegate(FunctionDefinition fd)
+    {
+        if (!_procedureMethods.TryGetValue(fd.SymbolId, out var m)) return true;
+        // Non statica (closure): CreateCallbackThunk non è applicabile → fallback al ref.
+        if (!m.IsStatic) return true;
+        if (!fd.Parameters.Any(p => p.Flags.HasFlag(SymbolFlags.IsByRef) || p.DataType is ArrayType))
+            return false;
+        // Thunk disponibile (TypeBuilder del programma) → EmitFunctionReference usa Func.
+        return !_programTypeBuilders.TryGetValue(_program, out _);
+    }
+
+    private void EmitFunctionReference(FunctionReferenceExpr expr, bool ffiCallbackShape = false)
     {
         // Callback per AMAP/AFILTER/AREDUCE/ACOUNT/...: la FUNCTION è già un metodo CIL
         // statico (in _procedureMethods) — costruisce il delegate Func<> con la firma CLR
@@ -1508,11 +1523,21 @@ private void EmitBrowserHumanScrollCall(BuiltinFunctionCallExpr expr)
             .Select(p => DataTypeMapper.Map(NormalizeInferredType(p.DataType), _types, _classTypes))
             .ToArray();
         var retClr = DataTypeMapper.Map(NormalizeInferredType(fd.ReturnType), _types, _classTypes);
-        // FUNCTION con parametri ARRAY (2026-11-02): il metodo ha `T[]&` (BYREF) e un delegate
-        // by-value non combacia con la firma (thunk con ABI sbagliata). Si usa un delegate
-        // dedicato con parametri `ref` (FfiRefCallbackTypes) anche fuori dall'FFI (es. una
-        // FUNCTION nominata passata a un parametro FUNCTION di una SUB).
-        Type? refDel = TryRefDelegateType(fd);
+        // FUNCTION con parametri ARRAY:
+        // - FFI (DECLARE NATIVE): il delegate deve combaciare con l'ABI C (array-first,
+        //   `T[]&`): si usa FfiRefCallbackTypes.CbRef* (2026-11-02).
+        // - Builtin (SolveIvp, LEAST SQUARES, FSOLVE, ...): il runtime aspetta Func/Action
+        //   by-value. Il metodo BASIC ha gli array `T[]&` → serve un THUNK statico by-value
+        //   che inoltra per indirizzo (vedi CreateCallbackThunk). Senza, il delegate
+        //   CbRef1S1ArrD veniva passato dove il runtime si aspetta Func<...>: l'ordine dei
+        //   parametri (array-first contro scalar-first) e il byref non combaciavano
+        //   (IndexOutOfRange in NUMERICAL.SolveIvp).
+        Type? refDel = ffiCallbackShape ? TryRefDelegateType(fd) : null;
+        MethodBuilder fnTarget = fnMethod;
+        if (refDel is null && fnMethod.IsStatic
+            && fd.Parameters.Any(p => p.Flags.HasFlag(SymbolFlags.IsByRef) || p.DataType is ArrayType))
+            fnTarget = CreateCallbackThunk(fd, fnMethod, retClr, paramClr) ?? fnMethod;
+        refDel ??= ReferenceEquals(fnTarget, fnMethod) ? TryRefDelegateType(fd) : null;
         // SUB (VoidType): callback Action<T...> — Func con retClr=void è IL illegale.
         Type delegateType = refDel ?? (retClr == _types.Void
             ? paramClr.Length switch
@@ -1565,8 +1590,38 @@ private void EmitBrowserHumanScrollCall(BuiltinFunctionCallExpr expr)
                     $"Backend IL: delegate a '{expr.OriginalToken.Lexeme}' (metodo di closure) senza istanza __context nel corpo corrente.");
             _il.Emit(OpCodes.Ldloc, closureLocal);
         }
-        _il.Emit(OpCodes.Ldftn, fnMethod);
+        _il.Emit(OpCodes.Ldftn, fnTarget);
         _il.Emit(OpCodes.Newobj, ctor);
+    }
+
+    /// <summary>
+    /// Crea (una volta per riferimento) un metodo statico con la firma BY-VALUE del delegate
+    /// (double[], double, ...) che inoltra gli argomenti per INDIRIZZO al metodo BASIC reale
+    /// (che dichiara gli array `T[]&` per il BYREF implicito del parser). È il ponte usato
+    /// quando una FUNCTION nominata con parametri array viene passata come callback a un
+    /// builtin che aspetta Func/Action: il CLR non può creare un delegate by-value su un
+    /// metodo byref (verrebbe un thunk con ABI sbagliata). Restituisce null se il TypeBuilder
+    /// del programma non è disponibile (fallback al delegate FfiRef dedicato).
+    /// </summary>
+    private MethodBuilder? CreateCallbackThunk(FunctionDefinition fd, MethodBuilder target,
+        Type retClr, Type[] paramClr)
+    {
+        if (!_programTypeBuilders.TryGetValue(_program, out var programType)) return null;
+        var seq = System.Threading.Interlocked.Increment(ref _callbackThunkSeq);
+        var thunk = programType.DefineMethod(
+            $"__cb_thunk_{fd.SymbolId}_{seq}",
+            MethodAttributes.Private | MethodAttributes.Static | MethodAttributes.HideBySig,
+            retClr, paramClr);
+        var thunkIl = thunk.GetILGenerator();
+        for (var i = 0; i < paramClr.Length; i++)
+        {
+            var byRef = MapParamClrTypeConsideringBox(
+                fd.Parameters[i], i, fd.SymbolId, _program, _types, _classTypes).IsByRef;
+            thunkIl.Emit(byRef ? OpCodes.Ldarga_S : OpCodes.Ldarg_S, (byte)i);
+        }
+        thunkIl.Emit(OpCodes.Call, target);
+        thunkIl.Emit(OpCodes.Ret);
+        return thunk;
     }
 
     private void EmitHttpFetchExpr(HttpFetchExpr expr)

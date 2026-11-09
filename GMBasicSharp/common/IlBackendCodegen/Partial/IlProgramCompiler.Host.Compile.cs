@@ -52,6 +52,10 @@ public sealed partial class IlProgramCompiler
             "GeneratedProgram",
             TypeAttributes.Public | TypeAttributes.Class | TypeAttributes.Abstract | TypeAttributes.Sealed,
             types.Object);
+        // Registra il TypeBuilder per i thunk dei callback (CreateCallbackThunk): la stessa
+        // BasicProgram può essere ricompilata, quindi si sostituisce il valore precedente.
+        _programTypeBuilders.Remove(program);
+        _programTypeBuilders.Add(program, programType);
 
         // --- Pass -1: dichiara il TIPO (TypeBuilder) di ogni INTERFACE, prima di tutto il
         // resto — un'interfaccia utente è un vero TypeBuilder CLR con

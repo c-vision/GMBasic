@@ -14832,12 +14832,18 @@ void emit_expr(ctx_t* c, gmb_expr_t* e) {
             sb_put(&c->out, "__ret");
             break;
         }
-        if (e->var && !lookup_var(c, e->var)) {
+        if (e->var && (strncmp(e->var, "__lambda_", 9) == 0 || !lookup_var(c, e->var))) {
             /* Riferimento nudo (mai una CALL: quella passa da GMB_EXPR_CALL/emit_call) al
              * NOME di una FUNCTION/SUB — valore funzione di prima classe (es. `RETURN
              * Incrementa` in CreaIncrementatore, FunctionsAdvanced.bas): costruisce un
              * gmb_fn_t (fn ptr + ctx, vedi gmb_runtime.h) invece di trattare il nome come
-             * variabile implicita. */
+             * variabile implicita.
+             * `__lambda_N` (2026-11-10): il lowering λ riscrive il nodo in un VAR col nome
+             * sintetico, ma un pass di registrazione nomi può aver creato PRIMA una
+             * variabile omonima (double) → lookup_var la trovava e la λ veniva emessa come
+             * `static gmb_double_t __lambda_N` (passata a un parametro `gmb_fn_t` =
+             * "incompatible type" su C99, es. Analysis/SolveIvp). Un nome sintetico è
+             * SEMPRE un valore-funzione: si emette il letterale gmb_fn_t, mai la variabile. */
             fn_info_t* rf = find_fn(c, e->var);
             if (rf) {
                 if (rf->is_lambda_cap) {
@@ -33273,7 +33279,13 @@ static void lambda_synth(ctx_t* c, gmb_expr_t* e) {
     int host_i = fn_index(c, c->cur_fn);
     fn_info_t* host = c->cur_fn;
     char syn[48];
-    snprintf(syn, sizeof(syn), "__lambda_%d", c->nfn);
+    /* MULTIPASS (gmb_c99_emit riemette l'AST mutato quando cambia un rango): dopo il
+     * primo pass il nodo λ è già un VAR col nome sintetico; si riusa QUEL nome, così la
+     * funzione ricreata è la stessa a cui il corpo (già riscritto) fa riferimento. */
+    if (e->kind == GMB_EXPR_VAR && e->var && strncmp(e->var, "__lambda_", 9) == 0)
+        snprintf(syn, sizeof(syn), "%s", e->var);
+    else
+        snprintf(syn, sizeof(syn), "__lambda_%d", c->nfn);
     /* raccogli i nomi (VAR) referenziati nel corpo della λ */
     namelist_t names; memset(&names, 0, sizeof(names));
     namelist_t ldim;  memset(&ldim, 0, sizeof(ldim));
@@ -33383,7 +33395,17 @@ static void lambda_synth(ctx_t* c, gmb_expr_t* e) {
     if (!c->error[0]) {
         gmb_stmt_t* fn = gmb_stmt_new(GMB_STMT_FUNCTION, e->line);
         fn->func_name = strdup(syn);
-        fn->func_params = e->lambda_params;                 /* trasferimento (zero-copy) */
+        /* COPIA dell'array dei parametri (le stringhe sono condivise col nodo λ): i campi
+         * λ restano sul nodo perché un pass successivo di gmb_c99_emit (rango cambiato)
+         * deve poter ricreare la funzione sintetica dallo stesso nodo ormai VAR. Prima
+         * erano un trasferimento zero-copy + azzeramento → al 2° pass la λ spariva del
+         * tutto dal C emesso (Analysis/SolveIvp: `gmb_solve_ivp_c99(__lambda_177, ...)`
+         * con `__lambda_177` dichiarata double e nessuna `gmb_user___lambda_177`). */
+        if (e->n_lambda_params > 0) {
+            fn->func_params = (char**)calloc((size_t)e->n_lambda_params, sizeof(char*));
+            for (int k = 0; k < e->n_lambda_params; k++)
+                fn->func_params[k] = e->lambda_params[k];
+        }
         fn->n_params = e->n_lambda_params;
         /* λ con corpo stringa (es. FN(s)=>UPPER(s) su LIST<STRING>) → ritorno stringa */
         if (!e->lambda_ret_str && e->lambda_expr && etype(c, e->lambda_expr) == TY_STR)
@@ -33392,14 +33414,15 @@ static void lambda_synth(ctx_t* c, gmb_expr_t* e) {
         if (e->lambda_ret_arr) fn->func_ret_type = strdup("ARRAY");
         if (e->lambda_expr) {
             gmb_stmt_t* ret = gmb_stmt_new(GMB_STMT_RETURN, e->line);
-            ret->ret_value = e->lambda_expr;                /* trasferimento */
+            ret->ret_value = e->lambda_expr;                /* condiviso col nodo λ */
             int cap0 = 0;
             gmb_stmt_add(&fn->func_body, &fn->n_funcbody, ret, &cap0);
-            e->lambda_expr = NULL;
-        } else {
-            fn->func_body = e->lambda_body;                 /* trasferimento */
+        } else if (e->n_lambda_body > 0) {
+            /* COPIA dell'array dei puntatori (le istruzioni sono condivise col nodo λ) */
+            fn->func_body = (gmb_stmt_t**)calloc((size_t)e->n_lambda_body, sizeof(gmb_stmt_t*));
+            for (int k = 0; k < e->n_lambda_body; k++)
+                fn->func_body[k] = e->lambda_body[k];
             fn->n_funcbody = e->n_lambda_body;
-            e->lambda_body = NULL;
         }
         /* λ che RITORNA una λ (`{ |x| RETURN { |y| ... } }`): clausola di ritorno
          * FUNCTION(...) + CATENA dei block ritornati. Senza, la funzione sintetica
@@ -33515,19 +33538,16 @@ static void lambda_synth(ctx_t* c, gmb_expr_t* e) {
     for (int i = 0; i < mut.n; i++) free(mut.names[i]);
     free(mut.names);
     if (c->error[0]) return;
-    free(e->lambda_params_str);
-    e->lambda_params_str = NULL;
-    free(e->lambda_params_arr);
-    e->lambda_params_arr = NULL;
-    /* riscrive il nodo IN PLACE come riferimento nudo alla funzione sintetica */
+    /* riscrive il nodo IN PLACE come riferimento nudo alla funzione sintetica. I campi λ
+     * (params/body/expr/…) restano sul nodo: servono se gmb_c99_emit ripete il pass
+     * (rango cambiato) — il secondo pass vede solo VAR `__lambda_N` e deve ricreare la
+     * funzione sintetica (vedi ramo VAR in lambda_prepass_expr). */
     e->kind = GMB_EXPR_VAR;
     if (e->var) free(e->var);
     e->var = strdup(syn);
     e->ns = NULL;
     e->nargs = 0;
     e->tk = GMB_TOK_Unknown;
-    e->lambda_params = NULL;
-    e->n_lambda_params = 0;
 }
 static void lambda_prepass_expr(ctx_t* c, gmb_expr_t* e) {
     if (!e) return;
@@ -33548,6 +33568,25 @@ static void lambda_prepass_expr(ctx_t* c, gmb_expr_t* e) {
                 lambda_prepass_list(c, self->stmt->func_body, self->stmt->n_funcbody);
                 c->cur_fn = fn_at(c, prv_i);
             }
+        }
+        return;
+    }
+    /* MULTIPASS: nodo λ GIÀ abbassato a VAR `__lambda_N` in un pass precedente (l'AST è
+     * mutato in place e gmb_c99_emit lo riemette quando cambia un rango di parametro).
+     * La funzione sintetica non esiste più in c->fns (ricostruito da zero a ogni pass) ma
+     * il nodo conserva params/body: la si ricrea con lo STESSO nome, altrimenti il C
+     * emesso contiene un riferimento a una variabile double senza definizione. */
+    if (e->kind == GMB_EXPR_VAR && e->var && strncmp(e->var, "__lambda_", 9) == 0) {
+        if (!find_fn(c, e->var) && (e->lambda_expr || e->n_lambda_body > 0)) {
+            lambda_synth(c, e);
+            if (c->error[0]) return;
+        }
+        fn_info_t* self = find_fn(c, e->var);
+        if (self && self->stmt) {
+            int prv_i = fn_index(c, c->cur_fn);
+            c->cur_fn = self;
+            lambda_prepass_list(c, self->stmt->func_body, self->stmt->n_funcbody);
+            c->cur_fn = fn_at(c, prv_i);
         }
         return;
     }

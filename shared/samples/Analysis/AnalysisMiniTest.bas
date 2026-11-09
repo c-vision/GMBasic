@@ -4,6 +4,9 @@
 
 IMPORT MULTIVARIATE
 IMPORT TIMESERIES
+FUNCTION Dy(t AS DOUBLE, y() AS DOUBLE) AS ARRAY OF DOUBLE
+  RETURN {-y(0)}
+END FUNCTION
 SUB Main()
   ' AdfTest su trend lineare (non stazionario)
   DIM d(49) AS DOUBLE
@@ -34,6 +37,6 @@ SUB Main()
   PRINT "splev="; ROUND(sv(0), 4)
   ' SolveIvp: dy/dt = -y, y(0)=1
   DIM y0(0) AS DOUBLE = {1}
-  DIM n = NUMERICAL.SolveIvp(FN(t, y) => {-y(0)}, y0, 0.0, 1.0)
+  DIM n = NUMERICAL.SolveIvp(Dy, y0, 0.0, 1.0)
   PRINT "solveivp_n="; n
 END SUB
