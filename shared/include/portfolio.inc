@@ -21,13 +21,13 @@ NAMESPACE PORTFOLIO
 ' ── binding nativi (uso interno) ────────────────────────────────────────────
 
 DECLARE FUNCTION PFN_EXPECTED LIB "gmbquant" ALIAS "ofx_q_pf_expected" (w() AS DOUBLE, mean() AS DOUBLE) AS DOUBLE
-DECLARE FUNCTION PFN_STDEV LIB "gmbquant" ALIAS "ofx_q_pf_stdev" (w() AS DOUBLE, cov() AS DOUBLE) AS DOUBLE
+DECLARE NATIVE FUNCTION PFN_STDEV LIB "gmbquant" ALIAS "ofx_q_pf_stdev" (w() AS DOUBLE, nw AS LONG, cov AS MATRIX OF (INT, INT, DOUBLE), ncov AS LONG) AS DOUBLE
 DECLARE FUNCTION PFN_SHARPE LIB "gmbquant" ALIAS "ofx_q_pf_sharpe" (ret AS DOUBLE, sd AS DOUBLE, rf AS DOUBLE) AS DOUBLE
 DECLARE FUNCTION PFN_LONGONLY LIB "gmbquant" ALIAS "ofx_q_pf_longonly" (w() AS DOUBLE) AS DOUBLE
 DECLARE FUNCTION PFN_MAD LIB "gmbquant" ALIAS "ofx_q_pf_mad" (r() AS DOUBLE) AS DOUBLE
 DECLARE FUNCTION PFN_SEMIMAD LIB "gmbquant" ALIAS "ofx_q_pf_semimad" (r() AS DOUBLE, target AS DOUBLE) AS DOUBLE
-DECLARE FUNCTION PFN_VAR LIB "gmbquant" ALIAS "ofx_q_pf_var" (hist() AS DOUBLE, w() AS DOUBLE, conf AS DOUBLE) AS DOUBLE
-DECLARE FUNCTION PFN_CVAR LIB "gmbquant" ALIAS "ofx_q_pf_cvar" (hist() AS DOUBLE, w() AS DOUBLE, conf AS DOUBLE) AS DOUBLE
+DECLARE NATIVE FUNCTION PFN_VAR LIB "gmbquant" ALIAS "ofx_q_pf_var" (hist AS MATRIX OF (INT, INT, DOUBLE), nh AS LONG, w() AS DOUBLE, nw AS LONG, conf AS DOUBLE) AS DOUBLE
+DECLARE NATIVE FUNCTION PFN_CVAR LIB "gmbquant" ALIAS "ofx_q_pf_cvar" (hist AS MATRIX OF (INT, INT, DOUBLE), nh AS LONG, w() AS DOUBLE, nw AS LONG, conf AS DOUBLE) AS DOUBLE
 
 DECLARE SUB PFN_MINVOL LIB "gmbquant" ALIAS "ofx_q_pf_minvol" (cov() AS DOUBLE, out() AS DOUBLE)
 DECLARE SUB PFN_MAXSHARPE LIB "gmbquant" ALIAS "ofx_q_pf_maxsharpe" (mean() AS DOUBLE, cov() AS DOUBLE, rf AS DOUBLE, out() AS DOUBLE)
@@ -47,15 +47,8 @@ DECLARE SUB PFN_BLACKLITTERMAN LIB "gmbquant" ALIAS "ofx_q_pf_blacklitterman" (c
 DECLARE FUNCTION EXPECTEDRETURN LIB "gmbquant" ALIAS "ofx_q_pf_expected" (w() AS DOUBLE, mean() AS DOUBLE) AS DOUBLE
 
 ' Volatilita' (deviazione standard): sqrt(w' cov w).
-PUBLIC FUNCTION STDEV(w() AS DOUBLE, cov() AS ARRAY OF DOUBLE) AS DOUBLE
-    DIM n AS LONG = UBOUND(w) + 1
-    DIM flat((n * n) - 1) AS DOUBLE
-    FOR i = 0 TO n - 1
-        FOR j = 0 TO n - 1
-            flat(i * n + j) = cov(i)(j)
-        NEXT j
-    NEXT i
-    RETURN PFN_STDEV(w, flat)
+PUBLIC FUNCTION STDEV(w() AS DOUBLE, cov AS MATRIX OF (INT, INT, DOUBLE)) AS DOUBLE
+    RETURN PFN_STDEV(w, UBOUND(w) + 1, cov, (UBOUND(cov, 1) + 1) * (UBOUND(cov, 2) + 1))
 END FUNCTION
 
 ' Sharpe: (ret - rf) / sd; sd = 0 -> 0.
@@ -75,28 +68,12 @@ END FUNCTION
 ' VaR storico (percentuale) e CVaR (frazione) di un portafoglio multi-asset.
 ' `pesi` resta nella firma per compatibilita' ma e' IGNORATO: il builtin lavora
 ' sullo storico appiattito (parita' IL/PCode/VM-C/C99).
-PUBLIC FUNCTION PVAR(hist() AS ARRAY OF DOUBLE, pesi() AS DOUBLE, conf AS DOUBLE) AS DOUBLE
-    DIM rows AS LONG = UBOUND(hist) + 1
-    DIM cols AS LONG = UBOUND(hist(0)) + 1
-    DIM flat((rows * cols) - 1) AS DOUBLE
-    FOR i = 0 TO rows - 1
-        FOR j = 0 TO cols - 1
-            flat(i * cols + j) = hist(i)(j)
-        NEXT j
-    NEXT i
-    RETURN PFN_VAR(flat, pesi, conf)
+PUBLIC FUNCTION PVAR(hist AS MATRIX OF (INT, INT, DOUBLE), pesi() AS DOUBLE, conf AS DOUBLE) AS DOUBLE
+    RETURN PFN_VAR(hist, (UBOUND(hist, 1) + 1) * (UBOUND(hist, 2) + 1), pesi, UBOUND(pesi) + 1, conf)
 END FUNCTION
 
-PUBLIC FUNCTION CVAR(hist() AS ARRAY OF DOUBLE, pesi() AS DOUBLE, conf AS DOUBLE) AS DOUBLE
-    DIM rows AS LONG = UBOUND(hist) + 1
-    DIM cols AS LONG = UBOUND(hist(0)) + 1
-    DIM flat((rows * cols) - 1) AS DOUBLE
-    FOR i = 0 TO rows - 1
-        FOR j = 0 TO cols - 1
-            flat(i * cols + j) = hist(i)(j)
-        NEXT j
-    NEXT i
-    RETURN PFN_CVAR(flat, pesi, conf)
+PUBLIC FUNCTION CVAR(hist AS MATRIX OF (INT, INT, DOUBLE), pesi() AS DOUBLE, conf AS DOUBLE) AS DOUBLE
+    RETURN PFN_CVAR(hist, (UBOUND(hist, 1) + 1) * (UBOUND(hist, 2) + 1), pesi, UBOUND(pesi) + 1, conf)
 END FUNCTION
 
 ' ── ottimizzatori (ARRAY: [ret, vol, sharpe, pesi...]) ──────────────────────
