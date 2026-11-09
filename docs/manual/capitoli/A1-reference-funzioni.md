@@ -3123,7 +3123,7 @@ GRAPHICS.POINT   ' dal codice del progetto: shared/minitests/graphics/graphics_a
 #### `GRAPHICS.RGB` — arita 3-4
 
 ```basic
-GRAPHICS.RGB   ' dal codice del progetto: shared/samples/graphics/GraphicsLegacySyntax.bas:13
+GRAPHICS.RGB   ' dal codice del progetto: shared/minitests/arrays/array_rgb_shadow_local.bas:1
 ```
 
 #### `GRAPHICS.SCREEN` — arita 0-2

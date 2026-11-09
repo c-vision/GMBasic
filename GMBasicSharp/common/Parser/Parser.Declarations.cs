@@ -223,7 +223,7 @@ public sealed partial class Parser
                 : suffixType ?? DeduceTypeFromSuffix(originalNameToken.Lexeme);
             Log($"[ParseDeclSyntaxOnly]   -> Tipo base determinato: {baseDataType}", log);
 
-            var finalDataType = isArrayDeclaration ? new ArrayType(baseDataType) : baseDataType;
+            var finalDataType = isArrayDeclaration ? new ArrayType(baseDataType, Math.Max(1, upperBounds.Count)) : baseDataType;
             Log($"[ParseDeclSyntaxOnly]   -> Tipo finale (considerando array): {finalDataType}", log);
 
             // Usa il nuovo costruttore di VariableDeclaration.

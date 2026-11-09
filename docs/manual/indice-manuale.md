@@ -124,6 +124,7 @@ assorbita (non si stampa due volte).
 ### II.5 — Tipi, variabili e scope
 
 - `Variables-Scope-Spec` — capitolo
+- `Array-Rank-Guida-Utente` — sezione
 - `DirectCast-Guida-Utente` — sezione
 - `NullConditionalAccess-Guida-Utente` — sezione
 - `TYPEINFO-Riflessione-Guida-Utente` — sezione

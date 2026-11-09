@@ -1083,13 +1083,11 @@ public sealed partial class IlProgramCompiler
         var symbol = _program.Symbols.GetSymbol(symbolId);
         if (symbol is null) return null;
         if (NormalizeInferredType(symbol.DataType) is not ArrayType arrayType) return null;
-        var rank = 0;
+        var rank = IlArrayRank(arrayType);
         DataType elementType = arrayType;
-        while (elementType is ArrayType inner) { rank++; elementType = inner.ElementType; }
+        while (elementType is ArrayType inner) { elementType = inner.ElementType; }
         if (rank < 1) return null;
-        var elementClrType = DataTypeMapper.Map(elementType, _types, _classTypes);
-        var clrArrayType = elementClrType;
-        for (var i = 0; i < rank; i++) clrArrayType = clrArrayType.MakeArrayType();
+        var clrArrayType = DataTypeMapper.Map(arrayType, _types, _classTypes);
         var local = GetOrDeclareLocal(symbolId);
         Action loadRef;
         if (isStatic)

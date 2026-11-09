@@ -1287,6 +1287,13 @@ static void emit_src_line(ctx_t* c, int line);   /* O8: `#line` verso il `.bas` 
 static void emit_arr_wb(ctx_t* c);
 static void emit_class_locals_dtors(ctx_t* c);   /* forward: usata da emit_defer_epilogue */
 struct cls_info* cls_find(ctx_t* c, const char* name);   /* forward: usata da emit_class_locals_dtors. Non-static: condivisa con gmb_c99_emit_speed.c. */
+/* 1 se la procedura corrente usa l'ABI void + canale di ritorno (array 1-D o matrice
+ * rank esplicito): il suo return non ha __ret. */
+static int cur_fn_out_abi(ctx_t* c) {
+    return c->cur_fn && c->cur_fn->stmt &&
+        ((c->cur_fn->stmt->func_ret_type && strcmp(c->cur_fn->stmt->func_ret_type, "ARRAY") == 0)
+         || c->cur_fn->stmt->func_ret_ndims >= 2);
+}
 static void emit_defer_epilogue(ctx_t* c) {
     gmb_stmt_t** arr; int n;
     if (c->cur_fn) { arr = c->cur_fn->defers; n = c->cur_fn->n_defers; }
@@ -1302,8 +1309,8 @@ static void emit_defer_epilogue(ctx_t* c) {
     /* Il codice di MODULO vive in `gmb_program_main` (VOID): un'uscita a top-level
      * (RETURN modulo) è `return;`. Non `return 0;` — error: void function should not
      * return a value (FunctionsParams: 1200 RETURN a livello modulo). */
-    if (cur_scope_has_gosub(c)) emit_gosub_return(c, c->cur_fn ? "return __ret;" : "return;");
-    else sb_put(&c->out, c->cur_fn ? "return __ret;\n" : "return;\n");
+    if (cur_scope_has_gosub(c)) emit_gosub_return(c, (c->cur_fn && !cur_fn_out_abi(c)) ? "return __ret;" : "return;");
+    else sb_put(&c->out, (c->cur_fn && !cur_fn_out_abi(c)) ? "return __ret;\n" : "return;\n");
 }
 
 /* 2.8: writeback dei parametri array BYREF (alias "_<ident>" → *<ident>, parity
@@ -1359,8 +1366,8 @@ static void emit_fn_return(ctx_t* c) {
     /* Il codice di MODULO vive in `gmb_program_main` (VOID): un'uscita a top-level
      * (RETURN modulo) è `return;`. Non `return 0;` — error: void function should not
      * return a value (FunctionsParams: 1200 RETURN a livello modulo). */
-    if (cur_scope_has_gosub(c)) emit_gosub_return(c, c->cur_fn ? "return __ret;" : "return;");
-    else sb_put(&c->out, c->cur_fn ? "return __ret;\n" : "return;\n");
+    if (cur_scope_has_gosub(c)) emit_gosub_return(c, (c->cur_fn && !cur_fn_out_abi(c)) ? "return __ret;" : "return;");
+    else sb_put(&c->out, (c->cur_fn && !cur_fn_out_abi(c)) ? "return __ret;\n" : "return;\n");
 }
 
 /* ─────────────────────── inferenza tipi espressioni ─────────────────────── */
@@ -1442,6 +1449,10 @@ static int future_index(ctx_t* c, const char* var) {
  * (SIGNAL.CONVOLVE/CORRELATE/HANN/HAMMING/BLACKMAN + ARRAYS.AMAP/AFILTER/
  * AREVERSE/ACLONE/AUNIQUE); 2 = matrice n×2 (NUMERICAL.Fft/IFFT). */
 static int user_fn_ret_arr(ctx_t* c, const char* name, int nargs);
+static int user_fn_ret_mat(ctx_t* c, const char* name, int nargs);
+static int user_fn_ret_rank(ctx_t* c, const char* name, int nargs);
+static int fn_ret_is_mat(const fn_info_t* fn);
+static int fn_ret_out_abi(const fn_info_t* fn);
 static int user_fn_exists(ctx_t* c, const char* name, int nargs);
 
 static int dim_arr_init_kind(ctx_t* c, const gmb_expr_t* e) {
@@ -3490,6 +3501,10 @@ static int dlg_lookup(ctx_t* c, const char* ty, int* arity, int* strm, int* rets
 }
 static int is_param_of_cur(ctx_t* c, const char* name);
 static int user_fn_ret_arr(ctx_t* c, const char* name, int nargs);
+static int user_fn_ret_mat(ctx_t* c, const char* name, int nargs);
+static int user_fn_ret_rank(ctx_t* c, const char* name, int nargs);
+static int fn_ret_is_mat(const fn_info_t* fn);
+static int fn_ret_out_abi(const fn_info_t* fn);
 
 static void reg_let_assign(ctx_t* c, gmb_stmt_t* s, vars_t* scope) {
  {
@@ -4150,6 +4165,16 @@ if (s->dim_var) {            int ty = suffix_type(s->dim_var);
                 && s->dim_init->kind == GMB_EXPR_CALL && s->dim_init->var
                 && user_fn_ret_arr(c, s->dim_init->var, s->dim_init->nargs)) {
                 v->is_array = 1; v->ndims = 1; v->dyn_len = 1; v->is_bytes = 0;
+            }
+            /* `DIM x() = <FUNCTION utente AS DOUBLE(,)>(...)`: matrice rank-2 flat con
+             * bounds runtime `x__b0/x__b1` (il callee pubblica ptr+dims nel canale). */
+            if (!v->is_array && !v->gkind && !v->boxed_val
+                && s->dim_init && s->dim_init->kind == GMB_EXPR_CALL && s->dim_init->var
+                && user_fn_ret_mat(c, s->dim_init->var, s->dim_init->nargs)) {
+                int _rr = user_fn_ret_rank(c, s->dim_init->var, s->dim_init->nargs);
+                if (_rr < 2) _rr = 2;
+                v->is_array = 1; v->ndims = _rr; v->dyn_len = 0; v->matrix = 0;
+                v->jagged = 0; v->is_bytes = 0;
             }
             /* DIM x() (vuota) NON tipizzata, fuori dai rami TY_STR: array DINAMICO
              * (es. DIM b() = CRYPTOGRAPHY.RANDOMCRYPTOBYTES(n) → b(i) indicizzabile;
@@ -5527,6 +5552,8 @@ static const char* fn_ret_ctype(ctx_t* c, const fn_info_t* fn) {
     if (fn_ret_is_tuple(fn)) return "gmb_val_t";
     if (fn_ret_is_func(fn)) return "gmb_fn_t";
     if (fn && fn->stmt && fn->stmt->func_ret_type && strcmp(fn->stmt->func_ret_type, "ARRAY") == 0) return "void";
+    /* Ritorno con rank esplicito (matrice): ABI void + canale (come gli array). */
+    if (fn_ret_is_mat(fn)) return "void";
     /* 2.7(d)p2b: AS <Classe> → istanza boxed (OPERATOR ... AS Punto) */
     if (c && fn && fn->stmt->func_ret_type && cls_find(c, fn->stmt->func_ret_type)) return "gmb_val_t";
     /* Ritorno DICT-OPACO (`FUNCTION ... AS JSON`): a runtime gmb_val_t — senza, `Form AS JSON`
@@ -5536,6 +5563,15 @@ static const char* fn_ret_ctype(ctx_t* c, const fn_info_t* fn) {
 }
 static int fn_ret_is_arr(const fn_info_t* fn) {
     return fn && fn->stmt && fn->stmt->func_ret_type && strcmp(fn->stmt->func_ret_type, "ARRAY") == 0;
+}
+/* Ritorno con rank esplicito (`FUNCTION F() AS DOUBLE(,)`): ABI come gli array (void +
+ * canale thread-local), ma il valore e' una matrice flat + dimensioni. */
+static int fn_ret_is_mat(const fn_info_t* fn) {
+    return fn && fn->stmt && fn->stmt->func_ret_ndims >= 2;
+}
+/* Qualsiasi ritorno che usa l'ABI void + canale (array 1-D o matrice rank-N). */
+static int fn_ret_out_abi(const fn_info_t* fn) {
+    return fn_ret_is_arr(fn) || fn_ret_is_mat(fn);
 }
 
 /* 1 se <name>/<nargs> è una FUNCTION utente che ritorna AS ARRAY OF … (ABI C99: void +
@@ -5551,6 +5587,21 @@ static int user_fn_ret_arr(ctx_t* c, const char* name, int nargs) {
     if (dot && dot[1]) name = dot + 1;
     fn_info_t* f = find_fn_arity(c, name, nargs, NULL);
     return f && fn_ret_is_arr(f) ? 1 : 0;
+}
+
+/* 1 se <name>/<nargs> e' una FUNCTION utente con ritorno rank esplicito >= 2
+ * (`AS DOUBLE(,)`): il risultato arriva dal canale thread-local come matrice flat + dims. */
+static int user_fn_ret_mat(ctx_t* c, const char* name, int nargs) {
+    return user_fn_ret_rank(c, name, nargs) >= 2;
+}
+
+/* Rank esplicito (>= 2) del ritorno di una FUNCTION utente, 0 se non e' una matrice. */
+static int user_fn_ret_rank(ctx_t* c, const char* name, int nargs) {
+    if (!c || !name || !name[0]) return 0;
+    const char* dot = strrchr(name, '.');
+    if (dot && dot[1]) name = dot + 1;
+    fn_info_t* f = find_fn_arity(c, name, nargs, NULL);
+    return (f && fn_ret_is_mat(f)) ? f->stmt->func_ret_ndims : 0;
 }
 
 /* Match nome builtin con o senza '$' finale (LEFT$ / LEFT), case-insensitive. */
@@ -13684,7 +13735,7 @@ static void emit_call(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_
                     sb_put(&c->out, " ? ");
                 }
             }
-        int ret_arr_call = fn_ret_is_arr(fn);
+        int ret_arr_call = fn_ret_out_abi(fn);
         if (ret_arr_call) sb_put(&c->out, "({ ");
         emit_fn_cname_call(c, fn, args, nargs);
         sb_put(&c->out, "(");
@@ -13699,7 +13750,7 @@ static void emit_call(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_
                 emit_variadic_pack(c, fn, args, fixed_count, variadic_argc, line);
                 emit_arr_arg_lowers(c, fn, fixed_count, NULL);
             }
-            if (ret_arr_call) sb_put(&c->out, ", NULL); gmb_lambda_ret_ptr_get(); })");
+            if (ret_arr_call) sb_put(&c->out, (fixed_count > 0 || is_variadic_last) ? ", NULL); gmb_lambda_ret_ptr_get(); })" : "NULL); gmb_lambda_ret_ptr_get(); })");
             else sb_put(&c->out, ")");
             if (ncombo > 1 && combo < ncombo - 1) sb_put(&c->out, " : ");
         }
@@ -18906,6 +18957,27 @@ static void st_dim(ctx_t* c, gmb_stmt_t* s) {
             }
             return;
         }
+        if (!s->array_size && s->dim_init && s->dim_init->kind == GMB_EXPR_CALL
+            && s->dim_init->var && user_fn_ret_mat(c, s->dim_init->var, s->dim_init->nargs)) {
+            var_t* mv = lookup_var(c, s->dim_var);
+            if (!mv && s->dim_var) mv = vars_add(cur_scope(c), s->dim_var, suffix_type(s->dim_var));
+            if (mv) {
+                int nd = user_fn_ret_rank(c, s->dim_init->var, s->dim_init->nargs);
+                if (nd < 2) nd = 2;
+                mv->is_array = 1; mv->ndims = nd; mv->dyn_len = 0; mv->matrix = 0; mv->jagged = 0;
+                ind(c);
+                emit_ident(c, mv->name);
+                sb_put(&c->out, " = ");
+                emit_expr(c, s->dim_init);
+                sb_put(&c->out, ";\n");
+                for (int _ax = 0; _ax < nd; _ax++) {
+                    ind(c);
+                    sb_bound_ident(&c->out, mv->name, _ax);
+                    sb_printf(&c->out, " = gmb_lambda_ret_dim_get(%d) - 1;\n", _ax);
+                }
+            }
+            return;
+        }
         if (!s->array_size && (dim_arr_init_kind(c, s->dim_init)
             /* FUNZIONE utente che ritorna AS ARRAY OF … (2026-11-03): array dinamico con
              * puntatore+lunghezza dal canale thread-local (emit_dim_arr_init). */
@@ -21194,6 +21266,30 @@ static void st_continue(ctx_t* c, gmb_stmt_t* s) {
 
 static void st_return(ctx_t* c, gmb_stmt_t* s) {
 {
+        /* Ritorno di MATRICE (rank esplicito >= 2): pubblica puntatore + dimensioni nel
+         * canale thread-local (stessa ABI degli array, void + __out). Il valore e' una
+         * matrice flat (double* + __b0/__b1) del chiamante/callee. */
+        if (c->cur_fn && fn_ret_is_mat(c->cur_fn) && s->ret_value) {
+            var_t* mv = (s->ret_value->kind == GMB_EXPR_VAR && s->ret_value->var)
+                ? lookup_var(c, s->ret_value->var) : NULL;
+            if (mv && mv->is_array) {
+                int nd = c->cur_fn->stmt->func_ret_ndims > 0 ? c->cur_fn->stmt->func_ret_ndims : 2;
+                ind(c);
+                sb_put(&c->out, "gmb_lambda_ret_ptr_set(");
+                emit_var_ref(c, mv);
+                sb_put(&c->out, ");\n");
+                for (int _ax = 0; _ax < nd; _ax++) {
+                    ind(c);
+                    sb_printf(&c->out, "gmb_lambda_ret_dim_set(%d, (gmb_int_t)(", _ax);
+                    sb_bound_var(&c->out, mv, _ax);
+                    sb_put(&c->out, ") + 1);\n");
+                }
+                ind(c); sb_put(&c->out, "return;\n");
+                return;
+            }
+            ind(c); sb_put(&c->out, "return;\n");
+            return;
+        }
         /* λ AS ARRAY OF: copia il valore-array in __out e return; (void + out ABI) */
         if (c->cur_fn && fn_ret_is_arr(c->cur_fn) && s->ret_value) {
             var_t* av = (s->ret_value->kind == GMB_EXPR_VAR && s->ret_value->var) ? lookup_var(c, s->ret_value->var) : NULL;
@@ -31972,7 +32068,7 @@ static void emit_function(ctx_t* c, fn_info_t* fn) {
     }
     sb_put(&c->out, "(");
     if (fn->cls_owner[0]) sb_put(&c->out, "gmb_val_t* self");
-    if (s->n_params == 0 && !has_ctx && !is_lctx && !is_lamv && !fn->cls_owner[0]) sb_put(&c->out, "void");
+    if (s->n_params == 0 && !has_ctx && !is_lctx && !is_lamv && !fn->cls_owner[0] && !fn_ret_out_abi(fn)) sb_put(&c->out, "void");
     if (is_lamv) sb_put(&c->out, "void* __ctx");
     if (is_lctx) sb_put(&c->out, "__lctx_"), sb_ident(&c->out, s->func_name), sb_put(&c->out, "* __ctx");
     if (has_ctx) sb_printf(&c->out, "%s%s* __ctx", fn->cls_owner[0] ? ", " : "", ctn);
@@ -32014,7 +32110,7 @@ static void emit_function(ctx_t* c, fn_info_t* fn) {
             }
         }
     }
-    if (fn_ret_is_arr(fn)) sb_put(&c->out, (s->n_params || has_ctx || is_lctx || is_lamv || fn->cls_owner[0]) ? ", double* __out" : "double* __out");
+    if (fn_ret_out_abi(fn)) sb_put(&c->out, (s->n_params || has_ctx || is_lctx || is_lamv || fn->cls_owner[0]) ? ", double* __out" : "double* __out");
     sb_put(&c->out, ") {\n");
     c->indent = 1;
     /* Lambda con parametro ARRAY (2026-11-02): il C99 le passa `double*` senza lunghezza.
@@ -32442,7 +32538,7 @@ static void emit_function(ctx_t* c, fn_info_t* fn) {
             sb_put(&c->out, ");\n");
         }
     }
-    if (fn_ret_is_arr(fn)) { /* AS ARRAY OF: void + double* __out (nessun __ret) */ }
+    if (fn_ret_out_abi(fn)) { /* AS ARRAY OF / rank esplicito: void + double* __out (nessun __ret) */ }
     else if (fn_ret_is_str(fn)) { ind(c); sb_put(&c->out, "gmb_string_t __ret = gmb_string_alloc(\"\");\n"); }
     else if (fn_ret_is_func(fn)) { ind(c); sb_put(&c->out, "gmb_fn_t __ret = {0};\n"); }
     else if (fn_ret_is_tuple(fn)) { ind(c); sb_put(&c->out, "gmb_val_t __ret = gmb_val_nil();\n"); }
@@ -34296,7 +34392,7 @@ static int gmb_c99_emit_once(const gmb_program_t* prog, char** out_src, char** e
         }
         sb_put(&proto, "(");
         if (c->fns[i].cls_owner[0]) sb_put(&proto, "gmb_val_t* self");
-        if (s->n_params == 0 && !has_ctx && !is_lctx && !is_lamv && !c->fns[i].cls_owner[0]) sb_put(&proto, "void");
+        if (s->n_params == 0 && !has_ctx && !is_lctx && !is_lamv && !c->fns[i].cls_owner[0] && !fn_ret_out_abi(&c->fns[i])) sb_put(&proto, "void");
         if (is_lamv) sb_put(&proto, "void* __ctx");
         if (is_lctx) sb_put(&proto, ctn), sb_put(&proto, "* __ctx");
         if (has_ctx) sb_printf(&proto, "%s%s* __ctx", c->fns[i].cls_owner[0] ? ", " : "", ctn);
@@ -34353,7 +34449,7 @@ static int gmb_c99_emit_once(const gmb_program_t* prog, char** out_src, char** e
                     for (int _j = 0; _j < _nd; _j++) { sb_put(&proto, ", gmb_int_t "); sb_lo_ident(&proto, s->func_params[k], _j); }
             }
         }
-        if (fn_ret_is_arr(&c->fns[i]))
+        if (fn_ret_out_abi(&c->fns[i]))
             sb_put(&proto, (s->n_params || has_ctx || is_lctx || is_lamv || c->fns[i].cls_owner[0]) ? ", double* __out" : "double* __out");
         sb_put(&proto, ");\n");
         /* 2026-09-03: prototipo callback dtor (SUB DESTRUCTOR di classe) — usata dal

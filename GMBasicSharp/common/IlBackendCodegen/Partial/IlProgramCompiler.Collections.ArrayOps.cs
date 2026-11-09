@@ -904,9 +904,9 @@ public sealed partial class IlProgramCompiler
         if (_program.Symbols.GetSymbol(declaration.SymbolId).DataType is not ArrayType arrayType) return;
         // rank = profondità dell'ArrayType annidato (ARRAY OF ARRAY OF DOUBLE = 2) — prima era
         // fisso a 1: 'DIM FftRes() = FFT(...)' (2D) falliva con 'indici 2 != rank 1'.
-        int rank = 0;
+        int rank = IlArrayRank(arrayType);
         DataType elementType = arrayType;
-        while (elementType is ArrayType inner) { rank++; elementType = inner.ElementType; }
+        while (elementType is ArrayType inner) { elementType = inner.ElementType; }
         // ACHUNK/AZIP ritornano object?[] a runtime (ogni elemento è un SOTTO-ARRAY/coppia,
         // non un valore omogeneo): mappare l'InferredType interno a Double (il default
         // generico sotto, corretto per AMAP/AFILTER/ecc. il cui elemento È scalare) darebbe

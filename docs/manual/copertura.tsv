@@ -518,7 +518,7 @@ GRAPHICS.COLLIDEBATCH	funzione	4-4	si	no	shared/minitests/graphics/graphics_all.
 GRAPHICS.P2CX	funzione	1-2	si	no	shared/minitests/graphics/graphics_all.bas:10
 GRAPHICS.P2CY	funzione	1-2	si	no	shared/minitests/graphics/graphics_all.bas:11
 GRAPHICS.Point	funzione	2-3	si	no	shared/minitests/graphics/graphics_all.bas:15
-GRAPHICS.RGB	funzione	3-4	si	no	shared/samples/graphics/GraphicsLegacySyntax.bas:13
+GRAPHICS.RGB	funzione	3-4	si	no	shared/minitests/arrays/array_rgb_shadow_local.bas:1
 GRAPHICS.SCREEN	funzione	0-2	si	no	shared/minitests/graphics/graphics_all.bas:18
 GRAPHICS.ScreenInfo	funzione	0-0	si	no	shared/minitests/graphics/graphics_all.bas:32
 GRAPHICS.Screens	funzione	0-0	si	no	shared/minitests/graphics/metrics.bas:5

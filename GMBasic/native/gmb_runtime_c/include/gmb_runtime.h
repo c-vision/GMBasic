@@ -69,6 +69,10 @@ void gmb_lambda_ret_len_set(gmb_int_t n);
  * passa `__out == NULL` (la funzione alloca). Vedi gmb_core.c. */
 gmb_double_t* gmb_lambda_ret_ptr_get(void);
 void gmb_lambda_ret_ptr_set(gmb_double_t* p);
+/* Dimensioni (rank-2) del valore restituito da `FUNCTION ... AS T(,)` via canale. */
+gmb_int_t gmb_lambda_ret_dim_get(int axis);
+void gmb_lambda_ret_dims_set(gmb_int_t d0, gmb_int_t d1);
+void gmb_lambda_ret_dim_set(int axis, gmb_int_t v);
 void gmb_lambda_bound_set(int idx, gmb_int_t b0);
 gmb_int_t gmb_lambda_lower(int idx);
 void gmb_lambda_lower_set(int idx, gmb_int_t lo);
