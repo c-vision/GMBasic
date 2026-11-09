@@ -121,7 +121,7 @@ SUB TourShape()
 
   DIM cla(5) AS DOUBLE, clb(5) AS DOUBLE
   cla(3) = 1 : clb(3) = 1 : clb(5) = 2
-  PRINT "shape="; GFXSHAPE.CHAMFER(cla(), 6, clb(), 6); ","; GFXSHAPE.HAUSDORFF(cla(), 6, clb(), 6)
+  PRINT "shape="; GFXSHAPE.CHAMFER(cla(), clb()); ","; GFXSHAPE.HAUSDORFF(cla(), clb())
 END SUB
 
 ' ═══ 4. GFX2D — immagini float, filtri, bitmap ═════════════════════════
