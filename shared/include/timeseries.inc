@@ -157,7 +157,7 @@ PUBLIC FUNCTION TSDECOMPOSE(series() AS DOUBLE, period AS LONG) AS ARRAY OF DOUB
     RETURN o
 END FUNCTION
 
-' Matrice di covarianza: input jagged (osservazioni x variabili), output m*m row-major.
+' Matrice di covarianza: input MATRIX (osservazioni x variabili), output m*m row-major.
 PUBLIC FUNCTION TSCOVARIANCEMATRIX(data AS MATRIX OF (INT, INT, DOUBLE)) AS ARRAY OF DOUBLE
     DIM nobs AS LONG = UBOUND(data, 1) + 1
     DIM m AS LONG = UBOUND(data, 2) + 1
@@ -443,7 +443,7 @@ PUBLIC FUNCTION TSBMAWEIGHTS(ic() AS DOUBLE) AS ARRAY OF DOUBLE
     RETURN o
 END FUNCTION
 
-' HMMFIT: data() jagged (osservazioni x dimensioni). out piatto:
+' HMMFIT: data MATRIX (osservazioni x dimensioni). out piatto:
 ' pi(K), A(K*K), means(K*d), covs(K*d*d).
 DECLARE NATIVE FUNCTION AXF_HMMFIT LIB "gmbstats" ALIAS "ofx_ts_hmmfit" (X AS MATRIX OF (INT, INT, DOUBLE), n AS LONG, d AS LONG, K AS LONG, nIter AS LONG, out() AS DOUBLE) AS LONG
 

@@ -164,10 +164,8 @@ SUB Main()
   PRINT "G) portafoglio (3 asset: azioni, bond, oro; rf 2%)"
   DIM w0(2) AS DOUBLE : w0 = {0.5, 0.3, 0.2}
   DIM mu(2) AS DOUBLE : mu = {0.10, 0.05, 0.035}
-  DIM cov(2) AS ARRAY OF DOUBLE
-  cov(0) = {0.0400, 0.0020, 0.0005}
-  cov(1) = {0.0020, 0.0100, 0.0002}
-  cov(2) = {0.0005, 0.0002, 0.0025}
+  DIM cov(2, 2) AS DOUBLE
+  cov = {{0.0400, 0.0020, 0.0005}, {0.0020, 0.0100, 0.0002}, {0.0005, 0.0002, 0.0025}}
   DIM pr() AS DOUBLE
 
   PRINT " rendimento atteso (50/30/20)    = "; FORMAT(PORTFOLIO.EXPECTEDRETURN(w0, mu), "#.000000")
@@ -190,7 +188,7 @@ SUB Main()
   pr = PORTFOLIO.MAXRETURN(mu)
   PRINT " max-return: 100% su asset 0     = "; pr(3); " "; pr(4); " "; pr(5)
   DIM rr(5) AS DOUBLE : rr = {0.02, -0.01, 0.03, 0.01, -0.02, 0.015}
-  DIM hr(0) AS ARRAY OF DOUBLE : hr(0) = {0.02, -0.01, 0.03, 0.01, -0.02, 0.015}
+  DIM hr(0, 5) AS DOUBLE : hr = {{0.02, -0.01, 0.03, 0.01, -0.02, 0.015}}
   pr = PORTFOLIO.KELLYCRITERION(hr, 0.02)
   PRINT " Kelly su serie con perdite      = "; FORMAT(pr(0), "#.000000")
   pr = PORTFOLIO.MINCVAR(hr, 0.95, 0.02)
@@ -201,18 +199,16 @@ SUB Main()
   PRINT " evolve (min-var deterministica) = "; FORMAT(pr(3) + pr(4) + pr(5), "#.000000"); " (somma pesi)"
 
   DIM caps(2) AS DOUBLE : caps = {1000000, 500000, 250000}
-  DIM P(2) AS ARRAY OF DOUBLE
-  P(0) = {1.0, 0.0, 0.0} : P(1) = {0.0, 1.0, 0.0} : P(2) = {0.0, 0.0, 1.0}
+  DIM P(2, 2) AS DOUBLE
+  P = {{1.0, 0.0, 0.0}, {0.0, 1.0, 0.0}, {0.0, 0.0, 1.0}}
   DIM Q(2) AS DOUBLE : Q = {0.12, 0.04, 0.03}
-  DIM om(2) AS ARRAY OF DOUBLE
-  om(0) = {0.0004, 0.0, 0.0} : om(1) = {0.0, 0.0002, 0.0} : om(2) = {0.0, 0.0, 0.0001}
+  DIM om(2, 2) AS DOUBLE
+  om = {{0.0004, 0.0, 0.0}, {0.0, 0.0002, 0.0}, {0.0, 0.0, 0.0001}}
   pr = PORTFOLIO.BLACKLITTERMAN(caps, cov, 2.5, 0.05, P, Q, om, 0.02)
   PRINT " Black-Litterman (somma, vol)    = "; FORMAT(pr(3) + pr(4) + pr(5), "#.000000"); " / "; FORMAT(pr(1), "#.000000")
 
-  DIM hist(2) AS ARRAY OF DOUBLE
-  hist(0) = {0.02, -0.01, 0.03, 0.01, -0.02}
-  hist(1) = {0.01, 0.005, -0.005, 0.02, 0.01}
-  hist(2) = {0.005, 0.01, -0.01, 0.015, 0.005}
+  DIM hist(2, 4) AS DOUBLE
+  hist = {{0.02, -0.01, 0.03, 0.01, -0.02}, {0.01, 0.005, -0.005, 0.02, 0.01}, {0.005, 0.01, -0.01, 0.015, 0.005}}
   PRINT " VaR 95% multi-asset             = "; FORMAT(PORTFOLIO.PVAR(hist, w0, 0.95), "#.000000")
   PRINT " CVaR 95% multi-asset            = "; FORMAT(PORTFOLIO.CVAR(hist, w0, 0.95), "#.000000")
 

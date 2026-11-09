@@ -227,23 +227,15 @@ public sealed partial class Parser
             if (baseDataType is ArrayType baseArray)
             {
                 /* Forma esplicita: `AS ARRAY OF T` (rank 1) oppure `AS MATRIX OF (I…, T)`.
-                 * `ARRAY OF ARRAY` non esiste più. Le parentesi sul nome, se presenti,
-                 * devono dichiarare lo stesso rank del tipo. */
+                 * `ARRAY OF ARRAY` non esiste. Le parentesi sul nome dichiarano le
+                 * ESTENSIONI dello stesso rank del tipo (DIM sugar), mai un array annidato:
+                 * `DIM x(n) AS ARRAY OF T` è un ARRAY rank-1 di n+1 elementi. */
                 if (baseArray.ElementType is ArrayType)
                     throw CreateError(originalNameToken, "ARRAY OF ARRAY non è supportato: usa AS ARRAY OF T o AS MATRIX OF (assi…, T).");
-                if (baseArray.Rank == 1 && isArrayDeclaration)
-                {
-                    /* TRANSITORIO: `DIM x(n) AS ARRAY OF T` = jagged legacy (nested),
-                     * ancora accettato durante la migrazione del corpus a MATRIX OF. */
-                    finalDataType = new ArrayType(baseDataType, 1);
-                }
-                else
-                {
-                    if (isArrayDeclaration && upperBounds.Count > 0 && upperBounds.Count != baseArray.Rank)
-                        throw CreateError(originalNameToken,
-                            $"DIM {originalNameToken.Lexeme}: {upperBounds.Count} dimensioni dichiarate ma il tipo ha rank {baseArray.Rank}.");
-                    finalDataType = baseArray;
-                }
+                if (isArrayDeclaration && upperBounds.Count > 0 && upperBounds.Count != baseArray.Rank)
+                    throw CreateError(originalNameToken,
+                        $"DIM {originalNameToken.Lexeme}: {upperBounds.Count} dimensioni dichiarate ma il tipo ha rank {baseArray.Rank}.");
+                finalDataType = baseArray;
             }
             else
             {

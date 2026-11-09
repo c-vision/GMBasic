@@ -13,7 +13,7 @@
 ' KELLYCRITERION / MINCVAR / MINCDAR hanno un solo "peso" (o(3)), come il builtin.
 ' Il campo Converged del vecchio tipo non esiste: le soluzioni sono deterministiche.
 '
-' Le matrici di covarianza sono JAGGED (cov(i)(j)); i wrapper le appiattiscono
+' Le matrici di covarianza sono rettangolari MATRIX OF (INT, INT, DOUBLE); i wrapper le passano
 ' row-major. I rendimenti sono in frazione (0.05 = 5%).
 
 NAMESPACE PORTFOLIO
@@ -126,7 +126,7 @@ PUBLIC FUNCTION MAXRETURN(mean() AS DOUBLE) AS ARRAY OF DOUBLE
 END FUNCTION
 
 ' Kelly: o(0) = indice di Kelly, o(3) = stesso valore (un solo "asset").
-' Accetta una matrice JAGGED di rendimenti (periodi x asset), come il builtin:
+' Accetta una matrice di rendimenti (periodi x asset), come il builtin:
 ' i valori vengono appiattiti (la formula lavora sulla serie, non per asset).
 ' `rf` resta nella firma per compatibilita' ma e' IGNORATO (parita' VM/C/C99).
 PUBLIC FUNCTION KELLYCRITERION(hist AS MATRIX OF (INT, INT, DOUBLE), rf AS DOUBLE) AS ARRAY OF DOUBLE
@@ -166,7 +166,7 @@ END FUNCTION
 
 ' Black-Litterman completo: Pi = lambda*Sigma*w_mkt;
 ' post = [(tau*Sigma)^-1 + P'Omega^-1 P]^-1 [(tau*Sigma)^-1 Pi + P'Omega^-1 Q];
-' poi MAXSHARPE(post, Sigma, rf). P e' k*n, omega k*k (jagged).
+' poi MAXSHARPE(post, Sigma, rf). P e' k*n, omega k*k (MATRIX OF).
 PUBLIC FUNCTION BLACKLITTERMAN(caps() AS DOUBLE, cov AS MATRIX OF (INT, INT, DOUBLE), risk AS DOUBLE, tau AS DOUBLE, P AS MATRIX OF (INT, INT, DOUBLE), Q() AS DOUBLE, omega AS MATRIX OF (INT, INT, DOUBLE), rf AS DOUBLE) AS ARRAY OF DOUBLE
     DIM n AS LONG = UBOUND(caps) + 1
     DIM k AS LONG = UBOUND(Q) + 1

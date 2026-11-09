@@ -283,13 +283,9 @@ public sealed partial class Parser
                 if (baseArray.ElementType is ArrayType)
                     throw CreateError(originalNameToken,
                         "ARRAY OF ARRAY non è supportato: usa AS ARRAY OF T o AS MATRIX OF (assi…, T).");
-                if (isArray)
-                {
-                    /* TRANSITORIO: `v() AS ARRAY OF T` = jagged legacy (nested),
-                     * ancora accettato durante la migrazione del corpus a MATRIX OF. */
-                    finalDataType = new ArrayType(baseArray, 1);
-                }
-                else finalDataType = baseArray;
+                /* `v() AS ARRAY OF T` = parametro rank-1 (le `()` indicano solo il
+                 * passaggio per riferimento implicito, non un array annidato). */
+                finalDataType = baseArray;
             }
             else
             {

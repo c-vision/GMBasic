@@ -17,9 +17,10 @@ SUB Main()
     rets(0)=0.05 : rets(1)=0.03 : rets(2)=0.04 : rets(3)=0.02 : rets(4)=0.01
     rets(5)=0.03 : rets(6)=0.02 : rets(7)=0.04 : rets(8)=0.03 : rets(9)=0.02
 
-    ' Le funzioni di rischio storico accettano una matrice JAGGED (periodi x asset).
-    DIM hist(0) AS ARRAY OF DOUBLE
-    hist(0) = rets
+    ' Le funzioni di rischio storico accettano una MATRICE (periodi x asset).
+    DIM hist(0, UBOUND(rets)) AS DOUBLE
+    DIM hi AS LONG
+    FOR hi = 0 TO UBOUND(rets) : hist(0, hi) = rets(hi) : NEXT hi
 
     ' --- MAXRETURN(meanReturns) ---
     PRINT "-- MAXRETURN --"

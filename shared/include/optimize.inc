@@ -76,14 +76,10 @@ PUBLIC DECLARE FUNCTION MINIMIZESCALARM LIB "gmbopt" ALIAS "gor_optb_minimize_sc
 
 ' ═══════════════════════════════════════════════════════════════════════════
 ' Minimi quadrati lineari / Cholesky / programmazione lineare
-' Le matrici sono PIATTE row-major (m*n): le DIMENSIONI le deduce il wrapper
-' (rows = UBOUND(b)+1, cols = (UBOUND(A)+1)/rows per A piatta 1-D), non il
-' chiamante. Per l'input JAGGED ci sono le FUNCTION omonime con `ARRAY OF DOUBLE`
-' in fondo al file, che appiattiscono qui dentro.
-' Una matrice 2-D (DIM m(r,c)) va passata alle DECLARE OPTN_* con dimensioni
-' esplicite: un parametro array del linguaggio non conserva il rank su C99
-' (IL/PCode/VM-C lo vedrebbero, C99 no) — per un'API cross-backend usare le
-' forme piatte/jagged di questi wrapper.
+' Le matrici sono rettangolari `MATRIX OF (INT, INT, DOUBLE)` (row-major). Le
+' dimensioni le legge il wrapper dal descrittore della matrice (UBOUND(A, 1/2)):
+' le DECLARE OPTN_* ricevono counts espliciti (n, m, rows, cols) perché
+' `DECLARE NATIVE` disattiva l'estensione automatica degli array.
 ' ═══════════════════════════════════════════════════════════════════════════
 
 ' A (rows×cols, row-major), b[rows] -> out[cols].
@@ -554,8 +550,9 @@ PUBLIC FUNCTION CURVEFIT(f AS FUNCTION(p() AS DOUBLE, x AS DOUBLE) AS DOUBLE, xd
     RETURN o
 END FUNCTION
 
-' ── Forme JAGGED (compatibili col builtin: nessuna dimensione esplicita) ────────────────
-' Acceptano `DIM A(rows) AS ARRAY OF DOUBLE` come `OPTIMIZE.*` e appiattiscono qui dentro.
+' ── Forme con INPUT MATRICE (rettangolare, row-major) ──────────────────────────────────
+' Accettano `DIM A(rows, cols) AS DOUBLE` / `MATRIX OF (INT, INT, DOUBLE)`; rows/cols
+' vengono letti dal descrittore (UBOUND(A, 1/2)) e passati esplicitamente al builtin.
 
 PUBLIC FUNCTION LEASTSQUARES(A AS MATRIX OF (INT, INT, DOUBLE), b() AS DOUBLE) AS ARRAY OF DOUBLE
     DIM rows AS LONG = UBOUND(A, 1) + 1

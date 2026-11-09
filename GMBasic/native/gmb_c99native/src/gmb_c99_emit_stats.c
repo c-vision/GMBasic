@@ -89,8 +89,9 @@ int emit_bf_stats_dict(ctx_t* c, const char* name, const char* ns, gmb_tokenkind
         return 1;
     case SD_ONE_VAL:
         if (n != 1) return 0;
-        /* ANOVA su matrice jagged (DIM groups(k) AS ARRAY OF DOUBLE): righe uniformi →
-         * sizes tutte uguali a groups__cols (stesso schema del ramo STATS.Anova). */
+        /* ANOVA/KRUSKAL su matrici: righe uniformi → sizes tutte uguali alla colonna.
+         * - jagged legacy (DIM g(k) AS ARRAY OF DOUBLE): g__cols + gmb_*_jagged
+         * - MATRIX (DIM g(k-1, c-1) AS DOUBLE): flat row-major + gmb_*_flat */
         if ((tk == GMB_TOK_StatsAnova || tk == GMB_TOK_StatsKruskal) && a[0] && a[0]->kind == GMB_EXPR_VAR && a[0]->var) {
             var_t* jv = lookup_var(c, a[0]->var);
             if (jv && jv->jagged) {
@@ -99,6 +100,17 @@ int emit_bf_stats_dict(ctx_t* c, const char* name, const char* ns, gmb_tokenkind
                 sb_put(&c->out, " + 1); for (int __ai = 0; __ai < __an && __ai < 256; __ai++) __asz[__ai] = (int)(");
                 emit_ident(c, jv->name); sb_put(&c->out, "__cols); "); sb_put(&c->out, tk == GMB_TOK_StatsKruskal ? "gmb_kruskal_jagged" : "gmb_anova_jagged"); sb_put(&c->out, "((const double* const*)");
                 emit_var_ref(c, jv);
+                sb_put(&c->out, ", __asz, __an); })");
+                return 1;
+            }
+            if (jv && jv->is_array && jv->ndims >= 2) {
+                sb_put(&c->out, "({ int __asz[256]; int __an = (int)(");
+                sb_bound_var(&c->out, jv, 0);
+                sb_put(&c->out, " + 1); int __nc = (int)(");
+                sb_bound_var(&c->out, jv, 1);
+                sb_put(&c->out, " + 1); for (int __ai = 0; __ai < __an && __ai < 256; __ai++) __asz[__ai] = __nc; ");
+                sb_put(&c->out, tk == GMB_TOK_StatsKruskal ? "gmb_kruskal_flat" : "gmb_anova_flat");
+                sb_put(&c->out, "((const double*)"); emit_var_ref(c, jv);
                 sb_put(&c->out, ", __asz, __an); })");
                 return 1;
             }
@@ -189,7 +201,15 @@ int emit_bf_stats_dict(ctx_t* c, const char* name, const char* ns, gmb_tokenkind
     case SD_CHI2CON:
         if (n != 1 || !a[0] || a[0]->kind != GMB_EXPR_VAR || !a[0]->var) return 0;
         x = lookup_var(c, a[0]->var);
-        if (!x || !x->is_array || x->matrix || x->vclass[0]) return 0;
+        if (!x || !x->is_array || x->vclass[0]) return 0;
+        if (x->ndims >= 2 && !x->jagged) {
+            /* MATRIX (DIM t(r-1, c-1) AS DOUBLE), flat row-major. */
+            sb_put(&c->out, "gmb_chi2con_flat((const double*)");
+            emit_var_ref(c, x);
+            sb_put(&c->out, ", (int)("); sb_bound_var(&c->out, x, 0); sb_put(&c->out, " + 1), (int)(");
+            sb_bound_var(&c->out, x, 1); sb_put(&c->out, " + 1))");
+            return 1;
+        }
         sb_put(&c->out, row->fn); sb_put(&c->out, "((const double**)");
         emit_var_ref(c, x);
         sb_put(&c->out, ", (int)(");

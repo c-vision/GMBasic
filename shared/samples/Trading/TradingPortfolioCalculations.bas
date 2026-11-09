@@ -31,10 +31,8 @@ SUB Main()
     RendimentiAttesi = {0.10, 0.05, 0.02} ' 10%, 5%, 2%
 
     ' Matrice di Covarianza (3x3, array jagged)
-    DIM MatriceCov(2) AS ARRAY OF DOUBLE
-    MatriceCov(0) = {0.04, 0.005, 0.0}
-    MatriceCov(1) = {0.005, 0.01, 0.0}
-    MatriceCov(2) = {0.0, 0.0, 0.0025}
+    DIM MatriceCov(2, 2) AS DOUBLE
+    MatriceCov = {{0.04, 0.005, 0.0}, {0.005, 0.01, 0.0}, {0.0, 0.0, 0.0025}}
 
     DIM TassoRiskFree AS DOUBLE = 0.01
 
@@ -73,10 +71,8 @@ SUB Main()
     ' --- 5. VAR e CVAR DI PORTAFOGLIO ---
     PRINT "--- 5. PVAR e CVAR ---"
     ' Serie storica sintetica: 3 asset, 5 periodi ciascuno (jagged array).
-    DIM Storico(2) AS ARRAY OF DOUBLE
-    Storico(0) = {0.02, -0.01, 0.03, 0.01, -0.02}
-    Storico(1) = {0.01, 0.005, -0.005, 0.02, 0.01}
-    Storico(2) = {0.005, 0.01, -0.01, 0.015, 0.005}
+    DIM Storico(2, 4) AS DOUBLE
+    Storico = {{0.02, -0.01, 0.03, 0.01, -0.02}, {0.01, 0.005, -0.005, 0.02, 0.01}, {0.005, 0.01, -0.01, 0.015, 0.005}}
 
     DIM PortVar AS DOUBLE
     DIM PortCVar AS DOUBLE

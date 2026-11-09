@@ -31,6 +31,25 @@ static int gmb_parse_matrix_of(gmb_parser_t* p, const gmb_token_t** value_tok)
     return rank; /* numero di assi (= virgole) */
 }
 
+/* `ARRAY OF T` (mature type system, 2026-11-09): il tipo dichiarato è l'ELEMENTO T,
+ * non un array annidato. `p` punta al token ARRAY; consuma ARRAY [OF <tipo>] e lascia
+ * il cursore sul tipo elemento. Ritorna il token dell'elemento (NULL se assente/DOUBLE
+ * implicito). Usato da DIM e parametri: rank/estensioni vengono dalle parentesi del
+ * nome, mai da un tipo ARRAY OF ARRAY (che non esiste più). */
+static const gmb_token_t* gmb_consume_array_of(gmb_parser_t* p)
+{
+    if (!p || !gmb_p_cur(p)) return NULL;
+    const gmb_token_t* t = gmb_p_cur(p);
+    if (!(t->kind == GMB_TOK_Array || gmb_p_tok_is_keyword(t, "Array"))) return NULL;
+    gmb_p_adv(p); /* ARRAY */
+    if (gmb_p_check(p, GMB_TOK_Of)) {
+        gmb_p_adv(p); /* OF */
+        const gmb_token_t* el = gmb_p_cur(p);
+        if (el && el->lexeme) return el;
+    }
+    return NULL; /* ARRAY senza OF = ARRAY OF DOUBLE implicito */
+}
+
 static int gm_parser_prim_len(const char* w, int len) {
     static const char* pr[] = { "STRING","INTEGER","INT","LONG","DOUBLE","SINGLE","FLOAT","BOOLEAN","BOOL","BYTE","ANY", NULL };
     if (!w) return 1;
@@ -1560,6 +1579,14 @@ static gmb_stmt_t* gmb_p_parse_stmt_impl(gmb_parser_t* p, bool* multiline)
                     if (gmb_p_tok_is_keyword(gmb_p_cur(p), "As") || gmb_p_check(p, GMB_TOK_As)) {
                         gmb_p_adv(p);
                         const gmb_token_t* ty = gmb_p_cur(p);
+                        /* `AS ARRAY OF T`: tipo ELEMENTO T (rank dagli assi/`()`). */
+                        if (ty && (ty->kind == GMB_TOK_Array || gmb_p_tok_is_keyword(ty, "Array"))) {
+                            ty = gmb_consume_array_of(p);
+                            if (s->n_params > 0) {
+                                s->param_is_array[s->n_params - 1] = 1;
+                                if (!s->param_ndims[s->n_params - 1]) s->param_ndims[s->n_params - 1] = 1;
+                            }
+                        }
                         if (ty && ty->kind == GMB_TOK_Matrix && s->n_params > 0) {
                             /* DECLARE ... (X AS MATRIX OF (I1, …, In, V), ...): il parametro
                              * FFI riceve il puntatore flat (row-major) e il tipo valore V. */
@@ -2238,6 +2265,15 @@ if (gmb_tk_rem_vari_in(t->kind)) {
                         gmb_p_adv(p);
                         /* cattura il nome del tipo (primo token) per il codegen C99 (GPM) */
                         const gmb_token_t* ty = gmb_p_cur(p);
+                        /* `AS ARRAY OF T`: tipo ELEMENTO T (rank dagli assi/`()`); niente
+                         * array annidati (ARRAY OF ARRAY non esiste più). */
+                        if (ty && (ty->kind == GMB_TOK_Array || gmb_p_tok_is_keyword(ty, "Array"))) {
+                            ty = gmb_consume_array_of(p);
+                            if (s->n_params > 0) {
+                                s->param_is_array[s->n_params - 1] = 1;
+                                if (!s->param_ndims[s->n_params - 1]) s->param_ndims[s->n_params - 1] = 1;
+                            }
+                        }
                         if (ty && ty->kind == GMB_TOK_Matrix) {
                             /* `a AS MATRIX OF (I1, …, In, V)`: rank dagli assi, tipo valore V. */
                             const gmb_token_t* vt = NULL;
@@ -3104,6 +3140,18 @@ if (gmb_tk_rem_vari_in(t->kind)) {
                    PAROLA (lexeme che inizia per lettera/underscore) come tipo. */
                 if (at->lexeme && (at->lexeme[0] == '_' || isalpha((unsigned char)at->lexeme[0]))) {
                     gmb_p_adv(p);   /* AS */
+                    /* `AS ARRAY OF T`: il tipo dichiarato è l'ELEMENTO T; il rank viene
+                     * dagli assi del DIM (mai un array annidato: ARRAY OF ARRAY non esiste). */
+                    if (gmb_p_cur(p) && (gmb_p_cur(p)->kind == GMB_TOK_Array || gmb_p_tok_is_keyword(gmb_p_cur(p), "Array"))) {
+                        const gmb_token_t* el = gmb_consume_array_of(p);
+                        if (el && el->lexeme) {
+                            size_t eln = (size_t)el->length < 31 ? (size_t)el->length : 31;
+                            memcpy(tb, el->lexeme, eln); tb[eln] = 0;
+                            dk0 = (el->kind == GMB_TOK_Identifier || el->kind == GMB_TOK_Unknown) ? (gmb_tokenkind_t)0 : el->kind;
+                        } else {
+                            tb[0] = 0; dk0 = GMB_TOK_Double;
+                        }
+                    }
                     gmb_p_adv(p);   /* nome tipo */
                     /* Tipo QUALIFICATO `AS NS.Cls` (es. AGENTS.AgentHandle): il C99Native è
                      * monofile e registra le classi col nome nudo (NAMESPACE è no-op) → si

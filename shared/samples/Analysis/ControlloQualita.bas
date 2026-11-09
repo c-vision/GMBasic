@@ -15,10 +15,9 @@ IMPORT STATS
 SUB Main()
     ' ── 1. ANOVA: tre linee, quattro pezzi ciascuna ──────────────────────────
     ' Se le medie delle linee fossero uguali, F sarebbe vicino a 0 e P alto.
-    DIM linee(2) AS ARRAY OF DOUBLE
-    linee(0) = {10.1, 10.3, 9.9, 10.0}     ' linea A: stretta intorno a 10
-    linee(1) = {10.4, 10.6, 10.2, 10.5}    ' linea B: spostata in alto
-    linee(2) = {9.7, 9.9, 9.5, 9.8}        ' linea C: spostata in basso
+    DIM linee(2, 3) AS DOUBLE
+    ' linea A: stretta intorno a 10; linea B: spostata in alto; linea C: spostata in basso
+    linee = {{10.1, 10.3, 9.9, 10.0}, {10.4, 10.6, 10.2, 10.5}, {9.7, 9.9, 9.5, 9.8}}
     DIM aov AS STATS.AnovaResult
     aov = STATS.Anova(linee)
     PRINT "== 1. ANOVA: le linee differiscono? =="

@@ -1243,7 +1243,8 @@ public record TBColumnType(Token? SourceToken = null)
 /// Rappresenta un tipo array, specificando il tipo degli elementi e il RANK statico
 /// (numero di dimensioni della matrice rettangolare). Il rank e' parte del TIPO:
 /// attraversa parametri e valori di ritorno senza deduzione dal valore.
-/// Gli array jagged restano annidati (`ARRAY OF ARRAY OF T`) e hanno rank 1 sull'esterno.
+/// NON esistono array annidati: `ARRAY OF ARRAY OF T` è vietato dal parser; usa
+/// <c>MATRIX OF (I1, …, In, T)</c> per le matrici a rank n.
 /// </summary>
 /// <param name="ElementType">Il tipo di dato degli elementi contenuti nell'array.</param>
 /// <param name="Rank">Numero di dimensioni (>= 1). Default 1 (vettore).</param>

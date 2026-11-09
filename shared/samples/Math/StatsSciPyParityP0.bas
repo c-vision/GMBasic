@@ -12,10 +12,10 @@ SUB Main()
   DIM z(19) AS DOUBLE = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20}
   DIM normal(9) AS DOUBLE = {0.12, -0.31, 0.45, 1.02, -0.76, 0.33, 0.18, -0.22, 0.57, -0.41}
   DIM v(4) AS DOUBLE = {1, 2, 3, 4, 5}
-  DIM an(1) AS ARRAY OF DOUBLE
-  an(0) = {2, 3, 4, 5} : an(1) = {4, 5, 6, 7}
-  DIM tb(1) AS ARRAY OF DOUBLE
-  tb(0) = {10, 20} : tb(1) = {30, 40}
+  DIM an(1, 3) AS DOUBLE
+  an = {{2, 3, 4, 5}, {4, 5, 6, 7}}
+  DIM tb(1, 1) AS DOUBLE
+  tb = {{10, 20}, {30, 40}}
 
   PRINT "iqr      ="; MATH.ROUND(STATS.IQR(x), 6)
 

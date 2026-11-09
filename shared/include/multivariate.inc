@@ -105,7 +105,7 @@ PUBLIC SUB KMEANS(data() AS DOUBLE, k AS LONG, out() AS DOUBLE)
     CALL MXF_KMEANS(data, n, k, 100, out)
 END SUB
 
-' PCA: data jagged (osservazioni x variabili); out = autovalori(m) + autovettori(m*m).
+' PCA: data MATRIX (osservazioni x variabili); out = autovalori(m) + autovettori(m*m).
 PUBLIC SUB PCA(data AS MATRIX OF (INT, INT, DOUBLE), out() AS DOUBLE)
     DIM rows AS LONG = UBOUND(data, 1) + 1
     DIM cols AS LONG = UBOUND(data, 2) + 1
@@ -133,7 +133,7 @@ PUBLIC FUNCTION BONEXT(x() AS DOUBLE, y() AS DOUBLE, cand() AS DOUBLE, l2 AS DOU
     RETURN o
 END FUNCTION
 
-' SVM multiclasse: X jagged (n x d); out = W(k*d).
+' SVM multiclasse: X MATRIX (n x d); out = W(k*d).
 PUBLIC SUB SVMFIT(X AS MATRIX OF (INT, INT, DOUBLE), y() AS DOUBLE, k AS LONG, C AS DOUBLE, maxIter AS LONG, out() AS DOUBLE)
     DIM n AS LONG = UBOUND(X, 1) + 1
     DIM d AS LONG = UBOUND(X, 2) + 1

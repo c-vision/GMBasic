@@ -1185,8 +1185,13 @@ static void gmb_bf_1065(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int fun
 static void gmb_bf_1063(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
 {
     (void)vm; (void)task; (void)func_code;
-    gmb_val_t groups = gmb_vm_arg_list(argc >= 1 ? &args[0] : NULL);
-    gmb_val_t r = gmb_kruskal(groups);
+    /* KRUSKAL su gruppi: matrice rettangolare (flat row-major) o lista di liste.
+     * `gmb_kruskal_flat` è il canone condiviso (stessa semantica del C99/IL). */
+    int k = 0;
+    int* sizes = NULL;
+    double* g = argc >= 1 ? gmb_vm_groups_to_flat(&args[0], &k, &sizes) : NULL;
+    gmb_val_t r = g ? gmb_kruskal_flat(g, sizes, k) : gmb_val_nil();
+    free(g); free(sizes);
     bout->result = 0;
     gmb_vm_set_dict_result_owned(r, &bout->is_num, &bout->result_ref, &bout->result_ref_bt);
 }

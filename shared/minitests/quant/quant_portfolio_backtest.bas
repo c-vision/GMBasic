@@ -8,8 +8,8 @@ IMPORT BACKTEST
 SUB Main()
   DIM w(2) AS DOUBLE : w = {0.5, 0.3, 0.2}
   DIM m(2) AS DOUBLE : m = {0.10, 0.05, 0.02}
-  DIM cov(2) AS ARRAY OF DOUBLE
-  cov(0) = {0.04, 0.005, 0.0} : cov(1) = {0.005, 0.01, 0.0} : cov(2) = {0.0, 0.0, 0.0025}
+  DIM cov(2, 2) AS DOUBLE
+  cov = {{0.04, 0.005, 0.0}, {0.005, 0.01, 0.0}, {0.0, 0.0, 0.0025}}
   DIM o() AS DOUBLE
 
   PRINT "er="; FORMAT(PORTFOLIO.EXPECTEDRETURN(w, m), "#.######")
@@ -31,7 +31,7 @@ SUB Main()
   PRINT "|ew="; FORMAT(o(3), "#.######")
   o = PORTFOLIO.MAXRETURN(m)
   PRINT "|mr="; FORMAT(o(0), "#.######"); ":"; o(3); o(4); o(5)
-  DIM hm(0) AS ARRAY OF DOUBLE : hm(0) = {0.10, 0.05, 0.02}
+  DIM hm(0, 2) AS DOUBLE : hm = {{0.10, 0.05, 0.02}}
   o = PORTFOLIO.KELLYCRITERION(hm, 0.01)
   PRINT "|kelly="; FORMAT(o(0), "#.######")
   o = PORTFOLIO.MINCVAR(hm, 0.95, 0.01)
@@ -42,18 +42,16 @@ SUB Main()
   PRINT "|ev="; FORMAT(o(3) + o(4) + o(5), "#.######")
 
   DIM caps(2) AS DOUBLE : caps = {100, 200, 300}
-  DIM P(2) AS ARRAY OF DOUBLE
-  P(0) = {1.0, 0.0, 0.0} : P(1) = {0.0, 1.0, 0.0} : P(2) = {0.0, 0.0, 1.0}
+  DIM P(2, 2) AS DOUBLE
+  P = {{1.0, 0.0, 0.0}, {0.0, 1.0, 0.0}, {0.0, 0.0, 1.0}}
   DIM Q(2) AS DOUBLE : Q = {0.10, 0.05, 0.02}
-  DIM om(2) AS ARRAY OF DOUBLE
-  om(0) = {0.0001, 0.0, 0.0} : om(1) = {0.0, 0.0001, 0.0} : om(2) = {0.0, 0.0, 0.0001}
+  DIM om(2, 2) AS DOUBLE
+  om = {{0.0001, 0.0, 0.0}, {0.0, 0.0001, 0.0}, {0.0, 0.0, 0.0001}}
   o = PORTFOLIO.BLACKLITTERMAN(caps, cov, 2.5, 0.05, P, Q, om, 0.01)
   PRINT "|bl="; FORMAT(o(3) + o(4) + o(5), "#.######"); ":"; FORMAT(o(1), "#.######")
 
-  DIM hist(2) AS ARRAY OF DOUBLE
-  hist(0) = {0.02, -0.01, 0.03, 0.01, -0.02}
-  hist(1) = {0.01, 0.005, -0.005, 0.02, 0.01}
-  hist(2) = {0.005, 0.01, -0.01, 0.015, 0.005}
+  DIM hist(2, 4) AS DOUBLE
+  hist = {{0.02, -0.01, 0.03, 0.01, -0.02}, {0.01, 0.005, -0.005, 0.02, 0.01}, {0.005, 0.01, -0.01, 0.015, 0.005}}
   PRINT "|pvar="; FORMAT(PORTFOLIO.PVAR(hist, w, 0.95), "#.######")
   PRINT "|pcvar="; FORMAT(PORTFOLIO.CVAR(hist, w, 0.95), "#.######")
 

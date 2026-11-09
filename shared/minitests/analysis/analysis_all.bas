@@ -106,9 +106,8 @@ END SUB
 
 
 SUB A_anova()
-  DIM g(1) AS ARRAY OF DOUBLE
-  g(0) = {2.0, 3.0, 4.0, 5.0}
-  g(1) = {4.0, 5.0, 6.0, 7.0}
+  DIM g(1, 3) AS DOUBLE
+  g = {{2.0, 3.0, 4.0, 5.0}, {4.0, 5.0, 6.0, 7.0}}
   DIM aov AS STATS.AnovaResult
   aov = STATS.Anova(g)
   PRINT "F="; MATH.ROUND(aov.FValue, 4)

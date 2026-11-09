@@ -23,9 +23,8 @@ END SUB
 
 
 SUB S_anova()
-  DIM groups(1) AS ARRAY OF DOUBLE
-  groups(0) = {2.0, 3.0, 4.0, 5.0}
-  groups(1) = {4.0, 5.0, 6.0, 7.0}
+  DIM groups(1, 3) AS DOUBLE
+  groups = {{2.0, 3.0, 4.0, 5.0}, {4.0, 5.0, 6.0, 7.0}}
   DIM r = STATS.ANOVA(groups)
   PRINT "f="; MATH.ROUND(r.Statistic, 6)
   PRINT "p="; MATH.ROUND(r.PValue, 6)
@@ -43,9 +42,8 @@ END SUB
 
 
 SUB S_chi2con()
-  DIM tb(1) AS ARRAY OF DOUBLE
-  tb(0) = {10, 20}
-  tb(1) = {30, 40}
+  DIM tb(1, 1) AS DOUBLE
+  tb = {{10, 20}, {30, 40}}
   DIM r = STATS.CHI2CON(tb)
   PRINT "chi2="; MATH.ROUND(r.Statistic, 6)
   PRINT "p="; MATH.ROUND(r.PValue, 6)

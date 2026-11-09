@@ -26,11 +26,8 @@ SUB Main()
     ' Dati di input simulati
     DIM Rendimenti(3) AS DOUBLE = {0.12, 0.08, 0.05, 0.03}
     ' Matrice di covarianza 4x4 (jagged)
-    DIM Covarianza(3) AS ARRAY OF DOUBLE
-    Covarianza(0) = {0.04, 0.01, 0.005, 0.0}
-    Covarianza(1) = {0.01, 0.02, 0.008, 0.002}
-    Covarianza(2) = {0.005, 0.008, 0.01, 0.001}
-    Covarianza(3) = {0.0, 0.002, 0.001, 0.005}
+    DIM Covarianza(3, 3) AS DOUBLE
+    Covarianza = {{0.04, 0.01, 0.005, 0.0}, {0.01, 0.02, 0.008, 0.002}, {0.005, 0.008, 0.01, 0.001}, {0.0, 0.002, 0.001, 0.005}}
     DIM RiskFree = 0.02
 
     DIM Ottimo() AS DOUBLE

@@ -4245,6 +4245,24 @@ double gmb_vm_call_proc_sync_num(gmb_vm_t* vm, gmb_task_t* task, const char* nam
     if (!a || a->type != 2 || !a->ref || a->ref->kind != GMB_OBJ_LIST) return NULL;
     gmb_obj_shared_val_t* sv = (gmb_obj_shared_val_t*)a->ref;
     if (!sv->list) return NULL;
+    /* Matrice RETTANGOLARE rank-2 (`DIM m(r,c) AS DOUBLE`): in VM/C è una lista FLAT
+     * row-major con ndims/dim_upper (vedi OP_REDIM), NON una lista di liste. */
+    if (sv->ndims >= 2) {
+        int nr = (int)sv->dim_upper[0] + 1;
+        int nc = (int)sv->dim_upper[1] + 1;
+        size_t need = (size_t)(nr > 0 ? nr : 0) * (size_t)(nc > 0 ? nc : 0);
+        if (nr <= 0 || nc <= 0 || sv->list->count < need) return NULL;
+        int* sz = (int*)calloc((size_t)nr, sizeof(int));
+        double* flat = (double*)malloc(sizeof(double) * need);
+        if (!sz || !flat) { free(sz); free(flat); return NULL; }
+        for (int i = 0; i < nr; i++) sz[i] = nc;
+        for (size_t idx = 0; idx < need; idx++) {
+            gmb_val_t it = sv->list->items[idx];
+            flat[idx] = it.kind == GMB_TYPE_DOUBLE ? it.v_double : it.kind == GMB_TYPE_INT ? (double)it.v_int : 0.0;
+        }
+        *k = nr; *sizes = sz;
+        return flat;
+    }
     *k = (int)sv->list->count;
     if (*k <= 0) return NULL;
     int* sz = (int*)calloc((size_t)*k, sizeof(int));
@@ -4286,6 +4304,21 @@ double* gmb_vm_jagged_to_flat(const gmb_stack_entry_t* a, int* nrows, int* ncols
     if (!a || a->type != 2 || !a->ref || a->ref->kind != GMB_OBJ_LIST) return NULL;
     gmb_obj_shared_val_t* sv = (gmb_obj_shared_val_t*)a->ref;
     if (!sv->list) return NULL;
+    /* Matrice RETTANGOLARE rank-2 (lista flat row-major + ndims/dim_upper). */
+    if (sv->ndims >= 2) {
+        int nr = (int)sv->dim_upper[0] + 1;
+        int nc = (int)sv->dim_upper[1] + 1;
+        size_t need = (size_t)(nr > 0 ? nr : 0) * (size_t)(nc > 0 ? nc : 0);
+        if (nr <= 0 || nc <= 0 || sv->list->count < need) return NULL;
+        double* flat = (double*)malloc(sizeof(double) * need);
+        if (!flat) return NULL;
+        for (size_t idx = 0; idx < need; idx++) {
+            gmb_val_t it = sv->list->items[idx];
+            flat[idx] = it.kind == GMB_TYPE_DOUBLE ? it.v_double : it.kind == GMB_TYPE_INT ? (double)it.v_int : 0.0;
+        }
+        *nrows = nr; *ncols = nc;
+        return flat;
+    }
     *nrows = (int)sv->list->count;
     if (*nrows <= 0) return NULL;
     gmb_val_t r0 = sv->list->items[0];

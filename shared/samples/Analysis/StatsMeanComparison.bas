@@ -11,10 +11,8 @@ SUB Main()
     DIM control() = {12.1, 11.8, 12.5, 12.0, 11.6}
     DIM treatment() = {13.4, 12.9, 13.7, 13.1, 12.8}
     DIM afterTreatment() = {12.8, 12.4, 13.0, 12.7, 12.2}
-    DIM groups(2) AS ARRAY OF DOUBLE
-    groups(0) = {12.1, 11.8, 12.5, 12.0, 11.6}
-    groups(1) = {13.4, 12.9, 13.7, 13.1, 12.8}
-    groups(2) = {12.5, 12.7, 12.9, 12.6, 12.8}
+    DIM groups(2, 4) AS DOUBLE
+    groups = {{12.1, 11.8, 12.5, 12.0, 11.6}, {13.4, 12.9, 13.7, 13.1, 12.8}, {12.5, 12.7, 12.9, 12.6, 12.8}}
 
     PrintResult("T test indipendente", STATS.TTEST(control, treatment))
     PrintResult("T test appaiato", STATS.TTESTPAIRED(control, afterTreatment))

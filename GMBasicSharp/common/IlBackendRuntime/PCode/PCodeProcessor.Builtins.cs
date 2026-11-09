@@ -37,13 +37,7 @@ internal sealed partial class PCodeProcessor
     }
 
 private static double[] ToDoubleArr(object? arg) => Basic.IlBackend.RuntimeFlatten.ToDoubles(arg);
-    private static double[][] ToDoubleMatrix(object? value)
-    {
-        if (value is not System.Collections.IEnumerable rows || value is string) return [];
-        var result = new List<double[]>();
-        foreach (var row in rows) result.Add(ToDoubleArr(row));
-        return result.ToArray();
-    }
+    private static double[][] ToDoubleMatrix(object? value) => ToJaggedArr(value);
     private static double[][] ToJaggedArr(object? value)
     {
         // Matrice RETTANGOLARE rank-2 (DIM M(3,1) AS DOUBLE → double[,] o object[,]): l'IL la

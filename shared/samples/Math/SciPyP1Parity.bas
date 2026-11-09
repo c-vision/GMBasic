@@ -36,10 +36,10 @@ SUB Main()
   PRINT "splev     ="; sv(0)
 
   ' pdist/cdist/distance_matrix
-  DIM X(2) AS ARRAY OF DOUBLE
-  X(0) = {0, 0} : X(1) = {3, 4} : X(2) = {6, 8}
-  DIM Y(0) AS ARRAY OF DOUBLE
-  Y(0) = {0, 0}
+  DIM X(2, 1) AS DOUBLE
+  X = {{0, 0}, {3, 4}, {6, 8}}
+  DIM Y(0, 1) AS DOUBLE
+  Y = {{0, 0}}
   DIM pd() = SPATIAL.PDIST(X, "euclidean")
   PRINT "pdist0    ="; pd(0)
   cdm = SPATIAL.CDIST(X, Y, "euclidean")
@@ -61,8 +61,8 @@ SUB Main()
   PRINT "irfft0    ="; ir(0)
 
   ' ConvexHull quadrato
-  DIM pts(4) AS ARRAY OF DOUBLE
-  pts(0) = {0, 0} : pts(1) = {1, 0} : pts(2) = {1, 1} : pts(3) = {0, 1} : pts(4) = {0.5, 0.5}
+  DIM pts(4, 1) AS DOUBLE
+  pts = {{0, 0}, {1, 0}, {1, 1}, {0, 1}, {0.5, 0.5}}
   DIM hull() = SPATIAL.CONVEXHULL(pts)
   PRINT "hull      ="; hull(0); hull(1); hull(2); hull(3)
 END SUB
