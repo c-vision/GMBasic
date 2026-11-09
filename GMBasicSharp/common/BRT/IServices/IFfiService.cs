@@ -33,7 +33,7 @@ public interface IFfiService
 {
     IntPtr LoadLibrary(string path);
     void FreeLibrary(IntPtr handle);
-    IntPtr GetFunction(IntPtr library, string name);
+    IntPtr GetFunction(IntPtr library, string name, string? libLabel = null);
     object? CallFunction(IntPtr function, object?[] args);
     /// <summary>Chiamata tipizzata (OP_CALL_FFI_T): kind omogeneo — 1 = int64 (LONG), 0 = double
     /// — per tutti i parametri e il ritorno, così l'ABI corrisponde al simbolo C exportato.</summary>

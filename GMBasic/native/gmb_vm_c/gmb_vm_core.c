@@ -15224,8 +15224,8 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                     {
                         char fmsg[256];
                         snprintf(fmsg, sizeof(fmsg), "[FFI] libreria non trovata: %s (simbolo %s)", lib, fn);
-                        vm_error(task, fmsg);
-                        return -1;
+                        gmb_raise_basic_error(task, 5.0, fmsg);   /* catturabile: TRY/ON ERROR */
+                        break;
                     }
                     if (h != NULL)
                     {
@@ -15234,8 +15234,8 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                         {
                             char fmsg[256];
                             snprintf(fmsg, sizeof(fmsg), "[FFI] simbolo '%s' non trovato in '%s' (libreria non aggiornata?)", fn, lib);
-                            vm_error(task, fmsg);
-                            return -1;
+                            gmb_raise_basic_error(task, 5.0, fmsg);   /* catturabile: TRY/ON ERROR */
+                            break;
                         }
                         if (p != NULL)
                         {
@@ -15573,8 +15573,8 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                     {
                         char fmsg[256];
                         snprintf(fmsg, sizeof(fmsg), "[FFI] libreria non trovata: %s (simbolo %s)", lib, fn);
-                        vm_error(task, fmsg);
-                        return -1;
+                        gmb_raise_basic_error(task, 5.0, fmsg);   /* catturabile: TRY/ON ERROR */
+                        break;
                     }
                     if (h != NULL)
                     {
@@ -15583,8 +15583,8 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                         {
                             char fmsg[256];
                             snprintf(fmsg, sizeof(fmsg), "[FFI] simbolo '%s' non trovato in '%s' (libreria non aggiornata?)", fn, lib);
-                            vm_error(task, fmsg);
-                            return -1;
+                            gmb_raise_basic_error(task, 5.0, fmsg);   /* catturabile: TRY/ON ERROR */
+                            break;
                         }
                         uint64_t fullMaskForArgc = argc >= 64 ? 0xFFFFFFFFFFFFFFFFull : ((1ull << argc) - 1ull);
                         /* 2026-11-02: slot puntatore (array/STRING/BYREF) presenti? Se sì il

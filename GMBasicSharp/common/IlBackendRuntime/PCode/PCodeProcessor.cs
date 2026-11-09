@@ -4527,11 +4527,18 @@ internal sealed partial class PCodeProcessor
                     try
                     {
                         var handle = _runtime.Ffi.LoadLibrary(libPath);
-                        var funcPtr = _runtime.Ffi.GetFunction(handle, funcName);
+                        var funcPtr = _runtime.Ffi.GetFunction(handle, funcName, libPath);
                         var result = _runtime.Ffi.CallFunction(funcPtr, args);
                         task.PushRef(result);
                     }
-                    catch (Exception ex) { task.PushRef($"[FFI_ERROR] {ex.Message}"); }
+                    catch (Exception ex)
+                    {
+                        /* Simbolo/libreria FFI non risolti: errore BASIC ESPLICITO e catturabile
+                         * (ON ERROR/TRY), codice 5 = IllegalFunctionCall come VM/C e C99Native.
+                         * Prima si spingeva la stringa "[FFI_ERROR] ..." sullo stack come se
+                         * fosse il risultato: nessun errore, out() intatti e valore credibile. */
+                        RaiseBasicError(task, ex is BasicException be ? (double)be.Code : 5.0, ex.Message);
+                    }
                 }
                 else { task.PushRef(null); }
                 return true;
@@ -4708,7 +4715,7 @@ internal sealed partial class PCodeProcessor
                             args[i] = ptr.ToInt64();
                         }
                         var handle = _runtime.Ffi.LoadLibrary(libPath);
-                        var funcPtr = _runtime.Ffi.GetFunction(handle, funcName);
+                        var funcPtr = _runtime.Ffi.GetFunction(handle, funcName, libPath);
                         var anyUdt = udtParamShapes.Any(s => s != null) || retUdtShape != null;
                         // Firma mista (2026-10): scalarKindMask non-uniforme con 'kind' (solo
                         // possibile quando non c'è nessun array/STRING/BYREF/UDT, per
@@ -4725,7 +4732,14 @@ internal sealed partial class PCodeProcessor
                             if (byrefBoxes[i] is { } b) b.Value = args[i];
                         task.PushRef(result);
                     }
-                    catch (Exception ex) { task.PushRef($"[FFI_ERROR] {ex.Message}"); }
+                    catch (Exception ex)
+                    {
+                        /* Simbolo/libreria FFI non risolti: errore BASIC ESPLICITO e catturabile
+                         * (ON ERROR/TRY), codice 5 = IllegalFunctionCall come VM/C e C99Native.
+                         * Prima si spingeva la stringa "[FFI_ERROR] ..." sullo stack come se
+                         * fosse il risultato: nessun errore, out() intatti e valore credibile. */
+                        RaiseBasicError(task, ex is BasicException be ? (double)be.Code : 5.0, ex.Message);
+                    }
                 }
                 else { task.PushRef(null); }
                 return true;
