@@ -785,12 +785,6 @@ public sealed partial class IlProgramCompiler
             case TokenKind.VDist: EmitLinAlgLongPairCall(expr, nameof(IlRuntime.VDist)); break;
             case TokenKind.VMin: EmitLinAlgLongPairCall(expr, nameof(IlRuntime.VMin)); break;
             case TokenKind.VMax: EmitLinAlgLongPairCall(expr, nameof(IlRuntime.VMax)); break;
-            // KDTree (scipy.spatial.KDTree): CREATE(points)→handle; QUERY/QUERYDIST(h,x,k);
-            // QUERYBALL(h,x,r).
-            case TokenKind.KdTreeCreate: EmitKdTreeCreateCall(expr); break;
-            case TokenKind.KdTreeQuery: EmitKdTreeQueryCall(expr, nameof(IlRuntime.KdTreeQuery)); break;
-            case TokenKind.KdTreeQueryDist: EmitKdTreeQueryCall(expr, nameof(IlRuntime.KdTreeQueryDist)); break;
-            case TokenKind.KdTreeQueryBall: EmitKdTreeQueryCall(expr, nameof(IlRuntime.KdTreeQueryBall)); break;
             case TokenKind.LinAlgLuFunc or TokenKind.Lu: EmitLinAlgUnaryHandleCall(expr, RuntimeMethod(nameof(IlRuntime.MatrixLu)), vector: false); break;
             case TokenKind.LinAlgQrFunc or TokenKind.Qr: EmitLinAlgUnaryHandleCall(expr, RuntimeMethod(nameof(IlRuntime.MatrixQr)), vector: false); break;
             case TokenKind.LinAlgSvdFunc or TokenKind.Svd: EmitLinAlgUnaryHandleCall(expr, RuntimeMethod(nameof(IlRuntime.MatrixSvd)), vector: false); break;

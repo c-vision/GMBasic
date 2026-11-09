@@ -1,10 +1,11 @@
 /* ============================================================================
- * gmb_kdtree.c — kd-tree per nearest-neighbor (scipy.spatial.KDTree): build
- * ricorsiva con split sulla dimensione a massima dispersione, query k-NN
- * branch-and-bound e query_ball_point. Porting di CommonLib.KdTree.cs.
+ * kdtree.c — namespace KDTREE (scipy.spatial.KDTree).
+ *
+ * Self-contained: tabella statica di alberi (handle int), nessuna dipendenza
+ * dal runtime. Le query scrivono in buffer forniti dal chiamante:
+ *   ofx_kd_query*  ritornano il numero di risultati (<= cap), -1 su errore.
  * ============================================================================ */
-
-#include "gmb_runtime.h"
+#include "gmbkdtree.h"
 #include <math.h>
 #include <stdlib.h>
 #include <string.h>
@@ -26,13 +27,13 @@ typedef struct {
 
 static gmb_kdtree_t g_kdtrees[GMB_KD_MAX];
 
-static gmb_kdtree_t* gmb_kdtree_get(gmb_int_t h)
+static gmb_kdtree_t* kd_get(int h)
 {
     if (h <= 0 || h >= GMB_KD_MAX) return NULL;
     return g_kdtrees[h].in_use ? &g_kdtrees[h] : NULL;
 }
 
-static int gmb_kdtree_build(gmb_kdtree_t* t, int* idx, int nidx)
+static int kd_build(gmb_kdtree_t* t, int* idx, int nidx)
 {
     if (nidx <= 0) return -1;
     int dim = 0;
@@ -61,12 +62,12 @@ static int gmb_kdtree_build(gmb_kdtree_t* t, int* idx, int nidx)
     t->node_pt[ni] = idx[mid];
     t->node_dim[ni] = dim;
     t->node_val[ni] = t->pts[idx[mid] * t->m + dim];
-    t->node_left[ni] = gmb_kdtree_build(t, idx, mid);
-    t->node_right[ni] = gmb_kdtree_build(t, idx + mid + 1, nidx - mid - 1);
+    t->node_left[ni] = kd_build(t, idx, mid);
+    t->node_right[ni] = kd_build(t, idx + mid + 1, nidx - mid - 1);
     return ni;
 }
 
-gmb_int_t gmb_kdtree_create(const double* flat, int n, int m)
+int ofx_kd_create(const double* flat, int n, int m)
 {
     if (flat == NULL || n <= 0 || m <= 0) return 0;
     gmb_kdtree_t* t = NULL;
@@ -91,15 +92,21 @@ gmb_int_t gmb_kdtree_create(const double* flat, int n, int m)
     int* idx = (int*)malloc(sizeof(int) * (size_t)n);
     if (!idx) return 0;
     for (int i = 0; i < n; i++) idx[i] = i;
-    gmb_kdtree_build(t, idx, n);
+    kd_build(t, idx, n);
     free(idx);
     t->in_use = 1;
     for (int i = 1; i < GMB_KD_MAX; i++)
-        if (t == &g_kdtrees[i]) return (gmb_int_t)i;
+        if (t == &g_kdtrees[i]) return i;
     return 0;
 }
 
-static double gmb_kd_dist2(const gmb_kdtree_t* t, const double* q, int pi)
+int ofx_kd_count(int h)
+{
+    gmb_kdtree_t* t = kd_get(h);
+    return t ? t->n : 0;
+}
+
+static double kd_dist2(const gmb_kdtree_t* t, const double* q, int pi)
 {
     double d2 = 0;
     const double* p = t->pts + (size_t)pi * t->m;
@@ -108,7 +115,7 @@ static double gmb_kd_dist2(const gmb_kdtree_t* t, const double* q, int pi)
 }
 
 /* Inserimento ordinato (ascendente) nei k migliori; ritorna il nuovo worst (d2 max). */
-static double gmb_kd_insert(double* best_d, int* best_i, int k, int* count, double d2, int pi)
+static double kd_insert(double* best_d, int* best_i, int k, int* count, double d2, int pi)
 {
     if (*count < k)
     {
@@ -125,68 +132,65 @@ static double gmb_kd_insert(double* best_d, int* best_i, int k, int* count, doub
     return best_d[*count - 1];
 }
 
-static void gmb_kd_search(const gmb_kdtree_t* t, int node, const double* q,
-                          double* best_d, int* best_i, int k, int* count, double* worst)
+static void kd_search(const gmb_kdtree_t* t, int node, const double* q,
+                      double* best_d, int* best_i, int k, int* count, double* worst)
 {
     if (node < 0) return;
-    double d2 = gmb_kd_dist2(t, q, t->node_pt[node]);
-    if (*count < k || d2 < *worst) *worst = gmb_kd_insert(best_d, best_i, k, count, d2, t->node_pt[node]);
+    double d2 = kd_dist2(t, q, t->node_pt[node]);
+    if (*count < k || d2 < *worst) *worst = kd_insert(best_d, best_i, k, count, d2, t->node_pt[node]);
     double plane = q[t->node_dim[node]] - t->node_val[node];
     int near = plane < 0 ? t->node_left[node] : t->node_right[node];
     int far = plane < 0 ? t->node_right[node] : t->node_left[node];
-    gmb_kd_search(t, near, q, best_d, best_i, k, count, worst);
-    if (*count < k || plane * plane < *worst) gmb_kd_search(t, far, q, best_d, best_i, k, count, worst);
+    kd_search(t, near, q, best_d, best_i, k, count, worst);
+    if (*count < k || plane * plane < *worst) kd_search(t, far, q, best_d, best_i, k, count, worst);
 }
 
-int gmb_kdtree_query(gmb_int_t h, const double* q, int k, int* out_idx)
+int ofx_kd_query(int h, const double* q, int k, double* out_idx, int out_cap)
 {
-    gmb_kdtree_t* t = gmb_kdtree_get(h);
-    if (!t || !q || k <= 0 || !out_idx) return 0;
+    gmb_kdtree_t* t = kd_get(h);
+    if (!t || !q || k <= 0 || !out_idx || out_cap < k) return -1;
     double* best_d = (double*)malloc(sizeof(double) * (size_t)k);
-    if (!best_d) return 0;
+    int* best_i = (int*)malloc(sizeof(int) * (size_t)k);
+    if (!best_d || !best_i) { free(best_d); free(best_i); return -1; }
     int count = 0;
     double worst = 1e300;
-    gmb_kd_search(t, 0, q, best_d, out_idx, k, &count, &worst);
-    free(best_d);
+    kd_search(t, 0, q, best_d, best_i, k, &count, &worst);
+    for (int i = 0; i < count; i++) out_idx[i] = (double)best_i[i];
+    free(best_d); free(best_i);
     return count;
 }
 
-int gmb_kdtree_query_dist(gmb_int_t h, const double* q, int k, double* out_d)
+int ofx_kd_query_dist(int h, const double* q, int k, double* out_d, int out_cap)
 {
-    gmb_kdtree_t* t = gmb_kdtree_get(h);
-    if (!t || !q || k <= 0 || !out_d) return 0;
+    gmb_kdtree_t* t = kd_get(h);
+    if (!t || !q || k <= 0 || !out_d || out_cap < k) return -1;
     int* idx = (int*)malloc(sizeof(int) * (size_t)k);
-    if (!idx) return 0;
     double* best_d = (double*)malloc(sizeof(double) * (size_t)k);
-    if (!best_d) { free(idx); return 0; }
+    if (!idx || !best_d) { free(idx); free(best_d); return -1; }
     int count = 0;
     double worst = 1e300;
-    gmb_kd_search(t, 0, q, best_d, idx, k, &count, &worst);
+    kd_search(t, 0, q, best_d, idx, k, &count, &worst);
     for (int i = 0; i < count; i++) out_d[i] = sqrt(best_d[i]);
     free(idx); free(best_d);
     return count;
 }
 
-int gmb_kdtree_query_ball(gmb_int_t h, const double* q, double r, int max_out, int* out_idx)
+int ofx_kd_query_ball(int h, const double* q, double r, double* out_idx, int out_cap)
 {
-    gmb_kdtree_t* t = gmb_kdtree_get(h);
-    if (!t || !q) return 0;   /* out_idx può essere NULL (conteggio only) */
+    gmb_kdtree_t* t = kd_get(h);
+    if (!t || !q || !out_idx || out_cap < t->n) return -1;
     double r2 = r * r;
     int count = 0;
-    /* DFS iterativo con stack esplicito (max 2*GMB_KD_MAXNODES) */
     int* stack = (int*)malloc(sizeof(int) * GMB_KD_MAXNODES * 2);
-    if (!stack) return 0;
+    if (!stack) return -1;
     int sp = 0;
     stack[sp++] = 0;
     while (sp > 0)
     {
         int node = stack[--sp];
         if (node < 0) continue;
-        if (gmb_kd_dist2(t, q, t->node_pt[node]) <= r2)
-        {
-            if (out_idx && count < max_out) out_idx[count] = t->node_pt[node];
-            count++;
-        }
+        if (kd_dist2(t, q, t->node_pt[node]) <= r2)
+            out_idx[count++] = (double)t->node_pt[node];
         double plane = q[t->node_dim[node]] - t->node_val[node];
         int near = plane < 0 ? t->node_left[node] : t->node_right[node];
         int far = plane < 0 ? t->node_right[node] : t->node_left[node];
@@ -195,42 +199,4 @@ int gmb_kdtree_query_ball(gmb_int_t h, const double* q, double r, int max_out, i
     }
     free(stack);
     return count;
-}
-
-/* ── Wrapper alloc (C99/VM): ritornano double* + outn (pattern array-builtin) ── */
-double* gmb_kdtree_query_indices_alloc(gmb_int_t h, const double* q, int k, gmb_int_t* outn)
-{
-    if (k <= 0) { *outn = 0; return NULL; }
-    double* r = (double*)malloc(sizeof(double) * (size_t)k);
-    int* idx = (int*)malloc(sizeof(int) * (size_t)k);
-    if (!r || !idx) { free(r); free(idx); *outn = 0; return NULL; }
-    int c = gmb_kdtree_query(h, q, k, idx);
-    for (int i = 0; i < c; i++) r[i] = (double)idx[i];
-    free(idx);
-    *outn = c;
-    return r;
-}
-
-double* gmb_kdtree_query_dists_alloc(gmb_int_t h, const double* q, int k, gmb_int_t* outn)
-{
-    if (k <= 0) { *outn = 0; return NULL; }
-    double* r = (double*)malloc(sizeof(double) * (size_t)k);
-    if (!r) { *outn = 0; return NULL; }
-    *outn = gmb_kdtree_query_dist(h, q, k, r);
-    return r;
-}
-
-double* gmb_kdtree_query_ball_alloc(gmb_int_t h, const double* q, double r, gmb_int_t* outn)
-{
-    int n = gmb_kdtree_query_ball(h, q, r, 0, NULL);
-    if (n <= 0) { *outn = 0; return NULL; }
-    double* res = (double*)malloc(sizeof(double) * (size_t)n);
-    if (!res) { *outn = 0; return NULL; }
-    int* idx = (int*)malloc(sizeof(int) * (size_t)n);
-    if (!idx) { free(res); *outn = 0; return NULL; }
-    int c = gmb_kdtree_query_ball(h, q, r, n, idx);
-    for (int i = 0; i < c; i++) res[i] = (double)idx[i];
-    free(idx);
-    *outn = c;
-    return res;
 }

@@ -264,7 +264,6 @@ public sealed partial class BackendImplementationRegistry
         r.Register(Backend.C99Native, "MATRIX.CREATE");
         r.Register(Backend.C99Native, "VECTOR.CREATE");
         r.Register(Backend.C99Native, "CHART.CREATE");
-        r.Register(Backend.C99Native, "KDTREE.CREATE");
         r.Register(Backend.C99Native, "TORCH.CREATE");
         r.Register(Backend.C99Native, "AI.Credits");
         r.Register(Backend.C99Native, "CONVERSIONS.CSng");
@@ -864,9 +863,6 @@ public sealed partial class BackendImplementationRegistry
         r.Register(Backend.C99Native, "AI.QaAnswer");
         r.Register(Backend.C99Native, "LINALG.QR");
         r.Register(Backend.C99Native, "CONVERT.Query");
-        r.Register(Backend.C99Native, "KDTREE.QUERY");
-        r.Register(Backend.C99Native, "KDTREE.QUERYBALL");
-        r.Register(Backend.C99Native, "KDTREE.QUERYDIST");
         r.Register(Backend.C99Native, "BRAINS.QueryMulti");
         r.Register(Backend.C99Native, "MATH.Rad2Deg");
         r.Register(Backend.C99Native, "AI.RagContext");

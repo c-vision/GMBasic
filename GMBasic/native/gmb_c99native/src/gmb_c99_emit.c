@@ -1490,8 +1490,6 @@ static int dim_arr_init_kind(ctx_t* c, const gmb_expr_t* e) {
         { GMB_TOK_ASort, 1, 1 }, { GMB_TOK_APad, 1, 2 }, { GMB_TOK_AClone, 1, 1 }, { GMB_TOK_AUnique, 1, 1 },
         { GMB_TOK_GetCursorPos, 1, 0 }, { GMB_TOK_GetTextMetrics, 1, 0 }, { GMB_TOK_GetPaletteColor, 1, 1 },
                 { GMB_TOK_Solve, 1, 2 }, { GMB_TOK_MatrixSolveTriangular, 1, 3 },
-        { GMB_TOK_KdTreeQuery, 1, 3 }, { GMB_TOK_KdTreeQueryDist, 1, 3 },
-        { GMB_TOK_KdTreeQueryBall, 1, 3 },
         { GMB_TOK_MatrixSubspaceAngles, 1, 2 },
         /* MATRIX gap 2026-09-12: HANDLE→ARRAY (runtime gmb_matrix_*_alloc con out-len) */
         { GMB_TOK_MatrixRowSums, 1, 1 }, { GMB_TOK_MatrixRowMeans, 1, 1 },
@@ -6152,7 +6150,6 @@ int emit_bf_rageval(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t 
 int emit_bf_uncertainty(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk, gmb_expr_t** args, int nargs, int line);
 int emit_bf_signal(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk, gmb_expr_t** args, int nargs, int line);
 int emit_bf_torch(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk, gmb_expr_t** args, int nargs, int line);
-int emit_bf_kdtree(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk, gmb_expr_t** args, int nargs, int line);
 int emit_bf_analysis(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk, gmb_expr_t** args, int nargs, int line);
 int emit_bf_vector(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk, gmb_expr_t** args, int nargs, int line);
 int emit_bf_finance_defaults(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk, gmb_expr_t** args, int nargs, int line);
@@ -6991,7 +6988,6 @@ static const gmb_bf_row_t gmb_bf_composite[] = {
     { NULL, GMB_TOK_TorchModelState, emit_bf_torch },
     { NULL, GMB_TOK_TorchModelTrainStep, emit_bf_torch },
     { NULL, GMB_TOK_SignalWelch, emit_bf_signal },
-    { NULL, GMB_TOK_KdTreeCreate, emit_bf_kdtree },
     /* TRAY (2026-10-02): tabella nel file di dominio gmb_c99_emit_tray.c (§0quater). */
     { NULL, GMB_TOK_TrayCreate, emit_bf_tray },
     { NULL, GMB_TOK_TrayItem, emit_bf_tray },
@@ -7004,9 +7000,6 @@ static const gmb_bf_row_t gmb_bf_composite[] = {
     { NULL, GMB_TOK_TrayAvailable, emit_bf_tray },
     { NULL, GMB_TOK_TrayLast, emit_bf_tray },
     /* BITS (2026-09-16): tabella nel file di dominio gmb_c99_emit_bits.c (§0quater). */
-    { NULL, GMB_TOK_KdTreeQuery, emit_bf_kdtree },
-    { NULL, GMB_TOK_KdTreeQueryDist, emit_bf_kdtree },
-    { NULL, GMB_TOK_KdTreeQueryBall, emit_bf_kdtree },
     { NULL, GMB_TOK_ContextBackground, emit_bf_context },
     { NULL, GMB_TOK_ContextWithCancel, emit_bf_context },
     { NULL, GMB_TOK_ContextDone, emit_bf_context },
@@ -8333,7 +8326,6 @@ static int dim_arr_analysis1d(ctx_t* c, gmb_stmt_t* s, gmb_expr_t* init);
 static int dim_arr_timeseries1d(ctx_t* c, gmb_stmt_t* s, gmb_expr_t* init);
 static int dim_arr_timeseries_matrix(ctx_t* c, gmb_stmt_t* s, gmb_expr_t* init);
 static int dim_arr_console1d(ctx_t* c, gmb_stmt_t* s, gmb_expr_t* init);
-static int dim_arr_kdtree(ctx_t* c, gmb_stmt_t* s, gmb_expr_t* init);
 static int an1d_arr(ctx_t* c, gmb_expr_t* a, var_t** out);
 static void emit_dict_key(ctx_t* c, gmb_expr_t* e);   /* definita più sotto in questo file */
 /* ============================================================================
@@ -9003,7 +8995,6 @@ static void emit_dim_arr_init(ctx_t* c, gmb_stmt_t* s) {
     if (dim_arr_analysis1d(c, s, init)) return;
     if (dim_arr_console1d(c, s, init)) return;
     /* KDTREE array-returning (QUERY/QUERYDIST/QUERYBALL) */
-    if (dim_arr_kdtree(c, s, init)) return;
     /* NUMERICAL.Fft/IFFT: matrice n×2 (re/im per riga) */
     int inv = init->tk == GMB_TOK_Ifft;
     int invc = init->tk == GMB_TOK_IfftComplex;
@@ -9222,42 +9213,6 @@ static int dim_arr_console1d(ctx_t* c, gmb_stmt_t* s, gmb_expr_t* init) {
     return 1;
 }
 
-/* ── KDTREE array-returning (QUERY/QUERYDIST/QUERYBALL): DIM x() = KDTREE.QUERY(...) ── */
-static int dim_arr_kdtree(ctx_t* c, gmb_stmt_t* s, gmb_expr_t* init) {
-    if (c->error[0]) return 0;
-    var_t* v = lookup_var(c, s->dim_var);
-    if (!v || !init || init->kind != GMB_EXPR_CALL || !init->var) return 0;
-    const char* fn = NULL;
-    if (init->tk == GMB_TOK_KdTreeQuery)       fn = "gmb_kdtree_query_indices_alloc";
-    else if (init->tk == GMB_TOK_KdTreeQueryDist) fn = "gmb_kdtree_query_dists_alloc";
-    else if (init->tk == GMB_TOK_KdTreeQueryBall) fn = "gmb_kdtree_query_ball_alloc";
-    if (!fn) return 0;
-    if (init->nargs < 3) { c99_fail(c, init->line, "KDTREE.%s: richiede 3 argomenti", init->var); return 1; }
-    var_t* qv = NULL;
-    if (init->args[1]->kind != GMB_EXPR_VAR || !(qv = lookup_var(c, init->args[1]->var))
-        || !qv->is_array || qv->matrix || qv->vclass[0]) {
-        c99_fail(c, init->line, "KDTREE.%s: query deve essere un array 1-D", init->var);
-        return 1;
-    }
-    ind(c);
-    emit_ident(c, v->name);
-    sb_put(&c->out, " = "); sb_put(&c->out, fn); sb_put(&c->out, "(");
-    emit_expr(c, init->args[0]);                       /* handle */
-    sb_put(&c->out, ", (gmb_double_t*)");
-    emit_var_ref(c, qv);                               /* query point ptr */
-    sb_put(&c->out, ", ");
-    if (init->tk == GMB_TOK_KdTreeQueryBall)
-        emit_expr(c, init->args[2]);                   /* r (double) */
-    else {
-        sb_put(&c->out, "(gmb_int_t)(");
-        emit_expr(c, init->args[2]);                   /* k (int) */
-            sb_put(&c->out, ")");
-    }
-    sb_put(&c->out, ", &");
-    emit_ident(c, v->name);
-    sb_put(&c->out, "_len);\n");
-    return 1;
-}
 
 /* TIMESERIES matrix-returning: la runtime ritorna un flat (cols×righe) + out-len; la
  * variabile è una matrice double** (righe×cols) con compagne <name>_len (righe) e

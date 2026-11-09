@@ -622,10 +622,6 @@ procedure,JSON,ReadValue,ReadValue
 procedure,JSON,Stringify,Stringify
 procedure,JSON,ToJson,ObjectToJson
 procedure,JSON,ToObject,JsonToObject
-procedure,KDTREE,CREATE,KdTreeCreate
-procedure,KDTREE,QUERY,KdTreeQuery
-procedure,KDTREE,QUERYBALL,KdTreeQueryBall
-procedure,KDTREE,QUERYDIST,KdTreeQueryDist
 procedure,LEDGER,ACCOUNTS,Accounts
 procedure,LEDGER,ADD,Add
 procedure,LEDGER,BALANCE,Balance

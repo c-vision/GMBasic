@@ -188,7 +188,6 @@ public sealed partial class StdLib : IParserRegistry
         // CreateOptimizeNamespace();  // DEPRECATO 2026-11-03: namespace OPTIMIZE dismesso,
         // sostituito dal pacchetto FFI `OPT` (libgmbopt). Copia archiviata in
         // GMBasicMonoRepo-Deprecated/optimize/StdLib.Optimize.cs.
-        CreateKdTreeNamespace();
         // BITS: namespace migrato a FFI (shared/libs/bits, libgmbbits) l'08-11-2026.
         CreateTrayNamespace();   // TRAY (2026-10-02): icona barra SO
         CreateMessageNamespace(); // MESSAGE (2026-10-05): messaging generico (bus) + ON MESSAGE
