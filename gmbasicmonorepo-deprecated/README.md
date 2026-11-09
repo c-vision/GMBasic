@@ -12,6 +12,9 @@ linguaggio.
 | `GMBasicSharp/common/CommonLib/Trading/Metrics.cs` | `GMBasicSharp/common/CommonLib/Trading/Metrics.cs` (facciata P/Invoke su `libgmbquant`) + sorgente C in `gmbsuite/gmbquant` / `shared/libs/quant` | 2026-11-07 |
 | `GMBasicSharp/common/CommonLib/Trading/Bonds.cs` | `GMBasicSharp/common/CommonLib/Trading/Bonds.cs` (facciata P/Invoke su `libgmbquant`) + sorgente C in `gmbsuite/gmbquant` / `shared/libs/quant` | 2026-11-07 |
 | `GMBasicSharp/common/CommonLib/Trading/Options.cs` | `GMBasicSharp/common/CommonLib/Trading/Options.cs` (facciata P/Invoke su `libgmbquant`) + sorgente C in `gmbsuite/gmbquant` / `shared/libs/quant` | 2026-11-07 |
+| `GMBasicSharp/common/CommonLib/Numerics/Finance.cs` | lib C `shared/libs/finance` (`libgmbfinance`) via `shared/include/finance.inc` — FFI su tutte e 4 le gambe | 2026-11-08 |
+| `GMBasicSharp/common/StdLib/StdLib.Finance.cs` | lib C `shared/libs/finance` (registrazione builtin `FINANCE` rimossa dalla superficie) | 2026-11-08 |
+| `GMBasicSharp/common/StdLib.Runtime/StdLib.Runtime.Finance.cs` | lib C `shared/libs/finance` (forwarder managed non più compilato) | 2026-11-08 |
 | `GMBasicSharp/common/StdLib/StdLib.BlockChain.cs` | pacchetto `blockchain` + `packages/blockchain/0.1.0/blockchain.inc` (dominio `BLOCKCHAIN` via FFI) | 2026-11-06 |
 | `shared/minitests/blockchain/*.bas` | stessi nomi in `shared/minitests/blockchain/` riscritti sull'include FFI (array di BYTE) | 2026-11-06 |
 | `shared/samples/Crypto/CryptoBlockchain.bas` | `shared/samples/Crypto/CryptoBlockchain.bas` (riscritto) | 2026-11-06 |
@@ -38,6 +41,18 @@ restano in C# (`Portfolio`, `Backtest`, `QLNet`, `MadSolver`, `PsoOptimizer`) no
 più raggiungibili dal linguaggio; le formule canoniche sono in `gmbquant`
 (`gq_portfolio.c`, `gq_backtest.c`) e l'archiviazione delle classi C# residue è il
 passo successivo.
+
+## Finance (2026-11-08)
+
+`CommonLib/Numerics/Finance.cs`, `StdLib/StdLib.Finance.cs` (registrazione del namespace
+builtin, 23 funzioni) e `StdLib.Runtime/StdLib.Runtime.Finance.cs` (forwarder managed)
+costituivano la superficie `FINANCE.*` in C#. Il dominio è ora una **lib C**:
+`shared/libs/finance` (`libgmbfinance`, 23 funzioni pure, nessuna dipendenza esterna) con
+l'export BASIC in `shared/include/finance.inc` (`DECLARE NATIVE`). IL e PCodeVM la
+raggiungono via **P/Invoke** (`C# → C`, ammesso), VM/C e C99Native via loader FFI.
+`FINANCE` **non è più** nella superficie builtin (`shared/spec/registry/surface.csv` → 0
+voci). Le copie archiviate sono qui in `finance/`, identiche all'ultima versione
+compilata e mai più compilate.
 
 ## Perché
 

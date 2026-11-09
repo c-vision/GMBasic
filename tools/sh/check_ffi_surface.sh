@@ -49,8 +49,11 @@ for base in "${INCS[@]}"; do
   fi
   ns=$(grep -m1 "^NAMESPACE " "$inc" 2>/dev/null | awk '{print $2}')
   [ -z "$ns" ] && { echo "check_ffi_surface: $inc senza NAMESPACE" >&2; exit 2; }
-  names=$(grep -E "^DECLARE (FUNCTION|SUB) " "$inc" | sed -E 's/^DECLARE (FUNCTION|SUB) ([A-Za-z0-9_]+) .*/\2/' | sort -u)
-  n_names=$(echo "$names" | wc -l | tr -d ' ')
+  # `DECLARE FUNCTION/SUB` (FFI classica) e `DECLARE NATIVE FUNCTION/SUB` (ABI esatta,
+  # forma usata dagli .inc delle shared/libs): il prefisso NATIVE e' opzionale.
+  names=$(grep -E "^DECLARE (NATIVE )?(FUNCTION|SUB) " "$inc" | sed -E 's/^DECLARE (NATIVE )?(FUNCTION|SUB) ([A-Za-z0-9_]+) .*/\3/' | sort -u)
+  n_names=0
+  [ -n "$names" ] && n_names=$(printf '%s\n' "$names" | wc -l | tr -d ' ')
   f0=$fails
 
   # 1) superficie canonica: il namespace non deve esistere
