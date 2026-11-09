@@ -206,7 +206,7 @@ nel corpus di test e sample `.bas`/`.inc`: dove il corpus non usa il simbolo è 
 | `DECIMATE` | `SIGNAL.DECIMATE(x, q)` | Downsampling (FIR + decimazione). |
 | `RESAMPLE` | `SIGNAL.RESAMPLE(x, num)` | Ricampionamento via FFT. |
 | `SAVGOLFILTER` | `SIGNAL.SAVGOLFILTER(x, w, p)` | Smoothing Savitzky-Golay. |
-| `WELCH` | `SIGNAL.WELCH(x, nperseg, fs)` | Densità spettrale (Welch). |
+| `WELCH` (builtin) | `SIGNAL.WELCH(x, nperseg, fs)` | Densità spettrale (Welch) → handle di matrice `[freq, psd]`. |
 | `FINDPEAKS` | `SIGNAL.FINDPEAKS(x, dist)` | Picchi locali con distanza minima. |
 | `FIRWIN` | `SIGNAL.FIRWIN(n, fc, btype, win)` | Design FIR a finestra (LP/HP/BP/BS). |
 | `HANN` | `SIGNAL.HANN(4)` | Finestra di Hann simmetrica. |
@@ -241,6 +241,108 @@ SUB Main()
 
 
 ## 3. Note e limitazioni
+
+### SIGNAL-Guida-Utente
+
+*Fonte: `SIGNAL-Guida-Utente`*
+
+| gruppo | funzioni |
+|---|---|
+| finestre | `HANN`, `HAMMING`, `BLACKMAN` |
+| convoluzione / correlazione | `CONVOLVE`, `CORRELATE` |
+| ricampionamento | `RESAMPLE`, `DECIMATE` |
+| design IIR | `BUTTER`, `CHEBY1`, `CHEBY2`, `ELLIP` |
+| applicazione filtro | `LFILTER`, `FILTFILT`, `FREQZ` |
+| FIR / picchi / smoothing | `FIRWIN`, `FINDPEAKS`, `SAVGOLFILTER` |
+| **builtin (non in lib)** | **`WELCH`** |
+
+## 1. Import
+
+IMPORT SIGNAL
+
+
+## 2. Funzioni della lib
+
+### Finestre
+| funzione | parametri | ritorno | semantica |
+|---|---|---|---|
+| `HANN(n)` | DOUBLE | array DOUBLE (n valori) | finestra di Hann **simmetrica**, `0.5 - 0.5·cos(2πi/(n-1))` |
+| `HAMMING(n)` | DOUBLE | array DOUBLE (n valori) | finestra di Hamming simmetrica |
+| `BLACKMAN(n)` | DOUBLE | array DOUBLE (n valori) | finestra di Blackman simmetrica |
+
+### Convoluzione e correlazione
+| funzione | parametri | ritorno | semantica |
+|---|---|---|---|
+| `CONVOLVE(x(), k())` | array DOUBLE, array DOUBLE | array DOUBLE (`nx+nk-1`) | convoluzione 1-D, mode `full` |
+| `CORRELATE(x(), k())` | array DOUBLE, array DOUBLE | array DOUBLE (`nx+nk-1`) | correlazione 1-D, mode `full` |
+
+### Ricampionamento
+| funzione | parametri | ritorno | semantica |
+|---|---|---|---|
+| `RESAMPLE(x(), num)` | array DOUBLE, LONG | array DOUBLE (`num`) | ricampiona a `num` campioni via FFT |
+| `DECIMATE(x(), q)` | array DOUBLE, LONG | array DOUBLE (`ceil(n/q)`) | filtro passa-basso FIR + decimazione di `q` (`q = 1` copia l'ingresso) |
+
+### Design dei filtri IIR (handle)
+| funzione | parametri | ritorno | semantica |
+|---|---|---|---|
+| `BUTTER(n, wn(), btype)` | DOUBLE, array DOUBLE, STRING | LONG (handle) | progetto Butterworth di ordine `n` |
+| `CHEBY1(n, rp, wn(), btype)` | DOUBLE, DOUBLE, array DOUBLE, STRING | LONG (handle) | Chebyshev I, ripple `rp` in dB |
+| `CHEBY2(n, rs, wn(), btype)` | DOUBLE, DOUBLE, array DOUBLE, STRING | LONG (handle) | Chebyshev II, attenuazione `rs` in dB |
+| `ELLIP(n, rp, rs, wn(), btype)` | DOUBLE, DOUBLE, DOUBLE, array DOUBLE, STRING | LONG (handle) | ellittico (Cauer), `rp`/`rs` in dB |
+
+### Applicazione del filtro
+| funzione | parametri | ritorno | semantica |
+|---|---|---|---|
+| `LFILTER(handle, x())` | LONG, array DOUBLE | array DOUBLE (`n`) | filtro IIR **causale** (stessa lunghezza dell'ingresso) |
+| `FILTFILT(handle, x())` | LONG, array DOUBLE | array DOUBLE (`n`) | filtro a **fase nulla** (avanti + indietro) |
+| `FREQZ(handle, n)` | LONG, DOUBLE | array DOUBLE (`n`) | risposta in ampiezza `|H|` su `n` punti in `0..π` |
+
+### FIR, picchi, smoothing
+| funzione | parametri | ritorno | semantica |
+|---|---|---|---|
+| `FIRWIN(numtaps, cutoff(), btype, window)` | LONG, array DOUBLE, STRING, STRING | array DOUBLE (`numtaps`) | coefficienti FIR a finestra |
+| `FINDPEAKS(x(), distance)` | array DOUBLE, DOUBLE | array DOUBLE | indici dei massimi locali distanziati di almeno `distance` campioni |
+| `SAVGOLFILTER(x(), window_length, polyorder)` | array DOUBLE, LONG, LONG | array DOUBLE (`n`) | smoothing Savitzky-Golay (`window_length` dispari `> polyorder`) |
+
+## 3. WELCH (builtin, matrice)
+
+DIM w = SIGNAL.WELCH(x, 64, 1.0)      ' handle di matrice [nfreqs, 2]
+PRINT MATRIX.GETVALUE(w, 0, 0); MATRIX.GETVALUE(w, 0, 1)   ' freq, PSD
+
+
+## 4. Esempio
+
+IMPORT SIGNAL
+
+SUB Main()
+    ' finestra e conteggio picchi
+    DIM h() = SIGNAL.HANN(5)
+    PRINT "hann(2) = "; h(2)
+
+    ' progetto Butterworth passa-basso (2° ordine, 0.3 = 0.3·Nyquist) e filtro zero-phase
+    DIM wn(0) AS DOUBLE = {0.3}
+    DIM f AS LONG = SIGNAL.BUTTER(2, wn, "low")
+    DIM x(4) AS DOUBLE = {1, 2, 3, 4, 5}
+    DIM y() = SIGNAL.FILTFILT(f, x)
+    PRINT "y(2) = "; y(2)
+
+    ' risposta in ampiezza del filtro su 4 punti
+    DIM m() = SIGNAL.FREQZ(f, 4)
+
+
+## 5. Errori e diagnosi
+| sintomo | causa |
+|---|---|
+| `BUTTER`/`CHEBY1`/`CHEBY2`/`ELLIP` restituisce `0` | ordine non positivo, `wn` fuori da `0..1`, numero di frequenze incoerente con `btype` |
+| `LFILTER`/`FILTFILT`/`FREQZ` restituisce zeri o valori piatti | handle `0` (progetto fallito) o handle non prodotto da un design della lib |
+| `FINDPEAKS` torna `[0]` | nessun picco con quella distanza (vedi §2, non è un array vuoto) |
+| `SAVGOLFILTER` non smussa | `window_length` pari, `≤ polyorder`, o maggiore della lunghezza del segnale |
+| risultati diversi da scipy | `wn` in Hz invece che normalizzata (`1` = Nyquist), o `q`/`num` invertiti in `DECIMATE`/`RESAMPLE` |
+| `SIGNAL.HANN` "ridefinisce il builtin" | si sta usando un `.inc` vecchio in cui le funzioni erano ancora builtin: serve la lib `signal` aggiornata (FFI) |
+
+## 6. Parità e test
+
+## 7. Riferimenti
 
 ### Blockchain-Guida-Utente
 

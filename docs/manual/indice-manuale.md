@@ -353,6 +353,7 @@ assorbita (non si stampa due volte).
 ### V.28 — Segnali, trading e blockchain
 
 - `Signal-Manual` — capitolo
+- `SIGNAL-Guida-Utente` — sezione
 - `Blockchain-Guida-Utente` — sezione
 - `FINANCE-Guida-Utente` — sezione
 - `Signals-Guida-Utente` — sezione
