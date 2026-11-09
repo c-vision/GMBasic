@@ -66,6 +66,9 @@ public static partial class Linker
             case ArrayAccessExpr access when outMatrices.Contains(access.SymbolId):
                 ThrowOutReadViolation(procedure, access.SymbolId, access.Position);
                 return;
+            case VariableExpr variable when outMatrices.Contains(variable.SymbolId):
+                ThrowOutReadViolation(procedure, variable.SymbolId, variable.Position);
+                return;
             case BinaryExpr binary:
                 CheckOutRead(binary.Left, outMatrices, procedure);
                 CheckOutRead(binary.Right, outMatrices, procedure);
@@ -98,7 +101,12 @@ public static partial class Linker
                 if (builtin.Name.Kind is TokenKind.MatrixRowCount or TokenKind.MatrixColumnCount
                     or TokenKind.MatrixIsContiguous)
                     return;
-                foreach (var argument in builtin.Args) CheckOutRead(argument, outMatrices, procedure);
+                for (var i = 0; i < builtin.Args.Length; i++)
+                {
+                    // MATRIX.SETVALUE(m, ...): il primo argomento è il TARGET (scrittura).
+                    if (builtin.Name.Kind == TokenKind.MatrixSetValue && i == 0) continue;
+                    CheckOutRead(builtin.Args[i], outMatrices, procedure);
+                }
                 break;
             case ArrayAccessExpr access:
                 if (!access.Indices.IsDefault)

@@ -9816,6 +9816,21 @@ static void emit_arr_call_arg(ctx_t* c, fn_info_t* fn, int i, gmb_expr_t* arg, i
                  fn->stmt->func_name ? fn->stmt->func_name : "?");
         return;
     }
+    /* ADR-MATRIX §3 (F3-quater): un parametro OUT del chiamante non può essere passato a
+     * un parametro IN/INOUT del callee (che lo leggerebbe). Se il parametro del callee è
+     * OUT (param_mode 1) il passaggio è una scrittura ed è lecito. */
+    if (fn && fn->stmt && i >= 0 && i < fn->stmt->n_params
+        && fn->stmt->param_mode && fn->stmt->param_mode[i] != 1
+        && fn->stmt->param_ndims && fn->stmt->param_ndims[i] >= 2
+        && arg && arg->kind == GMB_EXPR_VAR && arg->var
+        && gmb_c99_param_is_out_matrix(c, arg->var)) {
+        c99_fail(c, line,
+                 "il parametro matrice '%s' è dichiarato OUT (solo scrittura) ma è passato al parametro "
+                 "IN/INOUT '%s' di '%s', che lo legge: dichiaralo INOUT se devi leggerlo e scriverlo",
+                 arg->var, fn->stmt->func_params && i < fn->stmt->n_params ? fn->stmt->func_params[i] : "?",
+                 fn->stmt->func_name ? fn->stmt->func_name : "?");
+        return;
+    }
     /* Array LITERAL come argomento (2026-11-03): `Somma({1, 2})`. Il parser rappresenta
      * `{…}` come CALL "_array_"; si materializza un array temporaneo C99 e si passa
      * (puntatore, bound n-1). */
@@ -10095,6 +10110,18 @@ static void emit_eff_arg(ctx_t* c, gmb_stmt_t* fs, fn_info_t* f, gmb_expr_t** ar
                      "il parametro matrice '%s' è dichiarato IN (sola lettura) ma è passato al parametro "
                      "OUT/INOUT '%s' di '%s', che può modificarlo: dichiaralo INOUT (o OUT) oppure passa "
                      "una copia (MATRIX.CLONEMATRIX)",
+                     a->var, fs->func_params && i < fs->n_params ? fs->func_params[i] : "?",
+                     fs->func_name ? fs->func_name : "?");
+            return;
+        }
+        /* ADR-MATRIX §3 (F3-quater): un parametro OUT non può essere passato a un parametro
+         * IN/INOUT del callee (lettura); OUT del callee (param_mode 1) è una scrittura. */
+        if (fs && i >= 0 && i < fs->n_params && fs->param_mode && fs->param_mode[i] != 1
+            && fs->param_ndims && fs->param_ndims[i] >= 2
+            && a->kind == GMB_EXPR_VAR && a->var && gmb_c99_param_is_out_matrix(c, a->var)) {
+            c99_fail(c, c->cur_stmt_line,
+                     "il parametro matrice '%s' è dichiarato OUT (solo scrittura) ma è passato al parametro "
+                     "IN/INOUT '%s' di '%s', che lo legge: dichiaralo INOUT se devi leggerlo e scriverlo",
                      a->var, fs->func_params && i < fs->n_params ? fs->func_params[i] : "?",
                      fs->func_name ? fs->func_name : "?");
             return;
@@ -14321,6 +14348,13 @@ void emit_expr(ctx_t* c, gmb_expr_t* e) {
         emit_str_literal(c, e->str);   /* un letterale e' SEMPRE testo: `&` dentro le virgolette non e' una macro */
         break;
     case GMB_EXPR_VAR: {
+        /* F3-quater: un parametro matrice OUT è solo scrittura; leggerne l'INTERO valore
+         * in un'espressione è vietato (le scritture usano emit_var_ref, non emit_expr). */
+        if (e->var && gmb_c99_param_is_out_matrix(c, e->var)) {
+            c99_fail(c, e->line, "il parametro matrice '%s' è dichiarato OUT (solo scrittura): non può "
+                     "essere letto. Dichiaralo INOUT se devi leggere e scrivere", e->var);
+            break;
+        }
         /* chiave canonica del nome risolta UNA volta per questo VAR (True/False/Pi/Count) */
         int tbk = (int)e->tk;
         /* `x.VALUE` su nullable, indipendentemente dal TokenKind assegnato dal lexer:
