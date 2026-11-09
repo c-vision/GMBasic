@@ -129,7 +129,7 @@ FUNCTION RTrimSlash(p AS STRING) AS STRING
     DIM s AS STRING
     s = p
     DO WHILE LEN(s) > 0
-        IF RIGHT(s, 1) = "/" OR RIGHT(s, 1) = "\" THEN
+        IF RIGHT(s, 1) = "/" OR RIGHT(s, 1) = CHR$(92) THEN
             s = LEFT(s, LEN(s) - 1)
         ELSE
             EXIT DO
