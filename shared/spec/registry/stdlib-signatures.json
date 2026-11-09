@@ -13961,18 +13961,18 @@
       "ns": "MATRIX",
       "name": "MULTIPLY",
       "fn": true,
-      "return": "long",
+      "return": "double[]",
       "params": [
         {
           "name": "handle1",
-          "type": "long",
+          "type": "ANY",
           "optional": false,
           "byRef": false,
           "array": false
         },
         {
           "name": "handle2",
-          "type": "long",
+          "type": "ANY",
           "optional": false,
           "byRef": false,
           "array": false

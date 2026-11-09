@@ -141,10 +141,10 @@ public sealed partial class StdLib
 
             new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.Multiply, "MULTIPLY"),
                 [
-                    new Parameter(-1, T(TokenKind.Identifier, "handle1"), new LongType(), noFlags, null, false),
-                    new Parameter(-1, T(TokenKind.Identifier, "handle2"), new LongType(), noFlags, null, false)
+                    new Parameter(-1, T(TokenKind.Identifier, "handle1"), new AnyType(), noFlags, null, false),
+                    new Parameter(-1, T(TokenKind.Identifier, "handle2"), new AnyType(), noFlags, null, false)
                 ],
-                new LongType(), TokenKind.LinAlgMultiplyFunc),
+                new ArrayType(new DoubleType(), 2), TokenKind.LinAlgMultiplyFunc),
 
             new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.Transpose, "TRANSPOSE"),
                 [new Parameter(-1, T(TokenKind.Identifier, "handle"), new LongType(), noFlags, null, false)],

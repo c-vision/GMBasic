@@ -798,6 +798,16 @@ public sealed partial class IlProgramCompiler
         _il.Emit(OpCodes.Call, RuntimeMethod(methodName));
     }
 
+    /// <summary>F4: come HandlePairCall ma il metodo del runtime restituisce un VALORE
+    /// matrice (double[,]) invece di un handle.</summary>
+    private void EmitLinAlgHandlePairValueCall(BuiltinFunctionCallExpr expr, string methodName)
+    {
+        if (expr.Args.Length != 2) throw new NotSupportedException($"Backend IL: {expr.OriginalToken.Lexeme} richiede 2 handle/matrici.");
+        EmitLinAlgHandleArgument(expr.Args[0]);
+        EmitLinAlgHandleArgument(expr.Args[1]);
+        _il.Emit(OpCodes.Call, RuntimeMethod(methodName));
+    }
+
     /// <summary>MATRIX.CREATE a valore (F1): identità rank-2, tipo MATRIX OF (INT,INT,DOUBLE).</summary>
     private void EmitMatrixCreateValueCall(BuiltinFunctionCallExpr expr)
     {

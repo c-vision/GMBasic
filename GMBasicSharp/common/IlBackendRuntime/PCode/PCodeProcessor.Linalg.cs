@@ -120,7 +120,15 @@ internal sealed partial class PCodeProcessor
             case BuiltInFunction.MATRIXRANK: return LuMatrixRank(args);
             case BuiltInFunction.MATRIXTRACE: return LuMatrixTrace(args);
             case BuiltInFunction.MATRIXNORM: return LuMatrixNorm(args);
-            case BuiltInFunction.LINALGMULTIPLYFUNC: return LuMultiply(args);
+            case BuiltInFunction.LINALGMULTIPLYFUNC:
+            {
+                // F4: MATRIX.MULTIPLY (token LinAlgMultiplyFunc) restituisce il VALORE.
+                var r = LuMultiply(args);
+                if (r is double[,] rect) return rect;
+                if (r is long h && _linMatrices.TryGetValue(h, out var mat))
+                    return SimdToRect(new CommonLib.SimdMatrix(mat.ToRowMajorArray(), mat.RowCount, mat.ColumnCount));
+                return r;
+            }
             case BuiltInFunction.DOTPRODUCT: return LuVectorDotProduct(args);
             case BuiltInFunction.NORM: return LuVectorNorm(args);
             case BuiltInFunction.VECTORMANHATTAN: return LuVectorManhattan(args);
@@ -193,9 +201,14 @@ internal sealed partial class PCodeProcessor
             case BuiltInFunction.MATRIXMULTIPLYVECTOR: return LuSimd(args).Multiply(ToDoubleArr(args[1]));
             case BuiltInFunction.MATRIXMULTIPLYLEFTVECTOR: return LuSimd(args).MultiplyFromLeft(ToDoubleArr(args[1]));
             case BuiltInFunction.MATRIXMULTIPLY:
-                // Runtime comune (IlRuntime.MatrixMultiply): stessa logica — unica implementazione.
-                return Basic.IlBackend.IlRuntime.MatrixMultiply(
-                    (long)SafeDouble(ArgOr(args, 0)), (long)SafeDouble(ArgOr(args, 1)));
+            {
+                // F4: MATRIX.MULTIPLY restituisce il VALORE matrice (rank-2).
+                var r = LuMultiply(args);
+                if (r is double[,] rect) return rect;
+                if (r is long h && _linMatrices.TryGetValue(h, out var mat))
+                    return SimdToRect(new CommonLib.SimdMatrix(mat.ToRowMajorArray(), mat.RowCount, mat.ColumnCount));
+                return r;
+            }
             case BuiltInFunction.MATRIXLOADCSV: return StoreSimd(CommonLib.SimdMatrix.LoadCsv(ResolveMatrixPath(Convert.ToString(args[0]) ?? "")));
             case BuiltInFunction.MATRIXLOADJSON: return StoreSimd(CommonLib.SimdMatrix.LoadJson(ResolveMatrixPath(Convert.ToString(args[0]) ?? "")));
             default: return null;

@@ -1219,6 +1219,13 @@ public static partial class IlRuntime
         return StoreVector(vectorResult);
     }
 
+    /// <summary>MATRIX.MULTIPLY a valore (F4): risultato come double[,] rank-2.</summary>
+    public static double[,] MatrixMultiplyValue(long leftHandle, long rightHandle)
+        => MatrixValueOf(MatrixMultiply(leftHandle, rightHandle));
+
+    /// <summary>Copia indipendente della matrice registrata sotto <paramref name="handle"/>.</summary>
+    public static double[,] MatrixValueOf(long handle) => (double[,])Matrix(handle).Clone();
+
     public static double MatrixDeterminant(long handle)
     {
         var matrix = (double[,])Matrix(handle).Clone();

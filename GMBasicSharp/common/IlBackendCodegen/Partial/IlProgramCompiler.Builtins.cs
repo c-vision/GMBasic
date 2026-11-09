@@ -703,7 +703,10 @@ public sealed partial class IlProgramCompiler
                 break;
             case TokenKind.LinAlgMatrixCreateFunc: EmitMatrixCreateValueCall(expr); break;
             case TokenKind.LinAlgVectorCreateFunc: EmitLinAlgVectorCreateCall(expr); break;
-            case TokenKind.LinAlgMultiplyFunc or TokenKind.Multiply: EmitLinAlgHandlePairCall(expr, nameof(IlRuntime.MatrixMultiply)); break;
+            // F4: MATRIX.MULTIPLY restituisce il VALORE matrice. Il token della funzione
+            // risolta e' LinAlgMultiplyFunc (StdLib); Multiply resta per compatibilita'.
+            case TokenKind.LinAlgMultiplyFunc:
+            case TokenKind.Multiply: EmitLinAlgHandlePairValueCall(expr, nameof(IlRuntime.MatrixMultiplyValue)); break;
             case TokenKind.LinAlgInverseFunc or TokenKind.Inverse: EmitLinAlgUnaryHandleCall(expr, RuntimeMethod(nameof(IlRuntime.MatrixInverse)), vector: false); break;
             case TokenKind.LinAlgTransposeFunc or TokenKind.Transpose: EmitLinAlgUnaryValueCall(expr, RuntimeMethod(nameof(IlRuntime.MatrixTransposeValue))); break;
             case TokenKind.Determinant: EmitLinAlgUnaryHandleCall(expr, RuntimeMethod(nameof(IlRuntime.MatrixDeterminant)), vector: false); break;

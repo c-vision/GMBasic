@@ -3409,7 +3409,10 @@ static int mx_multiply(ctx_t* c, gmb_expr_t** a, int n) {
         return 1;
     }
     if (!(a0 && (a0->matrix || mx_is_matrix_val(a0)) && a1 && (a1->matrix || mx_is_matrix_val(a1)))) return 0;
-    sb_put(&c->out, "(gmb_double_t)gmb_matrix_multiply(");
+    /* F4: MATRIX.MULTIPLY restituisce un VALORE matrice rank-2: l'emitter produce
+     * l'handle, che il chiamante (emit_matrix_from_handle_result) materializza.
+     * Prima era un cast a double: il valore restava un handle mascherato. */
+    sb_put(&c->out, "(gmb_int_t)gmb_matrix_multiply(");
     emit_matrix_handle(c, a0); sb_put(&c->out, ", ");
     emit_matrix_handle(c, a1); sb_put(&c->out, ")");
     return 1;
