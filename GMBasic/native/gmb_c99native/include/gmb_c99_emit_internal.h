@@ -108,6 +108,8 @@ var_t* lookup_var(ctx_t* c, const char* name);
 int gmb_c99_emit_coll_json(ctx_t* c, const char* name);
 /* ADR-MATRIX §3: parametro matrice IN (sola lettura) nella funzione in emissione. */
 int gmb_c99_param_is_in_matrix(ctx_t* c, const char* name);
+/* ADR-MATRIX §3 (F3-ter): parametro matrice OUT (solo scrittura). */
+int gmb_c99_param_is_out_matrix(ctx_t* c, const char* name);
 int gmb_c99_var_coll_kind(ctx_t* c, const char* name);
 int gmb_c99_var_coll_sorted(ctx_t* c, const char* name);
 void sb_ident(sb_t* b, const char* name);

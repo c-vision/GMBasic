@@ -26,9 +26,115 @@ public static partial class Linker
                 .Where(p => p.Mode == ParameterMode.In && p.DataType is ArrayType { Rank: >= 2 })
                 .Select(p => p.SymbolId)
                 .ToHashSet();
-            if (inMatrices.Count == 0) continue;
-            WalkStatements(procedure.Body, statement => CheckStatement(statement, inMatrices, procedure));
+            if (inMatrices.Count > 0)
+                WalkStatements(procedure.Body, statement => CheckStatement(statement, inMatrices, procedure));
+
+            // F3-ter: un parametro OUT non deve essere LETTO (solo scritture). Qui si
+            // vieta la lettura di un ELEMENTO (`x = m(i,j)`); i metadati
+            // (ROWCOUNT/COLUMNCOUNT/ISCONTIGUOUS) e le scritture restano leciti.
+            var outMatrices = procedure.Parameters
+                .Where(p => p.Mode == ParameterMode.Out && p.DataType is ArrayType { Rank: >= 2 })
+                .Select(p => p.SymbolId)
+                .ToHashSet();
+            if (outMatrices.Count > 0)
+                WalkStatements(procedure.Body, statement => CheckOutStatement(statement, outMatrices, procedure));
         }
+    }
+
+    private static void CheckOutStatement(Stmt statement, HashSet<int> outMatrices, ProcedureDefinition procedure)
+    {
+        switch (statement)
+        {
+            case LetStmt let:
+                foreach (var assignment in let.Assignments)
+                    CheckOutRead(assignment.Value, outMatrices, procedure);
+                break;
+            case ExpressionStmt expression:
+                CheckOutRead(expression.Expression, outMatrices, procedure);
+                break;
+        }
+    }
+
+    /// <summary>Segnala la lettura di un elemento di un parametro OUT in un'espressione
+    /// (contesto di lettura: RHS/espressione). Gli argomenti passati a un parametro OUT
+    /// del callee sono scritture e non vengono visitati qui (CheckCallArguments).</summary>
+    private static void CheckOutRead(Expr? expression, HashSet<int> outMatrices, ProcedureDefinition procedure)
+    {
+        if (expression is null) return;
+        switch (expression)
+        {
+            case ArrayAccessExpr access when outMatrices.Contains(access.SymbolId):
+                ThrowOutReadViolation(procedure, access.SymbolId, access.Position);
+                return;
+            case BinaryExpr binary:
+                CheckOutRead(binary.Left, outMatrices, procedure);
+                CheckOutRead(binary.Right, outMatrices, procedure);
+                break;
+            case UnaryExpr unary:
+                CheckOutRead(unary.Right, outMatrices, procedure);
+                break;
+            case GroupingExpr grouping:
+                CheckOutRead(grouping.Expression, outMatrices, procedure);
+                break;
+            case NamedArgumentExpr named:
+                CheckOutRead(named.Value, outMatrices, procedure);
+                break;
+            case FunctionExpr function:
+                for (var i = 0; i < function.Args.Length; i++)
+                {
+                    if (IsOutArgument(function.Args[i], function.ResolvedDefinition, i)) continue;
+                    CheckOutRead(function.Args[i], outMatrices, procedure);
+                }
+                break;
+            case MethodCallExpr method:
+                for (var i = 0; i < method.Args.Length; i++)
+                {
+                    if (IsOutArgument(method.Args[i], method.ResolvedDefinition, i)) continue;
+                    CheckOutRead(method.Args[i], outMatrices, procedure);
+                }
+                break;
+            case BuiltinFunctionCallExpr builtin:
+                // Metadati: MATRIX.ROWCOUNT/COLUMNCOUNT/ISCONTIGUOUS leggono la FORMA, non i valori.
+                if (builtin.Name.Kind is TokenKind.MatrixRowCount or TokenKind.MatrixColumnCount
+                    or TokenKind.MatrixIsContiguous)
+                    return;
+                foreach (var argument in builtin.Args) CheckOutRead(argument, outMatrices, procedure);
+                break;
+            case ArrayAccessExpr access:
+                if (!access.Indices.IsDefault)
+                    foreach (var index in access.Indices) CheckOutRead(index, outMatrices, procedure);
+                break;
+        }
+    }
+
+    /// <summary>True se l'argomento è passato a un parametro OUT del callee (scrittura).</summary>
+    private static bool IsOutArgument(Expr argument, ProcedureDefinition? callee, int index)
+    {
+        if (callee is null || callee.Parameters.IsDefaultOrEmpty) return false;
+        var parameterIndex = index;
+        if (argument is NamedArgumentExpr n)
+        {
+            parameterIndex = -1;
+            for (var k = 0; k < callee.Parameters.Length; k++)
+                if (callee.Parameters[k].OriginalName.Lexeme.Equals(n.Name.Lexeme, StringComparison.OrdinalIgnoreCase))
+                {
+                    parameterIndex = k;
+                    break;
+                }
+        }
+        if (parameterIndex < 0 || parameterIndex >= callee.Parameters.Length) return false;
+        return callee.Parameters[parameterIndex].Mode == ParameterMode.Out;
+    }
+
+    private static void ThrowOutReadViolation(ProcedureDefinition procedure, int symbolId, SourcePosition position)
+    {
+        var name = procedure.Parameters.FirstOrDefault(p => p.SymbolId == symbolId)?.OriginalName.Lexeme
+                   ?? procedure.Parameters.FirstOrDefault(p => p.SymbolId == symbolId)?.Name.Lexeme
+                   ?? "?";
+        var token = new Token(TokenKind.Identifier, name, name, position);
+        throw CreateError(token,
+            $"Il parametro matrice '{name}' è dichiarato OUT (solo scrittura): non può essere letto. " +
+            "Dichiaralo INOUT se devi leggere e scrivere.");
     }
 
     private static void CheckStatement(Stmt statement, HashSet<int> inMatrices, ProcedureDefinition procedure)

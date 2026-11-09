@@ -8435,6 +8435,18 @@ int gmb_c99_param_is_in_matrix(ctx_t* c, const char* name) {
     return 0;
 }
 
+/* ADR-MATRIX §3 (F3-ter): parametro MATRICE dichiarato OUT (param_mode 1): solo scritture.
+ * La lettura di un elemento è vietata; i metadati (ROWCOUNT/…) restano leciti. */
+int gmb_c99_param_is_out_matrix(ctx_t* c, const char* name) {
+    if (!c || !c->cur_fn || !c->cur_fn->stmt || !name) return 0;
+    gmb_stmt_t* fs = c->cur_fn->stmt;
+    if (!fs->func_params || !fs->param_mode || !fs->param_ndims) return 0;
+    for (int k = 0; k < fs->n_params; k++)
+        if (fs->func_params[k] && strcasecmp(fs->func_params[k], name) == 0)
+            return fs->param_mode[k] == 1 && fs->param_ndims[k] >= 2;
+    return 0;
+}
+
 /* (b4): DIM x() = builtin array-returning (parity oracolo Statements.cs DIM-array-init:
  * chiamata runtime con out-len compagna). Nota: l'oracolo C# per IFFT su matrice passa
  * il double** con cast UB (gmb_fft_matrix stampa FAIL nel round-trip); qui l'IFFT su
@@ -12541,6 +12553,13 @@ static void emit_call(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_
         return;
     }
     if (av && av->is_array && !ns) {
+        /* F3-ter: un parametro OUT è solo scrittura: vietata la lettura di un elemento.
+         * I metadati (ROWCOUNT/COLUMNCOUNT/ISCONTIGUOUS) non passano da qui. */
+        if (nargs >= 1 && gmb_c99_param_is_out_matrix(c, av->name)) {
+            c99_fail(c, line, "il parametro matrice '%s' è dichiarato OUT (solo scrittura): non può "
+                     "essere letto. Dichiaralo INOUT se devi leggere e scrivere", av->name);
+            return;
+        }
         /* JAGGED con UN indice = la RIGA (`double*`), 2026-11-03: serve a `A(i)(j)` e
          * `UBOUND(A(i))` dentro le procedure (prima "attesi 2 indici, trovati 1"). */
         if (av->jagged && nargs == 1) {
