@@ -1345,7 +1345,7 @@ public sealed partial class IlProgramCompiler
         // Array BYREF (2026-09-28, parità PCodeVM/Compiler.Expressions.cs): il parametro
         // viaggia come puntatore nativo → classe di registri intera, indipendentemente dal
         // tipo elemento — vedi AiWiki Bugs/(open) - FFI-Marshalling-Limitato-...md punto (1).
-        bool IsArrayParam(Parameter p) => p.Flags.HasFlag(SymbolFlags.IsArray);
+        bool IsArrayParam(Parameter p) => p.Flags.HasFlag(SymbolFlags.IsArray) || p.DataType is ArrayType;
         // STRING (2026-09-28): un parametro/ritorno STRING è un puntatore (const char*) come un
         // array — stessa classe di registri intera. BYVAL solo (BYREF scalare di STRING resta
         // vietato, catturato da anyScalarByRef dato che una STRING senza `()` non è mai IsArray).

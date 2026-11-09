@@ -1556,9 +1556,26 @@ static gmb_stmt_t* gmb_p_parse_stmt_impl(gmb_parser_t* p, bool* multiline)
                             s->param_byref[s->n_params - 1] = 1;
                         }
                     }
+                    int matrix_handled = 0;
                     if (gmb_p_tok_is_keyword(gmb_p_cur(p), "As") || gmb_p_check(p, GMB_TOK_As)) {
                         gmb_p_adv(p);
                         const gmb_token_t* ty = gmb_p_cur(p);
+                        if (ty && ty->kind == GMB_TOK_Matrix && s->n_params > 0) {
+                            /* DECLARE ... (X AS MATRIX OF (I1, …, In, V), ...): il parametro
+                             * FFI riceve il puntatore flat (row-major) e il tipo valore V. */
+                            const gmb_token_t* vt = NULL;
+                            int axes = gmb_parse_matrix_of(p, &vt);
+                            if (axes >= 1 && vt) {
+                                s->param_is_array[s->n_params - 1] = 1;
+                                s->param_ndims[s->n_params - 1] = (uint8_t)axes;
+                                if (!s->param_types[s->n_params - 1]) {
+                                    char* tb = (char*)malloc((size_t)vt->length + 1);
+                                    memcpy(tb, vt->lexeme, (size_t)vt->length); tb[vt->length] = 0;
+                                    s->param_types[s->n_params - 1] = tb;
+                                }
+                                matrix_handled = 1;
+                            }
+                        }
                         if (ty && ty->lexeme && s->n_params > 0 && !s->param_types[s->n_params - 1]) {
                             char* tb = (char*)malloc((size_t)ty->length + 1);
                             memcpy(tb, ty->lexeme, (size_t)ty->length); tb[ty->length] = 0;
@@ -1620,7 +1637,7 @@ static gmb_stmt_t* gmb_p_parse_stmt_impl(gmb_parser_t* p, bool* multiline)
                                 }
                                 if (rtf) gmb_p_adv(p);
                             }
-                        } else {
+                        } else if (!matrix_handled) {
                             gmb_p_adv(p);
                         }
                     }
@@ -1635,6 +1652,19 @@ static gmb_stmt_t* gmb_p_parse_stmt_impl(gmb_parser_t* p, bool* multiline)
             if (rt && rt->lexeme) {
                 s->func_ret_type = (char*)malloc((size_t)rt->length + 1);
                 memcpy(s->func_ret_type, rt->lexeme, (size_t)rt->length); s->func_ret_type[rt->length] = 0;
+                int ret_matrix = 0;
+                if (rt->kind == GMB_TOK_Matrix) {
+                    const gmb_token_t* vt = NULL;
+                    int axes = gmb_parse_matrix_of(p, &vt);
+                    if (axes >= 1 && vt) {
+                        s->func_ret_ndims = axes;
+                        char* rb = (char*)malloc((size_t)vt->length + 1);
+                        memcpy(rb, vt->lexeme, (size_t)vt->length); rb[vt->length] = 0;
+                        free(s->func_ret_type);
+                        s->func_ret_type = rb;
+                        ret_matrix = 1;
+                    }
+                }
                 /* AS FUNCTION(params) AS <ret>: cattura la FIRMA del block restituito
                  * (arity/mask/ret) — serve a `DIM b = Mk()` (firma inferita): senza,
                  * GK_FUNCVAL restava arity 0 → `EVAL(b, 5)` "numero argomenti errato". */
@@ -1649,7 +1679,7 @@ static gmb_stmt_t* gmb_p_parse_stmt_impl(gmb_parser_t* p, bool* multiline)
                             s->func_val_ret_is_str = 1;
                         if (rr && gmb_keyword_tok(rr) == GMB_TOK_Array) s->func_val_ret_is_arr = 1;
                     }
-                } else {
+                } else if (!ret_matrix) {
                     gmb_p_adv(p);
                 }
             }
