@@ -6,9 +6,8 @@ IMPORT TIMESERIES AS TS
 SUB Main()
     DIM values() = {1.0, 2.0, 4.0, 3.0, 5.0, 7.0}
     DIM returns() = {-0.02, 0.01, 0.03, -0.01, 0.04, 0.02}
-    DIM data(1) AS ARRAY OF DOUBLE
-    data(0) = {1.0, 2.0, 3.0, 4.0}
-    data(1) = {2.0, 4.0, 5.0, 8.0}
+    DIM data(1, 3) AS DOUBLE
+    data = {{1.0, 2.0, 3.0, 4.0}, {2.0, 4.0, 5.0, 8.0}}
 
     DIM covariance() AS DOUBLE = TS.TSCOVARIANCEMATRIX(data)
     DIM bounds() = TS.TSMINMAX(values)

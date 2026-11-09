@@ -15,9 +15,9 @@ SUB Main()
   DIM path(2) AS LONG
   PRINT "vll="; MATH.ROUND(TIMESERIES.HMMVITERBI(lp, la, le, path), 6)
   PRINT "p0="; path(0); "p1="; path(1); "p2="; path(2)
-  DIM x(19) AS ARRAY OF DOUBLE
+  DIM x(19, 1) AS DOUBLE
   FOR i = 0 TO 19
-    x(i) = {SIN(i * 0.35) + i * 0.05, COS(i * 0.35) * 0.8}
+    x(i,0) = SIN(i * 0.35) + i * 0.05 : x(i,1) = COS(i * 0.35) * 0.8
   NEXT i
   ' out: pi(2), A(4), means(4), covs(8)
   DIM o(17) AS DOUBLE

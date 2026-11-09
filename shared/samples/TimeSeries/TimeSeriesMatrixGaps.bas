@@ -26,12 +26,8 @@ SUB Main()
     PRINT "TSDECOMPOSE trend[0] = "; dec(0)
 
     ' m x m covarianza: data = n_obs x n_vars
-    DIM data(4) AS ARRAY OF DOUBLE
-    data(0) = {1.0, 2.0}
-    data(1) = {2.0, 4.0}
-    data(2) = {3.0, 6.0}
-    data(3) = {4.0, 8.0}
-    data(4) = {5.0, 10.0}
+    DIM data(4, 1) AS DOUBLE
+    data = {{1.0, 2.0}, {2.0, 4.0}, {3.0, 6.0}, {4.0, 8.0}, {5.0, 10.0}}
     DIM cv() AS DOUBLE = TIMESERIES.TSCOVARIANCEMATRIX(data)
     PRINT "TSCOVARIANCEMATRIX(0,0) = "; cv(0)
 
