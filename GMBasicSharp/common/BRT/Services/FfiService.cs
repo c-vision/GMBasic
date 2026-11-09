@@ -412,12 +412,18 @@ public class FfiService : IFfiService
         NativeLibrary.Free(handle);
     }
 
-    public IntPtr GetFunction(IntPtr library, string name)
+    public IntPtr GetFunction(IntPtr library, string name, string? libLabel = null)
     {
         if (NativeLibrary.TryGetExport(library, name, out var ptr))
             return ptr;
-        throw new EntryPointNotFoundException($"Function '{name}' not found in library.");
+        throw new EntryPointNotFoundException(FfiSymbolMissingMessage(name, libLabel));
     }
+
+    /// <summary>Testo CANONICO (4 gambe) di un simbolo FFI non risolto: VM/C e C99Native
+    /// emettono la stessa stringa e IL/PCodeVM la usano come ERR.Description con codice 5
+    /// (IllegalFunctionCall). Una sola fonte per il messaggio: nessuna gamba può divergere.</summary>
+    public static string FfiSymbolMissingMessage(string symbol, string? libLabel)
+        => $"[FFI] simbolo '{symbol}' non trovato in '{libLabel ?? "libreria"}' (libreria non aggiornata?)";
 
     public object? CallFunction(IntPtr function, object?[] args)
     {

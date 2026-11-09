@@ -6,7 +6,7 @@ public static partial class IlRuntime
     {
         var ffi = Current.Ffi;
         var handle = ffi.LoadLibrary(lib);
-        var fnPtr = ffi.GetFunction(handle, symbol);
+        var fnPtr = ResolveFfiSymbol(handle, lib, symbol);
         var result = ffi.CallFunction(fnPtr, args);
         return Convert.ToDouble(result ?? 0.0);
     }
@@ -17,7 +17,7 @@ public static partial class IlRuntime
     {
         var ffi = Current.Ffi;
         var handle = ffi.LoadLibrary(lib);
-        var fnPtr = ffi.GetFunction(handle, symbol);
+        var fnPtr = ResolveFfiSymbol(handle, lib, symbol);
         var result = ffi.CallFunctionTyped(fnPtr, args, (byte)kind);
         return Convert.ToDouble(result ?? 0.0);
     }
@@ -46,7 +46,7 @@ public static partial class IlRuntime
     {
         var ffi = Current.Ffi;
         var handle = ffi.LoadLibrary(lib);
-        var fnPtr = ffi.GetFunction(handle, symbol);
+        var fnPtr = ResolveFfiSymbol(handle, lib, symbol);
         var result = ffi.CallFunctionTypedArr(fnPtr, args, kind, arrayMask, arrayElemIntMask, stringMask, retIsString: false, byrefScalarMask, byrefScalarElemIntMask, scalarKindMask: scalarKindMask);
         return Convert.ToDouble(result ?? 0.0);
     }
@@ -61,7 +61,7 @@ public static partial class IlRuntime
     {
         var ffi = Current.Ffi;
         var handle = ffi.LoadLibrary(lib);
-        var fnPtr = ffi.GetFunction(handle, symbol);
+        var fnPtr = ResolveFfiSymbol(handle, lib, symbol);
         // scalarKindMask dal COMPILATORE: la vecchia scorciatoia `kind == 1 ? 0xFFFF : 0`
         // passava come DOUBLE ogni scalare LONG quando kind=0 (firma con ritorno STRING:
         // es. BTCADDRFROMPUB(pub AS BYTE, n AS LONG) → n = bit di 33.0 = 4.6e18 → overread
@@ -80,7 +80,7 @@ public static partial class IlRuntime
     {
         var ffi = Current.Ffi;
         var handle = ffi.LoadLibrary(lib);
-        var fnPtr = ffi.GetFunction(handle, symbol);
+        var fnPtr = ResolveFfiSymbol(handle, lib, symbol);
         var result = ffi.CallFunctionTypedArr(fnPtr, args, kind, arrayMask, arrayElemIntMask, stringMask, retIsString: false, byrefScalarMask, byrefScalarElemIntMask, udtShapeStrs: udtShapes, scalarKindMask: scalarKindMask, byrefUdtMask: byrefUdtMask);
         return Convert.ToDouble(result ?? 0.0);
     }
@@ -97,7 +97,7 @@ public static partial class IlRuntime
     {
         var ffi = Current.Ffi;
         var handle = ffi.LoadLibrary(lib);
-        var fnPtr = ffi.GetFunction(handle, symbol);
+        var fnPtr = ResolveFfiSymbol(handle, lib, symbol);
         var result = ffi.CallFunctionTypedArr(fnPtr, args, kind, arrayMask, arrayElemIntMask, stringMask, retIsString: true, byrefScalarMask, byrefScalarElemIntMask, udtShapeStrs: udtShapes, scalarKindMask: scalarKindMask, byrefUdtMask: byrefUdtMask);
         return result as string ?? "";
     }
@@ -111,8 +111,25 @@ public static partial class IlRuntime
     {
         var ffi = Current.Ffi;
         var handle = ffi.LoadLibrary(lib);
-        var fnPtr = ffi.GetFunction(handle, symbol);
+        var fnPtr = ResolveFfiSymbol(handle, lib, symbol);
         var result = ffi.CallFunctionTypedArr(fnPtr, args, kind, arrayMask, arrayElemIntMask, stringMask, retIsString: false, byrefScalarMask, byrefScalarElemIntMask, udtReturnClrType: udtReturnType, scalarKindMask: scalarKindMask, udtShapeStrs: udtShapes, udtReturnShapeStr: udtReturnShape, byrefUdtMask: byrefUdtMask);
         return result!;
+    }
+
+    /// <summary>Risoluzione del simbolo FFI con l'errore CANONICO delle 4 gambe: un simbolo
+    /// mancante e' un errore BASIC 5 (IllegalFunctionCall) catturabile da ON ERROR/TRY, con il
+    /// testo di <see cref="Basic.Runtime.Services.FfiService.FfiSymbolMissingMessage"/>. Prima
+    /// restava un EntryPointNotFoundException qualsiasi -> FromClrException lo mappava a 200
+    /// (InternalError) con testo inglese, divergendo da VM/C e C99Native.</summary>
+    private static IntPtr ResolveFfiSymbol(IntPtr handle, string lib, string symbol)
+    {
+        try
+        {
+            return Current.Ffi.GetFunction(handle, symbol, lib);
+        }
+        catch (EntryPointNotFoundException ex)
+        {
+            throw new BasicException(ErrorCode.IllegalFunctionCall, new SourcePosition(0, 0, 0), ex.Message, innerException: ex);
+        }
     }
 }
