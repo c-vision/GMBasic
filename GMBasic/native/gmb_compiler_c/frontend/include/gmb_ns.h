@@ -90,7 +90,6 @@ static const char* const gmb_ns_names[] = {
     "COMPUTER",
     "TOOL",
     "UI",
-    "BITS",
     "LLM",
     "TRAY",
     "TUI",

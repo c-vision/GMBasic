@@ -4595,7 +4595,6 @@ if (args.Length >= 3) { var file = args[0]?.ToString() ?? ""; var section = args
         (INTERPOLATEBuiltInFunctions, (self, t, fn, a) => self.ExecuteBuiltInInterpolate(t, fn, a)),
         (ISAMBuiltInFunctions, (self, t, fn, a) => self.ExecuteBuiltInIsam(t, fn, a)),
         (KDTREEBuiltInFunctions, (self, t, fn, a) => self.ExecuteBuiltInKdtree(t, fn, a)),
-        (BITSBuiltInFunctions, (self, t, fn, a) => self.ExecuteBuiltInBits(t, fn, a)),
         (TRAYBuiltInFunctions, (self, t, fn, a) => self.ExecuteBuiltInTray(t, fn, a)),
         (MCPBuiltInFunctions, (self, t, fn, a) => self.ExecuteBuiltInMcp(t, fn, a)),
         (ConnectorBuiltInFunctions, (self, t, fn, a) => self.ExecuteBuiltInConnector(t, fn, a)),

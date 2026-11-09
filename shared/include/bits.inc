@@ -1,0 +1,126 @@
+' bits.inc — namespace BITS via FFI (lib `bits`, libgmbbits). Manipolazione bit a 64 bit.
+'
+' Semantica (identica al dominio storico, documentata nella guida):
+'   - indici 0-based, 0 = LSB;
+'   - n fuori [0,63] non altera x (BITGET/BITTEST → 0);
+'   - width <= 0 o > 64 → clampato a 64;
+'   - predicati in convenzione BIT: -1 vero, 0 falso.
+'
+' Uso: IMPORT BITS   (shared/libs: nessun REQUIRE; export in shared/include)
+
+NAMESPACE BITS
+
+DECLARE NATIVE FUNCTION BITSN_COUNT LIB "gmbbits" ALIAS "ofx_bits_count" (x AS LONG) AS LONG
+DECLARE NATIVE FUNCTION BITSN_GET LIB "gmbbits" ALIAS "ofx_bits_get" (x AS LONG, n AS LONG) AS LONG
+DECLARE NATIVE FUNCTION BITSN_SET LIB "gmbbits" ALIAS "ofx_bits_set" (x AS LONG, n AS LONG) AS LONG
+DECLARE NATIVE FUNCTION BITSN_CLEAR LIB "gmbbits" ALIAS "ofx_bits_clear" (x AS LONG, n AS LONG) AS LONG
+DECLARE NATIVE FUNCTION BITSN_TOGGLE LIB "gmbbits" ALIAS "ofx_bits_toggle" (x AS LONG, n AS LONG) AS LONG
+DECLARE NATIVE FUNCTION BITSN_TEST LIB "gmbbits" ALIAS "ofx_bits_test" (x AS LONG, n AS LONG) AS LONG
+DECLARE NATIVE FUNCTION BITSN_FIELD LIB "gmbbits" ALIAS "ofx_bits_field" (x AS LONG, lo AS LONG, hi AS LONG) AS LONG
+DECLARE NATIVE FUNCTION BITSN_REVERSE LIB "gmbbits" ALIAS "ofx_bits_reverse" (x AS LONG, width AS LONG) AS LONG
+DECLARE NATIVE FUNCTION BITSN_ROTL LIB "gmbbits" ALIAS "ofx_bits_rotl" (x AS LONG, n AS LONG, width AS LONG) AS LONG
+DECLARE NATIVE FUNCTION BITSN_ROTR LIB "gmbbits" ALIAS "ofx_bits_rotr" (x AS LONG, n AS LONG, width AS LONG) AS LONG
+DECLARE NATIVE FUNCTION BITSN_GRAY LIB "gmbbits" ALIAS "ofx_bits_gray" (x AS LONG) AS LONG
+DECLARE NATIVE FUNCTION BITSN_FROMGRAY LIB "gmbbits" ALIAS "ofx_bits_fromgray" (x AS LONG) AS LONG
+DECLARE NATIVE FUNCTION BITSN_PARITY LIB "gmbbits" ALIAS "ofx_bits_parity" (x AS LONG) AS LONG
+DECLARE NATIVE FUNCTION BITSN_SCANFWD LIB "gmbbits" ALIAS "ofx_bits_scanfwd" (x AS LONG) AS LONG
+DECLARE NATIVE FUNCTION BITSN_SCANREV LIB "gmbbits" ALIAS "ofx_bits_scanrev" (x AS LONG) AS LONG
+DECLARE NATIVE FUNCTION BITSN_BYTESWAP LIB "gmbbits" ALIAS "ofx_bits_byteswap" (x AS LONG) AS LONG
+DECLARE NATIVE FUNCTION BITSN_HAMMING LIB "gmbbits" ALIAS "ofx_bits_hamming" (a AS LONG, b AS LONG) AS LONG
+DECLARE NATIVE FUNCTION BITSN_INTERLEAVE LIB "gmbbits" ALIAS "ofx_bits_interleave" (a AS LONG, b AS LONG) AS LONG
+DECLARE NATIVE FUNCTION BITSN_DEINTERLEAVE LIB "gmbbits" ALIAS "ofx_bits_deinterleave" (m AS LONG, which AS LONG) AS LONG
+DECLARE NATIVE FUNCTION BITSN_NEXTPOW2 LIB "gmbbits" ALIAS "ofx_bits_nextpow2" (x AS LONG) AS LONG
+DECLARE NATIVE FUNCTION BITSN_ISPOW2 LIB "gmbbits" ALIAS "ofx_bits_ispow2" (x AS LONG) AS LONG
+
+' Popcount: numero di bit a 1 (0..64).
+PUBLIC FUNCTION BITCOUNT(x AS LONG) AS LONG
+    RETURN BITSN_COUNT(x)
+END FUNCTION
+
+' Bit n (0-based, 0 = LSB): 0/1. n fuori [0,63] → 0.
+PUBLIC FUNCTION BITGET(x AS LONG, n AS LONG) AS LONG
+    RETURN BITSN_GET(x, n)
+END FUNCTION
+
+' Imposta/azzera/inverte il bit n (n fuori [0,63] → x invariato).
+PUBLIC FUNCTION BITSET(x AS LONG, n AS LONG) AS LONG
+    RETURN BITSN_SET(x, n)
+END FUNCTION
+PUBLIC FUNCTION BITCLEAR(x AS LONG, n AS LONG) AS LONG
+    RETURN BITSN_CLEAR(x, n)
+END FUNCTION
+PUBLIC FUNCTION BITTOGGLE(x AS LONG, n AS LONG) AS LONG
+    RETURN BITSN_TOGGLE(x, n)
+END FUNCTION
+
+' BIT: -1 se il bit n è 1, 0 altrimenti.
+PUBLIC FUNCTION BITTEST(x AS LONG, n AS LONG) AS LONG
+    RETURN (BITSN_TEST(x, n) <> 0)
+END FUNCTION
+
+' Campo di bit lo..hi inclusi (0-based).
+PUBLIC FUNCTION BITFIELD(x AS LONG, lo AS LONG, hi AS LONG) AS LONG
+    RETURN BITSN_FIELD(x, lo, hi)
+END FUNCTION
+
+' Inverte i `width` bit bassi (width clampato a 64).
+PUBLIC FUNCTION BITREVERSE(x AS LONG, width AS LONG) AS LONG
+    RETURN BITSN_REVERSE(x, width)
+END FUNCTION
+
+' Rotazioni circolari su `width` bit.
+PUBLIC FUNCTION BITROTATEL(x AS LONG, n AS LONG, width AS LONG) AS LONG
+    RETURN BITSN_ROTL(x, n, width)
+END FUNCTION
+PUBLIC FUNCTION BITROTATER(x AS LONG, n AS LONG, width AS LONG) AS LONG
+    RETURN BITSN_ROTR(x, n, width)
+END FUNCTION
+
+' Codice di Gray e inversa.
+PUBLIC FUNCTION GRAYCODE(x AS LONG) AS LONG
+    RETURN BITSN_GRAY(x)
+END FUNCTION
+PUBLIC FUNCTION FROMGRAY(x AS LONG) AS LONG
+    RETURN BITSN_FROMGRAY(x)
+END FUNCTION
+
+' Parità: 0 = numero di bit a 1 pari, 1 = dispari.
+PUBLIC FUNCTION PARITY(x AS LONG) AS LONG
+    RETURN BITSN_PARITY(x)
+END FUNCTION
+
+' Indice del bit 1 più basso / più alto (-1 se x = 0).
+PUBLIC FUNCTION BITSCANFWD(x AS LONG) AS LONG
+    RETURN BITSN_SCANFWD(x)
+END FUNCTION
+PUBLIC FUNCTION BITSCANREV(x AS LONG) AS LONG
+    RETURN BITSN_SCANREV(x)
+END FUNCTION
+
+' Inverte l'ordine degli 8 byte.
+PUBLIC FUNCTION BYTESWAP(x AS LONG) AS LONG
+    RETURN BITSN_BYTESWAP(x)
+END FUNCTION
+
+' Distanza di Hamming (bit diversi).
+PUBLIC FUNCTION HAMMINGDIST(a AS LONG, b AS LONG) AS LONG
+    RETURN BITSN_HAMMING(a, b)
+END FUNCTION
+
+' Interleave/Deinterleave (codice di Morton; which 0/1).
+PUBLIC FUNCTION BITINTERLEAVE(a AS LONG, b AS LONG) AS LONG
+    RETURN BITSN_INTERLEAVE(a, b)
+END FUNCTION
+PUBLIC FUNCTION BITDEINTERLEAVE(m AS LONG, which AS LONG) AS LONG
+    RETURN BITSN_DEINTERLEAVE(m, which)
+END FUNCTION
+
+' Più piccola potenza di 2 ≥ x.
+PUBLIC FUNCTION NEXTPOW2(x AS LONG) AS LONG
+    RETURN BITSN_NEXTPOW2(x)
+END FUNCTION
+
+' BIT: -1 se x è una potenza di 2, 0 altrimenti.
+PUBLIC FUNCTION ISPOW2(x AS LONG) AS LONG
+    RETURN (BITSN_ISPOW2(x) <> 0)
+END FUNCTION

@@ -119,7 +119,6 @@ add_library(gmb_vm STATIC
     gmb_vm_core.c
     ${GMB_VM_DOMAIN_SRCS}
     gmb_builtin.c
-    gmb_builtin_bits.c
     gmb_builtin_tray.c
     gmb_mcp_exec.c
     gmb_uncertainty_exec.c

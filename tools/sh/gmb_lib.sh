@@ -27,7 +27,7 @@ LIBS="$MONO/shared/libs"
 INCLUDE="$MONO/shared/include"
 TOOLS="$MONO/tools/sh"
 
-ALL_LIBS="amqp grpc kafka mqtt nats protobuf media opt graph flow or mathprog gametheory aviation localsearch conic lagrangian scheduling math stats graphics pgm neural geo wsp quant auth memory"
+ALL_LIBS="amqp grpc kafka mqtt nats protobuf media opt graph flow or mathprog gametheory aviation localsearch conic lagrangian scheduling math stats graphics pgm neural geo wsp quant auth memory bits"
 
 die() { echo "gmb_lib: $*" >&2; exit 1; }
 

@@ -324,7 +324,6 @@ assorbita (non si stampa due volte).
 - `Math-Guida-Utente` — capitolo
 - `ABS-Guida-Utente` — sezione
 - `Analysis-Manual` — sezione
-- `BITS-Guida-Utente` — sezione
 - `COMPLEX-Guida-Utente` — sezione
 - `XFORM-Guida-Utente` — sezione
 - `SPECTRAL-Guida-Utente` — sezione
@@ -372,6 +371,7 @@ assorbita (non si stampa due volte).
 ### V.30 — Compressione e dati binari
 
 - `COMPRESSION-Guida-Utente` — capitolo
+- `BITS-Guida-Utente` — sezione
 - `Compression-Guida-Utente` — fuso
 
 ### V.31 — TORCH

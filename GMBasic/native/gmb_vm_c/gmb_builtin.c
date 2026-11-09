@@ -16103,7 +16103,6 @@ static void gmb_bf_worker(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int f
     default: bout->result = 0; break;
     }
 }
-void gmb_bf_bits(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task);
 void gmb_bf_tray(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task);
 
 // Tabella syscall -> handler. Ogni voce passa da GMB_BF_ENTRY: con GMB_VM_MIN i domini
@@ -17394,13 +17393,6 @@ static const gmb_bf_impl_t gmb_bf_impl_core[] = {
     { 3720, gmb_bf_tray },
     { 3723, gmb_bf_tray },
     { 3726, gmb_bf_tray },
-    { 3571, gmb_bf_bits },
-    { 3574, gmb_bf_bits },
-    { 3577, gmb_bf_bits },
-    { 3580, gmb_bf_bits },
-    { 3583, gmb_bf_bits },
-    { 3586, gmb_bf_bits },
-    { 3589, gmb_bf_bits },
     { 1170, gmb_bf_1170 },
     { 1171, gmb_bf_1171 },
     { 1172, gmb_bf_1172 },
@@ -17458,20 +17450,6 @@ static const gmb_bf_impl_t gmb_bf_impl_core[] = {
     { 3727, gmb_bf_tray },
     { 3728, gmb_bf_tray },
     { 3729, gmb_bf_tray },
-    { 3572, gmb_bf_bits },
-    { 3573, gmb_bf_bits },
-    { 3575, gmb_bf_bits },
-    { 3576, gmb_bf_bits },
-    { 3578, gmb_bf_bits },
-    { 3579, gmb_bf_bits },
-    { 3581, gmb_bf_bits },
-    { 3582, gmb_bf_bits },
-    { 3584, gmb_bf_bits },
-    { 3585, gmb_bf_bits },
-    { 3587, gmb_bf_bits },
-    { 3588, gmb_bf_bits },
-    { 3590, gmb_bf_bits },
-    { 3591, gmb_bf_bits },
 
 };
 #else

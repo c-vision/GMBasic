@@ -92,8 +92,7 @@ public sealed partial class IlProgramCompiler
             case "KEYPRESSED": _il.Emit(OpCodes.Call, IlRuntimeKeyPressedMethod); return;
         }
 
-        // BITS (2026-09-16): namespace dedicato → file di dominio IlProgramCompiler.Bits.cs.
-        if (TryEmitBitsCall(expr)) return;
+        // BITS: superficie RIMOSSA (shared/libs/bits via FFI).
         if (TryEmitTrayCall(expr)) return;
 
         // Moduli IL esterni caricati con IlModuleLoader (uso generico, non solo PackageManager):

@@ -1598,6 +1598,7 @@ PARTS = JOIN$(parts$(), "-")
 
 
 
+
 <!-- BEGIN DOMAIN TABLE -->
 ## Tavola sinottica del dominio
 

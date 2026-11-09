@@ -88,6 +88,25 @@ bit a bit di `BITS` sono il livello sotto. Il capitolo IV.22 spiega come si scri
 
 
 
+
+
+
+
+
+
+
+
+
+<!-- BEGIN DOMAIN TABLE -->
+## Tavola sinottica del dominio
+
+Ogni riga riporta la firma canonica (dal registry) e il primo uso reale trovato
+nel corpus di test e sample `.bas`/`.inc`: dove il corpus non usa il simbolo è dichiarato.
+
+- **ARCHIVE.UNZIP(x1, x2)** — `ARCHIVE.UNZIP(tmpZip, staging)` (shared/samples/PackageRegistry/PackageServer.bas:1789)
+- **ARCHIVE.ZIP(x1, x2)** — `ok = ARCHIVE.ZIP(srcs, tmp)` (shared/samples/PackageRegistry/PackageServer.bas:487)
+<!-- END DOMAIN TABLE -->
+
 <!-- BEGIN SURFACE (generato da tools/sh/manual_surface.sh — non modificare a mano) -->
 
 ## Riferimento completo: comandi, funzioni, parametri
@@ -169,6 +188,73 @@ SUB Main()
 
 ## 6. Riferimenti
 
+### BITS-Guida-Utente
+
+*Fonte: `BITS-Guida-Utente`*
+
+
+## 1. Import
+
+IMPORT BITS
+
+
+## 2. Funzioni
+| funzione | parametri | ritorno | semantica |
+|---|---|---|---|
+| `BITCOUNT(x)` | LONG | LONG | numero di bit a 1 (0..64) |
+| `BITGET(x, n)` | LONG, LONG | LONG (0/1) | bit `n` (0-based, 0 = LSB) |
+| `BITSET(x, n)` | LONG, LONG | LONG | `x` con il bit `n` a 1 |
+| `BITCLEAR(x, n)` | LONG, LONG | LONG | `x` con il bit `n` a 0 |
+| `BITTOGGLE(x, n)` | LONG, LONG | LONG | `x` con il bit `n` invertito |
+| `BITTEST(x, n)` | LONG, LONG | **BIT** | −1 se il bit `n` è 1, 0 altrimenti |
+| `BITFIELD(x, lo, hi)` | LONG, LONG, LONG | LONG | bit `lo..hi` inclusi, allineati a destra |
+| `BITREVERSE(x, width)` | LONG, LONG | LONG | inverte i `width` bit bassi |
+| `BITROTATEL(x, n, width)` | LONG, LONG, LONG | LONG | rotazione circolare a sinistra su `width` bit |
+| `BITROTATER(x, n, width)` | LONG, LONG, LONG | LONG | rotazione circolare a destra su `width` bit |
+| `GRAYCODE(x)` | LONG | LONG | `x ^ (x >> 1)` |
+| `FROMGRAY(x)` | LONG | LONG | inversa del codice di Gray |
+| `PARITY(x)` | LONG | LONG | 0 = numero di bit a 1 **pari**, 1 = dispari |
+| `BITSCANFWD(x)` | LONG | LONG | indice del bit 1 più basso (`-1` se `x = 0`) |
+| `BITSCANREV(x)` | LONG | LONG | indice del bit 1 più alto (`-1` se `x = 0`) |
+| `BYTESWAP(x)` | LONG | LONG | inverte l'ordine degli 8 byte |
+| `HAMMINGDIST(a, b)` | LONG, LONG | LONG | numero di bit diversi |
+| `BITINTERLEAVE(a, b)` | LONG, LONG | LONG | codice di Morton (alterna i bit di `a` e `b`) |
+| `BITDEINTERLEAVE(m, which)` | LONG, LONG | LONG | separa il Morton: `which` 0 o 1 |
+| `NEXTPOW2(x)` | LONG | LONG | più piccola potenza di 2 ≥ `x` |
+| `ISPOW2(x)` | LONG | **BIT** | −1 se `x` è una potenza di 2, 0 altrimenti |
+
+### Parametri (dettaglio)
+
+## 3. Esempio
+
+IMPORT BITS
+
+SUB Main()
+    DIM m AS LONG
+    m = BITSET(0, 3)          ' 8
+    m = BITSET(m, 7)          ' 136
+    PRINT BITCOUNT(m)         ' 2
+    PRINT BITTEST(m, 3)       ' -1
+    PRINT BITGET(m, 4)        ' 0
+    PRINT BITFIELD(60, 2, 3)  ' 3
+    PRINT GRAYCODE(5)         ' 7
+    PRINT NEXTPOW2(5)         ' 8
+END SUB
+
+
+## 4. Errori e diagnosi
+| sintomo | causa |
+|---|---|
+| `BITGET`/`BITTEST` = 0 con bit atteso | indice fuori `[0,63]`, oppure bit effettivamente 0 |
+| `BITSET`/`BITCLEAR` non cambia `x` | indice fuori `[0,63]` (contratto) |
+| `BITREVERSE`/rotazioni su larghezza sbagliata | `width` clampata a 64 se ≤0 o >64 |
+| `BITSCANFWD/REV` = `-1` | `x = 0` (nessun bit a 1) |
+| `PARITY` = 1 su un valore "tondo" | numero di bit a 1 dispari: è la parità, non un errore |
+
+## 5. Parità fra i backend
+
+## 6. Riferimenti
+
 ### Compression-Guida-Utente
 
 *Fonte: `Compression-Guida-Utente`*
@@ -242,40 +328,3 @@ END SUB
 ## 6. MiniTest e sample
 
 <!-- END SURFACE -->
-
-
-
-
-
-
-
-<!-- BEGIN DOMAIN TABLE -->
-## Tavola sinottica del dominio
-
-Ogni riga riporta la firma canonica (dal registry) e il primo uso reale trovato
-nel corpus di test e sample `.bas`/`.inc`: dove il corpus non usa il simbolo è dichiarato.
-
-- **ARCHIVE.UNZIP(x1, x2)** — `ARCHIVE.UNZIP(tmpZip, staging)` (shared/samples/PackageRegistry/PackageServer.bas:1789)
-- **ARCHIVE.ZIP(x1, x2)** — `ok = ARCHIVE.ZIP(srcs, tmp)` (shared/samples/PackageRegistry/PackageServer.bas:487)
-- **BITS.BITCLEAR(x1, x2)** — `RETURN BITS.BITCLEAR(mask, bit)` (shared/samples/Bits/PermessiUtente.bas:20)
-- **BITS.BITCOUNT(x1)** — `PRINT "ospite:    "; ospite; "    permessi attivi: "; BITS.BITCOUNT(ospite)` (shared/samples/Bits/PermessiUtente.bas:60)
-- **BITS.BITDEINTERLEAVE(x1, x2)** — `IF BITS.BITDEINTERLEAVE(indice, 0) <> x THEN errori = errori + 1` (shared/samples/Bits/ProtocolloPacchetti.bas:85)
-- **BITS.BITFIELD(x1, x2, x3)** — `RETURN BITS.BITFIELD(header, da, a)` (shared/samples/Bits/ProtocolloPacchetti.bas:23)
-- **BITS.BITGET(x1, x2)** — `PRINT "admin può cancellare (BITGET): "; BITS.BITGET(admin, 3)` (shared/samples/Bits/PermessiUtente.bas:103)
-- **BITS.BITINTERLEAVE(x1, x2)** — `indice = BITS.BITINTERLEAVE(x, y)` (shared/samples/Bits/ProtocolloPacchetti.bas:84)
-- **BITS.BITREVERSE(x1, x2)** — `cifrato = BITS.BITROTATEL(BITS.BITREVERSE(chiaro, 8), 3, 8)` (shared/samples/Bits/ProtocolloPacchetti.bas:100)
-- **BITS.BITROTATEL(x1, x2, x3)** — `cifrato = BITS.BITROTATEL(BITS.BITREVERSE(chiaro, 8), 3, 8)` (shared/samples/Bits/ProtocolloPacchetti.bas:100)
-- **BITS.BITROTATER(x1, x2, x3)** — `decifrato = BITS.BITREVERSE(BITS.BITROTATER(cifrato, 3, 8), 8)` (shared/samples/Bits/ProtocolloPacchetti.bas:102)
-- **BITS.BITSCANFWD(x1)** — `PRINT "bit più basso di 40: "; BITS.BITSCANFWD(40); _` (shared/samples/Bits/ProtocolloPacchetti.bas:118)
-- **BITS.BITSCANREV(x1)** — `", più alto: "; BITS.BITSCANREV(40)` (shared/samples/Bits/ProtocolloPacchetti.bas:119)
-- **BITS.BITSET(x1, x2)** — `RETURN BITS.BITSET(mask, bit)` (shared/samples/Bits/PermessiUtente.bas:16)
-- **BITS.BITTEST(x1, x2)** — `RETURN BITS.BITTEST(mask, bit)` (shared/samples/Bits/PermessiUtente.bas:24)
-- **BITS.BITTOGGLE(x1, x2)** — `impiegato = BITS.BITTOGGLE(impiegato, 3)` (shared/samples/Bits/PermessiUtente.bas:95)
-- **BITS.BYTESWAP(x1)** — `PRINT "byteswap due volte è l'identità: "; (BITS.BYTESWAP(BITS.BYTESWAP(12345)) = 12345)` (shared/samples/Bits/ProtocolloPacchetti.bas:105)
-- **BITS.FROMGRAY(x1)** — `IF BITS.FROMGRAY(BITS.GRAYCODE(i)) <> i THEN violazioni = violazioni + 1` (shared/samples/Bits/ProtocolloPacchetti.bas:67)
-- **BITS.GRAYCODE(x1)** — `IF BITS.FROMGRAY(BITS.GRAYCODE(i)) <> i THEN violazioni = violazioni + 1` (shared/samples/Bits/ProtocolloPacchetti.bas:67)
-- **BITS.HAMMINGDIST(x1, x2)** — `PRINT "distanza di Hamming fra i due ruoli: "; BITS.HAMMINGDIST(admin, ospite)` (shared/samples/Bits/PermessiUtente.bas:113)
-- **BITS.ISPOW2(x1)** — `PRINT "buffer: "; capacita; " byte (potenza di 2: "; BITS.ISPOW2(capacita); ")"` (shared/samples/Bits/ProtocolloPacchetti.bas:116)
-- **BITS.NEXTPOW2(x1)** — `capacita = BITS.NEXTPOW2(bisogno)` (shared/samples/Bits/ProtocolloPacchetti.bas:115)
-- **BITS.PARITY(x1)** — `parita = parita + BITS.PARITY(pacchetti(i))` (shared/samples/Bits/ProtocolloPacchetti.bas:53)
-<!-- END DOMAIN TABLE -->

@@ -1222,6 +1222,7 @@ ASYNC SUB Starter(wg AS WAITGROUP)
 
 
 
+
 <!-- BEGIN DOMAIN TABLE -->
 ## Tavola sinottica del dominio
 

@@ -1308,6 +1308,7 @@ curl -X POST http://localhost:8767/api/team/Squadra/broadcast \
 
 
 
+
 <!-- BEGIN DOMAIN TABLE -->
 ## Tavola sinottica del dominio
 
