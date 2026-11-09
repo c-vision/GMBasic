@@ -554,60 +554,6 @@ public sealed partial class IlProgramCompiler
         throw new NotSupportedException("Backend IL: atteso un array di DOUBLE.");
     }
 
-    private void EmitDateTimeArrayArgument(Expr argument)
-    {
-        if (NormalizeInferredType(InferType(argument)) is not ArrayType { ElementType: DateTimeType })
-            throw new NotSupportedException("Backend IL: atteso un array di DATETIME.");
-        EmitExpression(argument);
-    }
-
-    private void EmitFinanceNpvCall(BuiltinFunctionCallExpr expr)
-    {
-        if (expr.Args.Length != 2) throw new NotSupportedException("Backend IL: NPV richiede rate e un array di DOUBLE.");
-        EmitDoubleArgument(expr.Args[0]); EmitDoubleArrayArgument(expr.Args[1]); _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.Npv)));
-    }
-    private void EmitFinanceArrayDoubleCall(BuiltinFunctionCallExpr expr, string methodName, double defaultValue)
-    {
-        if (expr.Args.Length is < 1 or > 2) throw new NotSupportedException($"Backend IL: {expr.OriginalToken.Lexeme} richiede 1 o 2 argomenti.");
-        EmitDoubleArrayArgument(expr.Args[0]); if (expr.Args.Length == 2) EmitDoubleArgument(expr.Args[1]); else _il.Emit(OpCodes.Ldc_R8, defaultValue); _il.Emit(OpCodes.Call, RuntimeMethod(methodName));
-    }
-    private void EmitFinanceArrayDoubleDoubleCall(BuiltinFunctionCallExpr expr, string methodName)
-    {
-        if (expr.Args.Length != 3) throw new NotSupportedException($"Backend IL: {expr.OriginalToken.Lexeme} richiede 3 argomenti.");
-        EmitDoubleArrayArgument(expr.Args[0]); EmitDoubleArgument(expr.Args[1]); EmitDoubleArgument(expr.Args[2]); _il.Emit(OpCodes.Call, RuntimeMethod(methodName));
-    }
-    private void EmitFinanceXnpvCall(BuiltinFunctionCallExpr expr)
-    {
-        if (expr.Args.Length != 3) throw new NotSupportedException("Backend IL: XNPV richiede 3 argomenti.");
-        EmitDoubleArgument(expr.Args[0]); EmitDoubleArrayArgument(expr.Args[1]); EmitDateTimeArrayArgument(expr.Args[2]); _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.Xnpv)));
-    }
-    private void EmitFinanceXirrCall(BuiltinFunctionCallExpr expr)
-    {
-        if (expr.Args.Length is < 2 or > 3) throw new NotSupportedException("Backend IL: XIRR richiede 2 o 3 argomenti.");
-        EmitDoubleArrayArgument(expr.Args[0]); EmitDateTimeArrayArgument(expr.Args[1]); if (expr.Args.Length == 3) EmitDoubleArgument(expr.Args[2]); else _il.Emit(OpCodes.Ldc_R8, 0.1); _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.Xirr)));
-    }
-    private void EmitFinanceDateDateNumericCall(BuiltinFunctionCallExpr expr, string methodName, int mandatoryNumericCount, params double[] defaults)
-    {
-        var maximumArity = 2 + mandatoryNumericCount + defaults.Length;
-        var minimumArity = 2 + mandatoryNumericCount;
-        if (expr.Args.Length < minimumArity || expr.Args.Length > maximumArity) throw new NotSupportedException($"Backend IL: {expr.OriginalToken.Lexeme} richiede da {minimumArity} a {maximumArity} argomenti.");
-        EmitExpression(expr.Args[0]); EmitExpression(expr.Args[1]);
-        for (var index = 2; index < expr.Args.Length; index++) EmitDoubleArgument(expr.Args[index]);
-        for (var index = expr.Args.Length - minimumArity; index < defaults.Length; index++) _il.Emit(OpCodes.Ldc_R8, defaults[index]);
-        _il.Emit(OpCodes.Call, RuntimeMethod(methodName));
-    }
-    private void EmitDays360Call(BuiltinFunctionCallExpr expr)
-    {
-        // IlRuntime.Days360(DateTime, DateTime, bool european): il 3° argomento è BOOL —
-        // emettere EmitExpression su un letterale numerico (Ldc_R8 double) su un parametro
-        // bool → stack mismatch → InvalidProgram (FinanceGeneralTests.bas, fix 2026-08-11).
-        if (expr.Args.Length is < 2 or > 3) throw new NotSupportedException("Backend IL: DAYS360 richiede 2 o 3 argomenti.");
-        EmitExpression(expr.Args[0]); EmitExpression(expr.Args[1]);
-        if (expr.Args.Length == 3) EmitInt32Argument(expr.Args[2]); else _il.Emit(OpCodes.Ldc_I4_0);
-        _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.Days360)));
-    }
-
-
     private void EmitTimeSeriesDoubleArrayDoubleCall(BuiltinFunctionCallExpr expr, string methodName)
     { if (expr.Args.Length != 3) throw new NotSupportedException($"Backend IL: {expr.OriginalToken.Lexeme} richiede 3 argomenti."); EmitDoubleArgument(expr.Args[0]); EmitDoubleArrayArgument(expr.Args[1]); EmitDoubleArgument(expr.Args[2]); _il.Emit(OpCodes.Call, RuntimeMethod(methodName)); }
     private void EmitSvmFitCall(BuiltinFunctionCallExpr expr, string methodName)
@@ -1008,24 +954,6 @@ public sealed partial class IlProgramCompiler
     { if (expr.Args.Length != 3) throw new NotSupportedException($"Backend IL: {expr.OriginalToken.Lexeme} richiede 3 argomenti."); EmitDoubleArrayArgument(expr.Args[0]); EmitDoubleArgument(expr.Args[1]); EmitDoubleArgument(expr.Args[2]); _il.Emit(OpCodes.Call, RuntimeMethod(methodName)); }
     private void EmitStatsFourScalarCall(BuiltinFunctionCallExpr expr, string methodName)
     { if (expr.Args.Length != 4) throw new NotSupportedException($"Backend IL: {expr.OriginalToken.Lexeme} richiede 4 argomenti."); foreach (var argument in expr.Args) EmitDoubleArgument(argument); _il.Emit(OpCodes.Call, RuntimeMethod(methodName)); }
-
-    private void EmitFinanceNumericCall(BuiltinFunctionCallExpr expr, string methodName, int maximumArity, params double[] defaults)
-    {
-        var minimumArity = maximumArity - defaults.Length;
-        if (expr.Args.Length is < 1 || expr.Args.Length < minimumArity || expr.Args.Length > maximumArity)
-            throw new NotSupportedException($"Backend IL: {expr.OriginalToken.Lexeme} richiede da {minimumArity} a {maximumArity} argomenti.");
-        foreach (var argument in expr.Args) EmitDoubleArgument(argument);
-        for (var index = expr.Args.Length - minimumArity; index < defaults.Length; index++) _il.Emit(OpCodes.Ldc_R8, defaults[index]);
-        _il.Emit(OpCodes.Call, RuntimeMethod(methodName));
-    }
-
-    private void EmitMnpvCall(BuiltinFunctionCallExpr expr)
-    {
-        if (expr.Args.Length != 2) throw new NotSupportedException("Backend IL: MNPV richiede 2 argomenti (rate, cashflows[]).");
-        EmitDoubleArgument(expr.Args[0]);
-        EmitDoubleArrayArgument(expr.Args[1]);
-        _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.Mnpv)));
-    }
 
     private void EmitAnalysisInterpCall(BuiltinFunctionCallExpr expr, string methodName)
     { if (expr.Args.Length != 3) throw new NotSupportedException($"Backend IL: {expr.OriginalToken.Lexeme} richiede 3 argomenti."); EmitDoubleArrayArgument(expr.Args[0]); EmitDoubleArrayArgument(expr.Args[1]); EmitDoubleArgument(expr.Args[2]); _il.Emit(OpCodes.Call, RuntimeMethod(methodName)); }

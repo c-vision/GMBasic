@@ -210,17 +210,6 @@ public sealed partial class Compiler
         { TokenKind.TorchAccuracy, BuiltInFunction.TORCH_ACCURACY }, { TokenKind.TorchModelInput, BuiltInFunction.TORCH_MODELINPUT },
         { TokenKind.TorchModelOutput, BuiltInFunction.TORCH_MODELOUTPUT },
         { TokenKind.KolmogorovSmirnov, BuiltInFunction.KOLMOGOROVSMIRNOV },
-        // --- Funzioni Finanziarie (36 + 25 = 61) ---
-        { TokenKind.Pmt, BuiltInFunction.PMT }, { TokenKind.Fv, BuiltInFunction.FV },
-        { TokenKind.Pv, BuiltInFunction.PV }, { TokenKind.Nper, BuiltInFunction.NPER },
-        { TokenKind.Npv, BuiltInFunction.NPV }, { TokenKind.Irr, BuiltInFunction.IRR },
-        { TokenKind.Sln, BuiltInFunction.SLN }, { TokenKind.Syd, BuiltInFunction.SYD },
-        { TokenKind.Db, BuiltInFunction.DB }, { TokenKind.Ddb, BuiltInFunction.DDB },
-        { TokenKind.Xnpv, BuiltInFunction.XNPV }, { TokenKind.Xirr, BuiltInFunction.XIRR },
-        { TokenKind.Mirr, BuiltInFunction.MIRR }, { TokenKind.Mnpv, BuiltInFunction.MNPV },
-        { TokenKind.Cumipmt, BuiltInFunction.CUMIPMT }, { TokenKind.Cumprinc, BuiltInFunction.CUMPRINC },
-        { TokenKind.Price, BuiltInFunction.PRICE },         { TokenKind.Rate, BuiltInFunction.RATE }, { TokenKind.Days360, BuiltInFunction.DAYS360 },
-        { TokenKind.YearFrac, BuiltInFunction.YEARFRAC },
         // --- Funzioni di Algebra Lineare (16) ---
         { TokenKind.LinAlgMatrixCreateFunc, BuiltInFunction.LINALGMATRIXCREATEFUNC },
         { TokenKind.LinAlgVectorCreateFunc, BuiltInFunction.LINALGVECTORCREATEFUNC },
@@ -954,8 +943,6 @@ public sealed partial class Compiler
         { TokenKind.GetTextMetrics, BuiltInFunction.GETTEXTMETRICS }, { TokenKind.GetPaletteColor, BuiltInFunction.GETPALETTECOLOR },
         // FINANCE varianti (2026-08-06). YIELD riusa TokenKind.Yield (comando task YIELD e'
         // statement-only via ParseYieldStatement, nessun conflitto con la funzione qualificata).
-        { TokenKind.PmtExt, BuiltInFunction.PMTEXT }, { TokenKind.FvExt, BuiltInFunction.FVEXT },
-        { TokenKind.PvExt, BuiltInFunction.PVEXT }, { TokenKind.NperExt, BuiltInFunction.NPEREXT },
         { TokenKind.Yield, BuiltInFunction.YIELD },         // MESSAGE() — TokenKind.Message riusato: il comando TEAM.MESSAGE e' statement-only
         // (RegisterCommand con ParseTeamMessageStatement), la chiamata MESSAGE()/CONSOLE.MESSAGE()
         // passa dalla mappa builtin -> getter ClipperSet.Message().

@@ -5655,12 +5655,6 @@ static void gmb_bf_126(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func
         }
             { const char* tse = gmb_ts_last_error(); if (tse && *tse) vm_error(task, tse); }
 }
-static void gmb_bf_162(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
-{
-        {
-            bout->result = gmb_fin_days360(args[0].num, args[1].num, argc >= 3 ? (int)args[2].num : 0);
-        }
-}
 static void gmb_bf_305(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
 {
         {
@@ -6561,12 +6555,6 @@ static void gmb_bf_1239(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int fun
             bout->result = gmb_doc_render_png((int)args[0].num, (int)args[1].num, argc >= 4 ? (int)args[2].num : 150, out);
         }
 }
-static void gmb_bf_163(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
-{
-        {
-            bout->result = gmb_fin_yearfrac(args[0].num, args[1].num, argc >= 3 ? (int)args[2].num : 0);
-        }
-}
 static void gmb_bf_275(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
 {
         {
@@ -6735,30 +6723,6 @@ static void gmb_bf_460(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func
             bout->result = 0;
         }
 }
-static void gmb_bf_147(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
-{
-        {
-            double r = args[0].num;
-            double npv = 0;
-            gmb_obj_shared_val_t* sv = (args[1].type == 2 && args[1].ref) ? (gmb_obj_shared_val_t*)args[1].ref : NULL;
-            if (sv && sv->list && sv->list->count > 0)
-            {
-                int n = (int)sv->list->count;
-                double* cf = (double*)malloc(sizeof(double) * n);
-                if (cf)
-                {
-                    for (int i = 0; i < n; i++)
-                    {
-                        gmb_val_t v = sv->list->items[i];
-                        cf[i] = v.kind == GMB_TYPE_DOUBLE ? v.v_double : v.kind == GMB_TYPE_INT ? (double)v.v_int : 0;
-                    }
-                    npv = gmb_fin_npv(r, cf, n);
-                    free(cf);
-                }
-            }
-            bout->result = npv;
-        }
-}
 static void gmb_bf_271(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
 {
     const char* interval = (argc >= 1 && args[0].type == 2 && args[0].ref) ? ((gmb_obj_string_t*)args[0].ref)->data : "d";
@@ -6774,79 +6738,11 @@ static void gmb_bf_273(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func
             bout->result = gmb_dt_eomonth(args[0].num, argc >= 2 ? (int)args[1].num : 0);
         }
 }
-static void gmb_bf_154(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
-{
-        {
-            bout->result = gmb_fin_syd(args[0].num, args[1].num, args[2].num, args[3].num);
-        }
-}
 static void gmb_bf_272(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
 {
         {
             const char* interval = (argc >= 1 && args[0].type == 2 && args[0].ref) ? ((gmb_obj_string_t*)args[0].ref)->data : "d";
             bout->result = gmb_dt_datediff(interval, args[1].num, args[2].num);
-        }
-}
-static void gmb_bf_151(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
-{
-        {
-            double r = argc >= 1 ? args[0].num : 0;
-            gmb_obj_shared_val_t* cfs = (argc >= 2 && args[1].type == 2 && args[1].ref) ? (gmb_obj_shared_val_t*)args[1].ref : NULL;
-            gmb_obj_shared_val_t* dts = (argc >= 3 && args[2].type == 2 && args[2].ref) ? (gmb_obj_shared_val_t*)args[2].ref : NULL;
-            double xnpv = 0;
-            if (cfs && cfs->list && dts && dts->list && cfs->list->count == dts->list->count && cfs->list->count > 0)
-            {
-                int n = (int)cfs->list->count;
-                double* cf = (double*)malloc(sizeof(double) * n);
-                double* dt = (double*)malloc(sizeof(double) * n);
-                if (cf && dt)
-                {
-                    for (int i = 0; i < n; i++)
-                    {
-                        gmb_val_t v = cfs->list->items[i];
-                        cf[i] = v.kind == GMB_TYPE_DOUBLE ? v.v_double : v.kind == GMB_TYPE_INT ? (double)v.v_int : 0;
-                        gmb_val_t dv = dts->list->items[i];
-                        dt[i] = dv.kind == GMB_TYPE_DOUBLE ? dv.v_double : (double)dv.v_int;
-                    }
-                    xnpv = gmb_fin_xnpv(r, cf, dt, n);
-                }
-                free(cf); free(dt);
-            }
-            bout->result = xnpv;
-        }
-}
-static void gmb_bf_152(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
-{
-        {
-            double guess = argc >= 3 ? args[2].num : 0.1;
-            gmb_obj_shared_val_t* cfs = (args[0].type == 2 && args[0].ref) ? (gmb_obj_shared_val_t*)args[0].ref : NULL;
-            gmb_obj_shared_val_t* dts = (args[1].type == 2 && args[1].ref) ? (gmb_obj_shared_val_t*)args[1].ref : NULL;
-            double xirr = 0;
-            if (cfs && cfs->list && dts && dts->list && cfs->list->count == dts->list->count && cfs->list->count >= 2)
-            {
-                int n = (int)cfs->list->count;
-                double* cf = (double*)malloc(sizeof(double) * n);
-                double* dt = (double*)malloc(sizeof(double) * n);
-                if (cf && dt)
-                {
-                    for (int i = 0; i < n; i++)
-                    {
-                        gmb_val_t v = cfs->list->items[i];
-                        cf[i] = v.kind == GMB_TYPE_DOUBLE ? v.v_double : v.kind == GMB_TYPE_INT ? (double)v.v_int : 0;
-                        gmb_val_t dv = dts->list->items[i];
-                        dt[i] = dv.kind == GMB_TYPE_DOUBLE ? dv.v_double : (double)dv.v_int;
-                    }
-                    xirr = gmb_fin_xirr(cf, dt, n, guess);
-                }
-                free(cf); free(dt);
-            }
-            bout->result = xirr;
-        }
-}
-static void gmb_bf_153(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
-{
-        {
-            bout->result = gmb_fin_sln(args[0].num, args[1].num, args[2].num);
         }
 }
 static void gmb_bf_274(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
@@ -6898,108 +6794,6 @@ static void gmb_bf_277(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func
             bout->result = gmb_dt_timeserial((int)args[0].num, (int)args[1].num, (int)args[2].num);
         }
 }
-static void gmb_bf_139(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
-{
-        {
-            bout->result = gmb_fin_pmt(args[0].num, args[1].num, args[2].num,
-                                 argc >= 4 ? args[3].num : 0,
-                                 argc >= 5 ? (int)args[4].num : 0);
-        }
-}
-static void gmb_bf_148(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
-{
-        {
-            double guess = argc >= 2 ? args[1].num : 0.1;
-            gmb_obj_shared_val_t* sv = (args[0].type == 2 && args[0].ref) ? (gmb_obj_shared_val_t*)args[0].ref : NULL;
-            double irr = 0;
-            if (sv && sv->list && sv->list->count >= 2)
-            {
-                int n = (int)sv->list->count;
-                double* cf = (double*)malloc(sizeof(double) * n);
-                if (cf)
-                {
-                    for (int i = 0; i < n; i++)
-                    {
-                        gmb_val_t v = sv->list->items[i];
-                        cf[i] = v.kind == GMB_TYPE_DOUBLE ? v.v_double : v.kind == GMB_TYPE_INT ? (double)v.v_int : 0;
-                    }
-                    irr = gmb_fin_irr(cf, n, guess);
-                    free(cf);
-                }
-            }
-            bout->result = irr;
-        }
-}
-static void gmb_bf_149(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
-{
-        {
-            double fr = argc >= 2 ? args[1].num : 0;
-            double rr = argc >= 3 ? args[2].num : 0;
-            gmb_obj_shared_val_t* sv = (args[0].type == 2 && args[0].ref) ? (gmb_obj_shared_val_t*)args[0].ref : NULL;
-            double mirr = 0;
-            if (sv && sv->list && sv->list->count >= 2)
-            {
-                int n = (int)sv->list->count;
-                double* cf = (double*)malloc(sizeof(double) * n);
-                if (cf)
-                {
-                    for (int i = 0; i < n; i++)
-                    {
-                        gmb_val_t v = sv->list->items[i];
-                        cf[i] = v.kind == GMB_TYPE_DOUBLE ? v.v_double : v.kind == GMB_TYPE_INT ? (double)v.v_int : 0;
-                    }
-                    mirr = gmb_fin_mirr(cf, n, fr, rr);
-                    free(cf);
-                }
-            }
-            bout->result = mirr;
-        }
-}
-static void gmb_bf_141(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
-{
-        {
-            bout->result = gmb_fin_fv(args[0].num, args[1].num, args[2].num,
-                                argc >= 4 ? args[3].num : 0, argc >= 5 ? (int)args[4].num : 0);
-        }
-}
-static void gmb_bf_142(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
-{
-        {
-            bout->result = gmb_fin_fvext(args[0].num, args[1].num, args[2].num,
-                                   argc >= 4 ? args[3].num : 0, argc >= 5 ? (int)args[4].num : 0);
-        }
-}
-static void gmb_bf_144(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
-{
-        {
-            bout->result = gmb_fin_pvext(args[0].num, args[1].num, args[2].num,
-                                   argc >= 4 ? args[3].num : 0, argc >= 5 ? (int)args[4].num : 0);
-        }
-}
-static void gmb_bf_150(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
-{
-        {
-            double r = args[0].num;
-            gmb_obj_shared_val_t* sv = (args[1].type == 2 && args[1].ref) ? (gmb_obj_shared_val_t*)args[1].ref : NULL;
-            double npv = 0;
-            if (sv && sv->list && sv->list->count > 0)
-            {
-                int n = (int)sv->list->count;
-                double* cf = (double*)malloc(sizeof(double) * n);
-                if (cf)
-                {
-                    for (int i = 0; i < n; i++)
-                    {
-                        gmb_val_t v = sv->list->items[i];
-                        cf[i] = v.kind == GMB_TYPE_DOUBLE ? v.v_double : v.kind == GMB_TYPE_INT ? (double)v.v_int : 0;
-                    }
-                    npv = gmb_fin_mnpv(r, cf, n);
-                    free(cf);
-                }
-            }
-            bout->result = npv;
-        }
-}
 static void gmb_bf_295(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
 {
         {
@@ -7021,73 +6815,8 @@ static void gmb_bf_295(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func
             else { bout->is_num = 0; bout->result_ref = NULL; }
         }
 }
-static void gmb_bf_155(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
-{
-        {
-            bout->result = gmb_fin_db(args[0].num, args[1].num, args[2].num, args[3].num,
-                                argc >= 5 ? (int)args[4].num : 12);
-            { const char* fe = gmb_fin_last_error(); if (fe && *fe) vm_error(task, fe); }
-        }
-}
-static void gmb_bf_156(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
-{
-        {
-            bout->result = gmb_fin_ddb(args[0].num, args[1].num, args[2].num, args[3].num,
-                                 argc >= 5 ? args[4].num : 2.0);
-        }
-}
-static void gmb_bf_157(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
-{
-        {
-            bout->result = gmb_fin_cumipmt(args[0].num, args[1].num, args[2].num,
-                                     (int)args[3].num, (int)args[4].num,
-                                     argc >= 6 ? (int)args[5].num : 0);
-            { const char* fe = gmb_fin_last_error(); if (fe && *fe) vm_error(task, fe); }
-        }
-}
-static void gmb_bf_158(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
-{
-        {
-            bout->result = gmb_fin_cumprinc(args[0].num, args[1].num, args[2].num,
-                                      (int)args[3].num, (int)args[4].num,
-                                      argc >= 6 ? (int)args[5].num : 0);
-            { const char* fe = gmb_fin_last_error(); if (fe && *fe) vm_error(task, fe); }
-        }
-}
 
-static void gmb_bf_140(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
-{
-        {
-            bout->result = gmb_fin_pmt(args[0].num, args[1].num, args[2].num,
-                                 argc >= 4 ? args[3].num : 0, argc >= 5 ? (int)args[4].num : 0);
-        }
-}
 
-static void gmb_bf_146(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
-{
-        {
-            bout->result = gmb_fin_nper_ext(args[0].num, args[1].num, args[2].num,
-                                      argc >= 4 ? args[3].num : 0, argc >= 5 ? (int)args[4].num : 0);
-        }
-}
-static void gmb_bf_143(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
-{
-        {
-            bout->result = gmb_fin_pvext(args[0].num, args[1].num, args[2].num,
-                                   argc >= 4 ? args[3].num : 0, argc >= 5 ? (int)args[4].num : 0);
-        }
-}
-static void gmb_bf_145(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
-{
-        {
-            double r = args[0].num, pmt = args[1].num, pv = args[2].num;
-            double fv = argc >= 4 ? args[3].num : 0;
-            if (r == 0) { bout->result = (pv + fv != 0) ? -(pv + fv) / pmt : 0; }
-            double den = pmt + pv * r;
-            if (den == 0) { bout->result = 0; }
-            bout->result = log((pmt - fv * r) / den) / log(1 + r);
-        }
-}
 
 static void gmb_bf_107(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
 {
@@ -7252,23 +6981,7 @@ static void gmb_bf_544(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func
         }
 }
 
-static void gmb_bf_159(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
-{
-        {
-            bout->result = gmb_fin_bond_price(args[0].num, args[1].num, args[2].num, args[3].num,
-                                        args[4].num, (int)args[5].num, (int)args[6].num);
-        }
-}
 
-static void gmb_bf_161(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
-{
-        {
-            bout->result = gmb_fin_rate(args[0].num, args[1].num, args[2].num,
-                                  argc >= 4 ? args[3].num : 0,
-                                  argc >= 5 ? (int)args[4].num : 0,
-                                  argc >= 6 ? args[5].num : 0.1);
-        }
-}
 static void gmb_bf_677(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
 {
         {
@@ -7278,8 +6991,9 @@ static void gmb_bf_677(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func
                 task->force_yield = 1;
                 return;
             }
-            bout->result = gmb_fin_bond_yield(args[0].num, args[1].num, args[3].num, args[4].num,
-                                        args[2].num, (int)args[5].num, (int)args[6].num);
+            /* Il ramo bond-yield (YIELD con argomenti) è stato rimosso con la migrazione
+             * BONDS a FFI: resta solo lo YIELD() di cooperazione del GPM. */
+            bout->result = 0.0;
         }
 }
 static void gmb_bf_3802(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
@@ -16665,7 +16379,6 @@ static const gmb_bf_impl_t gmb_bf_impl_core[] = {
     { 114, gmb_bf_114 },
     { 117, gmb_bf_117 },
     { 126, gmb_bf_126 },
-    { 162, gmb_bf_162 },
     { 305, gmb_bf_305 },
     { 319, gmb_bf_319 },
     { 369, gmb_bf_369 },
@@ -16705,7 +16418,6 @@ static const gmb_bf_impl_t gmb_bf_impl_core[] = {
     { 1237, gmb_bf_1237 },
     { 1238, gmb_bf_1238 },
     { 1239, gmb_bf_1239 },
-    { 163, gmb_bf_163 },
     { 275, gmb_bf_275 },
     { 276, gmb_bf_276 },
     { 278, gmb_bf_278 },
@@ -16729,14 +16441,9 @@ static const gmb_bf_impl_t gmb_bf_impl_core[] = {
     { 545, gmb_bf_542 },
     { 543, gmb_bf_543 },
     { 460, gmb_bf_460 },
-    { 147, gmb_bf_147 },
-    { 151, gmb_bf_151 },
     { 271, gmb_bf_271 },
     { 273, gmb_bf_273 },
-    { 154, gmb_bf_154 },
     { 272, gmb_bf_272 },
-    { 152, gmb_bf_152 },
-    { 153, gmb_bf_153 },
     { 274, gmb_bf_274 },
     { 284, gmb_bf_284 },
     { 285, gmb_bf_285 },
@@ -16744,30 +16451,13 @@ static const gmb_bf_impl_t gmb_bf_impl_core[] = {
     { 294, gmb_bf_294 },
     { 293, gmb_bf_293 },
     { 277, gmb_bf_277 },
-    { 139, gmb_bf_139 },
-    { 148, gmb_bf_148 },
-    { 149, gmb_bf_149 },
-    { 141, gmb_bf_141 },
-    { 142, gmb_bf_142 },
-    { 144, gmb_bf_144 },
-    { 150, gmb_bf_150 },
     { 295, gmb_bf_295 },
-    { 155, gmb_bf_155 },
-    { 156, gmb_bf_156 },
-    { 157, gmb_bf_157 },
-    { 158, gmb_bf_158 },
-    { 140, gmb_bf_140 },
-    { 146, gmb_bf_146 },
-    { 143, gmb_bf_143 },
-    { 145, gmb_bf_145 },
     { 107, gmb_bf_107 },
     { 108, gmb_bf_107 },
     { 95, gmb_bf_95 },
     { 89, gmb_bf_89 },
     { 186, gmb_bf_186 },
     { 544, gmb_bf_544 },
-    { 159, gmb_bf_159 },
-    { 161, gmb_bf_161 },
     { 677, gmb_bf_677 },
     { 3802, gmb_bf_3802 },
     { 3803, gmb_bf_3802 },

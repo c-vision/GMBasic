@@ -6165,7 +6165,6 @@ int emit_bf_spatial(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t 
 int emit_bf_kdtree(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk, gmb_expr_t** args, int nargs, int line);
 int emit_bf_analysis(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk, gmb_expr_t** args, int nargs, int line);
 int emit_bf_vector(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk, gmb_expr_t** args, int nargs, int line);
-int emit_bf_finance(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk, gmb_expr_t** args, int nargs, int line);
 int emit_bf_finance_defaults(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk, gmb_expr_t** args, int nargs, int line);
 int emit_bf_matrix(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk, gmb_expr_t** args, int nargs, int line);
 int emit_bf_rdd(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk, gmb_expr_t** args, int nargs, int line);
@@ -6185,8 +6184,6 @@ int emit_bf_vecop(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk
 int emit_bf_tool(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk, gmb_expr_t** args, int nargs, int line);
 int emit_bf_encoding(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk, gmb_expr_t** args, int nargs, int line);
 
-int emit_bf_finance_scalar(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk, gmb_expr_t** args, int nargs, int line);
-int emit_bf_finance_cashflow(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk, gmb_expr_t** args, int nargs, int line);
 int emit_bf_ai_sb(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk, gmb_expr_t** args, int nargs, int line);
 static void em_msg_str(ctx_t* c, gmb_expr_t* e);
 /* MESSAGE (namespace MESSAGE): bus in-process (gmb_msg_*). */
@@ -7192,14 +7189,6 @@ static const gmb_bf_row_t gmb_bf_composite[] = {
     
     
     
-                                                            { NULL, GMB_TOK_Sln, emit_bf_finance },
-        { NULL, GMB_TOK_Syd, emit_bf_finance },
-                                                                        
-    { NULL, GMB_TOK_Days360, emit_bf_finance_defaults },
-                    { NULL, GMB_TOK_Price, emit_bf_finance_scalar },
-    { NULL, GMB_TOK_PvExt, emit_bf_finance_defaults },
-    { NULL, GMB_TOK_NperExt, emit_bf_finance_defaults },
-    { NULL, GMB_TOK_YearFrac, emit_bf_finance_defaults },
     { NULL, GMB_TOK_ENSURECOLLECTION, emit_bf_finance_defaults },
     { NULL, GMB_TOK_ENSURECOLLECTION, emit_bf_finance_defaults },
     { NULL, GMB_TOK_INDEXTEXT, emit_bf_finance_defaults },
@@ -7655,24 +7644,6 @@ static const gmb_bf_row_t gmb_bf_composite[] = {
     { NULL, GMB_TOK_MvGamblerDur, emit_bf_mv },
     { NULL, GMB_TOK_MvAteIpw, emit_bf_mv },
     { NULL, GMB_TOK_MvAteMatching, emit_bf_mv },
-    { NULL, GMB_TOK_Pmt, emit_bf_finance_scalar },
-    { NULL, GMB_TOK_PmtExt, emit_bf_finance_scalar },
-    { NULL, GMB_TOK_Fv, emit_bf_finance_scalar },
-    { NULL, GMB_TOK_Pv, emit_bf_finance_scalar },
-    { NULL, GMB_TOK_PvExt, emit_bf_finance_scalar },
-    { NULL, GMB_TOK_Nper, emit_bf_finance_scalar },
-    { NULL, GMB_TOK_Rate, emit_bf_finance_scalar },
-    { NULL, GMB_TOK_Cumipmt, emit_bf_finance_scalar },
-    { NULL, GMB_TOK_Cumprinc, emit_bf_finance_scalar },
-    { NULL, GMB_TOK_Db, emit_bf_finance_scalar },
-    { NULL, GMB_TOK_Ddb, emit_bf_finance_scalar },
-    { NULL, GMB_TOK_FvExt, emit_bf_finance_scalar },
-    { NULL, GMB_TOK_Npv, emit_bf_finance_cashflow },
-    { NULL, GMB_TOK_Mnpv, emit_bf_finance_cashflow },
-    { NULL, GMB_TOK_Irr, emit_bf_finance_cashflow },
-    { NULL, GMB_TOK_Mirr, emit_bf_finance_cashflow },
-    { NULL, GMB_TOK_Xirr, emit_bf_finance_cashflow },
-    { NULL, GMB_TOK_Xnpv, emit_bf_finance_cashflow },
     /* ── ARRAYS (forme scalari; le array-returning passano dal DIM path) ── */
     { NULL, GMB_TOK_AReduce, emit_bf_arrays },
     { NULL, GMB_TOK_ACount, emit_bf_arrays },

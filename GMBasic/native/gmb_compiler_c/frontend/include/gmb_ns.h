@@ -37,7 +37,6 @@ static const char* const gmb_ns_names[] = {
     "CRYPTOGRAPHY",
     "DATETIME",
     "DBF",
-    "FINANCE",
     "GRAPHICS",
     "GREP",
     "HTTP",
