@@ -35,10 +35,10 @@ DECLARE NATIVE SUB PFN_MEANVAR LIB "gmbquant" ALIAS "ofx_q_pf_meanvar" (mean() A
 DECLARE NATIVE SUB PFN_RISKPARITY LIB "gmbquant" ALIAS "ofx_q_pf_riskparity" (cov AS MATRIX OF (INT, INT, DOUBLE), ncov AS LONG, out() AS DOUBLE, nout AS LONG)
 DECLARE SUB PFN_EQUALLY LIB "gmbquant" ALIAS "ofx_q_pf_equally" (n AS LONG, out() AS DOUBLE)
 DECLARE SUB PFN_MAXRETURN LIB "gmbquant" ALIAS "ofx_q_pf_maxreturn" (mean() AS DOUBLE, out() AS DOUBLE)
-DECLARE SUB PFN_KELLY LIB "gmbquant" ALIAS "ofx_q_pf_kelly" (r() AS DOUBLE, rf AS DOUBLE, out() AS DOUBLE)
-DECLARE SUB PFN_MINCVAR LIB "gmbquant" ALIAS "ofx_q_pf_mincvar" (r() AS DOUBLE, conf AS DOUBLE, rf AS DOUBLE, out() AS DOUBLE)
-DECLARE SUB PFN_MINCDAR LIB "gmbquant" ALIAS "ofx_q_pf_mincdar" (r() AS DOUBLE, conf AS DOUBLE, rf AS DOUBLE, out() AS DOUBLE)
-DECLARE SUB PFN_EVOLVE LIB "gmbquant" ALIAS "ofx_q_pf_evolve" (cov() AS DOUBLE, mean() AS DOUBLE, out() AS DOUBLE)
+DECLARE NATIVE SUB PFN_KELLY LIB "gmbquant" ALIAS "ofx_q_pf_kelly" (r AS MATRIX OF (INT, INT, DOUBLE), n AS LONG, rf AS DOUBLE, out() AS DOUBLE, nout AS LONG)
+DECLARE NATIVE SUB PFN_MINCVAR LIB "gmbquant" ALIAS "ofx_q_pf_mincvar" (r AS MATRIX OF (INT, INT, DOUBLE), n AS LONG, conf AS DOUBLE, rf AS DOUBLE, out() AS DOUBLE, nout AS LONG)
+DECLARE NATIVE SUB PFN_MINCDAR LIB "gmbquant" ALIAS "ofx_q_pf_mincdar" (r AS MATRIX OF (INT, INT, DOUBLE), n AS LONG, conf AS DOUBLE, rf AS DOUBLE, out() AS DOUBLE, nout AS LONG)
+DECLARE NATIVE SUB PFN_EVOLVE LIB "gmbquant" ALIAS "ofx_q_pf_evolve" (cov AS MATRIX OF (INT, INT, DOUBLE), ncov AS LONG, mean() AS DOUBLE, nm AS LONG, out() AS DOUBLE, nout AS LONG)
 DECLARE SUB PFN_BLACKLITTERMAN LIB "gmbquant" ALIAS "ofx_q_pf_blacklitterman" (caps() AS DOUBLE, cov() AS DOUBLE, risk AS DOUBLE, tau AS DOUBLE, P() AS DOUBLE, Q() AS DOUBLE, omega() AS DOUBLE, rf AS DOUBLE, out() AS DOUBLE)
 
 ' ── metriche scalari (drop-in) ──────────────────────────────────────────────
@@ -129,62 +129,38 @@ END FUNCTION
 ' Accetta una matrice JAGGED di rendimenti (periodi x asset), come il builtin:
 ' i valori vengono appiattiti (la formula lavora sulla serie, non per asset).
 ' `rf` resta nella firma per compatibilita' ma e' IGNORATO (parita' VM/C/C99).
-PUBLIC FUNCTION KELLYCRITERION(hist() AS ARRAY OF DOUBLE, rf AS DOUBLE) AS ARRAY OF DOUBLE
-    DIM rows AS LONG = UBOUND(hist) + 1
-    DIM cols AS LONG = UBOUND(hist(0)) + 1
-    DIM flat((rows * cols) - 1) AS DOUBLE
-    FOR i = 0 TO rows - 1
-        FOR j = 0 TO cols - 1
-            flat(i * cols + j) = hist(i)(j)
-        NEXT j
-    NEXT i
+PUBLIC FUNCTION KELLYCRITERION(hist AS MATRIX OF (INT, INT, DOUBLE), rf AS DOUBLE) AS ARRAY OF DOUBLE
+    DIM rows AS LONG = UBOUND(hist, 1) + 1
+    DIM cols AS LONG = UBOUND(hist, 2) + 1
     DIM o(3) AS DOUBLE
-    CALL PFN_KELLY(flat, rf, o)
+    CALL PFN_KELLY(hist, rows * cols, rf, o, 4)
     RETURN o
 END FUNCTION
 
 ' Min-CVaR storico: o(0) = CVaR, o(3) = 1.0 (il builtin non distribuisce pesi).
-PUBLIC FUNCTION MINCVAR(hist() AS ARRAY OF DOUBLE, conf AS DOUBLE, rf AS DOUBLE) AS ARRAY OF DOUBLE
-    DIM rows AS LONG = UBOUND(hist) + 1
-    DIM cols AS LONG = UBOUND(hist(0)) + 1
-    DIM flat((rows * cols) - 1) AS DOUBLE
-    FOR i = 0 TO rows - 1
-        FOR j = 0 TO cols - 1
-            flat(i * cols + j) = hist(i)(j)
-        NEXT j
-    NEXT i
+PUBLIC FUNCTION MINCVAR(hist AS MATRIX OF (INT, INT, DOUBLE), conf AS DOUBLE, rf AS DOUBLE) AS ARRAY OF DOUBLE
+    DIM rows AS LONG = UBOUND(hist, 1) + 1
+    DIM cols AS LONG = UBOUND(hist, 2) + 1
     DIM o(3) AS DOUBLE
-    CALL PFN_MINCVAR(flat, conf, rf, o)
+    CALL PFN_MINCVAR(hist, rows * cols, conf, rf, o, 4)
     RETURN o
 END FUNCTION
 
 ' Min-CDaR storico: o(0) = CDaR, o(3) = 1.0.
-PUBLIC FUNCTION MINCDAR(hist() AS ARRAY OF DOUBLE, conf AS DOUBLE, rf AS DOUBLE) AS ARRAY OF DOUBLE
-    DIM rows AS LONG = UBOUND(hist) + 1
-    DIM cols AS LONG = UBOUND(hist(0)) + 1
-    DIM flat((rows * cols) - 1) AS DOUBLE
-    FOR i = 0 TO rows - 1
-        FOR j = 0 TO cols - 1
-            flat(i * cols + j) = hist(i)(j)
-        NEXT j
-    NEXT i
+PUBLIC FUNCTION MINCDAR(hist AS MATRIX OF (INT, INT, DOUBLE), conf AS DOUBLE, rf AS DOUBLE) AS ARRAY OF DOUBLE
+    DIM rows AS LONG = UBOUND(hist, 1) + 1
+    DIM cols AS LONG = UBOUND(hist, 2) + 1
     DIM o(3) AS DOUBLE
-    CALL PFN_MINCDAR(flat, conf, rf, o)
+    CALL PFN_MINCDAR(hist, rows * cols, conf, rf, o, 4)
     RETURN o
 END FUNCTION
 
 ' EVOLVE: il parametro GA del builtin non e' riprodotto; la soluzione e' quella
 ' deterministica di minima varianza (come il runtime condiviso).
-PUBLIC FUNCTION EVOLVE(mean() AS DOUBLE, cov() AS ARRAY OF DOUBLE) AS ARRAY OF DOUBLE
+PUBLIC FUNCTION EVOLVE(mean() AS DOUBLE, cov AS MATRIX OF (INT, INT, DOUBLE)) AS ARRAY OF DOUBLE
     DIM n AS LONG = UBOUND(mean) + 1
-    DIM flat((n * n) - 1) AS DOUBLE
-    FOR i = 0 TO n - 1
-        FOR j = 0 TO n - 1
-            flat(i * n + j) = cov(i)(j)
-        NEXT j
-    NEXT i
     DIM o(n + 2) AS DOUBLE
-    CALL PFN_EVOLVE(flat, mean, o)
+    CALL PFN_EVOLVE(cov, n * n, mean, n, o, n + 3)
     RETURN o
 END FUNCTION
 
