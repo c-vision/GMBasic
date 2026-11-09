@@ -31702,7 +31702,23 @@ static void emit_ffi_wrapper(ctx_t* c, fn_info_t* fn, const char* vkey) {
     ind(c);
     sb_put(&c->out, "static void* __ffi_lib_h = NULL;\n");
     ind(c);
+    /* Niente warning su stderr: l'errore lo solleva il ramo qui sotto (53 + testo canonico),
+     * e lo stderr del MiniTest fa parte dell'output confrontato fra le gambe. */
+    ind(c);
+    sb_put(&c->out, "gmb_ffi_dl_set_quiet(1);\n");
+    ind(c);
     sb_printf(&c->out, "if (!__ffi_lib_h) __ffi_lib_h = gmb_ffi_dl_open(\"%s\");\n", lib);
+    ind(c);
+    sb_put(&c->out, "gmb_ffi_dl_set_quiet(0);\n");
+    /* Libreria NON caricata: errore 53 (FileNotFound) con il testo CANONICO delle 4 gambe,
+     * PRIMA di tentare il simbolo. Prima il ramo lib-assente cadeva nel messaggio del simbolo
+     * ("simbolo 'X' non trovato in 'Y'"), che mandava a caccia del simbolo invece della lib. */
+    ind(c);
+    sb_printf(&c->out, "if (!__ffi_lib_h) { gmb_raise_error(53, \"[FFI] libreria '%s' non trovata\", 0L); ", lib);
+    if (strcmp(retC, "void") == 0) sb_put(&c->out, "return; }\n");
+    else if (strcmp(retC, "gmb_string_t") == 0) sb_put(&c->out, "return gmb_string_alloc(\"\"); }\n");
+    else if (strcmp(retC, "gmb_val_t") == 0) sb_put(&c->out, "return gmb_val_nil(); }\n");
+    else sb_printf(&c->out, "return (%s)0; }\n", retC);
     ind(c);
     sb_put(&c->out, "if (__ffi_lib_h) {\n");
     c->indent = 2;

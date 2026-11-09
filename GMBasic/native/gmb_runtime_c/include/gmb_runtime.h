@@ -2091,6 +2091,8 @@ gmb_int_t gmb_val_length(gmb_val_t v);
 
 /* --- FFI dl condiviso (gmb_ffi_dl.c): dlopen/dlsym usato da C99, VM/C e host IL --- */
 void* gmb_ffi_dl_open(const char* path);      /* dlopen + estensioni + match basename */
+void gmb_ffi_dl_set_quiet(int quiet);         /* 1 = nessun warning su stderr (il chiamante
+                                              * solleva già l'errore 53 con il testo canonico) */
 void* gmb_ffi_dl_sym(void* lib, const char* name);
 void  gmb_ffi_dl_preload(const char* abs_path); /* registra una lib di pacchetto risolta */
 /* --- Trading PsoOptimizer (common/CommonLib/Trading/PsoOptimizer.cs:307) ---

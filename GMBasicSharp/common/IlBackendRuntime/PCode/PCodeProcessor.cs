@@ -4537,7 +4537,10 @@ internal sealed partial class PCodeProcessor
                          * (ON ERROR/TRY), codice 5 = IllegalFunctionCall come VM/C e C99Native.
                          * Prima si spingeva la stringa "[FFI_ERROR] ..." sullo stack come se
                          * fosse il risultato: nessun errore, out() intatti e valore credibile. */
-                        RaiseBasicError(task, ex is BasicException be ? (double)be.Code : 5.0, ex.Message);
+                        var code = ex is BasicException be ? (double)be.Code
+                                 : ex is FileNotFoundException ? 53.0   /* libreria assente */
+                                 : 5.0;                                 /* simbolo assente */
+                        RaiseBasicError(task, code, ex.Message);
                     }
                 }
                 else { task.PushRef(null); }
@@ -4738,7 +4741,10 @@ internal sealed partial class PCodeProcessor
                          * (ON ERROR/TRY), codice 5 = IllegalFunctionCall come VM/C e C99Native.
                          * Prima si spingeva la stringa "[FFI_ERROR] ..." sullo stack come se
                          * fosse il risultato: nessun errore, out() intatti e valore credibile. */
-                        RaiseBasicError(task, ex is BasicException be ? (double)be.Code : 5.0, ex.Message);
+                        var code = ex is BasicException be ? (double)be.Code
+                                 : ex is FileNotFoundException ? 53.0   /* libreria assente */
+                                 : 5.0;                                 /* simbolo assente */
+                        RaiseBasicError(task, code, ex.Message);
                     }
                 }
                 else { task.PushRef(null); }

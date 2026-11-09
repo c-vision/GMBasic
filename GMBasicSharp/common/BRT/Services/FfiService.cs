@@ -124,7 +124,7 @@ public class FfiService : IFfiService
             Preloads[BasenameKey(absPath)] = absPath;
             return handle;
         }
-        throw new FileNotFoundException($"Library not found: {absPath}");
+        throw new FileNotFoundException(FfiLibraryMissingMessage(absPath));
     }
 
     private static string BasenameKey(string path)
@@ -231,7 +231,7 @@ public class FfiService : IFfiService
             }
         }
 
-        throw new FileNotFoundException($"Library not found: {path}");
+        throw new FileNotFoundException(FfiLibraryMissingMessage(path));
     }
 
     /// <summary>RID della piattaforma corrente (osx-arm64/osx-x64/win-x64/linux-*).</summary>
@@ -424,6 +424,12 @@ public class FfiService : IFfiService
     /// (IllegalFunctionCall). Una sola fonte per il messaggio: nessuna gamba può divergere.</summary>
     public static string FfiSymbolMissingMessage(string symbol, string? libLabel)
         => $"[FFI] simbolo '{symbol}' non trovato in '{libLabel ?? "libreria"}' (libreria non aggiornata?)";
+
+    /// <summary>Testo CANONICO (4 gambe) di una libreria FFI che non si carica affatto: codice
+    /// 53 (FileNotFound). Stessa stringa emessa dal wrapper C di C99Native e dal VM/C; una
+    /// libreria assente NON deve degradare in "simbolo non trovato" (era il caso IL/C99).</summary>
+    public static string FfiLibraryMissingMessage(string libLabel)
+        => $"[FFI] libreria '{libLabel}' non trovata";
 
     public object? CallFunction(IntPtr function, object?[] args)
     {

@@ -15214,7 +15214,7 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                 double result = 0.0;
                 if (lib != NULL && fn != NULL && argc <= GMB_FFI_MAX_ARGS)
                 {
-                    void* h = gmb_ffi_dl_open(lib);
+                    gmb_ffi_dl_set_quiet(1); void* h = gmb_ffi_dl_open(lib); gmb_ffi_dl_set_quiet(0);   /* l'errore 53 lo solleviamo noi: niente warning duplicato */
                     /* MAI un 0 silenzioso: un simbolo non risolto NON e' "la funzione ha
                      * restituito 0" — con la writeback del caso out() l'esito era
                      * indistinguibile da una chiamata riuscita (out() intatti, rc=0).
@@ -15223,8 +15223,8 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                     if (h == NULL)
                     {
                         char fmsg[256];
-                        snprintf(fmsg, sizeof(fmsg), "[FFI] libreria non trovata: %s (simbolo %s)", lib, fn);
-                        gmb_raise_basic_error(task, 5.0, fmsg);   /* catturabile: TRY/ON ERROR */
+                        snprintf(fmsg, sizeof(fmsg), "[FFI] libreria '%s' non trovata", lib);
+                        gmb_raise_basic_error(task, 53.0, fmsg);   /* 53 = FileNotFound; catturabile: TRY/ON ERROR */
                         break;
                     }
                     if (h != NULL)
@@ -15566,14 +15566,14 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                 gmb_obj_shared_val_t* retUdtInst = NULL; /* struct/UDT: istanza VM/C in uscita */
                 if (lib != NULL && fn != NULL && argc <= GMB_FFI_MAX_ARGS && !callbackError)
                 {
-                    void* h = gmb_ffi_dl_open(lib);
+                    gmb_ffi_dl_set_quiet(1); void* h = gmb_ffi_dl_open(lib); gmb_ffi_dl_set_quiet(0);   /* l'errore 53 lo solleviamo noi: niente warning duplicato */
                     /* Idem OP_CALL_FFI: simbolo/libreria mancanti = errore esplicito, non un 0
                      * silenzioso con gli out() intatti (vedi il commento gemello sopra). */
                     if (h == NULL)
                     {
                         char fmsg[256];
-                        snprintf(fmsg, sizeof(fmsg), "[FFI] libreria non trovata: %s (simbolo %s)", lib, fn);
-                        gmb_raise_basic_error(task, 5.0, fmsg);   /* catturabile: TRY/ON ERROR */
+                        snprintf(fmsg, sizeof(fmsg), "[FFI] libreria '%s' non trovata", lib);
+                        gmb_raise_basic_error(task, 53.0, fmsg);   /* 53 = FileNotFound; catturabile: TRY/ON ERROR */
                         break;
                     }
                     if (h != NULL)
