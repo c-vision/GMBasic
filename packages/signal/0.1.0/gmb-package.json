@@ -1,0 +1,28 @@
+{
+  "name": "signal",
+  "version": "0.1.0",
+  "description": "Dominio SIGNAL (scipy.signal) via FFI: finestre (hann/hamming/blackman), convoluzione/correlazione, design e applicazione di filtri IIR (butter/cheby1/cheby2/ellip + lfilter/filtfilt/freqz), FIR (firwin), picchi (findpeaks), ricampionamento (resample/decimate), smoothing Savitzky-Golay e densita' spettrale (welch). Sorgenti canonici in gmbsuite/gmbsignal, copia self-contained qui.",
+  "contentType": "c-ffi-source",
+  "exports": ["signal.inc"],
+  "samples": ["samples"],
+  "build": {
+    "command": "bash build.sh",
+    "cwd": ".",
+    "tool": "cc",
+    "outputs": ["lib/{platform}/libgmbsignal.dylib", "lib/{platform}/libgmbsignal.so"]
+  },
+  "ffi": {
+    "api": "c-abi",
+    "headers": ["include/gmbsignal.h"],
+    "libs": {
+      "osx-arm64": "lib/osx-arm64/libgmbsignal.dylib",
+      "osx-x64": "lib/osx-x64/libgmbsignal.dylib",
+      "linux-x64": "lib/linux-x64/libgmbsignal.so",
+      "linux-arm64": "lib/linux-arm64/libgmbsignal.so"
+    },
+    "link": "-lm",
+    "declareExample": "DECLARE NATIVE FUNCTION SXF_HANN LIB \"gmbsignal\" ALIAS \"ofx_signal_hann\" (n AS LONG, out() AS DOUBLE, cap AS LONG) AS LONG"
+  },
+  "nativeRequirements": {},
+  "dependencies": {}
+}
