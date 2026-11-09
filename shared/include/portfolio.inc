@@ -39,7 +39,7 @@ DECLARE NATIVE SUB PFN_KELLY LIB "gmbquant" ALIAS "ofx_q_pf_kelly" (r AS MATRIX 
 DECLARE NATIVE SUB PFN_MINCVAR LIB "gmbquant" ALIAS "ofx_q_pf_mincvar" (r AS MATRIX OF (INT, INT, DOUBLE), n AS LONG, conf AS DOUBLE, rf AS DOUBLE, out() AS DOUBLE, nout AS LONG)
 DECLARE NATIVE SUB PFN_MINCDAR LIB "gmbquant" ALIAS "ofx_q_pf_mincdar" (r AS MATRIX OF (INT, INT, DOUBLE), n AS LONG, conf AS DOUBLE, rf AS DOUBLE, out() AS DOUBLE, nout AS LONG)
 DECLARE NATIVE SUB PFN_EVOLVE LIB "gmbquant" ALIAS "ofx_q_pf_evolve" (cov AS MATRIX OF (INT, INT, DOUBLE), ncov AS LONG, mean() AS DOUBLE, nm AS LONG, out() AS DOUBLE, nout AS LONG)
-DECLARE SUB PFN_BLACKLITTERMAN LIB "gmbquant" ALIAS "ofx_q_pf_blacklitterman" (caps() AS DOUBLE, cov() AS DOUBLE, risk AS DOUBLE, tau AS DOUBLE, P() AS DOUBLE, Q() AS DOUBLE, omega() AS DOUBLE, rf AS DOUBLE, out() AS DOUBLE)
+DECLARE NATIVE SUB PFN_BLACKLITTERMAN LIB "gmbquant" ALIAS "ofx_q_pf_blacklitterman" (caps() AS DOUBLE, ncaps AS LONG, cov AS MATRIX OF (INT, INT, DOUBLE), ncov AS LONG, risk AS DOUBLE, tau AS DOUBLE, P AS MATRIX OF (INT, INT, DOUBLE), nP AS LONG, Q() AS DOUBLE, nQ AS LONG, omega AS MATRIX OF (INT, INT, DOUBLE), nOm AS LONG, rf AS DOUBLE, out() AS DOUBLE, nout AS LONG)
 
 ' ── metriche scalari (drop-in) ──────────────────────────────────────────────
 
@@ -167,28 +167,10 @@ END FUNCTION
 ' Black-Litterman completo: Pi = lambda*Sigma*w_mkt;
 ' post = [(tau*Sigma)^-1 + P'Omega^-1 P]^-1 [(tau*Sigma)^-1 Pi + P'Omega^-1 Q];
 ' poi MAXSHARPE(post, Sigma, rf). P e' k*n, omega k*k (jagged).
-PUBLIC FUNCTION BLACKLITTERMAN(caps() AS DOUBLE, cov() AS ARRAY OF DOUBLE, risk AS DOUBLE, tau AS DOUBLE, P() AS ARRAY OF DOUBLE, Q() AS DOUBLE, omega() AS ARRAY OF DOUBLE, rf AS DOUBLE) AS ARRAY OF DOUBLE
+PUBLIC FUNCTION BLACKLITTERMAN(caps() AS DOUBLE, cov AS MATRIX OF (INT, INT, DOUBLE), risk AS DOUBLE, tau AS DOUBLE, P AS MATRIX OF (INT, INT, DOUBLE), Q() AS DOUBLE, omega AS MATRIX OF (INT, INT, DOUBLE), rf AS DOUBLE) AS ARRAY OF DOUBLE
     DIM n AS LONG = UBOUND(caps) + 1
     DIM k AS LONG = UBOUND(Q) + 1
-    DIM fcov((n * n) - 1) AS DOUBLE
-    DIM fP((k * n) - 1) AS DOUBLE
-    DIM fom((k * k) - 1) AS DOUBLE
-    FOR i = 0 TO n - 1
-        FOR j = 0 TO n - 1
-            fcov(i * n + j) = cov(i)(j)
-        NEXT j
-    NEXT i
-    FOR i = 0 TO k - 1
-        FOR j = 0 TO n - 1
-            fP(i * n + j) = P(i)(j)
-        NEXT j
-    NEXT i
-    FOR i = 0 TO k - 1
-        FOR j = 0 TO k - 1
-            fom(i * k + j) = omega(i)(j)
-        NEXT j
-    NEXT i
     DIM o(n + 2) AS DOUBLE
-    CALL PFN_BLACKLITTERMAN(caps, fcov, risk, tau, fP, Q, fom, rf, o)
+    CALL PFN_BLACKLITTERMAN(caps, n, cov, n * n, risk, tau, P, k * n, Q, k, omega, k * k, rf, o, n + 3)
     RETURN o
 END FUNCTION
