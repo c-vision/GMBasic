@@ -1949,8 +1949,15 @@ static void tui_ctrl_set_value(gmb_control_t* c, double v)
         default: break;
     }
 }
+/* 1 = controllo del MODELLO UNICO (renderer a celle del modello). Nel runtime MINIMO
+ * (senza UI) gmb_widget_model.c non è compilato: il predicato è costante 0, così il
+ * core non porta un riferimento all'UI (il link testuale non cerca i render_line). */
+#ifdef GMB_WITH_UI
 static int is_model_ctrl(gmb_control_t* c)
 { return c && c->draw_fn == gmb_widget_draw_cells; }
+#else
+static int is_model_ctrl(gmb_control_t* c) { (void)c; return 0; }
+#endif
 static const char* tui_ctrl_text(gmb_control_t* c)
 {
     static char _buf[256]; void* u = c->user; _buf[0] = 0;

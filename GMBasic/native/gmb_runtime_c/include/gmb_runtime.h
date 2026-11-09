@@ -1624,6 +1624,8 @@ char* gmb_team_link_info_str(const char* team);
 char* gmb_team_runtime_stats_str(const char* team);
 
 /* --- AI registry (gmb_ai.c) --- */
+/* MEMORY engine interno (BSP state / agenti): la superficie MEMORY.* è nella lib
+ * `memory` (shared/libs/memory, FFI); queste restano per i consumer C interni. */
 int gmb_mem_store(const char* key, const char* value, int longTerm);
 char* gmb_mem_load(const char* key);   /* malloc (port SQLite :memory:, AgentMemoryStore) */
 char* gmb_mem_search(const char* pattern);
@@ -2191,6 +2193,7 @@ const char* gmb_env_get(const char* name);
 int gmb_env_has(const char* name);
 int gmb_command_count(void);
 const char* gmb_command_arg(int i);
+const char* gmb_command_program(void);   /* argv[0]: percorso dell'eseguibile */
 /* TSMINMAX: [min, max] della serie. */
 gmb_double_t* gmb_ts_minmax(gmb_double_t* data, gmb_int_t n, gmb_int_t* out_len);
 /* Rolling skewness/kurtosis/median/quantile/sharpe (finestra scorrevole). */

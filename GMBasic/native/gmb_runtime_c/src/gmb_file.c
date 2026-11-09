@@ -1594,8 +1594,20 @@ char* gmb_path_search_paths(void) {
     return out;
 }
 
-/* BINPATH(): directory base dell'host (headless: cwd, come gmb_path_app_dir). */
-char* gmb_path_bin_dir(void) { return gmb_path_app_dir(); }
+/* BINPATH(): cartella dell'ESEGUIBILE in esecuzione — dove il compilatore scrive il
+ * binario (`gmb build` → <progetto>/bin). È l'ancora stabile per i dati di un'app
+ * compilata: NON dipende dalla CWD con cui il programma viene lanciato.
+ * Fallback: CWD (REPL/embedder, dove argv[0] non è un percorso). */
+char* gmb_path_bin_dir(void)
+{
+    const char* prog = gmb_command_program();
+    if (prog && strchr(prog, '/')) {
+        char* dir = gmb_path_parent(prog);
+        if (dir && *dir) return dir;
+        free(dir);
+    }
+    return gmb_path_app_dir();
+}
 
 /* PROJECTFOLDER(): cartella reale del file .bas corrente (import-aware). */
 char* gmb_path_current_file_dir(void) {

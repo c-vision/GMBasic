@@ -85,6 +85,10 @@ typedef struct {
     const char* target;  /* build: native|c99 (il resto è dell'engine C#) */
     int interactive;     /* minitests: solo TAG interactive */
     int heavy;           /* minitests: solo TAG heavy */
+    /* run: argomenti del PROGRAMMA dopo `--` — inoltrati all'eseguibile (argv[1..]),
+     * NON interpretati dal CLI. Il programma li legge con COMMAND$/COMMANDCOUNT. */
+    char** prog_argv;
+    int    prog_argc;
 } Options;
 
 /* ── helper comuni (definiti in gmb_cli.c) ─────────────────────────────────────────────── */
