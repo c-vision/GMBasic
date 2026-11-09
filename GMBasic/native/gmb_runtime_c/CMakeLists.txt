@@ -268,7 +268,6 @@ set(GMB_ALL_SRCS
     src/gmb_console_extra.c
     src/gmb_keyboard_extra.c
     src/gmb_mouse_input.c
-    src/gmb_kdtree.c
     src/gmb_filters.c
     src/gmb_stats.c
     src/gmb_ode.c

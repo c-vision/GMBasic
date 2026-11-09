@@ -2094,14 +2094,6 @@ void  gmb_ffi_dl_preload(const char* abs_path); /* registra una lib di pacchetto
  * out: pesi ottimali (somma 1, non negativi). Deterministico (seed fisso). */
 void gmb_opt_pso(const double* returns, int nSim, int nAssets, double alpha, int objective,
                  int swarmSize, int maxIter, double* out);
-/* --- KDTree (gmb_kdtree.c): scipy.spatial.KDTree --- */
-gmb_int_t gmb_kdtree_create(const double* flat, int n, int m);
-int gmb_kdtree_query(gmb_int_t h, const double* q, int k, int* out_idx);
-int gmb_kdtree_query_dist(gmb_int_t h, const double* q, int k, double* out_d);
-int gmb_kdtree_query_ball(gmb_int_t h, const double* q, double r, int max_out, int* out_idx);
-double* gmb_kdtree_query_indices_alloc(gmb_int_t h, const double* q, int k, gmb_int_t* outn);
-double* gmb_kdtree_query_dists_alloc(gmb_int_t h, const double* q, int k, gmb_int_t* outn);
-double* gmb_kdtree_query_ball_alloc(gmb_int_t h, const double* q, double r, gmb_int_t* outn);
 /* --- Bridge C99 di quadratura (gmb_fn_t = lambda transpilata) --- */
 double gmb_quad_gk_c99(gmb_fn_t fn, double a, double b);
 double gmb_simpson_c99(gmb_fn_t fn, double a, double b, int n);

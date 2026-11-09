@@ -8051,37 +8051,6 @@ public static double TextWidth(string s)
     // --- Filtri IIR: il design/applicazione (BUTTER/CHEBY/ELLIP/LFILTER/FILTFILT/FREQZ) è
     // nella lib FFI `signal`; qui resta solo il wrapper TIMESERIES qui sotto.
 
-    // --- KDTree (scipy.spatial.KDTree): handle + query/query_ball ---
-    private static readonly Dictionary<long, CommonLib.KdTree> KdTreeHandles = new();
-    private static long _nextKdTreeHandle = 9000;
-
-    public static long KdTreeCreate(double[] flat, double m)
-    {
-        var f = flat ?? Array.Empty<double>();
-        var dims = Math.Max(1, (int)m);
-        var n = dims > 0 ? f.Length / dims : 0;
-        var rect = new double[n, dims];
-        for (var i = 0; i < n; i++)
-            for (var j = 0; j < dims; j++)
-                if (i * dims + j < f.Length) rect[i, j] = f[i * dims + j];
-        var tree = CommonLib.Numerics.KdTreeBuild(rect);
-        var h = Interlocked.Increment(ref _nextKdTreeHandle);
-        KdTreeHandles[h] = tree;
-        return h;
-    }
-
-    private static CommonLib.KdTree GetKdTree(double h)
-        => KdTreeHandles.TryGetValue((long)h, out var t) ? t : new CommonLib.KdTree();
-
-    public static double[] KdTreeQuery(double h, double[] x, double k)
-        => Array.ConvertAll(CommonLib.Numerics.KdTreeQuery(GetKdTree(h), x ?? Array.Empty<double>(), (int)k).indices, i => (double)i);
-
-    public static double[] KdTreeQueryDist(double h, double[] x, double k)
-        => CommonLib.Numerics.KdTreeQuery(GetKdTree(h), x ?? Array.Empty<double>(), (int)k).distances;
-
-    public static double[] KdTreeQueryBall(double h, double[] x, double r)
-        => Array.ConvertAll(CommonLib.Numerics.KdTreeQueryBall(GetKdTree(h), x ?? Array.Empty<double>(), r), i => (double)i);
-
     // Wrapper TIMESERIES: design Butterworth + applicazione lfilter in un colpo.
     public static double[] TimeSeriesLowPass(double[] x, double wn, double n)
         => CommonLib.Numerics.LFilter(CommonLib.Numerics.Butter((int)n, [wn], "low"), x ?? Array.Empty<double>());

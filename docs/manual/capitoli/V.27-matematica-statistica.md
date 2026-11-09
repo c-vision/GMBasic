@@ -2872,6 +2872,8 @@ END SUB
 
 ## 4. MiniTest e Sample
 
+## 5. Implementazione (FFI, 2026-11-09)
+
 ### Matrix-Linalg-Manual
 
 *Fonte: `Matrix-Linalg-Manual`*

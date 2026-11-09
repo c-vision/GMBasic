@@ -35,8 +35,6 @@ public sealed partial class Compiler
         { TokenKind.SpecialBesselI, BuiltInFunction.SPECIAL_BESSELI }, { TokenKind.SpecialBesselK, BuiltInFunction.SPECIAL_BESSELK },
         { TokenKind.VectorManhattan, BuiltInFunction.VECTORMANHATTAN }, { TokenKind.VectorChebyshev, BuiltInFunction.VECTORCHEBYSHEV },
         { TokenKind.VectorCosineDistance, BuiltInFunction.VECTORCOSINEDISTANCE }, { TokenKind.VectorMinkowski, BuiltInFunction.VECTORMINKOWSKI },
-        { TokenKind.KdTreeCreate, BuiltInFunction.KDTREE_CREATE }, { TokenKind.KdTreeQuery, BuiltInFunction.KDTREE_QUERY },
-        { TokenKind.KdTreeQueryDist, BuiltInFunction.KDTREE_QUERYDIST }, { TokenKind.KdTreeQueryBall, BuiltInFunction.KDTREE_QUERYBALL },
         // BITS (2026-09-16): mappa TokenKind → BuiltInFunction del namespace manipolazione bit.
         // TRAY (2026-10-02): mappa TokenKind → BuiltInFunction (icona barra SO).
         { TokenKind.TrayCreate, BuiltInFunction.TRAYCREATE }, { TokenKind.TrayItem, BuiltInFunction.TRAYITEM },

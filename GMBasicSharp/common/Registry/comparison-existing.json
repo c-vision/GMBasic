@@ -1,12 +1,12 @@
 {
   "canonical": {
-    "count": 1290,
-    "namespaces": 56
+    "count": 1286,
+    "namespaces": 55
   },
   "enum_cs": {
     "tokenkind_members": 2507,
     "builtinfunction_members": 0,
-    "builtinfunction_explicit_values": 1167,
+    "builtinfunction_explicit_values": 1163,
     "builtinfunction_dup_code_groups": 0,
     "builtinfunction_dup_members": 0
   },

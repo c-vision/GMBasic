@@ -787,11 +787,6 @@ public sealed partial class IlProgramCompiler
         EmitDoubleArgument(expr.Args[2]);
         _il.Emit(OpCodes.Call, RuntimeMethod(methodName));
     }
-    private void EmitKdTreeCreateCall(BuiltinFunctionCallExpr expr)
-    { if (expr.Args.Length != 2) throw new NotSupportedException("Backend IL: KDTREE.CREATE richiede 2 argomenti (points, m)."); EmitDoubleArrayArgument(expr.Args[0]); EmitDoubleArgument(expr.Args[1]); _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.KdTreeCreate))); }
-    private void EmitKdTreeQueryCall(BuiltinFunctionCallExpr expr, string methodName)
-    { if (expr.Args.Length != 3) throw new NotSupportedException($"Backend IL: {expr.OriginalToken.Lexeme} richiede 3 argomenti (handle, x, k/r)."); EmitDoubleArgument(expr.Args[0]); EmitDoubleArrayArgument(expr.Args[1]); EmitDoubleArgument(expr.Args[2]); _il.Emit(OpCodes.Call, RuntimeMethod(methodName)); }
-
     private void EmitMatrixSliceCall(BuiltinFunctionCallExpr expr)
     {
         if (expr.Args.Length != 5) throw new NotSupportedException("Backend IL: MATRIX.SLICE richiede handle e quattro indici.");

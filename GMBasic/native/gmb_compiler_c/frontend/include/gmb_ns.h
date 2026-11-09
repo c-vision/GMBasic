@@ -44,7 +44,6 @@ static const char* const gmb_ns_names[] = {
     "ISAM",
     "JOY",
     "JSON",
-    "KDTREE",
     "LEDGER",
     "MATH",
     "MATRIX",

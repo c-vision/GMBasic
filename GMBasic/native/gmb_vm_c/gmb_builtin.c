@@ -1511,53 +1511,6 @@ static void gmb_bf_1030(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int fun
         }
         
 }
-static void gmb_bf_890(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
-{
-        {
-            int nf = 0;
-            double* flat = argc >= 1 ? gmb_vm_list_to_dbl(&args[0], &nf) : NULL;
-            int m = (int)(argc >= 2 ? args[1].num : 2);
-            int n = m > 0 ? nf / m : 0;
-            bout->result = (double)gmb_kdtree_create(flat, n, m);
-            free(flat);
-        }
-}
-static void gmb_bf_891(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
-{
-        {
-            int nx = 0;
-            double* x = argc >= 2 ? gmb_vm_list_to_dbl(&args[1], &nx) : NULL;
-            int k = (int)(argc >= 3 ? args[2].num : 1);
-            gmb_int_t outn = 0;
-            double* r = gmb_kdtree_query_indices_alloc((gmb_int_t)(argc >= 1 ? args[0].num : 0), x, k, &outn);
-            free(x);
-            gmb_vm_set_result_list(r, (int)outn, &bout->is_num, &bout->result_ref);
-        }
-}
-static void gmb_bf_892(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
-{
-        {
-            int nx = 0;
-            double* x = argc >= 2 ? gmb_vm_list_to_dbl(&args[1], &nx) : NULL;
-            int k = (int)(argc >= 3 ? args[2].num : 1);
-            gmb_int_t outn = 0;
-            double* r = gmb_kdtree_query_dists_alloc((gmb_int_t)(argc >= 1 ? args[0].num : 0), x, k, &outn);
-            free(x);
-            gmb_vm_set_result_list(r, (int)outn, &bout->is_num, &bout->result_ref);
-        }
-}
-static void gmb_bf_893(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
-{
-        {
-            int nx = 0;
-            double* x = argc >= 2 ? gmb_vm_list_to_dbl(&args[1], &nx) : NULL;
-            double r = argc >= 3 ? args[2].num : 1;
-            gmb_int_t outn = 0;
-            double* res = gmb_kdtree_query_ball_alloc((gmb_int_t)(argc >= 1 ? args[0].num : 0), x, r, &outn);
-            free(x);
-            gmb_vm_set_result_list(res, (int)outn, &bout->is_num, &bout->result_ref);
-        }
-}
 static void gmb_bf_91(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
 {
         {
@@ -15806,10 +15759,6 @@ static const gmb_bf_impl_t gmb_bf_impl_core[] = {
     { 1025, gmb_bf_1025 },
     { 1029, gmb_bf_1029 },
     { 1030, gmb_bf_1030 },
-    { 890, gmb_bf_890 },
-    { 891, gmb_bf_891 },
-    { 892, gmb_bf_892 },
-    { 893, gmb_bf_893 },
     { 91, gmb_bf_91 },
     { 92, gmb_bf_92 },
     { 105, gmb_bf_105 },

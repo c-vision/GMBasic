@@ -172,10 +172,6 @@ public enum BuiltInFunction : ushort
     WEIBULLPPF = 883, LOGISTICPPF = 884, UNIFORMPPF = 885,
     PARETOPPF = 886, TRIANGULARPPF = 887,
     // --- scipy.spatial.KDTree (890-893) ---
-    KDTREE_CREATE = 890,
-    KDTREE_QUERY = 891,
-    KDTREE_QUERYDIST = 892,
-    KDTREE_QUERYBALL = 893,
     // --- scipy.linalg: funzioni matriciali (894-898) ---
     MATRIX_SQRTM = 894,
     MATRIX_LOGM = 895,

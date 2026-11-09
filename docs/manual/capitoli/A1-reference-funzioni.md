@@ -3744,30 +3744,6 @@ JSON.TOJSON   ' dal codice del progetto: shared/minitests/types/udt_json_list.ba
 JSON.TOOBJECT   ' dal codice del progetto: shared/minitests/types/udt_json_list.bas:27
 ```
 
-#### `KDTREE.CREATE` — arita 2-2
-
-```basic
-KDTREE.CREATE   ' dal codice del progetto: shared/minitests/kdtree/query.bas:7
-```
-
-#### `KDTREE.QUERY` — arita 3-3
-
-```basic
-KDTREE.QUERY   ' dal codice del progetto: shared/minitests/kdtree/query.bas:1
-```
-
-#### `KDTREE.QUERYBALL` — arita 3-3
-
-```basic
-KDTREE.QUERYBALL   ' dal codice del progetto: shared/minitests/kdtree/query.bas:13
-```
-
-#### `KDTREE.QUERYDIST` — arita 3-3
-
-```basic
-KDTREE.QUERYDIST   ' dal codice del progetto: shared/minitests/kdtree/query.bas:11
-```
-
 #### `LEDGER.ACCOUNTS` — arita 1-2
 
 ```basic
@@ -5358,112 +5334,10 @@ RDD.TODAY   ' dal codice del progetto: shared/minitests/dbf/rdd_fields.bas:30
 RDD.VALTYPE   ' dal codice del progetto: shared/minitests/dbf/rdd_fields.bas:28
 ```
 
-#### `SIGNAL.BLACKMAN` — arita 1-1
-
-```basic
-SIGNAL.BLACKMAN   ' dal codice del progetto: shared/minitests/signal/signal_all.bas:18
-```
-
-#### `SIGNAL.BUTTER` — arita 3-3
-
-```basic
-SIGNAL.BUTTER   ' dal codice del progetto: shared/minitests/signal/signal_all.bas:25
-```
-
-#### `SIGNAL.CHEBY1` — arita 4-4
-
-```basic
-SIGNAL.CHEBY1   ' dal codice del progetto: shared/minitests/signal/signal_all.bas:29
-```
-
-#### `SIGNAL.CHEBY2` — arita 4-4
-
-```basic
-SIGNAL.CHEBY2   ' dal codice del progetto: shared/minitests/signal/signal_all.bas:33
-```
-
-#### `SIGNAL.CONVOLVE` — arita 2-2
-
-```basic
-SIGNAL.CONVOLVE   ' dal codice del progetto: shared/minitests/signal/signal_all.bas:49
-```
-
-#### `SIGNAL.CORRELATE` — arita 2-2
-
-```basic
-SIGNAL.CORRELATE   ' dal codice del progetto: shared/minitests/signal/signal_all.bas:51
-```
-
-#### `SIGNAL.DECIMATE` — arita 2-2
-
-```basic
-SIGNAL.DECIMATE   ' dal codice del progetto: shared/minitests/signal/signal_all.bas:69
-```
-
-#### `SIGNAL.ELLIP` — arita 5-5
-
-```basic
-SIGNAL.ELLIP   ' dal codice del progetto: shared/minitests/signal/signal_all.bas:37
-```
-
-#### `SIGNAL.FILTFILT` — arita 2-2
-
-```basic
-SIGNAL.FILTFILT   ' dal codice del progetto: shared/minitests/signal/signal_all.bas:43
-```
-
-#### `SIGNAL.FINDPEAKS` — arita 2-2
-
-```basic
-SIGNAL.FINDPEAKS   ' dal codice del progetto: shared/minitests/signal/signal_all.bas:56
-```
-
-#### `SIGNAL.FIRWIN` — arita 4-4
-
-```basic
-SIGNAL.FIRWIN   ' dal codice del progetto: shared/minitests/signal/signal_all.bas:60
-```
-
-#### `SIGNAL.FREQZ` — arita 2-2
-
-```basic
-SIGNAL.FREQZ   ' dal codice del progetto: shared/minitests/signal/signal_all.bas:63
-```
-
-#### `SIGNAL.HAMMING` — arita 1-1
-
-```basic
-SIGNAL.HAMMING   ' dal codice del progetto: shared/minitests/signal/signal_all.bas:16
-```
-
-#### `SIGNAL.HANN` — arita 1-1
-
-```basic
-SIGNAL.HANN   ' dal codice del progetto: shared/minitests/signal/signal_all.bas:14
-```
-
-#### `SIGNAL.LFILTER` — arita 2-2
-
-```basic
-SIGNAL.LFILTER   ' dal codice del progetto: shared/minitests/signal/signal_all.bas:26
-```
-
-#### `SIGNAL.RESAMPLE` — arita 2-2
-
-```basic
-SIGNAL.RESAMPLE   ' dal codice del progetto: shared/minitests/signal/signal_all.bas:67
-```
-
-#### `SIGNAL.SAVGOLFILTER` — arita 3-3
-
-```basic
-SIGNAL.SAVGOLFILTER   ' dal codice del progetto: shared/minitests/signal/signal_all.bas:74
-```
-
 #### `SIGNAL.WELCH` — arita 3-3
 
 ```basic
-SIGNAL.WELCH   ' dal codice del progetto: shared/minitests/signal/signal_all.bas:78
+SIGNAL.WELCH   ' dal codice del progetto: shared/minitests/signal/signal_all.bas:79
 ```
 
 #### `SPEED.BEGINGROUPCOMMIT` — arita 0-0
