@@ -1019,7 +1019,7 @@ public sealed partial class Lexer
         { "HYPERGEOMETRICPMF", TokenKind.HypergeometricPmf },
 
         // --- Funzioni Finanziarie ---
-        { "NPER_EXT", TokenKind.NperExt },
+        // (rimosse con la migrazione FINANCE a shared/libs/finance: FFI, IMPORT FINANCE)
 
         // --- NUOVE FUNZIONI PER TITOLI E OPZIONI ---
         

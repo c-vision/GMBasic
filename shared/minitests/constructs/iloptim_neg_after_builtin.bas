@@ -1,5 +1,6 @@
 ' EXPECT: r1= 825.76|r2=-825.76|r3= 825.76|r4=-825.76
-' Regressione ILOptim: `x = -y` perdeva il segno quando y proveniva da un builtin.
+' Regressione ILOptim: `x = -y` perdeva il segno quando y proveniva da una call.
+IMPORT FINANCE
 SUB Main()
     DIM r1 AS DOUBLE
     r1 = -FINANCE.PMT(0.027 / 12.0, 300, 180000.0)
