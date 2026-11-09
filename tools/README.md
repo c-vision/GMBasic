@@ -7,9 +7,9 @@ they were partial copies, and the canonical folder at the root stayed empty.
 
 ```
 tools/
-  basic/    gates and generators written in BASIC (47)   e.g. no_stub.bas, check_enum_ids.bas, gen_c_tokenkind.bas
-  c/        support tools written in C (10)              e.g. gmb_fixture_stats.c, brain_manifest.c
-  sh/       wrappers, harnesses and shell gates (60)     e.g. check_file_size.sh, parity4, test_minitests_c99native
+  basic/    gates and generators written in BASIC (48)   e.g. no_stub.bas, check_enum_ids.bas, gen_c_tokenkind.bas
+  c/        support tools written in C (14)              e.g. gmb_fixture_stats.c, brain_manifest.c
+  sh/       wrappers, harnesses and shell gates (68)     e.g. check_file_size.sh, parity4, test_minitests_c99native
   data/     data read by the tools (3)                   hf_causal_lm_models.txt, llm_arch_allowlist.tsv, base_commit.txt
   fixtures/ minimal fixtures for the parity tests (3)    *.bas + gmb_torch*.o
   audit/    gmb_audit: builtin coverage per backend      Program.cs (legacy project ref: see README)

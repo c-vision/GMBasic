@@ -14,6 +14,8 @@
 #   bash tools/sh/tools_verify.sh --no-pkgcache # salta il controllo della cache pacchetti
 #   bash tools/sh/tools_verify.sh --no-pkgdylib # salta il controllo delle dylib dei pacchetti
 #   bash tools/sh/tools_verify.sh --no-readme   # salta i conteggi della sezione Structure
+#   bash tools/sh/tools_verify.sh --no-termini  # salta il gate terminologico del manuale
+#   bash tools/sh/tools_verify.sh --no-surface  # salta il gate delle superfici del manuale
 #   bash tools/sh/tools_verify.sh --c99native DIR  # compila un'altra copia del C99Native
 #                                         # (serve a validare il gruppo build)
 #
@@ -29,6 +31,8 @@ RUN_SYNTAX=1
 RUN_CACHE=1
 RUN_DYLIB=1
 RUN_README=1
+RUN_TERMINI=1
+RUN_SURFACE=1
 C99NATIVE="$ROOT/GMBasic/native/gmb_c99native"
 while [ $# -gt 0 ]; do
     case "$1" in
@@ -53,6 +57,12 @@ Gruppi di verifica di tools/
             reali sul disco (basic/ *.bas, c/ *.c, sh/ *.sh + harness senza estensione,
             data/ file, fixtures/ *.bas): una cifra stantia fa fallire il gate, e una
             cartella con cifra e senza regola di conteggio è un FAIL esplicito.
+  termini   Forme vietate del manuale fissate in docs/manual/stile.md (numero di backend,
+            parity5, C99Backend, superficie 982, PUL open source, percorsi morti, cache
+            legacy). Esegue tools/sh/check_manual_terms.sh e legge solo il suo esito.
+  superfici Capitoli rigenerati in docs/manual/capitoli: tabelle con riga di intestazione,
+            nessuna riga `|` isolata, blocchi di codice non vuoti e sempre chiusi. Esegue
+            tools/sh/check_manual_surface.sh e legge solo il suo esito.
 
 Controlli NON coperti qui (esistono come script propri, invocabili singolarmente):
   tools/sh/check_file_size.sh          dimensioni file + escape illegali BASIC
@@ -65,6 +75,8 @@ EOF
         --no-pkgcache) RUN_CACHE=0; shift ;;
         --no-pkgdylib) RUN_DYLIB=0; shift ;;
         --no-readme) RUN_README=0; shift ;;
+        --no-termini) RUN_TERMINI=0; shift ;;
+        --no-surface) RUN_SURFACE=0; shift ;;
         --c99native) C99NATIVE="${2:-}"; shift 2 ;;
         -h|--help)   awk 'NR>1 && /^#/ {sub(/^# ?/,""); print; next} NR>1 {exit}' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
         *) echo "opzione sconosciuta: $1 (usa --list)" >&2; exit 2 ;;
@@ -324,12 +336,62 @@ group_readme_counts() {
     fi
 }
 
+# ── gruppo: terminologia del manuale ──────────────────────────────────────────
+# Le forme vietate del libro sono fissate in docs/manual/stile.md e verificate da
+# check_manual_terms.sh; qui si legge solo il suo esito, così un solo comando copre il
+# testo del manuale e le sue superfici generate.
+group_manual_terms() {
+    local tool="$SCRIPT_DIR/check_manual_terms.sh"
+    if [ ! -f "$tool" ]; then
+        record SKIP "termini:manuale" "check_manual_terms.sh non trovato in $SCRIPT_DIR"
+        return
+    fi
+    if [ ! -d "$ROOT/docs/manual" ]; then
+        record INFO "termini:manuale" "docs/manual assente: nessun testo da controllare"
+        return
+    fi
+    local out rc
+    out="$(bash "$tool" 2>&1)"; rc=$?
+    if [ "$rc" -eq 0 ]; then
+        record PASS "termini:manuale" "$(printf '%s\n' "$out" | head -1)"
+        return
+    fi
+    record FAIL "termini:manuale" "$(printf '%s\n' "$out" | grep -v '^OK:' | sed 's/^/  /' | head -20)"
+}
+
+# ── gruppo: superfici del manuale ─────────────────────────────────────────────
+# I capitoli rigenerati da manual_surface.sh devono restare markdown valido: tabelle con
+# intestazione, nessuna riga `|` isolata, blocchi di codice non vuoti e sempre chiusi.
+group_manual_surface() {
+    local tool="$SCRIPT_DIR/check_manual_surface.sh"
+    if [ ! -f "$tool" ]; then
+        record SKIP "superfici:manuale" "check_manual_surface.sh non trovato in $SCRIPT_DIR"
+        return
+    fi
+    if [ ! -d "$ROOT/docs/manual/capitoli" ]; then
+        record INFO "superfici:manuale" "docs/manual/capitoli assente: nessun capitolo da controllare"
+        return
+    fi
+    local out rc head found
+    out="$(bash "$tool" 2>&1)"; rc=$?
+    if [ "$rc" -eq 0 ]; then
+        record PASS "superfici:manuale" "$(printf '%s\n' "$out" | head -1)"
+        return
+    fi
+    head="$(printf '%s\n' "$out" | grep -m1 '^FALLITO:')"
+    found="$(printf '%s\n' "$out" | grep -v '^FALLITO:' | sed 's/^/  /' | head -20)"
+    found="${found%$'\n'}"
+    record FAIL "superfici:manuale" "${head:-difetti strutturali}"$'\n'"$found"
+}
+
 # ── esecuzione ────────────────────────────────────────────────────────────────
 # build prima dei test: una rottura di compilazione si vede subito e non sporca i test
 group_build_c99native
 [ "$RUN_SYNTAX" -eq 1 ] && group_syntax
 [ "$RUN_CACHE" -eq 1 ] && group_pkgcache
 [ "$RUN_DYLIB" -eq 1 ] && group_pkgdylibs
+[ "$RUN_TERMINI" -eq 1 ] && group_manual_terms
+[ "$RUN_SURFACE" -eq 1 ] && group_manual_surface
 [ "$RUN_README" -eq 1 ] && group_readme_counts
 
 # ── riepilogo ─────────────────────────────────────────────────────────────────

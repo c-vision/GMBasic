@@ -12,6 +12,12 @@ fi
 
 # tools/sh/gmb_c99native_run.sh — compila+linka+esegue l'output del driver C99Native.
 # Uso: gmb_c99native_run.sh <sample.bas> [suffisso] [cflags]
+#      [--cc <compilatore>] [--target <triple>]
+#   --cc     il compilatore C (default: cc). Accetta una stringa multi-parola: `--cc "<zig> cc"`.
+#   --target triple di destinazione (default: host), es. aarch64-linux-musl / x86_64-apple-darwin.
+#            I flag dipendenti dalla piattaforma (-arch, -dead_strip_dylibs, @loader_path,
+#            dynamic_lookup, estensione delle librerie) si derivano da qui: nessuno e' piu' cablato
+#            su arm64/Darwin.
 #   CWD = root del repo. Emette in <dir>/bin/<base>_<suff>.c (output di default del
 #   compilatore) e lo esegue; `work/` NON si usa qui (e` per gli artefatti-dati dei sample).
 # Serve per la verifica END-TO-END del C99Native (EVAL/&, locali S_eval, ...): il driver
@@ -39,7 +45,23 @@ for _a in "$@"; do
   if [ "$_seen_sep" = "0" ] && [ "$_a" = "--" ]; then _seen_sep=1; continue; fi
   if [ "$_seen_sep" = "1" ]; then PROG_ARGS+=("$_a"); else _ARGS+=("$_a"); fi
 done
-if [ ${#_ARGS[@]} -gt 0 ]; then set -- "${_ARGS[@]}"; else set --; fi
+# ── COMPILATORE E TARGET (argomenti, non variabili d'ambiente) ──────────────────────────
+# Si estraggono PRIMA dei posizionali, cosi' restano validi <file> [suffisso] [cflags].
+CC_ARG=""
+TARGET_TRIPLE=""
+_POS=()
+_i=0
+while [ "$_i" -lt "${#_ARGS[@]}" ]; do
+  _a="${_ARGS[$_i]}"
+  case "$_a" in
+    --cc)       CC_ARG="${_ARGS[$((_i+1))]:-}"; _i=$((_i+2)); continue ;;
+    --cc=*)     CC_ARG="${_a#--cc=}"; _i=$((_i+1)); continue ;;
+    --target)   TARGET_TRIPLE="${_ARGS[$((_i+1))]:-}"; _i=$((_i+2)); continue ;;
+    --target=*) TARGET_TRIPLE="${_a#--target=}"; _i=$((_i+1)); continue ;;
+  esac
+  _POS+=("$_a"); _i=$((_i+1))
+done
+if [ ${#_POS[@]} -gt 0 ]; then set -- "${_POS[@]}"; else set --; fi
 
 ROOT=$(cd "$(dirname "$0")/../../GMBasic" && pwd)
 TOOLS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"   # tools/ (script ausiliari)
@@ -47,12 +69,54 @@ TOOLS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"   # tools/ (script aus
 # le copie della CACHE, che hanno install-name `@rpath/...`, NON i dist di build (possono essere
 # stale e avere `@loader_path`: caso reale `libllmtoken` @loader_path → l'eseguibile non partiva
 # con "Library not loaded: @loader_path/libllmtoken.dylib").
-case "$(uname -s)-$(uname -m)" in
-  Darwin-arm64)  RID=osx-arm64;;
-  Darwin-x86_64) RID=osx-x64;;
-  Linux-x86_64)  RID=linux-x64;;
-  Linux-aarch64) RID=linux-arm64;;
-  *)             RID=osx-arm64;;
+# ── PIATTAFORMA DI DESTINAZIONE ─────────────────────────────────────────────────────────
+# Default: l'host. Con `--target <triple>` si derivano OS e architettura dal triple, e da
+# quelli TUTTI i flag dipendenti dalla piattaforma (prima `-arch arm64` era cablato e il link
+# usava `-dead_strip_dylibs`/`@loader_path` anche dove non esistono).
+TARGET_OS="$(uname -s)"
+TARGET_ARCH="$(uname -m)"
+case "$TARGET_ARCH" in aarch64|arm64) TARGET_ARCH=arm64 ;; x86_64|amd64) TARGET_ARCH=x86_64 ;; esac
+if [ -n "$TARGET_TRIPLE" ]; then
+  case "$TARGET_TRIPLE" in
+    aarch64-*|arm64-*) TARGET_ARCH=arm64 ;;
+    x86_64-*|amd64-*)  TARGET_ARCH=x86_64 ;;
+    i386-*|i686-*)     TARGET_ARCH=i686 ;;
+  esac
+  case "$TARGET_TRIPLE" in
+    *-darwin*|*-macos*|*-apple*) TARGET_OS=Darwin ;;
+    *-linux*)                    TARGET_OS=Linux ;;
+    *-windows*|*mingw*)          TARGET_OS=Windows ;;
+  esac
+fi
+case "$TARGET_OS-$TARGET_ARCH" in
+  Darwin-arm64)   RID=osx-arm64 ;;
+  Darwin-x86_64)  RID=osx-x64 ;;
+  Linux-x86_64)   RID=linux-x64 ;;
+  Linux-arm64)    RID=linux-arm64 ;;
+  Windows-x86_64) RID=win-x64 ;;
+  Windows-arm64)  RID=win-arm64 ;;
+  *)              RID=osx-arm64 ;;
+ esac
+# Flag per piattaforma: UNA sola fonte. Vuoto = il flag non esiste su quel target.
+# Il triple va PASSATO al compilatore: senza, `--target` cambierebbe solo i flag di link e la
+# compilazione resterebbe sull'host (verificato: un cross dichiarato compilava nativo).
+TARGETFLAG=""
+if [ -n "$TARGET_TRIPLE" ]; then TARGETFLAG="-target $TARGET_TRIPLE"; fi
+ARCHFLAG=""        # Darwin: -arch <arch>; altrove il target lo sceglie il compilatore
+STRIPDYLIB=""      # ld64: tiene solo le dylib davvero usate
+RPATH_LOADER=""    # rpath relativo all'eseguibile (@loader_path / $ORIGIN)
+UNDEFSYM=""       # libreria condivisa con simboli risolti a load-time
+DYLIBEXT="dylib"   # estensione degli artefatti dinamici
+NM_GU="-gU"        # `nm` che mostra solo i simboli esterni definiti
+case "$TARGET_OS" in
+  Darwin)
+    ARCHFLAG="-arch $TARGET_ARCH"; STRIPDYLIB="-Wl,-dead_strip_dylibs"
+    RPATH_LOADER="-Wl,-rpath,@loader_path"; UNDEFSYM="-Wl,-undefined,dynamic_lookup"
+    DYLIBEXT="dylib"; NM_GU="-gU" ;;
+  Linux)
+    RPATH_LOADER='-Wl,-rpath,$ORIGIN'; DYLIBEXT="so"; NM_GU="-g" ;;
+  Windows)
+    DYLIBEXT="dll"; NM_GU="" ;;
 esac
 LIBS_CACHE="$HOME/.gmbasic/libs/$RID"
 
@@ -111,7 +175,8 @@ fi
 # Profilo C: bootstrap deterministico (i settings del compilatore sono letti dal toolchain C;
 # qui niente Python). CF_OVERRIDE permette di forzare i flag.
 CF="${CF_OVERRIDE:--O1 -w}"
-CC_BIN="cc"
+# Compilatore C: default `cc`, sostituibile con `--cc` (es. "<zig> cc" per il cross).
+CC_BIN="${CC_ARG:-cc}"
 
 ABS=$(cd "$(dirname "$B")" && pwd)/$(basename "$B")
 DIR=$(cd "$(dirname "$B")" && pwd)
@@ -150,17 +215,17 @@ TMPOBJ="$(mktemp -d "${TMPDIR:-/tmp}/gmbc99obj.XXXXXX")"
 trap 'rm -rf "$TMPOBJ"' EXIT
 TORCH_OBJS=""
 if [ -f "$ROOT/native/gmb_torch/src/gmb_torch.c" ]; then
-  $CC_BIN $CF $INC -c "$ROOT/native/gmb_torch/src/gmb_torch.c" -o "$TMPOBJ/gmb_torch.o"
+  $CC_BIN $TARGETFLAG $CF $INC -c "$ROOT/native/gmb_torch/src/gmb_torch.c" -o "$TMPOBJ/gmb_torch.o"
   TORCH_OBJS="$TMPOBJ/gmb_torch.o"
   if [ -f "$ROOT/native/gmb_torch/src/gmb_torch_str.c" ]; then
-    $CC_BIN $CF $INC -c "$ROOT/native/gmb_torch/src/gmb_torch_str.c" -o "$TMPOBJ/gmb_torch_str.o"
+    $CC_BIN $TARGETFLAG $CF $INC -c "$ROOT/native/gmb_torch/src/gmb_torch_str.c" -o "$TMPOBJ/gmb_torch_str.o"
     TORCH_OBJS="$TORCH_OBJS $TMPOBJ/gmb_torch_str.o"
   fi
 fi
 # `-w` sul .c GENERATO (convenzione gate C99 + test_minitests_c99native): i warning
 # (es. -Wunused-value delle statement-expression) inquinerebbero lo stdout catturato
 # dagli harness (falso DIFF di parity4). Gli errori restano fatali (exit!=0).
-$CC_BIN $CF $INC -c "$DIR/$CASE.c" -o "$DIR/$CASE.o"
+$CC_BIN $TARGETFLAG $CF $INC -c "$DIR/$CASE.c" -o "$DIR/$CASE.o"
 # CODEC (progetto autonomo gmb_ggml_codec): il CORE è la static lib (contenitori+registry);
 # le IMPLEMENTAZIONI sono plugin DYLIB che il runtime linka (come il target CMake gmb_runtime:
 # gmb_codec_ggml/mlx_affine/fp8). Senza questi, i simboli del codec (gmb_iq2_xxs_quantize,
@@ -168,8 +233,8 @@ $CC_BIN $CF $INC -c "$DIR/$CASE.c" -o "$DIR/$CASE.o"
 CODEC="$LLMENV/LLMEngine/mlx/build-gmbasic"   # codec (dylib/a) nel build MLX di LLMEnv (post-migrazione)
 # LIBRARY: il C generato non ha `int main` -> si produce una libreria condivisa (.gmblib),
 # non un eseguibile; niente esecuzione (nessun entry point).
-OUTBIN="$DIR/$CASE"; CCFIRST="-arch arm64"
-if ! grep -q "int main" "$DIR/$CASE.c"; then OUTBIN="$DIR/$CASE.dylib"; CCFIRST="-shared -fPIC -Wl,-undefined,dynamic_lookup -arch arm64"; fi
+OUTBIN="$DIR/$CASE"; CCFIRST="$TARGETFLAG $ARCHFLAG"
+if ! grep -q "int main" "$DIR/$CASE.c"; then OUTBIN="$DIR/$CASE.$DYLIBEXT"; CCFIRST="-shared -fPIC $UNDEFSYM $TARGETFLAG $ARCHFLAG"; fi
 # libllmtoken: dalla cache (install-name @rpath). Fallback al BUILD di LLMEnv, mai al dist di
 # staging (variante @loader_path che non si risolve accanto all'eseguibile).
 LLMTOKEN_DIR="$LIBS_CACHE"
@@ -225,7 +290,7 @@ if [ "$MIN_LINK" = "1" ]; then
   LLMDESC_LIB="$ROOT/native/gmb_runtime_c/build/llmdesc_build/libllmdesc.a"
   [ -f "$LLMDESC_LIB" ] || LLMDESC_LIB="$ROOT/native/gmb_vm_c/build/gmb_runtime_c_build/llmdesc_build/libllmdesc.a"
   [ -f "$LLMDESC_LIB" ] || LLMDESC_LIB=""
-  $CC_BIN $CF $CCFIRST -Wl,-dead_strip_dylibs $EXPORTDYN "$DIR/$CASE.o" -o "$OUTBIN" \
+  $CC_BIN $CF $CCFIRST $STRIPDYLIB $EXPORTDYN "$DIR/$CASE.o" -o "$OUTBIN" \
     "$RUNTIME_LIB" $TRAY_LINK "$ROOT/native/gmb_runtime_c/build/gmb_chart_build/libgmb_chart.a" \
     ${LLMDESC_LIB:+"$LLMDESC_LIB"} \
     -lpthread -lm -lz -lbz2 -lcurl -lcompression 2>/tmp/gmb_minlink.err || {
@@ -270,7 +335,7 @@ for _t in gmb_doc gmb_agent_runtime; do
   fi
 done
 
-$CC_BIN $CF $CCFIRST -Wl,-dead_strip_dylibs $EXPORTDYN -Wl,-rpath,@loader_path -Wl,-rpath,"$CODEC" "$DIR/$CASE.o" $TORCH_OBJS $JINJA_OBJ -o "$OUTBIN" \
+$CC_BIN $CF $CCFIRST $STRIPDYLIB $EXPORTDYN $RPATH_LOADER -Wl,-rpath,"$CODEC" "$DIR/$CASE.o" $TORCH_OBJS $JINJA_OBJ -o "$OUTBIN" \
   "$L/libgmb_vm.a" "$RUNTIME_LIB" $TRAY_LINK "$ASRLIB" \
   "$ROOT/native/gmb_runtime_c/build/gmb_chart_build/libgmb_chart.a" \
   "$ROOT/native/gmb_runtime_c/build/gmbllm_build/libgmbllm_train.a" \
@@ -374,19 +439,19 @@ if [ -f "$OUTBIN" ]; then
   if [ -f "$DIR/app.settings.json" ] && [ -x "$FIXBIN" ]; then
     "$FIXBIN" ensure --app "$DIR/app.settings.json" --quiet >/dev/null 2>&1 || true
   fi
-  emit_exe_libs "$OUTBIN" "${OUTBIN%.dylib}.libs.txt" "$DIR/$CASE.c" 2>/dev/null || true
-  [ -s "${OUTBIN%.dylib}.libs.txt" ] && echo "[c99native] libs.txt -> ${OUTBIN%.dylib}.libs.txt ($(grep -cv '^#' "${OUTBIN%.dylib}.libs.txt" | tr -d ' ') lib)" >&2
+  emit_exe_libs "$OUTBIN" "${OUTBIN%.$DYLIBEXT}.libs.txt" "$DIR/$CASE.c" 2>/dev/null || true
+  [ -s "${OUTBIN%.$DYLIBEXT}.libs.txt" ] && echo "[c99native] libs.txt -> ${OUTBIN%.$DYLIBEXT}.libs.txt ($(grep -cv '^#' "${OUTBIN%.dylib}.libs.txt" | tr -d ' ') lib)" >&2
 fi
 
 # Esegue (CWD = cartella del sample) per un eseguibile; per una libreria si verifica solo
 # che i simboli esportati siano presenti.
 if grep -q "int main" "$DIR/$CASE.c"; then
-  GMB_TORCH_PATH="${GMB_TORCH_PATH:-$HOME/.gmbasic/libs/ml/osx-arm64}"
+  GMB_TORCH_PATH="${GMB_TORCH_PATH:-$HOME/.gmbasic/libs/ml/$RID}"
   (cd "$DIR" && GMB_TORCH_PATH="$GMB_TORCH_PATH" ./bin/"$(basename "$CASE")" ${PROG_ARGS[@]+"${PROG_ARGS[@]}"})
 else
   # Verifica gli export della libreria (evita pipe con head: con `set -o pipefail` un lettore che
   # chiude presto manda SIGPIPE e farebbe fallire lo script).
-  nm -gU "$OUTBIN" > "$DIR/$CASE.syms" 2>/dev/null || true
+  nm $NM_GU "$OUTBIN" > "$DIR/$CASE.syms" 2>/dev/null || true
   LIBPREFIX=$(sed -nE 's/.*static void ([A-Za-z0-9_]+)__ctor.*/\1/p' "$DIR/$CASE.c" | sed -n '1p')
   if [ -n "$LIBPREFIX" ] && grep -q " T _${LIBPREFIX}_init" "$DIR/$CASE.syms"; then
     NE=$(grep -c " T _${LIBPREFIX}_" "$DIR/$CASE.syms" || true)
