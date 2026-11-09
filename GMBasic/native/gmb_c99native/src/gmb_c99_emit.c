@@ -12311,8 +12311,13 @@ static void emit_call(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_
             return;
         }
     }
-    /* lettura elemento array: a(i[, j...]) arriva come CALL con nome dell'array */
-    var_t* av = lookup_var(c, name);
+    /* lettura elemento array: a(i[, j...]) arriva come CALL con nome dell'array.
+     * Un nome QUALIFICATO (`JSON.KEYS(o)`: ns noto oppure nome dottato) non è MAI un
+     * accesso a elemento: con un locale omonimo (`DIM keys() AS STRING`) la call finiva in
+     * `gmb_list_get(keys, (gmb_int_t)(o))` — o è un gmb_val_t → C non compilabile, mentre
+     * IL/PCode/VM-C chiamano il builtin. Il guard lascia la call al dispatch builtin. */
+    int call_qualified = (ns && ns[0]) || (name && strchr(name, '.'));
+    var_t* av = call_qualified ? NULL : lookup_var(c, name);
     if (av && (gk_is_list(av->gkind) || gk_is_dict(av->gkind))) {
         /* `bytes()` con 0 argomenti = il CONTENITORE INTERO, non un elemento (es.
          * LEN(bytes()) dove bytes è un array da ReadAllBytes). Prima dava
