@@ -1479,6 +1479,10 @@ set_target_properties(gmb_runtime PROPERTIES INSTALL_RPATH "@loader_path")
 add_executable(gmbtheme tools/gmb_theme_cli.c src/gmb_tui_theme.c)
 target_include_directories(gmbtheme PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
 target_compile_options(gmbtheme PRIVATE -Wall -Wextra)
+# gmb_tui_theme.c chiama gmb_control_style_set_theme, definita in src/gmb_tui_style.c (piu'
+# gmb_screen_setchar): senza la runtime il link finiva con "Undefined symbols:
+# _gmb_control_style_set_theme", quindi gmbtheme non veniva costruito affatto.
+target_link_libraries(gmbtheme PRIVATE gmb_runtime)
 gmb_exe_relocatable(gmbtheme)
 
 # Cartella ABI di LLMEnv: settings JSONC (paths.abiDir) + risoluzione alla prima esecuzione. Include il .c: prova anche le statiche.
