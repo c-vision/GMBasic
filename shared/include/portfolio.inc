@@ -30,8 +30,8 @@ DECLARE NATIVE FUNCTION PFN_VAR LIB "gmbquant" ALIAS "ofx_q_pf_var" (hist AS MAT
 DECLARE NATIVE FUNCTION PFN_CVAR LIB "gmbquant" ALIAS "ofx_q_pf_cvar" (hist AS MATRIX OF (INT, INT, DOUBLE), nh AS LONG, w() AS DOUBLE, nw AS LONG, conf AS DOUBLE) AS DOUBLE
 
 DECLARE NATIVE SUB PFN_MINVOL LIB "gmbquant" ALIAS "ofx_q_pf_minvol" (cov AS MATRIX OF (INT, INT, DOUBLE), ncov AS LONG, out() AS DOUBLE, nout AS LONG)
-DECLARE SUB PFN_MAXSHARPE LIB "gmbquant" ALIAS "ofx_q_pf_maxsharpe" (mean() AS DOUBLE, cov() AS DOUBLE, rf AS DOUBLE, out() AS DOUBLE)
-DECLARE SUB PFN_MEANVAR LIB "gmbquant" ALIAS "ofx_q_pf_meanvar" (mean() AS DOUBLE, cov() AS DOUBLE, out() AS DOUBLE)
+DECLARE NATIVE SUB PFN_MAXSHARPE LIB "gmbquant" ALIAS "ofx_q_pf_maxsharpe" (mean() AS DOUBLE, nm AS LONG, cov AS MATRIX OF (INT, INT, DOUBLE), ncov AS LONG, rf AS DOUBLE, out() AS DOUBLE, nout AS LONG)
+DECLARE NATIVE SUB PFN_MEANVAR LIB "gmbquant" ALIAS "ofx_q_pf_meanvar" (mean() AS DOUBLE, nm AS LONG, cov AS MATRIX OF (INT, INT, DOUBLE), ncov AS LONG, out() AS DOUBLE, nout AS LONG)
 DECLARE NATIVE SUB PFN_RISKPARITY LIB "gmbquant" ALIAS "ofx_q_pf_riskparity" (cov AS MATRIX OF (INT, INT, DOUBLE), ncov AS LONG, out() AS DOUBLE, nout AS LONG)
 DECLARE SUB PFN_EQUALLY LIB "gmbquant" ALIAS "ofx_q_pf_equally" (n AS LONG, out() AS DOUBLE)
 DECLARE SUB PFN_MAXRETURN LIB "gmbquant" ALIAS "ofx_q_pf_maxreturn" (mean() AS DOUBLE, out() AS DOUBLE)
@@ -87,30 +87,18 @@ PUBLIC FUNCTION MINVOLATILITY(cov AS MATRIX OF (INT, INT, DOUBLE)) AS ARRAY OF D
 END FUNCTION
 
 ' Massimo Sharpe: w ~ inv(cov)·(mu - rf).
-PUBLIC FUNCTION MAXSHARPE(mean() AS DOUBLE, cov() AS ARRAY OF DOUBLE, rf AS DOUBLE) AS ARRAY OF DOUBLE
+PUBLIC FUNCTION MAXSHARPE(mean() AS DOUBLE, cov AS MATRIX OF (INT, INT, DOUBLE), rf AS DOUBLE) AS ARRAY OF DOUBLE
     DIM n AS LONG = UBOUND(mean) + 1
-    DIM flat((n * n) - 1) AS DOUBLE
-    FOR i = 0 TO n - 1
-        FOR j = 0 TO n - 1
-            flat(i * n + j) = cov(i)(j)
-        NEXT j
-    NEXT i
     DIM o(n + 2) AS DOUBLE
-    CALL PFN_MAXSHARPE(mean, flat, rf, o)
+    CALL PFN_MAXSHARPE(mean, n, cov, n * n, rf, o, n + 3)
     RETURN o
 END FUNCTION
 
 ' Mean-variance: stessa formula chiusa di MAXSHARPE con rf = 0.
-PUBLIC FUNCTION MEANVARIANCE(mean() AS DOUBLE, cov() AS ARRAY OF DOUBLE) AS ARRAY OF DOUBLE
+PUBLIC FUNCTION MEANVARIANCE(mean() AS DOUBLE, cov AS MATRIX OF (INT, INT, DOUBLE)) AS ARRAY OF DOUBLE
     DIM n AS LONG = UBOUND(mean) + 1
-    DIM flat((n * n) - 1) AS DOUBLE
-    FOR i = 0 TO n - 1
-        FOR j = 0 TO n - 1
-            flat(i * n + j) = cov(i)(j)
-        NEXT j
-    NEXT i
     DIM o(n + 2) AS DOUBLE
-    CALL PFN_MEANVAR(mean, flat, o)
+    CALL PFN_MEANVAR(mean, n, cov, n * n, o, n + 3)
     RETURN o
 END FUNCTION
 
