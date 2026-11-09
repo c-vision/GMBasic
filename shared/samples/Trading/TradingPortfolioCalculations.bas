@@ -30,7 +30,7 @@ SUB Main()
     DIM RendimentiAttesi(2) AS DOUBLE
     RendimentiAttesi = {0.10, 0.05, 0.02} ' 10%, 5%, 2%
 
-    ' Matrice di Covarianza (3x3, array jagged)
+    ' Matrice di Covarianza (3x3, MATRIX OF)
     DIM MatriceCov(2, 2) AS DOUBLE
     MatriceCov = {{0.04, 0.005, 0.0}, {0.005, 0.01, 0.0}, {0.0, 0.0, 0.0025}}
 
@@ -70,7 +70,7 @@ SUB Main()
 
     ' --- 5. VAR e CVAR DI PORTAFOGLIO ---
     PRINT "--- 5. PVAR e CVAR ---"
-    ' Serie storica sintetica: 3 asset, 5 periodi ciascuno (jagged array).
+    ' Serie storica sintetica: 3 asset, 5 periodi ciascuno (MATRIX OF).
     DIM Storico(2, 4) AS DOUBLE
     Storico = {{0.02, -0.01, 0.03, 0.01, -0.02}, {0.01, 0.005, -0.005, 0.02, 0.01}, {0.005, 0.01, -0.01, 0.015, 0.005}}
 

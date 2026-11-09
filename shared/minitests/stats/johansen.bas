@@ -1,5 +1,5 @@
 ' EXPECT: ev0= 0.24225|ev1= 0.383873|ev2= 0.958431|tr0= 228.64248|tr1= 212.553194|mx0= 16.089286|obs= 58
-' TIMESERIES (FFI): Johansen su matrice jagged (righe=osservazioni, colonne=variabili).
+' TIMESERIES (FFI): Johansen su matrice (righe=osservazioni, colonne=variabili).
 IMPORT TIMESERIES
 SUB Main()
   DIM y(59, 2) AS DOUBLE
