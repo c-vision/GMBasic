@@ -19,6 +19,7 @@
  *   CHOLESKY
  *   CIRCULANT
  *   CLONEMATRIX
+ *   COL
  *   COLMEANS
  *   COLSUMS
  *   COLUMNCOUNT
@@ -40,6 +41,7 @@
  *   HESSENBERG
  *   INFINITYNORM
  *   INVERSE
+ *   ISCONTIGUOUS
  *   ISLOWERTRIANGULAR
  *   ISORTHOGONAL
  *   ISSYMMETRIC
@@ -64,6 +66,7 @@
  *   QR
  *   RANK
  *   RESHAPE
+ *   ROW
  *   ROWCOUNT
  *   ROWMEANS
  *   ROWSUMS
@@ -213,6 +216,11 @@ public sealed partial class StdLib
             new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.MatrixRowCount, "ROWCOUNT"), [matrixArrayParam], new LongType(), TokenKind.MatrixRowCount, ExecutionKind: NativeExecutionKind.Pure),
             new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.MatrixColumnCount, "COLUMNCOUNT"), [matrixArrayParam], new LongType(), TokenKind.MatrixColumnCount, ExecutionKind: NativeExecutionKind.Pure),
             new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.MatrixClone, "CLONEMATRIX"), [matrixArrayParam], new ArrayType(new DoubleType(), 2), TokenKind.MatrixClone, ExecutionKind: NativeExecutionKind.Pure),
+            // MATRIX F2b (2026-11-09): ROW/COL come matrice rank-2 (1×cols / rows×1) e
+            // predicato di contiguità del descrittore.
+            new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.MatrixRow, "ROW"), [matrixArrayParam, new Parameter(-1, T(TokenKind.Identifier, "row"), new LongType(), noFlags, null, false)], new ArrayType(new DoubleType(), 2), TokenKind.MatrixRow, ExecutionKind: NativeExecutionKind.Pure),
+            new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.MatrixCol, "COL"), [matrixArrayParam, new Parameter(-1, T(TokenKind.Identifier, "col"), new LongType(), noFlags, null, false)], new ArrayType(new DoubleType(), 2), TokenKind.MatrixCol, ExecutionKind: NativeExecutionKind.Pure),
+            new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.MatrixIsContiguous, "ISCONTIGUOUS"), [matrixArrayParam], new BitType(), TokenKind.MatrixIsContiguous, ExecutionKind: NativeExecutionKind.Pure),
             new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.MatrixMultiplyVector, "MULTIPLYVECTOR"), [matrixArrayParam, new Parameter(-1, T(TokenKind.Identifier, "values"), new ArrayType(new DoubleType()), noFlags, null, false)], new ArrayType(new DoubleType()), TokenKind.MatrixMultiplyVector, ExecutionKind: NativeExecutionKind.Pure),
             new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.MatrixMultiplyLeftVector, "MULTIPLYLEFTVECTOR"), [matrixArrayParam, new Parameter(-1, T(TokenKind.Identifier, "values"), new ArrayType(new DoubleType()), noFlags, null, false)], new ArrayType(new DoubleType()), TokenKind.MatrixMultiplyLeftVector, ExecutionKind: NativeExecutionKind.Pure),
             new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.MatrixLoadCsv, "LOADCSV"), [new Parameter(-1, T(TokenKind.Identifier, "path"), new StringType(), noFlags, null, false)], new LongType(), TokenKind.MatrixLoadCsv),

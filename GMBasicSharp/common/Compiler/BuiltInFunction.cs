@@ -1572,4 +1572,9 @@ MCPSERVERMARKETPLACELIST = 730, MCPSERVERMARKETPLACEGET = 731, MCPLISTTOOLSSERVE
     // BRAINS.ADJACENCY (2026-11-06): nodi + archi pesati del cervello (ponte verso GRAPH/FLOW).
     // In coda: mirror in gmb_builtin.c.
     BRAINSADJACENCY = 3899,
+    // MATRIX F2b (2026-11-09): ROW/COL/ISCONTIGUOUS sui valori matrice.
+    // In coda: mirror in gmb_builtin.c.
+    MATRIXROW = 3900,
+    MATRIXCOL = 3901,
+    MATRIXISCONTIGUOUS = 3902,
 }

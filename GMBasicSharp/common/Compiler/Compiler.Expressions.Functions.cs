@@ -298,6 +298,10 @@ public sealed partial class Compiler
         { TokenKind.MatrixRowCount, BuiltInFunction.MATRIXROWCOUNT },
         { TokenKind.MatrixColumnCount, BuiltInFunction.MATRIXCOLUMNCOUNT },
         { TokenKind.MatrixClone, BuiltInFunction.MATRIXCLONE },
+        // MATRIX F2b (2026-11-09): ROW/COL/ISCONTIGUOUS.
+        { TokenKind.MatrixRow, BuiltInFunction.MATRIXROW },
+        { TokenKind.MatrixCol, BuiltInFunction.MATRIXCOL },
+        { TokenKind.MatrixIsContiguous, BuiltInFunction.MATRIXISCONTIGUOUS },
         { TokenKind.MatrixMultiplyVector, BuiltInFunction.MATRIXMULTIPLYVECTOR },
         { TokenKind.MatrixMultiplyLeftVector, BuiltInFunction.MATRIXMULTIPLYLEFTVECTOR },
         { TokenKind.MatrixLoadCsv, BuiltInFunction.MATRIXLOADCSV },

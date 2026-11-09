@@ -186,6 +186,10 @@ internal sealed partial class PCodeProcessor
             case BuiltInFunction.MATRIXROWCOUNT: return (long)LuSimd(args).Rows;
             case BuiltInFunction.MATRIXCOLUMNCOUNT: return (long)LuSimd(args).Cols;
             case BuiltInFunction.MATRIXCLONE: return SimdToRect(LuSimd(args).Clone());
+            // MATRIX F2b (2026-11-09): ROW/COL/ISCONTIGUOUS.
+            case BuiltInFunction.MATRIXROW: return SimdRowRect(LuSimd(args), checked((int)ToDouble(args, 1)));
+            case BuiltInFunction.MATRIXCOL: return SimdColRect(LuSimd(args), checked((int)ToDouble(args, 1)));
+            case BuiltInFunction.MATRIXISCONTIGUOUS: _ = LuSimd(args); return true;
             case BuiltInFunction.MATRIXMULTIPLYVECTOR: return LuSimd(args).Multiply(ToDoubleArr(args[1]));
             case BuiltInFunction.MATRIXMULTIPLYLEFTVECTOR: return LuSimd(args).MultiplyFromLeft(ToDoubleArr(args[1]));
             case BuiltInFunction.MATRIXMULTIPLY:
@@ -234,6 +238,7 @@ internal sealed partial class PCodeProcessor
             var id = argument switch
             {
                 double[,] data => StoreLinMatHandle(data),
+                object[,] data => StoreLinMatHandle(ObjectRectToDouble(data)),
                 double value => (long)value,
                 long value => value,
                 int value => value,
@@ -380,6 +385,35 @@ internal sealed partial class PCodeProcessor
         for (var row = 0; row < m.Rows; row++)
             for (var column = 0; column < m.Cols; column++)
                 result[row, column] = m[row, column];
+        return result;
+    }
+
+    /// <summary>Converte un object[,] del linguaggio (elementi boxati) in double[,].</summary>
+    private static double[,] ObjectRectToDouble(object[,] data)
+    {
+        int rows = data.GetLength(0), cols = data.GetLength(1);
+        var result = new double[rows, cols];
+        for (var row = 0; row < rows; row++)
+            for (var column = 0; column < cols; column++)
+                result[row, column] = Convert.ToDouble(data[row, column] ?? 0d);
+        return result;
+    }
+
+    /// <summary>MATRIX.ROW: riga come matrice rank-2 1×cols (fuori range → zeri).</summary>
+    private static double[,] SimdRowRect(CommonLib.SimdMatrix m, int row)
+    {
+        var result = new double[1, m.Cols];
+        if (row < 0 || row >= m.Rows) return result;
+        for (var column = 0; column < m.Cols; column++) result[0, column] = m[row, column];
+        return result;
+    }
+
+    /// <summary>MATRIX.COL: colonna come matrice rank-2 rows×1 (fuori range → zeri).</summary>
+    private static double[,] SimdColRect(CommonLib.SimdMatrix m, int col)
+    {
+        var result = new double[m.Rows, 1];
+        if (col < 0 || col >= m.Cols) return result;
+        for (var row = 0; row < m.Rows; row++) result[row, 0] = m[row, col];
         return result;
     }
 

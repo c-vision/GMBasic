@@ -4328,6 +4328,10 @@ if (args.Length >= 3) { var file = args[0]?.ToString() ?? ""; var section = args
         BuiltInFunction.MATRIXASCSV,
         BuiltInFunction.MATRIXASJSON,
         BuiltInFunction.MATRIXCLONE,
+        // MATRIX F2b (2026-11-09)
+        BuiltInFunction.MATRIXROW,
+        BuiltInFunction.MATRIXCOL,
+        BuiltInFunction.MATRIXISCONTIGUOUS,
         BuiltInFunction.MATRIXCOLMEANS,
         BuiltInFunction.MATRIXCOLSUMS,
         BuiltInFunction.MATRIXCOLUMNCOUNT,

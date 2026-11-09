@@ -101,6 +101,8 @@ int64_t gmb_matrix_create_from(int rows, int cols, const double* data)
 
 int gmb_matrix_rows(int64_t h) { gmb_matrix_t* m = mget(h); return m ? m->rows : 0; }
 int gmb_matrix_cols(int64_t h) { gmb_matrix_t* m = mget(h); return m ? m->cols : 0; }
+/* F2b: il registro handle è sempre denso row-major; valido ⇒ contiguo. */
+int gmb_matrix_is_contiguous_h(int64_t h) { return mget(h) ? 1 : 0; }
 
 double gmb_matrix_get(int64_t h, int r, int c)
 {

@@ -13590,10 +13590,32 @@
       "ns": "MATRIX",
       "name": "CLONEMATRIX",
       "fn": true,
-      "return": "long",
+      "return": "double[]",
       "params": [
         {
           "name": "data",
+          "type": "long",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        }
+      ]
+    },
+    {
+      "ns": "MATRIX",
+      "name": "COL",
+      "fn": true,
+      "return": "double[]",
+      "params": [
+        {
+          "name": "data",
+          "type": "long",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        },
+        {
+          "name": "col",
           "type": "long",
           "optional": false,
           "byRef": false,
@@ -13709,7 +13731,7 @@
       "ns": "MATRIX",
       "name": "CREATE",
       "fn": true,
-      "return": "long",
+      "return": "double[]",
       "params": [
         {
           "name": "rows",
@@ -13735,7 +13757,7 @@
       "params": [
         {
           "name": "handle",
-          "type": "long",
+          "type": "ANY",
           "optional": false,
           "byRef": false,
           "array": false
@@ -13772,6 +13794,21 @@
         {
           "name": "r",
           "type": "double[]",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        }
+      ]
+    },
+    {
+      "ns": "MATRIX",
+      "name": "ISCONTIGUOUS",
+      "fn": true,
+      "return": "bool",
+      "params": [
+        {
+          "name": "data",
+          "type": "long",
           "optional": false,
           "byRef": false,
           "array": false
@@ -13990,7 +14027,7 @@
       "ns": "MATRIX",
       "name": "RESHAPE",
       "fn": true,
-      "return": "long",
+      "return": "double[]",
       "params": [
         {
           "name": "data",
@@ -14008,6 +14045,28 @@
         },
         {
           "name": "cols",
+          "type": "long",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        }
+      ]
+    },
+    {
+      "ns": "MATRIX",
+      "name": "ROW",
+      "fn": true,
+      "return": "double[]",
+      "params": [
+        {
+          "name": "data",
+          "type": "long",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        },
+        {
+          "name": "row",
           "type": "long",
           "optional": false,
           "byRef": false,
@@ -14079,11 +14138,11 @@
       "ns": "MATRIX",
       "name": "SETVALUE",
       "fn": true,
-      "return": "long",
+      "return": "double[]",
       "params": [
         {
           "name": "handle",
-          "type": "long",
+          "type": "ANY",
           "optional": false,
           "byRef": false,
           "array": false
@@ -14115,7 +14174,7 @@
       "ns": "MATRIX",
       "name": "SLICE",
       "fn": true,
-      "return": "long",
+      "return": "double[]",
       "params": [
         {
           "name": "data",
@@ -14195,7 +14254,7 @@
       "ns": "MATRIX",
       "name": "TRANSPOSE",
       "fn": true,
-      "return": "long",
+      "return": "double[]",
       "params": [
         {
           "name": "handle",

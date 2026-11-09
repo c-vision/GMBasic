@@ -781,6 +781,7 @@ procedure,MATRIX,ASJSON,MatrixAsJson
 procedure,MATRIX,BLOCKDIAG,MatrixBlockDiag
 procedure,MATRIX,CIRCULANT,MatrixCirculant
 procedure,MATRIX,CLONEMATRIX,MatrixClone
+procedure,MATRIX,COL,MatrixCol
 procedure,MATRIX,COLMEANS,MatrixColMeans
 procedure,MATRIX,COLSUMS,MatrixColSums
 procedure,MATRIX,COLUMNCOUNT,MatrixColumnCount
@@ -790,6 +791,7 @@ procedure,MATRIX,CONCATROWS,MatrixConcatRows
 procedure,MATRIX,CREATE,LinAlgMatrixCreateFunc
 procedure,MATRIX,GETVALUE,MatrixGetValue
 procedure,MATRIX,HANKEL,MatrixHankel
+procedure,MATRIX,ISCONTIGUOUS,MatrixIsContiguous
 procedure,MATRIX,ISLOWERTRIANGULAR,MatrixIsLowerTriangular
 procedure,MATRIX,ISORTHOGONAL,MatrixIsOrthogonal
 procedure,MATRIX,ISSYMMETRIC,MatrixIsSymmetric
@@ -803,6 +805,7 @@ procedure,MATRIX,MULTIPLY,Multiply
 procedure,MATRIX,MULTIPLYLEFTVECTOR,MatrixMultiplyLeftVector
 procedure,MATRIX,MULTIPLYVECTOR,MatrixMultiplyVector
 procedure,MATRIX,RESHAPE,MatrixReshape
+procedure,MATRIX,ROW,MatrixRow
 procedure,MATRIX,ROWCOUNT,MatrixRowCount
 procedure,MATRIX,ROWMEANS,MatrixRowMeans
 procedure,MATRIX,ROWSUMS,MatrixRowSums

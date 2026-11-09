@@ -831,6 +831,16 @@ public sealed partial class IlProgramCompiler
         _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.MatrixReshapeValue)));
     }
 
+    /// <summary>MATRIX.ROW/COL: matrice/handle + indice → valore rank-2 (1×cols / rows×1).</summary>
+    private void EmitMatrixRowColCall(BuiltinFunctionCallExpr expr, MethodInfo method)
+    {
+        if (expr.Args.Length != 2)
+            throw new NotSupportedException($"Backend IL: {expr.OriginalToken.Lexeme} richiede matrice/handle e un indice.");
+        EmitLinAlgHandleArgument(expr.Args[0]);
+        EmitInt64Argument(expr.Args[1]);
+        _il.Emit(OpCodes.Call, method);
+    }
+
     /// <summary>Funzione matrice→matrice (TRANSPOSE/CLONEMATRIX): restituisce il VALORE
     /// rank-2 (F2), accettando un valore o un handle.</summary>
     private void EmitLinAlgUnaryValueCall(BuiltinFunctionCallExpr expr, MethodInfo method)

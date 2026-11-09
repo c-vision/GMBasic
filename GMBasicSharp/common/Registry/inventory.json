@@ -1,8 +1,8 @@
 {
-  "count": 1286,
+  "count": 1289,
   "namespaces": 58,
-  "distinctTokenKinds": 1182,
-  "namesInMultipleNamespaces": 85,
+  "distinctTokenKinds": 1185,
+  "namesInMultipleNamespaces": 86,
   "namesInMultipleNamespacesSample": [
     "Count",
     "Embed",

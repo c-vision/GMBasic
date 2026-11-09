@@ -543,6 +543,10 @@ public sealed partial class IlProgramCompiler
             case TokenKind.MatrixRowCount: EmitLinAlgUnaryHandleCall(expr, RuntimeMethod(nameof(IlRuntime.MatrixRowCount)), vector: false); break;
             case TokenKind.MatrixColumnCount: EmitLinAlgUnaryHandleCall(expr, RuntimeMethod(nameof(IlRuntime.MatrixColumnCount)), vector: false); break;
             case TokenKind.MatrixClone: EmitLinAlgUnaryValueCall(expr, RuntimeMethod(nameof(IlRuntime.MatrixCloneValue))); break;
+            // MATRIX F2b (2026-11-09): ROW/COL/ISCONTIGUOUS.
+            case TokenKind.MatrixRow: EmitMatrixRowColCall(expr, RuntimeMethod(nameof(IlRuntime.MatrixRowValue))); break;
+            case TokenKind.MatrixCol: EmitMatrixRowColCall(expr, RuntimeMethod(nameof(IlRuntime.MatrixColValue))); break;
+            case TokenKind.MatrixIsContiguous: EmitLinAlgUnaryHandleCall(expr, RuntimeMethod(nameof(IlRuntime.MatrixIsContiguous)), vector: false); break;
             case TokenKind.MatrixMultiplyVector: EmitMatrixVectorProductCall(expr, nameof(IlRuntime.MatrixMultiplyVector)); break;
             case TokenKind.MatrixMultiplyLeftVector: EmitMatrixVectorProductCall(expr, nameof(IlRuntime.MatrixMultiplyLeftVector)); break;
             case TokenKind.MatrixLoadCsv: EmitStringUnaryBuiltinCall(expr, RuntimeMethod(nameof(IlRuntime.MatrixLoadCsv))); break;

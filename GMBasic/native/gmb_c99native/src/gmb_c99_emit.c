@@ -3528,7 +3528,8 @@ static void reg_let_assign(ctx_t* c, gmb_stmt_t* s, vars_t* scope) {
              * implicita → matrice rank-2 nativa (double* + __bK). */
             if (s->value && s->value->kind == GMB_EXPR_CALL
                 && (s->value->tk == GMB_TOK_Transpose || s->value->tk == GMB_TOK_MatrixSlice
-                    || s->value->tk == GMB_TOK_MatrixReshape || s->value->tk == GMB_TOK_MatrixClone)) {
+                    || s->value->tk == GMB_TOK_MatrixReshape || s->value->tk == GMB_TOK_MatrixClone
+                    || s->value->tk == GMB_TOK_MatrixRow || s->value->tk == GMB_TOK_MatrixCol)) {
                 tv->is_array = 1; tv->ndims = 2; tv->matrix = 0; tv->jagged = 0; tv->dyn_len = 0;
             }
             /* v = <getter RDD (TY_VAL)> → var TY_VAL (gmb_val_t): il tipo si risolve a runtime. */
@@ -3874,7 +3875,9 @@ if (s->dim_var) {            int ty = suffix_type(s->dim_var);
                 else if (s->dim_init->tk == GMB_TOK_Transpose
                     || s->dim_init->tk == GMB_TOK_MatrixSlice
                     || s->dim_init->tk == GMB_TOK_MatrixReshape
-                    || s->dim_init->tk == GMB_TOK_MatrixClone) {
+                    || s->dim_init->tk == GMB_TOK_MatrixClone
+                    || s->dim_init->tk == GMB_TOK_MatrixRow
+                    || s->dim_init->tk == GMB_TOK_MatrixCol) {
                     v->is_array = 1; v->ndims = 2; v->matrix = 0; v->jagged = 0; v->dyn_len = 0;
                 }
                 /* LINALG.FACTOR(decomp, name): handle matrice (int64_t). */
@@ -7371,6 +7374,10 @@ static const gmb_bf_row_t gmb_bf_composite[] = {
     { NULL, GMB_TOK_Solve, emit_bf_matrix },
     /* MATRIX gap 2026-09-12 (32 funzioni, MX_TBL runtime C) */
     { NULL, GMB_TOK_MatrixClone, emit_bf_matrix },
+    /* MATRIX F2b (2026-11-09): ROW/COL/ISCONTIGUOUS */
+    { NULL, GMB_TOK_MatrixRow, emit_bf_matrix },
+    { NULL, GMB_TOK_MatrixCol, emit_bf_matrix },
+    { NULL, GMB_TOK_MatrixIsContiguous, emit_bf_matrix },
     { NULL, GMB_TOK_MatrixReshape, emit_bf_matrix },
     { NULL, GMB_TOK_MatrixConcatRows, emit_bf_matrix },
     { NULL, GMB_TOK_MatrixConcatCols, emit_bf_matrix },
@@ -15945,7 +15952,8 @@ static void emit_matrix_from_handle_result(ctx_t* c, var_t* dv, gmb_expr_t* call
       }
       if (target && value && !strchr(target, '.') && (value->tk == GMB_TOK_Transpose
           || value->tk == GMB_TOK_MatrixSlice || value->tk == GMB_TOK_MatrixReshape
-          || value->tk == GMB_TOK_MatrixClone)) {
+          || value->tk == GMB_TOK_MatrixClone
+          || value->tk == GMB_TOK_MatrixRow || value->tk == GMB_TOK_MatrixCol)) {
           var_t* mv = lookup_var(c, target);
           if (mv && mv->is_array && mv->ndims >= 2 && !mv->jagged && !mv->matrix && !mv->matrix_handle) {
               emit_matrix_from_handle_result(c, mv, value);
@@ -19026,7 +19034,9 @@ static void st_dim(ctx_t* c, gmb_stmt_t* s) {
          if (dv && s->dim_init && (s->dim_init->tk == GMB_TOK_Transpose
              || s->dim_init->tk == GMB_TOK_MatrixSlice
              || s->dim_init->tk == GMB_TOK_MatrixReshape
-             || s->dim_init->tk == GMB_TOK_MatrixClone)) {
+             || s->dim_init->tk == GMB_TOK_MatrixClone
+             || s->dim_init->tk == GMB_TOK_MatrixRow
+             || s->dim_init->tk == GMB_TOK_MatrixCol)) {
              emit_matrix_from_handle_result(c, dv, s->dim_init);
              return;
          }

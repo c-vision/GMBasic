@@ -207,6 +207,7 @@ public sealed partial class BackendImplementationRegistry
         r.Register(Backend.C99Native, "CONVERT.Close");
         r.Register(Backend.C99Native, "DATETIME.CMONTH");
         r.Register(Backend.C99Native, "CONVERT.CodeBlocks");
+        r.Register(Backend.C99Native, "MATRIX.COL");
         r.Register(Backend.C99Native, "SQL.COL");
         r.Register(Backend.C99Native, "GRAPHICS.COLLIDE");
         r.Register(Backend.C99Native, "GRAPHICS.COLLIDEBATCH");
@@ -569,6 +570,7 @@ public sealed partial class BackendImplementationRegistry
         r.Register(Backend.C99Native, "LINALG.INVERSE");
         r.Register(Backend.C99Native, "STATS.Iqr");
         r.Register(Backend.C99Native, "NUMERICAL.Irfft");
+        r.Register(Backend.C99Native, "MATRIX.ISCONTIGUOUS");
         r.Register(Backend.C99Native, "STRINGS.ISCREDITCARD");
         r.Register(Backend.C99Native, "DATETIME.ISDATE");
         r.Register(Backend.C99Native, "STRINGS.ISEMAIL");
@@ -938,6 +940,7 @@ public sealed partial class BackendImplementationRegistry
         r.Register(Backend.C99Native, "AI.Rotate");
         r.Register(Backend.C99Native, "TORCH.ROUGE");
         r.Register(Backend.C99Native, "MATH.Round");
+        r.Register(Backend.C99Native, "MATRIX.ROW");
         r.Register(Backend.C99Native, "MATRIX.ROWCOUNT");
         r.Register(Backend.C99Native, "MATRIX.ROWMEANS");
         r.Register(Backend.C99Native, "MATRIX.ROWSUMS");

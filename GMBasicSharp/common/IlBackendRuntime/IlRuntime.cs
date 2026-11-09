@@ -2238,6 +2238,34 @@ public static partial class IlRuntime
 
     public static double[,] MatrixCloneValue(long handle) => (double[,])Matrix(handle).Clone();
 
+    // ── F2b: ROW/COL/ISCONTIGUOUS ───────────────────────────────────────────────
+    /// <summary>Riga <paramref name="row"/> come matrice rank-2 1×cols (parità MATRIX.ROW).
+    /// Indice fuori range → riga di zeri (stessa semantica di SLICE/get, che non solleva).</summary>
+    public static double[,] MatrixRowValue(long handle, long row)
+    {
+        var matrix = Matrix(handle);
+        int rows = matrix.GetLength(0), cols = matrix.GetLength(1);
+        var result = new double[1, cols];
+        if (row < 0 || row >= rows) return result;
+        for (var column = 0; column < cols; column++) result[0, column] = matrix[row, column];
+        return result;
+    }
+
+    /// <summary>Colonna <paramref name="col"/> come matrice rank-2 rows×1 (parità MATRIX.COL).
+    /// Indice fuori range → colonna di zeri.</summary>
+    public static double[,] MatrixColValue(long handle, long col)
+    {
+        var matrix = Matrix(handle);
+        int rows = matrix.GetLength(0), cols = matrix.GetLength(1);
+        var result = new double[rows, 1];
+        if (col < 0 || col >= cols) return result;
+        for (var row = 0; row < rows; row++) result[row, 0] = matrix[row, col];
+        return result;
+    }
+
+    /// <summary>Le matrici gestite sono sempre contigue (double[,] row-major): predicato vero.</summary>
+    public static bool MatrixIsContiguous(long handle) { _ = Matrix(handle); return true; }
+
     public static double[] MatrixMultiplyVector(long handle, double[] values) => SimdMatrix(handle).Multiply(values);
     public static double[] MatrixMultiplyLeftVector(long handle, double[] values) => SimdMatrix(handle).MultiplyFromLeft(values);
     private static string ResolveMatrixPath(string path)

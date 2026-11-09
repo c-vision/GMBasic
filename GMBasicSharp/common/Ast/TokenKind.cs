@@ -2451,4 +2451,10 @@ public enum TokenKind
     // In coda (ordinali canonici): mai inserire nel mezzo.
     Cells,
     Pixels,
+    // MATRIX F2b (2026-11-09): ROW/COL (riga/colonna come matrice rank-2) e
+    // ISCONTIGUOUS (predicato di contiguità del descrittore). In coda
+    // (ordinali canonici): mai inserire nel mezzo.
+    MatrixRow,
+    MatrixCol,
+    MatrixIsContiguous,
   }

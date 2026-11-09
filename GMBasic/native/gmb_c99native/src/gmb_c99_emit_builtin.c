@@ -3762,6 +3762,28 @@ static int mxh_maxval(ctx_t* c, gmb_expr_t** a, int n) { return mxh_one_double(c
 static int mxh_minval(ctx_t* c, gmb_expr_t** a, int n) { return mxh_one_double(c, a, n, "gmb_matrix_min_value"); }
 static int mxh_rowcount(ctx_t* c, gmb_expr_t** a, int n) { return mxh_one_int(c, a, n, "gmb_matrix_rows"); }
 static int mxh_colcount(ctx_t* c, gmb_expr_t** a, int n) { return mxh_one_int(c, a, n, "gmb_matrix_cols"); }
+/* MATRIX.ROW/COL (F2b): riga/colonna come matrice rank-2 1×cols / rows×1. Restituisce
+ * un handle (come SLICE); il VALORE è materializzato dal chiamante (emit_matrix_from_handle_result).
+ * Indice fuori range → zeri, come SLICE/gmb_matrix_get (nessun errore). */
+static int mxh_row(ctx_t* c, gmb_expr_t** a, int n) {
+    if (n < 2) return 0;
+    sb_put(&c->out, "({ int64_t __mrh = (int64_t)(");
+    emit_matrix_arg(c, a[0]);
+    sb_put(&c->out, "); int __mrr = (int)(");
+    emit_expr(c, a[1]);
+    sb_put(&c->out, "); (gmb_int_t)gmb_matrix_slice(__mrh, __mrr, __mrr + 1, 0, gmb_matrix_cols(__mrh)); })");
+    return 1;
+}
+static int mxh_col(ctx_t* c, gmb_expr_t** a, int n) {
+    if (n < 2) return 0;
+    sb_put(&c->out, "({ int64_t __mch = (int64_t)(");
+    emit_matrix_arg(c, a[0]);
+    sb_put(&c->out, "); int __mcc = (int)(");
+    emit_expr(c, a[1]);
+    sb_put(&c->out, "); (gmb_int_t)gmb_matrix_slice(__mch, 0, gmb_matrix_rows(__mch), __mcc, __mcc + 1); })");
+    return 1;
+}
+static int mxh_iscontig(ctx_t* c, gmb_expr_t** a, int n) { return mxh_one_bit(c, a, n, "gmb_matrix_is_contiguous_h"); }
 static int mxh_islower(ctx_t* c, gmb_expr_t** a, int n) { return mxh_one_bit(c, a, n, "gmb_matrix_is_lower_triangular"); }
 static int mxh_isupper(ctx_t* c, gmb_expr_t** a, int n) { return mxh_one_bit(c, a, n, "gmb_matrix_is_upper_triangular"); }
 static int mxh_issym(ctx_t* c, gmb_expr_t** a, int n) { return mxh_one_bit(c, a, n, "gmb_matrix_is_symmetric"); }
@@ -3821,6 +3843,10 @@ static const mx_row MX_TBL[] = {
     { GMB_TOK_Solve, mxh_lu_solve },
     /* MATRIX gap 2026-09-12 (32 funzioni) */
     { GMB_TOK_MatrixClone, mxh_clone },
+    /* MATRIX F2b (2026-11-09): ROW/COL/ISCONTIGUOUS */
+    { GMB_TOK_MatrixRow, mxh_row },
+    { GMB_TOK_MatrixCol, mxh_col },
+    { GMB_TOK_MatrixIsContiguous, mxh_iscontig },
     { GMB_TOK_MatrixReshape, mxh_reshape },
     { GMB_TOK_MatrixConcatRows, mxh_concat_rows },
     { GMB_TOK_MatrixConcatCols, mxh_concat_cols },

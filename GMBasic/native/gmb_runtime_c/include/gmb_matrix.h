@@ -28,6 +28,8 @@ int64_t gmb_matrix_create_from(int rows, int cols, const double* data);
 /* ---- Accesso ---- */
 int gmb_matrix_rows(int64_t h);
 int gmb_matrix_cols(int64_t h);
+/* F2b: il registro handle è SEMPRE denso row-major → 1 se l'handle è valido, 0 altrimenti. */
+int gmb_matrix_is_contiguous_h(int64_t h);
 double gmb_matrix_get(int64_t h, int r, int c);
 void gmb_matrix_set(int64_t h, int r, int c, double v);
 void gmb_matrix_free(int64_t h);

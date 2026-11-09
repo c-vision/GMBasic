@@ -11131,6 +11131,32 @@ static void gmb_bf_796_c812(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int
     vm_matrix_set_value_result(__mr, bout);
     gmb_matrix_free(__mr);
 }
+/* MATRIX F2b (2026-11-09): ROW/COL restituiscono una matrice rank-2 1×cols / rows×1;
+ * ISCONTIGUOUS è il predicato di contiguità (convenzione Bit -1/0). */
+static void gmb_bf_3900(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
+{
+    (void)vm; (void)task; (void)func_code;
+    int64_t __h = vm_matrix_handle_arg(argc >= 1 ? &args[0] : NULL);
+    int __r = argc >= 2 ? (int)args[1].num : 0;
+    int64_t __v = gmb_matrix_slice(__h, __r, __r + 1, 0, gmb_matrix_cols(__h));
+    vm_matrix_set_value_result(__v, bout);
+    gmb_matrix_free(__v);
+}
+static void gmb_bf_3901(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
+{
+    (void)vm; (void)task; (void)func_code;
+    int64_t __h = vm_matrix_handle_arg(argc >= 1 ? &args[0] : NULL);
+    int __c = argc >= 2 ? (int)args[1].num : 0;
+    int64_t __v = gmb_matrix_slice(__h, 0, gmb_matrix_rows(__h), __c, __c + 1);
+    vm_matrix_set_value_result(__v, bout);
+    gmb_matrix_free(__v);
+}
+static void gmb_bf_3902(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
+{
+    (void)vm; (void)task; (void)func_code;
+    int64_t __h = vm_matrix_handle_arg(argc >= 1 ? &args[0] : NULL);
+    bout->result = gmb_matrix_is_contiguous_h(__h) ? -1.0 : 0.0;
+}
 static void gmb_bf_796_c813(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
 {
     (void)vm; (void)task; (void)func_code;
@@ -16562,6 +16588,10 @@ static const gmb_bf_impl_t gmb_bf_impl_core[] = {
     { 821, gmb_bf_796_c821 },
     { 822, gmb_bf_796_c822 },
     { 825, gmb_bf_796_c825 },
+    /* MATRIX F2b (2026-11-09): ROW/COL/ISCONTIGUOUS */
+    { 3900, gmb_bf_3900 },
+    { 3901, gmb_bf_3901 },
+    { 3902, gmb_bf_3902 },
     { 826, gmb_bf_796_c826 },
     { 827, gmb_bf_796_c827 },
     { 828, gmb_bf_796_c828 },
