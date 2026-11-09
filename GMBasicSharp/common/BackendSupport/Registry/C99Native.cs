@@ -160,7 +160,6 @@ public sealed partial class BackendImplementationRegistry
         r.Register(Backend.C99Native, "CONVERSIONS.CByte");
         r.Register(Backend.C99Native, "CONVERSIONS.CCur");
         r.Register(Backend.C99Native, "CONVERSIONS.CDbl");
-        r.Register(Backend.C99Native, "SPATIAL.CDIST");
         r.Register(Backend.C99Native, "DATETIME.CDOW");
         r.Register(Backend.C99Native, "MATH.Ceiling");
         r.Register(Backend.C99Native, "CONSOLE.CELL");
@@ -252,7 +251,6 @@ public sealed partial class BackendImplementationRegistry
         r.Register(Backend.C99Native, "AI.ContextValid");
         r.Register(Backend.C99Native, "AI.ContextView");
         r.Register(Backend.C99Native, "AI.ContextViewDebug");
-        r.Register(Backend.C99Native, "SPATIAL.CONVEXHULL");
         r.Register(Backend.C99Native, "MATH.Cos");
         r.Register(Backend.C99Native, "MATH.COSH");
         r.Register(Backend.C99Native, "VECTOR.COSINE");
@@ -319,7 +317,6 @@ public sealed partial class BackendImplementationRegistry
         r.Register(Backend.C99Native, "AI.Discover");
         r.Register(Backend.C99Native, "VECTOR.Dist2d");
         r.Register(Backend.C99Native, "VECTOR.Dist3d");
-        r.Register(Backend.C99Native, "SPATIAL.DISTANCEMATRIX");
         r.Register(Backend.C99Native, "LLM.DistillCkpt");
         r.Register(Backend.C99Native, "LLM.DistillDone");
         r.Register(Backend.C99Native, "LLM.DistillEvalAccept");
@@ -822,7 +819,6 @@ public sealed partial class BackendImplementationRegistry
         r.Register(Backend.C99Native, "STRINGS.Pascal");
         r.Register(Backend.C99Native, "LLM.Patch");
         r.Register(Backend.C99Native, "BRAINS.Path");
-        r.Register(Backend.C99Native, "SPATIAL.PDIST");
         r.Register(Backend.C99Native, "STATS.PearsonR");
         r.Register(Backend.C99Native, "NET.PEEK");
         r.Register(Backend.C99Native, "MATH.Perm");

@@ -160,7 +160,6 @@ public sealed partial class BackendImplementationRegistry
         r.Register(Backend.PCodeVM, "CONVERSIONS.CByte");
         r.Register(Backend.PCodeVM, "CONVERSIONS.CCur");
         r.Register(Backend.PCodeVM, "CONVERSIONS.CDbl");
-        r.Register(Backend.PCodeVM, "SPATIAL.CDIST");
         r.Register(Backend.PCodeVM, "DATETIME.CDOW");
         r.Register(Backend.PCodeVM, "MATH.Ceiling");
         r.Register(Backend.PCodeVM, "CONSOLE.CELL");
@@ -252,7 +251,6 @@ public sealed partial class BackendImplementationRegistry
         r.Register(Backend.PCodeVM, "AI.ContextValid");
         r.Register(Backend.PCodeVM, "AI.ContextView");
         r.Register(Backend.PCodeVM, "AI.ContextViewDebug");
-        r.Register(Backend.PCodeVM, "SPATIAL.CONVEXHULL");
         r.Register(Backend.PCodeVM, "MATH.Cos");
         r.Register(Backend.PCodeVM, "MATH.COSH");
         r.Register(Backend.PCodeVM, "VECTOR.COSINE");
@@ -319,7 +317,6 @@ public sealed partial class BackendImplementationRegistry
         r.Register(Backend.PCodeVM, "AI.Discover");
         r.Register(Backend.PCodeVM, "VECTOR.Dist2d");
         r.Register(Backend.PCodeVM, "VECTOR.Dist3d");
-        r.Register(Backend.PCodeVM, "SPATIAL.DISTANCEMATRIX");
         r.Register(Backend.PCodeVM, "LLM.DistillCkpt");
         r.Register(Backend.PCodeVM, "LLM.DistillDone");
         r.Register(Backend.PCodeVM, "LLM.DistillEvalAccept");
@@ -822,7 +819,6 @@ public sealed partial class BackendImplementationRegistry
         r.Register(Backend.PCodeVM, "STRINGS.Pascal");
         r.Register(Backend.PCodeVM, "LLM.Patch");
         r.Register(Backend.PCodeVM, "BRAINS.Path");
-        r.Register(Backend.PCodeVM, "SPATIAL.PDIST");
         r.Register(Backend.PCodeVM, "STATS.PearsonR");
         r.Register(Backend.PCodeVM, "NET.PEEK");
         r.Register(Backend.PCodeVM, "MATH.Perm");
