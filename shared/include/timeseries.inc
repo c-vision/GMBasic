@@ -8,8 +8,8 @@ DECLARE NATIVE SUB TXF_QLR LIB "gmbstats" ALIAS "ofx_ts_qlr" (l0 AS DOUBLE, lbet
 DECLARE NATIVE SUB TXF_DFGLS LIB "gmbstats" ALIAS "ofx_ts_dfgls" (series() AS DOUBLE, n AS LONG, lags AS LONG, deterministic AS LONG, out() AS DOUBLE)
 DECLARE NATIVE FUNCTION TXF_HMMFORWARD LIB "gmbstats" ALIAS "ofx_ts_hmm_forward" (logpi() AS DOUBLE, loga() AS DOUBLE, loge() AS DOUBLE, K AS LONG, n AS LONG) AS DOUBLE
 DECLARE NATIVE FUNCTION TXF_HMMVITERBI LIB "gmbstats" ALIAS "ofx_ts_hmm_viterbi" (logpi() AS DOUBLE, loga() AS DOUBLE, loge() AS DOUBLE, K AS LONG, n AS LONG, path() AS LONG) AS DOUBLE
-DECLARE NATIVE SUB TXF_ENGLEGRANGER LIB "gmbstats" ALIAS "ofx_ts_engle_granger" (Y() AS DOUBLE, n AS LONG, k AS LONG, dependent AS LONG, lags AS LONG, withConstant AS LONG, out() AS DOUBLE)
-DECLARE NATIVE SUB TXF_JOHANSEN LIB "gmbstats" ALIAS "ofx_ts_johansen" (Y() AS DOUBLE, nvars AS LONG, periods AS LONG, lags AS LONG, out() AS DOUBLE)
+DECLARE NATIVE SUB TXF_ENGLEGRANGER LIB "gmbstats" ALIAS "ofx_ts_engle_granger" (Y AS MATRIX OF (INT, INT, DOUBLE), n AS LONG, k AS LONG, dependent AS LONG, lags AS LONG, withConstant AS LONG, out() AS DOUBLE)
+DECLARE NATIVE SUB TXF_JOHANSEN LIB "gmbstats" ALIAS "ofx_ts_johansen" (Y AS MATRIX OF (INT, INT, DOUBLE), nvars AS LONG, periods AS LONG, lags AS LONG, out() AS DOUBLE)
 
 ' KPSS: out(9) = statistic, bandwidth, observations, deterministic,
 '           long_run_variance, critical10, critical5, critical25, critical1.
@@ -44,31 +44,19 @@ END FUNCTION
 
 ' Engle-Granger: Y(righe=osservazioni, colonne=variabili).
 ' out(5) = statistic, lags, observations, n_regressors, with_constant.
-PUBLIC SUB ENGLEGRANGER(Y() AS ARRAY OF DOUBLE, dependent AS LONG, lags AS LONG, withConstant AS LONG, out() AS DOUBLE)
-    DIM n AS LONG = UBOUND(Y) + 1
-    DIM k AS LONG = UBOUND(Y(0)) + 1
-    DIM flat((n * k) - 1) AS DOUBLE
-    FOR i = 0 TO n - 1
-        FOR j = 0 TO k - 1
-            flat(i * k + j) = Y(i)(j)
-        NEXT j
-    NEXT i
-    CALL TXF_ENGLEGRANGER(flat, n, k, dependent, lags, withConstant, out)
+PUBLIC SUB ENGLEGRANGER(Y AS MATRIX OF (INT, INT, DOUBLE), dependent AS LONG, lags AS LONG, withConstant AS LONG, out() AS DOUBLE)
+    DIM n AS LONG = UBOUND(Y, 1) + 1
+    DIM k AS LONG = UBOUND(Y, 2) + 1
+    CALL TXF_ENGLEGRANGER(Y, n, k, dependent, lags, withConstant, out)
 END SUB
 
 ' Johansen: Y(righe=osservazioni, colonne=variabili).
 ' out(3 + 3*nvars) = nvars, lags, observations, eigenvalues[nvars],
 '                    trace[nvars], max[nvars].
-PUBLIC SUB JOHANSEN(Y() AS ARRAY OF DOUBLE, lags AS LONG, out() AS DOUBLE)
-    DIM periods AS LONG = UBOUND(Y) + 1
-    DIM nvars AS LONG = UBOUND(Y(0)) + 1
-    DIM flat((periods * nvars) - 1) AS DOUBLE
-    FOR i = 0 TO periods - 1
-        FOR j = 0 TO nvars - 1
-            flat(i * nvars + j) = Y(i)(j)
-        NEXT j
-    NEXT i
-    CALL TXF_JOHANSEN(flat, nvars, periods, lags, out)
+PUBLIC SUB JOHANSEN(Y AS MATRIX OF (INT, INT, DOUBLE), lags AS LONG, out() AS DOUBLE)
+    DIM periods AS LONG = UBOUND(Y, 1) + 1
+    DIM nvars AS LONG = UBOUND(Y, 2) + 1
+    CALL TXF_JOHANSEN(Y, nvars, periods, lags, out)
 END SUB
 
 ' ═══════════════════════════════════════════════════════════════════════════

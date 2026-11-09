@@ -12,10 +12,10 @@ SUB Main()
   PRINT "dstat="; MATH.ROUND(outd(0), 6)
   PRINT "dlags="; outd(1)
   PRINT "dobs="; outd(2)
-  DIM y(49) AS ARRAY OF DOUBLE
+  DIM y(49, 1) AS DOUBLE
   FOR i = 0 TO 49
     DIM y0 AS DOUBLE = i * 0.1 + 0.3 * SIN(i * 0.4)
-    y(i) = {y0, y0 * 1.5 + 0.05 * COS(i * 0.9)}
+    y(i,0) = y0 : y(i,1) = y0 * 1.5 + 0.05 * COS(i * 0.9)
   NEXT i
   ' out(5): statistic, lags, observations, n_regressors, with_constant
   DIM oute(4) AS DOUBLE
