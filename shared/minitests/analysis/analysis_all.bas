@@ -124,11 +124,11 @@ END SUB
 
 
 SUB A_pca()
-  DIM data(3) AS ARRAY OF DOUBLE
-  data(0) = {1, 2}
-  data(1) = {2, 3}
-  data(2) = {3, 4}
-  data(3) = {4, 5}
+  DIM data(3, 1) AS DOUBLE
+  data(0,0) = 1 : data(0,1) = 2
+  data(1,0) = 2 : data(1,1) = 3
+  data(2,0) = 3 : data(2,1) = 4
+  data(3,0) = 4 : data(3,1) = 5
   DIM po(5) AS DOUBLE
   CALL MULTIVARIATE.PCA(data, po)
   PRINT "pca= ok"

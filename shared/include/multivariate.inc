@@ -92,7 +92,7 @@ END FUNCTION
 ' Seconda slice: KMeans/PCA/GMM/GP/SVM (risultati composti in out() piatto).
 ' ═══════════════════════════════════════════════════════════════════════════
 DECLARE NATIVE FUNCTION MXF_KMEANS LIB "gmbstats" ALIAS "ofx_kmeans" (x() AS DOUBLE, n AS LONG, k AS LONG, maxIter AS LONG, out() AS DOUBLE) AS LONG
-DECLARE NATIVE FUNCTION MXF_PCA LIB "gmbstats" ALIAS "ofx_pca" (data() AS DOUBLE, rows AS LONG, cols AS LONG, out() AS DOUBLE) AS LONG
+DECLARE NATIVE FUNCTION MXF_PCA LIB "gmbstats" ALIAS "ofx_pca" (X AS MATRIX OF (INT, INT, DOUBLE), rows AS LONG, cols AS LONG, out() AS DOUBLE) AS LONG
 DECLARE NATIVE FUNCTION MXF_GMM LIB "gmbstats" ALIAS "ofx_gmm_1d" (x() AS DOUBLE, n AS LONG, k AS LONG, iters AS LONG, out() AS DOUBLE) AS LONG
 DECLARE NATIVE FUNCTION MXF_GP LIB "gmbstats" ALIAS "ofx_gp" (x() AS DOUBLE, y() AS DOUBLE, n AS LONG, xs() AS DOUBLE, m AS LONG, l2 AS DOUBLE, noise AS DOUBLE, out() AS DOUBLE) AS LONG
 DECLARE NATIVE FUNCTION MXF_BONEXT LIB "gmbstats" ALIAS "ofx_bo_next" (x() AS DOUBLE, y() AS DOUBLE, cand() AS DOUBLE, n AS LONG, m AS LONG, hyper() AS DOUBLE, out() AS DOUBLE) AS LONG
@@ -106,16 +106,10 @@ PUBLIC SUB KMEANS(data() AS DOUBLE, k AS LONG, out() AS DOUBLE)
 END SUB
 
 ' PCA: data jagged (osservazioni x variabili); out = autovalori(m) + autovettori(m*m).
-PUBLIC SUB PCA(data() AS ARRAY OF DOUBLE, out() AS DOUBLE)
-    DIM rows AS LONG = UBOUND(data) + 1
-    DIM cols AS LONG = UBOUND(data(0)) + 1
-    DIM flat((rows * cols) - 1) AS DOUBLE
-    FOR i = 0 TO rows - 1
-        FOR j = 0 TO cols - 1
-            flat(i * cols + j) = data(i)(j)
-        NEXT j
-    NEXT i
-    CALL MXF_PCA(flat, rows, cols, out)
+PUBLIC SUB PCA(data AS MATRIX OF (INT, INT, DOUBLE), out() AS DOUBLE)
+    DIM rows AS LONG = UBOUND(data, 1) + 1
+    DIM cols AS LONG = UBOUND(data, 2) + 1
+    CALL MXF_PCA(data, rows, cols, out)
 END SUB
 
 ' GMM 1D: out = mu(k) + var(k) + weight(k).

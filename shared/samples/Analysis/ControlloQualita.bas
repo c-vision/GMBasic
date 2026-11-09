@@ -33,13 +33,13 @@ SUB Main()
     ' ── 2. PCA: temperatura e pressione ──────────────────────────────────────
     ' Se le due grandezze crescono insieme, la prima componente spiega quasi
     ' tutta la variabilità (autovalore 1 molto maggiore dell'autovalore 2).
-    DIM misure(5) AS ARRAY OF DOUBLE
-    misure(0) = {20.0, 1.01}
-    misure(1) = {21.0, 1.02}
-    misure(2) = {22.0, 1.03}
-    misure(3) = {23.0, 1.04}
-    misure(4) = {24.0, 1.05}
-    misure(5) = {25.0, 1.06}
+    DIM misure(5, 1) AS DOUBLE
+    misure(0,0) = 20.0 : misure(0,1) = 1.01
+    misure(1,0) = 21.0 : misure(1,1) = 1.02
+    misure(2,0) = 22.0 : misure(2,1) = 1.03
+    misure(3,0) = 23.0 : misure(3,1) = 1.04
+    misure(4,0) = 24.0 : misure(4,1) = 1.05
+    misure(5,0) = 25.0 : misure(5,1) = 1.06
     DIM pcaOut(5) AS DOUBLE
     CALL MULTIVARIATE.PCA(misure, pcaOut)
     PRINT "== 2. PCA: temperatura e pressione =="

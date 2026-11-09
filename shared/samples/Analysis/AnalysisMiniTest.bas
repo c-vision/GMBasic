@@ -20,8 +20,8 @@ SUB Main()
   DIM ir() = NUMERICAL.Irfft(re, im)
   PRINT "irfft0="; ROUND(ir(0), 4)
   ' Pca
-  DIM data(3) AS ARRAY OF DOUBLE
-  FOR i = 0 TO 3: data(i) = {i + 1, (i + 1) * 2}: NEXT
+  DIM data(3, 1) AS DOUBLE
+  FOR i = 0 TO 3: data(i,0) = i + 1: data(i,1) = (i + 1) * 2: NEXT
   DIM po(5) AS DOUBLE
   CALL MULTIVARIATE.PCA(data, po)
   PRINT "pca_ev="; ROUND(po(0), 4); ","; ROUND(po(1), 4)
