@@ -5,6 +5,32 @@
 #include <strings.h>
 #include <string.h>
 
+/* MATRIX OF (I1, …, In, V) — 2026-11-09. `p` punta al token MATRIX.
+ * Consuma OF ( … ) e ritorna il rank (numero di tipi-asse). `value_tok` riceve
+ * l'ultimo tipo (tipo valore). 0 se non è una MATRIX OF valida. */
+static int gmb_parse_matrix_of(gmb_parser_t* p, const gmb_token_t** value_tok)
+{
+    if (value_tok) *value_tok = NULL;
+    gmb_p_adv(p); /* MATRIX */
+    if (!gmb_p_match(p, GMB_TOK_Of)) return 0;
+    if (!gmb_p_match(p, GMB_TOK_LeftParen)) return 0;
+    int rank = 0;
+    const gmb_token_t* last = NULL;
+    int depth = 0;
+    while (!gmb_p_at_end(p)) {
+        const gmb_token_t* t = gmb_p_cur(p);
+        if (t->kind == GMB_TOK_RightParen && depth == 0) { gmb_p_adv(p); break; }
+        if (t->kind == GMB_TOK_LeftParen) depth++;
+        else if (t->kind == GMB_TOK_RightParen) depth--;
+        else if (t->kind == GMB_TOK_Comma && depth == 0) rank++;
+        if (t->kind != GMB_TOK_Comma && t->kind != GMB_TOK_Newline) last = t;
+        gmb_p_adv(p);
+    }
+    if (!last) return 0;
+    if (value_tok) *value_tok = last;
+    return rank; /* numero di assi (= virgole) */
+}
+
 static int gm_parser_prim_len(const char* w, int len) {
     static const char* pr[] = { "STRING","INTEGER","INT","LONG","DOUBLE","SINGLE","FLOAT","BOOLEAN","BOOL","BYTE","ANY", NULL };
     if (!w) return 1;
@@ -2182,6 +2208,20 @@ if (gmb_tk_rem_vari_in(t->kind)) {
                         gmb_p_adv(p);
                         /* cattura il nome del tipo (primo token) per il codegen C99 (GPM) */
                         const gmb_token_t* ty = gmb_p_cur(p);
+                        if (ty && ty->kind == GMB_TOK_Matrix) {
+                            /* `a AS MATRIX OF (I1, …, In, V)`: rank dagli assi, tipo valore V. */
+                            const gmb_token_t* vt = NULL;
+                            int axes = gmb_parse_matrix_of(p, &vt);
+                            if (axes >= 2 && vt && s->n_params > 0) {
+                                s->param_is_array[s->n_params - 1] = 1;
+                                s->param_ndims[s->n_params - 1] = (uint8_t)axes;
+                                if (!s->param_types[s->n_params - 1]) {
+                                    char* tb = (char*)malloc((size_t)vt->length + 1);
+                                    memcpy(tb, vt->lexeme, (size_t)vt->length); tb[vt->length] = 0;
+                                    s->param_types[s->n_params - 1] = tb;
+                                }
+                            }
+                        }
                         if (ty && ty->lexeme && s->n_params > 0 && !s->param_types[s->n_params - 1]) {
                             char* tb = (char*)malloc((size_t)ty->length + 1); memcpy(tb, ty->lexeme, (size_t)ty->length); tb[ty->length] = 0;
                             /* Tipo QUALIFICATO (`AS Ns.Classe`, es. `v AS Mezzi.Veicolo`): concatena
@@ -2339,6 +2379,18 @@ if (gmb_tk_rem_vari_in(t->kind)) {
                 char* rb = (char*)malloc((size_t)rt->length + 1);
                 memcpy(rb, rt->lexeme, (size_t)rt->length); rb[rt->length] = 0;
                 s->func_ret_type = rb;
+            }
+            if (rt && rt->kind == GMB_TOK_Matrix) {
+                /* `AS MATRIX OF (I1, …, In, V)`: rank dagli assi, tipo valore V. */
+                const gmb_token_t* vt = NULL;
+                int axes = gmb_parse_matrix_of(p, &vt);
+                if (axes >= 2 && vt) {
+                    s->func_ret_ndims = axes;
+                    char* rb = (char*)malloc((size_t)vt->length + 1);
+                    memcpy(rb, vt->lexeme, (size_t)vt->length); rb[vt->length] = 0;
+                    free(s->func_ret_type);
+                    s->func_ret_type = rb;
+                }
             }
             /* AS FUNCTION(params) AS <ret>: cattura la FIRMA del block restituito
              * (arity/mask/ret) — serve a `DIM b = Mk()` (firma inferita): senza,

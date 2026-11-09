@@ -143,7 +143,8 @@ public sealed partial class Parser
                 // Non dobbiamo più passargli un costruttore che crea un nuovo ArrayType,
                 // perché ParseSingleTypeCollection lo crea già.
                 // ArrayType è una classe specializzata, quindi lo si gestisce così.
-                TokenKind.Array => (ArrayType)ParseSingleTypeCollection(elementType => new ArrayType(elementType)),
+                TokenKind.Array => ParseArrayType(),
+                TokenKind.Matrix => ParseMatrixType(),
 
                 TokenKind.List => ParseListType(),
                 TokenKind.Dict => ParseDictType(),
@@ -181,23 +182,6 @@ public sealed partial class Parser
         {
             var qualifiedName = ParseQualifiedNameExpression(); // Parsa l'intero nome qualificato (es. MyNamespace.MyType)
             baseType = ParseGenericTypeArgumentsSuffix(new UnresolvedQualifiedType(qualifiedName));
-        }
-
-        // --- SUFFISSO RANK ESPLICITO: T(,), T(,,), ... (rank = numero di dimensioni) ---
-        // Sintassi simmetrica ai parametri `x(,) AS DOUBLE`: il rank e' parte del tipo e
-        // attraversa ritorni e parametri. `()` (rank 1) resta espresso da `ARRAY OF T`.
-        if (Check(TokenKind.LeftParen))
-        {
-            var save = _current;
-            Advance(); // consuma '('
-            var rank = 1;
-            while (Match(TokenKind.Comma)) rank++;
-            if (rank > 1 && Check(TokenKind.RightParen))
-            {
-                Advance(); // consuma ')'
-                return new ArrayType(baseType, rank);
-            }
-            _current = save; // non era un suffisso di rank: ripristina
         }
 
         // --- SUFFISSO NULLABLE: Tipo? ---
@@ -319,7 +303,7 @@ public sealed partial class Parser
     {
         return kind switch
         {
-            TokenKind.Array or TokenKind.List or TokenKind.Dict or TokenKind.HashSet or TokenKind.Hll
+            TokenKind.Array or TokenKind.Matrix or TokenKind.List or TokenKind.Dict or TokenKind.HashSet or TokenKind.Hll
                 or TokenKind.Queue or TokenKind.Stack or TokenKind.Sorted or TokenKind.Tree
                 or TokenKind.AVLTree or TokenKind.RedBlack or TokenKind.BITree or TokenKind.Trie
                 or TokenKind.LinkedList or TokenKind.DoublyLinkedList or TokenKind.Circular
@@ -432,6 +416,40 @@ public sealed partial class Parser
     /// </summary>
     /// <param name="constructor">Delegato che istanzia il tipo concreto di collezione.</param>
     /// <returns>Il DataType della collezione, con tipo elemento specifico o inferito.</returns>
+    /// <summary>Tipi composti (2026-11-09): `ARRAY OF T` = rank 1; `MATRIX OF (I1, …, In, V)`
+    /// = matrice rank-n con tipi degli assi e tipo valore. `ARRAY OF ARRAY` è rimosso.</summary>
+    private DataType ParseArrayType()
+    {
+        var arrayType = ParseSingleTypeCollection(elementType => new ArrayType(elementType));
+        if (arrayType is ArrayType { ElementType: ArrayType })
+            throw CreateError(Previous(),
+                "ARRAY OF ARRAY non è supportato: usa AS ARRAY OF T (vettore) o AS MATRIX OF (assi…, T).");
+        return arrayType;
+    }
+
+    /// <summary>MATRIX OF (I1, I2, …, In, V): il numero di tipi asse è il rank; l'ultimo è
+    /// il tipo valore. Gli assi sono descrittivi (indici interi); le estensioni restano
+    /// runtime. Internamente è ArrayType(V, rank).</summary>
+    private DataType ParseMatrixType()
+    {
+        if (!Match(TokenKind.Of))
+            throw CreateError(Peek(), "MATRIX richiede la forma MATRIX OF (I1, …, In, V).");
+        Consume(TokenKind.LeftParen, "Expected '(' after MATRIX OF.");
+        var types = new List<DataType>();
+        do
+        {
+            types.Add(ParseTypeName());
+        } while (Match(TokenKind.Comma));
+        Consume(TokenKind.RightParen, "Expected ')' after MATRIX OF (...).");
+        if (types.Count < 2)
+            throw CreateError(Previous(), "MATRIX OF richiede almeno un asse e il tipo valore: (I1, …, In, V).");
+        var valueType = types[^1];
+        if (valueType is ArrayType)
+            throw CreateError(Previous(), "MATRIX OF: il tipo valore non può essere un array o una matrice.");
+        var rank = types.Count - 1;
+        return new ArrayType(valueType, rank);
+    }
+
     private DataType ParseSingleTypeCollection(Func<DataType, DataType> constructor)
     {
         bool useAngles = Match(TokenKind.LessThan);
