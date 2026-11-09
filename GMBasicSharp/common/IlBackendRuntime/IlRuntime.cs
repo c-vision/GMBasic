@@ -2179,8 +2179,14 @@ public static partial class IlRuntime
         StoreSimdMatrix(SimdMatrix(handle).Reshape(checked((int)rows), checked((int)columns)));
     public static long MatrixConcatRows(long first, long second) =>
         StoreSimdMatrix(CommonLib.SimdMatrix.ConcatRows(SimdMatrix(first), SimdMatrix(second)));
+    /// <summary>F4: CONCATROWS a valore (double[,] rank-2).</summary>
+    public static double[,] MatrixConcatRowsValue(long first, long second)
+        => MatrixValueOf(MatrixConcatRows(first, second));
     public static long MatrixConcatCols(long first, long second) =>
         StoreSimdMatrix(CommonLib.SimdMatrix.ConcatCols(SimdMatrix(first), SimdMatrix(second)));
+    /// <summary>F4: CONCATCOLS a valore (double[,] rank-2).</summary>
+    public static double[,] MatrixConcatColsValue(long first, long second)
+        => MatrixValueOf(MatrixConcatCols(first, second));
     public static long MatrixAddRowVector(long handle, double[] values) => StoreSimdMatrix(SimdMatrix(handle).AddRowVector(values));
     public static long MatrixAddColVector(long handle, double[] values) => StoreSimdMatrix(SimdMatrix(handle).AddColVector(values));
     public static double MatrixMaxValue(long handle) => SimdMatrix(handle).Max();

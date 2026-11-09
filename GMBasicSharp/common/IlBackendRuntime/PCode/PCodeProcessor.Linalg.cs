@@ -169,10 +169,11 @@ internal sealed partial class PCodeProcessor
                 return SimdToRect(LuSimd(args).Slice(checked((int)ToDouble(args, 1)), checked((int)ToDouble(args, 2)), checked((int)ToDouble(args, 3)), checked((int)ToDouble(args, 4))));
             case BuiltInFunction.MATRIXRESHAPE:
                 return SimdToRect(LuSimd(args).Reshape(checked((int)ToDouble(args, 1)), checked((int)ToDouble(args, 2))));
+            // F4: CONCATROWS/CONCATCOLS restituiscono il VALORE matrice.
             case BuiltInFunction.MATRIXCONCATROWS:
-                return StoreSimd(CommonLib.SimdMatrix.ConcatRows(LuSimdAt(args, 0), LuSimdAt(args, 1)));
+                return SimdToRect(CommonLib.SimdMatrix.ConcatRows(LuSimdAt(args, 0), LuSimdAt(args, 1)));
             case BuiltInFunction.MATRIXCONCATCOLS:
-                return StoreSimd(CommonLib.SimdMatrix.ConcatCols(LuSimdAt(args, 0), LuSimdAt(args, 1)));
+                return SimdToRect(CommonLib.SimdMatrix.ConcatCols(LuSimdAt(args, 0), LuSimdAt(args, 1)));
             case BuiltInFunction.MATRIXADDROWVECTOR:
                 return StoreSimd(LuSimd(args).AddRowVector(ToDoubleArr(args[1])));
             case BuiltInFunction.MATRIXADDCOLVECTOR:

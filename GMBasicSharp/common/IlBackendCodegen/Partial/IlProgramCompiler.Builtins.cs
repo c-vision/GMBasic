@@ -530,8 +530,9 @@ public sealed partial class IlProgramCompiler
             case TokenKind.MatrixArgMin: EmitLinAlgUnaryHandleCall(expr, RuntimeMethod(nameof(IlRuntime.MatrixArgMin)), vector: false); break;
             case TokenKind.MatrixSlice: EmitMatrixSliceCall(expr); break;
             case TokenKind.MatrixReshape: EmitMatrixReshapeCall(expr); break;
-            case TokenKind.MatrixConcatRows: EmitLinAlgHandlePairCall(expr, nameof(IlRuntime.MatrixConcatRows)); break;
-            case TokenKind.MatrixConcatCols: EmitLinAlgHandlePairCall(expr, nameof(IlRuntime.MatrixConcatCols)); break;
+            // F4: CONCATROWS/CONCATCOLS restituiscono il VALORE matrice.
+            case TokenKind.MatrixConcatRows: EmitLinAlgHandlePairValueCall(expr, nameof(IlRuntime.MatrixConcatRowsValue)); break;
+            case TokenKind.MatrixConcatCols: EmitLinAlgHandlePairValueCall(expr, nameof(IlRuntime.MatrixConcatColsValue)); break;
             case TokenKind.MatrixAddRowVector: EmitMatrixBroadcastCall(expr, nameof(IlRuntime.MatrixAddRowVector)); break;
             case TokenKind.MatrixAddColVector: EmitMatrixBroadcastCall(expr, nameof(IlRuntime.MatrixAddColVector)); break;
             case TokenKind.MatrixMaxValue: EmitLinAlgUnaryHandleCall(expr, RuntimeMethod(nameof(IlRuntime.MatrixMaxValue)), vector: false); break;

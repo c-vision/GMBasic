@@ -13687,7 +13687,7 @@
       "ns": "MATRIX",
       "name": "CONCATCOLS",
       "fn": true,
-      "return": "long",
+      "return": "double[]",
       "params": [
         {
           "name": "data",
@@ -13698,7 +13698,7 @@
         },
         {
           "name": "other",
-          "type": "long",
+          "type": "ANY",
           "optional": false,
           "byRef": false,
           "array": false
@@ -13709,7 +13709,7 @@
       "ns": "MATRIX",
       "name": "CONCATROWS",
       "fn": true,
-      "return": "long",
+      "return": "double[]",
       "params": [
         {
           "name": "data",
@@ -13720,7 +13720,7 @@
         },
         {
           "name": "other",
-          "type": "long",
+          "type": "ANY",
           "optional": false,
           "byRef": false,
           "array": false
