@@ -8,7 +8,7 @@ SUB Main()
   DIM Y(1, 1) AS DOUBLE
   Y(0,0) = 1 : Y(0,1) = 0
   Y(1,0) = 0 : Y(1,1) = 1
-  m = SPATIAL.CDIST(X, Y, "euclidean")
+  DIM m = SPATIAL.CDIST(X, Y, "euclidean")
   PRINT ROUND(MATRIX.GETVALUE(m, 0, 0), 6); ROUND(MATRIX.GETVALUE(m, 0, 1), 6)
   PRINT ROUND(MATRIX.GETVALUE(m, 1, 0), 6); ROUND(MATRIX.GETVALUE(m, 1, 1), 6)
 END SUB

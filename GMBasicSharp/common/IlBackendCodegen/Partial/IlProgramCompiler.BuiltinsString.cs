@@ -780,6 +780,33 @@ public sealed partial class IlProgramCompiler
     private void EmitLinAlgLongPairCall(BuiltinFunctionCallExpr expr, string methodName)
     { if (expr.Args.Length != 2) throw new NotSupportedException($"Backend IL: {expr.OriginalToken.Lexeme} richiede 2 handle/dimensioni."); EmitInt64Argument(expr.Args[0]); EmitInt64Argument(expr.Args[1]); _il.Emit(OpCodes.Call, RuntimeMethod(methodName)); }
 
+    /// <summary>Argomento "handle matrice" che accetta SIA un handle LONG SIA un valore
+    /// matrice (MATRIX OF): boxing + IlRuntime.LinAlgMatrixHandle (che registra il valore
+    /// o restituisce il long). Canone del ponte handle↔valore (ADR-MATRIX-Valore §5).</summary>
+    private void EmitLinAlgHandleArgument(Expr arg)
+    {
+        EmitObjectBoxedArgument(arg);
+        _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.LinAlgMatrixHandle), typeof(object)));
+    }
+
+    /// <summary>Due argomenti handle-ou-valore (MULTIPLY/KRONECKER/BLOCKDIAG/CONCAT*).</summary>
+    private void EmitLinAlgHandlePairCall(BuiltinFunctionCallExpr expr, string methodName)
+    {
+        if (expr.Args.Length != 2) throw new NotSupportedException($"Backend IL: {expr.OriginalToken.Lexeme} richiede 2 handle/matrici.");
+        EmitLinAlgHandleArgument(expr.Args[0]);
+        EmitLinAlgHandleArgument(expr.Args[1]);
+        _il.Emit(OpCodes.Call, RuntimeMethod(methodName));
+    }
+
+    /// <summary>MATRIX.CREATE a valore (F1): identità rank-2, tipo MATRIX OF (INT,INT,DOUBLE).</summary>
+    private void EmitMatrixCreateValueCall(BuiltinFunctionCallExpr expr)
+    {
+        if (expr.Args.Length != 2) throw new NotSupportedException("Backend IL: MATRIX.CREATE richiede (rows, cols).");
+        EmitInt64Argument(expr.Args[0]);
+        EmitInt64Argument(expr.Args[1]);
+        _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.MatrixCreateValue)));
+    }
+
     private void EmitLinAlgLongPairDoubleCall(BuiltinFunctionCallExpr expr, string methodName)
     {
         if (expr.Args.Length != 3) throw new NotSupportedException($"Backend IL: {expr.OriginalToken.Lexeme} richiede 2 handle e un double.");
@@ -790,38 +817,40 @@ public sealed partial class IlProgramCompiler
     }
     private void EmitMatrixSliceCall(BuiltinFunctionCallExpr expr)
     {
-        if (expr.Args.Length != 5) throw new NotSupportedException("Backend IL: MATRIX.SLICE richiede handle e quattro indici.");
-        foreach (var argument in expr.Args) EmitInt64Argument(argument);
+        if (expr.Args.Length != 5) throw new NotSupportedException("Backend IL: MATRIX.SLICE richiede matrice/handle e quattro indici.");
+        EmitLinAlgHandleArgument(expr.Args[0]);
+        for (var i = 1; i < 5; i++) EmitInt64Argument(expr.Args[i]);
         _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.MatrixSlice)));
     }
 
     private void EmitMatrixReshapeCall(BuiltinFunctionCallExpr expr)
     {
-        if (expr.Args.Length != 3) throw new NotSupportedException("Backend IL: MATRIX.RESHAPE richiede handle, righe e colonne.");
-        foreach (var argument in expr.Args) EmitInt64Argument(argument);
+        if (expr.Args.Length != 3) throw new NotSupportedException("Backend IL: MATRIX.RESHAPE richiede matrice/handle, righe e colonne.");
+        EmitLinAlgHandleArgument(expr.Args[0]);
+        EmitInt64Argument(expr.Args[1]); EmitInt64Argument(expr.Args[2]);
         _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.MatrixReshape)));
     }
 
     private void EmitMatrixBroadcastCall(BuiltinFunctionCallExpr expr, string methodName)
     {
-        if (expr.Args.Length != 2) throw new NotSupportedException($"Backend IL: {expr.OriginalToken.Lexeme} richiede handle e vettore.");
-        EmitInt64Argument(expr.Args[0]);
+        if (expr.Args.Length != 2) throw new NotSupportedException($"Backend IL: {expr.OriginalToken.Lexeme} richiede matrice/handle e vettore.");
+        EmitLinAlgHandleArgument(expr.Args[0]);
         EmitDoubleArrayArgument(expr.Args[1]);
         _il.Emit(OpCodes.Call, RuntimeMethod(methodName));
     }
 
     private void EmitMatrixThresholdCall(BuiltinFunctionCallExpr expr, string methodName)
     {
-        if (expr.Args.Length != 2) throw new NotSupportedException($"Backend IL: {expr.OriginalToken.Lexeme} richiede handle e soglia.");
-        EmitInt64Argument(expr.Args[0]);
+        if (expr.Args.Length != 2) throw new NotSupportedException($"Backend IL: {expr.OriginalToken.Lexeme} richiede matrice/handle e soglia.");
+        EmitLinAlgHandleArgument(expr.Args[0]);
         EmitDoubleArgument(expr.Args[1]);
         _il.Emit(OpCodes.Call, RuntimeMethod(methodName));
     }
 
     private void EmitMatrixVectorProductCall(BuiltinFunctionCallExpr expr, string methodName)
     {
-        if (expr.Args.Length != 2) throw new NotSupportedException($"Backend IL: {expr.OriginalToken.Lexeme} richiede handle e vettore.");
-        EmitInt64Argument(expr.Args[0]);
+        if (expr.Args.Length != 2) throw new NotSupportedException($"Backend IL: {expr.OriginalToken.Lexeme} richiede matrice/handle e vettore.");
+        EmitLinAlgHandleArgument(expr.Args[0]);
         EmitDoubleArrayArgument(expr.Args[1]);
         _il.Emit(OpCodes.Call, RuntimeMethod(methodName));
     }
@@ -839,7 +868,15 @@ public sealed partial class IlProgramCompiler
     }
     private void EmitLinAlgSetValueCall(BuiltinFunctionCallExpr expr)
     {
-        if (expr.Args.Length != 4) throw new NotSupportedException("Backend IL: MATRIX.SETVALUE richiede 4 argomenti (handle, row, col, value).");
+        if (expr.Args.Length != 4) throw new NotSupportedException("Backend IL: MATRIX.SETVALUE richiede 4 argomenti (matrice/handle, row, col, value).");
+        // Valore MATRIX OF: mutazione diretta (niente registry).
+        if (NormalizeInferredType(InferType(expr.Args[0])) is ArrayType { Rank: 2 })
+        {
+            EmitExpression(expr.Args[0]);
+            EmitInt64Argument(expr.Args[1]); EmitInt64Argument(expr.Args[2]); EmitDoubleArgument(expr.Args[3]);
+            _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.MatrixSetAt)));
+            return;
+        }
         EmitObjectBoxedArgument(expr.Args[0]);
         _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.LinAlgMatrixHandle), typeof(object)));
         EmitDoubleArgument(expr.Args[1]); EmitDoubleArgument(expr.Args[2]); EmitDoubleArgument(expr.Args[3]);
@@ -847,7 +884,14 @@ public sealed partial class IlProgramCompiler
     }
     private void EmitLinAlgGetValueCall(BuiltinFunctionCallExpr expr)
     {
-        if (expr.Args.Length != 3) throw new NotSupportedException("Backend IL: MATRIX.GETVALUE richiede 3 argomenti (handle, row, col).");
+        if (expr.Args.Length != 3) throw new NotSupportedException("Backend IL: MATRIX.GETVALUE richiede 3 argomenti (matrice/handle, row, col).");
+        if (NormalizeInferredType(InferType(expr.Args[0])) is ArrayType { Rank: 2 })
+        {
+            EmitExpression(expr.Args[0]);
+            EmitInt64Argument(expr.Args[1]); EmitInt64Argument(expr.Args[2]);
+            _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.MatrixGetAt)));
+            return;
+        }
         EmitObjectBoxedArgument(expr.Args[0]);
         _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.LinAlgMatrixHandle), typeof(object)));
         EmitDoubleArgument(expr.Args[1]); EmitDoubleArgument(expr.Args[2]);

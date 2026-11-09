@@ -23,10 +23,10 @@ SUB Main()
   DIM Q(1, 1) AS DOUBLE
   Q(0,0) = 0 : Q(0,1) = 0
   Q(1,0) = 4 : Q(1,1) = 4
-  m = SPATIAL.CDIST(P, Q, "euclidean")
+  DIM m = SPATIAL.CDIST(P, Q, "euclidean")
   PRINT "cdist(0,0)="; ROUND(MATRIX.GETVALUE(m, 0, 0), 4); " cdist(2,1)="; ROUND(MATRIX.GETVALUE(m, 2, 1), 4)
 
   ' DISTANCEMATRIX: come CDIST ma con metrica euclidea.
-  dm = SPATIAL.DISTANCEMATRIX(P, Q)
+  DIM dm = SPATIAL.DISTANCEMATRIX(P, Q)
   PRINT "distmatrix(1,1)="; ROUND(MATRIX.GETVALUE(dm, 1, 1), 4)
 END SUB

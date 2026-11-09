@@ -530,8 +530,8 @@ public sealed partial class IlProgramCompiler
             case TokenKind.MatrixArgMin: EmitLinAlgUnaryHandleCall(expr, RuntimeMethod(nameof(IlRuntime.MatrixArgMin)), vector: false); break;
             case TokenKind.MatrixSlice: EmitMatrixSliceCall(expr); break;
             case TokenKind.MatrixReshape: EmitMatrixReshapeCall(expr); break;
-            case TokenKind.MatrixConcatRows: EmitLinAlgLongPairCall(expr, nameof(IlRuntime.MatrixConcatRows)); break;
-            case TokenKind.MatrixConcatCols: EmitLinAlgLongPairCall(expr, nameof(IlRuntime.MatrixConcatCols)); break;
+            case TokenKind.MatrixConcatRows: EmitLinAlgHandlePairCall(expr, nameof(IlRuntime.MatrixConcatRows)); break;
+            case TokenKind.MatrixConcatCols: EmitLinAlgHandlePairCall(expr, nameof(IlRuntime.MatrixConcatCols)); break;
             case TokenKind.MatrixAddRowVector: EmitMatrixBroadcastCall(expr, nameof(IlRuntime.MatrixAddRowVector)); break;
             case TokenKind.MatrixAddColVector: EmitMatrixBroadcastCall(expr, nameof(IlRuntime.MatrixAddColVector)); break;
             case TokenKind.MatrixMaxValue: EmitLinAlgUnaryHandleCall(expr, RuntimeMethod(nameof(IlRuntime.MatrixMaxValue)), vector: false); break;
@@ -697,19 +697,19 @@ public sealed partial class IlProgramCompiler
                 foreach (var a in expr.Args) { EmitExpression(a); _il.Emit(OpCodes.Pop); }
                 _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.TaskYield)));
                 break;
-            case TokenKind.LinAlgMatrixCreateFunc: EmitLinAlgLongPairCall(expr, nameof(IlRuntime.MatrixCreate)); break;
+            case TokenKind.LinAlgMatrixCreateFunc: EmitMatrixCreateValueCall(expr); break;
             case TokenKind.LinAlgVectorCreateFunc: EmitLinAlgVectorCreateCall(expr); break;
-            case TokenKind.LinAlgMultiplyFunc or TokenKind.Multiply: EmitLinAlgLongPairCall(expr, nameof(IlRuntime.MatrixMultiply)); break;
+            case TokenKind.LinAlgMultiplyFunc or TokenKind.Multiply: EmitLinAlgHandlePairCall(expr, nameof(IlRuntime.MatrixMultiply)); break;
             case TokenKind.LinAlgInverseFunc or TokenKind.Inverse: EmitLinAlgUnaryHandleCall(expr, RuntimeMethod(nameof(IlRuntime.MatrixInverse)), vector: false); break;
             case TokenKind.LinAlgTransposeFunc or TokenKind.Transpose: EmitLinAlgUnaryHandleCall(expr, RuntimeMethod(nameof(IlRuntime.MatrixTranspose)), vector: false); break;
             case TokenKind.Determinant: EmitLinAlgUnaryHandleCall(expr, RuntimeMethod(nameof(IlRuntime.MatrixDeterminant)), vector: false); break;
             case TokenKind.MatrixPseudoInverse: EmitLinAlgUnaryHandleCall(expr, RuntimeMethod(nameof(IlRuntime.MatrixPseudoInverse)), vector: false); break;
             case TokenKind.MatrixExp: EmitLinAlgUnaryHandleCall(expr, RuntimeMethod(nameof(IlRuntime.MatrixExp)), vector: false); break;
-            case TokenKind.MatrixKron: EmitLinAlgLongPairCall(expr, nameof(IlRuntime.MatrixKronecker)); break;
+            case TokenKind.MatrixKron: EmitLinAlgHandlePairCall(expr, nameof(IlRuntime.MatrixKronecker)); break;
             case TokenKind.MatrixSqrt: EmitLinAlgUnaryHandleCall(expr, RuntimeMethod(nameof(IlRuntime.MatrixSqrt)), vector: false); break;
             case TokenKind.MatrixLogm: EmitLinAlgUnaryHandleCall(expr, RuntimeMethod(nameof(IlRuntime.MatrixLogm)), vector: false); break;
             case TokenKind.MatrixHessenberg: EmitLinAlgUnaryHandleCall(expr, RuntimeMethod(nameof(IlRuntime.MatrixHessenberg)), vector: false); break;
-            case TokenKind.MatrixBlockDiag: EmitLinAlgLongPairCall(expr, nameof(IlRuntime.MatrixBlockDiag)); break;
+            case TokenKind.MatrixBlockDiag: EmitLinAlgHandlePairCall(expr, nameof(IlRuntime.MatrixBlockDiag)); break;
             case TokenKind.MatrixNullSpace: EmitLinAlgUnaryHandleCall(expr, RuntimeMethod(nameof(IlRuntime.MatrixNullSpace)), vector: false); break;
             case TokenKind.MatrixSetValue: EmitLinAlgSetValueCall(expr); break;
             case TokenKind.MatrixGetValue: EmitLinAlgGetValueCall(expr); break;
@@ -721,10 +721,10 @@ public sealed partial class IlProgramCompiler
             case TokenKind.MatrixPolar: EmitLinAlgUnaryHandleCall(expr, RuntimeMethod(nameof(IlRuntime.MatrixPolar)), vector: false); break;
             case TokenKind.MatrixEig: EmitLinAlgUnaryHandleCall(expr, RuntimeMethod(nameof(IlRuntime.MatrixEig)), vector: false); break;
             case TokenKind.MatrixSchur: EmitLinAlgUnaryHandleCall(expr, RuntimeMethod(nameof(IlRuntime.MatrixSchur)), vector: false); break;
-            case TokenKind.MatrixCond: EmitLinAlgUnaryHandleCall(expr, RuntimeMethod(nameof(IlRuntime.MatrixCond)), vector: true); break;
-            case TokenKind.MatrixNuclearNorm: EmitLinAlgUnaryHandleCall(expr, RuntimeMethod(nameof(IlRuntime.MatrixNuclearNorm)), vector: true); break;
+            case TokenKind.MatrixCond: EmitLinAlgUnaryHandleCall(expr, RuntimeMethod(nameof(IlRuntime.MatrixCond)), vector: false); break;
+            case TokenKind.MatrixNuclearNorm: EmitLinAlgUnaryHandleCall(expr, RuntimeMethod(nameof(IlRuntime.MatrixNuclearNorm)), vector: false); break;
             case TokenKind.MatrixFractionalPower:
-                EmitInt64Argument(expr.Args[0]);
+                EmitLinAlgHandleArgument(expr.Args[0]);
                 EmitDoubleArgument(expr.Args[1]);
                 _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.MatrixFractionalPower)));
                 break;
@@ -762,9 +762,9 @@ public sealed partial class IlProgramCompiler
                 EmitInt64Argument(expr.Args[2]);
                 _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.MatrixSolveTriangular)));
                 break;
-            case TokenKind.MatrixRank: EmitLinAlgUnaryHandleCall(expr, RuntimeMethod(nameof(IlRuntime.MatrixRank)), vector: true); break;
-            case TokenKind.MatrixTrace: EmitLinAlgUnaryHandleCall(expr, RuntimeMethod(nameof(IlRuntime.MatrixTrace)), vector: true); break;
-            case TokenKind.MatrixNorm: EmitLinAlgUnaryHandleCall(expr, RuntimeMethod(nameof(IlRuntime.MatrixNorm)), vector: true); break;
+            case TokenKind.MatrixRank: EmitLinAlgUnaryHandleCall(expr, RuntimeMethod(nameof(IlRuntime.MatrixRank)), vector: false); break;
+            case TokenKind.MatrixTrace: EmitLinAlgUnaryHandleCall(expr, RuntimeMethod(nameof(IlRuntime.MatrixTrace)), vector: false); break;
+            case TokenKind.MatrixNorm: EmitLinAlgUnaryHandleCall(expr, RuntimeMethod(nameof(IlRuntime.MatrixNorm)), vector: false); break;
             case TokenKind.Solve: EmitLinAlgSolveCall(expr); break;
             case TokenKind.DotProduct: EmitLinAlgSolveCall(expr, vectorDot: true); break;
             case TokenKind.Norm: EmitLinAlgUnaryHandleCall(expr, RuntimeMethod(nameof(IlRuntime.VectorNorm)), vector: true); break;

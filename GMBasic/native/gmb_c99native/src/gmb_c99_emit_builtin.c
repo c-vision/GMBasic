@@ -3354,6 +3354,20 @@ int emit_bf_vector(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t t
 }
 /* ── dominio: matrix (delegazione §0quater) ── */
 typedef struct { gmb_tokenkind_t tk; ma_sp sp; } mx_row;
+/* Vero per una matrice NATIVA rank-2 (DIM m(r,c)/MATRIX OF, double* + __bK): esclusi
+ * jagged (double**), matrix (double** FFT) e handle (int64_t). */
+static int mx_is_matrix_val(const var_t* v)
+{ return v && v->is_array && v->ndims >= 2 && !v->jagged && !v->matrix && !v->matrix_handle; }
+/* Argomento matrice per le funzioni HISTORICHE a handle: un valore MATRIX OF (var rank-2)
+ * viene registrato come handle con gmb_matrix_from_flat; un handle resta se stesso. */
+static void emit_matrix_arg(ctx_t* c, gmb_expr_t* e)
+{
+    if (e && e->kind == GMB_EXPR_VAR && e->var) {
+        var_t* v = lookup_var(c, e->var);
+        if (mx_is_matrix_val(v)) { emit_matrix_handle(c, v); return; }
+    }
+    emit_expr(c, e);
+}
 static int mx_one(ctx_t* c, gmb_expr_t** a, int n, const char* fn, int cast) {
     if (n != 1) return 0;
     if (a[0]->kind != GMB_EXPR_VAR || !a[0]->var) return 0;
@@ -3367,7 +3381,7 @@ static int mx_one(ctx_t* c, gmb_expr_t** a, int n, const char* fn, int cast) {
         sb_put(&c->out, "))");
         return 1;
     }
-    if (!(av && av->matrix)) {
+    if (!(av && (av->matrix || mx_is_matrix_val(av)))) {
         /* Fallback: variabile SCALARE non tipizzata che CONTIENE un handle MATRIX (es.
          * `h = MATRIX.CREATE(...)` senza DIM non marca matrix_handle). Il dispatch qui è
          * già per TokenKind MATRIX.* → l'argomento è un handle: emetti comunque. */
@@ -3394,7 +3408,7 @@ static int mx_multiply(ctx_t* c, gmb_expr_t** a, int n) {
         emit_expr(c, a[1]); sb_put(&c->out, "))");
         return 1;
     }
-    if (!(a0 && a0->matrix && a1 && a1->matrix)) return 0;
+    if (!(a0 && (a0->matrix || mx_is_matrix_val(a0)) && a1 && (a1->matrix || mx_is_matrix_val(a1)))) return 0;
     sb_put(&c->out, "(gmb_double_t)gmb_matrix_multiply(");
     emit_matrix_handle(c, a0); sb_put(&c->out, ", ");
     emit_matrix_handle(c, a1); sb_put(&c->out, ")");
@@ -3419,6 +3433,20 @@ static int mxh_create(ctx_t* c, gmb_expr_t** a, int n) {
 }
 static int mxh_get(ctx_t* c, gmb_expr_t** a, int n) {
     if (n < 3) return 0;
+    /* Valore MATRIX OF (var rank-2 nativa): accesso diretto con bound/lower, niente handle. */
+    if (a[0] && a[0]->kind == GMB_EXPR_VAR && a[0]->var) {
+        var_t* mv = lookup_var(c, a[0]->var);
+        if (mv && mv->is_array && mv->ndims >= 2 && !mv->jagged && !mv->matrix && !mv->matrix_handle) {
+            sb_put(&c->out, "({ gmb_int_t __r = (gmb_int_t)("); emit_expr(c, a[1]);
+            sb_put(&c->out, "); gmb_int_t __c = (gmb_int_t)("); emit_expr(c, a[2]);
+            sb_put(&c->out, "); (__r >= 0 && __r <= "); sb_bound_var(&c->out, mv, 0);
+            sb_put(&c->out, " && __c >= 0 && __c <= "); sb_bound_var(&c->out, mv, 1);
+            sb_put(&c->out, ") ? (gmb_double_t)"); emit_var_ref(c, mv);
+            sb_put(&c->out, "[__r * ("); sb_bound_var(&c->out, mv, 1);
+            sb_put(&c->out, " + 1) + __c] : 0.0; })");
+            return 1;
+        }
+    }
     sb_put(&c->out, "(gmb_double_t)gmb_matrix_get((int64_t)("); emit_expr(c, a[0]);
     sb_put(&c->out, "), (int)("); emit_expr(c, a[1]); sb_put(&c->out, "), (int)(");
     emit_expr(c, a[2]); sb_put(&c->out, "))");
@@ -3426,6 +3454,23 @@ static int mxh_get(ctx_t* c, gmb_expr_t** a, int n) {
 }
 static int mxh_set(ctx_t* c, gmb_expr_t** a, int n) {
     if (n < 4) return 0;
+    /* Valore MATRIX OF: mutazione diretta e valore restituito (F1:
+     * `m = MATRIX.SETVALUE(m, r, c, v)`), niente registry handle. */
+    if (a[0] && a[0]->kind == GMB_EXPR_VAR && a[0]->var) {
+        var_t* mv = lookup_var(c, a[0]->var);
+        if (mv && mv->is_array && mv->ndims >= 2 && !mv->jagged && !mv->matrix && !mv->matrix_handle) {
+            sb_put(&c->out, "({ gmb_int_t __r = (gmb_int_t)("); emit_expr(c, a[1]);
+            sb_put(&c->out, "); gmb_int_t __c = (gmb_int_t)("); emit_expr(c, a[2]);
+            sb_put(&c->out, "); if (__r >= 0 && __r <= "); sb_bound_var(&c->out, mv, 0);
+            sb_put(&c->out, " && __c >= 0 && __c <= "); sb_bound_var(&c->out, mv, 1);
+            sb_put(&c->out, ") "); emit_var_ref(c, mv);
+            sb_put(&c->out, "[__r * ("); sb_bound_var(&c->out, mv, 1);
+            sb_put(&c->out, " + 1) + __c] = (gmb_double_t)("); emit_expr(c, a[3]);
+            sb_put(&c->out, "); "); emit_var_ref(c, mv);
+            sb_put(&c->out, "; })");
+            return 1;
+        }
+    }
     sb_put(&c->out, "(gmb_matrix_set((int64_t)("); emit_expr(c, a[0]);
     sb_put(&c->out, "), (int)("); emit_expr(c, a[1]); sb_put(&c->out, "), (int)(");
     emit_expr(c, a[2]); sb_put(&c->out, "), "); emit_expr(c, a[3]);
@@ -3436,7 +3481,7 @@ static int mx_rowcol(ctx_t* c, gmb_expr_t** a, int n, const char* rc) {
     if (n != 1) return 0;
     if (a[0]->kind != GMB_EXPR_VAR || !a[0]->var) return 0;
     var_t* av = lookup_var(c, a[0]->var);
-    if (!(av && av->matrix)) return 0;
+    if (!(av && (av->matrix || mx_is_matrix_val(av)))) return 0;
     sb_put(&c->out, "(gmb_double_t)gmb_matrix_");
     sb_put(&c->out, rc);
     sb_put(&c->out, "((gmb_int_t)(");
@@ -3490,7 +3535,7 @@ static int mx_signm(ctx_t* c, gmb_expr_t** a, int n) { return mx_one(c, a, n, "g
 static int mx_factor(ctx_t* c, gmb_expr_t** a, int n) {
     if (n != 2) return 0;
     sb_put(&c->out, "gmb_matrix_decomp_get_factor_named((int64_t)(");
-    emit_expr(c, a[0]);
+    emit_matrix_arg(c, a[0]);
     sb_put(&c->out, "), (const char*)(");
     emit_str_operand(c, a[1]);
     sb_put(&c->out, ".data))");
@@ -3500,18 +3545,18 @@ static int mx_factor(ctx_t* c, gmb_expr_t** a, int n) {
 static int mxh_one_arg(ctx_t* c, gmb_expr_t** a, int n, const char* fn) {
     if (n != 1) return 0;
     sb_printf(&c->out, "(gmb_int_t)%s((int64_t)(", fn);
-    emit_expr(c, a[0]); sb_put(&c->out, "))"); return 1;
+    emit_matrix_arg(c, a[0]); sb_put(&c->out, "))"); return 1;
 }
 static int mxh_one_double(ctx_t* c, gmb_expr_t** a, int n, const char* fn) {
     if (n != 1) return 0;
     sb_printf(&c->out, "(gmb_double_t)%s((int64_t)(", fn);
-    emit_expr(c, a[0]); sb_put(&c->out, "))"); return 1;
+    emit_matrix_arg(c, a[0]); sb_put(&c->out, "))"); return 1;
 }
 static int mxh_two_handles(ctx_t* c, gmb_expr_t** a, int n, const char* fn) {
     if (n != 2) return 0;
     sb_printf(&c->out, "(gmb_int_t)%s((int64_t)(", fn);
-    emit_expr(c, a[0]); sb_put(&c->out, "), (int64_t)(");
-    emit_expr(c, a[1]); sb_put(&c->out, "))"); return 1;
+    emit_matrix_arg(c, a[0]); sb_put(&c->out, "), (int64_t)(");
+    emit_matrix_arg(c, a[1]); sb_put(&c->out, "))"); return 1;
 }
 static int mxh_cholesky(ctx_t* c, gmb_expr_t** a, int n) { return mxh_one_arg(c, a, n, "gmb_matrix_cholesky"); }
 static int mxh_evd(ctx_t* c, gmb_expr_t** a, int n) { return mxh_one_arg(c, a, n, "gmb_matrix_evd"); }
@@ -3525,15 +3570,15 @@ static int mxh_lu_solve(ctx_t* c, gmb_expr_t** a, int n) { return mxh_two_handle
 static int mxh_fractional(ctx_t* c, gmb_expr_t** a, int n) {
     if (n != 2) return 0;
     sb_put(&c->out, "(gmb_int_t)gmb_matrix_fractional_power((int64_t)(");
-    emit_expr(c, a[0]); sb_put(&c->out, "), (double)(");
+    emit_matrix_arg(c, a[0]); sb_put(&c->out, "), (double)(");
     emit_expr(c, a[1]); sb_put(&c->out, "))");
     return 1;
 }
 static int mxh_blockdiag(ctx_t* c, gmb_expr_t** a, int n) {
     if (n < 2) return 0;
     sb_put(&c->out, "(gmb_int_t)gmb_matrix_block_diag((const int64_t[]){ (int64_t)(");
-    emit_expr(c, a[0]); sb_put(&c->out, "), (int64_t)(");
-    emit_expr(c, a[1]); sb_put(&c->out, ") }, 2)");
+    emit_matrix_arg(c, a[0]); sb_put(&c->out, "), (int64_t)(");
+    emit_matrix_arg(c, a[1]); sb_put(&c->out, ") }, 2)");
     return 1;
 }
 static int mxh_loadcsv(ctx_t* c, gmb_expr_t** a, int n) {
@@ -3588,7 +3633,7 @@ static int mxh_solvetri(ctx_t* c, gmb_expr_t** a, int n) {
     var_t* bv = lookup_var(c, a[1]->var);
     if (!(bv && bv->is_array && !bv->matrix)) return 0;
     sb_put(&c->out, "(gmb_int_t)gmb_matrix_solve_triangular((int64_t)(");
-    emit_expr(c, a[0]); sb_put(&c->out, "), (const double*)");
+    emit_matrix_arg(c, a[0]); sb_put(&c->out, "), (const double*)");
     emit_var_ref(c, bv); sb_put(&c->out, ", (int)(");
     if (n >= 4) emit_expr(c, a[3]); else emit_arr_len_of(c, bv);
     sb_put(&c->out, "), (int)(");
@@ -3598,8 +3643,8 @@ static int mxh_solvetri(ctx_t* c, gmb_expr_t** a, int n) {
 static int mxh_subspace(ctx_t* c, gmb_expr_t** a, int n) {
     if (n != 2) return 0;
     sb_put(&c->out, "(gmb_int_t)(int64_t)(uintptr_t)gmb_matrix_subspace_angles_alloc((int64_t)(");
-    emit_expr(c, a[0]); sb_put(&c->out, "), (int64_t)(");
-    emit_expr(c, a[1]); sb_put(&c->out, "), &(int64_t){0})");
+    emit_matrix_arg(c, a[0]); sb_put(&c->out, "), (int64_t)(");
+    emit_matrix_arg(c, a[1]); sb_put(&c->out, "), &(int64_t){0})");
     return 1;
 }
 /* MATRIX gap 2026-09-12 (32 funzioni): HANDLE→HANDLE / →DOUBLE / →INT / →ARRAY /
@@ -3608,7 +3653,7 @@ static int mxh_subspace(ctx_t* c, gmb_expr_t** a, int n) {
 static int mxh_reshape(ctx_t* c, gmb_expr_t** a, int n) {
     if (n < 3) return 0;
     sb_put(&c->out, "(gmb_int_t)gmb_matrix_reshape((int64_t)(");
-    emit_expr(c, a[0]); sb_put(&c->out, "), (int)(");
+    emit_matrix_arg(c, a[0]); sb_put(&c->out, "), (int)(");
     emit_expr(c, a[1]); sb_put(&c->out, "), (int)(");
     emit_expr(c, a[2]); sb_put(&c->out, "))");
     return 1;
@@ -3616,7 +3661,7 @@ static int mxh_reshape(ctx_t* c, gmb_expr_t** a, int n) {
 static int mxh_slice(ctx_t* c, gmb_expr_t** a, int n) {
     if (n < 5) return 0;
     sb_put(&c->out, "(gmb_int_t)gmb_matrix_slice((int64_t)(");
-    emit_expr(c, a[0]);
+    emit_matrix_arg(c, a[0]);
     for (int i = 1; i < 5; i++) { sb_put(&c->out, "), (int)("); emit_expr(c, a[i]); }
     sb_put(&c->out, "))");
     return 1;
@@ -3627,7 +3672,7 @@ static int mxh_add_vector(ctx_t* c, gmb_expr_t** a, int n, const char* fn) {
     var_t* bv = lookup_var(c, a[1]->var);
     if (!(bv && bv->is_array && !bv->matrix)) return 0;
     sb_printf(&c->out, "(gmb_int_t)%s((int64_t)(", fn);
-    emit_expr(c, a[0]); sb_put(&c->out, "), (const double*)");
+    emit_matrix_arg(c, a[0]); sb_put(&c->out, "), (const double*)");
     emit_var_ref(c, bv); sb_put(&c->out, ", (int)(");
     emit_arr_len_of(c, bv); sb_put(&c->out, "))");
     return 1;
@@ -3636,14 +3681,14 @@ static int mxh_add_vector(ctx_t* c, gmb_expr_t** a, int n, const char* fn) {
 static int mxh_one_int(ctx_t* c, gmb_expr_t** a, int n, const char* fn) {
     if (n != 1) return 0;
     sb_printf(&c->out, "(gmb_double_t)%s((int64_t)(", fn);
-    emit_expr(c, a[0]); sb_put(&c->out, "))");
+    emit_matrix_arg(c, a[0]); sb_put(&c->out, "))");
     return 1;
 }
 /* Predicati booleani: convenzione Bit canonica -1/0 (parità IL/PCode), non 1/0 C. */
 static int mxh_one_bit(ctx_t* c, gmb_expr_t** a, int n, const char* fn) {
     if (n != 1) return 0;
     sb_printf(&c->out, "(gmb_double_t)(%s((int64_t)(", fn);
-    emit_expr(c, a[0]); sb_put(&c->out, ")) ? -1 : 0)");
+    emit_matrix_arg(c, a[0]); sb_put(&c->out, ")) ? -1 : 0)");
     return 1;
 }
 /* HANDLE→ARRAY in contesto espressione: come mxh_subspace, il puntatore è reso come
@@ -3651,14 +3696,14 @@ static int mxh_one_bit(ctx_t* c, gmb_expr_t** a, int n, const char* fn) {
 static int mxh_arr1(ctx_t* c, gmb_expr_t** a, int n, const char* fn) {
     if (n < 1) return 0;
     sb_printf(&c->out, "(gmb_int_t)(int64_t)(uintptr_t)%s((int64_t)(", fn);
-    emit_expr(c, a[0]); sb_put(&c->out, "), &(int64_t){0})");
+    emit_matrix_arg(c, a[0]); sb_put(&c->out, "), &(int64_t){0})");
     return 1;
 }
 /* ABOVEMASK/ABOVEMATRIX(handle, threshold) → bool* (reso come int64_t in espressione). */
 static int mxh_above(ctx_t* c, gmb_expr_t** a, int n, const char* fn) {
     if (n < 2) return 0;
     sb_printf(&c->out, "(gmb_int_t)(int64_t)(uintptr_t)%s((int64_t)(", fn);
-    emit_expr(c, a[0]); sb_put(&c->out, "), (double)(");
+    emit_matrix_arg(c, a[0]); sb_put(&c->out, "), (double)(");
     emit_expr(c, a[1]); sb_put(&c->out, "), &(int64_t){0})");
     return 1;
 }
@@ -3668,7 +3713,7 @@ static int mxh_mulvec(ctx_t* c, gmb_expr_t** a, int n) {
     var_t* bv = lookup_var(c, a[1]->var);
     if (!(bv && bv->is_array)) return 0;
     sb_put(&c->out, "(gmb_int_t)(int64_t)(uintptr_t)gmb_matrix_multiply_vector_alloc((int64_t)(");
-    emit_expr(c, a[0]); sb_put(&c->out, "), (const double*)");
+    emit_matrix_arg(c, a[0]); sb_put(&c->out, "), (const double*)");
     emit_var_ref(c, bv); sb_put(&c->out, ", (int)(");
     emit_arr_len_of(c, bv); sb_put(&c->out, "), &(int64_t){0})");
     return 1;
@@ -3682,20 +3727,20 @@ static int mxh_mulleftvec(ctx_t* c, gmb_expr_t** a, int n) {
     sb_put(&c->out, "(gmb_int_t)(int64_t)(uintptr_t)gmb_matrix_multiply_left_vector_alloc((const double*)");
     emit_var_ref(c, bv); sb_put(&c->out, ", (int)(");
     emit_arr_len_of(c, bv); sb_put(&c->out, "), (int64_t)(");
-    emit_expr(c, a[0]); sb_put(&c->out, "), &(int64_t){0})");
+    emit_matrix_arg(c, a[0]); sb_put(&c->out, "), &(int64_t){0})");
     return 1;
 }
 /* ASCSV/ASJSON(handle) → gmb_string_t (char* runtime → gmb_string_alloc). */
 static int mxh_as_csv(ctx_t* c, gmb_expr_t** a, int n) {
     if (n != 1) return 0;
     sb_put(&c->out, "gmb_string_alloc(gmb_matrix_as_csv((int64_t)(");
-    emit_expr(c, a[0]); sb_put(&c->out, ")))");
+    emit_matrix_arg(c, a[0]); sb_put(&c->out, ")))");
     return 1;
 }
 static int mxh_as_json(ctx_t* c, gmb_expr_t** a, int n) {
     if (n != 1) return 0;
     sb_put(&c->out, "gmb_string_alloc(gmb_matrix_as_json((int64_t)(");
-    emit_expr(c, a[0]); sb_put(&c->out, ")))");
+    emit_matrix_arg(c, a[0]); sb_put(&c->out, ")))");
     return 1;
 }
 static int mxh_clone(ctx_t* c, gmb_expr_t** a, int n) { return mxh_one_arg(c, a, n, "gmb_matrix_clone"); }

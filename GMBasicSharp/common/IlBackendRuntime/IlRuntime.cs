@@ -1161,9 +1161,40 @@ public static partial class IlRuntime
     {
         if (rows is <= 0 or > int.MaxValue || columns is <= 0 or > int.MaxValue)
             throw new ArgumentOutOfRangeException(nameof(rows), "Le dimensioni della matrice devono essere positive.");
+        return StoreMatrix(CreateIdentityMatrix(rows, columns));
+    }
+
+    /// <summary>MATRIX.CREATE a VALORE (ADR-MATRIX-Valore, F1): matrice rank-2 contigua,
+    /// identità sui primi min(rows,cols). Il tipo del linguaggio è `MATRIX OF (INT,INT,DOUBLE)`.</summary>
+    public static double[,] MatrixCreateValue(long rows, long columns)
+    {
+        if (rows is <= 0 or > int.MaxValue || columns is <= 0 or > int.MaxValue)
+            throw new ArgumentOutOfRangeException(nameof(rows), "Le dimensioni della matrice devono essere positive.");
+        return CreateIdentityMatrix(rows, columns);
+    }
+
+    private static double[,] CreateIdentityMatrix(long rows, long columns)
+    {
         var matrix = new double[checked((int)rows), checked((int)columns)];
-        for (var index = 0; index < Math.Min(rows, columns); index++) matrix[index, index] = 1d;
-        return StoreMatrix(matrix);
+        var d = Math.Min(rows, columns);
+        for (var index = 0; index < d; index++) matrix[index, index] = 1d;
+        return matrix;
+    }
+
+    /// <summary>MATRIX.GETVALUE su un valore matrice (senza passare dal registry handle).</summary>
+    public static double MatrixGetAt(double[,] matrix, long row, long column)
+        => matrix is not null && row >= 0 && row < matrix.GetLength(0)
+           && column >= 0 && column < matrix.GetLength(1)
+            ? matrix[row, column] : 0d;
+
+    /// <summary>MATRIX.SETVALUE su un valore matrice: mutazione visibile al chiamante e
+    /// valore restituito (il contratto F1 è `m = MATRIX.SETVALUE(m, r, c, v)`).</summary>
+    public static double[,] MatrixSetAt(double[,] matrix, long row, long column, double value)
+    {
+        if (matrix is not null && row >= 0 && row < matrix.GetLength(0)
+            && column >= 0 && column < matrix.GetLength(1))
+            matrix[row, column] = value;
+        return matrix ?? new double[0, 0];
     }
 
     public static long VectorCreate(double x, double y, double z, double w) => StoreVector([x, y, z, w]);
@@ -1957,11 +1988,11 @@ public static partial class IlRuntime
         return StoreMatrix(CommonLib.Numerics.NullSpace(m).ToArray());
     }
 
-    public static long MatrixSetValue(long handle, double r, double c, double v)
+    public static double[,] MatrixSetValue(long handle, double r, double c, double v)
     {
         var m = Matrix(handle);
         m[(int)r, (int)c] = v;
-        return handle;
+        return m;
     }
 
     public static double MatrixGetValue(long handle, double r, double c)

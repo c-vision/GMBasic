@@ -30,19 +30,19 @@ PUBLIC FUNCTION PDIST(X AS MATRIX OF (INT, INT, DOUBLE), metric AS STRING) AS AR
 END FUNCTION
 
 ' CDIST(X, Y, metric) — matrice nx*ny delle distanze tra ogni riga di X e Y.
-' Ritorna l'handle MATRIX (LONG) — namespace MATRIX (finché non migrato a valore).
-PUBLIC FUNCTION CDIST(X AS MATRIX OF (INT, INT, DOUBLE), Y AS MATRIX OF (INT, INT, DOUBLE), metric AS STRING) AS LONG
+' Ritorna il VALORE MATRIX OF (F1: namespace MATRIX a valore; gli handle restano accettati).
+PUBLIC FUNCTION CDIST(X AS MATRIX OF (INT, INT, DOUBLE), Y AS MATRIX OF (INT, INT, DOUBLE), metric AS STRING) AS MATRIX OF (INT, INT, DOUBLE)
     DIM nx AS LONG, ny AS LONG, dx AS LONG, dy AS LONG
     nx = UBOUND(X, 1) + 1
     dx = UBOUND(X, 2) + 1
     ny = UBOUND(Y, 1) + 1
     dy = UBOUND(Y, 2) + 1
     IF nx < 1 OR ny < 1 THEN
-        RETURN 0
+        RETURN MATRIX.CREATE(1, 1)
     END IF
     DIM o(nx * ny - 1) AS DOUBLE
     CALL SPN_CDIST(X, nx, dx, Y, ny, dy, metric, o, nx * ny)
-    DIM m AS LONG
+    DIM m AS MATRIX OF (INT, INT, DOUBLE)
     m = MATRIX.CREATE(nx, ny)
     DIM i AS LONG, j AS LONG
     FOR i = 0 TO nx - 1
@@ -54,7 +54,7 @@ PUBLIC FUNCTION CDIST(X AS MATRIX OF (INT, INT, DOUBLE), Y AS MATRIX OF (INT, IN
 END FUNCTION
 
 ' DISTANCEMATRIX(X, Y) — come CDIST con metrica euclidea.
-PUBLIC FUNCTION DISTANCEMATRIX(X AS MATRIX OF (INT, INT, DOUBLE), Y AS MATRIX OF (INT, INT, DOUBLE)) AS LONG
+PUBLIC FUNCTION DISTANCEMATRIX(X AS MATRIX OF (INT, INT, DOUBLE), Y AS MATRIX OF (INT, INT, DOUBLE)) AS MATRIX OF (INT, INT, DOUBLE)
     RETURN CDIST(X, Y, "euclidean")
 END FUNCTION
 

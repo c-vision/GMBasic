@@ -134,7 +134,7 @@ public sealed partial class StdLib
                     new Parameter(-1, T(TokenKind.Identifier, "rows"), new LongType(), noFlags, null, false),
                     new Parameter(-1, T(TokenKind.Identifier, "cols"), new LongType(), noFlags, null, false)
                 ],
-                new LongType(), TokenKind.LinAlgMatrixCreateFunc),
+                new ArrayType(new DoubleType(), 2), TokenKind.LinAlgMatrixCreateFunc),
 
             new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.Multiply, "MULTIPLY"),
                 [
@@ -162,14 +162,14 @@ public sealed partial class StdLib
                 new LongType(), TokenKind.MatrixBlockDiag),
 
             new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.MatrixSetValue, "SETVALUE"),
-                [new Parameter(-1, T(TokenKind.Identifier, "handle"), new LongType(), noFlags, null, false),
+                [new Parameter(-1, T(TokenKind.Identifier, "handle"), new AnyType(), noFlags, null, false),
                  new Parameter(-1, T(TokenKind.Identifier, "row"), new LongType(), noFlags, null, false),
                  new Parameter(-1, T(TokenKind.Identifier, "col"), new LongType(), noFlags, null, false),
                  new Parameter(-1, T(TokenKind.Identifier, "value"), new DoubleType(), noFlags, null, false)],
-                new LongType(), TokenKind.MatrixSetValue),
+                new ArrayType(new DoubleType(), 2), TokenKind.MatrixSetValue),
 
             new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.MatrixGetValue, "GETVALUE"),
-                [new Parameter(-1, T(TokenKind.Identifier, "handle"), new LongType(), noFlags, null, false),
+                [new Parameter(-1, T(TokenKind.Identifier, "handle"), new AnyType(), noFlags, null, false),
                  new Parameter(-1, T(TokenKind.Identifier, "row"), new LongType(), noFlags, null, false),
                  new Parameter(-1, T(TokenKind.Identifier, "col"), new LongType(), noFlags, null, false)],
                 new DoubleType(), TokenKind.MatrixGetValue),

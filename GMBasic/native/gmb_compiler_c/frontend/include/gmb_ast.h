@@ -295,6 +295,7 @@ struct gmb_stmt {
     uint8_t* param_fn_has_ret;
     char* func_ret_type;    /* clausola AS di ritorno (STRING/LONG/...) o NULL (numero) */
     int func_ret_ndims;     /* rank esplicito del ritorno: T(,) = 2, T(,,) = 3 (0/1 = 1D) */
+    int dim_ndims;          /* DIM v AS MATRIX OF (assi..., T): rank esplicito (0 = non matrice) */
     char* func_ret_tuple_fields; /* AS (nome AS T, ...): CSV dei nomi campo ("lo,hi"; indice vuoto
                                   * = anonimo) o NULL. Permette a DIM x = Fn() di risolvere
                                   * x.nome -> x(indice) nel chiamante (resolve_tuple_field). */

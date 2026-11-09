@@ -50,13 +50,27 @@ internal sealed partial class PCodeProcessor
         return HandleOf(newId);
     }
 
-    private static long ToLongHandle(object?[] args, int index)
+    private long ToLongHandle(object?[] args, int index)
     {
         if (index >= args.Length || args[index] == null)
             return 0;
+        // Ponte handle↔valore (ADR-MATRIX-Valore §5): un valore MATRIX OF (double[,]) viene
+        // registrato come handle per le funzioni storiche MATRIX.*.
+        if (args[index] is double[,] matrix) return StoreLinMatHandle(matrix);
         if (args[index] is double d) return (long)d;
         if (args[index] is int i) return i;
         return 0;
+    }
+
+    /// <summary>Registra un valore matrice e ritorna l'id handle (long) — usato dal ponte
+    /// handle↔valore; StoreLinMat ritorna l'oggetto handle, qui serve l'id nudo.</summary>
+    private long StoreLinMatHandle(double[,] data)
+    {
+        var m = global::MathNet.Numerics.LinearAlgebra.Double.DenseMatrix.Create(
+            data.GetLength(0), data.GetLength(1), (r, c) => data[r, c]);
+        var id = Interlocked.Increment(ref _nextLinearMatrixId);
+        _linMatrices[id] = m;
+        return id;
     }
 
     private static double ToDouble(object?[] args, int index)
@@ -219,6 +233,7 @@ internal sealed partial class PCodeProcessor
         {
             var id = argument switch
             {
+                double[,] data => StoreLinMatHandle(data),
                 double value => (long)value,
                 long value => value,
                 int value => value,
@@ -236,15 +251,11 @@ internal sealed partial class PCodeProcessor
     {
         var rows = Convert.ToInt32(args.Length > 0 ? args[0] : 4);
         var cols = Convert.ToInt32(args.Length > 1 ? args[1] : 4);
-        // Identita' rettangolare: diagonale 1 sui primi min(rows, cols) elementi.
-        // Prima si costruiva DenseIdentity(max) + SubMatrix(0, 0, rows, cols): la firma
-        // MathNet e' SubMatrix(rowIndex, rowCount, columnIndex, columnCount), quindi per
-        // matrici non quadrate il risultato era 0 righe (divergenza da IL/VM-C/C99).
-        var m = global::MathNet.Numerics.LinearAlgebra.Matrix<double>.Build.Dense(rows, cols, 0.0);
-        for (var i = 0; i < Math.Min(rows, cols); i++) m[i, i] = 1.0;
-        var newId = Interlocked.Increment(ref _nextLinearMatrixId);
-        _linMatrices[newId] = m;
-        return HandleOf(newId);
+        // MATRIX.CREATE a VALORE (F1): rank-2 contigua, identità sui primi min(rows,cols).
+        // Il tipo del linguaggio è MATRIX OF (INT,INT,DOUBLE): niente handle nel registry.
+        var arr = new double[rows, cols];
+        for (var i = 0; i < Math.Min(rows, cols); i++) arr[i, i] = 1.0;
+        return arr;
     }
 
     private global::MathNet.Numerics.LinearAlgebra.Vector<double>? VecById(object?[] args, int i)
@@ -1128,14 +1139,29 @@ internal sealed partial class PCodeProcessor
 
     private object? LuMatrixSetValue(object?[] args)
     {
+        // Valore MATRIX OF: mutazione diretta (visibile al chiamante), niente registry.
+        if (args.Length > 0 && args[0] is double[,] dm)
+        {
+            var r = (int)SafeDouble(args.Length > 1 ? args[1] : null);
+            var c = (int)SafeDouble(args.Length > 2 ? args[2] : null);
+            if (r >= 0 && r < dm.GetLength(0) && c >= 0 && c < dm.GetLength(1))
+                dm[r, c] = SafeDouble(args.Length > 3 ? args[3] : null);
+            return dm;
+        }
         var id = ToLongHandle(args, 0);
         if (!_linMatrices.TryGetValue(id, out var m)) return null;
         m[(int)SafeDouble(args[1]), (int)SafeDouble(args[2])] = SafeDouble(args[3]);
-        return HandleOf(id);
+        return m.ToArray();
     }
 
     private object? LuMatrixGetValue(object?[] args)
     {
+        if (args.Length > 0 && args[0] is double[,] dm)
+        {
+            var r = (int)SafeDouble(args.Length > 1 ? args[1] : null);
+            var c = (int)SafeDouble(args.Length > 2 ? args[2] : null);
+            return r >= 0 && r < dm.GetLength(0) && c >= 0 && c < dm.GetLength(1) ? dm[r, c] : 0.0;
+        }
         var id = ToLongHandle(args, 0);
         if (!_linMatrices.TryGetValue(id, out var m)) return null;
         return m[(int)SafeDouble(args[1]), (int)SafeDouble(args[2])];

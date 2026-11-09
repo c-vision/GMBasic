@@ -3140,6 +3140,19 @@ if (gmb_tk_rem_vari_in(t->kind)) {
                    PAROLA (lexeme che inizia per lettera/underscore) come tipo. */
                 if (at->lexeme && (at->lexeme[0] == '_' || isalpha((unsigned char)at->lexeme[0]))) {
                     gmb_p_adv(p);   /* AS */
+                    /* `AS MATRIX OF (assi…, T)`: DIM di una matrice rank-n (double* + __bK).
+                     * Il cursore resta DOPO la `)` (gmb_parse_matrix_of consuma tutto). */
+                    if (gmb_p_cur(p) && gmb_p_cur(p)->kind == GMB_TOK_Matrix) {
+                        const gmb_token_t* vt = NULL;
+                        int axes = gmb_parse_matrix_of(p, &vt);
+                        if (axes >= 2 && vt && vt->lexeme) {
+                            size_t eln = (size_t)vt->length < 31 ? (size_t)vt->length : 31;
+                            memcpy(tb, vt->lexeme, eln); tb[eln] = 0;
+                            dk0 = (vt->kind == GMB_TOK_Identifier || vt->kind == GMB_TOK_Unknown) ? (gmb_tokenkind_t)0 : vt->kind;
+                            s->dim_ndims = axes;
+                        }
+                        goto dim_type_done;
+                    }
                     /* `AS ARRAY OF T`: il tipo dichiarato è l'ELEMENTO T; il rank viene
                      * dagli assi del DIM (mai un array annidato: ARRAY OF ARRAY non esiste). */
                     if (gmb_p_cur(p) && (gmb_p_cur(p)->kind == GMB_TOK_Array || gmb_p_tok_is_keyword(gmb_p_cur(p), "Array"))) {
@@ -3153,6 +3166,7 @@ if (gmb_tk_rem_vari_in(t->kind)) {
                         }
                     }
                     gmb_p_adv(p);   /* nome tipo */
+dim_type_done:
                     /* Tipo QUALIFICATO `AS NS.Cls` (es. AGENTS.AgentHandle): il C99Native è
                      * monofile e registra le classi col nome nudo (NAMESPACE è no-op) → si
                      * usa l'ULTIMO segmento dopo il punto come dim_type. Bug 2026-09-03: il

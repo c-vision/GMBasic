@@ -42,9 +42,9 @@ SUB Main()
   Y = {{0, 0}}
   DIM pd() = SPATIAL.PDIST(X, "euclidean")
   PRINT "pdist0    ="; pd(0)
-  cdm = SPATIAL.CDIST(X, Y, "euclidean")
+  DIM cdm = SPATIAL.CDIST(X, Y, "euclidean")
   PRINT "cdist10   ="; MATRIX.GETVALUE(cdm, 1, 0)
-  dm = SPATIAL.DISTANCEMATRIX(X, Y)
+  DIM dm = SPATIAL.DISTANCEMATRIX(X, Y)
   PRINT "distmat10 ="; MATRIX.GETVALUE(dm, 1, 0)
 
   ' rfft/irfft: cos(2πi/8), ricostruzione
