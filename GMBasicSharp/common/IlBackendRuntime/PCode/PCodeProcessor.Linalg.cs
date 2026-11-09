@@ -158,9 +158,9 @@ internal sealed partial class PCodeProcessor
             case BuiltInFunction.MATRIXARGMIN:
             { var (row, column) = LuSimd(args).ArgMin(); return new long[] { row, column }; }
             case BuiltInFunction.MATRIXSLICE:
-                return StoreSimd(LuSimd(args).Slice(checked((int)ToDouble(args, 1)), checked((int)ToDouble(args, 2)), checked((int)ToDouble(args, 3)), checked((int)ToDouble(args, 4))));
+                return SimdToRect(LuSimd(args).Slice(checked((int)ToDouble(args, 1)), checked((int)ToDouble(args, 2)), checked((int)ToDouble(args, 3)), checked((int)ToDouble(args, 4))));
             case BuiltInFunction.MATRIXRESHAPE:
-                return StoreSimd(LuSimd(args).Reshape(checked((int)ToDouble(args, 1)), checked((int)ToDouble(args, 2))));
+                return SimdToRect(LuSimd(args).Reshape(checked((int)ToDouble(args, 1)), checked((int)ToDouble(args, 2))));
             case BuiltInFunction.MATRIXCONCATROWS:
                 return StoreSimd(CommonLib.SimdMatrix.ConcatRows(LuSimdAt(args, 0), LuSimdAt(args, 1)));
             case BuiltInFunction.MATRIXCONCATCOLS:
@@ -185,7 +185,7 @@ internal sealed partial class PCodeProcessor
             case BuiltInFunction.MATRIXASJSON: return LuSimd(args).ToJson();
             case BuiltInFunction.MATRIXROWCOUNT: return (long)LuSimd(args).Rows;
             case BuiltInFunction.MATRIXCOLUMNCOUNT: return (long)LuSimd(args).Cols;
-            case BuiltInFunction.MATRIXCLONE: return StoreSimd(LuSimd(args).Clone());
+            case BuiltInFunction.MATRIXCLONE: return SimdToRect(LuSimd(args).Clone());
             case BuiltInFunction.MATRIXMULTIPLYVECTOR: return LuSimd(args).Multiply(ToDoubleArr(args[1]));
             case BuiltInFunction.MATRIXMULTIPLYLEFTVECTOR: return LuSimd(args).MultiplyFromLeft(ToDoubleArr(args[1]));
             case BuiltInFunction.MATRIXMULTIPLY:
@@ -370,9 +370,17 @@ internal sealed partial class PCodeProcessor
         var id = ToLongHandle(args, 0);
         if (!_linMatrices.TryGetValue(id, out var m))
             return null;
-        var newId = Interlocked.Increment(ref _nextLinearMatrixId);
-        _linMatrices[newId] = m.Transpose();
-        return HandleOf(newId);
+        return m.Transpose().ToArray();
+    }
+
+    /// <summary>Converte un SimdMatrix nel valore rank-2 (double[,]) del linguaggio.</summary>
+    private static double[,] SimdToRect(CommonLib.SimdMatrix m)
+    {
+        var result = new double[m.Rows, m.Cols];
+        for (var row = 0; row < m.Rows; row++)
+            for (var column = 0; column < m.Cols; column++)
+                result[row, column] = m[row, column];
+        return result;
     }
 
     private object? LuMatrixInverse(PCodeTask task, object?[] args) => RunLinOp(task, ToLongHandle(args, 0), m => m.Inverse());

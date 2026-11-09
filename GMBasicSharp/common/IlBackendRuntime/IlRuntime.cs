@@ -2193,6 +2193,51 @@ public static partial class IlRuntime
     public static long MatrixRowCount(long handle) => SimdMatrix(handle).Rows;
     public static long MatrixColumnCount(long handle) => SimdMatrix(handle).Cols;
     public static long MatrixClone(long handle) => StoreSimdMatrix(SimdMatrix(handle).Clone());
+
+    // ── F2: valori matrice restituiti (TRANSPOSE/SLICE/RESHAPE/CLONEMATRIX) ──────────
+    public static double[,] MatrixTransposeValue(long handle)
+    {
+        var matrix = Matrix(handle);
+        var result = new double[matrix.GetLength(1), matrix.GetLength(0)];
+        for (var row = 0; row < matrix.GetLength(0); row++)
+            for (var column = 0; column < matrix.GetLength(1); column++)
+                result[column, row] = matrix[row, column];
+        return result;
+    }
+
+    /// <summary>SLICE con end ESCLUSIVO (canone SimdMatrix.Slice: 0..2 su 3 righe = 2 righe).</summary>
+    public static double[,] MatrixSliceValue(long handle, long rowStart, long rowEnd, long colStart, long colEnd)
+    {
+        var matrix = Matrix(handle);
+        int rows = matrix.GetLength(0), cols = matrix.GetLength(1);
+        int r0 = (int)Math.Max(0, Math.Min(rows, rowStart));
+        int r1 = (int)Math.Max(r0, Math.Min(rows, rowEnd));
+        int c0 = (int)Math.Max(0, Math.Min(cols, colStart));
+        int c1 = (int)Math.Max(c0, Math.Min(cols, colEnd));
+        var result = new double[r1 - r0, c1 - c0];
+        for (var row = r0; row < r1; row++)
+            for (var column = c0; column < c1; column++)
+                result[row - r0, column - c0] = matrix[row, column];
+        return result;
+    }
+
+    public static double[,] MatrixReshapeValue(long handle, long rows, long columns)
+    {
+        var matrix = Matrix(handle);
+        int total = matrix.GetLength(0) * matrix.GetLength(1);
+        int nr = checked((int)rows), nc = checked((int)columns);
+        if (nr <= 0 || nc <= 0 || nr * nc != total)
+            throw new ArgumentException($"RESHAPE: {nr}x{nc} non compatibile con {matrix.GetLength(0)}x{matrix.GetLength(1)}.");
+        var result = new double[nr, nc];
+        int index = 0;
+        for (var row = 0; row < matrix.GetLength(0); row++)
+            for (var column = 0; column < matrix.GetLength(1); column++)
+                result[index / nc, index++ % nc] = matrix[row, column];
+        return result;
+    }
+
+    public static double[,] MatrixCloneValue(long handle) => (double[,])Matrix(handle).Clone();
+
     public static double[] MatrixMultiplyVector(long handle, double[] values) => SimdMatrix(handle).Multiply(values);
     public static double[] MatrixMultiplyLeftVector(long handle, double[] values) => SimdMatrix(handle).MultiplyFromLeft(values);
     private static string ResolveMatrixPath(string path)

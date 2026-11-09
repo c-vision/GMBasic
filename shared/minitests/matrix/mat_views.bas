@@ -1,0 +1,15 @@
+' EXPECT: t10= 5|s= 2  ,  2|r= 1  ,  9|c01= 5
+' MATRIX a valore (F2): TRANSPOSE/SLICE/RESHAPE/CLONEMATRIX restituiscono il
+' valore MATRIX OF. SLICE ha end ESCLUSIVO (0..2 su 3 righe = 2 righe).
+SUB Main()
+  DIM m = MATRIX.CREATE(3, 3)
+  m = MATRIX.SETVALUE(m, 0, 1, 5)
+  DIM t = MATRIX.TRANSPOSE(m)
+  PRINT "t10="; MATRIX.GETVALUE(t, 1, 0)
+  DIM s = MATRIX.SLICE(m, 0, 2, 0, 2)
+  PRINT "s="; MATRIX.ROWCOUNT(s); " , "; MATRIX.COLUMNCOUNT(s)
+  DIM r = MATRIX.RESHAPE(m, 1, 9)
+  PRINT "r="; MATRIX.ROWCOUNT(r); " , "; MATRIX.COLUMNCOUNT(r)
+  DIM c = MATRIX.CLONEMATRIX(m)
+  PRINT "c01="; MATRIX.GETVALUE(c, 0, 1)
+END SUB

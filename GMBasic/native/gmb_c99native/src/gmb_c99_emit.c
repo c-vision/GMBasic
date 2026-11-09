@@ -3524,6 +3524,13 @@ static void reg_let_assign(ctx_t* c, gmb_stmt_t* s, vars_t* scope) {
         }
         if (s->target && !use_global(c, scope, s->target)) {
             var_t* tv = vars_add(scope, s->target, suffix_type(s->target));
+            /* F2: `x = MATRIX.TRANSPOSE/SLICE/RESHAPE/CLONEMATRIX(...)` su variabile
+             * implicita → matrice rank-2 nativa (double* + __bK). */
+            if (s->value && s->value->kind == GMB_EXPR_CALL
+                && (s->value->tk == GMB_TOK_Transpose || s->value->tk == GMB_TOK_MatrixSlice
+                    || s->value->tk == GMB_TOK_MatrixReshape || s->value->tk == GMB_TOK_MatrixClone)) {
+                tv->is_array = 1; tv->ndims = 2; tv->matrix = 0; tv->jagged = 0; tv->dyn_len = 0;
+            }
             /* v = <getter RDD (TY_VAL)> → var TY_VAL (gmb_val_t): il tipo si risolve a runtime. */
             if (s->value && etype(c, s->value) == TY_VAL && tv->type == TY_NUM && !s->value->var)
                 tv->type = TY_VAL;
@@ -3861,6 +3868,13 @@ if (s->dim_var) {            int ty = suffix_type(s->dim_var);
                 /* MATRIX.CREATE a VALORE (F1): il risultato è una matrice rank-2 nativa
                  * (double* + __b0/__b1), NON un handle. */
                 if (s->dim_init->tk == GMB_TOK_LinAlgMatrixCreateFunc) {
+                    v->is_array = 1; v->ndims = 2; v->matrix = 0; v->jagged = 0; v->dyn_len = 0;
+                }
+                /* F2: TRANSPOSE/SLICE/RESHAPE/CLONEMATRIX → valore matrice rank-2. */
+                else if (s->dim_init->tk == GMB_TOK_Transpose
+                    || s->dim_init->tk == GMB_TOK_MatrixSlice
+                    || s->dim_init->tk == GMB_TOK_MatrixReshape
+                    || s->dim_init->tk == GMB_TOK_MatrixClone) {
                     v->is_array = 1; v->ndims = 2; v->matrix = 0; v->jagged = 0; v->dyn_len = 0;
                 }
                 /* LINALG.FACTOR(decomp, name): handle matrice (int64_t). */
@@ -15875,6 +15889,7 @@ static void emit_arr_literal_assign(ctx_t* c, const char* target, gmb_expr_t* li
 }
 
 static void emit_matrix_create_value(ctx_t* c, var_t* dv, gmb_expr_t* call);
+static void emit_matrix_from_handle_result(ctx_t* c, var_t* dv, gmb_expr_t* call);
  static void emit_assignment(ctx_t* c, const char* target, gmb_expr_t* value, int line, int from_dim) {
       if (target && !strchr(target, '.') && gmb_c99_try_emit_dyn_write(c, target, value)) return;
       /* `m = MATRIX.CREATE(r,c)` (non-DIM) su una matrice nativa: alloca il valore
@@ -15883,6 +15898,15 @@ static void emit_matrix_create_value(ctx_t* c, var_t* dv, gmb_expr_t* call);
           var_t* mv = lookup_var(c, target);
           if (mv && mv->is_array && mv->ndims >= 2 && !mv->jagged && !mv->matrix && !mv->matrix_handle) {
               emit_matrix_create_value(c, mv, value);
+              return;
+          }
+      }
+      if (target && value && !strchr(target, '.') && (value->tk == GMB_TOK_Transpose
+          || value->tk == GMB_TOK_MatrixSlice || value->tk == GMB_TOK_MatrixReshape
+          || value->tk == GMB_TOK_MatrixClone)) {
+          var_t* mv = lookup_var(c, target);
+          if (mv && mv->is_array && mv->ndims >= 2 && !mv->jagged && !mv->matrix && !mv->matrix_handle) {
+              emit_matrix_from_handle_result(c, mv, value);
               return;
           }
       }
@@ -18885,6 +18909,40 @@ static void emit_matrix_create_value(ctx_t* c, var_t* dv, gmb_expr_t* call) {
     ind(c); sb_put(&c->out, "  } }\n");
 }
 
+static void emit_matrix_from_handle_result(ctx_t* c, var_t* dv, gmb_expr_t* call) {
+    /* F2: TRANSPOSE/SLICE/RESHAPE/CLONEMATRIX restituiscono un VALORE matrice, ma
+     * l'emitter espressione produce ancora l'handle: qui l'handle viene copiato nel
+     * buffer flat nativo della variabile (bounds + elementi). */
+    dv->is_array = 1; dv->ndims = 2; dv->matrix = 0; dv->jagged = 0; dv->dyn_len = 0;
+    static int mfh_uid = 0;
+    int mid = ++mfh_uid;
+    ind(c);
+    sb_printf(&c->out, "{ int64_t __mfh%d = (int64_t)(", mid);
+    emit_expr(c, call);
+    sb_put(&c->out, ");\n");
+    ind(c);
+    sb_printf(&c->out, "  int __mfh%d_r = gmb_matrix_rows(__mfh%d), __mfh%d_c = gmb_matrix_cols(__mfh%d);\n",
+              mid, mid, mid, mid);
+    ind(c);
+    sb_printf(&c->out, "  if (__mfh%d > 0 && __mfh%d_r > 0 && __mfh%d_c > 0) {\n", mid, mid, mid);
+    c->indent++;
+    ind(c); sb_put(&c->out, "  free("); emit_var_ref(c, dv); sb_put(&c->out, "); ");
+    emit_var_ref(c, dv);
+    sb_printf(&c->out, " = (gmb_double_t*)calloc((size_t)(__mfh%d_r * __mfh%d_c), sizeof(gmb_double_t));\n",
+              mid, mid);
+    ind(c); sb_bound_var(&c->out, dv, 0); sb_printf(&c->out, " = __mfh%d_r - 1;\n", mid);
+    ind(c); sb_bound_var(&c->out, dv, 1); sb_printf(&c->out, " = __mfh%d_c - 1;\n", mid);
+    ind(c);
+    sb_printf(&c->out, "  for (int __i = 0; __i < __mfh%d_r; __i++)\n", mid);
+    ind(c);
+    sb_printf(&c->out, "    for (int __j = 0; __j < __mfh%d_c; __j++)\n", mid);
+    ind(c); sb_put(&c->out, "      "); emit_var_ref(c, dv);
+    sb_printf(&c->out, "[__i * __mfh%d_c + __j] = gmb_matrix_get(__mfh%d, __i, __j);\n", mid, mid);
+    c->indent--;
+    ind(c); sb_put(&c->out, "  }\n");
+    ind(c); sb_printf(&c->out, "  gmb_matrix_free(__mfh%d); }\n", mid);
+}
+
 static void st_dim(ctx_t* c, gmb_stmt_t* s) {
  {
          if (s->dim_is_dynamic) { gmb_c99_emit_dyn_declare(c, s); return; }
@@ -18914,6 +18972,13 @@ static void st_dim(ctx_t* c, gmb_stmt_t* s) {
          }
          if (dv && s->dim_init && s->dim_init->tk == GMB_TOK_LinAlgMatrixCreateFunc) {
              emit_matrix_create_value(c, dv, s->dim_init);
+             return;
+         }
+         if (dv && s->dim_init && (s->dim_init->tk == GMB_TOK_Transpose
+             || s->dim_init->tk == GMB_TOK_MatrixSlice
+             || s->dim_init->tk == GMB_TOK_MatrixReshape
+             || s->dim_init->tk == GMB_TOK_MatrixClone)) {
+             emit_matrix_from_handle_result(c, dv, s->dim_init);
              return;
          }
          if (dv && dv->matrix_handle) {

@@ -820,7 +820,7 @@ public sealed partial class IlProgramCompiler
         if (expr.Args.Length != 5) throw new NotSupportedException("Backend IL: MATRIX.SLICE richiede matrice/handle e quattro indici.");
         EmitLinAlgHandleArgument(expr.Args[0]);
         for (var i = 1; i < 5; i++) EmitInt64Argument(expr.Args[i]);
-        _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.MatrixSlice)));
+        _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.MatrixSliceValue)));
     }
 
     private void EmitMatrixReshapeCall(BuiltinFunctionCallExpr expr)
@@ -828,7 +828,16 @@ public sealed partial class IlProgramCompiler
         if (expr.Args.Length != 3) throw new NotSupportedException("Backend IL: MATRIX.RESHAPE richiede matrice/handle, righe e colonne.");
         EmitLinAlgHandleArgument(expr.Args[0]);
         EmitInt64Argument(expr.Args[1]); EmitInt64Argument(expr.Args[2]);
-        _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.MatrixReshape)));
+        _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.MatrixReshapeValue)));
+    }
+
+    /// <summary>Funzione matrice→matrice (TRANSPOSE/CLONEMATRIX): restituisce il VALORE
+    /// rank-2 (F2), accettando un valore o un handle.</summary>
+    private void EmitLinAlgUnaryValueCall(BuiltinFunctionCallExpr expr, MethodInfo method)
+    {
+        if (expr.Args.Length != 1) throw new NotSupportedException($"Backend IL: {expr.OriginalToken.Lexeme} richiede 1 argomento.");
+        EmitLinAlgHandleArgument(expr.Args[0]);
+        _il.Emit(OpCodes.Call, method);
     }
 
     private void EmitMatrixBroadcastCall(BuiltinFunctionCallExpr expr, string methodName)

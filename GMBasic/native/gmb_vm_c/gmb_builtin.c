@@ -1463,6 +1463,22 @@ static int64_t vm_matrix_handle_arg(const gmb_stack_entry_t* a)
     }
     return (int64_t)(a ? a->num : -1);
 }
+
+/* Pubblica un handle matrice come VALORE rank-2 (lista flat + ndims/dim_upper).
+ * Usato dalle funzioni F2 che restituiscono matrici (TRANSPOSE/SLICE/RESHAPE/CLONE). */
+static void vm_matrix_set_value_result(int64_t h, gmb_builtin_out_t* bout)
+{
+    int rows = gmb_matrix_rows(h), cols = gmb_matrix_cols(h);
+    if (rows <= 0 || cols <= 0) { bout->is_num = 0; bout->result_ref = NULL; return; }
+    gmb_obj_shared_val_t* out = gmb_shared_list_new();
+    if (!out) { bout->is_num = 0; bout->result_ref = NULL; return; }
+    out->is_array = 1; out->ndims = 2;
+    out->dim_upper[0] = rows - 1; out->dim_upper[1] = cols - 1;
+    gmb_list_resize(out->list, (size_t)rows * (size_t)cols, 0);
+    for (int i = 0; i < rows * cols; i++)
+        out->list->items[i] = gmb_make_val_double(gmb_matrix_get(h, i / cols, i % cols));
+    bout->is_num = 0; bout->result_ref = (gmb_obj_t*)out; bout->result_ref_bt = GMB_BT_OBJECT;
+}
 static void gmb_bf_823(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
 {
         {
@@ -4946,7 +4962,8 @@ static void gmb_bf_610(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func
 {
         {
             int64_t h = gmb_matrix_transpose(vm_matrix_handle_arg(argc >= 1 ? &args[0] : NULL));
-            bout->result = (double)h;
+            vm_matrix_set_value_result(h, bout);
+            gmb_matrix_free(h);
         }
 }
 static void gmb_bf_611(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
@@ -11103,12 +11120,16 @@ static void gmb_bf_796_c810(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int
 static void gmb_bf_796_c811(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
 {
     (void)vm; (void)task; (void)func_code;
-    bout->result = (double)gmb_matrix_slice(vm_matrix_handle_arg(argc >= 1 ? &args[0] : NULL), argc >= 2 ? (int)args[1].num : 0, argc >= 3 ? (int)args[2].num : 0, argc >= 4 ? (int)args[3].num : 0, argc >= 5 ? (int)args[4].num : 0);
+    int64_t __ms = gmb_matrix_slice(vm_matrix_handle_arg(argc >= 1 ? &args[0] : NULL), argc >= 2 ? (int)args[1].num : 0, argc >= 3 ? (int)args[2].num : 0, argc >= 4 ? (int)args[3].num : 0, argc >= 5 ? (int)args[4].num : 0);
+    vm_matrix_set_value_result(__ms, bout);
+    gmb_matrix_free(__ms);
 }
 static void gmb_bf_796_c812(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
 {
     (void)vm; (void)task; (void)func_code;
-    bout->result = (double)gmb_matrix_reshape(vm_matrix_handle_arg(argc >= 1 ? &args[0] : NULL), argc >= 2 ? (int)args[1].num : 0, argc >= 3 ? (int)args[2].num : 0);
+    int64_t __mr = gmb_matrix_reshape(vm_matrix_handle_arg(argc >= 1 ? &args[0] : NULL), argc >= 2 ? (int)args[1].num : 0, argc >= 3 ? (int)args[2].num : 0);
+    vm_matrix_set_value_result(__mr, bout);
+    gmb_matrix_free(__mr);
 }
 static void gmb_bf_796_c813(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
 {
@@ -11163,7 +11184,9 @@ static void gmb_bf_796_c822(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int
 static void gmb_bf_796_c825(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
 {
     (void)vm; (void)task; (void)func_code;
-    bout->result = (double)gmb_matrix_clone(vm_matrix_handle_arg(argc >= 1 ? &args[0] : NULL));
+    int64_t __mc = gmb_matrix_clone(vm_matrix_handle_arg(argc >= 1 ? &args[0] : NULL));
+    vm_matrix_set_value_result(__mc, bout);
+    gmb_matrix_free(__mc);
 }
 static void gmb_bf_796_c826(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
 {

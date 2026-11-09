@@ -542,7 +542,7 @@ public sealed partial class IlProgramCompiler
             case TokenKind.MatrixAsJson: EmitLinAlgUnaryHandleCall(expr, RuntimeMethod(nameof(IlRuntime.MatrixAsJson)), vector: false); break;
             case TokenKind.MatrixRowCount: EmitLinAlgUnaryHandleCall(expr, RuntimeMethod(nameof(IlRuntime.MatrixRowCount)), vector: false); break;
             case TokenKind.MatrixColumnCount: EmitLinAlgUnaryHandleCall(expr, RuntimeMethod(nameof(IlRuntime.MatrixColumnCount)), vector: false); break;
-            case TokenKind.MatrixClone: EmitLinAlgUnaryHandleCall(expr, RuntimeMethod(nameof(IlRuntime.MatrixClone)), vector: false); break;
+            case TokenKind.MatrixClone: EmitLinAlgUnaryValueCall(expr, RuntimeMethod(nameof(IlRuntime.MatrixCloneValue))); break;
             case TokenKind.MatrixMultiplyVector: EmitMatrixVectorProductCall(expr, nameof(IlRuntime.MatrixMultiplyVector)); break;
             case TokenKind.MatrixMultiplyLeftVector: EmitMatrixVectorProductCall(expr, nameof(IlRuntime.MatrixMultiplyLeftVector)); break;
             case TokenKind.MatrixLoadCsv: EmitStringUnaryBuiltinCall(expr, RuntimeMethod(nameof(IlRuntime.MatrixLoadCsv))); break;
@@ -701,7 +701,7 @@ public sealed partial class IlProgramCompiler
             case TokenKind.LinAlgVectorCreateFunc: EmitLinAlgVectorCreateCall(expr); break;
             case TokenKind.LinAlgMultiplyFunc or TokenKind.Multiply: EmitLinAlgHandlePairCall(expr, nameof(IlRuntime.MatrixMultiply)); break;
             case TokenKind.LinAlgInverseFunc or TokenKind.Inverse: EmitLinAlgUnaryHandleCall(expr, RuntimeMethod(nameof(IlRuntime.MatrixInverse)), vector: false); break;
-            case TokenKind.LinAlgTransposeFunc or TokenKind.Transpose: EmitLinAlgUnaryHandleCall(expr, RuntimeMethod(nameof(IlRuntime.MatrixTranspose)), vector: false); break;
+            case TokenKind.LinAlgTransposeFunc or TokenKind.Transpose: EmitLinAlgUnaryValueCall(expr, RuntimeMethod(nameof(IlRuntime.MatrixTransposeValue))); break;
             case TokenKind.Determinant: EmitLinAlgUnaryHandleCall(expr, RuntimeMethod(nameof(IlRuntime.MatrixDeterminant)), vector: false); break;
             case TokenKind.MatrixPseudoInverse: EmitLinAlgUnaryHandleCall(expr, RuntimeMethod(nameof(IlRuntime.MatrixPseudoInverse)), vector: false); break;
             case TokenKind.MatrixExp: EmitLinAlgUnaryHandleCall(expr, RuntimeMethod(nameof(IlRuntime.MatrixExp)), vector: false); break;
