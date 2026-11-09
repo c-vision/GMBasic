@@ -1046,6 +1046,10 @@ int main(int argc, char** argv) {
     }
     for (int i = 2; i < argc; i++) {
         const char* a = argv[i];
+        /* `--`: da qui in poi sono argomenti del PROGRAMMA (solo `run`). Non sono
+         * opzioni del CLI: si inoltrano all'eseguibile così com'è il contratto di
+         * main(argc,argv) → COMMAND$/COMMANDCOUNT. */
+        if (!strcmp(a, "--")) { o.prog_argv = &argv[i + 1]; o.prog_argc = argc - (i + 1); break; }
         if (!strcmp(a, "--json")) { o.json = 1; continue; }
         if (!strcmp(a, "--strict")) { o.strict = 1; continue; }
         if (!strcmp(a, "--quiet") || !strcmp(a, "-q")) { o.quiet = 1; continue; }
@@ -1085,6 +1089,10 @@ int main(int argc, char** argv) {
         }
         fprintf(stderr, "gmb: opzione sconosciuta '%s'\n", a);
         gmb_cli_usage();
+        return 2;
+    }
+    if (o.prog_argc > 0 && strcmp(o.command, "run") != 0) {
+        fprintf(stderr, "gmb: gli argomenti dopo `--` valgono solo per `run` (comando: %s)\n", o.command);
         return 2;
     }
     /* minitests non ha un progetto: la radice è la suite stessa. */
@@ -1179,11 +1187,20 @@ int main(int argc, char** argv) {
             fprintf(stderr, "gmb run: %s è una libreria (LIBRARY), nessun entry point da eseguire\n", exe);
         } else {
             if (chdir(proj) != 0) { perror("gmb: chdir"); return 2; }
+            /* argv del PROGRAMMA: [exe, argomenti dopo `--`..., NULL]. Sono del programma:
+             * il CLI li ha solo separati dal proprio `--`, non interpretati. */
+            int pa = (o.prog_argc > 0) ? o.prog_argc : 0;
+            char** child = (char**)calloc((size_t)pa + 2, sizeof(char*));
+            if (!child) { perror("gmb: calloc"); return 2; }
+            child[0] = exe;
+            for (int k = 0; k < pa; k++) child[k + 1] = o.prog_argv[k];
+            child[pa + 1] = NULL;
             pid_t pid = fork();
             if (pid == 0) {
-                execl(exe, exe, (char*)NULL);
+                execv(exe, child);
                 _exit(127);
             }
+            free(child);
             if (pid < 0) { perror("gmb: fork"); return 6; }
             int st = 0;
             if (waitpid(pid, &st, 0) < 0) return 6;

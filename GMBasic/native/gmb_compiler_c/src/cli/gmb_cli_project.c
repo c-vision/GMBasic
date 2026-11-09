@@ -673,6 +673,9 @@ int build_project(const Options* o, const char* project, const char* entry,
         return 5;
     }
     free(log);
+    /* Il compilato è ESEGUIBILE per contratto, non per effetto collaterale di `cc`/umask:
+     * il bit di esecuzione si mette esplicitamente (0755) su ogni artefatto linkato. */
+    chmod(exe, 0755);
     /* Bundle di distribuzione: la dylib AI è SEMPRE in <out>/libs/<rid>/; `--libs` aggiunge
      * la chiusura (default), tutto/gruppi/nomi/componenti; `--plugins/--skills/--brains`
      * creano le sottocartelle. Per una LIBRARY il caricamento è dell'host: si salta. */

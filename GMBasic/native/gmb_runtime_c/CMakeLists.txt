@@ -412,6 +412,11 @@ foreach(_s IN LISTS GMB_ALL_SRCS)
   endif()
 endforeach()
 list(REMOVE_ITEM GMB_CORE_SRCS src/gmb_sql.c src/gmb_csv_vtab.c src/gmb_parquet_vtab.c)
+# gmb_widget_model.c = renderer a CELLE del modello unico: usa i gmb_*_render_line di
+# dominio (gmb_tui_slider/listbox/combobox/grid) e le primitive grafiche → è UI, non
+# core. Nel runtime MINIMO non si compila (un programma testuale non ha controlli).
+list(REMOVE_ITEM GMB_CORE_SRCS src/gmb_widget_model.c)
+list(APPEND GMB_UI_SRCS src/gmb_widget_model.c)
 # SPLIT core/AI — Windows: niente risoluzione dinamica dei simboli del core, quindi le
 # sorgenti AI restano nel core (link statico, come prima dello split) e il gateway (che
 # parla solo dlopen/LoadLibrary) non si compila: i simboli forti sono già qui.

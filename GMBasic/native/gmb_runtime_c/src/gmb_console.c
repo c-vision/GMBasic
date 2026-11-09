@@ -951,6 +951,9 @@ static char** g_cmd_argv = NULL;
 void gmb_set_command_args(int argc, char** argv) { g_cmd_argc = argc; g_cmd_argv = argv; }
 int gmb_command_count(void) { return g_cmd_argc > 0 ? g_cmd_argc - 1 : 0; }
 const char* gmb_command_arg(int i) { if (i >= 1 && i < g_cmd_argc && g_cmd_argv) return g_cmd_argv[i]; return ""; }
+/* argv[0]: percorso del PROGRAMMA in esecuzione (usato da BINPATH() per la cartella
+ * dell'eseguibile). Vuoto per un embedder senza argv. */
+const char* gmb_command_program(void) { return (g_cmd_argc > 0 && g_cmd_argv && g_cmd_argv[0]) ? g_cmd_argv[0] : ""; }
 
 /* ENV$(nome) / ENV.HAS(nome): lettura ESPLICITA dell'ambiente da parte del programma.
  * Il motore continua a usare il registro opzioni (AGENTS); qui non si imposta nulla. */
