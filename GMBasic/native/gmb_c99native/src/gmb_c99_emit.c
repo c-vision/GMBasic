@@ -646,6 +646,15 @@ static int expr_is_coll_list_value(ctx_t* c, gmb_expr_t* e) {
 }
 
 int etype(ctx_t* c, gmb_expr_t* e);   /* forward: usata qui sotto + emit_str_operand */
+/* Ombra di una VARIABILE LOCALE su un builtin che il parser marca per LESSEMA
+ * (`DIM rgb(3)` + `rgb(0)` → CALL con tk=GMB_TOK_Rgb): la call non produce il gmb_val_t
+ * del builtin (RGB → RgbaColor), ma l'elemento dell'array locale (DOUBLE). Stesso criterio
+ * del guard sui nomi qualificati in emit_call: nome NUDO + variabile dichiarata. */
+static int call_shadows_local_array(ctx_t* c, const gmb_expr_t* e) {
+    if (!e || e->kind != GMB_EXPR_CALL || !e->var || !e->var[0] || strchr(e->var, '.')) return 0;
+    if (e->ns && e->ns[0]) return 0;
+    return lookup_var(c, e->var) != NULL;
+}
 static int comp_src_is_str(ctx_t* c, gmb_expr_t* src);   /* forward: sorgente FOR di una comprehension produce stringhe */
 void emit_num_operand(ctx_t* c, gmb_expr_t* e) {
     /* TY_VAL (getter RDD/dinamico): in contesto NUMERICO → gmb_val_to_double. */
@@ -2517,7 +2526,7 @@ int etype(ctx_t* c, gmb_expr_t* e) {
      * dict, COLLIDEBATCH → lista): tipo DINAMICO. Senza, `DIM c AS RGBA = RGB(...)`
      * avvolgeva il dict in gmb_make_val_double((double)(...)) → C invalido. */
     if (e->kind == GMB_EXPR_CALL && (e->tk == GMB_TOK_Rgb || e->tk == GMB_TOK_ScreenInfo
-        || e->tk == GMB_TOK_CollideBatch)) return TY_VAL;
+        || e->tk == GMB_TOK_CollideBatch) && !call_shadows_local_array(c, e)) return TY_VAL;
     /* Getter RDD (RDD.GETFIELD/OLDVAL): tipo DINAMICO (numero se il campo è numerico, altrimenti
      * stringa) → TY_VAL. Le coercizioni (str/num/PRINT/assegnazione/confronto) lo risolvono. */
     if (e->kind == GMB_EXPR_CALL && (e->tk == GMB_TOK_RddGetField || e->tk == GMB_TOK_RddOldVal)) return TY_VAL;
@@ -17404,7 +17413,8 @@ static const char* http_mw_wrapper_for(ctx_t* c, fn_info_t* fn) {
 static int print_container_kind(ctx_t* c, gmb_expr_t* e) {
     if (!e) return 0;
     /* builtin che ritornano gmb_val_t (RgbaColor/DisplayMode/lista) → stampa val, non double */
-    if (e->kind == GMB_EXPR_CALL && (e->tk == GMB_TOK_Rgb || e->tk == GMB_TOK_ScreenInfo || e->tk == GMB_TOK_CollideBatch)) return 1;
+    if (e->kind == GMB_EXPR_CALL && (e->tk == GMB_TOK_Rgb || e->tk == GMB_TOK_ScreenInfo || e->tk == GMB_TOK_CollideBatch)
+        && !call_shadows_local_array(c, e)) return 1;
     if (e->kind != GMB_EXPR_VAR || !e->var) return 0;
     var_t* v = lookup_var(c, e->var);
     if (!v) return 0;
