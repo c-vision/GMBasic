@@ -31637,10 +31637,16 @@ static void emit_ffi_wrapper(ctx_t* c, fn_info_t* fn, const char* vkey) {
             emit_ident(c, s->func_params[i]);
             sb_put(&c->out, ", gmb_int_t ");
             sb_bound_ident(&c->out, s->func_params[i], 0);
-            /* estensioni automatiche: bound delle dimensioni successive (rango R → __b1..__b(R-1)) */
-            for (int _x = 1; _x < FFI_RANK(i); _x++) {
-                sb_put(&c->out, ", gmb_int_t ");
-                sb_bound_ident(&c->out, s->func_params[i], _x);
+            /* estensioni automatiche: bound delle dimensioni successive (rango R → __b1..
+             * __b(R-1)). Per una DECLARE con `MATRIX OF` il rango viene da param_ndims
+             * (il call-site BASIC passa tutti i bound), anche se l'ABI nativa non li usa. */
+            {
+                int _rank_decl = (s->param_ndims && s->param_ndims[i] >= 2) ? s->param_ndims[i] : 1;
+                int _rank_max = FFI_RANK(i) > _rank_decl ? FFI_RANK(i) : _rank_decl;
+                for (int _x = 1; _x < _rank_max; _x++) {
+                    sb_put(&c->out, ", gmb_int_t ");
+                    sb_bound_ident(&c->out, s->func_params[i], _x);
+                }
             }
             continue;
         }
