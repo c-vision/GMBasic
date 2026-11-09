@@ -5,7 +5,7 @@ public static partial class IlRuntime
     public static double FfiCall(string lib, string symbol, object?[] args)
     {
         var ffi = Current.Ffi;
-        var handle = ffi.LoadLibrary(lib);
+        var handle = LoadFfiLibrary(lib);
         var fnPtr = ResolveFfiSymbol(handle, lib, symbol);
         var result = ffi.CallFunction(fnPtr, args);
         return Convert.ToDouble(result ?? 0.0);
@@ -16,7 +16,7 @@ public static partial class IlRuntime
     public static double FfiCallTyped(string lib, string symbol, object?[] args, int kind)
     {
         var ffi = Current.Ffi;
-        var handle = ffi.LoadLibrary(lib);
+        var handle = LoadFfiLibrary(lib);
         var fnPtr = ResolveFfiSymbol(handle, lib, symbol);
         var result = ffi.CallFunctionTyped(fnPtr, args, (byte)kind);
         return Convert.ToDouble(result ?? 0.0);
@@ -45,7 +45,7 @@ public static partial class IlRuntime
     public static double FfiCallTypedArr(string lib, string symbol, object?[] args, int kind, long arrayMask, long arrayElemIntMask, long stringMask, long byrefScalarMask = 0, long byrefScalarElemIntMask = 0, long scalarKindMask = 0)
     {
         var ffi = Current.Ffi;
-        var handle = ffi.LoadLibrary(lib);
+        var handle = LoadFfiLibrary(lib);
         var fnPtr = ResolveFfiSymbol(handle, lib, symbol);
         var result = ffi.CallFunctionTypedArr(fnPtr, args, kind, arrayMask, arrayElemIntMask, stringMask, retIsString: false, byrefScalarMask, byrefScalarElemIntMask, scalarKindMask: scalarKindMask);
         return Convert.ToDouble(result ?? 0.0);
@@ -60,7 +60,7 @@ public static partial class IlRuntime
     public static string FfiCallTypedArrStr(string lib, string symbol, object?[] args, int kind, long arrayMask, long arrayElemIntMask, long stringMask, long byrefScalarMask = 0, long byrefScalarElemIntMask = 0, long scalarKindMask = 0)
     {
         var ffi = Current.Ffi;
-        var handle = ffi.LoadLibrary(lib);
+        var handle = LoadFfiLibrary(lib);
         var fnPtr = ResolveFfiSymbol(handle, lib, symbol);
         // scalarKindMask dal COMPILATORE: la vecchia scorciatoia `kind == 1 ? 0xFFFF : 0`
         // passava come DOUBLE ogni scalare LONG quando kind=0 (firma con ritorno STRING:
@@ -79,7 +79,7 @@ public static partial class IlRuntime
     public static double FfiCallTypedArrUdt(string lib, string symbol, object?[] args, int kind, long arrayMask, long arrayElemIntMask, long stringMask, long byrefScalarMask, long byrefScalarElemIntMask, string[] udtShapes, long scalarKindMask, long byrefUdtMask = 0)
     {
         var ffi = Current.Ffi;
-        var handle = ffi.LoadLibrary(lib);
+        var handle = LoadFfiLibrary(lib);
         var fnPtr = ResolveFfiSymbol(handle, lib, symbol);
         var result = ffi.CallFunctionTypedArr(fnPtr, args, kind, arrayMask, arrayElemIntMask, stringMask, retIsString: false, byrefScalarMask, byrefScalarElemIntMask, udtShapeStrs: udtShapes, scalarKindMask: scalarKindMask, byrefUdtMask: byrefUdtMask);
         return Convert.ToDouble(result ?? 0.0);
@@ -96,7 +96,7 @@ public static partial class IlRuntime
     public static string FfiCallTypedArrUdtStr(string lib, string symbol, object?[] args, int kind, long arrayMask, long arrayElemIntMask, long stringMask, long byrefScalarMask, long byrefScalarElemIntMask, string[] udtShapes, long scalarKindMask, long byrefUdtMask = 0)
     {
         var ffi = Current.Ffi;
-        var handle = ffi.LoadLibrary(lib);
+        var handle = LoadFfiLibrary(lib);
         var fnPtr = ResolveFfiSymbol(handle, lib, symbol);
         var result = ffi.CallFunctionTypedArr(fnPtr, args, kind, arrayMask, arrayElemIntMask, stringMask, retIsString: true, byrefScalarMask, byrefScalarElemIntMask, udtShapeStrs: udtShapes, scalarKindMask: scalarKindMask, byrefUdtMask: byrefUdtMask);
         return result as string ?? "";
@@ -110,11 +110,34 @@ public static partial class IlRuntime
     public static object FfiCallTypedArrUdtRet(string lib, string symbol, object?[] args, int kind, long arrayMask, long arrayElemIntMask, long stringMask, long byrefScalarMask, long byrefScalarElemIntMask, string[]? udtShapes, long scalarKindMask, long byrefUdtMask, string udtReturnShape, Type udtReturnType)
     {
         var ffi = Current.Ffi;
-        var handle = ffi.LoadLibrary(lib);
+        var handle = LoadFfiLibrary(lib);
         var fnPtr = ResolveFfiSymbol(handle, lib, symbol);
         var result = ffi.CallFunctionTypedArr(fnPtr, args, kind, arrayMask, arrayElemIntMask, stringMask, retIsString: false, byrefScalarMask, byrefScalarElemIntMask, udtReturnClrType: udtReturnType, scalarKindMask: scalarKindMask, udtShapeStrs: udtShapes, udtReturnShapeStr: udtReturnShape, byrefUdtMask: byrefUdtMask);
         return result!;
     }
+
+    /// <summary>Apre la libreria FFI con l'errore CANONICO delle 4 gambe: libreria assente =
+    /// 53 (FileNotFound) + <see cref="Basic.Runtime.Services.FfiService.FfiLibraryMissingMessage"/>.
+    /// Prima la lib mancante degradava in "simbolo non trovato" (lookup su un handle nullo/zero),
+    /// che mandava a cercare il simbolo invece della libreria.</summary>
+    private static IntPtr LoadFfiLibrary(string lib)
+    {
+        IntPtr handle;
+        try
+        {
+            handle = Current.Ffi.LoadLibrary(lib);
+        }
+        catch (FileNotFoundException ex)
+        {
+            throw LibraryMissing(lib, ex);
+        }
+        if (handle == IntPtr.Zero) throw LibraryMissing(lib, null);
+        return handle;
+    }
+
+    private static BasicException LibraryMissing(string lib, Exception? inner) => new(
+        ErrorCode.FileNotFound, new SourcePosition(0, 0, 0),
+        Basic.Runtime.Services.FfiService.FfiLibraryMissingMessage(lib), innerException: inner);
 
     /// <summary>Risoluzione del simbolo FFI con l'errore CANONICO delle 4 gambe: un simbolo
     /// mancante e' un errore BASIC 5 (IllegalFunctionCall) catturabile da ON ERROR/TRY, con il

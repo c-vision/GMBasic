@@ -407,6 +407,12 @@ void gmb_ffi_dl_preload(const char* abs_path)
     gmb_ffi_dl_basename(abs_path, e->base, sizeof(e->base));
 }
 
+/* Silenzia il warning su stderr del caso "libreria assente" per i chiamanti che SEGNALANO
+ * l'errore al programma (wrapper FFI di C99Native e VM/C sollevano 53): la diagnostica non va
+ * duplicata sullo stderr, che nei MiniTest fa parte dell'output confrontato fra le gambe. */
+static int g_ffi_quiet = 0;
+void gmb_ffi_dl_set_quiet(int quiet) { g_ffi_quiet = quiet; }
+
 /* Apre una libreria: cache path→handle, fallback estensioni, poi match per basename
  * sulle librerie pre-caricate (i pacchetti REQUIRE). Ritorna NULL se non trovata.
  *
@@ -470,7 +476,7 @@ void* gmb_ffi_dl_open(const char* path)
         static int nwarned = 0;
         int already = 0;
         for (int i = 0; i < nwarned; i++) if (strcmp(warned[i], path) == 0) { already = 1; break; }
-        if (!already) {
+        if (!already && !g_ffi_quiet) {
             if (nwarned < (int)(sizeof(warned) / sizeof(warned[0]))) warned[nwarned++] = path;
             {
                 char cachebuf2[4096];
