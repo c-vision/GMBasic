@@ -124,7 +124,6 @@ public sealed partial class BackendImplementationRegistry
         r.Register(Backend.VMC, "AI.BlackboardRead");
         r.Register(Backend.VMC, "AI.BlackboardWait");
         r.Register(Backend.VMC, "AI.BlackboardWrite");
-        r.Register(Backend.VMC, "SIGNAL.BLACKMAN");
         r.Register(Backend.VMC, "TORCH.BLEU");
         r.Register(Backend.VMC, "MATRIX.BLOCKDIAG");
         r.Register(Backend.VMC, "DBF.BOF");
@@ -142,7 +141,6 @@ public sealed partial class BackendImplementationRegistry
         r.Register(Backend.VMC, "AI.BrainVaultQuery");
         r.Register(Backend.VMC, "AI.BrainVaultWrite");
         r.Register(Backend.VMC, "RDD.BUFFER");
-        r.Register(Backend.VMC, "SIGNAL.BUTTER");
         r.Register(Backend.VMC, "MOUSE.BUTTON");
         r.Register(Backend.VMC, "BRAINS.ByFolder");
         r.Register(Backend.VMC, "BRAINS.ByTag");
@@ -175,8 +173,6 @@ public sealed partial class BackendImplementationRegistry
         r.Register(Backend.VMC, "AI.ChannelPublish");
         r.Register(Backend.VMC, "AI.ChannelSubscribe");
         r.Register(Backend.VMC, "AI.ChannelUnsubscribe");
-        r.Register(Backend.VMC, "SIGNAL.CHEBY1");
-        r.Register(Backend.VMC, "SIGNAL.CHEBY2");
         r.Register(Backend.VMC, "VECTOR.CHEBYSHEV");
         r.Register(Backend.VMC, "AI.Checkpoint");
         r.Register(Backend.VMC, "AI.CheckpointClear");
@@ -257,8 +253,6 @@ public sealed partial class BackendImplementationRegistry
         r.Register(Backend.VMC, "AI.ContextView");
         r.Register(Backend.VMC, "AI.ContextViewDebug");
         r.Register(Backend.VMC, "SPATIAL.CONVEXHULL");
-        r.Register(Backend.VMC, "SIGNAL.CONVOLVE");
-        r.Register(Backend.VMC, "SIGNAL.CORRELATE");
         r.Register(Backend.VMC, "MATH.Cos");
         r.Register(Backend.VMC, "MATH.COSH");
         r.Register(Backend.VMC, "VECTOR.COSINE");
@@ -301,7 +295,6 @@ public sealed partial class BackendImplementationRegistry
         r.Register(Backend.VMC, "MOUSE.DBLCLICK");
         r.Register(Backend.VMC, "DBF.DBRELATION");
         r.Register(Backend.VMC, "ISAM.DBRELATION");
-        r.Register(Backend.VMC, "SIGNAL.DECIMATE");
         r.Register(Backend.VMC, "LLM.DecodeStats");
         r.Register(Backend.VMC, "MATH.Deg2Rad");
         r.Register(Backend.VMC, "HTTP.DELETE");
@@ -354,7 +347,6 @@ public sealed partial class BackendImplementationRegistry
         r.Register(Backend.VMC, "STRINGS.Dup");
         r.Register(Backend.VMC, "LEDGER.EDIT");
         r.Register(Backend.VMC, "LINALG.EIG");
-        r.Register(Backend.VMC, "SIGNAL.ELLIP");
         r.Register(Backend.VMC, "AI.Embed");
         r.Register(Backend.VMC, "VECTORDB.Embed");
         r.Register(Backend.VMC, "SYSTEM.EMPTY");
@@ -413,11 +405,9 @@ public sealed partial class BackendImplementationRegistry
         r.Register(Backend.VMC, "LLM.FileOutline");
         r.Register(Backend.VMC, "GREP.FILES");
         r.Register(Backend.VMC, "BROWSER.Fill");
-        r.Register(Backend.VMC, "SIGNAL.FILTFILT");
         r.Register(Backend.VMC, "UI.Find");
         r.Register(Backend.VMC, "BROWSER.Find");
         r.Register(Backend.VMC, "UI.FindAll");
-        r.Register(Backend.VMC, "SIGNAL.FINDPEAKS");
         r.Register(Backend.VMC, "LLM.FindSymbol");
         r.Register(Backend.VMC, "LLM.FinetuneBaseHold");
         r.Register(Backend.VMC, "LLM.FinetuneBaseTrain");
@@ -431,7 +421,6 @@ public sealed partial class BackendImplementationRegistry
         r.Register(Backend.VMC, "LLM.FinetuneStatus");
         r.Register(Backend.VMC, "IO.FINPUT");
         r.Register(Backend.VMC, "DATETIME.FIRSTDAYOFMONTH");
-        r.Register(Backend.VMC, "SIGNAL.FIRWIN");
         r.Register(Backend.VMC, "STATS.FIsf");
         r.Register(Backend.VMC, "STATS.Fisher");
         r.Register(Backend.VMC, "MATH.Fix");
@@ -460,7 +449,6 @@ public sealed partial class BackendImplementationRegistry
         r.Register(Backend.VMC, "IO.FRead");
         r.Register(Backend.VMC, "TORCH.FREE");
         r.Register(Backend.VMC, "IO.FreeFile");
-        r.Register(Backend.VMC, "SIGNAL.FREQZ");
         r.Register(Backend.VMC, "LINALG.FROBENIUSNORM");
         r.Register(Backend.VMC, "TORCH.FROM");
         r.Register(Backend.VMC, "SQL.FROMCSV");
@@ -507,14 +495,12 @@ public sealed partial class BackendImplementationRegistry
         r.Register(Backend.VMC, "SYSTEM.GOMAXPROCS");
         r.Register(Backend.VMC, "CONTROLS.GOTFOCUSED");
         r.Register(Backend.VMC, "VECTORDB.Hallucination");
-        r.Register(Backend.VMC, "SIGNAL.HAMMING");
         r.Register(Backend.VMC, "AI.Handoff");
         r.Register(Backend.VMC, "AI.HandoffClear");
         r.Register(Backend.VMC, "AI.HandoffComplete");
         r.Register(Backend.VMC, "AI.HandoffList");
         r.Register(Backend.VMC, "AI.HandoffStatus");
         r.Register(Backend.VMC, "MATRIX.HANKEL");
-        r.Register(Backend.VMC, "SIGNAL.HANN");
         r.Register(Backend.VMC, "SYSTEM.HAS");
         r.Register(Backend.VMC, "TYPEINFO.HAS");
         r.Register(Backend.VMC, "AI.HashEdit");
@@ -629,7 +615,6 @@ public sealed partial class BackendImplementationRegistry
         r.Register(Backend.VMC, "STRINGS.Len");
         r.Register(Backend.VMC, "STRINGS.LenB");
         r.Register(Backend.VMC, "AI.LexicalEntropy");
-        r.Register(Backend.VMC, "SIGNAL.LFILTER");
         r.Register(Backend.VMC, "TORCH.LIBPATH");
         r.Register(Backend.VMC, "AI.LinkDangling");
         r.Register(Backend.VMC, "AI.LinkJson");
@@ -938,7 +923,6 @@ public sealed partial class BackendImplementationRegistry
         r.Register(Backend.VMC, "ISAM.REPLICATIONSHIP");
         r.Register(Backend.VMC, "LLM.RepoMap");
         r.Register(Backend.VMC, "AI.Rerank");
-        r.Register(Backend.VMC, "SIGNAL.RESAMPLE");
         r.Register(Backend.VMC, "AI.ResetFailed");
         r.Register(Backend.VMC, "MATRIX.RESHAPE");
         r.Register(Backend.VMC, "TORCH.RESHAPE");
@@ -981,7 +965,6 @@ public sealed partial class BackendImplementationRegistry
         r.Register(Backend.VMC, "LLM.RunStop");
         r.Register(Backend.VMC, "HTTP.SAFEFILENAME");
         r.Register(Backend.VMC, "AI.Save");
-        r.Register(Backend.VMC, "SIGNAL.SAVGOLFILTER");
         r.Register(Backend.VMC, "LINALG.SCHUR");
         r.Register(Backend.VMC, "GRAPHICS.SCREEN");
         r.Register(Backend.VMC, "GRAPHICS.ScreenInfo");

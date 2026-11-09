@@ -124,7 +124,6 @@ public sealed partial class BackendImplementationRegistry
         r.Register(Backend.C99Native, "AI.BlackboardRead");
         r.Register(Backend.C99Native, "AI.BlackboardWait");
         r.Register(Backend.C99Native, "AI.BlackboardWrite");
-        r.Register(Backend.C99Native, "SIGNAL.BLACKMAN");
         r.Register(Backend.C99Native, "TORCH.BLEU");
         r.Register(Backend.C99Native, "MATRIX.BLOCKDIAG");
         r.Register(Backend.C99Native, "DBF.BOF");
@@ -142,7 +141,6 @@ public sealed partial class BackendImplementationRegistry
         r.Register(Backend.C99Native, "AI.BrainVaultQuery");
         r.Register(Backend.C99Native, "AI.BrainVaultWrite");
         r.Register(Backend.C99Native, "RDD.BUFFER");
-        r.Register(Backend.C99Native, "SIGNAL.BUTTER");
         r.Register(Backend.C99Native, "MOUSE.BUTTON");
         r.Register(Backend.C99Native, "BRAINS.ByFolder");
         r.Register(Backend.C99Native, "BRAINS.ByTag");
@@ -175,8 +173,6 @@ public sealed partial class BackendImplementationRegistry
         r.Register(Backend.C99Native, "AI.ChannelPublish");
         r.Register(Backend.C99Native, "AI.ChannelSubscribe");
         r.Register(Backend.C99Native, "AI.ChannelUnsubscribe");
-        r.Register(Backend.C99Native, "SIGNAL.CHEBY1");
-        r.Register(Backend.C99Native, "SIGNAL.CHEBY2");
         r.Register(Backend.C99Native, "VECTOR.CHEBYSHEV");
         r.Register(Backend.C99Native, "AI.Checkpoint");
         r.Register(Backend.C99Native, "AI.CheckpointClear");
@@ -257,8 +253,6 @@ public sealed partial class BackendImplementationRegistry
         r.Register(Backend.C99Native, "AI.ContextView");
         r.Register(Backend.C99Native, "AI.ContextViewDebug");
         r.Register(Backend.C99Native, "SPATIAL.CONVEXHULL");
-        r.Register(Backend.C99Native, "SIGNAL.CONVOLVE");
-        r.Register(Backend.C99Native, "SIGNAL.CORRELATE");
         r.Register(Backend.C99Native, "MATH.Cos");
         r.Register(Backend.C99Native, "MATH.COSH");
         r.Register(Backend.C99Native, "VECTOR.COSINE");
@@ -301,7 +295,6 @@ public sealed partial class BackendImplementationRegistry
         r.Register(Backend.C99Native, "MOUSE.DBLCLICK");
         r.Register(Backend.C99Native, "DBF.DBRELATION");
         r.Register(Backend.C99Native, "ISAM.DBRELATION");
-        r.Register(Backend.C99Native, "SIGNAL.DECIMATE");
         r.Register(Backend.C99Native, "LLM.DecodeStats");
         r.Register(Backend.C99Native, "MATH.Deg2Rad");
         r.Register(Backend.C99Native, "HTTP.DELETE");
@@ -354,7 +347,6 @@ public sealed partial class BackendImplementationRegistry
         r.Register(Backend.C99Native, "STRINGS.Dup");
         r.Register(Backend.C99Native, "LEDGER.EDIT");
         r.Register(Backend.C99Native, "LINALG.EIG");
-        r.Register(Backend.C99Native, "SIGNAL.ELLIP");
         r.Register(Backend.C99Native, "AI.Embed");
         r.Register(Backend.C99Native, "VECTORDB.Embed");
         r.Register(Backend.C99Native, "SYSTEM.EMPTY");
@@ -413,11 +405,9 @@ public sealed partial class BackendImplementationRegistry
         r.Register(Backend.C99Native, "LLM.FileOutline");
         r.Register(Backend.C99Native, "GREP.FILES");
         r.Register(Backend.C99Native, "BROWSER.Fill");
-        r.Register(Backend.C99Native, "SIGNAL.FILTFILT");
         r.Register(Backend.C99Native, "UI.Find");
         r.Register(Backend.C99Native, "BROWSER.Find");
         r.Register(Backend.C99Native, "UI.FindAll");
-        r.Register(Backend.C99Native, "SIGNAL.FINDPEAKS");
         r.Register(Backend.C99Native, "LLM.FindSymbol");
         r.Register(Backend.C99Native, "LLM.FinetuneBaseHold");
         r.Register(Backend.C99Native, "LLM.FinetuneBaseTrain");
@@ -431,7 +421,6 @@ public sealed partial class BackendImplementationRegistry
         r.Register(Backend.C99Native, "LLM.FinetuneStatus");
         r.Register(Backend.C99Native, "IO.FINPUT");
         r.Register(Backend.C99Native, "DATETIME.FIRSTDAYOFMONTH");
-        r.Register(Backend.C99Native, "SIGNAL.FIRWIN");
         r.Register(Backend.C99Native, "STATS.FIsf");
         r.Register(Backend.C99Native, "STATS.Fisher");
         r.Register(Backend.C99Native, "MATH.Fix");
@@ -460,7 +449,6 @@ public sealed partial class BackendImplementationRegistry
         r.Register(Backend.C99Native, "IO.FRead");
         r.Register(Backend.C99Native, "TORCH.FREE");
         r.Register(Backend.C99Native, "IO.FreeFile");
-        r.Register(Backend.C99Native, "SIGNAL.FREQZ");
         r.Register(Backend.C99Native, "LINALG.FROBENIUSNORM");
         r.Register(Backend.C99Native, "TORCH.FROM");
         r.Register(Backend.C99Native, "SQL.FROMCSV");
@@ -507,14 +495,12 @@ public sealed partial class BackendImplementationRegistry
         r.Register(Backend.C99Native, "SYSTEM.GOMAXPROCS");
         r.Register(Backend.C99Native, "CONTROLS.GOTFOCUSED");
         r.Register(Backend.C99Native, "VECTORDB.Hallucination");
-        r.Register(Backend.C99Native, "SIGNAL.HAMMING");
         r.Register(Backend.C99Native, "AI.Handoff");
         r.Register(Backend.C99Native, "AI.HandoffClear");
         r.Register(Backend.C99Native, "AI.HandoffComplete");
         r.Register(Backend.C99Native, "AI.HandoffList");
         r.Register(Backend.C99Native, "AI.HandoffStatus");
         r.Register(Backend.C99Native, "MATRIX.HANKEL");
-        r.Register(Backend.C99Native, "SIGNAL.HANN");
         r.Register(Backend.C99Native, "SYSTEM.HAS");
         r.Register(Backend.C99Native, "TYPEINFO.HAS");
         r.Register(Backend.C99Native, "AI.HashEdit");
@@ -629,7 +615,6 @@ public sealed partial class BackendImplementationRegistry
         r.Register(Backend.C99Native, "STRINGS.Len");
         r.Register(Backend.C99Native, "STRINGS.LenB");
         r.Register(Backend.C99Native, "AI.LexicalEntropy");
-        r.Register(Backend.C99Native, "SIGNAL.LFILTER");
         r.Register(Backend.C99Native, "TORCH.LIBPATH");
         r.Register(Backend.C99Native, "AI.LinkDangling");
         r.Register(Backend.C99Native, "AI.LinkJson");
@@ -938,7 +923,6 @@ public sealed partial class BackendImplementationRegistry
         r.Register(Backend.C99Native, "ISAM.REPLICATIONSHIP");
         r.Register(Backend.C99Native, "LLM.RepoMap");
         r.Register(Backend.C99Native, "AI.Rerank");
-        r.Register(Backend.C99Native, "SIGNAL.RESAMPLE");
         r.Register(Backend.C99Native, "AI.ResetFailed");
         r.Register(Backend.C99Native, "MATRIX.RESHAPE");
         r.Register(Backend.C99Native, "TORCH.RESHAPE");
@@ -981,7 +965,6 @@ public sealed partial class BackendImplementationRegistry
         r.Register(Backend.C99Native, "LLM.RunStop");
         r.Register(Backend.C99Native, "HTTP.SAFEFILENAME");
         r.Register(Backend.C99Native, "AI.Save");
-        r.Register(Backend.C99Native, "SIGNAL.SAVGOLFILTER");
         r.Register(Backend.C99Native, "LINALG.SCHUR");
         r.Register(Backend.C99Native, "GRAPHICS.SCREEN");
         r.Register(Backend.C99Native, "GRAPHICS.ScreenInfo");

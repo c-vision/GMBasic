@@ -36,6 +36,15 @@ KW_C="$ROOT/GMBasic/native/gmb_compiler_c/frontend/src/gmb_lexer.c"
 TK_C="$ROOT/GMBasic/native/gmb_compiler_c/frontend/include/gmb_tokenkind.h"
 REG_DIR="$ROOT/GMBasicSharp/common/BackendSupport/Registry"
 STDLIB_DIRS="$ROOT/GMBasicSharp/common/StdLib $ROOT/GMBasicSharp/common/StdLib.Runtime"
+# ECCEZIONI DOCUMENTATE — funzioni che RESTANO builtin anche se il namespace è
+# migrato su lib FFI, perché il loro risultato è un handle del registro del runtime
+# (matrici, tensori) che l'ABI FFI non può restituire. Formato: NS.NAME (spazi separati).
+# SIGNAL.WELCH: ritorna un handle di matrice (SIGNAL.WELCH(x, nperseg, fs)); tutte le
+# altre 17 funzioni del namespace sono nella lib `signal` (shared/include/signal.inc).
+ALLOW_BUILTIN="SIGNAL.WELCH"
+allow_for() { # ns -> alternanza regex dei nomi ammessi (stringa vuota se nessuno)
+  printf '%s\n' $ALLOW_BUILTIN | awk -F. -v ns="$1" '$1==ns {printf "%s%s", sep, $0; sep="|"}'
+}
 
 fails=0
 checks=0
@@ -59,14 +68,21 @@ for base in "${INCS[@]}"; do
   # 1) superficie canonica: il namespace non deve esistere
   if [ -f "$REG_JSON" ]; then
     c=$(jq --arg ns "$ns" '[.procedures[] | select(.ns==$ns)] | length' "$REG_JSON" 2>/dev/null)
+    for ex in $ALLOW_BUILTIN; do
+      [ "${ex%%.*}" = "$ns" ] || continue
+      k=$(jq --arg ns "$ns" --arg nm "${ex#*.}" '[.procedures[] | select(.ns==$ns and .name==$nm)] | length' "$REG_JSON" 2>/dev/null)
+      c=$(( ${c:-0} - ${k:-0} ))
+    done
     checks=$((checks+1))
     [ "${c:-0}" != "0" ] && { note "FAIL $base: $c procedure canoniche nel namespace $ns"; fails=$((fails+1)); }
   fi
 
   # 2) registry per-backend (le 4 gambe)
+  allow_ns=$(allow_for "$ns")
   for f in "$REG_DIR"/*.cs; do
     [ -f "$f" ] || continue
-    c=$(grep -cE "\"$ns\." "$f")
+    if [ -n "$allow_ns" ]; then c=$(grep -E "\"$ns\." "$f" | grep -vcE "\"($allow_ns)\"")
+    else c=$(grep -cE "\"$ns\." "$f"); fi
     checks=$((checks+1))
     [ "$c" != "0" ] && { note "FAIL $base: $c entry in $(basename "$f")"; fails=$((fails+1)); }
   done

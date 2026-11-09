@@ -993,15 +993,6 @@ public sealed partial class IlProgramCompiler
         EmitDoubleArgument(expr.Args[3]);
         _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.SolveIvp)));
     }
-    private void EmitFirwinCall(BuiltinFunctionCallExpr expr)
-    {
-        if (expr.Args.Length is < 2 or > 4) throw new NotSupportedException("Backend IL: FIRWIN richiede (numtaps, cutoff[] [, btype, window]).");
-        EmitInt32Argument(expr.Args[0]);
-        EmitDoubleArrayArgument(expr.Args[1]);
-        if (expr.Args.Length >= 3) EmitStringArgument(expr.Args[2]); else _il.Emit(OpCodes.Ldstr, "lowpass");
-        if (expr.Args.Length >= 4) EmitStringArgument(expr.Args[3]); else _il.Emit(OpCodes.Ldstr, "hann");
-        _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.Firwin)));
-    }
     private void EmitSignalWelchCall(BuiltinFunctionCallExpr expr)
     {
         if (expr.Args.Length != 3) throw new NotSupportedException("Backend IL: WELCH richiede (x[], nperseg, fs).");
@@ -1031,29 +1022,6 @@ public sealed partial class IlProgramCompiler
         EmitInt64Argument(expr.Args[0]);
         EmitDoubleArrayArgument(expr.Args[1]);
         _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.Splev)));
-    }
-    private void EmitSpatialPdistCall(BuiltinFunctionCallExpr expr)
-    {
-        if (expr.Args.Length != 2) throw new NotSupportedException("Backend IL: PDIST richiede (X, metric).");
-        EmitDoubleArrayArrayArgument(expr.Args[0]);
-        EmitStringArgument(expr.Args[1]);
-        _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.Pdist)));
-    }
-    private void EmitSpatialMatrixCall(BuiltinFunctionCallExpr expr, string methodName)
-    {
-        if (expr.Args.Length != 3 && methodName != nameof(IlRuntime.DistanceMatrix))
-            throw new NotSupportedException($"Backend IL: {expr.OriginalToken.Lexeme} richiede (X, Y[, metric]).");
-        EmitDoubleArrayArrayArgument(expr.Args[0]);
-        EmitDoubleArrayArrayArgument(expr.Args[1]);
-        if (methodName == nameof(IlRuntime.Cdist)) EmitStringArgument(expr.Args[2]);
-        _il.Emit(OpCodes.Call, RuntimeMethod(methodName));
-    }
-    private void EmitFindPeaksCall(BuiltinFunctionCallExpr expr)
-    {
-        if (expr.Args.Length is < 1 or > 2) throw new NotSupportedException("Backend IL: FINDPEAKS richiede (x[] [, distance]).");
-        EmitDoubleArrayArgument(expr.Args[0]);
-        if (expr.Args.Length >= 2) EmitDoubleArgument(expr.Args[1]); else _il.Emit(OpCodes.Ldc_R8, 1.0);
-        _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.FindPeaks)));
     }
     private void EmitAnalysisIntDoubleCall(BuiltinFunctionCallExpr expr, string methodName)
     { if (expr.Args.Length != 2) throw new NotSupportedException($"Backend IL: {expr.OriginalToken.Lexeme} richiede 2 argomenti (n, d)."); EmitDoubleArgument(expr.Args[0]); EmitDoubleArgument(expr.Args[1]); _il.Emit(OpCodes.Call, RuntimeMethod(methodName)); }

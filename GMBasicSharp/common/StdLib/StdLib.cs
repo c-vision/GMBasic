@@ -192,7 +192,6 @@ public sealed partial class StdLib : IParserRegistry
         // BITS: namespace migrato a FFI (shared/libs/bits, libgmbbits) l'08-11-2026.
         CreateTrayNamespace();   // TRAY (2026-10-02): icona barra SO
         CreateMessageNamespace(); // MESSAGE (2026-10-05): messaging generico (bus) + ON MESSAGE
-        CreateSpatialNamespace();
         CreateTorchNamespace();
         CreateToolNamespace();
         CreateUiNamespace();

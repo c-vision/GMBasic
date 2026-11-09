@@ -1039,6 +1039,232 @@ con self-test).
 
 
 
+
+
+
+
+
+
+
+
+<!-- BEGIN DOMAIN TABLE -->
+## Tavola sinottica del dominio
+
+Ogni riga riporta la firma canonica (dal registry) e il primo uso reale trovato
+nel corpus di test e sample `.bas`/`.inc`: dove il corpus non usa il simbolo è dichiarato.
+
+- **MATH.ABS(x1)** — `err = MATH.ABS(MATH.SQR(tot / T) - rms)` (shared/samples/Quad/QuadLab.bas:75)
+- **MATH.ACOS(x1)** — `PRINT "Arcocoseno (ACOS) di 0:     "; MATH.ACOS(0); " (rad)"` (shared/samples/Math/MathTrigonometry.bas:47)
+- **MATH.ASIN(x1)** — `PRINT "Arcoseno (ASIN) di 1:       "; MATH.ASIN(1); " (rad)"` (shared/samples/Math/MathTrigonometry.bas:44)
+- **MATH.ATN(x1)** — `PRINT "ATN(1)  = "; ROUND(MATH.RAD2DEG(MATH.ATN(1)), 6); " deg"` (shared/samples/Math/MathAtnVectorAngle.bas:28)
+- **MATH.AVG()** — `media = MATH.AVG(risparmi)` (shared/samples/Math/PianificazioneRisparmi.bas:19)
+- **MATH.COSH(x1)** — `PRINT "Coseno Iperbolico (COSH) di 1:  "; MATH.COSH(1)` (shared/samples/Math/MathTrigonometry.bas:63)
+- **MATH.CEILING(x1)** — `PRINT "  CEILING(num):  "; MATH.CEILING(num_pos)` (shared/samples/Math/MathLogarithms.bas:59)
+- **MATH.CLAMP(x1, x2, x3)** — `PRINT "CLAMP(150, 0, 100): "; MATH.CLAMP(val, 0, 100); " (Atteso 100)"` (shared/samples/Math/MathCombinatorics.bas:70)
+- **MATH.COMB(x1, x2)** — `PRINT "COMB("; n; ", "; k; "):   "; MATH.COMB(n, k)` (shared/samples/Math/MathCombinatorics.bas:39)
+- **MATH.COS(x1)** — `r(0) = MATH.COS(t)` (shared/samples/VecCalc/VecCalcLab.bas:63)
+- **MATH.DEG2RAD(x1)** — `DIM angle_rad = MATH.DEG2RAD(angle_deg)` (shared/samples/Math/MathTrigonometry.bas:27)
+- **MATH.EXP(x1)** — `ys(0) = 1.0 : ys(1) = MATH.EXP(0.5) : ys(2) = MATH.EXP(1.0) : ys(3) = MATH.EXP(1.5) : ys(4) = MATH.E…` (shared/samples/include/optimize/05-Fitting.bas:9)
+- **MATH.FACT(x1)** — `PRINT "FACT("; n; "):      "; MATH.FACT(n)` (shared/samples/Math/MathCombinatorics.bas:31)
+- **MATH.FIX(x1)** — `PRINT "  FIX(num):      "; MATH.FIX(num_pos)` (shared/samples/Math/MathLogarithms.bas:56)
+- **MATH.FLOOR(x1)** — `PRINT "  FLOOR(num):    "; MATH.FLOOR(num_pos)` (shared/samples/Math/MathLogarithms.bas:58)
+- **MATH.HYPOT(x1, x2)** — `PRINT "HYPOT(3, 4):        "; MATH.HYPOT(3, 4)` (shared/samples/Math/MathCombinatorics.bas:66)
+- **MATH.INT(x1)** — `PRINT "  INT(num):      "; MATH.INT(num_pos)` (shared/samples/Math/MathLogarithms.bas:57)
+- **MATH.ISNUMERIC(x1)** — `IF MATH.ISNUMERIC(Input) THEN` (shared/samples/Types/TypesAny.bas:91)
+- **MATH.LOG(x1)** — `PRINT "LOG(e):                     "; MATH.LOG(e); " (Atteso: 1)"` (shared/samples/Math/MathLogarithms.bas:34)
+- **MATH.LOG10(x1)** — `PRINT "LOG10(1000):                "; MATH.LOG10(1000); " (Atteso: 3)"` (shared/samples/Math/MathLogarithms.bas:37)
+- **MATH.MAX()** — `GmbStats = "mean=" + STR$(STATSX.MEAN(n)) + " max=" + STR$(MATH.MAX(n[0], n[1], n[2])) + " min=" + S…` (shared/samples/Ai/McpCapabilityServer.bas:52)
+- **MATH.MIN()** — `PRINT "MIN(3, 1, 4, 1, 5, 9): "; MATH.MIN(3, 1, 4, 1, 5, 9) ' Atteso: 1` (shared/samples/Math/MathExtended.bas:43)
+- **MATH.PERM(x1, x2)** — `PRINT "PERM("; n; ", "; k; "):   "; MATH.PERM(n, k)` (shared/samples/Math/MathCombinatorics.bas:35)
+- **MATH.PI()** — `SerieStagionale(si) = (si * 0.1) + SIN(si * 2 * MATH.PI() / 12) * 5 + (MATH.RND() - 0.5)` (shared/samples/TimeSeries/TimeSeriesAdvanced.bas:62)
+- **MATH.PYTHAGORAS(x1, x2)** — `820 PRINT "PYTHAGORAS(3, 4) =", PYTHAGORAS(3, 4); "(Atteso: 5)"` (shared/samples/Types/TypesConversions.bas:135)
+- **MATH.RAD2DEG(x1)** — `PRINT "ATN(1)  = "; ROUND(MATH.RAD2DEG(MATH.ATN(1)), 6); " deg"` (shared/samples/Math/MathAtnVectorAngle.bas:28)
+- **MATH.RANGE()** — `PRINT "MATH.RANGE — Sequenze numeriche"` (shared/samples/Math/RangeDemo.bas:12)
+- **MATH.RND()** — `Prices(i) = Prices(i-1) * (1 + (MATH.RND() - 0.5) * 0.02)` (shared/samples/TimeSeries/TimeSeriesTests.bas:34)
+- **MATH.ROUND(x1)** — `PRINT "L1H0 copy score:  somma/|somma| = "; MATH.ROUND(s(0), 3); "   frazione positivi = "; MATH.ROU…` (shared/samples/Wsp/Edit.bas:20)
+- **MATH.SINH(x1)** — `PRINT "Seno Iperbolico (SINH) di 1:    "; MATH.SINH(1)` (shared/samples/Math/MathTrigonometry.bas:62)
+- **MATH.SGN(x1)** — `PRINT "SGN(-10.5): "; MATH.SGN(-10.5)` (shared/samples/Math/MathLogarithms.bas:75)
+- **MATH.SIN(x1)** — `RETURN 100 * MATH.SIN(W2 * t) + 30 * MATH.SIN(3 * W2 * t)` (shared/samples/Quad/QuadLab.bas:24)
+- **MATH.SQR(x1)** — `RETURN 1 / MATH.SQR(h)` (shared/samples/Quad/QuadLab.bas:35)
+- **MATH.SUM()** — `SPEED SELECT Clienti.Nome AS NomeCliente, SUM(Ordini.Importo) AS TotaleImporto INTO ris() OF Risulta…` (shared/samples/Databases/DbSpeedFullTests.bas:261)
+- **MATH.TANH(x1)** — `PRINT "Tangente Iperbolica (TANH) di 1: "; MATH.TANH(1)` (shared/samples/Math/MathTrigonometry.bas:64)
+- **MATH.TAN(x1)** — `PRINT "Tangente (TAN):   "; MATH.TAN(angle_rad)` (shared/samples/Math/MathTrigonometry.bas:34)
+- **MATH.TRUNC(x1)** — `PRINT "  TRUNC(num, 2): "; MATH.TRUNC(num_pos, 2)` (shared/samples/Math/MathLogarithms.bas:55)
+- **MATRIX.ABOVEMASK(x1, x2)** — `DIM flatMask() = MATRIX.ABOVEMASK(rowsBroadcast, 15.0)` (shared/samples/Matrix/MatrixCommonLibSimd.bas:51)
+- **MATRIX.ABOVEMATRIX(x1, x2)** — `DIM matrixMask() = MATRIX.ABOVEMATRIX(rowsBroadcast, 15.0)` (shared/samples/Matrix/MatrixCommonLibSimd.bas:52)
+- **MATRIX.ADDCOLVECTOR(x1, x2)** — `DIM columnsBroadcast = MATRIX.ADDCOLVECTOR(m, columnVector)` (shared/samples/Matrix/MatrixCommonLibSimd.bas:42)
+- **MATRIX.ADDROWVECTOR(x1, x2)** — `DIM rowsBroadcast = MATRIX.ADDROWVECTOR(m, rowVector)` (shared/samples/Matrix/MatrixCommonLibSimd.bas:41)
+- **MATRIX.ARGMAX(x1)** — `DIM amax() = MATRIX.ARGMAX(m)` (shared/samples/Arrays/MatrixArgmaxShadow.bas:20)
+- **MATRIX.ARGMIN(x1)** — `DIM amin() = MATRIX.ARGMIN(m)` (shared/samples/Arrays/MatrixArgmaxShadow.bas:21)
+- **MATRIX.ASCSV(x1)** — `PRINT "ASCSV="; MATRIX.ASCSV(m)` (shared/samples/Matrix/MatrixCommonLibSimd.bas:57)
+- **MATRIX.ASJSON(x1)** — `PRINT "ASJSON="; MATRIX.ASJSON(m)` (shared/samples/Matrix/MatrixCommonLibSimd.bas:58)
+- **MATRIX.BLOCKDIAG(x1, x2)** — `bd = MATRIX.BLOCKDIAG(h, h)` (shared/samples/Math/MatrixFunctionsSciPyParity.bas:27)
+- **MATRIX.CIRCULANT(x1)** — `cc = MATRIX.CIRCULANT(c1)` (shared/samples/Math/MatrixFunctionsSciPyParity2.bas:49)
+- **MATRIX.CLONEMATRIX(x1)** — `DIM cloned = MATRIX.CLONEMATRIX(m)` (shared/samples/Matrix/MatrixCommonLibSimd.bas:60)
+- **MATRIX.COLMEANS(x1)** — `DIM meansByColumn() = MATRIX.COLMEANS(m)` (shared/samples/Matrix/MatrixCommonLibSimd.bas:13)
+- **MATRIX.COLSUMS(x1)** — `DIM sumsByColumn() = MATRIX.COLSUMS(m)` (shared/samples/Matrix/MatrixCommonLibSimd.bas:11)
+- **MATRIX.COLUMNCOUNT(x1)** — `PRINT "COLUMNCOUNT="; MATRIX.COLUMNCOUNT(m)` (shared/samples/Matrix/MatrixCommonLibSimd.bas:64)
+- **MATRIX.COLVARIANCES(x1)** — `DIM variancesByColumn() = MATRIX.COLVARIANCES(m)` (shared/samples/Matrix/MatrixCommonLibSimd.bas:15)
+- **MATRIX.CONCATCOLS(x1, x2)** — `DIM columnsJoined = MATRIX.CONCATCOLS(m, m)` (shared/samples/Matrix/MatrixCommonLibSimd.bas:40)
+- **MATRIX.CONCATROWS(x1, x2)** — `DIM rowsJoined = MATRIX.CONCATROWS(m, m)` (shared/samples/Matrix/MatrixCommonLibSimd.bas:39)
+- **MATRIX.CREATE(x1, x2)** — `h = MATRIX.CREATE(2, 2)` (shared/samples/Math/MatrixFunctionsSciPyParity2.bas:7)
+- **MATRIX.GETVALUE(x1, x2, x3)** — `FOR k = 0 TO 4: re(k) = MATRIX.GETVALUE(rf, k, 0): im(k) = MATRIX.GETVALUE(rf, k, 1): NEXT` (shared/samples/Analysis/AnalysisMiniTest.bas:19)
+- **MATRIX.HANKEL(x1, x2)** — `hk = MATRIX.HANKEL(c1, r1)` (shared/samples/Math/MatrixFunctionsSciPyParity2.bas:47)
+- **MATRIX.ISLOWERTRIANGULAR(x1)** — `PRINT "LOWER="; MATRIX.ISLOWERTRIANGULAR(m)` (shared/samples/Matrix/MatrixCommonLibSimd.bas:31)
+- **MATRIX.ISORTHOGONAL(x1)** — `PRINT "ORTHOGONAL="; MATRIX.ISORTHOGONAL(m)` (shared/samples/Matrix/MatrixCommonLibSimd.bas:29)
+- **MATRIX.ISSYMMETRIC(x1)** — `PRINT "SYMMETRIC="; MATRIX.ISSYMMETRIC(m)` (shared/samples/Matrix/MatrixCommonLibSimd.bas:28)
+- **MATRIX.ISUPPERTRIANGULAR(x1)** — `PRINT "UPPER="; MATRIX.ISUPPERTRIANGULAR(m)` (shared/samples/Matrix/MatrixCommonLibSimd.bas:30)
+- **MATRIX.KRONECKER(x1, x2)** — `k = MATRIX.KRONECKER(h, h)` (shared/samples/Math/MatrixFuncSciPyParity.bas:10)
+- **MATRIX.LOADCSV(x1)** — `DIM csvMatrix = MATRIX.LOADCSV("samples/Fixtures/MatrixIdentity.csv")` (shared/samples/Matrix/MatrixCommonLibSimd.bas:69)
+- **MATRIX.LOADJSON(x1)** — `DIM jsonMatrix = MATRIX.LOADJSON("samples/Fixtures/MatrixIdentity.json")` (shared/samples/Matrix/MatrixCommonLibSimd.bas:70)
+- **MATRIX.MAXVALUE(x1)** — `PRINT "MAXVALUE="; MATRIX.MAXVALUE(rowsBroadcast)` (shared/samples/Matrix/MatrixCommonLibSimd.bas:53)
+- **MATRIX.MINVALUE(x1)** — `PRINT "MINVALUE="; MATRIX.MINVALUE(rowsBroadcast)` (shared/samples/Matrix/MatrixCommonLibSimd.bas:54)
+- **MATRIX.MULTIPLY(x1, x2)** — `DIM mul = MATRIX.MULTIPLY(a, a)` (shared/samples/Matrix/MatrixDecompositions.bas:26)
+- **MATRIX.MULTIPLYLEFTVECTOR(x1, x2)** — `DIM leftProduct() = MATRIX.MULTIPLYLEFTVECTOR(m, columnVector)` (shared/samples/Matrix/MatrixCommonLibSimd.bas:62)
+- **MATRIX.MULTIPLYVECTOR(x1, x2)** — `DIM rightProduct() = MATRIX.MULTIPLYVECTOR(m, rowVector)` (shared/samples/Matrix/MatrixCommonLibSimd.bas:61)
+- **MATRIX.RESHAPE(x1, x2, x3)** — `DIM reshaped = MATRIX.RESHAPE(m, 1, 9)` (shared/samples/Matrix/MatrixCommonLibSimd.bas:38)
+- **MATRIX.ROWCOUNT(x1)** — `PRINT "welchrows ="; MATRIX.ROWCOUNT(w)` (shared/samples/Math/SciPyP1Parity.bas:12)
+- **MATRIX.ROWMEANS(x1)** — `DIM meansByRow() = MATRIX.ROWMEANS(m)` (shared/samples/Matrix/MatrixCommonLibSimd.bas:12)
+- **MATRIX.ROWSUMS(x1)** — `DIM sumsByRow() = MATRIX.ROWSUMS(m)` (shared/samples/Matrix/MatrixCommonLibSimd.bas:10)
+- **MATRIX.ROWVARIANCES(x1)** — `DIM variancesByRow() = MATRIX.ROWVARIANCES(m)` (shared/samples/Matrix/MatrixCommonLibSimd.bas:14)
+- **MATRIX.SETVALUE(x1, x2, x3, x4)** — `h = MATRIX.SETVALUE(h, 0, 0, 2) : h = MATRIX.SETVALUE(h, 0, 1, 1)` (shared/samples/Math/MatrixFunctionsSciPyParity2.bas:8)
+- **MATRIX.SLICE(x1, x2, x3, x4, x5)** — `DIM sliced = MATRIX.SLICE(m, 0, 2, 0, 2)` (shared/samples/Matrix/MatrixCommonLibSimd.bas:37)
+- **MATRIX.TOEPLITZ(x1, x2)** — `tp = MATRIX.TOEPLITZ(c1, r1)` (shared/samples/Math/MatrixFunctionsSciPyParity2.bas:44)
+- **MATRIX.TRACE(x1)** — `PRINT "trace="; MATH.ROUND(MATRIX.TRACE(a), 6)` (shared/samples/Matrix/MatrixDecompositions.bas:15)
+- **MATRIX.TRANSPOSE(x1)** — `DIM tr = MATRIX.TRANSPOSE(a)` (shared/samples/Matrix/MatrixDecompositions.bas:24)
+- **STATS.ANOVA(x1)** — `result = STATS.ANOVA(groups)` (shared/samples/Analysis/StatsSciPyParity.bas:22)
+- **STATS.BERNOULLIPMF(x1, x2)** — `PRINT "BERNOULLIPMF(1,0.5): "; FORMAT(STATS.BERNOULLIPMF(1,0.5), "0.0000")` (shared/samples/Analysis/AnalysisTests.bas:159)
+- **STATS.BETACDF(x1, x2, x3)** — `PRINT "BETACDF(0.5,2,2): "; FORMAT(STATS.BETACDF(0.5,2,2), "0.0000")` (shared/samples/Analysis/AnalysisTests.bas:145)
+- **STATS.BETAISF(x1, x2, x3)** — `PRINT "beta="; MATH.ROUND(STATS.BetaIsf(0.5, 2, 2), 6)` (shared/minitests/stats/isf_extra2.bas:3)
+- **STATS.BETAPDF(x1, x2, x3)** — `PRINT "BETAPDF(0.5,2,2): "; FORMAT(STATS.BETAPDF(0.5,2,2), "0.0000")` (shared/samples/Analysis/AnalysisTests.bas:144)
+- **STATS.BETAPPF(x1, x2, x3)** — `PRINT "betappf  ="; STATS.BETAPPF(0.5, 2, 3)` (shared/samples/Math/StatsInverseSciPyParity.bas:15)
+- **STATS.BETASF(x1, x2, x3)** — `PRINT "beta="; MATH.ROUND(STATS.BetaSf(0.5, 2, 2), 6)` (shared/minitests/stats/beta_chi_sf.bas:3)
+- **STATS.BINOMIALPMF(x1, x2, x3)** — `PRINT "BINOMIALPMF(3,10,0.5): "; FORMAT(STATS.BINOMIALPMF(3,10,0.5), "0.0000")` (shared/samples/Analysis/AnalysisTests.bas:160)
+- **STATS.CHI2(x1, x2)** — `DIM chi2 = STATS.CHI2(observed, expected)` (shared/samples/Analysis/StatsCategoricalTests.bas:10)
+- **STATS.CHI2CON(x1)** — `r = STATS.CHI2CON(tb)` (shared/samples/Math/StatsSciPyParityP0.bas:32)
+- **STATS.CHICDF(x1, x2)** — `PRINT "CHICDF(1,2):   "; FORMAT(STATS.CHICDF(1,2), "0.0000")` (shared/samples/Analysis/AnalysisTests.bas:141)
+- **STATS.CHIISF(x1, x2)** — `PRINT "chi="; MATH.ROUND(STATS.ChiIsf(0.5, 1), 6)` (shared/minitests/stats/chi_isf.bas:3)
+- **STATS.CHIPDF(x1, x2)** — `PRINT "CHIPDF(1,2):   "; FORMAT(STATS.CHIPDF(1,2), "0.0000")` (shared/samples/Analysis/AnalysisTests.bas:140)
+- **STATS.CHIPPF(x1, x2)** — `PRINT "chippf   ="; STATS.CHIPPF(0.9, 7)` (shared/samples/Math/StatsInverseSciPyParity.bas:13)
+- **STATS.CHISF(x1, x2)** — `PRINT "chi="; MATH.ROUND(STATS.ChiSf(1.0, 1), 6)` (shared/minitests/stats/beta_chi_sf.bas:4)
+- **STATS.CHISQUAREDCDF(x1, x2)** — `PRINT "CHISQUAREDCDF(1,2): "; FORMAT(STATS.CHISQUAREDCDF(1,2), "0.0000")` (shared/samples/Analysis/AnalysisTests.bas:143)
+- **STATS.CHISQUAREDISF(x1, x2)** — `PRINT "chi2isf  ="; STATS.CHISQUAREDISF(0.05, 5)` (shared/samples/Math/StatsInverseSciPyParity.bas:20)
+- **STATS.CHISQUAREDPDF(x1, x2)** — `PRINT "CHISQUAREDPDF(1,2): "; FORMAT(STATS.CHISQUAREDPDF(1,2), "0.0000")` (shared/samples/Analysis/AnalysisTests.bas:142)
+- **STATS.CHISQUAREDPPF(x1, x2)** — `PRINT "chi2ppf  ="; STATS.CHISQUAREDPPF(0.95, 5)` (shared/samples/Math/StatsInverseSciPyParity.bas:12)
+- **STATS.CHISQUAREDSF(x1, x2)** — `PRINT "chi="; MATH.ROUND(STATS.ChiSquaredSf(3.841459, 1), 6)` (shared/minitests/stats/sf_extra.bas:5)
+- **STATS.DESCRIBE(x1)** — `r = STATS.DESCRIBE(v)` (shared/samples/Math/StatsSciPyParityP0.bas:60)
+- **STATS.EXPONENTIALCDF(x1, x2)** — `PRINT "EXPONENTIALCDF(1,2): "; FORMAT(STATS.EXPONENTIALCDF(1,2), "0.0000")` (shared/samples/Analysis/AnalysisTests.bas:153)
+- **STATS.EXPONENTIALISF(x1, x2)** — `PRINT "expisf   ="; STATS.EXPONENTIALISF(0.05, 0.5)` (shared/samples/Math/StatsInverseSciPyParity.bas:22)
+- **STATS.EXPONENTIALPDF(x1, x2)** — `PRINT "EXPONENTIALPDF(1,2): "; FORMAT(STATS.EXPONENTIALPDF(1,2), "0.0000")` (shared/samples/Analysis/AnalysisTests.bas:152)
+- **STATS.EXPONENTIALPPF(x1, x2)** — `PRINT "expppf   ="; STATS.EXPONENTIALPPF(0.9, 0.5)` (shared/samples/Math/StatsInverseSciPyParity.bas:16)
+- **STATS.EXPONENTIALSF(x1, x2)** — `PRINT "exp="; MATH.ROUND(STATS.ExponentialSf(2, 1.0), 6)` (shared/minitests/stats/sf_extra.bas:3)
+- **STATS.FCDF(x1, x2, x3)** — `PRINT "FCDF(1,5,10):  "; FORMAT(STATS.FCDF(1,5,10), "0.0000")` (shared/samples/Analysis/AnalysisTests.bas:151)
+- **STATS.FISF(x1, x2, x3)** — `PRINT "fisf     ="; STATS.FISF(0.05, 3, 8)` (shared/samples/Math/StatsInverseSciPyParity.bas:21)
+- **STATS.FPDF(x1, x2, x3)** — `PRINT "FPDF(1,5,10):  "; FORMAT(STATS.FPDF(1,5,10), "0.0000")` (shared/samples/Analysis/AnalysisTests.bas:150)
+- **STATS.FPPF(x1, x2, x3)** — `PRINT "fppf     ="; STATS.FPPF(0.95, 3, 8)` (shared/samples/Math/StatsInverseSciPyParity.bas:14)
+- **STATS.FSF(x1, x2, x3)** — `PRINT "f="; MATH.ROUND(STATS.FSf(1.0, 5, 10), 6)` (shared/minitests/stats/sf_weibull_f.bas:4)
+- **STATS.FTEST(x1, x2)** — `DIM f = STATS.FTest(a, b)` (shared/minitests/stats/kendall_ftest.bas:10)
+- **STATS.FISHER(x1, x2, x3, x4)** — `DIM fisher = STATS.FISHER(8, 2, 1, 5)` (shared/samples/Analysis/StatsCategoricalTests.bas:14)
+- **STATS.GAMMACDF(x1, x2, x3)** — `PRINT "gammacdf="; STATS.GAMMACDF(2, 3, 4)` (shared/samples/Math/StatsCdfPdfSciPyParity.bas:15)
+- **STATS.GAMMAISF(x1, x2, x3)** — `PRINT "gammaisf ="; MATH.ROUND(STATS.GAMMAISF(2, 1, 0.05), 9)` (shared/samples/Math/StatsInverseSciPyParity.bas:23)
+- **STATS.GAMMAPDF(x1, x2, x3)** — `PRINT "gammapdf="; STATS.GAMMAPDF(2, 3, 4)` (shared/samples/Math/StatsCdfPdfSciPyParity.bas:16)
+- **STATS.GAMMAPPF(x1, x2, x3)** — `PRINT "gppf="; MATH.ROUND(STATS.GammaPpf(2, 1, 0.5), 6)` (shared/minitests/stats/stats_all.bas:223)
+- **STATS.GAMMASF(x1, x2, x3)** — `DIM sf = STATS.GammaSf(2, 1, x)` (shared/minitests/stats/gamma_sf.bas:4)
+- **STATS.GEOMETRICPMF(x1, x2)** — `PRINT "GEOMETRICPMF(3,0.5): "; FORMAT(STATS.GEOMETRICPMF(3,0.5), "0.0000")` (shared/samples/Analysis/AnalysisTests.bas:162)
+- **STATS.HYPERGEOMETRICPMF(x1, x2, x3, x4)** — `PRINT "HYPERGEOMETRICPMF(2,5,10,20): "; FORMAT(STATS.HYPERGEOMETRICPMF(2,20,10,5), "0.0000")` (shared/samples/Analysis/AnalysisTests.bas:164)
+- **STATS.IQR(x1)** — `PRINT "iqr      ="; MATH.ROUND(STATS.IQR(x), 6)` (shared/samples/Math/StatsSciPyParityP0.bas:20)
+- **STATS.JARQUEBERA(x1)** — `r = STATS.JARQUEBERA(z)` (shared/samples/Math/StatsSciPyParityP0.bas:58)
+- **STATS.KENDALLTAU(x1, x2)** — `DIM k = STATS.KendallTau(x, y)` (shared/minitests/stats/kendall_ftest.bas:5)
+- **STATS.KRUSKAL(x1)** — `DIM r = STATS.Kruskal(g)` (shared/minitests/stats/kruskal.bas:6)
+- **STATS.KS(x1, x2)** — `result = STATS.KS(x, y)` (shared/samples/Analysis/StatsSciPyParity.bas:34)
+- **STATS.KURTOSISTEST(x1)** — `r = STATS.KURTOSISTEST(z)` (shared/samples/Math/StatsSciPyParityP0.bas:56)
+- **STATS.LINREGRESS(x1, x2)** — `r = STATS.LINREGRESS(x, y)` (shared/samples/Math/StatsSciPyParityP0.bas:48)
+- **STATS.LOGISTICCDF(x1)** — `PRINT "cdf="; MATH.ROUND(STATS.LogisticCdf(1.0, 0, 1), 6)` (shared/minitests/stats/logistic_cdf_sf.bas:3)
+- **STATS.LOGISTICISF(x1, x2, x3)** — `PRINT "logi="; MATH.ROUND(STATS.LogisticIsf(0.5, 0, 1), 6)` (shared/minitests/stats/isf_extra2.bas:4)
+- **STATS.LOGISTICPDF(x1, x2, x3)** — `PRINT "LOGISTICPDF(0,0,1): "; FORMAT(STATS.LOGISTICPDF(0,0,1), "0.0000")` (shared/samples/Analysis/AnalysisTests.bas:155)
+- **STATS.LOGISTICPPF(x1, x2, x3)** — `PRINT "logippf  ="; STATS.LOGISTICPPF(0.5, 0, 1)` (shared/samples/Math/StatsInverseSciPyParity.bas:24)
+- **STATS.LOGISTICSF(x1)** — `PRINT "sf="; MATH.ROUND(STATS.LogisticSf(1.0, 0, 1), 6)` (shared/minitests/stats/logistic_cdf_sf.bas:4)
+- **STATS.LOGNORMALCDF(x1)** — `PRINT "LOGNORMALCDF(1): "; FORMAT(STATS.LOGNORMALCDF(1), "0.0000")` (shared/samples/Analysis/AnalysisTests.bas:139)
+- **STATS.LOGNORMALISF(x1)** — `PRINT "logn="; MATH.ROUND(STATS.LognormalIsf(0.5, 0, 1), 6)` (shared/minitests/stats/isf_extra2.bas:5)
+- **STATS.LOGNORMALPDF(x1)** — `PRINT "LOGNORMALPDF(1): "; FORMAT(STATS.LOGNORMALPDF(1), "0.0000")` (shared/samples/Analysis/AnalysisTests.bas:138)
+- **STATS.LOGNORMALPPF(x1)** — `PRINT "logppf   ="; STATS.LOGNORMALPPF(0.9, 1, 0.5)` (shared/samples/Math/StatsInverseSciPyParity.bas:18)
+- **STATS.LOGNORMALSF(x1)** — `PRINT "ln="; MATH.ROUND(STATS.LognormalSf(1.0, 0, 1), 6)` (shared/minitests/stats/sf_normal.bas:4)
+- **STATS.MANNWHITNEY(x1, x2)** — `r = STATS.MANNWHITNEY(x, y)` (shared/samples/Math/StatsSciPyParityP0.bas:50)
+- **STATS.MODE(x1)** — `PRINT "mode="; STATS.Mode(a)` (shared/minitests/stats/stats_all.bas:227)
+- **STATS.MOMENT(x1, x2)** — `PRINT "STATS.MOMENT — momenti del campione 1..10"` (shared/samples/Analysis/StatsMoment.bas:25)
+- **STATS.NCBETACDF(x1, x2, x3, x4)** — `PRINT "bcdf="; MATH.ROUND(STATS.NcBetaCdf(0.5, 2, 2, 1), 6)` (shared/minitests/stats/nc_beta_gamma.bas:4)
+- **STATS.NCBETAISF(x1, x2, x3, x4)** — `PRINT "betai="; MATH.ROUND(STATS.NcBetaIsf(0.3, 2, 3, 2), 6)` (shared/minitests/stats/nc_ppf.bas:6)
+- **STATS.NCBETAPDF(x1, x2, x3, x4)** — `PRINT "bpdf="; MATH.ROUND(STATS.NcBetaPdf(0.5, 2, 2, 1), 6)` (shared/minitests/stats/nc_beta_gamma.bas:3)
+- **STATS.NCBETAPPF(x1, x2, x3, x4)** — `PRINT "beta="; MATH.ROUND(STATS.NcBetaPpf(0.95, 2, 3, 2), 6)` (shared/minitests/stats/nc_ppf.bas:5)
+- **STATS.NCBETASF(x1, x2, x3, x4)** — `PRINT "bsf="; MATH.ROUND(STATS.NcBetaSf(0.5, 2, 2, 1), 6)` (shared/minitests/stats/nc_beta_gamma.bas:5)
+- **STATS.NCCHI2CDF(x1, x2, x3)** — `PRINT "cdf="; MATH.ROUND(STATS.NcChi2Cdf(3.0, 2, 1), 6)` (shared/minitests/stats/nc_chi2.bas:4)
+- **STATS.NCCHI2ISF(x1, x2, x3)** — `PRINT "chi2i="; MATH.ROUND(STATS.NcChi2Isf(0.3, 3, 2), 6)` (shared/minitests/stats/nc_ppf.bas:4)
+- **STATS.NCCHI2PDF(x1, x2, x3)** — `PRINT "pdf="; MATH.ROUND(STATS.NcChi2Pdf(3.0, 2, 1), 6)` (shared/minitests/stats/nc_chi2.bas:3)
+- **STATS.NCCHI2PPF(x1, x2, x3)** — `PRINT "chi2="; MATH.ROUND(STATS.NcChi2Ppf(0.95, 3, 2), 6)` (shared/minitests/stats/nc_ppf.bas:3)
+- **STATS.NCCHI2SF(x1, x2, x3)** — `PRINT "sf="; MATH.ROUND(STATS.NcChi2Sf(3.0, 2, 1), 6)` (shared/minitests/stats/nc_chi2.bas:5)
+- **STATS.NCFCDF(x1, x2, x3, x4)** — `PRINT "fcdf="; MATH.ROUND(STATS.NcFCdf(1, 3, 10, 2), 6)` (shared/minitests/stats/nc_f_t_zt.bas:4)
+- **STATS.NCFISF(x1, x2, x3, x4)** — `PRINT "fi="; MATH.ROUND(STATS.NcFIsf(0.3, 3, 10, 2), 6)` (shared/minitests/stats/nc_ppf.bas:10)
+- **STATS.NCFPDF(x1, x2, x3, x4)** — `PRINT "fpdf="; MATH.ROUND(STATS.NcFPdf(1, 3, 10, 2), 6)` (shared/minitests/stats/nc_f_t_zt.bas:3)
+- **STATS.NCFPPF(x1, x2, x3, x4)** — `PRINT "f="; MATH.ROUND(STATS.NcFPpf(0.95, 3, 10, 2), 6)` (shared/minitests/stats/nc_ppf.bas:9)
+- **STATS.NCFSF(x1, x2, x3, x4)** — `PRINT "fsf="; MATH.ROUND(STATS.NcFSf(1, 3, 10, 2), 6)` (shared/minitests/stats/nc_f_t_zt.bas:5)
+- **STATS.NCGAMMACDF(x1, x2, x3)** — `PRINT "gcdf="; MATH.ROUND(STATS.NcGammaCdf(2.0, 2, 1), 6)` (shared/minitests/stats/nc_beta_gamma.bas:7)
+- **STATS.NCGAMMAISF(x1, x2, x3)** — `PRINT "gammai="; MATH.ROUND(STATS.NcGammaIsf(0.3, 2, 2), 6)` (shared/minitests/stats/nc_ppf.bas:8)
+- **STATS.NCGAMMAPDF(x1, x2, x3)** — `PRINT "gpdf="; MATH.ROUND(STATS.NcGammaPdf(2.0, 2, 1), 6)` (shared/minitests/stats/nc_beta_gamma.bas:6)
+- **STATS.NCGAMMAPPF(x1, x2, x3)** — `PRINT "gamma="; MATH.ROUND(STATS.NcGammaPpf(0.95, 2, 2), 6)` (shared/minitests/stats/nc_ppf.bas:7)
+- **STATS.NCGAMMASF(x1, x2, x3)** — `PRINT "gsf="; MATH.ROUND(STATS.NcGammaSf(2.0, 2, 1), 6)` (shared/minitests/stats/nc_beta_gamma.bas:8)
+- **STATS.NCTCDF(x1, x2, x3)** — `PRINT "tcdf="; MATH.ROUND(STATS.NcTCdf(1.5, 5, 2), 6)` (shared/minitests/stats/nc_f_t_zt.bas:7)
+- **STATS.NCTISF(x1, x2, x3)** — `PRINT "ti="; MATH.ROUND(STATS.NcTIsf(0.3, 5, 2), 6)` (shared/minitests/stats/nc_ppf.bas:12)
+- **STATS.NCTPDF(x1, x2, x3)** — `PRINT "tpdf="; MATH.ROUND(STATS.NcTPdf(1.5, 5, 2), 6)` (shared/minitests/stats/nc_f_t_zt.bas:6)
+- **STATS.NCTPPF(x1, x2, x3)** — `PRINT "t="; MATH.ROUND(STATS.NcTPpf(0.95, 5, 2), 6)` (shared/minitests/stats/nc_ppf.bas:11)
+- **STATS.NCTSF(x1, x2, x3)** — `PRINT "tsf="; MATH.ROUND(STATS.NcTSf(1.5, 5, 2), 6)` (shared/minitests/stats/nc_f_t_zt.bas:8)
+- **STATS.NEGATIVEBINOMIALPMF(x1, x2, x3)** — `PRINT "NEGATIVEBINOMIALPMF(3,5,0.5): "; FORMAT(STATS.NEGATIVEBINOMIALPMF(3,5,0.5), "0.0000")` (shared/samples/Analysis/AnalysisTests.bas:163)
+- **STATS.NORMALCDF(x1)** — `PRINT "NORMALCDF(0):  "; FORMAT(STATS.NORMALCDF(0), "0.0000")` (shared/samples/Analysis/AnalysisTests.bas:137)
+- **STATS.NORMALISF(x1)** — `PRINT "normisf  ="; STATS.NORMALISF(0.025, 0, 1)` (shared/samples/Math/StatsInverseSciPyParity.bas:19)
+- **STATS.NORMALPDF(x1)** — `PRINT "STATS.NORMALPDF(0):  "; FORMAT(STATS.NORMALPDF(0), "0.0000")` (shared/samples/Analysis/AnalysisTests.bas:136)
+- **STATS.NORMALPPF(x1)** — `PRINT "normppf  ="; STATS.NORMALPPF(0.975, 1, 2)` (shared/samples/Math/StatsInverseSciPyParity.bas:9)
+- **STATS.NORMALSF(x1)** — `PRINT "n="; MATH.ROUND(STATS.NormalSf(1.959964, 0, 1), 6)` (shared/minitests/stats/sf_normal.bas:3)
+- **STATS.NORMALTEST(x1)** — `result = STATS.NORMALTEST(normal)` (shared/samples/Analysis/StatsSciPyParity.bas:30)
+- **STATS.PARETOCDF(x1, x2, x3)** — `PRINT "cdf="; MATH.ROUND(STATS.ParetoCdf(2.0, 1, 2), 6)` (shared/minitests/stats/pareto_cdf_sf.bas:3)
+- **STATS.PARETOISF(x1, x2, x3)** — `PRINT "par="; MATH.ROUND(STATS.ParetoIsf(0.5, 1, 2), 6)` (shared/minitests/stats/isf_extra.bas:5)
+- **STATS.PARETOPDF(x1, x2, x3)** — `PRINT "PARETOPDF(1,2,3): "; FORMAT(STATS.PARETOPDF(1,2,3), "0.0000")` (shared/samples/Analysis/AnalysisTests.bas:154)
+- **STATS.PARETOPPF(x1, x2, x3)** — `PRINT "paretoppf="; STATS.PARETOPPF(0.9, 3, 2)` (shared/samples/Math/StatsInverseSciPyParity.bas:25)
+- **STATS.PARETOSF(x1, x2, x3)** — `PRINT "sf="; MATH.ROUND(STATS.ParetoSf(2.0, 1, 2), 6)` (shared/minitests/stats/pareto_cdf_sf.bas:4)
+- **STATS.PEARSONR(x1, x2)** — `r = STATS.PEARSONR(x, y)` (shared/samples/Math/StatsSciPyParityP0.bas:44)
+- **STATS.POISSONPMF(x1, x2)** — `PRINT "POISSONPMF(3,2): "; FORMAT(STATS.POISSONPMF(3,2), "0.0000")` (shared/samples/Analysis/AnalysisTests.bas:161)
+- **STATS.REGRESS(x1, x2)** — `RegRes = STATS.Regress(DatiX, DatiY)` (shared/samples/Analysis/AnalysisTests.bas:46)
+- **STATS.SHAPIRO(x1)** — `result = STATS.SHAPIRO(normal)` (shared/samples/Analysis/StatsSciPyParity.bas:28)
+- **STATS.SKEWTEST(x1)** — `r = STATS.SKEWTEST(z)` (shared/samples/Math/StatsSciPyParityP0.bas:54)
+- **STATS.SKEWEDNORMALPDF(x1)** — `PRINT "SKEWEDNORMALPDF(0): "; FORMAT(STATS.SKEWEDNORMALPDF(0), "0.0000")` (shared/samples/Analysis/AnalysisTests.bas:158)
+- **STATS.SPEARMANR(x1, x2)** — `r = STATS.SPEARMANR(x, y)` (shared/samples/Math/StatsSciPyParityP0.bas:46)
+- **STATS.STUDENTTCDF(x1, x2)** — `PRINT "STUDENTTCDF(0,5): "; FORMAT(STATS.STUDENTTCDF(0,5), "0.0000")` (shared/samples/Analysis/AnalysisTests.bas:147)
+- **STATS.STUDENTTISF(x1, x2)** — `PRINT "tisf     ="; STATS.STUDENTTISF(0.025, 10)` (shared/samples/Math/StatsInverseSciPyParity.bas:11)
+- **STATS.STUDENTTPDF(x1, x2)** — `PRINT "STUDENTTPDF(0,5): "; FORMAT(STATS.STUDENTTPDF(0,5), "0.0000")` (shared/samples/Analysis/AnalysisTests.bas:146)
+- **STATS.STUDENTTPPF(x1, x2)** — `PRINT "tppf     ="; STATS.STUDENTTPPF(0.975, 10)` (shared/samples/Math/StatsInverseSciPyParity.bas:10)
+- **STATS.STUDENTTSF(x1, x2)** — `PRINT "stud="; MATH.ROUND(STATS.StudentTSf(1.959964, 1000), 6)` (shared/minitests/stats/sf_extra.bas:4)
+- **STATS.TTEST(x1, x2)** — `DIM result = STATS.TTEST(x, y)` (shared/samples/Analysis/StatsSciPyParity.bas:16)
+- **STATS.TTESTONESAMPLE(x1, x2)** — `result = STATS.TTESTONESAMPLE(x, 5.0)` (shared/samples/Analysis/StatsSciPyParity.bas:20)
+- **STATS.TTESTPAIRED(x1, x2)** — `result = STATS.TTESTPAIRED(x, paired)` (shared/samples/Analysis/StatsSciPyParity.bas:18)
+- **STATS.TRIANGULARCDF(x1)** — `PRINT "cdf="; MATH.ROUND(STATS.TriangularCdf(2.0, 0, 1, 4), 6)` (shared/minitests/stats/triangular_cdf_sf.bas:3)
+- **STATS.TRIANGULARISF(x1)** — `PRINT "tri="; MATH.ROUND(STATS.TriangularIsf(0.5, 0, 0.5, 1), 6)` (shared/minitests/stats/isf_extra2.bas:6)
+- **STATS.TRIANGULARPDF(x1)** — `PRINT "TRIANGULARPDF(0.5): "; FORMAT(STATS.TRIANGULARPDF(0.5), "0.0000")` (shared/samples/Analysis/AnalysisTests.bas:156)
+- **STATS.TRIANGULARPPF(x1)** — `PRINT "trianppf ="; STATS.TRIANGULARPPF(0.5, 0, 1, 0.5)` (shared/samples/Math/StatsInverseSciPyParity.bas:26)
+- **STATS.TRIANGULARSF(x1)** — `PRINT "sf="; MATH.ROUND(STATS.TriangularSf(2.0, 0, 1, 4), 6)` (shared/minitests/stats/triangular_cdf_sf.bas:4)
+- **STATS.UNIFORMCDF(x1, x2, x3)** — `PRINT "cdf="; MATH.ROUND(STATS.UniformCdf(2.0, 1, 3), 6)` (shared/minitests/stats/uniform_cdf_sf.bas:3)
+- **STATS.UNIFORMISF(x1)** — `PRINT "uni="; MATH.ROUND(STATS.UniformIsf(0.5, 0, 1), 6)` (shared/minitests/stats/isf_extra.bas:4)
+- **STATS.UNIFORMPDF(x1)** — `PRINT "UNIFORMPDF(0.5):  "; FORMAT(STATS.UNIFORMPDF(0.5), "0.0000")` (shared/samples/Analysis/AnalysisTests.bas:157)
+- **STATS.UNIFORMPPF(x1)** — `PRINT "unifppf  ="; STATS.UNIFORMPPF(0.5, 0, 1)` (shared/samples/Math/StatsInverseSciPyParity.bas:27)
+- **STATS.UNIFORMSF(x1, x2, x3)** — `PRINT "sf="; MATH.ROUND(STATS.UniformSf(2.0, 1, 3), 6)` (shared/minitests/stats/uniform_cdf_sf.bas:4)
+- **STATS.WEIBULLCDF(x1, x2, x3)** — `PRINT "WEIBULLCDF(1,2,3): "; FORMAT(STATS.WEIBULLCDF(1,2,3), "0.0000")` (shared/samples/Analysis/AnalysisTests.bas:149)
+- **STATS.WEIBULLISF(x1, x2, x3)** — `PRINT "weib="; MATH.ROUND(STATS.WeibullIsf(0.5, 2, 1), 6)` (shared/minitests/stats/isf_extra.bas:3)
+- **STATS.WEIBULLPDF(x1, x2, x3)** — `PRINT "WEIBULLPDF(1,2,3): "; FORMAT(STATS.WEIBULLPDF(1,2,3), "0.0000")` (shared/samples/Analysis/AnalysisTests.bas:148)
+- **STATS.WEIBULLPPF(x1, x2, x3)** — `PRINT "weibppf  ="; STATS.WEIBULLPPF(0.8, 1.5, 2)` (shared/samples/Math/StatsInverseSciPyParity.bas:17)
+- **STATS.WEIBULLSF(x1, x2, x3)** — `PRINT "weib="; MATH.ROUND(STATS.WeibullSf(1.0, 2, 1), 6)` (shared/minitests/stats/sf_weibull_f.bas:3)
+- **STATS.WILCOXON(x1, x2)** — `r = STATS.WILCOXON(x, y)` (shared/samples/Math/StatsSciPyParityP0.bas:52)
+- **STATS.ZTPOISSONCDF(x1, x2)** — `PRINT "ztcdf="; MATH.ROUND(STATS.ZTPoissonCdf(3, 2.5), 6)` (shared/minitests/stats/nc_f_t_zt.bas:10)
+- **STATS.ZTPOISSONPMF(x1, x2)** — `PRINT "ztpmf="; MATH.ROUND(STATS.ZTPoissonPmf(3, 2.5), 6)` (shared/minitests/stats/nc_f_t_zt.bas:9)
+- **STATS.ZTEST(x1, x2, x3)** — `result = STATS.ZTEST(x, 5.0, 2.0)` (shared/samples/Analysis/StatsSciPyParity.bas:32)
+<!-- END DOMAIN TABLE -->
+
 <!-- BEGIN SURFACE (generato da tools/sh/manual_surface.sh — non modificare a mano) -->
 
 ## Riferimento completo: comandi, funzioni, parametri
@@ -1179,8 +1405,7 @@ ABS(espressione)
 | `NUMERICAL` | FFT/IFFT/RFFT/IRFFT, ODE (`SolveOde`/`SolveIvp`), integrali, interpolazione/spline, derivazione |
 | `TIMESERIES` | `Arima`, `HoltWinters`, `AdfTest`, `MaCoefficients`, `YuleWalker` |
 | `MULTIVARIATE` | `Pca`, `KMeans` |
-| `REGRESSION` | `Regress` |
-| `STATS` | descrittive e test già presenti (`Mean`, `Median`, `Variance`, `Anova`, …) |
+| `STATS` | descrittive e test (`Mean`, `Median`, `Variance`, `Anova`, …) + `Regress` (one-pass, ex `REGRESSION.Regress`) |
 | `VECTOR` | `EuclideanDistanceSquared` |
 
 ## 1. Riferimento funzioni
@@ -1221,7 +1446,7 @@ ABS(espressione)
 | `MEAN` | `STATS.Mean()` | Media aritmetica. |
 | `MEDIAN` | `STATS.Median()` | Mediana. |
 | `PCA` | `MULTIVARIATE.Pca()` | Analisi componenti principali. |
-| `REGRESS` | `REGRESSION.Regress()` | Regressione lineare. |
+| `REGRESS` | `STATS.Regress()` | Regressione lineare. |
 | `SIMPSON` | `NUMERICAL.Simpson(fn, a, b, n)` | Simpson composita. |
 | `SOLVEIVP` | `NUMERICAL.SolveIvp(fn, y0, t0, t1)` | ODE adattiva RK45 (scipy solve_ivp). |
 | `SOLVEODE` | `NUMERICAL.SolveOde(fn, y0, t0, t1, s)` | Solutore ODE 1o ordine (RK4). |
@@ -1301,84 +1526,10 @@ SUB Main()
 0.99968777644033  r.R2
 
 
-DIM r AS REGRESSION.RegressionResult
-r = REGRESSION.Regress(x, y)
+DIM r AS STATS.RegressionResult
+r = STATS.Regress(x, y)
 PRINT r.Slope; r.Intercept; r.R2
 
-
-### BITS-Guida-Utente
-
-*Fonte: `BITS-Guida-Utente`*
-
-
-## 1. Convenzioni (valgono per tutte le funzioni)
-
-### Convenzione numerica BIT/BOOL (TRUE = -1, FALSE = 0)
-| Regola | Valore |
-|---|---|
-| Indici dei bit | **0-based**, `0` = bit meno significativo (LSB) |
-| `n` fuori da `[0, 63]` | `BITGET`/`BITTEST` → `0`; `BITSET`/`BITCLEAR`/`BITTOGGLE` → `x` invariato |
-| `width` (BITREVERSE/rotazioni) | `<= 0` → `0`; `> 64` → clampato a `64` |
-| `lo`/`hi` invertiti (BITFIELD) | vengono **scambiati**; clampati a `[0,63]` |
-| Predicati (`BITTEST`, `ISPOW2`) | convenzione **Bit**: `-1` = vero, `0` = falso |
-| Interi | tutti i valori sono a 64 bit con segno (i numerici BASIC sono `double`, convertiti) |
-
-## 2. Tier 1 — operazioni elementari
-| Funzione | Sintassi | Ritorna | Esempio |
-|---|---|---|---|
-| `BITCOUNT` | `BITS.BITCOUNT(x)` | numero di bit a 1 (0..64) | `BITS.BITCOUNT(240)` → `4` |
-| `BITGET` | `BITS.BITGET(x, n)` | `0`/`1` | `BITS.BITGET(240, 4)` → `1` |
-| `BITSET` | `BITS.BITSET(x, n)` | `x` con il bit `n` posto a 1 | `BITS.BITSET(0, 3)` → `8` |
-| `BITCLEAR` | `BITS.BITCLEAR(x, n)` | `x` con il bit `n` azzerato | `BITS.BITCLEAR(255, 0)` → `254` |
-| `BITTOGGLE` | `BITS.BITTOGGLE(x, n)` | `x` con il bit `n` invertito | `BITS.BITTOGGLE(255, 0)` → `254` |
-| `BITTEST` | `BITS.BITTEST(x, n)` | Bit `-1`/`0` | `BITS.BITTEST(8, 3)` → `-1` |
-
-## 3. Tier 2 — campi, rotazioni, codifiche
-| Funzione | Sintassi | Ritorna | Esempio |
-|---|---|---|---|
-| `BITFIELD` | `BITS.BITFIELD(x, lo, hi)` | bit `lo..hi` **inclusi**, allineati a destra | `BITS.BITFIELD(45, 1, 3)` → `6` |
-| `BITREVERSE` | `BITS.BITREVERSE(x, width)` | ordine dei `width` bit bassi invertito | `BITS.BITREVERSE(1, 4)` → `8` |
-| `BITROTATEL` | `BITS.BITROTATEL(x, n, width)` | rotazione sinistra su `width` bit | `BITS.BITROTATEL(1, 1, 4)` → `2` |
-| `BITROTATER` | `BITS.BITROTATER(x, n, width)` | rotazione destra su `width` bit | `BITS.BITROTATER(1, 1, 4)` → `8` |
-| `GRAYCODE` | `BITS.GRAYCODE(x)` | `x XOR (x >> 1)` | `BITS.GRAYCODE(5)` → `7` |
-| `FROMGRAY` | `BITS.FROMGRAY(x)` | inversa del codice Gray | `BITS.FROMGRAY(7)` → `5` |
-| `PARITY` | `BITS.PARITY(x)` | `0` = numero pari di bit a 1, `1` = dispari | `BITS.PARITY(7)` → `1` |
-| `BITSCANFWD` | `BITS.BITSCANFWD(x)` | indice del bit a 1 **più basso**, `-1` se `x = 0` | `BITS.BITSCANFWD(8)` → `3` |
-| `BITSCANREV` | `BITS.BITSCANREV(x)` | indice del bit a 1 **più alto**, `-1` se `x = 0` | `BITS.BITSCANREV(8)` → `3` |
-| `BYTESWAP` | `BITS.BYTESWAP(x)` | ordine dei 8 byte invertito (endianness) | `BITS.BYTESWAP(256)` → `281474976710656` |
-
-## 4. Tier 3 — algoritmi
-| Funzione | Sintassi | Ritorna | Esempio |
-|---|---|---|---|
-| `HAMMINGDIST` | `BITS.HAMMINGDIST(a, b)` | numero di bit diversi | `BITS.HAMMINGDIST(0, 7)` → `3` |
-| `BITINTERLEAVE` | `BITS.BITINTERLEAVE(a, b)` | codice di **Morton**: bit di `a` in posizioni pari, `b` in dispari | `BITS.BITINTERLEAVE(3, 0)` → `5` |
-| `BITDEINTERLEAVE` | `BITS.BITDEINTERLEAVE(m, which)` | inversa: `which = 0` bit pari, `1` bit dispari | `BITS.BITDEINTERLEAVE(5, 0)` → `3` |
-| `NEXTPOW2` | `BITS.NEXTPOW2(x)` | più piccola potenza di 2 `>= x` (`x <= 1` → `1`) | `BITS.NEXTPOW2(1000)` → `1024` |
-| `ISPOW2` | `BITS.ISPOW2(x)` | Bit `-1` se potenza di 2 (e `> 0`) | `BITS.ISPOW2(8)` → `-1` |
-
-## 5. Esempio completo e complesso (verificato 5/5)
-| # | Scenario | Funzioni | Proprietà verificata |
-|---|---|---|---|
-| 1 | bitmask di permessi | `BITSET` `BITCLEAR` `BITTOGGLE` `BITTEST` `BITGET` `BITCOUNT` | conteggio/lettura coerenti dopo concessioni e revoche |
-| 2 | header impacchettato `[15..8]ver [7..4]tipo [3..0]flag` | `BITFIELD` | round-trip dei campi su una tabella di 4 header + campo con estremi invertiti |
-| 3 | integrità dei pacchetti | `PARITY` `HAMMINGDIST` | somma delle parità e somma delle distanze di Hamming |
-| 4 | contatore Gray su 0..15 | `GRAYCODE` `FROMGRAY` `HAMMINGDIST` | round-trip **e** invariante "codici adiacenti differiscono di 1 bit" (0 violazioni) |
-| 5 | griglia 4×4 → indice lineare | `BITINTERLEAVE` `BITDEINTERLEAVE` | round-trip su tutte le 16 celle (0 errori) |
-| 6 | cifrario a rotazione + endianness | `BITROTATEL` `BITROTATER` `BITREVERSE` `BYTESWAP` | cifratura/decifratura round-trip e `BYTESWAP` applicato due volte = identità |
-| 7 | capacità e allineamento | `NEXTPOW2` `ISPOW2` `BITSCANFWD` `BITSCANREV` | `ISPOW2(NEXTPOW2(n))` vero, indici LSB/MSB, `BITSCAN*` su 0 → `-1` |
-
-DIM viol AS LONG
-viol = 0
-FOR k = 0 TO 14
-  IF BITS.FROMGRAY(BITS.GRAYCODE(k)) <> k THEN viol = viol + 1
-  IF BITS.HAMMINGDIST(BITS.GRAYCODE(k), BITS.GRAYCODE(k + 1)) <> 1 THEN viol = viol + 1
-NEXT
-PRINT "gray_viol="; viol          ' 0
-
-
-## 6. Verifica
-
-## 7. Note e limiti
 
 ### COMPLEX-Guida-Utente
 
@@ -2229,6 +2380,10 @@ VECCALC.FLUX(Up, Bowl, 0, 1, 0, 1, 0.000001)   ' 1 (campo verticale su superfici
 | `metrics.inc` | `METRICS` | performance e rischio: Sharpe, Sortino, Calmar, drawdown, VaR/CVaR, alpha/beta, momenti, Jarque-Bera |
 | `volatility.inc` | `VOLATILITY` | volatilità annualizzata, downside deviation |
 | `fundamentals.inc` | `FUNDAMENTALS` | EPS/DPS/NAV, P/E, P/B, P/S, payout, dividend yield |
+| `bonds.inc` | `BONDS` | prezzo/rendimento di obbligazioni, duration, BEY, current yield, YTM, zero-coupon |
+| `derivatives.inc` | `DERIVATIVES` | Black-Scholes, Merton, binomiale CRR e le 11 greche |
+| `portfolio.inc` | `PORTFOLIO` | metriche multi-asset, min-varianza/max-Sharpe/risk-parity, Kelly, Black-Litterman, VaR/CVaR |
+| `backtest.inc` | `BACKTEST` | backtest a pesi uguali: metriche e curva |
 
 ## Uso
 
@@ -2246,6 +2401,37 @@ PRINT VOLATILITY.AnnualizedVolatility(r, 252)   ' 0.294856
 PRINT FUNDAMENTALS.DividendYield(5, 100)        ' 5 (percentuale)
 
 
+IMPORT BONDS
+IMPORT DERIVATIVES
+
+DIM s AS DOUBLE, m AS DOUBLE
+s = DATETIME.DATEVALUE("2024-01-01")     ' OADate (DateTime -> DOUBLE)
+m = DATETIME.DATEVALUE("2026-01-01")
+
+PRINT BONDS.BondPrice(s, m, 0.05, 0.05, 100, 1)         ' 100.000000
+PRINT BONDS.DURATION(s, m, 0.05, 0.05, 1, 0, 1)         ' 1.952381 (calcMethod ignorato)
+PRINT DERIVATIVES.BsCall(100, 100, 1, 0.05, 0.2)        ' 10.450584
+PRINT DERIVATIVES.Delta(100, 100, 1, 0.05, 0.2, "CALL") ' 0.636831
+
+
+IMPORT PORTFOLIO
+IMPORT BACKTEST
+
+DIM mu(2) AS DOUBLE : mu = {0.10, 0.05, 0.035}
+DIM cov(2) AS ARRAY OF DOUBLE
+cov(0) = {0.0400, 0.0020, 0.0005}
+cov(1) = {0.0020, 0.0100, 0.0002}
+cov(2) = {0.0005, 0.0002, 0.0025}
+
+DIM pr() AS DOUBLE
+pr = PORTFOLIO.MAXSHARPE(mu, cov, 0.02)
+PRINT pr(0); " "; pr(1); " "; pr(2)      ' rendimento, volatilità, Sharpe
+PRINT pr(3); " "; pr(4); " "; pr(5)      ' pesi
+
+' Backtest: matrice 2-D (periodi x asset) passata direttamente all'FFI.
+DIM mesi(1, 1) AS DOUBLE
+
+
 ## Convenzioni
 
 ## Da dove vengono (mapping dal vecchio namespace)
@@ -2257,10 +2443,10 @@ PRINT FUNDAMENTALS.DividendYield(5, 100)        ' 5 (percentuale)
 | `TRADING.METRICS.DownsideDeviation` | `VOLATILITY.DownsideDeviation` | gruppo volatilità |
 | `TRADING.METRICS.AnnualizedDownsideDeviation` | `VOLATILITY.AnnualizedDownsideDeviation` | gruppo volatilità |
 | `TRADING.METRICS.<11 fondamentali>` | `FUNDAMENTALS.<...>` | EPS, DPS, NAV, P/E, P/B, P/S, payout, dividend yield |
-| `TRADING.BONDS` | `BONDS` | ondata 2 |
-| `TRADING.OPTIONS` | `DERIVATIVES` | ondata 2 |
-| `TRADING.PORTFOLIO` | `PORTFOLIO` | ondata 3 |
-| `TRADING.BACKTESTS` | `BACKTEST` | ondata 3 |
+| `TRADING.BONDS.<9>` | `BONDS.<9>` | date `DATETIME` (convertite in OADate nel wrapper), `model` opzionale |
+| `TRADING.OPTIONS.<16>` | `DERIVATIVES.<16>` | `type` `"CALL"`/`"PUT"`, passi del binomiale come `LONG` |
+| `TRADING.PORTFOLIO.<19>` | `PORTFOLIO.<19>` | risultati come ARRAY (non più `PortfolioResult`) |
+| `TRADING.BACKTESTS.RUN` | `BACKTEST.SIMULATE` | matrice 2-D + buffer `out` (non più `BacktestResult`) |
 
 ## Riferimento: `TRADING` (12)
 | funzione | firma | risultato / note |
@@ -2322,17 +2508,87 @@ PRINT FUNDAMENTALS.DividendYield(5, 100)        ' 5 (percentuale)
 | `PERatio` | `(price, eps)` | `P/E` |
 | `PSRatio` | `(price, salesPerShare)` | `P/S` |
 
+## Riferimento: `BONDS` (9)
+| funzione | firma | risultato / note |
+|---|---|---|
+| `BondPrice` | `(settle, maturity, rate, yld, redemption, frequency[, model])` | prezzo *dirty* (rateo incluso). `model 0` = `Trading.Bonds`, `1` = `Numerics.Price` (basis 0) |
+| `BondYield` | `(settle, maturity, rate, price, redemption, frequency[, model])` | YTM dal prezzo, stesso modello di `BondPrice` (Newton, 100 iterazioni) |
+| `PRICESIMPLE` | `(settle, maturity, rate, yld, redemption, frequency)` | prezzo a periodi interi `n = round(anni·freq)`, senza rateo |
+| `DURATION` | `(settle, maturity, rate, yld, frequency, basis, calcMethod)` | Macaulay in anni; `basis` e `calcMethod` sono **ignorati** (parità builtin: sempre Macaulay) |
+| `BondEquivalentYield` | `(faceValue, bondPrice, daysToMaturity)` | `((F−P)/P)·(365/giorni)`; prezzo o giorni zero → 0 |
+| `CurrentYield` | `(annualCoupons, bondPrice)` | `cedole annuali / prezzo`; prezzo zero → 0 |
+| `YieldToMaturity` | `(couponPayment, faceValue, price, years)` | approssimazione `(C + (F−P)/anni)/((F+P)/2)` |
+| `ZeroCouponBondValue` | `(faceValue, rate, time)` | `F/(1+r)^t`; `1+r = 0 → 0` |
+| `ZeroCouponBondYield` | `(faceValue, price, time)` | `(F/P)^(1/t) − 1`; `t` o `P` zero → 0 |
+
+## Riferimento: `DERIVATIVES` (16)
+| funzione | firma | risultato / note |
+|---|---|---|
+| `BsCall` | `(S, K, T, r, vol[, q])` | Black-Scholes; con `q ≠ 0` diventa Merton |
+| `BsPut` | `(S, K, T, r, vol[, q])` | idem, put |
+| `MertonCall` | `(S, K, T, r, vol[, q])` | `q` = dividend yield continuo |
+| `MertonPut` | `(S, K, T, r, vol[, q])` | idem, put |
+| `BinomialOption` | `(S, K, T, r, vol, steps, type)` | albero CRR europeo; `steps ≤ 0 → 0` |
+| `Delta` | `(S, K, T, r, vol, type)` | `±N(d1)`; scadenza → 0/±1 |
+| `Gamma` | `(S, K, T, r, vol)` | `φ(d1)/(S·σ√T)` |
+| `Vega` | `(S, K, T, r, vol)` | per **1%** di volatilità |
+| `Theta` | `(S, K, T, r, vol, type)` | per **giorno** |
+| `Rho` | `(S, K, T, r, vol, type)` | per **1%** di tasso |
+| `Vanna` | `(S, K, T, r, vol)` | `−φ(d1)·d2/σ` |
+| `Volga` | `(S, K, T, r, vol)` | `S·φ(d1)·√T·d1·d2/σ` |
+| `Charm` | `(S, K, T, r, vol, type)` | delta-decay, per giorno |
+| `DeltaSpeed` | `(S, K, T, r, vol)` | `−Γ/S·(d1/(σ√T)+1)` |
+| `Zomma` | `(S, K, T, r, vol)` | derivata di Γ rispetto a σ |
+| `GammaColor` | `(S, K, T, r, vol)` | derivata di Γ rispetto a T |
+
+## Riferimento: `PORTFOLIO` (19)
+| funzione | firma | risultato / note |
+|---|---|---|
+| `EXPECTEDRETURN` | `(pesi(), rendimentiAttesi())` | `Σ w_i·μ_i` |
+| `STDEV` | `(pesi(), cov())` | `√(wᵀΣw)` |
+| `SHARPERATIO` | `(ret, sd, rf)` | `(ret−rf)/sd`; `sd = 0 → 0` |
+| `ISLONGONLY` | `(pesi())` | `-1` (vero) se tutti `w ≥ 0`, altrimenti `0` |
+| `PORTFOLIOMAD` | `(rendimenti())` | scarto medio assoluto dalla **mediana** |
+| `PORTFOLIOSEMIMAD` | `(rendimenti()[, target])` | solo i valori `< target` (default 0) |
+| `MINVOLATILITY` | `(cov())` | `w ∝ Σ⁻¹·1` |
+| `MAXSHARPE` | `(μ(), cov(), rf)` | `w ∝ Σ⁻¹(μ−rf)` |
+| `MEANVARIANCE` | `(μ(), cov())` | come MAXSHARPE con `rf = 0` |
+| `RISKPARITY` | `(cov())` | iterazione ERC (1000 passi, tolleranza 1e-8) |
+| `EQUALLYWEIGHTED` | `(n)` | `w_i = 1/n` |
+| `MAXRETURN` | `(μ())` | 100% sull'asset con `μ` massimo |
+| `KELLYCRITERION` | `(storico j, rf)` | `ARRAY` di 4; storico jagged appiattito; `rf` **ignorato** (parità builtin) |
+| `MINCVAR` | `(storico j, conf, rf)` | coda CVaR su storico jagged; `rf` ignorato; `ARRAY` di 4 |
+| `MINCDAR` | `(storico j, conf, rf)` | coda CDaR su storico jagged; `rf` ignorato; `ARRAY` di 4 |
+| `EVOLVE` | `(μ(), cov())` | soluzione deterministica min-varianza (niente GA) |
+| `BLACKLITTERMAN` | `(caps(), cov(), λ, τ, P(), Q(), Ω(), rf)` | `Π=λΣw_mkt`; posterior bayesiano; poi MAXSHARPE |
+| `PVAR` | `(storico(), pesi(), conf)` | VaR storico in **percentuale**; i pesi sono ignorati |
+| `CVAR` | `(storico(), pesi(), conf)` | CVaR storico (frazione); i pesi sono ignorati |
+
+## Riferimento: `BACKTEST` (1)
+| funzione | firma | risultato |
+|---|---|---|
+| `SIMULATE` | `(data() AS DOUBLE, out())` su matrice `DIM data(periodi, asset)` | scrive `out(0..5)` = TotalReturn%, AnnualizedReturn%, MaxDrawdown, Sharpe, TradesCount, Turnover e `out(6..)` = curva; ritorna il numero di periodi |
+| `RUNFLAT` | `(flat(), periodi, asset)` | `ARRAY [6 metriche + curva]` da un buffer piatto row-major |
+
 ## Esempio completo
 
 ## Parità e verifica
 
+### Protocollo 4.1
+| punto | stato |
+|---|---|
+| parità 4 backend (parametri e risultati) | MiniTest `quant/*` PASS su IL, PCodeVM, VM/C, C99Native; sample `QuantLab` identico sulle 4 backend |
+| MiniTest per ogni funzione | 89/89 coperte dai 3 `quant/*.bas` (oracoli deterministici) |
+| sample completo | `QuantLab.bas` (8 sezioni, tutte le funzioni) |
+| guida utente | questo documento |
+| manuale | V.27 §17 |
+| comandi | nessuno: `QUANT` espone solo funzioni (nessun comando, §1 della direttiva) |
+| polimorfismo | nessuna variante: la superficie è deterministica e headless-safe (nessun target console/window/graphics) |
+| errori | input non valido → `0` (o buffer invariato); nessuna eccezione attraversa l'FFI |
+
 ## Cosa non è (ancora) qui
 | bisogno | dove |
 |---|---|
-| obbligazioni, duration, ZCB | `BONDS` (ondata 2) |
-| opzioni, Black-Scholes, greche, binomiale | `DERIVATIVES` (ondata 2) |
-| ottimizzazione di portafoglio, Kelly, VaR multi-asset | `PORTFOLIO` (ondata 3) |
-| backtest di strategia | `BACKTEST` (ondata 3) |
 | calcolo vettoriale, quadratura, ODE | `VECCALC`, `QUAD`, `ODE` |
 | algebra vettoriale e matrici | `VECTOR`, `MATRIX`, `LINALG` |
 
@@ -3863,6 +4119,8 @@ SUB Main()
 
 ## 3. Note e limitazioni
 
+## 4. Implementazione (FFI, 2026-11-09)
+
 ### Stats-Guida-Utente
 
 *Fonte: `Stats-Guida-Utente`*
@@ -3934,228 +4192,3 @@ END SUB
 ## 4. Vedi anche
 
 <!-- END SURFACE -->
-
-
-
-
-
-
-
-
-<!-- BEGIN DOMAIN TABLE -->
-## Tavola sinottica del dominio
-
-Ogni riga riporta la firma canonica (dal registry) e il primo uso reale trovato
-nel corpus di test e sample `.bas`/`.inc`: dove il corpus non usa il simbolo è dichiarato.
-
-- **MATH.ABS(x1)** — `err = MATH.ABS(MATH.SQR(tot / T) - rms)` (shared/samples/Quad/QuadLab.bas:75)
-- **MATH.ACOS(x1)** — `PRINT "Arcocoseno (ACOS) di 0:     "; MATH.ACOS(0); " (rad)"` (shared/samples/Math/MathTrigonometry.bas:47)
-- **MATH.ASIN(x1)** — `PRINT "Arcoseno (ASIN) di 1:       "; MATH.ASIN(1); " (rad)"` (shared/samples/Math/MathTrigonometry.bas:44)
-- **MATH.ATN(x1)** — `PRINT "ATN(1)  = "; ROUND(MATH.RAD2DEG(MATH.ATN(1)), 6); " deg"` (shared/samples/Math/MathAtnVectorAngle.bas:28)
-- **MATH.AVG()** — `media = MATH.AVG(risparmi)` (shared/samples/Math/PianificazioneRisparmi.bas:19)
-- **MATH.COSH(x1)** — `PRINT "Coseno Iperbolico (COSH) di 1:  "; MATH.COSH(1)` (shared/samples/Math/MathTrigonometry.bas:63)
-- **MATH.CEILING(x1)** — `PRINT "  CEILING(num):  "; MATH.CEILING(num_pos)` (shared/samples/Math/MathLogarithms.bas:59)
-- **MATH.CLAMP(x1, x2, x3)** — `PRINT "CLAMP(150, 0, 100): "; MATH.CLAMP(val, 0, 100); " (Atteso 100)"` (shared/samples/Math/MathCombinatorics.bas:70)
-- **MATH.COMB(x1, x2)** — `PRINT "COMB("; n; ", "; k; "):   "; MATH.COMB(n, k)` (shared/samples/Math/MathCombinatorics.bas:39)
-- **MATH.COS(x1)** — `r(0) = MATH.COS(t)` (shared/samples/VecCalc/VecCalcLab.bas:63)
-- **MATH.DEG2RAD(x1)** — `DIM angle_rad = MATH.DEG2RAD(angle_deg)` (shared/samples/Math/MathTrigonometry.bas:27)
-- **MATH.EXP(x1)** — `ys(0) = 1.0 : ys(1) = MATH.EXP(0.5) : ys(2) = MATH.EXP(1.0) : ys(3) = MATH.EXP(1.5) : ys(4) = MATH.E…` (shared/samples/include/optimize/05-Fitting.bas:9)
-- **MATH.FACT(x1)** — `PRINT "FACT("; n; "):      "; MATH.FACT(n)` (shared/samples/Math/MathCombinatorics.bas:31)
-- **MATH.FIX(x1)** — `PRINT "  FIX(num):      "; MATH.FIX(num_pos)` (shared/samples/Math/MathLogarithms.bas:56)
-- **MATH.FLOOR(x1)** — `PRINT "  FLOOR(num):    "; MATH.FLOOR(num_pos)` (shared/samples/Math/MathLogarithms.bas:58)
-- **MATH.HYPOT(x1, x2)** — `PRINT "HYPOT(3, 4):        "; MATH.HYPOT(3, 4)` (shared/samples/Math/MathCombinatorics.bas:66)
-- **MATH.INT(x1)** — `PRINT "  INT(num):      "; MATH.INT(num_pos)` (shared/samples/Math/MathLogarithms.bas:57)
-- **MATH.ISNUMERIC(x1)** — `IF MATH.ISNUMERIC(Input) THEN` (shared/samples/Types/TypesAny.bas:91)
-- **MATH.LOG(x1)** — `PRINT "LOG(e):                     "; MATH.LOG(e); " (Atteso: 1)"` (shared/samples/Math/MathLogarithms.bas:34)
-- **MATH.LOG10(x1)** — `PRINT "LOG10(1000):                "; MATH.LOG10(1000); " (Atteso: 3)"` (shared/samples/Math/MathLogarithms.bas:37)
-- **MATH.MAX()** — `GmbStats = "mean=" + STR$(STATSX.MEAN(n)) + " max=" + STR$(MATH.MAX(n[0], n[1], n[2])) + " min=" + S…` (shared/samples/Ai/McpCapabilityServer.bas:52)
-- **MATH.MIN()** — `PRINT "MIN(3, 1, 4, 1, 5, 9): "; MATH.MIN(3, 1, 4, 1, 5, 9) ' Atteso: 1` (shared/samples/Math/MathExtended.bas:43)
-- **MATH.PERM(x1, x2)** — `PRINT "PERM("; n; ", "; k; "):   "; MATH.PERM(n, k)` (shared/samples/Math/MathCombinatorics.bas:35)
-- **MATH.PI()** — `SerieStagionale(si) = (si * 0.1) + SIN(si * 2 * MATH.PI() / 12) * 5 + (MATH.RND() - 0.5)` (shared/samples/TimeSeries/TimeSeriesAdvanced.bas:62)
-- **MATH.PYTHAGORAS(x1, x2)** — `820 PRINT "PYTHAGORAS(3, 4) =", PYTHAGORAS(3, 4); "(Atteso: 5)"` (shared/samples/Types/TypesConversions.bas:135)
-- **MATH.RAD2DEG(x1)** — `PRINT "ATN(1)  = "; ROUND(MATH.RAD2DEG(MATH.ATN(1)), 6); " deg"` (shared/samples/Math/MathAtnVectorAngle.bas:28)
-- **MATH.RANGE()** — `PRINT "MATH.RANGE — Sequenze numeriche"` (shared/samples/Math/RangeDemo.bas:12)
-- **MATH.RND()** — `Prices(i) = Prices(i-1) * (1 + (MATH.RND() - 0.5) * 0.02)` (shared/samples/TimeSeries/TimeSeriesTests.bas:34)
-- **MATH.ROUND(x1)** — `PRINT "L1H0 copy score:  somma/|somma| = "; MATH.ROUND(s(0), 3); "   frazione positivi = "; MATH.ROU…` (shared/samples/Wsp/Edit.bas:20)
-- **MATH.SINH(x1)** — `PRINT "Seno Iperbolico (SINH) di 1:    "; MATH.SINH(1)` (shared/samples/Math/MathTrigonometry.bas:62)
-- **MATH.SGN(x1)** — `PRINT "SGN(-10.5): "; MATH.SGN(-10.5)` (shared/samples/Math/MathLogarithms.bas:75)
-- **MATH.SIN(x1)** — `RETURN 100 * MATH.SIN(W2 * t) + 30 * MATH.SIN(3 * W2 * t)` (shared/samples/Quad/QuadLab.bas:24)
-- **MATH.SQR(x1)** — `RETURN 1 / MATH.SQR(h)` (shared/samples/Quad/QuadLab.bas:35)
-- **MATH.SUM()** — `SPEED SELECT Clienti.Nome AS NomeCliente, SUM(Ordini.Importo) AS TotaleImporto INTO ris() OF Risulta…` (shared/samples/Databases/DbSpeedFullTests.bas:261)
-- **MATH.TANH(x1)** — `PRINT "Tangente Iperbolica (TANH) di 1: "; MATH.TANH(1)` (shared/samples/Math/MathTrigonometry.bas:64)
-- **MATH.TAN(x1)** — `PRINT "Tangente (TAN):   "; MATH.TAN(angle_rad)` (shared/samples/Math/MathTrigonometry.bas:34)
-- **MATH.TRUNC(x1)** — `PRINT "  TRUNC(num, 2): "; MATH.TRUNC(num_pos, 2)` (shared/samples/Math/MathLogarithms.bas:55)
-- **MATRIX.ABOVEMASK(x1, x2)** — `DIM flatMask() = MATRIX.ABOVEMASK(rowsBroadcast, 15.0)` (shared/samples/Matrix/MatrixCommonLibSimd.bas:51)
-- **MATRIX.ABOVEMATRIX(x1, x2)** — `DIM matrixMask() = MATRIX.ABOVEMATRIX(rowsBroadcast, 15.0)` (shared/samples/Matrix/MatrixCommonLibSimd.bas:52)
-- **MATRIX.ADDCOLVECTOR(x1, x2)** — `DIM columnsBroadcast = MATRIX.ADDCOLVECTOR(m, columnVector)` (shared/samples/Matrix/MatrixCommonLibSimd.bas:42)
-- **MATRIX.ADDROWVECTOR(x1, x2)** — `DIM rowsBroadcast = MATRIX.ADDROWVECTOR(m, rowVector)` (shared/samples/Matrix/MatrixCommonLibSimd.bas:41)
-- **MATRIX.ARGMAX(x1)** — `DIM amax() = MATRIX.ARGMAX(m)` (shared/samples/Arrays/MatrixArgmaxShadow.bas:20)
-- **MATRIX.ARGMIN(x1)** — `DIM amin() = MATRIX.ARGMIN(m)` (shared/samples/Arrays/MatrixArgmaxShadow.bas:21)
-- **MATRIX.ASCSV(x1)** — `PRINT "ASCSV="; MATRIX.ASCSV(m)` (shared/samples/Matrix/MatrixCommonLibSimd.bas:57)
-- **MATRIX.ASJSON(x1)** — `PRINT "ASJSON="; MATRIX.ASJSON(m)` (shared/samples/Matrix/MatrixCommonLibSimd.bas:58)
-- **MATRIX.BLOCKDIAG(x1, x2)** — `bd = MATRIX.BLOCKDIAG(h, h)` (shared/samples/Math/MatrixFunctionsSciPyParity.bas:27)
-- **MATRIX.CIRCULANT(x1)** — `cc = MATRIX.CIRCULANT(c1)` (shared/samples/Math/MatrixFunctionsSciPyParity2.bas:49)
-- **MATRIX.CLONEMATRIX(x1)** — `DIM cloned = MATRIX.CLONEMATRIX(m)` (shared/samples/Matrix/MatrixCommonLibSimd.bas:60)
-- **MATRIX.COLMEANS(x1)** — `DIM meansByColumn() = MATRIX.COLMEANS(m)` (shared/samples/Matrix/MatrixCommonLibSimd.bas:13)
-- **MATRIX.COLSUMS(x1)** — `DIM sumsByColumn() = MATRIX.COLSUMS(m)` (shared/samples/Matrix/MatrixCommonLibSimd.bas:11)
-- **MATRIX.COLUMNCOUNT(x1)** — `PRINT "COLUMNCOUNT="; MATRIX.COLUMNCOUNT(m)` (shared/samples/Matrix/MatrixCommonLibSimd.bas:64)
-- **MATRIX.COLVARIANCES(x1)** — `DIM variancesByColumn() = MATRIX.COLVARIANCES(m)` (shared/samples/Matrix/MatrixCommonLibSimd.bas:15)
-- **MATRIX.CONCATCOLS(x1, x2)** — `DIM columnsJoined = MATRIX.CONCATCOLS(m, m)` (shared/samples/Matrix/MatrixCommonLibSimd.bas:40)
-- **MATRIX.CONCATROWS(x1, x2)** — `DIM rowsJoined = MATRIX.CONCATROWS(m, m)` (shared/samples/Matrix/MatrixCommonLibSimd.bas:39)
-- **MATRIX.CREATE(x1, x2)** — `h = MATRIX.CREATE(2, 2)` (shared/samples/Math/MatrixFunctionsSciPyParity2.bas:7)
-- **MATRIX.GETVALUE(x1, x2, x3)** — `FOR k = 0 TO 4: re(k) = MATRIX.GETVALUE(rf, k, 0): im(k) = MATRIX.GETVALUE(rf, k, 1): NEXT` (shared/samples/Analysis/AnalysisMiniTest.bas:19)
-- **MATRIX.HANKEL(x1, x2)** — `hk = MATRIX.HANKEL(c1, r1)` (shared/samples/Math/MatrixFunctionsSciPyParity2.bas:47)
-- **MATRIX.ISLOWERTRIANGULAR(x1)** — `PRINT "LOWER="; MATRIX.ISLOWERTRIANGULAR(m)` (shared/samples/Matrix/MatrixCommonLibSimd.bas:31)
-- **MATRIX.ISORTHOGONAL(x1)** — `PRINT "ORTHOGONAL="; MATRIX.ISORTHOGONAL(m)` (shared/samples/Matrix/MatrixCommonLibSimd.bas:29)
-- **MATRIX.ISSYMMETRIC(x1)** — `PRINT "SYMMETRIC="; MATRIX.ISSYMMETRIC(m)` (shared/samples/Matrix/MatrixCommonLibSimd.bas:28)
-- **MATRIX.ISUPPERTRIANGULAR(x1)** — `PRINT "UPPER="; MATRIX.ISUPPERTRIANGULAR(m)` (shared/samples/Matrix/MatrixCommonLibSimd.bas:30)
-- **MATRIX.KRONECKER(x1, x2)** — `k = MATRIX.KRONECKER(h, h)` (shared/samples/Math/MatrixFuncSciPyParity.bas:10)
-- **MATRIX.LOADCSV(x1)** — `DIM csvMatrix = MATRIX.LOADCSV("samples/Fixtures/MatrixIdentity.csv")` (shared/samples/Matrix/MatrixCommonLibSimd.bas:69)
-- **MATRIX.LOADJSON(x1)** — `DIM jsonMatrix = MATRIX.LOADJSON("samples/Fixtures/MatrixIdentity.json")` (shared/samples/Matrix/MatrixCommonLibSimd.bas:70)
-- **MATRIX.MAXVALUE(x1)** — `PRINT "MAXVALUE="; MATRIX.MAXVALUE(rowsBroadcast)` (shared/samples/Matrix/MatrixCommonLibSimd.bas:53)
-- **MATRIX.MINVALUE(x1)** — `PRINT "MINVALUE="; MATRIX.MINVALUE(rowsBroadcast)` (shared/samples/Matrix/MatrixCommonLibSimd.bas:54)
-- **MATRIX.MULTIPLY(x1, x2)** — `DIM mul = MATRIX.MULTIPLY(a, a)` (shared/samples/Matrix/MatrixDecompositions.bas:26)
-- **MATRIX.MULTIPLYLEFTVECTOR(x1, x2)** — `DIM leftProduct() = MATRIX.MULTIPLYLEFTVECTOR(m, columnVector)` (shared/samples/Matrix/MatrixCommonLibSimd.bas:62)
-- **MATRIX.MULTIPLYVECTOR(x1, x2)** — `DIM rightProduct() = MATRIX.MULTIPLYVECTOR(m, rowVector)` (shared/samples/Matrix/MatrixCommonLibSimd.bas:61)
-- **MATRIX.RESHAPE(x1, x2, x3)** — `DIM reshaped = MATRIX.RESHAPE(m, 1, 9)` (shared/samples/Matrix/MatrixCommonLibSimd.bas:38)
-- **MATRIX.ROWCOUNT(x1)** — `PRINT "welchrows ="; MATRIX.ROWCOUNT(w)` (shared/samples/Math/SciPyP1Parity.bas:12)
-- **MATRIX.ROWMEANS(x1)** — `DIM meansByRow() = MATRIX.ROWMEANS(m)` (shared/samples/Matrix/MatrixCommonLibSimd.bas:12)
-- **MATRIX.ROWSUMS(x1)** — `DIM sumsByRow() = MATRIX.ROWSUMS(m)` (shared/samples/Matrix/MatrixCommonLibSimd.bas:10)
-- **MATRIX.ROWVARIANCES(x1)** — `DIM variancesByRow() = MATRIX.ROWVARIANCES(m)` (shared/samples/Matrix/MatrixCommonLibSimd.bas:14)
-- **MATRIX.SETVALUE(x1, x2, x3, x4)** — `h = MATRIX.SETVALUE(h, 0, 0, 2) : h = MATRIX.SETVALUE(h, 0, 1, 1)` (shared/samples/Math/MatrixFunctionsSciPyParity2.bas:8)
-- **MATRIX.SLICE(x1, x2, x3, x4, x5)** — `DIM sliced = MATRIX.SLICE(m, 0, 2, 0, 2)` (shared/samples/Matrix/MatrixCommonLibSimd.bas:37)
-- **MATRIX.TOEPLITZ(x1, x2)** — `tp = MATRIX.TOEPLITZ(c1, r1)` (shared/samples/Math/MatrixFunctionsSciPyParity2.bas:44)
-- **MATRIX.TRACE(x1)** — `PRINT "trace="; MATH.ROUND(MATRIX.TRACE(a), 6)` (shared/samples/Matrix/MatrixDecompositions.bas:15)
-- **MATRIX.TRANSPOSE(x1)** — `DIM tr = MATRIX.TRANSPOSE(a)` (shared/samples/Matrix/MatrixDecompositions.bas:24)
-- **STATS.ANOVA(x1)** — `result = STATS.ANOVA(groups)` (shared/samples/Analysis/StatsSciPyParity.bas:22)
-- **STATS.BERNOULLIPMF(x1, x2)** — `PRINT "BERNOULLIPMF(1,0.5): "; FORMAT(STATS.BERNOULLIPMF(1,0.5), "0.0000")` (shared/samples/Analysis/AnalysisTests.bas:159)
-- **STATS.BETACDF(x1, x2, x3)** — `PRINT "BETACDF(0.5,2,2): "; FORMAT(STATS.BETACDF(0.5,2,2), "0.0000")` (shared/samples/Analysis/AnalysisTests.bas:145)
-- **STATS.BETAISF(x1, x2, x3)** — `PRINT "beta="; MATH.ROUND(STATS.BetaIsf(0.5, 2, 2), 6)` (shared/minitests/stats/isf_extra2.bas:3)
-- **STATS.BETAPDF(x1, x2, x3)** — `PRINT "BETAPDF(0.5,2,2): "; FORMAT(STATS.BETAPDF(0.5,2,2), "0.0000")` (shared/samples/Analysis/AnalysisTests.bas:144)
-- **STATS.BETAPPF(x1, x2, x3)** — `PRINT "betappf  ="; STATS.BETAPPF(0.5, 2, 3)` (shared/samples/Math/StatsInverseSciPyParity.bas:15)
-- **STATS.BETASF(x1, x2, x3)** — `PRINT "beta="; MATH.ROUND(STATS.BetaSf(0.5, 2, 2), 6)` (shared/minitests/stats/beta_chi_sf.bas:3)
-- **STATS.BINOMIALPMF(x1, x2, x3)** — `PRINT "BINOMIALPMF(3,10,0.5): "; FORMAT(STATS.BINOMIALPMF(3,10,0.5), "0.0000")` (shared/samples/Analysis/AnalysisTests.bas:160)
-- **STATS.CHI2(x1, x2)** — `DIM chi2 = STATS.CHI2(observed, expected)` (shared/samples/Analysis/StatsCategoricalTests.bas:10)
-- **STATS.CHI2CON(x1)** — `r = STATS.CHI2CON(tb)` (shared/samples/Math/StatsSciPyParityP0.bas:32)
-- **STATS.CHICDF(x1, x2)** — `PRINT "CHICDF(1,2):   "; FORMAT(STATS.CHICDF(1,2), "0.0000")` (shared/samples/Analysis/AnalysisTests.bas:141)
-- **STATS.CHIISF(x1, x2)** — `PRINT "chi="; MATH.ROUND(STATS.ChiIsf(0.5, 1), 6)` (shared/minitests/stats/chi_isf.bas:3)
-- **STATS.CHIPDF(x1, x2)** — `PRINT "CHIPDF(1,2):   "; FORMAT(STATS.CHIPDF(1,2), "0.0000")` (shared/samples/Analysis/AnalysisTests.bas:140)
-- **STATS.CHIPPF(x1, x2)** — `PRINT "chippf   ="; STATS.CHIPPF(0.9, 7)` (shared/samples/Math/StatsInverseSciPyParity.bas:13)
-- **STATS.CHISF(x1, x2)** — `PRINT "chi="; MATH.ROUND(STATS.ChiSf(1.0, 1), 6)` (shared/minitests/stats/beta_chi_sf.bas:4)
-- **STATS.CHISQUAREDCDF(x1, x2)** — `PRINT "CHISQUAREDCDF(1,2): "; FORMAT(STATS.CHISQUAREDCDF(1,2), "0.0000")` (shared/samples/Analysis/AnalysisTests.bas:143)
-- **STATS.CHISQUAREDISF(x1, x2)** — `PRINT "chi2isf  ="; STATS.CHISQUAREDISF(0.05, 5)` (shared/samples/Math/StatsInverseSciPyParity.bas:20)
-- **STATS.CHISQUAREDPDF(x1, x2)** — `PRINT "CHISQUAREDPDF(1,2): "; FORMAT(STATS.CHISQUAREDPDF(1,2), "0.0000")` (shared/samples/Analysis/AnalysisTests.bas:142)
-- **STATS.CHISQUAREDPPF(x1, x2)** — `PRINT "chi2ppf  ="; STATS.CHISQUAREDPPF(0.95, 5)` (shared/samples/Math/StatsInverseSciPyParity.bas:12)
-- **STATS.CHISQUAREDSF(x1, x2)** — `PRINT "chi="; MATH.ROUND(STATS.ChiSquaredSf(3.841459, 1), 6)` (shared/minitests/stats/sf_extra.bas:5)
-- **STATS.DESCRIBE(x1)** — `r = STATS.DESCRIBE(v)` (shared/samples/Math/StatsSciPyParityP0.bas:60)
-- **STATS.EXPONENTIALCDF(x1, x2)** — `PRINT "EXPONENTIALCDF(1,2): "; FORMAT(STATS.EXPONENTIALCDF(1,2), "0.0000")` (shared/samples/Analysis/AnalysisTests.bas:153)
-- **STATS.EXPONENTIALISF(x1, x2)** — `PRINT "expisf   ="; STATS.EXPONENTIALISF(0.05, 0.5)` (shared/samples/Math/StatsInverseSciPyParity.bas:22)
-- **STATS.EXPONENTIALPDF(x1, x2)** — `PRINT "EXPONENTIALPDF(1,2): "; FORMAT(STATS.EXPONENTIALPDF(1,2), "0.0000")` (shared/samples/Analysis/AnalysisTests.bas:152)
-- **STATS.EXPONENTIALPPF(x1, x2)** — `PRINT "expppf   ="; STATS.EXPONENTIALPPF(0.9, 0.5)` (shared/samples/Math/StatsInverseSciPyParity.bas:16)
-- **STATS.EXPONENTIALSF(x1, x2)** — `PRINT "exp="; MATH.ROUND(STATS.ExponentialSf(2, 1.0), 6)` (shared/minitests/stats/sf_extra.bas:3)
-- **STATS.FCDF(x1, x2, x3)** — `PRINT "FCDF(1,5,10):  "; FORMAT(STATS.FCDF(1,5,10), "0.0000")` (shared/samples/Analysis/AnalysisTests.bas:151)
-- **STATS.FISF(x1, x2, x3)** — `PRINT "fisf     ="; STATS.FISF(0.05, 3, 8)` (shared/samples/Math/StatsInverseSciPyParity.bas:21)
-- **STATS.FPDF(x1, x2, x3)** — `PRINT "FPDF(1,5,10):  "; FORMAT(STATS.FPDF(1,5,10), "0.0000")` (shared/samples/Analysis/AnalysisTests.bas:150)
-- **STATS.FPPF(x1, x2, x3)** — `PRINT "fppf     ="; STATS.FPPF(0.95, 3, 8)` (shared/samples/Math/StatsInverseSciPyParity.bas:14)
-- **STATS.FSF(x1, x2, x3)** — `PRINT "f="; MATH.ROUND(STATS.FSf(1.0, 5, 10), 6)` (shared/minitests/stats/sf_weibull_f.bas:4)
-- **STATS.FTEST(x1, x2)** — `DIM f = STATS.FTest(a, b)` (shared/minitests/stats/kendall_ftest.bas:10)
-- **STATS.FISHER(x1, x2, x3, x4)** — `DIM fisher = STATS.FISHER(8, 2, 1, 5)` (shared/samples/Analysis/StatsCategoricalTests.bas:14)
-- **STATS.GAMMACDF(x1, x2, x3)** — `PRINT "gammacdf="; STATS.GAMMACDF(2, 3, 4)` (shared/samples/Math/StatsCdfPdfSciPyParity.bas:15)
-- **STATS.GAMMAISF(x1, x2, x3)** — `PRINT "gammaisf ="; MATH.ROUND(STATS.GAMMAISF(2, 1, 0.05), 9)` (shared/samples/Math/StatsInverseSciPyParity.bas:23)
-- **STATS.GAMMAPDF(x1, x2, x3)** — `PRINT "gammapdf="; STATS.GAMMAPDF(2, 3, 4)` (shared/samples/Math/StatsCdfPdfSciPyParity.bas:16)
-- **STATS.GAMMAPPF(x1, x2, x3)** — `PRINT "gppf="; MATH.ROUND(STATS.GammaPpf(2, 1, 0.5), 6)` (shared/minitests/stats/stats_all.bas:223)
-- **STATS.GAMMASF(x1, x2, x3)** — `DIM sf = STATS.GammaSf(2, 1, x)` (shared/minitests/stats/gamma_sf.bas:4)
-- **STATS.GEOMETRICPMF(x1, x2)** — `PRINT "GEOMETRICPMF(3,0.5): "; FORMAT(STATS.GEOMETRICPMF(3,0.5), "0.0000")` (shared/samples/Analysis/AnalysisTests.bas:162)
-- **STATS.HYPERGEOMETRICPMF(x1, x2, x3, x4)** — `PRINT "HYPERGEOMETRICPMF(2,5,10,20): "; FORMAT(STATS.HYPERGEOMETRICPMF(2,20,10,5), "0.0000")` (shared/samples/Analysis/AnalysisTests.bas:164)
-- **STATS.IQR(x1)** — `PRINT "iqr      ="; MATH.ROUND(STATS.IQR(x), 6)` (shared/samples/Math/StatsSciPyParityP0.bas:20)
-- **STATS.JARQUEBERA(x1)** — `r = STATS.JARQUEBERA(z)` (shared/samples/Math/StatsSciPyParityP0.bas:58)
-- **STATS.KENDALLTAU(x1, x2)** — `DIM k = STATS.KendallTau(x, y)` (shared/minitests/stats/kendall_ftest.bas:5)
-- **STATS.KRUSKAL(x1)** — `DIM r = STATS.Kruskal(g)` (shared/minitests/stats/kruskal.bas:6)
-- **STATS.KS(x1, x2)** — `result = STATS.KS(x, y)` (shared/samples/Analysis/StatsSciPyParity.bas:34)
-- **STATS.KURTOSISTEST(x1)** — `r = STATS.KURTOSISTEST(z)` (shared/samples/Math/StatsSciPyParityP0.bas:56)
-- **STATS.LINREGRESS(x1, x2)** — `r = STATS.LINREGRESS(x, y)` (shared/samples/Math/StatsSciPyParityP0.bas:48)
-- **STATS.LOGISTICCDF(x1)** — `PRINT "cdf="; MATH.ROUND(STATS.LogisticCdf(1.0, 0, 1), 6)` (shared/minitests/stats/logistic_cdf_sf.bas:3)
-- **STATS.LOGISTICISF(x1, x2, x3)** — `PRINT "logi="; MATH.ROUND(STATS.LogisticIsf(0.5, 0, 1), 6)` (shared/minitests/stats/isf_extra2.bas:4)
-- **STATS.LOGISTICPDF(x1, x2, x3)** — `PRINT "LOGISTICPDF(0,0,1): "; FORMAT(STATS.LOGISTICPDF(0,0,1), "0.0000")` (shared/samples/Analysis/AnalysisTests.bas:155)
-- **STATS.LOGISTICPPF(x1, x2, x3)** — `PRINT "logippf  ="; STATS.LOGISTICPPF(0.5, 0, 1)` (shared/samples/Math/StatsInverseSciPyParity.bas:24)
-- **STATS.LOGISTICSF(x1)** — `PRINT "sf="; MATH.ROUND(STATS.LogisticSf(1.0, 0, 1), 6)` (shared/minitests/stats/logistic_cdf_sf.bas:4)
-- **STATS.LOGNORMALCDF(x1)** — `PRINT "LOGNORMALCDF(1): "; FORMAT(STATS.LOGNORMALCDF(1), "0.0000")` (shared/samples/Analysis/AnalysisTests.bas:139)
-- **STATS.LOGNORMALISF(x1)** — `PRINT "logn="; MATH.ROUND(STATS.LognormalIsf(0.5, 0, 1), 6)` (shared/minitests/stats/isf_extra2.bas:5)
-- **STATS.LOGNORMALPDF(x1)** — `PRINT "LOGNORMALPDF(1): "; FORMAT(STATS.LOGNORMALPDF(1), "0.0000")` (shared/samples/Analysis/AnalysisTests.bas:138)
-- **STATS.LOGNORMALPPF(x1)** — `PRINT "logppf   ="; STATS.LOGNORMALPPF(0.9, 1, 0.5)` (shared/samples/Math/StatsInverseSciPyParity.bas:18)
-- **STATS.LOGNORMALSF(x1)** — `PRINT "ln="; MATH.ROUND(STATS.LognormalSf(1.0, 0, 1), 6)` (shared/minitests/stats/sf_normal.bas:4)
-- **STATS.MANNWHITNEY(x1, x2)** — `r = STATS.MANNWHITNEY(x, y)` (shared/samples/Math/StatsSciPyParityP0.bas:50)
-- **STATS.MODE(x1)** — `PRINT "mode="; STATS.Mode(a)` (shared/minitests/stats/stats_all.bas:227)
-- **STATS.MOMENT(x1, x2)** — `PRINT "STATS.MOMENT — momenti del campione 1..10"` (shared/samples/Analysis/StatsMoment.bas:25)
-- **STATS.NCBETACDF(x1, x2, x3, x4)** — `PRINT "bcdf="; MATH.ROUND(STATS.NcBetaCdf(0.5, 2, 2, 1), 6)` (shared/minitests/stats/nc_beta_gamma.bas:4)
-- **STATS.NCBETAISF(x1, x2, x3, x4)** — `PRINT "betai="; MATH.ROUND(STATS.NcBetaIsf(0.3, 2, 3, 2), 6)` (shared/minitests/stats/nc_ppf.bas:6)
-- **STATS.NCBETAPDF(x1, x2, x3, x4)** — `PRINT "bpdf="; MATH.ROUND(STATS.NcBetaPdf(0.5, 2, 2, 1), 6)` (shared/minitests/stats/nc_beta_gamma.bas:3)
-- **STATS.NCBETAPPF(x1, x2, x3, x4)** — `PRINT "beta="; MATH.ROUND(STATS.NcBetaPpf(0.95, 2, 3, 2), 6)` (shared/minitests/stats/nc_ppf.bas:5)
-- **STATS.NCBETASF(x1, x2, x3, x4)** — `PRINT "bsf="; MATH.ROUND(STATS.NcBetaSf(0.5, 2, 2, 1), 6)` (shared/minitests/stats/nc_beta_gamma.bas:5)
-- **STATS.NCCHI2CDF(x1, x2, x3)** — `PRINT "cdf="; MATH.ROUND(STATS.NcChi2Cdf(3.0, 2, 1), 6)` (shared/minitests/stats/nc_chi2.bas:4)
-- **STATS.NCCHI2ISF(x1, x2, x3)** — `PRINT "chi2i="; MATH.ROUND(STATS.NcChi2Isf(0.3, 3, 2), 6)` (shared/minitests/stats/nc_ppf.bas:4)
-- **STATS.NCCHI2PDF(x1, x2, x3)** — `PRINT "pdf="; MATH.ROUND(STATS.NcChi2Pdf(3.0, 2, 1), 6)` (shared/minitests/stats/nc_chi2.bas:3)
-- **STATS.NCCHI2PPF(x1, x2, x3)** — `PRINT "chi2="; MATH.ROUND(STATS.NcChi2Ppf(0.95, 3, 2), 6)` (shared/minitests/stats/nc_ppf.bas:3)
-- **STATS.NCCHI2SF(x1, x2, x3)** — `PRINT "sf="; MATH.ROUND(STATS.NcChi2Sf(3.0, 2, 1), 6)` (shared/minitests/stats/nc_chi2.bas:5)
-- **STATS.NCFCDF(x1, x2, x3, x4)** — `PRINT "fcdf="; MATH.ROUND(STATS.NcFCdf(1, 3, 10, 2), 6)` (shared/minitests/stats/nc_f_t_zt.bas:4)
-- **STATS.NCFISF(x1, x2, x3, x4)** — `PRINT "fi="; MATH.ROUND(STATS.NcFIsf(0.3, 3, 10, 2), 6)` (shared/minitests/stats/nc_ppf.bas:10)
-- **STATS.NCFPDF(x1, x2, x3, x4)** — `PRINT "fpdf="; MATH.ROUND(STATS.NcFPdf(1, 3, 10, 2), 6)` (shared/minitests/stats/nc_f_t_zt.bas:3)
-- **STATS.NCFPPF(x1, x2, x3, x4)** — `PRINT "f="; MATH.ROUND(STATS.NcFPpf(0.95, 3, 10, 2), 6)` (shared/minitests/stats/nc_ppf.bas:9)
-- **STATS.NCFSF(x1, x2, x3, x4)** — `PRINT "fsf="; MATH.ROUND(STATS.NcFSf(1, 3, 10, 2), 6)` (shared/minitests/stats/nc_f_t_zt.bas:5)
-- **STATS.NCGAMMACDF(x1, x2, x3)** — `PRINT "gcdf="; MATH.ROUND(STATS.NcGammaCdf(2.0, 2, 1), 6)` (shared/minitests/stats/nc_beta_gamma.bas:7)
-- **STATS.NCGAMMAISF(x1, x2, x3)** — `PRINT "gammai="; MATH.ROUND(STATS.NcGammaIsf(0.3, 2, 2), 6)` (shared/minitests/stats/nc_ppf.bas:8)
-- **STATS.NCGAMMAPDF(x1, x2, x3)** — `PRINT "gpdf="; MATH.ROUND(STATS.NcGammaPdf(2.0, 2, 1), 6)` (shared/minitests/stats/nc_beta_gamma.bas:6)
-- **STATS.NCGAMMAPPF(x1, x2, x3)** — `PRINT "gamma="; MATH.ROUND(STATS.NcGammaPpf(0.95, 2, 2), 6)` (shared/minitests/stats/nc_ppf.bas:7)
-- **STATS.NCGAMMASF(x1, x2, x3)** — `PRINT "gsf="; MATH.ROUND(STATS.NcGammaSf(2.0, 2, 1), 6)` (shared/minitests/stats/nc_beta_gamma.bas:8)
-- **STATS.NCTCDF(x1, x2, x3)** — `PRINT "tcdf="; MATH.ROUND(STATS.NcTCdf(1.5, 5, 2), 6)` (shared/minitests/stats/nc_f_t_zt.bas:7)
-- **STATS.NCTISF(x1, x2, x3)** — `PRINT "ti="; MATH.ROUND(STATS.NcTIsf(0.3, 5, 2), 6)` (shared/minitests/stats/nc_ppf.bas:12)
-- **STATS.NCTPDF(x1, x2, x3)** — `PRINT "tpdf="; MATH.ROUND(STATS.NcTPdf(1.5, 5, 2), 6)` (shared/minitests/stats/nc_f_t_zt.bas:6)
-- **STATS.NCTPPF(x1, x2, x3)** — `PRINT "t="; MATH.ROUND(STATS.NcTPpf(0.95, 5, 2), 6)` (shared/minitests/stats/nc_ppf.bas:11)
-- **STATS.NCTSF(x1, x2, x3)** — `PRINT "tsf="; MATH.ROUND(STATS.NcTSf(1.5, 5, 2), 6)` (shared/minitests/stats/nc_f_t_zt.bas:8)
-- **STATS.NEGATIVEBINOMIALPMF(x1, x2, x3)** — `PRINT "NEGATIVEBINOMIALPMF(3,5,0.5): "; FORMAT(STATS.NEGATIVEBINOMIALPMF(3,5,0.5), "0.0000")` (shared/samples/Analysis/AnalysisTests.bas:163)
-- **STATS.NORMALCDF(x1)** — `PRINT "NORMALCDF(0):  "; FORMAT(STATS.NORMALCDF(0), "0.0000")` (shared/samples/Analysis/AnalysisTests.bas:137)
-- **STATS.NORMALISF(x1)** — `PRINT "normisf  ="; STATS.NORMALISF(0.025, 0, 1)` (shared/samples/Math/StatsInverseSciPyParity.bas:19)
-- **STATS.NORMALPDF(x1)** — `PRINT "STATS.NORMALPDF(0):  "; FORMAT(STATS.NORMALPDF(0), "0.0000")` (shared/samples/Analysis/AnalysisTests.bas:136)
-- **STATS.NORMALPPF(x1)** — `PRINT "normppf  ="; STATS.NORMALPPF(0.975, 1, 2)` (shared/samples/Math/StatsInverseSciPyParity.bas:9)
-- **STATS.NORMALSF(x1)** — `PRINT "n="; MATH.ROUND(STATS.NormalSf(1.959964, 0, 1), 6)` (shared/minitests/stats/sf_normal.bas:3)
-- **STATS.NORMALTEST(x1)** — `result = STATS.NORMALTEST(normal)` (shared/samples/Analysis/StatsSciPyParity.bas:30)
-- **STATS.PARETOCDF(x1, x2, x3)** — `PRINT "cdf="; MATH.ROUND(STATS.ParetoCdf(2.0, 1, 2), 6)` (shared/minitests/stats/pareto_cdf_sf.bas:3)
-- **STATS.PARETOISF(x1, x2, x3)** — `PRINT "par="; MATH.ROUND(STATS.ParetoIsf(0.5, 1, 2), 6)` (shared/minitests/stats/isf_extra.bas:5)
-- **STATS.PARETOPDF(x1, x2, x3)** — `PRINT "PARETOPDF(1,2,3): "; FORMAT(STATS.PARETOPDF(1,2,3), "0.0000")` (shared/samples/Analysis/AnalysisTests.bas:154)
-- **STATS.PARETOPPF(x1, x2, x3)** — `PRINT "paretoppf="; STATS.PARETOPPF(0.9, 3, 2)` (shared/samples/Math/StatsInverseSciPyParity.bas:25)
-- **STATS.PARETOSF(x1, x2, x3)** — `PRINT "sf="; MATH.ROUND(STATS.ParetoSf(2.0, 1, 2), 6)` (shared/minitests/stats/pareto_cdf_sf.bas:4)
-- **STATS.PEARSONR(x1, x2)** — `r = STATS.PEARSONR(x, y)` (shared/samples/Math/StatsSciPyParityP0.bas:44)
-- **STATS.POISSONPMF(x1, x2)** — `PRINT "POISSONPMF(3,2): "; FORMAT(STATS.POISSONPMF(3,2), "0.0000")` (shared/samples/Analysis/AnalysisTests.bas:161)
-- **STATS.REGRESS(x1, x2)** — `RegRes = STATS.Regress(DatiX, DatiY)` (shared/samples/Analysis/AnalysisTests.bas:46)
-- **STATS.SHAPIRO(x1)** — `result = STATS.SHAPIRO(normal)` (shared/samples/Analysis/StatsSciPyParity.bas:28)
-- **STATS.SKEWTEST(x1)** — `r = STATS.SKEWTEST(z)` (shared/samples/Math/StatsSciPyParityP0.bas:54)
-- **STATS.SKEWEDNORMALPDF(x1)** — `PRINT "SKEWEDNORMALPDF(0): "; FORMAT(STATS.SKEWEDNORMALPDF(0), "0.0000")` (shared/samples/Analysis/AnalysisTests.bas:158)
-- **STATS.SPEARMANR(x1, x2)** — `r = STATS.SPEARMANR(x, y)` (shared/samples/Math/StatsSciPyParityP0.bas:46)
-- **STATS.STUDENTTCDF(x1, x2)** — `PRINT "STUDENTTCDF(0,5): "; FORMAT(STATS.STUDENTTCDF(0,5), "0.0000")` (shared/samples/Analysis/AnalysisTests.bas:147)
-- **STATS.STUDENTTISF(x1, x2)** — `PRINT "tisf     ="; STATS.STUDENTTISF(0.025, 10)` (shared/samples/Math/StatsInverseSciPyParity.bas:11)
-- **STATS.STUDENTTPDF(x1, x2)** — `PRINT "STUDENTTPDF(0,5): "; FORMAT(STATS.STUDENTTPDF(0,5), "0.0000")` (shared/samples/Analysis/AnalysisTests.bas:146)
-- **STATS.STUDENTTPPF(x1, x2)** — `PRINT "tppf     ="; STATS.STUDENTTPPF(0.975, 10)` (shared/samples/Math/StatsInverseSciPyParity.bas:10)
-- **STATS.STUDENTTSF(x1, x2)** — `PRINT "stud="; MATH.ROUND(STATS.StudentTSf(1.959964, 1000), 6)` (shared/minitests/stats/sf_extra.bas:4)
-- **STATS.TTEST(x1, x2)** — `DIM result = STATS.TTEST(x, y)` (shared/samples/Analysis/StatsSciPyParity.bas:16)
-- **STATS.TTESTONESAMPLE(x1, x2)** — `result = STATS.TTESTONESAMPLE(x, 5.0)` (shared/samples/Analysis/StatsSciPyParity.bas:20)
-- **STATS.TTESTPAIRED(x1, x2)** — `result = STATS.TTESTPAIRED(x, paired)` (shared/samples/Analysis/StatsSciPyParity.bas:18)
-- **STATS.TRIANGULARCDF(x1)** — `PRINT "cdf="; MATH.ROUND(STATS.TriangularCdf(2.0, 0, 1, 4), 6)` (shared/minitests/stats/triangular_cdf_sf.bas:3)
-- **STATS.TRIANGULARISF(x1)** — `PRINT "tri="; MATH.ROUND(STATS.TriangularIsf(0.5, 0, 0.5, 1), 6)` (shared/minitests/stats/isf_extra2.bas:6)
-- **STATS.TRIANGULARPDF(x1)** — `PRINT "TRIANGULARPDF(0.5): "; FORMAT(STATS.TRIANGULARPDF(0.5), "0.0000")` (shared/samples/Analysis/AnalysisTests.bas:156)
-- **STATS.TRIANGULARPPF(x1)** — `PRINT "trianppf ="; STATS.TRIANGULARPPF(0.5, 0, 1, 0.5)` (shared/samples/Math/StatsInverseSciPyParity.bas:26)
-- **STATS.TRIANGULARSF(x1)** — `PRINT "sf="; MATH.ROUND(STATS.TriangularSf(2.0, 0, 1, 4), 6)` (shared/minitests/stats/triangular_cdf_sf.bas:4)
-- **STATS.UNIFORMCDF(x1, x2, x3)** — `PRINT "cdf="; MATH.ROUND(STATS.UniformCdf(2.0, 1, 3), 6)` (shared/minitests/stats/uniform_cdf_sf.bas:3)
-- **STATS.UNIFORMISF(x1)** — `PRINT "uni="; MATH.ROUND(STATS.UniformIsf(0.5, 0, 1), 6)` (shared/minitests/stats/isf_extra.bas:4)
-- **STATS.UNIFORMPDF(x1)** — `PRINT "UNIFORMPDF(0.5):  "; FORMAT(STATS.UNIFORMPDF(0.5), "0.0000")` (shared/samples/Analysis/AnalysisTests.bas:157)
-- **STATS.UNIFORMPPF(x1)** — `PRINT "unifppf  ="; STATS.UNIFORMPPF(0.5, 0, 1)` (shared/samples/Math/StatsInverseSciPyParity.bas:27)
-- **STATS.UNIFORMSF(x1, x2, x3)** — `PRINT "sf="; MATH.ROUND(STATS.UniformSf(2.0, 1, 3), 6)` (shared/minitests/stats/uniform_cdf_sf.bas:4)
-- **STATS.WEIBULLCDF(x1, x2, x3)** — `PRINT "WEIBULLCDF(1,2,3): "; FORMAT(STATS.WEIBULLCDF(1,2,3), "0.0000")` (shared/samples/Analysis/AnalysisTests.bas:149)
-- **STATS.WEIBULLISF(x1, x2, x3)** — `PRINT "weib="; MATH.ROUND(STATS.WeibullIsf(0.5, 2, 1), 6)` (shared/minitests/stats/isf_extra.bas:3)
-- **STATS.WEIBULLPDF(x1, x2, x3)** — `PRINT "WEIBULLPDF(1,2,3): "; FORMAT(STATS.WEIBULLPDF(1,2,3), "0.0000")` (shared/samples/Analysis/AnalysisTests.bas:148)
-- **STATS.WEIBULLPPF(x1, x2, x3)** — `PRINT "weibppf  ="; STATS.WEIBULLPPF(0.8, 1.5, 2)` (shared/samples/Math/StatsInverseSciPyParity.bas:17)
-- **STATS.WEIBULLSF(x1, x2, x3)** — `PRINT "weib="; MATH.ROUND(STATS.WeibullSf(1.0, 2, 1), 6)` (shared/minitests/stats/sf_weibull_f.bas:3)
-- **STATS.WILCOXON(x1, x2)** — `r = STATS.WILCOXON(x, y)` (shared/samples/Math/StatsSciPyParityP0.bas:52)
-- **STATS.ZTPOISSONCDF(x1, x2)** — `PRINT "ztcdf="; MATH.ROUND(STATS.ZTPoissonCdf(3, 2.5), 6)` (shared/minitests/stats/nc_f_t_zt.bas:10)
-- **STATS.ZTPOISSONPMF(x1, x2)** — `PRINT "ztpmf="; MATH.ROUND(STATS.ZTPoissonPmf(3, 2.5), 6)` (shared/minitests/stats/nc_f_t_zt.bas:9)
-- **STATS.ZTEST(x1, x2, x3)** — `result = STATS.ZTEST(x, 5.0, 2.0)` (shared/samples/Analysis/StatsSciPyParity.bas:32)
-<!-- END DOMAIN TABLE -->

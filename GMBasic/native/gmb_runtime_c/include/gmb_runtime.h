@@ -2157,13 +2157,7 @@ double* gmb_irfft(const double* re, const double* im, int m, gmb_int_t* outn);
 /* --- scipy.interpolate P1 (gmb_interp.c) --- */
 double* gmb_splrep(const double* x, const double* y, int n, gmb_int_t* out_len);
 double* gmb_splev(const double* spline, int slen, const double* xq, int nq, gmb_int_t* outn);
-/* --- scipy.spatial P1 (gmb_spatial.c) --- */
-double* gmb_pdist_flat(const double* X, int n, int d, const char* metric, gmb_int_t* outn);
-double* gmb_cdist_flat(const double* X, int nx, int dx, const double* Y, int ny, int dy,
-    const char* metric, int* out_rows, int* out_cols);
-double* gmb_distance_matrix_flat(const double* X, int nx, int dx, const double* Y, int ny, int dy,
-    int* out_rows, int* out_cols);
-double* gmb_convex_hull_flat(const double* X, int n, int stride, gmb_int_t* outn);
+/* --- scipy.spatial P1: migrato a shared/libs/spatial (libgmbspatial, FFI) --- */
 /* --- Bridge C99 P0/P1 --- */
 gmb_int_t gmb_welch_c99(const double* x, int n, int nperseg, double fs);
 double* gmb_savgol_c99(const double* x, int n, int wl, int po, gmb_int_t* outn);
@@ -2174,10 +2168,6 @@ double* gmb_irfft_c99(const double* re, const double* im, int m, gmb_int_t* outn
 double* gmb_firwin_c99(int numtaps, const double* cutoff, int ncut, const char* btype, const char* window, gmb_int_t* outn);
 double* gmb_splrep_c99(const double* x, const double* y, int n, gmb_int_t* outn);
 double* gmb_splev_c99(const double* spline, int slen, const double* xq, int nq, gmb_int_t* outn);
-double* gmb_pdist_c99(gmb_double_t** X, int n, int d, const char* metric, gmb_int_t* outn);
-gmb_int_t gmb_cdist_c99(gmb_double_t** X, int nx, int dx, gmb_double_t** Y, int ny, int dy, const char* metric);
-gmb_int_t gmb_distance_matrix_c99(gmb_double_t** X, int nx, int dx, gmb_double_t** Y, int ny, int dy);
-double* gmb_convex_hull_c99(gmb_double_t** X, int n, gmb_int_t* outn);
 double* gmb_find_peaks_alloc(const double* x, int n, double distance, gmb_int_t* outn);
 /* --- Bridge C99 vettore→vettore (fsolve/least_squares/solve_ivp) --- */
 gmb_int_t gmb_solve_ivp_c99(gmb_fn_t fn, double* y0, int n, double t0, double t1);

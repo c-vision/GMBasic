@@ -78,11 +78,7 @@ public sealed partial class IlProgramCompiler
     private static readonly MethodInfo IlRuntimeGammaIncInvMethod = typeof(IlRuntime).GetMethod(nameof(IlRuntime.GammaIncInv))!;
     private static readonly MethodInfo IlRuntimeGammaInccInvMethod = typeof(IlRuntime).GetMethod(nameof(IlRuntime.GammaInccInv))!;
     private static readonly MethodInfo IlRuntimeBetaIncInvMethod = typeof(IlRuntime).GetMethod(nameof(IlRuntime.BetaIncInv))!;
-    private static readonly MethodInfo IlRuntimeConvolveMethod = typeof(IlRuntime).GetMethod(nameof(IlRuntime.Convolve))!;
-    private static readonly MethodInfo IlRuntimeCorrelateMethod = typeof(IlRuntime).GetMethod(nameof(IlRuntime.Correlate))!;
-    private static readonly MethodInfo IlRuntimeHannMethod = typeof(IlRuntime).GetMethod(nameof(IlRuntime.Hann))!;
-    private static readonly MethodInfo IlRuntimeHammingMethod = typeof(IlRuntime).GetMethod(nameof(IlRuntime.Hamming))!;
-    private static readonly MethodInfo IlRuntimeBlackmanMethod = typeof(IlRuntime).GetMethod(nameof(IlRuntime.Blackman))!;
+    // SIGNAL: finestre/convoluzione/correlazione sono nella lib FFI `signal` (niente più runtime methods).
     private static readonly MethodInfo IlRuntimeTanMethod = typeof(IlRuntime).GetMethod(nameof(IlRuntime.Tan))!;
     private static readonly MethodInfo IlRuntimeAsinMethod = typeof(IlRuntime).GetMethod(nameof(IlRuntime.Asin))!;
     private static readonly MethodInfo IlRuntimeAcosMethod = typeof(IlRuntime).GetMethod(nameof(IlRuntime.Acos))!;

@@ -5466,30 +5466,6 @@ SIGNAL.SAVGOLFILTER   ' dal codice del progetto: shared/minitests/signal/signal_
 SIGNAL.WELCH   ' dal codice del progetto: shared/minitests/signal/signal_all.bas:78
 ```
 
-#### `SPATIAL.CDIST` — arita 3-3
-
-```basic
-SPATIAL.CDIST   ' dal codice del progetto: shared/minitests/spatial/cdist.bas:1
-```
-
-#### `SPATIAL.CONVEXHULL` — arita 1-1
-
-```basic
-SPATIAL.CONVEXHULL   ' dal codice del progetto: shared/minitests/spatial/spatial_all.bas:24
-```
-
-#### `SPATIAL.DISTANCEMATRIX` — arita 2-2
-
-```basic
-SPATIAL.DISTANCEMATRIX   ' dal codice del progetto: shared/minitests/spatial/spatial_all.bas:35
-```
-
-#### `SPATIAL.PDIST` — arita 2-2
-
-```basic
-SPATIAL.PDIST   ' dal codice del progetto: shared/minitests/spatial/spatial_all.bas:44
-```
-
 #### `SPEED.BEGINGROUPCOMMIT` — arita 0-0
 
 ```basic

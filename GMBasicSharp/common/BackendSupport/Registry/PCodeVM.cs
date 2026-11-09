@@ -124,7 +124,6 @@ public sealed partial class BackendImplementationRegistry
         r.Register(Backend.PCodeVM, "AI.BlackboardRead");
         r.Register(Backend.PCodeVM, "AI.BlackboardWait");
         r.Register(Backend.PCodeVM, "AI.BlackboardWrite");
-        r.Register(Backend.PCodeVM, "SIGNAL.BLACKMAN");
         r.Register(Backend.PCodeVM, "TORCH.BLEU");
         r.Register(Backend.PCodeVM, "MATRIX.BLOCKDIAG");
         r.Register(Backend.PCodeVM, "DBF.BOF");
@@ -142,7 +141,6 @@ public sealed partial class BackendImplementationRegistry
         r.Register(Backend.PCodeVM, "AI.BrainVaultQuery");
         r.Register(Backend.PCodeVM, "AI.BrainVaultWrite");
         r.Register(Backend.PCodeVM, "RDD.BUFFER");
-        r.Register(Backend.PCodeVM, "SIGNAL.BUTTER");
         r.Register(Backend.PCodeVM, "MOUSE.BUTTON");
         r.Register(Backend.PCodeVM, "BRAINS.ByFolder");
         r.Register(Backend.PCodeVM, "BRAINS.ByTag");
@@ -175,8 +173,6 @@ public sealed partial class BackendImplementationRegistry
         r.Register(Backend.PCodeVM, "AI.ChannelPublish");
         r.Register(Backend.PCodeVM, "AI.ChannelSubscribe");
         r.Register(Backend.PCodeVM, "AI.ChannelUnsubscribe");
-        r.Register(Backend.PCodeVM, "SIGNAL.CHEBY1");
-        r.Register(Backend.PCodeVM, "SIGNAL.CHEBY2");
         r.Register(Backend.PCodeVM, "VECTOR.CHEBYSHEV");
         r.Register(Backend.PCodeVM, "AI.Checkpoint");
         r.Register(Backend.PCodeVM, "AI.CheckpointClear");
@@ -257,8 +253,6 @@ public sealed partial class BackendImplementationRegistry
         r.Register(Backend.PCodeVM, "AI.ContextView");
         r.Register(Backend.PCodeVM, "AI.ContextViewDebug");
         r.Register(Backend.PCodeVM, "SPATIAL.CONVEXHULL");
-        r.Register(Backend.PCodeVM, "SIGNAL.CONVOLVE");
-        r.Register(Backend.PCodeVM, "SIGNAL.CORRELATE");
         r.Register(Backend.PCodeVM, "MATH.Cos");
         r.Register(Backend.PCodeVM, "MATH.COSH");
         r.Register(Backend.PCodeVM, "VECTOR.COSINE");
@@ -301,7 +295,6 @@ public sealed partial class BackendImplementationRegistry
         r.Register(Backend.PCodeVM, "MOUSE.DBLCLICK");
         r.Register(Backend.PCodeVM, "DBF.DBRELATION");
         r.Register(Backend.PCodeVM, "ISAM.DBRELATION");
-        r.Register(Backend.PCodeVM, "SIGNAL.DECIMATE");
         r.Register(Backend.PCodeVM, "LLM.DecodeStats");
         r.Register(Backend.PCodeVM, "MATH.Deg2Rad");
         r.Register(Backend.PCodeVM, "HTTP.DELETE");
@@ -354,7 +347,6 @@ public sealed partial class BackendImplementationRegistry
         r.Register(Backend.PCodeVM, "STRINGS.Dup");
         r.Register(Backend.PCodeVM, "LEDGER.EDIT");
         r.Register(Backend.PCodeVM, "LINALG.EIG");
-        r.Register(Backend.PCodeVM, "SIGNAL.ELLIP");
         r.Register(Backend.PCodeVM, "AI.Embed");
         r.Register(Backend.PCodeVM, "VECTORDB.Embed");
         r.Register(Backend.PCodeVM, "SYSTEM.EMPTY");
@@ -413,11 +405,9 @@ public sealed partial class BackendImplementationRegistry
         r.Register(Backend.PCodeVM, "LLM.FileOutline");
         r.Register(Backend.PCodeVM, "GREP.FILES");
         r.Register(Backend.PCodeVM, "BROWSER.Fill");
-        r.Register(Backend.PCodeVM, "SIGNAL.FILTFILT");
         r.Register(Backend.PCodeVM, "UI.Find");
         r.Register(Backend.PCodeVM, "BROWSER.Find");
         r.Register(Backend.PCodeVM, "UI.FindAll");
-        r.Register(Backend.PCodeVM, "SIGNAL.FINDPEAKS");
         r.Register(Backend.PCodeVM, "LLM.FindSymbol");
         r.Register(Backend.PCodeVM, "LLM.FinetuneBaseHold");
         r.Register(Backend.PCodeVM, "LLM.FinetuneBaseTrain");
@@ -431,7 +421,6 @@ public sealed partial class BackendImplementationRegistry
         r.Register(Backend.PCodeVM, "LLM.FinetuneStatus");
         r.Register(Backend.PCodeVM, "IO.FINPUT");
         r.Register(Backend.PCodeVM, "DATETIME.FIRSTDAYOFMONTH");
-        r.Register(Backend.PCodeVM, "SIGNAL.FIRWIN");
         r.Register(Backend.PCodeVM, "STATS.FIsf");
         r.Register(Backend.PCodeVM, "STATS.Fisher");
         r.Register(Backend.PCodeVM, "MATH.Fix");
@@ -460,7 +449,6 @@ public sealed partial class BackendImplementationRegistry
         r.Register(Backend.PCodeVM, "IO.FRead");
         r.Register(Backend.PCodeVM, "TORCH.FREE");
         r.Register(Backend.PCodeVM, "IO.FreeFile");
-        r.Register(Backend.PCodeVM, "SIGNAL.FREQZ");
         r.Register(Backend.PCodeVM, "LINALG.FROBENIUSNORM");
         r.Register(Backend.PCodeVM, "TORCH.FROM");
         r.Register(Backend.PCodeVM, "SQL.FROMCSV");
@@ -507,14 +495,12 @@ public sealed partial class BackendImplementationRegistry
         r.Register(Backend.PCodeVM, "SYSTEM.GOMAXPROCS");
         r.Register(Backend.PCodeVM, "CONTROLS.GOTFOCUSED");
         r.Register(Backend.PCodeVM, "VECTORDB.Hallucination");
-        r.Register(Backend.PCodeVM, "SIGNAL.HAMMING");
         r.Register(Backend.PCodeVM, "AI.Handoff");
         r.Register(Backend.PCodeVM, "AI.HandoffClear");
         r.Register(Backend.PCodeVM, "AI.HandoffComplete");
         r.Register(Backend.PCodeVM, "AI.HandoffList");
         r.Register(Backend.PCodeVM, "AI.HandoffStatus");
         r.Register(Backend.PCodeVM, "MATRIX.HANKEL");
-        r.Register(Backend.PCodeVM, "SIGNAL.HANN");
         r.Register(Backend.PCodeVM, "SYSTEM.HAS");
         r.Register(Backend.PCodeVM, "TYPEINFO.HAS");
         r.Register(Backend.PCodeVM, "AI.HashEdit");
@@ -629,7 +615,6 @@ public sealed partial class BackendImplementationRegistry
         r.Register(Backend.PCodeVM, "STRINGS.Len");
         r.Register(Backend.PCodeVM, "STRINGS.LenB");
         r.Register(Backend.PCodeVM, "AI.LexicalEntropy");
-        r.Register(Backend.PCodeVM, "SIGNAL.LFILTER");
         r.Register(Backend.PCodeVM, "TORCH.LIBPATH");
         r.Register(Backend.PCodeVM, "AI.LinkDangling");
         r.Register(Backend.PCodeVM, "AI.LinkJson");
@@ -938,7 +923,6 @@ public sealed partial class BackendImplementationRegistry
         r.Register(Backend.PCodeVM, "ISAM.REPLICATIONSHIP");
         r.Register(Backend.PCodeVM, "LLM.RepoMap");
         r.Register(Backend.PCodeVM, "AI.Rerank");
-        r.Register(Backend.PCodeVM, "SIGNAL.RESAMPLE");
         r.Register(Backend.PCodeVM, "AI.ResetFailed");
         r.Register(Backend.PCodeVM, "MATRIX.RESHAPE");
         r.Register(Backend.PCodeVM, "TORCH.RESHAPE");
@@ -981,7 +965,6 @@ public sealed partial class BackendImplementationRegistry
         r.Register(Backend.PCodeVM, "LLM.RunStop");
         r.Register(Backend.PCodeVM, "HTTP.SAFEFILENAME");
         r.Register(Backend.PCodeVM, "AI.Save");
-        r.Register(Backend.PCodeVM, "SIGNAL.SAVGOLFILTER");
         r.Register(Backend.PCodeVM, "LINALG.SCHUR");
         r.Register(Backend.PCodeVM, "GRAPHICS.SCREEN");
         r.Register(Backend.PCodeVM, "GRAPHICS.ScreenInfo");

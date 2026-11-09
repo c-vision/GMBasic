@@ -1,7 +1,7 @@
 // FILE: CommonLib.Numerics.SciPyP1.cs
-// P1 scipy: signal (welch, savgol_filter, resample, decimate), interpolate
-// (splrep/splev), spatial.distance (pdist, cdist, distance_matrix), fft
-// (rfft/irfft), spatial (ConvexHull). Reference: scipy 1.18.
+// P1 scipy: signal (welch — resta builtin), interpolate
+// (splrep/splev), fft (rfft/irfft). Reference: scipy 1.18.
+// NOTA: spatial.distance/ConvexHull sono migrati a shared/libs/spatial (FFI).
 
 using System.Numerics;
 using MathNet.Numerics;
@@ -16,6 +16,17 @@ public static partial class Numerics
     // scipy.signal: welch, savgol_filter, resample, decimate
     // ========================================================================
 
+    /// <summary>Finestra di Hann simmetrica (0.5-0.5·cos(2πi/(n-1))), usata da <see cref="Welch"/>.
+    /// Vive qui perché la finestra del dominio SIGNAL è nella lib FFI `signal`; WELCH resta builtin
+    /// (ritorna un handle di matrice) e non può dipendere dalla lib.</summary>
+    internal static double[] WelchWindow(int n)
+    {
+        if (n <= 1) return new[] { 1.0 };
+        var w = new double[n];
+        for (var i = 0; i < n; i++) w[i] = 0.5 - 0.5 * Math.Cos(2.0 * Math.PI * i / (n - 1));
+        return w;
+    }
+
     /// <summary>scipy.signal.welch — densità spettrale (periodogramma di Welch).
     /// Ritorna matrice [nfreqs, 2]: col0 = frequenze, col1 = PSD.</summary>
     public static double[,] Welch(double[] x, int nperseg, double fs)
@@ -26,7 +37,7 @@ public static partial class Numerics
         var noverlap = nperseg / 2;
         var step = nperseg - noverlap;
         var nSeg = Math.Max(1, (n - noverlap) / step);
-        var win = SignalHann(nperseg);
+        var win = WelchWindow(nperseg);
         var winSum2 = 0.0;
         foreach (var w in win) winSum2 += w * w;
         var nfreqs = nperseg / 2 + 1;
@@ -56,31 +67,6 @@ public static partial class Numerics
     }
 
     /// <summary>scipy.signal.savgol_filter — smoothing Savitzky-Golay (polinomio least-squares locale).</summary>
-    public static double[] SavgolFilter(double[] x, int windowLength, int polyorder)
-    {
-        var n = x.Length;
-        if (windowLength > n) windowLength = n;
-        if (windowLength % 2 == 0) windowLength++;
-        if (windowLength < 3) return (double[])x.Clone();
-        var half = (windowLength - 1) / 2;
-        var coeffs = SavgolCoeffs(half, polyorder);
-        // estende i bordi per estrapolazione polinomiale (scipy mode='interp')
-        var ext = new double[n + 2 * half];
-        var pl = PolyFit(x, 0, Math.Min(windowLength, n), polyorder);
-        var pr = PolyFit(x, Math.Max(0, n - windowLength), n, polyorder);
-        var wl = Math.Min(windowLength, n);
-        for (var i = 0; i < half; i++) ext[i] = EvalPoly(pl, i - half);
-        for (var i = 0; i < n; i++) ext[half + i] = x[i];
-        for (var i = 0; i < half; i++) ext[half + n + i] = EvalPoly(pr, wl + i);
-        var result = new double[n];
-        for (var i = 0; i < n; i++)
-        {
-            double s = 0;
-            for (var j = 0; j < windowLength; j++) s += coeffs[j] * ext[i + j];
-            result[i] = s;
-        }
-        return result;
-    }
 
     private static double[] PolyFit(double[] x, int start, int end, int order)
     {
@@ -138,58 +124,8 @@ public static partial class Numerics
     }
 
     /// <summary>scipy.signal.resample — ricampionamento via FFT (zero-pad/truncate nello spettro).</summary>
-    public static double[] Resample(double[] x, int num)
-    {
-        var n = x.Length;
-        if (n == 0 || num <= 0) return Array.Empty<double>();
-        if (num == n) return (double[])x.Clone();
-        var c = new Complex[n];
-        for (var i = 0; i < n; i++) c[i] = new Complex(x[i], 0);
-        Fourier.Forward(c, FourierOptions.NoScaling);
-        var outN = num;
-        var spec = new Complex[outN];
-        var halfN = n / 2;
-        var keep = Math.Min(halfN, outN / 2);
-        spec[0] = c[0];
-        for (var k = 1; k < keep; k++) spec[k] = c[k];
-        if (outN % 2 == 0 && outN / 2 < n)
-            spec[outN / 2] = c[Math.Min(outN / 2, n - 1)]; /* Nyquist */
-        for (var k = 1; k < keep; k++)
-            if (outN - k >= 0 && n - k >= 0) spec[outN - k] = c[n - k];
-        Fourier.Inverse(spec, FourierOptions.NoScaling);
-        var result = new double[outN];
-        for (var i = 0; i < outN; i++) result[i] = spec[i].Real / n;
-        return result;
-    }
 
     /// <summary>scipy.signal.decimate — filtra passa-basso FIR + downsampling di q.</summary>
-    public static double[] Decimate(double[] x, int q)
-    {
-        if (q <= 1) return (double[])x.Clone();
-        var n = x.Length;
-        var fc = 0.8 / q;
-        // FIR lowpass (taps dispari, finestra hann)
-        var nt = Math.Max(3, 2 * (int)Math.Ceiling(4.0 / fc) + 1);
-        if (nt > n) nt = n % 2 == 0 ? n - 1 : n;
-        var cutoff = new[] { fc };
-        var taps = Firwin(nt, cutoff, "lowpass", "hann");
-        var smoothed = new double[n];
-        var half = nt / 2;
-        for (var i = 0; i < n; i++)
-        {
-            double s = 0;
-            for (var j = 0; j < nt; j++)
-            {
-                var idx = i + j - half;
-                if (idx >= 0 && idx < n) s += taps[j] * x[idx];
-            }
-            smoothed[i] = s;
-        }
-        var m = (n + q - 1) / q;
-        var result = new double[m];
-        for (var i = 0; i < m; i++) result[i] = smoothed[i * q];
-        return result;
-    }
 
     // ========================================================================
     // scipy.interpolate: splrep / splev (cubic spline not-a-knot, k=3)
@@ -320,88 +256,6 @@ public static partial class Numerics
         return result;
     }
 
-    // ========================================================================
-    // scipy.spatial.distance: pdist, cdist, distance_matrix
-    // ========================================================================
-
-    private static double DistMetric(double[] a, double[] b, string metric, double p)
-    {
-        switch (metric.ToLowerInvariant())
-        {
-            case "cityblock" or "manhattan":
-            {
-                double s = 0;
-                for (var i = 0; i < a.Length; i++) s += Math.Abs(a[i] - b[i]);
-                return s;
-            }
-            case "chebyshev":
-            {
-                double s = 0;
-                for (var i = 0; i < a.Length; i++) s = Math.Max(s, Math.Abs(a[i] - b[i]));
-                return s;
-            }
-            case "cosine":
-            {
-                double ab = 0, aa = 0, bb = 0;
-                for (var i = 0; i < a.Length; i++) { ab += a[i] * b[i]; aa += a[i] * a[i]; bb += b[i] * b[i]; }
-                var denom = Math.Sqrt(aa * bb);
-                return denom > 0 ? 1.0 - ab / denom : 0;
-            }
-            case "minkowski":
-            {
-                double s = 0;
-                for (var i = 0; i < a.Length; i++) s += Math.Pow(Math.Abs(a[i] - b[i]), p);
-                return Math.Pow(s, 1.0 / p);
-            }
-            default:
-            {
-                double s = 0;
-                for (var i = 0; i < a.Length; i++) { var d = a[i] - b[i]; s += d * d; }
-                return Math.Sqrt(s);
-            }
-        }
-    }
-
-    /// <summary>scipy.spatial.distance.pdist — distanze a coppie condensate (triangolo superiore, i&lt;j).</summary>
-    public static double[] Pdist(double[][] X, string metric, double p)
-    {
-        var n = X.Length;
-        var m = n * (n - 1) / 2;
-        var result = new double[m];
-        var k = 0;
-        for (var i = 0; i < n; i++)
-            for (var j = i + 1; j < n; j++)
-                result[k++] = DistMetric(X[i], X[j], metric, p);
-        return result;
-    }
-
-    /// <summary>scipy.spatial.distance.cdist — distanze tra ogni riga di X e ogni riga di Y.</summary>
-    public static double[,] Cdist(double[][] X, double[][] Y, string metric, double p)
-    {
-        var result = new double[X.Length, Y.Length];
-        for (var i = 0; i < X.Length; i++)
-            for (var j = 0; j < Y.Length; j++)
-                result[i, j] = DistMetric(X[i], Y[j], metric, p);
-        return result;
-    }
-
-    /// <summary>scipy.spatial.distance_matrix — matrice di distanze euclidee.</summary>
-    public static double[,] DistanceMatrix(double[][] X, double[][] Y)
-    {
-        var result = new double[X.Length, Y.Length];
-        for (var i = 0; i < X.Length; i++)
-            for (var j = 0; j < Y.Length; j++)
-            {
-                double s = 0;
-                for (var k = 0; k < X[i].Length; k++)
-                {
-                    var d = X[i][k] - Y[j][k];
-                    s += d * d;
-                }
-                result[i, j] = Math.Sqrt(s);
-            }
-        return result;
-    }
 
     // ========================================================================
     // scipy.fft: rfft / irfft
@@ -440,39 +294,6 @@ public static partial class Numerics
         return result;
     }
 
-    // ========================================================================
-    // scipy.spatial: ConvexHull (Andrew's monotone chain)
-    // ========================================================================
-
-    /// <summary>scipy.spatial.ConvexHull — indici dei vertici dell'inviluppo convesso (2D).</summary>
-    public static double[] ConvexHull(double[][] points)
-    {
-        var n = points.Length;
-        var idx = Enumerable.Range(0, n).ToArray();
-        Array.Sort(idx, (a, b) => points[a][0] != points[b][0] ? points[a][0].CompareTo(points[b][0]) : points[a][1].CompareTo(points[b][1]));
-        double Cross(int o, int a, int b)
-        {
-            var (x1, y1) = (points[idx[a]][0] - points[idx[o]][0], points[idx[a]][1] - points[idx[o]][1]);
-            var (x2, y2) = (points[idx[b]][0] - points[idx[o]][0], points[idx[b]][1] - points[idx[o]][1]);
-            return x1 * y2 - y1 * x2;
-        }
-        var lower = new List<int>();
-        for (var i = 0; i < n; i++)
-        {
-            while (lower.Count >= 2 && Cross(lower[^2], lower[^1], i) <= 0) lower.RemoveAt(lower.Count - 1);
-            lower.Add(i);
-        }
-        var upper = new List<int>();
-        for (var i = n - 1; i >= 0; i--)
-        {
-            while (upper.Count >= 2 && Cross(upper[^2], upper[^1], i) <= 0) upper.RemoveAt(upper.Count - 1);
-            upper.Add(i);
-        }
-        lower.RemoveAt(lower.Count - 1);
-        upper.RemoveAt(upper.Count - 1);
-        lower.AddRange(upper);
-        return lower.Select(k => (double)idx[k]).ToArray();
-    }
 
     /// <summary>Risolve <c>a·x = b</c> con eliminazione di Gauss e pivot parziale.
     /// Ritorna <c>null</c> se la matrice è singolare (|pivot| &lt; 1e-14).</summary>

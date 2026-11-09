@@ -656,19 +656,8 @@ public sealed partial class IlProgramCompiler
             case TokenKind.KMeans: EmitAnalysisArrayScalarCall(expr, nameof(IlRuntime.KMeans)); break;
             case TokenKind.Pca: EmitAnalysisMatrixCall(expr, nameof(IlRuntime.Pca)); break;
             case TokenKind.Fft: EmitAnalysisArrayCall(expr, nameof(IlRuntime.Fft)); break;
-            case TokenKind.SignalConvolve: EmitAnalysisArrayArrayCall(expr, nameof(IlRuntime.Convolve)); break;
-            case TokenKind.SignalCorrelate: EmitAnalysisArrayArrayCall(expr, nameof(IlRuntime.Correlate)); break;
-            case TokenKind.SignalHann: EmitAnalysisIntArrayCall(expr, nameof(IlRuntime.Hann)); break;
-            case TokenKind.SignalHamming: EmitAnalysisIntArrayCall(expr, nameof(IlRuntime.Hamming)); break;
-            case TokenKind.SignalBlackman: EmitAnalysisIntArrayCall(expr, nameof(IlRuntime.Blackman)); break;
-            // Filtri IIR (SIGNAL): design → handle; LFILTER/FILTFILT/FREQZ applicano.
-            case TokenKind.SignalButter: EmitSignalDesignCall(expr, nameof(IlRuntime.SignalButter), 3); break;
-            case TokenKind.SignalCheby1: EmitSignalDesignCall(expr, nameof(IlRuntime.SignalCheby1), 4); break;
-            case TokenKind.SignalCheby2: EmitSignalDesignCall(expr, nameof(IlRuntime.SignalCheby2), 4); break;
-            case TokenKind.SignalEllip: EmitSignalDesignCall(expr, nameof(IlRuntime.SignalEllip), 5); break;
-            case TokenKind.SignalLfilter: EmitSignalApplyCall(expr, nameof(IlRuntime.SignalLfilter)); break;
-            case TokenKind.SignalFiltfilt: EmitSignalApplyCall(expr, nameof(IlRuntime.SignalFiltfilt)); break;
-            case TokenKind.SignalFreqz: EmitSignalFreqzCall(expr, nameof(IlRuntime.SignalFreqz)); break;
+            // SIGNAL: le 17 funzioni (finestre, convoluzione, filtri, FIR, picchi,
+            // ricampionamento, savgol) sono nella lib FFI `signal` (shared/include/signal.inc).
             // Wrapper TIMESERIES sui filtri SIGNAL (design+apply).
             case TokenKind.TsLowPass: EmitTsFilterCall(expr, nameof(IlRuntime.TimeSeriesLowPass), 3); break;
             case TokenKind.TsHighPass: EmitTsFilterCall(expr, nameof(IlRuntime.TimeSeriesHighPass), 3); break;
@@ -685,20 +674,11 @@ public sealed partial class IlProgramCompiler
             case TokenKind.Simpson: EmitAnalysisClosureTwoCall2(expr, nameof(IlRuntime.Simpson)); break;
             case TokenKind.SolveOde: EmitAnalysisOdeCall(expr, nameof(IlRuntime.SolveOde)); break;
             case TokenKind.SolveIvp: EmitSolveIvpCall(expr); break;
-            case TokenKind.SignalFirwin: EmitFirwinCall(expr); break;
             case TokenKind.SignalWelch: EmitSignalWelchCall(expr); break;
-            case TokenKind.SignalSavgolFilter: EmitSignalIntIntCall(expr, nameof(IlRuntime.SavgolFilter)); break;
-            case TokenKind.SignalResample: EmitSignalIntCall(expr, nameof(IlRuntime.Resample)); break;
-            case TokenKind.SignalDecimate: EmitSignalIntCall(expr, nameof(IlRuntime.Decimate)); break;
             case TokenKind.InterpSplrep: EmitAnalysisTwoArrayCall(expr, nameof(IlRuntime.Splrep)); break;
             case TokenKind.InterpSplev: EmitSplevCall(expr); break;
-            case TokenKind.SpatialPdist: EmitSpatialPdistCall(expr); break;
-            case TokenKind.SpatialCdist: EmitSpatialMatrixCall(expr, nameof(IlRuntime.Cdist)); break;
-            case TokenKind.SpatialDistanceMatrix: EmitSpatialMatrixCall(expr, nameof(IlRuntime.DistanceMatrix)); break;
             case TokenKind.FftRfft: EmitAnalysisArrayCall(expr, nameof(IlRuntime.Rfft)); break;
             case TokenKind.FftIrfft: EmitAnalysisTwoArrayCall(expr, nameof(IlRuntime.Irfft)); break;
-            case TokenKind.SpatialConvexHull: EmitAnalysisMatrixCall(expr, nameof(IlRuntime.ConvexHull)); break;
-            case TokenKind.SignalFindPeaks: EmitFindPeaksCall(expr); break;
             case TokenKind.Trapezoid: EmitAnalysisTwoArrayCall(expr, nameof(IlRuntime.Trapezoid)); break;
             case TokenKind.CumTrapezoid: EmitAnalysisTwoArrayCall(expr, nameof(IlRuntime.CumTrapezoid)); break;
             case TokenKind.CubicSpline: EmitAnalysisInterpCall(expr, nameof(IlRuntime.CubicSpline)); break;

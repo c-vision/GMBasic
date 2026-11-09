@@ -909,10 +909,6 @@ SIGNAL.LFILTER	funzione	2-2	si	no	shared/minitests/signal/signal_all.bas:26
 SIGNAL.RESAMPLE	funzione	2-2	si	no	shared/minitests/signal/signal_all.bas:67
 SIGNAL.SAVGOLFILTER	funzione	3-3	si	no	shared/minitests/signal/signal_all.bas:74
 SIGNAL.WELCH	funzione	3-3	si	no	shared/minitests/signal/signal_all.bas:78
-SPATIAL.CDIST	funzione	3-3	si	no	shared/minitests/spatial/cdist.bas:1
-SPATIAL.CONVEXHULL	funzione	1-1	si	no	shared/minitests/spatial/spatial_all.bas:24
-SPATIAL.DISTANCEMATRIX	funzione	2-2	si	no	shared/minitests/spatial/spatial_all.bas:35
-SPATIAL.PDIST	funzione	2-2	si	no	shared/minitests/spatial/spatial_all.bas:44
 SPEED.BEGINGROUPCOMMIT	funzione	0-0	si	no	shared/minitests/speed/gaps.bas:23
 SPEED.BEGINGROUPCOMMIT	funzione	0-1	si	no	shared/minitests/speed/gaps.bas:23
 SPEED.ENDGROUPCOMMIT	funzione	0-0	si	no	shared/minitests/speed/gaps.bas:24
