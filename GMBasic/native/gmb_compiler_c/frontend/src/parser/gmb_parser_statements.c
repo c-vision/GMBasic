@@ -1543,7 +1543,26 @@ static gmb_stmt_t* gmb_p_parse_stmt_impl(gmb_parser_t* p, bool* multiline)
             if (!gmb_p_check(p, GMB_TOK_RightParen)) {
                 for (;;) {
                     int is_byref = 0;
-                    int param_mode = 0;   /* DECLARE NATIVE: IN/OUT/INOUT non usati qui (0=IN) */
+                    int param_mode = 0;
+                    /* ADR-MATRIX §3: IN/OUT/INOUT anche nei DECLARE NATIVE (parità col
+                     * parser C#): OUT/INOUT valgono solo seguite da un NOME. */
+                    {
+                        const gmb_token_t* mc = gmb_p_cur(p);
+                        if (gmb_p_tok_is_keyword(mc, "In")) {
+                            param_mode = 0;
+                            gmb_p_adv(p);
+                        } else if (mc && mc->kind == GMB_TOK_Identifier && mc->lexeme
+                                   && (strncasecmp(mc->lexeme, "OUT", 3) == 0
+                                       || strncasecmp(mc->lexeme, "INOUT", 5) == 0)) {
+                            const gmb_token_t* nx = gmb_p_peek(p, 1);
+                            if (nx && nx->kind != GMB_TOK_As && nx->kind != GMB_TOK_Comma
+                                && nx->kind != GMB_TOK_RightParen && nx->kind != GMB_TOK_LeftParen
+                                && nx->kind != GMB_TOK_Equal) {
+                                param_mode = (strncasecmp(mc->lexeme, "INOUT", 5) == 0) ? 2 : 1;
+                                gmb_p_adv(p);
+                            }
+                        }
+                    }
                     if (gmb_p_tok_is_keyword(gmb_p_cur(p), "Byref") || gmb_p_check(p, GMB_TOK_ByRef)) { is_byref = 1; gmb_p_adv(p); }
                     else if (gmb_p_tok_is_keyword(gmb_p_cur(p), "Byval")) gmb_p_adv(p);
                     const gmb_token_t* prm = gmb_p_cur(p);
