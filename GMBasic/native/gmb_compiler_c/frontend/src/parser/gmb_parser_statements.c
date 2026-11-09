@@ -2166,8 +2166,18 @@ if (gmb_tk_rem_vari_in(t->kind)) {
                         s->n_params++;
                     }
                     gmb_p_adv(p);
-                    /* parametro: nome [()] [AS tipo] — le parentesi vuote marcano il parametro array */
-                    while (gmb_p_check(p, GMB_TOK_LeftParen)) { gmb_p_adv(p); while (!gmb_p_at_end(p) && !gmb_p_check(p, GMB_TOK_RightParen)) gmb_p_adv(p); gmb_p_match(p, GMB_TOK_RightParen); if (s->n_params > 0) { s->param_is_array[s->n_params - 1] = 1; s->param_ndims[s->n_params - 1]++; } }
+                    /* parametro: nome [()] [(,)] [(,,)]... [AS tipo] — il numero di
+                     * dimensioni e' dato dalle virgole (rank-n); `()` = rank 1. */
+                    while (gmb_p_check(p, GMB_TOK_LeftParen)) {
+                        gmb_p_adv(p);
+                        int _rank = 1;
+                        while (!gmb_p_at_end(p) && !gmb_p_check(p, GMB_TOK_RightParen)) {
+                            if (gmb_p_check(p, GMB_TOK_Comma)) _rank++;
+                            gmb_p_adv(p);
+                        }
+                        gmb_p_match(p, GMB_TOK_RightParen);
+                        if (s->n_params > 0) { s->param_is_array[s->n_params - 1] = 1; s->param_ndims[s->n_params - 1] += (uint8_t)_rank; }
+                    }
                     if (gmb_p_tok_is_keyword(gmb_p_cur(p), "As") || gmb_p_check(p, GMB_TOK_As)) {
                         gmb_p_adv(p);
                         /* cattura il nome del tipo (primo token) per il codegen C99 (GPM) */
@@ -2377,6 +2387,16 @@ if (gmb_tk_rem_vari_in(t->kind)) {
                 const gmb_token_t* tt = gmb_p_cur(p);
                 if (tt->kind == GMB_TOK_Newline && depth == 0) break;
                 if (tt->kind == GMB_TOK_FatArrow || tt->kind == GMB_TOK_Arrow) break;   /* 2.7(d): corpo => */
+                /* rank esplicito del ritorno: T(,), T(,,), ... (solo virgole dentro le parentesi) */
+                if (tt->kind == GMB_TOK_LeftParen && depth == 0 && s->func_ret_ndims == 0) {
+                    int _rk = 1, _k = 1;
+                    while (gmb_p_peek(p, _k) && gmb_p_peek(p, _k)->kind == GMB_TOK_Comma) { _rk++; _k++; }
+                    if (_rk > 1 && gmb_p_peek(p, _k) && gmb_p_peek(p, _k)->kind == GMB_TOK_RightParen) {
+                        s->func_ret_ndims = _rk;
+                        for (int _z = 0; _z <= _k; _z++) gmb_p_adv(p);
+                        continue;
+                    }
+                }
                 if (tt->kind == GMB_TOK_Multiply && gmb_p_peek(p, 1)
                     && gmb_p_peek(p, 1)->kind == GMB_TOK_Number) {
                     /* STRING * N: lunghezza fissa del ritorno */

@@ -61,7 +61,7 @@ public sealed partial class Parser
         var baseDataType = ParseTypeClause(nameToken);
 
         // Se sono state specificate le dimensioni, il tipo finale è un array.
-        var finalDataType = !dimensions.IsEmpty ? new ArrayType(baseDataType) : baseDataType;
+        var finalDataType = !dimensions.IsEmpty ? new ArrayType(baseDataType, dimensions.Length) : baseDataType;
 
         // --- VALIDAZIONE ---
         // I campi a lunghezza variabile (STRING, LIST/DICT, ANY) sono LECITI in un TYPE.

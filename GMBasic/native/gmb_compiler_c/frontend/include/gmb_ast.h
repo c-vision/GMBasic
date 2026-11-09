@@ -261,8 +261,7 @@ struct gmb_stmt {
     uint8_t* param_byref;   /* n_params flag: 1 = parametro BYREF */
     uint8_t* param_is_array;/* n_params flag: 1 = parametro array (nome()) */
     uint8_t* param_ndims;   /* n_params: numero dimensioni array param (0/1 = 1D, 2 = 2D...) */
-    char** param_types;     /* n_params: nome tipo AS (CHANNEL/WAITGROUP/...) o NULL */
-    int* param_fixed_lens;  /* n_params: lunghezza STRING * N del parametro (0 = non fissa) */
+    char** param_types;     /* n_params: nome tipo AS (CHANNEL/WAITGROUP/...) o NULL */    int* param_fixed_lens;  /* n_params: lunghezza STRING * N del parametro (0 = non fissa) */
     uint8_t* param_variadic;/* n_params flag: 1 = PARAMARRAY (raccoglie gli argomenti eccedenti) */
     uint8_t* param_optional;/* n_params flag: 1 = parametro OPTIONAL (default = tipo se manca '=') */
     gmb_expr_t** param_defaults; /* n_params: espressione di default (OPTIONAL ... = espr), NULL se assente/obbligatorio */
@@ -295,6 +294,7 @@ struct gmb_stmt {
      * altrimenti ambigui). */
     uint8_t* param_fn_has_ret;
     char* func_ret_type;    /* clausola AS di ritorno (STRING/LONG/...) o NULL (numero) */
+    int func_ret_ndims;     /* rank esplicito del ritorno: T(,) = 2, T(,,) = 3 (0/1 = 1D) */
     char* func_ret_tuple_fields; /* AS (nome AS T, ...): CSV dei nomi campo ("lo,hi"; indice vuoto
                                   * = anonimo) o NULL. Permette a DIM x = Fn() di risolvere
                                   * x.nome -> x(indice) nel chiamante (resolve_tuple_field). */

@@ -240,10 +240,12 @@ public sealed partial class Parser
             var normalizedNameToken = originalNameToken with { Lexeme = baseName };
             _declaredParameterNames.Add(baseName);   // vedi ParsePrimaryAtom: shadowing delle keyword a 0 argomenti
 
-            // 4. Controllo per array (parentesi vuote '()').
+            // 4. Controllo per array: parentesi `()` (rank 1) oppure `(,)`, `(,,)`... (rank N).
             var isArray = false;
+            var arrayRank = 1;
             if (Match(TokenKind.LeftParen))
             {
+                while (Match(TokenKind.Comma)) arrayRank++;
                 Consume(TokenKind.RightParen, "Expected ')' to close empty parentheses for array parameter.");
                 isArray = true;
             }
@@ -276,7 +278,7 @@ public sealed partial class Parser
                 baseDataType = DeduceTypeFromSuffix(originalNameToken.Lexeme);
             }
 
-            var finalDataType = isArray ? new ArrayType(baseDataType) : baseDataType;
+            var finalDataType = isArray ? new ArrayType(baseDataType, arrayRank) : baseDataType;
 
             // 6. Parsing del valore di default (vietato per PARAMARRAY).
             Expr? defaultValue = null;

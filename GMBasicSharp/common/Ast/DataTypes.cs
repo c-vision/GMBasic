@@ -1240,20 +1240,24 @@ public record TBColumnType(Token? SourceToken = null)
 }
 
 /// <summary>
-/// Rappresenta un tipo array, specificando il tipo dei suoi elementi.
+/// Rappresenta un tipo array, specificando il tipo degli elementi e il RANK statico
+/// (numero di dimensioni della matrice rettangolare). Il rank e' parte del TIPO:
+/// attraversa parametri e valori di ritorno senza deduzione dal valore.
+/// Gli array jagged restano annidati (`ARRAY OF ARRAY OF T`) e hanno rank 1 sull'esterno.
 /// </summary>
 /// <param name="ElementType">Il tipo di dato degli elementi contenuti nell'array.</param>
-public record ArrayType(DataType ElementType) : DataType(ElementType.Position)
+/// <param name="Rank">Numero di dimensioni (>= 1). Default 1 (vettore).</param>
+public record ArrayType(DataType ElementType, int Rank = 1) : DataType(ElementType.Position)
 {
     /// <summary>
     /// Restituisce una rappresentazione testuale del tipo array.
     /// </summary>
-    public override string ToString() => $"ARRAY OF {ElementType}";
+    public override string ToString() => Rank > 1 ? $"ARRAY({Rank}) OF {ElementType}" : $"ARRAY OF {ElementType}";
 
     /// <summary>
     /// Crea una copia profonda di questo nodo DataType.
     /// </summary>
-    public override AstNode DeepClone() => new ArrayType((DataType)ElementType.DeepClone());
+    public override AstNode DeepClone() => new ArrayType((DataType)ElementType.DeepClone(), Rank);
 }
 
 // ========================================================================

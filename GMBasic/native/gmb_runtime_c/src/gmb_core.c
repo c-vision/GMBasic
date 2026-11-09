@@ -1179,6 +1179,10 @@ static GMB_LAMBDA_TLS gmb_int_t g_lambda_ret_len = 0;
  * array composto, quindi la funzione alloca e pubblica qui puntatore + lunghezza; il call
  * site BASIC legge subito i due valori. Thread-local (nessuna interferenza fra esecuzioni). */
 static GMB_LAMBDA_TLS gmb_double_t* g_lambda_ret_ptr = NULL;
+/* Dimensioni (rank-2) dell'ultimo valore restituito da una funzione con rank esplicito
+ * (`FUNCTION F() AS DOUBLE(,)`): stessa ABI del canale ptr/len, usata dal chiamante per
+ * ricostruire i bound della matrice. */
+static GMB_LAMBDA_TLS gmb_int_t g_lambda_ret_dims[8] = { 0 };
 gmb_int_t gmb_lambda_bound(int idx) { return (idx >= 0 && idx < GMB_LAMBDA_MAX_BOUNDS) ? g_lambda_bounds[idx] : -1; }
 void gmb_lambda_bound_set(int idx, gmb_int_t b0) { if (idx >= 0 && idx < GMB_LAMBDA_MAX_BOUNDS) g_lambda_bounds[idx] = b0; }
 gmb_int_t gmb_lambda_lower(int idx) { return (idx >= 0 && idx < GMB_LAMBDA_MAX_BOUNDS) ? g_lambda_lowers[idx] : 0; }
@@ -1187,3 +1191,6 @@ gmb_int_t gmb_lambda_ret_len_get(void) { return g_lambda_ret_len; }
 void gmb_lambda_ret_len_set(gmb_int_t n) { g_lambda_ret_len = n; }
 gmb_double_t* gmb_lambda_ret_ptr_get(void) { return g_lambda_ret_ptr; }
 void gmb_lambda_ret_ptr_set(gmb_double_t* p) { g_lambda_ret_ptr = p; }
+gmb_int_t gmb_lambda_ret_dim_get(int axis) { return (axis >= 0 && axis < 8) ? g_lambda_ret_dims[axis] : 0; }
+void gmb_lambda_ret_dims_set(gmb_int_t d0, gmb_int_t d1) { g_lambda_ret_dims[0] = d0; g_lambda_ret_dims[1] = d1; }
+void gmb_lambda_ret_dim_set(int axis, gmb_int_t v) { if (axis >= 0 && axis < 8) g_lambda_ret_dims[axis] = v; }

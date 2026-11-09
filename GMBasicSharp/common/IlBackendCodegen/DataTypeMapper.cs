@@ -99,8 +99,8 @@ public static class DataTypeMapper
         // veloce possibile — accesso diretto via ldelem/stelem, niente wrapper
         // dinamico/generico come il CREATE_ARRAY del p-code Compiler esistente.
         ArrayType a => (a.ElementType is SingleType)
-            ? types.Single.MakeArrayType()   /* ABI FFI: array SINGLE = float[] (AI.EMBED) */
-            : Map(a.ElementType, types, classTypes).MakeArrayType(),
+            ? types.Single.MakeArrayType(Math.Max(1, a.Rank))   /* ABI FFI: array SINGLE = float[] (AI.EMBED) */
+            : Map(a.ElementType, types, classTypes).MakeArrayType(Math.Max(1, a.Rank)),
         // Tipi grafici custom mappati a double[] (la VM li rappresenta come array numerici:
         // SCREENINFO -> {25, 80}, RGB -> {r, g, b, a}). Porting da GMBasic.
         DisplayModeType => types.Double.MakeArrayType(),

@@ -183,6 +183,23 @@ public sealed partial class Parser
             baseType = ParseGenericTypeArgumentsSuffix(new UnresolvedQualifiedType(qualifiedName));
         }
 
+        // --- SUFFISSO RANK ESPLICITO: T(,), T(,,), ... (rank = numero di dimensioni) ---
+        // Sintassi simmetrica ai parametri `x(,) AS DOUBLE`: il rank e' parte del tipo e
+        // attraversa ritorni e parametri. `()` (rank 1) resta espresso da `ARRAY OF T`.
+        if (Check(TokenKind.LeftParen))
+        {
+            var save = _current;
+            Advance(); // consuma '('
+            var rank = 1;
+            while (Match(TokenKind.Comma)) rank++;
+            if (rank > 1 && Check(TokenKind.RightParen))
+            {
+                Advance(); // consuma ')'
+                return new ArrayType(baseType, rank);
+            }
+            _current = save; // non era un suffisso di rank: ripristina
+        }
+
         // --- SUFFISSO NULLABLE: Tipo? ---
         // Riconosce '?' dopo un tipo (es. INTEGER?, STRING?, MyClass?).
         // Non confligge con l'operatore ?? perché qui siamo in posizione di tipo (dopo AS).
