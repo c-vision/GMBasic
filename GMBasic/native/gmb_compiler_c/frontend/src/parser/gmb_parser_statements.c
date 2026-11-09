@@ -1543,6 +1543,7 @@ static gmb_stmt_t* gmb_p_parse_stmt_impl(gmb_parser_t* p, bool* multiline)
             if (!gmb_p_check(p, GMB_TOK_RightParen)) {
                 for (;;) {
                     int is_byref = 0;
+                    int param_mode = 0;   /* DECLARE NATIVE: IN/OUT/INOUT non usati qui (0=IN) */
                     if (gmb_p_tok_is_keyword(gmb_p_cur(p), "Byref") || gmb_p_check(p, GMB_TOK_ByRef)) { is_byref = 1; gmb_p_adv(p); }
                     else if (gmb_p_tok_is_keyword(gmb_p_cur(p), "Byval")) gmb_p_adv(p);
                     const gmb_token_t* prm = gmb_p_cur(p);
@@ -1551,14 +1552,14 @@ static gmb_stmt_t* gmb_p_parse_stmt_impl(gmb_parser_t* p, bool* multiline)
                             cap = cap ? cap * 2 : 4;
                             s->func_params = (char**)realloc(s->func_params, (size_t)cap * sizeof(char*));
                             s->param_byref = (uint8_t*)realloc(s->param_byref, (size_t)cap);
-                            s->param_is_array = (uint8_t*)realloc(s->param_is_array, (size_t)cap); s->param_ndims = (uint8_t*)realloc(s->param_ndims, (size_t)cap);
+                            s->param_is_array = (uint8_t*)realloc(s->param_is_array, (size_t)cap); s->param_ndims = (uint8_t*)realloc(s->param_ndims, (size_t)cap); s->param_mode = (uint8_t*)realloc(s->param_mode, (size_t)cap);
                             s->param_types = (char**)realloc(s->param_types, (size_t)cap * sizeof(char*));
                         }
                         char* b = (char*)malloc((size_t)prm->length + 1);
                         memcpy(b, prm->lexeme, (size_t)prm->length); b[prm->length] = 0;
                         s->func_params[s->n_params] = b;
                         s->param_byref[s->n_params] = (uint8_t)is_byref;
-                        s->param_is_array[s->n_params] = 0; s->param_ndims[s->n_params] = 0;
+                        s->param_is_array[s->n_params] = 0; s->param_ndims[s->n_params] = 0; s->param_mode[s->n_params] = (uint8_t)param_mode;
                         s->param_types[s->n_params] = NULL;
                         s->n_params++;
                     }
@@ -2230,17 +2231,38 @@ if (gmb_tk_rem_vari_in(t->kind)) {
                      * array (bug: FunctionsParams.bas, "indexing a numeric scalar is not
                      * allowed"). */
                     int is_byref = 0, is_variadic = 0, is_optional = 0;
+                    /* ADR-MATRIX §3: IN/OUT/INOUT in posizione parametro. OUT/INOUT non
+                     * sono keyword globali: valgono solo seguite da un NOME (non AS/,/)/=). */
+                    int param_mode = 0;
+                    {
+                        const gmb_token_t* mc = gmb_p_cur(p);
+                        if (gmb_p_tok_is_keyword(mc, "In")) {
+                            param_mode = 0;
+                            gmb_p_adv(p);
+                        } else if (mc && mc->kind == GMB_TOK_Identifier && mc->lexeme
+                                   && (strncasecmp(mc->lexeme, "OUT", 3) == 0
+                                       || strncasecmp(mc->lexeme, "INOUT", 5) == 0)) {
+                            const gmb_token_t* nx = gmb_p_peek(p, 1);
+                            if (nx && nx->kind != GMB_TOK_As && nx->kind != GMB_TOK_Comma
+                                && nx->kind != GMB_TOK_RightParen && nx->kind != GMB_TOK_LeftParen
+                                && nx->kind != GMB_TOK_Equal) {
+                                param_mode = (strncasecmp(mc->lexeme, "INOUT", 5) == 0) ? 2 : 1;
+                                gmb_p_adv(p);
+                            }
+                        }
+                    }
                     if (gmb_p_tok_is_keyword(gmb_p_cur(p), "Byref") || gmb_p_check(p, GMB_TOK_ByRef)) { is_byref = 1; gmb_p_adv(p); }
                     else if (gmb_p_tok_is_keyword(gmb_p_cur(p), "Paramarray")) { is_variadic = 1; gmb_p_adv(p); }
                     else if (gmb_p_tok_is_keyword(gmb_p_cur(p), "Optional")) { is_optional = 1; gmb_p_adv(p); }
                     else if (gmb_p_tok_is_keyword(gmb_p_cur(p), "Byval")) gmb_p_adv(p);
                     const gmb_token_t* prm = gmb_p_cur(p);
                     if (prm) {
-                        if (s->n_params >= cap) { cap = cap ? cap * 2 : 4; s->func_params = (char**)realloc(s->func_params, (size_t)cap * sizeof(char*)); s->param_byref = (uint8_t*)realloc(s->param_byref, (size_t)cap); s->param_is_array = (uint8_t*)realloc(s->param_is_array, (size_t)cap); s->param_ndims = (uint8_t*)realloc(s->param_ndims, (size_t)cap); s->param_types = (char**)realloc(s->param_types, (size_t)cap * sizeof(char*)); s->param_fixed_lens = (int*)realloc(s->param_fixed_lens, (size_t)cap * sizeof(int)); s->param_variadic = (uint8_t*)realloc(s->param_variadic, (size_t)cap); s->param_optional = (uint8_t*)realloc(s->param_optional, (size_t)cap); s->param_defaults = (gmb_expr_t**)realloc(s->param_defaults, (size_t)cap * sizeof(gmb_expr_t*)); s->param_fn_arity = (int*)realloc(s->param_fn_arity, (size_t)cap * sizeof(int)); s->param_fn_str_mask = (int*)realloc(s->param_fn_str_mask, (size_t)cap * sizeof(int)); s->param_fn_ret_str = (uint8_t*)realloc(s->param_fn_ret_str, (size_t)cap); for (int z = s->n_params; z < cap; z++) { s->param_types[z] = NULL; s->param_is_array[z] = 0; s->param_ndims[z] = 0; s->param_fixed_lens[z] = 0; s->param_variadic[z] = 0; s->param_optional[z] = 0; s->param_defaults[z] = NULL; s->param_fn_arity[z] = -1; s->param_fn_str_mask[z] = 0; s->param_fn_ret_str[z] = 0; } }
+                        if (s->n_params >= cap) { cap = cap ? cap * 2 : 4; s->func_params = (char**)realloc(s->func_params, (size_t)cap * sizeof(char*)); s->param_byref = (uint8_t*)realloc(s->param_byref, (size_t)cap); s->param_is_array = (uint8_t*)realloc(s->param_is_array, (size_t)cap); s->param_ndims = (uint8_t*)realloc(s->param_ndims, (size_t)cap); s->param_mode = (uint8_t*)realloc(s->param_mode, (size_t)cap); s->param_types = (char**)realloc(s->param_types, (size_t)cap * sizeof(char*)); s->param_fixed_lens = (int*)realloc(s->param_fixed_lens, (size_t)cap * sizeof(int)); s->param_variadic = (uint8_t*)realloc(s->param_variadic, (size_t)cap); s->param_optional = (uint8_t*)realloc(s->param_optional, (size_t)cap); s->param_defaults = (gmb_expr_t**)realloc(s->param_defaults, (size_t)cap * sizeof(gmb_expr_t*)); s->param_fn_arity = (int*)realloc(s->param_fn_arity, (size_t)cap * sizeof(int)); s->param_fn_str_mask = (int*)realloc(s->param_fn_str_mask, (size_t)cap * sizeof(int)); s->param_fn_ret_str = (uint8_t*)realloc(s->param_fn_ret_str, (size_t)cap); for (int z = s->n_params; z < cap; z++) { s->param_types[z] = NULL; s->param_is_array[z] = 0; s->param_ndims[z] = 0; s->param_mode[z] = 0; s->param_fixed_lens[z] = 0; s->param_variadic[z] = 0; s->param_optional[z] = 0; s->param_defaults[z] = NULL; s->param_fn_arity[z] = -1; s->param_fn_str_mask[z] = 0; s->param_fn_ret_str[z] = 0; } }
                         char* b = (char*)malloc((size_t)prm->length + 1); memcpy(b, prm->lexeme, (size_t)prm->length); b[prm->length] = 0;
                         s->func_params[s->n_params] = b;
                         s->param_byref[s->n_params] = (uint8_t)is_byref;
                         s->param_is_array[s->n_params] = 0; s->param_ndims[s->n_params] = 0;
+                        s->param_mode[s->n_params] = (uint8_t)param_mode;
                         s->param_types[s->n_params] = NULL;
                         s->param_fixed_lens[s->n_params] = 0;
                         s->param_variadic[s->n_params] = (uint8_t)is_variadic;

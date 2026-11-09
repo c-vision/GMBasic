@@ -887,6 +887,8 @@ public static class Orchestrator
         // Intercetta accessi ai campi su tipi primitivi e mismatch di assegnazione residui.
         Linker.ValidateTypes(program);
         Log("[Orchestrator] Passata 3.5 (Validazione Tipi) completata.", log);
+        Linker.ValidateParameterModes(program);
+        Log("[Orchestrator] Contratti IN/OUT/INOUT parametri matrice validati.", log);
         
         // Passata 3.6: Validazione finale del punto di ingresso del programma.
         if (!program.LoadedModules.TryGetValue(canonicalMainPath, out var rewrittenMainModule)

@@ -234,6 +234,31 @@ public sealed partial class Parser
                 if (!isByRef) Match(TokenKind.ByVal); // BYVAL è il default.
             }
 
+            // 2bis. Modalità IN/OUT/INOUT (ADR-MATRIX-Valore §3). OUT/INOUT non sono
+            // keyword globali: sono riconosciute QUI solo se seguite da un nome di
+            // parametro (non da AS/','/')'/'='), così un parametro chiamato `out` resta
+            // valido. IN usa il TokenKind.In già esistente (le keyword non possono essere
+            // nomi di parametro).
+            var mode = ParameterMode.In;
+            if (!isParamArray)
+            {
+                if (Match(TokenKind.In))
+                {
+                    mode = ParameterMode.In;
+                }
+                else if (Check(TokenKind.Identifier)
+                         && (At(0).Lexeme.Equals("OUT", StringComparison.OrdinalIgnoreCase)
+                             || At(0).Lexeme.Equals("INOUT", StringComparison.OrdinalIgnoreCase))
+                         && At(1).Kind != TokenKind.As && At(1).Kind != TokenKind.Comma
+                         && At(1).Kind != TokenKind.RightParen && At(1).Kind != TokenKind.LeftParen
+                         && At(1).Kind != TokenKind.Equal)
+                {
+                    mode = At(0).Lexeme.Equals("INOUT", StringComparison.OrdinalIgnoreCase)
+                        ? ParameterMode.InOut : ParameterMode.Out;
+                    Advance();
+                }
+            }
+
             // 3. Parsing del nome e normalizzazione.
             var originalNameToken = ConsumeProcedureName();
             var (baseName, _) = SplitNameAndSuffix(originalNameToken.Lexeme);
@@ -315,7 +340,8 @@ public sealed partial class Parser
             parameters.Add(
                 new Parameter(-1, normalizedNameToken, finalDataType, flags, defaultValue, hasAsClause)
                 {
-                    OriginalName = originalNameToken
+                    OriginalName = originalNameToken,
+                    Mode = mode
                 });
         } while (Match(TokenKind.Comma));
 

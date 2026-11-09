@@ -236,6 +236,7 @@ void gmb_stmt_free(gmb_stmt_t* s)
     free(s->param_byref);
     free(s->param_is_array);
     free(s->param_ndims);
+    free(s->param_mode);
     if (s->param_types) {
         for (int i = 0; i < s->n_params; i++) free(s->param_types[i]);
         free(s->param_types);

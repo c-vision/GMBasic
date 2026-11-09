@@ -8414,6 +8414,20 @@ static int is_param_of_cur(ctx_t* c, const char* name) {
     return 0;
 }
 
+/* ADR-MATRIX-Valore-Descrittore-INOUT §3: `name` è un parametro MATRICE (rank>=2)
+ * dichiarato IN (default, param_mode 0) nella funzione in emissione → sola lettura.
+ * OUT (1) e INOUT (2) possono scrivere. Il passaggio resta per descrittore condiviso:
+ * il modo è un contratto statico. */
+int gmb_c99_param_is_in_matrix(ctx_t* c, const char* name) {
+    if (!c || !c->cur_fn || !c->cur_fn->stmt || !name) return 0;
+    gmb_stmt_t* fs = c->cur_fn->stmt;
+    if (!fs->func_params || !fs->param_mode || !fs->param_ndims) return 0;
+    for (int k = 0; k < fs->n_params; k++)
+        if (fs->func_params[k] && strcasecmp(fs->func_params[k], name) == 0)
+            return fs->param_mode[k] == 0 && fs->param_ndims[k] >= 2;
+    return 0;
+}
+
 /* (b4): DIM x() = builtin array-returning (parity oracolo Statements.cs DIM-array-init:
  * chiamata runtime con out-len compagna). Nota: l'oracolo C# per IFFT su matrice passa
  * il double** con cast UB (gmb_fft_matrix stampa FAIL nel round-trip); qui l'IFFT su
@@ -18016,6 +18030,13 @@ static void res_guard_end(ctx_t* c, int res_guard) {
 
 static void st_let_assign(ctx_t* c, gmb_stmt_t* s) {
 {
+        /* ADR-MATRIX §3: scrittura su parametro matrice dichiarato IN (sola lettura).
+         * Vale per l'intera matrice (`m = ...`) e per l'elemento (`m(i,j) = ...`). */
+        if (s->target && !strchr(s->target, '.') && gmb_c99_param_is_in_matrix(c, s->target)) {
+            c99_fail(c, s->line, "il parametro matrice '%s' è dichiarato IN (sola lettura) e non può "
+                     "essere modificato: dichiaralo INOUT (o OUT) per consentire la scrittura", s->target);
+            return;
+        }
         /* a = <FUNCTION utente AS ARRAY OF …>(...) → stesso percorso del DIM `x() = …`
          * (l'assegnazione sostituisce l'array; var promossa a dyn_len dal pre-pass).
          * Su un PARAMETRO la promozione è disattivata (rappresentazione fissata dalla
@@ -21663,6 +21684,12 @@ static void st_expr(ctx_t* c, gmb_stmt_t* s) {
 
 static void st_redim(ctx_t* c, gmb_stmt_t* s) {
 {
+        /* ADR-MATRIX §3: REDIM di un parametro matrice IN (sola lettura). */
+        if (s->dim_var && !strchr(s->dim_var, '.') && gmb_c99_param_is_in_matrix(c, s->dim_var)) {
+            c99_fail(c, s->line, "REDIM del parametro matrice '%s' dichiarato IN (sola lettura): "
+                     "dichiaralo INOUT (o OUT) per consentire la modifica", s->dim_var);
+            return;
+        }
         var_t* v = lookup_var(c, s->dim_var);
         if (!v || !v->is_array) {
             /* `REDIM base.campo(n)`: CAMPO-ARRAY di un UDT/istanza di classe (`Cfg.Ports`).
@@ -21864,6 +21891,12 @@ static void st_redim(ctx_t* c, gmb_stmt_t* s) {
 
 static void st_aadd(ctx_t* c, gmb_stmt_t* s) {
 {
+        /* ADR-MATRIX §3: AADD/AINS/ADEL su parametro matrice IN (sola lettura). */
+        if (s->array_var && gmb_c99_param_is_in_matrix(c, s->array_var)) {
+            c99_fail(c, s->line, "AADD/AINS/ADEL sul parametro matrice '%s' dichiarato IN (sola lettura): "
+                     "dichiaralo INOUT (o OUT) per consentire la modifica", s->array_var);
+            return;
+        }
         var_t* v = s->array_var ? lookup_var(c, s->array_var) : NULL;
         if (!v || !v->is_array) {
             c99_fail(c, s->line, "AADD/AINS/ADEL: '%s' non è un array", s->array_var ? s->array_var : "?");
@@ -22021,6 +22054,12 @@ static void st_aadd(ctx_t* c, gmb_stmt_t* s) {
 
 /* AFILL array, value [, start [, count]]: riempie [start, start+count) (0-based, parity IL). */
 static void st_afill(ctx_t* c, gmb_stmt_t* s) {
+    /* ADR-MATRIX §3: AFILL su parametro matrice IN (sola lettura). */
+    if (s->array_var && gmb_c99_param_is_in_matrix(c, s->array_var)) {
+        c99_fail(c, s->line, "AFILL sul parametro matrice '%s' dichiarato IN (sola lettura): "
+                 "dichiaralo INOUT (o OUT) per consentire la modifica", s->array_var);
+        return;
+    }
     var_t* v = s->array_var ? lookup_var(c, s->array_var) : NULL;
     if (!v || !v->is_array || v->matrix || v->vclass[0]) {
         c99_fail(c, s->line, "AFILL: '%s' non è un array 1-D di primitivi", s->array_var ? s->array_var : "?");
@@ -22117,6 +22156,12 @@ static void st_acopy(ctx_t* c, gmb_stmt_t* s) {
  * - con comparatore funzionale (λ loweringata dal pre-pass): array di UDT/classe (elementi
  *   gmb_val_t boxed) o numerico, via gmb_array_sort_{val,dbl}_cmp (parity emitter C# qsort_r). */
 static void st_asort(ctx_t* c, gmb_stmt_t* s) {
+    /* ADR-MATRIX §3: ASORT su parametro matrice IN (sola lettura). */
+    if (s->array_var && gmb_c99_param_is_in_matrix(c, s->array_var)) {
+        c99_fail(c, s->line, "ASORT sul parametro matrice '%s' dichiarato IN (sola lettura): "
+                 "dichiaralo INOUT (o OUT) per consentire la modifica", s->array_var);
+        return;
+    }
     var_t* v = s->array_var ? lookup_var(c, s->array_var) : NULL;
     if (!v || !v->is_array || v->matrix) {
         c99_fail(c, s->line, "ASORT: '%s' non è un array 1-D", s->array_var ? s->array_var : "?");
@@ -22259,6 +22304,14 @@ static void st_ashuffle(ctx_t* c, gmb_stmt_t* s) {
 /* SWAP a, b — scambia due variabili (parity IL/VM).
  * Il temporaneo usa il tipo C della variabile sinistra (gmb_double_t di default). */
 static void st_swap(ctx_t* c, gmb_stmt_t* s) {
+    /* ADR-MATRIX §3: SWAP su parametro matrice IN (sola lettura). */
+    if ((s->swap_a && gmb_c99_param_is_in_matrix(c, s->swap_a))
+        || (s->swap_b && gmb_c99_param_is_in_matrix(c, s->swap_b))) {
+        c99_fail(c, s->line, "SWAP sul parametro matrice '%s' dichiarato IN (sola lettura): "
+                 "dichiaralo INOUT (o OUT) per consentire la modifica",
+                 (s->swap_a && gmb_c99_param_is_in_matrix(c, s->swap_a)) ? s->swap_a : s->swap_b);
+        return;
+    }
     const var_t* a = s->swap_a ? lookup_var(c, s->swap_a) : NULL;
     const var_t* b = s->swap_b ? lookup_var(c, s->swap_b) : NULL;
     if (!a || !b) { c99_fail(c, s->line, "SWAP: target non trovato (%s, %s)",

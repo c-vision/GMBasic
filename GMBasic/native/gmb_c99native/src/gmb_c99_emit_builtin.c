@@ -3454,6 +3454,13 @@ static int mxh_get(ctx_t* c, gmb_expr_t** a, int n) {
 }
 static int mxh_set(ctx_t* c, gmb_expr_t** a, int n) {
     if (n < 4) return 0;
+    /* ADR-MATRIX §3: MATRIX.SETVALUE su parametro matrice IN (sola lettura). */
+    if (a[0] && a[0]->kind == GMB_EXPR_VAR && a[0]->var
+        && gmb_c99_param_is_in_matrix(c, a[0]->var)) {
+        c99_fail(c, c->cur_stmt_line, "MATRIX.SETVALUE sul parametro matrice '%s' dichiarato IN "
+                 "(sola lettura): dichiaralo INOUT (o OUT) per consentire la modifica", a[0]->var);
+        return 1;
+    }
     /* Valore MATRIX OF: mutazione diretta e valore restituito (F1:
      * `m = MATRIX.SETVALUE(m, r, c, v)`), niente registry handle. */
     if (a[0] && a[0]->kind == GMB_EXPR_VAR && a[0]->var) {

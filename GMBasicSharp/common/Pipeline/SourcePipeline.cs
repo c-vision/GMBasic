@@ -133,6 +133,7 @@ public static class SourcePipeline
         global::Basic.Linker.ResolveAndRewriteModuleAsts(program);
         global::Basic.Linker.RebuildBlockScopedLabelReferences(program);
         global::Basic.Linker.ValidateTypes(program);
+        global::Basic.Linker.ValidateParameterModes(program);
         global::Basic.Linker.ApplySemanticPatches(program);   /* §4.10 write-side (post-link) */
 
         if (program.LoadedModules.TryGetValue(entryPath, out var mainMod))

@@ -3,6 +3,18 @@
 namespace Basic;
 
 /// <summary>
+/// Modalità di un parametro matrice (ADR-MATRIX-Valore §3): IN = sola lettura (default),
+/// OUT = il callee inizializza, INOUT = lettura e scrittura. Non cambia l'ABI (il
+/// descrittore è condiviso): è un CONTRATTO verificato dal compilatore.
+/// </summary>
+public enum ParameterMode
+{
+    In = 0,
+    Out = 1,
+    InOut = 2
+}
+
+/// <summary>
 /// Definisce un singolo parametro in una firma di FUNCTION o SUB.
 /// </summary>
 public sealed record Parameter(
@@ -13,6 +25,9 @@ public sealed record Parameter(
     Expr? DefaultValue,
     bool HasAsClause) : Decl(Name.Position)
 {
+    /// <summary>Modalità IN/OUT/INOUT (default IN). Rilevante per i parametri matrice.</summary>
+    public ParameterMode Mode { get; init; } = ParameterMode.In;
+
     /// <summary>Nome originale del parametro nel sorgente.</summary>
     public Token OriginalName { get; init; } = Name;
 
@@ -22,9 +37,15 @@ public sealed record Parameter(
         var isOptional = Flags.HasFlag(SymbolFlags.IsOptional);
         var isByRef = Flags.HasFlag(SymbolFlags.IsByRef);
         var isArray = Flags.HasFlag(SymbolFlags.IsArray);
+        var mode = Mode switch
+        {
+            ParameterMode.Out => "OUT ",
+            ParameterMode.InOut => "INOUT ",
+            _ => ""
+        };
 
         return
-            $"{(isOptional ? "OPTIONAL " : "")}{(isByRef ? "BYREF " : "")}{OriginalName.Lexeme}{(isArray ? "()" : "")} " +
+            $"{(isOptional ? "OPTIONAL " : "")}{mode}{(isByRef ? "BYREF " : "")}{OriginalName.Lexeme}{(isArray ? "()" : "")} " +
             $"AS {DataType}{(DefaultValue is not null ? $" = {DefaultValue}" : "")} [{Flags}]";
     }
 
@@ -38,7 +59,8 @@ public sealed record Parameter(
 
         return new Parameter(SymbolId, clonedName, clonedDataType, Flags, clonedDefaultValue, HasAsClause)
         {
-            OriginalName = clonedOriginalName
+            OriginalName = clonedOriginalName,
+            Mode = Mode
         };
     }
 }

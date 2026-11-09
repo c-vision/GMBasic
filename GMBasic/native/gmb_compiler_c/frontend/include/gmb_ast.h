@@ -261,6 +261,7 @@ struct gmb_stmt {
     uint8_t* param_byref;   /* n_params flag: 1 = parametro BYREF */
     uint8_t* param_is_array;/* n_params flag: 1 = parametro array (nome()) */
     uint8_t* param_ndims;   /* n_params: numero dimensioni array param (0/1 = 1D, 2 = 2D...) */
+    uint8_t* param_mode;    /* n_params: 0 = IN (default), 1 = OUT, 2 = INOUT (parametri matrice) */
     char** param_types;     /* n_params: nome tipo AS (CHANNEL/WAITGROUP/...) o NULL */    int* param_fixed_lens;  /* n_params: lunghezza STRING * N del parametro (0 = non fissa) */
     uint8_t* param_variadic;/* n_params flag: 1 = PARAMARRAY (raccoglie gli argomenti eccedenti) */
     uint8_t* param_optional;/* n_params flag: 1 = parametro OPTIONAL (default = tipo se manca '=') */
