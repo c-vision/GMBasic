@@ -11,8 +11,9 @@ IMPORT SIGNAL
 
 SUB Main()
   ' ── finestre ─────────────────────────────────────────────────────────────
-  DIM hann() = SIGNAL.HANN(5)
-  PRINT "hann="; LEN(hann); "|mid="; ROUND(hann(2), 6); "|end="; ROUND(hann(0), 6)
+  ' NB: variabile NON chiamata `hann` (ombreggerebbe la funzione HANN: `hann(2)` sarebbe una chiamata).
+  DIM hw() = SIGNAL.HANN(5)
+  PRINT "hann="; LEN(hw); "|mid="; ROUND(hw(2), 6); "|end="; ROUND(hw(0), 6)
   DIM ham() = SIGNAL.HAMMING(5)
   PRINT "hamming="; LEN(ham); "|mid="; ROUND(ham(2), 6); "|end="; ROUND(ham(0), 6)
   DIM blk() = SIGNAL.BLACKMAN(5)
