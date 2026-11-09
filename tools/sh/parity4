@@ -149,7 +149,7 @@ fi
 OUT=/tmp/parity4
 mkdir -p "$OUT"
 BASE=$(basename "$FILE" .bas)
-rm -f "$OUT/$BASE".*.txt "$OUT/$BASE".*.raw "$OUT/$BASE".*.rc "$OUT/$BASE".*.err.txt "$OUT/$BASE".*.skip
+rm -f "$OUT/$BASE".*.txt "$OUT/$BASE".*.raw "$OUT/$BASE".*.rc "$OUT/$BASE".*.err.txt "$OUT/$BASE".*.skip "$OUT/$BASE".*.stderr
 
 # normalizza: via ANSI, via righe di harness/prompt, trim, via righe vuote.
 norm() {
@@ -169,17 +169,38 @@ norm() {
 
 has_leg() { case ",$LEGS," in *",$1,"*) return 0;; esac; return 1; }
 
+# Stderr di una gamba fallita o muta: è l'unica spiegazione disponibile (build del harness,
+# MSBuild/MSB4166 per contesa fra sessioni, NuGet, link, loader). Scartandolo, un guasto di build
+# diventava "nessun output" e sembrava che il programma fosse morto prima del primo PRINT.
+show_stderr() {  # nome, file stderr, rc
+  local name="$1" err="$2" rc="$3"
+  if [ ! -s "$err" ]; then
+    echo "        $name: stderr vuoto (timeout ${TIMEOUT}s o nessun messaggio)"
+    return 0
+  fi
+  echo "        stderr di $name (rc=$rc) — $err:"
+  grep -viE 'warning (NU|CS|MSB)[0-9]+|Ripristino|Restore|Determinazione dei progetti|Build started|Tempo trascorso' "$err" \
+    | grep -vE '^[[:space:]]*$' | head -8 | sed 's/^/        | /'
+  local tot
+  tot=$(grep -c . "$err")
+  [ "$tot" -gt 8 ] && echo "        | … ($tot righe non vuote; vedi $err)"
+  return 0
+}
+
 run_leg() {  # nome, comando...
   local name="$1"; shift
-  local raw="$OUT/$BASE.$name.raw"
-  # Solo STDOUT: l'output del programma (PRINT) va su stdout; i log diagnostici del motore nativo
-  # ([bf16:*], [auto-policy], [packed-qkv], [GMB_MLX_PEROP], ...) vanno su stderr e NON devono
-  # entrare nel confronto di parità (interleaving non deterministico).
-  ( perl -e 'alarm shift; exec @ARGV' "$TIMEOUT" "$@" ) >"$raw" 2>/dev/null
+  local raw="$OUT/$BASE.$name.raw" err="$OUT/$BASE.$name.stderr"
+  # Solo STDOUT entra nel confronto: l'output del programma (PRINT) va su stdout; i log diagnostici
+  # del motore nativo ([bf16:*], [auto-policy], [packed-qkv], [GMB_MLX_PEROP], ...), i messaggi di
+  # build e quelli del harness vanno su stderr (interleaving non deterministico) e non si confrontano.
+  # Lo stderr però si CONSERVA in un file per gamba: è la prova del perché una gamba è muta.
+  ( perl -e 'alarm shift; exec @ARGV' "$TIMEOUT" "$@" ) >"$raw" 2>"$err"
   local rc=$?
   norm <"$raw" >"$OUT/$BASE.$name.txt"
   echo "$rc" >"$OUT/$BASE.$name.rc"
   echo "  $name: rc=$rc righe=$(wc -l <"$OUT/$BASE.$name.txt" | tr -d ' ')"
+  # Gamba in errore o muta: mostra subito il perché invece del generico "nessun output".
+  if [ "$rc" -ne 0 ] || [ ! -s "$OUT/$BASE.$name.txt" ]; then show_stderr "$name" "$err" "$rc"; fi
 }
 
 echo "== parity4 $FILE =="
@@ -234,6 +255,8 @@ for l in c99n il pcode vmc; do
     if [ -s "$OUT/$BASE.$l.raw" ]; then
       echo "        prime righe di $OUT/$BASE.$l.raw:"
       sed -n '1,4p' "$OUT/$BASE.$l.raw" | sed 's/^/        | /'
+    elif [ -s "$OUT/$BASE.$l.stderr" ]; then
+      echo "        stderr: $OUT/$BASE.$l.stderr (riportato sopra)"
     fi
     fail=1
     continue
