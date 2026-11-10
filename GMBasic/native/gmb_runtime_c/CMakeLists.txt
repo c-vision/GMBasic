@@ -279,6 +279,7 @@ set(GMB_ALL_SRCS
     src/gmb_validation.c
     src/gmb_matrix.c
     src/gmb_matrix_value.c
+    src/gmb_matrix_bridge.c
     src/gmb_finance.c
     src/gmb_finance_qlnet.c
     src/gmb_agent.c
