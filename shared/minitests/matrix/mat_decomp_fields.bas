@@ -1,4 +1,4 @@
-' EXPECT: lu_l10= 0.5|lu_u00= 4|qr_q00=-0.8944|qr_r01=-3.1305|sv_s00= 5.5616|ev_d00= 1.4384|ch_l11= 1.4142|sc_t00= 5.5616|sc_z00= 0.7882|po_u00= 1|po_p00= 4|eg_d0= 5.5616|eg_v00= 0.7882
+' EXPECT: lu_l10= 0.5|lu_u00= 4|u00b= 4|su01= 2|tr10= 2|ub= 1 , 1|len= 4|qr_q00=-0.8944|qr_r01=-3.1305|sv_s00= 5.5616|ev_d00= 1.4384|ch_l11= 1.4142|sc_t00= 5.5616|sc_z00= 0.7882|po_u00= 1|po_p00= 4|eg_d0= 5.5616|eg_v00= 0.7882
 ' Decomposizioni come VALORI con i FATTORI come CAMPI matrice (ADR-MATRIX F4):
 ' `lu.L`, `qr.Q`, `sv.S`, `ev.D`, `ch.L` sono MATRIX VALUE (indicizzabili e
 ' utilizzabili con MATRIX.*), non handle. LINALG.FACTOR resta l'alias esplicito.
@@ -12,6 +12,15 @@ SUB Main()
   DIM lu = LINALG.LU(a)
   PRINT "lu_l10="; MATH.ROUND(lu.L(1, 0), 4)
   PRINT "lu_u00="; MATH.ROUND(lu.U(0, 0), 4)
+  ' letture ripetute dello stesso fattore (l'handle interno non va liberato),
+  ' fattore come valore, MATRIX.* e UBOUND/LEN del fattore
+  PRINT "u00b="; MATH.ROUND(lu.U(0, 0), 4)
+  DIM su = lu.U
+  PRINT "su01="; MATH.ROUND(su(0, 1), 4)
+  DIM luT = MATRIX.TRANSPOSE(lu.U)
+  PRINT "tr10="; MATH.ROUND(luT(1, 0), 4)
+  PRINT "ub="; UBOUND(lu.U, 1); ","; UBOUND(lu.U, 2)
+  PRINT "len="; LEN(lu.U)
 
   DIM qr = LINALG.QR(a)
   PRINT "qr_q00="; MATH.ROUND(qr.Q(0, 0), 4)

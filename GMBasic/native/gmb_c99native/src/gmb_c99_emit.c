@@ -6618,6 +6618,16 @@ static int bf_m_len(ctx_t* c, gmb_expr_t** a, int n){
             return 1;
         }
     }
+    /* LEN di un campo-fattore di DECOMPOSIZIONE: rows*cols del fattore. */
+    {
+        char __ldf[8];
+        if (a[0] && decomp_factor_call(c, a[0], __ldf)) {
+            sb_put(&c->out, "({ int64_t __h = ");
+            emit_decomp_factor_scratch(c, a[0], __ldf);
+            sb_put(&c->out, "; (gmb_double_t)(gmb_matrix_rows(__h) * gmb_matrix_cols(__h)); })");
+            return 1;
+        }
+    }
     /* LEN(bytes()) — CALL 0-arg su una var LISTA = il contenitore INTERO (array da
      * ReadAllBytes/ReadAllLines). Prima emetteva `(bytes).length` → C non compilabile
      * (§ FilesFullCoverage righe 53/55). */
@@ -16307,7 +16317,7 @@ static int is_matrix_value_call_tk(gmb_tokenkind_t tk) {
           if (mvt && mvt->matrix_value && value->tk != GMB_TOK_LinAlgMatrixCreateFunc) {
               {
                   char __ddf[8];
-                  if (value->kind == GMB_EXPR_CALL && decomp_factor_call(c, value, __ddf) && value->nargs == 0) {
+                  if (decomp_factor_call(c, value, __ddf) && value->nargs == 0) {
                       emit_matrix_from_handle_result(c, mvt, value);
                       return;
                   }
@@ -16344,7 +16354,7 @@ static int is_matrix_value_call_tk(gmb_tokenkind_t tk) {
           }
       }
       /* `m = lu.U` (campo-fattore di una decomposizione) su una matrice a valore. */
-      if (target && value && !strchr(target, '.') && value->kind == GMB_EXPR_CALL) {
+      if (target && value && !strchr(target, '.')) {
           char __ddf2[8];
           if (decomp_factor_call(c, value, __ddf2) && value->nargs == 0) {
               var_t* mv2 = lookup_var(c, target);
@@ -19576,7 +19586,7 @@ void emit_mv_field_desc(ctx_t* c, gmb_expr_t* e) {
 
 static int mv_expr_ok(ctx_t* c, gmb_expr_t* e) {
     if (!e) return 0;
-    if (e->kind == GMB_EXPR_CALL) {
+    {
         char __df[8];
         if (decomp_factor_call(c, e, __df)) return e->nargs == 0;
     }
@@ -19612,7 +19622,7 @@ static int mv_expr_ok(ctx_t* c, gmb_expr_t* e) {
 }
 
 static void emit_mv_expr(ctx_t* c, gmb_expr_t* e) {
-    if (e->kind == GMB_EXPR_CALL) {
+    {
         char __df[8];
         if (decomp_factor_call(c, e, __df) && e->nargs == 0) { emit_decomp_factor_value(c, e, __df); return; }
     }
@@ -19797,7 +19807,7 @@ static void st_dim(ctx_t* c, gmb_stmt_t* s) {
                  return;
              }
          }
-         if (dv && dv->matrix_value && s->dim_init && s->dim_init->kind == GMB_EXPR_CALL) {
+         if (dv && dv->matrix_value && s->dim_init) {
              char __ddf[8];
              if (decomp_factor_call(c, s->dim_init, __ddf) && s->dim_init->nargs == 0) {
                  emit_matrix_from_handle_result(c, dv, s->dim_init);
