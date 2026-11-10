@@ -76,6 +76,24 @@ public sealed class MatrixValue
         return m;
     }
 
+    /// <summary>Matrice rows×cols contigua AZZERATA (canone di un DIM rank-2).</summary>
+    public static MatrixValue Zeros(int rows, int cols)
+    {
+        if (rows < 0 || cols < 0) throw new ArgumentOutOfRangeException(nameof(rows));
+        return new MatrixValue(new double[(long)rows * cols], rows, cols, cols, 1, 0);
+    }
+
+    /// <summary>Da un buffer flat row-major (copia).</summary>
+    public static MatrixValue FromFlat(double[] flat, int rows, int cols)
+    {
+        ArgumentNullException.ThrowIfNull(flat);
+        if (rows < 0 || cols < 0 || flat.Length < (long)rows * cols)
+            throw new ArgumentException("FromFlat: dimensioni incompatibili.");
+        var storage = new double[(long)rows * cols];
+        Array.Copy(flat, storage, storage.Length);
+        return new MatrixValue(storage, rows, cols, cols, 1, 0);
+    }
+
     /// <summary>Copia contigua in una matrice rettangolare managed (ponte legacy).</summary>
     public double[,] ToRect()
     {

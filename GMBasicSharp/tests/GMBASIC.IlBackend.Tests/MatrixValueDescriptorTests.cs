@@ -97,4 +97,19 @@ public class MatrixValueDescriptorTests
         var back = m.ToRect();
         Assert.Equal(source, back);
     }
+
+    [Fact]
+    public void Zeros_And_FromFlat()
+    {
+        var z = MatrixValue.Zeros(2, 3);
+        Assert.Equal(2, z.Rows);
+        Assert.Equal(3, z.Cols);
+        Assert.True(z.IsContiguous);
+        Assert.Equal(0d, z.Get(0, 0));
+        Assert.Equal(0d, z.Get(1, 2));
+
+        var f = MatrixValue.FromFlat([1, 2, 3, 4, 5, 6], 2, 3);
+        Assert.Equal(6d, f.Get(1, 2));
+        Assert.True(f.IsContiguous);
+    }
 }
