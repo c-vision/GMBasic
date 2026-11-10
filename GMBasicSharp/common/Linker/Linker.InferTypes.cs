@@ -682,10 +682,14 @@ public static partial class Linker
                             f.Name.Lexeme.Equals(fae.Field.Lexeme, StringComparison.OrdinalIgnoreCase));
                         if (field != null)
                         {
-                            // Se il campo ha dimensioni definite, è un array.
+                            // Se il campo ha dimensioni definite, è un array. Il RANGO è il
+                            // numero di dimensioni dichiarate (`DIM m(N,M)` → 2): prima si
+                            // assumeva sempre rank 1, quindi `DIM x = t.m` / `x(i,j)` su un
+                            // campo matrice venivano trattati come array monodimensionali
+                            // (IL: "numero di indici (2) diverso dal rank dell'array (1)").
                             if (field.Dimensions.Any())
                             {
-                                return new ArrayType(field.DataType);
+                                return new ArrayType(field.DataType, Math.Max(1, field.Dimensions.Length));
                             }
 
                             // Altrimenti, è un campo scalare.

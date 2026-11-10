@@ -801,7 +801,7 @@ public sealed partial class IlProgramCompiler
         // ai confini (copia) per i tipi rank-2 NON double (che restano veri array CLR).
         var sourceClr = DataTypeMapper.Map(sourceType, _types, _classTypes);
         var targetClr = DataTypeMapper.Map(targetType, _types, _classTypes);
-        if (targetClr == typeof(MatrixValue) && sourceClr == typeof(double[,]))
+        if (targetClr == typeof(MatrixValue) && (sourceClr == typeof(double[,]) || IsRectArrayField(value)))
         {
             _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.MatrixValueFromRect), typeof(double[,])));
             return;
