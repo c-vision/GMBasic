@@ -451,7 +451,6 @@ internal sealed partial class PCodeProcessor
         if (!_linMatrices.TryGetValue(id, out var m))
             return null;
         
-        var newId = Interlocked.Increment(ref _nextLinearMatrixId);
         var svd = m.Svd();
         var tolerance = Math.Max(m.RowCount, m.ColumnCount) * svd.S[0] * 1e-15;
 
@@ -465,8 +464,8 @@ internal sealed partial class PCodeProcessor
 
         // A⁺ = V * S⁺ * Uᵀ
         var result = svd.VT.Transpose() * invertedS * svd.U.Transpose();
-        _linMatrices[newId] = result;
-        return HandleOf(newId);
+        // F4: PINVERSE restituisce il VALORE matrice.
+        return result.ToArray();
     }
 
     private object? LuMatrixRank(object?[] args)
@@ -1190,7 +1189,7 @@ internal sealed partial class PCodeProcessor
 
     private object? LuMatrixLogm(PCodeTask task, object?[] args) => RunLinOpRect(task, ToLongHandle(args, 0), m => global::CommonLib.Numerics.MatrixLogm(m));
 
-    private object? LuMatrixHessenberg(PCodeTask task, object?[] args) => RunLinOp(task, ToLongHandle(args, 0), m => global::CommonLib.Numerics.MatrixHessenberg(m));
+    private object? LuMatrixHessenberg(PCodeTask task, object?[] args) => RunLinOpRect(task, ToLongHandle(args, 0), m => global::CommonLib.Numerics.MatrixHessenberg(m));
 
     private object? LuMatrixBlockDiag(object?[] args)
     {
@@ -1203,7 +1202,7 @@ internal sealed partial class PCodeProcessor
         return SimdToRect(new CommonLib.SimdMatrix(res.ToRowMajorArray(), res.RowCount, res.ColumnCount));
     }
 
-    private object? LuMatrixNullSpace(PCodeTask task, object?[] args) => RunLinOp(task, ToLongHandle(args, 0), m => global::CommonLib.Numerics.NullSpace(m));
+    private object? LuMatrixNullSpace(PCodeTask task, object?[] args) => RunLinOpRect(task, ToLongHandle(args, 0), m => global::CommonLib.Numerics.NullSpace(m));
 
     private object? LuMatrixSetValue(object?[] args)
     {
@@ -1275,16 +1274,16 @@ internal sealed partial class PCodeProcessor
     }
 
     // ---- scipy.linalg completato: funzioni matriciali, SVD-based, costruttori, eig/schur ----
-    private object? LuMatrixCosm(PCodeTask task, object?[] args) => ParkStoreLinMat(task, ToLongHandle(args, 0), global::CommonLib.Numerics.MatrixCos);
-    private object? LuMatrixSinm(PCodeTask task, object?[] args) => ParkStoreLinMat(task, ToLongHandle(args, 0), global::CommonLib.Numerics.MatrixSin);
-    private object? LuMatrixTanm(PCodeTask task, object?[] args) => ParkStoreLinMat(task, ToLongHandle(args, 0), global::CommonLib.Numerics.MatrixTan);
-    private object? LuMatrixSignm(PCodeTask task, object?[] args) => ParkStoreLinMat(task, ToLongHandle(args, 0), global::CommonLib.Numerics.MatrixSignm);
-    private object? LuMatrixOrth(PCodeTask task, object?[] args) => ParkStoreLinMat(task, ToLongHandle(args, 0), global::CommonLib.Numerics.Orth);
+    private object? LuMatrixCosm(PCodeTask task, object?[] args) => RunLinOpRect(task, ToLongHandle(args, 0), global::CommonLib.Numerics.MatrixCos);
+    private object? LuMatrixSinm(PCodeTask task, object?[] args) => RunLinOpRect(task, ToLongHandle(args, 0), global::CommonLib.Numerics.MatrixSin);
+    private object? LuMatrixTanm(PCodeTask task, object?[] args) => RunLinOpRect(task, ToLongHandle(args, 0), global::CommonLib.Numerics.MatrixTan);
+    private object? LuMatrixSignm(PCodeTask task, object?[] args) => RunLinOpRect(task, ToLongHandle(args, 0), global::CommonLib.Numerics.MatrixSignm);
+    private object? LuMatrixOrth(PCodeTask task, object?[] args) => RunLinOpRect(task, ToLongHandle(args, 0), global::CommonLib.Numerics.Orth);
 
     private object? LuMatrixFractionalPower(PCodeTask task, object?[] args)
     {
         var power = ToDouble(args, 1);
-        return RunLinOp(task, ToLongHandle(args, 0), m => global::CommonLib.Numerics.MatrixFractionalPower(m, power));
+        return RunLinOpRect(task, ToLongHandle(args, 0), m => global::CommonLib.Numerics.MatrixFractionalPower(m, power));
     }
 
     private object? LuMatrixSubspaceAngles(object?[] args)

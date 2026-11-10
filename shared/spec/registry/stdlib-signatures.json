@@ -11393,11 +11393,11 @@
       "ns": "LINALG",
       "name": "COSM",
       "fn": true,
-      "return": "long",
+      "return": "double[]",
       "params": [
         {
           "name": "handle",
-          "type": "long",
+          "type": "ANY",
           "optional": false,
           "byRef": false,
           "array": false
@@ -11490,11 +11490,11 @@
       "ns": "LINALG",
       "name": "FRACTIONALPOWER",
       "fn": true,
-      "return": "long",
+      "return": "double[]",
       "params": [
         {
           "name": "handle",
-          "type": "long",
+          "type": "ANY",
           "optional": false,
           "byRef": false,
           "array": false
@@ -11527,11 +11527,11 @@
       "ns": "LINALG",
       "name": "HESSENBERG",
       "fn": true,
-      "return": "long",
+      "return": "double[]",
       "params": [
         {
           "name": "handle",
-          "type": "long",
+          "type": "ANY",
           "optional": false,
           "byRef": false,
           "array": false
@@ -11632,11 +11632,11 @@
       "ns": "LINALG",
       "name": "NULLSPACE",
       "fn": true,
-      "return": "long",
+      "return": "double[]",
       "params": [
         {
           "name": "handle",
-          "type": "long",
+          "type": "ANY",
           "optional": false,
           "byRef": false,
           "array": false
@@ -11662,11 +11662,11 @@
       "ns": "LINALG",
       "name": "ORTH",
       "fn": true,
-      "return": "long",
+      "return": "double[]",
       "params": [
         {
           "name": "handle",
-          "type": "long",
+          "type": "ANY",
           "optional": false,
           "byRef": false,
           "array": false
@@ -11677,11 +11677,11 @@
       "ns": "LINALG",
       "name": "PINVERSE",
       "fn": true,
-      "return": "long",
+      "return": "double[]",
       "params": [
         {
           "name": "handle",
-          "type": "long",
+          "type": "ANY",
           "optional": false,
           "byRef": false,
           "array": false
@@ -11752,11 +11752,11 @@
       "ns": "LINALG",
       "name": "SIGNM",
       "fn": true,
-      "return": "long",
+      "return": "double[]",
       "params": [
         {
           "name": "handle",
-          "type": "long",
+          "type": "ANY",
           "optional": false,
           "byRef": false,
           "array": false
@@ -11767,11 +11767,11 @@
       "ns": "LINALG",
       "name": "SINM",
       "fn": true,
-      "return": "long",
+      "return": "double[]",
       "params": [
         {
           "name": "handle",
-          "type": "long",
+          "type": "ANY",
           "optional": false,
           "byRef": false,
           "array": false
@@ -11885,11 +11885,11 @@
       "ns": "LINALG",
       "name": "TANM",
       "fn": true,
-      "return": "long",
+      "return": "double[]",
       "params": [
         {
           "name": "handle",
-          "type": "long",
+          "type": "ANY",
           "optional": false,
           "byRef": false,
           "array": false

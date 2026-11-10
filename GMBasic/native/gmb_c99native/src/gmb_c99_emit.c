@@ -3538,7 +3538,12 @@ static void reg_let_assign(ctx_t* c, gmb_stmt_t* s, vars_t* scope) {
                     || s->value->tk == GMB_TOK_MatrixAddRowVector || s->value->tk == GMB_TOK_MatrixAddColVector
                     || s->value->tk == GMB_TOK_MatrixLoadCsv || s->value->tk == GMB_TOK_MatrixLoadJson
                     || s->value->tk == GMB_TOK_Inverse || s->value->tk == GMB_TOK_MatrixExp
-                    || s->value->tk == GMB_TOK_MatrixSqrt || s->value->tk == GMB_TOK_MatrixLogm)) {
+                    || s->value->tk == GMB_TOK_MatrixSqrt || s->value->tk == GMB_TOK_MatrixLogm
+                    || s->value->tk == GMB_TOK_MatrixPseudoInverse || s->value->tk == GMB_TOK_MatrixHessenberg
+                    || s->value->tk == GMB_TOK_MatrixNullSpace || s->value->tk == GMB_TOK_MatrixCosm
+                    || s->value->tk == GMB_TOK_MatrixSinm || s->value->tk == GMB_TOK_MatrixTanm
+                    || s->value->tk == GMB_TOK_MatrixSignm || s->value->tk == GMB_TOK_MatrixOrth
+                    || s->value->tk == GMB_TOK_MatrixFractionalPower)) {
                 tv->is_array = 1; tv->ndims = 2; tv->matrix = 0; tv->jagged = 0; tv->dyn_len = 0;
             }
             /* v = <getter RDD (TY_VAL)> → var TY_VAL (gmb_val_t): il tipo si risolve a runtime. */
@@ -3902,7 +3907,16 @@ if (s->dim_var) {            int ty = suffix_type(s->dim_var);
                     || s->dim_init->tk == GMB_TOK_Inverse
                     || s->dim_init->tk == GMB_TOK_MatrixExp
                     || s->dim_init->tk == GMB_TOK_MatrixSqrt
-                    || s->dim_init->tk == GMB_TOK_MatrixLogm) {
+                    || s->dim_init->tk == GMB_TOK_MatrixLogm
+                    || s->dim_init->tk == GMB_TOK_MatrixPseudoInverse
+                    || s->dim_init->tk == GMB_TOK_MatrixHessenberg
+                    || s->dim_init->tk == GMB_TOK_MatrixNullSpace
+                    || s->dim_init->tk == GMB_TOK_MatrixCosm
+                    || s->dim_init->tk == GMB_TOK_MatrixSinm
+                    || s->dim_init->tk == GMB_TOK_MatrixTanm
+                    || s->dim_init->tk == GMB_TOK_MatrixSignm
+                    || s->dim_init->tk == GMB_TOK_MatrixOrth
+                    || s->dim_init->tk == GMB_TOK_MatrixFractionalPower) {
                     v->is_array = 1; v->ndims = 2; v->matrix = 0; v->jagged = 0; v->dyn_len = 0;
                 }
                 /* LINALG.FACTOR(decomp, name): handle matrice (int64_t). */
@@ -16040,7 +16054,12 @@ static void emit_matrix_from_handle_result(ctx_t* c, var_t* dv, gmb_expr_t* call
           || value->tk == GMB_TOK_MatrixAddRowVector || value->tk == GMB_TOK_MatrixAddColVector
           || value->tk == GMB_TOK_MatrixLoadCsv || value->tk == GMB_TOK_MatrixLoadJson
           || value->tk == GMB_TOK_Inverse || value->tk == GMB_TOK_MatrixExp
-          || value->tk == GMB_TOK_MatrixSqrt || value->tk == GMB_TOK_MatrixLogm)) {
+          || value->tk == GMB_TOK_MatrixSqrt || value->tk == GMB_TOK_MatrixLogm
+          || value->tk == GMB_TOK_MatrixPseudoInverse || value->tk == GMB_TOK_MatrixHessenberg
+          || value->tk == GMB_TOK_MatrixNullSpace || value->tk == GMB_TOK_MatrixCosm
+          || value->tk == GMB_TOK_MatrixSinm || value->tk == GMB_TOK_MatrixTanm
+          || value->tk == GMB_TOK_MatrixSignm || value->tk == GMB_TOK_MatrixOrth
+          || value->tk == GMB_TOK_MatrixFractionalPower)) {
           var_t* mv = lookup_var(c, target);
           if (mv && mv->is_array && mv->ndims >= 2 && !mv->jagged && !mv->matrix && !mv->matrix_handle) {
               emit_matrix_from_handle_result(c, mv, value);
@@ -19139,7 +19158,16 @@ static void st_dim(ctx_t* c, gmb_stmt_t* s) {
              || s->dim_init->tk == GMB_TOK_Inverse
              || s->dim_init->tk == GMB_TOK_MatrixExp
              || s->dim_init->tk == GMB_TOK_MatrixSqrt
-             || s->dim_init->tk == GMB_TOK_MatrixLogm)) {
+             || s->dim_init->tk == GMB_TOK_MatrixLogm
+             || s->dim_init->tk == GMB_TOK_MatrixPseudoInverse
+             || s->dim_init->tk == GMB_TOK_MatrixHessenberg
+             || s->dim_init->tk == GMB_TOK_MatrixNullSpace
+             || s->dim_init->tk == GMB_TOK_MatrixCosm
+             || s->dim_init->tk == GMB_TOK_MatrixSinm
+             || s->dim_init->tk == GMB_TOK_MatrixTanm
+             || s->dim_init->tk == GMB_TOK_MatrixSignm
+             || s->dim_init->tk == GMB_TOK_MatrixOrth
+             || s->dim_init->tk == GMB_TOK_MatrixFractionalPower)) {
              emit_matrix_from_handle_result(c, dv, s->dim_init);
              return;
          }

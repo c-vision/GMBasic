@@ -1276,6 +1276,9 @@ public static partial class IlRuntime
         return StoreMatrix(result.ToArray());
     }
 
+    /// <summary>F4: PINVERSE a valore (double[,] rank-2).</summary>
+    public static double[,] MatrixPseudoInverseValue(long handle) => MatrixValueOf(MatrixPseudoInverse(handle));
+
     // LINALG.RANK(handle) - Rango matrice
     public static long MatrixRank(long handle)
     {
@@ -1441,6 +1444,13 @@ public static partial class IlRuntime
     public static long MatrixSignm(long handle) => StoreMatrix(CommonLib.Numerics.MatrixSignm(ToMathNet(Matrix(handle))).ToArray());
     public static long MatrixFractionalPower(long handle, double p) => StoreMatrix(CommonLib.Numerics.MatrixFractionalPower(ToMathNet(Matrix(handle)), p).ToArray());
     public static long MatrixOrth(long handle) => StoreMatrix(CommonLib.Numerics.Orth(ToMathNet(Matrix(handle))).ToArray());
+    /// <summary>F4: COSM/SINM/TANM/SIGNM/FRACTIONALPOWER/ORTH a valore (double[,] rank-2).</summary>
+    public static double[,] MatrixCosmValue(long handle) => MatrixValueOf(MatrixCosm(handle));
+    public static double[,] MatrixSinmValue(long handle) => MatrixValueOf(MatrixSinm(handle));
+    public static double[,] MatrixTanmValue(long handle) => MatrixValueOf(MatrixTanm(handle));
+    public static double[,] MatrixSignmValue(long handle) => MatrixValueOf(MatrixSignm(handle));
+    public static double[,] MatrixFractionalPowerValue(long handle, double p) => MatrixValueOf(MatrixFractionalPower(handle, p));
+    public static double[,] MatrixOrthValue(long handle) => MatrixValueOf(MatrixOrth(handle));
     public static double[] MatrixSubspaceAngles(long handle1, long handle2) => CommonLib.Numerics.SubspaceAngles(ToMathNet(Matrix(handle1)), ToMathNet(Matrix(handle2)));
     public static long MatrixPolar(long handle) => StoreDecomposition(CommonLib.Numerics.Polar(ToMathNet(Matrix(handle))));
     public static double MatrixCond(long handle) => CommonLib.Numerics.ConditionNumber(ToMathNet(Matrix(handle)));
@@ -1997,6 +2007,9 @@ public static partial class IlRuntime
         return StoreMatrix(CommonLib.Numerics.MatrixHessenberg(m).ToArray());
     }
 
+    /// <summary>F4: HESSENBERG a valore (double[,] rank-2).</summary>
+    public static double[,] MatrixHessenbergValue(long handle) => MatrixValueOf(MatrixHessenberg(handle));
+
     public static long MatrixBlockDiag(long a, long b)
     {
         var ma = MathNet.Numerics.LinearAlgebra.Double.DenseMatrix.OfArray(Matrix(a));
@@ -2012,6 +2025,9 @@ public static partial class IlRuntime
         var m = MathNet.Numerics.LinearAlgebra.Double.DenseMatrix.OfArray(Matrix(handle));
         return StoreMatrix(CommonLib.Numerics.NullSpace(m).ToArray());
     }
+
+    /// <summary>F4: NULLSPACE a valore (double[,] rank-2).</summary>
+    public static double[,] MatrixNullSpaceValue(long handle) => MatrixValueOf(MatrixNullSpace(handle));
 
     public static double[,] MatrixSetValue(long handle, double r, double c, double v)
     {

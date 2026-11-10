@@ -2156,10 +2156,9 @@ static void gmb_bf_894(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func
             (void)vm; (void)task;
             int64_t h = vm_matrix_handle_arg(argc >= 1 ? &args[0] : NULL);
             int64_t out = func_code == 894 ? gmb_matrix_sqrtm(h) : func_code == 895 ? gmb_matrix_logm(h) : gmb_matrix_hessenberg(h);
-            /* F4: SQRTM (894) e LOGM (895) restituiscono il VALORE; HESSENBERG (896)
-             * resta handle finche' non viene migrato (usato via FACTOR/GETVALUE). */
-            if (func_code == 894 || func_code == 895) { vm_matrix_set_value_result(out, bout); gmb_matrix_free(out); }
-            else bout->result = (double)out;
+            /* F4: SQRTM (894), LOGM (895) e HESSENBERG (896) restituiscono il VALORE. */
+            vm_matrix_set_value_result(out, bout);
+            gmb_matrix_free(out);
         }
 }
 static void gmb_bf_897(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
@@ -2178,7 +2177,9 @@ static void gmb_bf_898(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func
 {
         {
             int64_t h = vm_matrix_handle_arg(argc >= 1 ? &args[0] : NULL);
-            bout->result = (double)gmb_matrix_null_space(h);
+            int64_t __v = gmb_matrix_null_space(h);
+            vm_matrix_set_value_result(__v, bout);
+            gmb_matrix_free(__v);
         }
 }
 static void gmb_bf_899(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
@@ -2253,7 +2254,8 @@ static void gmb_bf_941(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func
                 : func_code == 943 ? gmb_matrix_tanm(h)
                 : func_code == 944 ? gmb_matrix_signm(h)
                 : gmb_matrix_orth(h);
-            bout->result = (double)out;
+            vm_matrix_set_value_result(out, bout);
+            gmb_matrix_free(out);
         }
 }
 static void gmb_bf_945(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
@@ -2261,7 +2263,9 @@ static void gmb_bf_945(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func
         {
             int64_t h = vm_matrix_handle_arg(argc >= 1 ? &args[0] : NULL);
             double p = argc >= 2 ? args[1].num : 0.5;
-            bout->result = (double)gmb_matrix_fractional_power(h, p);
+            int64_t __v = gmb_matrix_fractional_power(h, p);
+            vm_matrix_set_value_result(__v, bout);
+            gmb_matrix_free(__v);
         }
 }
 static void gmb_bf_947(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
@@ -11276,7 +11280,9 @@ static void gmb_bf_796_c829(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int
 static void gmb_bf_796_c937(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
 {
     (void)vm; (void)task; (void)func_code;
-    bout->result = (double)gmb_matrix_pseudo_inverse(vm_matrix_handle_arg(argc >= 1 ? &args[0] : NULL));
+    int64_t __v = gmb_matrix_pseudo_inverse(vm_matrix_handle_arg(argc >= 1 ? &args[0] : NULL));
+    vm_matrix_set_value_result(__v, bout);
+    gmb_matrix_free(__v);
 }
 void gmb_bf_840_c840(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
 {
