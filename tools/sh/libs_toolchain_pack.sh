@@ -100,6 +100,18 @@ all_rids() { echo "osx-arm64 osx-x64 linux-x64 linux-arm64 win-x64 win-arm64"; }
 
 # sha256 portatile: Git for Windows non ha sempre `shasum` (è uno script Perl), ma ha `sha256sum`
 # o `openssl`. Senza questo il CI Windows scriverebbe un indice con lo sha VUOTO.
+# Opzioni di impacchettamento IDENTICHE fra bsdtar (macOS/Windows) e GNU tar (Linux). Senza,
+# l'archivio porta il NOME dell'utente del runner (`gaetano`/`runner`, `staff`/`root`) e lo stesso
+# contenuto produce sha diversi — misurato 2026-11-10 su osx-arm64: 19.506 file identici, sha
+# diverso solo per `uname`/`gname` e per il fuso dell'mtime.
+tar_opts() {
+  if tar --version 2>/dev/null | head -1 | grep -qi 'gnu tar'; then
+    printf '%s\n' --format=pax --owner=0 --group=0 --numeric-owner --sort=name
+  else
+    printf '%s\n' --format=pax --uid 0 --gid 0 --uname '' --gname ''
+  fi
+}
+
 sha256_of() { # $1 = file
   if command -v shasum >/dev/null 2>&1; then shasum -a 256 "$1" | awk '{print $1}';
   elif command -v sha256sum >/dev/null 2>&1; then sha256sum "$1" | awk '{print $1}';
@@ -143,7 +155,9 @@ write_notices() { # $1 = radice estratta, $2 = rid, $3 = file di uscita
       cat "$src/$rel"
       echo
     } >> "$out"
-  done < <(cd "$src" && find . \( -iname 'LICENSE*' -o -iname 'COPYING*' -o -iname 'NOTICE*' \) -type f | sed 's|^\./||' | sort)
+  # `LC_ALL=C` è obbligatorio: con il locale del runner l'ordine dei file cambia (stessa dimensione,
+  # byte diversi) e i notices — parte dell'artefatto — non sarebbero più riproducibili.
+  done < <(cd "$src" && find . \( -iname 'LICENSE*' -o -iname 'COPYING*' -o -iname 'NOTICE*' \) -type f | sed 's|^\./||' | LC_ALL=C sort)
   echo "   notices: $n file di licenza"
   [ "$n" -gt 0 ] || { echo "ERRORE: nessuna licenza trovata nella distribuzione" >&2; return 1; }
 }
@@ -197,22 +211,26 @@ pack_one() { # $1 = rid
   # pubblica un hash per file e il downloader lo verifica. Misurato 2026-11-10: con un timestamp
   # nei notices due run davano 57.400.160 e 57.419.744 byte (hash diversi → artefatto non
   # riproducibile). mtime fisso su notices e radice: l'artefatto dipende solo dal contenuto.
-  touch -t 198001010000 "$top/THIRD_PARTY_NOTICES" 2>/dev/null || true
-  touch -t 198001010000 "$top" 2>/dev/null || true
+  # `TZ=UTC0`: `touch -t` interpreta l'ora nel fuso locale; su un runner UTC e su una macchina CET
+  # lo stesso comando scriveva 1980-01-01 00:00 e 1979-12-31 23:00 → tar diversi.
+  TZ=UTC0 touch -t 198001010000 "$top/THIRD_PARTY_NOTICES" 2>/dev/null || true
+  TZ=UTC0 touch -t 198001010000 "$top" 2>/dev/null || true
   [ -x "$top/zig" ] || [ -x "$top/zig.exe" ] || {
     echo "ERRORE: compilatore assente nella distribuzione ($rid)" >&2
     [ "$KEEP_WORK" = "1" ] || rm -rf "$work"; return 1; }
 
   # 4) impacchettamento: un solo formato (.tar.xz) per tutti i RID
   echo "-> comprimo $archive"
-  if ! tar -cJf "$OUT_DIR/$archive" -C "$work" "zig-${ZIG_VERSION}-${rid}" 2>/dev/null; then
+  local -a TOPTS=()
+  while IFS= read -r o; do TOPTS+=("$o"); done < <(tar_opts)
+  if ! tar ${TOPTS[@]+"${TOPTS[@]}"} -cJf "$OUT_DIR/$archive" -C "$work" "zig-${ZIG_VERSION}-${rid}" 2>/dev/null; then
     # Runner il cui tar non ha xz integrato (alcuni Windows): si comprime a parte. Contenuto e
     # formato identici; se manca anche `xz` l'errore è esplicito, mai un archivio corrotto.
     if ! command -v xz >/dev/null 2>&1; then
       echo "ERRORE: il tar locale non supporta -J e non c'è xz" >&2
       rm -f "$OUT_DIR/$archive"; [ "$KEEP_WORK" = "1" ] || rm -rf "$work"; return 1
     fi
-    tar -cf - -C "$work" "zig-${ZIG_VERSION}-${rid}" | xz -6 > "$OUT_DIR/$archive" \
+    tar ${TOPTS[@]+"${TOPTS[@]}"} -cf - -C "$work" "zig-${ZIG_VERSION}-${rid}" | xz -6 > "$OUT_DIR/$archive" \
       || { echo "ERRORE: compressione xz fallita" >&2; rm -f "$OUT_DIR/$archive"; return 1; }
   fi
 
