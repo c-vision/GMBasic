@@ -232,14 +232,17 @@ pack_one() { # $1 = rid
   # (misurato 2026-11-10: 19.506 file identici byte per byte, tar decompresso diverso).
   local LIST="$work/.filelist"
   ( cd "$work" && find "zig-${ZIG_VERSION}-${rid}" | LC_ALL=C sort > "$LIST" )
-  if ! tar ${TOPTS[@]+"${TOPTS[@]}"} -cJf "$OUT_DIR/$archive" -C "$work" -T "$LIST" 2>/dev/null; then
+  # `--no-recursion` è OBBLIGATORIO con `-T`: la lista contiene directory E file, e senza -n tar
+  # ricorre in ogni directory elencata aggiungendo i figli una seconda volta (misurato: 137.026
+  # voci invece di 20.777, 1,93 GB invece di 446 MB, artefatto 184 MB invece di 57 MB).
+  if ! tar ${TOPTS[@]+"${TOPTS[@]}"} --no-recursion -cJf "$OUT_DIR/$archive" -C "$work" -T "$LIST" 2>/dev/null; then
     # Runner il cui tar non ha xz integrato (alcuni Windows): si comprime a parte. Contenuto e
     # formato identici; se manca anche `xz` l'errore è esplicito, mai un archivio corrotto.
     if ! command -v xz >/dev/null 2>&1; then
       echo "ERRORE: il tar locale non supporta -J e non c'è xz" >&2
       rm -f "$OUT_DIR/$archive"; [ "$KEEP_WORK" = "1" ] || rm -rf "$work"; return 1
     fi
-    tar ${TOPTS[@]+"${TOPTS[@]}"} -cf - -C "$work" -T "$LIST" | xz -6 > "$OUT_DIR/$archive" \
+    tar ${TOPTS[@]+"${TOPTS[@]}"} --no-recursion -cf - -C "$work" -T "$LIST" | xz -6 > "$OUT_DIR/$archive" \
       || { echo "ERRORE: compressione xz fallita" >&2; rm -f "$OUT_DIR/$archive"; return 1; }
   fi
 
