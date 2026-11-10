@@ -35,6 +35,10 @@ int gmb_matrix_cols(int64_t h);
 int gmb_matrix_is_contiguous_h(int64_t h);
 double gmb_matrix_get(int64_t h, int r, int c);
 void gmb_matrix_set(int64_t h, int r, int c, double v);
+/* Puntatore allo storage CONTIGUO row-major dell'handle (NULL se non valido). Valido
+ * finché il registry non viene mutato: serve ai confini che richiedono un double*
+ * (argomento array di una procedura, lettura diretta). */
+double* gmb_matrix_data_ptr(int64_t h);
 void gmb_matrix_free(int64_t h);
 
 /* ---- Operazioni (modificano la matrice in place o creano nuova) ---- */

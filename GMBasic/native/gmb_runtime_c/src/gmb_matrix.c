@@ -39,7 +39,7 @@ typedef struct {
 static gmb_matrix_t g_mats[GMB_MATRIX_MAX];
 static gmb_matrix_lock_t g_mtx;
 /* Slot scratch del ponte descrittore→handle (vedi gmb_matrix_scratch). */
-#define GMB_MATRIX_SCRATCH 8
+#define GMB_MATRIX_SCRATCH 32
 static int64_t g_scratch_ids[GMB_MATRIX_SCRATCH];
 static int g_scratch_ready;
 static int g_scratch_next;
@@ -153,6 +153,12 @@ double gmb_matrix_get(int64_t h, int r, int c)
     gmb_matrix_t* m = mget(h);
     if (!m || r < 0 || r >= m->rows || c < 0 || c >= m->cols) return 0;
     return m->data[r * m->cols + c];
+}
+
+double* gmb_matrix_data_ptr(int64_t h)
+{
+    gmb_matrix_t* m = mget(h);
+    return m ? m->data : NULL;
 }
 
 void gmb_matrix_set(int64_t h, int r, int c, double v)
