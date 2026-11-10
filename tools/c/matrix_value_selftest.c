@@ -95,6 +95,39 @@ int main(void)
     CHECK(gmb_matrix_get(e, 0, 0) == 0.0, "empty: set no-op");
     gmb_matrix_free(&e);
 
+    /* ── operazioni a valore su descrittore ─────────────────────────────── */
+    {
+        gmb_matrix_t p = gmb_matrix_create_value(2, 3);   /* 1 0 0 / 0 1 0 */
+        gmb_matrix_t q = gmb_matrix_create_value(3, 2);   /* 1 0 / 0 1 / 0 0 */
+        gmb_matrix_set(p, 0, 0, 2); gmb_matrix_set(p, 0, 1, 1);
+        gmb_matrix_set(p, 1, 0, 1); gmb_matrix_set(p, 1, 1, 2);
+        gmb_matrix_t pq = gmb_matrix_value_multiply(p, q);
+        CHECK(pq.rows == 2 && pq.cols == 2, "value multiply: dimensioni");
+        CHECK(gmb_matrix_get(pq, 0, 0) == 2 && gmb_matrix_get(pq, 1, 1) == 2,
+              "value multiply: valori");
+
+        double rv[3] = {10, 20, 30};
+        gmb_matrix_t ar = gmb_matrix_value_add_row_vector(p, rv, 3);
+        CHECK(gmb_matrix_get(ar, 1, 2) == 30 && gmb_matrix_get(p, 1, 2) == 0,
+              "value add_row_vector: nuovo storage");
+
+        double cv[2] = {5, 7};
+        gmb_matrix_t ac = gmb_matrix_value_add_col_vector(p, cv, 2);
+        CHECK(gmb_matrix_get(ac, 1, 0) == 8 && gmb_matrix_get(p, 1, 0) == 1,
+              "value add_col_vector: nuovo storage");
+
+        gmb_matrix_t cr = gmb_matrix_value_concat_rows(p, p);
+        CHECK(cr.rows == 4 && cr.cols == 3 && gmb_matrix_get(cr, 2, 0) == 2,
+              "value concat_rows");
+        gmb_matrix_t cc = gmb_matrix_value_concat_cols(p, p);
+        CHECK(cc.rows == 2 && cc.cols == 6 && gmb_matrix_get(cc, 0, 3) == 2,
+              "value concat_cols");
+
+        gmb_matrix_free(&p); gmb_matrix_free(&q); gmb_matrix_free(&pq);
+        gmb_matrix_free(&ar); gmb_matrix_free(&ac);
+        gmb_matrix_free(&cr); gmb_matrix_free(&cc);
+    }
+
     if (g_fail) { fprintf(stderr, "%d FAIL\n", g_fail); return 1; }
     printf("matrix_value_selftest: OK\n");
     return 0;

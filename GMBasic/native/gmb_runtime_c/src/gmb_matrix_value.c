@@ -166,3 +166,77 @@ gmb_matrix_t gmb_matrix_col_view(gmb_matrix_t m, int64_t col)
 {
     return gmb_matrix_view(m, 0, col, m.rows, 1);
 }
+
+/* ── operazioni a valore (storage nuovo contiguo) ─────────────────────────── */
+/* Unica implementazione per i backend C quando la matrice e' un descrittore.
+ * Leggono SEMPRE via gmb_matrix_get (strides-safe) e scrivono su un risultato
+ * contiguo. */
+
+gmb_matrix_t gmb_matrix_value_multiply(gmb_matrix_t a, gmb_matrix_t b)
+{
+    if (!a.st || !b.st || a.cols != b.rows) return gmb_matrix_empty();
+    gmb_matrix_t out = gmb_matrix_create_value(a.rows, b.cols);
+    if (!out.st) return gmb_matrix_empty();
+    /* create_value inizializza l'identità: azzera prima del prodotto. */
+    for (int64_t r = 0; r < out.rows; r++)
+        for (int64_t c = 0; c < out.cols; c++) out.st->data[r * out.cols + c] = 0.0;
+    for (int64_t r = 0; r < a.rows; r++)
+        for (int64_t k = 0; k < a.cols; k++)
+        {
+            double av = gmb_matrix_get(a, r, k);
+            if (av == 0.0) continue;
+            for (int64_t c = 0; c < b.cols; c++)
+                out.st->data[r * out.cols + c] += av * gmb_matrix_get(b, k, c);
+        }
+    return out;
+}
+
+gmb_matrix_t gmb_matrix_value_add_row_vector(gmb_matrix_t a, const double* v, int64_t n)
+{
+    if (!a.st || !v) return gmb_matrix_empty();
+    if (n < a.cols) return gmb_matrix_empty();
+    gmb_matrix_t out = gmb_matrix_clone(a);
+    if (!out.st) return gmb_matrix_empty();
+    for (int64_t r = 0; r < out.rows; r++)
+        for (int64_t c = 0; c < out.cols; c++)
+            out.st->data[r * out.cols + c] += v[c];
+    return out;
+}
+
+gmb_matrix_t gmb_matrix_value_add_col_vector(gmb_matrix_t a, const double* v, int64_t n)
+{
+    if (!a.st || !v) return gmb_matrix_empty();
+    if (n < a.rows) return gmb_matrix_empty();
+    gmb_matrix_t out = gmb_matrix_clone(a);
+    if (!out.st) return gmb_matrix_empty();
+    for (int64_t r = 0; r < out.rows; r++)
+        for (int64_t c = 0; c < out.cols; c++)
+            out.st->data[r * out.cols + c] += v[r];
+    return out;
+}
+
+gmb_matrix_t gmb_matrix_value_concat_rows(gmb_matrix_t a, gmb_matrix_t b)
+{
+    if (!a.st || !b.st || a.cols != b.cols) return gmb_matrix_empty();
+    gmb_matrix_t out = gmb_matrix_create_value(a.rows + b.rows, a.cols);
+    if (!out.st) return gmb_matrix_empty();
+    for (int64_t r = 0; r < out.rows; r++)
+        for (int64_t c = 0; c < out.cols; c++)
+            out.st->data[r * out.cols + c] = r < a.rows
+                ? gmb_matrix_get(a, r, c)
+                : gmb_matrix_get(b, r - a.rows, c);
+    return out;
+}
+
+gmb_matrix_t gmb_matrix_value_concat_cols(gmb_matrix_t a, gmb_matrix_t b)
+{
+    if (!a.st || !b.st || a.rows != b.rows) return gmb_matrix_empty();
+    gmb_matrix_t out = gmb_matrix_create_value(a.rows, a.cols + b.cols);
+    if (!out.st) return gmb_matrix_empty();
+    for (int64_t r = 0; r < out.rows; r++)
+        for (int64_t c = 0; c < out.cols; c++)
+            out.st->data[r * out.cols + c] = c < a.cols
+                ? gmb_matrix_get(a, r, c)
+                : gmb_matrix_get(b, r, c - a.cols);
+    return out;
+}

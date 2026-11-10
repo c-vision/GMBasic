@@ -93,6 +93,16 @@ gmb_matrix_t gmb_matrix_transpose_view(gmb_matrix_t m);
 gmb_matrix_t gmb_matrix_row_view(gmb_matrix_t m, int64_t row);
 gmb_matrix_t gmb_matrix_col_view(gmb_matrix_t m, int64_t col);
 
+/* ── operazioni a valore (risultato: storage NUOVO contiguo) ──────────────── */
+/* A·B; vuota se le dimensioni non sono compatibili. */
+gmb_matrix_t gmb_matrix_value_multiply(gmb_matrix_t a, gmb_matrix_t b);
+/* A + v per riga (v di lunghezza cols) / per colonna (v di lunghezza rows). */
+gmb_matrix_t gmb_matrix_value_add_row_vector(gmb_matrix_t a, const double* v, int64_t n);
+gmb_matrix_t gmb_matrix_value_add_col_vector(gmb_matrix_t a, const double* v, int64_t n);
+/* Concatenazione: [A; B] (stesse colonne) e [A B] (stesse righe). */
+gmb_matrix_t gmb_matrix_value_concat_rows(gmb_matrix_t a, gmb_matrix_t b);
+gmb_matrix_t gmb_matrix_value_concat_cols(gmb_matrix_t a, gmb_matrix_t b);
+
 #ifdef __cplusplus
 }
 #endif
