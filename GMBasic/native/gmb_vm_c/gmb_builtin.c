@@ -11186,12 +11186,20 @@ static void gmb_bf_796_c814(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int
 static void gmb_bf_796_c815(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
 {
     (void)vm; (void)task; (void)func_code;
-    int vn = 0; double* v = gmb_vm_list_to_dbl(&args[1], &vn); bout->result = (double)gmb_matrix_add_row_vector(vm_matrix_handle_arg(argc >= 1 ? &args[0] : NULL), v, vn); free(v);
+    int vn = 0; double* v = gmb_vm_list_to_dbl(&args[1], &vn);
+    int64_t __v = gmb_matrix_add_row_vector(vm_matrix_handle_arg(argc >= 1 ? &args[0] : NULL), v, vn);
+    free(v);
+    vm_matrix_set_value_result(__v, bout);
+    gmb_matrix_free(__v);
 }
 static void gmb_bf_796_c816(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
 {
     (void)vm; (void)task; (void)func_code;
-    int vn = 0; double* v = gmb_vm_list_to_dbl(&args[1], &vn); bout->result = (double)gmb_matrix_add_col_vector(vm_matrix_handle_arg(argc >= 1 ? &args[0] : NULL), v, vn); free(v);
+    int vn = 0; double* v = gmb_vm_list_to_dbl(&args[1], &vn);
+    int64_t __v = gmb_matrix_add_col_vector(vm_matrix_handle_arg(argc >= 1 ? &args[0] : NULL), v, vn);
+    free(v);
+    vm_matrix_set_value_result(__v, bout);
+    gmb_matrix_free(__v);
 }
 static void gmb_bf_796_c817(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
 {
@@ -11246,12 +11254,16 @@ static void gmb_bf_796_c827(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int
 static void gmb_bf_796_c828(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
 {
     (void)vm; (void)task; (void)func_code;
-    bout->result = (double)gmb_matrix_load_csv(vm_builtin_sarg(args, argc, 0));
+    int64_t __v = gmb_matrix_load_csv(vm_builtin_sarg(args, argc, 0));
+    vm_matrix_set_value_result(__v, bout);
+    gmb_matrix_free(__v);
 }
 static void gmb_bf_796_c829(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
 {
     (void)vm; (void)task; (void)func_code;
-    bout->result = (double)gmb_matrix_load_json(vm_builtin_sarg(args, argc, 0));
+    int64_t __v = gmb_matrix_load_json(vm_builtin_sarg(args, argc, 0));
+    vm_matrix_set_value_result(__v, bout);
+    gmb_matrix_free(__v);
 }
 static void gmb_bf_796_c937(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
 {

@@ -13449,7 +13449,7 @@
       "ns": "MATRIX",
       "name": "ADDCOLVECTOR",
       "fn": true,
-      "return": "long",
+      "return": "double[]",
       "params": [
         {
           "name": "data",
@@ -13471,7 +13471,7 @@
       "ns": "MATRIX",
       "name": "ADDROWVECTOR",
       "fn": true,
-      "return": "long",
+      "return": "double[]",
       "params": [
         {
           "name": "data",
@@ -13901,7 +13901,7 @@
       "ns": "MATRIX",
       "name": "LOADCSV",
       "fn": true,
-      "return": "long",
+      "return": "double[]",
       "params": [
         {
           "name": "path",
@@ -13916,7 +13916,7 @@
       "ns": "MATRIX",
       "name": "LOADJSON",
       "fn": true,
-      "return": "long",
+      "return": "double[]",
       "params": [
         {
           "name": "path",

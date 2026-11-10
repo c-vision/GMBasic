@@ -175,9 +175,9 @@ internal sealed partial class PCodeProcessor
             case BuiltInFunction.MATRIXCONCATCOLS:
                 return SimdToRect(CommonLib.SimdMatrix.ConcatCols(LuSimdAt(args, 0), LuSimdAt(args, 1)));
             case BuiltInFunction.MATRIXADDROWVECTOR:
-                return StoreSimd(LuSimd(args).AddRowVector(ToDoubleArr(args[1])));
+                return SimdToRect(LuSimd(args).AddRowVector(ToDoubleArr(args[1])));
             case BuiltInFunction.MATRIXADDCOLVECTOR:
-                return StoreSimd(LuSimd(args).AddColVector(ToDoubleArr(args[1])));
+                return SimdToRect(LuSimd(args).AddColVector(ToDoubleArr(args[1])));
             case BuiltInFunction.MATRIXMAXVALUE: return LuSimd(args).Max();
             case BuiltInFunction.MATRIXMINVALUE: return LuSimd(args).Min();
             case BuiltInFunction.MATRIXABOVEMASK: return LuSimd(args).Mask(ToDouble(args, 1));
@@ -210,8 +210,8 @@ internal sealed partial class PCodeProcessor
                     return SimdToRect(new CommonLib.SimdMatrix(mat.ToRowMajorArray(), mat.RowCount, mat.ColumnCount));
                 return r;
             }
-            case BuiltInFunction.MATRIXLOADCSV: return StoreSimd(CommonLib.SimdMatrix.LoadCsv(ResolveMatrixPath(Convert.ToString(args[0]) ?? "")));
-            case BuiltInFunction.MATRIXLOADJSON: return StoreSimd(CommonLib.SimdMatrix.LoadJson(ResolveMatrixPath(Convert.ToString(args[0]) ?? "")));
+            case BuiltInFunction.MATRIXLOADCSV: return SimdToRect(CommonLib.SimdMatrix.LoadCsv(ResolveMatrixPath(Convert.ToString(args[0]) ?? "")));
+            case BuiltInFunction.MATRIXLOADJSON: return SimdToRect(CommonLib.SimdMatrix.LoadJson(ResolveMatrixPath(Convert.ToString(args[0]) ?? "")));
             default: return null;
         }
     }

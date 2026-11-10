@@ -2199,6 +2199,9 @@ public static partial class IlRuntime
         => MatrixValueOf(MatrixConcatCols(first, second));
     public static long MatrixAddRowVector(long handle, double[] values) => StoreSimdMatrix(SimdMatrix(handle).AddRowVector(values));
     public static long MatrixAddColVector(long handle, double[] values) => StoreSimdMatrix(SimdMatrix(handle).AddColVector(values));
+    /// <summary>F4: ADDROWVECTOR/ADDCOLVECTOR a valore (double[,] rank-2).</summary>
+    public static double[,] MatrixAddRowVectorValue(long handle, double[] values) => MatrixValueOf(MatrixAddRowVector(handle, values));
+    public static double[,] MatrixAddColVectorValue(long handle, double[] values) => MatrixValueOf(MatrixAddColVector(handle, values));
     public static double MatrixMaxValue(long handle) => SimdMatrix(handle).Max();
     public static double MatrixMinValue(long handle) => SimdMatrix(handle).Min();
     public static bool[] MatrixAboveMask(long handle, double threshold) => SimdMatrix(handle).Mask(threshold);
@@ -2303,6 +2306,9 @@ public static partial class IlRuntime
     }
     public static long MatrixLoadCsv(string path) => StoreSimdMatrix(CommonLib.SimdMatrix.LoadCsv(ResolveMatrixPath(path)));
     public static long MatrixLoadJson(string path) => StoreSimdMatrix(CommonLib.SimdMatrix.LoadJson(ResolveMatrixPath(path)));
+    /// <summary>F4: LOADCSV/LOADJSON a valore (double[,] rank-2).</summary>
+    public static double[,] MatrixLoadCsvValue(string path) => MatrixValueOf(MatrixLoadCsv(path));
+    public static double[,] MatrixLoadJsonValue(string path) => MatrixValueOf(MatrixLoadJson(path));
     public static double[] RollingDelta(double[] data, long period) => Basic.StdLibRuntime.TimeSeriesFunctions.RollingDelta(data, checked((int)period));
     public static long[] Outliers(double[] data, double threshold) => CommonLib.Numerics.Outliers(data, threshold: threshold).Select(index => (long)index).ToArray();
     public static double[] Difference(double[] data, long order)

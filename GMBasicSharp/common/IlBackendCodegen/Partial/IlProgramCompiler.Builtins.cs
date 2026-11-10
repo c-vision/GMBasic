@@ -533,8 +533,9 @@ public sealed partial class IlProgramCompiler
             // F4: CONCATROWS/CONCATCOLS restituiscono il VALORE matrice.
             case TokenKind.MatrixConcatRows: EmitLinAlgHandlePairValueCall(expr, nameof(IlRuntime.MatrixConcatRowsValue)); break;
             case TokenKind.MatrixConcatCols: EmitLinAlgHandlePairValueCall(expr, nameof(IlRuntime.MatrixConcatColsValue)); break;
-            case TokenKind.MatrixAddRowVector: EmitMatrixBroadcastCall(expr, nameof(IlRuntime.MatrixAddRowVector)); break;
-            case TokenKind.MatrixAddColVector: EmitMatrixBroadcastCall(expr, nameof(IlRuntime.MatrixAddColVector)); break;
+            // F4: ADDROWVECTOR/ADDCOLVECTOR restituiscono il VALORE matrice.
+            case TokenKind.MatrixAddRowVector: EmitMatrixBroadcastCall(expr, nameof(IlRuntime.MatrixAddRowVectorValue)); break;
+            case TokenKind.MatrixAddColVector: EmitMatrixBroadcastCall(expr, nameof(IlRuntime.MatrixAddColVectorValue)); break;
             case TokenKind.MatrixMaxValue: EmitLinAlgUnaryHandleCall(expr, RuntimeMethod(nameof(IlRuntime.MatrixMaxValue)), vector: false); break;
             case TokenKind.MatrixMinValue: EmitLinAlgUnaryHandleCall(expr, RuntimeMethod(nameof(IlRuntime.MatrixMinValue)), vector: false); break;
             case TokenKind.MatrixAboveMask: EmitMatrixThresholdCall(expr, nameof(IlRuntime.MatrixAboveMask)); break;
@@ -550,8 +551,9 @@ public sealed partial class IlProgramCompiler
             case TokenKind.MatrixIsContiguous: EmitLinAlgUnaryHandleCall(expr, RuntimeMethod(nameof(IlRuntime.MatrixIsContiguous)), vector: false); break;
             case TokenKind.MatrixMultiplyVector: EmitMatrixVectorProductCall(expr, nameof(IlRuntime.MatrixMultiplyVector)); break;
             case TokenKind.MatrixMultiplyLeftVector: EmitMatrixVectorProductCall(expr, nameof(IlRuntime.MatrixMultiplyLeftVector)); break;
-            case TokenKind.MatrixLoadCsv: EmitStringUnaryBuiltinCall(expr, RuntimeMethod(nameof(IlRuntime.MatrixLoadCsv))); break;
-            case TokenKind.MatrixLoadJson: EmitStringUnaryBuiltinCall(expr, RuntimeMethod(nameof(IlRuntime.MatrixLoadJson))); break;
+            // F4: LOADCSV/LOADJSON restituiscono il VALORE matrice.
+            case TokenKind.MatrixLoadCsv: EmitStringUnaryBuiltinCall(expr, RuntimeMethod(nameof(IlRuntime.MatrixLoadCsvValue))); break;
+            case TokenKind.MatrixLoadJson: EmitStringUnaryBuiltinCall(expr, RuntimeMethod(nameof(IlRuntime.MatrixLoadJsonValue))); break;
             case TokenKind.RollingDelta: EmitTimeSeriesArrayLongCall(expr, nameof(IlRuntime.RollingDelta)); break;
             case TokenKind.Outliers: EmitTimeSeriesArrayDoubleCall(expr, nameof(IlRuntime.Outliers)); break;
             case TokenKind.Difference: EmitTimeSeriesArrayLongCall(expr, nameof(IlRuntime.Difference)); break;
