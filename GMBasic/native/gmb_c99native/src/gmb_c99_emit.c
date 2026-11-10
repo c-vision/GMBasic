@@ -10012,11 +10012,18 @@ static void emit_arr_call_arg(ctx_t* c, fn_info_t* fn, int i, gmb_expr_t* arg, i
          * quindi OUT/INOUT restano visibili al chiamante senza copy-back. */
         int prank = (fn->stmt->param_ndims && fn->stmt->param_ndims[i] >= 2) ? fn->stmt->param_ndims[i] : 1;
         var_t* pv_mv = vars_find(&fn->locals, fn->stmt->func_params[i]);
-        if (prank != 2) {
-            c99_fail(c, line,
-                     "%s: la matrice '%s' (descrittore, rank 2) non può essere passata al parametro array rank-%d '%s'",
-                     fn->stmt->func_name, tv->name, prank, fn->stmt->func_params[i]);
-            return;
+        /* Il descrittore è rank 2: come l'inferenza dei parametri array per gli array
+         * nativi, il parametro (e quindi la firma del wrapper) va portato a rank 2, così
+         * call-site e callee concordano i bound. */
+        if (prank < 2) {
+            if (!fn->stmt->param_ndims) {
+                fn->stmt->param_ndims = (uint8_t*)calloc((size_t)(fn->stmt->n_params > 0 ? fn->stmt->n_params : 1), 1);
+            }
+            if (fn->stmt->param_ndims) {
+                fn->stmt->param_ndims[i] = 2;
+                g_c99_rank_changed = 1;
+            }
+            prank = 2;
         }
         if (pv_mv && pv_mv->arr_byref) {
             c99_fail(c, line,
@@ -10028,9 +10035,12 @@ static void emit_arr_call_arg(ctx_t* c, fn_info_t* fn, int i, gmb_expr_t* arg, i
         emit_var_ref(c, tv);
         sb_put(&c->out, "), (gmb_int_t)(");
         emit_ident(c, tv->name);
-        sb_put(&c->out, ".rows) - 1, (gmb_int_t)(");
-        emit_ident(c, tv->name);
-        sb_put(&c->out, ".cols) - 1");
+        sb_put(&c->out, ".rows) - 1");
+        if (prank >= 2) {
+            sb_put(&c->out, ", (gmb_int_t)(");
+            emit_ident(c, tv->name);
+            sb_put(&c->out, ".cols) - 1");
+        }
         emit_arr_arg_lowers(c, fn, i, tv);
         return;
     }
@@ -19305,8 +19315,133 @@ static void emit_matrix_create_value(ctx_t* c, var_t* dv, gmb_expr_t* call) {
     ind(c); sb_put(&c->out, "  } }\n");
 }
 
+/* Stage C backend C: un'espressione matrice è già un descrittore? (VAR matrix_value o
+ * chiamata a valore con SORGENTI descrittore). Usata per emettere le VIEW/operazioni
+ * direttamente sul descrittore, senza il ponte handle. */
+static int mv_expr_ok(ctx_t* c, gmb_expr_t* e) {
+    if (!e) return 0;
+    if (e->kind == GMB_EXPR_VAR && e->var) {
+        var_t* v = lookup_var(c, e->var);
+        return v && v->matrix_value;
+    }
+    if (e->kind != GMB_EXPR_CALL) return 0;
+    switch (e->tk) {
+        case GMB_TOK_Transpose: case GMB_TOK_MatrixClone:
+            return e->nargs == 1 && mv_expr_ok(c, e->args[0]);
+        case GMB_TOK_MatrixSlice:
+            return e->nargs == 5 && mv_expr_ok(c, e->args[0]);
+        case GMB_TOK_MatrixRow: case GMB_TOK_MatrixCol:
+            return e->nargs == 2 && mv_expr_ok(c, e->args[0]);
+        case GMB_TOK_MatrixReshape:
+            return e->nargs == 3 && mv_expr_ok(c, e->args[0]);
+        case GMB_TOK_Multiply: case GMB_TOK_MatrixConcatRows: case GMB_TOK_MatrixConcatCols:
+            return e->nargs == 2 && mv_expr_ok(c, e->args[0]) && mv_expr_ok(c, e->args[1]);
+        case GMB_TOK_MatrixAddRowVector: case GMB_TOK_MatrixAddColVector: {
+            if (e->nargs != 2 || !mv_expr_ok(c, e->args[0])) return 0;
+            gmb_expr_t* ve = e->args[1];
+            const char* vn = ve && ve->kind == GMB_EXPR_VAR ? ve->var
+                           : (ve && ve->kind == GMB_EXPR_CALL && ve->nargs == 0 ? ve->var : NULL);
+            var_t* vv = vn ? lookup_var(c, vn) : NULL;
+            return vv && vv->is_array && !vv->matrix_value && !vv->jagged;
+        }
+        default:
+            return 0;
+    }
+}
+
+static void emit_mv_expr(ctx_t* c, gmb_expr_t* e) {
+    if (e->kind == GMB_EXPR_VAR) {
+        emit_var_ref(c, lookup_var(c, e->var));
+        return;
+    }
+    switch (e->tk) {
+        case GMB_TOK_Transpose:
+            sb_put(&c->out, "gmb_matrix_transpose_view(");
+            emit_mv_expr(c, e->args[0]);
+            sb_put(&c->out, ")");
+            return;
+        case GMB_TOK_MatrixClone:
+            sb_put(&c->out, "gmb_matrix_value_clone(");
+            emit_mv_expr(c, e->args[0]);
+            sb_put(&c->out, ")");
+            return;
+        case GMB_TOK_MatrixSlice:
+            sb_put(&c->out, "gmb_matrix_view(");
+            emit_mv_expr(c, e->args[0]);
+            sb_put(&c->out, ", (gmb_int_t)("); emit_expr(c, e->args[1]);
+            sb_put(&c->out, "), (gmb_int_t)("); emit_expr(c, e->args[3]);
+            sb_put(&c->out, "), (gmb_int_t)(("); emit_expr(c, e->args[2]);
+            sb_put(&c->out, ") - ("); emit_expr(c, e->args[1]);
+            sb_put(&c->out, ")), (gmb_int_t)(("); emit_expr(c, e->args[4]);
+            sb_put(&c->out, ") - ("); emit_expr(c, e->args[3]); sb_put(&c->out, ")))");
+            return;
+        case GMB_TOK_MatrixRow:
+            sb_put(&c->out, "gmb_matrix_row_view(");
+            emit_mv_expr(c, e->args[0]);
+            sb_put(&c->out, ", (gmb_int_t)("); emit_expr(c, e->args[1]); sb_put(&c->out, "))");
+            return;
+        case GMB_TOK_MatrixCol:
+            sb_put(&c->out, "gmb_matrix_col_view(");
+            emit_mv_expr(c, e->args[0]);
+            sb_put(&c->out, ", (gmb_int_t)("); emit_expr(c, e->args[1]); sb_put(&c->out, "))");
+            return;
+        case GMB_TOK_MatrixReshape:
+            sb_put(&c->out, "gmb_matrix_value_reshape(");
+            emit_mv_expr(c, e->args[0]);
+            sb_put(&c->out, ", (gmb_int_t)("); emit_expr(c, e->args[1]);
+            sb_put(&c->out, "), (gmb_int_t)("); emit_expr(c, e->args[2]); sb_put(&c->out, "))");
+            return;
+        case GMB_TOK_Multiply:
+            sb_put(&c->out, "gmb_matrix_value_multiply(");
+            emit_mv_expr(c, e->args[0]); sb_put(&c->out, ", ");
+            emit_mv_expr(c, e->args[1]); sb_put(&c->out, ")");
+            return;
+        case GMB_TOK_MatrixConcatRows:
+            sb_put(&c->out, "gmb_matrix_value_concat_rows(");
+            emit_mv_expr(c, e->args[0]); sb_put(&c->out, ", ");
+            emit_mv_expr(c, e->args[1]); sb_put(&c->out, ")");
+            return;
+        case GMB_TOK_MatrixConcatCols:
+            sb_put(&c->out, "gmb_matrix_value_concat_cols(");
+            emit_mv_expr(c, e->args[0]); sb_put(&c->out, ", ");
+            emit_mv_expr(c, e->args[1]); sb_put(&c->out, ")");
+            return;
+        case GMB_TOK_MatrixAddRowVector:
+        case GMB_TOK_MatrixAddColVector: {
+            gmb_expr_t* ve = e->args[1];
+            const char* vn = ve && ve->kind == GMB_EXPR_VAR ? ve->var : ve->var;
+            var_t* vv = lookup_var(c, vn);
+            sb_put(&c->out, e->tk == GMB_TOK_MatrixAddRowVector
+                   ? "gmb_matrix_value_add_row_vector(" : "gmb_matrix_value_add_col_vector(");
+            emit_mv_expr(c, e->args[0]);
+            sb_put(&c->out, ", (const double*)(");
+            emit_var_ref(c, vv);
+            sb_put(&c->out, "), (gmb_int_t)(");
+            emit_arr_len_of(c, vv);
+            sb_put(&c->out, "))");
+            return;
+        }
+        default:
+            sb_put(&c->out, "gmb_matrix_empty()");
+            return;
+    }
+}
+
 static void emit_matrix_from_handle_result(ctx_t* c, var_t* dv, gmb_expr_t* call) {
     if (dv->matrix_value) {
+        if (mv_expr_ok(c, call)) {
+            /* View/operazione a valore DIRETTA sul descrittore: nessun handle, nessuna
+             * copia (TRANSPOSE/SLICE/ROW/COL sono view O(1)). */
+            ind(c);
+            sb_put(&c->out, "{ gmb_matrix_t _mv = ");
+            emit_mv_expr(c, call);
+            sb_put(&c->out, ";\n");
+            ind(c);
+            sb_put(&c->out, "  gmb_matrix_value_assign(&");
+            emit_var_ref(c, dv);
+            sb_put(&c->out, ", _mv); gmb_matrix_value_free(&_mv); }\n");
+            return;
+        }
         /* Stage C backend C: la funzione a valore produce ancora un handle nel runtime C;
          * lo si converte nel descrittore (gmb_matrix_value_of = copia) e si libera l'handle.
          * Le view vere (TRANSPOSE/SLICE/ROW/COL) passeranno direttamente al descrittore in

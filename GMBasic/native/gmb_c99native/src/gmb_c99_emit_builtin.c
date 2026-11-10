@@ -3525,6 +3525,13 @@ static int mx_rowcol(ctx_t* c, gmb_expr_t** a, int n, const char* rc) {
     if (a[0]->kind != GMB_EXPR_VAR || !a[0]->var) return 0;
     var_t* av = lookup_var(c, a[0]->var);
     if (!(av && (av->matrix || mx_is_matrix_val(av)))) return 0;
+    if (av && av->matrix_value) {
+        /* Stage C backend C: dimensione direttamente dal descrittore. */
+        sb_printf(&c->out, "(gmb_double_t)(((");
+        emit_ident(c, av->name);
+        sb_printf(&c->out, ").%s))", rc);
+        return 1;
+    }
     sb_put(&c->out, "(gmb_double_t)gmb_matrix_");
     sb_put(&c->out, rc);
     sb_put(&c->out, "((gmb_int_t)(");
@@ -3822,7 +3829,18 @@ static int mxh_col(ctx_t* c, gmb_expr_t** a, int n) {
     sb_put(&c->out, "); (gmb_int_t)gmb_matrix_slice(__mch, 0, gmb_matrix_rows(__mch), __mcc, __mcc + 1); })");
     return 1;
 }
-static int mxh_iscontig(ctx_t* c, gmb_expr_t** a, int n) { return mxh_one_bit(c, a, n, "gmb_matrix_is_contiguous_h"); }
+static int mxh_iscontig(ctx_t* c, gmb_expr_t** a, int n) {
+    if (n == 1 && a[0] && a[0]->kind == GMB_EXPR_VAR && a[0]->var) {
+        var_t* av = lookup_var(c, a[0]->var);
+        if (av && av->matrix_value) {
+            sb_put(&c->out, "(gmb_double_t)(gmb_matrix_is_contiguous(");
+            emit_var_ref(c, av);
+            sb_put(&c->out, ") ? -1 : 0)");
+            return 1;
+        }
+    }
+    return mxh_one_bit(c, a, n, "gmb_matrix_is_contiguous_h");
+}
 static int mxh_islower(ctx_t* c, gmb_expr_t** a, int n) { return mxh_one_bit(c, a, n, "gmb_matrix_is_lower_triangular"); }
 static int mxh_isupper(ctx_t* c, gmb_expr_t** a, int n) { return mxh_one_bit(c, a, n, "gmb_matrix_is_upper_triangular"); }
 static int mxh_issym(ctx_t* c, gmb_expr_t** a, int n) { return mxh_one_bit(c, a, n, "gmb_matrix_is_symmetric"); }
