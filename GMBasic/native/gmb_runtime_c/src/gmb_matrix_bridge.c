@@ -47,23 +47,27 @@ int64_t gmb_matrix_scratch_handle(gmb_matrix_t m)
 
 gmb_matrix_t gmb_matrix_decomp_factor_value_named(int64_t decomp, const char* name)
 {
-    int64_t h = gmb_matrix_decomp_get_factor_named(decomp, name);
+    int owned = 0;
+    int64_t h = gmb_matrix_decomp_get_factor_named_ex(decomp, name, &owned);
     if (h <= 0) return gmb_matrix_empty();
     int rows = gmb_matrix_rows(h), cols = gmb_matrix_cols(h);
-    if (rows <= 0 || cols <= 0) return gmb_matrix_empty();
+    if (rows <= 0 || cols <= 0) { if (owned) gmb_matrix_free(h); return gmb_matrix_empty(); }
     gmb_matrix_t out = gmb_matrix_value_zeros(rows, cols);
-    if (!out.st) return out;
+    if (!out.st) { if (owned) gmb_matrix_free(h); return out; }
     for (int r = 0; r < rows; r++)
         for (int c = 0; c < cols; c++)
             gmb_matrix_value_set(out, r, c, gmb_matrix_get(h, r, c));
+    if (owned) gmb_matrix_free(h);   /* fattore generato (es. EIG DREAL) */
     return out;
 }
 
 int64_t gmb_matrix_decomp_factor_scratch_named(int64_t decomp, const char* name)
 {
-    int64_t h = gmb_matrix_decomp_get_factor_named(decomp, name);
+    int owned = 0;
+    int64_t h = gmb_matrix_decomp_get_factor_named_ex(decomp, name, &owned);
     if (h <= 0) return -1;
     gmb_matrix_t src = gmb_matrix_value_of(h);
+    if (owned) gmb_matrix_free(h);
     if (!src.st) return -1;
     int rows = (int)src.rows, cols = (int)src.cols;
     double* flat = gmb_matrix_value_to_flat(src);

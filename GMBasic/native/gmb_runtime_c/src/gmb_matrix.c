@@ -75,6 +75,10 @@ static gmb_matrix_t* mget(int64_t h)
     return g_mats[h].in_use ? &g_mats[h] : NULL;
 }
 
+/* Valvola di sfogo quando il registry MATRICI è pieno: libera la decomposizione più
+ * vecchia (che possiede i suoi fattori). Definita più sotto, lock già tenuto. */
+static int gmb_decomp_evict_one_locked(void);
+
 int64_t gmb_matrix_create(int rows, int cols)
 {
     if (rows <= 0 || cols <= 0) return -1;
@@ -93,6 +97,27 @@ int64_t gmb_matrix_create(int rows, int cols)
                 for (int r = 0; r < rows; r++) g_mats[i].data[r * cols + r] = 1.0;
             gmb_matrix_unlock(&g_mtx);
             return (int64_t)i;
+        }
+    }
+    /* Registry matrici PIENO: libera la DECOMPOSIZIONE più vecchia (che possiede i suoi
+     * fattori) e riprova. Un ciclo di LINALG.LU allocava 2 matrici + 1 decomposizione per
+     * iterazione e si fermava dopo ~50-110 giri con un valore 0 in silenzio. */
+    if (gmb_decomp_evict_one_locked())
+    {
+        for (int i = 1; i < GMB_MATRIX_MAX; i++)
+        {
+            if (!g_mats[i].in_use)
+            {
+                g_mats[i].data = (double*)calloc((size_t)(rows * cols), sizeof(double));
+                if (!g_mats[i].data) { gmb_matrix_unlock(&g_mtx); return -1; }
+                g_mats[i].rows = rows;
+                g_mats[i].cols = cols;
+                g_mats[i].in_use = 1;
+                if (rows == cols)
+                    for (int r = 0; r < rows; r++) g_mats[i].data[r * cols + r] = 1.0;
+                gmb_matrix_unlock(&g_mtx);
+                return (int64_t)i;
+            }
         }
     }
     gmb_matrix_unlock(&g_mtx);
@@ -168,14 +193,20 @@ void gmb_matrix_set(int64_t h, int r, int c, double v)
     m->data[r * m->cols + c] = v;
 }
 
+/* Libera un handle SENZA prendere il lock: usata dai percorsi che lo tengono già
+ * (gmb_matrix_free e il rilascio delle decomposizioni, che libera i fattori). */
+static void mfree_locked(int64_t h)
+{
+    gmb_matrix_t* m = mget(h);
+    if (m) { free(m->data); m->in_use = 0; }
+}
+
 void gmb_matrix_free(int64_t h)
 {
     gmb_matrix_lock(&g_mtx);
-    gmb_matrix_t* m = mget(h);
-    if (m) { free(m->data); m->in_use = 0; }
+    mfree_locked(h);
     gmb_matrix_unlock(&g_mtx);
 }
-
 int gmb_matrix_identity(int64_t h)
 {
     gmb_matrix_t* m = mget(h);
@@ -602,20 +633,50 @@ void gmb_vector_bounce2d_xy(int64_t xp, int64_t yp, int64_t xv, int64_t yv,
  * ============================================================================ */
 #define GMB_DECOMP_MAX 128
 typedef struct {
-    int type;            /* 0=LU,1=QR,2=SVD,3=EVD,4=Cholesky */
-    int64_t a;           /* matrice di base */
+    int type;            /* 0=LU,1=QR,2=SVD,3=EVD,4=Cholesky,5=POLAR,6=EIG,7=SCHUR */
+    int64_t a;           /* matrice di base (o V per SVD: vedi a_owned) */
     int64_t b;           /* seconda matrice (U, R, S, V, L) */
     int64_t c;           /* terza matrice (V, vettori) */
     double vals[16];     /* autovalori / valori singolari */
     int n;
     int in_use;
+    int a_owned;         /* 1 = `a` è un fattore POSSEDUTO (SVD: V), non l'input */
+    uint64_t stamp;      /* ordine di creazione: FIFO quando il registry è pieno */
 } gmb_decomp_t;
 static gmb_decomp_t g_decomps[GMB_DECOMP_MAX];
+static uint64_t g_decomp_stamp;
 
 static gmb_decomp_t* dget(int64_t h)
 {
     if (h <= 0 || h >= GMB_DECOMP_MAX) return NULL;
     return g_decomps[h].in_use ? &g_decomps[h] : NULL;
+}
+
+/* Rilascia una decomposizione e i suoi FATTORI (handle del registry matrici), SENZA
+ * prendere il lock (il chiamante lo tiene già). Senza questo i fattori restavano
+ * registrati per sempre: un ciclo di decomposizioni esauriva il registry matrici. */
+static void decomp_release_locked(gmb_decomp_t* d)
+{
+    if (!d || !d->in_use) return;
+    if (d->a_owned && d->a > 0) mfree_locked(d->a);
+    if (d->b > 0) mfree_locked(d->b);
+    if (d->c > 0) mfree_locked(d->c);
+    d->a = d->b = d->c = 0;
+    d->in_use = 0;
+}
+
+/* Libera la decomposizione più VECCHIA (FIFO). Chiamata dal registry matrici quando è
+ * pieno: i fattori di una decomposizione vivono nel registry matrici, quindi liberarli
+ * restituisce gli slot necessari. Lock già tenuto dal chiamante. */
+static int gmb_decomp_evict_one_locked(void)
+{
+    int oldest = -1;
+    uint64_t best = UINT64_MAX;
+    for (int i = 1; i < GMB_DECOMP_MAX; i++)
+        if (g_decomps[i].in_use && g_decomps[i].stamp < best) { best = g_decomps[i].stamp; oldest = i; }
+    if (oldest <= 0) return 0;
+    decomp_release_locked(&g_decomps[oldest]);
+    return 1;
 }
 
 static int64_t dalloc(int type, int64_t a, int n)
@@ -630,9 +691,29 @@ static int64_t dalloc(int type, int64_t a, int n)
             g_decomps[i].a = a;
             g_decomps[i].n = n;
             g_decomps[i].in_use = 1;
+            g_decomps[i].stamp = ++g_decomp_stamp;
             gmb_matrix_unlock(&g_mtx);
             return (int64_t)i;
         }
+    }
+    /* Registry PIENO: libera la decomposizione più VECCHIA (FIFO) e riusa lo slot.
+     * Prima si restituiva -1 → le decomposizioni successive valevano 0 in silenzio
+     * (es. un ciclo con LINALG.LU si fermava dopo ~50 iterazioni su C99/VM/C). */
+    int oldest = -1;
+    uint64_t best = UINT64_MAX;
+    for (int i = 1; i < GMB_DECOMP_MAX; i++)
+        if (g_decomps[i].in_use && g_decomps[i].stamp < best) { best = g_decomps[i].stamp; oldest = i; }
+    if (oldest > 0)
+    {
+        decomp_release_locked(&g_decomps[oldest]);
+        memset(&g_decomps[oldest], 0, sizeof(gmb_decomp_t));
+        g_decomps[oldest].type = type;
+        g_decomps[oldest].a = a;
+        g_decomps[oldest].n = n;
+        g_decomps[oldest].in_use = 1;
+        g_decomps[oldest].stamp = ++g_decomp_stamp;
+        gmb_matrix_unlock(&g_mtx);
+        return (int64_t)oldest;
     }
     gmb_matrix_unlock(&g_mtx);
     return -1;
@@ -642,7 +723,7 @@ void gmb_matrix_decomp_free(int64_t h)
 {
     gmb_matrix_lock(&g_mtx);
     gmb_decomp_t* d = dget(h);
-    if (d) d->in_use = 0;
+    decomp_release_locked(d);
     gmb_matrix_unlock(&g_mtx);
 }
 
@@ -841,6 +922,7 @@ int64_t gmb_matrix_svd(int64_t a)
     dd->b = U; dd->c = S;
     /* salviamo V separatamente */
     dd->a = V;
+    dd->a_owned = 1;   /* V è un fattore POSSEDUTO (va liberato col rilascio) */
     return d;
 }
 
@@ -944,6 +1026,12 @@ int64_t gmb_matrix_cholesky(int64_t a)
 
 int64_t gmb_matrix_decomp_get_factor(int64_t decomp, int idx)
 {
+    return gmb_matrix_decomp_get_factor_ex(decomp, idx, NULL);
+}
+
+int64_t gmb_matrix_decomp_get_factor_ex(int64_t decomp, int idx, int* owned)
+{
+    if (owned) *owned = 0;
     gmb_decomp_t* d = dget(decomp);
     if (!d) return -1;
     switch (d->type)
@@ -964,6 +1052,7 @@ int64_t gmb_matrix_decomp_get_factor(int64_t decomp, int idx)
                 if (out <= 0) return -1;
                 for (int i = 0; i < n; i++)
                     gmb_matrix_set(out, i, 0, d->vals[idx * n + i]);
+                if (owned) *owned = 1;   /* handle NUOVO: il chiamante deve liberarlo */
                 return out;
             }
         case 7: return idx==0 ? d->b : d->c;   /* SCHUR: T, Z */
@@ -972,7 +1061,14 @@ int64_t gmb_matrix_decomp_get_factor(int64_t decomp, int idx)
 }
 
 /* Estrazione fattori per NOME (LINALG.FACTOR(h, "U") ecc.). */
-int64_t gmb_matrix_decomp_get_factor_named(int64_t decomp, const char* name){
+int64_t gmb_matrix_decomp_get_factor_named(int64_t decomp, const char* name)
+{
+    return gmb_matrix_decomp_get_factor_named_ex(decomp, name, NULL);
+}
+
+int64_t gmb_matrix_decomp_get_factor_named_ex(int64_t decomp, const char* name, int* owned)
+{
+    if (owned) *owned = 0;
     gmb_decomp_t* d = dget(decomp);
     if (!d || !name) return -1;
     if (d->type == 5)   /* POLAR */
@@ -991,6 +1087,7 @@ int64_t gmb_matrix_decomp_get_factor_named(int64_t decomp, const char* name){
             if (out <= 0) return -1;
             for (int i = 0; i < n; i++)
                 gmb_matrix_set(out, i, 0, d->vals[idx * n + i]);
+            if (owned) *owned = 1;   /* handle NUOVO: il chiamante deve liberarlo */
             return out;
         }
         return -1;
@@ -1050,11 +1147,19 @@ static int64_t decomp_factor_copy(int64_t h)
 }
 int64_t gmb_matrix_decomp_factor_copy_named(int64_t decomp, const char* name)
 {
-    return decomp_factor_copy(gmb_matrix_decomp_get_factor_named(decomp, name));
+    int owned = 0;
+    int64_t h = gmb_matrix_decomp_get_factor_named_ex(decomp, name, &owned);
+    int64_t out = decomp_factor_copy(h);
+    if (owned && h > 0) gmb_matrix_free(h);   /* fattore generato (es. EIG DREAL): va liberato */
+    return out;
 }
 int64_t gmb_matrix_decomp_factor_copy(int64_t decomp, int idx)
 {
-    return decomp_factor_copy(gmb_matrix_decomp_get_factor(decomp, idx));
+    int owned = 0;
+    int64_t h = gmb_matrix_decomp_get_factor_ex(decomp, idx, &owned);
+    int64_t out = decomp_factor_copy(h);
+    if (owned && h > 0) gmb_matrix_free(h);
+    return out;
 }
 
 /* ============================================================================
@@ -1863,10 +1968,18 @@ int64_t gmb_matrix_polar(int64_t a)
     int64_t P = gmb_matrix_multiply(VS, Vt);     /* V·S·V^T */
     if (Uu <= 0 || VS <= 0 || P <= 0) return -1;
     int64_t dec = dalloc(5, a, n);
-    if (dec <= 0) return -1;
+    if (dec <= 0) { gmb_matrix_free(Vt); gmb_matrix_free(Sinv); gmb_matrix_free(Un); gmb_matrix_free(Uu); gmb_matrix_free(VS); gmb_matrix_free(P); gmb_matrix_decomp_free(d); return -1; }
     gmb_decomp_t* dd = dget(dec);
     dd->b = Uu;   /* U */
     dd->c = P;    /* P */
+    /* I TEMPORANEI vanno liberati: prima restavano nel registry matrici per sempre e un
+     * ciclo di LINALG.POLAR lo esauriva dopo ~30 giri (poi l'eviction poteva liberare la
+     * decomposizione in uso → valore 0). La sotto-decomposizione SVD possiede U/S/V. */
+    gmb_matrix_free(Vt);
+    gmb_matrix_free(Sinv);
+    gmb_matrix_free(Un);
+    gmb_matrix_free(VS);
+    gmb_matrix_decomp_free(d);
     return dec;
 }
 
