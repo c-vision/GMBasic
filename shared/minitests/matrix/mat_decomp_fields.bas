@@ -1,4 +1,4 @@
-' EXPECT: lu_l10= 0.5|lu_u00= 4|qr_q00=-0.8944|qr_r01=-3.1305|sv_s00= 5.5616|ev_d00= 1.4384|ch_l11= 1.4142
+' EXPECT: lu_l10= 0.5|lu_u00= 4|qr_q00=-0.8944|qr_r01=-3.1305|sv_s00= 5.5616|ev_d00= 1.4384|ch_l11= 1.4142|sc_t00= 5.5616|sc_z00= 0.7882|po_u00= 1|po_p00= 4|eg_d0= 5.5616|eg_v00= 0.7882
 ' Decomposizioni come VALORI con i FATTORI come CAMPI matrice (ADR-MATRIX F4):
 ' `lu.L`, `qr.Q`, `sv.S`, `ev.D`, `ch.L` sono MATRIX VALUE (indicizzabili e
 ' utilizzabili con MATRIX.*), non handle. LINALG.FACTOR resta l'alias esplicito.
@@ -25,4 +25,16 @@ SUB Main()
 
   DIM ch = LINALG.CHOLESKY(a)
   PRINT "ch_l11="; MATH.ROUND(ch.L(1, 1), 4)
+
+  DIM sc = LINALG.SCHUR(a)
+  PRINT "sc_t00="; MATH.ROUND(sc.T(0, 0), 4)
+  PRINT "sc_z00="; MATH.ROUND(sc.Z(0, 0), 4)
+
+  DIM po = LINALG.POLAR(a)
+  PRINT "po_u00="; MATH.ROUND(po.U(0, 0), 4)
+  PRINT "po_p00="; MATH.ROUND(po.P(0, 0), 4)
+
+  DIM eg = LINALG.EIG(a)
+  PRINT "eg_d0="; MATH.ROUND(eg.D(0, 0), 4)
+  PRINT "eg_v00="; MATH.ROUND(eg.V(0, 0), 4)
 END SUB

@@ -2156,15 +2156,7 @@ public static partial class Linker
         // LINALG.FACTOR(lu,"U") (valore matrice): con argomenti è un accesso indicizzato
         // sul valore. `lu.U` senza argomenti è un FieldAccessExpr (RewriteFieldAccess).
         {
-            string? decFieldName = memberName.ToUpperInvariant() switch
-            {
-                var f when instanceType is LuDecompositionType && f is "L" or "U" or "P" => f,
-                var f when instanceType is QrDecompositionType && f is "Q" or "R" => f,
-                var f when instanceType is SvdDecompositionType && f is "U" or "S" or "VT" => f,
-                var f when instanceType is EvdDecompositionType && f is "D" or "V" => f,
-                var f when instanceType is CholeskyDecompositionType && f is "L" => f,
-                _ => null
-            };
+            string? decFieldName = DecompositionFactorName(instanceType, memberName);
             if (decFieldName != null)
             {
                 var factor = new BuiltinFunctionCallExpr(
@@ -2869,6 +2861,26 @@ public static partial class Linker
     /// e risolvendo gli alias di namespace per disambiguare le chiamate a funzione qualificate.
     /// VERSIONE CORRETTA: Aggiunta la logica di validazione e inferenza per i campi dei tipi built-in.
     /// </summary>
+    /// <summary>ADR-MATRIX F4: nome del FATTORE (runtime) per un campo di una decomposizione.
+    /// EIG espone D/V come DREAL/VRREAL (autovalori/autovettori reali).</summary>
+    private static string? DecompositionFactorName(DataType? t, string field)
+    {
+        var f = field.ToUpperInvariant();
+        return t switch
+        {
+            LuDecompositionType when f is "L" or "U" or "P" => f,
+            QrDecompositionType when f is "Q" or "R" => f,
+            SvdDecompositionType when f is "U" or "S" or "VT" => f,
+            EvdDecompositionType when f is "D" or "V" => f,
+            CholeskyDecompositionType when f is "L" => f,
+            SchurDecompositionType when f is "T" or "Z" => f,
+            PolarDecompositionType when f is "U" or "P" => f,
+            EigDecompositionType when f == "D" => "DREAL",
+            EigDecompositionType when f == "V" => "VRREAL",
+            _ => null
+        };
+    }
+
     private static Expr RewriteFieldAccess(FieldAccessExpr fae, AstRewriteContext context, BasicProgram program)
     {
         // §11.1: `istanza.Font.Name` / `istanza.Font.Size` (oggetto Font VB6) →
@@ -2958,15 +2970,7 @@ public static partial class Linker
         // (MATRIX VALUE), quindi indicizzazione e MATRIX.* funzionano senza conversioni.
         {
             var decType = LinkerInferExpressionType(rewrittenStructure, context, program);
-            string? decField = fae.Field.Lexeme.ToUpperInvariant() switch
-            {
-                var f when decType is LuDecompositionType && f is "L" or "U" or "P" => f,
-                var f when decType is QrDecompositionType && f is "Q" or "R" => f,
-                var f when decType is SvdDecompositionType && f is "U" or "S" or "VT" => f,
-                var f when decType is EvdDecompositionType && f is "D" or "V" => f,
-                var f when decType is CholeskyDecompositionType && f is "L" => f,
-                _ => null
-            };
+            string? decField = DecompositionFactorName(decType, fae.Field.Lexeme);
             if (decField != null)
             {
                 return new BuiltinFunctionCallExpr(
