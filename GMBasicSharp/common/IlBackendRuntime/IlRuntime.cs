@@ -117,6 +117,15 @@ public static partial class IlRuntime
     // otteneva un handle diverso da PCode/VM-C/C99Native (bug NUMERICAL.SolveIvp: IL 3 vs 2).
     private static long _nextDecompHandle;
     private static readonly System.Collections.Concurrent.ConcurrentDictionary<long, double[,]> LinAlgMatrices = new();
+    /* Slot SCRATCH per le matrici VALORE (descrittore MatrixValue) passate alle builtin
+     * handle-based: prima ogni argomento veniva registrato in LinAlgMatrices (handle
+     * stabile) e il registry cresceva a ogni operazione. Gli handle negativi (-1..-N)
+     * identificano questi slot temporanei, validi solo per la durata della chiamata in
+     * corso (round-robin su 64 slot: nessuna crescita, nessuna collisione con gli handle
+     * stabili >= 1). */
+    private const int LinAlgValueScratchSlots = 64;
+    private static readonly double[,]?[] LinAlgValueScratch = new double[,]?[LinAlgValueScratchSlots];
+    private static int _linAlgValueScratchCursor;
     private static readonly System.Collections.Concurrent.ConcurrentDictionary<long, double[]> LinAlgVectors = new();
     private static readonly System.Collections.Concurrent.ConcurrentDictionary<long, Stack<double[,]>> LinAlgMatrixStacks = new();
     // Decomposizioni standalone: lo stesso handle LONG punta a un fattore opaco
@@ -510,9 +519,30 @@ public static partial class IlRuntime
     /// (DETERMINANT/SOLVE/LU/...) chiamate con un array invece di un handle.</summary>
     public static long LinAlgMatrixHandle(object matrix)
         => matrix is double[,] dm ? StoreMatrix(dm)
-         : matrix is MatrixValue mv ? StoreMatrix(mv.ToRect())
+         // F4: valore a descrittore → slot SCRATCH (handle negativo, nessuna crescita del
+         // registry): l'handle vive solo per la builtin che lo riceve subito come argomento.
+         : matrix is MatrixValue mv ? StoreScratchMatrix(mv.ToRect())
          : matrix is double[] v ? StoreMatrix(ToJaggedAsRect(v))
          : Convert.ToInt64(matrix);
+
+    private static long StoreScratchMatrix(double[,] value)
+    {
+        var slot = Interlocked.Increment(ref _linAlgValueScratchCursor) & (LinAlgValueScratchSlots - 1);
+        LinAlgValueScratch[slot] = value;
+        return -(slot + 1);
+    }
+
+    private static bool TryMatrix(long handle, out double[,] value)
+    {
+        if (handle < 0)
+        {
+            var slot = -handle - 1;
+            var scratch = slot >= 0 && slot < LinAlgValueScratchSlots ? LinAlgValueScratch[slot] : null;
+            value = scratch!;
+            return scratch is not null;
+        }
+        return LinAlgMatrices.TryGetValue(handle, out value!);
+    }
 
     /// <summary>Registra un vettore reale (Double[]) come handle.</summary>
     public static long LinAlgVectorHandle(object vector)
@@ -535,7 +565,7 @@ public static partial class IlRuntime
         return handle;
     }
 
-    private static double[,] Matrix(long handle) => LinAlgMatrices.TryGetValue(handle, out var value)
+    private static double[,] Matrix(long handle) => TryMatrix(handle, out var value)
         ? value
         : throw new ArgumentException("Handle matrice non valido.", nameof(handle));
 
@@ -1202,7 +1232,7 @@ public static partial class IlRuntime
     public static long MatrixMultiply(long leftHandle, long rightHandle)
     {
         var left = Matrix(leftHandle);
-        if (LinAlgMatrices.TryGetValue(rightHandle, out var right))
+        if (TryMatrix(rightHandle, out var right))
         {
             if (left.GetLength(1) != right.GetLength(0)) throw new ArgumentException("Dimensioni matrice incompatibili.");
             var result = new double[left.GetLength(0), right.GetLength(1)];
@@ -1557,7 +1587,7 @@ public static partial class IlRuntime
     public static MatrixValue DecompositionGetFactorValue(long decompHandle, string factorName)
     {
         var handle = DecompositionGetFactor(decompHandle, factorName);
-        if (LinAlgMatrices.TryGetValue(handle, out var matrix)) return MatrixValue.FromRect(matrix);
+        if (TryMatrix(handle, out var matrix)) return MatrixValue.FromRect(matrix);
         if (LinAlgVectors.TryGetValue(handle, out var vector))
         {
             var column = new double[vector.Length, 1];

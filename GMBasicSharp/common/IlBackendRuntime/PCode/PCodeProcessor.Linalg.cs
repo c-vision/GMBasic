@@ -71,20 +71,45 @@ internal sealed partial class PCodeProcessor
     {
         if (index >= args.Length || args[index] == null)
             return 0;
-        // Ponte handle↔valore (ADR-MATRIX-Valore §5): un valore matrice (descrittore
-        // CommonLib.MatrixValue, Stage C) viene registrato come handle per le funzioni
-        // storiche MATRIX.*.
-        if (args[index] is CommonLib.MatrixValue valueMatrix) return StoreLinMatHandle(valueMatrix.ToRect());
-        if (args[index] is double[,] matrix) return StoreLinMatHandle(matrix);
+        // Ponte handle↔valore (ADR-MATRIX-Valore §5): una matrice VALORE (descrittore
+        // CommonLib.MatrixValue, Stage C — o array rank-2 legacy) viene mappata su uno slot
+        // SCRATCH del registry: l'handle vive solo per la builtin che lo riceve subito, quindi
+        // il registry non cresce a ogni operazione (64 slot riusati round-robin).
+        if (args[index] is CommonLib.MatrixValue valueMatrix) return StoreScratchRect(valueMatrix.ToRect());
+        if (args[index] is double[,] matrix) return StoreScratchRect(matrix);
         // Stage C: matrice DIM rank-2 della P-CODE VM = object[,] con elementi boxati.
-        if (args[index] is object[,] objMatrix) return StoreLinMatHandle(ObjectRectToDouble(objMatrix));
+        if (args[index] is object[,] objMatrix) return StoreScratchRect(ObjectRectToDouble(objMatrix));
         if (args[index] is double d) return (long)d;
         if (args[index] is int i) return i;
         return 0;
     }
 
-    /// <summary>Registra un valore matrice e ritorna l'id handle (long) — usato dal ponte
-    /// handle↔valore; StoreLinMat ritorna l'oggetto handle, qui serve l'id nudo.</summary>
+    /* Slot SCRATCH del registry per gli handle temporanei dei VALORI matrice. Gli id sono
+     * normali id di `_linMatrices` (tutti i siti TryGetValue restano invariati) ma vengono
+     * riusati ciclicamente: nessuna crescita del registry per le operazioni su valori. */
+    private const int ScratchMatrixSlots = 64;
+    private readonly long[] _scratchMatrixIds = new long[ScratchMatrixSlots];
+    private int _scratchMatrixCursor;
+
+    private long StoreScratchRect(double[,] data)
+        => StoreScratchMatrix(global::MathNet.Numerics.LinearAlgebra.Double.DenseMatrix.Create(
+            data.GetLength(0), data.GetLength(1), (r, c) => data[r, c]));
+
+    private long StoreScratchMatrix(global::MathNet.Numerics.LinearAlgebra.Matrix<double> matrix)
+    {
+        var slot = Interlocked.Increment(ref _scratchMatrixCursor) & (ScratchMatrixSlots - 1);
+        var id = _scratchMatrixIds[slot];
+        if (id == 0)
+        {
+            id = Interlocked.Increment(ref _nextLinearMatrixId);
+            _scratchMatrixIds[slot] = id;
+        }
+        _linMatrices[id] = matrix;
+        return id;
+    }
+
+    /// <summary>Registra una matrice in modo STABILE (id non riusato): per i risultati
+    /// restituiti come handle al linguaggio (decomposizioni legacy, MATRIX.HANDLE).</summary>
     private long StoreLinMatHandle(double[,] data)
     {
         var m = global::MathNet.Numerics.LinearAlgebra.Double.DenseMatrix.Create(
@@ -272,11 +297,14 @@ internal sealed partial class PCodeProcessor
         // rende il percorso uniforme per risultati scalari e array.
         foreach (var argument in args)
         {
+            // Matrice VALORE: letta direttamente, senza registrare un handle (il registry
+            // restava cresciuto di una entry per ogni operazione su valori).
+            if (argument is CommonLib.MatrixValue valueMatrix) return SimdFromMatrixValue(valueMatrix);
+            if (argument is double[,] rect) return SimdFromRect(rect);
+            if (argument is object[,] objRect) return SimdFromRect(ObjectRectToDouble(objRect));
+
             var id = argument switch
             {
-                CommonLib.MatrixValue valueMatrix => StoreLinMatHandle(valueMatrix.ToRect()),
-                double[,] data => StoreLinMatHandle(data),
-                object[,] data => StoreLinMatHandle(ObjectRectToDouble(data)),
                 double value => (long)value,
                 long value => value,
                 int value => value,
@@ -288,6 +316,26 @@ internal sealed partial class PCodeProcessor
         }
 
         throw new ArgumentException($"Handle matrice non valido (args={string.Join(",", args.Select(value => $"{value}:{value?.GetType().Name}"))}).");
+    }
+
+    /// <summary>SimdMatrix (row-major) da un descrittore MatrixValue.</summary>
+    private static CommonLib.SimdMatrix SimdFromMatrixValue(CommonLib.MatrixValue m)
+    {
+        var flat = new double[m.Rows * m.Cols];
+        for (var r = 0; r < m.Rows; r++)
+            for (var c = 0; c < m.Cols; c++)
+                flat[r * m.Cols + c] = m.Get(r, c);
+        return new CommonLib.SimdMatrix(flat, m.Rows, m.Cols);
+    }
+
+    private static CommonLib.SimdMatrix SimdFromRect(double[,] rect)
+    {
+        int rows = rect.GetLength(0), cols = rect.GetLength(1);
+        var flat = new double[rows * cols];
+        for (var r = 0; r < rows; r++)
+            for (var c = 0; c < cols; c++)
+                flat[r * cols + c] = rect[r, c];
+        return new CommonLib.SimdMatrix(flat, rows, cols);
     }
 
     private object? LuMatrixCreate(object?[] args)
