@@ -1013,6 +1013,25 @@ public sealed partial class IlProgramCompiler
 
     private bool IsMatrixValueArgument(Expr arg) => IsMatrixValueExpr(arg);
 
+    /// <summary>True quando l'argomento è un CAMPO matrice di CLASSE/UDT il cui FieldBuilder
+    /// è un <see cref="MatrixValue"/> (Stage D: i campi rank-2 DOUBLE sono descrittori).</summary>
+    private bool IsMatrixField(Expr arg)
+    {
+        if (arg is not FieldAccessExpr fa) return false;
+        int sym = fa.FieldSymbolId;
+        if (sym < 0)
+        {
+            try
+            {
+                sym = ResolveFieldOrPropertySymbolIdByName(
+                    NormalizeInferredType(InferType(fa.Structure)), fa.Field.Lexeme);
+            }
+            catch (NotSupportedException) { return false; }
+        }
+        return sym >= 0 && _classFieldArrays.TryGetValue(sym, out var fi)
+               && fi.Field.FieldType == typeof(MatrixValue);
+    }
+
     /// <summary>SOLVE(A, B): il PRIMO argomento è la MATRICE, il SECONDO il VETTORE —
     /// registra separatamente (LinAlgMatrixHandle/LinAlgVectorHandle). DOTPRODUCT(B, B):
     /// entrambi vettori.</summary>

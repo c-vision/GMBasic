@@ -12,6 +12,7 @@ using System.Reflection.Metadata.Ecma335;
 using System.Reflection.PortableExecutable;
 using Basic.IlBackend.Gpm;
 using Basic.Runtime.Gpm;
+using CommonLib;
 using Basic;
 
 namespace Basic.IlBackend;
@@ -308,6 +309,18 @@ public sealed partial class IlProgramCompiler
         // verrebbe scambiato per una chiamata a metodo inesistente.
         if (TryResolveIndexedFieldArray(expr.Base, out var loadInstance, out var fieldArrayInfo))
         {
+            /* Campo MATRICE rank-2 (MatrixValue): accesso elemento m(r,c) diretto. */
+            if (fieldArrayInfo.ClrArrayType == typeof(MatrixValue))
+            {
+                if (expr.Indices.Length != 2)
+                    throw new NotSupportedException("Backend IL: un campo matrice richiede 2 indici.");
+                loadInstance();
+                _il.Emit(OpCodes.Ldfld, fieldArrayInfo.Field);
+                EmitInt64Argument(expr.Indices[0]);
+                EmitInt64Argument(expr.Indices[1]);
+                _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.MatrixValueGetAt)));
+                return;
+            }
             EmitLoadArrayRefAndIndices(() => { loadInstance(); _il.Emit(OpCodes.Ldfld, fieldArrayInfo.Field); }, fieldArrayInfo.Rank, fieldArrayInfo.LowerBounds, expr.Indices, fieldArrayInfo.ClrArrayType);
             if (fieldArrayInfo.Rank == 1)
             {
@@ -478,6 +491,21 @@ public sealed partial class IlProgramCompiler
 
         if (!TryResolveIndexedFieldArray(target.Base, out var loadInstance, out var fieldArrayInfo))
             throw new NotSupportedException($"Backend IL: assegnazione a target indicizzato '{target.Base.GetType().Name}' non ancora supportata (solo campi array di classe).");
+
+        /* Campo MATRICE rank-2 (MatrixValue): scrittura elemento m(r,c) = v. */
+        if (fieldArrayInfo.ClrArrayType == typeof(MatrixValue))
+        {
+            if (target.Indices.Length != 2)
+                throw new NotSupportedException("Backend IL: un campo matrice richiede 2 indici.");
+            loadInstance();
+            _il.Emit(OpCodes.Ldfld, fieldArrayInfo.Field);
+            EmitInt64Argument(target.Indices[0]);
+            EmitInt64Argument(target.Indices[1]);
+            EmitDoubleArgument(value);
+            _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.MatrixValueSetAt)));
+            _il.Emit(OpCodes.Pop);
+            return;
+        }
 
         EmitLoadArrayRefAndIndices(() => { loadInstance(); _il.Emit(OpCodes.Ldfld, fieldArrayInfo.Field); }, fieldArrayInfo.Rank, fieldArrayInfo.LowerBounds, target.Indices, fieldArrayInfo.ClrArrayType);
         EmitExpression(value);

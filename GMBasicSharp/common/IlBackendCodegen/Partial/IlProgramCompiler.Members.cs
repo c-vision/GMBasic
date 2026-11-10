@@ -12,6 +12,7 @@ using System.Reflection.Metadata.Ecma335;
 using System.Reflection.PortableExecutable;
 using Basic.IlBackend.Gpm;
 using Basic.Runtime.Gpm;
+using CommonLib;
 using Basic;
 
 namespace Basic.IlBackend;
@@ -564,6 +565,11 @@ public sealed partial class IlProgramCompiler
             else if (_classFields.TryGetValue(fae.FieldSymbolId, out var fb)) fldB = fb;
             if (fldB is not null)
             {
+                /* Campo matrice (MatrixValue): non è un array CLR → nessun Ldelema. Le
+                 * scritture di elemento passano da EmitIndexedTargetAssignment (SetAt). */
+                if (fldB.FieldType == typeof(MatrixValue))
+                    throw new NotSupportedException(
+                        "Backend IL: indirizzo di un elemento di un campo matrice non supportato (usa m(r,c) = v).");
                 _il.Emit(OpCodes.Ldarg_0);
                 _il.Emit(OpCodes.Ldfld, fldB);
                 var faType = fldB.FieldType;

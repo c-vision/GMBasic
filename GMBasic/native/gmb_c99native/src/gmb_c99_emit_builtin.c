@@ -2353,6 +2353,20 @@ static int bd_lbound(ctx_t* c, gmb_expr_t** a, int n, int line) {
 }
 static int bd_ubound(ctx_t* c, gmb_expr_t** a, int n, int line) {
     if (n != 1 && n != 2) return 0;
+    /* UBOUND(<ist>.<campo matrice>[, asse]) — campo rank-2 numerico di CLASSE/UDT: i bound
+     * sono STATICI nel tipo del campo (0-based). Prima questa forma con l'asse (n==2) non
+     * entrava nei rami sotto (guardati da n==1) e cadeva in "UBOUND è una funzione di
+     * libreria (SYSTEM)". */
+    if (a[0] && a[0]->kind == GMB_EXPR_VAR && a[0]->var) {
+        long fr = 0, fc = 0;
+        if (mv_field_desc(c, a[0], &fr, &fc)) {
+            int k = 0;
+            if (n == 2 && a[1]->kind == GMB_EXPR_NUM) k = (int)a[1]->num - 1;
+            if (k < 0 || k > 1) k = 0;
+            sb_printf(&c->out, "(gmb_double_t)(%ld)", k == 0 ? fr - 1 : fc - 1);
+            return 1;
+        }
+    }
     /* UBOUND(A(i)) con A JAGGED (`DIM A(n) AS ARRAY OF DOUBLE` / parametro jagged):
      * le righe sono rettangolari → il numero di colonne è `A__cols` (2026-11-03). Senza,
      * la chiamata cadeva in "UBOUND è una funzione di libreria (SYSTEM)". */
@@ -2433,8 +2447,8 @@ static int bd_ubound(ctx_t* c, gmb_expr_t** a, int n, int line) {
             }
             /* UBOUND(<ist>.<campo-ARRAY>) — campo-array di UDT/CLASSE (es. `Res.Weights`,
              * `r.W`): il bound è un COSTANTE dichiarata → emetti il limite SUPERIORE
-             * (cls_field_arr_dim). Prima cadeva nel fallback "UBOUND non definita"
-             * (TradingPortfolioOptimization). */
+             * dell'ASSE richiesto (cls_field_arr_dim). Prima cadeva nel fallback "UBOUND
+             * non definita" (TradingPortfolioOptimization) e ignorava l'asse. */
             {
                 const char* fdot = strchr(a[0]->var, '.');
                 if (fdot && fdot != a[0]->var) {
@@ -2445,10 +2459,17 @@ static int bd_ubound(ctx_t* c, gmb_expr_t** a, int n, int line) {
                         const char* fcls = (fbv && fbv->vclass[0]) ? fbv->vclass : NULL;
                         char futy[64]; futy[0] = 0;
                         if (!fcls && gmb_udt_var_type(c, fb, futy, (int)sizeof futy) && futy[0]) fcls = futy;
+                        if (!fcls) { struct cls_info* fbci = cls_find(c, fb); if (fbci) fcls = fbci->name; }
                         struct cls_info* fci = fcls ? cls_find(c, fcls) : NULL;
-                        const char* fty = fci ? cls_field_type_of(fci, fdot + 1) : NULL;
+                        struct cls_info* fown = fci ? cls_field_owner(c, fci->name, fdot + 1) : NULL;
+                        const char* fty = fown ? cls_field_type_of(fown, fdot + 1) : NULL;
                         if (fty && cls_field_arr_size(fty) >= 0) {
-                            sb_printf(&c->out, "(gmb_double_t)(%ld)", cls_field_arr_dim(fty, 0));
+                            int frank = 0;
+                            for (const char* q = fty; *q; q++) if (*q == '[') frank++;
+                            int fk = 0;
+                            if (n == 2 && a[1]->kind == GMB_EXPR_NUM) fk = (int)a[1]->num - 1;
+                            if (fk < 0 || fk >= frank) fk = 0;
+                            sb_printf(&c->out, "(gmb_double_t)(%ld)", cls_field_arr_dim(fty, fk));
                             return 1;
                         }
                     }
