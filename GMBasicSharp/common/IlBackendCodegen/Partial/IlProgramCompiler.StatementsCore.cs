@@ -494,7 +494,7 @@ public sealed partial class IlProgramCompiler
         // Stage D: confini descrittore MatrixValue ↔ array rank-2 flat (solo tipi non-double).
         var returnClr = DataTypeMapper.Map(NormalizeInferredType(_currentReturnType), _types, _classTypes);
         var returnValueClr = DataTypeMapper.Map(valueType, _types, _classTypes);
-        if (returnClr == typeof(MatrixValue) && returnValueClr == typeof(double[,]))
+        if (returnClr == typeof(MatrixValue) && (returnValueClr == typeof(double[,]) || IsRectArrayField(value)))
         {
             _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.MatrixValueFromRect), typeof(double[,])));
             return;

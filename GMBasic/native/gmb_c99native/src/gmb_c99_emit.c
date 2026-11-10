@@ -3736,6 +3736,17 @@ if (s->dim_var) {            int ty = suffix_type(s->dim_var);
              * variabile, il controllo di duplicato sotto distingue la ri-registrazione
              * dello stesso DIM da una SECONDA dichiarazione con lo stesso nome. */
             v->dim_stmt = (const void*)s;
+            /* `DIM x = <campo matrice di CLASSE/UDT>` (`DIM x = t.m`): valore matrice, view
+             * sul buffer flat del campo (stessa semantica di PCode/VM-C: le due variabili
+             * condividono lo storage). */
+            if (!s->array_size && !s->dim_type && s->dim_init
+                && s->dim_init->kind == GMB_EXPR_VAR) {
+                long __fr = 0, __fc = 0;
+                if (mv_field_desc(c, s->dim_init, &__fr, &__fc)) {
+                    v->is_array = 1; v->ndims = 2; v->matrix = 0; v->jagged = 0;
+                    v->dyn_len = 0; v->matrix_value = 1;
+                }
+            }
             /* `DIM m AS MATRIX OF (assi…, T)`: valore matrice = descrittore gmb_matrix_t
              * (Stage C backend C; i parametri `MATRIX OF` restano ABI nativa ai confini). */
             if (s->dim_ndims >= 2) {
@@ -19603,6 +19614,13 @@ static void st_dim(ctx_t* c, gmb_stmt_t* s) {
              sb_put(&c->out, ";\n");
              dv->late_local = 0;
              return;
+         }
+         if (dv && dv->matrix_value && s->dim_init && s->dim_init->kind == GMB_EXPR_VAR) {
+             long __fr = 0, __fc = 0;
+             if (mv_field_desc(c, s->dim_init, &__fr, &__fc)) {
+                 emit_matrix_from_handle_result(c, dv, s->dim_init);
+                 return;
+             }
          }
          if (dv && s->dim_init && s->dim_init->tk == GMB_TOK_LinAlgMatrixCreateFunc) {
              emit_matrix_create_value(c, dv, s->dim_init);
