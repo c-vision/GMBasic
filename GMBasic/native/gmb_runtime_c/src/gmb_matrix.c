@@ -1060,8 +1060,15 @@ int64_t gmb_matrix_decomp_get_factor_ex(int64_t decomp, int idx, int* owned)
     return -1;
 }
 
-/* Estrazione fattori per NOME (LINALG.FACTOR(h, "U") ecc.). */
-int64_t gmb_matrix_decomp_get_factor_named(int64_t decomp, const char* name)
+/* Tipo della decomposizione (0=LU,1=QR,2=SVD,3=EVD,4=Cholesky,5=POLAR,6=EIG,7=SCHUR)
+ * oppure -1. Serve a chi costruisce il VALORE a dizionario dei fattori. */
+int gmb_matrix_decomp_type(int64_t h)
+{
+    gmb_decomp_t* d = dget(h);
+    return d ? d->type : -1;
+}
+
+/* Estrazione fattori per NOME (LINALG.FACTOR(h, "U") ecc.). */int64_t gmb_matrix_decomp_get_factor_named(int64_t decomp, const char* name)
 {
     return gmb_matrix_decomp_get_factor_named_ex(decomp, name, NULL);
 }
