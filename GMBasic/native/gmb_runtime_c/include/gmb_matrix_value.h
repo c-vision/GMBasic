@@ -73,6 +73,10 @@ gmb_matrix_t gmb_matrix_create_value(int64_t rows, int64_t cols);
 gmb_matrix_t gmb_matrix_value_zeros(int64_t rows, int64_t cols);
 /* Copia di un buffer flat row-major (ownership dello storage: nuovo). */
 gmb_matrix_t gmb_matrix_value_from_flat(const double* data, int64_t rows, int64_t cols);
+/* VIEW NON PROPRIETARIA su un buffer esterno contiguo row-major (es. campo-array nativo
+ * di CLASSE/UDT in C99Native, o un double* del chiamante): nessuna copia e nessuna free
+ * del buffer (lo storage wrapper non ha il flag OWNED). Le scritture passano al buffer. */
+gmb_matrix_t gmb_matrix_borrow_flat(double* data, int64_t rows, int64_t cols);
 /* Adotta un buffer malloc'ed (ownership trasferita allo storage). */
 gmb_matrix_t gmb_matrix_adopt_flat(double* data, int64_t rows, int64_t cols);
 /* Copia INDIPENDENTE (contigua); rompe l'aliasing con eventuali view. */

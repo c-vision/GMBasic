@@ -940,7 +940,22 @@ private bool TryInferNativeCollectionIndexType(IndexedAccessExpr expr, out DataT
              CollMembers.Is(fa.Field, TokenKind.CollPeek))
             && NormalizeInferredType(InferType(fa.Structure)) is StackType st)
             return st.ElementType;
-        if (fa.FieldSymbolId >= 0) return _program.Symbols.GetSymbol(fa.FieldSymbolId).DataType;
+        if (fa.FieldSymbolId >= 0 || NormalizeInferredType(InferType(fa.Structure)) is UserDefinedType or ClassType)
+        {
+            // CAMPO-ARRAY di CLASSE/UDT: il simbolo del campo porta il tipo ELEMENTO (es.
+            // DoubleType), il rango vive nella dichiarazione (FieldArrayInfo) — senza questo
+            // l'inferenza diceva "scalare" e `MATRIX.ROWCOUNT(t.m)`/`Show(t.m)` cadevano sul
+            // percorso handle ("Handle matrice non valido"), divergendo da PCode/VM-C/C99.
+            int faSym = fa.FieldSymbolId >= 0
+                ? fa.FieldSymbolId
+                : ResolveFieldOrPropertySymbolIdByName(NormalizeInferredType(InferType(fa.Structure)), fa.Field.Lexeme);
+            if (faSym >= 0)
+            {
+                if (_classFieldArrays.TryGetValue(faSym, out var faArrayInfo))
+                    return new ArrayType(faArrayInfo.ElementDataType, faArrayInfo.Rank);
+                return _program.Symbols.GetSymbol(faSym).DataType;
+            }
+        }
         // Campo dinamico su JSON/entry DICT (vedi EmitFieldAccess) — nessun simbolo REALE da
         // risolvere, il valore resta dinamico (object) esattamente come la struttura di
         // partenza: JsonFieldGet non sa a compile-time se restituirà una stringa o un numero.

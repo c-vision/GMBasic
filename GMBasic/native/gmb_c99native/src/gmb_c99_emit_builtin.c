@@ -3362,6 +3362,15 @@ static int mx_is_matrix_val(const var_t* v)
  * viene registrato come handle con gmb_matrix_from_flat; un handle resta se stesso. */
 static void emit_matrix_arg(ctx_t* c, gmb_expr_t* e)
 {
+    long fr = 0, fc = 0;
+    if (mv_field_desc(c, e, &fr, &fc)) {
+        /* Campo matrice di CLASSE/UDT: view sul buffer flat del campo, registrata in uno
+         * slot SCRATCH per la chiamata immediata. */
+        sb_put(&c->out, "(gmb_int_t)gmb_matrix_scratch_handle(");
+        emit_mv_field_desc(c, e);
+        sb_put(&c->out, ")");
+        return;
+    }
     if (e && e->kind == GMB_EXPR_VAR && e->var) {
         var_t* v = lookup_var(c, e->var);
         if (mx_is_matrix_val(v)) { emit_matrix_handle(c, v); return; }
@@ -3371,6 +3380,17 @@ static void emit_matrix_arg(ctx_t* c, gmb_expr_t* e)
 static int mx_one(ctx_t* c, gmb_expr_t** a, int n, const char* fn, int cast) {
     if (n != 1) return 0;
     if (a[0]->kind != GMB_EXPR_VAR || !a[0]->var) return 0;
+    {
+        /* Campo matrice di CLASSE/UDT: stessa strada dell'handle, via scratch. */
+        long fr = 0, fc = 0;
+        if (mv_field_desc(c, a[0], &fr, &fc)) {
+            sb_put(&c->out, cast ? "(gmb_int_t)" : "(gmb_double_t)");
+            sb_printf(&c->out, "%s(gmb_matrix_scratch_handle(", fn);
+            emit_mv_field_desc(c, a[0]);
+            sb_put(&c->out, "))");
+            return 1;
+        }
+    }
     var_t* av = lookup_var(c, a[0]->var);
     /* MATRIX handle (DIM h = MATRIX.CREATE(...)): gmb_matrix_*(h) — cast a double per
      * gli scalari, a int per gli handle (parity emitter C#). */
@@ -3399,6 +3419,18 @@ static int mx_one(ctx_t* c, gmb_expr_t** a, int n, const char* fn, int cast) {
 }
 static int mx_multiply(ctx_t* c, gmb_expr_t** a, int n) {
     if (n != 2) return 0;
+    {
+        /* Sorgenti CAMPO matrice (CLASSE/UDT): via handle scratch del campo. */
+        long fr = 0, fc = 0;
+        if (mv_field_desc(c, a[0], &fr, &fc) || mv_field_desc(c, a[1], &fr, &fc)) {
+            sb_put(&c->out, "(gmb_int_t)gmb_matrix_multiply((int64_t)(");
+            emit_matrix_arg(c, a[0]);
+            sb_put(&c->out, "), (int64_t)(");
+            emit_matrix_arg(c, a[1]);
+            sb_put(&c->out, "))");
+            return 1;
+        }
+    }
     if (a[0]->kind != GMB_EXPR_VAR || a[1]->kind != GMB_EXPR_VAR) return 0;
     var_t* a0 = lookup_var(c, a[0]->var);
     var_t* a1 = lookup_var(c, a[1]->var);
@@ -3464,7 +3496,7 @@ static int mxh_get(ctx_t* c, gmb_expr_t** a, int n) {
             return 1;
         }
     }
-    sb_put(&c->out, "(gmb_double_t)gmb_matrix_get((int64_t)("); emit_expr(c, a[0]);
+    sb_put(&c->out, "(gmb_double_t)gmb_matrix_get((int64_t)("); emit_matrix_arg(c, a[0]);
     sb_put(&c->out, "), (int)("); emit_expr(c, a[1]); sb_put(&c->out, "), (int)(");
     emit_expr(c, a[2]); sb_put(&c->out, "))");
     return 1;
@@ -3523,6 +3555,14 @@ static int mxh_set(ctx_t* c, gmb_expr_t** a, int n) {
 static int mx_rowcol(ctx_t* c, gmb_expr_t** a, int n, const char* rc) {
     if (n != 1) return 0;
     if (a[0]->kind != GMB_EXPR_VAR || !a[0]->var) return 0;
+    {
+        /* Campo matrice di CLASSE/UDT: bound STATICI dal tipo del campo. */
+        long fr = 0, fc = 0;
+        if (mv_field_desc(c, a[0], &fr, &fc)) {
+            sb_printf(&c->out, "(gmb_double_t)%ld", strcmp(rc, "rows") == 0 ? fr : fc);
+            return 1;
+        }
+    }
     var_t* av = lookup_var(c, a[0]->var);
     if (!(av && (av->matrix || mx_is_matrix_val(av)))) return 0;
     if (av && av->matrix_value) {

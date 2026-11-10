@@ -110,6 +110,11 @@ int gmb_c99_emit_coll_json(ctx_t* c, const char* name);
 int gmb_c99_param_is_in_matrix(ctx_t* c, const char* name);
 /* ADR-MATRIX §3 (F3-ter): parametro matrice OUT (solo scrittura). */
 int gmb_c99_param_is_out_matrix(ctx_t* c, const char* name);
+/* ADR-MATRIX backend C: campo-array rank-2 numerico di CLASSE/UDT (`t.m` con
+ * `DIM m(N,M) AS DOUBLE`) -> view non proprietaria sul buffer flat nativo, con bound
+ * statici. *rows/*cols valorizzati; 1 se è un campo matrice. */
+int mv_field_desc(ctx_t* c, gmb_expr_t* e, long* rows, long* cols);
+void emit_mv_field_desc(ctx_t* c, gmb_expr_t* e);
 int gmb_c99_var_coll_kind(ctx_t* c, const char* name);
 int gmb_c99_var_coll_sorted(ctx_t* c, const char* name);
 void sb_ident(sb_t* b, const char* name);

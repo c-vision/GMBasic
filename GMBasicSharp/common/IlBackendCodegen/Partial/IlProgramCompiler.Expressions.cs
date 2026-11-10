@@ -999,6 +999,43 @@ public sealed partial class IlProgramCompiler
             ? expr.FieldSymbolId
             : ResolveFieldOrPropertySymbolIdByName(InferType(expr.Structure), expr.Field.Lexeme);
 
+        // CAMPO-ARRAY di CLASSE/UDT (`t.m` con DIM m(N,M) AS DOUBLE): il FieldBuilder è
+        // l'array CLR (T[] / T[,]). La lettura dell'INTERO campo era NotSupported per i
+        // campi scalari di _classFields (i campi-array vivono in _classFieldArrays) → un
+        // `MATRIX.ROWCOUNT(t.m)`/`Show(t.m)` non compilava, benché PCode/VM-C/C99 lo
+        // supportino (divergenza segnalata dal probe UDT-matrice). Stesse regole di
+        // addressing dei campi scalari: struct UDT → indirizzo, classi/stringhe → reference.
+        if (_classFieldArrays.TryGetValue(fieldSymbolId, out var arrayFieldInfo))
+        {
+            var arrayField = arrayFieldInfo.Field;
+            if (arrayField.IsStatic) { _il.Emit(OpCodes.Ldsfld, arrayField); return; }
+            if (arrayField.DeclaringType!.IsValueType)
+            {
+                if (expr.Structure is VariableExpr svArr && TryResolveSelfArgIndex(svArr.SymbolId, out var selfArrIdx))
+                {
+                    _il.Emit(OpCodes.Ldarg, selfArrIdx);
+                    _il.Emit(OpCodes.Ldfld, arrayField);
+                    return;
+                }
+                if (expr.Structure is VariableExpr vArr
+                    && _parameters.TryGetValue(vArr.SymbolId, out var pArr) && pArr.IsByRef)
+                {
+                    EmitExpression(expr.Structure);
+                    _il.Emit(OpCodes.Ldfld, arrayField);
+                    return;
+                }
+                EmitExpression(expr.Structure);
+                var tmpArrLocal = _il.DeclareLocal(arrayField.DeclaringType);
+                _il.Emit(OpCodes.Stloc, tmpArrLocal);
+                _il.Emit(OpCodes.Ldloca, tmpArrLocal);
+                _il.Emit(OpCodes.Ldfld, arrayField);
+                return;
+            }
+            EmitExpression(expr.Structure);
+            _il.Emit(OpCodes.Ldfld, arrayField);
+            return;
+        }
+
         if (_classFields.TryGetValue(fieldSymbolId, out var fieldBuilder))
         {
             // Un campo STRING mai assegnato è null in IL (struct Initobj), ma il canone dei
@@ -1289,7 +1326,10 @@ public sealed partial class IlProgramCompiler
                 }
                 else if (paramType is MatrixValueType
                          && NormalizeInferredType(InferType(expr.Args[i])) is ArrayType { Rank: >= 2 } argArr
-                         && DataTypeMapper.Map(argArr, _types, _classTypes) != typeof(MatrixValue))
+                         && (DataTypeMapper.Map(argArr, _types, _classTypes) != typeof(MatrixValue)
+                             /* campo-array rank-2 di CLASSE/UDT: FieldBuilder double[,] anche se
+                              * Map dice MatrixValue (Stage D) → va convertito comunque */
+                             || IsRectArrayField(expr.Args[i])))
                 {
                     /* Array rank-2 flat (DIM) → parametro VALORE matrice: copia nel descrittore. */
                     EmitExpression(expr.Args[i]);
