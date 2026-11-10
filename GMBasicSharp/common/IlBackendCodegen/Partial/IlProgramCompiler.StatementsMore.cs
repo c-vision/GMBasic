@@ -745,7 +745,9 @@ public sealed partial class IlProgramCompiler
         {
             var refLocal = _il.DeclareLocal(refDel);
             _locals[declaration.SymbolId] = refLocal;
-            EmitExpression(fre);
+            /* Il local è il delegate `ref T[]` (CbRef…): il delegate DEVE essere creato
+             * con la stessa forma (over il metodo byref), non con il thunk by-value. */
+            EmitFunctionReference(fre, refCallbackShape: true);
             _il.Emit(OpCodes.Stloc, refLocal);
             return;
         }
