@@ -78,8 +78,7 @@ while [ $# -gt 0 ]; do
     *) echo "opzione sconosciuta: $1" >&2; exit 2;;
   esac
 done
-
-case "$GROUP" in runtime|runtime-core|boot|dev|core|engine|llmmotor|support) ;; *) echo "gruppo non valido: $GROUP (runtime|runtime-core|boot|dev|core|engine|llmmotor|support)" >&2; exit 2;; esac
+case "$GROUP" in runtime|runtime-core|boot|dev|core|engine|llmmotor|support|toolchain) ;; *) echo "gruppo non valido: $GROUP (runtime|runtime-core|boot|dev|core|engine|llmmotor|support|toolchain)" >&2; exit 2 ;; esac
 
 # ── RID (stessa mappatura di native/cmake/GmbRid.cmake e LibsResolver.Rid) ───────────────────
 if [ -z "$RID" ]; then
@@ -92,6 +91,23 @@ if [ -z "$RID" ]; then
     *) echo "RID non riconosciuto ($(uname -s)-$(uname -m)): passare --rid" >&2; exit 2;;
   esac
 fi
+# ── TOOLCHAIN (F1): il COMPILATORE, non una libreria ───────────────────────────────────────
+# Un artefatto per host, senza compilare nulla: delega a `libs_toolchain_pack.sh` (che è anche
+# l'unico punto che genera `THIRD_PARTY_NOTICES` e la riga d'indice). La PUBBLICAZIONE resta al
+# canale unico degli asset, quindi `--publish` qui NON si applica: si stampa il comando esatto
+# (D13: un solo writer dell'indice, il job `index`).
+if [ "$GROUP" = "toolchain" ]; then
+  # La VERSIONE di zig ha un pin unico: dentro `libs_toolchain_pack.sh` (qui non si duplica).
+  args=(--rid "$RID")
+  [ "$DRY" = "1" ] && args+=(--dry-run)
+  [ -n "$STAGE_DIR" ] && args+=(--out "$STAGE_DIR")
+  if [ "$PUBLISH" = "1" ]; then
+    echo "NOTA: --publish non si applica a 'toolchain': usare libs_publish_files_gh.sh." >&2
+  fi
+  echo "-> delega a: libs_toolchain_pack.sh ${args[*]}"
+  exec bash "$SCRIPT_DIR/libs_toolchain_pack.sh" "${args[@]}"
+fi
+
 IS_APPLE=0; [ "$(uname -s)" = "Darwin" ] && IS_APPLE=1
 # LLMEnv (motori/codec AI): env LLMENV, poi i layout noti (monorepo, Projects, HOME).
 if [ -z "${LLMENV:-}" ]; then
