@@ -131,6 +131,16 @@ public sealed partial class Parser
 
         var isBuiltinKeyword = typeToken.Kind != TokenKind.Identifier;
 
+        // Un TIPO UTENTE può chiamarsi come una keyword built-in (es. `CLASS Matrix`):
+        // `AS Matrix` / `NEW Matrix()` SENZA `OF` è il NOME del tipo, non il tipo built-in
+        // `MATRIX OF (...)`. Si produce un UnresolvedQualifiedType: il Linker risolve la
+        // classe/UDT o segnala "tipo sconosciuto" (stesso esito di un nome ignoto).
+        if (typeToken.Kind == TokenKind.Matrix && At(1).Kind != TokenKind.Of)
+        {
+            var userTypeName = ParseQualifiedNameExpression();
+            return ParseGenericTypeArgumentsSuffix(new UnresolvedQualifiedType(userTypeName));
+        }
+
         // Parsa il tipo sottostante (senza suffisso nullable).
         DataType baseType;
         if (isBuiltinKeyword)

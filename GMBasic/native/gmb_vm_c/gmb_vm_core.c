@@ -2272,9 +2272,20 @@ static gmb_obj_shared_val_t* vm_make_field_array(gmb_val_t dimsListVal, gmb_val_
     if (fieldTypeVal.kind == GMB_TYPE_STRING && fieldTypeVal.v_string.data)
     {
         const char* t = fieldTypeVal.v_string.data;
+        /* Il tipo di un campo-array è "ARRAY OF <T>" (rank 1) oppure "ARRAY(n) OF <T>"
+         * (rank n — ToString di ArrayType). Prima solo il primo formato era riconosciuto:
+         * un campo 2-D di UDT (`DIM m(2,2) AS Punto`) aveva elementi DOUBLE e
+         * `m(1,2).x` leggeva/scriveva 0 (parity PCode/IL/C99 rotta). */
+        const char* el = NULL;
         if (strncmp(t, "ARRAY OF ", 9) == 0)
+            el = t + 9;
+        else if (strncmp(t, "ARRAY(", 6) == 0)
         {
-            const char* el = t + 9;
+            const char* rp = strchr(t, ')');
+            if (rp && strncmp(rp + 1, " OF ", 4) == 0) el = rp + 5;
+        }
+        if (el)
+        {
             if (strncasecmp(el, "STRING", 6) == 0) elem_str = 1;
             else if (strncasecmp(el, "DOUBLE", 6) && strncasecmp(el, "INTEGER", 7)
                      && strncasecmp(el, "LONG", 4) && strncasecmp(el, "SINGLE", 6)
