@@ -78,6 +78,16 @@ asset_name_tree() {
 # dispatcher: modalità piatta (runtime) o albero (dev)
 A() { if [ "$TREE" = "1" ]; then asset_name_tree "$1"; else asset_name "$1"; fi; }
 
+# sha256 portatile: su Git for Windows `shasum` può mancare (è uno script Perl), mentre `sha256sum`
+# e `openssl` ci sono. Con `shasum` assente il confronto diventava "vuoto vs vuoto" e il publisher
+# avrebbe saltato per "identico" un asset mai verificato.
+sha256_of() { # $1 = file
+  if command -v shasum >/dev/null 2>&1; then shasum -a 256 "$1" | awk '{print $1}';
+  elif command -v sha256sum >/dev/null 2>&1; then sha256sum "$1" | awk '{print $1}';
+  else openssl dgst -sha256 "$1" | awk '{print $NF}';
+  fi
+}
+
 asset_name() {
   local f="$1" stem ext
   # TOOLCHAIN: l'archivio porta GIÀ il RID nel nome (`zig-0.17.0-osx-arm64.tar.xz`); aggiungerlo
@@ -177,7 +187,7 @@ trap 'rm -rf "$WORK"' EXIT
 UPLOAD=()
 for f in "${FILES[@]}"; do
   a="$(A "$f")"
-  ours="$(shasum -a 256 "$SRC/$f" | awk '{print $1}')"
+  ours="$(sha256_of "$SRC/$f")"
   have="$(published_sha "$a")"
   if [ -n "$have" ]; then
     if [ "$have" = "$ours" ]; then echo "  = $a (già pubblicato, identico)" >&2; continue; fi
@@ -234,7 +244,7 @@ fi
 
 # TSV per l'indice: name, sha256, size, url (sha ricalcolato sui byte caricati)
 for f in "${FILES[@]}"; do
-  sha=$(shasum -a 256 "$SRC/$f" | awk '{print $1}')
+  sha=$(sha256_of "$SRC/$f")
   size=$(stat -f %z "$SRC/$f" 2>/dev/null || stat -c %s "$SRC/$f")
   printf '%s\t%s\t%s\t%s\n' "$f" "$sha" "$size" \
     "https://github.com/$REPO/releases/download/$TAG/$(A "$f")"
