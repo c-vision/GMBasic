@@ -12,6 +12,7 @@ using System.Reflection.Metadata.Ecma335;
 using System.Reflection.PortableExecutable;
 using Basic.IlBackend.Gpm;
 using Basic.Runtime.Gpm;
+using CommonLib;
 using Basic;
 
 namespace Basic.IlBackend;
@@ -315,7 +316,15 @@ public sealed partial class IlProgramCompiler
                     var udtFieldArrayRank = field.Dimensions.Length;
                     var udtFieldArrayElementDataType = field.DataType;
                     var udtFieldArrayElementClrType = DataTypeMapper.Map(udtFieldArrayElementDataType, types, classTypes);
-                    var udtFieldArrayClrType = udtFieldArrayRank == 1 ? udtFieldArrayElementClrType.MakeArrayType() : udtFieldArrayElementClrType.MakeArrayType(udtFieldArrayRank);
+                    /* Campo MATRICE rank-2 DOUBLE (`DIM m(N,M) AS DOUBLE` dentro un TYPE):
+                     * descrittore MatrixValue (come un DIM locale rank-2, Stage D), non un
+                     * double[,]: così `DIM x = t.m` condivide lo storage (semantica di
+                     * riferimento, parità PCode/VM-C/C99) e le funzioni MATRIX con parametri
+                     * MATRIX OF ricevono il descrittore senza conversioni. */
+                    var udtFieldArrayClrType = udtFieldArrayRank == 2
+                                               && udtFieldArrayElementDataType is DoubleType
+                        ? typeof(MatrixValue)
+                        : udtFieldArrayRank == 1 ? udtFieldArrayElementClrType.MakeArrayType() : udtFieldArrayElementClrType.MakeArrayType(udtFieldArrayRank);
                     var udtFieldArrayBuilder = udtTypeBuilder.DefineField(field.Name.Lexeme, udtFieldArrayClrType, FieldAttributes.Public);
                     classFieldArrays[field.SymbolId] = new FieldArrayInfo(udtFieldArrayBuilder, udtFieldArrayClrType, udtFieldArrayElementDataType, udtFieldArrayRank, new int[udtFieldArrayRank], udtDef.SymbolId, field.Name.Lexeme);
                     udtFieldArrays.Add(field);
@@ -526,7 +535,13 @@ public sealed partial class IlProgramCompiler
                         // JAGGED (T[][]) — il rettangolare T[,...] non è risolvibile in
                         // Reflection.Emit. I tipi nativi restano rettangolari.
                         Type fieldArrayClrType;
-                        if (fieldArrayRank == 1)
+                        if (fieldArrayRank == 2 && fieldArrayElementDataType is DoubleType)
+                        {
+                            // Campo matrice rank-2 DOUBLE: descrittore (come un DIM locale
+                            // rank-2, Stage D) — riferimento condiviso, niente double[,].
+                            fieldArrayClrType = typeof(MatrixValue);
+                        }
+                        else if (fieldArrayRank == 1)
                             fieldArrayClrType = fieldArrayElementClrType.MakeArrayType();
                         else if (fieldArrayElementClrType is TypeBuilder)
                         {

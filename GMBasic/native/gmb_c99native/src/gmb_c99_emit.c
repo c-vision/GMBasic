@@ -1879,7 +1879,8 @@ static struct cls_info* cls_static_find(ctx_t* c, const char* clsname, const cha
 /* 2.7(c): classe che DEFINISCE il campo lungo la catena INHERITS (base-first nel
  * layout flat, parity oracolo FieldsWithBase) — il cast va fatto sulla struct
  * della classe definente (layout-compatibile: i campi base sono il prefisso). */
-static struct cls_info* cls_field_owner(ctx_t* c, const char* clsname, const char* f) {
+/* Non-static: condivisa con gmb_c99_emit_builtin.c (UBOUND dei campi-array, §0quater). */
+struct cls_info* cls_field_owner(ctx_t* c, const char* clsname, const char* f) {
     for (int d = 0; d < 8 && clsname; d++) {
         struct cls_info* ci = cls_find(c, clsname);
         if (!ci) {
@@ -6567,6 +6568,25 @@ static int is_byval_arr_param(ctx_t* c, const char* name);
 static int is_byte_expr(ctx_t* c, gmb_expr_t* e);
 static int bf_m_len(ctx_t* c, gmb_expr_t** a, int n){
     if(n!=1)return 0;
+    /* LEN di una MATRICE a valore (descrittore) o di un CAMPO matrice di CLASSE/UDT:
+     * numero di elementi = rows*cols (parità IL/PCode/VM-C). Prima emetteva
+     * `<var>_len`/`.length` su un descrittore o su un double* → errore C. */
+    if (a[0] && a[0]->kind == GMB_EXPR_VAR && a[0]->var) {
+        var_t* mvlen = lookup_var(c, a[0]->var);
+        if (mvlen && mvlen->matrix_value) {
+            sb_put(&c->out, "(gmb_double_t)((");
+            emit_var_ref(c, mvlen);
+            sb_put(&c->out, ").rows * (");
+            emit_var_ref(c, mvlen);
+            sb_put(&c->out, ").cols)");
+            return 1;
+        }
+        long __lfr = 0, __lfc = 0;
+        if (mv_field_desc(c, a[0], &__lfr, &__lfc)) {
+            sb_printf(&c->out, "(gmb_double_t)%ld", __lfr * __lfc);
+            return 1;
+        }
+    }
     /* LEN(bytes()) — CALL 0-arg su una var LISTA = il contenitore INTERO (array da
      * ReadAllBytes/ReadAllLines). Prima emetteva `(bytes).length` → C non compilabile
      * (§ FilesFullCoverage righe 53/55). */
@@ -19379,8 +19399,14 @@ int mv_field_desc(ctx_t* c, gmb_expr_t* e, long* rows, long* cols) {
     var_t* bv = lookup_var(c, base);
     const char* clsname = (bv && bv->vclass[0]) ? bv->vclass : NULL;
     if (!clsname) {
-        /* UDT senza var registrata (es. nome-tipo usato come istanza): la classe deve esistere. */
+        /* UDT: la var non porta vclass (o è una TYPE/CLASS dichiarata per nome) — il tipo
+         * si ricava dalla dichiarazione (gmb_udt_var_type) e, in mancanza, dal nome-tipo
+         * usato come istanza. */
         struct cls_info* ci0 = cls_find(c, base);
+        if (!ci0) {
+            char uty[64]; uty[0] = 0;
+            if (gmb_udt_var_type(c, base, uty, (int)sizeof uty) && uty[0]) ci0 = cls_find(c, uty);
+        }
         if (!ci0) return 0;
         clsname = ci0->name;
     }

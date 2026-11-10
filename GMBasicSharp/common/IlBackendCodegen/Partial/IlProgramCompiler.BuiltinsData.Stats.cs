@@ -612,7 +612,13 @@ public sealed partial class IlProgramCompiler
     {
         if (TryEmitRuntimeBound(expr, "UBOUND", isUpper: true)) return;
         // F4: valore matrice (descrittore) — UBOUND(m[, asse]) = rows/cols - 1 (lower 0).
-        if (expr.Args.Length >= 1 && NormalizeInferredType(InferType(expr.Args[0])) is MatrixValueType)
+        // Vale anche per un CAMPO matrice di CLASSE/UDT (staticamente ArrayType rank-2
+        // DOUBLE, a runtime MatrixValue). Un DIM rank-2 in _arrays NON passa di qui: ha i
+        // lower bound espliciti e li gestisce ResolveArrayBoundArgs (sotto).
+        bool mvBound = IsMatrixField(expr.Args[0]) || IsRectArrayField(expr.Args[0])
+            || (NormalizeInferredType(InferType(expr.Args[0])) is MatrixValueType
+                && !(expr.Args[0] is VariableExpr mvBoundVar && _arrays.ContainsKey(mvBoundVar.SymbolId)));
+        if (expr.Args.Length >= 1 && mvBound)
         {
             var axis = 1;
             if (expr.Args.Length > 1 && TryExtractCompileTimeInt32(expr.Args[1], out var ax)) axis = ax;
@@ -739,6 +745,14 @@ public sealed partial class IlProgramCompiler
     private void EmitLBoundCall(BuiltinFunctionCallExpr expr)
     {
         if (TryEmitRuntimeBound(expr, "LBOUND", isUpper: false)) return;
+        // CAMPO matrice di CLASSE/UDT: lower bound 0 (campo-array sempre 0-based).
+        if (expr.Args.Length >= 1 && (IsMatrixField(expr.Args[0]) || IsRectArrayField(expr.Args[0])))
+        {
+            EmitExpression(expr.Args[0]);
+            _il.Emit(OpCodes.Pop);
+            _il.Emit(OpCodes.Ldc_I8, 0L);
+            return;
+        }
         // F4: valore matrice — il lower bound BASIC è sempre 0.
         if (expr.Args.Length >= 1 && NormalizeInferredType(InferType(expr.Args[0])) is MatrixValueType)
         {
