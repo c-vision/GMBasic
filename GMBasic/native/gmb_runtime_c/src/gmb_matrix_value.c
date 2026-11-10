@@ -72,9 +72,17 @@ gmb_matrix_t gmb_matrix_create_value(int64_t rows, int64_t cols)
     return gmb_matrix_make(st, rows, cols, cols, 1, 0);
 }
 
-gmb_matrix_t gmb_matrix_value_from_flat(const double* data, int64_t rows, int64_t cols)
+gmb_matrix_t gmb_matrix_value_zeros(int64_t rows, int64_t cols)
 {
-    if (!data || rows < 0 || cols < 0) return gmb_matrix_empty();
+    if (rows < 0 || cols < 0) return gmb_matrix_empty();
+    if (rows != 0 && cols > INT64_MAX / rows) return gmb_matrix_empty();
+    gmb_matrix_storage_t* st = gmb_matrix_storage_new(rows * cols);
+    if (!st) return gmb_matrix_empty();
+    return gmb_matrix_make(st, rows, cols, cols, 1, 0);
+}
+
+gmb_matrix_t gmb_matrix_value_from_flat(const double* data, int64_t rows, int64_t cols)
+{    if (!data || rows < 0 || cols < 0) return gmb_matrix_empty();
     if (rows != 0 && cols > INT64_MAX / rows) return gmb_matrix_empty();
     int64_t n = rows * cols;
     gmb_matrix_storage_t* st = gmb_matrix_storage_new(n);
@@ -182,6 +190,37 @@ gmb_matrix_t gmb_matrix_value_reshape(gmb_matrix_t m, int64_t rows, int64_t cols
         for (int64_t c = 0; c < m.cols; c++)
             out.st->data[k++] = *gmb_matrix_elem(&m, r, c);
     return out;
+}
+
+void gmb_matrix_value_set_flat(gmb_matrix_t* dst, const double* flat, int64_t rows, int64_t cols)
+{
+    if (!dst || !flat || rows < 0 || cols < 0) return;
+    if (rows != 0 && cols > INT64_MAX / rows) return;
+    int64_t n = rows * cols;
+    /* Riusa lo storage del descrittore se ha esattamente la forma contigua attesa e
+     * refs==1 (nessuna view/alias): evita una nuova allocazione per ogni write-back. */
+    if (dst->st && dst->st->refs == 1 && dst->rows == rows && dst->cols == cols &&
+        dst->offset == 0 && dst->col_stride == 1 && dst->row_stride == cols)
+    {
+        if (n > 0) memcpy(dst->st->data, flat, (size_t)n * sizeof(double));
+        return;
+    }
+    gmb_matrix_t src = gmb_matrix_value_from_flat(flat, rows, cols);
+    gmb_matrix_value_assign(dst, src);
+    gmb_matrix_value_free(&src);
+}
+
+double* gmb_matrix_value_ensure_flat(gmb_matrix_t* m)
+{
+    if (!m) return NULL;
+    if (!m->st) return NULL;
+    if (m->col_stride == 1 && m->row_stride == m->cols && m->offset == 0)
+        return m->st->data;
+    gmb_matrix_t copy = gmb_matrix_value_clone(*m);
+    if (!copy.st) return NULL;
+    gmb_matrix_value_free(m);
+    *m = copy;
+    return m->st->data;
 }
 
 gmb_matrix_t gmb_matrix_view(gmb_matrix_t m, int64_t r0, int64_t c0,

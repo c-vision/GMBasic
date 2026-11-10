@@ -833,7 +833,18 @@ void emit_var_ref(ctx_t* c, const var_t* v) {
     if (v->arr_byref) sb_put(&c->out, "_");
     emit_ident(c, v->name);
 }
+void sb_bound_lo_k(sb_t* b, const var_t* v, int k);
 void sb_bound_var(sb_t* b, const var_t* v, int k) {
+    if (v->matrix_value) {
+        /* Stage C backend C: descrittore → upper = dimensione-1 (+ lower logico). */
+        sb_put(b, "((gmb_int_t)(");
+        if (v->arr_byref) sb_put(b, "_");
+        sb_ident(b, v->name);
+        sb_printf(b, ").%s - 1", k == 1 ? "cols" : "rows");
+        if (v->has_blo) { sb_put(b, " + "); sb_bound_lo_k(b, v, k); }
+        sb_put(b, ")");
+        return;
+    }
     if (v->arr_byref) sb_put(b, "_");
     sb_bound_ident(b, v->name, k);
 }
@@ -854,6 +865,15 @@ void sb_bound_lo_k(sb_t* b, const var_t* v, int k) {
     else sb_printf(b, "__blo%d", k);
 }
 static void sb_bound_lo(sb_t* b, const var_t* v) { sb_bound_lo_k(b, v, 0); }
+
+/* Stage C backend C: indice logico di un descrittore matrice → indice 0-based
+ * (`((gmb_int_t)(<expr>))` meno il lower bound dell'asse k, se presente). */
+void emit_mv_index(ctx_t* c, const var_t* v, int k, gmb_expr_t* e) {
+    sb_put(&c->out, "((gmb_int_t)(");
+    emit_expr(c, e);
+    sb_put(&c->out, "))");
+    if (v->has_blo) { sb_put(&c->out, " - "); sb_bound_lo_k(&c->out, v, k); }
+}
 
 /* ─────────────── FASE 2.6(b): helper GPM (parità oracolo C# Gpm.cs) ─────────────── */
 
@@ -3713,10 +3733,15 @@ if (s->dim_var) {            int ty = suffix_type(s->dim_var);
              * variabile, il controllo di duplicato sotto distingue la ri-registrazione
              * dello stesso DIM da una SECONDA dichiarazione con lo stesso nome. */
             v->dim_stmt = (const void*)s;
-            /* `DIM m AS MATRIX OF (assi…, T)`: matrice rank-n nativa (double* + __bK). */
+            /* `DIM m AS MATRIX OF (assi…, T)`: valore matrice = descrittore gmb_matrix_t
+             * (Stage C backend C; i parametri `MATRIX OF` restano ABI nativa ai confini). */
             if (s->dim_ndims >= 2) {
                 v->is_array = 1; v->ndims = s->dim_ndims;
                 v->matrix = 0; v->jagged = 0; v->dyn_len = 0;
+                if (s->dim_ndims == 2 && s->dim_type
+                    && gmb_keyword_tok(s->dim_type) != GMB_TOK_StringType
+                    && gmb_keyword_tok(s->dim_type) != GMB_TOK_Single)
+                    v->matrix_value = 1;
             }
             /* `DIM v = [ ... ]` (QUADRE) senza tipo target e `DIM g = (sel FOR ...)`:
              * secondo la guida (Arrays §0.3) sono LISTE del linguaggio. La rappresentazione
@@ -3882,9 +3907,11 @@ if (s->dim_var) {            int ty = suffix_type(s->dim_var);
                 else if (s->dim_init->tk == GMB_TOK_ContextDone)
                     v->gkind = GK_CHAN;
                 /* MATRIX.CREATE a VALORE (F1): il risultato è una matrice rank-2 nativa
-                 * (double* + __b0/__b1), NON un handle. */
+                 * (double* + __b0/__b1), NON un handle. Stage C backend C: valore =
+                 * descrittore gmb_matrix_t (matrix_value). */
                 if (s->dim_init->tk == GMB_TOK_LinAlgMatrixCreateFunc) {
                     v->is_array = 1; v->ndims = 2; v->matrix = 0; v->jagged = 0; v->dyn_len = 0;
+                    v->matrix_value = 1;
                 }
                 /* F2: TRANSPOSE/SLICE/RESHAPE/CLONEMATRIX → valore matrice rank-2. */
                 else if (s->dim_init->tk == GMB_TOK_Transpose
@@ -3920,6 +3947,9 @@ if (s->dim_var) {            int ty = suffix_type(s->dim_var);
                     || s->dim_init->tk == GMB_TOK_MatrixFractionalPower
                     || is_matrix_factor_call(s->dim_init)) {
                     v->is_array = 1; v->ndims = 2; v->matrix = 0; v->jagged = 0; v->dyn_len = 0;
+                    /* Stage C backend C: anche i risultati delle funzioni a valore sono
+                     * descrittori gmb_matrix_t (unica rappresentazione dei valori matrice). */
+                    v->matrix_value = 1;
                 }
                 /* MATRIX handle: `DIM h = MATRIX.<fn>(…)` con fn che ritorna un handle → int64_t. */
                 else if (s->dim_init->tk == GMB_TOK_LinAlgVectorCreateFunc
@@ -3972,6 +4002,12 @@ if (s->dim_var) {            int ty = suffix_type(s->dim_var);
                 if (s->dim_to_hi) v->has_blo = 1;
                 for (int kd = 0; kd < s->n_dim_extra; kd++)
                     if (s->dim_extra_lo && s->dim_extra_lo[kd]) v->has_blo = 1;
+                /* Stage C backend C: `DIM m(r,c)` rank-2 DOUBLE = descrittore gmb_matrix_t
+                 * (stessa rappresentazione dei risultati MATRIX.*). Altri tipi (STRING,
+                 * SINGLE, BIT, UDT/classe, BYTE) restano array nativi. */
+                if (v->ndims == 2 && ty == TY_NUM && !v->vclass[0] && !v->is_bytes
+                    && (!s->dim_type || gmb_keyword_tok(s->dim_type) == GMB_TOK_Double))
+                    v->matrix_value = 1;
             }
             else {
                 int arik = dim_arr_init_kind(c, s->dim_init);
@@ -8362,6 +8398,14 @@ static void vi_emit(ctx_t* c, void* ud) {
 /* (b4): lunghezza di un array come argomento di builtin array-returning:
  * dyn_len/matrix → compagna <nome>_len; DIM statico → bound+1. */
 void emit_arr_len_of(ctx_t* c, var_t* av) {
+    if (av->matrix_value) {
+        sb_put(&c->out, "((gmb_int_t)(");
+        emit_ident(c, av->name);
+        sb_put(&c->out, ").rows * (gmb_int_t)(");
+        emit_ident(c, av->name);
+        sb_put(&c->out, ").cols)");
+        return;
+    }
     if ((av->dyn_len || av->matrix) && !av->jagged) {
         emit_ident(c, av->name);
         sb_put(&c->out, "_len");
@@ -8408,6 +8452,15 @@ void emit_arr_arg_len(ctx_t* c, gmb_expr_t* a) {
 /* MATRIX handle: crea l'handle dalla matrice 2D nativa (parity EmitMatrixHandleArg oracolo).
  * rows/cols dalle dimensioni runtime <name>__b0 / <name>__b1 (DIM a(N,M)). */
 void emit_matrix_handle(ctx_t* c, const var_t* v) {
+    if (v->matrix_value) {
+        /* Stage C backend C: dal descrittore all'handle del registry (ponte transitorio
+         * per le API MATRIX.* ancora handle-based). */
+        sb_put(&c->out, "gmb_matrix_handle_of(");
+        if (v->arr_byref) sb_put(&c->out, "_");
+        emit_ident(c, v->name);
+        sb_put(&c->out, ")");
+        return;
+    }
     sb_put(&c->out, "gmb_matrix_from_flat((const double*)");
     emit_ident(c, v->name);
     sb_put(&c->out, ", (int)(");
@@ -9949,6 +10002,35 @@ static void emit_arr_call_arg(ctx_t* c, fn_info_t* fn, int i, gmb_expr_t* arg, i
     }
     if (!tv || !tv->is_array) {
         c99_fail(c, line, "%s: l'argomento %d non è un array", fn->stmt->func_name, i + 1);
+        return;
+    }
+    if (tv->matrix_value) {
+        /* Stage C backend C: matrice a DESCRITTORE passata a un parametro array/matrice
+         * nativo. `ensure_flat` restituisce lo storage contiguo (materializzando una copia
+         * se è una view a strides): il callee scrive NELLO STESSO storage del descrittore,
+         * quindi OUT/INOUT restano visibili al chiamante senza copy-back. */
+        int prank = (fn->stmt->param_ndims && fn->stmt->param_ndims[i] >= 2) ? fn->stmt->param_ndims[i] : 1;
+        var_t* pv_mv = vars_find(&fn->locals, fn->stmt->func_params[i]);
+        if (prank != 2) {
+            c99_fail(c, line,
+                     "%s: la matrice '%s' (descrittore, rank 2) non può essere passata al parametro array rank-%d '%s'",
+                     fn->stmt->func_name, tv->name, prank, fn->stmt->func_params[i]);
+            return;
+        }
+        if (pv_mv && pv_mv->arr_byref) {
+            c99_fail(c, line,
+                     "%s: la matrice '%s' non può essere passata a un parametro BYREF/REDIM",
+                     fn->stmt->func_name, tv->name);
+            return;
+        }
+        sb_put(&c->out, "gmb_matrix_value_ensure_flat(&");
+        emit_var_ref(c, tv);
+        sb_put(&c->out, "), (gmb_int_t)(");
+        emit_ident(c, tv->name);
+        sb_put(&c->out, ".rows) - 1, (gmb_int_t)(");
+        emit_ident(c, tv->name);
+        sb_put(&c->out, ".cols) - 1");
+        emit_arr_arg_lowers(c, fn, i, tv);
         return;
     }
     if (tv->dyn_len && !tv->matrix) {
@@ -12641,6 +12723,22 @@ static void emit_call(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_
         int nd = av->ndims > 0 ? av->ndims : 1;
         if (nargs != nd) {
             c99_fail(c, line, "array %s: attesi %d indici, trovati %d", name, nd, nargs);
+            return;
+        }
+        if (av->matrix_value) {
+            /* Stage C backend C: lettura di un elemento dal descrittore (Get è già
+             * bounds-safe: 0 fuori range, canone del descrittore IL). */
+            if (nargs != 2) {
+                c99_fail(c, line, "matrice %s: attesi 2 indici, trovati %d", name, nargs);
+                return;
+            }
+            sb_put(&c->out, "gmb_matrix_value_get(");
+            emit_var_ref(c, av);
+            sb_put(&c->out, ", ");
+            emit_mv_index(c, av, 0, args[0]);
+            sb_put(&c->out, ", ");
+            emit_mv_index(c, av, 1, args[1]);
+            sb_put(&c->out, ")");
             return;
         }
         if (av->matrix && !av->jagged) {
@@ -15955,6 +16053,28 @@ static void emit_arr_literal_assign(ctx_t* c, const char* target, gmb_expr_t* li
                      target ? target : "?");
             return;
         }
+        if (v->matrix_value) {
+            /* Stage C backend C: matrice a descrittore riempita dal letterale (row-major). */
+            ind(c);
+            sb_put(&c->out, "gmb_matrix_value_free(&");
+            emit_var_ref(c, v);
+            sb_put(&c->out, ");\n");
+            ind(c);
+            emit_var_ref(c, v);
+            sb_printf(&c->out, " = gmb_matrix_value_zeros(%d, %d);\n", nrows, ncols);
+            for (int r = 0; r < lit->nargs && !c->error[0]; r++) {
+                gmb_expr_t* row = lit->args[r];
+                for (int cc = 0; cc < row->nargs && !c->error[0]; cc++) {
+                    ind(c);
+                    sb_put(&c->out, "gmb_matrix_value_set(");
+                    emit_var_ref(c, v);
+                    sb_printf(&c->out, ", %d, %d, ", r, cc);
+                    emit_expr(c, row->args[cc]);
+                    sb_put(&c->out, ");\n");
+                }
+            }
+            return;
+        }
         /* Variabile DINAMICA (AS ANY/VARIANT → gmb_val_t): una matrice annidata va
          * rappresentata come LISTA DI LISTE boxed, non come T[][]: TBROWSE la consuma con
          * gmb_val_as_list (prima: matrice C double/string → mismatch di tipo). */
@@ -16029,8 +16149,59 @@ static void emit_arr_literal_assign(ctx_t* c, const char* target, gmb_expr_t* li
 
 static void emit_matrix_create_value(ctx_t* c, var_t* dv, gmb_expr_t* call);
 static void emit_matrix_from_handle_result(ctx_t* c, var_t* dv, gmb_expr_t* call);
+
+/* Token delle funzioni a VALORE matrice (risultato: descrittore/valore, non handle). */
+static int is_matrix_value_call_tk(gmb_tokenkind_t tk) {
+    switch (tk) {
+        case GMB_TOK_Transpose: case GMB_TOK_MatrixSlice: case GMB_TOK_MatrixReshape:
+        case GMB_TOK_MatrixClone: case GMB_TOK_MatrixRow: case GMB_TOK_MatrixCol:
+        case GMB_TOK_Multiply: case GMB_TOK_MatrixConcatRows: case GMB_TOK_MatrixConcatCols:
+        case GMB_TOK_MatrixKron: case GMB_TOK_MatrixBlockDiag: case GMB_TOK_MatrixToeplitz:
+        case GMB_TOK_MatrixHankel: case GMB_TOK_MatrixCirculant:
+        case GMB_TOK_MatrixAddRowVector: case GMB_TOK_MatrixAddColVector:
+        case GMB_TOK_MatrixLoadCsv: case GMB_TOK_MatrixLoadJson:
+        case GMB_TOK_Inverse: case GMB_TOK_MatrixExp: case GMB_TOK_MatrixSqrt:
+        case GMB_TOK_MatrixLogm: case GMB_TOK_MatrixPseudoInverse:
+        case GMB_TOK_MatrixHessenberg: case GMB_TOK_MatrixNullSpace:
+        case GMB_TOK_MatrixCosm: case GMB_TOK_MatrixSinm: case GMB_TOK_MatrixTanm:
+        case GMB_TOK_MatrixSignm: case GMB_TOK_MatrixOrth:
+        case GMB_TOK_MatrixFractionalPower:
+            return 1;
+        default:
+            return 0;
+    }
+}
+
  static void emit_assignment(ctx_t* c, const char* target, gmb_expr_t* value, int line, int from_dim) {
       if (target && !strchr(target, '.') && gmb_c99_try_emit_dyn_write(c, target, value)) return;
+      /* Stage C backend C: assegnazione a una matrice a DESCRITTORE (gmb_matrix_t).
+       * CREATE passa dal ramo sotto (emit_matrix_create_value ha il ramo descrittore);
+       * qui SETVALUE, copia di un altro valore e (esplicito) errore per il resto. */
+      if (target && value && !strchr(target, '.')) {
+          var_t* mvt = lookup_var(c, target);
+          if (mvt && mvt->matrix_value && value->tk != GMB_TOK_LinAlgMatrixCreateFunc) {
+              if (value->kind == GMB_EXPR_CALL
+                  && (is_matrix_value_call_tk(value->tk) || is_matrix_factor_call(value))) {
+                  emit_matrix_from_handle_result(c, mvt, value);
+                  return;
+              }
+              if (value->tk == GMB_TOK_MatrixSetValue
+                  || (value->kind == GMB_EXPR_VAR && value->var
+                      && lookup_var(c, value->var) && lookup_var(c, value->var)->matrix_value)) {
+                  ind(c);
+                  sb_put(&c->out, "gmb_matrix_value_assign(&");
+                  emit_var_ref(c, mvt);
+                  sb_put(&c->out, ", ");
+                  emit_expr(c, value);
+                  sb_put(&c->out, ");\n");
+                  return;
+              }
+              c99_fail(c, line,
+                       "assegnazione a '%s': atteso un valore matrice (MATRIX.CREATE/SETVALUE, "
+                       "CLONEMATRIX o un'altra matrice a descrittore)", target);
+              return;
+          }
+      }
       /* `m = MATRIX.CREATE(r,c)` (non-DIM) su una matrice nativa: alloca il valore
        * rank-2 (double* + __b0/__b1) invece di registrare un handle (F1). */
       if (target && value && !strchr(target, '.') && value->tk == GMB_TOK_LinAlgMatrixCreateFunc) {
@@ -17707,6 +17878,17 @@ static void emit_print_container(ctx_t* c, gmb_expr_t* e) {
         sb_ident(&c->out, v->name);
         sb_put(&c->out, "))");
     } else if (v->is_array) {
+        if (v->matrix_value) {
+            /* Stage C backend C: PRINT flat row-major del descrittore. */
+            sb_put(&c->out, "gmb_json_double_array(gmb_matrix_value_ensure_flat(&");
+            emit_var_ref(c, v);
+            sb_put(&c->out, "), (gmb_int_t)(((");
+            emit_ident(c, v->name);
+            sb_put(&c->out, ").rows) * ((");
+            emit_ident(c, v->name);
+            sb_put(&c->out, ").cols)))");
+            return;
+        }
         if (v->matrix || v->jagged) { sb_put(&c->out, "gmb_string_alloc(\"[..]\")"); return; }
         if (v->ndims > 1) {
             /* Matrice NATIVA rank-N (double* flat row-major): stampa piatta come IL/PCode. */
@@ -18846,6 +19028,20 @@ static void st_let_assign(ctx_t* c, gmb_stmt_t* s) {
             gmb_expr_t* idxs[8];
             idxs[0] = s->array_index;
             for (int k = 0; k < s->n_array_idx_extra && k < 7; k++) idxs[k + 1] = s->array_idx_extra[k];
+            if (v->matrix_value) {
+                /* Stage C backend C: scrittura di un elemento del descrittore. */
+                ind(c);
+                sb_put(&c->out, "gmb_matrix_value_set(");
+                emit_var_ref(c, v);
+                sb_put(&c->out, ", ");
+                emit_mv_index(c, v, 0, idxs[0]);
+                sb_put(&c->out, ", ");
+                emit_mv_index(c, v, 1, idxs[1]);
+                sb_put(&c->out, ", ");
+                emit_expr(c, s->value);
+                sb_put(&c->out, ");\n");
+                { res_guard_end(c, res_guard); return; }
+            }
             ind(c);
             emit_flat_index(c, v, idxs, ni);
             sb_put(&c->out, " = ");
@@ -19028,6 +19224,29 @@ static void emit_dim_literal_flat(ctx_t* c, var_t* v, const gmb_expr_t* e,
             emit_dim_literal_flat(c, v, e->args[i], pos, dim_id, ndims);
         return;
     }
+    if (v->matrix_value) {
+        /* Stage C backend C: riempimento row-major del descrittore (indice flat → r,c). */
+        ind(c);
+        sb_printf(&c->out, "if (%d < (gmb_int_t)((", *pos);
+        emit_ident(c, v->name);
+        sb_printf(&c->out, ").rows * (");
+        emit_ident(c, v->name);
+        sb_printf(&c->out, ").cols)) { gmb_matrix_value_set(");
+        emit_var_ref(c, v);
+        sb_printf(&c->out, ", (gmb_int_t)((");
+        emit_ident(c, v->name);
+        sb_printf(&c->out, ").cols > 0 ? (%d / (int)(", *pos);
+        emit_ident(c, v->name);
+        sb_printf(&c->out, ").cols) : 0), (gmb_int_t)((");
+        emit_ident(c, v->name);
+        sb_printf(&c->out, ").cols > 0 ? (%d %% (int)(", *pos);
+        emit_ident(c, v->name);
+        sb_put(&c->out, ").cols) : 0), ");
+        emit_expr(c, (gmb_expr_t*)e);
+        sb_put(&c->out, "); }\n");
+        (*pos)++;
+        return;
+    }
     ind(c);
     sb_printf(&c->out, "if (%d < (gmb_int_t)(", *pos);
     for (int k = 0; k < ndims; k++) {
@@ -19043,6 +19262,20 @@ static void emit_dim_literal_flat(ctx_t* c, var_t* v, const gmb_expr_t* e,
 }
 
 static void emit_matrix_create_value(ctx_t* c, var_t* dv, gmb_expr_t* call) {
+    /* Stage C backend C: valore = descrittore gmb_matrix_t. */
+    if (dv->matrix_value) {
+        ind(c);
+        sb_put(&c->out, "gmb_matrix_value_free(&");
+        emit_var_ref(c, dv);
+        sb_put(&c->out, "); ");
+        emit_var_ref(c, dv);
+        sb_put(&c->out, " = gmb_matrix_create_value((gmb_int_t)(");
+        if (call->nargs >= 1) emit_expr(c, call->args[0]); else sb_put(&c->out, "1");
+        sb_put(&c->out, "), (gmb_int_t)(");
+        if (call->nargs >= 2) emit_expr(c, call->args[1]); else sb_put(&c->out, "1");
+        sb_put(&c->out, "));\n");
+        return;
+    }
     /* DIM/assegnazione m = MATRIX.CREATE(r,c) (F1): matrice rank-2 nativa, identità sui
      * primi min(r,c). Niente handle: il valore è double* + __b0/__b1. */
     dv->is_array = 1; dv->ndims = 2; dv->matrix = 0; dv->jagged = 0; dv->dyn_len = 0;
@@ -19072,6 +19305,25 @@ static void emit_matrix_create_value(ctx_t* c, var_t* dv, gmb_expr_t* call) {
 }
 
 static void emit_matrix_from_handle_result(ctx_t* c, var_t* dv, gmb_expr_t* call) {
+    if (dv->matrix_value) {
+        /* Stage C backend C: la funzione a valore produce ancora un handle nel runtime C;
+         * lo si converte nel descrittore (gmb_matrix_value_of = copia) e si libera l'handle.
+         * Le view vere (TRANSPOSE/SLICE/ROW/COL) passeranno direttamente al descrittore in
+         * un sotto-passo successivo. */
+        static int mvh_uid = 0;
+        int mid = ++mvh_uid;
+        ind(c);
+        sb_printf(&c->out, "{ int64_t __mvh%d = (int64_t)(", mid);
+        emit_expr(c, call);
+        sb_put(&c->out, ");\n");
+        ind(c);
+        sb_put(&c->out, "  gmb_matrix_value_free(&");
+        emit_var_ref(c, dv);
+        sb_put(&c->out, "); ");
+        emit_var_ref(c, dv);
+        sb_printf(&c->out, " = gmb_matrix_value_of(__mvh%d); gmb_matrix_free(__mvh%d); }\n", mid, mid);
+        return;
+    }
     /* F2: TRANSPOSE/SLICE/RESHAPE/CLONEMATRIX restituiscono un VALORE matrice, ma
      * l'emitter espressione produce ancora l'handle: qui l'handle viene copiato nel
      * buffer flat nativo della variabile (bounds + elementi). */
@@ -19392,6 +19644,35 @@ static void st_dim(ctx_t* c, gmb_stmt_t* s) {
                 sb_put(&c->out, ")");
                 if (los[k]) { sb_put(&c->out, " - (gmb_int_t)("); emit_expr(c, los[k]); sb_put(&c->out, ")"); }
                 sb_put(&c->out, ";\n");
+            }
+            if (v->matrix_value) {
+                /* Stage C backend C: DIM m(r,c) rank-2 DOUBLE = descrittore AZZERATO. */
+                ind(c);
+                sb_put(&c->out, "gmb_matrix_value_free(&");
+                emit_var_ref(c, v);
+                sb_put(&c->out, ");\n");
+                ind(c);
+                emit_var_ref(c, v);
+                sb_printf(&c->out, " = gmb_matrix_value_zeros((gmb_int_t)(__dim%d_0 + 1), (gmb_int_t)(__dim%d_1 + 1));\n",
+                          id, id);
+                if (v->has_blo) {
+                    for (int k = 0; k < 2; k++) {
+                        ind(c);
+                        sb_bound_lo_k(&c->out, v, k);
+                        sb_put(&c->out, " = (gmb_int_t)(");
+                        if (los[k]) emit_expr(c, los[k]);
+                        else sb_put(&c->out, "0");
+                        sb_put(&c->out, ");\n");
+                    }
+                }
+                if (s->dim_init && s->dim_init->kind == GMB_EXPR_CALL && s->dim_init->var
+                    && strcmp(s->dim_init->var, "_array_") == 0) {
+                    int lit_pos_mv = 0;
+                    emit_dim_literal_flat(c, v, s->dim_init, &lit_pos_mv, id, 2);
+                }
+                c->indent--;
+                ind(c); sb_put(&c->out, "}\n");
+                return;
             }
             ind(c);
             sb_put(&c->out, "free(");
@@ -21612,6 +21893,25 @@ static void st_return(ctx_t* c, gmb_stmt_t* s) {
         if (c->cur_fn && fn_ret_is_mat(c->cur_fn) && s->ret_value) {
             var_t* mv = (s->ret_value->kind == GMB_EXPR_VAR && s->ret_value->var)
                 ? lookup_var(c, s->ret_value->var) : NULL;
+            if (mv && mv->matrix_value) {
+                /* Stage C backend C: la funzione ritorna l'ABI nativa (double* + dims nel
+                 * canale). Dal descrittore si pubblica una COPIA flat (ownership al
+                 * chiamante, come un risultato matrice nativo). */
+                int nd = c->cur_fn->stmt->func_ret_ndims > 0 ? c->cur_fn->stmt->func_ret_ndims : 2;
+                ind(c);
+                sb_put(&c->out, "gmb_lambda_ret_ptr_set(gmb_matrix_value_to_flat(");
+                emit_var_ref(c, mv);
+                sb_put(&c->out, "));\n");
+                int mnd = nd < 2 ? 2 : nd;
+                for (int _ax = 0; _ax < mnd; _ax++) {
+                    ind(c);
+                    sb_printf(&c->out, "gmb_lambda_ret_dim_set(%d, (gmb_int_t)(", _ax);
+                    emit_ident(c, mv->name);
+                    sb_put(&c->out, _ax == 1 ? ".cols));\n" : ".rows));\n");
+                }
+                ind(c); sb_put(&c->out, "return;\n");
+                return;
+            }
             if (mv && mv->is_array) {
                 int nd = c->cur_fn->stmt->func_ret_ndims > 0 ? c->cur_fn->stmt->func_ret_ndims : 2;
                 ind(c);
@@ -32697,6 +32997,22 @@ static void emit_function(ctx_t* c, fn_info_t* fn) {
             sb_put(&c->out, "gmb_val_t ");
             emit_ident(c, v->name);
             sb_put(&c->out, " = gmb_val_nil();\n");
+        } else if (v->matrix_value) {
+            /* Stage C backend C: valore MATRIX OF = descrittore gmb_matrix_t (storage
+             * condiviso + view O(1)); niente double* + __bK. */
+            sb_put(&c->out, "gmb_matrix_t ");
+            emit_ident(c, v->name);
+            sb_put(&c->out, " = gmb_matrix_empty();\n");
+            if (v->has_blo) {
+                int ndmv = v->ndims > 0 ? v->ndims : 2;
+                for (int kmv = 0; kmv < ndmv; kmv++) {
+                    ind(c);
+                    sb_put(&c->out, "gmb_int_t ");
+                    if (kmv == 0) sb_bound_lo(&c->out, v);
+                    else sb_bound_lo_k(&c->out, v, kmv);
+                    sb_put(&c->out, " = 0;\n");
+                }
+            }
         } else if (v->jagged) {
             /* DIM x(n) AS ARRAY OF DOUBLE: double** di righe + bound compagna */
             sb_put(&c->out, "gmb_double_t** ");

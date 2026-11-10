@@ -3436,10 +3436,24 @@ static int mxh_create(ctx_t* c, gmb_expr_t** a, int n) {
 }
 static int mxh_get(ctx_t* c, gmb_expr_t** a, int n) {
     if (n < 3) return 0;
+    /* Stage C backend C: valore a descrittore (gmb_matrix_t). */
+    if (a[0] && a[0]->kind == GMB_EXPR_VAR && a[0]->var) {
+        var_t* mvq = lookup_var(c, a[0]->var);
+        if (mvq && mvq->matrix_value) {
+            sb_put(&c->out, "((gmb_double_t)gmb_matrix_value_get(");
+            emit_var_ref(c, mvq);
+            sb_put(&c->out, ", ");
+            emit_mv_index(c, mvq, 0, a[1]);
+            sb_put(&c->out, ", ");
+            emit_mv_index(c, mvq, 1, a[2]);
+            sb_put(&c->out, "))");
+            return 1;
+        }
+    }
     /* Valore MATRIX OF (var rank-2 nativa): accesso diretto con bound/lower, niente handle. */
     if (a[0] && a[0]->kind == GMB_EXPR_VAR && a[0]->var) {
         var_t* mv = lookup_var(c, a[0]->var);
-        if (mv && mv->is_array && mv->ndims >= 2 && !mv->jagged && !mv->matrix && !mv->matrix_handle) {
+        if (mv && mv->is_array && mv->ndims >= 2 && !mv->jagged && !mv->matrix && !mv->matrix_handle && !mv->matrix_value) {
             sb_put(&c->out, "({ gmb_int_t __r = (gmb_int_t)("); emit_expr(c, a[1]);
             sb_put(&c->out, "); gmb_int_t __c = (gmb_int_t)("); emit_expr(c, a[2]);
             sb_put(&c->out, "); (__r >= 0 && __r <= "); sb_bound_var(&c->out, mv, 0);
@@ -3464,11 +3478,30 @@ static int mxh_set(ctx_t* c, gmb_expr_t** a, int n) {
                  "(sola lettura): dichiaralo INOUT (o OUT) per consentire la modifica", a[0]->var);
         return 1;
     }
+    /* Stage C backend C: SETVALUE su descrittore — muta e restituisce il valore
+     * (`m = MATRIX.SETVALUE(m, r, c, v)`). */
+    if (a[0] && a[0]->kind == GMB_EXPR_VAR && a[0]->var) {
+        var_t* mvq = lookup_var(c, a[0]->var);
+        if (mvq && mvq->matrix_value) {
+            sb_put(&c->out, "({ gmb_matrix_value_set(");
+            emit_var_ref(c, mvq);
+            sb_put(&c->out, ", ");
+            emit_mv_index(c, mvq, 0, a[1]);
+            sb_put(&c->out, ", ");
+            emit_mv_index(c, mvq, 1, a[2]);
+            sb_put(&c->out, ", (gmb_double_t)(");
+            emit_expr(c, a[3]);
+            sb_put(&c->out, ")); ");
+            emit_var_ref(c, mvq);
+            sb_put(&c->out, "; })");
+            return 1;
+        }
+    }
     /* Valore MATRIX OF: mutazione diretta e valore restituito (F1:
      * `m = MATRIX.SETVALUE(m, r, c, v)`), niente registry handle. */
     if (a[0] && a[0]->kind == GMB_EXPR_VAR && a[0]->var) {
         var_t* mv = lookup_var(c, a[0]->var);
-        if (mv && mv->is_array && mv->ndims >= 2 && !mv->jagged && !mv->matrix && !mv->matrix_handle) {
+        if (mv && mv->is_array && mv->ndims >= 2 && !mv->jagged && !mv->matrix && !mv->matrix_handle && !mv->matrix_value) {
             sb_put(&c->out, "({ gmb_int_t __r = (gmb_int_t)("); emit_expr(c, a[1]);
             sb_put(&c->out, "); gmb_int_t __c = (gmb_int_t)("); emit_expr(c, a[2]);
             sb_put(&c->out, "); if (__r >= 0 && __r <= "); sb_bound_var(&c->out, mv, 0);

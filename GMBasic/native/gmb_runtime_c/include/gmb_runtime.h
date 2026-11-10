@@ -21,6 +21,7 @@
 #include "gmb_distill.h"   /* Stream D: AI DISTILL (BUILD) */
 #include "gmb_rdd_db.h"
 #include "gmb_matrix.h"
+#include "gmb_matrix_value.h"   /* descrittore MATRIX OF a valore (ADR-MATRIX, backend C) */
 #include "gmb_compress.h"
 
 /* XOR LOGICO BASIC (keyword XOR): -1 se i due valori differiscono per truthiness, 0 altrimenti. */

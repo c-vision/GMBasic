@@ -69,6 +69,8 @@ void gmb_matrix_storage_release(gmb_matrix_storage_t* st);
 /* ── costruzione ─────────────────────────────────────────────────────────── */
 /* Matrice rows×cols contigua, identità sui primi min(rows,cols) (canone MATRIX.CREATE). */
 gmb_matrix_t gmb_matrix_create_value(int64_t rows, int64_t cols);
+/* Matrice rows×cols contigua AZZERATA (canone di un DIM rank-2). */
+gmb_matrix_t gmb_matrix_value_zeros(int64_t rows, int64_t cols);
 /* Copia di un buffer flat row-major (ownership dello storage: nuovo). */
 gmb_matrix_t gmb_matrix_value_from_flat(const double* data, int64_t rows, int64_t cols);
 /* Adotta un buffer malloc'ed (ownership trasferita allo storage). */
@@ -87,6 +89,15 @@ double* gmb_matrix_value_to_flat(gmb_matrix_t m);
 /* RESHAPE: view sullo stesso storage se il descrittore è contiguo (row-major) e la
  * cardinalità coincide, altrimenti copia contigua indipendente. */
 gmb_matrix_t gmb_matrix_value_reshape(gmb_matrix_t m, int64_t rows, int64_t cols);
+/* Carica un buffer flat row-major nel descrittore *dst* (write-back dopo una chiamata a
+ * un parametro array OUT/INOUT): riusa lo storage se le dimensioni coincidono e contiguo,
+ * altrimenti assegna un valore nuovo (release del vecchio). */
+void gmb_matrix_value_set_flat(gmb_matrix_t* dst, const double* flat, int64_t rows, int64_t cols);
+/* Puntatore allo storage contiguo row-major, MATERIALIZZANDO una copia contigua se il
+ * descrittore è una view a strides (in quel caso *m viene sostituito dalla copia, con
+ * release della view). Serve ai confini che richiedono un double* condiviso (parametri
+ * array OUT/INOUT, FFI): le scritture del callee finiscono nello storage del descrittore. */
+double* gmb_matrix_value_ensure_flat(gmb_matrix_t* m);
 
 /* ── accesso ─────────────────────────────────────────────────────────────── */
 int  gmb_matrix_is_contiguous(gmb_matrix_t m);
