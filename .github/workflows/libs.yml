@@ -57,6 +57,9 @@ on:
 
 # niente due pubblicazioni in parallelo (l'indice verrebbe sovrascritto)
 concurrency:
+  # Sequenziale di proposito (un solo writer dell'indice), ma senza `cancel-in-progress` un run
+  # bloccato su un label ritirato teneva gli altri in `pending` per sempre: si annulla a mano il
+  # run bloccato invece di aspettarlo.
   group: gmb-libs-publish
   cancel-in-progress: false
 
@@ -79,9 +82,9 @@ jobs:
           # quindi win-arm64 si ri-impacchetta dallo zip ufficiale anche su un runner x64 (nessuna
           # esecuzione del binario, solo bytes + notices + sha256).
           if [ "${{ github.event.inputs.group }}" = "toolchain" ]; then
-            ALL='[{"rid":"osx-arm64","os":"macos-14"},{"rid":"osx-x64","os":"macos-13"},{"rid":"linux-x64","os":"ubuntu-24.04"},{"rid":"linux-arm64","os":"ubuntu-24.04-arm"},{"rid":"win-x64","os":"windows-2022"},{"rid":"win-arm64","os":"windows-2022"}]'
+            ALL='[{"rid":"osx-arm64","os":"macos-15"},{"rid":"osx-x64","os":"macos-15-intel"},{"rid":"linux-x64","os":"ubuntu-24.04"},{"rid":"linux-arm64","os":"ubuntu-24.04-arm"},{"rid":"win-x64","os":"windows-2022"},{"rid":"win-arm64","os":"windows-2022"}]'
           else
-            ALL='[{"rid":"osx-arm64","os":"macos-14"},{"rid":"osx-x64","os":"macos-13"},{"rid":"linux-x64","os":"ubuntu-24.04"},{"rid":"linux-arm64","os":"ubuntu-24.04-arm"}]'
+            ALL='[{"rid":"osx-arm64","os":"macos-15"},{"rid":"osx-x64","os":"macos-15-intel"},{"rid":"linux-x64","os":"ubuntu-24.04"},{"rid":"linux-arm64","os":"ubuntu-24.04-arm"}]'
           fi
           WANT="${{ github.event.inputs.rids }}"
           if [ -z "$WANT" ]; then
@@ -109,7 +112,11 @@ jobs:
       # (build + verifica funzionano, la pubblicazione fallisce con 403).
       GH_TOKEN: ${{ secrets.GMB_MODULES_TOKEN || secrets.GITHUB_TOKEN }}
       # Il runner deve sapere che l'RID è quello della matrice (il default dello script è
-      # ricavato da uname, ma osx-x64 su macos-13 e linux-arm64 su runner arm sono espliciti).
+      # ricavato da uname, ma osx-x64 su macos-15-intel e linux-arm64 su runner arm sono espliciti).
+      # LABEL macOS (2026-11-10): `macos-13` è ritirato dal 2025-12-04 e `macos-14` dal 2026-11-02.
+      # Un label ritirato NON fallisce: il job resta `queued` per sempre senza runner — ed era
+      # esattamente il blocco visto sulla prima run. Ora: osx-arm64 → `macos-15`,
+      # osx-x64 → `macos-15-intel` (ultima immagine x86_64, disponibile fino ad agosto 2027).
       LLMENV: ${{ vars.LLMENV_DIR || '' }}
     steps:
       - uses: actions/checkout@v4

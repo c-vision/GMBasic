@@ -98,6 +98,15 @@ dist_name() {
 
 all_rids() { echo "osx-arm64 osx-x64 linux-x64 linux-arm64 win-x64 win-arm64"; }
 
+# sha256 portatile: Git for Windows non ha sempre `shasum` (è uno script Perl), ma ha `sha256sum`
+# o `openssl`. Senza questo il CI Windows scriverebbe un indice con lo sha VUOTO.
+sha256_of() { # $1 = file
+  if command -v shasum >/dev/null 2>&1; then shasum -a 256 "$1" | awk '{print $1}';
+  elif command -v sha256sum >/dev/null 2>&1; then sha256sum "$1" | awk '{print $1}';
+  else openssl dgst -sha256 "$1" | awk '{print $NF}';
+  fi
+}
+
 [ "$ALL" = "1" ] || [ -n "$RID" ] || RID="$(host_rid)"
 [ "$ALL" = "1" ] || [ -n "$RID" ] || { echo "RID non riconosciuto: passare --rid o --all" >&2; exit 2; }
 
@@ -224,7 +233,7 @@ pack_one() { # $1 = rid
   fi
 
   # 6) sha256 + riga d'indice (stesso formato di libs-index-<rid>.tsv)
-  sha="$(shasum -a 256 "$OUT_DIR/$archive" | awk '{print $1}')"
+  sha="$(sha256_of "$OUT_DIR/$archive")"
   size="$(wc -c < "$OUT_DIR/$archive" | tr -d ' ')"
   # Formato CANONICO di `shasum -a 256 -c` (`<hash>  <file>`): un sidecar non verificabile con gli
   # strumenti standard non serve a nulla (prima scriveva `sha256 <hash>`).
