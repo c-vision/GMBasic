@@ -50,6 +50,18 @@ internal sealed partial class PCodeProcessor
         return HandleOf(newId);
     }
 
+    /// <summary>F4: come RunLinOp ma restituisce il VALORE matrice (double[,]) invece
+    /// dell'handle, mantenendo il park per le matrici grandi.</summary>
+    private object? RunLinOpRect(PCodeTask task, long id,
+        Func<MathNet.Numerics.LinearAlgebra.Matrix<double>, MathNet.Numerics.LinearAlgebra.Matrix<double>> op)
+    {
+        if (!_linMatrices.TryGetValue(id, out var m)) return null;
+        double[,] Compute() => op(m).ToArray();
+        if (m.RowCount * m.ColumnCount >= 1024)
+            return ParkCpuBuiltin(task, () => (object?)Compute());
+        return Compute();
+    }
+
     private long ToLongHandle(object?[] args, int index)
     {
         if (index >= args.Length || args[index] == null)
@@ -431,7 +443,7 @@ internal sealed partial class PCodeProcessor
         return result;
     }
 
-    private object? LuMatrixInverse(PCodeTask task, object?[] args) => RunLinOp(task, ToLongHandle(args, 0), m => m.Inverse());
+    private object? LuMatrixInverse(PCodeTask task, object?[] args) => RunLinOpRect(task, ToLongHandle(args, 0), m => m.Inverse());
 
     private object? LuMatrixPseudoInverse(object?[] args)
     {
@@ -1160,7 +1172,7 @@ internal sealed partial class PCodeProcessor
         }
     }
 
-    private object? LuMatrixExp(PCodeTask task, object?[] args) => RunLinOp(task, ToLongHandle(args, 0), m => global::CommonLib.Numerics.MatrixExp(m));
+    private object? LuMatrixExp(PCodeTask task, object?[] args) => RunLinOpRect(task, ToLongHandle(args, 0), m => global::CommonLib.Numerics.MatrixExp(m));
 
     private object? LuMatrixKronecker(object?[] args)
     {
@@ -1174,9 +1186,9 @@ internal sealed partial class PCodeProcessor
     }
 
     // scipy.linalg: sqrtm/logm/hessenberg/block_diag/null_space.
-    private object? LuMatrixSqrt(PCodeTask task, object?[] args) => RunLinOp(task, ToLongHandle(args, 0), m => global::CommonLib.Numerics.MatrixSqrt(m));
+    private object? LuMatrixSqrt(PCodeTask task, object?[] args) => RunLinOpRect(task, ToLongHandle(args, 0), m => global::CommonLib.Numerics.MatrixSqrt(m));
 
-    private object? LuMatrixLogm(PCodeTask task, object?[] args) => RunLinOp(task, ToLongHandle(args, 0), m => global::CommonLib.Numerics.MatrixLogm(m));
+    private object? LuMatrixLogm(PCodeTask task, object?[] args) => RunLinOpRect(task, ToLongHandle(args, 0), m => global::CommonLib.Numerics.MatrixLogm(m));
 
     private object? LuMatrixHessenberg(PCodeTask task, object?[] args) => RunLinOp(task, ToLongHandle(args, 0), m => global::CommonLib.Numerics.MatrixHessenberg(m));
 

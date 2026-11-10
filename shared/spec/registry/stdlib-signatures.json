@@ -11453,11 +11453,11 @@
       "ns": "LINALG",
       "name": "EXPM",
       "fn": true,
-      "return": "long",
+      "return": "double[]",
       "params": [
         {
           "name": "handle",
-          "type": "long",
+          "type": "ANY",
           "optional": false,
           "byRef": false,
           "array": false
@@ -11557,11 +11557,11 @@
       "ns": "LINALG",
       "name": "INVERSE",
       "fn": true,
-      "return": "long",
+      "return": "double[]",
       "params": [
         {
           "name": "handle",
-          "type": "long",
+          "type": "ANY",
           "optional": false,
           "byRef": false,
           "array": false
@@ -11572,11 +11572,11 @@
       "ns": "LINALG",
       "name": "LOGM",
       "fn": true,
-      "return": "long",
+      "return": "double[]",
       "params": [
         {
           "name": "handle",
-          "type": "long",
+          "type": "ANY",
           "optional": false,
           "byRef": false,
           "array": false
@@ -11833,11 +11833,11 @@
       "ns": "LINALG",
       "name": "SQRTM",
       "fn": true,
-      "return": "long",
+      "return": "double[]",
       "params": [
         {
           "name": "handle",
-          "type": "long",
+          "type": "ANY",
           "optional": false,
           "byRef": false,
           "array": false

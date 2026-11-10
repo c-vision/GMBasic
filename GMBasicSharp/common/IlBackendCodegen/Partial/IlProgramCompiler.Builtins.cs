@@ -710,15 +710,16 @@ public sealed partial class IlProgramCompiler
             // risolta e' LinAlgMultiplyFunc (StdLib); Multiply resta per compatibilita'.
             case TokenKind.LinAlgMultiplyFunc:
             case TokenKind.Multiply: EmitLinAlgHandlePairValueCall(expr, nameof(IlRuntime.MatrixMultiplyValue)); break;
-            case TokenKind.LinAlgInverseFunc or TokenKind.Inverse: EmitLinAlgUnaryHandleCall(expr, RuntimeMethod(nameof(IlRuntime.MatrixInverse)), vector: false); break;
+            // F4: INVERSE/EXPM/SQRTM/LOGM restituiscono il VALORE matrice.
+            case TokenKind.LinAlgInverseFunc or TokenKind.Inverse: EmitLinAlgUnaryValueCall(expr, RuntimeMethod(nameof(IlRuntime.MatrixInverseValue))); break;
             case TokenKind.LinAlgTransposeFunc or TokenKind.Transpose: EmitLinAlgUnaryValueCall(expr, RuntimeMethod(nameof(IlRuntime.MatrixTransposeValue))); break;
             case TokenKind.Determinant: EmitLinAlgUnaryHandleCall(expr, RuntimeMethod(nameof(IlRuntime.MatrixDeterminant)), vector: false); break;
             case TokenKind.MatrixPseudoInverse: EmitLinAlgUnaryHandleCall(expr, RuntimeMethod(nameof(IlRuntime.MatrixPseudoInverse)), vector: false); break;
-            case TokenKind.MatrixExp: EmitLinAlgUnaryHandleCall(expr, RuntimeMethod(nameof(IlRuntime.MatrixExp)), vector: false); break;
+            case TokenKind.MatrixExp: EmitLinAlgUnaryValueCall(expr, RuntimeMethod(nameof(IlRuntime.MatrixExpValue))); break;
             // F4: KRONECKER/BLOCKDIAG restituiscono il VALORE matrice.
             case TokenKind.MatrixKron: EmitLinAlgHandlePairValueCall(expr, nameof(IlRuntime.MatrixKroneckerValue)); break;
-            case TokenKind.MatrixSqrt: EmitLinAlgUnaryHandleCall(expr, RuntimeMethod(nameof(IlRuntime.MatrixSqrt)), vector: false); break;
-            case TokenKind.MatrixLogm: EmitLinAlgUnaryHandleCall(expr, RuntimeMethod(nameof(IlRuntime.MatrixLogm)), vector: false); break;
+            case TokenKind.MatrixSqrt: EmitLinAlgUnaryValueCall(expr, RuntimeMethod(nameof(IlRuntime.MatrixSqrtValue))); break;
+            case TokenKind.MatrixLogm: EmitLinAlgUnaryValueCall(expr, RuntimeMethod(nameof(IlRuntime.MatrixLogmValue))); break;
             case TokenKind.MatrixHessenberg: EmitLinAlgUnaryHandleCall(expr, RuntimeMethod(nameof(IlRuntime.MatrixHessenberg)), vector: false); break;
             case TokenKind.MatrixBlockDiag: EmitLinAlgHandlePairValueCall(expr, nameof(IlRuntime.MatrixBlockDiagValue)); break;
             case TokenKind.MatrixNullSpace: EmitLinAlgUnaryHandleCall(expr, RuntimeMethod(nameof(IlRuntime.MatrixNullSpace)), vector: false); break;

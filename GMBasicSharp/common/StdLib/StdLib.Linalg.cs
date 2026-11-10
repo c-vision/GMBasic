@@ -127,8 +127,8 @@ public sealed partial class StdLib
         var procedures = new ProcedureDefinition[]
         {
             new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.Inverse, "INVERSE"),
-                [new Parameter(-1, T(TokenKind.Identifier, "handle"), new LongType(), noFlags, null, false)],
-                new LongType(), TokenKind.LinAlgInverseFunc),
+                [new Parameter(-1, T(TokenKind.Identifier, "handle"), new AnyType(), noFlags, null, false)],
+                new ArrayType(new DoubleType(), 2), TokenKind.LinAlgInverseFunc),
 
             new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.Solve, "SOLVE"),
                 [
@@ -146,8 +146,8 @@ public sealed partial class StdLib
                 new LongType(), TokenKind.MatrixPseudoInverse),
 
             new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.MatrixExp, "EXPM"),
-                [new Parameter(-1, T(TokenKind.Identifier, "handle"), new LongType(), noFlags, null, false)],
-                new LongType(), TokenKind.MatrixExp),
+                [new Parameter(-1, T(TokenKind.Identifier, "handle"), new AnyType(), noFlags, null, false)],
+                new ArrayType(new DoubleType(), 2), TokenKind.MatrixExp),
 
             new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.MatrixRank, "RANK"),
                 [new Parameter(-1, T(TokenKind.Identifier, "handle"), new LongType(), noFlags, null, false)],
@@ -159,12 +159,12 @@ public sealed partial class StdLib
 
             // --- scipy.linalg: funzioni matriciali (SQRTM/LOGM/HESSENBERG/BLOCKDIAG/NULLSPACE) ---
             new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.MatrixSqrt, "SQRTM"),
-                [new Parameter(-1, T(TokenKind.Identifier, "handle"), new LongType(), noFlags, null, false)],
-                new LongType(), TokenKind.MatrixSqrt),
+                [new Parameter(-1, T(TokenKind.Identifier, "handle"), new AnyType(), noFlags, null, false)],
+                new ArrayType(new DoubleType(), 2), TokenKind.MatrixSqrt),
 
             new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.MatrixLogm, "LOGM"),
-                [new Parameter(-1, T(TokenKind.Identifier, "handle"), new LongType(), noFlags, null, false)],
-                new LongType(), TokenKind.MatrixLogm),
+                [new Parameter(-1, T(TokenKind.Identifier, "handle"), new AnyType(), noFlags, null, false)],
+                new ArrayType(new DoubleType(), 2), TokenKind.MatrixLogm),
 
             new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.MatrixHessenberg, "HESSENBERG"),
                 [new Parameter(-1, T(TokenKind.Identifier, "handle"), new LongType(), noFlags, null, false)],

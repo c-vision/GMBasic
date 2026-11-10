@@ -1366,6 +1366,9 @@ public static partial class IlRuntime
         return StoreMatrix(inverse);
     }
 
+    /// <summary>F4: INVERSE a valore (double[,] rank-2).</summary>
+    public static double[,] MatrixInverseValue(long handle) => MatrixValueOf(MatrixInverse(handle));
+
     public static double[] MatrixSolve(long matrixHandle, long vectorHandle)
     {
         var matrix = Matrix(matrixHandle);
@@ -1982,6 +1985,11 @@ public static partial class IlRuntime
         var m = MathNet.Numerics.LinearAlgebra.Double.DenseMatrix.OfArray(Matrix(handle));
         return StoreMatrix(CommonLib.Numerics.MatrixLogm(m).ToArray());
     }
+
+    /// <summary>F4: EXPM/SQRTM/LOGM a valore (double[,] rank-2).</summary>
+    public static double[,] MatrixExpValue(long handle) => MatrixValueOf(MatrixExp(handle));
+    public static double[,] MatrixSqrtValue(long handle) => MatrixValueOf(MatrixSqrt(handle));
+    public static double[,] MatrixLogmValue(long handle) => MatrixValueOf(MatrixLogm(handle));
 
     public static long MatrixHessenberg(long handle)
     {

@@ -2105,10 +2105,12 @@ static void gmb_bf_vector_dist(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, 
 static void gmb_bf_928(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
 {
         {
+            (void)vm; (void)task; (void)func_code;
             int64_t h = gmb_matrix_expm(vm_matrix_handle_arg(argc >= 1 ? &args[0] : NULL));
-            bout->result = (double)h;
+            vm_matrix_set_value_result(h, bout);
+            gmb_matrix_free(h);
         }
-        
+
 }
 static void gmb_bf_860(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
 {
@@ -2151,9 +2153,13 @@ static void gmb_bf_938(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func
 static void gmb_bf_894(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
 {
         {
+            (void)vm; (void)task;
             int64_t h = vm_matrix_handle_arg(argc >= 1 ? &args[0] : NULL);
             int64_t out = func_code == 894 ? gmb_matrix_sqrtm(h) : func_code == 895 ? gmb_matrix_logm(h) : gmb_matrix_hessenberg(h);
-            bout->result = (double)out;
+            /* F4: SQRTM (894) e LOGM (895) restituiscono il VALORE; HESSENBERG (896)
+             * resta handle finche' non viene migrato (usato via FACTOR/GETVALUE). */
+            if (func_code == 894 || func_code == 895) { vm_matrix_set_value_result(out, bout); gmb_matrix_free(out); }
+            else bout->result = (double)out;
         }
 }
 static void gmb_bf_897(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
@@ -4977,8 +4983,10 @@ static void gmb_bf_610(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func
 static void gmb_bf_611(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
 {
         {
+            (void)vm; (void)task; (void)func_code;
             int64_t h = gmb_matrix_inverse(vm_matrix_handle_arg(argc >= 1 ? &args[0] : NULL));
-            bout->result = (double)h;
+            vm_matrix_set_value_result(h, bout);
+            gmb_matrix_free(h);
         }
 }
 static void gmb_bf_612(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
