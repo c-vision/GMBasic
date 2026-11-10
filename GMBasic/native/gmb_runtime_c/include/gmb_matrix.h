@@ -182,6 +182,8 @@ double* gmb_matrix_solve_alloc(int64_t a, const double* b, int nb, int64_t* outn
 int64_t gmb_matrix_decomp_get_factor(int64_t decomp, int idx);
 int64_t gmb_matrix_decomp_get_factor_ex(int64_t decomp, int idx, int* owned);
 void gmb_matrix_decomp_free(int64_t decomp);
+/* Tipo della decomposizione: 0=LU,1=QR,2=SVD,3=EVD,4=Cholesky,5=POLAR,6=EIG,7=SCHUR, -1. */
+int gmb_matrix_decomp_type(int64_t decomp);
 
 /* ---- Linalg aggiuntive (port CommonLib/Numerics/LinAlg.cs) ----
    Convenzione ritorno: matrice → handle int64_t (nuova matrice); scalare → double;

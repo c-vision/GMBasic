@@ -1483,25 +1483,67 @@ static int64_t vm_matrix_handle_arg(const gmb_stack_entry_t* a)
     return (int64_t)(a ? a->num : -1);
 }
 
-/* Pubblica un handle matrice come VALORE rank-2 (lista flat + ndims/dim_upper).
- * Usato dalle funzioni F2 che restituiscono matrici (TRANSPOSE/SLICE/RESHAPE/CLONE). */
-static void vm_matrix_set_value_result(int64_t h, gmb_builtin_out_t* bout)
+/* Converte un handle matrice in un VALORE rank-2 della VM (lista flat + ndims/dim_upper +
+ * descrittore). Ritorna l'oggetto POSSEDUTO (ref del creatore) o NULL. */
+static gmb_obj_shared_val_t* vm_matrix_value_obj(int64_t h)
 {
     int rows = gmb_matrix_rows(h), cols = gmb_matrix_cols(h);
-    if (rows <= 0 || cols <= 0) { bout->is_num = 0; bout->result_ref = NULL; return; }
+    if (rows <= 0 || cols <= 0) return NULL;
     gmb_obj_shared_val_t* out = gmb_shared_list_new();
-    if (!out) { bout->is_num = 0; bout->result_ref = NULL; return; }
+    if (!out) return NULL;
     out->is_array = 1; out->ndims = 2;
     out->dim_upper[0] = rows - 1; out->dim_upper[1] = cols - 1;
     gmb_list_resize(out->list, (size_t)rows * (size_t)cols, 0);
     for (int i = 0; i < rows * cols; i++)
         out->list->items[i] = gmb_make_val_double(gmb_matrix_get(h, i / cols, i % cols));
-    /* Descrittore a valore (copia dal risultato): evita di ri-appiattire a ogni MATRIX.*
-     * e abilita l'accesso diretto. La lista flat resta in sync. */
     out->mat = (gmb_matrix_t*)malloc(sizeof(gmb_matrix_t));
     if (out->mat) *out->mat = gmb_matrix_value_of(h);
     else out->mat = NULL;
+    return out;
+}
+
+/* Pubblica un handle matrice come VALORE rank-2 (lista flat + ndims/dim_upper).
+ * Usato dalle funzioni F2 che restituiscono matrici (TRANSPOSE/SLICE/RESHAPE/CLONE). */
+static void vm_matrix_set_value_result(int64_t h, gmb_builtin_out_t* bout)
+{
+    gmb_obj_shared_val_t* out = vm_matrix_value_obj(h);
+    if (!out) { bout->is_num = 0; bout->result_ref = NULL; return; }
     bout->is_num = 0; bout->result_ref = (gmb_obj_t*)out; bout->result_ref_bt = GMB_BT_OBJECT;
+}
+
+/* Decomposizione come VALORE a DIZIONARIO di valori matrice (niente handle al linguaggio):
+ * chiavi = nomi dei fattori per tipo. I fattori sono COPIATI nei valori e la
+ * decomposizione viene liberata (libera anche i suoi handle interni). */
+static void vm_decomp_dict_result(int64_t h, gmb_builtin_out_t* bout)
+{
+    bout->is_num = 0; bout->result_ref = NULL; bout->result_ref_bt = GMB_BT_OBJECT;
+    if (h <= 0) return;
+    int type = gmb_matrix_decomp_type(h);
+    const char* keys[4]; int nk = 0;
+    switch (type) {
+    case 0: keys[nk++] = "L"; keys[nk++] = "U"; break;
+    case 1: keys[nk++] = "Q"; keys[nk++] = "R"; break;
+    case 2: keys[nk++] = "U"; keys[nk++] = "S"; keys[nk++] = "VT"; break;
+    case 3: keys[nk++] = "D"; keys[nk++] = "V"; break;
+    case 4: keys[nk++] = "L"; break;
+    case 5: keys[nk++] = "U"; keys[nk++] = "P"; break;
+    case 6: keys[nk++] = "DREAL"; keys[nk++] = "VRREAL"; keys[nk++] = "DIMAG"; keys[nk++] = "VRIMAG"; break;
+    case 7: keys[nk++] = "T"; keys[nk++] = "Z"; break;
+    default: break;
+    }
+    gmb_obj_shared_val_t* d = gmb_shared_dict_new();
+    if (!d) { gmb_matrix_decomp_free(h); return; }
+    for (int i = 0; i < nk; i++)
+    {
+        int owned = 0;
+        int64_t fh = gmb_matrix_decomp_get_factor_named_ex(h, keys[i], &owned);
+        if (fh <= 0) continue;
+        gmb_obj_shared_val_t* mv = vm_matrix_value_obj(fh);
+        if (owned) gmb_matrix_free(fh);
+        if (mv) { gmb_dict_set(d->dict, keys[i], gmb_make_val_obj((gmb_obj_t*)mv)); gmb_obj_release((gmb_obj_t*)mv); }
+    }
+    gmb_matrix_decomp_free(h);   /* i fattori sono gia' copiati nei valori */
+    bout->result_ref = (gmb_obj_t*)d;   /* ref del creatore trasferito */
 }
 static void gmb_bf_823(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
 {
@@ -2313,7 +2355,7 @@ static void gmb_bf_948(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func
             int64_t out = func_code == 948 ? gmb_matrix_polar(h)
                 : func_code == 955 ? gmb_matrix_eig(h)
                 : gmb_matrix_schur(h);
-            bout->result = (double)out;
+            vm_decomp_dict_result(out, bout);
         }
 }
 static void gmb_bf_949(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
@@ -5087,36 +5129,60 @@ static void gmb_bf_616_c616(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int
 {
     (void)vm; (void)task; (void)func_code;
     int64_t src = vm_matrix_handle_arg(argc >= 1 ? &args[0] : NULL);
-    bout->result = (double)gmb_matrix_evd(src);
+    vm_decomp_dict_result(gmb_matrix_evd(src), bout);
 }
 static void gmb_bf_616_c613(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
 {
     (void)vm; (void)task; (void)func_code;
     int64_t src = vm_matrix_handle_arg(argc >= 1 ? &args[0] : NULL);
-    bout->result = (double)gmb_matrix_lu(src);
+    vm_decomp_dict_result(gmb_matrix_lu(src), bout);
 }
 static void gmb_bf_616_c614(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
 {
     (void)vm; (void)task; (void)func_code;
     int64_t src = vm_matrix_handle_arg(argc >= 1 ? &args[0] : NULL);
-    bout->result = (double)gmb_matrix_qr(src);
+    vm_decomp_dict_result(gmb_matrix_qr(src), bout);
 }
 static void gmb_bf_616_c615(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
 {
     (void)vm; (void)task; (void)func_code;
     int64_t src = vm_matrix_handle_arg(argc >= 1 ? &args[0] : NULL);
-    bout->result = (double)gmb_matrix_svd(src);
+    vm_decomp_dict_result(gmb_matrix_svd(src), bout);
 }
 static void gmb_bf_616_c617(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
 {
     (void)vm; (void)task; (void)func_code;
     int64_t src = vm_matrix_handle_arg(argc >= 1 ? &args[0] : NULL);
-    bout->result = (double)gmb_matrix_cholesky(src);
+    vm_decomp_dict_result(gmb_matrix_cholesky(src), bout);
 }
 static void gmb_bf_618(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
 {
         {
             (void)vm; (void)task; (void)func_code;
+            /* VALORE a dizionario di una decomposizione (nuova rappresentazione):
+             * LINALG.FACTOR legge il fattore dalla chiave. L'handle numerico resta
+             * supportato per i percorsi legacy. */
+            if (argc >= 1 && args[0].type == 2 && args[0].ref && args[0].ref->kind == GMB_OBJ_DICT)
+            {
+                gmb_obj_shared_val_t* dv = (gmb_obj_shared_val_t*)args[0].ref;
+                char nm[64]; nm[0] = 0;
+                if (argc >= 2 && args[1].type == 2 && args[1].basic_type == GMB_BT_STRING)
+                {
+                    gmb_obj_string_t* s = (gmb_obj_string_t*)args[1].ref;
+                    size_t n = s->length < 63 ? s->length : 63;
+                    memcpy(nm, s->data, n);
+                    nm[n] = '\0';
+                }
+                gmb_val_t fv = gmb_dict_get(*dv->dict, nm);
+                if (fv.kind == GMB_TYPE_OBJECT && fv.v_ptr)
+                {
+                    gmb_obj_retain((gmb_obj_t*)fv.v_ptr);
+                    bout->is_num = 0; bout->result_ref = (gmb_obj_t*)fv.v_ptr; bout->result_ref_bt = GMB_BT_OBJECT;
+                }
+                else if (fv.kind == GMB_TYPE_DOUBLE) bout->result = fv.v_double;
+                else { bout->is_num = 0; bout->result_ref = NULL; bout->result_ref_bt = GMB_BT_NULL; }
+                return;
+            }
             int64_t d = (int64_t)(argc >= 1 ? args[0].num : -1);
             int64_t fh;
             if (argc >= 2 && args[1].type == 2 && args[1].basic_type == GMB_BT_STRING)
