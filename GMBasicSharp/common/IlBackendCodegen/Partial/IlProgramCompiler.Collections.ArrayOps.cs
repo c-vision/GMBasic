@@ -24,7 +24,7 @@ public sealed partial class IlProgramCompiler
     /// descrittore matrice (Stage D: i comandi/funzioni <c>A*</c> sono rank-1).</summary>
     private static Type ArrayElemClr(ArrayInfo info)
         => info.ClrArrayType.IsArray
-            ? ArrayElemClr(info)
+            ? info.ClrArrayType.GetElementType()!
             : throw new NotSupportedException(
                 "Backend IL: operazione ARRAY su una matrice non supportata (i comandi/funzioni A* sono rank-1; usa le API MATRIX).");
 
