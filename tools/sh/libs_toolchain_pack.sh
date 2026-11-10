@@ -105,13 +105,15 @@ all_rids() { echo "osx-arm64 osx-x64 linux-x64 linux-arm64 win-x64 win-arm64"; }
 # contenuto produce sha diversi — misurato 2026-11-10 su osx-arm64: 19.506 file identici, sha
 # diverso solo per `uname`/`gname` e per il fuso dell'mtime.
 tar_opts() {
-  # `--format=pax` costa solo +0,3% (57,37 -> 57,52 MB misurati il 2026-11-10) e rende il flusso
-  # indipendente dal formato di default di bsdtar/GNU tar, cioe identico fra macchine. Il 3,2x
-  # visto prima NON era il pax: era `-T` senza `--no-recursion` (137.026 voci invece di 20.777).
+  # NIENTE `--format=pax` (misurato il 2026-11-10): in formato pax bsdtar scrive `ctime=` e
+  # `atime=` nell'header esteso, e `ctime` cambia a OGNI ricostruzione dell'albero — due build
+  # consecutive dello stesso RID davano 56.858.100 e 56.849.876 byte (differenza al char 1553,
+  # esattamente `ctime=`). Il pax trascina anche `SCHILY.xattr.com.apple.provenance`, che esiste
+  # solo su macOS. Con il formato di default l'archivio dipende solo dal contenuto.
   if tar --version 2>/dev/null | head -1 | grep -qi 'gnu tar'; then
-    printf '%s\n' --format=pax --owner=0 --group=0 --numeric-owner --sort=name
+    printf '%s\n' --owner=0 --group=0 --numeric-owner --sort=name
   else
-    printf '%s\n' --format=pax --uid 0 --gid 0 --uname '' --gname ''
+    printf '%s\n' --uid 0 --gid 0 --uname '' --gname ''
   fi
 }
 
