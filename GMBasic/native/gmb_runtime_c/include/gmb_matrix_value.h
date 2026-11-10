@@ -77,6 +77,16 @@ gmb_matrix_t gmb_matrix_adopt_flat(double* data, int64_t rows, int64_t cols);
 gmb_matrix_t gmb_matrix_value_clone(gmb_matrix_t m);
 /* Rilascia il valore (refcount--; azzera il descrittore). */
 void gmb_matrix_value_free(gmb_matrix_t* m);
+/* Assegna un valore a un descrittore ESISTENTE (retain del nuovo, release del vecchio):
+ * è ciò che serve a un riassegnamento nella VM/emitter. Sicura con self-assignment
+ * (anche quando src è una view dello stesso storage di *dst). */
+void gmb_matrix_value_assign(gmb_matrix_t* dst, gmb_matrix_t src);
+/* Copia CONTIGUA row-major (malloc: il chiamante la libera con free()), per i confini
+ * legacy/FFI che richiedono un double*. Vuota/nil → NULL. */
+double* gmb_matrix_value_to_flat(gmb_matrix_t m);
+/* RESHAPE: view sullo stesso storage se il descrittore è contiguo (row-major) e la
+ * cardinalità coincide, altrimenti copia contigua indipendente. */
+gmb_matrix_t gmb_matrix_value_reshape(gmb_matrix_t m, int64_t rows, int64_t cols);
 
 /* ── accesso ─────────────────────────────────────────────────────────────── */
 int  gmb_matrix_is_contiguous(gmb_matrix_t m);

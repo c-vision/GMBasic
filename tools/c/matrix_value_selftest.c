@@ -9,7 +9,9 @@
  *   cc -std=c11 -Wall -Wextra -O1 -I GMBasic/native/gmb_runtime_c/include \
  *      tools/c/matrix_value_selftest.c \
  *      GMBasic/native/gmb_runtime_c/src/gmb_matrix_value.c \
- *      -o /tmp/matrix_value_selftest && /tmp/matrix_value_selftest
+ *      GMBasic/native/gmb_runtime_c/src/gmb_matrix.c \
+ *      GMBasic/native/gmb_runtime_c/src/gmb_matrix_bridge.c \
+ *      -o /tmp/matrix_value_selftest -lm && /tmp/matrix_value_selftest
  * ========================================================================== */
 #include "gmb_matrix_value.h"
 #include "gmb_matrix.h"
@@ -144,6 +146,50 @@ int main(void)
         gmb_matrix_value_free(&m);
         gmb_matrix_value_free(&back);
         gmb_matrix_free(h);
+    }
+
+    /* ── assign / to_flat / reshape (Stage C backend C) ─────────────────── */
+    {
+        gmb_matrix_t a = gmb_matrix_create_value(2, 2);
+        gmb_matrix_value_set(a, 0, 1, 3.0);
+        gmb_matrix_t b = gmb_matrix_empty();
+
+        gmb_matrix_value_assign(&b, a);
+        CHECK(b.st == a.st && a.st->refs == 2, "assign: storage condiviso (refs=2)");
+        CHECK(gmb_matrix_value_get(b, 0, 1) == 3.0, "assign: valori");
+
+        /* self-assignment con una VIEW dello stesso storage (transpose): rifincount invariato */
+        gmb_matrix_t t = gmb_matrix_transpose_view(a);
+        int64_t refs_before = a.st->refs;
+        gmb_matrix_value_assign(&a, t);
+        CHECK(a.st == t.st && a.rows == 2 && a.cols == 2 && a.row_stride == 1,
+              "assign: self-view (strides del transpose)");
+        CHECK(gmb_matrix_value_get(a, 1, 0) == 3.0, "assign: self-view (a(1,0)=vecchio a(0,1))");
+        CHECK(a.st->refs == refs_before, "assign: self-view non altera il refcount");
+
+        /* to_flat di una view non contigua: copia row-major logica */
+        double* flat = gmb_matrix_value_to_flat(t);
+        CHECK(flat != NULL && flat[1 * 2 + 0] == 3.0, "to_flat: view trasposta in row-major");
+        free(flat);
+
+        /* reshape contiguo: view (stesso storage) */
+        gmb_matrix_t sq = gmb_matrix_create_value(2, 3);
+        gmb_matrix_t rs = gmb_matrix_value_reshape(sq, 3, 2);
+        CHECK(rs.st == sq.st && sq.st->refs == 2 && rs.rows == 3 && rs.cols == 2,
+              "reshape: view contigua (stesso storage)");
+        gmb_matrix_value_free(&rs);
+        /* reshape non contiguo: copia indipendente */
+        gmb_matrix_t sqt = gmb_matrix_transpose_view(sq);
+        gmb_matrix_t rs2 = gmb_matrix_value_reshape(sqt, 2, 3);
+        CHECK(rs2.st != sq.st && gmb_matrix_is_contiguous(rs2), "reshape: da view trasposta → copia contigua");
+
+        gmb_matrix_value_free(&sqt);
+        gmb_matrix_value_free(&rs2);
+        gmb_matrix_value_free(&sq);
+        gmb_matrix_value_free(&t);
+        gmb_matrix_value_free(&b);
+        /* a ora condivide lo storage con b: liberarlo due volte è corretto (refcount) */
+        gmb_matrix_value_free(&a);
     }
 
     if (g_fail) { fprintf(stderr, "%d FAIL\n", g_fail); return 1; }

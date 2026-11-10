@@ -140,6 +140,50 @@ void gmb_matrix_value_free(gmb_matrix_t* m)
     *m = gmb_matrix_empty();
 }
 
+void gmb_matrix_value_assign(gmb_matrix_t* dst, gmb_matrix_t src)
+{
+    if (!dst) return;
+    /* Stesso storage (anche view dello stesso owner): solo i campi del descrittore
+     * cambiano, il refcount NON va toccato (altrimenti si perderebbe/duplicherebbe). */
+    if (dst->st == src.st) { *dst = src; return; }
+    gmb_matrix_storage_retain(src.st);
+    gmb_matrix_storage_release(dst->st);
+    *dst = src;
+}
+
+double* gmb_matrix_value_to_flat(gmb_matrix_t m)
+{
+    if (!m.st || m.rows <= 0 || m.cols <= 0) return NULL;
+    if (m.cols > INT64_MAX / m.rows) return NULL;
+    int64_t n = m.rows * m.cols;
+    double* out = (double*)malloc((size_t)n * sizeof(double));
+    if (!out) return NULL;
+    for (int64_t r = 0; r < m.rows; r++)
+        for (int64_t c = 0; c < m.cols; c++)
+            out[r * m.cols + c] = *gmb_matrix_elem(&m, r, c);
+    return out;
+}
+
+gmb_matrix_t gmb_matrix_value_reshape(gmb_matrix_t m, int64_t rows, int64_t cols)
+{
+    if (!m.st || rows < 0 || cols < 0) return gmb_matrix_empty();
+    if (rows != 0 && cols > INT64_MAX / rows) return gmb_matrix_empty();
+    if (rows * cols != m.rows * m.cols) return gmb_matrix_empty();
+    if (m.col_stride == 1 && m.row_stride == m.cols)
+    {
+        gmb_matrix_storage_retain(m.st);
+        return gmb_matrix_make(m.st, rows, cols, cols, 1, m.offset);
+    }
+    /* Non contigua (es. transpose view): copia row-major indipendente. */
+    gmb_matrix_t out = gmb_matrix_create_value(rows, cols);
+    if (!out.st) return out;
+    int64_t k = 0;
+    for (int64_t r = 0; r < m.rows; r++)
+        for (int64_t c = 0; c < m.cols; c++)
+            out.st->data[k++] = *gmb_matrix_elem(&m, r, c);
+    return out;
+}
+
 gmb_matrix_t gmb_matrix_view(gmb_matrix_t m, int64_t r0, int64_t c0,
                              int64_t rows, int64_t cols)
 {
