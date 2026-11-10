@@ -331,8 +331,14 @@ int mv_field_desc(ctx_t* c, gmb_expr_t* e, long* rows, long* cols);
 void emit_mv_field_desc(ctx_t* c, gmb_expr_t* e);
 /* ADR-MATRIX F4: campo-fattore di una DECOMPOSIZIONE (`lu.U`, `lu.U(i,j)`). */
 int decomp_factor_call(ctx_t* c, gmb_expr_t* e, char* out_field);
+const char* decomp_kind_name(int kind);
+void emit_matrix_arg(ctx_t* c, gmb_expr_t* e);
 void emit_decomp_factor_value(ctx_t* c, gmb_expr_t* e, const char* field);
 void emit_decomp_factor_scratch(ctx_t* c, gmb_expr_t* e, const char* field);
+void emit_decomp_factor_get(ctx_t* c, gmb_expr_t* e, const char* field, gmb_expr_t* r, gmb_expr_t* cc);
+void emit_decomp_factor_flat(ctx_t* c, gmb_expr_t* e, const char* field);
+void emit_decomp_factor_dim(ctx_t* c, gmb_expr_t* e, const char* field, int col);
+void emit_decomp_factor_display(ctx_t* c, gmb_expr_t* e, const char* field);
 int  gmb_c99_dyn_is(ctx_t* c, const char* name);
 int  gmb_c99_dyn_is_str(ctx_t* c, const char* name);
 int  gmb_c99_list_declares_dynamic(gmb_stmt_t** list, int n);
@@ -2369,6 +2375,9 @@ static int imap_type_of(ctx_t* c, const char* name) {
 }
 
 int etype(ctx_t* c, gmb_expr_t* e) {
+    /* ADR-MATRIX F4: membro/fattore di una DECOMPOSIZIONE (`lu.U`, `lu.U(i,j)`): valore
+     * MATRICE → NUMERICO (mai valorizzato come gmb_val_to_double/dict). */
+    if (e && e->var && decomp_factor_call(c, e, (char[8]){0})) return TY_NUM;
     /* Variabile di ciclo mappata su un TEMP NASCOSTO con tipo esplicito (FOR EACH su
      * elemento di tipo diverso dal tipo statico della variabile: `item` numerico usato
      * anche come `item$`, o `v` stringa che itera valori numerici di un DICT): il tipo è
@@ -3728,7 +3737,11 @@ if (s->dim_var) {            int ty = suffix_type(s->dim_var);
                 }
                 return;
             }
-            if (!s->array_size && !s->dim_type && s->dim_init && etype(c, s->dim_init) == TY_STR) ty = TY_STR;
+            /* ADR-MATRIX F4 (C99): il membro di una DECOMPOSIZIONE è un valore MATRICE
+             * (numerico), non una stringa dinamica: niente inferenza TY_STR. */
+            if (!s->array_size && !s->dim_type && s->dim_init
+                && !decomp_factor_call(c, s->dim_init, (char[8]){0})
+                && etype(c, s->dim_init) == TY_STR) ty = TY_STR;
             /* `DIM v = {"a","b",...}` (letterale array di stringhe) → array dinamico STRING */
             if (!s->array_size && s->dim_init && s->dim_init->kind == GMB_EXPR_CALL
                 && s->dim_init->var && strcmp(s->dim_init->var, "_array_") == 0
@@ -3758,6 +3771,9 @@ if (s->dim_var) {            int ty = suffix_type(s->dim_var);
                 default: break;
                 }
                 v->decomp_kind = dk;
+                /* ADR-MATRIX F4 (C99): il valore di una decomposizione è un DIZIONARIO di
+                 * valori matrice (gmb_val_t), non un handle: la var è boxed_val. */
+                if (dk) v->boxed_val = 1;
             }
             /* `DIM s = lu.U` (campo-fattore di una decomposizione): valore matrice. */
             {
@@ -4041,6 +4057,13 @@ if (s->dim_var) {            int ty = suffix_type(s->dim_var);
                     || s->dim_init->tk == GMB_TOK_MemoryMap)
                     { v->matrix_handle = 1; v->type = TY_NUM; }
             }
+            /* ADR-MATRIX F4 (C99): una DECOMPOSIZIONE è un DIZIONARIO di valori matrice:
+             * annulla la classificazione "handle" (le vecchie liste la includevano) e
+             * dichiara la variabile come gmb_val_t. */
+            if (v->decomp_kind) {
+                v->matrix_handle = 0; v->matrix = 0; v->jagged = 0; v->is_array = 0;
+                v->boxed_val = 1;
+            }
             if (s->array_size) {
                 v->is_array = 1; v->ndims = 1 + s->n_dim_extra;
                 /* DIM con TO (anche su una sola dimensione): servono le compagne __bloK
@@ -4134,7 +4157,8 @@ if (s->dim_var) {            int ty = suffix_type(s->dim_var);
                  * gmb_print_string(val), C invalido). Vale solo per STRING: senza tipo
                  * esplicito il membro resta dinamico (gmb_val_t) come prima. */
                 if (dvk && !s->dim_empty_parens
-                    && !(s->dim_type && s->dim_type_tk == GMB_TOK_StringType)) v->boxed_val = 1;
+                    && !(s->dim_type && s->dim_type_tk == GMB_TOK_StringType)
+                    && !decomp_factor_call(c, s->dim_init, (char[8]){0})) v->boxed_val = 1;
                 if (dvk == 2) v->stats_val = 1;
                 /* DIM x = <base.membro> dove base è boxed (JSON/val dinamico): x è un valore
                  * dinamico (gmb_val_t) — il tipo del membro è noto solo a runtime. Prima x era
@@ -4151,7 +4175,10 @@ if (s->dim_var) {            int ty = suffix_type(s->dim_var);
                             var_t* dbv = vars_find(dscope, dbase);
                             if (!dbv) dbv = vars_find(&c->globals, dbase);
                             /* req.BodyJson / req.Params (GK_HTTPREQ): anche qui il membro è un dict dinamico. */
-                            if (dbv && ((dbv->boxed_val && !dbv->gkind && !dbv->vclass[0]
+                            /* ADR-MATRIX F4: i MEMBRI di una decomposizione (`lu.U`) sono
+                             * valori MATRICE, non valori dinamici: niente boxed_val. */
+                            if (dbv && ((dbv->boxed_val && !dbv->decomp_kind && !dbv->gkind
+                                        && !dbv->vclass[0]
                                         && !dbv->boxed_md && !dbv->stats_val)
                                     || (dbv->gkind == GK_HTTPREQ && !dbv->vclass[0]
                                         && (strcasecmp(dm + 1, "BodyJson") == 0
@@ -5083,7 +5110,11 @@ static int prop_dim(ctx_t* c, gmb_stmt_t* s, vars_t* scope) {
         if (s->dim_var && !s->array_size && s->dim_init) {
             var_t* v = vars_find(scope, s->dim_var);
             if (!v) v = vars_find(&c->globals, s->dim_var);
-            if (v && !v->gkind && !s->dim_type && !v->matrix_handle && v->type != TY_STR && etype(c, s->dim_init) == TY_STR) { v->type = TY_STR; changed = 1; }
+            /* ADR-MATRIX F4 (C99): il membro di una DECOMPOSIZIONE (valore MATRICE) non è
+             * una stringa dinamica → nessuna promozione TY_STR (punto fisso). */
+            if (v && !v->gkind && !s->dim_type && !v->matrix_handle && !v->matrix_value
+                && !decomp_factor_call(c, s->dim_init, (char[8]){0})
+                && v->type != TY_STR && etype(c, s->dim_init) == TY_STR) { v->type = TY_STR; changed = 1; }
             /* DIM v = MakeCounter() (AS FUNCTION) → variabile funzione di prima classe */
             if (v && !v->gkind && s->dim_init->kind == GMB_EXPR_CALL && s->dim_init->var) {
                 fn_info_t* f = find_fn(c, s->dim_init->var);
@@ -6622,9 +6653,11 @@ static int bf_m_len(ctx_t* c, gmb_expr_t** a, int n){
     {
         char __ldf[8];
         if (a[0] && decomp_factor_call(c, a[0], __ldf)) {
-            sb_put(&c->out, "({ int64_t __h = ");
-            emit_decomp_factor_scratch(c, a[0], __ldf);
-            sb_put(&c->out, "; (gmb_double_t)(gmb_matrix_rows(__h) * gmb_matrix_cols(__h)); })");
+            sb_put(&c->out, "(gmb_double_t)((");
+            emit_decomp_factor_dim(c, a[0], __ldf, 0);
+            sb_put(&c->out, ") * (");
+            emit_decomp_factor_dim(c, a[0], __ldf, 1);
+            sb_put(&c->out, "))");
             return 1;
         }
     }
@@ -10075,17 +10108,14 @@ static void emit_arr_call_arg(ctx_t* c, fn_info_t* fn, int i, gmb_expr_t* arg, i
                          fn->stmt->func_name, arg->var);
                 return;
             }
-            sb_put(&c->out, "({ int64_t __dfh = ");
-            emit_decomp_factor_scratch(c, arg, __ddf);
-            sb_put(&c->out, "; gmb_matrix_data_ptr(__dfh); })");
-            /* Bound: dal fattore (ogni chiamata scratch usa uno slot diverso del ring:
-             * il puntatore resta valido per la durata della chiamata). */
-            sb_put(&c->out, ", (gmb_int_t)(gmb_matrix_rows(");
-            emit_decomp_factor_scratch(c, arg, __ddf);
+            /* Puntatore allo storage del fattore (vive quanto il dizionario `lu`) + bound. */
+            emit_decomp_factor_flat(c, arg, __ddf);
+            sb_put(&c->out, ", (gmb_int_t)((");
+            emit_decomp_factor_dim(c, arg, __ddf, 0);
             sb_put(&c->out, ") - 1)");
             if (prank >= 2) {
-                sb_put(&c->out, ", (gmb_int_t)(gmb_matrix_cols(");
-                emit_decomp_factor_scratch(c, arg, __ddf);
+                sb_put(&c->out, ", (gmb_int_t)((");
+                emit_decomp_factor_dim(c, arg, __ddf, 1);
                 sb_put(&c->out, ") - 1)");
             }
             emit_arr_arg_lowers(c, fn, i, NULL);
@@ -15757,10 +15787,7 @@ void emit_expr(ctx_t* c, gmb_expr_t* e) {
             char __dfield[8];
             if (decomp_factor_call(c, e, __dfield)) {
                 if (e->nargs == 0) { emit_decomp_factor_value(c, e, __dfield); break; }
-                sb_put(&c->out, "(gmb_double_t)gmb_matrix_get(");
-                emit_decomp_factor_scratch(c, e, __dfield);
-                sb_put(&c->out, ", (int)("); emit_expr(c, e->args[0]);
-                sb_put(&c->out, "), (int)("); emit_expr(c, e->args[1]); sb_put(&c->out, "))");
+                emit_decomp_factor_get(c, e, __dfield, e->args[0], e->args[1]);
                 break;
             }
         }
@@ -16357,6 +16384,32 @@ static int is_matrix_value_call_tk(gmb_tokenkind_t tk) {
 
  static void emit_assignment(ctx_t* c, const char* target, gmb_expr_t* value, int line, int from_dim) {
       if (target && !strchr(target, '.') && gmb_c99_try_emit_dyn_write(c, target, value)) return;
+      /* ADR-MATRIX F4 (C99): riassegnazione di una decomposizione (dizionario di valori). */
+      if (target && value && !strchr(target, '.')) {
+          var_t* tdv = lookup_var(c, target);
+          if (tdv && tdv->decomp_kind && value->kind == GMB_EXPR_CALL) {
+              int dk = 0;
+              switch (value->tk) {
+              case GMB_TOK_Lu: case GMB_TOK_LinAlgLuFunc: dk = 1; break;
+              case GMB_TOK_Qr: case GMB_TOK_LinAlgQrFunc: dk = 2; break;
+              case GMB_TOK_Svd: case GMB_TOK_LinAlgSvdFunc: dk = 3; break;
+              case GMB_TOK_Evd: case GMB_TOK_LinAlgEvdFunc: dk = 4; break;
+              case GMB_TOK_Cholesky: case GMB_TOK_LinAlgCholeskyFunc: dk = 5; break;
+              case GMB_TOK_MatrixSchur: dk = 6; break;
+              case GMB_TOK_MatrixPolar: dk = 7; break;
+              case GMB_TOK_MatrixEig: dk = 8; break;
+              default: break;
+              }
+              if (dk) {
+                  ind(c); sb_put(&c->out, "gmb_val_discard("); emit_var_ref(c, tdv); sb_put(&c->out, ");\n");
+                  ind(c); emit_var_ref(c, tdv); sb_put(&c->out, " = gmb_matrix_decomp_dict(");
+                  if (value->nargs >= 1) emit_matrix_arg(c, value->args[0]);
+                  else sb_put(&c->out, "-1");
+                  sb_printf(&c->out, ", \"%s\");\n", decomp_kind_name(dk));
+                  return;
+              }
+          }
+      }
       /* Stage C backend C: assegnazione a una matrice a DESCRITTORE (gmb_matrix_t).
        * CREATE passa dal ramo sotto (emit_matrix_create_value ha il ramo descrittore);
        * qui SETVALUE, copia di un altro valore e (esplicito) errore per il resto. */
@@ -18073,9 +18126,7 @@ static void emit_print_container(ctx_t* c, gmb_expr_t* e) {
         /* Campo-fattore di una DECOMPOSIZIONE: stampa piatta row-major del valore. */
         char __pdf[8];
         if (decomp_factor_call(c, e, __pdf) && e->nargs == 0) {
-            sb_put(&c->out, "({ gmb_matrix_t __pm = ");
-            emit_decomp_factor_value(c, e, __pdf);
-            sb_put(&c->out, "; gmb_string_t __ps = gmb_json_double_array(gmb_matrix_value_ensure_flat(&__pm), (gmb_int_t)(__pm.rows * __pm.cols)); gmb_matrix_value_free(&__pm); __ps; })");
+            emit_decomp_factor_display(c, e, __pdf);
             return;
         }
     }
@@ -19531,6 +19582,22 @@ static void emit_matrix_create_value(ctx_t* c, var_t* dv, gmb_expr_t* call) {
 /* ADR-MATRIX F4: campo-fattore di una DECOMPOSIZIONE.
  * `lu.U` → valore matrice del fattore; `lu.U(i,j)` → elemento. Il nome canonico è
  * validato per TIPO (LU: L/U/P, QR: Q/R, SVD: U/S/VT, EVD: D/V, Cholesky: L). */
+/* Nome del TIPO di decomposizione per i costruttori a dizionario (C99). */
+const char* decomp_kind_name(int kind)
+{
+    switch (kind) {
+    case 1: return "LU";
+    case 2: return "QR";
+    case 3: return "SVD";
+    case 4: return "EVD";
+    case 5: return "CHOLESKY";
+    case 6: return "SCHUR";
+    case 7: return "POLAR";
+    case 8: return "EIG";
+    default: return "LU";
+    }
+}
+
 static int decomp_factor_name(int kind, const char* field, char* out, size_t cap)
 {
     if (!field || !field[0] || !out || cap < 2) return 0;
@@ -19589,17 +19656,54 @@ static var_t* decomp_factor_base(ctx_t* c, gmb_expr_t* e)
 void emit_decomp_factor_value(ctx_t* c, gmb_expr_t* e, const char* field)
 {
     var_t* bv = decomp_factor_base(c, e);
-    sb_put(&c->out, "gmb_matrix_decomp_factor_value_named((int64_t)(");
-    if (bv) emit_var_ref(c, bv); else sb_put(&c->out, "0");
-    sb_printf(&c->out, "), \"%s\")", field);
+    sb_put(&c->out, "gmb_val_decomp_factor_matrix(");
+    if (bv) emit_var_ref(c, bv); else sb_put(&c->out, "gmb_val_nil()");
+    sb_printf(&c->out, ", \"%s\")", field);
 }
 
 void emit_decomp_factor_scratch(ctx_t* c, gmb_expr_t* e, const char* field)
 {
     var_t* bv = decomp_factor_base(c, e);
-    sb_put(&c->out, "gmb_matrix_decomp_factor_scratch_named((int64_t)(");
-    if (bv) emit_var_ref(c, bv); else sb_put(&c->out, "0");
-    sb_printf(&c->out, "), \"%s\")", field);
+    sb_put(&c->out, "gmb_val_decomp_factor_scratch(");
+    if (bv) emit_var_ref(c, bv); else sb_put(&c->out, "gmb_val_nil()");
+    sb_printf(&c->out, ", \"%s\")", field);
+}
+
+/* Accessi diretti al fattore di una decomposizione (valore a dizionario). */
+void emit_decomp_factor_get(ctx_t* c, gmb_expr_t* e, const char* field, gmb_expr_t* r, gmb_expr_t* cc)
+{
+    var_t* bv = decomp_factor_base(c, e);
+    sb_put(&c->out, "(gmb_double_t)gmb_val_decomp_factor_get(");
+    if (bv) emit_var_ref(c, bv); else sb_put(&c->out, "gmb_val_nil()");
+    sb_printf(&c->out, ", \"%s\", (gmb_int_t)(", field);
+    emit_expr(c, r);
+    sb_put(&c->out, "), (gmb_int_t)(");
+    emit_expr(c, cc);
+    sb_put(&c->out, "))");
+}
+
+void emit_decomp_factor_flat(ctx_t* c, gmb_expr_t* e, const char* field)
+{
+    var_t* bv = decomp_factor_base(c, e);
+    sb_put(&c->out, "gmb_val_decomp_factor_flat(");
+    if (bv) emit_var_ref(c, bv); else sb_put(&c->out, "gmb_val_nil()");
+    sb_printf(&c->out, ", \"%s\")", field);
+}
+
+void emit_decomp_factor_dim(ctx_t* c, gmb_expr_t* e, const char* field, int col)
+{
+    var_t* bv = decomp_factor_base(c, e);
+    sb_printf(&c->out, "(gmb_double_t)gmb_val_decomp_factor_%s(", col ? "cols" : "rows");
+    if (bv) emit_var_ref(c, bv); else sb_put(&c->out, "gmb_val_nil()");
+    sb_printf(&c->out, ", \"%s\")", field);
+}
+
+void emit_decomp_factor_display(ctx_t* c, gmb_expr_t* e, const char* field)
+{
+    var_t* bv = decomp_factor_base(c, e);
+    sb_put(&c->out, "gmb_val_decomp_factor_display(");
+    if (bv) emit_var_ref(c, bv); else sb_put(&c->out, "gmb_val_nil()");
+    sb_printf(&c->out, ", \"%s\")", field);
 }
 
 int mv_field_desc(ctx_t* c, gmb_expr_t* e, long* rows, long* cols) {
@@ -19861,6 +19965,17 @@ static void st_dim(ctx_t* c, gmb_stmt_t* s) {
              }
              sb_put(&c->out, ";\n");
              dv->late_local = 0;
+             return;
+         }
+         if (dv && dv->decomp_kind && s->dim_init) {
+             /* ADR-MATRIX F4 (C99): decomposizione = DIZIONARIO di valori matrice. La
+              * variabile è dichiarata nel prologo (gmb_val_t = nil): qui si ASSEGNA,
+              * scartando il valore precedente (così un DIM in un ciclo non accumula). */
+             ind(c); sb_put(&c->out, "gmb_val_discard("); emit_var_ref(c, dv); sb_put(&c->out, ");\n");
+             ind(c); emit_var_ref(c, dv); sb_put(&c->out, " = gmb_matrix_decomp_dict(");
+             if (s->dim_init->nargs >= 1) emit_matrix_arg(c, s->dim_init->args[0]);
+             else sb_put(&c->out, "-1");
+             sb_printf(&c->out, ", \"%s\");\n", decomp_kind_name(dv->decomp_kind));
              return;
          }
          if (dv && dv->matrix_value && s->dim_init && s->dim_init->kind == GMB_EXPR_VAR) {

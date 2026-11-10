@@ -2375,15 +2375,15 @@ static int bd_ubound(ctx_t* c, gmb_expr_t** a, int n, int line) {
             return 1;
         }
     }
-    /* Campo-fattore di una DECOMPOSIZIONE: bound dal fattore (handle scratch). */
+    /* Campo-fattore di una DECOMPOSIZIONE: bound dal dizionario dei fattori. */
     {
         char __udf[8];
         if (a[0] && decomp_factor_call(c, a[0], __udf)) {
             int k = 0;
             if (n == 2 && a[1]->kind == GMB_EXPR_NUM) k = (int)a[1]->num - 1;
             if (k < 0 || k > 1) k = 0;
-            sb_printf(&c->out, "(gmb_double_t)(gmb_matrix_%s(", k == 0 ? "rows" : "cols");
-            emit_decomp_factor_scratch(c, a[0], __udf);
+            sb_put(&c->out, "(gmb_double_t)((");
+            emit_decomp_factor_dim(c, a[0], __udf, k == 1);
             sb_put(&c->out, ") - 1)");
             return 1;
         }
@@ -3402,7 +3402,7 @@ static int mx_is_matrix_val(const var_t* v)
 { return v && v->is_array && v->ndims >= 2 && !v->jagged && !v->matrix && !v->matrix_handle; }
 /* Argomento matrice per le funzioni HISTORICHE a handle: un valore MATRIX OF (var rank-2)
  * viene registrato come handle con gmb_matrix_from_flat; un handle resta se stesso. */
-static void emit_matrix_arg(ctx_t* c, gmb_expr_t* e)
+void emit_matrix_arg(ctx_t* c, gmb_expr_t* e)
 {
     {
         /* Campo-fattore di una DECOMPOSIZIONE: la funzione restituisce già un handle
@@ -3614,12 +3614,10 @@ static int mxh_set(ctx_t* c, gmb_expr_t** a, int n) {
 static int mx_rowcol(ctx_t* c, gmb_expr_t** a, int n, const char* rc) {
     if (n != 1) return 0;
     {
-        /* Campo-fattore di una DECOMPOSIZIONE: dimensione dal fattore (handle scratch). */
+        /* Campo-fattore di una DECOMPOSIZIONE: dimensione dal dizionario dei fattori. */
         char df[8];
         if (decomp_factor_call(c, a[0], df)) {
-            sb_printf(&c->out, "(gmb_double_t)gmb_matrix_%s(", rc);
-            emit_decomp_factor_scratch(c, a[0], df);
-            sb_put(&c->out, ")");
+            emit_decomp_factor_dim(c, a[0], df, strcmp(rc, "cols") == 0);
             return 1;
         }
     }
@@ -3696,9 +3694,40 @@ static int mx_signm(ctx_t* c, gmb_expr_t** a, int n) { return mx_one(c, a, n, "g
  * Condivide GMB_TOK_Get con POOL.Get/SyncMap.Get: n==2 con 1° arg handle decomp. */
 static int mx_factor(ctx_t* c, gmb_expr_t** a, int n) {
     if (n != 2) return 0;
-    /* Copia del fattore: l'handle viene materializzato in un valore e poi liberato — i
-     * fattori interni della decomposizione NON vanno liberati (altrimenti la seconda
-     * lettura dello stesso fattore restituisce vuoto). */
+    /* Argomento = VALORE di una decomposizione (variabile o chiamata): il fattore si legge
+     * dal dizionario e si restituisce un handle SCRATCH (nessuna crescita del registry). */
+    if (a[0] && a[0]->kind == GMB_EXPR_VAR && a[1] && a[1]->kind == GMB_EXPR_STR) {
+        var_t* dv = lookup_var(c, a[0]->var);
+        if (dv && dv->decomp_kind) {
+            sb_put(&c->out, "(gmb_int_t)gmb_val_decomp_factor_scratch(");
+            emit_var_ref(c, dv);
+            sb_printf(&c->out, ", \"%s\")", a[1]->str);
+            return 1;
+        }
+    }
+    if (a[0] && a[0]->kind == GMB_EXPR_CALL && a[1] && a[1]->kind == GMB_EXPR_STR) {
+        int dk = 0;
+        switch (a[0]->tk) {
+        case GMB_TOK_Lu: case GMB_TOK_LinAlgLuFunc: dk = 1; break;
+        case GMB_TOK_Qr: case GMB_TOK_LinAlgQrFunc: dk = 2; break;
+        case GMB_TOK_Svd: case GMB_TOK_LinAlgSvdFunc: dk = 3; break;
+        case GMB_TOK_Evd: case GMB_TOK_LinAlgEvdFunc: dk = 4; break;
+        case GMB_TOK_Cholesky: case GMB_TOK_LinAlgCholeskyFunc: dk = 5; break;
+        case GMB_TOK_MatrixSchur: dk = 6; break;
+        case GMB_TOK_MatrixPolar: dk = 7; break;
+        case GMB_TOK_MatrixEig: dk = 8; break;
+        default: break;
+        }
+        if (dk) {
+            sb_put(&c->out, "({ gmb_val_t __dq = gmb_matrix_decomp_dict(");
+            if (a[0]->nargs >= 1) emit_matrix_arg(c, a[0]->args[0]);
+            else sb_put(&c->out, "-1");
+            sb_printf(&c->out, ", \"%s\"); int64_t __qh = gmb_val_decomp_factor_scratch(__dq, \"%s\"); gmb_val_discard(__dq); __qh; })",
+                      decomp_kind_name(dk), a[1]->str);
+            return 1;
+        }
+    }
+    /* Fallback legacy: handle di decomposizione. */
     sb_put(&c->out, "gmb_matrix_decomp_factor_copy_named((int64_t)(");
     emit_matrix_arg(c, a[0]);
     sb_put(&c->out, "), (const char*)(");
