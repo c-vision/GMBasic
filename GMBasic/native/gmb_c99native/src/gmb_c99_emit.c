@@ -9018,8 +9018,8 @@ static void emit_dim_arr_init(ctx_t* c, gmb_stmt_t* s) {
         if (init->tk == GMB_TOK_MatrixSubspaceAngles) {
             if (init->nargs < 2) { c99_fail(c, s->line, "%s: attesi due handle matrice", bn); return; }
             sb_put(&c->out, " = gmb_matrix_subspace_angles_alloc((int64_t)(");
-            emit_expr(c, init->args[0]); sb_put(&c->out, "), (int64_t)(");
-            emit_expr(c, init->args[1]); sb_put(&c->out, "), &");
+            emit_matrix_value_or_expr(c, init->args[0]); sb_put(&c->out, "), (int64_t)(");
+            emit_matrix_value_or_expr(c, init->args[1]); sb_put(&c->out, "), &");
             emit_ident(c, v->name); sb_put(&c->out, "_len);\n");
             return;
         }

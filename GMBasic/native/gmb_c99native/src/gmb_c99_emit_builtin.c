@@ -3503,10 +3503,13 @@ static int mx_det(ctx_t* c, gmb_expr_t** a, int n) { return mx_one(c, a, n, "gmb
 static int mx_rank(ctx_t* c, gmb_expr_t** a, int n) { return mx_one(c, a, n, "gmb_matrix_rank", 0); }
 static int mx_trace(ctx_t* c, gmb_expr_t** a, int n) { return mx_one(c, a, n, "gmb_matrix_trace", 0); }
 static int mx_norm(ctx_t* c, gmb_expr_t** a, int n) {
-    /* VECTOR.EUCLIDEA (token condiviso GMB_TOK_Norm) su array 1D → gmb_vector_norm_flat. */
+    /* VECTOR.EUCLIDEA (token condiviso GMB_TOK_Norm) su array 1D → gmb_vector_norm_flat.
+     * Le matrici-VALORE sono is_array con ndims>=2 (matrix=0): NON devono prendere il
+     * ramo vettoriale, altrimenti NORM calcola la norma euclidea dei primi elementi
+     * (2.236 invece di 3 su [[2,1],[1,2]]). */
     if (n == 1 && a[0]->kind == GMB_EXPR_VAR && a[0]->var) {
         var_t* av = lookup_var(c, a[0]->var);
-        if (av && av->is_array && !av->matrix) {
+        if (av && av->is_array && !av->matrix && av->ndims <= 1) {
             sb_put(&c->out, "(gmb_double_t)gmb_vector_norm_flat((const double*)");
             emit_var_ref(c, av);
             sb_put(&c->out, ", (int)(");
