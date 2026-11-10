@@ -79,7 +79,7 @@ public static class DataTypeMapper
         // ecc. resta per la firma del linker, ma il CLR type è un intero a 64 bit.
         LuDecompositionType or QrDecompositionType or SvdDecompositionType or EvdDecompositionType or CholeskyDecompositionType
             or SchurDecompositionType or PolarDecompositionType or EigDecompositionType
-            => types.Int64,
+            => types.Object,   /* ADR-MATRIX F4: valore = dizionario dei fattori (MatrixValue) */
         // Placeholder pre-inferenza del Linker: capita per variabili dichiarate implicitamente
         // senza tipo esplicito né suffisso (es. contatore FOR I=1 TO 5, mai visto da un LET/DIM
         // tipizzato prima) — il linker non lo risolve staticamente perché il runtime dinamico
