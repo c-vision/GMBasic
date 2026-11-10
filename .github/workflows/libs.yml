@@ -138,7 +138,12 @@ jobs:
           repository: ${{ vars.LLMENV_REPO }}
           path: LLMEnv
 
+      # `shell: bash` esplicito: su Windows il default è PowerShell e questo è uno snippet POSIX
+      # (`set -uo pipefail`, `[ -d ... ]`) — senza, il job fallisce con ParserError prima di tutto.
+      # Per `toolchain` il passo è inutile (nessun LLMEnv): si salta.
       - name: compute LLMENV
+        if: env.GROUP != 'toolchain'
+        shell: bash
         run: |
           if [ -d "$GITHUB_WORKSPACE/LLMEnv" ]; then echo "LLMENV=$GITHUB_WORKSPACE/LLMEnv" >> "$GITHUB_ENV"; fi
 
@@ -161,11 +166,25 @@ jobs:
       # TOOLCHAIN (F1): il COMPILATORE per RID. Non compila e non usa LLMEnv: scarica la
       # distribuzione ufficiale, la ri-impacchetta in modo deterministico (notices + sha256) e,
       # col publish richiesto, carica gli asset sul tag immutabile `toolchain-v1`.
-      - name: "toolchain: impacchetta (+ pubblica se richiesto)"
+      - name: "toolchain: impacchetta"
         if: env.GROUP == 'toolchain'
         shell: bash
+        run: bash tools/sh/libs_toolchain_pack.sh --rid "${{ matrix.rid }}"
+
+      # L'artefatto si carica PRIMA della pubblicazione: la prova dello sha deve esistere anche
+      # quando il push su GMBasicModules non è possibile (senza PAT `GMB_MODULES_TOKEN` il
+      # GITHUB_TOKEN è in sola lettura → la pubblicazione finisce 403).
+      - uses: actions/upload-artifact@v4
+        if: env.GROUP == 'toolchain'
+        with:
+          name: toolchain-${{ matrix.rid }}
+          path: build/libs/toolchain/zig-*.tar.xz*
+          if-no-files-found: error
+
+      - name: "toolchain: pubblica su toolchain-vN"
+        if: env.GROUP == 'toolchain' && env.DO_PUBLISH == 'true'
+        shell: bash
         run: |
-          bash tools/sh/libs_toolchain_pack.sh --rid "${{ matrix.rid }}"
           # Tag del compilatore separato da quello degli altri gruppi: `tag=runtime-v3` con
           # `group=toolchain` spedirebbe 57 MB di zig su un tag di runtime.
           tag="${TAG:-toolchain-v1}"
@@ -173,18 +192,8 @@ jobs:
             toolchain-v*) : ;;
             *) echo "::error::il gruppo toolchain pubblica solo su toolchain-vN (ricevuto '$tag')" >&2; exit 1 ;;
           esac
-          if [ "$DO_PUBLISH" = "true" ]; then
-            bash tools/sh/libs_publish_files_gh.sh toolchain "${{ matrix.rid }}" \
-              --source build/libs/toolchain --tag "$tag" --yes
-          else
-            echo "(publish non richiesto: artefatti solo come workflow artifact)"
-          fi
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: toolchain-${{ matrix.rid }}
-          path: build/libs/toolchain/zig-*.tar.xz*
-          if-no-files-found: error
+          bash tools/sh/libs_publish_files_gh.sh toolchain "${{ matrix.rid }}" \
+            --source build/libs/toolchain --tag "$tag" --yes
 
   index:
     name: indice (libs-manifest.json)
