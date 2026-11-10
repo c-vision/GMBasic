@@ -10044,6 +10044,54 @@ static void emit_arr_call_arg(ctx_t* c, fn_info_t* fn, int i, gmb_expr_t* arg, i
         emit_arr_arg_lowers(c, fn, i, NULL);
         return;
     }
+    /* Campo-fattore di una DECOMPOSIZIONE (`lu.U`) passato a un parametro array/MATRIX OF:
+     * puntatore allo storage del fattore (handle scratch) + bound. Il fattore è un VALORE
+     * (read-only): un parametro OUT/INOUT non può riceverlo. */
+    {
+        char __ddf[8];
+        if (arg && decomp_factor_call(c, arg, __ddf) && arg->nargs == 0) {
+            int prank = (fn->stmt->param_ndims && fn->stmt->param_ndims[i] >= 2) ? fn->stmt->param_ndims[i] : 1;
+            var_t* pv_f = vars_find(&fn->locals, fn->stmt->func_params[i]);
+            if (fn->stmt->param_mode && i < fn->stmt->n_params && fn->stmt->param_mode[i] != 0) {
+                c99_fail(c, line,
+                         "%s: il campo-fattore '%s' di una decomposizione è un valore (sola lettura) e non può "
+                         "essere passato al parametro OUT/INOUT '%s'",
+                         fn->stmt->func_name, arg->var,
+                         i < fn->stmt->n_params ? fn->stmt->func_params[i] : "?");
+                return;
+            }
+            if (prank < 2) {
+                if (!fn->stmt->param_ndims)
+                    fn->stmt->param_ndims = (uint8_t*)calloc((size_t)(fn->stmt->n_params > 0 ? fn->stmt->n_params : 1), 1);
+                if (fn->stmt->param_ndims) {
+                    fn->stmt->param_ndims[i] = 2;
+                    g_c99_rank_changed = 1;
+                }
+                prank = 2;
+            }
+            if (pv_f && pv_f->arr_byref) {
+                c99_fail(c, line,
+                         "%s: il campo-fattore '%s' non può essere passato a un parametro BYREF/REDIM",
+                         fn->stmt->func_name, arg->var);
+                return;
+            }
+            sb_put(&c->out, "({ int64_t __dfh = ");
+            emit_decomp_factor_scratch(c, arg, __ddf);
+            sb_put(&c->out, "; gmb_matrix_data_ptr(__dfh); })");
+            /* Bound: dal fattore (ogni chiamata scratch usa uno slot diverso del ring:
+             * il puntatore resta valido per la durata della chiamata). */
+            sb_put(&c->out, ", (gmb_int_t)(gmb_matrix_rows(");
+            emit_decomp_factor_scratch(c, arg, __ddf);
+            sb_put(&c->out, ") - 1)");
+            if (prank >= 2) {
+                sb_put(&c->out, ", (gmb_int_t)(gmb_matrix_cols(");
+                emit_decomp_factor_scratch(c, arg, __ddf);
+                sb_put(&c->out, ") - 1)");
+            }
+            emit_arr_arg_lowers(c, fn, i, NULL);
+            return;
+        }
+    }
     /* Campi matrice di CLASSE/UDT (`t.m` con `DIM m(N,M) AS DOUBLE`): il campo è un
      * buffer flat nativo; al parametro si passa il puntatore ai dati e i bound STATICI
      * del tipo (rank portato a 2 come per i descrittori, così firma e call-site
@@ -18005,6 +18053,11 @@ static const char* http_mw_wrapper_for(ctx_t* c, fn_info_t* fn) {
 /* PRINT diretto di array/collezioni: costruisce la rappresentazione stringa JSON-like. */
 static int print_container_kind(ctx_t* c, gmb_expr_t* e) {
     if (!e) return 0;
+    /* Campo-fattore di una DECOMPOSIZIONE (`lu.U`): valore matrice → stampa piatta. */
+    {
+        char __pdf[8];
+        if (decomp_factor_call(c, e, __pdf) && e->nargs == 0) return 1;
+    }
     /* builtin che ritornano gmb_val_t (RgbaColor/DisplayMode/lista) → stampa val, non double */
     if (e->kind == GMB_EXPR_CALL && (e->tk == GMB_TOK_Rgb || e->tk == GMB_TOK_ScreenInfo || e->tk == GMB_TOK_CollideBatch)
         && !call_shadows_local_array(c, e)) return 1;
@@ -18016,6 +18069,16 @@ static int print_container_kind(ctx_t* c, gmb_expr_t* e) {
     return 0;
 }
 static void emit_print_container(ctx_t* c, gmb_expr_t* e) {
+    {
+        /* Campo-fattore di una DECOMPOSIZIONE: stampa piatta row-major del valore. */
+        char __pdf[8];
+        if (decomp_factor_call(c, e, __pdf) && e->nargs == 0) {
+            sb_put(&c->out, "({ gmb_matrix_t __pm = ");
+            emit_decomp_factor_value(c, e, __pdf);
+            sb_put(&c->out, "; gmb_string_t __ps = gmb_json_double_array(gmb_matrix_value_ensure_flat(&__pm), (gmb_int_t)(__pm.rows * __pm.cols)); gmb_matrix_value_free(&__pm); __ps; })");
+            return;
+        }
+    }
     if (e->kind == GMB_EXPR_CALL) {
         sb_put(&c->out, "gmb_val_to_display(");
         emit_expr(c, e);
