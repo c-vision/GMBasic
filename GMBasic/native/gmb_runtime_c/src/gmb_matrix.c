@@ -38,11 +38,18 @@ typedef struct {
 
 static gmb_matrix_t g_mats[GMB_MATRIX_MAX];
 static gmb_matrix_lock_t g_mtx;
+/* Slot scratch del ponte descrittore→handle (vedi gmb_matrix_scratch). */
+#define GMB_MATRIX_SCRATCH 8
+static int64_t g_scratch_ids[GMB_MATRIX_SCRATCH];
+static int g_scratch_ready;
+static int g_scratch_next;
 
 void gmb_matrix_init(void)
 {
     gmb_matrix_lock(&g_mtx);
     memset(g_mats, 0, sizeof(g_mats));
+    g_scratch_ready = 0;
+    g_scratch_next = 0;
     gmb_matrix_unlock(&g_mtx);
 }
 
@@ -57,6 +64,8 @@ void gmb_matrix_shutdown(void)
             g_mats[i].in_use = 0;
         }
     }
+    g_scratch_ready = 0;
+    g_scratch_next = 0;
     gmb_matrix_unlock(&g_mtx);
 }
 
@@ -96,6 +105,41 @@ int64_t gmb_matrix_create_from(int rows, int cols, const double* data)
     if (h <= 0 || !data) return h;
     gmb_matrix_t* m = mget(h);
     if (m) memcpy(m->data, data, (size_t)(rows * cols) * sizeof(double));
+    return h;
+}
+
+/* ── Handle SCRATCH per il ponte descrittore→handle ──────────────────────────
+ * Le API MATRIX.* storiche prendono un handle: senza slot dedicati il ponte
+ * descrittore→handle creerebbe (e non libererebbe) un handle per ogni operazione su un
+ * valore — il registry è fisso a 256 slot e un semplice ciclo lo esaurisce. Gli 8 slot
+ * scratch sono reclamati una volta e riusati round-robin: l'handle serve solo alla
+ * chiamata immediata che lo riceve. */
+int64_t gmb_matrix_scratch(int rows, int cols, const double* data)
+{
+    if (!data || rows <= 0 || cols <= 0) return -1;
+    if (!g_scratch_ready)
+    {
+        for (int i = 0; i < GMB_MATRIX_SCRATCH; i++)
+            g_scratch_ids[i] = gmb_matrix_create(1, 1);
+        g_scratch_ready = 1;
+    }
+    int slot = (__sync_fetch_and_add(&g_scratch_next, 1)) & (GMB_MATRIX_SCRATCH - 1);
+    int64_t h = g_scratch_ids[slot];
+    if (h <= 0) return -1;
+    gmb_matrix_lock(&g_mtx);
+    gmb_matrix_t* m = mget(h);
+    if (!m) { gmb_matrix_unlock(&g_mtx); return -1; }
+    size_t need = (size_t)rows * (size_t)cols;
+    if (need > (size_t)m->rows * (size_t)m->cols)
+    {
+        double* nd = (double*)realloc(m->data, need * sizeof(double));
+        if (!nd) { gmb_matrix_unlock(&g_mtx); return -1; }
+        m->data = nd;
+    }
+    memcpy(m->data, data, need * sizeof(double));
+    m->rows = rows;
+    m->cols = cols;
+    gmb_matrix_unlock(&g_mtx);
     return h;
 }
 

@@ -98,6 +98,10 @@ void gmb_matrix_value_set_flat(gmb_matrix_t* dst, const double* flat, int64_t ro
  * release della view). Serve ai confini che richiedono un double* condiviso (parametri
  * array OUT/INOUT, FFI): le scritture del callee finiscono nello storage del descrittore. */
 double* gmb_matrix_value_ensure_flat(gmb_matrix_t* m);
+/* Handle TEMPORANEO (slot scratch riusati) per passare un descrittore alle API MATRIX.*
+ * ancora handle-based: l'handle vive solo per la chiamata in corso (nessuna crescita del
+ * registry, che ha 256 slot fissi). */
+int64_t gmb_matrix_scratch_handle(gmb_matrix_t m);
 
 /* ── accesso ─────────────────────────────────────────────────────────────── */
 int  gmb_matrix_is_contiguous(gmb_matrix_t m);

@@ -25,6 +25,9 @@ int64_t gmb_matrix_create(int rows, int cols);
 /* Crea matrice da array di valori (row-major). Ritorna handle o -1. */
 int64_t gmb_matrix_create_from(int rows, int cols, const double* data);
 
+/* Handle SCRATCH (slot riusati) per il ponte descrittore→handle: valido solo per la
+ * chiamata immediata che lo riceve. Non fa crescere il registry (256 slot fissi). */
+int64_t gmb_matrix_scratch(int rows, int cols, const double* data);
 /* ---- Accesso ---- */
 int gmb_matrix_rows(int64_t h);
 int gmb_matrix_cols(int64_t h);

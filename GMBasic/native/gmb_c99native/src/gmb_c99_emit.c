@@ -8453,9 +8453,10 @@ void emit_arr_arg_len(ctx_t* c, gmb_expr_t* a) {
  * rows/cols dalle dimensioni runtime <name>__b0 / <name>__b1 (DIM a(N,M)). */
 void emit_matrix_handle(ctx_t* c, const var_t* v) {
     if (v->matrix_value) {
-        /* Stage C backend C: dal descrittore all'handle del registry (ponte transitorio
-         * per le API MATRIX.* ancora handle-based). */
-        sb_put(&c->out, "gmb_matrix_handle_of(");
+        /* Stage C backend C: handle SCRATCH (slot riusati) per le API MATRIX.* ancora
+         * handle-based: l'handle vive solo per la chiamata immediata, nessuna crescita
+         * del registry (256 slot fissi). */
+        sb_put(&c->out, "gmb_matrix_scratch_handle(");
         if (v->arr_byref) sb_put(&c->out, "_");
         emit_ident(c, v->name);
         sb_put(&c->out, ")");

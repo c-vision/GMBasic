@@ -9,6 +9,7 @@
  * ============================================================================ */
 #include "gmb_matrix.h"
 #include "gmb_matrix_value.h"
+#include <stdlib.h>
 
 gmb_matrix_t gmb_matrix_value_of(int64_t handle)
 {
@@ -31,5 +32,15 @@ int64_t gmb_matrix_handle_of(gmb_matrix_t m)
     for (int64_t r = 0; r < m.rows; r++)
         for (int64_t c = 0; c < m.cols; c++)
             gmb_matrix_set(h, (int)r, (int)c, gmb_matrix_value_get(m, r, c));
+    return h;
+}
+
+int64_t gmb_matrix_scratch_handle(gmb_matrix_t m)
+{
+    if (!m.st || m.rows <= 0 || m.cols <= 0) return -1;
+    double* flat = gmb_matrix_value_to_flat(m);
+    if (!flat) return -1;
+    int64_t h = gmb_matrix_scratch((int)m.rows, (int)m.cols, flat);
+    free(flat);
     return h;
 }

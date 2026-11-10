@@ -1456,7 +1456,7 @@ static int64_t vm_matrix_handle_arg(const gmb_stack_entry_t* a)
                             : v.kind == GMB_TYPE_INT ? (double)v.v_int : 0.0;
                 } else flat[i] = 0.0;
             }
-            int64_t h = gmb_matrix_create_from(rows, cols, flat);
+            int64_t h = gmb_matrix_scratch(rows, cols, flat);
             free(flat);
             return h;
         }
