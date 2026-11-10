@@ -1963,6 +1963,9 @@ public static partial class IlRuntime
         return StoreMatrix(CommonLib.Numerics.MatrixKron(ma, mb).ToArray());
     }
 
+    /// <summary>F4: KRONECKER a valore (double[,] rank-2).</summary>
+    public static double[,] MatrixKroneckerValue(long a, long b) => MatrixValueOf(MatrixKronecker(a, b));
+
     // scipy.linalg: funzioni matriciali (sqrtm/logm/hessenberg/block_diag/null_space).
     public static long MatrixSqrt(long handle)
     {
@@ -1988,6 +1991,9 @@ public static partial class IlRuntime
         var mb = MathNet.Numerics.LinearAlgebra.Double.DenseMatrix.OfArray(Matrix(b));
         return StoreMatrix(CommonLib.Numerics.BlockDiag(ma, mb).ToArray());
     }
+
+    /// <summary>F4: BLOCKDIAG a valore (double[,] rank-2).</summary>
+    public static double[,] MatrixBlockDiagValue(long a, long b) => MatrixValueOf(MatrixBlockDiag(a, b));
 
     public static long MatrixNullSpace(long handle)
     {

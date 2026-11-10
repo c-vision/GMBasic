@@ -151,18 +151,18 @@ public sealed partial class StdLib
                 new ArrayType(new DoubleType(), 2), TokenKind.LinAlgTransposeFunc),
 
             new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.MatrixKron, "KRONECKER"),
-                [new Parameter(-1, T(TokenKind.Identifier, "handle1"), new LongType(), noFlags, null, false),
-                 new Parameter(-1, T(TokenKind.Identifier, "handle2"), new LongType(), noFlags, null, false)],
-                new LongType(), TokenKind.MatrixKron),
+                [new Parameter(-1, T(TokenKind.Identifier, "handle1"), new AnyType(), noFlags, null, false),
+                 new Parameter(-1, T(TokenKind.Identifier, "handle2"), new AnyType(), noFlags, null, false)],
+                new ArrayType(new DoubleType(), 2), TokenKind.MatrixKron),
 
             new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.MatrixTrace, "TRACE"),
                 [new Parameter(-1, T(TokenKind.Identifier, "handle"), new LongType(), noFlags, null, false)],
                 new DoubleType(), TokenKind.MatrixTrace),
 
             new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.MatrixBlockDiag, "BLOCKDIAG"),
-                [new Parameter(-1, T(TokenKind.Identifier, "handle1"), new LongType(), noFlags, null, false),
-                 new Parameter(-1, T(TokenKind.Identifier, "handle2"), new LongType(), noFlags, null, false)],
-                new LongType(), TokenKind.MatrixBlockDiag),
+                [new Parameter(-1, T(TokenKind.Identifier, "handle1"), new AnyType(), noFlags, null, false),
+                 new Parameter(-1, T(TokenKind.Identifier, "handle2"), new AnyType(), noFlags, null, false)],
+                new ArrayType(new DoubleType(), 2), TokenKind.MatrixBlockDiag),
 
             new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.MatrixSetValue, "SETVALUE"),
                 [new Parameter(-1, T(TokenKind.Identifier, "handle"), new AnyType(), noFlags, null, false),

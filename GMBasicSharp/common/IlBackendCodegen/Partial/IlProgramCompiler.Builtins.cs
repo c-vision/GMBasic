@@ -713,11 +713,12 @@ public sealed partial class IlProgramCompiler
             case TokenKind.Determinant: EmitLinAlgUnaryHandleCall(expr, RuntimeMethod(nameof(IlRuntime.MatrixDeterminant)), vector: false); break;
             case TokenKind.MatrixPseudoInverse: EmitLinAlgUnaryHandleCall(expr, RuntimeMethod(nameof(IlRuntime.MatrixPseudoInverse)), vector: false); break;
             case TokenKind.MatrixExp: EmitLinAlgUnaryHandleCall(expr, RuntimeMethod(nameof(IlRuntime.MatrixExp)), vector: false); break;
-            case TokenKind.MatrixKron: EmitLinAlgHandlePairCall(expr, nameof(IlRuntime.MatrixKronecker)); break;
+            // F4: KRONECKER/BLOCKDIAG restituiscono il VALORE matrice.
+            case TokenKind.MatrixKron: EmitLinAlgHandlePairValueCall(expr, nameof(IlRuntime.MatrixKroneckerValue)); break;
             case TokenKind.MatrixSqrt: EmitLinAlgUnaryHandleCall(expr, RuntimeMethod(nameof(IlRuntime.MatrixSqrt)), vector: false); break;
             case TokenKind.MatrixLogm: EmitLinAlgUnaryHandleCall(expr, RuntimeMethod(nameof(IlRuntime.MatrixLogm)), vector: false); break;
             case TokenKind.MatrixHessenberg: EmitLinAlgUnaryHandleCall(expr, RuntimeMethod(nameof(IlRuntime.MatrixHessenberg)), vector: false); break;
-            case TokenKind.MatrixBlockDiag: EmitLinAlgHandlePairCall(expr, nameof(IlRuntime.MatrixBlockDiag)); break;
+            case TokenKind.MatrixBlockDiag: EmitLinAlgHandlePairValueCall(expr, nameof(IlRuntime.MatrixBlockDiagValue)); break;
             case TokenKind.MatrixNullSpace: EmitLinAlgUnaryHandleCall(expr, RuntimeMethod(nameof(IlRuntime.MatrixNullSpace)), vector: false); break;
             case TokenKind.MatrixSetValue: EmitLinAlgSetValueCall(expr); break;
             case TokenKind.MatrixGetValue: EmitLinAlgGetValueCall(expr); break;

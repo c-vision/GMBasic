@@ -2159,10 +2159,13 @@ static void gmb_bf_894(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func
 static void gmb_bf_897(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
 {
         {
+            (void)vm; (void)task; (void)func_code;
             int64_t hs[2];
             hs[0] = vm_matrix_handle_arg(argc >= 1 ? &args[0] : NULL);
             hs[1] = vm_matrix_handle_arg(argc >= 2 ? &args[1] : NULL);
-            bout->result = (double)gmb_matrix_block_diag(hs, 2);
+            int64_t __v = gmb_matrix_block_diag(hs, 2);
+            vm_matrix_set_value_result(__v, bout);
+            gmb_matrix_free(__v);
         }
 }
 static void gmb_bf_898(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
@@ -2327,10 +2330,12 @@ static void gmb_bf_954(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func
 static void gmb_bf_929(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
 {
         {
+            (void)vm; (void)task; (void)func_code;
             int64_t h = gmb_matrix_kron(vm_matrix_handle_arg(argc >= 1 ? &args[0] : NULL), vm_matrix_handle_arg(argc >= 2 ? &args[1] : NULL));
-            bout->result = (double)h;
+            vm_matrix_set_value_result(h, bout);
+            gmb_matrix_free(h);
         }
-        
+
 }
 static void gmb_bf_1100(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
 {

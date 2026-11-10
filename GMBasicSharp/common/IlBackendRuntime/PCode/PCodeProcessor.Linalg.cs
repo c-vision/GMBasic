@@ -1168,9 +1168,9 @@ internal sealed partial class PCodeProcessor
         var id2 = ToLongHandle(args, 1);
         if (!_linMatrices.TryGetValue(id1, out var m1) || !_linMatrices.TryGetValue(id2, out var m2))
             return null;
-        var newId = Interlocked.Increment(ref _nextLinearMatrixId);
-        _linMatrices[newId] = global::CommonLib.Numerics.MatrixKron(m1, m2);
-        return HandleOf(newId);
+        // F4: KRONECKER restituisce il VALORE matrice.
+        var res = global::CommonLib.Numerics.MatrixKron(m1, m2);
+        return SimdToRect(new CommonLib.SimdMatrix(res.ToRowMajorArray(), res.RowCount, res.ColumnCount));
     }
 
     // scipy.linalg: sqrtm/logm/hessenberg/block_diag/null_space.
@@ -1186,9 +1186,9 @@ internal sealed partial class PCodeProcessor
         var id2 = ToLongHandle(args, 1);
         if (!_linMatrices.TryGetValue(id1, out var m1) || !_linMatrices.TryGetValue(id2, out var m2))
             return null;
-        var newId = Interlocked.Increment(ref _nextLinearMatrixId);
-        _linMatrices[newId] = global::CommonLib.Numerics.BlockDiag(m1, m2);
-        return HandleOf(newId);
+        // F4: BLOCKDIAG restituisce il VALORE matrice.
+        var res = global::CommonLib.Numerics.BlockDiag(m1, m2);
+        return SimdToRect(new CommonLib.SimdMatrix(res.ToRowMajorArray(), res.RowCount, res.ColumnCount));
     }
 
     private object? LuMatrixNullSpace(PCodeTask task, object?[] args) => RunLinOp(task, ToLongHandle(args, 0), m => global::CommonLib.Numerics.NullSpace(m));
