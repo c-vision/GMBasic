@@ -78,6 +78,7 @@ public static class DataTypeMapper
         // IL (vedi IlRuntime.LinAlgDecompositions); il tipo statico LuDecompositionType
         // ecc. resta per la firma del linker, ma il CLR type è un intero a 64 bit.
         LuDecompositionType or QrDecompositionType or SvdDecompositionType or EvdDecompositionType or CholeskyDecompositionType
+            or SchurDecompositionType or PolarDecompositionType or EigDecompositionType
             => types.Int64,
         // Placeholder pre-inferenza del Linker: capita per variabili dichiarate implicitamente
         // senza tipo esplicito né suffisso (es. contatore FOR I=1 TO 5, mai visto da un LET/DIM

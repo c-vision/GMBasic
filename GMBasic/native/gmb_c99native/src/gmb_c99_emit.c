@@ -3752,6 +3752,9 @@ if (s->dim_var) {            int ty = suffix_type(s->dim_var);
                 case GMB_TOK_Svd: case GMB_TOK_LinAlgSvdFunc: dk = 3; break;
                 case GMB_TOK_Evd: case GMB_TOK_LinAlgEvdFunc: dk = 4; break;
                 case GMB_TOK_Cholesky: case GMB_TOK_LinAlgCholeskyFunc: dk = 5; break;
+                case GMB_TOK_MatrixSchur: dk = 6; break;
+                case GMB_TOK_MatrixPolar: dk = 7; break;
+                case GMB_TOK_MatrixEig: dk = 8; break;
                 default: break;
                 }
                 v->decomp_kind = dk;
@@ -19464,16 +19467,23 @@ static int decomp_factor_name(int kind, const char* field, char* out, size_t cap
     for (size_t i = 0; i < n; i++) up[i] = (char)toupper((unsigned char)field[i]);
     up[n] = 0;
     int ok = 0;
+    const char* rn = up;
     switch (kind) {
     case 1: ok = (!strcmp(up, "L") || !strcmp(up, "U") || !strcmp(up, "P")); break;
     case 2: ok = (!strcmp(up, "Q") || !strcmp(up, "R")); break;
     case 3: ok = (!strcmp(up, "U") || !strcmp(up, "S") || !strcmp(up, "VT")); break;
     case 4: ok = (!strcmp(up, "D") || !strcmp(up, "V")); break;
     case 5: ok = (!strcmp(up, "L")); break;
+    case 6: ok = (!strcmp(up, "T") || !strcmp(up, "Z")); break;   /* SCHUR */
+    case 7: ok = (!strcmp(up, "U") || !strcmp(up, "P")); break;   /* POLAR */
+    case 8:                                                       /* EIG: D/V reali */
+        if (!strcmp(up, "D")) { ok = 1; rn = "DREAL"; }
+        else if (!strcmp(up, "V")) { ok = 1; rn = "VRREAL"; }
+        break;
     default: break;
     }
     if (!ok) return 0;
-    snprintf(out, cap, "%s", up);
+    snprintf(out, cap, "%s", rn);
     return 1;
 }
 

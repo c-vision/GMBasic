@@ -94,6 +94,9 @@ namespace Basic;
 [JsonDerivedType(typeof(SvdDecompositionType), nameof(SvdDecompositionType))]
 [JsonDerivedType(typeof(EvdDecompositionType), nameof(EvdDecompositionType))]
 [JsonDerivedType(typeof(CholeskyDecompositionType), nameof(CholeskyDecompositionType))]
+[JsonDerivedType(typeof(SchurDecompositionType), nameof(SchurDecompositionType))]
+[JsonDerivedType(typeof(PolarDecompositionType), nameof(PolarDecompositionType))]
+[JsonDerivedType(typeof(EigDecompositionType), nameof(EigDecompositionType))]
 [JsonDerivedType(typeof(FunctionPointerType), nameof(FunctionPointerType))]
 [JsonDerivedType(typeof(InterfaceType), nameof(InterfaceType))]
 [JsonDerivedType(typeof(ClassType), nameof(ClassType))]
@@ -1081,6 +1084,30 @@ public record CholeskyDecompositionType(Token? SourceToken = null)
     /// </summary>
     public override string ToString() => "CHOLESKYDECOMPOSITION";
 
+    public override AstNode DeepClone() => this with { };
+}
+
+/// <summary>Decomposizione di SCHUR (campi T, Z).</summary>
+public record SchurDecompositionType(Token? SourceToken = null)
+    : DataType(SourceToken?.Position ?? SourcePosition.Unknown)
+{
+    public override string ToString() => "SCHURDECOMPOSITION";
+    public override AstNode DeepClone() => this with { };
+}
+
+/// <summary>Decomposizione POLAR (campi U, P).</summary>
+public record PolarDecompositionType(Token? SourceToken = null)
+    : DataType(SourceToken?.Position ?? SourcePosition.Unknown)
+{
+    public override string ToString() => "POLARDECOMPOSITION";
+    public override AstNode DeepClone() => this with { };
+}
+
+/// <summary>Decomposizione EIG generale (campi D → DREAL, V → VRREAL).</summary>
+public record EigDecompositionType(Token? SourceToken = null)
+    : DataType(SourceToken?.Position ?? SourcePosition.Unknown)
+{
+    public override string ToString() => "EIGDECOMPOSITION";
     public override AstNode DeepClone() => this with { };
 }
 

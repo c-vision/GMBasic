@@ -199,7 +199,7 @@ public sealed partial class StdLib
                 new ArrayType(new DoubleType()), TokenKind.MatrixSubspaceAngles),
             new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.MatrixPolar, "POLAR"),
                 [new Parameter(-1, T(TokenKind.Identifier, "handle"), new LongType(), noFlags, null, false)],
-                new LongType(), TokenKind.MatrixPolar),
+                new PolarDecompositionType(), TokenKind.MatrixPolar),
             new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.MatrixCond, "COND"),
                 [new Parameter(-1, T(TokenKind.Identifier, "handle"), new LongType(), noFlags, null, false)],
                 new DoubleType(), TokenKind.MatrixCond),
@@ -213,10 +213,10 @@ public sealed partial class StdLib
                 new ArrayType(new DoubleType()), TokenKind.MatrixSolveTriangular),
             new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.MatrixEig, "EIG"),
                 [new Parameter(-1, T(TokenKind.Identifier, "handle"), new LongType(), noFlags, null, false)],
-                new LongType(), TokenKind.MatrixEig),
+                new EigDecompositionType(), TokenKind.MatrixEig),
             new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.MatrixSchur, "SCHUR"),
                 [new Parameter(-1, T(TokenKind.Identifier, "handle"), new LongType(), noFlags, null, false)],
-                new LongType(), TokenKind.MatrixSchur),
+                new SchurDecompositionType(), TokenKind.MatrixSchur),
 
             new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.Lu, "LU"),
                 [new Parameter(-1, T(TokenKind.Identifier, "handle"), new LongType(), noFlags, null, false)],
@@ -256,7 +256,10 @@ public sealed partial class StdLib
             { "QrDecomposition", new QrDecompositionType() },
             { "SvdDecomposition", new SvdDecompositionType() },
             { "EvdDecomposition", new EvdDecompositionType() },
-            { "CholeskyDecomposition", new CholeskyDecompositionType() }
+            { "CholeskyDecomposition", new CholeskyDecompositionType() },
+            { "SchurDecomposition", new SchurDecompositionType() },
+            { "PolarDecomposition", new PolarDecompositionType() },
+            { "EigDecomposition", new EigDecompositionType() }
         };
 
         /* ADR-MATRIX F4: le decomposizioni sono VALORI con i fattori come CAMPI matrice.
@@ -283,6 +286,18 @@ public sealed partial class StdLib
         RegisterTypeSchema(typeof(CholeskyDecompositionType), new Dictionary<string, DataType>(StringComparer.OrdinalIgnoreCase)
         {
             { "L", new MatrixValueType() }
+        });
+        RegisterTypeSchema(typeof(SchurDecompositionType), new Dictionary<string, DataType>(StringComparer.OrdinalIgnoreCase)
+        {
+            { "T", new MatrixValueType() }, { "Z", new MatrixValueType() }
+        });
+        RegisterTypeSchema(typeof(PolarDecompositionType), new Dictionary<string, DataType>(StringComparer.OrdinalIgnoreCase)
+        {
+            { "U", new MatrixValueType() }, { "P", new MatrixValueType() }
+        });
+        RegisterTypeSchema(typeof(EigDecompositionType), new Dictionary<string, DataType>(StringComparer.OrdinalIgnoreCase)
+        {
+            { "D", new MatrixValueType() }, { "V", new MatrixValueType() }
         });
 
         RegisterBuiltinNamespace(namespaceName, procedures, types);
