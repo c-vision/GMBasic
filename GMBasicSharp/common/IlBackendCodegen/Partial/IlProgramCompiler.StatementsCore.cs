@@ -6,6 +6,7 @@ using System.Collections.Immutable;
 using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
+using CommonLib;
 using System.Reflection.Metadata;
 using System.Reflection.Metadata.Ecma335;
 using System.Reflection.PortableExecutable;
@@ -490,6 +491,19 @@ public sealed partial class IlProgramCompiler
     {
         if (_currentReturnType is null) return;
         var valueType = NormalizeInferredType(InferType(value));
+        // F4: confini valore MATRIX ↔ array rank-2 flat sul valore di ritorno.
+        if (NormalizeInferredType(_currentReturnType) is MatrixValueType
+            && valueType is ArrayType { Rank: >= 2 })
+        {
+            _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.MatrixValueFromRect), typeof(double[,])));
+            return;
+        }
+        if (NormalizeInferredType(_currentReturnType) is ArrayType { Rank: >= 2 }
+            && valueType is MatrixValueType)
+        {
+            _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.MatrixValueToRect), typeof(MatrixValue)));
+            return;
+        }
         if (_currentReturnType is StringType returnStrType)
         {
             if (valueType is not StringType)

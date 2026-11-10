@@ -3538,7 +3538,7 @@ public static partial class Linker
                 { ResolvedDefinition = finalSymbol.DeclarationNode as ProcedureDefinition };
         }
 
-        var isIndexableType = finalSymbol.DataType is ArrayType or TupleType or ListType or DictType or HashSetType or QueueType
+        var isIndexableType = finalSymbol.DataType is ArrayType or MatrixValueType or TupleType or ListType or DictType or HashSetType or QueueType
             or StackType or SortedDictType or TreeType or AVLTreeType or RedBlackTreeType
             or BinaryIndexedTreeType or TrieType or LinkedListType or CircularLinkedListType
             or BinaryHeapType or BagType or CacheType or GraphType or TimelineType

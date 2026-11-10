@@ -542,13 +542,13 @@ public sealed partial class IlProgramCompiler
             case TokenKind.MatrixAboveMatrix: EmitMatrixThresholdCall(expr, nameof(IlRuntime.MatrixAboveMatrix)); break;
             case TokenKind.MatrixAsCsv: EmitLinAlgUnaryHandleCall(expr, RuntimeMethod(nameof(IlRuntime.MatrixAsCsv)), vector: false); break;
             case TokenKind.MatrixAsJson: EmitLinAlgUnaryHandleCall(expr, RuntimeMethod(nameof(IlRuntime.MatrixAsJson)), vector: false); break;
-            case TokenKind.MatrixRowCount: EmitLinAlgUnaryHandleCall(expr, RuntimeMethod(nameof(IlRuntime.MatrixRowCount)), vector: false); break;
-            case TokenKind.MatrixColumnCount: EmitLinAlgUnaryHandleCall(expr, RuntimeMethod(nameof(IlRuntime.MatrixColumnCount)), vector: false); break;
-            case TokenKind.MatrixClone: EmitLinAlgUnaryValueCall(expr, RuntimeMethod(nameof(IlRuntime.MatrixCloneValue))); break;
+            case TokenKind.MatrixRowCount: EmitMatrixValueOrHandleUnary(expr, nameof(IlRuntime.MatrixValueRowCount), RuntimeMethod(nameof(IlRuntime.MatrixRowCount))); break;
+            case TokenKind.MatrixColumnCount: EmitMatrixValueOrHandleUnary(expr, nameof(IlRuntime.MatrixValueColumnCount), RuntimeMethod(nameof(IlRuntime.MatrixColumnCount))); break;
+            case TokenKind.MatrixClone: EmitMatrixUnaryValue(expr, RuntimeMethod(nameof(IlRuntime.MatrixCloneValue)), nameof(IlRuntime.MatrixValueClone)); break;
             // MATRIX F2b (2026-11-09): ROW/COL/ISCONTIGUOUS.
-            case TokenKind.MatrixRow: EmitMatrixRowColCall(expr, RuntimeMethod(nameof(IlRuntime.MatrixRowValue))); break;
-            case TokenKind.MatrixCol: EmitMatrixRowColCall(expr, RuntimeMethod(nameof(IlRuntime.MatrixColValue))); break;
-            case TokenKind.MatrixIsContiguous: EmitLinAlgUnaryHandleCall(expr, RuntimeMethod(nameof(IlRuntime.MatrixIsContiguous)), vector: false); break;
+            case TokenKind.MatrixRow: EmitMatrixRowColCall(expr, RuntimeMethod(nameof(IlRuntime.MatrixRowValue)), isRow: true); break;
+            case TokenKind.MatrixCol: EmitMatrixRowColCall(expr, RuntimeMethod(nameof(IlRuntime.MatrixColValue)), isRow: false); break;
+            case TokenKind.MatrixIsContiguous: EmitMatrixValueOrHandleUnary(expr, nameof(IlRuntime.MatrixValueIsContiguous), RuntimeMethod(nameof(IlRuntime.MatrixIsContiguous))); break;
             case TokenKind.MatrixMultiplyVector: EmitMatrixVectorProductCall(expr, nameof(IlRuntime.MatrixMultiplyVector)); break;
             case TokenKind.MatrixMultiplyLeftVector: EmitMatrixVectorProductCall(expr, nameof(IlRuntime.MatrixMultiplyLeftVector)); break;
             // F4: LOADCSV/LOADJSON restituiscono il VALORE matrice.
@@ -712,7 +712,7 @@ public sealed partial class IlProgramCompiler
             case TokenKind.Multiply: EmitLinAlgHandlePairValueCall(expr, nameof(IlRuntime.MatrixMultiplyValue)); break;
             // F4: INVERSE/EXPM/SQRTM/LOGM restituiscono il VALORE matrice.
             case TokenKind.LinAlgInverseFunc or TokenKind.Inverse: EmitLinAlgUnaryValueCall(expr, RuntimeMethod(nameof(IlRuntime.MatrixInverseValue))); break;
-            case TokenKind.LinAlgTransposeFunc or TokenKind.Transpose: EmitLinAlgUnaryValueCall(expr, RuntimeMethod(nameof(IlRuntime.MatrixTransposeValue))); break;
+            case TokenKind.LinAlgTransposeFunc or TokenKind.Transpose: EmitMatrixUnaryValue(expr, RuntimeMethod(nameof(IlRuntime.MatrixTransposeValue)), nameof(IlRuntime.MatrixValueTransposeView)); break;
             case TokenKind.Determinant: EmitLinAlgUnaryHandleCall(expr, RuntimeMethod(nameof(IlRuntime.MatrixDeterminant)), vector: false); break;
             case TokenKind.MatrixPseudoInverse: EmitLinAlgUnaryValueCall(expr, RuntimeMethod(nameof(IlRuntime.MatrixPseudoInverseValue))); break;
             case TokenKind.MatrixExp: EmitLinAlgUnaryValueCall(expr, RuntimeMethod(nameof(IlRuntime.MatrixExpValue))); break;

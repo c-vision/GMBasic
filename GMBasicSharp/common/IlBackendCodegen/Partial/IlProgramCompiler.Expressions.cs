@@ -6,6 +6,7 @@ using System.Collections.Immutable;
 using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
+using CommonLib;
 using System.Reflection.Metadata;
 using System.Reflection.Metadata.Ecma335;
 using System.Reflection.PortableExecutable;
@@ -1162,6 +1163,10 @@ public sealed partial class IlProgramCompiler
         static bool ElemIsInt(DataType t) => t is LongType or IntegerType or QuadType
             or ByteType or SByteType or ULongType or UIntegerType or UQuadType;
         var arrayKindFix = new System.Collections.Generic.List<(System.Reflection.Emit.LocalBuilder tmp, System.Reflection.Emit.LocalBuilder orig, System.Type tmpType, bool wantInt)>();
+        /* Valore MATRIX (descrittore) → parametro ARRAY rank-2 (layout flat `double[,]`):
+         * si passa una copia rettangolare e (per OUT/INOUT) si ricopia indietro nel
+         * descrittore del chiamante dopo la Call. Elenco consumato subito dopo la chiamata. */
+        var matrixArgFix = new System.Collections.Generic.List<(System.Reflection.Emit.LocalBuilder tmp, System.Reflection.Emit.LocalBuilder orig, System.Type tmpType, bool writeBack)>();
         for (var i = 0; i < expr.Args.Length; i++)
         {
             var paramDef = definition.Parameters[i];
@@ -1211,6 +1216,24 @@ public sealed partial class IlProgramCompiler
                     _il.Emit(OpCodes.Ldloca, tmpArr);
                     arrayKindFix.Add((tmpArr, origObj, tmpClr, ElemIsInt(pbArr.ElementType)));
                 }
+                else if (NormalizeInferredType(paramDef.DataType) is ArrayType pbMat
+                         && pbMat.Rank >= 2
+                         && NormalizeInferredType(InferType(expr.Args[i])) is MatrixValueType)
+                {
+                    /* Valore MATRIX → parametro array rank-2 per riferimento: copia
+                     * rettangolare in un temp, poi write-back nel descrittore (OUT/INOUT). */
+                    var tmpClr = DataTypeMapper.Map(pbMat, _types, _classTypes);
+                    var origObj = _il.DeclareLocal(typeof(object));
+                    var tmpArr = _il.DeclareLocal(tmpClr);
+                    EmitExpression(expr.Args[i]);
+                    _il.Emit(OpCodes.Stloc, origObj);
+                    _il.Emit(OpCodes.Ldloc, origObj);
+                    _il.Emit(OpCodes.Castclass, typeof(MatrixValue));
+                    _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.MatrixValueToRect), typeof(MatrixValue)));
+                    _il.Emit(OpCodes.Stloc, tmpArr);
+                    _il.Emit(OpCodes.Ldloca, tmpArr);
+                    matrixArgFix.Add((tmpArr, origObj, tmpClr, paramDef.Mode != ParameterMode.In));
+                }
                 else
                 {
                     EmitAddressOf(expr.Args[i]);
@@ -1236,6 +1259,38 @@ public sealed partial class IlProgramCompiler
                     _il.Emit(OpCodes.Stloc, tmpArr);
                     _il.Emit(OpCodes.Ldloc, tmpArr);
                     arrayKindFix.Add((tmpArr, origObj, tmpClr, ElemIsInt(pArr.ElementType)));
+                }
+                else if (paramType is ArrayType pMat
+                         && pMat.Rank >= 2
+                         && NormalizeInferredType(InferType(expr.Args[i])) is MatrixValueType)
+                {
+                    /* Valore MATRIX → parametro array rank-2 BYVAL: copia rettangolare; per
+                     * OUT/INOUT (mode non-IN) il risultato torna nel descrittore del chiamante. */
+                    var tmpClr = DataTypeMapper.Map(pMat, _types, _classTypes);
+                    var tmpArr = _il.DeclareLocal(tmpClr);
+                    EmitExpression(expr.Args[i]);
+                    if (paramDef.Mode != ParameterMode.In)
+                    {
+                        var origObj = _il.DeclareLocal(typeof(object));
+                        _il.Emit(OpCodes.Stloc, origObj);
+                        _il.Emit(OpCodes.Ldloc, origObj);
+                        _il.Emit(OpCodes.Castclass, typeof(MatrixValue));
+                        _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.MatrixValueToRect), typeof(MatrixValue)));
+                        _il.Emit(OpCodes.Stloc, tmpArr);
+                        _il.Emit(OpCodes.Ldloc, tmpArr);
+                        matrixArgFix.Add((tmpArr, origObj, tmpClr, true));
+                    }
+                    else
+                    {
+                        _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.MatrixValueToRect), typeof(MatrixValue)));
+                    }
+                }
+                else if (paramType is MatrixValueType
+                         && NormalizeInferredType(InferType(expr.Args[i])) is ArrayType { Rank: >= 2 })
+                {
+                    /* Array rank-2 flat (DIM) → parametro VALORE matrice: copia nel descrittore. */
+                    EmitExpression(expr.Args[i]);
+                    _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.MatrixValueFromRect), typeof(double[,])));
                 }
                 else
                 {
@@ -1305,7 +1360,7 @@ public sealed partial class IlProgramCompiler
         if (methodBuilder.IsStatic) _il.Emit(OpCodes.Call, methodBuilder);
         else _il.Emit(OpCodes.Callvirt, methodBuilder);
 
-        if (arrayKindFix.Count > 0)
+        if (arrayKindFix.Count > 0 || matrixArgFix.Count > 0)
         {
             var hasRet = methodBuilder.ReturnType != typeof(void);
             System.Reflection.Emit.LocalBuilder? res = hasRet ? _il.DeclareLocal(methodBuilder.ReturnType) : null;
@@ -1315,6 +1370,16 @@ public sealed partial class IlProgramCompiler
                 _il.Emit(OpCodes.Ldloc, p.orig);
                 _il.Emit(OpCodes.Ldloc, p.tmp);
                 _il.Emit(OpCodes.Call, RuntimeMethod(p.wantInt ? nameof(IlRuntime.CopyBackLong) : nameof(IlRuntime.CopyBackDouble), typeof(object), p.tmpType));
+            }
+            foreach (var p in matrixArgFix)
+            {
+                // Write-back del temp rettangolare nel descrittore del chiamante (solo
+                // OUT/INOUT: un parametro IN non può scrivere per contratto F3).
+                if (!p.writeBack) continue;
+                _il.Emit(OpCodes.Ldloc, p.orig);
+                _il.Emit(OpCodes.Castclass, typeof(MatrixValue));
+                _il.Emit(OpCodes.Ldloc, p.tmp);
+                _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.MatrixValueCopyFromRect), typeof(MatrixValue), p.tmpType));
             }
             if (res != null) _il.Emit(OpCodes.Ldloc, res);
         }
@@ -1789,6 +1854,10 @@ public sealed partial class IlProgramCompiler
         _il.Emit(OpCodes.Ldc_I4, expr.Args.Length);
         _il.Emit(OpCodes.Newarr, typeof(object));
         _il.Emit(OpCodes.Stloc, arrLocal);
+        /* F4: argomento VALORE matrice (MatrixValueType) per un parametro array/matrice
+         * dell'ABI nativa: si passa la copia rettangolare; per OUT/INOUT si ricopia il
+         * risultato nel descrittore dopo la chiamata (elenco). */
+        System.Collections.Generic.List<(int Index, System.Reflection.Emit.LocalBuilder Orig)>? ffiMatrixFix = null;
         for (var i = 0; i < expr.Args.Length; i++)
         {
             _il.Emit(OpCodes.Ldloc, arrLocal);
@@ -1806,6 +1875,21 @@ public sealed partial class IlProgramCompiler
             if (arg is FunctionReferenceExpr fre && FfiCallbackHasArrayShape(epd.Parameters[pi].DataType))
             {
                 EmitFfiCallbackFunctionReference(fre);
+                return;
+            }
+            // F4: valore matrice → parametro array/matrice nativo: passa la copia rettangolare.
+            if (IsArrayParam(epd.Parameters[pi])
+                && NormalizeInferredType(InferType(arg)) is MatrixValueType)
+            {
+                EmitExpression(arg);
+                if (epd.Parameters[pi].Mode != ParameterMode.In)
+                {
+                    var orig = _il.DeclareLocal(typeof(MatrixValue));
+                    _il.Emit(OpCodes.Stloc, orig);
+                    _il.Emit(OpCodes.Ldloc, orig);
+                    (ffiMatrixFix ??= new()).Add((pi, orig));
+                }
+                _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.MatrixValueToRect), typeof(MatrixValue)));
                 return;
             }
             EmitObjectBoxedArgument(arg);
@@ -1897,8 +1981,7 @@ public sealed partial class IlProgramCompiler
             }
         }
         void EmitByRefScalarWriteback()
-        {
-            for (var pi = 0; pi < epd.Parameters.Length; pi++)
+        {            for (var pi = 0; pi < epd.Parameters.Length; pi++)
             {
                 if ((byrefScalarMask & (1L << pi)) == 0) continue;
                 var ve = (VariableExpr)expr.Args[pi];
@@ -1926,6 +2009,19 @@ public sealed partial class IlProgramCompiler
         // vera ABI .NET, nessuna forma-ombra/copia campo-per-campo (args[i] è già l'istanza
         // boxed giusta, vedi EmitObjectBoxedArgument/DataTypeMapper.Map). Lascia l'array in
         // cima allo stack — va chiamato appena prima del Call, come argomento posizionale.
+        void EmitFfiMatrixWriteback()
+        {
+            if (ffiMatrixFix is null) return;
+            foreach (var (pi, orig) in ffiMatrixFix)
+            {
+                _il.Emit(OpCodes.Ldloc, orig);
+                _il.Emit(OpCodes.Ldloc, arrLocal);
+                _il.Emit(OpCodes.Ldc_I4, pi);
+                _il.Emit(OpCodes.Ldelem_Ref);
+                _il.Emit(OpCodes.Castclass, typeof(double[,]));
+                _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.MatrixValueCopyFromRect), typeof(MatrixValue), typeof(double[,])));
+            }
+        }
         void EmitUdtShapesArray()
         {
             _il.Emit(OpCodes.Ldc_I4, epd.Parameters.Length);
@@ -1997,6 +2093,7 @@ public sealed partial class IlProgramCompiler
             }
             EmitByRefScalarWriteback();
             EmitByRefUdtWriteback();
+            EmitFfiMatrixWriteback();
             EmitCallbackKeepAliveIfAny();
             return;
         }
@@ -2036,6 +2133,7 @@ public sealed partial class IlProgramCompiler
             _il.Emit(OpCodes.Unbox_Any, udtReturnClrType);
             EmitByRefScalarWriteback();
             EmitByRefUdtWriteback();
+            EmitFfiMatrixWriteback();
             EmitCallbackKeepAliveIfAny();
         }
         else if (anyUdtParam)
@@ -2055,6 +2153,7 @@ public sealed partial class IlProgramCompiler
                 _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.FfiCallTypedArrUdt), typeof(string), typeof(string), typeof(object[]), typeof(int), typeof(long), typeof(long), typeof(long), typeof(long), typeof(long), typeof(string[]), typeof(long), typeof(long)));
             EmitByRefScalarWriteback();
             EmitByRefUdtWriteback();
+            EmitFfiMatrixWriteback();
             EmitCallbackKeepAliveIfAny();
         }
         else if (retIsString)
@@ -2070,6 +2169,7 @@ public sealed partial class IlProgramCompiler
             _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.FfiCallTypedArrStr), typeof(string), typeof(string), typeof(object[]), typeof(int), typeof(long), typeof(long), typeof(long), typeof(long), typeof(long), typeof(long)));
             EmitByRefScalarWriteback();
             EmitByRefUdtWriteback();
+            EmitFfiMatrixWriteback();
             EmitCallbackKeepAliveIfAny();
         }
         else if (arrayMask != 0 || stringMask != 0 || byrefScalarMask != 0 || anyCallbackParam)
@@ -2083,6 +2183,7 @@ public sealed partial class IlProgramCompiler
             _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.FfiCallTypedArr), typeof(string), typeof(string), typeof(object[]), typeof(int), typeof(long), typeof(long), typeof(long), typeof(long), typeof(long), typeof(long)));
             EmitByRefScalarWriteback();
             EmitByRefUdtWriteback();
+            EmitFfiMatrixWriteback();
             EmitCallbackKeepAliveIfAny();
         }
         else if (mixedScalarsOnly)
@@ -2098,11 +2199,13 @@ public sealed partial class IlProgramCompiler
             _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.FfiCallTypedArr), typeof(string), typeof(string), typeof(object[]), typeof(int), typeof(long), typeof(long), typeof(long), typeof(long), typeof(long), typeof(long)));
             EmitByRefScalarWriteback();
             EmitByRefUdtWriteback();
+            EmitFfiMatrixWriteback();
             EmitCallbackKeepAliveIfAny();
         }
         else
         {
             _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.FfiCallTyped), typeof(string), typeof(string), typeof(object[]), typeof(int)));
+            EmitFfiMatrixWriteback();
             EmitCallbackKeepAliveIfAny();
         }
     }

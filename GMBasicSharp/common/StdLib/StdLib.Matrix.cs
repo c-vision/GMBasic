@@ -137,23 +137,23 @@ public sealed partial class StdLib
                     new Parameter(-1, T(TokenKind.Identifier, "rows"), new LongType(), noFlags, null, false),
                     new Parameter(-1, T(TokenKind.Identifier, "cols"), new LongType(), noFlags, null, false)
                 ],
-                new ArrayType(new DoubleType(), 2), TokenKind.LinAlgMatrixCreateFunc),
+                new MatrixValueType(), TokenKind.LinAlgMatrixCreateFunc),
 
             new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.Multiply, "MULTIPLY"),
                 [
                     new Parameter(-1, T(TokenKind.Identifier, "handle1"), new AnyType(), noFlags, null, false),
                     new Parameter(-1, T(TokenKind.Identifier, "handle2"), new AnyType(), noFlags, null, false)
                 ],
-                new ArrayType(new DoubleType(), 2), TokenKind.LinAlgMultiplyFunc),
+                new MatrixValueType(), TokenKind.LinAlgMultiplyFunc),
 
             new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.Transpose, "TRANSPOSE"),
                 [new Parameter(-1, T(TokenKind.Identifier, "handle"), new LongType(), noFlags, null, false)],
-                new ArrayType(new DoubleType(), 2), TokenKind.LinAlgTransposeFunc),
+                new MatrixValueType(), TokenKind.LinAlgTransposeFunc),
 
             new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.MatrixKron, "KRONECKER"),
                 [new Parameter(-1, T(TokenKind.Identifier, "handle1"), new AnyType(), noFlags, null, false),
                  new Parameter(-1, T(TokenKind.Identifier, "handle2"), new AnyType(), noFlags, null, false)],
-                new ArrayType(new DoubleType(), 2), TokenKind.MatrixKron),
+                new MatrixValueType(), TokenKind.MatrixKron),
 
             new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.MatrixTrace, "TRACE"),
                 [new Parameter(-1, T(TokenKind.Identifier, "handle"), new LongType(), noFlags, null, false)],
@@ -162,14 +162,14 @@ public sealed partial class StdLib
             new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.MatrixBlockDiag, "BLOCKDIAG"),
                 [new Parameter(-1, T(TokenKind.Identifier, "handle1"), new AnyType(), noFlags, null, false),
                  new Parameter(-1, T(TokenKind.Identifier, "handle2"), new AnyType(), noFlags, null, false)],
-                new ArrayType(new DoubleType(), 2), TokenKind.MatrixBlockDiag),
+                new MatrixValueType(), TokenKind.MatrixBlockDiag),
 
             new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.MatrixSetValue, "SETVALUE"),
                 [new Parameter(-1, T(TokenKind.Identifier, "handle"), new AnyType(), noFlags, null, false),
                  new Parameter(-1, T(TokenKind.Identifier, "row"), new LongType(), noFlags, null, false),
                  new Parameter(-1, T(TokenKind.Identifier, "col"), new LongType(), noFlags, null, false),
                  new Parameter(-1, T(TokenKind.Identifier, "value"), new DoubleType(), noFlags, null, false)],
-                new ArrayType(new DoubleType(), 2), TokenKind.MatrixSetValue),
+                new MatrixValueType(), TokenKind.MatrixSetValue),
 
             new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.MatrixGetValue, "GETVALUE"),
                 [new Parameter(-1, T(TokenKind.Identifier, "handle"), new AnyType(), noFlags, null, false),
@@ -181,14 +181,14 @@ public sealed partial class StdLib
             new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.MatrixToeplitz, "TOEPLITZ"),
                 [new Parameter(-1, T(TokenKind.Identifier, "c"), new ArrayType(new DoubleType()), noFlags, null, false),
                  new Parameter(-1, T(TokenKind.Identifier, "r"), new ArrayType(new DoubleType()), noFlags, null, false)],
-                new ArrayType(new DoubleType(), 2), TokenKind.MatrixToeplitz),
+                new MatrixValueType(), TokenKind.MatrixToeplitz),
             new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.MatrixHankel, "HANKEL"),
                 [new Parameter(-1, T(TokenKind.Identifier, "c"), new ArrayType(new DoubleType()), noFlags, null, false),
                  new Parameter(-1, T(TokenKind.Identifier, "r"), new ArrayType(new DoubleType()), noFlags, null, false)],
-                new ArrayType(new DoubleType(), 2), TokenKind.MatrixHankel),
+                new MatrixValueType(), TokenKind.MatrixHankel),
             new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.MatrixCirculant, "CIRCULANT"),
                 [new Parameter(-1, T(TokenKind.Identifier, "c"), new ArrayType(new DoubleType()), noFlags, null, false)],
-                new ArrayType(new DoubleType(), 2), TokenKind.MatrixCirculant),
+                new MatrixValueType(), TokenKind.MatrixCirculant),
             new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.MatrixRowSums, "ROWSUMS"), [matrixArrayParam], new ArrayType(new DoubleType()), TokenKind.MatrixRowSums, ExecutionKind: NativeExecutionKind.Pure),
             new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.MatrixColSums, "COLSUMS"), [matrixArrayParam], new ArrayType(new DoubleType()), TokenKind.MatrixColSums, ExecutionKind: NativeExecutionKind.Pure),
             new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.MatrixRowMeans, "ROWMEANS"), [matrixArrayParam], new ArrayType(new DoubleType()), TokenKind.MatrixRowMeans, ExecutionKind: NativeExecutionKind.Pure),
@@ -201,12 +201,12 @@ public sealed partial class StdLib
             new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.MatrixIsLowerTriangular, "ISLOWERTRIANGULAR"), [matrixArrayParam], new BitType(), TokenKind.MatrixIsLowerTriangular, ExecutionKind: NativeExecutionKind.Pure),
             new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.MatrixArgMax, "ARGMAX"), [matrixArrayParam], new ArrayType(new LongType()), TokenKind.MatrixArgMax, ExecutionKind: NativeExecutionKind.Pure),
             new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.MatrixArgMin, "ARGMIN"), [matrixArrayParam], new ArrayType(new LongType()), TokenKind.MatrixArgMin, ExecutionKind: NativeExecutionKind.Pure),
-            new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.MatrixSlice, "SLICE"), [matrixArrayParam, new Parameter(-1, T(TokenKind.Identifier, "rowStart"), new LongType(), noFlags, null, false), new Parameter(-1, T(TokenKind.Identifier, "rowEnd"), new LongType(), noFlags, null, false), new Parameter(-1, T(TokenKind.Identifier, "colStart"), new LongType(), noFlags, null, false), new Parameter(-1, T(TokenKind.Identifier, "colEnd"), new LongType(), noFlags, null, false)], new ArrayType(new DoubleType(), 2), TokenKind.MatrixSlice, ExecutionKind: NativeExecutionKind.Pure),
-            new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.MatrixReshape, "RESHAPE"), [matrixArrayParam, new Parameter(-1, T(TokenKind.Identifier, "rows"), new LongType(), noFlags, null, false), new Parameter(-1, T(TokenKind.Identifier, "cols"), new LongType(), noFlags, null, false)], new ArrayType(new DoubleType(), 2), TokenKind.MatrixReshape, ExecutionKind: NativeExecutionKind.Pure),
-            new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.MatrixConcatRows, "CONCATROWS"), [matrixArrayParam, new Parameter(-1, T(TokenKind.Identifier, "other"), new AnyType(), noFlags, null, false)], new ArrayType(new DoubleType(), 2), TokenKind.MatrixConcatRows, ExecutionKind: NativeExecutionKind.Pure),
-            new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.MatrixConcatCols, "CONCATCOLS"), [matrixArrayParam, new Parameter(-1, T(TokenKind.Identifier, "other"), new AnyType(), noFlags, null, false)], new ArrayType(new DoubleType(), 2), TokenKind.MatrixConcatCols, ExecutionKind: NativeExecutionKind.Pure),
-            new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.MatrixAddRowVector, "ADDROWVECTOR"), [matrixArrayParam, new Parameter(-1, T(TokenKind.Identifier, "values"), new ArrayType(new DoubleType()), noFlags, null, false)], new ArrayType(new DoubleType(), 2), TokenKind.MatrixAddRowVector, ExecutionKind: NativeExecutionKind.Pure),
-            new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.MatrixAddColVector, "ADDCOLVECTOR"), [matrixArrayParam, new Parameter(-1, T(TokenKind.Identifier, "values"), new ArrayType(new DoubleType()), noFlags, null, false)], new ArrayType(new DoubleType(), 2), TokenKind.MatrixAddColVector, ExecutionKind: NativeExecutionKind.Pure),
+            new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.MatrixSlice, "SLICE"), [matrixArrayParam, new Parameter(-1, T(TokenKind.Identifier, "rowStart"), new LongType(), noFlags, null, false), new Parameter(-1, T(TokenKind.Identifier, "rowEnd"), new LongType(), noFlags, null, false), new Parameter(-1, T(TokenKind.Identifier, "colStart"), new LongType(), noFlags, null, false), new Parameter(-1, T(TokenKind.Identifier, "colEnd"), new LongType(), noFlags, null, false)], new MatrixValueType(), TokenKind.MatrixSlice, ExecutionKind: NativeExecutionKind.Pure),
+            new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.MatrixReshape, "RESHAPE"), [matrixArrayParam, new Parameter(-1, T(TokenKind.Identifier, "rows"), new LongType(), noFlags, null, false), new Parameter(-1, T(TokenKind.Identifier, "cols"), new LongType(), noFlags, null, false)], new MatrixValueType(), TokenKind.MatrixReshape, ExecutionKind: NativeExecutionKind.Pure),
+            new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.MatrixConcatRows, "CONCATROWS"), [matrixArrayParam, new Parameter(-1, T(TokenKind.Identifier, "other"), new AnyType(), noFlags, null, false)], new MatrixValueType(), TokenKind.MatrixConcatRows, ExecutionKind: NativeExecutionKind.Pure),
+            new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.MatrixConcatCols, "CONCATCOLS"), [matrixArrayParam, new Parameter(-1, T(TokenKind.Identifier, "other"), new AnyType(), noFlags, null, false)], new MatrixValueType(), TokenKind.MatrixConcatCols, ExecutionKind: NativeExecutionKind.Pure),
+            new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.MatrixAddRowVector, "ADDROWVECTOR"), [matrixArrayParam, new Parameter(-1, T(TokenKind.Identifier, "values"), new ArrayType(new DoubleType()), noFlags, null, false)], new MatrixValueType(), TokenKind.MatrixAddRowVector, ExecutionKind: NativeExecutionKind.Pure),
+            new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.MatrixAddColVector, "ADDCOLVECTOR"), [matrixArrayParam, new Parameter(-1, T(TokenKind.Identifier, "values"), new ArrayType(new DoubleType()), noFlags, null, false)], new MatrixValueType(), TokenKind.MatrixAddColVector, ExecutionKind: NativeExecutionKind.Pure),
             new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.MatrixMaxValue, "MAXVALUE"), [matrixArrayParam], new DoubleType(), TokenKind.MatrixMaxValue, ExecutionKind: NativeExecutionKind.Pure),
             new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.MatrixMinValue, "MINVALUE"), [matrixArrayParam], new DoubleType(), TokenKind.MatrixMinValue, ExecutionKind: NativeExecutionKind.Pure),
             new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.MatrixAboveMask, "ABOVEMASK"), [matrixArrayParam, new Parameter(-1, T(TokenKind.Identifier, "threshold"), new DoubleType(), noFlags, null, false)], new ArrayType(new BitType()), TokenKind.MatrixAboveMask, ExecutionKind: NativeExecutionKind.Pure),
@@ -215,16 +215,16 @@ public sealed partial class StdLib
             new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.MatrixAsJson, "ASJSON"), [matrixArrayParam], new StringType(), TokenKind.MatrixAsJson, ExecutionKind: NativeExecutionKind.Pure),
             new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.MatrixRowCount, "ROWCOUNT"), [matrixArrayParam], new LongType(), TokenKind.MatrixRowCount, ExecutionKind: NativeExecutionKind.Pure),
             new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.MatrixColumnCount, "COLUMNCOUNT"), [matrixArrayParam], new LongType(), TokenKind.MatrixColumnCount, ExecutionKind: NativeExecutionKind.Pure),
-            new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.MatrixClone, "CLONEMATRIX"), [matrixArrayParam], new ArrayType(new DoubleType(), 2), TokenKind.MatrixClone, ExecutionKind: NativeExecutionKind.Pure),
+            new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.MatrixClone, "CLONEMATRIX"), [matrixArrayParam], new MatrixValueType(), TokenKind.MatrixClone, ExecutionKind: NativeExecutionKind.Pure),
             // MATRIX F2b (2026-11-09): ROW/COL come matrice rank-2 (1×cols / rows×1) e
             // predicato di contiguità del descrittore.
-            new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.MatrixRow, "ROW"), [matrixArrayParam, new Parameter(-1, T(TokenKind.Identifier, "row"), new LongType(), noFlags, null, false)], new ArrayType(new DoubleType(), 2), TokenKind.MatrixRow, ExecutionKind: NativeExecutionKind.Pure),
-            new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.MatrixCol, "COL"), [matrixArrayParam, new Parameter(-1, T(TokenKind.Identifier, "col"), new LongType(), noFlags, null, false)], new ArrayType(new DoubleType(), 2), TokenKind.MatrixCol, ExecutionKind: NativeExecutionKind.Pure),
+            new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.MatrixRow, "ROW"), [matrixArrayParam, new Parameter(-1, T(TokenKind.Identifier, "row"), new LongType(), noFlags, null, false)], new MatrixValueType(), TokenKind.MatrixRow, ExecutionKind: NativeExecutionKind.Pure),
+            new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.MatrixCol, "COL"), [matrixArrayParam, new Parameter(-1, T(TokenKind.Identifier, "col"), new LongType(), noFlags, null, false)], new MatrixValueType(), TokenKind.MatrixCol, ExecutionKind: NativeExecutionKind.Pure),
             new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.MatrixIsContiguous, "ISCONTIGUOUS"), [matrixArrayParam], new BitType(), TokenKind.MatrixIsContiguous, ExecutionKind: NativeExecutionKind.Pure),
             new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.MatrixMultiplyVector, "MULTIPLYVECTOR"), [matrixArrayParam, new Parameter(-1, T(TokenKind.Identifier, "values"), new ArrayType(new DoubleType()), noFlags, null, false)], new ArrayType(new DoubleType()), TokenKind.MatrixMultiplyVector, ExecutionKind: NativeExecutionKind.Pure),
             new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.MatrixMultiplyLeftVector, "MULTIPLYLEFTVECTOR"), [matrixArrayParam, new Parameter(-1, T(TokenKind.Identifier, "values"), new ArrayType(new DoubleType()), noFlags, null, false)], new ArrayType(new DoubleType()), TokenKind.MatrixMultiplyLeftVector, ExecutionKind: NativeExecutionKind.Pure),
-            new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.MatrixLoadCsv, "LOADCSV"), [new Parameter(-1, T(TokenKind.Identifier, "path"), new StringType(), noFlags, null, false)], new ArrayType(new DoubleType(), 2), TokenKind.MatrixLoadCsv),
-            new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.MatrixLoadJson, "LOADJSON"), [new Parameter(-1, T(TokenKind.Identifier, "path"), new StringType(), noFlags, null, false)], new ArrayType(new DoubleType(), 2), TokenKind.MatrixLoadJson)
+            new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.MatrixLoadCsv, "LOADCSV"), [new Parameter(-1, T(TokenKind.Identifier, "path"), new StringType(), noFlags, null, false)], new MatrixValueType(), TokenKind.MatrixLoadCsv),
+            new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.MatrixLoadJson, "LOADJSON"), [new Parameter(-1, T(TokenKind.Identifier, "path"), new StringType(), noFlags, null, false)], new MatrixValueType(), TokenKind.MatrixLoadJson)
         };
 
         var types = new Dictionary<string, DataType>(StringComparer.OrdinalIgnoreCase);

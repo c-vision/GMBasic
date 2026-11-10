@@ -447,6 +447,11 @@ public sealed partial class Parser
         if (valueType is ArrayType)
             throw CreateError(Previous(), "MATRIX OF: il tipo valore non può essere un array o una matrice.");
         var rank = types.Count - 1;
+        // F4: `MATRIX OF (I1, I2, DOUBLE)` è il VALORE matrice (descrittore), non il layout
+        // flat `double[,]`. Nella firma di un `DECLARE ... LIB` resta invece ArrayType:
+        // l'ABI nativa vuole il puntatore ai double (i conteggi sono espliciti).
+        if (!_parsingExternalSignature && rank == 2 && valueType is DoubleType)
+            return new MatrixValueType();
         return new ArrayType(valueType, rank);
     }
 

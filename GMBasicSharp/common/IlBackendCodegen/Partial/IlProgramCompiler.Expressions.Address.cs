@@ -175,6 +175,19 @@ public sealed partial class IlProgramCompiler
             _il.Emit(OpCodes.Callvirt, dictIndexer.GetGetMethod()!);
             return;
         }
+        // F4: valore matrice (descrittore) indicizzato m(r,c) → MatrixValueGetAt. Prima del
+        // calcolo del tipo CLR "runtime array" (che per un parametro MatrixValueType cadrebbe
+        // su object e rifiuterebbe i 2 indici).
+        if (_program.Symbols.GetSymbol(expr.SymbolId).DataType is MatrixValueType)
+        {
+            if (expr.Indices.Length != 2)
+                throw new NotSupportedException("Backend IL: una matrice-valore richiede 2 indici.");
+            EmitLoadVariable(expr.SymbolId);
+            EmitInt64Argument(expr.Indices[0]);
+            EmitInt64Argument(expr.Indices[1]);
+            _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.MatrixValueGetAt)));
+            return;
+        }
         if (TryGetDictSymbolInfo(expr.SymbolId, out _, out var indexer))
         {
             EmitLoadVariable(expr.SymbolId);

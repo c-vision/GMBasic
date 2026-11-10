@@ -510,6 +510,7 @@ public static partial class IlRuntime
     /// (DETERMINANT/SOLVE/LU/...) chiamate con un array invece di un handle.</summary>
     public static long LinAlgMatrixHandle(object matrix)
         => matrix is double[,] dm ? StoreMatrix(dm)
+         : matrix is MatrixValue mv ? StoreMatrix(mv.ToRect())
          : matrix is double[] v ? StoreMatrix(ToJaggedAsRect(v))
          : Convert.ToInt64(matrix);
 
@@ -1166,11 +1167,11 @@ public static partial class IlRuntime
 
     /// <summary>MATRIX.CREATE a VALORE (ADR-MATRIX-Valore, F1): matrice rank-2 contigua,
     /// identità sui primi min(rows,cols). Il tipo del linguaggio è `MATRIX OF (INT,INT,DOUBLE)`.</summary>
-    public static double[,] MatrixCreateValue(long rows, long columns)
+    public static MatrixValue MatrixCreateValue(long rows, long columns)
     {
         if (rows is <= 0 or > int.MaxValue || columns is <= 0 or > int.MaxValue)
             throw new ArgumentOutOfRangeException(nameof(rows), "Le dimensioni della matrice devono essere positive.");
-        return CreateIdentityMatrix(rows, columns);
+        return MatrixValue.FromRect(CreateIdentityMatrix(rows, columns));
     }
 
     private static double[,] CreateIdentityMatrix(long rows, long columns)
@@ -1220,11 +1221,11 @@ public static partial class IlRuntime
     }
 
     /// <summary>MATRIX.MULTIPLY a valore (F4): risultato come double[,] rank-2.</summary>
-    public static double[,] MatrixMultiplyValue(long leftHandle, long rightHandle)
+    public static MatrixValue MatrixMultiplyValue(long leftHandle, long rightHandle)
         => MatrixValueOf(MatrixMultiply(leftHandle, rightHandle));
 
     /// <summary>Copia indipendente della matrice registrata sotto <paramref name="handle"/>.</summary>
-    public static double[,] MatrixValueOf(long handle) => (double[,])Matrix(handle).Clone();
+    public static MatrixValue MatrixValueOf(long handle) => MatrixValue.FromRect(Matrix(handle));
 
     public static double MatrixDeterminant(long handle)
     {
@@ -1277,7 +1278,7 @@ public static partial class IlRuntime
     }
 
     /// <summary>F4: PINVERSE a valore (double[,] rank-2).</summary>
-    public static double[,] MatrixPseudoInverseValue(long handle) => MatrixValueOf(MatrixPseudoInverse(handle));
+    public static MatrixValue MatrixPseudoInverseValue(long handle) => MatrixValueOf(MatrixPseudoInverse(handle));
 
     // LINALG.RANK(handle) - Rango matrice
     public static long MatrixRank(long handle)
@@ -1370,7 +1371,7 @@ public static partial class IlRuntime
     }
 
     /// <summary>F4: INVERSE a valore (double[,] rank-2).</summary>
-    public static double[,] MatrixInverseValue(long handle) => MatrixValueOf(MatrixInverse(handle));
+    public static MatrixValue MatrixInverseValue(long handle) => MatrixValueOf(MatrixInverse(handle));
 
     public static double[] MatrixSolve(long matrixHandle, long vectorHandle)
     {
@@ -1445,12 +1446,12 @@ public static partial class IlRuntime
     public static long MatrixFractionalPower(long handle, double p) => StoreMatrix(CommonLib.Numerics.MatrixFractionalPower(ToMathNet(Matrix(handle)), p).ToArray());
     public static long MatrixOrth(long handle) => StoreMatrix(CommonLib.Numerics.Orth(ToMathNet(Matrix(handle))).ToArray());
     /// <summary>F4: COSM/SINM/TANM/SIGNM/FRACTIONALPOWER/ORTH a valore (double[,] rank-2).</summary>
-    public static double[,] MatrixCosmValue(long handle) => MatrixValueOf(MatrixCosm(handle));
-    public static double[,] MatrixSinmValue(long handle) => MatrixValueOf(MatrixSinm(handle));
-    public static double[,] MatrixTanmValue(long handle) => MatrixValueOf(MatrixTanm(handle));
-    public static double[,] MatrixSignmValue(long handle) => MatrixValueOf(MatrixSignm(handle));
-    public static double[,] MatrixFractionalPowerValue(long handle, double p) => MatrixValueOf(MatrixFractionalPower(handle, p));
-    public static double[,] MatrixOrthValue(long handle) => MatrixValueOf(MatrixOrth(handle));
+    public static MatrixValue MatrixCosmValue(long handle) => MatrixValueOf(MatrixCosm(handle));
+    public static MatrixValue MatrixSinmValue(long handle) => MatrixValueOf(MatrixSinm(handle));
+    public static MatrixValue MatrixTanmValue(long handle) => MatrixValueOf(MatrixTanm(handle));
+    public static MatrixValue MatrixSignmValue(long handle) => MatrixValueOf(MatrixSignm(handle));
+    public static MatrixValue MatrixFractionalPowerValue(long handle, double p) => MatrixValueOf(MatrixFractionalPower(handle, p));
+    public static MatrixValue MatrixOrthValue(long handle) => MatrixValueOf(MatrixOrth(handle));
     public static double[] MatrixSubspaceAngles(long handle1, long handle2) => CommonLib.Numerics.SubspaceAngles(ToMathNet(Matrix(handle1)), ToMathNet(Matrix(handle2)));
     public static long MatrixPolar(long handle) => StoreDecomposition(CommonLib.Numerics.Polar(ToMathNet(Matrix(handle))));
     public static double MatrixCond(long handle) => CommonLib.Numerics.ConditionNumber(ToMathNet(Matrix(handle)));
@@ -1459,9 +1460,9 @@ public static partial class IlRuntime
     public static long MatrixHankel(double[] c, double[] r) => StoreMatrix(CommonLib.Numerics.Hankel(c, r).ToArray());
     public static long MatrixCirculant(double[] c) => StoreMatrix(CommonLib.Numerics.Circulant(c).ToArray());
     /// <summary>F4: TOEPLITZ/HANKEL/CIRCULANT a valore (double[,] rank-2).</summary>
-    public static double[,] MatrixToeplitzValue(double[] c, double[] r) => MatrixValueOf(MatrixToeplitz(c, r));
-    public static double[,] MatrixHankelValue(double[] c, double[] r) => MatrixValueOf(MatrixHankel(c, r));
-    public static double[,] MatrixCirculantValue(double[] c) => MatrixValueOf(MatrixCirculant(c));
+    public static MatrixValue MatrixToeplitzValue(double[] c, double[] r) => MatrixValueOf(MatrixToeplitz(c, r));
+    public static MatrixValue MatrixHankelValue(double[] c, double[] r) => MatrixValueOf(MatrixHankel(c, r));
+    public static MatrixValue MatrixCirculantValue(double[] c) => MatrixValueOf(MatrixCirculant(c));
     public static double[] MatrixSolveTriangular(long aHandle, long bHandle, long lower) => CommonLib.Numerics.SolveTriangular(ToMathNet(Matrix(aHandle)), global::MathNet.Numerics.LinearAlgebra.Double.DenseVector.OfArray(Vector(bHandle)), lower != 0).ToArray();
     public static long MatrixEig(long handle) => StoreDecomposition(CommonLib.Numerics.GeneralEigen(ToMathNet(Matrix(handle))));
     public static long MatrixSchur(long handle) => StoreDecomposition(CommonLib.Numerics.RealSchur(ToMathNet(Matrix(handle))));
@@ -1554,15 +1555,15 @@ public static partial class IlRuntime
 
     /// <summary>F4: LINALG.FACTOR restituisce il VALORE matrice del fattore (i fattori
     /// vettoriali, es. SVECTOR, diventano una colonna).</summary>
-    public static double[,] DecompositionGetFactorValue(long decompHandle, string factorName)
+    public static MatrixValue DecompositionGetFactorValue(long decompHandle, string factorName)
     {
         var handle = DecompositionGetFactor(decompHandle, factorName);
-        if (LinAlgMatrices.TryGetValue(handle, out var matrix)) return (double[,])matrix.Clone();
+        if (LinAlgMatrices.TryGetValue(handle, out var matrix)) return MatrixValue.FromRect(matrix);
         if (LinAlgVectors.TryGetValue(handle, out var vector))
         {
             var column = new double[vector.Length, 1];
             for (var i = 0; i < vector.Length; i++) column[i, 0] = vector[i];
-            return column;
+            return MatrixValue.FromRect(column);
         }
         throw new ArgumentException("Fattore non trovato.");
     }
@@ -1996,7 +1997,7 @@ public static partial class IlRuntime
     }
 
     /// <summary>F4: KRONECKER a valore (double[,] rank-2).</summary>
-    public static double[,] MatrixKroneckerValue(long a, long b) => MatrixValueOf(MatrixKronecker(a, b));
+    public static MatrixValue MatrixKroneckerValue(long a, long b) => MatrixValueOf(MatrixKronecker(a, b));
 
     // scipy.linalg: funzioni matriciali (sqrtm/logm/hessenberg/block_diag/null_space).
     public static long MatrixSqrt(long handle)
@@ -2012,9 +2013,9 @@ public static partial class IlRuntime
     }
 
     /// <summary>F4: EXPM/SQRTM/LOGM a valore (double[,] rank-2).</summary>
-    public static double[,] MatrixExpValue(long handle) => MatrixValueOf(MatrixExp(handle));
-    public static double[,] MatrixSqrtValue(long handle) => MatrixValueOf(MatrixSqrt(handle));
-    public static double[,] MatrixLogmValue(long handle) => MatrixValueOf(MatrixLogm(handle));
+    public static MatrixValue MatrixExpValue(long handle) => MatrixValueOf(MatrixExp(handle));
+    public static MatrixValue MatrixSqrtValue(long handle) => MatrixValueOf(MatrixSqrt(handle));
+    public static MatrixValue MatrixLogmValue(long handle) => MatrixValueOf(MatrixLogm(handle));
 
     public static long MatrixHessenberg(long handle)
     {
@@ -2023,7 +2024,7 @@ public static partial class IlRuntime
     }
 
     /// <summary>F4: HESSENBERG a valore (double[,] rank-2).</summary>
-    public static double[,] MatrixHessenbergValue(long handle) => MatrixValueOf(MatrixHessenberg(handle));
+    public static MatrixValue MatrixHessenbergValue(long handle) => MatrixValueOf(MatrixHessenberg(handle));
 
     public static long MatrixBlockDiag(long a, long b)
     {
@@ -2033,7 +2034,7 @@ public static partial class IlRuntime
     }
 
     /// <summary>F4: BLOCKDIAG a valore (double[,] rank-2).</summary>
-    public static double[,] MatrixBlockDiagValue(long a, long b) => MatrixValueOf(MatrixBlockDiag(a, b));
+    public static MatrixValue MatrixBlockDiagValue(long a, long b) => MatrixValueOf(MatrixBlockDiag(a, b));
 
     public static long MatrixNullSpace(long handle)
     {
@@ -2042,7 +2043,7 @@ public static partial class IlRuntime
     }
 
     /// <summary>F4: NULLSPACE a valore (double[,] rank-2).</summary>
-    public static double[,] MatrixNullSpaceValue(long handle) => MatrixValueOf(MatrixNullSpace(handle));
+    public static MatrixValue MatrixNullSpaceValue(long handle) => MatrixValueOf(MatrixNullSpace(handle));
 
     public static double[,] MatrixSetValue(long handle, double r, double c, double v)
     {
@@ -2229,18 +2230,18 @@ public static partial class IlRuntime
     public static long MatrixConcatRows(long first, long second) =>
         StoreSimdMatrix(CommonLib.SimdMatrix.ConcatRows(SimdMatrix(first), SimdMatrix(second)));
     /// <summary>F4: CONCATROWS a valore (double[,] rank-2).</summary>
-    public static double[,] MatrixConcatRowsValue(long first, long second)
+    public static MatrixValue MatrixConcatRowsValue(long first, long second)
         => MatrixValueOf(MatrixConcatRows(first, second));
     public static long MatrixConcatCols(long first, long second) =>
         StoreSimdMatrix(CommonLib.SimdMatrix.ConcatCols(SimdMatrix(first), SimdMatrix(second)));
     /// <summary>F4: CONCATCOLS a valore (double[,] rank-2).</summary>
-    public static double[,] MatrixConcatColsValue(long first, long second)
+    public static MatrixValue MatrixConcatColsValue(long first, long second)
         => MatrixValueOf(MatrixConcatCols(first, second));
     public static long MatrixAddRowVector(long handle, double[] values) => StoreSimdMatrix(SimdMatrix(handle).AddRowVector(values));
     public static long MatrixAddColVector(long handle, double[] values) => StoreSimdMatrix(SimdMatrix(handle).AddColVector(values));
     /// <summary>F4: ADDROWVECTOR/ADDCOLVECTOR a valore (double[,] rank-2).</summary>
-    public static double[,] MatrixAddRowVectorValue(long handle, double[] values) => MatrixValueOf(MatrixAddRowVector(handle, values));
-    public static double[,] MatrixAddColVectorValue(long handle, double[] values) => MatrixValueOf(MatrixAddColVector(handle, values));
+    public static MatrixValue MatrixAddRowVectorValue(long handle, double[] values) => MatrixValueOf(MatrixAddRowVector(handle, values));
+    public static MatrixValue MatrixAddColVectorValue(long handle, double[] values) => MatrixValueOf(MatrixAddColVector(handle, values));
     public static double MatrixMaxValue(long handle) => SimdMatrix(handle).Max();
     public static double MatrixMinValue(long handle) => SimdMatrix(handle).Min();
     public static bool[] MatrixAboveMask(long handle, double threshold) => SimdMatrix(handle).Mask(threshold);
@@ -2260,18 +2261,18 @@ public static partial class IlRuntime
     public static long MatrixClone(long handle) => StoreSimdMatrix(SimdMatrix(handle).Clone());
 
     // ── F2: valori matrice restituiti (TRANSPOSE/SLICE/RESHAPE/CLONEMATRIX) ──────────
-    public static double[,] MatrixTransposeValue(long handle)
+    public static MatrixValue MatrixTransposeValue(long handle)
     {
         var matrix = Matrix(handle);
         var result = new double[matrix.GetLength(1), matrix.GetLength(0)];
         for (var row = 0; row < matrix.GetLength(0); row++)
             for (var column = 0; column < matrix.GetLength(1); column++)
                 result[column, row] = matrix[row, column];
-        return result;
+        return MatrixValue.FromRect(result);
     }
 
     /// <summary>SLICE con end ESCLUSIVO (canone SimdMatrix.Slice: 0..2 su 3 righe = 2 righe).</summary>
-    public static double[,] MatrixSliceValue(long handle, long rowStart, long rowEnd, long colStart, long colEnd)
+    public static MatrixValue MatrixSliceValue(long handle, long rowStart, long rowEnd, long colStart, long colEnd)
     {
         var matrix = Matrix(handle);
         int rows = matrix.GetLength(0), cols = matrix.GetLength(1);
@@ -2283,10 +2284,10 @@ public static partial class IlRuntime
         for (var row = r0; row < r1; row++)
             for (var column = c0; column < c1; column++)
                 result[row - r0, column - c0] = matrix[row, column];
-        return result;
+        return MatrixValue.FromRect(result);
     }
 
-    public static double[,] MatrixReshapeValue(long handle, long rows, long columns)
+    public static MatrixValue MatrixReshapeValue(long handle, long rows, long columns)
     {
         var matrix = Matrix(handle);
         int total = matrix.GetLength(0) * matrix.GetLength(1);
@@ -2298,38 +2299,78 @@ public static partial class IlRuntime
         for (var row = 0; row < matrix.GetLength(0); row++)
             for (var column = 0; column < matrix.GetLength(1); column++)
                 result[index / nc, index++ % nc] = matrix[row, column];
-        return result;
+        return MatrixValue.FromRect(result);
     }
 
-    public static double[,] MatrixCloneValue(long handle) => (double[,])Matrix(handle).Clone();
+    public static MatrixValue MatrixCloneValue(long handle) => MatrixValue.FromRect(Matrix(handle));
 
     // ── F2b: ROW/COL/ISCONTIGUOUS ───────────────────────────────────────────────
     /// <summary>Riga <paramref name="row"/> come matrice rank-2 1×cols (parità MATRIX.ROW).
     /// Indice fuori range → riga di zeri (stessa semantica di SLICE/get, che non solleva).</summary>
-    public static double[,] MatrixRowValue(long handle, long row)
+    public static MatrixValue MatrixRowValue(long handle, long row)
     {
         var matrix = Matrix(handle);
         int rows = matrix.GetLength(0), cols = matrix.GetLength(1);
         var result = new double[1, cols];
-        if (row < 0 || row >= rows) return result;
+        if (row < 0 || row >= rows) return MatrixValue.FromRect(result);
         for (var column = 0; column < cols; column++) result[0, column] = matrix[row, column];
-        return result;
+        return MatrixValue.FromRect(result);
     }
 
     /// <summary>Colonna <paramref name="col"/> come matrice rank-2 rows×1 (parità MATRIX.COL).
     /// Indice fuori range → colonna di zeri.</summary>
-    public static double[,] MatrixColValue(long handle, long col)
+    public static MatrixValue MatrixColValue(long handle, long col)
     {
         var matrix = Matrix(handle);
         int rows = matrix.GetLength(0), cols = matrix.GetLength(1);
         var result = new double[rows, 1];
-        if (col < 0 || col >= cols) return result;
+        if (col < 0 || col >= cols) return MatrixValue.FromRect(result);
         for (var row = 0; row < rows; row++) result[row, 0] = matrix[row, col];
-        return result;
+        return MatrixValue.FromRect(result);
     }
 
     /// <summary>Le matrici gestite sono sempre contigue (double[,] row-major): predicato vero.</summary>
     public static bool MatrixIsContiguous(long handle) { _ = Matrix(handle); return true; }
+
+    // ── F4: overload sul VALORE (MatrixValue) — view O(1) ──────────────────────
+    /// <summary>GETVALUE su valore (mutazione/lettura diretta).</summary>
+    public static double MatrixValueGetAt(MatrixValue matrix, long row, long column)
+        => matrix.Get((int)row, (int)column);
+    /// <summary>SETVALUE su valore: muta lo storage (view comprese) e restituisce se stesso.</summary>
+    public static MatrixValue MatrixValueSetAt(MatrixValue matrix, long row, long column, double value)
+    {
+        matrix.Set((int)row, (int)column, value);
+        return matrix;
+    }
+    public static long MatrixValueRowCount(MatrixValue matrix) => matrix.Rows;
+    public static long MatrixValueColumnCount(MatrixValue matrix) => matrix.Cols;
+    public static bool MatrixValueIsContiguous(MatrixValue matrix) => matrix.IsContiguous;
+    /// <summary>TRANSPOSE su valore: view O(1).</summary>
+    public static MatrixValue MatrixValueTransposeView(MatrixValue matrix) => matrix.TransposeView();
+    /// <summary>SLICE su valore: view O(1), end ESCLUSIVO con clamp (parità SimdMatrix.Slice).</summary>
+    public static MatrixValue MatrixValueSliceView(MatrixValue matrix, long rowStart, long rowEnd, long colStart, long colEnd)
+    {
+        int r0 = (int)Math.Max(0, Math.Min(matrix.Rows, rowStart));
+        int r1 = (int)Math.Max(r0, Math.Min(matrix.Rows, rowEnd));
+        int c0 = (int)Math.Max(0, Math.Min(matrix.Cols, colStart));
+        int c1 = (int)Math.Max(c0, Math.Min(matrix.Cols, colEnd));
+        return matrix.View(r0, c0, r1 - r0, c1 - c0);
+    }
+    /// <summary>ROW/COL su valore: view O(1) 1×cols / rows×1 (fuori range → zeri).</summary>
+    public static MatrixValue MatrixValueRowView(MatrixValue matrix, long row)
+        => row < 0 || row >= matrix.Rows ? MatrixValue.Zeros(1, matrix.Cols) : matrix.RowView((int)row);
+    public static MatrixValue MatrixValueColView(MatrixValue matrix, long col)
+        => col < 0 || col >= matrix.Cols ? MatrixValue.Zeros(matrix.Rows, 1) : matrix.ColView((int)col);
+    /// <summary>CLONEMATRIX su valore: copia indipendente.</summary>
+    public static MatrixValue MatrixValueClone(MatrixValue matrix) => matrix.Clone();
+    /// <summary>Ponte valore→array rettangolare (copia): per i confini che usano ancora
+    /// il layout flat `double[,]` (parametri array delle procedure utente, FFI legacy).</summary>
+    public static double[,] MatrixValueToRect(MatrixValue matrix) => matrix.ToRect();
+    /// <summary>Ponte array rettangolare→valore (copia): confine di ritorno/assegnazione.</summary>
+    public static MatrixValue MatrixValueFromRect(double[,] matrix) => MatrixValue.FromRect(matrix);
+    /// <summary>Write-back di un parametro array OUT/INOUT dentro il descrittore del
+    /// chiamante (attraverso Get/Set: rispetta le strides delle view).</summary>
+    public static void MatrixValueCopyFromRect(MatrixValue target, double[,] source) => target.CopyFromRect(source);
 
     public static double[] MatrixMultiplyVector(long handle, double[] values) => SimdMatrix(handle).Multiply(values);
     public static double[] MatrixMultiplyLeftVector(long handle, double[] values) => SimdMatrix(handle).MultiplyFromLeft(values);
@@ -2346,8 +2387,8 @@ public static partial class IlRuntime
     public static long MatrixLoadCsv(string path) => StoreSimdMatrix(CommonLib.SimdMatrix.LoadCsv(ResolveMatrixPath(path)));
     public static long MatrixLoadJson(string path) => StoreSimdMatrix(CommonLib.SimdMatrix.LoadJson(ResolveMatrixPath(path)));
     /// <summary>F4: LOADCSV/LOADJSON a valore (double[,] rank-2).</summary>
-    public static double[,] MatrixLoadCsvValue(string path) => MatrixValueOf(MatrixLoadCsv(path));
-    public static double[,] MatrixLoadJsonValue(string path) => MatrixValueOf(MatrixLoadJson(path));
+    public static MatrixValue MatrixLoadCsvValue(string path) => MatrixValueOf(MatrixLoadCsv(path));
+    public static MatrixValue MatrixLoadJsonValue(string path) => MatrixValueOf(MatrixLoadJson(path));
     public static double[] RollingDelta(double[] data, long period) => Basic.StdLibRuntime.TimeSeriesFunctions.RollingDelta(data, checked((int)period));
     public static long[] Outliers(double[] data, double threshold) => CommonLib.Numerics.Outliers(data, threshold: threshold).Select(index => (long)index).ToArray();
     public static double[] Difference(double[] data, long order)

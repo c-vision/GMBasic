@@ -16,6 +16,7 @@ namespace Basic;
 
 [JsonDerivedType(typeof(SingleType), nameof(SingleType))]
 [JsonDerivedType(typeof(DoubleType), nameof(DoubleType))]
+[JsonDerivedType(typeof(MatrixValueType), nameof(MatrixValueType))]
 [JsonDerivedType(typeof(CurrencyType), nameof(CurrencyType))]
 [JsonDerivedType(typeof(StringType), nameof(StringType))]
 [JsonDerivedType(typeof(BitType), nameof(BitType))]
@@ -168,6 +169,21 @@ public record DoubleType(Token? SourceToken = null)
     /// <summary>
     /// Crea una copia profonda di questo nodo. Poiché il tipo è immutabile, restituisce se stesso.
     /// </summary>
+    public override AstNode DeepClone() => this with { };
+}
+
+/// <summary>
+/// Rappresenta un VALORE matrice (descrittore `MatrixValue`): tipo dei risultati
+/// delle funzioni `MATRIX.*`/LINALG matriciali a valore (F4). Distinto da
+/// <see cref="ArrayType"/> rank-2 (che resta il layout flat `double[,]` di un DIM).
+/// </summary>
+public record MatrixValueType(Token? SourceToken = null)
+    : DataType(SourceToken?.Position ?? SourcePosition.Unknown)
+{
+    /// <summary>Rappresentazione testuale compatta.</summary>
+    public override string ToString() => "MATRIX VALUE";
+
+    /// <inheritdoc />
     public override AstNode DeepClone() => this with { };
 }
 

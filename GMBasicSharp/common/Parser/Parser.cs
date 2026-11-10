@@ -303,6 +303,10 @@ public sealed partial class Parser
     private string? _currentNamespace;
     /// <summary>Nome della libreria dichiarata con `LIBRARY "nome"` (null = eseguibile).</summary>
     private string? _libraryName;
+    /// <summary>True mentre si parsa la FIRMA di un `DECLARE ... LIB` (FFI): lì
+    /// `MATRIX OF (...)` descrive l'ABI nativa (puntatore double, non il valore
+    /// descrittore), quindi resta <see cref="ArrayType"/> rank-2.</summary>
+    private bool _parsingExternalSignature;
     
     /// <summary>
     /// Nomi delle variabili dichiarate finora (DIM/AS) — serve a disambiguare un nome con

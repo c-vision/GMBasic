@@ -3,6 +3,7 @@
 using System.Linq;
 using System.Reflection.Emit;
 using Basic.Runtime.Gpm;
+using CommonLib;
 
 namespace Basic.IlBackend;
 
@@ -35,6 +36,8 @@ public static class DataTypeMapper
     public static Type Map(DataType dataType, IlTypeContext types, IReadOnlyDictionary<int, TypeBuilder> classTypes) => dataType switch
     {
         DoubleType => types.Double,
+        /* F4: valore matrice a descrittore (risultati MATRIX.* a valore). */
+        MatrixValueType => typeof(MatrixValue),
         /* SINGLE: le gambe C (VM/C, C99Native) rappresentano TUTTI i numerici come double e
          * non arrotondano le variabili SINGLE. Per parità di stampa/valore anche il backend
          * gestito usa double (CSNG è già identità double). Gli ARRAY SINGLE restano float[]

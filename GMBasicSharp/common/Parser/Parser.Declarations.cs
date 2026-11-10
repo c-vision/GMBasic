@@ -811,13 +811,25 @@ public sealed partial class Parser
             aliasNameToken = Consume(TokenKind.StringLiteral, "Expected exported routine name as a string.");
         }
 
-        var parameters = Check(TokenKind.LeftParen) ? ParseParameters() : ImmutableArray<Parameter>.Empty;
-        var isFunction = Check(TokenKind.As);
-        // 2026-09-24: come per FUNCTION/SUB — DECLARE ... LIB atterra nello stesso scope
-        // del namespace (mai membro, mai nidificata qui: lo stack copre le locali).
-        if (_functionContextStack.Count == 0)
-            CheckBuiltinShadowing(nameToken, parameters);
-        var returnType = isFunction ? ParseTypeClause(nameToken) : null;
+        var parameters = ImmutableArray<Parameter>.Empty;
+        DataType? returnType = null;
+        var isFunction = false;
+        var previousExternalSignature = _parsingExternalSignature;
+        _parsingExternalSignature = true;
+        try
+        {
+            parameters = Check(TokenKind.LeftParen) ? ParseParameters() : ImmutableArray<Parameter>.Empty;
+            isFunction = Check(TokenKind.As);
+            // 2026-09-24: come per FUNCTION/SUB — DECLARE ... LIB atterra nello stesso scope
+            // del namespace (mai membro, mai nidificata qui: lo stack copre le locali).
+            if (_functionContextStack.Count == 0)
+                CheckBuiltinShadowing(nameToken, parameters);
+            returnType = isFunction ? ParseTypeClause(nameToken) : null;
+        }
+        finally
+        {
+            _parsingExternalSignature = previousExternalSignature;
+        }
         var callingConvention =
             Match(TokenKind.CDecl) ? FfiCallingConvention.CDecl : FfiCallingConvention.StdCall;
         if (callingConvention == FfiCallingConvention.StdCall)

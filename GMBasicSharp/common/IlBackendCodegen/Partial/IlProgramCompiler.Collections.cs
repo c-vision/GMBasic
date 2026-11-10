@@ -904,6 +904,19 @@ public sealed partial class IlProgramCompiler
 
     private void EmitArrayElementAssignment(ArrayElementTarget target, Expr value)
     {
+        // F4: valore MatrixValue m(r,c) = v → mutazione diretta MatrixValueSetAt.
+        if (NormalizeInferredType(_program.Symbols.GetSymbol(target.SymbolId).DataType) is MatrixValueType)
+        {
+            if (target.Indices.Length != 2)
+                throw new NotSupportedException("Backend IL: una matrice-valore richiede 2 indici.");
+            EmitLoadVariable(target.SymbolId);
+            EmitInt64Argument(target.Indices[0]);
+            EmitInt64Argument(target.Indices[1]);
+            EmitDoubleArgument(value);
+            _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.MatrixValueSetAt)));
+            _il.Emit(OpCodes.Pop);   // SetAt restituisce la matrice; qui l'effetto è la scrittura
+            return;
+        }
         if (TryGetDictSymbolInfo(target.SymbolId, out _, out var indexer))
         {
             EmitLoadVariable(target.SymbolId);

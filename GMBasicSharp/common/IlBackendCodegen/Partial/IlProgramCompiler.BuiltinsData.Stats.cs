@@ -6,6 +6,7 @@ using System.Collections.Immutable;
 using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
+using CommonLib;
 using System.Reflection.Metadata;
 using System.Reflection.Metadata.Ecma335;
 using System.Reflection.PortableExecutable;
@@ -591,6 +592,19 @@ public sealed partial class IlProgramCompiler
     private void EmitUBoundCall(BuiltinFunctionCallExpr expr)
     {
         if (TryEmitRuntimeBound(expr, "UBOUND", isUpper: true)) return;
+        // F4: valore matrice (descrittore) — UBOUND(m[, asse]) = rows/cols - 1 (lower 0).
+        if (expr.Args.Length >= 1 && NormalizeInferredType(InferType(expr.Args[0])) is MatrixValueType)
+        {
+            var axis = 1;
+            if (expr.Args.Length > 1 && TryExtractCompileTimeInt32(expr.Args[1], out var ax)) axis = ax;
+            EmitExpression(expr.Args[0]);
+            _il.Emit(OpCodes.Call, RuntimeMethod(
+                axis == 2 ? nameof(IlRuntime.MatrixValueColumnCount) : nameof(IlRuntime.MatrixValueRowCount),
+                typeof(MatrixValue)));
+            _il.Emit(OpCodes.Ldc_I8, 1L);
+            _il.Emit(OpCodes.Sub);
+            return;
+        }
         // UBOUND su una LIST (es. UBOUND(Numeri) con Numeri AS LIST<INTEGER>): il
         // conteggio runtime − 1 (le liste non hanno un ArrayInfo).
         if (expr.Args.Length >= 1 && NormalizeInferredType(InferType(expr.Args[0])) is ListType)
@@ -688,6 +702,14 @@ public sealed partial class IlProgramCompiler
     private void EmitLBoundCall(BuiltinFunctionCallExpr expr)
     {
         if (TryEmitRuntimeBound(expr, "LBOUND", isUpper: false)) return;
+        // F4: valore matrice — il lower bound BASIC è sempre 0.
+        if (expr.Args.Length >= 1 && NormalizeInferredType(InferType(expr.Args[0])) is MatrixValueType)
+        {
+            EmitExpression(expr.Args[0]);
+            _il.Emit(OpCodes.Pop);
+            _il.Emit(OpCodes.Ldc_I8, 0L);
+            return;
+        }
         var (arrayInfo, axisIndex) = ResolveArrayBoundArgs(expr, "LBOUND");
         EmitArrayLower(arrayInfo, axisIndex);
         _il.Emit(OpCodes.Conv_I8); // LongType, vedi EmitUBoundCall

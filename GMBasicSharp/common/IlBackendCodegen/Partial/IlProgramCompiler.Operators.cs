@@ -6,6 +6,7 @@ using System.Collections.Immutable;
 using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
+using CommonLib;
 using System.Reflection.Metadata;
 using System.Reflection.Metadata.Ecma335;
 using System.Reflection.PortableExecutable;
@@ -795,6 +796,20 @@ public sealed partial class IlProgramCompiler
     private void EmitCoerceToTarget(int symbolId, Expr value)
     {
         var targetType = NormalizeInferredType(_program.Symbols.GetSymbol(symbolId).DataType);
+        // F4: confini tra il VALORE matrice (descrittore MatrixValue) e il layout flat
+        // `double[,]` di un array rank-2 (DIM/MATRIX OF dichiarati come array). Le due
+        // rappresentazioni sono interscambiabili ai confini con una copia.
+        var sourceType = NormalizeInferredType(InferType(value));
+        if (targetType is MatrixValueType && sourceType is ArrayType { Rank: >= 2 })
+        {
+            _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.MatrixValueFromRect), typeof(double[,])));
+            return;
+        }
+        if (targetType is ArrayType { Rank: >= 2 } && sourceType is MatrixValueType)
+        {
+            _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.MatrixValueToRect), typeof(MatrixValue)));
+            return;
+        }
         // `DIM entries AS LIST` + `entries = IO.DIR(...)`: IO.DIR/READLINES... ritornano un ARRAY (string[]), ma una variabile LIST
         // senza elemento tipizzato e' una List<object>: lo store (castclass sul campo/local) lanciava InvalidCastException
         // "String[] -> List<object>" per le variabili globali (registry PackageServer.bas). Si converte l'array in List<object>.

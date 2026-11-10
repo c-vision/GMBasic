@@ -15,7 +15,7 @@
 namespace CommonLib;
 
 /// <summary>Matrice a valore con descrittore e view a strides (O(1)).</summary>
-public sealed class MatrixValue
+public sealed class MatrixValue : System.Collections.Generic.IEnumerable<double>
 {
     private readonly double[] _storage;   // storage condiviso (row-major o layout arbitrario)
     private readonly int _offset;         // indice del primo elemento in _storage
@@ -104,6 +104,20 @@ public sealed class MatrixValue
         return result;
     }
 
+    /// <summary>Scrive gli elementi di una matrice rettangolare dentro questo descrittore
+    /// (attraverso Get/Set: la scrittura passa dalle strides, quindi anche su una view).
+    /// Usato dal write-back dei parametri array↔valore. Dimensioni diverse: copia il
+    /// rettangolo intersezione.</summary>
+    public void CopyFromRect(double[,] source)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+        int rows = Math.Min(Rows, source.GetLength(0));
+        int cols = Math.Min(Cols, source.GetLength(1));
+        for (var r = 0; r < rows; r++)
+            for (var c = 0; c < cols; c++)
+                Set(r, c, source[r, c]);
+    }
+
     /// <summary>Elemento (r,c); 0 se fuori range (canone gmb_matrix_get).</summary>
     public double Get(int r, int c)
     {
@@ -158,4 +172,16 @@ public sealed class MatrixValue
                 m.Set(r, c, Get(r, c));
         return m;
     }
+
+    /// <summary>Enumerazione row-major degli elementi (stessa sequenza di un array flat
+    /// `double[,]`): serve alla stampa/collezioni (`PRINT m` → "[1, 0, 0, …]") e alle
+    /// conversioni generiche che accettano IEnumerable.</summary>
+    public System.Collections.Generic.IEnumerator<double> GetEnumerator()
+    {
+        for (var r = 0; r < Rows; r++)
+            for (var c = 0; c < Cols; c++)
+                yield return Get(r, c);
+    }
+
+    System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator() => GetEnumerator();
 }

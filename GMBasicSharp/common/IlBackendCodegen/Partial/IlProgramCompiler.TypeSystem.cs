@@ -441,6 +441,11 @@ public sealed partial class IlProgramCompiler
         // array, facendo fallire EmitDoubleArrayArgument/EmitDateTimeArrayArgument con
         // "atteso un array di..." per qualunque array, anche perfettamente valido.
         ArrayAccessExpr a when a.Indices.IsEmpty => NormalizeInferredType(_program.Symbols.GetSymbol(a.SymbolId).DataType),
+        // F4: valore matrice (descrittore) indicizzato m(i,j) → l'elemento è un DOUBLE
+        // (MatrixValueGetAt). Senza questo case il fallback restituiva MatrixValueType e il
+        // consumatore (PRINT) non boxava il double → InvalidProgramException.
+        ArrayAccessExpr a when NormalizeInferredType(_program.Symbols.GetSymbol(a.SymbolId).DataType) is MatrixValueType
+            => new DoubleType(),
         // MyList(0) su LIST/DICT (non array): tipo dell'elemento / valore del dict.
         ArrayAccessExpr a when NormalizeInferredType(_program.Symbols.GetSymbol(a.SymbolId).DataType) is ListType listT
             => listT.ElementType,

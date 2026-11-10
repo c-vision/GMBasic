@@ -71,6 +71,12 @@ public static partial class Linker
         // 3. InferredType è sempre compatibile (sarà risolto nelle passate successive).
         if (targetType is InferredType || sourceType is InferredType) return true;
 
+        // 3c. F4: il VALORE matrice (descrittore `MATRIX OF (…, DOUBLE)`) e l'array
+        // rank-2 flat `double[,]` sono interscambiabili ai confini — il backend emette
+        // la conversione (copia) in entrambe le direzioni.
+        if (sourceType is MatrixValueType && targetType is ArrayType { Rank: 2, ElementType: DoubleType }) return true;
+        if (targetType is MatrixValueType && sourceType is ArrayType { Rank: 2, ElementType: DoubleType }) return true;
+
         // 3b. Canali (parità Go chan): un canale generico (ValueType Any/Inferred, es. `DIM ch
         // AS CHANNEL` o `CONTEXT.DONE` che ritorna CHANNEL) è assegnabile a un canale di
         // qualunque tipo e viceversa; altrimenti il ValueType deve essere coercibile.

@@ -7,6 +7,7 @@ using System.Collections.Immutable;
 using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
+using CommonLib;
 using System.Reflection.Metadata;
 using System.Reflection.Metadata.Ecma335;
 using System.Reflection.PortableExecutable;
@@ -268,6 +269,11 @@ public sealed partial class IlProgramCompiler
             // UnresolvedQualifiedType (es. il tipo di ritorno di un OPERATOR UDT, "Vector2D"
             // non ancora legato): mappato a object nel DataTypeMapper → default null.
             case UnresolvedQualifiedType: _il.Emit(OpCodes.Ldnull); return;
+            // F4: valore matrice — default = matrice vuota (0×0), mai null (il descrittore è
+            // un reference type ma le operazioni assumono sempre un valore valido).
+            case MatrixValueType:
+                _il.Emit(OpCodes.Call, typeof(MatrixValue).GetProperty(nameof(MatrixValue.Empty))!.GetGetMethod()!);
+                return;
             default: throw new NotSupportedIlDataTypeException(type);
         }
     }

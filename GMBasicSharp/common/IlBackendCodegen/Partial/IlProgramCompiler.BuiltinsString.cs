@@ -828,6 +828,14 @@ public sealed partial class IlProgramCompiler
     private void EmitMatrixSliceCall(BuiltinFunctionCallExpr expr)
     {
         if (expr.Args.Length != 5) throw new NotSupportedException("Backend IL: MATRIX.SLICE richiede matrice/handle e quattro indici.");
+        // Valore MatrixValue: view O(1) sullo storage (nessuna copia).
+        if (NormalizeInferredType(InferType(expr.Args[0])) is MatrixValueType)
+        {
+            EmitExpression(expr.Args[0]);
+            for (var i = 1; i < 5; i++) EmitInt64Argument(expr.Args[i]);
+            _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.MatrixValueSliceView)));
+            return;
+        }
         EmitLinAlgHandleArgument(expr.Args[0]);
         for (var i = 1; i < 5; i++) EmitInt64Argument(expr.Args[i]);
         _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.MatrixSliceValue)));
@@ -842,10 +850,18 @@ public sealed partial class IlProgramCompiler
     }
 
     /// <summary>MATRIX.ROW/COL: matrice/handle + indice → valore rank-2 (1×cols / rows×1).</summary>
-    private void EmitMatrixRowColCall(BuiltinFunctionCallExpr expr, MethodInfo method)
+    private void EmitMatrixRowColCall(BuiltinFunctionCallExpr expr, MethodInfo method, bool isRow)
     {
         if (expr.Args.Length != 2)
             throw new NotSupportedException($"Backend IL: {expr.OriginalToken.Lexeme} richiede matrice/handle e un indice.");
+        // Valore MatrixValue: view O(1) (1×cols / rows×1).
+        if (NormalizeInferredType(InferType(expr.Args[0])) is MatrixValueType)
+        {
+            EmitExpression(expr.Args[0]);
+            EmitInt64Argument(expr.Args[1]);
+            _il.Emit(OpCodes.Call, RuntimeMethod(isRow ? nameof(IlRuntime.MatrixValueRowView) : nameof(IlRuntime.MatrixValueColView)));
+            return;
+        }
         EmitLinAlgHandleArgument(expr.Args[0]);
         EmitInt64Argument(expr.Args[1]);
         _il.Emit(OpCodes.Call, method);
@@ -858,6 +874,34 @@ public sealed partial class IlProgramCompiler
         if (expr.Args.Length != 1) throw new NotSupportedException($"Backend IL: {expr.OriginalToken.Lexeme} richiede 1 argomento.");
         EmitLinAlgHandleArgument(expr.Args[0]);
         _il.Emit(OpCodes.Call, method);
+    }
+
+    /// <summary>Come EmitLinAlgUnaryValueCall, ma se l'argomento è un VALORE MatrixValue usa
+    /// l'overload dedicato (es. TRANSPOSE/CLONE: view O(1) / clone indipendente).</summary>
+    private void EmitMatrixUnaryValue(BuiltinFunctionCallExpr expr, MethodInfo handleMethod, string matrixValueMethod)
+    {
+        if (expr.Args.Length != 1) throw new NotSupportedException($"Backend IL: {expr.OriginalToken.Lexeme} richiede 1 argomento.");
+        if (NormalizeInferredType(InferType(expr.Args[0])) is MatrixValueType)
+        {
+            EmitExpression(expr.Args[0]);
+            _il.Emit(OpCodes.Call, RuntimeMethod(matrixValueMethod));
+            return;
+        }
+        EmitLinAlgUnaryValueCall(expr, handleMethod);
+    }
+
+    /// <summary>ROWCOUNT/COLUMNCOUNT/ISCONTIGUOUS: se l'argomento è un valore MatrixValue usa
+    /// il metodo dedicato (per ISCONTIGUOUS conserva lo stato di view a strides).</summary>
+    private void EmitMatrixValueOrHandleUnary(BuiltinFunctionCallExpr expr, string valueMethod, MethodInfo handleMethod)
+    {
+        if (expr.Args.Length != 1) throw new NotSupportedException($"Backend IL: {expr.OriginalToken.Lexeme} richiede 1 argomento.");
+        if (NormalizeInferredType(InferType(expr.Args[0])) is MatrixValueType)
+        {
+            EmitExpression(expr.Args[0]);
+            _il.Emit(OpCodes.Call, RuntimeMethod(valueMethod));
+            return;
+        }
+        EmitLinAlgUnaryHandleCall(expr, handleMethod, vector: false);
     }
 
     private void EmitMatrixBroadcastCall(BuiltinFunctionCallExpr expr, string methodName)
@@ -898,7 +942,15 @@ public sealed partial class IlProgramCompiler
     private void EmitLinAlgSetValueCall(BuiltinFunctionCallExpr expr)
     {
         if (expr.Args.Length != 4) throw new NotSupportedException("Backend IL: MATRIX.SETVALUE richiede 4 argomenti (matrice/handle, row, col, value).");
-        // Valore MATRIX OF: mutazione diretta (niente registry).
+        // Valore MATRIX OF (MatrixValueType): mutazione diretta sullo storage (view comprese).
+        if (NormalizeInferredType(InferType(expr.Args[0])) is MatrixValueType)
+        {
+            EmitExpression(expr.Args[0]);
+            EmitInt64Argument(expr.Args[1]); EmitInt64Argument(expr.Args[2]); EmitDoubleArgument(expr.Args[3]);
+            _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.MatrixValueSetAt)));
+            return;
+        }
+        // Array rank-2 flat (DIM m(r,c)): mutazione diretta.
         if (NormalizeInferredType(InferType(expr.Args[0])) is ArrayType { Rank: 2 })
         {
             EmitExpression(expr.Args[0]);
@@ -914,6 +966,13 @@ public sealed partial class IlProgramCompiler
     private void EmitLinAlgGetValueCall(BuiltinFunctionCallExpr expr)
     {
         if (expr.Args.Length != 3) throw new NotSupportedException("Backend IL: MATRIX.GETVALUE richiede 3 argomenti (matrice/handle, row, col).");
+        if (NormalizeInferredType(InferType(expr.Args[0])) is MatrixValueType)
+        {
+            EmitExpression(expr.Args[0]);
+            EmitInt64Argument(expr.Args[1]); EmitInt64Argument(expr.Args[2]);
+            _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.MatrixValueGetAt)));
+            return;
+        }
         if (NormalizeInferredType(InferType(expr.Args[0])) is ArrayType { Rank: 2 })
         {
             EmitExpression(expr.Args[0]);

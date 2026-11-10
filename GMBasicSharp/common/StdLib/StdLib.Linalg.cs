@@ -128,7 +128,7 @@ public sealed partial class StdLib
         {
             new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.Inverse, "INVERSE"),
                 [new Parameter(-1, T(TokenKind.Identifier, "handle"), new AnyType(), noFlags, null, false)],
-                new ArrayType(new DoubleType(), 2), TokenKind.LinAlgInverseFunc),
+                new MatrixValueType(), TokenKind.LinAlgInverseFunc),
 
             new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.Solve, "SOLVE"),
                 [
@@ -143,11 +143,11 @@ public sealed partial class StdLib
 
             new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.MatrixPseudoInverse, "PINVERSE"),
                 [new Parameter(-1, T(TokenKind.Identifier, "handle"), new AnyType(), noFlags, null, false)],
-                new ArrayType(new DoubleType(), 2), TokenKind.MatrixPseudoInverse),
+                new MatrixValueType(), TokenKind.MatrixPseudoInverse),
 
             new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.MatrixExp, "EXPM"),
                 [new Parameter(-1, T(TokenKind.Identifier, "handle"), new AnyType(), noFlags, null, false)],
-                new ArrayType(new DoubleType(), 2), TokenKind.MatrixExp),
+                new MatrixValueType(), TokenKind.MatrixExp),
 
             new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.MatrixRank, "RANK"),
                 [new Parameter(-1, T(TokenKind.Identifier, "handle"), new LongType(), noFlags, null, false)],
@@ -160,39 +160,39 @@ public sealed partial class StdLib
             // --- scipy.linalg: funzioni matriciali (SQRTM/LOGM/HESSENBERG/BLOCKDIAG/NULLSPACE) ---
             new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.MatrixSqrt, "SQRTM"),
                 [new Parameter(-1, T(TokenKind.Identifier, "handle"), new AnyType(), noFlags, null, false)],
-                new ArrayType(new DoubleType(), 2), TokenKind.MatrixSqrt),
+                new MatrixValueType(), TokenKind.MatrixSqrt),
 
             new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.MatrixLogm, "LOGM"),
                 [new Parameter(-1, T(TokenKind.Identifier, "handle"), new AnyType(), noFlags, null, false)],
-                new ArrayType(new DoubleType(), 2), TokenKind.MatrixLogm),
+                new MatrixValueType(), TokenKind.MatrixLogm),
 
             new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.MatrixHessenberg, "HESSENBERG"),
                 [new Parameter(-1, T(TokenKind.Identifier, "handle"), new AnyType(), noFlags, null, false)],
-                new ArrayType(new DoubleType(), 2), TokenKind.MatrixHessenberg),
+                new MatrixValueType(), TokenKind.MatrixHessenberg),
 
             new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.MatrixNullSpace, "NULLSPACE"),
                 [new Parameter(-1, T(TokenKind.Identifier, "handle"), new AnyType(), noFlags, null, false)],
-                new ArrayType(new DoubleType(), 2), TokenKind.MatrixNullSpace),
+                new MatrixValueType(), TokenKind.MatrixNullSpace),
 
             new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.MatrixCosm, "COSM"),
                 [new Parameter(-1, T(TokenKind.Identifier, "handle"), new AnyType(), noFlags, null, false)],
-                new ArrayType(new DoubleType(), 2), TokenKind.MatrixCosm),
+                new MatrixValueType(), TokenKind.MatrixCosm),
             new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.MatrixSinm, "SINM"),
                 [new Parameter(-1, T(TokenKind.Identifier, "handle"), new AnyType(), noFlags, null, false)],
-                new ArrayType(new DoubleType(), 2), TokenKind.MatrixSinm),
+                new MatrixValueType(), TokenKind.MatrixSinm),
             new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.MatrixTanm, "TANM"),
                 [new Parameter(-1, T(TokenKind.Identifier, "handle"), new AnyType(), noFlags, null, false)],
-                new ArrayType(new DoubleType(), 2), TokenKind.MatrixTanm),
+                new MatrixValueType(), TokenKind.MatrixTanm),
             new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.MatrixSignm, "SIGNM"),
                 [new Parameter(-1, T(TokenKind.Identifier, "handle"), new AnyType(), noFlags, null, false)],
-                new ArrayType(new DoubleType(), 2), TokenKind.MatrixSignm),
+                new MatrixValueType(), TokenKind.MatrixSignm),
             new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.MatrixFractionalPower, "FRACTIONALPOWER"),
                 [new Parameter(-1, T(TokenKind.Identifier, "handle"), new AnyType(), noFlags, null, false),
                  new Parameter(-1, T(TokenKind.Identifier, "p"), new DoubleType(), noFlags, null, false)],
-                new ArrayType(new DoubleType(), 2), TokenKind.MatrixFractionalPower),
+                new MatrixValueType(), TokenKind.MatrixFractionalPower),
             new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.MatrixOrth, "ORTH"),
                 [new Parameter(-1, T(TokenKind.Identifier, "handle"), new AnyType(), noFlags, null, false)],
-                new ArrayType(new DoubleType(), 2), TokenKind.MatrixOrth),
+                new MatrixValueType(), TokenKind.MatrixOrth),
             new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.MatrixSubspaceAngles, "SUBSPACEANGLES"),
                 [new Parameter(-1, T(TokenKind.Identifier, "handle1"), new LongType(), noFlags, null, false),
                  new Parameter(-1, T(TokenKind.Identifier, "handle2"), new LongType(), noFlags, null, false)],
@@ -244,7 +244,7 @@ public sealed partial class StdLib
                         null, false),
                     new Parameter(-1, T(TokenKind.Identifier, "factorName"), new StringType(), noFlags, null, false)
                 ],
-                new ArrayType(new DoubleType(), 2), TokenKind.LinAlgDecompGetFactorFunc),
+                new MatrixValueType(), TokenKind.LinAlgDecompGetFactorFunc),
             new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.MatrixFrobeniusNorm, "FROBENIUSNORM"), [matrixArrayParam], new DoubleType(), TokenKind.MatrixFrobeniusNorm, ExecutionKind: NativeExecutionKind.Pure),
             new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.MatrixOneNorm, "ONENORM"), [matrixArrayParam], new DoubleType(), TokenKind.MatrixOneNorm, ExecutionKind: NativeExecutionKind.Pure),
             new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.MatrixInfinityNorm, "INFINITYNORM"), [matrixArrayParam], new DoubleType(), TokenKind.MatrixInfinityNorm, ExecutionKind: NativeExecutionKind.Pure),

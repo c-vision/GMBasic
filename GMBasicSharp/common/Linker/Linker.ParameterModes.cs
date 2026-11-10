@@ -23,7 +23,7 @@ public static partial class Linker
         {
             if (procedure.Parameters.IsDefaultOrEmpty) continue;
             var inMatrices = procedure.Parameters
-                .Where(p => p.Mode == ParameterMode.In && p.DataType is ArrayType { Rank: >= 2 })
+                .Where(p => p.Mode == ParameterMode.In && IsMatrixParamType(p.DataType))
                 .Select(p => p.SymbolId)
                 .ToHashSet();
             if (inMatrices.Count > 0)
@@ -33,13 +33,19 @@ public static partial class Linker
             // vieta la lettura di un ELEMENTO (`x = m(i,j)`); i metadati
             // (ROWCOUNT/COLUMNCOUNT/ISCONTIGUOUS) e le scritture restano leciti.
             var outMatrices = procedure.Parameters
-                .Where(p => p.Mode == ParameterMode.Out && p.DataType is ArrayType { Rank: >= 2 })
+                .Where(p => p.Mode == ParameterMode.Out && IsMatrixParamType(p.DataType))
                 .Select(p => p.SymbolId)
                 .ToHashSet();
             if (outMatrices.Count > 0)
                 WalkStatements(procedure.Body, statement => CheckOutStatement(statement, outMatrices, procedure));
         }
     }
+
+    /// <summary>Vero per un tipo di parametro che rappresenta una matrice: il valore
+    /// descrittore (`MATRIX OF (I1, I2, DOUBLE)` → <see cref="MatrixValueType"/>) o
+    /// l'array rank≥2 legacy (FFI/DIM).</summary>
+    private static bool IsMatrixParamType(DataType? type)
+        => type is MatrixValueType || type is ArrayType { Rank: >= 2 };
 
     private static void CheckOutStatement(Stmt statement, HashSet<int> outMatrices, ProcedureDefinition procedure)
     {
@@ -263,7 +269,7 @@ public static partial class Linker
             if (parameterIndex < 0 || parameterIndex >= parameters.Length) continue;
             var target = parameters[parameterIndex];
             if (target.Mode == ParameterMode.In) continue;
-            if (target.DataType is not ArrayType { Rank: >= 2 }) continue;
+            if (!IsMatrixParamType(target.DataType)) continue;
             var symbolId = argument switch
             {
                 VariableExpr variable => variable.SymbolId,
