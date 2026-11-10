@@ -16,8 +16,10 @@
 #   - Linux: CMake reso portabile (RID, `$ORIGIN`, `--as-needed` invece di `-dead_strip_dylibs`)
 #     ma la build NON è mai stata eseguita su Linux → il primo run serve a scoprire le dipendenze
 #     di sistema mancanti (elencate sotto, da completare).
-#   - Windows: NON abilitato. La build usa API POSIX (dlopen, fork/exec, `m`) e i target
-#     CMake non hanno un percorso MSVC; va prima fatto il port (issue dedicata).
+#   - Windows: NON abilitato per core/engine/llmmotor. La build usa API POSIX (dlopen, fork/exec,
+#     `m`) e i target CMake non hanno un percorso MSVC; va prima fatto il port (issue dedicata).
+#     ECCEZIONE: il gruppo `toolchain` include i RID Windows (2026-11-10) perché il packer non
+#     compila, ri-impacchetta soltanto; primo run CI da validare.
 #
 # SEGRETI/VARIABILI RICHIESTI (Settings → Secrets and variables → Actions)
 #   - `GMB_MODULES_TOKEN` (secret, PAT con `repo` su c-vision/GMBasicModules):
@@ -36,7 +38,7 @@ on:
   workflow_dispatch:
     inputs:
       group:
-        description: "Gruppo da produrre: core | engine | llmmotor"
+        description: "Gruppo da produrre: core | engine | llmmotor | toolchain"
         default: "core"
         required: true
       rids:
@@ -73,7 +75,14 @@ jobs:
       - id: pick
         shell: bash
         run: |
-          ALL='[{"rid":"osx-arm64","os":"macos-14"},{"rid":"osx-x64","os":"macos-13"},{"rid":"linux-x64","os":"ubuntu-24.04"},{"rid":"linux-arm64","os":"ubuntu-24.04-arm"}]'
+          # `toolchain` è l'UNICO gruppo con i RID Windows in matrice: il packer non compila nulla,
+          # quindi win-arm64 si ri-impacchetta dallo zip ufficiale anche su un runner x64 (nessuna
+          # esecuzione del binario, solo bytes + notices + sha256).
+          if [ "${{ github.event.inputs.group }}" = "toolchain" ]; then
+            ALL='[{"rid":"osx-arm64","os":"macos-14"},{"rid":"osx-x64","os":"macos-13"},{"rid":"linux-x64","os":"ubuntu-24.04"},{"rid":"linux-arm64","os":"ubuntu-24.04-arm"},{"rid":"win-x64","os":"windows-2022"},{"rid":"win-arm64","os":"windows-2022"}]'
+          else
+            ALL='[{"rid":"osx-arm64","os":"macos-14"},{"rid":"osx-x64","os":"macos-13"},{"rid":"linux-x64","os":"ubuntu-24.04"},{"rid":"linux-arm64","os":"ubuntu-24.04-arm"}]'
+          fi
           WANT="${{ github.event.inputs.rids }}"
           if [ -z "$WANT" ]; then
             SEL="$ALL"
@@ -106,13 +115,13 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: dipendenze di sistema (macOS)
-        if: runner.os == 'macOS'
+        if: runner.os == 'macOS' && env.GROUP != 'toolchain'
         run: |
           brew update >/dev/null
           brew install cmake openssl@3 zstd curl brotli lz4 sdl2 sdl2_ttf jpeg-turbo libpng libtiff webp sqlite
 
       - name: dipendenze di sistema (Linux)
-        if: runner.os == 'Linux'
+        if: runner.os == 'Linux' && env.GROUP != 'toolchain'
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
@@ -123,7 +132,7 @@ jobs:
       # LLMEnv serve a TUTTI i gruppi: `gmb_runtime_c` include LLMEnv/LLMEngine e `add_subdirectory`
       # dei suoi progetti (tokenizer, plugin, desc). engine/llmmotor in più PUBBLICANO da LLMEnv.
       - name: checkout LLMEnv
-        if: ${{ vars.LLMENV_REPO != '' }}
+        if: ${{ vars.LLMENV_REPO != '' && env.GROUP != 'toolchain' }}
         uses: actions/checkout@v4
         with:
           repository: ${{ vars.LLMENV_REPO }}
@@ -134,6 +143,7 @@ jobs:
           if [ -d "$GITHUB_WORKSPACE/LLMEnv" ]; then echo "LLMENV=$GITHUB_WORKSPACE/LLMEnv" >> "$GITHUB_ENV"; fi
 
       - name: LLMEnv presente? (errore chiaro, non un configure di CMake illeggibile)
+        if: env.GROUP != 'toolchain'
         run: |
           if [ -z "${LLMENV:-}" ] || [ ! -d "$LLMENV" ]; then
             echo "::error::LLMEnv non trovato. Serve per compilare QUALSIASI gruppo: imposta la variable LLMENV_REPO (es. c-vision/LLMEnv) o LLMENV_DIR (checkout precompilato)." >&2
@@ -141,11 +151,40 @@ jobs:
           fi
 
       - name: build + gate di caricabilità
+        if: env.GROUP != 'toolchain'
         run: |
           args=( "$GROUP" --rid "${{ matrix.rid }}" )
           [ "$DO_PUBLISH" = "true" ] && args+=( --publish --yes --no-index )   # indice: job dedicato
           [ -n "$TAG" ] && args+=( --tag "$TAG" )
           bash tools/sh/libs_build_release.sh "${args[@]}"
+
+      # TOOLCHAIN (F1): il COMPILATORE per RID. Non compila e non usa LLMEnv: scarica la
+      # distribuzione ufficiale, la ri-impacchetta in modo deterministico (notices + sha256) e,
+      # col publish richiesto, carica gli asset sul tag immutabile `toolchain-v1`.
+      - name: "toolchain: impacchetta (+ pubblica se richiesto)"
+        if: env.GROUP == 'toolchain'
+        shell: bash
+        run: |
+          bash tools/sh/libs_toolchain_pack.sh --rid "${{ matrix.rid }}"
+          # Tag del compilatore separato da quello degli altri gruppi: `tag=runtime-v3` con
+          # `group=toolchain` spedirebbe 57 MB di zig su un tag di runtime.
+          tag="${TAG:-toolchain-v1}"
+          case "$tag" in
+            toolchain-v*) : ;;
+            *) echo "::error::il gruppo toolchain pubblica solo su toolchain-vN (ricevuto '$tag')" >&2; exit 1 ;;
+          esac
+          if [ "$DO_PUBLISH" = "true" ]; then
+            bash tools/sh/libs_publish_files_gh.sh toolchain "${{ matrix.rid }}" \
+              --source build/libs/toolchain --tag "$tag" --yes
+          else
+            echo "(publish non richiesto: artefatti solo come workflow artifact)"
+          fi
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: toolchain-${{ matrix.rid }}
+          path: build/libs/toolchain/zig-*.tar.xz*
+          if-no-files-found: error
 
   index:
     name: indice (libs-manifest.json)

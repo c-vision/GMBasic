@@ -35,7 +35,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 GROUP="${1:-}"; RID="${2:-}"
 [ -n "$GROUP" ] && [ -n "$RID" ] || { sed -n '2,30p' "$0" | sed 's/^# \{0,1\}//'; exit 2; }
 shift 2
-case "$GROUP" in boot|dev|support|core|engine|llmmotor|ffi|domain|runtime|runtime-core) ;; *) echo "gruppo non valido: $GROUP" >&2; exit 2;; esac
+case "$GROUP" in boot|dev|support|core|engine|llmmotor|ffi|domain|runtime|runtime-core|toolchain) ;; *) echo "gruppo non valido: $GROUP" >&2; exit 2;; esac
 LIBS_RID="$RID"   # regole di gruppo per RID di DESTINAZIONE
 
 SRC=""; TAG=""; YES=0; DRY=0; PRUNE=0; TREE=0; REPO="c-vision/GMBasicModules"
@@ -80,6 +80,9 @@ A() { if [ "$TREE" = "1" ]; then asset_name_tree "$1"; else asset_name "$1"; fi;
 
 asset_name() {
   local f="$1" stem ext
+  # TOOLCHAIN: l'archivio porta GIÀ il RID nel nome (`zig-0.17.0-osx-arm64.tar.xz`); aggiungerlo
+  # di nuovo darebbe `…-osx-arm64-osx-arm64.tar.xz`. Il nome del file È il nome dell'asset.
+  if [ "$GROUP" = "toolchain" ]; then printf '%s' "$f"; return 0; fi
   case "$f" in
     *.so|*.so.*) stem="${f%%.so*}"; ext="${f#"$stem"}";;
     *.dylib)     stem="${f%.dylib}"; ext=".dylib";;
@@ -96,7 +99,7 @@ while IFS= read -r f; do
   if [ "$TREE" = "1" ]; then b="${f#"$SRC"/}"; else b="$(basename "$f")"; fi
   [ -n "$(libs_group_pick "$GROUP" "$b")" ] || continue
   FILES+=("$b")
-done < <(if [ "$TREE" = "1" ]; then find "$SRC" -type f \( -name "*.h" -o -name "*.hpp" -o -name "*.a" -o -name "*.dylib" -o -name "*.so" -o -name "*.so.*" -o -name "*.dll" -o -name "*.pc" \) | sort; else find "$SRC" -maxdepth 1 -type f \( -name "*.dylib" -o -name "*.so" -o -name "*.so.*" -o -name "*.dll" -o -name "*.metallib" \) | sort; fi)
+done < <(if [ "$TREE" = "1" ]; then find "$SRC" -type f \( -name "*.h" -o -name "*.hpp" -o -name "*.a" -o -name "*.dylib" -o -name "*.so" -o -name "*.so.*" -o -name "*.dll" -o -name "*.pc" \) | sort; else find "$SRC" -maxdepth 1 -type f \( -name "*.dylib" -o -name "*.so" -o -name "*.so.*" -o -name "*.dll" -o -name "*.metallib" -o -name "*.tar.xz" \) | sort; fi)
 [ "${#FILES[@]}" -gt 0 ] || { echo "nessun file del gruppo '$GROUP' in $SRC" >&2; exit 1; }
 
 echo "== per-file: gruppo=$GROUP rid=$RID tag=$TAG file=${#FILES[@]} (repo=$REPO)" >&2

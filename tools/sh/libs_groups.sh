@@ -63,6 +63,7 @@ libs_group_pick() {
           libgmb_*|gmb_sql_*) ;;                     # nostro ma non in runtime
           libgmbamqp.*|libgmbgrpc.*|libgmbkafka.*|libgmbmqtt.*|libgmbnats.*|libgmbprotobuf.*|libgmbmedia.*) ;;  # gruppo `ffi`
           libllm*|libllama*|libggml*|libmtmd*|mlx.metallib) ;;   # engine/llmmotor gestiti sopra
+          zig-[0-9]*.tar.xz) ;;                      # gruppo `toolchain`: il compilatore NON si esegue
           *) echo "$f";;                             # il resto = terze parti (support)
         esac;;
       runtime-core)
@@ -80,6 +81,14 @@ libs_group_pick() {
         # La `.a` di gmbmedia resta un artefatto di link locale: non si distribuisce.
         case "$f" in
           libgmbamqp.*|libgmbgrpc.*|libgmbkafka.*|libgmbmqtt.*|libgmbnats.*|libgmbprotobuf.*|libgmbmedia.dylib|libgmbmedia.so) echo "$f";;
+        esac;;
+      toolchain)
+        # IL COMPILATORE, non una libreria (F1, 2026-11-10): un artefatto per host,
+        # `zig-<versione>-<rid>.tar.xz`, prodotto da `tools/sh/libs_toolchain_pack.sh`.
+        # Sta QUI e non in un secondo elenco perché questa è l'unica tabella gruppo→file:
+        # l'indice (`libs_manifest_gh.sh`) classifica con la stessa regola.
+        case "$f" in
+          zig-[0-9]*.tar.xz) echo "$f";;
         esac;;
       dev)
         # PAYLOAD per COMPILARE: header di terze parti (`include/…`) e le nostre statiche
@@ -99,6 +108,7 @@ libs_group_pick() {
         esac;;
       support) case "$f" in
           libgmb_*|gmb_sql_*|libllm*|libllama*|libggml*|libmtmd*|mlx.metallib|libtorch*|libc10*|libomp*) ;;
+          zig-[0-9]*.tar.xz) ;;                      # gruppo `toolchain`: mai nel bundle delle terze parti
           libgmbamqp.*|libgmbgrpc.*|libgmbkafka.*|libgmbmqtt.*|libgmbnats.*|libgmbprotobuf.*|libgmbmedia.*) ;;  # gruppo `ffi`
           *) echo "$f";;
         esac;;
