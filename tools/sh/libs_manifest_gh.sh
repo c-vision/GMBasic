@@ -418,10 +418,18 @@ do_push() {
   fi
   ( cd "$clone" \
     && git add libs-manifest.json \
-    && git -c user.name="gmb-libs-publisher" -c user.email="gmbasic@maxxcom.it" \
-         commit -q -m "libs-manifest: aggiornato $(jq -r '.version' libs-manifest.json) ($(jq -r '.rids|keys|join(", ")' libs-manifest.json))" \
-    && git ${cred[@]+"${cred[@]}"} push -q origin HEAD:main )
-  echo "manifest pubblicato: https://github.com/$REPO/blob/main/libs-manifest.json"
+    && if git diff --cached --quiet; then
+         # NIENTE da pubblicare: il manifest del checkout è già quello su main. Prima `git commit`
+         # usciva con "nothing to commit" (rc 1) e il job `index` diventava ROSSO pur avendo fatto
+         # tutto bene (visto nel run 42866953867: osx-arm64 era già pubblicato dal run prima).
+         # Un no-op è un SUCCESSO: non c'è nulla da scrivere.
+         echo "manifest identico a quello pubblicato: niente da pushare"
+       else
+         git -c user.name="gmb-libs-publisher" -c user.email="gmbasic@maxxcom.it" \
+             commit -q -m "libs-manifest: aggiornato $(jq -r '.version' libs-manifest.json) ($(jq -r '.rids|keys|join(", ")' libs-manifest.json))" \
+           && git ${cred[@]+"${cred[@]}"} push -q origin HEAD:main \
+           && echo "manifest pubblicato: https://github.com/$REPO/blob/main/libs-manifest.json"
+       fi )
   rm -rf "$clone"
 }
 
