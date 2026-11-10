@@ -105,10 +105,14 @@ all_rids() { echo "osx-arm64 osx-x64 linux-x64 linux-arm64 win-x64 win-arm64"; }
 # contenuto produce sha diversi — misurato 2026-11-10 su osx-arm64: 19.506 file identici, sha
 # diverso solo per `uname`/`gname` e per il fuso dell'mtime.
 tar_opts() {
+  # NIENTE `--format=pax`: misurato il 2026-11-10, i pax header per file portano l'artefatto da
+  # 57 MB a 185 MB (3,2x sul download di ogni RID) in cambio di una identita byte-per-byte che
+  # comunque non copre GNU tar vs bsdtar. Formato di default (restricted pax → ustar sui nomi
+  # normali): si tengono solo i campi che non costano nulla.
   if tar --version 2>/dev/null | head -1 | grep -qi 'gnu tar'; then
-    printf '%s\n' --format=pax --owner=0 --group=0 --numeric-owner --sort=name
+    printf '%s\n' --owner=0 --group=0 --numeric-owner --sort=name
   else
-    printf '%s\n' --format=pax --uid 0 --gid 0 --uname '' --gname ''
+    printf '%s\n' --uid 0 --gid 0 --uname '' --gname ''
   fi
 }
 
