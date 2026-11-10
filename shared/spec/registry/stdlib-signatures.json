@@ -13575,7 +13575,7 @@
       "ns": "MATRIX",
       "name": "CIRCULANT",
       "fn": true,
-      "return": "long",
+      "return": "double[]",
       "params": [
         {
           "name": "c",
@@ -13782,7 +13782,7 @@
       "ns": "MATRIX",
       "name": "HANKEL",
       "fn": true,
-      "return": "long",
+      "return": "double[]",
       "params": [
         {
           "name": "c",
@@ -14217,7 +14217,7 @@
       "ns": "MATRIX",
       "name": "TOEPLITZ",
       "fn": true,
-      "return": "long",
+      "return": "double[]",
       "params": [
         {
           "name": "c",

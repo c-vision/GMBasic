@@ -749,18 +749,18 @@ public sealed partial class IlProgramCompiler
                 if (expr.Args.Length != 2) throw new NotSupportedException("Backend IL: MATRIX.TOEPLITZ richiede 2 array.");
                 EmitDoubleArrayArgument(expr.Args[0]);
                 EmitDoubleArrayArgument(expr.Args[1]);
-                _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.MatrixToeplitz)));
+                _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.MatrixToeplitzValue)));
                 break;
             case TokenKind.MatrixHankel:
                 if (expr.Args.Length != 2) throw new NotSupportedException("Backend IL: MATRIX.HANKEL richiede 2 array.");
                 EmitDoubleArrayArgument(expr.Args[0]);
                 EmitDoubleArrayArgument(expr.Args[1]);
-                _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.MatrixHankel)));
+                _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.MatrixHankelValue)));
                 break;
             case TokenKind.MatrixCirculant:
                 if (expr.Args.Length != 1) throw new NotSupportedException("Backend IL: MATRIX.CIRCULANT richiede 1 array.");
                 EmitDoubleArrayArgument(expr.Args[0]);
-                _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.MatrixCirculant)));
+                _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.MatrixCirculantValue)));
                 break;
             case TokenKind.MatrixSolveTriangular:
                 if (expr.Args.Length != 3) throw new NotSupportedException("Backend IL: LINALG.SOLVETRIANGULAR richiede handle, handle, lower.");

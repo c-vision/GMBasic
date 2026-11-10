@@ -3532,7 +3532,9 @@ static void reg_let_assign(ctx_t* c, gmb_stmt_t* s, vars_t* scope) {
                     || s->value->tk == GMB_TOK_MatrixRow || s->value->tk == GMB_TOK_MatrixCol
                     || s->value->tk == GMB_TOK_Multiply
                     || s->value->tk == GMB_TOK_MatrixConcatRows || s->value->tk == GMB_TOK_MatrixConcatCols
-                    || s->value->tk == GMB_TOK_MatrixKron || s->value->tk == GMB_TOK_MatrixBlockDiag)) {
+                    || s->value->tk == GMB_TOK_MatrixKron || s->value->tk == GMB_TOK_MatrixBlockDiag
+                    || s->value->tk == GMB_TOK_MatrixToeplitz || s->value->tk == GMB_TOK_MatrixHankel
+                    || s->value->tk == GMB_TOK_MatrixCirculant)) {
                 tv->is_array = 1; tv->ndims = 2; tv->matrix = 0; tv->jagged = 0; tv->dyn_len = 0;
             }
             /* v = <getter RDD (TY_VAL)> → var TY_VAL (gmb_val_t): il tipo si risolve a runtime. */
@@ -3885,7 +3887,10 @@ if (s->dim_var) {            int ty = suffix_type(s->dim_var);
                     || s->dim_init->tk == GMB_TOK_MatrixConcatRows
                     || s->dim_init->tk == GMB_TOK_MatrixConcatCols
                     || s->dim_init->tk == GMB_TOK_MatrixKron
-                    || s->dim_init->tk == GMB_TOK_MatrixBlockDiag) {
+                    || s->dim_init->tk == GMB_TOK_MatrixBlockDiag
+                    || s->dim_init->tk == GMB_TOK_MatrixToeplitz
+                    || s->dim_init->tk == GMB_TOK_MatrixHankel
+                    || s->dim_init->tk == GMB_TOK_MatrixCirculant) {
                     v->is_array = 1; v->ndims = 2; v->matrix = 0; v->jagged = 0; v->dyn_len = 0;
                 }
                 /* LINALG.FACTOR(decomp, name): handle matrice (int64_t). */
@@ -16017,7 +16022,9 @@ static void emit_matrix_from_handle_result(ctx_t* c, var_t* dv, gmb_expr_t* call
           || value->tk == GMB_TOK_MatrixRow || value->tk == GMB_TOK_MatrixCol
           || value->tk == GMB_TOK_Multiply
           || value->tk == GMB_TOK_MatrixConcatRows || value->tk == GMB_TOK_MatrixConcatCols
-          || value->tk == GMB_TOK_MatrixKron || value->tk == GMB_TOK_MatrixBlockDiag)) {
+          || value->tk == GMB_TOK_MatrixKron || value->tk == GMB_TOK_MatrixBlockDiag
+          || value->tk == GMB_TOK_MatrixToeplitz || value->tk == GMB_TOK_MatrixHankel
+          || value->tk == GMB_TOK_MatrixCirculant)) {
           var_t* mv = lookup_var(c, target);
           if (mv && mv->is_array && mv->ndims >= 2 && !mv->jagged && !mv->matrix && !mv->matrix_handle) {
               emit_matrix_from_handle_result(c, mv, value);
@@ -19105,7 +19112,10 @@ static void st_dim(ctx_t* c, gmb_stmt_t* s) {
              || s->dim_init->tk == GMB_TOK_MatrixConcatRows
              || s->dim_init->tk == GMB_TOK_MatrixConcatCols
              || s->dim_init->tk == GMB_TOK_MatrixKron
-             || s->dim_init->tk == GMB_TOK_MatrixBlockDiag)) {
+             || s->dim_init->tk == GMB_TOK_MatrixBlockDiag
+             || s->dim_init->tk == GMB_TOK_MatrixToeplitz
+             || s->dim_init->tk == GMB_TOK_MatrixHankel
+             || s->dim_init->tk == GMB_TOK_MatrixCirculant)) {
              emit_matrix_from_handle_result(c, dv, s->dim_init);
              return;
          }

@@ -1318,23 +1318,23 @@ internal sealed partial class PCodeProcessor
 
     private object? LuMatrixToeplitz(object?[] args)
     {
-        var newId = Interlocked.Increment(ref _nextLinearMatrixId);
-        _linMatrices[newId] = global::CommonLib.Numerics.Toeplitz(ToDoubleArr(args.Length > 0 ? args[0] : null), ToDoubleArr(args.Length > 1 ? args[1] : null));
-        return HandleOf(newId);
+        // F4: TOEPLITZ restituisce il VALORE matrice.
+        var res = global::CommonLib.Numerics.Toeplitz(ToDoubleArr(args.Length > 0 ? args[0] : null), ToDoubleArr(args.Length > 1 ? args[1] : null));
+        return SimdToRect(new CommonLib.SimdMatrix(res.ToRowMajorArray(), res.RowCount, res.ColumnCount));
     }
 
     private object? LuMatrixHankel(object?[] args)
     {
-        var newId = Interlocked.Increment(ref _nextLinearMatrixId);
-        _linMatrices[newId] = global::CommonLib.Numerics.Hankel(ToDoubleArr(args.Length > 0 ? args[0] : null), ToDoubleArr(args.Length > 1 ? args[1] : null));
-        return HandleOf(newId);
+        // F4: HANKEL restituisce il VALORE matrice.
+        var res = global::CommonLib.Numerics.Hankel(ToDoubleArr(args.Length > 0 ? args[0] : null), ToDoubleArr(args.Length > 1 ? args[1] : null));
+        return SimdToRect(new CommonLib.SimdMatrix(res.ToRowMajorArray(), res.RowCount, res.ColumnCount));
     }
 
     private object? LuMatrixCirculant(object?[] args)
     {
-        var newId = Interlocked.Increment(ref _nextLinearMatrixId);
-        _linMatrices[newId] = global::CommonLib.Numerics.Circulant(ToDoubleArr(args.Length > 0 ? args[0] : null));
-        return HandleOf(newId);
+        // F4: CIRCULANT restituisce il VALORE matrice.
+        var res = global::CommonLib.Numerics.Circulant(ToDoubleArr(args.Length > 0 ? args[0] : null));
+        return SimdToRect(new CommonLib.SimdMatrix(res.ToRowMajorArray(), res.RowCount, res.ColumnCount));
     }
 
     private object? LuMatrixSolveTriangular(object?[] args)

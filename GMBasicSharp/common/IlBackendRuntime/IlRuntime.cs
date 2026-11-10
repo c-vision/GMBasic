@@ -1445,6 +1445,10 @@ public static partial class IlRuntime
     public static long MatrixToeplitz(double[] c, double[] r) => StoreMatrix(CommonLib.Numerics.Toeplitz(c, r).ToArray());
     public static long MatrixHankel(double[] c, double[] r) => StoreMatrix(CommonLib.Numerics.Hankel(c, r).ToArray());
     public static long MatrixCirculant(double[] c) => StoreMatrix(CommonLib.Numerics.Circulant(c).ToArray());
+    /// <summary>F4: TOEPLITZ/HANKEL/CIRCULANT a valore (double[,] rank-2).</summary>
+    public static double[,] MatrixToeplitzValue(double[] c, double[] r) => MatrixValueOf(MatrixToeplitz(c, r));
+    public static double[,] MatrixHankelValue(double[] c, double[] r) => MatrixValueOf(MatrixHankel(c, r));
+    public static double[,] MatrixCirculantValue(double[] c) => MatrixValueOf(MatrixCirculant(c));
     public static double[] MatrixSolveTriangular(long aHandle, long bHandle, long lower) => CommonLib.Numerics.SolveTriangular(ToMathNet(Matrix(aHandle)), global::MathNet.Numerics.LinearAlgebra.Double.DenseVector.OfArray(Vector(bHandle)), lower != 0).ToArray();
     public static long MatrixEig(long handle) => StoreDecomposition(CommonLib.Numerics.GeneralEigen(ToMathNet(Matrix(handle))));
     public static long MatrixSchur(long handle) => StoreDecomposition(CommonLib.Numerics.RealSchur(ToMathNet(Matrix(handle))));

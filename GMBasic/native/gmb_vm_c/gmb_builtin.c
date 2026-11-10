@@ -2298,7 +2298,8 @@ static void gmb_bf_951(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func
                 : gmb_matrix_hankel(c, r, nc, nr);
             free(c);
             free(r);
-            bout->result = (double)out;
+            vm_matrix_set_value_result(out, bout);
+            gmb_matrix_free(out);
         }
 }
 static void gmb_bf_953(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
@@ -2306,8 +2307,10 @@ static void gmb_bf_953(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func
         {
             int nc = 0;
             double* c = argc >= 1 ? gmb_vm_list_to_dbl(&args[0], &nc) : NULL;
-            bout->result = (double)gmb_matrix_circulant(c, nc);
+            int64_t __v = gmb_matrix_circulant(c, nc);
             free(c);
+            vm_matrix_set_value_result(__v, bout);
+            gmb_matrix_free(__v);
         }
 }
 static void gmb_bf_954(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
