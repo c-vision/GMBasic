@@ -730,9 +730,9 @@ public sealed partial class IlProgramCompiler
             case TokenKind.MatrixTanm: EmitLinAlgUnaryValueCall(expr, RuntimeMethod(nameof(IlRuntime.MatrixTanmValue))); break;
             case TokenKind.MatrixSignm: EmitLinAlgUnaryValueCall(expr, RuntimeMethod(nameof(IlRuntime.MatrixSignmValue))); break;
             case TokenKind.MatrixOrth: EmitLinAlgUnaryValueCall(expr, RuntimeMethod(nameof(IlRuntime.MatrixOrthValue))); break;
-            case TokenKind.MatrixPolar: EmitLinAlgUnaryHandleCall(expr, RuntimeMethod(nameof(IlRuntime.MatrixPolar)), vector: false); break;
-            case TokenKind.MatrixEig: EmitLinAlgUnaryHandleCall(expr, RuntimeMethod(nameof(IlRuntime.MatrixEig)), vector: false); break;
-            case TokenKind.MatrixSchur: EmitLinAlgUnaryHandleCall(expr, RuntimeMethod(nameof(IlRuntime.MatrixSchur)), vector: false); break;
+            case TokenKind.MatrixPolar: EmitLinAlgDecompValueCall(expr, RuntimeMethod(nameof(IlRuntime.MatrixPolar)), "POLAR"); break;
+            case TokenKind.MatrixEig: EmitLinAlgDecompValueCall(expr, RuntimeMethod(nameof(IlRuntime.MatrixEig)), "EIG"); break;
+            case TokenKind.MatrixSchur: EmitLinAlgDecompValueCall(expr, RuntimeMethod(nameof(IlRuntime.MatrixSchur)), "SCHUR"); break;
             case TokenKind.MatrixCond: EmitLinAlgUnaryHandleCall(expr, RuntimeMethod(nameof(IlRuntime.MatrixCond)), vector: false); break;
             case TokenKind.MatrixNuclearNorm: EmitLinAlgUnaryHandleCall(expr, RuntimeMethod(nameof(IlRuntime.MatrixNuclearNorm)), vector: false); break;
             case TokenKind.MatrixFractionalPower:
@@ -797,11 +797,11 @@ public sealed partial class IlProgramCompiler
             case TokenKind.VDist: EmitLinAlgLongPairCall(expr, nameof(IlRuntime.VDist)); break;
             case TokenKind.VMin: EmitLinAlgLongPairCall(expr, nameof(IlRuntime.VMin)); break;
             case TokenKind.VMax: EmitLinAlgLongPairCall(expr, nameof(IlRuntime.VMax)); break;
-            case TokenKind.LinAlgLuFunc or TokenKind.Lu: EmitLinAlgUnaryHandleCall(expr, RuntimeMethod(nameof(IlRuntime.MatrixLu)), vector: false); break;
-            case TokenKind.LinAlgQrFunc or TokenKind.Qr: EmitLinAlgUnaryHandleCall(expr, RuntimeMethod(nameof(IlRuntime.MatrixQr)), vector: false); break;
-            case TokenKind.LinAlgSvdFunc or TokenKind.Svd: EmitLinAlgUnaryHandleCall(expr, RuntimeMethod(nameof(IlRuntime.MatrixSvd)), vector: false); break;
-            case TokenKind.LinAlgEvdFunc or TokenKind.Evd: EmitLinAlgUnaryHandleCall(expr, RuntimeMethod(nameof(IlRuntime.MatrixEvd)), vector: false); break;
-            case TokenKind.LinAlgCholeskyFunc or TokenKind.Cholesky: EmitLinAlgUnaryHandleCall(expr, RuntimeMethod(nameof(IlRuntime.MatrixCholesky)), vector: false); break;
+            case TokenKind.LinAlgLuFunc or TokenKind.Lu: EmitLinAlgDecompValueCall(expr, RuntimeMethod(nameof(IlRuntime.MatrixLu)), "LU"); break;
+            case TokenKind.LinAlgQrFunc or TokenKind.Qr: EmitLinAlgDecompValueCall(expr, RuntimeMethod(nameof(IlRuntime.MatrixQr)), "QR"); break;
+            case TokenKind.LinAlgSvdFunc or TokenKind.Svd: EmitLinAlgDecompValueCall(expr, RuntimeMethod(nameof(IlRuntime.MatrixSvd)), "SVD"); break;
+            case TokenKind.LinAlgEvdFunc or TokenKind.Evd: EmitLinAlgDecompValueCall(expr, RuntimeMethod(nameof(IlRuntime.MatrixEvd)), "EVD"); break;
+            case TokenKind.LinAlgCholeskyFunc or TokenKind.Cholesky: EmitLinAlgDecompValueCall(expr, RuntimeMethod(nameof(IlRuntime.MatrixCholesky)), "CHOLESKY"); break;
             case TokenKind.LinAlgDecompGetFactorFunc: EmitLinAlgDecompGetFactorCall(expr); break;
             case TokenKind.InterpolateLinear: EmitInterpolationCall(expr, nameof(IlRuntime.InterpolateLinear)); break;
             case TokenKind.InterpolateSpline: EmitInterpolationCall(expr, nameof(IlRuntime.InterpolateSpline)); break;

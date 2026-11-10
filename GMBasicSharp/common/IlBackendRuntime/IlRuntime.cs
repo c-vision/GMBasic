@@ -1434,6 +1434,49 @@ public static partial class IlRuntime
         ? value
         : throw new ArgumentException("Handle di decomposizione non valido.", nameof(handle));
 
+    /// <summary>ADR-MATRIX F4: la decomposizione diventa un VALORE (dizionario dei fattori
+    /// come MatrixValue) e l'handle viene rimosso dal registry: il linguaggio non vede più
+    /// token opachi. `LINALG.FACTOR(valore, nome)` legge la chiave.</summary>
+    public static object DecompositionValue(long handle, string kind)
+    {
+        string[] keys = kind.ToUpperInvariant() switch
+        {
+            "LU" => ["L", "U"],
+            "QR" => ["Q", "R"],
+            "SVD" => ["U", "S", "VT"],
+            "EVD" => ["D", "V"],
+            "CHOLESKY" => ["L"],
+            "POLAR" => ["U", "P"],
+            "EIG" => ["DREAL", "VRREAL", "DIMAG", "VRIMAG"],
+            "SCHUR" => ["T", "Z"],
+            _ => []
+        };
+        var dict = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase);
+        foreach (var k in keys)
+        {
+            try { dict[k] = DecompositionGetFactorValue(handle, k); } catch { }
+        }
+        LinAlgDecompositions.TryRemove(handle, out _);
+        return dict;
+    }
+
+    /// <summary>LINALG.FACTOR su un VALORE (dizionario dei fattori) o, per compatibilità,
+    /// su un handle numerico legacy.</summary>
+    public static MatrixValue DecompositionGetFactorValueFrom(object? value, string factorName)
+    {
+        if (value is IDictionary<string, object?> dict)
+        {
+            if (dict.TryGetValue(factorName, out var v) && v is MatrixValue mv) return mv;
+            foreach (var kv in dict)
+                if (string.Equals(kv.Key, factorName, StringComparison.OrdinalIgnoreCase) && kv.Value is MatrixValue mv2)
+                    return mv2;
+            throw new ArgumentException($"Fattore '{factorName}' non presente nella decomposizione.");
+        }
+        if (value is long l) return DecompositionGetFactorValue(l, factorName);
+        if (value is int i) return DecompositionGetFactorValue(i, factorName);
+        throw new ArgumentException("Valore di decomposizione non valido.");
+    }
+
     public static long MatrixLu(long handle)
     {
         var matrix = Matrix(handle);

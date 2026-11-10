@@ -673,6 +673,12 @@ internal sealed partial class PCodeProcessor
         if (!_linMatrices.TryGetValue(id, out var m))
             return null;
         var newId = Interlocked.Increment(ref _nextLinearDecompositionId);
+        object? Value()
+        {
+            _linDecompositions.TryGetValue(newId, out var d);
+            _linDecompositions.TryRemove(newId, out _);
+            return DecompValue(d, kind);
+        }
         if (m.RowCount * m.ColumnCount >= 1024) // soglia piano §20.2: decomposizioni O(n³) sul pool
             return ParkCpuBuiltin(task, () =>
             {
@@ -684,7 +690,7 @@ internal sealed partial class PCodeProcessor
                     case "evd": _linDecompositions[newId] = m.Evd(); break;
                     default: _linDecompositions[newId] = m.Cholesky(); break;
                 }
-                return HandleOf(newId);
+                return Value();
             });
         switch (kind)
         {
@@ -694,15 +700,32 @@ internal sealed partial class PCodeProcessor
             case "evd": _linDecompositions[newId] = m.Evd(); break;
             default: _linDecompositions[newId] = m.Cholesky(); break;
         }
-        return HandleOf(newId);
+        return Value();
     }
 
     private object? LuDecompGetFactor(object?[] args)
     {
+        /* Valore (dizionario dei fattori) oppure handle legacy. */
+        if (args.Length >= 1 && args[0] is IDictionary<string, object?> dv)
+        {
+            var name = Convert.ToString(args.Length > 1 ? args[1] : null) ?? "";
+            if (dv.TryGetValue(name, out var fv)) return fv;
+            foreach (var kv in dv)
+                if (string.Equals(kv.Key, name, StringComparison.OrdinalIgnoreCase)) return kv.Value;
+            return null;
+        }
         var handle = ToLongHandle(args, 0);
         var factorName = Convert.ToString(args.Length > 1 ? args[1] : null) ?? "";
         if (!_linDecompositions.TryGetValue(handle, out var decomp))
             return null;
+        return TryDecompFactor(decomp, factorName);
+    }
+
+    /// <summary>Fattore di una decomposizione (oggetto MathNet/CommonLib) come valore
+    /// matrice (MatrixValue) o null.</summary>
+    private object? TryDecompFactor(object? decomp, string factorName)
+    {
+        if (decomp is null) return null;
         global::MathNet.Numerics.LinearAlgebra.Matrix<double>? matrixFactor = null;
         global::MathNet.Numerics.LinearAlgebra.Vector<double>? vectorFactor = null;
         switch (decomp)
@@ -771,6 +794,41 @@ internal sealed partial class PCodeProcessor
             return CommonLib.MatrixValue.FromFlat(flat, vectorFactor.Count, 1);
         }
         return null;
+    }
+
+    /// <summary>ADR-MATRIX F4: la decomposizione diventa un VALORE (dizionario dei fattori
+    /// come MatrixValue) e l'handle viene rimosso dal registry.</summary>
+    private object? DecompValue(object? decomp, string kind)
+    {
+        if (decomp is null) return null;
+        string[] keys = kind.ToUpperInvariant() switch
+        {
+            "LU" => ["L", "U"],
+            "QR" => ["Q", "R"],
+            "SVD" => ["U", "S", "VT"],
+            "EVD" => ["D", "V"],
+            "CHOLESKY" => ["L"],
+            "POLAR" => ["U", "P"],
+            "EIG" => ["DREAL", "VRREAL", "DIMAG", "VRIMAG"],
+            "SCHUR" => ["T", "Z"],
+            _ => []
+        };
+        var dict = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase);
+        foreach (var k in keys)
+        {
+            var f = TryDecompFactor(decomp, k);
+            if (f is not null) dict[k] = f;
+        }
+        return dict;
+    }
+
+    /// <summary>Estrae il valore a dizionario dalla decomposizione appena registrata e
+    /// rimuove l'handle dal registry (ADR-MATRIX F4).</summary>
+    private object? TakeDecompValue(long id, string kind)
+    {
+        _linDecompositions.TryGetValue(id, out var d);
+        _linDecompositions.TryRemove(id, out _);
+        return DecompValue(d, kind);
     }
 
     private static global::MathNet.Numerics.LinearAlgebra.Vector<double> ExtractEigenvalueVector(
@@ -1384,10 +1442,10 @@ internal sealed partial class PCodeProcessor
             return ParkCpuBuiltin(task, () =>
             {
                 _linDecompositions[newId] = global::CommonLib.Numerics.Polar(m);
-                return HandleOf(newId);
+                return TakeDecompValue(newId, "POLAR");
             });
         _linDecompositions[newId] = global::CommonLib.Numerics.Polar(m);
-        return HandleOf(newId);
+        return TakeDecompValue(newId, "POLAR");
     }
 
     private object? LuMatrixCond(PCodeTask task, object?[] args)
@@ -1454,10 +1512,10 @@ internal sealed partial class PCodeProcessor
             return ParkCpuBuiltin(task, () =>
             {
                 _linDecompositions[newId] = global::CommonLib.Numerics.GeneralEigen(m);
-                return HandleOf(newId);
+                return TakeDecompValue(newId, "EIG");
             });
         _linDecompositions[newId] = global::CommonLib.Numerics.GeneralEigen(m);
-        return HandleOf(newId);
+        return TakeDecompValue(newId, "EIG");
     }
 
     private object? LuMatrixSchur(PCodeTask task, object?[] args)
@@ -1469,10 +1527,10 @@ internal sealed partial class PCodeProcessor
             return ParkCpuBuiltin(task, () =>
             {
                 _linDecompositions[newId] = global::CommonLib.Numerics.RealSchur(m);
-                return HandleOf(newId);
+                return TakeDecompValue(newId, "SCHUR");
             });
         _linDecompositions[newId] = global::CommonLib.Numerics.RealSchur(m);
-        return HandleOf(newId);
+        return TakeDecompValue(newId, "SCHUR");
     }
 
     private global::MathNet.Numerics.LinearAlgebra.Matrix<double> UnaryMat(object?[] args)

@@ -947,6 +947,17 @@ public sealed partial class IlProgramCompiler
         _il.Emit(OpCodes.Call, RuntimeMethod(vector ? nameof(IlRuntime.LinAlgVectorHandle) : nameof(IlRuntime.LinAlgMatrixHandle), typeof(object)));
         _il.Emit(OpCodes.Call, method);
     }
+
+    /// <summary>ADR-MATRIX F4: le DECOMPOSIZIONI sono VALORI (dizionario dei fattori come
+    /// MatrixValue), non handle: il metodo handle-based viene avvolto da
+    /// <see cref="IlRuntime.DecompositionValue"/>, che costruisce il dizionario e rimuove
+    /// l'handle dal registry.</summary>
+    private void EmitLinAlgDecompValueCall(BuiltinFunctionCallExpr expr, MethodInfo handleMethod, string kind)
+    {
+        EmitLinAlgUnaryHandleCall(expr, handleMethod, vector: false);
+        _il.Emit(OpCodes.Ldstr, kind);
+        _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.DecompositionValue), typeof(long), typeof(string)));
+    }
     private void EmitLinAlgSetValueCall(BuiltinFunctionCallExpr expr)
     {
         if (expr.Args.Length != 4) throw new NotSupportedException("Backend IL: MATRIX.SETVALUE richiede 4 argomenti (matrice/handle, row, col, value).");
@@ -1045,7 +1056,16 @@ public sealed partial class IlProgramCompiler
         _il.Emit(OpCodes.Call, RuntimeMethod(vectorDot ? nameof(IlRuntime.VectorDotProduct) : nameof(IlRuntime.MatrixSolve)));
     }
     private void EmitLinAlgDecompGetFactorCall(BuiltinFunctionCallExpr expr)
-    { if (expr.Args.Length != 2) throw new NotSupportedException($"Backend IL: {expr.OriginalToken.Lexeme} richiede handle di decomposizione e nome del fattore."); EmitInt64Argument(expr.Args[0]); EmitStringArgument(expr.Args[1]); _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.DecompositionGetFactorValue))); }
+    {
+        if (expr.Args.Length != 2) throw new NotSupportedException($"Backend IL: {expr.OriginalToken.Lexeme} richiede la decomposizione e il nome del fattore.");
+        /* Valore (dizionario dei fattori) oppure handle legacy: il runtime distingue. */
+        EmitExpression(expr.Args[0]);
+        var argType = NormalizeInferredType(InferType(expr.Args[0]));
+        var argClr = DataTypeMapper.Map(argType, _types, _classTypes);
+        if (argClr.IsValueType) _il.Emit(OpCodes.Box, argClr);
+        EmitStringArgument(expr.Args[1]);
+        _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.DecompositionGetFactorValueFrom), typeof(object), typeof(string)));
+    }
     private void EmitStringArgument(Expr expr)
     { EmitExpression(expr); var type = NormalizeInferredType(InferType(expr)); IlConversion.EmitConvert(_il, _types, type, DataTypeMapper.Map(type, _types, _classTypes), _types.String); }
     private void EmitLinAlgVectorCreateCall(BuiltinFunctionCallExpr expr)
