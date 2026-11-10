@@ -9745,6 +9745,15 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                      * UBOUND(...) del chiamante iterava solo i=0 (ArraysPassingLocal.bas). */
                     arr->ndims = numDims;
                     for (int i = 0; i < numDims && i < 8; i++) arr->dim_upper[i] = lengths[i];
+                    /* REDIM cambia la geometria: il descrittore a valore non è più valido.
+                     * Si libera e si azzera — verrà ricostruito dalla lista flat al primo
+                     * uso matriciale (vm_matrix_handle_arg). */
+                    if (arr->mat)
+                    {
+                        gmb_matrix_value_free(arr->mat);
+                        free(arr->mat);
+                        arr->mat = NULL;
+                    }
                     /* Array di UDT/CLASS (udtDescIdx risolto dal compilatore, sentinel
                      * ushort.MaxValue se l'elemento non è un UDT — vedi Compiler.Arrays.cs):
                      * gmb_list_resize riempie i nuovi slot con gmb_val_nil() generico, MAI
@@ -10619,6 +10628,16 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                         gmb_raise_basic_error(task, 9, "");
                         break;
                     }
+                    if (!isKeyStr && numIndices >= 2 && ((gmb_obj_shared_val_t*)arrO)->mat)
+                    {
+                        /* Descrittore a valore: accesso diretto (stessa semantica della lista). */
+                        gmb_obj_shared_val_t* msvd = (gmb_obj_shared_val_t*)arrO;
+                        long mr = (long)indices[0] - (long)msvd->dim_lower[0];
+                        long mc = (long)indices[1] - (long)msvd->dim_lower[1];
+                        push_num_entry(task, gmb_matrix_value_get(*msvd->mat, mr, mc), GMB_BT_NUMBER);
+                        gmb_obj_release(arrE.ref);
+                        break;
+                    }
                     if (numIndices == 1 && !isKeyStr && ((gmb_obj_shared_val_t*)arrO)->ndims >= 2)
                     {
                         gmb_obj_shared_val_t* msv = (gmb_obj_shared_val_t*)arrO;
@@ -10850,6 +10869,26 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                     while (target < 0) target += (long)l->count;
                     while ((size_t)target >= l->count) gmb_list_add(l, gmb_val_nil());
                     gmb_list_set(l, (gmb_int_t)target, v);
+                    /* Descrittore a valore: scrittura through, così il descrittore resta
+                     * in sync con la lista flat (rappresentazione condivisa col bytecode).
+                     * Un indice SINGOLO su una matrice scrive la lista piatta: non ha una
+                     * corrispondenza (r,c), quindi il descrittore viene invalidato. */
+                    if (((gmb_obj_shared_val_t*)arrO)->mat)
+                    {
+                        gmb_obj_shared_val_t* msvw = (gmb_obj_shared_val_t*)arrO;
+                        if (!isKeyStr && numIndices >= 2)
+                        {
+                            long wr = (long)indices[0] - (long)msvw->dim_lower[0];
+                            long wc = (long)indices[1] - (long)msvw->dim_lower[1];
+                            gmb_matrix_value_set(*msvw->mat, wr, wc, gmb_val_to_double(v));
+                        }
+                        else
+                        {
+                            gmb_matrix_value_free(msvw->mat);
+                            free(msvw->mat);
+                            msvw->mat = NULL;
+                        }
+                    }
                 }
                 else if (arrO && arrO->kind == GMB_OBJ_DICT && ((gmb_obj_shared_val_t*)arrO)->dict && numIndices >= 1)
                 {
@@ -15881,6 +15920,14 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                                     sv->list->items[j] = scratchIsInt[i]
                                         ? gmb_make_val_int(((int64_t*)scratch[i])[j])
                                         : gmb_make_val_double(((double*)scratch[i])[j]);
+                                }
+                                /* Il nativo ha (ri)scritto il buffer: il descrittore a valore
+                                 * non è più affidabile → invalidato, ricostruito dal flat. */
+                                if (sv->mat)
+                                {
+                                    gmb_matrix_value_free(sv->mat);
+                                    free(sv->mat);
+                                    sv->mat = NULL;
                                 }
                                 free(scratch[i]);
                             }
