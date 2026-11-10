@@ -123,6 +123,8 @@ enum {
     GMB_OBJ_COND = 16,    /* variabile di condizione (parità Go sync.Cond / PCodeCond) */
     GMB_OBJ_CONTEXT = 17, /* cancellazione propagata (parità Go context.Context / PCodeContext) */
     GMB_OBJ_CONCURRENTMAP = 18, /* mappa concorrente (parità Go sync.Map / PCodeConcurrentMap) */
+    GMB_OBJ_MATRIX = 19,  /* valore matrice (descrittore gmb_matrix_t) dentro un gmb_val_t:
+                           * decomposizioni come DIZIONARIO di valori matrice (ADR-MATRIX F4) */
 };
 typedef struct gmb_obj {
     uint32_t refcount;       /* VM: conteggio riferimenti */
@@ -854,9 +856,28 @@ gmb_list_t gmb_val_dict_keys(gmb_val_t v);
  * Implementate in gmb_collections.c; dichiarate qui perché il C generato include questo header. */
 const char* gmb_collection_type_name(int type_code);
 const char* gmb_collection_valtype_letter(int type_code);
-gmb_dict_t gmb_val_as_dict(gmb_val_t v);
-gmb_val_t gmb_make_val_dict(gmb_dict_t src);
+gmb_dict_t gmb_val_as_dict(gmb_val_t v);gmb_val_t gmb_make_val_dict(gmb_dict_t src);
 gmb_val_t gmb_make_val_dict_take(gmb_dict_t* src);   /* adotta lo storage di *src (nessuna copia), lo lascia vuoto */
+
+/* ── valori MATRICE dentro un gmb_val_t (ADR-MATRIX F4: decomposizioni a dizionario) ──
+ * Il box è refcountato: la matrice condivide lo storage (retain) e viene liberata alla
+ * release del box. Usato per i fattori delle decomposizioni su C99Native. */
+gmb_val_t gmb_make_val_matrix(gmb_matrix_t m);
+/* Borrow: copia il descrittore in *out SENZA trattenere lo storage (valido finché il
+ * box/dizionario che lo contiene è vivo). 1 = era una matrice. */
+int gmb_val_as_matrix(gmb_val_t v, gmb_matrix_t* out);
+/* Decomposizione come DIZIONARIO di valori matrice (chiavi per tipo) e rilascio
+ * dell'handle: `LINALG.LU(a)` su C99Native. */
+gmb_val_t gmb_matrix_decomp_dict(int64_t handle, const char* kind);
+/* Accessi al fattore di un dizionario di decomposizione (name = chiave runtime). */
+gmb_matrix_t gmb_val_decomp_factor_matrix(gmb_val_t dict, const char* name);   /* valore (retain, il chiamante libera) */
+int gmb_val_decomp_factor_into(gmb_val_t dict, const char* name, gmb_matrix_t* out);
+double gmb_val_decomp_factor_get(gmb_val_t dict, const char* name, gmb_int_t r, gmb_int_t c);
+int64_t gmb_val_decomp_factor_scratch(gmb_val_t dict, const char* name);
+double* gmb_val_decomp_factor_flat(gmb_val_t dict, const char* name);
+gmb_int_t gmb_val_decomp_factor_rows(gmb_val_t dict, const char* name);
+gmb_int_t gmb_val_decomp_factor_cols(gmb_val_t dict, const char* name);
+gmb_string_t gmb_val_decomp_factor_display(gmb_val_t dict, const char* name);
 gmb_val_t gmb_val_tuple(const gmb_val_t* items, gmb_int_t n);
 int gmb_val_dict_set(gmb_val_t v, const char* key, gmb_val_t value);
 gmb_val_t gmb_val_dict_get(gmb_val_t v, const char* key);
@@ -2775,6 +2796,9 @@ int   gmb_paths_llm_root(char* out, size_t cap);
 void  gmb_paths_test_override(const char* key, const char* dir);
 int   gmb_paths_resources_dir(char* out, size_t cap);          /* Resources CONDIVISA (font/sprite/manifest): 1 se trovata */
 int   gmb_paths_settings_file(char* out, size_t cap);          /* 1 se system.settings.json trovato */
+/* Chiave TOP-LEVEL di system.settings.json (app.settings.json vince), stringa. Vive in
+ * gmb_paths.c per poter essere usata dai target leggeri (gmb_boot) che non linkano gfx. */
+int   gmb_paths_settings_value(const char* key, char* out, size_t cap);
 int   gmb_paths_app_settings(char* out, size_t cap);           /* app.settings.json: CWD → accanto all'eseguibile */
 /* Settings (system.settings.json + app.settings.json override) — SettingsManager.cs. */
 int  gmb_settings_str(const char* file, const char* key, char* out, int cap);
@@ -2823,10 +2847,24 @@ int  gmb_lib_path_any(const char* name, char* out, size_t cap);   /* nome P/Invo
 int  gmb_lib_open(const char* name);
 int  gmb_component(const char* name, char* out, size_t cap);
 int  gmb_bootstrap(int scope);
+/* Bootstrap di un RID ESPLICITO (primo uso con ambito "all": RID diversi dall'host). */
+int  gmb_bootstrap_rid(const char* rid, int scope);
+/* Download grezzo di un URL in un file (indice piatto `index-<rid>.txt`). 1 = ok. */
+int  gmb_fetch_url(const char* url, const char* dest);
+/* Procura un file nella cache di un RID ESPLICITO (`<cache>/<rid>/<file>`). */
+int  gmb_libs_ensure_file_for_rid(const char* index_path, const char* rid, const char* fileName,
+                                 char* out_path, size_t cap);
+/* ── PRIMO USO (gmb_first_use.c): librerie di tutti i gruppi + toolchain zig ────────────────
+ * Ambito da `bootstrapScope` nei settings: "host" (default) | "all" | "off". Marker in
+ * `~/.gmbasic/.first-use-<rid>`: a cache completa non costa nulla. `dry` = solo il piano.
+ * 1 = completo (o già completo), 0 = qualcosa manca (il chiamante NON deve bloccare). */
+int  gmb_first_use_ensure(int dry);
+void gmb_first_use_forget(void);   /* --force: dimentica i marker (tutti i RID) */
 void gmb_progress(const char* label, double frac01);
 
 const char* gmb_libs_rid(void);
 int  gmb_libs_ensure_file_from(const char* index_path, const char* fileName, char* out_path, size_t cap);
+int  gmb_libs_ensure_file_for_rid(const char* index_path, const char* rid, const char* fileName, char* out_path, size_t cap);
 int  gmb_libs_autoensure(const char* fileName, char* out_path, size_t cap);
 int  gmb_libs_ensure_next_to(const char* exe, const char* fileName, char* out_path, size_t cap);
 void  gmb_paths_packages_dir(char* out, size_t cap);           /* default: <root>/packages (vedi anche gmb_paths_exe_dir) */
