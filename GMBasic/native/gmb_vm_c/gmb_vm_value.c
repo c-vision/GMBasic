@@ -165,6 +165,12 @@ gmb_obj_generator_t* gmb_generator_new(struct gmb_task* task)
 static void shared_val_release_fn(struct gmb_obj* o)
 {
     gmb_obj_shared_val_t* s = (gmb_obj_shared_val_t*)o;
+    if (s->mat)
+    {
+        gmb_matrix_value_free(s->mat);
+        free(s->mat);
+        s->mat = NULL;
+    }
     if (s->list)
     {
         gmb_list_free(s->list);

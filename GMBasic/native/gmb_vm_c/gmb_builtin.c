@@ -1441,6 +1441,25 @@ static int64_t vm_matrix_handle_arg(const gmb_stack_entry_t* a)
 {
     if (a && a->type == 2 && a->ref && a->ref->kind == GMB_OBJ_LIST) {
         gmb_obj_shared_val_t* sv = (gmb_obj_shared_val_t*)a->ref;
+        /* Descrittore a valore già presente (MATRIX.CREATE / risultati a valore): nessun
+         * ri-appiattimento della lista, handle scratch per la chiamata immediata. Si
+         * ricontrollano le dimensioni: se la lista è stata ridimensionata fuori dai
+         * percorsi sincronizzati, il descrittore viene scartato e ricostruito dal flat. */
+        if (sv->mat && !gmb_matrix_is_empty(sv->mat))
+        {
+            int estRows = sv->ndims >= 2 ? (int)(sv->dim_upper[0] - sv->dim_lower[0] + 1) : 0;
+            int estCols = sv->ndims >= 2 ? (int)(sv->dim_upper[1] - sv->dim_lower[1] + 1) : 0;
+            int64_t need = sv->mat->rows * sv->mat->cols;
+            if (!sv->list || (int64_t)sv->list->count < need
+                || estRows != (int)sv->mat->rows || estCols != (int)sv->mat->cols)
+            {
+                gmb_matrix_value_free(sv->mat);
+                free(sv->mat);
+                sv->mat = NULL;
+            }
+        }
+        if (sv->mat && !gmb_matrix_is_empty(sv->mat))
+            return gmb_matrix_scratch_handle(*sv->mat);
         if (sv->ndims >= 2 && sv->list) {
             int rows = (int)sv->dim_upper[0] + 1;
             int cols = (int)sv->dim_upper[1] + 1;
@@ -1477,6 +1496,11 @@ static void vm_matrix_set_value_result(int64_t h, gmb_builtin_out_t* bout)
     gmb_list_resize(out->list, (size_t)rows * (size_t)cols, 0);
     for (int i = 0; i < rows * cols; i++)
         out->list->items[i] = gmb_make_val_double(gmb_matrix_get(h, i / cols, i % cols));
+    /* Descrittore a valore (copia dal risultato): evita di ri-appiattire a ogni MATRIX.*
+     * e abilita l'accesso diretto. La lista flat resta in sync. */
+    out->mat = (gmb_matrix_t*)malloc(sizeof(gmb_matrix_t));
+    if (out->mat) *out->mat = gmb_matrix_value_of(h);
+    else out->mat = NULL;
     bout->is_num = 0; bout->result_ref = (gmb_obj_t*)out; bout->result_ref_bt = GMB_BT_OBJECT;
 }
 static void gmb_bf_823(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
@@ -2198,6 +2222,8 @@ static void gmb_bf_899(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func
                     if (r >= 0 && r < rows && c >= 0 && c < cols) {
                         size_t idx = (size_t)r * (size_t)cols + (size_t)c;
                         if (idx < sv->list->count) sv->list->items[idx] = gmb_make_val_double(v);
+                        /* Descrittore a valore in sync (lista = rappresentazione condivisa). */
+                        if (sv->mat) gmb_matrix_value_set(*sv->mat, r, c, v);
                     }
                     gmb_obj_retain(args[0].ref);
                     bout->is_num = 0; bout->result_ref = args[0].ref; bout->result_ref_bt = GMB_BT_OBJECT;
@@ -4973,6 +4999,10 @@ static void gmb_bf_608(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func
             for (int i = 0; i < rows * cols; i++) arr->list->items[i] = gmb_make_val_double(0.0);
             int d = rows < cols ? rows : cols;
             for (int i = 0; i < d; i++) arr->list->items[(size_t)i * (size_t)cols + (size_t)i] = gmb_make_val_double(1.0);
+            /* Descrittore a valore (canone MATRIX.CREATE: identità sui primi min(r,c)). */
+            arr->mat = (gmb_matrix_t*)malloc(sizeof(gmb_matrix_t));
+            if (arr->mat) *arr->mat = gmb_matrix_create_value(rows, cols);
+            else arr->mat = NULL;
             bout->is_num = 0; bout->result_ref = (gmb_obj_t*)arr; bout->result_ref_bt = GMB_BT_OBJECT;
         }
 }

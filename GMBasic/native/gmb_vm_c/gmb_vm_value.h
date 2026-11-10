@@ -50,6 +50,13 @@ typedef struct gmb_obj_shared_val {
                           * un array da una LISTA a runtime per TYPENAME → "ARRAY". */
     int dim_upper[8];    /* limite SUPERIORE dichiarato per dimensione — per UBOUND(A, d) */
     int dim_lower[8];    /* limite INFERIORE dichiarato per dimensione — per LBOUND(A, d) (default 0) */
+    /* ADR-MATRIX backend C: descrittore a valore (mirror di gmb_matrix_t), popolato per i
+     * valori matriciali creati da MATRIX.CREATE e dalle funzioni a valore. La lista flat
+     * resta la rappresentazione condivisa con il bytecode e viene tenuta IN SYNC; il
+     * descrittore evita di ri-appiattire a ogni operazione MATRIX.* e abilita l'accesso
+     * diretto agli elementi. NULL = valore non matriciale (o invalidato da una mutazione
+     * della lista: si ricostruisce dal flat). */
+    gmb_matrix_t* mat;
 } gmb_obj_shared_val_t;
 
 gmb_obj_shared_val_t* gmb_shared_list_new(void);
