@@ -91,8 +91,20 @@ gmb_matrix_t gmb_matrix_value_from_flat(const double* data, int64_t rows, int64_
     return gmb_matrix_make(st, rows, cols, cols, 1, 0);
 }
 
-gmb_matrix_t gmb_matrix_adopt_flat(double* data, int64_t rows, int64_t cols)
+gmb_matrix_t gmb_matrix_borrow_flat(double* data, int64_t rows, int64_t cols)
 {
+    if (!data || rows <= 0 || cols <= 0) return gmb_matrix_empty();
+    if (cols > INT64_MAX / rows) return gmb_matrix_empty();
+    gmb_matrix_storage_t* st = (gmb_matrix_storage_t*)calloc(1, sizeof(*st));
+    if (!st) return gmb_matrix_empty();
+    st->data = data;
+    st->capacity = rows * cols;
+    st->refs = 1;
+    st->flags = 0;   /* NON proprietario: il buffer appartiene al chiamante */
+    return gmb_matrix_make(st, rows, cols, cols, 1, 0);
+}
+
+gmb_matrix_t gmb_matrix_adopt_flat(double* data, int64_t rows, int64_t cols){
     if (rows < 0 || cols < 0) { free(data); return gmb_matrix_empty(); }
     if (rows != 0 && cols > INT64_MAX / rows) { free(data); return gmb_matrix_empty(); }
     gmb_matrix_storage_t* st = (gmb_matrix_storage_t*)calloc(1, sizeof(*st));

@@ -325,7 +325,10 @@ typedef struct fn_info {
 /* SCOPE DINAMICO (DYNAMIC) — helper in gmb_c99_emit_dynamic.c (prototipi anche in
  * gmb_c99_emit_internal.h, ma questo TU non include l'header interno). */
 void gmb_c99_collect_dynamic(ctx_t* c, gmb_stmt_t** list, int n);
-int  gmb_c99_dyn_is(ctx_t* c, const char* name);
+/* ADR-MATRIX backend C: campo-array rank-2 numerico di CLASSE/UDT (`t.m`) — view
+ * descrittore non proprietaria sul buffer flat nativo. Definizioni più sotto. */
+int mv_field_desc(ctx_t* c, gmb_expr_t* e, long* rows, long* cols);
+void emit_mv_field_desc(ctx_t* c, gmb_expr_t* e);int  gmb_c99_dyn_is(ctx_t* c, const char* name);
 int  gmb_c99_dyn_is_str(ctx_t* c, const char* name);
 int  gmb_c99_list_declares_dynamic(gmb_stmt_t** list, int n);
 void gmb_c99_emit_dyn_declare(ctx_t* c, gmb_stmt_t* s);
@@ -9969,6 +9972,38 @@ static void emit_arr_call_arg(ctx_t* c, fn_info_t* fn, int i, gmb_expr_t* arg, i
         emit_arr_arg_lowers(c, fn, i, NULL);
         return;
     }
+    /* Campi matrice di CLASSE/UDT (`t.m` con `DIM m(N,M) AS DOUBLE`): il campo è un
+     * buffer flat nativo; al parametro si passa il puntatore ai dati e i bound STATICI
+     * del tipo (rank portato a 2 come per i descrittori, così firma e call-site
+     * concordano; niente copy-back: il callee scrive nel buffer del campo). */
+    {
+        long fr = 0, fc = 0;
+        if (arg && mv_field_desc(c, arg, &fr, &fc)) {
+            int prank = (fn->stmt->param_ndims && fn->stmt->param_ndims[i] >= 2) ? fn->stmt->param_ndims[i] : 1;
+            var_t* pv_f = vars_find(&fn->locals, fn->stmt->func_params[i]);
+            if (prank < 2) {
+                if (!fn->stmt->param_ndims)
+                    fn->stmt->param_ndims = (uint8_t*)calloc((size_t)(fn->stmt->n_params > 0 ? fn->stmt->n_params : 1), 1);
+                if (fn->stmt->param_ndims) {
+                    fn->stmt->param_ndims[i] = 2;
+                    g_c99_rank_changed = 1;
+                }
+                prank = 2;
+            }
+            if (pv_f && pv_f->arr_byref) {
+                c99_fail(c, line,
+                         "%s: il campo matrice '%s' non può essere passato a un parametro BYREF/REDIM",
+                         fn->stmt->func_name, arg->var);
+                return;
+            }
+            sb_put(&c->out, "(gmb_double_t*)(");
+            emit_expr(c, arg);
+            sb_printf(&c->out, "), (gmb_int_t)%ld", fr - 1);
+            if (prank >= 2) sb_printf(&c->out, ", (gmb_int_t)%ld", fc - 1);
+            emit_arr_arg_lowers(c, fn, i, NULL);
+            return;
+        }
+    }
     /* variabile nuda (stile moderno) o "Nome()" con 0 argomenti (stile classico) */
     const char* vname = NULL;
     if (arg && arg->kind == GMB_EXPR_VAR) vname = arg->var;
@@ -19318,11 +19353,56 @@ static void emit_matrix_create_value(ctx_t* c, var_t* dv, gmb_expr_t* call) {
 /* Stage C backend C: un'espressione matrice è già un descrittore? (VAR matrix_value o
  * chiamata a valore con SORGENTI descrittore). Usata per emettere le VIEW/operazioni
  * direttamente sul descrittore, senza il ponte handle. */
+/* Campo-ARRAY rank-2 numerico di una CLASSE/UDT (`t.m` con `DIM m(N,M) AS DOUBLE`).
+ * Il campo è un buffer flat nativo (double*), quindi NON è un descrittore: se ne espone
+ * una VIEW non proprietaria (gmb_matrix_borrow_flat) con i bound STATICI del tipo.
+ * Ritorna 1 con *rows/*cols valorizzati; 0 se non è un campo matrice. */
+int mv_field_desc(ctx_t* c, gmb_expr_t* e, long* rows, long* cols) {
+    if (!e || e->kind != GMB_EXPR_VAR || !e->var) return 0;
+    const char* dot = strchr(e->var, '.');
+    if (!dot || !dot[1] || strchr(dot + 1, '.')) return 0;
+    char base[64];
+    size_t bl = (size_t)(dot - e->var);
+    if (bl == 0 || bl >= sizeof base) return 0;
+    memcpy(base, e->var, bl); base[bl] = 0;
+    var_t* bv = lookup_var(c, base);
+    const char* clsname = (bv && bv->vclass[0]) ? bv->vclass : NULL;
+    if (!clsname) {
+        /* UDT senza var registrata (es. nome-tipo usato come istanza): la classe deve esistere. */
+        struct cls_info* ci0 = cls_find(c, base);
+        if (!ci0) return 0;
+        clsname = ci0->name;
+    }
+    const char* field = dot + 1;
+    struct cls_info* fo = cls_field_owner(c, (char*)clsname, field);
+    const char* ft = fo ? cls_field_type_of(fo, field) : NULL;
+    if (!ft) return 0;
+    if (strncasecmp(ft, "DOUBLE", 6) != 0 && strncasecmp(ft, "SINGLE", 6) != 0) return 0;
+    int rank = 0;
+    for (const char* q = ft; *q; q++) if (*q == '[') rank++;
+    if (rank != 2) return 0;
+    long r = cls_field_arr_dim(ft, 0), cc = cls_field_arr_dim(ft, 1);
+    if (r < 0 || cc < 0) return 0;
+    *rows = r + 1; *cols = cc + 1;
+    return 1;
+}
+
+/* VIEW descrittore su un campo matrice (vedi mv_field_desc). */
+void emit_mv_field_desc(ctx_t* c, gmb_expr_t* e) {
+    long r = 0, cc = 0;
+    (void)mv_field_desc(c, e, &r, &cc);
+    sb_put(&c->out, "gmb_matrix_borrow_flat((double*)(");
+    emit_expr(c, e);
+    sb_printf(&c->out, "), (gmb_int_t)%ld, (gmb_int_t)%ld)", r, cc);
+}
+
 static int mv_expr_ok(ctx_t* c, gmb_expr_t* e) {
     if (!e) return 0;
     if (e->kind == GMB_EXPR_VAR && e->var) {
         var_t* v = lookup_var(c, e->var);
-        return v && v->matrix_value;
+        if (v && v->matrix_value) return 1;
+        long r = 0, cc = 0;
+        return mv_field_desc(c, e, &r, &cc);
     }
     if (e->kind != GMB_EXPR_CALL) return 0;
     switch (e->tk) {
@@ -19351,7 +19431,11 @@ static int mv_expr_ok(ctx_t* c, gmb_expr_t* e) {
 
 static void emit_mv_expr(ctx_t* c, gmb_expr_t* e) {
     if (e->kind == GMB_EXPR_VAR) {
-        emit_var_ref(c, lookup_var(c, e->var));
+        var_t* v = lookup_var(c, e->var);
+        if (v && v->matrix_value) { emit_var_ref(c, v); return; }
+        long r = 0, cc = 0;
+        if (mv_field_desc(c, e, &r, &cc)) { emit_mv_field_desc(c, e); return; }
+        emit_var_ref(c, v);
         return;
     }
     switch (e->tk) {

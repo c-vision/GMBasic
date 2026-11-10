@@ -885,6 +885,9 @@ public sealed partial class IlProgramCompiler
         if (IsMatrixValueExpr(expr.Args[0]))
         {
             EmitExpression(expr.Args[0]);
+            /* campo-array rank-2 di CLASSE/UDT: double[,] → MatrixValue */
+            if (IsRectArrayField(expr.Args[0]))
+                _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.MatrixValueFromRect), typeof(double[,])));
             _il.Emit(OpCodes.Call, RuntimeMethod(matrixValueMethod));
             return;
         }
@@ -899,6 +902,10 @@ public sealed partial class IlProgramCompiler
         if (IsMatrixValueExpr(expr.Args[0]))
         {
             EmitExpression(expr.Args[0]);
+            /* CAMPO-ARRAY rank-2 di CLASSE/UDT: staticamente è double[,] (non MatrixValue)
+             * → conversione nel descrittore prima del metodo a valore. */
+            if (IsRectArrayField(expr.Args[0]))
+                _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.MatrixValueFromRect), typeof(double[,])));
             _il.Emit(OpCodes.Call, RuntimeMethod(valueMethod));
             return;
         }
@@ -963,6 +970,9 @@ public sealed partial class IlProgramCompiler
         if (IsMatrixValueArgument(expr.Args[0]))
         {
             EmitExpression(expr.Args[0]);
+            /* campo-array rank-2 di CLASSE/UDT: double[,] → MatrixValue */
+            if (IsRectArrayField(expr.Args[0]))
+                _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.MatrixValueFromRect), typeof(double[,])));
             EmitInt64Argument(expr.Args[1]); EmitInt64Argument(expr.Args[2]);
             _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.MatrixValueGetAt)));
             return;
@@ -978,6 +988,28 @@ public sealed partial class IlProgramCompiler
     private bool IsMatrixValueExpr(Expr arg)
         => NormalizeInferredType(InferType(arg)) is MatrixValueType
            || NormalizeInferredType(InferType(arg)) is ArrayType { Rank: 2, ElementType: DoubleType };
+
+    /// <summary>True quando l'argomento è un CAMPO-ARRAY rank-2 di CLASSE/UDT il cui
+    /// FieldBuilder è un vero <c>double[,]</c> (non un MatrixValue): va convertito con
+    /// <see cref="IlRuntime.MatrixValueFromRect"/> prima di un metodo che vuole un
+    /// MatrixValue. Serve perché <c>DataTypeMapper.Map</c> mappa ArrayType rank-2 DOUBLE a
+    /// MatrixValue (Stage D), quindi il tipo statico non basta a distinguere i due casi.</summary>
+    private bool IsRectArrayField(Expr arg)
+    {
+        if (arg is not FieldAccessExpr fa) return false;
+        int sym = fa.FieldSymbolId;
+        if (sym < 0)
+        {
+            try
+            {
+                sym = ResolveFieldOrPropertySymbolIdByName(
+                    NormalizeInferredType(InferType(fa.Structure)), fa.Field.Lexeme);
+            }
+            catch (NotSupportedException) { return false; }
+        }
+        return sym >= 0 && _classFieldArrays.TryGetValue(sym, out var fi)
+               && fi.Field.FieldType == typeof(double[,]);
+    }
 
     private bool IsMatrixValueArgument(Expr arg) => IsMatrixValueExpr(arg);
 
