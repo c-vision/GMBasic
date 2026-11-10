@@ -1720,6 +1720,23 @@ int64_t gmb_matrix_orth(int64_t a)
     for (int i = 0; i < n; i++)
         for (int j = 0; j < rank; j++)
             gmb_matrix_set(out, i, j, gmb_matrix_get(U, i, j) / sv[j]); /* normalizza */
+    /* Convenzione di SEGNO condivisa col managed (CommonLib.Numerics.Orth): il primo
+     * elemento di modulo massimo di ogni colonna e' POSITIVO. Senza, il segno delle colonne
+     * di U dipende dall'implementazione SVD (Jacobi qui, LAPACK/MathNet nel managed) e le
+     * gambe divergono su ORTH (es. -0.7882 vs 0.7882 nel sample MatrixDecompositions). */
+    for (int j = 0; j < rank; j++)
+    {
+        int pivot = 0;
+        double pivotAbs = 0.0;
+        for (int i = 0; i < n; i++)
+        {
+            double v = fabs(gmb_matrix_get(out, i, j));
+            if (v > pivotAbs) { pivotAbs = v; pivot = i; }
+        }
+        if (pivotAbs > 0.0 && gmb_matrix_get(out, pivot, j) < 0.0)
+            for (int i = 0; i < n; i++)
+                gmb_matrix_set(out, i, j, -gmb_matrix_get(out, i, j));
+    }
     free(sv);
     return out;
 }
