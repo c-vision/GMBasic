@@ -43,6 +43,18 @@ private static double[] ToDoubleArr(object? arg) => Basic.IlBackend.RuntimeFlatt
         // Matrice RETTANGOLARE rank-2 (DIM M(3,1) AS DOUBLE → double[,] o object[,]): l'IL la
         // converte con RectToJagged, ma il dispatch PCode intercetta la builtin con l'argomento
         // grezzo (spesso object[,] con elementi boxed).
+        // Stage C: un VALORE matrice (descrittore) va letto per RIGHE, non come enumerabile
+        // flat (MatrixValue implementa IEnumerable<double>, ma qui servono le righe).
+        if (value is CommonLib.MatrixValue valueMatrix)
+        {
+            var mvRows = new double[valueMatrix.Rows][];
+            for (var r = 0; r < valueMatrix.Rows; r++)
+            {
+                mvRows[r] = new double[valueMatrix.Cols];
+                for (var c = 0; c < valueMatrix.Cols; c++) mvRows[r][c] = valueMatrix.Get(r, c);
+            }
+            return mvRows;
+        }
         if (value is Array arr2 && arr2.Rank == 2)
         {
             var r2 = arr2.GetLength(0);
@@ -315,6 +327,8 @@ private static double[] ToDoubleArr(object? arg) => Basic.IlBackend.RuntimeFlatt
         {
             {
                 var dim = args.Length > 1 ? Convert.ToInt32(args[1] ?? 1) : 1;
+                if (args.Length > 0 && args[0] is CommonLib.MatrixValue mvUb)
+                    return (double)((dim == 2 ? mvUb.Cols : mvUb.Rows) - 1);
                 if (args.Length > 0 && args[0] is Array mdArray)
                 {
                     if (mdArray.Rank > 1 || dim > 1)
@@ -352,6 +366,7 @@ private static double[] ToDoubleArr(object? arg) => Basic.IlBackend.RuntimeFlatt
         {
             {
                 var dim = args.Length > 1 ? Convert.ToInt32(args[1] ?? 1) : 1;
+                if (args.Length > 0 && args[0] is CommonLib.MatrixValue) return 0.0;
                 if (args.Length > 0 && args[0] is Array mdArray)
                     return (double)(mdArray.GetLowerBound(dim - 1));
                 if (args.Length > 0 && args[0] is string)
@@ -1461,7 +1476,12 @@ if (args.Length >= 2) { var file = args[0]?.ToString() ?? ""; var section = args
         {
                 double[,] mat;
                 var pcaArg = ArgOr(args, 0);
-                if (pcaArg is double[,] rect)
+                if (pcaArg is CommonLib.MatrixValue pcaMv)
+                {
+                    // Stage C: valore matrice (descrittore) → matrice rettangolare.
+                    mat = pcaMv.ToRect();
+                }
+                else if (pcaArg is double[,] rect)
                 {
                     // Matrice RETTANGOLARE DIM d(m-1,n-1) (double[,]) → PCA direttamente.
                     mat = rect;

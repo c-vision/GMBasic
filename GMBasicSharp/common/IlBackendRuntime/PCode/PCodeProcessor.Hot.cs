@@ -661,6 +661,23 @@ internal sealed partial class PCodeProcessor
                     keys[i] = task.Sp > 0 ? task.PopRef() : null;
                 var arr = task.Sp > 0 ? task.PopRef() : null;
                 if (arr is RefToVar rvL) arr = rvL.Array[rvL.Index];
+                // Stage C: valore matrice = descrittore CommonLib.MatrixValue (risultati
+                // MATRIX.*). Due indici → elemento (Get, 0 fuori range come il runtime IL);
+                // un indice su una matrice → RIGA come double[] (FOR EACH).
+                if (arr is CommonLib.MatrixValue mvL)
+                {
+                    if (numIndices >= 2)
+                        task.PushRef(mvL.Get(Convert.ToInt32(keys[0] ?? 0), Convert.ToInt32(keys[1] ?? 0)));
+                    else if (numIndices == 1)
+                    {
+                        var rowIdxL = Convert.ToInt32(keys[0] ?? 0);
+                        var rowL = new double[mvL.Cols];
+                        for (var cL = 0; cL < mvL.Cols; cL++) rowL[cL] = mvL.Get(rowIdxL, cL);
+                        task.PushRef(rowL);
+                    }
+                    else task.PushRef(null);
+                    return true;
+                }
                 if (arr is Array array && numIndices > 0)
                 {
                     var idx = keys.Select(k => Convert.ToInt32(k ?? 0)).ToArray();
@@ -767,6 +784,13 @@ internal sealed partial class PCodeProcessor
                 var arr = task.Sp > 0 ? task.PopRef() : null;
                 var val = task.Sp > 0 ? task.PopRef() : null;
                 if (arr is RefToVar rvS) arr = rvS.Array[rvS.Index];
+                // Stage C: matrice a descrittore — scrittura diretta dell'elemento (Set no-op
+                // fuori range, canone del descrittore IL).
+                if (arr is CommonLib.MatrixValue mvS && numIndices >= 2)
+                {
+                    mvS.Set(Convert.ToInt32(keys[0] ?? 0), Convert.ToInt32(keys[1] ?? 0), SafeDouble(val));
+                    return true;
+                }
                 if (arr is Array array && numIndices > 0)
                 {
                     var idx = keys.Select(k => Convert.ToInt32(k ?? 0)).ToArray();

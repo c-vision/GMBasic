@@ -1555,6 +1555,21 @@ internal sealed partial class PCodeProcessor
                     keys[i] = task.Sp > 0 ? task.PopRef() : null;
                 var arr = task.Sp > 0 ? task.PopRef() : null;
                 if (arr is RefToVar rvLp) arr = rvLp.Array[rvLp.Index];
+                // Stage C: matrice a descrittore — due indici → elemento; un indice → riga.
+                if (arr is CommonLib.MatrixValue mvP)
+                {
+                    if (numIndices >= 2)
+                        task.PushRef(mvP.Get(Convert.ToInt32(keys[0] ?? 0), Convert.ToInt32(keys[1] ?? 0)));
+                    else if (numIndices == 1)
+                    {
+                        var rowIdxP = Convert.ToInt32(keys[0] ?? 0);
+                        var rowP = new double[mvP.Cols];
+                        for (var cP = 0; cP < mvP.Cols; cP++) rowP[cP] = mvP.Get(rowIdxP, cP);
+                        task.PushRef(rowP);
+                    }
+                    else task.PushRef(null);
+                    return true;
+                }
                 if (arr is Array arrayP && numIndices > 0)
                 {
                     var idx = keys.Select(k => Convert.ToInt32(k ?? 0)).ToArray();
@@ -4520,6 +4535,11 @@ internal sealed partial class PCodeProcessor
                 var args = new object?[argCount];
                 for (var i = argCount - 1; i >= 0; i--)
                     args[i] = task.Sp > 0 ? task.PopRef() : null;
+                // Stage C: le matrici a descrittore vanno marshallate all'ABI nativa come array
+                // rettangolare (FfiService pinna System.Array). I parametri OUT/INOUT matrice
+                // non sono usati dall'ABI reale (il contratto F3 li ammette solo in firma).
+                for (var i = 0; i < args.Length; i++)
+                    if (args[i] is CommonLib.MatrixValue ffiMatrix) args[i] = ffiMatrix.ToRect();
                 var libPath = libIdx >= 0 && libIdx < _constants.Count ? _constants[libIdx] as string : null;
                 var funcName = nameIdx >= 0 && nameIdx < _constants.Count ? _constants[nameIdx] as string : null;
                 if (libPath != null && funcName != null)

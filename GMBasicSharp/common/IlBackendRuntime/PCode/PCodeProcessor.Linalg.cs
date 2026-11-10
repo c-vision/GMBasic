@@ -50,15 +50,20 @@ internal sealed partial class PCodeProcessor
         return HandleOf(newId);
     }
 
-    /// <summary>F4: come RunLinOp ma restituisce il VALORE matrice (double[,]) invece
+    /// <summary>F4 (Stage C): come RunLinOp ma restituisce il VALORE matrice
+    /// (<see cref="CommonLib.MatrixValue"/>, stessa rappresentazione del backend IL) invece
     /// dell'handle, mantenendo il park per le matrici grandi.</summary>
     private object? RunLinOpRect(PCodeTask task, long id,
         Func<MathNet.Numerics.LinearAlgebra.Matrix<double>, MathNet.Numerics.LinearAlgebra.Matrix<double>> op)
     {
         if (!_linMatrices.TryGetValue(id, out var m)) return null;
-        double[,] Compute() => op(m).ToArray();
+        object? Compute()
+        {
+            var res = op(m);
+            return SimdToRect(new CommonLib.SimdMatrix(res.ToRowMajorArray(), res.RowCount, res.ColumnCount));
+        }
         if (m.RowCount * m.ColumnCount >= 1024)
-            return ParkCpuBuiltin(task, () => (object?)Compute());
+            return ParkCpuBuiltin(task, Compute);
         return Compute();
     }
 
@@ -66,9 +71,13 @@ internal sealed partial class PCodeProcessor
     {
         if (index >= args.Length || args[index] == null)
             return 0;
-        // Ponte handle↔valore (ADR-MATRIX-Valore §5): un valore MATRIX OF (double[,]) viene
-        // registrato come handle per le funzioni storiche MATRIX.*.
+        // Ponte handle↔valore (ADR-MATRIX-Valore §5): un valore matrice (descrittore
+        // CommonLib.MatrixValue, Stage C) viene registrato come handle per le funzioni
+        // storiche MATRIX.*.
+        if (args[index] is CommonLib.MatrixValue valueMatrix) return StoreLinMatHandle(valueMatrix.ToRect());
         if (args[index] is double[,] matrix) return StoreLinMatHandle(matrix);
+        // Stage C: matrice DIM rank-2 della P-CODE VM = object[,] con elementi boxati.
+        if (args[index] is object[,] objMatrix) return StoreLinMatHandle(ObjectRectToDouble(objMatrix));
         if (args[index] is double d) return (long)d;
         if (args[index] is int i) return i;
         return 0;
@@ -136,7 +145,8 @@ internal sealed partial class PCodeProcessor
             {
                 // F4: MATRIX.MULTIPLY (token LinAlgMultiplyFunc) restituisce il VALORE.
                 var r = LuMultiply(args);
-                if (r is double[,] rect) return rect;
+                if (r is CommonLib.MatrixValue mvR) return mvR;
+                if (r is double[,] rect) return CommonLib.MatrixValue.FromRect(rect);
                 if (r is long h && _linMatrices.TryGetValue(h, out var mat))
                     return SimdToRect(new CommonLib.SimdMatrix(mat.ToRowMajorArray(), mat.RowCount, mat.ColumnCount));
                 return r;
@@ -217,7 +227,8 @@ internal sealed partial class PCodeProcessor
             {
                 // F4: MATRIX.MULTIPLY restituisce il VALORE matrice (rank-2).
                 var r = LuMultiply(args);
-                if (r is double[,] rect) return rect;
+                if (r is CommonLib.MatrixValue mvR) return mvR;
+                if (r is double[,] rect) return CommonLib.MatrixValue.FromRect(rect);
                 if (r is long h && _linMatrices.TryGetValue(h, out var mat))
                     return SimdToRect(new CommonLib.SimdMatrix(mat.ToRowMajorArray(), mat.RowCount, mat.ColumnCount));
                 return r;
@@ -263,6 +274,7 @@ internal sealed partial class PCodeProcessor
         {
             var id = argument switch
             {
+                CommonLib.MatrixValue valueMatrix => StoreLinMatHandle(valueMatrix.ToRect()),
                 double[,] data => StoreLinMatHandle(data),
                 object[,] data => StoreLinMatHandle(ObjectRectToDouble(data)),
                 double value => (long)value,
@@ -282,11 +294,10 @@ internal sealed partial class PCodeProcessor
     {
         var rows = Convert.ToInt32(args.Length > 0 ? args[0] : 4);
         var cols = Convert.ToInt32(args.Length > 1 ? args[1] : 4);
-        // MATRIX.CREATE a VALORE (F1): rank-2 contigua, identità sui primi min(rows,cols).
-        // Il tipo del linguaggio è MATRIX OF (INT,INT,DOUBLE): niente handle nel registry.
-        var arr = new double[rows, cols];
-        for (var i = 0; i < Math.Min(rows, cols); i++) arr[i, i] = 1.0;
-        return arr;
+        // MATRIX.CREATE a VALORE (F1/Stage C): rank-2 contigua, identità sui primi min(rows,cols).
+        // Il tipo del linguaggio è MATRIX OF (INT,INT,DOUBLE): il valore è il descrittore
+        // CommonLib.MatrixValue (stessa rappresentazione del backend IL), niente handle.
+        return CommonLib.MatrixValue.Create(rows, cols);
     }
 
     private global::MathNet.Numerics.LinearAlgebra.Vector<double>? VecById(object?[] args, int i)
@@ -401,18 +412,13 @@ internal sealed partial class PCodeProcessor
         var id = ToLongHandle(args, 0);
         if (!_linMatrices.TryGetValue(id, out var m))
             return null;
-        return m.Transpose().ToArray();
+        var t = m.Transpose();
+        return SimdToRect(new CommonLib.SimdMatrix(t.ToRowMajorArray(), t.RowCount, t.ColumnCount));
     }
 
-    /// <summary>Converte un SimdMatrix nel valore rank-2 (double[,]) del linguaggio.</summary>
-    private static double[,] SimdToRect(CommonLib.SimdMatrix m)
-    {
-        var result = new double[m.Rows, m.Cols];
-        for (var row = 0; row < m.Rows; row++)
-            for (var column = 0; column < m.Cols; column++)
-                result[row, column] = m[row, column];
-        return result;
-    }
+    /// <summary>Converte un SimdMatrix nel valore matrice (descrittore MatrixValue).</summary>
+    private static CommonLib.MatrixValue SimdToRect(CommonLib.SimdMatrix m)
+        => CommonLib.MatrixValue.FromFlat(m.ToArray(), m.Rows, m.Cols);
 
     /// <summary>Converte un object[,] del linguaggio (elementi boxati) in double[,].</summary>
     private static double[,] ObjectRectToDouble(object[,] data)
@@ -426,21 +432,21 @@ internal sealed partial class PCodeProcessor
     }
 
     /// <summary>MATRIX.ROW: riga come matrice rank-2 1×cols (fuori range → zeri).</summary>
-    private static double[,] SimdRowRect(CommonLib.SimdMatrix m, int row)
+    private static CommonLib.MatrixValue SimdRowRect(CommonLib.SimdMatrix m, int row)
     {
-        var result = new double[1, m.Cols];
-        if (row < 0 || row >= m.Rows) return result;
-        for (var column = 0; column < m.Cols; column++) result[0, column] = m[row, column];
-        return result;
+        var flat = new double[m.Cols];
+        if (row >= 0 && row < m.Rows)
+            for (var column = 0; column < m.Cols; column++) flat[column] = m[row, column];
+        return CommonLib.MatrixValue.FromFlat(flat, 1, m.Cols);
     }
 
     /// <summary>MATRIX.COL: colonna come matrice rank-2 rows×1 (fuori range → zeri).</summary>
-    private static double[,] SimdColRect(CommonLib.SimdMatrix m, int col)
+    private static CommonLib.MatrixValue SimdColRect(CommonLib.SimdMatrix m, int col)
     {
-        var result = new double[m.Rows, 1];
-        if (col < 0 || col >= m.Cols) return result;
-        for (var row = 0; row < m.Rows; row++) result[row, 0] = m[row, col];
-        return result;
+        var flat = new double[m.Rows];
+        if (col >= 0 && col < m.Cols)
+            for (var row = 0; row < m.Rows; row++) flat[row] = m[row, col];
+        return CommonLib.MatrixValue.FromFlat(flat, m.Rows, 1);
     }
 
     private object? LuMatrixInverse(PCodeTask task, object?[] args) => RunLinOpRect(task, ToLongHandle(args, 0), m => m.Inverse());
@@ -464,8 +470,8 @@ internal sealed partial class PCodeProcessor
 
         // A⁺ = V * S⁺ * Uᵀ
         var result = svd.VT.Transpose() * invertedS * svd.U.Transpose();
-        // F4: PINVERSE restituisce il VALORE matrice.
-        return result.ToArray();
+        // F4 (Stage C): PINVERSE restituisce il VALORE matrice (descrittore).
+        return SimdToRect(new CommonLib.SimdMatrix(result.ToRowMajorArray(), result.RowCount, result.ColumnCount));
     }
 
     private object? LuMatrixRank(object?[] args)
@@ -709,12 +715,12 @@ internal sealed partial class PCodeProcessor
         }
 
         if (matrixFactor != null)
-            return matrixFactor.ToArray();
+            return SimdToRect(new CommonLib.SimdMatrix(matrixFactor.ToRowMajorArray(), matrixFactor.RowCount, matrixFactor.ColumnCount));
         if (vectorFactor != null)
         {
-            var column = new double[vectorFactor.Count, 1];
-            for (var i = 0; i < vectorFactor.Count; i++) column[i, 0] = vectorFactor[i];
-            return column;
+            var flat = new double[vectorFactor.Count];
+            for (var i = 0; i < vectorFactor.Count; i++) flat[i] = vectorFactor[i];
+            return CommonLib.MatrixValue.FromFlat(flat, vectorFactor.Count, 1);
         }
         return null;
     }
@@ -1202,28 +1208,59 @@ internal sealed partial class PCodeProcessor
 
     private object? LuMatrixSetValue(object?[] args)
     {
-        // Valore MATRIX OF: mutazione diretta (visibile al chiamante), niente registry.
+        // Stage C: valore matrice = descrittore CommonLib.MatrixValue (mutazione diretta,
+        // visibile al chiamante, niente registry).
+        if (args.Length > 0 && args[0] is CommonLib.MatrixValue valueMatrix)
+        {
+            var r = (int)SafeDouble(args.Length > 1 ? args[1] : null);
+            var c = (int)SafeDouble(args.Length > 2 ? args[2] : null);
+            valueMatrix.Set(r, c, SafeDouble(args.Length > 3 ? args[3] : null));
+            return valueMatrix;
+        }
+        // Valore legacy `double[,]` (es. conversione FFI o DIM di un altro backend).
         if (args.Length > 0 && args[0] is double[,] dm)
         {
             var r = (int)SafeDouble(args.Length > 1 ? args[1] : null);
             var c = (int)SafeDouble(args.Length > 2 ? args[2] : null);
             if (r >= 0 && r < dm.GetLength(0) && c >= 0 && c < dm.GetLength(1))
                 dm[r, c] = SafeDouble(args.Length > 3 ? args[3] : null);
-            return dm;
+            return CommonLib.MatrixValue.FromRect(dm);
+        }
+        // Stage C: matrice DIM rank-2 della P-CODE VM (object[,], elementi boxati).
+        if (args.Length > 0 && args[0] is object[,] om)
+        {
+            var r = (int)SafeDouble(args.Length > 1 ? args[1] : null);
+            var c = (int)SafeDouble(args.Length > 2 ? args[2] : null);
+            if (r >= 0 && r < om.GetLength(0) && c >= 0 && c < om.GetLength(1))
+                om[r, c] = SafeDouble(args.Length > 3 ? args[3] : null);
+            return CommonLib.MatrixValue.FromRect(ObjectRectToDouble(om));
         }
         var id = ToLongHandle(args, 0);
         if (!_linMatrices.TryGetValue(id, out var m)) return null;
         m[(int)SafeDouble(args[1]), (int)SafeDouble(args[2])] = SafeDouble(args[3]);
-        return m.ToArray();
+        return SimdToRect(new CommonLib.SimdMatrix(m.ToRowMajorArray(), m.RowCount, m.ColumnCount));
     }
 
     private object? LuMatrixGetValue(object?[] args)
     {
+        if (args.Length > 0 && args[0] is CommonLib.MatrixValue valueMatrix)
+        {
+            var r = (int)SafeDouble(args.Length > 1 ? args[1] : null);
+            var c = (int)SafeDouble(args.Length > 2 ? args[2] : null);
+            return valueMatrix.Get(r, c);
+        }
         if (args.Length > 0 && args[0] is double[,] dm)
         {
             var r = (int)SafeDouble(args.Length > 1 ? args[1] : null);
             var c = (int)SafeDouble(args.Length > 2 ? args[2] : null);
             return r >= 0 && r < dm.GetLength(0) && c >= 0 && c < dm.GetLength(1) ? dm[r, c] : 0.0;
+        }
+        // Stage C: matrice DIM rank-2 della P-CODE VM (object[,], elementi boxati).
+        if (args.Length > 0 && args[0] is object[,] om)
+        {
+            var r = (int)SafeDouble(args.Length > 1 ? args[1] : null);
+            var c = (int)SafeDouble(args.Length > 2 ? args[2] : null);
+            return r >= 0 && r < om.GetLength(0) && c >= 0 && c < om.GetLength(1) ? SafeDouble(om[r, c]) : 0.0;
         }
         var id = ToLongHandle(args, 0);
         if (!_linMatrices.TryGetValue(id, out var m)) return null;

@@ -506,6 +506,8 @@ internal sealed partial class PCodeProcessor
             byte bt => " " + bt.ToString(System.Globalization.CultureInfo.InvariantCulture) + " ",
             System.Collections.DictionaryEntry de2 => "[[Key, " + (de2.Key?.ToString() ?? "") + "], [Value, " + FormatPrintValueCompact(de2.Value) + "]]",
             Array arrVal => "[" + string.Join(", ", arrVal.Cast<object>().Select(FormatPrintValueCompact)) + "]",
+            // Stage C: matrice a descrittore — stampa flat row-major come un array rank-2.
+            CommonLib.MatrixValue mvVal => "[" + string.Join(", ", mvVal.Cast<object?>().Select(FormatPrintValueCompact)) + "]",
             System.Collections.IList listVal => FormatIListValue(listVal),
             System.Collections.IDictionary dictVal => "[" + string.Join(", ", dictVal.Cast<object>().Select(x => {
                 if (x is System.Collections.DictionaryEntry de4) return "[" + (de4.Key?.ToString() ?? "") + ", " + FormatPrintValueCompact(de4.Value) + "]";
