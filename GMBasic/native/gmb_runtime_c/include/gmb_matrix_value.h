@@ -133,6 +133,10 @@ gmb_matrix_t gmb_matrix_value_concat_rows(gmb_matrix_t a, gmb_matrix_t b);
 gmb_matrix_t gmb_matrix_value_concat_cols(gmb_matrix_t a, gmb_matrix_t b);
 
 /* ── ponte TRANSITORIO handle ↔ descrittore (ADR §5) ─────────────────────── */
+/* Fattore di una decomposizione come VALORE matrice (storage nuovo, indipendente dal
+ * registry della decomposizione): `lu.U` in BASIC. */
+gmb_matrix_t gmb_matrix_decomp_factor_value_named(int64_t decomp, const char* name);
+
 /* value_of: copia contigua dal registry handle. handle_of: registra una copia
  * contigua nel registry handle. Servono solo durante la migrazione: i nuovi
  * percorsi a valore non devono dipendere dal registry. */

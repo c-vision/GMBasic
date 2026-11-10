@@ -122,6 +122,15 @@ int64_t gmb_matrix_solve_triangular(int64_t a, const double* b, int nb, int lowe
 int64_t gmb_matrix_eig(int64_t a);
 int64_t gmb_matrix_schur(int64_t a);
 int64_t gmb_matrix_decomp_get_factor_named(int64_t decomp, const char* name);
+/* Come sopra ma con handle NUOVO (copia del fattore): da usare quando il fattore viene
+ * restituito come VALORE al linguaggio (il chiamante libera l'handle; i fattori interni
+ * della decomposizione NON vanno liberati). */
+int64_t gmb_matrix_decomp_factor_copy_named(int64_t decomp, const char* name);
+int64_t gmb_matrix_decomp_factor_copy(int64_t decomp, int idx);
+/* Fattore in uno slot SCRATCH (handle riusato, nessuna crescita del registry): per le API
+ * MATRIX.* handle-based chiamate subito (ROWCOUNT, GETVALUE, norme, ...). Il valore a
+ * descrittore è `gmb_matrix_decomp_factor_value_named` (gmb_matrix_value.h). */
+int64_t gmb_matrix_decomp_factor_scratch_named(int64_t decomp, const char* name);
 double* gmb_matrix_subspace_angles_alloc(int64_t a, int64_t b, int64_t* outn);
 double* gmb_matrix_row_sums_alloc(int64_t h, int64_t* outn);
 double* gmb_matrix_row_means_alloc(int64_t h, int64_t* outn);

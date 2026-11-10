@@ -3383,6 +3383,12 @@ static int mx_is_matrix_val(const var_t* v)
  * viene registrato come handle con gmb_matrix_from_flat; un handle resta se stesso. */
 static void emit_matrix_arg(ctx_t* c, gmb_expr_t* e)
 {
+    {
+        /* Campo-fattore di una DECOMPOSIZIONE: la funzione restituisce già un handle
+         * (slot scratch, nessuna crescita del registry). */
+        char df[8];
+        if (decomp_factor_call(c, e, df)) { emit_decomp_factor_scratch(c, e, df); return; }
+    }
     long fr = 0, fc = 0;
     if (mv_field_desc(c, e, &fr, &fc)) {
         /* Campo matrice di CLASSE/UDT: view sul buffer flat del campo, registrata in uno
@@ -3400,6 +3406,17 @@ static void emit_matrix_arg(ctx_t* c, gmb_expr_t* e)
 }
 static int mx_one(ctx_t* c, gmb_expr_t** a, int n, const char* fn, int cast) {
     if (n != 1) return 0;
+    {
+        /* Campo-fattore di una DECOMPOSIZIONE: handle scratch del fattore. */
+        char df[8];
+        if (decomp_factor_call(c, a[0], df)) {
+            sb_put(&c->out, cast ? "(gmb_int_t)" : "(gmb_double_t)");
+            sb_printf(&c->out, "%s(", fn);
+            emit_decomp_factor_scratch(c, a[0], df);
+            sb_put(&c->out, ")");
+            return 1;
+        }
+    }
     if (a[0]->kind != GMB_EXPR_VAR || !a[0]->var) return 0;
     {
         /* Campo matrice di CLASSE/UDT: stessa strada dell'handle, via scratch. */
@@ -3575,6 +3592,16 @@ static int mxh_set(ctx_t* c, gmb_expr_t** a, int n) {
 }
 static int mx_rowcol(ctx_t* c, gmb_expr_t** a, int n, const char* rc) {
     if (n != 1) return 0;
+    {
+        /* Campo-fattore di una DECOMPOSIZIONE: dimensione dal fattore (handle scratch). */
+        char df[8];
+        if (decomp_factor_call(c, a[0], df)) {
+            sb_printf(&c->out, "(gmb_double_t)gmb_matrix_%s(", rc);
+            emit_decomp_factor_scratch(c, a[0], df);
+            sb_put(&c->out, ")");
+            return 1;
+        }
+    }
     if (a[0]->kind != GMB_EXPR_VAR || !a[0]->var) return 0;
     {
         /* Campo matrice di CLASSE/UDT: bound STATICI dal tipo del campo. */
@@ -3648,7 +3675,10 @@ static int mx_signm(ctx_t* c, gmb_expr_t** a, int n) { return mx_one(c, a, n, "g
  * Condivide GMB_TOK_Get con POOL.Get/SyncMap.Get: n==2 con 1° arg handle decomp. */
 static int mx_factor(ctx_t* c, gmb_expr_t** a, int n) {
     if (n != 2) return 0;
-    sb_put(&c->out, "gmb_matrix_decomp_get_factor_named((int64_t)(");
+    /* Copia del fattore: l'handle viene materializzato in un valore e poi liberato — i
+     * fattori interni della decomposizione NON vanno liberati (altrimenti la seconda
+     * lettura dello stesso fattore restituisce vuoto). */
+    sb_put(&c->out, "gmb_matrix_decomp_factor_copy_named((int64_t)(");
     emit_matrix_arg(c, a[0]);
     sb_put(&c->out, "), (const char*)(");
     emit_str_operand(c, a[1]);

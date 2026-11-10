@@ -631,6 +631,8 @@ public sealed partial class IlProgramCompiler
         // NotSupportedIlExpressionException).
         IndexedAccessExpr ia when ia.Base is VariableExpr ivArr && _arrays.TryGetValue(ivArr.SymbolId, out var iaArrInfo)
             => iaArrInfo.ElementDataType,
+        IndexedAccessExpr ia when NormalizeInferredType(InferType(ia.Base)) is MatrixValueType
+            => new DoubleType(),
         IndexedAccessExpr ia => TryResolveIndexedFieldArray(ia.Base, out _, out var indexedFieldArrayInfo)
             ? indexedFieldArrayInfo.ElementDataType
             : NormalizeInferredType(ResolveIndexedAccessMethodDefinition(ia, out _).ReturnType),
