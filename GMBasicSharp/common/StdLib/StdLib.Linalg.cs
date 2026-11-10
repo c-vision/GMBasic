@@ -244,7 +244,7 @@ public sealed partial class StdLib
                         null, false),
                     new Parameter(-1, T(TokenKind.Identifier, "factorName"), new StringType(), noFlags, null, false)
                 ],
-                new LongType(), TokenKind.LinAlgDecompGetFactorFunc),
+                new ArrayType(new DoubleType(), 2), TokenKind.LinAlgDecompGetFactorFunc),
             new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.MatrixFrobeniusNorm, "FROBENIUSNORM"), [matrixArrayParam], new DoubleType(), TokenKind.MatrixFrobeniusNorm, ExecutionKind: NativeExecutionKind.Pure),
             new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.MatrixOneNorm, "ONENORM"), [matrixArrayParam], new DoubleType(), TokenKind.MatrixOneNorm, ExecutionKind: NativeExecutionKind.Pure),
             new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.MatrixInfinityNorm, "INFINITYNORM"), [matrixArrayParam], new DoubleType(), TokenKind.MatrixInfinityNorm, ExecutionKind: NativeExecutionKind.Pure),

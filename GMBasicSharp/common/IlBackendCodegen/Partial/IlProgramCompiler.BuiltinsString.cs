@@ -940,7 +940,7 @@ public sealed partial class IlProgramCompiler
         _il.Emit(OpCodes.Call, RuntimeMethod(vectorDot ? nameof(IlRuntime.VectorDotProduct) : nameof(IlRuntime.MatrixSolve)));
     }
     private void EmitLinAlgDecompGetFactorCall(BuiltinFunctionCallExpr expr)
-    { if (expr.Args.Length != 2) throw new NotSupportedException($"Backend IL: {expr.OriginalToken.Lexeme} richiede handle di decomposizione e nome del fattore."); EmitInt64Argument(expr.Args[0]); EmitStringArgument(expr.Args[1]); _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.DecompositionGetFactor))); }
+    { if (expr.Args.Length != 2) throw new NotSupportedException($"Backend IL: {expr.OriginalToken.Lexeme} richiede handle di decomposizione e nome del fattore."); EmitInt64Argument(expr.Args[0]); EmitStringArgument(expr.Args[1]); _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.DecompositionGetFactorValue))); }
     private void EmitStringArgument(Expr expr)
     { EmitExpression(expr); var type = NormalizeInferredType(InferType(expr)); IlConversion.EmitConvert(_il, _types, type, DataTypeMapper.Map(type, _types, _classTypes), _types.String); }
     private void EmitLinAlgVectorCreateCall(BuiltinFunctionCallExpr expr)

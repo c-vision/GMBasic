@@ -5086,7 +5086,9 @@ static void gmb_bf_616_c617(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int
 static void gmb_bf_618(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
 {
         {
+            (void)vm; (void)task; (void)func_code;
             int64_t d = (int64_t)(argc >= 1 ? args[0].num : -1);
+            int64_t fh;
             if (argc >= 2 && args[1].type == 2 && args[1].basic_type == GMB_BT_STRING)
             {
                 gmb_obj_string_t* s = (gmb_obj_string_t*)args[1].ref;
@@ -5094,13 +5096,16 @@ static void gmb_bf_618(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func
                 size_t n = s->length < 63 ? s->length : 63;
                 memcpy(nm, s->data, n);
                 nm[n] = '\0';
-                bout->result = (double)gmb_matrix_decomp_get_factor_named(d, nm);
+                fh = gmb_matrix_decomp_get_factor_named(d, nm);
             }
             else
             {
                 int idx = (int)(argc >= 2 ? args[1].num : 0);
-                bout->result = (double)gmb_matrix_decomp_get_factor(d, idx);
+                fh = gmb_matrix_decomp_get_factor(d, idx);
             }
+            /* F4: LINALG.FACTOR restituisce il VALORE matrice del fattore. */
+            vm_matrix_set_value_result(fh, bout);
+            gmb_matrix_free(fh);
         }
 }
 static void gmb_bf_6(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)

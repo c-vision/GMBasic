@@ -1552,6 +1552,21 @@ public static partial class IlRuntime
         throw new ArgumentException("Nessun fattore valido estratto dalla decomposizione.");
     }
 
+    /// <summary>F4: LINALG.FACTOR restituisce il VALORE matrice del fattore (i fattori
+    /// vettoriali, es. SVECTOR, diventano una colonna).</summary>
+    public static double[,] DecompositionGetFactorValue(long decompHandle, string factorName)
+    {
+        var handle = DecompositionGetFactor(decompHandle, factorName);
+        if (LinAlgMatrices.TryGetValue(handle, out var matrix)) return (double[,])matrix.Clone();
+        if (LinAlgVectors.TryGetValue(handle, out var vector))
+        {
+            var column = new double[vector.Length, 1];
+            for (var i = 0; i < vector.Length; i++) column[i, 0] = vector[i];
+            return column;
+        }
+        throw new ArgumentException("Fattore non trovato.");
+    }
+
     // Estrarre parte reale/immaginaria di Vector<Complex> senza il metodo di
     // estensione MathNet Real()/Imaginary() (che richiederebbe un using dedicato
     // nel file): si costruisce il Vector<double> componente per componente.

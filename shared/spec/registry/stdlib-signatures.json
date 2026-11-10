@@ -11468,7 +11468,7 @@
       "ns": "LINALG",
       "name": "FACTOR",
       "fn": true,
-      "return": "long",
+      "return": "double[]",
       "params": [
         {
           "name": "decompositionObject",

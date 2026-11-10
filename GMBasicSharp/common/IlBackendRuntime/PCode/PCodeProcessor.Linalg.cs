@@ -709,16 +709,12 @@ internal sealed partial class PCodeProcessor
         }
 
         if (matrixFactor != null)
-        {
-            var newId = Interlocked.Increment(ref _nextLinearMatrixId);
-            _linMatrices[newId] = matrixFactor;
-            return HandleOf(newId);
-        }
+            return matrixFactor.ToArray();
         if (vectorFactor != null)
         {
-            var newId = Interlocked.Increment(ref _nextLinearVectorId);
-            _linVectors[newId] = vectorFactor;
-            return HandleOf(newId);
+            var column = new double[vectorFactor.Count, 1];
+            for (var i = 0; i < vectorFactor.Count; i++) column[i, 0] = vectorFactor[i];
+            return column;
         }
         return null;
     }
