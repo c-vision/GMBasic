@@ -374,11 +374,22 @@ do_push() {
   local clone; clone="$(mktemp -d "${TMPDIR:-/tmp}/gmbmod.XXXXXX")"
   git clone --depth 1 "https://github.com/$REPO.git" "$clone" >/dev/null 2>&1
   cp "$MANIFEST" "$clone/libs-manifest.json"
+  # CREDENZIALE (2026-11-10). In locale `git push` funzionava perché esiste
+  # `credential.helper=store`; su un runner NON c'è alcun helper e il job `index` moriva con
+  # "fatal: could not read Username for 'https://github.com'" (run 42862585667, 6/6 build+asset
+  # pubblicati e indice rosso). Se `GH_TOKEN` è nell'ambiente lo si passa a git con un helper
+  # EFFIMERO valido per questo solo comando: il token non finisce negli argomenti di `git`
+  # (visibili in `ps`) né in un file di credenziali su disco.
+  local -a cred=()
+  if [ -n "${GH_TOKEN:-}" ]; then
+    cred=(-c credential.helper= \
+          -c 'credential.helper=!f() { test "$1" = get && printf "username=x-access-token\npassword=%s\n" "$GH_TOKEN"; }; f')
+  fi
   ( cd "$clone" \
     && git add libs-manifest.json \
     && git -c user.name="gmb-libs-publisher" -c user.email="gmbasic@maxxcom.it" \
          commit -q -m "libs-manifest: aggiornato $(jq -r '.version' libs-manifest.json) ($(jq -r '.rids|keys|join(", ")' libs-manifest.json))" \
-    && git push -q origin HEAD:main )
+    && git ${cred[@]+"${cred[@]}"} push -q origin HEAD:main )
   echo "manifest pubblicato: https://github.com/$REPO/blob/main/libs-manifest.json"
   rm -rf "$clone"
 }

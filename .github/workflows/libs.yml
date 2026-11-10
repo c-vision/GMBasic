@@ -149,12 +149,13 @@ jobs:
 
   index:
     name: indice (libs-manifest.json)
-    needs: build
+    needs: [build, plan]
     if: ${{ github.event_name == 'push' || github.event.inputs.publish == 'true' }}
     runs-on: ubuntu-24.04
     env:
       GH_TOKEN: ${{ secrets.GMB_MODULES_TOKEN || secrets.GITHUB_TOKEN }}
       GROUP: ${{ github.event.inputs.group || 'core' }}
+      MATRIX: ${{ needs.plan.outputs.matrix }}
     steps:
       - uses: actions/checkout@v4
 
@@ -162,7 +163,13 @@ jobs:
         run: |
           # `libs_manifest_gh.sh build` FONDE il RID nel manifest esistente (nel checkout), `push`
           # lo pubblica su main. In sequenza i push sono cumulativi: nessuna corsa fra RID.
-          for rid in osx-arm64 osx-x64 linux-x64 linux-arm64; do
+          #
+          # I RID si prendono dalla MATRICE del job `plan` (= quelli davvero pubblicati), non da una
+          # lista scritta a mano: quella lista aveva i soli 4 RID Unix e con `group=toolchain`
+          # avrebbe lasciato win-x64/win-arm64 indietro di una release.
+          RIDS="$(printf '%s' "$MATRIX" | jq -r '.include[].rid')"
+          echo "RID da indicizzare: $(echo $RIDS)"
+          for rid in $RIDS; do
             if bash tools/sh/libs_manifest_gh.sh build --rid "$rid"; then
               bash tools/sh/libs_manifest_gh.sh push || exit 1
             else
