@@ -66,7 +66,31 @@ public static partial class Numerics
         for (var i = 0; i < svd.S.Count; i++)
             if (svd.S[i] > tol) rank++;
         if (rank == 0) return DenseMatrix.Create(a.RowCount, 0, 0.0);
-        return svd.U.SubMatrix(0, a.RowCount, 0, rank);
+        var q = svd.U.SubMatrix(0, a.RowCount, 0, rank);
+        // Convenzione di SEGNO condivisa col runtime C (gmb_matrix_orth): il primo elemento
+        // di modulo massimo di ogni colonna è POSITIVO. Senza, il segno delle colonne di U
+        // dipende dall'implementazione SVD (LAPACK del runtime C vs MathNet) e le gambe
+        // divergono su ORTH (es. -0.7882 vs 0.7882 nel sample MatrixDecompositions).
+        CanonicalizeColumnSigns(q);
+        return q;
+    }
+
+    /// <summary>Rende positivo il primo elemento di modulo massimo di ogni colonna (convenzione
+    /// di segno stabile per basi ortonormali tra implementazioni SVD diverse).</summary>
+    internal static void CanonicalizeColumnSigns(Matrix<double> q)
+    {
+        for (var c = 0; c < q.ColumnCount; c++)
+        {
+            var pivotRow = 0;
+            var pivotAbs = 0.0;
+            for (var r = 0; r < q.RowCount; r++)
+            {
+                var v = Math.Abs(q[r, c]);
+                if (v > pivotAbs) { pivotAbs = v; pivotRow = r; }
+            }
+            if (pivotAbs > 0 && q[pivotRow, c] < 0)
+                for (var r = 0; r < q.RowCount; r++) q[r, c] = -q[r, c];
+        }
     }
 
     /// <summary>scipy.linalg.subspace_angles — angoli tra due sottospazi.</summary>

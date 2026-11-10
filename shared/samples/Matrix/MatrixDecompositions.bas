@@ -42,8 +42,8 @@ SUB Main()
     DIM qr = LINALG.QR(a)
     DIM qrq   = LINALG.FACTOR(qr, "Q")
     PRINT "qr_q00="; MATH.ROUND(MATRIX.GETVALUE(qrq, 0, 0), 6)
-    DIM eig = LINALG.EIG(a)
-    PRINT "eig="; eig
+    DIM eig = LINALG.FACTOR(LINALG.EIG(a), "DREAL")
+    PRINT "eig="; MATH.ROUND(MATRIX.GETVALUE(eig, 0, 0), 4)
 
     ' funzioni matriciali
     PRINT "expm00="; MATH.ROUND(MATRIX.GETVALUE(LINALG.EXPM(a), 0, 0), 4)
@@ -57,8 +57,8 @@ SUB Main()
 
     ' fattorizzazioni avanzate
     PRINT "hess00="; MATH.ROUND(MATRIX.GETVALUE(LINALG.HESSENBERG(a), 0, 0), 4)
-    PRINT "schur00="; MATH.ROUND(MATRIX.GETVALUE(LINALG.SCHUR(a), 0, 0), 4)
-    PRINT "polar00="; MATH.ROUND(MATRIX.GETVALUE(LINALG.POLAR(a), 0, 0), 4)
+    PRINT "schur00="; MATH.ROUND(MATRIX.GETVALUE(LINALG.FACTOR(LINALG.SCHUR(a), "T"), 0, 0), 4)
+    PRINT "polar00="; MATH.ROUND(MATRIX.GETVALUE(LINALG.FACTOR(LINALG.POLAR(a), "U"), 0, 0), 4)
     PRINT "orth00="; MATH.ROUND(MATRIX.GETVALUE(LINALG.ORTH(a), 0, 0), 4)
 
     ' costruzione matrici (CIRCULANT/HANKEL/TOEPLITZ prendono array grezzi)
