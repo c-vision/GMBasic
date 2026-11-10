@@ -2313,6 +2313,14 @@ static const char* bd_arg_name(gmb_expr_t* e) {
 }
 static int bd_lbound(ctx_t* c, gmb_expr_t** a, int n, int line) {
     if (n != 1 && n != 2) return 0;
+    /* Campo-fattore di una DECOMPOSIZIONE: lower bound 0. */
+    {
+        char __ldf[8];
+        if (a[0] && decomp_factor_call(c, a[0], __ldf)) {
+            sb_put(&c->out, "(gmb_double_t)0");
+            return 1;
+        }
+    }
     const char* an0 = bd_arg_name(a[0]);
     if (!an0) return 0;
     var_t* av = lookup_var(c, an0);
@@ -2364,6 +2372,19 @@ static int bd_ubound(ctx_t* c, gmb_expr_t** a, int n, int line) {
             if (n == 2 && a[1]->kind == GMB_EXPR_NUM) k = (int)a[1]->num - 1;
             if (k < 0 || k > 1) k = 0;
             sb_printf(&c->out, "(gmb_double_t)(%ld)", k == 0 ? fr - 1 : fc - 1);
+            return 1;
+        }
+    }
+    /* Campo-fattore di una DECOMPOSIZIONE: bound dal fattore (handle scratch). */
+    {
+        char __udf[8];
+        if (a[0] && decomp_factor_call(c, a[0], __udf)) {
+            int k = 0;
+            if (n == 2 && a[1]->kind == GMB_EXPR_NUM) k = (int)a[1]->num - 1;
+            if (k < 0 || k > 1) k = 0;
+            sb_printf(&c->out, "(gmb_double_t)(gmb_matrix_%s(", k == 0 ? "rows" : "cols");
+            emit_decomp_factor_scratch(c, a[0], __udf);
+            sb_put(&c->out, ") - 1)");
             return 1;
         }
     }
