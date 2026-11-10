@@ -1497,7 +1497,7 @@ private void EmitBrowserHumanScrollCall(BuiltinFunctionCallExpr expr)
         return !_programTypeBuilders.TryGetValue(_program, out _);
     }
 
-    private void EmitFunctionReference(FunctionReferenceExpr expr, bool ffiCallbackShape = false)
+    private void EmitFunctionReference(FunctionReferenceExpr expr, bool ffiCallbackShape = false, bool refCallbackShape = false)
     {
         // Callback per AMAP/AFILTER/AREDUCE/ACOUNT/...: la FUNCTION è già un metodo CIL
         // statico (in _procedureMethods) — costruisce il delegate Func<> con la firma CLR
@@ -1532,7 +1532,7 @@ private void EmitBrowserHumanScrollCall(BuiltinFunctionCallExpr expr)
         //   CbRef1S1ArrD veniva passato dove il runtime si aspetta Func<...>: l'ordine dei
         //   parametri (array-first contro scalar-first) e il byref non combaciavano
         //   (IndexOutOfRange in NUMERICAL.SolveIvp).
-        Type? refDel = ffiCallbackShape ? TryRefDelegateType(fd) : null;
+        Type? refDel = (ffiCallbackShape || refCallbackShape) ? TryRefDelegateType(fd) : null;
         MethodBuilder fnTarget = fnMethod;
         if (refDel is null && fnMethod.IsStatic
             && fd.Parameters.Any(p => p.Flags.HasFlag(SymbolFlags.IsByRef) || p.DataType is ArrayType))
