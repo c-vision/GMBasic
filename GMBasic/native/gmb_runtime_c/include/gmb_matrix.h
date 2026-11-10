@@ -126,6 +126,9 @@ int64_t gmb_matrix_solve_triangular(int64_t a, const double* b, int nb, int lowe
 int64_t gmb_matrix_eig(int64_t a);
 int64_t gmb_matrix_schur(int64_t a);
 int64_t gmb_matrix_decomp_get_factor_named(int64_t decomp, const char* name);
+/* Come sopra, con `owned`: 1 = l'handle restituito è NUOVO (fattore generato, es. EIG
+ * DREAL) e il chiamante deve liberarlo; 0 = handle posseduto dalla decomposizione. */
+int64_t gmb_matrix_decomp_get_factor_named_ex(int64_t decomp, const char* name, int* owned);
 /* Come sopra ma con handle NUOVO (copia del fattore): da usare quando il fattore viene
  * restituito come VALORE al linguaggio (il chiamante libera l'handle; i fattori interni
  * della decomposizione NON vanno liberati). */
@@ -177,6 +180,7 @@ double* gmb_matrix_solve_alloc(int64_t a, const double* b, int nb, int64_t* outn
 /* GetFactor(decomp, idx): idx 0=L,1=U (LU); 0=Q,1=R (QR); 0=U,1=S,2=V (SVD);
    0=Valori,1=Vettori (EVD); 0=L (Cholesky). Ritorna handle matrice o -1. */
 int64_t gmb_matrix_decomp_get_factor(int64_t decomp, int idx);
+int64_t gmb_matrix_decomp_get_factor_ex(int64_t decomp, int idx, int* owned);
 void gmb_matrix_decomp_free(int64_t decomp);
 
 /* ---- Linalg aggiuntive (port CommonLib/Numerics/LinAlg.cs) ----
