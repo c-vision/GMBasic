@@ -1,4 +1,4 @@
-# requires dev-v1 domain-v1 ffi-v2 llmmotor-v2 runtime-v2
+# requires dev-v1 domain-v1 ffi-v2 llmmotor-v2 runtime-v2 toolchain-v2
 gmb_sql_csv_ext.dylib	049627e711afa34513a7cf7cb60da560d2e33800cb1d97ee7c3201a360fabbc9	51664	https://github.com/c-vision/GMBasicModules/releases/download/runtime-v2/gmb_sql_csv_ext-osx-arm64.dylib
 gmb_sql_parquet_ext.dylib	8cd8b15db87e2cd16043a783620d7654fab3c1b71091173f9311570da601e975	102880	https://github.com/c-vision/GMBasicModules/releases/download/runtime-v2/gmb_sql_parquet_ext-osx-arm64.dylib
 include/SDL2/SDL.h	1a54ea57a8ddcf18166abbe6c4b45523d78a5374320d7cb8b89e4890b6a94d62	8111	https://github.com/c-vision/GMBasicModules/releases/download/dev-v1/include__SDL2__SDL-osx-arm64.h
@@ -554,3 +554,4 @@ libzstd.1.5.7.dylib	a61d9ec25a1109bc5030a99a7fcbd79737868111fb82adb32f7de3e5b7fa
 libzstd.1.dylib	a61d9ec25a1109bc5030a99a7fcbd79737868111fb82adb32f7de3e5b7fa7a25	631664	https://github.com/c-vision/GMBasicModules/releases/download/runtime-v2/libzstd.1-osx-arm64.dylib
 libzstd.dylib	a61d9ec25a1109bc5030a99a7fcbd79737868111fb82adb32f7de3e5b7fa7a25	631664	https://github.com/c-vision/GMBasicModules/releases/download/runtime-v2/libzstd-osx-arm64.dylib
 mlx.metallib	a1657f753a4abf5ac72086fa671142b545dbc78346de2a1e64099e08ec794c30	163611848	https://github.com/c-vision/GMBasicModules/releases/download/llmmotor-v2/mlx-osx-arm64.metallib
+zig-0.17.0.tar.xz	0f79c1acff5b87c0ead60b7ad32146efec6569167627677edc4cdcab5c9fb2bf	56717704	https://github.com/c-vision/GMBasicModules/releases/download/toolchain-v2/zig-0.17.0-osx-arm64.tar.xz
