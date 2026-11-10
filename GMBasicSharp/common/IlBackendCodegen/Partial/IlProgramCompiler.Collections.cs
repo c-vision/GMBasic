@@ -955,6 +955,7 @@ public sealed partial class IlProgramCompiler
         var elemLocalClr = elemSymbolType is ListType
             ? DataTypeMapper.Map(elemSymbolType, _types, _classTypes)
             : _arrays.TryGetValue(target.SymbolId, out var arrInfoT) ? arrInfoT.ClrArrayType
+            : TrySynthesizeBagArrayInfo(target.SymbolId) is { } bagArrT ? bagArrT.ClrArrayType
             : _locals.TryGetValue(target.SymbolId, out var lbT) ? lbT.LocalType
             : typeof(object);
         if (elemLocalClr == typeof(object))
@@ -1010,7 +1011,7 @@ public sealed partial class IlProgramCompiler
     private void EmitLoadArrayRefAndIndices(Action emitLoadRef, int rank, int[] lowerBounds, ImmutableArray<Expr> indices, Type infoClrArrayType, ArrayInfo? lowerInfo = null)
     {
         emitLoadRef();
-        var isJagged = rank > 1 && infoClrArrayType.GetElementType()!.IsArray;
+        var isJagged = rank > 1 && infoClrArrayType.IsArray && infoClrArrayType.GetElementType()!.IsArray;
         for (var axis = 0; axis < rank; axis++)
         {
             EmitInt32Arg(indices[axis]);

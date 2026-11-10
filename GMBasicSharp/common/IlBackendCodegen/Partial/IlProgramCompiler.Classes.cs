@@ -6,6 +6,7 @@ using System.Collections.Immutable;
 using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
+using CommonLib;
 using System.Reflection.Metadata;
 using System.Reflection.Metadata.Ecma335;
 using System.Reflection.PortableExecutable;
@@ -254,6 +255,14 @@ public sealed partial class IlProgramCompiler
         {
             il.Emit(OpCodes.Ldc_I4, lengths[0]);
             il.Emit(OpCodes.Newarr, info.ClrArrayType.GetElementType()!);
+        }
+        else if (info.ClrArrayType == typeof(MatrixValue))
+        {
+            // Campo matrice rank-2 DOUBLE: descrittore (Stage D), come un DIM locale.
+            il.Emit(OpCodes.Ldc_I4, lengths[0]);
+            il.Emit(OpCodes.Ldc_I4, lengths[1]);
+            il.Emit(OpCodes.Call, typeof(MatrixValue).GetMethod(nameof(MatrixValue.Zeros),
+                [types.Int32, types.Int32])!);
         }
         else if (info.ClrArrayType.GetElementType() is { IsArray: true })
         {

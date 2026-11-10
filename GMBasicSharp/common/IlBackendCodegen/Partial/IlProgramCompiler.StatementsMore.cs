@@ -83,7 +83,7 @@ public sealed partial class IlProgramCompiler
         _arrays.TryGetValue(expr.Args[0] is VariableExpr veSort ? veSort.SymbolId : -1, out var info);
         var isDirectArray = expr.Args[0] is VariableExpr && info is not null;
         var elementType = isDirectArray
-            ? info!.ClrArrayType.GetElementType()!
+            ? ArrayElemClr(info!)
             : NormalizeInferredType(InferType(expr.Args[0])) is ArrayType atSort
                 ? DataTypeMapper.Map(atSort.ElementType, _types, _classTypes)
                 : throw new NotSupportedException("Backend IL: ASORT richiede un array come argomento.");

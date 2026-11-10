@@ -7,6 +7,7 @@ using System.Collections.Immutable;
 using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
+using CommonLib;
 using System.Reflection.Metadata;
 using System.Reflection.Metadata.Ecma335;
 using System.Reflection.PortableExecutable;
@@ -19,10 +20,18 @@ namespace Basic.IlBackend;
 /// <summary>Partial del transpiler IL: operazioni array/comandi ARRAYS.</summary>
 public sealed partial class IlProgramCompiler
 {
+    /// <summary>Elemento CLR di un array rank-1; errore esplicito se il valore è un
+    /// descrittore matrice (Stage D: i comandi/funzioni <c>A*</c> sono rank-1).</summary>
+    private static Type ArrayElemClr(ArrayInfo info)
+        => info.ClrArrayType.IsArray
+            ? ArrayElemClr(info)
+            : throw new NotSupportedException(
+                "Backend IL: operazione ARRAY su una matrice non supportata (i comandi/funzioni A* sono rank-1; usa le API MATRIX).");
+
     private void EmitAEvalStatement(AEvalStmt stmt)
     {
         var (info, _) = ResolveArrayStmtTarget(stmt.Array, "AEVAL");
-        var elementType = info.ClrArrayType.GetElementType()!;
+        var elementType = ArrayElemClr(info);
         // T del generico = tipo del PARAMETRO della callback (come AMAP/AFILTER): il
         // risultato di AFILTER/AMAP tipizzato sul parametro (es. Pari short[] da
         // FN(n AS INTEGER)) NON coincide col tipo statico del simbolo (double[]) — senza,
@@ -64,7 +73,7 @@ public sealed partial class IlProgramCompiler
     private void EmitASortStatement(ASortStmt stmt)
     {
         var (info, _) = ResolveArrayStmtTarget(stmt.Array, "ASORT");
-        var elementType = info.ClrArrayType.GetElementType()!;
+        var elementType = ArrayElemClr(info);
 
         _il.Emit(OpCodes.Ldloc, info.Local);
 
@@ -203,7 +212,7 @@ public sealed partial class IlProgramCompiler
     private void EmitADelStatement(ADelStmt stmt)
     {
         var (info, symbolId) = ResolveArrayStmtTarget(stmt.Array, "ADEL");
-        var elementType = info.ClrArrayType.GetElementType()!;
+        var elementType = ArrayElemClr(info);
 
         var positionLocal = _il.DeclareLocal(_types.Int32);
         EmitInt32Arg(stmt.PositionExpr);
@@ -255,7 +264,7 @@ public sealed partial class IlProgramCompiler
     private void EmitAInsStatement(AInsStmt stmt)
     {
         var (info, symbolId) = ResolveArrayStmtTarget(stmt.Array, "AINS");
-        var elementType = info.ClrArrayType.GetElementType()!;
+        var elementType = ArrayElemClr(info);
 
         var positionLocal = _il.DeclareLocal(_types.Int32);
         EmitInt32Arg(stmt.PositionExpr);
@@ -307,7 +316,7 @@ public sealed partial class IlProgramCompiler
     private void EmitAAddStatement(AAddStmt stmt)
     {
         var (info, symbolId) = ResolveArrayStmtTarget(stmt.Array, "AADD");
-        var elementType = info.ClrArrayType.GetElementType()!;
+        var elementType = ArrayElemClr(info);
 
         _il.Emit(OpCodes.Ldloca, info.Local);
         _il.Emit(OpCodes.Ldloc, info.Local);
@@ -349,7 +358,7 @@ public sealed partial class IlProgramCompiler
         if (expr.Args.Length != 2)
             throw new NotSupportedException("Backend IL: ASCAN richiede 2 argomenti (array, valore_o_predicato).");
         var info = ResolveArrayArg(expr.Args[0], "ASCAN");
-        var elementType = info.ClrArrayType.GetElementType()!;
+        var elementType = ArrayElemClr(info);
         _il.Emit(OpCodes.Ldloc, info.Local);
         EmitExpression(expr.Args[1]);
         if (IsCallbackArg(expr.Args[1]))
@@ -363,7 +372,7 @@ public sealed partial class IlProgramCompiler
         if (expr.Args.Length != 2)
             throw new NotSupportedException("Backend IL: ACOUNT richiede 2 argomenti (array, conditionFunc).");
         var info = ResolveArrayArg(expr.Args[0], "ACOUNT");
-        var elementType = info.ClrArrayType.GetElementType()!;
+        var elementType = ArrayElemClr(info);
         _il.Emit(OpCodes.Ldloc, info.Local);
         EmitExpression(expr.Args[1]);
         _il.Emit(OpCodes.Call, ArrayHelpersACountMethod.MakeGenericMethod(elementType));
@@ -442,7 +451,7 @@ public sealed partial class IlProgramCompiler
         if (arg is VariableExpr veArr && _arrays.TryGetValue(veArr.SymbolId, out var arrInfo))
         {
             _il.Emit(OpCodes.Ldloc, arrInfo.Local);
-            elemClr = arrInfo.ClrArrayType.GetElementType()!;
+            elemClr = ArrayElemClr(arrInfo);
         }
         else if (argType is ListType listType)
         {
@@ -622,7 +631,7 @@ public sealed partial class IlProgramCompiler
         if (expr.Args.Length != 1)
             throw new NotSupportedException($"Backend IL: {name} richiede esattamente 1 argomento.");
         var info = ResolveArrayArg(expr.Args[0], name);
-        var elementType = info.ClrArrayType.GetElementType()!;
+        var elementType = ArrayElemClr(info);
         EmitArrayRefFromInfo(info);
         _il.Emit(OpCodes.Call, ArrayHelpersACloneMethod.MakeGenericMethod(elementType));
         _il.Emit(OpCodes.Dup);
@@ -634,7 +643,7 @@ public sealed partial class IlProgramCompiler
         if (expr.Args.Length != 1)
             throw new NotSupportedException($"Backend IL: {name} richiede esattamente 1 argomento.");
         var info = ResolveArrayArg(expr.Args[0], name);
-        var elementType = info.ClrArrayType.GetElementType()!;
+        var elementType = ArrayElemClr(info);
         EmitArrayRefFromInfo(info);
         _il.Emit(OpCodes.Call, openGenericMethod.MakeGenericMethod(elementType));
     }
@@ -765,6 +774,51 @@ public sealed partial class IlProgramCompiler
                 }
             }
         }
+        else if (rank == 2 && elementDataType is DoubleType)
+        {
+            // Stage D: matrice rank-2 DOUBLE = VALORE descrittore (MatrixValue), non più
+            // `double[,]`. `DIM m(r,c) AS DOUBLE` allocava un array rettangolare CLR;
+            // ora lo stesso tipo del linguaggio di MATRIX OF ha un'unica rappresentazione
+            // (storage flat + strides, view O(1)) e le API MATRIX non copiano più.
+            clrArrayType = typeof(MatrixValue);
+            arrayLocal = GetOrDeclareLocal(declaration.SymbolId);
+            EmitAxisLength(declaration.Dimensions[0], lowerBounds[0]);
+            EmitAxisLength(declaration.Dimensions[1], lowerBounds[1]);
+            _il.Emit(OpCodes.Conv_I4);
+            _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.MatrixValueZeros), typeof(int), typeof(int)));
+            _il.Emit(OpCodes.Stloc, arrayLocal);
+
+            // Inizializzatore letterale `{{...}}` appiattito dal Linker (row-major).
+            var matrixElems = declaration.InitialValue switch
+            {
+                ArrayLiteralExpr al => al.Elements,
+                ListLiteralExpr ll => ll.Elements,
+                _ => default(ImmutableArray<Expr>?),
+            };
+            if (matrixElems is { } matrixLiteral)
+            {
+                var axisLengths = new int[rank];
+                for (var axis = 0; axis < rank; axis++)
+                    axisLengths[axis] = ExtractCompileTimeInt32(declaration.Dimensions[axis]) - lowerBounds[axis] + 1;
+                var setMethod = typeof(MatrixValue).GetMethod(nameof(MatrixValue.Set), [typeof(int), typeof(int), typeof(double)])!;
+                for (var flatIndex = 0; flatIndex < matrixLiteral.Length; flatIndex++)
+                {
+                    _il.Emit(OpCodes.Ldloc, arrayLocal);
+                    var remaining = flatIndex;
+                    var idxAtAxis = new int[rank];
+                    for (var axis = rank - 1; axis >= 0; axis--)
+                    {
+                        idxAtAxis[axis] = remaining % axisLengths[axis];
+                        remaining /= axisLengths[axis];
+                    }
+                    for (var axis = 0; axis < rank; axis++)
+                        _il.Emit(OpCodes.Ldc_I4, idxAtAxis[axis]);
+                    EmitExpression(matrixLiteral[flatIndex]);
+                    EmitCoerceTypes(NormalizeInferredType(InferType(matrixLiteral[flatIndex])), elementDataType);
+                    _il.Emit(OpCodes.Call, setMethod);
+                }
+            }
+        }
         else if (elementClrType is TypeBuilder)
         {
             // Elemento CLASS/UDT (TypeBuilder non finalizzato): il costruttore rettangolare
@@ -878,8 +932,10 @@ public sealed partial class IlProgramCompiler
             };
         }
         /* Lower bound logici: associati all'oggetto-array (CWT) così passano alle procedure
-         * per riferimento, senza cambiarne la firma. Solo se almeno un asse è != 0. */
-        if (lowerBounds.Any(l => l != 0))
+         * per riferimento, senza cambiarne la firma. Solo se almeno un asse è != 0. I
+         * descrittori MatrixValue non passano dal CWT (non sono System.Array): i lower bound
+         * restano in ArrayInfo e le API MATRIX sono 0-based. */
+        if (lowerBounds.Any(l => l != 0) && clrArrayType != typeof(MatrixValue))
         {
             _il.Emit(OpCodes.Ldloc, arrayLocal);
             _il.Emit(OpCodes.Ldc_I4, rank);

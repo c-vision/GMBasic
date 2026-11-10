@@ -569,6 +569,25 @@ public sealed partial class IlProgramCompiler
         if (expr.Args.Length != 2 || expr.Args[0] is not VariableExpr rv
             || !_arrays.TryGetValue(rv.SymbolId, out var rArr) || TryExtractCompileTimeInt32(expr.Args[1], out _))
             return false;
+        // Stage D: matrice a descrittore — bound a dimensione RUNTIME dal descrittore.
+        if (rArr.ClrArrayType == typeof(MatrixValue))
+        {
+            EmitArrayRefFromInfo(rArr);
+            EmitInt32Argument(expr.Args[1]);          // asse 1-based
+            _il.Emit(isUpper ? OpCodes.Ldc_I4_1 : OpCodes.Ldc_I4_0);
+            _il.Emit(OpCodes.Ldc_I4, rArr.Rank);
+            _il.Emit(OpCodes.Newarr, typeof(int));
+            for (var axis = 0; axis < rArr.Rank; axis++)
+            {
+                _il.Emit(OpCodes.Dup);
+                _il.Emit(OpCodes.Ldc_I4, axis);
+                EmitArrayLower(rArr, axis);
+                _il.Emit(OpCodes.Stelem_I4);
+            }
+            _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.MatrixValueBound),
+                typeof(MatrixValue), typeof(int), typeof(bool), typeof(int[])));
+            return true;
+        }
         EmitExpression(expr.Args[0]);
         _il.Emit(OpCodes.Castclass, typeof(Array));
         EmitInt32Argument(expr.Args[1]);          // asse 1-based
@@ -663,6 +682,24 @@ public sealed partial class IlProgramCompiler
         }
 
         var (arrayInfo, axisIndex) = ResolveArrayBoundArgs(expr, "UBOUND");
+
+        // Stage D: matrice a descrittore (DIM rank-2 / MATRIX OF) — lunghezza da Rows/Cols.
+        if (arrayInfo.ClrArrayType == typeof(MatrixValue))
+        {
+            EmitArrayRefFromInfo(arrayInfo);
+            _il.Emit(OpCodes.Call, RuntimeMethod(
+                axisIndex == 1 ? nameof(IlRuntime.MatrixValueColumnCount) : nameof(IlRuntime.MatrixValueRowCount),
+                typeof(MatrixValue)));
+            _il.Emit(OpCodes.Ldc_I8, 1L);
+            _il.Emit(OpCodes.Sub);
+            if ((arrayInfo.LowerLocals is { Length: > 0 }) || arrayInfo.LowerBounds[axisIndex] != 0)
+            {
+                EmitArrayLower(arrayInfo, axisIndex);
+                _il.Emit(OpCodes.Conv_I8);
+                _il.Emit(OpCodes.Add);
+            }
+            return;
+        }
 
         EmitArrayRefFromInfo(arrayInfo);
         /* Gli array di UDT/CLASS sono CLR JAGGED (T[][]), non rettangolari: l'asse 0 è il

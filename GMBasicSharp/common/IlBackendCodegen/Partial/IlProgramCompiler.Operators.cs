@@ -796,16 +796,17 @@ public sealed partial class IlProgramCompiler
     private void EmitCoerceToTarget(int symbolId, Expr value)
     {
         var targetType = NormalizeInferredType(_program.Symbols.GetSymbol(symbolId).DataType);
-        // F4: confini tra il VALORE matrice (descrittore MatrixValue) e il layout flat
-        // `double[,]` di un array rank-2 (DIM/MATRIX OF dichiarati come array). Le due
-        // rappresentazioni sono interscambiabili ai confini con una copia.
         var sourceType = NormalizeInferredType(InferType(value));
-        if (targetType is MatrixValueType && sourceType is ArrayType { Rank: >= 2 })
+        // Stage D: descrittore (MatrixValue) e layout flat `double[,]` restano interscambiabili
+        // ai confini (copia) per i tipi rank-2 NON double (che restano veri array CLR).
+        var sourceClr = DataTypeMapper.Map(sourceType, _types, _classTypes);
+        var targetClr = DataTypeMapper.Map(targetType, _types, _classTypes);
+        if (targetClr == typeof(MatrixValue) && sourceClr == typeof(double[,]))
         {
             _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.MatrixValueFromRect), typeof(double[,])));
             return;
         }
-        if (targetType is ArrayType { Rank: >= 2 } && sourceType is MatrixValueType)
+        if (targetClr == typeof(double[,]) && sourceClr == typeof(MatrixValue))
         {
             _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.MatrixValueToRect), typeof(MatrixValue)));
             return;

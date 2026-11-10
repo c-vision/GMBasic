@@ -101,6 +101,10 @@ public static class DataTypeMapper
         // un vero array CLR con elementi unboxed (T[]) è la rappresentazione più
         // veloce possibile — accesso diretto via ldelem/stelem, niente wrapper
         // dinamico/generico come il CREATE_ARRAY del p-code Compiler esistente.
+        // F4/Stage D: una matrice rank-2 DOUBLE è il VALORE descrittore (MatrixValue) anche
+        // quando nasce da un DIM (m(r,c) AS DOUBLE) o da un campo/parametro array rank-2:
+        // un'unica rappresentazione per DIM e MATRIX OF (view O(1), niente conversioni ai confini).
+        ArrayType a when a.Rank == 2 && a.ElementType is DoubleType => typeof(MatrixValue),
         ArrayType a => (a.ElementType is SingleType)
             ? types.Single.MakeArrayType(Math.Max(1, a.Rank))   /* ABI FFI: array SINGLE = float[] (AI.EMBED) */
             : Map(a.ElementType, types, classTypes).MakeArrayType(Math.Max(1, a.Rank)),

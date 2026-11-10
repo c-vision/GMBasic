@@ -252,7 +252,7 @@ public sealed partial class IlProgramCompiler
                     for (var axis = 0; axis < info.Rank; axis++)
                     {
                         _il.Emit(OpCodes.Ldloc, indices[axis]);
-                        if (axis < info.Rank - 1 && info.ClrArrayType.GetElementType()!.IsArray)
+                        if (axis < info.Rank - 1 && info.ClrArrayType.IsArray && info.ClrArrayType.GetElementType()!.IsArray)
                             _il.Emit(OpCodes.Ldelem_Ref);
                     }
                 }
@@ -261,7 +261,7 @@ public sealed partial class IlProgramCompiler
                 {
                     EmitAddress();
                     if (info.Rank == 1) EmitArrayElementLoad(info.ElementDataType);
-                    else if (info.ClrArrayType.GetElementType()!.IsArray) EmitArrayElementLoad(info.ElementDataType);
+                    else if (info.ClrArrayType.IsArray && info.ClrArrayType.GetElementType()!.IsArray) EmitArrayElementLoad(info.ElementDataType);
                     else _il.Emit(OpCodes.Call, info.ClrArrayType.GetMethod("Get")!);
                 }
 
@@ -270,7 +270,7 @@ public sealed partial class IlProgramCompiler
                     EmitAddress();
                     emitValue();
                     if (info.Rank == 1) EmitArrayElementStore(info.ElementDataType);
-                    else if (info.ClrArrayType.GetElementType()!.IsArray) EmitArrayElementStore(info.ElementDataType);
+                    else if (info.ClrArrayType.IsArray && info.ClrArrayType.GetElementType()!.IsArray) EmitArrayElementStore(info.ElementDataType);
                     else _il.Emit(OpCodes.Call, info.ClrArrayType.GetMethod("Set")!);
                 }
 
@@ -491,15 +491,15 @@ public sealed partial class IlProgramCompiler
     {
         if (_currentReturnType is null) return;
         var valueType = NormalizeInferredType(InferType(value));
-        // F4: confini valore MATRIX ↔ array rank-2 flat sul valore di ritorno.
-        if (NormalizeInferredType(_currentReturnType) is MatrixValueType
-            && valueType is ArrayType { Rank: >= 2 })
+        // Stage D: confini descrittore MatrixValue ↔ array rank-2 flat (solo tipi non-double).
+        var returnClr = DataTypeMapper.Map(NormalizeInferredType(_currentReturnType), _types, _classTypes);
+        var returnValueClr = DataTypeMapper.Map(valueType, _types, _classTypes);
+        if (returnClr == typeof(MatrixValue) && returnValueClr == typeof(double[,]))
         {
             _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.MatrixValueFromRect), typeof(double[,])));
             return;
         }
-        if (NormalizeInferredType(_currentReturnType) is ArrayType { Rank: >= 2 }
-            && valueType is MatrixValueType)
+        if (returnClr == typeof(double[,]) && returnValueClr == typeof(MatrixValue))
         {
             _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.MatrixValueToRect), typeof(MatrixValue)));
             return;

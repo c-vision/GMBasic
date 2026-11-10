@@ -6,6 +6,7 @@ using System.Collections.Immutable;
 using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
+using CommonLib;
 using System.Reflection.Metadata;
 using System.Reflection.Metadata.Ecma335;
 using System.Reflection.PortableExecutable;
@@ -829,7 +830,7 @@ public sealed partial class IlProgramCompiler
     {
         if (expr.Args.Length != 5) throw new NotSupportedException("Backend IL: MATRIX.SLICE richiede matrice/handle e quattro indici.");
         // Valore MatrixValue: view O(1) sullo storage (nessuna copia).
-        if (NormalizeInferredType(InferType(expr.Args[0])) is MatrixValueType)
+        if (IsMatrixValueExpr(expr.Args[0]))
         {
             EmitExpression(expr.Args[0]);
             for (var i = 1; i < 5; i++) EmitInt64Argument(expr.Args[i]);
@@ -855,7 +856,7 @@ public sealed partial class IlProgramCompiler
         if (expr.Args.Length != 2)
             throw new NotSupportedException($"Backend IL: {expr.OriginalToken.Lexeme} richiede matrice/handle e un indice.");
         // Valore MatrixValue: view O(1) (1×cols / rows×1).
-        if (NormalizeInferredType(InferType(expr.Args[0])) is MatrixValueType)
+        if (IsMatrixValueExpr(expr.Args[0]))
         {
             EmitExpression(expr.Args[0]);
             EmitInt64Argument(expr.Args[1]);
@@ -881,7 +882,7 @@ public sealed partial class IlProgramCompiler
     private void EmitMatrixUnaryValue(BuiltinFunctionCallExpr expr, MethodInfo handleMethod, string matrixValueMethod)
     {
         if (expr.Args.Length != 1) throw new NotSupportedException($"Backend IL: {expr.OriginalToken.Lexeme} richiede 1 argomento.");
-        if (NormalizeInferredType(InferType(expr.Args[0])) is MatrixValueType)
+        if (IsMatrixValueExpr(expr.Args[0]))
         {
             EmitExpression(expr.Args[0]);
             _il.Emit(OpCodes.Call, RuntimeMethod(matrixValueMethod));
@@ -895,7 +896,7 @@ public sealed partial class IlProgramCompiler
     private void EmitMatrixValueOrHandleUnary(BuiltinFunctionCallExpr expr, string valueMethod, MethodInfo handleMethod)
     {
         if (expr.Args.Length != 1) throw new NotSupportedException($"Backend IL: {expr.OriginalToken.Lexeme} richiede 1 argomento.");
-        if (NormalizeInferredType(InferType(expr.Args[0])) is MatrixValueType)
+        if (IsMatrixValueExpr(expr.Args[0]))
         {
             EmitExpression(expr.Args[0]);
             _il.Emit(OpCodes.Call, RuntimeMethod(valueMethod));
@@ -942,20 +943,13 @@ public sealed partial class IlProgramCompiler
     private void EmitLinAlgSetValueCall(BuiltinFunctionCallExpr expr)
     {
         if (expr.Args.Length != 4) throw new NotSupportedException("Backend IL: MATRIX.SETVALUE richiede 4 argomenti (matrice/handle, row, col, value).");
-        // Valore MATRIX OF (MatrixValueType): mutazione diretta sullo storage (view comprese).
-        if (NormalizeInferredType(InferType(expr.Args[0])) is MatrixValueType)
+        // Stage D: valore matrice (MATRIX OF o DIM rank-2) — entrambi MatrixValue a livello CLR:
+        // mutazione diretta sullo storage (view comprese).
+        if (IsMatrixValueArgument(expr.Args[0]))
         {
             EmitExpression(expr.Args[0]);
             EmitInt64Argument(expr.Args[1]); EmitInt64Argument(expr.Args[2]); EmitDoubleArgument(expr.Args[3]);
             _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.MatrixValueSetAt)));
-            return;
-        }
-        // Array rank-2 flat (DIM m(r,c)): mutazione diretta.
-        if (NormalizeInferredType(InferType(expr.Args[0])) is ArrayType { Rank: 2 })
-        {
-            EmitExpression(expr.Args[0]);
-            EmitInt64Argument(expr.Args[1]); EmitInt64Argument(expr.Args[2]); EmitDoubleArgument(expr.Args[3]);
-            _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.MatrixSetAt)));
             return;
         }
         EmitObjectBoxedArgument(expr.Args[0]);
@@ -966,18 +960,11 @@ public sealed partial class IlProgramCompiler
     private void EmitLinAlgGetValueCall(BuiltinFunctionCallExpr expr)
     {
         if (expr.Args.Length != 3) throw new NotSupportedException("Backend IL: MATRIX.GETVALUE richiede 3 argomenti (matrice/handle, row, col).");
-        if (NormalizeInferredType(InferType(expr.Args[0])) is MatrixValueType)
+        if (IsMatrixValueArgument(expr.Args[0]))
         {
             EmitExpression(expr.Args[0]);
             EmitInt64Argument(expr.Args[1]); EmitInt64Argument(expr.Args[2]);
             _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.MatrixValueGetAt)));
-            return;
-        }
-        if (NormalizeInferredType(InferType(expr.Args[0])) is ArrayType { Rank: 2 })
-        {
-            EmitExpression(expr.Args[0]);
-            EmitInt64Argument(expr.Args[1]); EmitInt64Argument(expr.Args[2]);
-            _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.MatrixGetAt)));
             return;
         }
         EmitObjectBoxedArgument(expr.Args[0]);
@@ -985,6 +972,14 @@ public sealed partial class IlProgramCompiler
         EmitDoubleArgument(expr.Args[1]); EmitDoubleArgument(expr.Args[2]);
         _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.MatrixGetValue)));
     }
+
+    /// <summary>True quando l'argomento è una matrice VALORE (MATRIX OF oppure array rank-2
+    /// DOUBLE): entrambi mappati a <see cref="MatrixValue"/> nel backend IL (Stage D).</summary>
+    private bool IsMatrixValueExpr(Expr arg)
+        => NormalizeInferredType(InferType(arg)) is MatrixValueType
+           || NormalizeInferredType(InferType(arg)) is ArrayType { Rank: 2, ElementType: DoubleType };
+
+    private bool IsMatrixValueArgument(Expr arg) => IsMatrixValueExpr(arg);
 
     /// <summary>SOLVE(A, B): il PRIMO argomento è la MATRICE, il SECONDO il VETTORE —
     /// registra separatamente (LinAlgMatrixHandle/LinAlgVectorHandle). DOTPRODUCT(B, B):
@@ -1018,12 +1013,20 @@ public sealed partial class IlProgramCompiler
         // Solo RETTANGOLARE (double[,] — DIM M(3,1)): il JAGGED (double[][] — DIM FftRes() =
         // FFT(...)) passa come riferimento (RectToJagged(double[,]) su un jagged lancerebbe
         // 'Array does not have that many dimensions').
-        if (expr is VariableExpr veArr && _arrays.TryGetValue(veArr.SymbolId, out var arrInfo) && arrInfo.Rank == 2
-            && !arrInfo.ClrArrayType.GetElementType()!.IsArray)
+        if (expr is VariableExpr veArr && _arrays.TryGetValue(veArr.SymbolId, out var arrInfo) && arrInfo.Rank == 2)
         {
-            _il.Emit(OpCodes.Ldloc, arrInfo.Local);
-            _il.Emit(OpCodes.Call, IlRuntimeRectToJaggedMethod);
-            return;
+            if (arrInfo.ClrArrayType == typeof(MatrixValue))
+            {
+                EmitArrayRefFromInfo(arrInfo);
+                _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.MatrixValueToJagged), typeof(MatrixValue)));
+                return;
+            }
+            if (arrInfo.ClrArrayType.IsArray && !arrInfo.ClrArrayType.GetElementType()!.IsArray)
+            {
+                _il.Emit(OpCodes.Ldloc, arrInfo.Local);
+                _il.Emit(OpCodes.Call, IlRuntimeRectToJaggedMethod);
+                return;
+            }
         }
         EmitExpression(expr);
     }

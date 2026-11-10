@@ -6,6 +6,7 @@ using System.Collections.Immutable;
 using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
+using CommonLib;
 using System.Reflection.Metadata;
 using System.Reflection.Metadata.Ecma335;
 using System.Reflection.PortableExecutable;
@@ -103,7 +104,15 @@ public sealed partial class IlProgramCompiler
         {
             _il.Emit(OpCodes.Ldelema, DataTypeMapper.Map(info.ElementDataType, _types, _classTypes));
         }
-        else if (info.ClrArrayType.GetElementType()!.IsArray)
+        else if (info.ClrArrayType == typeof(MatrixValue))
+        {
+            // Indirizzo di un ELEMENTO di matrice a descrittore: non esiste un riferimento
+            // stabile (l'elemento vive in uno storage flat con strides). Caso rarissimo
+            // (passaggio BYREF di m(i,j)); errore esplicito invece di IL invalido.
+            throw new NotSupportedException(
+                "Backend IL: indirizzo (BYREF) di un elemento di matrice non supportato — copia l'elemento in una variabile.");
+        }
+        else if (info.ClrArrayType.IsArray && info.ClrArrayType.GetElementType()!.IsArray)
         {
             // JAGGED (T[][], ...): EmitLoadArrayRefAndIndices ha già fatto ldelem.ref sugli
             // assi intermedi; l'ultimo indice è ancora sullo stack → indirizzo con ldelema.
@@ -360,8 +369,9 @@ public sealed partial class IlProgramCompiler
         else
         {
             // JAGGED (double[][] — DIM implicito 2D): ldelem.r8 sull'elemento scalare;
-            // RETTANGOLARE (double[,] — DIM esplicito): Get(ind0, ind1, ...).
-            if (info.ClrArrayType.GetElementType()!.IsArray)
+            // RETTANGOLARE (double[,] — DIM esplicito) o DESCRITTORE (MatrixValue —
+            // Stage D): Get(ind0, ind1, ...) sul tipo CLR dell'array.
+            if (info.ClrArrayType.IsArray && info.ClrArrayType.GetElementType()!.IsArray)
                 EmitArrayElementLoad(info.ElementDataType);
             else
                 _il.Emit(OpCodes.Call, info.ClrArrayType.GetMethod("Get")!);

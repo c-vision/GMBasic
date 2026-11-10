@@ -1182,20 +1182,19 @@ public static partial class IlRuntime
         return matrix;
     }
 
-    /// <summary>MATRIX.GETVALUE su un valore matrice (senza passare dal registry handle).</summary>
+    /// <summary>MATRIX.GETVALUE su un valore matrice rect (legacy interno).</summary>
     public static double MatrixGetAt(double[,] matrix, long row, long column)
         => matrix is not null && row >= 0 && row < matrix.GetLength(0)
            && column >= 0 && column < matrix.GetLength(1)
             ? matrix[row, column] : 0d;
 
-    /// <summary>MATRIX.SETVALUE su un valore matrice: mutazione visibile al chiamante e
-    /// valore restituito (il contratto F1 è `m = MATRIX.SETVALUE(m, r, c, v)`).</summary>
-    public static double[,] MatrixSetAt(double[,] matrix, long row, long column, double value)
+    /// <summary>MATRIX.SETVALUE su un valore matrice rect (legacy interno): mutazione visibile
+    /// al chiamante e valore restituito (contratto F1 `m = MATRIX.SETVALUE(m, r, c, v)`).</summary>
+    public static MatrixValue MatrixSetAt(double[,] matrix, long row, long column, double value)
     {
-        if (matrix is not null && row >= 0 && row < matrix.GetLength(0)
-            && column >= 0 && column < matrix.GetLength(1))
-            matrix[row, column] = value;
-        return matrix ?? new double[0, 0];
+        var mv = MatrixValue.FromRect(matrix ?? new double[0, 0]);
+        mv.Set((int)row, (int)column, value);
+        return mv;
     }
 
     public static long VectorCreate(double x, double y, double z, double w) => StoreVector([x, y, z, w]);
@@ -2045,11 +2044,11 @@ public static partial class IlRuntime
     /// <summary>F4: NULLSPACE a valore (double[,] rank-2).</summary>
     public static MatrixValue MatrixNullSpaceValue(long handle) => MatrixValueOf(MatrixNullSpace(handle));
 
-    public static double[,] MatrixSetValue(long handle, double r, double c, double v)
+    public static MatrixValue MatrixSetValue(long handle, double r, double c, double v)
     {
         var m = Matrix(handle);
         m[(int)r, (int)c] = v;
-        return m;
+        return MatrixValue.FromRect(m);
     }
 
     public static double MatrixGetValue(long handle, double r, double c)
@@ -2363,6 +2362,30 @@ public static partial class IlRuntime
         => col < 0 || col >= matrix.Cols ? MatrixValue.Zeros(matrix.Rows, 1) : matrix.ColView((int)col);
     /// <summary>CLONEMATRIX su valore: copia indipendente.</summary>
     public static MatrixValue MatrixValueClone(MatrixValue matrix) => matrix.Clone();
+    /// <summary>Allocazione di un DIM rank-2 (m(r,c) AS DOUBLE): matrice contigua azzerata.</summary>
+    public static MatrixValue MatrixValueZeros(int rows, int cols) => MatrixValue.Zeros(rows, cols);
+    /// <summary>UBOUND/LBOUND a dimensione RUNTIME su un descrittore (parità ArrayBound):
+    /// <paramref name="dimension"/> 1-based; i lower bound logici arrivano da ArrayInfo.</summary>
+    public static long MatrixValueBound(MatrixValue matrix, int dimension, bool upper, int[] lowerBounds)
+    {
+        var axis = dimension <= 1 ? 1 : 2;
+        var length = axis == 2 ? matrix.Cols : matrix.Rows;
+        var lower = lowerBounds is { Length: >= 2 } ? lowerBounds[axis - 1]
+                  : lowerBounds is { Length: 1 } && axis == 1 ? lowerBounds[0] : 0;
+        return upper ? lower + (long)length - 1 : lower;
+    }
+    /// <summary>Righe come double[] (jagged) — i runtime ANALYSIS vogliono double[][];
+    /// stessa semantica del precedente RectToJagged su un array rettangolare.</summary>
+    public static double[][] MatrixValueToJagged(MatrixValue matrix)
+    {
+        var rows = new double[matrix.Rows][];
+        for (var r = 0; r < matrix.Rows; r++)
+        {
+            rows[r] = new double[matrix.Cols];
+            for (var c = 0; c < matrix.Cols; c++) rows[r][c] = matrix.Get(r, c);
+        }
+        return rows;
+    }
     /// <summary>Ponte valore→array rettangolare (copia): per i confini che usano ancora
     /// il layout flat `double[,]` (parametri array delle procedure utente, FFI legacy).</summary>
     public static double[,] MatrixValueToRect(MatrixValue matrix) => matrix.ToRect();
@@ -8540,6 +8563,8 @@ public static double TextWidth(string s)
         if (value is string s) return CommonLib.StringUtils.CharCount(s);
         if (value is System.Collections.ICollection c) return c.Count;
         if (value is System.Array a) return a.Length;
+        // Stage D: matrice a descrittore — elementi totali (come Array.Length del flat).
+        if (value is MatrixValue mv) return (long)mv.Rows * mv.Cols;
         if (value is double d) return d.ToString("G17", System.Globalization.CultureInfo.InvariantCulture).Replace(".", "").TrimStart('-').Length;
         return value?.ToString() is { } t ? CommonLib.StringUtils.CharCount(t) : 0;
     }
@@ -12821,6 +12846,13 @@ public static double TextWidth(string s)
     /// <summary>Accesso SAFE a un array (arr(i)?): il valore boxed o null se fuori range.</summary>
     public static object? ArraySafeIndex(object? array, double index)
     {
+        if (array is MatrixValue mv)
+        {
+            var i = (int)index;
+            if (i >= 0 && i < (long)mv.Rows * mv.Cols)
+                return mv.Get(i / mv.Cols, i % mv.Cols);
+            return null;
+        }
         if (array is System.Array a)
         {
             var i = (int)index;
@@ -14274,6 +14306,8 @@ public static double TextWidth(string s)
         if (collection is CommonLib.Collections.HyperLogLog hll) return hll.Count();
         if (collection is System.Collections.ICollection c) return c.Count;
         if (collection is System.Array a) return a.Length;
+        // Descrittore matrice: LEN(m) = elementi totali, come un array rank-2 flat.
+        if (collection is MatrixValue mvCount) return (double)mvCount.Rows * mvCount.Cols;
         if (collection is string s) return s.Length;
         /* Collezioni CommonLib con Count come PROPRIETÀ ma non ICollection (TRIE, e in
          * generale le strutture dedicate): senza, `.Count()` rispondeva 0 su IL mentre le
@@ -19465,6 +19499,17 @@ public static double TextWidth(string s)
             // array multidim itererebbe TUTTI gli elementi flat; lo slicing esplicito per la
             // prima dimensione restituisce le righe (stessa semantica del p-code VM
             // OP_LOAD_ELEMENT_POSITIONAL su Rank>1).
+            // Descrittore MatrixValue (DIM rank-2 e MATRIX OF): stessa semantica per righe.
+            case MatrixValue mvForEach:
+            {
+                for (var ri = 0; ri < mvForEach.Rows; ri++)
+                {
+                    var row = new double[mvForEach.Cols];
+                    for (var ci = 0; ci < mvForEach.Cols; ci++) row[ci] = mvForEach.Get(ri, ci);
+                    result.Add(row);
+                }
+                break;
+            }
             case Array matrix when matrix.Rank > 1:
             {
                 var len0 = matrix.GetLength(0);
@@ -19529,6 +19574,16 @@ public static double TextWidth(string s)
                     var row = Array.CreateInstance(elemType, len2);
                     for (var ci = 0; ci < len2; ci++)
                         row.SetValue(matrix.GetValue(matrix.GetLowerBound(0) + ri, lb1 + ci), ci);
+                    result.Add(new Tuple<object?, object?>((double)ri, row));
+                }
+                break;
+            }
+            case MatrixValue mvEntries:
+            {
+                for (var ri = 0; ri < mvEntries.Rows; ri++)
+                {
+                    var row = new double[mvEntries.Cols];
+                    for (var ci = 0; ci < mvEntries.Cols; ci++) row[ci] = mvEntries.Get(ri, ci);
                     result.Add(new Tuple<object?, object?>((double)ri, row));
                 }
                 break;

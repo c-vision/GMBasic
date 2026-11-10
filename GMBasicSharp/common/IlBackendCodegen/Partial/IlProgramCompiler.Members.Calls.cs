@@ -297,7 +297,7 @@ public sealed partial class IlProgramCompiler
         {
             EmitLoadArrayRefAndIndices(idxArrInfo, expr.Indices);
             if (idxArrInfo.Rank == 1) EmitArrayElementLoad(idxArrInfo.ElementDataType);
-            else if (idxArrInfo.ClrArrayType.GetElementType()!.IsArray) EmitArrayElementLoad(idxArrInfo.ElementDataType);
+            else if (idxArrInfo.ClrArrayType.IsArray && idxArrInfo.ClrArrayType.GetElementType()!.IsArray) EmitArrayElementLoad(idxArrInfo.ElementDataType);
             else _il.Emit(OpCodes.Call, idxArrInfo.ClrArrayType.GetMethod("Get")!);
             return;
         }
@@ -315,7 +315,7 @@ public sealed partial class IlProgramCompiler
             }
             else
             {
-                if (fieldArrayInfo.ClrArrayType.GetElementType()!.IsArray)
+                if (fieldArrayInfo.ClrArrayType.IsArray && fieldArrayInfo.ClrArrayType.GetElementType()!.IsArray)
                     EmitArrayElementLoad(fieldArrayInfo.ElementDataType);
                 else
                     _il.Emit(OpCodes.Call, fieldArrayInfo.ClrArrayType.GetMethod("Get")!);
@@ -419,7 +419,7 @@ public sealed partial class IlProgramCompiler
                 EmitCoerceToElementClr(topArrInfo.ElementDataType);
                 EmitArrayElementStore(topArrInfo.ElementDataType);
             }
-            else if (topArrInfo.ClrArrayType.GetElementType()!.IsArray) EmitArrayElementStore(topArrInfo.ElementDataType);
+            else if (topArrInfo.ClrArrayType.IsArray && topArrInfo.ClrArrayType.GetElementType()!.IsArray) EmitArrayElementStore(topArrInfo.ElementDataType);
             else _il.Emit(OpCodes.Call, topArrInfo.ClrArrayType.GetMethod("Set")!);
             return;
         }

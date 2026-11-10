@@ -1218,6 +1218,7 @@ public sealed partial class IlProgramCompiler
                 }
                 else if (NormalizeInferredType(paramDef.DataType) is ArrayType pbMat
                          && pbMat.Rank >= 2
+                         && DataTypeMapper.Map(pbMat, _types, _classTypes) != typeof(MatrixValue)
                          && NormalizeInferredType(InferType(expr.Args[i])) is MatrixValueType)
                 {
                     /* Valore MATRIX → parametro array rank-2 per riferimento: copia
@@ -1262,6 +1263,7 @@ public sealed partial class IlProgramCompiler
                 }
                 else if (paramType is ArrayType pMat
                          && pMat.Rank >= 2
+                         && DataTypeMapper.Map(pMat, _types, _classTypes) != typeof(MatrixValue)
                          && NormalizeInferredType(InferType(expr.Args[i])) is MatrixValueType)
                 {
                     /* Valore MATRIX → parametro array rank-2 BYVAL: copia rettangolare; per
@@ -1286,7 +1288,8 @@ public sealed partial class IlProgramCompiler
                     }
                 }
                 else if (paramType is MatrixValueType
-                         && NormalizeInferredType(InferType(expr.Args[i])) is ArrayType { Rank: >= 2 })
+                         && NormalizeInferredType(InferType(expr.Args[i])) is ArrayType { Rank: >= 2 } argArr
+                         && DataTypeMapper.Map(argArr, _types, _classTypes) != typeof(MatrixValue))
                 {
                     /* Array rank-2 flat (DIM) → parametro VALORE matrice: copia nel descrittore. */
                     EmitExpression(expr.Args[i]);
@@ -1877,9 +1880,14 @@ public sealed partial class IlProgramCompiler
                 EmitFfiCallbackFunctionReference(fre);
                 return;
             }
-            // F4: valore matrice → parametro array/matrice nativo: passa la copia rettangolare.
+            // Stage D: valore matrice (MATRIX OF o DIM rank-2, entrambi MatrixValue) →
+            // parametro array nativo (di qualunque rank dichiarato: l'ABI riceve il puntatore
+            // flat + conteggi espliciti): passa la copia rettangolare (FfiService marshalla
+            // System.Array); per OUT/INOUT ricopia nel descrittore dopo la chiamata.
+            var ffiArgType = NormalizeInferredType(InferType(arg));
             if (IsArrayParam(epd.Parameters[pi])
-                && NormalizeInferredType(InferType(arg)) is MatrixValueType)
+                && (ffiArgType is MatrixValueType
+                    || ffiArgType is ArrayType { Rank: 2, ElementType: DoubleType }))
             {
                 EmitExpression(arg);
                 if (epd.Parameters[pi].Mode != ParameterMode.In)
