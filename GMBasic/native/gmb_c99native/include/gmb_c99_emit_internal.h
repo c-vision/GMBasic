@@ -115,6 +115,10 @@ int gmb_c99_param_is_out_matrix(ctx_t* c, const char* name);
  * statici. *rows/*cols valorizzati; 1 se è un campo matrice. */
 int mv_field_desc(ctx_t* c, gmb_expr_t* e, long* rows, long* cols);
 void emit_mv_field_desc(ctx_t* c, gmb_expr_t* e);
+/* ADR-MATRIX F4: campo-fattore di una DECOMPOSIZIONE (`lu.U`, `lu.U(i,j)`). */
+int decomp_factor_call(ctx_t* c, gmb_expr_t* e, char* out_field);
+void emit_decomp_factor_value(ctx_t* c, gmb_expr_t* e, const char* field);
+void emit_decomp_factor_scratch(ctx_t* c, gmb_expr_t* e, const char* field);
 int gmb_c99_var_coll_kind(ctx_t* c, const char* name);
 int gmb_c99_var_coll_sorted(ctx_t* c, const char* name);
 void sb_ident(sb_t* b, const char* name);

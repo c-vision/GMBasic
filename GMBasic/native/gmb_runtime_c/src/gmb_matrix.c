@@ -966,8 +966,7 @@ int64_t gmb_matrix_decomp_get_factor(int64_t decomp, int idx)
 }
 
 /* Estrazione fattori per NOME (LINALG.FACTOR(h, "U") ecc.). */
-int64_t gmb_matrix_decomp_get_factor_named(int64_t decomp, const char* name)
-{
+int64_t gmb_matrix_decomp_get_factor_named(int64_t decomp, const char* name){
     gmb_decomp_t* d = dget(decomp);
     if (!d || !name) return -1;
     if (d->type == 5)   /* POLAR */
@@ -1030,6 +1029,26 @@ int64_t gmb_matrix_decomp_get_factor_named(int64_t decomp, const char* name)
     if (strcmp(name, "R") == 0 || strcmp(name, "V") == 0) return d->c;
     if (strcmp(name, "S") == 0 || strcmp(name, "VT") == 0) return d->c;
     return -1;
+}
+
+/* Copia di un fattore in un handle NUOVO. I fattori di una decomposizione sono POSSEDUTI
+ * dal suo registry (d->a/b/c): chi li restituisce come VALORE al linguaggio deve copiarli,
+ * perché il chiamante libera l'handle del risultato — liberando quello interno si
+ * distrugge la decomposizione (bug preesistente: LINALG.FACTOR chiamato due volte sulla
+ * stessa decomposizione restituiva vuoto su VM/C e C99). */
+static int64_t decomp_factor_copy(int64_t h)
+{
+    gmb_matrix_t* m = mget(h);
+    if (!m) return -1;
+    return gmb_matrix_create_from(m->rows, m->cols, m->data);
+}
+int64_t gmb_matrix_decomp_factor_copy_named(int64_t decomp, const char* name)
+{
+    return decomp_factor_copy(gmb_matrix_decomp_get_factor_named(decomp, name));
+}
+int64_t gmb_matrix_decomp_factor_copy(int64_t decomp, int idx)
+{
+    return decomp_factor_copy(gmb_matrix_decomp_get_factor(decomp, idx));
 }
 
 /* ============================================================================

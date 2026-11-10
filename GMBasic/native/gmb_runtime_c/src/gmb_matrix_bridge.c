@@ -44,3 +44,32 @@ int64_t gmb_matrix_scratch_handle(gmb_matrix_t m)
     free(flat);
     return h;
 }
+
+gmb_matrix_t gmb_matrix_decomp_factor_value_named(int64_t decomp, const char* name)
+{
+    int64_t h = gmb_matrix_decomp_get_factor_named(decomp, name);
+    if (h <= 0) return gmb_matrix_empty();
+    int rows = gmb_matrix_rows(h), cols = gmb_matrix_cols(h);
+    if (rows <= 0 || cols <= 0) return gmb_matrix_empty();
+    gmb_matrix_t out = gmb_matrix_value_zeros(rows, cols);
+    if (!out.st) return out;
+    for (int r = 0; r < rows; r++)
+        for (int c = 0; c < cols; c++)
+            gmb_matrix_value_set(out, r, c, gmb_matrix_get(h, r, c));
+    return out;
+}
+
+int64_t gmb_matrix_decomp_factor_scratch_named(int64_t decomp, const char* name)
+{
+    int64_t h = gmb_matrix_decomp_get_factor_named(decomp, name);
+    if (h <= 0) return -1;
+    gmb_matrix_t src = gmb_matrix_value_of(h);
+    if (!src.st) return -1;
+    int rows = (int)src.rows, cols = (int)src.cols;
+    double* flat = gmb_matrix_value_to_flat(src);
+    gmb_matrix_value_free(&src);
+    if (!flat) return -1;
+    int64_t sh = gmb_matrix_scratch(rows, cols, flat);
+    free(flat);
+    return sh;
+}

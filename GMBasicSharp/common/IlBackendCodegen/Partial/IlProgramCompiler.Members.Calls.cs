@@ -303,6 +303,20 @@ public sealed partial class IlProgramCompiler
             return;
         }
 
+        // Base ESPRESSIONE di tipo MATRIX VALUE (es. `lu.U(0,0)` — campo di una
+        // decomposizione riscritto in LINALG.FACTOR, o `MATRIX.TRANSPOSE(m)(i,j)`):
+        // valuta il valore matrice e legge l'elemento.
+        if (expr.Indices.Length == 2
+            && NormalizeInferredType(InferType(expr.Base)) is MatrixValueType
+            && expr.Base is not VariableExpr)
+        {
+            EmitExpression(expr.Base);
+            EmitInt64Argument(expr.Indices[0]);
+            EmitInt64Argument(expr.Indices[1]);
+            _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.MatrixValueGetAt)));
+            return;
+        }
+
         // "Istanza.CampoArray(i)" in lettura riscade nella STESSA forma sintattica
         // generica di "Istanza.Metodo(args)" (stesso gap del Linker, vedi sopra) — va
         // controllato PRIMA della risoluzione come metodo, altrimenti un campo array

@@ -2151,6 +2151,33 @@ public static partial class Linker
 
         DataType instanceType = LinkerInferExpressionType(rewrittenInstance, context, program);
 
+        // ADR-MATRIX F4: `lu.U(i,j)` — il parser produce una MemberCallExpr per
+        // `istanza.Campo(args)`. Il campo-fattore di una decomposizione è
+        // LINALG.FACTOR(lu,"U") (valore matrice): con argomenti è un accesso indicizzato
+        // sul valore. `lu.U` senza argomenti è un FieldAccessExpr (RewriteFieldAccess).
+        {
+            string? decFieldName = memberName.ToUpperInvariant() switch
+            {
+                var f when instanceType is LuDecompositionType && f is "L" or "U" or "P" => f,
+                var f when instanceType is QrDecompositionType && f is "Q" or "R" => f,
+                var f when instanceType is SvdDecompositionType && f is "U" or "S" or "VT" => f,
+                var f when instanceType is EvdDecompositionType && f is "D" or "V" => f,
+                var f when instanceType is CholeskyDecompositionType && f is "L" => f,
+                _ => null
+            };
+            if (decFieldName != null)
+            {
+                var factor = new BuiltinFunctionCallExpr(
+                    new Token(TokenKind.Identifier, "LINALG", null, mce.MethodName.Position),
+                    new Token(TokenKind.LinAlgDecompGetFactorFunc, "FACTOR", null, mce.MethodName.Position),
+                    [rewrittenInstance, new StringExpr(decFieldName, mce.MethodName)],
+                    new MatrixValueType());
+                if (mce.Args.Length == 0) return factor;
+                var idxArgs = mce.Args.Select(a => RewriteExpression(a, context, program)).ToImmutableArray();
+                return new IndexedAccessExpr(factor, idxArgs);
+            }
+        }
+
         // 1. Tentativo Metodi Definiti (Classi/UDT)
         ProcedureDefinition? resolvedMethod = null;
         if (instanceType is ClassType ct)
@@ -2923,6 +2950,32 @@ public static partial class Linker
 
         // Fase 1: Riscrivi ricorsivamente la struttura base dell'accesso.
         var rewrittenStructure = RewriteExpression(fae.Structure, context, program);
+
+        // ADR-MATRIX F4: i CAMPI di una DECOMPOSIZIONE sono i FATTORI. `lu.U` è
+        // `LINALG.FACTOR(lu, "U")` — un valore matrice. La riscrittura avviene QUI una volta
+        // sola, così IL/PCode/VM-C/C99 vedono una normale chiamata FACTOR (nessuna logica
+        // duplicata nei backend); il tipo del campo è dichiarato negli schemi StdLib
+        // (MATRIX VALUE), quindi indicizzazione e MATRIX.* funzionano senza conversioni.
+        {
+            var decType = LinkerInferExpressionType(rewrittenStructure, context, program);
+            string? decField = fae.Field.Lexeme.ToUpperInvariant() switch
+            {
+                var f when decType is LuDecompositionType && f is "L" or "U" or "P" => f,
+                var f when decType is QrDecompositionType && f is "Q" or "R" => f,
+                var f when decType is SvdDecompositionType && f is "U" or "S" or "VT" => f,
+                var f when decType is EvdDecompositionType && f is "D" or "V" => f,
+                var f when decType is CholeskyDecompositionType && f is "L" => f,
+                _ => null
+            };
+            if (decField != null)
+            {
+                return new BuiltinFunctionCallExpr(
+                    new Token(TokenKind.Identifier, "LINALG", null, fae.Field.Position),
+                    new Token(TokenKind.LinAlgDecompGetFactorFunc, "FACTOR", null, fae.Field.Position),
+                    [rewrittenStructure, new StringExpr(decField, fae.Field)],
+                    new MatrixValueType());
+            }
+        }
 
         // --- ALIAS DI NAMESPACE ---
         if (rewrittenStructure is VariableExpr { SymbolId: < 0 } baseVar)

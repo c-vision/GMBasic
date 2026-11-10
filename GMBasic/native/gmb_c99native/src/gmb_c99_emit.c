@@ -328,7 +328,12 @@ void gmb_c99_collect_dynamic(ctx_t* c, gmb_stmt_t** list, int n);
 /* ADR-MATRIX backend C: campo-array rank-2 numerico di CLASSE/UDT (`t.m`) — view
  * descrittore non proprietaria sul buffer flat nativo. Definizioni più sotto. */
 int mv_field_desc(ctx_t* c, gmb_expr_t* e, long* rows, long* cols);
-void emit_mv_field_desc(ctx_t* c, gmb_expr_t* e);int  gmb_c99_dyn_is(ctx_t* c, const char* name);
+void emit_mv_field_desc(ctx_t* c, gmb_expr_t* e);
+/* ADR-MATRIX F4: campo-fattore di una DECOMPOSIZIONE (`lu.U`, `lu.U(i,j)`). */
+int decomp_factor_call(ctx_t* c, gmb_expr_t* e, char* out_field);
+void emit_decomp_factor_value(ctx_t* c, gmb_expr_t* e, const char* field);
+void emit_decomp_factor_scratch(ctx_t* c, gmb_expr_t* e, const char* field);
+int  gmb_c99_dyn_is(ctx_t* c, const char* name);
 int  gmb_c99_dyn_is_str(ctx_t* c, const char* name);
 int  gmb_c99_list_declares_dynamic(gmb_stmt_t** list, int n);
 void gmb_c99_emit_dyn_declare(ctx_t* c, gmb_stmt_t* s);
@@ -3737,6 +3742,29 @@ if (s->dim_var) {            int ty = suffix_type(s->dim_var);
              * variabile, il controllo di duplicato sotto distingue la ri-registrazione
              * dello stesso DIM da una SECONDA dichiarazione con lo stesso nome. */
             v->dim_stmt = (const void*)s;
+            /* `DIM lu = LINALG.LU(a)` (o MATRIX.LU): la variabile è una DECOMPOSIZIONE — i
+             * campi `.L/.U/...` sono i fattori (LINALG.FACTOR). */
+            if (s->dim_init) {
+                int dk = 0;
+                switch (s->dim_init->tk) {
+                case GMB_TOK_Lu: case GMB_TOK_LinAlgLuFunc: dk = 1; break;
+                case GMB_TOK_Qr: case GMB_TOK_LinAlgQrFunc: dk = 2; break;
+                case GMB_TOK_Svd: case GMB_TOK_LinAlgSvdFunc: dk = 3; break;
+                case GMB_TOK_Evd: case GMB_TOK_LinAlgEvdFunc: dk = 4; break;
+                case GMB_TOK_Cholesky: case GMB_TOK_LinAlgCholeskyFunc: dk = 5; break;
+                default: break;
+                }
+                v->decomp_kind = dk;
+            }
+            /* `DIM s = lu.U` (campo-fattore di una decomposizione): valore matrice. */
+            {
+                char __df[8];
+                if (!s->array_size && !s->dim_type && s->dim_init
+                    && decomp_factor_call(c, s->dim_init, __df) && s->dim_init->nargs == 0) {
+                    v->is_array = 1; v->ndims = 2; v->matrix = 0; v->jagged = 0;
+                    v->dyn_len = 0; v->matrix_value = 1;
+                }
+            }
             /* `DIM x = <campo matrice di CLASSE/UDT>` (`DIM x = t.m`): valore matrice, view
              * sul buffer flat del campo (stessa semantica di PCode/VM-C: le due variabili
              * condividono lo storage). */
@@ -14560,6 +14588,11 @@ void emit_expr(ctx_t* c, gmb_expr_t* e) {
         emit_str_literal(c, e->str);   /* un letterale e' SEMPRE testo: `&` dentro le virgolette non e' una macro */
         break;
     case GMB_EXPR_VAR: {
+        /* ADR-MATRIX F4: campo-fattore di una DECOMPOSIZIONE (`lu.U` come VAR puntata). */
+        {
+            char __dfv[8];
+            if (decomp_factor_call(c, e, __dfv)) { emit_decomp_factor_value(c, e, __dfv); break; }
+        }
         /* F3-quater: un parametro matrice OUT è solo scrittura; leggerne l'INTERO valore
          * in un'espressione è vietato (le scritture usano emit_var_ref, non emit_expr). */
         if (e->var && gmb_c99_param_is_out_matrix(c, e->var)) {
@@ -15658,6 +15691,18 @@ void emit_expr(ctx_t* c, gmb_expr_t* e) {
             sb_printf(&c->out, "); __lfr%d; })", id);
             break;
         }
+        /* ADR-MATRIX F4: campo-fattore di una DECOMPOSIZIONE (`lu.U`, `lu.U(i,j)`). */
+        {
+            char __dfield[8];
+            if (decomp_factor_call(c, e, __dfield)) {
+                if (e->nargs == 0) { emit_decomp_factor_value(c, e, __dfield); break; }
+                sb_put(&c->out, "(gmb_double_t)gmb_matrix_get(");
+                emit_decomp_factor_scratch(c, e, __dfield);
+                sb_put(&c->out, ", (int)("); emit_expr(c, e->args[0]);
+                sb_put(&c->out, "), (int)("); emit_expr(c, e->args[1]); sb_put(&c->out, "))");
+                break;
+            }
+        }
         /* `x.VALUE` su nullable: il parser produce una CALL 0-arg con nome "x.VALUE"
          * (la forma VAR era già gestita). Prima diventava una variabile implicita
          * `x_2EVALUE` a 0. */
@@ -16257,6 +16302,13 @@ static int is_matrix_value_call_tk(gmb_tokenkind_t tk) {
       if (target && value && !strchr(target, '.')) {
           var_t* mvt = lookup_var(c, target);
           if (mvt && mvt->matrix_value && value->tk != GMB_TOK_LinAlgMatrixCreateFunc) {
+              {
+                  char __ddf[8];
+                  if (value->kind == GMB_EXPR_CALL && decomp_factor_call(c, value, __ddf) && value->nargs == 0) {
+                      emit_matrix_from_handle_result(c, mvt, value);
+                      return;
+                  }
+              }
               if (value->kind == GMB_EXPR_CALL
                   && (is_matrix_value_call_tk(value->tk) || is_matrix_factor_call(value))) {
                   emit_matrix_from_handle_result(c, mvt, value);
@@ -16286,6 +16338,18 @@ static int is_matrix_value_call_tk(gmb_tokenkind_t tk) {
           if (mv && mv->is_array && mv->ndims >= 2 && !mv->jagged && !mv->matrix && !mv->matrix_handle) {
               emit_matrix_create_value(c, mv, value);
               return;
+          }
+      }
+      /* `m = lu.U` (campo-fattore di una decomposizione) su una matrice a valore. */
+      if (target && value && !strchr(target, '.') && value->kind == GMB_EXPR_CALL) {
+          char __ddf2[8];
+          if (decomp_factor_call(c, value, __ddf2) && value->nargs == 0) {
+              var_t* mv2 = lookup_var(c, target);
+              if (mv2 && (mv2->matrix_value
+                          || (mv2->is_array && mv2->ndims >= 2 && !mv2->jagged && !mv2->matrix && !mv2->matrix_handle))) {
+                  emit_matrix_from_handle_result(c, mv2, value);
+                  return;
+              }
           }
       }
       if (target && value && !strchr(target, '.') && (value->tk == GMB_TOK_Transpose
@@ -19388,6 +19452,73 @@ static void emit_matrix_create_value(ctx_t* c, var_t* dv, gmb_expr_t* call) {
  * Il campo è un buffer flat nativo (double*), quindi NON è un descrittore: se ne espone
  * una VIEW non proprietaria (gmb_matrix_borrow_flat) con i bound STATICI del tipo.
  * Ritorna 1 con *rows/*cols valorizzati; 0 se non è un campo matrice. */
+/* ADR-MATRIX F4: campo-fattore di una DECOMPOSIZIONE.
+ * `lu.U` → valore matrice del fattore; `lu.U(i,j)` → elemento. Il nome canonico è
+ * validato per TIPO (LU: L/U/P, QR: Q/R, SVD: U/S/VT, EVD: D/V, Cholesky: L). */
+static int decomp_factor_name(int kind, const char* field, char* out, size_t cap)
+{
+    if (!field || !field[0] || !out || cap < 2) return 0;
+    char up[8];
+    size_t n = strlen(field);
+    if (n >= sizeof up) return 0;
+    for (size_t i = 0; i < n; i++) up[i] = (char)toupper((unsigned char)field[i]);
+    up[n] = 0;
+    int ok = 0;
+    switch (kind) {
+    case 1: ok = (!strcmp(up, "L") || !strcmp(up, "U") || !strcmp(up, "P")); break;
+    case 2: ok = (!strcmp(up, "Q") || !strcmp(up, "R")); break;
+    case 3: ok = (!strcmp(up, "U") || !strcmp(up, "S") || !strcmp(up, "VT")); break;
+    case 4: ok = (!strcmp(up, "D") || !strcmp(up, "V")); break;
+    case 5: ok = (!strcmp(up, "L")); break;
+    default: break;
+    }
+    if (!ok) return 0;
+    snprintf(out, cap, "%s", up);
+    return 1;
+}
+
+int decomp_factor_call(ctx_t* c, gmb_expr_t* e, char* out_field)
+{
+    if (!e || !e->var) return 0;
+    if (e->kind != GMB_EXPR_CALL && e->kind != GMB_EXPR_VAR) return 0;
+    const char* dot = strchr(e->var, '.');
+    if (!dot || !dot[1] || strchr(dot + 1, '.')) return 0;
+    char base[160];
+    size_t bl = (size_t)(dot - e->var);
+    if (bl == 0 || bl >= sizeof base) return 0;
+    memcpy(base, e->var, bl); base[bl] = 0;
+    var_t* bv = lookup_var(c, base);
+    if (!bv || !bv->decomp_kind) return 0;
+    if (e->kind == GMB_EXPR_CALL && e->nargs != 0 && e->nargs != 2) return 0;
+    return decomp_factor_name(bv->decomp_kind, dot + 1, out_field, 8);
+}
+
+static var_t* decomp_factor_base(ctx_t* c, gmb_expr_t* e)
+{
+    const char* dot = strchr(e->var, '.');
+    char base[160];
+    size_t bl = (size_t)(dot - e->var);
+    if (bl == 0 || bl >= sizeof base) return NULL;
+    memcpy(base, e->var, bl); base[bl] = 0;
+    return lookup_var(c, base);
+}
+
+void emit_decomp_factor_value(ctx_t* c, gmb_expr_t* e, const char* field)
+{
+    var_t* bv = decomp_factor_base(c, e);
+    sb_put(&c->out, "gmb_matrix_decomp_factor_value_named((int64_t)(");
+    if (bv) emit_var_ref(c, bv); else sb_put(&c->out, "0");
+    sb_printf(&c->out, "), \"%s\")", field);
+}
+
+void emit_decomp_factor_scratch(ctx_t* c, gmb_expr_t* e, const char* field)
+{
+    var_t* bv = decomp_factor_base(c, e);
+    sb_put(&c->out, "gmb_matrix_decomp_factor_scratch_named((int64_t)(");
+    if (bv) emit_var_ref(c, bv); else sb_put(&c->out, "0");
+    sb_printf(&c->out, "), \"%s\")", field);
+}
+
 int mv_field_desc(ctx_t* c, gmb_expr_t* e, long* rows, long* cols) {
     if (!e || e->kind != GMB_EXPR_VAR || !e->var) return 0;
     const char* dot = strchr(e->var, '.');
@@ -19435,6 +19566,10 @@ void emit_mv_field_desc(ctx_t* c, gmb_expr_t* e) {
 
 static int mv_expr_ok(ctx_t* c, gmb_expr_t* e) {
     if (!e) return 0;
+    if (e->kind == GMB_EXPR_CALL) {
+        char __df[8];
+        if (decomp_factor_call(c, e, __df)) return e->nargs == 0;
+    }
     if (e->kind == GMB_EXPR_VAR && e->var) {
         var_t* v = lookup_var(c, e->var);
         if (v && v->matrix_value) return 1;
@@ -19467,6 +19602,10 @@ static int mv_expr_ok(ctx_t* c, gmb_expr_t* e) {
 }
 
 static void emit_mv_expr(ctx_t* c, gmb_expr_t* e) {
+    if (e->kind == GMB_EXPR_CALL) {
+        char __df[8];
+        if (decomp_factor_call(c, e, __df) && e->nargs == 0) { emit_decomp_factor_value(c, e, __df); return; }
+    }
     if (e->kind == GMB_EXPR_VAR) {
         var_t* v = lookup_var(c, e->var);
         if (v && v->matrix_value) { emit_var_ref(c, v); return; }
@@ -19644,6 +19783,13 @@ static void st_dim(ctx_t* c, gmb_stmt_t* s) {
          if (dv && dv->matrix_value && s->dim_init && s->dim_init->kind == GMB_EXPR_VAR) {
              long __fr = 0, __fc = 0;
              if (mv_field_desc(c, s->dim_init, &__fr, &__fc)) {
+                 emit_matrix_from_handle_result(c, dv, s->dim_init);
+                 return;
+             }
+         }
+         if (dv && dv->matrix_value && s->dim_init && s->dim_init->kind == GMB_EXPR_CALL) {
+             char __ddf[8];
+             if (decomp_factor_call(c, s->dim_init, __ddf) && s->dim_init->nargs == 0) {
                  emit_matrix_from_handle_result(c, dv, s->dim_init);
                  return;
              }

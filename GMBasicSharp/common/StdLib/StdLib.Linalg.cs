@@ -259,6 +259,32 @@ public sealed partial class StdLib
             { "CholeskyDecomposition", new CholeskyDecompositionType() }
         };
 
+        /* ADR-MATRIX F4: le decomposizioni sono VALORI con i fattori come CAMPI matrice.
+         * `DIM lu = LINALG.LU(a) : PRINT lu.U(0,0)` — il valore resta l'handle interno
+         * (LINALG.FACTOR resta valido), ma i campi sono tipizzati MATRIX VALUE così
+         * indicizzazione, MATRIX.* e passaggio a parametri `MATRIX OF` funzionano senza
+         * conversioni esplicite. */
+        RegisterTypeSchema(typeof(LuDecompositionType), new Dictionary<string, DataType>(StringComparer.OrdinalIgnoreCase)
+        {
+            { "L", new MatrixValueType() }, { "U", new MatrixValueType() }, { "P", new MatrixValueType() }
+        });
+        RegisterTypeSchema(typeof(QrDecompositionType), new Dictionary<string, DataType>(StringComparer.OrdinalIgnoreCase)
+        {
+            { "Q", new MatrixValueType() }, { "R", new MatrixValueType() }
+        });
+        RegisterTypeSchema(typeof(SvdDecompositionType), new Dictionary<string, DataType>(StringComparer.OrdinalIgnoreCase)
+        {
+            { "U", new MatrixValueType() }, { "S", new MatrixValueType() }, { "VT", new MatrixValueType() }
+        });
+        RegisterTypeSchema(typeof(EvdDecompositionType), new Dictionary<string, DataType>(StringComparer.OrdinalIgnoreCase)
+        {
+            { "D", new MatrixValueType() }, { "V", new MatrixValueType() }
+        });
+        RegisterTypeSchema(typeof(CholeskyDecompositionType), new Dictionary<string, DataType>(StringComparer.OrdinalIgnoreCase)
+        {
+            { "L", new MatrixValueType() }
+        });
+
         RegisterBuiltinNamespace(namespaceName, procedures, types);
     }
 }
