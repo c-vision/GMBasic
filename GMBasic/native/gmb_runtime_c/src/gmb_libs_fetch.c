@@ -323,11 +323,19 @@ static int lf_ensure_in_dir(const char* index_path, const char* fileName, const 
 int gmb_libs_ensure_file_from(const char* index_path, const char* fileName,
                               char* out_path, size_t cap)
 {
+    return gmb_libs_ensure_file_for_rid(index_path, gmb_libs_rid(), fileName, out_path, cap);
+}
+
+/* Come sopra ma per un RID ESPLICITO: lo usa il primo uso con ambito "all", che popola la
+ * cache di RID diversi da quello della macchina (stessa cache piatta `<cache>/<rid>/`). */
+int gmb_libs_ensure_file_for_rid(const char* index_path, const char* rid, const char* fileName,
+                                 char* out_path, size_t cap)
+{
     char cache[2048];
     gmb_paths_libs_cache_dir(cache, sizeof cache);
-    if (!cache[0]) return 0;
+    if (!cache[0] || !rid || !*rid) return 0;
     char dir[2304];
-    snprintf(dir, sizeof dir, "%s/%s", cache, gmb_libs_rid());
+    snprintf(dir, sizeof dir, "%s/%s", cache, rid);
     return lf_ensure_in_dir(index_path, fileName, dir, out_path, cap);
 }
 

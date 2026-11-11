@@ -979,7 +979,10 @@ set_target_properties(gmb_gfx PROPERTIES
 # (libSystem + libcurl). Non include gfx/AI/SDL.
 # gmb_paths.c porta il parser delle impostazioni (self-contained) e richiede l'anchor dell'ABI
 # (gmb_abi.c, 347 righe): entrambi nel target per restare sullo stesso comportamento del runtime.
-add_library(gmb_boot SHARED src/gmb_boot.c src/gmb_libs_fetch.c src/gmb_paths.c src/gmb_boot_abi_stub.c)
+# gmb_first_use.c: PRIMO USO (librerie di tutti i gruppi + toolchain zig), esposto come
+# `gmbadmin first-use`. Vive qui perché usa SOLO le API di questo target (indice, download,
+# settings, cache) e perché gmbadmin lo linka già: nessuna dipendenza nuova.
+add_library(gmb_boot SHARED src/gmb_boot.c src/gmb_libs_fetch.c src/gmb_paths.c src/gmb_boot_abi_stub.c src/gmb_first_use.c)
 target_include_directories(gmb_boot PRIVATE include src)
 target_link_libraries(gmb_boot PRIVATE ${CMAKE_DL_LIBS})
 if(GMB_CURL_LIB)

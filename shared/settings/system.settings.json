@@ -89,6 +89,27 @@
   "defaultProjectsFolder": "PROJECTS",
 
   // --------------------------------------------------------------------
+  // --- Sezione bootstrap: cosa scarica il PRIMO USO di compilatore/CLI/REPL ---
+  // --------------------------------------------------------------------
+  //
+  // Al primo uso di uno QUALSIASI fra `gmb`, `gmbnative` (i due compilatori), `gmbcs` (CLI
+  // C#) e `gmbrepl` manca quasi sempre tutto: le librerie native del RID e il compilatore C
+  // (`zig`, gruppo `toolchain`). Il primo uso le procura da c-vision/GMBasicModules una volta
+  // sola e lascia un marker in `~/.gmbasic/.first-use-<rid>`: dagli avvii successivi costa
+  // una sola `stat`, nessuna rete.
+  //
+  //   "host" (default) → solo il RID di questa macchina
+  //   "all"            → tutti e 6 i RID (osx-arm64, osx-x64, linux-x64, linux-arm64,
+  //                      win-x64, win-arm64): una cache completa per ciascuno, utile per
+  //                      preparare una macchina offline o un mirror
+  //   "off"            → nessun download automatico (`gmb libs ensure` resta disponibile)
+  //
+  // Il componente `torch` NON si scarica qui: è external (download.pytorch.org), pesa centinaia
+  // di MB e arriva on-demand quando una funzione lo richiede.
+  // Riprovare dopo un fallimento di rete: `gmbadmin first-use --force`.
+  "bootstrapScope": "host",
+
+  // --------------------------------------------------------------------
   // --- Sezione paths: posizione delle cartelle dati di GMBASIC ---
   // --------------------------------------------------------------------
   //

@@ -482,6 +482,37 @@ int gmb_paths_settings_file(char* out, size_t cap)
     return g_pr_settings[0] ? 1 : 0;
 }
 
+/* Valore STRINGA di una chiave TOP-LEVEL (non dentro `paths`) di system.settings.json, con
+ * `app.settings.json` che vince — stessa precedenza di `pr_paths_value`.
+ *
+ * PERCHÉ QUI: serve al PRIMO USO (`bootstrapScope`), che gira nel target leggero `gmb_boot`
+ * (boot+paths, senza gfx/AI): lì `gmb_settings_str` di `gmb_settings.c` non c'è, perché quel file
+ * trascina graphics/console. Il testo è già letto e ripulito dai commenti da `pr_load`: UN solo
+ * parser, nessuna copia.
+ * Ritorna 1 se la chiave esiste con valore non vuoto. */
+int gmb_paths_settings_value(const char* key, char* out, size_t cap)
+{
+    if (!out || cap == 0 || !key || !*key) return 0;
+    out[0] = '\0';
+    if (!g_pr_loaded) pr_load();
+    const char* js = g_pr_app_json_len ? g_pr_app_json : g_pr_json;
+    if (!js[0]) return 0;
+    char pat[128];
+    snprintf(pat, sizeof(pat), "\"%s\"", key);
+    const char* p = strstr(js, pat);
+    if (!p) return 0;
+    p += strlen(pat);
+    while (*p && *p != ':') p++;
+    if (*p == ':') p++;
+    while (*p && isspace((unsigned char)*p)) p++;
+    if (*p != '"') return 0;   /* null o numero: non è una stringa */
+    p++;
+    size_t oi = 0;
+    while (*p && *p != '"' && oi + 1 < cap) out[oi++] = *p++;
+    out[oi] = '\0';
+    return oi > 0 ? 1 : 0;
+}
+
 /* Risolve una cartella dati: chiave paths se valorizzata, altrimenti default relativo root. */
 static void pr_dir(const char* key, const char* defrel, char* out, size_t cap)
 {

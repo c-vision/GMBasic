@@ -34,6 +34,9 @@
 #include "gmb_inc_resolve.h"
 #include "gmb_cli_internal.h"
 
+/* gmb_cli_bootstrap.c — primo uso: delega a `gmbadmin first-use` (nessun link nuovo). */
+int gmb_first_use_spawn_if_needed(int argc, char** argv);
+
 #include <ctype.h>
 #include <dirent.h>
 #include <stdio.h>
@@ -987,6 +990,10 @@ int main(int argc, char** argv) {
         printf("gmb 1.0.0 (GMBASIC C CLI)\n");
         return 0;
     }
+    /* PRIMO USO: completa librerie native + toolchain (zig) prima di compilare. Delega a
+     * `gmbadmin first-use` — una sola implementazione (gmb_first_use.c), nessun link nuovo.
+     * A cache completa costa una `stat`; `--no-bootstrap` lo salta. */
+    gmb_first_use_spawn_if_needed(argc, argv);
     {
         int arc = gmb_cli_admin_maybe(argc, argv);   /* pkg/fixtures/setup/... → gmbadmin (C) */
         if (arc >= 0) return arc;

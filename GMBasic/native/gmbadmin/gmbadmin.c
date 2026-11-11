@@ -36,12 +36,16 @@ static void usage(void)
            "`gmb fixtures ensure` (fixtures-v1), `gmb setup <comp>` (ML/Chromium/Obscura).\n");
 }
 
+/* gmbadminsys.c: PRIMO USO (librerie di tutti i gruppi + toolchain zig). */
+int gmbadmin_first_use(int argc, char** argv);
+
 int main(int argc, char** argv)
 {
     if (argc < 2) { usage(); return 2; }
     const char* cmd = argv[1];
     if (!strcmp(cmd, "-h") || !strcmp(cmd, "--help") || !strcmp(cmd, "-help") || !strcmp(cmd, "help")) { usage(); return 0; }
 
+    if (!strcmp(cmd, "first-use") || !strcmp(cmd, "firstuse")) return gmbadmin_first_use(argc, argv);
     if (!strcmp(cmd, "pkg"))      return gmbadmin_pkg(argc, argv);
     if (!strcmp(cmd, "fixtures")) return gmbadmin_fixtures(argc, argv);
     if (!strcmp(cmd, "setup"))    return gmbadmin_setup(argc, argv);

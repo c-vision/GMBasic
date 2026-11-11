@@ -143,6 +143,35 @@ static void libs_index_path(char* out, size_t cap)
  * e un gruppo nuovo non verrebbe mai scaricato (parità con il vecchio CLI). */
 static int libs_check(int argc, char** argv);   /* sotto */
 
+/* `first-use` — PRIMO USO dei compilatori/CLI/REPL: completa la cache (librerie di tutti i
+ * gruppi + toolchain zig) secondo `bootstrapScope` nei settings: "host" (default) | "all" |
+ * "off". È l'UNICA implementazione (gmb_runtime_c/src/gmb_first_use.c): `gmb`, `gmbnative` e
+ * `gmbcs` delegano qui. Non blocca mai l'avvio: ritorna 0 anche se resta qualcosa da scaricare,
+ * perché il compilatore deve poter partire con ciò che ha (il motivo è stampato). */
+int gmbadmin_first_use(int argc, char** argv)
+{
+    int dry = 0, force = 0;
+    for (int i = 2; i < argc; i++)
+    {
+        if (!strcmp(argv[i], "--dry-run") || !strcmp(argv[i], "--dry")) dry = 1;
+        else if (!strcmp(argv[i], "--force") || !strcmp(argv[i], "--retry")) force = 1;
+        else if (!strcmp(argv[i], "--help") || !strcmp(argv[i], "-h"))
+        {
+            printf("uso: gmbadmin first-use [--dry-run] [--force]\n"
+                   "  completo una volta sola librerie native e toolchain (zig) del RID host.\n"
+                   "  Ambito: bootstrapScope nei settings (host | all | off).\n"
+                   "  --dry-run  mostra il piano (indice, file, toolchain) senza scaricare\n"
+                   "  --force    ignora il marker di primo uso e riprova\n");
+            return 0;
+        }
+    }
+    if (force) gmb_first_use_forget();
+    int ok = gmb_first_use_ensure(dry);
+    if (!ok)
+        fprintf(stderr, "?first-use: cache INCOMPLETA (vedi i messaggi sopra). Rimedio: gmb libs ensure\n");
+    return 0;   /* mai bloccante: l'avvio del compilatore non dipende da questo */
+}
+
 static int libs_ensure(int argc, char** argv)
 {
     for (int i = 3; i < argc; i++)

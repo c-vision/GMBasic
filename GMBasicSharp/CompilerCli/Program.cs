@@ -189,6 +189,9 @@ public static class Program
 
     public static int Main(string[] args)
     {
+        /* PRIMO USO: completa librerie native + toolchain (zig) una volta sola. Delega a
+         * `gmbadmin first-use` (gmb_first_use.c): una sola implementazione per tutti i mondi. */
+        CommonLib.FirstUseBootstrap.EnsureAtFirstUse(args);
         try { return Run(args); }
         catch (Exception ex)
         {

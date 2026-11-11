@@ -70,7 +70,7 @@ resolve_zig() {
   cat >&2 <<EOF
 zigcc: nessuna toolchain zig ${ZIG_VERSION} trovata.
   cercata in: ${TOOLCHAINS}/${ZIG_VERSION}-<rid>/zig
-  rimedio:    gmb toolchain ensure            (scarica ${ZIG_VERSION} per il RID host)
+  rimedio:    gmbadmin first-use [--force]    (scarica ${ZIG_VERSION} per il RID host)
 oppure:       tools/sh/zigcc.sh --zig /percorso/del/binario/zig ...
 EOF
   return 1

@@ -14,6 +14,9 @@ extern const char* gmb_opt_env(const char* name);
 #include "gmb_types.h"
 #include "gmb_rewrite.h"
 #include "gmb_semgraph.h"
+
+/* gmb_cli_bootstrap.c — primo uso: delega a `gmbadmin first-use` (nessun link nuovo). */
+int gmb_first_use_spawn_if_needed(int argc, char** argv);
 #include <sys/stat.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -494,6 +497,10 @@ int main(int argc, char** argv) {
             "  -I e statiche del runtime, se non indicate, si scoprono dalla root dell'installazione.\n", argv[0]);
         return 2;
     }
+    /* PRIMO USO: librerie + toolchain prima di emettere il C (delega a `gmbadmin first-use`).
+     * È il secondo compilatore: stesso punto d'ingresso, stessa implementazione. */
+    gmb_first_use_spawn_if_needed(argc, argv);
+
     const char* in = argv[1];
     int no_exe = 0;
     int gpm_mode = 0;   /* 0 auto, 1 always, 2 linear (--gpm) */

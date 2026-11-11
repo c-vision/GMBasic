@@ -5,6 +5,11 @@
 #include "gmb_iconsole.h"
 #include <unistd.h>
 
+/* PRIMO USO: procura librerie + toolchain una volta sola. Implementazione UNICA in
+ * gmb_first_use.c, invocata via `gmbadmin first-use` (gmb_first_use_spawn.c): a cache
+ * completa costa una `stat`, nessun processo, nessuna rete. */
+int gmb_first_use_spawn_if_needed(int argc, char** argv);
+
 static const char* USAGE =
     "gmbrepl (REPL unica, C) — esegue vmc|c99; engine C# opzionale per IL/P-Code\n"
     "USO: gmbrepl [<file.bas>] [opzioni]\n"
@@ -59,6 +64,8 @@ int main(int argc, char** argv)
     /* -size/-font sovrascrivono i settings: passati alla console via env. */
     if (o.grid_width > 0 && o.grid_height > 0) { char _b[64]; snprintf(_b, sizeof(_b), "%d,%d", o.grid_width, o.grid_height); setenv("GMB_CONSOLE_SIZE", _b, 1); }
     if (o.font_name || o.font_size > 0) { char _b[192]; snprintf(_b, sizeof(_b), "%s,%d", o.font_name ? o.font_name : "", o.font_size); setenv("GMB_CONSOLE_FONT", _b, 1); }
+    /* PRIMO USO: completa librerie + toolchain prima di eseguire/compilare (una volta sola). */
+    gmb_first_use_spawn_if_needed(argc, argv);
     gmb_iconsole_boot();   /* startup console: replica Executor.Startup.cs (GMB_CONSOLE/GMBASIC_HEADLESS) */
 
     /* -bsp <dir>: precompila le pagine BSP all'avvio (come il vecchio runner -bsp). */
