@@ -1960,7 +1960,42 @@ public sealed partial class Compiler
             return;
         }
         VisitExpression(expr.Instance);
-        foreach (var arg in expr.Args) { VisitExpression(arg); }
+        /* Argomenti BYREF di un METODO (2026-11-11): stesso trattamento delle SUB/FUNCTION —
+         * la variabile (o l'elemento di array) va passata per RIFERIMENTO (ByRefBox), non per
+         * valore. Prima ogni argomento era VisitExpression: il callee scriveva su una copia e
+         * il chiamante non vedeva nulla (`r.Scala(k)` lasciava k=3 invece di 0, divergenza da
+         * IL/C99 che erano corretti). */
+        var mByRefDef = expr.ResolvedDefinition;
+        for (var mi = 0; mi < expr.Args.Length; mi++)
+        {
+            var mIsByRef = mByRefDef is not null && mi < mByRefDef.Parameters.Length
+                && mByRefDef.Parameters[mi].Flags.HasFlag(SymbolFlags.IsByRef)
+                && !mByRefDef.Parameters[mi].Flags.HasFlag(SymbolFlags.IsArray);
+            if (mIsByRef && expr.Args[mi] is VariableExpr mve)
+            {
+                var mLocalIdx = ResolveLocal(mve.NameCleaned.Lexeme);
+                if (mLocalIdx >= 0)
+                {
+                    EmitByte((byte)OpCode.OP_MAKE_BYREF);
+                    EmitShort((ushort)mLocalIdx);
+                    continue;
+                }
+                if (_globals.TryGetValue(mve.NameCleaned.Lexeme, out var mGlobalIdx))
+                {
+                    EmitByte((byte)OpCode.OP_MAKE_BYREF_GLOBAL);
+                    EmitShort((ushort)mGlobalIdx);
+                    continue;
+                }
+            }
+            else if (mIsByRef && expr.Args[mi] is ArrayAccessExpr maeByRef && maeByRef.Indices.Length == 1)
+            {
+                LoadVariable(new VariableTarget(-1, maeByRef.NameSuffixed, maeByRef.NameCleaned));
+                VisitExpression(maeByRef.Indices[0]);
+                EmitByte((byte)OpCode.OP_MAKE_BYREF_ELEMENT);
+                continue;
+            }
+            VisitExpression(expr.Args[mi]);
+        }
         // If ResolvedDefinition is a base class method, emit direct call via OP_CALL_CTOR
         if (expr.ResolvedDefinition is { } def && expr.Instance is BaseExpr)
         {
