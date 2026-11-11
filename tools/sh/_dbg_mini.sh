@@ -457,7 +457,8 @@ for f in "$MINI"/**/*.bas "$MINI"/*.bas; do
     fail=$((fail+1)); continue
   fi
   # Salva il codice C generato per ispezione (verifica reale, non solo verdetto).
-  CNAME="${name##*/}"; CNAME="${CNAME%.bas}"
+  # Nome UNICO per percorso (due test omonimi in domini diversi non si sovrascrivono).
+  CNAME="$(printf '%s' "${name%.bas}" | sed 's|/|__|g')"
   CDEST="$MONO/tools/out/c99native/$CNAME.c"
   mkdir -p "$(dirname "$CDEST")" 2>/dev/null; cp "$WORK/out.c" "$CDEST" 2>/dev/null || true
   echo "PASS $name :: $OUT|"
