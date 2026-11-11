@@ -8,7 +8,19 @@
 #      presenti non vengono ricaricati).
 # Dopo gli upload: manifest per i 6 RID (`--groups dev`), push su GMBasicModules, indice.
 # Uso: tools/sh/libs_publish_dev_bulk.sh   (staging in /tmp/dev-<rid>)
+#      tools/sh/libs_publish_dev_bulk.sh --prune-report
+#          per ogni RID elenca gli asset presenti nella release che NON sono più nella sorgente
+#          (cioè quello che un prune rimuoverebbe) e non fa null'altro: niente creazione della
+#          release, niente upload, niente manifest, push o indice.
 cd /Users/gaetano/Documents/Projects/GMBasicMonoRepo || exit 1
+REPORT=0
+for arg in "$@"; do
+  case "$arg" in
+    --prune-report) REPORT=1;;
+    -h|--help) sed -n '2,17p' "$0" | sed 's/^# \{0,1\}//'; exit 0;;
+    *) echo "opzione sconosciuta: $arg" >&2; exit 2;;
+  esac
+done
 . tools/sh/libs_groups.sh
 REPO=c-vision/GMBasicModules; LOG=/tmp/finish-publish.log; : > "$LOG"
 say(){ echo "[$(date +%H:%M:%S)] $*" | tee -a "$LOG"; }
@@ -46,6 +58,24 @@ for pair in "osx-arm64:dev-v2" "osx-x64:dev-v3" "linux-x64:dev-v4" "linux-arm64:
   # release (la creazione puo' essere bloccata dal limite)
   have=$(gh api graphql -f query='query($o:String!,$r:String!,$t:String!){repository(owner:$o,name:$r){release(tagName:$t){id}}}' \
           -f o=c-vision -f r=GMBasicModules -f t="$TAG" --jq '.data.repository.release.id // empty' </dev/null 2>/dev/null)
+  # --prune-report: sola lettura. `gh release view` invece della GraphQL paginata del percorso
+  # di pubblicazione (quella, su un tag assente, farebbe girare until_ok per mezz'ora).
+  if [ "$REPORT" = "1" ]; then
+    if [ -z "$have" ]; then say "$RID: release $TAG assente — nessun resoconto"; continue; fi
+    gh release view "$TAG" -R "$REPO" --json assets --jq '.assets[].name' > /tmp/exist-$RID.txt </dev/null 2>/dev/null
+    exp="/tmp/exp-$RID.txt"; : > "$exp"
+    while IFS= read -r f; do
+      rel="${f#"$SRC"/}"
+      [ -n "$(libs_group_pick dev "$rel")" ] || continue
+      a_tree "$rel"; printf '\n'
+    done < <(find "$SRC" -type f | sort) | sort > "$exp"
+    sort /tmp/exist-$RID.txt -o /tmp/exist-$RID.sorted.txt
+    comm -13 "$exp" /tmp/exist-$RID.sorted.txt > /tmp/prune-$RID.txt
+    sed 's/^/  prune-report: /' /tmp/prune-$RID.txt >&2
+    say "$RID: $(grep -c . /tmp/prune-$RID.txt) asset da rimuovere in $TAG (nessuno rimosso)"
+    continue
+  fi
+
   if [ -z "$have" ]; then
     until_ok "crea $TAG" gh release create "$TAG" -R "$REPO" --title "GMBasic libs — dev ($RID)" \
       --notes "Header e statiche per compilare su $RID (un asset per file; path in include__…). Indice: libs-manifest.json."
@@ -74,6 +104,7 @@ for pair in "osx-arm64:dev-v2" "osx-x64:dev-v3" "linux-x64:dev-v4" "linux-arm64:
     i=$((i+j)); say "$RID: $okc/$total"
   done
 done
+if [ "$REPORT" = "1" ]; then say "FINITO (solo resoconto: nulla creato, caricato o pubblicato)"; exit 0; fi
 say "=== manifest per i 6 RID ==="
 for rid in osx-arm64 osx-x64 linux-x64 linux-arm64 win-x64 win-arm64; do
   until_ok "manifest $rid" tools/sh/libs_manifest_gh.sh build --rid "$rid" --groups dev
