@@ -162,6 +162,14 @@ jobs:
             exit 1
           fi
 
+      # `gmb_runtime_c/CMakeLists.txt` cerca le terze parti SOLO nella cache del RID
+      # (`build/libs/<rid>` o `~/.gmbasic/libs/<rid>`, NO_DEFAULT_PATH): un runner pulito non ce
+      # l'ha, e il configure si ferma con "GMB_CRYPTO_LIB non trovata" (run 43117749641).
+      - name: terze parti di sistema in build/libs/<rid>
+        if: env.GROUP != 'toolchain'
+        shell: bash
+        run: bash tools/sh/libs_stage_system_deps.sh "${{ matrix.rid }}" "$GITHUB_WORKSPACE/GMBasic/build/libs/${{ matrix.rid }}"
+
       - name: build + gate di caricabilità
         if: env.GROUP != 'toolchain'
         run: |
