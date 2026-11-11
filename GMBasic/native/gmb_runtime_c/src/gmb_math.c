@@ -3890,7 +3890,7 @@ static double gmb_tpe_logpdf_dim(double x, double mu, double sd)
     return -0.5 * d * d / (sd * sd) - log(sd);
 }
 double* gmb_sim_tpe_ctx(gmb_tpe_fn_t f, void* ctx, const double* lo, const double* hi, int d,
-                        int n_iter, int n_init, double seed, int* outn)
+                        int n_iter, int n_init, double seed, gmb_int_t* outn)
 {
     static const double LNORM = 0.91893853320467274178;
     double *X, *Y, *sigma, *cand, *bestx, *out;

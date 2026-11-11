@@ -17,6 +17,7 @@
 #include "gmb_hpack_huffman.h"
 
 #include <ctype.h>
+#include <stdint.h>   /* F2: int16_t (g_huff12) — su mingw non arriva da un altro header */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

@@ -4884,7 +4884,7 @@ static void http_h2_dispatch(void* user, gmb_h2_conn_t* c, int32_t stream,
     for (int i = 0; i < GMB_HTTP_MAX_ROUTES; i++)
     {
         const gmb_http_route_t* r = &x->s->routes[i];
-        size_t pc = 0;
+        int pc = 0;   /* F2: route_match_path scrive un `int` (era `size_t` → errore con clang 22) */
         if (!r->in_use) continue;
         if (!http_method_matches(r->method, method)) continue;
         if (!r->handler && !r->handler_bin) continue;

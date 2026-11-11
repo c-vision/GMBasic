@@ -1214,7 +1214,7 @@ void gmb_fit_rsquared(const double* data, int n, double* r2, double* angle);
 double gmb_fit_rsquared_test(const double* data, int n);
 gmb_val_t gmb_fit_polyfit_dict(const double* x, const double* y, int n, int m);
 gmb_val_t gmb_fit_rsquared_dict(const double* data, int n);
-void gmb_sim_seed(unsigned long long seed);
+void gmb_sim_seed(uint64_t seed);   /* F2: uint64_t (su linux x86_64 `unsigned long long` ≠ uint64_t = unsigned long) */
 double gmb_sim_uniform(void);
 double gmb_sim_normal(void);
 double gmb_sim_exponential(double rate);
@@ -1223,7 +1223,7 @@ double gmb_sim_binomial(double n, double p);
 gmb_val_t gmb_sim_particle_filter(const double* obs, int T, double a, double q, double r, int N, double seed);
 double* gmb_mv_boost_fit_alloc(const double* X, int n, int p, const double* y, int engine, int n_est, double lr, int max_depth, int* outn);
 typedef double (*gmb_tpe_fn_t)(const double* x, void* ctx);
-double* gmb_sim_tpe_ctx(gmb_tpe_fn_t f, void* ctx, const double* lo, const double* hi, int d, int n_iter, int n_init, double seed, int* outn);
+double* gmb_sim_tpe_ctx(gmb_tpe_fn_t f, void* ctx, const double* lo, const double* hi, int d, int n_iter, int n_init, double seed, gmb_int_t* outn);
 double* gmb_sim_tpe_c99(gmb_fn_t fn, const double* lo, const double* hi, int d, int n_iter, int n_init, double seed, gmb_int_t* outn);
 double gmb_mv_boost_predict(const double* model, int mlen, const double* x);
 double gmb_mv_boost_score(const double* model, int mlen, const double* X, int n, int p, const double* y);

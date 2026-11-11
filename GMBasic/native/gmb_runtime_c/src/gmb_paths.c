@@ -793,6 +793,8 @@ static void pr_migrate_gmb_root(void)
     snprintf(new_root, sizeof new_root, "%s/.gmbasic", home);
     struct stat st;
     if (stat(old_root, &st) != 0) return;              /* niente da migrare */
+    /* 2 argomenti: il mingw "nudo" ne dichiara 1, ma la build Windows usa il win32shim
+     * (`#define mkdir(p, m) _mkdir(p)`), che è la forma portabile canonica del progetto (F2). */
     mkdir(new_root, 0755);
     static const char* box[] = { "libs", "packages", "daemons", "ml", "chromium", "ocr", "obscura",
                                  "config.json", "trusted-keys.json" };
@@ -930,7 +932,11 @@ void gmb_paths_packages_dir(char* out, size_t cap)
         snprintf(alt, sizeof(alt), "%s/../packages", g_pr_root);
         if (gmb_pkgdir_looks_like_cache(alt)) {
             char rl[4096];
+#if defined(_WIN32) || defined(_WIN64)
+            snprintf(out, cap, "%s", _fullpath(rl, alt, sizeof rl) ? rl : alt);   /* mingw: niente realpath (F2) */
+#else
             snprintf(out, cap, "%s", realpath(alt, rl) ? rl : alt);
+#endif
         }
         return;   /* checkout senza cache popolata: <root>/packages (verrà creata) */
     }
