@@ -12,6 +12,7 @@
 #
 # USO
 #   tools/sh/libs_publish_files_gh.sh <gruppo> <rid> --source DIR [--tag TAG] [--yes] [--dry-run]
+#                                    [--prune | --prune-report]
 #
 # TAG DI VERSIONE (immutabili): `runtime-v1`, `dev-v1`, `llmmotor-v1`, `support-v1`, `ffi-v1`.
 # Su questi tag NON si sovrascrive MAI un asset con contenuto diverso: se serve un cambiamento si
@@ -22,6 +23,8 @@
 #     --tag TAG      release di destinazione (default: gmb-<gruppo>-<data>)
 #     --prune        rimuove dalla release gli asset per-file di questo RID che NON sono più
 #                    nella sorgente (default: off; usare quando si rimuove/rinomina una lib)
+#     --prune-report elenca su stderr gli asset che --prune rimuoverebbe, SENZA rimuoverli
+#                    (implica --prune: nessuna chiamata delete-asset)
 #     --yes          non chiede conferma
 #     --dry-run      stampa il piano
 #
@@ -33,12 +36,12 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 . "$SCRIPT_DIR/libs_groups.sh"
 
 GROUP="${1:-}"; RID="${2:-}"
-[ -n "$GROUP" ] && [ -n "$RID" ] || { sed -n '2,30p' "$0" | sed 's/^# \{0,1\}//'; exit 2; }
+[ -n "$GROUP" ] && [ -n "$RID" ] || { sed -n '2,33p' "$0" | sed 's/^# \{0,1\}//'; exit 2; }
 shift 2
 case "$GROUP" in boot|dev|support|core|engine|llmmotor|ffi|domain|runtime|runtime-core|toolchain) ;; *) echo "gruppo non valido: $GROUP" >&2; exit 2;; esac
 LIBS_RID="$RID"   # regole di gruppo per RID di DESTINAZIONE
 
-SRC=""; TAG=""; YES=0; DRY=0; PRUNE=0; TREE=0; REPO="c-vision/GMBasicModules"
+SRC=""; TAG=""; YES=0; DRY=0; PRUNE=0; PRUNE_REPORT=0; TREE=0; REPO="c-vision/GMBasicModules"
 while [ $# -gt 0 ]; do
   case "$1" in
     --source) SRC="${2:-}"; shift 2;;
@@ -46,9 +49,10 @@ while [ $# -gt 0 ]; do
     --tag) TAG="${2:-}"; shift 2;;
     --repo) REPO="${2:-}"; shift 2;;
     --prune) PRUNE=1; shift;;
+    --prune-report) PRUNE=1; PRUNE_REPORT=1; shift;;
     --yes) YES=1; shift;;
     --dry-run) DRY=1; shift;;
-    -h|--help) sed -n '2,30p' "$0" | sed 's/^# \{0,1\}//'; exit 0;;
+    -h|--help) sed -n '2,33p' "$0" | sed 's/^# \{0,1\}//'; exit 0;;
     *) echo "opzione sconosciuta: $1" >&2; exit 2;;
   esac
 done
@@ -266,12 +270,22 @@ if [ "$PRUNE" = "1" ]; then
     printf '%s\n' "$a" >> "$HAVE"
   done <<< "$NOW"
   sort -o "$HAVE" "$HAVE"
-  comm -13 "$WANT" "$HAVE" | while IFS= read -r a; do
-    [ -n "$a" ] || continue
-    echo "  prune: $a" >&2
-    gh release delete-asset "$TAG" "$a" --repo "$REPO" --yes >/dev/null 2>&1
-  done
-  rm -f "$WANT" "$HAVE"
+  CAND="$(mktemp)"; comm -13 "$WANT" "$HAVE" > "$CAND"
+  if [ "$PRUNE_REPORT" = "1" ]; then
+    # solo resoconto: elenca e NON chiama `gh release delete-asset`.
+    while IFS= read -r a; do
+      [ -n "$a" ] || continue
+      echo "  prune-report: $a" >&2
+    done < "$CAND"
+    echo "prune-report: $(grep -c . "$CAND") asset di $RID da rimuovere — nessuno rimosso" >&2
+  else
+    while IFS= read -r a; do
+      [ -n "$a" ] || continue
+      echo "  prune: $a" >&2
+      gh release delete-asset "$TAG" "$a" --repo "$REPO" --yes >/dev/null 2>&1
+    done < "$CAND"
+  fi
+  rm -f "$WANT" "$HAVE" "$CAND"
 fi
 
 # TSV per l'indice: name, sha256, size, url (sha ricalcolato sui byte caricati)
