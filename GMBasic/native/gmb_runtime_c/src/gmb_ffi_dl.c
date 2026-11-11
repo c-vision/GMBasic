@@ -432,10 +432,16 @@ static void* ffi_dl_open_local(const char* path)
     char libsPath[8192];
     if (gmb_ffi_dl_find_libs(path, libsPath, sizeof(libsPath)))
     {
-        gmb_ffi_dl_preload(libsPath);   /* dlopen + registra per basename */
+        gmb_ffi_dl_preload(libsPath);
         for (int i = 0; i < g_preloaded_count; i++)
             if (strcmp(g_preloaded[i].path, libsPath) == 0)
                 return g_preloaded[i].handle;
+        /* Il preload può NON aver aggiunto la voce (tabella piena o dlopen fallito):
+         * apriamo il path trovato direttamente, così non si ricade sul match per basename
+         * di una copia STANTIA già pre-caricata (caso reale 2026-11-11: libgmbgraph in
+         * cache pre-caricato dall'autoensure e `shared/libs/graph` fresco ignorato). */
+        void* hl = GMB_DL_OPEN(libsPath);
+        if (hl != NULL) return hl;
     }
 
     /* auto-discovery cache pacchetti GMB (~/.gmbasic/packages): lib dei pacchetti REQUIRE */
