@@ -204,6 +204,41 @@ public sealed partial class IlProgramCompiler
         }
     }
 
+    /// <summary>
+    /// Tipo CLR dell'ELEMENTO di un array indicizzato (<c>null</c> se l'array non è noto in
+    /// questo metodo). È il tipo del LOCAL quando questo è un array (fonte di verità: è il tipo
+    /// su cui girano <c>ldelem/stelem</c>), altrimenti il mapping dell'elemento dichiarato.
+    /// Serve al chiamante per distinguere uno storage <c>float</c> (array SINGLE, ABI FFI) da
+    /// uno <c>double</c> (variabili SINGLE del dialetto) quando passa l'elemento BYREF.
+    /// </summary>
+    private Type? TryGetArrayElementClrType(ArrayAccessExpr expr)
+    {
+        if (!_arrays.TryGetValue(expr.SymbolId, out var info))
+        {
+            var synthesized = TrySynthesizeBagArrayInfo(expr.SymbolId);
+            if (synthesized is null) return null;
+            info = synthesized;
+        }
+        if (info.Rank != expr.Indices.Length) return null;
+        return ArrayElementClrTypeOf(info);
+    }
+
+    /// <summary>
+    /// Tipo CLR reale dell'elemento di un array (vedi <see cref="TryGetArrayElementClrType"/>).
+    /// Il LOCAL è la fonte di verità: `ArrayInfo.ClrArrayType` per un array SINGLE vale
+    /// `Double[]` (mapping dell'elemento singolo) mentre il local è `Single[]` (ABI FFI, la
+    /// stessa rappresentazione con cui girano `ldelem.r4`/`stelem.r4`) → usare il mapping
+    /// scalare in `Ldelema` scalava l'indice di 8 byte su elementi da 4 e l'indirizzo
+    /// finiva sull'elemento successivo (BYREF su un elemento SINGLE).
+    /// </summary>
+    private Type ArrayElementClrTypeOf(ArrayInfo info)
+    {
+        var local = info.Local.LocalType;
+        if (local.IsArray && local.GetArrayRank() == Math.Max(1, info.Rank))
+            return local.GetElementType()!;
+        return DataTypeMapper.Map(info.ElementDataType, _types, _classTypes);
+    }
+
     private void EmitArrayElementAddress(ArrayAccessExpr expr)
     {
         var info = GetArrayInfo(expr.SymbolId, expr.Indices.Length);
@@ -211,7 +246,7 @@ public sealed partial class IlProgramCompiler
 
         if (info.Rank == 1)
         {
-            _il.Emit(OpCodes.Ldelema, DataTypeMapper.Map(info.ElementDataType, _types, _classTypes));
+            _il.Emit(OpCodes.Ldelema, ArrayElementClrTypeOf(info));
         }
         else if (info.ClrArrayType == typeof(MatrixValue))
         {

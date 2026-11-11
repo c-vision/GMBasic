@@ -6115,6 +6115,21 @@ static int fn_param_is_byref(fn_info_t* f, const char* name)
     return 0;
 }
 
+/* Vero se l'argomento `a` è un ELEMENTO DI ARRAY (`a(i)`, che nel parser C è un
+ * GMB_EXPR_CALL con `var` = nome della variabile array). Un argomento BYREF di questa forma
+ * riceve l'INDIRIZZO REALE dell'elemento: il vecchio percorso del temporaneo copy-in/copy-out
+ * non aveva write-back per gli elementi (la condizione del write-back è `kind == GMB_EXPR_VAR`)
+ * e il valore scritto dalla callee andava perso — `SetL(a(1))` non aggiornava niente su questa
+ * gamba, mentre PCode/VM-C/IL lo facevano (divergenza trovata dalla verifica BYREF 2026-11-11). */
+static int call_arg_is_index_lvalue(ctx_t* c, gmb_expr_t* a)
+{
+    if (!a || a->kind != GMB_EXPR_CALL || !a->var || !a->args || a->nargs < 1) return 0;
+    if (a->ns) return 0;                             /* NS.FUNZIONE: builtin, non un indice */
+    if (find_fn(c, a->var)) return 0;                /* chiamata a una SUB/FUNCTION utente */
+    var_t* av = lookup_var(c, a->var);
+    return av && av->is_array && !av->matrix;
+}
+
 /* Registra le funzioni nidificate dirette del genitore parent_idx (hoisting a livello
  * modulo, parity oracolo) con rilevazione delle variabili catturate. */
 static void hoist_nested_fns(ctx_t* c, int parent_idx) {
@@ -10422,6 +10437,32 @@ static int emit_any_param_arg(ctx_t* c, gmb_expr_t* a) {
 static void emit_param_arg(ctx_t* c, fn_info_t* f, int pi, gmb_expr_t* a) {
     const char* pt = (f && f->stmt && f->stmt->param_types && pi >= 0 && pi < f->stmt->n_params) ? f->stmt->param_types[pi] : NULL;
     if (pt && gmb_keyword_tok(pt) == GMB_TOK_Any && emit_any_param_arg(c, a)) return;
+    /* Parametro BYREF di un METODO/COSTRUTTORE: il call-site deve passare l'INDIRIZZO.
+     * Prima emetteva il valore e il C generato non compilava ("passing 'gmb_double_t' to
+     * parameter of incompatible type 'gmb_double_t *'") per ogni metodo con un parametro
+     * BYREF. Per le SUB/FUNCTION esisteva già il percorso temporaneo+writeback; qui la
+     * variabile è passata per indirizzo reale (vera semantica BYREF), come per gli
+     * argomenti non catturati nel percorso delle funzioni. */
+    if (f && f->stmt && f->stmt->param_byref && pi >= 0 && pi < f->stmt->n_params
+        && f->stmt->param_byref[pi]) {
+        if (a && a->kind == GMB_EXPR_VAR && a->var) {
+            var_t* v = lookup_var(c, a->var);
+            if (!v) v = vars_add(cur_scope(c), a->var, suffix_type(a->var));
+            if (v->byref && !v->captured) { emit_ident(c, v->name); return; }   /* già un puntatore */
+            sb_put(&c->out, "&");
+            emit_ident(c, v->name);
+            return;
+        }
+        if (call_arg_is_index_lvalue(c, a)) {
+            sb_put(&c->out, "&(");
+            emit_expr(c, a);
+            sb_put(&c->out, ")");
+            return;
+        }
+        c99_fail(c, a ? a->line : 0, "BYREF %s: argomento %d non indirizzabile (serve una variabile o un elemento di array)",
+                 f->stmt->func_name, pi + 1);
+        return;
+    }
     emit_expr(c, a);
 }
 
@@ -14271,6 +14312,9 @@ static void emit_call(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_
             gmb_expr_t* a = EFF_ARG(i);
             direct_addr[i] = fn->stmt->param_byref[i] && a && a->kind == GMB_EXPR_VAR && a->var
                              && byref_param_captured_by_closure(c, fn, i);
+            /* Elemento di array `a(i)`: indirizzo REALE dell'elemento (vera semantica BYREF). */
+            if (fn->stmt->param_byref[i] && !direct_addr[i] && call_arg_is_index_lvalue(c, a))
+                direct_addr[i] = 1;
         }
         sb_put(&c->out, "({ ");
         for (int i = 0; i < fixed_count && !c->error[0]; i++) {
@@ -14358,6 +14402,13 @@ static void emit_call(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_
                 /* 2.6(r)/2.8: array → puntatore + bound (& se REDIMmato nella callee) */
                 emit_arr_call_arg(c, fn, i, a, line);
             } else if (i < 64 && direct_addr[i]) {
+                if (call_arg_is_index_lvalue(c, a)) {
+                    /* elemento di array: `&(A[i])` — indirizzo reale, nessun temporaneo */
+                    sb_put(&c->out, "&(");
+                    emit_expr(c, a);
+                    sb_put(&c->out, ")");
+                    continue;
+                }
                 var_t* tv = lookup_var(c, a->var);
                 if (!tv) tv = vars_add(cur_scope(c), a->var, suffix_type(a->var));
                 if (tv->byref && !tv->captured) emit_ident(c, tv->name);

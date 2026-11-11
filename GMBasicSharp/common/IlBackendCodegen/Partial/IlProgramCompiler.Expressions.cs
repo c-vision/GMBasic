@@ -1211,6 +1211,9 @@ public sealed partial class IlProgramCompiler
          * si passa una copia rettangolare e (per OUT/INOUT) si ricopia indietro nel
          * descrittore del chiamante dopo la Call. Elenco consumato subito dopo la chiamata. */
         var matrixArgFix = new System.Collections.Generic.List<(System.Reflection.Emit.LocalBuilder tmp, System.Reflection.Emit.LocalBuilder orig, System.Type tmpType, bool writeBack)>();
+        /* Elementi di array SINGLE passati BYREF (float[] → parametro `double&`):
+         * temporaneo float + ricopiatura nell'elemento dopo la Call. */
+        var singleElemFix = new System.Collections.Generic.List<(ArrayAccessExpr Elem, System.Reflection.Emit.LocalBuilder Tmp)>();
         for (var i = 0; i < expr.Args.Length; i++)
         {
             var paramDef = definition.Parameters[i];
@@ -1278,6 +1281,28 @@ public sealed partial class IlProgramCompiler
                     _il.Emit(OpCodes.Stloc, tmpArr);
                     _il.Emit(OpCodes.Ldloca, tmpArr);
                     matrixArgFix.Add((tmpArr, origObj, tmpClr, paramDef.Mode != ParameterMode.In));
+                }
+                else if (NormalizeInferredType(paramDef.DataType) is SingleType
+                         && expr.Args[i] is ArrayAccessExpr singleElem
+                         && TryGetArrayElementClrType(singleElem) is { } singleElemClr
+                         && singleElemClr == typeof(float))
+                {
+                    /* Elemento di un array SINGLE (float[], ABI FFI) verso un parametro BYREF
+                     * SINGLE: nello storage del dialetto il SINGLE è DOUBLE (variabile), ma
+                     * l'elemento è float → con l'indirizzo diretto il callee scrive 8 byte su 4
+                     * (corrompe l'elemento successivo: `SetV(a(1))` finiva su a(2)). Si passa
+                     * l'indirizzo di un temporaneo DOUBLE (il tipo del parametro), seminato dal
+                     * valore dell'elemento, e si ricopia nell'elemento SUBITO dopo la call
+                     * convertendo in float. Gli indici vengono rivalutati al write-back (stesso
+                     * compromesso di arrayKindFix: un indice con effetti collaterali non è
+                     * supportato). */
+                    var singleTmp = _il.DeclareLocal(_types.Double);
+                    EmitArrayElementAddress(singleElem);
+                    _il.Emit(OpCodes.Ldind_R4);
+                    _il.Emit(OpCodes.Conv_R8);
+                    _il.Emit(OpCodes.Stloc, singleTmp);
+                    _il.Emit(OpCodes.Ldloca, singleTmp);
+                    singleElemFix.Add((singleElem, singleTmp));
                 }
                 else
                 {
@@ -1413,11 +1438,18 @@ public sealed partial class IlProgramCompiler
         _byRefBagSlotFixes = prevBagSlotFixes;
         EmitByRefBagSlotWriteBacks(bagSlotFixes, methodBuilder.ReturnType);
 
-        if (arrayKindFix.Count > 0 || matrixArgFix.Count > 0)
+        if (arrayKindFix.Count > 0 || matrixArgFix.Count > 0 || singleElemFix.Count > 0)
         {
             var hasRet = methodBuilder.ReturnType != typeof(void);
             System.Reflection.Emit.LocalBuilder? res = hasRet ? _il.DeclareLocal(methodBuilder.ReturnType) : null;
             if (res != null) _il.Emit(OpCodes.Stloc, res);
+            foreach (var se in singleElemFix)
+            {
+                EmitArrayElementAddress(se.Elem);
+                _il.Emit(OpCodes.Ldloc, se.Tmp);
+                _il.Emit(OpCodes.Conv_R4);
+                _il.Emit(OpCodes.Stind_R4);
+            }
             foreach (var p in arrayKindFix)
             {
                 _il.Emit(OpCodes.Ldloc, p.orig);
