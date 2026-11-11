@@ -19,6 +19,74 @@ namespace Basic.IlBackend;
 /// <summary>Partial del transpiler IL: address-of e accesso array.</summary>
 public sealed partial class IlProgramCompiler
 {
+    /// <summary>
+    /// Argomento BYREF la cui variabile vive nel bag GLOBALE/STATICO come <b>reference
+    /// type</b>: non esiste un managed pointer dentro al bag, quindi il callee riceve
+    /// l'indirizzo di un TEMPORANEO e il valore va ricopiato nello slot del bag SUBITO dopo
+    /// la chiamata (i value type usano invece il box, vedi <see cref="EmitBagValueAddress"/>:
+    /// nessuna copia, il callee scrive direttamente nel box del bag).
+    /// </summary>
+    private readonly struct ByRefBagSlotFix
+    {
+        public readonly LocalBuilder Tmp;
+        public readonly int SymbolId;
+        public readonly bool IsStatic;
+        public readonly Type Clr;
+
+        public ByRefBagSlotFix(LocalBuilder tmp, int symbolId, bool isStatic, Type clr)
+            => (Tmp, SymbolId, IsStatic, Clr) = (tmp, symbolId, isStatic, clr);
+    }
+
+    /// <summary>Destinazione dei write-back BYREF del bag: <c>null</c> = nessuna chiamata in
+    /// corso (vedi <see cref="EmitByRefBagSlotWriteBacks"/>). Impostata da ogni emettitore di
+    /// CALL attorno all'emissione degli argomenti.</summary>
+    private List<ByRefBagSlotFix>? _byRefBagSlotFixes;
+
+    /// <summary>
+    /// Ricopia nel bag i valori dei temporanei BYREF raccolti durante l'emissione degli
+    /// argomenti. Il valore di ritorno della call (se c'è) è già sullo stack: viene stashato
+    /// in un locale e ricaricato dopo i write-back.
+    /// </summary>
+    private void EmitByRefBagSlotWriteBacks(List<ByRefBagSlotFix> fixes, Type? returnType)
+    {
+        if (fixes.Count == 0) return;
+        LocalBuilder? res = null;
+        if (returnType is not null && returnType != typeof(void))
+        {
+            res = _il.DeclareLocal(returnType);
+            _il.Emit(OpCodes.Stloc, res);
+        }
+        foreach (var f in fixes)
+        {
+            _il.Emit(OpCodes.Ldc_I4, f.SymbolId);
+            _il.Emit(OpCodes.Ldloc, f.Tmp);
+            if (f.Clr.IsValueType) _il.Emit(OpCodes.Box, f.Clr);
+            _il.Emit(OpCodes.Call, RuntimeMethod(
+                f.IsStatic ? nameof(IlRuntime.StoreStatic) : nameof(IlRuntime.StoreGlobal),
+                typeof(int), typeof(object)));
+        }
+        if (res is not null) _il.Emit(OpCodes.Ldloc, res);
+    }
+
+    /// <summary>
+    /// Indirizzo del valore di una variabile GLOBALE/STATICA (value type) che vive BOXED nel
+    /// bag: <c>Unbox</c> restituisce un managed pointer DENTRO il box, quindi il callee scrive
+    /// direttamente nello slot del bag — nessun write-back, e ogni lettura successiva
+    /// (<c>LoadGlobal</c> + <c>Unbox_Any</c>) vede il valore. Il box viene creato dal default
+    /// se il globale non è mai stato assegnato (stesso schema di <c>EmitGlobalUdtAddress</c>,
+    /// senza label: il GPM v2 stepper non marca label definite in mezzo alla selezione).
+    /// </summary>
+    private void EmitBagValueAddress(int symbolId, bool isStatic, Type clr, DataType declared)
+    {
+        _il.Emit(OpCodes.Ldc_I4, symbolId);
+        EmitDefaultValue(declared);
+        _il.Emit(OpCodes.Box, clr);
+        _il.Emit(OpCodes.Call, RuntimeMethod(
+            isStatic ? nameof(IlRuntime.GetOrCreateStaticBox) : nameof(IlRuntime.GetOrCreateGlobalBox),
+            typeof(int), typeof(object)));
+        _il.Emit(OpCodes.Unbox, clr);
+    }
+
     private void EmitAddressOf(Expr expr)
     {
         switch (expr)
@@ -65,6 +133,47 @@ public sealed partial class IlProgramCompiler
                     EmitArrayRefFromInfo(bagArrayInfo);
                     _il.Emit(OpCodes.Stloc, bagArrayInfo.Local);
                     _il.Emit(OpCodes.Ldloca, bagArrayInfo.Local);
+                    return;
+                }
+                // Contatore di un FOR APERTO: il local è l'AUTORITÀ (stesso motivo del ramo
+                // omonimo in EmitLoadVariable — l'incremento del NEXT scrive SOLO nel local,
+                // il bag non viene mai toccato mentre il loop è aperto) → indirizzo diretto.
+                if (_activeForCounters.Contains(v.SymbolId))
+                {
+                    _il.Emit(OpCodes.Ldloca, GetOrDeclareLocal(v.SymbolId));
+                    return;
+                }
+                var symName = _program.Symbols.GetSymbol(v.SymbolId).OriginalToken.Lexeme;
+                if (_forLoopState.TryGetValue(symName, out var forState)
+                    && forState.SymbolId != v.SymbolId
+                    && _activeForCounters.Contains(forState.SymbolId))
+                {
+                    _il.Emit(OpCodes.Ldloca, GetOrDeclareLocal(forState.SymbolId));
+                    return;
+                }
+                /* GLOBALE/STATIC (2026-11-11): il valore vive nel BAG (StoreGlobal/StoreStatic),
+                 * mai nel local CIL di questo metodo. `Ldloca` di un local sintetico dava
+                 * l'indirizzo di una cella scollegata: la callee scriveva su una copia e il
+                 * chiamante non vedeva nulla (bug: BYREF in un programma di primo livello,
+                 * senza SUB Main — le altre 3 gambe erano corrette). */
+                if (IsStaticSymbol(v.SymbolId) || IsGlobalSymbol(v.SymbolId))
+                {
+                    var isStatic = IsStaticSymbol(v.SymbolId);
+                    var bagClr = isStatic ? StaticClrType(v.SymbolId) : GlobalClrType(v.SymbolId);
+                    var declared = NormalizeInferredType(_program.Symbols.GetSymbol(v.SymbolId).DataType);
+                    if (bagClr.IsValueType)
+                    {
+                        EmitBagValueAddress(v.SymbolId, isStatic, bagClr, declared);
+                        return;
+                    }
+                    if (_byRefBagSlotFixes is null)
+                        throw new NotSupportedException(
+                            $"Backend IL: BYREF della variabile globale/statica '{symName}' in un contesto di chiamata senza write-back (NEW o delegate).");
+                    var bagTmp = _il.DeclareLocal(bagClr);
+                    EmitLoadVariable(v.SymbolId);
+                    _il.Emit(OpCodes.Stloc, bagTmp);
+                    _il.Emit(OpCodes.Ldloca, bagTmp);
+                    _byRefBagSlotFixes.Add(new ByRefBagSlotFix(bagTmp, v.SymbolId, isStatic, bagClr));
                     return;
                 }
                 _il.Emit(OpCodes.Ldloca, GetOrDeclareLocal(v.SymbolId));

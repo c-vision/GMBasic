@@ -13822,6 +13822,21 @@ public static double TextWidth(string s)
         lock (ProgramStatics) ProgramStatics[symbolId] = value;
     }
 
+    /// <summary>Gemello di <see cref="GetOrCreateGlobalBox"/> per una variabile STATIC:
+    /// restituisce il box (object) del valore, creandolo dal default se assente. Serve a
+    /// prendere l'INDIRIZZO di uno STATIC value type con una sequenza IL senza label (il
+    /// GPM v2 stepper, che spezza il corpo in stati, non sa marcare le label definite in
+    /// mezzo alla selezione).</summary>
+    public static object GetOrCreateStaticBox(int symbolId, object defaultValue)
+    {
+        lock (ProgramStatics)
+        {
+            if (ProgramStatics.TryGetValue(symbolId, out var existing) && existing is not null) return existing;
+            ProgramStatics[symbolId] = defaultValue;
+            return defaultValue;
+        }
+    }
+
     /// <summary>Inizializza una variabile STATIC alla PRIMA chiamata (le successive ignorano il valore).</summary>
     public static void StaticInitOnce(int symbolId, object? value)
     {

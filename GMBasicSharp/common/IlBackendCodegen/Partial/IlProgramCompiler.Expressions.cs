@@ -1194,6 +1194,13 @@ public sealed partial class IlProgramCompiler
         }
 
         var boxArgPositions = GetByRefCapturedParamPositions(_program).GetValueOrDefault(definition.SymbolId);
+        /* Argomenti BYREF che vivono nel bag globale/statico come reference type: EmitAddressOf
+         * lascia qui il temporaneo da ricopiare nel bag SUBITO dopo la call (vedi
+         * EmitByRefBagSlotWriteBacks). Il salvataggio/ripristino rende l'elenco annidabile:
+         * una call dentro un argomento ha il proprio elenco, svuotato subito dopo di lei. */
+        var bagSlotFixes = new System.Collections.Generic.List<ByRefBagSlotFix>();
+        var prevBagSlotFixes = _byRefBagSlotFixes;
+        _byRefBagSlotFixes = bagSlotFixes;
         /* Array con KIND dell'elemento diverso dal parametro (2026-11-04): si passa una copia
          * convertita e si ricopia indietro dopo la Call. Elenco riempito mentre si emettono gli
          * argomenti, consumato subito dopo la chiamata. */
@@ -1402,6 +1409,9 @@ public sealed partial class IlProgramCompiler
 
         if (methodBuilder.IsStatic) _il.Emit(OpCodes.Call, methodBuilder);
         else _il.Emit(OpCodes.Callvirt, methodBuilder);
+
+        _byRefBagSlotFixes = prevBagSlotFixes;
+        EmitByRefBagSlotWriteBacks(bagSlotFixes, methodBuilder.ReturnType);
 
         if (arrayKindFix.Count > 0 || matrixArgFix.Count > 0)
         {

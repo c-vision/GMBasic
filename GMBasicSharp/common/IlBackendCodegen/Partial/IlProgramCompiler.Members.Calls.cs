@@ -159,6 +159,11 @@ public sealed partial class IlProgramCompiler
         // (anche se la firma del MethodBuilder non lo mostra esplicitamente), a differenza
         // di un metodo di CLASS (reference type: il riferimento stesso è il "this").
         var isStatic = methodDef.Flags.HasFlag(SymbolFlags.IsStatic);
+        /* Argomenti BYREF che vivono nel bag globale/statico come reference type: stesso
+         * meccanismo di EmitFunctionCall (temporaneo + write-back dopo la call). */
+        var bagSlotFixes = new System.Collections.Generic.List<ByRefBagSlotFix>();
+        var prevBagSlotFixes = _byRefBagSlotFixes;
+        _byRefBagSlotFixes = bagSlotFixes;
         if (!isStatic)
         {
             if (methodBuilder.DeclaringType!.IsValueType) EmitAddressOf(instance);
@@ -201,6 +206,8 @@ public sealed partial class IlProgramCompiler
         var isVirtualDispatch = !forceNonVirtual && !isStatic
             && (methodDef.Flags.HasFlag(SymbolFlags.IsVirtual) || methodDef.Flags.HasFlag(SymbolFlags.IsOverride) || methodDef.Parent is InterfaceDefinition);
         _il.Emit(isVirtualDispatch ? OpCodes.Callvirt : OpCodes.Call, methodBuilder);
+        _byRefBagSlotFixes = prevBagSlotFixes;
+        EmitByRefBagSlotWriteBacks(bagSlotFixes, methodBuilder.ReturnType);
     }
 
     /// <summary>
