@@ -1539,23 +1539,15 @@ private void EmitBrowserHumanScrollCall(BuiltinFunctionCallExpr expr)
             fnTarget = CreateCallbackThunk(fd, fnMethod, retClr, paramClr) ?? fnMethod;
         refDel ??= ReferenceEquals(fnTarget, fnMethod) ? TryRefDelegateType(fd) : null;
         // SUB (VoidType): callback Action<T...> — Func con retClr=void è IL illegale.
-        Type delegateType = refDel ?? (retClr == _types.Void
-            ? paramClr.Length switch
-            {
-                0 => typeof(Action),
-                1 => typeof(Action<>).MakeGenericType(paramClr[0]),
-                2 => typeof(Action<,>).MakeGenericType(paramClr[0], paramClr[1]),
-                3 => typeof(Action<,,>).MakeGenericType(paramClr[0], paramClr[1], paramClr[2]),
-                _ => throw new NotSupportedException($"Backend IL: callback '{expr.OriginalToken.Lexeme}' con {paramClr.Length} parametri non supportata.")
-            }
-            : paramClr.Length switch
-            {
-                0 => typeof(Func<>).MakeGenericType(retClr),
-                1 => typeof(Func<,>).MakeGenericType(paramClr[0], retClr),
-                2 => typeof(Func<,,>).MakeGenericType(paramClr[0], paramClr[1], retClr),
-                3 => typeof(Func<,,,>).MakeGenericType(paramClr[0], paramClr[1], paramClr[2], retClr),
-                _ => throw new NotSupportedException($"Backend IL: callback '{expr.OriginalToken.Lexeme}' con {paramClr.Length} parametri non supportata.")
-            });
+        // Il tipo delegate viene da DataTypeMapper (Func/Action fino a 16 parametri, poi un
+        // tipo generato a runtime): prima qui c'era uno switch scritto a mano che si fermava a
+        // 3 parametri, quindi una FUNCTION nominata con 4+ parametri usata come callback
+        // falliva SOLO sulla gamba IL.
+        Type delegateType = refDel ?? DataTypeMapper.Map(
+            new FunctionPointerType(
+                fd.Parameters.Select(p => NormalizeInferredType(p.DataType)).ToImmutableArray(),
+                NormalizeInferredType(fd.ReturnType)),
+            _types, _classTypes);
         // Delegate generico chiuso che può contenere un TypeBuilder (es. Func<Punto, Punto>
         // con Punto = TYPE utente): GetConstructor diretto fallisce — serve il ponte
         // TypeBuilder.GetConstructor(closedType, openCtor). MA il ponte richiede che il

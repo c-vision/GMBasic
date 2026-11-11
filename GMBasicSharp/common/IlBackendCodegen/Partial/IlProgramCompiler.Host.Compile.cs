@@ -42,6 +42,10 @@ public sealed partial class IlProgramCompiler
         var asmName = new AssemblyName(assemblyName);
         var assemblyBuilder = new PersistedAssemblyBuilder(asmName, types.Object.Assembly);
         var moduleBuilder = assemblyBuilder.DefineDynamicModule(assemblyName);
+        // Delegate con arità > 16 (limite del BCL): il tipo va definito in QUESTO modulo,
+        // altrimenti l'IL emesso lo referenzia in un assembly dinamico "Run" che il .dll
+        // salvato non può risolvere ("Could not load file or assembly 'GmbDynamicDelegates'").
+        types = types.WithModule(moduleBuilder);
 
         // Il parent va passato ESPLICITAMENTE: a differenza del vecchio
         // AssemblyBuilderAccess.RunAndSave, PersistedAssemblyBuilder non lo assume di default,
@@ -1275,6 +1279,10 @@ public sealed partial class IlProgramCompiler
                     udtFieldCounts.TryGetValue(kv.Key, out var udtNf) ? udtNf : -1);
         }
         foreach (var closureTypeBuilder in closureTypesToFinalize) closureTypeBuilder.CreateType();
+        // Delegate generati per arità > 16 (vedi DataTypeMapper/DelegateTypeBeyondBcl): creati
+        // DOPO i tipi utente, che possono comparire nei loro parametri.
+        if (types.PendingDelegateTypes != null)
+            foreach (var dynDelegate in types.PendingDelegateTypes) dynDelegate.CreateType();
         programType.CreateType();
         entryPointToken = mainMethod.MetadataToken;
         return assemblyBuilder;

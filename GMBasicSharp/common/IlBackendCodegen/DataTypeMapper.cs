@@ -1,6 +1,7 @@
 // FILE: Basic.IlBackend.DataTypeMapper.cs
 
 using System.Linq;
+using System.Reflection;
 using System.Reflection.Emit;
 using Basic.Runtime.Gpm;
 using CommonLib;
@@ -233,17 +234,36 @@ public static class DataTypeMapper
         var arity = fpt.ParameterTypes.Length;
         var paramTypes = fpt.ParameterTypes.Select(p => Map(p, types, classTypes)).ToArray();
 
+        // Oltre i 16 parametri (limite dei delegate del BCL: Func`17 = 16 argomenti + ritorno,
+        // Action`16) il tipo delegate si costruisce a runtime (2026-11-11): GMBASIC ammette
+        // callback fino a 64 parametri e solo il backend IL dipendeva da System.Func/Action.
         if (fpt.ReturnType is VoidType)
         {
             if (arity >= types.ActionOpenGenericsByArity.Length)
-                throw new NotSupportedException($"Backend IL: CALLBACK/SUB con {arity} parametri non ancora supportato (max {types.ActionOpenGenericsByArity.Length - 1}).");
+                return DelegateTypeBeyondBcl(types, types.Void, paramTypes);
             return arity == 0 ? types.ActionOpenGenericsByArity[0] : types.ActionOpenGenericsByArity[arity].MakeGenericType(paramTypes);
         }
 
-        if (arity >= types.FuncOpenGenericsByArity.Length)
-            throw new NotSupportedException($"Backend IL: CALLBACK/FUNCTION con {arity} parametri non ancora supportato (max {types.FuncOpenGenericsByArity.Length - 1}).");
         var returnType = Map(fpt.ReturnType, types, classTypes);
+        if (arity >= types.FuncOpenGenericsByArity.Length)
+            return DelegateTypeBeyondBcl(types, returnType, paramTypes);
         return types.FuncOpenGenericsByArity[arity].MakeGenericType([.. paramTypes, returnType]);
+    }
+
+    /// <summary>Delegate oltre i 16 parametri (limite dei delegate del BCL). Se il contesto è
+    /// legato al modulo di compilazione il tipo viene definito LÌ (e creato a fine
+    /// compilazione, vedi IlTypeContext.PendingDelegateTypes): un tipo di un assembly dinamico
+    /// "Run" non è referenziabile dall'IL emesso. Fallback "Run" per gli usi fuori compilazione.</summary>
+    private static Type DelegateTypeBeyondBcl(IlTypeContext types, Type returnType, Type[] paramTypes)
+    {
+        if (types.ModuleBuilder != null && types.PendingDelegateTypes != null)
+        {
+            var built = DynamicDelegateTypes.DefineIn(types.ModuleBuilder, types.PendingDelegateTypes, returnType, paramTypes, cdecl: false);
+            types.DynamicDelegateMembers ??= new Dictionary<Type, (ConstructorInfo, MethodInfo)>();
+            types.DynamicDelegateMembers[built.Type] = (built.Ctor, built.Invoke);
+            return built.Type;
+        }
+        return DynamicDelegateTypes.GetOrBuild(returnType, paramTypes, cdecl: false);
     }
 }
 

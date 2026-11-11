@@ -503,11 +503,7 @@ public sealed partial class IlProgramCompiler
         // Delegate generico chiuso con un TypeBuilder nei type args (es. lambda con
         // parametro di una CLASS/UDT): GetConstructor diretto fallisce — ponte selettivo
         // (vedi EmitFunctionReference/EmitNewNativeCollection).
-        var delegateCtor = ClosedGenericContainsTypeBuilder(info.DelegateType)
-            ? TypeBuilder.GetConstructor(info.DelegateType,
-                info.DelegateType.GetGenericTypeDefinition().GetConstructor([_types.Object, typeof(IntPtr)])!)
-            : info.DelegateType.GetConstructor([_types.Object, typeof(IntPtr)])
-              ?? throw new NotSupportedException($"Backend IL: costruttore del delegate '{info.DelegateType}' non trovato.");
+        var delegateCtor = ResolveDelegateCtor(info.DelegateType);
 
         if (info.ClosureType is null)
         {
@@ -569,8 +565,7 @@ public sealed partial class IlProgramCompiler
         foreach (var arg in ev.Args) EmitExpression(arg);
         if (!_lambdaInfos.TryGetValue(le, out var info))
             throw new NotSupportedException("Backend IL: lambda non scoperta da DiscoverAndCompileLambdas (bug interno).");
-        var invokeMethod = info.DelegateType.GetMethod("Invoke")
-            ?? throw new NotSupportedException($"Backend IL: metodo Invoke non trovato sul delegate '{info.DelegateType}'.");
+        var invokeMethod = ResolveDelegateInvoke(info.DelegateType);
         _il.Emit(OpCodes.Callvirt, invokeMethod);
     }
 
@@ -579,6 +574,31 @@ public sealed partial class IlProgramCompiler
     /// tipo CALLBACK/FUNCTION() invocata come DELEGATE.Invoke(args), non una `call`
     /// diretta a un MethodBuilder noto (quella resta EmitFunctionCall).
     /// </summary>
+    /// <summary>Costruttore (object, IntPtr) del tipo delegate: gestisce i delegate definiti a
+    /// runtime (arity &gt; 16, vedi DynamicDelegateTypes), per cui <c>GetConstructor</c> su un
+    /// TypeBuilder non ancora creato lancia, e i generici chiusi che contengono un TypeBuilder
+    /// (ponte selettivo).</summary>
+    private ConstructorInfo ResolveDelegateCtor(Type delegateType)
+    {
+        if (_types.DynamicDelegateMembers != null && _types.DynamicDelegateMembers.TryGetValue(delegateType, out var dyn))
+            return dyn.Ctor;
+        if (ClosedGenericContainsTypeBuilder(delegateType))
+            return TypeBuilder.GetConstructor(delegateType,
+                delegateType.GetGenericTypeDefinition().GetConstructor([_types.Object, typeof(IntPtr)])!);
+        return delegateType.GetConstructor([_types.Object, typeof(IntPtr)])
+            ?? throw new NotSupportedException($"Backend IL: costruttore del delegate '{delegateType}' non trovato.");
+    }
+
+    /// <summary>Metodo Invoke del tipo delegate (vedi <see cref="ResolveDelegateCtor"/> per i
+    /// delegate definiti a runtime).</summary>
+    private MethodInfo ResolveDelegateInvoke(Type delegateType)
+    {
+        if (_types.DynamicDelegateMembers != null && _types.DynamicDelegateMembers.TryGetValue(delegateType, out var dyn))
+            return dyn.Invoke;
+        return delegateType.GetMethod("Invoke")
+            ?? throw new NotSupportedException($"Backend IL: metodo Invoke non trovato sul delegate '{delegateType}'.");
+    }
+
     private LocalBuilder? FindClosureContextLocal(Type closureDeclaringType)
     {
         foreach (var kv in _locals)

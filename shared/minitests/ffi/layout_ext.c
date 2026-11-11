@@ -330,3 +330,13 @@ double cb_mixed_q(double (*f)(double, int64_t, double), int64_t n, double d)
 {
     return f(d, n, d);
 }
+
+/* ── Callback con ARITÀ 17 (2026-11-11) ───────────────────────────────────────
+ * Oltre il limite dei delegate del BCL (System.Func arriva a 16 argomenti + ritorno):
+ * sulla gamba IL il tipo delegate viene generato a runtime. */
+double cb_apply17(double (*f)(double, double, double, double, double, double, double, double,
+                              double, double, double, double, double, double, double, double,
+                              double), double x)
+{
+    return f(x, x, x, x, x, x, x, x, x, x, x, x, x, x, x, x, x);
+}

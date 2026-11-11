@@ -2,6 +2,7 @@
 
 using System.Linq;
 using System.Reflection;
+using System.Reflection.Emit;
 
 namespace Basic.IlBackend;
 
@@ -33,6 +34,31 @@ namespace Basic.IlBackend;
 /// </summary>
 public sealed class IlTypeContext
 {
+    /// <summary>Modulo dell'assembly in compilazione (null in <see cref="ForRuntime"/>).
+    /// Serve a definire nello STESSO modulo i tipi che l'IL emesso deve referenziare —
+    /// oggi i delegate con arità &gt; 16 (limite del BCL): un tipo di un assembly dinamico
+    /// "Run" NON è risolvibile dal .dll salvato (PersistedAssemblyBuilder).</summary>
+    public ModuleBuilder? ModuleBuilder { get; set; }
+
+    /// <summary>TypeBuilder di delegate generati durante la compilazione, da
+    /// <c>CreateType()</c>-are alla fine (dopo i tipi utente, che possono comparire nei
+    /// loro parametri), con costruttore e Invoke già risolti (su un TypeBuilder non ancora
+    /// creato <c>GetConstructor</c>/<c>GetMethod</c> lanciano).</summary>
+    public List<TypeBuilder>? PendingDelegateTypes { get; set; }
+
+    /// <summary>Membri dei delegate di cui sopra, per tipo (chiave = il TypeBuilder).</summary>
+    public Dictionary<Type, (ConstructorInfo Ctor, MethodInfo Invoke)>? DynamicDelegateMembers { get; set; }
+
+    /// <summary>Copia shallow del contesto legata a un modulo di compilazione.</summary>
+    public IlTypeContext WithModule(ModuleBuilder module)
+    {
+        var copy = (IlTypeContext)MemberwiseClone();
+        copy.ModuleBuilder = module;
+        copy.PendingDelegateTypes ??= new List<TypeBuilder>();
+        copy.DynamicDelegateMembers ??= new Dictionary<Type, (ConstructorInfo, MethodInfo)>();
+        return copy;
+    }
+
     public required Type Object { get; init; }
     public required Type ValueType { get; init; }
     public required Type Void { get; init; }
