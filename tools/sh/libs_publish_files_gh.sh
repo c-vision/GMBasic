@@ -251,15 +251,27 @@ for f in "${FILES[@]}"; do
 done
 [ "$MISSING" = "0" ] || { echo "ERRORE: $MISSING asset non pubblicati col nome atteso" >&2; exit 1; }
 
-# --prune: asset per-file di QUESTO RID che non corrispondono più alla sorgente
+# --prune: asset per-file di QUESTO RID che non corrispondono più alla sorgente.
+# LINEARITÀ (2026-11-11). Prima, per OGNI asset si riscandiva FILES con una subshell
+# `$(A "$f")`: costo O(n²), e su un bundle `dev` (600-1000 asset) il comando non terminava in
+# tempi utili (misurato: oltre 290 s su 664 asset, sembrava appeso). Ora l'insieme atteso si
+# materializza UNA volta e il confronto è `comm` fra due file ordinati: nessuna subshell per asset.
 if [ "$PRUNE" = "1" ]; then
+  WANT="$(mktemp)"; HAVE="$(mktemp)"
+  for f in "${FILES[@]}"; do A "$f"; printf '\n'; done | sort > "$WANT"
+  : > "$HAVE"
   while IFS= read -r a; do
     [ -n "$a" ] || continue
     case "$a" in *"-$RID") ;; *"-$RID".*) ;; *) continue;; esac
-    found=0
-    for f in "${FILES[@]}"; do [ "$a" = "$(A "$f")" ] && { found=1; break; }; done
-    [ "$found" = "1" ] || { echo "  prune: $a" >&2; gh release delete-asset "$TAG" "$a" --repo "$REPO" --yes >/dev/null 2>&1; }
+    printf '%s\n' "$a" >> "$HAVE"
   done <<< "$NOW"
+  sort -o "$HAVE" "$HAVE"
+  comm -13 "$WANT" "$HAVE" | while IFS= read -r a; do
+    [ -n "$a" ] || continue
+    echo "  prune: $a" >&2
+    gh release delete-asset "$TAG" "$a" --repo "$REPO" --yes >/dev/null 2>&1
+  done
+  rm -f "$WANT" "$HAVE"
 fi
 
 # TSV per l'indice: name, sha256, size, url (sha ricalcolato sui byte caricati)
