@@ -340,3 +340,21 @@ double cb_apply17(double (*f)(double, double, double, double, double, double, do
 {
     return f(x, x, x, x, x, x, x, x, x, x, x, x, x, x, x, x, x);
 }
+
+/* ── Struct PACKED per valore/puntatore (2026-11-11) ──────────────────────────
+ * `__attribute__((packed))`: nessun padding. int32@0, double@4, int8@12 → size 13. */
+typedef struct __attribute__((packed)) { int32_t a; double b; int8_t c; } PackedMix;
+
+double packed_sum(const PackedMix *p) { return (double)p->a + p->b + (double)p->c; }
+double packed_sum_val(PackedMix p) { return (double)p.a + p.b + (double)p.c; }
+PackedMix packed_make(int32_t a, double b, int8_t c) { PackedMix p; p.a = a; p.b = b; p.c = c; return p; }
+void packed_bump(PackedMix *p) { p->a += 1; p->b += 0.5; p->c += 1; }
+double packed_arr_sum(const PackedMix *p, int64_t n)
+{
+    double s = 0;
+    for (int64_t i = 0; i < n; i++) s += (double)p[i].a + p[i].b + (double)p[i].c;
+    return s;
+}
+
+/* BYREF della struct NON packed (per isolare un eventuale bug preesistente del BYREF UDT). */
+double mixed_sum_ref(const Mixed *p) { return (double)p->a + p->b + (double)p->c; }

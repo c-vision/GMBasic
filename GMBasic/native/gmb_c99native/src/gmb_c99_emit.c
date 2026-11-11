@@ -32134,6 +32134,9 @@ static const char* ffi_code_ctype(int code) {
 static int ffi_layout_rec(ctx_t* c, struct cls_info* ci, const char* prefix, ffi_leaf_t* out,
                           int* n, int max, int* max_align, int depth) {
     if (depth > 8) return -1;
+    /* PACKED TYPE (2026-11-11): layout senza padding, come `__attribute__((packed))` — nessun
+     * allineamento tra i campi e nessuna taglia finale arrotondata. */
+    int packed = ci->is_packed;
     int off = 0, al = 1;
     for (int fi = 0; fi < ci->nfields; fi++) {
         char path[128];
@@ -32153,7 +32156,7 @@ static int ffi_layout_rec(ctx_t* c, struct cls_info* ci, const char* prefix, ffi
             if (code == 9) return -1;
             if (cls_find(c, base)) return -1;
             int sz = ffi_code_size(code);
-            off = (off + sz - 1) / sz * sz;
+            if (!packed) off = (off + sz - 1) / sz * sz;
             for (int k = 0; k < arrn; k++) {
                 if (*n >= max) return -1;
                 char apath[160];
@@ -32173,7 +32176,7 @@ static int ffi_layout_rec(ctx_t* c, struct cls_info* ci, const char* prefix, ffi
         if (code >= 0) {
             if (*n >= max) return -1;
             int sz = ffi_code_size(code);
-            off = (off + sz - 1) / sz * sz;
+            if (!packed) off = (off + sz - 1) / sz * sz;
             snprintf(out[*n].path, sizeof(out[*n].path), "%s", path);
             out[*n].is_int = (code != 0 && code != 8);
             out[*n].code = code;
@@ -32191,14 +32194,14 @@ static int ffi_layout_rec(ctx_t* c, struct cls_info* ci, const char* prefix, ffi
             if (sub_size < 0) return sub_size;
             int end = (start < *n) ? out[*n - 1].off + out[*n - 1].size : 0;
             if (sub_size != end) return -2;   /* padding interno: flattening non ABI-safe */
-            off = (off + sub_al - 1) / sub_al * sub_al;
+            if (!packed) off = (off + sub_al - 1) / sub_al * sub_al;
             for (int k = start; k < *n; k++) out[k].off += off;
             off += sub_size;
             if (sub_al > al) al = sub_al;
         }
     }
     if (al > *max_align) *max_align = al;
-    return (off + al - 1) / al * al;
+    return packed ? off : (off + al - 1) / al * al;
 }
 
 /* Raccoglie le foglie di ci in out (max maxOut), "silenziosa" (nessun c99_fail): usata SOLO
@@ -32821,6 +32824,15 @@ static void emit_ffi_wrapper(ctx_t* c, fn_info_t* fn, const char* vkey) {
                          "(solo TYPE semplici, senza operatori/costruttori/metodi/generici).", sym, uci->name, what);
                 return;
             }
+            /* PACKED per VALORE (2026-11-11): il layout senza padding non è rappresentabile
+             * nell'ABI (la VM/C usa la classificazione di libffi) → il trampolino naturale
+             * passerebbe registri/memoria diversi. Ammesso solo BYREF e array di UDT. */
+            if (uci->is_packed && !(s->param_byref && s->param_byref[i])) {
+                c99_fail(c, s->line, "FFI '%s': lo UDT PACKED '%s' non è ammesso per %s per VALORE "
+                         "(layout senza padding non rappresentabile nell'ABI: passa BYREF o come "
+                         "array di UDT).", sym, uci->name, what);
+                return;
+            }
             /* Kind misto come PARAMETRO (2026-09-29, era vietato — parità
              * Compiler.Expressions.cs): ammesso, il conteggio "al massimo uno" e' verificato
              * DOPO il loop (mixed_udt_param_count sotto). */
@@ -32881,6 +32893,11 @@ static void emit_ffi_wrapper(ctx_t* c, fn_info_t* fn, const char* vkey) {
                 return;
             }
             if (!ffi_validate_udt(c, rci, sym, "il ritorno", s->line, /*allow_mixed_kind=*/1)) return;
+            if (rci->is_packed) {
+                c99_fail(c, s->line, "FFI '%s': lo UDT PACKED '%s' non è ammesso come RITORNO "
+                         "(layout senza padding non rappresentabile nell'ABI).", sym, rci->name);
+                return;
+            }
             ret_udt_ci = rci;
         } else {
             gmb_tokenkind_t rk = gmb_keyword_tok(s->func_ret_type);
@@ -35919,10 +35936,15 @@ static int gmb_c99_emit_once(const gmb_program_t* prog, char** out_src, char** e
         ffi_leaf_t __lv[64];
         int __n = collect_ffi_leaves_silent(c, __cu, "", __lv, 64);
         if (__n <= 0 || __n > 64) continue;
+        /* PACKED TYPE: il typedef-ombra deve essere packed come la struct C reale, altrimenti
+         * il compilatore C inserisce il padding e gli offset divergono (2026-11-11). */
         sb_printf(&proto, "typedef struct { ");
         for (int __f = 0; __f < __n; __f++)
             sb_printf(&proto, "%s f%d; ", ffi_code_ctype(__lv[__f].code), __f);
-        sb_printf(&proto, "} gmb_ffi_udt_%s_t;\n", __cu->name);
+        if (__cu->is_packed)
+            sb_printf(&proto, "} __attribute__((packed)) gmb_ffi_udt_%s_t;\n", __cu->name);
+        else
+            sb_printf(&proto, "} gmb_ffi_udt_%s_t;\n", __cu->name);
     }
     if (c->n_classes) sb_put(&proto, "\n");
     for (int i = 0; i < c->nfn; i++) {

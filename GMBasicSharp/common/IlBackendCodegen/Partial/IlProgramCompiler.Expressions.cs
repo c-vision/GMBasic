@@ -1598,6 +1598,9 @@ public sealed partial class IlProgramCompiler
         };
         int LayoutUdt2(UserDefinedType udt, string what, string prefix, List<(string Path, int Code, int Off)> outLeaves)
         {
+            // PACKED TYPE (2026-11-11): layout C senza padding, come `__attribute__((packed))`
+            // (parita Compiler.Expressions.cs) — gli offset devono coincidere con quelli del C.
+            var packed2 = udt.IsPacked;
             var off = 0; var align = 1;
             foreach (var f in udt.Fields)
             {
@@ -1617,7 +1620,7 @@ public sealed partial class IlProgramCompiler
                         else throw new NotSupportedException($"FFI '{symbolName}': il campo array '{path}' deve avere bound letterali ({what}).");
                     }
                     var szA = FfiSz2(codeArr);
-                    off = (off + szA - 1) / szA * szA;
+                    if (!packed2) off = (off + szA - 1) / szA * szA;
                     for (var k = 0; k < nArr; k++)
                     {
                         outLeaves.Add(($"{path}[{k}]", codeArr, off));
@@ -1639,7 +1642,7 @@ public sealed partial class IlProgramCompiler
                         throw new NotSupportedException($"FFI '{symbolName}': lo UDT '{udt.Name.Lexeme}' usato per {what} contiene la struttura annidata '{sub.Name.Lexeme}' con PADDING: il layout non è riproducibile — dichiara i campi nell'UDT esterno.");
                     var subAlign = 1;
                     foreach (var l in outLeaves.GetRange(start, outLeaves.Count - start)) subAlign = Math.Max(subAlign, FfiSz2(l.Code));
-                    off = (off + subAlign - 1) / subAlign * subAlign;
+                    if (!packed2) off = (off + subAlign - 1) / subAlign * subAlign;
                     for (var k = start; k < outLeaves.Count; k++)
                     {
                         var l = outLeaves[k];
@@ -1654,13 +1657,13 @@ public sealed partial class IlProgramCompiler
                     if (code < 0)
                         throw new NotSupportedException($"FFI '{symbolName}': tipo del campo '{path}' non supportato per {what}.");
                     var sz = FfiSz2(code);
-                    off = (off + sz - 1) / sz * sz;
+                    if (!packed2) off = (off + sz - 1) / sz * sz;
                     outLeaves.Add((path, code, off));
                     off += sz;
                     align = Math.Max(align, sz);
                 }
             }
-            return (off + align - 1) / align * align;
+            return packed2 ? off : (off + align - 1) / align * align;
         }
         string UdtShapeString(UserDefinedType udt, string what)
         {
@@ -1727,8 +1730,23 @@ public sealed partial class IlProgramCompiler
         // IL non ne avrebbe bisogno, ma la guardia resta identica su tutti e 5 i backend per
         // parità cross-backend).
         foreach (var p in epd.Parameters)
-            if (IsUdtParam(p)) ValidateUdtForFfi((UserDefinedType)p.DataType!, $"il parametro '{p.Name.Lexeme}'", allowMixedKind: true);
-        if (udtReturn != null) ValidateUdtForFfi(udtReturn, "il ritorno", allowMixedKind: true);
+            if (IsUdtParam(p))
+            {
+                var udtP = (UserDefinedType)p.DataType!;
+                // PACKED per VALORE: vedi Compiler.Expressions.cs (la VM/C non può esprimere un
+                // layout packed nella classificazione ABI di libffi) — ammesso BYREF/array.
+                if (udtP.IsPacked && !IsByRefUdtParam(p))
+                    throw new NotSupportedException(
+                        $"FFI '{symbolName}': lo UDT PACKED '{udtP.Name.Lexeme}' non è ammesso per il parametro '{p.Name.Lexeme}' per VALORE (layout senza padding non rappresentabile nell'ABI: passa BYREF o come array di UDT).");
+                ValidateUdtForFfi(udtP, $"il parametro '{p.Name.Lexeme}'", allowMixedKind: true);
+            }
+        if (udtReturn != null)
+        {
+            if (udtReturn.IsPacked)
+                throw new NotSupportedException(
+                    $"FFI '{symbolName}': lo UDT PACKED '{udtReturn.Name.Lexeme}' non è ammesso come RITORNO (layout senza padding non rappresentabile nell'ABI).");
+            ValidateUdtForFfi(udtReturn, "il ritorno", allowMixedKind: true);
+        }
         // S0 (2026-11-06): il limite "un solo parametro UDT a kind misto" era del dispatch
         // per-cast della VM/C; con libffi (slot per argomento) non serve più.
         foreach (var p in epd.Parameters)

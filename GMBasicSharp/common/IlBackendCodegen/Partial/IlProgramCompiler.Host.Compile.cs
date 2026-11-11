@@ -203,20 +203,13 @@ public sealed partial class IlProgramCompiler
                     "Udt_" + udtDef.SymbolId,
                     TypeAttributes.Public | TypeAttributes.SequentialLayout | TypeAttributes.Sealed,
                     types.ValueType);
-            // PACKED TYPE: layout senza padding — [StructLayout(LayoutKind.Sequential, Pack=1)]
-            // (campi allineati a 1 byte, nessuno spazio di riempimento tra i campi).
-            // NB: StructLayoutAttribute.Pack è un CAMPO (non una proprietà) → overload
-            // CustomAttributeBuilder(ctor, args, namedFields, fieldValues).
-            if (udtDef.IsPacked)
-            {
-                var structLayoutCtor = typeof(System.Runtime.InteropServices.StructLayoutAttribute)
-                    .GetConstructor([typeof(System.Runtime.InteropServices.LayoutKind)]);
-                var packField = typeof(System.Runtime.InteropServices.StructLayoutAttribute)
-                    .GetField(nameof(System.Runtime.InteropServices.StructLayoutAttribute.Pack));
-                udtBuilder.SetCustomAttribute(new CustomAttributeBuilder(
-                    structLayoutCtor!, new object[] { System.Runtime.InteropServices.LayoutKind.Sequential },
-                    [packField!], new object[] { 1 }));
-            }
+            // PACKED TYPE (2026-11-11): la rappresentazione CLR resta NATURALE — il layout
+            // packed serve SOLO alla frontiera FFI, dove viaggia come forma/offset espliciti
+            // (UdtShapeString). Dichiarare Pack=1 sul tipo del dialetto rendeva i campi
+            // disallineati, e la reflection su di essi (GetValue/SetValue del marshalling UDT)
+            // fa crashare il runtime in modo intermittente (FieldDesc::*InstanceField, SIGBUS
+            // su ARM64, ~50% delle esecuzioni). Il layout C è comunque rispettato: gli UDT
+            // packed sono ammessi solo BYREF/array (il per-valore è rifiutato a compile-time).
             classTypes[udtDef.SymbolId] = udtBuilder;
             udtBasicNames[udtDef.SymbolId] = udtDef.OriginalName.Lexeme;
             udtFieldCounts[udtDef.SymbolId] = udtDef.Fields.Length;

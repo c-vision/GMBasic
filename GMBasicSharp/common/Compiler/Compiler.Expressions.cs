@@ -1080,6 +1080,12 @@ public sealed partial class Compiler
             int LayoutUdt(UserDefinedType udt, string what, string pathPrefix, string symPrefix,
                           List<(string Path, string SymbolIdPath, int Code, int Off, bool IsInt)> outLeaves)
             {
+                // PACKED TYPE (2026-11-11): layout C senza padding (come `__attribute__((packed))`)
+                // — ogni campo parte subito dopo il precedente, taglia finale = somma delle
+                // taglie. Prima il layout FFI allineava sempre: un PACKED TYPE passato a una
+                // funzione C con struct packed leggeva/scetc. valori sbagliati (gli offset non
+                // coincidevano con quelli reali del C).
+                var packed = udt.IsPacked;
                 var off = 0; var align = 1;
                 foreach (var f in udt.Fields)
                 {
@@ -1111,7 +1117,7 @@ public sealed partial class Compiler
                                 $"FFI '{symbolName}': il campo array '{path}' deve avere bound letterali ({what}).");
                         }
                         var szA = FfiSz(codeArr);
-                        off = (off + szA - 1) / szA * szA;
+                        if (!packed) off = (off + szA - 1) / szA * szA;
                         for (var k = 0; k < nArr; k++)
                         {
                             outLeaves.Add(($"{path}[{k}]", symPath, codeArr, off, codeArr != 0 && codeArr != 8));
@@ -1135,7 +1141,7 @@ public sealed partial class Compiler
                         var subAlign = 1;
                         foreach (var l in outLeaves.GetRange(start, outLeaves.Count - start))
                             subAlign = Math.Max(subAlign, FfiSz(l.Code));
-                        off = (off + subAlign - 1) / subAlign * subAlign;
+                        if (!packed) off = (off + subAlign - 1) / subAlign * subAlign;
                         for (var k = start; k < outLeaves.Count; k++)
                         {
                             var l = outLeaves[k];
@@ -1151,13 +1157,13 @@ public sealed partial class Compiler
                             throw new BasicException(expr.OriginalToken,
                                 $"FFI '{symbolName}': tipo del campo '{path}' non supportato per {what} (UDT '{udt.Name.Lexeme}'; ammessi DOUBLE/SINGLE, interi a 1/2/4/8 byte, STRING).");
                         var sz = FfiSz(code);
-                        off = (off + sz - 1) / sz * sz;
+                        if (!packed) off = (off + sz - 1) / sz * sz;
                         outLeaves.Add((path, symPath, code, off, code != 0 && code != 8));
                         off += sz;
                         align = Math.Max(align, sz);
                     }
                 }
-                return (off + align - 1) / align * align;
+                return packed ? off : (off + align - 1) / align * align;
             }
             // IsMixedKindUdt/UdtKind sono chiamate SOLO dopo la validazione per lo stesso UDT.
             IEnumerable<bool> LeafKinds(UserDefinedType udt) => udt.Fields.SelectMany(f =>
@@ -1192,9 +1198,21 @@ public sealed partial class Compiler
             for (var pi = 0; pi < ffiProc.Parameters.Length; pi++)
                 if (IsUdtParam(ffiProc.Parameters[pi]))
                 {
+                    var udtP = (UserDefinedType)ffiProc.Parameters[pi].DataType;
+                    // PACKED per VALORE (2026-11-11): il layout C packed (senza padding) non è
+                    // esprimibile nella classificazione ABI di libffi (VM/C): il trampolino
+                    // naturale produce registri/memoria diversi → valori sbagliati. Ammesso solo
+                    // per BYREF (puntatore alla struct) e array di UDT, dove il buffer è nostro.
+                    if (udtP.IsPacked && !IsByRefUdtParam(ffiProc.Parameters[pi]))
+                        throw new BasicException(expr.OriginalToken,
+                            $"FFI '{symbolName}': lo UDT PACKED '{udtP.Name.Lexeme}' non è ammesso per il parametro '{ffiProc.Parameters[pi].Name.Lexeme}' per VALORE (layout senza padding non rappresentabile nell'ABI: passa BYREF o come array di UDT).");
                     var leaves = ValidateUdtForFfi((UserDefinedType)ffiProc.Parameters[pi].DataType, $"il parametro '{ffiProc.Parameters[pi].Name.Lexeme}'");
                     if (pi < FfiMaxArgs) udtParamLeaves[pi] = leaves;
                 }
+            // Ritorno PACKED per valore: stesso limite del parametro per valore.
+            if (udtReturn != null && udtReturn.IsPacked)
+                throw new BasicException(expr.OriginalToken,
+                    $"FFI '{symbolName}': lo UDT PACKED '{udtReturn.Name.Lexeme}' non è ammesso come RITORNO (layout senza padding non rappresentabile nell'ABI).");
             var udtReturnLeaves = udtReturn != null ? ValidateUdtForFfi(udtReturn, "il ritorno") : null;
             // S0 (2026-11-06): il limite "un solo parametro UDT a kind misto" era del dispatch
             // per-cast della VM/C; con libffi (slot per argomento) non serve più.

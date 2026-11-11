@@ -505,15 +505,27 @@ public class FfiService : IFfiService
         var asmName = new AssemblyName("FfiUdtShapes");
         var asmBuilder = AssemblyBuilder.DefineDynamicAssembly(asmName, AssemblyBuilderAccess.Run);
         var modBuilder = asmBuilder.DefineDynamicModule("Main");
+        // PACKED (2026-11-11): un layout senza padding NON va dichiarato con FieldOffset espliciti
+        // — i campi finiscono disallineati e `FieldInfo.SetValue` (reflection) su un campo non
+        // allineato fa crashare il runtime (FieldDesc::SetInstanceField, SIGBUS intermittente su
+        // ARM64). Con Sequential+Packed=1 il CLR calcola gli stessi offset ma marca i campi come
+        // unaligned.
+        var packedShape = types != null && offsets != null && IsPackedOffsets(types, offsets);
         var typeBuilder = modBuilder.DefineType(
             $"FfiUdtShape_{(types != null ? "L" : "K")}{Math.Abs(shapeKey.GetHashCode())}",
-            TypeAttributes.Public | TypeAttributes.ExplicitLayout | TypeAttributes.Sealed, typeof(ValueType));
+            TypeAttributes.Public | (packedShape ? TypeAttributes.SequentialLayout : TypeAttributes.ExplicitLayout) | TypeAttributes.Sealed, typeof(ValueType));
+        if (packedShape)
+            typeBuilder.SetCustomAttribute(new CustomAttributeBuilder(
+                typeof(System.Runtime.InteropServices.StructLayoutAttribute).GetConstructor([typeof(System.Runtime.InteropServices.LayoutKind)])!,
+                new object[] { System.Runtime.InteropServices.LayoutKind.Sequential },
+                [typeof(System.Runtime.InteropServices.StructLayoutAttribute).GetField(nameof(System.Runtime.InteropServices.StructLayoutAttribute.Pack))!],
+                new object[] { 1 }));
         var n = types?.Length ?? fieldIsInt.Length;
         for (var i = 0; i < n; i++)
         {
             var clr = types != null ? ClrTypeOfFfiCode(types[i]) : (fieldIsInt[i] ? typeof(long) : typeof(double));
             var fb = typeBuilder.DefineField($"F{i}", clr, FieldAttributes.Public);
-            if (types != null && offsets != null && i < offsets.Length)
+            if (!packedShape && types != null && offsets != null && i < offsets.Length)
                 fb.SetCustomAttribute(new CustomAttributeBuilder(
                     typeof(System.Runtime.InteropServices.FieldOffsetAttribute).GetConstructor([typeof(int)])!,
                     new object[] { offsets[i] }));
@@ -521,6 +533,20 @@ public class FfiService : IFfiService
         var built = typeBuilder.CreateType()!;
         _udtShapeTypeCache[shapeKey] = built;
         return built;
+    }
+
+    /// <summary>True se gli offset seguono il pattern PACKED (ogni campo subito dopo il
+    /// precedente, senza padding di allineamento).</summary>
+    private static bool IsPackedOffsets(byte[] types, int[] offsets)
+    {
+        static int Sz(byte code) => code switch { 0 or 1 or 9 or 10 => 8, 6 or 7 or 8 => 4, 4 or 5 => 2, _ => 1 };
+        var off = 0;
+        for (var i = 0; i < types.Length; i++)
+        {
+            if (i < offsets.Length && offsets[i] != off) return false;
+            off += Sz(types[i]);
+        }
+        return true;
     }
 
     /// <summary>Converte un valore grezzo (double/long/string) nel tipo CLR del campo struct C
@@ -554,6 +580,15 @@ public class FfiService : IFfiService
     /// write-back del BYREF UDT in IL (il delegate ritorna il tipo-ombra, non quello del
     /// dialetto).</summary>
     public static object CopyShapeToStruct(string shapeStr, object? shadow, object? current)
+        => CopyShapeValuesToStruct(shapeStr,
+            shadow is object?[] vals ? vals : null,
+            current, shadow);
+
+    /// <summary>Come <see cref="CopyShapeToStruct"/> ma con i valori per foglia già come
+    /// array (il backend IL li riceve così dal BYREF UDT: niente struct-ombra PACKED a runtime,
+    /// vedi FfiService.CallFunctionTypedArrCore). <paramref name="legacyShapeObject"/> resta per
+    /// il percorso storico che passa una struct-ombra.</summary>
+    public static object CopyShapeValuesToStruct(string shapeStr, object?[]? values, object? current, object? legacyShapeObject = null)
     {
         var (_, fields) = ParseUdtShape(shapeStr);
         var dst = current ?? throw new ArgumentNullException(nameof(current));
@@ -564,7 +599,9 @@ public class FfiService : IFfiService
             fi.SetValue(fresh, fi.GetValue(dst));
         for (var f = 0; f < fields.Length; f++)
         {
-            var raw = shadow?.GetType().GetField($"F{f}")?.GetValue(shadow);
+            var raw = values != null
+                ? (f < values.Length ? values[f] : null)
+                : legacyShapeObject?.GetType().GetField($"F{f}")?.GetValue(legacyShapeObject);
             object? val = fields[f].Code == 9
                 ? (raw is IntPtr ip ? (Marshal.PtrToStringUTF8(ip) ?? "") : (raw as string ?? ""))
                 : Convert.ToDouble(raw ?? 0.0);
@@ -623,14 +660,25 @@ public class FfiService : IFfiService
         if (_staticShapeCache.TryGetValue(key, out var cached)) return cached;
         var asmBuilder = AssemblyBuilder.DefineDynamicAssembly(new AssemblyName("FfiUdtShapesS"), AssemblyBuilderAccess.Run);
         var modBuilder = asmBuilder.DefineDynamicModule("M");
+        // PACKED: Sequential+Packed=1 invece di FieldOffset espliciti (vedi
+        // GetOrBuildUdtShapeType: i campi disallineati con layout esplicito fanno crashare
+        // FieldInfo.SetValue su ARM64).
+        var packedShape = IsPackedOffsets(types, offsets);
         var tb = modBuilder.DefineType("FfiUdtShape_" + Math.Abs(key.GetHashCode()),
-            TypeAttributes.Public | TypeAttributes.ExplicitLayout | TypeAttributes.Sealed, typeof(ValueType));
+            TypeAttributes.Public | (packedShape ? TypeAttributes.SequentialLayout : TypeAttributes.ExplicitLayout) | TypeAttributes.Sealed, typeof(ValueType));
+        if (packedShape)
+            tb.SetCustomAttribute(new CustomAttributeBuilder(
+                typeof(System.Runtime.InteropServices.StructLayoutAttribute).GetConstructor([typeof(System.Runtime.InteropServices.LayoutKind)])!,
+                new object[] { System.Runtime.InteropServices.LayoutKind.Sequential },
+                [typeof(System.Runtime.InteropServices.StructLayoutAttribute).GetField(nameof(System.Runtime.InteropServices.StructLayoutAttribute.Pack))!],
+                new object[] { 1 }));
         for (var i = 0; i < types.Length; i++)
         {
             var fb = tb.DefineField($"F{i}", ClrTypeOfFfiCode(types[i]), FieldAttributes.Public);
-            fb.SetCustomAttribute(new CustomAttributeBuilder(
-                typeof(System.Runtime.InteropServices.FieldOffsetAttribute).GetConstructor([typeof(int)])!,
-                new object[] { offsets[i] }));
+            if (!packedShape)
+                fb.SetCustomAttribute(new CustomAttributeBuilder(
+                    typeof(System.Runtime.InteropServices.FieldOffsetAttribute).GetConstructor([typeof(int)])!,
+                    new object[] { offsets[i] }));
         }
         var built = tb.CreateType()!;
         _staticShapeCache[key] = built;
@@ -1570,14 +1618,13 @@ public class FfiService : IFfiService
                 }
                 else
                 {
-                    // IL: ricostruisce la struct-OMBRA aggiornata (il writeback la converte).
-                    var ffiTypeBr = byrefUdtShapeStr[i] != null
-                        ? BuildFfiTypeFromShape(ParseUdtShape(byrefUdtShapeStr[i]!).Fields)
-                        : GetOrBuildUdtShapeType(shpBr.FieldTypes, shpBr.FieldIsInt, shpBr.FieldOffsets);
-                    var boxedBr = Activator.CreateInstance(ffiTypeBr)!;
-                    for (var f = 0; f < shpBr.FieldNames.Length; f++)
-                        ffiTypeBr.GetField($"F{f}")!.SetValue(boxedBr, valsBr[f]);
-                    args[i] = boxedBr;
+                    // IL: al writeback arrivano i VALORI per foglia (object[]), non una
+                    // struct-ombra. Creare/riempire una struct con layout PACKED a runtime è
+                    // instabile: i campi sono disallineati e la reflection su di essi (o il
+                    // marshaler) fa crashare il processo in modo intermittente
+                    // (FieldDesc::*InstanceField, SIGBUS su ARM64). Il tipo del DIALETTO ha
+                    // layout naturale e viene aggiornato campo per campo dal writeback.
+                    args[i] = valsBr;
                 }
             }
             if (retIsString)
