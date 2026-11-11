@@ -636,6 +636,29 @@ else()
     target_link_options(gmbclm PRIVATE -Wl,--allow-shlib-undefined)
 endif()
 
+# ── MATRIX FLAT: kernel matriciali per i backend MANAGED (P/Invoke C#→C) ──────────────────────
+# IL/PCodeVM implementavano SINM/TANM/ORTH con MathNet, mentre VM/C e C99Native usano i kernel
+# del runtime C: due implementazioni indipendenti → differenze di pochi ulp visibili quando un
+# sample stampa 15 cifre (parity4 testo-esatto). Questa lib espone `gmb_matrix_flat_op` con
+# buffer piatti: il managed chiama la STESSA funzione delle gambe C (sorgente unica) e ricade
+# sul managed se la lib non è disponibile.
+add_library(gmb_matrix_flat SHARED
+    src/gmb_matrix_flat.c
+)
+target_include_directories(gmb_matrix_flat PUBLIC include)
+target_link_libraries(gmb_matrix_flat PRIVATE gmb_runtime)
+set_target_properties(gmb_matrix_flat PROPERTIES
+    OUTPUT_NAME gmb_matrix_flat
+    C_VISIBILITY_PRESET default
+    LIBRARY_OUTPUT_DIRECTORY "${GMB_LIBS_OUT}")
+# Stessa ricetta di gmb_fonts/gmb_grep: la static gmb_runtime trascina oggetti UI/TUI con
+# simboli forniti dall'host; i kernel matriciali non li usano → risolti a runtime.
+if(APPLE)
+    target_link_options(gmb_matrix_flat PRIVATE -Wl,-undefined,dynamic_lookup)
+else()
+    target_link_options(gmb_matrix_flat PRIVATE -Wl,--allow-shlib-undefined)
+endif()
+
 # COMPRESSION come libreria CONDIVISA per P/Invoke (REPL/backends C#): esporta
 # gmb_compress_b64/decompress_b64/free (zstd/lz4/xz + zlib/bz2/brotli).
 add_library(gmb_compress SHARED
