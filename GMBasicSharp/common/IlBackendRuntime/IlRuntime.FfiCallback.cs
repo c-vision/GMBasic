@@ -64,8 +64,12 @@ public static partial class IlRuntime
             for (var i = 0; i < l.Count; i++) Marshal.WriteInt64(outp, i * 8, BitConverter.DoubleToInt64Bits(Convert.ToDouble(l[i] ?? 0.0)));
     }
 
-    private static (Delegate KeepAlive, IntPtr Ptr) BuildIlFfiCallbackTrampoline(Delegate cb, int arity, bool isInt, bool hasReturn)
+    private static (Delegate KeepAlive, IntPtr Ptr) BuildIlFfiCallbackTrampoline(Delegate cb, int arity, bool isInt, bool hasReturn,
+        bool[]? sigKinds = null, int sigRetKind = -1)
     {
+        // Firma per-slot (2026-11-11): kind MISTO e arità 0-64 via delegate dinamico.
+        if (sigKinds != null && arity < 128)
+            return FfiCallbackDynamicThunk.Create(sigKinds, sigRetKind, a => InvokeFfiCallbackDelegate(cb, a));
         // Callback VETTORIALE (2026-11-02): arity >= 128, descriptor = arity-128:
         // bit0-1 nArray-1, bit2-3 nScalari, bit4 ritorno ARRAY. ABI nativa:
         // (double* a0, int64_t n0[, double* a1, int64_t n1][, double s0[, double s1]][, double* out]).
@@ -199,17 +203,40 @@ public static partial class IlRuntime
     /// EmitFfiCall) DEVE tenerla viva (in un locale + <see cref="KeepAliveFfiCallback"/> dopo
     /// la chiamata nativa) per tutta la durata della chiamata FFI sottostante — il GC
     /// potrebbe altrimenti raccogliere un delegate il cui puntatore nativo è ancora in uso.</summary>
-    public static List<Delegate> PrepareFfiCallbackArgs(object?[] args, int[] callbackArity, int callbackKindMask, int callbackHasRetMask)
+    public static List<Delegate> PrepareFfiCallbackArgs(object?[] args, int[] callbackArity, int callbackKindMask, int callbackHasRetMask,
+        string cbSigs = "")
     {
+        // Firma per-slot (2026-11-11): "slot:kinds>ret;..." — kind I/D, ritorno I/D/V.
+        var sigKinds = new Dictionary<int, bool[]>();
+        var sigRet = new Dictionary<int, int>();
+        if (!string.IsNullOrEmpty(cbSigs))
+        {
+            foreach (var rec in cbSigs.Split(';'))
+            {
+                if (rec.Length == 0) continue;
+                var colon = rec.IndexOf(':');
+                if (colon <= 0) continue;
+                var slot = int.Parse(rec[..colon]);
+                var rest = rec[(colon + 1)..];
+                var arrow = rest.IndexOf('>');
+                if (arrow < 0) continue;
+                var ks = rest[..arrow];
+                var rk = rest[(arrow + 1)..];
+                sigKinds[slot] = Array.ConvertAll(ks.ToCharArray(), ch => ch == 'I');
+                sigRet[slot] = rk == "V" ? 2 : rk == "I" ? 1 : 0;
+            }
+        }
         var keepAlive = new List<Delegate>();
-        for (var i = 0; i < args.Length && i < 8; i++)
+        for (var i = 0; i < args.Length && i < 64; i++)
         {
             if (callbackArity[i] == 255) continue;
             if (args[i] is not Delegate cb)
                 throw new InvalidOperationException($"FFI: il parametro {i + 1} atteso come callback (AS FUNCTION/AS SUB) non è un riferimento a funzione valido.");
             var isInt = (callbackKindMask & (1 << i)) != 0;
             var hasRet = (callbackHasRetMask & (1 << i)) != 0;
-            var (d, ptr) = BuildIlFfiCallbackTrampoline(cb, callbackArity[i], isInt, hasRet);
+            var (d, ptr) = BuildIlFfiCallbackTrampoline(cb, callbackArity[i], isInt, hasRet,
+                sigKinds.TryGetValue(i, out var sk) ? sk : null,
+                sigRet.TryGetValue(i, out var sr) ? sr : -1);
             keepAlive.Add(d);
             args[i] = ptr.ToInt64();
         }

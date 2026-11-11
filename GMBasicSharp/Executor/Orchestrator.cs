@@ -1177,7 +1177,7 @@ public static class Orchestrator
             Span<byte> hdr = stackalloc byte[5];
             stream.ReadExactly(hdr);
             return hdr[0] == (byte)'G' && hdr[1] == (byte)'M' && hdr[2] == (byte)'B' && hdr[3] == (byte)'C'
-                && (hdr[4] == 1 || hdr[4] == 2); // GMB_CHUNK_VERSION (1 storico, 2 descrittore FFI)
+                && (hdr[4] == 1 || hdr[4] == 2 || hdr[4] == 3); // GMB_CHUNK_VERSION (1 storico, 2 descrittore FFI, 3 firme callback)
         }
         catch { return false; }
     }

@@ -4587,7 +4587,7 @@ internal sealed partial class PCodeProcessor
                 var retUdtNew = (kindByte & 0x80) != 0;
                 // bit 0x20 di `kind` = DECLARE NATIVE (ABI esatta: nessuna estensione automatica degli array).
                 var nativeAbi = (kindByte & 0x20) != 0;
-                var kind = kindByte & 0x5F;
+                var kind = kindByte & 0x1F;   // 0x20 = NATIVE, 0x40 = tabella firme callback, 0x80 = ritorno UDT
                 var retUdtFieldCount = retUdtNew ? (retLo | (retHi << 8)) : retLo;
                 var retUdtFieldKindMask = retUdtNew ? 0 : retHi;
                 // Descrittore PER ARGOMENTO (2026-11-06, niente maschere nel formato):
@@ -4693,6 +4693,25 @@ internal sealed partial class PCodeProcessor
                         udtParamShapes[pi] = ReadUdtShape(udtArrCount[pi], 0, true);
                 }
                 var retUdtShape = retUdtFieldCount > 0 ? ReadUdtShape(retUdtFieldCount, (byte)retUdtFieldKindMask, retUdtNew) : null;
+                // Tabella firme callback SCALARI (2026-11-11, bit 0x40 di `kind`): per ogni
+                // parametro callback, in ordine di slot, u8 arità + u8 retKind (0 double,
+                // 1 int64, 2 void) + arità × u8 kind. Sostituisce l'assunzione storica di
+                // firma interna omogenea (a2 bit0) e alza il limite di arità da 8 a 64.
+                bool[][]? cbSigKinds = null;
+                var cbSigRet = new int[PCodeFfiMaxArgs];
+                if ((kindByte & 0x40) != 0)
+                {
+                    cbSigKinds = new bool[PCodeFfiMaxArgs][];
+                    for (var pi = 0; pi < argCount && pi < PCodeFfiMaxArgs; pi++)
+                    {
+                        if (callbackParamArity[pi] == 255 || callbackParamArity[pi] >= 128) continue;
+                        var ar = ReadU8(task);
+                        cbSigRet[pi] = ReadU8(task);
+                        var ks = new bool[ar];
+                        for (var b = 0; b < ar; b++) ks[b] = ReadU8(task) != 0;
+                        cbSigKinds[pi] = ks;
+                    }
+                }
                 var args = new object?[argCount];
                 var byrefBoxes = new Basic.Runtime.Gpm.ByRefBox?[argCount];
                 for (var i = argCount - 1; i >= 0; i--)
@@ -4733,7 +4752,8 @@ internal sealed partial class PCodeProcessor
                                 throw new InvalidOperationException($"il parametro {i + 1} atteso come callback (AS FUNCTION/AS SUB) non è una closure valida.");
                             var cbIsInt = (callbackParamKindMask & (1L << i)) != 0;
                             var cbHasRet = (callbackParamHasRetMask & (1L << i)) != 0;
-                            var (keepAlive, ptr) = BuildFfiCallbackTrampoline(task, cd, callbackParamArity[i], cbIsInt, cbHasRet);
+                            var (keepAlive, ptr) = BuildFfiCallbackTrampoline(task, cd, callbackParamArity[i], cbIsInt, cbHasRet,
+                                cbSigKinds?[i], cbSigKinds != null ? cbSigRet[i] : -1);
                             callbackKeepAlive.Add(keepAlive);
                             args[i] = ptr.ToInt64();
                         }

@@ -303,16 +303,14 @@ public sealed class IlTypeContext
         ArrayCopyWithOffsets = typeof(Array).GetMethod(nameof(Array.Copy),
             [typeof(Array), typeof(int), typeof(Array), typeof(int), typeof(int)])!,
         ArrayGetUpperBound = typeof(Array).GetMethod(nameof(Array.GetUpperBound), [typeof(int)])!,
-        FuncOpenGenericsByArity =
-        [
-            typeof(Func<>), typeof(Func<,>), typeof(Func<,,>), typeof(Func<,,,>), typeof(Func<,,,,>),
-            typeof(Func<,,,,,>), typeof(Func<,,,,,,>), typeof(Func<,,,,,,,>), typeof(Func<,,,,,,,,>)
-        ],
-        ActionOpenGenericsByArity =
-        [
-            typeof(Action), typeof(Action<>), typeof(Action<,>), typeof(Action<,,>), typeof(Action<,,,>),
-            typeof(Action<,,,,>), typeof(Action<,,,,,>), typeof(Action<,,,,,,>), typeof(Action<,,,,,,,>)
-        ],
+        // Func`N / Action`N risolti PER NOME (2026-11-11): l'indice dell'array è l'ARITÀ (0
+        // parametri → Func`1 = Func<TResult>; N parametri → Func`(N+1)). Scritti a mano si
+        // contano le virgole — un errore produce un open generic con l'arità sbagliata SENZA
+        // errore di compilazione. Fino a 16 parametri (limite di System.Func/Action).
+        FuncOpenGenericsByArity = Enumerable.Range(1, 17)
+            .Select(i => Type.GetType($"System.Func`{i}")!).ToArray(),
+        ActionOpenGenericsByArity = Enumerable.Range(0, 17)
+            .Select(i => i == 0 ? typeof(Action) : Type.GetType($"System.Action`{i}")!).ToArray(),
         BasicExceptionType = typeof(BasicException),
         BasicExceptionConstructor = typeof(BasicException).GetConstructor(
             [typeof(ErrorCode), typeof(SourcePosition), typeof(string), typeof(SourceLine), typeof(Exception)])!,

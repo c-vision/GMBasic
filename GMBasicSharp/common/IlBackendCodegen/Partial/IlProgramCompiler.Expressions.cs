@@ -1539,12 +1539,13 @@ public sealed partial class IlProgramCompiler
                 throw new NotSupportedException(
                     $"FFI '{symbolName}': callback con array usato per {what} non supportato " +
                     "(ammessi solo array di DOUBLE, con ritorno DOUBLE o ARRAY OF DOUBLE).");
-            if (fp.ParameterTypes.Length > 8)
+            if (fp.ParameterTypes.Length > global::Compiler.Compiler.FfiMaxArgs)
+            {
+                var maxCbArgs = global::Compiler.Compiler.FfiMaxArgs;
                 throw new NotSupportedException(
-                    $"FFI '{symbolName}': il callback usato per {what} ha {fp.ParameterTypes.Length} parametri (ammessi 0-8).");
+                    $"FFI '{symbolName}': il callback usato per {what} ha {fp.ParameterTypes.Length} parametri (ammessi 0-{maxCbArgs}).");
+            }
             var hasReturn = fp.ReturnType is not VoidType;
-            var kinds = fp.ParameterTypes.Select(t => IsI64(t)).ToList();
-            if (hasReturn) kinds.Add(IsI64(fp.ReturnType));
             foreach (var (pt, idx) in fp.ParameterTypes.Select((t, i) => (t, i)))
                 if (!IsI64(pt) && !IsFfiDoubleType(pt))
                     throw new NotSupportedException(
@@ -1552,34 +1553,15 @@ public sealed partial class IlProgramCompiler
             if (hasReturn && !IsI64(fp.ReturnType) && !IsFfiDoubleType(fp.ReturnType))
                 throw new NotSupportedException(
                     $"FFI '{symbolName}': tipo di ritorno del callback usato per {what} non supportato (ammessi: DOUBLE/SINGLE, interi LONG/INTEGER/QUAD/BYTE/..., o nessuno per un CALLBACK SUB).");
-            if (kinds.Distinct().Count() > 1)
-                throw new NotSupportedException(
-                    $"FFI '{symbolName}': il callback usato per {what} ha una firma interna mista LONG/DOUBLE — non supportata nella v1 del supporto callback (tutti i parametri e l'eventuale ritorno dello stesso kind).");
         }
         bool CallbackIsInt64(FunctionPointerType fp) => IsVecCallback(fp)
             ? IsI64(fp.ReturnType)
             : fp.ParameterTypes.Length > 0 ? IsI64(fp.ParameterTypes[0]) : fp.ReturnType is not VoidType && IsI64(fp.ReturnType);
         foreach (var p in epd.Parameters)
             if (IsCallbackParam(p)) ValidateCallbackForFfi((FunctionPointerType)p.DataType!, $"il parametro '{p.Name.Lexeme}'");
-        // Più callback nella stessa DECLARE: ammessi; il pool dei backend C ha 2 trampolini per
-        // forma (kind, arità / codice vettoriale). Oltre, VM/C e C99Native falliscono a runtime:
-        // rifiuto a compile-time, stesso messaggio delle 4 gambe (parità Compiler.Expressions.cs).
-        {
-            var cbShapeCount = new Dictionary<string, int>();
-            foreach (var p in epd.Parameters)
-            {
-                if (!IsCallbackParam(p)) continue;
-                var fp = (FunctionPointerType)p.DataType!;
-                string shape = IsVecCallback(fp) ? "v" + VecCallbackCode(fp)
-                             : IsScalarArrayCallback(fp) ? "a" + fp.ParameterTypes.Length
-                             : "s" + (CallbackIsInt64(fp) ? "i" : "d") + fp.ParameterTypes.Length;
-                cbShapeCount[shape] = cbShapeCount.TryGetValue(shape, out var cn) ? cn + 1 : 1;
-            }
-            foreach (var kv in cbShapeCount)
-                if (kv.Value > 2)
-                    throw new NotSupportedException(
-                        $"FFI '{symbolName}': {kv.Value} callback con la stessa forma (kind, arità) nella stessa dichiarazione — i backend C hanno 2 trampolini per forma (massimo 2).");
-        }
+        // Più callback nella stessa DECLARE: ammessi. Dal 2026-11-11 non c'è più il limite di
+        // 2 trampolini per forma (VM/C usa closure libffi, C99Native emette un trampolino per
+        // parametro, IL/PCode generano il delegate dinamicamente).
         // Struct/UDT per valore (2026-09-29, parità Compiler.Expressions.cs/PCodeVM/VM-C): un
         // UDT "semplice" (nessun operatore/costruttore/metodo/generico) con TUTTI i campi dello
         // stesso kind a 8 byte viaggia per valore. Il backend IL è "gratis" rispetto a PCodeVM:
@@ -2005,7 +1987,25 @@ public sealed partial class IlProgramCompiler
             _il.Emit(OpCodes.Ldloc, cbArityLocal);
             _il.Emit(OpCodes.Ldc_I4, callbackKindMask);
             _il.Emit(OpCodes.Ldc_I4, callbackHasRetMask);
-            _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.PrepareFfiCallbackArgs), typeof(object[]), typeof(int[]), typeof(int), typeof(int)));
+            /* Firma per-slot dei callback scalari (2026-11-11): "slot:kinds>ret;..." con
+             * kind I/D, ritorno I/D/V. La forma vettoriale (128+)/scalare-con-ritorno-array
+             * (192+) resta codificata nell'arità e non compare qui. */
+            {
+                var sigs = new List<string>();
+                for (var pi = 0; pi < epd.Parameters.Length && pi < global::Compiler.Compiler.FfiMaxArgs; pi++)
+                {
+                    if (!IsCallbackParam(epd.Parameters[pi])) continue;
+                    var fp = (FunctionPointerType)epd.Parameters[pi].DataType!;
+                    if (IsVecCallback(fp) || IsScalarArrayCallback(fp)) continue;
+                    var sb = new System.Text.StringBuilder();
+                    sb.Append(pi).Append(':');
+                    foreach (var pt in fp.ParameterTypes) sb.Append(IsI64(pt) ? 'I' : 'D');
+                    sb.Append('>').Append(fp.ReturnType is VoidType ? 'V' : IsI64(fp.ReturnType) ? 'I' : 'D');
+                    sigs.Add(sb.ToString());
+                }
+                _il.Emit(OpCodes.Ldstr, string.Join(";", sigs));
+            }
+            _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.PrepareFfiCallbackArgs), typeof(object[]), typeof(int[]), typeof(int), typeof(int), typeof(string)));
             cbKeepAliveLocal = _il.DeclareLocal(typeof(List<Delegate>));
             _il.Emit(OpCodes.Stloc, cbKeepAliveLocal);
         }

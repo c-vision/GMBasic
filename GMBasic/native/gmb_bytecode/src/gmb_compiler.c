@@ -2719,7 +2719,7 @@ static void cc_emit_ffi_call(gmb_cc_t* c, const gmb_expr_t* e, const gmb_stmt_t*
         else if (is_byref[i]) { byrefScalarMask |= (unsigned)(1u << i); if (p_int[i]) byrefScalarElemIntMask |= (unsigned)(1u << i); }
         else if (is_cb[i]) {
             int ar = pd->param_fn_arity[i];
-            cbArity[i] = (unsigned char)(ar > 8 ? 8 : ar);
+            cbArity[i] = (unsigned char)(ar > GMB_FFI_MAX_ARGS ? GMB_FFI_MAX_ARGS : ar);
             int cb_int = (ar > 0) ? ((pd->param_fn_kind_mask && (pd->param_fn_kind_mask[i] & 1)) ? 1 : 0)
                                   : ((pd->param_fn_ret_int && pd->param_fn_ret_int[i]) ? 1 : 0);
             if (cb_int) cbKindMask |= (unsigned)(1u << i);
@@ -2755,6 +2755,10 @@ static void cc_emit_ffi_call(gmb_cc_t* c, const gmb_expr_t* e, const gmb_stmt_t*
         cc_byte(c, (uint8_t)argc);
         return;
     }
+    /* Callback SCALARI (firma per-slot, 2026-11-11): tabella in coda all'istruzione (bit 0x40
+     * di `kind`). Il parser C non ha forme vettoriali, quindi ogni callback è scalare. */
+    int any_cb_sig = 0;
+    for (int i = 0; i < argc && i < GMB_FFI_MAX_ARGS; i++) if (is_cb[i]) any_cb_sig = 1;
 
     cc_byte(c, GMB_OP_CALL_FFI_T);
     cc_u16(c, (uint16_t)libIdx);
@@ -2771,7 +2775,7 @@ static void cc_emit_ffi_call(gmb_cc_t* c, const gmb_expr_t* e, const gmb_stmt_t*
      * struct (u16) e per ogni foglia (u8 tipo, u16 offset). Il formato vecchio (bit7=0:
      * aux1=campi, aux2=maschera kind a 8 bit) resta leggibile per i chunk esistenti. */
     cc_u16(c, (uint16_t)argc);
-    cc_byte(c, (uint8_t)(kind | (ret_udt_idx >= 0 ? 0x80 : 0) | (pd->ffi_native ? 0x20 : 0)));   /* 0x20 = DECLARE NATIVE */
+    cc_byte(c, (uint8_t)(kind | (ret_udt_idx >= 0 ? 0x80 : 0) | (pd->ffi_native ? 0x20 : 0) | (any_cb_sig ? 0x40 : 0)));   /* 0x20 = DECLARE NATIVE, 0x40 = tabella firme callback */
     cc_byte(c, (uint8_t)ret_is_string);
     /* Ritorno UDT (formato nuovo): il bit7 di `kind` lo segnala e questi due byte diventano
      * il conteggio foglie (u16) al posto di count+mask. */
@@ -2831,6 +2835,20 @@ static void cc_emit_ffi_call(gmb_cc_t* c, const gmb_expr_t* e, const gmb_stmt_t*
         for (int f = 0; f < n_ret_leaves; f++) {
             cc_byte(c, (uint8_t)ret_layout[f].code);
             cc_u16(c, (uint16_t)ret_layout[f].off);
+        }
+    }
+    /* Tabella firme callback scalari (2026-11-11): per ogni parametro callback, in ordine di
+     * slot: u8 arita', u8 retKind (0=DOUBLE 1=INT64 2=nessun ritorno), arita' × u8 kind. */
+    if (any_cb_sig) {
+        for (int i = 0; i < argc && i < GMB_FFI_MAX_ARGS; i++) {
+            if (!is_cb[i]) continue;
+            int ar = cbArity[i];
+            int mask = pd->param_fn_kind_mask ? pd->param_fn_kind_mask[i] : 0;
+            int has_ret = pd->param_fn_has_ret ? pd->param_fn_has_ret[i] : 0;
+            int ret_int = has_ret && pd->param_fn_ret_int ? pd->param_fn_ret_int[i] : 0;
+            cc_byte(c, (uint8_t)ar);
+            cc_byte(c, (uint8_t)(has_ret ? (ret_int ? 1 : 0) : 2));
+            for (int b = 0; b < ar; b++) cc_byte(c, (uint8_t)((mask & (1 << b)) ? 1 : 0));
         }
     }
 }

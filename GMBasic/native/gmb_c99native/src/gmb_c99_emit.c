@@ -32336,6 +32336,24 @@ static const char* ffi_cb_native_type(int arity, int isInt, int hasRet) {
     return buf;
 }
 
+/* Firma nativa di una callback SCALARE con kind PER-SLOT (2026-11-11): il tipo del parametro i
+ * viene da kinds[i], il ritorno da retkind (0=double, 1=int64, 2=void). Sostituisce l'assunzione
+ * di firma omogenea usata da ffi_cb_native_type. */
+static const char* ffi_cb_native_type_sig(int arity, const unsigned char* kinds, int retkind) {
+    static char bufs[4][1024];
+    static int bi = 0;
+    char* buf = bufs[bi]; bi = (bi + 1) % 4;
+    char params[768] = "";
+    for (int i = 0; i < arity && i < 64; i++) {
+        if (i) strncat(params, ", ", sizeof(params) - strlen(params) - 1);
+        strncat(params, kinds && kinds[i] ? "gmb_int_t" : "gmb_double_t",
+                sizeof(params) - strlen(params) - 1);
+    }
+    if (arity <= 0) snprintf(params, sizeof params, "void");
+    snprintf(buf, 1024, "%s (*)(%s)", retkind == 2 ? "void" : retkind == 1 ? "gmb_int_t" : "gmb_double_t", params);
+    return buf;
+}
+
 /* Emette (UNA SOLA VOLTA per programma) il pool di trampolini nativi per Callback come
  * parametro FFI (2026-09-29, v1) — vedi AiWiki Bugs/(open) - FFI-Estensioni-Possibili-BYREF-
  * Struct-Callback.md §3bis. Stesso design di EmitFfiCallbackPool in emitter C#
@@ -32497,6 +32515,71 @@ static void emit_ffi_callback_pool(ctx_t* c) {
     sb_put(&c->out, "\n");
 }
 
+/* ── Callback FFI con firma PER-SLOT (2026-11-11) ───────────────────────────────────────
+ * Il pool storico (emit_ffi_callback_pool) ha un trampolino per ogni coppia (kind, arità)
+ * con firma interna OMOGENEA e arità 0-8. Una callback dichiarata in BASIC può però avere
+ * parametri di kind MISTO (`FUNCTION(a AS LONG, b AS DOUBLE)`) e arità fino a 64: qui il
+ * trampolino si genera con la firma ESATTA, uno per (wrapper FFI, parametro) — così due
+ * parametri callback con la stessa forma non si contendono gli slot e non serve alcun
+ * limite "2 per forma". Il codice va nel buffer c->ffi_cb_tramps, riversato nel preludio
+ * (prima dei corpi), e la convenzione interna resta quella di sempre: la lambda BASIC è
+ * `double (void*, double...)`, quindi i parametri interi si convertono in double e il
+ * ritorno si ricasta. */
+static int ffi_cb_uniq_id(ctx_t* c, const void* stmt, int param)
+{
+    char key[64];
+    snprintf(key, sizeof key, "%p:%d", stmt, param);
+    for (int i = 0; i < c->n_ffi_cb_uniq; i++)
+        if (strcmp(c->ffi_cb_uniq_key[i], key) == 0) return c->ffi_cb_uniq_id[i];
+    if (c->n_ffi_cb_uniq >= 128) return -1;
+    int id = c->n_ffi_cb_uniq++;
+    snprintf(c->ffi_cb_uniq_key[id], sizeof c->ffi_cb_uniq_key[id], "%s", key);
+    c->ffi_cb_uniq_id[id] = id;
+    return id;
+}
+
+static void emit_ffi_cb_tramp(ctx_t* c, int id, int n, const unsigned char* kinds, int retkind)
+{
+    if (id < 0 || id >= 128 || c->ffi_cb_uniq_emitted[id]) return;
+    c->ffi_cb_uniq_emitted[id] = 1;
+    sb_t* o = &c->ffi_cb_tramps;
+    const char* retC = retkind == 1 ? "gmb_int_t" : "gmb_double_t";
+    char params[1024] = ""; char ptypes[1024] = ""; char dtypes[1024] = ""; char dargs[1024] = "";
+    for (int i = 0; i < n && i < 64; i++) {
+        const char* ct = kinds[i] ? "gmb_int_t" : "gmb_double_t";
+        if (i) {
+            strncat(params, ", ", sizeof(params) - strlen(params) - 1);
+            strncat(ptypes, ", ", sizeof(ptypes) - strlen(ptypes) - 1);
+            strncat(dtypes, ", ", sizeof(dtypes) - strlen(dtypes) - 1);
+            strncat(dargs, ", ", sizeof(dargs) - strlen(dargs) - 1);
+        }
+        char pn[32]; snprintf(pn, sizeof pn, "%s a%d", ct, i);
+        strncat(params, pn, sizeof(params) - strlen(params) - 1);
+        strncat(ptypes, ct, sizeof(ptypes) - strlen(ptypes) - 1);
+        strncat(dtypes, "gmb_double_t", sizeof(dtypes) - strlen(dtypes) - 1);
+        char dan[40]; snprintf(dan, sizeof dan, "(gmb_double_t)a%d", i);
+        strncat(dargs, dan, sizeof(dargs) - strlen(dargs) - 1);
+    }
+    if (n == 0) { snprintf(params, sizeof params, "void"); snprintf(ptypes, sizeof ptypes, "void"); }
+    sb_printf(o, "static gmb_fn_t gmb_cbslot_%d[2];\n", id);
+    sb_printf(o, "static int gmb_cbinuse_%d[2];\n", id);
+    for (int s = 0; s < 2; s++) {
+        if (retkind == 2)
+            sb_printf(o, "static void gmb_cbtramp_%d_%d(%s) { gmb_fn_t f = gmb_cbslot_%d[%d]; ((gmb_double_t(*)(void*%s%s))f.fn)(f.ctx%s%s); }\n",
+                      id, s, params, id, s, n > 0 ? ", " : "", dtypes, n > 0 ? ", " : "", dargs);
+        else
+            sb_printf(o, "static %s gmb_cbtramp_%d_%d(%s) { gmb_fn_t f = gmb_cbslot_%d[%d]; return (%s)((gmb_double_t(*)(void*%s%s))f.fn)(f.ctx%s%s); }\n",
+                      retC, id, s, params, id, s, retC, n > 0 ? ", " : "", dtypes, n > 0 ? ", " : "", dargs);
+    }
+    if (retkind == 2)
+        sb_printf(o, "static void (*gmb_cbptr_%d[2])(%s) = { gmb_cbtramp_%d_0, gmb_cbtramp_%d_1 };\n", id, ptypes, id, id);
+    else
+        sb_printf(o, "static %s (*gmb_cbptr_%d[2])(%s) = { gmb_cbtramp_%d_0, gmb_cbtramp_%d_1 };\n", retC, id, ptypes, id, id);
+    sb_printf(o, "static int gmb_cbacq_%d(gmb_fn_t f) { for (int s = 0; s < 2; s++) if (!gmb_cbinuse_%d[s]) { gmb_cbinuse_%d[s] = 1; gmb_cbslot_%d[s] = f; return s; } return -1; }\n",
+              id, id, id, id);
+    sb_printf(o, "static void gmb_cbrel_%d(int s) { if (s >= 0) gmb_cbinuse_%d[s] = 0; }\n", id, id);
+}
+
 static void emit_ffi_wrapper(ctx_t* c, fn_info_t* fn, const char* vkey) {
     gmb_stmt_t* s = fn->stmt;
     /* Estensioni automatiche degli array (vedi ffi_variant_key): rango per parametro array
@@ -32552,6 +32635,12 @@ static void emit_ffi_wrapper(ctx_t* c, fn_info_t* fn, const char* vkey) {
     int cb_arity[C99_FFI_MAX_ARGS] = {0};
     int cb_kind_int[C99_FFI_MAX_ARGS] = {0};  /* 1 = firma interna del callback e' INT64, 0 = DOUBLE */
     int cb_has_ret[C99_FFI_MAX_ARGS] = {0};
+    int cb_uniq[C99_FFI_MAX_ARGS];            /* id del trampolino per-slot (firma mista, 2026-11-11) */
+    for (int i = 0; i < C99_FFI_MAX_ARGS; i++) cb_uniq[i] = -1;
+    unsigned char cb_sigkinds[C99_FFI_MAX_ARGS][64];   /* kind PER SLOT della firma interna */
+    int cb_sigret[C99_FFI_MAX_ARGS];                  /* 0 double, 1 int64, 2 void */
+    memset(cb_sigkinds, 0, sizeof cb_sigkinds);
+    memset(cb_sigret, 0, sizeof cb_sigret);
     for (int i = 0; i < s->n_params; i++) {
         int isArr = s->param_is_array && s->param_is_array[i];
         if (i < C99_FFI_MAX_ARGS) is_arr_param[i] = isArr;
@@ -32559,9 +32648,9 @@ static void emit_ffi_wrapper(ctx_t* c, fn_info_t* fn, const char* vkey) {
             int arity = s->param_fn_arity[i];
             char what[96];
             snprintf(what, sizeof(what), "il parametro '%s'", s->func_params[i]);
-            if (arity > 8) {
+            if (arity > C99_FFI_MAX_ARGS) {
                 c99_fail(c, s->line, "FFI '%s': il callback usato per %s ha %d parametri "
-                         "(ammessi 0-8).", sym, what, arity);
+                         "(ammessi 0-%d).", sym, what, arity, C99_FFI_MAX_ARGS);
                 return;
             }
             int strmask = s->param_fn_str_mask ? s->param_fn_str_mask[i] : 0;
@@ -32629,22 +32718,26 @@ static void emit_ffi_wrapper(ctx_t* c, fn_info_t* fn, const char* vkey) {
                 cb_has_ret[i] = 1;
                 continue;
             }
-            /* Omogeneità della firma INTERNA del callback (2026-09-29, v1): tutti i parametri
-             * + l'eventuale ritorno dello stesso kind — stesso controllo di
-             * Compiler.Expressions.cs/ValidateCallbackForFfi. */
-            int sawInt = 0, sawDbl = 0;
-            for (int bi = 0; bi < arity; bi++) { if (kindmask & (1 << bi)) sawInt = 1; else sawDbl = 1; }
-            if (hasRet) { if (retInt) sawInt = 1; else sawDbl = 1; }
-            if (sawInt && sawDbl) {
-                c99_fail(c, s->line, "FFI '%s': il callback usato per %s ha una firma interna "
-                         "mista LONG/DOUBLE — non supportata nella v1 del supporto callback "
-                         "(tutti i parametri e l'eventuale ritorno dello stesso kind).", sym, what);
+            /* Firma interna PER-SLOT (2026-11-11): ogni parametro ha il proprio kind
+             * (INTEGER/… = gmb_int_t, DOUBLE/SINGLE = gmb_double_t) e l'arità può arrivare a
+             * C99_FFI_MAX_ARGS. Il trampolino viene generato con la firma ESATTA
+             * (emit_ffi_cb_tramp) invece di usare il pool omogeneo 0-8. */
+            unsigned char sigkinds[64];
+            for (int bi = 0; bi < arity && bi < 64; bi++) sigkinds[bi] = (kindmask & (1 << bi)) ? 1 : 0;
+            int sigret = hasRet ? (retInt ? 1 : 0) : 2;
+            int uniq = ffi_cb_uniq_id(c, s, i);
+            if (uniq < 0) {
+                c99_fail(c, s->line, "FFI '%s': troppi callback distinti nel programma (max 128).", sym);
                 return;
             }
+            emit_ffi_cb_tramp(c, uniq, arity, sigkinds, sigret);
             is_cb_param[i] = 1;
+            memcpy(cb_sigkinds[i], sigkinds, (size_t)(arity < 64 ? arity : 64));
+            cb_sigret[i] = sigret;
             cb_arity[i] = arity;
-            cb_kind_int[i] = sawInt;
+            cb_kind_int[i] = hasRet && retInt;
             cb_has_ret[i] = hasRet;
+            cb_uniq[i] = uniq;
             continue;
         }
         if (isArr) {
@@ -32752,14 +32845,15 @@ static void emit_ffi_wrapper(ctx_t* c, fn_info_t* fn, const char* vkey) {
             }
         }
     }
-    /* Più callback nella stessa DECLARE: ammessi; il pool ha 2 trampolini per forma
-     * (kind, arità / codice vettoriale). Oltre, errore a COMPILE-TIME con lo stesso testo
-     * delle altre 3 gambe (prima: fallimento a runtime su VM/C e crash su C99Native). */
+    /* Più callback nella stessa DECLARE: ammessi. Dal 2026-11-11 i callback SCALARI hanno un
+     * trampolino per PARAMETRO (emit_ffi_cb_tramp), quindi nessun limite "2 per forma"; resta
+     * il pool a 2 slot solo per le forme VETTORIALI (128+/192+), dove il limite è ancora reale
+     * e va segnalato a COMPILE-TIME con lo stesso testo delle altre gambe. */
     {
         int cb_shape_count[2][256];
         memset(cb_shape_count, 0, sizeof cb_shape_count);
         for (int i = 0; i < s->n_params && i < C99_FFI_MAX_ARGS; i++) {
-            if (!is_cb_param[i]) continue;
+            if (!is_cb_param[i] || cb_arity[i] < 128) continue;
             int k = cb_kind_int[i] ? 1 : 0;
             int a = cb_arity[i];
             if (a >= 0 && a < 256) cb_shape_count[k][a]++;
@@ -32767,9 +32861,9 @@ static void emit_ffi_wrapper(ctx_t* c, fn_info_t* fn, const char* vkey) {
         for (int k = 0; k < 2; k++)
             for (int a = 0; a < 256; a++)
                 if (cb_shape_count[k][a] > 2) {
-                    c99_fail(c, s->line, "FFI '%s': %d callback con la stessa forma (kind, arità) "
-                             "nella stessa dichiarazione — i backend C hanno 2 trampolini per forma "
-                             "(massimo 2).", sym, cb_shape_count[k][a]);
+                    c99_fail(c, s->line, "FFI '%s': %d callback vettoriali con la stessa forma "
+                             "(kind, arità) nella stessa dichiarazione — il pool dei formati "
+                             "vettoriali ha 2 trampolini per forma (massimo 2).", sym, cb_shape_count[k][a]);
                     return;
                 }
     }
@@ -32900,7 +32994,7 @@ static void emit_ffi_wrapper(ctx_t* c, fn_info_t* fn, const char* vkey) {
      * preveniva: struct invece di puntatore). */
     #define FFI_INNER(k2) ((k2) < C99_FFI_MAX_ARGS && byref_udt_ci[k2] ? ffi_udt_shape_name_ptr(c, byref_udt_ci[k2]) \
         : (k2) < C99_FFI_MAX_ARGS && is_strarr_param[k2] ? "const char**" \
-        : (k2) < C99_FFI_MAX_ARGS && is_cb_param[k2] ? ffi_cb_native_type(cb_arity[k2], cb_kind_int[k2], cb_has_ret[k2]) \
+        : (k2) < C99_FFI_MAX_ARGS && is_cb_param[k2] ? (cb_uniq[k2] >= 0 ? ffi_cb_native_type_sig(cb_arity[k2], cb_sigkinds[k2], cb_sigret[k2]) : ffi_cb_native_type(cb_arity[k2], cb_kind_int[k2], cb_has_ret[k2])) \
         : (k2) < C99_FFI_MAX_ARGS && udt_param_ci[k2] ? ffi_udt_shape_name(c, udt_param_ci[k2]) \
         : (k2) < C99_FFI_MAX_ARGS && arr_udt_ci[k2] ? arr_udt_tname[k2] \
         : (k2) < C99_FFI_MAX_ARGS && is_arr_param[k2] \
@@ -32916,7 +33010,14 @@ static void emit_ffi_wrapper(ctx_t* c, fn_info_t* fn, const char* vkey) {
      * usa — vedi emit_ffi_callback_pool sopra. */
     int any_cb_param = 0;
     for (int i = 0; i < s->n_params && i < C99_FFI_MAX_ARGS; i++) if (is_cb_param[i]) any_cb_param = 1;
-    if (any_cb_param) emit_ffi_callback_pool(c);
+    if (any_cb_param) {
+        /* Pool storico solo per le forme VETTORIALI (128+/192+), che usano ancora i codici
+         * pre-compilati; i callback scalari hanno il trampolino per-slot (emit_ffi_cb_tramp). */
+        int need_pool = 0;
+        for (int i = 0; i < s->n_params && i < C99_FFI_MAX_ARGS; i++)
+            if (is_cb_param[i] && cb_arity[i] >= 128) need_pool = 1;
+        if (need_pool) emit_ffi_callback_pool(c);
+    }
     /* Array a elemento INTERO: la memoria BASIC e' double* → serve copy-in/copy-back verso
      * un temporaneo gmb_int_t* (parità PCode/VM-C che fanno copy-in/copy-out per gli array
      * non blittable). Conta quanti per sapere se il corpo deve usare il percorso a temporanei. */
@@ -33151,7 +33252,8 @@ static void emit_ffi_wrapper(ctx_t* c, fn_info_t* fn, const char* vkey) {
         if (!is_cb_param[i]) continue;
         ind(c);
         sb_put(&c->out, "int __cbslot_"); emit_ident(c, s->func_params[i]);
-        sb_printf(&c->out, " = gmb_ffi_cb_acquire_%s%d(", cb_kind_int[i] ? "i" : "d", cb_arity[i]);
+        if (cb_uniq[i] >= 0) sb_printf(&c->out, " = gmb_cbacq_%d(", cb_uniq[i]);
+        else sb_printf(&c->out, " = gmb_ffi_cb_acquire_%s%d(", cb_kind_int[i] ? "i" : "d", cb_arity[i]);
         emit_ident(c, s->func_params[i]);
         sb_put(&c->out, ");\n");
     }
@@ -33169,8 +33271,9 @@ static void emit_ffi_wrapper(ctx_t* c, fn_info_t* fn, const char* vkey) {
             sb_put(&c->out, "if (__cbslot_"); emit_ident(c, s->func_params[i]); sb_put(&c->out, " < 0) { ");
             for (int j = 0; j < s->n_params && j < C99_FFI_MAX_ARGS; j++) {
                 if (!is_cb_param[j]) continue;
-                sb_printf(&c->out, "gmb_ffi_cb_release_%s%d(__cbslot_",
-                          cb_kind_int[j] ? "i" : "d", cb_arity[j]);
+                if (cb_uniq[j] >= 0) sb_printf(&c->out, "gmb_cbrel_%d(__cbslot_", cb_uniq[j]);
+                else sb_printf(&c->out, "gmb_ffi_cb_release_%s%d(__cbslot_",
+                               cb_kind_int[j] ? "i" : "d", cb_arity[j]);
                 emit_ident(c, s->func_params[j]);
                 sb_put(&c->out, "); ");
             }
@@ -33185,7 +33288,8 @@ static void emit_ffi_wrapper(ctx_t* c, fn_info_t* fn, const char* vkey) {
      * puntatore, non lo struct per valore — l'ABI sbagliata che la guardia preveniva). */
     #define FFI_EMIT_ARG(i) do { \
         if ((i) < C99_FFI_MAX_ARGS && is_cb_param[i]) { \
-            sb_printf(&c->out, "%s%s%d[__cbslot_", cb_has_ret[i] ? "g_ffi_cb_ptr_" : "g_ffi_cb_ptr_sub_", cb_kind_int[i] ? "i" : "d", cb_arity[i]); \
+            if (cb_uniq[i] >= 0) sb_printf(&c->out, "gmb_cbptr_%d[__cbslot_", cb_uniq[i]); \
+            else sb_printf(&c->out, "%s%s%d[__cbslot_", cb_has_ret[i] ? "g_ffi_cb_ptr_" : "g_ffi_cb_ptr_sub_", cb_kind_int[i] ? "i" : "d", cb_arity[i]); \
             emit_ident(c, s->func_params[i]); \
             sb_put(&c->out, "]"); \
         } else if ((i) < C99_FFI_MAX_ARGS && udt_param_ci[i]) { \
@@ -33270,7 +33374,8 @@ static void emit_ffi_wrapper(ctx_t* c, fn_info_t* fn, const char* vkey) {
         for (int i = 0; i < s->n_params && i < C99_FFI_MAX_ARGS; i++) {
             if (!is_cb_param[i]) continue;
             ind(c);
-            sb_printf(&c->out, "gmb_ffi_cb_release_%s%d(__cbslot_", cb_kind_int[i] ? "i" : "d", cb_arity[i]);
+            if (cb_uniq[i] >= 0) sb_printf(&c->out, "gmb_cbrel_%d(__cbslot_", cb_uniq[i]);
+            else sb_printf(&c->out, "gmb_ffi_cb_release_%s%d(__cbslot_", cb_kind_int[i] ? "i" : "d", cb_arity[i]);
             emit_ident(c, s->func_params[i]);
             sb_put(&c->out, ");\n");
         }
@@ -36751,6 +36856,9 @@ static int gmb_c99_emit_once(const gmb_program_t* prog, char** out_src, char** e
             "    return NULL;\n"
             "}\n\n");
     }
+    /* Trampolini callback per-slot (firma mista/arità > 8): generati durante l'emissione dei
+     * wrapper, definiti qui nel preludio (file scope, PRIMA dei corpi che li usano). */
+    if (c->ffi_cb_tramps.s) { sb_put(&fin, c->ffi_cb_tramps.s); free(c->ffi_cb_tramps.s); c->ffi_cb_tramps.s = NULL; }
     sb_put(&fin, c->out.s);
     free(c->out.s);
     if (c->preds) { sb_t* pb = (sb_t*)c->preds; if (pb->s) sb_put(&fin, pb->s); }

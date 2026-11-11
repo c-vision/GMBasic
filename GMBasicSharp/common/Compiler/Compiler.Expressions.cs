@@ -992,12 +992,10 @@ public sealed partial class Compiler
                     throw new BasicException(expr.OriginalToken,
                         $"FFI '{symbolName}': callback con array usato per {what} non supportato " +
                         "(ammessi solo array di DOUBLE, con ritorno DOUBLE o ARRAY OF DOUBLE).");
-                if (fp.ParameterTypes.Length > 8)
+                if (fp.ParameterTypes.Length > FfiMaxArgs)
                     throw new BasicException(expr.OriginalToken,
-                        $"FFI '{symbolName}': il callback usato per {what} ha {fp.ParameterTypes.Length} parametri (ammessi 0-8).");
+                        $"FFI '{symbolName}': il callback usato per {what} ha {fp.ParameterTypes.Length} parametri (ammessi 0-{FfiMaxArgs}).");
                 var hasReturn = fp.ReturnType is not VoidType;
-                var kinds = fp.ParameterTypes.Select(t => IsFfiInt64Type(t)).ToList();
-                if (hasReturn) kinds.Add(IsFfiInt64Type(fp.ReturnType));
                 foreach (var (pt, idx) in fp.ParameterTypes.Select((t, i) => (t, i)))
                     if (!IsFfiInt64Type(pt) && !IsFfiDoubleType(pt))
                         throw new BasicException(expr.OriginalToken,
@@ -1005,45 +1003,27 @@ public sealed partial class Compiler
                 if (hasReturn && !IsFfiInt64Type(fp.ReturnType) && !IsFfiDoubleType(fp.ReturnType))
                     throw new BasicException(expr.OriginalToken,
                         $"FFI '{symbolName}': tipo di ritorno del callback usato per {what} non supportato (ammessi: DOUBLE/SINGLE, interi LONG/INTEGER/QUAD/BYTE/..., o nessuno per un CALLBACK SUB).");
-                if (kinds.Distinct().Count() > 1)
-                    throw new BasicException(expr.OriginalToken,
-                        $"FFI '{symbolName}': il callback usato per {what} ha una firma interna mista LONG/DOUBLE — non supportata nella v1 del supporto callback (tutti i parametri e l'eventuale ritorno dello stesso kind).");
             }
-            // Kind del callback ai fini dell'omogeneità di firma e dell'emissione bytecode
-            // (2026-09-29): il PRIMO parametro del callback se presente, altrimenti il suo
-            // ritorno se presente — ValidateCallbackForFfi garantisce già l'omogeneità
-            // dell'intera firma interna, quindi guardare solo il primo elemento è corretto. Un
-            // callback arità-0/SUB (nessun parametro, nessun ritorno) non ha nessuno scalare da
-            // marshallare: il kind non è mai consultato a runtime per quello slot, FfiDouble è
-            // un default innocuo.
+            // Kind del callback per l'emissione bytecode LEGACY (a2 bit0, firma interna omogenea):
+            // il PRIMO parametro se presente, altrimenti il ritorno. Con la firma MISTA
+            // (2026-11-11) il bit e' irrilevante — il runtime legge la tabella per-slot emessa
+            // in coda all'istruzione (bit 0x40 di `kind`), che descrive ogni parametro.
             bool CallbackIsInt64(FunctionPointerType fp) => IsVecCallback(fp)
                 ? IsFfiInt64Type(fp.ReturnType)
                 : fp.ParameterTypes.Length > 0
                     ? IsFfiInt64Type(fp.ParameterTypes[0])
                     : fp.ReturnType is not VoidType && IsFfiInt64Type(fp.ReturnType);
+            // Firma INTERNA del callback scalare (2026-11-11, arità 0-64 e kind misto): la
+            // tabella per-slot viaggia nel bytecode (vedi EmitCallbackSignatureTable). La forma
+            // vettoriale (128+)/scalare-con-ritorno-array (192+) resta codificata in a1.
+            bool IsScalarSignatureCallback(FunctionPointerType fp) =>
+                !IsVecCallback(fp) && !IsScalarArrayCallback(fp);
             foreach (var p in ffiProc.Parameters)
                 if (IsCallbackParam(p)) ValidateCallbackForFfi((FunctionPointerType)p.DataType, $"il parametro '{p.Name.Lexeme}'");
-            // Più callback nella stessa DECLARE: ammessi (le lib del monorepo ne usano 2, es.
-            // METANSGA2 e LINESCALAR/LINEWORK/FLUX). Il pool dei backend C ha però 2 trampolini
-            // per forma (kind, arità; codici vettoriali distinti): un terzo callback della stessa
-            // forma fallisce a runtime su VM/C (pool esaurito) e su C99Native (errore dedicato).
-            // Qui si rifiuta a compile-time con un messaggio unico sulle 4 gambe.
-            {
-                var cbShapeCount = new Dictionary<string, int>();
-                foreach (var p in ffiProc.Parameters)
-                {
-                    if (!IsCallbackParam(p)) continue;
-                    var fp = (FunctionPointerType)p.DataType;
-                    string shape = IsVecCallback(fp) ? "v" + VecCallbackCode(fp)
-                                 : IsScalarArrayCallback(fp) ? "a" + fp.ParameterTypes.Length
-                                 : "s" + (CallbackIsInt64(fp) ? "i" : "d") + fp.ParameterTypes.Length;
-                    cbShapeCount[shape] = cbShapeCount.TryGetValue(shape, out var cn) ? cn + 1 : 1;
-                }
-                foreach (var kv in cbShapeCount)
-                    if (kv.Value > 2)
-                        throw new BasicException(expr.OriginalToken,
-                            $"FFI '{symbolName}': {kv.Value} callback con la stessa forma (kind, arità) nella stessa dichiarazione — i backend C hanno 2 trampolini per forma (massimo 2).");
-            }
+            // Più callback nella stessa DECLARE: ammessi. Dal 2026-11-11 non c'è più il limite di
+            // 2 trampolini per forma (VM/C usa closure libffi, C99Native emette un trampolino per
+            // parametro, IL/PCode generano il delegate dinamicamente): la guardia storica è stata
+            // rimossa.
             // Struct/UDT per valore (2026-09-28): un UDT "semplice" (nessun operatore/
             // costruttore/metodo — quelli che emitter C# mappa già su uno struct C reale, non
             // su gmb_val_t opaco) con TUTTI i campi dello stesso kind a 8 byte (stessa
@@ -1380,6 +1360,14 @@ public sealed partial class Compiler
                               : true;
                 if (bitIsInt) scalarKindMask |= 1L << pi;
             }
+            // Firma interna dei callback SCALARI (2026-11-11): tabella per-slot emessa in coda
+            // all'istruzione, segnalata dal bit 0x40 di `kind`. Le forme vettoriali (128+) e
+            // scalari-con-ritorno-array (192+) restano descritte da a1.
+            var anyScalarCbSig = false;
+            for (var pi = 0; pi < ffiProc.Parameters.Length && pi < FfiMaxArgs; pi++)
+                if (IsCallbackParam(ffiProc.Parameters[pi])
+                    && IsScalarSignatureCallback((FunctionPointerType)ffiProc.Parameters[pi].DataType))
+                    anyScalarCbSig = true;
             if (useTypedPath)
             {
                 EmitByte((byte)OpCode.OP_CALL_FFI_T);
@@ -1388,7 +1376,7 @@ public sealed partial class Compiler
                 EmitShort((ushort)expr.Args.Length);
                 /* S1 (2026-11-06): bit7 di `kind` = ritorno UDT con LAYOUT ESPLICITO; i due byte
                  * successivi diventano il conteggio foglie u16 (al posto di count u8 + mask u8). */
-                EmitByte((byte)(emittedKind | (udtReturnLeaves != null ? 0x80 : 0) | (ffiProc.IsNativeAbi ? 0x20 : 0)));   // 0x20 = DECLARE NATIVE (ABI esatta, niente estensioni array)
+                EmitByte((byte)(emittedKind | (udtReturnLeaves != null ? 0x80 : 0) | (ffiProc.IsNativeAbi ? 0x20 : 0) | (anyScalarCbSig ? 0x40 : 0)));   // 0x20 = DECLARE NATIVE (ABI esatta, niente estensioni array), 0x40 = tabella firme callback
                 EmitByte((byte)(retIsString ? 1 : 0));
                 var retLeafCount = (ushort)(udtReturnLeaves?.Count ?? 0);
                 EmitByte((byte)(retLeafCount & 0xFF));
@@ -1512,6 +1500,26 @@ public sealed partial class Compiler
                     {
                         EmitByte((byte)leaf.Code);
                         EmitShort((ushort)leaf.Off);
+                    }
+                }
+                /* Tabella firme callback (2026-11-11, bit 0x40 di `kind`): per OGNI parametro
+                 * callback scalare, in ordine di slot:
+                 *   u8 arita', u8 retKind (0=DOUBLE, 1=INT64, 2=nessun ritorno),
+                 *   arita' × u8 kind del parametro (0=DOUBLE, 1=INT64).
+                 * Sostituisce l'assunzione "firma interna omogenea" (a2 bit0) e alza il limite
+                 * di arità da 8 a 64. */
+                if (anyScalarCbSig)
+                {
+                    for (var pi = 0; pi < expr.Args.Length && pi < FfiMaxArgs; pi++)
+                    {
+                        if (!IsCallbackParam(ffiProc.Parameters[pi])) continue;
+                        var fp = (FunctionPointerType)ffiProc.Parameters[pi].DataType;
+                        if (!IsScalarSignatureCallback(fp)) continue;
+                        EmitByte((byte)fp.ParameterTypes.Length);
+                        EmitByte((byte)(fp.ReturnType is VoidType ? 2
+                            : IsFfiInt64Type(fp.ReturnType) ? 1 : 0));
+                        foreach (var pt in fp.ParameterTypes)
+                            EmitByte((byte)(IsFfiInt64Type(pt) ? 1 : 0));
                     }
                 }
             }
@@ -1996,6 +2004,15 @@ public sealed partial class Compiler
         var functionAddress = _chunk.Code.Count;
         _chunk.Code.AddRange(functionChunk.Code);
         _chunk.Lines.AddRange(functionChunk.Lines);
+        /* LocalCount (2026-11-11): il corpo della lambda gira in un PROPRIO frame, quindi i
+         * suoi locali (parametri compresi) devono stare nel LocalCount del chunk — che è il
+         * numero di slot allocati a OGNI chiamata (PCodeProcessor.CreateLocals). Prima il
+         * conteggio restava quello della procedura che OSPITA la lambda: ogni parametro/locale
+         * oltre quel numero veniva scritto in uno slot inesistente e letto come 0 (bug reale:
+         * callback con 9 parametri → gli ultimi 2 arrivavano a 0 SOLO su PCode; IL/VM-C/C99
+         * corretti). */
+        if (functionChunk.LocalCount > _chunk.LocalCount) _chunk.LocalCount = functionChunk.LocalCount;
+        if (functionChunk.LocalCount > _maximumLocalCount) _maximumLocalCount = functionChunk.LocalCount;
         // S_eval: propaga lo snapshot locali del figlio traslato all'indirizzo reale.
         _chunk.MergeChildLocalNames(functionChunk, functionAddress, prologueShift);
         foreach (var constant in functionChunk.Constants)

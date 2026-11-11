@@ -312,3 +312,22 @@ int64_t strs_total(const char** a, int64_t n)
     for (int64_t i = 0; i < n; i++) t += a[i] ? (int64_t)strlen(a[i]) : 0;
     return t;
 }
+
+/* ── Callback con firma interna MISTA e arità > 8 (2026-11-11) ─────────────────
+ * `int64_t (*)(int64_t, double)` e `double (*)(double ×9)`: il trampolino deve avere
+ * ESATTAMENTE questa firma (kind per slot), non una firma omogenea. */
+double cb_mixed(double (*f)(int64_t, double), int64_t n, double d)
+{
+    return f(n, d);
+}
+
+double cb_apply9(double (*f)(double, double, double, double, double, double, double, double, double), double x)
+{
+    return f(x, x, x, x, x, x, x, x, x);
+}
+
+/* Mixed callback DOUBLE/LONG/DOUBLE → DOUBLE (ordine dei registri FP/int alternato). */
+double cb_mixed_q(double (*f)(double, int64_t, double), int64_t n, double d)
+{
+    return f(d, n, d);
+}

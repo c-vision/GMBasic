@@ -24,8 +24,13 @@ internal sealed partial class PCodeProcessor
     /// della chiamata nativa sottostante (GC.KeepAlive) — il puntatore nativo da solo non basta
     /// a impedire che il GC raccolga il delegate.
     /// </summary>
-    private (Delegate KeepAlive, IntPtr Ptr) BuildFfiCallbackTrampoline(PCodeTask task, ClosureData cd, int arity, bool isInt, bool hasReturn)
+    private (Delegate KeepAlive, IntPtr Ptr) BuildFfiCallbackTrampoline(PCodeTask task, ClosureData cd, int arity, bool isInt, bool hasReturn,
+        bool[]? sigKinds = null, int sigRetKind = -1)
     {
+        // Firma per-slot dal bytecode (2026-11-11, bit 0x40 di `kind`): kind MISTO e arità 0-64.
+        // I delegate pre-dichiarati sotto coprono solo firme omogenee 0-8 (formato storico).
+        if (sigKinds != null && arity < 128)
+            return FfiCallbackDynamicThunk.Create(sigKinds, sigRetKind, a => CallFnSync(task, cd, a));
         // Callback VETTORIALE (2026-11-02): descriptor = arity-128 (array/scalari/ritorno array).
         if (arity >= 128)
         {

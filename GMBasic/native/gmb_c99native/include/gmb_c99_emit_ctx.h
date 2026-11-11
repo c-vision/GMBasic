@@ -155,6 +155,15 @@ typedef struct {
     /* Callback FFI (2026-09-29): pool di trampolini nativi emesso UNA SOLA VOLTA per
      * programma — vedi emit_ffi_callback_pool. */
     int ffi_callback_pool_emitted;
+    /* Callback FFI con firma PER-SLOT (2026-11-11): trampolini generati al bisogno, uno per
+     * (wrapper, parametro) — coprono firme interne MISTE e arità fino a 64, che il pool
+     * storico (firma omogenea, arità 0-8) non rappresentava. Emessi in un buffer a parte
+     * (ffi_cb_tramps) riversato nel preludio del file, quindi definiti prima dei wrapper. */
+    sb_t ffi_cb_tramps;
+    char ffi_cb_uniq_key[128][64];
+    int ffi_cb_uniq_id[128];
+    int ffi_cb_uniq_emitted[128];
+    int n_ffi_cb_uniq;
     char error[512];
     /* Canone EXIT/CONTINUE con etichetta 2026-09-30: etichetta del loop in emissione
      * (impostata per adiacenza in emit_tracked, letta all'ingresso dei loop). */

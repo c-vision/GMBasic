@@ -3762,6 +3762,54 @@ double gmb_vm_call_closure_sync_n(gmb_vm_t* vm, gmb_task_t* task, gmb_obj_closur
  * FFI, mai dopo); un callback salvato dal nativo per un richiamo POSTERIORE alla chiamata FFI
  * romperebbe questo schema (slot liberato troppo presto) — fuori scope v1, vedi AiWiki
  * Bugs/(open) - FFI-Estensioni-Possibili-BYREF-Struct-Callback.md §3bis. */
+/* Callback FFI con firma PER-SLOT (2026-11-11): closure libffi. Il vecchio pool di
+ * trampolini pre-compilati copriva solo firme interne omogenee (tutti INT64 o tutti DOUBLE)
+ * e arità 0-8; la firma dichiarata in BASIC può essere MISTA e avere fino a 64 parametri,
+ * quindi il trampolino si costruisce a runtime (gmb_closure_create, gmb_call.c).
+ * Gli argomenti nativi viaggiano nel modello numerico della VM (double), come per il pool. */
+typedef struct {
+    gmb_vm_t* vm;
+    gmb_task_t* task;
+    gmb_obj_closure_t* closure;
+    int addr;
+    int n;
+    int ret_kind;          /* 0 = double, 1 = int64, 2 = void */
+    uint64_t kind_mask;    /* bit i = parametro i INT64 (0 = double) */
+} gmb_ffi_cb_closure_ctx_t;
+
+static void gmb_ffi_cb_closure_handler(void* user, void* ret, void** args)
+{
+    gmb_ffi_cb_closure_ctx_t* c = (gmb_ffi_cb_closure_ctx_t*)user;
+    double a[64];
+    int n = c->n > 64 ? 64 : (c->n < 0 ? 0 : c->n);
+    for (int i = 0; i < n; i++)
+        a[i] = ((c->kind_mask >> i) & 1ull) ? (double)*(int64_t*)args[i] : *(double*)args[i];
+    double r = gmb_vm_call_closure_sync_n(c->vm, c->task, c->closure, c->addr, n > 0 ? a : NULL, n);
+    if (c->ret_kind == 2) return;
+    if (c->ret_kind == 1) { if (ret) *(int64_t*)ret = (int64_t)r; return; }
+    if (ret) *(double*)ret = r;
+}
+
+/* Alloca la closure sulla firma per-slot. Ritorna il puntatore al codice nativo (da passare
+ * alla funzione FFI) e salva l'handle in *out_handle (da liberare con gmb_closure_free dopo
+ * la chiamata), oppure NULL se non preparabile. */
+static void* gmb_ffi_cb_make_closure(gmb_vm_t* vm, gmb_task_t* task, gmb_obj_closure_t* closure, int addr,
+                                     int n, uint64_t kind_mask, int ret_kind, void** out_handle)
+{
+    gmb_ffi_cb_closure_ctx_t* ctx = (gmb_ffi_cb_closure_ctx_t*)calloc(1, sizeof(*ctx));
+    if (!ctx) return NULL;
+    ctx->vm = vm; ctx->task = task; ctx->closure = closure; ctx->addr = addr;
+    ctx->n = n; ctx->kind_mask = kind_mask; ctx->ret_kind = ret_kind;
+    unsigned char kinds[64];
+    for (int i = 0; i < n && i < 64; i++) kinds[i] = (unsigned char)((kind_mask >> i) & 1ull);
+    void* handle = NULL;
+    void* code = gmb_closure_create(n, kinds, ret_kind, gmb_ffi_cb_closure_handler, ctx, &handle);
+    if (!code) { free(ctx); return NULL; }
+    if (out_handle) *out_handle = handle;
+    else gmb_closure_free(handle);
+    return code;
+}
+
 typedef struct {
     gmb_vm_t* vm;
     gmb_task_t* task;
@@ -15365,7 +15413,7 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                  * a funzionare. */
                 int retUdtNew = (kindByte & 0x80) != 0;
                 int nativeAbi = (kindByte & 0x20) != 0;   /* 0x20 = DECLARE NATIVE: niente estensioni array */
-                int kind = kindByte & 0x5F;
+                int kind = kindByte & 0x1F;   /* 0x20 = NATIVE, 0x40 = tabella firme callback, 0x80 = ritorno UDT */
                 int retUdtFieldCount = retUdtNew ? (retUdtLo | (retUdtHi << 8)) : retUdtLo;
                 int retUdtFieldKindMask = retUdtNew ? 0 : retUdtHi;
                 if (argc > GMB_FFI_MAX_ARGS)
@@ -15533,9 +15581,33 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                         }
                     }
                 }
+                /* Tabella firme callback SCALARI (2026-11-11, bit 0x40 di `kind`): per ogni
+                 * parametro callback, in ordine di slot, u8 arità + u8 retKind (0=DOUBLE,
+                 * 1=INT64, 2=nessun ritorno) + arità × u8 kind. Sostituisce l'assunzione
+                 * storica di firma interna omogenea (callbackParamKindMask) e alza il limite
+                 * di arità da 8 a 64: il trampolino diventa una closure libffi costruita sulla
+                 * firma per-slot (vedi gmb_closure_create). */
+                uint64_t cbSigKindMask[narg];
+                int cbSigRetKind[narg];
+                int cbSigArity[narg];
+                memset(cbSigKindMask, 0, sizeof(uint64_t) * (size_t)narg);
+                memset(cbSigRetKind, 0, sizeof(int) * (size_t)narg);
+                memset(cbSigArity, 0, sizeof(int) * (size_t)narg);
+                int hasCbSigTable = (kindByte & 0x40) != 0;
+                if (hasCbSigTable)
+                {
+                    for (int i = 0; i < argc; i++)
+                    {
+                        if (callbackParamArity[i] == 255 || callbackParamArity[i] >= 128) continue;
+                        int ar = gmb_vm_read_u8(vm, task);
+                        cbSigRetKind[i] = gmb_vm_read_u8(vm, task);
+                        cbSigArity[i] = ar;
+                        for (int b = 0; b < ar && b < 64; b++)
+                            if (gmb_vm_read_u8(vm, task)) cbSigKindMask[i] |= (1ull << b);
+                    }
+                }
                 double args[narg];
-                gmb_obj_t* arrRefs[narg]; memset(arrRefs, 0, sizeof(gmb_obj_t*) * (size_t)narg);
-                for (int i = argc - 1; i >= 0 && task->sp > 0; i--)
+                gmb_obj_t* arrRefs[narg]; memset(arrRefs, 0, sizeof(gmb_obj_t*) * (size_t)narg);                for (int i = argc - 1; i >= 0 && task->sp > 0; i--)
                 {
                     gmb_stack_entry_t a = gmb_task_pop(task);
                     /* Callback (2026-09-29): come array/STRING/BYREF/UDT, il ref (una
@@ -15618,6 +15690,8 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                  * allocati vengono liberati subito dopo la chiamata nativa (vedi sotto, insieme
                  * al rilascio di arrRefs[]). */
                 int cbAllocKind[narg], cbAllocArity[narg], cbAllocSlot[narg], cbAllocCount = 0;
+                void* cbClosures[narg]; memset(cbClosures, 0, sizeof(void*) * (size_t)narg);
+                int cbClosureCount = 0;
                 int callbackError = 0;
                 for (int i = 0; i < argc; i++)
                 {
@@ -15635,7 +15709,17 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                     }
                     int cbKind = (callbackParamKindMask & (1ull << i)) != 0 ? 1 : 0;
                     int slot = -1;
-                    void* tramp = gmb_ffi_cb_alloc(cbKind, callbackParamArity[i], vm, task, cl, addr, &slot);
+                    void* tramp;
+                    if (hasCbSigTable)
+                    {
+                        /* Firma per-slot (2026-11-11): closure libffi — kind misto e arità 0-64,
+                         * nessun limite di 2 callback concorrenti della stessa forma. */
+                        void* handle = NULL;
+                        tramp = gmb_ffi_cb_make_closure(vm, task, cl, addr, cbSigArity[i],
+                                                        cbSigKindMask[i], cbSigRetKind[i], &handle);
+                        if (tramp && cbClosureCount < narg) cbClosures[cbClosureCount++] = handle;
+                    }
+                    else tramp = gmb_ffi_cb_alloc(cbKind, callbackParamArity[i], vm, task, cl, addr, &slot);
                     if (!tramp) { callbackError = 1; break; } /* pool esaurito: >2 callback concorrenti per (kind,arita'), limite v1 */
                     cbAllocKind[cbAllocCount] = cbKind;
                     cbAllocArity[cbAllocCount] = callbackParamArity[i];
@@ -16051,6 +16135,10 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                  * BYREF-Struct-Callback.md §3bis. */
                 for (int ci = 0; ci < cbAllocCount; ci++)
                     gmb_ffi_cb_free(cbAllocKind[ci], cbAllocArity[ci], cbAllocSlot[ci]);
+                /* Closure libffi (firma per-slot, 2026-11-11): stesso schema solo-sincrono del
+                 * pool — liberate a fine chiamata. */
+                for (int ci = 0; ci < cbClosureCount; ci++)
+                    gmb_closure_free(cbClosures[ci]);
                 if (callbackError)
                 {
                     vm_error(task, "[FFI] parametro callback (AS FUNCTION/AS SUB) non valido: il valore passato non e' una closure invocabile, oppure troppi callback concorrenti dello stesso kind/arita' (limite v1: 2).");

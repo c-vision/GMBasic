@@ -17,10 +17,11 @@ extern "C" {
 #endif
 
 #define GMB_CHUNK_MAGIC "GMBC"
-/* 2 = descrittore FFI per argomento (2026-11-06). La 1 (formato storico a maschere) è ancora
- * letta: è valida per i chunk SENZA chiamate FFI (es. le pagine BSP); una chiamata FFI in un
- * chunk v1 produce un errore esplicito ("ricompilare"), mai un parse silenzioso. */
-#define GMB_CHUNK_VERSION 2
+/* 3 = tabella delle firme callback in coda a OP_CALL_FFI_T (2026-11-11: firma interna dei
+ * callback PER-SLOT, arità 0-64). La 2 (descrittore FFI per argomento, 2026-11-06) resta letta;
+ * la 1 (formato storico a maschere) è valida solo per chunk SENZA chiamate FFI, altrimenti
+ * errore esplicito ("ricompilare"), mai un parse silenzioso. */
+#define GMB_CHUNK_VERSION 3
 
 /* ---- Tipi di valore nel constant pool ---- */
 enum {
