@@ -472,6 +472,12 @@ struct gmb_stmt {
     /* PACKED TYPE (canone SIZEOF): i campi stanno alla somma dei propri byte, senza padding
      * di allineamento — il flag deve giungere alla tabella classi dell'emitter (cls_info). */
     int class_is_packed;
+    /* UNION (2026-11-11): tutti i campi a offset 0 (semantica C). L'emitter C99 emette una
+     * union ANONIMA (C11) con i tipi C reali: l'aliasing lo fa il compilatore C. */
+    int class_is_union;
+    /* BITFIELD (`A AS LONG WIDTH 3`, 2026-11-11): larghezza in bit per campo (0 = normale).
+     * L'emitter emette veri bitfield C (`int64_t A : 3`) — LSB-first, come le altre gambe. */
+    int* cls_field_bits;
     char** cls_implements; int n_cls_implements;
     char** cls_field_names; char** cls_field_types; int n_cls_fields;
     char** cls_static_names; char** cls_static_types; gmb_expr_t** cls_static_inits; int n_cls_statics;

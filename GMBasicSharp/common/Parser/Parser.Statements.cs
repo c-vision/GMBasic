@@ -973,17 +973,17 @@ public sealed partial class Parser
             case TokenKind.Function: return [ParseFunctionDefinition()];
             case TokenKind.Generator: return [ParseGeneratorDefinition()];
             case TokenKind.Enum: return [ParseEnumDefinition()];
-            case TokenKind.Type or TokenKind.Packed:
+            case TokenKind.Type or TokenKind.Packed or TokenKind.Union:
             {
                 // Se siamo all'interno di una procedura (SUB, FUNCTION, etc.),
                 // una dichiarazione TYPE senza modificatore di visibilità è locale.
                 if (_functionContextStack.Count > 0)
                 {
-                    return [new LocalTypeStmt(ParseTypeDefinition())];
+                    return [new LocalTypeStmt(ParseTypeDefinition(Peek().Kind == TokenKind.Union))];
                 }
 
                 // Altrimenti, è una dichiarazione di tipo a livello di modulo.
-                return [ParseTypeDefinition()];
+                return [ParseTypeDefinition(Peek().Kind == TokenKind.Union)];
             }
             case TokenKind.Class: return [ParseClassDefinition()];
             case TokenKind.Unload: return [ParseUnloadStatement(this)];

@@ -1978,6 +1978,12 @@ static void push_const(gmb_vm_t* vm, gmb_task_t* t, int idx)
     }
 }
 
+/* Materializza una LISTA costante del chunk (ricorsiva: gli elementi possono essere liste o
+ * dict annidati — es. "Groups" di UNION/bitfield: lista di liste di numeri, o
+ * "FieldArrayDimensions": dict di array di bound). Prima i valori annidati dentro una lista
+ * diventavano NIL: la metadata arrivava vuota alla VM. */
+static gmb_obj_shared_val_t* gmb_vm_materialize_list(const gmb_chunk_list_t* src);
+
 /* Materializza una costante dict del chunk (descrittore UDT/class, ecc.) in un
  * gmb_obj_shared_val_t runtime. Ricorsivo per valori annidati (dict/list). */
 static gmb_obj_shared_val_t* gmb_vm_materialize_dict(const gmb_chunk_dict_t* d)
@@ -2005,19 +2011,7 @@ static gmb_obj_shared_val_t* gmb_vm_materialize_dict(const gmb_chunk_dict_t* d)
             }
             case GMB_CONST_LIST:
             {
-                gmb_obj_shared_val_t* l = gmb_shared_list_new();
-                if (l && e->val_list)
-                {
-                    for (uint32_t j = 0; j < e->val_list->count; j++)
-                    {
-                        const gmb_chunk_dict_entry_t* le = &e->val_list->items[j];
-                        gmb_val_t lv;
-                        if (le->val_type == GMB_CONST_DOUBLE || le->val_type == GMB_CONST_INT) lv = gmb_make_val_double(le->val_double);
-                        else if (le->val_type == GMB_CONST_STRING) lv = gmb_make_val_string(le->val_str ? le->val_str : "");
-                        else lv = gmb_val_nil();
-                        gmb_list_add(l->list, lv);
-                    }
-                }
+                gmb_obj_shared_val_t* l = gmb_vm_materialize_list(e->val_list);
                 v = l ? gmb_make_val_obj((gmb_obj_t*)l) : gmb_val_nil();
                 break;
             }
@@ -2029,6 +2023,40 @@ static gmb_obj_shared_val_t* gmb_vm_materialize_dict(const gmb_chunk_dict_t* d)
             gmb_obj_release((gmb_obj_t*)v.v_ptr);
     }
     return out;
+}
+
+static gmb_obj_shared_val_t* gmb_vm_materialize_list(const gmb_chunk_list_t* src)
+{
+    gmb_obj_shared_val_t* l = gmb_shared_list_new();
+    if (!l || !src) return l;
+    for (uint32_t j = 0; j < src->count; j++)
+    {
+        const gmb_chunk_dict_entry_t* le = &src->items[j];
+        gmb_val_t lv;
+        switch (le->val_type)
+        {
+            case GMB_CONST_DOUBLE:
+            case GMB_CONST_INT: lv = gmb_make_val_double(le->val_double); break;
+            case GMB_CONST_STRING: lv = gmb_make_val_string(le->val_str ? le->val_str : ""); break;
+            case GMB_CONST_LIST:
+            {
+                gmb_obj_shared_val_t* sub = gmb_vm_materialize_list(le->val_list);
+                lv = sub ? gmb_make_val_obj((gmb_obj_t*)sub) : gmb_val_nil();
+                break;
+            }
+            case GMB_CONST_DICT:
+            {
+                gmb_obj_shared_val_t* sub = gmb_vm_materialize_dict(le->val_dict);
+                lv = sub ? gmb_make_val_obj((gmb_obj_t*)sub) : gmb_val_nil();
+                break;
+            }
+            default: lv = gmb_val_nil(); break;
+        }
+        gmb_list_add(l->list, lv);
+        if ((le->val_type == GMB_CONST_LIST || le->val_type == GMB_CONST_DICT) && lv.kind == GMB_TYPE_OBJECT && lv.v_ptr)
+            gmb_obj_release((gmb_obj_t*)lv.v_ptr);
+    }
+    return l;
 }
 
 /* Descrittore materializzato, CONDIVISO per costante (cache per-VM). Ritorna un riferimento POSSEDUTO (+1):
@@ -2184,6 +2212,163 @@ static const char* vm_field_name_from_offset(gmb_obj_shared_val_t* cd, int offse
         if (nameV.kind == GMB_TYPE_STRING && nameV.v_string.data) return nameV.v_string.data;
     }
     return NULL;
+}
+
+/* ── UNION / BITFIELD: gruppi di aliasing (2026-11-11) ────────────────────────────────
+ * PCodeVM/VM-C tengono i campi di una istanza UDT in un DIZIONARIO nome→valore: non c'è una
+ * struct in memoria, quindi l'aliasing C (scrivere `u.I` e leggere `u.F`) va EMULATO. Il
+ * compilatore emette nel descrittore `__class__` la voce "Groups": lista di gruppi, ognuno un
+ * blocco di byte condiviso:
+ *   UNION    → un gruppo con tutti i campi a offset 0 (size = taglia dell'unione)
+ *   BITFIELD → un gruppo per unità di storage (size = byte del tipo dichiarato)
+ * Formato: [size, n, (symId, byteOff, bitOff, bitWidth, typeCode) × n] — tutti numeri.
+ * Alla SCRITTURA di un campo membro si aggiornano i bit nel buffer del gruppo (lista di byte
+ * conservata nell'istanza sotto "__grp<i>") e si riscrivono TUTTI i fratelli nel dizionario. */
+static int vm_group_code_bytes(int code)
+{
+    switch (code) {
+    case 0: case 1: case 9: case 10: return 8;
+    case 6: case 7: case 8: return 4;
+    case 4: case 5: return 2;
+    default: return 1;
+    }
+}
+static int vm_group_code_signed(int code) { return code == 1 || code == 2 || code == 4 || code == 6; }
+
+static double vm_group_num(gmb_val_t v)
+{
+    if (v.kind == GMB_TYPE_INT) return (double)v.v_int;
+    if (v.kind == GMB_TYPE_DOUBLE) return v.v_double;
+    return 0.0;
+}
+
+static uint64_t vm_group_get_bits(gmb_obj_shared_val_t* buf, int byteOff, int bitOff, int count)
+{
+    uint64_t r = 0;
+    for (int b = 0; b < count; b++) {
+        int bit = bitOff + b;
+        int pos = byteOff + bit / 8;
+        if (!buf || !buf->list || (size_t)pos >= buf->list->count) break;
+        unsigned byte = (unsigned)vm_group_num(buf->list->items[pos]) & 0xFFu;
+        if ((byte >> (bit % 8)) & 1u) r |= (1ull << b);
+    }
+    return r;
+}
+
+static void vm_group_set_bits(gmb_obj_shared_val_t* buf, int byteOff, int bitOff, int count, uint64_t v)
+{
+    if (!buf || !buf->list) return;
+    for (int b = 0; b < count; b++) {
+        int bit = bitOff + b;
+        int pos = byteOff + bit / 8;
+        if ((size_t)pos >= buf->list->count) break;
+        unsigned byte = (unsigned)vm_group_num(buf->list->items[pos]) & 0xFFu;
+        if ((v >> b) & 1ull) byte |= (1u << (bit % 8));
+        else byte &= ~(1u << (bit % 8));
+        gmb_list_set(buf->list, pos, gmb_make_val_double((double)byte));
+    }
+}
+
+/* Valore BASIC → bit grezzi del tipo C (double/float per bit pattern, interi troncati). */
+static uint64_t vm_group_value_to_bits(gmb_val_t v, int code, int width)
+{
+    double d = vm_group_num(v);
+    uint64_t raw;
+    if (code == 0) { union { double d; uint64_t u; } cv; cv.d = d; raw = cv.u; }
+    else if (code == 8) { union { float f; uint32_t u; } cf; cf.f = (float)d; raw = cf.u; }
+    else raw = (uint64_t)(int64_t)d;
+    if (width > 0 && width < 64) raw &= ((1ull << width) - 1ull);
+    return raw;
+}
+
+/* Bit grezzi → valore BASIC (double), con estensione del segno per i tipi signed. */
+static double vm_group_bits_to_value(uint64_t bits, int code, int width)
+{
+    int w = width > 0 ? width : vm_group_code_bytes(code) * 8;
+    if (w < 64) bits &= ((1ull << w) - 1ull);
+    if (code == 0) { union { double d; uint64_t u; } cv; cv.u = bits; return cv.d; }
+    if (code == 8) { union { float f; uint32_t u; } cf; cf.u = (uint32_t)bits; return (double)cf.f; }
+    if (vm_group_code_signed(code) && w < 64 && ((bits >> (w - 1)) & 1ull))
+        return (double)(int64_t)(bits | (~0ull << w));
+    return (double)bits;
+}
+
+static void vm_udt_group_apply(gmb_obj_shared_val_t* inst, gmb_obj_shared_val_t* cd, int symId, gmb_val_t val)
+{
+    if (!inst || !inst->dict || !cd || !cd->dict) return;
+    gmb_val_t gv = vm_dict_get_ci(cd->dict, "Groups");
+    fprintf(stderr, "[DBG grp] sym=%d kind=%d ptr=%p\n", symId, (int)gv.kind, gv.v_ptr);
+    if (gv.kind != GMB_TYPE_OBJECT || !gv.v_ptr) return;
+    gmb_obj_t* gro = (gmb_obj_t*)gv.v_ptr;
+    fprintf(stderr, "[DBG grp] objkind=%d\n", (int)gro->kind);
+    if (gro->kind != GMB_OBJ_LIST) return;
+    gmb_obj_shared_val_t* groups = (gmb_obj_shared_val_t*)gro;
+    if (!groups->list) { fprintf(stderr, "[DBG grp] no list\n"); return; }
+    fprintf(stderr, "[DBG grp] ngroups=%zu\n", groups->list->count);
+
+    for (size_t gi = 0; gi < groups->list->count; gi++) {
+        gmb_val_t eg = groups->list->items[gi];
+        fprintf(stderr, "[DBG grp] egkind_val=%d\n", (int)eg.kind);
+        if (eg.kind != GMB_TYPE_OBJECT || !eg.v_ptr) continue;
+        gmb_obj_t* eo = (gmb_obj_t*)eg.v_ptr;
+        fprintf(stderr, "[DBG grp] egkind=%d\n", (int)eo->kind);
+        if (eo->kind != GMB_OBJ_LIST) continue;
+        gmb_obj_shared_val_t* g = (gmb_obj_shared_val_t*)eo;
+        if (!g->list || g->list->count < 2) continue;
+        int size = (int)vm_group_num(g->list->items[0]);
+        int n = (int)vm_group_num(g->list->items[1]);
+        int hit = -1;
+        for (int m = 0; m < n; m++) {
+            int k = 2 + m * 5;
+            if ((size_t)(k + 4) >= g->list->count) break;
+            if ((int)vm_group_num(g->list->items[k]) == symId) { hit = m; break; }
+        }
+        if (hit < 0) continue;
+
+        /* Buffer del gruppo: lista di `size` byte, creata alla prima scrittura. */
+        char bkey[32];
+        snprintf(bkey, sizeof(bkey), "__grp%zu", gi);
+        gmb_val_t bv = vm_dict_get_ci(inst->dict, bkey);
+        gmb_obj_shared_val_t* buf = NULL;
+        if (bv.kind == GMB_TYPE_OBJECT && bv.v_ptr && ((gmb_obj_t*)bv.v_ptr)->kind == GMB_OBJ_LIST) {
+            buf = (gmb_obj_shared_val_t*)bv.v_ptr;
+            if (buf->list && (int)buf->list->count != (size > 0 ? size : 1)) buf = NULL;
+        }
+        if (!buf) {
+            gmb_obj_shared_val_t* nb = gmb_shared_list_new();
+            if (!nb) return;
+            for (int b = 0; b < (size > 0 ? size : 1); b++) gmb_list_add(nb->list, gmb_make_val_double(0.0));
+            gmb_dict_set(inst->dict, bkey, gmb_make_val_obj((gmb_obj_t*)nb));
+            gmb_obj_release((gmb_obj_t*)nb);   /* l'istanza tiene un ref nel dict */
+            buf = nb;
+        }
+
+        int k = 2 + hit * 5;
+        int byteOff = (int)vm_group_num(g->list->items[k + 1]);
+        int bitOff = (int)vm_group_num(g->list->items[k + 2]);
+        int width = (int)vm_group_num(g->list->items[k + 3]);
+        int code = (int)vm_group_num(g->list->items[k + 4]);
+        int bitCount = width > 0 ? width : vm_group_code_bytes(code) * 8;
+        vm_group_set_bits(buf, byteOff, bitOff, bitCount, vm_group_value_to_bits(val, code, width));
+
+        /* Riscrive TUTTI i fratelli (compreso il campo scritto: è così che il bitfield riceve la
+         * maschera; per una union il valore riletto coincide con quello scritto). */
+        for (int m = 0; m < n; m++) {
+            int kk = 2 + m * 5;
+            if ((size_t)(kk + 4) >= g->list->count) break;
+            int sym = (int)vm_group_num(g->list->items[kk]);
+            const char* fname = vm_field_name_from_offset(cd, sym);
+            if (!fname) continue;
+            int bOff = (int)vm_group_num(g->list->items[kk + 1]);
+            int btOff = (int)vm_group_num(g->list->items[kk + 2]);
+            int wm = (int)vm_group_num(g->list->items[kk + 3]);
+            int cm = (int)vm_group_num(g->list->items[kk + 4]);
+            int cnt = wm > 0 ? wm : vm_group_code_bytes(cm) * 8;
+            double out = vm_group_bits_to_value(vm_group_get_bits(buf, bOff, btOff, cnt), cm, wm);
+            gmb_dict_set(inst->dict, fname, gmb_make_val_double(out));
+        }
+        return;
+    }
 }
 
 /* Truthiness di un operando (usata da OP_JUMP_IF_* / fast path): per una STRINGA si applica
@@ -11136,6 +11321,10 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                     else
                     {
                         gmb_dict_set(dict, key, gmb_adapter_stack_to_val_borrowed(valE));
+                        /* UNION/BITFIELD (2026-11-11): aggiorna il buffer del gruppo e riscrive
+                         * i fratelli (l'aliasing C non esiste nel modello a dizionario). */
+                        vm_udt_group_apply((gmb_obj_shared_val_t*)obj, cd, offset,
+                                           gmb_adapter_stack_to_val_borrowed(valE));
                     }
                     if (curS.type == 2 && curS.ref) gmb_obj_release(curS.ref);
                 }

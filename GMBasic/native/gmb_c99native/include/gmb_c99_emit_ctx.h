@@ -61,6 +61,8 @@ typedef struct {
                       int is_interface;                     /* 2.7(d)p2b: INTERFACE (no struct/ctor) */
                       int is_udt;                           /* 2.7(d)p2b: TYPE/UDT (assegnamento = copia valore) */
                       int is_packed;                        /* PACKED TYPE: layout = somma dei campi (canone SIZEOF) */
+                      int is_union;                         /* UNION: campi sovrapposti (union anonima C11) */
+                      int fbits[128];                       /* BITFIELD: larghezza in bit per campo (0 = normale) */
                       char impl[8][40]; int nimpl;          /* 2.7(d)p2b: interfacce IMPLEMENTS */
                       char fname[128][40]; char ftype[128][40];
                       int nstatics; char sname[8][40]; char stype[8][40];

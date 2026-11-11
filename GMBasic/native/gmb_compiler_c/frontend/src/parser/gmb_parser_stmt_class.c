@@ -216,7 +216,8 @@ gmb_stmt_t* gmb_p_parse_class(gmb_parser_t* p, int line, int is_udt, int is_pack
         if (mt->kind == GMB_TOK_EndClass || mt->kind == GMB_TOK_EndType) { gmb_p_adv(p); break; }
         if (mt->kind == GMB_TOK_End && gmb_p_peek(p, 1)
             && (gmb_p_peek(p, 1)->kind == GMB_TOK_Class || gmb_p_tok_is_keyword(gmb_p_peek(p, 1), "Class")
-                || gmb_p_peek(p, 1)->kind == GMB_TOK_Type || gmb_p_tok_is_keyword(gmb_p_peek(p, 1), "Type"))) {
+                || gmb_p_peek(p, 1)->kind == GMB_TOK_Type || gmb_p_tok_is_keyword(gmb_p_peek(p, 1), "Type")
+                || gmb_p_peek(p, 1)->kind == GMB_TOK_UnionType || gmb_p_tok_is_keyword(gmb_p_peek(p, 1), "Union"))) {
             gmb_p_adv(p); gmb_p_adv(p); break;
         }
         if (gmb_member_mod_in(mt->kind)) {
@@ -589,6 +590,27 @@ gmb_stmt_t* gmb_p_parse_class(gmb_parser_t* p, int line, int is_udt, int is_pack
                         }
                     }
                 }
+                /* BITFIELD (2026-11-11): clausola `WIDTH n` dopo il tipo del campo (1..64 bit).
+                 * La larghezza viaggia in cls_field_bits[] accanto a nomi/tipi; l'emitter C99
+                 * genera un vero bitfield C (`int64_t A : 3`) e il layout (SIZEOF) resta
+                 * calcolato dal canone TypeLayout. */
+                int fbits = 0;
+                if (ftype && gmb_p_cur(p) && (gmb_p_cur(p)->kind == GMB_TOK_Width || gmb_p_tok_is_keyword(gmb_p_cur(p), "Width"))) {
+                    gmb_p_adv(p);   /* WIDTH */
+                    const gmb_token_t* wn = gmb_p_cur(p);
+                    if (wn && (wn->kind == GMB_TOK_Number || wn->kind == GMB_TOK_Integer)) {
+                        fbits = (int)strtol(wn->lexeme, NULL, 10);
+                        gmb_p_adv(p);
+                        /* Solo tipi INTERI (parità col parser C#): un bitfield C non può essere
+                         * double/float. Il marcatore -1 fa fallire l'emissione con un errore
+                         * esplicito invece di un campo silenziosamente ignorato. */
+                        if (strncasecmp(ftype, "BYTE", 4) != 0 && strncasecmp(ftype, "SBYTE", 5) != 0
+                            && strncasecmp(ftype, "INTEGER", 7) != 0 && strncasecmp(ftype, "UINTEGER", 8) != 0
+                            && strncasecmp(ftype, "LONG", 4) != 0 && strncasecmp(ftype, "ULONG", 5) != 0
+                            && strncasecmp(ftype, "QUAD", 4) != 0 && strncasecmp(ftype, "UQUAD", 5) != 0)
+                            fbits = -1;
+                    }
+                }
                 if (fname) {
                     /* Campo DIMensionato in un TYPE (X(n) AS T): gli elementi NON sono inline,
                      * il campo è un riferimento da 8 byte nel layout (canone SIZEOF/TypeLayout).
@@ -618,9 +640,11 @@ gmb_stmt_t* gmb_p_parse_class(gmb_parser_t* p, int line, int is_udt, int is_pack
                         capf = capf ? capf * 2 : 8;
                         s->cls_field_names = (char**)realloc(s->cls_field_names, (size_t)capf * sizeof(char*));
                         s->cls_field_types = (char**)realloc(s->cls_field_types, (size_t)capf * sizeof(char*));
+                        s->cls_field_bits = (int*)realloc(s->cls_field_bits, (size_t)capf * sizeof(int));
                     }
                     s->cls_field_names[s->n_cls_fields] = fname;
                     s->cls_field_types[s->n_cls_fields] = ftype;
+                    s->cls_field_bits[s->n_cls_fields] = fbits;
                     s->n_cls_fields++;
                 } else { if (ftype) free(ftype); }
                 if (!gmb_p_match(p, GMB_TOK_Comma)) break;

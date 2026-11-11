@@ -1598,6 +1598,14 @@ public sealed partial class IlProgramCompiler
         };
         int LayoutUdt2(UserDefinedType udt, string what, string prefix, List<(string Path, int Code, int Off)> outLeaves)
         {
+            // UNION/BITFIELD (2026-11-11): layout non riproducibile a foglie (vedi
+            // Compiler.Expressions.cs) — vale anche per array di UDT / UDT annidati.
+            if (udt.IsUnion)
+                throw new NotSupportedException(
+                    $"FFI '{symbolName}': lo UDT '{udt.Name.Lexeme}' usato per {what} è una UNION (campi sovrapposti): non ammesso dal marshalling FFI.");
+            if (udt.Fields.Any(f => f.BitWidth > 0))
+                throw new NotSupportedException(
+                    $"FFI '{symbolName}': lo UDT '{udt.Name.Lexeme}' usato per {what} contiene BITFIELD (WIDTH): non ammesso dal marshalling FFI.");
             // PACKED TYPE (2026-11-11): layout C senza padding, come `__attribute__((packed))`
             // (parita Compiler.Expressions.cs) — gli offset devono coincidere con quelli del C.
             var packed2 = udt.IsPacked;
@@ -1701,6 +1709,14 @@ public sealed partial class IlProgramCompiler
             if (!IsSimpleUdt(udt))
                 throw new NotSupportedException(
                     $"FFI '{symbolName}': lo UDT '{udt.Name.Lexeme}' usato per {what} non è ammesso dal marshalling FFI (solo TYPE semplici, senza operatori/costruttori/metodi/generici).");
+            // UNION/BITFIELD (2026-11-11): vedi Compiler.Expressions.cs — layout non
+            // riproducibile a foglie.
+            if (udt.IsUnion)
+                throw new NotSupportedException(
+                    $"FFI '{symbolName}': lo UDT '{udt.Name.Lexeme}' usato per {what} è una UNION (campi sovrapposti): non ammesso dal marshalling FFI.");
+            if (udt.Fields.Any(f => f.BitWidth > 0))
+                throw new NotSupportedException(
+                    $"FFI '{symbolName}': lo UDT '{udt.Name.Lexeme}' usato per {what} contiene BITFIELD (WIDTH): non ammesso dal marshalling FFI.");
             // Limite a 8 campi FOGLIA dopo flattening ricorsivo (S0 2026-11-06) — parità
             // Compiler.Expressions.cs. Il vecchio limite a 1-2 foglie (16 byte) valeva finché la
             // VM/C chiamava con un cast di funzione scritto a mano; ora la VM/C usa libffi

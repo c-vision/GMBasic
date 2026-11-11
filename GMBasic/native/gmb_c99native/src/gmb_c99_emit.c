@@ -2127,16 +2127,41 @@ static int uc_prop_is_string(const char* p) {
         || !strcasecmp(p, "ForeColor") || !strcasecmp(p, "FG") || !strcasecmp(p, "Foreground")
         || !strcasecmp(p, "BackColor") || !strcasecmp(p, "BG") || !strcasecmp(p, "Background");
 }
+/* Tipo C di STORAGE di un campo quando serve il layout C reale (UNION/bitfield, 2026-11-11):
+ * un bitfield C non può essere di tipo double, e una union deve sovrapporre i tipi C veri per
+ * dare l'aliasing. Larghezze = canone del LINGUAGGIO (TypeLayout): BYTE 1, INTEGER 2,
+ * LONG/QUAD 8, SINGLE 4, DOUBLE 8. */
+static const char* cls_field_storage_ctype(struct cls_info* ci, int k) {
+    const char* t = ci->ftype[k] ? ci->ftype[k] : "DOUBLE";
+    if (strncasecmp(t, "SBYTE", 5) == 0) return "signed char";
+    if (strncasecmp(t, "BYTE", 4) == 0) return "unsigned char";
+    if (strncasecmp(t, "UINTEGER", 8) == 0) return "unsigned short";
+    if (strncasecmp(t, "INTEGER", 7) == 0) return "short";
+    if (strncasecmp(t, "ULONG", 5) == 0 || strncasecmp(t, "UQUAD", 5) == 0) return "unsigned long long";
+    if (strncasecmp(t, "LONG", 4) == 0 || strncasecmp(t, "QUAD", 4) == 0) return "long long";
+    if (strncasecmp(t, "SINGLE", 6) == 0) return "float";
+    return "double";
+}
 /* 2.7(c): campi FLATTENED base-first nella struct (parity oracolo FieldsWithBase:
- * i campi base sono il prefisso del layout, BASE.NEW è layout-compatibile) */
+ * i campi base sono il prefisso del layout, BASE.NEW è layout-compatibile).
+ * UNION (2026-11-11): i campi stanno in una `union` ANONIMA (C11) → tutti a offset 0 e
+ * accessibili come `obj.campo` (il codice di accesso esistente non cambia). BITFIELD:
+ * veri bitfield C con il tipo intero della larghezza dichiarata (LSB-first, come le
+ * altre gambe). */
 static void cls_emit_flat_fields(ctx_t* c, sb_t* b, struct cls_info* ci, int depth) {
     if (!ci || depth > 8) return;
     if (ci->base[0]) cls_emit_flat_fields(c, b, cls_find(c, ci->base), depth + 1);
+    if (ci->is_union) sb_put(b, "    union {\n");
     for (int k = 0; k < ci->nfields; k++) {
-        sb_printf(b, "    %s ", cls_field_ctype(c, ci->ftype[k]));
+        if (ci->is_union || ci->fbits[k] > 0)
+            sb_printf(b, "    %s ", cls_field_storage_ctype(ci, k));
+        else
+            sb_printf(b, "    %s ", cls_field_ctype(c, ci->ftype[k]));
         sb_ident(b, ci->fname[k]);
+        if (ci->fbits[k] > 0) sb_printf(b, " : %d", ci->fbits[k]);
         sb_put(b, ";\n");
     }
+    if (ci->is_union) sb_put(b, "    };   /* union anonima: campi sovrapposti */\n");
 }
 static int cls_flat_field_count(ctx_t* c, struct cls_info* ci, int depth) {
     if (!ci || depth > 8) return 0;
@@ -6237,11 +6262,13 @@ static void reg_class_from_stmt(ctx_t* c, gmb_stmt_t* s) {
     ci->is_interface = s->class_is_interface;
     ci->is_udt = s->class_is_udt;
     ci->is_packed = s->class_is_packed;
+    ci->is_union = s->class_is_union;
     for (int k = 0; k < s->n_cls_implements && ci->nimpl < 8; k++)
         snprintf(ci->impl[ci->nimpl++], 40, "%s", s->cls_implements[k]);
     for (int k = 0; k < s->n_cls_fields && ci->nfields < 128; k++) {
         snprintf(ci->fname[ci->nfields], 40, "%s", s->cls_field_names[k]);
         snprintf(ci->ftype[ci->nfields], 40, "%s", s->cls_field_types[k] ? s->cls_field_types[k] : "NUMERIC");
+        if (s->cls_field_bits) ci->fbits[ci->nfields] = s->cls_field_bits[k];
         ci->nfields++;
     }
     for (int k = 0; k < s->n_cls_statics && ci->nstatics < 8; k++) {
@@ -32134,6 +32161,12 @@ static const char* ffi_code_ctype(int code) {
 static int ffi_layout_rec(ctx_t* c, struct cls_info* ci, const char* prefix, ffi_leaf_t* out,
                           int* n, int max, int* max_align, int depth) {
     if (depth > 8) return -1;
+    /* UNION/BITFIELD (2026-11-11): campi sovrapposti / impacchettati in bit → layout non
+     * riproducibile a foglie (parità Compiler.Expressions.cs / IlProgramCompiler). */
+    if (ci && ci->is_union) return -3;
+    if (ci)
+        for (int _b = 0; _b < ci->nfields; _b++)
+            if (ci->fbits[_b] > 0) return -3;
     /* PACKED TYPE (2026-11-11): layout senza padding, come `__attribute__((packed))` — nessun
      * allineamento tra i campi e nessuna taglia finale arrotondata. */
     int packed = ci->is_packed;
@@ -32255,6 +32288,21 @@ static const char* ffi_udt_shape_name_ptr(ctx_t* c, struct cls_info* ci) {
  * niente campi array, niente struct annidate con padding, 1..64 foglie. */
 static int ffi_validate_udt(ctx_t* c, struct cls_info* ci, const char* sym, const char* what, int line, int allow_mixed_kind) {
     (void)allow_mixed_kind;
+    /* UNION/BITFIELD (2026-11-11): campi sovrapposti o impacchettati in bit → il layout non è
+     * riproducibile a foglie (parità Compiler.Expressions.cs / IlProgramCompiler). */
+    if (ci && ci->is_union) {
+        c99_fail(c, line, "FFI '%s': lo UDT '%s' usato per %s è una UNION (campi sovrapposti): "
+                 "non ammesso dal marshalling FFI.", sym, ci->name, what);
+        return 0;
+    }
+    if (ci) {
+        for (int _k = 0; _k < ci->nfields; _k++)
+            if (ci->fbits[_k] > 0) {
+                c99_fail(c, line, "FFI '%s': lo UDT '%s' usato per %s contiene BITFIELD (WIDTH): "
+                         "non ammesso dal marshalling FFI.", sym, ci->name, what);
+                return 0;
+            }
+    }
     ffi_leaf_t leaves[64];
     int n = 0, al = 1;
     int rc = ffi_layout_rec(c, ci, "", leaves, &n, 64, &al, 0);
@@ -35855,6 +35903,13 @@ static int gmb_c99_emit_once(const gmb_program_t* prog, char** out_src, char** e
     for (int i = 0; i < c->n_classes; i++) {
         struct cls_info* ci = &c->classes[i];
         if (ci->is_interface) continue;   /* 2.7(d)p2b: interfaccia = solo contratto, no struct */
+        for (int k = 0; k < ci->nfields; k++) {
+            if (ci->fbits[k] < 0) {
+                c99_fail(c, 0, "campo '%s' di '%s': WIDTH è ammesso solo su campi interi "
+                         "(BYTE/INTEGER/LONG/QUAD e varianti unsigned).", ci->fname[k], ci->name);
+                return 1;
+            }
+        }
         sb_printf(&proto, "typedef struct gmb_obj_%s {\n", ci->name);
         if (cls_flat_field_count(c, ci, 0) == 0) sb_put(&proto, "    int __empty;\n");
         else cls_emit_flat_fields(c, &proto, ci, 0);
@@ -35887,6 +35942,16 @@ static int gmb_c99_emit_once(const gmb_program_t* prog, char** out_src, char** e
                 }
                 else if (strncasecmp(ft, "STRING", 6) == 0) code = 2;
                 else if (gmb_ctype_is_list(ft)) { code = 4; elem = gmb_list_elem_of(ft); }
+                /* UNION/BITFIELD (2026-11-11): `offsetof` su un bitfield è ILLEGALE in C
+                 * (clang: "cannot compute offset of bit-field") e in una union anonima
+                 * l'offset non è significativo: il registro di layout serve solo a DBF/ISAM,
+                 * dove questi tipi non sono ammessi (rifiutati a monte). Si emette 0. */
+                if (ci->is_union || ci->fbits[fi] > 0) {
+                    if (strncasecmp(ft, "DOUBLE", 6) == 0 || strncasecmp(ft, "SINGLE", 6) == 0) code = 1;
+                    else code = 0;   /* intero */
+                    sb_printf(&proto, "    gmb_type_udt_field(\"%s\", \"%s\", 0L, %d);\n", ci->name, ci->fname[fi], code);
+                    continue;
+                }
                 /* Il nome C del campo è SANITIZZATO (sb_ident: `for` → `gmb_kw_for`), come
                  * nella struct sopra; usare qui il nome BASIC crudo generava C invalido
                  * (`offsetof(..., for)`) per campi omonimi di keyword C — es. `TYPE loop`

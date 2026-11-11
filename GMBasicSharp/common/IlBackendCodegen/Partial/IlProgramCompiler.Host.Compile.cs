@@ -188,7 +188,7 @@ public sealed partial class IlProgramCompiler
                 // prima di questo blocco / riusato sotto per i metodi).
                 var udtDtorTypeBuilder = classTypes.TryGetValue(udtDef.SymbolId, out var existingTb)
                     ? existingTb : moduleBuilder.DefineType("Udt_" + udtDef.SymbolId,
-                        TypeAttributes.Public | TypeAttributes.SequentialLayout | TypeAttributes.Sealed, types.ValueType);
+                        TypeAttributes.Public | (udtDef.IsUnion ? TypeAttributes.ExplicitLayout : TypeAttributes.SequentialLayout) | TypeAttributes.Sealed, types.ValueType);
                 classTypes[udtDef.SymbolId] = udtDtorTypeBuilder;
                 var udtDestructorBuilder = udtDtorTypeBuilder.DefineMethod(
                     "__Destructor",
@@ -201,7 +201,7 @@ public sealed partial class IlProgramCompiler
                 ? preUdtTb
                 : moduleBuilder.DefineType(
                     "Udt_" + udtDef.SymbolId,
-                    TypeAttributes.Public | TypeAttributes.SequentialLayout | TypeAttributes.Sealed,
+                    TypeAttributes.Public | (udtDef.IsUnion ? TypeAttributes.ExplicitLayout : TypeAttributes.SequentialLayout) | TypeAttributes.Sealed,
                     types.ValueType);
             // PACKED TYPE (2026-11-11): la rappresentazione CLR resta NATURALE — il layout
             // packed serve SOLO alla frontiera FFI, dove viaggia come forma/offset espliciti
@@ -329,6 +329,12 @@ public sealed partial class IlProgramCompiler
                 }
                 var udtFieldClrType = MapProcedureType(field.DataType, types, classTypes);
                 classFields[field.SymbolId] = udtTypeBuilder.DefineField(field.Name.Lexeme, udtFieldClrType, FieldAttributes.Public);
+                // UNION (2026-11-11): tutti i campi a offset 0 — il CLR gestisce l'aliasing
+                // (scrivere I e leggere F restituisce la reinterpretazione dei byte, come in C).
+                if (udtDef.IsUnion)
+                    classFields[field.SymbolId].SetCustomAttribute(new CustomAttributeBuilder(
+                        typeof(System.Runtime.InteropServices.FieldOffsetAttribute).GetConstructor([typeof(int)])!,
+                        new object[] { 0 }));
             }
 
             // PROPERTY di UDT (es. `PROPERTY Magnitude AS DOUBLE` con GET): getter/setter

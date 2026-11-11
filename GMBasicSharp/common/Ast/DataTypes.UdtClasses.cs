@@ -18,7 +18,11 @@ public record TypeField(
     Token Name,
     DataType DataType,
     ImmutableArray<Expr> Dimensions,
-    Expr? DefaultValue) : Decl(Name.Position)
+    Expr? DefaultValue,
+    /// <summary>BITFIELD (2026-11-11): larghezza in bit (1..64) della clausola `WIDTH n`
+    /// dopo il tipo; 0 = campo normale. Il valore viene mascherato/esteso al segno in base al
+    /// tipo dichiarato e impacchettato LSB-first nell'unità di storage (regole C).</summary>
+    int BitWidth = 0) : Decl(Name.Position)
 {
     /// <summary>
     /// Restituisce una rappresentazione testuale compatta del nodo.
@@ -26,7 +30,8 @@ public record TypeField(
     public override string ToString()
     {
         var dimsString = Dimensions.IsEmpty ? "" : $"({string.Join(", ", Dimensions)})";
-        return $"{Name.Lexeme}{dimsString}#{SymbolId} AS {DataType}{(DefaultValue is not null ? $" = {DefaultValue}" : "")}";
+        var bitsString = BitWidth > 0 ? $" WIDTH {BitWidth}" : "";
+        return $"{Name.Lexeme}{dimsString}#{SymbolId} AS {DataType}{bitsString}{(DefaultValue is not null ? $" = {DefaultValue}" : "")}";
     }
 
     /// <summary>
@@ -40,7 +45,8 @@ public record TypeField(
             (Token)Name.DeepClone(),
             (DataType)DataType.DeepClone(),
             [..Dimensions.Select(d => (Expr)d.DeepClone())],
-            (Expr?)DefaultValue?.DeepClone());
+            (Expr?)DefaultValue?.DeepClone(),
+            BitWidth);
     }
 }
 
@@ -212,6 +218,14 @@ public record UserDefinedType(
     /// </summary>
     public bool IsPacked { get; init; }
 
+    /// <summary>
+    /// UNION (2026-11-11): tutti i campi partono dall'offset 0 e condividono la stessa
+    /// storage (semantica C). Taglia = massimo dei campi, allineamento = massimo.
+    /// Scrivere un campo e leggere un altro restituisce la reinterpretazione dei byte.
+    /// Ammessi solo campi NUMERICI scalari (v1).
+    /// </summary>
+    public bool IsUnion { get; init; }
+
     /// <summary>True se il tipo è a LUNGHEZZA FISSA (serializzabile a record: tutti i campi
     /// sono fixed — scalari, STRING*N, array fisso di fixed, UDT fixed). False se contiene
     /// campi a lunghezza variabile (STRING, LIST/DICT/collezioni, ANY, UDT non-fixed).
@@ -307,6 +321,7 @@ public record UserDefinedType(
             [..TypeParameters.Select(tp => (TypeParameter)tp.DeepClone())])
         {
             IsPacked = IsPacked,
+            IsUnion = IsUnion,
             DeclaredNamespace = DeclaredNamespace, // Propaga il namespace
             OriginalName = (Token)OriginalName.DeepClone(),
             ImplementedInterfaceNames = [..ImplementedInterfaceNames.Select(t => (Token)t.DeepClone())],

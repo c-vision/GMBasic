@@ -869,8 +869,39 @@ static long gmb_cls_field_bytes(ctx_t* c, const char* t, int depth) {
 }
 static long gmb_cls_layout_size(ctx_t* c, struct cls_info* ci, int depth) {
     if (!ci || depth > 8) return 0;
+    /* UNION (2026-11-11): tutti i campi a offset 0 → taglia = massimo, allineamento = massimo.
+     * BITFIELD: i bit si impacchettano LSB-first nell'unità del tipo dichiarato (regole C:
+     * nuova unità quando il campo non ci sta). Parità con TypeLayout.ComputeLayout (C#). */
+    if (ci->is_union) {
+        long size = 0, maxAlignU = 1;
+        for (int i = 0; i < ci->nfields; i++) {
+            long sz = ci->fbits[i] > 0 ? gmb_scalar_bytes(ci->ftype[i]) : gmb_cls_field_bytes(c, ci->ftype[i], depth);
+            if (sz < 1) sz = 1;
+            if (sz > size) size = sz;
+            if (sz > maxAlignU) maxAlignU = sz;
+        }
+        return size > 0 ? (size + maxAlignU - 1) / maxAlignU * maxAlignU : 0;
+    }
     long offset = 0, maxAlign = 1;
+    long unitBytes = 0, usedBits = 0;
+    int inUnit = 0;
     for (int i = 0; i < ci->nfields; i++) {
+        if (ci->fbits[i] > 0) {
+            long unit = gmb_scalar_bytes(ci->ftype[i]);
+            if (unit < 1) unit = 1;
+            long unitBits = unit * 8;
+            if (!inUnit || unit != unitBytes || usedBits + ci->fbits[i] > unitBits) {
+                if (!ci->is_packed) offset = (offset + unit - 1) / unit * unit;
+                unitBytes = unit;
+                usedBits = 0;
+                inUnit = 1;
+                offset += unit;
+                if (unit > maxAlign) maxAlign = unit;
+            }
+            usedBits += ci->fbits[i];
+            continue;
+        }
+        inUnit = 0; unitBytes = 0; usedBits = 0;
         long sz = gmb_cls_field_bytes(c, ci->ftype[i], depth);
         if (sz < 1) sz = 1;
         if (ci->is_packed) { offset += sz; continue; }

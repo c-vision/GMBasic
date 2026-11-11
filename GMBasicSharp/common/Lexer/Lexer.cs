@@ -1060,6 +1060,9 @@ public sealed partial class Lexer
         if (MatchKeyword("END CLASS")) return CreateToken(TokenKind.EndClass);
         if (MatchKeyword("END ENUM")) return CreateToken(TokenKind.EndEnum);
         if (MatchKeyword("END TYPE")) return CreateToken(TokenKind.EndType);
+        // UNION (2026-11-11): la chiusura `END UNION` produce lo stesso token di `END TYPE`
+        // (il parser sa se sta chiudendo un TYPE o una UNION dal contesto).
+        if (MatchKeyword("END UNION")) return CreateToken(TokenKind.EndType);
         if (MatchKeyword("END SUB")) return CreateToken(TokenKind.EndFunction);
         if (MatchKeyword("END GET")) return CreateToken(TokenKind.EndGet);
         if (MatchKeyword("END SET")) return CreateToken(TokenKind.EndSet);

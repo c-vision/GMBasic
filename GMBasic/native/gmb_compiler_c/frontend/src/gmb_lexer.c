@@ -200,6 +200,7 @@ static const gmb_keyword_t gmb_keywords[] = {
     GMB_KEYWORD_ENTRY("TYPE", Type),
     GMB_KEYWORD_ENTRY("PROPERTY", Property),
     GMB_KEYWORD_ENTRY("ENDTYPE", EndType),
+    GMB_KEYWORD_ENTRY("ENDUNION", EndType),   /* chiusura di UNION (stesso token di END TYPE) */
     GMB_KEYWORD_ENTRY("ENDPROPERTY", EndProperty),
     GMB_KEYWORD_ENTRY("ENDGET", EndGet),
     GMB_KEYWORD_ENTRY("ENDSET", EndSet),
@@ -1133,6 +1134,7 @@ static const gmb_keyword_t gmb_keywords[] = {
     GMB_KEYWORD_ENTRY("VARPTR", VarPtr),
     GMB_KEYWORD_ENTRY("STRPTR", StrPtr),
     GMB_KEYWORD_ENTRY("PACKED", Packed),
+    GMB_KEYWORD_ENTRY("UNION", UnionType),
     GMB_KEYWORD_ENTRY("UDTPACKED", UdtPacked),
     GMB_KEYWORD_ENTRY("UDTALIGNED", UdtAligned),
     GMB_KEYWORD_ENTRY("TOP", Top),

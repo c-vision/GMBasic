@@ -1080,6 +1080,15 @@ public sealed partial class Compiler
             int LayoutUdt(UserDefinedType udt, string what, string pathPrefix, string symPrefix,
                           List<(string Path, string SymbolIdPath, int Code, int Off, bool IsInt)> outLeaves)
             {
+                // UNION/BITFIELD (2026-11-11): il marshalling FFI appiattisce l'UDT in foglie con
+                // offset propri — con campi SOVRAPPOSTI o impacchettati in bit il layout non è
+                // riproducibile (vale anche per array di UDT e UDT annidati).
+                if (udt.IsUnion)
+                    throw new BasicException(expr.OriginalToken,
+                        $"FFI '{symbolName}': lo UDT '{udt.Name.Lexeme}' usato per {what} è una UNION (campi sovrapposti): non ammesso dal marshalling FFI.");
+                if (udt.Fields.Any(f => f.BitWidth > 0))
+                    throw new BasicException(expr.OriginalToken,
+                        $"FFI '{symbolName}': lo UDT '{udt.Name.Lexeme}' usato per {what} contiene BITFIELD (WIDTH): non ammesso dal marshalling FFI.");
                 // PACKED TYPE (2026-11-11): layout C senza padding (come `__attribute__((packed))`)
                 // — ogni campo parte subito dopo il precedente, taglia finale = somma delle
                 // taglie. Prima il layout FFI allineava sempre: un PACKED TYPE passato a una
@@ -1174,6 +1183,15 @@ public sealed partial class Compiler
                 if (!IsSimpleUdt(udt))
                     throw new BasicException(expr.OriginalToken,
                         $"FFI '{symbolName}': lo UDT '{udt.Name.Lexeme}' usato per {what} non è ammesso dal marshalling FFI (solo TYPE semplici, senza operatori/costruttori/metodi/generici).");
+                // UNION/BITFIELD (2026-11-11): il marshalling FFI appiattisce lo UDT in foglie con
+                // offset propri — con campi SOVRAPPOSTI (union) o impacchettati in bit (WIDTH) il
+                // layout non è riproducibile a foglie: rifiuto esplicito su tutte le gambe.
+                if (udt.IsUnion)
+                    throw new BasicException(expr.OriginalToken,
+                        $"FFI '{symbolName}': lo UDT '{udt.Name.Lexeme}' usato per {what} è una UNION (campi sovrapposti): non ammesso dal marshalling FFI.");
+                if (udt.Fields.Any(f => f.BitWidth > 0))
+                    throw new BasicException(expr.OriginalToken,
+                        $"FFI '{symbolName}': lo UDT '{udt.Name.Lexeme}' usato per {what} contiene BITFIELD (WIDTH): non ammesso dal marshalling FFI.");
                 var leaves = CollectFfiLeaves(udt, what, "", "", out _);
                 if (leaves.Count is 0 or > 64)
                     throw new BasicException(expr.OriginalToken,

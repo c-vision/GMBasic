@@ -1150,6 +1150,16 @@ static gmb_stmt_t* gmb_p_parse_stmt_impl(gmb_parser_t* p, bool* multiline)
         if (c1 && c1->kind == GMB_TOK_Abstract && gmb_p_peek(p, cadv + 1)) { c1 = gmb_p_peek(p, cadv + 1); cadv++; }
         if (c1 && c1->kind == GMB_TOK_Class) { for (int i = 0; i < cadv; i++) gmb_p_adv(p); return gmb_p_parse_class(p, line, 0, 0); }
     }
+    /* UNION (2026-11-11): tipo a campi SOVRAPPOSTI (semantica C). Stesso corpo di un TYPE
+     * (solo campi), chiuso da END UNION (o END TYPE). La semantica di aliasing è realizzata
+     * dal runtime (PCodeVM/VM-C: buffer di byte + refresh dei fratelli) e — su C99Native —
+     * da una `union` anonima C11 con i tipi C reali: in entrambi i casi l'utente scrive un
+     * campo e ne legge un altro. */
+    if (t->kind == GMB_TOK_UnionType) {
+        gmb_stmt_t* u = gmb_p_parse_class(p, line, 1, 0);
+        if (u) u->class_is_union = 1;
+        return u;
+    }
     /* dichiarazioni a blocco: TYPE/PACKED TYPE/ENUM/INTERFACE ... END <word> — nessun codice */
     if (t->kind == GMB_TOK_Type || t->kind == GMB_TOK_Enum || t->kind == GMB_TOK_Interface
         || ((t->kind == GMB_TOK_Public || t->kind == GMB_TOK_Private) && gmb_p_peek(p, 1) && (gmb_p_peek(p, 1)->kind == GMB_TOK_Enum || gmb_p_peek(p, 1)->kind == GMB_TOK_Interface || gmb_p_tok_is_keyword(gmb_p_peek(p, 1), "Type")))

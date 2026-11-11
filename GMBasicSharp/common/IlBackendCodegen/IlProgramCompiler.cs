@@ -588,6 +588,57 @@ public sealed partial class IlProgramCompiler
     /// </summary>
     private readonly Dictionary<int, FieldBuilder> _capturedFields = new();
 
+    /// <summary>BITFIELD (2026-11-11): per SymbolId del campo, larghezza in bit e segno del
+    /// tipo dichiarato. In scrittura il valore viene mascherato e (se signed) esteso al segno,
+    /// così la lettura restituisce esattamente il valore C di un bitfield (es. `int a:3 = 5`
+    /// → -3). Costruita pigramente scorrendo i TYPE del programma.</summary>
+    private Dictionary<int, (int Width, bool Signed)>? _bitfields;
+
+    private Dictionary<int, (int Width, bool Signed)> Bitfields
+    {
+        get
+        {
+            if (_bitfields != null) return _bitfields;
+            var map = new Dictionary<int, (int, bool)>();
+            static bool IsSigned(DataType t) => t is SByteType or IntegerType or LongType or QuadType;
+            var decls = _program.LoadedModules.Values.SelectMany(m => m.Declarations)
+                .Concat(_program.MainModule?.Declarations ?? ImmutableArray<AstNode>.Empty);
+            foreach (var udt in decls.OfType<UserDefinedType>())
+                foreach (var f in udt.Fields)
+                    if (f.BitWidth > 0) map[f.SymbolId] = (f.BitWidth, IsSigned(f.DataType));
+            _bitfields = map;
+            return map;
+        }
+    }
+
+    /// <summary>Applica la maschera/sign-extension di un bitfield al valore in cima allo stack
+    /// (già convertito al tipo CLR del campo; lo lascia di quel tipo).</summary>
+    private void EmitBitfieldMask(int width, bool signed, Type fieldType)
+    {
+        if (width is <= 0 or >= 64)
+        {
+            if (width is >= 64) { /* nessuna maschera: intero a 64 bit */ }
+            else return;
+        }
+        _il.Emit(OpCodes.Conv_I8);
+        _il.Emit(OpCodes.Ldc_I8, (long)((1UL << width) - 1));
+        _il.Emit(OpCodes.And);
+        if (signed)
+        {
+            var sh = 64 - width;
+            _il.Emit(OpCodes.Ldc_I4, sh);
+            _il.Emit(OpCodes.Shl);
+            _il.Emit(OpCodes.Ldc_I4, sh);
+            _il.Emit(OpCodes.Shr);      // shr su int64 = aritmetico (estende il segno)
+        }
+        if (fieldType == typeof(sbyte)) _il.Emit(OpCodes.Conv_I1);
+        else if (fieldType == typeof(byte)) _il.Emit(OpCodes.Conv_U1);
+        else if (fieldType == typeof(short)) _il.Emit(OpCodes.Conv_I2);
+        else if (fieldType == typeof(ushort)) _il.Emit(OpCodes.Conv_U2);
+        else if (fieldType == typeof(int)) _il.Emit(OpCodes.Conv_I4);
+        else if (fieldType == typeof(uint)) _il.Emit(OpCodes.Conv_U4);
+    }
+
     /// <summary>
     /// True quando questa istanza compila il corpo di un METODO o COSTRUTTORE di classe
     /// (mai per Main/procedure top-level): l'argomento CIL 0 è l'istanza implicita

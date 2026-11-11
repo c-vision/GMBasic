@@ -283,6 +283,14 @@ public sealed partial class Compiler
         // "" incondizionato per ogni campo non ancora assegnato — vedi OP_NEW_UDT_INSTANCE e
         // MakeDefaultUdtInstance in PCodeProcessor.cs.
         classDescriptor["FieldTypes"] = udt.Fields.ToDictionary(f => f.SymbolId, f => (DataType)f.DataType);
+        // Gruppi di ALIASING (UNION e bitfield WIDTH, 2026-11-11): la VM/C e PCodeVM tengono i
+        // campi in un dizionario per nome, quindi l'aliasing va EMULATO: al momento della
+        // scrittura di un campo del gruppo si aggiorna il buffer dell'unità e si riscrivono
+        // TUTTI i fratelli (vedi PCodeProcessor.ApplyUdtGroupWrite / gmb_vm_core.c).
+        {
+            var groups = TypeLayout.AliasGroups(udt);
+            if (groups.Count > 0) classDescriptor["Groups"] = groups;
+        }
         // Dimensioni degli array-campo (SymbolId -> coppie lower/upper), come per le CLASS:
         // senza, la VM/PCode non alloca la lista e `v.A(0)` su un campo array di un TYPE
         // risolve su uno scalare (2026-11-06, S3b).

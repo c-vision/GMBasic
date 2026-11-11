@@ -2703,6 +2703,7 @@ internal sealed partial class PCodeProcessor
                         }
                         catch { }
                         if (!WriteThroughByRefChain(dict, fieldName, val)) dict[fieldName] = val;
+                        ApplyUdtGroupWrite(dict, smClassDesc, offset, val);
                     }
                     else
                     {
