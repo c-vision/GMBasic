@@ -270,6 +270,75 @@ static int fu_ensure_rid(const char* rid, int dry)
     return ok && tc;
 }
 
+/* ── cartella ABI di LLMEnv (descrittori *.gmbarch) ────────────────────────────────────── */
+
+/* Cartella valida = contiene almeno un `*.gmbarch`. Il descrittore non si apre: il formato è
+ * di LLMEnv (`llmdesc`), qui serve solo sapere se la cartella è quella giusta. */
+static int fu_abi_desc(const char* dir, int* count)
+{
+    DIR* d = opendir(dir);
+    if (!d) return 0;
+    int n = 0;
+    struct dirent* e;
+    while ((e = readdir(d)) != NULL)
+    {
+        size_t L = strlen(e->d_name);
+        if (L > 8 && strcmp(e->d_name + L - 8, ".gmbarch") == 0) n++;
+    }
+    closedir(d);
+    if (count) *count = n;
+    return n > 0;
+}
+
+/* Scoperta SENZA percorsi cablati: `$LLMDESC_ABI_DIR` (la PRIMA fonte di `llmdesc`) e poi i
+ * layout RELATIVI a `gmb_paths_llm_root` (env `LLM_ROOT` → `paths.llmRoot` → accanto
+ * all'install → risalendo da eseguibile e cwd): `ABI/`, `lib/llmenv/ABI/`, `share/llmenv/ABI/`
+ * (pkg e Homebrew non mettono l'ABI nella radice del prefisso). 1 = trovata, con fonte. */
+/* Percorso NORMALIZZATO: `gmb_paths_llm_root` può contenere `../..` (`<root>/GMBasic/../../LLMEnv`)
+ * e una stringa del genere non è confrontabile con il percorso reale (né confronti nel codice
+ * né messaggi). Su Windows non c'è `realpath`: si lascia com'è. */
+static void fu_abi_normalize(char* p, size_t cap)
+{
+#if !defined(_WIN32)
+    char real[4096];
+    if (p && cap && p[0] && realpath(p, real)) snprintf(p, cap, "%s", real);
+#else
+    (void)p; (void)cap;
+#endif
+}
+
+int gmb_first_use_abi_dir(char* out, size_t cap, char* how, size_t howcap)
+{
+    if (out && cap) out[0] = '\0';
+    if (how && howcap) how[0] = '\0';
+    const char* env = getenv("LLMDESC_ABI_DIR");
+    if (env && *env && fu_abi_desc(env, NULL))
+    {
+        snprintf(out, cap, "%s", env);
+        fu_abi_normalize(out, cap);
+        if (how) snprintf(how, howcap, "%s", "LLMDESC_ABI_DIR");
+        return 1;
+    }
+    char llm[2048];
+    if (gmb_paths_llm_root(llm, sizeof llm) && llm[0])
+    {
+        static const char* rel[] = { "ABI", "lib/llmenv/ABI", "share/llmenv/ABI" };
+        for (size_t i = 0; i < sizeof rel / sizeof rel[0]; i++)
+        {
+            char p[2600];
+            snprintf(p, sizeof p, "%s/%s", llm, rel[i]);
+            if (fu_abi_desc(p, NULL))
+            {
+                snprintf(out, cap, "%s", p);
+                fu_abi_normalize(out, cap);
+                if (how) snprintf(how, howcap, "LLM_ROOT/%s", rel[i]);
+                return 1;
+            }
+        }
+    }
+    return 0;
+}
+
 /* ── API ──────────────────────────────────────────────────────────────────────────────────── */
 
 /* 1 = cache completa (o già completa), 0 = qualcosa manca (l'avvio NON viene bloccato). */
@@ -315,6 +384,18 @@ int gmb_first_use_ensure(int dry)
             ok = 0;
             fprintf(stderr, "[first-use] %s: INCOMPLETO — riprova con: gmbadmin first-use --force\n", rid);
         }
+    }
+
+    /* CARTELLA ABI di LLMEnv: si risolve QUI una volta (env → LLM_ROOT → layout installati),
+     * così il primo uso la DICE e `first-use --abi-dir` la può stampare per la shell senza
+     * cablare niente. NON si scrive nei settings: un percorso macchina in un file versionato
+     * è sbagliato (D16), e `llmdesc` legge `LLMDESC_ABI_DIR` come prima fonte. */
+    {
+        char abi[2048], how[64];
+        if (gmb_first_use_abi_dir(abi, sizeof abi, how, sizeof how))
+            fprintf(stderr, "[first-use] ABI LLMEnv: %s (%s)\n", abi, how);
+        else
+            fprintf(stderr, "[first-use] ABI LLMEnv: non trovata (imposta LLMDESC_ABI_DIR, o installa LLMEnv)\n");
     }
     return ok;
 }

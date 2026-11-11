@@ -2860,6 +2860,10 @@ int  gmb_libs_ensure_file_for_rid(const char* index_path, const char* rid, const
  * 1 = completo (o già completo), 0 = qualcosa manca (il chiamante NON deve bloccare). */
 int  gmb_first_use_ensure(int dry);
 void gmb_first_use_forget(void);   /* --force: dimentica i marker (tutti i RID) */
+/* Cartella ABI di LLMEnv (descrittori `*.gmbarch`): scoperta SENZA percorsi cablati —
+ * `$LLMDESC_ABI_DIR` per prima, poi `gmb_paths_llm_root` + `ABI|lib/llmenv/ABI|share/llmenv/ABI`.
+ * 1 = trovata (`how` = fonte). La usa `gmbadmin first-use --abi-dir` e la stampa il primo uso. */
+int  gmb_first_use_abi_dir(char* out, size_t cap, char* how, size_t howcap);
 void gmb_progress(const char* label, double frac01);
 
 const char* gmb_libs_rid(void);
@@ -2896,6 +2900,10 @@ int   gmb_paths_get(const char* key, char* out, size_t cap);
  * BASIC); se manca o non e' piu' valida la localizza (prima esecuzione), la salva nei settings e, se LLMEnv non c'e', propone
  * l'installazione. Registrata come risolutore di llmdesc: chiamata quando serve. 1 = trovata. */
 int   gmb_abi_dir(char* out, size_t cap);
+/* Cartella dell'APPLICAZIONE quando non e' la CWD (REPL/VM-C: il `.bas` sta altrove). L'host la
+ * imposta da `--entry-source`: cosi' `app.settings.json` accanto al programma vale comunque.
+ * Vuota (default) = solo la CWD, come per un programma lanciato dalla sua cartella. */
+void  gmb_abi_set_app_dir(const char* dir);
 gmb_string_t gmb_str_padl_str(gmb_string_t s, gmb_int_t length, gmb_string_t pad);
 gmb_string_t gmb_str_padr_str(gmb_string_t s, gmb_int_t length, gmb_string_t pad);
 gmb_string_t gmb_str_padc_str(gmb_string_t s, gmb_int_t length, gmb_string_t pad);

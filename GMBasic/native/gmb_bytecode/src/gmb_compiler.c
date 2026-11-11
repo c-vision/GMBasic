@@ -6063,7 +6063,19 @@ static void cc_stmt(gmb_cc_t* c, const gmb_stmt_t* s)
             if (llm_code) {
                 int llm_max = (llm_code == 1993 || llm_code == 1994 || llm_code == 2308 || llm_code == 2314) ? 2 : (s->n_go_args - llm_first);
                 int pushed = 0;
-                for (int li = llm_first; li < s->n_go_args && pushed < llm_max; li++) { cc_expr(c, s->go_args[li]); if (c->error) return; pushed++; }
+                for (int li = llm_first; li < s->n_go_args && pushed < llm_max; li++) {
+                    /* SOTTO-VERBO LETTERALE (2026-11-11): in POLICY/ARCH il PRIMO argomento è il nome
+                     * del sotto-verbo (`LLM ARCH CHECK "dir"`, `LLM POLICY SHOW`), non un valore.
+                     * Con `cc_expr` un VAR nudo diventava il LOAD di una variabile inesistente →
+                     * stringa vuota → "LLM ARCH: sotto-verbo '' non supportato" sul VM/C, mentre
+                     * l'emitter C99 (che legge `a[0]->var`) funzionava: divergenza fra le gambe.
+                     * `cc_push_str_arg` fa esattamente la lettura del C99: VAR → costante col NOME,
+                     * STR → costante (forma fra virgolette ammessa), altro → espressione. */
+                    const gmb_expr_t* ga = s->go_args[li];
+                    if (li == llm_first && (llm_code == 3616 || llm_code == 3622)) cc_push_str_arg(c, ga);
+                    else cc_expr(c, ga);
+                    if (c->error) return; pushed++;
+                }
                 cc_byte(c, GMB_OP_CALL_BUILTIN); cc_u16(c, llm_code); cc_byte(c, (uint8_t)pushed);
                 cc_byte(c, llm_print ? GMB_OP_PRINT_LINE : GMB_OP_POP);
                 break;

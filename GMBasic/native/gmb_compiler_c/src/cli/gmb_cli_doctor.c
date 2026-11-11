@@ -18,6 +18,9 @@
  *                         comando (una build imprevista dentro un diagnostico sarebbe un
  *                         effetto collaterale enorme, e richiede la toolchain).
  *   gmb doctor --json     la stessa lista in JSON (CI/IDE).
+ *   gmb doctor --abi-dir  stampa SOLO la cartella ABI di LLMEnv (descrittori `*.gmbarch`) e la
+ *                         fonte da cui viene; exit 1 se non c'è. La usa `~/.zshrc` per esportare
+ *                         `LLMDESC_ABI_DIR` senza cablare nessun percorso.
  *
  * DUE SOLE ENV DI PERCORSO (per direttiva): `GMBASIC_ROOT` (install GMBasic) e `LLM_ROOT`
  * (LLMEnv). Nessuna nuova env di comportamento: qualunque altra regolazione passa dal registry
@@ -54,6 +57,9 @@ typedef struct {
     char cc[CLI_PATH];
     char cache_libs[CLI_PATH];   /* ~/.gmbasic/libs/<rid> trovata */
     char settings[CLI_PATH];
+    char abi[CLI_PATH];          /* cartella ABI di LLMEnv (descrittori *.gmbarch) */
+    char abi_how[64];            /* fonte: LLMDESC_ABI_DIR | LLM_ROOT/<rel> */
+    int  n_abi;                  /* descrittori trovati */
     int  n_cache_files;
     int  n_inc;                  /* numero di -I REALI che `cc` riceverebbe */
     int  has_runtime_h;
@@ -199,6 +205,52 @@ static void doc_scan_cache(void) {
     g_doc.n_cache_files = best;
 }
 
+/* ── cartella ABI di LLMEnv (descrittori *.gmbarch) ──────────────────────────────────── */
+
+/* Cartella valida = contiene almeno un `*.gmbarch`. Il descrittore NON si apre: il formato è
+ * di LLMEnv (`llmdesc`), qui serve solo sapere se la cartella è quella giusta. */
+static int doc_abi_desc(const char* dir, int* count) {
+    DIR* d = opendir(dir);
+    if (!d) return 0;
+    int n = 0;
+    struct dirent* e;
+    while ((e = readdir(d)) != NULL) {
+        size_t l = strlen(e->d_name);
+        if (l > 8 && strcmp(e->d_name + l - 8, ".gmbarch") == 0) n++;
+    }
+    closedir(d);
+    if (count) *count = n;
+    return n > 0;
+}
+
+/* Scoperta SENZA percorsi cablati: `$LLMDESC_ABI_DIR` (la prima fonte di `llmdesc`) e poi i
+ * layout RELATIVI a LLM_ROOT già risolta (env, install, repo fratello): `ABI/`, `lib/llmenv/ABI/`
+ * e `share/llmenv/ABI/` (pkg e Homebrew non mettono l'ABI nella radice del prefisso).
+ * 1 = trovata, con cartella e fonte. */
+static int doc_abi_find(char* out, size_t cap, char* how, size_t howcap) {
+    const char* env = getenv("LLMDESC_ABI_DIR");
+    if (env && *env && doc_abi_desc(env, NULL)) {
+        snprintf(out, cap, "%s", env);
+        snprintf(how, howcap, "LLMDESC_ABI_DIR");
+        return 1;
+    }
+    if (g_doc.llm[0]) {
+        static const char* rel[] = { "ABI", "lib/llmenv/ABI", "share/llmenv/ABI" };
+        for (size_t i = 0; i < sizeof rel / sizeof rel[0]; i++) {
+            char p[CLI_PATH];
+            snprintf(p, sizeof p, "%s/%s", g_doc.llm, rel[i]);
+            if (doc_abi_desc(p, NULL)) {
+                snprintf(out, cap, "%s", p);
+                snprintf(how, howcap, "LLM_ROOT/%s", rel[i]);
+                return 1;
+            }
+        }
+    }
+    if (out && cap) out[0] = 0;
+    if (how && howcap) how[0] = 0;
+    return 0;
+}
+
 /* ── rilevamento ──────────────────────────────────────────────────────────────────────── */
 
 static void doc_probe(void) {
@@ -214,6 +266,10 @@ static void doc_probe(void) {
         if (g_doc.llm[0] && realpath(g_doc.llm, real))
             snprintf(g_doc.llm, sizeof g_doc.llm, "%s", real);
     }
+
+    /* Cartella ABI dei descrittori: se c'è, è quella che `llmdesc` userà (l'env vince su tutto). */
+    if (doc_abi_find(g_doc.abi, sizeof g_doc.abi, g_doc.abi_how, sizeof g_doc.abi_how))
+        (void)doc_abi_desc(g_doc.abi, &g_doc.n_abi);
 
     /* 48 slot: companion+statiche dell'install, `build/libs/<rid>` e i sottoprogetti
      * annidati (`build/gmb_chart_build`, `build/gmb_runtime_c_build`, …). */
@@ -374,6 +430,15 @@ static int doc_report(int json) {
             "export GMBASIC_ROOT=<cartella che contiene native/>");
     DOC_ROW("LLM_ROOT", 1, g_doc.llm[0] && is_dir(g_doc.llm), g_doc.llm,
             "gmb doctor --fix   (git clone c-vision/LLMEnv → <root>/../LLMEnv)");
+    {   /* una riga sola: cartella, fonte e descrittori (la fonte dice CHI ha deciso) */
+        static char abi_found[CLI_PATH + 128];
+        if (g_doc.abi[0])
+            snprintf(abi_found, sizeof abi_found, "%s  (%s, %d descrittori)",
+                     g_doc.abi, g_doc.abi_how, g_doc.n_abi);
+        else abi_found[0] = 0;
+        DOC_ROW("ABI (LLMEnv)", 0, g_doc.abi[0], abi_found,
+                "export LLMDESC_ABI_DIR=<cartella ABI>   (`gmb doctor --abi-dir` la stampa)");
+    }
     DOC_ROW("gmbnative", 1, g_doc.driver[0], g_doc.driver,
             "cmake --build native/gmb_compiler_c/build --target gmbnative");
     DOC_ROW("gmbchunk", 1, g_doc.chunk[0], g_doc.chunk,
@@ -446,16 +511,27 @@ static int doc_report(int json) {
 }
 
 int gmb_cli_doctor(int argc, char** argv) {
-    int fix = 0, json = 0;
+    int fix = 0, json = 0, abi_only = 0;
     const char* llm_repo = "https://github.com/c-vision/LLMEnv.git";
     for (int i = 2; i < argc; i++) {
         const char* a = argv[i];
         if (!strcmp(a, "--fix")) { fix = 1; continue; }
         if (!strcmp(a, "--json")) { json = 1; continue; }
+        if (!strcmp(a, "--abi-dir")) { abi_only = 1; continue; }
         if (!strcmp(a, "--llm-repo") && i + 1 < argc) { llm_repo = argv[++i]; continue; }
         if (!strncmp(a, "--llm-repo=", 11)) { llm_repo = a + 11; continue; }
-        fprintf(stderr, "uso: gmb doctor [--fix] [--json] [--llm-repo <url>]\n");
+        fprintf(stderr, "uso: gmb doctor [--fix] [--json] [--abi-dir] [--llm-repo <url>]\n");
         return 2;
+    }
+
+    if (abi_only) {   /* modalità STRETTA: risolve e stampa solo la cartella ABI (shell, CI) */
+        char real[CLI_PATH];
+        (void)gmb_resolve_llm_root(g_doc.llm, sizeof g_doc.llm);
+        if (g_doc.llm[0] && realpath(g_doc.llm, real))
+            snprintf(g_doc.llm, sizeof g_doc.llm, "%s", real);
+        if (!doc_abi_find(g_doc.abi, sizeof g_doc.abi, g_doc.abi_how, sizeof g_doc.abi_how)) return 1;
+        printf("%s\n", g_doc.abi);
+        return 0;
     }
 
     doc_probe();

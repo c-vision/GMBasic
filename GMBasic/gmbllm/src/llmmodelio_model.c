@@ -43,6 +43,34 @@ static FILE* g_llm_out = NULL;
 #include <string.h>
 #include <strings.h>
 #include <ctype.h>
+#if !defined(_WIN32)
+#include <dlfcn.h>
+#endif
+
+/* Dichiarazione locale: in questo file `llmdesc.h` non e' incluso (le altre funzioni LLMEnv
+ * arrivano da altri header del codec); stesso prototipo di LLMEnv. */
+int llmdesc_abi_dir(char* out, size_t cap);
+
+/* CARTELLA ABI: prima la risoluzione dell'APPLICAZIONE, poi LLMEnv.
+ *
+ * `gmb_abi_dir` (runtime C) e' l'UNICA sede della regola: `paths.abiDir` di `app.settings.json`
+ * (se valido, fine) -> localizzazione di LLMEnv -> ramo `monorepo sibling`. Il runtime la registra
+ * come policy di LLMEnv con `llmdesc_set_abi_policy`, ma su macOS i binari usano
+ * `-Wl,-dead_strip` e quella funzione non e' riferita da nessuno (la si cerca con `dlsym`): il
+ * linker la elimina, la policy non viene registrata e LLMEnv risolveva da sola — `paths.abiDir`
+ * INERTE nella REPL/VM-C (bug 2026-11-11), con la cartella scelta dal ramo sibling.
+ * Qui si chiede direttamente al resolver del runtime (via `dlsym`: NESSUNA dipendenza di link
+ * gmbllm -> runtime; chi non linka il runtime ricade su `llmdesc_abi_dir`, come prima). */
+static int llmmodelio_abi_dir(char* out, size_t cap)
+{
+#if !defined(_WIN32)
+    static int (*res)(char*, size_t) = NULL;
+    static int looked = 0;
+    if (!looked) { looked = 1; res = (int (*)(char*, size_t))dlsym(RTLD_DEFAULT, "gmb_abi_dir"); }
+    if (res != NULL && res(out, cap)) return 1;
+#endif
+    return llmdesc_abi_dir(out, cap);
+}
 #include <unistd.h>
 #include <sys/stat.h>
 #include <dlfcn.h>   /* LLM QUALITY: engine MLX via dlopen (dipendenza debole) */   /* mkdir (checkpoint store) */   /* getcwd (arch-resolution da file .gguf) */
@@ -2529,7 +2557,7 @@ void llmmodelio_arch_list(void) {
     arch_list_dir(d);
     /* ABI/ canonica del repo (risalendo dal cwd): dove vivono TUTTE le descrizioni locali. */
     char abi[4096];
-    if (llmdesc_abi_dir(abi, sizeof abi) && strcmp(abi, d) != 0) arch_list_dir(abi);
+    if (llmmodelio_abi_dir(abi, sizeof abi) && strcmp(abi, d) != 0) arch_list_dir(abi);
 }
 
 /* Esegue un comando LLM ARCH a runtime: sub = RESOLVE|SHOW|LIST|CHECK, path = dir modello (puo' essere "").
@@ -5506,7 +5534,7 @@ static int llmmodelio_arch_resolve_gguf(const char* gguf_path) {
      * prima esecuzione). Niente piu' ricerca di ABI/ o arch/ risalendo dalla cwd. Senza ABI il resolver registrato dal
      * runtime ha gia' segnalato l'errore: si ferma qui invece di ripiegare sul descrittore generico. */
     { char abi[2048];
-      if (!llmdesc_abi_dir(abi, sizeof abi)) return -1;
+      if (!llmmodelio_abi_dir(abi, sizeof abi)) return -1;
       static const char* exts[] = { "llmarch", "gmbarch" };
       for (int x = 0; x < 2; x++) {
           snprintf(path, sizeof path, "%s/%s.%s", abi, slug, exts[x]);
@@ -5517,7 +5545,7 @@ static int llmmodelio_arch_resolve_gguf(const char* gguf_path) {
      * "qwen3moe" vs ABI "qwen3_moe.gmbarch"). Cerca nella dir ABI un file il cui nome, senza '_',
      * coincide col slug — così l'emitter MLX risolve anche i modelli con nomi "fusi". */
     { char abi[2048];
-      if (llmdesc_abi_dir(abi, sizeof abi)) {
+      if (llmmodelio_abi_dir(abi, sizeof abi)) {
         DIR* dp = opendir(abi);
         if (dp != NULL) {
             struct dirent* de;
@@ -5553,8 +5581,7 @@ int llmmodelio_model_modality(const char* base_path, const char* mmproj_path, co
     if (base_path == NULL || mmproj_path == NULL || out_path == NULL) return -1;
     const char* sl = strrchr(mmproj_path, '/'); const char* mmb = sl ? sl + 1 : mmproj_path;
     int found = 0; char arch[96] = "";
-    char abi[2048];
-    if (llmdesc_abi_dir(abi, sizeof abi)) {
+    char abi[2048];        if (llmmodelio_abi_dir(abi, sizeof abi)) {
         DIR* dp = opendir(abi);
         if (dp != NULL) {
             struct dirent* de;
@@ -5659,7 +5686,7 @@ int llmmodelio_model_module(const char* base_path, const char* gmmod_path, const
     int ok = 0;
     if (arch[0]) {
         char abi[2048];
-        if (llmdesc_abi_dir(abi, sizeof abi)) {
+        if (llmmodelio_abi_dir(abi, sizeof abi)) {
             char path[4096];
             snprintf(path,sizeof path,"%s/%s.llmarch", abi, arch);
             if (llmdesc_load(path,&g_arch)==0){ snprintf(g_arch_path,sizeof g_arch_path,"%s",path); g_arch_ok=1; ok=1; }

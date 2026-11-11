@@ -1518,3 +1518,24 @@ add_executable(test_abi_settings tests/test_abi_settings.c ${LLMENV}/LLMDesc/llm
 target_include_directories(test_abi_settings PRIVATE include ${LLMENV}/LLMDesc)
 target_compile_options(test_abi_settings PRIVATE -w)
 add_test(NAME test_abi_settings COMMAND test_abi_settings)
+
+# La cartella ABI presa dall'AMBIENTE (`$LLMDESC_ABI_DIR`) vince sulla scoperta interna e NON
+# finisce nei settings: la prova end-to-end manuale del 2026-11-11 resa permanente e ripetibile.
+add_executable(test_abi_env_precedence tests/test_abi_env_precedence.c ${LLMENV}/LLMDesc/llmdesc.c src/gmb_paths.c)
+target_include_directories(test_abi_env_precedence PRIVATE include ${LLMENV}/LLMDesc)
+target_compile_options(test_abi_env_precedence PRIVATE -w)
+add_test(NAME test_abi_env_precedence COMMAND test_abi_env_precedence)
+
+# `paths.abiDir` si scrive SOLO in `app.settings.json`: stesso sorgente, due contesti di
+# compilazione — APP (runtime: scrive il file dell'applicazione) e SYSTEM (`gmb_ai_modelio`,
+# `-DGMB_ABI_SCOPE_SYSTEM`: non scrive NULLA, i settings di sistema sono condivisi e versionati).
+add_executable(test_abi_per_app tests/test_abi_per_app.c ${LLMENV}/LLMDesc/llmdesc.c src/gmb_paths.c)
+target_include_directories(test_abi_per_app PRIVATE include ${LLMENV}/LLMDesc)
+target_compile_options(test_abi_per_app PRIVATE -w)
+add_test(NAME test_abi_per_app COMMAND test_abi_per_app)
+
+add_executable(test_abi_per_app_system tests/test_abi_per_app.c ${LLMENV}/LLMDesc/llmdesc.c src/gmb_paths.c)
+target_include_directories(test_abi_per_app_system PRIVATE include ${LLMENV}/LLMDesc)
+target_compile_options(test_abi_per_app_system PRIVATE -w)
+target_compile_definitions(test_abi_per_app_system PRIVATE GMB_ABI_SCOPE_SYSTEM)
+add_test(NAME test_abi_per_app_system COMMAND test_abi_per_app_system)

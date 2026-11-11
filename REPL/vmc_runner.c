@@ -30,7 +30,7 @@ int rpl_run_vmc(const char* bas_file, const rpl_options_t* o)
         const char* h = rpl_resolve_vm_host();
         snprintf(host, sizeof(host), "%s", h ? h : "native/gmb_vm_c/build/gmb_vm_host");
         char cmd[8192];
-        snprintf(cmd, sizeof(cmd), "\"%s\" \"%s\" --debug%s", host, chunk, dbg_args);
+        snprintf(cmd, sizeof(cmd), "\"%s\" \"%s\" --entry-source \"%s\" --debug%s", host, chunk, bas_file, dbg_args);
         rc = system(cmd);
         rc = WIFEXITED(rc) ? WEXITSTATUS(rc) : 1;
         unlink(chunk);
@@ -47,7 +47,9 @@ int rpl_run_vmc(const char* bas_file, const rpl_options_t* o)
               char host2[2048];
               snprintf(host2, sizeof(host2), "%s", h ? h : "native/gmb_vm_c/build/gmb_vm_host");
               char cmd2[4096];
-              snprintf(cmd2, sizeof(cmd2), "\"%s\" \"%s\"", host2, chunk2);
+              /* `--entry-source`: la cartella del `.bas` (PROJECTFOLDER/APPPATH e `paths.abiDir`
+               * di `app.settings.json`, che non sta nella CWD della REPL). */
+              snprintf(cmd2, sizeof(cmd2), "\"%s\" \"%s\" --entry-source \"%s\"", host2, chunk2, bas_file);
               int r2 = system(cmd2);
               rc = WIFEXITED(r2) ? WEXITSTATUS(r2) : 1;
               unlink(chunk2);

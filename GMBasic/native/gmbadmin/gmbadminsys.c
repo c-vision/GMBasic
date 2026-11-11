@@ -150,20 +150,30 @@ static int libs_check(int argc, char** argv);   /* sotto */
  * perché il compilatore deve poter partire con ciò che ha (il motivo è stampato). */
 int gmbadmin_first_use(int argc, char** argv)
 {
-    int dry = 0, force = 0;
+    int dry = 0, force = 0, abi_only = 0;
     for (int i = 2; i < argc; i++)
     {
         if (!strcmp(argv[i], "--dry-run") || !strcmp(argv[i], "--dry")) dry = 1;
         else if (!strcmp(argv[i], "--force") || !strcmp(argv[i], "--retry")) force = 1;
+        else if (!strcmp(argv[i], "--abi-dir")) abi_only = 1;
         else if (!strcmp(argv[i], "--help") || !strcmp(argv[i], "-h"))
         {
-            printf("uso: gmbadmin first-use [--dry-run] [--force]\n"
+            printf("uso: gmbadmin first-use [--dry-run] [--force] [--abi-dir]\n"
                    "  completo una volta sola librerie native e toolchain (zig) del RID host.\n"
                    "  Ambito: bootstrapScope nei settings (host | all | off).\n"
                    "  --dry-run  mostra il piano (indice, file, toolchain) senza scaricare\n"
-                   "  --force    ignora il marker di primo uso e riprova\n");
+                   "  --force    ignora il marker di primo uso e riprova\n"
+                   "  --abi-dir  stampa solo la cartella ABI di LLMEnv (descrittori *.gmbarch)\n"
+                   "             e la fonte: niente download, exit 1 se non c'e'\n");
             return 0;
         }
+    }
+    if (abi_only)   /* modalità STRETTA per la shell: nessun download, nessuna scrittura */
+    {
+        char abi[2048], how[64];
+        if (!gmb_first_use_abi_dir(abi, sizeof abi, how, sizeof how)) return 1;
+        printf("%s\n", abi);
+        return 0;
     }
     if (force) gmb_first_use_forget();
     int ok = gmb_first_use_ensure(dry);

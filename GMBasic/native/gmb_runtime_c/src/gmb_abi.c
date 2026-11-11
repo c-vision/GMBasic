@@ -5,10 +5,12 @@
  * dal canale di installazione di LLMEnv (pkg, tar.gz, Homebrew, albero sorgente) e dalla macchina. Questo modulo lo
  * risolve quando serve (la prima chiamata di llmdesc_abi_dir) e lo ricorda nei settings:
  *
- *   1. impostazione `paths.abiDir` — dell'APPLICAZIONE (app.settings.json, cartella del .bas) per i programmi BASIC,
- *      del COMPILATORE (system.settings.json) per gmb_ai_modelio. Se valorizzata e la cartella e' valida: fine.
+ *   1. impostazione `paths.abiDir` — SOLO dell'APPLICAZIONE (`app.settings.json` nella cartella del .bas). Se
+ *      valorizzata e la cartella e' valida: fine. Nessun altro file puo' contenerla: un percorso di QUESTA macchina
+ *      in un settings condiviso e versionato sarebbe sbagliato su ogni altra (D16).
  *   2. altrimenti (assente, null, o percorso non piu' valido: altra macchina, LLMEnv spostato) si LOCALIZZA con
- *      llmdesc_abi_locate (LLMEnv) e il risultato viene scritto nella stessa impostazione: dalla volta dopo e' un'unica lettura.
+ *      llmdesc_abi_locate (LLMEnv: `$LLMDESC_ABI_DIR`, install, albero sorgente) e il risultato si scrive in
+ *      `app.settings.json`: dalla volta dopo e' un'unica lettura. Lo scope COMPILATORE non scrive piu' nulla.
  *   3. se LLMEnv non c'e': errore netto con le istruzioni; su terminale interattivo (o GMB_ABI_AUTOINSTALL=1)
  *      si propone di installarlo con Homebrew e si riprova.
  *
@@ -45,8 +47,50 @@ static void gmb_abi_bind_direct(void)
     g_llmdesc_locate = llmdesc_abi_locate;
     g_llmdesc_policy = llmdesc_set_abi_policy;
 }
+/* POSIX: il CORE non linka LLMEnv (split core/AI), ma i programmi C99Native linkano `llmdesc`
+ * STATICAMENTE nello stesso eseguibile. Lì nessuno chiama `gmb_abi_set_llmdesc` — lo fa il
+ * constructor di `gmb_runtime_ai` (dylib), che non c'è — e la policy restava INERTE: `paths.abiDir`
+ * ignorato e ramo `monorepo sibling` irraggiungibile (provato 2026-11-11 su un'app reale).
+ * Due modi di agganciare i tre servizi SENZA obbligare il core a linkare LLMEnv. */
+#elif defined(__APPLE__)
+/* Darwin: né `weak` né `weak_import` su una dichiarazione si possono lasciare irrisolti in un
+ * eseguibile — ld64 li tratta come strong e il link fallisce ("Undefined symbols ...
+ * _llmdesc_abi_valid", verificato con `cc` nudo, 2026-11-11). `dlsym(RTLD_DEFAULT)` non crea
+ * alcun riferimento al momento del link e trova sia la copia STATICA nello stesso eseguibile
+ * (programmi C99Native: libllmdesc.a) sia quella della dylib AI. */
+#include <dlfcn.h>
+static void gmb_abi_bind_direct(void)
+{
+    if (g_llmdesc_valid) return;
+    int  (*v)(const char*)                  = (int (*)(const char*))dlsym(RTLD_DEFAULT, "llmdesc_abi_valid");
+    int  (*l)(char*, size_t, char*, size_t)  = (int (*)(char*, size_t, char*, size_t))dlsym(RTLD_DEFAULT, "llmdesc_abi_locate");
+    void (*p)(int (*)(char*, size_t), int)   = (void (*)(int (*)(char*, size_t), int))dlsym(RTLD_DEFAULT, "llmdesc_set_abi_policy");
+    /* La POLICY e' OPZIONALE: i binari si linkano con `-Wl,-dead_strip` e nessuno riferisce
+     * `llmdesc_set_abi_policy` (la si cerca solo qui, con dlsym) -> il linker la elimina.
+     * Pretendendo anche lei, NESSUN servizio veniva agganciato: `gmb_abi_available()` restava
+     * falso, `paths.abiDir` non veniva mai letto e la cartella la sceglieva LLMEnv da sola
+     * (ramo `monorepo sibling`) — bug REPL/VM-C 2026-11-11. Con valid+locate basta: la policy
+     * serve solo a far delegare LLMEnv a questo resolver, e chi la trova la registra sotto. */
+    if (!v || !l) return;                     /* LLMEnv non è in questo processo */
+    g_llmdesc_valid  = v;
+    g_llmdesc_locate = l;
+    g_llmdesc_policy = p;
+}
 #else
-static void gmb_abi_bind_direct(void) { }
+/* ELF (Linux): un riferimento DEBOLE può restare irrisolto e vale 0 quando LLMEnv non c'è,
+ * senza obbligare il core a linkarlo. */
+extern int  llmdesc_abi_valid(const char*) __attribute__((weak));
+extern int  llmdesc_abi_locate(char*, size_t, char*, size_t) __attribute__((weak));
+extern void llmdesc_set_abi_policy(int (*)(char*, size_t), int) __attribute__((weak));
+static void gmb_abi_bind_direct(void)
+{
+    if (g_llmdesc_valid) return;
+    /* La policy e' opzionale (vedi il ramo Darwin: `-dead_strip` puo' rimuoverla). */
+    if (!llmdesc_abi_valid || !llmdesc_abi_locate) return;
+    g_llmdesc_valid  = llmdesc_abi_valid;
+    g_llmdesc_locate = llmdesc_abi_locate;
+    g_llmdesc_policy = llmdesc_set_abi_policy;   /* NULL se assente: va bene */
+}
 #endif
 
 static int gmb_abi_available(void)
@@ -195,11 +239,126 @@ static void abi_quote(const char* in, char* out, size_t cap)
     out[o] = 0;
 }
 
+/* ---------------------------------------------------------------------------------------------------------------
+ * Validazione JSONC (commenti ammessi), usata SOLO come guardia prima di una scrittura.
+ * Un `app.settings.json` rotto dall'utente (troncato, virgola di troppo, testo qualunque) non deve
+ * essere "corretto" a metà: si lascia com'è e la cartella si ritrova lo stesso in memoria.
+ * --------------------------------------------------------------------------------------------------------------- */
+
+static void abi_j_ws(const char* s, size_t n, size_t* i)
+{
+    while (*i < n)
+    {
+        if (isspace((unsigned char)s[*i])) { (*i)++; continue; }
+        if (s[*i] == '/' && *i + 1 < n && s[*i + 1] == '/') { while (*i < n && s[*i] != '\n') (*i)++; continue; }
+        if (s[*i] == '/' && *i + 1 < n && s[*i + 1] == '*') { *i += 2; while (*i + 1 < n && !(s[*i] == '*' && s[*i + 1] == '/')) (*i)++; *i += 2; continue; }
+        break;
+    }
+}
+
+static int abi_j_value(const char* s, size_t n, size_t* i, int depth);
+
+static int abi_j_string(const char* s, size_t n, size_t* i)
+{
+    if (*i >= n || s[*i] != '"') return 0;
+    (*i)++;
+    while (*i < n)
+    {
+        if (s[*i] == '\\') { *i += 2; continue; }
+        if (s[*i] == '"') { (*i)++; return 1; }
+        if ((unsigned char)s[*i] < 0x20) return 0;      /* controllo non escapato: non è JSON */
+        (*i)++;
+    }
+    return 0;                                           /* stringa non chiusa */
+}
+
+static int abi_j_number(const char* s, size_t n, size_t* i)
+{
+    size_t j = *i;
+    if (j < n && s[j] == '-') j++;
+    if (j >= n || !isdigit((unsigned char)s[j])) return 0;
+    if (s[j] == '0') j++; else while (j < n && isdigit((unsigned char)s[j])) j++;
+    if (j < n && s[j] == '.') { j++; if (j >= n || !isdigit((unsigned char)s[j])) return 0; while (j < n && isdigit((unsigned char)s[j])) j++; }
+    if (j < n && (s[j] == 'e' || s[j] == 'E'))
+    {
+        j++; if (j < n && (s[j] == '+' || s[j] == '-')) j++;
+        if (j >= n || !isdigit((unsigned char)s[j])) return 0;
+        while (j < n && isdigit((unsigned char)s[j])) j++;
+    }
+    *i = j; return 1;
+}
+
+static int abi_j_object(const char* s, size_t n, size_t* i, int depth)
+{
+    (*i)++;                                             /* '{' */
+    abi_j_ws(s, n, i);
+    if (*i < n && s[*i] == '}') { (*i)++; return 1; }
+    for (;;)
+    {
+        abi_j_ws(s, n, i);
+        if (!abi_j_string(s, n, i)) return 0;
+        abi_j_ws(s, n, i);
+        if (*i >= n || s[*i] != ':') return 0;
+        (*i)++;
+        if (!abi_j_value(s, n, i, depth + 1)) return 0;
+        abi_j_ws(s, n, i);
+        if (*i < n && s[*i] == ',') { (*i)++; continue; }
+        if (*i < n && s[*i] == '}') { (*i)++; return 1; }
+        return 0;
+    }
+}
+
+static int abi_j_array(const char* s, size_t n, size_t* i, int depth)
+{
+    (*i)++;                                             /* '[' */
+    abi_j_ws(s, n, i);
+    if (*i < n && s[*i] == ']') { (*i)++; return 1; }
+    for (;;)
+    {
+        if (!abi_j_value(s, n, i, depth + 1)) return 0;
+        abi_j_ws(s, n, i);
+        if (*i < n && s[*i] == ',') { (*i)++; continue; }
+        if (*i < n && s[*i] == ']') { (*i)++; return 1; }
+        return 0;
+    }
+}
+
+static int abi_j_value(const char* s, size_t n, size_t* i, int depth)
+{
+    if (depth > 64) return 0;                           /* annidamento patologico */
+    abi_j_ws(s, n, i);
+    if (*i >= n) return 0;
+    switch (s[*i])
+    {
+        case '{': return abi_j_object(s, n, i, depth);
+        case '[': return abi_j_array(s, n, i, depth);
+        case '"': return abi_j_string(s, n, i);
+        case 't': if (*i + 4 <= n && strncmp(s + *i, "true", 4) == 0) { *i += 4; return 1; } return 0;
+        case 'f': if (*i + 5 <= n && strncmp(s + *i, "false", 5) == 0) { *i += 5; return 1; } return 0;
+        case 'n': if (*i + 4 <= n && strncmp(s + *i, "null", 4) == 0) { *i += 4; return 1; } return 0;
+        default: return abi_j_number(s, n, i);
+    }
+}
+
+/* 1 = tutto il testo è UN valore JSONC valido e nulla lo segue (spazi e commenti esclusi). */
+static int abi_json_ok(const char* s, size_t n)
+{
+    if (!s || n == 0) return 0;
+    size_t i = 0;
+    if (!abi_j_value(s, n, &i, 0)) return 0;
+    abi_j_ws(s, n, &i);
+    return i == n;
+}
+
 /* Scrive paths.abiDir in `file` (lo crea se manca); sostituzione atomica. 1 = scritto. */
 static int abi_file_set(const char* file, const char* dir)
 {
     char q[4200]; abi_quote(dir, q, sizeof q);
     size_t n = 0; char* s = abi_slurp(file, &n);
+    /* Il file C'E' ma non è JSON valido (o non è leggibile / troppo grande): NON lo tocchiamo.
+     * Sovrascriverlo distruggerebbe impostazioni dell'utente per una chiave che si ritrova da sola
+     * a ogni avvio (`llmdesc_abi_locate`). La cartella resta comunque risolta in memoria. */
+    if (access(file, F_OK) == 0 && (!s || !abi_json_ok(s, n))) { free(s); return 0; }
     char* out = NULL; size_t cap = n + 1024 + strlen(q) * 2, o = 0;
     out = (char*)malloc(cap); if (!out) { free(s); return 0; }
 #define PUT(p, len) do { memcpy(out + o, (p), (len)); o += (len); } while (0)
@@ -239,31 +398,45 @@ static int abi_file_set(const char* file, const char* dir)
  * --------------------------------------------------------------------------------------------------------------- */
 
 extern int gmb_paths_repo_root(char* out, size_t cap);
-extern int gmb_paths_settings_file(char* out, size_t cap);
 
-/* File dove SCRIVERE l'impostazione. APP: app.settings.json (cartella del programma). SYSTEM: la copia locale editabile
- * config/system.settings.json (creata dal template Resources/ se manca; mai il template stesso). 0 = nessun posto sicuro. */
+/* Cartella dell'APPLICAZIONE nota al processo ma diversa dalla CWD: la REPL/VM-C lancia il
+ * programma da un'altra cartella, quindi `app.settings.json` accanto al `.bas` non si vedrebbe.
+ * La imposta l'host con `--entry-source` (`gmb_abi_set_app_dir`), senza nuove env. */
+static char g_abi_app_dir[2048];
+
+void gmb_abi_set_app_dir(const char* dir)
+{
+    snprintf(g_abi_app_dir, sizeof g_abi_app_dir, "%s", dir ? dir : "");
+}
+
+/* File dove SCRIVERE l'impostazione: SOLO `app.settings.json` (cartella del programma).
+ *
+ * Lo scope COMPILATORE (`gmb_ai_modelio`) NON scrive niente: `paths.abiDir` è un'impostazione
+ * dell'APPLICAZIONE, e i settings di sistema sono condivisi e versionati — un percorso di questa
+ * macchina lì dentro romperebbe il compilatore su tutte le altre (D16). Il compilatore risolve
+ * con `llmdesc_abi_locate` (env `LLMDESC_ABI_DIR`, install, albero sorgente): nessuna cache
+ * necessaria, e `gmb doctor --abi-dir` / `gmbadmin first-use --abi-dir` la stampano per la shell. */
 static int abi_target_file(char* out, size_t cap)
 {
 #if ABI_SCOPE_APP
+    /* 1. la CWD ha gia' il file (programma lanciato dalla sua cartella): caso normale. */
+    if (access("app.settings.json", R_OK) == 0) { snprintf(out, cap, "app.settings.json"); return 1; }
+    /* 2. cartella dell'applicazione nota (REPL/VM-C: il `.bas` sta altrove): si usa il file
+     *    SOLO se esiste gia' — non si creano settings in una cartella che non e' quella di
+     *    esecuzione (la prima esecuzione li crea dove il programma gira). */
+    if (g_abi_app_dir[0])
+    {
+        char cand[4200];
+        snprintf(cand, sizeof cand, "%s/app.settings.json", g_abi_app_dir);
+        if (access(cand, R_OK) == 0) { snprintf(out, cap, "%s", cand); return 1; }
+        return 0;
+    }
+    /* 3. prima esecuzione nella cartella da cui gira il programma: qui si crea. */
     snprintf(out, cap, "app.settings.json");
     return 1;
 #else
-    char root[2048] = "", cur[2048] = "";
-    int have_root = gmb_paths_repo_root(root, sizeof root);
-    int have_cur = gmb_paths_settings_file(cur, sizeof cur);
-    if (have_cur && strstr(cur, "/Resources/") == NULL) { snprintf(out, cap, "%s", cur); return 1; }   /* copia locale (o cwd) */
-    if (!have_root) return 0;
-    char probe[2200]; snprintf(probe, sizeof probe, "%s/GMBASIC.sln", root);
-    if (access(probe, F_OK) != 0 && !(getenv("GMBASIC_ROOT") && *getenv("GMBASIC_ROOT"))) return 0;      /* niente cartelle nella cwd altrui */
-    char dir[2200]; snprintf(dir, sizeof dir, "%s/config", root); mkdir(dir, 0755);
-    snprintf(out, cap, "%s/config/system.settings.json", root);
-    if (have_cur)   /* parti dal template, cosi' la copia locale non perde le altre impostazioni */
-    {
-        size_t n; char* t = abi_slurp(cur, &n);
-        if (t) { FILE* f = fopen(out, "wb"); if (f) { fwrite(t, 1, n, f); fclose(f); } free(t); }
-    }
-    return 1;
+    (void)out; (void)cap;
+    return 0;
 #endif
 }
 
@@ -341,13 +514,8 @@ int gmb_abi_dir(char* out, size_t cap)
 
     /* 1. impostazione salvata: dello scope; per l'applicazione vale anche quella globale del compilatore */
     if (have_target && abi_stored(target, found, sizeof found)) ok = 1;
-#if ABI_SCOPE_APP
-    if (!ok)
-    {
-        char sys[2048];
-        if (gmb_paths_settings_file(sys, sizeof sys) && abi_stored(sys, found, sizeof found)) ok = 1;
-    }
-#endif
+    /* NIENTE lettura dei settings di sistema: la cartella ABI è per-APPLICAZIONE (D16). Un valore
+     * lasciato lì da versioni precedenti si ignora: `llmdesc` la ritrova da sé in un attimo. */
     /* senza la dylib AI (LLMEnv) non c'è ABI: si esce in silenzio — l'errore vero lo dà
      * l'operazione AI quando viene invocata (`gmb_ai_last_error`). */
     if (!gmb_abi_available())
@@ -389,6 +557,13 @@ int gmb_abi_dir(char* out, size_t cap)
     if (!ok && g_llmdesc_locate && abi_offer_install() &&
         g_llmdesc_locate(found, sizeof found, how, sizeof how)) ok = 2;
 
+    /* Percorso CANONICO prima di usarlo/scriverlo: i candidati del ramo sibling nascono da
+     * `<root>/../..` e finirebbero nei settings con i `..` dentro (`realpath` non c'è su Windows,
+     * dove il ramo sibling non esiste). */
+#if !defined(_WIN32)
+    if (ok && found[0]) { char rp[4096]; if (realpath(found, rp)) snprintf(found, sizeof found, "%s", rp); }
+#endif
+
     if (ok == 2 && have_target && strncmp(how, "source tree", 11) != 0 && strcmp(how, "LLMDESC_ABI_DIR") != 0)
         abi_file_set(target, found);   /* l'albero sorgente si ritrova da solo; l'env e' per-processo: non si salvano */
 
@@ -400,8 +575,9 @@ int gmb_abi_dir(char* out, size_t cap)
             "          Model loading and conversion need LLMEnv. Install it with:\n"
             "            brew tap c-vision/llmenv %s && brew install llmenv\n"
             "          or download the installer from %s/releases (an ABI-enabled release, 0.2.0 or later).\n"
-            "          If LLMEnv is already installed, set paths.%s in %s (or the LLMDESC_ABI_DIR environment variable).\n",
-            ABI_REPO_URL, ABI_REPO_URL, ABI_KEY, have_target ? target : "system.settings.json");
+            "          If LLMEnv is already installed, set paths.%s in app.settings.json (or the LLMDESC_ABI_DIR\n"
+            "          environment variable; `gmb doctor --abi-dir` prints the folder).\n",
+            ABI_REPO_URL, ABI_REPO_URL, ABI_KEY);
     }
     snprintf(g_abi_dir, sizeof g_abi_dir, "%s", found);
     g_abi_done = 1; g_abi_busy = 0;

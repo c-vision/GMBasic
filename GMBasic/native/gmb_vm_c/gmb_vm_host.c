@@ -258,6 +258,12 @@ int main(int argc, char** argv)
              * quindi PROJECTFOLDER()/APPPATH() cadevano sulla cartella del chunk (divergenza tra
              * le gambe). L'harness passa qui il .bas originale -> entry corretto. */
             gmb_path_set_entry(argv[i + 1]);
+            /* Cartella ABI: `app.settings.json` sta accanto al `.bas`, non nella CWD dell'host
+             * (la REPL lancia da un'altra cartella) -> `paths.abiDir` restava inerte. */
+            { char _ad[2048]; snprintf(_ad, sizeof _ad, "%s", argv[i + 1]);
+              char* _sl = strrchr(_ad, '/'); if (_sl) { if (_sl == _ad) _sl[1] = 0; else *_sl = 0; }
+              else snprintf(_ad, sizeof _ad, ".");
+              gmb_abi_set_app_dir(_ad); }
             i += 2;
         }
         else break;
