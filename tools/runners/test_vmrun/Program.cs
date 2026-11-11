@@ -177,7 +177,11 @@ if (forwardStdin)
     if (!psi.Environment.ContainsKey("GMB_TORCH_PATH")) psi.Environment["GMB_TORCH_PATH"] = mlDir;
     if (OperatingSystem.IsMacOS())
     {
-        var dirs = new[] { mlDir, libsDir, buildDir }.Where(Directory.Exists);
+        // ORDINE: build del working tree PRIMA della cache. La cache è la release pubblicata:
+        // può avere mtime più nuovo ma sorgenti più vecchi (caso reale 2026-11-11: `libgmbmath`
+        // in cache senza `ofx_vc_gradient` → gambe C con "simbolo non trovato" mentre il build
+        // del checkout era aggiornato). Stessa regola di tools/sh/parity4 e test_minitests_parity.
+        var dirs = new[] { mlDir, buildDir, libsDir }.Where(Directory.Exists);
         var prev = Environment.GetEnvironmentVariable("DYLD_LIBRARY_PATH");
         var joined = string.Join(":", dirs);
         psi.Environment["DYLD_LIBRARY_PATH"] = string.IsNullOrEmpty(prev) ? joined : $"{joined}:{prev}";

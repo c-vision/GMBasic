@@ -124,10 +124,14 @@ esac
 # Componenti e librerie NON stanno nel checkout: la cache utente `~/.gmbasic/libs` contiene
 # `<componente>/<rid>/` (ml = torch, chromium, obscura, ocr) e `<rid>/` (nostre lib + esterne);
 # in sviluppo si aggiunge `GMBasic/build/libs/<rid>/`. Stessa regola di tools/sh/harness.sh.
+# ORDINE: prima il build del working tree, poi la cache. La cache è la release pubblicata e
+# può essere più NUOVA per mtime ma più VECCHIA come sorgenti (caso reale 2026-11-11:
+# `libgmbmath`/`libgmbor` in cache senza simboli aggiunti dopo) → con la cache davanti il
+# loader macOS caricava la copia vecchia e le gambe C davano "simbolo non trovato".
 LIBS_CACHE="$HOME/.gmbasic/libs"
 if [ "$(uname)" = "Darwin" ] && [ -n "$RID5" ]; then
   export GMB_TORCH_PATH="${GMB_TORCH_PATH:-$LIBS_CACHE/ml/$RID5}"
-  DYLD4="$LIBS_CACHE/ml/$RID5:$LIBS_CACHE/$RID5:$ROOT/build/libs/$RID5"
+  DYLD4="$LIBS_CACHE/ml/$RID5:$ROOT/build/libs/$RID5:$LIBS_CACHE/$RID5"
   if [ -n "${DYLD_LIBRARY_PATH:-}" ]; then
     export DYLD_LIBRARY_PATH="$DYLD4:$DYLD_LIBRARY_PATH"
   else

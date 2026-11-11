@@ -449,9 +449,17 @@ public class MiniTestsParityTests
                 var mlDir = Path.Combine(vmRoot, "libs-runtime", "ml", rid);
                 var resDir = Path.Combine(vmRoot, "Resources", "libs", rid);
                 var rtDir = Path.Combine(vmRoot, "libs-runtime", rid);
+                // ORDINE (2026-11-11): build del working tree PRIMA della cache utente. La
+                // cache è la release pubblicata e può avere mtime più nuovo ma sorgenti più
+                // vecchi (libgmbmath/libgmbor senza i simboli appena aggiunti → VMC "simbolo
+                // non trovato"). Stessa regola di tools/sh/parity4 e del runner test_vmrun.
+                var buildDir = Path.Combine(vmRoot, "build", "libs", rid);
+                var cacheDir = Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+                    ".gmbasic", "libs", rid);
                 psi.Environment["GMB_TORCH_PATH"] = mlDir;
                 if (OperatingSystem.IsMacOS())
-                    psi.Environment["DYLD_LIBRARY_PATH"] = $"{mlDir}:{resDir}:{rtDir}:{Environment.GetEnvironmentVariable("DYLD_LIBRARY_PATH")}";
+                    psi.Environment["DYLD_LIBRARY_PATH"] = $"{mlDir}:{buildDir}:{cacheDir}:{resDir}:{rtDir}:{Environment.GetEnvironmentVariable("DYLD_LIBRARY_PATH")}";
             }
             using var proc = System.Diagnostics.Process.Start(psi)!;
             // Timeout OBBLIGATORIO: un programma BASIC che blocca il VMC (attesa su
