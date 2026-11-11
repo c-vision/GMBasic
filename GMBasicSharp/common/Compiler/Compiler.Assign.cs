@@ -55,6 +55,11 @@ public sealed partial class Compiler
                         EmitAdjustStringForLocal(localIndex);
                         EmitByte((byte)OpCode.OP_STORE_LOCAL); EmitShort((ushort)localIndex);
                     }
+                    else if (_staticVars.TryGetValue(name, out var staticId))
+                    {
+                        EmitByte((byte)OpCode.OP_STORE_STATIC_FIELD);
+                        EmitShort((ushort)staticId);
+                    }
                     else
                     {
                         AddImplicitLocal(vt.NameCleaned, vt.NameSuffixed);
@@ -80,6 +85,11 @@ public sealed partial class Compiler
                         _locals[localIndex].AlreadyFinalized = false;
                         EmitAdjustStringForLocal(localIndex);
                         EmitByte((byte)OpCode.OP_STORE_LOCAL); EmitShort((ushort)localIndex);
+                    }
+                    else if (_staticVars.TryGetValue(name, out var staticId))
+                    {
+                        EmitByte((byte)OpCode.OP_STORE_STATIC_FIELD);
+                        EmitShort((ushort)staticId);
                     }
                     else if (TryResolveOrRegisterGlobal(name, out var globalIndex))
                     {
@@ -331,6 +341,25 @@ public sealed partial class Compiler
     {
         foreach (var declaration in stmt.Declarations)
         {
+            /* STATIC dentro una procedura (2026-11-11): lo storage non è lo slot di frame ma
+             * l'area STATICA del runtime (la stessa dei campi statici di CLASS: chiave =
+             * SymbolId, persistence fra le chiamate). Qui si apre il blocco "inizializza una
+             * volta sola": se lo slot è ancora NIL il valore (default del tipo o
+             * inizializzatore) viene valutato e memorizzato; altrimenti si salta — così un
+             * secondo ingresso nella procedura NON riesegue l'inizializzatore.
+             * Il resto della dichiarazione (calcolo del valore) è identico al DIM: il case
+             * `TokenKind.Static` in fondo memorizza nello storage statico e chiude il salto. */
+            int? staticInitSkipJump = null;
+            if (stmt.Keyword.Kind == TokenKind.Static && _scopeDepth > 0)
+            {
+                EmitByte((byte)OpCode.OP_LOAD_STATIC_FIELD);
+                EmitShort((ushort)declaration.SymbolId);
+                EmitByte((byte)OpCode.OP_PUSH_NIL);
+                EmitByte((byte)OpCode.OP_CMP_EQ);
+                staticInitSkipJump = EmitJump((byte)OpCode.OP_JUMP_IF_FALSE);
+                _staticVars[declaration.NameCleaned.Lexeme] = declaration.SymbolId;
+            }
+
             var hasExplicitDimensions = declaration.Dimensions.Any();
             var hasInitialValue = declaration.InitialValue is not null;
 
@@ -642,20 +671,41 @@ public sealed partial class Compiler
                     EmitShort(globalIndex);
                     break;
 
+                case TokenKind.Static when _scopeDepth == 0:
+                    /* STATIC fuori da una procedura: non ha nulla da "persistere" oltre al
+                     * programma stesso → è un GLOBALE. IL e C99Native lo accettano già così;
+                     * prima PCode/VM-C lanciavano un'eccezione (divergenza trovata dalla
+                     * verifica 2026-11-11). */
+                    var staticGlobalIndex = DefineGlobal(declaration.NameCleaned.Lexeme, finalVariableType);
+                    var staticLocalIdx = ResolveLocal(declaration.NameCleaned.Lexeme);
+                    if (staticLocalIdx != -1)
+                    {
+                        EmitByte((byte)OpCode.OP_DUP);
+                        EmitByte((byte)OpCode.OP_STORE_LOCAL);
+                        EmitShort((ushort)staticLocalIdx);
+                    }
+                    EmitByte((byte)OpCode.OP_DEFINE_GLOBAL);
+                    EmitShort(staticGlobalIndex);
+                    break;
+
+                case TokenKind.Static:
+                    if (IsMacroScope)
+                        throw new Exception("STATIC is not allowed inside EVAL/macro: eval scope is transient.");
+                    /* Il valore (default del tipo o inizializzatore) è sullo stack: va nello
+                     * STORAGE STATICO, non in uno slot di frame — è ciò che lo fa persistere
+                     * fra le chiamate. Poi si chiude il salto del blocco "inizializza una volta"
+                     * aperto in testa alla dichiarazione. */
+                    EmitByte((byte)OpCode.OP_STORE_STATIC_FIELD);
+                    EmitShort((ushort)declaration.SymbolId);
+                    if (staticInitSkipJump is { } staticSkip)
+                        PatchJump(staticSkip);
+                    break;
+
                 case TokenKind.Let:
                 case TokenKind.Local:
                 case TokenKind.Dim:
-                case TokenKind.Static:
                     if (stmt.Keyword.Kind == TokenKind.Local && _scopeDepth == 0)
                         throw new Exception("LOCAL can only be used inside a SUB/FUNCTION.");
-                    if (stmt.Keyword.Kind == TokenKind.Static && _scopeDepth == 0)
-                        throw new Exception("STATIC can only be used inside a SUB or FUNCTION.");
-                    // S_eval (semantica vincolante 2026-09-09): lo scope eval è transiente — una
-                    // STATIC richiederebbe persistenza tra chiamate: errore esplicito, mai
-                    // no-op silenzioso (le definizioni SUB/FUNCTION non possono nemmeno parsare
-                    // in ParseSingleStatement/Expression, quindi solo STATIC va guardato qui).
-                    if (stmt.Keyword.Kind == TokenKind.Static && IsMacroScope)
-                        throw new Exception("STATIC is not allowed inside EVAL/macro: eval scope is transient.");
 
                     AddLocal(declaration.NameCleaned, finalVariableType);
                     

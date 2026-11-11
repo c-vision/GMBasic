@@ -66,6 +66,17 @@ public sealed partial class Compiler
     private readonly Dictionary<string, int> _globals = new(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>
+    /// Variabili <c>STATIC</c> dichiarate nella procedura correntemente compilata: nome →
+    /// SymbolId. Vivono nello storage STATICO del runtime
+    /// (<c>OP_LOAD_STATIC_FIELD</c>/<c>OP_STORE_STATIC_FIELD</c>, la stessa area dei campi
+    /// statici di CLASS), non in uno slot di frame: è questo che le fa sopravvivere fra una
+    /// chiamata e l'altra. Il dizionario è per-istanza del compilatore, quindi è
+    /// naturalmente limitato alla procedura (un omonimo STATIC in un'altra procedura ha il
+    /// suo SymbolId). Vedi EmitStaticDeclarationOnce/VisitDeclarationStatement.
+    /// </summary>
+    private readonly Dictionary<string, int> _staticVars = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>
     /// Lista che contiene le informazioni dettagliate (incluso il tipo) per ogni variabile globale,
     /// indicizzata in modo coerente con `_globals`.
     /// </summary>
@@ -1360,6 +1371,12 @@ public sealed partial class Compiler
                 if (stmt is DeclarationStmt ds && ds.Keyword.Kind != TokenKind.Global)
                 {
                     bool needsInit = false;
+                    /* STATIC: serve SEMPRE passare da VisitDeclarationStatement (è lì che la
+                     * variabile entra in _staticVars e si emette l'inizializzazione
+                     * "una volta sola" nello storage statico). La scorciatoia !needsInit qui
+                     * sotto registrerebbe solo un locale di frame, perdendo la persistenza. */
+                    if (ds.Keyword.Kind == TokenKind.Static)
+                        needsInit = true;
                     foreach (var decl in ds.Declarations)
                     {
                         // UserDefinedType manca qui era il bug: senza inizializzatore esplicito,

@@ -108,6 +108,9 @@ typedef struct { char* name; int type; int is_array; int ndims; int byref; int g
                                    * gmb_list_t/gmb_dict_t dell'emitter. Serve ai contenitori
                                    * TIPIZZATI con semantica non-lista (HEAP/MAXHEAP/BAG/TRIE):
                                    * heapify su Add, Peek/Extract = radice, BAG multiset. */
+                 int is_static;   /* STATIC dentro una procedura: dichiarata `static` nel
+                                   * prologo della funzione (persiste fra le chiamate) e
+                                   * inizializzata una volta sola dal sito DIM. */
                } var_t;
 
 /* `vars_t` dipende da `var_t`: una sola definizione anche di questa. */

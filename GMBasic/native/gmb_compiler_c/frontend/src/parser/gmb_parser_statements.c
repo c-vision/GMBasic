@@ -2763,6 +2763,7 @@ if (gmb_tk_rem_vari_in(t->kind)) {
     if (t->kind == GMB_TOK_Local || t->kind == GMB_TOK_Static || t->kind == GMB_TOK_Private) {
         gmb_stmt_t* ls = gmb_stmt_new(GMB_STMT_DIM, line);
         ls->dim_is_local = (t->kind == GMB_TOK_Local);
+        ls->dim_is_static = (t->kind == GMB_TOK_Static);
         gmb_p_adv(p);
         const gmb_token_t* lv = gmb_p_cur(p);
         if (lv) { ls->dim_var = (char*)malloc((size_t)lv->length + 1); memcpy(ls->dim_var, lv->lexeme, (size_t)lv->length); ls->dim_var[lv->length] = 0; gmb_p_adv(p); }

@@ -4653,6 +4653,14 @@ if (s->dim_var) {            int ty = suffix_type(s->dim_var);
             if (s->dim_type && strcmp(s->dim_type, "__VAL__") == 0) { v->boxed_val = 1; v->type = TY_NUM; }
             /* 2.8: DIM v AS STRING * N → lunghezza fissa (pad/truncate in assegnamento) */
             if (s->dim_fixed_len > 0) v->fixed_len = s->dim_fixed_len;
+            /* STATIC dentro una procedura (2026-11-11): la variabile C è dichiarata `static`
+             * nel prologo della funzione (persiste fra le chiamate) e il sito DIM emette
+             * l'inizializzazione "una volta sola" (vedi st_dim). Fuori da una procedura
+             * STATIC non ha senso e resta il comportamento di prima. */
+            if (s->dim_is_static && c->cur_fn) {
+                var_t* sv = vars_find(scope, s->dim_var);
+                if (sv) sv->is_static = 1;
+            }
         }
         return;
 }
@@ -20024,6 +20032,55 @@ static void st_dim(ctx_t* c, gmb_stmt_t* s) {
          var_t* dv = NULL;
          if (c->cur_fn && s->dim_var) dv = vars_find(&c->cur_fn->locals, s->dim_var);
          if (!dv && s->dim_var) dv = lookup_var(c, s->dim_var);
+         /* STATIC dentro una procedura: la variabile C è dichiarata `static` nel prologo
+          * (persiste fra le chiamate). Qui si esegue l'inizializzazione UNA volta sola:
+          * al primo ingresso con l'inizializzatore (o il default del tipo), poi mai più.
+          * Parità con IL (StaticInitOnce) e con il bytecode (blocco "inizializza una
+          * volta" su OP_LOAD/STORE_STATIC_FIELD). */
+         if (dv && dv->is_static) {
+             int staticSimple = (dv->type == TY_STR)
+                 || (!dv->is_array && !dv->gkind && !dv->vclass[0] && !dv->boxed_val && !dv->matrix
+                     && !dv->matrix_value && !dv->jagged && !dv->dyn_len && !dv->nullable
+                     && !dv->sb_builder && !dv->regex_obj && !dv->coll_handle && !dv->matrix_handle
+                     && !dv->cell);
+             if (staticSimple) {
+                 ind(c);
+                 sb_put(&c->out, "if (!");
+                 emit_ident(c, dv->name);
+                 sb_put(&c->out, "__inited) { ");
+                 emit_ident(c, dv->name);
+                 sb_put(&c->out, "__inited = 1; ");
+                 emit_ident(c, dv->name);
+                 sb_put(&c->out, " = ");
+                 if (dv->type == TY_STR) {
+                     if (s->dim_init) emit_str_operand(c, s->dim_init);
+                     else sb_put(&c->out, "gmb_string_alloc(\"\")");
+                 } else {
+                     if (s->dim_init) emit_num_operand(c, s->dim_init);
+                     else sb_put(&c->out, "0");
+                 }
+                 sb_put(&c->out, "; }\n");
+                 return;
+             }
+             /* STATIC di tipo COMPOSTO (array, collezione, matrice): l'inizializzazione è
+              * l'emissione normale della DIM (allocazione dell'array, OP_NEW della collezione,
+              * ...), che deve però girare UNA volta sola: la si racchiude nel guard e si
+              * richiama st_dim con il flag disattivato (la ricorsione non rientra qui). */
+             ind(c);
+             sb_printf(&c->out, "if (!");
+             emit_ident(c, dv->name);
+             sb_printf(&c->out, "__inited) { ");
+             emit_ident(c, dv->name);
+             sb_put(&c->out, "__inited = 1;\n");
+             c->indent++;
+             dv->is_static = 0;
+             st_dim(c, s);
+             dv->is_static = 1;
+             c->indent--;
+             ind(c);
+             sb_put(&c->out, "}\n");
+             return;
+         }
          /* LOCAL che ombreggia una GLOBAL: dichiarazione C emessa QUI, non nel prologo,
           * così le istruzioni precedenti continuano a vedere la globale. */
          if (dv && dv->late_local) {
@@ -33826,6 +33883,7 @@ static void emit_function(ctx_t* c, fn_info_t* fn) {
         if (v->captured) continue;
         if (v->cell) continue;         /* vive in una cella heap: vedi blocco "celle" sotto */
         if (v->late_local) continue;   /* LOCAL che ombreggia GLOBAL: dichiarata al punto d'uso */
+        if (v->is_static) continue;    /* STATIC: vedi il blocco dedicato sotto */
         ind(c);
         if (v->nullable) {
             /* DIM v AS <scalare>?: local gmb_val_t boxed, init NIL (non 0). */
@@ -34009,6 +34067,58 @@ static void emit_function(ctx_t* c, fn_info_t* fn) {
             emit_ident(c, v->name);
             sb_put(&c->out, " = 0;\n");
         }
+    }
+    /* STATIC dentro una procedura: dichiarata `static` (storage persistente per l'intera
+     * esecuzione: è ciò che la fa sopravvivere fra le chiamate) + un flag d'inizializzazione
+     * per il sito DIM (che deve eseguire l'inizializzatore UNA volta sola, parità IL/PCode). */
+    for (int i = s->n_params; i < fn->locals.n; i++) {
+        var_t* v = &fn->locals.v[i];
+        if (!v->is_static) continue;
+        int cond = !v->gkind && !v->vclass[0] && !v->boxed_val && !v->matrix && !v->matrix_value
+                   && !v->jagged && !v->nullable && !v->sb_builder && !v->regex_obj
+                   && !v->coll_handle && !v->matrix_handle && !v->cell;
+        if (v->type == TY_STR && !v->is_array) {
+            ind(c); sb_put(&c->out, "static gmb_string_t "); emit_ident(c, v->name); sb_put(&c->out, ";\n");
+        } else if (!v->is_array && cond) {
+            ind(c); sb_put(&c->out, "static gmb_double_t "); emit_ident(c, v->name); sb_put(&c->out, " = 0;\n");
+        } else if (v->is_array && cond) {
+            /* array STATIC: puntatore + companion (len dei dyn_len, bound, lower bound) statici —
+             * li riempie la DIM (una volta sola), le letture successive li ritrovano. */
+            ind(c);
+            sb_printf(&c->out, "static %s* ", ctype_name(v->type));
+            emit_ident(c, v->name);
+            sb_put(&c->out, ";\n");
+            if (v->dyn_len) {
+                ind(c); sb_put(&c->out, "static gmb_int_t "); emit_ident(c, v->name);
+                sb_put(&c->out, "_len = 0;\n");
+            }
+            int nd_st = v->ndims > 0 ? v->ndims : 1;
+            for (int k = 0; k < nd_st; k++) {
+                ind(c); sb_put(&c->out, "static gmb_int_t ");
+                sb_bound_ident(&c->out, v->name, k);
+                sb_put(&c->out, " = -1;\n");
+            }
+            ind(c); sb_put(&c->out, "static gmb_int_t ");
+            sb_bound_lo(&c->out, v);
+            sb_put(&c->out, " = 0;\n");
+            if (v->has_blo) {
+                for (int kb = 1; kb < nd_st; kb++) {
+                    ind(c); sb_put(&c->out, "static gmb_int_t ");
+                    sb_bound_lo_k(&c->out, v, kb);
+                    sb_put(&c->out, " = 0;\n");
+                }
+            }
+        } else {
+            /* Altri tipi composti (collezioni, classi, matrici, boxed): non supportati — un
+             * `static` di questi richiederebbe l'inizializzazione al primo ingresso di un
+             * oggetto il cui costruttore ha semantica propria. Errore esplicito. */
+            c99_fail(c, 0, "STATIC '%s': tipo non supportato dall'emitter C (ammessi scalari, STRING e array)", v->name);
+            continue;
+        }
+        ind(c);
+        sb_put(&c->out, "static int ");
+        emit_ident(c, v->name);
+        sb_put(&c->out, "__inited = 0;\n");
     }
     /* FASE 2.6(j): remap identificatori per le catture.
      * - figlio con catture: nome → __ctx-><campo>

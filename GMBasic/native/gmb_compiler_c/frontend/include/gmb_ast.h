@@ -335,6 +335,9 @@ struct gmb_stmt {
                                 * modulo, condiviso da tutte le procedure. */
     int dim_is_local;          /* `LOCAL v ...`: lexical block-scope; se ombreggia una GLOBAL,
                                 * la dichiarazione locale ha effetto solo dal punto in poi. */
+    int dim_is_static;         /* `STATIC v ...` (dentro una procedura): la variabile C è
+                                * `static` (persiste fra le chiamate) e va inizializzata una
+                                * volta sola al sito DIM — parità PCode/VM-C/IL. */
     char* dim_type;            /* DIM v AS <tipo>: nome tipo (CHANNEL/WAITGROUP/MUTEX/...) */
     char* dim_type_args;       /* DIM v AS Base<A1,A2>: CSV degli argomenti generici ("A1,A2");
                                 * NULL se il tipo non è istanziato (parità C# `Pair_INTEGER_STRING_`). */
