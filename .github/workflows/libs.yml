@@ -166,6 +166,11 @@ jobs:
         if: env.GROUP != 'toolchain'
         run: |
           args=( "$GROUP" --rid "${{ matrix.rid }}" )
+          # CI: il checkout è pulito, quindi NON esistono le build dir. Senza `--build-root`
+          # `build_core` si ferma con "build dir assente" (run 43116276267: 3 build rosse).
+          # Con la root il progetto viene CONFIGURATO lì; lo staging cerca già le statiche in
+          # <root>/build/cmake-<rid> (cross) e le shared in <root>/build/libs/<rid>.
+          args+=( --build-root "$GITHUB_WORKSPACE/GMBasic/build/cmake-${{ matrix.rid }}" )
           [ "$DO_PUBLISH" = "true" ] && args+=( --publish --yes --no-index )   # indice: job dedicato
           [ -n "$TAG" ] && args+=( --tag "$TAG" )
           bash tools/sh/libs_build_release.sh "${args[@]}"

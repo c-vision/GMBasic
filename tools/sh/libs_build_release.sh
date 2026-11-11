@@ -21,6 +21,8 @@
 #                        altrimenti N RID in parallelo si sovrascrivono lo stesso manifest)
 #     --stage-dir DIR    dove lasciare i file raccolti (default: temp, cancellata all'uscita).
 #                        Serve al runner in container: il bundle esce su un volume montato.
+#     --deps DIR         (gruppo `dev`) terze parti del RID: attributi `include/` e `lib/`
+#                        (default: ~/gmb-deps/<triple>, dove le mette tools/c/build-deps.sh).
 #     --build-root DIR   albero di build separato (default: <progetto>/build). Serve quando il
 #                        checkout è montato da un ALTRO OS (container): il CMakeCache del host
 #                        (macOS) non è riutilizzabile in Linux → si configura in DIR/<progetto>.
@@ -59,7 +61,7 @@ GROUP="${1:-}"; [ $# -gt 0 ] && shift
 # soltanto (`libs_manifest_gh.sh build`), che tratta `ffi` come gli altri gruppi.
 
 RID=""; DO_BUILD=1; PUBLISH=0; TAG=""; ALLOW_GAPS=0; DO_VERIFY=1; DRY=0; YES=0; NO_INDEX=0
-STAGE_DIR=""; BUILD_ROOT=""; CMAKE_ARGS=()
+STAGE_DIR=""; BUILD_ROOT=""; DEPS_DIR=""; CMAKE_ARGS=()
 while [ $# -gt 0 ]; do
   case "$1" in
     --rid) RID="${2:-}"; shift 2;;
@@ -70,6 +72,7 @@ while [ $# -gt 0 ]; do
     --no-index) NO_INDEX=1; shift;;
     --stage-dir) STAGE_DIR="${2:-}"; shift 2;;
     --build-root) BUILD_ROOT="${2:-}"; shift 2;;
+    --deps)       DEPS_DIR="${2:-}"; shift 2;;
     --cmake-arg) CMAKE_ARGS+=("${2:-}"); shift 2;;
     --no-verify) DO_VERIFY=0; shift;;
     --dry-run) DRY=1; shift;;
@@ -215,10 +218,105 @@ build_engine_local() {
     [ "$DRY" = "1" ] || cmake -S "$ROOT/native/gmb_runtime_c" -B "$bdir" -DCMAKE_BUILD_TYPE=Release ${CMAKE_ARGS[@]+"${CMAKE_ARGS[@]}"} || return 1
   fi
   echo "-> build gmb_runtime_c (include i sottoprogetti LLMEnv: codec/token/desc/moe)"
-  [ "$DRY" = "1" ] || cmake --build "$bdir" -j 6
+  # Il `;` dopo l'echo MANCAVA: `echo ... [ "$DRY" = "1" ] || cmake …` passava il test come
+  # ARGOMENTO dell'echo, l'echo usciva 0 e la build non veniva mai eseguita (gruppi con
+  # ENGINE_LOCAL: engine/llmmotor). Ora si esegue davvero e l'errore si propaga.
+  [ "$DRY" = "1" ] || cmake --build "$bdir" -j 6 || return 1
 }
 
-if [ "$DO_BUILD" = "1" ]; then
+# ── GRUPPO `dev` (F3 del piano Toolchain-Zig) ────────────────────────────────────────────────
+# Il payload per COMPILARE non sono librerie dinamiche: sono `include/**` (terze parti + header
+# nostri + gli header generati nel build, es. `gmb_gfx_spirv.h`) e `lib/*.a` (statiche nostre +
+# archivi delle terze parti). Lo staging generico qui sotto cerca solo `.dylib/.so/.dll` e con la
+# regola `dev` raccoglierebbe quasi nulla: per questo il gruppo ha il suo staging dedicato, e il
+# gate `libs_dev_selfcheck.sh` misura ciò che conta (gli include e le `-l` risolti NEL bundle).
+rid_triple() {
+  # $1 = RID → triple (tabella §17.1 del piano: RID ≠ triple)
+  case "$1" in
+    osx-arm64)   echo aarch64-macos;;
+    osx-x64)     echo x86_64-macos;;
+    linux-x64)   echo x86_64-linux-gnu;;
+    linux-arm64) echo aarch64-linux-gnu;;
+    win-x64)     echo x86_64-windows-gnu;;
+    win-arm64)   echo aarch64-windows-gnu;;
+    *) return 1;;
+  esac
+}
+
+stage_dev() {
+  # $1 = cartella di staging (già creata)
+  local stage="$1" triple deps d n inc_n lib_n
+  triple="$(rid_triple "$RID")" || { echo "ERRORE: RID non valido: $RID" >&2; return 1; }
+  deps="${DEPS_DIR:-$HOME/gmb-deps/$triple}"
+  if [ ! -d "$deps/include" ] || [ ! -d "$deps/lib" ]; then
+    echo "ERRORE: mancano le terze parti per $RID in $deps" >&2
+    echo "  generarle (una volta per target): tools/c/build-deps.sh --target $triple" >&2
+    return 1
+  fi
+  mkdir -p "$stage/include" "$stage/lib" || return 1
+
+  # 1) terze parti: albero degli header + archivi (già per il triple giusto, nessun filtro)
+  ( cd "$deps/include" && tar cf - . ) | ( cd "$stage/include" && tar xf - ) || return 1
+  cp -f "$deps"/lib/*.a "$deps"/lib/*.dylib "$deps"/lib/*.so* "$deps"/lib/*.lib "$stage/lib/" 2>/dev/null
+
+  # 1bis) RID Windows: lo strato POSIX→Win32 (`GMBasic/native/win32shim/include`) è parte del
+  #    payload di compilazione, non un extra: senza, `sys/socket.h`, `unistd.h`, `pthread.h`,
+  #    `netdb.h` non risolvono e i sorgenti — che sono gli STESSI di macOS/Linux — non compilano.
+  case "$RID" in
+    win-*)
+      ( cd "$ROOT/native/win32shim/include" && tar cf - . ) | ( cd "$stage/include" && tar xf - ) || return 1 ;;
+  esac
+
+  # 2) header NOSTRI, piatti: i sorgenti li includono per nome (`#include "gmb_runtime.h"`)
+  for d in "$ROOT"/native/*/include; do
+    [ -d "$d" ] || continue
+    cp -f "$d"/*.h "$stage/include/" 2>/dev/null
+  done
+
+  # 2bis) header INTERNI di progetto (`src/*.h`, `*.inc`): non sono API pubblica, ma senza
+  #    `gmb_hpack_huffman.h` o `gmb_tui_*.inc` il runtime non si ricompila. `cp -n`: l'API
+  #    pubblica (`include/`) vince sempre sui nomi uguali.
+  for d in "$ROOT"/native/*/src; do
+    [ -d "$d" ] || continue
+    cp -n "$d"/*.h   "$stage/include/" 2>/dev/null
+    cp -n "$d"/*.inc "$stage/include/" 2>/dev/null
+  done
+
+  # 3) header GENERATI nel build: `gmb_gfx_vulkan.c` include `gmb_gfx_spirv.h`, che non è nel
+  #    repo. Senza, quel sorgente non compila e il gate lo segnala come mancante.
+  for d in "$HOME/gmb-deps/gen" "$ROOT/build/cmake-$RID" "$ROOT/native/gmb_runtime_c/build"; do
+    [ -f "$d/gmb_gfx_spirv.h" ] && cp -f "$d/gmb_gfx_spirv.h" "$stage/include/"
+  done
+
+  # 4) statiche NOSTRE del RID (cross: <root>/build/cmake-<rid>; host: <progetto>/build).
+  #    `libgmb_runtime_min.a` è la variante minima del runtime: non è il payload di compilazione.
+  local roots=("$ROOT/build/cmake-$RID" "$ROOT/build/libs/$RID")
+  for d in gmb_runtime_c gmb_compiler_c gmb_bytecode gmb_db_c gmb_doc_c gmb_chart gmb_agent_runtime; do
+    roots+=("$ROOT/native/$d/build")
+  done
+  for d in "${roots[@]}"; do
+    [ -d "$d" ] || continue
+    while IFS= read -r f; do
+      case "$(basename "$f")" in libgmb_runtime_min.a) continue;; esac
+      cp -f "$f" "$stage/lib/" 2>/dev/null
+    done < <(find "$d" -maxdepth 2 -type f \( -name 'lib*.a' -o -name 'lib*.dll.a' -o -name '*.lib' \
+                 -o -name 'lib*.dylib' -o -name 'lib*.so' -o -name 'lib*.so.*' \) 2>/dev/null)
+  done
+
+  inc_n=$(find "$stage/include" -type f | wc -l | tr -d ' ')
+  lib_n=$(find "$stage/lib" -type f | wc -l | tr -d ' ')
+  n=$((inc_n + lib_n))
+  echo "   dev $RID: $inc_n header, $lib_n archivi (tot $n file) · deps=$deps"
+  [ "$n" -gt 0 ] || { echo "ERRORE: staging dev vuoto" >&2; return 1; }
+  return 0
+}
+
+
+if [ "$DO_BUILD" = "1" ] && [ "$GROUP" = "dev" ]; then
+  # `dev` non produce nulla: raccoglie le statiche/header già costruiti per il RID (build_core
+  # ricompilerebbe le librerie DINAMICHE, che non fanno parte di questo payload).
+  echo "== 1) compilazione saltata (dev: uso gli artefatti già presenti per $RID)"
+elif [ "$DO_BUILD" = "1" ]; then
   if [ "$ENGINE_LOCAL" = "1" ]; then
     echo "== 1) compilazione ($GROUP, tramite i sottoprogetti LLMEnv) =="
     build_engine_local || { echo "ERRORE: build fallita" >&2; exit 1; }
@@ -239,6 +337,24 @@ else
 fi
 GATE_DIR="$STAGE"
 trap '[ "$TMP_STAGE" = "1" ] && rm -rf "$STAGE"; [ "$GATE_DIR" != "$STAGE" ] && rm -rf "$GATE_DIR"; true' EXIT
+
+# `dev` non passa dallo staging delle librerie dinamiche (vedi stage_dev): si mette in stage il
+# payload di COMPILAZIONE e si misura col suo gate. La pubblicazione resta al canale unico degli
+# asset (i path `include/…` diventano `include__…` con libs_publish_files_gh.sh), quindi qui si
+# stampa il comando esatto e non si pubblica: `--publish` su `dev` è volutamente non supportato.
+if [ "$GROUP" = "dev" ]; then
+  stage_dev "$STAGE" || exit 1
+  if [ "$DO_VERIFY" = "1" ] && [ "$DRY" = "0" ]; then
+    echo "== 3) gate dev (libs_dev_selfcheck.sh)"
+    bash "$SCRIPT_DIR/libs_dev_selfcheck.sh" "$STAGE" --rid "$RID" || {
+      echo "ERRORE: il bundle dev non basta a compilare per $RID" >&2; exit 1; }
+  fi
+  echo "== 4) pubblicazione: NON in questo script (asset piatti, un solo writer)"
+  echo "   ls -l \"$STAGE/include\" \"$STAGE/lib\""
+  echo "   tools/sh/libs_publish_files_gh.sh dev $RID --source \"$STAGE\" --tag dev-v1 --yes"
+  [ "$TMP_STAGE" = "1" ] && [ "$DRY" = "0" ] && echo "   (staging temporaneo: usare --stage-dir per conservarlo)"
+  exit 0
+fi
 
 ROOTS=(
   "$ROOT/build/libs/$RID"
