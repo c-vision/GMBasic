@@ -289,10 +289,9 @@ void byref_pt_scale(ByrefPt* p, double k) { p->x *= k; p->y *= k; }
 void byref_pt_set(ByrefPt* p, double x, double y) { p->x = x; p->y = y; }
 
 /* ── Callback multipli (2026-11-11) ────────────────────────────────────────────
- * Due callback nella STESSA firma e con la STESSA forma (kind, arità): il pool dei
- * backend C ha 2 trampolini per forma -> funziona (ffi_callback_two.bas).
- * Tre della stessa forma: oltre il pool -> errore di compilazione con messaggio unico
- * sulle 4 gambe (ffi_negative_callback_three.bas). */
+ * Due/Tre callback nella STESSA firma e con la STESSA forma (kind, arità): dal 2026-11-11
+ * non c'è più un pool a 2 trampolini per forma sui callback scalari (ffi_callback_two.bas,
+ * ffi_callback_three.bas). */
 double cb_apply2(double (*f)(double), double (*g)(double), double x)
 {
     return f(x) + g(x);
