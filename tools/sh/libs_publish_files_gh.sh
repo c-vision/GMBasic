@@ -58,6 +58,23 @@ done
 # Nome dell'asset: il RID va PRIMA dell'estensione (un file = una libreria, riconoscibile):
 #   libgmb_gfx.so → libgmb_gfx-linux-arm64.so      libllama.so.0 → libllama-linux-x64.so.0
 #   libgmb_gfx.dylib → libgmb_gfx-osx-arm64.dylib  mlx.metallib → mlx-osx-arm64.metallib
+# Separatore di path negli asset del gruppo `dev`: "/" → "__". Un SEGMENTO che inizia o finisce
+# con "_" (o che contiene "__") si scontrerebbe col separatore e il path ricostruito sarebbe
+# sbagliato (caso reale: include/openssl/__DECC_INCLUDE_PROLOGUE.H → include/openssl//DECC…).
+# In quei segmenti soltanto, ogni "_" diventa "-q-" (nessun nome reale contiene "-q-": "-", "q" sono caratteri ammessi da GitHub): tutti gli
+# altri nomi restano identici, quindi gli asset già pubblicati non vanno rinominati.
+tree_path() { # $1 = path relativo → segmenti uniti con "__", segmenti ambigui escapati
+  local out="" seg
+  local IFS=/
+  for seg in $1; do
+    case "$seg" in
+      _*|*_|*__*) seg="${seg//_/-q-}";;
+    esac
+    if [ -n "$out" ]; then out="${out}__$seg"; else out="$seg"; fi
+  done
+  printf '%s' "$out"
+}
+
 # Asset per alberi (dev): il nome porta il PATH RELATIVO con "/" → "__", così `include/SDL2/SDL.h`
 # diventa `include__SDL2__SDL-osx-arm64.h`. Il manifest ricostruisce il path invertendo la regola.
 asset_name_tree() {
@@ -69,10 +86,13 @@ asset_name_tree() {
     *.a)         stem="${rel%.a}";     ext=".a";;
     # header e file di configurazione: il RID va PRIMA dell'estensione finale
     # (include__SDL2__SDL-osx-arm64.h), altrimenti il manifest non ricostruisce il path.
-    *.h|*.hpp|*.inl|*.pc) stem="${rel%.*}"; ext=".${rel##*.}";;
+    # QUALUNQUE altra estensione (`include/*` porta .h .hpp .inl .pc .inc .cppm .H …) e le
+    # import/statiche di Windows (.lib): il RID va PRIMA dell'estensione finale, altrimenti il
+    # manifest non ricostruisce il path (o l'asset non viene indicizzato affatto).
+    *.*)         stem="${rel%.*}";     ext=".${rel##*.}";;
     *)           stem="${rel}";        ext="";;
   esac
-  printf '%s-%s%s' "${stem//\//__}" "$RID" "$ext"
+  printf '%s-%s%s' "$(tree_path "$stem")" "$RID" "$ext"
 }
 
 # dispatcher: modalità piatta (runtime) o albero (dev)
@@ -109,7 +129,7 @@ while IFS= read -r f; do
   if [ "$TREE" = "1" ]; then b="${f#"$SRC"/}"; else b="$(basename "$f")"; fi
   [ -n "$(libs_group_pick "$GROUP" "$b")" ] || continue
   FILES+=("$b")
-done < <(if [ "$TREE" = "1" ]; then find "$SRC" -type f \( -name "*.h" -o -name "*.hpp" -o -name "*.a" -o -name "*.dylib" -o -name "*.so" -o -name "*.so.*" -o -name "*.dll" -o -name "*.pc" \) | sort; else find "$SRC" -maxdepth 1 -type f \( -name "*.dylib" -o -name "*.so" -o -name "*.so.*" -o -name "*.dll" -o -name "*.metallib" -o -name "*.tar.xz" \) | sort; fi)
+done < <(if [ "$TREE" = "1" ]; then find "$SRC" -type f | sort; else find "$SRC" -maxdepth 1 -type f \( -name "*.dylib" -o -name "*.so" -o -name "*.so.*" -o -name "*.dll" -o -name "*.metallib" -o -name "*.tar.xz" \) | sort; fi)
 [ "${#FILES[@]}" -gt 0 ] || { echo "nessun file del gruppo '$GROUP' in $SRC" >&2; exit 1; }
 
 echo "== per-file: gruppo=$GROUP rid=$RID tag=$TAG file=${#FILES[@]} (repo=$REPO)" >&2

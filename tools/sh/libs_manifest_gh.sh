@@ -196,7 +196,7 @@ assets_perfile() {
     | (try ($n | capture("^(?<stem>.+)-" + $rid + "(?<ext>\\.[A-Za-z0-9.]+)$")) catch null) as $c
     | select($c != null)
     | [ $n,
-        (($c.stem + $c.ext) | gsub("__"; "/")),   # dev: include__SDL2__SDL.h → include/SDL2/SDL.h
+        (($c.stem + $c.ext) | split("__") | map(gsub("-q-"; "_")) | join("/")),   # dev: include__SDL2__SDL.h → include/SDL2/SDL.h (`-q-` = "_" escapato in un segmento ambiguo)
         (.digest // "" | sub("^sha256:"; "")), (.size|tostring) ]
     | @tsv' 2>/dev/null
 }

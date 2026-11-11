@@ -94,8 +94,12 @@ libs_group_pick() {
         # PAYLOAD per COMPILARE: header di terze parti (`include/…`) e le nostre statiche
         # (`lib/*.a`). Il nome è il PATH RELATIVO nella cache; l'asset è piatto con `/` → `__`.
         # Direttiva 2026-10-29: si compila senza dipendenze di sistema, scaricando questo gruppo.
+        # `lib/*.lib` sono le import/statiche di Windows (MSVC: SDL2.lib, curl.lib …) e
+        # `lib/*.so*` le shared prodotte per i RID win: senza di esse il bundle dichiarato
+        # "pronto a compilare" non lo era (misurato 2026-11-11: il gate contava 95 archivi
+        # per win-x64, l'indice ne pubblicava 62).
         case "$f" in
-          include/*|lib/*.a|lib/*.dylib) echo "$f";;
+          include/*|lib/*.a|lib/*.dylib|lib/*.lib|lib/*.so|lib/*.so.*) echo "$f";;
         esac;;
       boot) case "$f" in
           # libgmb_boot: il PUNTO UNICO di ricerca/download/caricamento. Piccolissima (55 KB,
