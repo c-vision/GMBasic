@@ -1291,9 +1291,9 @@ public sealed partial class Compiler
                         if (lvTmp.Count is 0 or > 64)
                             throw new BasicException(expr.OriginalToken, $"FFI '{symbolName}': array di UDT '{ue.Name.Lexeme}' con {lvTmp.Count} campi (ammessi 1..64).");
                     }
-                    else if (!IsFfiArrayElemType(elem))
+                    else if (!IsFfiArrayElemType(elem) && elem is not StringType)
                         throw new BasicException(expr.OriginalToken,
-                            $"FFI '{symbolName}': tipo elemento non supportato per il parametro array '{p.Name.Lexeme}' (solo AS DOUBLE, LONG/QUAD, BYTE o un TYPE).");
+                            $"FFI '{symbolName}': tipo elemento non supportato per il parametro array '{p.Name.Lexeme}' (solo AS DOUBLE, LONG/QUAD, BYTE, STRING o un TYPE).");
                 }
                 else if (IsByRefScalarParam(p) && !IsFfiByRefScalarType(p.DataType))
                     throw new BasicException(expr.OriginalToken,
@@ -1415,6 +1415,7 @@ public sealed partial class Compiler
                         var elemT = (p.DataType as ArrayType)?.ElementType;
                         if (elemT is UserDefinedType) flags |= 0x80;      /* array di struct */
                         else if (IsFfiInt64Type(elemT)) flags |= 0x40;
+                        else if (elemT is StringType) flags |= 4;         /* array di STRING (char**, solo INPUT) */
                     }
                     else if (isStr) flags |= 4;
                     else if (isBr) { flags |= 8; if (IsFfiInt64Type(p.DataType)) flags |= 0x80; }

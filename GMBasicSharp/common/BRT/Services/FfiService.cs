@@ -1066,6 +1066,9 @@ public class FfiService : IFfiService
         // Campi STRING di uno struct FFI (2026-11-06, S1): buffer UTF-8 da liberare a fine
         // chiamata (il nativo non li trattiene).
         List<IntPtr>? udtStrPtrs = null;
+        // Array di STRING (char**, 2026-11-11, solo INPUT): una stringa UTF-8 per elemento,
+        // liberata a fine chiamata come i campi STRING degli UDT.
+        List<IntPtr>? arrayStrPtrs = null;
         // Per gli slot object[] (PCodeVM): scratch buffer copy-in + riferimento all'array
         // originale per il copy-out dopo la chiamata.
         var scratchIsInt = new bool[n];
@@ -1208,6 +1211,24 @@ public class FfiService : IFfiService
                         structTypeIn.GetField($"F{fi}")!.SetValue(boxedIn, fieldVal);
                     }
                     dArgs[i] = boxedIn;
+                    continue;
+                }
+                if ((arrayMask & (1L << i)) != 0 && (stringMask & (1L << i)) != 0)
+                {
+                    /* Array di STRING (char**, solo INPUT): buffer contiguo di puntatori
+                     * `char*` alle stringhe UTF-8, pinnato per la durata della chiamata.
+                     * Il nativo NON può trattenere i puntatori (liberati nel finally). */
+                    var src = args[i] as Array;
+                    var nElem = src?.Length ?? 0;
+                    var ptrs = new IntPtr[nElem];
+                    for (var k = 0; k < nElem; k++)
+                    {
+                        var sp = Marshal.StringToCoTaskMemUTF8(Convert.ToString(src!.GetValue(k)) ?? "");
+                        (arrayStrPtrs ??= new List<IntPtr>()).Add(sp);
+                        ptrs[k] = sp;
+                    }
+                    handles[i] = GCHandle.Alloc(ptrs, GCHandleType.Pinned);
+                    dArgs[i] = handles[i].AddrOfPinnedObject();
                     continue;
                 }
                 if ((stringMask & (1L << i)) != 0)
@@ -1656,6 +1677,10 @@ public class FfiService : IFfiService
             if (udtStrPtrs != null)
             {
                 foreach (var sp in udtStrPtrs) Marshal.FreeCoTaskMem(sp);
+            }
+            if (arrayStrPtrs != null)
+            {
+                foreach (var sp in arrayStrPtrs) Marshal.FreeCoTaskMem(sp);
             }
             for (var i = 0; i < n; i++)
                 if (udtArrRaw[i] != IntPtr.Zero) { Marshal.FreeHGlobal(udtArrRaw[i]); udtArrRaw[i] = IntPtr.Zero; }

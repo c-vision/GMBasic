@@ -26769,7 +26769,9 @@ static void emit_ai_domain(ctx_t* c, gmb_stmt_t* s) {
         else if (vk0 == GMB_TOK_LlmKernel) fam = 4;
         else if (vk0 == GMB_TOK_LlmKv) fam = 5;
         if (fam >= 0) {
-            const char* sub = (n >= 1 && a[0] && a[0]->var) ? a[0]->var : "";
+            /* Sotto-verbo letterale: parola nuda o stringa fra virgolette (stessa parità del
+             * blocco `LLM ARCH` qui sopra, 2026-11-11). */
+            const char* sub = (n >= 1 && a[0]) ? (a[0]->var ? a[0]->var : (a[0]->str ? a[0]->str : "")) : "";
             /* TOKENS/DETOKENIZE hanno il ritorno "pulito" (id / testo) dal dominio tokenizer. */
             if (fam == 0 && (strcasecmp(sub, "TOKENS") == 0 || strcasecmp(sub, "TOKENIZE") == 0 ||
                              strcasecmp(sub, "DETOKENIZE") == 0 || strcasecmp(sub, "DETOK") == 0)) {
@@ -26958,7 +26960,10 @@ static void emit_ai_domain(ctx_t* c, gmb_stmt_t* s) {
      * il compilatore risolve la descrizione del modello dal config; lo script non vede il file. */
     if (gmb_keyword_tok(verb) == GMB_TOK_LlmArch) {
         if (n == 0) { c99_fail(c, s->line, "LLM ARCH: atteso RESOLVE <dir> | SHOW | LIST | CHECK <dir>"); return; }
-        const char* sub = (a[0] && a[0]->var) ? a[0]->var : "";
+        /* Il sotto-verbo è un LETTERALE: parola nuda (`LLM ARCH CHECK "dir"`) oppure stringa fra
+         * virgolette (`LLM ARCH "CHECK" "dir"`) — quest'ultima forma è quella richiesta dal
+         * compilatore chunk/VM-C, quindi si accettano ENTRAMBE per parità (2026-11-11). */
+        const char* sub = (a[0] && a[0]->var) ? a[0]->var : ((a[0] && a[0]->str) ? a[0]->str : "");
         if (strcasecmp(sub, "RESOLVE") == 0) {
             if (n < 2) { c99_fail(c, s->line, "LLM ARCH RESOLVE: atteso <hf_dir>"); return; }
             emit_llm_call_open(c);
@@ -32515,6 +32520,9 @@ static void emit_ffi_wrapper(ctx_t* c, fn_info_t* fn, const char* vkey) {
      * Bugs/(solved) - FFI-Marshalling-Limitato-No-BYREF-Array-Struct.md punto (1). */
     int is_arr_param[C99_FFI_MAX_ARGS] = {0};
     int is_str_param[C99_FFI_MAX_ARGS] = {0};
+    /* Array di STRING (`a() AS STRING`, char**, 2026-11-11, SOLO INPUT): il wrapper riceve
+     * `gmb_string_t*` e costruisce un `const char**` di `.data` per la durata della chiamata. */
+    int is_strarr_param[C99_FFI_MAX_ARGS] = {0};
     /* BYREF scalare (2026-09-28): come un array/STRING, forza la firma a Int64 (e' un
      * puntatore). Questo backend emette C: il wrapper prende gia' un puntatore come parametro
      * per un BYREF (stessa convenzione del BYREF ordinario verso una FUNCTION/SUB utente),
@@ -32647,6 +32655,12 @@ static void emit_ffi_wrapper(ctx_t* c, fn_info_t* fn, const char* vkey) {
              * letto con un passo a 8 byte da' garbage (bug osservato lato IL: AS BYTE pinnato
              * direttamente). Vedi Compiler.Expressions.cs per il dettaglio completo. */
             gmb_tokenkind_t ek = s->param_types && s->param_types[i] ? gmb_keyword_tok(s->param_types[i]) : GMB_TOK_Double;
+            /* Array di STRING (`a() AS STRING`, 2026-11-11): SOLO INPUT (char**), nessun
+             * copy-out: il wrapper costruisce un buffer di puntatori ogni chiamata. */
+            if (ek == GMB_TOK_StringType) {
+                if (i < C99_FFI_MAX_ARGS) is_strarr_param[i] = 1;
+                continue;
+            }
             /* BYTE/SBYTE (2026-11-06): ammessi come elemento-array — lo storage BASIC resta
              * gmb_double_t*, la conversione a gmb_int_t (8 byte per elemento, valori 0..255) e'
              * fatta da __ci_<param> sotto (n_intarr), con copy-back dopo la chiamata. */
@@ -32665,8 +32679,8 @@ static void emit_ffi_wrapper(ctx_t* c, fn_info_t* fn, const char* vkey) {
                 || ek == GMB_TOK_Byte || ek == GMB_TOK_SByte;
             if (!elemOk) {
                 c99_fail(c, s->line, "FFI '%s': tipo elemento non supportato per il parametro "
-                         "array '%s' (solo AS DOUBLE o LONG/QUAD, non INTEGER/BYTE/SINGLE — "
-                         "larghezza nativa a 8 byte).", sym, s->func_params[i]);
+                         "array '%s' (solo AS DOUBLE, LONG/QUAD, BYTE, STRING o un TYPE).",
+                         sym, s->func_params[i]);
                 return;
             }
             continue;
@@ -32885,6 +32899,7 @@ static void emit_ffi_wrapper(ctx_t* c, fn_info_t* fn, const char* vkey) {
      * `const char*` (NON gmb_string_t per valore — quella e' l'ABI SBAGLIATA che la guardia
      * preveniva: struct invece di puntatore). */
     #define FFI_INNER(k2) ((k2) < C99_FFI_MAX_ARGS && byref_udt_ci[k2] ? ffi_udt_shape_name_ptr(c, byref_udt_ci[k2]) \
+        : (k2) < C99_FFI_MAX_ARGS && is_strarr_param[k2] ? "const char**" \
         : (k2) < C99_FFI_MAX_ARGS && is_cb_param[k2] ? ffi_cb_native_type(cb_arity[k2], cb_kind_int[k2], cb_has_ret[k2]) \
         : (k2) < C99_FFI_MAX_ARGS && udt_param_ci[k2] ? ffi_udt_shape_name(c, udt_param_ci[k2]) \
         : (k2) < C99_FFI_MAX_ARGS && arr_udt_ci[k2] ? arr_udt_tname[k2] \
@@ -32939,6 +32954,9 @@ static void emit_ffi_wrapper(ctx_t* c, fn_info_t* fn, const char* vkey) {
             if (arr_udt_ci[i]) {
                 /* Array di UDT: la memoria BASIC e un array di gmb_val_t (istanze boxate). */
                 sb_put(&c->out, "gmb_val_t* ");
+            } else if (is_strarr_param[i]) {
+                /* Array di STRING: la memoria BASIC e' un array di gmb_string_t (struct). */
+                sb_put(&c->out, "gmb_string_t* ");
             } else {
                 sb_put(&c->out, "gmb_double_t* ");
             }
@@ -33051,6 +33069,17 @@ static void emit_ffi_wrapper(ctx_t* c, fn_info_t* fn, const char* vkey) {
         ind(c);
         sb_put(&c->out, "for (gmb_int_t __k = 0; __k <= "); emit_ident(c, s->func_params[i]); sb_put(&c->out, "__bT; __k++) __ci_");
         emit_ident(c, s->func_params[i]); sb_put(&c->out, "[__k] = (gmb_int_t)"); emit_ident(c, s->func_params[i]); sb_put(&c->out, "[__k];\n");
+    }
+    /* Array di STRING (char**, 2026-11-11, input-only): buffer di puntatori alle .data,
+     * liberato subito dopo la chiamata. */
+    for (int i = 0; i < s->n_params && i < C99_FFI_MAX_ARGS; i++) {
+        if (!is_strarr_param[i]) continue;
+        ind(c);
+        sb_put(&c->out, "const char** __ss_"); emit_ident(c, s->func_params[i]);
+        sb_put(&c->out, " = (const char**)malloc(sizeof(char*) * ((size_t)"); emit_ident(c, s->func_params[i]); sb_put(&c->out, "__bT + 1));\n");
+        ind(c);
+        sb_put(&c->out, "for (gmb_int_t __k = 0; __k <= "); emit_ident(c, s->func_params[i]); sb_put(&c->out, "__bT; __k++) __ss_");
+        emit_ident(c, s->func_params[i]); sb_put(&c->out, "[__k] = "); emit_ident(c, s->func_params[i]); sb_put(&c->out, "[__k].data;\n");
     }
     /* Array di UDT (S3, 2026-11-06): buffer contiguo di struct nel layout C, riempito dagli
      * elementi (istanze boxate gmb_obj_<Tipo>) — il nativo vede `gmb_ffi_udt_<Tipo>_t*`. */
@@ -33199,6 +33228,8 @@ static void emit_ffi_wrapper(ctx_t* c, fn_info_t* fn, const char* vkey) {
             sb_put(&c->out, "&__ub_"); emit_ident(c, s->func_params[i]);  \
         } else if ((i) < C99_FFI_MAX_ARGS && arr_udt_ci[i]) { \
             sb_put(&c->out, "__ua_"); emit_ident(c, s->func_params[i]); \
+        } else if ((i) < C99_FFI_MAX_ARGS && is_strarr_param[i]) { \
+            sb_put(&c->out, "__ss_"); emit_ident(c, s->func_params[i]); \
         } else if ((i) < C99_FFI_MAX_ARGS && is_arr_param[i] && strcmp(ffi_param_ctype(s, i), "gmb_int_t") == 0) { \
             sb_put(&c->out, "__ci_"); emit_ident(c, s->func_params[i]); \
         } else if ((i) < C99_FFI_MAX_ARGS && is_str_param[i]) { \
@@ -33217,10 +33248,13 @@ static void emit_ffi_wrapper(ctx_t* c, fn_info_t* fn, const char* vkey) {
     int cast_ret = strcmp(inner_ret, retC) != 0 && strcmp(retC, "void") != 0 && strcmp(inner_ret, "void") != 0;
     int any_arr_udt = 0;
     for (int i = 0; i < s->n_params && i < C99_FFI_MAX_ARGS; i++) if (arr_udt_ci[i]) any_arr_udt = 1;
+    /* Array di STRING: serve il path "esteso" (costruzione del char** + free dopo la chiamata). */
+    int any_strarr = 0;
+    for (int i = 0; i < s->n_params && i < C99_FFI_MAX_ARGS; i++) if (is_strarr_param[i]) any_strarr = 1;
     /* BYREF UDT: serve SEMPRE il path "esteso" (chiamata in una variabile + copy-back). */
     int any_byref_udt = 0;
     for (int i = 0; i < s->n_params && i < C99_FFI_MAX_ARGS; i++) if (byref_udt_ci[i]) any_byref_udt = 1;
-    if (n_intarr == 0 && !ret_is_udt && !any_cb_param && !any_arr_udt && !any_byref_udt) {
+    if (n_intarr == 0 && !ret_is_udt && !any_cb_param && !any_arr_udt && !any_byref_udt && !any_strarr) {
         ind(c);
         if (strcmp(retC, "void") == 0) sb_put(&c->out, "__ffi_fn(");
         else if (ret_is_str) sb_put(&c->out, "return gmb_string_alloc(__ffi_fn(");
@@ -33239,6 +33273,12 @@ static void emit_ffi_wrapper(ctx_t* c, fn_info_t* fn, const char* vkey) {
             sb_printf(&c->out, "gmb_ffi_cb_release_%s%d(__cbslot_", cb_kind_int[i] ? "i" : "d", cb_arity[i]);
             emit_ident(c, s->func_params[i]);
             sb_put(&c->out, ");\n");
+        }
+        /* Array di STRING: i puntatori erano validi solo durante la chiamata. */
+        for (int i = 0; i < s->n_params && i < C99_FFI_MAX_ARGS; i++) {
+            if (!is_strarr_param[i]) continue;
+            ind(c);
+            sb_put(&c->out, "free(__ss_"); emit_ident(c, s->func_params[i]); sb_put(&c->out, ");\n");
         }
         for (int i = 0; i < s->n_params && i < C99_FFI_MAX_ARGS; i++) {
             if (!is_arr_param[i] || strcmp(ffi_param_ctype(s, i), "gmb_int_t") != 0) continue;

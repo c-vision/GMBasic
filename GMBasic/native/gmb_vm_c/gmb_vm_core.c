@@ -15716,6 +15716,22 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                                 if (udtArrCount[i] > 0) continue;
                                 gmb_obj_shared_val_t* sv = (gmb_obj_shared_val_t*)arrRefs[i];
                                 gmb_int_t n = sv->list ? (gmb_int_t)sv->list->count : 0;
+                                /* Array di STRING (char**, 2026-11-11, SOLO INPUT): n puntatori
+                                 * alle stringhe della lista, validi durante la chiamata. */
+                                if ((stringMask & (1ull << i)) != 0)
+                                {
+                                    char** sbuf = (char**)malloc(sizeof(char*) * (size_t)(n > 0 ? n : 1));
+                                    if (!sbuf) continue;
+                                    for (gmb_int_t j = 0; j < n; j++)
+                                    {
+                                        gmb_val_t v = sv->list->items[j];
+                                        sbuf[j] = (v.kind == GMB_TYPE_STRING && v.v_string.data) ? v.v_string.data : "";
+                                    }
+                                    scratch[i] = sbuf;
+                                    scratchLen[i] = n;
+                                    scratchIsInt[i] = 1;
+                                    continue;
+                                }
                                 int isInt = (arrayElemIntMask & (1ull << i)) != 0;
                                 scratchIsInt[i] = isInt;
                                 scratchLen[i] = n;
@@ -15914,6 +15930,9 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                             for (int i = 0; i < argc; i++)
                             {
                                 if (!scratch[i]) continue;
+                                /* Array di STRING: solo INPUT, nessun copy-out (i puntatori
+                                 * non si riscrivono) — si libera e basta. */
+                                if ((stringMask & (1ull << i)) != 0) { free(scratch[i]); continue; }
                                 if (byrefScalarMask & (1ull << i))
                                 {
                                     gmb_stack_entry_t outv = {0};

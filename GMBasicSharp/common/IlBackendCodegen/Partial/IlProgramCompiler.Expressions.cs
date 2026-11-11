@@ -1785,7 +1785,7 @@ public sealed partial class IlProgramCompiler
          * FFI viaggia a 8): FfiService.CallFunctionTypedArr costruisce uno scratch long[] con i
          * valori 0..255 e fa copy-back dopo la chiamata. Senza questa ammissione la gamba IL
          * rifiutava in compilazione le firme `arr() AS BYTE` che C99Native/VM-C accettano. */
-        bool IsFfiArrayElem(DataType? t) => t is DoubleType || IsI64ArrayElem(t) || t is ByteType || t is SByteType;
+        bool IsFfiArrayElem(DataType? t) => t is DoubleType || IsI64ArrayElem(t) || t is ByteType || t is SByteType || t is StringType;
         foreach (var p in epd.Parameters)
         {
             if (IsArrayParam(p))
@@ -1795,7 +1795,7 @@ public sealed partial class IlProgramCompiler
                     UdtShapeString(ueA, $"il parametro '{p.Name.Lexeme}'");   // valida il layout
                 else if (!IsFfiArrayElem(elem))
                     throw new NotSupportedException(
-                        $"FFI '{symbolName}': tipo elemento non supportato per il parametro array '{p.Name.Lexeme}' (solo AS DOUBLE, LONG/QUAD, BYTE o un TYPE).");
+                        $"FFI '{symbolName}': tipo elemento non supportato per il parametro array '{p.Name.Lexeme}' (solo AS DOUBLE, LONG/QUAD, BYTE, STRING o un TYPE).");
             }
             else if (IsByRefUdtParam(p))
                 ValidateUdtForFfi((UserDefinedType)p.DataType!, $"il parametro BYREF '{p.Name.Lexeme}'", allowMixedKind: true);
@@ -1900,6 +1900,7 @@ public sealed partial class IlProgramCompiler
             arrayMask |= 1L << pi;
             var elem = (epd.Parameters[pi].DataType as ArrayType)?.ElementType;
             if (IsI64(elem)) arrayElemIntMask |= 1L << pi;
+            if (elem is StringType) stringMask |= 1L << pi;   /* array di STRING (char**, solo INPUT) */
         }
         // DECLARE NATIVE: ABI esatta, nessuna estensione automatica degli array (bit 0x100 nel kind;
         // FfiService.CallFunctionTypedArr lo toglie prima di marshallare).

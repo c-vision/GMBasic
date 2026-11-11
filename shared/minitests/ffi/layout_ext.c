@@ -302,3 +302,13 @@ double cb_apply3(double (*f)(double), double (*g)(double), double (*h)(double), 
 {
     return f(x) + g(x) + h(x);
 }
+
+/* ── Array di STRING (char**), SOLO INPUT (2026-11-11) ────────────────────────
+ * `a() AS STRING` passa al nativo un `const char**` di n stringhe UTF-8, valide
+ * SOLO durante la chiamata (il nativo deve copiarle se vuole trattenerle). */
+int64_t strs_total(const char** a, int64_t n)
+{
+    int64_t t = 0;
+    for (int64_t i = 0; i < n; i++) t += a[i] ? (int64_t)strlen(a[i]) : 0;
+    return t;
+}
