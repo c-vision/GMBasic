@@ -1,4 +1,4 @@
-# requires ffi-v2 runtime-v2 support-v4 toolchain-v2
+# requires ffi-v2 runtime-v2 support-v4 toolchain-v3
 gmb_sql_csv_ext.so	cd82cbe7ac6e0ebae1a7b875eb7cb178ef05e2f4365b4d0a202a32f75f39b536	21616	https://github.com/c-vision/GMBasicModules/releases/download/runtime-v2/gmb_sql_csv_ext-linux-x64.so
 gmb_sql_parquet_ext.so	a4de3bd5a4f67f134df54fb49da5ff60daa59e082703a70c5bfa4539442acdef	100936	https://github.com/c-vision/GMBasicModules/releases/download/runtime-v2/gmb_sql_parquet_ext-linux-x64.so
 libFLAC.so	03f99851a828586d74e06f62d098025271b19aeba9fe781a31b2d90dc57e723b	407648	https://github.com/c-vision/GMBasicModules/releases/download/support-v4/libFLAC-linux-x64.so
@@ -251,4 +251,4 @@ libz.so.1.3	f61677c7bdb7c2aa2a243ea781bfd16afcb361cede7b4ef76127a9d8eb9a5242	113
 libzstd.so	0a2128bc10841fb29e76d08d945864dfb0b6a66da5df6df5d8299197439e54bb	755864	https://github.com/c-vision/GMBasicModules/releases/download/support-v4/libzstd-linux-x64.so
 libzstd.so.1	0a2128bc10841fb29e76d08d945864dfb0b6a66da5df6df5d8299197439e54bb	755864	https://github.com/c-vision/GMBasicModules/releases/download/support-v4/libzstd-linux-x64.so.1
 libzstd.so.1.5.5	0a2128bc10841fb29e76d08d945864dfb0b6a66da5df6df5d8299197439e54bb	755864	https://github.com/c-vision/GMBasicModules/releases/download/support-v4/libzstd-linux-x64.so.1.5.5
-zig-0.17.0.tar.xz	168e82d32a8ca9a6e94cb35a4129f23c2c36dafe634633573a9c63aadbbdefdc	60098824	https://github.com/c-vision/GMBasicModules/releases/download/toolchain-v2/zig-0.17.0-linux-x64.tar.xz
+zig-0.17.0.tar.xz	04eeb7a60f9f9a5339106067f70ea73d2393106f8e863b4e77184cc7effc5c6e	59403232	https://github.com/c-vision/GMBasicModules/releases/download/toolchain-v3/zig-0.17.0-linux-x64.tar.xz

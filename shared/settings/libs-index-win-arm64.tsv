@@ -1,4 +1,4 @@
-# requires ffi-v2 runtime-v2 toolchain-v2
+# requires ffi-v2 runtime-v2 toolchain-v3
 libgmb_ai_llm.dll	2d3354cfb44a107d42b776cb285656974617a81c5ea58ddbf9ad2f2d586b6085	976896	https://github.com/c-vision/GMBasicModules/releases/download/runtime-v2/libgmb_ai_llm-win-arm64.dll
 libgmb_boot.dll	2167a47555995acf9e46f556c360d434e1fe803354f5ecfe91a8083ae6c69727	210944	https://github.com/c-vision/GMBasicModules/releases/download/runtime-v2/libgmb_boot-win-arm64.dll
 libgmb_compress.dll	984b93dfd8d145ba86ae3278d1aba813834d35d5c64212abf8e36d352840bb22	7989760	https://github.com/c-vision/GMBasicModules/releases/download/runtime-v2/libgmb_compress-win-arm64.dll
@@ -32,4 +32,4 @@ libllmcodec_spqr.so	9bdf92253b0c46be9f5c9a79c100cd6b80b696e2e9119e2dd98d6c623a6c
 libllmcodec_turboquant.so	3d5c967cc9e2f7dbeee104655dceb5e09d1ad1cf755b79911de861ec1a87ebea	190976	https://github.com/c-vision/GMBasicModules/releases/download/runtime-v2/libllmcodec_turboquant-win-arm64.so
 libllmcodec_vptq.so	7a79a0d07fa75d8810543bd08899911f995471aca91f3b815fb2e8831334ed33	187392	https://github.com/c-vision/GMBasicModules/releases/download/runtime-v2/libllmcodec_vptq-win-arm64.so
 libllmtoken.dll	149b8179e4edcfd2bc8fe15f28d9254bfa3d8cd37ba9d8f1317af5ef490c63b7	914944	https://github.com/c-vision/GMBasicModules/releases/download/runtime-v2/libllmtoken-win-arm64.dll
-zig-0.17.0.tar.xz	eb7ae007e21b39025f78a1d19adb5d9d7ec7c7d5053d36a9e905d12899b48fc0	55202384	https://github.com/c-vision/GMBasicModules/releases/download/toolchain-v2/zig-0.17.0-win-arm64.tar.xz
+zig-0.17.0.tar.xz	90d49dccbc5ecd65e3922ab84b4345bf7fd25f5e7211fe75f12d2b05c254fbc7	55110956	https://github.com/c-vision/GMBasicModules/releases/download/toolchain-v3/zig-0.17.0-win-arm64.tar.xz

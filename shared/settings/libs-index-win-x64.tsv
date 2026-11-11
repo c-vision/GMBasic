@@ -1,4 +1,4 @@
-# requires ffi-v2 runtime-v2 support-v1 toolchain-v2
+# requires ffi-v2 runtime-v2 support-v1 toolchain-v3
 SDL2.dll	564306d1d75b9c55fb662a09a5c9ec0f38da06b8815fae841858118bdd9cb599	1576448	https://github.com/c-vision/GMBasicModules/releases/download/support-v1/SDL2-win-x64.dll
 SDL2_image.dll	79fc19743e5deb003f84635862b63d3c5d799a27eeaa0f40d7afb55c5834524a	287232	https://github.com/c-vision/GMBasicModules/releases/download/support-v1/SDL2_image-win-x64.dll
 SDL2_mixer.dll	79d84ea27b2b0402b5506bc6883e71fbca2874f983c727106fa26abb11b7f5b5	421376	https://github.com/c-vision/GMBasicModules/releases/download/support-v1/SDL2_mixer-win-x64.dll
@@ -43,4 +43,4 @@ libllmcodec_vptq.so	4f2e1897e544974bc2ce5418577aaded9b209f5fa5c4e23a40812380bc8b
 libllmtoken.dll	db8a72ba1136e8d6abe67ee09355af6972106b6bb2aa2c1dd9a84187deb0c416	999936	https://github.com/c-vision/GMBasicModules/releases/download/runtime-v2/libllmtoken-win-x64.dll
 libssl-3-x64.dll	b94df46997b95262b9013bf9eb8a37fe53ff8cd877a39894ecca5bc74ce34092	1321984	https://github.com/c-vision/GMBasicModules/releases/download/support-v1/libssl-3-x64-win-x64.dll
 pdf_oxide.dll	3abab7f77d97e4609d8c541b5e9fd33ebb39d75f3eadbebb51dd10c5b6882808	28574208	https://github.com/c-vision/GMBasicModules/releases/download/support-v1/pdf_oxide-win-x64.dll
-zig-0.17.0.tar.xz	b2f9ea4792d1288030adca330bc317b392db80ce7b058ea3bd820bc0c3a5a173	60951520	https://github.com/c-vision/GMBasicModules/releases/download/toolchain-v2/zig-0.17.0-win-x64.tar.xz
+zig-0.17.0.tar.xz	f277066b0c2f1740edc99a32feb9d496632c6e232de6d9a6f936359d5eed0e70	60836344	https://github.com/c-vision/GMBasicModules/releases/download/toolchain-v3/zig-0.17.0-win-x64.tar.xz
