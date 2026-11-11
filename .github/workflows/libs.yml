@@ -78,6 +78,14 @@ jobs:
       - id: pick
         shell: bash
         run: |
+          # Gruppi che questo workflow sa davvero costruire. `dev` non ne fa parte: richiede le
+          # terze parti in ~/gmb-deps/<triple> (tools/c/build-deps.sh, non eseguibile su un runner
+          # pulito) e pubblica con `tools/sh/libs_publish_dev_bulk.sh`. Meglio dirlo subito che
+          # fallire a metà build con un errore di CMake.
+          case "${{ github.event.inputs.group }}" in
+            ''|core|engine|llmmotor|toolchain) ;;
+            *) echo "::error::gruppo '${{ github.event.inputs.group }}' non supportato da questo workflow: core | engine | llmmotor | toolchain (per dev: tools/sh/libs_publish_dev_bulk.sh)" >&2; exit 1;;
+          esac
           # `toolchain` è l'UNICO gruppo con i RID Windows in matrice: il packer non compila nulla,
           # quindi win-arm64 si ri-impacchetta dallo zip ufficiale anche su un runner x64 (nessuna
           # esecuzione del binario, solo bytes + notices + sha256).
