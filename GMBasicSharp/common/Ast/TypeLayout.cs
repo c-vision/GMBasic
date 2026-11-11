@@ -269,8 +269,11 @@ public static class TypeLayout
         foreach (var key in order)
         {
             var list = byUnit[key];
+            // byteOff è RELATIVO all'unità (i membri del gruppo stanno tutti nell'unità, che è
+            // il buffer del gruppo): con l'offset assoluto una seconda unità (offset 2) scriveva
+            // fuori dal buffer → valore perso (trovato dal MiniTest bitfield_widths).
             var g = new List<double> { key.Unit, list.Count };
-            foreach (var m in list) { g.Add(m.Sym); g.Add(key.Off); g.Add(m.BitOff); g.Add(m.Width); g.Add(m.Code); }
+            foreach (var m in list) { g.Add(m.Sym); g.Add(0); g.Add(m.BitOff); g.Add(m.Width); g.Add(m.Code); }
             groups.Add(g.ToArray());
         }
         return groups;

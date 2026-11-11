@@ -35909,6 +35909,25 @@ static int gmb_c99_emit_once(const gmb_program_t* prog, char** out_src, char** e
                          "(BYTE/INTEGER/LONG/QUAD e varianti unsigned).", ci->fname[k], ci->name);
                 return 1;
             }
+            /* UNION v1 (parità col parser C#): solo tipi con la stessa larghezza in memoria su
+             * tutte le gambe, e niente bitfield dentro una union. */
+            if (ci->is_union) {
+                const char* ft = ci->ftype[k] ? ci->ftype[k] : "";
+                int okU = !strncasecmp(ft, "BYTE", 4) || !strncasecmp(ft, "SBYTE", 5)
+                       || !strncasecmp(ft, "LONG", 4) || !strncasecmp(ft, "ULONG", 5)
+                       || !strncasecmp(ft, "QUAD", 4) || !strncasecmp(ft, "UQUAD", 5)
+                       || !strncasecmp(ft, "DOUBLE", 6);
+                if (!okU) {
+                    c99_fail(c, 0, "UNION '%s': il campo '%s' non è ammesso (v1: BYTE, SBYTE, LONG, "
+                             "ULONG, QUAD, UQUAD, DOUBLE).", ci->name, ci->fname[k]);
+                    return 1;
+                }
+                if (ci->fbits[k] > 0) {
+                    c99_fail(c, 0, "UNION '%s': il campo '%s' usa WIDTH: i bitfield non sono ammessi "
+                             "dentro una UNION (v1).", ci->name, ci->fname[k]);
+                    return 1;
+                }
+            }
         }
         sb_printf(&proto, "typedef struct gmb_obj_%s {\n", ci->name);
         if (cls_flat_field_count(c, ci, 0) == 0) sb_put(&proto, "    int __empty;\n");

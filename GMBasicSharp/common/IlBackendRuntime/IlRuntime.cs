@@ -13225,6 +13225,13 @@ public static double TextWidth(string s)
         long l => PrintFormatDouble(l),
         short s2 => PrintFormatDouble(s2),
         byte by => PrintFormatDouble(by),
+        // SBYTE e i tipi unsigned stretti (2026-11-11): mancavano nel switch → cadevano nel
+        // default `ToString() + " "` e stampavano SENZA lo spazio di padding ("sb=2" invece di
+        // "sb= 2"), divergenza dalle altre gambe (trovata sul MiniTest union_scalars).
+        sbyte sby => PrintFormatDouble(sby),
+        ushort us2 => PrintFormatDouble(us2),
+        uint ui => PrintFormatDouble(ui),
+        ulong ul => PrintFormatDouble(ul),
         decimal dec => (dec >= 0.0m ? " " : "") + dec.ToString("G", System.Globalization.CultureInfo.InvariantCulture) + " ",
         System.Collections.IEnumerable en => "[" + string.Join(", ", en.Cast<object?>().Select(JsonValueToString)) + "]",
         // DATA/ORA: "dd/MM/yyyy HH:mm:ss" SENZA lo spazio finale del caso generico.

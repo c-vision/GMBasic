@@ -2495,6 +2495,11 @@ internal sealed partial class PCodeProcessor
                     var clone = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase);
                     foreach (System.Collections.DictionaryEntry entry in srcDict)
                         clone[(string)entry.Key] = entry.Value;
+                    // I buffer dei gruppi (UNION/bitfield) sono storage PROPRIO dell'istanza:
+                    // copia profonda, altrimenti scrivere nella copia altererebbe l'originale.
+                    foreach (var key in clone.Keys.ToList())
+                        if (key.StartsWith("__grp", StringComparison.Ordinal) && clone[key] is byte[] buf)
+                            clone[key] = (byte[])buf.Clone();
                     task.PushRef(clone);
                 }
                 else

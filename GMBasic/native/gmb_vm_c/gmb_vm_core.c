@@ -17916,12 +17916,46 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
             }
             case OP_CLONE_UDT:
             {
-                /* popa e ripusha lo stesso valore (clone superficiale dict non ancora
-                 * implementato a runtime — i test concorrenza non dipendono dalla copia) */
+                /* COPIA PER VALORE di un UDT (2026-11-11): prima era un NO-OP ("clone
+                 * superficiale non ancora implementato"), quindi `v = u` su VM/C condivideva il
+                 * dizionario e modificare la copia cambiava l'originale — divergenza dalle altre
+                 * 3 gambe (PCode fa una copia superficiale del dizionario, IL/C99 sono value type
+                 * veri). Qui: copia del dizionario + COPIA PROFONDA dei buffer dei gruppi
+                 * (union/bitfield), che sono storage proprio dell'istanza. */
                 gmb_stack_entry_t top = { 0 };
                 if (task->sp > 0) top = gmb_task_pop(task);
-                if (top.type == 1) push_num_entry(task, top.num, top.basic_type);
-                else push_ref_new(task, (gmb_obj_t*)top.ref, top.basic_type);   /* top e' posseduto (popped): lo stack lo riadotta */
+                if (top.type == 1) { push_num_entry(task, top.num, top.basic_type); break; }
+                gmb_obj_shared_val_t* srcInst = (top.type == 2 && top.ref && top.ref->kind == GMB_OBJ_DICT)
+                    ? (gmb_obj_shared_val_t*)top.ref : NULL;
+                if (srcInst && srcInst->dict)
+                {
+                    gmb_obj_shared_val_t* clone = vm_new_dict_copy(srcInst->dict);
+                    if (clone)
+                    {
+                        for (int gi = 0; gi < 64; gi++)
+                        {
+                            char gk[24];
+                            snprintf(gk, sizeof(gk), "__grp%d", gi);
+                            gmb_val_t bv = gmb_dict_get(*clone->dict, gk);
+                            if (bv.kind != GMB_TYPE_OBJECT || !bv.v_ptr) continue;
+                            gmb_obj_t* bo = (gmb_obj_t*)bv.v_ptr;
+                            if (bo->kind != GMB_OBJ_LIST) continue;
+                            gmb_obj_shared_val_t* bs = (gmb_obj_shared_val_t*)bo;
+                            gmb_obj_shared_val_t* dup = gmb_shared_list_new();
+                            if (!dup) continue;
+                            if (bs->list)
+                                for (size_t bi = 0; bi < bs->list->count; bi++)
+                                    gmb_list_add(dup->list, bs->list->items[bi]);
+                            gmb_dict_set(clone->dict, gk, gmb_make_val_obj((gmb_obj_t*)dup));
+                            gmb_obj_release((gmb_obj_t*)dup);   /* il dict ne trattiene uno */
+                        }
+                        push_ref_new(task, (gmb_obj_t*)clone, GMB_BT_OBJECT);
+                        gmb_obj_release(top.ref);   /* top e' posseduto (popped) */
+                        break;
+                    }
+                }
+                if (top.type == 2 && top.ref) push_ref_new(task, (gmb_obj_t*)top.ref, top.basic_type);
+                else push_nil(task);
                 break;
             }
             case OP_LOAD_STATIC_FIELD:

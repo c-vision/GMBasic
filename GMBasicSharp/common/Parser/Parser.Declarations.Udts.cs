@@ -248,17 +248,22 @@ public sealed partial class Parser
 
         Consume(TokenKind.EndType, isUnion ? "Expected 'END UNION' to close the union block." : "Expected 'END TYPE' to close the type block.");
 
-        // UNION v1 (2026-11-11): solo campi NUMERICI scalari — l'aliasing sui byte passa da
-        // conversioni numeriche; STRING/UDT/array dentro una union non sono supportati (errore
-        // esplicito, non silenzioso).
+        // UNION v1 (2026-11-11): solo i tipi la cui larghezza in memoria è la STESSA su tutte e
+        // 4 le gambe (BYTE/SBYTE 1, LONG/ULONG/QUAD/UQUAD 8, DOUBLE 8). INTEGER/UINTEGER/SINGLE
+        // sono esclusi perché sulla gamba IL lo storage dei numerici è a 8 byte (Int64/double):
+        // l'aliasing byte-per-byte divergerebbe dalle altre gambe. Niente bitfield dentro una
+        // union (la vista mascherata di una storage condivisa non è supportata in v1).
         if (isUnion)
         {
             foreach (var uf in fields)
             {
-                if (!uf.Dimensions.IsEmpty || uf.DataType is not (ByteType or SByteType or IntegerType
-                        or UIntegerType or LongType or ULongType or QuadType or UQuadType or SingleType or DoubleType))
+                if (!uf.Dimensions.IsEmpty || uf.DataType is not (ByteType or SByteType
+                        or LongType or ULongType or QuadType or UQuadType or DoubleType))
                     throw CreateError(uf.Name,
-                        $"UNION '{nameToken.Lexeme}': il campo '{uf.Name.Lexeme}' non è un numerico scalare (ammessi BYTE/INTEGER/LONG/QUAD/SINGLE/DOUBLE nella v1).");
+                        $"UNION '{nameToken.Lexeme}': il campo '{uf.Name.Lexeme}' non è ammesso (v1: BYTE, SBYTE, LONG, ULONG, QUAD, UQUAD, DOUBLE — i tipi la cui larghezza in memoria è identica sulle 4 gambe).");
+                if (uf.BitWidth > 0)
+                    throw CreateError(uf.Name,
+                        $"UNION '{nameToken.Lexeme}': il campo '{uf.Name.Lexeme}' usa WIDTH: i bitfield non sono ammessi dentro una UNION (v1).");
             }
         }
 

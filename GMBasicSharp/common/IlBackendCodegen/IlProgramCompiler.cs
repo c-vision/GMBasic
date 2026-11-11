@@ -615,11 +615,9 @@ public sealed partial class IlProgramCompiler
     /// (già convertito al tipo CLR del campo; lo lascia di quel tipo).</summary>
     private void EmitBitfieldMask(int width, bool signed, Type fieldType)
     {
-        if (width is <= 0 or >= 64)
-        {
-            if (width is >= 64) { /* nessuna maschera: intero a 64 bit */ }
-            else return;
-        }
+        // Larghezza 0 = campo normale; 64 = intero pieno, nessuna maschera (e `1UL << 64`
+        // avvolgerebbe a 1 → maschera 0, azzerando il valore).
+        if (width <= 0 || width >= 64) return;
         _il.Emit(OpCodes.Conv_I8);
         _il.Emit(OpCodes.Ldc_I8, (long)((1UL << width) - 1));
         _il.Emit(OpCodes.And);
