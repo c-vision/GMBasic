@@ -162,13 +162,15 @@ jobs:
             exit 1
           fi
 
-      # `gmb_runtime_c/CMakeLists.txt` cerca le terze parti SOLO nella cache del RID
-      # (`build/libs/<rid>` o `~/.gmbasic/libs/<rid>`, NO_DEFAULT_PATH): un runner pulito non ce
-      # l'ha, e il configure si ferma con "GMB_CRYPTO_LIB non trovata" (run 43117749641).
-      - name: terze parti di sistema in build/libs/<rid>
+      # I CMake cercano le terze parti SOLO nella cache del RID, con NO_DEFAULT_PATH: un runner
+      # pulito non ce l'ha e il configure si ferma ("GMB_CRYPTO_LIB non trovata", poi "zstd non
+      # trovata"). La destinazione è `$HOME/.gmbasic/libs/<rid>` e non `build/libs/<rid>` perché
+      # `gmb_sql_ext` hardcoda la cache utente: la cache soddisfa tutti i consumatori, mentre
+      # `build/libs` solo gmb_runtime_c.
+      - name: terze parti di sistema nella cache del RID
         if: env.GROUP != 'toolchain'
         shell: bash
-        run: bash tools/sh/libs_stage_system_deps.sh "${{ matrix.rid }}" "$GITHUB_WORKSPACE/GMBasic/build/libs/${{ matrix.rid }}"
+        run: bash tools/sh/libs_stage_system_deps.sh "${{ matrix.rid }}" "$HOME/.gmbasic/libs/${{ matrix.rid }}"
 
       - name: build + gate di caricabilità
         if: env.GROUP != 'toolchain'
