@@ -47,7 +47,7 @@ public static class VmHostFreshness
         var buildDir = Path.Combine(nativeRoot, "native", "gmb_vm_c", "build");
         var host = Path.Combine(buildDir, "gmb_vm_host");
         var exists = File.Exists(host);
-        if (exists && NewestSourceUtc(nativeRoot) <= File.GetLastWriteTimeUtc(host)) return host;
+        if (exists && NewestSourceUtc(nativeRoot) <= File.GetLastWriteTimeUtc(host)) return RealHostPath(host);
 
         Console.Error.WriteLine(exists
             ? "[vm/c] gmb_vm_host da ricostruire: sorgenti più nuovi dell'eseguibile"
@@ -109,6 +109,25 @@ public static class VmHostFreshness
 
         Console.Error.WriteLine(
             $"[vm/c] gmb_vm_host ricostruito ({File.GetLastWriteTimeUtc(host):yyyy-MM-dd HH:mm:ss} UTC)");
+        return RealHostPath(host);
+    }
+
+    /// <summary>
+    /// Percorso REALE dell'eseguibile: `build/gmb_vm_host` è un SYMLINK a `<repo>/bin/gmb_vm_host`
+    /// (output del build). Eseguendo il symlink, la dir dell'eseguibile è l'albero di build e la
+    /// scoperta FFI `<exe>/libs` trova le copie STANTIE in `build/libs/<rid>/` (artefatti), che
+    /// ombreggiano `shared/libs` e la cache — caso reale 2026-11-11: `libgmbor` vecchio in
+    /// `gmb_vm_c/build/libs/osx-arm64/` ⇒ "simbolo non trovato" su VM/C. Eseguendo il target
+    /// reale (in `bin/`, senza `libs/`) la scoperta prosegue su `<repo>/shared/libs` (fresco).
+    /// </summary>
+    private static string RealHostPath(string host)
+    {
+        try
+        {
+            var target = File.ResolveLinkTarget(host, returnFinalTarget: true);
+            if (target != null && File.Exists(target.FullName)) return target.FullName;
+        }
+        catch { /* non un link / permessi: si usa il path com'è */ }
         return host;
     }
 
