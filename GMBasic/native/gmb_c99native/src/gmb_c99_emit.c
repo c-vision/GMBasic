@@ -32738,6 +32738,27 @@ static void emit_ffi_wrapper(ctx_t* c, fn_info_t* fn, const char* vkey) {
             }
         }
     }
+    /* Più callback nella stessa DECLARE: ammessi; il pool ha 2 trampolini per forma
+     * (kind, arità / codice vettoriale). Oltre, errore a COMPILE-TIME con lo stesso testo
+     * delle altre 3 gambe (prima: fallimento a runtime su VM/C e crash su C99Native). */
+    {
+        int cb_shape_count[2][256];
+        memset(cb_shape_count, 0, sizeof cb_shape_count);
+        for (int i = 0; i < s->n_params && i < C99_FFI_MAX_ARGS; i++) {
+            if (!is_cb_param[i]) continue;
+            int k = cb_kind_int[i] ? 1 : 0;
+            int a = cb_arity[i];
+            if (a >= 0 && a < 256) cb_shape_count[k][a]++;
+        }
+        for (int k = 0; k < 2; k++)
+            for (int a = 0; a < 256; a++)
+                if (cb_shape_count[k][a] > 2) {
+                    c99_fail(c, s->line, "FFI '%s': %d callback con la stessa forma (kind, arità) "
+                             "nella stessa dichiarazione — i backend C hanno 2 trampolini per forma "
+                             "(massimo 2).", sym, cb_shape_count[k][a]);
+                    return;
+                }
+    }
     /* Whitelist esplicita sul RITORNO (fix 2026-09-28, stesso motivo dei parametri sopra):
      * senza guardia, ret_is_int sotto trattava QUALUNQUE tipo non-STRING/SINGLE/DOUBLE come
      * intero per default (UDT incluso) invece di rifiutarlo. */
@@ -33104,6 +33125,32 @@ static void emit_ffi_wrapper(ctx_t* c, fn_info_t* fn, const char* vkey) {
         sb_printf(&c->out, " = gmb_ffi_cb_acquire_%s%d(", cb_kind_int[i] ? "i" : "d", cb_arity[i]);
         emit_ident(c, s->func_params[i]);
         sb_put(&c->out, ");\n");
+    }
+    /* Pool ESAURITO (>2 callback della stessa forma nella stessa chiamata): errore BASIC
+     * pulito. Prima l'indice -1 veniva usato per leggere `g_ffi_cb_ptr_*[-1]` → funzione
+     * spuria nel registro e SIGSEGV (riprodotto: 3 callback `(x AS DOUBLE)→DOUBLE`).
+     * L'ordine è "acquisisci tutti, poi verifica": così tutte le variabili slot sono
+     * dichiarate e le già acquisite vengono rilasciate prima di sollevare.
+     * Il limite è per forma (kind, arità, FUNCTION/SUB / codice vettoriale) — lo stesso
+     * del pool; VM/C dà già errore pulito, IL/PCodeVM non hanno pool. */
+    {
+        for (int i = 0; i < s->n_params && i < C99_FFI_MAX_ARGS; i++) {
+            if (!is_cb_param[i]) continue;
+            ind(c);
+            sb_put(&c->out, "if (__cbslot_"); emit_ident(c, s->func_params[i]); sb_put(&c->out, " < 0) { ");
+            for (int j = 0; j < s->n_params && j < C99_FFI_MAX_ARGS; j++) {
+                if (!is_cb_param[j]) continue;
+                sb_printf(&c->out, "gmb_ffi_cb_release_%s%d(__cbslot_",
+                          cb_kind_int[j] ? "i" : "d", cb_arity[j]);
+                emit_ident(c, s->func_params[j]);
+                sb_put(&c->out, "); ");
+            }
+            sb_printf(&c->out, "gmb_raise_error(5, \"FFI '%s': troppi callback con la stessa forma "
+                      "(kind, arita) nella stessa chiamata (massimo 2 per forma sui backend C)\", 0L); ", sym);
+            if (strcmp(retC, "void") == 0) sb_put(&c->out, "return; }\n");
+            else if (ret_is_str) sb_put(&c->out, "return gmb_string_alloc(\"\"); }\n");
+            else sb_put(&c->out, "return 0; }\n");
+        }
     }
     /* Emette l'argomento i per la chiamata al simbolo nativo: uno STRING passa .data (il
      * puntatore, non lo struct per valore — l'ABI sbagliata che la guardia preveniva). */

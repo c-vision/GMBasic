@@ -1023,6 +1023,27 @@ public sealed partial class Compiler
                     : fp.ReturnType is not VoidType && IsFfiInt64Type(fp.ReturnType);
             foreach (var p in ffiProc.Parameters)
                 if (IsCallbackParam(p)) ValidateCallbackForFfi((FunctionPointerType)p.DataType, $"il parametro '{p.Name.Lexeme}'");
+            // Più callback nella stessa DECLARE: ammessi (le lib del monorepo ne usano 2, es.
+            // METANSGA2 e LINESCALAR/LINEWORK/FLUX). Il pool dei backend C ha però 2 trampolini
+            // per forma (kind, arità; codici vettoriali distinti): un terzo callback della stessa
+            // forma fallisce a runtime su VM/C (pool esaurito) e su C99Native (errore dedicato).
+            // Qui si rifiuta a compile-time con un messaggio unico sulle 4 gambe.
+            {
+                var cbShapeCount = new Dictionary<string, int>();
+                foreach (var p in ffiProc.Parameters)
+                {
+                    if (!IsCallbackParam(p)) continue;
+                    var fp = (FunctionPointerType)p.DataType;
+                    string shape = IsVecCallback(fp) ? "v" + VecCallbackCode(fp)
+                                 : IsScalarArrayCallback(fp) ? "a" + fp.ParameterTypes.Length
+                                 : "s" + (CallbackIsInt64(fp) ? "i" : "d") + fp.ParameterTypes.Length;
+                    cbShapeCount[shape] = cbShapeCount.TryGetValue(shape, out var cn) ? cn + 1 : 1;
+                }
+                foreach (var kv in cbShapeCount)
+                    if (kv.Value > 2)
+                        throw new BasicException(expr.OriginalToken,
+                            $"FFI '{symbolName}': {kv.Value} callback con la stessa forma (kind, arità) nella stessa dichiarazione — i backend C hanno 2 trampolini per forma (massimo 2).");
+            }
             // Struct/UDT per valore (2026-09-28): un UDT "semplice" (nessun operatore/
             // costruttore/metodo — quelli che emitter C# mappa già su uno struct C reale, non
             // su gmb_val_t opaco) con TUTTI i campi dello stesso kind a 8 byte (stessa
@@ -1253,6 +1274,11 @@ public sealed partial class Compiler
              * Vedi FfiService.CallFunctionTypedArr (case byte[]/sbyte[]), gmb_vm_core.c
              * (array_elem_int_mask) e gmb_c99_emit.c (n_intarr). */
             bool IsFfiArrayElemType(DataType? t) => t is DoubleType or LongType or QuadType or ULongType or UQuadType or ByteType or SByteType;
+            // BYREF scalare: solo tipi a 8 byte. Il puntatore punta a una cella di 8 byte: un
+            // BYTE/SBYTE produrrebbe lo stesso mismatch di larghezza silenzioso degli array, e
+            // per questo IL e C99Native lo rifiutano già. BYTE/SBYTE restano ammessi come
+            // ELEMENTO di un array (scratch a 8 byte per elemento), non come BYREF.
+            bool IsFfiByRefScalarType(DataType? t) => t is DoubleType or LongType or QuadType or ULongType or UQuadType;
             foreach (var p in ffiProc.Parameters)
             {
                 if (IsArrayParam(p))
@@ -1269,7 +1295,7 @@ public sealed partial class Compiler
                         throw new BasicException(expr.OriginalToken,
                             $"FFI '{symbolName}': tipo elemento non supportato per il parametro array '{p.Name.Lexeme}' (solo AS DOUBLE, LONG/QUAD, BYTE o un TYPE).");
                 }
-                else if (IsByRefScalarParam(p) && !IsFfiArrayElemType(p.DataType))
+                else if (IsByRefScalarParam(p) && !IsFfiByRefScalarType(p.DataType))
                     throw new BasicException(expr.OriginalToken,
                         $"FFI '{symbolName}': tipo non supportato per il parametro BYREF '{p.Name.Lexeme}' (solo AS DOUBLE o LONG/QUAD, non INTEGER/BYTE/SINGLE — larghezza nativa a 8 byte).");
             }

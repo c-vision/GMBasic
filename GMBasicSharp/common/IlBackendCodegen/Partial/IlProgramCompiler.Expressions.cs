@@ -1561,6 +1561,25 @@ public sealed partial class IlProgramCompiler
             : fp.ParameterTypes.Length > 0 ? IsI64(fp.ParameterTypes[0]) : fp.ReturnType is not VoidType && IsI64(fp.ReturnType);
         foreach (var p in epd.Parameters)
             if (IsCallbackParam(p)) ValidateCallbackForFfi((FunctionPointerType)p.DataType!, $"il parametro '{p.Name.Lexeme}'");
+        // Più callback nella stessa DECLARE: ammessi; il pool dei backend C ha 2 trampolini per
+        // forma (kind, arità / codice vettoriale). Oltre, VM/C e C99Native falliscono a runtime:
+        // rifiuto a compile-time, stesso messaggio delle 4 gambe (parità Compiler.Expressions.cs).
+        {
+            var cbShapeCount = new Dictionary<string, int>();
+            foreach (var p in epd.Parameters)
+            {
+                if (!IsCallbackParam(p)) continue;
+                var fp = (FunctionPointerType)p.DataType!;
+                string shape = IsVecCallback(fp) ? "v" + VecCallbackCode(fp)
+                             : IsScalarArrayCallback(fp) ? "a" + fp.ParameterTypes.Length
+                             : "s" + (CallbackIsInt64(fp) ? "i" : "d") + fp.ParameterTypes.Length;
+                cbShapeCount[shape] = cbShapeCount.TryGetValue(shape, out var cn) ? cn + 1 : 1;
+            }
+            foreach (var kv in cbShapeCount)
+                if (kv.Value > 2)
+                    throw new NotSupportedException(
+                        $"FFI '{symbolName}': {kv.Value} callback con la stessa forma (kind, arità) nella stessa dichiarazione — i backend C hanno 2 trampolini per forma (massimo 2).");
+        }
         // Struct/UDT per valore (2026-09-29, parità Compiler.Expressions.cs/PCodeVM/VM-C): un
         // UDT "semplice" (nessun operatore/costruttore/metodo/generico) con TUTTI i campi dello
         // stesso kind a 8 byte viaggia per valore. Il backend IL è "gratis" rispetto a PCodeVM:
