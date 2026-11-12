@@ -2669,12 +2669,10 @@ public static partial class Linker
     {
         const bool log = false;
 
-        if (context.IsInStrictContext && !decl.HasAsClause &&
-            SplitNameAndSuffix(decl.NameSuffixed.Lexeme).SuffixType == null)
-        {
-            throw CreateError(decl.NameSuffixed,
-                $"OPTION STRICT ON: La variabile '{decl.NameSuffixed.Lexeme}' richiede un tipo esplicito (clausola AS o suffisso).");
-        }
+        // OPTION STRICT non impone la clausola AS: `DIM x = 7` È una dichiarazione (tipo
+        // inferito) e soddisfa il contratto «nessuna variabile implicita». Prima veniva
+        // rifiutata («richiede un tipo esplicito»), un vincolo che il resto del linguaggio non
+        // ha e che rendeva la modalità inutilizzabile sulle forme più comuni (2026-11-11).
 
         int resolvedSymbolId = decl.SymbolId;
         if (resolvedSymbolId < 0) throw CreateError(decl.NameSuffixed, "Errore interno: SymbolId non risolto.");

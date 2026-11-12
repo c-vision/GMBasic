@@ -3595,6 +3595,17 @@ static void reg_let_assign(ctx_t* c, gmb_stmt_t* s, vars_t* scope) {
         int let_shadow = s->target && s->is_let && scope != &c->globals
                          && !vars_find(scope, s->target)
                          && vars_find(&c->globals, s->target) != NULL;
+        /* OPTION STRICT ON: ogni nome deve essere DICHIARATO (DIM/GLOBAL/parametro). Una
+         * `LET`/assegnazione a un nome mai dichiarato è un errore di compilazione, come nel
+         * linker C# — la modalità esiste esattamente per questo. */
+        if (c->option_strict && s->target && !s->array_index && !strchr(s->target, '.')
+            && !vars_find(scope, s->target) && !vars_find(&c->globals, s->target)
+            && !gmb_c99_dyn_is(c, s->target)) {
+            c99_fail(c, s->line,
+                     "In OPTION STRICT mode, la variabile '%s' deve essere dichiarata esplicitamente.",
+                     s->target);
+            return;
+        }
         if (s->target && (let_shadow || !use_global(c, scope, s->target))) {
             var_t* tv = vars_add(scope, s->target, suffix_type(s->target));
             if (let_shadow && tv) { tv->late_local = 1; tv->decl_indent = 0; }
@@ -15503,7 +15514,28 @@ void emit_expr(ctx_t* c, gmb_expr_t* e) {
         }
         var_t* v = ensure_dbf_field_var(c, e);
         if (!v) v = lookup_var(c, e->var ? e->var : "");
+        /* OPTION STRICT ON: un LOCAL il cui blocco di dichiarazione è CHIUSO (decl_block == 0:
+         * il prologo marca -1, un blocco attivo il suo id) è fuori scope → errore, come sulle
+         * altre gambe. Fuori da STRICT vale il default (la variabile di funzione, 0/""). */
+        if (v && c->option_strict && c->cur_fn && v->decl_block == 0 && !v->late_local) {
+            var_t* lv = vars_find(&c->cur_fn->locals, v->name);
+            if (lv == v) {
+                c99_fail(c, e->line,
+                         "In OPTION STRICT mode, la variabile '%s' deve essere dichiarata esplicitamente.",
+                         e->var ? e->var : "");
+                break;
+            }
+        }
         if (!v) {
+            /* OPTION STRICT ON: nessuna variabile implicita — un nome non dichiarato è un errore
+             * di compilazione (stesso testo del linker C#). Fuori da STRICT resta la variabile
+             * implicita (default del tipo), che è la regola del linguaggio (manuale II.5 §1). */
+            if (c->option_strict) {
+                c99_fail(c, e->line,
+                         "Il simbolo '%s' non è definito. Con OPTION STRICT ON, tutte le variabili devono essere dichiarate esplicitamente.",
+                         e->var ? e->var : "");
+                break;
+            }
             /* implicit declaration BASIC: tipo dal suffisso ($ = stringa) */
             v = vars_add(&c->globals, e->var ? e->var : "", suffix_type(e->var ? e->var : ""));
         }
@@ -16314,6 +16346,39 @@ static void emit_list(ctx_t* c, gmb_stmt_t** list, int n) {
             emit_num_label(c, list[i]->bas_line);
         emit_tracked(c, list, i);
     }
+}
+
+/* Corpo di un COSTRUTTO (IF/ELSE, cicli, SELECT, TRY/CATCH/FINALLY): è uno scope di BLOCCO
+ * (spec Variables-Scope §2.1/§6). Oltre a emettere la lista, assegna un id al blocco così le
+ * DIM/LOCAL/LET al suo interno possono dichiarare la variabile DENTRO il blocco C (shadow) e,
+ * alla chiusura, invalidano quella dichiarazione (il nome torna a indicare quella esterna). */
+/* Vero se il nome ha una DIM al livello FUNZIONE (cioè un'istruzione DIM direttamente nel corpo
+ * della funzione, non dentro un blocco): serve a decidere se, alla chiusura di un blocco, il
+ * nome torna alla variabile di funzione o resta "non dichiarato" (OPTION STRICT). */
+static int c99_name_has_toplevel_dim(fn_info_t* fn, const char* name) {
+    if (!fn || !fn->stmt || !name) return 0;
+    for (int i = 0; i < fn->stmt->n_funcbody; i++) {
+        gmb_stmt_t* st = fn->stmt->func_body[i];
+        if (st && st->kind == GMB_STMT_DIM && st->dim_var && strcasecmp(st->dim_var, name) == 0) return 1;
+    }
+    return 0;
+}
+
+static void emit_block(ctx_t* c, gmb_stmt_t** list, int n) {
+    int prev = c->cur_blk;
+    c->cur_blk = ++c->blk_seq;
+    emit_list(c, list, n);
+    if (c->cur_fn) {
+        for (int i = 0; i < c->cur_fn->locals.n; i++) {
+            var_t* bv = &c->cur_fn->locals.v[i];
+            if (bv->decl_block == c->cur_blk)
+                /* La dichiarazione di blocco non è più in scope: se il nome ha ANCHE una DIM al
+                 * livello della funzione torna a quella (-1), altrimenti resta "non dichiarata"
+                 * (0) — è ciò che permette a OPTION STRICT di segnalare la lettura fuori blocco. */
+                bv->decl_block = c99_name_has_toplevel_dim(c->cur_fn, bv->name) ? -1 : 0;
+        }
+    }
+    c->cur_blk = prev;
 }
 
 /* 2.8: coercizione del valore di ritorno al tipo della funzione corrente
@@ -18771,11 +18836,10 @@ static void st_let_assign(ctx_t* c, gmb_stmt_t* s) {
             var_t* shv = NULL;
             if (c->cur_fn) shv = vars_find(&c->cur_fn->locals, s->target);
             if (shv) {
-                /* Il blocco che aveva dichiarato l'ombra è chiuso (la profondità C è scesa):
-                 * la dichiarazione C non è più in scope → la prossima LET deve ridichiarare. */
-                if (shv->decl_indent > 1 && shv->decl_indent > c->indent) shv->decl_indent = 0;
-                int need_decl = shv->late_local || shv->decl_indent == 0
-                                || (c->indent > 1 && shv->decl_indent < c->indent);
+                /* Si DICHIARA (shadow) quando la LET è dentro un blocco diverso da quello in cui
+                 * la variabile è già dichiarata, oppure quando la locale ombreggia una GLOBAL e
+                 * non è ancora stata dichiarata (late_local). Altrimenti è un'assegnazione. */
+                int need_decl = shv->late_local || (c->cur_blk && shv->decl_block != c->cur_blk);
                 if (need_decl) {
                     int sh_str = shv->type == TY_STR;
                     int sh_simple = !shv->is_array && !shv->gkind && !shv->vclass[0] && !shv->boxed_val
@@ -18794,7 +18858,7 @@ static void st_let_assign(ctx_t* c, gmb_stmt_t* s) {
                     if (sh_str) emit_str_operand(c, s->value);
                     else emit_num_operand(c, s->value);
                     sb_put(&c->out, ";\n");
-                    shv->decl_indent = c->indent;
+                    shv->decl_block = c->cur_blk ? c->cur_blk : -1;
                     shv->late_local = 0;
                     res_guard_end(c, res_guard);
                     return;
@@ -20085,6 +20149,34 @@ static void st_dim(ctx_t* c, gmb_stmt_t* s) {
          var_t* dv = NULL;
          if (c->cur_fn && s->dim_var) dv = vars_find(&c->cur_fn->locals, s->dim_var);
          if (!dv && s->dim_var) dv = lookup_var(c, s->dim_var);
+         /* DIM/LOCAL dentro un BLOCCO (spec Variables-Scope §2.1/§6): la variabile è di BLOCCO →
+          * dichiarazione C QUI (shadow dell'eventuale omonima di funzione), non una scrittura
+          * nella variabile esterna. Alla chiusura del blocco emit_block invalida la dichiarazione,
+          * quindi il nome torna a indicare quella esterna. Per i tipi composti (array/collezioni/
+          * matrici/classi) resta il percorso normale (limite noto, documentato). */
+         if (dv && c->cur_blk && dv->decl_block != c->cur_blk && !s->dim_is_static) {
+             int simple = !dv->is_array && !dv->gkind && !dv->vclass[0] && !dv->boxed_val
+                          && !dv->matrix && !dv->matrix_value && !dv->jagged && !dv->dyn_len
+                          && !dv->nullable && !dv->sb_builder && !dv->regex_obj
+                          && !dv->coll_handle && !dv->matrix_handle && !dv->cell;
+             if (simple) {
+                 ind(c);
+                 sb_put(&c->out, dv->type == TY_STR ? "gmb_string_t " : "gmb_double_t ");
+                 emit_ident(c, dv->name);
+                 sb_put(&c->out, " = ");
+                 if (dv->type == TY_STR) {
+                     if (s->dim_init) emit_str_operand(c, s->dim_init);
+                     else sb_put(&c->out, "gmb_string_alloc(\"\")");
+                 } else {
+                     if (s->dim_init) emit_num_operand(c, s->dim_init);
+                     else sb_put(&c->out, "0");
+                 }
+                 sb_put(&c->out, ";\n");
+                 dv->decl_block = c->cur_blk;
+                 dv->late_local = 0;
+                 return;
+             }
+         }
          /* STATIC dentro una procedura: la variabile C è dichiarata `static` nel prologo
           * (persiste fra le chiamate). Qui si esegue l'inizializzazione UNA volta sola:
           * al primo ingresso con l'inizializzatore (o il default del tipo), poi mai più.
@@ -20676,12 +20768,12 @@ static void st_if(ctx_t* c, gmb_stmt_t* s) {
         } else emit_num_operand(c, s->cond);
         sb_put(&c->out, ") {\n");
         c->indent++;
-        emit_list(c, s->then_body, s->n_then);
+        emit_block(c, s->then_body, s->n_then);
         c->indent--;
         if (s->n_else > 0) {
             ind(c); sb_put(&c->out, "} else {\n");
             c->indent++;
-            emit_list(c, s->else_body, s->n_else);
+            emit_block(c, s->else_body, s->n_else);
             c->indent--;
         }
         ind(c); sb_put(&c->out, "}\n");
@@ -20713,7 +20805,7 @@ static void st_for(ctx_t* c, gmb_stmt_t* s) {
                 ind(c);
                 emit_ident(c, rfv->name);
                 sb_printf(&c->out, " = __rv%d;\n", id);
-                emit_list(c, s->for_body, s->n_for);
+                emit_block(c, s->for_body, s->n_for);
                 emit_num_label(c, s->for_next_bas);
                 c->indent--;
                 ind(c); sb_put(&c->out, "}\n");
@@ -20763,7 +20855,7 @@ static void st_for(ctx_t* c, gmb_stmt_t* s) {
                     c99_fail(c, s->line, "FOR EACH REVERSE: fonte non supportata");
                     return;
                 }
-                emit_list(c, s->for_body, s->n_for);
+                emit_block(c, s->for_body, s->n_for);
                 emit_num_label(c, s->for_next_bas);
                 c->indent--;
                 ind(c); sb_put(&c->out, "}\n");
@@ -20809,7 +20901,7 @@ static void st_for(ctx_t* c, gmb_stmt_t* s) {
                 ind(c);
                 emit_ident(c, fv->name);
                 sb_printf(&c->out, " = __feL%d[__fe%d];\n", id, id);
-                emit_list(c, s->for_body, s->n_for);
+                emit_block(c, s->for_body, s->n_for);
                 emit_num_label(c, s->for_next_bas);
                 c->indent--;
                 ind(c); sb_put(&c->out, "}\n");
@@ -20840,7 +20932,7 @@ static void st_for(ctx_t* c, gmb_stmt_t* s) {
                 ind(c);
                 emit_ident(c, kfv->name);
                 sb_printf(&c->out, " = gmb_val_to_string(gmb_list_get(__feK%d, __fekI%d));\n", id, id);
-                emit_list(c, s->for_body, s->n_for);
+                emit_block(c, s->for_body, s->n_for);
                 emit_num_label(c, s->for_next_bas);
                 c->indent--;
                 ind(c); sb_put(&c->out, "}\n");
@@ -20901,7 +20993,7 @@ static void st_for(ctx_t* c, gmb_stmt_t* s) {
                     ind(c);
                     emit_ident(c, fv->name);
                     sb_printf(&c->out, " = gmb_string_char_at(__feS%d, __fe%d);\n", id, id);
-                    emit_list(c, s->for_body, s->n_for);
+                    emit_block(c, s->for_body, s->n_for);
                     emit_num_label(c, s->for_next_bas);
                     c->indent--;
                     ind(c); sb_put(&c->out, "}\n");
@@ -20945,7 +21037,7 @@ static void st_for(ctx_t* c, gmb_stmt_t* s) {
                 sb_put(&c->out, " = ");
                 if (elem_is_str) sb_printf(&c->out, "gmb_string_alloc(__fecv%d.v_string.data);\n", id);
                 else sb_printf(&c->out, "__fecv%d.v_int;\n", id);
-                emit_list(c, s->for_body, s->n_for);
+                emit_block(c, s->for_body, s->n_for);
                 emit_num_label(c, s->for_next_bas);
                 c->indent--;
                 ind(c); sb_put(&c->out, "}\n");
@@ -20984,7 +21076,7 @@ static void st_for(ctx_t* c, gmb_stmt_t* s) {
                     sb_put(&c->out, ") + 1) + ((gmb_int_t)(");
                     sb_printf(&c->out, "%d))];\n", cv);
                 }
-                emit_list(c, s->for_body, s->n_for);
+                emit_block(c, s->for_body, s->n_for);
                 emit_num_label(c, s->for_next_bas);
                 c->indent--;
                 ind(c); sb_put(&c->out, "}\n");
@@ -21035,7 +21127,7 @@ static void st_for(ctx_t* c, gmb_stmt_t* s) {
                     emit_var_ref(c, av);
                     sb_printf(&c->out, "[__feiv%d];\n", id);
                 }
-                emit_list(c, s->for_body, s->n_for);
+                emit_block(c, s->for_body, s->n_for);
                 emit_num_label(c, s->for_next_bas);
                 c->indent--;
                 ind(c); sb_put(&c->out, "}\n");
@@ -21173,7 +21265,7 @@ static void st_for(ctx_t* c, gmb_stmt_t* s) {
                         if (av->elem_str) sb_put(&c->out, ").v_string.data);\n");
                         else sb_put(&c->out, ").v_double;\n");
                     }
-                    emit_list(c, s->for_body, s->n_for);
+                    emit_block(c, s->for_body, s->n_for);
                     emit_num_label(c, s->for_next_bas);
                     c->indent--;
                     ind(c); sb_put(&c->out, "}\n");
@@ -21223,7 +21315,7 @@ static void st_for(ctx_t* c, gmb_stmt_t* s) {
                 sb_put(&c->out, " = gmb_string_char_at(");
                 sb_ident(&c->out, av->name);
                 sb_printf(&c->out, ", __fcs%d);\n", id);
-                emit_list(c, s->for_body, s->n_for);
+                emit_block(c, s->for_body, s->n_for);
                 emit_num_label(c, s->for_next_bas);
                 c->indent--;
                 ind(c); sb_put(&c->out, "}\n");
@@ -21258,7 +21350,7 @@ static void st_for(ctx_t* c, gmb_stmt_t* s) {
                 ind(c);
                 emit_ident(c, vfv->name);
                 sb_printf(&c->out, " = __jd.items[__fejd%d].value;\n", id);
-                emit_list(c, s->for_body, s->n_for);
+                emit_block(c, s->for_body, s->n_for);
                 emit_num_label(c, s->for_next_bas);
                 c->indent--;
                 ind(c); sb_put(&c->out, "}\n");
@@ -21296,7 +21388,7 @@ static void st_for(ctx_t* c, gmb_stmt_t* s) {
                 ind(c);
                 emit_ident(c, jfv->name);
                 sb_printf(&c->out, " = gmb_make_val_dict(__kvd%d);\n", id);
-                emit_list(c, s->for_body, s->n_for);
+                emit_block(c, s->for_body, s->n_for);
                 emit_num_label(c, s->for_next_bas);
                 c->indent--;
                 ind(c); sb_put(&c->out, "}\n");
@@ -21308,7 +21400,7 @@ static void st_for(ctx_t* c, gmb_stmt_t* s) {
                 ind(c);
                 emit_ident(c, jfv->name);
                 sb_printf(&c->out, " = __jf.items[__fej%d];\n", id);
-                emit_list(c, s->for_body, s->n_for);
+                emit_block(c, s->for_body, s->n_for);
                 emit_num_label(c, s->for_next_bas);
                 c->indent--;
                 ind(c); sb_put(&c->out, "}\n");
@@ -21345,7 +21437,7 @@ static void st_for(ctx_t* c, gmb_stmt_t* s) {
                     sb_printf(&c->out, " = __fehv%d;\n", hid);
                 else
                     sb_printf(&c->out, " = __fehv%d.v_double;\n", hid);
-                emit_list(c, s->for_body, s->n_for);
+                emit_block(c, s->for_body, s->n_for);
                 emit_num_label(c, s->for_next_bas);
                 c->indent--;
                 ind(c); sb_put(&c->out, "}\n");
@@ -21381,7 +21473,7 @@ static void st_for(ctx_t* c, gmb_stmt_t* s) {
                         c->imap_type[c->n_imap] = -1;
                         c->n_imap++;
                     }
-                    emit_list(c, s->for_body, s->n_for);
+                    emit_block(c, s->for_body, s->n_for);
                     if (c->n_imap > 0 && c->imap_name[c->n_imap - 1] == s->for_var) {
                         free((void*)c->imap_expr[c->n_imap - 1]);
                         c->n_imap--;
@@ -21411,7 +21503,7 @@ static void st_for(ctx_t* c, gmb_stmt_t* s) {
                     sb_put(&c->out, " = gmb_list_get(");
                     sb_ident(&c->out, av->name);
                     sb_printf(&c->out, ", __feo%d);\n", id);
-                    emit_list(c, s->for_body, s->n_for);
+                    emit_block(c, s->for_body, s->n_for);
                     emit_num_label(c, s->for_next_bas);
                     c->indent--;
                     ind(c); sb_put(&c->out, "}\n");
@@ -21483,7 +21575,7 @@ static void st_for(ctx_t* c, gmb_stmt_t* s) {
                     else
                         sb_printf(&c->out, ", __fel%d).v_double;\n", id);
                 }
-                emit_list(c, s->for_body, s->n_for);
+                emit_block(c, s->for_body, s->n_for);
                 if (mismatch && c->n_imap > 0 && c->imap_name[c->n_imap - 1] == lfv2->name) {
                     free((void*)c->imap_expr[c->n_imap - 1]);
                     c->n_imap--;
@@ -21541,7 +21633,7 @@ static void st_for(ctx_t* c, gmb_stmt_t* s) {
                                     c->imap_type[c->n_imap] = -1;
                                     c->n_imap++;
                                 }
-                                emit_list(c, s->for_body, s->n_for);
+                                emit_block(c, s->for_body, s->n_for);
                                 if (c->n_imap > 0 && c->imap_name[c->n_imap - 1] == s->for_var) {
                                     free((void*)c->imap_expr[c->n_imap - 1]);
                                     c->n_imap--;
@@ -21593,7 +21685,7 @@ static void st_for(ctx_t* c, gmb_stmt_t* s) {
                             ind(c);
                             emit_ident(c, lfv->name);
                             sb_printf(&c->out, " = gmb_list_get(__feL%d, __fel%d);\n", id, id);
-                            emit_list(c, s->for_body, s->n_for);
+                            emit_block(c, s->for_body, s->n_for);
                             emit_num_label(c, s->for_next_bas);
                             c->indent--;
                             ind(c); sb_put(&c->out, "}\n");
@@ -21684,7 +21776,7 @@ static void st_for(ctx_t* c, gmb_stmt_t* s) {
                     sb_printf(&c->out, "[_fri%d] = (%s)gmb_list_get(__femrow%d, _fri%d).v_double; }\n",
                               mid, ctype_name(mfv->type), mid, mid);
                 }
-                emit_list(c, s->for_body, s->n_for);
+                emit_block(c, s->for_body, s->n_for);
                 emit_num_label(c, s->for_next_bas);
                 c->indent--;
                 ind(c); sb_put(&c->out, "}\n");
@@ -21756,7 +21848,7 @@ static void st_for(ctx_t* c, gmb_stmt_t* s) {
                 }
                 fv->type = av->type;
             }
-            emit_list(c, s->for_body, s->n_for);
+            emit_block(c, s->for_body, s->n_for);
             emit_num_label(c, s->for_next_bas);
             if (shadow) {
                 if (c->n_imap > 0 && c->imap_name[c->n_imap - 1] == fv->name) c->n_imap--;
@@ -21805,7 +21897,7 @@ static void st_for(ctx_t* c, gmb_stmt_t* s) {
         emit_ident(c, fv->name);
         sb_printf(&c->out, " += __step%d) {\n", id);
         c->indent++;
-        emit_list(c, s->for_body, s->n_for);
+        emit_block(c, s->for_body, s->n_for);
         emit_num_label(c, s->for_next_bas);
         /* Alias continue per `CONTINUE X` (canone 2026-09-30): qui cade nell'incremento
          * del for (snapshot forlab: cur cambia nei corpi annidati). Solo se etichettato. */
@@ -21837,7 +21929,7 @@ static void st_while(ctx_t* c, gmb_stmt_t* s) {
         emit_expr(c, s->cond);
         sb_put(&c->out, ") {\n");
         c->indent++;
-        emit_list(c, s->while_body, s->n_while);
+        emit_block(c, s->while_body, s->n_while);
         c->indent--;
         ind(c); sb_put(&c->out, "}\n");
         return;
@@ -21857,7 +21949,7 @@ static void st_do(ctx_t* c, gmb_stmt_t* s) {
             emit_expr(c, s->do_while);
             sb_put(&c->out, ")) {\n");
             c->indent++;
-            emit_list(c, s->do_body, s->n_do);
+            emit_block(c, s->do_body, s->n_do);
             if (s->flag == 2) {
                 /* TICK <rate>: frame limiter + present UNA volta per frame
                  * (prima il rate era ignorato → loop a migliaia di fps). */
@@ -21873,7 +21965,7 @@ static void st_do(ctx_t* c, gmb_stmt_t* s) {
              * in coda (salta al test, non al corpo). */
             ind(c); sb_put(&c->out, "do {\n");
             c->indent++;
-            emit_list(c, s->do_body, s->n_do);
+            emit_block(c, s->do_body, s->n_do);
             c->indent--;
             if (mylab[0]) { ind(c); sb_put(&c->out, "lbl_"); sb_put(&c->out, mylab); sb_put(&c->out, "_CONTINUE: ;\n"); }
             ind(c); sb_put(&c->out, "} while (");
@@ -22319,7 +22411,7 @@ static void st_try(ctx_t* c, gmb_stmt_t* s) {
         ind(c); sb_printf(&c->out, "if (setjmp(__trybuf_%d) == 0) {\n", id);
         c->indent++;
         c->try_depth++;
-        emit_list(c, s->try_body, s->n_try);
+        emit_block(c, s->try_body, s->n_try);
         c->try_depth--;
         ind(c); sb_printf(&c->out, "gmb_err_set_handler(__tryprev_%d);\n", id);
         c->indent--;
@@ -22462,7 +22554,7 @@ static void st_try(ctx_t* c, gmb_stmt_t* s) {
                         }
                     }
                 }
-                emit_list(c, cl->catch_body, cl->n_catch);
+                emit_block(c, cl->catch_body, cl->n_catch);
                 c->n_catch_names = saved_names;
                 if (is_class_clause) {
                     if (had_var) { var_t* now = vars_find(sc, cvar); if (now) *now = saved_var; }
@@ -22495,7 +22587,7 @@ static void st_try(ctx_t* c, gmb_stmt_t* s) {
             ind(c); sb_printf(&c->out, "gmb_err_set_handler(__tryprev_%d);\n", id);
             ind(c); sb_printf(&c->out, "{ gmb_task_t* __uft_%d = gmb_cur(); if (__uft_%d) __uft_%d->unwind_top = __uf_%d.prev; }\n",
                                id, id, id, id);
-            emit_list(c, s->finally_body, s->n_finally);
+            emit_block(c, s->finally_body, s->n_finally);
             if (s->n_catch == 0)
                 ind(c); sb_printf(&c->out, "if (__err_active_%d) gmb_raise_error(__err_num_%d, __err_desc_%d, __err_line_%d);\n",
                                    id, id, id, id);
@@ -22623,14 +22715,14 @@ static void st_select(ctx_t* c, gmb_stmt_t* s) {
             sb_put(&c->out, ")) {\n");
             c->indent++;
             ind(c); sb_printf(&c->out, "__selm%d = 1;\n", id);
-            emit_list(c, cs->case_body, cs->n_case_body);
+            emit_block(c, cs->case_body, cs->n_case_body);
             c->indent--;
             ind(c); sb_put(&c->out, "}\n");
         }
         if (else_case && !c->error[0]) {
             ind(c); sb_printf(&c->out, "if (!__selm%d) {\n", id);
             c->indent++;
-            emit_list(c, else_case->case_body, else_case->n_case_body);
+            emit_block(c, else_case->case_body, else_case->n_case_body);
             c->indent--;
             ind(c); sb_put(&c->out, "}\n");
         }
@@ -26523,6 +26615,7 @@ static const char* aimodel_err_msg(int kind) {
     default:                          return "AI MODEL: operazione fallita";
     }
 }
+
 static void st_aimodel(ctx_t* c, gmb_stmt_t* s) {
     gmb_expr_t** a = s->go_args;
     int na = s->n_go_args;
@@ -26615,7 +26708,6 @@ static void st_aimodel(ctx_t* c, gmb_stmt_t* s) {
         sb_put(&c->out, ")");
         break;
     case GMB_STMT_AIMODEL_DIFF:   /* LLM MODEL DIFF <a>, <b>, <out> — checkpoint/rollback */
-
         sb_put(&c->out, "llmmodelio_model_diff(");
         if (na >= 1) { sb_put(&c->out, "gmb_paths_model_q("); emit_str_operand(c, a[0]); sb_put(&c->out, ".data)"); } else sb_put(&c->out, "\"\"");
         sb_put(&c->out, ", ");
@@ -31262,7 +31354,7 @@ static void st_goselect(ctx_t* c, gmb_stmt_t* s) {
              * dell'int come double, garbage). */
             else sb_printf(&c->out, " = gmb_val_to_double(__sel_v%d);\n", k);
             if (ov) { ind(c); emit_net_lhs(c, ov); sb_printf(&c->out, " = __sel_ok%d;\n", k); }
-            emit_list(c, s->go_cases[k].body, s->go_cases[k].n_body);
+            emit_block(c, s->go_cases[k].body, s->go_cases[k].n_body);
             ind(c); sb_printf(&c->out, "goto %s;\n", doneL);
             c->indent--; ind(c); sb_put(&c->out, "}\n");
             c->indent--; ind(c); sb_put(&c->out, "}\n");
@@ -31274,7 +31366,7 @@ static void st_goselect(ctx_t* c, gmb_stmt_t* s) {
             ind(c); sb_put(&c->out, "{\n"); c->indent++;
             ind(c); sb_printf(&c->out, "if (gmb_chan_trysend(%s, %s)) {\n", chanT[k], valT[k]);
             c->indent++;
-            emit_list(c, s->go_cases[k].body, s->go_cases[k].n_body);
+            emit_block(c, s->go_cases[k].body, s->go_cases[k].n_body);
             ind(c); sb_printf(&c->out, "goto %s;\n", doneL);
             c->indent--; ind(c); sb_put(&c->out, "}\n");
             c->indent--; ind(c); sb_put(&c->out, "}\n");
@@ -31283,14 +31375,14 @@ static void st_goselect(ctx_t* c, gmb_stmt_t* s) {
         if (tc >= 0) {
             ind(c); sb_printf(&c->out, "if (gmb_c99_now_ms() >= __gs_%d_deadline) {\n", id);
             c->indent++;
-            emit_list(c, s->go_cases[tc].body, s->go_cases[tc].n_body);
+            emit_block(c, s->go_cases[tc].body, s->go_cases[tc].n_body);
             ind(c); sb_printf(&c->out, "goto %s;\n", doneL);
             c->indent--; ind(c); sb_put(&c->out, "}\n");
         }
         /* FASE 3: DEFAULT non bloccante */
         for (int k = 0; k < n; k++) {
             if (s->go_cases[k].comm) continue;
-            emit_list(c, s->go_cases[k].body, s->go_cases[k].n_body);
+            emit_block(c, s->go_cases[k].body, s->go_cases[k].n_body);
             ind(c); sb_printf(&c->out, "goto %s;\n", doneL);
         }
         /* FASE 4: park su tutti i canali + dispatch winner; altrimenti retry */
@@ -31330,7 +31422,7 @@ static void st_goselect(ctx_t* c, gmb_stmt_t* s) {
                     else sb_printf(&c->out, " = gmb_val_to_double(__gs_sel%d->winner_val);\n", id);
                     if (ov) { ind(c); emit_net_lhs(c, ov); sb_printf(&c->out, " = __gs_sel%d->winner_ok;\n", id); }
                 }
-                emit_list(c, s->go_cases[k].body, s->go_cases[k].n_body);
+                emit_block(c, s->go_cases[k].body, s->go_cases[k].n_body);
                 ind(c); sb_put(&c->out, "break;\n");
                 c->indent--;
             }
@@ -33986,9 +34078,9 @@ static void emit_function(ctx_t* c, fn_info_t* fn) {
     for (int i = 0; i < fn->locals.n; i++) {
         var_t* pv0 = &fn->locals.v[i];
         /* Tutto ciò che è dichiarato nel prologo (parametri compresi: gli argomenti sono
-         * copiati nello slot dal chiamante) vive al livello FUNZIONE: una `LET` dentro un
-         * blocco deve quindi dichiarare una variabile di blocco che lo ombreggi. */
-        if (pv0->decl_indent == 0 && !pv0->late_local) pv0->decl_indent = 1;
+         * copiati nello slot dal chiamante) vive al livello FUNZIONE: una DIM/LOCAL/LET dentro
+         * un blocco emette una dichiarazione di blocco che lo ombreggia. */
+        pv0->decl_block = c99_name_has_toplevel_dim(fn, pv0->name) ? -1 : 0;
     }
     for (int i = s->n_params; i < fn->locals.n; i++) {
         var_t* v = &fn->locals.v[i];
@@ -35814,6 +35906,7 @@ static int gmb_c99_emit_once(const gmb_program_t* prog, char** out_src, char** e
     ctx_t ctx;
     memset(&ctx, 0, sizeof(ctx));
     ctx_t* c = &ctx;
+    c->option_strict = prog->option_strict;
     if (prog->library_name[0]) {
         ctx.lib_mode = 1;
         strncpy(ctx.lib_name, prog->library_name, sizeof(ctx.lib_name) - 1);

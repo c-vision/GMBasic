@@ -87,15 +87,15 @@ public static partial class Linker
             return CanCoerce(sourceChan.ValueType, targetChan.ValueType, context, program);
         }
 
-        // 4. Validazione OPTION STRICT per tipi numerici (solo widening consentito).
-        if (context.IsInStrictContext)
-        {
-            // In modalità STRICT, solo le conversioni "widening" (che non perdono dati) sono permesse.
-            if (IsNumericType(sourceType) && IsNumericType(targetType))
-            {
-                return IsWideningConversion(sourceType, targetType);
-            }
-        }
+        // 4. OPTION STRICT NON introduce una tipizzazione statica: il contratto della modalità è
+        // «nessuna variabile implicita — ogni nome deve avere una dichiarazione» (è il testo stesso
+        // del messaggio d'errore). Il dialetto ha un unico modello numerico a runtime (tutti i
+        // backend rappresentano i numerici come double/int64 e non emulano il wraparound), quindi
+        // un'assegnazione numerica fra tipi diversi resta valida anche in STRICT: prima si
+        // accettavano solo i widening e `DIM x AS LONG : x = 7` falliva (letterale = DOUBLE →
+        // narrowing), rendendo la modalità inutilizzabile (2026-11-11).
+        // Le regole che RESTANO in STRICT: lettura di un nome non dichiarato, creazione implicita
+        // (assegnazione a un nome senza DIM/LET), lettura di un nome fuori dal blocco.
         
         // 4b. Un UserDefinedType placeholder (SymbolId < 0, usato in StdLib per UDTPACKED/UDTALIGNED/SIZEOF)
         // è compatibile con qualsiasi UserDefinedType concreto.

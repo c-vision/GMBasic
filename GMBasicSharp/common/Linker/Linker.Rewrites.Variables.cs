@@ -98,6 +98,31 @@ public static partial class Linker
         // 2. ID già valido (Ottimizzazione/Costanti/Closure o già risolto)
         if (ve.SymbolId >= 0)
         {
+            // Il PARSER può aver già risolto il nome a un simbolo dichiarato in un BLOCCO che non
+            // è più attivo (blocco chiuso): il nome non è in scope, quindi non va usato.
+            // In OPTION STRICT è un errore; fuori da STRICT il nome vale come variabile implicita
+            // (default 0/"") — stessa regola di TryResolveFallback, ma qui perché l'ID è già
+            // presente e il fallback per nome non verrebbe mai raggiunto (2026-11-11).
+            if (ve.ScopeId >= 0)
+            {
+                var preSym = program.Symbols.GetSymbol(ve.SymbolId);
+                if (preSym is not null && !preSym.Flags.HasFlag(SymbolFlags.IsGlobal)
+                    && program.Symbols.GetScope(preSym.ScopeId).Type == SymbolTable.ScopeType.Block
+                    && FindSymbolIdInScopeChain(ve.NameCleaned.Lexeme, ve.ScopeId, ve.Position, program) < 0
+                    && context.IsInStrictContext)
+                {
+                    // Solo in OPTION STRICT ON: il nome è dichiarato in un blocco che non è più
+                    // attivo → errore. Fuori da STRICT si lascia il comportamento storico
+                    // (lettura risolta: è codice errato per la spec §2.1/§6, valore non
+                    // garantito). NON si sostituisce con un letterale: la stessa condizione può
+                    // scattare per nomi che SONO in scope (i ScopeId del parser non seguono
+                    // sempre i blocchi) e romperebbe la creazione implicita nelle chiamate BYREF
+                    // (ScopesByRef). Vedi la nota Bug/Plan sullo scope di blocco.
+                    throw CreateError(ve.NameSuffixed,
+                        $"In OPTION STRICT mode, la variabile '{ve.NameSuffixed.Lexeme}' deve essere dichiarata esplicitamente.",
+                        ErrorCode.UndefinedVariable);
+                }
+            }
             Log($"[REWR-VAR]   -> VariableExpr ha già SymbolId {ve.SymbolId}. Processo RewritePreResolvedSymbol...", log);
             return RewritePreResolvedSymbol(ve, context, program);
         }
@@ -540,6 +565,22 @@ public static partial class Linker
             var isLocal = symbolFilePath != null &&
                           symbolFilePath.Equals(context.ModulePath, StringComparison.OrdinalIgnoreCase);
             var isGlobal = program.Symbols.GetNamespaceNameForSymbol(symbol.Id) == SymbolTable.GlobalScopeName;
+
+            // Simbolo dichiarato dentro un BLOCCO che non è più attivo (blocco chiuso): con
+            // OPTION STRICT ON è un errore (il nome non è in scope). Fuori da STRICT si lascia il
+            // comportamento storico (il nome viene risolto dal fallback): leggerlo è un errore di
+            // programmazione e il valore non è garantito (specifica §2.1/§6).
+            if (!symbol.Flags.HasFlag(SymbolFlags.IsGlobal)
+                && program.Symbols.GetScope(symbol.ScopeId).Type == SymbolTable.ScopeType.Block
+                && FindSymbolIdInScopeChain(variableName, ve.ScopeId, ve.Position, program) < 0)
+            {
+                if (context.IsInStrictContext)
+                {
+                    throw CreateError(ve.NameSuffixed,
+                        $"In OPTION STRICT mode, la variabile '{ve.NameSuffixed.Lexeme}' deve essere dichiarata esplicitamente.",
+                        ErrorCode.UndefinedVariable);
+                }
+            }
 
             if (isLocal || isGlobal)
             {

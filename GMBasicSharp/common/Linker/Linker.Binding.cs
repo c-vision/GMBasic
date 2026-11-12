@@ -2794,14 +2794,10 @@ public static partial class Linker
             // CASO 1: Variabile SCALARE implicita (logica esistente)
             if (target is VariableTarget { SymbolId: < 0 } vt)
             {
-                // Se in strict mode non permettiamo creazione implicita.
-                if (isStrict)
-                {
-                    throw new BasicException(vt.NameSuffixed,
-                        $"In OPTION STRICT mode, la variabile '{vt.NameSuffixed.Lexeme}' deve essere dichiarata esplicitamente.",
-                        ErrorCode.UndefinedVariable);
-                }
-
+                // Il target può essere ancora NON risolto pur essendo GIÀ dichiarato: il binder lo
+                // collega dopo. La decisione (errore STRICT o creazione implicita) va quindi presa
+                // DOPO il lookup, non prima — prima si lanciava su una `DIM` fatta poche righe
+                // sopra nello stesso blocco (falso positivo di OPTION STRICT, 2026-11-11).
                 // LET: crea un nuovo simbolo nello scope corrente solo se il nome NON e' gia'
                 // dichiarato in tale scope (permette lo shadowing di variabili di scope superiori);
                 // se esiste gia' nello scope corrente, e' una semplice riassegnazione allo stesso simbolo.
@@ -2811,6 +2807,15 @@ public static partial class Linker
                         ? idsInCurrentScope
                         : null
                     : program.Symbols.FindSymbolInScope(vt.NameCleaned.Lexeme);
+
+                // Se in strict mode non permettiamo creazione implicita (solo quando il nome è
+                // DAVVERO assente: né nello scope corrente né in un genitore).
+                if (isStrict && (existingSymbolIds == null || existingSymbolIds.Count == 0))
+                {
+                    throw new BasicException(vt.NameSuffixed,
+                        $"In OPTION STRICT mode, la variabile '{vt.NameSuffixed.Lexeme}' deve essere dichiarata esplicitamente.",
+                        ErrorCode.UndefinedVariable);
+                }
 
                 if (existingSymbolIds == null || existingSymbolIds.Count == 0)
                 {

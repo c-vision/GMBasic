@@ -117,6 +117,11 @@ typedef struct { char* name; int type; int is_array; int ndims; int byref; int g
                                    * registrazione per un LET che ombreggia una GLOBAL). Serve a
                                    * decidere se una `LET` deve DICHIARARE una variabile di blocco
                                    * (spec §3.1/§6) o è una semplice assegnazione. */
+                 int decl_block;  /* ID del blocco (ctx_t.cur_blk) in cui la variabile è stata
+                                   * dichiarata: `-1` = livello funzione (prologo), `0` = non
+                                   * dichiarata da nessun blocco. Una DIM/LOCAL/LET dentro un blocco
+                                   * emette una DICHIARAZIONE C nel blocco (shadowing) e segna
+                                   * l'ID; alla chiusura del blocco l'ID torna 0 (emit_block). */
                } var_t;
 
 /* `vars_t` dipende da `var_t`: una sola definizione anche di questa. */

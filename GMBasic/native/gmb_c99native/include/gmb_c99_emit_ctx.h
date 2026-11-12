@@ -101,6 +101,16 @@ typedef struct {
     /* LIBRARY "nome": produce una libreria condivisa (.gmblib) — niente main; i PUBLIC
      * FUNCTION/SUB top-level diventano simboli esportati <lib>_<nome>. */
     int lib_mode;
+    /* OPTION STRICT ON: ogni nome usato deve essere dichiarato (nessuna variabile implicita).
+     * Parità con il linker C#: i nomi non risolti producono un errore di compilazione con lo
+     * stesso messaggio. 0 = modalità normale (variabili implicite ammesse). */
+    int option_strict;
+    /* Identità dei BLOCCHI (scope di blocco, spec §2.1/§6): ogni corpo di costrutto
+     * (IF/ELSE, cicli, SELECT, TRY/CATCH/FINALLY) riceve un id monotono. Una DIM/LOCAL/LET
+     * dentro un blocco emette una dichiarazione C nel blocco (shadow) marcata con l'id; alla
+     * chiusura (emit_block) l'id torna 0 e il nome torna a indicare la variabile esterna. */
+    int cur_blk;
+    int blk_seq;
     char lib_name[96];
     /* FASE 2.6(j): remap identificatori per variabili catturate dalle closure:
      * nome BASIC → espressione C (es. "fattore" → "__clo_Moltiplica.fattore"). */

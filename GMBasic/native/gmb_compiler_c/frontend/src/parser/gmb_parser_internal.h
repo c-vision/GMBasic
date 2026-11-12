@@ -59,6 +59,9 @@ typedef struct gmb_parser {
     /* Modalita' grafica: i controlli keyword (LISTBOX/SPINNER/…) emettono la versione PIXEL
      * (nome rinominato in "PIX<NAME>" a parse-time). */
     int gui_mode;
+    /* OPTION STRICT ON|OFF: direttiva di modulo (parità linker C#). Con ON l'emitter rifiuta
+     * ogni nome non dichiarato. */
+    int option_strict;
 } gmb_parser_t;
 
 typedef struct {

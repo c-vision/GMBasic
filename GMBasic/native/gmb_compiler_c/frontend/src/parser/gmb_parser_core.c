@@ -73,6 +73,7 @@ gmb_program_t gmb_parse(const gmb_lex_result_t* lx, char** error)
         }
     }
     memcpy(prog.library_name, p.lib_name, sizeof(prog.library_name));
+    prog.option_strict = p.option_strict;
     if (error) *error = p.error;
     return prog;
 }

@@ -1764,12 +1764,30 @@ static gmb_stmt_t* gmb_p_parse_stmt_impl(gmb_parser_t* p, bool* multiline)
         }
         return s;
     }
-    /* OPTION [STRICT ON|OFF | ...]: direttiva di modulo, NESSUN bytecode (parità C#
-     * Parser.Statements — il C# consuma `OPTION STRICT ON|OFF` e prosegue; il default è
-     * STRICT OFF, quindi è un no-op). Salta la riga. Prima OPTION era nella lista rem_vari
-     * → "comando 'OPTION' non ancora supportato". */
+    /* OPTION [STRICT ON|OFF | ...]: direttiva di modulo. `OPTION STRICT ON` chiede che ogni
+     * nome usato sia dichiarato (nessuna variabile implicita): il flag viaggia fino all'emitter,
+     * che rifiuta i nomi non risolti con lo stesso messaggio del linker C#. Le altre forme
+     * restano no-op. Prima la riga veniva solo saltata (STRICT ignorato → su questa gamba un
+     * programma "strict" compilava e stampava 0 dove le altre gambe davano errore). */
     if (t->kind == GMB_TOK_Option) {
         gmb_p_adv(p);
+        /* STRICT ON|OFF */
+        int is_strict_tok = 0;
+        const gmb_token_t* nt = gmb_p_cur(p);
+        if (nt && (nt->kind == GMB_TOK_Strict
+                   || gmb_p_tok_is_keyword(nt, "Strict"))) {
+            is_strict_tok = 1;
+            gmb_p_adv(p);
+            const gmb_token_t* on = gmb_p_cur(p);
+            if (on && (on->kind == GMB_TOK_On || gmb_p_tok_is_keyword(on, "On"))) {
+                p->option_strict = 1;
+                gmb_p_adv(p);
+            } else if (on && (on->kind == GMB_TOK_Off || gmb_p_tok_is_keyword(on, "Off"))) {
+                p->option_strict = 0;
+                gmb_p_adv(p);
+            }
+        }
+        (void)is_strict_tok;
         while (!gmb_p_at_end(p) && !gmb_p_check(p, GMB_TOK_Newline) && !gmb_p_check(p, GMB_TOK_Colon)) gmb_p_adv(p);
         return gmb_stmt_new(GMB_STMT_REM, line);
     }
