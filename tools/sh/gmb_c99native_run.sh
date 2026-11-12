@@ -240,22 +240,17 @@ if ! grep -q "int main" "$DIR/$CASE.c"; then OUTBIN="$DIR/$CASE.$DYLIBEXT"; CCFI
 LLMTOKEN_DIR="$LIBS_CACHE"
 [ -f "$LLMTOKEN_DIR/libllmtoken.dylib" ] || LLMTOKEN_DIR="$LLMENV/build/LLMToken"
 # ── Quale runtime? ────────────────────────────────────────────────────────────────────────────
-# TESTUALE → gmb_runtime_min (core + stub UI no-op): l'eseguibile NON dipende da SDL/Vulkan.
-# FORM/READ/grafica → runtime COMPLETO (UI vera).
-MIN_LIB="$ROOT/native/gmb_runtime_c/build/libgmb_runtime_min.a"
-# Runtime COMPLETO: prima la copia canonica (`gmb_runtime_c/build`, ricostruita sopra), poi —
-# solo se manca — quella del tree VM/C. Prima era SEMPRE quella del tree VM/C: dopo una modifica
-# al runtime si linkava una lib vecchia ("undefined symbol").
+# SEMPRE il runtime COMPLETO. Il ramo «programma testuale → gmb_runtime_min» è stato RIMOSSO
+# (2026-11-12): quel lib-set NON è linkabile, perché gli oggetti del runtime minimo chiedono
+# sqlite3, lzma, zstd, brotli, OpenSSL, lz4 e simboli gfx/TUI/brain che non gli appartengono.
+# Con ld64 il link falliva e lo script ripiegava IN SILENZIO sul lib-set completo, quindi il
+# minimo non è mai stato usato nei fatti; con lld di `zig cc` lo stesso link «riesce» e produce
+# un eseguibile con gli stub a 0, che muore al primo costruttore (EXC_BAD_ACCESS a 0x0) —
+# misurato il 2026-11-12 su llm_tokens_error.bas. Un solo link, quello che funziona: nessun
+# ripiego muto e nessun eseguibile diverso a seconda del linker.
 FULL_LIB="$ROOT/native/gmb_runtime_c/build/libgmb_runtime.a"
 [ -f "$FULL_LIB" ] || FULL_LIB="$L/gmb_runtime_c_build/libgmb_runtime.a"
-RUNTIME_LIB="$MIN_LIB"; MIN_LINK=1
-if [ ! -f "$RUNTIME_LIB" ]; then RUNTIME_LIB="$FULL_LIB"; MIN_LINK=0; fi
-if grep -qiE '^[[:space:]]*(FORM|READ|TORCH|TRAIN|JINJA|SCREEN|GRAPHICS|SPRITE|SPRITESET|PSET|PRESET|CIRCLE|PAINT|DRAW|POLYGON|PCOPY|SCREENSET|PALETTE|MOUSE|WINDOW|IMAGE|BITMAP|TILE|FONT|PLOT|CHART|VIDEO)[[:space:](]' "$B" 2>/dev/null; then
-  RUNTIME_LIB="$FULL_LIB"; MIN_LINK=0
-  echo "[c99native] programma con UI/grafica → runtime completo (SDL/Vulkan)" >&2
-else
-  echo "[c99native] programma testuale → runtime minimo (0 librerie esterne)" >&2
-fi
+RUNTIME_LIB="$FULL_LIB"
 # TRAY: le funzioni gmb_tray_* vivono in una dylib CONDIVISA (target CMake gmb_tray), non
 # nella statica del runtime. La si ricostruisce in modo incrementale e la si aggiunge al link
 # SOLO se il C generato la usa: un programma testuale senza TRAY resta senza dipendenze.
@@ -271,41 +266,43 @@ if grep -q 'gmb_tray_' "$DIR/$CASE.c" 2>/dev/null; then
     echo "[c99native] TRAY: libgmb_tray.dylib assente (target gmb_tray non costruito)" >&2
   fi
 fi
-# SPLIT core/AI (2026-11-02): su ELF la dylib `libgmb_runtime_ai.so` è caricata con dlopen e
-# risolve a load-time i simboli del core: l'eseguibile deve esportarli (`-rdynamic`).
+# SPLIT core/AI: le nostre dylib risolvono a LOAD-TIME i simboli del core (import
+# `<flat-namespace>`, linkate con `-undefined dynamic_lookup`). Su ELF l'eseguibile deve
+# esportarli (`--export-dynamic`). Su Darwin ld64 esporta i globali dell'eseguibile di default,
+# lld di `zig cc` NO: dead-strippa ciò che nulla referenzia — misurato il 2026-11-12, stesso
+# link: clang 4020 simboli esportati (0 su 35 assenti), zig 198 con **32 su 35** assenti, cioè
+# stub a 0 e crash nei percorsi AI. `-export_dynamic` lo accetta solo ld64 (`--export-dynamic`
+# solo lld) e in lld non cambia gli export: si usa invece `-u,_simbolo` per OGNI simbolo cercato
+# a load-time, che è ADDITIVO (non una lista chiusa) e supportato da entrambi i linker.
+# La lista non si scrive a mano: si legge dagli `import <flat-namespace>` delle nostre dylib,
+# più i tre `dlsym(RTLD_DEFAULT, …)` del core (gmb_abi.c), che non passano da un import.
 EXPORTDYN=""
-if [ "$(uname -s)" = "Linux" ]; then EXPORTDYN="-Wl,--export-dynamic"; fi
+case "$TARGET_OS" in
+  Linux)
+    EXPORTDYN="-Wl,--export-dynamic" ;;
+  Darwin)
+    if command -v dyld_info >/dev/null 2>&1; then
+      _ai_syms="$(mktemp "${TMPDIR:-/tmp}/gmbai.XXXXXX")"
+      for _d in "$ROOT/build/libs/$RID"/libgmb*.dylib "$LIBS_CACHE"/libgmb*.dylib; do
+        [ -f "$_d" ] || continue
+        # `|| true`: una dylib senza import flat-namespace fa uscire `grep` con 1 e con
+        # `set -e -o pipefail` fermerebbe tutto lo script.
+        dyld_info -imports "$_d" 2>/dev/null | grep 'flat-namespace' \
+          | tr -s ' ' | cut -d' ' -f2 | grep '^_' || true
+      done | sort -u > "$_ai_syms"
+      printf '%s\n' _llmdesc_abi_valid _llmdesc_abi_locate _llmdesc_set_abi_policy >> "$_ai_syms"
+      sort -u -o "$_ai_syms" "$_ai_syms"
+      while IFS= read -r _s; do EXPORTDYN="$EXPORTDYN -Wl,-u,$_s"; done < "$_ai_syms"
+      rm -f "$_ai_syms"
+    else
+      echo "[c99native] dyld_info assente: export dei simboli cercati dalle dylib non forzato" >&2
+    fi
+    ;;
+esac
 ASRLIB="$L/gmb_runtime_c_build/llmasr_build/libllm_asr.a"
 [ -f "$ASRLIB" ] || ASRLIB="$ROOT/native/gmb_runtime_c/build/llmasr_build/libllm_asr.a"
 # -dead_strip_dylibs: ld64 tiene SOLO le dylib che servono davvero ai simboli usati dal
 # programma. Prima ogni `-l` finiva comunque in LC_LOAD_DYLIB (16 dipendenze per un PRINT).
-if [ "$MIN_LINK" = "1" ]; then
-  # Link MINIMO: solo runtime minimo + chart (matrici) e le lib di sistema. Niente UI,
-  # niente doc/agent/compiler: l'eseguibile che ne esce NON ha librerie esterne.
-  # niente TORCH_OBJS/JINJA_OBJ: tirano dentro gfx/UI (e un programma testuale non li usa).
-  # LLMDESC: il runtime MINIMO include `gmb_abi.o` (forzato nel link da `gmb_paths.c` via
-  # `gmb_abi_link_anchor`) che usa `llmdesc_abi_*` e registra la policy ABI: senza questa
-  # statica il link minimo falliva SEMPRE ("_llmdesc_abi_locate non definito") e si ripiegava
-  # in silenzio sul lib-set completo — quindi nessun programma testuale usava davvero il minimo.
-  LLMDESC_LIB="$ROOT/native/gmb_runtime_c/build/llmdesc_build/libllmdesc.a"
-  [ -f "$LLMDESC_LIB" ] || LLMDESC_LIB="$ROOT/native/gmb_vm_c/build/gmb_runtime_c_build/llmdesc_build/libllmdesc.a"
-  [ -f "$LLMDESC_LIB" ] || LLMDESC_LIB=""
-  $CC_BIN $CF $CCFIRST $STRIPDYLIB $EXPORTDYN "$DIR/$CASE.o" -o "$OUTBIN" \
-    "$RUNTIME_LIB" $TRAY_LINK "$ROOT/native/gmb_runtime_c/build/gmb_chart_build/libgmb_chart.a" \
-    ${LLMDESC_LIB:+"$LLMDESC_LIB"} \
-    -lpthread -lm -lz -lbz2 -lcurl -lcompression 2>/tmp/gmb_minlink.err || {
-      echo "[c99native] link minimo fallito, uso il lib-set completo (vedi /tmp/gmb_minlink.err)" >&2
-      # Il ripiego deve CAMBIARE davvero runtime: prima RUNTIME_LIB restava la MIN lib, così
-      # il "lib-set completo" linkava il runtime minimo e falliva con "Undefined symbols"
-      # (caso reale 2026-10-30: `_gmb_msg_delivery_stats` mancante nella min stale) — un
-      # messaggio che accusa il programma invece della lib.
-      # Il runtime COMPLETO è quello canonico (`gmb_runtime_c/build`, ricostruito sopra):
-      # la copia nel tree VM/C resta solo come fallback.
-      RUNTIME_LIB="$FULL_LIB"
-      MIN_LINK=0
-    }
-fi
-if [ "$MIN_LINK" = "0" ]; then
 # Il COMPILATORE C scarica le librerie che gli servono per il link (asset per-file): se una
 # delle lib della cache è assente, `gmb_libs_fetch` la prende dal bundle `<libreria>-<rid><ext>`
 # e la mette in ~/.gmbasic/libs/<rid>/. Prima del 2026-10-29 il link falliva e basta.
@@ -355,7 +352,6 @@ $CC_BIN $CF $CCFIRST $STRIPDYLIB $EXPORTDYN $RPATH_LOADER -Wl,-rpath,"$CODEC" "$
   "$LIBS_CACHE/libSDL2_mixer.dylib" "$LIBS_CACHE/libSDL2_ttf.dylib" "$LIBS_CACHE/libSDL2.dylib" \
   "$LIBS_CACHE/liblzma.5.dylib" "$LIBS_CACHE/liblz4.1.10.0.dylib" "$LIBS_CACHE/libMoltenVK.dylib" \
   -L"$LLMTOKEN_DIR" -lllmtoken -Wl,-rpath,"$LLMTOKEN_DIR" -lz
-fi
 # ── BUNDLE: il compilato si distribuisce SENZA compilatore ────────────────────────────────────
 # Accanto all'eseguibile finiscono i file che gli servono a girare da solo, su una macchina dove
 # non esistono né il repo né `shared/settings/`: i settings (`system.settings.json`), l'override

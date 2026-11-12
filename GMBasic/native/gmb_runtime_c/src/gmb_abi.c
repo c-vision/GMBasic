@@ -525,8 +525,11 @@ int gmb_abi_dir(char* out, size_t cap)
         snprintf(out, cap, "%s", g_abi_dir);
         return 0;
     }
-    /* 2. prima esecuzione (o percorso non piu' valido): localizza e ricorda */
-    if (!ok && g_llmdesc_locate(found, sizeof found, how, sizeof how)) ok = 2;
+    /* 2. prima esecuzione (o percorso non piu' valido): localizza e ricorda.
+     * Il puntatore va verificato: `gmb_abi_available()` garantisce `g_llmdesc_valid`, non
+     * `g_llmdesc_locate` (una registrazione parziale lo lascia a NULL) e una chiamata a 0 e'
+     * un crash dell'eseguibile, non un errore ABI. */
+    if (!ok && g_llmdesc_locate && g_llmdesc_locate(found, sizeof found, how, sizeof how)) ok = 2;
     /* 2b. MONOREPO: LLMEnv è un progetto FRATELLO (<repo>/../LLMEnv/ABI). llmdesc_abi_locate
      * conosce solo install (pkg/Homebrew) e albero sorgente RISALENDO da cwd/eseguibile/libreria:
      * in un run di test (cwd nei binari, libreria in una cache) non trova NULLA, e ogni
@@ -592,5 +595,20 @@ __attribute__((constructor)) static void gmb_abi_register(void)
     if (g_llmdesc_policy) g_llmdesc_policy(gmb_abi_dir, 1);
 }
 
-/* Riferimento forzato dal modulo paths: tiene il file oggetto nel link anche da libreria statica. */
-void gmb_abi_link_anchor(void) { }
+/* Riferimento forzato dal modulo paths: tiene il file oggetto nel link anche da libreria statica.
+ *
+ * Inoltre tiene VIVO `gmb_abi_set_llmdesc` per il lookup A LOAD-TIME della dylib
+ * `gmb_runtime_ai`: il suo costruttore la risolve con `-undefined dynamic_lookup` (flat namespace)
+ * e NESSUN codice dell'eseguibile la chiama. ld64 la esporta comunque; lld di `zig cc` la
+ * dead-strippa perché nulla la referenzia (misurato il 2026-11-12: eseguibile con 198 simboli
+ * esportati invece di 4020, `_gmb_abi_set_llmdesc` assente, e il costruttore della dylib saltava
+ * a 0 — EXC_BAD_ACCESS at 0x0 prima di `main`). Prendere qui l'indirizzo rende il simbolo
+ * raggiungibile, quindi resta nel link ed è esportato da entrambi i linker. `volatile` perché
+ * l'ottimizzatore non può togliere la relocazione. */
+void gmb_abi_link_anchor(void)
+{
+    static void (*volatile keep_services)(int (*)(const char*),
+                                          int (*)(char*, size_t, char*, size_t),
+                                          void (*)(int (*)(char*, size_t), int)) = gmb_abi_set_llmdesc;
+    (void)keep_services;
+}
