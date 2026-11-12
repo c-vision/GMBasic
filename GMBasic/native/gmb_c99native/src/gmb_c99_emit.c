@@ -2403,6 +2403,20 @@ static int imap_type_of(ctx_t* c, const char* name) {
 }
 
 int etype(ctx_t* c, gmb_expr_t* e) {
+    /* Membro LISTA di un dict dinamico (`tb.rows`/`tb.headers` delle tabelle
+     * CONVERT.TABLES): DINAMICO. Va deciso PRESTO: nel pre-pass di registrazione il loop
+     * var del FOR EACH (`tb`) non è ancora in tabella (lookup NULL) e il typing cadeva su
+     * STRING → l'inizializzazione passava da emit_str_operand e serializzava la lista
+     * (UBOUND(rows) = 0, convert/md_tables). */
+    if (e && e->kind == GMB_EXPR_VAR && e->var) {
+        const char* _rd = strrchr(e->var, '.');
+        if (_rd && _rd[1] && (!strcasecmp(_rd + 1, "rows") || !strcasecmp(_rd + 1, "headers"))) {
+            char _rb[160]; size_t _rl = (size_t)(_rd - e->var);
+            var_t* _rv = NULL;
+            if (_rl > 0 && _rl < sizeof(_rb)) { memcpy(_rb, e->var, _rl); _rb[_rl] = 0; _rv = lookup_var(c, _rb); }
+            if (!_rv || (_rv->boxed_val && !_rv->gkind && !_rv->vclass[0])) return TY_VAL;
+        }
+    }
     /* ADR-MATRIX F4: membro/fattore di una DECOMPOSIZIONE (`lu.U`, `lu.U(i,j)`): valore
      * MATRICE → NUMERICO (mai valorizzato come gmb_val_to_double/dict). */
     if (e && e->var && decomp_factor_call(c, e, (char[8]){0})) return TY_NUM;
@@ -2914,7 +2928,15 @@ int etype(ctx_t* c, gmb_expr_t* e) {
                          * come valori). Lettura grezza nel dispatch VAR sotto. */
                         if (bv->posted_val) return TY_VAL;
                         if (bv->rgba_obj) return TY_NUM;   /* .Red/.Green/.Blue/.Alpha numerici */
-                        if (bv->boxed_val && !bv->gkind && !bv->stats_val) return TY_STR;
+                        if (bv->boxed_val && !bv->gkind && !bv->stats_val) {
+                            /* Membri che per contratto sono LISTE (tabelle CONVERT.TABLES):
+                             * dinamicI. Tiparli STRING faceva serializzare il valore in
+                             * gmb_val_to_string e UBOUND leggeva una stringa → 0
+                             * (convert/md_tables: `DIM rs = tb.rows`). */
+                            if (strcasecmp(bmd + 1, "rows") == 0 || strcasecmp(bmd + 1, "headers") == 0)
+                                return TY_VAL;
+                            return TY_STR;
+                        }
                         /* req.BodyJson / req.Params: il membro è un DICT (val dinamico), non stringa/numero. */
                         /* SOLO lettura del MEMBRO (`req.Params` nudo = dict, TY_VAL): la forma
                          * CHIAMATA `req.Params("k")` (nargs>=1) ritorna una STRINGA → lascia
@@ -15142,15 +15164,20 @@ void emit_expr(ctx_t* c, gmb_expr_t* e) {
                             /* CONVERT.* Markdown AST: i campi sono chiavi del dict del blocco
                              * (text/url/language/...). Lettura come stringa (parity emitter C#
                              * gmb_val_to_string(gmb_dict_get(gmb_val_as_dict(h), "text"))).
+                             * ECCEZIONE: `rows`/`headers` sono LISTE (tabelle): si emette il
+                             * valore GREZZO (gmb_val_t), altrimenti la lista veniva serializzata
+                             * a stringa e `UBOUND(tb.rows)` leggeva 0 (convert/md_tables).
                              * emit_ident (non sb_ident) per onorare l'imap del FOR EACH. */
-                            sb_put(&c->out, "gmb_val_to_string(gmb_dict_get(gmb_val_as_dict(");
+                            int _md_list = (!strcasecmp(bmd + 1, "rows") || !strcasecmp(bmd + 1, "headers"));
+                            sb_put(&c->out, _md_list ? "gmb_dict_get(gmb_val_as_dict("
+                                                     : "gmb_val_to_string(gmb_dict_get(gmb_val_as_dict(");
                             emit_ident(c, bv->name);
                             sb_put(&c->out, "), \"");
                             for (const char* p = bmd + 1; *p; p++) {
                                 if (*p == '"' || *p == '\\') sb_put(&c->out, "\\");
                                 sb_putn(&c->out, p, 1);
                             }
-                            sb_put(&c->out, "\"))");
+                            sb_put(&c->out, _md_list ? "\")" : "\"))");
                             break;
                         }
                         if (bv->stats_val) {
