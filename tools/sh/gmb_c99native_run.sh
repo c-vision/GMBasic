@@ -18,6 +18,22 @@ fi
 #            win-x64, win-arm64). Fissa triple, OS, framework e terze parti via
 #            `tools/sh/gmb_link_set.sh` (F5): con `--rid linux-x64` da macOS si PRODUCE il binario
 #            Linux e NON lo si esegue (l'esecuzione richiede il RID host).
+#   RUNTIME con un RID ≠ host (cross): il runtime dell'host NON è linkabile per un altro RID —
+#   è Mach-O/COFF, il linker non ne tira nessun oggetto e dichiara undefined OGNI simbolo del
+#   runtime (`gmb_print_stage_end`, `gmb_string_alloc`, `gmb_type_register_udt`, …), un errore
+#   che non dice nulla sul codice BASIC. Si prende il runtime costruito PER QUEL RID, in
+#   quest'ordine (stessa precedenza del MiniTest):
+#     1. la CACHE PER-RID del MiniTest: ${TMPDIR:-/tmp}/gmb_c99native_rt_cache/<rid>/librt.a
+#        (la scrive `tools/sh/test_minitests_c99native`, invalidata da uno stamp di contenuto;
+#         la cartella è per RID perché un run host non deve sovrascrivere quella del cross);
+#     2. l'ARCHIVIO DEL BUILD CROSS: <monorepo>/build/libs/<rid>/libgmb_runtime.a
+#        (`tools/sh/libs_cross_build.sh <rid> --zig <zig>`).
+#   Serve produrne UNA delle due UNA VOLTA SOLA per RID: poi ogni caso cross si costruisce allo
+#   stesso modo di un caso host e si esegue col comando Docker che lo script stampa (per Linux;
+#   un PE32+ richiede Windows/Wine). Se non esiste né la cache né l'archivio, lo script esce 2
+#   elencando i due comandi che li producono, invece di lasciare decine di undefined a valle.
+#   Run host (nessun `--rid`, o il RID dell'host): percorso invariato, runtime canonico di
+#   `native/gmb_runtime_c/build` con il suo `cmake --build` incrementale.
 #   --target triple di destinazione (default: host), es. aarch64-linux-musl / x86_64-apple-darwin.
 #            I flag dipendenti dalla piattaforma (-arch, -dead_strip_dylibs, @loader_path,
 #            dynamic_lookup, estensione delle librerie) si derivano da qui: nessuno e' piu' cablato
@@ -261,9 +277,44 @@ LLMTOKEN_DIR="$LIBS_CACHE"
 # un eseguibile con gli stub a 0, che muore al primo costruttore (EXC_BAD_ACCESS a 0x0) —
 # misurato il 2026-11-12 su llm_tokens_error.bas. Un solo link, quello che funziona: nessun
 # ripiego muto e nessun eseguibile diverso a seconda del linker.
+# RID dell'HOST: serve QUI (non solo in fondo) perché un cross non può linkare il runtime
+# dell'host. Era calcolato ~200 righe più giù, dopo la scelta del runtime.
+case "$(uname -s)-$(uname -m)" in
+  Darwin-arm64)                  HOST_RID=osx-arm64 ;;
+  Darwin-x86_64)                 HOST_RID=osx-x64 ;;
+  Linux-x86_64)                  HOST_RID=linux-x64 ;;
+  Linux-aarch64|Linux-arm64)     HOST_RID=linux-arm64 ;;
+  *)                             HOST_RID=osx-arm64 ;;
+esac
 FULL_LIB="$ROOT/native/gmb_runtime_c/build/libgmb_runtime.a"
 [ -f "$FULL_LIB" ] || FULL_LIB="$L/gmb_runtime_c_build/libgmb_runtime.a"
 RUNTIME_LIB="$FULL_LIB"
+# CROSS (F5): il runtime dell'host NON è linkabile per un altro RID — è Mach-O, lld non ne tira
+# nessun oggetto e il linker dichiara undefined OGNI simbolo del runtime (`gmb_print_stage_end`,
+# `gmb_string_alloc`, `gmb_type_register_udt`, `gmb_print_double`, …), un errore che non dice
+# nulla sul codice BASIC in prova. Si usa il runtime costruito PER QUEL RID, con la stessa
+# precedenza del MiniTest: prima la sua cache per-RID, poi l'archivio del build cross.
+if [ "$RID" != "$HOST_RID" ]; then
+  MONO_DIR="$(cd "$ROOT/.." && pwd)"
+  # Stessa cartella del MiniTest (`test_minitests_c99native`): un runtime per RID, così un run
+  # dell'host non può sovrascrivere per sbaglio quello del cross (bug misurato 2026-11-12).
+  RT_CACHE="${TMPDIR:-/tmp}/gmb_c99native_rt_cache/$RID/librt.a"
+  CROSS_LIB="$MONO_DIR/build/libs/$RID/libgmb_runtime.a"
+  if [ -f "$RT_CACHE" ]; then
+    RUNTIME_LIB="$RT_CACHE"
+    echo "[c99native] runtime $RID: cache per-RID ($RT_CACHE)" >&2
+  elif [ -f "$CROSS_LIB" ]; then
+    RUNTIME_LIB="$CROSS_LIB"
+    echo "[c99native] runtime $RID: archivio del build cross ($CROSS_LIB)" >&2
+  else
+    echo "[c99native] runtime $RID ASSENTE: né la cache per-RID né l'archivio del build cross." >&2
+    echo "  Un cross non può linkare il runtime dell'host ($HOST_RID): senza, il link dichiara" >&2
+    echo "  undefined ogni gmb_* del runtime. Una delle due, una volta sola:" >&2
+    echo "    tools/sh/libs_cross_build.sh $RID --zig <zig>   # archivio CMake per il RID" >&2
+    echo "    GMB_MINI_ONLY=\"<dominio>/<file>.bas\" tools/sh/test_minitests_c99native --rid $RID  # cache per-RID" >&2
+    exit 2
+  fi
+fi
 # TRAY: le funzioni gmb_tray_* vivono in una dylib CONDIVISA (target CMake gmb_tray), non
 # nella statica del runtime. La si ricostruisce in modo incrementale e la si aggiunge al link
 # SOLO se il C generato la usa: un programma testuale senza TRAY resta senza dipendenze.
@@ -489,15 +540,21 @@ fi
 # che i simboli esportati siano presenti.
 # CROSS (F5): un binario per un altro RID si produce e si verifica, NON si esegue — chiedere al
 # loader dell'host un ELF eseguibile su macOS produce solo un errore di exec fuorviante.
-case "$(uname -s)-$(uname -m)" in
-  Darwin-arm64)                  HOST_RID=osx-arm64 ;;
-  Darwin-x86_64)                 HOST_RID=osx-x64 ;;
-  Linux-x86_64)                  HOST_RID=linux-x64 ;;
-  Linux-aarch64|Linux-arm64)     HOST_RID=linux-arm64 ;;
-  *)                             HOST_RID=osx-arm64 ;;
-esac
+# `HOST_RID` è calcolato in cima (serve alla scelta del runtime). Qui si stampa anche COME
+# eseguirlo, così un caso cross si prova senza passare dalla suite.
 if grep -q "int main" "$DIR/$CASE.c" && [ "$RID" != "$HOST_RID" ]; then
   echo "[c99native] cross $RID: binario prodotto ($OUTBIN), non eseguito su $HOST_RID" >&2
+  case "$RID" in
+    linux-x64|linux-arm64)
+      _plat="linux/amd64"; [ "$RID" = linux-arm64 ] && _plat="linux/arm64"
+      echo "  esecuzione (Docker, usa solo la cache del RID):" >&2
+      echo "    docker run --rm --platform $_plat -v \"$OUTBIN:/p\" -v \"$LIBS_CACHE:$LIBS_CACHE:ro\" \\" >&2
+      echo "      -e LD_LIBRARY_PATH=$LIBS_CACHE ubuntu:24.04 /p" >&2
+      ;;
+    win-*)
+      echo "  esecuzione: serve Windows/Wine; il PE32+ è in $OUTBIN" >&2
+      ;;
+  esac
 elif grep -q "int main" "$DIR/$CASE.c"; then
   GMB_TORCH_PATH="${GMB_TORCH_PATH:-$HOME/.gmbasic/libs/ml/$RID}"
   (cd "$DIR" && GMB_TORCH_PATH="$GMB_TORCH_PATH" ./bin/"$(basename "$CASE")" ${PROG_ARGS[@]+"${PROG_ARGS[@]}"})
