@@ -12,10 +12,11 @@
 // topologico delle dipendenze: una sola implementazione, condivisa da IL e bytecode,
 // perché entrambi compilano `MainModule.ExecutionOrder`.
 //
-// Le righe NUMERATE legacy dei moduli importati restano escluse: con una `SUB Main` anche
-// il modulo di ingresso salta le righe < 1_000_000 (vedi IlProgramCompiler.EmitEntryPoint),
-// quindi il comportamento è coerente. Restano raggiungibili via GOTO solo all'interno del
-// proprio modulo (i salti cross-modulo non sono supportati).
+// Le righe NUMERATE legacy non possono esistere in un modulo importato: dentro `NAMESPACE`
+// il parser le rifiuta (stesso messaggio su parser C# e C; MiniTest
+// `constructs/namespace_numeri_riga.bas`), quindi l'inizializzazione di un modulo è fatta
+// solo di righe senza numero. Il filtro `lineNumber < 1_000_000` resta come guardia
+// difensiva (righe numerate di un file raggiunto senza NAMESPACE).
 
 using System.Collections.Immutable;
 
