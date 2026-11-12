@@ -740,6 +740,23 @@ public sealed partial class Compiler
                     EmitByte((byte)OpCode.OP_MAKE_BYREF_GLOBAL);
                     EmitShort((ushort)globalIdx);
                 }
+                else if (ve.SymbolId >= 0)
+                {
+                    /* CREAZIONE IMPLICITA al call-site (2026-11-12): il linker
+                     * (`RewriteSingleArgument`) registra il simbolo per un argomento BYREF con
+                     * SymbolId < 0, ma il compilatore bytecode risolve per NOME e non trova né un
+                     * locale né un globale → cadeva nel ramo BYVAL e la callee scriveva su una
+                     * copia (PCode/VM-C: `Set10(C)` lasciava C=0; IL/C99 corretti). Qui si crea
+                     * lo SLOT con il tipo del parametro e si passa il suo indirizzo: la variabile
+                     * esiste dopo la call (creazione implicita, spec §3.2) e la scrittura torna
+                     * al chiamante. */
+                    AddLocal(ve.NameCleaned, proc!.Parameters[i].DataType);
+                    var newIdx = _locals.Count - 1;
+                    var sfx = ve.NameSuffixed.Lexeme ?? string.Empty;
+                    _locals[newIdx].NumericDefault = sfx.Length == 0 || !sfx.EndsWith('$');
+                    EmitByte((byte)OpCode.OP_MAKE_BYREF);
+                    EmitShort((ushort)newIdx);
+                }
                 else { VisitExpression(expr.Args[i]); }
             }
             else if (isByRef && expr.Args[i] is ArrayAccessExpr aaeByRef && aaeByRef.Indices.Length == 1)
