@@ -26502,7 +26502,10 @@ static void st_aimodel(ctx_t* c, gmb_stmt_t* s) {
         sb_put(&c->out, "gmb_moestream_stmt_load(");
         if (na >= 1) { emit_str_operand(c, a[0]); sb_put(&c->out, ".data"); } else sb_put(&c->out, "\"\"");
         sb_put(&c->out, ", ");
-        if (na >= 2) { emit_str_operand(c, a[1]); sb_put(&c->out, ".data"); } else sb_put(&c->out, "\"\"");
+        /* PATH del modello: passa dal risolutore del runtime (`path.models_root`, `~`, `%MODELS%`).
+         * Il PRIMO argomento di LOAD resta il nome registrato, e lo stesso vale per UNLOAD/CACHE/
+         * PREFETCH/DEVICE/PROMOTE/DEMOTE: quelli NON sono path e non si risolvono. */
+        if (na >= 2) { sb_put(&c->out, "gmb_paths_model_q("); emit_str_operand(c, a[1]); sb_put(&c->out, ".data)"); } else sb_put(&c->out, "\"\"");
         sb_printf(&c->out, ", %d)", na >= 3 ? 1 : 0);
         break;
     case GMB_STMT_AIMODEL_UNLOAD:
@@ -26537,13 +26540,14 @@ static void st_aimodel(ctx_t* c, gmb_stmt_t* s) {
             /* STATEMENT-EXPRESSION (GNU): il valore del comando viene assegnato a `int __ms_rc = …`
              * dal wrapper, quindi qui si DEVE produrre un'ESPRESSIONE, non un blocco-statement. */
             sb_put(&c->out, "({ int _cvrc = llmmodelio_model_convert(");
-            emit_str_operand(c, a[0]); sb_put(&c->out, ".data, ");
+            sb_put(&c->out, "gmb_paths_model_q("); emit_str_operand(c, a[0]); sb_put(&c->out, ".data)");
+            sb_put(&c->out, ", ");
             emit_str_operand(c, a[1]); sb_put(&c->out, ".data, ");
             emit_str_operand(c, a[2]); sb_put(&c->out, ".data);");
             sb_printf(&c->out, " if (_cvrc != 0) gmb_raise_error(_cvrc, \"LLM MODEL CONVERT fallita\", %d); _cvrc; })", s->line);
         } else {
             sb_put(&c->out, "llmmodelio_model_convert(");
-            if (na >= 1) { emit_str_operand(c, a[0]); sb_put(&c->out, ".data"); } else sb_put(&c->out, "\"\"");
+            if (na >= 1) { sb_put(&c->out, "gmb_paths_model_q("); emit_str_operand(c, a[0]); sb_put(&c->out, ".data)"); } else sb_put(&c->out, "\"\"");
             sb_put(&c->out, ", ");
             if (na >= 2) { emit_str_operand(c, a[1]); sb_put(&c->out, ".data"); } else sb_put(&c->out, "\"\"");
             sb_put(&c->out, ", \"GGUF\")");   /* il runtime richiede il 3o arg `fmt` (2 argomenti = GGUF) */
@@ -26551,19 +26555,19 @@ static void st_aimodel(ctx_t* c, gmb_stmt_t* s) {
         break;
     case GMB_STMT_AIMODEL_INSPECT:
         sb_put(&c->out, "gmb_moestream_stmt_inspect(");
-        if (na >= 1) { emit_str_operand(c, a[0]); sb_put(&c->out, ".data"); } else sb_put(&c->out, "\"\"");
+        if (na >= 1) { sb_put(&c->out, "gmb_paths_model_q("); emit_str_operand(c, a[0]); sb_put(&c->out, ".data)"); } else sb_put(&c->out, "\"\"");
             sb_put(&c->out, ")");
         break;
     case GMB_STMT_AIMODEL_SAVE:   /* LLM MODEL SAVE <in>, <out> — model compiler (round-trip GGUF) */
         sb_put(&c->out, "llmmodelio_model_save(");
-        if (na >= 1) { emit_str_operand(c, a[0]); sb_put(&c->out, ".data"); } else sb_put(&c->out, "\"\"");
+        if (na >= 1) { sb_put(&c->out, "gmb_paths_model_q("); emit_str_operand(c, a[0]); sb_put(&c->out, ".data)"); } else sb_put(&c->out, "\"\"");
         sb_put(&c->out, ", ");
         if (na >= 2) { emit_str_operand(c, a[1]); sb_put(&c->out, ".data"); } else sb_put(&c->out, "\"\"");
             sb_put(&c->out, ")");
         break;
     case GMB_STMT_AIMODEL_ABLATE:  /* LLM MODEL ABLATE <in>, <out>, <pattern> — model surgery MODIFICARE */
         sb_put(&c->out, "llmmodelio_model_ablate(");
-        if (na >= 1) { emit_str_operand(c, a[0]); sb_put(&c->out, ".data"); } else sb_put(&c->out, "\"\"");
+        if (na >= 1) { sb_put(&c->out, "gmb_paths_model_q("); emit_str_operand(c, a[0]); sb_put(&c->out, ".data)"); } else sb_put(&c->out, "\"\"");
         sb_put(&c->out, ", ");
         if (na >= 2) { emit_str_operand(c, a[1]); sb_put(&c->out, ".data"); } else sb_put(&c->out, "\"\"");
         sb_put(&c->out, ", ");
@@ -26572,7 +26576,7 @@ static void st_aimodel(ctx_t* c, gmb_stmt_t* s) {
         break;
     case GMB_STMT_AIMODEL_REMOVE:  /* LLM MODEL ABLATE <in>, <out>, <pattern> — model surgery MODIFICARE */
         sb_put(&c->out, "llmmodelio_model_remove_layer(");
-        if (na >= 1) { emit_str_operand(c, a[0]); sb_put(&c->out, ".data"); } else sb_put(&c->out, "\"\"");
+        if (na >= 1) { sb_put(&c->out, "gmb_paths_model_q("); emit_str_operand(c, a[0]); sb_put(&c->out, ".data)"); } else sb_put(&c->out, "\"\"");
         sb_put(&c->out, ", ");
         if (na >= 2) { emit_str_operand(c, a[1]); sb_put(&c->out, ".data"); } else sb_put(&c->out, "\"\"");
         sb_put(&c->out, ", ");
@@ -26581,7 +26585,7 @@ static void st_aimodel(ctx_t* c, gmb_stmt_t* s) {
         break;
     case GMB_STMT_AIMODEL_DIFF:   /* LLM MODEL DIFF <a>, <b>, <out> — checkpoint/rollback */
         sb_put(&c->out, "llmmodelio_model_diff(");
-        if (na >= 1) { emit_str_operand(c, a[0]); sb_put(&c->out, ".data"); } else sb_put(&c->out, "\"\"");
+        if (na >= 1) { sb_put(&c->out, "gmb_paths_model_q("); emit_str_operand(c, a[0]); sb_put(&c->out, ".data)"); } else sb_put(&c->out, "\"\"");
         sb_put(&c->out, ", ");
         if (na >= 2) { emit_str_operand(c, a[1]); sb_put(&c->out, ".data"); } else sb_put(&c->out, "\"\"");
         sb_put(&c->out, ", ");
@@ -26590,7 +26594,7 @@ static void st_aimodel(ctx_t* c, gmb_stmt_t* s) {
         break;
     case GMB_STMT_AIMODEL_CHECKPOINT:  /* LLM MODEL CHECKPOINT <src>, <store>, <name> */
         sb_put(&c->out, "llmmodelio_model_checkpoint(");
-        if (na >= 1) { emit_str_operand(c, a[0]); sb_put(&c->out, ".data"); } else sb_put(&c->out, "\"\"");
+        if (na >= 1) { sb_put(&c->out, "gmb_paths_model_q("); emit_str_operand(c, a[0]); sb_put(&c->out, ".data)"); } else sb_put(&c->out, "\"\"");
         sb_put(&c->out, ", ");
         if (na >= 2) { emit_str_operand(c, a[1]); sb_put(&c->out, ".data"); } else sb_put(&c->out, "\"\"");
         sb_put(&c->out, ", ");
