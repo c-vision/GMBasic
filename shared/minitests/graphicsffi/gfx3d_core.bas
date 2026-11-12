@@ -122,7 +122,10 @@ SUB Main()
   mtx(0) = 1 : mtx(5) = 1 : mtx(10) = 1 : mtx(15) = 1
   PRINT "abtr="; GFX3D.AABBTRANSFORM(ibox(), mtx(), obox()); ":";
   PRINT obox(0); ","; obox(3)
-  DIM op(2) AS DOUBLE, tp(2) AS DOUBLE, dl(2) AS DOUBLE, amn(2) AS DOUBLE, amx(2) AS DOUBLE
+  ' tp serve sia RAYAT (3 valori) sia AABBMAKE (6 valori = min3+max3): con tp(2) la
+  ' AABBMAKE scriveva 3 double OLTRE la fine dell'array → corruzione dell'heap gestito
+  ' (su IL/PCode il processo xUnit moriva in GC; su C99 l'overflow restava silenzioso).
+  DIM op(2) AS DOUBLE, tp(5) AS DOUBLE, dl(2) AS DOUBLE, amn(2) AS DOUBLE, amx(2) AS DOUBLE
   PRINT "orbit="; GFX3D.CAMERAORBIT(eye(), ctr(), 0, 0.5, 6, op()); ":";
   PRINT op(0); ","; op(1); ","; op(2)
   dl(0) = 1 : dl(1) = 0 : dl(2) = 0
