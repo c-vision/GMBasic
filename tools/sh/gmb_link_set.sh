@@ -49,8 +49,12 @@ die() { echo "gmb_link_set: $*" >&2; exit 2; }
 case "$RID" in
   osx-arm64)   LS_OS=Darwin; LS_ARCH=arm64;  LS_TRIPLE=aarch64-macos ;;
   osx-x64)     LS_OS=Darwin; LS_ARCH=x86_64; LS_TRIPLE=x86_64-macos ;;
-  linux-x64)   LS_OS=Linux;  LS_ARCH=x86_64; LS_TRIPLE=x86_64-linux-gnu.2.28 ;;
-  linux-arm64) LS_OS=Linux;  LS_ARCH=arm64;  LS_TRIPLE=aarch64-linux-gnu.2.28 ;;
+  # FLOOR GLIBC = 2.39, MISURATO (2026-11-12). Le `.so` del bundle Linux sono costruite su
+  # Ubuntu 24.04: a 2.28 il link cross si ferma su `dlerror@GLIBC_2.34`, a 2.35 su
+  # `__isoc23_strtol@GLIBC_2.38` (libcrypto) e `fmod@GLIBC_2.38` (libsqlite3). A 2.39 linka.
+  # Con 2.28 il binario prodotto, se linkasse, non avrebbe comunque i simboli per quelle `.so`.
+  linux-x64)   LS_OS=Linux;  LS_ARCH=x86_64; LS_TRIPLE=x86_64-linux-gnu.2.39 ;;
+  linux-arm64) LS_OS=Linux;  LS_ARCH=arm64;  LS_TRIPLE=aarch64-linux-gnu.2.39 ;;
   win-x64)     LS_OS=Windows; LS_ARCH=x86_64; LS_TRIPLE=x86_64-windows-gnu ;;
   win-arm64)   LS_OS=Windows; LS_ARCH=arm64; LS_TRIPLE=aarch64-windows-gnu ;;
   *) die "RID non riconosciuto: $RID (attesi i 6 del piano)" ;;
@@ -120,9 +124,27 @@ LS_SYS=()
 case "$LS_OS" in
   Darwin)  LS_SYS=(-lcurl -lcompression -lz -lbz2 -lsqlite3) ;;
   Linux)   LS_SYS=(-lcurl -lz -lbz2 -lsqlite3 -lm -ldl -lpthread) ;;
-  # Windows: insieme mingw minimo per curl/sqlite/openssl; NON verificato (F4 non ha ancora
-  # prodotto il bundle `runtime` per i due RID Windows) — se il link chiede altro, si aggiunge qui.
-  Windows) LS_SYS=(-lcurl -lz -lbz2 -lsqlite3 -lws2_32 -lbcrypt -luserenv -lole32 -luuid -lm) ;;
+  # Windows — MISURATO il 2026-11-12 (cross da macOS, `zig cc -target x86_64-windows-gnu`, sonda
+  # `int main` con una `-l` per volta). Qui ci sono SOLO librerie che il mingw di zig fornisce
+  # davvero: `ws2_32 bcrypt userenv ole32 uuid m` linkano tutte. Verificate disponibili, se il
+  # link le chiedera': `advapi32 shell32 user32 gdi32 winmm crypt32 iphlpapi psapi secur32 ncrypt
+  # winhttp wldap32 comdlg32 oleaut32 dbghelp normaliz shlwapi uxtheme dwmapi oleacc d3d11 dxgi
+  # mfplat bthprops setupapi version`.
+  # NON stanno qui (erano dichiarate e non potevano risolvere):
+  #  · `curl z sqlite3` — mingw non le ha: nel bundle `win-x64` sono STATICHE in `<cache>/lib/`
+  #    (`libcurl.a libz.a libsqlite3.a`, COFF amd64: verificate), quindi sono TERZE PARTI;
+  #  · `bz2` — nessuna delle due fonti la fornisce (il bundle non ha né `libbz2.a` né `bzlib.h`)
+  #    e non serve: `gmb_bzip2.c` compila `BZ2_*` solo sotto `__has_include(<bzlib.h>)`, quindi
+  #    senza header la funzione resta spenta. Era una `-l` che non poteva risolvere MAI.
+  # MISURATO con l'hello win-x64 linkato per davvero (2026-11-12): senza `version` e `imm32`
+  # il linker si ferma su `GetFileVersionInfoA/VerQueryValueA` (gmb_sdl_console) e su `Imm*`
+  # (IME, gmb_console). Aggiunte dopo la misura; con queste nessun simbolo WinAPI resta scoperto.
+  # NB: il pcre2 statico chiede anche `-DPCRE2_STATIC` in compilazione, altrimenti la sua
+  # dichiarazione diventa il simbolo letterale `__declspec(dllimport) pcre2_compile_8`.
+  # `crypt32` serve perché `libcrypto.a` (OpenSSL 3.5, engine CAPI) referenzia `Cert*`; i nomi
+  # arrivano manglati (`__declspec(dllimport) CertCloseStore`) e sono PROPRIO così anche
+  # nell'import lib del mingw: con `-lcrypt32` linkano (verificato: 0 simboli scoperti).
+  Windows) LS_SYS=(-lws2_32 -lbcrypt -luserenv -lole32 -luuid -lversion -limm32 -lcrypt32 -lm) ;;
 esac
 
 # ── Terze parti: NOME LOGICO + `-L<cache>`; l'estensione la sceglie il linker. ────────────────
@@ -132,6 +154,11 @@ esac
 # MoltenVK esiste solo su macOS (Metal); MLX non è nel perimetro dei due RID Linux/Windows.
 THIRD_LOGIC=(crypto ssl zstd brotlienc brotlidec pcre2-8 SDL2_mixer SDL2_ttf SDL2 lzma lz4)
 [ "$LS_OS" = Darwin ] && THIRD_LOGIC=(crypto ssl zstd brotlienc brotlidec pcre2-8 SDL2_mixer SDL2_ttf SDL2 lzma lz4 MoltenVK)
+# Windows: `curl z sqlite3` entrano qui perché il mingw NON le fornisce e nel bundle sono
+# statiche in `<cache>/lib/`. `SDL2_mixer` nel bundle win-x64 non esiste come libreria (c'è solo
+# `SDL2_mixer.dll`): resta dichiarata di proposito, così finisce in LS_MISSING e il runner dice
+# cosa manca davvero invece di fallire con «unable to find dynamic system library».
+[ "$LS_OS" = Windows ] && THIRD_LOGIC=(crypto ssl zstd brotlienc brotlidec pcre2-8 SDL2_mixer SDL2_ttf SDL2 lzma lz4 curl z sqlite3)
 
 LS_THIRD=()
 LS_MISSING=()
@@ -139,19 +166,55 @@ for _l in "${THIRD_LOGIC[@]}"; do
   case "$LS_DYLIBEXT" in
     dylib) _pat="$CACHE/lib$_l.dylib" ;;   # `-l` risolve via symlink non versionato
     so)    _pat="$CACHE/lib$_l.so" ;;
-    dll)   _pat="$CACHE/lib$_l.dll.a"; [ -f "$_pat" ] || _pat="$CACHE/lib$_l.dll" ;;
+    # Bundle Windows: le terze parti stanno in `<cache>/lib` come STATICHE mingw (`libcurl.a`,
+    # COFF amd64) accanto alle import lib (`*.dll.a`) e alle DLL alla radice; il vecchio lookup
+    # guardava solo `lib<name>.dll.a`/`.dll` nella radice e non trovava mai nulla.
+    dll)   _pat="$CACHE/lib$_l.dll.a"; [ -f "$_pat" ] || _pat="$CACHE/lib$_l.dll"; [ -f "$_pat" ] || _pat="$CACHE/lib/lib$_l.a"
+           # Alcune terze parti hanno SOLO la DLL, senza import lib (bundle win-x64: `SDL2_mixer.dll`
+           # alla radice). lld accetta una DLL come input di link e si genera l'import da sé
+           # (verificato: `zig cc -target x86_64-windows-gnu t.c SDL2_mixer.dll` → exit 0).
+           [ -f "$_pat" ] || _pat="$CACHE/lib$_l.dll"; [ -f "$_pat" ] || _pat="$CACHE/$_l.dll" ;;
   esac
   if [ -f "$_pat" ]; then
     LS_THIRD+=("-l$_l")
+  # Il bundle Linux di alcune terze parti ha SOLO il nome versionato (`libSDL2_mixer-2.0.so`),
+  # senza il symlink non versionato che `-lSDL2_mixer` cerca: la `-l` moriva con «unable to find
+  # dynamic system library "SDL2_mixer"». Si linka il file per percorso (il nome resta nell'indice).
+  # NB: niente `ls … | head -1` nella condizione — `ls` muore di SIGPIPE (141) e lo `&&`
+  # diventa falso anche quando un file c'è. Si scorre il glob e si tiene il primo.
+  elif [ "$LS_DYLIBEXT" = so ] && { _v=""; for _f in "$CACHE/lib$_l".so.* "$CACHE/lib$_l"-*.so*; do [ -e "$_f" ] && { _v="$_f"; break; }; done; [ -n "$_v" ]; }; then
+    LS_THIRD+=("$_v")
   else
     LS_MISSING+=("$_l")
   fi
 done
-[ ${#LS_THIRD[@]} -gt 0 ] && LS_THIRD=(-L"$CACHE" "${LS_THIRD[@]}")
+# Windows: le statiche del bundle stanno in `<cache>/lib` (le DLL alla radice) → serve anche
+# quella `-L`, oltre alla radice che vale per macOS/Linux.
+if [ ${#LS_THIRD[@]} -gt 0 ]; then
+  if [ "$LS_OS" = Windows ]; then LS_THIRD=(-L"$CACHE" -L"$CACHE/lib" "${LS_THIRD[@]}")
+  else LS_THIRD=(-L"$CACHE" "${LS_THIRD[@]}"); fi
+fi
 
 # ── agent_runtime: solo Darwin (i suoi oggetti usano AX/CG). ──────────────────────────────────
 LS_AGENT=0
 [ "$LS_OS" = Darwin ] && LS_AGENT=1
+
+# ── LLM dell'host (`llmtoken`, `llmcodec_*`, `gmbllm_*`, `llmengine_plugin`, `llmdesc`). ───────
+# Sono costruite da LLMEnv PER LA MACCHINA CHE LE COMPILA (dylib Mach-O arm64, archivi COFF della
+# cache dell'host): per un RID diverso non esistono. Chiederle in un link cross non aggiunge «una
+# -l in più»: produce `archive member ... not a mach-o file` / `unable to find -lllmtoken`, cioè
+# errori che nascondono quello VERO. Stesso patto di `LS_AGENT`: il gate le toglie e il chiamante
+# lo dichiara.
+LS_LLM=0
+case "$(uname -s 2>/dev/null):$(uname -m 2>/dev/null)" in
+  Darwin:arm64)                              LS_HOST_RID=osx-arm64 ;;
+  Darwin:x86_64)                             LS_HOST_RID=osx-x64 ;;
+  Linux:x86_64)                              LS_HOST_RID=linux-x64 ;;
+  Linux:aarch64|Linux:arm64)                  LS_HOST_RID=linux-arm64 ;;
+  MINGW*:x86_64|MSYS*:x86_64|Windows_NT:x86_64) LS_HOST_RID=win-x64 ;;
+  *)                                         LS_HOST_RID="" ;;
+esac
+[ "$RID" = "$LS_HOST_RID" ] && LS_LLM=1
 
 # ── File ESATTI da scaricare, dall'indice del RID (niente `.dylib` cablati). ──────────────────
 # Per ogni nome logico si prende la riga dell'indice con basename `lib<l>` o `lib<l>.<…>`,
@@ -184,7 +247,9 @@ if [ -n "$PRINT" ]; then
     arch)     echo "$LS_ARCH" ;;
     dylibext) echo "$LS_DYLIBEXT" ;;
     agent)    echo "$LS_AGENT" ;;
-    *) die "--print: campo sconosciuto: $PRINT (triple|os|arch|dylibext|agent)" ;;
+    llm)      echo "$LS_LLM" ;;
+    host-rid) echo "$LS_HOST_RID" ;;
+      *) die "--print: campo sconosciuto: $PRINT (triple|os|arch|dylibext|agent|llm|host-rid)" ;;
   esac
   exit 0
 fi
@@ -200,6 +265,8 @@ printf 'LS_RPATH=%q\n' "$LS_RPATH"
 printf 'LS_UNDEF=%q\n' "$LS_UNDEF"
 printf 'LS_NM_GU=%q\n' "$LS_NM_GU"
 printf 'LS_AGENT=%q\n' "$LS_AGENT"
+printf 'LS_LLM=%q\n' "$LS_LLM"
+printf 'LS_HOST_RID=%q\n' "$LS_HOST_RID"
 printf 'LS_SDK=('
 for _a in ${LS_SDK[@]+"${LS_SDK[@]}"}; do printf '%q ' "$_a"; done
 printf ')\n'
