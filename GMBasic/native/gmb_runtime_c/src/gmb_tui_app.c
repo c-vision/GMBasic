@@ -574,8 +574,8 @@ static int modal_control_cb(const gmb_ui_event_t* ev, void* ctx)
     {
         char out[65536];
         size_t n = gmb_render_screen(buf, out, sizeof(out));
-        fwrite(out, 1, n, stdout);
-        fflush(stdout);
+        FILE* co = gmb_tui_console_out();   /* console di sistema, non il canale dati */
+        if (n && co) { fwrite(out, 1, n, co); fflush(co); }
     }
     return 1;
 }
@@ -1368,9 +1368,10 @@ int gmb_tui_controls_frame(int frame_ms)
         static gmb_cell_color_t s_bg = GMB_CELLCOLOR_DEFAULT;
         if (!s_cursor_hidden)
         {
-            /* Primo frame TEXT: pulisci, nascondi il cursore, abilita il mouse reporting. */
-            fputs("\x1b[2J\x1b[H\x1b[?25l\x1b[?1000h\x1b[?1003h\x1b[?1006h", stdout);
-            fflush(stdout);
+            /* Primo frame TEXT: pulisci, nascondi il cursore, abilita il mouse reporting.
+             * Sulla CONSOLE DI SISTEMA (gmb_tui_console_out): mai sul canale dati. */
+            FILE* co0 = gmb_tui_console_out();
+            if (co0) { fputs("\x1b[2J\x1b[H\x1b[?25l\x1b[?1000h\x1b[?1003h\x1b[?1006h", co0); fflush(co0); }
             gmb_clipper_mouse_enable();
             s_cursor_hidden = 1;
         }
@@ -1379,7 +1380,8 @@ int gmb_tui_controls_frame(int frame_ms)
         {
             char out[1 << 20];
             size_t n = gmb_render_screen_diff(buf, s_have_prev ? s_prev : NULL, &s_fg, &s_bg, out, sizeof(out));
-            if (n) { fwrite(out, 1, n, stdout); fflush(stdout); }
+            FILE* co = gmb_tui_console_out();
+            if (n && co) { fwrite(out, 1, n, co); fflush(co); }
             if (s_prev) gmb_screen_buffer_copy_to(s_prev, buf);
             s_have_prev = 1;
         }

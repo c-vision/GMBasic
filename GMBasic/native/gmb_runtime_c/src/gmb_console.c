@@ -104,6 +104,37 @@ void gmb_print_stage_end(int commit)
  * ========================================================================== */
 /* s_tui_on / s_tui_row / s_tui_col: definiti sopra (servono anche allo staging). */
 
+/* ============================================================================
+ * CONSOLE DI SISTEMA per i FRAME TUI (2026-11-12)
+ *
+ * I frame (clear + render ANSI del buffer TUI) NON sono output del programma: sono
+ * interfaccia. Vanno quindi sulla console di sistema, MAI sul canale dati del processo:
+ * prima si scriveva sempre su stdout, così con l'output rediretto (harness, `prog > f`,
+ * pipe, servizio) i frame finivano DENTRO l'output del programma — su VMC
+ * `controls/window_events` stampava i bordi `┌─[■]…` prima di `flags: …`, e sul VHS le
+ * gambe managed li mandavano al terminale dell'harness.
+ *
+ * Regola (una scelta per processo, il terminale non cambia):
+ *   1. stdout è un TERMINALE → è già la console: stdout (uso interattivo normale);
+ *   2. altrimenti il TERMINALE DI CONTROLLO (/dev/tty, su Windows CONOUT$);
+ *   3. nessun terminale (headless, servizio, CI) → NULL: i frame si SCARTANO.
+ * ========================================================================== */
+FILE* gmb_tui_console_out(void)
+{
+    static int done = 0;
+    static FILE* f = NULL;
+    if (done) return f;
+    done = 1;
+#if defined(_WIN32) || defined(_WIN64)
+    if (_isatty(_fileno(stdout))) { f = stdout; return f; }
+    f = fopen("CONOUT$", "w");
+#else
+    if (isatty(fileno(stdout))) { f = stdout; return f; }
+    f = fopen("/dev/tty", "w");
+#endif
+    return f;
+}
+
 void gmb_tui_screen_enable(void)
 {
     /* Settings: applica consoleConfiguration[0] (charGrid/logical) una volta. */
@@ -112,7 +143,8 @@ void gmb_tui_screen_enable(void)
      * banner/compilazione restano mescolati al frame). */
     { void gmb_console_apply_env_once(void); gmb_console_apply_env_once(); }
     if (!s_tui_on) {
-        fputs("\x1b[2J\x1b[H\x1b[?25l", stdout); fflush(stdout);
+        FILE* co = gmb_tui_console_out();   /* console di sistema, MAI il canale dati */
+        if (co) { fputs("\x1b[2J\x1b[H\x1b[?25l", co); fflush(co); }
         /* Desktop dal TEMA (default Turbo = blu Borland + ░): un'unica famiglia di
          * finestre/controlli, nessuna palette "Clipper" separata. */
         gmb_clipper_state_t* st = gmb_clipper_global_state();
@@ -152,7 +184,10 @@ void gmb_tui_screen_flush(void)
         fbuf = nb; fcap = need;
     }
     size_t n = gmb_render_screen(st->buffer, fbuf, fcap);
-    if (n) { fwrite(fbuf, 1, n, stdout); fflush(stdout); }
+    {   /* frame sulla CONSOLE DI SISTEMA (mai sul canale dati: vedi gmb_tui_console_out) */
+        FILE* co = gmb_tui_console_out();
+        if (n && co) { fwrite(fbuf, 1, n, co); fflush(co); }
+    }
 }
 
 /* Offset (0-based) del contenuto della finestra attiva: focalizzata, altrimenti la prima. */

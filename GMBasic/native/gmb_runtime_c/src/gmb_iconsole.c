@@ -215,18 +215,20 @@ static void io_present_ansi(gmb_iconsole_t* c)
      * SOLO i campi RGB (senza, StandardConsole usciva nero su nero). */
     gmb_sdl_console_resolve_colors(i->model);
     size_t n = gmb_render_screen(b, buf, cap);
+    /* Frame sulla CONSOLE DI SISTEMA (gmb_tui_console_out): mai sul canale dati. */
+    FILE* co = gmb_tui_console_out();
     /* Synchronized update (DEC 2026 ?2026h/l): il terminale applica TUTTO il frame in una
      * volta -> niente flicker e niente shift dell'ultima riga (status bar) durante il
      * drag: prima il frame era una sola write, ma il terminale lo applicava a celle.
      * No-op sui terminali che non lo supportano; sync su kitty/iTerm2/Terminal.app recente. */
-    if (n) { fputs("\x1b[?2026h", stdout); fwrite(buf, 1, n, stdout); fputs("\x1b[?2026l", stdout); }
+    if (n && co) { fputs("\x1b[?2026h", co); fwrite(buf, 1, n, co); fputs("\x1b[?2026l", co); }
     /* RenderBuffer C#: dopo il frame il cursore REALE va sulla posizione logica e
      * torna visibile (è il cursore lampeggiante del terminale). */
     { int cr = gmb_sdl_console_cursor_row(i->model), cc = gmb_sdl_console_cursor_col(i->model);
       if (cr < 0) cr = 0; if (cc < 0) cc = 0;
-      fprintf(stdout, "\x1b[%d;%dH", cr + 1, cc + 1);
-      fputs(gmb_sdl_console_cursor_visible(i->model) ? "\x1b[?25h" : "\x1b[?25l", stdout); }
-    fflush(stdout);
+      if (co) fprintf(co, "\x1b[%d;%dH", cr + 1, cc + 1);
+      if (co) fputs(gmb_sdl_console_cursor_visible(i->model) ? "\x1b[?25h" : "\x1b[?25l", co); }
+    if (co) fflush(co);
     free(buf);
     i->model->dirty = 0;
 }

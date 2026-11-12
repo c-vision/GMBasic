@@ -1,5 +1,4 @@
 ' MiniTest: ON WINDOW — forme dell'azione e forme della clausola OF.
-' TAG: exitcode — l'output contiene i FRAME TUI (solo VMC li renderizza): la parita' si verifica sull'exit code.
 ' Copre: CALL sub(), GOSUB sub, GOTO <label locale>, GOSUB <label locale>, STOP (deregistra),
 ' OF <espressione> (handle calcolato) e forma SENZA OF (wildcard: vale per ogni finestra).
 ' Gli handler girano come TASK GPM: si osservano i flag dopo un SLEEP 0 (contratto della guida).

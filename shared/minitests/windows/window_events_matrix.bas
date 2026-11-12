@@ -1,5 +1,4 @@
 ' MiniTest: ON WINDOW <EVENTO> OF <handle> — matrice degli eventi innalzabili in headless.
-' TAG: exitcode — l'output contiene i FRAME TUI (solo VMC li renderizza): la parita' si verifica sull'exit code.
 ' Verifica, per OGNI evento che si può innalzare senza input/display, che:
 '   - l'handler registrato con OF <handle> scatta SOLO per la finestra dell'handle;
 '   - l'evento arriva su tutte e 4 le gambe con lo stesso risultato.

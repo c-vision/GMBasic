@@ -152,8 +152,7 @@ public class MiniTestsParityTests
         return ok;
     }
 
-    private static string RunPCode(string file) => RunPCode(file, out _);
-    private static string RunPCode(string file, out int exitCode)
+    private static string RunPCode(string file)
     {
         var originalCwd = Directory.GetCurrentDirectory();
         var originalOut = Console.Out;
@@ -187,19 +186,16 @@ public class MiniTestsParityTests
                 throw new Exception($"[PCode] {file} TIMEOUT (20s) — park/interattivo");
             if (pcerr != null) throw pcerr;
             Assert.True(r.Success, $"[PCode] {file} fallito:\n{r.Output}");
-            exitCode = r.ExitCode;
             return r.Output;
         }
         finally { Console.SetOut(originalOut); Directory.SetCurrentDirectory(originalCwd); }
     }
 
-    private static string RunIl(string file) => RunIl(file, out _);
-    private static string RunIl(string file, out int exitCode)
+    private static string RunIl(string file)
     {
         var originalCwd = Directory.GetCurrentDirectory();
         var originalOut = Console.Out;
         var sw = new StringWriter();
-        var ilExit = 0;
         try
         {
             CleanupDbfTempFiles();
@@ -223,12 +219,10 @@ public class MiniTestsParityTests
                 // PRINT finiva nel buffer vecchio (output vuoto). Reinstalla l'host QUI.
                 Basic.IlBackend.IlRuntime.SetCurrent(ilHost);
                 Basic.IlBackend.IlRuntime.SetCurrentForThread(ilHost);
-                var __rc = main.Invoke(null, null);
-                ilExit = __rc is null ? 0 : Convert.ToInt32(__rc);
+                main.Invoke(null, null);
             }, TimeSpan.FromSeconds(20), out var ilerr);
             Assert.True(task, $"[IL] {file} TIMEOUT\n{sw}");
             if (ilerr != null) throw ilerr;
-            exitCode = ilExit;
             return sw.ToString();
         }
         finally
@@ -331,27 +325,6 @@ public class MiniTestsParityTests
     private static bool HeavyEnabled() =>
         string.Equals(Environment.GetEnvironmentVariable("GMB_RUN_HEAVY"), "1", StringComparison.Ordinal);
 
-    /// <summary>MiniTest il cui esito è l'EXIT CODE (`FUNCTION Main AS INTEGER`: 0 = pass,
-    /// ≠0 = fail), marcato con `' TAG: exitcode`. Serve ai test che creano/renderizzano
-    /// FINESTRE: sul VMC (runtime C, TEXT) i frame TUI finiscono in stdout mentre IL/PCode
-    /// sono headless, quindi l'OUTPUT non è confrontabile fra gambe — l'esito lo è.
-    /// Per questi file il parity runner confronta gli exit code e NON il testo.</summary>
-    private static bool IsExitCodeTest(string file)
-    {
-        try
-        {
-            foreach (var line in File.ReadLines(file))
-            {
-                var t = line.TrimStart();
-                if (t.Length == 0) continue;
-                if (t[0] != '\'') break;
-                if (t.StartsWith("' TAG: exitcode", StringComparison.Ordinal)) return true;
-            }
-        }
-        catch { }
-        return false;
-    }
-
     private static void CheckExpect(string file, string who, string output, List<string> mismatches)
     {
         var expect = ReadExpect(file);
@@ -429,11 +402,8 @@ public class MiniTestsParityTests
         }
     }
 
-    private static string RunVmc(string file) { var s = RunVmcRaw(file, out var rc); Assert.True(rc == 0, $"[VMC] {file} exit={rc}"); return s; }
-    private static string RunVmc(string file, out int exitCode) => RunVmcRaw(file, out exitCode);
-    private static string RunVmcRaw(string file, out int exitCode)
+    private static string RunVmc(string file)
     {
-        exitCode = -1;
         CleanupArtifacts(file);
         CleanupBinDir(file);
         var exePath = ResolveVmcHost();
@@ -506,7 +476,7 @@ public class MiniTestsParityTests
             }
             var stdout = stdoutTask.GetAwaiter().GetResult();
             var stderr = stderrTask.GetAwaiter().GetResult();
-            exitCode = proc.ExitCode;
+            Assert.True(proc.ExitCode == 0, $"[VMC] {file} exit={proc.ExitCode}\n{stdout}\nSTDERR: {stderr}");
             return stdout;
         }
         finally { try { File.Delete(chunkPath); } catch { } }
@@ -608,30 +578,6 @@ public class MiniTestsParityTests
         var mismatches = new List<string>();
         foreach (var f in files)
         {
-            // TEST A ESITO = EXIT CODE (`' TAG: exitcode`): i MiniTest che creano/renderizzano
-            // FINESTRE producono, sul VMC (runtime C, TEXT), i frame TUI in stdout mentre
-            // IL/PCode sono headless → l'OUTPUT non è confrontabile (lo dichiara il test
-            // stesso). L'esito invece lo è: si confrontano gli exit code delle tre gambe e si
-            // richiede 0 (FUNCTION Main AS INTEGER: 0 = pass, ≠0 = fail).
-            if (IsExitCodeTest(f))
-            {
-                int pcx = -1, ilx = -1, vmcx = -1;
-                ResetAgents();
-                Basic.IlBackend.IlRuntime.FormReset();
-                var pcOut = RunLegOutput(() => RunPCode(f, out pcx));
-                ResetAgents();
-                Basic.IlBackend.IlRuntime.FormReset();
-                var ilOut = RunLegOutput(() => RunIl(f, out ilx));
-                ResetAgents();
-                var vmcOut = RunLegOutput(() => RunVmc(f, out vmcx));
-                if (pcx != ilx)
-                    mismatches.Add($"{Path.GetFileName(f)}: exit PCode {pcx} != IL {ilx}\n  PCode: {pcOut}\n  IL:    {ilOut}");
-                if (pcx != vmcx)
-                    mismatches.Add($"{Path.GetFileName(f)}: exit PCode {pcx} != VMC {vmcx}\n  VMC:   {vmcOut}");
-                if (pcx != 0)
-                    mismatches.Add($"{Path.GetFileName(f)}: exit code {pcx} (0 = pass) — esito FAIL della gamba\n  PCode: {pcOut}\n  IL:    {ilOut}\n  VMC:   {vmcOut}");
-                continue;
-            }
             // Ogni gamba produce un OUTPUT NORMALIZZATO: stdout se riesce, il MESSAGGIO
             // d'errore (normalizzato cross-formato) se lancia. Prima un'eccezione PCode
             // abortiva il file con "PCode eccezione" e le gambe non erano confrontabili:

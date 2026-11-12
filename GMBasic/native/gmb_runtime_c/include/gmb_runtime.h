@@ -620,6 +620,10 @@ int  gmb_c64_is_vfill(int cp);
 void gmb_gfx_draw_glyph_vfill(int cp, int x, int y, int cw, int ch, uint32_t color);
 int  gmb_tui_screen_active(void);
 void gmb_tui_screen_flush(void);
+/* Console di SISTEMA per i frame TUI: terminale di stdout se è un tty, altrimenti il
+ * terminale di controllo (/dev/tty, Windows CONOUT$), altrimenti NULL (frame scartati).
+ * I frame TUI NON vanno mai sul canale dati del processo (stdout rediretto/pipe). */
+FILE* gmb_tui_console_out(void);
 
 /* CPRINT: forza la stampa su console (stdout), ignorando TUI/gfx. */
 void gmb_print_force_console(int on);
