@@ -104,6 +104,20 @@ TARGET_RID="${PRE_RID:-$HOST_RID}"
 eval "$(bash "$MONO/tools/sh/gmb_link_set.sh" --rid "$TARGET_RID" --cache "$HOME/.gmbasic/libs/$TARGET_RID")" || exit 2
 # `-target` DOPO il resolver (LS_SDK nasce lì): ordine sbagliato = `set -u` rosso su LS_SDK.
 [ -n "$PRE_TRIPLE" ] && TF="-target $PRE_TRIPLE ${LS_SDK[*]+${LS_SDK[*]}}"   # + `-isysroot` (piano L13)
+# ── Vulkan: backend OPZIONALE, aggiunto da CMake solo se il system header esiste. Il bundle del
+# RID non lo porta (`vulkan/vulkan.h` è un header di sistema, non un file scaricabile da lì):
+# senza questo filtro il cross si ferma sulla PRIMA riga di gmb_gfx_vulkan.c. Sull'host, dove
+# l'header c'è, il sorgente resta nel set come prima.
+if [ ! -f "$HOME/.gmbasic/libs/$TARGET_RID/include/vulkan/vulkan.h" ]; then
+  RT_SRCS="$(echo $RT_SRCS | tr ' ' '\n' | grep -v '/gmb_gfx_vulkan.c$' | tr '\n' ' ')"
+fi
+# ── AR: l'`ar` di Apple RIFIUTA oggetti non-Mach-O («archive member … not a mach-o file») e
+# scrive un archivio con ZERO membri: il link poi fallisce con «undefined symbol» su tutto il
+# runtime. Per un RID ELF da macOS serve `zig ar` (llvm-ar), ricavato dal primo campo di --cc.
+AR_CMD="ar"
+case "$PRE_CC" in
+  *zig*' cc') AR_CMD="${PRE_CC% cc} ar" ;;
+esac
 FRAMEWORKS="${LS_FRAMEWORKS[*]+${LS_FRAMEWORKS[*]}}"   # vuoto fuori da macOS; `set -u` + bash 3.2
 if [ "$TARGET_RID" != "$HOST_RID" ]; then
   echo "cross $TARGET_RID da $HOST_RID: i binari vengono linkati ma NON eseguiti" >&2
@@ -175,16 +189,20 @@ ensure_static_lib "$ROOT/native/gmb_db_c/build/libgmb_db.a" "$ROOT/native/gmb_db
 # il link con simboli che non esistono più). Policy soft: vedi commento sopra.
 # `gmbllm` è un target INTERFACE (aggregato): gli archivi reali sono gmbllm_core e gmbllm_train
 # (link order: train prima di core), non esiste più un libgmbllm.a da ricostruire.
-ENSURE_POLICY=soft
-ensure_static_lib "$ROOT/native/gmb_runtime_c/build/gmbllm_build/libgmbllm_train.a" \
-  "$ROOT/native/gmb_runtime_c/build" gmbllm_train "$ROOT/gmbllm"
-ensure_static_lib "$ROOT/native/gmb_runtime_c/build/gmbllm_build/libgmbllm_core.a" \
-  "$ROOT/native/gmb_runtime_c/build" gmbllm_core "$ROOT/gmbllm"
-ensure_static_lib "$ROOT/native/gmb_runtime_c/build/llmengine_plugin_build/libllmengine_plugin.a" \
-  "$ROOT/native/gmb_runtime_c/build" llmengine_plugin "$LLMENV/LLMEngine/plugin"
-ensure_static_lib "$ROOT/native/gmb_runtime_c/build/llmdesc_build/libllmdesc.a" \
-  "$ROOT/native/gmb_runtime_c/build" llmdesc "$LLMENV/LLMDesc"
-ENSURE_POLICY=hard
+# Solo per il RID nativo: per un altro RID queste librerie NON si linkano (vedi LINK_IN/LS_LLM),
+# quindi non ha senso compilarle qui (per win-* non compilerebbero nemmeno).
+if [ "$LS_LLM" = 1 ]; then
+  ENSURE_POLICY=soft
+  ensure_static_lib "$ROOT/native/gmb_runtime_c/build/gmbllm_build/libgmbllm_train.a" \
+    "$ROOT/native/gmb_runtime_c/build" gmbllm_train "$ROOT/gmbllm"
+  ensure_static_lib "$ROOT/native/gmb_runtime_c/build/gmbllm_build/libgmbllm_core.a" \
+    "$ROOT/native/gmb_runtime_c/build" gmbllm_core "$ROOT/gmbllm"
+  ensure_static_lib "$ROOT/native/gmb_runtime_c/build/llmengine_plugin_build/libllmengine_plugin.a" \
+    "$ROOT/native/gmb_runtime_c/build" llmengine_plugin "$LLMENV/LLMEngine/plugin"
+  ensure_static_lib "$ROOT/native/gmb_runtime_c/build/llmdesc_build/libllmdesc.a" \
+    "$ROOT/native/gmb_runtime_c/build" llmdesc "$LLMENV/LLMDesc"
+  ENSURE_POLICY=hard
+fi
 
 if [ ! -x "$DRV" ] || [ "$DRV" -ot "$HOST_BUILD/libgmb_compiler_c.a" ] || \
    [ "$DRV" -ot "$DRIVER_SRC" ]; then
@@ -272,7 +290,13 @@ pass=0; fail=0; skip=0
 # Prima il runtime (≈60 sorgenti C) veniva ricompilato a OGNI invocazione: con un sample alla
 # volta significava minuti per test. Ora la libreria è in una cache in /tmp, invalidata SOLO se
 # cambia un sorgente o gli header (hash di mtime+percorso). Il flag GMB_RT_REBUILD=1 la forza.
-RT_CACHE_DIR="${TMPDIR:-/tmp}/gmb_c99native_rt_cache"
+# …e la CARTELLA è per-RID (2026-11-12). Prima era una sola per host e per cross: lo STAMP
+# distingueva i due mondi, ma lo stesso path no — un run host (o un'altra sessione) che partiva
+# mentre un cross era in corso SOVRASCRIVEVA `librt.a` con oggetti arm64 Mach-O. Sintomo: il
+# cross «linka» e il linker dichiara undefined OGNI simbolo del runtime (`gmb_print_stage_end`,
+# `gmb_ffi_dl_sym`, …), perché i nomi Mach-O hanno l'underscore iniziale e non corrispondono.
+# Con la cartella per RID i due build non si toccano più.
+RT_CACHE_DIR="${TMPDIR:-/tmp}/gmb_c99native_rt_cache/$TARGET_RID"
 RT_CACHE="$RT_CACHE_DIR/librt.a"
 RT_STAMP="$RT_CACHE_DIR/src.stamp"
 # Gli HEADER contano: prima la cache era invalidata solo dai .c, quindi una modifica a un header
@@ -304,7 +328,7 @@ else
     $FC $TF -c "$s" -o "$WORK/rt_$RT_O.o" $INC_RT -I"$INC_CHART" -I"$ROOT/native/gmb_runtime_c/build" -I"$ROOT/native/gmb_agent_runtime" -I"$ROOT/native/gmb_doc_c/include" -I"$ROOT/native/gmb_db_c/include" -I"$ROOT/native/gmb_torch/include" $LLM_INC -I"$ZSTD_INC" $CODEC_INC $INC_EXTRA -O2 -ffunction-sections -fdata-sections -w -ffp-contract=off -DHAVE_OPENSSL -DGMB_PARQUET_HAVE_ZSTD -DGMB_WITH_UI=1 || exit 1
     OBJS="$OBJS $WORK/rt_$RT_O.o"
   done
-  ar rcs "$RT_CACHE.tmp" $OBJS && mv "$RT_CACHE.tmp" "$RT_CACHE"
+  $AR_CMD rcs "$RT_CACHE.tmp" $OBJS && mv "$RT_CACHE.tmp" "$RT_CACHE"
   echo "$STAMP" > "$RT_STAMP"
   RT_LIB="$RT_CACHE"
 fi
@@ -404,9 +428,13 @@ for f in "$MINI"/**/*.bas "$MINI"/*.bas; do
   # gmb_agent_run_named (AI.AGENTRUN/AGENTRUNGRAPH/AGENTRUNRAG) vive in gmb_agent_runtime
   # (gmb_agent_loop.c) ma il C GENERATO lo nomina senza 'gmb_agent_loop' → senza questa voce
   # il link fallisce con 'call to undeclared function'.
-  if grep -qE 'gmb_cua_|gmb_browser_|gmb_computer_|gmb_ax_|gmb_agent_loop|gmb_agent_run_named|tool_search|gmb_cdp_|gmb_desktop_|screenshot|llm_|gmb_docextract_json' "$WORK/out.c" 2>/dev/null; then
+  if [ "$LS_AGENT" = 1 ] && grep -qE 'gmb_cua_|gmb_browser_|gmb_computer_|gmb_ax_|gmb_agent_loop|gmb_agent_run_named|tool_search|gmb_cdp_|gmb_desktop_|screenshot|llm_|gmb_docextract_json' "$WORK/out.c" 2>/dev/null; then
     AGENT="$AGENT_SRCS"
   fi
+  # Fuori da Darwin `gmb_agent_runtime` non compila affatto: `gmb_ax_mac.c` e
+  # `gmb_computer_provider_mac.c` includono `<ApplicationServices/…>` (CMake li mette solo
+  # nel ramo APPLE). `LS_AGENT` è 0 per linux-*/win-* e il resolver lo dice: senza questo
+  # gate il cross di un MiniTest qualunque moriva su quell'include, non sul codice in prova.
   # B2: AI VERIFY COMPILE nel mondo C → serve il compilatore C (gmb_compile_bas_file).
   COMPILER=""
   # gmb_observe_test (AI OBSERVE TEST) e gmb_verify_require usano gmb_compile_bas_file
@@ -446,16 +474,26 @@ for f in "$MINI"/**/*.bas "$MINI"/*.bas; do
         "$ROOT/native/gmb_runtime_c/build/gmbllm_build/libgmbllm_core.a" )
   PLG="$ROOT/native/gmb_runtime_c/build/llmengine_plugin_build/libllmengine_plugin.a"
   MDS="$ROOT/native/gmb_runtime_c/build/llmdesc_build/libllmdesc.a"
-  TOK="$LIBS_CACHE/libllmtoken.$LS_DYLIBEXT"
-  [ -f "$TOK" ] || TOK="$LLMENV/build/dist/osx-arm64/libllmtoken.dylib"
+  # Pila LLM dell'host: solo per il RID nativo (`LS_LLM`, da gmb_link_set.sh). Per un altro RID
+  # llmtoken/llmcodec_*/gmbllm* sono archivi dell'host e il loro errore di link nasconde quello
+  # vero: si omettono e si dichiara.
+  LLM_STATIC=(); LLM_CODEC_FLAGS=""
+  if [ "$LS_LLM" = 1 ]; then
+    LLM_STATIC=( "$MOE_LIB" "${MIO[@]}" "$PLG" "$MDS" )
+    TOK="$LIBS_CACHE/libllmtoken.$LS_DYLIBEXT"
+    [ -f "$TOK" ] || TOK="$LLMENV/build/dist/osx-arm64/libllmtoken.dylib"
+    LLM_CODEC_FLAGS="$CODEC_LIB $TOK -Wl,-rpath,$(dirname "$TOK")"
+  else
+    echo "test_minitests_c99native: llmtoken/llmcodec_* omesse per $TARGET_RID (pila LLM costruita per $LS_HOST_RID, LS_LLM=0)" >&2
+  fi
   # Input e flag di link CONDIVISI fra l'eseguibile e la libreria condivisa: la lista era
   # duplicata (due copie da tenere allineate) e la gamba LIBRARY linkava per forza un binario.
   # Array (non stringa) perché il path di rpath può contenere spazi e perché $AGENT/$DOC_SRCS
   # sono già liste: nello stringone i confini dei token dipendevano dallo split implicito.
-  LINK_IN=( "$RT_LIB" $AGENT $COMPILER "$DB_LIB" "$MOE_LIB" "${MIO[@]}" "$PLG" "$MDS" $DOC_SRCS $TORCH_SRCS )
+  LINK_IN=( "$RT_LIB" $AGENT $COMPILER "$DB_LIB" ${LLM_STATIC[@]+"${LLM_STATIC[@]}"} $DOC_SRCS $TORCH_SRCS )
   LINK_FLAGS=( $INC_RT -I"$ROOT/native/gmb_agent_runtime" -I"$LLMENV/LLMJinja" -I"$LLMENV/LLMEngine/mlx"
     -I"$ROOT/native/gmb_compiler_c/include" $CODEC_INC $DB_INC $LLM_INC $INC_EXTRA $FRAMEWORKS
-    -lm -w -ffp-contract=off -DGMB_WITH_UI=1 $LS_STRIP $CODEC_LIB "$TOK" -Wl,-rpath,"$(dirname "$TOK")"
+    -lm -w -ffp-contract=off -DGMB_WITH_UI=1 $LS_STRIP $LLM_CODEC_FLAGS
     $EXT )
   # LIBRARY (marker header `' TAG: library`): il prodotto e' una LIBRERIA condivisa, e per
   # contratto NON ha entry point (Guide/utente/LIBRARY-gmblib-Guide.md §1). Linkare `-o bin`

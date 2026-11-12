@@ -356,19 +356,32 @@ AGENT_LIB=""
 if [ "$LS_AGENT" = 1 ] && [ -f "$L/gmb_agent_runtime_build/libgmb_agent_runtime.a" ]; then
   AGENT_LIB="$L/gmb_agent_runtime_build/libgmb_agent_runtime.a"
 fi
-$CC_BIN $CF $CCFIRST $STRIPDYLIB $EXPORTDYN $RPATH_LOADER -Wl,-rpath,"$CODEC" "$DIR/$CASE.o" $TORCH_OBJS $JINJA_OBJ -o "$OUTBIN" \
-  "$L/libgmb_vm.a" "$RUNTIME_LIB" $TRAY_LINK "$ASRLIB" \
+# LLM dell'host (`llmtoken`, `llmcodec_*`, gmbllm/llmengine_plugin/llmdesc): esistono solo per il
+# RID nativo (`LS_LLM`). Per un RID diverso sono Mach-O/COFF dell'host e il loro errore
+# («not a mach-o file», «unable to find -lllmtoken») nasconde quello vero: si omettono e si dice.
+LLM_LINK=()
+if [ "$LS_LLM" = 1 ]; then
+  LLM_LINK=(-Wl,-rpath,"$CODEC" "$ASRLIB" \
+    "$ROOT/native/gmb_runtime_c/build/gmbllm_build/libgmbllm_train.a" \
+    "$ROOT/native/gmb_runtime_c/build/gmbllm_build/libgmbllm_core.a" \
+    "$ROOT/native/gmb_runtime_c/build/llmengine_plugin_build/libllmengine_plugin.a" \
+    "$ROOT/native/gmb_runtime_c/build/llmdesc_build/libllmdesc.a" \
+    "$CODEC/llmcodec_mlx_build/libllmcodec.a" "$CODEC/llmengine_moe_mlx_build/libllmengine_moe.a" \
+    -L"$CODEC" -lllmcodec_ggml -lllmcodec_mlx_affine -lllmcodec_fp8 -Wl,-rpath,"$CODEC" \
+    -L"$LLMTOKEN_DIR" -lllmtoken -Wl,-rpath,"$LLMTOKEN_DIR")
+else
+  echo "[c99native] llmtoken/llmcodec_* omesse per $RID: la pila LLM e' costruita per $LS_HOST_RID (LS_LLM=0)" >&2
+fi
+$CC_BIN $CF $CCFIRST $STRIPDYLIB $EXPORTDYN $RPATH_LOADER "$DIR/$CASE.o" $TORCH_OBJS $JINJA_OBJ -o "$OUTBIN" \
+  "$L/libgmb_vm.a" "$RUNTIME_LIB" $TRAY_LINK \
+  ${LLM_LINK[@]+"${LLM_LINK[@]}"} \
   "$ROOT/native/gmb_runtime_c/build/gmb_chart_build/libgmb_chart.a" \
-  "$ROOT/native/gmb_runtime_c/build/gmbllm_build/libgmbllm_train.a" \
-  "$ROOT/native/gmb_runtime_c/build/gmbllm_build/libgmbllm_core.a" \
-  "$ROOT/native/gmb_runtime_c/build/llmengine_plugin_build/libllmengine_plugin.a" \
-  "$ROOT/native/gmb_runtime_c/build/llmdesc_build/libllmdesc.a" \
-  "$CODEC/llmcodec_mlx_build/libllmcodec.a" "$CODEC/llmengine_moe_mlx_build/libllmengine_moe.a" -L"$CODEC" -lllmcodec_ggml -lllmcodec_mlx_affine -lllmcodec_fp8 -Wl,-rpath,"$CODEC" "$L/gmb_compiler_c_build/libgmb_compiler_c.a" -lpthread \
+  "$L/gmb_compiler_c_build/libgmb_compiler_c.a" -lpthread \
   "$L/gmb_doc_c_build/libgmb_doc.a" $AGENT_LIB \
   ${LS_FRAMEWORKS[@]+"${LS_FRAMEWORKS[@]}"} \
   "$L/gmb_db_c_build/libgmb_db.a" -lm ${LS_SYS[@]+"${LS_SYS[@]}"} \
   -Wl,-rpath,"$LIBS_CACHE" ${LS_THIRD[@]+"${LS_THIRD[@]}"} \
-  -L"$LLMTOKEN_DIR" -lllmtoken -Wl,-rpath,"$LLMTOKEN_DIR" -lz
+  -lz
 # ── GATE EXPORT: il link può "riuscire" e produrre un binario che crasha all'avvio ────────────
 # Per le dylib conta ciò che l'eseguibile ESPORTA. Con lld un simbolo che nulla referenzia non è
 # un errore di link: la dylib ha uno stub NULL e ci salta al primo uso (EXC_BAD_ACCESS at 0x0 in un
