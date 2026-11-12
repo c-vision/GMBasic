@@ -14,6 +14,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "gmb_runtime.h"   /* gmb_paths_model_path: risolutore UNICO dei path dei modelli */
+
 static LlmAsrModel* g_model = NULL;
 static LlmAsrTok* g_tok = NULL;
 static char g_dir[1024];
@@ -26,6 +28,13 @@ static void cmd_emit(const char* piece, int len, void* ctx) {
 }
 
 char* gmb_asr_cmd(const char* model_dir, const char* wav_path, const char* out_path) {
+    /* DIR del modello: `%MODELS%/<x>` e `~/ai/Models/<x>` passano dal risolutore del runtime
+     * (`path.models_root`, opzione del registro). Si risolve PRIMA del confronto con la cache
+     * `g_dir`, cosi' la chiave della cache e' la dir REALE. Questa funzione e' l'entry-point di
+     * TUTTE le gambe per `ASR.RECOGNIZE` — VM/C e C99 la chiamano, IL/PCode via P/Invoke alla
+     * stessa dylib: una sola regola, nessuna copia nei backend. */
+    char pathbuf[4096];
+    model_dir = gmb_paths_model_path(model_dir, pathbuf, sizeof pathbuf);
     if (model_dir == NULL || !*model_dir || wav_path == NULL || !*wav_path) return NULL;
     if (g_model == NULL || strcmp(g_dir, model_dir) != 0) {
         if (g_model) { llm_asr_model_free(g_model); g_model = NULL; }

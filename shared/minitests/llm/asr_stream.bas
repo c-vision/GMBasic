@@ -8,5 +8,5 @@ IMPORT ASR
 
 SUB Main()
   CHDIR PROJECTFOLDER()
-  PRINT ASR.RECOGNIZE("/Volumes/Armor5TB/LocalLLM/ai/models/Qwen3-ASR-0.6B", "../../samples/Fixtures/audio/test_speech.wav", "work/asr_stream.txt")
+  PRINT ASR.RECOGNIZE("%MODELS%/Qwen3-ASR-0.6B", "../../samples/Fixtures/audio/test_speech.wav", "work/asr_stream.txt")
 END SUB

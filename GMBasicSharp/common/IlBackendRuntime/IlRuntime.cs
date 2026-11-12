@@ -9906,6 +9906,7 @@ public static double TextWidth(string s)
     // Sorgente unica: il dispatcher C `llmmodelio_tensor_cmd_to` (una sola implementazione).
     private static string LlmCapture4(string sub, string a, string b, string c)
     {
+        a = Basic.Providers.LlmModelNative.ResolveModelPath(a);
         int cap = 1 << 16; string txt = "";
         while (true)
         {
@@ -9957,6 +9958,9 @@ public static double TextWidth(string s)
     private static string LlmFamilyOut(int family, string sub, string a, string b, string c)
     {
         string s0 = sub ?? "", s1 = a ?? "", s2 = b ?? "", s3 = c ?? "";
+        // TENSOR: il primo argomento e' una dir di modello (LOGITS/TOPK/QUALITY/USAGEEVAL) e passa
+        // dal risolutore del runtime; per gli altri sotto-verbi torna invariato.
+        if (family == FamTensor) s1 = Basic.Providers.LlmModelNative.ResolveModelPath(s1);
         Func<byte[], int, int> call = family switch
         {
             FamPolicy => (buf, cap) => Basic.Providers.LlmModelNative.llmmodelio_policy_cmd_to(s0, s1, s2, s3, buf, cap),
@@ -10025,6 +10029,10 @@ public static double TextWidth(string s)
     private static string LlmCmdTo4(string label, string sub, string a, string b, string c,
         Func<string, string, string, string, byte[], int> call)
     {
+        // PATH del modello risolto dal runtime C (`path.models_root`, `%MODELS%`, `~`): le gambe
+        // gestite non reimplementano la regola, la chiamano (AGENTS C#→C). Sulle forme non
+        // riconosciute (nomi di tensore, assoluti, relativi) il valore torna identico.
+        a = Basic.Providers.LlmModelNative.ResolveModelPath(a);
         int cap = 1 << 16; string txt = ""; int rc;
         while (true)
         {

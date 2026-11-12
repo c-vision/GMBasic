@@ -57,6 +57,15 @@ char* gmb_llm_detokenize(const char* model, const char* ids_csv)
 /* Output di QUALUNQUE sotto-verbo `LLM TENSOR <sub>` catturato invece che stampato. */
 char* gmb_llm_tensor_out(const char* sub, const char* a, const char* b, const char* c)
 {
+    /* PATH del modello: il primo argomento di `LLM TENSOR LOGITS|TOPK|QUALITY|USAGEEVAL <dir>`
+     * passa dal risolutore UNICO del runtime (`path.models_root`, `~`, `%MODELS%`). Si applica
+     * SEMPRE e non a una lista di sotto-verbi: le uniche forme che cambiano sono `%MODELS%…` e
+     * `~…`, quindi un nome di tensore o un parametro attraversa la funzione INVARIATO. Serve qui
+     * (e non solo nel codice emesso da C99Native) perche' la gamba VM/C entra da questa funzione:
+     * prima riceveva il token letterale.
+     */
+    char pathbuf[4096];
+    a = gmb_paths_model_path(a, pathbuf, sizeof pathbuf);
     size_t cap = 1u << 16;
     for (int attempt = 0; attempt < 8; attempt++) {
         char* buf = (char*)malloc(cap);
@@ -77,6 +86,11 @@ char* gmb_llm_tensor_out(const char* sub, const char* a, const char* b, const ch
  * adattivo, nessuna duplicazione nei backend. */
 char* gmb_llm_cmd_out(int family, const char* sub, const char* a, const char* b, const char* c)
 {
+    /* Stessa risoluzione della variante `_out` (sopra), per la famiglia TENSOR: il primo
+     * argomento e' una dir di modello per LOGITS/TOPK/QUALITY/USAGEEVAL e per gli altri
+     * sotto-verbi il risolutore restituisce l'input invariato. */
+    char pathbuf[4096];
+    if (family == GMB_LLM_FAM_TENSOR) a = gmb_paths_model_path(a, pathbuf, sizeof pathbuf);
     size_t cap = 1u << 16;
     for (int attempt = 0; attempt < 8; attempt++) {
         char* buf = (char*)malloc(cap);

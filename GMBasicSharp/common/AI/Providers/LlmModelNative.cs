@@ -118,6 +118,24 @@ public static partial class LlmModelNative
     [LibraryImport(LibName, StringMarshalling = StringMarshalling.Utf8)]
     public static partial int llmmodelio_policy_set_item(string name, string fmt);
 
+    // ── RISOLUTORE DEI PATH DEI MODELLI (opzione `path.models_root`) ─────────────────────────
+    // `%MODELS%/<x>` e `~/ai/Models/<x>` -> `<radice>/<x>`; `~/<x>` -> `<HOME>/<x>`; resto
+    // INVARIATO. La regola vive in UN posto solo (`gmb_runtime_c/src/gmb_paths.c`) e le gambe
+    // gestite la CHIAMANO via P/Invoke invece di reimplementarla (AGENTS: C#→C, mai due copie).
+    [LibraryImport(LibName, StringMarshalling = StringMarshalling.Utf8)]
+    private static partial System.IntPtr gmb_paths_model_path(string inPath, byte[] outBuf, nuint cap);
+
+    /// <summary>Risolve il path di un modello con la regola del runtime C. Le forme non
+    /// riconosciute (path assoluti, relativi, nomi) tornano identiche; vuoto resta vuoto.</summary>
+    public static string ResolveModelPath(string path)
+    {
+        if (string.IsNullOrEmpty(path)) return path ?? string.Empty;
+        var buf = new byte[4096];
+        _ = gmb_paths_model_path(path, buf, (nuint)buf.Length);
+        int n = System.Array.IndexOf(buf, (byte)0); if (n < 0) n = buf.Length;
+        return System.Text.Encoding.UTF8.GetString(buf, 0, n);
+    }
+
     // Model compiler LLM: verbi TENSOR/KERNEL/MODULE/KV (superficie .gmbarch data-driven).
     [LibraryImport(LibName, StringMarshalling = StringMarshalling.Utf8)]
     public static partial int llmmodelio_tensor_cmd_to(string sub, string a, string b, string c, byte[] outBuf, int cap);

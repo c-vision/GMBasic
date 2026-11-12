@@ -2810,6 +2810,9 @@ const char* gmb_paths_model_path(const char* in, char* out, size_t cap);
 const char* gmb_paths_model_q(const char* in);
 /* Accessor del registro per la voce `path.models_root` (vuota se non impostata). */
 int         gmb_opt_models_root(char* out, int cap);
+/* Il REGISTRO spinge qui la radice dei pesi (mai il contrario: gmb_opts.c usa gmb_paths_*, e il
+ * riferimento inverso romperebbe i target che linkano solo gmb_paths.c). Vuota = default. */
+void        gmb_paths_set_models_root(const char* v);
 /* Settings (system.settings.json + app.settings.json override) — SettingsManager.cs. */
 int  gmb_settings_str(const char* file, const char* key, char* out, int cap);
 int  gmb_settings_int(const char* file, const char* key, int* out);

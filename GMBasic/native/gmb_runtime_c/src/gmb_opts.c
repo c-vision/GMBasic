@@ -70,6 +70,15 @@ static GmbOpt* gmb_opt_find(const char* n) {
     return NULL;
 }
 
+/* Spinge la radice dei pesi nel risolutore dei path (`gmb_paths_set_models_root`). Il registro e'
+ * l'unico proprietario del valore; `gmb_paths.c` lo riceve e non lo cerca (evita il ciclo
+ * opts<->paths: gmb_opts.c usa gmb_paths_app_settings). Chiamata dopo la gerarchia dei settings
+ * e a ogni `AI SET OPTION`. */
+static void sync_models_root(void) {
+    GmbOpt* o = gmb_opt_find("path.models_root");
+    gmb_paths_set_models_root((o && o->set) ? o->val : "");
+}
+
 static void ensure_init(void) {
     if (g_init) return;
     g_init = 1;
@@ -81,6 +90,7 @@ static void ensure_init(void) {
         o->val[0] = '\0'; o->set = 0; o->on_set = NULL;
     }
     gmb_opts_load_hierarchy();   /* cache dai settings: globali (exe) → app (override) */
+    sync_models_root();
 }
 
 int gmb_opt_register(const char* name, const char* desc, const char* def, void (*on_set)(const char*)) {
@@ -116,6 +126,7 @@ int gmb_opt_set(const char* name, const char* value) {
     snprintf(o->val, sizeof o->val, "%s", value);
     o->set = 1;
     if (o->on_set) o->on_set(o->val);
+    if (!strcmp(o->name, "path.models_root")) gmb_paths_set_models_root(o->val);
     return 0;
 }
 
@@ -281,7 +292,7 @@ static int load_engine_section(const char* path) {
 }
 
 /* Compat: carica la sezione engine da un singolo file. */
-int gmb_opts_load(const char* path) { ensure_init(); return load_engine_section(path); }
+int gmb_opts_load(const char* path) { ensure_init(); int rc = load_engine_section(path); sync_models_root(); return rc; }
 
 /* Gerarchia a DUE livelli di dir (nessun ~/.gmbasic):
  *   1. dir COMPILATORE: system.settings.json (default globali)

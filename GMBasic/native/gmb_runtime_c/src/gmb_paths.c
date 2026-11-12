@@ -692,6 +692,20 @@ static void pr_user_root(const char* name, char* out, size_t cap)
     else snprintf(out, cap, "%s", "");
 }
 
+/* Radice dei pesi IMPOSTATA DAL REGISTRO OPZIONI (`path.models_root`).
+ * La freccia e' `gmb_opts.c` (registro) -> `gmb_paths.c` (risolutore), MAI il contrario:
+ * `gmb_opts.c` chiama gia' `gmb_paths_app_settings`, quindi un riferimento inverso chiude un
+ * CICLO e rompe il link dei target che compilano `gmb_paths.c` da solo senza il registro
+ * (`gmb_boot`, `gmb_ai_modelio`, `test_abi_*`) — era la regressione del 2026-11-12 con
+ * "undefined _gmb_opt_models_root". Il registro spinge qui il valore dopo aver caricato la
+ * gerarchia dei settings e a ogni `AI SET OPTION`. */
+static char g_models_root[1024];
+
+void gmb_paths_set_models_root(const char* v)
+{
+    snprintf(g_models_root, sizeof g_models_root, "%s", v ? v : "");
+}
+
 /* ── RADICE DEI MODELLI (2026-11-12) ────────────────────────────────────────────────────────
  * I MiniTest `TAG: heavy` e i sample scrivono `"~/ai/Models/<modello>"`, ma la gamba C non
  * espande `~`: il path arrivava LETTERALE al loader e il test falliva con "tokenizer assente".
@@ -707,8 +721,8 @@ static void pr_user_root(const char* name, char* out, size_t cap)
 void gmb_paths_models_root(char* out, size_t cap)
 {
     if (!out || cap == 0) return;
-    char v[1024];
-    if (gmb_opt_models_root(v, (int)sizeof v) == 0 && v[0]) {
+    const char* v = g_models_root;   /* spinta dal registro; vuota = default */
+    if (*v) {
         if (v[0] == '~' && (v[1] == '/' || v[1] == '\0')) {
             const char* home = getenv("HOME");
             if (home && *home) { snprintf(out, cap, "%s%s", home, v + 1); return; }
