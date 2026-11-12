@@ -58,6 +58,15 @@ public static class SqlCsvExtension
                 if (File.Exists(p)) return p;
                 var mono = Path.GetFullPath(Path.Combine(b, "GMBasic", "Resources", "libs", r, name));
                 if (File.Exists(mono)) return mono;
+                /* Artefatti di BUILD: `<root>/build/libs/<rid>/` è dove finiscono le
+                 * estensioni appena compilate (gmb_lib/CMake) e ha la precedenza sulla
+                 * cache — stesso ordine del loader FFI C (gmb_ffi_dl.c). Senza questo,
+                 * `sql/csv_vtab` e `parquet_*` davano "no such module: csv" nelle gambe
+                 * managed (il file esisteva solo in build/libs). */
+                var buildMono = Path.GetFullPath(Path.Combine(b, "GMBasic", "build", "libs", r, name));
+                if (File.Exists(buildMono)) return buildMono;
+                var buildRoot = Path.GetFullPath(Path.Combine(b, "build", "libs", r, name));
+                if (File.Exists(buildRoot)) return buildRoot;
             }
         return null;
     }

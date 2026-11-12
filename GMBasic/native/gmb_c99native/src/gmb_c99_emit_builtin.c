@@ -2774,7 +2774,20 @@ static int tg_zeros(ctx_t* c, gmb_expr_t** a, int n){ if(n<2)return 0; sb_put(&c
 static int tg_ones(ctx_t* c, gmb_expr_t** a, int n){ if(n<2)return 0; sb_put(&c->out,"gmb_ml_tensor_ones((int)("); emit_expr(c,a[0]); sb_put(&c->out,"), (int)("); emit_expr(c,a[1]); sb_put(&c->out,"), gmb_ml_active_device())"); return 1; }
 static int tg_eye(ctx_t* c, gmb_expr_t** a, int n){ if(n<1)return 0; sb_put(&c->out,"gmb_ml_tensor_eye((int)("); emit_expr(c,a[0]); sb_put(&c->out,"), gmb_ml_active_device())"); return 1; }
 static int tg_randn(ctx_t* c, gmb_expr_t** a, int n){ if(n<2)return 0; sb_put(&c->out,"gmb_ml_tensor_randn((int)("); emit_expr(c,a[0]); sb_put(&c->out,"), (int)("); emit_expr(c,a[1]); sb_put(&c->out,"), gmb_ml_active_device())"); return 1; }
-static int tg_from(ctx_t* c, gmb_expr_t** a, int n){ if(n<1||a[0]->kind!=GMB_EXPR_VAR)return 0; var_t* v=lookup_var(c,a[0]->var); if(!v||!v->is_array)return 0; sb_put(&c->out,"gmb_ml_tensor_from(1, (int)("); emit_arr_len_of(c,v); sb_put(&c->out,"), (gmb_double_t*)"); emit_var_ref(c,v); sb_put(&c->out,", gmb_ml_active_device())"); return 1; }
+static int tg_from(ctx_t* c, gmb_expr_t** a, int n){ if(n<1||a[0]->kind!=GMB_EXPR_VAR)return 0; var_t* v=lookup_var(c,a[0]->var); if(!v||!v->is_array)return 0;
+    /* Valore matrice (DIM m(r,c) rank-2 DOUBLE): descrittore gmb_matrix_t, non double*.
+     * ensure_flat materializza il buffer contiguo row-major e il conteggio sono rows*cols. */
+    if (v->matrix_value) {
+        sb_put(&c->out,"gmb_ml_tensor_from(1, (int)((");
+        emit_var_ref(c,v);
+        sb_put(&c->out,").rows * (");
+        emit_var_ref(c,v);
+        sb_put(&c->out,").cols), gmb_matrix_value_ensure_flat(&");
+        emit_var_ref(c,v);
+        sb_put(&c->out,"), gmb_ml_active_device())");
+        return 1;
+    }
+    sb_put(&c->out,"gmb_ml_tensor_from(1, (int)("); emit_arr_len_of(c,v); sb_put(&c->out,"), (gmb_double_t*)"); emit_var_ref(c,v); sb_put(&c->out,", gmb_ml_active_device())"); return 1; }
 static int tg_get(ctx_t* c, gmb_expr_t** a, int n){ if(n<3)return 0; sb_put(&c->out,"gmb_ml_tensor_get("); emit_expr(c,a[0]); sb_put(&c->out,", (int)("); emit_expr(c,a[1]); sb_put(&c->out,"), (int)("); emit_expr(c,a[2]); sb_put(&c->out,"))"); return 1; }
 static int tg_set(ctx_t* c, gmb_expr_t** a, int n){ if(n<4)return 0; sb_put(&c->out,"(gmb_ml_tensor_set("); emit_expr(c,a[0]); sb_put(&c->out,", (int)("); emit_expr(c,a[1]); sb_put(&c->out,"), (int)("); emit_expr(c,a[2]); sb_put(&c->out,"), "); emit_expr(c,a[3]); sb_put(&c->out,"), "); emit_expr(c,a[3]); sb_put(&c->out,")"); return 1; }
 static int tg_free(ctx_t* c, gmb_expr_t** a, int n){ if(n<1)return 0; sb_put(&c->out,"(gmb_ml_tensor_free("); emit_expr(c,a[0]); sb_put(&c->out,"), 0)"); return 1; }
