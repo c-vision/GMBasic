@@ -107,13 +107,22 @@
             "pop r12\n"
             "pop rbx\n"
             "pop rbp\n"
+            /* Sfilare anche lo slot dell'indirizzo di ritorno: si salta a `pc` come farebbe
+               una `ret`, quindi `rsp` deve puntare OLTRE quello slot. Senza questo `add`,
+               a ogni ripresa la coroutine ripartiva con `rsp` 8 byte piu' in basso (il
+               primo `ret` del codice ripreso leggeva lo slot sbagliato ~ indirizzo di
+               stack da eseguire, diagnosticato come "STACK OVERFLOW"). */
+            "add rsp, 8\n"
             "jmp rax\n"
             ".att_syntax prefix\n"
             : : : "memory");
     }
     static void gmb_ctx_make(gmb_ctx_t* ctx, void (*fn)(void), char* stack, size_t sz) {
         void** sp = (void**)(stack + sz);
-        sp -= 7;
+        /* 8 slot: 6 registri callee-saved, l'indirizzo di ritorno (fn) e lo slot che il
+           restore sfila con `add rsp, 8`. Cosi' all'ingresso del trampoline `rsp` vale
+           stack+sz-8 (allineato a 16 byte, come dopo una `call`). */
+        sp -= 8;
         sp[0]=0; sp[1]=0; sp[2]=0; sp[3]=0; sp[4]=0; sp[5]=0;
         sp[6]=(void*)fn;   /* return address = trampoline */
         ctx->sp = sp; ctx->pc = (void*)fn;
@@ -231,6 +240,19 @@ static size_t gmb_stack_default_size(void) {
    (indirizzi più bassi, verso cui cresce SP) è PROT_NONE. Un overflow tocca la
    guard page → SIGSEGV rilevabile (handler sotto) invece di corruzione muta.
    Layout: [GUARD PROT_NONE | stack RW (size byte)] — stack cresce in basso. */
+/* Stack ALTERNATIVO per l'handler di fault: in un VERO overflow lo stack della
+   coroutine ha pochi byte liberi, l'handler girerebbe su quello, fault-erebbe di
+   nuovo e il messaggio non uscirebbe mai (cascata: SIGSEGV secco, exit 139).
+   sigaltstack è PER-THREAD: serve solo dove girano i task (i worker). */
+static char g_altstack_mem[32 * 1024] __attribute__((aligned(16)));
+static void gmb_stack_install_altstack(void) {
+    stack_t ss;
+    memset(&ss, 0, sizeof ss);
+    ss.ss_sp = g_altstack_mem;
+    ss.ss_size = sizeof g_altstack_mem;
+    ss.ss_flags = 0;
+    sigaltstack(&ss, NULL);
+}
 static void gmb_stack_alloc(size_t size, char** stack_out, void** map_out, size_t* map_len_out) {
     long pg = sysconf(_SC_PAGESIZE);
     if (pg <= 0) pg = 4096;
@@ -254,30 +276,47 @@ static void gmb_stack_alloc(size_t size, char** stack_out, void** map_out, size_
     *map_out = base;             /* per munmap a fine task */
     *map_len_out = map_len;
 }
-/* Rilevatore overflow: SIGSEGV nella guard page → errore chiaro, non corruzione.
-   Solo la task corrente può toccare la propria guard page; l'handler valuta la
-   guard della task corrrente (g_current) e, se l'indirizzo del fault è dentro,
-   stampa e termina. Altrimenti ripristina il comportamento default. */
+/* Rilevatore di fault nella coroutine. Il mapping di ogni task è
+   [GUARD PROT_NONE (1 pagina) | stack RW (stack_size byte)] e la zona usabile
+   PARTE da stack_map + pagina, quindi basta l'indirizzo del fault:
+     - DENTRO la guard page → VERO overflow (SP è sceso fino in fondo): si può
+       solo aumentare lo stack;
+     - DENTRO la zona stack  → zona SCRIVIBILE, quindi non è esaurimento: è un
+       accesso/PC spurio (tipico un indirizzo di ritorno corrotto che fa
+       eseguire lo stack). Qui GMBASIC_GOROUTINE_STACK non aiuta.
+   Il fault può cadere ESATTAMENTE sul confine guard/stack: si confronta con
+   l'inizio della zona usabile, non col fondo del mapping. Un fault fuori dal
+   mapping della task corrente torna al comportamento di default. */
 static void gmb_stack_fault_handler(int sig, siginfo_t* si, void* uctx) {
-    (void)sig; (void)uctx;
+    (void)uctx;
     gmb_task_t* g = gmb_cur();
-    /* Il fault può cadere ESATTAMENTE sul confine guard/stack (SP scende fino al
-       primo byte PROT_NONE): il range copre l'intero mapping dello stack
-       (guard + zona usabile) — l'unica parte non accessibile è la guard, quindi
-       un SIGSEGV qui è per definizione overflow della coroutine. */
-    if (g && g->stack_map && si->si_addr >= g->stack_map
-        && (char*)si->si_addr <= (char*)g->stack_map + g->stack_map_len) {
-        fprintf(stderr, "[GMBASIC] STACK OVERFLOW coroutine: aumentare GMBASIC_GOROUTINE_STACK"
-            " (attuale %zu byte)\n", g->stack_size);
-        _Exit(2);
+    char* addr = (char*)si->si_addr;
+    if (g && g->stack_map) {
+        char* map = (char*)g->stack_map;
+        char* end = map + g->stack_map_len;
+        if (addr >= map && addr < end) {
+            if (addr < g->stack) {                    /* guard page */
+                fprintf(stderr, "[GMBASIC] STACK OVERFLOW coroutine: aumentare"
+                    " GMBASIC_GOROUTINE_STACK (attuale %zu byte)\n", g->stack_size);
+            } else {                                  /* zona stack scrivibile */
+                fprintf(stderr, "[GMBASIC] FAULT nella coroutine, NON stack overflow:"
+                    " indirizzo %p dentro la zona stack (offset %ld, scrivibile),"
+                    " stack %zu byte\n", (void*)addr, (long)(addr - map), g->stack_size);
+                fprintf(stderr, "[GMBASIC]   aumentare GMBASIC_GOROUTINE_STACK non risolve:"
+                    " il guasto non e' esaurimento di stack\n");
+            }
+            _Exit(2);
+        }
     }
-    signal(SIGSEGV, SIG_DFL);
-    raise(SIGSEGV);
+    signal(sig, SIG_DFL);
+    raise(sig);
 }
 static void gmb_stack_install_handler(void) {
     struct sigaction sa = { 0 };
     sa.sa_sigaction = gmb_stack_fault_handler;
-    sa.sa_flags = SA_SIGINFO;
+    /* SA_ONSTACK: l'handler gira sull'altstack, non sullo stack della coroutine
+       (in un vero overflow quello è esaurito). */
+    sa.sa_flags = SA_SIGINFO | SA_ONSTACK;
     /* su macOS una pagina PROT_NONE genera SIGBUS, non SIGSEGV — serve entrambi */
     sigaction(SIGSEGV, &sa, NULL);
     sigaction(SIGBUS, &sa, NULL);
@@ -507,6 +546,8 @@ static void gmb_sched_wake_expired_sleepers(int64_t now_ms) {
 static void* gmb_worker(void* arg) {
 #if defined(_WIN32) || defined(_WIN64)
     g_worker_fiber = ConvertThreadToFiber(NULL);
+#else
+    gmb_stack_install_altstack();   /* l'handler di fault deve avere stack proprio */
 #endif
     for (;;) {
         gmb_task_t* t = gmb_sched_find_runnable();
@@ -610,6 +651,8 @@ int gmb_gomaxprocs(int n) {
 void gmb_gpm_start(void (*main_entry)(void*)) {
     g_gpm_active = 1;
 #if !defined(_WIN32) && !defined(_WIN64)
+    /* Handler process-wide; l'altstack serve solo ai thread che eseguono task
+       (installato in gmb_worker), non al thread chiamante che qui aspetta. */
     gmb_stack_install_handler();
 #endif
     GMB_MUTEX_INIT(&g_sched.qlock);
