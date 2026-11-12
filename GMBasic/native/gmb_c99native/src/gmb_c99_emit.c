@@ -3585,8 +3585,19 @@ static void reg_let_assign(ctx_t* c, gmb_stmt_t* s, vars_t* scope) {
                 }
             }
         }
-        if (s->target && !use_global(c, scope, s->target)) {
+        /* LET su un nome che esiste SOLO come GLOBAL (2026-11-11): la specifica
+         * (Variables-Scope §3.1) vuole una LOCALE nello scope corrente che la ombreggia.
+         * Prima `use_global` rispondeva "è una globale" e la scrittura finiva sulla globale
+         * (divergenza da IL/PCode/VM-C: `LET g = 20` dentro una SUB cambiava il valore del
+         * globale). La locale viene creata e marcata late_local: la dichiarazione C è emessa
+         * al PUNTO D'USO (st_let_assign) perché le istruzioni precedenti devono continuare a
+         * vedere la globale. */
+        int let_shadow = s->target && s->is_let && scope != &c->globals
+                         && !vars_find(scope, s->target)
+                         && vars_find(&c->globals, s->target) != NULL;
+        if (s->target && (let_shadow || !use_global(c, scope, s->target))) {
             var_t* tv = vars_add(scope, s->target, suffix_type(s->target));
+            if (let_shadow && tv) tv->late_local = 1;
             /* F2: `x = MATRIX.TRANSPOSE/SLICE/RESHAPE/CLONEMATRIX(...)` su variabile
              * implicita → matrice rank-2 nativa (double* + __bK). */
             if (s->value && s->value->kind == GMB_EXPR_CALL
@@ -18741,12 +18752,42 @@ static void st_let_assign(ctx_t* c, gmb_stmt_t* s) {
         /* ON ERROR/RESUME attivo (parity oracolo C#): guard setjmp per-istruzione.
          * RESUME NEXT fa longjmp al jmp_buf di QUESTO guard → goto salta OLTRE
          * l'istruzione fallita (ripresa dopo, come il resume-ip della VM). */
-        int res_guard = 0;
-        if (c->uses_onerror) {
+        int res_guard = 0;        if (c->uses_onerror) {
             res_guard = ++c->res_uid;
             ind(c); sb_printf(&c->out, "jmp_buf __res%d;\n", res_guard);
             ind(c); sb_printf(&c->out, "gmb_err_set_resume(&__res%d);\n", res_guard);
             ind(c); sb_printf(&c->out, "if (setjmp(__res%d) != 0) goto __resume_end_%d;\n", res_guard, res_guard);
+        }
+        /* LET su un nome che ombreggia una GLOBAL (Variables-Scope §3.1): la locale va
+         * DICHIARATA qui (punto d'uso) e inizializzata col valore — non è un'assegnazione alla
+         * globale. Il flag late_local è stato messo dal pass di registrazione e viene azzerato
+         * dopo: le LET successive sullo stesso nome (e tutte le letture che seguono) usano la
+         * locale, mentre le istruzioni PRIMA di questa continuavano a vedere la globale. */
+        if (s->is_let && s->target && !s->array_index && !strchr(s->target, '.')) {
+            var_t* shv = NULL;
+            if (c->cur_fn) shv = vars_find(&c->cur_fn->locals, s->target);
+            if (shv && shv->late_local) {
+                int sh_str = shv->type == TY_STR;
+                int sh_simple = !shv->is_array && !shv->gkind && !shv->vclass[0] && !shv->boxed_val
+                                && !shv->matrix && !shv->matrix_value && !shv->jagged && !shv->dyn_len
+                                && !shv->nullable && !shv->sb_builder && !shv->regex_obj
+                                && !shv->coll_handle && !shv->matrix_handle && !shv->cell;
+                if (!sh_simple) {
+                    c99_fail(c, s->line, "LET %s: l'ombreggiamento di una GLOBAL con un tipo composto non è supportato dall'emitter C", s->target);
+                    res_guard_end(c, res_guard);
+                    return;
+                }
+                ind(c);
+                sb_put(&c->out, sh_str ? "gmb_string_t " : "gmb_double_t ");
+                emit_ident(c, shv->name);
+                sb_put(&c->out, " = ");
+                if (sh_str) emit_str_operand(c, s->value);
+                else emit_num_operand(c, s->value);
+                sb_put(&c->out, ";\n");
+                shv->late_local = 0;
+                res_guard_end(c, res_guard);
+                return;
+            }
         }
         /* Suffisso tipo BASIC sulla SCRITTURA scalare (`S$ = …`, `n% = …`): il suffisso NON
          * fa parte del nome (S e S$ sono la stessa variabile), quindi se contraddice il tipo
