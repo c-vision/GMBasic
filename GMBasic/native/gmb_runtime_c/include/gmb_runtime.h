@@ -501,6 +501,10 @@ gmb_string_t gmb_val_json_text(gmb_val_t v);
 gmb_string_t gmb_val_to_display(gmb_val_t v);
 gmb_string_t gmb_json_double_array(const gmb_double_t* items, gmb_int_t n);
 gmb_string_t gmb_json_string_array(const gmb_string_t* items, gmb_int_t n);
+/* Display di un array numerico per PRINT: "[1, 2, 3]" (separatore ", ", parità IL/PCode/VM-C).
+ * Diverso da gmb_json_double_array (JSON compatto, senza spazi: è ciò che stampa
+ * JSON.STRINGIFY): il PRINT di un array usa questo. */
+gmb_string_t gmb_display_double_array(const gmb_double_t* items, gmb_int_t n);
 gmb_string_t gmb_val_ledger_item(gmb_val_t v);
 int gmb_csv_value(char* out, int cap, int* pos, gmb_val_t v);
 int gmb_csv_field(const char* csv, int idx, char* out, int cap);

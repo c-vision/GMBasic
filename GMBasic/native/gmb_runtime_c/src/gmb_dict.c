@@ -1306,6 +1306,33 @@ gmb_string_t gmb_json_double_array(const gmb_double_t* items, gmb_int_t n) {
     return s;
 }
 
+/* Display di un array numerico per PRINT: "[1, 2, 3]" (separatore ", "). Parità con
+ * gmb_val_to_display (IL/PCode/VM-C): il PRINT di un array usa gli spazi, il JSON no. */
+gmb_string_t gmb_display_double_array(const gmb_double_t* items, gmb_int_t n) {
+    if (!items || n < 0) return gmb_string_alloc("[]");
+    size_t cap = 64, pos = 0;
+    char* buf = (char*)malloc(cap);
+    if (!buf) return gmb_string_alloc("[]");
+    buf[pos++] = '[';
+    for (gmb_int_t i = 0; i < n; i++) {
+        if (i > 0) {
+            while (pos + 2 >= cap) { cap *= 2; buf = (char*)realloc(buf, cap); }
+            buf[pos++] = ','; buf[pos++] = ' ';
+        }
+        gmb_string_t t = gmb_double_to_string(items[i]);
+        const char* td = t.data ? t.data : "";
+        size_t tl = strlen(td);
+        while (pos + tl + 1 >= cap) { cap *= 2; buf = (char*)realloc(buf, cap); }
+        memcpy(buf + pos, td, tl); pos += tl;
+    }
+    while (pos + 1 >= cap) { cap *= 2; buf = (char*)realloc(buf, cap); }
+    buf[pos++] = ']';
+    buf[pos] = '\0';
+    gmb_string_t s = gmb_string_alloc(buf);
+    free(buf);
+    return s;
+}
+
 /* Array nativo di stringhe: ogni elemento virgolettato (senza escape, stesso limite del
  * writer gmb_val_to_json — gli escape interni dei caratteri speciali restano un limite
  * noto del runtime, vedi gmb_json_append_val/GMB_TYPE_STRING). */

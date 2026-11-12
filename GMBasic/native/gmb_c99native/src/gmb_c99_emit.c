@@ -18321,7 +18321,7 @@ static void emit_print_container(ctx_t* c, gmb_expr_t* e) {
     } else if (v->is_array) {
         if (v->matrix_value) {
             /* Stage C backend C: PRINT flat row-major del descrittore. */
-            sb_put(&c->out, "gmb_json_double_array(gmb_matrix_value_ensure_flat(&");
+            sb_put(&c->out, "gmb_display_double_array(gmb_matrix_value_ensure_flat(&");
             emit_var_ref(c, v);
             sb_put(&c->out, "), (gmb_int_t)(((");
             emit_ident(c, v->name);
@@ -18333,7 +18333,7 @@ static void emit_print_container(ctx_t* c, gmb_expr_t* e) {
         if (v->matrix || v->jagged) { sb_put(&c->out, "gmb_string_alloc(\"[..]\")"); return; }
         if (v->ndims > 1) {
             /* Matrice NATIVA rank-N (double* flat row-major): stampa piatta come IL/PCode. */
-            sb_put(&c->out, "gmb_json_double_array((const gmb_double_t*)");
+            sb_put(&c->out, "gmb_display_double_array((const gmb_double_t*)");
             emit_ident(c, v->name);
             sb_put(&c->out, ", (gmb_int_t)(");
             for (int k = 0; k < v->ndims; k++) {
@@ -18345,7 +18345,7 @@ static void emit_print_container(ctx_t* c, gmb_expr_t* e) {
             sb_put(&c->out, "))");
             return;
         }
-        sb_put(&c->out, v->type == TY_STR ? "gmb_json_string_array(" : "gmb_json_double_array(");
+        sb_put(&c->out, v->type == TY_STR ? "gmb_json_string_array(" : "gmb_display_double_array(");
         sb_ident(&c->out, v->name);
         sb_put(&c->out, ", ");
         if (v->dyn_len) emit_arr_len_of(c, v);
