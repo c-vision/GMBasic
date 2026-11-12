@@ -6,6 +6,7 @@
 ' la lib scriverebbe su una copia o rifiuterebbe l'output. `DeriveAndPub` esercita inoltre il
 ' passaggio parametro -> parametro (seed/dk/re inoltrati a Derive e Pub).
 REQUIRE "blockchain"
+REQUIRE "crypto"
 IMPORT BLOCKCHAIN
 IMPORT CRYPTOGRAPHY
 IMPORT STRINGS
@@ -36,10 +37,10 @@ SUB MnToSeed(m$ AS STRING, pass AS STRING, o() AS BYTE)
   n = MNEMONICTOSEED(m$, pass, o)
 END SUB
 
-SUB Sign(msg() AS BYTE, priv() AS BYTE, o() AS BYTE)
+SUB SignLocal(msg() AS BYTE, priv() AS BYTE, o() AS BYTE)
   DIM n AS LONG
   n = SECP256K1SIGN(msg, priv, o)
-  PRINT "sigprefix="; LEFT(TOHEX(o), 2)
+  PRINT "sigprefix="; LEFT(BYTESHEX(o), 2)
   PRINT "derlen>=68="; (n >= 68)
 END SUB
 
@@ -48,7 +49,9 @@ SUB Diff(h() AS BYTE)
 END SUB
 
 SUB Main()
-  DIM seed() AS BYTE = FROMHEX("000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f")
+  DIM seed(31) AS BYTE
+  DIM _n_seed AS LONG
+  _n_seed = FROMHEX("000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f", seed)
   DIM dk(96) AS BYTE
   DIM re(63) AS BYTE
   DeriveAndPub(seed, dk, re)
@@ -64,9 +67,9 @@ SUB Main()
   FOR i = 0 TO 32
     pub(i) = dk(32 + i)
   NEXT i
-  PRINT "priv="; TOHEX(priv)
-  PRINT "chain="; TOHEX(chain)
-  IF LEFT(TOHEX(re), 66) = TOHEX(pub) THEN
+  PRINT "priv="; BYTESHEX(priv)
+  PRINT "chain="; BYTESHEX(chain)
+  IF LEFT(BYTESHEX(re), 66) = BYTESHEX(pub) THEN
     PRINT "match=SI"
   ELSE
     PRINT "match=NO"
@@ -74,12 +77,16 @@ SUB Main()
 
   DIM sd(63) AS BYTE
   MnToSeed("abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about", "TREZOR", sd)
-  PRINT "seed="; TOHEX(sd)
+  PRINT "seed="; BYTESHEX(sd)
 
-  DIM msg() AS BYTE = FROMHEX("00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff")
+  DIM msg(31) AS BYTE
+  DIM _n_msg AS LONG
+  _n_msg = FROMHEX("00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff", msg)
   DIM sig(79) AS BYTE
-  Sign(msg, priv, sig)
+  SignLocal(msg, priv, sig)
 
-  DIM h() AS BYTE = FROMHEX("0000000000000000000000000000000000000000000000000000000000000000")
+  DIM h(31) AS BYTE
+  DIM _n_h AS LONG
+  _n_h = FROMHEX("0000000000000000000000000000000000000000000000000000000000000000", h)
   Diff(h)
 END SUB

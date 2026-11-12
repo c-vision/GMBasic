@@ -3,17 +3,20 @@
 ' solo il prefisso 0x30 e la lunghezza >= 68). Contestualmente verifica il copy-back: il
 ' buffer BYTE di uscita e' scritto dalla lib e riletto qui.
 REQUIRE "blockchain"
+REQUIRE "crypto"
 IMPORT BLOCKCHAIN
 IMPORT CRYPTOGRAPHY
 IMPORT STRINGS
 
 SUB Main()
-  DIM msg() AS BYTE = FROMHEX("00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff")
+  DIM msg(31) AS BYTE
+  DIM _n_msg AS LONG
+  _n_msg = FROMHEX("00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff", msg)
   DIM priv(31) AS BYTE
   priv(31) = 1
   DIM sig(79) AS BYTE
   DIM n AS LONG
   n = SECP256K1SIGN(msg, priv, sig)
-  PRINT "sigprefix="; LEFT(TOHEX(sig), 2)
+  PRINT "sigprefix="; LEFT(BYTESHEX(sig), 2)
   PRINT "derlen>=68="; (n >= 68)
 END SUB

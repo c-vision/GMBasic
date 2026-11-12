@@ -3,21 +3,24 @@
 ' (firma e mnemonica sono casuali: si controlla solo forma/lunghezza).
 ' EXPECT: k=1c8aff950685c2ed4bc3174f3472287b56d9517b9c948127319a09a7a36deac8|r=108f07b8382412612c048d07d13f814118445acd|b=324dcf027dd4a30a932c441f365a25e86b173defa4b8e58948253471b81b72cf|b58=Cn8eVZg|b32=NBSWY3DP|b58d= 5 :68656c6c6f|b32d= 5 :68656c6c6f|rlp=8568656c6c6f|v=9601|dv= 150|pub= 33|full= 65|eth=0x7e5f4552091a69125d5dfcb7b8c2659029395bdf|cks=0x7E5F4552091A69125d5DfCb7b8C2659029395Bdf|btc=1BgGZ9tcN4rm9KBzDn7KprQz87SZ26SAMH|btct=mrCDrCybB6J1vRfbwM5hemdJz73FwDBC8r|seed=c55257c360c07c72029aebc1b53c05ed0362ada38ead3e3e9efa3708e53495531f09a6987599d18264c1e1c92f2cf141630c7a3c4ab7c81b2f001698e7463b04|hd= 97|mn= 12|sig=30|lenok=-1|diff= 5|abi=0x70a082310000000000000000000000000000000000000000000000000000000000000001|sel=0x70a08231|dec= 1|n= 1
 REQUIRE "blockchain"
+REQUIRE "crypto"
 IMPORT BLOCKCHAIN
 IMPORT CRYPTOGRAPHY
 
 SUB Main()
   ' hashing (KECCAK256, RIPEMD160, BLAKE2B256)
-  DIM d() AS BYTE = FROMHEX("68656c6c6f")
+  DIM d(4) AS BYTE
+  DIM _n_d AS LONG
+  _n_d = FROMHEX("68656c6c6f", d)
   DIM k(31) AS BYTE
   DIM r(19) AS BYTE
   DIM b(31) AS BYTE
   KECCAK256(d, k)
   RIPEMD160(d, r)
   BLAKE2B256(d, b)
-  PRINT "k="; TOHEX(k)
-  PRINT "r="; TOHEX(r)
-  PRINT "b="; TOHEX(b)
+  PRINT "k="; BYTESHEX(k)
+  PRINT "r="; BYTESHEX(r)
+  PRINT "b="; BYTESHEX(b)
 
   ' encoding (BASE58/BASE32 ENCODE+DECODE, RLPENCODE, VARINTENCODE/DECODE)
   DIM o(31) AS BYTE
@@ -28,15 +31,15 @@ SUB Main()
   PRINT "b58="; BASE58ENCODE(d)
   PRINT "b32="; BASE32ENCODE(d)
   n1 = BASE58DECODE(BASE58ENCODE(d), o)
-  PRINT "b58d="; n1; ":"; LEFT$(TOHEX(o), n1 * 2)
+  PRINT "b58d="; n1; ":"; LEFT$(BYTESHEX(o), n1 * 2)
   n2 = BASE32DECODE(BASE32ENCODE(d), o)
-  PRINT "b32d="; n2; ":"; LEFT$(TOHEX(o), n2 * 2)
+  PRINT "b32d="; n2; ":"; LEFT$(BYTESHEX(o), n2 * 2)
   DIM rlp(31) AS BYTE
   n3 = RLPENCODE(d, rlp)
-  PRINT "rlp="; LEFT$(TOHEX(rlp), n3 * 2)
+  PRINT "rlp="; LEFT$(BYTESHEX(rlp), n3 * 2)
   DIM vi(15) AS BYTE
   n4 = VARINTENCODE(150, vi)
-  PRINT "v="; LEFT$(TOHEX(vi), n4 * 2)
+  PRINT "v="; LEFT$(BYTESHEX(vi), n4 * 2)
   PRINT "dv="; VARINTDECODE(vi)
 
   ' chiavi/indirizzi (GETPUBLICKEY, GETFULLPUBLICKEY, ETHADDRFROMPUB,
@@ -56,7 +59,7 @@ SUB Main()
   DIM seed(63) AS BYTE
   DIM nseed AS LONG
   nseed = MNEMONICTOSEED("abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about", "TREZOR", seed)
-  PRINT "seed="; LEFT$(TOHEX(seed), nseed * 2)
+  PRINT "seed="; LEFT$(BYTESHEX(seed), nseed * 2)
   DIM hd(96) AS BYTE
   PRINT "hd="; DERIVEKEY(seed, "", hd)
   DIM m$ AS STRING
@@ -70,15 +73,19 @@ SUB Main()
   PRINT "mn="; w
 
   ' firma (SECP256K1SIGN) — deterministica solo la forma
-  DIM hash() AS BYTE = FROMHEX("00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff")
+  DIM hash(31) AS BYTE
+  DIM _n_hash AS LONG
+  _n_hash = FROMHEX("00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff", hash)
   DIM sig(79) AS BYTE
   DIM n AS LONG
   n = SECP256K1SIGN(hash, priv, sig)
-  PRINT "sig="; LEFT$(TOHEX(sig), 2)
+  PRINT "sig="; LEFT$(BYTESHEX(sig), 2)
   PRINT "lenok="; (n >= 68)
 
   ' difficoltà (BLOCKDIFFICULTY)
-  DIM hdr() AS BYTE = FROMHEX("0000000000000000000000000000000000000000000000000000000000000000")
+  DIM hdr(31) AS BYTE
+  DIM _n_hdr AS LONG
+  _n_hdr = FROMHEX("0000000000000000000000000000000000000000000000000000000000000000", hdr)
   PRINT "diff="; BLOCKDIFFICULTY(hdr, 553648127)
 
   ' ABI (ABIENCODE, ABISELECTOR, ABIDECODE)

@@ -2,12 +2,15 @@
 ' MiniTest BLOCKCHAIN (pacchetto FFI): ETHADDRCHECKSUM (vettore EIP-55) + BTCADDRFROMPUB
 ' mainnet/testnet sulla chiave G compressa (33 byte).
 REQUIRE "blockchain"
+REQUIRE "crypto"
 IMPORT BLOCKCHAIN
 IMPORT CRYPTOGRAPHY
 
 SUB Main()
   PRINT "cs="; ETHADDRCHECKSUM("0x5aaeb6053f3e94c096b9a57e4e0a27d1c5f6d")
-  DIM pub() AS BYTE = FROMHEX("0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798")
+  DIM pub(32) AS BYTE
+  DIM _n_pub AS LONG
+  _n_pub = FROMHEX("0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798", pub)
   PRINT "btcMain="; BTCADDRFROMPUB(pub, FALSE)
   PRINT "btcTest="; BTCADDRFROMPUB(pub, TRUE)
 END SUB

@@ -3,11 +3,14 @@
 ' (priv 32 || pub 33 || chainCode 32); il path NON e' applicato (chiave master, come il
 ' builtin dismesso) e la chiave pubblica ricavata da GETPUBLICKEY combacia.
 REQUIRE "blockchain"
+REQUIRE "crypto"
 IMPORT BLOCKCHAIN
 IMPORT CRYPTOGRAPHY
 
 SUB Main()
-  DIM seed() AS BYTE = FROMHEX("000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f")
+  DIM seed(31) AS BYTE
+  DIM _n_seed AS LONG
+  _n_seed = FROMHEX("000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f", seed)
   DIM dk(96) AS BYTE
   DIM n AS LONG
   n = DERIVEKEY(seed, "m/44'/60'/0'/0/0", dk)
@@ -22,11 +25,11 @@ SUB Main()
   FOR i = 0 TO 32
     pub(i) = dk(32 + i)
   NEXT i
-  PRINT "priv="; TOHEX(priv)
-  PRINT "chain="; TOHEX(chain)
+  PRINT "priv="; BYTESHEX(priv)
+  PRINT "chain="; BYTESHEX(chain)
   DIM re(63) AS BYTE
   n = GETPUBLICKEY(priv, re)
-  IF LEFT(TOHEX(re), n * 2) = TOHEX(pub) THEN
+  IF LEFT(BYTESHEX(re), n * 2) = BYTESHEX(pub) THEN
     PRINT "match=SI"
   ELSE
     PRINT "match=NO"

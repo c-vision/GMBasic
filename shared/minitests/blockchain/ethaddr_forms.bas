@@ -17,6 +17,7 @@
 ' cambia solo la codifica — quindi un indirizzo diverso non e' un errore di calcolo, e' la
 ' lib che non converte fra le due forme.
 REQUIRE "blockchain"
+REQUIRE "crypto"
 IMPORT BLOCKCHAIN
 IMPORT CRYPTOGRAPHY
 IMPORT STRINGS
@@ -55,7 +56,7 @@ SUB Main()
   ELSE
     PRINT "diversi=NO"
   END IF
-  IF MID(TOHEX(k65), 3, 64) = MID(TOHEX(k33), 3, 64) THEN
+  IF MID(BYTESHEX(k65), 3, 64) = MID(BYTESHEX(k33), 3, 64) THEN
     PRINT "stessaX=SI"
   ELSE
     PRINT "stessaX=NO"

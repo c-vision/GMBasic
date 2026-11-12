@@ -4,6 +4,7 @@
 ' `blockchain.inc`. Copre encode E decode: l'array non e' un DIM locale del chiamante ma il
 ' parametro della SUB (percorso array→parametro→FFI, dove in C99 l'array non ha `.data`/`.length`).
 REQUIRE "blockchain"
+REQUIRE "crypto"
 IMPORT BLOCKCHAIN
 IMPORT CRYPTOGRAPHY
 IMPORT STRINGS
@@ -15,7 +16,7 @@ END SUB
 SUB DecB58(t AS STRING, o() AS BYTE)
   DIM n AS LONG
   n = BASE58DECODE(t, o)
-  PRINT "b58d="; LEFT(TOHEX(o), n * 2)
+  PRINT "b58d="; LEFT(BYTESHEX(o), n * 2)
 END SUB
 
 SUB EncB32(a() AS BYTE)
@@ -25,19 +26,19 @@ END SUB
 SUB DecB32(t AS STRING, o() AS BYTE)
   DIM n AS LONG
   n = BASE32DECODE(t, o)
-  PRINT "b32d="; LEFT(TOHEX(o), n * 2)
+  PRINT "b32d="; LEFT(BYTESHEX(o), n * 2)
 END SUB
 
 SUB EncRlp(a() AS BYTE, o() AS BYTE)
   DIM n AS LONG
   n = RLPENCODE(a, o)
-  PRINT "rlp="; LEFT(TOHEX(o), n * 2)
+  PRINT "rlp="; LEFT(BYTESHEX(o), n * 2)
 END SUB
 
 SUB EncVar(v AS LONG, o() AS BYTE)
   DIM n AS LONG
   n = VARINTENCODE(v, o)
-  PRINT "v="; LEFT(TOHEX(o), n * 2)
+  PRINT "v="; LEFT(BYTESHEX(o), n * 2)
 END SUB
 
 SUB DecVar(a() AS BYTE)
@@ -45,7 +46,9 @@ SUB DecVar(a() AS BYTE)
 END SUB
 
 SUB Main()
-  DIM d() AS BYTE = FROMHEX("68656c6c6f")
+  DIM d(4) AS BYTE
+  DIM _n_d AS LONG
+  _n_d = FROMHEX("68656c6c6f", d)
   EncB58(d)
   EncB32(d)
 
@@ -53,12 +56,16 @@ SUB Main()
   DecB58("Cn8eVZg", o)
   DecB32("NBSWY3DP", o)
 
-  DIM dog() AS BYTE = FROMHEX("646f67")
+  DIM dog(2) AS BYTE
+  DIM _n_dog AS LONG
+  _n_dog = FROMHEX("646f67", dog)
   EncRlp(dog, o)
 
   DIM vb(9) AS BYTE
   EncVar(300, vb)
 
-  DIM c() AS BYTE = FROMHEX("ac02")
+  DIM c(1) AS BYTE
+  DIM _n_c AS LONG
+  _n_c = FROMHEX("ac02", c)
   DecVar(c)
 END SUB

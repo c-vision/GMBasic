@@ -13,7 +13,6 @@
 ' verMain/verTest fissano anche il byte di versione dell'indirizzo (0x00 mainnet, 0x6F testnet).
 REQUIRE "blockchain"
 IMPORT BLOCKCHAIN
-IMPORT CRYPTOGRAPHY
 IMPORT STRINGS
 
 ' L'array di parametro attraversa l'FFI anche come argomento di FUNCTION.

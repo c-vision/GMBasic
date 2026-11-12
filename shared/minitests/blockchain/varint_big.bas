@@ -1,6 +1,7 @@
 ' EXPECT: e150=9601|e300=ac02|d150= 150|d300= 300
 ' MiniTest BLOCKCHAIN (pacchetto FFI): VARINT LEB128 multibyte (2 byte).
 REQUIRE "blockchain"
+REQUIRE "crypto"
 IMPORT BLOCKCHAIN
 IMPORT CRYPTOGRAPHY
 
@@ -8,11 +9,15 @@ SUB Main()
   DIM o(9) AS BYTE
   DIM n AS LONG
   n = VARINTENCODE(150, o)
-  PRINT "e150="; LEFT(TOHEX(o), n * 2)
+  PRINT "e150="; LEFT(BYTESHEX(o), n * 2)
   n = VARINTENCODE(300, o)
-  PRINT "e300="; LEFT(TOHEX(o), n * 2)
-  DIM a() AS BYTE = FROMHEX("9601")
+  PRINT "e300="; LEFT(BYTESHEX(o), n * 2)
+  DIM a(1) AS BYTE
+  DIM _n_a AS LONG
+  _n_a = FROMHEX("9601", a)
   PRINT "d150="; VARINTDECODE(a)
-  DIM c() AS BYTE = FROMHEX("ac02")
+  DIM c(1) AS BYTE
+  DIM _n_c AS LONG
+  _n_c = FROMHEX("ac02", c)
   PRINT "d300="; VARINTDECODE(c)
 END SUB

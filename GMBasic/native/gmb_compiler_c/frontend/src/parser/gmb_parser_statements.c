@@ -1559,8 +1559,18 @@ static gmb_stmt_t* gmb_p_parse_stmt_impl(gmb_parser_t* p, bool* multiline)
                     {
                         const gmb_token_t* mc = gmb_p_cur(p);
                         if (gmb_p_tok_is_keyword(mc, "In")) {
-                            param_mode = 0;
-                            gmb_p_adv(p);
+                            /* `IN` può essere anche il NOME del parametro (`in() AS DOUBLE`):
+                             * è un modificatore solo se seguito da un ALTRO nome. Prima veniva
+                             * consumato sempre, quindi `DECLARE ... (in() AS DOUBLE)` e
+                             * `SUB S(in() AS BYTE)` davano «statement non riconosciuto»
+                             * (graphicsffi/gfx2d_*). */
+                            const gmb_token_t* nx = gmb_p_peek(p, 1);
+                            if (nx && nx->kind != GMB_TOK_As && nx->kind != GMB_TOK_Comma
+                                && nx->kind != GMB_TOK_RightParen && nx->kind != GMB_TOK_LeftParen
+                                && nx->kind != GMB_TOK_Equal) {
+                                param_mode = 0;
+                                gmb_p_adv(p);
+                            }
                         } else if (mc && mc->kind == GMB_TOK_Identifier && mc->lexeme
                                    && (strncasecmp(mc->lexeme, "OUT", 3) == 0
                                        || strncasecmp(mc->lexeme, "INOUT", 5) == 0)) {
@@ -2291,8 +2301,18 @@ if (gmb_tk_rem_vari_in(t->kind)) {
                     {
                         const gmb_token_t* mc = gmb_p_cur(p);
                         if (gmb_p_tok_is_keyword(mc, "In")) {
-                            param_mode = 0;
-                            gmb_p_adv(p);
+                            /* `IN` può essere anche il NOME del parametro (`in() AS DOUBLE`):
+                             * è un modificatore solo se seguito da un ALTRO nome. Prima veniva
+                             * consumato sempre, quindi `DECLARE ... (in() AS DOUBLE)` e
+                             * `SUB S(in() AS BYTE)` davano «statement non riconosciuto»
+                             * (graphicsffi/gfx2d_*). */
+                            const gmb_token_t* nx = gmb_p_peek(p, 1);
+                            if (nx && nx->kind != GMB_TOK_As && nx->kind != GMB_TOK_Comma
+                                && nx->kind != GMB_TOK_RightParen && nx->kind != GMB_TOK_LeftParen
+                                && nx->kind != GMB_TOK_Equal) {
+                                param_mode = 0;
+                                gmb_p_adv(p);
+                            }
                         } else if (mc && mc->kind == GMB_TOK_Identifier && mc->lexeme
                                    && (strncasecmp(mc->lexeme, "OUT", 3) == 0
                                        || strncasecmp(mc->lexeme, "INOUT", 5) == 0)) {
