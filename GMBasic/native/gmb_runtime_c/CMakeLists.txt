@@ -452,6 +452,14 @@ add_library(gmb_runtime_ui_obj OBJECT ${GMB_UI_SRCS})
 target_link_libraries(gmb_runtime_core_obj PRIVATE gmb_runtime_deps)
 # Il runtime COMPLETO include l'UI (FORM/READ con listbox/combobox/ombra/input).
 target_compile_definitions(gmb_runtime_core_obj PRIVATE GMB_WITH_UI=1)
+# Windows: `llmdesc` e' linkato nel core (blocco if(WIN32) sopra), quindi la cartella ABI dei
+# modelli resti AGGANCIATA: `gmb_abi.c` fa il bind diretto dei tre llmdesc_abi_* solo quando
+# questo macro e' definito (senza, il ramo e' no-op per i link runtime-only che llmdesc non lo
+# hanno). La call sta qui e non dentro il blocco perche' il target esiste solo da poche righe;
+# l'if(WIN32) la tiene comunque esclusiva di Windows.
+if(WIN32)
+  target_compile_definitions(gmb_runtime_core_obj PRIVATE GMB_WITH_LLMDESC)
+endif()
 # Path di BUILD della dylib AI: il gateway la trova anche senza install (dev/REPL build dir).
 target_compile_definitions(gmb_runtime_core_obj PRIVATE
     GMB_RUNTIME_AI_PATH="${GMB_LIBS_OUT}/${CMAKE_SHARED_LIBRARY_PREFIX}gmb_runtime_ai${CMAKE_SHARED_LIBRARY_SUFFIX}")

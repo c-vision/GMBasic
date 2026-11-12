@@ -37,8 +37,13 @@ void gmb_abi_set_llmdesc(int (*valid)(const char*), int (*locate)(char*, size_t,
 }
 
 #if defined(_WIN32)
-/* Windows: lo split non c'è (niente dynamic_lookup) → `llmdesc` è linkato nel core e i
- * servizi si registrano direttamente al primo uso (nessun constructor esterno). */
+/* Windows: lo split non c'è (niente dynamic_lookup) e non esiste il riferimento debole, quindi
+ * l'aggancio è DIRETTO — ma solo se `llmdesc` è davvero linkato in questo eseguibile.
+ * `GMB_WITH_LLMDESC` lo dichiara il build dei target che linkano llmdesc: così i servizi si
+ * registrano al primo uso (nessun constructor esterno) come prima, mentre un link
+ * runtime-only (solo `gmb_runtime`) NON referenzia `llmdesc_abi_valid/locate` né
+ * `llmdesc_set_abi_policy` — senza il macro il link si fermava su quei tre simboli. */
+#if defined(GMB_WITH_LLMDESC)
 #include "llmdesc.h"
 static void gmb_abi_bind_direct(void)
 {
@@ -47,6 +52,10 @@ static void gmb_abi_bind_direct(void)
     g_llmdesc_locate = llmdesc_abi_locate;
     g_llmdesc_policy = llmdesc_set_abi_policy;
 }
+#else
+/* llmdesc non è in questo eseguibile: l'ABI dei modelli non c'è (g_llmdesc_* restano NULL). */
+static void gmb_abi_bind_direct(void) { }
+#endif
 /* POSIX: il CORE non linka LLMEnv (split core/AI), ma i programmi C99Native linkano `llmdesc`
  * STATICAMENTE nello stesso eseguibile. Lì nessuno chiama `gmb_abi_set_llmdesc` — lo fa il
  * constructor di `gmb_runtime_ai` (dylib), che non c'è — e la policy restava INERTE: `paths.abiDir`
