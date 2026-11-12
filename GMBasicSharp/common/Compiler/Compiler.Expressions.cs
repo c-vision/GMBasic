@@ -24,6 +24,16 @@ public sealed partial class Compiler
             case StringExpr s: EmitConstant(s.Value); break;
             case BooleanExpr b: EmitByte((byte)(b.Value ? (byte)OpCode.OP_PUSH_TRUE : (byte)OpCode.OP_PUSH_FALSE)); break;
             case VariableExpr v:
+                /* Nome dichiarato in un BLOCCO ormai chiuso (linker → OutOfScopeSymbolId): non è
+                 * in scope → vale il DEFAULT del tipo (0 numerico, "" stringa). Senza questo
+                 * ramo la lettura cadeva nella risoluzione per nome (implicita/globale) e poteva
+                 * leggere valori non pertinenti. Vedi SymbolTable.OutOfScopeSymbolId. */
+                if (v.SymbolId == SymbolTable.OutOfScopeSymbolId)
+                {
+                    if (v.NameSuffixed.Lexeme.EndsWith('$')) EmitConstant(string.Empty);
+                    else EmitConstant(0.0);
+                    break;
+                }
                 // Sentinella del record buffer DBF: base di un FieldAccessExpr "campo nudo"
                 // (`PRINT NomeCampo` con area aperta), prodotta dal Linker (SymbolId = -2).
                 // Va emessa come NIL esplicito: senza questo il compilatore la trattava come

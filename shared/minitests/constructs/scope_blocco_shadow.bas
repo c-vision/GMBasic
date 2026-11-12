@@ -1,4 +1,4 @@
-' EXPECT: dim dentro= 10|dim dopo= 100|loc dentro= 20|loc dopo= 100|let dentro= 30|let dopo= 100
+' EXPECT: dim dentro= 10|dim dopo= 100|loc dentro= 20|loc dopo= 100|let dentro= 30|let dopo= 100|fuori= 0|testo=
 ' SCOPE DI BLOCCO (spec Variables-Scope §2.1/§2.2/§3.1/§6): DIM, LOCAL e LET dentro un blocco
 ' creano una variabile DEL BLOCCO che ombreggia quella esterna; alla chiusura del blocco il nome
 ' torna a indicare la variabile esterna (che non è stata modificata).
@@ -24,6 +24,20 @@ SUB Blocchi()
         PRINT "let dentro="; A
     END IF
     PRINT "let dopo="; A
+
+    ' Un nome dichiarato in un blocco e letto FUORI vale il default del tipo (specifica §2.1:
+    ' non è più in scope) -> 0 numerico, "" per una STRING.
+    IF TRUE THEN
+        DIM SoloBlocco AS LONG
+        SoloBlocco = 7
+    END IF
+    PRINT "fuori="; SoloBlocco
+
+    IF TRUE THEN
+        DIM SoloTesto AS STRING
+        SoloTesto = "dentro"
+    END IF
+    PRINT "testo="; SoloTesto
 END SUB
 
 SUB Main()

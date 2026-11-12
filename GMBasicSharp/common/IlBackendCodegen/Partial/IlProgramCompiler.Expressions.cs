@@ -29,6 +29,16 @@ public sealed partial class IlProgramCompiler
             case StringExpr s: _il.Emit(OpCodes.Ldstr, s.Value); break;
             case BooleanExpr b: _il.Emit(b.Value ? OpCodes.Ldc_I4_1 : OpCodes.Ldc_I4_0); break;
             case VariableExpr v:
+                /* Nome dichiarato in un BLOCCO ormai chiuso (linker → OutOfScopeSymbolId): non è
+                 * in scope → vale il DEFAULT del tipo (0 numerico, "" stringa). Non va cercato per
+                 * nome fra i locali (il fallback sotto lo "resusciterebbe": `DIM x` in un blocco,
+                 * `PRINT x` dopo stampava il valore del blocco). Vedi SymbolTable.OutOfScopeSymbolId. */
+                if (v.SymbolId == SymbolTable.OutOfScopeSymbolId)
+                {
+                    if (v.NameSuffixed.Lexeme.EndsWith('$')) _il.Emit(OpCodes.Ldstr, string.Empty);
+                    else _il.Emit(OpCodes.Ldc_R8, 0.0);
+                    break;
+                }
                 // Variabile di iterazione FOR con SymbolId NON risolto dal linker (gap:
                 // `LINE (i*40,...), i, BF` → SymbolId=-1 nel corpo) → risolvi per NOME
                 // contro il contatore FOR attivo e carica il suo local (aggiornato dal Next).

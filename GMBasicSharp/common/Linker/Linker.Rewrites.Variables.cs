@@ -107,20 +107,19 @@ public static partial class Linker
             {
                 var preSym = program.Symbols.GetSymbol(ve.SymbolId);
                 if (preSym is not null && !preSym.Flags.HasFlag(SymbolFlags.IsGlobal)
-                    && program.Symbols.GetScope(preSym.ScopeId).Type == SymbolTable.ScopeType.Block
-                    && FindSymbolIdInScopeChain(ve.NameCleaned.Lexeme, ve.ScopeId, ve.Position, program) < 0
-                    && context.IsInStrictContext)
+                    && IsDeclaredInClosedBlock(program, preSym, ve))
                 {
-                    // Solo in OPTION STRICT ON: il nome è dichiarato in un blocco che non è più
-                    // attivo → errore. Fuori da STRICT si lascia il comportamento storico
-                    // (lettura risolta: è codice errato per la spec §2.1/§6, valore non
-                    // garantito). NON si sostituisce con un letterale: la stessa condizione può
-                    // scattare per nomi che SONO in scope (i ScopeId del parser non seguono
-                    // sempre i blocchi) e romperebbe la creazione implicita nelle chiamate BYREF
-                    // (ScopesByRef). Vedi la nota Bug/Plan sullo scope di blocco.
-                    throw CreateError(ve.NameSuffixed,
-                        $"In OPTION STRICT mode, la variabile '{ve.NameSuffixed.Lexeme}' deve essere dichiarata esplicitamente.",
-                        ErrorCode.UndefinedVariable);
+                    // Il nome ESISTE ma è dichiarato in un blocco FIGLIO dello scope della lettura:
+                    // il blocco è chiuso → non è più in scope. Con STRICT è un errore; senza STRICT
+                    // vale il default del tipo (OutOfScopeSymbolId: i backend NON devono cercarlo
+                    // per nome fra i locali). Vedi SymbolTable.OutOfScopeSymbolId.
+                    if (context.IsInStrictContext)
+                    {
+                        throw CreateError(ve.NameSuffixed,
+                            $"In OPTION STRICT mode, la variabile '{ve.NameSuffixed.Lexeme}' deve essere dichiarata esplicitamente.",
+                            ErrorCode.UndefinedVariable);
+                    }
+                    return OutOfScopeDefault(ve, preSym);
                 }
             }
             Log($"[REWR-VAR]   -> VariableExpr ha già SymbolId {ve.SymbolId}. Processo RewritePreResolvedSymbol...", log);
@@ -537,10 +536,63 @@ public static partial class Linker
     /// alla definizione statica del campo, impedendo al `RewriteDbfUpdateStatement` di funzionare o bloccando
     /// il passaggio al Late Binding per i campi reali del database.
     /// </summary>
+    /// <summary>
+    /// Vero se il simbolo è dichiarato in uno scope di BLOCCO che DISCENDE dallo scope della
+    /// lettura: il blocco è quindi già chiuso (la lettura è fuori) e il nome non è più in scope.
+    /// Criterio preciso per la regola «leggere un nome fuori dal blocco → default (o errore con
+    /// STRICT)»: si confrontano gli ScopeId, MAI la catena per nome (che può fallire per nomi che
+    /// SONO in scope e romperebbe la creazione implicita BYREF — verificato su ScopesByRef).
+    /// </summary>
+    private static bool IsDeclaredInClosedBlock(BasicProgram program, SymbolTable.Symbol sym, VariableExpr use)
+    {
+        if (use.ScopeId < 0 || sym.ScopeId == use.ScopeId) return false;
+        var declScope = program.Symbols.GetScope(sym.ScopeId);
+        if (declScope.Type != SymbolTable.ScopeType.Block) return false;
+        var cur = declScope.ParentId;
+        var guard = 0;
+        while (cur >= 0 && guard++ < 64)
+        {
+            if (cur == use.ScopeId) return true;
+            var parent = program.Symbols.GetScope(cur).ParentId;
+            if (parent == cur) break;
+            cur = parent;
+        }
+        return false;
+    }
+
+    /// <summary>
+    /// Valore di un nome letto FUORI dal blocco in cui è dichiarato: il DEFAULT del tipo
+    /// (`0` numerico, `""` per una STRING), cioè come una variabile implicita (specifica
+    /// Variables-Scope §2.1/§6; con `OPTION STRICT ON` il chiamante produce un errore e non
+    /// arriva qui). Il tipo si legge dalla DICHIARAZIONE del simbolo, non dal suffisso del nome
+    /// (`DIM x AS STRING` senza `$` deve dare `""`).
+    /// </summary>
+    private static Expr OutOfScopeDefault(VariableExpr ve, SymbolTable.Symbol sym)
+    {
+        var isStr = (sym.DeclarationNode as VariableDeclaration)?.DataType is StringType
+                    || ve.NameSuffixed.Lexeme.EndsWith('$');
+        return isStr
+            ? new StringExpr("", ve.NameSuffixed) { ScopeId = ve.ScopeId }
+            : new NumberExpr(0.0, ve.NameSuffixed) { ScopeId = ve.ScopeId };
+    }
+
     private static Expr? TryResolveFallback(VariableExpr ve, AstRewriteContext context, BasicProgram program)
     {
         var variableName = ve.NameCleaned.Lexeme;
         var symbolsByName = program.Symbols.FindSymbolsByName(variableName);
+
+        // Declinazione «nome esistente ma dichiarato in un blocco chiuso»: STRICT → errore,
+        // altrimenti il nome vale il default del tipo (OutOfScopeSymbolId). Vale qui perché il
+        // fallback per nome è proprio ciò che altrimenti lo «resusciterebbe».
+        foreach (var s in symbolsByName)
+            if (!s.Flags.HasFlag(SymbolFlags.IsGlobal) && IsDeclaredInClosedBlock(program, s, ve))
+            {
+                if (context.IsInStrictContext)
+                    throw CreateError(ve.NameSuffixed,
+                        $"In OPTION STRICT mode, la variabile '{ve.NameSuffixed.Lexeme}' deve essere dichiarata esplicitamente.",
+                        ErrorCode.UndefinedVariable);
+                return OutOfScopeDefault(ve, s);
+            }
 
         foreach (var symbol in symbolsByName)
         {

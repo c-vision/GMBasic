@@ -131,6 +131,17 @@ L'Executor riceve un'immagine del programma semanticamente valida e completament
     public const int DynamicScopeSymbolId = -3;
 
     /// <summary>
+    /// ID speciale per un nome che ESISTE nel programma ma è stato dichiarato in un BLOCCO
+    /// ormai chiuso: non è in scope, quindi vale il **default del tipo** (`0`, `""`) come una
+    /// variabile implicita (specifica Variables-Scope §2.1/§6; con `OPTION STRICT ON` il linker
+    /// produce un errore prima di arrivare qui). Distinto da <see cref="DynamicScopeSymbolId"/>
+    /// (nome mai dichiarato → scope dinamico) e da <see cref="UnresolvedSymbolId"/> (late-binding
+    /// DBF): i backend devono trattarlo come "leggi il default", MAI cercarlo per nome fra i
+    /// locali (era il bug: `DIM x` in un blocco, `PRINT x` dopo stampava il valore del blocco su IL).
+    /// </summary>
+    public const int OutOfScopeSymbolId = -4;
+
+    /// <summary>
     /// L'elenco master di tutti i simboli unici nel programma.
     /// L'indice di un simbolo in questa lista corrisponde al suo <see cref="Symbol.Id"/>.
     /// Questa è la fonte di verità assoluta per i metadati di ogni simbolo (nome, tipo, flag, scope).

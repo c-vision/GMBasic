@@ -2,7 +2,31 @@
 #include "gmb_parser.h"
 #include "gmb_parser_internal.h"
 #include <stdlib.h>
+#include <stdio.h>
 #include <string.h>
+
+/* Vero se in una lista di statement (a livello di MODULO) esiste una `LET x = ...`: la
+ * specifica (Variables-Scope §3.1) la vieta fuori dalle procedure. Si scende nei blocchi
+ * (IF/FOR/WHILE/DO/SELECT/TRY) ma NON nei corpi delle procedure (`func_body`), dove la LET è
+ * lecita. Usato da `gmb_parse` dopo il parsing. */
+static int gmb_p_top_level_let(gmb_stmt_t** list, int n) {
+    if (!list) return 0;
+    for (int i = 0; i < n; i++) {
+        gmb_stmt_t* s = list[i];
+        if (!s) continue;
+        if (s->kind == GMB_STMT_ASSIGN && s->is_let) return 1;
+        if (gmb_p_top_level_let(s->then_body, s->n_then)) return 1;
+        if (gmb_p_top_level_let(s->else_body, s->n_else)) return 1;
+        if (gmb_p_top_level_let(s->for_body, s->n_for)) return 1;
+        if (gmb_p_top_level_let(s->while_body, s->n_while)) return 1;
+        if (gmb_p_top_level_let(s->do_body, s->n_do)) return 1;
+        if (gmb_p_top_level_let(s->case_body, s->n_case_body)) return 1;
+        if (gmb_p_top_level_let(s->try_body, s->n_try)) return 1;
+        if (gmb_p_top_level_let(s->catch_body, s->n_catch)) return 1;
+        if (gmb_p_top_level_let(s->finally_body, s->n_finally)) return 1;
+    }
+    return 0;
+}
 
 gmb_program_t gmb_parse(const gmb_lex_result_t* lx, char** error)
 {
@@ -74,6 +98,16 @@ gmb_program_t gmb_parse(const gmb_lex_result_t* lx, char** error)
     }
     memcpy(prog.library_name, p.lib_name, sizeof(prog.library_name));
     prog.option_strict = p.option_strict;
+    /* `LET` a livello di MODULO = errore di sintassi (specifica Variables-Scope §3.1): con
+     * `p.error` già valorizzato non si sovrascrive l'errore originale. Si scende nei blocchi
+     * (IF/FOR/...) ma NON nei corpi delle procedure (func_body). */
+    if (!p.error && gmb_p_top_level_let(prog.stmts, prog.n))
+    {
+        static char let_err[256];
+        snprintf(let_err, sizeof(let_err),
+                 "LET è valido solo dentro una procedura (SUB/FUNCTION/GENERATOR): a livello di modulo usare un'assegnazione (x = ...) oppure DIM/GLOBAL.");
+        p.error = let_err;
+    }
     if (error) *error = p.error;
     return prog;
 }
