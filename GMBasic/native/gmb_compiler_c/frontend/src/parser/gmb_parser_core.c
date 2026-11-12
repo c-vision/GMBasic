@@ -103,10 +103,12 @@ gmb_program_t gmb_parse(const gmb_lex_result_t* lx, char** error)
      * (IF/FOR/...) ma NON nei corpi delle procedure (func_body). */
     if (!p.error && gmb_p_top_level_let(prog.stmts, prog.n))
     {
-        static char let_err[256];
-        snprintf(let_err, sizeof(let_err),
-                 "LET è valido solo dentro una procedura (SUB/FUNCTION/GENERATOR): a livello di modulo usare un'assegnazione (x = ...) oppure DIM/GLOBAL.");
-        p.error = let_err;
+        /* `p.error` è LIBERATO dal chiamante (contratto di gmb_parse: `*error` è una stringa
+         * allocata, vedi `gmb_p_set_err`). Un buffer `static` qui faceva `free()` di memoria
+         * non allocata → abort del driver ("pointer being freed was not allocated") su ogni
+         * programma con `LET` a livello di modulo (constructs/let_scope_modulo). */
+        p.error = strdup("LET è valido solo dentro una procedura (SUB/FUNCTION/GENERATOR): "
+                         "a livello di modulo usare un'assegnazione (x = ...) oppure DIM/GLOBAL.");
     }
     if (error) *error = p.error;
     return prog;
