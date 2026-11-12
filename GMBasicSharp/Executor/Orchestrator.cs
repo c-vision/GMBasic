@@ -909,6 +909,12 @@ public static class Orchestrator
         // "Call-Main-Esplicita-Entry-Doppia-VMC-Parita").
         Linker.ValidateNoExplicitMainCall(program, rewrittenMainModule);
 
+        // Passata 3.7: esegue il codice di modulo dei moduli IMPORTATI prima dell'entry point
+        // (IL e bytecode compilano solo il MainModule: senza questo, `PUBLIC DIM x` di un altro
+        // file restava al default). Dipendenze prima, entry per ultima — come C99Native.
+        Linker.InlineModuleInitializers(program);
+        Log("[Orchestrator] Passata 3.7 (Inizializzazione moduli importati) completata.", log);
+
         Log("[Orchestrator] === FINE PASSATA 3 ===", log);
 
         global::Basic.Linker.ApplySemanticPatches(program);   /* §4.10 write-side (post-link) */
