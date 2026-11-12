@@ -68,6 +68,18 @@ ext() {
 build_one() {
   local lib="$1"
   local dir="$LIBS/$lib"
+  # libffi VENDORIZZATA (AGENTS §0novies): NON è una "nostra" libreria FFI con src/*.c
+  # compilabili direttamente — richiede configure/make (genera fficonfig.h e ffi.h).
+  # Contratto suo: shared/libs/ffi/build.sh → out/lib/libffi.a (statica, linkata da gmb_vm_c).
+  # Senza questo ramo `gmb_lib.sh build ffi` falliva con "fficonfig.h/ffi.h file not found".
+  if [ "$lib" = "ffi" ]; then
+    if [ -f "$dir/out/lib/libffi.a" ]; then
+      echo "[ffi] già compilata: out/lib/libffi.a"
+    else
+      bash "$dir/build.sh" || die "build libffi fallita ($dir/build.sh)"
+    fi
+    return 0
+  fi
   [ -d "$dir/src" ] || die "sorgenti assenti: $dir/src"
   [ -d "$dir/include" ] || die "header interni assenti: $dir/include"
 
