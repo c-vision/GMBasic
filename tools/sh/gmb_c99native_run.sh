@@ -274,12 +274,16 @@ fi
 # stub a 0 e crash nei percorsi AI. `-export_dynamic` lo accetta solo ld64 (`--export-dynamic`
 # solo lld) e in lld non cambia gli export: si usa invece `-u,_simbolo` per OGNI simbolo cercato
 # a load-time, che è ADDITIVO (non una lista chiusa) e supportato da entrambi i linker.
-# La lista non si scrive a mano NÉ si ricava al volo: la scrive il BUNDLE, in
-# `build/libs/<rid>/libgmb.exports.txt` (tools/sh/libs_exports_file.sh, invocato quando il bundle
-# nasce). Così una dylib ricompilata su un'altra macchina — o un bundle pubblicato — porta con sé i
-# suoi requisiti: il link di un programma non può restare indietro rispetto alle dylib che gireranno.
-# Se il file manca (checkout senza bundle, o bundle vecchio) si ricade sugli import delle dylib
-# presenti: lista equivalente, ma NON autorevole, e lo si dichiara invece di tacere.
+# QUALI simboli si forzano: SOLO l'ABI minima (`libs_exports_file.sh abi`, 4 simboli), cioè
+# `gmb_abi_set_llmdesc` — chiamato dal COSTRUTTORE della dylib — più i tre target del `dlsym`.
+#
+# PERCHÉ NON TUTTI GLI IMPORT DELLE DYLIB (misurato 2026-11-12). `-u` non "esporta" un simbolo:
+# obbliga il linker a TENERE l'oggetto che lo definisce. Forzare l'unione degli import di tutte le
+# dylib (AI, LLM, fonts, grafica) faceva entrare quel codice in OGNI programma: su `PRINT "ciao"`
+# il binario passava da 198 KB a 594 KB, con 604 export al posto di 189 e oggetti `gmb_ai_*` mai
+# chiamati dal BASIC. Con l'anchor in `gmb_abi.c` (gmb_abi_set_llmdesc referenziato dal core) lld
+# tiene ed esporta da sé ciò che le dylib si aspettano: i sette MiniTest AI passano con zig senza
+# forzare nulla, mentre i 4 simboli qui sotto coprono il caso del bug originale (costruttore).
 EXPORTDYN=""
 EXPORT_SYMS_FILE=""
 _EXPORT_SYMS_TMP=0
@@ -288,28 +292,12 @@ case "$TARGET_OS" in
     EXPORTDYN="-Wl,--export-dynamic" ;;
   Darwin)
     if command -v dyld_info >/dev/null 2>&1; then
-      _bundle_exports="$ROOT/build/libs/$RID/libgmb.exports.txt"
       EXPORT_SYMS_FILE="$(mktemp "${TMPDIR:-/tmp}/gmbexports.XXXXXX")"
       _EXPORT_SYMS_TMP=1
-      # Base AUTOREVOLE: il file del bundle (scritto col bundle, viaggia con le sue dylib). Se
-      # manca, si ricava dagli import delle dylib di build/libs — equivalente, ma non autorevole:
-      # lo si dice. In coda si aggiungono gli import delle dylib della CACHE: sono quelle che il
-      # link carica davvero da questa macchina e possono essere più nuove/più numerose del bundle
-      # (qui 52 contro 19, 100 simboli contro 42). Senza questo, il gate segnalerebbe coperti solo
-      # i simboli del bundle e bloccherebbe link che oggi funzionano.
-      if [ -s "$_bundle_exports" ]; then
-        cat "$_bundle_exports"
-      else
-        bash "$TOOLS_DIR/libs_exports_file.sh" list "$ROOT/build/libs/$RID" 2>/dev/null || true
-        echo "[c99native] $_bundle_exports assente: lista export derivata dalle dylib presenti — non autorevole (rigenerarla con tools/sh/libs_build_release.sh)" >&2
-      fi > "$EXPORT_SYMS_FILE"
-      { cat "$EXPORT_SYMS_FILE";
-        bash "$TOOLS_DIR/libs_exports_file.sh" list "$LIBS_CACHE" 2>/dev/null || true;
-      } | sort -u > "$EXPORT_SYMS_FILE.merged" && mv -f "$EXPORT_SYMS_FILE.merged" "$EXPORT_SYMS_FILE"
-      [ -s "$EXPORT_SYMS_FILE" ] || echo "[c99native] ATTENZIONE: nessun simbolo da esportare ricavato dalle dylib (lista vuota)" >&2
+      bash "$TOOLS_DIR/libs_exports_file.sh" abi > "$EXPORT_SYMS_FILE"
       while IFS= read -r _s; do EXPORTDYN="$EXPORTDYN -Wl,-u,$_s"; done < "$EXPORT_SYMS_FILE"
     else
-      echo "[c99native] dyld_info assente: export dei simboli cercati dalle dylib non forzato" >&2
+      echo "[c99native] dyld_info assente: export dell'ABI minima (llmdesc) non forzato" >&2
     fi
     ;;
 esac

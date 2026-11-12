@@ -9,22 +9,28 @@
 # nulla referenzia (misurato 2026-11-12, stesso link: clang 4020 export con 0 su 35 assenti, zig 198
 # con 32 su 35 assenti). Da qui l'obbligo di forzare ogni simbolo cercato con `-Wl,-u,<simbolo>`.
 #
-# Perché un FILE e non gli import letti al volo. Gli import describe le dylib che ci sono ORA su
-# questa macchina: una dylib ricompilata altrove (o un bundle pubblicato) porta requisiti che il
-# linker locale non vedrebbe, e il programma nascerebbe con un buco. Il bundle scrive con `write`
-# la lista `libgmb.exports.txt` accanto alle dylib; il runner la legge (`list` non serve più) e,
-# dopo il link, `verify` blocca la consegna se resta un simbolo scoperto.
+# Cosa fa oggi (dopo la riduzione a 4 simboli, 2026-11-12): `abi` è la fonte AUTOREVOLE del link —
+# i tre runner la usano e il gate che segue il link verifica quegli stessi simboli; `list` e
+# `verify` restano per la diagnostica a richiesta. NON esiste più un file `libgmb.exports.txt`:
+# nessun runner lo leggeva, e un manifest prodotto e copiato nel bundle senza essere consumato fa
+# credere che il link lo usi (due hook lo scrivevano, rimossi). Per la lista completa dei requisiti:
+# `list <dir-dylib>…`.
 #
 # Uso:
-#   libs_exports_file.sh write  <dir-bundle>                 → scrive <dir>/libgmb.exports.txt
-#   libs_exports_file.sh list   <dir> [<dir>…]               → stampa la lista su stdout
+#   libs_exports_file.sh [abi]                              → i simboli ABI MINIMI (4), su stdout
+#   libs_exports_file.sh list   <dir> [<dir>…]               → stampa la lista completa su stdout
 #   libs_exports_file.sh verify <eseguibile> <file-export>   → exit 1 se restano simboli scoperti
 #
-# `list` esiste per il fallback del runner: se il bundle non ha il file, la lista si ricava dalle
-# dylib presenti (equivalente al file, ma non autorevole: il runner lo dichiara).
+# QUALI si forzano al link. SOLO `abi` (4 simboli): sono quelli che il core offre alla dylib
+# quando questa si carica, e forzarli costa pochi KB. LA LISTA COMPLETA NON SI FORZA PIÙ: `-u`
+# non "esporta" un simbolo, lo OBBLIGA a restare nel link trascinando l'oggetto che lo definisce
+# — misurato 2026-11-12, su `PRINT "ciao"` la lista completa portava il binario da 198 KB a 594 KB
+# e ci infilava oggetti AI (`gmb_ai_*`) mai chiamati dal BASIC. Dal fix dell'anchor in
+# `gmb_abi.c` (gmb_abi_set_llmdesc referenziato dal core) lld tiene ed esporta da sé tutto ciò che
+# le dylib si aspettano: i sette MiniTest AI passano con zig senza forzare nulla.
 set -uo pipefail
 
-MODE="${1:-write}"
+MODE="${1:-abi}"
 
 # I tre simboli che il core cerca con `dlsym(RTLD_DEFAULT, …)` (native/gmb_runtime_c/src/gmb_abi.c):
 # non passano da un import, quindi non compaiono in `dyld_info -imports` e vanno aggiunti a mano.
@@ -50,6 +56,13 @@ exports_of() {
 }
 
 case "$MODE" in
+  abi)
+    # ABI MINIMA che il core deve offrire alla dylib quando questa si carica:
+    #  - `gmb_abi_set_llmdesc`: chiamato dal COSTRUTTORE di libgmb_runtime_ai (load-time);
+    #  - i tre target del `dlsym(RTLD_DEFAULT, …)` che non passano da un import.
+    printf '%s\n' _gmb_abi_set_llmdesc "${DLSYM_SYMS[@]}"
+    ;;
+
   list)
     [ "$#" -ge 2 ] || die "list: serve almeno una directory"
     need_dyld_info
@@ -63,29 +76,6 @@ case "$MODE" in
       done
       printf '%s\n' "${DLSYM_SYMS[@]}"
     } | sort -u
-    ;;
-
-  write)
-    dir="${2:-}"
-    [ -n "$dir" ] || die "write: serve la directory del bundle"
-    [ -d "$dir" ] || die "write: directory inesistente: $dir"
-    need_dyld_info
-    out="$dir/libgmb.exports.txt"
-    tmp="$(mktemp "${TMPDIR:-/tmp}/gmbexports.XXXXXX")"
-    # Lista vuota = nessuna dylib nel bundle: non è un errore, ma si dichiara (il file non si
-    # scrive: un file vuoto verrebbe letto come "niente da esportare" senza spiegazione).
-    syms="$({
-      for d in "$dir"/libgmb*.dylib; do [ -f "$d" ] && imports_of "$d"; done
-      printf '%s\n' "${DLSYM_SYMS[@]}"
-    } | sort -u)"
-    if [ -z "$syms" ]; then
-      rm -f "$tmp"
-      echo "libs_exports_file: nessuna dylib in $dir — $out NON scritto" >&2
-      exit 0
-    fi
-    printf '%s\n' "$syms" > "$tmp"
-    mv -f "$tmp" "$out"
-    echo "libs_exports_file: $out ($(printf '%s\n' "$syms" | wc -l | tr -d ' ') simboli)" >&2
     ;;
 
   verify)
@@ -108,6 +98,6 @@ case "$MODE" in
     ;;
 
   *)
-    die "modo sconosciuto: $MODE (write|list|verify)"
+    die "modo sconosciuto: $MODE (abi|list|verify)"
     ;;
 esac

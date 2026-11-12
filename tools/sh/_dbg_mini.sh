@@ -165,8 +165,9 @@ LIBS_CACHE="$HOME/.gmbasic/libs/$RID"
 # Stessa regola dei runner ufficiali (`gmb_c99native_run.sh`, `test_minitests_c99native`): le dylib
 # AI risolvono il core CARICANDOSI (`-undefined dynamic_lookup`), quindi chi fornisce i simboli è la
 # tabella degli export dell'eseguibile. Darwin: ld64 li esporta, lld di `zig cc` li dead-strippa;
-# Linux: serve `--export-dynamic`. Lista dal bundle (`libgmb.exports.txt`) + import delle dylib in
-# cache; senza file si ricava dalle dylib presenti e lo si dichiara.
+# Linux: serve `--export-dynamic`. Si forzano SOLO i 4 simboli ABI (`libs_exports_file.sh abi`),
+# non gli import di tutte le dylib: `-u` trattiene l'oggetto che definisce il simbolo, e la lista
+# piena infilava oggetti AI/grafici in ogni eseguibile (misurato: 198 KB → 594 KB su un `PRINT`).
 EXPORT_FLAGS=()
 EXPORT_SYMS_FILE=""; EXPORT_SYMS_TMP=0; EXPORT_GATE=0
 case "$(uname -s)" in
@@ -175,15 +176,9 @@ case "$(uname -s)" in
   Darwin)
     if command -v dyld_info >/dev/null 2>&1; then
       EXPORT_SYMS_FILE="$(mktemp "${TMPDIR:-/tmp}/gmbexports.XXXXXX")"; EXPORT_SYMS_TMP=1
-      if [ -s "$ROOT/build/libs/$RID/libgmb.exports.txt" ]; then
-        cat "$ROOT/build/libs/$RID/libgmb.exports.txt"
-      else
-        bash "$MONO/tools/sh/libs_exports_file.sh" list "$ROOT/build/libs/$RID" 2>/dev/null || true
-        echo "_dbg_mini: libgmb.exports.txt assente — lista export derivata dalle dylib (non autorevole)" >&2
-      fi > "$EXPORT_SYMS_FILE"
-      { cat "$EXPORT_SYMS_FILE";
-        bash "$MONO/tools/sh/libs_exports_file.sh" list "$LIBS_CACHE" 2>/dev/null || true;
-      } | sort -u > "$EXPORT_SYMS_FILE.m" && mv -f "$EXPORT_SYMS_FILE.m" "$EXPORT_SYMS_FILE"
+      # SOLO l'ABI minima (4 simboli): la lista piena, forzata con `-u`, trascinava dentro
+      # oggetti AI/grafici mai usati dal BASIC (198 KB → 594 KB su un `PRINT`).
+      bash "$MONO/tools/sh/libs_exports_file.sh" abi > "$EXPORT_SYMS_FILE"
       while IFS= read -r _s; do EXPORT_FLAGS+=("-Wl,-u,$_s"); done < "$EXPORT_SYMS_FILE"
     fi
     ;;

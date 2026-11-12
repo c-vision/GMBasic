@@ -195,8 +195,9 @@ if [ -f "$LIBS_CACHE/libcrypto.dylib" ]; then EXT="$EXT -L$LIBS_CACHE -lcrypto -
 # mentre lld di `zig cc` dead-strippa i simboli che nulla referenzia (stub NULL → crash in un
 # inizializzatore, prima di `main`); su LINUX senza `--export-dynamic` l'eseguibile non li esporta
 # affatto — qui mancava del tutto, quindi i MiniTest AI su linux-x64 linkavano e morivano all'avvio.
-# La lista viene dal bundle (`libgmb.exports.txt`, scritto da tools/sh/libs_exports_file.sh) più gli
-# import delle dylib della cache; se il file manca si ricava dalle dylib presenti e lo si dichiara.
+# Si forzano SOLO i 4 simboli ABI (`libs_exports_file.sh abi`), non gli import di tutte le dylib:
+# `-u` trattiene l'oggetto che definisce il simbolo, e la lista piena infilava oggetti AI/grafici
+# in ogni eseguibile (misurato: 198 KB → 594 KB su un `PRINT`).
 EXPORT_FLAGS=()
 EXPORT_SYMS_FILE=""; EXPORT_SYMS_TMP=0; EXPORT_GATE=0
 case "$(uname -s)" in
@@ -205,18 +206,13 @@ case "$(uname -s)" in
   Darwin)
     if command -v dyld_info >/dev/null 2>&1; then
       EXPORT_SYMS_FILE="$(mktemp "${TMPDIR:-/tmp}/gmbexports.XXXXXX")"; EXPORT_SYMS_TMP=1
-      if [ -s "$ROOT/build/libs/$RID/libgmb.exports.txt" ]; then
-        cat "$ROOT/build/libs/$RID/libgmb.exports.txt"
-      else
-        bash "$MONO/tools/sh/libs_exports_file.sh" list "$ROOT/build/libs/$RID" 2>/dev/null || true
-        echo "test_minitests_c99native: libgmb.exports.txt assente — lista export derivata dalle dylib (non autorevole)" >&2
-      fi > "$EXPORT_SYMS_FILE"
-      { cat "$EXPORT_SYMS_FILE";
-        bash "$MONO/tools/sh/libs_exports_file.sh" list "$LIBS_CACHE" 2>/dev/null || true;
-      } | sort -u > "$EXPORT_SYMS_FILE.m" && mv -f "$EXPORT_SYMS_FILE.m" "$EXPORT_SYMS_FILE"
+      # SOLO l'ABI minima (4 simboli), non l'unione degli import di tutte le dylib: `-u`
+      # obbliga a TENERE l'oggetto che definisce il simbolo, quindi la lista piena ficcava
+      # oggetti AI (e grafici) in ogni eseguibile — misurato: 198 KB → 594 KB su `PRINT "ciao"`.
+      bash "$MONO/tools/sh/libs_exports_file.sh" abi > "$EXPORT_SYMS_FILE"
       while IFS= read -r _s; do EXPORT_FLAGS+=("-Wl,-u,$_s"); done < "$EXPORT_SYMS_FILE"
     else
-      echo "test_minitests_c99native: dyld_info assente — export dei simboli cercati dalle dylib non forzato" >&2
+      echo "test_minitests_c99native: dyld_info assente — export dell'ABI minima (llmdesc) non forzato" >&2
     fi
     ;;
 esac
