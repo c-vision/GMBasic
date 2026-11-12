@@ -26492,6 +26492,37 @@ static void st_aiserver(ctx_t* c, gmb_stmt_t* s) {
  * gmb_moestream_stmt_* del runtime condiviso (dlopen libgmb_ai_moestream). Statement: esito
  * scartato; errore esplicito via gmb_raise_error. go_args = termini (nome, path/MB/topn/modo...).
  * (Ripristinati 2026-09-25: erano stati rimossi per errore insieme al formato .gmoe.) */
+/* Testo d'errore PER VERBO di `LLM MODEL …`, identico alla gamba VM/C (gmb_builtin.c:
+ * gmb_bf_aimodel*_c35xx). Prima qui ogni verbo finiva sul generico "AI MODEL: operazione
+ * fallita", quindi — a codice ormai uniforme — il testo non coincideva con nessuna gamba. */
+static const char* aimodel_err_msg(int kind) {
+    switch (kind) {
+    case GMB_STMT_AIMODEL_LOAD:       return "LLM MODEL LOAD: modello non valido o non trovato";
+    case GMB_STMT_AIMODEL_UNLOAD:     return "LLM MODEL UNLOAD fallito";
+    case GMB_STMT_AIMODEL_CACHE:      return "LLM MODEL CACHE fallito";
+    case GMB_STMT_AIMODEL_PREFETCH:   return "LLM MODEL PREFETCH fallito";
+    case GMB_STMT_AIMODEL_DEVICE:     return "LLM MODEL DEVICE non disponibile";
+    case GMB_STMT_AIMODEL_CONVERT:    return "LLM MODEL CONVERT: conversione fallita";
+    case GMB_STMT_AIMODEL_SAVE:       return "LLM MODEL SAVE fallito";
+    case GMB_STMT_AIMODEL_ABLATE:     return "LLM MODEL ABLATE fallito";
+    case GMB_STMT_AIMODEL_REMOVE:     return "LLM MODEL REMOVE fallito";
+    case GMB_STMT_AIMODEL_DIFF:       return "LLM MODEL DIFF fallito";
+    case GMB_STMT_AIMODEL_CHECKPOINT: return "LLM MODEL CHECKPOINT fallito";
+    case GMB_STMT_AIMODEL_ROLLBACK:   return "LLM MODEL ROLLBACK fallito";
+    case GMB_STMT_AIMODEL_ADD:        return "LLM MODEL ADD fallito";
+    case GMB_STMT_AIMODEL_ADAPTER:    return "LLM MODEL ADAPTER fallito";
+    case GMB_STMT_AIMODEL_MODULE:     return "LLM MODEL MODULE fallito";
+    case GMB_STMT_AIMODEL_MODALITY:   return "LLM MODEL MODALITY fallito";
+    case GMB_STMT_AIMODEL_VALIDATE:   return "LLM MODEL VALIDATE fallito";
+    case GMB_STMT_AIMODEL_TRACE:      return "LLM MODEL TRACE fallito";
+    case GMB_STMT_AIMODEL_PROMOTE:    return "LLM MODEL PROMOTE fallito";
+    case GMB_STMT_AIMODEL_DEMOTE:     return "LLM MODEL DEMOTE fallito";
+    /* INSPECT/QUANTIZE sono verbi `AI MODEL …` (non LLM) con il testo della VM/C. */
+    case GMB_STMT_AIMODEL_INSPECT:    return "AI MODEL INSPECT fallito";
+    case GMB_STMT_AIMODEL_QUANTIZE:   return "AI MODEL QUANTIZE fallito";
+    default:                          return "AI MODEL: operazione fallita";
+    }
+}
 static void st_aimodel(ctx_t* c, gmb_stmt_t* s) {
     gmb_expr_t** a = s->go_args;
     int na = s->n_go_args;
@@ -26584,37 +26615,6 @@ static void st_aimodel(ctx_t* c, gmb_stmt_t* s) {
         sb_put(&c->out, ")");
         break;
     case GMB_STMT_AIMODEL_DIFF:   /* LLM MODEL DIFF <a>, <b>, <out> — checkpoint/rollback */
-/* Testo d'errore PER VERBO di `LLM MODEL …`, identico alla gamba VM/C (gmb_builtin.c:
- * gmb_bf_aimodel*_c35xx). Prima qui ogni verbo finiva sul generico "AI MODEL: operazione
- * fallita", quindi — a codice ormai uniforme — il testo non coincideva con nessuna gamba. */
-static const char* aimodel_err_msg(int kind) {
-    switch (kind) {
-    case GMB_STMT_AIMODEL_LOAD:       return "LLM MODEL LOAD: modello non valido o non trovato";
-    case GMB_STMT_AIMODEL_UNLOAD:     return "LLM MODEL UNLOAD fallito";
-    case GMB_STMT_AIMODEL_CACHE:      return "LLM MODEL CACHE fallito";
-    case GMB_STMT_AIMODEL_PREFETCH:   return "LLM MODEL PREFETCH fallito";
-    case GMB_STMT_AIMODEL_DEVICE:     return "LLM MODEL DEVICE non disponibile";
-    case GMB_STMT_AIMODEL_CONVERT:    return "LLM MODEL CONVERT: conversione fallita";
-    case GMB_STMT_AIMODEL_SAVE:       return "LLM MODEL SAVE fallito";
-    case GMB_STMT_AIMODEL_ABLATE:     return "LLM MODEL ABLATE fallito";
-    case GMB_STMT_AIMODEL_REMOVE:     return "LLM MODEL REMOVE fallito";
-    case GMB_STMT_AIMODEL_DIFF:       return "LLM MODEL DIFF fallito";
-    case GMB_STMT_AIMODEL_CHECKPOINT: return "LLM MODEL CHECKPOINT fallito";
-    case GMB_STMT_AIMODEL_ROLLBACK:   return "LLM MODEL ROLLBACK fallito";
-    case GMB_STMT_AIMODEL_ADD:        return "LLM MODEL ADD fallito";
-    case GMB_STMT_AIMODEL_ADAPTER:    return "LLM MODEL ADAPTER fallito";
-    case GMB_STMT_AIMODEL_MODULE:     return "LLM MODEL MODULE fallito";
-    case GMB_STMT_AIMODEL_MODALITY:   return "LLM MODEL MODALITY fallito";
-    case GMB_STMT_AIMODEL_VALIDATE:   return "LLM MODEL VALIDATE fallito";
-    case GMB_STMT_AIMODEL_TRACE:      return "LLM MODEL TRACE fallito";
-    case GMB_STMT_AIMODEL_PROMOTE:    return "LLM MODEL PROMOTE fallito";
-    case GMB_STMT_AIMODEL_DEMOTE:     return "LLM MODEL DEMOTE fallito";
-    /* INSPECT/QUANTIZE sono verbi `AI MODEL …` (non LLM) con il testo della VM/C. */
-    case GMB_STMT_AIMODEL_INSPECT:    return "AI MODEL INSPECT fallito";
-    case GMB_STMT_AIMODEL_QUANTIZE:   return "AI MODEL QUANTIZE fallito";
-    default:                          return "AI MODEL: operazione fallita";
-    }
-}
 
         sb_put(&c->out, "llmmodelio_model_diff(");
         if (na >= 1) { sb_put(&c->out, "gmb_paths_model_q("); emit_str_operand(c, a[0]); sb_put(&c->out, ".data)"); } else sb_put(&c->out, "\"\"");
