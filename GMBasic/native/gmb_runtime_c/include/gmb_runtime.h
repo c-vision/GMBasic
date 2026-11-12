@@ -2800,6 +2800,16 @@ int   gmb_paths_settings_file(char* out, size_t cap);          /* 1 se system.se
  * gmb_paths.c per poter essere usata dai target leggeri (gmb_boot) che non linkano gfx. */
 int   gmb_paths_settings_value(const char* key, char* out, size_t cap);
 int   gmb_paths_app_settings(char* out, size_t cap);           /* app.settings.json: CWD → accanto all'eseguibile */
+/* RADICE DEI MODELLI (opzione `path.models_root`, 2026-11-12): la gamba C non espandeva `~`,
+ * quindi `"~/ai/Models/<x>"` arrivava letterale al loader. Regola unica per tutte le gambe C:
+ *   `%MODELS%/<x>` e `~/ai/Models/<x>` → `<root>/<x>`;  `~/<x>` → `<HOME>/<x>`;  altro invariato.
+ * Radice = registro opzioni (`AI SET OPTION`/sezione `engine`), vuoto = `~/ai/Models`.
+ * `gmb_paths_model_q()` è la variante a buffer statico per il codice EMESSO (una chiamata). */
+void        gmb_paths_models_root(char* out, size_t cap);
+const char* gmb_paths_model_path(const char* in, char* out, size_t cap);
+const char* gmb_paths_model_q(const char* in);
+/* Accessor del registro per la voce `path.models_root` (vuota se non impostata). */
+int         gmb_opt_models_root(char* out, int cap);
 /* Settings (system.settings.json + app.settings.json override) — SettingsManager.cs. */
 int  gmb_settings_str(const char* file, const char* key, char* out, int cap);
 int  gmb_settings_int(const char* file, const char* key, int* out);

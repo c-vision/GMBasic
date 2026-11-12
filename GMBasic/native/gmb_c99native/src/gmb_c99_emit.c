@@ -27221,7 +27221,17 @@ static void emit_ai_domain(ctx_t* c, gmb_stmt_t* s) {
         }
         emit_llm_call_open(c);
         sb_printf(&c->out, "%s(\"%s\", ", fn, sub);
-        if (n >= 2) { emit_str_operand(c, a[1]); sb_put(&c->out, ".data"); } else sb_put(&c->out, "gmb_string_alloc(\"\").data");
+        /* Il PRIMO argomento di TENSOR LOGITS/TOPK/QUALITY/USAGEEVAL è una DIR di modello: passa dal
+         * risolutore del runtime (`gmb_paths_model_q`), che applica l'opzione `path.models_root` ed
+         * espande `~`/`%MODELS%`. Gli altri sotto-verbi di TENSOR e quelli di KERNEL/MODULE/KV non
+         * ricevono un path (nomi di tensori, coefficienti, strutture), quindi restano com'erano. */
+        if (vk == GMB_TOK_LlmTensor &&
+            (strcasecmp(sub, "LOGITS") == 0 || strcasecmp(sub, "TOPK") == 0 ||
+             strcasecmp(sub, "QUALITY") == 0 || strcasecmp(sub, "USAGEEVAL") == 0)) {
+            if (n >= 2) { sb_put(&c->out, "gmb_paths_model_q("); emit_str_operand(c, a[1]); sb_put(&c->out, ".data)"); }
+            else        { sb_put(&c->out, "gmb_string_alloc(\"\").data"); }
+        }
+        else if (n >= 2) { emit_str_operand(c, a[1]); sb_put(&c->out, ".data"); } else sb_put(&c->out, "gmb_string_alloc(\"\").data");
         sb_put(&c->out, ", ");
         if (n >= 3) { emit_str_operand(c, a[2]); sb_put(&c->out, ".data"); } else sb_put(&c->out, "gmb_string_alloc(\"\").data");
         /* TENSOR ha un 4° argomento opzionale (es. bpw di AUTOGATE); KERNEL/MODULE/KV no. */

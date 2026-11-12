@@ -692,6 +692,68 @@ static void pr_user_root(const char* name, char* out, size_t cap)
     else snprintf(out, cap, "%s", "");
 }
 
+/* ── RADICE DEI MODELLI (2026-11-12) ────────────────────────────────────────────────────────
+ * I MiniTest `TAG: heavy` e i sample scrivono `"~/ai/Models/<modello>"`, ma la gamba C non
+ * espande `~`: il path arrivava LETTERALE al loader e il test falliva con "tokenizer assente".
+ * La radice dei pesi e' un parametro di FUNZIONAMENTO, quindi vive nel registro opzioni
+ * (`path.models_root`, superficie `AI SET OPTION` / sezione `engine`), mai in una env.
+ *
+ * Regola unica, usata da tutte le gambe C tramite `gmb_paths_model_path()`:
+ *   `%MODELS%/<x>`       -> `<root>/<x>`
+ *   `~/ai/Models/<x>`    -> `<root>/<x>`   (default storico della radice: ~/ai/Models)
+ *   `~/<x>`              -> `<HOME>/<x>`   (l'espansione di `~` che mancava)
+ *   relativo/assoluto    -> invariato
+ * Con la radice non impostata il comportamento e' identico a prima, quindi nessun sample cambia. */
+void gmb_paths_models_root(char* out, size_t cap)
+{
+    if (!out || cap == 0) return;
+    char v[1024];
+    if (gmb_opt_models_root(v, (int)sizeof v) == 0 && v[0]) {
+        if (v[0] == '~' && (v[1] == '/' || v[1] == '\0')) {
+            const char* home = getenv("HOME");
+            if (home && *home) { snprintf(out, cap, "%s%s", home, v + 1); return; }
+        }
+        snprintf(out, cap, "%s", v);
+        return;
+    }
+    const char* home = getenv("HOME");
+    if (home && *home) snprintf(out, cap, "%s/ai/Models", home);
+    else snprintf(out, cap, "%s", "~/ai/Models");
+}
+
+const char* gmb_paths_model_path(const char* in, char* out, size_t cap)
+{
+    if (!out || cap == 0) return in;
+    if (!in || !*in) { snprintf(out, cap, "%s", ""); return out; }
+    const char* rest = NULL;
+    if (!strncmp(in, "%MODELS%/", 9))        rest = in + 9;
+    else if (!strncmp(in, "%MODELS%", 8))    rest = "";
+    else if (!strncmp(in, "~/ai/Models/", 12)) rest = in + 12;
+    else if (!strcmp(in, "~/ai/Models"))     rest = "";
+    if (rest) {
+        char root[2048];
+        gmb_paths_models_root(root, sizeof root);
+        if (*rest) snprintf(out, cap, "%s/%s", root, rest);
+        else       snprintf(out, cap, "%s", root);
+        return out;
+    }
+    if (in[0] == '~' && (in[1] == '/' || in[1] == '\0')) {
+        const char* home = getenv("HOME");
+        if (home && *home) { snprintf(out, cap, "%s%s", home, in + 1); return out; }
+    }
+    snprintf(out, cap, "%s", in);
+    return out;
+}
+
+/* Variante per il codice EMESSO: `gmb_paths_model_q(expr.data)` in una sola chiamata.
+ * Il buffer e' statico di proposito: l'argomento e' valutato una volta per chiamata e il valore
+ * serve solo al loader che parte subito dopo. */
+const char* gmb_paths_model_q(const char* in)
+{
+    static char buf[4096];
+    return gmb_paths_model_path(in, buf, sizeof buf);
+}
+
 /* Manifest dei cervelli distribuiti (schema di ml-manifest.json). Ordine di ricerca:
  *   1. `paths.brainsManifest` (esplicito)
  *   2. <exe>/settings/brains-manifest.json        (client/bundle)

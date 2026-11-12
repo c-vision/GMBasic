@@ -28,6 +28,12 @@ static int     g_init  = 0;
 /* Voci disponibili in ogni backend C (host-agnostiche). */
 static const struct { const char* name; const char* desc; } g_opt_core[] = {
     { "moe_swap_dir", "dir modello per lo streaming esperti MoE (vuoto = off)" },
+    /* RADICE DEI MODELLI (2026-11-12). I MiniTest `TAG: heavy` e i sample scrivono
+     * "~/ai/Models/<modello>": la gamba C non espandeva `~` e il path arrivava letterale al
+     * loader. La voce e' il modo CANONICO (registro opzioni, non ambiente) per dire dove stanno
+     * i pesi: `gmb_paths_model_path()` risolve `%MODELS%/x` e `~/ai/Models/x` su questo valore.
+     * Vuoto = ~/ai/Models (il default storico), quindi nulla cambia per chi non la imposta. */
+    { "path.models_root", "radice dei modelli per `%MODELS%` e `~/ai/Models` (vuoto = ~/ai/Models)" },
     /* Nomi di origine env, dichiarati qui perche' compaiano nell'elenco del registro
      * (`gmb_opt_at`) e siano impostabili con `AI SET OPTION`. La CHIAVE e' la stessa che
      * usa il ponte `gmb_opt_env` (registro se impostato, altrimenti la variabile d'ambiente),
@@ -129,6 +135,16 @@ int gmb_opt_moe_swap_dir(char* out, int cap) {
     if (!out || cap <= 0) return -1;
     ensure_init();
     GmbOpt* o = gmb_opt_find("moe_swap_dir");
+    snprintf(out, (size_t)cap, "%s", (o && o->set) ? o->val : "");
+    return 0;
+}
+
+/* Opzione `path.models_root`: radice dei pesi. Vuota = il default `~/ai/Models`, che il
+ * risolutore dei path costruisce da HOME (non e' un parametro d'ambiente: e' la cartella utente). */
+int gmb_opt_models_root(char* out, int cap) {
+    if (!out || cap <= 0) return -1;
+    ensure_init();
+    GmbOpt* o = gmb_opt_find("path.models_root");
     snprintf(out, (size_t)cap, "%s", (o && o->set) ? o->val : "");
     return 0;
 }
