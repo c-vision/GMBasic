@@ -9,6 +9,10 @@ IMPORT ISAM
 IMPORT IO
 IMPORT JSON
 
+' Cartella dei dati del test (convenzione dei MiniTest): le gambe managed usano la CWD
+' della radice del repo, quindi serve un percorso ASSOLUTO per non scrivere nel root.
+DIM GMBWORK$ AS STRING = PROJECTFOLDER() + "/work"
+
 TYPE R
   ID AS STRING * 10
   V AS STRING * 20
@@ -82,7 +86,6 @@ SUB Replica()
 END SUB
 
 SUB Main()
-  DIM GMBWORK$ AS STRING = PROJECTFOLDER() + "/work"
   MKDIR GMBWORK$
   Stato()
   Replica()

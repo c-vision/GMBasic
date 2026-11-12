@@ -11,7 +11,7 @@ DIM Gd(63) AS DOUBLE
 ' Obiettivo della ricerca locale: somma dei quadrati delle distanze lungo il giro (ciclo).
 FUNCTION GiroCosto(tour() AS DOUBLE) AS DOUBLE
     s = 0
-    FOREACH i IN tour
+    FOR EACH i IN tour
         j = i + 1
         IF j = 8 THEN j = 0
         s = s + Gd(tour(i) * 8 + tour(j))

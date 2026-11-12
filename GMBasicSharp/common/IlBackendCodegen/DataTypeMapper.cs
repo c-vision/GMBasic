@@ -108,8 +108,13 @@ public static class DataTypeMapper
         // un'unica rappresentazione per DIM e MATRIX OF (view O(1), niente conversioni ai confini).
         ArrayType a when a.Rank == 2 && a.ElementType is DoubleType => typeof(MatrixValue),
         ArrayType a => (a.ElementType is SingleType)
-            ? types.Single.MakeArrayType(Math.Max(1, a.Rank))   /* ABI FFI: array SINGLE = float[] (AI.EMBED) */
-            : Map(a.ElementType, types, classTypes).MakeArrayType(Math.Max(1, a.Rank)),
+            /* ABI FFI: array SINGLE = float[] (AI.EMBED). Rank 1 → MakeArrayType() (SZ array,
+             * `float[]`), MAI MakeArrayType(1) che produce `float[*]` — un tipo CLR diverso che
+             * non combacia con le firme dei metodi (RuntimeMethod non lo trovava: bug
+             * CopyBackDouble su `tour() AS DOUBLE`). */
+            ? (a.Rank <= 1 ? types.Single.MakeArrayType() : types.Single.MakeArrayType(a.Rank))
+            : (a.Rank <= 1 ? Map(a.ElementType, types, classTypes).MakeArrayType()
+                           : Map(a.ElementType, types, classTypes).MakeArrayType(a.Rank)),
         // Tipi grafici custom mappati a double[] (la VM li rappresenta come array numerici:
         // SCREENINFO -> {25, 80}, RGB -> {r, g, b, a}). Porting da GMBasic.
         DisplayModeType => types.Double.MakeArrayType(),

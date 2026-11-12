@@ -136,6 +136,12 @@ void gmb_read_skip_field(int idx)
     gmb_read_ctx_t* ctx = gmb_read_active();
     if (idx >= 0 && idx < ctx->n_fields) ctx->fields[idx].skip = 1;
 }
+int gmb_read_field_skipped(int idx)
+{
+    gmb_read_ctx_t* ctx = gmb_read_active();
+    if (idx < 0 || idx >= ctx->n_fields) return 1;   /* inesistente: niente da assegnare */
+    return ctx->fields[idx].skip ? 1 : 0;
+}
 /* Applica MESSAGE/ERROR al campo idx (-1 = ultimo). */
 static int read_last_field_idx(gmb_read_ctx_t* ctx, int idx)
 {

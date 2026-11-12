@@ -31485,12 +31485,18 @@ static void st_read(ctx_t* c, gmb_stmt_t* s) {
             else { ind(c); sb_put(&c->out, "gmb_read_run(gmb_read_active());\n"); }
             for (int k = 0; k < c->n_read_vars; k++) {
                 const char* vn = c->read_vars[k]; int is_str = c->read_is_str[k];
+                /* GET ... WHEN falso → campo saltato: la variabile resta INVARIATA (non va
+                 * riassegnata col testo del campo, che è vuoto). Parità IL/PCode/VM-C. */
+                ind(c); sb_printf(&c->out, "if (!gmb_read_field_skipped(%d)) {\n", k);
+                c->indent++;
                 if (gmb_c99_dyn_is(c, vn)) {
                     ind(c);
                     sb_printf(&c->out, "gmb_dscope_set(\"%s\", %s(gmb_read_value_at(%d)%s));\n",
                               vn, is_str ? "gmb_make_val_string" : "gmb_make_val_double(gmb_string_to_double(gmb_string_alloc",
                               k, is_str ? "" : "))");
                     if (!is_str) { /* parentesi extra già incluse sopra */ }
+                    c->indent--;
+                    ind(c); sb_put(&c->out, "}\n");
                     continue;
                 }
                 var_t* v = lookup_var(c, vn);
@@ -31499,6 +31505,8 @@ static void st_read(ctx_t* c, gmb_stmt_t* s) {
                 emit_ident(c, vn);
                 if (is_str) sb_printf(&c->out, " = gmb_string_alloc(gmb_read_value_at(%d));\n", k);
                 else sb_printf(&c->out, " = gmb_string_to_double(gmb_string_alloc(gmb_read_value_at(%d)));\n", k);
+                c->indent--;
+                ind(c); sb_put(&c->out, "}\n");
             }
             if (nv > 0) {
                 ind(c); sb_put(&c->out, "if (_gmb_rst != 1) break;\n");
