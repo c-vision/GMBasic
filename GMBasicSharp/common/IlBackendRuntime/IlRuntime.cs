@@ -19624,6 +19624,12 @@ public static double TextWidth(string s)
     public static void RunCommand(string command)
     {
         if (string.IsNullOrWhiteSpace(command)) return;
+        /* Ordine dell'output: il figlio scrive direttamente sul descrittore stdout del
+         * processo, mentre PRINT può passare da un Console.Out reindirizzato (harness
+         * PCode/VM-C) o bufferizzato. Senza flush l'output del comando precede i PRINT
+         * già eseguiti (samples/Commands/RunChainLoad: PCode invertito rispetto a IL). */
+        try { Console.Out.Flush(); } catch { /* writer chiuso: nessun flush necessario */ }
+        try { Console.Error.Flush(); } catch { }
         var psi = new System.Diagnostics.ProcessStartInfo
         {
             FileName = OperatingSystem.IsWindows() ? "cmd.exe" : "/bin/sh",

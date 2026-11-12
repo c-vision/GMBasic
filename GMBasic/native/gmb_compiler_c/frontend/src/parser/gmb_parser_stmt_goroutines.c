@@ -218,7 +218,11 @@ static gmb_stmt_t* gmb_p_parse_once(gmb_parser_t* p, int line)
 {
     gmb_stmt_t* s = gmb_stmt_new(GMB_STMT_ONCE, line);
     gmb_p_adv(p);   /* ONCE */
-    if (gmb_p_match(p, GMB_TOK_Run)) {
+    /* RUN non è (ancora) una keyword del lexer C: arriva come Identifier. Lo si accetta
+     * anche per grafia (soft keyword), come fa il parser C# con TokenKind.Run; senza,
+     * `ONCE RUN o, proc` dava "statement non riconosciuto" (concurrency_once.bas). */
+    if (gmb_p_match(p, GMB_TOK_Run) || gmb_p_tok_is_soft_keyword(gmb_p_cur(p), "RUN")) {
+        if (gmb_p_check(p, GMB_TOK_Identifier)) gmb_p_adv(p);   /* consuma RUN */
         s->channel = gmb_p_parse_expr(p);
         if (gmb_p_match(p, GMB_TOK_Comma)) {
             const gmb_token_t* t = gmb_p_cur(p);

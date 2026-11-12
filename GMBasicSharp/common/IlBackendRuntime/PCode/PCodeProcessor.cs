@@ -1393,7 +1393,14 @@ internal sealed partial class PCodeProcessor
             {
                 var slot = ReadU16(task);
                 var locals = (task.Frame?.LocalVariables is { Length: > 0 } fLocals) ? fLocals : task.GetLocals();
-                task.PushRef(new ByRefBox(locals, slot));
+                /* Idempotente (specchio di OP_MAKE_BYREF in VM/C): se lo slot contiene già una
+                 * ByRefBox (parametro BYREF inoltrato a un'altra procedura, ora anche gli ARRAY
+                 * vengono passati per riferimento) si RIUSA quella cella — annidare un box in un
+                 * box faceva leggere al callee un box invece dell'array (UBOUND=0, bug 2026-11-03). */
+                if (slot < locals.Length && locals[slot] is ByRefBox existingBox)
+                    task.PushRef(existingBox);
+                else
+                    task.PushRef(new ByRefBox(locals, slot));
                 return true;
             }
             case OpCode.OP_MAKE_BYREF_GLOBAL:

@@ -944,6 +944,8 @@ public class FfiService : IFfiService
     /// esterna + lunghezza della prima riga non nulla, ricorsivamente; 1-D → [Length].</summary>
     internal static long[] ArrayExtents(object? a)
     {
+        if (a is CommonLib.MatrixValue mv)
+            return new long[] { mv.Rows, mv.Cols };
         if (a is not Array arr) return new long[] { 0 };
         if (arr.Rank >= 2)
         {
@@ -1126,7 +1128,7 @@ public class FfiService : IFfiService
         // quello dichiarato dal parametro FFI: copy-in/copy-out convertito (2026-11-04, AiWiki
         // Bugs/(solved) - FFI-Array-Tipizzato-LONG-IL.md).
         var typedScratch = new Array?[n];
-        var typedOrig = new Array?[n];
+        var typedOrig = new object?[n];
         // Array BYTE/SBYTE (2026-11-06): il puntatore FFI viaggia a 8 byte per elemento, quindi
         // un byte[] CLR NON puo' essere pinnato direttamente (l'elemento e' largo 1). Si usa uno
         // scratch long[] con i valori 0..255 e il copy-back dopo la chiamata.
@@ -1423,6 +1425,29 @@ public class FfiService : IFfiService
                         dArgs[i] = handles[i].AddrOfPinnedObject();
                         break;
                     }
+                    /* Matrice a VALORE (DIM m(r,c) / MATRIX.* a valore): è un descrittore
+                     * CommonLib.MatrixValue, non un Array CLR. Un parametro FFI array
+                     * (`a() AS DOUBLE`) riceve il buffer flat row-major: prima cadeva nel
+                     * default e lanciava "atteso array (arrayMask), ricevuto MatrixValue"
+                     * (MiniTest ffi/ffi_dims_mixed_rank su IL; PCode/VM-C/C99 già ok). */
+                    case CommonLib.MatrixValue mvm:
+                    {
+                        var wantIntMv = (arrayElemIntMask & (1L << i)) != 0;
+                        var flatMvCount = mvm.Rows * mvm.Cols;
+                        var bufMv = wantIntMv ? (Array)new long[flatMvCount] : (Array)new double[flatMvCount];
+                        var kMv = 0;
+                        for (var rMv = 0; rMv < mvm.Rows; rMv++)
+                            for (var cMv = 0; cMv < mvm.Cols; cMv++)
+                            {
+                                if (wantIntMv) ((long[])bufMv)[kMv++] = Convert.ToInt64(mvm.Get(rMv, cMv));
+                                else ((double[])bufMv)[kMv++] = mvm.Get(rMv, cMv);
+                            }
+                        typedScratch[i] = bufMv;
+                        typedOrig[i] = mvm;
+                        handles[i] = GCHandle.Alloc(bufMv, GCHandleType.Pinned);
+                        dArgs[i] = handles[i].AddrOfPinnedObject();
+                        break;
+                    }
                     case object[] boxed:
                     {
                         /* PCode: una jagged e' object[] di object[] (non object[][] tipizzato).
@@ -1528,6 +1553,14 @@ public class FfiService : IFfiService
                             for (var r0 = 0; r0 < umat.GetLength(0); r0++)
                                 for (var c0 = 0; c0 < umat.GetLength(1); c0++)
                                     umat[r0, c0] = Convert.ToUInt64(tbuf.GetValue(k++));
+                            break;
+                        }
+                        case CommonLib.MatrixValue mvd:
+                        {
+                            var k = 0;
+                            for (var r0 = 0; r0 < mvd.Rows; r0++)
+                                for (var c0 = 0; c0 < mvd.Cols; c0++)
+                                    mvd.Set(r0, c0, Convert.ToDouble(tbuf.GetValue(k++)));
                             break;
                         }
                         case double[][] djag:

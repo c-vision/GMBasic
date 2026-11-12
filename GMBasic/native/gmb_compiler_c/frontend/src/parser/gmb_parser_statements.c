@@ -2112,7 +2112,14 @@ if (gmb_tk_rem_vari_in(t->kind)) {
      * come codice morto da rimuovere in una sessione dedicata. */
     if (t->kind == GMB_TOK_Swap) { gmb_p_adv(p); return gmb_p_parse_swap(p, line); }
     if (t->kind == GMB_TOK_Stop) { gmb_p_adv(p); return gmb_p_parse_stop(p, line); }
-    if (t->kind == GMB_TOK_Run) { gmb_p_adv(p); return gmb_p_parse_run(p, line); }
+    /* RUN [<file>] — RUN non è (ancora) una keyword del lexer C: arriva come Identifier,
+     * quindi si accetta anche per grafia. Il guard su `=` mantiene l'uso come variabile
+     * (`run = 1`), già presente in alcuni MiniTest TUI. */
+    if ((t->kind == GMB_TOK_Run || gmb_p_tok_is_soft_keyword(t, "RUN"))
+        && !(gmb_p_peek(p, 1) && (gmb_p_peek(p, 1)->kind == GMB_TOK_Equal
+                                  || gmb_p_peek(p, 1)->kind == GMB_TOK_InlineAssign))) {
+        gmb_p_adv(p); return gmb_p_parse_run(p, line);
+    }
     if (t->kind == GMB_TOK_Require) { gmb_p_adv(p); return gmb_p_parse_require(p, line); }
     if (t->kind == GMB_TOK_Process) { gmb_p_adv(p); return gmb_p_parse_process(p, line); }
     if (t->kind == GMB_TOK_Yield) { gmb_p_adv(p); return gmb_p_parse_yield(p, line); }

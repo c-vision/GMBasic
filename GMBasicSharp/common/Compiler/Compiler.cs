@@ -930,8 +930,21 @@ public sealed partial class Compiler
                 // non hoistata; i GLOBAL senza inizializzatore (solo registrazione, già fatta
                 // da CompileDefinitions) restano skippati per non azzerare global già
                 // assegnati da righe precedenti.
+                /* GLOBAL a livello modulo: si salta lo statement solo se è già coperto.
+                 * - scalare SENZA inizializzatore: la sola registrazione basta (già fatta da
+                 *   CompileDefinitions) e rieseguirlo azzererebbe un global assegnato prima;
+                 * - con inizializzatore: se è nel prefisso hoistato, l'ha già eseguito
+                 *   __global_init.
+                 * Un `GLOBAL arr(n) AS <tipo>` NON è coperto da nessuno dei due: senza
+                 * eseguire lo statement l'array non viene mai allocato (restava NIL →
+                 * `arr(i).campo = v` era un no-op su PCode/VM-C: ScopesLocal/TypesUdtGlobal).
+                 * Quindi la condizione di skip richiede anche "nessuna dimensione". */
+                static bool GlobalDeclAlreadyHandled(VariableDeclaration d, HashSet<VariableDeclaration> hoisted)
+                    => d.InitialValue is not null
+                        ? hoisted.Contains(d)
+                        : d.Dimensions.IsDefaultOrEmpty;
                 if (stmt is DeclarationStmt { Keyword.Kind: TokenKind.Global } gGlobal
-                    && gGlobal.Declarations.All(d => d.InitialValue is null || hoistedDecls.Contains(d)))
+                    && gGlobal.Declarations.All(d => GlobalDeclAlreadyHandled(d, hoistedDecls)))
                     continue;
                 // DIM top-level CON inizializzatore: già compilata in __global_init (vedi
                 // CompileGlobalInitializers/GetHoistedGlobalInitDecls) — ricompilarla ANCHE

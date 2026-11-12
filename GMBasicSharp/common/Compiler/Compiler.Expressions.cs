@@ -715,11 +715,15 @@ public sealed partial class Compiler
         {
             /* Gli ARRAY non si incapsulano in una ByRefBox (2026-11-03) — vedi il gemello
              * nel percorso ArrayAccessExpr: inoltrare un PARAMETRO array a un'altra
-             * procedura passava la box e il callee vedeva UBOUND=0. */
+             * procedura passava la box e il callee vedeva UBOUND=0.
+             * AGGIORNAMENTO 2026-11-12: il difetto era il DOPPIO box (box di un box), non il
+             * box in sé; OP_MAKE_BYREF in PCode/VM-C è ora idempotente (riusa la cella
+             * esistente) e gli array possono tornare BYREF — necessario perché `REDIM D(n)`
+             * dentro una procedura si rifletta sull'array del chiamante (ArraysComplexProcessing,
+             * ScopesByRef). */
             var isByRef = found && proc is ProcedureDefinition pd &&
                 i < pd.Parameters.Length &&
-                pd.Parameters[i].Flags.HasFlag(SymbolFlags.IsByRef) &&
-                !pd.Parameters[i].Flags.HasFlag(SymbolFlags.IsArray);
+                pd.Parameters[i].Flags.HasFlag(SymbolFlags.IsByRef);
             // BYREF scalare FFI (2026-09-28): riusa lo STESSO meccanismo del BYREF ordinario
             // (OP_MAKE_BYREF/OP_MAKE_BYREF_GLOBAL — una ByRefBox generica, scrive-attraverso
             // sullo slot locale/globale del chiamante). L'argomento deve essere una VARIABILE

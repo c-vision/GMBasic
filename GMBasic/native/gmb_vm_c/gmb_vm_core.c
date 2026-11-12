@@ -2166,6 +2166,66 @@ static gmb_obj_shared_val_t* vm_class_desc_of(gmb_obj_t* inst)
     return NULL;
 }
 
+/* Uguaglianza di VALORE per due gmb_val_t nel confronto (parità PCodeVM UdtValueEquals):
+ * le stringhe in VM/C sono oggetti (GMB_OBJ_STRING) e `gmb_val_equals` le confronterebbe per
+ * PUNTATORE; qui si confronta il contenuto. I nested UDT/CLASS ricorrono sull'uguaglianza
+ * per campo. Tutto il resto delega a gmb_val_equals (numerico cross-kind, ecc.). */
+static int vm_udt_value_equals(gmb_obj_t* a, gmb_obj_t* b);
+static int vm_cmp_val_equals(gmb_val_t a, gmb_val_t b)
+{
+    if (a.kind == GMB_TYPE_OBJECT && b.kind == GMB_TYPE_OBJECT && a.v_ptr && b.v_ptr)
+    {
+        gmb_obj_t* oa = (gmb_obj_t*)a.v_ptr;
+        gmb_obj_t* ob = (gmb_obj_t*)b.v_ptr;
+        if (oa->kind == GMB_OBJ_STRING && ob->kind == GMB_OBJ_STRING)
+        {
+            const char* sa = ((gmb_obj_string_t*)oa)->data;
+            const char* sb = ((gmb_obj_string_t*)ob)->data;
+            return strcmp(sa ? sa : "", sb ? sb : "") == 0;
+        }
+        if (oa->kind == GMB_OBJ_DICT && ob->kind == GMB_OBJ_DICT)
+            return vm_udt_value_equals(oa, ob);
+    }
+    return gmb_val_equals(a, b) != 0;
+}
+
+/* UDT/CLASS per VALORE (parità PCodeVM `UdtValueEquals`): stesso descrittore `__class__` e
+ * uguali TUTTI i campi dichiarati in FieldNames. Prima OP_CMP_EQ/NE confrontava due istanze
+ * per identità: `P2 = P1` (copia) risultava sempre diverso — samples/Types/TypesUdtGlobal,
+ * IL/PCode davano TRUE, VM/C FALSE. */
+static int vm_udt_value_equals(gmb_obj_t* a, gmb_obj_t* b)
+{
+    if (!a || !b) return a == b;
+    if (a->kind != GMB_OBJ_DICT || b->kind != GMB_OBJ_DICT) return a == b;
+    gmb_obj_shared_val_t* sa = (gmb_obj_shared_val_t*)a;
+    gmb_obj_shared_val_t* sb = (gmb_obj_shared_val_t*)b;
+    if (!sa->dict || !sb->dict) return a == b;
+    gmb_val_t ca = gmb_dict_get(*sa->dict, "__class__");
+    gmb_val_t cb = gmb_dict_get(*sb->dict, "__class__");
+    if (ca.kind != GMB_TYPE_OBJECT || cb.kind != GMB_TYPE_OBJECT) return a == b;
+    if (ca.v_ptr != cb.v_ptr) return 0;                 /* tipo diverso */
+    gmb_obj_t* desc_obj = (gmb_obj_t*)ca.v_ptr;
+    if (!desc_obj || desc_obj->kind != GMB_OBJ_DICT) return a == b;
+    gmb_obj_shared_val_t* desc = (gmb_obj_shared_val_t*)desc_obj;
+    if (!desc->dict) return a == b;
+    gmb_val_t fn = gmb_dict_get(*desc->dict, "FieldNames");
+    if (fn.kind != GMB_TYPE_OBJECT || !fn.v_ptr) return a == b;
+    gmb_obj_t* fn_obj = (gmb_obj_t*)fn.v_ptr;
+    if (fn_obj->kind != GMB_OBJ_DICT) return a == b;
+    gmb_obj_shared_val_t* fn_sv = (gmb_obj_shared_val_t*)fn_obj;
+    if (!fn_sv->dict) return a == b;
+    gmb_dict_t* fd = fn_sv->dict;
+    for (size_t i = 0; i < fd->count; i++)
+    {
+        gmb_val_t nm = fd->items[i].value;
+        if (nm.kind != GMB_TYPE_STRING || !nm.v_string.data) continue;
+        gmb_val_t av = vm_dict_get_ci(sa->dict, nm.v_string.data);
+        gmb_val_t bv = vm_dict_get_ci(sb->dict, nm.v_string.data);
+        if (!vm_cmp_val_equals(av, bv)) return 0;
+    }
+    return 1;
+}
+
 /* Lookup in un sotto-dict del descriptor (VTable/PropertyGetters/PropertySetters). */
 static int vm_desc_table_addr(gmb_obj_shared_val_t* cd, const char* table, const char* name)
 {
@@ -9711,7 +9771,15 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                         eq = (an && bn) || (an && sb && !*sb) || (bn && sa && !*sa);
                     else if ((a.type == 2 && a.ref && (a.ref->kind == GMB_OBJ_DICT || a.ref->kind == GMB_OBJ_LIST)) ||
                              (b.type == 2 && b.ref && (b.ref->kind == GMB_OBJ_DICT || b.ref->kind == GMB_OBJ_LIST)))
-                        eq = (a.ref == b.ref);   /* UdtValueEquals: identità (approx) */
+                    {
+                        /* UDT/CLASS: confronto PER VALORE (stesso __class__ + campi);
+                         * dict/list generici: identità (come PCodeVM). */
+                        if (a.type == 2 && b.type == 2 && a.ref && b.ref &&
+                            a.ref->kind == GMB_OBJ_DICT && b.ref->kind == GMB_OBJ_DICT)
+                            eq = vm_udt_value_equals(a.ref, b.ref);
+                        else
+                            eq = (a.ref == b.ref);
+                    }
                     else if ((a.type == 2 && a.ref && a.ref->kind != GMB_OBJ_STRING && b.type == 1 && b.num == 0.0) ||
                              (b.type == 2 && b.ref && b.ref->kind != GMB_OBJ_STRING && a.type == 1 && a.num == 0.0))
                         /* HANDLE (channel/context/waitgroup/...) vs 0/NIL: il riferimento è

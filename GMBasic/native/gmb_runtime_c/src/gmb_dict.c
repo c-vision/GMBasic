@@ -1290,7 +1290,7 @@ gmb_string_t gmb_json_double_array(const gmb_double_t* items, gmb_int_t n) {
     for (gmb_int_t i = 0; i < n; i++) {
         if (i > 0) {
             while (pos + 1 >= cap) { cap *= 2; buf = (char*)realloc(buf, cap); }
-            buf[pos++] = ','; buf[pos++] = ' ';
+            buf[pos++] = ',';
         }
         gmb_string_t t = gmb_double_to_string(items[i]);
         const char* td = t.data ? t.data : "";

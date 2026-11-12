@@ -987,6 +987,9 @@ static void sb_var_ctype(sb_t* b, var_t* v) {
     if (gk_is_list(v->gkind)) { sb_put(b, "gmb_list_t"); return; }
     if (gk_is_dict(v->gkind)) { sb_put(b, "gmb_dict_t"); return; }
     if (gk) { sb_put(b, gk); return; }
+    /* Valore matrice (DIM rank-2 DOUBLE, MATRIX.* a valore): descrittore gmb_matrix_t.
+     * Deve precedere il ramo `is_array`, che emette un puntatore. */
+    if (v->matrix_value) { sb_put(b, "gmb_matrix_t"); if (v->byref) sb_put(b, "*"); return; }
     if (v->jagged) { sb_put(b, "gmb_double_t**"); return; }
     sb_put(b, ctype_name(v->type));
     if (v->byref) sb_put(b, "*");
@@ -5766,6 +5769,14 @@ static int fn_needs_fv_adapter(const fn_info_t* fn) {
     int need = 0;
     for (int i = 0; i < fn->n_params; i++) {
         if (fn->stmt->param_byref && fn->stmt->param_byref[i]) return 0;
+        /* BYREF ARRAY (`BYREF D() AS STRING`): il target riceve `T**` + bound, ABI che il
+         * gmb_fn_t non sa fornire — l'adapter ctx-first dichiarava `gmb_string_t Dati` e
+         * chiamava il target con `gmb_string_t**` (C invalido: ArraysPassingLocal). Un
+         * parametro array byref non è un valore-callback: nessun adapter. */
+        {
+            var_t* pvb = vars_find(&fn->locals, fn->stmt->func_params[i]);
+            if (pvb && pvb->arr_byref) return 0;
+        }
         if (fn->stmt->param_variadic && fn->stmt->param_variadic[i]) return 0;
         /* Array (2026-11-02): un parametro array del target e' un PUNTATORE, ma il gmb_fn_t
          * viene invocato con `void* ctx` in testa: senza adapter il ctx finisce nel registro
@@ -15622,7 +15633,7 @@ void emit_expr(ctx_t* c, gmb_expr_t* e) {
                 struct cls_info* uci = cls_find(c, ucl);
                 if (uci && uci->is_udt && uci->nfields > 0) {
                     int neq = (strcmp(op, "<>") == 0 || strcmp(op, "!=") == 0);
-                    sb_put(&c->out, neq ? "(!(" : "(");
+                    sb_put(&c->out, neq ? "((!(" : "((");
                     for (int k = 0; k < uci->nfields; k++) {
                         if (k) sb_put(&c->out, " && ");
                         if (cls_field_is_str(uci, uci->fname[k])) {
@@ -15646,7 +15657,7 @@ void emit_expr(ctx_t* c, gmb_expr_t* e) {
                             sb_ident(&c->out, uci->fname[k]);
                         }
                     }
-                    sb_put(&c->out, neq ? "))" : ")");
+                    sb_put(&c->out, neq ? ")) ? -1.0 : 0.0)" : ") ? -1.0 : 0.0)");
                     return;
                 }
             }
@@ -37047,6 +37058,28 @@ static int gmb_c99_emit_once(const gmb_program_t* prog, char** out_src, char** e
             sb_put(&fin, "static gmb_val_t ");
             sb_ident(&fin, gv->name);
             sb_put(&fin, " = {0};\n");
+            continue;
+        }
+        if (gv->matrix_value) {
+            /* `DIM m(r,c)` rank-2 DOUBLE a livello di MODULO: a file scope è un descrittore
+             * gmb_matrix_t (stessa rappresentazione dei LOCALI, vedi prologo), NON un
+             * `double*` + bound: l'indicizzazione usa gmb_matrix_value_get/set(<nome>, …) e
+             * il DIM assegna gmb_matrix_value_zeros. Senza questo ramo il C generato
+             * dichiarava `static gmb_double_t*` e poi usava il descrittore → "assigning to
+             * 'gmb_double_t *' from incompatible type 'gmb_matrix_t'" (Arrays/ArraysDim,
+             * 2026-11-12). */
+            sb_put(&fin, "static gmb_matrix_t ");
+            sb_ident(&fin, gv->name);
+            sb_put(&fin, " = {0};\n");
+            if (gv->has_blo) {
+                int nd = gv->ndims > 0 ? gv->ndims : 2;
+                for (int k = 0; k < nd; k++) {
+                    sb_put(&fin, "static gmb_int_t ");
+                    if (k == 0) sb_bound_lo(&fin, gv);
+                    else sb_bound_lo_k(&fin, gv, k);
+                    sb_put(&fin, " = 0;\n");
+                }
+            }
             continue;
         }
         if (gv->matrix) {
