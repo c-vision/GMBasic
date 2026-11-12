@@ -711,7 +711,7 @@ int main(int argc, char** argv) {
     if (line_map) (void)write_line_map(line_map, in, &smap, csrc);
     gmb_src_map_free(&smap);   /* l'emissione è finita: gli anchor non servono più */
     FILE* of = fopen(out, "wb");
-    if (!of) { fprintf(stderr, "impossibile scrivere: %s\n", out); free(csrc); gmb_typereg_free(&tr); gmb_symtab_free(&st); goto fail; }
+    if (!of) { fprintf(stderr, "impossibile scrivere: %s\n", out); free(csrc); gmb_typereg_free(&tr); gmb_symtab_free(&st); gmb_program_free(&prog); goto fail; }
     fwrite(csrc, 1, strlen(csrc), of); fclose(of);
     /* su stderr, NON su stdout: stdout resta pulito per l'harness (falso DIFF di parità) */
     fprintf(stderr, "emesso -> %s (%zu bytes)\n", out, strlen(csrc));
