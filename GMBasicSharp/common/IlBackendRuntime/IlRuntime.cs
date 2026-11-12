@@ -9557,13 +9557,17 @@ public static double TextWidth(string s)
     private static string AiModelFail(string verb) =>
         throw new BasicException(ErrorCode.IllegalFunctionCall, SourcePosition.Unknown, AiModelErr(verb));
 
-    /// <summary>Esegue un verbo `LLM MODEL …` del provider normalizzando QUALUNQUE fallimento sul
-    /// testo canonico: MoestreamServer lo descrive con un JSON ({"ok":false,"error":…}) o con un
-    /// messaggio proprio, che non coincide con quello delle gambe C.</summary>
+    /// <summary>Esegue un verbo `LLM MODEL …` del provider normalizzando i fallimenti PREVISTI sul
+    /// testo canonico della VM/C: il provider segnala "model not found"/"adapter error" con
+    /// `BasicException` (MoestreamErrors.Verb) o `InvalidOperationException`, messaggi che non
+    /// coincidono con quelli delle gambe C. Ogni altra eccezione (NullReference, InvalidCast,
+    /// ArgumentNull, …) e' un bug interno e sale INVARIATA: non deve diventare un ERR 5 fuorviante
+    /// che manda a cercare il problema nel modello invece che nel codice.</summary>
     private static string AiModelDo(string verb, Func<string> call)
     {
         try { return call(); }
-        catch (Exception) { return AiModelFail(verb); }
+        catch (BasicException) { return AiModelFail(verb); }
+        catch (InvalidOperationException) { return AiModelFail(verb); }
     }
 
     public static string AiModelLoad(string name, string path, string flags)
