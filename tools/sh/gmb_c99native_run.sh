@@ -14,6 +14,10 @@ fi
 # Uso: gmb_c99native_run.sh <sample.bas> [suffisso] [cflags]
 #      [--cc <compilatore>] [--target <triple>]
 #   --cc     il compilatore C (default: cc). Accetta una stringa multi-parola: `--cc "<zig> cc"`.
+#   --rid    RID di destinazione (i sei del piano: osx-arm64, osx-x64, linux-x64, linux-arm64,
+#            win-x64, win-arm64). Fissa triple, OS, framework e terze parti via
+#            `tools/sh/gmb_link_set.sh` (F5): con `--rid linux-x64` da macOS si PRODUCE il binario
+#            Linux e NON lo si esegue (l'esecuzione richiede il RID host).
 #   --target triple di destinazione (default: host), es. aarch64-linux-musl / x86_64-apple-darwin.
 #            I flag dipendenti dalla piattaforma (-arch, -dead_strip_dylibs, @loader_path,
 #            dynamic_lookup, estensione delle librerie) si derivano da qui: nessuno e' piu' cablato
@@ -49,6 +53,7 @@ done
 # Si estraggono PRIMA dei posizionali, cosi' restano validi <file> [suffisso] [cflags].
 CC_ARG=""
 TARGET_TRIPLE=""
+RID_ARG=""
 _POS=()
 _i=0
 while [ "$_i" -lt "${#_ARGS[@]}" ]; do
@@ -58,6 +63,10 @@ while [ "$_i" -lt "${#_ARGS[@]}" ]; do
     --cc=*)     CC_ARG="${_a#--cc=}"; _i=$((_i+1)); continue ;;
     --target)   TARGET_TRIPLE="${_ARGS[$((_i+1))]:-}"; _i=$((_i+2)); continue ;;
     --target=*) TARGET_TRIPLE="${_a#--target=}"; _i=$((_i+1)); continue ;;
+    # --rid: F5. Il RID (i sei del piano) determina triple, OS, framework e terze parti.
+    # Senza --rid resta l'host. Se c'è anche --target, vince --target (è più specifico).
+    --rid)      RID_ARG="${_ARGS[$((_i+1))]:-}"; _i=$((_i+2)); continue ;;
+    --rid=*)    RID_ARG="${_a#--rid=}"; _i=$((_i+1)); continue ;;
   esac
   _POS+=("$_a"); _i=$((_i+1))
 done
@@ -65,6 +74,11 @@ if [ ${#_POS[@]} -gt 0 ]; then set -- "${_POS[@]}"; else set --; fi
 
 ROOT=$(cd "$(dirname "$0")/../../GMBasic" && pwd)
 TOOLS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"   # tools/ (script ausiliari)
+# ── F5: `--rid` fissa la triple. Il mapping RID→triple vive SOLO in `gmb_link_set.sh` (§17.1):
+# duplicarlo qui lo farebbe divergere al primo RID nuovo. `--target` resta più specifico.
+if [ -n "$RID_ARG" ] && [ -z "$TARGET_TRIPLE" ]; then
+  TARGET_TRIPLE="$(bash "$TOOLS_DIR/gmb_link_set.sh" --rid "$RID_ARG" --print triple)" || exit 2
+fi
 # Cache ON-DEMAND delle librerie native (CommonLib.LibsResolver / `gmb libs ensure`): il link usa
 # le copie della CACHE, che hanno install-name `@rpath/...`, NON i dist di build (possono essere
 # stale e avere `@loader_path`: caso reale `libllmtoken` @loader_path → l'eseguibile non partiva
@@ -96,28 +110,27 @@ case "$TARGET_OS-$TARGET_ARCH" in
   Windows-x86_64) RID=win-x64 ;;
   Windows-arm64)  RID=win-arm64 ;;
   *)              RID=osx-arm64 ;;
- esac
+esac
+# ── F5: IL SET DI LINK DEL RID, da `gmb_link_set.sh` (una sola fonte) ────────────────────────────
+# Framework, librerie di sistema e terze parti non sono più cablati su Darwin/arm64: `LS_*`
+# (array inclusi) è quello che il RID dichiara. `LS_FRAMEWORKS` è vuoto fuori da macOS,
+# `LS_SYS` non contiene `-lcompression` fuori da macOS, `LS_THIRD` dà `-L<cache> -l<nome>` con
+# l'estensione scelta dal linker, `LS_AGENT=0` fuori da Darwin (`libgmb_agent_runtime` usa AX/CG).
+eval "$(bash "$TOOLS_DIR/gmb_link_set.sh" --rid "$RID" --cache "$HOME/.gmbasic/libs/$RID")" || exit 2
 # Flag per piattaforma: UNA sola fonte. Vuoto = il flag non esiste su quel target.
 # Il triple va PASSATO al compilatore: senza, `--target` cambierebbe solo i flag di link e la
 # compilazione resterebbe sull'host (verificato: un cross dichiarato compilava nativo).
-TARGETFLAG=""
-if [ -n "$TARGET_TRIPLE" ]; then TARGETFLAG="-target $TARGET_TRIPLE"; fi
 ARCHFLAG=""        # Darwin: -arch <arch>; altrove il target lo sceglie il compilatore
-STRIPDYLIB=""      # ld64: tiene solo le dylib davvero usate
-RPATH_LOADER=""    # rpath relativo all'eseguibile (@loader_path / $ORIGIN)
-UNDEFSYM=""       # libreria condivisa con simboli risolti a load-time
-DYLIBEXT="dylib"   # estensione degli artefatti dinamici
-NM_GU="-gU"        # `nm` che mostra solo i simboli esterni definiti
-case "$TARGET_OS" in
-  Darwin)
-    ARCHFLAG="-arch $TARGET_ARCH"; STRIPDYLIB="-Wl,-dead_strip_dylibs"
-    RPATH_LOADER="-Wl,-rpath,@loader_path"; UNDEFSYM="-Wl,-undefined,dynamic_lookup"
-    DYLIBEXT="dylib"; NM_GU="-gU" ;;
-  Linux)
-    RPATH_LOADER='-Wl,-rpath,$ORIGIN'; DYLIBEXT="so"; NM_GU="-g" ;;
-  Windows)
-    DYLIBEXT="dll"; NM_GU="" ;;
-esac
+TARGETFLAG=""
+# `-isysroot`: senza, zig non trova le lib di sistema dei target Apple (piano L13).
+if [ -n "$TARGET_TRIPLE" ]; then TARGETFLAG="-target $TARGET_TRIPLE ${LS_SDK[*]+${LS_SDK[*]}}"; fi
+# I flag di link arrivano dal resolver (F5); qui restano i nomi.
+STRIPDYLIB="$LS_STRIP"
+RPATH_LOADER="$LS_RPATH"
+UNDEFSYM="$LS_UNDEF"
+DYLIBEXT="$LS_DYLIBEXT"
+NM_GU="$LS_NM_GU"
+[ "$TARGET_OS" = Darwin ] && ARCHFLAG="-arch $TARGET_ARCH"
 LIBS_CACHE="$HOME/.gmbasic/libs/$RID"
 
 # ── Download on-demand (asset per-file) ─────────────────────────────────────────────────────
@@ -238,7 +251,7 @@ if ! grep -q "int main" "$DIR/$CASE.c"; then OUTBIN="$DIR/$CASE.$DYLIBEXT"; CCFI
 # libllmtoken: dalla cache (install-name @rpath). Fallback al BUILD di LLMEnv, mai al dist di
 # staging (variante @loader_path che non si risolve accanto all'eseguibile).
 LLMTOKEN_DIR="$LIBS_CACHE"
-[ -f "$LLMTOKEN_DIR/libllmtoken.dylib" ] || LLMTOKEN_DIR="$LLMENV/build/LLMToken"
+[ -f "$LLMTOKEN_DIR/libllmtoken.$DYLIBEXT" ] || LLMTOKEN_DIR="$LLMENV/build/LLMToken"
 # ── Quale runtime? ────────────────────────────────────────────────────────────────────────────
 # SEMPRE il runtime COMPLETO. Il ramo «programma testuale → gmb_runtime_min» è stato RIMOSSO
 # (2026-11-12): quel lib-set NON è linkabile, perché gli oggetti del runtime minimo chiedono
@@ -257,8 +270,8 @@ RUNTIME_LIB="$FULL_LIB"
 TRAY_LINK=""
 if grep -q 'gmb_tray_' "$DIR/$CASE.c" 2>/dev/null; then
   cmake --build "$ROOT/native/gmb_runtime_c/build" --target gmb_tray -j4 >/dev/null 2>&1 || true
-  TRAY_DYLIB="$LIBS_CACHE/libgmb_tray.dylib"
-  [ -f "$TRAY_DYLIB" ] || TRAY_DYLIB="$ROOT/build/libs/$RID/libgmb_tray.dylib"
+  TRAY_DYLIB="$LIBS_CACHE/libgmb_tray.$DYLIBEXT"
+  [ -f "$TRAY_DYLIB" ] || TRAY_DYLIB="$ROOT/build/libs/$RID/libgmb_tray.$DYLIBEXT"
   if [ -f "$TRAY_DYLIB" ]; then
     TRAY_LINK="$TRAY_DYLIB -Wl,-rpath,$(dirname "$TRAY_DYLIB")"
     echo "[c99native] TRAY: link di $(basename "$TRAY_DYLIB")" >&2
@@ -311,11 +324,10 @@ ASRLIB="$L/gmb_runtime_c_build/llmasr_build/libllm_asr.a"
 FETCH="$ROOT/native/gmb_runtime_c/build/gmb_libs_fetch"
 if [ -x "$FETCH" ]; then
   emit_libs_index "$DIR/bin/libs.txt"
-  if [ -s "$DIR/bin/libs.txt" ]; then
-    "$FETCH" "$DIR/bin/libs.txt" \
-      libcrypto.3.dylib libssl.3.dylib libzstd.1.5.7.dylib libbrotlienc.1.dylib libbrotlidec.1.dylib \
-      libpcre2-8.0.dylib libSDL2_mixer.dylib libSDL2_ttf.dylib libSDL2.dylib liblzma.5.dylib \
-      liblz4.1.10.0.dylib libMoltenVK.dylib >/dev/null 2>&1 || true
+  if [ -s "$DIR/bin/libs.txt" ] && [ ${#LS_FETCH_NAMES[@]} -gt 0 ]; then
+    # Nomi ESATTI letti dall'indice del RID (`libcrypto.3.dylib` su macOS, `libcrypto.so.3` su
+    # Linux): prima erano cablati con l'estensione `.dylib` e su un altro RID non esistevano.
+    "$FETCH" "$DIR/bin/libs.txt" ${LS_FETCH_NAMES[@]+"${LS_FETCH_NAMES[@]}"} >/dev/null 2>&1 || true
   fi
 fi
 
@@ -323,7 +335,10 @@ fi
 # gira, lasciando una statica MANCANTE e facendo fallire il link — falso negativo del gate
 # (caso reale: 5 MiniTest "FAIL" solo perché `libgmb_doc.a` era in ricostruzione). Se una delle
 # statiche attese non c'è, si ricostruisce il target e si prosegue (una volta).
-for _t in gmb_doc gmb_agent_runtime; do
+# `gmb_agent_runtime` ha senso solo dove il suo archivio è linkabile (Darwin: AX/CG).
+_ENSURE_TARGETS="gmb_doc"
+[ "$LS_AGENT" = 1 ] && _ENSURE_TARGETS="gmb_doc gmb_agent_runtime"
+for _t in $_ENSURE_TARGETS; do
   case "$_t" in
     gmb_doc) _needlib="$L/gmb_doc_c_build/libgmb_doc.a" ;;
     *) _needlib="$L/gmb_agent_runtime_build/libgmb_agent_runtime.a" ;;
@@ -334,6 +349,13 @@ for _t in gmb_doc gmb_agent_runtime; do
   fi
 done
 
+# Set di link dal resolver (F5): `LS_FRAMEWORKS` è vuoto fuori da macOS (niente `-framework` su
+# Linux/Windows), `LS_SYS` non contiene `-lcompression` fuori da macOS, `LS_THIRD` è
+# `-L<cache> -l<crypto|ssl|…>` con l'estensione che sceglie il linker.
+AGENT_LIB=""
+if [ "$LS_AGENT" = 1 ] && [ -f "$L/gmb_agent_runtime_build/libgmb_agent_runtime.a" ]; then
+  AGENT_LIB="$L/gmb_agent_runtime_build/libgmb_agent_runtime.a"
+fi
 $CC_BIN $CF $CCFIRST $STRIPDYLIB $EXPORTDYN $RPATH_LOADER -Wl,-rpath,"$CODEC" "$DIR/$CASE.o" $TORCH_OBJS $JINJA_OBJ -o "$OUTBIN" \
   "$L/libgmb_vm.a" "$RUNTIME_LIB" $TRAY_LINK "$ASRLIB" \
   "$ROOT/native/gmb_runtime_c/build/gmb_chart_build/libgmb_chart.a" \
@@ -342,17 +364,10 @@ $CC_BIN $CF $CCFIRST $STRIPDYLIB $EXPORTDYN $RPATH_LOADER -Wl,-rpath,"$CODEC" "$
   "$ROOT/native/gmb_runtime_c/build/llmengine_plugin_build/libllmengine_plugin.a" \
   "$ROOT/native/gmb_runtime_c/build/llmdesc_build/libllmdesc.a" \
   "$CODEC/llmcodec_mlx_build/libllmcodec.a" "$CODEC/llmengine_moe_mlx_build/libllmengine_moe.a" -L"$CODEC" -lllmcodec_ggml -lllmcodec_mlx_affine -lllmcodec_fp8 -Wl,-rpath,"$CODEC" "$L/gmb_compiler_c_build/libgmb_compiler_c.a" -lpthread \
-  "$L/gmb_doc_c_build/libgmb_doc.a" "$L/gmb_agent_runtime_build/libgmb_agent_runtime.a" \
-  -framework CoreGraphics -framework ApplicationServices -framework ImageIO \
-  -framework CoreServices -framework AppKit \
-  "$L/gmb_db_c_build/libgmb_db.a" -lm -lcurl -lcompression -lz -lbz2 -lsqlite3 \
-  -L"$LIBS_CACHE" -Wl,-rpath,"$LIBS_CACHE" \
-  "$LIBS_CACHE/libcrypto.3.dylib" "$LIBS_CACHE/libssl.3.dylib" \
-  "$LIBS_CACHE/libzstd.1.5.7.dylib" \
-  "$LIBS_CACHE/libbrotlienc.1.dylib" "$LIBS_CACHE/libbrotlidec.1.dylib" \
-  "$LIBS_CACHE/libpcre2-8.0.dylib" \
-  "$LIBS_CACHE/libSDL2_mixer.dylib" "$LIBS_CACHE/libSDL2_ttf.dylib" "$LIBS_CACHE/libSDL2.dylib" \
-  "$LIBS_CACHE/liblzma.5.dylib" "$LIBS_CACHE/liblz4.1.10.0.dylib" "$LIBS_CACHE/libMoltenVK.dylib" \
+  "$L/gmb_doc_c_build/libgmb_doc.a" $AGENT_LIB \
+  ${LS_FRAMEWORKS[@]+"${LS_FRAMEWORKS[@]}"} \
+  "$L/gmb_db_c_build/libgmb_db.a" -lm ${LS_SYS[@]+"${LS_SYS[@]}"} \
+  -Wl,-rpath,"$LIBS_CACHE" ${LS_THIRD[@]+"${LS_THIRD[@]}"} \
   -L"$LLMTOKEN_DIR" -lllmtoken -Wl,-rpath,"$LLMTOKEN_DIR" -lz
 # ── GATE EXPORT: il link può "riuscire" e produrre un binario che crasha all'avvio ────────────
 # Per le dylib conta ciò che l'eseguibile ESPORTA. Con lld un simbolo che nulla referenzia non è
@@ -459,7 +474,18 @@ fi
 
 # Esegue (CWD = cartella del sample) per un eseguibile; per una libreria si verifica solo
 # che i simboli esportati siano presenti.
-if grep -q "int main" "$DIR/$CASE.c"; then
+# CROSS (F5): un binario per un altro RID si produce e si verifica, NON si esegue — chiedere al
+# loader dell'host un ELF eseguibile su macOS produce solo un errore di exec fuorviante.
+case "$(uname -s)-$(uname -m)" in
+  Darwin-arm64)                  HOST_RID=osx-arm64 ;;
+  Darwin-x86_64)                 HOST_RID=osx-x64 ;;
+  Linux-x86_64)                  HOST_RID=linux-x64 ;;
+  Linux-aarch64|Linux-arm64)     HOST_RID=linux-arm64 ;;
+  *)                             HOST_RID=osx-arm64 ;;
+esac
+if grep -q "int main" "$DIR/$CASE.c" && [ "$RID" != "$HOST_RID" ]; then
+  echo "[c99native] cross $RID: binario prodotto ($OUTBIN), non eseguito su $HOST_RID" >&2
+elif grep -q "int main" "$DIR/$CASE.c"; then
   GMB_TORCH_PATH="${GMB_TORCH_PATH:-$HOME/.gmbasic/libs/ml/$RID}"
   (cd "$DIR" && GMB_TORCH_PATH="$GMB_TORCH_PATH" ./bin/"$(basename "$CASE")" ${PROG_ARGS[@]+"${PROG_ARGS[@]}"})
 else

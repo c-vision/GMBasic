@@ -14,8 +14,23 @@ fi
 # (C99Native): lex→parse→gmb_c99_emit (driver gmbnative) → cc col runtime
 # reale → esecuzione. PASS = genera C + cc ok + run exit 0. Complementare al gate C99
 # (C99Native) e al test di parità IL/PCode/VMC.
-# Uso: tools/sh/test_minitests_c99native
+# Uso: tools/sh/test_minitests_c99native [--cc <compilatore>] [--target <triple>] [--rid <rid>]
+#   F5: gli stessi argomenti del runner diretto. `--rid` prende triple, framework, sistema e terze
+#   parti da `tools/sh/gmb_link_set.sh` (stessa fonte di `gmb_c99native_run.sh`).
+#   Filtro dei file: GMB_MINI_ONLY="<dominio>/<file>[,<altro>]".
 set -u
+PRE_CC=""; PRE_TRIPLE=""; PRE_RID=""
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --cc)       PRE_CC="${2:-}"; shift 2 ;;
+    --cc=*)     PRE_CC="${1#--cc=}"; shift ;;
+    --target)   PRE_TRIPLE="${2:-}"; shift 2 ;;
+    --target=*) PRE_TRIPLE="${1#--target=}"; shift ;;
+    --rid)      PRE_RID="${2:-}"; shift 2 ;;
+    --rid=*)    PRE_RID="${1#--rid=}"; shift ;;
+    *) echo "test_minitests_c99native: argomento sconosciuto: $1 (--cc/--target/--rid)" >&2; exit 2 ;;
+  esac
+done
 ROOT="$(cd "$(dirname "$0")/../../GMBasic" && pwd)"; cd "$ROOT"
 # I TOOL vivono nella radice del MONOREPO (`tools/`), non più in GMBasic/tools.
 # NB: si ricava da ROOT (assoluto) e NON da `$0`: dopo il `cd` un `$0` relativo
@@ -72,9 +87,26 @@ MOE_LIB="$LLMENV/LLMEngine/mlx/build-gmbasic/llmengine_moe_mlx_build/libllmengin
 # CUA/browser: i backend C usano gmb_agent_runtime (C) — vedi CUA-Universal-Action-Runtime-Guida.
 # gmb_agent_runtime dipende dal motore Jinja C (gmb_chat_template.c -> gmb_jinja): va linkato.
 AGENT_SRCS="$(echo "$ROOT"/native/gmb_agent_runtime/*.c) $LLMENV/LLMJinja/llmjinja.c $LLMENV/LLMJinja/llmjinja_builtins.c"
-FRAMEWORKS=""
-if [ "$(uname)" = "Darwin" ]; then
-  FRAMEWORKS="-framework CoreGraphics -framework ApplicationServices -framework ImageIO -framework CoreServices -framework AppKit"
+FC="${PRE_CC:-cc}"          # compilatore (F5: `--cc "<zig> cc"` come nel runner diretto)
+TF=""                        # -target del RID (F5)
+if [ -n "$PRE_RID" ] && [ -z "$PRE_TRIPLE" ]; then
+  PRE_TRIPLE="$(bash "$MONO/tools/sh/gmb_link_set.sh" --rid "$PRE_RID" --print triple)" || exit 2
+fi
+# (niente `case` dentro `$( )`: bash 3.2 di macOS non lo parsa — errore di sintassi a ogni run)
+_U="$(uname -s)-$(uname -m)"
+if   [ "$_U" = Darwin-arm64 ];  then HOST_RID=osx-arm64
+elif [ "$_U" = Darwin-x86_64 ]; then HOST_RID=osx-x64
+elif [ "$_U" = Linux-x86_64 ];  then HOST_RID=linux-x64
+elif [ "$_U" = Linux-aarch64 ] || [ "$_U" = Linux-arm64 ]; then HOST_RID=linux-arm64
+else HOST_RID=osx-arm64; fi
+TARGET_RID="${PRE_RID:-$HOST_RID}"
+# Framework/sistema/terze parti: dal resolver del RID (F5), non cablati su Darwin.
+eval "$(bash "$MONO/tools/sh/gmb_link_set.sh" --rid "$TARGET_RID" --cache "$HOME/.gmbasic/libs/$TARGET_RID")" || exit 2
+# `-target` DOPO il resolver (LS_SDK nasce lì): ordine sbagliato = `set -u` rosso su LS_SDK.
+[ -n "$PRE_TRIPLE" ] && TF="-target $PRE_TRIPLE ${LS_SDK[*]+${LS_SDK[*]}}"   # + `-isysroot` (piano L13)
+FRAMEWORKS="${LS_FRAMEWORKS[*]+${LS_FRAMEWORKS[*]}}"   # vuoto fuori da macOS; `set -u` + bash 3.2
+if [ "$TARGET_RID" != "$HOST_RID" ]; then
+  echo "cross $TARGET_RID da $HOST_RID: i binari vengono linkati ma NON eseguiti" >&2
 fi
 
 # Il driver va RICOMPILATO se manca OPPURE se è più vecchio della libreria del compilatore
@@ -177,16 +209,17 @@ fi
 # L'indice TSV (`<bin>.libs.txt`) è lo STESSO di `gmb_c99native_run.sh` (una sola implementazione):
 # serve al download on-demand delle lib che non stanno più nel repo (le nostre FFI, release `ffi-v1`).
 . "$MONO/tools/sh/libs_index_lib.sh"
-RID="$(li_rid)"
+RID="$TARGET_RID"
 li_init
 LIBS_CACHE="$HOME/.gmbasic/libs/$RID"
-ZSTD_INC="$LIBS_CACHE/include"; ZSTD_LIB="-L$LIBS_CACHE -lzstd"
-EXT=" -lcurl -lz -lbz2 -lsqlite3 $ZSTD_LIB"
-if [ -f "$LIBS_CACHE/libbrotlidec.dylib" ]; then EXT="$EXT -L$LIBS_CACHE -lbrotlidec -lbrotlienc"; fi
-if [ -f "$LIBS_CACHE/libpcre2-8.dylib" ]; then EXT="$EXT -L$LIBS_CACHE -lpcre2-8"; fi
+ZSTD_INC="$LIBS_CACHE/include"
+# Sistema + terze parti dal resolver (F5): prima `-lcurl -lz -lbz2 -lsqlite3` erano cablati e
+# brotli/pcre2/SDL/crypto si aggiungevano solo se esisteva il file `.dylib` (nome macOS nel test).
+EXT="${LS_SYS[*]} ${LS_THIRD[*]}"
 INC_EXTRA="-I$ROOT/native/gmb_runtime_c/src"
-if [ -d "$LIBS_CACHE/include/SDL2" ]; then INC_EXTRA="$INC_EXTRA -I$LIBS_CACHE/include"; EXT="$EXT -L$LIBS_CACHE -lSDL2 -lSDL2_ttf"; fi
-if [ -f "$LIBS_CACHE/libcrypto.dylib" ]; then EXT="$EXT -L$LIBS_CACHE -lcrypto -lssl -DHAVE_OPENSSL"; INC_EXTRA="$INC_EXTRA -I$LIBS_CACHE/include"; fi
+if [ -d "$LIBS_CACHE/include/SDL2" ] || [ -f "$LIBS_CACHE/libcrypto.$LS_DYLIBEXT" ]; then
+  INC_EXTRA="$INC_EXTRA -I$LIBS_CACHE/include"
+fi
 
 # ── EXPORT dei simboli che le NOSTRE dylib cercano a load-time ───────────────────────────────
 # Stessa regola di `tools/sh/gmb_c99native_run.sh` (una sola regola, due runner). Le dylib AI sono
@@ -200,7 +233,9 @@ if [ -f "$LIBS_CACHE/libcrypto.dylib" ]; then EXT="$EXT -L$LIBS_CACHE -lcrypto -
 # in ogni eseguibile (misurato: 198 KB → 594 KB su un `PRINT`).
 EXPORT_FLAGS=()
 EXPORT_SYMS_FILE=""; EXPORT_SYMS_TMP=0; EXPORT_GATE=0
-case "$(uname -s)" in
+# Il flag dipende dall'OS di DESTINAZIONE (F5: con `--rid linux-x64` da macOS serve
+# `--export-dynamic`, che su Darwin non esiste), non da `uname` dell'host.
+case "$LS_OS" in
   Linux)
     EXPORT_FLAGS=(-Wl,--export-dynamic) ;;
   Darwin)
@@ -254,7 +289,9 @@ RT_HDRS="$(find $RT_HDR_DIRS -type f -name '*.h' 2>/dev/null | tr '\n' ' ')"
 # Con l'hash del contenuto, qualunque modifica (anche un revert nello stesso secondo) invalida la cache.
 # I FLAG di compilazione fanno parte della cache: senza, cambiare -DGMB_WITH_UI (o OpenSSL/ZSTD)
 # riuserebbe un archivio costruito con un'altra configurazione.
-STAMP="$( ( printf '%s\n' "GMB_WITH_UI=1 HAVE_OPENSSL GMB_PARQUET_HAVE_ZSTD"; for s in $RT_SRCS $RT_HDRS; do printf '%s\n' "$s"; shasum -a 1 "$s" 2>/dev/null | cut -d' ' -f1; done ) | shasum | cut -c1-16)"
+# La cache è PER-TARGET: gli stessi sorgenti compilati per un altro RID (`--rid`/`--target`) o con
+# un altro compilatore non sono riusabili (sarebbero oggetti dell'host dentro un link cross).
+STAMP="$( ( printf '%s\n' "GMB_WITH_UI=1 HAVE_OPENSSL GMB_PARQUET_HAVE_ZSTD rid=$TARGET_RID tf=$TF cc=$FC"; for s in $RT_SRCS $RT_HDRS; do printf '%s\n' "$s"; shasum -a 1 "$s" 2>/dev/null | cut -d' ' -f1; done ) | shasum | cut -c1-16)"
 mkdir -p "$RT_CACHE_DIR"
 if [ "${GMB_RT_REBUILD:-}" != "1" ] && [ -f "$RT_CACHE" ] && [ -f "$RT_STAMP" ] && [ "$(cat "$RT_STAMP")" = "$STAMP" ]; then
   echo "runtime C: cache valida ($RT_CACHE)"
@@ -264,7 +301,7 @@ else
   RT_O=0; OBJS=""
   for s in $RT_SRCS; do
     RT_O=$((RT_O+1))
-    cc -c "$s" -o "$WORK/rt_$RT_O.o" $INC_RT -I"$INC_CHART" -I"$ROOT/native/gmb_runtime_c/build" -I"$ROOT/native/gmb_agent_runtime" -I"$ROOT/native/gmb_doc_c/include" -I"$ROOT/native/gmb_db_c/include" -I"$ROOT/native/gmb_torch/include" $LLM_INC -I"$ZSTD_INC" $CODEC_INC $INC_EXTRA -O2 -ffunction-sections -fdata-sections -w -ffp-contract=off -DHAVE_OPENSSL -DGMB_PARQUET_HAVE_ZSTD -DGMB_WITH_UI=1 || exit 1
+    $FC $TF -c "$s" -o "$WORK/rt_$RT_O.o" $INC_RT -I"$INC_CHART" -I"$ROOT/native/gmb_runtime_c/build" -I"$ROOT/native/gmb_agent_runtime" -I"$ROOT/native/gmb_doc_c/include" -I"$ROOT/native/gmb_db_c/include" -I"$ROOT/native/gmb_torch/include" $LLM_INC -I"$ZSTD_INC" $CODEC_INC $INC_EXTRA -O2 -ffunction-sections -fdata-sections -w -ffp-contract=off -DHAVE_OPENSSL -DGMB_PARQUET_HAVE_ZSTD -DGMB_WITH_UI=1 || exit 1
     OBJS="$OBJS $WORK/rt_$RT_O.o"
   done
   ar rcs "$RT_CACHE.tmp" $OBJS && mv "$RT_CACHE.tmp" "$RT_CACHE"
@@ -409,7 +446,8 @@ for f in "$MINI"/**/*.bas "$MINI"/*.bas; do
         "$ROOT/native/gmb_runtime_c/build/gmbllm_build/libgmbllm_core.a" )
   PLG="$ROOT/native/gmb_runtime_c/build/llmengine_plugin_build/libllmengine_plugin.a"
   MDS="$ROOT/native/gmb_runtime_c/build/llmdesc_build/libllmdesc.a"
-  TOK="$LLMENV/build/dist/osx-arm64/libllmtoken.dylib"
+  TOK="$LIBS_CACHE/libllmtoken.$LS_DYLIBEXT"
+  [ -f "$TOK" ] || TOK="$LLMENV/build/dist/osx-arm64/libllmtoken.dylib"
   # Input e flag di link CONDIVISI fra l'eseguibile e la libreria condivisa: la lista era
   # duplicata (due copie da tenere allineate) e la gamba LIBRARY linkava per forza un binario.
   # Array (non stringa) perché il path di rpath può contenere spazi e perché $AGENT/$DOC_SRCS
@@ -417,8 +455,8 @@ for f in "$MINI"/**/*.bas "$MINI"/*.bas; do
   LINK_IN=( "$RT_LIB" $AGENT $COMPILER "$DB_LIB" "$MOE_LIB" "${MIO[@]}" "$PLG" "$MDS" $DOC_SRCS $TORCH_SRCS )
   LINK_FLAGS=( $INC_RT -I"$ROOT/native/gmb_agent_runtime" -I"$LLMENV/LLMJinja" -I"$LLMENV/LLMEngine/mlx"
     -I"$ROOT/native/gmb_compiler_c/include" $CODEC_INC $DB_INC $LLM_INC $INC_EXTRA $FRAMEWORKS
-    -lm -w -ffp-contract=off -DGMB_WITH_UI=1 -Wl,-dead_strip $CODEC_LIB "$TOK" -Wl,-rpath,"$(dirname "$TOK")"
-    -lcompression -lz $EXT )
+    -lm -w -ffp-contract=off -DGMB_WITH_UI=1 $LS_STRIP $CODEC_LIB "$TOK" -Wl,-rpath,"$(dirname "$TOK")"
+    $EXT )
   # LIBRARY (marker header `' TAG: library`): il prodotto e' una LIBRERIA condivisa, e per
   # contratto NON ha entry point (Guide/utente/LIBRARY-gmblib-Guide.md §1). Linkare `-o bin`
   # falliva con `undefined _main` su un file che, per l'ABI, era corretto: il test non poteva
@@ -426,13 +464,13 @@ for f in "$MINI"/**/*.bas "$MINI"/*.bas; do
   # esporti l'ABI documentata: `<lib>_init`/`<lib>_fini` (+ ctor/dtor) e `<lib>_<Proc>` per
   # ogni PUBLIC SUB/FUNCTION.
   if grep -q "^' TAG: library" "$f" 2>/dev/null; then
-    if ! cc "$WORK/out.c" "${LINK_IN[@]}" "${LINK_FLAGS[@]}" -shared -fPIC -o "$WORK/lib.dylib" 2>"$WORK/ccerr.txt"; then
+    if ! $FC $TF "$WORK/out.c" "${LINK_IN[@]}" "${LINK_FLAGS[@]}" -shared -fPIC -o "$WORK/lib.$LS_DYLIBEXT" 2>"$WORK/ccerr.txt"; then
       echo "FAIL $name (cc -shared: $(tail -3 "$WORK/ccerr.txt" | tr '\n' ' '))"; fail=$((fail+1)); continue
     fi
     lib="$(awk 'toupper($1)=="LIBRARY"{n=$2; gsub(/\"/,"",n); print n; exit}' "$f")"
     [ -n "$lib" ] || { echo "FAIL $name (ABI: nessun nome dopo LIBRARY)"; fail=$((fail+1)); continue; }
     procs="$(awk 'toupper($1)=="PUBLIC" && (toupper($2)=="FUNCTION" || toupper($2)=="SUB"){n=$3; sub(/\(.*/,"",n); print n}' "$f")"
-    SYMS="$(nm -gU "$WORK/lib.dylib" 2>/dev/null | awk '{print $NF}')"
+    SYMS="$(nm $LS_NM_GU "$WORK/lib.$LS_DYLIBEXT" 2>/dev/null | awk '{print $NF}')"
     missing=""
     for want in "_${lib}_init" "_${lib}_fini" $(for p in $procs; do echo "_${lib}_$p"; done); do
       printf '%s\n' "$SYMS" | grep -qx "$want" || missing="$missing $want"
@@ -448,7 +486,7 @@ for f in "$MINI"/**/*.bas "$MINI"/*.bas; do
   fi
   # `EXPORT_FLAGS` SOLO sull'eseguibile: su `-shared` una `-u` verso un simbolo non definito lì
   # sarebbe un errore di link (la gamba LIBRARY resta com'era).
-  if ! cc "$WORK/out.c" "${LINK_IN[@]}" "${LINK_FLAGS[@]}" ${EXPORT_FLAGS[@]+"${EXPORT_FLAGS[@]}"} -o "$WORK/bin" 2>"$WORK/ccerr.txt"; then
+  if ! $FC $TF "$WORK/out.c" "${LINK_IN[@]}" "${LINK_FLAGS[@]}" ${EXPORT_FLAGS[@]+"${EXPORT_FLAGS[@]}"} -o "$WORK/bin" 2>"$WORK/ccerr.txt"; then
     echo "FAIL $name (cc: $(tail -3 "$WORK/ccerr.txt" | tr '\n' ' '))"; fail=$((fail+1)); continue
   fi
   # GATE EXPORT (una volta sola, al primo eseguibile): il link può riuscire e produrre un binario
@@ -464,6 +502,12 @@ for f in "$MINI"/**/*.bas "$MINI"/*.bas; do
       exit 1
     fi
     EXPORT_GATE=1
+  fi
+  # CROSS (F5): il binario per un altro RID si linka e si verifica, non si esegue — il loader
+  # dell'host rifiuterebbe un ELF con un errore che non dice nulla sul codice BASIC.
+  if [ "$TARGET_RID" != "$HOST_RID" ]; then
+    echo "PASS $name :: (cross $TARGET_RID: linkato, non eseguito)"
+    pass=$((pass+1)); continue
   fi
   # Il motore MLX (dlopen in LLM QUALITY/REGISTRY MEASURE) e' raggiungibile via loader path: senza,
   # le gambe C sono standalone e la PPL reale darebbe `ppl=na` (divergenza vs IL). I log engine
