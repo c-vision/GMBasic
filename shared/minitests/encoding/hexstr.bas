@@ -1,3 +1,4 @@
+REQUIRE "crypto"
 IMPORT CRYPTOGRAPHY
 SUB Main()
   PRINT TOHEX("abc")

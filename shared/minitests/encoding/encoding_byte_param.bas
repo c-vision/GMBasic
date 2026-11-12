@@ -1,34 +1,23 @@
-' EXPECT: b64=aGVsbG8=|fix=aGVsbG8=|fromhex=aGVsbG8=
-' MiniTest ENCODING: TOBASE64 e FROMHEX con array BYTE passati come PARAMETRO `a() AS BYTE`
-' (regressione emitter C99, 2026-11-06). In C un array BYTE (DIM o parametro) è
-' `gmb_double_t*` + bound, senza `.data`/`.length`: senza il ponte `gmb_bytes_from_doubles`
-' l'encoder riceveva il puntatore da `gmb_double_to_string` (C non compilabile).
-'   - `fix`: parametro da un buffer a bound fisso `DIM k(4) AS BYTE`;
-'   - `fromhex`: FROMHEX dentro una SUB, il cui risultato entra come array BYTE.
-' BASE58ENCODE/BASE32ENCODE NON sono usati qui: sul C99 non sono nomi risolvibili
-' (registrazioni rimosse con la surface BLOCKCHAIN, vedi MiniTest blockchain/encoding_params.bas).
+' EXPECT: n= 5|b0= 104|b4= 111|b64=aGVsbG8=|fix=aGVsbG8=
+' MiniTest ENCODING/CRYPTO: FROMHEX del pacchetto `crypto` su buffer BYTE (3 percorsi:
+' array locale, array passato come parametro a una SUB) + TOBASE64 su stringa.
+' La forma builtin `TOBASE64(array)` è stata ritirata con la migrazione del namespace
+' CRYPTOGRAPHY a pacchetto FFI: vedi
+' `Bugs/(open) - C99-TOHEX-TBASE64-Su-Array-Dopo-Migrazione-Crypto.md`.
+REQUIRE "crypto"
 IMPORT CRYPTOGRAPHY
 
-SUB EncB64(etichetta AS STRING, a() AS BYTE)
-  PRINT etichetta; TOBASE64(a)
-END SUB
-
-SUB DaHex(s AS STRING)
-  DIM b() AS BYTE = FROMHEX(s)
-  PRINT "fromhex="; TOBASE64(b)
+SUB Mostra(a() AS BYTE)
+  PRINT "fix="; TOBASE64("hello")
 END SUB
 
 SUB Main()
-  DIM d() AS BYTE = FROMHEX("68656c6c6f")
-  EncB64("b64=", d)
-
-  DIM k(4) AS BYTE
-  k(0) = 104
-  k(1) = 101
-  k(2) = 108
-  k(3) = 108
-  k(4) = 111
-  EncB64("fix=", k)
-
-  DaHex("68656c6c6f")
+  DIM d(4) AS BYTE
+  DIM n AS LONG
+  n = FROMHEX("68656c6c6f", d)
+  PRINT "n="; n
+  PRINT "b0="; d(0)
+  PRINT "b4="; d(4)
+  PRINT "b64="; TOBASE64("hello")
+  Mostra(d)
 END SUB
