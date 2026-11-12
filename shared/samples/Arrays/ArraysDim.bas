@@ -102,8 +102,8 @@ IMPORT STRINGS
 510 PRINT "  VALS(5) ="; VALS(5); "(Atteso: 0, default)"
 520 PRINT
 ' Inizializzazione totale con dimensione inferita (parentesi vuote).
-530 LET DatiDinamici() AS INTEGER = {1, 2, 3, 4}
-540 PRINT "LET DatiDinamici() AS INTEGER = {1,2,3,4}"
+530 DIM DatiDinamici() AS INTEGER = {1, 2, 3, 4}
+540 PRINT "DIM DatiDinamici() AS INTEGER = {1,2,3,4}"
 550 PRINT "  UBOUND(DatiDinamici) ="; UBOUND(DatiDinamici); "(Atteso: 3)"
 560 PRINT "  DatiDinamici(3) ="; DatiDinamici(3); "(Atteso: 4)"
 570 PRINT

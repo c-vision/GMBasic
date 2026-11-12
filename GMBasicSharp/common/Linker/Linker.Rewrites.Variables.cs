@@ -548,16 +548,24 @@ public static partial class Linker
         if (use.ScopeId < 0 || sym.ScopeId == use.ScopeId) return false;
         var declScope = program.Symbols.GetScope(sym.ScopeId);
         if (declScope.Type != SymbolTable.ScopeType.Block) return false;
-        var cur = declScope.ParentId;
+        /* Dichiarazione IMPLICITA al call-site (`RewriteSingleArgument` registra la VariableExpr
+         * stessa come DeclarationNode): è nello scope dell'uso per costruzione — non è "fuori
+         * blocco" (senza questo guard la creazione implicita BYREF si romperebbe). */
+        if (ReferenceEquals(sym.DeclarationNode, use)) return false;
+        /* Fuori scope quando lo scope della DICHIARAZIONE non è un antenato (o uguale) di quello
+         * della lettura: copre sia il "dopo il blocco" sia i blocchi FRATELLI (TRY vs CATCH,
+         * THEN vs ELSE). Dentro un blocco annidato lo scope della dichiarazione è un antenato →
+         * in scope. */
+        var cur = use.ScopeId;
         var guard = 0;
         while (cur >= 0 && guard++ < 64)
         {
-            if (cur == use.ScopeId) return true;
+            if (cur == sym.ScopeId) return false;       // antenato (o uguale): in scope
             var parent = program.Symbols.GetScope(cur).ParentId;
             if (parent == cur) break;
             cur = parent;
         }
-        return false;
+        return true;
     }
 
     /// <summary>

@@ -2159,7 +2159,22 @@ public static partial class Linker
     private static TryCatchStmt BindTryCatchStatement(BasicProgram program, TryCatchStmt tryStmt, bool isStrict)
     {
         var currentScopeId = program.Symbols.GetCurrentScope().Id;
-        var boundTryBody = BindListOfStatements(tryStmt.TryBody, program, isStrict);
+        /* Il corpo del TRY è uno SCOPE DI BLOCCO (spec Variables-Scope §6.3: «ogni clausola
+         * TRY/CATCH/FINALLY crea il proprio scope locale e indipendente»). Prima le sue
+         * dichiarazioni finivano nello scope della PROCEDURA: una variabile dichiarata nel TRY
+         * restava visibile in CATCH/FINALLY e dopo il blocco (divergenza da PCode/VM-C/C99, che
+         * davano il default). */
+        program.Symbols.EnterScope($"Try_{tryStmt.Token.Line}_{tryStmt.Token.Column}",
+            SymbolTable.ScopeType.Block);
+        ImmutableArray<Stmt> boundTryBody;
+        try
+        {
+            boundTryBody = BindListOfStatements(tryStmt.TryBody, program, isStrict);
+        }
+        finally
+        {
+            program.Symbols.ExitScope();
+        }
 
         var boundCatchClauses = tryStmt.CatchClauses.Select(catchClause =>
         {

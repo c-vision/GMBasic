@@ -13,6 +13,15 @@ public class SsaPromotion : IMethodPass
 
     public MethodPassResult Run(MethodTransformContext ctx)
     {
+        /* Metodi con REGIONI PROTETTE (TRY/CATCH/FINALLY): la promozione SSA non modella il
+         * flusso degli handler, quindi due locali con intervalli "disgiunti" secondo il suo CFG
+         * possono essere fusi e il valore di uno sovrascrive quello dell'altro. Caso reale
+         * (2026-11-12): una variabile dichiarata nel TRY e usata solo lì + una variabile esterna
+         * letta nel FINALLY → FINALLY stampava il valore della variabile del TRY. Si salta la
+         * promozione per questi metodi: si perde un'ottimizzazione, non la correttezza. */
+        foreach (var inst in ctx.Method.Instructions())
+            if (inst is GuardInst) return MethodInvalidations.None;
+
         FindSlotsAndInsertPhis(ctx);
 
         if (_slotNameStacks.Count == 0) {
