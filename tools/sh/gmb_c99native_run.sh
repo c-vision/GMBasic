@@ -274,26 +274,40 @@ fi
 # stub a 0 e crash nei percorsi AI. `-export_dynamic` lo accetta solo ld64 (`--export-dynamic`
 # solo lld) e in lld non cambia gli export: si usa invece `-u,_simbolo` per OGNI simbolo cercato
 # a load-time, che è ADDITIVO (non una lista chiusa) e supportato da entrambi i linker.
-# La lista non si scrive a mano: si legge dagli `import <flat-namespace>` delle nostre dylib,
-# più i tre `dlsym(RTLD_DEFAULT, …)` del core (gmb_abi.c), che non passano da un import.
+# La lista non si scrive a mano NÉ si ricava al volo: la scrive il BUNDLE, in
+# `build/libs/<rid>/libgmb.exports.txt` (tools/sh/libs_exports_file.sh, invocato quando il bundle
+# nasce). Così una dylib ricompilata su un'altra macchina — o un bundle pubblicato — porta con sé i
+# suoi requisiti: il link di un programma non può restare indietro rispetto alle dylib che gireranno.
+# Se il file manca (checkout senza bundle, o bundle vecchio) si ricade sugli import delle dylib
+# presenti: lista equivalente, ma NON autorevole, e lo si dichiara invece di tacere.
 EXPORTDYN=""
+EXPORT_SYMS_FILE=""
+_EXPORT_SYMS_TMP=0
 case "$TARGET_OS" in
   Linux)
     EXPORTDYN="-Wl,--export-dynamic" ;;
   Darwin)
     if command -v dyld_info >/dev/null 2>&1; then
-      _ai_syms="$(mktemp "${TMPDIR:-/tmp}/gmbai.XXXXXX")"
-      for _d in "$ROOT/build/libs/$RID"/libgmb*.dylib "$LIBS_CACHE"/libgmb*.dylib; do
-        [ -f "$_d" ] || continue
-        # `|| true`: una dylib senza import flat-namespace fa uscire `grep` con 1 e con
-        # `set -e -o pipefail` fermerebbe tutto lo script.
-        dyld_info -imports "$_d" 2>/dev/null | grep 'flat-namespace' \
-          | tr -s ' ' | cut -d' ' -f2 | grep '^_' || true
-      done | sort -u > "$_ai_syms"
-      printf '%s\n' _llmdesc_abi_valid _llmdesc_abi_locate _llmdesc_set_abi_policy >> "$_ai_syms"
-      sort -u -o "$_ai_syms" "$_ai_syms"
-      while IFS= read -r _s; do EXPORTDYN="$EXPORTDYN -Wl,-u,$_s"; done < "$_ai_syms"
-      rm -f "$_ai_syms"
+      _bundle_exports="$ROOT/build/libs/$RID/libgmb.exports.txt"
+      EXPORT_SYMS_FILE="$(mktemp "${TMPDIR:-/tmp}/gmbexports.XXXXXX")"
+      _EXPORT_SYMS_TMP=1
+      # Base AUTOREVOLE: il file del bundle (scritto col bundle, viaggia con le sue dylib). Se
+      # manca, si ricava dagli import delle dylib di build/libs — equivalente, ma non autorevole:
+      # lo si dice. In coda si aggiungono gli import delle dylib della CACHE: sono quelle che il
+      # link carica davvero da questa macchina e possono essere più nuove/più numerose del bundle
+      # (qui 52 contro 19, 100 simboli contro 42). Senza questo, il gate segnalerebbe coperti solo
+      # i simboli del bundle e bloccherebbe link che oggi funzionano.
+      if [ -s "$_bundle_exports" ]; then
+        cat "$_bundle_exports"
+      else
+        bash "$TOOLS_DIR/libs_exports_file.sh" list "$ROOT/build/libs/$RID" 2>/dev/null || true
+        echo "[c99native] $_bundle_exports assente: lista export derivata dalle dylib presenti — non autorevole (rigenerarla con tools/sh/libs_build_release.sh)" >&2
+      fi > "$EXPORT_SYMS_FILE"
+      { cat "$EXPORT_SYMS_FILE";
+        bash "$TOOLS_DIR/libs_exports_file.sh" list "$LIBS_CACHE" 2>/dev/null || true;
+      } | sort -u > "$EXPORT_SYMS_FILE.merged" && mv -f "$EXPORT_SYMS_FILE.merged" "$EXPORT_SYMS_FILE"
+      [ -s "$EXPORT_SYMS_FILE" ] || echo "[c99native] ATTENZIONE: nessun simbolo da esportare ricavato dalle dylib (lista vuota)" >&2
+      while IFS= read -r _s; do EXPORTDYN="$EXPORTDYN -Wl,-u,$_s"; done < "$EXPORT_SYMS_FILE"
     else
       echo "[c99native] dyld_info assente: export dei simboli cercati dalle dylib non forzato" >&2
     fi
@@ -352,6 +366,22 @@ $CC_BIN $CF $CCFIRST $STRIPDYLIB $EXPORTDYN $RPATH_LOADER -Wl,-rpath,"$CODEC" "$
   "$LIBS_CACHE/libSDL2_mixer.dylib" "$LIBS_CACHE/libSDL2_ttf.dylib" "$LIBS_CACHE/libSDL2.dylib" \
   "$LIBS_CACHE/liblzma.5.dylib" "$LIBS_CACHE/liblz4.1.10.0.dylib" "$LIBS_CACHE/libMoltenVK.dylib" \
   -L"$LLMTOKEN_DIR" -lllmtoken -Wl,-rpath,"$LLMTOKEN_DIR" -lz
+# ── GATE EXPORT: il link può "riuscire" e produrre un binario che crasha all'avvio ────────────
+# Per le dylib conta ciò che l'eseguibile ESPORTA. Con lld un simbolo che nulla referenzia non è
+# un errore di link: la dylib ha uno stub NULL e ci salta al primo uso (EXC_BAD_ACCESS at 0x0 in un
+# inizializzatore, prima di `main`, zero output). Qui si verifica SUBITO DOPO il link, prima di
+# eseguire: se resta un simbolo scoperto si dice quale e si esce in errore, cancellando il binario.
+if [ "$TARGET_OS" = Darwin ] && [ -n "$EXPORT_SYMS_FILE" ] && [ -s "$EXPORT_SYMS_FILE" ]; then
+  if ! bash "$TOOLS_DIR/libs_exports_file.sh" verify "$OUTBIN" "$EXPORT_SYMS_FILE"; then
+    rm -f "$OUTBIN"
+    [ "$_EXPORT_SYMS_TMP" = 1 ] && rm -f "$EXPORT_SYMS_FILE"
+    echo "[c99native] ERRORE: link riuscito ma eseguibile INCOMPLETO — i simboli qui sopra sono cercati" >&2
+    echo "  a load-time dalle nostre dylib e non sono esportati: il binario sarebbe crashato all'avvio" >&2
+    echo "  (stub NULL). Ricompilare le dylib/bundle (tools/sh/libs_build_release.sh) e ritentare." >&2
+    exit 1
+  fi
+fi
+[ "$_EXPORT_SYMS_TMP" = 1 ] && rm -f "$EXPORT_SYMS_FILE"
 # ── BUNDLE: il compilato si distribuisce SENZA compilatore ────────────────────────────────────
 # Accanto all'eseguibile finiscono i file che gli servono a girare da solo, su una macchina dove
 # non esistono né il repo né `shared/settings/`: i settings (`system.settings.json`), l'override

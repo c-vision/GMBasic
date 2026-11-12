@@ -188,6 +188,39 @@ INC_EXTRA="-I$ROOT/native/gmb_runtime_c/src"
 if [ -d "$LIBS_CACHE/include/SDL2" ]; then INC_EXTRA="$INC_EXTRA -I$LIBS_CACHE/include"; EXT="$EXT -L$LIBS_CACHE -lSDL2 -lSDL2_ttf"; fi
 if [ -f "$LIBS_CACHE/libcrypto.dylib" ]; then EXT="$EXT -L$LIBS_CACHE -lcrypto -lssl -DHAVE_OPENSSL"; INC_EXTRA="$INC_EXTRA -I$LIBS_CACHE/include"; fi
 
+# ── EXPORT dei simboli che le NOSTRE dylib cercano a load-time ───────────────────────────────
+# Stessa regola di `tools/sh/gmb_c99native_run.sh` (una sola regola, due runner). Le dylib AI sono
+# linkate con `-undefined dynamic_lookup`: non importano il core, lo risolvono quando dyld le carica,
+# e chi glielo fornisce è la TABELLA DEGLI EXPORT dell'eseguibile. Su Darwin ld64 li esporta da sé
+# mentre lld di `zig cc` dead-strippa i simboli che nulla referenzia (stub NULL → crash in un
+# inizializzatore, prima di `main`); su LINUX senza `--export-dynamic` l'eseguibile non li esporta
+# affatto — qui mancava del tutto, quindi i MiniTest AI su linux-x64 linkavano e morivano all'avvio.
+# La lista viene dal bundle (`libgmb.exports.txt`, scritto da tools/sh/libs_exports_file.sh) più gli
+# import delle dylib della cache; se il file manca si ricava dalle dylib presenti e lo si dichiara.
+EXPORT_FLAGS=()
+EXPORT_SYMS_FILE=""; EXPORT_SYMS_TMP=0; EXPORT_GATE=0
+case "$(uname -s)" in
+  Linux)
+    EXPORT_FLAGS=(-Wl,--export-dynamic) ;;
+  Darwin)
+    if command -v dyld_info >/dev/null 2>&1; then
+      EXPORT_SYMS_FILE="$(mktemp "${TMPDIR:-/tmp}/gmbexports.XXXXXX")"; EXPORT_SYMS_TMP=1
+      if [ -s "$ROOT/build/libs/$RID/libgmb.exports.txt" ]; then
+        cat "$ROOT/build/libs/$RID/libgmb.exports.txt"
+      else
+        bash "$MONO/tools/sh/libs_exports_file.sh" list "$ROOT/build/libs/$RID" 2>/dev/null || true
+        echo "test_minitests_c99native: libgmb.exports.txt assente — lista export derivata dalle dylib (non autorevole)" >&2
+      fi > "$EXPORT_SYMS_FILE"
+      { cat "$EXPORT_SYMS_FILE";
+        bash "$MONO/tools/sh/libs_exports_file.sh" list "$LIBS_CACHE" 2>/dev/null || true;
+      } | sort -u > "$EXPORT_SYMS_FILE.m" && mv -f "$EXPORT_SYMS_FILE.m" "$EXPORT_SYMS_FILE"
+      while IFS= read -r _s; do EXPORT_FLAGS+=("-Wl,-u,$_s"); done < "$EXPORT_SYMS_FILE"
+    else
+      echo "test_minitests_c99native: dyld_info assente — export dei simboli cercati dalle dylib non forzato" >&2
+    fi
+    ;;
+esac
+
 # ── broker pub/sub: lo avvia e lo ferma il GATE (vedi tools/sh/msg_broker.sh) ──────────────
 # I MiniTest tcp aprono un broker esterno: senza, falliscono con "timeout" per un prerequisito
 # che non è il codice in prova. Le porte si leggono dai `tcp://` loopback dei file selezionati.
@@ -200,7 +233,7 @@ broker_cleanup() {
 }
 
 WORK="$(mktemp -d /tmp/minitests_c99native.XXXXXX)"
-trap 'rm -rf "$WORK"; broker_cleanup' EXIT
+trap 'rm -rf "$WORK"; [ "$EXPORT_SYMS_TMP" = 1 ] && rm -f "$EXPORT_SYMS_FILE" "$EXPORT_SYMS_FILE.m"; broker_cleanup' EXIT
 pass=0; fail=0; skip=0
 # Il runtime C e' compilato UNA volta per invocazione in una static library, poi ogni
 # MiniTest linka solo il proprio out.c (prima il runtime veniva ricompilato per ogni test).
@@ -417,8 +450,24 @@ for f in "$MINI"/**/*.bas "$MINI"/*.bas; do
     echo "PASS $name :: .gmblib '$lib' → $(echo $procs | wc -w | tr -d ' ') export ($(for p in $procs; do printf '%s ' "${lib}_$p"; done))"
     pass=$((pass+1)); continue
   fi
-  if ! cc "$WORK/out.c" "${LINK_IN[@]}" "${LINK_FLAGS[@]}" -o "$WORK/bin" 2>"$WORK/ccerr.txt"; then
+  # `EXPORT_FLAGS` SOLO sull'eseguibile: su `-shared` una `-u` verso un simbolo non definito lì
+  # sarebbe un errore di link (la gamba LIBRARY resta com'era).
+  if ! cc "$WORK/out.c" "${LINK_IN[@]}" "${LINK_FLAGS[@]}" ${EXPORT_FLAGS[@]+"${EXPORT_FLAGS[@]}"} -o "$WORK/bin" 2>"$WORK/ccerr.txt"; then
     echo "FAIL $name (cc: $(tail -3 "$WORK/ccerr.txt" | tr '\n' ' '))"; fail=$((fail+1)); continue
+  fi
+  # GATE EXPORT (una volta sola, al primo eseguibile): il link può riuscire e produrre un binario
+  # che muore all'avvio, perché per le dylib conta ciò che l'eseguibile ESPORTA. Qui si verifica
+  # PRIMA di eseguire, con i nomi dei simboli scoperti: un crash silenzioso in un inizializzatore
+  # diventerebbe un FAIL inspiegabile del MiniTest.
+  if [ "$EXPORT_GATE" = 0 ] && [ -n "$EXPORT_SYMS_FILE" ] && [ -s "$EXPORT_SYMS_FILE" ]; then
+    if ! bash "$MONO/tools/sh/libs_exports_file.sh" verify "$WORK/bin" "$EXPORT_SYMS_FILE"; then
+      echo "" >&2
+      echo "ERRORE: l'eseguibile non esporta i simboli che le dylib cercano a load-time (elenco sopra)." >&2
+      echo "  Un binario così muore nel costruttore della dylib, prima di \`main\`: si ferma il run invece" >&2
+      echo "  di riportare FAIL incomprensibili. Rigenerare il bundle: tools/sh/libs_build_release.sh" >&2
+      exit 1
+    fi
+    EXPORT_GATE=1
   fi
   # Il motore MLX (dlopen in LLM QUALITY/REGISTRY MEASURE) e' raggiungibile via loader path: senza,
   # le gambe C sono standalone e la PPL reale darebbe `ppl=na` (divergenza vs IL). I log engine

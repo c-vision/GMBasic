@@ -161,6 +161,33 @@ fi
 RID="$(li_rid)"
 li_init
 LIBS_CACHE="$HOME/.gmbasic/libs/$RID"
+# ── EXPORT dei simboli che le NOSTRE dylib cercano a load-time ─────────────────────────────────
+# Stessa regola dei runner ufficiali (`gmb_c99native_run.sh`, `test_minitests_c99native`): le dylib
+# AI risolvono il core CARICANDOSI (`-undefined dynamic_lookup`), quindi chi fornisce i simboli è la
+# tabella degli export dell'eseguibile. Darwin: ld64 li esporta, lld di `zig cc` li dead-strippa;
+# Linux: serve `--export-dynamic`. Lista dal bundle (`libgmb.exports.txt`) + import delle dylib in
+# cache; senza file si ricava dalle dylib presenti e lo si dichiara.
+EXPORT_FLAGS=()
+EXPORT_SYMS_FILE=""; EXPORT_SYMS_TMP=0; EXPORT_GATE=0
+case "$(uname -s)" in
+  Linux)
+    EXPORT_FLAGS=(-Wl,--export-dynamic) ;;
+  Darwin)
+    if command -v dyld_info >/dev/null 2>&1; then
+      EXPORT_SYMS_FILE="$(mktemp "${TMPDIR:-/tmp}/gmbexports.XXXXXX")"; EXPORT_SYMS_TMP=1
+      if [ -s "$ROOT/build/libs/$RID/libgmb.exports.txt" ]; then
+        cat "$ROOT/build/libs/$RID/libgmb.exports.txt"
+      else
+        bash "$MONO/tools/sh/libs_exports_file.sh" list "$ROOT/build/libs/$RID" 2>/dev/null || true
+        echo "_dbg_mini: libgmb.exports.txt assente — lista export derivata dalle dylib (non autorevole)" >&2
+      fi > "$EXPORT_SYMS_FILE"
+      { cat "$EXPORT_SYMS_FILE";
+        bash "$MONO/tools/sh/libs_exports_file.sh" list "$LIBS_CACHE" 2>/dev/null || true;
+      } | sort -u > "$EXPORT_SYMS_FILE.m" && mv -f "$EXPORT_SYMS_FILE.m" "$EXPORT_SYMS_FILE"
+      while IFS= read -r _s; do EXPORT_FLAGS+=("-Wl,-u,$_s"); done < "$EXPORT_SYMS_FILE"
+    fi
+    ;;
+esac
 ZSTD_INC="$LIBS_CACHE/include"; ZSTD_LIB="-L$LIBS_CACHE -lzstd"
 EXT=" -lcurl -lz -lbz2 -lsqlite3 $ZSTD_LIB"
 if [ -f "$LIBS_CACHE/libbrotlidec.dylib" ]; then EXT="$EXT -L$LIBS_CACHE -lbrotlidec -lbrotlienc"; fi
@@ -181,7 +208,7 @@ broker_cleanup() {
 }
 
 WORK="$(mktemp -d /tmp/minitests_c99native.XXXXXX)"
-trap 'broker_cleanup' EXIT
+trap '[ "$EXPORT_SYMS_TMP" = 1 ] && rm -f "$EXPORT_SYMS_FILE" "$EXPORT_SYMS_FILE.m"; broker_cleanup' EXIT
 pass=0; fail=0; skip=0
 # Il runtime C e' compilato UNA volta per invocazione in una static library, poi ogni
 # MiniTest linka solo il proprio out.c (prima il runtime veniva ricompilato per ogni test).
@@ -396,8 +423,20 @@ for f in "$MINI"/**/*.bas "$MINI"/*.bas; do
     echo "PASS $name :: .gmblib '$lib' → $(echo $procs | wc -w | tr -d ' ') export ($(for p in $procs; do printf '%s ' "${lib}_$p"; done))"
     pass=$((pass+1)); continue
   fi
-  if ! cc "$WORK/out.c" "${LINK_IN[@]}" "${LINK_FLAGS[@]}" -o "$WORK/bin" 2>"$WORK/ccerr.txt"; then
+  # `EXPORT_FLAGS` solo sull'eseguibile: su `-shared` una `-u` verso un simbolo non definito lì
+  # sarebbe un errore di link.
+  if ! cc "$WORK/out.c" "${LINK_IN[@]}" "${LINK_FLAGS[@]}" ${EXPORT_FLAGS[@]+"${EXPORT_FLAGS[@]}"} -o "$WORK/bin" 2>"$WORK/ccerr.txt"; then
     echo "FAIL $name (cc: $(tail -3 "$WORK/ccerr.txt" | tr '\n' ' '))"; fail=$((fail+1)); continue
+  fi
+  # GATE EXPORT (una volta sola): un link riuscito non basta — se un simbolo cercato a load-time non
+  # è esportato il binario muore nel costruttore della dylib, prima di `main`.
+  if [ "$EXPORT_GATE" = 0 ] && [ -n "$EXPORT_SYMS_FILE" ] && [ -s "$EXPORT_SYMS_FILE" ]; then
+    if ! bash "$MONO/tools/sh/libs_exports_file.sh" verify "$WORK/bin" "$EXPORT_SYMS_FILE"; then
+      echo "ERRORE: l'eseguibile non esporta i simboli cercati a load-time dalle dylib (elenco sopra):" >&2
+      echo "  il binario morirebbe in un inizializzatore. Rigenerare il bundle (tools/sh/libs_build_release.sh)." >&2
+      exit 1
+    fi
+    EXPORT_GATE=1
   fi
   # Il motore MLX (dlopen in LLM QUALITY/REGISTRY MEASURE) e' raggiungibile via loader path: senza,
   # le gambe C sono standalone e la PPL reale darebbe `ppl=na` (divergenza vs IL). I log engine

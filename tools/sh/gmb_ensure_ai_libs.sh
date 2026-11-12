@@ -32,7 +32,17 @@ fi
 
 # 1) lib statiche AI (libgmb_runtime.a, libgmbllm_core.a, libgmbllm_train.a) + dylib gmb_ai_llm/gmb_runtime_ai.
 #    NIENTE `|| true`: se il build AI fallisce la build del consumer DEVE fallire (mai stale silenzioso).
-cmake --build "$RT" --target gmb_runtime gmb_runtime_ai gmbllm_core gmbllm_train gmb_ai_llm -j 6 >/dev/null
+  cmake --build "$RT" --target gmb_runtime gmb_runtime_ai gmbllm_core gmbllm_train gmb_ai_llm -j 6 >/dev/null
+  # 1a) EXPORT MANIFEST: le dylib appena ricostruite possono avere IMPORT NUOVI, e le nostre dylib
+  #     li risolvono a load-time nell'eseguibile. Il file che il runner legge al link
+  #     (`build/libs/<rid>/libgmb.exports.txt`) va quindi riscritto QUI: se restasse quello di un
+  #     bundle precedente, un import nuovo resterebbe scoperto e l'eseguibile avrebbe uno stub NULL
+  #     (crash in un inizializzatore, prima di `main`). Non blocca il build se dyld_info manca.
+  if [ -f "$MONO/tools/sh/libs_exports_file.sh" ] && command -v dyld_info >/dev/null 2>&1; then
+    bash "$MONO/tools/sh/libs_exports_file.sh" write "$ROOT/build/libs/osx-arm64" || \
+      echo "gmb_ensure_ai_libs: ATTENZIONE libgmb.exports.txt non rigenerato" >&2
+  fi
+
 # 1b) `gmb_matrix_flat` (NON AI): ABI piatta dei kernel matriciali per il P/Invoke dei backend
 #     managed (IL/PCode → stessa sorgente di VM/C e C99Native). Comando SEPARATO: su un albero
 #     di build non ancora riconfigurato il target non esiste e `make` fallirebbe in fase di

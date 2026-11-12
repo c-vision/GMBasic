@@ -393,6 +393,25 @@ echo "   file raccolti: $COUNT"
 if [ "$COUNT" = "0" ]; then echo "ERRORE: nessun file del gruppo '$GROUP' negli alberi di build" >&2; exit 1; fi
 find "$STAGE" -maxdepth 1 -type f -exec basename {} \; | sort | sed 's/^/     /'
 
+# ── EXPORT MANIFEST: il bundle DICHIARA cosa le sue dylib cercano a load-time ───────────────────
+# Le dylib nostre sono linkate con `-undefined dynamic_lookup`: i simboli del core li risolvono
+# quando dyld le carica, e chi li fornisce è la tabella degli export dell'eseguibile. La lista vive
+# accanto alle dylib (`libgmb.exports.txt`), scritta qui e copiata nel bundle: così il requisito
+# viaggia con le dylib e il link di un programma non può restare indietro (il runner la legge, e
+# dopo il link verifica che l'eseguibile esporti tutto: se manca qualcosa si ferma, invece di
+# consegnare un binario che crasha all'avvio). Solo Darwin: su altre piattaforme gli import
+# flat-namespace non esistono e gli export li decide il linker (`--export-dynamic`, .def).
+if [ "$(uname -s)" = Darwin ] && [ "${DRY:-0}" != "1" ]; then
+  if [ -f "$SCRIPT_DIR/libs_exports_file.sh" ]; then
+    bash "$SCRIPT_DIR/libs_exports_file.sh" write "$ROOT/build/libs/$RID" || \
+      echo "   ATTENZIONE: libgmb.exports.txt non rigenerato" >&2
+    if [ -f "$ROOT/build/libs/$RID/libgmb.exports.txt" ]; then
+      cp -f "$ROOT/build/libs/$RID/libgmb.exports.txt" "$STAGE/"
+      echo "   export manifest: $(wc -l < "$STAGE/libgmb.exports.txt" | tr -d ' ') simboli"
+    fi
+  fi
+fi
+
 # ── COPERTURA: il set deve coprire ciò che l'indice dichiara per questo RID ─────────────────
 # Un file elencato nell'indice e NON prodotto dal build = bundle irriproducibile: si blocca
 # (niente pubblicazione a metà) e si dice esattamente quale progetto aggiungere.
