@@ -17,6 +17,7 @@
 #include <stdint.h>
 #include <dirent.h>
 #include <strings.h>
+#include "gmb_compat_win.h"   /* mkdir a 2 argomenti (solo su Windows) */
 #include <time.h>
 
 #define GMB_VEC_MAX 8

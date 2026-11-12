@@ -21,6 +21,7 @@
 #include <math.h>
 #include <SDL2/SDL_ttf.h>
 #include <unistd.h>
+#include "gmb_compat_win.h"   /* strcasestr (solo su Windows) */
 
 extern gmb_gfx_ctx_t g_gfx;
 extern float g_gfx_scale;

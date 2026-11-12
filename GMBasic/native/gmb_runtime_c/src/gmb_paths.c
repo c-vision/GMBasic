@@ -21,6 +21,7 @@
 #include <sys/stat.h>   /* stat/mkdir: migrazione ~/.gmb → ~/.gmbasic */
 #include <ctype.h>
 #include <dirent.h>   /* su Windows: GMBasic/native/win32shim/include/dirent.h */
+#include "gmb_compat_win.h"   /* mkdir a 2 argomenti (solo su Windows) */
 #if defined(_WIN32) || defined(_WIN64)
 #include <windows.h>
 #elif defined(__APPLE__)

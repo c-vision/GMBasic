@@ -18,6 +18,7 @@
 #include <ctype.h>
 #include <dirent.h>
 #include <sys/stat.h>
+#include "gmb_compat_win.h"   /* strcasestr (solo su Windows) */
 #include <unistd.h>
 
 /* ══════════════════════════════════════════════════════════════════════════

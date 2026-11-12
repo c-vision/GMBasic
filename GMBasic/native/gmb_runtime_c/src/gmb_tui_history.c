@@ -4,6 +4,7 @@
 #include "gmb_tui_history.h"
 #include <stdio.h>
 #include <string.h>
+#include "gmb_compat_win.h"   /* strcasestr (solo su Windows) */
 
 void gmb_basic_history_init(gmb_basic_history_t* h, int capacity)
 {

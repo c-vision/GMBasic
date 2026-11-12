@@ -9,6 +9,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <dirent.h>
+#include "gmb_compat_win.h"   /* lstat (solo su Windows) */
 
 #if defined(_WIN32) || defined(_WIN64)
 #  include <direct.h>

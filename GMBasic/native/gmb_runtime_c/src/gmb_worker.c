@@ -9,6 +9,7 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <dirent.h>
+#include "gmb_compat_win.h"   /* mkdir a 2 argomenti (solo su Windows) */
 
 #define GMB_WKR_MAX 64
 

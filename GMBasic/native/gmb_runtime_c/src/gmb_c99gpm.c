@@ -16,6 +16,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <setjmp.h>
+#include <time.h>   /* nanosleep/struct timespec: su mingw li dichiara <time.h>, non <unistd.h> */
 #include "gmb_c99gpm.h"
 #include "gmb_tray.h"
 #include "gmb_ui_gfx.h"

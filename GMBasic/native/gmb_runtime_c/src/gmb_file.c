@@ -13,12 +13,14 @@
 
 #if defined(_WIN32) || defined(_WIN64)
 #include <windows.h>
-#include <direct.h>
+#include <sys/stat.h>    /* struct stat/stat/S_ISDIR: mancava, la build Windows si fermava qui */
+#include <dirent.h>      /* DIR/opendir/readdir/struct dirent */
 #else
 #include <unistd.h>
 #include <sys/stat.h>
 #include <dirent.h>
 #endif
+#include "gmb_compat_win.h"   /* mkstemps + close (solo su Windows) */
 
 gmb_bool_t gmb_file_exists(const char* path) {
 #if defined(_WIN32) || defined(_WIN64)

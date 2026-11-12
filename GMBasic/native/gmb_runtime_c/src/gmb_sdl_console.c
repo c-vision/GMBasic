@@ -14,6 +14,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <strings.h>
+#include "gmb_compat_win.h"   /* strcasestr (solo su Windows) */
 #include <stdio.h>
 #ifdef GMB_GFX_SDL_PRESENT
 #include <SDL.h>

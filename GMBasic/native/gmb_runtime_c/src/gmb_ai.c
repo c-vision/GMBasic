@@ -9,6 +9,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include <errno.h>
+#include "gmb_compat_win.h"   /* mkdir a 2 argomenti + strcasestr (solo su Windows) */
 
 #define AI_MAX_ENTRIES 256
 #define AI_MAX_PROVIDERS 64
