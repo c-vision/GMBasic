@@ -9540,51 +9540,81 @@ public static double TextWidth(string s)
     /// <summary>LLM MODEL LOAD nome, path [, RESIDENT] — carica un modello MoE out-of-core nel
     /// provider (MoestreamServer, runtime gmb_moe_runtime su GGUF). RESIDENT = tutto in RAM senza
     /// swap (default SWAP). Ritorna JSON con esito o errore esplicito. Mai stub.</summary>
-    public static string AiModelLoad(string name, string path, string flags)
+    /// <summary>Testo canonico (gamba VM/C) dell'errore di un verbo `LLM MODEL …`: la VM/C ha un
+    /// messaggio per verbo (gmb_builtin.c, gmb_bf_aimodel*_c35xx) e C99Native lo emette da
+    /// aimodel_err_msg(); il managed lo deve riprodurre identico, non solo nel codice.</summary>
+    private static string AiModelErr(string verb) => verb switch
     {
-        int mode = (flags is not null && flags.Contains("RESIDENT", StringComparison.OrdinalIgnoreCase)) ? 1 : 0;
-        return Basic.Providers.MoestreamServer.Instance.Load(name, path, mode, 0, 0, 0, 0, 0);
+        "LOAD" => "LLM MODEL LOAD: modello non valido o non trovato",
+        "DEVICE" => "LLM MODEL DEVICE non disponibile",
+        "CONVERT" => "LLM MODEL CONVERT: conversione fallita",
+        "INSPECT" => "AI MODEL INSPECT fallito",
+        "QUANTIZE" => "AI MODEL QUANTIZE fallito",
+        _ => "LLM MODEL " + verb + " fallito",
+    };
+
+    /// <summary>Errore BASIC canonico di un verbo `LLM MODEL …` (ERR 5 + testo della VM/C).</summary>
+    private static string AiModelFail(string verb) =>
+        throw new BasicException(ErrorCode.IllegalFunctionCall, SourcePosition.Unknown, AiModelErr(verb));
+
+    /// <summary>Esegue un verbo `LLM MODEL …` del provider normalizzando QUALUNQUE fallimento sul
+    /// testo canonico: MoestreamServer lo descrive con un JSON ({"ok":false,"error":…}) o con un
+    /// messaggio proprio, che non coincide con quello delle gambe C.</summary>
+    private static string AiModelDo(string verb, Func<string> call)
+    {
+        try { return call(); }
+        catch (Exception) { return AiModelFail(verb); }
     }
+
+    public static string AiModelLoad(string name, string path, string flags)
+        => AiModelDo("LOAD", () =>
+        {
+            int mode = (flags is not null && flags.Contains("RESIDENT", StringComparison.OrdinalIgnoreCase)) ? 1 : 0;
+            return Basic.Providers.MoestreamServer.Instance.Load(name, path, mode, 0, 0, 0, 0, 0);
+        });
 
     /// <summary>LLM MODEL UNLOAD nome — libera il modello (gli altri restano in memoria).</summary>
     public static string AiModelUnload(string name) =>
-        Basic.Providers.MoestreamServer.Instance.Unload(name);
+        AiModelDo("UNLOAD", () => Basic.Providers.MoestreamServer.Instance.Unload(name));
 
     /// <summary>LLM MODEL PROMOTE nome — porta il modello in ACTIVE (tutti gli esperti in RAM).</summary>
     public static string AiModelPromote(string name) =>
-        Basic.Providers.MoestreamServer.Instance.Promote(name);
+        AiModelDo("PROMOTE", () => Basic.Providers.MoestreamServer.Instance.Promote(name));
 
     /// <summary>LLM MODEL DEMOTE nome — riporta il modello in WARM (esperti on-demand).</summary>
     public static string AiModelDemote(string name) =>
-        Basic.Providers.MoestreamServer.Instance.Demote(name);
+        AiModelDo("DEMOTE", () => Basic.Providers.MoestreamServer.Instance.Demote(name));
 
     /// <summary>LLM MODEL CACHE nome, MB — cambia il budget della expert cache (0 = off).</summary>
     public static string AiModelCache(string name, double mb)
-    {
-        ulong v = mb < 0 ? 0 : (ulong)mb;
-        return Basic.Providers.MoestreamServer.Instance.SetCache(name, v);
-    }
+        => AiModelDo("CACHE", () =>
+        {
+            ulong v = mb < 0 ? 0 : (ulong)mb;
+            return Basic.Providers.MoestreamServer.Instance.SetCache(name, v);
+        });
 
     /// <summary>LLM MODEL TRACE nome, path|OFF (K1) — registra/ferma il trace esperti `.moetrace`.
     /// Il trace è il carburante del replay offline `moe_sim` (sizing cache senza rifare il run).</summary>
     public static string AiModelTrace(string name, string path)
-    {
-        if (string.IsNullOrWhiteSpace(name)) throw new InvalidOperationException("nome modello vuoto");
-        bool off = string.IsNullOrWhiteSpace(path) || path.Equals("OFF", StringComparison.OrdinalIgnoreCase);
-        return off ? Basic.Providers.MoestreamServer.Instance.TraceStop(name)
-                   : Basic.Providers.MoestreamServer.Instance.TraceStart(name, path);
-    }
+        => AiModelDo("TRACE", () =>
+        {
+            if (string.IsNullOrWhiteSpace(name)) throw new InvalidOperationException("nome modello vuoto");
+            bool off = string.IsNullOrWhiteSpace(path) || path.Equals("OFF", StringComparison.OrdinalIgnoreCase);
+            return off ? Basic.Providers.MoestreamServer.Instance.TraceStop(name)
+                       : Basic.Providers.MoestreamServer.Instance.TraceStart(name, path);
+        });
 
     /// <summary>LLM MODEL PREFETCH nome, topn — 0 = OFF (nessun prefetch).</summary>
     public static string AiModelPrefetch(string name, double topn)
-    {
-        uint v = topn < 0 ? 0u : (uint)topn;
-        return Basic.Providers.MoestreamServer.Instance.SetPrefetch(name, v, v > 0 ? 64u : 0u);
-    }
+        => AiModelDo("PREFETCH", () =>
+        {
+            uint v = topn < 0 ? 0u : (uint)topn;
+            return Basic.Providers.MoestreamServer.Instance.SetPrefetch(name, v, v > 0 ? 64u : 0u);
+        });
 
     /// <summary>LLM MODEL DEVICE nome, AUTO|CPU|METAL — METAL fallisce esplicitamente se assente.</summary>
     public static string AiModelDevice(string name, string mode) =>
-        Basic.Providers.MoestreamServer.Instance.SetDevice(name, mode);
+        AiModelDo("DEVICE", () => Basic.Providers.MoestreamServer.Instance.SetDevice(name, mode));
 
     /// <summary>LLM.STREAMSTATS(nome) — statistiche del modello MoE (mode, device, byte letti,
     /// cache, prefetch). Ritorna JSON con esito o errore esplicito.</summary>
@@ -9601,8 +9631,7 @@ public static double TextWidth(string s)
         if (f.Length == 0) f = "GGUF";
         // GGUF/MLX: converter del progetto codec (P/Invoke, una sola sorgente C). C#→C ammesso.
         int rc = Basic.Providers.LlmModelNative.llmmodelio_model_convert(src, dst, f);
-        if (rc != 0)
-            throw new InvalidOperationException($"LLM MODEL CONVERT {f}: conversione fallita ({rc}) per '{src}'.");
+        if (rc != 0) return AiModelFail("CONVERT");
         string es = src.Replace("\\", "\\\\").Replace("\"", "\\\"");
         string ed = dst.Replace("\\", "\\\\").Replace("\"", "\\\"");
         return "{\"ok\":true,\"src\":\"" + es + "\",\"dst\":\"" + ed + "\",\"fmt\":\"" + f + "\"}";
@@ -9615,7 +9644,7 @@ public static double TextWidth(string s)
         if (group <= 0) group = 64;
         int qrc = Basic.Providers.ModelIoNative.gmb_modelio_quantize(src, dst, (int)bits, (int)group,
                                                                     string.IsNullOrEmpty(imatrix) ? null : imatrix, (int)expertBits);
-        if (qrc != 0) throw new InvalidOperationException($"AI MODEL QUANTIZE: fallita ({qrc}) per '{src}'.");
+        if (qrc != 0) return AiModelFail("QUANTIZE");
         string es = src.Replace("\\", "\\\\").Replace("\"", "\\\"");
         string ed = dst.Replace("\\", "\\\\").Replace("\"", "\\\"");
         return "{\"ok\":true,\"src\":\"" + es + "\",\"dst\":\"" + ed + "\",\"bits\":" + (int)bits + "}";
@@ -9626,7 +9655,7 @@ public static double TextWidth(string s)
     {
         var buf = new byte[1 << 20];   /* 1 MiB: l IR/INFO di modelli grandi (377 tensori) supera i 16 KiB -> troncamento su IL/PCode (divergenza vs VMC) */
         int n = Basic.Providers.ModelIoNative.gmb_modelio_inspect(dir, buf, buf.Length);
-        if (n <= 0) throw new InvalidOperationException($"AI MODEL INSPECT: .gmbarch non risolto per '{dir}'.");
+        if (n <= 0) return AiModelFail("INSPECT");
         string report = System.Text.Encoding.UTF8.GetString(buf, 0, n);
         Current.Console.Print(report);
         Current.Console.PrintNewLine();
@@ -9638,7 +9667,7 @@ public static double TextWidth(string s)
     public static string AiModelSave(string src, string dst)
     {
         int rc = Basic.Providers.LlmModelNative.llmmodelio_model_save(src, dst);
-        if (rc != 0) throw new InvalidOperationException($"LLM MODEL SAVE: fallita ({rc}) per '{src}' -> '{dst}'.");
+        if (rc != 0) return AiModelFail("SAVE");
         return "{\"ok\":true}";
     }
 
@@ -9647,13 +9676,13 @@ public static double TextWidth(string s)
     public static string AiModelAblate(string src, string dst, string pattern)
     {
         int rc = Basic.Providers.LlmModelNative.llmmodelio_model_ablate(src, dst, pattern);
-        if (rc != 0) throw new InvalidOperationException($"LLM MODEL ABLATE: fallita ({rc}) per '{src}' pattern '{pattern}'.");
+        if (rc != 0) return AiModelFail("ABLATE");
         return "{\"ok\":true}";
     }
     public static string AiModelRemove(string src, string dst, string layer)
     {
         int rc = Basic.Providers.LlmModelNative.llmmodelio_model_remove_layer(src, dst, layer ?? "");
-        if (rc != 0) throw new InvalidOperationException($"LLM MODEL REMOVE: fallita ({rc}) per '{src}' (layer={layer}).");
+        if (rc != 0) return AiModelFail("REMOVE");
         return "{\"ok\":true}";
     }
 
@@ -9661,7 +9690,7 @@ public static double TextWidth(string s)
     public static string AiModelDiff(string a, string b, string output)
     {
         int rc = Basic.Providers.LlmModelNative.llmmodelio_model_diff(a, b, output);
-        if (rc != 0) throw new InvalidOperationException($"LLM MODEL DIFF: fallita ({rc}) per '{a}' vs '{b}'.");
+        if (rc != 0) return AiModelFail("DIFF");
         return "{\"ok\":true}";
     }
 
@@ -9669,7 +9698,7 @@ public static double TextWidth(string s)
     public static string AiModelCheckpoint(string src, string store, string name)
     {
         int rc = Basic.Providers.LlmModelNative.llmmodelio_model_checkpoint(src, store, name);
-        if (rc != 0) throw new InvalidOperationException($"LLM MODEL CHECKPOINT: fallita ({rc}) per '{src}' -> {store}/{name}.");
+        if (rc != 0) return AiModelFail("CHECKPOINT");
         return "{\"ok\":true}";
     }
 
@@ -9677,7 +9706,7 @@ public static double TextWidth(string s)
     public static string AiModelRollback(string store, string name, string dst)
     {
         int rc = Basic.Providers.LlmModelNative.llmmodelio_model_rollback(store, name, dst);
-        if (rc != 0) throw new InvalidOperationException($"LLM MODEL ROLLBACK: fallita ({rc}) per {store}/{name} -> '{dst}'.");
+        if (rc != 0) return AiModelFail("ROLLBACK");
         return "{\"ok\":true}";
     }
 
@@ -9685,7 +9714,7 @@ public static double TextWidth(string s)
     public static string AiModelAdd(string basePath, string modulePath, string output)
     {
         int rc = Basic.Providers.LlmModelNative.llmmodelio_model_add(basePath, modulePath, output);
-        if (rc != 0) throw new InvalidOperationException($"LLM MODEL ADD: fallita ({rc}) per '{modulePath}' in '{basePath}'.");
+        if (rc != 0) return AiModelFail("ADD");
         return "{\"ok\":true}";
     }
 
@@ -9693,7 +9722,7 @@ public static double TextWidth(string s)
     public static string AiModelAdapter(string basePath, string adapterPath, string output, string alpha)
     {
         int rc = Basic.Providers.LlmModelNative.llmmodelio_model_adapter(basePath, adapterPath, output, alpha);
-        if (rc != 0) throw new InvalidOperationException($"LLM MODEL ADAPTER: fallita ({rc}) per '{adapterPath}' in '{basePath}'.");
+        if (rc != 0) return AiModelFail("ADAPTER");
         return "{\"ok\":true}";
     }
 
@@ -9701,7 +9730,7 @@ public static double TextWidth(string s)
     public static string AiModelModule(string basePath, string gmmodPath, string modulePath, string output)
     {
         int rc = Basic.Providers.LlmModelNative.llmmodelio_model_module(basePath, gmmodPath, modulePath, output);
-        if (rc != 0) throw new InvalidOperationException($"LLM MODEL MODULE: fallita ({rc}) per '{gmmodPath}' + '{modulePath}'.");
+        if (rc != 0) return AiModelFail("MODULE");
         return "{\"ok\":true}";
     }
 
@@ -9709,7 +9738,7 @@ public static double TextWidth(string s)
     public static string AiModelModality(string basePath, string mmprojPath, string output)
     {
         int rc = Basic.Providers.LlmModelNative.llmmodelio_model_modality(basePath, mmprojPath, output);
-        if (rc != 0) throw new InvalidOperationException($"LLM MODEL MODALITY: fallita ({rc}) per mmproj '{mmprojPath}'.");
+        if (rc != 0) return AiModelFail("MODALITY");
         return "{\"ok\":true}";
     }
 
@@ -9717,7 +9746,7 @@ public static double TextWidth(string s)
     public static string AiModelValidate(string path, string output)
     {
         int rc = Basic.Providers.LlmModelNative.llmmodelio_model_validate(path, output);
-        if (rc != 0) throw new InvalidOperationException($"LLM MODEL VALIDATE: fallita ({rc}) per '{path}' (artefatto invalido).");
+        if (rc != 0) return AiModelFail("VALIDATE");
         return "{\"ok\":true}";
     }
 

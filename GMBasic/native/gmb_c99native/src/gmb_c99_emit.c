@@ -26544,7 +26544,7 @@ static void st_aimodel(ctx_t* c, gmb_stmt_t* s) {
             sb_put(&c->out, ", ");
             emit_str_operand(c, a[1]); sb_put(&c->out, ".data, ");
             emit_str_operand(c, a[2]); sb_put(&c->out, ".data);");
-            sb_printf(&c->out, " if (_cvrc != 0) gmb_raise_error(5, \"LLM MODEL CONVERT fallita\", %d); _cvrc; })", s->line);
+            sb_printf(&c->out, " if (_cvrc != 0) gmb_raise_error(5, \"LLM MODEL CONVERT: conversione fallita\", %d); _cvrc; })", s->line);
         } else {
             sb_put(&c->out, "llmmodelio_model_convert(");
             if (na >= 1) { sb_put(&c->out, "gmb_paths_model_q("); emit_str_operand(c, a[0]); sb_put(&c->out, ".data)"); } else sb_put(&c->out, "\"\"");
@@ -26584,6 +26584,38 @@ static void st_aimodel(ctx_t* c, gmb_stmt_t* s) {
         sb_put(&c->out, ")");
         break;
     case GMB_STMT_AIMODEL_DIFF:   /* LLM MODEL DIFF <a>, <b>, <out> — checkpoint/rollback */
+/* Testo d'errore PER VERBO di `LLM MODEL …`, identico alla gamba VM/C (gmb_builtin.c:
+ * gmb_bf_aimodel*_c35xx). Prima qui ogni verbo finiva sul generico "AI MODEL: operazione
+ * fallita", quindi — a codice ormai uniforme — il testo non coincideva con nessuna gamba. */
+static const char* aimodel_err_msg(int kind) {
+    switch (kind) {
+    case GMB_STMT_AIMODEL_LOAD:       return "LLM MODEL LOAD: modello non valido o non trovato";
+    case GMB_STMT_AIMODEL_UNLOAD:     return "LLM MODEL UNLOAD fallito";
+    case GMB_STMT_AIMODEL_CACHE:      return "LLM MODEL CACHE fallito";
+    case GMB_STMT_AIMODEL_PREFETCH:   return "LLM MODEL PREFETCH fallito";
+    case GMB_STMT_AIMODEL_DEVICE:     return "LLM MODEL DEVICE non disponibile";
+    case GMB_STMT_AIMODEL_CONVERT:    return "LLM MODEL CONVERT: conversione fallita";
+    case GMB_STMT_AIMODEL_SAVE:       return "LLM MODEL SAVE fallito";
+    case GMB_STMT_AIMODEL_ABLATE:     return "LLM MODEL ABLATE fallito";
+    case GMB_STMT_AIMODEL_REMOVE:     return "LLM MODEL REMOVE fallito";
+    case GMB_STMT_AIMODEL_DIFF:       return "LLM MODEL DIFF fallito";
+    case GMB_STMT_AIMODEL_CHECKPOINT: return "LLM MODEL CHECKPOINT fallito";
+    case GMB_STMT_AIMODEL_ROLLBACK:   return "LLM MODEL ROLLBACK fallito";
+    case GMB_STMT_AIMODEL_ADD:        return "LLM MODEL ADD fallito";
+    case GMB_STMT_AIMODEL_ADAPTER:    return "LLM MODEL ADAPTER fallito";
+    case GMB_STMT_AIMODEL_MODULE:     return "LLM MODEL MODULE fallito";
+    case GMB_STMT_AIMODEL_MODALITY:   return "LLM MODEL MODALITY fallito";
+    case GMB_STMT_AIMODEL_VALIDATE:   return "LLM MODEL VALIDATE fallito";
+    case GMB_STMT_AIMODEL_TRACE:      return "LLM MODEL TRACE fallito";
+    case GMB_STMT_AIMODEL_PROMOTE:    return "LLM MODEL PROMOTE fallito";
+    case GMB_STMT_AIMODEL_DEMOTE:     return "LLM MODEL DEMOTE fallito";
+    /* INSPECT/QUANTIZE sono verbi `AI MODEL …` (non LLM) con il testo della VM/C. */
+    case GMB_STMT_AIMODEL_INSPECT:    return "AI MODEL INSPECT fallito";
+    case GMB_STMT_AIMODEL_QUANTIZE:   return "AI MODEL QUANTIZE fallito";
+    default:                          return "AI MODEL: operazione fallita";
+    }
+}
+
         sb_put(&c->out, "llmmodelio_model_diff(");
         if (na >= 1) { sb_put(&c->out, "gmb_paths_model_q("); emit_str_operand(c, a[0]); sb_put(&c->out, ".data)"); } else sb_put(&c->out, "\"\"");
         sb_put(&c->out, ", ");
@@ -26690,10 +26722,10 @@ static void st_aimodel(ctx_t* c, gmb_stmt_t* s) {
         break;
     }
     sb_put(&c->out, ";\n");
-    /* Codice UNIFORME (5) con la gamba VM/C, che alza lo stesso errore per ogni `LLM MODEL …`:
-     * prima qui si alzava 0 e la libreria tornava -1, quindi lo stesso statement fallito dava
-     * tre codici diversi fra le gambe C e le gestite. */
-    ind(c); sb_put(&c->out, "if (__ms_rc != 0) gmb_raise_error(5, \"AI MODEL: operazione fallita\", ");
+    /* Codice UNIFORME (5) e TESTO PER VERBO, entrambi presi dalla gamba VM/C: prima qui si
+     * alzava 0 (o l'rc grezzo della libreria) con un generico "AI MODEL: operazione fallita"
+     * per ogni verbo, mentre VM/C distingue LOAD/UNLOAD/SAVE/… */
+    ind(c); sb_printf(&c->out, "if (__ms_rc != 0) gmb_raise_error(5, \"%s\", ", aimodel_err_msg((int)s->kind));
     sb_printf(&c->out, "%d);\n", s->line);
     c->indent--; ind(c); sb_put(&c->out, "}\n");
 }

@@ -14675,7 +14675,7 @@ static void gmb_bf_aimodelinspect_c3543(gmb_vm_t* vm, gmb_stack_entry_t* args, i
     (void)vm; (void)func_code; (void)bout;
     const char* dir = argc >= 1 ? vm_builtin_sarg(args, argc, 0) : "";
     if (gmb_model_io_inspect_print(dir ? dir : "") != 0)
-        gmb_raise_basic_error(task, 0, "AI MODEL INSPECT fallito");
+        gmb_raise_basic_error(task, 5.0, "AI MODEL INSPECT fallito");   /* codice UNIFORME 5 come C99/IL/PCode */
 }
 /* EMITTER (2026-09-30, codice 3702): LLM MODEL SAVE <in>, <out> — round-trip/emissione artefatto
  * (writer condiviso llmmodelio_model_save: metadata + byte tensori). Stessa logica di IL/C99. */
@@ -14797,7 +14797,7 @@ static void gmb_bf_aimodelquantize_c3542(gmb_vm_t* vm, gmb_stack_entry_t* args, 
     const char* imatrix = argc >= 5 ? vm_builtin_sarg(args, argc, 4) : NULL;
     int expert_bits = argc >= 6 ? (int)args[5].num : 0;
     if (gmb_model_io_quantize(src ? src : "", dst ? dst : "", bits, group, imatrix, expert_bits) != 0)
-        gmb_raise_basic_error(task, 0, "AI MODEL QUANTIZE fallito");
+        gmb_raise_basic_error(task, 5.0, "AI MODEL QUANTIZE fallito");   /* codice UNIFORME 5 come C99/IL/PCode */
 }
 
 /* MODEL COMPILER LLM (2026-09-23, codici 3604..3611) — verbi LLM (PLAN/POLICY/QUANT/MERGE/
