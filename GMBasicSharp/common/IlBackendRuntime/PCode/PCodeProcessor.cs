@@ -2993,11 +2993,36 @@ internal sealed partial class PCodeProcessor
                 // vecchio switch PCode SOLO se il metodo non è noto (NotSupportedException).
                 // Le due gambe condividono così la stessa semantica (Add/Remove/Keys/Min/Max/
                 // Trie/Bag/Graph/...), senza duplicare 76 casi.
-                if (instance is System.Collections.IList || instance is System.Collections.IDictionary
+                /* PRECEDENZA DEI METODI DI CLASSE (2026-11-12). L'istanza di una classe BASIC è
+                 * un Dictionary con "__class__" (descrittore con VTable/PropertyGetters): senza
+                 * questo controllo il bridge sotto RIVENDICAVA i nomi di collection e il metodo
+                 * utente non veniva mai chiamato — `f.Count()` (0 argomenti) tornava il numero
+                 * di CHIAVI dell'istanza invece del valore del metodo (controls/segmented_uc:
+                 * `n=9` invece di `4` su PCode, IL/C99 corretti). Se il membro è nella
+                 * VTable/PropertyGetters della classe, la risoluzione della classe ha la
+                 * precedenza; altrimenti (istanza "nuda", es. dict/JSON) il bridge resta. */
+                int? classMethodAddr = null;
+                if (instance is System.Collections.IDictionary cdInst && cdInst.Contains("__class__")
+                    && cdInst["__class__"] is System.Collections.IDictionary cdDesc)
+                {
+                    if (cdDesc["VTable"] is System.Collections.IDictionary cdVt)
+                    {
+                        var cdMa = cdVt[methodName ?? ""];
+                        if (cdMa is int cdIa) classMethodAddr = cdIa;
+                        else if (cdMa is double cdDa) classMethodAddr = (int)cdDa;
+                    }
+                    if (!classMethodAddr.HasValue && cdDesc["PropertyGetters"] is System.Collections.IDictionary cdPg)
+                    {
+                        var cdGa = cdPg[methodName ?? ""];
+                        if (cdGa is int cdGia) classMethodAddr = cdGia;
+                        else if (cdGa is double cdGda) classMethodAddr = (int)cdGda;
+                    }
+                }
+                if (!classMethodAddr.HasValue && (instance is System.Collections.IList || instance is System.Collections.IDictionary
                     // HLL: NON è IList/IDictionary (non conserva gli elementi) ma va dispatchato
                     // dal dispatcher condiviso (prima finiva nella reflection generica, che
                     // ingoiava le eccezioni: `Load("garbage")` non segnalava nulla).
-                    || instance is CommonLib.Collections.HyperLogLog)
+                    || instance is CommonLib.Collections.HyperLogLog))
                 {
                     try
                     {
@@ -3029,7 +3054,7 @@ internal sealed partial class PCodeProcessor
                         return true;
                     }
                 }
-                int? methodAddr = null;
+                int? methodAddr = classMethodAddr;
                 // Check IList FIRST (collections like List<T>)
                 if (instance is System.Collections.IList iList)
                 {

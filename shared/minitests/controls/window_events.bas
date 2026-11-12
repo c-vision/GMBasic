@@ -1,4 +1,5 @@
 ' MiniTest: ON WINDOW <EVENTO> OF <handle> — l'evento arriva SOLO alla finestra indicata.
+' TAG: exitcode — l'output contiene i FRAME TUI (solo VMC li renderizza): la parita' si verifica sull'exit code.
 ' Due finestre (handle 1 e 2). Si registrano: MINIMIZE per handle 1, MINIMIZE per handle 2,
 ' MINIMIZE senza OF (wildcard) e FOCUS per handle 1. Poi si minimizza/attiva SOLO la finestra 2:
 '   - l'handler di handle 2 scatta (b=1) e il wildcard pure (anyr=1);
