@@ -8512,13 +8512,16 @@ static int aimo_llm_kv_out(ctx_t* c, gmb_expr_t** a, int n, int line) {
 }static int aasr_transcribe(ctx_t* c, gmb_expr_t** a, int n, int line) {
     /* ASR.RECOGNIZE(model, wav[, outPath]) → gmb_asr_cmd (engine ASR nativo in gmb_runtime). Ritorna stringa. */
     if (n < 2) { c99_fail(c, line, "ASR.RECOGNIZE richiede (model, wav[, outPath])"); return 1; }
-    sb_put(&c->out, "gmb_string_alloc(gmb_asr_cmd(");
+    /* Il motore restituisce NULL su FALLIMENTO (modello/WAV non caricabili): si alza ERR 5,
+     * catturabile con ON ERROR/TRY, come le altre tre gambe. Prima il NULL diventava una
+     * stringa vuota silenziosa e il programma proseguiva come se avesse trascritto niente. */
+    sb_put(&c->out, "({ char* _asr = gmb_asr_cmd(");
     emit_str_operand(c, a[0]); sb_put(&c->out, ".data, ");
     emit_str_operand(c, a[1]); sb_put(&c->out, ".data, ");
-    /* Due parentesi: chiude gmb_asr_cmd( e gmb_string_alloc( (prima ne mancava una
-     * → il C generato non compilava: "expected ')'" su ogni ASR.RECOGNIZE). */
-    if (n >= 3) { emit_str_operand(c, a[2]); sb_put(&c->out, ".data))"); }
-    else sb_put(&c->out, "\"\"))");
+    if (n >= 3) { emit_str_operand(c, a[2]); sb_put(&c->out, ".data"); }
+    else sb_put(&c->out, "\"\"");
+    sb_printf(&c->out, "); if (_asr == NULL) gmb_raise_error(5, \"ASR.RECOGNIZE: trascrizione fallita\", %d); ", line);
+    sb_put(&c->out, "gmb_string_alloc(_asr); })");
     return 1;
 }
 static int aimo_streamstats(ctx_t* c, gmb_expr_t** a, int n, int line) {    if (n != 1) return 0;

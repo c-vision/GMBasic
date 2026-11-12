@@ -15019,11 +15019,15 @@ static void gmb_bf_llmkvout_c3814(gmb_vm_t* vm, gmb_stack_entry_t* args, int arg
 }
 /* ASR — ASR.TRANSCRIBE(model, wav): speech-to-text Qwen3-ASR (engine nativo in gmb_runtime). */
 void gmb_bf_asrtranscribe_c3805(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task) {
-    (void)vm; (void)func_code; (void)task;
+    (void)vm; (void)func_code;
     const char* m = argc >= 1 ? vm_builtin_sarg(args, argc, 0) : "";
     const char* w = argc >= 2 ? vm_builtin_sarg(args, argc, 1) : "";
     const char* o = argc >= 3 ? vm_builtin_sarg(args, argc, 2) : "";
     char* r = gmb_asr_cmd(m ? m : "", w ? w : "", o ? o : "");
+    /* Motore che FALLISCE (NULL) -> ERR 5 catturabile con ON ERROR/TRY, come le altre gambe.
+     * Prima il NULL finiva in vm_builtin_rstr che usciva SENZA toccare il registro: il
+     * chiamante leggeva il valore precedente (tipicamente 0) e il fallimento era invisibile. */
+    if (r == NULL) gmb_raise_basic_error(task, 5.0, "ASR.RECOGNIZE: trascrizione fallita");
     vm_builtin_rstr(r, &bout->is_num, &bout->result_ref, &bout->result_ref_bt);
 }
 static void gmb_bf_llmquality_c3628(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task) {

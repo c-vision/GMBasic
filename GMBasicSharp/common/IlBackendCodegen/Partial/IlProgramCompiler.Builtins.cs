@@ -1355,7 +1355,15 @@ public sealed partial class IlProgramCompiler
             case TokenKind.LlmModuleOut: EmitLlmCall(expr, RuntimeMethod(nameof(IlRuntime.LlmModuleOut), typeof(string), typeof(string), typeof(string), typeof(string)), "ssss"); break;
             case TokenKind.LlmKernelOut: EmitLlmCall(expr, RuntimeMethod(nameof(IlRuntime.LlmKernelOut), typeof(string), typeof(string), typeof(string), typeof(string)), "ssss"); break;
             case TokenKind.LlmKvOut: EmitLlmCall(expr, RuntimeMethod(nameof(IlRuntime.LlmKvOut), typeof(string), typeof(string), typeof(string), typeof(string)), "ssss"); break;
-            case TokenKind.AsrTranscribe: EmitLlmCall(expr, RuntimeMethod(nameof(IlRuntime.AsrTranscribe), typeof(string), typeof(string), typeof(string)), "sss"); break;
+            case TokenKind.AsrTranscribe:
+                // 4° argomento = RIGA: serve a sollevare l'errore catturabile (ERR 5) con la
+                // posizione giusta, come SafeDivide/SafeMod. Prima la firma non aveva la riga e
+                // il fallimento tornava "" in silenzio.
+                EmitStringArg(expr.Args[0]); EmitStringArg(expr.Args[1]);
+                if (expr.Args.Length >= 3) EmitStringArg(expr.Args[2]); else _il.Emit(OpCodes.Ldstr, "");
+                _il.Emit(OpCodes.Ldc_I4, expr.Position.Line > 0 ? expr.Position.Line : 0);
+                _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.AsrTranscribe), typeof(string), typeof(string), typeof(string), typeof(int)));
+                break;
             case TokenKind.LlmCompile: EmitLlmCall(expr, RuntimeMethod(nameof(IlRuntime.LlmCompile), typeof(string), typeof(string)), "ss"); break;
             case TokenKind.LlmQuality:
                 // QUALITY/EVAL: (model, prompt/dataset[, out][, ref]). out e ref opzionali.

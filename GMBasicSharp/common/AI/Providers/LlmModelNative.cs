@@ -192,18 +192,28 @@ public static partial class LlmModelNative
     [DllImport(LibName, EntryPoint = "gmb_asr_free", CallingConvention = CallingConvention.Cdecl)]
     private static extern void gmb_asr_free(IntPtr p);
 
-    /// <summary>ASR.RECOGNIZE(model, wav[, outPath]): trascrive un WAV col modello Qwen3-ASR
-    /// (o "" su errore). Con outPath non vuoto scrive i pezzi in live sul file.</summary>
-    public static string AsrTranscribe(string model, string wav, string outPath)
+    /// <summary>ASR.RECOGNIZE(model, wav[, outPath]) con esito DISTINTO: <c>null</c> se il motore
+    /// ha FALLITO (modello/WAV non caricabile, eccezione P/Invoke), altrimenti il testo (anche
+    /// vuoto se la trascrizione è legittimamente vuota). Prima il fallimento veniva appiattito su
+    /// "" e nessuna gamba gestita poteva alzare l'errore: <c>ON ERROR</c> restava muto su IL e
+    /// PCode mentre le gambe C restituivano un valore silenzioso. Con outPath non vuoto scrive i
+    /// pezzi in live sul file.</summary>
+    public static string? AsrTranscribeOrNull(string model, string wav, string outPath)
     {
         try
         {
             var p = gmb_asr_cmd_raw(model ?? "", wav ?? "", outPath ?? "");
-            if (p == IntPtr.Zero) return "";
+            if (p == IntPtr.Zero) return null;
             var s = Marshal.PtrToStringUTF8(p) ?? "";
             gmb_asr_free(p);
             return s;
         }
-        catch { return ""; }
+        catch { return null; }
     }
+
+    /// <summary>Variante tollerante (mai null): "" quando il motore fallisce. Per i chiamanti che
+    /// non hanno un gestore d'errore; le gambe BASIC usano <see cref="AsrTranscribeOrNull"/> e
+    /// sollevano l'errore catturabile.</summary>
+    public static string AsrTranscribe(string model, string wav, string outPath)
+        => AsrTranscribeOrNull(model, wav, outPath) ?? "";
 }

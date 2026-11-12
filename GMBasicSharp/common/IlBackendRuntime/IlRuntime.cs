@@ -9988,8 +9988,19 @@ public static double TextWidth(string s)
         return raw.TrimEnd('\n', '\r');
     }
     /// <summary>ASR.TRANSCRIBE(model, wav[, outPath]): trascrizione speech-to-text (engine ASR nativo C).</summary>
-    public static string AsrTranscribe(string model, string wav, string outPath)
-        => Basic.Providers.LlmModelNative.AsrTranscribe(model ?? "", wav ?? "", outPath ?? "");
+    /// <summary>ASR.RECOGNIZE(model, wav[, outPath]): trascrizione; se il motore C FALLISCE
+    /// solleva ERR 5 "ASR.RECOGNIZE: trascrizione fallita", catturabile con ON ERROR/TRY.
+    /// Prima tornava "" in silenzio (il P/Invoke appiattiva il NULL su stringa vuota), quindi
+    /// nessuna gamba gestita poteva accorgersene. Stesso codice d'errore delle gambe C e di
+    /// `IlRuntime.Ffi` per una chiamata nativa fallita.</summary>
+    public static string AsrTranscribe(string model, string wav, string outPath, int line)
+    {
+        var s = Basic.Providers.LlmModelNative.AsrTranscribeOrNull(model ?? "", wav ?? "", outPath ?? "");
+        if (s == null)
+            throw new BasicException(ErrorCode.IllegalFunctionCall, new SourcePosition(-1, line, 0),
+                                     "ASR.RECOGNIZE: trascrizione fallita");
+        return s;
+    }
     public static string LlmCompile(string model, string output)
     {
         // Via la variante _to (stesso percorso di LLM TENSOR COMPILE): l output resta nel canale

@@ -7894,7 +7894,12 @@ static void vm_pop_num(gmb_task_t* task, double* out)
 
 void vm_builtin_rstr(char* heap, int* is_num, gmb_obj_t** result_ref, uint8_t* result_ref_bt)
 {
-    if (!heap) return;
+    /* heap NULL (builtin di stringa FALLITO) -> stringa VUOTA, mai il ritorno anticipato:
+     * prima il registro del chiamante restava al valore precedente (0), quindi una funzione di
+     * stringa fallita restituiva un NUMERO (divergenza con IL/PCode/C99, e valore sbagliato in
+     * silenzio: `x$ = ASR.RECOGNIZE(...)` senza modello dava "0"). Chi vuole l'errore lo alza
+     * prima di chiamare questa funzione (vedi il builtin ASR). */
+    if (!heap) { *is_num = 0; *result_ref = (gmb_obj_t*)gmb_str_cstr(""); *result_ref_bt = GMB_BT_STRING; return; }
     *is_num = 0;
     *result_ref = (gmb_obj_t*)gmb_str_cstr(heap);
     free(heap);
