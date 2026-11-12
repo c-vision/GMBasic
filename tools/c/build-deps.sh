@@ -43,6 +43,32 @@ while [ $# -gt 0 ]; do
 done
 [ -n "$LIBS" ] || LIBS="zlib sqlite3 zstd lz4 brotli lzma pcre2 openssl freetype sdl2 sdl2_ttf curl"
 [ -x "$ZIG_BIN" ] || { echo "zig non trovato: $ZIG_BIN (ZIG=... )" >&2; exit 2; }
+
+# ── LINUX: terze parti in un CONTAINER della stessa architettura del RID (F3, 2026-11-11) ────
+# `prepare()` copre `*-windows-gnu` (zig) e `*-macos` (clang): per Linux non esiste una
+# toolchain sull'host, e prima questo script rispondeva «target sconosciuto» (misurato: era
+# l'unico motivo per cui `dev` non esisteva su x86_64/aarch64-linux-gnu). Qui si usa l'immagine
+# Ubuntu 24.04 dell'architettura giusta e i suoi pacchetti `-dev`, copiando SOLO header delle
+# terze parti + archivi statici (tools/c/build-deps-linux-inner.sh): niente /usr/include intero,
+# che porterebbe la libc dentro il bundle.
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+case "$TARGET" in
+  *-linux-gnu)
+    case "$TARGET" in
+      x86_64-linux-gnu)  PLAT=linux/amd64 ;;
+      aarch64-linux-gnu) PLAT=linux/arm64 ;;
+      *) echo "target Linux non gestito: $TARGET" >&2; exit 2 ;;
+    esac
+    [ -n "$OUT" ] || OUT="$OUT_BASE/$TARGET"
+    mkdir -p "$OUT"
+    echo "══ $TARGET → $OUT (container $PLAT)"
+    command -v docker >/dev/null 2>&1 || { echo "docker assente: serve per le terze parti Linux" >&2; exit 2; }
+    exec docker run --rm --platform "$PLAT" \
+      -v "$REPO_ROOT:/repo:ro" -v "$OUT:/out" ubuntu:24.04 \
+      bash /repo/tools/c/build-deps-linux-inner.sh "$TARGET" $LIBS
+    ;;
+esac
+
 SDK="$(xcrun --sdk macosx --show-sdk-path)"
 mkdir -p "$SRC_BASE"
 
