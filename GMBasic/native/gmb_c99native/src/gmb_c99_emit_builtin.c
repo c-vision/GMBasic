@@ -8419,7 +8419,7 @@ static int aimo_llm_tokens(ctx_t* c, gmb_expr_t** a, int n, int line) {
     if (n < 2) { c99_fail(c, line, "LLM.TOKENS richiede (model, testo)"); return 1; }
     sb_put(&c->out, "gmb_string_alloc(gmb_llm_out_or_raise(gmb_llm_tokens(");
     emit_str_operand(c, a[0]); sb_put(&c->out, ".data, ");
-    emit_str_operand(c, a[1]); sb_put(&c->out, ".data), \"LLM.TOKENS\", ");
+    emit_str_operand(c, a[1]); sb_put(&c->out, ".data), \"LLM.TOKENS: tokenizer non disponibile per il modello indicato\", ");
     { char lb[16]; snprintf(lb, sizeof lb, "%d", line); sb_put(&c->out, lb); }
     sb_put(&c->out, "))");
     return 1;
@@ -8428,7 +8428,7 @@ static int aimo_llm_detokenize(ctx_t* c, gmb_expr_t** a, int n, int line) {
     if (n < 2) { c99_fail(c, line, "LLM.DETOKENIZE richiede (model, ids)"); return 1; }
     sb_put(&c->out, "gmb_string_alloc(gmb_llm_out_or_raise(gmb_llm_detokenize(");
     emit_str_operand(c, a[0]); sb_put(&c->out, ".data, ");
-    emit_str_operand(c, a[1]); sb_put(&c->out, ".data), \"LLM.DETOKENIZE\", ");
+    emit_str_operand(c, a[1]); sb_put(&c->out, ".data), \"LLM.DETOKENIZE: tokenizer non disponibile o id non validi\", ");
     { char lb[16]; snprintf(lb, sizeof lb, "%d", line); sb_put(&c->out, lb); }
     sb_put(&c->out, "))");
     return 1;
@@ -8440,7 +8440,7 @@ static int aimo_llm_tensor_out(ctx_t* c, gmb_expr_t** a, int n, int line) {
     emit_str_operand(c, a[1]); sb_put(&c->out, ".data, ");
     if (n >= 3) { emit_str_operand(c, a[2]); sb_put(&c->out, ".data, "); } else sb_put(&c->out, "\"\", ");
     if (n >= 4) { emit_str_operand(c, a[3]); sb_put(&c->out, ".data)"); } else sb_put(&c->out, "\"\")");
-    sb_put(&c->out, ", \"LLM.TENSOR\", ");
+    sb_put(&c->out, ", \"LLM.TENSOR: verbo fallito\", ");
     { char lb[16]; snprintf(lb, sizeof lb, "%d", line); sb_put(&c->out, lb); }
     sb_put(&c->out, "))");
     return 1;
@@ -8448,12 +8448,12 @@ static int aimo_llm_tensor_out(ctx_t* c, gmb_expr_t** a, int n, int line) {
 static int aimo_llm_policy_out(ctx_t* c, gmb_expr_t** a, int n, int line) {
     /* LLM.POLICYOUT(sub[, a[, b[, c]]]) → gmb_llm_cmd_out (famiglia 1): output catturato. */
     if (n < 1) { c99_fail(c, line, "LLM.POLICY richiede almeno il sotto-verbo"); return 1; }
-    sb_put(&c->out, "gmb_string_alloc(gmb_llm_out_or_raise(gmb_llm_cmd_out(1, ");
+    sb_put(&c->out, "gmb_string_alloc(gmb_llm_out_or_raise(gmb_llm_cmd_out(1, ");   /* POLICY */
     emit_str_operand(c, a[0]); sb_put(&c->out, ".data, ");
     if (n >= 2) { emit_str_operand(c, a[1]); sb_put(&c->out, ".data, "); } else sb_put(&c->out, "\"\", ");
     if (n >= 3) { emit_str_operand(c, a[2]); sb_put(&c->out, ".data, "); } else sb_put(&c->out, "\"\", ");
     if (n >= 4) { emit_str_operand(c, a[3]); sb_put(&c->out, ".data)"); } else sb_put(&c->out, "\"\")");
-    sb_put(&c->out, ", \"LLM.POLICYOUT\", ");
+    sb_put(&c->out, ", \"LLM.POLICY: verbo fallito\", ");
     { char lb[16]; snprintf(lb, sizeof lb, "%d", line); sb_put(&c->out, lb); }
     sb_put(&c->out, "))");
     return 1;
@@ -8466,7 +8466,7 @@ static int aimo_llm_arch_out(ctx_t* c, gmb_expr_t** a, int n, int line) {
     if (n >= 2) { emit_str_operand(c, a[1]); sb_put(&c->out, ".data, "); } else sb_put(&c->out, "\"\", ");
     if (n >= 3) { emit_str_operand(c, a[2]); sb_put(&c->out, ".data, "); } else sb_put(&c->out, "\"\", ");
     if (n >= 4) { emit_str_operand(c, a[3]); sb_put(&c->out, ".data)"); } else sb_put(&c->out, "\"\")");
-    sb_put(&c->out, ", \"LLM.POLICYOUT\", ");
+    sb_put(&c->out, ", \"LLM.ARCH: verbo fallito\", ");
     { char lb[16]; snprintf(lb, sizeof lb, "%d", line); sb_put(&c->out, lb); }
     sb_put(&c->out, "))");
     return 1;
@@ -8479,7 +8479,7 @@ static int aimo_llm_module_out(ctx_t* c, gmb_expr_t** a, int n, int line) {
     if (n >= 2) { emit_str_operand(c, a[1]); sb_put(&c->out, ".data, "); } else sb_put(&c->out, "\"\", ");
     if (n >= 3) { emit_str_operand(c, a[2]); sb_put(&c->out, ".data, "); } else sb_put(&c->out, "\"\", ");
     if (n >= 4) { emit_str_operand(c, a[3]); sb_put(&c->out, ".data)"); } else sb_put(&c->out, "\"\")");
-    sb_put(&c->out, ", \"LLM.POLICYOUT\", ");
+    sb_put(&c->out, ", \"LLM.MODULE: verbo fallito\", ");
     { char lb[16]; snprintf(lb, sizeof lb, "%d", line); sb_put(&c->out, lb); }
     sb_put(&c->out, "))");
     return 1;
@@ -8492,7 +8492,7 @@ static int aimo_llm_kernel_out(ctx_t* c, gmb_expr_t** a, int n, int line) {
     if (n >= 2) { emit_str_operand(c, a[1]); sb_put(&c->out, ".data, "); } else sb_put(&c->out, "\"\", ");
     if (n >= 3) { emit_str_operand(c, a[2]); sb_put(&c->out, ".data, "); } else sb_put(&c->out, "\"\", ");
     if (n >= 4) { emit_str_operand(c, a[3]); sb_put(&c->out, ".data)"); } else sb_put(&c->out, "\"\")");
-    sb_put(&c->out, ", \"LLM.POLICYOUT\", ");
+    sb_put(&c->out, ", \"LLM.KERNEL: verbo fallito\", ");
     { char lb[16]; snprintf(lb, sizeof lb, "%d", line); sb_put(&c->out, lb); }
     sb_put(&c->out, "))");
     return 1;
@@ -8505,7 +8505,7 @@ static int aimo_llm_kv_out(ctx_t* c, gmb_expr_t** a, int n, int line) {
     if (n >= 2) { emit_str_operand(c, a[1]); sb_put(&c->out, ".data, "); } else sb_put(&c->out, "\"\", ");
     if (n >= 3) { emit_str_operand(c, a[2]); sb_put(&c->out, ".data, "); } else sb_put(&c->out, "\"\", ");
     if (n >= 4) { emit_str_operand(c, a[3]); sb_put(&c->out, ".data)"); } else sb_put(&c->out, "\"\")");
-    sb_put(&c->out, ", \"LLM.POLICYOUT\", ");
+    sb_put(&c->out, ", \"LLM.KV: verbo fallito\", ");
     { char lb[16]; snprintf(lb, sizeof lb, "%d", line); sb_put(&c->out, lb); }
     sb_put(&c->out, "))");
     return 1;

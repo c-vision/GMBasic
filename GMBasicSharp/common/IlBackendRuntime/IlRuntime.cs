@@ -9725,9 +9725,13 @@ public static double TextWidth(string s)
     // I verbi PLAN/POLICY/QUANT/MERGE/PRUNE/EXTRACT/PROFILE/ARCH sono eseguiti dalla STESSA logica C
     // di C99Native/VM-C (una sola sorgente, AGENTS: C#→C ammesso; C→C# mai). Mai
     // silenzioso: rc != 0 → errore esplicito.
+    /// <summary>Esito di un verbo LLM nativo: su fallimento ERR 5 con il testo UNIFORME delle
+    /// quattro gambe. Prima `InvalidOperationException` diventava 200 su IL e PCode, mentre
+    /// C99Native riportava il -1 della libreria e VM/C 0: stesso errore, quattro codici.</summary>
     private static string LlmEnsure(int rc, string verb, string detail)
     {
-        if (rc != 0) throw new InvalidOperationException("LLM verbo fallito");   /* testo UNIFORME su 4 backend */
+        if (rc != 0)
+            throw new BasicException(ErrorCode.IllegalFunctionCall, SourcePosition.Unknown, "LLM verbo fallito");
         return "{\"ok\":true}";
     }
 
@@ -9923,14 +9927,19 @@ public static double TextWidth(string s)
 
     /// <summary>LLM.TOKENS(model, testo) → "74,71,78,…" (gli id come dato, non stampati).</summary>
     public static string LlmTokens(string model, string text)
-        => LlmCaptureStr((buf, cap) => Basic.Providers.LlmModelNative.llmmodelio_tokenize_ids_to(model ?? "", text ?? "", buf, (nuint)cap));
+        => LlmCaptureStr((buf, cap) => Basic.Providers.LlmModelNative.llmmodelio_tokenize_ids_to(model ?? "", text ?? "", buf, (nuint)cap),
+                         "LLM.TOKENS: tokenizer non disponibile per il modello indicato");
 
     /// <summary>LLM.DETOKENIZE(model, "74,71,…") → testo.</summary>
     public static string LlmDetokenize(string model, string ids)
-        => LlmCaptureStr((buf, cap) => Basic.Providers.LlmModelNative.llmmodelio_detokenize_to(model ?? "", ids ?? "", buf, (nuint)cap));
+        => LlmCaptureStr((buf, cap) => Basic.Providers.LlmModelNative.llmmodelio_detokenize_to(model ?? "", ids ?? "", buf, (nuint)cap),
+                         "LLM.DETOKENIZE: tokenizer non disponibile o id non validi");
 
-    /// <summary>Buffer adattivo + decodifica UTF-8 (stesso contratto di LlmCmdTo4).</summary>
-    private static string LlmCaptureStr(Func<byte[], int, int> call)
+    /// <summary>Buffer adattivo + decodifica UTF-8 (stesso contratto di LlmCmdTo4).
+    /// Su fallimento ERR 5 (illegal function call) con `verb` quando il chiamante lo passa: prima
+    /// `InvalidOperationException` diventava ERR 200, mentre le gambe C alzano 5 (VM/C builtin) e
+    /// C99Native alzava 9. Stesso codice e stesso testo per la coppia del tokenizer.</summary>
+    private static string LlmCaptureStr(Func<byte[], int, int> call, string verb = null)
     {
         int cap = 1 << 16;
         while (true)
@@ -9940,7 +9949,9 @@ public static double TextWidth(string s)
             int n = Array.IndexOf(buf, (byte)0); if (n < 0) n = buf.Length;
             string txt = System.Text.Encoding.UTF8.GetString(buf, 0, n);
             if (rc == -2) { cap <<= 1; if (cap > (1 << 24)) throw new InvalidOperationException("LLM: output troppo grande (> 16 MiB)."); continue; }
-            if (rc < 0) throw new InvalidOperationException("LLM: verbo fallito (output non disponibile: modello/argomenti non validi).");
+            if (rc < 0)
+                throw new BasicException(ErrorCode.IllegalFunctionCall, SourcePosition.Unknown,
+                    verb ?? "LLM: verbo fallito (output non disponibile: modello/argomenti non validi).");
             if (n < cap - 1 || cap >= (1 << 24)) return txt;
             cap <<= 1;
         }
@@ -9970,7 +9981,19 @@ public static double TextWidth(string s)
             FamKv => (buf, cap) => Basic.Providers.LlmModelNative.llmmodelio_kv_cmd_to(s0, s1, s2, buf, cap),
             _ => (buf, cap) => Basic.Providers.LlmModelNative.llmmodelio_tensor_cmd_to(s0, s1, s2, s3, buf, cap),
         };
-        return LlmCaptureStr(call).TrimEnd('\n', '\r');
+        // Testo d'errore PER FAMIGLIA, identico alle gambe C (emitter C99: aimo_llm_*_out;
+        // VM/C: gmb_bf_llm*out): prima tutte le famiglie riportavano il messaggio generico
+        // "LLM: verbo fallito (output non disponibile…)", che non coincideva con nessuna.
+        string verb = family switch
+        {
+            FamPolicy => "LLM.POLICY: verbo fallito",
+            FamArch => "LLM.ARCH: verbo fallito",
+            FamModule => "LLM.MODULE: verbo fallito",
+            FamKernel => "LLM.KERNEL: verbo fallito",
+            FamKv => "LLM.KV: verbo fallito",
+            _ => "LLM.TENSOR: verbo fallito",
+        };
+        return LlmCaptureStr(call, verb).TrimEnd('\n', '\r');
     }
 
     public static string LlmPolicyOut(string sub, string a, string b, string c) => LlmFamilyOut(FamPolicy, sub, a, b, c);

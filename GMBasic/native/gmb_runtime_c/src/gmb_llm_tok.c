@@ -115,9 +115,14 @@ char* gmb_llm_cmd_out(int family, const char* sub, const char* a, const char* b,
 }
 
 /* Il valore delle funzioni LLM non e' mai un silenzio: se il verbo fallisce si alza un errore
- * BASIC catturabile (ON ERROR), come fanno le funzioni gestite con l'eccezione. */
+ * BASIC catturabile (ON ERROR), come fanno le funzioni gestite con l'eccezione.
+ * CODICE 5 (illegal function call), lo stesso dei builtin LLM della gamba VM/C e della copia
+ * WEAK in gmb_ai_gateway.c (usata quando il programma carica le funzioni LLM dalla dylib):
+ * prima qui c'era 0, per cui un MiniTest linkato contro librt.a vedeva ERR.Number 0 mentre lo
+ * stesso sorgente linkato contro la dylib vedeva 5. Le due copie devono restare identiche
+ * (AGENTS §0bis: una sola semantica, la weak e' solo il fallback statico). */
 char* gmb_llm_out_or_raise(char* r, const char* what, long line)
 {
-    if (r == NULL) gmb_raise_error(0, what ? what : "LLM: verbo fallito", line);
+    if (r == NULL) gmb_raise_error(5, what ? what : "LLM: verbo fallito", line);
     return r;
 }

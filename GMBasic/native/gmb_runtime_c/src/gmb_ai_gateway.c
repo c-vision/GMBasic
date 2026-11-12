@@ -191,10 +191,16 @@ GMB_AI_WEAK char* gmb_llm_cmd_out(int family, const char* sub, const char* a, co
 }
 
 /* Helper NON delegato: alza l'errore BASIC (sta nel core) e ritorna `r`.
- * Tenerlo qui evita un round-trip dlsym su una funzione di 3 righe. */
+ * Tenerlo qui evita un round-trip dlsym su una funzione di 3 righe.
+ * CODICE 5 (illegal function call), lo stesso che alzano i builtin LLM della gamba VM/C:
+ * prima era 9 (subscript out of range), un codice semanticamente sbagliato per un verbo LLM
+ * fallito che faceva divergere C99Native (ERR 9) dalle altre gambe. ATTENZIONE: questa e' la
+ * copia WEAK (fallback quando le funzioni LLM arrivano dalla dylib); la copia FORTE vive in
+ * gmb_llm_tok.c (linkata da librt.a) e deve alzare lo STESSO codice — se divergono, lo stesso
+ * sorgente BASIC produce ERR.Number diversi a seconda del link. */
 GMB_AI_WEAK char* gmb_llm_out_or_raise(char* r, const char* what, long line)
 {
-    if (!r) gmb_raise_error(9, what && *what ? what : "LLM error", line);
+    if (!r) gmb_raise_error(5, what && *what ? what : "LLM error", line);
     return r;
 }
 

@@ -26544,7 +26544,7 @@ static void st_aimodel(ctx_t* c, gmb_stmt_t* s) {
             sb_put(&c->out, ", ");
             emit_str_operand(c, a[1]); sb_put(&c->out, ".data, ");
             emit_str_operand(c, a[2]); sb_put(&c->out, ".data);");
-            sb_printf(&c->out, " if (_cvrc != 0) gmb_raise_error(_cvrc, \"LLM MODEL CONVERT fallita\", %d); _cvrc; })", s->line);
+            sb_printf(&c->out, " if (_cvrc != 0) gmb_raise_error(5, \"LLM MODEL CONVERT fallita\", %d); _cvrc; })", s->line);
         } else {
             sb_put(&c->out, "llmmodelio_model_convert(");
             if (na >= 1) { sb_put(&c->out, "gmb_paths_model_q("); emit_str_operand(c, a[0]); sb_put(&c->out, ".data)"); } else sb_put(&c->out, "\"\"");
@@ -26690,7 +26690,10 @@ static void st_aimodel(ctx_t* c, gmb_stmt_t* s) {
         break;
     }
     sb_put(&c->out, ";\n");
-    ind(c); sb_put(&c->out, "if (__ms_rc != 0) gmb_raise_error(0, \"AI MODEL: operazione fallita\", ");
+    /* Codice UNIFORME (5) con la gamba VM/C, che alza lo stesso errore per ogni `LLM MODEL …`:
+     * prima qui si alzava 0 e la libreria tornava -1, quindi lo stesso statement fallito dava
+     * tre codici diversi fra le gambe C e le gestite. */
+    ind(c); sb_put(&c->out, "if (__ms_rc != 0) gmb_raise_error(5, \"AI MODEL: operazione fallita\", ");
     sb_printf(&c->out, "%d);\n", s->line);
     c->indent--; ind(c); sb_put(&c->out, "}\n");
 }
@@ -26815,7 +26818,10 @@ static void emit_llm_call_open(ctx_t* c) {
 }
 static void emit_llm_call_close(ctx_t* c, gmb_stmt_t* s, const char* cmd_label) {
     sb_put(&c->out, ";\n");
-    ind(c); sb_printf(&c->out, "if (_llmrc != 0) gmb_raise_error(_llmrc, \"LLM verbo fallito\", %d);\n", s->line);
+    /* Codice UNIFORME sulle quattro gambe: la libreria torna -1, ma ERR.Number deve essere 5
+     * (illegal function call) come su IL/PCode/VM/C. Prima `_llmrc` finiva in ERR.Number, per
+     * cui lo stesso verbo fallito dava -1 qui, 200 su IL/PCode e 0 su VM/C. */
+    ind(c); sb_printf(&c->out, "if (_llmrc != 0) gmb_raise_error(5, \"LLM verbo fallito\", %d);\n", s->line);
     ind(c); sb_put(&c->out, "}\n");
 }
 static void emit_ai_domain(ctx_t* c, gmb_stmt_t* s) {
