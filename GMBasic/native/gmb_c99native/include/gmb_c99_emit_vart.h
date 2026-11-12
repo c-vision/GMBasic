@@ -111,6 +111,12 @@ typedef struct { char* name; int type; int is_array; int ndims; int byref; int g
                  int is_static;   /* STATIC dentro una procedura: dichiarata `static` nel
                                    * prologo della funzione (persiste fra le chiamate) e
                                    * inizializzata una volta sola dal sito DIM. */
+                 int decl_indent; /* Profondità del blocco C in cui la variabile è stata
+                                   * DICHIARATA (1 = prologo/livello funzione, >1 = blocco).
+                                   * 0 = "da dichiarare al primo LET" (locale creata dal pass di
+                                   * registrazione per un LET che ombreggia una GLOBAL). Serve a
+                                   * decidere se una `LET` deve DICHIARARE una variabile di blocco
+                                   * (spec §3.1/§6) o è una semplice assegnazione. */
                } var_t;
 
 /* `vars_t` dipende da `var_t`: una sola definizione anche di questa. */

@@ -160,10 +160,14 @@ if [ ! -x "$DRV" ] || [ "$DRV" -ot "$HOST_BUILD/libgmb_compiler_c.a" ] || \
   # gmb_opt_env/gmb_paths/gmb_abi vivono nel runtime ma il driver li usa per il registro
   # opzioni: il target CMake `gmbnative` li compila DENTRO (vedi gmb_compiler_c/CMakeLists.txt);
   # il link manuale del gate deve fare lo stesso, altrimenti "_gmb_opt_env non definito".
+  # Stesso motivo per `gmb_first_use_spawn.c`: il driver chiama `gmb_first_use_spawn_if_needed`
+  # (primo uso delle librerie/toolchain) e senza quel sorgente il gate non linka
+  # (`_gmb_first_use_spawn_if_needed` undefined).
   cc "$DRIVER_SRC" \
      "$ROOT/native/gmb_runtime_c/src/gmb_opts.c" \
      "$ROOT/native/gmb_runtime_c/src/gmb_paths.c" \
      "$ROOT/native/gmb_runtime_c/src/gmb_abi.c" \
+     "$ROOT/native/gmb_runtime_c/src/gmb_first_use_spawn.c" \
      $INC_C $INC_RT "$HOST_BUILD/libgmb_compiler_c.a" -o "$DRV" || exit 1
 fi
 

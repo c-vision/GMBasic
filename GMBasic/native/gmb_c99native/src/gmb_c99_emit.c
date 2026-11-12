@@ -3597,7 +3597,7 @@ static void reg_let_assign(ctx_t* c, gmb_stmt_t* s, vars_t* scope) {
                          && vars_find(&c->globals, s->target) != NULL;
         if (s->target && (let_shadow || !use_global(c, scope, s->target))) {
             var_t* tv = vars_add(scope, s->target, suffix_type(s->target));
-            if (let_shadow && tv) tv->late_local = 1;
+            if (let_shadow && tv) { tv->late_local = 1; tv->decl_indent = 0; }
             /* F2: `x = MATRIX.TRANSPOSE/SLICE/RESHAPE/CLONEMATRIX(...)` su variabile
              * implicita → matrice rank-2 nativa (double* + __bK). */
             if (s->value && s->value->kind == GMB_EXPR_CALL
@@ -18758,35 +18758,47 @@ static void st_let_assign(ctx_t* c, gmb_stmt_t* s) {
             ind(c); sb_printf(&c->out, "gmb_err_set_resume(&__res%d);\n", res_guard);
             ind(c); sb_printf(&c->out, "if (setjmp(__res%d) != 0) goto __resume_end_%d;\n", res_guard, res_guard);
         }
-        /* LET su un nome che ombreggia una GLOBAL (Variables-Scope §3.1): la locale va
-         * DICHIARATA qui (punto d'uso) e inizializzata col valore — non è un'assegnazione alla
-         * globale. Il flag late_local è stato messo dal pass di registrazione e viene azzerato
-         * dopo: le LET successive sullo stesso nome (e tutte le letture che seguono) usano la
-         * locale, mentre le istruzioni PRIMA di questa continuavano a vedere la globale. */
+        /* LET = variabile dello SCOPE CORRENTE (Variables-Scope §3.1/§6). Tre casi:
+         *  - nome già dichiarato in QUESTO blocco C → semplice assegnazione;
+         *  - nome dichiarato in un blocco ESTERNO (parametro, DIM di procedura, LET di un
+         *    blocco precedente) → qui si DICHIARA una variabile di blocco che lo ombreggia
+         *    (`gmb_double_t x = <valore>;`): C applica da sé lo scoping, e quando il blocco
+         *    chiude il nome torna a indicare quella esterna;
+         *  - nome che esiste solo come GLOBAL → il pass di registrazione ha già creato la
+         *    locale con late_local/decl_indent = 0: si dichiara al primo LET.
+         * Il flag late_local nasconde la locale alle letture PRIMA della dichiarazione. */
         if (s->is_let && s->target && !s->array_index && !strchr(s->target, '.')) {
             var_t* shv = NULL;
             if (c->cur_fn) shv = vars_find(&c->cur_fn->locals, s->target);
-            if (shv && shv->late_local) {
-                int sh_str = shv->type == TY_STR;
-                int sh_simple = !shv->is_array && !shv->gkind && !shv->vclass[0] && !shv->boxed_val
-                                && !shv->matrix && !shv->matrix_value && !shv->jagged && !shv->dyn_len
-                                && !shv->nullable && !shv->sb_builder && !shv->regex_obj
-                                && !shv->coll_handle && !shv->matrix_handle && !shv->cell;
-                if (!sh_simple) {
-                    c99_fail(c, s->line, "LET %s: l'ombreggiamento di una GLOBAL con un tipo composto non è supportato dall'emitter C", s->target);
+            if (shv) {
+                /* Il blocco che aveva dichiarato l'ombra è chiuso (la profondità C è scesa):
+                 * la dichiarazione C non è più in scope → la prossima LET deve ridichiarare. */
+                if (shv->decl_indent > 1 && shv->decl_indent > c->indent) shv->decl_indent = 0;
+                int need_decl = shv->late_local || shv->decl_indent == 0
+                                || (c->indent > 1 && shv->decl_indent < c->indent);
+                if (need_decl) {
+                    int sh_str = shv->type == TY_STR;
+                    int sh_simple = !shv->is_array && !shv->gkind && !shv->vclass[0] && !shv->boxed_val
+                                    && !shv->matrix && !shv->matrix_value && !shv->jagged && !shv->dyn_len
+                                    && !shv->nullable && !shv->sb_builder && !shv->regex_obj
+                                    && !shv->coll_handle && !shv->matrix_handle && !shv->cell;
+                    if (!sh_simple) {
+                        c99_fail(c, s->line, "LET %s: l'ombreggiamento di una variabile con un tipo composto non è supportato dall'emitter C", s->target);
+                        res_guard_end(c, res_guard);
+                        return;
+                    }
+                    ind(c);
+                    sb_put(&c->out, sh_str ? "gmb_string_t " : "gmb_double_t ");
+                    emit_ident(c, shv->name);
+                    sb_put(&c->out, " = ");
+                    if (sh_str) emit_str_operand(c, s->value);
+                    else emit_num_operand(c, s->value);
+                    sb_put(&c->out, ";\n");
+                    shv->decl_indent = c->indent;
+                    shv->late_local = 0;
                     res_guard_end(c, res_guard);
                     return;
                 }
-                ind(c);
-                sb_put(&c->out, sh_str ? "gmb_string_t " : "gmb_double_t ");
-                emit_ident(c, shv->name);
-                sb_put(&c->out, " = ");
-                if (sh_str) emit_str_operand(c, s->value);
-                else emit_num_operand(c, s->value);
-                sb_put(&c->out, ";\n");
-                shv->late_local = 0;
-                res_guard_end(c, res_guard);
-                return;
             }
         }
         /* Suffisso tipo BASIC sulla SCRITTURA scalare (`S$ = …`, `n% = …`): il suffisso NON
@@ -33929,6 +33941,13 @@ static void emit_function(ctx_t* c, fn_info_t* fn) {
     }
     /* dichiarazioni locali (esclusi i parametri e le variabili catturate: queste
      * vivono nella struct __ctx della closure, FASE 2.6(j)) */
+    for (int i = 0; i < fn->locals.n; i++) {
+        var_t* pv0 = &fn->locals.v[i];
+        /* Tutto ciò che è dichiarato nel prologo (parametri compresi: gli argomenti sono
+         * copiati nello slot dal chiamante) vive al livello FUNZIONE: una `LET` dentro un
+         * blocco deve quindi dichiarare una variabile di blocco che lo ombreggi. */
+        if (pv0->decl_indent == 0 && !pv0->late_local) pv0->decl_indent = 1;
+    }
     for (int i = s->n_params; i < fn->locals.n; i++) {
         var_t* v = &fn->locals.v[i];
         if (v->captured) continue;

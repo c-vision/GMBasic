@@ -748,12 +748,39 @@ public sealed partial class Compiler
     }
 
     /// <summary>
+    /// <c>LET x = …</c>: se <c>x</c> non esiste nello SCOPE CORRENTE (o esiste solo in uno
+    /// scope esterno) crea una variabile locale del blocco — l'ombreggiamento previsto dalla
+    /// specifica (Variables-Scope §3.1/§6). Un nome già dichiarato a questo stesso livello (o un
+    /// parametro, che vive al livello della procedura) viene riusato: `LET` ripetuta nello stesso
+    /// blocco è una semplice assegnazione.
+    /// </summary>
+    private void EnsureLetBlockLocal(VariableTarget target)
+    {
+        var name = target.NameCleaned.Lexeme;
+        if (string.IsNullOrEmpty(name)) return;
+        var idx = ResolveLocal(name);
+        if (idx != -1 && _locals[idx].Depth >= _scopeDepth) return;   // già a questo livello
+        AddLocal(target.NameCleaned);
+        _locals[^1].NumericDefault = target.NameSuffixed.Lexeme is { Length: > 0 } lex
+                                     && !lex.EndsWith('$');
+    }
+
+    /// <summary>
     /// Compila un'istruzione LET (assegnazione esplicita o implicita).
     /// </summary>
     private void VisitLetStatement(LetStmt stmt)
     {
         foreach (var assignment in stmt.Assignments)
         {
+            /* LET = variabile dello SCOPE CORRENTE (Variables-Scope §3.1/§6): dentro un blocco
+             * una `LET x = …` su un nome che vive in uno scope ESTERNO crea una NUOVA variabile
+             * di blocco che lo ombreggia — l'esterno resta intatto alla chiusura del blocco.
+             * La creazione avviene PRIMA di valutare il valore (l'inizializzatore vede la nuova
+             * variabile, come il backend IL); l'assegnazione implicita (`x = …`, senza LET) non
+             * passa da qui e continua a cercare verso l'alto. */
+            if (stmt.LetToken is not null && assignment.Target is VariableTarget letTarget)
+                EnsureLetBlockLocal(letTarget);
+
             // Fusion nativo: `acc = acc + f(I) * m` dentro un FOR → un solo opcode C nativo.
             // Additivo: se il pattern non matcha, si procede con l'emissione normale.
             if (TryEmitNativeLoopAccumulator(assignment))
