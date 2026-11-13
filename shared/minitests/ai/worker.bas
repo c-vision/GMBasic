@@ -1,8 +1,11 @@
 ' P3 AI WORKER — lifecycle + workspace + state save/load.
 ' EXPECT: new= ok|run= ok|save= ok|load= nota|rounds=  1|spend=  0|rescued=  0
-' NOTA: `spend`/`rescued` sono 0 sulle gambe managed (il completer FIXTURE non conta token) e
-' `251`/`1` su C99Native, che invece li conta: DIVERGENZA APERTA (contabilita' token del
-' worker fra le gambe), non un oracolo da aggiustare.
+' NOTA: `AI WORKER RUN` registra SOLO un round (rounds++); `spend` (caratteri della vista di
+' contesto) e `rescued` (fallimenti recuperati) appartengono all'invocazione pulita
+' `AI WORKER "<TASK>"` e al LOOP: qui restano 0 su tutte e 4 le gambe. Prima su C99Native
+' valevano 251|1 perche' il parser C non riconosceva il sub-verbo RUN (soft keyword) e
+' emetteva `gmb_worker_invoke("RUN")` con il nome del worker perso: bug chiuso nel parser
+' (`gmb_parser_stmt_domain.c`), non nell'oracolo.
 IMPORT AI
 IMPORT STRINGS
 
