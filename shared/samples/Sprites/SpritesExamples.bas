@@ -158,7 +158,21 @@ SUB Main()
     ' Controlla se l'utente preme ESC per uscire
     INKEY K$
     IF K$ <> "" THEN EXIT DO
-    IF Alive <= 1 THEN EXIT DO ' un solo sprite non può più collidere: fine (niente ciclo infinito)
+    ' FINE: quando resta UN solo sprite non può più collidere (una collisione richiede due
+    ' sprite). Prima si usciva lasciandolo a schermo ("il programma ha finito con ancora
+    ' sprite sullo schermo"): qui si spengono gli ultimi rimasti e la fiamma, così la scena
+    ' resta VUOTA e il ciclo non può diventare infinito.
+    IF Alive <= 1 THEN
+      FOR I = 0 TO NumSprites - 1
+        IF Vivo(SprID(I)) = 1 THEN
+          SPRITE OFF SprID(I)
+          Vivo(SprID(I)) = 0
+          Alive = Alive - 1
+        END IF
+      NEXT I
+      SPRITE OFF ExplosionID
+      EXIT DO
+    END IF
   LOOP
   ' Chiude la finestra grafica e torna alla modalità testo
   ' Attende un tasto REALE prima di chiudere (WAITKEY in headless non blocca:
