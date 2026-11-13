@@ -1814,7 +1814,10 @@ static void cls_emit_arr_alloc(ctx_t* c, struct cls_info* ci, const char* inst_e
         ind(c);
         sb_printf(&c->out, "%s->", inst_expr);
         sb_ident(&c->out, ci->fname[k]);
-        sb_printf(&c->out, " = (%s*)calloc((size_t)%d, sizeof(%s));\n", ec, sz, elem);
+        /* Il membro ha tipo `ec` (es. "gmb_double_t*"); il cast deve essere quello dell'ELEMENTO
+         * (`elem`, senza il '*' finale), altrimenti esce "(gmb_double_t**)" su un membro
+         * "gmb_double_t*": clang lo accetta come warning, clang>=22 e' errore. */
+        sb_printf(&c->out, " = (%s*)calloc((size_t)%d, sizeof(%s));\n", elem, sz, elem);
     }
 }
 /* stringa del tipo dichiarato di un campo della classe (NULL se assente) */
@@ -16800,7 +16803,9 @@ static int is_matrix_value_call_tk(gmb_tokenkind_t tk) {
               var_t* xv = (xa && xa->kind == GMB_EXPR_VAR) ? lookup_var(c, xa->var) : NULL;
               var_t* yv = (ya && ya->kind == GMB_EXPR_VAR) ? lookup_var(c, ya->var) : NULL;
               if (xv && xv->is_array && yv && yv->is_array) {
-                  ind(c); emit_ident(c, pv->name);
+                  /* out_len di gmb_gfx_collide_batch e' `int*` (vedi gmb_graphics.h), non
+                   * gmb_int_t*: si scrive in un int temporaneo e poi in <nome>_len. */
+                  ind(c); sb_put(&c->out, "{ int _gfxn = 0; "); emit_ident(c, pv->name);
                   sb_put(&c->out, " = gmb_gfx_collide_batch(");
                   emit_ident(c, xv->name); sb_put(&c->out, ", (int)(");
                   emit_arr_len_of(c, xv); sb_put(&c->out, "), ");
@@ -16808,7 +16813,8 @@ static int is_matrix_value_call_tk(gmb_tokenkind_t tk) {
                   emit_arr_len_of(c, yv); sb_put(&c->out, "), (double)(");
                   emit_expr(c, value->args[2]); sb_put(&c->out, "), (double)(");
                   emit_expr(c, value->args[3]);
-                  sb_put(&c->out, "), &"); emit_ident(c, pv->name); sb_put(&c->out, "_len);\n");
+                  sb_put(&c->out, "), &_gfxn); "); emit_ident(c, pv->name);
+                  sb_put(&c->out, "_len = (gmb_int_t)_gfxn; }\n");
                   return;
               }
           }
