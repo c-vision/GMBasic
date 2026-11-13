@@ -59,6 +59,9 @@ SUB Main()
   '           VelBase   = velocità massima in px/frame (più alto = più veloce).
   CONST FrameDelay = 6
   CONST VelBase = 1.6
+  ' ACCELERAZIONE PROGRESSIVA: man mano che gli aerei esplodono gli altri accelerano.
+  ' Boost va da 1× (tutti vivi) a 1+BoostMax (quasi finiti): BoostMax = 3 → fino a 4×.
+  CONST BoostMax = 3.0
   DIM SprID(NumSprites) AS LONG
   FOR I = 0 TO NumSprites - 1
     SPRITE LOAD "player.png", SprID(I)
@@ -105,16 +108,20 @@ SUB Main()
   NEXT I
   
   ' --- GAME LOOP PRINCIPALE ---
+  DIM Boost AS DOUBLE
   DO
     ' 1. Pulisce lo schermo a ogni frame
     CLS 1 ' Sfondo blu
     
     ' 2. Fase di UPDATE (mosso dalla CPU)
+    ' ACCELERAZIONE PROGRESSIVA: ogni aereo esploso rende gli altri un po' più veloci
+    ' (Alive scende → Boost sale: 1× all'inizio, 1+BoostMax quando ne restano pochi).
+    Boost = 1 + (((NumSprites - Alive) / NumSprites) * BoostMax)
     ' Questo loop aggiorna la logica di gioco (le posizioni).
     FOR I = 0 TO NumSprites - 1
       ' Aggiorna posizione
-      PosX(I) = PosX(I) + VelX(I)
-      PosY(I) = PosY(I) + VelY(I)
+      PosX(I) = PosX(I) + VelX(I) * Boost
+      PosY(I) = PosY(I) + VelY(I) * Boost
       
       ' Bordi: RIMBALZO (non wrapping) con cambio di direzione e velocità casuale.
       ' Le coordinate dello sprite sono il CENTRO (il motore disegna a x-w/2): i bordi sono
