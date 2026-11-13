@@ -1,16 +1,20 @@
 ' P3 AI WORKER — lifecycle + workspace + state save/load.
-' EXPECT: new= ok|run= ok|save= ok|load= nota|rounds=  1|spend=  0|rescued=  0
-' NOTA: `AI WORKER RUN` registra SOLO un round (rounds++); `spend` (caratteri della vista di
-' contesto) e `rescued` (fallimenti recuperati) appartengono all'invocazione pulita
-' `AI WORKER "<TASK>"` e al LOOP: qui restano 0 su tutte e 4 le gambe. Prima su C99Native
-' valevano 251|1 perche' il parser C non riconosceva il sub-verbo RUN (soft keyword) e
-' emetteva `gmb_worker_invoke("RUN")` con il nome del worker perso: bug chiuso nel parser
-' (`gmb_parser_stmt_domain.c`), non nell'oracolo.
+' EXPECT: new= ok|run= ok|save= ok|load= nota|rounds=  1|spend=  7|rescued=  1
+' NOTA: `AI WORKER RUN` è un ROUND DI LAVORO (come `AI WORKER "<TASK>"`, senza testo di task):
+' costruisce la vista curata dal solo stato del workspace e la manda al completer. Qui non c'è
+' provider → sentinella "Error: nessun provider LLM configurato" ⇒ rescued=1, e spend = 7 =
+' lunghezza della vista "TASK: \n" (per questo il test CANCELLA il workspace: senza la pulizia la
+' vista includerebbe SOLUTION/STATE del run precedente e spend non sarebbe deterministico).
+' rounds/spend/rescued sono per-processo: identici su tutte e 4 le gambe (semantica unica nel
+' runtime: wkr_round in C, InvokeWithView nel managed).
 IMPORT AI
 IMPORT STRINGS
 
 SUB Main()
   CHDIR PROJECTFOLDER()
+    ' Workspace ERMETICO: il run precedente lascia solution/last_error/state/*, che entrerebbero
+    ' nella vista curata (spend dipenderebbe dalla storia del checkout).
+    IF IO.DIREXISTS("work/w1") THEN RMDIR "work/w1", TRUE
     ' AI WORKER NEW name, {opts}
     AI WORKER NEW "w1", "{""workspace"":""work/w1"",""budget"":16000}"
     IF AI.WORKERROUNDS() >= 0 THEN

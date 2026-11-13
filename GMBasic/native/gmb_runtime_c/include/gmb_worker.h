@@ -5,6 +5,11 @@
 #include "gmb_runtime.h"
 
 double       gmb_worker_new(const char* name, const char* opts);
+/* AI WORKER RUN <name> — UN ROUND DI LAVORO sul worker indicato per nome: stessa invocazione
+ * pulita di `AI WORKER "<TASK>"` (vista curata = solo stato del workspace, Context Engine con la
+ * chiave "worker:<name>", completer, contatori rounds/spend e rescued sui fallimenti), senza testo
+ * di task. Con "Error:" dal provider: rescued++, last_error, -2. Nome sconosciuto → -1 (nessun
+ * worker fantasma: la ricerca non alloca). Speculare a AiWorkerRuntime.WorkerRun (C#). */
 double       gmb_worker_run(const char* name);
 /* AI WORKER "<TASK>" — INVOCAZIONE PULITA (C1, P3): vista curata = SOLO memoria esterna del
  * run (workspace: task, plan.md, notes.md, solution, state), normalizzata dal Context Engine

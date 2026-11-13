@@ -1005,10 +1005,16 @@ internal sealed partial class PCodeProcessor
             }
             case SysCall.RMDIR:
             {
-                var path = PopString(task);
+                // Ordine di POP: l'emitter PCode pusha PRIMA il path e POI il flag ricorsivo
+                // (Compiler.FileSystem.VisitRmDirStatement) → il flag è in cima allo stack.
+                // Prima si poppava la stringa per prima (prendeva "0"/"-1") e si chiamava
+                // `File.Delete(path)` su una DIRECTORY (no-op): `RMDIR "dir", TRUE` non
+                // cancellava NULLA sulla gamba PCode (misurato: IL/VM-C rimuovono, PCode no).
                 var recursive = task.Sp > 0 ? PopNum(task) != 0 : false;
-                if (!string.IsNullOrEmpty(path))
-                    _runtime.File.Delete(path);
+                var path = PopString(task);
+                // Stessa semantica di IlRuntime.RemoveDirectory (parità IL/PCode).
+                if (!string.IsNullOrEmpty(path) && Directory.Exists(path))
+                    Directory.Delete(path, recursive);
                 break;
             }
             case SysCall.CHDIR:
