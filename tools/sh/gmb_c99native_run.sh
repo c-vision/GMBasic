@@ -9,11 +9,19 @@ if [ -z "${GMB_BUILDBIN_ON:-}" ]; then
   GMB_BUILDBIN="$(cd "$(dirname "$0")" && pwd)/buildbin"
   [ -d "$GMB_BUILDBIN" ] && export PATH="$GMB_BUILDBIN:$PATH"
 fi
+# ZIG è il compilatore canonico (un solo toolchain su ogni piattaforma): default = tools/sh/zcc,
+# che è `zig cc` + i flag che su macOS clang Apple ricava da sé. Va risolto ORA, prima del `cd`
+# in $ROOT più sotto. Senza zig si ripiega su `cc`.
+SH_TOOLS="$(cd "$(dirname "$0")" && pwd)"
+ZCC_DEFAULT=""
+[ -x "$SH_TOOLS/zcc" ] && ZCC_DEFAULT="$SH_TOOLS/zcc"
 
 # tools/sh/gmb_c99native_run.sh — compila+linka+esegue l'output del driver C99Native.
 # Uso: gmb_c99native_run.sh <sample.bas> [suffisso] [cflags]
 #      [--cc <compilatore>] [--target <triple>]
-#   --cc     il compilatore C (default: cc). Accetta una stringa multi-parola: `--cc "<zig> cc"`.
+#   --cc     il compilatore C (default: ZIG via tools/sh/zcc, il toolchain canonico: stessi
+#            artefatti su ogni piattaforma). `--cc cc` resta per la gamba A/B di confronto.
+#            Accetta anche una stringa multi-parola: `--cc "<zig> cc"`.
 #   --rid    RID di destinazione (i sei del piano: osx-arm64, osx-x64, linux-x64, linux-arm64,
 #            win-x64, win-arm64). Fissa triple, OS, framework e terze parti via
 #            `tools/sh/gmb_link_set.sh` (F5): con `--rid linux-x64` da macOS si PRODUCE il binario
@@ -204,8 +212,8 @@ fi
 # Profilo C: bootstrap deterministico (i settings del compilatore sono letti dal toolchain C;
 # qui niente Python). CF_OVERRIDE permette di forzare i flag.
 CF="${CF_OVERRIDE:--O1 -w}"
-# Compilatore C: default `cc`, sostituibile con `--cc` (es. "<zig> cc" per il cross).
-CC_BIN="${CC_ARG:-cc}"
+# Compilatore C: default ZIG (tools/sh/zcc); `--cc cc` per la gamba A/B, o "<zig> cc" per il cross.
+CC_BIN="${CC_ARG:-${ZCC_DEFAULT:-cc}}"
 
 ABS=$(cd "$(dirname "$B")" && pwd)/$(basename "$B")
 DIR=$(cd "$(dirname "$B")" && pwd)

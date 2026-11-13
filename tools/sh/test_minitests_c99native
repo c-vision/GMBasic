@@ -87,8 +87,16 @@ MOE_LIB="$LLMENV/LLMEngine/mlx/build-gmbasic/llmengine_moe_mlx_build/libllmengin
 # CUA/browser: i backend C usano gmb_agent_runtime (C) — vedi CUA-Universal-Action-Runtime-Guida.
 # gmb_agent_runtime dipende dal motore Jinja C (gmb_chat_template.c -> gmb_jinja): va linkato.
 AGENT_SRCS="$(echo "$ROOT"/native/gmb_agent_runtime/*.c) $LLMENV/LLMJinja/llmjinja.c $LLMENV/LLMJinja/llmjinja_builtins.c"
+# ZIG È IL COMPILATORE CANONICO (accordo 2026-11-13: un solo toolchain, artefatti uguali su
+# ogni piattaforma). Default = `tools/sh/zcc`, cioè `zig cc` + i flag che su macOS clang Apple
+# ricava da sé. `--cc cc` resta soltanto come gamba A/B di confronto, NON come default.
+# Se zig non è installato si ripiega su `cc` con un avviso: il runner non deve morire su una
+# macchina senza toolchain zig (la cache del runtime resta separata perché lo stamp include il
+# compilatore, vedi `cc=$FC`).
+if [ -z "$PRE_CC" ] && [ -x "$MONO/tools/sh/zcc" ]; then PRE_CC="tools/sh/zcc"; fi
 # `--cc "tools/sh/zcc"` è relativo al MONOREPO, ma qui la cwd è `$ROOT`: si risolve sotto `$MONO`.
 case "$PRE_CC" in ""|/*) : ;; *) [ -f "$MONO/$PRE_CC" ] && PRE_CC="$MONO/$PRE_CC" ;; esac
+[ -n "$PRE_CC" ] || echo "compilatore: cc (fallback: tools/sh/zcc non eseguibile, installa la toolchain zig)" >&2
 FC="${PRE_CC:-cc}"          # compilatore (F5: `--cc "<zig> cc"` come nel runner diretto)
 TF=""                        # -target del RID (F5)
 if [ -n "$PRE_RID" ] && [ -z "$PRE_TRIPLE" ]; then
@@ -124,7 +132,9 @@ fi
 AR_CMD="ar"
 case "$PRE_CC" in
   *zig*' cc') AR_CMD="${PRE_CC% cc} ar" ;;
-esac
+  *zcc)       ZIGBIN="$("$PRE_CC" --print 2>/dev/null | awk '{print $1}')"
+              [ -n "$ZIGBIN" ] && AR_CMD="$ZIGBIN ar" ;;   # ar di Apple rifiuta oggetti non-Mach-O
+             esac
 FRAMEWORKS="${LS_FRAMEWORKS[*]+${LS_FRAMEWORKS[*]}}"   # vuoto fuori da macOS; `set -u` + bash 3.2
 if [ "$TARGET_RID" != "$HOST_RID" ]; then
   echo "cross $TARGET_RID da $HOST_RID: i binari vengono linkati ma NON eseguiti" >&2
@@ -438,6 +448,7 @@ fi
   echo "MiniTest non trovati: attesi in $ROOT/MiniTests o $ROOT/../shared/minitests (o in GMB_MINI_ROOT)"; exit 1;
 }
 echo "MiniTest: $MINI"
+echo "Compilatore: $FC"
 # Rumore diagnostico del motore MLX: prefissi in UNA fonte di verità (`tests/engine_noise_prefixes.txt`
 # nel repo originale, `GMBasicSharp/tests/` nel monorepo — la stessa lista dell'xUnit).
 NOISE_FILE="${GMB_NOISE_FILE:-}"
