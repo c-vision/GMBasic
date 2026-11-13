@@ -18274,17 +18274,27 @@ public static double TextWidth(string s)
     {
         try
         {
-            var v = MacroEvalExprWithLocals(ev, System.Array.Empty<string>(), System.Array.Empty<object?>());
+            var v = MacroEvalExprPCodeEx(ev, System.Array.Empty<string>(), System.Array.Empty<object?>(),
+                out var implicitName);
+            /* Nome nudo IGNOTO (il compilatore ha dovuto creare la variabile): il valutatore C, che
+             * è il riferimento del contratto ("un evento non eseguibile è tracciato, mai ignorato"),
+             * lo risolve a NIL e `gmb_replay_auto` registra l'errore; qui il canone EVAL darebbe lo
+             * slot transiente 0 e l'evento risulterebbe "ok". Stesso testo del C, così l'esito è
+             * identico sulle 4 gambe (divergenza misurata: samples/Ai/RuntimeFullCoverage §6.2). */
+            if (implicitName)
+                return "non eseguibile";
             // Contratto CONDIVISO col mondo C: un evento è "eseguito" solo se produce un valore.
             // Il valutatore C# NON solleva: segnala il fallimento con `null` (NIL) oppure con la
             // convenzione interna della pipeline macro, la stringa "MACRO ERROR: …" → entrambi
-            // sono registrati come ERRORE, mai "ok" silenzioso.
-            if (v is null) return "error: evento non eseguibile (valuta a NIL)";
+            // sono registrati come ERRORE, mai "ok" silenzioso. Il testo è il MOTIVO: il prefisso
+            // "error: <evento> → " lo aggiunge ReplayRegistry.Auto (come il C), quindi NON va
+            // ripetuto qui (prima usciva "error: X → error: …").
+            if (v is null) return "evento non eseguibile (valuta a NIL)";
             if (v is string s && s.StartsWith("MACRO ERROR:", System.StringComparison.Ordinal))
-                return "error: " + s;
+                return s;
             return "";
         }
-        catch (System.Exception ex) { return "error: " + ex.Message; }
+        catch (System.Exception ex) { return ex.Message; }
     }
 
     public static double ReplayRun(string sessionId, string targetId)
@@ -19461,7 +19471,18 @@ public static double TextWidth(string s)
     /// EVAL/&amp; non ha alcun uso pratico, un'assegnazione sì — è quello che l'utente intendeva.
     /// </summary>
     private static object? MacroEvalExprPCode(string code, string[]? localNames = null, object?[]? localValues = null)
+        => MacroEvalExprPCodeEx(code, localNames, localValues, out _);
+
+    /// <summary>Come <see cref="MacroEvalExprPCode"/>, ma riporta in <paramref name="implicitName"/>
+    /// se il valore proviene da un NOME NUDO che il compilatore ha dovuto CREARE perché ignoto
+    /// (nessun simbolo nel programma ospite, nessun campo DBF, nessun locale): il canone EVAL lo
+    /// tiene nello scope transiente (valore 0/""), ma il valutatore del runtime C
+    /// (<c>gmb_eval_env</c>/<c>vm_expr_get</c>) lo risolve a NIL. Serve a `AI REPLAY AUTO`, che deve
+    /// trattare l'evento come NON ESEGUIBILE in entrambi i mondi (vedi EvalReplayEvent).</summary>
+    private static object? MacroEvalExprPCodeEx(string code, string[]? localNames, object?[]? localValues,
+        out bool implicitName)
     {
+        implicitName = false;
         if (string.IsNullOrWhiteSpace(code))
             return code;
         var program = Volatile.Read(ref _macroProgram) ?? MinimalMacroProgram;
@@ -19526,6 +19547,19 @@ public static double TextWidth(string s)
                 ExternalHostProcs = clrTableE
             };
             var chunk = compiler.CompileExpressionBody(ImmutableArray<Parameter>.Empty, expr);
+
+            /* Nome nudo IGNOTO: `VariableExpr` che non corrisponde a nessun simbolo reale
+             * dell'host, a nessun campo DBF attivo e a nessun locale. Il canone EVAL lo tiene
+             * nello scope transiente (0/""), ma il valutatore del runtime C lo risolve a NIL:
+             * serve a `AI REPLAY AUTO` per registrare l'evento come NON ESEGUIBILE in entrambi i
+             * mondi. Nessun falso positivo: le costanti (PI, TRUE…) non sono `VariableExpr`
+             * (PI è BuiltinFunctionCallExpr, TRUE è BooleanExpr) e i nomi risolvibili sono esclusi
+             * qui sotto. */
+            if (expr is VariableExpr vImpl && vImpl.NameCleaned.Lexeme is { } implNm
+                && EvalLocalIndex(localNames, localValues, implNm) < 0
+                && !TryResolveGlobalSymbolId(implNm, out _)
+                && !DbfActiveHasField(implNm))
+                implicitName = true;
 
             var slotToSymbolId = ResolveGlobalCaptureSlots(compiler);
             chunk.GlobalCount = compiler.GlobalSlots.Count;

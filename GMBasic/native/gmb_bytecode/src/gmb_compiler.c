@@ -2984,6 +2984,18 @@ static void cc_expr(gmb_cc_t* c, const gmb_expr_t* e)
             && cc_dyn_is(c, e->var) && cc_local(c, e->var) < 0) {
             cc_push_str_const(c, e->var); cc_syscall(c, 473, 1); break;
         }
+        /* PI / MATH.PI — costante di LINGUAGGIO (la stessa di `_constants["PI"]` nel compilatore
+         * C#). Il parser la produce come VAR col token Pi: senza questo ramo cadeva nel fallback
+         * "variabile" e la VM lasciava NIL — `EVAL("PI")` era vuoto sui due motori C mentre
+         * IL/PCode danno 3.14159, e il frammento EVAL lo compila proprio QUESTO compilatore.
+         * Una variabile locale omonima vince (cc_local). */
+        if (e->var && e->nargs == 0 && cc_local(c, e->var) < 0
+            && (strcasecmp(e->var, "PI") == 0 || strcasecmp(e->var, "MATH.PI") == 0)) {
+            int cpi = cc_add_const(c, GMB_CCONST_DOUBLE, 3.14159265358979323846, NULL);
+            if (c->error) return;
+            cc_byte(c, GMB_OP_PUSH_CONST); cc_u16(c, cpi);
+            break;
+        }
         /* costante utente (CONST) dichiarata nel programma: risolta in compile-time */
         if (e->var && !strchr(e->var, '.') && e->nargs == 0) {
             double cv; int cis; const char* csv;
