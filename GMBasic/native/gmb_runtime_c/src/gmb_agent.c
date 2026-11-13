@@ -62,9 +62,21 @@ static void agent_gen_id(char out[33]) {
 /* Timestamp ISO-8601 ":O" (yyyy-MM-ddTHH:mm:ss.fffffff+00:00) come DateTimeOffset C#. */
 static void agent_iso_ts(char* out, size_t cap) {
     struct timespec ts;
-    clock_gettime(CLOCK_REALTIME, &ts);
     struct tm tm;
+#if defined(_WIN32)
+    /* MinGW non ha ne' `clock_gettime` (POSIX) ne' `gmtime_r`: C11 `timespec_get` + `gmtime`
+     * (entrambi disponibili su ogni toolchain Windows). `gmtime` non e' thread-safe, ma qui
+     * serve solo copiare subito i campi in `tm`, senza conservare il puntatore. */
+    timespec_get(&ts, TIME_UTC);
+    {
+        time_t secs = (time_t)ts.tv_sec;
+        struct tm* p = gmtime(&secs);
+        if (p) tm = *p; else memset(&tm, 0, sizeof tm);
+    }
+#else
+    clock_gettime(CLOCK_REALTIME, &ts);
     gmtime_r(&ts.tv_sec, &tm);
+#endif
     snprintf(out, cap, "%04d-%02d-%02dT%02d:%02d:%02d.%07ld+00:00",
              tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday,
              tm.tm_hour, tm.tm_min, tm.tm_sec, (long)(ts.tv_nsec / 100));
