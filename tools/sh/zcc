@@ -1,14 +1,21 @@
 #!/usr/bin/env bash
 # tools/sh/zcc — `zig cc` per macOS con i pezzi che clang Apple ricava da sé e zig no.
 #
-#   -F<SDK>/System/Library/Frameworks  header dei framework (gmb_ax_mac.c → ApplicationServices)
-#   -isystem <SDK>/usr/include         libDER/DERItem.h (incluso da Security.framework/oids.h)
-#   -include mach-o/dyld.h             _NSGetExecutablePath in gmb_eval_hook.c (riga 75): quel
-#                                      file NON include l'header né lo dichiara `extern` — gli
-#                                      altri 14 chiamanti invece sì (misurato: togliendo questa
-#                                      `-include` la build della runtime si ferma su quel file).
-#                                      Quando gmb_eval_hook.c avrà il suo `#include`, questa riga
-#                                      si può togliere.
+#   -F<SDK>/System/Library/Frameworks  header dei framework (`<Accelerate/Accelerate.h>`) e, al
+#                                      LINK, il percorso dove ld cerca i framework: senza,
+#                                      `-framework Accelerate` muore con «unable to find system
+#                                      framework … searched paths: none», e `Accelerate.h` non si
+#                                      trova. Misurato: la sola compilazione dei 395 sorgenti del
+#                                      runtime NON se ne accorge (non includono header di
+#                                      framework), quindi non usatela come prova che `-F` è
+#                                      superfluo — serve appena si compila o linka un framework.
+#   -isystem <SDK>/usr/include         libDER/DERItem.h, che l'SDK include da
+#                                      Security.framework/oids.h (vi arriva ApplicationServices):
+#                                      misurato — senza, gmb_ax_mac.c e gmb_computer_provider_mac.c
+#                                      non compilano.
+# NESSUNA `-include` forzata su ogni unità: chi usa `_NSGetExecutablePath` include
+# `mach-o/dyld.h` da sé (14 chiamanti) o lo dichiara `extern`. L'unica eccezione
+# storica era gmb_eval_hook.c, che ora ha il suo `#include` sotto `__APPLE__`.
 #   -L<SDK>/usr/lib                    .tbd di sistema (libsqlite3/libcurl/libz/libbz2)
 #   -target <arch>-macos.<FLOOR>       PAVIMENTO: senza, il minimo di macOS lo decide lo SDK del
 #                                      builder (qui 27.2) e il binario NON parte su macOS
@@ -31,18 +38,19 @@ for c in "${HOME}"/.gmbasic/toolchains/zig/*/zig; do [ -x "$c" ] && ZIG="$c"; do
 [ -n "$ZIG" ] || ZIG="$(command -v zig || true)"
 [ -n "$ZIG" ] || { echo "zcc: zig non trovato (PATH o ~/.gmbasic/toolchains/zig/*/zig)" >&2; exit 127; }
 
-# Pavimento macOS: UNICA fonte `tools/sh/macos-floor` (nessun letterale, così non può andare
-# fuori sincrono con gmb_link_set.sh). `read` è un BUILTIN di bash: zero processi in più per
-# ogni unità compilata (zcc gira una volta per sorgente).
-case "${BASH_SOURCE[0]:-$0}" in
-  */*) _zcc_dir="${BASH_SOURCE[0]:-$0}"; _zcc_dir="${_zcc_dir%/*}" ;;
-  *)   _zcc_dir="$(command -v -- "$0")"; _zcc_dir="${_zcc_dir%/*}" ;;
-esac
-IFS= read -r MACOS_FLOOR < "$_zcc_dir/macos-floor" 2>/dev/null \
-  || { echo "zcc: $_zcc_dir/macos-floor mancante (pavimento macOS: unica fonte)" >&2; exit 127; }
-
 FLAGS=()
 if [ "$(uname -s)" = Darwin ]; then
+  # Pavimento macOS: UNICA fonte `tools/sh/macos-floor` (nessun letterale, così non può andare
+  # fuori sincrono con gmb_link_set.sh). `read` è un BUILTIN: zero processi in più per ogni
+  # unità compilata. Si legge QUI e non a livello di script: fuori da Darwin il valore non serve
+  # e un build Linux non deve dipendere da un file che non usa.
+  case "${BASH_SOURCE[0]:-$0}" in
+    */*) _zcc_dir="${BASH_SOURCE[0]:-$0}"; _zcc_dir="${_zcc_dir%/*}" ;;
+    *)   _zcc_dir="$(command -v -- "$0")"; _zcc_dir="${_zcc_dir%/*}" ;;
+  esac
+  [ -r "$_zcc_dir/macos-floor" ] \
+    || { echo "zcc: $_zcc_dir/macos-floor mancante (pavimento macOS: unica fonte)" >&2; exit 127; }
+  IFS= read -r MACOS_FLOOR < "$_zcc_dir/macos-floor"
   SDK="$(xcrun --show-sdk-path 2>/dev/null || true)"
   if [ ! -d "${SDK:-}" ]; then
     for s in /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk \
@@ -51,8 +59,8 @@ if [ "$(uname -s)" = Darwin ]; then
     done
   fi
   [ -d "${SDK:-}" ] || { echo "zcc: SDK macOS non trovato — servono i Command Line Tools (xcode-select --install); Xcode NON serve" >&2; exit 127; }
-  FLAGS=(-isysroot "$SDK" -L"$SDK/usr/lib" -F"$SDK/System/Library/Frameworks"
-         -isystem "$SDK/usr/include" -include mach-o/dyld.h)
+  FLAGS=(-isysroot "$SDK" -L"$SDK/usr/lib" -isystem "$SDK/usr/include" \
+         -F"$SDK/System/Library/Frameworks")
   # Pavimento macOS: solo per l'HOST, cioè quando il chiamante non ha già scelto il target
   # (il cross passa `-target` via gmb_link_set.sh, che ha lo stesso pavimento nella triple).
   explicit=0
