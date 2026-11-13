@@ -83,7 +83,11 @@ uint8_t* gmb_base58_decode(const char* input, size_t* len_out) {
         }
         out_len = j;
     }
-    // risultato little-endian → inverti, aggiungi gli zeri iniziali
+    // risultato little-endian → inverti, aggiungi gli zeri iniziali.
+    // NB: il ciclo bignum puo' lasciare byte a ZERO in coda (aggiunti solo per il carry):
+    // vanno scartati, altrimenti il decodificato ha un byte in piu' (misurato: 21 byte per
+    // un input di 20, con 0x00 finale). Gli zeri "veri" sono solo quelli dei '1' iniziali.
+    while (out_len > 0 && out[out_len - 1] == 0) out_len--;
     uint8_t* result = (uint8_t*)malloc(out_len + zeros);
     if (!result) { free(out); return NULL; }
     memset(result, 0, zeros);
@@ -123,10 +127,17 @@ char* gmb_base32_encode(const uint8_t* data, size_t len) {
     if (!out) return NULL;
     size_t oi = 0;
     for (size_t i = 0; i < len; i += 5) {
-        uint32_t buf = 0;
+        uint64_t buf = 0;   /* 5 byte = 40 bit: con uint32_t i primi 8 andavano persi */
         int bits = 0;
         for (int j = 0; j < 5 && i + j < len; j++) { buf = (buf << 8) | data[i + j]; bits += 8; }
-        int nchars = (bits + 4) / 5;
+        /* Gruppo FINALE non pieno: si allinea a un multiplo di 5 bit con zeri in CODA prima di
+         * emettere i char. Senza, l'ultimo char veniva estratto con uno shift NEGATIVO
+         * (`bits - 5*(j+1)`) e usciva 0 → l'ultimo byte del round-trip cambiava
+         * (misurato: 0x6c invece di 0x6e su "gm-basic blockchain"). */
+        int pad = (5 - (bits % 5)) % 5;
+        buf <<= pad;
+        bits += pad;
+        int nchars = bits / 5;
         for (int j = 0; j < 8; j++) {
             if (j < nchars) out[oi++] = BASE32_ALPHA[(buf >> (bits - 5 * (j + 1))) & 0x1F];
             else out[oi++] = '=';
@@ -146,7 +157,7 @@ uint8_t* gmb_base32_decode(const char* input, size_t* len_out) {
     uint8_t* out = (uint8_t*)malloc(olen + 1);
     if (!out) return NULL;
     size_t oi = 0;
-    uint32_t buf = 0;
+    uint64_t buf = 0;   /* 5 bit per char, senza maschera: serve > 32 bit */
     int bits = 0;
     for (size_t i = 0; i < inlen; i++) {
         if (input[i] == '=' || input[i] == ' ') continue;
