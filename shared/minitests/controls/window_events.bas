@@ -46,6 +46,9 @@ FUNCTION Main() AS INTEGER
 
     ' Fuori dalle finestre: i PRINT mentre una finestra è attiva finiscono nel suo buffer.
     WINDOW SELECT 0
+    ' Handler come task GPM: SLEEP 1 (park reale) prima di leggere i flag, altrimenti la
+    ' stampa puo' precedere il task dell'evento (uscita non deterministica su PCode).
+    SLEEP 1
     PRINT "flags:"; a; b; anyr; f1
     IF a <> 0 THEN fails = fails + 1         ' handle 1 non deve aver visto eventi di w2
     IF b <> 1 THEN fails = fails + 1

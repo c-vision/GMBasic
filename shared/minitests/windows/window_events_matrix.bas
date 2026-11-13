@@ -53,6 +53,10 @@ FUNCTION Main() AS INTEGER
     WINDOW SELECT 0                       ' deattiva w2 (se era attiva)
 
     WINDOW SELECT 0
+    ' Gli handler sono task GPM: senza un park reale il flag puo' essere letto PRIMA che il
+    ' task dell'evento parta (PCode: foc2 a 0 nel PRINT e 1 nell'IF successivo -> uscita
+    ' non deterministica). SLEEP 1 sincronizza prima di stampare.
+    SLEEP 1
     PRINT "flags:"; open1; min1; res1; foc2; close2
     IF open1 <> 1 THEN fails = fails + 1  ' OPEN su DEFINE (handle 1)
     IF min1 <> 1 THEN fails = fails + 1
@@ -61,9 +65,10 @@ FUNCTION Main() AS INTEGER
     IF close2 <> 0 THEN fails = fails + 1 ' CLOSE di w1 non deve toccare l'handler di w2
 
     WINDOW w2 CLOSE
-    ' Gli handler girano come TASK GPM: un SLEEP 0 lascia girare i task pendenti, così il
-    ' flag scritto dall'handler è osservabile (contratto documentato nella guida).
-    SLEEP 0
+    ' Gli handler girano come TASK GPM: SLEEP 1 (park reale) lascia girare i task pendenti,
+    ' così il flag scritto dall'handler è osservabile. Con SLEEP 0 (solo yield) il task
+    ' dell'evento poteva non essere partito prima dell'IF successivo → test FLAKY su PCode.
+    SLEEP 1
     IF close2 = 1 THEN PRINT "close2-ok" ELSE fails = fails + 1
     IF fails = 0 THEN
         PRINT "win-ev-ok"
