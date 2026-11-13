@@ -441,25 +441,19 @@ RT_HDRS="$(find $RT_HDR_DIRS -type f -name '*.h' 2>/dev/null | tr '\n' ' ')"
 # `zflags` = i flag INTERNI del wrapper (`zcc --print`): `cc=$FC` copre il percorso, non ciò che
 # il wrapper aggiunge. Senza, cambiare le flag di zcc (SDK, `-include`, pavimento) lasciava in
 # cache oggetti costruiti con le vecchie — misurato il 13/11: la build "verde" era con oggetti
-# vecchi, è servito GMB_RT_REBUILD=1 per accorgersene. Per `cc` il comando non esiste: stringa vuota.
+# vecchi, è servito GMB_RT_REBUILD=1 per accorgersene.
+# Identità del compilatore, UNA volta per entrambi gli usi: nello stamp (cambiare zcc o aggiornare
+# zig deve invalidare) e nella chiave della directory oggetti. `--print` dà il percorso di zig, che
+# porta la versione nella directory; per `cc` (che `--print` non ce l'ha) vale `--version`.
+RT_CC_ID="$("$FC" --print 2>/dev/null || { "$FC" --version 2>/dev/null | head -1; })"
 rt_stamp_hash() {       # hash del contenuto: un `shasum` per BLOCCO (xargs), non uno per file
-    ( printf '%s\n' "GMB_WITH_UI=1 HAVE_OPENSSL GMB_PARQUET_HAVE_ZSTD rid=$TARGET_RID tf=$TF cc=$FC zflags=$("$FC" --print 2>/dev/null)"
+    ( printf '%s\n' "GMB_WITH_UI=1 HAVE_OPENSSL GMB_PARQUET_HAVE_ZSTD rid=$TARGET_RID tf=$TF cc=$FC zflags=$RT_CC_ID"
       printf '%s\n' $RT_SRCS $RT_HDRS | xargs shasum -a 1 2>/dev/null ) | shasum | cut -c1-16
 }
-# Il TIMBRO (il file dello stamp, scritto alla costruzione) è l'ancora del CANCELLO: se nessun
-# sorgente/header è più recente di lui, la cache è valida e l'hash del contenuto non si calcola.
-# Misurato il 13/11: `find -newer -print -quit` su 1296 file costa 0,111 s contro 16,06 s di
-# `shasum` per file — e un'invocazione con un solo caso scende da 14,2 s a ~1 s di pedaggio.
-# L'hash resta l'AUTORITÀ (non l'mtime): quando il cancello scatta si confronta il contenuto, così
-# un `touch` senza modifiche non ricompila, e una modifica reale invalida come prima. Il cancello
-# guarda le DIRECTORY oltre ai file: aggiungere o togliere un sorgente cambia l'mtime della
-# directory che lo contiene. Limite noto: un file ripristinato con mtime più vecchia del timbro
-# (es. `cp -p` di una versione vecchia) non apre il cancello; git e gli editor danno mtime nuove.
-RT_GATE_DIRS=""
-for s in $RT_SRCS $RT_HDRS; do
-    d="${s%/*}"
-    case "$RT_GATE_DIRS " in *" $d "*) ;; *) RT_GATE_DIRS="$RT_GATE_DIRS $d" ;; esac
-done
+# La validità la decide l'HASH DEL CONTENUTO, senza cancello sull'mtime: in blocco (`xargs`) i
+# 552 sorgenti+header costano 0,04 s — meno di quanto rendeva il `find -newer` su 9 directory
+# (0,00 s) che questa versione aveva, e senza il suo punto debole: un file ripristinato con mtime
+# più vecchia del timbro non apriva il cancello e restava in cache. L'mtime non è mai l'autorità.
 # ── Cache PER-OGGETTO ─────────────────────────────────────────────────────────────────────────
 # Chiave di una unità = contenuto del SORGENTE (nome dell'oggetto) + flag + identità del
 # compilatore + contenuto degli HEADER (directory che porta la chiave). Così toccare un `.c`
@@ -468,34 +462,23 @@ done
 # `RT_UNIT_FLAGS` è UNA stringa: la stessa va nella chiave e nella riga di compilazione, così non
 # possono divergere.
 RT_UNIT_FLAGS="$TF $INC_RT -I$INC_CHART -I$ROOT/native/gmb_runtime_c/build -I$ROOT/native/gmb_agent_runtime -I$ROOT/native/gmb_doc_c/include -I$ROOT/native/gmb_db_c/include -I$ROOT/native/gmb_torch/include $LLM_INC -I$ZSTD_INC $CODEC_INC $INC_EXTRA -O2 -ffunction-sections -fdata-sections -w -ffp-contract=off -DHAVE_OPENSSL -DGMB_PARQUET_HAVE_ZSTD -DGMB_WITH_UI=1"
-# Identità del compilatore: `--print` (percorso di zig, che porta la versione nella directory) per
-# zcc, altrimenti `--version`. Cambiare zcc o aggiornare zig cambia la chiave.
-RT_CC_ID="$("$FC" --print 2>/dev/null || { "$FC" --version 2>/dev/null | head -1; })"
-RT_OBJ_KEY="$( ( printf '%s\n%s\n' "$RT_UNIT_FLAGS" "$RT_CC_ID"; printf '%s\n' $RT_HDRS | xargs shasum -a 1 2>/dev/null ) | shasum | cut -c1-16 )"
-RT_OBJ_DIR="$RT_CACHE_DIR/obj/$RT_OBJ_KEY"
 mkdir -p "$RT_CACHE_DIR"
-RT_OK=0
-if [ "${GMB_RT_REBUILD:-}" != "1" ] && [ -f "$RT_CACHE" ] && [ -f "$RT_STAMP" ]; then
-    if [ -z "$(find $RT_GATE_DIRS -newer "$RT_STAMP" -print -quit 2>/dev/null)" ]; then
-        RT_OK=1
-    elif [ "$(cat "$RT_STAMP")" = "$(rt_stamp_hash)" ]; then
-        RT_OK=1; touch "$RT_STAMP"      # contenuto confermato: il prossimo giro torna al cancello
-    fi
-fi
-if [ "$RT_OK" = 1 ]; then
+STAMP="$(rt_stamp_hash)"
+if [ "${GMB_RT_REBUILD:-}" != "1" ] && [ -f "$RT_CACHE" ] && [ -f "$RT_STAMP" ] && [ "$(cat "$RT_STAMP")" = "$STAMP" ]; then
   echo "runtime C: cache valida ($RT_CACHE)"
   RT_LIB="$RT_CACHE"
 else
-  STAMP="$(rt_stamp_hash)"
+  # Identità del compilatore (già in $RT_CC_ID): la chiave cambia con zcc e con la versione di zig.
+  RT_OBJ_KEY="$( ( printf '%s\n%s\n' "$RT_UNIT_FLAGS" "$RT_CC_ID"; printf '%s\n' $RT_HDRS | xargs shasum -a 1 2>/dev/null ) | shasum | cut -c1-16 )"
+  RT_OBJ_DIR="$RT_CACHE_DIR/obj/$RT_OBJ_KEY"
   mkdir -p "$RT_OBJ_DIR"
-  echo "runtime C: ricostruisco l'archivio ($(printf '%s\n' $RT_SRCS | wc -l | tr -d ' ') unità, cache per-oggetto)..."
+  echo "runtime C: ricostruisco l'archivio (cache per-oggetto)..."
   # Una sola passata di `shasum` per TUTTI i sorgenti (xargs): 395 fork in meno, e l'ordine
   # delle righe è quello di $RT_SRCS, che è anche l'ordine dei membri nell'archivio.
   printf '%s\n' $RT_SRCS | xargs shasum -a 1 2>/dev/null > "$WORK/rt_shasums"
   RT_N=0; RT_COMPILED=0; OBJS=""
-  while IFS= read -r line; do
+  while read -r h s; do
     RT_N=$((RT_N+1))
-    h="${line%% *}"; s="${line#*  }"
     o="$RT_OBJ_DIR/$h.o"
     if [ "${GMB_RT_REBUILD:-}" = "1" ] || [ ! -f "$o" ]; then
       $FC -c "$s" -o "$o.$$.tmp" $RT_UNIT_FLAGS || { rm -f "$o.$$.tmp"; exit 1; }
