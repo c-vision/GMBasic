@@ -51,12 +51,19 @@ die() { echo "gmb_link_set: $*" >&2; exit 2; }
 # zig ignora `-mmacosx-version-min`: la versione va qui. Il VALORE sta in `tools/sh/macos-floor`,
 # unica fonte letta anche da `tools/sh/zcc`: nessun letterale duplicato da tenere sincrono.
 # `read` è un builtin, e questo script gira una volta per invocazione del runner, non per unità.
-case "${BASH_SOURCE[0]:-$0}" in
-  */*) _ls_dir="${BASH_SOURCE[0]:-$0}"; _ls_dir="${_ls_dir%/*}" ;;
-  *)   _ls_dir="$(command -v -- "$0")"; _ls_dir="${_ls_dir%/*}" ;;
+# Il file si legge solo per i RID macOS: un build Linux/Windows non deve dipendere da un dato
+# che non usa.
+case "$RID" in
+  osx-*)
+    case "${BASH_SOURCE[0]:-$0}" in
+      */*) _ls_dir="${BASH_SOURCE[0]:-$0}"; _ls_dir="${_ls_dir%/*}" ;;
+      *)   _ls_dir="$(command -v -- "$0")"; _ls_dir="${_ls_dir%/*}" ;;
+    esac
+    [ -r "$_ls_dir/macos-floor" ] \
+      || die "tools/sh/macos-floor mancante accanto a gmb_link_set.sh (pavimento macOS)"
+    IFS= read -r LS_MACOS_FLOOR < "$_ls_dir/macos-floor"
+    ;;
 esac
-IFS= read -r LS_MACOS_FLOOR < "$_ls_dir/macos-floor" 2>/dev/null \
-  || die "tools/sh/macos-floor mancante accanto a gmb_link_set.sh (pavimento macOS)"
 case "$RID" in
   osx-arm64)   LS_OS=Darwin; LS_ARCH=arm64;  LS_TRIPLE=aarch64-macos.$LS_MACOS_FLOOR ;;
   osx-x64)     LS_OS=Darwin; LS_ARCH=x86_64; LS_TRIPLE=x86_64-macos.$LS_MACOS_FLOOR ;;

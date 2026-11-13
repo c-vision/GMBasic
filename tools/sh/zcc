@@ -3,8 +3,12 @@
 #
 #   -F<SDK>/System/Library/Frameworks  header dei framework (gmb_ax_mac.c → ApplicationServices)
 #   -isystem <SDK>/usr/include         libDER/DERItem.h (incluso da Security.framework/oids.h)
-#   -include mach-o/dyld.h             _NSGetExecutablePath in gmb_eval_hook.c (clang lo trova
-#                                      per transitività, zig no → "call to undeclared function")
+#   -include mach-o/dyld.h             _NSGetExecutablePath in gmb_eval_hook.c (riga 75): quel
+#                                      file NON include l'header né lo dichiara `extern` — gli
+#                                      altri 14 chiamanti invece sì (misurato: togliendo questa
+#                                      `-include` la build della runtime si ferma su quel file).
+#                                      Quando gmb_eval_hook.c avrà il suo `#include`, questa riga
+#                                      si può togliere.
 #   -L<SDK>/usr/lib                    .tbd di sistema (libsqlite3/libcurl/libz/libbz2)
 #   -target <arch>-macos.<FLOOR>       PAVIMENTO: senza, il minimo di macOS lo decide lo SDK del
 #                                      builder (qui 27.2) e il binario NON parte su macOS

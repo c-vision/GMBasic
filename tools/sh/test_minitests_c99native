@@ -337,25 +337,32 @@ mirror_case_files() {   # $1 = dir reale da specchiare, $2 = dir reale di destin
         fi
     done
 }
-# Riporta la copia specchio allo stato dei sorgenti fra un caso e il successivo: via ciò che il
-# caso ha aggiunto, ri-clonati i file che ha riscritto o cancellato. Il confronto e' sul
-# CONTENUTO (`cmp`), non sull'mtime: quello ha granularità al secondo e una riscrittura fatta
-# nello stesso secondo del clone passerebbe inosservata (verificato con una sonda).
-reset_case_dir() {      # $1 = directory del caso nei sorgenti, $2 = la sua copia nello specchio
+# Riporta la copia specchio allo stato dei sorgenti fra un caso e il successivo.
+# Tocco del caso = mtime più recente del TIMBRO, e `find -newer` lo vede al NANOSECONDO (a
+# differenza di `[ -nt ]`, che confronta al secondo e mancherebbe una riscrittura fatta nello
+# stesso secondo del clone). Costa due `find` per caso e nessun confronto di contenuto:
+# misurato 0,007 s/caso su misc e 0,011 s su ai, contro 0,13 e 0,71 della variante a `cmp`.
+reset_case_dir() {      # $1 = dir del caso nei sorgenti, $2 = copia specchio, $3 = timbro, $4 = elenco relativo
     local x rel
     [ -d "$2" ] || return 0
-    # 1) via tutto ciò che nella copia non esiste nei sorgenti (file, symlink, directory)
-    find "$2" -depth -mindepth 1 2>/dev/null | while IFS= read -r x; do
+    # 1) riscritti o creati dal caso: ri-clona se sono nei sorgenti, altrimenti è un residuo
+    find "$2" \( -type f -o -type l \) -newer "$3" 2>/dev/null | while IFS= read -r x; do
         rel="${x#"$2"/}"
-        [ -e "$1/$rel" ] || [ -L "$1/$rel" ] || rm -rf "$x"
+        if [ -f "$1/$rel" ] && [ ! -L "$1/$rel" ]; then
+            rm -f "$x"; cp -c "$1/$rel" "$x" 2>/dev/null || cp -p "$1/$rel" "$x"
+        else
+            rm -f "$x"
+        fi
     done
-    # 2) ripristina ciò che il caso ha riscritto o cancellato
-    find "$1" -type f 2>/dev/null | while IFS= read -r x; do
-        rel="${x#"$1"/}"
-        [ -e "$2/$rel" ] && cmp -s "$x" "$2/$rel" && continue
+    # 2) cancellati dal caso: l'elenco dice cosa DEVE esistere nello specchio
+    while IFS= read -r rel; do
+        [ -n "$rel" ] || continue
+        [ -e "$2/$rel" ] && continue
         case "$rel" in */*) mkdir -p "$2/${rel%/*}" ;; esac
-        cp -c "$x" "$2/$rel" 2>/dev/null || cp -p "$x" "$2/$rel"
-    done
+        cp -c "$1/$rel" "$2/$rel" 2>/dev/null || cp -p "$1/$rel" "$2/$rel"
+    done < "$4"
+    # 3) directory nate durante il caso (a questo punto vuote)
+    find "$2" -depth -mindepth 1 -type d -newer "$3" 2>/dev/null | while IFS= read -r d; do rmdir "$d" 2>/dev/null; done
 }
 prepare_case_cwd() {    # $1 = dir assoluta del MiniTest; imposta CASE_CWD
     local src="$1" rest cur dst comp e b
@@ -367,7 +374,7 @@ prepare_case_cwd() {    # $1 = dir assoluta del MiniTest; imposta CASE_CWD
     # Stessa directory del caso precedente: lo specchio e' gia' pronto (ricostruirlo costa
     # ~0,6 s/caso fra cloni e antenati) → basta riportarlo allo stato iniziale.
     if [ "${PREP_SRC:-}" = "$src" ] && [ -d "$dst/$rest" ]; then
-        reset_case_dir "$MONO/$rest" "$dst/$rest"
+        reset_case_dir "$MONO/$rest" "$dst/$rest" "$WORK/casecwd.stamp" "$WORK/casecwd.files"
         CASE_CWD="$dst/$rest"; return 0
     fi
     PREP_SRC="$src"
@@ -385,6 +392,10 @@ prepare_case_cwd() {    # $1 = dir assoluta del MiniTest; imposta CASE_CWD
         cur="$cur/$comp"; dst="$dst/$comp"; mkdir -p "$dst"
     done
     mirror_case_files "$cur" "$dst"
+    # Stato del ripristino: il TIMBRO dice cosa il caso ha toccato, l'ELENCO cosa deve esistere
+    # (per ripristinare i file cancellati). Path relativi alla foglia dello specchio.
+    touch "$WORK/casecwd.stamp"
+    ( cd "$dst" && find . -mindepth 1 \( -type f -o -type l \) | sed 's|^\./||' ) > "$WORK/casecwd.files"
     CASE_CWD="$dst"
 }
 trap 'rm -rf "$WORK"; [ "$EXPORT_SYMS_TMP" = 1 ] && rm -f "$EXPORT_SYMS_FILE" "$EXPORT_SYMS_FILE.m"; broker_cleanup' EXIT
@@ -409,8 +420,8 @@ RT_CACHE_DIR="${TMPDIR:-/tmp}/gmb_c99native_rt_cache/$TARGET_RID"
 # (`gmb_c99native_run.sh`) non serve nessuna copia-alias; la gamba A/B usa `librt.<tag>.a` e
 # non tocca il canonico. Il tag è un hash della stringa di `--cc`: stabile fra invocazioni
 # identiche.
-case "$(basename "${FC%% *}")" in
-  zcc|zig*) RT_CACHE="$RT_CACHE_DIR/librt.a";         RT_STAMP="$RT_CACHE_DIR/src.stamp" ;;
+case "${FC%% *}" in
+  zcc|zig|*/zcc|*/zig) RT_CACHE="$RT_CACHE_DIR/librt.a";         RT_STAMP="$RT_CACHE_DIR/src.stamp" ;;
   *)        RT_TAG="$(printf '%s' "$FC" | shasum | cut -c1-8)"
             RT_CACHE="$RT_CACHE_DIR/librt.$RT_TAG.a"; RT_STAMP="$RT_CACHE_DIR/src.$RT_TAG.stamp" ;;
 esac
@@ -430,7 +441,11 @@ RT_HDRS="$(find $RT_HDR_DIRS -type f -name '*.h' 2>/dev/null | tr '\n' ' ')"
 # riuserebbe un archivio costruito con un'altra configurazione.
 # La cache è PER-TARGET: gli stessi sorgenti compilati per un altro RID (`--rid`/`--target`) o con
 # un altro compilatore non sono riusabili (sarebbero oggetti dell'host dentro un link cross).
-STAMP="$( ( printf '%s\n' "GMB_WITH_UI=1 HAVE_OPENSSL GMB_PARQUET_HAVE_ZSTD rid=$TARGET_RID tf=$TF cc=$FC"; for s in $RT_SRCS $RT_HDRS; do printf '%s\n' "$s"; shasum -a 1 "$s" 2>/dev/null | cut -d' ' -f1; done ) | shasum | cut -c1-16)"
+# `zflags` = i flag INTERNI del wrapper (`zcc --print`): `cc=$FC` copre il percorso, non ciò che
+# il wrapper aggiunge. Senza, cambiare le flag di zcc (SDK, `-include`, pavimento) lasciava in
+# cache oggetti costruiti con le vecchie — misurato il 13/11: la build "verde" era con oggetti
+# vecchi, è servito GMB_RT_REBUILD=1 per accorgersene. Per `cc` il comando non esiste: stringa vuota.
+STAMP="$( ( printf '%s\n' "GMB_WITH_UI=1 HAVE_OPENSSL GMB_PARQUET_HAVE_ZSTD rid=$TARGET_RID tf=$TF cc=$FC zflags=$("$FC" --print 2>/dev/null)"; for s in $RT_SRCS $RT_HDRS; do printf '%s\n' "$s"; shasum -a 1 "$s" 2>/dev/null | cut -d' ' -f1; done ) | shasum | cut -c1-16)"
 mkdir -p "$RT_CACHE_DIR"
 if [ "${GMB_RT_REBUILD:-}" != "1" ] && [ -f "$RT_CACHE" ] && [ -f "$RT_STAMP" ] && [ "$(cat "$RT_STAMP")" = "$STAMP" ]; then
   echo "runtime C: cache valida ($RT_CACHE)"
