@@ -1968,7 +1968,9 @@ static void push_const(gmb_vm_t* vm, gmb_task_t* t, int idx)
             break;
         case GMB_CONST_STRING:
         {
-            gmb_obj_string_t* s = gmb_str_alloc(c->s, c->s ? (uint32_t)strlen(c->s) : 0);
+            /* s_len != 0: costante BINARIA (EMBEDFILE), può contenere NUL. */
+            uint32_t n = c->s_len ? c->s_len : (c->s ? (uint32_t)strlen(c->s) : 0);
+            gmb_obj_string_t* s = gmb_str_alloc(c->s, n);
             push_ref_new(t, (gmb_obj_t*)s, GMB_BT_STRING);
             break;
         }
@@ -10572,7 +10574,8 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                         break;
                     case GMB_CONST_STRING:
                     {
-                        gmb_obj_string_t* s = gmb_str_alloc(d->s, d->s ? (uint32_t)strlen(d->s) : 0);
+                        uint32_t n = d->s_len ? d->s_len : (d->s ? (uint32_t)strlen(d->s) : 0);
+                        gmb_obj_string_t* s = gmb_str_alloc(d->s, n);
                         push_ref_new(task, (gmb_obj_t*)s, GMB_BT_STRING);
                         break;
                     }

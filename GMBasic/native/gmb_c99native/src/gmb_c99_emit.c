@@ -5405,6 +5405,19 @@ static void emit_str_literal(ctx_t* c, const char* s) {
     sb_put(&c->out, "\")");
 }
 
+/* Letterale STRINGA BINARIO (EMBEDFILE): la lunghezza è esplicita, i byte possono
+ * includere NUL. Stessa semantica del ramo C# (una stringa = N char, uno per byte):
+ * si materializza con gmb_string_from_bytes, mai con gmb_string_alloc (che troncherebbe
+ * al primo NUL — è esattamente il bug di C99-FROMBASE64-Payload-Grandi). */
+static void emit_str_literal_n(ctx_t* c, const char* s, long len) {
+    sb_put(&c->out, "gmb_string_from_bytes((const unsigned char[]){");
+    for (long i = 0; i < len; i++) {
+        if (i) sb_put(&c->out, ",");
+        sb_printf(&c->out, "%u", (unsigned)(unsigned char)s[i]);
+    }
+    sb_printf(&c->out, "},%ld)", len);
+}
+
 static fn_info_t* find_fn(ctx_t* c, const char* name) {
     for (int i = 0; i < c->nfn; i++) {
         const char* fn = c->fns[i].stmt->func_name;
@@ -14818,7 +14831,9 @@ void emit_expr(ctx_t* c, gmb_expr_t* e) {
         sb_printf(&c->out, "%.17g", e->num);
         break;
     case GMB_EXPR_STR:
-        emit_str_literal(c, e->str);   /* un letterale e' SEMPRE testo: `&` dentro le virgolette non e' una macro */
+        /* un letterale e' SEMPRE testo: `&` dentro le virgolette non e' una macro */
+        if (e->str_len > 0) emit_str_literal_n(c, e->str, e->str_len);
+        else emit_str_literal(c, e->str);
         break;
     case GMB_EXPR_VAR: {
         /* ADR-MATRIX F4: campo-fattore di una DECOMPOSIZIONE (`lu.U` come VAR puntata). */

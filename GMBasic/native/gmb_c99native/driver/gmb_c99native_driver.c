@@ -9,6 +9,7 @@ extern const char* gmb_opt_env(const char* name);
 #include "gmb_c99_emit.h"
 #include "gmb_compiler.h"
 #include "gmb_inc_resolve.h"
+#include "gmb_embed.h"        /* EMBEDFILE: cartella base dei percorsi relativi */
 #include "gmb_cc_defaults.h"   /* ricetta UNICA di -I e statiche (condivisa col CLI `gmb build`) */
 #include "gmb_symtab.h"
 #include "gmb_types.h"
@@ -353,6 +354,7 @@ static void print_diff_json(const gmb_semgraph_diff_t* d) {
 /* Programma da un file SENZA include/REQUIRE (per il diff del tooling). */
 static int load_plain_program(const char* path, gmb_program_t* out, char** err) {
     *err = NULL;
+    gmb_embed_set_base_from_path(path);   /* EMBEDFILE: i path relativi sono al programma */
     FILE* f = fopen(path, "rb");
     if (!f) { *err = strdup("file non trovato"); return 1; }
     fseek(f, 0, SEEK_END); long n = ftell(f); fseek(f, 0, SEEK_SET);
@@ -502,6 +504,7 @@ int main(int argc, char** argv) {
     gmb_first_use_spawn_if_needed(argc, argv);
 
     const char* in = argv[1];
+    gmb_embed_set_base_from_path(in);   /* EMBEDFILE: i path relativi sono al programma */
     int no_exe = 0;
     int gpm_mode = 0;   /* 0 auto, 1 always, 2 linear (--gpm) */
     int want_semgraph = 0;

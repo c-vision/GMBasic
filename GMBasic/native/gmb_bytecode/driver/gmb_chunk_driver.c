@@ -14,6 +14,7 @@ extern const char* gmb_opt_env(const char* name);
 #include "gmb_parser.h"
 #include "gmb_compiler.h"
 #include "gmb_inc_resolve.h"
+#include "gmb_embed.h"        /* EMBEDFILE: cartella base dei percorsi relativi */
 #include "gmb_bsp.h"
 #include <sys/stat.h>
 #include <stdio.h>
@@ -41,6 +42,7 @@ int main(int argc, char** argv) {
         return 2;
     }
     const char* in = argv[1];
+    gmb_embed_set_base_from_path(in);   /* EMBEDFILE: i path relativi sono al programma */
     const char* out = (argc > 2 && strcmp(argv[2], "--map") != 0) ? argv[2] : "out.chunk";
     const char* map_path = NULL;
     for (int a = 2; a < argc; a++) {

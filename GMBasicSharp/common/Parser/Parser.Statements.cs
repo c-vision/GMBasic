@@ -703,6 +703,11 @@ public sealed partial class Parser
     {
         var token = Peek();
 
+        // --- EMBEDFILE "file" AS nome$ : direttiva compile-time (equivalente di @embedFile).
+        // SOFT keyword: solo se seguita da un letterale stringa (parità col parser C).
+        if (AtEmbedFileDirective())
+            return ParseEmbedFileStatement();
+
         // Gli attributes a livello di modulo sono gestiti nel loop principale di ParseModuleLevelStatements.
 
         // --- Gestione CALL (zucchero sintattico opzionale) ---

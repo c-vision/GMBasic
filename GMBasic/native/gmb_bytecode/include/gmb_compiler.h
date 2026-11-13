@@ -178,7 +178,7 @@ typedef struct gmb_cconst_entry {
 struct gmb_cconst_node { gmb_cconst_entry_t* entries; int n, cap; };
 
 /* Chunk compilato in memoria (prima della serializzazione su file). */
-typedef struct gmb_cconst { int type; double d; char* s; gmb_cconst_node_t* tree; } gmb_cconst_t;
+typedef struct gmb_cconst { int type; double d; char* s; long s_len; gmb_cconst_node_t* tree; } gmb_cconst_t;
 
 typedef struct gmb_compiled_chunk {
     uint8_t* code; uint32_t code_len;

@@ -5,6 +5,7 @@
  * base). I costrutti non ancora compilabili producono un errore esplicito (divergenza). */
 #include "gmb_compiler.h"
 #include "gmb_inc_resolve.h"   /* gmb_exe_dir: ancora di <exe>/packages (installazione locale) */
+#include "gmb_embed.h"         /* EMBEDFILE: lettura compile-time + cartella base */
 #include "gmb_semver.h"
 #include "gmb_linker.h"
 #include "gmb_lexer.h"
@@ -1036,6 +1037,31 @@ static int cc_add_const(gmb_cc_t* c, int type, double d, const char* s)
     ch->consts[idx].type = type;
     ch->consts[idx].d = d;
     ch->consts[idx].s = s ? strdup(s) : NULL;
+    ch->consts[idx].s_len = 0;
+    ch->consts[idx].tree = NULL;
+    ch->consts_len++;
+    return idx;
+}
+
+/* Costante STRINGA BINARIA (EMBEDFILE): lunghezza esplicita, il contenuto puo' avere NUL.
+ * Dedup solo fra costanti della stessa lunghezza e degli stessi byte. */
+static int cc_add_const_str_n(gmb_cc_t* c, const char* data, long len)
+{
+    gmb_compiled_chunk_t* ch = c->chunk;
+    if (len <= 0) return cc_add_const(c, GMB_CCONST_STRING, 0, "");
+    for (uint32_t i = 0; i < ch->consts_len; i++) {
+        if (ch->consts[i].type == GMB_CCONST_STRING && ch->consts[i].s_len == len
+            && ch->consts[i].s && memcmp(ch->consts[i].s, data, (size_t)len) == 0)
+            return (int)i;
+    }
+    if (ch->consts_len >= 65535) { cc_err(c, "constant pool piena"); return 0; }
+    ch->consts = realloc(ch->consts, (size_t)(ch->consts_len + 1) * sizeof(*ch->consts));
+    int idx = (int)ch->consts_len;
+    ch->consts[idx].type = GMB_CCONST_STRING;
+    ch->consts[idx].d = 0;
+    ch->consts[idx].s = (char*)malloc((size_t)len + 1);
+    if (ch->consts[idx].s) { memcpy(ch->consts[idx].s, data, (size_t)len); ch->consts[idx].s[len] = 0; }
+    ch->consts[idx].s_len = len;
     ch->consts[idx].tree = NULL;
     ch->consts_len++;
     return idx;
@@ -1673,6 +1699,14 @@ static void cc_emit_lambda(gmb_cc_t* c, const gmb_expr_t* e);
 static void cc_push_str_const(gmb_cc_t* c, const char* str)
 {
     int idx = cc_add_const(c, GMB_CCONST_STRING, 0, str ? str : "");
+    if (c->error) return;
+    cc_byte(c, GMB_OP_PUSH_CONST); cc_u16(c, idx);
+}
+
+/* PUSH di una stringa BINARIA (lunghezza esplicita, NUL ammessi) — EMBEDFILE. */
+static void cc_push_str_const_n(gmb_cc_t* c, const char* data, long len)
+{
+    int idx = cc_add_const_str_n(c, data, len);
     if (c->error) return;
     cc_byte(c, GMB_OP_PUSH_CONST); cc_u16(c, idx);
 }
@@ -2977,7 +3011,9 @@ static void cc_expr(gmb_cc_t* c, const gmb_expr_t* e)
         break;
     }
     case GMB_EXPR_STR: {
-        int idx = cc_add_const(c, GMB_CCONST_STRING, 0, e->str ? e->str : "");
+        int idx = e->str_len > 0
+            ? cc_add_const_str_n(c, e->str ? e->str : "", e->str_len)
+            : cc_add_const(c, GMB_CCONST_STRING, 0, e->str ? e->str : "");
         if (c->error) return;
         cc_byte(c, GMB_OP_PUSH_CONST); cc_u16(c, idx);
         break;
@@ -7680,6 +7716,14 @@ static void buf_str(buf_t* b, const char* s)
     buf_u32(b, len);
     for (uint32_t i = 0; i < len; i++) buf_byte(b, (uint8_t)s[i]);
 }
+
+/* Come buf_str ma con lunghezza ESPLICITA: il contenuto può contenere NUL. */
+static void buf_str_n(buf_t* b, const char* s, long len)
+{
+    uint32_t n = (len > 0) ? (uint32_t)len : 0;
+    buf_u32(b, n);
+    for (uint32_t i = 0; i < n; i++) buf_byte(b, (uint8_t)(s ? s[i] : 0));
+}
 static void buf_f64(buf_t* b, double d)
 {
     uint64_t bits;
@@ -7723,7 +7767,12 @@ static void buf_const(buf_t* b, const gmb_cconst_t* cc)
     buf_byte(b, (uint8_t)cc->type);
     switch (cc->type) {
     case GMB_CCONST_DOUBLE: buf_f64(b, cc->d); break;
-    case GMB_CCONST_STRING: buf_str(b, cc->s); break;
+    case GMB_CCONST_STRING:
+        /* lunghezza esplicita quando la costante è BINARIA (EMBEDFILE): il contenuto
+         * può avere NUL e strlen troncherebbe. 0 = stringa testuale normale. */
+        if (cc->s_len > 0) buf_str_n(b, cc->s ? cc->s : "", cc->s_len);
+        else buf_str(b, cc->s);
+        break;
     case GMB_CCONST_INT: buf_u32(b, (uint32_t)(int32_t)cc->d); break;
     case GMB_CCONST_DATATYPE: buf_byte(b, (uint8_t)cc->d); break;
     case GMB_CCONST_DICT: case GMB_CCONST_LIST: buf_dict_tree(b, cc->tree); break;
@@ -8449,6 +8498,7 @@ int gmb_compile_bas_file(const char* path, uint8_t** out_data, size_t* out_len, 
     if (out_len) *out_len = 0;
     if (diag) *diag = NULL;
     if (!path) { if (diag) *diag = strdup("gmb_compile_bas_file: path NULL"); return -1; }
+    gmb_embed_set_base_from_path(path);   /* EMBEDFILE: i path relativi sono al programma */
     FILE* f = fopen(path, "rb");
     if (!f) { if (diag) *diag = strdup("file non trovato"); return -1; }
     fseek(f, 0, SEEK_END); long alen = ftell(f); fseek(f, 0, SEEK_SET);

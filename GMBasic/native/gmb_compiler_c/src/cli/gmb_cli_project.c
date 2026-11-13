@@ -7,6 +7,7 @@
  */
 #include "gmb_cli_internal.h"
 #include "gmb_inc_resolve.h"
+#include "gmb_embed.h"         /* EMBEDFILE: cartella base dei percorsi relativi */
 #include "gmb_cc_defaults.h"   /* ricetta UNICA degli -I e delle statiche (la stessa del driver) */
 #include "gmb_lexer.h"   /* check: validazione sintattica (parità con gmbcs) */
 #include "gmb_parser.h"
@@ -28,6 +29,7 @@
  * `gmbcs check` (che compila) lo rifiutava — divergenza reale fra i due compilatori. */
 static void check_syntax(const char* path, DiagList* diags)
 {
+    gmb_embed_set_base_from_path(path);   /* EMBEDFILE: i path relativi sono al programma */
     char* src = read_all(path);
     if (!src) return;
     gmb_lex_result_t lx = gmb_lexer_scan(src, (long)strlen(src));

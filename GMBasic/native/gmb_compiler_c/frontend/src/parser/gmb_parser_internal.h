@@ -205,6 +205,9 @@ gmb_stmt_t* gmb_p_parse_run(gmb_parser_t* p, int line);
 /* PROCESS <file> [PROMPT <istruzioni>] (E3): statement-espressione sul builtin PROCESS. */
 gmb_stmt_t* gmb_p_parse_process(gmb_parser_t* p, int line);
 gmb_stmt_t* gmb_p_parse_require(gmb_parser_t* p, int line);
+/* EMBEDFILE "file" AS nome — direttiva compile-time: il contenuto diventa un letterale
+ * stringa binario (DIM + assegnazione in coda). Vedi gmb_parser_stmt_embed.c. */
+gmb_stmt_t* gmb_p_parse_embedfile(gmb_parser_t* p, int line);
 gmb_stmt_t* gmb_p_parse_yield(gmb_parser_t* p, int line);
 /* Parser.Stmt.Arrays.cs */
 gmb_stmt_t* gmb_p_parse_aadd(gmb_parser_t* p, int line);

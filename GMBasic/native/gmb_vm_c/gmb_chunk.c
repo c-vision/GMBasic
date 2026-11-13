@@ -49,6 +49,22 @@ static char* rd_str(reader_t* r)
     return s;
 }
 
+/* Come rd_str ma restituisce anche la lunghezza (0 se `out_len` è NULL): le costanti
+ * binarie (EMBEDFILE) possono contenere NUL e vanno materializzate con gmb_str_alloc(s, n). */
+static char* rd_str_len(reader_t* r, uint32_t* out_len)
+{
+    uint32_t len = rd_u32(r);
+    if (out_len) *out_len = 0;
+    if (r->err || r->p + len > r->end) { r->err = 1; return NULL; }
+    char* s = (char*)malloc(len + 1);
+    if (!s) { r->err = 1; return NULL; }
+    memcpy(s, r->p, len);
+    s[len] = '\0';
+    r->p += len;
+    if (out_len) *out_len = len;
+    return s;
+}
+
 /* ---- Deserializzazione value (boxed) ---- */
 static gmb_chunk_dict_t* rd_dict(reader_t* r)
 {
@@ -93,7 +109,7 @@ static gmb_value_t rd_value(reader_t* r)
     {
         case GMB_CONST_NIL: break;
         case GMB_CONST_DOUBLE: v.d = rd_f64(r); break;
-        case GMB_CONST_STRING: v.s = rd_str(r); break;
+        case GMB_CONST_STRING: v.s = rd_str_len(r, &v.s_len); break;
         case GMB_CONST_INT: v.d = (double)(int32_t)rd_u32(r); break;
         case GMB_CONST_DICT: v.dict = rd_dict(r); break;
         case GMB_CONST_LIST: v.list = (gmb_chunk_list_t*)rd_dict(r); break;

@@ -24,6 +24,10 @@ struct gmb_expr {
     int line;
     double num;
     char* str;
+    /* Lunghezza ESPLICITA del letterale stringa (0 = usa strlen). Serve ai letterali
+     * BINARI di EMBEDFILE: il contenuto di un file puo' contenere NUL, quindi
+     * `str` non e' terminabile e la lunghezza va portata con il nodo. */
+    long str_len;
     char* var;                 /* nome variabile */
     char* ns;                  /* namespace della call qualificata (NS.FUNZIONE), NULL se
                                 * non qualificata. Il nome canonico resta nudo in var; ns
@@ -94,6 +98,10 @@ struct gmb_expr {
 
 gmb_expr_t* gmb_expr_num(double v, int line);
 gmb_expr_t* gmb_expr_str(const char* s, int line);
+/* Letterale stringa BINARIO: `data` puo' contenere NUL, la lunghezza e' esplicita.
+ * Usato da EMBEDFILE (contenuto di un file); l'emitter C99 e il bytecode lo
+ * materializzano con la lunghezza, mai con strlen. */
+gmb_expr_t* gmb_expr_str_n(const char* data, long len, int line);
 gmb_expr_t* gmb_expr_var(const char* name, int line);
 gmb_expr_t* gmb_expr_clone(const gmb_expr_t* e);
 gmb_expr_t* gmb_expr_binary(const char* op, gmb_expr_t* l, gmb_expr_t* r, int line);

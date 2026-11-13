@@ -68,6 +68,10 @@ typedef struct {
     int type;               /* GMB_CONST_* */
     double d;
     char*  s;
+    /* Lunghezza ESPLICITA della stringa (0 = usa strlen). Le costanti binarie
+     * (EMBEDFILE) possono contenere NUL: il wire format porta già la lunghezza, qui
+     * la conserviamo per materializzare la stringa senza troncarla. */
+    uint32_t s_len;
     gmb_chunk_dict_t* dict;
     gmb_chunk_list_t* list;
     uint8_t dt_cat;

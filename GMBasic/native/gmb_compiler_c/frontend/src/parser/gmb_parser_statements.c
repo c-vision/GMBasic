@@ -2131,6 +2131,14 @@ if (gmb_tk_rem_vari_in(t->kind)) {
         gmb_p_adv(p); return gmb_p_parse_run(p, line);
     }
     if (t->kind == GMB_TOK_Require) { gmb_p_adv(p); return gmb_p_parse_require(p, line); }
+    /* EMBEDFILE "file" AS nome — direttiva compile-time (equivalente di @embedFile).
+     * SOFT keyword: si attiva solo se la riga comincia con la parola E il token successivo
+     * è un letterale stringa, così `embedfile` resta un nome di variabile utilizzabile. */
+    if (gmb_p_tok_is_soft_keyword(t, "EMBEDFILE")
+        && gmb_p_peek(p, 1) && gmb_p_peek(p, 1)->kind == GMB_TOK_StringLiteral) {
+        gmb_p_adv(p);
+        return gmb_p_parse_embedfile(p, line);
+    }
     if (t->kind == GMB_TOK_Process) { gmb_p_adv(p); return gmb_p_parse_process(p, line); }
     if (t->kind == GMB_TOK_Yield) { gmb_p_adv(p); return gmb_p_parse_yield(p, line); }
     if (t->kind == GMB_TOK_AAdd) { gmb_p_adv(p); return gmb_p_parse_aadd(p, line); }

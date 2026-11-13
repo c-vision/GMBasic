@@ -55,6 +55,23 @@ gmb_expr_t* gmb_expr_str(const char* s, int line)
     e->kind = GMB_EXPR_STR; e->str = s ? strdup(s) : NULL; e->line = line;
     return e;
 }
+
+/* Letterale BINARIO (EMBEDFILE): copia `len` byte (anche NUL) senza terminarli "per caso".
+ * `str` resta comunque NUL-terminato in coda per i percorsi che usano ancora strlen. */
+gmb_expr_t* gmb_expr_str_n(const char* data, long len, int line)
+{
+    gmb_expr_t* e = (gmb_expr_t*)calloc(1, sizeof(*e));
+    e->kind = GMB_EXPR_STR;
+    e->line = line;
+    if (!data || len < 0) len = 0;
+    e->str = (char*)malloc((size_t)len + 1);
+    if (e->str) {
+        if (len) memcpy(e->str, data, (size_t)len);
+        e->str[len] = 0;
+    }
+    e->str_len = len;
+    return e;
+}
 gmb_expr_t* gmb_expr_var(const char* name, int line)
 {
     gmb_expr_t* e = (gmb_expr_t*)calloc(1, sizeof(*e));
@@ -138,6 +155,7 @@ gmb_expr_t* gmb_expr_clone(const gmb_expr_t* e)
     gmb_expr_t* c = (gmb_expr_t*)calloc(1, sizeof(*c));
     c->kind = e->kind; c->line = e->line; c->num = e->num;
     c->str = e->str ? strdup(e->str) : NULL;
+    c->str_len = e->str_len;
     c->var = e->var ? strdup(e->var) : NULL;
     c->ns = e->ns ? strdup(e->ns) : NULL;
     c->ns_tk = e->ns_tk; c->pf_tk = e->pf_tk; c->op = e->op; c->tk = e->tk;
