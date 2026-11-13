@@ -65,6 +65,27 @@ if (argsList.Contains("--builtin-codes"))
     Console.Error.WriteLine($"wrote {Rel(repoRoot, codesOut)}");
     return 0;
 }
+if (argsList.Contains("--coverage"))
+{
+    // Copia PUBBLICATA della copertura (shared/spec/registry) + quella del tool:
+    // sono lo STESSO testo, rigenerato dalla superficie corrente. Serve a NON lasciare in giro
+    // la vecchia fotografia che elencava ancora le superfici migrate a FFI (FINANCE, KDTREE,
+    // CRYPTOGRAPHY, TRADING.* …): i builtin corrispondenti sono già stati rimossi dal registry.
+    var reg2 = (IParserRegistry)Basic.StdLib.Instance;
+    var (procs2, cmds2, _) = Collect(reg2);
+    var gs2 = Path.Combine(repoRoot, "GMBasicSharp");
+    var covText = BuildCoverage(gs2, procs2, cmds2);
+    foreach (var rel in new[] { "GMBasicSharp/common/Registry/coverage.json", "shared/spec/registry/coverage.json" })
+    {
+        var path = Path.Combine(repoRoot, rel);
+        var cur = File.Exists(path) ? File.ReadAllText(path) : null;
+        if (cur == covText) { Console.Error.WriteLine($"invariato: {rel}"); continue; }
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        File.WriteAllText(path, covText);
+        Console.Error.WriteLine($"wrote {rel}");
+    }
+    return 0;
+}
 if (argsList.Contains("--all")) return RunAll(repoRoot, write: true);
 if (argsList.Contains("--check")) return RunAll(repoRoot, write: false);
 
@@ -262,7 +283,11 @@ static int RunAll(string root, bool write)
     outputs.Add((Path.Combine(sh, "spec/registry/surface.csv"), surface));
 
     outputs.Add((Path.Combine(gs, "common/Registry/comparison-existing.json"), BuildComparison(gs, gb, cMembers, procs)));
-    outputs.Add((Path.Combine(gs, "common/Registry/coverage.json"), BuildCoverage(gs, procs, cmds)));
+    // Copertura: la stessa fotografia va anche nella copia PUBBLICATA (shared/spec/registry),
+    // altrimenti resta lì quella vecchia che elenca le superfici migrate a FFI.
+    var covTextAll = BuildCoverage(gs, procs, cmds);
+    outputs.Add((Path.Combine(gs, "common/Registry/coverage.json"), covTextAll));
+    outputs.Add((Path.Combine(sh, "spec/registry/coverage.json"), covTextAll));
 
     outputs.Add((Path.Combine(gb, "native/gmb_compiler_c/frontend/include/gen/gmb_registry.gen.h"), BuildRegistryGenH(procs, cmds, consts)));
     outputs.Add((Path.Combine(gs, "common/Registry/generated/CanonicalLookup.g.cs"), BuildCanonicalLookupCs(procs, cmds, consts)));
@@ -696,9 +721,21 @@ static string BuildCoverage(string gs, List<ProcRow> procs, List<CmdRow> cmds)
         ("VMC", "common/BackendSupport/Registry/VMC.cs"),
         ("C99Native", "common/BackendSupport/Registry/C99Native.cs"),
     };
-    var sets = backends.ToDictionary(b => b.Name,
-        b => Regex.Matches(File.ReadAllText(Path.Combine(gs, b.File)), "Register\\([^,]+,\\s*\"([^\"]+)\"")
-            .Select(m => m.Groups[1].Value.ToLowerInvariant()).ToHashSet());
+    var sets = backends.ToDictionary(b => b.Name, b =>
+    {
+        var full = Regex.Matches(File.ReadAllText(Path.Combine(gs, b.File)), "Register\\([^,]+,\\s*\"([^\"]+)\"")
+            .Select(m => m.Groups[1].Value.ToLowerInvariant()).ToList();
+        var s = new HashSet<string>(full);
+        /* Anche la forma NUDa (ultimo segmento dopo il namespace): i COMANDI sono registrati
+         * qualificati (`ARRAYS.AADD`) ma la superficie canonica li elenca col nome nudo —
+         * senza questo, 115 comandi risultavano "non implementati" su tutti i backend. */
+        foreach (var f in full)
+        {
+            var dot = f.LastIndexOf('.');
+            if (dot >= 0 && dot + 1 < f.Length) s.Add(f[(dot + 1)..]);
+        }
+        return s;
+    });
 
     var rows = new List<Dictionary<string, object>>();
     for (int i = 0; i < procs.Count; i++)
@@ -709,7 +746,12 @@ static string BuildCoverage(string gs, List<ProcRow> procs, List<CmdRow> cmds)
             ["id"] = i + 1, ["ns"] = p.Ns, ["name"] = p.Name, ["kind"] = p.KindName
         };
         foreach (var b in backends)
-            row[b.Name] = sets[b.Name].Contains(p.Name.ToLowerInvariant()) || sets[b.Name].Contains(p.KindName.ToLowerInvariant());
+            row[b.Name] = sets[b.Name].Contains(p.Name.ToLowerInvariant())
+                       || sets[b.Name].Contains(p.KindName.ToLowerInvariant())
+                       /* I registry dei backend registrano il nome CANONICO QUALIFICATO
+                        * (`ARRAYS.AADD`, `MATH.Abs`): senza questa forma ogni riga risultava
+                        * "non implementata" (coverage tutto false, misurato 2026-11-13). */
+                       || sets[b.Name].Contains((p.Ns + "." + p.Name).ToLowerInvariant());
         rows.Add(row);
     }
     for (int i = 0; i < cmds.Count; i++)
