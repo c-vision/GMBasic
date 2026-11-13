@@ -132,6 +132,16 @@ typedef struct {
     char***   ploc_names;
     uint32_t* ploc_counts;
     uint32_t  ploc_count;
+    /* DEFAULT dei parametri OPTIONAL per procedura (coda FINALE opzionale A1): per voce
+     * indirizzo di inizio procedura + nparams + per parametro kind {0=nessuno,1=f64,2=stringa}.
+     * Servono a `gmb_vm_call_proc_sync_vals` (macro che chiama una procedura: gli argomenti
+     * omessi prendono il default dichiarato). Specchio CompiledChunk.ProcedureParamDefaults. */
+    uint32_t* pdef_addrs;
+    uint32_t* pdef_counts;
+    uint8_t** pdef_kinds;
+    double**  pdef_nums;
+    char***   pdef_strs;
+    uint32_t  pdef_count;
     /* pool di stringhe deserializzate (ownership) */
     char** _strings;
     uint32_t _strings_count;

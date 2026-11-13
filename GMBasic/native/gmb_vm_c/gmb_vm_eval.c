@@ -252,6 +252,24 @@ static int merged_build(eval_ent_t* e, const gmb_chunk_t* host,
     e->merged.arity_addrs = e->own_arity_addrs;
     e->merged.arity_vals = e->own_arity_vals;
     e->merged.arity_count = e->merged.proc_count;
+    /* DEFAULT dei parametri OPTIONAL: PRESTATI dal chunk ospite (l'entry lo trattiene in
+     * `e->host`, e merged_free libera solo gli array own_*). Senza, una procedura invocata
+     * dalla macro perdeva i default e riceveva 0 al posto del valore dichiarato. */
+    if (host)
+    {
+        e->merged.pdef_count = host->pdef_count;
+        e->merged.pdef_addrs = host->pdef_addrs;
+        e->merged.pdef_counts = host->pdef_counts;
+        e->merged.pdef_kinds = host->pdef_kinds;
+        e->merged.pdef_nums = host->pdef_nums;
+        e->merged.pdef_strs = host->pdef_strs;
+        /* VERSIONE del formato: un OP_CALL_FFI in un chunk < v2 è RIFIUTATO ("ricompilare").
+         * Il chunk FUSO nasceva senza versione (0) → una procedura ospite con DECLARE ... LIB
+         * (es. FINANCE.PMT → ofx_fin_pmt) falliva dentro EVAL con quell'errore, mentre la
+         * chiamata diretta funzionava. Il fuso eredita la versione del chunk ospite. */
+        e->merged.version = host->version;
+        e->merged.uses_tray = host->uses_tray;
+    }
 
     uint32_t hloc = host ? host->ploc_count : 0;
     uint32_t sloc = s->ploc_count;

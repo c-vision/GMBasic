@@ -1318,6 +1318,25 @@ public sealed partial class Compiler
             // l'indirizzo per-Simbolo le disambigua (CallPatchToken porta il SymbolId).
             if (proc.SymbolId >= 0) _procedureAddresses[$"@sym{proc.SymbolId}"] = procStartAddr;
             _procedureArities[_chunk.Code.Count] = proc.Parameters.Length;
+            /* DEFAULT dei parametri OPTIONAL (coda A1): la VM/C invoca le procedure anche dal
+             * frammento EVAL/& e deve completare gli argomenti omessi come il call-site C#.
+             * Solo LETTERALI (numero/stringa/bool): un default calcolato resta esplicito. */
+            {
+                var pdefs = new object?[proc.Parameters.Length];
+                var any = false;
+                for (var pi = 0; pi < pdefs.Length; pi++)
+                {
+                    pdefs[pi] = proc.Parameters[pi].DefaultValue switch
+                    {
+                        NumberExpr dn => dn.Value,
+                        StringExpr ds => ds.Value,
+                        BooleanExpr db => db.Value ? -1.0 : 0.0,   // canone BASIC: TRUE = -1
+                        _ => null
+                    };
+                    if (pdefs[pi] is not null) any = true;
+                }
+                if (any) _chunk.ProcedureParamDefaults[_chunk.Code.Count] = pdefs;
+            }
             _locals.Clear();
             _scopeDepth = 0;
             _isReachable = true;

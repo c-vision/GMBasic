@@ -4514,21 +4514,67 @@ int gmb_vm_call_proc_sync_vals(gmb_vm_t* vm, gmb_task_t* task, const char* name,
     int addr = gmb_vm_proc_addr(vm, name);
     if (addr <= 0) return -1;
     gmb_stack_entry_t se[16];
-    int nn = n > 16 ? 16 : (n < 0 ? 0 : n);
+    /* Gli argomenti OMESSI si completano con i DEFAULT dichiarati nella procedura (coda A1
+     * `ProcedureParamDefaults`): è ciò che il call-site C# fa per una chiamata normale, quindi
+     * una macro che scrive `EVAL("PMT(r, n, pv)")` deve ottenere lo stesso valore (prima il
+     * parametro omesso restava 0, o la procedura falliva se l'arità non combaciava). Senza
+     * default noti per un parametro obbligatorio → -1 (errore esplicito della macro). */
+    uint32_t arity = 0;
+    if (vm->chunk && vm->chunk->arity_count)
+        for (uint32_t i = 0; i < vm->chunk->arity_count; i++)
+            if ((int)vm->chunk->arity_addrs[i] == addr) { arity = vm->chunk->arity_vals[i]; break; }
+    const uint8_t* pkind = NULL; const double* pnum = NULL; char** pstr = NULL;
+    uint32_t pcount = 0;
+    if (vm->chunk && vm->chunk->pdef_count)
+        for (uint32_t i = 0; i < vm->chunk->pdef_count; i++)
+            if ((int)vm->chunk->pdef_addrs[i] == addr)
+            {
+                pkind = vm->chunk->pdef_kinds ? vm->chunk->pdef_kinds[i] : NULL;
+                pnum  = vm->chunk->pdef_nums ? vm->chunk->pdef_nums[i] : NULL;
+                pstr  = vm->chunk->pdef_strs ? vm->chunk->pdef_strs[i] : NULL;
+                pcount = vm->chunk->pdef_counts[i];
+                break;
+            }
+    int nn = n < 0 ? 0 : n;
+    int given = nn;
+    if (arity > (uint32_t)nn && arity <= 16 && pkind && pcount >= arity)
+    {
+        for (uint32_t k = (uint32_t)nn; k < arity; k++)
+            if (pkind[k] == 0) return -1;    /* parametro OBBLIGATORIO mancante: esplicito */
+        nn = (int)arity;
+    }
+    if (nn > 16) nn = 16;
     for (int i = 0; i < nn; i++)
     {
         memset(&se[i], 0, sizeof se[i]);
-        const gmb_val_t* v = &args[i];
-        if (v->kind == GMB_TYPE_STRING)
+        if (i < given)
+        {
+            const gmb_val_t* v = &args[i];
+            if (v->kind == GMB_TYPE_STRING)
+            {
+                se[i].type = 2;
+                se[i].ref = (gmb_obj_t*)gmb_str_cstr(v->v_string.data ? v->v_string.data : "");
+                se[i].basic_type = GMB_BT_STRING;
+            }
+            else
+            {
+                se[i].type = 1;
+                se[i].num = gmb_val_to_double(*v);
+                se[i].basic_type = GMB_BT_NUMBER;
+            }
+            continue;
+        }
+        /* argomento OMESSO: default dichiarato (numero/stringa) */
+        if (pkind[i] == 2)
         {
             se[i].type = 2;
-            se[i].ref = (gmb_obj_t*)gmb_str_cstr(v->v_string.data ? v->v_string.data : "");
+            se[i].ref = (gmb_obj_t*)gmb_str_cstr(pstr && pstr[i] ? pstr[i] : "");
             se[i].basic_type = GMB_BT_STRING;
         }
         else
         {
             se[i].type = 1;
-            se[i].num = gmb_val_to_double(*v);
+            se[i].num = pnum ? pnum[i] : 0.0;
             se[i].basic_type = GMB_BT_NUMBER;
         }
     }

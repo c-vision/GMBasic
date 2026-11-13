@@ -118,6 +118,26 @@ public static class ChunkA1Serializer
         // USES TRAY (coda FINALE opzionale): 1 byte 0/1 — il programma usa il namespace TRAY.
         w.Write(chunk.UsesTray ? (byte)1 : (byte)0);
 
+        // PROC PARAM DEFAULTS (coda FINALE opzionale): per procedura, i default LETTERALI dei
+        // parametri OPTIONAL, così la VM/C può completare gli argomenti omessi da una macro
+        // (il chunk non porta l'AST). u32 count → per voce: u32 addr, u32 nparams,
+        // poi per parametro u8 kind (0 = nessun default, 1 = numero, 2 = stringa).
+        WriteU32(w, (uint)chunk.ProcedureParamDefaults.Count);
+        foreach (var (addr, defs) in chunk.ProcedureParamDefaults)
+        {
+            WriteU32(w, (uint)addr);
+            WriteU32(w, (uint)defs.Length);
+            foreach (var d in defs)
+            {
+                switch (d)
+                {
+                    case double dn: w.Write((byte)1); WriteF64(w, dn); break;
+                    case string ds: w.Write((byte)2); WriteString(w, ds); break;
+                    default: w.Write((byte)0); break;
+                }
+            }
+        }
+
         return ms.ToArray();
     }
 
@@ -222,6 +242,29 @@ public static class ChunkA1Serializer
             // USES TRAY (coda FINALE, opzionale): byte 0/1.
             if (r.BaseStream.Position < r.BaseStream.Length)
                 chunk.UsesTray = r.ReadByte() != 0;
+            // PROC PARAM DEFAULTS (coda FINALE, opzionale): default letterali dei parametri
+            // OPTIONAL per procedura (la VM/C li usa per completare una chiamata da macro).
+            if (r.BaseStream.Position < r.BaseStream.Length)
+            {
+                var pdefCount = ReadU32(r);
+                for (var i = 0; i < pdefCount; i++)
+                {
+                    var addr = unchecked((int)ReadU32(r));
+                    var n = (int)ReadU32(r);
+                    var defs = new object?[n];
+                    for (var j = 0; j < n; j++)
+                    {
+                        var kind = r.ReadByte();
+                        defs[j] = kind switch
+                        {
+                            1 => (object)ReadF64(r),
+                            2 => ReadString(r),
+                            _ => null
+                        };
+                    }
+                    chunk.ProcedureParamDefaults[addr] = defs;
+                }
+            }
         }
         catch (EndOfStreamException) { }
 

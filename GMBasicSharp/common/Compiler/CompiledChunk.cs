@@ -133,6 +133,16 @@ public sealed class CompiledChunk
     public Dictionary<int, string?[]> ProcedureLocalNames { get; } = new();
 
     /// <summary>
+    /// DEFAULT dei parametri OPTIONAL per procedura (chiave = indirizzo Ip di inizio): indice =
+    /// posizione del parametro, valore = default LETTERALE (double/string) o null se il parametro
+    /// è obbligatorio (o il default non è letterale). Serve alla VM/C per invocare una procedura
+    /// dal frammento `EVAL`/`&` completando gli argomenti OMESSI come fa il call-site C#
+    /// (il chunk non ha l'AST). Serializzato in coda A1/GMBC (i loader vecchi ignorano i byte
+    /// extra): prima, `EVAL("PMT(r,n,pv)")` sulla gamba VM/C lasciava 0 al posto del default.
+    /// </summary>
+    public Dictionary<int, object?[]> ProcedureParamDefaults { get; } = new();
+
+    /// <summary>
     /// Riversa le tabelle locali di un chunk figlio (lambda, LOCAL SUB/FUNCTION) nel chunk
     /// ospite, traslando gli indirizzi di <paramref name="hostAddress"/> + <paramref name="shift"/>
     /// (il prologo STORE_LOCAL/CLEAR_RETURN inserito in testa al codice figlio sposta il corpo).
