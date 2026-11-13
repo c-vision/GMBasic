@@ -410,7 +410,11 @@ static int gb_multi_ask(ctx_t* c, gmb_expr_t** args, int nargs) {
     if (nargs > 2) { sb_put(&c->out, "(int)("); emit_expr(c, args[2]); sb_put(&c->out, ")"); } else sb_put(&c->out, "1");
     sb_put(&c->out, ", ");
     if (nargs > 3) { emit_expr(c, args[3]); } else sb_put(&c->out, "-1.0");
-    sb_put(&c->out, "); char* _r; if (_c && strncmp(_c, \"{\\\"status\\\":\", 10) == 0) { _r = _c; } else { char _p[8192]; snprintf(_p, sizeof(_p), \"Domanda: %s\\nContesto:\\n%s\", ");
+    /* "[insufficient evidence]" è già la RISPOSTA canonica (nessun documento rilevante:
+     * parità RagAskPipeline del lato managed, che non chiama l'LLM). Prima si costruiva il
+     * prompt e si chiamava il completa → senza provider usciva "Error: nessun provider LLM
+     * configurato (AI SET ACTIVE)" invece del messaggio deterministico (ai/ai_askmulti). */
+    sb_put(&c->out, "); char* _r; if (_c && (strncmp(_c, \"{\\\"status\\\":\", 10) == 0 || strncmp(_c, \"[insufficient evidence]\", 23) == 0)) { _r = _c; } else { char _p[8192]; snprintf(_p, sizeof(_p), \"Domanda: %s\\nContesto:\\n%s\", ");
     emit_s(c, args, 0); sb_put(&c->out, ".data, _c ? _c : \"\"); if (_c) free(_c); _r = gmb_llm_complete(\"Rispondi alla domanda usando SOLO il contesto fornito.\", _p); } gmb_string_t _s = gmb_string_alloc(_r); if (_r) free(_r); _s; })");
     return 1;
 }
