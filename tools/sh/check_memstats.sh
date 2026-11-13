@@ -29,22 +29,32 @@ RUN="$ROOT/tools/sh/gmb_c99native_run.sh"
 WORK=$(mktemp -d "${TMPDIR:-/tmp}/gmb_memstats_check.XXXXXX") || exit 2
 trap 'rm -rf "$WORK"' EXIT
 
-cat > "$WORK/on.bas" <<'EOF'
-IMPORT SYSTEM
-IMPORT AI
-AI SET OPTION "debug.memory", "1"
-DIM i AS LONG
-DIM s AS STRING
-FOR i = 1 TO 500
-  s = "riga " + STR$(i)
-NEXT i
-PRINT "len="; LEN(s)
-EOF
 # ATTENZIONE: `AI SET OPTION` PERSISTE la voce in app.settings.json della cartella del
 # programma (gmb_opt_set_persist). I due casi vanno quindi in DUE cartelle diverse,
 # altrimenti l'OFF eredita il valore scritto dall'ON.
 mkdir -p "$WORK/on" "$WORK/off"
-mv "$WORK/on.bas" "$WORK/on/prog.bas"
+cat > "$WORK/on/prog.bas" <<'EOF'
+IMPORT SYSTEM
+IMPORT AI
+IMPORT COLLECTIONS
+AI SET OPTION "debug.memory", "1"
+SUB Main()
+  DIM i AS LONG
+  DIM s AS STRING
+  FOR i = 1 TO 200
+    s = "riga " + STR$(i)
+  NEXT i
+  DIM l AS LIST OF STRING = NEW LIST OF STRING
+  FOR i = 1 TO 100
+    l.Add("x" + STR$(i))
+  NEXT i
+  DIM d AS DICT OF STRING, INTEGER = NEW DICT OF STRING, INTEGER
+  FOR i = 1 TO 100
+    d.Set("k" + STR$(i), i)
+  NEXT i
+  PRINT "len="; LEN(s); "|list="; l.Count(); "|dict="; d.Count()
+END SUB
+EOF
 sed -e 's/AI SET OPTION "debug.memory", "1"//' "$WORK/on/prog.bas" > "$WORK/off/prog.bas"
 
 run_case() {
@@ -62,6 +72,20 @@ grep -q "^\[MEM\] string vivi" "$WORK/memon.err" || {
 }
 grep -q "^\[MEM\] list" "$WORK/memon.err" || {
   echo "FAIL: report incompleto (manca la riga 'list')" >&2
+  fail=1
+}
+grep -q "^\[MEM\] dict" "$WORK/memon.err" || {
+  echo "FAIL: report incompleto (manca la riga 'dict')" >&2
+  fail=1
+}
+# i contatori list/dict devono essere AGGANCIATI (un programma che usa liste e dict
+# deve mostrare byte vivi, non sempre 0)
+grep -Eq "^\[MEM\] list +vivi [1-9]" "$WORK/memon.err" || {
+  echo "FAIL: il contatore 'list' non vede la lista viva (aggancio assente?)" >&2
+  fail=1
+}
+grep -Eq "^\[MEM\] dict +vivi [1-9]" "$WORK/memon.err" || {
+  echo "FAIL: il contatore 'dict' non vede il dict vivo (aggancio assente?)" >&2
   fail=1
 }
 if grep -q "^\[MEM\]" "$WORK/memoff.err"; then
