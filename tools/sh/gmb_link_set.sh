@@ -46,9 +46,20 @@ die() { echo "gmb_link_set: $*" >&2; exit 2; }
 [ -n "$RID" ] || die "serve --rid <osx-arm64|osx-x64|linux-x64|linux-arm64|win-x64|win-arm64>"
 
 # ── §17.1 del piano: l'UNICA tabella RID → triple. `arm64-macos` non esiste come triple. ──────
+# I RID macOS portano la VERSIONE nella triple (come i Linux, che hanno la glibc): senza, il
+# minimo di macOS lo decide lo SDK del builder e il binario non parte su macOS precedenti.
+# zig ignora `-mmacosx-version-min`: la versione va qui. Il VALORE sta in `tools/sh/macos-floor`,
+# unica fonte letta anche da `tools/sh/zcc`: nessun letterale duplicato da tenere sincrono.
+# `read` è un builtin, e questo script gira una volta per invocazione del runner, non per unità.
+case "${BASH_SOURCE[0]:-$0}" in
+  */*) _ls_dir="${BASH_SOURCE[0]:-$0}"; _ls_dir="${_ls_dir%/*}" ;;
+  *)   _ls_dir="$(command -v -- "$0")"; _ls_dir="${_ls_dir%/*}" ;;
+esac
+IFS= read -r LS_MACOS_FLOOR < "$_ls_dir/macos-floor" 2>/dev/null \
+  || die "tools/sh/macos-floor mancante accanto a gmb_link_set.sh (pavimento macOS)"
 case "$RID" in
-  osx-arm64)   LS_OS=Darwin; LS_ARCH=arm64;  LS_TRIPLE=aarch64-macos ;;
-  osx-x64)     LS_OS=Darwin; LS_ARCH=x86_64; LS_TRIPLE=x86_64-macos ;;
+  osx-arm64)   LS_OS=Darwin; LS_ARCH=arm64;  LS_TRIPLE=aarch64-macos.$LS_MACOS_FLOOR ;;
+  osx-x64)     LS_OS=Darwin; LS_ARCH=x86_64; LS_TRIPLE=x86_64-macos.$LS_MACOS_FLOOR ;;
   # FLOOR GLIBC = 2.39, MISURATO (2026-11-12). Le `.so` del bundle Linux sono costruite su
   # Ubuntu 24.04: a 2.28 il link cross si ferma su `dlerror@GLIBC_2.34`, a 2.35 su
   # `__isoc23_strtol@GLIBC_2.38` (libcrypto) e `fmod@GLIBC_2.38` (libsqlite3). A 2.39 linka.

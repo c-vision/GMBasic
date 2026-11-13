@@ -6,6 +6,16 @@
 #   -include mach-o/dyld.h             _NSGetExecutablePath in gmb_eval_hook.c (clang lo trova
 #                                      per transitività, zig no → "call to undeclared function")
 #   -L<SDK>/usr/lib                    .tbd di sistema (libsqlite3/libcurl/libz/libbz2)
+#   -target <arch>-macos.<FLOOR>       PAVIMENTO: senza, il minimo di macOS lo decide lo SDK del
+#                                      builder (qui 27.2) e il binario NON parte su macOS
+#                                      precedenti. zig ignora `-mmacosx-version-min`: la versione
+#                                      va nella triple. Un `-target` del chiamante (cross) vince.
+#                                      Il VALORE sta in `tools/sh/macos-floor`, unica fonte letta
+#                                      anche da `gmb_link_set.sh`: qui non c'è nessun letterale.
+#
+# XCODE NON SERVE: basta l'SDK dei Command Line Tools (`xcode-select --install`). `xcrun` è la
+# via normale; se Xcode è stato rimosso dopo l'installazione `xcode-select` punta a un percorso
+# morto e `xcrun` fallisce mentre l'SDK dei CLT è ancora al suo posto — si cerca anche lì.
 #
 # Uso: tools/sh/test_minitests_c99native --rid osx-arm64 --cc "tools/sh/zcc"
 #      tools/sh/zcc --print        riga esatta (debug)
@@ -17,12 +27,38 @@ for c in "${HOME}"/.gmbasic/toolchains/zig/*/zig; do [ -x "$c" ] && ZIG="$c"; do
 [ -n "$ZIG" ] || ZIG="$(command -v zig || true)"
 [ -n "$ZIG" ] || { echo "zcc: zig non trovato (PATH o ~/.gmbasic/toolchains/zig/*/zig)" >&2; exit 127; }
 
+# Pavimento macOS: UNICA fonte `tools/sh/macos-floor` (nessun letterale, così non può andare
+# fuori sincrono con gmb_link_set.sh). `read` è un BUILTIN di bash: zero processi in più per
+# ogni unità compilata (zcc gira una volta per sorgente).
+case "${BASH_SOURCE[0]:-$0}" in
+  */*) _zcc_dir="${BASH_SOURCE[0]:-$0}"; _zcc_dir="${_zcc_dir%/*}" ;;
+  *)   _zcc_dir="$(command -v -- "$0")"; _zcc_dir="${_zcc_dir%/*}" ;;
+esac
+IFS= read -r MACOS_FLOOR < "$_zcc_dir/macos-floor" 2>/dev/null \
+  || { echo "zcc: $_zcc_dir/macos-floor mancante (pavimento macOS: unica fonte)" >&2; exit 127; }
+
 FLAGS=()
 if [ "$(uname -s)" = Darwin ]; then
   SDK="$(xcrun --show-sdk-path 2>/dev/null || true)"
-  [ -d "${SDK:-}" ] || { echo "zcc: SDK macOS non trovato (xcrun --show-sdk-path)" >&2; exit 127; }
+  if [ ! -d "${SDK:-}" ]; then
+    for s in /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk \
+             /Library/Developer/CommandLineTools/SDKs/MacOSX*.sdk; do
+      if [ -d "$s" ]; then SDK="$s"; break; fi
+    done
+  fi
+  [ -d "${SDK:-}" ] || { echo "zcc: SDK macOS non trovato — servono i Command Line Tools (xcode-select --install); Xcode NON serve" >&2; exit 127; }
   FLAGS=(-isysroot "$SDK" -L"$SDK/usr/lib" -F"$SDK/System/Library/Frameworks"
          -isystem "$SDK/usr/include" -include mach-o/dyld.h)
+  # Pavimento macOS: solo per l'HOST, cioè quando il chiamante non ha già scelto il target
+  # (il cross passa `-target` via gmb_link_set.sh, che ha lo stesso pavimento nella triple).
+  explicit=0
+  for a in "$@"; do [ "$a" = "-target" ] && explicit=1; done
+  if [ "$explicit" = 0 ]; then
+    case "$(uname -m)" in
+      arm64) FLAGS+=(-target "aarch64-macos.$MACOS_FLOOR") ;;
+      *)     FLAGS+=(-target "x86_64-macos.$MACOS_FLOOR") ;;
+    esac
+  fi
 fi
 
 if [ "${1:-}" = "--print" ]; then

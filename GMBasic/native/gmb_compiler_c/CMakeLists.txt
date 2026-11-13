@@ -6,6 +6,15 @@
 # consumatori: executor/repl/gmb_vm_c/gmb_runtime_c) e il MODEL compiler (checkpoint MoE).
 # Libreria autonoma, NESSUNA dipendenza dal runtime (gmb_runtime_c).
 cmake_minimum_required(VERSION 3.10)
+# PAVIMENTO macOS allineato a `tools/sh/zcc` (MACOS_FLOOR): senza, cmake non passa alcun
+# deployment target e clang prende il minimo dello SDK del builder (qui 27.2) — i binari
+# distribuiti (`gmbnative`, `gmb`, `gmblsp`, `gmbchunk`, …) partivano SOLO su macOS 27.2,
+# mentre i programmi prodotti da zcc dichiarano 12.0. Va impostato PRIMA di `project()`,
+# che è quando CMake inizializza i flag del compilatore; `CMAKE_HOST_SYSTEM_NAME` è già
+# valorizzato a questo punto (`APPLE` non lo è).
+if(CMAKE_HOST_SYSTEM_NAME STREQUAL "Darwin" AND NOT CMAKE_OSX_DEPLOYMENT_TARGET)
+  set(CMAKE_OSX_DEPLOYMENT_TARGET "12.0")
+endif()
 project(gmb_compiler_c C)
 
 # RID della macchina di build (unico posto: native/cmake/GmbRid.cmake): l'output delle nostre
