@@ -45,6 +45,9 @@ done
 die() { echo "gmb_link_set: $*" >&2; exit 2; }
 [ -n "$RID" ] || die "serve --rid <osx-arm64|osx-x64|linux-x64|linux-arm64|win-x64|win-arm64>"
 
+MONO="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+ROOT="$MONO/GMBasic"
+
 # ── §17.1 del piano: l'UNICA tabella RID → triple. `arm64-macos` non esiste come triple. ──────
 # I RID macOS portano la VERSIONE nella triple (come i Linux, che hanno la glibc): senza, il
 # minimo di macOS lo decide lo SDK del builder e il binario non parte su macOS precedenti.
@@ -55,13 +58,9 @@ die() { echo "gmb_link_set: $*" >&2; exit 2; }
 # che non usa.
 case "$RID" in
   osx-*)
-    case "${BASH_SOURCE[0]:-$0}" in
-      */*) _ls_dir="${BASH_SOURCE[0]:-$0}"; _ls_dir="${_ls_dir%/*}" ;;
-      *)   _ls_dir="$(command -v -- "$0")"; _ls_dir="${_ls_dir%/*}" ;;
-    esac
-    [ -r "$_ls_dir/macos-floor" ] \
-      || die "tools/sh/macos-floor mancante accanto a gmb_link_set.sh (pavimento macOS)"
-    IFS= read -r LS_MACOS_FLOOR < "$_ls_dir/macos-floor"
+    [ -r "$MONO/tools/sh/macos-floor" ] \
+      || die "tools/sh/macos-floor mancante nel monorepo (pavimento macOS)"
+    IFS= read -r LS_MACOS_FLOOR < "$MONO/tools/sh/macos-floor"
     ;;
 esac
 case "$RID" in
@@ -78,8 +77,6 @@ case "$RID" in
   *) die "RID non riconosciuto: $RID (attesi i 6 del piano)" ;;
 esac
 
-MONO="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-ROOT="$MONO/GMBasic"
 [ -n "$CACHE" ] || CACHE="$HOME/.gmbasic/libs/$RID"
 INDEX="$MONO/shared/settings/libs-index-$RID.tsv"
 
