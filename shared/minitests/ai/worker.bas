@@ -1,5 +1,8 @@
 ' P3 AI WORKER — lifecycle + workspace + state save/load.
 ' EXPECT: new= ok|run= ok|save= ok|load= nota|rounds=  1|spend=  0|rescued=  0
+' NOTA: `spend`/`rescued` sono 0 sulle gambe managed (il completer FIXTURE non conta token) e
+' `251`/`1` su C99Native, che invece li conta: DIVERGENZA APERTA (contabilita' token del
+' worker fra le gambe), non un oracolo da aggiustare.
 IMPORT AI
 IMPORT STRINGS
 
