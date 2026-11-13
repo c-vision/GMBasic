@@ -45,9 +45,49 @@ public class NullGraphicsService : IGraphicsService
     public void CCls() { }
     public void CSaveScreen(string path) { }
     public void CRestoreScreen(string path) { }
-    public double SpriteCollide(int id1, int id2) => 0;
-    public object[] SpriteCollideAll(int id) => Array.Empty<object>();
-    public object[] SpriteCollideBatch(float[] xs, float[] ys, float w, float h) => Array.Empty<object>();
+    /* COLLIDE(id1,id2) / COLLIDE(id) / COLLIDEBATCH: NIENTE stub. Il modello software qui
+     * sotto ha già rettangoli veri (dimensioni PNG × posizione × visibilità) e le collisioni
+     * al SYNC le calcola da sempre; questi tre erano `=> 0` / `=> vuoto`, quindi su IL/PCode
+     * headless `COLLIDE()` rispondeva SEMPRE 0 (mentre C99/VM-C collidevano) — bastava un
+     * demo con due sprite sovrapposti per vederlo. Stessa AABB del SYNC e dello Sprites
+     * gestito: tocco se a.x < b.x+b.w && a.x+a.w > b.x && a.y < b.y+b.h && a.y+a.h > b.y. */
+    private bool NullOverlap((float X, float Y, int W, int H, bool Vis) a, (float X, float Y, int W, int H, bool Vis) b)
+        => a.X < b.X + b.W && a.X + a.W > b.X && a.Y < b.Y + b.H && a.Y + a.H > b.Y;
+    public double SpriteCollide(int id1, int id2)
+    {
+        if (!_nullSprites.TryGetValue(id1, out var a) || !_nullSprites.TryGetValue(id2, out var b)) return 0;
+        if (!a.Vis || !b.Vis) return 0;          /* sprite spento (SPRITE OFF) non collide */
+        return NullOverlap(a, b) ? -1 : 0;
+    }
+    public object[] SpriteCollideAll(int id)
+    {
+        var hits = new List<object>();
+        if (!_nullSprites.TryGetValue(id, out var a) || !a.Vis) return hits.ToArray();
+        foreach (var kv in _nullSprites)
+        {
+            if (kv.Key == id || !kv.Value.Vis) continue;
+            if (NullOverlap(a, kv.Value)) hits.Add(kv.Key);   /* stessi elementi di Sdl/Sprites (id) */
+        }
+        return hits.ToArray();
+    }
+    public object[] SpriteCollideBatch(float[] xs, float[] ys, float w, float h)
+    {
+        var n = Math.Min(xs?.Length ?? 0, ys?.Length ?? 0);
+        var pairs = new List<object>();
+        if (n < 2) return pairs.ToArray();
+        var halfW = w / 2f; var halfH = h / 2f;
+        for (var i = 0; i < n; i++)
+            for (var j = i + 1; j < n; j++)
+            {
+                float ax = xs![i], ay = ys![i], bx = xs[j], by = ys[j];
+                if (ax + halfW >= bx - halfW && ax - halfW <= bx + halfW &&
+                    ay + halfH >= by - halfH && ay - halfH <= by + halfH)
+                {
+                    pairs.Add(i); pairs.Add(j);   /* coppie piatte [i0,j0,i1,j1,…] come CollideBatch */
+                }
+            }
+        return pairs.ToArray();
+    }
     // Modello software minimo degli sprite (headless, senza SDL): id progressivi, rettangolo = dimensioni del PNG,
     // posizione e visibilita'. Serve solo a rilevare le collisioni al SYNC (ON SPRITE COLLISION), come la C runtime
     // headless (gmb_graphics_sprite.c) e GraphicsManager.DetectCollisions.

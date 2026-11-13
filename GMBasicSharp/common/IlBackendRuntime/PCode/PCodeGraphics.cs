@@ -304,7 +304,10 @@ internal sealed class PCodeGraphics
 
     // ── Collisioni ──
     internal bool Collide(int id1, int id2)
-        => _c is null ? GraphicsManager.Instance.Collide(id1, id2) : _c.SpriteCollide(id1, id2) > 0;
+        /* Convenzione BASIC: -1 = collisione, 0 = no. `_c.SpriteCollide` (motore C) ritorna
+         * -1/0 → il vecchio `> 0` era SEMPRE falso: su PCode `COLLIDE()` rispondeva 0 anche
+         * con gli sprite sovrapposti (C99/IL/VM-C davano -1). */
+        => _c is null ? GraphicsManager.Instance.Collide(id1, id2) : _c.SpriteCollide(id1, id2) != 0;
 
     internal int[] CollideAll(int id)
     {

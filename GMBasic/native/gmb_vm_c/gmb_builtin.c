@@ -6664,9 +6664,35 @@ static void gmb_bf_543(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func
 }
 static void gmb_bf_460(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
 {
+    /* COLLIDE(id1, id2) → -1/0 (AABB tra due sprite: dimensioni dalla texture, posizione
+     * dallo stato sprite) e COLLIDE(id) → lista degli id in collisione con `id`.
+     * Prima era `bout->result = 0`: sulla gamba VM/C `COLLIDE` rispondeva SEMPRE 0 (nessuna
+     * collisione, mentre C99/IL/PCode collidevano). Stessa funzione del runtime C usata da
+     * C99Native (gmb_gfx_collide), così il calcolo è UNO (§0bis). */
+    (void)vm; (void)func_code; (void)task;
+    if (argc >= 2)
+    {
+        bout->result = (double)gmb_gfx_collide((int)args[0].num, (int)args[1].num);
+        return;
+    }
+    if (argc == 1)
+    {
+        int id = (int)args[0].num;
+        gmb_obj_shared_val_t* out = gmb_shared_list_new();
+        if (out)
         {
-            bout->result = 0;
+            /* Gli id sprite non sono contigui: si scandisce un intervallo ampio e si tiene chi
+             * collide (gmb_gfx_collide ritorna 0 per id inesistenti, non serve conoscerli). */
+            for (int other = 1; other < 4096; other++)
+            {
+                if (other == id) continue;
+                if (gmb_gfx_collide(id, other)) gmb_list_add(out->list, gmb_make_val_double(other));
+            }
+            bout->is_num = 0; bout->result_ref = (gmb_obj_t*)out; bout->result_ref_bt = GMB_BT_OBJECT;
+            return;
         }
+    }
+    bout->result = 0;
 }
 static void gmb_bf_271(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
 {

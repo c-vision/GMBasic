@@ -108,6 +108,13 @@ public sealed partial class IlProgramCompiler
         // applicava la conversione bool->numerico su un double (mul double*int32 =
         // "Invalid operand types in BinaryInst", ABS(<BIT>) su GPM).
         if (f.Name.Kind is TokenKind.Abs) return new DoubleType();
+        /* COLLIDE(id1, id2) ritorna -1/0 (numerico) — la stdlib lo dichiara InferredType perché
+         * COLLIDE(id) ritorna l'ARRAY degli id in collisione. Con InferredType l'assegnazione
+         * `n% = COLLIDE(a,b)` non riceveva la coerce double→INTEGER e lo store scriveva i BIT
+         * del double in un int32: `-1` diventava -4.61618961805476E+18 (visibile solo quando
+         * c'è collisione: con 0.0 i bit sono 0). Qui il tipo si decide dall'arità. */
+        if (f.Name.Kind is TokenKind.Collide)
+            return f.Args.Length >= 2 ? new DoubleType() : new ArrayType(new InferredType());
         // POOL.GET(p): PCodePool.Get ritorna un `object` (valore dinamico). Dichiararlo AnyType
         // (→ System.Object) fa convertire al consumatore con il dispatch runtime sul tipo reale;
         // con il ReturnType InferredType (→ double) lo stack aveva object dove si attendeva double

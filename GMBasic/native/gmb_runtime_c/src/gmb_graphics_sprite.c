@@ -184,9 +184,17 @@ int gmb_gfx_collide(int id1, int id2)
     if (id2 <= 0 || id2 >= GMB_GFX_MAX_SPRITES || !g_gfx.sprites[id2].in_use) return 0;
     gmb_gfx_sprite_t* a = &g_gfx.sprites[id1];
     gmb_gfx_sprite_t* b = &g_gfx.sprites[id2];
+    /* Sprite SPENTO (SPRITE OFF) non partecipa alle collisioni: è il contratto già applicato
+     * dal rilevamento al SYNC qui sopra (`gfx_detect_collisions` salta !visible) e dalle due
+     * implementazioni gestite (Sprites/Null: «0 = no collisione o sprite inesistente/nascosto»).
+     * Senza, `COLLIDE` dopo `SPRITE OFF` dava -1 su C99/VM-C/PCode e 0 su IL. */
+    if (!a->visible || !b->visible) return 0;
     gmb_gfx_image_t *ta = NULL, *tb = NULL;
-    if (a->tex_id > 0 && a->tex_id < GMB_GFX_MAX_TEXTURES && g_gfx.textures[a->tex_id].in_use) ta = &g_gfx.textures[a->tex_id];
-    if (b->tex_id > 0 && b->tex_id < GMB_GFX_MAX_TEXTURES && g_gfx.textures[b->tex_id].in_use) tb = &g_gfx.textures[b->tex_id];
+    /* tex_id: -1 = nessuna texture; gli id VALIDI partono da 0 (register_image fa
+     * `next_tex_id++`). Il vecchio `> 0` scartava proprio la texture id 0, quindi il PRIMO
+     * sprite caricato non collideva MAI (COLLIDE/ON SPRITE COLLISION sempre 0 per lui). */
+    if (a->tex_id >= 0 && a->tex_id < GMB_GFX_MAX_TEXTURES && g_gfx.textures[a->tex_id].in_use) ta = &g_gfx.textures[a->tex_id];
+    if (b->tex_id >= 0 && b->tex_id < GMB_GFX_MAX_TEXTURES && g_gfx.textures[b->tex_id].in_use) tb = &g_gfx.textures[b->tex_id];
     if (!ta || !tb) return 0;
     float ax = a->x, ay = a->y, aw = (float)ta->w, ah = (float)ta->h;
     float bx = b->x, by = b->y, bw = (float)tb->w, bh = (float)tb->h;
