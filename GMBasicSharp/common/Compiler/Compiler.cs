@@ -11,7 +11,14 @@ namespace Compiler;
 /// Addr = indirizzo Ip nel chunk ospite (PCodeVM), oppure -1 (host CLR su IL: la
 /// risoluzione avviene per nome nel registro IlRuntime). Mai serializzata in A1/GMBC.
 /// </summary>
-public sealed record MacroHostProc(string Name, int Addr, int Arity);
+public sealed record MacroHostProc(string Name, int Addr, int Arity,
+    // DEFAULT dichiarati dei parametri OPTIONAL (indice = posizione del parametro; null =
+    // obbligatorio o default non letterale). Servono al compilatore del frammento per
+    // completare l'arità quando la macro omette gli opzionali: senza, il chiamante
+    // OP_CALL_HOST passava meno argomenti e la procedura riceveva 0 al posto del default
+    // (misurato: `EVAL("Opt(5)")` con `OPTIONAL b = 10` → 5 su PCode, errore su IL, e
+    // "chiamata esterna non disponibile" su C99). Mai serializzato in A1/GMBC.
+    object?[]? Defaults = null);
 
 /// <summary>
 /// Compila un Abstract Syntax Tree (AST) in un <see cref="CompiledChunk"/> di P-Code.

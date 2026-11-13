@@ -708,11 +708,35 @@ public sealed partial class Compiler
             // avviene per invocazione sincrona nel runtime ospite (PCodeVm sync-pump o
             // registro CLR su IL), mai con indirizzi del chunk macro. L'argc viaggia come
             // secondo operando (come OP_CALL_N): il runtime valida.
-            if (expr.Arguments.Length > 255)
-                throw new InvalidOperationException($"Macro chiama '{expr.Name.Lexeme}' con {expr.Arguments.Length} argomenti (max 255).");
+            var entry = ExternalHostProcs![hostIdx];
+            var given = expr.Arguments.Length;
+            /* PARAMETRI OPTIONAL omessi: si pushano i DEFAULT dichiarati nella procedura
+             * ospite, così la chiamata arriva con l'ARITÀ FORMALE e i due mondi hanno lo
+             * stesso esito (prima: PCode passava 0, IL lanciava, C99 non trovava la
+             * procedura). Solo default LETTERALI: un default calcolato resta esplicito. */
+            if (given < entry.Arity && entry.Defaults != null && entry.Defaults.Length >= entry.Arity)
+            {
+                var complete = true;
+                for (var k = given; k < entry.Arity; k++)
+                    if (entry.Defaults[k] is null) { complete = false; break; }
+                if (complete)
+                {
+                    for (var k = given; k < entry.Arity; k++)
+                    {
+                        var dv = entry.Defaults[k]!;
+                        if (dv is string ds) EmitConstant(ds);
+                        else if (dv is double dn) EmitConstant(dn);
+                        else if (dv is bool db) EmitConstant(db ? -1.0 : 0.0);
+                        else { complete = false; break; }
+                    }
+                    if (complete) given = entry.Arity;
+                }
+            }
+            if (given > 255)
+                throw new InvalidOperationException($"Macro chiama '{expr.Name.Lexeme}' con {given} argomenti (max 255).");
             EmitByte((byte)OpCode.OP_CALL_HOST);
             EmitShort((ushort)hostIdx);
-            EmitByte((byte)expr.Arguments.Length);
+            EmitByte((byte)given);
         }
         else
         {

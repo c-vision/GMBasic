@@ -273,6 +273,11 @@ int gmb_vm_proc_addr(gmb_vm_t* vm, const char* name);
 double gmb_vm_call_proc_sync_str(gmb_vm_t* vm, gmb_task_t* task, const char* name, const char* s);
 /* Chiamata sincrona a una procedura per NOME con N argomenti numerici (ritorna double). */
 double gmb_vm_call_proc_sync_num(gmb_vm_t* vm, gmb_task_t* task, const char* name, const double* vals, int n);
+/* Chiamata sincrona per NOME con N argomenti GENERICI (gmb_val_t): dispatcher di
+ * OP_CALL_EXTERNAL per i frammenti EVAL/& dentro la VM (host gmb_vm_host).
+ * 0 = eseguita, -1 = nome non presente nel chunk. */
+int gmb_vm_call_proc_sync_vals(gmb_vm_t* vm, gmb_task_t* task, const char* name,
+                               const gmb_val_t* args, int n, gmb_val_t* out);
 double gmb_vm_call_closure_sync2(gmb_vm_t* vm, gmb_task_t* task, gmb_obj_closure_t* closure, double a, double b);
 double gmb_vm_call_closure_sync_val(gmb_vm_t* vm, gmb_task_t* task, gmb_obj_closure_t* closure, gmb_val_t a);
 double gmb_vm_call_closure_sync3_val(gmb_vm_t* vm, gmb_task_t* task, gmb_obj_closure_t* closure, gmb_val_t a, gmb_val_t b, gmb_val_t c);

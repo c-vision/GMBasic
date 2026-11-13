@@ -17,6 +17,14 @@ extern "C" {
 
 struct gmb_task;
 
+/* Contesto del FRAMMENTO in valutazione (thread-local, impostato attorno alla chiamata al
+ * dispatcher registrato con gmb_eval_set_call): l'host VM/C ne ha bisogno per invocare una
+ * PROCEDURA del proprio chunk sul TASK CORRENTE quando la macro chiama una funzione utente.
+ * `void*` perché `gmb_vm_t` è un typedef ANONIMO (gmb_vm_core.h): il chiamante fa il cast. */
+void* gmb_eval_current_vm(void);
+gmb_task_t* gmb_eval_current_task(void);
+void gmb_vm_eval_set_call(gmb_eval_call_fn fn);
+
 /* 0 = ok. `as_stmt`=1 esegue statement (PRINT inclusi), 0 valuta un'espressione
  * e ne restituisce il valore in *out (malloc-gestito come gmb_val_t). */
 int gmb_vm_eval_text(struct gmb_task* task, const char* src, int as_stmt, gmb_val_t* out);

@@ -577,7 +577,11 @@ internal sealed partial class PCodeProcessor
         Func<int, object?[], object?>? hostInvoker = _vm?.MacroHostInvoker
             ?? ((idx, args) => hostTable == null || idx < 0 || idx >= hostTable.Count
                 ? throw new InvalidOperationException($"OP_CALL_HOST idx={idx}: tabella host assente.")
-                : CallHostProcedureSync(task, hostTable[idx].Addr, args));
+                /* Parametri OPTIONAL omessi: il percorso PCode invoca per INDIRIZZO (niente AST
+                 * nel compilatore del frammento) → i default letterali si applicano qui, così
+                 * `EVAL("Opt(5)")` dà lo stesso valore della chiamata diretta. */
+                : CallHostProcedureSync(task, hostTable[idx].Addr,
+                    Basic.IlBackend.IlRuntime.ExpandOmittedOptionals(hostTable[idx].Name, hostTable[idx].Arity, args)));
         return Basic.IlBackend.IlRuntime.MacroEvalWithProvider(code, asExpr, _runtime, Known, Get, Set,
             MacroParentKnown, MacroParentGet, MacroParentSet, hostTable, hostInvoker,
             // Macro-comando: i PRINT della VM figlia si accodano ai PendingPrints di QUESTO
@@ -610,7 +614,10 @@ internal sealed partial class PCodeProcessor
         foreach (var (name, addr) in _procedureAddresses)
         {
             if (!_procedureArities.TryGetValue(addr, out var ar)) continue;
-            table.Add(new Compiler.MacroHostProc(name, addr, ar));
+            /* Default letterali dei parametri OPTIONAL: il compilatore del frammento li
+             * pusha quando la macro li omette (altrimenti la procedura riceveva 0). */
+            table.Add(new Compiler.MacroHostProc(name, addr, ar,
+                Basic.IlBackend.IlRuntime.HostProcDefaults(name, ar)));
         }
         return table.Count > 0 ? table : null;
     }

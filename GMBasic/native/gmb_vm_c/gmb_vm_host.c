@@ -15,6 +15,7 @@
 #include <dlfcn.h>
 #include <stdint.h>
 #include "gmb_runtime.h"
+#include "gmb_vm_eval.h"   /* gmb_eval_current_vm/task per il dispatcher dei frammenti */
 #include "gmb_iconsole.h"
 #include "llmengine.h"
 #include "gmb_agent_loop.h"   /* §4.10: gmb_agent_run_code + gmb_agent_code_query_set (seam agenti) */
@@ -135,6 +136,22 @@ static void gmb_vm_host_on_pause(int sig) {
     (void)sig;
     if (g_interactive_debug) g_interactive_debug->pause_requested = 1;
 }
+
+/* Dispatcher per OP_CALL_EXTERNAL dei frammenti EVAL/&: la macro deve poter chiamare una
+ * FUNCTION del PROGRAMMA (che vive nel chunk). Il valutatore passa VM e TASK correnti
+ * (gmb_eval_current_*), così la procedura gira sullo STESSO task/scheduler (GPM), mai su un
+ * task nuovo. Ritorna 0 se eseguita, -1 se il nome non è nel chunk (errore esplicito della
+ * macro: "chiamata esterna non disponibile"). */
+static int gmb_vm_host_eval_call(void* vmp, const char* name, const gmb_val_t* args, int nargs, gmb_val_t* out)
+{
+    gmb_vm_t* vm = (gmb_vm_t*)vmp;
+    if (!vm) vm = gmb_eval_current_vm();
+    gmb_task_t* task = gmb_eval_current_task();
+    if (!vm || !task || !name || !*name) return -1;
+    return gmb_vm_call_proc_sync_vals(vm, task, name, args, nargs, out);
+}
+
+static void gmb_vm_host_eval_register(void) { gmb_vm_eval_set_call(gmb_vm_host_eval_call); }
 
 int main(int argc, char** argv)
 {
@@ -315,6 +332,7 @@ int main(int argc, char** argv)
     gmb_vm_bsp_register();   /* BSP: pagine .bsp precompilate eseguite dalla VM */
     gmb_vm_init(&vm, chunk);
     gmb_vm_set_http_vm(&vm);
+    gmb_vm_host_eval_register();
     vm.print_str = print_str_hook;
     vm.print_num = print_num_hook;
     vm.print_newline = print_nl_hook;

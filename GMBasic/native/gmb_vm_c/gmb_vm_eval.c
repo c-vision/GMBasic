@@ -83,7 +83,17 @@ static char g_err[512];
 /* Callback per OP_CALL_EXTERNAL del frammento in esecuzione (TLS: sicuro con
  * valutazioni annidate/thread concorrenti). NULL = procedura utente non
  * richiamabile in questo contesto. */
+static int eval_external_shim(void* vmp, gmb_task_t* t, const char* name,
+                              const gmb_val_t* args, int nargs, gmb_val_t* out);
 static __thread gmb_eval_call_fn g_call_cur = NULL;
+/* Registrazione DIRETTA del dispatcher dell'host (stessa copia del runtime di chi valuta):
+ * l'hook generico `gmb_eval_set_call` vive in gmb_runtime_c, che un host può linkare in una
+ * copia diversa (gmb_vm_host linka la build annidata) → il puntatore si perdeva e la macro
+ * rispondeva "chiamata esterna non disponibile". */
+/* Registrazione di PROCESSO: `g_call_cur` è thread-local e la VM/C esegue su un worker GPM,
+ * quindi il dispatcher registrato dal main thread andrebbe perso sul thread che valuta. */
+static gmb_eval_call_fn g_call_global = NULL;
+void gmb_vm_eval_set_call(gmb_eval_call_fn fn) { g_call_cur = fn; g_call_global = fn; }
 /* Ambiente del frammento in esecuzione: gli EVAL ANNIDATI ereditano get/set/ctx. */
 static __thread gmb_eval_env_get_fn g_env_get_cur = NULL;
 static __thread gmb_eval_env_set_fn g_env_set_cur = NULL;
@@ -438,6 +448,13 @@ int gmb_vm_eval_text_env(gmb_task_t* task, const char* src, int as_stmt,
 
     /* Argomenti: locali del chiamante come BYREF write-through; nomi ignoti
      * (campi DBF / variabili nuove) come celle BYREF con il valore del record. */
+    /* Dispatcher di OP_CALL_EXTERNAL sulla VM del frammento: è QUI che va agganciato anche nel
+     * percorso IN-TASK (prima lo si faceva solo nello standalone) — senza, una macro che chiama
+     * una FUNCTION del programma rispondeva "chiamata esterna non disponibile" su VM/C. */
+    if (e->s_vm && !e->s_vm->external_call) e->s_vm->external_call = eval_external_shim;
+    /* ...e sulla VM del CHIAMANTE: nel percorso in-task il frammento gira nella sua task
+     * (merged chunk), quindi è `vm` a dover avere il dispatcher. */
+    if (!vm->external_call) vm->external_call = eval_external_shim;
     int argc = e->n_params;
     gmb_obj_byref_t** cells = (gmb_obj_byref_t**)calloc((size_t)(argc ? argc : 1), sizeof(void*));
     for (int i = 0; i < argc; i++) {
@@ -528,7 +545,14 @@ int gmb_vm_eval_text_env(gmb_task_t* task, const char* src, int as_stmt,
 
 int gmb_vm_eval_text(gmb_task_t* task, const char* src, int as_stmt, gmb_val_t* out)
 {
-    return gmb_vm_eval_text_env(task, src, as_stmt, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, out);
+    /* Il dispatcher delle FUNCTION dell'host viaggia con la chiamata: quello REGISTRATO dal
+     * processo (gmb_eval_set_call, es. gmb_vm_host) va inoltrato, altrimenti una macro che
+     * chiama una funzione utente non trova nulla e risponde "chiamata esterna non
+     * disponibile" (misurato: EVAL("PMT(...)") sul leg VM/C, mentre la chiamata diretta
+     * funzionava). */
+    return gmb_vm_eval_text_env(task, src, as_stmt, NULL, NULL, NULL,
+                                g_call_cur ? g_call_cur : g_call_global,
+                                NULL, NULL, NULL, NULL, out);
 }
 
 /* Hook per i contesti senza VM (REQUIRE): usa la task corrente del thread.
@@ -573,13 +597,33 @@ void gmb_vm_eval_cache_clear(void)
     pthread_mutex_unlock(&g_mu);
 }
 
-/* Procedure utente dal frammento (C99: FUNCTION statiche del programma emesso). */
+/* Procedure utente dal frammento (C99: FUNCTION statiche del programma emesso).
+ * Il contesto (VM + TASK che sta valutando) viaggia al dispatcher registrato dall'host:
+ * serve all'host VM/C, che deve invocare una PROCEDURA del chunk PROPRIO su quel task
+ * (il C99 non ne ha bisogno: le sue FUNCTION sono chiamate C statiche). */
+static __thread gmb_vm_t* g_eval_vm_cur = NULL;
+static __thread gmb_task_t* g_eval_task_cur = NULL;
+void* gmb_eval_current_vm(void) { return (void*)g_eval_vm_cur; }
+gmb_task_t* gmb_eval_current_task(void) { return g_eval_task_cur; }
+
 static int eval_external_shim(void* vmp, gmb_task_t* t, const char* name,
                               const gmb_val_t* args, int nargs, gmb_val_t* out)
 {
-    (void)vmp; (void)t;
-    if (!g_call_cur) return -1;
-    return g_call_cur(NULL, name, args, nargs, out);
+    if (!g_call_cur) g_call_cur = g_call_global;
+    if (!g_call_cur)
+    {
+        /* Nessun dispatcher registrato: la procedura da chiamare può essere DEL CHUNK che sta
+         * valutando (VM/C: le FUNCTION del programma vivono nel chunk) → invocazione sincrona
+         * sul TASK CORRENTE (stesso scheduler/GPM), mai un task nuovo. Senza questo, una macro
+         * che chiama una funzione utente dava "chiamata esterna non disponibile". */
+        if (!vmp || !t) return -1;
+        return gmb_vm_call_proc_sync_vals((gmb_vm_t*)vmp, t, name, args, nargs, out);
+    }
+    gmb_vm_t* sv = g_eval_vm_cur; gmb_task_t* st = g_eval_task_cur;
+    g_eval_vm_cur = (gmb_vm_t*)vmp; g_eval_task_cur = t;
+    int rc = g_call_cur(vmp, name, args, nargs, out);
+    g_eval_vm_cur = sv; g_eval_task_cur = st;
+    return rc;
 }
 
 /* Stampa dei frammenti attraverso il runtime (staging console C99/TUI). */

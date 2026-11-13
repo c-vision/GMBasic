@@ -4504,6 +4504,45 @@ static double vm_call_addr_sync_args(gmb_vm_t* vm, gmb_task_t* task, int addr, c
 }
 
 
+/* Chiamata sincrona a una PROCEDURA del chunk per NOME con N argomenti generici
+ * (`gmb_val_t`): serve al dispatcher OP_CALL_EXTERNAL dei frammenti EVAL/& eseguiti DENTRO
+ * una VM (host `gmb_vm_host`). Il risultato scalare torna come `gmb_val_t` numerico.
+ * Ritorna 0 se la procedura esiste ed è stata eseguita, -1 se il nome non è nel chunk. */
+int gmb_vm_call_proc_sync_vals(gmb_vm_t* vm, gmb_task_t* task, const char* name,
+                               const gmb_val_t* args, int n, gmb_val_t* out)
+{
+    int addr = gmb_vm_proc_addr(vm, name);
+    if (addr <= 0) return -1;
+    gmb_stack_entry_t se[16];
+    int nn = n > 16 ? 16 : (n < 0 ? 0 : n);
+    for (int i = 0; i < nn; i++)
+    {
+        memset(&se[i], 0, sizeof se[i]);
+        const gmb_val_t* v = &args[i];
+        if (v->kind == GMB_TYPE_STRING)
+        {
+            se[i].type = 2;
+            se[i].ref = (gmb_obj_t*)gmb_str_cstr(v->v_string.data ? v->v_string.data : "");
+            se[i].basic_type = GMB_BT_STRING;
+        }
+        else
+        {
+            se[i].type = 1;
+            se[i].num = gmb_val_to_double(*v);
+            se[i].basic_type = GMB_BT_NUMBER;
+        }
+    }
+    if (task->state == GMB_TS_FINISHED) task->state = GMB_TS_RUNNABLE;
+    double r = vm_call_addr_sync_args(vm, task, addr, se, nn);
+    for (int i = 0; i < nn; i++) if (se[i].type == 2 && se[i].ref) gmb_obj_release(se[i].ref);
+    /* Un errore della procedura invocata (es. arità diversa: il CHUNK non porta i default dei
+     * parametri OPTIONAL) NON deve diventare un errore FATALE del programma: si riporta -1 al
+     * valutatore, che lo rende come "MACRO ERROR: ..." sul frammento (mai un exit 6). */
+    if (task->pending_exception != NULL) { free(task->pending_exception); task->pending_exception = NULL; return -1; }
+    if (out) *out = gmb_make_val_double(r);
+    return 0;
+}
+
 /* Wrapper pubblico: chiama una procedura del chunk per NOME con UN argomento STRINGA,
  * in modo sincrono (stesso schema di vm_call_addr_sync_args usato da RAISE EVENT).
  * Usato dagli handler che devono invocare una SUB callback (es. AI AGENT ASK STREAM). */

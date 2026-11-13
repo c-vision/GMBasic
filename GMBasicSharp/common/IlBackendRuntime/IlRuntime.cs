@@ -12019,6 +12019,66 @@ public static double TextWidth(string s)
     /// Limiti: niente metodi di classe (serve receiver), niente GENERATOR (non eseguibili
     /// in sync), parametri ByRefBox avvolti (scritture perse), park dentro la chiamata
     /// non supportato (deadlock — il chiamante EVAL è sincrono).</summary>
+    /// <summary>Valore LETTERALE di un default di parametro (numeri, stringhe, booleani, NIL);
+    /// null per un default calcolato o assente (il chiamante resta esplicito: mai un valore
+    /// inventato). Usato dal registro host delle macro (IL e PCode).</summary>
+    internal static object? LiteralDefault(Expr? d) => d switch
+    {
+        NumberExpr n => n.Value,
+        StringExpr s => s.Value,
+        BooleanExpr b => b.Value ? -1.0 : 0.0,          // canone BASIC: TRUE = -1
+        NilExpr => null,
+        _ => null
+    };
+
+    /// <summary>Completa gli argomenti omessi di una procedura dell'HOST con i DEFAULT letterali
+    /// dichiarati (`OPTIONAL x AS T = valore`). Serve al percorso PCode, che invoca per
+    /// INDIRIZZO e non ha un'AST a portata di mano nel compilatore del frammento: senza,
+    /// `EVAL("Opt(5)")` lasciava 0 al posto del default (mentre la chiamata diretta dava 10).
+    /// Se la procedura non è nel programma macro, o un default non è letterale, gli argomenti
+    /// restano quelli ricevuti (nessun valore inventato).</summary>
+    public static object?[] ExpandOmittedOptionals(string name, int arity, object?[] args)
+    {
+        if (args.Length >= arity) return args;
+        var defs = HostProcDefaults(name, arity);
+        if (defs == null) return args;
+        var full = new object?[arity];
+        Array.Copy(args, full, args.Length);
+        for (var i = args.Length; i < arity; i++)
+        {
+            if (defs[i] is null) return args;      // default non letterale/obbligatorio: esplicito
+            full[i] = defs[i];
+        }
+        return full;
+    }
+
+    /// <summary>DEFAULT letterali dei parametri di una procedura dell'HOST, per la tabella
+    /// OP_CALL_HOST del PCode (che dal chunk conosce solo nome/indirizzo/arità). Null se la
+    /// procedura non è nel programma macro o se l'arità non combacia.</summary>
+    public static object?[]? HostProcDefaults(string name, int arity)
+    {
+        var program = Volatile.Read(ref _macroProgram);
+        if (program == null) return null;
+        var fd = program.Symbols.GetAllProcedures().OfType<FunctionDefinition>()
+            .FirstOrDefault(f => f.Parameters.Length == arity
+                                 && string.Equals(f.OriginalName.Lexeme, name, StringComparison.OrdinalIgnoreCase));
+        if (fd == null) return null;
+        var d = new object?[arity];
+        for (var i = 0; i < arity; i++) d[i] = LiteralDefault(fd.Parameters[i].DefaultValue);
+        return d;
+    }
+
+    /// <summary>Valore del DEFAULT dichiarato per il parametro <paramref name="i"/> di una
+    /// procedura BASIC, quando la macro/EVAL lo omette. Valuta le forme letterali (numeri,
+    /// stringhe, booleani, NIL); per un default calcolato (espressione non letterale) ritorna
+    /// null → il chiamante ripiega su <see cref="Type.Missing"/> (errore esplicito del binder,
+    /// mai un valore inventato).</summary>
+    private static object? DefaultOfOmitted(ImmutableArray<Parameter> ps, int i, string proc)
+    {
+        if (i < 0 || i >= ps.Length) return null;
+        return LiteralDefault(ps[i].DefaultValue);
+    }
+
     public static object? InvokeBasicProcedureByName(string name, int argc, object?[] args)
     {
         var program = Volatile.Read(ref _macroProgram);
@@ -12051,9 +12111,14 @@ public static double TextWidth(string s)
         {
             if (i >= args.Length)
             {
-                // Parametri opzionali omessi: il binder usa il default (Type.Missing),
-                // altrimenti Invoke lancia esplicito (mai prese silenziose).
-                invokeArgs[i] = Type.Missing;
+                /* Parametri OPTIONAL omessi: si applica il DEFAULT DICHIARATO nel BASIC.
+                 * `Type.Missing` da solo NON basta: il metodo `Proc_<id>` generato non porta
+                 * `[opt]` nei metadati e il binder lancia "Missing parameter does not have a
+                 * default value"; sul percorso P-Code il valore restava 0 (misurato:
+                 * `EVAL("Opt(5)")` con `OPTIONAL b AS DOUBLE = 10` → errore su IL, 5 su PCode,
+                 * 15 la chiamata DIRETTA). Qui il default lo valuta il runtime dall'AST. */
+                var def = DefaultOfOmitted(chosen.Parameters, i, name);
+                invokeArgs[i] = def is null ? Type.Missing : CoerceInvokeArg(def, pis[i].ParameterType, name);
                 continue;
             }
             var pt = pis[i].ParameterType;
@@ -12062,7 +12127,12 @@ public static double TextWidth(string s)
         }
         try
         {
-            var result = method.Invoke(null, invokeArgs);
+            /* `BindingFlags.OptionalParamBinding` + `Type.Missing` = il binder applica i DEFAULT
+             * dichiarati per i parametri OPTIONAL omessi. Senza il flag, `Invoke` lancia
+             * "Missing parameter does not have a default value" (reale: `EVAL("PMT(r, n, pv)")`
+             * su una FUNCTION con OPTIONAL fv/type falliva su IL/PCode). */
+            var result = method.Invoke(null, System.Reflection.BindingFlags.OptionalParamBinding,
+                binder: null, invokeArgs, culture: null);
             return method.ReturnType == typeof(void) ? null : result;
         }
         catch (System.Reflection.TargetInvocationException tie)
@@ -12102,7 +12172,9 @@ public static double TextWidth(string s)
         var table = new List<global::Compiler.MacroHostProc>();
         foreach (var fd in program.Symbols.GetAllProcedures().OfType<FunctionDefinition>())
         {
-            table.Add(new global::Compiler.MacroHostProc(fd.OriginalName.Lexeme, -1, fd.Parameters.Length));
+            var defs = new object?[fd.Parameters.Length];
+            for (var i = 0; i < defs.Length; i++) defs[i] = LiteralDefault(fd.Parameters[i].DefaultValue);
+            table.Add(new global::Compiler.MacroHostProc(fd.OriginalName.Lexeme, -1, fd.Parameters.Length, defs));
         }
         if (table.Count == 0) return (null, null);
         Func<int, object?[], object?> inv = (idx, args) => (idx < 0 || idx >= table.Count)

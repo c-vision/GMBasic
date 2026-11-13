@@ -1806,18 +1806,16 @@ static void cls_emit_arr_alloc(ctx_t* c, struct cls_info* ci, const char* inst_e
     for (int k = 0; k < ci->nfields; k++) {
         int sz = cls_field_arr_size(ci->ftype[k]);
         if (sz < 0) continue;
-        const char* ec = cls_field_ctype(c, ci->ftype[k]);   /* "gmb_double_t*" */
-        char elem[80];
-        snprintf(elem, sizeof(elem), "%s", ec);
-        size_t el = strlen(elem);
-        if (el && elem[el - 1] == '*') elem[el - 1] = 0;
+        const char* ec = cls_field_ctype(c, ci->ftype[k]);   /* es. "gmb_double_t*" */
+        /* Cast e sizeof dell'ELEMENTO, senza il '*' finale: sul membro "gmb_double_t*" un
+         * "(gmb_double_t**)" e' warning per Apple clang ed ERRORE per clang>=22. `%.*s`
+         * evita il buffer temporaneo (e il suo troncamento a 80 byte). */
+        size_t el = strlen(ec);
+        if (el && ec[el - 1] == '*') el--;
         ind(c);
         sb_printf(&c->out, "%s->", inst_expr);
         sb_ident(&c->out, ci->fname[k]);
-        /* Il membro ha tipo `ec` (es. "gmb_double_t*"); il cast deve essere quello dell'ELEMENTO
-         * (`elem`, senza il '*' finale), altrimenti esce "(gmb_double_t**)" su un membro
-         * "gmb_double_t*": clang lo accetta come warning, clang>=22 e' errore. */
-        sb_printf(&c->out, " = (%s*)calloc((size_t)%d, sizeof(%s));\n", elem, sz, elem);
+        sb_printf(&c->out, " = (%.*s*)calloc((size_t)%d, sizeof(%.*s));\n", (int)el, ec, sz, (int)el, ec);
     }
 }
 /* stringa del tipo dichiarato di un campo della classe (NULL se assente) */
@@ -34727,17 +34725,51 @@ static void emit_host_env(ctx_t* c, sb_t* fin) {
          * è il `void* __ctx` — richiamarle per nome senza ctx non compila (bug latente
          * esposto da un sito macro &/EVAL con code block in scope). Si invocano via fn value. */
         if (fn->is_lambda || fn->is_lambda_cap) continue;
+        /* Parametri OBBLIGATORI = quelli prima del primo OPTIONAL/PARAMARRAY (regola del
+         * linguaggio: gli opzionali sono in coda). Prima il bridge accettava SOLO
+         * `nargs == n_params`: `EVAL("PMT(r, n, pv)")` (5 parametri di cui 2 OPTIONAL) finiva
+         * in "chiamata esterna non disponibile", mentre la chiamata diretta dava il valore. */
+        int req_n = 0;
+        for (int k = 0; k < s->n_params; k++) {
+            if ((s->param_optional && s->param_optional[k])
+                || (s->param_variadic && s->param_variadic[k])) break;
+            req_n++;
+        }
         sb_put(fin, "    if (strcasecmp(name, \"");
         sb_put(fin, s->func_name);
-        sb_printf(fin, "\") == 0 && nargs == %d) {\n", s->n_params);
+        if (req_n == s->n_params)
+            sb_printf(fin, "\") == 0 && nargs == %d) {\n", s->n_params);
+        else
+            sb_printf(fin, "\") == 0 && nargs >= %d && nargs <= %d) {\n", req_n, s->n_params);
         for (int k = 0; k < s->n_params; k++) {
             var_t* pv = vars_find(&fn->locals, s->func_params[k]);
+            /* Valore del parametro k: dall'argomento se fornito, altrimenti il DEFAULT
+             * dichiarato (`OPTIONAL x AS T = valore`), o il default di tipo se OPTIONAL senza
+             * `=`. I default NON letterali (espressione calcolata) non sono riproducibili nel
+             * bridge: si usa il default di tipo, mai un valore inventato. */
+            char dflt[256];
+            gmb_expr_t* de = s->param_defaults ? s->param_defaults[k] : NULL;
+            if (de && de->kind == GMB_EXPR_NUM)
+                snprintf(dflt, sizeof dflt, "(gmb_double_t)%.17g", de->num);
+            else if (de && de->kind == GMB_EXPR_STR && de->str) {
+                char esc[192]; int eo = 0;
+                for (const char* q = de->str; *q && eo < (int)sizeof esc - 3; q++) {
+                    if (*q == '"' || *q == '\\') esc[eo++] = '\\';
+                    esc[eo++] = *q;
+                }
+                esc[eo] = 0;
+                snprintf(dflt, sizeof dflt, "gmb_string_alloc(\"%s\")", esc);
+            }
+            else if (pv && pv->type == TY_STR) snprintf(dflt, sizeof dflt, "gmb_string_alloc(\"\")");
+            else snprintf(dflt, sizeof dflt, "(gmb_double_t)0");
             if (pv && pv->type == TY_STR) {
                 sb_put(fin, "        gmb_string_t __a");
-                sb_printf(fin, "%d = gmb_val_to_string(args[%d]);\n", k, k);
+                if (k < req_n) sb_printf(fin, "%d = gmb_val_to_string(args[%d]);\n", k, k);
+                else sb_printf(fin, "%d = nargs > %d ? gmb_val_to_string(args[%d]) : %s;\n", k, k, k, dflt);
             } else {
                 sb_put(fin, "        gmb_double_t __a");
-                sb_printf(fin, "%d = gmb_val_to_double(args[%d]);\n", k, k);
+                if (k < req_n) sb_printf(fin, "%d = gmb_val_to_double(args[%d]);\n", k, k);
+                else sb_printf(fin, "%d = nargs > %d ? gmb_val_to_double(args[%d]) : %s;\n", k, k, k, dflt);
             }
         }
         sb_printf(fin, "        %s __r = gmb_user_", fn_ret_ctype(c, fn));
