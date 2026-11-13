@@ -30,4 +30,9 @@ void gmb_embed_set_base_from_path(const char* file);
  * reali) oppure NULL con `*error` = messaggio malloc (da liberare). */
 char* gmb_embed_load(const char* path, long* out_len, char** error);
 
+/* Come gmb_embed_load ma per un payload QUALSIASI (binario compreso): ritorna il
+ * contenuto codificato in **Base64** (alfabeto RFC 4648 con padding, nessun a capo),
+ * pronto per essere incorporato come letterale stringa. `*out_len` = lunghezza del testo. */
+char* gmb_embed_load_base64(const char* path, long* out_len, char** error);
+
 #endif /* GMB_EMBED_H */

@@ -63,8 +63,12 @@ gmb_stmt_t* gmb_p_parse_embedfile(gmb_parser_t* p, int line)
     char* path = lit_value(pt);
     gmb_p_adv(p);
 
-    /* AS nome — AS è una keyword hard; si accetta anche la forma senza AS (come DIM). */
+    /* AS [BASE64] nome — AS è una keyword hard; si accetta anche la forma senza AS (come DIM).
+     * `BASE64` è un SOFT keyword (non esiste un TokenKind): chiede il payload binario
+     * codificato, così il file può essere qualunque. */
     if (gmb_p_check(p, GMB_TOK_As) || gmb_p_tok_is_keyword(gmb_p_cur(p), "As")) gmb_p_adv(p);
+    int base64 = 0;
+    if (gmb_p_tok_is_soft_keyword(gmb_p_cur(p), "BASE64")) { base64 = 1; gmb_p_adv(p); }
 
     const gmb_token_t* nt = gmb_p_cur(p);
     if (!nt || nt->kind == GMB_TOK_Newline || nt->kind == GMB_TOK_Colon || nt->kind == GMB_TOK_Eof
@@ -80,7 +84,8 @@ gmb_stmt_t* gmb_p_parse_embedfile(gmb_parser_t* p, int line)
 
     long blen = 0;
     char* err = NULL;
-    char* data = gmb_embed_load(path, &blen, &err);
+    char* data = base64 ? gmb_embed_load_base64(path, &blen, &err)
+                        : gmb_embed_load(path, &blen, &err);
     if (!data) {
         size_t n = strlen(path) + 64 + (err ? strlen(err) : 0);
         char* m = (char*)malloc(n);
@@ -97,12 +102,13 @@ gmb_stmt_t* gmb_p_parse_embedfile(gmb_parser_t* p, int line)
     free(err);
     free(path);
 
-    /* Un solo statement: `nome = <letterale binario>`. Stesso desugaring del frontend C#
+    /* Un solo statement: `nome = <letterale>`. Stesso desugaring del frontend C#
      * (nessun DIM: la variabile segue la regola delle assegnazioni implicite, identica
-     * sulle 4 gambe — verificata da MiniTest/parity4). */
+     * sulle 4 gambe — verificata da MiniTest/parity4).
+     * Nel caso BASE64 il letterale è testo ASCII puro (str_len 0 = strlen). */
     gmb_stmt_t* asg = gmb_stmt_new(GMB_STMT_ASSIGN, line);
     asg->target = name;
-    asg->value = gmb_expr_str_n(data, blen, line);
+    asg->value = base64 ? gmb_expr_str(data, line) : gmb_expr_str_n(data, blen, line);
     free(data);
     return asg;
 }

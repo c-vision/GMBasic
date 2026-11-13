@@ -104,10 +104,43 @@ static char* utf8_check(const char* data, long len)
     return NULL;
 }
 
-char* gmb_embed_load(const char* path, long* out_len, char** error)
+/* ── Base64 (RFC 4648, alfabeto standard + padding, nessun a capo) ────────────────
+ * Stessa codifica di `Convert.ToBase64String` del frontend C#: la forma EMBEDFILE
+ * BASE64 deve produrre testo IDENTICO sulle 4 gambe (parità stretta). */
+static const char B64[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+
+static char* b64_encode(const unsigned char* data, long len, long* out_len)
 {
-    if (out_len) *out_len = 0;
-    if (error) *error = NULL;
+    if (len < 0) len = 0;
+    long n = ((len + 2) / 3) * 4;
+    char* out = (char*)malloc((size_t)n + 1);
+    if (!out) return NULL;
+    long o = 0, i = 0;
+    while (i + 2 < len) {
+        unsigned int v = ((unsigned)data[i] << 16) | ((unsigned)data[i + 1] << 8) | data[i + 2];
+        out[o++] = B64[(v >> 18) & 0x3F];
+        out[o++] = B64[(v >> 12) & 0x3F];
+        out[o++] = B64[(v >> 6) & 0x3F];
+        out[o++] = B64[v & 0x3F];
+        i += 3;
+    }
+    if (i < len) {
+        unsigned int v = (unsigned)data[i] << 16;
+        int rem = (int)(len - i);
+        if (rem == 2) v |= (unsigned)data[i + 1] << 8;
+        out[o++] = B64[(v >> 18) & 0x3F];
+        out[o++] = B64[(v >> 12) & 0x3F];
+        out[o++] = (rem == 2) ? B64[(v >> 6) & 0x3F] : '=';
+        out[o++] = '=';
+    }
+    out[o] = 0;
+    if (out_len) *out_len = o;
+    return out;
+}
+
+/* Percorso → file aperto: prova la cartella base (programma) e poi la CWD. */
+static char* slurp_any(const char* path, long* out_len, char** error)
+{
     if (!path || !*path) {
         if (error) *error = strdup("EMBEDFILE: percorso vuoto");
         return NULL;
@@ -138,6 +171,35 @@ char* gmb_embed_load(const char* path, long* out_len, char** error)
         }
         return NULL;
     }
+    if (out_len) *out_len = len;
+    return buf;
+}
+
+char* gmb_embed_load_base64(const char* path, long* out_len, char** error)
+{
+    if (out_len) *out_len = 0;
+    if (error) *error = NULL;
+    long len = 0;
+    char* raw = slurp_any(path, &len, error);
+    if (!raw) return NULL;
+    long b64len = 0;
+    char* b64 = b64_encode((const unsigned char*)raw, len, &b64len);
+    free(raw);
+    if (!b64) {
+        if (error) *error = strdup("EMBEDFILE: memoria esaurita (base64)");
+        return NULL;
+    }
+    if (out_len) *out_len = b64len;
+    return b64;
+}
+
+char* gmb_embed_load(const char* path, long* out_len, char** error)
+{
+    if (out_len) *out_len = 0;
+    if (error) *error = NULL;
+    long len = 0;
+    char* buf = slurp_any(path, &len, error);
+    if (!buf) return NULL;
     if (out_len) *out_len = len;
     {
         char* uerr = utf8_check(buf, len);

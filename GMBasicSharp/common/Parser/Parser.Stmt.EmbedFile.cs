@@ -47,11 +47,19 @@ public sealed partial class Parser
         var relPath = pathToken.Literal as string ?? string.Empty;
 
         Match(TokenKind.As);                    // AS opzionale (parità col parser C)
+        // BASE64 (soft keyword, nessun TokenKind): payload BINARIO codificato in testo.
+        var base64 = false;
+        if (Peek().Kind == TokenKind.Identifier
+            && string.Equals(Peek().Lexeme, "BASE64", StringComparison.OrdinalIgnoreCase))
+        {
+            base64 = true;
+            Advance();
+        }
         var nameToken = Advance();
         if (nameToken.Kind is not (TokenKind.Identifier or TokenKind.Id))
             throw CreateError(nameToken, "EMBEDFILE: atteso il nome della variabile (EMBEDFILE \"file\" AS nome$).");
 
-        var text = LoadEmbedFileText(relPath, pathToken);
+        var text = LoadEmbedFileText(relPath, pathToken, base64);
 
         // Nome NORMALIZZATO come in ParsePrimaryAtom: NameSuffixed porta il `$`, NameCleaned no.
         // Il resolver/linker lavora sul nome pulito: passare il suffisso in entrambi i token
@@ -72,7 +80,7 @@ public sealed partial class Parser
     /// Legge il file come TESTO e lo restituisce. Errori espliciti di compilazione:
     /// file mancante, contenuto binario (NUL) o UTF-8 non valido.
     /// </summary>
-    private string LoadEmbedFileText(string relPath, Token positionToken)
+    private string LoadEmbedFileText(string relPath, Token positionToken, bool base64 = false)
     {
         if (string.IsNullOrEmpty(relPath))
             throw CreateError(positionToken, "EMBEDFILE: percorso vuoto.");
@@ -99,11 +107,15 @@ public sealed partial class Parser
             throw CreateError(positionToken, $"EMBEDFILE: lettura fallita di '{used}': {ex.Message}");
         }
 
+        // BASE64: payload QUALSIASI (binario compreso) codificato in testo ASCII.
+        // Stessa codifica del frontend C (gmb_embed_load_base64): testo identico sulle 4 gambe.
+        if (base64) return Convert.ToBase64String(bytes);
+
         var nul = Array.IndexOf(bytes, (byte)0);
         if (nul >= 0)
             throw CreateError(positionToken,
                 $"EMBEDFILE: il file contiene un byte NUL (offset {nul}): non è testo UTF-8. " +
-                "EMBEDFILE incorpora TESTO; per i payload binari serve una forma a array di byte (non ancora disponibile).");
+                "Per i payload binari usa la forma BASE64: EMBEDFILE \"file\" AS BASE64 nome$.");
 
         try
         {
@@ -113,7 +125,8 @@ public sealed partial class Parser
         catch (DecoderFallbackException)
         {
             throw CreateError(positionToken,
-                $"EMBEDFILE: '{relPath}' non è testo UTF-8 valido (byte fuori sequenza): non può essere incorporato come stringa.");
+                $"EMBEDFILE: '{relPath}' non è testo UTF-8 valido (byte fuori sequenza). " +
+                "Per i payload binari usa la forma BASE64: EMBEDFILE \"file\" AS BASE64 nome$.");
         }
     }
 }
