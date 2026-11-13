@@ -1290,7 +1290,9 @@ private void EmitBrowserHumanScrollCall(BuiltinFunctionCallExpr expr)
             _il.Emit(OpCodes.Stelem_R8);
         }
         _il.Emit(OpCodes.Call, IlRuntimeChartDrawMethod);
-        if (cm.Into is VariableTarget gv) EmitAssignTargetFromTop(gv); else _il.Emit(OpCodes.Pop);
+        /* ChartDraw ritorna un double: coercizione esplicita verso il tipo del target
+         * (vedi ChartConfigGet: senza, un `INTO <intero>` scrive i bit del double). */
+        if (cm.Into is VariableTarget gv) EmitAssignTargetFromTop(gv, new DoubleType()); else _il.Emit(OpCodes.Pop);
     }
 
     /// <summary>CHART SET/GET/GETS → IGraphicsService.ChartConfigSet/Get/GetStr (configurazione
@@ -1314,7 +1316,11 @@ private void EmitBrowserHumanScrollCall(BuiltinFunctionCallExpr expr)
         else if (isGet)
         {
             _il.Emit(OpCodes.Call, IlRuntimeChartConfigGetMethod);
-            if (cm.Into is VariableTarget gv) EmitAssignTargetFromTop(gv); else _il.Emit(OpCodes.Pop);
+            /* Il ritorno di ChartConfigGet è un double: senza il tipo del valore la conversione
+             * verso un target INTEGER/LONG/BIT non viene emessa e lo store scrive i BITS di un
+             * double in un int32 (valore spazzatura, es. `4.6e18` — graphics/chart_config).
+             * Stesso schema del CONTROL GET qui sopra. */
+            if (cm.Into is VariableTarget gv) EmitAssignTargetFromTop(gv, new DoubleType()); else _il.Emit(OpCodes.Pop);
         }
         else
         {

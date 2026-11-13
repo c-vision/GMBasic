@@ -17245,7 +17245,6 @@ public static double TextWidth(string s)
 
     /// <summary>Gli eventi finestra dispatchano al EventDispatcher unificato (ON WINDOW).</summary>
     private static ClipperLib.Controls.WindowManager? _tuiWindows;
-    private static bool _tuiWindowEventsSubscribed;
 
     private static ClipperLib.Controls.WindowManager TuiWindows
     {
@@ -17255,21 +17254,24 @@ public static double TextWidth(string s)
             {
                 _tuiWindows = new ClipperLib.Controls.WindowManager(new ClipperLib.Clipper.ScreenRect(0, 0, 80, 24));
                 try { _tuiWindows.ClipboardService = Current.Clipboard; } catch { }
-                if (!_tuiWindowEventsSubscribed)
+                /* Sottoscrizione degli eventi sull'ISTANZA nuova, SEMPRE. Prima c'era un flag
+                 * statico `_tuiWindowEventsSubscribed`: quando `_tuiWindows` veniva azzerato
+                 * (ResetProgramState fra un programma e l'altro nello stesso processo) la
+                 * WindowManager successiva nasceva SENZA sottoscrizioni → ON WINDOW (MINIMIZE/
+                 * FOCUS/…) non dispatchava più nulla. Sintomo: MiniTest verde da solo e
+                 * `flags: 0 0 0 0` quando girava dopo un altro test nella stessa JVM
+                 * (controls/window_events, windows/window_events_matrix). */
+                try
                 {
-                    _tuiWindowEventsSubscribed = true;
-                    try
-                    {
-                        _tuiWindows.WindowOpened += (_, e) => CommonLib.App.EventDispatcher.Instance.DispatchWindow(7, e.Id);
-                        _tuiWindows.WindowClosed += (_, e) => CommonLib.App.EventDispatcher.Instance.DispatchWindow(0, e.Id);
-                        _tuiWindows.WindowMoved += (_, e) => CommonLib.App.EventDispatcher.Instance.DispatchWindow(3, e.Id);
-                        _tuiWindows.WindowResized += (_, e) => CommonLib.App.EventDispatcher.Instance.DispatchWindow(1, e.Id);
-                        _tuiWindows.WindowFocused += (_, e) => CommonLib.App.EventDispatcher.Instance.DispatchWindow(4, e.Id);
-                        _tuiWindows.WindowMinimized += (_, e) => CommonLib.App.EventDispatcher.Instance.DispatchWindow(5, e.Id);
-                        _tuiWindows.WindowRestored += (_, e) => CommonLib.App.EventDispatcher.Instance.DispatchWindow(6, e.Id);
-                    }
-                    catch { }
+                    _tuiWindows.WindowOpened += (_, e) => CommonLib.App.EventDispatcher.Instance.DispatchWindow(7, e.Id);
+                    _tuiWindows.WindowClosed += (_, e) => CommonLib.App.EventDispatcher.Instance.DispatchWindow(0, e.Id);
+                    _tuiWindows.WindowMoved += (_, e) => CommonLib.App.EventDispatcher.Instance.DispatchWindow(3, e.Id);
+                    _tuiWindows.WindowResized += (_, e) => CommonLib.App.EventDispatcher.Instance.DispatchWindow(1, e.Id);
+                    _tuiWindows.WindowFocused += (_, e) => CommonLib.App.EventDispatcher.Instance.DispatchWindow(4, e.Id);
+                    _tuiWindows.WindowMinimized += (_, e) => CommonLib.App.EventDispatcher.Instance.DispatchWindow(5, e.Id);
+                    _tuiWindows.WindowRestored += (_, e) => CommonLib.App.EventDispatcher.Instance.DispatchWindow(6, e.Id);
                 }
+                catch { }
             }
             return _tuiWindows;
         }
