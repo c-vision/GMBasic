@@ -289,6 +289,92 @@ broker_cleanup() {
 }
 
 WORK="$(mktemp -d /tmp/minitests_c99native.XXXXXX)"
+# ── CWD PULITA PER CASO ────────────────────────────────────────────────────
+# Ogni MiniTest gira nella SUA directory (i path relativi "work/…" e
+# "../../samples/…" devono valere), ma i file che il caso CREA non devono finire
+# nei sorgenti: un artefatto lasciato da un caso (es. shared/minitests/ai/x)
+# faceva fallire i gen_AI_* al giro successivo. La cwd e' quindi uno SPECCHIO in
+# $WORK con la STESSA struttura di path — antenati come directory reali con i
+# fratelli symlinkati (cosi' ".." e "../.." restano identici), file dei test come
+# CLONI copy-on-write (contenuto identico, ma una scrittura del caso non tocca il
+# sorgente) e sottodirectory reali: tutto cio' che il caso scrive nasce in $WORK e
+# sparisce con il caso. Lo specchio si costruisce una volta per directory e fra un
+# caso e l'altro viene riportato allo stato iniziale (niente residui da un caso al
+# successivo). I sorgenti non si toccano.
+mirror_case_files() {   # $1 = dir reale da specchiare, $2 = dir reale di destinazione
+    local e b
+    for e in "$1"/* "$1"/.[!.]*; do
+        [ -e "$e" ] || [ -L "$e" ] || continue
+        b="${e##*/}"
+        if [ -d "$e" ] && [ ! -L "$e" ]; then
+            mkdir -p "$2/$b" && mirror_case_files "$e" "$2/$b"
+        elif [ -L "$e" ]; then
+            ln -sfn "$e" "$2/$b"
+        else
+            # Clone copy-on-write (APFS): il test legge il contenuto vero ma una sua
+            # SCRITTURA non tocca il sorgente (con il symlink la toccava: un test ha
+            # riscritto shared/minitests/ai/app.settings.json). Se il filesystem non
+            # clona, si ripiega sul symlink.
+            cp -c "$e" "$2/$b" 2>/dev/null || ln -sfn "$e" "$2/$b"
+        fi
+    done
+}
+prepare_case_cwd() {    # $1 = dir assoluta del MiniTest; imposta CASE_CWD
+    local src="$1" rest cur dst comp e b
+    case "$src" in
+        "$MONO"/*) rest="${src#"$MONO"/}" ;;
+        *) CASE_CWD="$src"; return 0 ;;   # fuori dal monorepo: si gira dove si e'
+    esac
+    cur="$MONO"; dst="$WORK/casecwd"
+    # Stessa directory del caso precedente: lo specchio e' gia' pronto e si riporta allo
+    # stato iniziale — via i file/symlink NATI durante il caso (non sono in casecwd.files),
+    # ripristino dei cloni RISCRITTI (mtime piu' recente del timbro), via le dir nuove.
+    if [ "${PREP_SRC:-}" = "$src" ] && [ -d "$dst/$rest" ]; then
+        if [ -s "$WORK/casecwd.files" ]; then
+            find "$dst" \( -type f -o -type l \) 2>/dev/null | grep -vxF -f "$WORK/casecwd.files" |
+            while IFS= read -r x; do rm -f "$x"; done
+        fi
+        find "$dst" -type f -newer "$WORK/casecwd.stamp" 2>/dev/null |
+        while IFS= read -r x; do
+            rel="${x#"$dst"/}"
+            if [ -f "$MONO/$rel" ] && [ ! -L "$MONO/$rel" ]; then
+                rm -f "$x"
+                cp -c "$MONO/$rel" "$x" 2>/dev/null || cp -p "$MONO/$rel" "$x" 2>/dev/null || :
+            else
+                rm -f "$x"
+            fi
+        done
+        if [ -s "$WORK/casecwd.dirs" ]; then
+            find "$dst" -depth -mindepth 1 -type d 2>/dev/null | while IFS= read -r d; do
+                grep -qxF "$d" "$WORK/casecwd.dirs" || rmdir "$d" 2>/dev/null
+            done
+        fi
+        CASE_CWD="$dst/$rest"; return 0
+    fi
+    PREP_SRC="$src"
+    rm -rf "$dst"; mkdir -p "$dst"
+    while [ -n "$rest" ]; do
+        comp="${rest%%/*}"
+        case "$rest" in */*) rest="${rest#*/}" ;; *) rest="" ;; esac
+        [ "$comp" = ".." ] && break
+        for e in "$cur"/* "$cur"/.[!.]*; do
+            [ -e "$e" ] || [ -L "$e" ] || continue
+            b="${e##*/}"
+            [ "$b" = "$comp" ] && continue
+            ln -sfn "$e" "$dst/$b"
+        done
+        cur="$cur/$comp"; dst="$dst/$comp"; mkdir -p "$dst"
+    done
+    mirror_case_files "$cur" "$dst"
+    # Gli elenchi coprono la RADICE dello specchio: il riuso ripulisce tutto $WORK/casecwd,
+    # quindi devono includere anche gli antenati/symlink dei fratelli (se restano fuori,
+    # il riuso li scambia per file del test e li cancella: spariscono "../../samples" e co.).
+    find "$WORK/casecwd" -type d > "$WORK/casecwd.dirs" 2>/dev/null                 # dir legittime
+    find "$WORK/casecwd" \( -type f -o -type l \) > "$WORK/casecwd.files" 2>/dev/null  # file del test
+    touch "$WORK/casecwd.stamp"    # i file specchiati sono piu' vecchi: quelli piu' nuovi
+                                   # sono state scritture del caso (da ripristinare)
+    CASE_CWD="$dst"
+}
 trap 'rm -rf "$WORK"; [ "$EXPORT_SYMS_TMP" = 1 ] && rm -f "$EXPORT_SYMS_FILE" "$EXPORT_SYMS_FILE.m"; broker_cleanup' EXIT
 pass=0; fail=0; skip=0
 # Il runtime C e' compilato UNA volta per invocazione in una static library, poi ogni
@@ -567,7 +653,12 @@ for f in "$MINI"/**/*.bas "$MINI"/*.bas; do
   # `<bin>.libs.txt` accanto all'eseguibile: le lib dell'indice da cui dipende + le FFI dichiarate
   # (`DECLARE … LIB`). Il runtime C lo legge se una lib manca e la scarica (sha verificato).
   emit_exe_libs "$WORK/bin" "$WORK/bin.libs.txt" "$WORK/out.c" 2>/dev/null || true
-  if ! (cd "$(dirname "$f")" && DYLD_LIBRARY_PATH="$ROOT/build/libs/$RID:$HOME/.gmbasic/libs/$RID${DYLD_LIBRARY_PATH:+:$DYLD_LIBRARY_PATH}" "$WORK/bin" >"$WORK/out.txt" 2>&1); then
+  # CWD PULITA PER CASO: il binario NON gira nella dir dei sorgenti ma in uno specchio
+  # dentro $WORK (prepare_case_cwd). I MiniTest si aspettano la loro directory (path
+  # relativi "work/…" e "../../samples/…"), ma i file che CREANO (es. `x`, che poi faceva
+  # fallire i gen_AI_*) restavano nei sorgenti e contaminavano i casi successivi.
+  prepare_case_cwd "$(cd "$(dirname "$f")" && pwd)"
+  if ! (cd "$CASE_CWD" && DYLD_LIBRARY_PATH="$ROOT/build/libs/$RID:$HOME/.gmbasic/libs/$RID${DYLD_LIBRARY_PATH:+:$DYLD_LIBRARY_PATH}" "$WORK/bin" >"$WORK/out.txt" 2>&1); then
     # TEST DI ERRORE ATTESO (marker header `' TAG: expected-error`): l'EXPECT descrive il
     # messaggio che DEVE comparire. Serve ai MiniTest che verificano un errore esplicito
     # (es. AI.DISCOVER su endpoint irraggiungibile): prima erano FAIL solo per l'exit != 0.
