@@ -792,11 +792,11 @@ public class MiniTestsParityTests
         // confrontabili con EXPECT statico né nel cross-leg in-process (park modale).
         // Verificati per-gamba (emissione+compile+link su 4 backend; C99Native 2026-09-22).
         || nome.Equals("widgets_draw_perleg.bas", StringComparison.OrdinalIgnoreCase)
-        // TRAY: il tray ha bisogno del PUMP sul main thread del host (la coda OP_CREATE/OP_ITEM
-        // viene drenata da `TrayPump`). Il test host xUnit non ha un main loop: in-process
-        // `TRAYSELFTEST()` resta 0 mentre sul VMC/C99 (processo con main thread) è -1 →
-        // divergenza di HOST, non di linguaggio. Verificato sulle gambe con pump (VMC, C99).
-        || nome.Equals("tray_parity.bas", StringComparison.OrdinalIgnoreCase)
+        // TRAY: NON più escluso (2026-11-13). `gmb_tray_poll()` drena la MACCHINA A STATI su
+        // qualunque thread e tocca l'OS layer (AppKit/Win32) SOLO sul main thread: negli host
+        // senza main loop (xUnit in-process, headless) la coda veniva ignorata e
+        // `TRAYSELFTEST()` restava 0 mentre su C99/VM-C era -1 → divergenza di HOST che
+        // rendeva il test non confrontabile. Con il contrato nuovo le 4 gambe concordano.
         // gen_AI_*: campioni di COPERTURA SIMBOLO generati; le loro EXPECT catturano STATO di
         // macchina/sessione — `AI.BRAINUSED` = brain usati nel processo corrente,
         // `AI.PROVIDERS` = provider configurati, `AI.VAULTLIST` = vault creati dai test

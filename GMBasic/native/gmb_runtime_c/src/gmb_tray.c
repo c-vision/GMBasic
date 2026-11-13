@@ -189,8 +189,13 @@ int gmb_tray_poll(void)
 {
     int n = 0;
     tray_init_once();
-    /* Solo il main thread drena la coda (i worker la popolano e basta) — pattern SDL. */
-    if (!tray_os_is_main()) return 0;
+    /* CONTRATTO (2026-11-13): la MACCHINA A STATI si drena su QUALUNQUE thread; gli EFFETTI
+     * sull'OS (AppKit/Win32) solo sul MAIN thread. Prima si usciva subito fuori dal main thread:
+     * negli host senza main loop (harness xUnit, processi headless) la coda non veniva MAI
+     * drenata e `TRAYSELFTEST()` restava 0 mentre su C99/VM-C (main thread) era -1 → il
+     * MiniTest `tray/tray_parity` non era confrontabile fra le gambe (divergenza di HOST).
+     * L'invariante "AppKit solo sul main thread" resta: fuori dal main non si chiama l'OS layer. */
+    int on_main = tray_os_is_main();
     for (;;) {
         tray_cmd_t c;
         TRAY_LOCK();
@@ -202,38 +207,38 @@ int gmb_tray_poll(void)
         switch (c.op) {
         case OP_CREATE:
 #if defined(__APPLE__) && defined(GMB_TRAY_COCOA)
-            gmb_tray_macos_create(c.s0, c.s1);
+            if (on_main) gmb_tray_macos_create(c.s0, c.s1);
 #elif defined(_WIN32)
-            gmb_tray_win_create(c.s0, c.s1);
+            if (on_main) gmb_tray_win_create(c.s0, c.s1);
 #endif
             g_os_created = 1;
             break;
         case OP_ITEM:
 #if defined(__APPLE__) && defined(GMB_TRAY_COCOA)
-            gmb_tray_macos_item(c.id, c.s0);
+            if (on_main) gmb_tray_macos_item(c.id, c.s0);
 #elif defined(_WIN32)
-            gmb_tray_win_item(c.id, c.s0);
+            if (on_main) gmb_tray_win_item(c.id, c.s0);
 #endif
             break;
         case OP_SEP:
 #if defined(__APPLE__) && defined(GMB_TRAY_COCOA)
-            gmb_tray_macos_sep();
+            if (on_main) gmb_tray_macos_sep();
 #elif defined(_WIN32)
-            gmb_tray_win_sep();
+            if (on_main) gmb_tray_win_sep();
 #endif
             break;
         case OP_TOOLTIP:
 #if defined(__APPLE__) && defined(GMB_TRAY_COCOA)
-            gmb_tray_macos_tooltip(c.s0);
+            if (on_main) gmb_tray_macos_tooltip(c.s0);
 #elif defined(_WIN32)
-            gmb_tray_win_tooltip(c.s0);
+            if (on_main) gmb_tray_win_tooltip(c.s0);
 #endif
             break;
         case OP_REMOVE:
 #if defined(__APPLE__) && defined(GMB_TRAY_COCOA)
-            gmb_tray_macos_remove();
+            if (on_main) gmb_tray_macos_remove();
 #elif defined(_WIN32)
-            gmb_tray_win_remove();
+            if (on_main) gmb_tray_win_remove();
 #endif
             g_os_created = 0;
             break;
@@ -242,12 +247,14 @@ int gmb_tray_poll(void)
         tray_free_cmd(&c);
         n++;
     }
-    /* Pompa anche gli eventi OS pendenti (menu/click) sul main thread. */
+    /* Pompa anche gli eventi OS pendenti (menu/click): solo sul main thread. */
+    if (on_main) {
 #if defined(__APPLE__) && defined(GMB_TRAY_COCOA)
-    n += gmb_tray_macos_poll();
+        n += gmb_tray_macos_poll();
 #elif defined(_WIN32)
-    n += gmb_tray_win_poll();
+        n += gmb_tray_win_poll();
 #endif
+    }
     return n;
 }
 
