@@ -33,7 +33,10 @@ ZCC_DEFAULT=""
 #   quest'ordine (stessa precedenza del MiniTest):
 #     1. la CACHE PER-RID del MiniTest: ${TMPDIR:-/tmp}/gmb_c99native_rt_cache/<rid>/librt.a
 #        (la scrive `tools/sh/test_minitests_c99native`, invalidata da uno stamp di contenuto;
-#         la cartella è per RID perché un run host non deve sovrascrivere quella del cross);
+#         la cartella è per RID perché un run host non deve sovrascrivere quella del cross; qui
+#         `librt.a` è l'archivio del compilatore CANONICO (zig) — il runner tiene un archivio per
+#         compilatore (`librt.<tag>.a` per la gamba A/B, che non tocca il canonico), così
+#         alternare zig e cc non ricostruisce il runtime a ogni cambio);
 #     2. l'ARCHIVIO DEL BUILD CROSS: <monorepo>/build/libs/<rid>/libgmb_runtime.a
 #        (`tools/sh/libs_cross_build.sh <rid> --zig <zig>`).
 #   Serve produrne UNA delle due UNA VOLTA SOLA per RID: poi ogni caso cross si costruisce allo

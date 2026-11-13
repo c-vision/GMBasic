@@ -11,9 +11,17 @@ if [ -z "${GMB_BUILDBIN_ON:-}" ]; then
 fi
 
 # test_minitests_c99native — esegue ogni MiniTest/ con il compilatore nativo C99
-# (C99Native): lex→parse→gmb_c99_emit (driver gmbnative) → cc col runtime
-# reale → esecuzione. PASS = genera C + cc ok + run exit 0. Complementare al gate C99
+# (C99Native): lex→parse→gmb_c99_emit (driver gmbnative) → compilazione col runtime
+# reale → esecuzione. PASS = genera C + compila + run exit 0. Complementare al gate C99
 # (C99Native) e al test di parità IL/PCode/VMC.
+#
+# COMPILATORE: ZIG è il toolchain canonico su ogni piattaforma (`tools/sh/zcc` = `zig cc`
+# + i flag che Apple clang ricava da sé), quindi è il DEFAULT: non serve `--cc`.
+# `--cc cc` esiste solo come GAMBA A/B di confronto col clang di sistema, mai come
+# riferimento: il clang di zig promuove a errore difetti che Apple clang nasconde
+# (es. -Wincompatible-pointer-types), quindi una corsa solo-`cc` non è un gate di
+# portabilità. Senza zig installato si ripiega su `cc` con un avviso (modalità degradata).
+#
 # Uso: tools/sh/test_minitests_c99native [--cc <compilatore>] [--target <triple>] [--rid <rid>]
 #   F5: gli stessi argomenti del runner diretto. `--rid` prende triple, framework, sistema e terze
 #   parti da `tools/sh/gmb_link_set.sh` (stessa fonte di `gmb_c99native_run.sh`).
@@ -323,10 +331,30 @@ mirror_case_files() {   # $1 = dir reale da specchiare, $2 = dir reale di destin
         else
             # Clone copy-on-write (APFS): il test legge il contenuto vero ma una sua
             # SCRITTURA non tocca il sorgente (con il symlink la toccava: un test ha
-            # riscritto shared/minitests/ai/app.settings.json). Se il filesystem non
-            # clona, si ripiega sul symlink.
-            cp -c "$e" "$2/$b" 2>/dev/null || ln -sfn "$e" "$2/$b"
+            # riscritto shared/minitests/ai/app.settings.json). Se il filesystem non clona
+            # si COPIA: un symlink qui riaprirebbe la scrittura sui sorgenti.
+            cp -c "$e" "$2/$b" 2>/dev/null || cp -p "$e" "$2/$b"
         fi
+    done
+}
+# Riporta la copia specchio allo stato dei sorgenti fra un caso e il successivo: via ciò che il
+# caso ha aggiunto, ri-clonati i file che ha riscritto o cancellato. Il confronto e' sul
+# CONTENUTO (`cmp`), non sull'mtime: quello ha granularità al secondo e una riscrittura fatta
+# nello stesso secondo del clone passerebbe inosservata (verificato con una sonda).
+reset_case_dir() {      # $1 = directory del caso nei sorgenti, $2 = la sua copia nello specchio
+    local x rel
+    [ -d "$2" ] || return 0
+    # 1) via tutto ciò che nella copia non esiste nei sorgenti (file, symlink, directory)
+    find "$2" -depth -mindepth 1 2>/dev/null | while IFS= read -r x; do
+        rel="${x#"$2"/}"
+        [ -e "$1/$rel" ] || [ -L "$1/$rel" ] || rm -rf "$x"
+    done
+    # 2) ripristina ciò che il caso ha riscritto o cancellato
+    find "$1" -type f 2>/dev/null | while IFS= read -r x; do
+        rel="${x#"$1"/}"
+        [ -e "$2/$rel" ] && cmp -s "$x" "$2/$rel" && continue
+        case "$rel" in */*) mkdir -p "$2/${rel%/*}" ;; esac
+        cp -c "$x" "$2/$rel" 2>/dev/null || cp -p "$x" "$2/$rel"
     done
 }
 prepare_case_cwd() {    # $1 = dir assoluta del MiniTest; imposta CASE_CWD
@@ -336,29 +364,10 @@ prepare_case_cwd() {    # $1 = dir assoluta del MiniTest; imposta CASE_CWD
         *) CASE_CWD="$src"; return 0 ;;   # fuori dal monorepo: si gira dove si e'
     esac
     cur="$MONO"; dst="$WORK/casecwd"
-    # Stessa directory del caso precedente: lo specchio e' gia' pronto e si riporta allo
-    # stato iniziale — via i file/symlink NATI durante il caso (non sono in casecwd.files),
-    # ripristino dei cloni RISCRITTI (mtime piu' recente del timbro), via le dir nuove.
+    # Stessa directory del caso precedente: lo specchio e' gia' pronto (ricostruirlo costa
+    # ~0,6 s/caso fra cloni e antenati) → basta riportarlo allo stato iniziale.
     if [ "${PREP_SRC:-}" = "$src" ] && [ -d "$dst/$rest" ]; then
-        if [ -s "$WORK/casecwd.files" ]; then
-            find "$dst" \( -type f -o -type l \) 2>/dev/null | grep -vxF -f "$WORK/casecwd.files" |
-            while IFS= read -r x; do rm -f "$x"; done
-        fi
-        find "$dst" -type f -newer "$WORK/casecwd.stamp" 2>/dev/null |
-        while IFS= read -r x; do
-            rel="${x#"$dst"/}"
-            if [ -f "$MONO/$rel" ] && [ ! -L "$MONO/$rel" ]; then
-                rm -f "$x"
-                cp -c "$MONO/$rel" "$x" 2>/dev/null || cp -p "$MONO/$rel" "$x" 2>/dev/null || :
-            else
-                rm -f "$x"
-            fi
-        done
-        if [ -s "$WORK/casecwd.dirs" ]; then
-            find "$dst" -depth -mindepth 1 -type d 2>/dev/null | while IFS= read -r d; do
-                grep -qxF "$d" "$WORK/casecwd.dirs" || rmdir "$d" 2>/dev/null
-            done
-        fi
+        reset_case_dir "$MONO/$rest" "$dst/$rest"
         CASE_CWD="$dst/$rest"; return 0
     fi
     PREP_SRC="$src"
@@ -376,13 +385,6 @@ prepare_case_cwd() {    # $1 = dir assoluta del MiniTest; imposta CASE_CWD
         cur="$cur/$comp"; dst="$dst/$comp"; mkdir -p "$dst"
     done
     mirror_case_files "$cur" "$dst"
-    # Gli elenchi coprono la RADICE dello specchio: il riuso ripulisce tutto $WORK/casecwd,
-    # quindi devono includere anche gli antenati/symlink dei fratelli (se restano fuori,
-    # il riuso li scambia per file del test e li cancella: spariscono "../../samples" e co.).
-    find "$WORK/casecwd" -type d > "$WORK/casecwd.dirs" 2>/dev/null                 # dir legittime
-    find "$WORK/casecwd" \( -type f -o -type l \) > "$WORK/casecwd.files" 2>/dev/null  # file del test
-    touch "$WORK/casecwd.stamp"    # i file specchiati sono piu' vecchi: quelli piu' nuovi
-                                   # sono state scritture del caso (da ripristinare)
     CASE_CWD="$dst"
 }
 trap 'rm -rf "$WORK"; [ "$EXPORT_SYMS_TMP" = 1 ] && rm -f "$EXPORT_SYMS_FILE" "$EXPORT_SYMS_FILE.m"; broker_cleanup' EXIT
@@ -400,8 +402,18 @@ pass=0; fail=0; skip=0
 # `gmb_ffi_dl_sym`, …), perché i nomi Mach-O hanno l'underscore iniziale e non corrispondono.
 # Con la cartella per RID i due build non si toccano più.
 RT_CACHE_DIR="${TMPDIR:-/tmp}/gmb_c99native_rt_cache/$TARGET_RID"
-RT_CACHE="$RT_CACHE_DIR/librt.a"
-RT_STAMP="$RT_CACHE_DIR/src.stamp"
+# FILE per-COMPILATORE, con i nomi SENZA suffisso per il canonico (zig). Prima c'era un solo
+# `librt.a` con lo STAMP che includeva `cc=$FC`: alternare zig e cc (gamba A/B) invalidava e
+# SOVRASCRIVEVA la cache dell'altro — 395 sorgenti ricompilati a ogni cambio (~4 min).
+# Ora `librt.a` è l'archivio zig, e siccome è anche il nome cercato dal cross
+# (`gmb_c99native_run.sh`) non serve nessuna copia-alias; la gamba A/B usa `librt.<tag>.a` e
+# non tocca il canonico. Il tag è un hash della stringa di `--cc`: stabile fra invocazioni
+# identiche.
+case "$(basename "${FC%% *}")" in
+  zcc|zig*) RT_CACHE="$RT_CACHE_DIR/librt.a";         RT_STAMP="$RT_CACHE_DIR/src.stamp" ;;
+  *)        RT_TAG="$(printf '%s' "$FC" | shasum | cut -c1-8)"
+            RT_CACHE="$RT_CACHE_DIR/librt.$RT_TAG.a"; RT_STAMP="$RT_CACHE_DIR/src.$RT_TAG.stamp" ;;
+esac
 # Gli HEADER contano: prima la cache era invalidata solo dai .c, quindi una modifica a un header
 # (es. gmb_runtime.h, dove vive ogni prototipo gmb_*) lasciava in cache un runtime compilato con
 # le vecchie dichiarazioni → simboli/ABI stantii in silenzio. Sono le -I usate qui sotto.
