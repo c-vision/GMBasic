@@ -635,6 +635,26 @@ for f in "$MINI"/**/*.bas "$MINI"/*.bas; do
     TORCH_SRCS="$ROOT/native/gmb_torch/src/gmb_torch.c"
     [ -f "$ROOT/native/gmb_torch/src/gmb_torch_str.c" ] && TORCH_SRCS="$TORCH_SRCS $ROOT/native/gmb_torch/src/gmb_torch_str.c"
   fi
+  # TRAY: le funzioni gmb_tray_* vere vivono nella dylib CONDIVISA (target CMake gmb_tray: Cocoa su
+  # macOS, Win32 su Windows). In librt.a entra solo il `gmb_tray.c` compilato SENZA
+  # GMB_TRAY_COCOA — quello che questo script compila nel glob di `src/*.c`: il suo
+  # `gmb_tray_backend()` risponde "none" e ogni chiamata è un no-op. La gamba nativa divergeva
+  # così da IL/VM-C (`backend=macos`, `available=-1`) e il MiniTest passava lo stesso, perché il
+  # suo oracolo è cross-leg (con tutte le gambe a "none" non c'è niente da confrontare).
+  # La dylib va PRIMA di librt.a: l'archivio estrae un membro solo se un simbolo è ancora
+  # indefinito, quindi con la dylib davanti lo stub non entra nel binario. Solo se il C generato la
+  # usa: un MiniTest testuale non paga la dipendenza (stesso criterio di AGENT/DOC/TORCH).
+  TRAY_IN=()
+  if grep -q 'gmb_tray_' "$WORK/out.c" 2>/dev/null; then
+    cmake --build "$ROOT/native/gmb_runtime_c/build" --target gmb_tray -j4 >/dev/null 2>&1 || true
+    TRAY_DYLIB="$LIBS_CACHE/libgmb_tray.$LS_DYLIBEXT"
+    [ -f "$TRAY_DYLIB" ] || TRAY_DYLIB="$ROOT/build/libs/$RID/libgmb_tray.$LS_DYLIBEXT"
+    if [ -f "$TRAY_DYLIB" ]; then
+      TRAY_IN=( "$TRAY_DYLIB" -Wl,-rpath,"$(dirname "$TRAY_DYLIB")" )
+    else
+      echo "test_minitests_c99native: libgmb_tray.$LS_DYLIBEXT assente (target gmb_tray non costruito): resta il backend none di librt.a" >&2
+    fi
+  fi
   # MODEL I/O + plugin/model_desc + tokenizer: `gmb_llm_model_convert` (e il resto del namespace
   # LLM) vivono nel progetto separato gmb_model_io, che il C99Native deve linkare
   # (il C generato per `LLM MODEL CONVERT` li chiama). Prebuilt come db/moe/codec.
@@ -658,7 +678,7 @@ for f in "$MINI"/**/*.bas "$MINI"/*.bas; do
   # duplicata (due copie da tenere allineate) e la gamba LIBRARY linkava per forza un binario.
   # Array (non stringa) perché il path di rpath può contenere spazi e perché $AGENT/$DOC_SRCS
   # sono già liste: nello stringone i confini dei token dipendevano dallo split implicito.
-  LINK_IN=( "$RT_LIB" $AGENT $COMPILER "$DB_LIB" ${LLM_STATIC[@]+"${LLM_STATIC[@]}"} $DOC_SRCS $TORCH_SRCS )
+  LINK_IN=( ${TRAY_IN[@]+"${TRAY_IN[@]}"} "$RT_LIB" $AGENT $COMPILER "$DB_LIB" ${LLM_STATIC[@]+"${LLM_STATIC[@]}"} $DOC_SRCS $TORCH_SRCS )
   LINK_FLAGS=( $INC_RT -I"$ROOT/native/gmb_agent_runtime" -I"$LLMENV/LLMJinja" -I"$LLMENV/LLMEngine/mlx"
     -I"$ROOT/native/gmb_compiler_c/include" $CODEC_INC $DB_INC $LLM_INC $INC_EXTRA $FRAMEWORKS
     -lm -w -ffp-contract=off -DGMB_WITH_UI=1 $LS_STRIP $LLM_CODEC_FLAGS
