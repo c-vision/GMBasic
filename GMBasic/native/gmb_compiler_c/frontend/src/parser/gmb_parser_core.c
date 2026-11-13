@@ -49,6 +49,10 @@ gmb_program_t gmb_parse(const gmb_lex_result_t* lx, char** error)
             if (strtod(buf, NULL) != 0.0) { p.gui_mode = 1; break; }
         }
     }
+    /* GATE dei NAMESPACE: raccoglie gli IMPORT del programma (pre-scan dei token, come il
+     * pre-scan SCREEN sopra: una direttiva può stare dopo il punto d'uso) — serve a
+     * `gmb_p_check_bare_builtin` per rifiutare un nome nudo di libreria non importato. */
+    gmb_p_collect_imports(&p);
 
     while (!gmb_p_at_end(&p)) {
         gmb_p_skip_eol(&p);

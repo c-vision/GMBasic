@@ -62,6 +62,30 @@ typedef struct gmb_parser {
     /* OPTION STRICT ON|OFF: direttiva di modulo (parità linker C#). Con ON l'emitter rifiuta
      * ogni nome non dichiarato. */
     int option_strict;
+    /* GATE dei NAMESPACE (parità `KnownLibraryNotImported` del linker C#): namespace
+     * IMPORTati nel programma (normalizzati in MAIUSCOLO, anche dotted). Una funzione di
+     * LIBRERIA si chiama nuda SOLO se il suo namespace è qui o è fra i default del
+     * linguaggio: `RMDIR`-style i comandi non c'entrano, questo vale per le funzioni. */
+    char imports[64][96];
+    int n_imports;
+    /* Procedure DICHIARATE dal programma (FUNCTION/SUB, anche metodi di classe): una
+     * funzione UTENTE con lo stesso nome di un builtin di libreria lo SHADOWA (il C# lo
+     * risolve a link-time), quindi il gate dei namespace non deve scattare. Raccolte dallo
+     * stesso pre-scan degli IMPORT (copre anche le dichiarazioni successive al punto d'uso). */
+    char user_fns[512][64];
+    int n_user_fns;
+    /* Nomi DICHIARATI (DIM/REDIM/GLOBAL/LOCAL/STATIC, anche nelle forme MULTIPLE
+     * `DIM a(2), b(2)` e `DIM g(7) AS T, info(0) AS LONG`): il parser registra in
+     * `declared` solo la PRIMA di un DIM multiplo, e la tabella ha cap 512 — qui il
+     * pre-scan li raccoglie tutti, così `info(0)`/`mask(0)` (accessi a elemento) non
+     * vengono scambiati per la funzione di libreria omonima. */
+    char decl_names[1024][64];
+    int n_decl_names;
+    /* 1 = il sorgente è un FRAMMENTO EVAL/& (wrapper `SUB|FUNCTION __GMB_EVAL__`, vedi
+     * gmb_bytecode/snip_wrap_text): un frammento non è un programma e non può contenere
+     * IMPORT → il gate dei namespace è sospeso (il valutatore C# della macro risolve i
+     * builtin per nome). Rilevato dal pre-scan di gmb_p_collect_imports. */
+    int snippet;
 } gmb_parser_t;
 
 typedef struct {
@@ -91,6 +115,15 @@ int gmb_p_udt_field_dims_ahead(gmb_parser_t* p);
 /* 2026-09-24: cattura il nome del namespace della direttiva NAMESPACE corrente (anche
  * dotted, es. TRADING.PORTFOLIO) in p->cur_ns; riga vuota = reset a "" (globale). */
 void gmb_p_capture_namespace(gmb_parser_t* p);
+/* ── GATE dei NAMESPACE (parità `KnownLibraryNotImported`, Linker.Rewrites.cs) ──
+ * `gmb_p_collect_imports` pre-scansiona i token e registra in p->imports i namespace
+ * IMPORTati (anche dotted, normalizzati in maiuscolo; `IMPORT A, B`, `A (membri)`,
+ * `A AS x` e `A.*` sono gestiti). `gmb_p_check_bare_builtin` verifica una chiamata NUDa
+ * già risolta a TokenKind: se il nome appartiene a uno o più namespace di libreria e
+ * NESSUNO è caricato (import esplicito o default del linguaggio) → errore esplicito, come
+ * il linker C#. Ritorna 1 se la chiamata è lecita, 0 se ha settato p->error. */
+void gmb_p_collect_imports(gmb_parser_t* p);
+int  gmb_p_check_bare_builtin(gmb_parser_t* p, gmb_tokenkind_t tk, const char* name, int line);
 const gmb_token_t* gmb_p_cur(gmb_parser_t* p);
 bool gmb_p_at_end(gmb_parser_t* p);
 void gmb_p_adv(gmb_parser_t* p);

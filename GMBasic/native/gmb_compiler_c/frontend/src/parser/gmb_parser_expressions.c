@@ -1954,6 +1954,14 @@ gmb_expr_t* gmb_p_parse_primary(gmb_parser_t* p)
              * era dispatchato per lexeme (tk=0) e l'emissione restava vuota. */
             if (ct2 < 0 && t->kind != GMB_TOK_Identifier && t->kind != GMB_TOK_Unknown)
                 ct2 = (int)t->kind;
+            /* GATE dei NAMESPACE (parità `KnownLibraryNotImported` del linker C#): un nome
+             * NUDO di funzione di libreria è lecito SOLO se il suo namespace è fra i default
+             * del linguaggio o è stato IMPORTato — `ANGLE2D(...)` richiede `IMPORT VECTOR`,
+             * altrimenti si usa `VECTOR.ANGLE2D(...)`. `ibns` non-NULL = risolto su un
+             * namespace IMPORTato (riga sopra) → già lecito. La forma qualificata non passa
+             * da qui (name contiene '.'). Su errore p->error è settato e gmb_parse abortisce. */
+            if (ct2 >= 0 && !ibns && name[0] && !strchr(name, '.'))
+                (void)gmb_p_check_bare_builtin(p, (gmb_tokenkind_t)ct2, name, line);
             gmb_expr_t* call = ct2 >= 0 ? gmb_expr_call_typed(name, (gmb_tokenkind_t)ct2, args, na, line)
                                         : gmb_expr_call(name, args, na, line);
             if (gmb_p_match(p, GMB_TOK_QuestionMark)) call->is_safe = 1;   /* arr(9)? */
