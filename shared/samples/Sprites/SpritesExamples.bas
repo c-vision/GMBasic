@@ -43,18 +43,22 @@ SUB Main()
   PRINT "║ SpritesExamples - Test di Rendering in Batch                                ║"
   PRINT "╚═════════════════════════════════════════════════════════════════════════════╝"
   
-  ' Imposta la modalità grafica e carica un font
-  SCREEN 12 ' 640x480, 16 colori
+  ' Imposta la modalità grafica e carica un font.
+  ' Finestra PIÙ GRANDE (1280×800, 32bpp). SW/SH sono le dimensioni LOGICHE usate dal
+  ' programma (bordi di rimbalzo e griglia): se cambi la SCREEN, aggiorna anche questi due.
+  CONST SW = 1280
+  CONST SH = 800
+  SCREEN 12, SW, SH, 32
   FONT "font.ttf", 16
   
   ' Carica l'immagine dello sprite.
-  ' 50 sprite distanziati su una griglia 10×5 (passo 60×90 px): player.png è 32×32, quindi
-  ' c'è spazio fra loro e i contatti sono RADI → ogni scontro si vede bene e la demo dura
-  ' a lungo (con 221 sprite al ~50% di densità i contatti erano continui e la scena si
-  ' svuotava in pochi secondi).
+  ' 50 sprite distanziati su una griglia 10×5 nella finestra 1280×800: player.png è 32×32,
+  ' quindi c'è molto spazio fra loro e i contatti restano RADI e leggibili.
   CONST NumSprites = 50
-  ' MANOPOLA: pausa in MILLISECONDI a ogni frame → più alto = movimento più lento.
-  CONST FrameDelay = 8
+  ' MANOPOLE: FrameDelay = pausa in MILLISECONDI a ogni frame (più alto = più lento);
+  '           VelBase   = velocità massima in px/frame (più alto = più veloce).
+  CONST FrameDelay = 6
+  CONST VelBase = 1.6
   DIM SprID(NumSprites) AS LONG
   FOR I = 0 TO NumSprites - 1
     SPRITE LOAD "player.png", SprID(I)
@@ -92,12 +96,12 @@ SUB Main()
   DIM PosX(NumSprites), PosY(NumSprites)
   DIM VelX(NumSprites), VelY(NumSprites)
   
-  ' Griglia 10×5 con passo 60×90 px: sprite ben distanziati, contatti radi e leggibili.
+  ' Griglia 10×5 distribuita su tutta la finestra SW×SH.
   FOR I = 0 TO NumSprites - 1
-    PosX(I) = 40 + (I MOD 10) * 60
-    PosY(I) = 40 + (I \ 10) * 90
-    VelX(I) = ((RND() * 2) - 1) * 0.9
-    VelY(I) = ((RND() * 2) - 1) * 0.9
+    PosX(I) = 60 + (I MOD 10) * ((SW - 120) / 9)
+    PosY(I) = 80 + (I \ 10) * ((SH - 160) / 4)
+    VelX(I) = ((RND() * 2) - 1) * VelBase
+    VelY(I) = ((RND() * 2) - 1) * VelBase
   NEXT I
   
   ' --- GAME LOOP PRINCIPALE ---
@@ -113,20 +117,20 @@ SUB Main()
       PosY(I) = PosY(I) + VelY(I)
       
       ' Bordi: RIMBALZO (non wrapping) con cambio di direzione e velocità casuale.
-      ' Le coordinate dello sprite sono il CENTRO (il motore disegna a x-w/2): il bordo
-      ' sinistro è x=16, il destro x=640-16, in alto y=16, in basso y=480-16.
+      ' Le coordinate dello sprite sono il CENTRO (il motore disegna a x-w/2): i bordi sono
+      ' a 16 px (metà sprite) e a SW/SH-16.
       IF PosX(I) < 16 THEN
         PosX(I) = 16
         VelX(I) = ABS(VelX(I)) * (0.6 + RND() * 0.8)
-      ELSEIF PosX(I) > 624 THEN
-        PosX(I) = 624
+      ELSEIF PosX(I) > SW - 16 THEN
+        PosX(I) = SW - 16
         VelX(I) = -ABS(VelX(I)) * (0.6 + RND() * 0.8)
       END IF
       IF PosY(I) < 16 THEN
         PosY(I) = 16
         VelY(I) = ABS(VelY(I)) * (0.6 + RND() * 0.8)
-      ELSEIF PosY(I) > 464 THEN
-        PosY(I) = 464
+      ELSEIF PosY(I) > SH - 16 THEN
+        PosY(I) = SH - 16
         VelY(I) = -ABS(VelY(I)) * (0.6 + RND() * 0.8)
       END IF
       
