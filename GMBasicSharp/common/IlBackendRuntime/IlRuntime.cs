@@ -17978,6 +17978,10 @@ public static double TextWidth(string s)
     private static readonly (string Name, string Desc)[] OptionCoreTable =
     [
         ("moe_swap_dir",   "dir modello per lo streaming esperti MoE (vuoto = off)"),
+        /* Radice dei pesi (2026-11-12): voce del registro C (`gmb_opts.c`) che i MiniTest
+         * HEAVY e i sample usano per `%MODELS%`/`~/ai/Models`. Mancava qui, quindi
+         * `AI LIST OPTIONS` dava un elenco DIVERSO sulle gambe managed (una voce in meno). */
+        ("path.models_root", "radice dei modelli per `%MODELS%` e `~/ai/Models` (vuoto = ~/ai/Models)"),
         ("GMB_TUI_SCRIPT", "typeahead scriptato per TUI/CI: tasti iniettati nell'input (vuoto = input reale)"),
         ("GMB_PKG_CACHE",  "dir cache dei pacchetti per REQUIRE (vuoto = <progetto>/packages)"),
         ("GMB_TORCH_PATH", "dir dei runtime ML (torch/mlx) quando i settings non la indicano"),

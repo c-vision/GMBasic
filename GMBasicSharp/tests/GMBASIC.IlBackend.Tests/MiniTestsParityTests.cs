@@ -791,6 +791,12 @@ public class MiniTestsParityTests
         // `TRAYSELFTEST()` resta 0 mentre sul VMC/C99 (processo con main thread) è -1 →
         // divergenza di HOST, non di linguaggio. Verificato sulle gambe con pump (VMC, C99).
         || nome.Equals("tray_parity.bas", StringComparison.OrdinalIgnoreCase)
+        // gen_AI_*: campioni di COPERTURA SIMBOLO generati; le loro EXPECT catturano STATO di
+        // macchina/sessione — `AI.BRAINUSED` = brain usati nel processo corrente,
+        // `AI.PROVIDERS` = provider configurati, `AI.VAULTLIST` = vault creati dai test
+        // precedenti nella stessa JVM, `AI.COUNT` = documenti indicizzati. Come gen_BROWSER_*:
+        // la copertura del simbolo resta garantita dal census; l'oracolo unico non esiste.
+        || nome.StartsWith("gen_AI_", StringComparison.OrdinalIgnoreCase)
         // Proprietà base + TEXTBOX + metodi CONTROL: GUI pixel (screen), solo
         // C99Native per ora; verificato per-gamba.
         || nome.Equals("control_methods_perleg.bas", StringComparison.OrdinalIgnoreCase);

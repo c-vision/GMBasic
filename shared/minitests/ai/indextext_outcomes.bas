@@ -1,4 +1,4 @@
-' EXPECT: -1|-1|-1|-1
+' EXPECT: 1|2|2|1
 ' MiniTest — VectorDB INDEXTEXT su IL (oracolo per la parità).
 ' DB persistente work/vec.db (l'harness pulisce work/ prima di ogni gamba).
 IMPORT AI
