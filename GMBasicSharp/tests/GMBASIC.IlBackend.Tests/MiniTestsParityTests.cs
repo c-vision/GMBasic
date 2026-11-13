@@ -741,6 +741,12 @@ public class MiniTestsParityTests
     /// driver C99Native (dove il runtime C è deterministico).</summary>
     private static bool IsParityExcluded(string nome) =>
         nome.Equals("gen_AI_Discover.bas", StringComparison.OrdinalIgnoreCase)
+        // GATE dei NAMESPACE (2026-11-13): `constructs/ns_import_gate.bas` è un test NEGATIVO di
+        // compilazione (`' EXPECT: ERROR: …`): il frontend C deve RIFIUTARE `ANGLE2D(...)` senza
+        // `IMPORT VECTOR`. Il cross-leg managed compila in-process e si aspetta un run riuscito,
+        // quindi il caso si verifica sulla gamba C (runner `tools/sh/test_minitests_c99native`);
+        // le forme LECITE sono coperte da geom/dist2d, geom/dist3d, math/math3, math/math_all.
+        || nome.Equals("ns_import_gate.bas", StringComparison.OrdinalIgnoreCase)
         // CLIPPER macro/EVAL/code-block (2026-10-02): batteria macro_core/eval_block/
         // eval_macro_string ora a parita' 4 backend (D1 EVAL dispatch, D2 text substitution,
         // D3 macro annidate, D4 corpo-espressione, D5 macro->block) — NON piu' escluse.
