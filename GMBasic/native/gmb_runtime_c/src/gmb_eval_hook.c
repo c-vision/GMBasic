@@ -11,6 +11,9 @@
 #include "gmb_runtime.h"
 
 #include <dlfcn.h>
+#if defined(__APPLE__)
+#include <mach-o/dyld.h>            /* _NSGetExecutablePath (sotto __APPLE__, più sotto) */
+#endif
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
