@@ -635,24 +635,29 @@ for f in "$MINI"/**/*.bas "$MINI"/*.bas; do
     TORCH_SRCS="$ROOT/native/gmb_torch/src/gmb_torch.c"
     [ -f "$ROOT/native/gmb_torch/src/gmb_torch_str.c" ] && TORCH_SRCS="$TORCH_SRCS $ROOT/native/gmb_torch/src/gmb_torch_str.c"
   fi
-  # TRAY: le funzioni gmb_tray_* vere vivono nella dylib CONDIVISA (target CMake gmb_tray: Cocoa su
-  # macOS, Win32 su Windows). In librt.a entra solo il `gmb_tray.c` compilato SENZA
-  # GMB_TRAY_COCOA — quello che questo script compila nel glob di `src/*.c`: il suo
-  # `gmb_tray_backend()` risponde "none" e ogni chiamata è un no-op. La gamba nativa divergeva
-  # così da IL/VM-C (`backend=macos`, `available=-1`) e il MiniTest passava lo stesso, perché il
-  # suo oracolo è cross-leg (con tutte le gambe a "none" non c'è niente da confrontare).
-  # La dylib va PRIMA di librt.a: l'archivio estrae un membro solo se un simbolo è ancora
-  # indefinito, quindi con la dylib davanti lo stub non entra nel binario. Solo se il C generato la
-  # usa: un MiniTest testuale non paga la dipendenza (stesso criterio di AGENT/DOC/TORCH).
+  # TRAY: le funzioni gmb_tray_* vere stanno nella dylib CONDIVISA (target CMake gmb_tray: Cocoa su
+  # macOS, Win32 su Windows). In librt.a c'è solo il `gmb_tray.c` compilato SENZA GMB_TRAY_COCOA
+  # (il glob di `src/*.c` qui sopra): risponde backend="none" e non fa nulla. La gamba nativa
+  # divergeva così da IL/VM-C (backend=macos) senza dirlo — l'oracolo del MiniTest è cross-leg, e
+  # con tutte le gambe a "none" non c'era niente da confrontare.
+  # La dylib va PRIMA di librt.a: MISURATO il 13/11, con zig/lld l'ordine è indifferente (risolve
+  # dalla dylib in entrambe le posizioni), ma con ld64 di Apple — la gamba A/B `--cc cc` — archivio
+  # prima estrae lo stub e il binario stampa "none". Davanti costa zero e vale per tutti e due.
+  # Cancello sul C generato: un test senza tray non paga la dipendenza, e i RID cross non hanno la
+  # dylib dell'host (linkarla sempre costerebbe 0,2 ms/test, misurati, ma qui romperebbe il link).
   TRAY_IN=()
   if grep -q 'gmb_tray_' "$WORK/out.c" 2>/dev/null; then
-    cmake --build "$ROOT/native/gmb_runtime_c/build" --target gmb_tray -j4 >/dev/null 2>&1 || true
     TRAY_DYLIB="$LIBS_CACHE/libgmb_tray.$LS_DYLIBEXT"
-    [ -f "$TRAY_DYLIB" ] || TRAY_DYLIB="$ROOT/build/libs/$RID/libgmb_tray.$LS_DYLIBEXT"
+    if [ ! -f "$TRAY_DYLIB" ]; then
+      # Solo se la cache non ce l'ha: `cmake --build` scrive in build/libs, non nella cache che
+      # questo blocco linka, quindi a cache piena costava 0,18 s per rigenerare un file inutilizzato.
+      cmake --build "$ROOT/native/gmb_runtime_c/build" --target gmb_tray -j4 >/dev/null 2>&1 || true
+      TRAY_DYLIB="$ROOT/build/libs/$RID/libgmb_tray.$LS_DYLIBEXT"
+    fi
     if [ -f "$TRAY_DYLIB" ]; then
-      TRAY_IN=( "$TRAY_DYLIB" -Wl,-rpath,"$(dirname "$TRAY_DYLIB")" )
+      TRAY_IN=( "$TRAY_DYLIB" -Wl,-rpath,"${TRAY_DYLIB%/*}" )
     else
-      echo "test_minitests_c99native: libgmb_tray.$LS_DYLIBEXT assente (target gmb_tray non costruito): resta il backend none di librt.a" >&2
+      echo "FAIL $name (tray: libgmb_tray.$LS_DYLIBEXT assente per $RID)"; fail=$((fail+1)); continue
     fi
   fi
   # MODEL I/O + plugin/model_desc + tokenizer: `gmb_llm_model_convert` (e il resto del namespace
