@@ -405,14 +405,10 @@ gmb_string_t gmb_string_from_bytes(const char* data, gmb_int_t len);
  * gmb_bytes_as_doubles: i byte di una stringa binaria come array numerico 0..255, in un
  * buffer a ROTAZIONE (8 slot, riallocati al bisogno; il chiamante non libera e non deve
  * conservare il puntatore oltre l'espressione corrente). len_out opzionale.
- * gmb_hex_from_doubles: hex minuscolo malloc'd/NUL-terminato dei primi n elementi di un
- * array numerico (elementi clampati a 0..255). */
+ * NB (2026-11-13): le conversioni inverse `gmb_hex_from_doubles`/`gmb_bytes_from_doubles`
+ * (forme `TOHEX(array)`/`TOBASE64(array)`) sono state RIMOSSE: ritirate con la migrazione
+ * CRYPTOGRAPHY a pacchetto FFI (per i byte: `BYTESHEX(a())`). */
 const gmb_double_t* gmb_bytes_as_doubles(gmb_string_t s, gmb_int_t* len_out);
-char* gmb_hex_from_doubles(const gmb_double_t* a, gmb_int_t n);
-/* gmb_bytes_from_doubles: array numerico 0..255 (`DIM x(n) AS BYTE`, parametro `a() AS BYTE`)
- * come STRINGA BINARIA (gmb_string_t, copia). Serve agli encoder (BASE58/BASE32/BASE64), che
- * consumano `.data`/`.length`: senza il ponte il puntatore finiva in gmb_double_to_string. */
-gmb_string_t gmb_bytes_from_doubles(const gmb_double_t* a, gmb_int_t n);
 
 /* SYSTEM.SYS(proprietà) per i backend C: OS/ARCH/UI/VERSION/RUNTIME/CPUCOUNT/MACHINE/USER/CWD +
  * memoria (MEMAVAILABLE/MEMFREE/MEMRECLAIMABLE/MEMTOTAL/MEMUSED, e …MB). Ritorna un buffer statico

@@ -5892,29 +5892,13 @@ int emit_bf_tool(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk,
 typedef struct { gmb_tokenkind_t tk; ma_sp sp; } en_row;
 /* (2026-09-07) operando "data" per encoder (TOHEX/TOBASE64/…): un digest MD5/SHA*
  * generico produce hex-text; qui va consumato come BYTE GREZZI (parity IL/PCodeVM/VM-C:
- * MD5 ritorna byte[], quindi TOHEX(MD5(x)) = hex del digest, non doppio hex). */
+ * MD5 ritorna byte[], quindi TOHEX(MD5(x)) = hex del digest, non doppio hex).
+ * NB (2026-11-13): il ramo ARRAY‑numerico è stato RITIRATO insieme alle forme array di
+ * TOHEX/TOBASE64 (migrazione CRYPTOGRAPHY a pacchetto FFI: le FUNZIONI del pacchetto
+ * accettano STRINGA e hanno la precedenza sul builtin omonimo, quindi quel ramo era
+ * irraggiungibile). Vedi Bugs/(solved) - C99-TOHEX-TBASE64-Su-Array*: le forme lecite
+ * sono `TOHEX(testo)`/`TOBASE64(s)` e, per i byte, `BYTESHEX(a())` del pacchetto. */
 static void emit_bytes_operand(ctx_t* c, gmb_expr_t* a) {
-    /* Array numerico/BYTE (`DIM x(n) AS BYTE` o PARAMETRO `a() AS BYTE`): in C è un
-     * `gmb_double_t*` con bound `<nome>__b0` (o `_len` se dinamico), quindi NON ha
-     * `.data`/`.length`. Va convertito in stringa binaria col ponte del runtime
-     * condiviso; senza, il puntatore finiva in `gmb_double_to_string`. */
-    if (a && a->kind == GMB_EXPR_VAR) {
-        var_t* tv = lookup_var(c, a->var);
-        if (tv && tv->is_array && !tv->matrix && !tv->jagged && !tv->is_bytes && tv->type != TY_STR) {
-            sb_put(&c->out, "gmb_bytes_from_doubles(");
-            emit_ident(c, tv->name);
-            sb_put(&c->out, ", (gmb_int_t)(");
-            if (tv->dyn_len) {
-                emit_ident(c, tv->name);
-                sb_put(&c->out, "_len)");
-            } else {
-                emit_ident(c, tv->name);
-                sb_put(&c->out, "__b0) + 1");
-            }
-            sb_put(&c->out, ")");
-            return;
-        }
-    }
     emit_str_operand(c, a);
 }
 static int en_encode(ctx_t* c, gmb_expr_t** a, int n, const char* fn) {
@@ -5943,30 +5927,11 @@ static int en_frombase64(ctx_t* c, gmb_expr_t** a, int n) { return en_decode(c, 
 static int en_frombase64url(ctx_t* c, gmb_expr_t** a, int n) { return en_decode(c, a, n, "gmb_base64url_decode"); }
 static int en_tohex(ctx_t* c, gmb_expr_t** a, int n) {
     if (n < 1) return 0;
-    /* Array numerico BYTE (DIM x(n) AS BYTE, buffer di digest): in C e' `gmb_double_t*`
-     * con bound `<nome>__b0`, NON una stringa. TOHEX deve produrre l'hex dei valori
-     * 0..255 col ponte del runtime condiviso (gmb_hex_from_doubles): senza questo ramo
-     * l'operando finiva in gmb_double_to_string(puntatore) => C non compilabile. */
-    if (a[0] && a[0]->kind == GMB_EXPR_VAR) {
-        var_t* tv = lookup_var(c, a[0]->var);
-        /* Array numerico/BYTE (DIM o PARAMETRO `a() AS BYTE`): la var e' `gmb_double_t*`
-         * + bound `<nome>__b0` (o `_len` per gli array dinamici). Un array di STRINGHE
-         * (type TY_STR, `gmb_string_t*`) non c'entra: si esclude esplicitamente. */
-        if (tv && tv->is_array && !tv->matrix && !tv->jagged && !tv->is_bytes && tv->type != TY_STR) {
-            sb_put(&c->out, "gmb_string_alloc(gmb_hex_from_doubles(");
-            emit_ident(c, tv->name);
-            sb_put(&c->out, ", (gmb_int_t)(");
-            if (tv->dyn_len) {
-                emit_ident(c, tv->name);
-                sb_put(&c->out, "_len)");
-            } else {
-                emit_ident(c, tv->name);
-                sb_put(&c->out, "__b0) + 1");
-            }
-            sb_put(&c->out, "))");
-            return 1;
-        }
-    }
+    /* NB (2026-11-13): RITIRATO il ramo "array numerico → hex" (gmb_hex_from_doubles).
+     * Con la migrazione CRYPTOGRAPHY a pacchetto FFI il nome TOHEX risolve alla FUNCTION
+     * `TOHEX(text AS STRING)` del pacchetto (che ha la precedenza sul builtin), quindi il
+     * ramo era codice morto; per i BYTE si usa `BYTESHEX(a())` del pacchetto.
+     * Vedi Bugs/(solved) - C99-TOHEX-TBASE64-Su-Array-Dopo-Migrazione-Crypto. */
     sb_put(&c->out, "gmb_string_alloc(gmb_hex_encode_string((const uint8_t*)");
     emit_bytes_operand(c, a[0]);
     sb_put(&c->out, ".data, ");

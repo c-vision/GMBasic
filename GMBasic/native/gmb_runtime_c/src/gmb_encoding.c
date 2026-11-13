@@ -60,11 +60,14 @@ void gmb_hex_encode(const uint8_t* data, size_t len, char* out) {
 /* Ponte BYTE ↔ ARRAY (C99Native). In questo backend i byte "grezzi" possono vivere in due
  * rappresentazioni: stringa binaria (gmb_string_t, esito di FROMHEX/digest) oppure array
  * numerico con elementi 0..255 (`DIM x(n) AS BYTE`). Per poterli usare in modo
- * intercambiabile (argomento di un parametro array, TOHEX) servono le due conversioni qui.
+ * intercambiabile (argomento di un parametro array) serve la conversione qui sotto.
  *
  * gmb_bytes_as_doubles: buffer a ROTAZIONE (nessuna allocazione da liberare dal chiamante,
  * vita valida per la durata dell'espressione che lo usa). Cade solo su OOM (catastrofico).
- * gmb_hex_from_doubles: hex minuscolo malloc'd, NUL-terminato (il runtime FFI/PRINT libera). */
+ * NB (2026-11-13): `gmb_hex_from_doubles` e `gmb_bytes_from_doubles` (ponte array→hex/binario
+ * per le forme `TOHEX(array)`/`TOBASE64(array)`) sono stati RIMOSSI: quelle forme sono ritirate
+ * con la migrazione CRYPTOGRAPHY a pacchetto FFI (per i byte c'è `BYTESHEX(a())`).
+ * Vedi Bugs/(solved) - C99-TOHEX-TBASE64-Su-Array-Dopo-Migrazione-Crypto. */
 #define GMB_AS_DOUBLES_SLOTS 8
 const gmb_double_t* gmb_bytes_as_doubles(gmb_string_t s, gmb_int_t* len_out) {
     static gmb_double_t* buf[GMB_AS_DOUBLES_SLOTS];
@@ -83,43 +86,6 @@ const gmb_double_t* gmb_bytes_as_doubles(gmb_string_t s, gmb_int_t* len_out) {
         buf[i][k] = (gmb_double_t)(unsigned char)(s.data ? s.data[k] : 0);
     if (len_out) *len_out = (gmb_int_t)n;
     return buf[i];
-}
-
-char* gmb_hex_from_doubles(const gmb_double_t* a, gmb_int_t n) {
-    static const char hx[] = "0123456789abcdef";
-    if (!a || n < 0) n = 0;
-    size_t len = (size_t)n;
-    char* out = (char*)malloc(len * 2 + 1);
-    if (!out) return NULL;
-    for (size_t i = 0; i < len; i++) {
-        int v = (int)a[i];
-        if (v < 0) v = 0;
-        else if (v > 255) v = 255;
-        out[i * 2] = hx[(v >> 4) & 0xF];
-        out[i * 2 + 1] = hx[v & 0xF];
-    }
-    out[len * 2] = '\0';
-    return out;
-}
-
-/* gmb_bytes_from_doubles: array numerico (elementi 0..255) → stringa BINARIA. È il ponte
- * usato dagli encoder (BASE58/BASE32/BASE64) quando l'argomento è un array BYTE, che in C99
- * è `gmb_double_t*` e non ha `.data`/`.length`. `gmb_string_from_bytes` copia, quindi il
- * buffer temporaneo si libera subito. */
-gmb_string_t gmb_bytes_from_doubles(const gmb_double_t* a, gmb_int_t n) {
-    if (!a || n < 0) n = 0;
-    size_t len = (size_t)n;
-    char* buf = (char*)malloc(len + 1);
-    if (!buf) return gmb_string_from_bytes("", 0);
-    for (size_t i = 0; i < len; i++) {
-        int v = (int)a[i];
-        if (v < 0) v = 0;
-        else if (v > 255) v = 255;
-        buf[i] = (char)(unsigned char)v;
-    }
-    gmb_string_t s = gmb_string_from_bytes(buf, (gmb_int_t)len);
-    free(buf);
-    return s;
 }
 
 char* gmb_hex_encode_string(const uint8_t* data, size_t len) {
