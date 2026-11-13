@@ -21,6 +21,7 @@ typedef int (*eval_run_fn)(const char* src, int as_stmt,
                            gmb_eval_print_str_fn pstr, gmb_eval_print_num_fn pnum,
                            gmb_eval_print_nl_fn pnl, void* pctx, gmb_val_t* out);
 typedef int (*eval_abi_fn)(void);
+typedef const char* (*eval_err_fn)(void);
 
 static gmb_eval_env_fn g_eval_env = NULL;
 static gmb_eval_call_fn g_eval_call = NULL;
@@ -33,6 +34,7 @@ static gmb_eval_env_fn g_eval_filter = NULL;
 static void* g_lib = NULL;
 static int g_lib_tried = 0;
 static eval_run_fn g_run = NULL;
+static eval_err_fn g_run_err = NULL;
 
 void gmb_eval_register_env(gmb_eval_env_fn fn) { g_eval_env = fn; }
 
@@ -41,6 +43,14 @@ void gmb_eval_register_filter(gmb_eval_env_fn fn) { g_eval_filter = fn; }
 const char* gmb_eval_last_error(void)
 {
     static char err[384];
+    /* Il MOTIVO vero sta nella libreria: se è caricata, si riporta il suo ultimo errore
+     * (frammento non compilabile, builtin non implementato, eccezione del valutatore…).
+     * Prima si diceva sempre "priva di gmb_eval_run_env" — falso appena la libreria era
+     * caricata, e mascherava l'errore reale. */
+    if (g_run_err) {
+        const char* e = g_run_err();
+        if (e && *e) return e;
+    }
     if (!g_lib) snprintf(err, sizeof err,
         "nessun valutatore a runtime: libro %s non caricabile", "libgmb_eval");
     else snprintf(err, sizeof err, "libgmb_eval priva di gmb_eval_run_env");
@@ -97,6 +107,7 @@ static void* load_eval_lib(void)
         eval_run_fn run = (eval_run_fn)dlsym(h, "gmb_eval_run_env");
         if (!abi || abi() != 1 || !run) { dlclose(h); continue; }
         g_lib = h; g_run = run;
+        g_run_err = (eval_err_fn)dlsym(h, "gmb_eval_run_error");   /* opzionale */
         return g_lib;
     }
     return NULL;

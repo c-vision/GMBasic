@@ -40,6 +40,14 @@ static int ns_is_loaded(const gmb_parser_t* p, const char* ns)
     return 0;
 }
 
+/* Contesto del MODULO: un sub-parse di frammento costante (`EVAL("<letterale>")`) punta al
+ * padre; IMPORT, nomi dichiarati, procedure utente e flag "snippet" sono quelli del root. */
+static const gmb_parser_t* ns_root(const gmb_parser_t* p)
+{
+    while (p && p->parent) p = p->parent;
+    return p;
+}
+
 static void ns_add_import(gmb_parser_t* p, char* name, int len)
 {
     if (len <= 0) return;
@@ -179,7 +187,10 @@ void gmb_p_collect_imports(gmb_parser_t* p)
 int gmb_p_check_bare_builtin(gmb_parser_t* p, gmb_tokenkind_t tk, const char* name, int line)
 {
     if (tk == GMB_TOK_Unknown || !name || !*name) return 1;
-    if (p->snippet) return 1;      /* frammento EVAL/&: nessun IMPORT possibile (v. sopra) */
+    const gmb_parser_t* root = ns_root(p);
+    if (!root) return 1;
+    const gmb_parser_t* mod = root;   /* IMPORT/dichiarazioni/snippet del MODULO */
+    if (mod->snippet) return 1;      /* frammento EVAL/&: nessun IMPORT possibile (v. sopra) */
 
     /* Nome che è una KEYWORD del linguaggio (FETCH, LIST, ADD, DETERMINANT…): la sua
      * semantica è del compilatore (espressione/statement), non della procedura di libreria
@@ -199,10 +210,10 @@ int gmb_p_check_bare_builtin(gmb_parser_t* p, gmb_tokenkind_t tk, const char* na
         if (bl > 1 && (bare[bl - 1] == '$' || bare[bl - 1] == '%' || bare[bl - 1] == '!'
                        || bare[bl - 1] == '#')) bare[bl - 1] = 0;
         for (int k = 0; k < p->n_user_fns; k++)
-            if (strcasecmp(p->user_fns[k], bare) == 0) return 1;
+            if (strcasecmp(mod->user_fns[k], bare) == 0) return 1;
         /* Nome DICHIARATO (DIM/param, tutte le forme): accesso a elemento, non una call. */
-        for (int k = 0; k < p->n_decl_names; k++) {
-            const char* dn = p->decl_names[k];
+        for (int k = 0; k < mod->n_decl_names; k++) {
+            const char* dn = mod->decl_names[k];
             size_t dl = strlen(dn);
             if (dl > 1 && (dn[dl - 1] == '$' || dn[dl - 1] == '%' || dn[dl - 1] == '!'
                            || dn[dl - 1] == '#')) dl--;
@@ -211,7 +222,7 @@ int gmb_p_check_bare_builtin(gmb_parser_t* p, gmb_tokenkind_t tk, const char* na
         /* VARIABILE/ARRAY dichiarato (DIM/parametro): `X(i)` è un accesso a elemento, non la
          * funzione di libreria omonima (MOUSE.X/WINDOWS.X…). Il C# arriva qui solo se il nome
          * NON è un simbolo; qui basta la tabella dei nomi dichiarati dal parser. */
-        if (gmb_p_is_declared(p, bare)) return 1;
+        if (gmb_p_is_declared(mod, bare)) return 1;
     }
 
     /* Suffisso tipo BASIC ($ % ! #): solo il tipo di ritorno, non fa parte del nome. */
@@ -246,7 +257,7 @@ int gmb_p_check_bare_builtin(gmb_parser_t* p, gmb_tokenkind_t tk, const char* na
     }
     if (n_owners == 0) return 1;                 /* non è una funzione di libreria registrata */
     for (int k = 0; k < n_owners; k++)
-        if (ns_is_loaded(p, owners[k])) return 1;
+        if (ns_is_loaded(mod, owners[k])) return 1;
 
     char list[256];
     int used = 0;

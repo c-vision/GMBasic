@@ -86,6 +86,11 @@ typedef struct gmb_parser {
      * IMPORT → il gate dei namespace è sospeso (il valutatore C# della macro risolve i
      * builtin per nome). Rilevato dal pre-scan di gmb_p_collect_imports. */
     int snippet;
+    /* PADRE quando questo parser è il SUB-PARSE di un frammento COSTANTE (`EVAL("...")`/
+     * `&("...")` di un letterale, gmb_p_try_expand_const_macro): il testo è parte dello
+     * STESSO modulo, quindi il gate dei namespace deve leggere il contesto del padre
+     * (IMPORT, nomi dichiarati, procedure utente) e non vedere un programma vuoto. */
+    const struct gmb_parser* parent;
 } gmb_parser_t;
 
 typedef struct {

@@ -13,6 +13,7 @@
 #include "gmb_mcp_schema.h"
 #include "gmb_parser.h"
 #include "gen/gmb_registry.gen.h"
+#include "gmb_builtin_codes.h"   /* GENERATO: nome (o Ns.Nome) -> codice builtin della VM */
 #include <pthread.h>
 #include <stdlib.h>
 #include <string.h>
@@ -412,6 +413,27 @@ static int cc_builtin_code(const char* name)
     }
     for (size_t i = 0; i < sizeof(g_cc_builtins) / sizeof(g_cc_builtins[0]); i++)
         if (strcasecmp(g_cc_builtins[i].name, buf) == 0) return g_cc_builtins[i].code;
+    return -1;
+}
+
+/* Codice builtin dalla tabella GENERATA dal registry (`gmb_builtin_codes.h`, fonte unica:
+ * la StdLib / BuiltInFunction). Copre TUTTE le procedure di libreria, quindi anche i namespace
+ * (VECTOR, FINANCE, …): senza, un builtin di namespace compilato **a runtime** (frammento
+ * EVAL/&) finiva in OP_CALL_EXTERNAL e l'host di eval rispondeva
+ * "MACRO ERROR: chiamata esterna non disponibile" — mentre IL/PCode davano il valore.
+ * La tabella a mano sopra ha la PRECEDENZA (mappature core/alias storiche). */
+static int cc_builtin_code_gen(const char* name)
+{
+    if (!name || !*name) return -1;
+    char buf[256];
+    snprintf(buf, sizeof(buf), "%s", name);
+    size_t bl = strlen(buf);
+    if (bl > 1) {
+        char last = buf[bl - 1];
+        if (last == '$' || last == '%' || last == '!' || last == '#') buf[bl - 1] = 0;
+    }
+    for (int i = 0; i < GMB_BUILTIN_CODES_COUNT; i++)
+        if (strcasecmp(gmb_builtin_codes[i].name, buf) == 0) return gmb_builtin_codes[i].code;
     return -1;
 }
 
@@ -3468,7 +3490,11 @@ static void cc_expr(gmb_cc_t* c, const gmb_expr_t* e)
             char qualified[300];
             snprintf(qualified, sizeof(qualified), "%s.%s", e->ns, e->var);
             bcode = cc_builtin_code(qualified);
+            /* Tabella GENERATA dal registry: copre tutti i builtin di namespace
+             * (`VECTOR.Angle2d`, `FINANCE.PMT`, …), non solo quelli mappati a mano. */
+            if (bcode < 0) bcode = cc_builtin_code_gen(qualified);
         }
+        if (bcode < 0 && e->var) bcode = cc_builtin_code_gen(e->var);
         if (bcode >= 0
             && !(e->var && cc_user_accepts_arity(c, e->var, e->nargs)
                  && !cc_builtin_accepts_arity(e->ns, e->var, e->nargs))) {

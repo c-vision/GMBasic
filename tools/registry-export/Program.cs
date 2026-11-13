@@ -7,6 +7,7 @@
 //   gmb_registry.gen.h, CanonicalLookup.g.cs
 //   gmb_pconst_gen.inc
 //   gmb_ns_lookup.h, gmb_fn_lookup.h
+//   gmb_builtin_codes.h (nome/Ns.Nome -> codice BuiltInFunction, per i frammenti EVAL/&)
 //   gmb_ns_types.h (entrambe le copie del compiler C)
 //   gmb_tokenkind.h (sync additivo da TokenKind.cs)
 //   gmb_db_tokenkind_gen.h (ordinali Top/Bottom)
@@ -45,6 +46,25 @@ if (argsList.Contains("--signatures"))
     return 0;
 }
 if (argsList.Contains("--check-enum-ids")) return CheckEnumIds(repoRoot);
+if (argsList.Contains("--builtin-codes"))
+{
+    // Tabella NOME -> CODICE builtin per il compilatore dei FRAMMENTI EVAL/& (gmb_bytecode):
+    // un builtin di namespace compilato a runtime finiva in OP_CALL_EXTERNAL, che l'host di
+    // eval non risolve ("MACRO ERROR: chiamata esterna non disponibile" su C99/VM-C mentre
+    // IL/PCode davano il valore). Il CODICE è il valore di BuiltInFunction (= il numero che
+    // `gmb_builtin_dispatch` usa per trovare `gmb_bf_N`).
+    var reg1 = (IParserRegistry)Basic.StdLib.Instance;
+    var (procs1, _, _) = Collect(reg1);
+    var codesOut = argsList.SkipWhile(a => a != "--builtin-codes").Skip(1).FirstOrDefault();
+    if (codesOut is null || codesOut.StartsWith('-'))
+        codesOut = Path.Combine(repoRoot, "GMBasic/native/gmb_bytecode/include/gmb_builtin_codes.h");
+    var codesText = BuildBuiltinCodesH(procs1, Path.Combine(repoRoot, "GMBasicSharp"));
+    var cur = File.Exists(codesOut) ? File.ReadAllText(codesOut) : null;
+    if (cur == codesText) { Console.Error.WriteLine($"invariato: {Rel(repoRoot, codesOut)}"); return 0; }
+    File.WriteAllText(codesOut, codesText);
+    Console.Error.WriteLine($"wrote {Rel(repoRoot, codesOut)}");
+    return 0;
+}
 if (argsList.Contains("--all")) return RunAll(repoRoot, write: true);
 if (argsList.Contains("--check")) return RunAll(repoRoot, write: false);
 
@@ -249,6 +269,9 @@ static int RunAll(string root, bool write)
     outputs.Add((Path.Combine(gb, "native/gmb_compiler_c/frontend/include/gen/gmb_pconst_gen.inc"), BuildPconstInc(consts)));
     outputs.Add((Path.Combine(gb, "native/gmb_compiler_c/frontend/include/gmb_ns_lookup.h"), BuildNsLookupH(procs, cMembers)));
     outputs.Add((Path.Combine(gb, "native/gmb_compiler_c/frontend/include/gmb_fn_lookup.h"), BuildFnLookupH(procs, cMembers)));
+    // Nome (e Ns.Nome) -> CODICE BuiltInFunction: lo usa il compilatore dei FRAMMENTI EVAL/&
+    // (gmb_bytecode) per emettere OP_CALL_BUILTIN invece di OP_CALL_EXTERNAL.
+    outputs.Add((Path.Combine(gb, "native/gmb_bytecode/include/gmb_builtin_codes.h"), BuildBuiltinCodesH(procs, gs)));
     outputs.Add((Path.Combine(gb, "native/gmb_compiler_c/frontend/include/gmb_ns_types.h"), BuildNsTypesH(reg)));
     outputs.Add((Path.Combine(gb, "native/gmb_compiler_c/include/gmb_ns_types.h"), BuildNsTypesH(reg)));
     outputs.Add((Path.Combine(gb, "native/gmb_db_c/include/gmb_db_tokenkind_gen.h"), BuildDbTokenKindH(gs)));
@@ -519,8 +542,67 @@ static string BuildNsTypesH(IParserRegistry reg)
     return sb.ToString();
 }
 
-static string BuildDbTokenKindH(string gs)
+static string BuildBuiltinCodesH(List<ProcRow> procs, string gs)
+{    // Il CODICE è quello che il compilatore C# emette davvero (OP_CALL_BUILTIN N): la mappa
+    // TokenKind → BuiltInFunction di `Compiler.Expressions.Functions.cs` + il valore dell'enum
+    // `Compiler.BuiltInFunction`. NON `NativeProcedureDefinition.BuiltinKind` (è un altro
+    // numbering: Angle2d = 666 lì, 52 nell'enum usato dalla VM → "builtin 666 non implementato").
+    var codes = TokenKindBuiltinCodes(gs);
+    // Chiavi: il NOME di superficie (`Angle2d`) e la forma QUALIFICATA (`VECTOR.Angle2d`),
+    // così il compilatore può preferire la qualificata quando il parser l'ha registrata
+    // (`SQL.FETCH` ≠ `HTTP.FETCH`). Ordine deterministico: Ns poi Name; un nome nudo
+    // condiviso da più namespace tiene la PRIMA riga (namespace in ordine alfabetico).
+    var keys = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+    foreach (var p in procs.OrderBy(x => x.Ns, StringComparer.OrdinalIgnoreCase)
+                           .ThenBy(x => x.Name, StringComparer.OrdinalIgnoreCase))
+    {
+        if (string.IsNullOrEmpty(p.Name)) continue;
+        if (!codes.TryGetValue(p.DisplayKind, out var code)) continue;
+        keys.TryAdd(p.Name, code);
+        keys.TryAdd(p.Ns + "." + p.Name, code);
+    }
+
+    var sb = new StringBuilder();
+    sb.Append("/* gmb_builtin_codes.h — GENERATO da `tools/registry-export --builtin-codes`.\n");
+    sb.Append(" * NON modificare a mano.\n *\n");
+    sb.Append(" * Mappa NOME di superficie (e forma qualificata `Ns.Nome`) -> CODICE builtin della VM,\n");
+    sb.Append(" * cioè il valore di `BuiltInFunction` che `gmb_builtin_dispatch` usa per trovare\n");
+    sb.Append(" * `gmb_bf_<N>`. La usa il compilatore dei FRAMMENTI EVAL/& (gmb_bytecode): senza,\n");
+    sb.Append(" * un builtin di namespace compilato A RUNTIME finiva in OP_CALL_EXTERNAL e l'host di\n");
+    sb.Append(" * eval rispondeva \"MACRO ERROR: chiamata esterna non disponibile\" (IL/PCode davano il\n");
+    sb.Append(" * valore). I codici sono gli stessi del compilatore C# (fonte unica: la StdLib). */\n");
+    sb.Append("#ifndef GMB_BUILTIN_CODES_H\n#define GMB_BUILTIN_CODES_H\n");
+    sb.Append("typedef struct { const char* name; int code; } gmb_builtin_code_row_t;\n");
+    sb.Append("static const gmb_builtin_code_row_t gmb_builtin_codes[] = {\n");
+    foreach (var kv in keys.OrderBy(k => k.Key, StringComparer.OrdinalIgnoreCase))
+        sb.Append($"    {{ \"{kv.Key}\", {kv.Value} }},\n");
+    sb.Append("};\n");
+    sb.Append("#define GMB_BUILTIN_CODES_COUNT ((int)(sizeof(gmb_builtin_codes)/sizeof(gmb_builtin_codes[0])))\n");
+    sb.Append("#endif\n");
+    return sb.ToString();
+}
+
+/// <summary>TokenKind (nome) → codice BuiltInFunction, letti dalla mappa del compilatore C#
+/// (`Compiler.Expressions.Functions.cs`) e dal valore dell'enum (`BuiltInFunction.cs` via
+/// reflection): è lo STESSO numero che finisce in OP_CALL_BUILTIN, quindi il codice giusto per
+/// la VM. `NativeProcedureDefinition.BuiltinKind` è un altro numbering (NON usarlo).</summary>
+static Dictionary<string, int> TokenKindBuiltinCodes(string gs)
 {
+    var map = new Dictionary<string, int>(StringComparer.Ordinal);
+    var path = Path.Combine(gs, "common/Compiler/Compiler.Expressions.Functions.cs");
+    if (!File.Exists(path)) return map;
+    var text = File.ReadAllText(path);
+    foreach (Match m in Regex.Matches(text, @"\{\s*TokenKind\.(\w+)\s*,\s*BuiltInFunction\.(\w+)\s*\}"))
+    {
+        var tk = m.Groups[1].Value;
+        var bf = m.Groups[2].Value;
+        if (map.ContainsKey(tk)) continue;
+        if (Enum.TryParse<Compiler.BuiltInFunction>(bf, out var v)) map[tk] = (int)v;
+    }
+    return map;
+}
+
+static string BuildDbTokenKindH(string gs){
     var values = TokenKindValues(gs);
     var wanted = new (string Const, string Member)[] { ("GMB_DB_TOK_TOP", "Top"), ("GMB_DB_TOK_BOTTOM", "Bottom") };
     var width = wanted.Max(w => w.Const.Length);
