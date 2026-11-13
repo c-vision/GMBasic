@@ -6100,9 +6100,42 @@ static void gmb_bf_3406(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int fun
     }
 }
 
+/* Uscita tipizzata di un valore JSON verso la VM/C (JSON.EXTRACT / walk del path):
+ * numeri → NUMERO (PRINT → " 42"), stringhe → STRINGA, bool → -1/0 (stessa convenzione di
+ * JSON.PARSE in gmb_bf_758). Prima TUTTO diventava testo: su VM/C `JSON.EXTRACT(d,"n")`
+ * stampava `42` invece di ` 42` (divergenza con IL/PCode/C99, json/extract_typed).
+ * Ritorna 1 se ha scritto l'uscita; 0 = valore non scalare (proseguire col walk). */
+static int bf_json_val_out(gmb_val_t v, gmb_builtin_out_t* bout)
+{
+    switch (v.kind)
+    {
+        case GMB_TYPE_INT:
+        case GMB_TYPE_DOUBLE:
+        case GMB_TYPE_CURRENCY:
+        case GMB_TYPE_DATETIME:
+            bout->is_num = 1;
+            bout->result = gmb_val_to_double(v);
+            return 1;
+        case GMB_TYPE_BOOL:
+            bout->is_num = 1;
+            bout->result = v.v_bool ? -1.0 : 0.0;
+            return 1;
+        case GMB_TYPE_STRING:
+        {
+            gmb_obj_string_t* st = gmb_str_cstr(v.v_string.data ? v.v_string.data : "");
+            bout->is_num = 0;
+            bout->result_ref = (gmb_obj_t*)st;
+            bout->result_ref_bt = GMB_BT_STRING;
+            return 1;
+        }
+        default:
+            return 0;
+    }
+}
+
 static void gmb_bf_3407(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
 {
-    /* JSON.EXTRACT(obj, "path[0].field") */
+    /* JSON.EXTRACT(obj, "path[0].field") — usa bf_json_val_out per la resa TIPIZZATA. */
     bout->is_num = 0; bout->result_ref = NULL; bout->result = 0;
     (void)vm; (void)func_code; (void)task;
     if (argc < 2 || args[0].type != 2 || !args[0].ref) return;
@@ -6121,10 +6154,7 @@ static void gmb_bf_3407(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int fun
         {
             gmb_val_t v = gmb_dict_get(*((gmb_obj_shared_val_t*)cur)->dict, seg);
             cur = (v.kind == GMB_TYPE_OBJECT) ? (gmb_obj_t*)v.v_ptr : NULL;
-            if (v.kind == GMB_TYPE_STRING) { gmb_obj_string_t* st = gmb_str_cstr(v.v_string.data ? v.v_string.data : ""); bout->result_ref = (gmb_obj_t*)st; bout->result_ref_bt = GMB_BT_STRING; return; }
-            if (v.kind == GMB_TYPE_DOUBLE) { gmb_string_t _ts = gmb_double_to_string(v.v_double); gmb_obj_string_t* _st = gmb_str_cstr(_ts.data ? _ts.data : ""); bout->result_ref = (gmb_obj_t*)_st; bout->result_ref_bt = GMB_BT_STRING; return; }
-            if (v.kind == GMB_TYPE_INT) { gmb_string_t _ts = gmb_double_to_string((double)v.v_int); gmb_obj_string_t* _st = gmb_str_cstr(_ts.data ? _ts.data : ""); bout->result_ref = (gmb_obj_t*)_st; bout->result_ref_bt = GMB_BT_STRING; return; }
-            if (v.kind == GMB_TYPE_BOOL) { gmb_obj_string_t* _st = gmb_str_cstr(v.v_bool ? "true" : "false"); bout->result_ref = (gmb_obj_t*)_st; bout->result_ref_bt = GMB_BT_STRING; return; }
+            if (bf_json_val_out(v, bout)) return;
         }
         while (*q == '[')
         {
@@ -6138,10 +6168,7 @@ static void gmb_bf_3407(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int fun
                 {
                     gmb_val_t v = l->items[idx];
                     cur = (v.kind == GMB_TYPE_OBJECT) ? (gmb_obj_t*)v.v_ptr : NULL;
-                    if (v.kind == GMB_TYPE_STRING) { gmb_obj_string_t* st = gmb_str_cstr(v.v_string.data ? v.v_string.data : ""); bout->result_ref = (gmb_obj_t*)st; bout->result_ref_bt = GMB_BT_STRING; return; }
-                    if (v.kind == GMB_TYPE_DOUBLE) { gmb_string_t _ts = gmb_double_to_string(v.v_double); gmb_obj_string_t* _st = gmb_str_cstr(_ts.data ? _ts.data : ""); bout->result_ref = (gmb_obj_t*)_st; bout->result_ref_bt = GMB_BT_STRING; return; }
-                    if (v.kind == GMB_TYPE_INT) { gmb_string_t _ts = gmb_double_to_string((double)v.v_int); gmb_obj_string_t* _st = gmb_str_cstr(_ts.data ? _ts.data : ""); bout->result_ref = (gmb_obj_t*)_st; bout->result_ref_bt = GMB_BT_STRING; return; }
-                    if (v.kind == GMB_TYPE_BOOL) { gmb_obj_string_t* _st = gmb_str_cstr(v.v_bool ? "true" : "false"); bout->result_ref = (gmb_obj_t*)_st; bout->result_ref_bt = GMB_BT_STRING; return; }
+                    if (bf_json_val_out(v, bout)) return;
                 }
                 else cur = NULL;
             }
@@ -9889,8 +9916,37 @@ static void gmb_bf_2190(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int fun
 static void gmb_bf_2191(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
 {
         (void)vm; (void)func_code; (void)task;
-        gmb_obj_string_t* s = gmb_str_cstr(gmb_docextract_json(vm_image_str(args, argc, 0), vm_image_str(args, argc, 1)));
-        bout->is_num = 0; bout->result_ref = (gmb_obj_t*)s; bout->result_ref_bt = GMB_BT_STRING;
+        /* JSON.EXTRACT(doc, "campo") deve conservare il TIPO del valore estratto: un numero
+         * resta numerico (PRINT → " 42"), una stringa resta stringa. Prima si passava
+         * SEMPRE da gmb_docextract_json (testo JSON) → su VM/C `r1=42` invece di `r1= 42`
+         * (divergenza con IL/PCode/C99, che usano gmb_json_extract_val). */
+        {
+            gmb_val_t v = gmb_json_extract_val(vm_image_str(args, argc, 0), vm_image_str(args, argc, 1));
+            switch (v.kind)
+            {
+                case GMB_TYPE_INT:
+                case GMB_TYPE_DOUBLE:
+                case GMB_TYPE_BOOL:
+                case GMB_TYPE_CURRENCY:
+                case GMB_TYPE_DATETIME:
+                    bout->is_num = 1;
+                    bout->result = gmb_val_to_double(v);
+                    return;
+                case GMB_TYPE_STRING:
+                {
+                    gmb_obj_string_t* s = gmb_str_cstr(v.v_string.data ? v.v_string.data : "");
+                    bout->is_num = 0; bout->result_ref = (gmb_obj_t*)s; bout->result_ref_bt = GMB_BT_STRING;
+                    return;
+                }
+                default:
+                    /* NIL/array/oggetto: si ricade sulla resa JSON testuale (comportamento storico). */
+                    break;
+            }
+        }
+        {
+            gmb_obj_string_t* s = gmb_str_cstr(gmb_docextract_json(vm_image_str(args, argc, 0), vm_image_str(args, argc, 1)));
+            bout->is_num = 0; bout->result_ref = (gmb_obj_t*)s; bout->result_ref_bt = GMB_BT_STRING;
+        }
 }
 /* F4 multimodale (2026-09-11): AI.SYNTHESIZE(text, output) → TTS via motore di sistema
  * (runtime condiviso gmb_tts.c). Ritorna 1 (ok) / 0 (errore). */

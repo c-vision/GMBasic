@@ -2100,10 +2100,13 @@ static int gf_rgb(ctx_t* c, gmb_expr_t** a, int n, int line) {
 }
 static int gf_screeninfo(ctx_t* c, gmb_expr_t** a, int n) {
     (void)a; (void)n;
-    /* DisplayMode dict {ModeID,Width,Height,Bpp,Colors,Active} (canone StdLib).
+    /* DisplayMode dict {ModeID,Width,Height,Bpp,Colors,Active,Description} (canone StdLib).
      * Colors/Active mancavano: SCREENINFO().Colors dava 0 e .Active veniva
-     * risolto come il builtin AI ACTIVE (cc-error). */
-    sb_put(&c->out, "({ gmb_dict_t _dm = gmb_dict_new(); gmb_dict_set(&_dm, \"ModeID\", gmb_make_val_double(0.0)); gmb_dict_set(&_dm, \"Width\", gmb_make_val_double(80.0)); gmb_dict_set(&_dm, \"Height\", gmb_make_val_double(25.0)); gmb_dict_set(&_dm, \"Bpp\", gmb_make_val_double(0.0)); gmb_dict_set(&_dm, \"Colors\", gmb_make_val_double(16.0)); gmb_dict_set(&_dm, \"Active\", gmb_make_val_double(-1.0)); gmb_make_val_dict(_dm); })");
+     * risolto come il builtin AI ACTIVE (cc-error).
+     * Description (stringa) mancava del tutto: le gambe managed producono
+     * "Text 80x25" (IlRuntime.ScreenInfo / PCodeProcessor) e `PRINT SCREENINFO()`
+     * mostrava un dict SENZA quella chiave (graphics/collections su C99). */
+    sb_put(&c->out, "({ gmb_dict_t _dm = gmb_dict_new(); gmb_dict_set(&_dm, \"ModeID\", gmb_make_val_double(0.0)); gmb_dict_set(&_dm, \"Width\", gmb_make_val_double(80.0)); gmb_dict_set(&_dm, \"Height\", gmb_make_val_double(25.0)); gmb_dict_set(&_dm, \"Bpp\", gmb_make_val_double(0.0)); gmb_dict_set(&_dm, \"Colors\", gmb_make_val_double(16.0)); gmb_dict_set(&_dm, \"Active\", gmb_make_val_double(-1.0)); gmb_dict_set(&_dm, \"Description\", gmb_make_val_string(\"Text 80x25\")); gmb_make_val_dict(_dm); })");
     return 1;
 }
 static int gf_collidebatch(ctx_t* c, gmb_expr_t** a, int n) {
@@ -2136,6 +2139,13 @@ int emit_bf_graphics(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t
          * ns="SCREENINFO" e name="Active" (Active è keyword → dispatch per token,
          * prima diventava il builtin AI ACTIVE con 0 argomenti). */
         const char* m = (name && strncasecmp(name, "SCREENINFO.", 11) == 0 && name[11]) ? name + 11 : name;
+        /* `Description` è l'UNICO membro STRINGA del DisplayMode: gli altri sono numerici. */
+        if (strcasecmp(m, "Description") == 0) {
+            sb_put(&c->out, "gmb_val_to_string(gmb_dict_get(gmb_val_as_dict(");
+            gf_screeninfo(c, NULL, 0);
+            sb_put(&c->out, "), \"Description\"))");
+            return 1;
+        }
         sb_put(&c->out, "(gmb_double_t)gmb_val_to_double(gmb_dict_get(gmb_val_as_dict(");
         gf_screeninfo(c, NULL, 0);
         sb_printf(&c->out, "), \"%s\"))", m);

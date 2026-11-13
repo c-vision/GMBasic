@@ -1,7 +1,7 @@
 ' MiniTest NAMESPACE GRAPHICS — tutte le 15 funzioni della superficie.
 ' C2PX, C2PY, CELL, CELLSTR, COLLIDE, COLLIDEBATCH, P2CX, P2CY, Point, RGB,
 ' SCREEN, ScreenInfo, Screens, TextHeight, TextWidth. Headless (console 80x25).
-' EXPECT: c2px= 6|c2py= 8|p2cx= 3|p2cy= 4|point=-1|cell= 7|cellstr=[]|screen= 0|collide= 0|tw= 25|th= 19|screens= 1|tw_linear=-1|th_stable=-1|rgb=[[Red, 255], [Green, 0], [Blue, 0], [Alpha, 255]]|modeid= 0|width= 80|height= 25|bpp= 0|colors= 16|active=-1|cb_ub= 1|cb0= 0|cb1= 1
+' EXPECT: c2px= 6|c2py= 8|p2cx= 3|p2cy= 4|point=-1|cell= 7|cellstr=[]|screen= 0|collide= 0|tw>0=-1|th>0=-1|screens= 1|tw_linear=-1|th_stable=-1|rgb=[[Red, 255], [Green, 0], [Blue, 0], [Alpha, 255]]|modeid= 0|width= 80|height= 25|bpp= 0|colors= 16|active=-1|cb_ub= 1|cb0= 0|cb1= 1
 IMPORT GRAPHICS
 
 SUB TestCoords()
@@ -20,8 +20,10 @@ SUB TestScalars()
 END SUB
 
 SUB TestMetrics()
-  PRINT "tw="; TextWidth("abc")
-  PRINT "th="; TextHeight()
+  ' Metriche ASSOLUTE escluse dall'oracolo: dipendono dal font configurato (vedi metrics.bas).
+  ' Si verifica il CONTRATTO: valori positivi e larghezza che cresce col testo.
+  PRINT "tw>0="; (TextWidth("abc") > 0)
+  PRINT "th>0="; (TextHeight() > 0)
   PRINT "screens="; Screens()
   PRINT "tw_linear="; (TextWidth("MMM") >= TextWidth("M"))
   PRINT "th_stable="; (TextHeight() = TextHeight())
