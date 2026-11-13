@@ -1,0 +1,35 @@
+#!/usr/bin/env bash
+# tools/sh/zcc — `zig cc` per macOS con i pezzi che clang Apple ricava da sé e zig no.
+#
+#   -F<SDK>/System/Library/Frameworks  header dei framework (gmb_ax_mac.c → ApplicationServices)
+#   -isystem <SDK>/usr/include         libDER/DERItem.h (incluso da Security.framework/oids.h)
+#   -include mach-o/dyld.h             _NSGetExecutablePath in gmb_eval_hook.c (clang lo trova
+#                                      per transitività, zig no → "call to undeclared function")
+#   -L<SDK>/usr/lib                    .tbd di sistema (libsqlite3/libcurl/libz/libbz2)
+#
+# Uso: tools/sh/test_minitests_c99native --rid osx-arm64 --cc "tools/sh/zcc"
+#      tools/sh/zcc --print        riga esatta (debug)
+# Fuori da Darwin esegue `zig cc "$@"` senza flag macOS (il cross li prende da gmb_link_set.sh).
+set -uo pipefail
+
+ZIG=""
+for c in "${HOME}"/.gmbasic/toolchains/zig/*/zig; do [ -x "$c" ] && ZIG="$c"; done
+[ -n "$ZIG" ] || ZIG="$(command -v zig || true)"
+[ -n "$ZIG" ] || { echo "zcc: zig non trovato (PATH o ~/.gmbasic/toolchains/zig/*/zig)" >&2; exit 127; }
+
+FLAGS=()
+if [ "$(uname -s)" = Darwin ]; then
+  SDK="$(xcrun --show-sdk-path 2>/dev/null || true)"
+  [ -d "${SDK:-}" ] || { echo "zcc: SDK macOS non trovato (xcrun --show-sdk-path)" >&2; exit 127; }
+  FLAGS=(-isysroot "$SDK" -L"$SDK/usr/lib" -F"$SDK/System/Library/Frameworks"
+         -isystem "$SDK/usr/include" -include mach-o/dyld.h)
+fi
+
+if [ "${1:-}" = "--print" ]; then
+  printf '%s cc' "$ZIG"
+  printf ' %q' ${FLAGS[@]+"${FLAGS[@]}"}
+  echo
+  exit 0
+fi
+
+exec "$ZIG" cc ${FLAGS[@]+"${FLAGS[@]}"} "$@"

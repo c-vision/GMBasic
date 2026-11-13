@@ -87,6 +87,8 @@ MOE_LIB="$LLMENV/LLMEngine/mlx/build-gmbasic/llmengine_moe_mlx_build/libllmengin
 # CUA/browser: i backend C usano gmb_agent_runtime (C) — vedi CUA-Universal-Action-Runtime-Guida.
 # gmb_agent_runtime dipende dal motore Jinja C (gmb_chat_template.c -> gmb_jinja): va linkato.
 AGENT_SRCS="$(echo "$ROOT"/native/gmb_agent_runtime/*.c) $LLMENV/LLMJinja/llmjinja.c $LLMENV/LLMJinja/llmjinja_builtins.c"
+# `--cc "tools/sh/zcc"` è relativo al MONOREPO, ma qui la cwd è `$ROOT`: si risolve sotto `$MONO`.
+case "$PRE_CC" in ""|/*) : ;; *) [ -f "$MONO/$PRE_CC" ] && PRE_CC="$MONO/$PRE_CC" ;; esac
 FC="${PRE_CC:-cc}"          # compilatore (F5: `--cc "<zig> cc"` come nel runner diretto)
 TF=""                        # -target del RID (F5)
 if [ -n "$PRE_RID" ] && [ -z "$PRE_TRIPLE" ]; then
@@ -103,7 +105,12 @@ TARGET_RID="${PRE_RID:-$HOST_RID}"
 # Framework/sistema/terze parti: dal resolver del RID (F5), non cablati su Darwin.
 eval "$(bash "$MONO/tools/sh/gmb_link_set.sh" --rid "$TARGET_RID" --cache "$HOME/.gmbasic/libs/$TARGET_RID")" || exit 2
 # `-target` DOPO il resolver (LS_SDK nasce lì): ordine sbagliato = `set -u` rosso su LS_SDK.
-[ -n "$PRE_TRIPLE" ] && TF="-target $PRE_TRIPLE ${LS_SDK[*]+${LS_SDK[*]}}"   # + `-isysroot` (piano L13)
+  [ -n "$PRE_TRIPLE" ] && TF="-target $PRE_TRIPLE ${LS_SDK[*]+${LS_SDK[*]}}"   # + `-isysroot` (piano L13)
+  # Windows: force-include dello shim POSIX→Win32 (gmtime_r/localtime_r, unistd, sys/*) e i
+  # define *_STATIC, perché nella cache win curl/pcre2/SDL sono statici ma gli header usano dllimport.
+  case "$TARGET_RID" in
+    win-*) TF="$TF -include $ROOT/native/win32shim/include/gmb_win32.h -I$ROOT/native/win32shim/include -DCURL_STATICLIB -DPCRE2_STATIC -DSDL_STATIC" ;;
+  esac
 # ── Vulkan: backend OPZIONALE, aggiunto da CMake solo se il system header esiste. Il bundle del
 # RID non lo porta (`vulkan/vulkan.h` è un header di sistema, non un file scaricabile da lì):
 # senza questo filtro il cross si ferma sulla PRIMA riga di gmb_gfx_vulkan.c. Sull'host, dove

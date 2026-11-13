@@ -158,7 +158,11 @@ THIRD_LOGIC=(crypto ssl zstd brotlienc brotlidec pcre2-8 SDL2_mixer SDL2_ttf SDL
 # statiche in `<cache>/lib/`. `SDL2_mixer` nel bundle win-x64 non esiste come libreria (c'è solo
 # `SDL2_mixer.dll`): resta dichiarata di proposito, così finisce in LS_MISSING e il runner dice
 # cosa manca davvero invece di fallire con «unable to find dynamic system library».
-[ "$LS_OS" = Windows ] && THIRD_LOGIC=(crypto ssl zstd brotlienc brotlidec pcre2-8 SDL2_mixer SDL2_ttf SDL2 lzma lz4 curl z sqlite3)
+# `brotlicommon` PRIMA di enc/dec: nel bundle Windows brotli e' STATICO e `libbrotlienc.a`
+# referenzia `BrotliSharedDictionaryDestroyInstance` che vive solo in `libbrotlicommon.a`
+# (senza: lld-link "undefined symbol" sul link PE di qualunque MiniTest). Su Darwin/Linux la
+# dylib di enc/dec porta gia' le sue dipendenze e la voce non serve.
+[ "$LS_OS" = Windows ] && THIRD_LOGIC=(crypto ssl zstd brotlicommon brotlienc brotlidec pcre2-8 SDL2_mixer SDL2_ttf SDL2 lzma lz4 curl z sqlite3)
 
 LS_THIRD=()
 LS_MISSING=()

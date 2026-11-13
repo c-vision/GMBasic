@@ -1,17 +1,21 @@
 #!/usr/bin/env bash
-# tools/sh/lxbuild — HARNESS linux-x64: compila UN MiniTest (driver .bas->C + link cross) e
-# registra la riga di manifest per l'esecuzione in container (vedi tools/sh/lxrun).
+# tools/sh/lxbuild — HARNESS CROSS-RID: compila UN MiniTest (driver .bas->C + link cross) e
+# registra la riga di manifest per l'esecuzione (vedi tools/sh/lxrun per linux-x64 in container).
 #
-# PERCHE' ESISTE. Il leg nativo gira su macOS: per misurare lo STESSO compilatore su linux-x64
-# serve un link cross (zig cc -target x86_64-linux-gnu) e un container per eseguire. Questo
-# script fa solo il BUILD; l'esecuzione e il confronto con l'oracolo sono in `lxrun`.
+# PERCHE' ESISTE. Il leg nativo gira su macOS: per misurare lo STESSO compilatore su un'altra
+# piattaforma serve un link cross (zig cc -target <triple>) e, per linux-x64, un container per
+# eseguire. Questo script fa solo il BUILD; l'esecuzione e il confronto sono in `lxrun`.
+#
+# IL RID E' UN ARGOMENTO (`--rid`), non una costante: lo stesso script compila osx-arm64,
+# linux-x64, linux-arm64, win-x64 con lo stesso zig. Triple/SDK/framework/librerie vengono da
+# `gmb_link_set.sh`, quindi un RID nuovo non richiede modifiche qui.
 #
 # COSA NON DUPLICA. Il set di link NON e' cablato qui: viene da `tools/sh/gmb_link_set.sh`
 # (l'unica fonte RID -> triple/framework/librerie, la stessa del runner ufficiale). Qui si
 # aggiungono solo gli archivi e gli include del caso.
 #
 # WORK DIR PERSISTENTE. Gli artefatti (C generato, binari, manifest) vivono in
-#   $HOME/.gmbasic/harness/linux-x64/
+#   $HOME/.gmbasic/harness/<rid>/
 # e non in /tmp: sopravvivono allo svuotamento e non entrano nel repo.
 #
 # FORMATO MANIFEST. Campi separati da US (0x1f), 5 campi:
@@ -19,28 +23,44 @@
 # Il TAB non e' separatore: un EXPECT puo' contenerlo (es. llm/gmb_module) e verrebbe troncato.
 #
 # USO
-#   tools/sh/lxbuild <dominio>/<file>.bas [tag-manifest]
+#   tools/sh/lxbuild <dominio>/<file>.bas [tag-manifest] [--rid <rid>]
 #     tag-manifest  nome dello shard (default: main) -> $LXW/manifest_<tag>.tsv
 #                   (lo usa `lxshard` per build in parallelo)
+#     --rid         RID di destinazione (default: linux-x64), uno dei sei di gmb_link_set.sh:
+#                   linux-x64 linux-arm64 osx-arm64 osx-x64 win-x64 win-arm64
 #
 # PRIMA VOLTA. Serve la cache del runtime per-RID (`librt.a`), che il runner ufficiale
 # costruisce; se manca, questo script lo dice e non inventa nulla:
 #   GMB_MINI_ONLY=http/roundtrip.bas bash tools/sh/test_minitests_c99native --rid linux-x64
 set -o pipefail
 
-LX_RID="linux-x64"
+LX_RID="linux-x64"          # default; `--rid` lo sostituisce (i sei RID di gmb_link_set.sh)
 REPO="$(cd "$(dirname "$0")/../.." && pwd)"
-CACHE="$HOME/.gmbasic/libs/$LX_RID"
-LXW="$HOME/.gmbasic/harness/$LX_RID"
 LLMENV="$HOME/Documents/Projects/LLMEnv"
 ZIG="$HOME/.gmbasic/toolchains/zig/0.17.0-osx-arm64/zig"
 DRV="$REPO/GMBasic/native/gmb_compiler_c/build/gmbnative"
 US=$(printf '\037')
 
-case_path="${1:-}"
-TAG="${2:-main}"
+# Il RID e' un ARGOMENTO, non una costante: niente variabili d'ambiente.
+case_path=""; TAG="main"; _pos=()
+while [ $# -gt 0 ]; do
+    case "$1" in
+        --rid)     LX_RID="${2:-}"; shift 2 ;;
+        --rid=*)   LX_RID="${1#--rid=}"; shift ;;
+        -h|--help) sed -n '2,36p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+        *)         _pos[${#_pos[@]}]="$1"; shift ;;
+    esac
+done
+case_path="${_pos[0]:-}"
+[ "${#_pos[@]}" -ge 2 ] && TAG="${_pos[1]}"
+case "$LX_RID" in
+    linux-*|osx-*|win-*) ;;
+    *) echo "lxbuild: RID non valido '$LX_RID' (attesi: linux-x64 linux-arm64 osx-arm64 osx-x64 win-x64 win-arm64)" >&2; exit 2 ;;
+esac
+CACHE="$HOME/.gmbasic/libs/$LX_RID"
+LXW="$HOME/.gmbasic/harness/$LX_RID"
 if [ -z "$case_path" ]; then
-    echo "uso: tools/sh/lxbuild <dominio>/<file>.bas [tag-manifest]" >&2
+    echo "uso: tools/sh/lxbuild <dominio>/<file>.bas [tag-manifest] [--rid <rid>]" >&2
     exit 2
 fi
 src="$REPO/shared/minitests/$case_path"
@@ -113,10 +133,50 @@ fi
 
 TF="-target $LS_TRIPLE"
 [ -n "${LS_SDK[*]:-}" ] && TF="$TF ${LS_SDK[*]}"
+# Windows: stesso force-include del build ufficiale (POSIX->Win32: gmtime_r/localtime_r, unistd,
+# sys/*). Senza, i TU del runtime che li usano non compilano in PE.
+case "$LX_RID" in
+    win-*) TF="$TF -include $REPO/GMBasic/native/win32shim/include/gmb_win32.h -I$REPO/GMBasic/native/win32shim/include -DCURL_STATICLIB -DPCRE2_STATIC -DSDL_STATIC" ;;
+esac
 
-if "$ZIG" cc $TF "$c" "$RTLIB" "$REPO/GMBasic/native/gmb_db_c/build/libgmb_db.a" $EXTRA \
-     $INC -w -ffp-contract=off -DGMB_WITH_UI=1 ${LS_SYS[*]:-} ${LS_THIRD[*]:-} \
-     -Wl,--export-dynamic -o "$bin" > "$LXW/log/$slug.cc" 2>&1; then
+# Compilatore: su osx-* si passa da `tools/sh/zcc`, che aggiunge i pezzi che zig non ricava da solo
+# (`-F` framework, `-isystem <SDK>/usr/include` per libDER, `-include mach-o/dyld.h`); senza,
+# `gmb_agent_runtime/gmb_ax_mac.c` non compila e `gmb_eval_hook.c` non dichiara _NSGetExecutablePath.
+CC_CMD="$ZIG cc"
+case "$LX_RID" in
+    osx-*) [ -x "$REPO/tools/sh/zcc" ] && CC_CMD="$REPO/tools/sh/zcc" ;;
+esac
+# Su Darwin `librt.a` referenzia llmcodec_*/gmbllm_*/llmengine_plugin/llmdesc (LS_LLM=1) e i
+# simboli di gmb_agent_runtime (LS_AGENT=1): sono archivi/sorgenti dell'HOST, il resolver li
+# dichiara 0 per gli altri RID.
+LLM_EXTRA=""
+if [ "${LS_LLM:-0}" = 1 ]; then
+    _codec="$LLMENV/LLMEngine/mlx/build-gmbasic"
+    for _a in "$_codec/llmcodec_mlx_build/libllmcodec.a" "$_codec/llmengine_moe_mlx_build/libllmengine_moe.a" \
+              "$REPO/GMBasic/native/gmb_runtime_c/build/gmbllm_build/libgmbllm_train.a" \
+              "$REPO/GMBasic/native/gmb_runtime_c/build/gmbllm_build/libgmbllm_core.a" \
+              "$REPO/GMBasic/native/gmb_runtime_c/build/llmengine_plugin_build/libllmengine_plugin.a" \
+              "$REPO/GMBasic/native/gmb_runtime_c/build/llmdesc_build/libllmdesc.a" \
+              "$CACHE/libllmtoken.dylib"; do
+        [ -f "$_a" ] && LLM_EXTRA="$LLM_EXTRA $_a"
+    done
+    LLM_EXTRA="$LLM_EXTRA -L$_codec -lllmcodec_ggml -lllmcodec_mlx_affine -lllmcodec_fp8 -Wl,-rpath,$_codec -Wl,-rpath,$CACHE"
+fi
+[ "${LS_AGENT:-0}" = 1 ] && {
+    EXTRA="$EXTRA $(echo "$REPO"/GMBasic/native/gmb_agent_runtime/*.c) $LLMENV/LLMJinja/llmjinja.c $LLMENV/LLMJinja/llmjinja_builtins.c"
+    INC="$INC -I$LLMENV/LLMJinja"
+}
+
+# `--export-dynamic` esiste solo su ELF (Mach-O lo rifiuta, PE non ne ha bisogno).
+EXPORT_FLAG=""
+case "$LX_RID" in linux-*) EXPORT_FLAG="-Wl,--export-dynamic" ;; esac
+# `libgmb_db.a` e' l'archivio dell'HOST: in PE non e' linkabile (Mach-O), quindi fuori.
+DB_LIB=""
+case "$LX_RID" in win-*) : ;; *) DB_LIB="$REPO/GMBasic/native/gmb_db_c/build/libgmb_db.a" ;; esac
+
+if $CC_CMD $TF "$c" "$RTLIB" ${DB_LIB:+"$DB_LIB"} $EXTRA $LLM_EXTRA \
+     $INC -w -ffp-contract=off -DGMB_WITH_UI=1 ${LS_SYS[*]:-} ${LS_THIRD[*]:-} ${LS_FRAMEWORKS[*]:-} \
+     ${EXPORT_FLAG:+$EXPORT_FLAG} -o "$bin" > "$LXW/log/$slug.cc" 2>&1; then
     expect="$(grep -m1 "^' EXPECT: " "$src" | sed "s/^' EXPECT: //" \
               | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' \
               | grep -v '^$' | tr '\n' '|' | sed -e 's/|$//')"
