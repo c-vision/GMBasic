@@ -3733,7 +3733,7 @@ static void reg_let_assign(ctx_t* c, gmb_stmt_t* s, vars_t* scope) {
              * riclassificata come array dinamico (altrimenti il global diventa M_len e le
              * letture M(i,j) usano il percorso dyn_len a indice singolo → valore sbagliato). */
             if (s->value && s->value->kind == GMB_EXPR_CALL && s->value->var
-                && strcmp(s->value->var, "_array_") == 0 && !tv->coll_handle) {
+                && strcmp(s->value->var, "_array_") == 0 && !tv->coll_handle && !tv->gkind) {
                 /* NON per i contenitori TIPIZZATI a handle (HEAP/MAXHEAP/BAG/TRIE: già
                  * registrati dal DIM come collezione del runtime condiviso, gmb_val_t):
                  * `vars_add` ritorna la var ESISTENTE, e riclassificarla qui come array
@@ -4568,6 +4568,14 @@ if (s->dim_var) {            int ty = suffix_type(s->dim_var);
                      * `gmb_array_resize((void**)&H, &H_len, …)` su un gmb_val_t, con H_len mai
                      * dichiarato (C invalido). Si azzera qui, dove coll_handle diventa noto. */
                     if (v->coll_handle) { v->is_array = 0; v->dyn_len = 0; v->ndims = 0; v->matrix = 0; }
+                    /* IDEM per i contenitori a VALORE (LIST/QUEUE/STACK/HASHSET/DICT/SORTED/…):
+                     * un contenitore non è MAI un array nativo — la rappresentazione C la decide
+                     * gkind (gmb_list_t / gmb_dict_t). Lasciare is_array=1 (residuo della
+                     * classificazione del letterale) faceva scegliere al dispatcher dello
+                     * statement `emit_arr_literal_assign` per `l = [1,2,3]` / `d = {"a":1}`,
+                     * che emetteva `gmb_array_resize((void**)&l, &l_len, …)` su una lista →
+                     * C che non compila (`l_len` mai dichiarata, `l[...]` su una struct). */
+                    v->is_array = 0; v->dyn_len = 0; v->ndims = 0; v->matrix = 0; v->jagged = 0;
                 }
             }
             /* DELEGATE: `DIM v AS <DelegateName>` → valore funzione di prima classe */
@@ -6837,6 +6845,15 @@ static int bf_m_len(ctx_t* c, gmb_expr_t** a, int n){
         var_t* lv = lookup_var(c, a[0]->var);
         if (lv && lv->gkind && gk_is_list(lv->gkind)) {
             sb_put(&c->out, "(gmb_double_t)gmb_list_count(");
+            emit_ident(c, lv->name);
+            sb_put(&c->out, ")");
+            return 1;
+        }
+        /* LEN(<var DICT/SORTED>) → numero di CHIAVI (parità IL/PCode/VM-C: `LEN(d)` = 2 con
+         * due chiavi). Senza questo ramo LEN cadeva nel percorso STRINGA
+         * (`gmb_str_t_len(<gmb_dict_t>)`) → C non compilabile. */
+        if (lv && lv->gkind && gk_is_dict(lv->gkind)) {
+            sb_put(&c->out, "(gmb_double_t)gmb_dict_count(");
             emit_ident(c, lv->name);
             sb_put(&c->out, ")");
             return 1;
@@ -10690,6 +10707,8 @@ static void emit_dict_key(ctx_t* c, gmb_expr_t* e) {
     }
 }
 static void emit_list_literal(ctx_t* c, gmb_expr_t* e);
+static void emit_set_literal(ctx_t* c, gmb_expr_t* e);
+static void emit_dict_literal(ctx_t* c, gmb_expr_t* e);
 /* Contenitori TIPIZZATI la cui semantica NON è quella di una lista e che quindi in C99Native
  * vivono come COLLEZIONE del runtime C condiviso (§0bis) — un gmb_val_t con handle — invece
  * che come gmb_list_t/gmb_dict_t dell'emitter:
@@ -16765,6 +16784,44 @@ static int is_matrix_value_call_tk(gmb_tokenkind_t tk) {
        * (lista vs boxed) nel ramo non-UDT. Azzerato a fine assegnamento (sotto). */
       { var_t* _jt = target ? lookup_var(c, target) : NULL;
         c->cur_assign_target = (_jt && _jt->boxed_val && !_jt->gkind && !_jt->vclass[0] && !_jt->is_array) ? target : NULL; }
+      /* RIASSEGNAZIONE fuori dal DIM di una variabile LIST/DICT/SET con un LETTERALE:
+       * `l = [1,2,3]`, `d = {"a":1}`, `s = [1,2,2]`. Il DIM ha già i rami giusti
+       * (emit_list_literal / emit_dict_literal / emit_set_literal); l'assegnazione cadeva
+       * nel percorso ARRAY nativo ed emetteva `gmb_array_resize((void**)&l, &l_len, …)` su un
+       * `gmb_list_t` → C che non compila (`l_len` mai dichiarata, `l[...]` su una struct).
+       * Stessa forma dei rami handle qui sopra, ma per i contenitori a VALORE. */
+      if (target && value && !strchr(target, '.') && value->kind == GMB_EXPR_CALL && value->var) {
+          var_t* lcv = lookup_var(c, target);
+          if (lcv && !lcv->is_array && !lcv->coll_handle) {
+              if (strcmp(value->var, "_array_") == 0 && gk_is_list(lcv->gkind)) {
+                  ind(c); emit_ident(c, lcv->name); sb_put(&c->out, " = ");
+                  if (lcv->gkind == GK_SET) emit_set_literal(c, value);
+                  else emit_list_literal(c, value);
+                  sb_put(&c->out, ";\n");
+                  return;
+              }
+              if (strcmp(value->var, "_dict_") == 0 && (lcv->gkind == GK_DICT || lcv->gkind == GK_SORTED)) {
+                  ind(c); emit_ident(c, lcv->name); sb_put(&c->out, " = ");
+                  emit_dict_literal(c, value);
+                  sb_put(&c->out, ";\n");
+                  return;
+              }
+              /* `{}` (dict VUOTO) arriva dal parser come letterale array SENZA elementi
+               * (`_array_` con 0 argomenti): su un target DICT/SORTED il frontend C# RIFIUTA
+               * l'assegnazione ("Impossibile assegnare un valore di tipo 'ARRAY OF …' nella
+               * variabile 'd' (tipo dichiarato 'DICT OF …')"). Qui si emette lo stesso errore
+               * esplicito — mai un C invalido (`d = gmb_make_val_list(...)` su un gmb_dict_t).
+               * La forma canonica per svuotare/ricreare è `d.Clear()` o `NEW DICT OF …`. */
+              if (strcmp(value->var, "_array_") == 0 && value->nargs == 0
+                  && (lcv->gkind == GK_DICT || lcv->gkind == GK_SORTED)) {
+                  c99_fail(c, line,
+                           "assegnazione a '%s': il letterale '{}' e' un ARRAY VUOTO, non un DICT. "
+                           "Usare %s.Clear() oppure NEW DICT OF <tipo chiave, tipo valore>",
+                           target, target);
+                  return;
+              }
+          }
+      }
       /* Contenitore TIPIZZATO a handle (HEAP 14 / MAXHEAP 27 / BAG 15 / TRIE 11)
        * RIASSEGNATO con un letterale `H = [e1, …]` FUORI dal DIM: il letterale sono gli
        * ELEMENTI della collezione nuova (gmb_collection_new con l'heapify del ctor, come
@@ -19578,7 +19635,16 @@ static void st_let_assign(ctx_t* c, gmb_stmt_t* s) {
         } else if (s->value && s->value->kind == GMB_EXPR_CALL && s->value->var
                    && strcmp(s->value->var, "_array_") == 0
                    && s->target && !strchr(s->target, '.')
-                   && lookup_var(c, s->target) && lookup_var(c, s->target)->boxed_val) {
+                   && lookup_var(c, s->target) && lookup_var(c, s->target)->boxed_val
+                   /* un contenitore TIPIZZATO (LIST/QUEUE/STACK/HASHSET/DICT/…) non è un
+                    * valore boxed "any": la rappresentazione la decide gkind (gmb_list_t /
+                    * gmb_dict_t) e il letterale lo emette emit_assignment con
+                    * emit_list_literal/emit_dict_literal. Prima `DIM l AS LIST OF INTEGER =
+                    * NEW LIST OF INTEGER` + `l = []` finiva qui e produceva
+                    * `l = gmb_make_val_list(({ gmb_list_t … }))` (val → list, C invalido). */
+                   && !(lookup_var(c, s->target)->gkind
+                        && (gk_is_list(lookup_var(c, s->target)->gkind)
+                            || gk_is_dict(lookup_var(c, s->target)->gkind)))) {
             /* AS ANY: matrice annidata → lista di liste boxed (gmb_val_t), consumata da
              * TBROWSE con gmb_val_as_list (prima: matrice C di double/string → mismatch). */
             extern void gmb_c99_emit_nested_list(ctx_t*, gmb_expr_t*);

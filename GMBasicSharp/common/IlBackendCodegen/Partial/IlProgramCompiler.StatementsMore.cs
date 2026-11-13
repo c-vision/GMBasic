@@ -692,6 +692,13 @@ public sealed partial class IlProgramCompiler
             // (come il percorso LOCALE in EmitScalarDeclaration).
             if (declaredType is StringBuilderType or RegexType)
                 EmitNewNativeCollection(declaredType);
+            // Collezioni BASIC "pronte all'uso" anche come GLOBALI: `DIM d AS DICT` a livello
+            // di modulo deve poter fare subito `d("k") = v`, come il percorso LOCALE qui sotto
+            // (EmitDefaultValue su un tipo reference dà null → NullReferenceException alla
+            // prima scrittura; bug osservato con `DIM d AS DICT` + `d("k") = 2`).
+            else if (declaredType is ListType or DictType or HashSetType or QueueType or StackType
+                     or SortedDictType or LinkedListType)
+                EmitNewNativeCollection(declaredType);
             // Collezioni avanzate (RINGBUFFER/TREE/BAG/GRAPH/...): un GLOBALE senza
             // inizializzatore deve materializzare l'istanza, non restare null —
             // altrimenti MyRing.ENQUEUE/Count → NullReferenceException e Capacity=0
