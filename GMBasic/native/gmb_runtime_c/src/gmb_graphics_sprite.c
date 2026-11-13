@@ -196,8 +196,16 @@ int gmb_gfx_collide(int id1, int id2)
     if (a->tex_id >= 0 && a->tex_id < GMB_GFX_MAX_TEXTURES && g_gfx.textures[a->tex_id].in_use) ta = &g_gfx.textures[a->tex_id];
     if (b->tex_id >= 0 && b->tex_id < GMB_GFX_MAX_TEXTURES && g_gfx.textures[b->tex_id].in_use) tb = &g_gfx.textures[b->tex_id];
     if (!ta || !tb) return 0;
-    float ax = a->x, ay = a->y, aw = (float)ta->w, ah = (float)ta->h;
-    float bx = b->x, by = b->y, bw = (float)tb->w, bh = (float)tb->h;
+    /* (x,y) dello sprite è il suo CENTRO: il renderer disegna a x - w/2 (vedi
+     * gmb_graphics_texture.c). Qui il rettangolo va quindi costruito attorno al centro,
+     * come fanno il motore gestito (Sprites.BoundingBox) e il rilevamento eventi. Prima si
+     * usava (x,y) come angolo in alto a sinistra: con texture di dimensioni DIVERSE
+     * (aereo 32×32 vs esplosione 48×48) il rettangolo era spostato di mezzo sprite →
+     * collisioni e fiamme fuori posto. */
+    float aw = (float)ta->w, ah = (float)ta->h;
+    float bw = (float)tb->w, bh = (float)tb->h;
+    float ax = a->x - aw / 2.0f, ay = a->y - ah / 2.0f;
+    float bx = b->x - bw / 2.0f, by = b->y - bh / 2.0f;
     if (ax < bx + bw && ax + aw > bx && ay < by + bh && ay + ah > by) return -1;
     return 0;
 }

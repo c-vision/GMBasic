@@ -976,8 +976,11 @@ static void gfx_detect_collisions(void)
             if (!gmb_gfx_collide(i, j)) continue;
             if (g_col_n >= GFX_COL_MAX) return;
             g_col_a[g_col_n] = i; g_col_b[g_col_n] = j;
-            g_col_x[g_col_n] = a->x + g_gfx.textures[a->tex_id].w / 2.0f;
-            g_col_y[g_col_n] = a->y + g_gfx.textures[a->tex_id].h / 2.0f;
+            /* PUNTO DI CONTATTO = punto medio fra i due CENTRI: (x,y) di uno sprite è il suo
+             * centro (il renderer disegna a x-w/2, vedi gmb_graphics_texture.c). Il vecchio
+             * `a->x + w/2` spostava la fiamma di MEZZO sprite in basso a destra. */
+            g_col_x[g_col_n] = (a->x + b->x) / 2.0f;
+            g_col_y[g_col_n] = (a->y + b->y) / 2.0f;
             g_col_n++;
         }
     }
