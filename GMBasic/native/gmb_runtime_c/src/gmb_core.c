@@ -4,6 +4,7 @@
  * ============================================================================ */
 
 #include "gmb_runtime.h"
+#include "gmb_memstats.h"
 #include <strings.h>
 
 /* Stringhe contate (VM/C): vedi gmb_make_val_string_counted in gmb_runtime.h. */
@@ -16,12 +17,14 @@ gmb_string_t gmb_string_alloc(const char* str) {
         s.data = (char*)calloc(1, 1);
         s.length = 0;
         s.ref_count = 1;
+        if (s.data && gmb_mem_on()) gmb_mem_track(s.data, 1, GMB_MEM_STRING);
         return s;
     }
     s.length = strlen(str);
     s.data = (char*)malloc(s.length + 1);
     memcpy(s.data, str, s.length + 1);
     s.ref_count = 1;
+    if (s.data && gmb_mem_on()) gmb_mem_track(s.data, s.length + 1, GMB_MEM_STRING);
     return s;
 }
 
@@ -29,13 +32,16 @@ gmb_string_t gmb_string_alloc(const char* str) {
  * "comoda": i simboli esportati prendono const char* + len invece del gmb_string_t struct. */
 gmb_string_t gmb_string_from_bytes(const char* data, gmb_int_t len) {
     gmb_string_t s;
-    if (!data) { s.data = (char*)calloc(1, 1); s.length = 0; s.ref_count = 1; return s; }
+    if (!data) { s.data = (char*)calloc(1, 1); s.length = 0; s.ref_count = 1;
+                 if (s.data && gmb_mem_on()) gmb_mem_track(s.data, 1, GMB_MEM_STRING);
+                 return s; }
     size_t n = (len < 0) ? strlen(data) : (size_t)len;
     s.data = (char*)malloc(n + 1);
     if (n) memcpy(s.data, data, n);
     s.data[n] = 0;
     s.length = n;
     s.ref_count = 1;
+    if (s.data && gmb_mem_on()) gmb_mem_track(s.data, n + 1, GMB_MEM_STRING);
     return s;
 }
 
@@ -47,6 +53,7 @@ gmb_string_t gmb_string_concat(gmb_string_t s1, gmb_string_t s2) {
     if (s2.data && s2.length > 0) memcpy(res.data + s1.length, s2.data, s2.length);
     res.data[res.length] = '\0';
     res.ref_count = 1;
+    if (res.data && gmb_mem_on()) gmb_mem_track(res.data, res.length + 1, GMB_MEM_STRING);
     return res;
 }
 
@@ -74,11 +81,12 @@ void gmb_string_free(gmb_string_t* s) {
         /* stringa contata: il creatore (rc 0, fluttuante) la libera; se e' trattenuta da un contenitore
          * (rc > 0) il contenitore ne e' il proprietario e questa chiamata non fa nulla. */
         int32_t* h = gmb_str_counted_hdr(s->data);
-        if (*h == 0) free((char*)h);
+        if (*h == 0) { if (gmb_mem_on()) gmb_mem_untrack((void*)h); free((char*)h); }
         s->data = NULL; s->length = 0;
         return;
     }
     if (s && s->data) {
+        if (gmb_mem_on()) gmb_mem_untrack(s->data);
         free(s->data);
         s->data = NULL;
         s->length = 0;
@@ -163,6 +171,7 @@ gmb_val_t gmb_make_val_string_counted_n(const char* s, size_t n) {
     if (s && n) memcpy(d, s, n);
     d[n] = '\0';
     v.v_string.data = d; v.v_string.length = n; v.v_string.ref_count = GMB_STR_COUNTED_MAGIC;
+    if (gmb_mem_on()) gmb_mem_track(base, 16 + n + 1, GMB_MEM_STRING);
     return v;
 }
 gmb_val_t gmb_make_val_string_counted(const char* s) { return gmb_make_val_string_counted_n(s, s ? strlen(s) : 0); }
@@ -172,7 +181,7 @@ void gmb_val_discard(gmb_val_t v) {
      * Qualunque altro valore (stringhe normali, oggetti, stringhe gia' trattenute da un contenitore) non e' toccato. */
     if (v.kind == GMB_TYPE_STRING && v.v_string.ref_count == GMB_STR_COUNTED_MAGIC && v.v_string.data) {
         int32_t* h = gmb_str_counted_hdr(v.v_string.data);
-        if (*h == 0) free((char*)h);
+        if (*h == 0) { if (gmb_mem_on()) gmb_mem_untrack((void*)h); free((char*)h); }
     }
 }
 
@@ -190,7 +199,7 @@ void gmb_val_release(gmb_val_t v) {
     if (v.kind == GMB_TYPE_STRING) {
         if (v.v_string.ref_count == GMB_STR_COUNTED_MAGIC && v.v_string.data) {
             int32_t* h = gmb_str_counted_hdr(v.v_string.data);
-            if (*h > 0 && --(*h) == 0) free((char*)h);
+            if (*h > 0 && --(*h) == 0) { if (gmb_mem_on()) gmb_mem_untrack((void*)h); free((char*)h); }
         }
         return;
     }

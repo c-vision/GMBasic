@@ -61,6 +61,11 @@ static const struct { const char* name; const char* desc; } g_opt_core[] = {
     { "GMB_FORM_SHOT",     "file PNG della cattura del form (test)" },
     { "GMB_FORM_SHOT_FRAME","frame in cui scattare GMB_FORM_SHOT (default 20)" },
     { "MAXXLIB_GRAPHICS",  "protocollo grafico del terminale: kitty o sixel (assente = dedotto da TERM)" },
+    /* ── DIAGNOSTICA (2026-11-13): contabilità della memoria viva del runtime C, per tipo.
+     * Attiva con `AI SET OPTION "debug.memory", "1"` o dalla sezione `engine` dei settings;
+     * a fine esecuzione stampa su stderr una riga per tipo (blocchi/byte vivi e picco).
+     * Spenta = costo nullo. Nessuna variabile d'ambiente. Vedi gmb_memstats.h. */
+    { "debug.memory",      "contabilità memoria del runtime C per tipo, report su stderr a fine run (1 = attiva)" },
 };
 #define GMB_OPT_CORE_N ((int)(sizeof g_opt_core / sizeof g_opt_core[0]))
 
