@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+# tools/sh/lxshard — HARNESS linux-x64: costruisce (lxbuild) tutti i casi elencati in un file,
+# uno per riga (`dominio/file.bas`), e scrive le righe di manifest in $LXW/manifest_<tag>.tsv.
+#
+# USO
+#   tools/sh/lxshard <lista.txt> <tag>
+#     lista.txt  una riga per caso, es. "http/roundtrip.bas"
+#     tag        nome dello shard -> $LXW/manifest_<tag>.tsv (poi `lxrun` per riga)
+#
+# Il lavoro pesante (driver .bas->C + link cross) e' in `lxbuild`: qui non c'e' logica di link.
+set -u
+list="${1:-}"
+tag="${2:-main}"
+if [ -z "$list" ] || [ ! -f "$list" ]; then
+    echo "uso: tools/sh/lxshard <lista.txt> <tag>" >&2
+    exit 2
+fi
+here="$(cd "$(dirname "$0")" && pwd)"
+while IFS= read -r c; do
+    [ -n "$c" ] || continue
+    bash "$here/lxbuild" "$c" "$tag" >/dev/null 2>&1
+done < "$list"

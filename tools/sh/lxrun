@@ -1,0 +1,70 @@
+#!/bin/sh
+# tools/sh/lxrun — HARNESS linux-x64: esegue UN binario compilato da `lxbuild` e confronta
+# l'output con l'oracolo EXPECT del MiniTest, con la normalizzazione del runner ufficiale
+# (ANSI via, trim ai due estremi, righe vuote scartate, unite da '|').
+#
+# GIRA DENTRO IL CONTAINER. La radice dei dati e' /w (il work dir montato); i path interni
+# sono quelli del mount, non quelli dell'host:
+#   /w/bin/<slug>     binario compilato da `lxbuild`
+#   /w/tree/<slug>/   copia di lavoro della dir del caso (cwd dell'esecuzione)
+#   /w/libs           cache librerie del RID (sola lettura)
+#
+# ESEMPIO (host):
+#   LXW="$HOME/.gmbasic/harness/linux-x64"
+#   docker run --rm --platform linux/amd64 \
+#     -v "$LXW:/w" -v "$HOME/.gmbasic/libs/linux-x64:/w/libs:ro" \
+#     -v "$PWD/tools/sh/lxrun:/w/lxrun:ro" ubuntu:24.04 sh /w/lxrun "<riga-US>"
+#
+# FORMATO: campi separati da US (0x1f), in ingresso e in uscita:
+#   ingresso  case_path US slug US reldir US expect US tag
+#   uscita    PASS|FAIL US case_path US nota
+# Il TAB non e' separatore: l'EXPECT puo' contenerlo (es. llm/gmb_module) e il messaggio di
+# FAIL puo' contenerlo (output tabulato). US non compare in un .bas ne' in un output di test.
+#
+# CWD PULITA. Prima di eseguire si rimuovono gli artefatti `x`/`x.aiff`: alcuni MiniTest
+# usano path RELATIVI che devono NON esistere (ai/gen_AI_OCR: AI.OCR("x",…) si aspetta
+# "file not found"); se un giro precedente ha lasciato `x`, il caso passa al ramo
+# "no active provider" e sembra rosso d'ambiente mentre nel flusso canonico e' verde.
+US=$(printf '\037')
+row="$1"
+name=$(printf '%s' "$row" | cut -d"$US" -f1)
+slug=$(printf '%s' "$row" | cut -d"$US" -f2)
+dir=$(printf '%s' "$row" | cut -d"$US" -f3)
+exp=$(printf '%s' "$row" | cut -d"$US" -f4)
+tag=$(printf '%s' "$row" | cut -d"$US" -f5)
+ESC=$(printf '\033')
+
+if [ ! -x "/w/bin/$slug" ]; then
+  printf 'NOBIN\037%s\037\n' "$name"
+  exit 0
+fi
+# cwd: la copia di lavoro della dir del dominio nel work dir
+if [ -d "/w/tree/$dir" ]; then
+  rundir="/w/tree/$dir"
+elif [ -d "/w/tree/$slug" ]; then
+  rundir="/w/tree/$slug"
+else
+  printf 'FAIL\037%s\037cwd assente: /w/tree/%s\n' "$name" "$dir"
+  exit 0
+fi
+out=$( cd "$rundir" && rm -f ./x ./x.aiff && LD_LIBRARY_PATH="/w/libs" "/w/bin/$slug" 2>&1 ); rc=$?
+norm=$(printf '%s\n' "$out" \
+  | sed "s/${ESC}\[[0-9;?]*[A-Za-z]//g" \
+  | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' \
+  | grep -v '^$' | tr '\n' '|' | sed -e 's/|$//')
+if [ "$tag" = "EXPECTED-ERROR" ]; then
+  msg=$(printf '%s\n' "$norm" | sed -e 's/^.*\[GMBASIC\] ERROR [0-9]*: *//' -e 's/ *(line [0-9]*)[[:space:]]*$//')
+  if [ "$rc" != "0" ] && [ "$msg" = "$exp" ]; then printf 'PASS\037%s\037\n' "$name"; else
+    printf 'FAIL\037%s\037expected-error rc=%s msg=[%s]\n' "$name" "$rc" "$msg"; fi
+  exit 0
+fi
+if [ "$rc" != "0" ]; then
+  last=$(printf '%s\n' "$norm" | tr '|' '\n' | tail -1 | cut -c1-80)
+  printf 'FAIL\037%s\037exit=%s [%s]\n' "$name" "$rc" "$last"
+  exit 0
+fi
+if [ -n "$exp" ] && [ "$norm" != "$exp" ]; then
+  printf 'FAIL\037%s\037EXPECT=[%s] OTTENUTO=[%s]\n' "$name" "$exp" "$norm"
+  exit 0
+fi
+printf 'PASS\037%s\037\n' "$name"
