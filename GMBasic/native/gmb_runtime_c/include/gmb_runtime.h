@@ -15,6 +15,7 @@
 #include <string.h>
 #include <math.h>
 #include <setjmp.h>
+#include "gmb_trace.h"        /* stack trace BASIC: gmb_trace_line (inline) + frame */
 #include "gmb_llm_tok.h"      /* LLM.TOKENS / LLM.DETOKENIZE / LLM.TENSOROUT (ritorno come dato) */
 #include "gmb_ai_server.h"
 #include "gmb_finetune.h"

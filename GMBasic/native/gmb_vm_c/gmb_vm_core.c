@@ -266,6 +266,7 @@ enum {
 };
 
 /* ---- Utilities ---- */
+static void vm_append_trace(gmb_task_t* task, char* out, size_t cap);
 void vm_error(gmb_task_t* task, const char* msg)
 {
     task->state = GMB_TS_FINISHED;
@@ -8802,12 +8803,53 @@ static void deliver_exception_after_finally(gmb_task_t* task, gmb_stack_entry_t*
         else
         {
             char buf[1100];
-            snprintf(buf, sizeof(buf), "BASIC Runtime Error: %s", desc);
+            snprintf(buf, sizeof(buf), "BASIC Runtime Error: %s\n", desc);
+            vm_append_trace(task, buf, sizeof buf);
             vm_error(task, buf);
         }
     }
     if (has && ev->type == 2 && ev->ref) gmb_obj_release(ev->ref);
     ev->ref = NULL;
+}
+
+/* STACK TRACE BASIC (parità C99Native): catena delle procedure dal frame della VM.
+ * Ogni `gmb_frame_t.return_ip` dice DOVE si torna, quindi appartiene alla procedura che
+ * CONTIENE quell'ip: nome dal `proc_names/proc_addrs` del chunk, riga da `chunk->lines`.
+ * Si accoda al messaggio d'errore fatale (il resto delle gambe stampa la stessa forma). */
+static void vm_append_trace(gmb_task_t* task, char* out, size_t cap)
+{
+    gmb_vm_t* vm = (gmb_vm_t*)task->vm_ctx;
+    if (!vm || !vm->chunk) return;
+    size_t o = strlen(out);
+
+    /* Helper: nome della procedura che CONTIENE l'ip + riga di quell'ip. */
+    #define VM_TRACE_PUSH(_ip) do {                                                   \
+        int _p = (_ip);                                                              \
+        if (_p > 0 && o + 96 < (cap)) {                                              \
+            const char* _n = NULL;                                                   \
+            uint32_t _best = 0;                                                      \
+            for (uint32_t _i = 0; _i < vm->chunk->proc_count; _i++)                   \
+                if ((int)vm->chunk->proc_addrs[_i] <= _p && vm->chunk->proc_addrs[_i] >= _best) { \
+                    _best = vm->chunk->proc_addrs[_i];                                \
+                    _n = vm->chunk->proc_names[_i];                                   \
+                }                                                                     \
+            if (_n && _n[0] && _n[0] != '@') {                                        \
+                long _line = 0;                                                       \
+                if (vm->chunk->lines && (uint32_t)_p < vm->chunk->code_len) {         \
+                    uint32_t _raw = vm->chunk->lines[_p];                             \
+                    if (_raw < 0xFFFFFFF0u) _line = (long)_raw + 1;                   \
+                }                                                                     \
+                int _w = snprintf(out + o, cap - o, "  in %s (riga %ld)\n", _n, _line);\
+                if (_w > 0 && (size_t)_w < cap - o) o += (size_t)_w;                  \
+            }                                                                         \
+        }                                                                             \
+    } while (0)
+
+    /* La procedura CORRENTE non è ancora nella catena dei frame (il frame porta il punto di
+     * RITORNO, cioè il chiamante): si parte dall'ip corrente. */
+    VM_TRACE_PUSH(task->current_ip);
+    for (gmb_frame_t* f = task->frame; f; f = f->prev) VM_TRACE_PUSH(f->return_ip);
+    #undef VM_TRACE_PUSH
 }
 
 static int continue_pending_unwind(gmb_task_t* task)
@@ -9194,6 +9236,12 @@ static int raise_basic_error(gmb_task_t* task, double err_code, const char* msg)
     task->error_resume_next_ip = statement_resume_ip(task, task->current_ip, task->ip);
     task->print_staging_len = 0;   /* DiscardIncompletePrintStatement */
 
+    /* STACK TRACE: si cattura SUBITO, prima dell'unwind dei frame (dopo non esistono più).
+     * Lo usa il ramo fatale più sotto; `ERR.StackTrace` può riusare lo stesso testo. */
+    char tr[1024];
+    tr[0] = 0;
+    vm_append_trace(task, tr, sizeof tr);
+
     long err_line = current_source_line(task);
 
     /* Descrizione: se il raise non ne porta una (es. `ERROR 11`), usa il catalogo canonico
@@ -9243,7 +9291,11 @@ static int raise_basic_error(gmb_task_t* task, double err_code, const char* msg)
     }
 
     char buf[1024];
-    snprintf(buf, sizeof(buf), "BASIC Runtime Error: %s", msg ? msg : "");
+    snprintf(buf, sizeof(buf), "BASIC Runtime Error: %s\n", msg ? msg : "");
+    {
+        size_t _o = strlen(buf);
+        snprintf(buf + _o, sizeof(buf) - _o, "%s", tr);
+    }
     vm_error(task, buf);
     return 0;
 }

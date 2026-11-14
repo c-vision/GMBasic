@@ -5,6 +5,7 @@
 
 #include "gmb_runtime.h"
 #include "gmb_memstats.h"
+#include "gmb_trace.h"
 #include <strings.h>
 
 /* Stringhe contate (VM/C): vedi gmb_make_val_string_counted in gmb_runtime.h. */
@@ -735,6 +736,10 @@ static void gmb_raise_error_impl(int number, const char* description, long line,
     g_err_description = description ? description : "";
     g_err_line = line;
     if (!keep_value) gmb_err_clear_value();
+    /* STACK TRACE: fotografia della catena PRIMA di qualunque longjmp (dopo il salto i frame
+     * delle procedure attraversate non esistono più). La leggono `ERR.StackTrace` e il
+     * messaggio fatale qui sotto. */
+    gmb_trace_snapshot();
     if (g_err_jmp) {
         longjmp(*g_err_jmp, number);
     }
@@ -745,6 +750,7 @@ static void gmb_raise_error_impl(int number, const char* description, long line,
     }
     fprintf(stderr, "[GMBASIC] ERROR %d: %s (line %ld)\n", number,
             g_err_description, line);
+    if (gmb_err_trace()[0]) fprintf(stderr, "%s", gmb_err_trace());
     /* Codice d'uscita canonico per un errore BASIC a runtime NON gestito: 6, allineato a
      * IL/PCode (test_ilrun) e VM/C (gmb_vm_host). Vedi
      * Bugs/(solved) - Semantica-Errore-Builtin-Tra-Backend.md. */

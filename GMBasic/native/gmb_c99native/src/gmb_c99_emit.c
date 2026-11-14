@@ -34232,6 +34232,16 @@ static void emit_function(ctx_t* c, fn_info_t* fn) {
     if (fn_ret_out_abi(fn)) sb_put(&c->out, (s->n_params || has_ctx || is_lctx || is_lamv || fn->cls_owner[0]) ? ", double* __out" : "double* __out");
     sb_put(&c->out, ") {\n");
     c->indent = 1;
+    /* STACK TRACE BASIC: frame della procedura nello stack delle chiamate, aggiornato a ogni
+     * statement da `gmb_trace_line`. `cleanup` garantisce l'uscita su OGNI percorso (RETURN
+     * multipli, GOTO, defer): un push/pop scritto a mano ne dimenticherebbe almeno uno.
+     * Il nome è quello BASIC (non il C) e la riga quella della dichiarazione. */
+    if (s->func_name && s->func_name[0]) {
+        ind(c);
+        sb_printf(&c->out,
+                  "gmb_trace_frame_t __gmb_tf __attribute__((cleanup(gmb_trace_leave))) = gmb_trace_enter(\"%s\", %d);\n",
+                  s->func_name, s->line > 0 ? s->line : 0);
+    }
     /* Lambda con parametro ARRAY (2026-11-02): il C99 le passa `double*` senza lunghezza.
      * Il chiamante (trampolino FFI vettoriale) pubblica il bound in
      * gmb_lambda_bound(); qui lo si materializza in `<param>__b0` (prima non dichiarata). */
@@ -36042,6 +36052,11 @@ static void emit_src_line(ctx_t* c, int line) {
         sb_putn(&c->out, p, 1);
     }
     sb_put(&c->out, "\"\n");
+    /* STACK TRACE: la riga corrente del frame BASIC va aggiornata sullo STESSO punto in cui
+     * si emette l'anchor `#line` (uno per statement): è uno store inlined, e rende il trace
+     * preciso al momento dell'errore senza altre chiamate. */
+    ind(c);
+    sb_printf(&c->out, "gmb_trace_line(%d);\n", line);
 }
 
 
