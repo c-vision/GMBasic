@@ -25,7 +25,11 @@ set -uo pipefail
 
 MONO="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 ROOT="$MONO/GMBasic"
-ZIG="$HOME/.gmbasic/toolchains/zig/0.17.0-osx-arm64/zig"
+# Toolchain: NESSUN percorso cablato. Se non arriva `--zig`, la risolve
+# `tools/sh/zigcc.sh --print-zig` (ordine canonico del piano F1: --zig → <ver>-<rid> →
+# <ver>-* → PATH). Prima qui c'era "0.17.0-osx-arm64": su un host Linux/Windows o con
+# un'altra versione il tool moriva.
+ZIG=""
 RID=""; OUT=""; JOBS="$(sysctl -n hw.ncpu 2>/dev/null || echo 4)"
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -41,7 +45,13 @@ while [ $# -gt 0 ]; do
   esac
 done
 [ -n "$RID" ] || { echo "libs_cross_build: serve un RID (linux-x64, linux-arm64, osx-x64, win-x64, win-arm64)" >&2; exit 2; }
-[ -x "$ZIG" ] || { echo "libs_cross_build: zig non trovato in $ZIG" >&2; exit 2; }
+if [ -z "$ZIG" ]; then
+  ZIG="$(bash "$MONO/tools/sh/zigcc.sh" --print-zig)" || {
+    echo "libs_cross_build: nessuna toolchain zig (usa --zig <path>, oppure gmbadmin first-use)" >&2
+    exit 2
+  }
+fi
+[ -x "$ZIG" ] || { echo "libs_cross_build: zig non eseguibile: $ZIG" >&2; exit 2; }
 
 TRIPLE="$(bash "$MONO/tools/sh/gmb_link_set.sh" --rid "$RID" --print triple)" || exit 2
 OS="$(bash "$MONO/tools/sh/gmb_link_set.sh" --rid "$RID" --print os)" || exit 2

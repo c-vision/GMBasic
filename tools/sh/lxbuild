@@ -37,7 +37,10 @@ set -o pipefail
 LX_RID="linux-x64"          # default; `--rid` lo sostituisce (i sei RID di gmb_link_set.sh)
 REPO="$(cd "$(dirname "$0")/../.." && pwd)"
 LLMENV="$HOME/Documents/Projects/LLMEnv"
-ZIG="$HOME/.gmbasic/toolchains/zig/0.17.0-osx-arm64/zig"
+# Toolchain: risolta da `zigcc.sh --print-zig` (ordine canonico del piano F1), MAI cablata.
+ZIG="$(bash "$REPO/tools/sh/zigcc.sh" --print-zig)" || {
+    echo "lxbuild: nessuna toolchain zig (gmbadmin first-use)" >&2; exit 2
+}
 DRV="$REPO/GMBasic/native/gmb_compiler_c/build/gmbnative"
 US=$(printf '\037')
 

@@ -81,6 +81,7 @@ done
 CC_ARG=""
 TARGET_TRIPLE=""
 RID_ARG=""
+STATIC_ARG=0
 _POS=()
 _i=0
 while [ "$_i" -lt "${#_ARGS[@]}" ]; do
@@ -94,10 +95,24 @@ while [ "$_i" -lt "${#_ARGS[@]}" ]; do
     # Senza --rid resta l'host. Se c'è anche --target, vince --target (è più specifico).
     --rid)      RID_ARG="${_ARGS[$((_i+1))]:-}"; _i=$((_i+2)); continue ;;
     --rid=*)    RID_ARG="${_a#--rid=}"; _i=$((_i+1)); continue ;;
+    # --static: binario a FILE SINGOLO per Linux (musl, `-static`): nessuna libreria dinamica,
+    # nessun rpath, nessun SDK. Le terze parti e il runtime si prendono dagli archivi STATICI
+    # della cache del RID (`~/.gmbasic/libs/<rid>/lib/*.a`). Solo Linux: su Darwin/Windows
+    # `-static` non esiste in questa forma (si dice e si esce).
+    --static)   STATIC_ARG=1; _i=$((_i+1)); continue ;;
   esac
   _POS+=("$_a"); _i=$((_i+1))
 done
 if [ ${#_POS[@]} -gt 0 ]; then set -- "${_POS[@]}"; else set --; fi
+# --static implica il target musl: senza un `--target`/`--rid` esplicito si parte da linux-x64
+# (l'unico RID Linux con artefatti locali, AGENTS §Toolchain).
+if [ "$STATIC_ARG" = 1 ] && [ -z "$TARGET_TRIPLE" ]; then
+  case "${RID_ARG:-linux-x64}" in
+    linux-arm64) TARGET_TRIPLE="aarch64-linux-musl" ;;
+    linux-x64)   TARGET_TRIPLE="x86_64-linux-musl" ;;
+    *)           TARGET_TRIPLE="x86_64-linux-musl" ;;
+  esac
+fi
 
 ROOT=$(cd "$(dirname "$0")/../../GMBasic" && pwd)
 TOOLS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"   # tools/ (script ausiliari)
@@ -434,6 +449,69 @@ if [ "$LS_LLM" = 1 ]; then
 else
   echo "[c99native] llmtoken/llmcodec_* omesse per $RID: la pila LLM e' costruita per $LS_HOST_RID (LS_LLM=0)" >&2
 fi
+if [ "$STATIC_ARG" = 1 ]; then
+  # ── LINK STATICO (musl) ────────────────────────────────────────────────────────────────
+  # Binario a FILE SINGOLO: nessuna dylib/.so, nessun rpath, nessun SDK. Si linkano SOLO gli
+  # archivi statici della cache del RID (`~/.gmbasic/libs/<rid>/lib/*.a`): le librerie
+  # dell'host (`$L/*.a`: Mach-O/COFF) non sono linkabili per un altro target.
+  #
+  # Runtime HEADLESS: `core` + `sql` della cache (NON `ui`, che porta SDL). Il runtime
+  # completo trascina SDL e, a cascata, bzip2/png/libsamplerate, che nella cache esistono
+  # solo come .so: un binario a file singolo è per programmi console/servizio, quindi si
+  # linka la variante senza UI. Un programma che disegna non è staticizzabile oggi: il link
+  # lo dice con i simboli mancanti (nessun successo silenzioso).
+  CACHE_LIB="$HOME/.gmbasic/libs/$RID/lib"
+  MONO_DIR="$(cd "$ROOT/.." && pwd)"
+  STATIC_RT=()
+  # Ordine: archivio HEADLESS appena cross-compilato dal checkout (`build/libs/<rid>/libgmb_runtime.a`
+  # = core+sql, senza UI/SDL) → poi la cache del RID. La variante con UI trascinerebbe SDL2 e la
+  # catena X11/Wayland/ALSA/pulse/harfbuzz (488 simboli, solo .so): non è staticizzabile.
+  if [ -f "$MONO_DIR/build/libs/$RID/libgmb_runtime.a" ]; then
+    STATIC_RT=("$MONO_DIR/build/libs/$RID/libgmb_runtime.a")
+    [ -f "$MONO_DIR/build/libs/$RID/libgmb_chart.a" ] && STATIC_RT+=("$MONO_DIR/build/libs/$RID/libgmb_chart.a")
+  elif [ -f "$CACHE_LIB/libgmb_runtime_core.a" ] && [ -f "$CACHE_LIB/libgmb_runtime_sql.a" ]; then
+    STATIC_RT=("$CACHE_LIB/libgmb_runtime_core.a" "$CACHE_LIB/libgmb_runtime_sql.a")
+  elif [ -f "$RUNTIME_LIB" ]; then
+    STATIC_RT=("$RUNTIME_LIB")
+  fi
+  if [ ${#STATIC_RT[@]} -eq 0 ]; then
+    echo "[c99native] --static: runtime per $RID assente (né core/sql in <cache>/lib né cache per-RID)." >&2
+    echo "  Popolali con: gmb libs ensure --rid $RID" >&2
+    exit 2
+  fi
+  STATIC_OWN=()
+  for _a in libgmb_compiler_c libgmb_chart libgmb_db; do
+    [ -f "$CACHE_LIB/$_a.a" ] && STATIC_OWN+=("$CACHE_LIB/$_a.a")
+  done
+  STATIC_THIRD=()
+  # Solo ciò che il runtime headless usa davvero; le terze parti grafiche (SDL2/ttf/freetype)
+  # restano fuori perché la variante `core` non le referenzia.
+  for _l in z zstd lzma pcre2-8 brotlidec brotlienc brotlicommon sqlite3 ssl crypto curl; do
+    [ -f "$CACHE_LIB/lib$_l.a" ] && STATIC_THIRD+=("-l$_l")
+  done
+  if [ ! -f "$CACHE_LIB/libz.a" ]; then
+    echo "[c99native] --static: manca $CACHE_LIB/libz.a (archivi statici del RID assenti)." >&2
+    echo "  Popolali con: gmb libs ensure --rid $RID   (o tools/sh/libs_cross_build.sh $RID --zig <zig>)" >&2
+    exit 2
+  fi
+  if ! $CC_BIN $CF $TARGETFLAG -static -O2 -w "$DIR/$CASE.o" \
+       "$TOOLS_DIR/../c/musl_fortify_compat.c" -o "$OUTBIN" \
+       ${STATIC_RT[@]+"${STATIC_RT[@]}"} ${STATIC_OWN[@]+"${STATIC_OWN[@]}"} \
+       -L"$CACHE_LIB" ${STATIC_THIRD[@]+"${STATIC_THIRD[@]}"} -lm -lpthread 2>"$DIR/static_link.err"; then
+    echo "[c99native] --static: link fallito (vedi $DIR/static_link.err)." >&2
+    echo "  Il link statico usa SOLO gli archivi di $CACHE_LIB: un simbolo che vive in una" >&2
+    echo "  libreria non presente in forma statica non è linkabile a file singolo." >&2
+    tail -8 "$DIR/static_link.err" >&2
+    exit 5
+  fi
+  if command -v file >/dev/null 2>&1; then
+    if ! file "$OUTBIN" | grep -q "statically linked"; then
+      echo "[c99native] --static: il binario NON risulta statico: $(file -b "$OUTBIN")" >&2
+      exit 5
+    fi
+  fi
+  echo "[c99native] link STATICO ($TARGET_TRIPLE, musl): $(basename "$OUTBIN")" >&2
+else
 $CC_BIN $CF $CCFIRST $STRIPDYLIB $EXPORTDYN $RPATH_LOADER "$DIR/$CASE.o" $TORCH_OBJS $JINJA_OBJ -o "$OUTBIN" \
   "$L/libgmb_vm.a" "$RUNTIME_LIB" $TRAY_LINK \
   ${LLM_LINK[@]+"${LLM_LINK[@]}"} \
@@ -444,6 +522,7 @@ $CC_BIN $CF $CCFIRST $STRIPDYLIB $EXPORTDYN $RPATH_LOADER "$DIR/$CASE.o" $TORCH_
   "$L/gmb_db_c_build/libgmb_db.a" -lm ${LS_SYS[@]+"${LS_SYS[@]}"} \
   -Wl,-rpath,"$LIBS_CACHE" ${LS_THIRD[@]+"${LS_THIRD[@]}"} \
   -lz
+fi
 # ── GATE EXPORT: il link può "riuscire" e produrre un binario che crasha all'avvio ────────────
 # Per le dylib conta ciò che l'eseguibile ESPORTA. Con lld un simbolo che nulla referenzia non è
 # un errore di link: la dylib ha uno stub NULL e ci salta al primo uso (EXC_BAD_ACCESS at 0x0 in un
