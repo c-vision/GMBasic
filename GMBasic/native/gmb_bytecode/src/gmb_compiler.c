@@ -7349,12 +7349,19 @@ static void cc_proc(gmb_cc_t* c, const gmb_stmt_t* s)
 /* §4.10(f): fold delle funzioni del semantic graph (AI.SYMBOL/IMPACT/CALLMAP) — def. in gmb_semfold.c */
 void gmb_semfold_program(gmb_stmt_t** stmts, int n, const char* file);
 
+/* TESTO SORGENTE per ERR.SourceLineText: il driver che ha il sorgente CONCATENATO (quello
+ * dato al parser, indice 0 = riga 1) lo passa qui prima di gmb_compile; il chunk ne porta
+ * una copia, così la VM/C riporta il testo della riga anche senza sorgenti accanto. */
+static const char* g_cc_src_text = NULL;
+void gmb_compiler_set_source_text(const char* src) { g_cc_src_text = src; }
+
 int gmb_compile(const gmb_program_t* prog, uint8_t** out_data, size_t* out_len, char** error)
 {
     if (prog && prog->stmts && prog->n > 0)
         gmb_semfold_program(prog->stmts, prog->n, "");   /* pre-pass: sostituisce le call sem. graph */
     if (!prog || !out_data || !out_len) { if (error) *error = strdup("gmb_compile: argomenti nulli"); return -1; }
     gmb_compiled_chunk_t ch = {0};
+    ch.src_text = g_cc_src_text;   /* ERR.SourceLineText: testo del sorgente (dal driver) */
     gmb_cc_t c = {0};
     c.cur_class = -1;
     c.chunk = &ch;
@@ -7793,8 +7800,7 @@ static void buf_const(buf_t* b, const gmb_cconst_t* cc)
 }
 
 int gmb_compiled_chunk_serialize(const gmb_compiled_chunk_t* c, uint8_t** out_data, size_t* out_len, char** error)
-{
-    (void)error;
+{    (void)error;
     buf_t b = {0};
     /* MAGIC + VERSION */
     buf_byte(&b, 'G'); buf_byte(&b, 'M'); buf_byte(&b, 'B'); buf_byte(&b, 'C');
@@ -7806,8 +7812,15 @@ int gmb_compiled_chunk_serialize(const gmb_compiled_chunk_t* c, uint8_t** out_da
     buf_u32(&b, c->consts_len);
     /* code */
     for (uint32_t i = 0; i < c->code_len; i++) buf_byte(&b, c->code[i]);
-    /* lines */
-    for (uint32_t i = 0; i < c->code_len; i++) buf_u32(&b, c->lines ? c->lines[i] : 0);
+    /* lines: il frontend C numera le righe da 1, il chunk A1 è 0-BASED (come
+     * SourceLineIndex del compilatore C#); la VM/C aggiunge +1 per ERR.LineNumber/stack
+     * trace. Scrivendo il valore 1-based si aveva un OFF-BY-ONE sul percorso chunk nativo
+     * (gmbchunk → gmb_vm_host): `line=` dava la riga successiva. 0/0xFFFFFFFx = "nessuna
+     * riga" → sentinella 0xFFFFFFFF (la VM la salta). */
+    for (uint32_t i = 0; i < c->code_len; i++) {
+        uint32_t ln = c->lines ? c->lines[i] : 0;
+        buf_u32(&b, (ln == 0 || ln >= 0xFFFFFFF0u) ? 0xFFFFFFFFu : ln - 1);
+    }
     /* constants */
     for (uint32_t i = 0; i < c->consts_len; i++) buf_const(&b, &c->consts[i]);
     /* data */
@@ -7838,6 +7851,34 @@ int gmb_compiled_chunk_serialize(const gmb_compiled_chunk_t* c, uint8_t** out_da
         buf_u32(&b, c->ploc_counts[i]);
         for (uint32_t j = 0; j < c->ploc_counts[i]; j++)
             buf_str(&b, (c->ploc_names[i] && c->ploc_names[i][j]) ? c->ploc_names[i][j] : "");
+    }
+
+    /* ── CODA OPZIONALE A1, nell'ORDINE del lettore (gmb_chunk_load) ─────────────────────
+     * Il compilatore C non traccia statement ranges / local numeric / tray / param defaults:
+     * si scrivono VUOTI, così il lettore arriva allineato alla sezione successiva (senza
+     * queste sezioni il conteggio dei SOURCE TEXTS verrebbe letto come "uses_tray"). */
+    buf_u32(&b, 0);          /* STATEMENT RANGES */
+    buf_u32(&b, 0);          /* LOCAL NUMERIC */
+    buf_byte(&b, 0);         /* USES TRAY */
+    buf_u32(&b, 0);          /* PROC PARAM DEFAULTS */
+    /* SOURCE TEXTS: righe del sorgente concatenato (indice 0 = riga 1) per
+     * ERR.SourceLineText. */
+    {
+        uint32_t n = 0;
+        if (c->src_text && c->src_text[0]) {
+            n = 1;
+            for (const char* p = c->src_text; *p; p++) if (*p == '\n') n++;
+        }
+        buf_u32(&b, n);
+        if (n > 0) {
+            const char* p = c->src_text;
+            for (uint32_t i = 0; i < n; i++) {
+                const char* e = p;
+                while (*e && *e != '\n') e++;
+                buf_str_n(&b, p, (long)(e - p));
+                p = (*e == '\n') ? e + 1 : e;
+            }
+        }
     }
 
     *out_data = b.b;
@@ -8550,6 +8591,7 @@ int gmb_compile_bas_file(const char* path, uint8_t** out_data, size_t* out_len, 
         free(perr);
     } else {
         uint8_t* data = NULL; size_t len = 0; char* cerr = NULL;
+        gmb_compiler_set_source_text(src);   /* ERR.SourceLineText: righe nel chunk */
         if (gmb_compile(&prog, &data, &len, &cerr) == 0) {
             if (out_data) *out_data = data; else if (data) free(data);
             if (out_len) *out_len = len;
@@ -8560,6 +8602,7 @@ int gmb_compile_bas_file(const char* path, uint8_t** out_data, size_t* out_len, 
             rc = -1;
         }
     }
+    gmb_compiler_set_source_text(NULL);   /* src sta per essere liberato */
     gmb_program_free(&prog);
     gmb_lex_result_free(&lx2); gmb_lex_result_free(&lx);
     free(src);

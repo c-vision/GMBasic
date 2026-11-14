@@ -210,11 +210,19 @@ typedef struct gmb_compiled_chunk {
      * indirizzo inizio procedura + nomi normalizzati per slot (NULL = anonimo) */
     uint32_t* ploc_addrs; char*** ploc_names; uint32_t* ploc_counts;
     uint32_t ploc_count;
+    /* TESTO SORGENTE (coda opzionale, ERR.SourceLineText): righe del sorgente concatenato
+     * (indice 0 = riga 1). Riempito dal driver che ha il testo (`gmb_compile_bas_file`). */
+    const char* src_text;
 } gmb_compiled_chunk_t;
 
 /* Compila un programma AST in un chunk serializzato (formato A1/GMBC).
  * Ritorna 0 ok (out_data/out_len allocati da malloc), -1 errore (error allocato). */
 int gmb_compile(const gmb_program_t* prog, uint8_t** out_data, size_t* out_len, char** error);
+
+/* TESTO SORGENTE per ERR.SourceLineText: da chiamare PRIMA di gmb_compile con il sorgente
+ * CONCATENATO dato al parser (indice 0 = riga 1). Il puntatore deve vivere fino al ritorno
+ * di gmb_compile (il chunk ne copia le righe). NULL = nessun testo nel chunk. */
+void gmb_compiler_set_source_text(const char* src);
 
 /* ── Compilazione SNIPPET A RUNTIME (EVAL / & / filtri): simboli ESTERNI ────────
  * Compila un frammento BASIC contro le tabelle di simboli del chunk OSPITE (VM/C):

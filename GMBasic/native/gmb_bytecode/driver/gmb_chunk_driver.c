@@ -158,6 +158,9 @@ int main(int argc, char** argv) {
     if (perr) { fprintf(stderr, "parse error: %s\n", perr); free(perr); goto fail; }
 
     uint8_t* data = NULL; size_t len = 0; char* cerr = NULL;
+    /* ERR.SourceLineText: il testo del sorgente CONCATENATO (quello dato al parser) viaggia
+     * nel chunk, cosi' la VM/C riporta la riga anche senza sorgenti accanto. */
+    gmb_compiler_set_source_text(src);
     if (gmb_compile(&prog, &data, &len, &cerr) != 0) {
         fprintf(stderr, "compilazione: %s\n", cerr ? cerr : "errore");
         free(cerr);
