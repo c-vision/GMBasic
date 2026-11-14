@@ -74,8 +74,8 @@ SUB Main()
 
   ' ── VRP: finestre temporali, multi-deposito, pickup&delivery ──────────────────────
   ' VRPTW: n = NUMERO DI CLIENTI (il deposito è l'indice 0), dist (n+1)x(n+1)
-  DIM dem(3) AS DOUBLE
-  FOR i = 0 TO 3 : dem(i) = 1 : NEXT i
+  DIM dem(4) AS DOUBLE
+  FOR i = 0 TO 4 : dem(i) = 1 : NEXT i
   DIM tw(11) AS DOUBLE
   FOR i = 0 TO 3
     tw(i) = 0

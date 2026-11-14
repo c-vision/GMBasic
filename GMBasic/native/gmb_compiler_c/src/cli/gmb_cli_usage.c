@@ -11,6 +11,8 @@ void gmb_cli_usage(void) {
         "                   [--plugins[=all|nomi]] [--skills[=all|nomi]] [--brains[=all|nomi]]\n"
         "     gmb dump ast|chunk|c|disasm <file.bas> [--out <file>]   dump per la REPL (F1)\n"
         "     gmb eval \"<istruzioni>\"                          compila ed esegue uno snippet\n"
+        "     gmb <file.bas> [-- ARG...]                        scorciatoia di `run --project <dir>\n"
+        "                                                       --entry <file>` (ARG al PROGRAMMA)\n"
         "     gmb minitests [--root <dir>] [--filter <substr>] [--all] [--json]\n"
         "                   [--driver <exe>] [--cc <cc>] [--baseline <json>]\n"
         "     gmb doctor [--fix] [--json] [--abi-dir] [--llm-repo <url>]\n"
