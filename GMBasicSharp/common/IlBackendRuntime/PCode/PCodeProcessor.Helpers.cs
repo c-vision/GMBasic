@@ -588,6 +588,10 @@ internal sealed partial class PCodeProcessor
         task.ErrorLineIp = task.CurrentInstructionIp;
         task.ErrorResumeNextIp = StatementResumeIp(task.CurrentInstructionIp, task.Ip);
         DiscardIncompletePrintStatement(task);
+        // STACK TRACE: la catena va letta ORA — dopo UnwindProcedureFramesToErrorHandler i
+        // frame delle procedure attraversate non esistono più. Serve al messaggio fatale e a
+        // `ERR.StackTrace`.
+        var trace = BuildBasicTrace(task);
         // Pseudo-variabile ERR del linguaggio (StdLib: ERR.Number/Description/LineNumber/…):
         // va popolata PRIMA del dispatch, così l'handler ON ERROR e il CATCH la vedono.
         // Prima non veniva mai scritta → `ERR.Number` restava vuoto/0 (divergenza con IL/C99).
@@ -602,7 +606,7 @@ internal sealed partial class PCodeProcessor
             ["Description"] = msg,
             ["LineNumber"] = (double)SourceLineForIp(task.CurrentInstructionIp),
             ["SourceLineText"] = string.Empty,
-            ["StackTrace"] = BuildBasicTrace(task)
+            ["StackTrace"] = trace
         };
         SetErrGlobal(task, errInfo);
         if (TryEnterExceptionHandler(task, errInfo))
@@ -631,7 +635,10 @@ internal sealed partial class PCodeProcessor
             task.Ip = task.ErrorHandlerIp.Value;
             return false;
         }
-        throw new InvalidOperationException("BASIC Runtime Error: " + msg);
+        // Errore FATALE: il messaggio porta la catena delle procedure (parità C99Native
+        // "[GMBASIC] ERROR … / in C (riga N)", VM/C "[VM ERROR] BASIC Runtime Error: …" e IL).
+        // La catena va catturata QUI, prima dell'unwind dei frame.
+        throw new InvalidOperationException("BASIC Runtime Error: " + msg + "\n" + trace);
     }
 
     /// <summary>Intervalli [start,end) del bytecode emesso da ogni istruzione BASIC (per
