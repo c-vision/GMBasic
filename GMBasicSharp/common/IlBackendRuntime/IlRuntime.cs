@@ -18074,6 +18074,13 @@ public static double TextWidth(string s)
         ("GMB_FORM_SHOT",      "file PNG della cattura del form (test)"),
         ("GMB_FORM_SHOT_FRAME","frame in cui scattare GMB_FORM_SHOT (default 20)"),
         ("MAXXLIB_GRAPHICS",   "protocollo grafico del terminale: kitty o sixel (assente = dedotto da TERM)"),
+        /* Diagnostica del runtime C (voce di `g_opt_core[]` dal 2026-11-13): `debug.memory`
+         * accende la contabilità della memoria viva per tipo (gmb_memstats.c). Mancava qui,
+         * quindi l'elenco delle gambe managed aveva una riga in meno di VMC/C99Native e
+         * `ai/ai_list_options` divergeva. IL e PCodeVM non producono il report (è del runtime C),
+         * ma la voce va DICHIARATA lo stesso: l'elenco è la superficie del registro, non
+         * l'inventario di ciò che ogni gamba sa fare. */
+        ("debug.memory", "contabilità memoria del runtime C per tipo, report su stderr a fine run (1 = attiva)"),
     ];
 
     /// <summary>AI LIST OPTIONS — comando-query (§1): stampa nome, descrizione e valore
