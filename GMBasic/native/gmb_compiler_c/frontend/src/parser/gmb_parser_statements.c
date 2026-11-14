@@ -2680,7 +2680,17 @@ if (gmb_tk_rem_vari_in(t->kind)) {
             if (gmb_p_cur(p) && (gmb_p_cur(p)->kind == GMB_TOK_EndFunction || gmb_p_tok_is_keyword(gmb_p_cur(p), "EndFunction"))) gmb_p_adv(p);
             else if (gmb_p_at_end_compound(p, GMB_TOK_Function)) { gmb_p_adv(p); gmb_p_adv(p); }
         }
-        (void)gmb_p_wrap_errdefers(&body, line);
+        /* ERRDEFER dentro un GENERATOR: il desugaring produce un TRY/CATCH, che il corpo di un
+         * generatore non può contenere (l'emitter C lo rifiuta come "statement non supportato").
+         * Errore ESPLICITO in parsing, con la ragione. */
+        if (is_gen) {
+            if (!p->error && gmb_p_has_stray_errdefer(body.items, body.n))
+                p->error = strdup("ERRDEFER non è supportato dentro un GENERATOR: il cleanup sul "
+                                  "percorso d'errore richiede un TRY/CATCH, che il corpo di un "
+                                  "generatore non può contenere.");
+        } else {
+            (void)gmb_p_wrap_errdefers(&body, line);
+        }
         s->func_body = body.items; s->n_funcbody = body.n;
         return s;
     }

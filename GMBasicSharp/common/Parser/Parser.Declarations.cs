@@ -624,6 +624,7 @@ public sealed partial class Parser
 
         _functionContextStack.Push(nameToken);
         _functionContextReturnsValue.Push(true);   // i generator restituiscono sempre un valore
+        _generatorBodyDepth++;                     // ERRDEFER qui è rifiutato (vedi ParseErrDeferStatement)
         try
         {
             // Crea una definizione di generatore fittizia per fornire il contesto.
@@ -651,6 +652,7 @@ public sealed partial class Parser
         {
             _functionContextStack.Pop();
             _functionContextReturnsValue.Pop();
+            _generatorBodyDepth--;
         }
 
         var endToken = Consume(TokenKind.EndGenerator, "Expected 'END GENERATOR'.");
