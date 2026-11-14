@@ -12,6 +12,11 @@
     exec bash "$0" "$@"
 }
 
+# PID della RUN: è il proprietario del lease del broker (`msg_broker.sh`). Deve essere preso qui,
+# una volta: dentro una sostituzione di comando `$$` sarebbe la subshell e il lease morirebbe con
+# lei, mentre la run sta ancora usando il broker.
+SELF_PID=$$
+
 # ── MUTEX di build: i comandi di build (cc/clang/cmake/make/dotnet) prendono un lock ──
 # esclusivo su mutex.txt SOLO per la durata del SINGOLO comando, poi lo rilasciano subito
 # (lo script puo proseguire a lungo senza tenere il lock). Scadenza 15 min con heartbeat:
@@ -316,7 +321,7 @@ BROKER_STARTED=()
 broker_cleanup() {
   local p
   for p in ${BROKER_STARTED[@]+"${BROKER_STARTED[@]}"}; do
-    "$MONO/tools/sh/msg_broker.sh" release "$p" >/dev/null 2>&1
+          "$MONO/tools/sh/msg_broker.sh" release "$p" "" "" "$SELF_PID" >/dev/null 2>&1
   done
 }
 
@@ -584,11 +589,16 @@ if [ -x "$BROKER_SH" ]; then
     _bports="$("$BROKER_SH" ports 2>/dev/null)"
   fi
   for _bp in $_bports; do
-    _bres="$("$BROKER_SH" ensure "$_bp" 2>/dev/null)" || _bres=failed
-    case "$_bres" in
-      started) BROKER_STARTED+=("$_bp"); echo "broker pub/sub avviato dal gate su :$_bp" ;;
-      already) echo "broker pub/sub già attivo su :$_bp (lo lascio a chi l'ha avviato)" ;;
-      *)       echo "attenzione: broker non avviabile su :$_bp" >&2 ;;
+          # `ensure` stampa già started|already|busy|failed: il `||` non deve CANCELLARE il motivo
+      # (un `busy` mascherato da failed mandava a cercare un broker rotto invece di una run
+      # concorrente che teneva la porta).
+      _bres="$("$BROKER_SH" ensure "$_bp" "" "" "$SELF_PID" 2>/dev/null)" || true
+      [ -n "$_bres" ] || _bres=failed
+      case "$_bres" in
+        started) BROKER_STARTED+=("$_bp"); echo "broker pub/sub avviato dal gate su :$_bp" ;;
+        already) echo "broker pub/sub già attivo su :$_bp (riuso quello della run)" ;;
+        busy)    echo "ERRORE: broker :$_bp occupato da un'altra run (lease non rilasciato in tempo): i test tcp di questa run non sono verificabili" >&2 ;;
+        *)       echo "attenzione: broker non avviabile su :$_bp" >&2 ;;
     esac
   done
 fi
