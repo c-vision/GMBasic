@@ -185,6 +185,7 @@ enum {
     OP_PRINT_LINE = 114,
     OP_PRINT_TAB_ZONE = 115,
     OP_PRINT_NEWLINE = 116,
+    OP_PRINT_FLUSH = 216,   /* PRINT senza newline: commette il parziale (vedi OpCode.cs) */
     OP_YIELD = 117,
     OP_NEW_WAITGROUP = 118,
     OP_NEW_CHANNEL = 119,
@@ -14455,6 +14456,26 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                  * vivi dopo 600 render di una pagina con 1000 PRINT; `leaks` con
                  * MallocStackLogging: `push_const → gmb_str_alloc`). */
                 if (e.type == 2 && e.ref) gmb_obj_release(e.ref);
+                break;
+            }
+            case OP_PRINT_FLUSH:
+            {
+                /* Fine di una PRINT SENZA newline finale (`PRINT x;` / `PRINT x,`): il
+                 * parziale si COMMETTE come testo, senza a capo (parità C99Native
+                 * gmb_print_stage_end). Senza questo marcatore lo staging restava pendente e
+                 * il PRINT di una procedura chiamata DOPO (frame diverso) lo sospendeva →
+                 * ordine invertito (opt/opt_forward_array: "outer=" finiva in fondo). */
+                print_stage_enter(task);
+                if (task->print_staging_len > 0)
+                {
+                    task->print_staging[task->print_staging_len] = '\0';
+                    pthread_mutex_lock(&vm->print_lock);
+                    if (vm->print_str) vm->print_str(vm->print_ctx, task->print_staging, (uint32_t)task->print_staging_len);
+                    else fputs(task->print_staging, stdout);
+                    pthread_mutex_unlock(&vm->print_lock);
+                    task->print_staging_len = 0;
+                }
+                print_stage_leave(task);
                 break;
             }
             case OP_PRINT_LINE:

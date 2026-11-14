@@ -8128,19 +8128,16 @@ static void gmb_bf_685(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func
 static void gmb_bf_686(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
 {
         {
-            char path[1024];
-            gmb_paths_providers_json(path, sizeof(path));
-            FILE* f = fopen(path, "r");
-            gmb_obj_string_t* s;
-            if (f)
-            {
-                char buf[8192];
-                size_t n = fread(buf, 1, sizeof(buf) - 1, f);
-                buf[n] = '\0';
-                fclose(f);
-                s = gmb_str_cstr(buf);
-            }
-            else s = gmb_str_cstr("(no providers)");
+            /* AI.PROVIDERS(): stessa funzione del runtime CONDIVISO usata da C99Native
+             * (gmb_ai_providers_json: config/providers.json → seed condiviso → registry
+             * serializzato). Prima il VM/C la re-implementava leggendo SOLO il file locale:
+             * nei MiniTest (provider fixture registrati in memoria, nessun providers.json)
+             * rispondeva "(no providers)" mentre IL/PCode/C99 davano il JSON del registry
+             * (divergenza trovata da misc/ai_ns_probe.bas). */
+            (void)vm; (void)args; (void)argc; (void)func_code; (void)task;
+            char* j = gmb_ai_providers_json();
+            gmb_obj_string_t* s = gmb_str_cstr(j ? j : "");
+            free(j);
             bout->is_num = 0; bout->result_ref = (gmb_obj_t*)s; bout->result_ref_bt = GMB_BT_STRING;
         }
 }

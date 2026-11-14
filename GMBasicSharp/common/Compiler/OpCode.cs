@@ -690,6 +690,18 @@ public enum OpCode : byte
     /// <para>Formato: [OP_PRINT_NEWLINE] - 1 byte</para>
     /// </summary>
     OP_PRINT_NEWLINE = 116,
+
+    /// <summary>
+    /// Chiude un'istruzione PRINT che NON chiede il newline finale (`PRINT x;` / `PRINT x,`):
+    /// il parziale accumulato viene COMMESSO come testo, senza a capo.
+    /// <para>Perché serve: senza un marcatore di fine istruzione lo staging di stampa resta
+    /// pendente e il PRINT di una procedura chiamata DOPO (frame diverso) lo SOSPENDE, così
+    /// l'ordine di stampa si inverte (il parziale finisce in fondo). C99Native chiude sempre
+    /// lo staging a fine istruzione (<c>gmb_print_stage_end</c>), quindi il parziale è già
+    /// emesso prima del PRINT annidato.</para>
+    /// <para>Formato: [OP_PRINT_FLUSH] - 1 byte</para>
+    /// </summary>
+    OP_PRINT_FLUSH = 216,
     
     // ========================================================================
     // --- Opcodes per Cooperativo Scheduling ---

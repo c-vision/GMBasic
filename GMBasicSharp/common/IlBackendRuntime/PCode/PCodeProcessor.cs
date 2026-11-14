@@ -1297,6 +1297,34 @@ internal sealed partial class PCodeProcessor
                 lock (_consoleLock) _printColumn += formatted.Length;
                 return true;
             }
+            case OpCode.OP_PRINT_FLUSH:
+            {
+                /* Fine di una PRINT SENZA newline finale (`PRINT x;` / `PRINT x,`): il
+                 * parziale accumulato si COMMETTE come testo (kind 0 = senza a capo), come fa
+                 * C99Native chiudendo sempre lo staging a fine istruzione
+                 * (gmb_print_stage_end). Senza questo marcatore lo staging restava pendente e
+                 * il PRINT di una procedura chiamata DOPO (frame diverso) lo sospendeva →
+                 * l'ordine di stampa si invertiva (opt/opt_forward_array: "outer=" in fondo). */
+                PrintStageEnter(task);
+                var partial = task.PrintLineStaging?.ToString() ?? string.Empty;
+                task.PrintLineStaging = null;
+                PrintStageLeave(task);   /* riprende un eventuale PRINT esterno sospeso */
+                if (partial.Length > 0)
+                {
+                    if (PCodeGraphics.Instance.IsScreenOn)
+                    {
+                        PCodeGraphics.Instance.PRINT_GPM(partial, (_r, _e) => { });
+                    }
+                    else
+                    {
+                        (task.PendingPrints ??= new()).Add((0, partial,
+                            Basic.IlBackend.IlRuntime.Current.Graphics.ClipperPrinterOnly(),
+                            Basic.IlBackend.IlRuntime.Current.Graphics.ClipperPrinterRouting()));
+                        FlushPrintBuffer(task);
+                    }
+                }
+                return true;
+            }
             case OpCode.OP_PRINT_LINE:
             {
                 var val = task.Sp > 0 ? task.PopRef() : null;

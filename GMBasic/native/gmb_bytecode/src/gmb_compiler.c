@@ -4379,7 +4379,19 @@ static void cc_stmt(gmb_cc_t* c, const gmb_stmt_t* s)
         for (int i = 0; i < s->nprint; i++) {
             cc_expr(c, s->print_args[i]);
             if (c->error) return;
-            if (i == s->nprint - 1) cc_byte(c, GMB_OP_PRINT_LINE);
+            if (i == s->nprint - 1) {
+                /* `PRINT x;` / `PRINT x,` (separatore finale, print_hold): il valore si stampa
+                 * SENZA newline e poi si CHIUDE l'istruzione con OP_PRINT_FLUSH, che commette il
+                 * parziale (parità C99Native gmb_print_stage_end). Prima si emetteva sempre
+                 * OP_PRINT_LINE → il VM/C aggiungeva un a capo che C99/IL/PCode non danno. */
+                if (s->print_hold) {
+                    cc_byte(c, GMB_OP_PRINT_VALUE);
+                    if (s->print_comma && s->print_comma[i]) cc_byte(c, GMB_OP_PRINT_TAB_ZONE);
+                    cc_byte(c, GMB_OP_PRINT_FLUSH);
+                } else {
+                    cc_byte(c, GMB_OP_PRINT_LINE);
+                }
+            }
             else {
                 cc_byte(c, GMB_OP_PRINT_VALUE);
                 /* separatore ',' → zona di 14 colonne (parità IL/PCode/C99

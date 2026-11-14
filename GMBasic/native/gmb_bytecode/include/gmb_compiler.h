@@ -73,6 +73,9 @@ enum {
     GMB_OP_FOR_PREPARE = 110, GMB_OP_FOR_LOOP = 111,
     GMB_OP_PRINT_VALUE = 113, GMB_OP_PRINT_LINE = 114, GMB_OP_PRINT_TAB_ZONE = 115,
     GMB_OP_PRINT_NEWLINE = 116,
+    /* Chiusura di una PRINT SENZA newline finale (`PRINT x;` / `PRINT x,`): commette il
+     * parziale senza a capo (parità C99Native gmb_print_stage_end). Vedi OpCode.cs. */
+    GMB_OP_PRINT_FLUSH = 216,
     GMB_OP_NEW_WAITGROUP = 118, GMB_OP_NEW_CHANNEL = 119,
     GMB_OP_GO_EXIT = 133, GMB_OP_CHANNEL_CLOSE = 135, GMB_OP_RECV_OK = 136,
     GMB_OP_NEW_MUTEX = 137, GMB_OP_LOCK = 138, GMB_OP_UNLOCK = 139,
