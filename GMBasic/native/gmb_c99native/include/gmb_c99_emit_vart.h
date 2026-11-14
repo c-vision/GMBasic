@@ -122,6 +122,12 @@ typedef struct { char* name; int type; int is_array; int ndims; int byref; int g
                                    * dichiarata da nessun blocco. Una DIM/LOCAL/LET dentro un blocco
                                    * emette una DICHIARAZIONE C nel blocco (shadowing) e segna
                                    * l'ID; alla chiusura del blocco l'ID torna 0 (emit_block). */
+                 /* LEAK STRINGHE (2026-11-13): 1 = il valore della variabile stringa può essere
+                  * CONDIVISO (escape: argomento di una call, RETURN, elemento di contenitore,
+                  * campo UDT, cattura di closure, RHS nudo) → non si libera il vecchio valore.
+                  * 0 = l'analisi conservativa (str_escape_prepass) ha dimostrato che ogni uso è
+                  * una lettura pura: l'assegnazione libera il valore precedente. */
+                 int str_escape;
                } var_t;
 
 /* `vars_t` dipende da `var_t`: una sola definizione anche di questa. */

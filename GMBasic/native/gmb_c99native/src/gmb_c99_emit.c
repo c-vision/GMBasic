@@ -5396,6 +5396,33 @@ void emit_arr_arg_len(ctx_t* c, gmb_expr_t* a);
 void emit_matrix_handle(ctx_t* c, const var_t* v);
 static int boxed_member_is_str(const char* m);
 
+/* LEAK STRINGHE (2026-11-13): l'espressione produce un gmb_string_t TEMPORANEO, cioè un
+ * buffer nuovo che nessun altro possiede (letterale, call, concat) — e che quindi si può
+ * liberare subito dopo l'uso. VAR/campo/elemento di array sono invece POSseduti altrove:
+ * no. Usato dalla concat (gmb_str_concat_owned) per non lasciare vivi i temporanei. */
+static int is_str_temp_expr(ctx_t* c, gmb_expr_t* e) {
+    if (!e) return 0;
+    switch (e->kind) {
+    case GMB_EXPR_STR: return 1;
+    case GMB_EXPR_BINARY:
+        /* concat: il risultato è un buffer nuovo */
+        return e->op && strcmp(e->op, "+") == 0 && etype(c, e) == TY_STR;
+    case GMB_EXPR_CALL:
+        /* ATTENZIONE: la stessa forma CALL è usata per la LETTURA di un elemento di array
+         * (`parts[i]` → CALL con var = nome dell'array) e per l'accesso a un campo
+         * (`p.name` → var con un punto): quelli restituiscono un valore POSSEDUTO dalla
+         * variabile, non un temporaneo — liberarli distruggerebbe l'array/campo.
+         * Sono temporanei solo le call a FUNZIONI/builtin (che costruiscono un buffer nuovo)
+         * e i ritorni FFI (il runtime li copia). */
+        if (etype(c, e) != TY_STR) return 0;
+        if (e->var && lookup_var(c, e->var)) return 0;                    /* elemento di array */
+        if (e->var && strchr(e->var, '.') && !find_fn(c, e->var)) return 0; /* campo/membro */
+        return 1;
+    default:
+        return 0;
+    }
+}
+
 static void emit_str_literal(ctx_t* c, const char* s) {
     sb_put(&c->out, "gmb_string_alloc(\"");
     for (const char* p = s ? s : ""; *p; p++) {
@@ -15725,9 +15752,14 @@ void emit_expr(ctx_t* c, gmb_expr_t* e) {
             }
         }
         if (strcmp(op, "+") == 0 && ls == TY_STR && rs == TY_STR) {
-            sb_put(&c->out, "gmb_string_concat(");
-            emit_expr(c, e->left); sb_put(&c->out, ", "); emit_expr(c, e->right);
-            sb_put(&c->out, ")");
+            /* LEAK STRINGHE: un operando TEMPORANEO (letterale, call, concat) è un buffer
+             * nuovo che nessun altro possiede → lo si libera subito dopo la concat. Un
+             * operando VAR/campo/indice è invece posseduto altrove: NON si tocca. Senza,
+             * ogni `+` dentro un ciclo lasciava vivi i temporanei (misurato: 1002 blocchi
+             * per 500 iterazioni con `debug.memory`). */
+            sb_put(&c->out, "gmb_str_concat_owned(");
+            emit_expr(c, e->left); sb_put(&c->out, is_str_temp_expr(c, e->left) ? ", 1, " : ", 0, ");
+            emit_expr(c, e->right); sb_put(&c->out, is_str_temp_expr(c, e->right) ? ", 1)" : ", 0)");
         } else if (strcmp(op, "+") == 0 && ls != rs
                    && (ls == TY_STR || rs == TY_STR)) {
             /* Concatenazione stringa+numero (semantica MQL): coerce il lato numerico a stringa.
@@ -15735,7 +15767,10 @@ void emit_expr(ctx_t* c, gmb_expr_t* e) {
              * Lato BOXED (gmb_val_t: dict/JSON/val dinamico, es. `DIM id = p("id")` di
              * HttpFullServer): gmb_double_to_string(gmb_val_t) NON compila — serve
              * gmb_val_to_string (stessa coercizione di emit_interp_segment). */
-            sb_put(&c->out, "gmb_string_concat(");
+            /* LEAK STRINGHE: il lato NUMERICO diventa un temporaneo (double_to_string /
+             * val_to_string) → va liberato dopo la concat. Il lato STRINGA segue la regola
+             * temporaneo/variabile di is_str_temp_expr. */
+            sb_put(&c->out, "gmb_str_concat_owned(");
             var_t* _lbx = (e->left->kind == GMB_EXPR_VAR && e->left->var) ? lookup_var(c, e->left->var) : NULL;
             var_t* _rbx = (e->right->kind == GMB_EXPR_VAR && e->right->var) ? lookup_var(c, e->right->var) : NULL;
             int _lbox = _lbx && _lbx->boxed_val && !_lbx->gkind && !_lbx->vclass[0]
@@ -15745,19 +15780,24 @@ void emit_expr(ctx_t* c, gmb_expr_t* e) {
             /* TY_VAL (json("k")/getter dinamico) conta come boxed: gmb_val_to_string, non
              * double_to_string (bug BspModelAuthDemo: `"user=" + gUser("name")`). */
             if (ls == TY_STR && (_rbox || rs == TY_VAL)) {
-                emit_expr(c, e->left); sb_put(&c->out, ", gmb_val_to_string(");
-                emit_expr(c, e->right); sb_put(&c->out, ")");
+                emit_expr(c, e->left);
+                sb_put(&c->out, is_str_temp_expr(c, e->left) ? ", 1, gmb_val_to_string(" : ", 0, gmb_val_to_string(");
+                emit_expr(c, e->right); sb_put(&c->out, "), 1)");
             } else if (ls == TY_STR) {
-                emit_expr(c, e->left); sb_put(&c->out, ", gmb_double_to_string(");
-                emit_expr(c, e->right); sb_put(&c->out, ")");
+                emit_expr(c, e->left);
+                sb_put(&c->out, is_str_temp_expr(c, e->left) ? ", 1, gmb_double_to_string(" : ", 0, gmb_double_to_string(");
+                emit_expr(c, e->right); sb_put(&c->out, "), 1)");
             } else if (_lbox || ls == TY_VAL) {
                 sb_put(&c->out, "gmb_val_to_string("); emit_expr(c, e->left);
-                sb_put(&c->out, "), "); emit_expr(c, e->right);
+                sb_put(&c->out, "), 1, ");
+                emit_expr(c, e->right);
+                sb_put(&c->out, is_str_temp_expr(c, e->right) ? ", 1)" : ", 0)");
             } else {
                 sb_put(&c->out, "gmb_double_to_string("); emit_expr(c, e->left);
-                sb_put(&c->out, "), "); emit_expr(c, e->right);
+                sb_put(&c->out, "), 1, ");
+                emit_expr(c, e->right);
+                sb_put(&c->out, is_str_temp_expr(c, e->right) ? ", 1)" : ", 0)");
             }
-            sb_put(&c->out, ")");
         } else if ((strcmp(op, "=") == 0 || strcmp(op, "<>") == 0)
                    && (ls == TY_STR || rs == TY_STR) && ls != TY_NUM && rs != TY_NUM) {
             /* confronto stringhe (TY_VAL incluso: getter RDD dinamico) → -1.0 (vero) / 0.0,
@@ -16619,6 +16659,37 @@ static int is_matrix_value_call_tk(gmb_tokenkind_t tk) {
 
  static void emit_assignment(ctx_t* c, const char* target, gmb_expr_t* value, int line, int from_dim) {
       if (target && !strchr(target, '.') && gmb_c99_try_emit_dyn_write(c, target, value)) return;
+      /* LEAK STRINGHE (2026-11-13): assegnazione a una variabile stringa "pura" (nessun uso
+       * che possa trattenere il buffer: vedi str_escape_prepass) → il valore PRECEDENTE va
+       * liberato, altrimenti in un loop la memoria cresce senza limite. Il nuovo valore si
+       * valuta in un temporaneo PRIMA del free, così `s = s + x` resta corretto. */
+      if (target && value && !strchr(target, '.') && !from_dim) {
+          var_t* sv = lookup_var(c, target);
+          /* `NOMEFUNZIONE = <expr>` è l'assegnazione del VALORE DI RITORNO della FUNCTION in
+           * emissione (non una variabile): il percorso normale la gestisce con `__ret`/slot
+           * dedicato — liberare "il valore precedente" qui romperebbe il ritorno. */
+          int is_fn_ret = (c->cur_fn && c->cur_fn->stmt && c->cur_fn->stmt->func_name
+                           && (strcasecmp(c->cur_fn->stmt->func_name, target) == 0
+                               || strcasecmp(target, "FUNCTION") == 0
+                               || strcasecmp(target, "OPERATOR") == 0));
+          int bare_self = (value->kind == GMB_EXPR_VAR && value->var
+                           && strcasecmp(value->var, target) == 0 && value->nargs == 0);
+          if (!is_fn_ret && sv && sv->type == TY_STR && !sv->is_array && !sv->gkind && !sv->boxed_val
+              && !sv->vclass[0] && !sv->nullable && !sv->sb_builder && !sv->regex_obj
+              && !sv->is_static && !sv->byref && !sv->arr_byref
+              && !sv->str_escape && !bare_self
+              && etype(c, value) == TY_STR) {
+              ind(c);
+              sb_put(&c->out, "{ gmb_string_t __gmb_nv = ");
+              emit_expr(c, value);
+              sb_put(&c->out, "; gmb_string_free(&");
+              emit_ident(c, sv->name);
+              sb_put(&c->out, "); ");
+              emit_ident(c, sv->name);
+              sb_put(&c->out, " = __gmb_nv; }\n");
+              return;
+          }
+      }
       /* ADR-MATRIX F4 (C99): riassegnazione di una decomposizione (dizionario di valori). */
       if (target && value && !strchr(target, '.')) {
           var_t* tdv = lookup_var(c, target);
@@ -18841,7 +18912,10 @@ static int is_json_path_member(ctx_t* c, gmb_expr_t* e, var_t** out_bv, const ch
                        ? 0
                        : (print_class_field_str(c, s->print_args[i]) || expr_value_is_str(c, s->print_args[i]) || etype(c, s->print_args[i]) == TY_STR
                         || (s->print_args[i] && s->print_args[i]->kind == GMB_EXPR_CALL && s->print_args[i]->tk == GMB_TOK_AsrTranscribe))) {
-                sb_put(&c->out, "gmb_print_string(");
+                /* LEAK STRINGHE: se l'argomento è un TEMPORANEO (concat/call/letterale) lo si
+                 * stampa e lo si libera subito; una variabile/campo non si tocca. */
+                sb_put(&c->out, is_str_temp_expr(c, s->print_args[i]) ? "gmb_print_string_tmp("
+                                                                     : "gmb_print_string(");
                 emit_expr(c, s->print_args[i]);
             } else if (s->print_args[i]->kind == GMB_EXPR_VAR && s->print_args[i]->var
                        && (_pv = lookup_var(c, s->print_args[i]->var)) != NULL
@@ -36057,6 +36131,255 @@ static void collect_global_decls(ctx_t* c, gmb_stmt_t** list, int n) {
     }
 }
 
+/* ── LEAK STRINGHE (2026-11-13) — analisi CONSERVATIVA di "escape" ────────────────────────
+ * L'emitter assegnava un nuovo gmb_string_t sopra il vecchio senza liberarlo: in un loop la
+ * memoria cresce senza limite (misurato con `debug.memory`: 500 iterazioni di
+ * `s$ = "riga " + STR$(i)` → 1501 blocchi vivi / 10 KB; 20000 iterazioni → ~317 KB).
+ *
+ * Perché non basta `gmb_string_free(&s)` prima dell'assegnazione: le stringhe C sono struct
+ * copiate PER VALORE (`a(i) = s$` → `a[...] = s`, stesso `s.data`; idem campi UDT, argomenti,
+ * RETURN, elementi di lista/dict, catture di closure). Liberare "sulla fiducia" il valore
+ * precedente rende PENDENTI tutte quelle copie: è corruzione di memoria, non un leak.
+ *
+ * Qui si marca ogni variabile stringa come ESCAPED (`str_escape = 1`) appena il suo valore
+ * può essere trattenuto altrove; solo le variabili che restano "pure letture" vengono
+ * liberate all'assegnazione. La regola è "in dubbio, NO": sbagliare per eccesso lascia il
+ * leak su quella variabile (nessun danno), sbagliare per difetto sarebbe un use-after-free.
+ *
+ * Sono considerati usi NON escaping (non trattengono il buffer):
+ *   • argomenti di PRINT (console/file)          • condizione di IF/WHILE/DO, limiti di FOR
+ *   • operandi di concat/confronto               • argomenti dei builtin PURO (whitelist sotto:
+ *     restituiscono un buffer NUOVO — len/lenb/asc/instr/ucase/lcase/trim/ltrim/rtrim/mid/
+ *     left/right/val)
+ * Tutto il resto (argomenti di altre call, RETURN, contenitori, campi, closure, indici,
+ * RHS "nudo" che condivide il buffer) → escape.
+ */
+static int str_pure_builtin(gmb_tokenkind_t tk) {
+    switch (tk) {
+    case GMB_TOK_Len: case GMB_TOK_LenB: case GMB_TOK_Asc: case GMB_TOK_Instr:
+    case GMB_TOK_Upper: case GMB_TOK_Lower: case GMB_TOK_Trim: case GMB_TOK_LTrim:
+    case GMB_TOK_RTrim: case GMB_TOK_Mid: case GMB_TOK_Left: case GMB_TOK_Right:
+    case GMB_TOK_Val:
+        return 1;
+    default:
+        return 0;
+    }
+}
+
+static void str_escape_name(ctx_t* c, const char* name) {
+    if (!name || !name[0]) return;
+    var_t* v = lookup_var(c, name);
+    if (v && v->type == TY_STR) v->str_escape = 1;
+}
+
+/* Marca escaped tutte le variabili nominate nell'espressione. `safe` = 1 → l'espressione è
+ * consumata da una lettura pura (PRINT/condizione/concat/argomento di builtin puro). */
+static void str_escape_expr(ctx_t* c, gmb_expr_t* e, int safe);
+static void str_escape_stmt(ctx_t* c, gmb_stmt_t* s);
+
+static void str_escape_expr_list(ctx_t* c, gmb_expr_t** list, int n, int safe) {
+    for (int i = 0; i < n; i++) str_escape_expr(c, list ? list[i] : NULL, safe);
+}
+
+static void str_escape_expr(ctx_t* c, gmb_expr_t* e, int safe) {
+    if (!e) return;
+    switch (e->kind) {
+    case GMB_EXPR_VAR:
+        if (!safe) str_escape_name(c, e->var);
+        break;
+    case GMB_EXPR_NUM:
+    case GMB_EXPR_STR:
+        break;
+    case GMB_EXPR_BINARY:
+    case GMB_EXPR_UNARY:
+        /* concat/confronto/aritmetica: il risultato è un valore NUOVO, gli operandi sono letti */
+        str_escape_expr(c, e->left, safe);
+        str_escape_expr(c, e->right, safe);
+        break;
+    case GMB_EXPR_CALL: {
+        /* builtin puro → gli argomenti sono sole letture; qualunque altra call può trattenere
+         * il valore (funzione utente, FFI, contenitore: list.Add(s) ecc.) → escape. */
+        int pure = str_pure_builtin(e->tk);
+        for (int i = 0; i < e->nargs; i++) str_escape_expr(c, e->args[i], pure ? safe : 0);
+        if (e->callee) str_escape_expr(c, e->callee, 0);
+        break;
+    }
+    case GMB_EXPR_LAMBDA:
+        /* closure: la cattura può trattenere la variabile oltre lo statement */
+        str_escape_expr_list(c, e->args, e->nargs, 0);
+        str_escape_expr(c, e->lambda_expr, 0);
+        for (int i = 0; i < e->n_lambda_body; i++) {
+            gmb_stmt_t* s = e->lambda_body[i];
+            if (s) str_escape_stmt(c, s);
+        }
+        break;
+    case GMB_EXPR_COMPREHENSION:
+        str_escape_expr(c, e->comp_src, 0);
+        str_escape_expr(c, e->comp_where, 0);
+        str_escape_expr(c, e->comp_order, 0);
+        str_escape_expr(c, e->comp_sel, 0);
+        str_escape_expr(c, e->comp_key, 0);
+        str_escape_expr_list(c, e->comp_more_src, e->n_comp_more, 0);
+        break;
+    default:
+        str_escape_expr_list(c, e->args, e->nargs, 0);
+        break;
+    }
+}
+
+/* Tutti i campi-espressione di uno statement, con l'escape conservativo. */
+static void str_escape_stmt_fields(ctx_t* c, gmb_stmt_t* s) {
+    str_escape_expr_list(c, s->print_args, s->nprint, 0);
+    str_escape_expr(c, s->value, 0);
+    str_escape_expr(c, s->expr, 0);
+    str_escape_expr(c, s->cond, 0);
+    str_escape_expr(c, s->array_index, 0);
+    str_escape_expr_list(c, s->array_idx_extra, s->n_array_idx_extra, 0);
+    str_escape_expr(c, s->for_from, 0); str_escape_expr(c, s->for_to, 0); str_escape_expr(c, s->for_step, 0);
+    str_escape_expr(c, s->do_until, 0); str_escape_expr(c, s->do_while, 0);
+    str_escape_expr(c, s->array_size, 0); str_escape_expr(c, s->dim_to_hi, 0);
+    str_escape_expr_list(c, s->dim_extra, s->n_dim_extra, 0);
+    str_escape_expr_list(c, s->dim_extra_lo, s->n_dim_extra, 0);
+    str_escape_expr(c, s->dim_init, 0);
+    str_escape_expr(c, s->ret_value, 0);
+    str_escape_expr_list(c, s->case_tests, s->n_case_tests, 0);
+    str_escape_expr_list(c, s->case_hi, s->n_case_tests, 0);
+    str_escape_expr(c, s->of_expr, 0);
+    str_escape_expr(c, s->on_expr, 0);
+    str_escape_expr(c, s->on_call, 0);
+    str_escape_expr(c, s->catch_when, 0);
+    str_escape_expr(c, s->error_code, 0);
+    str_escape_expr(c, s->throw_expr, 0);
+    str_escape_expr_list(c, s->data_values, s->n_data, 0);
+    str_escape_expr(c, s->run_expr, 0);
+    str_escape_expr(c, s->array_value, 0);
+    str_escape_expr(c, s->array_position, 0);
+    str_escape_expr(c, s->array_start, 0);
+    str_escape_expr(c, s->array_count, 0);
+    str_escape_expr(c, s->array_extra, 0);
+    str_escape_expr(c, s->row, 0);
+    str_escape_expr(c, s->col, 0);
+    str_escape_expr(c, s->fg, 0);
+    str_escape_expr(c, s->bg, 0);
+    str_escape_expr(c, s->input_prompt, 0);
+    str_escape_expr(c, s->file_path_expr, 0);
+    str_escape_expr(c, s->file_num, 0);
+    str_escape_expr(c, s->file_pos, 0);
+    str_escape_expr_list(c, s->control_args, s->n_control_args, 0);
+    str_escape_expr(c, s->channel, 0);
+    str_escape_expr(c, s->send_value, 0);
+    str_escape_expr(c, s->ok_flag, 0);
+    for (int i = 0; i < 4; i++) str_escape_expr(c, s->win_coords[i], 0);
+    str_escape_expr(c, s->cond_mutex, 0);
+    str_escape_expr(c, s->go_wait, 0);
+    str_escape_expr(c, s->proc_name, 0);
+    str_escape_expr_list(c, s->go_args, s->n_go_args, 0);
+    str_escape_expr_list(c, s->net_args, s->n_netargs, 0);
+    str_escape_expr_list(c, s->cls_static_inits, s->n_cls_statics, 0);
+    str_escape_expr_list(c, s->param_defaults, s->n_params, 0);
+}
+
+/* Corpi annidati (stessa procedura): NON cambiano lo scope → si scendono normalmente. */
+static void str_escape_stmt(ctx_t* c, gmb_stmt_t* s) {
+    if (!s) return;
+    switch (s->kind) {
+    case GMB_STMT_PRINT:
+        /* stampa: il buffer viene solo letto */
+        str_escape_expr_list(c, s->print_args, s->nprint, 1);
+        break;
+    case GMB_STMT_LET:
+    case GMB_STMT_ASSIGN: {
+        /* RHS "nudo" (VAR/campo/indice): la variabile bersaglio CONDIVIDE il buffer →
+         * né il target né la sorgente sono liberabili. */
+        gmb_expr_t* v = s->value;
+        int bare = v && (v->kind == GMB_EXPR_VAR) && v->nargs == 0;
+        if (bare) {
+            if (s->target) str_escape_name(c, s->target);
+            str_escape_expr(c, v, 0);
+        } else {
+            str_escape_expr(c, v, 1);
+        }
+        str_escape_expr(c, s->array_index, 0);
+        str_escape_expr_list(c, s->array_idx_extra, s->n_array_idx_extra, 0);
+        break;
+    }
+    case GMB_STMT_IF:
+        str_escape_expr(c, s->cond, 1);
+        for (int i = 0; i < s->n_then; i++) str_escape_stmt(c, s->then_body[i]);
+        for (int i = 0; i < s->n_else; i++) str_escape_stmt(c, s->else_body[i]);
+        break;
+    case GMB_STMT_FOR:
+        str_escape_expr(c, s->for_from, 1);
+        str_escape_expr(c, s->for_to, 1);
+        str_escape_expr(c, s->for_step, 1);
+        for (int i = 0; i < s->n_for; i++) str_escape_stmt(c, s->for_body[i]);
+        break;
+    case GMB_STMT_WHILE:
+        str_escape_expr(c, s->cond, 1);
+        for (int i = 0; i < s->n_while; i++) str_escape_stmt(c, s->while_body[i]);
+        break;
+    case GMB_STMT_DO:
+        str_escape_expr(c, s->do_until, 1);
+        str_escape_expr(c, s->do_while, 1);
+        for (int i = 0; i < s->n_do; i++) str_escape_stmt(c, s->do_body[i]);
+        break;
+    default:
+        str_escape_stmt_fields(c, s);
+        break;
+    }
+    /* corpi annidati comuni a tutti i kind */
+    for (int i = 0; i < s->n_then; i++) str_escape_stmt(c, s->then_body[i]);
+    for (int i = 0; i < s->n_else; i++) str_escape_stmt(c, s->else_body[i]);
+    for (int i = 0; i < s->n_for; i++) str_escape_stmt(c, s->for_body[i]);
+    for (int i = 0; i < s->n_while; i++) str_escape_stmt(c, s->while_body[i]);
+    for (int i = 0; i < s->n_do; i++) str_escape_stmt(c, s->do_body[i]);
+    for (int i = 0; i < s->n_try; i++) str_escape_stmt(c, s->try_body[i]);
+    for (int i = 0; i < s->n_catch; i++) str_escape_stmt(c, s->catch_body[i]);
+    for (int i = 0; i < s->n_finally; i++) str_escape_stmt(c, s->finally_body[i]);
+    for (int k = 0; k < s->n_select_cases; k++) {
+        gmb_stmt_t* cs = s->select_cases[k];
+        if (cs) str_escape_stmt(c, cs);
+    }
+    for (int k = 0; k < s->n_go_cases; k++)
+        if (s->go_cases[k].body) {
+            for (int j = 0; j < s->go_cases[k].n_body; j++) str_escape_stmt(c, s->go_cases[k].body[j]);
+            str_escape_stmt(c, s->go_cases[k].comm);
+        }
+    if (s->case_body) for (int i = 0; i < s->n_case_body; i++) str_escape_stmt(c, s->case_body[i]);
+}
+
+/* Pre-pass: per ogni PROCEDURA (e per il top level) marca le stringhe che possono essere
+ * condivise. I corpi di funzioni nidificate/λ sono trattati come "tutto escape" (catture). */
+static void str_escape_prepass(ctx_t* c, const gmb_program_t* prog) {
+    /* 1. top level (scope globale) */
+    {
+        int prv_fn_i = fn_index(c, c->cur_fn);
+        c->cur_fn = NULL;
+        for (int i = 0; i < prog->n; i++) {
+            gmb_stmt_t* s = prog->stmts[i];
+            if (!s || s->kind == GMB_STMT_FUNCTION || s->kind == GMB_STMT_CLASS) continue;
+            str_escape_stmt(c, s);
+        }
+        c->cur_fn = fn_at(c, prv_fn_i);
+    }
+    /* 2. corpi delle procedure: scope locale della funzione */
+    for (int i = 0; i < c->nfn; i++) {
+        fn_info_t* fn = &c->fns[i];
+        if (!fn->stmt || fn->stmt->is_ffi) continue;
+        c->cur_fn = fn;
+        for (int k = 0; k < fn->stmt->n_funcbody; k++) str_escape_stmt(c, fn->stmt->func_body[k]);
+        c->cur_fn = NULL;
+    }
+    /* 3. una variabile CATTURATA da una closure (cell) è condivisa per definizione */
+    for (int i = 0; i < c->nfn; i++) {
+        fn_info_t* fn = &c->fns[i];
+        for (int k = 0; k < fn->locals.n; k++)
+            if (fn->locals.v[k].captured || fn->locals.v[k].cell) fn->locals.v[k].str_escape = 1;
+    }
+    for (int k = 0; k < c->globals.n; k++)
+        if (c->globals.v[k].captured || c->globals.v[k].cell) c->globals.v[k].str_escape = 1;
+}
+
 static int gmb_c99_emit_once(const gmb_program_t* prog, char** out_src, char** error) {
     g_c99_last_dir_line = -1;   /* O8: la prima direttiva della nuova emissione */
     g_c99_last_dir_file[0] = 0;
@@ -36256,6 +36579,11 @@ static int gmb_c99_emit_once(const gmb_program_t* prog, char** out_src, char** e
         }
         if (!changed) break;
     }
+
+    /* 3-bis. LEAK STRINGHE: analisi conservativa di "escape" (vedi str_escape_prepass).
+     * Va DOPO il punto fisso dei tipi (serve sapere quali variabili sono TY_STR) e PRIMA
+     * dell'emissione (emit_assignment legge var->str_escape). */
+    str_escape_prepass(c, prog);
 
     /* 3b. FASE 2.6(b/c): il programma usa GPM? ON ERROR/RESUME? (pre-scan) */
     c->top_stmts = prog->stmts; c->n_top_stmts = prog->n;

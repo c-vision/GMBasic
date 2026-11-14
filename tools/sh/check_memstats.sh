@@ -101,8 +101,45 @@ if ! diff -q "$WORK/memon.out" "$WORK/memoff.out" >/dev/null 2>&1; then
 fi
 
 [ "$fail" -eq 0 ] || exit 1
+
+# ── LEAK STRINGHE (2026-11-13): un loop che riassegna una stringa NON deve crescere ──────
+# Prima della fix il contatore cresceva di ~2 blocchi per iterazione (500 iterazioni →
+# 1501 blocchi vivi): qui si verifica che a fine programma restino solo i valori vivi
+# davvero (la stringa finale), cioè che assegnazione e temporanei di concat/PRINT siano
+# rilasciati.
+cat > "$WORK/on/leak.bas" <<'EOF'
+IMPORT SYSTEM
+IMPORT AI
+AI SET OPTION "debug.memory", "1"
+SUB Main()
+  DIM i AS LONG
+  DIM s AS STRING
+  FOR i = 1 TO 500
+    s = "riga " + STR$(i)
+  NEXT i
+  FOR i = 1 TO 200
+    PRINT "t" + STR$(i)
+  NEXT i
+  PRINT "fine:"; LEN(s)
+END SUB
+EOF
+( cd "$ROOT" && bash "$RUN" "$WORK/on/leak.bas" memleak ) > "$WORK/leak.out" 2> "$WORK/leak.err" || {
+  echo "check_memstats: run del caso LEAK fallita" >&2; tail -3 "$WORK/leak.err" >&2; exit 1
+}
+live="$(grep -oE "^\[MEM\] string +vivi [0-9]+" "$WORK/leak.err" | grep -oE "[0-9]+$" | head -1)"
+if [ -z "$live" ]; then
+  echo "FAIL: caso LEAK senza report '[MEM] string vivi N'" >&2
+  exit 1
+fi
+if [ "$live" -gt 5 ]; then
+  echo "FAIL: LEAK — $live blocchi stringa ancora vivi dopo 700 iterazioni (attesi <= 5)" >&2
+  grep "^\[MEM\]" "$WORK/leak.err" | sed 's/^/  /' >&2
+  exit 1
+fi
+grep -q "^fine:" "$WORK/leak.out" || { echo "FAIL: caso LEAK senza output finale" >&2; exit 1; }
+
 if [ "$QUIET" -eq 0 ]; then
-  echo "check_memstats: OK"
+  echo "check_memstats: OK (leak: $live blocchi stringa vivi su 700 iterazioni)"
   grep "^\[MEM\]" "$WORK/memon.err" | sed 's/^/  /'
 fi
 exit 0

@@ -267,6 +267,15 @@ void gmb_print_string(gmb_string_t s) {
     console_or_gfx_text(s.data);
 }
 
+/* Stampa di un TEMPORANEO: stampa e libera il buffer (nessun altro lo possiede).
+ * Usata dall'emitter C99 per gli argomenti di PRINT che sono concat/call/letterali:
+ * senza, ogni `PRINT "x" + STR$(i)` dentro un ciclo lasciava vivo un buffer per giro
+ * (leak per iterazione, 2026-11-13). */
+void gmb_print_string_tmp(gmb_string_t s) {
+    console_or_gfx_text(s.data);
+    gmb_string_free(&s);
+}
+
 /* Stampa di un VALORE TESTO il cui tipo si decide dal contenuto (getter RDD su percorsi
  * C99/C99Native, dove il motore RDD conserva celle testuali): testo numerico → display
  * double con il padding Clipper (identico ai builtin VM/C e al gestito), altrimenti

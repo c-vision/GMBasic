@@ -417,6 +417,10 @@ const char* gmb_sys_info(const char* property);
 unsigned long long gmb_mem_available_bytes(void);
 unsigned long long gmb_mem_total_bytes(void);
 gmb_string_t gmb_string_concat(gmb_string_t s1, gmb_string_t s2);
+/* Concatena LIBERANDO gli operandi temporanei (free_a/free_b decisi dall'emitter: un
+ * letterale o il risultato di una call/concat è un buffer nuovo, una variabile no).
+ * Evita di lasciare vivo un temporaneo per ogni `+` dentro un ciclo (leak per iterazione). */
+gmb_string_t gmb_str_concat_owned(gmb_string_t a, int free_a, gmb_string_t b, int free_b);
 gmb_string_t gmb_bytes_dump(gmb_string_t b);
 void gmb_string_free(gmb_string_t* s);
 gmb_string_t gmb_int_to_string(gmb_int_t val);
@@ -433,6 +437,8 @@ gmb_string_t gmb_string_char_at(gmb_string_t s, gmb_int_t i);
  * ---------------------------------------------------------------------------- */
 
 void gmb_print_string(gmb_string_t s);
+/* Stampa un TEMPORANEO e lo libera (argomenti PRINT temporanei: nessun leak per ciclo). */
+void gmb_print_string_tmp(gmb_string_t s);
 void gmb_print_text_typed(const char* s);
 void gmb_print_int(gmb_int_t val);
 void gmb_print_double(gmb_double_t val);

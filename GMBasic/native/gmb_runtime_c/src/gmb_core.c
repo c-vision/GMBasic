@@ -57,6 +57,18 @@ gmb_string_t gmb_string_concat(gmb_string_t s1, gmb_string_t s2) {
     return res;
 }
 
+/* Concatenazione che LIBERA gli operandi quando sono temporanei (nessun altro proprietario).
+ * `free_a`/`free_b` li decide l'emitter (C99) in base alla forma dell'espressione: un
+ * letterale o il risultato di una call/concat è un buffer nuovo e usa-e-getta, una variabile
+ * no. Serve a non lasciar vivo un temporaneo per ogni `+` dentro un ciclo: è la parte
+ * "leak per iterazione" delle stringhe (2026-11-13). */
+gmb_string_t gmb_str_concat_owned(gmb_string_t a, int free_a, gmb_string_t b, int free_b) {
+    gmb_string_t r = gmb_string_concat(a, b);
+    if (free_a) gmb_string_free(&a);
+    if (free_b) gmb_string_free(&b);
+    return r;
+}
+
 /* (2026-09-07) rappresentazione testo di un byte[] come lista decimale `[144, 1, ...]`
  * (parity IL/PCode/VM-C: PRINT di un byte[]/digest = `[b0, b1, ...]`, non hex). */
 gmb_string_t gmb_bytes_dump(gmb_string_t b) {
