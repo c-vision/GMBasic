@@ -31,6 +31,7 @@
  */
 #include "gmb_cli_internal.h"
 #include "gmb_inc_resolve.h"
+#include "gmb_cc_defaults.h"   /* gmb_cc_cache_libdir (RID host della cache) */
 
 #include <dirent.h>
 #include <stdio.h>
@@ -178,13 +179,33 @@ static int doc_run(char* const argv[]) {
     return WIFEXITED(st) ? WEXITSTATUS(st) : -1;
 }
 
-/* Cache delle librerie native: `~/.gmbasic/libs/<rid>/`. Si riporta la sottocartella più
- * popolata (una sola per macchina) e quanti file contiene: nessun RID da duplicare qui. */
+/* Cache delle librerie native: `~/.gmbasic/libs/<rid>/`. Si preferisce il RID dell'HOST
+ * (è quello che serve alle build locali); solo se manca si ripiega sulla sottocartella più
+ * popolata (una macchina può avere cache di cross-build: su un Mac con `linux-x64` più
+ * popolata il doctor riportava quella, fuorviante per l'utente). */
 static void doc_scan_cache(void) {
     const char* home = getenv("HOME");
     if (!home || !*home) return;
     char root[CLI_PATH];
     snprintf(root, sizeof root, "%s/.gmbasic/libs", home);
+    /* 1. RID host (se la cartella esiste) */
+    {
+        char host[CLI_PATH];
+        if (gmb_cc_cache_libdir(host, sizeof host)) {
+            DIR* hs = opendir(host);
+            if (hs) {
+                int n = 0;
+                struct dirent* q;
+                while ((q = readdir(hs)) != NULL) if (q->d_name[0] != '.') n++;
+                closedir(hs);
+                if (n > 0) {
+                    snprintf(g_doc.cache_libs, sizeof g_doc.cache_libs, "%s", host);
+                    g_doc.n_cache_files = n;
+                    return;
+                }
+            }
+        }
+    }
     DIR* d = opendir(root);
     if (!d) { snprintf(g_doc.cache_libs, sizeof g_doc.cache_libs, "%s", root); return; }
     int best = 0;
