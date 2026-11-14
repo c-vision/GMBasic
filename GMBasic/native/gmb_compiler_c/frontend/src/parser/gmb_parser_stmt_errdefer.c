@@ -54,15 +54,59 @@ static gmb_expr_t* member_expr(const char* var, const char* field, int line)
     return e;
 }
 
+/* Estrae i marcatori ERRDEFER da `list` — RICORSIVAMENTE nei corpi annidati (IF/FOR/WHILE/
+ * DO/TRY/CATCH/FINALLY/SELECT) — togliendoli dai corpi e accodando il loro `go_comm` in `out`
+ * in ordine di dichiarazione. Ritorna il numero di statement rimasti in `list`.
+ *
+ * Perché ricorsivo: `ERRDEFER` dentro un IF è legittimo (il cleanup è della PROCEDURA, come
+ * in C# dove il marcatore finisce nello scope della procedura a qualunque profondità). Prima
+ * si guardava solo il livello superiore: il marcatore annidato restava nel corpo e l'emitter
+ * falliva con "statement non ancora supportato (kind=222)". */
+static int extract_in_list(gmb_stmt_t** list, int n, gmb_stmt_t*** out, int* out_n, int* out_cap)
+{
+    if (!list || n <= 0) return n;
+    int k = 0;
+    for (int i = 0; i < n; i++) {
+        gmb_stmt_t* s = list[i];
+        if (!s) continue;
+        if (s->kind == GMB_STMT_ERRDEFER) {
+            if (s->go_comm) {
+                if (*out_n >= *out_cap) {
+                    *out_cap = *out_cap ? *out_cap * 2 : 8;
+                    *out = (gmb_stmt_t**)realloc(*out, (size_t)(*out_cap) * sizeof(gmb_stmt_t*));
+                }
+                (*out)[(*out_n)++] = s->go_comm;
+            }
+            continue;   /* il marcatore non resta nel corpo */
+        }
+        s->n_then    = extract_in_list(s->then_body,    s->n_then,    out, out_n, out_cap);
+        s->n_else    = extract_in_list(s->else_body,    s->n_else,    out, out_n, out_cap);
+        s->n_for     = extract_in_list(s->for_body,     s->n_for,     out, out_n, out_cap);
+        s->n_while   = extract_in_list(s->while_body,   s->n_while,   out, out_n, out_cap);
+        s->n_do      = extract_in_list(s->do_body,      s->n_do,      out, out_n, out_cap);
+        s->n_try     = extract_in_list(s->try_body,     s->n_try,     out, out_n, out_cap);
+        s->n_catch   = extract_in_list(s->catch_body,   s->n_catch,   out, out_n, out_cap);
+        s->n_finally = extract_in_list(s->finally_body, s->n_finally, out, out_n, out_cap);
+        for (int c = 0; c < s->n_select_cases; c++)
+            if (s->select_cases[c])
+                s->select_cases[c]->n_case_body =
+                    extract_in_list(s->select_cases[c]->case_body,
+                                    s->select_cases[c]->n_case_body, out, out_n, out_cap);
+        list[k++] = s;
+    }
+    return k;
+}
+
 /* Avvolge `body` nel TRY/CATCH dei cleanup se contiene almeno un ERRDEFER.
  * Ritorna il numero di ERRDEFER trovati (0 = corpo invariato). */
 int gmb_p_wrap_errdefers(gmb_stmt_list_t* body, int line)
 {
     if (!body || body->n <= 0) return 0;
-    int n_ed = 0;
-    for (int i = 0; i < body->n; i++)
-        if (body->items[i] && body->items[i]->kind == GMB_STMT_ERRDEFER) n_ed++;
-    if (n_ed == 0) return 0;
+
+    gmb_stmt_t** defers = NULL;
+    int n_def = 0, cap_def = 0;
+    body->n = extract_in_list(body->items, body->n, &defers, &n_def, &cap_def);
+    if (n_def == 0) { free(defers); return 0; }
 
     /* Nome del binding UNIVOCO per procedura (contatore statico): con lo stesso nome in due
      * procedure un frontend/linker che risolve i nomi globalmente può far collidere il
@@ -75,29 +119,23 @@ int gmb_p_wrap_errdefers(gmb_stmt_list_t* body, int line)
     gmb_stmt_t* c = gmb_stmt_new(GMB_STMT_CATCH, line);
     c->catch_var = strdup(ev);
     c->catch_type = strdup("ERR");
-    int cap = n_ed + 1;
+    int cap = n_def + 1;
     c->catch_body = (gmb_stmt_t**)malloc((size_t)cap * sizeof(gmb_stmt_t*));
     c->n_catch = 0;
-    for (int i = body->n - 1; i >= 0 && c->n_catch < n_ed; i--) {
-        gmb_stmt_t* m = body->items[i];
-        if (m && m->kind == GMB_STMT_ERRDEFER && m->go_comm)
-            c->catch_body[c->n_catch++] = m->go_comm;
-    }
+    /* LIFO: l'ultimo ERRDEFER dichiarato corre per primo. */
+    for (int i = n_def - 1; i >= 0; i--) c->catch_body[c->n_catch++] = defers[i];
+    free(defers);
     gmb_stmt_t* re = gmb_stmt_new(GMB_STMT_ERROR, line);
     re->error_code = member_expr(ev, "Number", line);
     re->throw_expr = member_expr(ev, "Description", line);
     c->catch_body[c->n_catch++] = re;
 
-    /* ── TRY: il corpo originale senza i marcatori ── */
+    /* ── TRY: il corpo originale (ormai senza marcatori) ── */
     gmb_stmt_t* try_s = gmb_stmt_new(GMB_STMT_TRY, line);
-    try_s->try_body = (gmb_stmt_t**)malloc((size_t)(body->n - n_ed + 1) * sizeof(gmb_stmt_t*));
+    try_s->try_body = (gmb_stmt_t**)malloc((size_t)(body->n + 1) * sizeof(gmb_stmt_t*));
     try_s->n_try = 0;
-    for (int i = 0; i < body->n; i++) {
-        gmb_stmt_t* m = body->items[i];
-        if (!m) continue;
-        if (m->kind == GMB_STMT_ERRDEFER) continue;
-        try_s->try_body[try_s->n_try++] = m;
-    }
+    for (int i = 0; i < body->n; i++)
+        if (body->items[i]) try_s->try_body[try_s->n_try++] = body->items[i];
     try_s->catch_body = (gmb_stmt_t**)malloc(sizeof(gmb_stmt_t*));
     try_s->catch_body[0] = c;
     try_s->n_catch = 1;
@@ -105,7 +143,7 @@ int gmb_p_wrap_errdefers(gmb_stmt_list_t* body, int line)
     /* il corpo della procedura diventa il solo TRY */
     body->items[0] = try_s;
     body->n = 1;
-    return n_ed;
+    return n_def;
 }
 
 /* `ERRDEFER` fuori da una procedura: errore esplicito (il marcatore non ha nessuno che lo

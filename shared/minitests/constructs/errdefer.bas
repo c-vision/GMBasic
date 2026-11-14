@@ -12,7 +12,7 @@
 ' (bug reale: due procedure con ERRDEFER non compilavano su IL/PCode — "la base è un valore
 ' costante" perché il nome del binding era lo stesso in entrambe).
 '
-' EXPECT: n 0 :entro|n 0 :normale|n 1 :entro|n 2 :entro|n 2 :B|n 2 :A|n2:catturato  11  boom|n 3 :entro|n 3 :interno|n 3 :normale|altra:A|altra:  13  altro|fine
+' EXPECT: n 0 :entro|n 0 :normale|n 1 :entro|n 2 :entro|n 2 :B|n 2 :A|n2:catturato  11  boom|n 3 :entro|n 3 :interno|n 3 :normale|altra:A|altra:  13  altro|annidata:for|annidata:if|annidata:  14|fine
 SUB Rischiosa(n AS LONG)
     ERRDEFER PRINT "n"; n; ":A"
     ERRDEFER PRINT "n"; n; ":B"
@@ -35,6 +35,18 @@ SUB Altra()
     ERROR 13, "altro"
 END SUB
 
+' ERRDEFER ANNIDATI (dentro IF e FOR): il cleanup è della PROCEDURA, a qualunque profondità.
+SUB Annidata()
+    IF 1 = 1 THEN
+        ERRDEFER PRINT "annidata:if"
+    END IF
+    DIM i AS LONG
+    FOR i = 1 TO 1
+        ERRDEFER PRINT "annidata:for"
+    NEXT i
+    ERROR 14, "annidata"
+END SUB
+
 SUB Main()
     Rischiosa(0)
     Rischiosa(1)
@@ -48,6 +60,11 @@ SUB Main()
         Altra()
     CATCH e AS ERR
         PRINT "altra: "; e.Number; " "; e.Description
+    END TRY
+    TRY
+        Annidata()
+    CATCH e AS ERR
+        PRINT "annidata: "; e.Number
     END TRY
     PRINT "fine"
 END SUB
