@@ -727,7 +727,7 @@ const char* gmb_err_default_message(int code) {
 /* Nucleo condiviso da gmb_raise_error (errore "numerico": azzera un eventuale valore utente
  * rimasto) e gmb_raise_user_error (keep_value=1: il valore è già nello slot). */
 static void gmb_raise_error_impl(int number, const char* description, long line, int keep_value) {
-    gmb_print_stage_end(0);   /* canone: scarta l'output PARZIALE del PRINT in corso */
+    gmb_print_stage_abort();   /* canone: scarta l'output PARZIALE del PRINT in corso (tutti i livelli) */
     /* Descrizione vuota (es. `ERROR 11` senza testo) → catalogo canonico: `ERR.Description`
      * deve riportare il testo dell'errore, non una stringa vuota (parità IL/PCode, dove
      * BasicException.GetDefaultMessage fa la stessa cosa). */

@@ -466,6 +466,12 @@ struct gmb_task {
     /* stampa bufferizzata per-riga (come PrintLineStaging/PendingPrints) */
     char print_staging[1024];
     int  print_staging_len;
+    /* Frame della PROCEDURA che ha iniziato lo staging: un PRINT ANNIDATO (dentro una
+     * procedura chiamata come argomento) ha un frame più interno e va SOSPESO, non accodato
+     * (canone C99Native/IL/PCode: `[dentro]` + `b= 5`, non `b=[dentro]`). */
+    gmb_frame_t* print_staging_frame;
+    struct { char* buf; int len; gmb_frame_t* frame; } print_staging_saved[8];
+    int n_print_staging_saved;
     char print_line[2048];
     int  print_line_len;
     /* chiamata sincrona di closure dai builtin (gmb_vm_call_closure_sync) */

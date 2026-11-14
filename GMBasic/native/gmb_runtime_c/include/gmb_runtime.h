@@ -450,6 +450,8 @@ void gmb_print_newline(void);
  * viene scartato (output parziale non emesso) — parità il/pcode/vmc/c99. */
 void gmb_print_stage_begin(void);
 void gmb_print_stage_end(int commit);
+/* ERRORE: scarta TUTTI i livelli di staging pendenti (il longjmp salta gli `end`). */
+void gmb_print_stage_abort(void);
 /* PRINT con separatore ',': avanza alla prossima zona di 14 colonne (parity oracolo
  * IlRuntime.PrintTabZone / VM-C OP_PRINT_TAB_ZONE) — stampa gli spazi di padding in base
  * alla colonna corrente tracciata internamente da gmb_console.c. */

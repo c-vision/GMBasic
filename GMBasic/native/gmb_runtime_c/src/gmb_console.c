@@ -60,6 +60,20 @@ static __thread size_t s_stage_len = 0, s_stage_cap = 0;
 static __thread int    s_stage_active = 0;
 static __thread int    s_stage_col0 = 0;
 
+/* Livelli SOSPESI dello staging. Un PRINT ANNIDATO (es. un PRINT dentro un generatore
+ * valutato come argomento di un altro PRINT) non deve distruggere il parziale del PRINT
+ * esterno: `begin` SOSPENDE il livello corrente e ne apre uno nuovo, `end` lo chiude e
+ * riprende il precedente. Così `PRINT "pref="; NEXT(it)` con un PRINT nel generatore dà
+ * la riga del generatore e poi `pref= 7` — come IL/PCode/VM-C.
+ *
+ * Su ERRORE tutti i livelli si SCARTANO (gmb_print_stage_abort): il longjmp salta gli
+ * `end` dell'emitter, quindi i livelli pendenti non vanno ripresi né committati (canone
+ * "un PRINT interrotto non emette la riga parziale"). */
+#define GMB_STAGE_MAX 8
+typedef struct { char* buf; size_t len, cap; int col0; } gmb_stage_lvl_t;
+static __thread gmb_stage_lvl_t s_stage_saved[GMB_STAGE_MAX];
+static __thread int s_stage_depth = 0;
+
 /* Modalità SCREEN TUI (definizione sotto): dichiarazioni anticipate perché lo staging
  * di stampa (sopra la definizione) deve instradare il testo commesso allo screen. */
 static int  s_tui_on = 0;
@@ -68,7 +82,19 @@ void gmb_print_force_console(int on) { s_force_console = on ? 1 : 0; }
 static int  s_tui_row = 1, s_tui_col = 1;
 static void tui_screen_put(const char* text);
 
-void gmb_print_stage_begin(void) { s_stage_active = 1; s_stage_len = 0; s_stage_col0 = g_print_col; }
+void gmb_print_stage_begin(void)
+{
+    if (s_stage_active && s_stage_depth < GMB_STAGE_MAX)
+    {
+        s_stage_saved[s_stage_depth].buf = s_stage_buf;
+        s_stage_saved[s_stage_depth].len = s_stage_len;
+        s_stage_saved[s_stage_depth].cap = s_stage_cap;
+        s_stage_saved[s_stage_depth].col0 = s_stage_col0;
+        s_stage_depth++;
+        s_stage_buf = NULL; s_stage_len = 0; s_stage_cap = 0;
+    }
+    s_stage_active = 1; s_stage_len = 0; s_stage_col0 = g_print_col;
+}
 
 void gmb_print_stage_end(int commit)
 {
@@ -92,7 +118,40 @@ void gmb_print_stage_end(int commit)
         }
     }
     if (!commit) g_print_col = s_stage_col0;   /* scartato: ripristina la colonna di inizio */
-    s_stage_active = 0; s_stage_len = 0;
+    s_stage_len = 0;
+    if (s_stage_depth > 0)
+    {
+        /* riprende il livello esterno (il buffer del livello chiuso si libera) */
+        char* child = s_stage_buf;
+        s_stage_depth--;
+        s_stage_buf = s_stage_saved[s_stage_depth].buf;
+        s_stage_len = s_stage_saved[s_stage_depth].len;
+        s_stage_cap = s_stage_saved[s_stage_depth].cap;
+        s_stage_col0 = s_stage_saved[s_stage_depth].col0;
+        s_stage_saved[s_stage_depth].buf = NULL;
+        s_stage_active = 1;
+        if (child && child != s_stage_buf) free(child);
+    }
+    else
+    {
+        s_stage_active = 0;
+    }
+}
+
+/* ERRORE (gmb_raise_error): scarta TUTTI i livelli pendenti. Il longjmp salta gli `end`
+ * emessi dall'emitter, quindi i livelli aperti non verrebbero mai chiusi: qui si buttano. */
+void gmb_print_stage_abort(void)
+{
+    if (s_stage_depth > 0) g_print_col = s_stage_saved[0].col0;
+    for (int i = 0; i < s_stage_depth; i++)
+    {
+        free(s_stage_saved[i].buf);
+        s_stage_saved[i].buf = NULL;
+        s_stage_saved[i].len = s_stage_saved[i].cap = 0;
+    }
+    s_stage_depth = 0;
+    s_stage_active = 0;
+    s_stage_len = 0;
 }
 
 /* ============================================================================

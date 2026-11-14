@@ -771,7 +771,45 @@ internal sealed partial class PCodeProcessor
         // soltanto su OP_PRINT_LINE/NEWLINE. Se la valutazione di un argomento solleva un
         // errore (tipicamente implicit-await di un future fallito), lo statement non è mai
         // completato: il prefisso parziale non deve sopravvivere al salto verso l'handler.
+        // Si scartano anche i LIVELLI SOSPESI (PRINT annidati): il longjmp non passa dai loro
+        // commit, quindi non vanno ripresi (canone "un PRINT interrotto non emette il parziale").
         task.PrintLineStaging = null;
+        task.PrintLineStagingSaved = null;
+        task.PrintLineStagingFrame = null;
+    }
+
+    /// <summary>Inizio di un pezzo di PRINT: se lo staging appartiene a un FRAME più esterno
+    /// (PRINT ANNIDATO dentro una procedura chiamata come argomento) lo SOSPENDE invece di
+    /// accodarci il testo. Canone delle 4 gambe: il PRINT interno emette la sua riga, l'esterno
+    /// riprende e committa la sua (`[dentro]` + `b= 5`, non `b=[dentro]`).</summary>
+    private static void PrintStageEnter(PCodeTask task)
+    {
+        if (task.PrintLineStaging is { Length: > 0 } && !ReferenceEquals(task.PrintLineStagingFrame, task.Frame))
+        {
+            (task.PrintLineStagingSaved ??= new()).Push((task.PrintLineStaging, task.PrintLineStagingFrame));
+            task.PrintLineStaging = null;
+        }
+        if (task.PrintLineStaging == null) task.PrintLineStagingFrame = task.Frame;
+    }
+
+    /// <summary>Riga interna committata: riprende il livello esterno sospeso (se c'era).
+    /// Si riprende SOLO un livello di un frame più ESTERNO (il PRINT annidato è finito); un
+    /// livello rimasto da uno statement abortito (stesso frame) viene scartato.</summary>
+    private static void PrintStageLeave(PCodeTask task)
+    {
+        if (task.PrintLineStagingSaved is { Count: > 0 })
+        {
+            var top = task.PrintLineStagingSaved.Peek();
+            if (!ReferenceEquals(top.Frame, task.Frame))
+            {
+                task.PrintLineStagingSaved.Pop();
+                task.PrintLineStaging = top.Buf;
+                task.PrintLineStagingFrame = top.Frame;
+                return;
+            }
+            task.PrintLineStagingSaved.Clear();   /* livello orfano: scartato */
+        }
+        task.PrintLineStagingFrame = null;
     }
 
     private static void RestoreCallerErrorScope(PCodeTask task, PCodeCallFrame frame)

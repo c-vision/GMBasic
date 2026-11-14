@@ -13120,12 +13120,34 @@ public static double TextWidth(string s)
     // raggiunto → il parziale resta nel buffer e viene scartato dal PrintStageBegin successivo (o
     // a fine programma). Finestre/grafica restano immediate (come PCode).
     [ThreadStatic] private static System.Text.StringBuilder? _printStage;
+    /* Livelli SOSPESI: un PRINT ANNIDATO (un PRINT dentro una FUNCTION valutata come
+     * argomento) SOSPENDE il parziale esterno invece di distruggerlo. Canone delle 4 gambe:
+     * il PRINT interno emette la sua riga, l'esterno riprende e committa la sua. */
+    [ThreadStatic] private static System.Collections.Generic.Stack<System.Text.StringBuilder>? _printStageSaved;
 
     /// <summary>Exit code del programma BASIC: valore di ritorno di FUNCTION Main()
     /// (VB6/script tool). Il runner lo usa come codice di uscita del processo.</summary>
     public static int ProgramExitCode { get; private set; }
     public static void SetProgramExitCode(double v) { ProgramExitCode = (int)v; }
-    public static void PrintStageBegin() { _printStage ??= new System.Text.StringBuilder(); _printStage.Clear(); }
+    public static void PrintStageBegin()
+    {
+        if (_printStage is { Length: > 0 })
+        {
+            (_printStageSaved ??= new()).Push(_printStage);
+            _printStage = new System.Text.StringBuilder();
+            return;
+        }
+        /* Statement nuovo con un livello esterno PENDENTE = quello esterno è stato ABORTITO
+         * (errore: il suo PrintStageEnd non è stato raggiunto) → si scarta, canone
+         * "un PRINT interrotto non emette la riga parziale". */
+        if (_printStageSaved is { Count: > 0 })
+        {
+            _printStageSaved.Clear();
+            _printStage = null;
+        }
+        _printStage ??= new System.Text.StringBuilder();
+        _printStage.Clear();
+    }
 
     public static void PrintStageEnd(bool commit)
     {
@@ -13140,9 +13162,13 @@ public static double TextWidth(string s)
             try { gfx = g?.IsAvailable == true; } catch { gfx = false; }
             if (gfx) g!.Print(staged);
             else Current.Console.Print(staged);
-            return;
         }
-        _printStage?.Clear();
+        else
+        {
+            _printStage?.Clear();
+        }
+        /* Riprende il livello esterno sospeso (se c'era un PRINT annidato). */
+        if (_printStageSaved is { Count: > 0 }) _printStage = _printStageSaved.Pop();
     }
 
     public static void PrintDispatch(string text)

@@ -8879,10 +8879,86 @@ static void vm_append_trace(gmb_task_t* task, char* out, size_t cap)
     #undef VM_TRACE_PUSH
 }
 
+/* Staging del PRINT — sospensione per i PRINT ANNIDATI (canone C99Native/IL/PCode).
+ * Lo staging appartiene al FRAME della procedura che l'ha iniziato: se il frame cambia
+ * (siamo dentro una procedura chiamata come argomento di PRINT), il livello esterno si
+ * SOSPENDE invece di accodarci il testo; `leave` lo riprende al commit della riga interna.
+ * Senza: `PRINT "b="; Dentro()` con un PRINT in Dentro dava `b=[dentro]` invece di
+ * `[dentro]` + `b= 5`. */
+static void print_stage_enter(gmb_task_t* task)
+{
+    if (!task) return;
+    if (task->print_staging_len > 0 && task->print_staging_frame != task->frame)
+    {
+        if (task->n_print_staging_saved < 8)
+        {
+            char* cp = (char*)malloc((size_t)task->print_staging_len + 1);
+            if (cp)
+            {
+                memcpy(cp, task->print_staging, (size_t)task->print_staging_len);
+                cp[task->print_staging_len] = 0;
+                int i = task->n_print_staging_saved++;
+                task->print_staging_saved[i].buf = cp;
+                task->print_staging_saved[i].len = task->print_staging_len;
+                task->print_staging_saved[i].frame = task->print_staging_frame;
+                task->print_staging_len = 0;
+            }
+        }
+        else
+        {
+            task->print_staging_len = 0;   /* troppi livelli: scarta il parziale */
+        }
+    }
+    if (task->print_staging_len == 0) task->print_staging_frame = task->frame;
+}
+
+static void print_stage_leave(gmb_task_t* task)
+{
+    if (!task) return;
+    while (task->n_print_staging_saved > 0)
+    {
+        int i = task->n_print_staging_saved - 1;
+        int len = task->print_staging_saved[i].len;
+        gmb_frame_t* fr = task->print_staging_saved[i].frame;
+        char* cp = task->print_staging_saved[i].buf;
+        task->print_staging_saved[i].buf = NULL;
+        task->print_staging_saved[i].len = 0;
+        task->n_print_staging_saved--;
+        if (fr != task->frame)
+        {
+            /* livello di un frame ESTERNO: il PRINT annidato è finito, si riprende */
+            if (cp && len > 0 && len < (int)sizeof(task->print_staging))
+            {
+                memcpy(task->print_staging, cp, (size_t)len);
+                task->print_staging_len = len;
+                task->print_staging_frame = fr;
+            }
+            free(cp);
+            return;
+        }
+        free(cp);   /* livello orfano (stesso frame): scartato */
+    }
+    task->print_staging_frame = NULL;
+}
+
+/* Errore: si scartano TUTTI i livelli di staging pendenti (il longjmp salta i commit). */
+static void print_stage_abort(gmb_task_t* task)
+{
+    if (!task) return;
+    for (int i = 0; i < task->n_print_staging_saved; i++)
+    {
+        free(task->print_staging_saved[i].buf);
+        task->print_staging_saved[i].buf = NULL;
+        task->print_staging_saved[i].len = 0;
+    }
+    task->n_print_staging_saved = 0;
+    task->print_staging_len = 0;
+    task->print_staging_frame = NULL;
+}
+
 static int continue_pending_unwind(gmb_task_t* task)
 {
-    if (!task->unwind_active) return 0;
-    gmb_unwind_t* uw = &task->unwind;
+    if (!task->unwind_active) return 0;    gmb_unwind_t* uw = &task->unwind;
 
     while (task->cleanup_count > 0)
     {
@@ -9261,7 +9337,7 @@ static int raise_basic_error(gmb_task_t* task, double err_code, const char* msg)
 {
     task->error_line_ip = task->current_ip;
     task->error_resume_next_ip = statement_resume_ip(task, task->current_ip, task->ip);
-    task->print_staging_len = 0;   /* DiscardIncompletePrintStatement */
+    print_stage_abort(task);   /* DiscardIncompletePrintStatement: anche i livelli sospesi */
 
     /* STACK TRACE: si cattura SUBITO, prima dell'unwind dei frame (dopo non esistono più).
      * Lo usa il ramo fatale più sotto; `ERR.StackTrace` può riusare lo stesso testo. */
@@ -14330,6 +14406,7 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                 char buf[8192];
                 gmb_format_value(buf, sizeof(buf), e);
                 int n = (int)strlen(buf);
+                print_stage_enter(task);   /* PRINT annidato: sospende lo staging esterno */
                 if (task->print_staging_len + n < 1024)
                 {
                     memcpy(task->print_staging + task->print_staging_len, buf, n);
@@ -14370,6 +14447,7 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                 /* completa la riga: staging + valore, emessi direttamente (righe
                  * lunghe oltre i vecchi buffer fissi non vengono più troncate). */
                 int n = (int)strlen(buf);
+                print_stage_enter(task);   /* PRINT annidato: sospende lo staging esterno */
                 pthread_mutex_lock(&vm->print_lock);
                 if (task->print_staging_len > 0)
                 {
@@ -14385,6 +14463,7 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                 }
                 if (vm->print_newline) vm->print_newline(vm->print_ctx); else fputc('\n', stdout);
                 pthread_mutex_unlock(&vm->print_lock);
+                print_stage_leave(task);   /* riprende il PRINT esterno sospeso */
                 if (e.type == 2 && e.ref) gmb_obj_release(e.ref);   /* vedi OP_PRINT_VALUE */
                 break;
             }
@@ -14400,6 +14479,7 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                 }
                 if (vm->print_newline) vm->print_newline(vm->print_ctx); else fputc('\n', stdout);
                 pthread_mutex_unlock(&vm->print_lock);
+                print_stage_leave(task);   /* riprende il PRINT esterno sospeso */
                 break;
             }
             case OP_PRINT_TAB_ZONE:

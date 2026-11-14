@@ -1283,6 +1283,7 @@ internal sealed partial class PCodeProcessor
             {
                 var val = task.Sp > 0 ? task.PopRef() : null;
                 var formatted = FormatPrintValue(val);
+                PrintStageEnter(task);   /* PRINT annidato: sospende lo staging esterno */
                 (task.PrintLineStaging ??= new()).Append(formatted);
                 lock (_consoleLock) _printColumn += formatted.Length;
                 return true;
@@ -1291,6 +1292,7 @@ internal sealed partial class PCodeProcessor
             {
                 var val = task.Sp > 0 ? task.PopRef() : null;
                 var formatted = FormatPrintValue(val);
+                PrintStageEnter(task);   /* PRINT annidato: sospende lo staging esterno */
                 string fullLine;
                 if (task.PrintLineStaging is { Length: > 0 } staging)
                 {
@@ -1302,6 +1304,7 @@ internal sealed partial class PCodeProcessor
                 {
                     fullLine = formatted;
                 }
+                PrintStageLeave(task);   /* riprende il PRINT esterno sospeso */
                 // PRINT GRAFICO: accoda SUBITO (al completamento della riga), NON a fine tick:
                 // il flush di fine tick arriverebbe DOPO i comandi successivi già accodati nel
                 // game loop (es. un COLOR 10 dopo il PRINT rendeva il testo verde — bug
@@ -1332,6 +1335,7 @@ internal sealed partial class PCodeProcessor
                 {
                     (task.PendingPrints ??= new()).Add((1, stagedAtNewline.ToString(), Basic.IlBackend.IlRuntime.Current.Graphics.ClipperPrinterOnly(), Basic.IlBackend.IlRuntime.Current.Graphics.ClipperPrinterRouting()));
                     task.PrintLineStaging = null;
+                    PrintStageLeave(task);   /* riprende il PRINT esterno sospeso */
                 }
                 else
                 {

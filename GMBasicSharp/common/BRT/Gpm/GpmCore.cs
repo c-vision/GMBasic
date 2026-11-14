@@ -673,6 +673,17 @@ public sealed class PCodeTask
     /// tutto il contenuto qui accumulato viene spostato in PendingPrints in un solo colpo.</summary>
     public System.Text.StringBuilder? PrintLineStaging { get; set; }
 
+    /// <summary>Frame della PROCEDURA che ha iniziato lo staging corrente. Serve a riconoscere
+    /// un PRINT ANNIDATO (un PRINT dentro una procedura chiamata come argomento): lo staging
+    /// appartiene a un frame più esterno e va SOSPESO, non accodato — altrimenti il testo del
+    /// PRINT interno si fonde col prefisso dell'esterno (`b=[dentro]` invece di `[dentro]` +
+    /// `b= 5`). Stesso canone di C99Native/IL (PrintStageBegin/End).</summary>
+    public PCodeCallFrame? PrintLineStagingFrame { get; set; }
+
+    /// <summary>Livelli di staging SOSPESI (PRINT annidati), LIFO. Ripresi al commit della
+    /// riga interna. Sul percorso d'errore si scartano tutti (DiscardIncompletePrintStatement).</summary>
+    public System.Collections.Generic.Stack<(System.Text.StringBuilder Buf, PCodeCallFrame? Frame)>? PrintLineStagingSaved { get; set; }
+
     // === Stato ambient database, per-task (non più su PCodeProcessor condiviso) ===
     // "Area corrente" ISAM/DBF e "ultimo SEEK trovato" sono semanticamente "la MIA area
     // corrente"/"il risultato del MIO ultimo SEEK", non uno stato di programma condiviso — se
