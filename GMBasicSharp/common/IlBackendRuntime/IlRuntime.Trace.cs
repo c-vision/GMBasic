@@ -34,6 +34,11 @@ public static partial class IlRuntime
     [ThreadStatic] private static (int SymbolId, int Line)[]? _traceStack;
     [ThreadStatic] private static int _traceN;
     [ThreadStatic] private static string? _traceSnapshot;
+    /// <summary>Frame di un GENERATORE da anteporre alla catena. Il corpo del generatore gira
+    /// su un ALTRO thread (con la sua catena): quando l'errore viene ri-lanciato dal
+    /// consumatore, i suoi frame vanno preposti a quelli del chiamante — è ciò che sulle gambe
+    /// native accade da sé, perché la catena è condivisa tra corpo e chiamante.</summary>
+    [ThreadStatic] private static string? _tracePrefix;
 
     /// <summary>Entra nella procedura: pusha il frame e ritorna la profondità PRECEDENTE
     /// (da passare a <see cref="TraceLeaveTo"/> / <see cref="TraceRestoreTo"/>).</summary>
@@ -73,7 +78,13 @@ public static partial class IlRuntime
     public static void TraceSnapshot()
     {
         _traceSnapshot = BuildTraceText();
+        _tracePrefix = null;   /* consumato: la fotografia lo contiene già */
     }
+
+    /// <summary>Antepone alla prossima fotografia i frame di un generatore il cui errore sta
+    /// per essere ri-lanciato su questo thread (vedi IlGeneratorInstance.Next).</summary>
+    internal static void SetTracePrefix(string? prefix)
+        => _tracePrefix = string.IsNullOrEmpty(prefix) ? null : prefix;
 
     /// <summary>Catena fotografata all'ultimo errore ("" se nessuno).</summary>
     public static string ErrTrace() => _traceSnapshot ?? string.Empty;
@@ -92,8 +103,9 @@ public static partial class IlRuntime
 
     private static string BuildTraceText()
     {
-        if (_traceN <= 0 || _traceStack is null) return string.Empty;
+        if (_tracePrefix is null && (_traceN <= 0 || _traceStack is null)) return string.Empty;
         var sb = new StringBuilder();
+        if (_tracePrefix is not null) sb.Append(_tracePrefix);
         for (var i = _traceN - 1; i >= 0; i--)
         {
             var (sym, line) = _traceStack[i];

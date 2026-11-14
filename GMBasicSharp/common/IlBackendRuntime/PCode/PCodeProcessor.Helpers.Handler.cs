@@ -1114,7 +1114,11 @@ internal sealed partial class PCodeProcessor
     {
         public int Code { get; }
         public string Message { get; }
-        public GeneratorErrorSignal(int code, string message) { Code = code; Message = message; }
+        /// <summary>Catena BASIC del CORPO del generatore al momento dell'errore (i suoi frame
+        /// non esistono più nel task del chiamante: vanno anteposti alla sua catena).</summary>
+        public string Trace { get; }
+        public GeneratorErrorSignal(int code, string message, string trace)
+        { Code = code; Message = message; Trace = trace; }
     }
 
     /// <summary>
@@ -1176,6 +1180,13 @@ internal sealed partial class PCodeProcessor
                     break;
                 }
                 var op = (OpCode)_code[genTask.Ip];
+                /* STACK TRACE: l'ip dell'istruzione in esecuzione nel CORPO. NON si scrive su
+                 * genTask.CurrentInstructionIp: la semantica d'errore del corpo (ERRDEFER,
+                 * TRY/CATCH, RESUME NEXT) dipende da quel campo e alterarlo cambiava il
+                 * comportamento (il re-raise dell'ERRDEFER finiva nel CATCH sbagliato). Lo si
+                 * passa alla sola costruzione della catena, via override. */
+                _generatorTraceTask = genTask;
+                _generatorTraceIp = genTask.Ip;
                 genTask.Ip++;
                 bool cont;
                 try
@@ -1190,7 +1201,7 @@ internal sealed partial class PCodeProcessor
                      * gmb_gen_next / VM/C). */
                     genTask.State = PCodeTaskState.Finished;
                     genTask.PendingException = bex;
-                    return new GeneratorErrorSignal((int)bex.Code, bex.Message);
+                    return new GeneratorErrorSignal((int)bex.Code, bex.Message, BuildBasicTrace(genTask));
                 }
                 catch (InvalidOperationException iex) when (genTask.LastErrorCode != 0)
                 {
@@ -1199,13 +1210,19 @@ internal sealed partial class PCodeProcessor
                     genTask.State = PCodeTaskState.Finished;
                     genTask.PendingException = iex;
                     return new GeneratorErrorSignal(genTask.LastErrorCode,
-                        genTask.LastErrorDescription ?? iex.Message);
+                        genTask.LastErrorDescription ?? iex.Message,
+                        genTask.LastErrorTrace ?? BuildBasicTrace(genTask));
                 }
                 catch (Exception ex)
                 {
                     genTask.State = PCodeTaskState.Finished;
                     genTask.PendingException = ex;
                     throw;
+                }
+                finally
+                {
+                    _generatorTraceTask = null;
+                    _generatorTraceIp = -1;
                 }
                 if (op == OpCode.OP_NEXT_GENERATOR)
                 {

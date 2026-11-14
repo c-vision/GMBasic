@@ -393,6 +393,15 @@ internal sealed partial class PCodeProcessor
     private Dictionary<int, Basic.Runtime.Gpm.IslandRun> _islandByAddr = new();
     private int _islandCacheVersion = -1;
     private int[]? _debugSourceLines;
+    /// <summary>Catena del corpo di un generatore il cui errore sta per essere ri-lanciato nel
+    /// chiamante: <see cref="BuildBasicTrace"/> la antepone e la consuma.</summary>
+    private string? _pendingTracePrefix;
+    /// <summary>Task e ip dell'istruzione in esecuzione quando si costruisce la catena per un
+    /// errore nato nel CORPO di un generatore (vedi DriveGeneratorTask): il corpo non aggiorna
+    /// <see cref="PCodeTask.CurrentInstructionIp"/> — farlo cambierebbe la semantica d'errore —
+    /// quindi l'ip giusto si fornisce qui, per la sola lettura della riga.</summary>
+    private PCodeTask? _generatorTraceTask;
+    private int _generatorTraceIp = -1;
 
     public PCodeProcessor(IRuntimeHost runtime, CompiledChunk chunk, PCodeScheduler? scheduler = null, object? consoleLock = null, PCodeVm? vm = null)
     {

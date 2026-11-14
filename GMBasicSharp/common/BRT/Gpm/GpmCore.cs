@@ -451,6 +451,11 @@ public sealed class PCodeTask
     /// andrebbe perso (il CATCH del chiamante vedeva 200).</summary>
     public int LastErrorCode;
     public string? LastErrorDescription;
+    /// <summary>Catena BASIC dell'ultimo errore, letta da <c>RaiseBasicError</c> PRIMA
+    /// dell'unwind (dopo i frame delle procedure attraversate non esistono più). Serve ai
+    /// generatori: il corpo è un task separato e la sua catena va anteposta a quella del
+    /// chiamante quando l'errore viene ri-lanciato.</summary>
+    public string? LastErrorTrace;
 
     public string DebugPendingWait
     {

@@ -8805,6 +8805,7 @@ static void deliver_exception_after_finally(gmb_task_t* task, gmb_stack_entry_t*
         {
             char buf[1100];
             snprintf(buf, sizeof(buf), "BASIC Runtime Error: %s\n", desc);
+            size_t _tr_off = strlen(buf);
             vm_append_trace(task, buf, sizeof buf);
             /* Codice/riga/descrizione per i driver che devono RILANCIARE l'errore in un
              * altro contesto (generatori): parità C99Native gmb_gen_next. */
@@ -8823,6 +8824,8 @@ static void deliver_exception_after_finally(gmb_task_t* task, gmb_stack_entry_t*
             task->fatal_err_line = current_source_line(task);
             free(task->fatal_err_desc);
             task->fatal_err_desc = strdup(desc);
+            free(task->fatal_err_trace);
+            task->fatal_err_trace = strdup(buf + _tr_off);
             vm_error(task, buf);
         }
     }
@@ -8837,8 +8840,21 @@ static void deliver_exception_after_finally(gmb_task_t* task, gmb_stack_entry_t*
 static void vm_append_trace(gmb_task_t* task, char* out, size_t cap)
 {
     gmb_vm_t* vm = (gmb_vm_t*)task->vm_ctx;
-    if (!vm || !vm->chunk) return;
     size_t o = strlen(out);
+    /* PREFISSO: frame del CORPO di un generatore il cui errore sta per essere ri-lanciato nel
+     * contesto del chiamante (il corpo è un task separato: la sua catena non è in quella del
+     * chiamante). Si consuma una volta sola. */
+    if (task->trace_prefix)
+    {
+        if (task->trace_prefix[0] && o + 1 < cap)
+        {
+            int w = snprintf(out + o, cap - o, "%s", task->trace_prefix);
+            if (w > 0 && (size_t)w < cap - o) o += (size_t)w;
+        }
+        free(task->trace_prefix);
+        task->trace_prefix = NULL;
+    }
+    if (!vm || !vm->chunk) return;
 
     /* Helper: nome della procedura che CONTIENE l'ip + riga di quell'ip. Si scartano le
      * chiavi SINONIME del chunk (`@sym<id>` e `Nome#arità`, che il compilatore C# aggiunge
@@ -9406,6 +9422,8 @@ static int raise_basic_error(gmb_task_t* task, double err_code, const char* msg)
     task->fatal_err_line = err_line;
     free(task->fatal_err_desc);
     task->fatal_err_desc = strdup(msg ? msg : "");
+    free(task->fatal_err_trace);
+    task->fatal_err_trace = strdup(tr);
     vm_error(task, buf);
     return 0;
 }
@@ -16714,6 +16732,11 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                     int gc = task->gen_err_code;
                     char* gd = task->gen_err_desc;
                     task->gen_err_desc = NULL;
+                    /* Catena del CORPO del generatore: va anteposta a quella del chiamante
+                     * (vm_append_trace la consuma). */
+                    free(task->trace_prefix);
+                    task->trace_prefix = task->gen_err_trace;
+                    task->gen_err_trace = NULL;
                     gmb_raise_basic_error(task, (double)gc, gd ? gd : "");
                     free(gd);
                     if (task->state == GMB_TS_FINISHED) return -1;
@@ -18726,6 +18749,8 @@ static int gmb_vm_generator_drive(gmb_vm_t* vm, gmb_obj_generator_t* gen)
                 gen->err_line = t->fatal_err_line;
                 free(gen->err_desc);
                 gen->err_desc = strdup(t->fatal_err_desc);
+                free(gen->err_trace);
+                gen->err_trace = strdup(t->fatal_err_trace ? t->fatal_err_trace : "");
             }
             return 1;
         }
@@ -18743,6 +18768,8 @@ static int gmb_vm_generator_drive(gmb_vm_t* vm, gmb_obj_generator_t* gen)
                 gen->err_line = t->fatal_err_line;
                 free(gen->err_desc);
                 gen->err_desc = strdup(t->fatal_err_desc);
+                free(gen->err_trace);
+                gen->err_trace = strdup(t->fatal_err_trace ? t->fatal_err_trace : "");
             }
             return 1;
         }

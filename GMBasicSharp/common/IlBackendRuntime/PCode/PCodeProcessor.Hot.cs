@@ -870,6 +870,9 @@ internal sealed partial class PCodeProcessor
                 // VM/C). Gestito qui, prima del PushRef, perché RaiseBasicError cambia l'Ip.
                 if (bResult is GeneratorErrorSignal genErr)
                 {
+                    /* I frame del CORPO non esistono nel task del chiamante: si antepongono
+                     * alla catena che RaiseBasicError costruirà qui. */
+                    _pendingTracePrefix = genErr.Trace;
                     if (RaiseBasicError(task, (double)genErr.Code, genErr.Message))
                         return true;   // RESUME NEXT: il chiamante lascia un risultato (0)
                     return true;       // consegnato al CATCH: niente push

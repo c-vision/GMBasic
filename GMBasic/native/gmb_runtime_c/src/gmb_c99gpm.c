@@ -18,6 +18,7 @@
 #include <setjmp.h>
 #include <time.h>   /* nanosleep/struct timespec: su mingw li dichiara <time.h>, non <unistd.h> */
 #include "gmb_c99gpm.h"
+#include "gmb_trace.h"
 #include "gmb_tray.h"
 #include "gmb_ui_gfx.h"
 #include "gmb_iconsole.h"
@@ -1523,6 +1524,12 @@ struct gmb_gen {
     long err_line;
     gmb_val_t err_val;
     jmp_buf* caller_err_jmp;   /* handler del chiamante, ripristinato al ritorno dal corpo */
+    /* STACK TRACE: profondità della catena nel corpo e nel chiamante. Il corpo pusha i suoi
+     * frame SOPRA quelli del chiamante, quindi a ogni switch la cima deve essere quella del
+     * contesto che gira (altrimenti il `gmb_trace_line` del chiamante scrive la riga nel frame
+     * del generatore). Vedi gmb_gen_next / gmb_gen_yield. */
+    int body_trace_n;
+    int caller_trace_n;
     struct gmb_gen* next_all;
 #if defined(_WIN32) || defined(_WIN64)
     LPVOID caller_fiber;
@@ -1643,6 +1650,10 @@ int gmb_gen_next(gmb_gen_t* g, double* out)
     if (!g || g->done) return 1;
     gmb_gen_t* prev = g_gen_cur;
     g_gen_cur = g;
+    /* STACK TRACE: si riprende dal frame del CORPO (quello lasciato al YIELD). Al primo NEXT
+     * body_trace_n è 0 → il corpo pusha il proprio frame sopra quello del chiamante. */
+    g->caller_trace_n = gmb_trace_n;
+    if (g->body_trace_n > 0) gmb_trace_n = g->body_trace_n;
     /* L'handler d'errore è __thread: mentre il corpo gira deve essere QUELLO DEL CORPO
      * (installato dal trampolino sul suo stack). Se restasse attivo quello del chiamante
      * (un jmp_buf nel suo frame) un raise nel corpo farebbe longjmp dentro il frame del
@@ -1684,6 +1695,11 @@ void gmb_gen_yield(double v)
         return;
     }
     g->value = v;
+    /* STACK TRACE: mentre il corpo è sospeso la cima della catena deve tornare al frame del
+     * CHIAMANTE — il suo `gmb_trace_line` aggiorna la PROPRIA riga, non quella del generatore.
+     * La profondità del corpo si salva e si riprende al NEXT successivo. */
+    g->body_trace_n = gmb_trace_n;
+    gmb_trace_n = g->caller_trace_n;
     /* Mentre il corpo è sospeso deve essere attivo l'handler del CHIAMANTE (un raise del
      * chiamante non deve finire nel jmp_buf del corpo, che vive sul suo stack). */
     jmp_buf* mine = gmb_err_set_handler(g->caller_err_jmp);

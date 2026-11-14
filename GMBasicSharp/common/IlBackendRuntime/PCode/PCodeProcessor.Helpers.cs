@@ -592,6 +592,9 @@ internal sealed partial class PCodeProcessor
         // frame delle procedure attraversate non esistono più. Serve al messaggio fatale e a
         // `ERR.StackTrace`.
         var trace = BuildBasicTrace(task);
+        /* Conservata sul task: se questo è il CORPO di un generatore, il driver la riusa per
+         * anteporla alla catena del chiamante al re-raise (i frame qui stanno per sparire). */
+        task.LastErrorTrace = trace;
         // Pseudo-variabile ERR del linguaggio (StdLib: ERR.Number/Description/LineNumber/…):
         // va popolata PRIMA del dispatch, così l'handler ON ERROR e il CATCH la vedono.
         // Prima non veniva mai scritta → `ERR.Number` restava vuoto/0 (divergenza con IL/C99).
@@ -679,8 +682,14 @@ internal sealed partial class PCodeProcessor
     /// </summary>
     private string BuildBasicTrace(PCodeTask task)
     {
-        if (_addrToProcedureName.Count == 0) return string.Empty;
+        /* Frame del GENERATORE di cui si sta ri-lanciando l'errore: il corpo è un task
+         * separato, quindi la sua catena va anteposta a quella del chiamante (parità con
+         * C99Native, dove la catena è condivisa tra corpo e chiamante). Si consuma una volta. */
+        var prefix = _pendingTracePrefix;
+        _pendingTracePrefix = null;
+        if (_addrToProcedureName.Count == 0) return prefix ?? string.Empty;
         var sb = new System.Text.StringBuilder();
+        if (!string.IsNullOrEmpty(prefix)) sb.Append(prefix);
         void Push(int ip)
         {
             if (ip <= 0) return;
@@ -701,7 +710,9 @@ internal sealed partial class PCodeProcessor
             sb.Append("  in ").Append(name).Append(" (riga ")
               .Append(SourceLineForIp(ip)).Append(")\n");
         }
-        Push(task.CurrentInstructionIp);
+        Push(ReferenceEquals(task, _generatorTraceTask) && _generatorTraceIp >= 0
+            ? _generatorTraceIp
+            : task.CurrentInstructionIp);
         for (var f = task.Frame; f is not null; f = f.Previous) Push(f.ReturnIp);
         return sb.ToString();
     }
@@ -719,13 +730,18 @@ internal sealed partial class PCodeProcessor
         var lines = _debugSourceLines;
         if (lines is null || lines.Length == 0) return 0;
         static int ToLine(int raw) => raw >= 0 ? raw + 1 : 0;
-        if (ip >= 0 && ip < lines.Length && lines[ip] > 0) return ToLine(lines[ip]);
+        /* ATTENZIONE: l'indice 0 è la RIGA 1 del sorgente (valido). Il sentinella degli opcode
+         * sintetici è -1: il test deve essere `>= 0`, non `> 0` — con `> 0` ogni istruzione in
+         * riga 1 veniva attribuita alla prima riga successiva con indice valido (il re-raise
+         * di un ERRDEFER dichiarato in riga 2 riportava la riga del cleanup invece della
+         * propria). */
+        if (ip >= 0 && ip < lines.Length && lines[ip] >= 0) return ToLine(lines[ip]);
         for (var d = 1; d < lines.Length; d++)
         {
             var back = ip - d;
-            if (back >= 0 && back < lines.Length && lines[back] > 0) return ToLine(lines[back]);
+            if (back >= 0 && back < lines.Length && lines[back] >= 0) return ToLine(lines[back]);
             var fwd = ip + d;
-            if (fwd >= 0 && fwd < lines.Length && lines[fwd] > 0) return ToLine(lines[fwd]);
+            if (fwd >= 0 && fwd < lines.Length && lines[fwd] >= 0) return ToLine(lines[fwd]);
         }
         return 0;
     }

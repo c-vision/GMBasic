@@ -434,11 +434,18 @@ struct gmb_task {
     int fatal_err_code;
     long fatal_err_line;
     char* fatal_err_desc;
+    /* Catena BASIC dell'errore fatale, letta PRIMA dell'unwind dei frame (i generatori la
+     * antepongono alla catena del chiamante al re-raise: il corpo è un task separato). */
+    char* fatal_err_trace;
     /* NEXT() su un generatore il cui corpo è uscito per ERRORE: il codice vero viaggia fino
      * all'handler del chiamante (parità C99Native gmb_gen_next, che rilancia subito). */
     int gen_err_pending;
     int gen_err_code;
     char* gen_err_desc;
+    char* gen_err_trace;   /* catena del corpo del generatore (da anteporre a quella del chiamante) */
+    /* Prefisso da anteporre alla PROSSIMA catena costruita da vm_append_trace (re-raise di un
+     * errore di generatore: i frame del corpo non esistono nel task del chiamante). */
+    char* trace_prefix;
     /* DATA pointer (OP_READ/OP_RESTORE): indice nel chunk->data */
     int data_index;
     /* Generatore (GENERATOR PROCEDURE): valore prodotto dall'ultimo YIELD

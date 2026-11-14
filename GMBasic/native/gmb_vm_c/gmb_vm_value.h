@@ -107,6 +107,7 @@ typedef struct gmb_obj_generator {
     int err_code;
     char* err_desc;
     long err_line;
+    char* err_trace;   /* catena BASIC del corpo al momento dell'errore (frame interni) */
 } gmb_obj_generator_t;
 
 gmb_obj_generator_t* gmb_generator_new(struct gmb_task* task);

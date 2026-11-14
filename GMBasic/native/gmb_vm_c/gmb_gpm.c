@@ -2053,7 +2053,10 @@ void gmb_task_free(gmb_task_t* t)
     /* Messaggi d'errore del task (prima `pending_exception` non veniva liberato: leak). */
     free(t->pending_exception); t->pending_exception = NULL;
     free(t->fatal_err_desc); t->fatal_err_desc = NULL;
+    free(t->fatal_err_trace); t->fatal_err_trace = NULL;
     free(t->gen_err_desc); t->gen_err_desc = NULL;
+    free(t->gen_err_trace); t->gen_err_trace = NULL;
+    free(t->trace_prefix); t->trace_prefix = NULL;
     free(t);
 }
 
