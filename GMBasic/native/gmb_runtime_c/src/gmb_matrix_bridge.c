@@ -258,5 +258,8 @@ gmb_string_t gmb_val_decomp_factor_display(gmb_val_t dv, const char* name)
     if (!decomp_factor_matrix(dv, name, &m)) return gmb_string_alloc("");
     double* flat = gmb_matrix_flat(m);
     if (!flat) return gmb_string_alloc("");
-    return gmb_json_double_array(flat, (gmb_int_t)(m.rows * m.cols));
+    /* Display UMANO del fattore: separatore ", " (parità IL/PCode, che rende "[4, 2, 0, 2]").
+     * Il JSON compatto (`gmb_json_double_array`, senza spazi) resta per JSON.STRINGIFY: qui si
+     * stampa con PRINT, e la virgola senza spazio faceva divergere `matrix/mat_decomp_fields`. */
+    return gmb_display_double_array(flat, (gmb_int_t)(m.rows * m.cols));
 }
