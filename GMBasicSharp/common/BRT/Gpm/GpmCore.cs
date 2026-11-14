@@ -456,6 +456,9 @@ public sealed class PCodeTask
     /// generatori: il corpo è un task separato e la sua catena va anteposta a quella del
     /// chiamante quando l'errore viene ri-lanciato.</summary>
     public string? LastErrorTrace;
+    /// <summary>Riga (1-based) dell.ultimo errore: serve al re-raise del generatore, che
+    /// deve riportare la riga del CORPO e non quella del chiamante.</summary>
+    public int LastErrorLine;
 
     public string DebugPendingWait
     {

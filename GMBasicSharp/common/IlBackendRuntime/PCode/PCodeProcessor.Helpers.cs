@@ -545,7 +545,7 @@ internal sealed partial class PCodeProcessor
             ["Number"] = 200.0, // ErrorCode.InternalError
             ["Description"] = msg,
             ["LineNumber"] = (double)SourceLineForIp(task.CurrentInstructionIp),
-            ["SourceLineText"] = SourceLineTextForIp(ReferenceEquals(task, _generatorTraceTask) && _generatorTraceIp >= 0 ? _generatorTraceIp : task.CurrentInstructionIp),
+            ["SourceLineText"] = SourceLineTextForIp(task.CurrentInstructionIp),
             ["StackTrace"] = BuildBasicTrace(task)
         });
         var errInfo = new System.Collections.Generic.Dictionary<string, object?>
@@ -595,6 +595,16 @@ internal sealed partial class PCodeProcessor
         /* Conservata sul task: se questo è il CORPO di un generatore, il driver la riusa per
          * anteporla alla catena del chiamante al re-raise (i frame qui stanno per sparire). */
         task.LastErrorTrace = trace;
+        /* Riga dell'errore: quella del punto che ha fallito. Il re-raise di un errore di
+         * GENERATORE la porta con sé (il corpo gira in un task separato: altrimenti si
+         * riportava la riga del chiamante, dove sta la NEXT). */
+        var errLine = _pendingLineOverride > 0
+            ? _pendingLineOverride
+            : SourceLineForIp(ReferenceEquals(task, _generatorTraceTask) && _generatorTraceIp >= 0
+                ? _generatorTraceIp
+                : task.CurrentInstructionIp);
+        _pendingLineOverride = 0;
+        task.LastErrorLine = errLine;
         // Pseudo-variabile ERR del linguaggio (StdLib: ERR.Number/Description/LineNumber/…):
         // va popolata PRIMA del dispatch, così l'handler ON ERROR e il CATCH la vedono.
         // Prima non veniva mai scritta → `ERR.Number` restava vuoto/0 (divergenza con IL/C99).
@@ -607,8 +617,8 @@ internal sealed partial class PCodeProcessor
         {
             ["Number"] = errCode,
             ["Description"] = msg,
-            ["LineNumber"] = (double)SourceLineForIp(task.CurrentInstructionIp),
-            ["SourceLineText"] = SourceLineTextForIp(ReferenceEquals(task, _generatorTraceTask) && _generatorTraceIp >= 0 ? _generatorTraceIp : task.CurrentInstructionIp),
+            ["LineNumber"] = (double)errLine,
+            ["SourceLineText"] = SourceLineTextForLine(errLine),
             ["StackTrace"] = trace
         };
         SetErrGlobal(task, errInfo);
@@ -752,8 +762,15 @@ internal sealed partial class PCodeProcessor
     {
         var texts = _debugSourceTexts;
         if (texts is null) return string.Empty;
-        var line = SourceLineForIp(ip);
-        if (line < 1 || line > texts.Length) return string.Empty;
+        return SourceLineTextForLine(SourceLineForIp(ip));
+    }
+
+    /// <summary>Testo (trimato) della riga `line` (1-based) per ERR.SourceLineText; "" se il
+    /// chunk non porta il testo o la riga è fuori range.</summary>
+    private string SourceLineTextForLine(int line)
+    {
+        var texts = _debugSourceTexts;
+        if (texts is null || line < 1 || line > texts.Length) return string.Empty;
         return (texts[line - 1] ?? string.Empty).Trim(' ', '\t', '\r');
     }
 

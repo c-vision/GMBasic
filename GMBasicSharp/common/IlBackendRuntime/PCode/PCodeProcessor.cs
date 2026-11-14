@@ -405,6 +405,9 @@ internal sealed partial class PCodeProcessor
     /// quindi l'ip giusto si fornisce qui, per la sola lettura della riga.</summary>
     private PCodeTask? _generatorTraceTask;
     private int _generatorTraceIp = -1;
+    /// <summary>Riga da usare per il PROSSIMO RaiseBasicError (re-raise di un errore di
+    /// GENERATORE: la riga del corpo, non quella del chiamante dove sta la NEXT).</summary>
+    private int _pendingLineOverride;
 
     public PCodeProcessor(IRuntimeHost runtime, CompiledChunk chunk, PCodeScheduler? scheduler = null, object? consoleLock = null, PCodeVm? vm = null)
     {

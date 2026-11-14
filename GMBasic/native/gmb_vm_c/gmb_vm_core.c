@@ -9362,7 +9362,8 @@ static int raise_basic_error(gmb_task_t* task, double err_code, const char* msg)
     tr[0] = 0;
     vm_append_trace(task, tr, sizeof tr);
 
-    long err_line = current_source_line(task);
+    long err_line = task->err_line_override > 0 ? task->err_line_override : current_source_line(task);
+    task->err_line_override = 0;
 
     /* Descrizione: se il raise non ne porta una (es. `ERROR 11`), usa il catalogo canonico
      * condiviso con C99Native/IL/PCode — `ERR.Description` non deve restare vuota. */
@@ -16758,6 +16759,7 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                     free(task->trace_prefix);
                     task->trace_prefix = task->gen_err_trace;
                     task->gen_err_trace = NULL;
+                    task->err_line_override = task->gen_err_line;   /* riga del CORPO */
                     gmb_raise_basic_error(task, (double)gc, gd ? gd : "");
                     free(gd);
                     if (task->state == GMB_TS_FINISHED) return -1;

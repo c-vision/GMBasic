@@ -7715,6 +7715,7 @@ static void gmb_bf_655(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func
                     task->gen_err_desc = strdup(gen->err_desc ? gen->err_desc : "");
                     free(task->gen_err_trace);
                     task->gen_err_trace = strdup(gen->err_trace ? gen->err_trace : "");
+                    task->gen_err_line = gen->err_line;
                     bout->is_num = 0; bout->result_ref = NULL;
                 }
                 else

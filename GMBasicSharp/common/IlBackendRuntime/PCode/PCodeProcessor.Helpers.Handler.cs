@@ -1117,8 +1117,10 @@ internal sealed partial class PCodeProcessor
         /// <summary>Catena BASIC del CORPO del generatore al momento dell'errore (i suoi frame
         /// non esistono più nel task del chiamante: vanno anteposti alla sua catena).</summary>
         public string Trace { get; }
-        public GeneratorErrorSignal(int code, string message, string trace)
-        { Code = code; Message = message; Trace = trace; }
+        /// <summary>Riga (1-based) dell.errore NEL CORPO del generatore.</summary>
+        public int Line { get; }
+        public GeneratorErrorSignal(int code, string message, string trace, int line)
+        { Code = code; Message = message; Trace = trace; Line = line; }
     }
 
     /// <summary>
@@ -1201,7 +1203,7 @@ internal sealed partial class PCodeProcessor
                      * gmb_gen_next / VM/C). */
                     genTask.State = PCodeTaskState.Finished;
                     genTask.PendingException = bex;
-                    return new GeneratorErrorSignal((int)bex.Code, bex.Message, BuildBasicTrace(genTask));
+                    return new GeneratorErrorSignal((int)bex.Code, bex.Message, BuildBasicTrace(genTask), SourceLineForIp(genTask.CurrentInstructionIp));
                 }
                 catch (InvalidOperationException iex) when (genTask.LastErrorCode != 0)
                 {
@@ -1211,7 +1213,7 @@ internal sealed partial class PCodeProcessor
                     genTask.PendingException = iex;
                     return new GeneratorErrorSignal(genTask.LastErrorCode,
                         genTask.LastErrorDescription ?? iex.Message,
-                        genTask.LastErrorTrace ?? BuildBasicTrace(genTask));
+                        genTask.LastErrorTrace ?? BuildBasicTrace(genTask), genTask.LastErrorLine);
                 }
                 catch (Exception ex)
                 {

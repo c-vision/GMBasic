@@ -873,6 +873,7 @@ internal sealed partial class PCodeProcessor
                     /* I frame del CORPO non esistono nel task del chiamante: si antepongono
                      * alla catena che RaiseBasicError costruirà qui. */
                     _pendingTracePrefix = genErr.Trace;
+                    _pendingLineOverride = genErr.Line;   /* riga del CORPO, non del chiamante */
                     if (RaiseBasicError(task, (double)genErr.Code, genErr.Message))
                         return true;   // RESUME NEXT: il chiamante lascia un risultato (0)
                     return true;       // consegnato al CATCH: niente push

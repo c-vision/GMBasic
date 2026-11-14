@@ -443,6 +443,9 @@ struct gmb_task {
     int gen_err_code;
     char* gen_err_desc;
     char* gen_err_trace;   /* catena del corpo del generatore (da anteporre a quella del chiamante) */
+    long gen_err_line;     /* riga dell.errato NEL corpo del generatore (il re-raise deve usarla, non
+                            * quella del chiamante dove sta la NEXT) */
+    long err_line_override; /* riga da usare per il PROSSIMO raise (consumata) */
     /* Prefisso da anteporre alla PROSSIMA catena costruita da vm_append_trace (re-raise di un
      * errore di generatore: i frame del corpo non esistono nel task del chiamante). */
     char* trace_prefix;
