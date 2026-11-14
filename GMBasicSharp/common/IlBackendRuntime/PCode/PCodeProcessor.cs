@@ -393,6 +393,9 @@ internal sealed partial class PCodeProcessor
     private Dictionary<int, Basic.Runtime.Gpm.IslandRun> _islandByAddr = new();
     private int _islandCacheVersion = -1;
     private int[]? _debugSourceLines;
+    /// <summary>Testo delle righe sorgente (indice = riga 0-based) per ERR.SourceLineText;
+    /// arriva dalla coda opzionale del chunk (null = chunk vecchio → "").</summary>
+    private string[]? _debugSourceTexts;
     /// <summary>Catena del corpo di un generatore il cui errore sta per essere ri-lanciato nel
     /// chiamante: <see cref="BuildBasicTrace"/> la antepone e la consuma.</summary>
     private string? _pendingTracePrefix;
@@ -411,6 +414,7 @@ internal sealed partial class PCodeProcessor
         _chunkFormatVersion = chunk.FormatVersion;
         _code = chunk.Code.ToArray();
         _debugSourceLines = chunk.Lines.Count == chunk.Code.Count ? chunk.Lines.ToArray() : null;
+        _debugSourceTexts = chunk.SourceTexts.Length > 0 ? chunk.SourceTexts : null;
         _debugStatementRanges = chunk.StatementRanges.Count > 0 ? chunk.StatementRanges.ToArray() : null;
         _localNumericByAddr = chunk.ProcedureLocalNumeric.Count > 0 ? chunk.ProcedureLocalNumeric : null;
         _constants = chunk.Constants.ToList();
@@ -2627,7 +2631,7 @@ internal sealed partial class PCodeProcessor
                     ["Number"] = thrownCode,
                     ["Description"] = thrownDescription,
                     ["LineNumber"] = (double)SourceLineForIp(task.CurrentInstructionIp),
-                    ["SourceLineText"] = string.Empty,
+                    ["SourceLineText"] = SourceLineTextForIp(ReferenceEquals(task, _generatorTraceTask) && _generatorTraceIp >= 0 ? _generatorTraceIp : task.CurrentInstructionIp),
                     ["StackTrace"] = BuildBasicTrace(task)
                 });
                 if (TryEnterExceptionHandler(task, val))

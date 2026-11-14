@@ -138,6 +138,14 @@ public static class ChunkA1Serializer
             }
         }
 
+        // SOURCE TEXTS (coda FINALE opzionale): testo delle righe sorgente per
+        // ERR.SourceLineText. u32 count → count stringhe (indice = riga 0-based).
+        {
+            var texts = chunk.SourceTexts;
+            WriteU32(w, (uint)texts.Length);
+            foreach (var t in texts) WriteString(w, t ?? string.Empty);
+        }
+
         return ms.ToArray();
     }
 
@@ -264,6 +272,14 @@ public static class ChunkA1Serializer
                     }
                     chunk.ProcedureParamDefaults[addr] = defs;
                 }
+            }
+            // SOURCE TEXTS (coda FINALE, opzionale): testo delle righe per ERR.SourceLineText.
+            if (r.BaseStream.Position < r.BaseStream.Length)
+            {
+                var stCount = ReadU32(r);
+                var texts = new string[stCount];
+                for (var i = 0; i < stCount; i++) texts[i] = ReadString(r);
+                chunk.SourceTexts = texts;
             }
         }
         catch (EndOfStreamException) { }

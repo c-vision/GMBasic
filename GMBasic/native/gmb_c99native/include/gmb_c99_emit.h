@@ -30,5 +30,9 @@ typedef struct {
     const char* file;
 } gmb_c99_anchor_t;
 void gmb_c99_set_source_anchors(const gmb_c99_anchor_t* anchors, int n);
+/* TESTO SORGENTE per ERR.SourceLineText: il sorgente CONCATENATO passato al parser (indice 0 =
+ * riga 1, la stessa numerazione dei `#line`). Il puntatore resta di proprietà del chiamante e
+ * deve vivere per tutta l'emissione. NULL = nessun blob incorporato. */
+void gmb_c99_set_source_text(const char* text);
 
 #endif

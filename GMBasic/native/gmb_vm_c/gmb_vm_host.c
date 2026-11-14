@@ -326,6 +326,10 @@ int main(int argc, char** argv)
         fprintf(stderr, "gmb_vm_host: chunk A1 non valido (formato o versione errati)\n");
         return gmb_vm_host_exit(1);
     }
+    /* TESTO SORGENTE per ERR.SourceLineText: le righe viaggiano nel chunk (coda opzionale).
+     * Il chunk vive per tutta l'esecuzione, quindi il registro può puntarne l'array. */
+    if (chunk->src_texts && chunk->src_text_count > 0)
+        gmb_src_lines_register((const char* const*)chunk->src_texts, (int)chunk->src_text_count);
 
     gmb_vm_t vm;
     gmb_net_init();

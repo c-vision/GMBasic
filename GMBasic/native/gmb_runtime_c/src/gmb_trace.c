@@ -83,3 +83,57 @@ const char* gmb_err_trace(void)
 {
     return g_err_trace_snapshot ? g_err_trace_snapshot : "";
 }
+
+/* ── TESTO SORGENTE per ERR.SourceLineText ────────────────────────────────────────────────
+ * Il codice generato incorpora le righe del sorgente concatenato come UN letterale
+ * ("riga1\nriga2\n...", indice 0 = riga 1 — la stessa numerazione di `chunk->Lines` e dei
+ * `#line` del C emesso) e lo registra all'avvio. Il testo si cerca solo quando un errore
+ * viene letto (`ERR.SourceLineText`), quindi la scansione lineare non costa nulla nei
+ * percorsi caldi. */
+static const char* g_src_blob = NULL;   /* GLOBALE: registrato una volta, letto da qualunque thread */
+/* Variante ad ARRAY (chunk A1: le righe arrivano già separate) — usata dal VM/C. */
+static const char* const* g_src_lines = NULL;
+static int g_src_lines_n = 0;
+
+void gmb_src_text_register(const char* blob) { g_src_blob = blob; }
+
+void gmb_src_lines_register(const char* const* lines, int count)
+{
+    g_src_lines = lines;
+    g_src_lines_n = lines ? count : 0;
+}
+
+const char* gmb_src_line_text(long line)
+{
+    const char* p;
+    const char* e;
+    if (g_src_lines != NULL)
+    {
+        if (line < 1 || line > (long)g_src_lines_n) return "";
+        p = g_src_lines[line - 1];
+        if (p == NULL) return "";
+        e = p + strlen(p);
+    }
+    else
+    {
+        if (g_src_blob == NULL || line < 1) return "";
+        p = g_src_blob;
+        for (long cur = 1; cur < line; cur++) {
+            while (*p && *p != '\n') p++;
+            if (*p != '\n') return "";          /* riga oltre la fine del blob */
+            p++;
+        }
+        e = p;
+        while (*e && *e != '\n') e++;
+    }
+    /* Copia trimata (spazi iniziali e finali): il testo della riga senza indentazione, così
+     * l'oracolo è stabile fra leg e non dipende dalla formattazione del sorgente. */
+    static __thread char buf[512];
+    size_t n = (size_t)(e - p);
+    while (n > 0 && (p[0] == ' ' || p[0] == '\t')) { p++; n--; }
+    while (n > 0 && (p[n - 1] == ' ' || p[n - 1] == '\t' || p[n - 1] == '\r')) n--;
+    if (n >= sizeof buf) n = sizeof buf - 1;
+    memcpy(buf, p, n);
+    buf[n] = 0;
+    return buf;
+}

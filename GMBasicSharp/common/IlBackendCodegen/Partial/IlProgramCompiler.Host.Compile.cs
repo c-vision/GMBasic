@@ -37,6 +37,21 @@ public sealed partial class IlProgramCompiler
         static ImmutableArray<AstNode> AllModuleDeclarations(BasicProgram p) =>
             p.LoadedModules.Values.SelectMany(m => m.Declarations).ToImmutableArray();
 
+        /* Blob del TESTO SORGENTE per ERR.SourceLineText: righe della SourceMap unite da '\n'
+         * (indice 0 = riga 1, la stessa numerazione di ERR.LineNumber/SourceLineIndex). */
+        static string BuildSourceTextBlob(BasicProgram p)
+        {
+            var map = p.SourceMap;
+            if (map.IsDefaultOrEmpty) return string.Empty;
+            var sb = new System.Text.StringBuilder();
+            for (var i = 0; i < map.Length; i++)
+            {
+                if (i > 0) sb.Append('\n');
+                sb.Append(map[i].Text ?? string.Empty);
+            }
+            return sb.ToString();
+        }
+
         types ??= IlTypeContext.ForRuntime();
 
         var asmName = new AssemblyName(assemblyName);
@@ -878,6 +893,10 @@ public sealed partial class IlProgramCompiler
 
         var mainCompiler = new IlProgramCompiler(program, mainMethod.GetILGenerator(), types, procedureMethods, procedureDefinitionsBySymbol, classTypes, classFields, classFieldArrays, classConstructors, classProperties, classOperators, lambdaInfos, classFinalizers, udtFinalizers);
 
+        /* TESTO SORGENTE (ERR.SourceLineText): le righe del programma nell'ordine della
+         * SourceMap (indice 0 = riga 1). Un solo blob, emesso una volta nell'entry. */
+        var sourceTextBlob = BuildSourceTextBlob(program);
+
         // PrepareGraphicsHost DEVE precedere "new HeadlessRuntimeHost(...)": IRuntimeHost.
         // Graphics/Audio sono proprietà get-only lette UNA VOLTA SOLA nel costruttore da
         // HeadlessRuntimeHost.DefaultGraphics/DefaultAudio — chiamarlo dopo (come nel primo
@@ -894,6 +913,15 @@ public sealed partial class IlProgramCompiler
         // top-level; host/globali li prepara il chiamante (BspDispatch).
         if (!skipEntryInitialization)
         {
+            /* TESTO SORGENTE (ERR.SourceLineText): righe del sorgente concatenato, indice 0 =
+             * riga 1 (la numerazione di ERR.LineNumber). Un solo Ldstr + registrazione: il
+             * testo resta nell'assembly, così l'errore riporta la riga anche in un .exe
+             * standalone (senza sorgenti accanto). */
+            if (!string.IsNullOrEmpty(sourceTextBlob))
+            {
+                mainCompiler._il.Emit(OpCodes.Ldstr, sourceTextBlob);
+                mainCompiler._il.Emit(OpCodes.Call, typeof(IlRuntime).GetMethod(nameof(IlRuntime.RegisterSourceText), [typeof(string)])!);
+            }
             // GMBASIC_HEADLESS=1 (runner headless: test_ilrun/sweep): salta PrepareGraphicsHost
             // così HeadlessRuntimeHost.DefaultGraphics resta null → il host usa NullGraphicsService
             // e i park grafici completano subito. Senza, l'entry cabla la SDL reale che i runner

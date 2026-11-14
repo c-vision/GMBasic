@@ -373,6 +373,21 @@ gmb_chunk_t* gmb_chunk_load(const uint8_t* data, size_t len, bool load_lines)
                 if (r.err) { c->pdef_count = 0; goto fail; }
             }
         }
+        /* SOURCE TEXTS (coda FINALE opzionale): testo delle righe per ERR.SourceLineText.
+         * u32 count → count stringhe (u32 len + byte). Indice 0 = riga 1. */
+        if (!r.err && r.p < r.end)
+        {
+            uint32_t st_count = rd_u32(&r);
+            if (!r.err && st_count > 0 && st_count <= 1000000)
+            {
+                c->src_texts = (char**)calloc(st_count, sizeof(char*));
+                if (!c->src_texts) goto fail;
+                c->src_text_count = st_count;
+                for (uint32_t i = 0; i < st_count && !r.err; i++)
+                    c->src_texts[i] = rd_str(&r);
+                if (r.err) { c->src_text_count = 0; goto fail; }
+            }
+        }
     }
     if (r.err) goto fail;
 
@@ -419,6 +434,11 @@ void gmb_chunk_free(gmb_chunk_t* c)
         }
     }
     free(c->pdef_addrs); free(c->pdef_counts); free(c->pdef_kinds); free(c->pdef_nums); free(c->pdef_strs);
+    if (c->src_texts)
+    {
+        for (uint32_t i = 0; i < c->src_text_count; i++) free(c->src_texts[i]);
+        free(c->src_texts);
+    }
     if (c->plnum_flags)
     {
         for (uint32_t i = 0; i < c->plnum_count; i++) free(c->plnum_flags[i]);

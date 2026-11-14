@@ -54,6 +54,8 @@ SUB Main()
     CATCH e AS ERR
         PRINT "numero: "; e.Number
         PRINT "descrizione: "; e.Description
+        PRINT "riga: "; e.LineNumber
+        PRINT "testo della riga: "; e.SourceLineText
         PRINT "catena:"
         PRINT e.StackTrace
         PRINT "catena da ERR.StackTrace:"

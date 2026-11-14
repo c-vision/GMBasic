@@ -69,4 +69,13 @@ char* gmb_trace_text_skip(int skip);
 void gmb_trace_snapshot(void);
 const char* gmb_err_trace(void);
 
+/* ── TESTO SORGENTE (ERR.SourceLineText) ──────────────────────────────────────────────────
+ * Il codice generato incorpora le righe del sorgente concatenato in UN letterale con le
+ * righe separate da '\n' (indice 0 = riga 1) e lo registra all'avvio. */
+void gmb_src_text_register(const char* blob);
+/* Variante ad ARRAY (chunk A1: righe già separate, indice 0 = riga 1). */
+void gmb_src_lines_register(const char* const* lines, int count);
+/* Testo (trimato) della riga `line` 1-based; "" se il blob non c'è o la riga è fuori range. */
+const char* gmb_src_line_text(long line);
+
 #endif /* GMB_TRACE_H */

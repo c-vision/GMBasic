@@ -356,7 +356,13 @@ public sealed partial class IlProgramCompiler
         if (lineLocal is not null) _il.Emit(OpCodes.Ldloc, lineLocal);
         else _il.Emit(OpCodes.Ldc_I4, fallbackLine);
         _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.ErrLineOf), _types.BasicExceptionType, typeof(int)));
-        _il.Emit(OpCodes.Ldstr, string.Empty);
+        // SourceLineText: testo della STESSA riga, dal blob registrato all'avvio
+        // (IlRuntime.RegisterSourceText). Prima era sempre "": ora parità con C99Native/VM-C/PCode.
+        _il.Emit(OpCodes.Ldloc, caughtExceptionLocal);
+        if (lineLocal is not null) _il.Emit(OpCodes.Ldloc, lineLocal);
+        else _il.Emit(OpCodes.Ldc_I4, fallbackLine);
+        _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.ErrLineOf), _types.BasicExceptionType, typeof(int)));
+        _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.ErrSourceLineText), typeof(int)));
         /* StackTrace: catena BASIC fotografata all'ingresso del CATCH (IlRuntime.TraceSnapshot),
          * parità con C99Native/VM-C/PCode. */
         _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.ErrTrace)));

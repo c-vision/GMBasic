@@ -9279,7 +9279,7 @@ static void set_err_global_from_throw(gmb_task_t* task, gmb_stack_entry_t val)
     gmb_dict_set(err->dict, "Number", gmb_make_val_double(code));
     gmb_dict_set(err->dict, "Description", gmb_make_val_string_counted(desc));
     gmb_dict_set(err->dict, "LineNumber", gmb_make_val_double((double)current_source_line(task)));
-    gmb_dict_set(err->dict, "SourceLineText", gmb_make_val_string_counted(""));
+    gmb_dict_set(err->dict, "SourceLineText", gmb_make_val_string_counted(gmb_src_line_text(current_source_line(task))));
     gmb_dict_set(err->dict, "StackTrace", gmb_make_val_string_counted(""));
     set_err_global(task, err);
 }
@@ -9375,7 +9375,7 @@ static int raise_basic_error(gmb_task_t* task, double err_code, const char* msg)
         gmb_dict_set(err->dict, "Number", gmb_make_val_double(err_code));
         gmb_dict_set(err->dict, "Description", gmb_make_val_string_counted(msg ? msg : ""));
         gmb_dict_set(err->dict, "LineNumber", gmb_make_val_double((double)err_line));
-        gmb_dict_set(err->dict, "SourceLineText", gmb_make_val_string_counted(""));
+        gmb_dict_set(err->dict, "SourceLineText", gmb_make_val_string_counted(gmb_src_line_text(err_line)));
         gmb_dict_set(err->dict, "StackTrace", gmb_make_val_string_counted(tr));
         ev.type = 2;
         ev.ref = (gmb_obj_t*)err;

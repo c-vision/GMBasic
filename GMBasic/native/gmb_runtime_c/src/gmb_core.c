@@ -628,6 +628,11 @@ int gmb_err_number(void) { return g_err_number; }
 const char* gmb_err_description(void) { return g_err_description; }
 long gmb_err_line(void) { return g_err_line; }
 
+/* ERR.SourceLineText / ex.SourceLineText: testo della riga che ha sollevato l'errore, letto
+ * dal blob del sorgente registrato dal codice generato (gmb_src_text_register). "" quando il
+ * sorgente non è stato incorporato (es. eseguibile compilato senza il blob). */
+const char* gmb_err_source_line_text(void) { return gmb_src_line_text(g_err_line); }
+
 int gmb_err_has_value(void) { return g_err_has_value; }
 /* TRASFERISCE il valore dell'eccezione utente al chiamante: dopo la chiamata lo slot è vuoto
  * (il chiamante ne diventa l'unico detentore — nessun doppio free con i dtor delle classi). */

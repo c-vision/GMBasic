@@ -146,6 +146,10 @@ typedef struct {
     double**  pdef_nums;
     char***   pdef_strs;
     uint32_t  pdef_count;
+    /* TESTO SORGENTE (coda opzionale): testo delle righe, indice 0 = riga 1, per
+     * ERR.SourceLineText. Specchio CompiledChunk.SourceTexts. */
+    char**    src_texts;
+    uint32_t  src_text_count;
     /* pool di stringhe deserializzate (ownership) */
     char** _strings;
     uint32_t _strings_count;

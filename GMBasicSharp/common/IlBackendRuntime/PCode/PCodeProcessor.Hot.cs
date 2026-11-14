@@ -853,7 +853,7 @@ internal sealed partial class PCodeProcessor
                         ["Number"] = 144.0, // ErrorCode.StopIteration
                         ["Description"] = "Stop iteration",
                         ["LineNumber"] = (double)SourceLineForIp(task.CurrentInstructionIp),
-                        ["SourceLineText"] = string.Empty,
+                        ["SourceLineText"] = SourceLineTextForIp(ReferenceEquals(task, _generatorTraceTask) && _generatorTraceIp >= 0 ? _generatorTraceIp : task.CurrentInstructionIp),
                         ["StackTrace"] = BuildBasicTrace(task)
                     });
                     var errInfo = new System.Collections.Generic.Dictionary<string, object?>

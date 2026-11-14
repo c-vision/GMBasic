@@ -545,7 +545,7 @@ internal sealed partial class PCodeProcessor
             ["Number"] = 200.0, // ErrorCode.InternalError
             ["Description"] = msg,
             ["LineNumber"] = (double)SourceLineForIp(task.CurrentInstructionIp),
-            ["SourceLineText"] = string.Empty,
+            ["SourceLineText"] = SourceLineTextForIp(ReferenceEquals(task, _generatorTraceTask) && _generatorTraceIp >= 0 ? _generatorTraceIp : task.CurrentInstructionIp),
             ["StackTrace"] = BuildBasicTrace(task)
         });
         var errInfo = new System.Collections.Generic.Dictionary<string, object?>
@@ -608,7 +608,7 @@ internal sealed partial class PCodeProcessor
             ["Number"] = errCode,
             ["Description"] = msg,
             ["LineNumber"] = (double)SourceLineForIp(task.CurrentInstructionIp),
-            ["SourceLineText"] = string.Empty,
+            ["SourceLineText"] = SourceLineTextForIp(ReferenceEquals(task, _generatorTraceTask) && _generatorTraceIp >= 0 ? _generatorTraceIp : task.CurrentInstructionIp),
             ["StackTrace"] = trace
         };
         SetErrGlobal(task, errInfo);
@@ -725,8 +725,7 @@ internal sealed partial class PCodeProcessor
     /// `currentTokenLine - 1`), quindi la riga del sorgente è <c>voce + 1</c> — l'equivalente
     /// del `s->line` (1-based) che C99Native passa a gmb_raise_error.
     /// </summary>
-    private int SourceLineForIp(int ip)
-    {
+    private int SourceLineForIp(int ip)    {
         var lines = _debugSourceLines;
         if (lines is null || lines.Length == 0) return 0;
         static int ToLine(int raw) => raw >= 0 ? raw + 1 : 0;
@@ -744,6 +743,18 @@ internal sealed partial class PCodeProcessor
             if (fwd >= 0 && fwd < lines.Length && lines[fwd] >= 0) return ToLine(lines[fwd]);
         }
         return 0;
+    }
+
+    /// <summary>TESTO della riga dell'errore per ERR.SourceLineText (trimato, "" se il chunk
+    /// non porta il testo — chunk vecchi). Usa lo stesso ip della catena (override del
+    /// generatore compreso).</summary>
+    private string SourceLineTextForIp(int ip)
+    {
+        var texts = _debugSourceTexts;
+        if (texts is null) return string.Empty;
+        var line = SourceLineForIp(ip);
+        if (line < 1 || line > texts.Length) return string.Empty;
+        return (texts[line - 1] ?? string.Empty).Trim(' ', '\t', '\r');
     }
 
     /// <summary>

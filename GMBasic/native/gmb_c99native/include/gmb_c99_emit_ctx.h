@@ -217,6 +217,10 @@ typedef struct {
     int ffi_var_n;
     int ffi_var_fn[128];
     char ffi_var_key[128][65];
+    /* TESTO SORGENTE (ERR.SourceLineText): il sorgente CONCATENATO passato al parser, di
+     * proprietà del driver (vive per tutta l'emissione). Indice 0 = riga 1, la stessa
+     * numerazione dei `#line` e di `gmb_trace_line`. NULL = non incorporare il blob. */
+    const char* src_text;
 } ctx_t;
 
 #endif /* GMB_C99_EMIT_CTX_H */

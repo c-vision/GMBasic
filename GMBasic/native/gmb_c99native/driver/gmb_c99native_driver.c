@@ -702,6 +702,9 @@ int main(int argc, char** argv) {
         for (int k = 0; k < na; k++) { anchors[k].line = smap.segs[k].line; anchors[k].file = smap.segs[k].file; }
         gmb_c99_set_source_anchors(anchors, na);
     }
+    /* TESTO SORGENTE per ERR.SourceLineText: `src` è il testo CONCATENATO dato al parser (vive
+     * fino alla fine dell'emissione). */
+    gmb_c99_set_source_text(src);
     gmb_c99_set_gpm_mode(gpm_mode);
     if (gmb_c99_emit(&prog, &csrc, &eerr) != 0) {
         fprintf(stderr, "emissione: %s\n", eerr ? eerr : "errore"); free(eerr);

@@ -120,6 +120,14 @@ public sealed class CompiledChunk
     public string[] GlobalNames { get; set; } = [];
 
     /// <summary>
+    /// TESTO delle righe sorgente, indice = SourceLineIndex (0 = riga 1) — la
+    /// stessa numerazione di <see cref="Lines"/> e di <c>ERR.LineNumber</c>. Serve a
+    /// <c>ERR.SourceLineText</c>/<c>e.SourceLineText</c>: il testo viaggia nel chunk così la VM
+    /// lo riporta anche eseguendo un binario senza sorgenti accanto. Coda opzionale del
+    /// formato A1: i chunk vecchi non ce l'hanno ("" come prima).
+    /// </summary>
+    public string[] SourceTexts { get; set; } = [];
+    /// <summary>
     /// Nomi delle variabili locali di procedura, chiave = indirizzo Ip di inizio procedura,
     /// valore = nomi per slot (indice array = slot; null = slot senza nome noto, es. temporanei).
     /// Popolato a compile-time dai nomi dichiarati a LIVELLO PROCEDURA (return-slot, parametri,

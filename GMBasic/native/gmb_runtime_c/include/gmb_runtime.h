@@ -522,6 +522,10 @@ int gmb_csv_field(const char* csv, int idx, char* out, int cap);
 int gmb_err_number(void);
 const char* gmb_err_description(void);
 long gmb_err_line(void);
+/* ERR.SourceLineText / ex.SourceLineText: testo della riga dell'errore ("" se il sorgente non
+ * è incorporato nel binario). Implementata in gmb_core.c, legge il blob registrato con
+ * gmb_src_text_register (gmb_trace.h). */
+const char* gmb_err_source_line_text(void);
 jmp_buf* gmb_err_set_handler(jmp_buf* buf);
 void gmb_raise_error(int number, const char* description, long line);
 /* Eccezione UTENTE (`THROW NEW <Classe>`): il valore lanciato (istanza boxed) viaggia accanto

@@ -395,6 +395,11 @@ void gmb_c99_set_source_anchors(const gmb_c99_anchor_t* anchors, int n) {
     g_c99_last_dir_file[0] = 0;
 }
 
+/* TESTO SORGENTE (ERR.SourceLineText): il driver passa il sorgente CONCATENATO (lo stesso
+ * dato al parser). I puntatori restano di proprietà del chiamante. */
+static const char* g_c99_src_text = NULL;
+void gmb_c99_set_source_text(const char* text) { g_c99_src_text = text; }
+
 void c99_fail(ctx_t* c, int line, const char* fmt, ...) {
     if (c->error[0]) return;
     va_list ap;
@@ -1517,6 +1522,8 @@ static int catch_member_kind(ctx_t* c, const char* var) {
             /* StackTrace: catena delle procedure catturata all'ultimo raise (gmb_err_trace).
              * Prima cadeva nel fallback e `e.StackTrace` valeva 0. */
             if (strcasecmp(dot + 1, "StackTrace") == 0) return 3;
+            /* SourceLineText: testo della riga dell'errore (gmb_err_source_line_text). */
+            if (strcasecmp(dot + 1, "SourceLineText") == 0) return 3;
             return 0;
         }
     return 0;
@@ -2950,9 +2957,10 @@ int etype(ctx_t* c, gmb_expr_t* e) {
          * PRINT emetteva gmb_print_double(gmb_string_alloc(...)) → errore C in compilazione.
          * Condizione allineata a emit_var (prefix "ERR.", strncasecmp). */
         if (e->var && ((e->ns && e->ns_tk == GMB_TOK_Err) || strncasecmp(e->var, "ERR.", 4) == 0)) {
-            /* Description e StackTrace sono STRINGHE; Number/LineNumber numerici. */
+            /* Description, StackTrace e SourceLineText sono STRINGHE; Number/LineNumber numerici. */
             if (gmb_member_tok(e->var + 4) == GMB_TOK_Description) return TY_STR;
             if (strcasecmp(e->var + 4, "StackTrace") == 0) return TY_STR;
+            if (strcasecmp(e->var + 4, "SourceLineText") == 0) return TY_STR;
             return TY_NUM;
         }
         /* COLLECTIONS: proprietà senza parentesi su var (list.Count/Peek/Dequeue/Pop/…, dict.Keys) */
@@ -15238,6 +15246,8 @@ void emit_expr(ctx_t* c, gmb_expr_t* e) {
             if (emk == GMB_TOK_LineNumber) { sb_put(&c->out, "(gmb_double_t)gmb_err_line()"); break; }
             /* Catena delle procedure dell'ultimo errore (parità VM/C, PCode, IL). */
             if (strcasecmp(m, "StackTrace") == 0) { sb_put(&c->out, "gmb_string_alloc(gmb_err_trace())"); break; }
+            /* Testo della riga che ha sollevato l'errore (parità VM/C/PCode/IL). */
+            if (strcasecmp(m, "SourceLineText") == 0) { sb_put(&c->out, "gmb_string_alloc(gmb_err_source_line_text())"); break; }
             /* Altri campi (es. SOURCELINETEXT): fallback "0" (non errore), come il resto
              * delle gambe. Prima la gamba C falliva con "campo ERR non supportato". */
             sb_put(&c->out, "0");
@@ -15261,6 +15271,7 @@ void emit_expr(ctx_t* c, gmb_expr_t* e) {
             else if (cmk == GMB_TOK_Description) sb_put(&c->out, "gmb_string_alloc(gmb_err_description())");
             else if (cmk == GMB_TOK_LineNumber) sb_put(&c->out, "(gmb_double_t)gmb_err_line()");
             else if (strcasecmp(m, "StackTrace") == 0) sb_put(&c->out, "gmb_string_alloc(gmb_err_trace())");
+            else if (strcasecmp(m, "SourceLineText") == 0) sb_put(&c->out, "gmb_string_alloc(gmb_err_source_line_text())");
             else { c99_fail(c, e->line, "campo variabile CATCH non supportato: %s", m); return; }
             break;
         }
@@ -35967,6 +35978,38 @@ static void emit_library_section(ctx_t* c, const gmb_program_t* prog)
     }
 }
 
+/* TESTO SORGENTE per ERR.SourceLineText: emette il blob (righe del sorgente concatenato
+ * separate da '\n', indice 0 = riga 1) come letterali adiacenti (ognuno < 900 caratteri:
+ * nessun limite di lunghezza di un singolo letterale) e lo registra all'avvio di main.
+ * Il testo viene TRIMATO a runtime da gmb_src_line_text (indentazione esclusa). */
+static void emit_src_blob(ctx_t* c) {
+    if (!c->src_text || !c->src_text[0]) return;
+    sb_put(&c->out, "/* TESTO SORGENTE (ERR.SourceLineText): righe del sorgente concatenato,\n"
+                    " * indice 0 = riga 1 — stessa numerazione di gmb_trace_line. */\n"
+                    "static const char __gmb_src_text[] =\n");
+    size_t col = 0;
+    sb_put(&c->out, "    \"");
+    for (const unsigned char* p = (const unsigned char*)c->src_text; *p; p++) {
+        char esc[8];
+        size_t n = 0;
+        switch (*p) {
+            case '\\': esc[0] = '\\'; esc[1] = '\\'; n = 2; break;
+            case '"':  esc[0] = '\\'; esc[1] = '"';  n = 2; break;
+            case '\n': esc[0] = '\\'; esc[1] = 'n';  n = 2; break;
+            case '\t': esc[0] = '\\'; esc[1] = 't';  n = 2; break;
+            case '\r': continue;                     /* CRLF → LF */
+            default:
+                if (*p < 0x20) { n = (size_t)snprintf(esc, sizeof esc, "\\%03o", *p); }
+                else { esc[0] = (char)*p; n = 1; }   /* >= 0x20 (UTF-8 compreso) così com'è */
+                break;
+        }
+        if (col + n > 900) { sb_put(&c->out, "\"\n    \""); col = 0; }
+        sb_putn(&c->out, esc, n);
+        col += n;
+    }
+    sb_put(&c->out, "\";\n\n");
+}
+
 void gmb_semfold_program(gmb_stmt_t** stmts, int n, const char* file);   /* gmb_semfold.c */
 
 /* §3.6 PARSEC: file sorgente corrente (per LLM.FILEOUTLINE). Settato dal driver. */
@@ -36390,6 +36433,8 @@ static int gmb_c99_emit_once(const gmb_program_t* prog, char** out_src, char** e
     memset(&ctx, 0, sizeof(ctx));
     ctx_t* c = &ctx;
     c->option_strict = prog->option_strict;
+    /* TESTO SORGENTE per ERR.SourceLineText (vedi gmb_c99_set_source_text). */
+    c->src_text = g_c99_src_text;
     if (prog->library_name[0]) {
         ctx.lib_mode = 1;
         strncpy(ctx.lib_name, prog->library_name, sizeof(ctx.lib_name) - 1);
@@ -37309,7 +37354,9 @@ static int gmb_c99_emit_once(const gmb_program_t* prog, char** out_src, char** e
             else
                 sb_put(&c->out, "    gmb_user_Main();\n}\n\n");
         }
+        emit_src_blob(c);
         sb_put(&c->out, "int main(int argc, char** argv) {\n");
+        if (c->src_text && c->src_text[0]) sb_put(&c->out, "    gmb_src_text_register(__gmb_src_text);\n");
         sb_put(&c->out, "    gmb_set_command_args(argc, argv);\n");
         /* Boot UI/console SOLO se il programma usa grafica/controls/TUI (Eseguibili-C-Minimali):
          * un programma headless (PRINT/DBF/…) non deve inizializzare SDL/iconsole. */

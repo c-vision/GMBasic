@@ -519,6 +519,19 @@ public sealed partial class Compiler
         // _procedureArities è ormai finale — copiato per intero (vedi CompiledChunk.ProcedureArities).
         foreach (var kv in _procedureArities) _chunk.ProcedureArities[kv.Key] = kv.Value;
 
+        // TESTO SORGENTE per ERR.SourceLineText: righe nell'ordine della SourceMap (indice 0 =
+        // riga 1, la stessa numerazione di chunk.Lines/ERR.LineNumber). Va nel chunk così la VM
+        // (PCode e VM/C) riporta il testo della riga anche su un eseguibile senza sorgenti.
+        {
+            var map = (_ctx as BasicProgram)?.SourceMap ?? default;
+            if (!map.IsDefaultOrEmpty)
+            {
+                var texts = new string[map.Length];
+                for (var i = 0; i < map.Length; i++) texts[i] = map[i].Text ?? string.Empty;
+                _chunk.SourceTexts = texts;
+            }
+        }
+
         return _chunk;
     }
 

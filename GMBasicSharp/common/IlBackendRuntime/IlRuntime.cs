@@ -8535,6 +8535,35 @@ public static double TextWidth(string s)
     public static int ErrLineOf(BasicException ex, int fallback)
         => ex.Position.Line > 0 ? ex.Position.Line : fallback;
 
+    /* ── TESTO SORGENTE (ERR.SourceLineText) ──────────────────────────────────────────────
+     * Il codice generato registra all'avvio UN blob con le righe del sorgente concatenato
+     * ("riga1\nriga2\n...", indice 0 = riga 1 — la stessa numerazione di ERR.LineNumber).
+     * Stesso formato e stessa semantica del runtime C (gmb_src_line_text): testo TRIMATO,
+     * "" se la riga è fuori range o il blob non è stato registrato (assembly compilato
+     * senza, es. esecuzione di un .dll prodotto altrove). */
+    private static string? _srcText;
+
+    public static void RegisterSourceText(string? blob) => _srcText = blob;
+
+    public static string SourceLineText(int line)
+    {
+        var blob = _srcText;
+        if (string.IsNullOrEmpty(blob) || line < 1) return string.Empty;
+        var start = 0;
+        for (var cur = 1; cur < line; cur++)
+        {
+            var nl = blob.IndexOf('\n', start);
+            if (nl < 0) return string.Empty;
+            start = nl + 1;
+        }
+        var end = blob.IndexOf('\n', start);
+        if (end < 0) end = blob.Length;
+        return blob.Substring(start, end - start).Trim(' ', '\t', '\r');
+    }
+
+    /// <summary>Testo della riga di un errore appena lanciato (parità C: gmb_err_source_line_text).</summary>
+    public static string ErrSourceLineText(int line) => SourceLineText(line);
+
     public static double SafeDivide(double a, double b, int line)
     {
         if (b == 0) RaiseDivisionByZero(line);
