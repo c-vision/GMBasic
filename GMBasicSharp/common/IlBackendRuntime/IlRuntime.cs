@@ -18077,8 +18077,38 @@ public static double TextWidth(string s)
     public static void TeamDistillThinking(string team, string dataset) { Basic.Agents.Recursive.RecursiveTrainer.DistillThinking(team, dataset); }
     public static string AiSetHfToken(string value) { Basic.AI.AiConfig.HfToken = value; return value; }
     public static string AiSetOption(string name, string value)
-        => Basic.Providers.MlxOptions.Set(name, value) == 0 ? value : "";
+    {
+        var rc = Basic.Providers.MlxOptions.Set(name, value);
+        if (rc == 0) NotifyOptionAcceptedWithoutReport(name, value);
+        return rc == 0 ? value : "";
+    }
     public static string AiOption(string name) => Basic.Providers.MlxOptions.Get(name);
+
+    /* NOTA DIAGNOSTICA `debug.memory` (2026-11-14). L'opzione è la SUPERFICIE del registro
+     * (§2.1): va accettata e elencata anche qui, e il testo dell'elenco resta identico alle
+     * gambe C. Ma la contabilità della memoria viva sta in `gmb_memstats.c` (runtime C):
+     * su IL e PCodeVM il set riesce e NON esiste alcun report `[MEM]`. Accettarla in silenzio
+     * faceva sembrare la diagnostica rotta invece che assente per costruzione. La nota va su
+     * STDERR — l'oracolo dei MiniTest è lo stdout, quindi nessun test cambia esito e l'elenco
+     * delle opzioni non viene toccato. */
+    private static bool _debugMemoryNoReportNoted;
+    private static void NotifyOptionAcceptedWithoutReport(string name, string value)
+    {
+        if (_debugMemoryNoReportNoted) return;
+        if (!string.Equals(name, "debug.memory", StringComparison.OrdinalIgnoreCase)) return;
+        if (string.IsNullOrEmpty(value)) return;
+        // Stessa regola di "acceso" di `gmb_memstats.c`: vuoto/0/off/false/no = spenta.
+        if (value == "0"
+            || string.Equals(value, "off", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(value, "false", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(value, "no", StringComparison.OrdinalIgnoreCase)) return;
+        _debugMemoryNoReportNoted = true;
+        Console.Error.WriteLine(
+            "[AI SET OPTION] debug.memory=\"" + value + "\": opzione registrata, ma la contabilità della " +
+            "memoria viva è del solo runtime C (gmb_memstats.c). Su IL e PCodeVM il valore è accettato e " +
+            "NON produce alcun report [MEM]: per la diagnosi eseguire il programma sulla gamba C " +
+            "(VM/C o C99Native).");
+    }
 
     /// <summary>Voci DICHIARATE del registro opzioni — MIRROR di `g_opt_core[]` in
     /// native/gmb_runtime_c/src/gmb_opts.c, che è la fonte canonica: nomi, ordine e
