@@ -45,6 +45,11 @@ Gruppi di verifica di tools/
             CMake e non scrive oggetti nel repo.
   statici   Sintassi di tutti gli script di tools/: bash -n su ogni .sh e compile()
             su ogni .py. Non esegue nulla, non tocca il repo, nessun artefatto.
+  opzioni   Confronta il MIRROR C# del registro opzioni (OptionCoreTable in IlRuntime.cs) col
+            canonico C (g_opt_core[] in gmb_opts.c): nomi, ordine e descrizioni devono essere
+            identici, perché `AI LIST OPTIONS` è una superficie delle 4 gambe. Al primo scarto
+            stampa il diff esatto della voce (testo C, testo C#, primo carattere diverso).
+            Esegue tools/sh/check_option_registry.sh e legge solo il suo esito.
   cache     Confronta la cache utente dei pacchetti (~/.gmbasic/packages) col workspace:
             un pacchetto INSTALLATO e rimasto indietro fa fallire il gate. Serve a non
             rincorrere gli errori confusi da cache stale (export "non definito",
@@ -167,6 +172,26 @@ group_syntax() {
         detail="${detail%$'\n'}"          # niente riga vuota in coda
         record FAIL "statici" "$sb — $((bad + pybad)) con errori di sintassi"$'\n'"$detail"
     fi
+}
+
+# ── gruppo: registro opzioni (mirror C# ↔ canonico C) ──
+# `AI LIST OPTIONS` è una superficie delle 4 gambe e il MiniTest `ai/ai_list_options` ne
+# confronta il testo: `OptionCoreTable` (IlRuntime.cs) deve replicare `g_opt_core[]`
+# (gmb_opts.c) nome per nome, nello stesso ordine e con lo stesso testo. La voce
+# `debug.memory` è già mancata due volte e il difetto si vedeva solo eseguendo la parità.
+# Il confronto e il diff esatto della voce sono del tool dedicato: qui si legge solo l'esito.
+group_option_registry() {
+    local tool="$SCRIPT_DIR/check_option_registry.sh" out rc
+    if [ ! -f "$tool" ]; then
+        record SKIP "opzioni:registro" "check_option_registry.sh non trovato in $SCRIPT_DIR"
+        return
+    fi
+    out="$(bash "$tool" --quiet 2>&1)"; rc=$?
+    case "$rc" in
+        0) record PASS "opzioni:registro" "OptionCoreTable identica a g_opt_core[] (nomi, ordine, descrizioni)" ;;
+        1) record FAIL "opzioni:registro" "mirror C# divergente dal canonico C"$'\n'"$out" ;;
+        *) record SKIP "opzioni:registro" "gate non eseguibile (rc=$rc)"$'\n'"$out" ;;
+    esac
 }
 
 # ── gruppo: cache dei pacchetti ───────────────────────────────────────────────
@@ -387,6 +412,7 @@ group_manual_surface() {
 # ── esecuzione ────────────────────────────────────────────────────────────────
 # build prima dei test: una rottura di compilazione si vede subito e non sporca i test
 group_build_c99native
+group_option_registry            # mirror C# del registro opzioni ↔ g_opt_core[] (sempre: statico, a costo zero)
 [ "$RUN_SYNTAX" -eq 1 ] && group_syntax
 [ "$RUN_CACHE" -eq 1 ] && group_pkgcache
 [ "$RUN_DYLIB" -eq 1 ] && group_pkgdylibs
