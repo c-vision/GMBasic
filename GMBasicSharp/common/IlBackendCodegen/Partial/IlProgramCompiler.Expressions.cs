@@ -1400,6 +1400,16 @@ public sealed partial class IlProgramCompiler
                 // nessun coerce numerico (il delegate è già del tipo del parametro FUNCTION).
                 if (expr.Args[i] is LambdaExpr or FunctionReferenceExpr) continue;
                 var argType = NormalizeInferredType(InferType(expr.Args[i]));
+                /* NUMERO → STRING (parametro dichiarato STRING, argomento numerico): senza
+                 * conversione si emette `call Proc(double…)` su una firma `string` → IL
+                 * INVALIDO e InvalidProgramException al primo uso. Caso reale:
+                 * `BND.CHARM(S, K, T, r, vol, 0)` con `type AS STRING` (trading/charm,
+                 * trading/theta). C99Native/VM-C convertono implicitamente (0 → "0"). */
+                if (paramType is StringType && argType is not StringType)
+                {
+                    EmitCoerceTypes(argType, paramType);
+                    continue;
+                }
                 if (IlConversion.IsNumeric(paramType) && IlConversion.IsNumeric(argType)
                     // L'argomento è GIÀ stato coercedo dal Linker (avvolto in CINT/CBYTE/
                     // CLNG/CDBL per il tipo del parametro — RewriteSingleArgument): ri-coercere

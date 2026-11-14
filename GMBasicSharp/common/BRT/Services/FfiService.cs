@@ -1283,7 +1283,14 @@ public class FfiService : IFfiService
                 }
                 if ((stringMask & (1L << i)) != 0)
                 {
-                    stringPtrs[i] = Marshal.StringToCoTaskMemUTF8((string?)args[i] ?? "");
+                    /* COERCIZIONE, non cast: un argomento NUMERICO passato dove la DECLARE
+                     * dichiara STRING (es. `BND.CHARM(…, 0)` per il flag call/put) deve
+                     * diventare la sua forma testuale, come fanno C99Native/VM-C. Il vecchio
+                     * `(string?)args[i]` emetteva un castclass su un boxed Double →
+                     * InvalidProgram su IL e "Unable to cast Double to String" su PCode
+                     * (bug reale: trading/charm, trading/theta). */
+                    stringPtrs[i] = Marshal.StringToCoTaskMemUTF8(
+                        Convert.ToString(args[i], System.Globalization.CultureInfo.InvariantCulture) ?? "");
                     dArgs[i] = stringPtrs[i];
                     continue;
                 }
