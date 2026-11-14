@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
-# GMBASIC — gate A/B zig vs clang sul SINGOLO MiniTest toccato (pre-commit).
+# GMBASIC — gate A/B fra i DUE compilatori C sul SINGOLO MiniTest toccato (pre-commit).
 #
-# PERCHE'. Il toolchain canonico e' zig (`tools/sh/zcc`); `--cc cc` e' la gamba di CONFRONTO
-# col clang di sistema. Le divergenze fra i due — un warning che zig promuove a errore, un
+# PERCHE'. Il C non ha un compilatore solo (accordo 2026-11-14): il RIFERIMENTO e' il default del
+# runner (`cc` = Apple clang su macOS, `tools/sh/zcc` = `zig cc` altrove) e la gamba di CONFRONTO
+# e' sempre l'ALTRO dei due. Le divergenze fra loro — un warning che zig promuove a errore, un
 # `incompatible-pointer-types` che Apple clang nasconde, un ordinamento di link diverso — si
 # scoprivano solo se qualcuno si ricordava di lanciare la gamba A/B a mano. L'unico controllo
 # automatico era l'ordine dei link del tray dentro `tools/sh/test_minitests_c99native`. Qui il
@@ -11,11 +12,11 @@
 #
 # COSA FA. Prende i file STAGED del commit; se nessuno e' un MiniTest termina subito (costo
 # zero, nessun compilatore lanciato). Per ogni MiniTest toccato esegue il runner due volte —
-# default (zig) e `--cc cc` — e confronta le righe di esito (`PASS <file> :: <output>|`,
+# default e la gamba di confronto (`--cc tools/sh/zcc` su macOS, `--cc cc` altrove) — e confronta le righe di esito (`PASS <file> :: <output>|`,
 # `FAIL <file> (...)`, `SKIP`) e ne ricava UNO di quattro verdetti, che non vanno confusi:
 #   OK        le gambe concordano e il caso PASSA;
 #   DIVERGE   le gambe danno esiti diversi (commit bloccato, con il diff delle due uscite);
-#   FALLISCE  le gambe concordano NEL FALLIMENTO: nessuna divergenza zig/clang, ma il test e'
+#   FALLISCE  le gambe concordano NEL FALLIMENTO: nessuna divergenza fra i due, ma il test e'
 #             rotto o l'EXPECT e' sbagliato. Non e' un OK e blocca il commit: un gate che
 #             stampasse "ok" qui certificherebbe un test rosso;
 #   ERRORE    una gamba non ha eseguito NULLA (filtro o toolchain rotti): commit bloccato.
@@ -29,7 +30,7 @@
 #    gate verifica cio' che e' su disco.
 #  - I MiniTest con `' TAG: interactive` sono esclusi per progetto da entrambe le gambe; qui si
 #    saltano PRIMA, altrimenti "saltato" diventerebbe "nessun file eseguito" (gate rosso).
-#  - Il gate copre la gamba C (zig vs clang). La parita' IL/PCode/VM-C resta a
+#  - Il gate copre la gamba C (i due compilatori). La parita' IL/PCode/VM-C resta a
 #    `tools/sh/test_minitests_parity.sh` e non e' compito di questo script.
 #
 # Uso:
@@ -50,12 +51,25 @@ set -u
 SELF_DIR="$(cd "$(dirname "$0")" && pwd)"
 MONO="$(cd "$SELF_DIR/../.." && pwd)"
 RUNNER="$SELF_DIR/test_minitests_c99native"
-PLAIN_CC="cc"          # la gamba A/B: clang di sistema (Apple su macOS)
+# GAMBE. Su macOS sono ESPLICITE: `--cc cc` e `--cc tools/sh/zcc` (AGENTS §0). Non si lascia la
+# prima gamba al default del runner: il default e' cambiato una volta (16ed9e60, zig -> cc) e
+# questo gate continuava a passare `cc` come gamba di confronto — su macOS eseguiva `cc` DUE volte
+# e stampava "zig == cc" senza aver mai visto zig, quindi nessuna divergenza poteva emergere.
+# Nominando entrambi i compilatori, il confronto non dipende piu' da quale sia il default.
+if [ "$(uname -s)" = Darwin ]; then
+    REF_CC="cc";  REF_NAME="cc"
+    PLAIN_CC="$SELF_DIR/zcc"
+else
+    REF_CC="";    REF_NAME="zcc"      # default del runner fuori da macOS (`tools/sh/zcc`)
+    PLAIN_CC="cc"
+fi
+AB_NAME="$(basename "$PLAIN_CC")"
 # Radice dei MiniTest: serve a verificare che il file passato a `check` ESISTA davvero (un needle
 # che non corrisponde a nulla fa girare il runner su zero casi, cioe' un altro falso verde).
 MINI_ROOT="${GMB_MINI_ROOT:-$MONO/shared/minitests}"
 TMPD="$(mktemp -d "${TMPDIR:-/tmp}/minitest_ab.XXXXXX")" || exit 2
 EXECUTED=0     # file realmente eseguiti su ENTRAMBE le gambe
+DEAD=0         # gambe che non hanno prodotto ALCUN esito (compilatore/toolchain rotti)
 BAD_INVOCATION=0  # file passati ma non riconducibili a un MiniTest: uso errato, non un salto
 STRICT_PATH=0     # 1 solo in `check`: li' il percorso lo scrive l'utente e sbagliarlo deve fallire
 SKIPPED=0      # file saltati (interattivi, non-MiniTest): non contano come verifica
@@ -78,7 +92,7 @@ hook_path() {
 block_text() {
     cat <<'BLOCK'
 # >>> gmb minitest A/B (tools/sh/minitest_ab_gate.sh) >>>
-# Se il commit tocca MiniTest: il file toccato gira su zig (canonico) e su `--cc cc` e le due
+# Se il commit tocca MiniTest: il file toccato gira sui DUE compilatori C e le due
 # uscite devono coincidere. Una divergenza fra i due toolchain blocca il commit.
 _gmb_root=$(git rev-parse --show-toplevel 2>/dev/null || true)
 if [ -n "$_gmb_root" ] && [ -f "$_gmb_root/tools/sh/minitest_ab_gate.sh" ]; then
@@ -169,7 +183,7 @@ result_lines() { grep -E '^(PASS|FAIL|SKIP) ' "$1" 2>/dev/null || true; }
 
 # check_one <file> <cc> — 0 = gambe concordi, 1 = divergenza o gamba muta.
 check_one() {
-    local f="$1" cc="$2" needle rc_zig rc_cc t0 t1 a b
+    local f="$1" cc="$2" needle rc_ref rc_cc t0 t1 a b
     if ! needle="$(needle_of "$f")"; then
         # In `run` i percorsi arrivano da git: un `.bas` fuori dalla radice dei MiniTest
         # (samples/, tools/basic/) non e' un errore, si salta — altrimenti il pre-commit
@@ -190,24 +204,26 @@ check_one() {
         SKIPPED=$((SKIPPED+1))
         return 0
     fi
-    a="$TMPD/zig.$$.txt"; b="$TMPD/ab.$$.txt"
+    a="$TMPD/ref.$$.txt"; b="$TMPD/ab.$$.txt"
     t0=$(date +%s)
-    rc_zig="$(run_leg "" "$needle" "$a")"
+    rc_ref="$(run_leg "$REF_CC" "$needle" "$a")"
     t1=$(date +%s)
     rc_cc="$(run_leg "$cc" "$needle" "$b")"
     local a_res b_res
-    a_res="$TMPD/zig.$$.res"; b_res="$TMPD/cc.$$.res"
+    a_res="$TMPD/ref.$$.res"; b_res="$TMPD/ab.$$.res"
     result_lines "$a" > "$a_res"; result_lines "$b" > "$b_res"
 
     # Gamba MUTA: il filtro non ha eseguito nulla (nome sbagliato, file non trovato). Un
     # confronto fra due vuoti sarebbe un falso verde.
     if [ ! -s "$a_res" ]; then
-        echo "ERRORE: la gamba zig non ha eseguito NULLA per '$needle' (rc=$rc_zig)" >&2
+        DEAD=$((DEAD+1))
+        echo "ERRORE: la gamba $REF_NAME non ha eseguito NULLA per '$needle' (rc=$rc_ref)" >&2
         tail -5 "$a" | sed 's/^/    /' >&2
         return 1
     fi
     if [ ! -s "$b_res" ]; then
-        echo "ERRORE: la gamba $cc non ha eseguito NULLA per '$needle' (rc=$rc_cc)" >&2
+        DEAD=$((DEAD+1))
+        echo "ERRORE: la gamba $AB_NAME non ha eseguito NULLA per '$needle' (rc=$rc_cc)" >&2
         tail -5 "$b" | sed 's/^/    /' >&2
         return 1
     fi
@@ -219,7 +235,7 @@ check_one() {
         # commit con dentro un test rosso passerebbe "certificato" dall'A/B.
         if grep -q '^FAIL ' "$a_res"; then
             ACCORD_FAIL=$((ACCORD_FAIL+1))
-            echo "FALLISCE $needle  (zig e $cc falliscono ALLO STESSO MODO: nessuna divergenza)" >&2
+            echo "FALLISCE $needle  ($REF_NAME e $AB_NAME falliscono ALLO STESSO MODO: nessuna divergenza)" >&2
             sed 's/^/  esito | /' "$a_res" >&2
             return 1
         fi
@@ -229,16 +245,16 @@ check_one() {
             echo "SALTATO  $needle  (nessuna gamba ha eseguito il caso: $(head -1 "$a_res" | cut -c1-60))"
             return 0
         fi
-        echo "OK       $needle  (zig $(( t1 - t0 ))s, $cc: $(head -1 "$a_res" | cut -c1-48))"
+        echo "OK       $needle  ($REF_NAME $(( t1 - t0 ))s, $AB_NAME: $(head -1 "$a_res" | cut -c1-48))"
         return 0
     fi
 
     DIVERGED=$((DIVERGED+1))
-    echo "DIVERGE  $needle  (zig vs $cc)" >&2
-    echo "  --- zig (canonico) ---" >&2
-    sed 's/^/  zig  | /' "$a_res" >&2
-    echo "  --- $cc ---" >&2
-    sed 's/^/  cc   | /' "$b_res" >&2
+    echo "DIVERGE  $needle  ($REF_NAME vs $AB_NAME)" >&2
+    echo "  --- $REF_NAME (riferimento) ---" >&2
+    sed "s/^/  $REF_NAME | /" "$a_res" >&2
+    echo "  --- $AB_NAME ---" >&2
+    sed "s/^/  $AB_NAME | /" "$b_res" >&2
     echo "  diff:" >&2
     diff -u "$a_res" "$b_res" | sed 's/^/  /' >&2
     return 1
@@ -248,7 +264,7 @@ check_one() {
 cmd_check() {
     local cc="$PLAIN_CC" f rc=0 n=0
     STRICT_PATH=1        # invocazione manuale: un percorso sbagliato e' un errore, non un salto
-    if [ "${1:-}" = "--cc" ]; then cc="${2:-}"; shift 2; fi
+    if [ "${1:-}" = "--cc" ]; then cc="${2:-}"; shift 2; AB_NAME="$(basename "$cc")"; fi
     [ $# -gt 0 ] || { echo "ERRORE: check richiede almeno un file" >&2; return 2; }
     for f in "$@"; do
         check_one "$f" "$cc" || rc=1
@@ -257,12 +273,16 @@ cmd_check() {
         echo "gate A/B: $BAD_INVOCATION file non verificabili — il percorso passato non e' un MiniTest valido (vedi ERRORE sopra)" >&2
         return 2
     fi
+    if [ "$DEAD" -gt 0 ]; then
+        echo "gate A/B: $DEAD gamba/e MUTA/E — un compilatore non ha prodotto alcun esito, nessuna verifica (vedi ERRORE sopra)" >&2
+        return 1
+    fi
     if [ "$rc" -eq 0 ]; then
-        echo "gate A/B: $EXECUTED passati su entrambe le gambe, zig == $cc (${SKIPPED:-0} saltati)"
+        echo "gate A/B: $EXECUTED passati su entrambe le gambe, $REF_NAME == $AB_NAME (${SKIPPED:-0} saltati)"
     elif [ "$ACCORD_FAIL" -gt 0 ] && [ "$DIVERGED" -eq 0 ]; then
-        echo "gate A/B: $ACCORD_FAIL falliti su entrambe le gambe — nessuna divergenza zig/$cc" >&2
+        echo "gate A/B: $ACCORD_FAIL falliti su entrambe le gambe — nessuna divergenza $REF_NAME/$AB_NAME" >&2
     elif [ "$DIVERGED" -gt 0 ] && [ "$ACCORD_FAIL" -eq 0 ]; then
-        echo "gate A/B: $DIVERGED divergenze zig/$cc" >&2
+        echo "gate A/B: $DIVERGED divergenze $REF_NAME/$AB_NAME" >&2
     else
         echo "gate A/B: $DIVERGED divergenze, $ACCORD_FAIL falliti su entrambe le gambe" >&2
     fi
@@ -294,13 +314,18 @@ $staged
 EOF
     [ -s "$TMPD/list" ] || return 0
 
-    echo "gate A/B (zig canonico vs $PLAIN_CC) sui MiniTest toccati:"
+    echo "gate A/B ($REF_NAME di riferimento vs $AB_NAME) sui MiniTest toccati:"
     while IFS= read -r f; do
         [ -n "$f" ] || continue
         check_one "$f" "$PLAIN_CC" || rc=1
     done < "$TMPD/list"
     if [ "$rc" -ne 0 ]; then
         echo "" >&2
+        if [ "$DEAD" -gt 0 ]; then
+            echo "COMMIT BLOCCATO ($DEAD gamba/e muta/e): un compilatore non ha prodotto NESSUN esito." >&2
+            echo "Non e' una divergenza: senza due esiti non c'e' confronto, e un gate che dice" >&2
+            echo "\"0 divergenze\" qui certificherebbe un commit senza aver verificato niente." >&2
+        fi
         if [ "$DIVERGED" -gt 0 ]; then
             echo "COMMIT BLOCCATO ($DIVERGED divergenze): le gambe non concordano. Il C e' lo" >&2
             echo "stesso, quindi la differenza e' di compilazione/link: va risolta nel codice o nel" >&2
@@ -308,13 +333,13 @@ EOF
         fi
         if [ "$ACCORD_FAIL" -gt 0 ]; then
             echo "COMMIT BLOCCATO ($ACCORD_FAIL MiniTest falliti su ENTRAMBE le gambe): qui non c'e'" >&2
-            echo "nessuna divergenza zig/clang — il test e' rotto o ha un EXPECT sbagliato, e il gate" >&2
+            echo "nessuna divergenza fra i due compilatori — il test e' rotto o ha un EXPECT sbagliato," >&2
             echo "A/B non puo' certificare un caso che fallisce anche sul toolchain canonico." >&2
             echo "Sistemare il MiniTest, oppure non committarlo." >&2
         fi
         return 1
     fi
-    echo "gate A/B: $EXECUTED MiniTest eseguiti su entrambe le gambe, zig == $PLAIN_CC (${SKIPPED:-0} saltati)"
+    echo "gate A/B: $EXECUTED MiniTest eseguiti su entrambe le gambe, $REF_NAME == $AB_NAME (${SKIPPED:-0} saltati)"
     return 0
 }
 
