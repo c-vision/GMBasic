@@ -2366,6 +2366,27 @@ static int ci_istr(const char* s, const char* needle)
     return 0;
 }
 
+/* Il TokenKind NON basta a dire "il risultato è una MATRICE": QUAT.INVERSE porta
+ * GMB_TOK_Inverse, lo stesso di MATRIX.INVERSE (stesso verbo, namespace diverso). Se il
+ * namespace non è MATRIX/LINALG la chiamata rende un UDT: marcarla matrice rendeva
+ * `DIM r AS Quat` un ARRAY (`gmb_val_t* r = NULL;` + `r_len`/`r__b0`, poi assegnazione di un
+ * valore e `r.v_ptr` su un puntatore → quat/quat_core non compilava, 20 errori).
+ * Nome nudo o non qualificato: decide il chiamante (il linker lo ha già risolto). */
+static int call_ns_is_matrix(gmb_expr_t* e) {
+    if (!e) return 1;
+    if (e->ns && e->ns[0])
+        return !strcasecmp(e->ns, "MATRIX") || !strcasecmp(e->ns, "LINALG");
+    if (e->var && e->var[0]) {
+        const char* dot = strrchr(e->var, '.');
+        if (dot) {
+            size_t n = (size_t)(dot - e->var);
+            return (n == 6 && !strncasecmp(e->var, "MATRIX", 6))
+                || (n == 6 && !strncasecmp(e->var, "LINALG", 6));
+        }
+    }
+    return 1;
+}
+
 /* LINALG.FACTOR(decomp, name): handle matrice.
  * Il parser non conserva il namespace in e->ns (var = "LINALG.FACTOR"), e args[0] può
  * essere una VAR che contiene la decomposizione: il riconoscimento è sul nome completo. */
@@ -3648,7 +3669,7 @@ static void reg_let_assign(ctx_t* c, gmb_stmt_t* s, vars_t* scope) {
                     || s->value->tk == GMB_TOK_MatrixCirculant
                     || s->value->tk == GMB_TOK_MatrixAddRowVector || s->value->tk == GMB_TOK_MatrixAddColVector
                     || s->value->tk == GMB_TOK_MatrixLoadCsv || s->value->tk == GMB_TOK_MatrixLoadJson
-                    || s->value->tk == GMB_TOK_Inverse || s->value->tk == GMB_TOK_MatrixExp
+                    || (s->value->tk == GMB_TOK_Inverse && call_ns_is_matrix(s->value)) || s->value->tk == GMB_TOK_MatrixExp
                     || s->value->tk == GMB_TOK_MatrixSqrt || s->value->tk == GMB_TOK_MatrixLogm
                     || s->value->tk == GMB_TOK_MatrixPseudoInverse || s->value->tk == GMB_TOK_MatrixHessenberg
                     || s->value->tk == GMB_TOK_MatrixNullSpace || s->value->tk == GMB_TOK_MatrixCosm
@@ -4067,7 +4088,7 @@ if (s->dim_var) {            int ty = suffix_type(s->dim_var);
                     || s->dim_init->tk == GMB_TOK_MatrixAddColVector
                     || s->dim_init->tk == GMB_TOK_MatrixLoadCsv
                     || s->dim_init->tk == GMB_TOK_MatrixLoadJson
-                    || s->dim_init->tk == GMB_TOK_Inverse
+                    || (s->dim_init->tk == GMB_TOK_Inverse && call_ns_is_matrix(s->dim_init))
                     || s->dim_init->tk == GMB_TOK_MatrixExp
                     || s->dim_init->tk == GMB_TOK_MatrixSqrt
                     || s->dim_init->tk == GMB_TOK_MatrixLogm
@@ -4089,7 +4110,7 @@ if (s->dim_var) {            int ty = suffix_type(s->dim_var);
                 /* MATRIX handle: `DIM h = MATRIX.<fn>(…)` con fn che ritorna un handle → int64_t. */
                 else if (s->dim_init->tk == GMB_TOK_LinAlgVectorCreateFunc
                     || s->dim_init->tk == GMB_TOK_MatrixSetValue
-                    || s->dim_init->tk == GMB_TOK_Inverse
+                    || (s->dim_init->tk == GMB_TOK_Inverse && call_ns_is_matrix(s->dim_init))
                     || s->dim_init->tk == GMB_TOK_Multiply
                     || s->dim_init->tk == GMB_TOK_MatrixEig
                     || s->dim_init->tk == GMB_TOK_MatrixSqrt
@@ -20491,7 +20512,7 @@ static void st_dim(ctx_t* c, gmb_stmt_t* s) {
              || s->dim_init->tk == GMB_TOK_MatrixAddColVector
              || s->dim_init->tk == GMB_TOK_MatrixLoadCsv
              || s->dim_init->tk == GMB_TOK_MatrixLoadJson
-             || s->dim_init->tk == GMB_TOK_Inverse
+             || (s->dim_init->tk == GMB_TOK_Inverse && call_ns_is_matrix(s->dim_init))
              || s->dim_init->tk == GMB_TOK_MatrixExp
              || s->dim_init->tk == GMB_TOK_MatrixSqrt
              || s->dim_init->tk == GMB_TOK_MatrixLogm
