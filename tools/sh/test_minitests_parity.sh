@@ -1,4 +1,18 @@
 #!/bin/zsh
+# ── INTERPRETE (guardia, 2026-11-14). Questo script e' zsh: usa le espansioni proprie di zsh
+# (unione dei filtri, array indicizzati da 1). Invocato con bash muore alla prima di quelle
+# espansioni con `bad substitution`, senza dire perche'. Qui ci si ri-esegue con zsh — come fa
+# test_minitests_c99native con bash, nella direzione opposta — invece di lasciare un errore
+# incomprensibile; se zsh manca, si esce 2 dicendo il motivo.
+if [ -z "${ZSH_VERSION:-}" ]; then
+    command -v zsh >/dev/null 2>&1 || {
+        echo "ERRORE: questo script gira solo con zsh (usa le espansioni proprie di zsh: con bash la" >&2
+        echo "        prima muore con 'bad substitution'). Invocalo cosi': zsh $0 …" >&2
+        exit 2
+    }
+    exec zsh "$0" "$@"
+fi
+
 # test_minitests_parity — esecuzione MIRATA dei MiniTest su 4 gambe (IL, PCode, VM-C, C99Native).
 # ORDINE E RUOLI: prima la gamba NATIVA (C99Native, runner nativo) = RIFERIMENTO — il
 # compilatore principale del monorepo è quello nativo; poi le tre gambe gestite (IL, PCode,

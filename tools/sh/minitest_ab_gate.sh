@@ -131,26 +131,16 @@ cmd_status() {
     fi
 }
 
-# needle_of <path> — il filtro del runner e' una SOTTOSTRINGA del nome del caso, cioe' del
-# percorso relativo alla radice dei MiniTest (`misc/max.bas`). Passargli il percorso del repo
-# (`shared/minitests/misc/max.bas`) non corrisponderebbe a NULLA.
+# needle_of <path> — il needle (percorso relativo alla radice dei MiniTest, es. `misc/max.bas`)
+# del file, SE e' un MiniTest che esiste davvero; altrimenti niente. Il filtro del runner e' una
+# SOTTOSTRINGA di quel percorso: un needle che non corrisponde a un file reale fa eseguire al
+# runner zero casi (in passato: falso verde). Tre passi, ognuno con un solo motivo per fallire:
 needle_of() {
-    local p="$1"
-    # I file arrivano ASSOLUTI dalla lista dei candidati, relativi dall'index di git.
-    p="${p#"$MONO"/}"
-    case "$p" in
-        shared/minitests/*) p="${p#shared/minitests/}" ;;
-        */minitests/*)      p="${p#*minitests/}" ;;   # radice forzata (GMB_MINI_ROOT) o percorso assoluto
-        */MiniTests/*)      p="${p#*MiniTests/}" ;;
-        MiniTests/*)        p="${p#MiniTests/}" ;;
-        # PERCORSO RELATIVO AL DOMINIO (`matrix/max.bas`): e' la forma che si scrive a mano.
-        # ...ma solo se il file ESISTE sotto la radice: senza questo vincolo anche
-        # `tools/basic/check_enum_ids.bas` passava di qui, il runner riceveva un filtro che non
-        # corrisponde a nulla e il pre-commit si bloccava su un commit senza MiniTest.
-        */*.bas)            [ -f "$MINI_ROOT/$p" ] || return 1 ;;
-        *)                  return 1 ;;
-    esac
-    case "$p" in *.bas) printf '%s' "$p" ;; *) return 1 ;; esac
+    local p="${1#"$MONO"/}"           # assoluto -> relativo al repo
+    case "$p" in */minitests/*) p="${p#*minitests/}" ;; esac   # shared/minitests/x, assoluti
+    case "$p" in */*.bas) ;; *) return 1 ;; esac               # solo <dir>/<file>.bas
+    [ -f "$MINI_ROOT/$p" ] || return 1                          # e deve esistere
+    printf '%s' "$p"
 }
 
 # Un MiniTest interattivo e' escluso da entrambe le gambe per progetto (`' TAG: interactive`):
@@ -181,34 +171,19 @@ result_lines() { grep -E '^(PASS|FAIL|SKIP) ' "$1" 2>/dev/null || true; }
 check_one() {
     local f="$1" cc="$2" needle rc_zig rc_cc t0 t1 a b
     if ! needle="$(needle_of "$f")"; then
-        case "$f" in
-            *.bas)
-                # In `run` i percorsi arrivano da git: un `.bas` fuori dalla radice dei MiniTest
-                # (samples/, tools/basic/) NON e' un errore, si salta come prima — altrimenti il
-                # pre-commit bloccherebbe commit che non toccano nessun MiniTest. In `check` il
-                # percorso lo scrive l'utente: sbagliarlo deve fallire, non sparire tra i SALTATO.
-                if [ "$STRICT_PATH" = 1 ]; then
-                    echo "ERRORE: '$f' non e' un percorso di MiniTest riconosciuto." >&2
-                    echo "        forme accettate: shared/minitests/<dominio>/<file>.bas | <dominio>/<file>.bas | percorso assoluto sotto la radice" >&2
-                    BAD_INVOCATION=$((BAD_INVOCATION+1))
-                    return 1
-                fi
-                echo "salto $f (non e' un MiniTest)"
-                SKIPPED=$((SKIPPED+1))
-                return 0
-                ;;
-            *)
-                echo "salto $f (non e' un MiniTest)"
-                SKIPPED=$((SKIPPED+1))
-                return 0
-                ;;
-        esac
-    fi
-    if [ "$STRICT_PATH" = 1 ] && [ ! -f "$MINI_ROOT/$needle" ]; then
-        echo "ERRORE: '$f' -> '$needle', ma $MINI_ROOT/$needle non esiste." >&2
-        echo "        forme accettate: shared/minitests/<dominio>/<file>.bas | <dominio>/<file>.bas" >&2
-        BAD_INVOCATION=$((BAD_INVOCATION+1))
-        return 1
+        # In `run` i percorsi arrivano da git: un `.bas` fuori dalla radice dei MiniTest
+        # (samples/, tools/basic/) non e' un errore, si salta — altrimenti il pre-commit
+        # bloccherebbe commit che non toccano MiniTest. In `check` il percorso lo scrive
+        # l'utente: un `.bas` sbagliato deve fallire, non sparire tra i SALTATO.
+        if [ "$STRICT_PATH" = 1 ] && [ "${f##*.}" = bas ]; then
+            echo "ERRORE: '$f' non e' un MiniTest esistente sotto $MINI_ROOT." >&2
+            echo "        forme accettate: shared/minitests/<dominio>/<file>.bas | <dominio>/<file>.bas" >&2
+            BAD_INVOCATION=$((BAD_INVOCATION+1))
+            return 1
+        fi
+        echo "salto $f (non e' un MiniTest)"
+        SKIPPED=$((SKIPPED+1))
+        return 0
     fi
     if is_interactive "$MINI_ROOT/$needle"; then
         echo "salto $needle (interattivo: escluso per progetto da entrambe le gambe)"
@@ -296,7 +271,7 @@ cmd_check() {
 
 # cmd_run [--staged <path...>] — i MiniTest del commit. Nessun MiniTest toccato = costo zero.
 cmd_run() {
-    local staged files f n=0 rc=0
+    local staged f rc=0
     if [ "${1:-}" = "--staged" ]; then
         shift
         staged="$(printf '%s\n' "$@")"
@@ -310,11 +285,10 @@ cmd_run() {
     : > "$TMPD/list"
     while IFS= read -r f; do
         [ -n "$f" ] || continue
-        case "$f" in *.bas) ;; *) continue ;; esac
-        cand="$MONO/$f"
-        [ -f "$cand" ] || continue
+        # needle_of fa gia' i tre controlli (forma <dir>/<file>.bas, esistenza sotto la radice,
+        # percorso ricondotto): un `.bas` fuori dai MiniTest qui non arriva.
         needle_of "$f" > /dev/null || continue
-        printf '%s\n' "$cand" >> "$TMPD/list"
+        printf '%s\n' "$MONO/$f" >> "$TMPD/list"
     done <<EOF
 $staged
 EOF

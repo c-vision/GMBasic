@@ -138,7 +138,10 @@ static void libs_index_path(char* out, size_t cap)
     else snprintf(out, cap, "libs.txt");
 }
 
-/* `libs ensure|install [--runtime-only|--dev|--components|--all]` — default: tutte.
+/* `libs ensure|install [--profile runtime|build|all] [--runtime-only|--dev|--components|--all]`
+ * — default: tutte. `--profile` è la forma che nomina il PERCHÉ del download:
+ *   runtime → solo ciò che serve a ESEGUIRE; build → runtime+dev (header e statiche per
+ *   COMPILARE); all → anche componenti/toolchain.
  * L'indice in cache viene rinfrescato: un indice vecchio farebbe risultare "tutto a posto"
  * e un gruppo nuovo non verrebbe mai scaricato (parità con il vecchio CLI). */
 static int libs_check(int argc, char** argv);   /* sotto */
@@ -187,11 +190,26 @@ static int libs_ensure(int argc, char** argv)
     for (int i = 3; i < argc; i++)
         if (!strcmp(argv[i], "--verify")) return libs_check(argc, argv);   /* solo controllo sha */
     int scope = GMB_SCOPE_ALL;
+    const char* profile = NULL;   /* nome scelto con --profile, per il messaggio */
     for (int i = 3; i < argc; i++) {
         if (!strcmp(argv[i], "--runtime-only") || !strcmp(argv[i], "--runtime")) scope = GMB_SCOPE_RUNTIME;
         else if (!strcmp(argv[i], "--dev")) scope = GMB_SCOPE_DEV;
         else if (!strcmp(argv[i], "--components")) scope = GMB_SCOPE_COMPONENTS;
         else if (!strcmp(argv[i], "--all")) scope = GMB_SCOPE_ALL;
+        else if (!strcmp(argv[i], "--profile") && i + 1 < argc) profile = argv[++i];
+        else if (!strncmp(argv[i], "--profile=", 10)) profile = argv[i] + 10;
+    }
+    /* `--profile` vince sui flag di scope: chi lo scrive ha già scelto l'ambito.
+     * `build` = GMB_SCOPE_DEV, che in gmb_boot.c vale runtime+dev (i file senza tag sono
+     * runtime e restano sempre inclusi). */
+    if (profile) {
+        if (!strcmp(profile, "runtime")) scope = GMB_SCOPE_RUNTIME;
+        else if (!strcmp(profile, "build")) scope = GMB_SCOPE_DEV;
+        else if (!strcmp(profile, "all")) scope = GMB_SCOPE_ALL;
+        else {
+            fprintf(stderr, "?libs ensure: --profile '%s' non valido (runtime|build|all)\n", profile);
+            return 2;
+        }
     }
     const char* rid = gmb_libs_rid();
     char cache[2048], dir[2300], idx[2400];
@@ -199,9 +217,10 @@ static int libs_ensure(int argc, char** argv)
     snprintf(dir, sizeof dir, "%s/%s", cache, rid);
     snprintf(idx, sizeof idx, "%s/index.txt", dir);
     unlink(idx);   /* forza il refresh dell'indice (pochi KB) */
-    printf("libs ensure: RID %s, scope %s → %s\n", rid,
-           scope == GMB_SCOPE_ALL ? "tutte" : scope & GMB_SCOPE_DEV ? "runtime+dev" :
-           scope & GMB_SCOPE_COMPONENTS ? "componenti" : "runtime", dir);
+    const char* sco = scope == GMB_SCOPE_ALL ? "tutte" : scope & GMB_SCOPE_DEV ? "runtime+dev" :
+                      scope & GMB_SCOPE_COMPONENTS ? "componenti" : "runtime";
+    if (profile) printf("libs ensure: RID %s, profilo %s, scope %s → %s\n", rid, profile, sco, dir);
+    else printf("libs ensure: RID %s, scope %s → %s\n", rid, sco, dir);
     int r = gmb_bootstrap(scope);
     if (!r) { fprintf(stderr, "?libs ensure: bootstrap incompleto (indice di rete assente o rete non disponibile)\n"); return 1; }
     printf("libs ensure: completato\n");
@@ -255,7 +274,8 @@ int gmbadmin_libs(int argc, char** argv)
     if (!strcmp(sub, "check")) return libs_check(argc, argv);
     if (!strcmp(sub, "help") || !strcmp(sub, "--help")) {
         printf("uso: gmb libs <status|ensure|check|prune|index|publish>\n");
-        printf("  ensure|install [--runtime-only|--dev|--components|--all]: download dalla cache\n");
+        printf("  ensure|install [--profile runtime|build|all] [--runtime-only|--dev|--components|--all]:\n");
+        printf("      download dalla cache; build = runtime+dev (header e statiche per compilare)\n");
         printf("  status: cache ~/.gmbasic/libs/<rid>/\n  check [--index file]: sha256 vs indice\n");
         printf("  publish <support|engine|core> <rid> [--yes]: release su GMBasicModules\n");
         printf("  prune [--dry-run]: rimuove dalla cache i file non presenti nel manifest\n");

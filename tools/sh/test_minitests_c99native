@@ -1,18 +1,16 @@
 #!/usr/bin/env bash
-# ── INTERPRETE (guardia, 2026-11-14). Questo script e' bash: usa `read -a` e conta sul
-# word-splitting di `$INC`. Sotto zsh (che non spezza i parametri non quotati) il compilatore
-# riceve l'intero blocco ' -I… -I…' come UN SOLO argomento e TUTTE le gambe C falliscono per
-# include mancanti (`fatal error: 'gmb_runtime.h' file not found`, `no such file or directory:
-# ' -I…'`), sembrando un problema di header invece che di interprete. Qui ci si ri-esegue con
-# bash: l'invocazione sbagliata non produce piu' un falso rosso.
-if [ -n "${ZSH_VERSION:-}" ]; then
+# ── INTERPRETE (guardia, 2026-11-14). Lo script e' bash: usa `read -a` e conta sul word-splitting
+# di `$INC`. Sotto zsh (nessun word-splitting implicito) il compilatore riceve ' -I… -I…' come UN
+# SOLO argomento e tutte le gambe C falliscono per include mancanti, sembrando un problema di
+# header. Se l'interprete non e' bash ci si ri-esegue con bash; se bash manca, exit 2 col motivo.
+[ -n "${BASH_VERSION:-}" ] || {
     command -v bash >/dev/null 2>&1 || {
-        echo "ERRORE: questo script gira solo con bash (zsh non spezza \$INC: tutte le gambe C" >&2
-        echo "        fallirebbero per -I mancanti). Invocalo con: bash $0 …" >&2
+        echo "ERRORE: serve bash (zsh non spezza \$INC: le gambe C fallirebbero per -I mancanti)." >&2
+        echo "        Invocalo con: bash $0 …" >&2
         exit 2
     }
     exec bash "$0" "$@"
-fi
+}
 
 # ── MUTEX di build: i comandi di build (cc/clang/cmake/make/dotnet) prendono un lock ──
 # esclusivo su mutex.txt SOLO per la durata del SINGOLO comando, poi lo rilasciano subito
