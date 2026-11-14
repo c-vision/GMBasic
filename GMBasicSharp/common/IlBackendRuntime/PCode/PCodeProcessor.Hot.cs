@@ -854,7 +854,7 @@ internal sealed partial class PCodeProcessor
                         ["Description"] = "Stop iteration",
                         ["LineNumber"] = (double)SourceLineForIp(task.CurrentInstructionIp),
                         ["SourceLineText"] = string.Empty,
-                        ["StackTrace"] = string.Empty
+                        ["StackTrace"] = BuildBasicTrace(task)
                     });
                     var errInfo = new System.Collections.Generic.Dictionary<string, object?>
                     {

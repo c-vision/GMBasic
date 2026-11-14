@@ -8822,18 +8822,27 @@ static void vm_append_trace(gmb_task_t* task, char* out, size_t cap)
     if (!vm || !vm->chunk) return;
     size_t o = strlen(out);
 
-    /* Helper: nome della procedura che CONTIENE l'ip + riga di quell'ip. */
+    /* Helper: nome della procedura che CONTIENE l'ip + riga di quell'ip. Si scartano le
+     * chiavi SINONIME del chunk (`@sym<id>` e `Nome#arità`, che il compilatore C# aggiunge
+     * accanto al nome nudo per lo stesso indirizzo): senza il filtro vinceva l'ultima
+     * inserita e il trace mostrava `@sym551` invece del nome BASIC. */
     #define VM_TRACE_PUSH(_ip) do {                                                   \
         int _p = (_ip);                                                              \
         if (_p > 0 && o + 96 < (cap)) {                                              \
             const char* _n = NULL;                                                   \
             uint32_t _best = 0;                                                      \
-            for (uint32_t _i = 0; _i < vm->chunk->proc_count; _i++)                   \
+            for (uint32_t _i = 0; _i < vm->chunk->proc_count; _i++) {                 \
+                const char* _nm = vm->chunk->proc_names[_i];                          \
+                if (!_nm || !_nm[0] || _nm[0] == '@' || strchr(_nm, '#')) continue;   \
                 if ((int)vm->chunk->proc_addrs[_i] <= _p && vm->chunk->proc_addrs[_i] >= _best) { \
                     _best = vm->chunk->proc_addrs[_i];                                \
-                    _n = vm->chunk->proc_names[_i];                                   \
+                    _n = _nm;                                                         \
                 }                                                                     \
-            if (_n && _n[0] && _n[0] != '@') {                                        \
+            }                                                                         \
+            /* pseudo-procedura del codice di modulo: non è una procedura BASIC (va  \
+             * scartata DOPO la scelta, altrimenti si ricade sul frame precedente) */\
+            if (_n && (strcmp(_n, "__main") == 0 || strcmp(_n, "__module") == 0)) _n = NULL; \
+            if (_n) {                                                                 \
                 long _line = 0;                                                       \
                 if (vm->chunk->lines && (uint32_t)_p < vm->chunk->code_len) {         \
                     uint32_t _raw = vm->chunk->lines[_p];                             \
@@ -9256,7 +9265,7 @@ static int raise_basic_error(gmb_task_t* task, double err_code, const char* msg)
         gmb_dict_set(err->dict, "Description", gmb_make_val_string_counted(msg ? msg : ""));
         gmb_dict_set(err->dict, "LineNumber", gmb_make_val_double((double)err_line));
         gmb_dict_set(err->dict, "SourceLineText", gmb_make_val_string_counted(""));
-        gmb_dict_set(err->dict, "StackTrace", gmb_make_val_string_counted(""));
+        gmb_dict_set(err->dict, "StackTrace", gmb_make_val_string_counted(tr));
         ev.type = 2;
         ev.ref = (gmb_obj_t*)err;
         ev.basic_type = GMB_BT_OBJECT;
@@ -16601,6 +16610,7 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                     {
                         gmb_dict_set(err->dict, "Number", gmb_make_val_double(144.0));
                         gmb_dict_set(err->dict, "Description", gmb_make_val_string_counted("Stop iteration"));
+                        gmb_dict_set(err->dict, "StackTrace", gmb_make_val_string_counted(""));
                         ev.type = 2;
                         ev.ref = (gmb_obj_t*)err;
                         ev.basic_type = GMB_BT_OBJECT;

@@ -120,6 +120,10 @@ public sealed partial class IlProgramCompiler
     {
         if (_currentProcDeclaresDynamic)
             _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.DynamicVarPop)));
+        // STACK TRACE BASIC: ogni uscita della procedura passa di qui (END SUB/FUNCTION,
+        // RETURN, fallthrough, punto di uscita dei RETURN dentro TRY/DEFER) → il frame va
+        // chiuso in un solo posto. No-op per i metodi senza procedura BASIC.
+        EmitTraceLeave();
     }
 
     /// <summary>Vero se il corpo (ricorsivamente) contiene una dichiarazione DYNAMIC.</summary>

@@ -2587,7 +2587,7 @@ internal sealed partial class PCodeProcessor
                     ["Description"] = thrownDescription,
                     ["LineNumber"] = (double)SourceLineForIp(task.CurrentInstructionIp),
                     ["SourceLineText"] = string.Empty,
-                    ["StackTrace"] = string.Empty
+                    ["StackTrace"] = BuildBasicTrace(task)
                 });
                 if (TryEnterExceptionHandler(task, val))
                     return true;

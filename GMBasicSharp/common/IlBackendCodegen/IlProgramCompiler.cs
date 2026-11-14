@@ -883,15 +883,47 @@ public sealed partial class IlProgramCompiler
     /// quel caso si ricade sulla riga statica dello statement.</summary>
     private LocalBuilder? _currentLineLocal;
 
-    internal void EmitStatement(Stmt stmt)
+    /// <summary>Profondità della catena di frame BASIC PRIMA di entrare nella procedura
+    /// corrente (ritorno di IlRuntime.TraceEnter). Nullo nei metodi senza procedura BASIC
+    /// (Main top-level, costruttori, lambda): lì non c'è un frame da aprire/chiudere.</summary>
+    private LocalBuilder? _traceDepthLocal;
+
+    /// <summary>STACK TRACE: chiude il frame della procedura corrente (uscita normale).</summary>
+    private void EmitTraceLeave()
     {
-        IlConversion.CurrentStatement = $"{stmt.Position.Line}:{stmt.Position.Column} {stmt.GetType().Name}";
+        if (_traceDepthLocal is not { } depth) return;
+        _il.Emit(OpCodes.Ldloc, depth);
+        _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.TraceLeaveTo), typeof(int)));
+    }
+
+    /// <summary>STACK TRACE: fotografia della catena + ritorno al frame corrente, all'ingresso
+    /// di un CATCH (i frame delle procedure attraversate dall'errore non sono stati chiusi:
+    /// nessun `ret` è passato). Va emesso PRIMA di qualunque statement del CATCH.</summary>
+    private void EmitTraceSnapshotRestore()
+    {
+        _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.TraceSnapshot)));
+        if (_traceDepthLocal is not { } depth) return;
+        _il.Emit(OpCodes.Ldloc, depth);
+        _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.TraceRestoreTo), typeof(int)));
+    }
+
+    internal void EmitStatement(Stmt stmt)
+    {        IlConversion.CurrentStatement = $"{stmt.Position.Line}:{stmt.Position.Column} {stmt.GetType().Name}";
         // Traccia la riga dello statement in esecuzione (2 istruzioni per statement, solo se la
         // riga cambia): è la fonte di ERR.LineNumber nel catch ON ERROR/TRY.
         if (_currentLineLocal is { } lineLocal && stmt.Position.Line > 0)
         {
             _il.Emit(OpCodes.Ldc_I4, stmt.Position.Line);
             _il.Emit(OpCodes.Stloc, lineLocal);
+        }
+        // STACK TRACE BASIC (parità C99Native/VM-C/PCode): riga corrente della procedura,
+        // letta da IlRuntime.ErrTraceOf per ogni frame presente nello StackTrace .NET.
+        // Solo dentro una procedura (in Main top-level/lambda/method non c'è un frame BASIC).
+        if (_currentReturnSymbolId >= 0 && stmt.Position.Line > 0)
+        {
+            _il.Emit(OpCodes.Ldc_I4, _currentReturnSymbolId);
+            _il.Emit(OpCodes.Ldc_I4, stmt.Position.Line);
+            _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.TraceLine), typeof(int), typeof(int)));
         }
         switch (stmt)
         {

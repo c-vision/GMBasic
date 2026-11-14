@@ -5,41 +5,59 @@
  * chiamata. Qui si tiene una catena di frame (procedura + riga corrente) e la si rende come
  * testo, con la stessa forma su tutte le gambe:
  *
- *     errore 11: Division by zero (line 42)
+ *     [GMBASIC] ERROR 11: Division by zero (line 42)
  *       in C (riga 42)
  *       in B (riga 17)
  *       in Main (riga 8)
  *
- * COSTO. Nessuna allocazione: i frame sono variabili di stack legate con
- * `__attribute__((cleanup(...)))` (emesse dall'emitter C99) e l'aggiornamento di riga è uno
- * store (gmb_trace_line è `static inline`). La VM/C non instrumenta nulla: ricava la catena
- * dai propri frame di chiamata (`gmb_frame_t.return_ip` → nome procedura e riga dal chunk).
+ * COSTO. Nessuna allocazione per frame: gli entry vivono in un array thread-local e il
+ * frame è solo un indice (`__attribute__((cleanup(...)))` emesso dall'emitter C99). La
+ * riga si aggiorna con uno store (gmb_trace_line è `static inline`, nessuna chiamata).
+ * La VM/C non instrumenta nulla: ricava la catena dai propri frame di chiamata.
  *
- * ATTENZIONE (longjmp): `gmb_raise_error` fa longjmp, quindi i cleanup NON corrono. È
- * esattamente ciò che serve: al momento del raise i frame sono ancora tutti validi e il
- * testo si cattura lì, PRIMA del salto.
+ * LONGJMP. `gmb_raise_error` fa longjmp: i `cleanup` NON corrono e la profondità resta
+ * "alta" (frame morti). Non è un crash (l'array è statico, non punta a stack morto), ma
+ * dopo un errore catturato la catena va RIPRISTINATA al frame della procedura che ha
+ * catturato: lo fa `gmb_trace_restore_frame(&__gmb_tf)` (emesso all'ingresso del CATCH e
+ * alla ripresa di ON ERROR RESUME NEXT). Il testo del trace si cattura PRIMA del salto
+ * (gmb_trace_snapshot), quando i frame sono ancora tutti validi.
  */
 #ifndef GMB_TRACE_H
 #define GMB_TRACE_H
 
-typedef struct gmb_trace_frame {
-    const char* fn;                 /* nome BASIC della procedura (letterale, mai liberato) */
-    long line;                      /* riga BASIC corrente nella procedura */
-    struct gmb_trace_frame* prev;   /* frame chiamante */
-} gmb_trace_frame_t;
+/* Un entry della catena: nome BASIC della procedura + riga corrente. */
+typedef struct gmb_trace_ent {
+    const char* fn;
+    long line;
+} gmb_trace_ent_t;
 
-/* Cima della catena (NULL = nessuna procedura BASIC in esecuzione). */
-extern gmb_trace_frame_t* gmb_trace_top;
+#define GMB_TRACE_MAX 64
+
+/* Stato thread-local (stesso canone di g_err_number/g_err_jmp in gmb_core.c: lo stato
+ * d'errore appartiene al thread che esegue la procedura BASIC). */
+extern __thread gmb_trace_ent_t gmb_trace_stack[GMB_TRACE_MAX];
+extern __thread int gmb_trace_n;
+
+/* Handle di un frame: indice nell'array. */
+typedef struct gmb_trace_frame {
+    int idx;
+} gmb_trace_frame_t;
 
 /* Entra in una procedura: ritorna il frame (da passare a gmb_trace_leave). */
 gmb_trace_frame_t gmb_trace_enter(const char* fn, long line);
-/* Esce dalla procedura (usato come `cleanup`): ripristina la cima precedente. */
+/* Esce dalla procedura (usato come `cleanup`): ripristina la profondità del chiamante. */
 void gmb_trace_leave(gmb_trace_frame_t* f);
+/* Riporta la catena a `f` (incluso): usato DOPO un longjmp, quando i frame più interni
+ * sono morti e i loro `cleanup` non sono passati. */
+void gmb_trace_restore_frame(const gmb_trace_frame_t* f);
+/* Riporta la catena a `n` frame (usato a livello di modulo, dove non c'è un frame). */
+void gmb_trace_restore_depth(int n);
+int gmb_trace_depth(void);
+
 /* Aggiorna la riga corrente del frame in cima (chiamata a ogni statement emesso). */
 static inline void gmb_trace_line(long line) {
-    if (gmb_trace_top) gmb_trace_top->line = line;
+    if (gmb_trace_n > 0) gmb_trace_stack[gmb_trace_n - 1].line = line;
 }
-int gmb_trace_depth(void);
 
 /* Catena come testo (malloc, "" se vuota), dal frame più interno al più esterno:
  *   "  in C (riga 42)\n  in B (riga 17)\n  in Main (riga 8)\n"

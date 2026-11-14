@@ -546,7 +546,7 @@ internal sealed partial class PCodeProcessor
             ["Description"] = msg,
             ["LineNumber"] = (double)SourceLineForIp(task.CurrentInstructionIp),
             ["SourceLineText"] = string.Empty,
-            ["StackTrace"] = string.Empty
+            ["StackTrace"] = BuildBasicTrace(task)
         });
         var errInfo = new System.Collections.Generic.Dictionary<string, object?>
         {
@@ -602,7 +602,7 @@ internal sealed partial class PCodeProcessor
             ["Description"] = msg,
             ["LineNumber"] = (double)SourceLineForIp(task.CurrentInstructionIp),
             ["SourceLineText"] = string.Empty,
-            ["StackTrace"] = string.Empty
+            ["StackTrace"] = BuildBasicTrace(task)
         };
         SetErrGlobal(task, errInfo);
         if (TryEnterExceptionHandler(task, errInfo))
@@ -658,6 +658,43 @@ internal sealed partial class PCodeProcessor
             if (len < bestLen) { bestLen = len; best = en; }
         }
         return best >= 0 ? best : fallbackIp;
+    }
+
+    /// <summary>
+    /// STACK TRACE BASIC (parità C99Native/VM-C): catena delle procedure dell'errore, dalla
+    /// più interna alla più esterna, con la riga BASIC corrente di ciascuna.
+    /// Ogni <see cref="PCodeCallFrame.ReturnIp"/> appartiene alla procedura che CONTIENE
+    /// quell'ip (è il punto di ritorno nel chiamante), quindi il nome si risolve per
+    /// indirizzo di procedura e la riga con <see cref="SourceLineForIp"/>.
+    /// Va catturata PRIMA dell'unwind (dopo i frame non esistono più).
+    /// </summary>
+    private string BuildBasicTrace(PCodeTask task)
+    {
+        if (_addrToProcedureName.Count == 0) return string.Empty;
+        var sb = new System.Text.StringBuilder();
+        void Push(int ip)
+        {
+            if (ip <= 0) return;
+            // Procedura con l'indirizzo più alto <= ip. Si scartano le chiavi SINONIME che il
+            // compilatore C# aggiunge per lo stesso indirizzo (`@sym<id>` e `Nome#arità`):
+            // senza il filtro il trace mostrava `@sym551` invece del nome BASIC.
+            var best = -1;
+            string? name = null;
+            foreach (var kv in _procedureAddresses)
+            {
+                if (kv.Key.Length == 0 || kv.Key[0] == '@' || kv.Key.Contains('#')) continue;
+                if (kv.Value <= ip && kv.Value > best) { best = kv.Value; name = kv.Key; }
+            }
+            // Pseudo-procedura del codice di modulo (`__main`): non è una procedura BASIC.
+            // Va scartata DOPO la scelta (non prima), altrimenti si ricadrebbe sulla
+            // procedura precedente per indirizzo e il trace mostrerebbe un frame falso.
+            if (string.IsNullOrEmpty(name) || name is "__main" or "__module") return;
+            sb.Append("  in ").Append(name).Append(" (riga ")
+              .Append(SourceLineForIp(ip)).Append(")\n");
+        }
+        Push(task.CurrentInstructionIp);
+        for (var f = task.Frame; f is not null; f = f.Previous) Push(f.ReturnIp);
+        return sb.ToString();
     }
 
     /// <summary>

@@ -971,7 +971,8 @@ public sealed partial class IlProgramCompiler
                 : isLineNumber ? _types.ErrInstanceLineNumberGetter
                 : expr.Field.Lexeme.Equals("Description", StringComparison.OrdinalIgnoreCase) ? _types.ErrInstanceDescriptionGetter
                 : expr.Field.Lexeme.Equals("SourceLineText", StringComparison.OrdinalIgnoreCase) ? _types.ErrInstanceSourceLineTextGetter
-                : throw new NotSupportedException($"Backend IL: campo '{expr.Field.Lexeme}' non supportato su ERR (solo Number/Description/LineNumber/SourceLineText)."));
+                : expr.Field.Lexeme.Equals("StackTrace", StringComparison.OrdinalIgnoreCase) ? _types.ErrInstanceStackTraceGetter
+                : throw new NotSupportedException($"Backend IL: campo '{expr.Field.Lexeme}' non supportato su ERR (solo Number/Description/LineNumber/SourceLineText/StackTrace)."));
             // ErrInstance.Number/LineNumber sono int32 CLR puri (vedi Ast/Exceptions.cs),
             // ma questo backend tratta OGNI valore numerico BASIC come double per
             // convenzione (vedi InferType sotto, stesso caso ErrType) — conversione qui,

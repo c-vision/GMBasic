@@ -729,6 +729,8 @@ internal sealed partial class MethodEmitter
             typeof(Basic.ErrInstance).GetProperty(nameof(Basic.ErrInstance.Description))!.GetGetMethod()!;
         private static readonly System.Reflection.MethodInfo ErrInstanceSourceLineTextGetterMethod =
             typeof(Basic.ErrInstance).GetProperty(nameof(Basic.ErrInstance.SourceLineText))!.GetGetMethod()!;
+        private static readonly System.Reflection.MethodInfo ErrInstanceStackTraceGetterMethod =
+            typeof(Basic.ErrInstance).GetProperty(nameof(Basic.ErrInstance.StackTrace))!.GetGetMethod()!;
 
         private int SlotOf(int symbolId)
             => _slotOf.TryGetValue(symbolId, out var s) ? s : throw new InvalidOperationException($"StepV2: variabile senza slot (sym {symbolId}).");
@@ -1134,11 +1136,13 @@ internal sealed partial class MethodEmitter
             var isLine = field.Equals("LineNumber", StringComparison.OrdinalIgnoreCase);
             var isDesc = field.Equals("Description", StringComparison.OrdinalIgnoreCase);
             var isSrc = field.Equals("SourceLineText", StringComparison.OrdinalIgnoreCase);
-            if (!isNumber && !isLine && !isDesc && !isSrc)
-                throw new NotSupportedException($"StepV2: campo '{field}' non supportato su ERR (solo Number/Description/LineNumber/SourceLineText).");
+            var isTrace = field.Equals("StackTrace", StringComparison.OrdinalIgnoreCase);
+            if (!isNumber && !isLine && !isDesc && !isSrc && !isTrace)
+                throw new NotSupportedException($"StepV2: campo '{field}' non supportato su ERR (solo Number/Description/LineNumber/SourceLineText/StackTrace).");
             _il.Emit(OpCodes.Call, isNumber ? ErrInstanceNumberGetterMethod
                 : isLine ? ErrInstanceLineNumberGetterMethod
                 : isDesc ? ErrInstanceDescriptionGetterMethod
+                : isTrace ? ErrInstanceStackTraceGetterMethod
                 : ErrInstanceSourceLineTextGetterMethod);
             if (isNumber || isLine)
             {

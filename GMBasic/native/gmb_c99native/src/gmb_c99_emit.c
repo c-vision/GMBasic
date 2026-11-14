@@ -1386,6 +1386,16 @@ static void emit_class_locals_dtors(ctx_t* c) {
         sb_put(&c->out, ");\n");
     }
 }
+/* STACK TRACE: riporta la catena al frame della procedura corrente. Emesso nei punti in
+ * cui si RIPRENDE dopo un longjmp (CATCH, fine del guard ON ERROR RESUME NEXT): il salto
+ * ha scavalcato i `cleanup` dei frame più interni, che quindi restano contati. A livello
+ * di modulo non c'è `__gmb_tf` (nessuna procedura): si azzera la profondità. */
+static void emit_trace_restore(ctx_t* c) {
+    ind(c);
+    if (c->cur_fn) sb_put(&c->out, "gmb_trace_restore_frame(&__gmb_tf);\n");
+    else sb_put(&c->out, "gmb_trace_restore_depth(0);\n");
+}
+
 static void emit_fn_return(ctx_t* c) {
     emit_arr_wb(c);
     /* RIPRISTINO degli handler TRY attivi: un RETURN dentro `TRY ... END TRY` deve rimettere
@@ -1477,6 +1487,9 @@ static int catch_member_kind(ctx_t* c, const char* var) {
             int mk = gmb_member_tok(dot + 1);
             if (mk == GMB_TOK_Number || mk == GMB_TOK_LineNumber) return 1;
             if (mk == GMB_TOK_Description) return 2;
+            /* StackTrace: catena delle procedure catturata all'ultimo raise (gmb_err_trace).
+             * Prima cadeva nel fallback e `e.StackTrace` valeva 0. */
+            if (strcasecmp(dot + 1, "StackTrace") == 0) return 3;
             return 0;
         }
     return 0;
@@ -2909,8 +2922,12 @@ int etype(ctx_t* c, gmb_expr_t* e) {
          * GOTO + PRINT ERR.Description): il requisito ns==Err lasciava etype=TY_NUM e
          * PRINT emetteva gmb_print_double(gmb_string_alloc(...)) → errore C in compilazione.
          * Condizione allineata a emit_var (prefix "ERR.", strncasecmp). */
-        if (e->var && ((e->ns && e->ns_tk == GMB_TOK_Err) || strncasecmp(e->var, "ERR.", 4) == 0))
-            return gmb_member_tok(e->var + 4) == GMB_TOK_Description ? TY_STR : TY_NUM;
+        if (e->var && ((e->ns && e->ns_tk == GMB_TOK_Err) || strncasecmp(e->var, "ERR.", 4) == 0)) {
+            /* Description e StackTrace sono STRINGHE; Number/LineNumber numerici. */
+            if (gmb_member_tok(e->var + 4) == GMB_TOK_Description) return TY_STR;
+            if (strcasecmp(e->var + 4, "StackTrace") == 0) return TY_STR;
+            return TY_NUM;
+        }
         /* COLLECTIONS: proprietà senza parentesi su var (list.Count/Peek/Dequeue/Pop/…, dict.Keys) */
         if (e->var) {
             const char* cdot = strchr(e->var, '.');
@@ -2932,7 +2949,7 @@ int etype(ctx_t* c, gmb_expr_t* e) {
             }
         }
         int cmk = catch_member_kind(c, e->var);
-        if (cmk) return cmk == 2 ? TY_STR : TY_NUM;
+        if (cmk) return (cmk == 2 || cmk == 3) ? TY_STR : TY_NUM;
         {   /* 2.6(p): membro nudo di dict boxed (FETCHRESULT) o req/res HTTP */
             const char* bmd = e->var ? strchr(e->var, '.') : NULL;
             if (bmd && bmd != e->var) {
@@ -15197,8 +15214,10 @@ void emit_expr(ctx_t* c, gmb_expr_t* e) {
             if (emk == GMB_TOK_Number) { sb_put(&c->out, "gmb_err_number()"); break; }
             if (emk == GMB_TOK_Description) { sb_put(&c->out, "gmb_string_alloc(gmb_err_description())"); break; }
             if (emk == GMB_TOK_LineNumber) { sb_put(&c->out, "(gmb_double_t)gmb_err_line()"); break; }
-            /* Altri campi (es. SOURCELINETEXT/STACKTRACE): il C# C99 emette "0" (fallback, non
-             * errore) → parity. Prima la gamba C falliva con "campo ERR non supportato". */
+            /* Catena delle procedure dell'ultimo errore (parità VM/C, PCode, IL). */
+            if (strcasecmp(m, "StackTrace") == 0) { sb_put(&c->out, "gmb_string_alloc(gmb_err_trace())"); break; }
+            /* Altri campi (es. SOURCELINETEXT): fallback "0" (non errore), come il resto
+             * delle gambe. Prima la gamba C falliva con "campo ERR non supportato". */
             sb_put(&c->out, "0");
             break;
         }
@@ -15219,6 +15238,7 @@ void emit_expr(ctx_t* c, gmb_expr_t* e) {
             }
             else if (cmk == GMB_TOK_Description) sb_put(&c->out, "gmb_string_alloc(gmb_err_description())");
             else if (cmk == GMB_TOK_LineNumber) sb_put(&c->out, "(gmb_double_t)gmb_err_line()");
+            else if (strcasecmp(m, "StackTrace") == 0) sb_put(&c->out, "gmb_string_alloc(gmb_err_trace())");
             else { c99_fail(c, e->line, "campo variabile CATCH non supportato: %s", m); return; }
             break;
         }
@@ -18997,6 +19017,9 @@ static void res_guard_end(ctx_t* c, int res_guard) {
     if (!res_guard) return;
     ind(c); sb_printf(&c->out, "__resume_end_%d:;\n", res_guard);
     ind(c); sb_put(&c->out, "gmb_err_set_resume(NULL);\n");
+    /* STACK TRACE: la ripresa dopo il longjmp di RESUME NEXT è nella stessa procedura, ma i
+     * frame delle chiamate più interne sono morti (i loro cleanup non sono passati). */
+    emit_trace_restore(c);
 }
 
 static void st_let_assign(ctx_t* c, gmb_stmt_t* s) {
@@ -22399,9 +22422,14 @@ static void st_on_error(ctx_t* c, gmb_stmt_t* s) {
             int id = ++c->err_uid;
             err_decl_record(c, id);   /* dichiarazione nel prologo (scope funzione) */
             ind(c); sb_printf(&c->out, "gmb_err_set_handler(&__err%d);\n", id);
-            ind(c); sb_printf(&c->out, "if (setjmp(__err%d) != 0) goto lbl_", id);
+            ind(c); sb_printf(&c->out, "if (setjmp(__err%d) != 0) {\n", id);
+            c->indent++;
+            emit_trace_restore(c);   /* il salto ha scavalcato i cleanup dei frame interni */
+            ind(c); sb_put(&c->out, "goto lbl_");
             emit_ident(c, s->target_label);
             sb_put(&c->out, ";\n");
+            c->indent--;
+            ind(c); sb_put(&c->out, "}\n");
             return;
         }
         if (strcmp(ok, "ERROR_RESUME_HANDLER") == 0) {
@@ -22662,6 +22690,11 @@ static void st_try(ctx_t* c, gmb_stmt_t* s) {
          * corpo del TRY: il puntatore resterebbe su un jmp_buf di un frame morto e un successivo
          * `ON ERROR RESUME NEXT` (gmb_err_resume_next) vi farebbe longjmp (stack corrotto). */
         ind(c); sb_put(&c->out, "gmb_err_set_resume(NULL);\n");
+        /* STACK TRACE: il longjmp ha saltato i `cleanup` dei frame più interni (che non
+         * esistono più). Si riporta la catena al frame di QUESTA procedura: senza, il primo
+         * statement del CATCH aggiornerebbe la riga di un frame morto e un errore successivo
+         * riporterebbe una catena sbagliata. */
+        emit_trace_restore(c);
         if (s->n_catch == 0) {
             ind(c); sb_printf(&c->out, "__err_active_%d = 1; __err_num_%d = gmb_err_number(); __err_desc_%d = gmb_err_description(); __err_line_%d = gmb_err_line();\n",
                                id, id, id, id);

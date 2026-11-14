@@ -263,6 +263,9 @@ public sealed class IlTypeContext
     public required MethodInfo ErrInstanceDescriptionGetter { get; init; }
     public required MethodInfo ErrInstanceLineNumberGetter { get; init; }
     public required MethodInfo ErrInstanceSourceLineTextGetter { get; init; }
+    /// <summary>Basic.ErrInstance.StackTrace — catena BASIC dell'errore (parità C99Native/VM-C/
+    /// PCode). Prima la gamba IL rifiutava il campo con NotSupportedException.</summary>
+    public required MethodInfo ErrInstanceStackTraceGetter { get; init; }
 
     /// <summary>Basic.SourcePosition — struct (FileId, Line, Column), embeddato per valore a ogni THROW/ERROR/costruzione di BasicException (posizione nota a compile-time, dal Token dello statement).</summary>
     public required ConstructorInfo SourcePositionConstructor { get; init; }
@@ -353,6 +356,7 @@ public sealed class IlTypeContext
         ErrInstanceDescriptionGetter = typeof(ErrInstance).GetProperty(nameof(ErrInstance.Description))!.GetGetMethod()!,
         ErrInstanceLineNumberGetter = typeof(ErrInstance).GetProperty(nameof(ErrInstance.LineNumber))!.GetGetMethod()!,
         ErrInstanceSourceLineTextGetter = typeof(ErrInstance).GetProperty(nameof(ErrInstance.SourceLineText))!.GetGetMethod()!,
+        ErrInstanceStackTraceGetter = typeof(ErrInstance).GetProperty(nameof(ErrInstance.StackTrace))!.GetGetMethod()!,
         SourcePositionConstructor = typeof(SourcePosition).GetConstructor([typeof(int), typeof(int), typeof(int)])!
     };
 
@@ -511,6 +515,7 @@ public sealed class IlTypeContext
             ErrInstanceDescriptionGetter = errInstanceType.GetProperty("Description")!.GetGetMethod()!,
             ErrInstanceLineNumberGetter = errInstanceType.GetProperty("LineNumber")!.GetGetMethod()!,
             ErrInstanceSourceLineTextGetter = errInstanceType.GetProperty("SourceLineText")!.GetGetMethod()!,
+            ErrInstanceStackTraceGetter = errInstanceType.GetProperty("StackTrace")!.GetGetMethod()!,
             SourcePositionConstructor = sourcePositionType.GetConstructor(
                 [Resolve("System.Int32"), Resolve("System.Int32"), Resolve("System.Int32")])!
         };

@@ -1,6 +1,9 @@
 /* gmb_trace.c — stack trace BASIC del runtime C. Vedi gmb_trace.h per il contratto.
- * Nessuna allocazione per frame: la catena vive nello stack delle procedure BASIC (l'emitter
- * C99 emette `gmb_trace_frame_t __gmb_tf __attribute__((cleanup(gmb_trace_leave))) = ...`).
+ *
+ * Nessuna allocazione per frame: la catena è un array thread-local di entry (nome + riga)
+ * e il "frame" che l'emitter C99 porta nello stack della procedura è solo l'indice.
+ * Così un longjmp (gmb_raise_error) lascia la profondità alta ma NON lascia puntatori a
+ * stack morto: la scrittura della riga resta sempre dentro l'array.
  */
 #include "gmb_trace.h"
 
@@ -8,44 +11,67 @@
 #include <stdlib.h>
 #include <string.h>
 
-gmb_trace_frame_t* gmb_trace_top = NULL;
+__thread gmb_trace_ent_t gmb_trace_stack[GMB_TRACE_MAX];
+__thread int gmb_trace_n = 0;
 
 gmb_trace_frame_t gmb_trace_enter(const char* fn, long line)
 {
     gmb_trace_frame_t f;
-    f.fn = (fn && *fn) ? fn : "?";
-    f.line = line;
-    f.prev = gmb_trace_top;
-    gmb_trace_top = &f;
+    f.idx = gmb_trace_n;
+    if (gmb_trace_n < GMB_TRACE_MAX) {
+        gmb_trace_stack[gmb_trace_n].fn = (fn && *fn) ? fn : "?";
+        gmb_trace_stack[gmb_trace_n].line = line;
+        gmb_trace_n++;
+    }
     return f;
 }
 
 void gmb_trace_leave(gmb_trace_frame_t* f)
 {
-    /* `cleanup` passa l'indirizzo della variabile locale: se è la cima, si torna al
-     * chiamante. Il controllo su `prev` rende la funzione idempotente e sicura anche se
-     * chiamata su un frame non in cima (es. longjmp che salta un livello). */
     if (!f) return;
-    if (gmb_trace_top == f) gmb_trace_top = f->prev;
-    else {
-        /* rimuove f dalla catena (caso raro: uscita fuori ordine) */
-        gmb_trace_frame_t* p = gmb_trace_top;
-        while (p && p->prev != f) p = p->prev;
-        if (p && p->prev == f) p->prev = f->prev;
-    }
+    /* Uscita NORMALE: il frame è la cima. Uscita dopo un longjmp catturato: i frame più
+     * interni sono ancora contati (i loro cleanup non sono passati) → si tronca a questo. */
+    if (f->idx < gmb_trace_n) gmb_trace_n = f->idx;
+}
+
+void gmb_trace_restore_frame(const gmb_trace_frame_t* f)
+{
+    if (!f) return;
+    if (f->idx + 1 <= gmb_trace_n) gmb_trace_n = f->idx + 1;
+}
+
+void gmb_trace_restore_depth(int n)
+{
+    if (n < 0) n = 0;
+    if (n < gmb_trace_n) gmb_trace_n = n;
 }
 
 int gmb_trace_depth(void)
 {
-    int n = 0;
-    for (gmb_trace_frame_t* f = gmb_trace_top; f; f = f->prev) n++;
-    return n;
+    return gmb_trace_n;
+}
+
+char* gmb_trace_text_skip(int skip)
+{
+    size_t cap = 64;
+    for (int i = skip; i < gmb_trace_n; i++) cap += strlen(gmb_trace_stack[i].fn) + 32;
+    char* out = (char*)malloc(cap);
+    if (!out) return strdup("");
+    size_t o = 0;
+    out[0] = 0;
+    for (int i = gmb_trace_n - 1; i >= skip; i--) {
+        int w = snprintf(out + o, cap - o, "  in %s (riga %ld)\n",
+                         gmb_trace_stack[i].fn, gmb_trace_stack[i].line);
+        if (w <= 0 || (size_t)w >= cap - o) break;
+        o += (size_t)w;
+    }
+    return out;
 }
 
 /* Snapshot della catena catturato all'ULTIMO raise (gmb_raise_error): dopo il longjmp i
  * frame delle procedure attraversate non esistono più, quindi il testo va catturato PRIMA
  * del salto. `ERR.StackTrace` e il messaggio fatale leggono questo. */
-static char* g_err_trace_snapshot = NULL;
+static __thread char* g_err_trace_snapshot = NULL;
 
 void gmb_trace_snapshot(void)
 {
@@ -56,23 +82,4 @@ void gmb_trace_snapshot(void)
 const char* gmb_err_trace(void)
 {
     return g_err_trace_snapshot ? g_err_trace_snapshot : "";
-}
-
-char* gmb_trace_text_skip(int skip)
-{
-    size_t cap = 64;
-    int n = 0;
-    for (gmb_trace_frame_t* f = gmb_trace_top; f; f = f->prev) { n++; cap += strlen(f->fn) + 32; }
-    char* out = (char*)malloc(cap);
-    if (!out) return strdup("");
-    size_t o = 0;
-    int i = 0;
-    out[0] = 0;
-    for (gmb_trace_frame_t* f = gmb_trace_top; f; f = f->prev, i++) {
-        if (i < skip) continue;
-        int w = snprintf(out + o, cap - o, "  in %s (riga %ld)\n", f->fn, f->line);
-        if (w <= 0 || (size_t)w >= cap - o) break;
-        o += (size_t)w;
-    }
-    return out;
 }
