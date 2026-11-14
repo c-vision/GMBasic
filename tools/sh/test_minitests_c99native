@@ -417,10 +417,14 @@ RT_CACHE_DIR="${TMPDIR:-/tmp}/gmb_c99native_rt_cache/$TARGET_RID"
 # (`gmb_c99native_run.sh`) non serve nessuna copia-alias; la gamba A/B usa `librt.<tag>.a` e
 # non tocca il canonico. Il tag è un hash della stringa di `--cc`: stabile fra invocazioni
 # identiche.
+# `RT_PUB` è il nome STABILE che leggono gli altri script (`lxbuild` fallisce senza `librt.a`,
+# `gmb_c99native_run.sh` lo usa se c'è): continua a essere pubblicato. `RT_CACHE` è invece
+# l'archivio che QUESTO processo linka, con lo stamp nel nome: nessun altro processo può
+# sostituirglielo con sorgenti diverse mentre la corsa è in corso.
 case "${FC%% *}" in
-  zcc|zig|*/zcc|*/zig) RT_CACHE="$RT_CACHE_DIR/librt.a";         RT_STAMP="$RT_CACHE_DIR/src.stamp" ;;
+  zcc|zig|*/zcc|*/zig) RT_PUB="$RT_CACHE_DIR/librt.a";            RT_CACHE_BASE="$RT_CACHE_DIR/librt" ;;
   *)        RT_TAG="$(printf '%s' "$FC" | shasum | cut -c1-8)"
-            RT_CACHE="$RT_CACHE_DIR/librt.$RT_TAG.a"; RT_STAMP="$RT_CACHE_DIR/src.$RT_TAG.stamp" ;;
+            RT_PUB="$RT_CACHE_DIR/librt.$RT_TAG.a";             RT_CACHE_BASE="$RT_CACHE_DIR/librt.$RT_TAG" ;;
 esac
 # Gli HEADER contano: prima la cache era invalidata solo dai .c, quindi una modifica a un header
 # (es. gmb_runtime.h, dove vive ogni prototipo gmb_*) lasciava in cache un runtime compilato con
@@ -464,7 +468,16 @@ rt_stamp_hash() {       # hash del contenuto: un `shasum` per BLOCCO (xargs), no
 RT_UNIT_FLAGS="$TF $INC_RT -I$INC_CHART -I$ROOT/native/gmb_runtime_c/build -I$ROOT/native/gmb_agent_runtime -I$ROOT/native/gmb_doc_c/include -I$ROOT/native/gmb_db_c/include -I$ROOT/native/gmb_torch/include $LLM_INC -I$ZSTD_INC $CODEC_INC $INC_EXTRA -O2 -ffunction-sections -fdata-sections -w -ffp-contract=off -DHAVE_OPENSSL -DGMB_PARQUET_HAVE_ZSTD -DGMB_WITH_UI=1"
 mkdir -p "$RT_CACHE_DIR"
 STAMP="$(rt_stamp_hash)"
-if [ "${GMB_RT_REBUILD:-}" != "1" ] && [ -f "$RT_CACHE" ] && [ -f "$RT_STAMP" ] && [ "$(cat "$RT_STAMP")" = "$STAMP" ]; then
+RT_CACHE="$RT_CACHE_BASE.$STAMP.a"
+# Numero di membri attesi: è il metro che distingue un archivio VERO da uno corrotto. Il 13/11
+# un `ar rcs` in corsa ha lasciato in cache un `librt.<tag>.a` da 96 byte e la cache restava
+# "valida" (lo stamp era quello giusto): da lì in poi OGNI link falliva con "symbol(s) not found".
+RT_N_EXPECTED="$(printf '%s\n' $RT_SRCS | wc -l | tr -d ' ')"
+# Membri = unità + la tabella dei simboli che `ar` aggiunge (`__.SYMDEF` su Mach-O, `/` o
+# `//` su ELF): contarla faceva rifiutare un archivio sano (misurato: 397 membri per 396 unità).
+archive_members() { $AR_CMD t "$1" 2>/dev/null | grep -v -e '^__\.SYMDEF' -e '^//$' -e '^/$' | wc -l | tr -d ' '; }
+cache_ok() { [ -f "$1" ] && [ "$(archive_members "$1")" = "$RT_N_EXPECTED" ]; }
+if [ "${GMB_RT_REBUILD:-}" != "1" ] && cache_ok "$RT_CACHE"; then
   echo "runtime C: cache valida ($RT_CACHE)"
   RT_LIB="$RT_CACHE"
 else
@@ -488,8 +501,25 @@ else
     OBJS="$OBJS $o"
   done < "$WORK/rt_shasums"
   echo "runtime C: compilate $RT_COMPILED di $RT_N unità"
-  $AR_CMD rcs "$RT_CACHE.tmp" $OBJS && mv "$RT_CACHE.tmp" "$RT_CACHE"
-  echo "$STAMP" > "$RT_STAMP"
+  # TEMPORANEO PER PID: era `$RT_CACHE.tmp` per tutti, così due `ar rcs` simultanei scrivevano
+  # lo stesso file e il `mv` pubblicava un archivio vuoto da 96 byte (misurato: due invocazioni
+  # in parallelo → 61 errori di link su 61 test, entrambe le run). Il file resta privato finché
+  # non è validato, e solo allora prende il nome definitivo.
+  AR_TMP="$RT_CACHE.$$.tmp"
+  if ! $AR_CMD rcs "$AR_TMP" $OBJS || ! cache_ok "$AR_TMP"; then
+    rm -f "$AR_TMP"
+    echo "runtime C: archivio non valido ($(archive_members "$AR_TMP") membri, $RT_N_EXPECTED attesi): non lo pubblico" >&2
+    exit 1
+  fi
+  mv -f "$AR_TMP" "$RT_CACHE"
+  # Nome stabile per chi lo legge da fuori: hard link (atomico, stesso filesystem) invece di
+  # una copia da 17 MB; `cp` solo se il link non è possibile.
+  if ! ln -f "$RT_CACHE" "$RT_PUB" 2>/dev/null; then
+    cp -f "$RT_CACHE" "$RT_PUB.$$.tmp" && mv -f "$RT_PUB.$$.tmp" "$RT_PUB"
+  fi
+  # Gli archivi legati allo stamp si accumulano (~17 MB l'uno): si tengono quelli delle ultime
+  # 3 ore, più di qualsiasi singola invocazione. `librt.a` non ha il punto e non viene toccato.
+  find "$RT_CACHE_DIR" -maxdepth 1 -name 'librt.*.a' -mmin +180 -delete 2>/dev/null || true
   RT_LIB="$RT_CACHE"
 fi
 # I MiniTest cambiano posto fra i due repository: nella radice di GMBasic in quello originale,
@@ -827,7 +857,10 @@ for f in "$MINI"/**/*.bas "$MINI"/*.bas; do
   # ispezionava il C poteva leggere quello dell'ALTRO test.
   CNAME="$(printf '%s' "${name%.bas}" | sed 's|/|__|g')"
   CDEST="$MONO/tools/out/c99native/$CNAME.c"
-  mkdir -p "$(dirname "$CDEST")" 2>/dev/null; cp "$WORK/out.c" "$CDEST" 2>/dev/null || true
+  # Copia ATOMICA anche qui: la dir è condivisa fra processi, un `cp` diretto lasciava un file
+  # troncato a chi lo leggeva nello stesso istante.
+  mkdir -p "$(dirname "$CDEST")" 2>/dev/null
+  cp "$WORK/out.c" "$CDEST.$$.tmp" 2>/dev/null && mv -f "$CDEST.$$.tmp" "$CDEST" 2>/dev/null || rm -f "$CDEST.$$.tmp"
   echo "PASS $name :: $OUT|"
   echo "     C generato: tools/out/c99native/$CNAME.c"
   if [ "${GMB_C99NATIVE_SHOW_C:-0}" = "1" ]; then echo "  --- C generato ($CNAME) ---"; cat "$CDEST"; echo "  --- fine C ---"; fi
