@@ -18780,6 +18780,20 @@ static int is_json_path_member(ctx_t* c, gmb_expr_t* e, var_t** out_bv, const ch
                  if (s->print_comma && s->print_comma[i]) { ind(c); sb_put(&c->out, "gmb_print_tab_zone();\n"); }
                  continue;
              }
+             /* `PRINT F()` con F che è una SUB (nessun tipo di ritorno): la chiamata si
+              * esegue, ma NON c'è un valore da stampare — l'argomento non produce output
+              * (parità IL/PCode/VM-C). Prima si stampava il `__ret` della SUB (0), quindi
+              * C99 diceva `a= 0` dove le altre gambe dicono `a=`. */
+             if (s->print_args[i] && s->print_args[i]->kind == GMB_EXPR_CALL && s->print_args[i]->var) {
+                 const char* _vn = strrchr(s->print_args[i]->var, '.');
+                 _vn = (_vn && _vn[1]) ? _vn + 1 : s->print_args[i]->var;
+                 fn_info_t* _vf = find_fn_arity(c, _vn, s->print_args[i]->nargs, NULL);
+                 if (_vf && _vf->stmt && !_vf->stmt->func_ret_type && !_vf->stmt->is_generator) {
+                     ind(c); emit_expr(c, s->print_args[i]); sb_put(&c->out, ";\n");
+                     if (s->print_comma && s->print_comma[i]) { ind(c); sb_put(&c->out, "gmb_print_tab_zone();\n"); }
+                     continue;
+                 }
+             }
              /* F1-followup (2026-09-11): AI.EMBED ritorna double* (senza lunghezza) → in
               * PRINT costruisci la lista con la lunghezza e stampala come "[a, b]"
               * (parità IL/PCode). Prima: gmb_print_double(double*) → errore cc. */
