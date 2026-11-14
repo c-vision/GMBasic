@@ -20,6 +20,9 @@
 #             stampasse "ok" qui certificherebbe un test rosso;
 #   ERRORE    una gamba non ha eseguito NULLA (filtro o toolchain rotti): commit bloccato.
 # Un caso SALTATO da entrambe le gambe non e' verificato e non blocca.
+# Un `.bas` passato con un percorso che non si riconduce alla radice dei MiniTest — o che non
+# esiste — NON e' un salto: e' un ERRORE d'invocazione (exit 2). Prima finiva in "salto … (non
+# e' un MiniTest)" e il gate usciva 0: verde senza aver eseguito niente.
 #
 # LIMITI DICHIARATI.
 #  - La gamba compila il file dal WORKING TREE, non dal blob staged: con uno stage parziale il
@@ -35,7 +38,10 @@
 #   tools/sh/minitest_ab_gate.sh status       # dice se il blocco e' installato
 #   tools/sh/minitest_ab_gate.sh run          # i MiniTest staged del commit (lo invoca l'hook)
 #   tools/sh/minitest_ab_gate.sh run --staged <path...>   # prova, senza toccare l'index
-#   tools/sh/minitest_ab_gate.sh check <file...>          # prova diretta, senza git
+#   tools/sh/minitest_ab_gate.sh check <file...>          # prova diretta, senza git (accetta
+#                                                        shared/minitests/<dominio>/<file>.bas,
+#                                                        <dominio>/<file>.bas o un assoluto;
+#                                                        un .bas non valido = ERRORE, exit 2)
 #   tools/sh/minitest_ab_gate.sh check --cc <cmd> <file...>
 #
 # Exit: 0 = nessuna divergenza (o nulla da fare) · 1 = divergenza / gamba muta · 2 = uso errato.
@@ -45,8 +51,13 @@ SELF_DIR="$(cd "$(dirname "$0")" && pwd)"
 MONO="$(cd "$SELF_DIR/../.." && pwd)"
 RUNNER="$SELF_DIR/test_minitests_c99native"
 PLAIN_CC="cc"          # la gamba A/B: clang di sistema (Apple su macOS)
+# Radice dei MiniTest: serve a verificare che il file passato a `check` ESISTA davvero (un needle
+# che non corrisponde a nulla fa girare il runner su zero casi, cioe' un altro falso verde).
+MINI_ROOT="${GMB_MINI_ROOT:-$MONO/shared/minitests}"
 TMPD="$(mktemp -d "${TMPDIR:-/tmp}/minitest_ab.XXXXXX")" || exit 2
 EXECUTED=0     # file realmente eseguiti su ENTRAMBE le gambe
+BAD_INVOCATION=0  # file passati ma non riconducibili a un MiniTest: uso errato, non un salto
+STRICT_PATH=0     # 1 solo in `check`: li' il percorso lo scrive l'utente e sbagliarlo deve fallire
 SKIPPED=0      # file saltati (interattivi, non-MiniTest): non contano come verifica
 DIVERGED=0     # le due gambe danno esiti DIVERSI
 ACCORD_FAIL=0   # le due gambe concordano, ma nel FALLIMENTO: non e' un test verificato
@@ -132,6 +143,11 @@ needle_of() {
         */minitests/*)      p="${p#*minitests/}" ;;   # radice forzata (GMB_MINI_ROOT) o percorso assoluto
         */MiniTests/*)      p="${p#*MiniTests/}" ;;
         MiniTests/*)        p="${p#MiniTests/}" ;;
+        # PERCORSO RELATIVO AL DOMINIO (`matrix/max.bas`): e' la forma che si scrive a mano.
+        # ...ma solo se il file ESISTE sotto la radice: senza questo vincolo anche
+        # `tools/basic/check_enum_ids.bas` passava di qui, il runner riceveva un filtro che non
+        # corrisponde a nulla e il pre-commit si bloccava su un commit senza MiniTest.
+        */*.bas)            [ -f "$MINI_ROOT/$p" ] || return 1 ;;
         *)                  return 1 ;;
     esac
     case "$p" in *.bas) printf '%s' "$p" ;; *) return 1 ;; esac
@@ -164,8 +180,37 @@ result_lines() { grep -E '^(PASS|FAIL|SKIP) ' "$1" 2>/dev/null || true; }
 # check_one <file> <cc> — 0 = gambe concordi, 1 = divergenza o gamba muta.
 check_one() {
     local f="$1" cc="$2" needle rc_zig rc_cc t0 t1 a b
-    needle="$(needle_of "$f")" || { echo "salto $f (non e' un MiniTest)"; SKIPPED=$((SKIPPED+1)); return 0; }
-    if is_interactive "$f"; then
+    if ! needle="$(needle_of "$f")"; then
+        case "$f" in
+            *.bas)
+                # In `run` i percorsi arrivano da git: un `.bas` fuori dalla radice dei MiniTest
+                # (samples/, tools/basic/) NON e' un errore, si salta come prima — altrimenti il
+                # pre-commit bloccherebbe commit che non toccano nessun MiniTest. In `check` il
+                # percorso lo scrive l'utente: sbagliarlo deve fallire, non sparire tra i SALTATO.
+                if [ "$STRICT_PATH" = 1 ]; then
+                    echo "ERRORE: '$f' non e' un percorso di MiniTest riconosciuto." >&2
+                    echo "        forme accettate: shared/minitests/<dominio>/<file>.bas | <dominio>/<file>.bas | percorso assoluto sotto la radice" >&2
+                    BAD_INVOCATION=$((BAD_INVOCATION+1))
+                    return 1
+                fi
+                echo "salto $f (non e' un MiniTest)"
+                SKIPPED=$((SKIPPED+1))
+                return 0
+                ;;
+            *)
+                echo "salto $f (non e' un MiniTest)"
+                SKIPPED=$((SKIPPED+1))
+                return 0
+                ;;
+        esac
+    fi
+    if [ "$STRICT_PATH" = 1 ] && [ ! -f "$MINI_ROOT/$needle" ]; then
+        echo "ERRORE: '$f' -> '$needle', ma $MINI_ROOT/$needle non esiste." >&2
+        echo "        forme accettate: shared/minitests/<dominio>/<file>.bas | <dominio>/<file>.bas" >&2
+        BAD_INVOCATION=$((BAD_INVOCATION+1))
+        return 1
+    fi
+    if is_interactive "$MINI_ROOT/$needle"; then
         echo "salto $needle (interattivo: escluso per progetto da entrambe le gambe)"
         SKIPPED=$((SKIPPED+1))
         return 0
@@ -227,11 +272,16 @@ check_one() {
 # cmd_check <files...> — nessun git: serve per provare il gate a mano (o da un altro gate).
 cmd_check() {
     local cc="$PLAIN_CC" f rc=0 n=0
+    STRICT_PATH=1        # invocazione manuale: un percorso sbagliato e' un errore, non un salto
     if [ "${1:-}" = "--cc" ]; then cc="${2:-}"; shift 2; fi
     [ $# -gt 0 ] || { echo "ERRORE: check richiede almeno un file" >&2; return 2; }
     for f in "$@"; do
         check_one "$f" "$cc" || rc=1
     done
+    if [ "$BAD_INVOCATION" -gt 0 ]; then
+        echo "gate A/B: $BAD_INVOCATION file non verificabili — il percorso passato non e' un MiniTest valido (vedi ERRORE sopra)" >&2
+        return 2
+    fi
     if [ "$rc" -eq 0 ]; then
         echo "gate A/B: $EXECUTED passati su entrambe le gambe, zig == $cc (${SKIPPED:-0} saltati)"
     elif [ "$ACCORD_FAIL" -gt 0 ] && [ "$DIVERGED" -eq 0 ]; then
