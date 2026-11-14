@@ -2,6 +2,7 @@
 ' Sull'emitter C# erano `#error unsupported FOR EACH collection` (chiuso 2026-09-17);
 ' VM/C e C99Native avevano divergenze (chiuso 2026-09-18: UBOUND/LOAD_ELEMENT_POSITIONAL
 ' per stringa sul VM/C, ramo stringa + righe sul C99Native).
+' EXPECT: str= 3  s=abc|mrows= 2|full= 4
 DIM cc AS INTEGER = 0
 DIM s AS STRING = ""
 FOR EACH ch IN "abc"
@@ -24,4 +25,3 @@ FOR EACH e IN lst
   full = full + 1
 NEXT
 PRINT "full="; full
-' EXPECT: str= 3  s=abc|mrows= 2|full= 4

@@ -1,6 +1,7 @@
 ' Minitest — controlli di dominio "minori" (§12.4) come UserControl, 4 backend.
 ' Ticker (flash up/down) · TreeGroup (espansione + totale gruppo) · EconCalendar (filtro impatto)
-' · Toolbar (hit-test). EXPECT: trading-minors-ok
+' · Toolbar (hit-test).
+' EXPECT: trading-minors-ok
 IMPORT CONTROLS
 IMPORT CustomControls
 

@@ -30,5 +30,5 @@ SUB Main()
   SPEED GO T, TOP
   SPEED GET T, rec
   PRINT "top: " + rec.Name
-  ' EXPECT: top: Beta
+  ' (atteso: top: Beta)
 END SUB

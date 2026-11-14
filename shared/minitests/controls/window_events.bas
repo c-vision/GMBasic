@@ -9,9 +9,9 @@
 ' incrementi consecutivi sulla stessa variabile possono sovrapporsi (lost update), mentre un
 ' flag idempotente resta deterministico.
 '
-' Niente riga EXPECT: creazione/render delle finestre scrivono frame sulla console e l'output
-' completo non è confrontabile fra backend. La verifica è l'EXIT CODE (FUNCTION Main AS INTEGER:
-' 1 = FAIL), come per tui/window_parity.bas.
+' Niente oracolo statico: creazione/render delle finestre scrivono frame sulla console e
+' l'output completo non è confrontabile fra backend. La verifica è l'EXIT CODE (FUNCTION
+' Main AS INTEGER: 1 = FAIL), come per tui/window_parity.bas.
 IMPORT WINDOWS
 SCREEN 0
 DIM a = 0

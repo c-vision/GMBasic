@@ -1,6 +1,7 @@
 ' MiniTest DBF — JOIN WITH zero match (condizione falsa).
 ' Crea ordini (3 rec) e clienti (1 rec con ID=XX che non matcha O.IDCLI).
-' JOIN WITH produce 0 record. EXPECT: 0
+' JOIN WITH produce 0 record.
+' EXPECT: 0
 IMPORT DBF
 
 TYPE TORD

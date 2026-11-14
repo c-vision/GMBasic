@@ -1,6 +1,7 @@
 ' R1 AI OBSERVE — OBSERVATIONLIST/HASH/COUNT strutturale.
-' Expect: ok= list-ok
-' EXPECT: ok= list-fail
+' Il contratto di OBSERVATIONLIST$() è la lista compatta `id|tipo|hash` (non JSON): la
+' verifica è che contenga l'hash dell'osservazione appena registrata.
+' EXPECT: ok= list-ok
 IMPORT AI
 
 SUB Main()
@@ -11,7 +12,7 @@ SUB Main()
     h$ = AI.OBSERVATIONHASH$(id)
     o$ = AI.OBSERVATION$(id)
     l$ = AI.OBSERVATIONLIST$()
-    IF n > 0 AND LEN(h$) > 0 AND INSTR(l$, "{") AND INSTR(l$, "|") THEN
+    IF n > 0 AND LEN(h$) > 0 AND INSTR(l$, h$) > 0 AND INSTR(l$, "|") > 0 THEN
         PRINT "ok= list-ok"
     ELSE
         PRINT "ok= list-fail"

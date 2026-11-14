@@ -3,7 +3,10 @@
 ' LLM.MODULE, LLM.KERNEL, LLM.KV; le forme `LLM … INTO`; l'arità (parametri opzionali);
 ' il contratto d'errore (verbo inesistente → errore CATTURABILE, mai stringa vuota).
 ' Oracolo deterministico: fixture tokenizer del corpus + tabelle/descrizioni del compilatore.
-' | EXPECT: tok=SI|detok=SI|cnt=29|tens=SI|pol=SI|polset=OK|into_pol=SI|arch=SI|archlist=SI|mod=ERR|ker=ERR|kv=ERR|into_tok=SI|into_tens=SI|into_arch=SI|ar2=SI|ar3=SI
+' Le diagnostiche `LLM MODULE:`/`LLM KV:` (sotto-verbo inesistente) sono RUMORE DI MOTORE:
+' le scrive su stderr solo il layer comando C, e sono filtrate via
+' tests/engine_noise_prefixes.txt — il contratto verificato è l'errore catturabile (mod/ker/kv=ERR).
+' EXPECT: tok=SI|detok=SI|cnt=29|tens=SI|pol=SI|polset=OK|into_pol=SI|arch=SI|archlist=SI|mod=ERR|ker=ERR|kv=ERR|into_tok=SI|into_tens=SI|into_arch=SI|ar2=SI|ar3=SI
 IMPORT LLM
 
 DIM g_out AS STRING
