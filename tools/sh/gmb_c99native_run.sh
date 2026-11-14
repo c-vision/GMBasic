@@ -568,7 +568,11 @@ emit_program_bundle() { # $1 = eseguibile
   bundle_tool="$TOOLS_DIR/../basic/settings_bundle.bas"
   if [ -f "$bundle_tool" ]; then
     if command -v gmb >/dev/null 2>&1; then
-      gmb "$bundle_tool" --system "$shared/system.settings.json" \
+      # `--` PRIMA degli argomenti del tool: senza, il CLI li interpreta come OPZIONI di `run`
+      # e muore con "gmb: opzione sconosciuta '--system'" (il bundle settings veniva saltato
+      # in silenzio, quindi l'eseguibile distribuito partiva senza app.settings.json).
+      # Contratto: `gmb <file.bas> -- ARG...` inoltra ARG al PROGRAMMA (vedi gmb_cli_usage).
+      gmb "$bundle_tool" -- --system "$shared/system.settings.json" \
         --app "$DIR/app.settings.json" --out "$out/app.settings.json" >/dev/null && n=$((n+1))
     elif [ -f "$ROOT/../tools/runners/test_ilrun/bin/Debug/net10.0/test_ilrun.dll" ]; then
       dotnet "$ROOT/../tools/runners/test_ilrun/bin/Debug/net10.0/test_ilrun.dll" --engine=il \

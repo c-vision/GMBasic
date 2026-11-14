@@ -8,6 +8,7 @@
  * Elenco generato da: nm -u libgmb_runtime_min.a ∩ nm -gU gmb_runtime_ui_obj (66 simboli).
  */
 #include "gmb_runtime.h"
+#include "gmb_graphics_internal.h"   /* gmb_gfx_page_t + active_page() */
 #include "gmb_tui.h"
 #include "gmb_tui_app.h"
 #include "gmb_tui_widgets.h"
@@ -30,6 +31,41 @@ static void gmb_ui_null_warn(const char* fn)
 }
 
 void gmb_control_apply_style(gmb_control_t* c, const char* spec) { gmb_ui_null_warn("gmb_control_apply_style"); }
+
+/* ── FORM (gmb_form.c) è nel CORE: la usa anche READ con i form. Le primitive che chiama
+ * vivono nel layer UI/gfx, che la variante MINIMA non ha → stub nulli. Senza, il link di
+ * QUALUNQUE programma via `gmb run`/`gmb build` falliva con "Undefined symbols:
+ * _active_page, _gmb_control_apply_style_handle, _gmb_control_coord_transform,
+ * _gmb_control_handle_mouse, _gmb_gfx_clear_rect, _gmb_gfx_dim_page, _gmb_gfx_drop_shadow"
+ * (2026-11-14: `gmb run` era rotto per OGNI programma, anche un solo PRINT). */
+gmb_gfx_page_t* active_page(void) { gmb_ui_null_warn("active_page"); return NULL; }
+void gmb_control_apply_style_handle(int handle, const char* spec) { (void)handle; (void)spec; gmb_ui_null_warn("gmb_control_apply_style_handle"); }
+int  gmb_control_coord_transform(const gmb_control_t* c) { (void)c; return 0; }
+bool gmb_control_handle_mouse(gmb_control_t* c, const gmb_mouse_action_t* a) { (void)c; (void)a; return false; }
+void gmb_gfx_clear_rect(int x1, int y1, int x2, int y2, int color) { (void)x1; (void)y1; (void)x2; (void)y2; (void)color; gmb_ui_null_warn("gmb_gfx_clear_rect"); }
+void gmb_gfx_dim_page(float factor) { (void)factor; gmb_ui_null_warn("gmb_gfx_dim_page"); }
+void gmb_gfx_drop_shadow(int x, int y, int w, int h, int offset, unsigned int shadow_rgba, int radius) { (void)x; (void)y; (void)w; (void)h; (void)offset; (void)shadow_rgba; (void)radius; gmb_ui_null_warn("gmb_gfx_drop_shadow"); }
+
+/* Secondo giro (stessa causa: gmb_form.c/gmb_tui_controls_add.c sono nel core, il layer
+ * UI non c'è nella variante minima). */
+void gmb_gfx_fill_rounded_gradient(int x, int y, int w, int h, int radius, unsigned int c1, unsigned int c2) { (void)x; (void)y; (void)w; (void)h; (void)radius; (void)c1; (void)c2; gmb_ui_null_warn("gmb_gfx_fill_rounded_gradient"); }
+int  gmb_gfx_page_bg_color(void) { return 0; }
+int  gmb_gfx_text_height_logical(void) { return 1; }
+int  gmb_gfx_input_poll_key(char* out, int maxlen) { (void)out; (void)maxlen; return 0; }
+int  gmb_gfx_input_poll_mouse(int* type, int* x, int* y, int* button, int* wheel) { (void)type; (void)x; (void)y; (void)button; (void)wheel; return 0; }
+void gmb_gfx_input_push_key(const char* key) { (void)key; }
+gmb_menu_item_t* gmb_menu_item_at(gmb_menu_t* m, int i) { (void)m; (void)i; return NULL; }
+void gmb_tui_bind_str(int handle, gmb_string_t* out) { (void)handle; if (out) { out->data = NULL; out->length = 0; } }
+void gmb_tui_draw_px_all_force(void) { }
+void gmb_tui_mark_dirty(void) { }
+void gmb_tui_sync_bindings(void) { }
+
+/* Terzo giro: la console (gmb_console.c, core) usa il tema TUI. */
+gmb_theme_t gmb_ui_theme(void) { gmb_theme_t t; memset(&t, 0, sizeof t); return t; }
+void gmb_ui_set_theme_name(const char* name) { (void)name; }
+void gmb_theme_paint_desktop(gmb_screen_buffer_t* buf) { (void)buf; }
+
+
 void gmb_gfx_cls(int color) { gmb_ui_null_warn("gmb_gfx_cls"); }
 void gmb_gfx_draw_text(const char* text, int x, int y, int align, int color) { gmb_ui_null_warn("gmb_gfx_draw_text"); }
 void gmb_gfx_fill_rounded_rect(int x, int y, int w, int h, int radius, unsigned int rgba) { gmb_ui_null_warn("gmb_gfx_fill_rounded_rect"); }
