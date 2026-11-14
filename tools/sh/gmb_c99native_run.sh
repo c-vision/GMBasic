@@ -9,18 +9,25 @@ if [ -z "${GMB_BUILDBIN_ON:-}" ]; then
   GMB_BUILDBIN="$(cd "$(dirname "$0")" && pwd)/buildbin"
   [ -d "$GMB_BUILDBIN" ] && export PATH="$GMB_BUILDBIN:$PATH"
 fi
-# ZIG è il compilatore canonico (un solo toolchain su ogni piattaforma): default = tools/sh/zcc,
-# che è `zig cc` + i flag che su macOS clang Apple ricava da sé. Va risolto ORA, prima del `cd`
-# in $ROOT più sotto. Senza zig si ripiega su `cc`.
+# DUE COMPILATORI (AGENTS §0, accordo 2026-11-14): su macOS il riferimento è `cc` (Apple
+# clang: conosce l'SDK da sé e il suo linker registra TUTTE le dylib caricate — con `zig cc`
+# su macOS lo stesso programma usciva con 4 dylib invece di 14 e moriva con SIGSEGV);
+# sulle altre piattaforme / cross è `tools/sh/zcc` (`zig cc`: porta la libc del target).
+# Va risolto ORA, prima del `cd` in $ROOT più sotto. Override: `--cc <compilatore>`.
 SH_TOOLS="$(cd "$(dirname "$0")" && pwd)"
 ZCC_DEFAULT=""
-[ -x "$SH_TOOLS/zcc" ] && ZCC_DEFAULT="$SH_TOOLS/zcc"
+if [ "$(uname -s)" = Darwin ]; then
+  ZCC_DEFAULT="cc"
+elif [ -x "$SH_TOOLS/zcc" ]; then
+  ZCC_DEFAULT="$SH_TOOLS/zcc"
+fi
 
 # tools/sh/gmb_c99native_run.sh — compila+linka+esegue l'output del driver C99Native.
 # Uso: gmb_c99native_run.sh <sample.bas> [suffisso] [cflags]
 #      [--cc <compilatore>] [--target <triple>]
-#   --cc     il compilatore C (default: ZIG via tools/sh/zcc, il toolchain canonico: stessi
-#            artefatti su ogni piattaforma). `--cc cc` resta per la gamba A/B di confronto.
+#   --cc     il compilatore C. Default: `cc` su macOS (Apple clang, riferimento nativo) e
+#            `tools/sh/zcc` (zig cc) sulle altre piattaforme / cross (AGENTS §0: DUE
+#            compilatori). `--cc cc` / `--cc tools/sh/zcc` servono anche per la gamba A/B.
 #            Accetta anche una stringa multi-parola: `--cc "<zig> cc"`.
 #   --rid    RID di destinazione (i sei del piano: osx-arm64, osx-x64, linux-x64, linux-arm64,
 #            win-x64, win-arm64). Fissa triple, OS, framework e terze parti via

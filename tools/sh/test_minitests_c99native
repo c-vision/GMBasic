@@ -15,12 +15,13 @@ fi
 # reale → esecuzione. PASS = genera C + compila + run exit 0. Complementare al gate C99
 # (C99Native) e al test di parità IL/PCode/VMC.
 #
-# COMPILATORE: ZIG è il toolchain canonico su ogni piattaforma (`tools/sh/zcc` = `zig cc`
-# + i flag che Apple clang ricava da sé), quindi è il DEFAULT: non serve `--cc`.
-# `--cc cc` esiste solo come GAMBA A/B di confronto col clang di sistema, mai come
-# riferimento: il clang di zig promuove a errore difetti che Apple clang nasconde
-# (es. -Wincompatible-pointer-types), quindi una corsa solo-`cc` non è un gate di
-# portabilità. Senza zig installato si ripiega su `cc` con un avviso (modalità degradata).
+# COMPILATORE (AGENTS §0, accordo 2026-11-14 — DUE compilatori):
+#   • macOS  → `cc` (Apple clang): è il riferimento nativo, conosce l'SDK da sé e il suo
+#              linker registra TUTTE le dylib caricate (con `zig cc` su macOS lo stesso
+#              programma usciva con 4 dylib invece di 14 e moriva con SIGSEGV);
+#   • altrove / cross → `tools/sh/zcc` (`zig cc`, porta la libc del target).
+# Qui il default è `cc` (gamba nativa): `--cc tools/sh/zcc` è la gamba A/B. Quando si tocca
+# la gamba C il gate vuole ENTRAMBE: `--cc cc` e `--cc tools/sh/zcc` sullo stesso file.
 #
 # Uso: tools/sh/test_minitests_c99native [--cc <compilatore>] [--target <triple>] [--rid <rid>]
 #   F5: gli stessi argomenti del runner diretto. `--rid` prende triple, framework, sistema e terze
