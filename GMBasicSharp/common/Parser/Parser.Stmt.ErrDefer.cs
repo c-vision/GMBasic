@@ -38,6 +38,11 @@ public sealed partial class Parser
     /// <summary>Stack degli ERRDEFER della procedura in parsing (LIFO per annidamento).</summary>
     private readonly Stack<List<Stmt>> _errDeferScopes = new();
 
+    /// <summary>Contatore per rendere UNIVOCO il nome del binding del CATCH implicito di
+    /// ERRDEFER (`__gmb_ed_e_<n>`): con lo stesso nome in due procedure il Linker risolveva
+    /// il secondo su un simbolo non dichiarato e la compilazione falliva.</summary>
+    private int _errDeferUid;
+
     private static bool AtErrDeferDirective(Token t) =>
         t.Kind == TokenKind.Identifier
         && string.Equals(t.Lexeme, ErrDeferKeyword, StringComparison.OrdinalIgnoreCase);
@@ -81,7 +86,11 @@ public sealed partial class Parser
         // `VisitRethrowStatement` emette OP_THROW senza push, quindi l'errore arrivava al
         // CATCH esterno come 256/"Unspecified" (numero e descrizione persi). La forma ERROR
         // con i membri dell'errore catturato è portabile e già a parità sulle 4 gambe.
-        var errName = new Token(TokenKind.Identifier, "__gmb_ed_e", null, token.Position);
+        // Nome del binding UNIVOCO per procedura: con lo stesso nome in due SUB il Linker
+        // risolveva il secondo `__gmb_ed_e` su un simbolo non dichiarato (`#-1`) e il
+        // `FieldAccessExpr` falliva con "la base è un valore costante" (bug reale: due
+        // procedure con ERRDEFER => errore di compilazione su IL/PCode).
+        var errName = new Token(TokenKind.Identifier, $"__gmb_ed_e_{++_errDeferUid}", null, token.Position);
         var errVarExpr = new VariableExpr(-1, errName, errName);
         var numField = new Token(TokenKind.Identifier, "Number", null, token.Position);
         var descField = new Token(TokenKind.Identifier, "Description", null, token.Position);

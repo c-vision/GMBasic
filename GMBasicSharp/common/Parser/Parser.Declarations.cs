@@ -581,7 +581,11 @@ public sealed partial class Parser
         // ERRDEFER: il corpo (senza END) va avvolto in TRY/CATCH+RILANCIO; END PROCEDURE resta
         // FUORI dal TRY (il `ret` non deve stare in un blocco protetto).
         var errDefers = _errDeferScopes.Pop();
-        if (errDefers.Count > 0) bodyStmts = WrapErrDefers(bodyStmts, errDefers, endToken);
+        // Il token del binding/rilancio è quello della SIGNATURE (non END SUB): il rilancio
+        // sintetico riporta la riga della PROCEDURA, che è anche quella che usa il frontend C
+        // (`gmb_p_wrap_errdefers(&body, line)`). Il rilancio resta un'istruzione sintetica:
+        // la riga esatta può variare di poco fra le gambe, numero/descrizione no.
+        if (errDefers.Count > 0) bodyStmts = WrapErrDefers(bodyStmts, errDefers, nameToken);
         bodyStmts.Add(new EndProcedureStmt(endToken));
 
         // Il primo token della signature (es. 'PUBLIC' o 'SUB'/'FUNCTION') viene usato

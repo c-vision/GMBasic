@@ -64,7 +64,12 @@ int gmb_p_wrap_errdefers(gmb_stmt_list_t* body, int line)
         if (body->items[i] && body->items[i]->kind == GMB_STMT_ERRDEFER) n_ed++;
     if (n_ed == 0) return 0;
 
-    const char* ev = "__gmb_ed_e";
+    /* Nome del binding UNIVOCO per procedura (contatore statico): con lo stesso nome in due
+     * procedure un frontend/linker che risolve i nomi globalmente può far collidere il
+     * secondo binding (sul frontend C# succedeva: "la base è un valore costante"). */
+    static int s_ed_uid = 0;
+    char ev[32];
+    snprintf(ev, sizeof ev, "__gmb_ed_e_%d", ++s_ed_uid);
 
     /* ── clausola CATCH: cleanup (LIFO) + rilancio dell'errore ── */
     gmb_stmt_t* c = gmb_stmt_new(GMB_STMT_CATCH, line);
