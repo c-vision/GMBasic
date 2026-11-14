@@ -445,6 +445,13 @@ public sealed class PCodeTask
         Interlocked.Exchange(ref _pendingWait, null);
     }
 
+    /// <summary>Codice/descrizione dell'ULTIMO errore BASIC sollevato su questo task. Serve ai
+    /// driver che devono RILANCIARE l'errore in un altro contesto (generatori): quando
+    /// RaiseBasicError non trova handler lancia una InvalidOperationException e il codice
+    /// andrebbe perso (il CATCH del chiamante vedeva 200).</summary>
+    public int LastErrorCode;
+    public string? LastErrorDescription;
+
     public string DebugPendingWait
     {
         get

@@ -267,6 +267,7 @@ enum {
 
 /* ---- Utilities ---- */
 static void vm_append_trace(gmb_task_t* task, char* out, size_t cap);
+static long current_source_line(gmb_task_t* task);
 void vm_error(gmb_task_t* task, const char* msg)
 {
     task->state = GMB_TS_FINISHED;
@@ -8805,6 +8806,23 @@ static void deliver_exception_after_finally(gmb_task_t* task, gmb_stack_entry_t*
             char buf[1100];
             snprintf(buf, sizeof(buf), "BASIC Runtime Error: %s\n", desc);
             vm_append_trace(task, buf, sizeof buf);
+            /* Codice/riga/descrizione per i driver che devono RILANCIARE l'errore in un
+             * altro contesto (generatori): parità C99Native gmb_gen_next. */
+            int fcode = 256;   /* ErrorCode.UserDefined */
+            if (has && ev->type == 2 && ev->ref && ev->ref->kind == GMB_OBJ_DICT)
+            {
+                gmb_obj_shared_val_t* fd = (gmb_obj_shared_val_t*)ev->ref;
+                if (fd->dict)
+                {
+                    gmb_val_t nv = gmb_dict_get(*fd->dict, "Number");
+                    if (nv.kind == GMB_TYPE_DOUBLE) fcode = (int)nv.v_double;
+                    else if (nv.kind == GMB_TYPE_INT) fcode = (int)nv.v_int;
+                }
+            }
+            task->fatal_err_code = fcode;
+            task->fatal_err_line = current_source_line(task);
+            free(task->fatal_err_desc);
+            task->fatal_err_desc = strdup(desc);
             vm_error(task, buf);
         }
     }
@@ -9305,6 +9323,13 @@ static int raise_basic_error(gmb_task_t* task, double err_code, const char* msg)
         size_t _o = strlen(buf);
         snprintf(buf + _o, sizeof(buf) - _o, "%s", tr);
     }
+    /* Errore FATALE: si conservano codice/riga/descrizione sul task, così un driver che
+     * guida questo task da un ALTRO contesto (generatori) può RILANCIARE l'errore vero
+     * invece di trasformarlo in StopIteration (parità C99Native gmb_gen_next). */
+    task->fatal_err_code = (int)err_code;
+    task->fatal_err_line = err_line;
+    free(task->fatal_err_desc);
+    task->fatal_err_desc = strdup(msg ? msg : "");
     vm_error(task, buf);
     return 0;
 }
@@ -16594,11 +16619,26 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                 int func_code = gmb_vm_read_u16(vm, task);
                 int argc = gmb_vm_read_u8(vm, task);
                 task->stop_iteration = 0;
+                task->gen_err_pending = 0;
                 gmb_vm_exec_builtin(vm, task, func_code, argc);
                 /* V5b safepoint CPU: il builtin ha parcheggiato il task su un kernel
                  * lungo (thread dedicato); il tick si ferma — il thread del job pusha
                  * il risultato e riaccoda il task (specchio ParkCpuBuiltin/ParkAsync). */
                 if (task->state == GMB_TS_BLOCKED) return 0;
+                /* NEXT() su un generatore il cui corpo è uscito per ERRORE: si rilancia il
+                 * codice VERO nel contesto del chiamante (parità C99Native gmb_gen_next).
+                 * Prima l'errore diventava StopIteration (144). */
+                if (task->gen_err_pending)
+                {
+                    task->gen_err_pending = 0;
+                    int gc = task->gen_err_code;
+                    char* gd = task->gen_err_desc;
+                    task->gen_err_desc = NULL;
+                    gmb_raise_basic_error(task, (double)gc, gd ? gd : "");
+                    free(gd);
+                    if (task->state == GMB_TS_FINISHED) return -1;
+                    break;   /* l'ip è già cambiato (CATCH): niente push */
+                }
                 /* NEXT() su generatore esaurito segnala StopIteration (ERR.Number=144):
                  * unwind V4 verso il CATCH più interno (attraversa i FINALLY). */
                 if (task->stop_iteration)
@@ -18596,6 +18636,17 @@ static int gmb_vm_generator_drive(gmb_vm_t* vm, gmb_obj_generator_t* gen)
         {
             t->state = GMB_TS_FINISHED;
             gen->done = 1;
+            /* Il corpo è uscito per un ERRORE (non per esaurimento): si conserva il codice
+             * vero, così NEXT lo rilancia nel contesto del chiamante invece di trasformarlo
+             * in StopIteration (parità C99Native gmb_gen_next). */
+            if (t->pending_exception && t->fatal_err_desc)
+            {
+                gen->has_err = 1;
+                gen->err_code = t->fatal_err_code;
+                gen->err_line = t->fatal_err_line;
+                free(gen->err_desc);
+                gen->err_desc = strdup(t->fatal_err_desc);
+            }
             return 1;
         }
         int r = gmb_vm_tick(vm, t);
@@ -18605,6 +18656,14 @@ static int gmb_vm_generator_drive(gmb_vm_t* vm, gmb_obj_generator_t* gen)
         {
             t->state = GMB_TS_FINISHED;
             gen->done = 1;
+            if (t->pending_exception && t->fatal_err_desc)
+            {
+                gen->has_err = 1;
+                gen->err_code = t->fatal_err_code;
+                gen->err_line = t->fatal_err_line;
+                free(gen->err_desc);
+                gen->err_desc = strdup(t->fatal_err_desc);
+            }
             return 1;
         }
         if (++guard > 100000000) { gen->done = 1; return 1; }

@@ -865,6 +865,15 @@ internal sealed partial class PCodeProcessor
                         return true;
                     throw new InvalidOperationException("BASIC Runtime Error: Stop iteration (nessun blocco TRY attivo).");
                 }
+                // NEXT() su un generatore il cui corpo è uscito per ERRORE: si rilancia il
+                // codice VERO nel contesto del CHIAMANTE (parità C99Native gmb_gen_next e
+                // VM/C). Gestito qui, prima del PushRef, perché RaiseBasicError cambia l'Ip.
+                if (bResult is GeneratorErrorSignal genErr)
+                {
+                    if (RaiseBasicError(task, (double)genErr.Code, genErr.Message))
+                        return true;   // RESUME NEXT: il chiamante lascia un risultato (0)
+                    return true;       // consegnato al CATCH: niente push
+                }
                 task.PushRef(bResult);
                 return true;
             }

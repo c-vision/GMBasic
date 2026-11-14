@@ -1106,6 +1106,17 @@ internal sealed partial class PCodeProcessor
         public static readonly StopIterationSignal Instance = new();
     }
 
+    /// <summary>Errore che ha fatto USCERE il corpo di un generatore (non esaurimento).
+    /// Viaggia dal driver NEXT fino a OP_CALL_BUILTIN, che lo rilancia nel contesto del
+    /// chiamante con il codice VERO (parità C99Native gmb_gen_next / VM/C). Prima l'eccezione
+    /// sfuggiva come .NET e arrivava al CATCH come 200 InternalError.</summary>
+    private sealed class GeneratorErrorSignal
+    {
+        public int Code { get; }
+        public string Message { get; }
+        public GeneratorErrorSignal(int code, string message) { Code = code; Message = message; }
+    }
+
     /// <summary>
     /// Estende List&lt;object?&gt; (invece di limitarsi a implementare IEnumerable) perché il FOR
     /// EACH di P-CODE (VisitForEachAdvanceAndAssignStatement, Compiler/Compiler.Others.cs) NON usa
@@ -1170,6 +1181,25 @@ internal sealed partial class PCodeProcessor
                 try
                 {
                     cont = DispatchOpcode(genTask, op);
+                }
+                catch (BasicException bex)
+                {
+                    /* Errore BASIC del corpo: NON si rilancia qui (diventerebbe 200 nel
+                     * chiamante): si segnala con GeneratorErrorSignal, che OP_CALL_BUILTIN
+                     * rilancia nel contesto del chiamante col codice vero (parità C99Native
+                     * gmb_gen_next / VM/C). */
+                    genTask.State = PCodeTaskState.Finished;
+                    genTask.PendingException = bex;
+                    return new GeneratorErrorSignal((int)bex.Code, bex.Message);
+                }
+                catch (InvalidOperationException iex) when (genTask.LastErrorCode != 0)
+                {
+                    /* Errore fatale del corpo (RaiseBasicError senza handler): il codice vero
+                     * è su genTask.LastErrorCode — senza questo arrivava 200. */
+                    genTask.State = PCodeTaskState.Finished;
+                    genTask.PendingException = iex;
+                    return new GeneratorErrorSignal(genTask.LastErrorCode,
+                        genTask.LastErrorDescription ?? iex.Message);
                 }
                 catch (Exception ex)
                 {

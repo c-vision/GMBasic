@@ -428,6 +428,17 @@ struct gmb_task {
      * fine task via go->waitgroup; il ref del genitore è rilasciato in gmb_task_free. */
     gmb_waitgroup_t* implicit_waitgroup;
     char* pending_exception;         /* messaggio o NULL */
+    /* Codice/riga/descrizione dell'errore che ha reso il task FATALE (pending_exception).
+     * Serve ai driver che devono RILANCIARE l'errore nel contesto di un altro task invece
+     * di trasformarlo in StopIteration (generatori, parità C99Native gmb_gen_next). */
+    int fatal_err_code;
+    long fatal_err_line;
+    char* fatal_err_desc;
+    /* NEXT() su un generatore il cui corpo è uscito per ERRORE: il codice vero viaggia fino
+     * all'handler del chiamante (parità C99Native gmb_gen_next, che rilancia subito). */
+    int gen_err_pending;
+    int gen_err_code;
+    char* gen_err_desc;
     /* DATA pointer (OP_READ/OP_RESTORE): indice nel chunk->data */
     int data_index;
     /* Generatore (GENERATOR PROCEDURE): valore prodotto dall'ultimo YIELD

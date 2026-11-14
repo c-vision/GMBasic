@@ -2050,6 +2050,10 @@ void gmb_task_free(gmb_task_t* t)
         free(t->globals_basic);
     }
     pthread_mutex_destroy(&t->lock);
+    /* Messaggi d'errore del task (prima `pending_exception` non veniva liberato: leak). */
+    free(t->pending_exception); t->pending_exception = NULL;
+    free(t->fatal_err_desc); t->fatal_err_desc = NULL;
+    free(t->gen_err_desc); t->gen_err_desc = NULL;
     free(t);
 }
 

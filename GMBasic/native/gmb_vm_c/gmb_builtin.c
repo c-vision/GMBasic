@@ -7703,6 +7703,18 @@ static void gmb_bf_655(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func
                     else if (out.type == 1) { bout->result = out.num; }
                     else { bout->is_num = 0; bout->result_ref = NULL; }
                 }
+                else if (gen->has_err)
+                {
+                    /* Il corpo è uscito per un ERRORE (non per esaurimento): si porta il
+                     * codice VERO fino all'handler del chiamante — OP_CALL_BUILTIN lo
+                     * rilancia (parità C99Native gmb_gen_next). Prima diventava 144. */
+                    gen->has_err = 0;
+                    task->gen_err_pending = 1;
+                    task->gen_err_code = gen->err_code;
+                    free(task->gen_err_desc);
+                    task->gen_err_desc = strdup(gen->err_desc ? gen->err_desc : "");
+                    bout->is_num = 0; bout->result_ref = NULL;
+                }
                 else
                 {
                     

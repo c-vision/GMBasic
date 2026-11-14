@@ -638,6 +638,8 @@ internal sealed partial class PCodeProcessor
         // Errore FATALE: il messaggio porta la catena delle procedure (parità C99Native
         // "[GMBASIC] ERROR … / in C (riga N)", VM/C "[VM ERROR] BASIC Runtime Error: …" e IL).
         // La catena va catturata QUI, prima dell'unwind dei frame.
+        task.LastErrorCode = (int)errCode;
+        task.LastErrorDescription = msg;
         throw new InvalidOperationException("BASIC Runtime Error: " + msg + "\n" + trace);
     }
 
