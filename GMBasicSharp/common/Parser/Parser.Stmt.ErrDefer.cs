@@ -64,8 +64,9 @@ public sealed partial class Parser
         // Errore ESPLICITO e specifico, invece del generico "a livello di modulo".
         if (_generatorBodyDepth > 0)
             throw CreateError(kw,
-                "ERRDEFER non è supportato dentro un GENERATOR: il cleanup sul percorso " +
-                "d'errore richiede un TRY/CATCH, che il corpo di un generatore non può contenere.");
+                "ERRDEFER non è supportato dentro un GENERATOR: si traduce in un TRY/CATCH e il " +
+                "corpo di un generatore non lo ammette su tutte le gambe (il backend nativo lo " +
+                "rifiuta). Metti il cleanup in una SUB/FUNCTION chiamata dal generatore.");
         if (_errDeferScopes.Count == 0)
             throw CreateError(kw,
                 "ERRDEFER è valido solo dentro una procedura (SUB/FUNCTION): " +

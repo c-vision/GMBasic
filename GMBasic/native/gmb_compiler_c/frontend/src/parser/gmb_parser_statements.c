@@ -2685,9 +2685,10 @@ if (gmb_tk_rem_vari_in(t->kind)) {
          * Errore ESPLICITO in parsing, con la ragione. */
         if (is_gen) {
             if (!p->error && gmb_p_has_stray_errdefer(body.items, body.n))
-                p->error = strdup("ERRDEFER non è supportato dentro un GENERATOR: il cleanup sul "
-                                  "percorso d'errore richiede un TRY/CATCH, che il corpo di un "
-                                  "generatore non può contenere.");
+                p->error = strdup("ERRDEFER non è supportato dentro un GENERATOR: si traduce in un "
+                                  "TRY/CATCH e il corpo di un generatore non lo ammette su tutte le "
+                                  "gambe (il backend nativo lo rifiuta). Metti il cleanup in una "
+                                  "SUB/FUNCTION chiamata dal generatore.");
         } else {
             (void)gmb_p_wrap_errdefers(&body, line);
         }
