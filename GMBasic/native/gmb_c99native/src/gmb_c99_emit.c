@@ -1370,8 +1370,6 @@ static void emit_defer_epilogue(ctx_t* c) {
     if (c->cur_fn && !c->cur_fn->has_gosub)
         emit_class_locals_dtors(c);
     ind(c);
-    /* Corpo di un GENERATOR (coroutine void): `return;` senza __ret. */
-    if (c->gen_body) { sb_put(&c->out, "return;\n"); return; }
     /* Il codice di MODULO vive in `gmb_program_main` (VOID): un'uscita a top-level
      * (RETURN modulo) è `return;`. Non `return 0;` — error: void function should not
      * return a value (FunctionsParams: 1200 RETURN a livello modulo). */

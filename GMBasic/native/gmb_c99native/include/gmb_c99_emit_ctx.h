@@ -30,9 +30,6 @@ typedef struct {
                                              * err_decl_insert): lo scope deve coprire tutta
                                              * la procedura, non il blocco dell'ON ERROR. */
     int try_depth;             /* FASE 2.6(d): dentro body TRY → ERROR solleva (gmb_raise_error) */
-    /* 1 mentre si emette il CORPO di un GENERATOR (coroutine, funzione void): l'epilogo dei
-     * DEFER deve chiudere con `return;` e non con `return __ret;` (nessun __ret). */
-    int gen_body;
     /* Riga BASIC dello statement in emissione (aggiornata da emit_stmt): serve alle operazioni
      * che portano una riga a runtime (divisione/MOD -> gmb_safe_*), così l'errore riporta la
      * riga della ISTRUZIONE e non quella dell'operatore (che per uno statement spezzato su più
