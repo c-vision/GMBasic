@@ -684,6 +684,25 @@ for f in "$MINI"/**/*.bas "$MINI"/*.bas; do
   # Array (non stringa) perché il path di rpath può contenere spazi e perché $AGENT/$DOC_SRCS
   # sono già liste: nello stringone i confini dei token dipendevano dallo split implicito.
   LINK_IN=( ${TRAY_IN[@]+"${TRAY_IN[@]}"} "$RT_LIB" $AGENT $COMPILER "$DB_LIB" ${LLM_STATIC[@]+"${LLM_STATIC[@]}"} $DOC_SRCS $TORCH_SRCS )
+  # GATE ORDINE (misurato il 13/11): la dylib del tray deve stare PRIMA di librt.a. Con lld
+  # l'ordine è indifferente, con ld64 di Apple no: se l'archivio precede, il suo `gmb_tray.o` —
+  # lo stub che risponde backend="none" — viene estratto al posto della dylib, e il MiniTest
+  # passa lo stesso perché il suo oracolo è cross-leg. Un commento non ferma nessuno: chi sposta
+  # la dylib in fondo (o in LINK_FLAGS, che è accodato) non se ne accorgerebbe. Qui si contano le
+  # posizioni e il test che usa il tray fallisce. Il controllo costa un ciclo su ~8 elementi e
+  # gira solo quando TRAY_IN non è vuoto, cioè solo per i test che linkano la dylib.
+  if [ ${#TRAY_IN[@]} -gt 0 ]; then
+    tray_at=""; rt_at=""; pos=0
+    for a in "${LINK_IN[@]}"; do
+      if [ "$a" = "$TRAY_DYLIB" ] && [ -z "$tray_at" ]; then tray_at=$pos; fi
+      if [ "$a" = "$RT_LIB" ] && [ -z "$rt_at" ]; then rt_at=$pos; fi
+      pos=$((pos+1))
+    done
+    if [ -z "$tray_at" ] || [ -z "$rt_at" ] || [ "$tray_at" -ge "$rt_at" ]; then
+      echo "FAIL $name (ordine del link: libgmb_tray è alla posizione $tray_at, librt.a alla $rt_at — la dylib deve venire prima)"
+      fail=$((fail+1)); continue
+    fi
+  fi
   LINK_FLAGS=( $INC_RT -I"$ROOT/native/gmb_agent_runtime" -I"$LLMENV/LLMJinja" -I"$LLMENV/LLMEngine/mlx"
     -I"$ROOT/native/gmb_compiler_c/include" $CODEC_INC $DB_INC $LLM_INC $INC_EXTRA $FRAMEWORKS
     -lm -w -ffp-contract=off -DGMB_WITH_UI=1 $LS_STRIP $LLM_CODEC_FLAGS
