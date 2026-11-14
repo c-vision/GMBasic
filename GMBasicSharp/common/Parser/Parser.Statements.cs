@@ -703,6 +703,12 @@ public sealed partial class Parser
     {
         var token = Peek();
 
+        // --- ERRDEFER &lt;stmt&gt;: cleanup solo sul percorso d'errore (equivalente di `errdefer`
+        // di Zig). SOFT keyword: si attiva solo se la parola non è seguita da '=' (così
+        // `errdefer` resta un nome di variabile utilizzabile). ---
+        if (AtErrDeferDirective(token) && At(1).Kind != TokenKind.Equal)
+            return ParseErrDeferStatement();
+
         // --- EMBEDFILE "file" AS nome$ : direttiva compile-time (equivalente di @embedFile).
         // SOFT keyword: solo se seguita da un letterale stringa (parità col parser C).
         if (AtEmbedFileDirective())

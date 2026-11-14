@@ -208,6 +208,12 @@ gmb_stmt_t* gmb_p_parse_require(gmb_parser_t* p, int line);
 /* EMBEDFILE "file" AS nome — direttiva compile-time: il contenuto diventa un letterale
  * stringa binario (DIM + assegnazione in coda). Vedi gmb_parser_stmt_embed.c. */
 gmb_stmt_t* gmb_p_parse_embedfile(gmb_parser_t* p, int line);
+/* ERRDEFER <stmt>: cleanup eseguito solo se la procedura esce per un errore. Marcatore di
+ * parsing: `gmb_p_wrap_errdefers` avvolge il corpo in TRY/CATCH+RILANCIO. Vedi
+ * gmb_parser_stmt_errdefer.c. */
+gmb_stmt_t* gmb_p_parse_errdefer(gmb_parser_t* p, int line);
+int gmb_p_wrap_errdefers(gmb_stmt_list_t* body, int line);
+int gmb_p_has_stray_errdefer(gmb_stmt_t** list, int n);
 gmb_stmt_t* gmb_p_parse_yield(gmb_parser_t* p, int line);
 /* Parser.Stmt.Arrays.cs */
 gmb_stmt_t* gmb_p_parse_aadd(gmb_parser_t* p, int line);

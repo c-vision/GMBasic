@@ -548,6 +548,7 @@ public sealed partial class Parser
 
         _functionContextStack.Push(nameToken);
         _functionContextReturnsValue.Push(returnType is not VoidType);
+        _errDeferScopes.Push(new List<Stmt>());   // ERRDEFER della procedura (LIFO)
         try
         {
             // Crea una definizione di procedura fittizia per fornire il contesto ai metodi interni.
@@ -577,6 +578,10 @@ public sealed partial class Parser
             _functionContextStack.Pop();
             _functionContextReturnsValue.Pop();
         }        var endToken = Consume(TokenKind.EndFunction, "Expected 'END FUNCTION' or 'END SUB'.");
+        // ERRDEFER: il corpo (senza END) va avvolto in TRY/CATCH+RILANCIO; END PROCEDURE resta
+        // FUORI dal TRY (il `ret` non deve stare in un blocco protetto).
+        var errDefers = _errDeferScopes.Pop();
+        if (errDefers.Count > 0) bodyStmts = WrapErrDefers(bodyStmts, errDefers, endToken);
         bodyStmts.Add(new EndProcedureStmt(endToken));
 
         // Il primo token della signature (es. 'PUBLIC' o 'SUB'/'FUNCTION') viene usato

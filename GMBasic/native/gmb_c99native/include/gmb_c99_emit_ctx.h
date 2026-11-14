@@ -128,6 +128,12 @@ typedef struct {
     /* FASE 2.6(k): RETURN/GOTO che attraversano FINALLY (parity oracolo     * __defer_retval/ret_cont): stack dei TRY-with-FINALLY attivi e continuazioni
      * registrate dai siti RETURN/GOTO (eseguite DOPO il body FINALLY). */
     struct { int id; gmb_stmt_t* s; } try_fin_stack[16]; int n_try_fin;
+    /* TRY/CATCH (senza FINALLY) ATTIVI: id dei `__tryprev_<id>` da RIPRISTINARE quando si
+     * esce dal corpo con RETURN. Senza, il `jmp_buf` della TRY resta installato in
+     * `gmb_err_set_handler` dopo il ritorno: il primo errore NON gestito successivo fa
+     * longjmp in un frame morto → SIGSEGV (bug reale, misurato con
+     * `TRY ... RETURN ... END TRY` e poi un `ERROR` fatale). */
+    int try_ids[16]; int n_try_ids;
     struct { int try_id; int cont_id; int is_return; char label[64]; } ret_conts[64]; int n_ret_conts;
     int ret_cont_uid;
     /* FASE 2.6(w): AI.BLACKBOARDWAIT/AI.AGENTSWARM async (parity FETCH espressione, FASE 2.6p):

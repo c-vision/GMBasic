@@ -1388,6 +1388,15 @@ static void emit_class_locals_dtors(ctx_t* c) {
 }
 static void emit_fn_return(ctx_t* c) {
     emit_arr_wb(c);
+    /* RIPRISTINO degli handler TRY attivi: un RETURN dentro `TRY ... END TRY` deve rimettere
+     * `gmb_err_set_handler` com'era, altrimenti resta installato il `jmp_buf` di un frame che
+     * sta per morire e il PRIMO errore non gestito successivo fa longjmp lì → SIGSEGV
+     * (bug misurato: `TRY ... RETURN ... END TRY` + `ERROR` fatale in un'altra SUB).
+     * Dal più interno al più esterno. */
+    for (int _ti = c->n_try_ids - 1; _ti >= 0; _ti--) {
+        ind(c);
+        sb_printf(&c->out, "gmb_err_set_handler(__tryprev_%d);\n", c->try_ids[_ti]);
+    }
     /* DESTRUCTOR locali di classe a ogni uscita della funzione — solo senza GOSUB
      * (con GOSUB un RETURN puo' tornare da una subroutine senza terminare la funzione). */
     if (c->cur_fn && !c->cur_fn->has_gosub)
@@ -22629,7 +22638,12 @@ static void st_try(ctx_t* c, gmb_stmt_t* s) {
         ind(c); sb_printf(&c->out, "if (setjmp(__trybuf_%d) == 0) {\n", id);
         c->indent++;
         c->try_depth++;
+        /* registra il TRY attivo: un RETURN nel corpo deve ripristinare l'handler, altrimenti
+         * resta installato un jmp_buf di un frame morto (SIGSEGV al primo errore non gestito
+         * successivo — bug misurato, vedi emit_fn_return). */
+        if (c->n_try_ids < 16) c->try_ids[c->n_try_ids++] = id;
         emit_block(c, s->try_body, s->n_try);
+        if (c->n_try_ids > 0) c->n_try_ids--;
         c->try_depth--;
         ind(c); sb_printf(&c->out, "gmb_err_set_handler(__tryprev_%d);\n", id);
         c->indent--;

@@ -2139,6 +2139,15 @@ if (gmb_tk_rem_vari_in(t->kind)) {
         gmb_p_adv(p);
         return gmb_p_parse_embedfile(p, line);
     }
+    /* ERRDEFER <stmt> — cleanup solo sul percorso d'errore (parità `errdefer` di Zig).
+     * SOFT keyword: si attiva solo se la riga comincia con la parola e il token successivo
+     * NON è un operatore di assegnazione (così `errdefer` resta un nome utilizzabile). */
+    if (gmb_p_tok_is_soft_keyword(t, "ERRDEFER")
+        && !(gmb_p_peek(p, 1) && (gmb_p_peek(p, 1)->kind == GMB_TOK_Equal
+                                  || gmb_p_peek(p, 1)->kind == GMB_TOK_InlineAssign))) {
+        gmb_p_adv(p);
+        return gmb_p_parse_errdefer(p, line);
+    }
     if (t->kind == GMB_TOK_Process) { gmb_p_adv(p); return gmb_p_parse_process(p, line); }
     if (t->kind == GMB_TOK_Yield) { gmb_p_adv(p); return gmb_p_parse_yield(p, line); }
     if (t->kind == GMB_TOK_AAdd) { gmb_p_adv(p); return gmb_p_parse_aadd(p, line); }
@@ -2650,6 +2659,7 @@ if (gmb_tk_rem_vari_in(t->kind)) {
                 gmb_stmt_add(&body.items, &body.n, r, &body.cap);
             }
             while (!gmb_p_at_end(p) && !gmb_p_check(p, GMB_TOK_Newline)) gmb_p_adv(p);
+            (void)gmb_p_wrap_errdefers(&body, line);
             s->func_body = body.items; s->n_funcbody = body.n;
             return s;
         }
@@ -2670,6 +2680,7 @@ if (gmb_tk_rem_vari_in(t->kind)) {
             if (gmb_p_cur(p) && (gmb_p_cur(p)->kind == GMB_TOK_EndFunction || gmb_p_tok_is_keyword(gmb_p_cur(p), "EndFunction"))) gmb_p_adv(p);
             else if (gmb_p_at_end_compound(p, GMB_TOK_Function)) { gmb_p_adv(p); gmb_p_adv(p); }
         }
+        (void)gmb_p_wrap_errdefers(&body, line);
         s->func_body = body.items; s->n_funcbody = body.n;
         return s;
     }

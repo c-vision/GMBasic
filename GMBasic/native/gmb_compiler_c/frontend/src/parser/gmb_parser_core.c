@@ -102,6 +102,12 @@ gmb_program_t gmb_parse(const gmb_lex_result_t* lx, char** error)
     }
     memcpy(prog.library_name, p.lib_name, sizeof(prog.library_name));
     prog.option_strict = p.option_strict;
+    /* ERRDEFER a livello di MODULO: il cleanup è legato all'uscita da una PROCEDURA (come
+     * `errdefer` di Zig, che vive nel blocco): fuori da SUB/FUNCTION il marcatore non ha
+     * nessuno che lo trasformi in TRY/CATCH → errore esplicito, non un no-op silenzioso. */
+    if (!p.error && gmb_p_has_stray_errdefer(prog.stmts, prog.n))
+        p.error = strdup("ERRDEFER è valido solo dentro una procedura (SUB/FUNCTION/GENERATOR): "
+                         "a livello di modulo non c'è un'uscita da proteggere.");
     /* `LET` a livello di MODULO = errore di sintassi (specifica Variables-Scope §3.1): con
      * `p.error` già valorizzato non si sovrascrive l'errore originale. Si scende nei blocchi
      * (IF/FOR/...) ma NON nei corpi delle procedure (func_body). */

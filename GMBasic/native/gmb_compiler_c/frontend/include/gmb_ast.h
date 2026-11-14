@@ -228,6 +228,11 @@ typedef enum {
                            * [type,symbol,value,asset,market,timeframe]; UNSUBSCRIBE: [id]; PING: - */
     GMB_STMT_ON_SIGNAL,   /* ON SIGNAL <id> CALL <handler>: id in net_args[0], handler in target_label,
                            * arità dell'handler (4/5) in flag */
+    /* ERRDEFER <stmt>: cleanup eseguito SOLO se la procedura esce per un errore (parità
+     * con `errdefer` di Zig). Marcatore di PARSER: il corpo della procedura viene avvolto
+     * in un TRY/CATCH che esegue i cleanup e RILANCIA (nessun backend lo vede). `go_comm`
+     * porta lo statement da eseguire. */
+    GMB_STMT_ERRDEFER,
 } gmb_stmt_kind_t;
 typedef struct gmb_window { const char* name; const char* action; const char* style; int flag; } gmb_window_t;
 
