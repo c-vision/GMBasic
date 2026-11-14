@@ -1,3 +1,4 @@
+' EXPECT: ababab|x
 IMPORT STRINGS
 SUB Main()
   PRINT REPEAT("ab", 3)

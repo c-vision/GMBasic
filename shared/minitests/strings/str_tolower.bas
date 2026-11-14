@@ -1,1 +1,2 @@
+' EXPECT: abc
 PRINT LOWER("ABC")

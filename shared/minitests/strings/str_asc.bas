@@ -1,1 +1,2 @@
+' EXPECT: 65
 PRINT ASC("A")

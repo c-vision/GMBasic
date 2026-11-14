@@ -1,3 +1,4 @@
+' EXPECT: 12.5
 SUB Main()
   PRINT VAL("12.5")
 END SUB

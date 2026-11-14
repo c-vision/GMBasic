@@ -1,1 +1,2 @@
+' EXPECT: 3
 PRINT SQR(9)

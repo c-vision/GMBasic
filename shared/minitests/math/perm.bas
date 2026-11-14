@@ -1,3 +1,4 @@
+' EXPECT: 20
 SUB Main()
   PRINT PERM(5, 2)
 END SUB

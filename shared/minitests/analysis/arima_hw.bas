@@ -1,5 +1,6 @@
 ' ARIMA/HoltWinters via TIMESERIES (FFI). ARIMA ha out piatto:
 '   out(0)=AIC, out(1..p)=AR, out(1+p..p+q)=MA, out(1+p+q..)=Fitted(nd).
+' EXPECT: -4.220358|0.792388|0.024221|-0.792388|9.16044|11.023513
 IMPORT TIMESERIES
 SUB Main()
   DIM s(14) AS DOUBLE = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 9, 8, 7, 6, 5}

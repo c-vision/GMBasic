@@ -1,3 +1,4 @@
+' EXPECT: -1|-1
 SUB Main()
   PRINT (RND() >= 0)
   PRINT (RND() < 1)

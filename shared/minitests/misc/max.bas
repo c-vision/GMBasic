@@ -1,3 +1,4 @@
+' EXPECT: 7
 SUB Main()
   PRINT MAX(3,7)
 END SUB

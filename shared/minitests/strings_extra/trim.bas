@@ -1,3 +1,4 @@
+' EXPECT: [ciao]|[ciao]|[ciao]
 IMPORT STRINGS
 SUB Main()
   PRINT "[" + TRIM("  ciao  ") + "]"

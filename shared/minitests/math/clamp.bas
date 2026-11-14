@@ -1,3 +1,4 @@
+' EXPECT: 10
 SUB Main()
   PRINT CLAMP(15, 0, 10)
 END SUB

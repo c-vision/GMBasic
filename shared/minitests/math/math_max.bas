@@ -1,1 +1,2 @@
+' EXPECT: 7
 PRINT MAX(3,7)

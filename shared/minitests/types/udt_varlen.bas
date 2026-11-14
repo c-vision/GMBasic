@@ -1,5 +1,6 @@
 ' udt_varlen.bas — TYPE accetta campi a lunghezza variabile (STRING/LIST/DICT).
 ' (livello dichiarazione: tutti i backend devono compilare ed eseguire)
+' EXPECT: hello|udt varlen ok
 TYPE Box
   name AS STRING * 16
   tags AS LIST OF DOUBLE

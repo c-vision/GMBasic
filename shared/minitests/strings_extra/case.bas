@@ -1,3 +1,4 @@
+' EXPECT: ciao|CIAO|4|Ciao Mondo
 IMPORT STRINGS
 SUB Main()
   PRINT LOWER("CIAO")

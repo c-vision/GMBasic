@@ -1,3 +1,4 @@
+' EXPECT: CiaoMondo
 IMPORT STRINGS
 SUB Main()
   PRINT PASCAL("ciao mondo")

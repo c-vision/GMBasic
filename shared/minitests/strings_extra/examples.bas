@@ -1,3 +1,4 @@
+' EXPECT: cba|ciao|CIAO|ciao|ciao|ciao|Ciao Mondo|CiaoMondo|ciaoMondo|ciao_mondo|ciao-mondo|Ciao mondo|aaa|a+b+c|cia mnd|00001|10000|**ab**|ciao|mondo
 IMPORT STRINGS
 SUB Main()
     PRINT REVERSE("abc")

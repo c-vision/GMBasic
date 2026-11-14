@@ -1,5 +1,6 @@
 ' udt_list_field.bas — UDT con campo LISTA di UDT: popolamento (variabile lista),
 ' proprietà Count, accesso elemento t.legs(i).campo — feature di linguaggio UDT.
+' EXPECT: t1       n= 2|leg  0  buy    K= 100|leg  1  sell   K= 105
 TYPE Leg
   side AS STRING * 6
   strike AS DOUBLE

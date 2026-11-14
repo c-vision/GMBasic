@@ -1,3 +1,4 @@
+' EXPECT: cba
 IMPORT STRINGS
 SUB Main()
   PRINT REVERSE("abc")

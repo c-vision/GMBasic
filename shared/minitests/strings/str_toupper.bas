@@ -1,1 +1,2 @@
+' EXPECT: ABC
 PRINT UPPER("abc")

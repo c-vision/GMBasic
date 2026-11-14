@@ -1,1 +1,2 @@
+' EXPECT: 1234.50
 PRINT FORMAT(1234.5, "#.##")

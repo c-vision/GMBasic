@@ -1,1 +1,2 @@
+' EXPECT: FF
 PRINT HEX(255)

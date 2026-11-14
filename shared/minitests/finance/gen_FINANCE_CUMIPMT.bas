@@ -1,3 +1,4 @@
+' EXPECT: 0
 IMPORT FINANCE
 
 SUB Main()

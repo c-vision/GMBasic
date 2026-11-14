@@ -1,3 +1,4 @@
+' EXPECT: -1|-1|-1|0|0|0|-1|-1|0|0
 SUB Main()
   PRINT ISNUMERIC("12.5")
   PRINT ISNUMERIC("-3")

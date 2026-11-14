@@ -1,3 +1,4 @@
+' EXPECT: 9|1|24
 IMPORT ARRAYS AS AR
 SUB Main()
   DIM d(4) AS DOUBLE = {5, 2, 9, 1, 7}

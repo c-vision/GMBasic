@@ -1,3 +1,4 @@
+' EXPECT: 10
 SUB Main()
   PRINT COMB(5, 2)
 END SUB

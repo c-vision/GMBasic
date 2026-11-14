@@ -1,3 +1,4 @@
+' EXPECT: 00001|10000|**ab**
 IMPORT STRINGS
 SUB Main()
   PRINT PADL("1", 5, "0")

@@ -1,4 +1,5 @@
 ' udt_json_list.bas — UDT con campo LIST OF UDT + STRING var-length: JSON round-trip (4 backend).
+' EXPECT: {"strategy":"bull","net_mid":1.5,"legs":[{"side":"buy","symbol":"AAPL.P335","qty":2}]}|bull  1.5   1  AAPL.P335  2
 TYPE Leg
   side AS STRING
   symbol AS STRING

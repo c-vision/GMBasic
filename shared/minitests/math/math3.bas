@@ -1,3 +1,4 @@
+' EXPECT: 4|0|90|2|0
 IMPORT VECTOR
 
 SUB Main()

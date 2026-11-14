@@ -1,1 +1,2 @@
+' EXPECT: A
 PRINT CHR$(65)

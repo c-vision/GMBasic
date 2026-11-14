@@ -1,3 +1,4 @@
+' EXPECT: 5|5|0|0|5|10|1|1|120
 SUB Main()
   PRINT ABS(-5)
   PRINT ABS(5)

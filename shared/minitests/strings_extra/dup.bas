@@ -1,3 +1,4 @@
+' EXPECT: aaa
 IMPORT STRINGS
 SUB Main()
   PRINT DUP(3, "a")

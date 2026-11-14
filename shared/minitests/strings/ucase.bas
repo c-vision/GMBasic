@@ -1,3 +1,4 @@
+' EXPECT: CIAO
 SUB Main()
   PRINT UPPER("ciao")
 END SUB
