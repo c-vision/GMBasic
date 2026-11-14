@@ -43,11 +43,6 @@ public sealed partial class Parser
     /// il secondo su un simbolo non dichiarato e la compilazione falliva.</summary>
     private int _errDeferUid;
 
-    /// <summary>Profondità del corpo di un GENERATOR in parsing: `ERRDEFER` non è supportato
-    /// lì (il desugaring produce un TRY/CATCH, che il corpo di un generatore non può
-    /// contenere) e va rifiutato con un errore ESPLICITO, non con un messaggio generico.</summary>
-    private int _generatorBodyDepth;
-
     private static bool AtErrDeferDirective(Token t) =>
         t.Kind == TokenKind.Identifier
         && string.Equals(t.Lexeme, ErrDeferKeyword, StringComparison.OrdinalIgnoreCase);
@@ -59,14 +54,6 @@ public sealed partial class Parser
     private IReadOnlyList<AstNode> ParseErrDeferStatement()
     {
         var kw = Advance();                       // ERRDEFER
-        // GENERATOR: il desugaring produce un TRY/CATCH, che il corpo di un generatore non
-        // può contenere (il backend C lo rifiuta e i gestiti perderebbero il cleanup).
-        // Errore ESPLICITO e specifico, invece del generico "a livello di modulo".
-        if (_generatorBodyDepth > 0)
-            throw CreateError(kw,
-                "ERRDEFER non è supportato dentro un GENERATOR: si traduce in un TRY/CATCH e il " +
-                "corpo di un generatore non lo ammette su tutte le gambe (il backend nativo lo " +
-                "rifiuta). Metti il cleanup in una SUB/FUNCTION chiamata dal generatore.");
         if (_errDeferScopes.Count == 0)
             throw CreateError(kw,
                 "ERRDEFER è valido solo dentro una procedura (SUB/FUNCTION): " +

@@ -1497,3 +1497,211 @@ gmb_string_t gmb_key_wait_park(int timeout_ms)
 }
 
 
+
+/* ═══════════════════════════════════════════════════════════════════════════════════════
+ * GENERATORI — coroutine stackful guidate SINCRONAMENTE da NEXT (parità VM/C)
+ *
+ * Un GENERATOR BASIC è una coroutine con stack proprio: il corpo è compilato come funzione
+ * C NORMALE (quindi TRY/CATCH, FOR EACH, DEFER, ERRDEFER… funzionano, perché non c'è un
+ * mini-emitter), e YIELD sospende cambiando contesto. Nessuno scheduler: chi chiama NEXT è
+ * l'unico che guida la coroutine (stessa semantica di gmb_vm_generator_drive in VM/C).
+ *
+ * ERRORI: un errore nel corpo NON deve fare longjmp attraverso gli stack (sarebbe UB).
+ * Il trampolino installa un proprio jmp_buf, cattura l'errore, lo registra e torna al
+ * chiamante; gmb_gen_next lo RILANCIA nel contesto del chiamante (numero/descrizione/riga/
+ * valore conservati), così il TRY/CATCH attorno a NEXT lo vede identico.
+ * ═══════════════════════════════════════════════════════════════════════════════════════ */
+
+struct gmb_gen {
+    void (*fn)(void*);
+    void* params;
+    double value;
+    int done;
+    int has_err;
+    int err_num;
+    char* err_desc;
+    long err_line;
+    gmb_val_t err_val;
+    jmp_buf* caller_err_jmp;   /* handler del chiamante, ripristinato al ritorno dal corpo */
+    struct gmb_gen* next_all;
+#if defined(_WIN32) || defined(_WIN64)
+    LPVOID caller_fiber;
+    LPVOID body_fiber;
+#else
+    gmb_ctx_t caller_ctx;
+    gmb_ctx_t body_ctx;
+    char* stack;
+    void* stack_map;
+    size_t stack_map_len;
+    size_t stack_size;
+#endif
+};
+
+/* Generatore in esecuzione sul thread corrente (il corpo lo usa da gmb_gen_yield).
+ * Salvato/ripristinato da gmb_gen_next: due generatori annidati non si pestano i piedi. */
+static __thread gmb_gen_t* g_gen_cur;
+
+/* Registro dei generatori vivi: libera stack e memoria all'uscita del processo (un
+ * generatore ABBANDONATO non ha un distruttore: il suo struct è una variabile C). */
+static gmb_gen_t* g_gen_all;
+static gmb_lock_t g_gen_all_lock;   /* statico = azzerato = sbloccato */
+
+static void gmb_gen_registry_add(gmb_gen_t* g)
+{
+    gmb_lock(&g_gen_all_lock);
+    g->next_all = g_gen_all;
+    g_gen_all = g;
+    gmb_unlock(&g_gen_all_lock);
+}
+
+static void gmb_gen_free_mem(gmb_gen_t* g)
+{
+#if defined(_WIN32) || defined(_WIN64)
+    if (g->body_fiber) { DeleteFiber(g->body_fiber); g->body_fiber = NULL; }
+#else
+    if (g->stack_map) { munmap(g->stack_map, g->stack_map_len); g->stack_map = NULL; g->stack = NULL; }
+#endif
+    free(g->params); g->params = NULL;
+    free(g->err_desc); g->err_desc = NULL;
+}
+
+#if defined(__GNUC__) || defined(__clang__)
+__attribute__((destructor))
+#endif
+static void gmb_gen_free_all(void)
+{
+    gmb_gen_t* g = g_gen_all;
+    while (g) { gmb_gen_t* n = g->next_all; gmb_gen_free_mem(g); free(g); g = n; }
+    g_gen_all = NULL;
+}
+
+/* Corpo della coroutine: esegue la funzione generata, cattura l'errore e torna al
+ * chiamante marcando `done`. Non torna mai (il contesto del corpo non è più ripreso). */
+static void gmb_gen_trampoline(void)
+{
+    gmb_gen_t* g = g_gen_cur;
+    if (!g) return;
+    jmp_buf buf;
+    jmp_buf* prev = gmb_err_set_handler(&buf);
+    if (setjmp(buf) == 0)
+    {
+        g->fn(g->params);
+    }
+    else
+    {
+        g->has_err = 1;
+        g->err_num = gmb_err_number();
+        g->err_line = gmb_err_line();
+        g->err_val = gmb_err_take_value();
+        const char* d = gmb_err_description();
+        g->err_desc = strdup(d ? d : "");
+    }
+    gmb_err_set_handler(prev);
+    g->done = 1;
+#if defined(_WIN32) || defined(_WIN64)
+    SwitchToFiber(g->caller_fiber);
+#else
+    gmb_ctx_switch(&g->body_ctx, &g->caller_ctx);
+#endif
+}
+
+gmb_gen_t* gmb_gen_new(void (*fn)(void*), const void* params, size_t params_size)
+{
+    if (!fn) return NULL;
+    gmb_gen_t* g = (gmb_gen_t*)calloc(1, sizeof(gmb_gen_t));
+    if (!g) return NULL;
+    g->fn = fn;
+    if (params && params_size > 0)
+    {
+        g->params = malloc(params_size);
+        if (!g->params) { free(g); return NULL; }
+        memcpy(g->params, params, params_size);
+    }
+    g->value = 0.0;
+    g->done = 0;
+#if defined(_WIN32) || defined(_WIN64)
+    {
+        size_t sz = gmb_stack_default_size();
+        g->body_fiber = CreateFiber((SIZE_T)sz, (LPFIBER_START_ROUTINE)gmb_gen_trampoline, NULL);
+        if (!g->body_fiber) { free(g->params); free(g); return NULL; }
+        g->caller_fiber = ConvertThreadToFiber(NULL);
+        if (!g->caller_fiber) g->caller_fiber = GetCurrentFiber();
+    }
+#else
+    g->stack_size = gmb_stack_default_size();
+    gmb_stack_alloc(g->stack_size, &g->stack, &g->stack_map, &g->stack_map_len);
+    gmb_ctx_make(&g->body_ctx, gmb_gen_trampoline, g->stack, g->stack_size);
+#endif
+    gmb_gen_registry_add(g);
+    return g;
+}
+
+/* Riprende il generatore: 0 = valore prodotto (in *out), 1 = esaurito.
+ * Se il corpo è uscito per un errore, lo RILANCIA qui (contesto del chiamante). */
+int gmb_gen_next(gmb_gen_t* g, double* out)
+{
+    if (!g || g->done) return 1;
+    gmb_gen_t* prev = g_gen_cur;
+    g_gen_cur = g;
+    /* L'handler d'errore è __thread: mentre il corpo gira deve essere QUELLO DEL CORPO
+     * (installato dal trampolino sul suo stack). Se restasse attivo quello del chiamante
+     * (un jmp_buf nel suo frame) un raise nel corpo farebbe longjmp dentro il frame del
+     * chiamante dal contesto sbagliato. Si azzera qui e si ripristina al ritorno. */
+    g->caller_err_jmp = gmb_err_set_handler(NULL);
+#if defined(_WIN32) || defined(_WIN64)
+    SwitchToFiber(g->body_fiber);
+#else
+    gmb_ctx_switch(&g->caller_ctx, &g->body_ctx);
+#endif
+    gmb_err_set_handler(g->caller_err_jmp);
+    g_gen_cur = prev;
+    if (g->has_err)
+    {
+        int n = g->err_num;
+        long l = g->err_line;
+        char* d = g->err_desc;
+        gmb_val_t v = g->err_val;
+        g->has_err = 0;
+        g->err_desc = NULL;
+        g->err_val = gmb_val_nil();
+        if (out) *out = 0.0;
+        gmb_raise_user_error(v, n, d ? d : "", l);   /* non ritorna: TRY/CATCH del chiamante */
+        free(d);
+        return 1;
+    }
+    if (g->done) return 1;
+    if (out) *out = g->value;
+    return 0;
+}
+
+/* YIELD dal corpo: pubblica il valore e torna al chiamante di NEXT. */
+void gmb_gen_yield(double v)
+{
+    gmb_gen_t* g = g_gen_cur;
+    if (!g)
+    {
+        gmb_raise_error(1, "YIELD fuori da un generatore", 0);
+        return;
+    }
+    g->value = v;
+    /* Mentre il corpo è sospeso deve essere attivo l'handler del CHIAMANTE (un raise del
+     * chiamante non deve finire nel jmp_buf del corpo, che vive sul suo stack). */
+    jmp_buf* mine = gmb_err_set_handler(g->caller_err_jmp);
+#if defined(_WIN32) || defined(_WIN64)
+    SwitchToFiber(g->caller_fiber);
+#else
+    gmb_ctx_switch(&g->body_ctx, &g->caller_ctx);
+#endif
+    gmb_err_set_handler(mine);   /* ripreso: torna attivo l'handler del corpo */
+}
+
+/* Chiusura esplicita (abbandono): libera stack e memoria. Un generatore abbandonato senza
+ * close resta nel registro e viene liberato all'uscita del processo; i cleanup (DEFER)
+ * del corpo NON corrono su un abbandono (semantica documentata). */
+void gmb_gen_close(gmb_gen_t* g)
+{
+    if (!g) return;
+    g->done = 1;
+    gmb_gen_free_mem(g);
+    free(g);
+}

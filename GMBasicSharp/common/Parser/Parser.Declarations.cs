@@ -624,7 +624,9 @@ public sealed partial class Parser
 
         _functionContextStack.Push(nameToken);
         _functionContextReturnsValue.Push(true);   // i generator restituiscono sempre un valore
-        _generatorBodyDepth++;                     // ERRDEFER qui è rifiutato (vedi ParseErrDeferStatement)
+        // ERRDEFER anche nei generatori: il corpo è una coroutine compilata come procedura
+        // normale (vedi gmb_gen_* nel runtime), quindi il TRY/CATCH del desugaring è ammesso.
+        _errDeferScopes.Push(new List<Stmt>());
         try
         {
             // Crea una definizione di generatore fittizia per fornire il contesto.
@@ -652,10 +654,12 @@ public sealed partial class Parser
         {
             _functionContextStack.Pop();
             _functionContextReturnsValue.Pop();
-            _generatorBodyDepth--;
         }
 
         var endToken = Consume(TokenKind.EndGenerator, "Expected 'END GENERATOR'.");
+        // ERRDEFER del generatore: stesso desugaring della procedura (END resta FUORI dal TRY).
+        var genErrDefers = _errDeferScopes.Pop();
+        if (genErrDefers.Count > 0) bodyStmts = WrapErrDefers(bodyStmts, genErrDefers, nameToken);
         bodyStmts.Add(new EndProcedureStmt(endToken));
 
         // 'Name' deve avere il LEXEME del vero identificatore (nameToken, es. "Count"), non del

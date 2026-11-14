@@ -2680,18 +2680,10 @@ if (gmb_tk_rem_vari_in(t->kind)) {
             if (gmb_p_cur(p) && (gmb_p_cur(p)->kind == GMB_TOK_EndFunction || gmb_p_tok_is_keyword(gmb_p_cur(p), "EndFunction"))) gmb_p_adv(p);
             else if (gmb_p_at_end_compound(p, GMB_TOK_Function)) { gmb_p_adv(p); gmb_p_adv(p); }
         }
-        /* ERRDEFER dentro un GENERATOR: il desugaring produce un TRY/CATCH, che il corpo di un
-         * generatore non può contenere (l'emitter C lo rifiuta come "statement non supportato").
-         * Errore ESPLICITO in parsing, con la ragione. */
-        if (is_gen) {
-            if (!p->error && gmb_p_has_stray_errdefer(body.items, body.n))
-                p->error = strdup("ERRDEFER non è supportato dentro un GENERATOR: si traduce in un "
-                                  "TRY/CATCH e il corpo di un generatore non lo ammette su tutte le "
-                                  "gambe (il backend nativo lo rifiuta). Metti il cleanup in una "
-                                  "SUB/FUNCTION chiamata dal generatore.");
-        } else {
-            (void)gmb_p_wrap_errdefers(&body, line);
-        }
+        /* ERRDEFER anche nei GENERATORI: il corpo è una coroutine compilata come funzione
+         * normale, quindi il TRY/CATCH del desugaring è ammesso (prima il generatore era una
+         * macchina a stati che non lo supportava). */
+        (void)gmb_p_wrap_errdefers(&body, line);
         s->func_body = body.items; s->n_funcbody = body.n;
         return s;
     }

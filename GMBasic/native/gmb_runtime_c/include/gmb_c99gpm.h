@@ -250,6 +250,18 @@ gmb_string_t gmb_val_str_or_empty(gmb_val_t v);
  * allocato; "" se timeout/nessun terminale). Mai spin-wait. */
 gmb_string_t gmb_key_wait_park(int timeout_ms);
 
+/* --- GENERATORI (coroutine stackful guidate sincronamente da NEXT) -------------------
+ * Parità VM/C: il corpo è compilato come funzione C NORMALE (TRY/CATCH, FOR EACH, DEFER…
+ * funzionano) e YIELD sospende cambiando contesto. Nessuno scheduler: solo il chiamante
+ * di NEXT guida la coroutine. L'errore del corpo viene RILANCIATO nel contesto del
+ * chiamante da gmb_gen_next (numero/descrizione/riga/valore conservati). */
+typedef struct gmb_gen gmb_gen_t;
+gmb_gen_t* gmb_gen_new(void (*fn)(void*), const void* params, size_t params_size);
+/* 0 = valore prodotto (in *out), 1 = esaurito. Errore del corpo → raise nel chiamante. */
+int  gmb_gen_next(gmb_gen_t* g, double* out);
+void gmb_gen_yield(double v);      /* chiamata dal corpo */
+void gmb_gen_close(gmb_gen_t* g);  /* abbandono esplicito: libera stack e memoria */
+
 #ifdef __cplusplus
 }
 #endif

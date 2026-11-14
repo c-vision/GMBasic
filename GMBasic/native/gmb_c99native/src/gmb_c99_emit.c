@@ -610,6 +610,33 @@ static int expr_value_is_str(ctx_t* c, gmb_expr_t* e) {
 /* Emette un operando numerico sballando un eventuale nullable (gmb_val_t). */
 void emit_expr(ctx_t* c, gmb_expr_t* e);
 void emit_ident(ctx_t* c, const char* name);
+static void sb_ident(sb_t* b, const char* name);   /* definita sotto */
+
+/* Costruzione dell'handle di un GENERATOR: `(gmb_gen_<id>_t){ gmb_gen_new(body, …) }`.
+ * gmb_gen_new COPIA il blob dei parametri, quindi il temporaneo del chiamante può morire
+ * subito. Usata sia in `DIM it = G(...)` sia in posizione espressione. */
+static void emit_gen_make(ctx_t* c, const char* gen_id, fn_info_t* gf,
+                          gmb_expr_t** args, int nargs) {
+    sb_put(&c->out, "(gmb_gen_"); sb_ident(&c->out, gen_id);
+    sb_put(&c->out, "_t){ gmb_gen_new(gmb_user_"); sb_ident(&c->out, gen_id);
+    sb_put(&c->out, "_genentry, ");
+    if (nargs > 0 && gf && gf->stmt && gf->stmt->n_params > 0) {
+        sb_put(&c->out, "&(gmb_gen_"); sb_ident(&c->out, gen_id); sb_put(&c->out, "_params_t){");
+        for (int ai = 0; ai < nargs; ai++) {
+            if (ai < gf->stmt->n_params && gf->stmt->func_params[ai]) {
+                sb_put(&c->out, "."); sb_ident(&c->out, gf->stmt->func_params[ai]);
+                sb_put(&c->out, " = ");
+            }
+            emit_expr(c, args[ai]);
+            sb_put(&c->out, ", ");
+        }
+        sb_put(&c->out, "}, sizeof(gmb_gen_"); sb_ident(&c->out, gen_id); sb_put(&c->out, "_params_t)");
+    } else {
+        sb_put(&c->out, "NULL, 0");
+    }
+    sb_put(&c->out, ") }");
+}
+
 static int is_json_path_member(ctx_t* c, gmb_expr_t* e, var_t** out_bv, const char** out_m);
 int is_json_index_member_call(ctx_t* c, gmb_expr_t* e);
 static void emit_num_from_json_member(ctx_t* c, gmb_expr_t* e);
@@ -1343,6 +1370,8 @@ static void emit_defer_epilogue(ctx_t* c) {
     if (c->cur_fn && !c->cur_fn->has_gosub)
         emit_class_locals_dtors(c);
     ind(c);
+    /* Corpo di un GENERATOR (coroutine void): `return;` senza __ret. */
+    if (c->gen_body) { sb_put(&c->out, "return;\n"); return; }
     /* Il codice di MODULO vive in `gmb_program_main` (VOID): un'uscita a top-level
      * (RETURN modulo) è `return;`. Non `return 0;` — error: void function should not
      * return a value (FunctionsParams: 1200 RETURN a livello modulo). */
@@ -12928,18 +12957,15 @@ static void emit_call(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_
             }
         }
     }
-    /* NEXT(generatore): fa avanzare la state-machine; se il generatore è esaurito solleva
-     * 144 (StopIteration, catturabile da TRY/CATCH e.Number=144) — mirror emitter C#. */
+    /* NEXT(generatore): riprende la coroutine; se il generatore è esaurito solleva
+     * 144 (StopIteration, catturabile da TRY/CATCH con e.Number=144) — mirror emitter C#.
+     * Un errore del corpo è RILANCIATO da gmb_gen_next nel contesto del chiamante. */
     if (tk == GMB_TOK_Next && nargs == 1 && args[0]
         && args[0]->kind == GMB_EXPR_VAR && args[0]->var) {
         var_t* gv = lookup_var(c, args[0]->var);
         if (gv && gv->gkind == GK_GEN) {
-            sb_put(&c->out, "({ if (");
-            emit_ident(c, gv->name); sb_put(&c->out, ".done) gmb_raise_error(144, \"StopIteration\", 0); gmb_user_");
-            sb_ident(&c->out, gv->gen_id); sb_put(&c->out, "_step(&");
-            emit_ident(c, gv->name); sb_put(&c->out, "); if (");
-            emit_ident(c, gv->name); sb_put(&c->out, ".done) gmb_raise_error(144, \"StopIteration\", 0); ");
-            emit_ident(c, gv->name); sb_put(&c->out, ".value; })");
+            sb_put(&c->out, "({ double __gv = 0; if (gmb_gen_next(");
+            emit_ident(c, gv->name); sb_put(&c->out, ".co, &__gv)) gmb_raise_error(144, \"StopIteration\", 0); __gv; })");
             return;
         }
     }
@@ -14232,12 +14258,10 @@ static void emit_call(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_
         }
     }
     if (fn) {
-        /* chiamata a GENERATOR (es. `Count(3)`): costruisce la struct di stato per valore
-         * (step=0,done=0,value=0, poi i parametri) — il corpo NON parte (mirror emitter C#). */
+        /* chiamata a GENERATOR (es. `Count(3)`): costruisce l'HANDLE della coroutine (il
+         * corpo parte al primo NEXT). */
         if (fn->stmt->is_generator) {
-            sb_put(&c->out, "(gmb_gen_"); sb_ident(&c->out, fn->stmt->func_name); sb_put(&c->out, "_t){0, 0, 0");
-            for (int i = 0; i < nargs && i < fn->n_params; i++) { sb_put(&c->out, ", "); emit_expr(c, args[i]); }
-            sb_put(&c->out, "}");
+            emit_gen_make(c, fn->stmt->func_name, fn, args, nargs);
             return;
         }
         /* ARGOMENTI NOMINALI (bug #4 — FunctionsParams.bas): il parser codifica ogni
@@ -20657,26 +20681,16 @@ static void st_dim(ctx_t* c, gmb_stmt_t* s) {
                 else sb_put(&c->out, " = (gmb_fn_t){0};\n");
                 break;
             case GK_GEN:
-                /* DIM it = Generatore(args): la struct `gmb_gen_<id>_t` si costruisce coi
-                 * PARAMETRI del generatore nei campi omonimi (il corpo NON parte: lo step 0
-                 * lo avvia il primo NEXT). Prima si emetteva una CALL al nome del
-                 * generatore in posizione di assegnazione → valore double. */
+                /* DIM it = Generatore(args): costruisce l'HANDLE della coroutine (il corpo
+                 * parte al primo NEXT); i parametri viaggiano in un blob copiato da
+                 * gmb_gen_new. */
                 if (s->dim_init && s->dim_init->kind == GMB_EXPR_CALL && s->dim_init->var
                     && s->dim_init->nargs <= 8) {
                     fn_info_t* gf = find_fn(c, s->dim_init->var);
                     if (gf && gf->stmt && gf->stmt->is_generator) {
-                        sb_put(&c->out, " = (gmb_gen_");
-                        sb_ident(&c->out, dv->gen_id);
-                        sb_put(&c->out, "_t){");
-                        for (int ai = 0; ai < s->dim_init->nargs; ai++) {
-                            if (ai < gf->stmt->n_params && gf->stmt->func_params[ai]) {
-                                sb_put(&c->out, "."); sb_ident(&c->out, gf->stmt->func_params[ai]);
-                                sb_put(&c->out, " = ");
-                            }
-                            emit_expr(c, s->dim_init->args[ai]);
-                            sb_put(&c->out, ", ");
-                        }
-                        sb_put(&c->out, "};\n");
+                        sb_put(&c->out, " = ");
+                        emit_gen_make(c, dv->gen_id, gf, s->dim_init->args, s->dim_init->nargs);
+                        sb_put(&c->out, ";\n");
                         break;
                     }
                 }
@@ -32054,6 +32068,8 @@ static void st_print(ctx_t* c, gmb_stmt_t* s) {
     if (cp) { ind(c); sb_put(&c->out, "gmb_print_force_console(0);\n"); }
 }
 
+static void st_yield(ctx_t* c, gmb_stmt_t* s);   /* YIELD: coroutine del generatore (sotto) */
+
 static const ST_EMIT_TBL_row ST_EMIT_TBL[] = {
     { GMB_STMT_PRINT, st_print },
     { GMB_STMT_MMAP_POKE, st_mmap_poke },
@@ -32074,6 +32090,7 @@ static const ST_EMIT_TBL_row ST_EMIT_TBL[] = {
     { GMB_STMT_ON_WINDOW, st_on_window },
     { GMB_STMT_ERROR, st_error },
     { GMB_STMT_THROW, st_throw },
+    { GMB_STMT_YIELD, st_yield },
     { GMB_STMT_TRY, st_try },
     { GMB_STMT_USING, st_using },
     { GMB_STMT_SELECT, st_select },
@@ -32453,204 +32470,87 @@ static void emit_stmt(ctx_t* c, gmb_stmt_t* s) {
 
 
 /* ─────────────────────────── emissione funzioni ─────────────────────────── */
-
 /* ============================================================================
- * GENERATORI (2026-09-06) — mirror emitter C# EmitGenerator: struct di stato +
- * `void gmb_user_<id>_step(gmb_gen_<id>_t*)` con `switch(g->step)`. I loop che
- * contengono YIELD sono APPIATTITI (goto/label top-level, mai `{}` annidati) così
- * i `case K:` di resume restano legali a livello del switch. YIELD = writeback
- * locali + `g->step=K; return;`, resume da `case K:`.
+ * GENERATORI (2026-11-14) — COROUTINA dedicata, guidata sincronamente da NEXT.
+ *
+ * PRIMA: macchina a stati (`gmb_user_<id>_step` con `switch(g->step)`, loop appiattiti in
+ * goto/label). Quel design imponeva un SOTTOINSIEME di istruzioni:
+ *   - niente TRY/CATCH: i `case K:` di ripresa devono stare al livello dello `switch` e un
+ *     `setjmp` non sopravvive al `return` di YIELD (il jmp_buf punta a un frame morto);
+ *   - niente DEFER (serve un epilogo di uscita unico) né FOR EACH/SELECT (blocchi annidati);
+ *   - i locali andavano copiati a mano nella struct (solo DIM/FOR, solo scalari).
+ *
+ * ORA: il corpo è una funzione C NORMALE eseguita su uno stack PROPRIO (coroutine stackful
+ * del runtime: `gmb_gen_*` in gmb_runtime_c/src/gmb_c99gpm.c) e `YIELD` sospende cambiando
+ * contesto. Quindi TRY/CATCH, FOR EACH, DEFER, ERRDEFER, SELECT… funzionano senza codice
+ * dedicato e i locali vivono sullo stack della coroutine (nessun writeback). È lo stesso
+ * meccanismo di VM/C, che guida il task del generatore tick-per-tick da NEXT; qui nessuno
+ * scheduler: solo il chiamante di NEXT guida la coroutine.
+ *
+ *   typedef struct { gmb_double_t n; } gmb_gen_G_params_t;   -- parametri (blob)
+ *   typedef struct { gmb_gen_t* co; }  gmb_gen_G_t;          -- handle (per valore)
+ *   static void gmb_user_G_genentry(void* __arg) { ...; gmb_gen_yield(v); ... }
+ *   DIM it = G(3) → (gmb_gen_G_t){ gmb_gen_new(gmb_user_G_genentry, &(params){...}, sizeof) }
+ *   NEXT(it)      → gmb_gen_next(it.co, &v)   (esaurito → 144 StopIteration)
  * ============================================================================ */
 
-typedef struct gencollect { const char* names[64]; const char* types[64]; int n; } gencollect_t;
-static void gen_collect_list(gmb_stmt_t** list, int n, gencollect_t* col, fn_info_t* fn);
-static void gen_collect_stmt(gmb_stmt_t* s, gencollect_t* col, fn_info_t* fn) {
-    if (!s) return;
-    if (s->kind == GMB_STMT_DIM && s->dim_var) {
-        var_t* lv = vars_find(&fn->locals, s->dim_var);
-        col->names[col->n] = s->dim_var;
-        col->types[col->n] = (lv && lv->type == TY_STR) ? "gmb_string_t" : "gmb_double_t";
-        col->n++;
-    } else if (s->kind == GMB_STMT_FOR && s->for_var) {
-        var_t* lv = vars_find(&fn->locals, s->for_var);
-        col->names[col->n] = s->for_var;
-        col->types[col->n] = (lv && lv->type == TY_STR) ? "gmb_string_t" : "gmb_double_t";
-        col->n++;
-    }
-    gen_collect_list(s->then_body, s->n_then, col, fn);
-    gen_collect_list(s->else_body, s->n_else, col, fn);
-    gen_collect_list(s->for_body, s->n_for, col, fn);
-    gen_collect_list(s->while_body, s->n_while, col, fn);
-    gen_collect_list(s->do_body, s->n_do, col, fn);
-    gen_collect_list(s->try_body, s->n_try, col, fn);
-    gen_collect_list(s->catch_body && s->n_catch ? s->catch_body[0] ? s->catch_body[0]->catch_body : NULL : NULL, 0, col, fn);
-    gen_collect_list(s->finally_body, s->n_finally, col, fn);
-}
-static void gen_collect_list(gmb_stmt_t** list, int n, gencollect_t* col, fn_info_t* fn) {
-    for (int i = 0; i < n && col->n < 64; i++) gen_collect_stmt(list[i], col, fn);
+/* YIELD <espr>: sospende la coroutine e pubblica il valore (numerico, come prima). */
+static void st_yield(ctx_t* c, gmb_stmt_t* s) {
+    ind(c);
+    sb_put(&c->out, "gmb_gen_yield((gmb_double_t)(");
+    if (s->value) emit_expr(c, s->value);
+    else sb_put(&c->out, "0");
+    sb_put(&c->out, "));\n");
 }
 
-static void gen_writeback(ctx_t* c, gencollect_t* col) {
-    for (int i = 0; i < col->n; i++) {
-        ind(c); sb_put(&c->out, "g->"); sb_ident(&c->out, col->names[i]);
-        sb_put(&c->out, " = "); sb_ident(&c->out, col->names[i]); sb_put(&c->out, ";\n");
-    }
-}
-
-static void gen_stmt(ctx_t* c, gmb_stmt_t* s, gencollect_t* col, const char* gid, int* case_no, int* lu);
-static void gen_list(ctx_t* c, gmb_stmt_t** list, int n, gencollect_t* col, const char* gid, int* case_no, int* lu) {
-    for (int i = 0; i < n && !c->error[0]; i++) gen_stmt(c, list[i], col, gid, case_no, lu);
-}
-static void gen_stmt(ctx_t* c, gmb_stmt_t* s, gencollect_t* col, const char* gid, int* case_no, int* lu) {
-    (void)gid;
-    if (!s) return;
-    if (s->kind == GMB_STMT_REM) return;
-    if (s->kind == GMB_STMT_YIELD) {
-        int cur = (*case_no)++;
-        ind(c); sb_put(&c->out, "g->value = ");
-        if (s->value) emit_expr(c, s->value);
-        else sb_put(&c->out, "0");
-        sb_put(&c->out, ";\n");
-        gen_writeback(c, col);
-        ind(c); sb_printf(&c->out, "g->step = %d;\n", cur);
-        ind(c); sb_put(&c->out, "return;\n");
-        ind(c); sb_printf(&c->out, "case %d: ;\n", cur);
-        return;
-    }
-    if (s->kind == GMB_STMT_DIM) {
-        if (!s->array_size && s->dim_init) {
-            ind(c); emit_ident(c, s->dim_var);
-            sb_put(&c->out, " = "); emit_expr(c, s->dim_init); sb_put(&c->out, ";\n");
-        }
-        return;
-    }
-    if (s->kind == GMB_STMT_LET && s->target && s->value && !strchr(s->target, '.')) {
-        ind(c); emit_ident(c, s->target);
-        sb_put(&c->out, " = "); emit_expr(c, s->value); sb_put(&c->out, ";\n");
-        return;
-    }
-    if (s->kind == GMB_STMT_FOR) {
-        if (s->flag == 1) { c99_fail(c, s->line, "GENERATOR: FOR EACH non supportato"); return; }
-        int u = (*lu)++;
-        char cond[24], body[24], step[24], endd[24];
-        snprintf(cond, sizeof(cond), "__gen%d_c", u);
-        snprintf(body, sizeof(body), "__gen%d_b", u);
-        snprintf(step, sizeof(step), "__gen%d_s", u);
-        snprintf(endd, sizeof(endd), "__gen%d_e", u);
-        /* init */
-        ind(c); emit_ident(c, s->for_var); sb_put(&c->out, " = ");
-        emit_expr(c, s->for_from); sb_put(&c->out, ";\n");
-        /* cond */
-        ind(c); sb_printf(&c->out, "%s: if (", cond);
-        if (s->for_step) { sb_put(&c->out, "(gmb_double_t)("); emit_expr(c, s->for_step); sb_put(&c->out, ") >= 0"); }
-        else sb_put(&c->out, "(gmb_double_t)1 >= 0");
-        sb_put(&c->out, " ? ");
-        emit_ident(c, s->for_var); sb_put(&c->out, " <= (gmb_double_t)(");
-        emit_expr(c, s->for_to); sb_put(&c->out, ") : ");
-        emit_ident(c, s->for_var); sb_put(&c->out, " >= (gmb_double_t)(");
-        emit_expr(c, s->for_to); sb_put(&c->out, ")");
-        sb_printf(&c->out, ") goto %s; goto %s;\n", body, endd);
-        /* body */
-        ind(c); sb_printf(&c->out, "%s:\n", body);
-        gen_list(c, s->for_body, s->n_for, col, gid, case_no, lu);
-        /* step + loop */
-        ind(c); sb_printf(&c->out, "%s: ", step); emit_ident(c, s->for_var);
-        sb_put(&c->out, " = "); emit_ident(c, s->for_var); sb_put(&c->out, " + (gmb_double_t)(");
-        if (s->for_step) emit_expr(c, s->for_step); else sb_put(&c->out, "1");
-        sb_printf(&c->out, "); goto %s;\n", cond);
-        /* end */
-        ind(c); sb_printf(&c->out, "%s: ;\n", endd);
-        return;
-    }
-    c99_fail(c, s->line, "GENERATOR: statement (kind=%d) non supportato nel body", (int)s->kind);
-}
-
-/* Emette la definizione della step function di un generatore (mirror EmitGenerator). */
-static void emit_generator_def(ctx_t* c, fn_info_t* fn) {
+/* Entry della COROUTINA di un generatore: funzione void che spacchetta il blob dei
+ * parametri e chiama il corpo VERO (`gmb_user_<id>`, emesso da emit_function come una
+ * procedura normale: prologo dei locali, TRY/CATCH, DEFER, FOR EACH… tutto già supportato).
+ * `YIELD` sospende la coroutine (gmb_gen_yield) senza tornare da questa funzione. */
+static void emit_generator_entry(ctx_t* c, fn_info_t* fn) {
     gmb_stmt_t* s = fn->stmt;
     if (!s->is_generator || !s->func_name) return;
-    gencollect_t col; memset(&col, 0, sizeof(col));
-    gencollect_t params; memset(&params, 0, sizeof(params));
-    for (int k = 0; k < s->n_params; k++) {
-        var_t* pv = vars_find(&fn->locals, s->func_params[k]);
-        params.names[params.n] = s->func_params[k];
-        params.types[params.n] = (pv && pv->type == TY_STR) ? "gmb_string_t" : "gmb_double_t";
-        params.n++;
-    }
-    gen_collect_list(s->func_body, s->n_funcbody, &col, fn);
-    /* dedup locals vs params */
-    {
-        gencollect_t loc; memset(&loc, 0, sizeof(loc));
-        for (int i = 0; i < col.n; i++) {
-            int dup = 0;
-            for (int j = 0; j < params.n; j++)
-                if (strcasecmp(params.names[j], col.names[i]) == 0) { dup = 1; break; }
-            for (int j = 0; j < loc.n; j++)
-                if (strcasecmp(loc.names[j], col.names[i]) == 0) { dup = 1; break; }
-            if (!dup) { loc.names[loc.n] = col.names[i]; loc.types[loc.n] = col.types[i]; loc.n++; }
-        }
-        col = loc;
-    }
-    /* ordinamento struct: step,done,value,parametri,locali */
-    sb_put(&c->out, "static void gmb_user_"); sb_ident(&c->out, s->func_name); sb_put(&c->out, "_step(gmb_gen_");
-    sb_ident(&c->out, s->func_name); sb_put(&c->out, "_t* g) {\n");
+    sb_put(&c->out, "static void gmb_user_"); sb_ident(&c->out, s->func_name);
+    sb_put(&c->out, "_genentry(void* __arg) {\n");
     c->indent = 1;
-    int err_sv = c->n_err_decl;
-    size_t err_pos = c->out.len;
-    for (int i = 0; i < params.n; i++) {
-        ind(c); sb_put(&c->out, params.types[i]); sb_put(&c->out, " "); sb_ident(&c->out, params.names[i]);
-        sb_put(&c->out, " = g->"); sb_ident(&c->out, params.names[i]); sb_put(&c->out, ";\n");
+    if (s->n_params > 0) {
+        ind(c); sb_put(&c->out, "gmb_gen_"); sb_ident(&c->out, s->func_name);
+        sb_put(&c->out, "_params_t* __p = (gmb_gen_"); sb_ident(&c->out, s->func_name);
+        sb_put(&c->out, "_params_t*)__arg;\n");
+        ind(c); sb_put(&c->out, "gmb_user_"); sb_ident(&c->out, s->func_name); sb_put(&c->out, "(");
+        for (int i = 0; i < s->n_params; i++) {
+            if (i) sb_put(&c->out, ", ");
+            sb_put(&c->out, "__p->"); sb_ident(&c->out, s->func_params[i]);
+        }
+        sb_put(&c->out, ");\n");
+    } else {
+        ind(c); sb_put(&c->out, "(void)__arg;\n");
+        ind(c); sb_put(&c->out, "gmb_user_"); sb_ident(&c->out, s->func_name); sb_put(&c->out, "();\n");
     }
-    for (int i = 0; i < col.n; i++) {
-        ind(c); sb_put(&c->out, col.types[i]); sb_put(&c->out, " "); sb_ident(&c->out, col.names[i]);
-        sb_put(&c->out, " = g->"); sb_ident(&c->out, col.names[i]); sb_put(&c->out, ";\n");
-    }
-    ind(c); sb_put(&c->out, "switch (g->step) {\n");
-    c->indent++;
-    ind(c); sb_put(&c->out, "case 0:\n");
-    c->indent++;
-    /* unisco param+loc per writeback/struct (ordine struct = params poi locals) */
-    gencollect_t all; memset(&all, 0, sizeof(all));
-    for (int i = 0; i < params.n; i++) { all.names[all.n] = params.names[i]; all.types[all.n] = params.types[i]; all.n++; }
-    for (int i = 0; i < col.n; i++) { all.names[all.n] = col.names[i]; all.types[all.n] = col.types[i]; all.n++; }
-    int case_no = 1, lu = 1;
-    gen_list(c, s->func_body, s->n_funcbody, &all, s->func_name, &case_no, &lu);
-    c->indent--;
-    c->indent--;
-    ind(c); sb_put(&c->out, "}\n");
-    ind(c); sb_put(&c->out, "g->done = 1;\n");
-    gen_writeback(c, &all);
-    err_decl_insert(c, err_sv, err_pos);   /* jmp_buf ON ERROR (scope della funzione _step) */
     c->indent = 0;
     sb_put(&c->out, "}\n\n");
 }
 
-/* Emette (in un sb) la typedef della struct + il prototipo step di un generatore. */
+
+/* Typedef (blob parametri + handle) e prototipo del corpo di un generatore. */
 static void emit_generator_proto(sb_t* out, fn_info_t* fn) {
     gmb_stmt_t* s = fn->stmt;
     if (!s->is_generator || !s->func_name) return;
-    gencollect_t col; memset(&col, 0, sizeof(col));
-    gencollect_t params; memset(&params, 0, sizeof(params));
+    /* Blob dei PARAMETRI: gmb_gen_new ne copia una copia, quindi il temporaneo del
+     * chiamante (`DIM it = G(3)`) può morire subito dopo. */
+    sb_put(out, "typedef struct gmb_gen_"); sb_ident(out, s->func_name); sb_put(out, "_params {\n");
     for (int k = 0; k < s->n_params; k++) {
         var_t* pv = vars_find(&fn->locals, s->func_params[k]);
-        params.names[params.n] = s->func_params[k];
-        params.types[params.n] = (pv && pv->type == TY_STR) ? "gmb_string_t" : "gmb_double_t";
-        params.n++;
+        sb_put(out, "    ");
+        sb_put(out, (pv && pv->type == TY_STR) ? "gmb_string_t" : "gmb_double_t");
+        sb_put(out, " "); sb_ident(out, s->func_params[k]); sb_put(out, ";\n");
     }
-    gen_collect_list(s->func_body, s->n_funcbody, &col, fn);
-    sb_put(out, "typedef struct gmb_gen_"); sb_ident(out, s->func_name); sb_put(out, " {\n");
-    sb_put(out, "    gmb_int_t step;\n    gmb_int_t done;\n    gmb_double_t value;\n");
-    for (int i = 0; i < params.n; i++) { sb_put(out, "    "); sb_put(out, params.types[i]); sb_put(out, " "); sb_ident(out, params.names[i]); sb_put(out, ";\n"); }
-    for (int i = 0; i < col.n; i++) {
-        int dup = 0;
-        for (int j = 0; j < params.n; j++) if (strcasecmp(params.names[j], col.names[i]) == 0) { dup = 1; break; }
-        for (int j = 0; j < i; j++) if (strcasecmp(col.names[j], col.names[i]) == 0) { dup = 1; break; }
-        if (dup) continue;
-        sb_put(out, "    "); sb_put(out, col.types[i]); sb_put(out, " "); sb_ident(out, col.names[i]); sb_put(out, ";\n");
-    }
-    sb_put(out, "} gmb_gen_"); sb_ident(out, s->func_name); sb_put(out, "_t;\n");
-    sb_put(out, "static void gmb_user_"); sb_ident(out, s->func_name); sb_put(out, "_step(gmb_gen_");
-    sb_ident(out, s->func_name); sb_put(out, "_t* g);\n");
+    if (s->n_params == 0) sb_put(out, "    char __empty;\n");
+    sb_put(out, "} gmb_gen_"); sb_ident(out, s->func_name); sb_put(out, "_params_t;\n");
+    /* Handle del generatore (per valore, come prima): solo il puntatore alla coroutine. */
+    sb_put(out, "typedef struct gmb_gen_"); sb_ident(out, s->func_name);
+    sb_put(out, " { gmb_gen_t* co; } gmb_gen_"); sb_ident(out, s->func_name); sb_put(out, "_t;\n");
+    sb_put(out, "static void gmb_user_"); sb_ident(out, s->func_name); sb_put(out, "_genentry(void* __arg);\n");
 }
 
 /* Tipo NATIVO di un tipo dichiarato per FFI: gmb_int_t per gli interi (ABI nativa
@@ -37192,12 +37092,13 @@ static int gmb_c99_emit_once(const gmb_program_t* prog, char** out_src, char** e
      * corpi funzione, perché invoca le gmb_user_*). */
     sb_put(&c->out, "static char* __gmb_plugin_call(const char* __plugin, const char* __arg);\n\n");
 
-    /* 5. corpi funzione */
+    /* 5. corpi funzione — i GENERATORI sono procedure normali: il loro corpo è una
+     * coroutine (funzione void) che YIELD sospende, quindi passa dallo stesso emitter. */
     for (int i = 0; i < c->nfn && !c->error[0]; i++)
-        if (!c->fns[i].stmt->is_generator) emit_function(c, &c->fns[i]);
-    /* 5a. generatori: step function delle GENERATOR (mirror emitter C# EmitGenerator) */
+        emit_function(c, &c->fns[i]);
+    /* 5a. generatori: entry della coroutine (spacchetta i parametri e chiama il corpo) */
     for (int i = 0; i < c->nfn && !c->error[0]; i++)
-        if (c->fns[i].stmt->is_generator) emit_generator_def(c, &c->fns[i]);
+        if (c->fns[i].stmt->is_generator) emit_generator_entry(c, &c->fns[i]);
 
     /* 5a-bis. Handler evento con LABEL LOCALE: una funzione sintetica per (procedura, label)
      * che esegue il blocco del label con le locali FRESCHE della procedura (zero-init), come il
