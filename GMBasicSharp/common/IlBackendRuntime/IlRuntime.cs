@@ -13171,6 +13171,17 @@ public static double TextWidth(string s)
         if (_printStageSaved is { Count: > 0 }) _printStage = _printStageSaved.Pop();
     }
 
+    /// <summary>ERRORE: scarta TUTTI i livelli di staging pendenti. Un PRINT interrotto da un
+    /// errore non deve emettere la riga parziale — e nemmeno riprenderla dopo: il canone è
+    /// "scarta" (parità C99Native/VM-C/PCode, dove il raise azzera lo staging). Chiamata
+    /// all'ingresso del CATCH / del dispatch ON ERROR.</summary>
+    public static void PrintStageAbort()
+    {
+        _printStage?.Clear();
+        _printStage = null;
+        _printStageSaved?.Clear();
+    }
+
     public static void PrintDispatch(string text)
     {
         // Finestra attiva → scrive nel buffer della finestra (viewport corrente).

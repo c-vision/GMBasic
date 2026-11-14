@@ -902,6 +902,10 @@ public sealed partial class IlProgramCompiler
     private void EmitTraceSnapshotRestore()
     {
         _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.TraceSnapshot)));
+        /* Errore: scarta i livelli di staging di stampa pendenti (un PRINT interrotto non
+         * emette la riga parziale) — parità C99Native/VM-C/PCode, dove il raise azzera lo
+         * staging. Senza, il prefisso dell'argomento che ha fallito veniva ripreso dopo. */
+        _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.PrintStageAbort)));
         if (_traceDepthLocal is not { } depth) return;
         _il.Emit(OpCodes.Ldloc, depth);
         _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.TraceRestoreTo), typeof(int)));
