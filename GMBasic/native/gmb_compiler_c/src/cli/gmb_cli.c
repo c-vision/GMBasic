@@ -298,6 +298,24 @@ int path_under(const char* path, const char* root) {
     return strncmp(path, root, l) == 0 && (path[l] == '/' || path[l] == 0);
 }
 
+/* Voce di baseline → path come lo stampa il CLI, cioè RELATIVO alla radice della suite.
+ * Il baseline è versionato con path relativi, ma una voce può arrivare ASSOLUTA (baseline
+ * vecchi, o registro fatto da un altro checkout): senza normalizzarla ogni voce nota sembra
+ * una regressione e il gate diventa rosso su una macchina e verde su un'altra. Il confronto
+ * con la radice è case-insensitive (stesso file con case diverso: checkout su filesystem
+ * case-insensitive, path trascritto in maiuscolo) e richiede il separatore dopo la radice,
+ * così `/x/bad` non "assorbe" `/x/bad2`: un path fuori radice resta com'è e non combacia. */
+static void baseline_norm(const char* entry, const char* root, char* out, size_t cap) {
+    const char* p = entry;
+    size_t lr = root ? strlen(root) : 0;
+    if (lr > 1 && strncasecmp(entry, root, lr) == 0 &&
+        (entry[lr] == '/' || entry[lr] == 0)) {
+        p = entry + lr;
+        while (*p == '/') p++;
+    }
+    snprintf(out, cap, "%s", p);
+}
+
 /* ── opzioni ──────────────────────────────────────────────────────────────────────────── */
 
 
@@ -412,11 +430,16 @@ static char* pick_entry(const char* project, const char* explicit_entry, DiagLis
  * file e ricette -I diverse: i conteggi non erano confrontabili. Qui la scoperta è ricorsiva
  * e ordinata (readdir non lo è: senza sort due run darebbero diff inutili) e la ricetta degli
  * -I è la STESSA di `build` (build_inc).
+ *
+ * I MiniTest NEGATIVI di compilazione (`' EXPECT: ERROR: <testo>`) sono un ESITO: il rifiuto
+ * del driver è esattamente ciò che il file chiede, quindi conta PASS e non entra nel baseline.
+ * Un crash del driver resta un DRIVER-FAIL (il segnale non è un verdetto).
  */
 
 typedef struct {
     int interactive;
     int heavy;
+    int expect_error;   /* `' EXPECT: ERROR:` in colonna 1: MiniTest NEGATIVO di compilazione */
 } MiniTags;
 
 /* Tutti i `.bas` sotto `dir`, ricorsivo. readdir non è ordinato: si ordina dopo. */
@@ -439,10 +462,12 @@ static int cmp_str(const void* a, const void* b) {
     return strcmp(*(const char* const*)a, *(const char* const*)b);
 }
 
-/* I TAG del MiniTest (' TAG: interactive / heavy, in colonna 1 come li scrive la suite). */
+/* I TAG del MiniTest (' TAG: interactive / heavy, in colonna 1 come li scrive la suite) e il
+ * marcatore dei negativi di compilazione (' EXPECT: ERROR: <testo atteso>). */
 static void mini_tags(const char* path, MiniTags* t) {
     t->interactive = 0;
     t->heavy = 0;
+    t->expect_error = 0;
     char* s = read_all(path);
     if (!s) return;
     for (char* p = s; *p; ) {
@@ -450,6 +475,8 @@ static void mini_tags(const char* path, MiniTags* t) {
             const char* v = p + 7;
             if (strncasecmp(v, "interactive", 11) == 0) t->interactive = 1;
             else if (strncasecmp(v, "heavy", 5) == 0) t->heavy = 1;
+        } else if (strncmp(p, "' EXPECT: ERROR:", 16) == 0) {
+            t->expect_error = 1;
         }
         char* eol = strchr(p, '\n');
         if (!eol) break;
@@ -730,6 +757,7 @@ static int run_minitests(const Options* o) {
     MiniCat cats[MINI_MAX_CATS];
     int ncats = 0;
     int total = files.n, run = 0, pass = 0, ccfail = 0, drvfail = 0, crash = 0;
+    int exprej = 0;   /* negativi di compilazione rifiutati come atteso (`' EXPECT: ERROR:`) */
     int skip_i = 0, skip_h = 0;
 
     for (int i = 0; i < files.n; i++) {
@@ -758,7 +786,19 @@ static int run_minitests(const Options* o) {
         int errors = 0;
         int drv_stage = 0;
 
-        if (rc != 0) {
+        int failed = 1;
+        if (rc != 0 && tags.expect_error && rc < 128) {
+            /* MiniTest NEGATIVO di compilazione (`' EXPECT: ERROR:`): il driver DEVE rifiutare
+             * il sorgente, quindi il rifiuto è il risultato atteso, non un DRIVER-FAIL — e non
+             * deve finire nel baseline, altrimenti ogni nuovo test negativo è una finta
+             * regressione. Un CRASH (rc >= 128) resta un guasto: il segnale non è un verdetto.
+             * Il testo dell'EXPECT non si confronta qui (i negativi di parsing hanno messaggi
+             * più precisi del marcatore): lo verifica l'harness `tools/sh/test_minitests_c99native`. */
+            exprej++;
+            pass++;
+            failed = 0;
+            fprintf(stderr, "NEGATIVO-OK %s (rifiuto atteso, rc=%d)\n", disp, rc);
+        } else if (rc != 0) {
             drvfail++;
             drv_stage = 1;
             int crashed = rc >= 128;
@@ -815,11 +855,12 @@ static int run_minitests(const Options* o) {
                 }
             } else {
                 pass++;
+                failed = 0;
             }
         }
         free(log);
 
-        if (rc != 0) {
+        if (failed) {
             if (nfails == capfails) {
                 int cap = capfails ? capfails * 2 : 64;
                 MiniFail* p = (MiniFail*)realloc(fails, (size_t)cap * sizeof *p);
@@ -877,8 +918,13 @@ static int run_minitests(const Options* o) {
         if (o->filter && *o->filter)
             fprintf(stderr, "gmb minitests: avviso, --baseline con --filter: i file non "
                             "eseguiti risultano 'risolti'\n");
-        /* confronto case-insensitive: `base` resta com'è per stamparlo, `base_lc` serve al match */
-        for (int i = 0; i < base.n; i++) nameset_add_lower(&base_lc, base.items[i]);
+        /* confronto case-insensitive: `base` resta com'è per stamparlo, `base_lc` serve al match
+         * e contiene la voce NORMALIZZATA (relativa alla radice), la stessa forma di `cur`. */
+        for (int i = 0; i < base.n; i++) {
+            char norm[CLI_PATH];
+            baseline_norm(base.items[i], root, norm, sizeof norm);
+            nameset_add_lower(&base_lc, norm);
+        }
         for (int i = 0; i < nfails; i++) nameset_add_lower(&cur, fails[i].path);
         for (int i = 0; i < nfails; i++)
             if (!nameset_has_lower(&base_lc, fails[i].path)) newfails++;
@@ -893,8 +939,9 @@ static int run_minitests(const Options* o) {
         json_str(stdout, ".");   /* relativo alla radice: nessun path assoluto nel baseline */
         printf(",\n  \"total\": %d,\n  \"run\": %d,\n  \"skipped_interactive\": %d,"
                "\n  \"skipped_heavy\": %d,\n  \"pass\": %d,\n  \"cc_fail\": %d,"
-               "\n  \"driver_fail\": %d,\n  \"driver_crash\": %d,",
-               total, run, skip_i, skip_h, pass, ccfail, drvfail, crash);
+               "\n  \"driver_fail\": %d,\n  \"driver_crash\": %d,"
+               "\n  \"expected_reject\": %d,",
+               total, run, skip_i, skip_h, pass, ccfail, drvfail, crash, exprej);
         if (have_base) printf("\n  \"new_failures\": %d,\n  \"fixed\": %d,", newfails, fixed);
         printf("\n  \"ok\": %s,\n", ok ? "true" : "false");
         printf("  \"cc_categories\": [");
@@ -955,6 +1002,9 @@ static int run_minitests(const Options* o) {
                 total, run, pass, ccfail, drvfail, crash);
         /* riga storica di tools/c99_compile_errors.sh, tenuta per chi la legge ancora */
         fprintf(stderr, "C99 compile-error: %d\n", ccfail);
+        if (exprej)
+            fprintf(stderr, "negativi attesi (EXPECT: ERROR, rifiuto del driver): %d — contati PASS\n",
+                    exprej);
         if (have_base) {
             for (int i = 0; i < nfails; i++)
                 if (!nameset_has_lower(&base_lc, fails[i].path))

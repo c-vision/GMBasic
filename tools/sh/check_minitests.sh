@@ -7,6 +7,10 @@
 # solo per le REGRESSIONI (un FAIL che prima non c'era). Il pavimento che scende non è un
 # errore: appare come `RISOLTO <file>` e col tempo si rigenera il baseline.
 #
+# I MiniTest NEGATIVI di compilazione (`' EXPECT: ERROR: <testo>`) NON sono fallimenti: il CLI
+# conta PASS il rifiuto atteso del driver, quindi non entrano nel baseline e aggiungerne uno
+# nuovo non richiede `--update`.
+#
 # Uso:
 #   tools/sh/check_minitests.sh               # verifica → exit 0 ok · 2 regressione · 1 setup
 #   tools/sh/check_minitests.sh --update      # rigenera il baseline (dopo fix o nuovi MiniTest)

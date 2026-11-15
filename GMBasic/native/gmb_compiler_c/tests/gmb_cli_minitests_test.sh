@@ -181,6 +181,23 @@ rc=$?
 [ "$rc" = "0" ] && pass "baseline con case diverso → rc 0" || ko "baseline con case diverso → rc 0 (rc=$rc)"
 [ "$(json_get "$WORK/b_upper.json" new_failures)" = "0" ] \
     && pass "baseline case-insensitive: 0 regressioni" || ko "baseline case-insensitive: 0 regressioni"
+# ...ma la normalizzazione non deve diventare un match sul solo basename: un path assoluto che
+# punta FUORI dalla radice in esame resta una regressione vera (se no il baseline di un'altra
+# suite nasconderebbe i FAIL di questa).
+printf '{"failures":[{"file":"/altrove/rotto.bas"}]}\n' > "$WORK/base_altrove.json"
+"$GMB" minitests --root "$BAD" --baseline "$WORK/base_altrove.json" --json > "$WORK/b_altrove.json" 2>/dev/null
+rc=$?
+[ "$rc" = "2" ] && pass "path assoluto fuori radice → rc 2" \
+    || ko "path assoluto fuori radice → rc 2 (rc=$rc)"
+[ "$(json_get "$WORK/b_altrove.json" new_failures)" = "1" ] \
+    && pass "path assoluto fuori radice: 1 regressione" \
+    || ko "path assoluto fuori radice: 1 regressione (new_failures=$(json_get "$WORK/b_altrove.json" new_failures))"
+# e una radice che è PREFISSO di un'altra (`/x/bad` vs `/x/bad2`) non deve combaciare
+printf '{"failures":[{"file":"%s2/rotto.bas"}]}\n' "$(cd "$BAD" && pwd -P)" > "$WORK/base_prefix.json"
+"$GMB" minitests --root "$BAD" --baseline "$WORK/base_prefix.json" --json > "$WORK/b_prefix.json" 2>/dev/null
+rc=$?
+[ "$rc" = "2" ] && pass "radice prefisso di un'altra → rc 2" \
+    || ko "radice prefisso di un'altra → rc 2 (rc=$rc)"
 
 echo "---------------------------------"
 if [ "$fail" = "0" ]; then echo "gmb minitests: PASS"; else echo "gmb minitests: FAIL"; fi
