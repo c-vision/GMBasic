@@ -1,24 +1,18 @@
 {
   "command": "minitests",
   "root": ".",
-  "total": 2005,
-  "run": 1962,
-  "skipped_interactive": 13,
+  "total": 2392,
+  "run": 2350,
+  "skipped_interactive": 12,
   "skipped_heavy": 30,
-  "pass": 1955,
+  "pass": 2350,
   "cc_fail": 0,
-  "driver_fail": 7,
+  "driver_fail": 0,
   "driver_crash": 0,
-  "ok": false,
+  "expected_reject": 22,
+  "ok": true,
   "cc_categories": [
   ],
   "failures": [
-    {"file": "parser/if_then_stmt_else_block.bas", "status": "DRIVER-FAIL", "exit": 3, "errors": 0, "crash": false, "detail": "parse error: END IF without a matching IF (a single-line 'IF c THEN stmt [ELSE stmt]' has no END IF; if you mixed it with a multi-line block, use the block form 'IF c THEN' / 'ELSE' / 'END IF') (riga 9)"},
-    {"file": "parser/stray_case.bas", "status": "DRIVER-FAIL", "exit": 3, "errors": 0, "crash": false, "detail": "parse error: statement non riconosciuto (riga 5)"},
-    {"file": "parser/stray_else.bas", "status": "DRIVER-FAIL", "exit": 3, "errors": 0, "crash": false, "detail": "parse error: statement non riconosciuto (riga 5)"},
-    {"file": "parser/stray_elseif.bas", "status": "DRIVER-FAIL", "exit": 3, "errors": 0, "crash": false, "detail": "parse error: statement non riconosciuto (riga 5)"},
-    {"file": "parser/stray_end_if.bas", "status": "DRIVER-FAIL", "exit": 3, "errors": 0, "crash": false, "detail": "parse error: END IF without a matching IF (a single-line 'IF c THEN stmt [ELSE stmt]' has no END IF; if you mixed it with a multi-line block, use the block form 'IF c THEN' / 'ELSE' / 'END IF') (riga 5)"},
-    {"file": "parser/stray_end_if_loop.bas", "status": "DRIVER-FAIL", "exit": 3, "errors": 0, "crash": false, "detail": "parse error: END IF without a matching IF (a single-line 'IF c THEN stmt [ELSE stmt]' has no END IF; if you mixed it with a multi-line block, use the block form 'IF c THEN' / 'ELSE' / 'END IF') (riga 9)"},
-    {"file": "parser/stray_end_select.bas", "status": "DRIVER-FAIL", "exit": 3, "errors": 0, "crash": false, "detail": "parse error: END SELECT without a matching SELECT CASE (riga 5)"}
   ]
 }
