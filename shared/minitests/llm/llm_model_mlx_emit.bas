@@ -1,5 +1,6 @@
 ' MiniTest: EMITTER MLX — LLM MODEL SAVE <gguf>, <dir>.mlx produce un artefatto MLX
 ' (config.json + model.safetensors) e il round-trip MLX->GGUF (LLM MODEL CONVERT) regge.
+' EXPECT: emitter-mlx: config+safetensors scritti|round-trip: mlx->gguf ok
 IMPORT LLM
 SUB Main()
   DIM GMBWORK$ AS STRING = PROJECTFOLDER() + "/work"

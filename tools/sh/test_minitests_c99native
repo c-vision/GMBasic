@@ -613,16 +613,20 @@ for f in "$MINI"/**/*.bas "$MINI"/*.bas; do
     ONLY_MATCHED=$((ONLY_MATCHED+1))
   fi
   # INTERATTIVI (marker header `' TAG: interactive`): esclusi di default; inclusi con GMB_RUN_INTERACTIVE=1.
-  if [ "${GMB_RUN_INTERACTIVE:-0}" != "1" ] && grep -q "^' TAG: interactive" "$f" 2>/dev/null; then skip=$((skip+1)); continue; fi
+  if [ "${GMB_RUN_INTERACTIVE:-0}" != "1" ] && grep -q "^' TAG: interactive" "$f" 2>/dev/null; then echo "SKIP ${f#$MINI/} (interattivo: escluso per progetto)"; skip=$((skip+1)); continue; fi
   # HEAVY (marker header `' TAG: heavy`): richiede modello reale + training; escluso di default.
-  if [ "${GMB_RUN_HEAVY:-0}" != "1" ] && grep -q "^' TAG: heavy" "$f" 2>/dev/null; then skip=$((skip+1)); continue; fi
+  if [ "${GMB_RUN_HEAVY:-0}" != "1" ] && grep -q "^' TAG: heavy" "$f" 2>/dev/null; then echo "SKIP ${f#$MINI/} (heavy: richiede modello reale, escluso per progetto)"; skip=$((skip+1)); continue; fi
   # gen_AI_*: campioni di COPERTURA SIMBOLO generati; le loro EXPECT catturano STATO di
   # macchina/sessione (`AI.BRAINUSED` = brain usati nel processo, `AI.PROVIDERS` = provider
   # configurati, `AI.VAULTLIST` = vault creati dai test precedenti, `AI.COUNT` = documenti
   # indicizzati). Non esiste un oracolo unico: si escludono come nel cross-leg xUnit
   # (IsParityExcluded, stesso criterio di gen_BROWSER_*). La copertura del simbolo resta
   # garantita dal census.
-  case "$(basename "$f")" in gen_AI_*) skip=$((skip+1)); continue ;; esac
+  case "$(basename "$f")" in
+    # SKIP DICHIARATO e RIPORTATO (una riga per file): un salto muto non si distingue da una
+    # gamba che non ha eseguito nulla, e il gate A/B del pre-commit lo blocca come "gamba muta".
+    gen_AI_*) echo "SKIP ${f#$MINI/} (gen_AI_*: output dipende dallo stato di macchina/sessione)"; skip=$((skip+1)); continue ;;
+  esac
   [ -f "$f" ] || continue
   name="${f#$MINI/}"
   if ! "$DRV" "$f" "$WORK/out.c" --no-exe >/dev/null 2>"$WORK/derr.txt"; then

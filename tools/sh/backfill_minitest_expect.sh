@@ -42,7 +42,13 @@ for a in "$@"; do
 done
 
 # normalizza come gli harness: trim per riga, scarta le righe vuote, unisce con '|'
-norm() { sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' | grep -v '^$' | tr '\n' '|' | sed 's/|$//'; }
+# `|| true`: con `set -o pipefail` un output VUOTO faceva uscire `grep -v '^$'` con 1 e la
+# pipeline risultava fallita → il file veniva classificato "exit 1" invece di "output vuoto".
+norm() { sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' | grep -v '^$' | tr '\n' '|' | sed 's/|$//' || true; }
+
+# Esclusioni esplicite (rel path, separati da spazio): file che NON devono avere un oracolo
+# statico per progetto (es. `ai/ai_envreads` legge lo stato locale: config/mcp.json, skills/).
+BACKFILL_SKIP="${BACKFILL_SKIP:-}"
 
 # valori che NON devono finire in un oracolo (dipendono dalla macchina o dal tempo)
 volatile() {
@@ -65,14 +71,15 @@ for f in "${files[@]}"; do
   nt=$((nt+1))
   has_oracle "$f" && continue
   rel="${f#"$MINI"/}"
-  out1="$(cd "$ROOT" && timeout 300 bash "$RUN" "../shared/minitests/$rel" bfx 2>/dev/null | norm)"
+  case " $BACKFILL_SKIP " in *" $rel "*) echo "SKIP $rel (escluso per progetto)"; ns=$((ns+1)); continue ;; esac
+  out1="$(cd "$ROOT" && timeout "${BACKFILL_TIMEOUT:-300}" bash "$RUN" "../shared/minitests/$rel" bfx 2>/dev/null | norm)"
   rc=$?
   if [ $rc -ne 0 ]; then echo "SKIP $rel (exit $rc)"; ns=$((ns+1)); continue; fi
   if [ -z "$out1" ]; then echo "SKIP $rel (output vuoto)"; ns=$((ns+1)); continue; fi
   # SECONDA esecuzione per la stabilità (default ON: costa un compile, evita oracoli ballerini).
   # BACKFILL_RUNS=1 dimezza il tempo e lascia la validazione al run 4-gambe successivo.
   if [ "${BACKFILL_RUNS:-2}" = 2 ]; then
-    out2="$(cd "$ROOT" && timeout 300 bash "$RUN" "../shared/minitests/$rel" bfx 2>/dev/null | norm)"
+    out2="$(cd "$ROOT" && timeout "${BACKFILL_TIMEOUT:-300}" bash "$RUN" "../shared/minitests/$rel" bfx 2>/dev/null | norm)"
     if [ "$out1" != "$out2" ]; then echo "SKIP $rel (output NON stabile fra due run)"; ns=$((ns+1)); continue; fi
   fi
   if volatile "$out1"; then echo "SKIP $rel (path/valore volatile)"; ns=$((ns+1)); continue; fi

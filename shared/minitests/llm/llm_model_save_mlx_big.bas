@@ -1,4 +1,5 @@
 ' MiniTest: LLM MODEL SAVE <gguf>, <dir>.mlx su fixture grande -> emitter MLX + round-trip. 4 backend.
+' EXPECT: save-mlx: config+safetensors ok|save-mlx: round-trip ok
 IMPORT LLM
 SUB Main()
   DIM GMBWORK$ AS STRING = PROJECTFOLDER() + "/work"
