@@ -1,5 +1,6 @@
 ' Metodo di classe: campo-array letto in un FOR + CONTROL DRAW con argomenti espressione (i - 1, campo-array diretto, handle `g AS ANY`).
 ' Regressione IL: gli argomenti di CONTROL <sub> non venivano risolti/riscritti (g -> `ldarg.0`=this, mQty(i) -> array locale, conv.r8 su object).
+' EXPECT: q 0 = 3|q 1 = 4|OK
 IMPORT CONTROLS
 
 CLASS Depth

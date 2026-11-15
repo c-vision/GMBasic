@@ -1,5 +1,6 @@
 ' MiniTest NAMESPACE TRAY — tutte le 10 funzioni della superficie.
 ' Headless: valori normalizzati (>= -1) e self-test del backend; nessun display richiesto.
+' EXPECT: backend>0=-1|available>=-1=-1|selftest0= 0|create>=-1=-1|item>=-1=-1|sep>=-1=-1|tooltip>=-1=-1|poll>=-1=-1|last>=-1=-1|remove>=-1=-1
 IMPORT TRAY
 SUB Main()
   PRINT "backend>0="; (LEN(TRAYBACKEND()) > 0)

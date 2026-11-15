@@ -1,3 +1,4 @@
+' EXPECT: 5
 IMPORT VECTOR
 
 SUB Main()

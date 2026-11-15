@@ -1,5 +1,6 @@
 ' Minitest MESSAGE ciclo completo — CONNECT/SUBSCRIBE/ON MESSAGE/PUBLISH/UNSUBSCRIBE/PING/CLOSE.
 ' Parità 4 backend: dopo UNSUBSCRIBE non arriva più nulla.
+' EXPECT: RX s t a|DONE
 IMPORT MESSAGE
 SUB H(id AS STRING, topic AS STRING, payload AS STRING)
   PRINT "RX "; id; " "; topic; " "; payload

@@ -1,3 +1,4 @@
+' EXPECT: 7|# Title
 IMPORT IO
 SUB Main()
   DIM L = IO.READLINES("fix_headings.md")

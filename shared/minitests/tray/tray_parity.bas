@@ -4,6 +4,7 @@
 ' (Cocoa su macOS, Win32, "none" dove non c'è), quindi il confronto giusto è fra le gambe, non
 ' contro una costante. Il contratto del poll (2026-11-13) rende confrontabili anche gli esiti:
 ' la MACCHINA A STATI si drena su qualunque thread, l'OS layer si tocca solo sul main thread.
+' EXPECT: backend=macos|available=-1|selftest0= 0|create= 0|item1= 0|sep= 0|tooltip= 0|selftest1=-1|last=-1|selftest2= 0|DONE
 IMPORT TRAY
 PRINT "backend="; TRAYBACKEND()
 PRINT "available="; TRAYAVAILABLE()

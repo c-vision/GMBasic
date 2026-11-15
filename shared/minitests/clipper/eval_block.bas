@@ -1,4 +1,5 @@
 ' CLIPPER 5.3 — EVAL(bBlock [, args...]) su un code block
+' EXPECT: e1= 6|e2= 10|e3= 42|e4= 3.14|e5=ABC|e6=X!|e7=x!|e8= 10|e9=x!|e10= 3.14|e11= 15|e12=X|e13=y|e14= 6|e15= 6|e16= 6|e17= 6
 FUNCTION MkInc() AS FUNCTION(x) AS DOUBLE
   RETURN { |x| RETURN x + 1 }
 END FUNCTION

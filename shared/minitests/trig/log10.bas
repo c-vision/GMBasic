@@ -1,3 +1,4 @@
+' EXPECT: 2
 SUB Main()
   PRINT LOG10(100)
 END SUB

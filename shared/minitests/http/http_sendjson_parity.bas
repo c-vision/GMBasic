@@ -1,4 +1,5 @@
 ' Minitest HTTP — parità 4 backend: server + route + req.Query + res.SendJSON/ContentType.
+' EXPECT: RESP={"svc":"alpha","n":42}
 IMPORT HTTP
 SUB Main()
   DIM cfg AS HTTPCONFIG
