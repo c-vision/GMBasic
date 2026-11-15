@@ -1,4 +1,5 @@
 ' Minitest TUI SCROLLVIEW — parità 4 backend (statement widget TUI).
+' EXPECT: OK-scrollview
 IMPORT CONTROLS
 SUB Main()
   DIM v AS INTEGER

@@ -1,4 +1,5 @@
 ' Minitest TUI PROPERTYGRID — parità 4 backend (statement widget TUI).
+' EXPECT: OK-propertygrid
 IMPORT CONTROLS
 SUB Main()
   DIM v AS INTEGER

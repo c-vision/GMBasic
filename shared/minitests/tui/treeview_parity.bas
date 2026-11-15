@@ -1,4 +1,5 @@
 ' Minitest TUI TREEVIEW — parità 4 backend (statement widget TUI).
+' EXPECT: OK-treeview
 IMPORT CONTROLS
 SUB Main()
   DIM it(2) AS STRING

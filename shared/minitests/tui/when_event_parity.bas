@@ -1,4 +1,5 @@
 ' Minitest evento WHEN + FIRE EVENT (dispatch sincrono su IL/PCode/VM-C) — parità.
+' EXPECT: OK-when-event
 IMPORT CONTROLS
 SUB Main()
   DIM h AS INTEGER

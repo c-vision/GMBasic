@@ -1,4 +1,5 @@
 ' Depth.bas — Market Depth / DOM (best bid/ask) come UserControl (stile VB6), in BASIC.
+' EXPECT: OK-depth-uc
 IMPORT CONTROLS
 
 CLASS MarketDepth

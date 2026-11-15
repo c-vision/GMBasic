@@ -1,4 +1,5 @@
 ' Minitest TUI COLORPICKER — parità 4 backend (statement widget TUI).
+' EXPECT: OK-colorpicker
 IMPORT CONTROLS
 SUB Main()
   DIM v AS INTEGER

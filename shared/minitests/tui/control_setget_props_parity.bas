@@ -1,4 +1,5 @@
 ' Minitest CONTROL SET/GET props numeriche (min/max/step) — parità 4 backend.
+' EXPECT: OK-control-props
 IMPORT CONTROLS
 SUB Main()
   DIM v AS INTEGER

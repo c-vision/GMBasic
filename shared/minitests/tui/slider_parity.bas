@@ -1,4 +1,5 @@
 ' Minitest TUI SLIDER — parità 4 backend (statement widget TUI).
+' EXPECT: OK-slider
 IMPORT CONTROLS
 SUB Main()
   DIM v AS INTEGER

@@ -1,4 +1,5 @@
 ' Minitest CONTROL SET/GET proprietà (incluso colore Clipper) — parità 4 backend.
+' EXPECT: OK-control-setget
 IMPORT CONTROLS
 SUB Main()
   DIM v AS INTEGER

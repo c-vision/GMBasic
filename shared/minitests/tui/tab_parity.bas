@@ -1,4 +1,5 @@
 ' Minitest TUI TAB — parità 4 backend (statement widget TUI).
+' EXPECT: OK-tab
 IMPORT CONTROLS
 SUB Main()
   DIM v AS INTEGER

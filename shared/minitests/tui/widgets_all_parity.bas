@@ -1,5 +1,6 @@
 ' Minitest TUI widgets — parità 4 backend: tutti i 18 controlli, chiusura SENDKEY ESC.
 ' Target: liste/dialoghi → STRING; numerici → LONG (arità canoniche Parser.Stmt.Controls.cs).
+' EXPECT: OK-widgets_all
 IMPORT CONTROLS
 SUB Main()
   DIM n AS LONG

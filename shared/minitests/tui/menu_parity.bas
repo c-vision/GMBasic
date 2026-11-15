@@ -1,4 +1,5 @@
 ' Minitest TUI MENU — parità 4 backend (statement widget TUI).
+' EXPECT: OK-menu
 IMPORT CONTROLS
 SUB Main()
   DIM v AS INTEGER

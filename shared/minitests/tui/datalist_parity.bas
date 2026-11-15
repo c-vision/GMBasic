@@ -1,4 +1,5 @@
 ' Minitest TUI DATALIST — parità 4 backend (statement widget TUI).
+' EXPECT: OK-datalist
 IMPORT CONTROLS
 SUB Main()
   DIM v AS INTEGER

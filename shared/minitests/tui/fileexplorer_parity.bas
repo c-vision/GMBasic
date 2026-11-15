@@ -1,4 +1,5 @@
 ' Minitest TUI FILEEXPLORER — parità 4 backend (statement widget TUI).
+' EXPECT: OK-fileexplorer
 IMPORT CONTROLS
 SUB Main()
   DIM v AS INTEGER

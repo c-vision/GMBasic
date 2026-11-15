@@ -1,4 +1,5 @@
 ' Minitest TUI TOGGLE — parità 4 backend (statement widget TUI).
+' EXPECT: OK-toggle
 IMPORT CONTROLS
 SUB Main()
   DIM v AS BOOLEAN

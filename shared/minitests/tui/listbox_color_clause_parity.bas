@@ -1,4 +1,5 @@
 ' Minitest TUI LISTBOX + clausola inline COLOR "W+/B" — parità 4 backend.
+' EXPECT: OK-listbox-color-clause
 IMPORT CONTROLS
 SUB Main()
   DIM v AS INTEGER

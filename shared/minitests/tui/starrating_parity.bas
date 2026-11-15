@@ -1,4 +1,5 @@
 ' Minitest TUI STARRATING — parità 4 backend (statement widget TUI).
+' EXPECT: OK-starrating
 IMPORT CONTROLS
 SUB Main()
   DIM v AS INTEGER

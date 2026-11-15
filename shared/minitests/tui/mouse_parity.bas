@@ -1,4 +1,5 @@
 ' Minitest MOUSE — parità 4 backend (tutti gli statement mouse, headless).
+' EXPECT: MOUSE-OK
 IMPORT MOUSE
 SUB Main()
   MOUSE ON

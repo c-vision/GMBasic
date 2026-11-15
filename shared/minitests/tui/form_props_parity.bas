@@ -1,4 +1,5 @@
 ' Minitest props form-pixel (PROGRESS/TEXTBOX) via CONTROL SET/GET — parità 4 backend.
+' EXPECT: OK-form-props
 IMPORT CONTROLS
 SUB Main()
   DIM v AS INTEGER

@@ -2,6 +2,7 @@
 ' Copre: toggle ripetuti, ridondanze (SHOW/SHOW, HIDE/HIDE), alternanze. Headless i
 ' comandi sono no-op osservabili; l'output sono solo le righe PRINT (identiche su
 ' tutti i backend). L'interazione con SCREEN e' coperta dal sample dedicato.
+' EXPECT: t0|t1|t2|DONE
 IMPORT WINDOWS
 SUB Main()
   PRINT "t0"

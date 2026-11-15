@@ -1,4 +1,5 @@
 ' Minitest CONTROL SET/GET props specifiche (max numericupdown, value; color label) — 4 backend.
+' EXPECT: OK-props-extra
 IMPORT CONTROLS
 SUB Main()
   DIM v AS INTEGER
