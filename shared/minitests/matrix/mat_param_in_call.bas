@@ -1,4 +1,4 @@
-' EXPECT: ERROR: Il parametro matrice 'm' è dichiarato IN (sola lettura) ma è passato al parametro 'x' INOUT di 'Writer', che può modificarlo. Dichiaralo INOUT (o OUT) oppure passa una copia (MATRIX.CLONEMATRIX).
+' EXPECT: COMPILE ERROR: Il parametro matrice 'm' è dichiarato IN (sola lettura) ma è passato al parametro 'x' INOUT di 'Writer', che può modificarlo. Dichiaralo INOUT (o OUT) oppure passa una copia (MATRIX.CLONEMATRIX).
 ' ADR-MATRIX §3 (F3-bis), test NEGATIVO: un parametro IN non può essere passato a un
 ' parametro OUT/INOUT di un'altra procedura (propagazione del contratto).
 SUB Writer(INOUT x AS MATRIX OF (INT, INT, DOUBLE))

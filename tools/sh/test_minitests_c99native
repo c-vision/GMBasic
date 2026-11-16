@@ -630,10 +630,17 @@ for f in "$MINI"/**/*.bas "$MINI"/*.bas; do
   [ -f "$f" ] || continue
   name="${f#$MINI/}"
   if ! "$DRV" "$f" "$WORK/out.c" --no-exe >/dev/null 2>"$WORK/derr.txt"; then
-    # MiniTest NEGATIVO di compilazione (`' EXPECT: ERROR: ...`): il driver DEVE rifiutare il sorgente. Il testo esatto del
-    # messaggio differisce fra parser C# e parser C, quindi qui conta che l'errore ci sia (e che il driver non vada in HANG).
-    if grep -m1 -q "^' EXPECT: ERROR:" "$f" 2>/dev/null; then
+    # Negativo di COMPILAZIONE (`' EXPECT: COMPILE ERROR: ...`): il driver DEVE rifiutare il
+    # sorgente. Il testo esatto del messaggio differisce fra parser C# e parser C, quindi qui
+    # conta che l'errore ci sia (e che il driver non vada in HANG).
+    if grep -m1 -q "^' EXPECT: COMPILE ERROR:" "$f" 2>/dev/null; then
       echo "PASS $name :: (errore di compilazione atteso) $(head -1 "$WORK/derr.txt" | head -c 100)"; pass=$((pass+1)); continue
+    fi
+    # Negativo di RUNTIME (`' EXPECT: ERROR: ...`) rifiutato dal driver: il test non arriva più
+    # al runtime che doveva verificare, e prima usciva come PASS ("errore di compilazione
+    # atteso") — un check perso travestito da esito.
+    if grep -m1 -q "^' EXPECT: ERROR:" "$f" 2>/dev/null; then
+      echo "FAIL $name (EXPECT: ERROR e' un negativo di RUNTIME ma il driver rifiuta il sorgente: $(head -1 "$WORK/derr.txt" | head -c 100))"; fail=$((fail+1)); continue
     fi
     # DIPENDENZA ESTERNA ASSENTE, dichiarata nel file (`' TAG: unsupported-c99native`): i test
     # che fanno `REQUIRE "<pacchetto>"` non sono verificabili senza il pacchetto installato.
@@ -644,6 +651,12 @@ for f in "$MINI"/**/*.bas "$MINI"/*.bas; do
       echo "SKIP $name (dipendenza esterna assente: $(head -1 "$WORK/derr.txt" | head -c 90))"; skip=$((skip+1)); continue
     fi
     echo "FAIL $name (driver: $(head -1 "$WORK/derr.txt"))"; fail=$((fail+1)); continue
+  fi
+  # Negativo di COMPILAZIONE che COMPILA: la verifica è SPARITA (il driver ha accettato un
+  # sorgente che doveva rifiutare) → FAIL subito, senza link né esecuzione. Prima era il caso
+  # peggiore: il file "compila", quindi PASS, e un check rimosso non si vedeva.
+  if grep -m1 -q "^' EXPECT: COMPILE ERROR:" "$f" 2>/dev/null; then
+    echo "FAIL $name (EXPECT: COMPILE ERROR non rispettato: il driver ha ACCETTATO il sorgente)"; fail=$((fail+1)); continue
   fi
   # Solo i test CUA/browser/computer/agent_loop necessitano di gmb_agent_runtime: lo si linka
   # solo se il C generato referenzia quei simboli (evita ricompilare agent_runtime per tutti).

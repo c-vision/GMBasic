@@ -315,10 +315,16 @@ for f in "$MINI"/**/*.bas "$MINI"/*.bas; do
   [ -f "$f" ] || continue
   name="${f#$MINI/}"
   if ! "$DRV" "$f" "$WORK/out.c" --no-exe >/dev/null 2>"$WORK/derr.txt"; then
-    # MiniTest NEGATIVO di compilazione (`' EXPECT: ERROR: ...`): il driver DEVE rifiutare il sorgente. Il testo esatto del
-    # messaggio differisce fra parser C# e parser C, quindi qui conta che l'errore ci sia (e che il driver non vada in HANG).
-    if grep -m1 -q "^' EXPECT: ERROR:" "$f" 2>/dev/null; then
+    # Negativo di COMPILAZIONE (`' EXPECT: COMPILE ERROR: ...`): il driver DEVE rifiutare il
+    # sorgente. Il testo esatto del messaggio differisce fra parser C# e parser C, quindi qui
+    # conta che l'errore ci sia (e che il driver non vada in HANG).
+    if grep -m1 -q "^' EXPECT: COMPILE ERROR:" "$f" 2>/dev/null; then
       echo "PASS $name :: (errore di compilazione atteso) $(head -1 "$WORK/derr.txt" | head -c 100)"; pass=$((pass+1)); continue
+    fi
+    # Negativo di RUNTIME rifiutato dal driver: il test non arriva al runtime che doveva
+    # verificare (prima usciva come PASS "errore di compilazione atteso").
+    if grep -m1 -q "^' EXPECT: ERROR:" "$f" 2>/dev/null; then
+      echo "FAIL $name (EXPECT: ERROR e' di runtime, ma il driver rifiuta il sorgente: $(head -1 "$WORK/derr.txt" | head -c 100))"; fail=$((fail+1)); continue
     fi
     # DIPENDENZA ESTERNA ASSENTE, dichiarata nel file (`' TAG: unsupported-c99native`): i test
     # che fanno `REQUIRE "<pacchetto>"` non sono verificabili senza il pacchetto installato.

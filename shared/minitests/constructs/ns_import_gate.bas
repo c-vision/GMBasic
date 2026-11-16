@@ -4,7 +4,7 @@
 ' ARRAYS): qui `ANGLE2D` è di VECTOR e manca `IMPORT VECTOR`, quindi il programma NON deve
 ' COMPILARE. Le forme lecite sono `IMPORT VECTOR` + `ANGLE2D(...)` oppure `VECTOR.ANGLE2D(...)`
 ' (coperte da geom/dist2d.bas e math/math_all.bas).
-' EXPECT: ERROR: namespace non importato
+' EXPECT: COMPILE ERROR: namespace non importato
 IMPORT STRINGS
 
 SUB Main()

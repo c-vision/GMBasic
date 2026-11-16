@@ -39,6 +39,7 @@ IMPORT GREP
 
 DIM g_marker AS STRING
 DIM g_negative AS STRING
+DIM g_neg_compile AS STRING
 
 ' findings
 DIM g_n AS LONG
@@ -343,10 +344,16 @@ SUB AuditFile(fi AS LONG)
     END IF
   END IF
 
-  ' E6 — test negativo: il gate C99Native cerca la forma a colonna 0
-  IF FindSens(big, "EXPECT: ERROR:", 1) > 0 THEN
+  ' E6 — test negativo: il gate C99Native cerca la forma a colonna 0. Due marcatori, due
+  ' verifiche (2026-11-14): `EXPECT: COMPILE ERROR:` = rifiuto in compilazione, `EXPECT: ERROR:`
+  ' = errore a runtime. Entrambi devono stare a colonna 0.
+  IF FindSens(big, "EXPECT: COMPILE ERROR:", 1) > 0 THEN
+    IF LEFT$(big, LEN(g_neg_compile)) <> g_neg_compile THEN
+      AddFinding("E6", fi, firsti + 1, "test negativo (compilazione) non a colonna 0: il gate C99Native (grep '^\\' EXPECT: COMPILE ERROR:') non lo riconoscerebbe", 1)
+    END IF
+  ELSEIF FindSens(big, "EXPECT: ERROR:", 1) > 0 THEN
     IF LEFT$(big, LEN(g_negative)) <> g_negative THEN
-      AddFinding("E6", fi, firsti + 1, "test negativo non a colonna 0: il gate C99Native (grep '^\\' EXPECT: ERROR:') non lo riconoscerebbe", 1)
+      AddFinding("E6", fi, firsti + 1, "test negativo (runtime) non a colonna 0: il gate C99Native (grep '^\\' EXPECT: ERROR:') non lo riconoscerebbe", 1)
     END IF
   END IF
 END SUB
@@ -364,6 +371,7 @@ FUNCTION Main() AS INTEGER
 
   g_marker = "' EXPECT: "
   g_negative = "' EXPECT: ERROR:"
+  g_neg_compile = "' EXPECT: COMPILE ERROR:"
   strictFlag = 0 : noOracle = 0 : dirArg = ""
   FOR i = 1 TO COMMANDCOUNT()
     t = COMMAND$(i)

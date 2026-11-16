@@ -1,4 +1,4 @@
-' EXPECT: ERROR: LET è valido solo dentro una procedura (SUB/FUNCTION/GENERATOR): a livello di modulo usare un'assegnazione (x = ...) oppure DIM/GLOBAL.
+' EXPECT: COMPILE ERROR: LET è valido solo dentro una procedura (SUB/FUNCTION/GENERATOR): a livello di modulo usare un'assegnazione (x = ...) oppure DIM/GLOBAL.
 ' MiniTest NEGATIVO di compilazione: spec Variables-Scope §3.1, ultima riga — «LET è valido solo
 ' all'interno di procedure o blocchi; a livello di Namespace genera un errore di sintassi».
 ' A livello di modulo il corpo del programma NON è una procedura: LET non ha uno «scope corrente»

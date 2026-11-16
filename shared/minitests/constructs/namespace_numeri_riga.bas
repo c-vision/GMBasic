@@ -1,4 +1,4 @@
-' EXPECT: ERROR: Line numbers not allowed inside NAMESPACE 'NumLineTest'.
+' EXPECT: COMPILE ERROR: Line numbers not allowed inside NAMESPACE 'NumLineTest'.
 ' MiniTest NEGATIVO di compilazione: un MODULO (file con `NAMESPACE`) non può avere numeri di
 ' riga. Il codice numerato legacy appartiene al programma principale (righe < 1_000_000), non a
 ' una libreria importata: il parser lo rifiuta dentro `NAMESPACE`, con lo stesso testo su C# e C
