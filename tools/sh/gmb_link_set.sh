@@ -209,9 +209,12 @@ for _l in "${THIRD_LOGIC[@]}"; do
 done
 # Windows: le statiche del bundle stanno in `<cache>/lib` (le DLL alla radice) → serve anche
 # quella `-L`, oltre alla radice che vale per macOS/Linux.
+# Dal 2026-11-16 la `-L<cache>/lib` si passa su OGNI piattaforma: l'indice pubblica le statiche
+# in `lib/libcrypto.a` (non `<cache>/libcrypto.a`), quindi su macOS/Linux il link di un
+# programma che usa openssl/curl falliva con «library 'crypto' not found» **dopo** aver
+# scaricato tutto. Trovato provando l'avvio da uno zip con HOME pulita.
 if [ ${#LS_THIRD[@]} -gt 0 ]; then
-  if [ "$LS_OS" = Windows ]; then LS_THIRD=(-L"$CACHE" -L"$CACHE/lib" "${LS_THIRD[@]}")
-  else LS_THIRD=(-L"$CACHE" "${LS_THIRD[@]}"); fi
+  LS_THIRD=(-L"$CACHE" -L"$CACHE/lib" "${LS_THIRD[@]}")
 fi
 
 # ── agent_runtime: solo Darwin (i suoi oggetti usano AX/CG). ──────────────────────────────────
