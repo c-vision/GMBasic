@@ -1,6 +1,7 @@
 {
   "name": "hdf5",
   "version": "1.0.0",
+  "license": "PUL-1.1",
   "description": "HDF5 2.2.0 (dataset numerici multidimensionali) via shim FFI gmbsuite libgmbhdf5. Nel pacchetto libhdf5.320.dylib + libsz.2.dylib, con install-name @rpath e rpath @loader_path: relocabile e volutamente distinta dall'install-name della libhdf5 del runtime (che la VM/C precarica), cosi' tutti i backend usano la 2.2.0.",
   "contentType": "c-ffi",
   "exports": [

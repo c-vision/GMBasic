@@ -1,6 +1,7 @@
 {
   "name": "blockchain",
   "version": "0.1.0",
+  "license": "PUL-1.1",
   "description": "Dominio BLOCKCHAIN (hashing, base58/base32/RLP/varint, indirizzi ETH/BTC, BIP39/BIP32, firma secp256k1, difficolta' di blocco, ABI EVM) via FFI. Sorgenti canonici in gmbsuite/gmbblockchain, copia self-contained qui.",
   "contentType": "c-ffi-source",
   "exports": ["blockchain.inc"],

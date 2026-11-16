@@ -1,6 +1,7 @@
 {
   "name": "dom",
   "version": "1.0.0",
+  "license": "PUL-1.1",
   "description": "DOM/HTML (shim FFI su libxml2): PARSE di HTML in memoria, TEXT/SELECT via XPath, NUMNODES/NODEATTR, FREE. Deterministico, nessuna rete.",
   "contentType": "c-ffi-source",
   "exports": ["dom.inc"],

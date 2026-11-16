@@ -1,6 +1,7 @@
 {
   "name": "mongo",
   "version": "1.0.0",
+  "license": "PUL-1.1",
   "description": "MongoDB (shim FFI minimale): AVAILABLE + CONNECT (TCP reale con timeout) + PING/CLOSE. Nessun handshake MongoDB: PING su un socket aperto ritorna 0 (niente falsi successi).",
   "contentType": "c-ffi-source",
   "exports": ["mongo.inc"],

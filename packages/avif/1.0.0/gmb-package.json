@@ -1,6 +1,7 @@
 {
   "name": "avif",
   "version": "1.0.0",
+  "license": "PUL-1.1",
   "description": "AVIF (decode/encode) via shim FFI gmbsuite libgmbavif: libavif e' COMPILATA DAI SORGENTI e linkata staticamente (con libaom/libvmaf statiche) dentro lo shim -> self-contained, nessuna lib di sistema.",
   "contentType": "c-ffi-source",
   "exports": ["avif.inc"],
