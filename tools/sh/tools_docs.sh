@@ -56,11 +56,12 @@ trap 'rm -rf "$WORK"' EXIT
 
 # ── estrazione dal sorgente ────────────────────────────────────────────────────────────
 
-kind_of() {  # <file> → sh|bas|c|""
+kind_of() {  # <file> → sh|bas|c|cs|""
     case "$1" in
         *.sh|*.pl|*.awk) echo sh ;;   # header a `#`: shell, perl e awk si leggono uguale
         *.bas) echo bas ;;
         *.c)   echo c ;;
+        *.cs)  echo cs ;;             # progetti .NET (tools/audit, tools/registry-export)
         *)     echo "" ;;
     esac
 }
@@ -178,13 +179,20 @@ aligned=0; drift=0; written=0; skipped=0; missing=0; manual=0; alias=0
 SEEN=""
 BK="${TMPDIR:-/tmp}/gmbasic-backup/tools-docs/$(date +%Y%m%d-%H%M%S)"
 
-for f in "$ROOT"/tools/basic/*.bas "$ROOT"/tools/c/*.c "$ROOT"/tools/sh/*; do
+for f in "$ROOT"/tools/basic/*.bas "$ROOT"/tools/c/*.c "$ROOT"/tools/sh/* "$ROOT"/tools/*/Program.cs; do
     [ -f "$f" ] || continue
-    base="$(basename "$f")"; stem="${base%.*}"
+    base="$(basename "$f")"
+    # Progetti .NET (`tools/audit`, `tools/registry-export`): il tool è la CARTELLA, quindi la
+    # scheda è `Guide/Tools/<dir>.md`, non `Program.md`.
+    if [ "$base" = "Program.cs" ]; then
+        stem="$(basename "$(dirname "$f")")"
+    else
+        stem="${base%.*}"
+    fi
     # In tools/sh ci sono anche gli harness SENZA estensione (lxbuild, zcc, parity4, …): sono
     # tool, e si riconoscono dallo shebang. Restano fuori i dati (`macos-floor`) e i `.cmd`.
     case "$base" in
-        *.bas|*.c|*.sh|*.pl|*.awk) ;;
+        *.bas|*.c|*.sh|*.pl|*.awk|*.cs) ;;
         *.*) continue ;;
         *) head -1 "$f" | grep -q '^#!' || continue ;;
     esac
@@ -226,6 +234,7 @@ for f in "$ROOT"/tools/basic/*.bas "$ROOT"/tools/c/*.c "$ROOT"/tools/sh/*; do
         *.sh|*.pl|*.awk) kind="sh" ;;   # header a `#`: shell, perl e awk si leggono uguale
         *.bas) kind="bas" ;;
         *.c)   kind="c" ;;
+        *.cs)  kind="cs" ;;
         *)     kind="sh" ;;             # harness senza estensione (già filtrato sullo shebang)
     esac
     hdr="$WORK/hdr"; scp="$WORK/scp"; new="$WORK/new"
