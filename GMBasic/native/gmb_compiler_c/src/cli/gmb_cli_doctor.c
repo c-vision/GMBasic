@@ -468,7 +468,7 @@ static int doc_report(int json) {
             "cmake --build native/gmb_vm_c/build --target gmb_vm_host (REPL/notebook/EVAL)");
     DOC_ROW("gmbadmin", 0, g_doc.admin[0], g_doc.admin,
             "cmake --build native/gmbadmin/build (pkg/libs/brain/setup)");
-    DOC_ROW("gmbcs", 0, g_doc.gmbcs[0], g_doc.gmbcs,
+    DOC_ROW("gmbcs", 0, g_doc.gmbcs[0] && is_file(g_doc.gmbcs), g_doc.gmbcs,
             "gmb doctor --fix   (dotnet build GMBasicSharp/CompilerCli)");
     DOC_ROW("libgmb_runtime_min.a", 1, g_doc.runtime_min[0], g_doc.runtime_min,
             "cmake --build native/gmb_runtime_c/build");

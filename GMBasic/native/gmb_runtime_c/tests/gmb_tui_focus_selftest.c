@@ -47,8 +47,8 @@ int main(void)
     gmb_tui_push_gfx_key(' ');
     gmb_tui_process_pending_keys();
 
-    int a_checked = ((gmb_checkbox_t*)ca->user)->checked ? 1 : 0;
-    int b_checked = ((gmb_checkbox_t*)cb->user)->checked ? 1 : 0;
+    int a_checked = ((gmb_checkbox_t*)ca->user)->ival ? 1 : 0;
+    int b_checked = ((gmb_checkbox_t*)cb->user)->ival ? 1 : 0;
     long long focused = gmb_tui_control_focused();
     if (focused != ia) { printf("FAIL focus sync: focused=%lld atteso=%d\n", focused, ia); return 1; }
     if (!a_checked)    { printf("FAIL il tasto non e' arrivato al controllo di wA\n"); return 1; }
@@ -60,8 +60,8 @@ int main(void)
     gmb_tui_push_gfx_key(' ');
     gmb_tui_process_pending_keys();
 
-    int a2 = ((gmb_checkbox_t*)ca->user)->checked ? 1 : 0;
-    int b2 = ((gmb_checkbox_t*)cb->user)->checked ? 1 : 0;
+    int a2 = ((gmb_checkbox_t*)ca->user)->ival ? 1 : 0;
+    int b2 = ((gmb_checkbox_t*)cb->user)->ival ? 1 : 0;
     long long focused2 = gmb_tui_control_focused();
     if (focused2 != ib) { printf("FAIL focus sync 2: focused=%lld atteso=%d\n", focused2, ib); return 1; }
     if (!b2) { printf("FAIL il tasto non e' arrivato al controllo di wB\n"); return 1; }
