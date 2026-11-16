@@ -13,18 +13,24 @@
 #   bash tools/sh/tools_docs.sh                 # --check: elenca le schede divergenti (exit 1)
 #   bash tools/sh/tools_docs.sh --write         # riscrive le schede divergenti (backup prima)
 #   bash tools/sh/tools_docs.sh --only minitest # limita a un tool (sottostringa del nome file)
-#   bash tools/sh/tools_docs.sh --vault DIR     # altro vault (default: ~/Documents/AiWiki/01-Projects/GMBasic)
+#   bash tools/sh/tools_docs.sh --vault DIR     # altro vault (default: ~/Documents/AiWiki/01-Projects/GMBasicMonoRepo)
 #   bash tools/sh/tools_docs.sh --quiet         # solo il riepilogo
 #
 # Copre `tools/basic/*.bas`, `tools/c/*.c`, `tools/sh/*.sh`. I progetti .NET (`tools/audit`,
 # `tools/registry-export`) non hanno un header di commento unico e restano fuori.
 #
-# Uscita: 0 tutte allineate (o scritte) · 1 almeno una divergente in --check · 2 uso/vault.
+# Due tool con lo STESSO stem (`x.c` + `x.sh` wrapper) condividono una scheda: si documenta il
+# primo della lista (basic → c → sh, cioè l'implementazione) e il secondo è contato `alias`
+# (prima la scheda "flappava" fra due header diversi a ogni giro).
+# Una scheda scritta a mano (prosa, più ricca di un header) si dichiara col marcatore
+# `scheda scritta a mano` e viene contata `manuale`, non rigenerata.
+#
+# Uscita: 0 tutte allineate (o scritte) · 1 divergenti, schede mancanti o da decidere · 2 uso/vault.
 # Nessuna variabile d'ambiente: i parametri passano solo dai flag.
 set -uo pipefail
 
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
-VAULT="$HOME/Documents/AiWiki/01-Projects/GMBasic"
+VAULT="$HOME/Documents/AiWiki/01-Projects/GMBasicMonoRepo"
 WRITE=0
 QUIET=0
 ONLY=""
@@ -66,19 +72,21 @@ header_of() {  # <file> <kind>
             ok = 0
             if (kind == "sh")       ok = ($0 ~ /^#/)
             else if (kind == "bas") ok = (substr($0, 1, 1) == q)
-            else                    ok = ($0 ~ /^\/\*/ || $0 ~ /^\*/ || $0 ~ /^\/\//)
+            else                    ok = ($0 ~ /^[ \t]*(\/\*|\*|\/\/)/)
             if (!ok) exit
             print
         }' "$1"
 }
 
 # Scopo: si scartano lo shebang e la PRIMA riga di commento (il titolo "nome — descrizione"),
-# poi si prende il PRIMO PARAGRAFO, cioè tutte le righe consecutive di commento non vuoto fino
-# alla riga di commento vuota. Nessun taglio a metà frase: se il paragrafo è lungo, si prende
-# tutto (era il difetto delle schede scritte a mano: si fermavano alla prima riga).
+# poi si prende il primo PARAGRAFO "descrittivo": le righe consecutive di commento non vuoto
+# fino alla riga di commento vuota. I paragrafi che sono solo USO/ENV (iniziano con `Uso:`,
+# `Env:`, un percorso `tools/…`, oppure una riga di `===`) non sono uno scopo: si passa al
+# successivo, e se non ce n'è nessuno si tiene il primo trovato (non si perde contenuto).
 scopo_of() {  # <kind>  (header su stdin)
     awk -v kind="$1" -v q="'" '
         function body(l) {
+            sub(/^[ \t]+/, "", l)
             if (kind == "sh")       sub(/^#[ \t]?/, "", l)
             else if (kind == "bas") { if (substr(l, 1, 1) == q) l = substr(l, 2); sub(/^[ \t]/, "", l) }
             else {
@@ -89,15 +97,36 @@ scopo_of() {  # <kind>  (header su stdin)
             sub(/^ /, "", l); sub(/ $/, "", l)
             return l
         }
+        function is_usage(p) {
+            return (p ~ /^(Uso|uso|USO):/) || (p ~ /^(Env|env|ENV):/) \
+                || (p ~ /^tools\//) || (p ~ /^===+/) || (p ~ /^-+$/)
+        }
         {
             l = body($0)
             if (l ~ /^!/) next                 # shebang
-            if (!title) { if (l == "") next; title = 1; next }   # riga-titolo
-            if (l == "") { if (n > 0) exit; next }
-            out = (n > 0) ? out " " l : l
+            if (!title) {                      # riga-titolo: "nome — descrizione"
+                if (l == "") next
+                title = 1
+                t = l
+                p = index(t, " — ")
+                if (p > 0) titledesc = substr(t, p + length(" — "))
+                else { p = index(t, " - "); if (p > 0) titledesc = substr(t, p + 3) }
+                sub(/[.]*$/, "", titledesc)
+                next
+            }
+            if (l == "") {
+                if (n > 0) { np++; paras[np] = cur; n = 0; cur = "" }
+                next
+            }
+            cur = (n > 0) ? cur " " l : l
             n++
         }
-        END { if (n > 0) print out }' 
+        END {
+            if (n > 0) { np++; paras[np] = cur }
+            for (i = 1; i <= np; i++) if (!is_usage(paras[i])) { print paras[i]; exit }
+            if (titledesc != "") { print titledesc; exit }
+            if (np >= 1) print paras[1]
+        }'
 }
 
 # ── riscrittura delle due sezioni nella scheda ────────────────────────────────────────
@@ -140,7 +169,8 @@ render_card() {  # <scheda> <file-scopo> <file-header>  → stdout
 
 # ── ciclo sui tool ────────────────────────────────────────────────────────────────────
 
-aligned=0; drift=0; written=0; skipped=0; missing=0
+aligned=0; drift=0; written=0; skipped=0; missing=0; manual=0; alias=0
+SEEN=""
 BK="${TMPDIR:-/tmp}/gmbasic-backup/tools-docs/$(date +%Y%m%d-%H%M%S)"
 
 for f in "$ROOT"/tools/basic/*.bas "$ROOT"/tools/c/*.c "$ROOT"/tools/sh/*.sh; do
@@ -149,9 +179,28 @@ for f in "$ROOT"/tools/basic/*.bas "$ROOT"/tools/c/*.c "$ROOT"/tools/sh/*.sh; do
     [ -n "$ONLY" ] && case "$base" in *"$ONLY"*) ;; *) continue ;; esac
 
     card="$VAULT/Guide/Tools/$stem.md"
+    # Due tool possono condividere lo stem (es. `x.c` + `x.sh` wrapper): una sola scheda.
+    # Si documenta il PRIMO della lista (basic → c → sh, cioè l'implementazione) e il
+    # secondo è un ALIAS dichiarato: senza questo la scheda "flappava" fra due header.
+    if printf '%s\n' "$SEEN" | grep -qxF "$card"; then
+        alias=$((alias + 1))
+        [ "$QUIET" = 0 ] && echo "ALIAS $base (stessa scheda di un altro tool: Guide/Tools/$stem.md)"
+        continue
+    fi
     if [ ! -f "$card" ]; then
         missing=$((missing + 1))
         [ "$QUIET" = 0 ] && echo "SCHEDA ASSENTE $base (attesa: Guide/Tools/$stem.md)"
+        continue
+    fi
+    SEEN="$SEEN$card
+"
+    # Le schede scritte a mano in prosa (più ricche di un header) si dichiarano con il
+    # marcatore: senza, il tool le salterebbe e resterebbero indistinguibili da una scheda
+    # rotta. Il marcatore si cerca SOLO fuori dall'«Intestazione del tool»: anche il sorgente
+    # di QUESTO script ne parla, e la sua scheda lo cita verbatim (falso positivo trovato).
+    if sed '/^## Intestazione del tool/,$d' "$card" | grep -qi 'scheda scritta a mano'; then
+        manual=$((manual + 1))
+        [ "$QUIET" = 0 ] && echo "MANUALE Guide/Tools/$stem.md (scheda scritta a mano: non rigenerata)"
         continue
     fi
     # Solo le schede che hanno entrambe le sezioni generate: le altre restano intatte.
@@ -196,13 +245,15 @@ for f in "$ROOT"/tools/basic/*.bas "$ROOT"/tools/c/*.c "$ROOT"/tools/sh/*.sh; do
 done
 
 [ "$QUIET" = 1 ] || echo "---------------------------------"
-echo "schede: $aligned allineate · $drift divergenti · $written scritte · $skipped saltate · $missing assenti"
+echo "schede: $aligned allineate · $drift divergenti · $written scritte · $skipped saltate · $missing assenti · $manual manuali · $alias alias"
 if [ "$WRITE" = 1 ]; then
     echo "tools_docs: OK (le schede divergenti sono state riscritte)"
     exit 0
 fi
-if [ "$drift" -gt 0 ]; then
-    echo "tools_docs: DRIFT (rilancia con --write per allinearle)"
+if [ "$drift" -gt 0 ] || [ "$missing" -gt 0 ] || [ "$skipped" -gt 0 ]; then
+    [ "$drift" -gt 0 ] && echo "tools_docs: DRIFT (rilancia con --write per allinearle)"
+    [ "$missing" -gt 0 ] && echo "tools_docs: MANCANO $missing schede (una per tool in Guide/Tools/)"
+    [ "$skipped" -gt 0 ] && echo "tools_docs: $skipped schede da decidere (sezioni generate assenti: manuale o template)"
     exit 1
 fi
 echo "tools_docs: allineate"
