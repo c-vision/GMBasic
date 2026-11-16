@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# test_minitests_c99native — runner dei MiniTest sulla gamba NATIVA: compila con cc o zcc, linka ed esegue.
 # ── INTERPRETE (guardia, 2026-11-14). Lo script e' bash: usa `read -a` e conta sul word-splitting
 # di `$INC`. Sotto zsh (nessun word-splitting implicito) il compilatore riceve ' -I… -I…' come UN
 # SOLO argomento e tutte le gambe C falliscono per include mancanti, sembrando un problema di

@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# parity4 — esegue un sample sulle 4 gambe e ne confronta l'output (riferimento: C99Native).
 # ── MUTEX di build: i comandi di build (cc/clang/cmake/make/dotnet) prendono un lock ──
 # esclusivo su mutex.txt SOLO per la durata del SINGOLO comando, poi lo rilasciano subito
 # (lo script puo proseguire a lungo senza tenere il lock). Scadenza 15 min con heartbeat:

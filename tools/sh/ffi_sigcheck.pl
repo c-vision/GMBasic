@@ -1,4 +1,8 @@
-# ffi_sigcheck.pl <file.inc> <dir>... : confronta arita' DECLARE (+1 per ogni array) con la definizione C.
+# ffi_sigcheck.pl — confronta l'arità delle DECLARE con la definizione C (gate FFI).
+#
+# Uso: perl tools/sh/ffi_sigcheck.pl <file.inc> <dir>...
+# Per ogni DECLARE con parametri ARRAY l'arità attesa cresce di 1 (le estensioni viaggiano
+# dopo il puntatore): se il C dichiara un numero diverso di parametri, è drift di firma.
 use strict; use warnings; use File::Find;
 my ($inc, @dirs) = @ARGV; open(my $fh,'<',$inc) or die; my @lines=<$fh>; close $fh;
 sub split_top { my ($s)=@_; my @o; my ($d,$cur)=(0,''); for my $ch (split //,$s) { $d++ if $ch eq '('; $d-- if $ch eq ')'; if ($ch eq ',' && $d==0) { push @o,$cur; $cur='' } else { $cur.=$ch } } push @o,$cur if length($cur)||@o; return @o; }

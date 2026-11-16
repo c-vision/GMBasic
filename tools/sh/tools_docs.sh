@@ -16,8 +16,10 @@
 #   bash tools/sh/tools_docs.sh --vault DIR     # altro vault (default: ~/Documents/AiWiki/01-Projects/GMBasicMonoRepo)
 #   bash tools/sh/tools_docs.sh --quiet         # solo il riepilogo
 #
-# Copre `tools/basic/*.bas`, `tools/c/*.c`, `tools/sh/*.sh`. I progetti .NET (`tools/audit`,
-# `tools/registry-export`) non hanno un header di commento unico e restano fuori.
+# Copre `tools/basic/*.bas`, `tools/c/*.c`, `tools/sh/*.sh`, gli harness di `tools/sh` **senza
+# estensione** (con shebang: `zcc`, `parity4`, `lxbuild`, …) e gli script `.pl`/`.awk` di
+# `tools/sh` (header a `#`). I progetti .NET (`tools/audit`, `tools/registry-export`) non hanno
+# un header di commento unico e restano fuori, come i dati (`tools/sh/macos-floor`).
 #
 # Due tool con lo STESSO stem (`x.c` + `x.sh` wrapper) condividono una scheda: si documenta il
 # primo della lista (basic → c → sh, cioè l'implementazione) e il secondo è contato `alias`
@@ -56,7 +58,7 @@ trap 'rm -rf "$WORK"' EXIT
 
 kind_of() {  # <file> → sh|bas|c|""
     case "$1" in
-        *.sh)  echo sh ;;
+        *.sh|*.pl|*.awk) echo sh ;;   # header a `#`: shell, perl e awk si leggono uguale
         *.bas) echo bas ;;
         *.c)   echo c ;;
         *)     echo "" ;;
@@ -123,6 +125,9 @@ scopo_of() {  # <kind>  (header su stdin)
         }
         END {
             if (n > 0) { np++; paras[np] = cur }
+            # La riga-titolo (nome — descrizione) è la sintesi più affidabile: si preferisce
+            # a un paragrafo che, in molti header, è un elenco puntato o un blocco di uso.
+            if (titledesc != "" && !is_usage(titledesc)) { print titledesc; exit }
             for (i = 1; i <= np; i++) if (!is_usage(paras[i])) { print paras[i]; exit }
             if (titledesc != "") { print titledesc; exit }
             if (np >= 1) print paras[1]
@@ -173,9 +178,16 @@ aligned=0; drift=0; written=0; skipped=0; missing=0; manual=0; alias=0
 SEEN=""
 BK="${TMPDIR:-/tmp}/gmbasic-backup/tools-docs/$(date +%Y%m%d-%H%M%S)"
 
-for f in "$ROOT"/tools/basic/*.bas "$ROOT"/tools/c/*.c "$ROOT"/tools/sh/*.sh; do
+for f in "$ROOT"/tools/basic/*.bas "$ROOT"/tools/c/*.c "$ROOT"/tools/sh/*; do
     [ -f "$f" ] || continue
     base="$(basename "$f")"; stem="${base%.*}"
+    # In tools/sh ci sono anche gli harness SENZA estensione (lxbuild, zcc, parity4, …): sono
+    # tool, e si riconoscono dallo shebang. Restano fuori i dati (`macos-floor`) e i `.cmd`.
+    case "$base" in
+        *.bas|*.c|*.sh|*.pl|*.awk) ;;
+        *.*) continue ;;
+        *) head -1 "$f" | grep -q '^#!' || continue ;;
+    esac
     [ -n "$ONLY" ] && case "$base" in *"$ONLY"*) ;; *) continue ;; esac
 
     card="$VAULT/Guide/Tools/$stem.md"
@@ -210,7 +222,12 @@ for f in "$ROOT"/tools/basic/*.bas "$ROOT"/tools/c/*.c "$ROOT"/tools/sh/*.sh; do
         continue
     fi
 
-    kind="$(kind_of "$f")"
+    case "$base" in
+        *.sh|*.pl|*.awk) kind="sh" ;;   # header a `#`: shell, perl e awk si leggono uguale
+        *.bas) kind="bas" ;;
+        *.c)   kind="c" ;;
+        *)     kind="sh" ;;             # harness senza estensione (già filtrato sullo shebang)
+    esac
     hdr="$WORK/hdr"; scp="$WORK/scp"; new="$WORK/new"
     header_of "$f" "$kind" > "$hdr"
     scopo_of "$kind" < "$hdr" > "$scp"
