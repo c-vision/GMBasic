@@ -131,7 +131,12 @@ fi
 LS_FRAMEWORKS=()
 if [ "$LS_OS" = Darwin ]; then
   LS_FRAMEWORKS=(-framework CoreGraphics -framework ApplicationServices -framework ImageIO
-                 -framework CoreServices -framework AppKit)
+                 -framework CoreServices -framework AppKit
+                 # `libcurl.a` (statica, l'unica pubblicata) usa SCDynamicStore* per i proxy:
+                 # senza il framework il link muore con «_SCDynamicStoreCopyProxies symbol(s)
+                 # not found» (trovato dal gate A/B sul test `isam/isam_gap_probe`, 2026-11-17).
+                 # La stessa voce sta in `gmb_cli_project.c` per i programmi emessi da `gmb`.
+                 -framework SystemConfiguration)
 fi
 
 # ── Librerie di SISTEMA per OS. `-lcompression` è macOS-only (su Linux è libz/liblzma). ───────

@@ -436,6 +436,9 @@ GMB_DB_API int      gmb_db_isam_append_many(int64_t h, gmb_list_t list);
 GMB_DB_API int      gmb_db_isam_zap(int64_t h);
 GMB_DB_API int      gmb_db_isam_set_filter(int64_t h, const char* expression);
 GMB_DB_API int      gmb_db_isam_set_order(int64_t h, const char* indexName);
+/* Ordine attivo dell'area ISAM come ordinale 1-based (0 = nessuno). Usato da INDEXORD()
+ * quando l'area corrente è ISAM: `gmb_indexord_dbl` guardava solo il DBF e rispondeva 0. */
+GMB_DB_API int      gmb_db_isam_get_order(int64_t h);
 GMB_DB_API int      gmb_db_isam_create_index(int64_t h, const char* indexName, const char* keyExpression, int keyLength);
 GMB_DB_API int      gmb_db_isam_drop_index(int64_t h, const char* indexName);
 GMB_DB_API int      gmb_db_isam_lock(int64_t h);

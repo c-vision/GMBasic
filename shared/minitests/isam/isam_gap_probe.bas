@@ -8,6 +8,10 @@ IMPORT ISAM
 IMPORT IO
 IMPORT JSON
 
+' `GMBWORK$` a LIVELLO DI MODULO: dentro `Main` era una locale, quindi `Stato()`/`Replica()` la
+' vedevano vuota e il path diventava `/isam_all.isdb` (stessa classe di `isam_all`, 2026-11-12).
+DIM GMBWORK$ AS STRING = PROJECTFOLDER() + "/work"
+
 TYPE R
   ID AS STRING * 10
   V AS STRING * 20
@@ -69,7 +73,6 @@ SUB Replica()
 END SUB
 
 SUB Main()
-  DIM GMBWORK$ AS STRING = PROJECTFOLDER() + "/work"
   MKDIR GMBWORK$
   Stato()
   Replica()

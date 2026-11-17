@@ -821,6 +821,14 @@ int gmb_db_isam_set_order(int64_t h, const char* indexName)
     return Engine_SetOrder(hh->u.isam.engine, indexName);
 }
 
+/* Ordine attivo dell'area ISAM (1 = primary, 2+i = secondaria i, 0 = nessuno). Per INDEXORD(). */
+int gmb_db_isam_get_order(int64_t h)
+{
+    gmb_handle_t* hh = gmb_db_get(h, GMB_H_ISAM);
+    if (!hh || !hh->u.isam.engine) return 0;
+    return Engine_GetOrder(hh->u.isam.engine);
+}
+
 int gmb_db_isam_create_index(int64_t h, const char* indexName, const char* keyExpression, int keyLength)
 {
     gmb_handle_t* hh = gmb_db_get(h, GMB_H_ISAM);

@@ -6425,6 +6425,16 @@ int Engine_SetOrder(Engine* self, const char* indexName)
     return GMB_DB_ERR;
 }
 
+int Engine_GetOrder(const Engine* self)
+{
+    int i;
+    if (!self || !self->active) return 0;
+    if (self->active == self->primary) return 1;
+    for (i = 0; i < self->secondaryCount; i++)
+        if (self->active == self->secondary[i]) return i + 2;
+    return 1;   /* ordine attivo non mappato: si dichiara "c'è un ordine" (>=1) */
+}
+
 int Engine_CreateIndex(Engine* self, const char* indexName, const char* keyExpression, int keyLength)
 {
     IsamSchema* schema;
