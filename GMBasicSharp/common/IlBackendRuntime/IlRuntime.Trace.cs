@@ -89,6 +89,17 @@ public static partial class IlRuntime
     /// <summary>Catena fotografata all'ultimo errore ("" se nessuno).</summary>
     public static string ErrTrace() => _traceSnapshot ?? string.Empty;
 
+    /// <summary>Azzera lo stato della catena (fine programma in un processo CONDIVISO). Senza,
+    /// i frame e la fotografia del programma precedente restano vivi e un nuovo programma li
+    /// eredita (nello sweep per-file la catena mostrava procedure di ALTRI file).</summary>
+    public static void TraceReset()
+    {
+        _traceN = 0;
+        _traceStack = null;
+        _traceSnapshot = null;
+        _tracePrefix = null;
+    }
+
     /// <summary>Catena corrente come testo (usata per il messaggio fatale: nessun CATCH ha
     /// ancora scartato i frame).</summary>
     public static string TraceText() => BuildTraceText();

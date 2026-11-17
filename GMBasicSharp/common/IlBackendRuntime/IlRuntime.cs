@@ -13819,6 +13819,14 @@ public static double TextWidth(string s)
         {
             InkeyQueue.Clear();
         }
+        // STACK TRACE + registro delle procedure BASIC: in un processo CONDIVISO (harness,
+        // REPL) restavano quelli del programma precedente. `_basicProcedures` è indicizzato per
+        // symbolId e nomi di procedure di ALTRI file con lo stesso id vincevano la ricerca →
+        // `ERR.StackTrace` stampava nomi sbagliati (`Media` → `ConPark`, `G` → `Set10`).
+        // Il prologo del programma nuovo li re-registra subito dopo.
+        TraceReset();
+        _basicProcedures.Clear();
+        _basicProcedureAssembly = null;
     }
 
     /// <summary>Legge una variabile GLOBAL condivisa tra stepper Main e Proc_* degli handler.</summary>
