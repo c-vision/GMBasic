@@ -51,10 +51,31 @@ in the **releases** of two companion repos and are downloaded **only when needed
 | **`c-vision/GMBasicModules`** | public | **binaries and data**: native libraries (one release per group), market feeds (`fixtures-v1`), ML/Chromium/OCR components |
 | **`c-vision/GMBasicBrains`** | private | **brains** (Second Brain): RAG and knowledge graph, shipped as release assets |
 
-The other two repos never need to be cloned: the commands below fetch from their releases. From a
-checkout, build the C tools once (`GMBasic/native/gmb_compiler_c`, `GMBasic/native/gmbadmin`) and
-use `gmb …` — the whole administrative surface is **C** (there is no C# CLI any more). The
-**interactive REPL is the C binary** `REPL/build/gmbrepl` (see `REPL/README.md`).
+The other two repos never need to be cloned: the commands below fetch from their releases. The
+whole administrative surface is **C** (there is no C# CLI any more); the **interactive REPL is the
+C binary** `REPL/build/gmbrepl` (see `REPL/README.md`).
+
+### Build from a checkout (order matters)
+
+```sh
+# 1. runtime C: statiche + dylib (BASE di tutto il resto)
+cmake -S GMBasic/native/gmb_runtime_c  -B GMBasic/native/gmb_runtime_c/build  && cmake --build GMBasic/native/gmb_runtime_c/build
+# 2. compilatore nativo (produce bin/gmb)
+cmake -S GMBasic/native/gmb_compiler_c -B GMBasic/native/gmb_compiler_c/build && cmake --build GMBasic/native/gmb_compiler_c/build --target gmb
+# 3. CLI amministrativo (pkg/libs/brain/doctor) — richiede il passo 1
+cmake -S GMBasic/native/gmbadmin -B GMBasic/native/gmbadmin/build && cmake --build GMBasic/native/gmbadmin/build
+# 4. VM/C: gmb_vm_host (+ libgmb_eval/libgmb_bsp per EVAL, REPL, notebook)
+cmake -S GMBasic/native/gmb_vm_c -B GMBasic/native/gmb_vm_c/build && cmake --build GMBasic/native/gmb_vm_c/build
+
+export PATH="$PWD/bin:$PATH"
+gmb doctor --fix          # installa LLMEnv (serve per compilare) e le librerie mancanti
+gmb eval "PRINT 40+2"     # 42
+```
+
+Il passo 1 **deve** precedere il 3: `gmbadmin` include `gmb_runtime_c` e senza la sua build dir
+fallisce con «build dir assente». `gmb doctor` elenca cosa manca e con quale comando produrlo;
+`gmb doctor --fix` scarica LLMEnv (Apache-2.0, repo separato) e le librerie native.
+Su macOS il compilatore C è `cc`; sulle altre piattaforme `zig` (vedi `tools/sh/zcc`).
 
 ### First time — the four commands that actually matter
 

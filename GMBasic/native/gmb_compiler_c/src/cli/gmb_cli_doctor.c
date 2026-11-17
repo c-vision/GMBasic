@@ -532,6 +532,21 @@ static int doc_report(int json) {
 }
 
 int gmb_cli_doctor(int argc, char** argv) {
+    /* `gmb doctor --verify` = conformità dell'ARTEFATTO (sha256 vs release-manifest.json).
+     * La fa `gmbadmin verify`: lo SHA-256 vive nel runtime (una sola implementazione) e
+     * `gmbadmin` lo linka già; il compilatore no. Stesso schema di `gmb libs …`. */
+    for (int i = 2; i < argc; i++) {
+        if (strcmp(argv[i], "--verify") != 0) continue;
+        char** nv = (char**)calloc((size_t)argc + 1, sizeof(char*));
+        if (!nv) { fprintf(stderr, "?gmb: memoria esaurita\n"); return 2; }
+        int n = 0;
+        nv[n++] = argv[0];
+        nv[n++] = (char*)"verify";
+        for (int j = 2; j < argc; j++)
+            if (strcmp(argv[j], "--verify") != 0) nv[n++] = argv[j];
+        nv[n] = NULL;
+        return gmb_cli_admin_maybe(n, nv);
+    }
     int fix = 0, json = 0, abi_only = 0;
     const char* llm_repo = "https://github.com/c-vision/LLMEnv.git";
     for (int i = 2; i < argc; i++) {

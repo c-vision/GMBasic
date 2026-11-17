@@ -56,6 +56,7 @@ int main(int argc, char** argv)
     if (!strcmp(cmd, "web2md"))   return gmbadmin_web2md(argc, argv);
     if (!strcmp(cmd, "batch"))    return gmbadmin_batch(argc, argv);
     if (!strcmp(cmd, "keygen"))   return gmbadmin_keygen(argc, argv);
+    if (!strcmp(cmd, "verify"))   return gmbadmin_verify(argc, argv);    /* `gmb doctor --verify` */
     if (!strcmp(cmd, "pack"))     return gmbadmin_pack(argc, argv);
     if (!strcmp(cmd, "publish")) {
         for (int i = 2; i < argc; i++)

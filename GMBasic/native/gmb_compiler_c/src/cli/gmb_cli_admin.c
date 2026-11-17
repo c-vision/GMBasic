@@ -30,7 +30,7 @@ static int is_admin_cmd(const char* c)
 {
     static const char* names[] = {
         "pkg", "fixtures", "setup", "libs", "brain", "grep", "rg",
-        "convert", "convfmt", "keygen",
+        "convert", "convfmt", "keygen", "verify",
         /* non ancora portati (gmbadmin risponde con un errore esplicito, F9c) */
         "publish", "login", "register", "logout", "admin", "pack", "daemon",
         "rag", "graph", "hf", "mlx", "web2md", "batch", NULL

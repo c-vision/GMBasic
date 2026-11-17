@@ -1098,8 +1098,18 @@ int main(int argc, char** argv) {
     }
     /* PRIMO USO: completa librerie native + toolchain (zig) prima di compilare. Delega a
      * `gmbadmin first-use` — una sola implementazione (gmb_first_use.c), nessun link nuovo.
-     * A cache completa costa una `stat`; `--no-bootstrap` lo salta. */
-    gmb_first_use_spawn_if_needed(argc, argv);
+     * A cache completa costa una `stat`; `--no-bootstrap` lo salta.
+     * NON si attiva per i comandi LOCALI che non compilano nulla: `doctor --verify` deve
+     * poter verificare un artefatto appena scompattato **senza rete** (e senza scaricare
+     * 443 MB prima di dire se i file combaciano). */
+    {
+        int local_only = 0;
+        if (argc > 2 && !strcmp(argv[1], "doctor")) {
+            for (int i = 2; i < argc; i++)
+                if (!strcmp(argv[i], "--verify")) local_only = 1;
+        }
+        if (!local_only) gmb_first_use_spawn_if_needed(argc, argv);
+    }
     {
         int arc = gmb_cli_admin_maybe(argc, argv);   /* pkg/fixtures/setup/... → gmbadmin (C) */
         if (arc >= 0) return arc;

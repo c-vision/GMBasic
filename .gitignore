@@ -280,3 +280,6 @@ shared/skills/wait-what/
 shared/skills/wayfinder/
 shared/skills/wizard/
 shared/skills/working-capital/
+
+# Artefatti di release (tools/sh/release.sh): staging + zip, MAI versionati
+dist/
