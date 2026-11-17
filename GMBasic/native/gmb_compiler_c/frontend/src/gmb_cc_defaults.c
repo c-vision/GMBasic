@@ -20,6 +20,7 @@
 #include <string.h>
 #include <strings.h>
 #include <sys/stat.h>
+#include <unistd.h>
 
 /* RID di build: lo passa CMake (frontend/CMakeLists.txt da native/cmake/GmbRid.cmake). Il
  * fallback copre un build che non lo passasse: la cache native non si trova e le voci
@@ -42,14 +43,79 @@ static int cc_is_file(const char* p)
     return p && *p && stat(p, &st) == 0 && S_ISREG(st.st_mode);
 }
 
+/* Cache delle librerie, **settings-aware**: `paths.libsCacheDir` di system.settings.json
+ * (default `~/.gmbasic/libs`). Prima era `$HOME/.gmbasic/libs` hardcoded: con la chiave
+ * impostata il primo uso scaricava nella cache dei settings, ma il link cercava in `$HOME` →
+ * su una macchina pulita «library 'crypto' not found» (2026-11-16).
+ * I settings si cercano accanto all'eseguibile (`<exe>/../shared/settings/…` in una
+ * distribuzione, `<exe>/../../shared/settings/…` in un checkout), poi nella CWD. Nessuna
+ * dipendenza dal runtime: qui si legge solo la stringa `"libsCacheDir": "…"`. */
+static int cc_settings_libscache(char* out, size_t cap)
+{
+    char exe[4096] = "";
+#if defined(__APPLE__)
+    {
+        uint32_t sz = (uint32_t)sizeof exe;
+        if (_NSGetExecutablePath(exe, &sz) != 0) exe[0] = 0;
+    }
+#elif defined(__linux__)
+    {
+        ssize_t n = readlink("/proc/self/exe", exe, sizeof exe - 1);
+        if (n > 0) exe[n] = 0;
+    }
+#endif
+    char* sl = exe[0] ? strrchr(exe, '/') : NULL;
+    if (sl) *sl = 0;
+    const char* cand[3] = { NULL, NULL, NULL };
+    char p0[4096], p1[4096];
+    if (exe[0]) {
+        snprintf(p0, sizeof p0, "%s/../shared/settings/system.settings.json", exe);
+        snprintf(p1, sizeof p1, "%s/../../shared/settings/system.settings.json", exe);
+        cand[0] = p0; cand[1] = p1;
+    }
+    cand[2] = "system.settings.json";
+    for (int i = 0; i < 3; i++) {
+        if (!cand[i] || !cc_is_file(cand[i])) continue;
+        FILE* f = fopen(cand[i], "rb");
+        if (!f) continue;
+        char txt[262144];
+        size_t n = fread(txt, 1, sizeof txt - 1, f);
+        fclose(f);
+        txt[n] = 0;
+        const char* k = strstr(txt, "\"libsCacheDir\"");
+        if (!k) continue;
+        const char* q = strchr(k, ':');
+        if (!q) continue;
+        q = strchr(q, '"');
+        if (!q) continue;                       /* null = default */
+        q++;
+        const char* e = strchr(q, '"');
+        if (!e || e <= q) continue;
+        char v[2048];
+        snprintf(v, sizeof v, "%.*s", (int)(e - q), q);
+        if (v[0] == '~') snprintf(out, cap, "%s%s", getenv("HOME") ? getenv("HOME") : "", v + 1);
+        else snprintf(out, cap, "%s", v);
+        return out[0] != 0;
+    }
+    return 0;
+}
+
 int gmb_cc_cache_libdir(char* out, size_t cap)
 {
-    const char* home;
+    char base[2048];
     if (!out || cap == 0) return 0;
     out[0] = 0;
-    home = getenv("HOME");
-    if (!home || !*home) return 0;
-    snprintf(out, cap, "%s/.gmbasic/libs/%s", home, GMB_RID_STR);
+    if (cc_settings_libscache(base, sizeof base)) {
+        /* la chiave contiene la RADICE della cache: il RID lo aggiunge il chiamante */
+        snprintf(out, cap, "%s/%s", base, GMB_RID_STR);
+        if (cc_is_dir(out)) return 1;
+        out[0] = 0;
+    }
+    {
+        const char* home = getenv("HOME");
+        if (!home || !*home) return 0;
+        snprintf(out, cap, "%s/.gmbasic/libs/%s", home, GMB_RID_STR);
+    }
     return cc_is_dir(out);
 }
 

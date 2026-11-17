@@ -235,17 +235,34 @@ static int libs_check(int argc, char** argv)
         if (!strcmp(argv[i], "--index") && i + 1 < argc) explicit = argv[++i];
     gmb_paths_libs_cache_dir(cache, sizeof cache);
     const char* rid = gmb_libs_rid();
+    /* Sorgenti dell'indice, in ordine di affidabilità:
+     *   1. `--index <file>` (esplicito);
+     *   2. `<exe>/libs.txt` (bundle di deploy: l'elenco viaggia accanto al programma);
+     *   3. `<cache>/<rid>/index.txt` (scaricato dal bootstrap del primo uso);
+     *   4. `<repo>/shared/settings/libs-index-<rid>.tsv` (versionato: c'è anche in uno ZIP).
+     * Il vecchio fallback `tools/basic/bin/libs.txt` era un artefatto di build del repo e in una
+     * distribuzione non esiste: spariva con «indice non trovato» anche quando l'indice c'era. */
     if (explicit && *explicit) snprintf(idx, sizeof idx, "%s", explicit);
     else {
         libs_index_path(idx, sizeof idx);
+        if (access(idx, R_OK) != 0) snprintf(idx, sizeof idx, "%s/%s/index.txt", cache, rid);
         if (access(idx, R_OK) != 0) {
-            /* indice della cache utente, poi il bundle dei tool */
-            snprintf(idx, sizeof idx, "%s/%s/index.txt", cache, rid);
-            if (access(idx, R_OK) != 0) snprintf(idx, sizeof idx, "tools/basic/bin/libs.txt");
+            char root[4096];
+            if (gmb_paths_repo_root(root, sizeof root) && root[0])
+                snprintf(idx, sizeof idx, "%s/shared/settings/libs-index-%s.tsv", root, rid);
+            else
+                snprintf(idx, sizeof idx, "shared/settings/libs-index-%s.tsv", rid);
         }
     }
     FILE* f = fopen(idx, "r");
-    if (!f) { fprintf(stderr, "?libs check: indice non trovato (%s)\n", idx); return 2; }
+    if (!f) {
+        fprintf(stderr,
+                "?libs check: nessun indice delle librerie (provati: <exe>/libs.txt, "
+                "<cache>/%s/index.txt, <repo>/shared/settings/libs-index-%s.tsv)\n"
+                "            per lo stato della cache usa `gmb libs status`; per scaricare "
+                "`gmb libs ensure`.\n", rid, rid);
+        return 2;
+    }
     char line[4096];
     int ok = 0, bad = 0, missing = 0;
     while (fgets(line, sizeof line, f)) {

@@ -164,6 +164,18 @@ static int fu_install_toolchain(const char* rid, int dry)
 {
     char root[2048], cache[2048], cachedir[2560], archive[512];
     if (!fu_root(root, sizeof root)) return 0;
+    /* macOS: la toolchain zig per `osx-*` NON si scarica e non si installa — DECISIONE
+     * (2026-11-16): su macOS il compilatore di riferimento è `cc` (Apple clang), e lo zig
+     * sull'host è la parte problematica (misurato: 4 dylib invece di 14 e `Segmentation
+     * fault: 11` con il linker zig; AGENTS §"DUE COMPILATORI": il toolchain si evita
+     * sull'host). Gli archivi `osx-*` del gruppo `toolchain` saranno ELIMINATI dagli asset;
+     * per il cross (linux/win) resta `zig` dal PATH o dalla cache, non questa cartella. */
+    if (strncmp(rid, "osx", 3) == 0)
+    {
+        fprintf(stderr, "[first-use] toolchain %s: non serve (su macOS si usa `cc`; gli archivi "
+                        "zig per osx-* sono in dismissione).\n", rid);
+        return 1;
+    }
     char have[2800];
     if (fu_zig_installed(rid, have, sizeof have))
     {

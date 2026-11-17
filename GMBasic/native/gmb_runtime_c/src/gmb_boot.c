@@ -55,13 +55,14 @@ int gmb_libs_autoensure(const char* fileName, char* out_path, size_t cap);
 int gmb_cache(char* out, size_t cap)
 {
     if (!out || cap == 0) return 0;
-    /* NB: qui NON si legge system.settings.json (servirebbe il parser delle impostazioni e
-     * quindi mezza runtime): la cache è `~/.gmbasic/libs`, punto. L'override `paths.libsCacheDir`
-     * resta valido nel runtime completo, che condivide la stessa cartella di default. */
-    const char* home = getenv("HOME");
-    if (!home || !*home) { out[0] = '\0'; return 0; }
-    snprintf(out, cap, "%s/.gmbasic/libs", home);
-    return 1;
+    /* Stessa FONTE del resto del runtime: `paths.libsCacheDir` di system.settings.json
+     * (default `~/.gmbasic/libs`). Prima era hardcoded: con la chiave impostata il bootstrap
+     * scaricava in `~/.gmbasic/libs` mentre `libs`/loader/link leggevano la cache dei settings
+     * → due cache, download in una e link nell'altra (bug trovato il 2026-11-16).
+     * Questo modulo include già `gmb_paths.c`: nessuna dipendenza nuova. */
+    out[0] = '\0';
+    gmb_paths_libs_cache_dir(out, cap);
+    return out[0] != '\0';
 }
 
 /* ── progress bar (solo su TTY; rate-limited) ────────────────────────────────────────────── */
@@ -316,6 +317,11 @@ static int boot_ensure_scope(const char* index_path, int scope, const char* rid)
                     || (scope & GMB_SCOPE_COMPONENTS && strncmp(tag, "component", 9) == 0)
                     || (scope & GMB_SCOPE_RUNTIME && strncmp(tag, "runtime", 7) == 0);
         if (!in_scope) continue;
+        /* macOS: gli archivi della toolchain zig per `osx-*` NON si scaricano — DECISIONE
+         * (2026-11-16): su macOS si usa `cc`, lo zig sull'host è la parte problematica
+         * (AGENTS §"DUE COMPILATORI"), e gli archivi `osx-*` sono in dismissione. Prima il
+         * primo uso scaricava ~50 MB di zig per poi non installarlo. */
+        if (strncmp(rid, "osx", 3) == 0 && strncmp(name, "zig-", 4) == 0) continue;
         gmb_progress(name, total ? (double)done / total : 0.0);
         if (!gmb_libs_ensure_file_for_rid(index_path, rid, name, NULL, 0)) { fprintf(stderr, "[boot] FALLITO: %s\n", name); fail++; }
         done++;
