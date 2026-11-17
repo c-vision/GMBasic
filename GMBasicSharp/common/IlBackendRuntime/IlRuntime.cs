@@ -3042,6 +3042,23 @@ public static partial class IlRuntime
     /// <summary>Cartella reale assoluta del file .bas CORRENTE (import-aware; entry-point se nessuna procedura).</summary>
     public static string ProjectFolder()
     {
+        // L'ENTRY POINT vince: PROJECTFOLDER() è "la cartella del programma" (guida IO/GRAPH).
+        // `_currentSourceFile` è il modulo dell'ULTIMA procedura eseguita (lo emette il prologo
+        // IL, import-aware): per un programma che importa un `.inc`/pacchetto diventava
+        // `shared/include`, e la cartella CAMBIAVA a metà run. Divergenza trovata dallo sweep
+        // 2026-11-17 su `graph/querymulti`: la gamba PCode ereditava `shared/include/graph.inc`
+        // dalla gamba IL del file precedente → FIXTURE$ puntava a
+        // `shared/include/../../samples/…` (inesistente) → nessun grafo costruito
+        // ("nessun brain graph interrogabile"). Resta come fallback quando l'entry è ignoto.
+        if (!string.IsNullOrEmpty(_entrySourcePath))
+        {
+            try
+            {
+                var entryDir = Path.GetDirectoryName(Path.GetFullPath(_entrySourcePath));
+                if (!string.IsNullOrEmpty(entryDir)) return entryDir;
+            }
+            catch { }
+        }
         if (!string.IsNullOrEmpty(_currentSourceFile))
         {
             try

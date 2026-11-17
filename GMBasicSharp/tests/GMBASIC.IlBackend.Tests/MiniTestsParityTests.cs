@@ -164,6 +164,10 @@ public class MiniTestsParityTests
             Directory.SetCurrentDirectory(Path.GetDirectoryName(Path.GetFullPath(file))!);
             CleanupArtifacts(file);
             CleanupBinDir(file);
+            // Cartella ENTRY come fa l'Executor (Executor.cs): senza, `PROJECTFOLDER()` cade su
+            // `_currentSourceFile`, che il prologo IL dell'ULTIMO programma eseguito può aver
+            // lasciato su un `.inc` importato (sweep 2026-11-17, `graph/querymulti`).
+            Basic.IlBackend.IlRuntime.SetEntrySourcePath(file);
             var program = Basic.Orchestrator.Compile(file, null, false, "il");
             // Macro &/EVAL: compilazione ed esecuzione nello STESSO processo → registra il
             // BasicProgram vivo (la cattura dei GLOBALI per nome non deve dipendere dalla
@@ -201,6 +205,7 @@ public class MiniTestsParityTests
             CleanupDbfTempFiles();
             Directory.SetCurrentDirectory(Path.GetDirectoryName(Path.GetFullPath(file))!);
             CleanupBinDir(file);
+            Basic.IlBackend.IlRuntime.SetEntrySourcePath(file);   // vedi RunPCode
             var program = Basic.Orchestrator.Compile(file, null, false, "il");
             // Macro &/EVAL in-process: registra il BasicProgram vivo (stesso motivo di RunPCode).
             Basic.IlBackend.IlRuntime.SetMacroContext(program);
