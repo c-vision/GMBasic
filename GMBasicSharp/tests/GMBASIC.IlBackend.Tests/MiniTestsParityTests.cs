@@ -523,6 +523,18 @@ public class MiniTestsParityTests
         // in `tools/test_minitests_parity` (testhost in-process) e in `RunVmc` (processo VM-C).
         // Ora `minitests/torch/` è INCLUSA nel cross-leg (parità piena), senza esclusioni.
         files = files.Where(f => !IsParityExcluded(Path.GetFileName(f))).ToArray();
+        // NEGATIVI DI COMPILAZIONE (marker `' EXPECT: COMPILE ERROR:`, 2026-11-16): il sorgente
+        // DEVE essere rifiutato dal compilatore. Il cross-leg compila in-process e si aspetta un
+        // run riuscito → il rifiuto sarebbe un falso rosso. Questi file li verifica la gamba
+        // NATIVA (`tools/sh/test_minitests_c99native`), che conta il rifiuto come PASS. Prima si
+        // escludevano per NOME (`ns_import_gate`, `embedfile_binary`), e i 23 file passati al
+        // nuovo marcatore finivano nel cross-leg: 20 di loro comparivano come divergenze finte.
+        var negCompile = files.Where(f => File.ReadAllText(f).Contains("' EXPECT: COMPILE ERROR:", StringComparison.Ordinal)).ToArray();
+        if (negCompile.Length > 0)
+        {
+            files = files.Where(f => !negCompile.Contains(f)).ToArray();
+            Console.WriteLine($"SKIP {negCompile.Length} MiniTest NEGATIVI di compilazione (marker 'EXPECT: COMPILE ERROR'): li verifica la gamba nativa.");
+        }
         // INTERATTIVI (marker `' TAG: interactive`): esclusi SEMPRE di default; inclusi solo col param.
         var interactive = files.Where(IsInteractive).ToArray();
         if (!InteractiveEnabled())
