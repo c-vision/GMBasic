@@ -55,10 +55,30 @@ for d in "$MINI"/*/; do
     if [ -n "$ONLY" ]; then
         case ",$ONLY," in *",$dom,"*) ;; *) continue ;; esac
     fi
+    # Un dominio SENZA `.bas` non è un dominio: il filtro `dom/` non corrisponderebbe a nulla e
+    # l'harness lo segnala come errore («filtro errato»). Es.: `ffi_pending/`, `optimize/`.
+    set -- "$d"*.bas
+    [ -e "$1" ] || { echo "# salto $dom (nessun .bas)" | tee -a "$LOG"; continue; }
     domains+=("$dom")
 done
 say "# gambe gestite (IL+PCode+VM-C), un processo per dominio — $(date '+%Y-%m-%d %H:%M')"
 say "# domini: ${#domains[@]}"
+
+# BROKER pub/sub: i MiniTest `messaging/` (tcp) senza broker divergono per costruzione. Si
+# riusa quello già attivo (lease), se no lo si avvia come fa `test_minitests_parity.sh`.
+BROKER_SH="$WS/tools/sh/msg_broker.sh"
+if [ -x "$BROKER_SH" ]; then
+    src="/"
+    for p in $("$BROKER_SH" ports 2>/dev/null); do
+        [ -n "$p" ] || continue
+        r="$("$BROKER_SH" ensure "$p" "" "" "$$" 2>/dev/null)" || r=failed
+        case "$r" in
+            started) say "# broker :$p avviato (lease $$)" ;;
+            already) say "# broker :$p già attivo (riuso)" ;;
+            *)       say "# attenzione: broker :$p non disponibile ($r)" ;;
+        esac
+    done
+fi
 
 run_one() {  # <filtro>  → stdout del dotnet test
     SDL_VIDEODRIVER=dummy GMB_MINI_ONLY="$1" dotnet test "$TESTS" --no-build --filter "$FILTER" 2>&1
