@@ -353,11 +353,14 @@ int gmb_first_use_abi_dir(char* out, size_t cap, char* how, size_t howcap)
 
 /* ── API ──────────────────────────────────────────────────────────────────────────────────── */
 
-/* 1 = cache completa (o già completa), 0 = qualcosa manca (l'avvio NON viene bloccato). */
-int gmb_first_use_ensure(int dry)
+/* 1 = cache completa (o già completa), 0 = qualcosa manca (l'avvio NON viene bloccato).
+ * `scope_override` (NULL = dai settings): "host" | "all" | "off". Serve a `first-use --all`,
+ * che deve poter prendere le toolchain degli ALTRI RID senza toccare system.settings.json. */
+int gmb_first_use_ensure_scope(int dry, const char* scope_override)
 {
     char scope[16];
-    fu_scope(scope, sizeof scope);
+    if (scope_override && *scope_override) snprintf(scope, sizeof scope, "%s", scope_override);
+    else fu_scope(scope, sizeof scope);
     if (!strcmp(scope, "off"))
     {
         fprintf(stderr, "[first-use] disattivato (bootstrapScope=\"off\" nei settings)\n");
@@ -421,3 +424,6 @@ void gmb_first_use_forget(void)
         if (fu_marker(marker, sizeof marker, FU_RIDS[i])) remove(marker);
     }
 }
+
+/* Compatibilità: senza override lo scope è quello dei settings (`bootstrapScope`). */
+int gmb_first_use_ensure(int dry) { return gmb_first_use_ensure_scope(dry, NULL); }

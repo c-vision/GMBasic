@@ -2889,6 +2889,10 @@ int  gmb_libs_ensure_file_for_rid(const char* index_path, const char* rid, const
  * `~/.gmbasic/.first-use-<rid>`: a cache completa non costa nulla. `dry` = solo il piano.
  * 1 = completo (o già completo), 0 = qualcosa manca (il chiamante NON deve bloccare). */
 int  gmb_first_use_ensure(int dry);
+/* Variante con SCOPE ESPLICITO (NULL = `bootstrapScope` dei settings): la usa
+ * `gmbadmin first-use --all` per prendere le toolchain degli altri RID senza modificare
+ * system.settings.json. "host" | "all" | "off". */
+int  gmb_first_use_ensure_scope(int dry, const char* scope_override);
 void gmb_first_use_forget(void);   /* --force: dimentica i marker (tutti i RID) */
 /* Cartella ABI di LLMEnv (descrittori `*.gmbarch`): scoperta SENZA percorsi cablati —
  * `$LLMDESC_ABI_DIR` per prima, poi `gmb_paths_llm_root` + `ABI|lib/llmenv/ABI|share/llmenv/ABI`.
