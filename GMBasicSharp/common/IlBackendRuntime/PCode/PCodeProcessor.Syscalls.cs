@@ -19,6 +19,20 @@ internal sealed partial class PCodeProcessor
 {
     private static readonly System.Collections.Generic.List<(int idx, System.Action<string> apply)> _nativeReadApply = new();
 
+    /// <summary>Azzerra lo stato READ del PROCESSO (registro dei campi `@GET` del runtime
+    /// condiviso + gli apply del PCode). Va chiamato all'AVVIO di ogni programma: i campi
+    /// `@GET` si accumulano fino al `READ`, e un programma che ne registra alcuni SENZA
+    /// leggere li lasciava nel registro statico per il programma successivo — che al suo
+    /// `READ` partiva da un campo altrui, con il `when_fn` legato a un task ormai morto
+    /// (in headless: attesa di un tasto che non arriva → timeout, come in
+    /// `console/get_when_clauses_parity` → `console/get_when_skip_parity`, 2026-11-17).
+    /// Gli apply, allo stesso modo, riscrivevano variabili del programma precedente.</summary>
+    internal static void ResetNativeReadState()
+    {
+        _nativeReadApply.Clear();
+        Basic.Runtime.Services.NativeTui.ReadReset();
+    }
+
     private static object? DynLoad(PCodeTask t, string n)
     {
         for (var fr = t.Frame; fr is not null; fr = fr.Previous)
