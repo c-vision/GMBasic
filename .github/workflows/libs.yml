@@ -16,8 +16,10 @@
 #   - Linux: CMake reso portabile (RID, `$ORIGIN`, `--as-needed` invece di `-dead_strip_dylibs`)
 #     ma la build NON è mai stata eseguita su Linux → il primo run serve a scoprire le dipendenze
 #     di sistema mancanti (elencate sotto, da completare).
-#   - Windows: NON abilitato. La build usa API POSIX (dlopen, fork/exec, `m`) e i target
-#     CMake non hanno un percorso MSVC; va prima fatto il port (issue dedicata).
+#   - Windows: NON abilitato per core/engine/llmmotor. La build usa API POSIX (dlopen, fork/exec,
+#     `m`) e i target CMake non hanno un percorso MSVC; va prima fatto il port (issue dedicata).
+#     ECCEZIONE: il gruppo `toolchain` include i RID Windows (2026-11-10) perché il packer non
+#     compila, ri-impacchetta soltanto; primo run CI da validare.
 #
 # SEGRETI/VARIABILI RICHIESTI (Settings → Secrets and variables → Actions)
 #   - `GMB_MODULES_TOKEN` (secret, PAT con `repo` su c-vision/GMBasicModules):
@@ -36,7 +38,7 @@ on:
   workflow_dispatch:
     inputs:
       group:
-        description: "Gruppo da produrre: core | engine | llmmotor"
+        description: "Gruppo da produrre: core | engine | llmmotor | toolchain"
         default: "core"
         required: true
       rids:
@@ -55,6 +57,9 @@ on:
 
 # niente due pubblicazioni in parallelo (l'indice verrebbe sovrascritto)
 concurrency:
+  # Sequenziale di proposito (un solo writer dell'indice), ma senza `cancel-in-progress` un run
+  # bloccato su un label ritirato teneva gli altri in `pending` per sempre: si annulla a mano il
+  # run bloccato invece di aspettarlo.
   group: gmb-libs-publish
   cancel-in-progress: false
 
@@ -73,7 +78,14 @@ jobs:
       - id: pick
         shell: bash
         run: |
-          ALL='[{"rid":"osx-arm64","os":"macos-14"},{"rid":"osx-x64","os":"macos-13"},{"rid":"linux-x64","os":"ubuntu-24.04"},{"rid":"linux-arm64","os":"ubuntu-24.04-arm"}]'
+          # `toolchain` è l'UNICO gruppo con i RID Windows in matrice: il packer non compila nulla,
+          # quindi win-arm64 si ri-impacchetta dallo zip ufficiale anche su un runner x64 (nessuna
+          # esecuzione del binario, solo bytes + notices + sha256).
+          if [ "${{ github.event.inputs.group }}" = "toolchain" ]; then
+            ALL='[{"rid":"osx-arm64","os":"macos-15"},{"rid":"osx-x64","os":"macos-15-intel"},{"rid":"linux-x64","os":"ubuntu-24.04"},{"rid":"linux-arm64","os":"ubuntu-24.04-arm"},{"rid":"win-x64","os":"windows-2022"},{"rid":"win-arm64","os":"windows-2022"}]'
+          else
+            ALL='[{"rid":"osx-arm64","os":"macos-15"},{"rid":"osx-x64","os":"macos-15-intel"},{"rid":"linux-x64","os":"ubuntu-24.04"},{"rid":"linux-arm64","os":"ubuntu-24.04-arm"}]'
+          fi
           WANT="${{ github.event.inputs.rids }}"
           if [ -z "$WANT" ]; then
             SEL="$ALL"
@@ -100,19 +112,23 @@ jobs:
       # (build + verifica funzionano, la pubblicazione fallisce con 403).
       GH_TOKEN: ${{ secrets.GMB_MODULES_TOKEN || secrets.GITHUB_TOKEN }}
       # Il runner deve sapere che l'RID è quello della matrice (il default dello script è
-      # ricavato da uname, ma osx-x64 su macos-13 e linux-arm64 su runner arm sono espliciti).
+      # ricavato da uname, ma osx-x64 su macos-15-intel e linux-arm64 su runner arm sono espliciti).
+      # LABEL macOS (2026-11-10): `macos-13` è ritirato dal 2025-12-04 e `macos-14` dal 2026-11-02.
+      # Un label ritirato NON fallisce: il job resta `queued` per sempre senza runner — ed era
+      # esattamente il blocco visto sulla prima run. Ora: osx-arm64 → `macos-15`,
+      # osx-x64 → `macos-15-intel` (ultima immagine x86_64, disponibile fino ad agosto 2027).
       LLMENV: ${{ vars.LLMENV_DIR || '' }}
     steps:
       - uses: actions/checkout@v4
 
       - name: dipendenze di sistema (macOS)
-        if: runner.os == 'macOS'
+        if: runner.os == 'macOS' && env.GROUP != 'toolchain'
         run: |
           brew update >/dev/null
           brew install cmake openssl@3 zstd curl brotli lz4 sdl2 sdl2_ttf jpeg-turbo libpng libtiff webp sqlite
 
       - name: dipendenze di sistema (Linux)
-        if: runner.os == 'Linux'
+        if: runner.os == 'Linux' && env.GROUP != 'toolchain'
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
@@ -123,17 +139,23 @@ jobs:
       # LLMEnv serve a TUTTI i gruppi: `gmb_runtime_c` include LLMEnv/LLMEngine e `add_subdirectory`
       # dei suoi progetti (tokenizer, plugin, desc). engine/llmmotor in più PUBBLICANO da LLMEnv.
       - name: checkout LLMEnv
-        if: ${{ vars.LLMENV_REPO != '' }}
+        if: ${{ vars.LLMENV_REPO != '' && env.GROUP != 'toolchain' }}
         uses: actions/checkout@v4
         with:
           repository: ${{ vars.LLMENV_REPO }}
           path: LLMEnv
 
+      # `shell: bash` esplicito: su Windows il default è PowerShell e questo è uno snippet POSIX
+      # (`set -uo pipefail`, `[ -d ... ]`) — senza, il job fallisce con ParserError prima di tutto.
+      # Per `toolchain` il passo è inutile (nessun LLMEnv): si salta.
       - name: compute LLMENV
+        if: env.GROUP != 'toolchain'
+        shell: bash
         run: |
           if [ -d "$GITHUB_WORKSPACE/LLMEnv" ]; then echo "LLMENV=$GITHUB_WORKSPACE/LLMEnv" >> "$GITHUB_ENV"; fi
 
       - name: LLMEnv presente? (errore chiaro, non un configure di CMake illeggibile)
+        if: env.GROUP != 'toolchain'
         run: |
           if [ -z "${LLMENV:-}" ] || [ ! -d "$LLMENV" ]; then
             echo "::error::LLMEnv non trovato. Serve per compilare QUALSIASI gruppo: imposta la variable LLMENV_REPO (es. c-vision/LLMEnv) o LLMENV_DIR (checkout precompilato)." >&2
@@ -141,20 +163,54 @@ jobs:
           fi
 
       - name: build + gate di caricabilità
+        if: env.GROUP != 'toolchain'
         run: |
           args=( "$GROUP" --rid "${{ matrix.rid }}" )
           [ "$DO_PUBLISH" = "true" ] && args+=( --publish --yes --no-index )   # indice: job dedicato
           [ -n "$TAG" ] && args+=( --tag "$TAG" )
           bash tools/sh/libs_build_release.sh "${args[@]}"
 
+      # TOOLCHAIN (F1): il COMPILATORE per RID. Non compila e non usa LLMEnv: scarica la
+      # distribuzione ufficiale, la ri-impacchetta in modo deterministico (notices + sha256) e,
+      # col publish richiesto, carica gli asset sul tag immutabile `toolchain-v1`.
+      - name: "toolchain: impacchetta"
+        if: env.GROUP == 'toolchain'
+        shell: bash
+        run: bash tools/sh/libs_toolchain_pack.sh --rid "${{ matrix.rid }}"
+
+      # L'artefatto si carica PRIMA della pubblicazione: la prova dello sha deve esistere anche
+      # quando il push su GMBasicModules non è possibile (senza PAT `GMB_MODULES_TOKEN` il
+      # GITHUB_TOKEN è in sola lettura → la pubblicazione finisce 403).
+      - uses: actions/upload-artifact@v4
+        if: env.GROUP == 'toolchain'
+        with:
+          name: toolchain-${{ matrix.rid }}
+          path: build/libs/toolchain/zig-*.tar.xz*
+          if-no-files-found: error
+
+      - name: "toolchain: pubblica su toolchain-vN"
+        if: env.GROUP == 'toolchain' && env.DO_PUBLISH == 'true'
+        shell: bash
+        run: |
+          # Tag del compilatore separato da quello degli altri gruppi: `tag=runtime-v3` con
+          # `group=toolchain` spedirebbe 57 MB di zig su un tag di runtime.
+          tag="${TAG:-toolchain-v1}"
+          case "$tag" in
+            toolchain-v*) : ;;
+            *) echo "::error::il gruppo toolchain pubblica solo su toolchain-vN (ricevuto '$tag')" >&2; exit 1 ;;
+          esac
+          bash tools/sh/libs_publish_files_gh.sh toolchain "${{ matrix.rid }}" \
+            --source build/libs/toolchain --tag "$tag" --yes
+
   index:
     name: indice (libs-manifest.json)
-    needs: build
+    needs: [build, plan]
     if: ${{ github.event_name == 'push' || github.event.inputs.publish == 'true' }}
     runs-on: ubuntu-24.04
     env:
       GH_TOKEN: ${{ secrets.GMB_MODULES_TOKEN || secrets.GITHUB_TOKEN }}
       GROUP: ${{ github.event.inputs.group || 'core' }}
+      MATRIX: ${{ needs.plan.outputs.matrix }}
     steps:
       - uses: actions/checkout@v4
 
@@ -162,7 +218,13 @@ jobs:
         run: |
           # `libs_manifest_gh.sh build` FONDE il RID nel manifest esistente (nel checkout), `push`
           # lo pubblica su main. In sequenza i push sono cumulativi: nessuna corsa fra RID.
-          for rid in osx-arm64 osx-x64 linux-x64 linux-arm64; do
+          #
+          # I RID si prendono dalla MATRICE del job `plan` (= quelli davvero pubblicati), non da una
+          # lista scritta a mano: quella lista aveva i soli 4 RID Unix e con `group=toolchain`
+          # avrebbe lasciato win-x64/win-arm64 indietro di una release.
+          RIDS="$(printf '%s' "$MATRIX" | jq -r '.include[].rid')"
+          echo "RID da indicizzare: $(echo $RIDS)"
+          for rid in $RIDS; do
             if bash tools/sh/libs_manifest_gh.sh build --rid "$rid"; then
               bash tools/sh/libs_manifest_gh.sh push || exit 1
             else

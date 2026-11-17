@@ -73,7 +73,7 @@ RID=""
 # DECLARE … LIB: amqp, grpc, kafka, media, mqtt, nats, protobuf) + `torch` (external, sotto).
 # I gruppi storici `boot`/`engine`/`core`/`support` NON hanno più una release propria (sono
 # confluiti in `runtime-vN`): chiederli faceva fallire il build con "nessuna release trovata".
-GROUP_LIST="runtime,llmmotor,dev,ffi,domain"
+GROUP_LIST="runtime,llmmotor,dev,ffi,domain,toolchain"
 WITH_TORCH=1
 CMD="${1:-build}"; [ $# -gt 0 ] && shift
 
@@ -135,17 +135,22 @@ latest_tag() {
                   | map({t:.tagName, d:(.tagName|capture("(?<d>[0-9]{4}\\.[0-9]{2}\\.[0-9]{2})$").d)})
                   | sort_by(.d) | reverse | .[].t')"
   fi
+  local assets
   for t in $tags; do
     # il tag è valido per questo RID se ha l'archivio di gruppo OPPURE almeno un asset PER-FILE
     # (`<libreria>-<rid>.<ext>`): con il modello per-file l'archivio non esiste più.
-    if release_assets "$t" | jq -Rse --arg a "gmb-$g-$RID.zip" --arg rid "$RID" '
+    assets="$(release_assets "$t")" || return 1   # errore API ≠ assenza del gruppo
+    if printf '%s\n' "$assets" | jq -Rse --arg a "gmb-$g-$RID.zip" --arg rid "$RID" '
          split("\n") | map(select(length > 0) | split("\t")[0]) as $n
          | ($n | index($a)) != null
            or ($n | map(select(test("-" + $rid + "\\.[A-Za-z0-9.]+$"))) | length > 0)' \
-         >/dev/null 2>&1; then
+         >/dev/null; then
       echo "$t"; return 0
     fi
   done
+  # 3 = nessun tag ha un asset per QUESTO RID: ASSENZA LEGITTIMA, non un errore
+  # (misurato 2026-11-10: `dev-v1` ha 431 asset per osx-arm64 e ZERO per osx-x64).
+  return 3
 }
 
 # ── asset PER-FILE della release per il RID: "asset<TAB>nomefile<TAB>sha256<TAB>size" ──────────
@@ -154,8 +159,14 @@ latest_tag() {
 # Asset di una release via GRAPHQL (name<TAB>size<TAB>digest), paginati.
 # Perché non `gh release view`: usa la REST API, che ha un limite orario basso e restituisce
 # "release not found" quando è esaurito — e il manifest veniva scritto MUTILATO in silenzio.
-release_assets() { # $1 = tag
-  gh api graphql --paginate -f query='
+release_assets() { # $1 = tag · stdout = name<TAB>size<TAB>digest · rc!=0 = ERRORE API (mai muto)
+  # L'errore NON si inghiotte (prima c'era `2>/dev/null`): senza distinguere "la release non ha
+  # asset per questo RID" da "la query è fallita", il chiamante non poteva fare la cosa giusta —
+  # e un fallimento a metà paginazione produceva elenchi TRONCATI (visto: 247 file invece di 95).
+  local tag="$1" out err i
+  out="$(mktemp)"; err="$(mktemp)"
+  for i in 1 2 3; do
+    if gh api graphql --paginate -f query='
     query($owner:String!,$repo:String!,$tag:String!,$endCursor:String){
       repository(owner:$owner,name:$repo){
         release(tagName:$tag){
@@ -165,8 +176,15 @@ release_assets() { # $1 = tag
           }
         }
       }
-    }' -f owner="${REPO%%/*}" -f repo="${REPO##*/}" -f tag="$1" \
-    --jq '.data.repository.release.releaseAssets.nodes[] | [.name, (.size|tostring), (.digest // "")] | @tsv' 2>/dev/null
+    }' -f owner="${REPO%%/*}" -f repo="${REPO##*/}" -f tag="$tag" \
+       --jq '.data.repository.release.releaseAssets.nodes[] | [.name, (.size|tostring), (.digest // "")] | @tsv' \
+       > "$out" 2> "$err"; then
+      cat "$out"; rm -f "$out" "$err"; return 0
+    fi
+    sleep $((i * 2))   # raffiche di query: GitHub risponde con rate-limit secondario e si rientra
+  done
+  echo "release_assets($tag): $(head -1 "$err")" >&2
+  rm -f "$out" "$err"; return 1
 }
 
 assets_perfile() {
@@ -248,11 +266,18 @@ do_build() {
   # Un gruppo che NON si riesce a indicizzare è un ERRORE, non uno "salto": scrivere il manifest
   # senza quel gruppo lo lascia mutilato (successo reale: rate-limit GitHub → i tre gruppi per-file
   # spariti dall'indice e `gmb libs status` vuoto). Meglio non scrivere nulla.
-  local failed=0
+  local failed=0 rc=0
   for g in ${GROUP_LIST//,/ }; do
-    tag="$(latest_tag "$g")"
-    if [ -z "$tag" ]; then
-      echo "[$g] ERRORE: nessuna release trovata (rate-limit GitHub? rete?)" >&2
+    rc=0
+    tag="$(latest_tag "$g")" || rc=$?
+    if [ "$rc" = "3" ]; then
+      # assenza legittima: il gruppo non ha release per questo RID. La voce già nel manifest RESTA
+      # (il merge è per gruppo), quindi il RID non si mutila.
+      echo "[$g] assente per $RID (nessuna release con asset di questo RID) — la voce precedente resta"
+      continue
+    fi
+    if [ "$rc" != "0" ] || [ -z "$tag" ]; then
+      echo "[$g] ERRORE: query delle release fallita (rate-limit GitHub? rete?)" >&2
       failed=1; continue
     fi
     local out="$work/$g.jsonl"; : > "$out"
@@ -261,7 +286,13 @@ do_build() {
     # (1) PER-FILE (preferito): la release ha gli asset `<stem>-<rid>.<ext>`.
     #     Nessun download: sha/size arrivano dai metadati dell'asset (digest). È il modello
     #     "una libreria = un file", con URL per singolo file nell'indice.
-    local nper=0
+    # In un FILE, non in process substitution: se la query fallisce a metà il `while` vedrebbe un
+    # elenco TRONCATO e scriverebbe un indice parziale in silenzio. Con il file l'errore si vede.
+    local nper=0 pf="$work/$g.perfile.tsv"
+    if ! assets_perfile "$tag" > "$pf"; then
+      echo "[$g] ERRORE: elenco asset non ottenuto ($tag)" >&2
+      failed=1; continue
+    fi
     while IFS=$'\t' read -r asset name sha size; do
       [ -n "${asset:-}" ] || continue
       # un asset ZIP non è un file di libreria: `gmb-support-linux-arm64.zip` combacia col
@@ -272,7 +303,7 @@ do_build() {
         --arg u "https://github.com/$REPO/releases/download/$tag/$asset" \
         '{name:$n, group:$g, sha256:$s, size:$z, url:$u}' >> "$out"
       nper=$((nper+1))
-    done < <(assets_perfile "$tag")
+    done < "$pf"
 
     if [ "$nper" -gt 0 ]; then
       cat "$out" >> "$files_jsonl"
@@ -374,12 +405,31 @@ do_push() {
   local clone; clone="$(mktemp -d "${TMPDIR:-/tmp}/gmbmod.XXXXXX")"
   git clone --depth 1 "https://github.com/$REPO.git" "$clone" >/dev/null 2>&1
   cp "$MANIFEST" "$clone/libs-manifest.json"
+  # CREDENZIALE (2026-11-10). In locale `git push` funzionava perché esiste
+  # `credential.helper=store`; su un runner NON c'è alcun helper e il job `index` moriva con
+  # "fatal: could not read Username for 'https://github.com'" (run 42862585667, 6/6 build+asset
+  # pubblicati e indice rosso). Se `GH_TOKEN` è nell'ambiente lo si passa a git con un helper
+  # EFFIMERO valido per questo solo comando: il token non finisce negli argomenti di `git`
+  # (visibili in `ps`) né in un file di credenziali su disco.
+  local -a cred=()
+  if [ -n "${GH_TOKEN:-}" ]; then
+    cred=(-c credential.helper= \
+          -c 'credential.helper=!f() { test "$1" = get && printf "username=x-access-token\npassword=%s\n" "$GH_TOKEN"; }; f')
+  fi
   ( cd "$clone" \
     && git add libs-manifest.json \
-    && git -c user.name="gmb-libs-publisher" -c user.email="gmbasic@maxxcom.it" \
-         commit -q -m "libs-manifest: aggiornato $(jq -r '.version' libs-manifest.json) ($(jq -r '.rids|keys|join(", ")' libs-manifest.json))" \
-    && git push -q origin HEAD:main )
-  echo "manifest pubblicato: https://github.com/$REPO/blob/main/libs-manifest.json"
+    && if git diff --cached --quiet; then
+         # NIENTE da pubblicare: il manifest del checkout è già quello su main. Prima `git commit`
+         # usciva con "nothing to commit" (rc 1) e il job `index` diventava ROSSO pur avendo fatto
+         # tutto bene (visto nel run 42866953867: osx-arm64 era già pubblicato dal run prima).
+         # Un no-op è un SUCCESSO: non c'è nulla da scrivere.
+         echo "manifest identico a quello pubblicato: niente da pushare"
+       else
+         git -c user.name="gmb-libs-publisher" -c user.email="gmbasic@maxxcom.it" \
+             commit -q -m "libs-manifest: aggiornato $(jq -r '.version' libs-manifest.json) ($(jq -r '.rids|keys|join(", ")' libs-manifest.json))" \
+           && git ${cred[@]+"${cred[@]}"} push -q origin HEAD:main \
+           && echo "manifest pubblicato: https://github.com/$REPO/blob/main/libs-manifest.json"
+       fi )
   rm -rf "$clone"
 }
 

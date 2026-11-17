@@ -35,7 +35,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 GROUP="${1:-}"; RID="${2:-}"
 [ -n "$GROUP" ] && [ -n "$RID" ] || { sed -n '2,30p' "$0" | sed 's/^# \{0,1\}//'; exit 2; }
 shift 2
-case "$GROUP" in boot|dev|support|core|engine|llmmotor|ffi|domain|runtime|runtime-core) ;; *) echo "gruppo non valido: $GROUP" >&2; exit 2;; esac
+case "$GROUP" in boot|dev|support|core|engine|llmmotor|ffi|domain|runtime|runtime-core|toolchain) ;; *) echo "gruppo non valido: $GROUP" >&2; exit 2;; esac
 LIBS_RID="$RID"   # regole di gruppo per RID di DESTINAZIONE
 
 SRC=""; TAG=""; YES=0; DRY=0; PRUNE=0; TREE=0; REPO="c-vision/GMBasicModules"
@@ -78,8 +78,21 @@ asset_name_tree() {
 # dispatcher: modalità piatta (runtime) o albero (dev)
 A() { if [ "$TREE" = "1" ]; then asset_name_tree "$1"; else asset_name "$1"; fi; }
 
+# sha256 portatile: su Git for Windows `shasum` può mancare (è uno script Perl), mentre `sha256sum`
+# e `openssl` ci sono. Con `shasum` assente il confronto diventava "vuoto vs vuoto" e il publisher
+# avrebbe saltato per "identico" un asset mai verificato.
+sha256_of() { # $1 = file
+  if command -v shasum >/dev/null 2>&1; then shasum -a 256 "$1" | awk '{print $1}';
+  elif command -v sha256sum >/dev/null 2>&1; then sha256sum "$1" | awk '{print $1}';
+  else openssl dgst -sha256 "$1" | awk '{print $NF}';
+  fi
+}
+
 asset_name() {
   local f="$1" stem ext
+  # TOOLCHAIN: l'archivio porta GIÀ il RID nel nome (`zig-0.17.0-osx-arm64.tar.xz`); aggiungerlo
+  # di nuovo darebbe `…-osx-arm64-osx-arm64.tar.xz`. Il nome del file È il nome dell'asset.
+  if [ "$GROUP" = "toolchain" ]; then printf '%s' "$f"; return 0; fi
   case "$f" in
     *.so|*.so.*) stem="${f%%.so*}"; ext="${f#"$stem"}";;
     *.dylib)     stem="${f%.dylib}"; ext=".dylib";;
@@ -96,7 +109,7 @@ while IFS= read -r f; do
   if [ "$TREE" = "1" ]; then b="${f#"$SRC"/}"; else b="$(basename "$f")"; fi
   [ -n "$(libs_group_pick "$GROUP" "$b")" ] || continue
   FILES+=("$b")
-done < <(if [ "$TREE" = "1" ]; then find "$SRC" -type f \( -name "*.h" -o -name "*.hpp" -o -name "*.a" -o -name "*.dylib" -o -name "*.so" -o -name "*.so.*" -o -name "*.dll" -o -name "*.pc" \) | sort; else find "$SRC" -maxdepth 1 -type f \( -name "*.dylib" -o -name "*.so" -o -name "*.so.*" -o -name "*.dll" -o -name "*.metallib" \) | sort; fi)
+done < <(if [ "$TREE" = "1" ]; then find "$SRC" -type f \( -name "*.h" -o -name "*.hpp" -o -name "*.a" -o -name "*.dylib" -o -name "*.so" -o -name "*.so.*" -o -name "*.dll" -o -name "*.pc" \) | sort; else find "$SRC" -maxdepth 1 -type f \( -name "*.dylib" -o -name "*.so" -o -name "*.so.*" -o -name "*.dll" -o -name "*.metallib" -o -name "*.tar.xz" \) | sort; fi)
 [ "${#FILES[@]}" -gt 0 ] || { echo "nessun file del gruppo '$GROUP' in $SRC" >&2; exit 1; }
 
 echo "== per-file: gruppo=$GROUP rid=$RID tag=$TAG file=${#FILES[@]} (repo=$REPO)" >&2
@@ -174,7 +187,7 @@ trap 'rm -rf "$WORK"' EXIT
 UPLOAD=()
 for f in "${FILES[@]}"; do
   a="$(A "$f")"
-  ours="$(shasum -a 256 "$SRC/$f" | awk '{print $1}')"
+  ours="$(sha256_of "$SRC/$f")"
   have="$(published_sha "$a")"
   if [ -n "$have" ]; then
     if [ "$have" = "$ours" ]; then echo "  = $a (già pubblicato, identico)" >&2; continue; fi
@@ -231,7 +244,7 @@ fi
 
 # TSV per l'indice: name, sha256, size, url (sha ricalcolato sui byte caricati)
 for f in "${FILES[@]}"; do
-  sha=$(shasum -a 256 "$SRC/$f" | awk '{print $1}')
+  sha=$(sha256_of "$SRC/$f")
   size=$(stat -f %z "$SRC/$f" 2>/dev/null || stat -c %s "$SRC/$f")
   printf '%s\t%s\t%s\t%s\n' "$f" "$sha" "$size" \
     "https://github.com/$REPO/releases/download/$TAG/$(A "$f")"
