@@ -4034,8 +4034,7 @@ static void gmb_ffi_cb_closure_handler(void* user, void* ret, void** args)
     int n = c->n > 64 ? 64 : (c->n < 0 ? 0 : c->n);
     for (int i = 0; i < n; i++)
         a[i] = ((c->kind_mask >> i) & 1ull) ? (double)*(int64_t*)args[i] : *(double*)args[i];
-    double r = gmb_vm_call_closure_sync_n(c->vm, c->task, c->closure, c->addr, n > 0 ? a : NULL, n);
-    if (c->ret_kind == 2) return;
+    double r = gmb_vm_call_closure_sync_n(c->vm, c->task, c->closure, c->addr, n > 0 ? a : NULL, n);    if (c->ret_kind == 2) return;
     if (c->ret_kind == 1) { if (ret) *(int64_t*)ret = (int64_t)r; return; }
     if (ret) *(double*)ret = r;
 }
@@ -16266,10 +16265,18 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                     int cbKind = (callbackParamKindMask & (1ull << i)) != 0 ? 1 : 0;
                     int slot = -1;
                     void* tramp;
-                    if (hasCbSigTable)
+                    if (hasCbSigTable && callbackParamArity[i] < 128)
                     {
                         /* Firma per-slot (2026-11-11): closure libffi — kind misto e arità 0-64,
-                         * nessun limite di 2 callback concorrenti della stessa forma. */
+                         * nessun limite di 2 callback concorrenti della stessa forma.
+                         * SOLO per i callback che la tabella DESCRIVE: le forme VETTORIALI
+                         * (arità >= 128, es. `FUNCTION(t) AS ARRAY`) non hanno riga nella
+                         * tabella e devono continuare a usare il pool qui sotto. Prima
+                         * finivano anche loro nella closure, con arità 0 e ritorno double: la
+                         * funzione nativa le chiamava con un argomento e leggeva 0 come
+                         * puntatore (`VECCALC.LINESCALAR` dava 0 invece di 2π — sweep
+                         * 2026-11-17; `LINEWORK`, con DUE callback vettoriali, non aveva la
+                         * tabella e quindi funzionava). */
                         void* handle = NULL;
                         tramp = gmb_ffi_cb_make_closure(vm, task, cl, addr, cbSigArity[i],
                                                         cbSigKindMask[i], cbSigRetKind[i], &handle);
