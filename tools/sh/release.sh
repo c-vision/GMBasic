@@ -86,7 +86,10 @@ needed_dylibs() {
     printf '%s\n' libgmb_eval libgmb_bsp
 }
 needed_bins() {
-    printf '%s\n' gmb gmbnative gmbchunk gmbadmin gmb_vm_host gmblsp gmblibs gmbfetch gmbbrains gmbfixtures gmbimgdiff gmbtheme
+    # `gmbrepl`/`gmbnotebook` sono la REPL e il notebook C (P4 del piano Release-1.0): senza,
+    # lo zip consegna il compilatore ma non l'ambiente interattivo che il README documenta.
+    printf '%s\n' gmb gmbnative gmbchunk gmbadmin gmb_vm_host gmblsp gmbrepl gmbnotebook \
+                  gmblibs gmbfetch gmbbrains gmbfixtures gmbimgdiff gmbtheme
 }
 
 build_all() {
@@ -119,8 +122,12 @@ rm -rf "$STAGE"
 mkdir -p "$STAGE/bin/libs/$RID" "$STAGE/GMBasic/native" "$STAGE/shared" "$STAGE/LLMEnv"
 
 copied=0
-cp_one() {  # <src-rel> <dst>
-    local src="$ROOT/$1" dst="$2"
+cp_one() {  # <src: relativo a ROOT oppure assoluto> <dst>
+    local src="$1" dst="$2"
+    case "$src" in
+        /*) ;;                       # già assoluto: usato com'è (LLMEnv è fuori dal repo)
+        *)  src="$ROOT/$src" ;;
+    esac
     [ -e "$src" ] || return 1
     mkdir -p "$(dirname "$dst")"
     if [ -d "$src" ]; then cp -R "$src" "$dst"; else cp -p "$src" "$dst"; fi
@@ -224,15 +231,37 @@ done < <(find "$ROOT/GMBasic/native" -name "libgmb_*.a" -path "*/build/*" 2>/dev
 for d in settings include Controls; do cp_one "shared/$d" "$STAGE/shared/$d"; done
 
 # LLMEnv (Apache-2.0): header + ABI + licenza. Se non c'è, `gmb doctor --fix` la installa.
+# NOTA (2026-11-17): qui si usava `realpath --relative-to`, che è GNU coreutils e su macOS non
+# esiste → i `cp_one` fallivano con il path assoluto prefissato da $ROOT e l'artefatto usciva con
+# il SOLO `ABI/`: `LLM_ROOT` (obbligatorio in `gmb doctor`) risultava MANCANTE e `IMPORT AI` non
+# compilava da zip. Ora `cp_one` accetta path assoluti e la presenza degli header è verificata.
+REQ_LLM_ENV=0
 for cand in "$ROOT/../LLMEnv" "$HOME/Documents/Projects/LLMEnv"; do
     [ -d "$cand" ] || continue
-    cp_one "${cand#$ROOT/}/ABI" "$STAGE/LLMEnv/ABI" 2>/dev/null || true
-    for d in LLMCodec/include LLMJinja LLMEngine/include LLMDesc LLMToken/include; do
-        [ -d "$cand/$d" ] && cp_one "$(realpath --relative-to="$ROOT" "$cand/$d" 2>/dev/null || echo "$cand/$d")" "$STAGE/LLMEnv/$d" 2>/dev/null
+    cp_one "$cand/ABI" "$STAGE/LLMEnv/ABI" || true
+    # Gli `-I` del driver (`gmb_cc_defaults.c`, lista `llmrel`) puntano a QUESTE sottocartelle:
+    # l'insieme deve essere identico, altrimenti un programma testuale non compila perché un
+    # header di `gmbllm/include` include un pezzo di LLMEnv che non c'è (era il caso di
+    # `llmengine_plugin.h`, in `LLMEngine/plugin`: `gmb build` da zip falliva su QUALUNQUE
+    # programma). Si copiano SOLO gli header, non i sorgenti.
+    for d in LLMCodec/include LLMJinja LLMEngine/moe/include LLMEngine/asr/include \
+             LLMEngine/mlx LLMEngine/include LLMEngine/Options LLMEngine/plugin \
+             LLMDesc LLMToken/include; do
+        [ -d "$cand/$d" ] || continue
+        while IFS= read -r h; do
+            cp_one "$cand/$d/$h" "$STAGE/LLMEnv/$d/$h"
+        done < <(cd "$cand/$d" && find . -type f \( -name '*.h' -o -name '*.hpp' -o -name '*.inl' \) | sed 's|^\./||')
     done
-    for f in LICENSE NOTICE; do [ -f "$cand/$f" ] && cp_one "$(realpath --relative-to="$ROOT" "$cand/$f" 2>/dev/null || echo "$cand/$f")" "$STAGE/LLMEnv/$f"; done
+    for f in LICENSE NOTICE; do [ -f "$cand/$f" ] && cp_one "$cand/$f" "$STAGE/LLMEnv/$f"; done
+    REQ_LLM_ENV=1
     break
 done
+# `gmb doctor` richiede LLM_ROOT: la cartella deve essere VALIDA, cioè con LLMCodec/include
+# (`gmb_resolve_llm_root` la riconosce con quella sonda). Artefatto muto = release rotta.
+if [ "$REQ_LLM_ENV" = 1 ] && [ ! -d "$STAGE/LLMEnv/LLMCodec/include" ]; then
+    die "LLMEnv incompleta nello staging (manca LLMCodec/include): LLM_ROOT sarebbe MANCANTE"
+fi
+[ "$REQ_LLM_ENV" = 1 ] || say "attenzione: LLMEnv non trovata — l'artefatto richiederà 'gmb doctor --fix'"
 
 # ── 3. manifest con sha256 di ogni file ──────────────────────────────────────────────────────
 MAN="$STAGE/release-manifest.json"
