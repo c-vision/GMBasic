@@ -1,4 +1,5 @@
 ' Minitest TUI CONFIRMATIONBOX — parità 4 backend (statement widget TUI).
+' EXPECT: OK-confirmationbox
 IMPORT CONTROLS
 SUB Main()
   DIM v AS INTEGER

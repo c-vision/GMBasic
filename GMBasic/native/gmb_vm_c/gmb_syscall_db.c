@@ -941,6 +941,75 @@ int n;
     return -1; /* non gestito */
 }
 
+/* ---- LEDGER: DELETE (h, tx_id) ----
+ * Mancava sul VM/C: il syscall cadeva nel default (nessun handler) → il comando non faceva
+ * NULLA e COUNT restava invariato (divergenza con C99Native/IL/PCode trovata da
+ * ledger/ledger_all.bas: afterDelete 1 invece di 0). L'handle è ESPLICITO, non
+ * g_last_ledger, come LEDGER ADD/EDIT. */
+static int gmb_sys_GMB_SYS_LEDGER_DELETE(gmb_vm_t* vm, gmb_task_t* task, int code, int argc)
+{
+    (void)vm; (void)code; (void)argc;
+    {
+        gmb_stack_entry_t e = gmb_task_pop(task);          /* tx id */
+        int64_t txid = e.type == 1 ? (int64_t)e.num : 0;
+        gmb_obj_release(e.ref);
+        e = gmb_task_pop(task);                            /* handle */
+        int64_t h = (e.type == 1 && (int64_t)e.num > 0) ? (int64_t)e.num : gmb_db_current_ledger();
+        gmb_obj_release(e.ref);
+        int rc = gmb_db_ledger_delete(h, txid);
+        push_num_entry(task, rc == GMB_DB_OK ? -1.0 : 0.0, GMB_BT_NUMBER);   /* -1 = ok (BIT) */
+        return 0;
+    }
+}
+
+/* ---- LEDGER: SAVE / CLOSE / PACK (h) — mancavano sul VM/C (syscall senza handler) ---- */
+static int gmb_sys_GMB_SYS_LEDGER_SAVE(gmb_vm_t* vm, gmb_task_t* task, int code, int argc)
+{
+    (void)vm; (void)code; (void)argc;
+    {
+        gmb_stack_entry_t e = gmb_task_pop(task);
+        int64_t h = (e.type == 1 && (int64_t)e.num > 0) ? (int64_t)e.num : gmb_db_current_ledger();
+        gmb_obj_release(e.ref);
+        push_num_entry(task, gmb_db_ledger_save(h) == GMB_DB_OK ? -1.0 : 0.0, GMB_BT_NUMBER);
+        return 0;
+    }
+}
+static int gmb_sys_GMB_SYS_LEDGER_CLOSE(gmb_vm_t* vm, gmb_task_t* task, int code, int argc)
+{
+    (void)vm; (void)code; (void)argc;
+    {
+        gmb_stack_entry_t e = gmb_task_pop(task);
+        int64_t h = (e.type == 1 && (int64_t)e.num > 0) ? (int64_t)e.num : gmb_db_current_ledger();
+        gmb_obj_release(e.ref);
+        push_num_entry(task, gmb_db_ledger_close(h) == GMB_DB_OK ? -1.0 : 0.0, GMB_BT_NUMBER);
+        return 0;
+    }
+}
+static int gmb_sys_GMB_SYS_LEDGER_PACK(gmb_vm_t* vm, gmb_task_t* task, int code, int argc)
+{
+    (void)vm; (void)code; (void)argc;
+    {
+        gmb_stack_entry_t e = gmb_task_pop(task);
+        int64_t h = (e.type == 1 && (int64_t)e.num > 0) ? (int64_t)e.num : gmb_db_current_ledger();
+        gmb_obj_release(e.ref);
+        push_num_entry(task, gmb_db_ledger_pack(h) == GMB_DB_OK ? -1.0 : 0.0, GMB_BT_NUMBER);
+        return 0;
+    }
+}
+/* ---- LEDGER: VALIDATE (h) INTO v — -1 = valido (BIT BASIC), come IL/PCode ---- */
+static int gmb_sys_GMB_SYS_LEDGER_VALIDATE(gmb_vm_t* vm, gmb_task_t* task, int code, int argc)
+{
+    (void)vm; (void)code; (void)argc;
+    {
+        gmb_stack_entry_t e = gmb_task_pop(task);
+        int64_t h = (e.type == 1 && (int64_t)e.num > 0) ? (int64_t)e.num : gmb_db_current_ledger();
+        gmb_obj_release(e.ref);
+        /* BOOL (non NUMBER): CONVERSIONS.CSTR deve rendere "True"/"False", come C#/IL. */
+        push_num_entry(task, gmb_db_ledger_validate(h) ? -1.0 : 0.0, GMB_BT_BOOL);
+        return 0;
+    }
+}
+
 static int gmb_sys_GMB_SYS_LEDGER_BUDGET(gmb_vm_t* vm, gmb_task_t* task, int code, int argc)
 {
 int rc;
@@ -2592,6 +2661,11 @@ static const gmb_sys_impl_t gmb_sys_impl[] = {
     { GMB_SYS_SPEED_SEEK, gmb_sys_GMB_SYS_SPEED_SEEK },
     { GMB_SYS_LEDGER_ADD, gmb_sys_GMB_SYS_LEDGER_ADD },
     { GMB_SYS_LEDGER_EDIT, gmb_sys_GMB_SYS_LEDGER_EDIT },
+    { GMB_SYS_LEDGER_DELETE, gmb_sys_GMB_SYS_LEDGER_DELETE },
+    { GMB_SYS_LEDGER_SAVE, gmb_sys_GMB_SYS_LEDGER_SAVE },
+    { GMB_SYS_LEDGER_CLOSE, gmb_sys_GMB_SYS_LEDGER_CLOSE },
+    { GMB_SYS_LEDGER_PACK, gmb_sys_GMB_SYS_LEDGER_PACK },
+    { GMB_SYS_LEDGER_VALIDATE, gmb_sys_GMB_SYS_LEDGER_VALIDATE },
     { GMB_SYS_LEDGER_BUDGET, gmb_sys_GMB_SYS_LEDGER_BUDGET },
     { GMB_SYS_LEDGER_VARIANCE, gmb_sys_GMB_SYS_LEDGER_VARIANCE },
     { GMB_SYS_LEDGER_ACCOUNTS, gmb_sys_GMB_SYS_LEDGER_ACCOUNTS },

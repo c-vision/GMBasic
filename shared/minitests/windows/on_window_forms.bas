@@ -1,7 +1,7 @@
 ' MiniTest: ON WINDOW — forme dell'azione e forme della clausola OF.
 ' Copre: CALL sub(), GOSUB sub, GOTO <label locale>, GOSUB <label locale>, STOP (deregistra),
 ' OF <espressione> (handle calcolato) e forma SENZA OF (wildcard: vale per ogni finestra).
-' Gli handler girano come TASK GPM: si osservano i flag dopo un SLEEP 0 (contratto della guida).
+' Gli handler girano come TASK GPM: si osservano i flag dopo un SLEEP 1 (contratto della guida).
 ' Verifica su exit code; FUNCTION Main ritorna 1 se un assert fallisce.
 IMPORT WINDOWS
 SCREEN 0
@@ -48,18 +48,20 @@ FUNCTION Main() AS INTEGER
     ON WINDOW CLOSE OF 2 GOSUB OnRepA          ' sostituito dalla registrazione successiva
     ON WINDOW CLOSE OF 2 GOSUB OnRepB
 
-    ' SLEEP 0 fra un'azione e l'altra: gli handler sono task GPM e devono poter girare
-    ' prima dell'evento successivo (contratto documentato: un evento per volta).
+    ' SLEEP 1 fra un'azione e l'altra: gli handler sono task GPM e devono poter girare
+    ' prima dell'evento successivo (contratto documentato: un evento per volta). SLEEP 1 e
+    ' non 0: il park reale garantisce che il task dell'evento parta; con SLEEP 0 il solo
+    ' yield non lo garantiva → l'asserzione poteva leggere i flag a zero (FLAKY su PCode).
     WINDOW f1 MINIMIZE
-    SLEEP 0
+    SLEEP 1
     WINDOW f2 MINIMIZE
-    SLEEP 0
+    SLEEP 1
     WINDOW f1 RESTORE
-    SLEEP 0
+    SLEEP 1
     WINDOW f2 RESTORE
-    SLEEP 0
+    SLEEP 1
     WINDOW f2 ACTIVATE
-    SLEEP 0
+    SLEEP 1
     WINDOW SELECT 0                            ' i PRINT tornano sulla console, non nel buffer
 
     IF callN = 1 THEN PRINT "call-ok" ELSE fails = fails + 1
@@ -70,12 +72,12 @@ FUNCTION Main() AS INTEGER
     ' STOP: deregistra l'handler dell'evento (non deve più scattare).
     ON WINDOW CLOSE OF 1 STOP
     WINDOW f1 CLOSE
-    SLEEP 0
+    SLEEP 1
     IF labelN = 0 THEN PRINT "stop-ok" ELSE fails = fails + 1
 
     ' Una sola registrazione per (evento, handle): eseguito solo l'ultimo handler (repN = 1).
     WINDOW f2 CLOSE
-    SLEEP 0
+    SLEEP 1
     IF repN = 1 THEN PRINT "replace-ok" ELSE fails = fails + 1
 
     IF fails = 0 THEN

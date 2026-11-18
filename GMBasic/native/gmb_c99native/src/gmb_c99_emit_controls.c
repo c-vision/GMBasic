@@ -974,10 +974,14 @@ int emit_control_stmt(ctx_t* c, gmb_stmt_t* s)
         if (_iv) { emit_net_lhs(c, _iv); if (_iv->type == TY_STR) sb_put(&c->out, " = gmb_string_alloc(\"\"); "); else sb_put(&c->out, " = (gmb_double_t)0; "); }
         sb_put(&c->out, "}\n");
     } else if (strcasecmp(cname, "TAB") == 0 && nr >= 3 && (na < 6 || s->control_into > 0)) {
-        /* Factory polimorfica. Forme: x,y,items  |  x,y,w,items  (h default). */
+        /* Factory polimorfica. Forme: x,y,items  |  x,y,w,items  |  x,y,w,h,items.
+         * L'items è SEMPRE l'ULTIMO argomento scritto: con 5 argomenti (forma canonica TUI,
+         * `TAB row, col, width, height, tabs`) è a[4] — prendere a[3] passava l'ALTEZZA come
+         * lista di tab (divergenza C99Native: `CONTROL GETS "tb","items"` dava "3" invece di
+         * "X|Y" mentre IL/PCode/VM-C davano la lista giusta). */
         ind(c);
         sb_put(&c->out, "{ ");
-        ctl_split_csv(c, nr >= 4 ? a[3] : a[2], "__tb", "__tbn", NULL);
+        ctl_split_csv(c, nr >= 5 ? a[4] : (nr >= 4 ? a[3] : a[2]), "__tb", "__tbn", NULL);
         ctl_join_csv_from(c, "__tb", "__tbn", "__tbcsv");
         sb_put(&c->out, "gmb_control_add_tab((int)("); emit_expr_dflt(c, a[0], "0"); sb_put(&c->out, "), (int)("); emit_expr_dflt(c, a[1], "0");
         sb_put(&c->out, "), (int)("); if (nr >= 4) emit_expr_dflt(c, a[2], "200"); else sb_put(&c->out, "200"); sb_put(&c->out, "), __tbcsv, ");

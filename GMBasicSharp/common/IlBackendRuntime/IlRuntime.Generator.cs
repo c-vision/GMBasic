@@ -30,6 +30,7 @@ public sealed class IlGeneratorInstance
     private Thread? _thread;
     private object? _value;
     private Exception? _error;
+    private string? _traceText;
     private bool _done;
     private bool _abandoned;
 
@@ -58,6 +59,11 @@ public sealed class IlGeneratorInstance
             var e = _error;
             _error = null;
             _done = true;
+            /* STACK TRACE: il corpo ha girato su un ALTRO thread, con la sua catena. I suoi
+             * frame vanno anteposti a quelli del chiamante, come sulle gambe native dove la
+             * catena è condivisa tra corpo e chiamante (l'emitter IL li emette nel prologo del
+             * generatore, quindi qui sono già in _traceText). */
+            IlRuntime.SetTracePrefix(_traceText);
             throw e;
         }
         if (_done) throw StopIteration();
@@ -93,8 +99,16 @@ public sealed class IlGeneratorInstance
         }
         catch (ThreadInterruptedException) { /* consumatore sparito */ }
         catch (TargetInvocationException tie) when (tie.InnerException is ThreadInterruptedException) { }
-        catch (TargetInvocationException tie) { _error = tie.InnerException ?? tie; }
-        catch (Exception ex) { _error = ex; }
+        catch (TargetInvocationException tie)
+        {
+            _error = tie.InnerException ?? tie;
+            _traceText = IlRuntime.TraceText();   /* catena del corpo, PRIMA di lasciare il thread */
+        }
+        catch (Exception ex)
+        {
+            _error = ex;
+            _traceText = IlRuntime.TraceText();
+        }
         finally
         {
             _done = true;

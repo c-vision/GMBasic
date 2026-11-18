@@ -61,6 +61,8 @@ typedef struct {
                       int is_interface;                     /* 2.7(d)p2b: INTERFACE (no struct/ctor) */
                       int is_udt;                           /* 2.7(d)p2b: TYPE/UDT (assegnamento = copia valore) */
                       int is_packed;                        /* PACKED TYPE: layout = somma dei campi (canone SIZEOF) */
+                      int is_union;                         /* UNION: campi sovrapposti (union anonima C11) */
+                      int fbits[128];                       /* BITFIELD: larghezza in bit per campo (0 = normale) */
                       char impl[8][40]; int nimpl;          /* 2.7(d)p2b: interfacce IMPLEMENTS */
                       char fname[128][40]; char ftype[128][40];
                       int nstatics; char sname[8][40]; char stype[8][40];
@@ -99,6 +101,16 @@ typedef struct {
     /* LIBRARY "nome": produce una libreria condivisa (.gmblib) — niente main; i PUBLIC
      * FUNCTION/SUB top-level diventano simboli esportati <lib>_<nome>. */
     int lib_mode;
+    /* OPTION STRICT ON: ogni nome usato deve essere dichiarato (nessuna variabile implicita).
+     * Parità con il linker C#: i nomi non risolti producono un errore di compilazione con lo
+     * stesso messaggio. 0 = modalità normale (variabili implicite ammesse). */
+    int option_strict;
+    /* Identità dei BLOCCHI (scope di blocco, spec §2.1/§6): ogni corpo di costrutto
+     * (IF/ELSE, cicli, SELECT, TRY/CATCH/FINALLY) riceve un id monotono. Una DIM/LOCAL/LET
+     * dentro un blocco emette una dichiarazione C nel blocco (shadow) marcata con l'id; alla
+     * chiusura (emit_block) l'id torna 0 e il nome torna a indicare la variabile esterna. */
+    int cur_blk;
+    int blk_seq;
     char lib_name[96];
     /* FASE 2.6(j): remap identificatori per variabili catturate dalle closure:
      * nome BASIC → espressione C (es. "fattore" → "__clo_Moltiplica.fattore"). */
@@ -116,6 +128,12 @@ typedef struct {
     /* FASE 2.6(k): RETURN/GOTO che attraversano FINALLY (parity oracolo     * __defer_retval/ret_cont): stack dei TRY-with-FINALLY attivi e continuazioni
      * registrate dai siti RETURN/GOTO (eseguite DOPO il body FINALLY). */
     struct { int id; gmb_stmt_t* s; } try_fin_stack[16]; int n_try_fin;
+    /* TRY/CATCH (senza FINALLY) ATTIVI: id dei `__tryprev_<id>` da RIPRISTINARE quando si
+     * esce dal corpo con RETURN. Senza, il `jmp_buf` della TRY resta installato in
+     * `gmb_err_set_handler` dopo il ritorno: il primo errore NON gestito successivo fa
+     * longjmp in un frame morto → SIGSEGV (bug reale, misurato con
+     * `TRY ... RETURN ... END TRY` e poi un `ERROR` fatale). */
+    int try_ids[16]; int n_try_ids;
     struct { int try_id; int cont_id; int is_return; char label[64]; } ret_conts[64]; int n_ret_conts;
     int ret_cont_uid;
     /* FASE 2.6(w): AI.BLACKBOARDWAIT/AI.AGENTSWARM async (parity FETCH espressione, FASE 2.6p):
@@ -155,6 +173,15 @@ typedef struct {
     /* Callback FFI (2026-09-29): pool di trampolini nativi emesso UNA SOLA VOLTA per
      * programma — vedi emit_ffi_callback_pool. */
     int ffi_callback_pool_emitted;
+    /* Callback FFI con firma PER-SLOT (2026-11-11): trampolini generati al bisogno, uno per
+     * (wrapper, parametro) — coprono firme interne MISTE e arità fino a 64, che il pool
+     * storico (firma omogenea, arità 0-8) non rappresentava. Emessi in un buffer a parte
+     * (ffi_cb_tramps) riversato nel preludio del file, quindi definiti prima dei wrapper. */
+    sb_t ffi_cb_tramps;
+    char ffi_cb_uniq_key[128][64];
+    int ffi_cb_uniq_id[128];
+    int ffi_cb_uniq_emitted[128];
+    int n_ffi_cb_uniq;
     char error[512];
     /* Canone EXIT/CONTINUE con etichetta 2026-09-30: etichetta del loop in emissione
      * (impostata per adiacenza in emit_tracked, letta all'ingresso dei loop). */
@@ -190,6 +217,10 @@ typedef struct {
     int ffi_var_n;
     int ffi_var_fn[128];
     char ffi_var_key[128][65];
+    /* TESTO SORGENTE (ERR.SourceLineText): il sorgente CONCATENATO passato al parser, di
+     * proprietà del driver (vive per tutta l'emissione). Indice 0 = riga 1, la stessa
+     * numerazione dei `#line` e di `gmb_trace_line`. NULL = non incorporare il blob. */
+    const char* src_text;
 } ctx_t;
 
 #endif /* GMB_C99_EMIT_CTX_H */

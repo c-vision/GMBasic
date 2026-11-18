@@ -120,6 +120,10 @@ public static class IlDisassembler
             var name = mr.GetString(m.Name);
             var declType = mr.GetTypeDefinition(m.GetDeclaringType());
             var typeName = mr.GetString(declType.Name);
+            // Metodi senza corpo IL (RVA 0): abstract, runtime-implemented (ctor/Invoke di un
+            // delegate, es. quelli generati a runtime per arità > 16) — GetMethodBody lancerebbe
+            // "Invalid relative virtual address (RVA): 0x00000000".
+            if (m.RelativeVirtualAddress == 0) continue;
             var body = pe.GetMethodBody(m.RelativeVirtualAddress);
             if (body == null) continue;
 

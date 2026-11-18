@@ -132,6 +132,13 @@ public sealed partial class Compiler
                 {
                     EmitByte((byte)OpCode.OP_LOAD_LOCAL); EmitShort((ushort)localIndex);
                 }
+                else if (_staticVars.TryGetValue(normalizedName, out var staticSymbolId))
+                {
+                    // STATIC della procedura corrente: lo storage persistente è l'area statica
+                    // del runtime (stessa degli OP_*_STATIC_FIELD dei campi di classe).
+                    EmitByte((byte)OpCode.OP_LOAD_STATIC_FIELD);
+                    EmitShort((ushort)staticSymbolId);
+                }
                 else if (TryResolveOrRegisterGlobal(normalizedName, out var globalIndex))
                 {
                     EmitByte((byte)OpCode.OP_LOAD_GLOBAL);

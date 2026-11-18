@@ -1,1 +1,2 @@
+' EXPECT: 3
 PRINT ROUND(2.6)

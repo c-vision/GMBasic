@@ -1,4 +1,5 @@
 ' Minitest TUI ALERTBOX — parità 4 backend (statement widget TUI, display-only).
+' EXPECT: OK-alertbox
 IMPORT CONTROLS
 SUB Main()
   ALERTBOX 5, 2, 30, 6, "Attenzione"

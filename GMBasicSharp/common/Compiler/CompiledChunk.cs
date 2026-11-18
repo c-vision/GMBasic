@@ -8,12 +8,12 @@ namespace Compiler;
 public sealed class CompiledChunk
 {
     /// <summary>
-    /// Versione del formato A1/GMBC. **2** = descrittore FFI per argomento (2026-11-06);
-    /// **1** = formato storico (maschere), valido solo per chunk SENZA chiamate FFI.
-    /// I chunk compilati in-process sono sempre 2; il valore arriva da
-    /// <c>ChunkA1Serializer.Deserialize</c> per i chunk letti da file.
+    /// Versione del formato A1/GMBC. **3** = firme callback per-slot in coda a OP_CALL_FFI_T
+    /// (2026-11-11); **2** = descrittore FFI per argomento (2026-11-06); **1** = formato storico
+    /// (maschere), valido solo per chunk SENZA chiamate FFI. I chunk compilati in-process sono
+    /// sempre 3; il valore arriva da <c>ChunkA1Serializer.Deserialize</c> per i chunk da file.
     /// </summary>
-    public int FormatVersion { get; set; } = 2;
+    public int FormatVersion { get; set; } = 3;
 
     /// <summary>
     /// La sequenza di byte che rappresentano le istruzioni P-Code.
@@ -120,6 +120,14 @@ public sealed class CompiledChunk
     public string[] GlobalNames { get; set; } = [];
 
     /// <summary>
+    /// TESTO delle righe sorgente, indice = SourceLineIndex (0 = riga 1) — la
+    /// stessa numerazione di <see cref="Lines"/> e di <c>ERR.LineNumber</c>. Serve a
+    /// <c>ERR.SourceLineText</c>/<c>e.SourceLineText</c>: il testo viaggia nel chunk così la VM
+    /// lo riporta anche eseguendo un binario senza sorgenti accanto. Coda opzionale del
+    /// formato A1: i chunk vecchi non ce l'hanno ("" come prima).
+    /// </summary>
+    public string[] SourceTexts { get; set; } = [];
+    /// <summary>
     /// Nomi delle variabili locali di procedura, chiave = indirizzo Ip di inizio procedura,
     /// valore = nomi per slot (indice array = slot; null = slot senza nome noto, es. temporanei).
     /// Popolato a compile-time dai nomi dichiarati a LIVELLO PROCEDURA (return-slot, parametri,
@@ -131,6 +139,16 @@ public sealed class CompiledChunk
     /// (ChunkA1Serializer/gmb_chunk.c) resta intatto; la VM/C riceverà i nomi per altra via (fase 2).
     /// </summary>
     public Dictionary<int, string?[]> ProcedureLocalNames { get; } = new();
+
+    /// <summary>
+    /// DEFAULT dei parametri OPTIONAL per procedura (chiave = indirizzo Ip di inizio): indice =
+    /// posizione del parametro, valore = default LETTERALE (double/string) o null se il parametro
+    /// è obbligatorio (o il default non è letterale). Serve alla VM/C per invocare una procedura
+    /// dal frammento `EVAL`/`&` completando gli argomenti OMESSI come fa il call-site C#
+    /// (il chunk non ha l'AST). Serializzato in coda A1/GMBC (i loader vecchi ignorano i byte
+    /// extra): prima, `EVAL("PMT(r,n,pv)")` sulla gamba VM/C lasciava 0 al posto del default.
+    /// </summary>
+    public Dictionary<int, object?[]> ProcedureParamDefaults { get; } = new();
 
     /// <summary>
     /// Riversa le tabelle locali di un chunk figlio (lambda, LOCAL SUB/FUNCTION) nel chunk

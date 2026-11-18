@@ -54,6 +54,12 @@ public static class PCodeVmRunner
     {
         ArgumentNullException.ThrowIfNull(chunk);
 
+        /* Stato READ del processo: i campi @GET registrati dal programma PRECEDENTE (senza
+         * READ) non devono entrare nel primo READ di questo. Vedi
+         * PCodeProcessor.ResetNativeReadState. */
+        PCodeProcessor.ResetNativeReadState();
+
+
         // PrepareGraphicsHost DEVE girare prima di costruire HeadlessRuntimeHost: imposta
         // HeadlessRuntimeHost.DefaultGraphics (letto dal costruttore), altrimenti la PCodeVM
         // resta headless per sempre anche se SCREEN viene chiamato (stesso ordine richiesto

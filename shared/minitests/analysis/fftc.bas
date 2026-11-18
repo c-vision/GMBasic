@@ -1,3 +1,4 @@
+' EXPECT: 0  0  1  0|0  1  0  1
 SUB Main()
   DIM x(3) AS DOUBLE = {1, 0, -1, 0}
   DIM imz(3) AS DOUBLE = {0, 0, 0, 0}

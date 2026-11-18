@@ -162,6 +162,14 @@ public sealed partial class Compiler
         // L'unico caso non gestito è un `PRINT` seguito da un commento `REM`,
         // che il parser potrebbe non considerare come "senza separatore finale".
         // La logica attuale è sufficientemente robusta per la maggior parte dei casi.
+        //
+        // CHIUSURA DELLO STAGING: un PRINT senza newline deve comunque COMMETTERE il
+        // parziale a fine istruzione (OP_PRINT_FLUSH), come fa C99Native
+        // (gmb_print_stage_end(1) sempre). Senza, lo staging restava pendente e il PRINT
+        // di una procedura chiamata DOPO (frame diverso) lo sospendeva → ordine invertito
+        // (opt/opt_forward_array: "outer=" finiva in fondo all'output).
+        var endsWithNewline = stmt.Arguments.Length > 0 && stmt.Arguments[^1].Separator is null;
+        if (!endsWithNewline) EmitByte((byte)OpCode.OP_PRINT_FLUSH);
     }
     
     /// <summary>

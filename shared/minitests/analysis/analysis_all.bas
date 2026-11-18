@@ -83,7 +83,8 @@ SUB A_udt()
   PRINT ROUND(r.Intercept, 12)
   PRINT ROUND(r.R2, 12)
   DIM d(4) AS DOUBLE = {1, 2, 10, 11}
-  DIM ko(5) AS DOUBLE
+  ' out() = centri(k) + assegnazioni(n): k=2, n=5 → servono 7 slot (0..6).
+  DIM ko(6) AS DOUBLE
   CALL MULTIVARIATE.KMEANS(d, 2, ko)
   PRINT ko(0)
   PRINT ko(1)

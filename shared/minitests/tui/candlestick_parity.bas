@@ -1,4 +1,5 @@
 ' Minitest TUI CANDLESTICK — parità 4 backend (candele OHLC: celle in TEXT, pixel in GRAPHICS).
+' EXPECT: OK-candlestick
 IMPORT CONTROLS
 SUB Main()
   ' Dataset demo (CSV vuoto).

@@ -1,3 +1,4 @@
+' EXPECT: 0
 SUB Main()
   PRINT SIN(0)
 END SUB

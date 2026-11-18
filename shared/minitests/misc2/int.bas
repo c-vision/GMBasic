@@ -1,3 +1,4 @@
+' EXPECT: 3
 SUB Main()
   PRINT INT(3.9)
 END SUB

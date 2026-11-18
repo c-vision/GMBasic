@@ -1,3 +1,4 @@
+' EXPECT: 3
 SUB Main()
   PRINT MIN(3,7)
 END SUB

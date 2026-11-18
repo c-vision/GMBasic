@@ -32,7 +32,15 @@ fi
 
 # 1) lib statiche AI (libgmb_runtime.a, libgmbllm_core.a, libgmbllm_train.a) + dylib gmb_ai_llm/gmb_runtime_ai.
 #    NIENTE `|| true`: se il build AI fallisce la build del consumer DEVE fallire (mai stale silenzioso).
-cmake --build "$RT" --target gmb_runtime gmb_runtime_ai gmbllm_core gmbllm_train gmb_ai_llm -j 6 >/dev/null
+  cmake --build "$RT" --target gmb_runtime gmb_runtime_ai gmbllm_core gmbllm_train gmb_ai_llm -j 6 >/dev/null
+# 1b) `gmb_matrix_flat` (NON AI): ABI piatta dei kernel matriciali per il P/Invoke dei backend
+#     managed (IL/PCode → stessa sorgente di VM/C e C99Native). Comando SEPARATO: su un albero
+#     di build non ancora riconfigurato il target non esiste e `make` fallirebbe in fase di
+#     parsing; se manca, si riconfigura una volta (riusa la cache).
+if ! cmake --build "$RT" --target gmb_matrix_flat -j 6 >/dev/null 2>&1; then
+  cmake -S "$ROOT/native/gmb_runtime_c" -B "$RT" >/dev/null
+  cmake --build "$RT" --target gmb_matrix_flat -j 6 >/dev/null
+fi
 # 2) dylib gmb_ai_modelio (model compiler, P/Invoke) — albero separato (gmb_compiler_c).
 #    Se il build fallisce -> ERRORE (prima c'era `|| true` che lasciava una dylib STALE).
 if [ -d "$CC" ]; then

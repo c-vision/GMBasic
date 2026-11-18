@@ -55,4 +55,21 @@ int gmb_call_invoke_slots(void* fn, int n, const gmb_call_slot* slots,
                           const int* ret_field_off, int ret_struct_size,
                           void* ret);
 
+/* ── Closure (callback NATIVA → codice BASIC, 2026-11-11) ──────────────────────────────
+ * Una callback FFI è un function pointer che il codice nativo invoca; la sua firma è quella
+ * dichiarata in BASIC (`AS FUNCTION(a AS LONG, b AS DOUBLE) AS DOUBLE`), quindi NON è
+ * omogenea in generale e può avere arità > 8. Anziché un pool di trampolini pre-compilati
+ * (una funzione C per ogni combinazione kind×arità) si usa una closure libffi: il CIF è
+ * costruito a runtime dalla firma per-slot e `ffi_prep_closure_loc` genera il codice
+ * eseguibile che richiama `handler(user, ret, args)`.
+ *
+ * `param_is_int[i]` != 0 → parametro i intero/pointer a 8 byte (int64_t), 0 → double.
+ * `ret_kind`: 0 = double, 1 = int64_t, 2 = void.
+ * `*out_handle` riceve l'handle da passare a gmb_closure_free (il puntatore al codice è il
+ * valore di ritorno). Ritorna NULL se la firma non è preparabile. */
+void* gmb_closure_create(int n, const unsigned char* param_is_int, int ret_kind,
+                         void (*handler)(void* user, void* ret, void** args),
+                         void* user, void** out_handle);
+void gmb_closure_free(void* handle);
+
 #endif /* GMB_CALL_H */

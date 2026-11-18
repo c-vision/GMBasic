@@ -1,4 +1,5 @@
 ' Minitest TUI LISTBOX + colore Clipper (spec "W+/B") — parità 4 backend.
+' EXPECT: OK-listbox-color
 IMPORT CONTROLS
 SUB Main()
   DIM v AS INTEGER

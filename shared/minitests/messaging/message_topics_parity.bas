@@ -1,4 +1,5 @@
 ' Minitest MESSAGE topic filtering — due sottoscrizioni, ogni PUBLISH va solo al topic giusto.
+' EXPECT: RX sx x|RX sy y|DONE
 IMPORT MESSAGE
 SUB H(id AS STRING, topic AS STRING, payload AS STRING)
   PRINT "RX "; id; " "; topic

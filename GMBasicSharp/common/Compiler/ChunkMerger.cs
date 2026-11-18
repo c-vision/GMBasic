@@ -240,33 +240,11 @@ public static class ChunkMerger
                     CopyU16(); CopyU16(); CopyU8(); break;
                 case OpCode.OP_CALL_FFI_T:
                 {
-                    // FFI tipizzata (2026-10, fix): il formato completo è libIndex(u16)+
-                    // nameIndex(u16)+argCount(u8)+kind(u8)+scalarKindMask(u8)+arrayMask(u8)+
-                    // arrayElemIntMask(u8)+stringMask(u8)+retIsString(u8)+byrefScalarMask(u8)+
-                    // byrefScalarElemIntMask(u8)+udtParamFieldCount[8]+udtParamFieldKindMask[8]+
-                    // retUdtFieldCount+retUdtFieldKindMask+callbackParamArity[8]+
-                    // callbackParamKindMask+callbackParamHasRetMask, poi una coda a lunghezza
-                    // VARIABILE di due u16 (nome+SymbolId) per ogni foglia UDT (parametri poi
-                    // ritorno) — vedi Compiler.Expressions.cs/Disassembler.cs OP_CALL_FFI_T.
-                    // Il vecchio `CopyU16(); CopyU16(); CopyU8(); CopyU8();` si fermava dopo
-                    // 'kind', disallineando il resto del chunk per QUALUNQUE OP_CALL_FFI_T
-                    // (sempre presente da quando array/STRING/BYREF/UDT/callback sono stati
-                    // introdotti, 2026-09-28/29 — bug preesistente, mai esercitato prima
-                    // perché nessun REQUIRE con una FFI tipizzata passava da questa pass).
-                    // Nessuno di questi operandi è un indirizzo di salto qui: solo avanzare
-                    // 'o', nessun patch (coerente con OP_CALL_FFI sopra).
-                    CopyU16(); CopyU16(); CopyU8();
-                    CopyU8(); CopyU8();
-                    CopyU8(); CopyU8(); CopyU8(); CopyU8();
-                    CopyU8(); CopyU8();
-                    var udtTotal = 0;
-                    for (var pi = 0; pi < 8; pi++) { udtTotal += o < code.Count ? code[o] : 0; CopyU8(); }
-                    for (var pi = 0; pi < 8; pi++) CopyU8();
-                    udtTotal += o < code.Count ? code[o] : 0; CopyU8();
-                    CopyU8();
-                    for (var pi = 0; pi < 8; pi++) CopyU8();
-                    CopyU8(); CopyU8();
-                    for (var k = 0; k < udtTotal; k++) { CopyU16(); CopyU16(); }
+                    // Formato completo in Compiler/FfiCallFormat.cs (descrittore per-argomento +
+                    // coda foglie UDT + tabella firme callback): nessun operando è un indirizzo
+                    // di salto qui, quindi si avanza soltanto.
+                    var lay = FfiCallFormat.Describe(code, offset);
+                    o = offset + lay.Length;
                     break;
                 }
                 case OpCode.OP_CALL_BUILTIN:
@@ -482,33 +460,17 @@ public static class ChunkMerger
                     CopyU8();
                     break;
 
-                // ── FFI tipizzata (2026-10, fix): come sopra + kind/scalarKindMask/arrayMask/
-                // arrayElemIntMask/stringMask/retIsString/byrefScalarMask/
-                // byrefScalarElemIntMask/udtParamFieldCount[8]/udtParamFieldKindMask[8]/
-                // retUdtFieldCount/retUdtFieldKindMask/callbackParamArity[8]/
-                // callbackParamKindMask/callbackParamHasRetMask (nessun rebase, nessuno è un
-                // indice costante/indirizzo), poi una coda VARIABILE di due u16 (nome+
-                // SymbolId) per ogni foglia UDT → ENTRAMBI indici costante, serve rebase. Il
-                // vecchio `PatchU16+PatchU16+CopyU8+CopyU8` si fermava dopo 'kind': oltre a
-                // disallineare il chunk, NON ribasava gli indici costante delle foglie UDT —
-                // bug preesistente (2026-09-28/29), mai esercitato prima perché nessun
-                // REQUIRE con una FFI tipizzata passava da questa pass. ──
+                // ── FFI tipizzata: formato in Compiler/FfiCallFormat.cs. lib/name e le due u16
+                // per foglia UDT sono INDICI COSTANTE → rebase; il resto è copiato. ──
                 case OpCode.OP_CALL_FFI_T:
                 {
-                    PatchU16(Kind.Const);
-                    PatchU16(Kind.Const);
-                    CopyU8();
-                    CopyU8(); CopyU8();
-                    CopyU8(); CopyU8(); CopyU8(); CopyU8();
-                    CopyU8(); CopyU8();
-                    var udtTotal = 0;
-                    for (var pi = 0; pi < 8; pi++) { udtTotal += o < code.Count ? code[o] : 0; CopyU8(); }
-                    for (var pi = 0; pi < 8; pi++) CopyU8();
-                    udtTotal += o < code.Count ? code[o] : 0; CopyU8();
-                    CopyU8();
-                    for (var pi = 0; pi < 8; pi++) CopyU8();
-                    CopyU8(); CopyU8();
-                    for (var k = 0; k < udtTotal; k++) { PatchU16(Kind.Const); PatchU16(Kind.Const); }
+                    var lay = FfiCallFormat.Describe(code, offset);
+                    var constAt = new HashSet<int>(lay.ConstOffsets);
+                    while (o < offset + lay.Length)
+                    {
+                        if (constAt.Contains(o)) PatchU16(Kind.Const);
+                        else CopyU8();
+                    }
                     break;
                 }
 

@@ -9,6 +9,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include <errno.h>
+#include "gmb_compat_win.h"   /* mkdir a 2 argomenti + strcasestr (solo su Windows) */
 
 #define AI_MAX_ENTRIES 256
 #define AI_MAX_PROVIDERS 64
@@ -100,6 +101,13 @@ static int gmb_ai_is_local_mlx_source(const char* src) {
 
 int gmb_provider_register(const char* role, const char* name, const char* kind, const char* config) {
     if (!role || !name) return 0;
+    /* SORGENTE del provider = path di un modello: `%MODELS%/<x>` e `~/ai/Models/<x>` passano dal
+     * risolutore dei path (opzione `path.models_root`) e `~/<x>` espande; tutto il resto resta
+     * com'e'. Qui si incontrano TUTTE le gambe C (VM/C e C99Native emettono la stessa chiamata),
+     * quindi la regola vive in un punto solo. Con l'opzione vuota il comportamento e' quello di
+     * prima. */
+    char srcbuf[4096];
+    kind = gmb_paths_model_path(kind, srcbuf, sizeof srcbuf);
     /* Normalizza il ruolo (parità C# ProviderRole.FromCapabilityOrRole): i backend C ricevono
      * `%CHAT` come "0"/"%CHAT" — senza normalizzazione il provider veniva registrato sotto il
      * ruolo sbagliato. COPIA LOCALE: gmb_provider_normalize_role usa un buffer statico e

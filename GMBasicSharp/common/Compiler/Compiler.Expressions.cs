@@ -24,6 +24,16 @@ public sealed partial class Compiler
             case StringExpr s: EmitConstant(s.Value); break;
             case BooleanExpr b: EmitByte((byte)(b.Value ? (byte)OpCode.OP_PUSH_TRUE : (byte)OpCode.OP_PUSH_FALSE)); break;
             case VariableExpr v:
+                /* Nome dichiarato in un BLOCCO ormai chiuso (linker → OutOfScopeSymbolId): non è
+                 * in scope → vale il DEFAULT del tipo (0 numerico, "" stringa). Senza questo
+                 * ramo la lettura cadeva nella risoluzione per nome (implicita/globale) e poteva
+                 * leggere valori non pertinenti. Vedi SymbolTable.OutOfScopeSymbolId. */
+                if (v.SymbolId == SymbolTable.OutOfScopeSymbolId)
+                {
+                    if (v.NameSuffixed.Lexeme.EndsWith('$')) EmitConstant(string.Empty);
+                    else EmitConstant(0.0);
+                    break;
+                }
                 // Sentinella del record buffer DBF: base di un FieldAccessExpr "campo nudo"
                 // (`PRINT NomeCampo` con area aperta), prodotta dal Linker (SymbolId = -2).
                 // Va emessa come NIL esplicito: senza questo il compilatore la trattava come
@@ -705,11 +715,15 @@ public sealed partial class Compiler
         {
             /* Gli ARRAY non si incapsulano in una ByRefBox (2026-11-03) — vedi il gemello
              * nel percorso ArrayAccessExpr: inoltrare un PARAMETRO array a un'altra
-             * procedura passava la box e il callee vedeva UBOUND=0. */
+             * procedura passava la box e il callee vedeva UBOUND=0.
+             * AGGIORNAMENTO 2026-11-12: il difetto era il DOPPIO box (box di un box), non il
+             * box in sé; OP_MAKE_BYREF in PCode/VM-C è ora idempotente (riusa la cella
+             * esistente) e gli array possono tornare BYREF — necessario perché `REDIM D(n)`
+             * dentro una procedura si rifletta sull'array del chiamante (ArraysComplexProcessing,
+             * ScopesByRef). */
             var isByRef = found && proc is ProcedureDefinition pd &&
                 i < pd.Parameters.Length &&
-                pd.Parameters[i].Flags.HasFlag(SymbolFlags.IsByRef) &&
-                !pd.Parameters[i].Flags.HasFlag(SymbolFlags.IsArray);
+                pd.Parameters[i].Flags.HasFlag(SymbolFlags.IsByRef);
             // BYREF scalare FFI (2026-09-28): riusa lo STESSO meccanismo del BYREF ordinario
             // (OP_MAKE_BYREF/OP_MAKE_BYREF_GLOBAL — una ByRefBox generica, scrive-attraverso
             // sullo slot locale/globale del chiamante). L'argomento deve essere una VARIABILE
@@ -739,6 +753,23 @@ public sealed partial class Compiler
                 {
                     EmitByte((byte)OpCode.OP_MAKE_BYREF_GLOBAL);
                     EmitShort((ushort)globalIdx);
+                }
+                else if (ve.SymbolId >= 0)
+                {
+                    /* CREAZIONE IMPLICITA al call-site (2026-11-12): il linker
+                     * (`RewriteSingleArgument`) registra il simbolo per un argomento BYREF con
+                     * SymbolId < 0, ma il compilatore bytecode risolve per NOME e non trova né un
+                     * locale né un globale → cadeva nel ramo BYVAL e la callee scriveva su una
+                     * copia (PCode/VM-C: `Set10(C)` lasciava C=0; IL/C99 corretti). Qui si crea
+                     * lo SLOT con il tipo del parametro e si passa il suo indirizzo: la variabile
+                     * esiste dopo la call (creazione implicita, spec §3.2) e la scrittura torna
+                     * al chiamante. */
+                    AddLocal(ve.NameCleaned, proc!.Parameters[i].DataType);
+                    var newIdx = _locals.Count - 1;
+                    var sfx = ve.NameSuffixed.Lexeme ?? string.Empty;
+                    _locals[newIdx].NumericDefault = sfx.Length == 0 || !sfx.EndsWith('$');
+                    EmitByte((byte)OpCode.OP_MAKE_BYREF);
+                    EmitShort((ushort)newIdx);
                 }
                 else { VisitExpression(expr.Args[i]); }
             }
@@ -992,12 +1023,10 @@ public sealed partial class Compiler
                     throw new BasicException(expr.OriginalToken,
                         $"FFI '{symbolName}': callback con array usato per {what} non supportato " +
                         "(ammessi solo array di DOUBLE, con ritorno DOUBLE o ARRAY OF DOUBLE).");
-                if (fp.ParameterTypes.Length > 8)
+                if (fp.ParameterTypes.Length > FfiMaxArgs)
                     throw new BasicException(expr.OriginalToken,
-                        $"FFI '{symbolName}': il callback usato per {what} ha {fp.ParameterTypes.Length} parametri (ammessi 0-8).");
+                        $"FFI '{symbolName}': il callback usato per {what} ha {fp.ParameterTypes.Length} parametri (ammessi 0-{FfiMaxArgs}).");
                 var hasReturn = fp.ReturnType is not VoidType;
-                var kinds = fp.ParameterTypes.Select(t => IsFfiInt64Type(t)).ToList();
-                if (hasReturn) kinds.Add(IsFfiInt64Type(fp.ReturnType));
                 foreach (var (pt, idx) in fp.ParameterTypes.Select((t, i) => (t, i)))
                     if (!IsFfiInt64Type(pt) && !IsFfiDoubleType(pt))
                         throw new BasicException(expr.OriginalToken,
@@ -1005,24 +1034,27 @@ public sealed partial class Compiler
                 if (hasReturn && !IsFfiInt64Type(fp.ReturnType) && !IsFfiDoubleType(fp.ReturnType))
                     throw new BasicException(expr.OriginalToken,
                         $"FFI '{symbolName}': tipo di ritorno del callback usato per {what} non supportato (ammessi: DOUBLE/SINGLE, interi LONG/INTEGER/QUAD/BYTE/..., o nessuno per un CALLBACK SUB).");
-                if (kinds.Distinct().Count() > 1)
-                    throw new BasicException(expr.OriginalToken,
-                        $"FFI '{symbolName}': il callback usato per {what} ha una firma interna mista LONG/DOUBLE — non supportata nella v1 del supporto callback (tutti i parametri e l'eventuale ritorno dello stesso kind).");
             }
-            // Kind del callback ai fini dell'omogeneità di firma e dell'emissione bytecode
-            // (2026-09-29): il PRIMO parametro del callback se presente, altrimenti il suo
-            // ritorno se presente — ValidateCallbackForFfi garantisce già l'omogeneità
-            // dell'intera firma interna, quindi guardare solo il primo elemento è corretto. Un
-            // callback arità-0/SUB (nessun parametro, nessun ritorno) non ha nessuno scalare da
-            // marshallare: il kind non è mai consultato a runtime per quello slot, FfiDouble è
-            // un default innocuo.
+            // Kind del callback per l'emissione bytecode LEGACY (a2 bit0, firma interna omogenea):
+            // il PRIMO parametro se presente, altrimenti il ritorno. Con la firma MISTA
+            // (2026-11-11) il bit e' irrilevante — il runtime legge la tabella per-slot emessa
+            // in coda all'istruzione (bit 0x40 di `kind`), che descrive ogni parametro.
             bool CallbackIsInt64(FunctionPointerType fp) => IsVecCallback(fp)
                 ? IsFfiInt64Type(fp.ReturnType)
                 : fp.ParameterTypes.Length > 0
                     ? IsFfiInt64Type(fp.ParameterTypes[0])
                     : fp.ReturnType is not VoidType && IsFfiInt64Type(fp.ReturnType);
+            // Firma INTERNA del callback scalare (2026-11-11, arità 0-64 e kind misto): la
+            // tabella per-slot viaggia nel bytecode (vedi EmitCallbackSignatureTable). La forma
+            // vettoriale (128+)/scalare-con-ritorno-array (192+) resta codificata in a1.
+            bool IsScalarSignatureCallback(FunctionPointerType fp) =>
+                !IsVecCallback(fp) && !IsScalarArrayCallback(fp);
             foreach (var p in ffiProc.Parameters)
                 if (IsCallbackParam(p)) ValidateCallbackForFfi((FunctionPointerType)p.DataType, $"il parametro '{p.Name.Lexeme}'");
+            // Più callback nella stessa DECLARE: ammessi. Dal 2026-11-11 non c'è più il limite di
+            // 2 trampolini per forma (VM/C usa closure libffi, C99Native emette un trampolino per
+            // parametro, IL/PCode generano il delegate dinamicamente): la guardia storica è stata
+            // rimossa.
             // Struct/UDT per valore (2026-09-28): un UDT "semplice" (nessun operatore/
             // costruttore/metodo — quelli che emitter C# mappa già su uno struct C reale, non
             // su gmb_val_t opaco) con TUTTI i campi dello stesso kind a 8 byte (stessa
@@ -1079,6 +1111,21 @@ public sealed partial class Compiler
             int LayoutUdt(UserDefinedType udt, string what, string pathPrefix, string symPrefix,
                           List<(string Path, string SymbolIdPath, int Code, int Off, bool IsInt)> outLeaves)
             {
+                // UNION/BITFIELD (2026-11-11): il marshalling FFI appiattisce l'UDT in foglie con
+                // offset propri — con campi SOVRAPPOSTI o impacchettati in bit il layout non è
+                // riproducibile (vale anche per array di UDT e UDT annidati).
+                if (udt.IsUnion)
+                    throw new BasicException(expr.OriginalToken,
+                        $"FFI '{symbolName}': lo UDT '{udt.Name.Lexeme}' usato per {what} è una UNION (campi sovrapposti): non ammesso dal marshalling FFI.");
+                if (udt.Fields.Any(f => f.BitWidth > 0))
+                    throw new BasicException(expr.OriginalToken,
+                        $"FFI '{symbolName}': lo UDT '{udt.Name.Lexeme}' usato per {what} contiene BITFIELD (WIDTH): non ammesso dal marshalling FFI.");
+                // PACKED TYPE (2026-11-11): layout C senza padding (come `__attribute__((packed))`)
+                // — ogni campo parte subito dopo il precedente, taglia finale = somma delle
+                // taglie. Prima il layout FFI allineava sempre: un PACKED TYPE passato a una
+                // funzione C con struct packed leggeva/scetc. valori sbagliati (gli offset non
+                // coincidevano con quelli reali del C).
+                var packed = udt.IsPacked;
                 var off = 0; var align = 1;
                 foreach (var f in udt.Fields)
                 {
@@ -1110,7 +1157,7 @@ public sealed partial class Compiler
                                 $"FFI '{symbolName}': il campo array '{path}' deve avere bound letterali ({what}).");
                         }
                         var szA = FfiSz(codeArr);
-                        off = (off + szA - 1) / szA * szA;
+                        if (!packed) off = (off + szA - 1) / szA * szA;
                         for (var k = 0; k < nArr; k++)
                         {
                             outLeaves.Add(($"{path}[{k}]", symPath, codeArr, off, codeArr != 0 && codeArr != 8));
@@ -1134,7 +1181,7 @@ public sealed partial class Compiler
                         var subAlign = 1;
                         foreach (var l in outLeaves.GetRange(start, outLeaves.Count - start))
                             subAlign = Math.Max(subAlign, FfiSz(l.Code));
-                        off = (off + subAlign - 1) / subAlign * subAlign;
+                        if (!packed) off = (off + subAlign - 1) / subAlign * subAlign;
                         for (var k = start; k < outLeaves.Count; k++)
                         {
                             var l = outLeaves[k];
@@ -1150,13 +1197,13 @@ public sealed partial class Compiler
                             throw new BasicException(expr.OriginalToken,
                                 $"FFI '{symbolName}': tipo del campo '{path}' non supportato per {what} (UDT '{udt.Name.Lexeme}'; ammessi DOUBLE/SINGLE, interi a 1/2/4/8 byte, STRING).");
                         var sz = FfiSz(code);
-                        off = (off + sz - 1) / sz * sz;
+                        if (!packed) off = (off + sz - 1) / sz * sz;
                         outLeaves.Add((path, symPath, code, off, code != 0 && code != 8));
                         off += sz;
                         align = Math.Max(align, sz);
                     }
                 }
-                return (off + align - 1) / align * align;
+                return packed ? off : (off + align - 1) / align * align;
             }
             // IsMixedKindUdt/UdtKind sono chiamate SOLO dopo la validazione per lo stesso UDT.
             IEnumerable<bool> LeafKinds(UserDefinedType udt) => udt.Fields.SelectMany(f =>
@@ -1167,6 +1214,15 @@ public sealed partial class Compiler
                 if (!IsSimpleUdt(udt))
                     throw new BasicException(expr.OriginalToken,
                         $"FFI '{symbolName}': lo UDT '{udt.Name.Lexeme}' usato per {what} non è ammesso dal marshalling FFI (solo TYPE semplici, senza operatori/costruttori/metodi/generici).");
+                // UNION/BITFIELD (2026-11-11): il marshalling FFI appiattisce lo UDT in foglie con
+                // offset propri — con campi SOVRAPPOSTI (union) o impacchettati in bit (WIDTH) il
+                // layout non è riproducibile a foglie: rifiuto esplicito su tutte le gambe.
+                if (udt.IsUnion)
+                    throw new BasicException(expr.OriginalToken,
+                        $"FFI '{symbolName}': lo UDT '{udt.Name.Lexeme}' usato per {what} è una UNION (campi sovrapposti): non ammesso dal marshalling FFI.");
+                if (udt.Fields.Any(f => f.BitWidth > 0))
+                    throw new BasicException(expr.OriginalToken,
+                        $"FFI '{symbolName}': lo UDT '{udt.Name.Lexeme}' usato per {what} contiene BITFIELD (WIDTH): non ammesso dal marshalling FFI.");
                 var leaves = CollectFfiLeaves(udt, what, "", "", out _);
                 if (leaves.Count is 0 or > 64)
                     throw new BasicException(expr.OriginalToken,
@@ -1191,9 +1247,21 @@ public sealed partial class Compiler
             for (var pi = 0; pi < ffiProc.Parameters.Length; pi++)
                 if (IsUdtParam(ffiProc.Parameters[pi]))
                 {
+                    var udtP = (UserDefinedType)ffiProc.Parameters[pi].DataType;
+                    // PACKED per VALORE (2026-11-11): il layout C packed (senza padding) non è
+                    // esprimibile nella classificazione ABI di libffi (VM/C): il trampolino
+                    // naturale produce registri/memoria diversi → valori sbagliati. Ammesso solo
+                    // per BYREF (puntatore alla struct) e array di UDT, dove il buffer è nostro.
+                    if (udtP.IsPacked && !IsByRefUdtParam(ffiProc.Parameters[pi]))
+                        throw new BasicException(expr.OriginalToken,
+                            $"FFI '{symbolName}': lo UDT PACKED '{udtP.Name.Lexeme}' non è ammesso per il parametro '{ffiProc.Parameters[pi].Name.Lexeme}' per VALORE (layout senza padding non rappresentabile nell'ABI: passa BYREF o come array di UDT).");
                     var leaves = ValidateUdtForFfi((UserDefinedType)ffiProc.Parameters[pi].DataType, $"il parametro '{ffiProc.Parameters[pi].Name.Lexeme}'");
                     if (pi < FfiMaxArgs) udtParamLeaves[pi] = leaves;
                 }
+            // Ritorno PACKED per valore: stesso limite del parametro per valore.
+            if (udtReturn != null && udtReturn.IsPacked)
+                throw new BasicException(expr.OriginalToken,
+                    $"FFI '{symbolName}': lo UDT PACKED '{udtReturn.Name.Lexeme}' non è ammesso come RITORNO (layout senza padding non rappresentabile nell'ABI).");
             var udtReturnLeaves = udtReturn != null ? ValidateUdtForFfi(udtReturn, "il ritorno") : null;
             // S0 (2026-11-06): il limite "un solo parametro UDT a kind misto" era del dispatch
             // per-cast della VM/C; con libffi (slot per argomento) non serve più.
@@ -1253,6 +1321,11 @@ public sealed partial class Compiler
              * Vedi FfiService.CallFunctionTypedArr (case byte[]/sbyte[]), gmb_vm_core.c
              * (array_elem_int_mask) e gmb_c99_emit.c (n_intarr). */
             bool IsFfiArrayElemType(DataType? t) => t is DoubleType or LongType or QuadType or ULongType or UQuadType or ByteType or SByteType;
+            // BYREF scalare: solo tipi a 8 byte. Il puntatore punta a una cella di 8 byte: un
+            // BYTE/SBYTE produrrebbe lo stesso mismatch di larghezza silenzioso degli array, e
+            // per questo IL e C99Native lo rifiutano già. BYTE/SBYTE restano ammessi come
+            // ELEMENTO di un array (scratch a 8 byte per elemento), non come BYREF.
+            bool IsFfiByRefScalarType(DataType? t) => t is DoubleType or LongType or QuadType or ULongType or UQuadType;
             foreach (var p in ffiProc.Parameters)
             {
                 if (IsArrayParam(p))
@@ -1265,11 +1338,11 @@ public sealed partial class Compiler
                         if (lvTmp.Count is 0 or > 64)
                             throw new BasicException(expr.OriginalToken, $"FFI '{symbolName}': array di UDT '{ue.Name.Lexeme}' con {lvTmp.Count} campi (ammessi 1..64).");
                     }
-                    else if (!IsFfiArrayElemType(elem))
+                    else if (!IsFfiArrayElemType(elem) && elem is not StringType)
                         throw new BasicException(expr.OriginalToken,
-                            $"FFI '{symbolName}': tipo elemento non supportato per il parametro array '{p.Name.Lexeme}' (solo AS DOUBLE, LONG/QUAD, BYTE o un TYPE).");
+                            $"FFI '{symbolName}': tipo elemento non supportato per il parametro array '{p.Name.Lexeme}' (solo AS DOUBLE, LONG/QUAD, BYTE, STRING o un TYPE).");
                 }
-                else if (IsByRefScalarParam(p) && !IsFfiArrayElemType(p.DataType))
+                else if (IsByRefScalarParam(p) && !IsFfiByRefScalarType(p.DataType))
                     throw new BasicException(expr.OriginalToken,
                         $"FFI '{symbolName}': tipo non supportato per il parametro BYREF '{p.Name.Lexeme}' (solo AS DOUBLE o LONG/QUAD, non INTEGER/BYTE/SINGLE — larghezza nativa a 8 byte).");
             }
@@ -1354,6 +1427,14 @@ public sealed partial class Compiler
                               : true;
                 if (bitIsInt) scalarKindMask |= 1L << pi;
             }
+            // Firma interna dei callback SCALARI (2026-11-11): tabella per-slot emessa in coda
+            // all'istruzione, segnalata dal bit 0x40 di `kind`. Le forme vettoriali (128+) e
+            // scalari-con-ritorno-array (192+) restano descritte da a1.
+            var anyScalarCbSig = false;
+            for (var pi = 0; pi < ffiProc.Parameters.Length && pi < FfiMaxArgs; pi++)
+                if (IsCallbackParam(ffiProc.Parameters[pi])
+                    && IsScalarSignatureCallback((FunctionPointerType)ffiProc.Parameters[pi].DataType))
+                    anyScalarCbSig = true;
             if (useTypedPath)
             {
                 EmitByte((byte)OpCode.OP_CALL_FFI_T);
@@ -1362,7 +1443,7 @@ public sealed partial class Compiler
                 EmitShort((ushort)expr.Args.Length);
                 /* S1 (2026-11-06): bit7 di `kind` = ritorno UDT con LAYOUT ESPLICITO; i due byte
                  * successivi diventano il conteggio foglie u16 (al posto di count u8 + mask u8). */
-                EmitByte((byte)(emittedKind | (udtReturnLeaves != null ? 0x80 : 0) | (ffiProc.IsNativeAbi ? 0x20 : 0)));   // 0x20 = DECLARE NATIVE (ABI esatta, niente estensioni array)
+                EmitByte((byte)(emittedKind | (udtReturnLeaves != null ? 0x80 : 0) | (ffiProc.IsNativeAbi ? 0x20 : 0) | (anyScalarCbSig ? 0x40 : 0)));   // 0x20 = DECLARE NATIVE (ABI esatta, niente estensioni array), 0x40 = tabella firme callback
                 EmitByte((byte)(retIsString ? 1 : 0));
                 var retLeafCount = (ushort)(udtReturnLeaves?.Count ?? 0);
                 EmitByte((byte)(retLeafCount & 0xFF));
@@ -1389,6 +1470,7 @@ public sealed partial class Compiler
                         var elemT = (p.DataType as ArrayType)?.ElementType;
                         if (elemT is UserDefinedType) flags |= 0x80;      /* array di struct */
                         else if (IsFfiInt64Type(elemT)) flags |= 0x40;
+                        else if (elemT is StringType) flags |= 4;         /* array di STRING (char**, solo INPUT) */
                     }
                     else if (isStr) flags |= 4;
                     else if (isBr) { flags |= 8; if (IsFfiInt64Type(p.DataType)) flags |= 0x80; }
@@ -1485,6 +1567,26 @@ public sealed partial class Compiler
                     {
                         EmitByte((byte)leaf.Code);
                         EmitShort((ushort)leaf.Off);
+                    }
+                }
+                /* Tabella firme callback (2026-11-11, bit 0x40 di `kind`): per OGNI parametro
+                 * callback scalare, in ordine di slot:
+                 *   u8 arita', u8 retKind (0=DOUBLE, 1=INT64, 2=nessun ritorno),
+                 *   arita' × u8 kind del parametro (0=DOUBLE, 1=INT64).
+                 * Sostituisce l'assunzione "firma interna omogenea" (a2 bit0) e alza il limite
+                 * di arità da 8 a 64. */
+                if (anyScalarCbSig)
+                {
+                    for (var pi = 0; pi < expr.Args.Length && pi < FfiMaxArgs; pi++)
+                    {
+                        if (!IsCallbackParam(ffiProc.Parameters[pi])) continue;
+                        var fp = (FunctionPointerType)ffiProc.Parameters[pi].DataType;
+                        if (!IsScalarSignatureCallback(fp)) continue;
+                        EmitByte((byte)fp.ParameterTypes.Length);
+                        EmitByte((byte)(fp.ReturnType is VoidType ? 2
+                            : IsFfiInt64Type(fp.ReturnType) ? 1 : 0));
+                        foreach (var pt in fp.ParameterTypes)
+                            EmitByte((byte)(IsFfiInt64Type(pt) ? 1 : 0));
                     }
                 }
             }
@@ -1889,7 +1991,42 @@ public sealed partial class Compiler
             return;
         }
         VisitExpression(expr.Instance);
-        foreach (var arg in expr.Args) { VisitExpression(arg); }
+        /* Argomenti BYREF di un METODO (2026-11-11): stesso trattamento delle SUB/FUNCTION —
+         * la variabile (o l'elemento di array) va passata per RIFERIMENTO (ByRefBox), non per
+         * valore. Prima ogni argomento era VisitExpression: il callee scriveva su una copia e
+         * il chiamante non vedeva nulla (`r.Scala(k)` lasciava k=3 invece di 0, divergenza da
+         * IL/C99 che erano corretti). */
+        var mByRefDef = expr.ResolvedDefinition;
+        for (var mi = 0; mi < expr.Args.Length; mi++)
+        {
+            var mIsByRef = mByRefDef is not null && mi < mByRefDef.Parameters.Length
+                && mByRefDef.Parameters[mi].Flags.HasFlag(SymbolFlags.IsByRef)
+                && !mByRefDef.Parameters[mi].Flags.HasFlag(SymbolFlags.IsArray);
+            if (mIsByRef && expr.Args[mi] is VariableExpr mve)
+            {
+                var mLocalIdx = ResolveLocal(mve.NameCleaned.Lexeme);
+                if (mLocalIdx >= 0)
+                {
+                    EmitByte((byte)OpCode.OP_MAKE_BYREF);
+                    EmitShort((ushort)mLocalIdx);
+                    continue;
+                }
+                if (_globals.TryGetValue(mve.NameCleaned.Lexeme, out var mGlobalIdx))
+                {
+                    EmitByte((byte)OpCode.OP_MAKE_BYREF_GLOBAL);
+                    EmitShort((ushort)mGlobalIdx);
+                    continue;
+                }
+            }
+            else if (mIsByRef && expr.Args[mi] is ArrayAccessExpr maeByRef && maeByRef.Indices.Length == 1)
+            {
+                LoadVariable(new VariableTarget(-1, maeByRef.NameSuffixed, maeByRef.NameCleaned));
+                VisitExpression(maeByRef.Indices[0]);
+                EmitByte((byte)OpCode.OP_MAKE_BYREF_ELEMENT);
+                continue;
+            }
+            VisitExpression(expr.Args[mi]);
+        }
         // If ResolvedDefinition is a base class method, emit direct call via OP_CALL_CTOR
         if (expr.ResolvedDefinition is { } def && expr.Instance is BaseExpr)
         {
@@ -1969,6 +2106,15 @@ public sealed partial class Compiler
         var functionAddress = _chunk.Code.Count;
         _chunk.Code.AddRange(functionChunk.Code);
         _chunk.Lines.AddRange(functionChunk.Lines);
+        /* LocalCount (2026-11-11): il corpo della lambda gira in un PROPRIO frame, quindi i
+         * suoi locali (parametri compresi) devono stare nel LocalCount del chunk — che è il
+         * numero di slot allocati a OGNI chiamata (PCodeProcessor.CreateLocals). Prima il
+         * conteggio restava quello della procedura che OSPITA la lambda: ogni parametro/locale
+         * oltre quel numero veniva scritto in uno slot inesistente e letto come 0 (bug reale:
+         * callback con 9 parametri → gli ultimi 2 arrivavano a 0 SOLO su PCode; IL/VM-C/C99
+         * corretti). */
+        if (functionChunk.LocalCount > _chunk.LocalCount) _chunk.LocalCount = functionChunk.LocalCount;
+        if (functionChunk.LocalCount > _maximumLocalCount) _maximumLocalCount = functionChunk.LocalCount;
         // S_eval: propaga lo snapshot locali del figlio traslato all'indirizzo reale.
         _chunk.MergeChildLocalNames(functionChunk, functionAddress, prologueShift);
         foreach (var constant in functionChunk.Constants)

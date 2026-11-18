@@ -4,6 +4,7 @@
  * ============================================================================ */
 
 #include "gmb_runtime.h"
+#include "gmb_memstats.h"
 #include <ctype.h>
 #include <stdlib.h>
 #include <string.h>
@@ -34,7 +35,7 @@ void gmb_dict_free(gmb_dict_t* d) {
         if (d->items[i].key) free(d->items[i].key);
         gmb_val_release(d->items[i].value);
     }
-    if (d->items) free(d->items);
+    if (d->items) { if (gmb_mem_on()) gmb_mem_untrack(d->items); free(d->items); }
     d->items = NULL; d->count = 0; d->capacity = 0;
 }
 
@@ -78,6 +79,7 @@ void gmb_dict_set(gmb_dict_t* d, const char* key, gmb_val_t v) {
         size_t nc = d->capacity == 0 ? 4 : d->capacity * 2;
         gmb_pair_t* ni = (gmb_pair_t*)realloc(d->items, nc * sizeof(gmb_pair_t));
         if (!ni) return;
+        if (gmb_mem_on()) gmb_mem_resize(d->items, ni, nc * sizeof(gmb_pair_t), GMB_MEM_DICT);
         d->items = ni;
         d->capacity = nc;
     }
@@ -591,6 +593,7 @@ static gmb_pair_t* jp_dict_append(gmb_dict_t* d, const char* key, size_t klen, g
         size_t nc = d->capacity == 0 ? 8 : d->capacity * 2;
         gmb_pair_t* ni = (gmb_pair_t*)realloc(d->items, nc * sizeof(gmb_pair_t));
         if (!ni) return NULL;
+        if (gmb_mem_on()) gmb_mem_resize(d->items, ni, nc * sizeof(gmb_pair_t), GMB_MEM_DICT);
         d->items = ni; d->capacity = nc;
     }
     gmb_pair_t* pr = &d->items[d->count];
@@ -800,6 +803,7 @@ void gmb_json_parse_to_dict(const char* js, gmb_dict_t* out) {
 void gmb_dict_clear(gmb_dict_t* d) {
     if (!d) return;
     for (size_t i = 0; i < d->count; i++) { free(d->items[i].key); gmb_val_release(d->items[i].value); }
+    if (gmb_mem_on()) gmb_mem_untrack(d->items);
     free(d->items);
     d->items = NULL;
     d->count = 0;
@@ -1290,6 +1294,33 @@ gmb_string_t gmb_json_double_array(const gmb_double_t* items, gmb_int_t n) {
     for (gmb_int_t i = 0; i < n; i++) {
         if (i > 0) {
             while (pos + 1 >= cap) { cap *= 2; buf = (char*)realloc(buf, cap); }
+            buf[pos++] = ',';
+        }
+        gmb_string_t t = gmb_double_to_string(items[i]);
+        const char* td = t.data ? t.data : "";
+        size_t tl = strlen(td);
+        while (pos + tl + 1 >= cap) { cap *= 2; buf = (char*)realloc(buf, cap); }
+        memcpy(buf + pos, td, tl); pos += tl;
+    }
+    while (pos + 1 >= cap) { cap *= 2; buf = (char*)realloc(buf, cap); }
+    buf[pos++] = ']';
+    buf[pos] = '\0';
+    gmb_string_t s = gmb_string_alloc(buf);
+    free(buf);
+    return s;
+}
+
+/* Display di un array numerico per PRINT: "[1, 2, 3]" (separatore ", "). Parità con
+ * gmb_val_to_display (IL/PCode/VM-C): il PRINT di un array usa gli spazi, il JSON no. */
+gmb_string_t gmb_display_double_array(const gmb_double_t* items, gmb_int_t n) {
+    if (!items || n < 0) return gmb_string_alloc("[]");
+    size_t cap = 64, pos = 0;
+    char* buf = (char*)malloc(cap);
+    if (!buf) return gmb_string_alloc("[]");
+    buf[pos++] = '[';
+    for (gmb_int_t i = 0; i < n; i++) {
+        if (i > 0) {
+            while (pos + 2 >= cap) { cap *= 2; buf = (char*)realloc(buf, cap); }
             buf[pos++] = ','; buf[pos++] = ' ';
         }
         gmb_string_t t = gmb_double_to_string(items[i]);

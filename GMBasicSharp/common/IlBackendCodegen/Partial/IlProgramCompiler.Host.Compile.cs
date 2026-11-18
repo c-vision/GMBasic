@@ -37,11 +37,30 @@ public sealed partial class IlProgramCompiler
         static ImmutableArray<AstNode> AllModuleDeclarations(BasicProgram p) =>
             p.LoadedModules.Values.SelectMany(m => m.Declarations).ToImmutableArray();
 
+        /* Blob del TESTO SORGENTE per ERR.SourceLineText: righe della SourceMap unite da '\n'
+         * (indice 0 = riga 1, la stessa numerazione di ERR.LineNumber/SourceLineIndex). */
+        static string BuildSourceTextBlob(BasicProgram p)
+        {
+            var map = p.SourceMap;
+            if (map.IsDefaultOrEmpty) return string.Empty;
+            var sb = new System.Text.StringBuilder();
+            for (var i = 0; i < map.Length; i++)
+            {
+                if (i > 0) sb.Append('\n');
+                sb.Append(map[i].Text ?? string.Empty);
+            }
+            return sb.ToString();
+        }
+
         types ??= IlTypeContext.ForRuntime();
 
         var asmName = new AssemblyName(assemblyName);
         var assemblyBuilder = new PersistedAssemblyBuilder(asmName, types.Object.Assembly);
         var moduleBuilder = assemblyBuilder.DefineDynamicModule(assemblyName);
+        // Delegate con arità > 16 (limite del BCL): il tipo va definito in QUESTO modulo,
+        // altrimenti l'IL emesso lo referenzia in un assembly dinamico "Run" che il .dll
+        // salvato non può risolvere ("Could not load file or assembly 'GmbDynamicDelegates'").
+        types = types.WithModule(moduleBuilder);
 
         // Il parent va passato ESPLICITAMENTE: a differenza del vecchio
         // AssemblyBuilderAccess.RunAndSave, PersistedAssemblyBuilder non lo assume di default,
@@ -184,7 +203,7 @@ public sealed partial class IlProgramCompiler
                 // prima di questo blocco / riusato sotto per i metodi).
                 var udtDtorTypeBuilder = classTypes.TryGetValue(udtDef.SymbolId, out var existingTb)
                     ? existingTb : moduleBuilder.DefineType("Udt_" + udtDef.SymbolId,
-                        TypeAttributes.Public | TypeAttributes.SequentialLayout | TypeAttributes.Sealed, types.ValueType);
+                        TypeAttributes.Public | (udtDef.IsUnion ? TypeAttributes.ExplicitLayout : TypeAttributes.SequentialLayout) | TypeAttributes.Sealed, types.ValueType);
                 classTypes[udtDef.SymbolId] = udtDtorTypeBuilder;
                 var udtDestructorBuilder = udtDtorTypeBuilder.DefineMethod(
                     "__Destructor",
@@ -197,22 +216,15 @@ public sealed partial class IlProgramCompiler
                 ? preUdtTb
                 : moduleBuilder.DefineType(
                     "Udt_" + udtDef.SymbolId,
-                    TypeAttributes.Public | TypeAttributes.SequentialLayout | TypeAttributes.Sealed,
+                    TypeAttributes.Public | (udtDef.IsUnion ? TypeAttributes.ExplicitLayout : TypeAttributes.SequentialLayout) | TypeAttributes.Sealed,
                     types.ValueType);
-            // PACKED TYPE: layout senza padding — [StructLayout(LayoutKind.Sequential, Pack=1)]
-            // (campi allineati a 1 byte, nessuno spazio di riempimento tra i campi).
-            // NB: StructLayoutAttribute.Pack è un CAMPO (non una proprietà) → overload
-            // CustomAttributeBuilder(ctor, args, namedFields, fieldValues).
-            if (udtDef.IsPacked)
-            {
-                var structLayoutCtor = typeof(System.Runtime.InteropServices.StructLayoutAttribute)
-                    .GetConstructor([typeof(System.Runtime.InteropServices.LayoutKind)]);
-                var packField = typeof(System.Runtime.InteropServices.StructLayoutAttribute)
-                    .GetField(nameof(System.Runtime.InteropServices.StructLayoutAttribute.Pack));
-                udtBuilder.SetCustomAttribute(new CustomAttributeBuilder(
-                    structLayoutCtor!, new object[] { System.Runtime.InteropServices.LayoutKind.Sequential },
-                    [packField!], new object[] { 1 }));
-            }
+            // PACKED TYPE (2026-11-11): la rappresentazione CLR resta NATURALE — il layout
+            // packed serve SOLO alla frontiera FFI, dove viaggia come forma/offset espliciti
+            // (UdtShapeString). Dichiarare Pack=1 sul tipo del dialetto rendeva i campi
+            // disallineati, e la reflection su di essi (GetValue/SetValue del marshalling UDT)
+            // fa crashare il runtime in modo intermittente (FieldDesc::*InstanceField, SIGBUS
+            // su ARM64, ~50% delle esecuzioni). Il layout C è comunque rispettato: gli UDT
+            // packed sono ammessi solo BYREF/array (il per-valore è rifiutato a compile-time).
             classTypes[udtDef.SymbolId] = udtBuilder;
             udtBasicNames[udtDef.SymbolId] = udtDef.OriginalName.Lexeme;
             udtFieldCounts[udtDef.SymbolId] = udtDef.Fields.Length;
@@ -332,6 +344,12 @@ public sealed partial class IlProgramCompiler
                 }
                 var udtFieldClrType = MapProcedureType(field.DataType, types, classTypes);
                 classFields[field.SymbolId] = udtTypeBuilder.DefineField(field.Name.Lexeme, udtFieldClrType, FieldAttributes.Public);
+                // UNION (2026-11-11): tutti i campi a offset 0 — il CLR gestisce l'aliasing
+                // (scrivere I e leggere F restituisce la reinterpretazione dei byte, come in C).
+                if (udtDef.IsUnion)
+                    classFields[field.SymbolId].SetCustomAttribute(new CustomAttributeBuilder(
+                        typeof(System.Runtime.InteropServices.FieldOffsetAttribute).GetConstructor([typeof(int)])!,
+                        new object[] { 0 }));
             }
 
             // PROPERTY di UDT (es. `PROPERTY Magnitude AS DOUBLE` con GET): getter/setter
@@ -875,6 +893,10 @@ public sealed partial class IlProgramCompiler
 
         var mainCompiler = new IlProgramCompiler(program, mainMethod.GetILGenerator(), types, procedureMethods, procedureDefinitionsBySymbol, classTypes, classFields, classFieldArrays, classConstructors, classProperties, classOperators, lambdaInfos, classFinalizers, udtFinalizers);
 
+        /* TESTO SORGENTE (ERR.SourceLineText): le righe del programma nell'ordine della
+         * SourceMap (indice 0 = riga 1). Un solo blob, emesso una volta nell'entry. */
+        var sourceTextBlob = BuildSourceTextBlob(program);
+
         // PrepareGraphicsHost DEVE precedere "new HeadlessRuntimeHost(...)": IRuntimeHost.
         // Graphics/Audio sono proprietà get-only lette UNA VOLTA SOLA nel costruttore da
         // HeadlessRuntimeHost.DefaultGraphics/DefaultAudio — chiamarlo dopo (come nel primo
@@ -891,6 +913,15 @@ public sealed partial class IlProgramCompiler
         // top-level; host/globali li prepara il chiamante (BspDispatch).
         if (!skipEntryInitialization)
         {
+            /* TESTO SORGENTE (ERR.SourceLineText): righe del sorgente concatenato, indice 0 =
+             * riga 1 (la numerazione di ERR.LineNumber). Un solo Ldstr + registrazione: il
+             * testo resta nell'assembly, così l'errore riporta la riga anche in un .exe
+             * standalone (senza sorgenti accanto). */
+            if (!string.IsNullOrEmpty(sourceTextBlob))
+            {
+                mainCompiler._il.Emit(OpCodes.Ldstr, sourceTextBlob);
+                mainCompiler._il.Emit(OpCodes.Call, typeof(IlRuntime).GetMethod(nameof(IlRuntime.RegisterSourceText), [typeof(string)])!);
+            }
             // GMBASIC_HEADLESS=1 (runner headless: test_ilrun/sweep): salta PrepareGraphicsHost
             // così HeadlessRuntimeHost.DefaultGraphics resta null → il host usa NullGraphicsService
             // e i park grafici completano subito. Senza, l'entry cabla la SDL reale che i runner
@@ -1275,6 +1306,10 @@ public sealed partial class IlProgramCompiler
                     udtFieldCounts.TryGetValue(kv.Key, out var udtNf) ? udtNf : -1);
         }
         foreach (var closureTypeBuilder in closureTypesToFinalize) closureTypeBuilder.CreateType();
+        // Delegate generati per arità > 16 (vedi DataTypeMapper/DelegateTypeBeyondBcl): creati
+        // DOPO i tipi utente, che possono comparire nei loro parametri.
+        if (types.PendingDelegateTypes != null)
+            foreach (var dynDelegate in types.PendingDelegateTypes) dynDelegate.CreateType();
         programType.CreateType();
         entryPointToken = mainMethod.MetadataToken;
         return assemblyBuilder;

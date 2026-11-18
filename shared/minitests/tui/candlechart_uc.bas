@@ -1,5 +1,6 @@
 ' CandleChart.bas — chart a candele come UserControl (stile VB6), scritto in BASIC.
 ' Sostituisce l'idea di CANDLESTICK built-in: ora e' un controllo utente (namespace CONTROLS).
+' EXPECT: OK-candlechart-uc
 IMPORT CONTROLS
 
 CLASS CandleChart

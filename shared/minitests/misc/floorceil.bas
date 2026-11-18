@@ -1,3 +1,4 @@
+' EXPECT: 3|-4|-4|4|-3|-3
 SUB Main()
   PRINT FLOOR(3.7)
   PRINT FLOOR(-3.7)

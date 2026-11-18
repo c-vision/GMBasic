@@ -853,8 +853,8 @@ internal sealed partial class PCodeProcessor
                         ["Number"] = 144.0, // ErrorCode.StopIteration
                         ["Description"] = "Stop iteration",
                         ["LineNumber"] = (double)SourceLineForIp(task.CurrentInstructionIp),
-                        ["SourceLineText"] = string.Empty,
-                        ["StackTrace"] = string.Empty
+                        ["SourceLineText"] = SourceLineTextForIp(ReferenceEquals(task, _generatorTraceTask) && _generatorTraceIp >= 0 ? _generatorTraceIp : task.CurrentInstructionIp),
+                        ["StackTrace"] = BuildBasicTrace(task)
                     });
                     var errInfo = new System.Collections.Generic.Dictionary<string, object?>
                     {
@@ -864,6 +864,19 @@ internal sealed partial class PCodeProcessor
                     if (TryEnterExceptionHandler(task, errInfo))
                         return true;
                     throw new InvalidOperationException("BASIC Runtime Error: Stop iteration (nessun blocco TRY attivo).");
+                }
+                // NEXT() su un generatore il cui corpo è uscito per ERRORE: si rilancia il
+                // codice VERO nel contesto del CHIAMANTE (parità C99Native gmb_gen_next e
+                // VM/C). Gestito qui, prima del PushRef, perché RaiseBasicError cambia l'Ip.
+                if (bResult is GeneratorErrorSignal genErr)
+                {
+                    /* I frame del CORPO non esistono nel task del chiamante: si antepongono
+                     * alla catena che RaiseBasicError costruirà qui. */
+                    _pendingTracePrefix = genErr.Trace;
+                    _pendingLineOverride = genErr.Line;   /* riga del CORPO, non del chiamante */
+                    if (RaiseBasicError(task, (double)genErr.Code, genErr.Message))
+                        return true;   // RESUME NEXT: il chiamante lascia un risultato (0)
+                    return true;       // consegnato al CATCH: niente push
                 }
                 task.PushRef(bResult);
                 return true;

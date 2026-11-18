@@ -9,11 +9,15 @@ extern const char* gmb_opt_env(const char* name);
 #include "gmb_c99_emit.h"
 #include "gmb_compiler.h"
 #include "gmb_inc_resolve.h"
+#include "gmb_embed.h"        /* EMBEDFILE: cartella base dei percorsi relativi */
 #include "gmb_cc_defaults.h"   /* ricetta UNICA di -I e statiche (condivisa col CLI `gmb build`) */
 #include "gmb_symtab.h"
 #include "gmb_types.h"
 #include "gmb_rewrite.h"
 #include "gmb_semgraph.h"
+
+/* gmb_cli_bootstrap.c — primo uso: delega a `gmbadmin first-use` (nessun link nuovo). */
+int gmb_first_use_spawn_if_needed(int argc, char** argv);
 #include <sys/stat.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -350,6 +354,7 @@ static void print_diff_json(const gmb_semgraph_diff_t* d) {
 /* Programma da un file SENZA include/REQUIRE (per il diff del tooling). */
 static int load_plain_program(const char* path, gmb_program_t* out, char** err) {
     *err = NULL;
+    gmb_embed_set_base_from_path(path);   /* EMBEDFILE: i path relativi sono al programma */
     FILE* f = fopen(path, "rb");
     if (!f) { *err = strdup("file non trovato"); return 1; }
     fseek(f, 0, SEEK_END); long n = ftell(f); fseek(f, 0, SEEK_SET);
@@ -494,7 +499,12 @@ int main(int argc, char** argv) {
             "  -I e statiche del runtime, se non indicate, si scoprono dalla root dell'installazione.\n", argv[0]);
         return 2;
     }
+    /* PRIMO USO: librerie + toolchain prima di emettere il C (delega a `gmbadmin first-use`).
+     * È il secondo compilatore: stesso punto d'ingresso, stessa implementazione. */
+    gmb_first_use_spawn_if_needed(argc, argv);
+
     const char* in = argv[1];
+    gmb_embed_set_base_from_path(in);   /* EMBEDFILE: i path relativi sono al programma */
     int no_exe = 0;
     int gpm_mode = 0;   /* 0 auto, 1 always, 2 linear (--gpm) */
     int want_semgraph = 0;
@@ -692,6 +702,9 @@ int main(int argc, char** argv) {
         for (int k = 0; k < na; k++) { anchors[k].line = smap.segs[k].line; anchors[k].file = smap.segs[k].file; }
         gmb_c99_set_source_anchors(anchors, na);
     }
+    /* TESTO SORGENTE per ERR.SourceLineText: `src` è il testo CONCATENATO dato al parser (vive
+     * fino alla fine dell'emissione). */
+    gmb_c99_set_source_text(src);
     gmb_c99_set_gpm_mode(gpm_mode);
     if (gmb_c99_emit(&prog, &csrc, &eerr) != 0) {
         fprintf(stderr, "emissione: %s\n", eerr ? eerr : "errore"); free(eerr);
@@ -704,7 +717,7 @@ int main(int argc, char** argv) {
     if (line_map) (void)write_line_map(line_map, in, &smap, csrc);
     gmb_src_map_free(&smap);   /* l'emissione è finita: gli anchor non servono più */
     FILE* of = fopen(out, "wb");
-    if (!of) { fprintf(stderr, "impossibile scrivere: %s\n", out); free(csrc); gmb_typereg_free(&tr); gmb_symtab_free(&st); goto fail; }
+    if (!of) { fprintf(stderr, "impossibile scrivere: %s\n", out); free(csrc); gmb_typereg_free(&tr); gmb_symtab_free(&st); gmb_program_free(&prog); goto fail; }
     fwrite(csrc, 1, strlen(csrc), of); fclose(of);
     /* su stderr, NON su stdout: stdout resta pulito per l'harness (falso DIFF di parità) */
     fprintf(stderr, "emesso -> %s (%zu bytes)\n", out, strlen(csrc));

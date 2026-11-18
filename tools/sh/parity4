@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# parity4 — esegue un sample sulle 4 gambe e ne confronta l'output (riferimento: C99Native).
 # ── MUTEX di build: i comandi di build (cc/clang/cmake/make/dotnet) prendono un lock ──
 # esclusivo su mutex.txt SOLO per la durata del SINGOLO comando, poi lo rilasciano subito
 # (lo script puo proseguire a lungo senza tenere il lock). Scadenza 15 min con heartbeat:
@@ -124,10 +125,14 @@ esac
 # Componenti e librerie NON stanno nel checkout: la cache utente `~/.gmbasic/libs` contiene
 # `<componente>/<rid>/` (ml = torch, chromium, obscura, ocr) e `<rid>/` (nostre lib + esterne);
 # in sviluppo si aggiunge `GMBasic/build/libs/<rid>/`. Stessa regola di tools/sh/harness.sh.
+# ORDINE: prima il build del working tree, poi la cache. La cache è la release pubblicata e
+# può essere più NUOVA per mtime ma più VECCHIA come sorgenti (caso reale 2026-11-11:
+# `libgmbmath`/`libgmbor` in cache senza simboli aggiunti dopo) → con la cache davanti il
+# loader macOS caricava la copia vecchia e le gambe C davano "simbolo non trovato".
 LIBS_CACHE="$HOME/.gmbasic/libs"
 if [ "$(uname)" = "Darwin" ] && [ -n "$RID5" ]; then
   export GMB_TORCH_PATH="${GMB_TORCH_PATH:-$LIBS_CACHE/ml/$RID5}"
-  DYLD4="$LIBS_CACHE/ml/$RID5:$LIBS_CACHE/$RID5:$ROOT/build/libs/$RID5"
+  DYLD4="$LIBS_CACHE/ml/$RID5:$ROOT/build/libs/$RID5:$LIBS_CACHE/$RID5"
   if [ -n "${DYLD_LIBRARY_PATH:-}" ]; then
     export DYLD_LIBRARY_PATH="$DYLD4:$DYLD_LIBRARY_PATH"
   else
@@ -148,8 +153,19 @@ fi
 
 OUT=/tmp/parity4
 mkdir -p "$OUT"
-BASE=$(basename "$FILE" .bas)
-rm -f "$OUT/$BASE".*.txt "$OUT/$BASE".*.raw "$OUT/$BASE".*.rc "$OUT/$BASE".*.err.txt "$OUT/$BASE".*.skip "$OUT/$BASE".*.stderr
+# Nome leggibile (per i messaggi) e CHIAVE DI OUTPUT unica per PERCORSO (per i file).
+# Il basename da solo NON identifica il test: piu' MiniTest omonimi in domini diversi
+# (`arrays/slice.bas` e `matrix/slice.bas`, `abs.bas`, `sum.bas`, `range.bas`, …) scrivevano
+# gli STESSI `/tmp/parity4/<base>.<gamba>.txt`: una suite (o due esecuzioni in parallelo)
+# sovrascriveva i risultati dell'altro file e il verdetto veniva calcolato sull'output di un
+# ALTRO programma — falso PASS/DIFF intermittente. La chiave deriva dal path relativo al repo.
+NAME=$(basename "$FILE" .bas)
+REL=${FILE#"$MONOREPO"/}
+BASE=$(printf '%s' "$REL" | sed -e 's|^/||' -e 's|\.bas$||' -e 's|[^A-Za-z0-9_.-]|_|g')
+# Pulizia dei file STANTII della stessa chiave. `find` invece di un glob: invocando lo script
+# con `zsh` (invocazione canonica) un glob non corrispondente stampa "no matches found"; con
+# `find` è silenzioso e non dipende dalla shell. BASE è sanificato (niente metacaratteri).
+find "$OUT" -maxdepth 1 -type f -name "$BASE.*" -delete 2>/dev/null || true
 
 # normalizza: via ANSI, via righe di harness/prompt, trim, via righe vuote.
 norm() {
@@ -351,5 +367,5 @@ if [ "$LIB_MODE" = "1" ]; then
 fi
 
 [ "$KEEP" = 1 ] || true
-[ "$fail" = 0 ] && echo "== PASS $BASE ==" || echo "== DIFF $BASE (output in $OUT) =="
+[ "$fail" = 0 ] && echo "== PASS $NAME ==" || echo "== DIFF $NAME (output in $OUT/$BASE.*) =="
 exit $fail

@@ -43,6 +43,16 @@ public sealed partial class Parser
         Log($"[ParseLetStatement] ENTER. Current: {Peek()}");
         var letToken = Match(TokenKind.Let) ? Previous() : null;
 
+        /* `LET` è un'assegnazione allo SCOPE CORRENTE (specifica Variables-Scope §3.1): fuori da
+         * una procedura non c'è uno scope corrente più interno di quello di modulo, e la spec
+         * dice esplicitamente «a livello di Namespace genera un errore di sintassi». Prima il
+         * parser lo accettava e i backend lo trattavano come un'assegnazione (scarto fra
+         * documento e implementazione, 2026-11-12): qui diventa un errore di compilazione, con lo
+         * stesso testo sul parser C (`gmb_parser_core.c`). */
+        if (letToken is not null && _functionContextStack.Count == 0)
+            throw CreateError(letToken,
+                "LET è valido solo dentro una procedura (SUB/FUNCTION/GENERATOR): a livello di modulo usare un'assegnazione (x = ...) oppure DIM/GLOBAL.");
+
         // --- LOOKAHEAD per determinare se è un'assegnazione o una dichiarazione ---
         var savedPosition = _current;
         var isDeclaration = false;

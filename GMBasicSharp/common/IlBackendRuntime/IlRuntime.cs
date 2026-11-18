@@ -3042,6 +3042,23 @@ public static partial class IlRuntime
     /// <summary>Cartella reale assoluta del file .bas CORRENTE (import-aware; entry-point se nessuna procedura).</summary>
     public static string ProjectFolder()
     {
+        // L'ENTRY POINT vince: PROJECTFOLDER() è "la cartella del programma" (guida IO/GRAPH).
+        // `_currentSourceFile` è il modulo dell'ULTIMA procedura eseguita (lo emette il prologo
+        // IL, import-aware): per un programma che importa un `.inc`/pacchetto diventava
+        // `shared/include`, e la cartella CAMBIAVA a metà run. Divergenza trovata dallo sweep
+        // 2026-11-17 su `graph/querymulti`: la gamba PCode ereditava `shared/include/graph.inc`
+        // dalla gamba IL del file precedente → FIXTURE$ puntava a
+        // `shared/include/../../samples/…` (inesistente) → nessun grafo costruito
+        // ("nessun brain graph interrogabile"). Resta come fallback quando l'entry è ignoto.
+        if (!string.IsNullOrEmpty(_entrySourcePath))
+        {
+            try
+            {
+                var entryDir = Path.GetDirectoryName(Path.GetFullPath(_entrySourcePath));
+                if (!string.IsNullOrEmpty(entryDir)) return entryDir;
+            }
+            catch { }
+        }
         if (!string.IsNullOrEmpty(_currentSourceFile))
         {
             try
@@ -8535,6 +8552,35 @@ public static double TextWidth(string s)
     public static int ErrLineOf(BasicException ex, int fallback)
         => ex.Position.Line > 0 ? ex.Position.Line : fallback;
 
+    /* ── TESTO SORGENTE (ERR.SourceLineText) ──────────────────────────────────────────────
+     * Il codice generato registra all'avvio UN blob con le righe del sorgente concatenato
+     * ("riga1\nriga2\n...", indice 0 = riga 1 — la stessa numerazione di ERR.LineNumber).
+     * Stesso formato e stessa semantica del runtime C (gmb_src_line_text): testo TRIMATO,
+     * "" se la riga è fuori range o il blob non è stato registrato (assembly compilato
+     * senza, es. esecuzione di un .dll prodotto altrove). */
+    private static string? _srcText;
+
+    public static void RegisterSourceText(string? blob) => _srcText = blob;
+
+    public static string SourceLineText(int line)
+    {
+        var blob = _srcText;
+        if (string.IsNullOrEmpty(blob) || line < 1) return string.Empty;
+        var start = 0;
+        for (var cur = 1; cur < line; cur++)
+        {
+            var nl = blob.IndexOf('\n', start);
+            if (nl < 0) return string.Empty;
+            start = nl + 1;
+        }
+        var end = blob.IndexOf('\n', start);
+        if (end < 0) end = blob.Length;
+        return blob.Substring(start, end - start).Trim(' ', '\t', '\r');
+    }
+
+    /// <summary>Testo della riga di un errore appena lanciato (parità C: gmb_err_source_line_text).</summary>
+    public static string ErrSourceLineText(int line) => SourceLineText(line);
+
     public static double SafeDivide(double a, double b, int line)
     {
         if (b == 0) RaiseDivisionByZero(line);
@@ -9540,51 +9586,85 @@ public static double TextWidth(string s)
     /// <summary>LLM MODEL LOAD nome, path [, RESIDENT] — carica un modello MoE out-of-core nel
     /// provider (MoestreamServer, runtime gmb_moe_runtime su GGUF). RESIDENT = tutto in RAM senza
     /// swap (default SWAP). Ritorna JSON con esito o errore esplicito. Mai stub.</summary>
-    public static string AiModelLoad(string name, string path, string flags)
+    /// <summary>Testo canonico (gamba VM/C) dell'errore di un verbo `LLM MODEL …`: la VM/C ha un
+    /// messaggio per verbo (gmb_builtin.c, gmb_bf_aimodel*_c35xx) e C99Native lo emette da
+    /// aimodel_err_msg(); il managed lo deve riprodurre identico, non solo nel codice.</summary>
+    private static string AiModelErr(string verb) => verb switch
     {
-        int mode = (flags is not null && flags.Contains("RESIDENT", StringComparison.OrdinalIgnoreCase)) ? 1 : 0;
-        return Basic.Providers.MoestreamServer.Instance.Load(name, path, mode, 0, 0, 0, 0, 0);
+        "LOAD" => "LLM MODEL LOAD: modello non valido o non trovato",
+        "DEVICE" => "LLM MODEL DEVICE non disponibile",
+        "CONVERT" => "LLM MODEL CONVERT: conversione fallita",
+        "INSPECT" => "AI MODEL INSPECT fallito",
+        "QUANTIZE" => "AI MODEL QUANTIZE fallito",
+        _ => "LLM MODEL " + verb + " fallito",
+    };
+
+    /// <summary>Errore BASIC canonico di un verbo `LLM MODEL …` (ERR 5 + testo della VM/C).</summary>
+    private static string AiModelFail(string verb) =>
+        throw new BasicException(ErrorCode.IllegalFunctionCall, SourcePosition.Unknown, AiModelErr(verb));
+
+    /// <summary>Esegue un verbo `LLM MODEL …` del provider normalizzando i fallimenti PREVISTI sul
+    /// testo canonico della VM/C: il provider segnala "model not found"/"adapter error" con
+    /// `BasicException` (MoestreamErrors.Verb) o `InvalidOperationException`, messaggi che non
+    /// coincidono con quelli delle gambe C. Ogni altra eccezione (NullReference, InvalidCast,
+    /// ArgumentNull, …) e' un bug interno e sale INVARIATA: non deve diventare un ERR 5 fuorviante
+    /// che manda a cercare il problema nel modello invece che nel codice.</summary>
+    private static string AiModelDo(string verb, Func<string> call)
+    {
+        try { return call(); }
+        catch (BasicException) { return AiModelFail(verb); }
+        catch (InvalidOperationException) { return AiModelFail(verb); }
     }
+
+    public static string AiModelLoad(string name, string path, string flags)
+        => AiModelDo("LOAD", () =>
+        {
+            int mode = (flags is not null && flags.Contains("RESIDENT", StringComparison.OrdinalIgnoreCase)) ? 1 : 0;
+            return Basic.Providers.MoestreamServer.Instance.Load(name, path, mode, 0, 0, 0, 0, 0);
+        });
 
     /// <summary>LLM MODEL UNLOAD nome — libera il modello (gli altri restano in memoria).</summary>
     public static string AiModelUnload(string name) =>
-        Basic.Providers.MoestreamServer.Instance.Unload(name);
+        AiModelDo("UNLOAD", () => Basic.Providers.MoestreamServer.Instance.Unload(name));
 
     /// <summary>LLM MODEL PROMOTE nome — porta il modello in ACTIVE (tutti gli esperti in RAM).</summary>
     public static string AiModelPromote(string name) =>
-        Basic.Providers.MoestreamServer.Instance.Promote(name);
+        AiModelDo("PROMOTE", () => Basic.Providers.MoestreamServer.Instance.Promote(name));
 
     /// <summary>LLM MODEL DEMOTE nome — riporta il modello in WARM (esperti on-demand).</summary>
     public static string AiModelDemote(string name) =>
-        Basic.Providers.MoestreamServer.Instance.Demote(name);
+        AiModelDo("DEMOTE", () => Basic.Providers.MoestreamServer.Instance.Demote(name));
 
     /// <summary>LLM MODEL CACHE nome, MB — cambia il budget della expert cache (0 = off).</summary>
     public static string AiModelCache(string name, double mb)
-    {
-        ulong v = mb < 0 ? 0 : (ulong)mb;
-        return Basic.Providers.MoestreamServer.Instance.SetCache(name, v);
-    }
+        => AiModelDo("CACHE", () =>
+        {
+            ulong v = mb < 0 ? 0 : (ulong)mb;
+            return Basic.Providers.MoestreamServer.Instance.SetCache(name, v);
+        });
 
     /// <summary>LLM MODEL TRACE nome, path|OFF (K1) — registra/ferma il trace esperti `.moetrace`.
     /// Il trace è il carburante del replay offline `moe_sim` (sizing cache senza rifare il run).</summary>
     public static string AiModelTrace(string name, string path)
-    {
-        if (string.IsNullOrWhiteSpace(name)) throw new InvalidOperationException("nome modello vuoto");
-        bool off = string.IsNullOrWhiteSpace(path) || path.Equals("OFF", StringComparison.OrdinalIgnoreCase);
-        return off ? Basic.Providers.MoestreamServer.Instance.TraceStop(name)
-                   : Basic.Providers.MoestreamServer.Instance.TraceStart(name, path);
-    }
+        => AiModelDo("TRACE", () =>
+        {
+            if (string.IsNullOrWhiteSpace(name)) throw new InvalidOperationException("nome modello vuoto");
+            bool off = string.IsNullOrWhiteSpace(path) || path.Equals("OFF", StringComparison.OrdinalIgnoreCase);
+            return off ? Basic.Providers.MoestreamServer.Instance.TraceStop(name)
+                       : Basic.Providers.MoestreamServer.Instance.TraceStart(name, path);
+        });
 
     /// <summary>LLM MODEL PREFETCH nome, topn — 0 = OFF (nessun prefetch).</summary>
     public static string AiModelPrefetch(string name, double topn)
-    {
-        uint v = topn < 0 ? 0u : (uint)topn;
-        return Basic.Providers.MoestreamServer.Instance.SetPrefetch(name, v, v > 0 ? 64u : 0u);
-    }
+        => AiModelDo("PREFETCH", () =>
+        {
+            uint v = topn < 0 ? 0u : (uint)topn;
+            return Basic.Providers.MoestreamServer.Instance.SetPrefetch(name, v, v > 0 ? 64u : 0u);
+        });
 
     /// <summary>LLM MODEL DEVICE nome, AUTO|CPU|METAL — METAL fallisce esplicitamente se assente.</summary>
     public static string AiModelDevice(string name, string mode) =>
-        Basic.Providers.MoestreamServer.Instance.SetDevice(name, mode);
+        AiModelDo("DEVICE", () => Basic.Providers.MoestreamServer.Instance.SetDevice(name, mode));
 
     /// <summary>LLM.STREAMSTATS(nome) — statistiche del modello MoE (mode, device, byte letti,
     /// cache, prefetch). Ritorna JSON con esito o errore esplicito.</summary>
@@ -9601,8 +9681,7 @@ public static double TextWidth(string s)
         if (f.Length == 0) f = "GGUF";
         // GGUF/MLX: converter del progetto codec (P/Invoke, una sola sorgente C). C#→C ammesso.
         int rc = Basic.Providers.LlmModelNative.llmmodelio_model_convert(src, dst, f);
-        if (rc != 0)
-            throw new InvalidOperationException($"LLM MODEL CONVERT {f}: conversione fallita ({rc}) per '{src}'.");
+        if (rc != 0) return AiModelFail("CONVERT");
         string es = src.Replace("\\", "\\\\").Replace("\"", "\\\"");
         string ed = dst.Replace("\\", "\\\\").Replace("\"", "\\\"");
         return "{\"ok\":true,\"src\":\"" + es + "\",\"dst\":\"" + ed + "\",\"fmt\":\"" + f + "\"}";
@@ -9615,7 +9694,7 @@ public static double TextWidth(string s)
         if (group <= 0) group = 64;
         int qrc = Basic.Providers.ModelIoNative.gmb_modelio_quantize(src, dst, (int)bits, (int)group,
                                                                     string.IsNullOrEmpty(imatrix) ? null : imatrix, (int)expertBits);
-        if (qrc != 0) throw new InvalidOperationException($"AI MODEL QUANTIZE: fallita ({qrc}) per '{src}'.");
+        if (qrc != 0) return AiModelFail("QUANTIZE");
         string es = src.Replace("\\", "\\\\").Replace("\"", "\\\"");
         string ed = dst.Replace("\\", "\\\\").Replace("\"", "\\\"");
         return "{\"ok\":true,\"src\":\"" + es + "\",\"dst\":\"" + ed + "\",\"bits\":" + (int)bits + "}";
@@ -9626,7 +9705,7 @@ public static double TextWidth(string s)
     {
         var buf = new byte[1 << 20];   /* 1 MiB: l IR/INFO di modelli grandi (377 tensori) supera i 16 KiB -> troncamento su IL/PCode (divergenza vs VMC) */
         int n = Basic.Providers.ModelIoNative.gmb_modelio_inspect(dir, buf, buf.Length);
-        if (n <= 0) throw new InvalidOperationException($"AI MODEL INSPECT: .gmbarch non risolto per '{dir}'.");
+        if (n <= 0) return AiModelFail("INSPECT");
         string report = System.Text.Encoding.UTF8.GetString(buf, 0, n);
         Current.Console.Print(report);
         Current.Console.PrintNewLine();
@@ -9638,7 +9717,7 @@ public static double TextWidth(string s)
     public static string AiModelSave(string src, string dst)
     {
         int rc = Basic.Providers.LlmModelNative.llmmodelio_model_save(src, dst);
-        if (rc != 0) throw new InvalidOperationException($"LLM MODEL SAVE: fallita ({rc}) per '{src}' -> '{dst}'.");
+        if (rc != 0) return AiModelFail("SAVE");
         return "{\"ok\":true}";
     }
 
@@ -9647,13 +9726,13 @@ public static double TextWidth(string s)
     public static string AiModelAblate(string src, string dst, string pattern)
     {
         int rc = Basic.Providers.LlmModelNative.llmmodelio_model_ablate(src, dst, pattern);
-        if (rc != 0) throw new InvalidOperationException($"LLM MODEL ABLATE: fallita ({rc}) per '{src}' pattern '{pattern}'.");
+        if (rc != 0) return AiModelFail("ABLATE");
         return "{\"ok\":true}";
     }
     public static string AiModelRemove(string src, string dst, string layer)
     {
         int rc = Basic.Providers.LlmModelNative.llmmodelio_model_remove_layer(src, dst, layer ?? "");
-        if (rc != 0) throw new InvalidOperationException($"LLM MODEL REMOVE: fallita ({rc}) per '{src}' (layer={layer}).");
+        if (rc != 0) return AiModelFail("REMOVE");
         return "{\"ok\":true}";
     }
 
@@ -9661,7 +9740,7 @@ public static double TextWidth(string s)
     public static string AiModelDiff(string a, string b, string output)
     {
         int rc = Basic.Providers.LlmModelNative.llmmodelio_model_diff(a, b, output);
-        if (rc != 0) throw new InvalidOperationException($"LLM MODEL DIFF: fallita ({rc}) per '{a}' vs '{b}'.");
+        if (rc != 0) return AiModelFail("DIFF");
         return "{\"ok\":true}";
     }
 
@@ -9669,7 +9748,7 @@ public static double TextWidth(string s)
     public static string AiModelCheckpoint(string src, string store, string name)
     {
         int rc = Basic.Providers.LlmModelNative.llmmodelio_model_checkpoint(src, store, name);
-        if (rc != 0) throw new InvalidOperationException($"LLM MODEL CHECKPOINT: fallita ({rc}) per '{src}' -> {store}/{name}.");
+        if (rc != 0) return AiModelFail("CHECKPOINT");
         return "{\"ok\":true}";
     }
 
@@ -9677,7 +9756,7 @@ public static double TextWidth(string s)
     public static string AiModelRollback(string store, string name, string dst)
     {
         int rc = Basic.Providers.LlmModelNative.llmmodelio_model_rollback(store, name, dst);
-        if (rc != 0) throw new InvalidOperationException($"LLM MODEL ROLLBACK: fallita ({rc}) per {store}/{name} -> '{dst}'.");
+        if (rc != 0) return AiModelFail("ROLLBACK");
         return "{\"ok\":true}";
     }
 
@@ -9685,7 +9764,7 @@ public static double TextWidth(string s)
     public static string AiModelAdd(string basePath, string modulePath, string output)
     {
         int rc = Basic.Providers.LlmModelNative.llmmodelio_model_add(basePath, modulePath, output);
-        if (rc != 0) throw new InvalidOperationException($"LLM MODEL ADD: fallita ({rc}) per '{modulePath}' in '{basePath}'.");
+        if (rc != 0) return AiModelFail("ADD");
         return "{\"ok\":true}";
     }
 
@@ -9693,7 +9772,7 @@ public static double TextWidth(string s)
     public static string AiModelAdapter(string basePath, string adapterPath, string output, string alpha)
     {
         int rc = Basic.Providers.LlmModelNative.llmmodelio_model_adapter(basePath, adapterPath, output, alpha);
-        if (rc != 0) throw new InvalidOperationException($"LLM MODEL ADAPTER: fallita ({rc}) per '{adapterPath}' in '{basePath}'.");
+        if (rc != 0) return AiModelFail("ADAPTER");
         return "{\"ok\":true}";
     }
 
@@ -9701,7 +9780,7 @@ public static double TextWidth(string s)
     public static string AiModelModule(string basePath, string gmmodPath, string modulePath, string output)
     {
         int rc = Basic.Providers.LlmModelNative.llmmodelio_model_module(basePath, gmmodPath, modulePath, output);
-        if (rc != 0) throw new InvalidOperationException($"LLM MODEL MODULE: fallita ({rc}) per '{gmmodPath}' + '{modulePath}'.");
+        if (rc != 0) return AiModelFail("MODULE");
         return "{\"ok\":true}";
     }
 
@@ -9709,7 +9788,7 @@ public static double TextWidth(string s)
     public static string AiModelModality(string basePath, string mmprojPath, string output)
     {
         int rc = Basic.Providers.LlmModelNative.llmmodelio_model_modality(basePath, mmprojPath, output);
-        if (rc != 0) throw new InvalidOperationException($"LLM MODEL MODALITY: fallita ({rc}) per mmproj '{mmprojPath}'.");
+        if (rc != 0) return AiModelFail("MODALITY");
         return "{\"ok\":true}";
     }
 
@@ -9717,7 +9796,7 @@ public static double TextWidth(string s)
     public static string AiModelValidate(string path, string output)
     {
         int rc = Basic.Providers.LlmModelNative.llmmodelio_model_validate(path, output);
-        if (rc != 0) throw new InvalidOperationException($"LLM MODEL VALIDATE: fallita ({rc}) per '{path}' (artefatto invalido).");
+        if (rc != 0) return AiModelFail("VALIDATE");
         return "{\"ok\":true}";
     }
 
@@ -9725,9 +9804,13 @@ public static double TextWidth(string s)
     // I verbi PLAN/POLICY/QUANT/MERGE/PRUNE/EXTRACT/PROFILE/ARCH sono eseguiti dalla STESSA logica C
     // di C99Native/VM-C (una sola sorgente, AGENTS: C#→C ammesso; C→C# mai). Mai
     // silenzioso: rc != 0 → errore esplicito.
+    /// <summary>Esito di un verbo LLM nativo: su fallimento ERR 5 con il testo UNIFORME delle
+    /// quattro gambe. Prima `InvalidOperationException` diventava 200 su IL e PCode, mentre
+    /// C99Native riportava il -1 della libreria e VM/C 0: stesso errore, quattro codici.</summary>
     private static string LlmEnsure(int rc, string verb, string detail)
     {
-        if (rc != 0) throw new InvalidOperationException("LLM verbo fallito");   /* testo UNIFORME su 4 backend */
+        if (rc != 0)
+            throw new BasicException(ErrorCode.IllegalFunctionCall, SourcePosition.Unknown, "LLM verbo fallito");
         return "{\"ok\":true}";
     }
 
@@ -9906,6 +9989,7 @@ public static double TextWidth(string s)
     // Sorgente unica: il dispatcher C `llmmodelio_tensor_cmd_to` (una sola implementazione).
     private static string LlmCapture4(string sub, string a, string b, string c)
     {
+        a = Basic.Providers.LlmModelNative.ResolveModelPath(a);
         int cap = 1 << 16; string txt = "";
         while (true)
         {
@@ -9922,14 +10006,19 @@ public static double TextWidth(string s)
 
     /// <summary>LLM.TOKENS(model, testo) → "74,71,78,…" (gli id come dato, non stampati).</summary>
     public static string LlmTokens(string model, string text)
-        => LlmCaptureStr((buf, cap) => Basic.Providers.LlmModelNative.llmmodelio_tokenize_ids_to(model ?? "", text ?? "", buf, (nuint)cap));
+        => LlmCaptureStr((buf, cap) => Basic.Providers.LlmModelNative.llmmodelio_tokenize_ids_to(model ?? "", text ?? "", buf, (nuint)cap),
+                         "LLM.TOKENS: tokenizer non disponibile per il modello indicato");
 
     /// <summary>LLM.DETOKENIZE(model, "74,71,…") → testo.</summary>
     public static string LlmDetokenize(string model, string ids)
-        => LlmCaptureStr((buf, cap) => Basic.Providers.LlmModelNative.llmmodelio_detokenize_to(model ?? "", ids ?? "", buf, (nuint)cap));
+        => LlmCaptureStr((buf, cap) => Basic.Providers.LlmModelNative.llmmodelio_detokenize_to(model ?? "", ids ?? "", buf, (nuint)cap),
+                         "LLM.DETOKENIZE: tokenizer non disponibile o id non validi");
 
-    /// <summary>Buffer adattivo + decodifica UTF-8 (stesso contratto di LlmCmdTo4).</summary>
-    private static string LlmCaptureStr(Func<byte[], int, int> call)
+    /// <summary>Buffer adattivo + decodifica UTF-8 (stesso contratto di LlmCmdTo4).
+    /// Su fallimento ERR 5 (illegal function call) con `verb` quando il chiamante lo passa: prima
+    /// `InvalidOperationException` diventava ERR 200, mentre le gambe C alzano 5 (VM/C builtin) e
+    /// C99Native alzava 9. Stesso codice e stesso testo per la coppia del tokenizer.</summary>
+    private static string LlmCaptureStr(Func<byte[], int, int> call, string verb = null)
     {
         int cap = 1 << 16;
         while (true)
@@ -9939,7 +10028,9 @@ public static double TextWidth(string s)
             int n = Array.IndexOf(buf, (byte)0); if (n < 0) n = buf.Length;
             string txt = System.Text.Encoding.UTF8.GetString(buf, 0, n);
             if (rc == -2) { cap <<= 1; if (cap > (1 << 24)) throw new InvalidOperationException("LLM: output troppo grande (> 16 MiB)."); continue; }
-            if (rc < 0) throw new InvalidOperationException("LLM: verbo fallito (output non disponibile: modello/argomenti non validi).");
+            if (rc < 0)
+                throw new BasicException(ErrorCode.IllegalFunctionCall, SourcePosition.Unknown,
+                    verb ?? "LLM: verbo fallito (output non disponibile: modello/argomenti non validi).");
             if (n < cap - 1 || cap >= (1 << 24)) return txt;
             cap <<= 1;
         }
@@ -9957,6 +10048,9 @@ public static double TextWidth(string s)
     private static string LlmFamilyOut(int family, string sub, string a, string b, string c)
     {
         string s0 = sub ?? "", s1 = a ?? "", s2 = b ?? "", s3 = c ?? "";
+        // TENSOR: il primo argomento e' una dir di modello (LOGITS/TOPK/QUALITY/USAGEEVAL) e passa
+        // dal risolutore del runtime; per gli altri sotto-verbi torna invariato.
+        if (family == FamTensor) s1 = Basic.Providers.LlmModelNative.ResolveModelPath(s1);
         Func<byte[], int, int> call = family switch
         {
             FamPolicy => (buf, cap) => Basic.Providers.LlmModelNative.llmmodelio_policy_cmd_to(s0, s1, s2, s3, buf, cap),
@@ -9966,7 +10060,19 @@ public static double TextWidth(string s)
             FamKv => (buf, cap) => Basic.Providers.LlmModelNative.llmmodelio_kv_cmd_to(s0, s1, s2, buf, cap),
             _ => (buf, cap) => Basic.Providers.LlmModelNative.llmmodelio_tensor_cmd_to(s0, s1, s2, s3, buf, cap),
         };
-        return LlmCaptureStr(call).TrimEnd('\n', '\r');
+        // Testo d'errore PER FAMIGLIA, identico alle gambe C (emitter C99: aimo_llm_*_out;
+        // VM/C: gmb_bf_llm*out): prima tutte le famiglie riportavano il messaggio generico
+        // "LLM: verbo fallito (output non disponibile…)", che non coincideva con nessuna.
+        string verb = family switch
+        {
+            FamPolicy => "LLM.POLICY: verbo fallito",
+            FamArch => "LLM.ARCH: verbo fallito",
+            FamModule => "LLM.MODULE: verbo fallito",
+            FamKernel => "LLM.KERNEL: verbo fallito",
+            FamKv => "LLM.KV: verbo fallito",
+            _ => "LLM.TENSOR: verbo fallito",
+        };
+        return LlmCaptureStr(call, verb).TrimEnd('\n', '\r');
     }
 
     public static string LlmPolicyOut(string sub, string a, string b, string c) => LlmFamilyOut(FamPolicy, sub, a, b, c);
@@ -9984,8 +10090,19 @@ public static double TextWidth(string s)
         return raw.TrimEnd('\n', '\r');
     }
     /// <summary>ASR.TRANSCRIBE(model, wav[, outPath]): trascrizione speech-to-text (engine ASR nativo C).</summary>
-    public static string AsrTranscribe(string model, string wav, string outPath)
-        => Basic.Providers.LlmModelNative.AsrTranscribe(model ?? "", wav ?? "", outPath ?? "");
+    /// <summary>ASR.RECOGNIZE(model, wav[, outPath]): trascrizione; se il motore C FALLISCE
+    /// solleva ERR 5 "ASR.RECOGNIZE: trascrizione fallita", catturabile con ON ERROR/TRY.
+    /// Prima tornava "" in silenzio (il P/Invoke appiattiva il NULL su stringa vuota), quindi
+    /// nessuna gamba gestita poteva accorgersene. Stesso codice d'errore delle gambe C e di
+    /// `IlRuntime.Ffi` per una chiamata nativa fallita.</summary>
+    public static string AsrTranscribe(string model, string wav, string outPath, int line)
+    {
+        var s = Basic.Providers.LlmModelNative.AsrTranscribeOrNull(model ?? "", wav ?? "", outPath ?? "");
+        if (s == null)
+            throw new BasicException(ErrorCode.IllegalFunctionCall, new SourcePosition(-1, line, 0),
+                                     "ASR.RECOGNIZE: trascrizione fallita");
+        return s;
+    }
     public static string LlmCompile(string model, string output)
     {
         // Via la variante _to (stesso percorso di LLM TENSOR COMPILE): l output resta nel canale
@@ -10025,6 +10142,10 @@ public static double TextWidth(string s)
     private static string LlmCmdTo4(string label, string sub, string a, string b, string c,
         Func<string, string, string, string, byte[], int> call)
     {
+        // PATH del modello risolto dal runtime C (`path.models_root`, `%MODELS%`, `~`): le gambe
+        // gestite non reimplementano la regola, la chiamano (AGENTS C#→C). Sulle forme non
+        // riconosciute (nomi di tensore, assoluti, relativi) il valore torna identico.
+        a = Basic.Providers.LlmModelNative.ResolveModelPath(a);
         int cap = 1 << 16; string txt = ""; int rc;
         while (true)
         {
@@ -11944,6 +12065,66 @@ public static double TextWidth(string s)
     /// Limiti: niente metodi di classe (serve receiver), niente GENERATOR (non eseguibili
     /// in sync), parametri ByRefBox avvolti (scritture perse), park dentro la chiamata
     /// non supportato (deadlock — il chiamante EVAL è sincrono).</summary>
+    /// <summary>Valore LETTERALE di un default di parametro (numeri, stringhe, booleani, NIL);
+    /// null per un default calcolato o assente (il chiamante resta esplicito: mai un valore
+    /// inventato). Usato dal registro host delle macro (IL e PCode).</summary>
+    internal static object? LiteralDefault(Expr? d) => d switch
+    {
+        NumberExpr n => n.Value,
+        StringExpr s => s.Value,
+        BooleanExpr b => b.Value ? -1.0 : 0.0,          // canone BASIC: TRUE = -1
+        NilExpr => null,
+        _ => null
+    };
+
+    /// <summary>Completa gli argomenti omessi di una procedura dell'HOST con i DEFAULT letterali
+    /// dichiarati (`OPTIONAL x AS T = valore`). Serve al percorso PCode, che invoca per
+    /// INDIRIZZO e non ha un'AST a portata di mano nel compilatore del frammento: senza,
+    /// `EVAL("Opt(5)")` lasciava 0 al posto del default (mentre la chiamata diretta dava 10).
+    /// Se la procedura non è nel programma macro, o un default non è letterale, gli argomenti
+    /// restano quelli ricevuti (nessun valore inventato).</summary>
+    public static object?[] ExpandOmittedOptionals(string name, int arity, object?[] args)
+    {
+        if (args.Length >= arity) return args;
+        var defs = HostProcDefaults(name, arity);
+        if (defs == null) return args;
+        var full = new object?[arity];
+        Array.Copy(args, full, args.Length);
+        for (var i = args.Length; i < arity; i++)
+        {
+            if (defs[i] is null) return args;      // default non letterale/obbligatorio: esplicito
+            full[i] = defs[i];
+        }
+        return full;
+    }
+
+    /// <summary>DEFAULT letterali dei parametri di una procedura dell'HOST, per la tabella
+    /// OP_CALL_HOST del PCode (che dal chunk conosce solo nome/indirizzo/arità). Null se la
+    /// procedura non è nel programma macro o se l'arità non combacia.</summary>
+    public static object?[]? HostProcDefaults(string name, int arity)
+    {
+        var program = Volatile.Read(ref _macroProgram);
+        if (program == null) return null;
+        var fd = program.Symbols.GetAllProcedures().OfType<FunctionDefinition>()
+            .FirstOrDefault(f => f.Parameters.Length == arity
+                                 && string.Equals(f.OriginalName.Lexeme, name, StringComparison.OrdinalIgnoreCase));
+        if (fd == null) return null;
+        var d = new object?[arity];
+        for (var i = 0; i < arity; i++) d[i] = LiteralDefault(fd.Parameters[i].DefaultValue);
+        return d;
+    }
+
+    /// <summary>Valore del DEFAULT dichiarato per il parametro <paramref name="i"/> di una
+    /// procedura BASIC, quando la macro/EVAL lo omette. Valuta le forme letterali (numeri,
+    /// stringhe, booleani, NIL); per un default calcolato (espressione non letterale) ritorna
+    /// null → il chiamante ripiega su <see cref="Type.Missing"/> (errore esplicito del binder,
+    /// mai un valore inventato).</summary>
+    private static object? DefaultOfOmitted(ImmutableArray<Parameter> ps, int i, string proc)
+    {
+        if (i < 0 || i >= ps.Length) return null;
+        return LiteralDefault(ps[i].DefaultValue);
+    }
+
     public static object? InvokeBasicProcedureByName(string name, int argc, object?[] args)
     {
         var program = Volatile.Read(ref _macroProgram);
@@ -11976,9 +12157,14 @@ public static double TextWidth(string s)
         {
             if (i >= args.Length)
             {
-                // Parametri opzionali omessi: il binder usa il default (Type.Missing),
-                // altrimenti Invoke lancia esplicito (mai prese silenziose).
-                invokeArgs[i] = Type.Missing;
+                /* Parametri OPTIONAL omessi: si applica il DEFAULT DICHIARATO nel BASIC.
+                 * `Type.Missing` da solo NON basta: il metodo `Proc_<id>` generato non porta
+                 * `[opt]` nei metadati e il binder lancia "Missing parameter does not have a
+                 * default value"; sul percorso P-Code il valore restava 0 (misurato:
+                 * `EVAL("Opt(5)")` con `OPTIONAL b AS DOUBLE = 10` → errore su IL, 5 su PCode,
+                 * 15 la chiamata DIRETTA). Qui il default lo valuta il runtime dall'AST. */
+                var def = DefaultOfOmitted(chosen.Parameters, i, name);
+                invokeArgs[i] = def is null ? Type.Missing : CoerceInvokeArg(def, pis[i].ParameterType, name);
                 continue;
             }
             var pt = pis[i].ParameterType;
@@ -11987,7 +12173,12 @@ public static double TextWidth(string s)
         }
         try
         {
-            var result = method.Invoke(null, invokeArgs);
+            /* `BindingFlags.OptionalParamBinding` + `Type.Missing` = il binder applica i DEFAULT
+             * dichiarati per i parametri OPTIONAL omessi. Senza il flag, `Invoke` lancia
+             * "Missing parameter does not have a default value" (reale: `EVAL("PMT(r, n, pv)")`
+             * su una FUNCTION con OPTIONAL fv/type falliva su IL/PCode). */
+            var result = method.Invoke(null, System.Reflection.BindingFlags.OptionalParamBinding,
+                binder: null, invokeArgs, culture: null);
             return method.ReturnType == typeof(void) ? null : result;
         }
         catch (System.Reflection.TargetInvocationException tie)
@@ -12027,7 +12218,9 @@ public static double TextWidth(string s)
         var table = new List<global::Compiler.MacroHostProc>();
         foreach (var fd in program.Symbols.GetAllProcedures().OfType<FunctionDefinition>())
         {
-            table.Add(new global::Compiler.MacroHostProc(fd.OriginalName.Lexeme, -1, fd.Parameters.Length));
+            var defs = new object?[fd.Parameters.Length];
+            for (var i = 0; i < defs.Length; i++) defs[i] = LiteralDefault(fd.Parameters[i].DefaultValue);
+            table.Add(new global::Compiler.MacroHostProc(fd.OriginalName.Lexeme, -1, fd.Parameters.Length, defs));
         }
         if (table.Count == 0) return (null, null);
         Func<int, object?[], object?> inv = (idx, args) => (idx < 0 || idx >= table.Count)
@@ -12973,12 +13166,34 @@ public static double TextWidth(string s)
     // raggiunto → il parziale resta nel buffer e viene scartato dal PrintStageBegin successivo (o
     // a fine programma). Finestre/grafica restano immediate (come PCode).
     [ThreadStatic] private static System.Text.StringBuilder? _printStage;
+    /* Livelli SOSPESI: un PRINT ANNIDATO (un PRINT dentro una FUNCTION valutata come
+     * argomento) SOSPENDE il parziale esterno invece di distruggerlo. Canone delle 4 gambe:
+     * il PRINT interno emette la sua riga, l'esterno riprende e committa la sua. */
+    [ThreadStatic] private static System.Collections.Generic.Stack<System.Text.StringBuilder>? _printStageSaved;
 
     /// <summary>Exit code del programma BASIC: valore di ritorno di FUNCTION Main()
     /// (VB6/script tool). Il runner lo usa come codice di uscita del processo.</summary>
     public static int ProgramExitCode { get; private set; }
     public static void SetProgramExitCode(double v) { ProgramExitCode = (int)v; }
-    public static void PrintStageBegin() { _printStage ??= new System.Text.StringBuilder(); _printStage.Clear(); }
+    public static void PrintStageBegin()
+    {
+        if (_printStage is { Length: > 0 })
+        {
+            (_printStageSaved ??= new()).Push(_printStage);
+            _printStage = new System.Text.StringBuilder();
+            return;
+        }
+        /* Statement nuovo con un livello esterno PENDENTE = quello esterno è stato ABORTITO
+         * (errore: il suo PrintStageEnd non è stato raggiunto) → si scarta, canone
+         * "un PRINT interrotto non emette la riga parziale". */
+        if (_printStageSaved is { Count: > 0 })
+        {
+            _printStageSaved.Clear();
+            _printStage = null;
+        }
+        _printStage ??= new System.Text.StringBuilder();
+        _printStage.Clear();
+    }
 
     public static void PrintStageEnd(bool commit)
     {
@@ -12993,9 +13208,24 @@ public static double TextWidth(string s)
             try { gfx = g?.IsAvailable == true; } catch { gfx = false; }
             if (gfx) g!.Print(staged);
             else Current.Console.Print(staged);
-            return;
         }
+        else
+        {
+            _printStage?.Clear();
+        }
+        /* Riprende il livello esterno sospeso (se c'era un PRINT annidato). */
+        if (_printStageSaved is { Count: > 0 }) _printStage = _printStageSaved.Pop();
+    }
+
+    /// <summary>ERRORE: scarta TUTTI i livelli di staging pendenti. Un PRINT interrotto da un
+    /// errore non deve emettere la riga parziale — e nemmeno riprenderla dopo: il canone è
+    /// "scarta" (parità C99Native/VM-C/PCode, dove il raise azzera lo staging). Chiamata
+    /// all'ingresso del CATCH / del dispatch ON ERROR.</summary>
+    public static void PrintStageAbort()
+    {
         _printStage?.Clear();
+        _printStage = null;
+        _printStageSaved?.Clear();
     }
 
     public static void PrintDispatch(string text)
@@ -13225,6 +13455,13 @@ public static double TextWidth(string s)
         long l => PrintFormatDouble(l),
         short s2 => PrintFormatDouble(s2),
         byte by => PrintFormatDouble(by),
+        // SBYTE e i tipi unsigned stretti (2026-11-11): mancavano nel switch → cadevano nel
+        // default `ToString() + " "` e stampavano SENZA lo spazio di padding ("sb=2" invece di
+        // "sb= 2"), divergenza dalle altre gambe (trovata sul MiniTest union_scalars).
+        sbyte sby => PrintFormatDouble(sby),
+        ushort us2 => PrintFormatDouble(us2),
+        uint ui => PrintFormatDouble(ui),
+        ulong ul => PrintFormatDouble(ul),
         decimal dec => (dec >= 0.0m ? " " : "") + dec.ToString("G", System.Globalization.CultureInfo.InvariantCulture) + " ",
         System.Collections.IEnumerable en => "[" + string.Join(", ", en.Cast<object?>().Select(JsonValueToString)) + "]",
         // DATA/ORA: "dd/MM/yyyy HH:mm:ss" SENZA lo spazio finale del caso generico.
@@ -13599,6 +13836,14 @@ public static double TextWidth(string s)
         {
             InkeyQueue.Clear();
         }
+        // STACK TRACE + registro delle procedure BASIC: in un processo CONDIVISO (harness,
+        // REPL) restavano quelli del programma precedente. `_basicProcedures` è indicizzato per
+        // symbolId e nomi di procedure di ALTRI file con lo stesso id vincevano la ricerca →
+        // `ERR.StackTrace` stampava nomi sbagliati (`Media` → `ConPark`, `G` → `Set10`).
+        // Il prologo del programma nuovo li re-registra subito dopo.
+        TraceReset();
+        _basicProcedures.Clear();
+        _basicProcedureAssembly = null;
     }
 
     /// <summary>Legge una variabile GLOBAL condivisa tra stepper Main e Proc_* degli handler.</summary>
@@ -13813,6 +14058,21 @@ public static double TextWidth(string s)
     public static void StoreStatic(int symbolId, object? value)
     {
         lock (ProgramStatics) ProgramStatics[symbolId] = value;
+    }
+
+    /// <summary>Gemello di <see cref="GetOrCreateGlobalBox"/> per una variabile STATIC:
+    /// restituisce il box (object) del valore, creandolo dal default se assente. Serve a
+    /// prendere l'INDIRIZZO di uno STATIC value type con una sequenza IL senza label (il
+    /// GPM v2 stepper, che spezza il corpo in stati, non sa marcare le label definite in
+    /// mezzo alla selezione).</summary>
+    public static object GetOrCreateStaticBox(int symbolId, object defaultValue)
+    {
+        lock (ProgramStatics)
+        {
+            if (ProgramStatics.TryGetValue(symbolId, out var existing) && existing is not null) return existing;
+            ProgramStatics[symbolId] = defaultValue;
+            return defaultValue;
+        }
     }
 
     /// <summary>Inizializza una variabile STATIC alla PRIMA chiamata (le successive ignorano il valore).</summary>
@@ -17148,7 +17408,6 @@ public static double TextWidth(string s)
 
     /// <summary>Gli eventi finestra dispatchano al EventDispatcher unificato (ON WINDOW).</summary>
     private static ClipperLib.Controls.WindowManager? _tuiWindows;
-    private static bool _tuiWindowEventsSubscribed;
 
     private static ClipperLib.Controls.WindowManager TuiWindows
     {
@@ -17158,21 +17417,24 @@ public static double TextWidth(string s)
             {
                 _tuiWindows = new ClipperLib.Controls.WindowManager(new ClipperLib.Clipper.ScreenRect(0, 0, 80, 24));
                 try { _tuiWindows.ClipboardService = Current.Clipboard; } catch { }
-                if (!_tuiWindowEventsSubscribed)
+                /* Sottoscrizione degli eventi sull'ISTANZA nuova, SEMPRE. Prima c'era un flag
+                 * statico `_tuiWindowEventsSubscribed`: quando `_tuiWindows` veniva azzerato
+                 * (ResetProgramState fra un programma e l'altro nello stesso processo) la
+                 * WindowManager successiva nasceva SENZA sottoscrizioni → ON WINDOW (MINIMIZE/
+                 * FOCUS/…) non dispatchava più nulla. Sintomo: MiniTest verde da solo e
+                 * `flags: 0 0 0 0` quando girava dopo un altro test nella stessa JVM
+                 * (controls/window_events, windows/window_events_matrix). */
+                try
                 {
-                    _tuiWindowEventsSubscribed = true;
-                    try
-                    {
-                        _tuiWindows.WindowOpened += (_, e) => CommonLib.App.EventDispatcher.Instance.DispatchWindow(7, e.Id);
-                        _tuiWindows.WindowClosed += (_, e) => CommonLib.App.EventDispatcher.Instance.DispatchWindow(0, e.Id);
-                        _tuiWindows.WindowMoved += (_, e) => CommonLib.App.EventDispatcher.Instance.DispatchWindow(3, e.Id);
-                        _tuiWindows.WindowResized += (_, e) => CommonLib.App.EventDispatcher.Instance.DispatchWindow(1, e.Id);
-                        _tuiWindows.WindowFocused += (_, e) => CommonLib.App.EventDispatcher.Instance.DispatchWindow(4, e.Id);
-                        _tuiWindows.WindowMinimized += (_, e) => CommonLib.App.EventDispatcher.Instance.DispatchWindow(5, e.Id);
-                        _tuiWindows.WindowRestored += (_, e) => CommonLib.App.EventDispatcher.Instance.DispatchWindow(6, e.Id);
-                    }
-                    catch { }
+                    _tuiWindows.WindowOpened += (_, e) => CommonLib.App.EventDispatcher.Instance.DispatchWindow(7, e.Id);
+                    _tuiWindows.WindowClosed += (_, e) => CommonLib.App.EventDispatcher.Instance.DispatchWindow(0, e.Id);
+                    _tuiWindows.WindowMoved += (_, e) => CommonLib.App.EventDispatcher.Instance.DispatchWindow(3, e.Id);
+                    _tuiWindows.WindowResized += (_, e) => CommonLib.App.EventDispatcher.Instance.DispatchWindow(1, e.Id);
+                    _tuiWindows.WindowFocused += (_, e) => CommonLib.App.EventDispatcher.Instance.DispatchWindow(4, e.Id);
+                    _tuiWindows.WindowMinimized += (_, e) => CommonLib.App.EventDispatcher.Instance.DispatchWindow(5, e.Id);
+                    _tuiWindows.WindowRestored += (_, e) => CommonLib.App.EventDispatcher.Instance.DispatchWindow(6, e.Id);
                 }
+                catch { }
             }
             return _tuiWindows;
         }
@@ -17869,8 +18131,38 @@ public static double TextWidth(string s)
     public static void TeamDistillThinking(string team, string dataset) { Basic.Agents.Recursive.RecursiveTrainer.DistillThinking(team, dataset); }
     public static string AiSetHfToken(string value) { Basic.AI.AiConfig.HfToken = value; return value; }
     public static string AiSetOption(string name, string value)
-        => Basic.Providers.MlxOptions.Set(name, value) == 0 ? value : "";
+    {
+        var rc = Basic.Providers.MlxOptions.Set(name, value);
+        if (rc == 0) NotifyOptionAcceptedWithoutReport(name, value);
+        return rc == 0 ? value : "";
+    }
     public static string AiOption(string name) => Basic.Providers.MlxOptions.Get(name);
+
+    /* NOTA DIAGNOSTICA `debug.memory` (2026-11-14). L'opzione è la SUPERFICIE del registro
+     * (§2.1): va accettata e elencata anche qui, e il testo dell'elenco resta identico alle
+     * gambe C. Ma la contabilità della memoria viva sta in `gmb_memstats.c` (runtime C):
+     * su IL e PCodeVM il set riesce e NON esiste alcun report `[MEM]`. Accettarla in silenzio
+     * faceva sembrare la diagnostica rotta invece che assente per costruzione. La nota va su
+     * STDERR — l'oracolo dei MiniTest è lo stdout, quindi nessun test cambia esito e l'elenco
+     * delle opzioni non viene toccato. */
+    private static bool _debugMemoryNoReportNoted;
+    private static void NotifyOptionAcceptedWithoutReport(string name, string value)
+    {
+        if (_debugMemoryNoReportNoted) return;
+        if (!string.Equals(name, "debug.memory", StringComparison.OrdinalIgnoreCase)) return;
+        if (string.IsNullOrEmpty(value)) return;
+        // Stessa regola di "acceso" di `gmb_memstats.c`: vuoto/0/off/false/no = spenta.
+        if (value == "0"
+            || string.Equals(value, "off", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(value, "false", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(value, "no", StringComparison.OrdinalIgnoreCase)) return;
+        _debugMemoryNoReportNoted = true;
+        Console.Error.WriteLine(
+            "[AI SET OPTION] debug.memory=\"" + value + "\": opzione registrata, ma la contabilità della " +
+            "memoria viva è del solo runtime C (gmb_memstats.c). Su IL e PCodeVM il valore è accettato e " +
+            "NON produce alcun report [MEM]: per la diagnosi eseguire il programma sulla gamba C " +
+            "(VM/C o C99Native).");
+    }
 
     /// <summary>Voci DICHIARATE del registro opzioni — MIRROR di `g_opt_core[]` in
     /// native/gmb_runtime_c/src/gmb_opts.c, che è la fonte canonica: nomi, ordine e
@@ -17879,6 +18171,10 @@ public static double TextWidth(string s)
     private static readonly (string Name, string Desc)[] OptionCoreTable =
     [
         ("moe_swap_dir",   "dir modello per lo streaming esperti MoE (vuoto = off)"),
+        /* Radice dei pesi (2026-11-12): voce del registro C (`gmb_opts.c`) che i MiniTest
+         * HEAVY e i sample usano per `%MODELS%`/`~/ai/Models`. Mancava qui, quindi
+         * `AI LIST OPTIONS` dava un elenco DIVERSO sulle gambe managed (una voce in meno). */
+        ("path.models_root", "radice dei modelli per `%MODELS%` e `~/ai/Models` (vuoto = ~/ai/Models)"),
         ("GMB_TUI_SCRIPT", "typeahead scriptato per TUI/CI: tasti iniettati nell'input (vuoto = input reale)"),
         ("GMB_PKG_CACHE",  "dir cache dei pacchetti per REQUIRE (vuoto = <progetto>/packages)"),
         ("GMB_TORCH_PATH", "dir dei runtime ML (torch/mlx) quando i settings non la indicano"),
@@ -17899,6 +18195,13 @@ public static double TextWidth(string s)
         ("GMB_FORM_SHOT",      "file PNG della cattura del form (test)"),
         ("GMB_FORM_SHOT_FRAME","frame in cui scattare GMB_FORM_SHOT (default 20)"),
         ("MAXXLIB_GRAPHICS",   "protocollo grafico del terminale: kitty o sixel (assente = dedotto da TERM)"),
+        /* Diagnostica del runtime C (voce di `g_opt_core[]` dal 2026-11-13): `debug.memory`
+         * accende la contabilità della memoria viva per tipo (gmb_memstats.c). Mancava qui,
+         * quindi l'elenco delle gambe managed aveva una riga in meno di VMC/C99Native e
+         * `ai/ai_list_options` divergeva. IL e PCodeVM non producono il report (è del runtime C),
+         * ma la voce va DICHIARATA lo stesso: l'elenco è la superficie del registro, non
+         * l'inventario di ciò che ogni gamba sa fare. */
+        ("debug.memory", "contabilità memoria del runtime C per tipo, report su stderr a fine run (1 = attiva)"),
     ];
 
     /// <summary>AI LIST OPTIONS — comando-query (§1): stampa nome, descrizione e valore
@@ -18171,17 +18474,27 @@ public static double TextWidth(string s)
     {
         try
         {
-            var v = MacroEvalExprWithLocals(ev, System.Array.Empty<string>(), System.Array.Empty<object?>());
+            var v = MacroEvalExprPCodeEx(ev, System.Array.Empty<string>(), System.Array.Empty<object?>(),
+                out var implicitName);
+            /* Nome nudo IGNOTO (il compilatore ha dovuto creare la variabile): il valutatore C, che
+             * è il riferimento del contratto ("un evento non eseguibile è tracciato, mai ignorato"),
+             * lo risolve a NIL e `gmb_replay_auto` registra l'errore; qui il canone EVAL darebbe lo
+             * slot transiente 0 e l'evento risulterebbe "ok". Stesso testo del C, così l'esito è
+             * identico sulle 4 gambe (divergenza misurata: samples/Ai/RuntimeFullCoverage §6.2). */
+            if (implicitName)
+                return "non eseguibile";
             // Contratto CONDIVISO col mondo C: un evento è "eseguito" solo se produce un valore.
             // Il valutatore C# NON solleva: segnala il fallimento con `null` (NIL) oppure con la
             // convenzione interna della pipeline macro, la stringa "MACRO ERROR: …" → entrambi
-            // sono registrati come ERRORE, mai "ok" silenzioso.
-            if (v is null) return "error: evento non eseguibile (valuta a NIL)";
+            // sono registrati come ERRORE, mai "ok" silenzioso. Il testo è il MOTIVO: il prefisso
+            // "error: <evento> → " lo aggiunge ReplayRegistry.Auto (come il C), quindi NON va
+            // ripetuto qui (prima usciva "error: X → error: …").
+            if (v is null) return "evento non eseguibile (valuta a NIL)";
             if (v is string s && s.StartsWith("MACRO ERROR:", System.StringComparison.Ordinal))
-                return "error: " + s;
+                return s;
             return "";
         }
-        catch (System.Exception ex) { return "error: " + ex.Message; }
+        catch (System.Exception ex) { return ex.Message; }
     }
 
     public static double ReplayRun(string sessionId, string targetId)
@@ -19358,7 +19671,18 @@ public static double TextWidth(string s)
     /// EVAL/&amp; non ha alcun uso pratico, un'assegnazione sì — è quello che l'utente intendeva.
     /// </summary>
     private static object? MacroEvalExprPCode(string code, string[]? localNames = null, object?[]? localValues = null)
+        => MacroEvalExprPCodeEx(code, localNames, localValues, out _);
+
+    /// <summary>Come <see cref="MacroEvalExprPCode"/>, ma riporta in <paramref name="implicitName"/>
+    /// se il valore proviene da un NOME NUDO che il compilatore ha dovuto CREARE perché ignoto
+    /// (nessun simbolo nel programma ospite, nessun campo DBF, nessun locale): il canone EVAL lo
+    /// tiene nello scope transiente (valore 0/""), ma il valutatore del runtime C
+    /// (<c>gmb_eval_env</c>/<c>vm_expr_get</c>) lo risolve a NIL. Serve a `AI REPLAY AUTO`, che deve
+    /// trattare l'evento come NON ESEGUIBILE in entrambi i mondi (vedi EvalReplayEvent).</summary>
+    private static object? MacroEvalExprPCodeEx(string code, string[]? localNames, object?[]? localValues,
+        out bool implicitName)
     {
+        implicitName = false;
         if (string.IsNullOrWhiteSpace(code))
             return code;
         var program = Volatile.Read(ref _macroProgram) ?? MinimalMacroProgram;
@@ -19423,6 +19747,19 @@ public static double TextWidth(string s)
                 ExternalHostProcs = clrTableE
             };
             var chunk = compiler.CompileExpressionBody(ImmutableArray<Parameter>.Empty, expr);
+
+            /* Nome nudo IGNOTO: `VariableExpr` che non corrisponde a nessun simbolo reale
+             * dell'host, a nessun campo DBF attivo e a nessun locale. Il canone EVAL lo tiene
+             * nello scope transiente (0/""), ma il valutatore del runtime C lo risolve a NIL:
+             * serve a `AI REPLAY AUTO` per registrare l'evento come NON ESEGUIBILE in entrambi i
+             * mondi. Nessun falso positivo: le costanti (PI, TRUE…) non sono `VariableExpr`
+             * (PI è BuiltinFunctionCallExpr, TRUE è BooleanExpr) e i nomi risolvibili sono esclusi
+             * qui sotto. */
+            if (expr is VariableExpr vImpl && vImpl.NameCleaned.Lexeme is { } implNm
+                && EvalLocalIndex(localNames, localValues, implNm) < 0
+                && !TryResolveGlobalSymbolId(implNm, out _)
+                && !DbfActiveHasField(implNm))
+                implicitName = true;
 
             var slotToSymbolId = ResolveGlobalCaptureSlots(compiler);
             chunk.GlobalCount = compiler.GlobalSlots.Count;
@@ -19527,6 +19864,12 @@ public static double TextWidth(string s)
     public static void RunCommand(string command)
     {
         if (string.IsNullOrWhiteSpace(command)) return;
+        /* Ordine dell'output: il figlio scrive direttamente sul descrittore stdout del
+         * processo, mentre PRINT può passare da un Console.Out reindirizzato (harness
+         * PCode/VM-C) o bufferizzato. Senza flush l'output del comando precede i PRINT
+         * già eseguiti (samples/Commands/RunChainLoad: PCode invertito rispetto a IL). */
+        try { Console.Out.Flush(); } catch { /* writer chiuso: nessun flush necessario */ }
+        try { Console.Error.Flush(); } catch { }
         var psi = new System.Diagnostics.ProcessStartInfo
         {
             FileName = OperatingSystem.IsWindows() ? "cmd.exe" : "/bin/sh",

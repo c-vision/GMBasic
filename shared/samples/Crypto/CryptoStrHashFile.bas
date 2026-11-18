@@ -1,12 +1,16 @@
 ' FILE: Crypto/CryptoStrHashFile.bas
 ' =================================================================================================
 ' CRYPTOGRAPHY.STRHASHFILE(path$, algo$) — hash di file come stringa esadecimale
+' NB (2026-11-13): CRYPTOGRAPHY è un PACCHETTO FFI — serve `REQUIRE "crypto"` prima di IMPORT
+' (senza, il namespace non è risolto e ogni simbolo risulta "non definito").
 ' =================================================================================================
+REQUIRE "crypto"
 IMPORT CRYPTOGRAPHY
 
 SUB Main()
-    CLS
+    ' CLS/TUI non necessari: il sample deve girare anche headless.
     PRINT "=== CRYPTOGRAPHY.STRHASHFILE ==="
+    IF NOT IO.DIREXISTS("work") THEN MKDIR "work"
     DIM testFile$ = "work/hashme.txt"
     DIM path$ = testFile$
 

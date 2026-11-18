@@ -177,7 +177,10 @@ END FUNCTION
 PUBLIC FUNCTION TSMA(series() AS DOUBLE, period AS LONG) AS ARRAY OF DOUBLE
     DIM n AS LONG = UBOUND(series) + 1
     DIM o(n - period) AS DOUBLE
-    CALL RXF_MA(series, n, period, o)
+    ' MEDIA MOBILE (n-period+1 valori). Prima chiamava RXF_MA -> ofx_ts_macoeff, che
+    ' restituisce i COEFFICIENTI di autocorrelazione del modello MA (q valori), non la
+    ' media mobile: i test stampavano 0 sull'ultimo elemento su tutte le gambe.
+    CALL RXF_ROLL_MEAN(series, n, period, o)
     RETURN o
 END FUNCTION
 

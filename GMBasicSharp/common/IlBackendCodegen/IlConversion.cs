@@ -306,6 +306,12 @@ public static class IlConversion
             {
                 il.Emit(OpCodes.Call, types.IlRuntimeToOADateMethod);
             }
+            else if (fromClr == typeof(ulong))
+            {
+                // UInt64 → double NON SEGNATO (C: (double)u): Conv_R8 reinterpreta i valori
+                // sopra 2^63 come negativi (parità con VM/C e C99).
+                il.Emit(OpCodes.Conv_R_Un);
+            }
             else
             {
                 il.Emit(ConvertOpcode(typeof(double)));
@@ -373,6 +379,12 @@ public static class IlConversion
             {
                 il.Emit(OpCodes.Call, types.IlRuntimeToOADateMethod);
             }
+            else if (fromClr == typeof(ulong))
+            {
+                // UInt64 → double NON SEGNATO (C: (double)u): Conv_R8 reinterpreta i valori
+                // sopra 2^63 come negativi (parità con VM/C e C99).
+                il.Emit(OpCodes.Conv_R_Un);
+            }
             else
             {
                 il.Emit(ConvertOpcode(typeof(double)));
@@ -429,7 +441,7 @@ public static class IlConversion
 
     private static bool IsIntegral(Type t) =>
         t == typeof(int) || t == typeof(long) || t == typeof(short) || t == typeof(byte) ||
-        t == typeof(sbyte) || t == typeof(uint) || t == typeof(ushort);
+        t == typeof(sbyte) || t == typeof(uint) || t == typeof(ushort) || t == typeof(ulong);
 
     private static bool IsSignedWidth(Type t) => t == typeof(sbyte) || t == typeof(byte);
 

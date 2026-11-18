@@ -20,6 +20,10 @@
  * (--project/--entry/--out/...). Nessuna traduzione di parametri. */
 int gmb_cli_find_gmbcs(const char* explicit_path, char* out, size_t cap)
 {
+    /* `out` è un OUT: a ogni tentativo fallito resta dentro l'ultimo path composto
+     * (`<dir>/gmbcs`), e chi testa `out[0]` per sapere se gmbcs c'è lo scambia per trovato
+     * (bug visto: `gmb doctor` riportava `[ok] /sbin/gmbcs`, che non esiste). Si azzera qui. */
+    if (out && cap) out[0] = '\0';
     if (explicit_path && *explicit_path) {
         if (access(explicit_path, X_OK) == 0) { snprintf(out, cap, "%s", explicit_path); return 1; }
         return 0;

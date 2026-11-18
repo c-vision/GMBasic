@@ -505,15 +505,27 @@ public class FfiService : IFfiService
         var asmName = new AssemblyName("FfiUdtShapes");
         var asmBuilder = AssemblyBuilder.DefineDynamicAssembly(asmName, AssemblyBuilderAccess.Run);
         var modBuilder = asmBuilder.DefineDynamicModule("Main");
+        // PACKED (2026-11-11): un layout senza padding NON va dichiarato con FieldOffset espliciti
+        // — i campi finiscono disallineati e `FieldInfo.SetValue` (reflection) su un campo non
+        // allineato fa crashare il runtime (FieldDesc::SetInstanceField, SIGBUS intermittente su
+        // ARM64). Con Sequential+Packed=1 il CLR calcola gli stessi offset ma marca i campi come
+        // unaligned.
+        var packedShape = types != null && offsets != null && IsPackedOffsets(types, offsets);
         var typeBuilder = modBuilder.DefineType(
             $"FfiUdtShape_{(types != null ? "L" : "K")}{Math.Abs(shapeKey.GetHashCode())}",
-            TypeAttributes.Public | TypeAttributes.ExplicitLayout | TypeAttributes.Sealed, typeof(ValueType));
+            TypeAttributes.Public | (packedShape ? TypeAttributes.SequentialLayout : TypeAttributes.ExplicitLayout) | TypeAttributes.Sealed, typeof(ValueType));
+        if (packedShape)
+            typeBuilder.SetCustomAttribute(new CustomAttributeBuilder(
+                typeof(System.Runtime.InteropServices.StructLayoutAttribute).GetConstructor([typeof(System.Runtime.InteropServices.LayoutKind)])!,
+                new object[] { System.Runtime.InteropServices.LayoutKind.Sequential },
+                [typeof(System.Runtime.InteropServices.StructLayoutAttribute).GetField(nameof(System.Runtime.InteropServices.StructLayoutAttribute.Pack))!],
+                new object[] { 1 }));
         var n = types?.Length ?? fieldIsInt.Length;
         for (var i = 0; i < n; i++)
         {
             var clr = types != null ? ClrTypeOfFfiCode(types[i]) : (fieldIsInt[i] ? typeof(long) : typeof(double));
             var fb = typeBuilder.DefineField($"F{i}", clr, FieldAttributes.Public);
-            if (types != null && offsets != null && i < offsets.Length)
+            if (!packedShape && types != null && offsets != null && i < offsets.Length)
                 fb.SetCustomAttribute(new CustomAttributeBuilder(
                     typeof(System.Runtime.InteropServices.FieldOffsetAttribute).GetConstructor([typeof(int)])!,
                     new object[] { offsets[i] }));
@@ -521,6 +533,20 @@ public class FfiService : IFfiService
         var built = typeBuilder.CreateType()!;
         _udtShapeTypeCache[shapeKey] = built;
         return built;
+    }
+
+    /// <summary>True se gli offset seguono il pattern PACKED (ogni campo subito dopo il
+    /// precedente, senza padding di allineamento).</summary>
+    private static bool IsPackedOffsets(byte[] types, int[] offsets)
+    {
+        static int Sz(byte code) => code switch { 0 or 1 or 9 or 10 => 8, 6 or 7 or 8 => 4, 4 or 5 => 2, _ => 1 };
+        var off = 0;
+        for (var i = 0; i < types.Length; i++)
+        {
+            if (i < offsets.Length && offsets[i] != off) return false;
+            off += Sz(types[i]);
+        }
+        return true;
     }
 
     /// <summary>Converte un valore grezzo (double/long/string) nel tipo CLR del campo struct C
@@ -554,6 +580,15 @@ public class FfiService : IFfiService
     /// write-back del BYREF UDT in IL (il delegate ritorna il tipo-ombra, non quello del
     /// dialetto).</summary>
     public static object CopyShapeToStruct(string shapeStr, object? shadow, object? current)
+        => CopyShapeValuesToStruct(shapeStr,
+            shadow is object?[] vals ? vals : null,
+            current, shadow);
+
+    /// <summary>Come <see cref="CopyShapeToStruct"/> ma con i valori per foglia già come
+    /// array (il backend IL li riceve così dal BYREF UDT: niente struct-ombra PACKED a runtime,
+    /// vedi FfiService.CallFunctionTypedArrCore). <paramref name="legacyShapeObject"/> resta per
+    /// il percorso storico che passa una struct-ombra.</summary>
+    public static object CopyShapeValuesToStruct(string shapeStr, object?[]? values, object? current, object? legacyShapeObject = null)
     {
         var (_, fields) = ParseUdtShape(shapeStr);
         var dst = current ?? throw new ArgumentNullException(nameof(current));
@@ -564,7 +599,9 @@ public class FfiService : IFfiService
             fi.SetValue(fresh, fi.GetValue(dst));
         for (var f = 0; f < fields.Length; f++)
         {
-            var raw = shadow?.GetType().GetField($"F{f}")?.GetValue(shadow);
+            var raw = values != null
+                ? (f < values.Length ? values[f] : null)
+                : legacyShapeObject?.GetType().GetField($"F{f}")?.GetValue(legacyShapeObject);
             object? val = fields[f].Code == 9
                 ? (raw is IntPtr ip ? (Marshal.PtrToStringUTF8(ip) ?? "") : (raw as string ?? ""))
                 : Convert.ToDouble(raw ?? 0.0);
@@ -623,14 +660,25 @@ public class FfiService : IFfiService
         if (_staticShapeCache.TryGetValue(key, out var cached)) return cached;
         var asmBuilder = AssemblyBuilder.DefineDynamicAssembly(new AssemblyName("FfiUdtShapesS"), AssemblyBuilderAccess.Run);
         var modBuilder = asmBuilder.DefineDynamicModule("M");
+        // PACKED: Sequential+Packed=1 invece di FieldOffset espliciti (vedi
+        // GetOrBuildUdtShapeType: i campi disallineati con layout esplicito fanno crashare
+        // FieldInfo.SetValue su ARM64).
+        var packedShape = IsPackedOffsets(types, offsets);
         var tb = modBuilder.DefineType("FfiUdtShape_" + Math.Abs(key.GetHashCode()),
-            TypeAttributes.Public | TypeAttributes.ExplicitLayout | TypeAttributes.Sealed, typeof(ValueType));
+            TypeAttributes.Public | (packedShape ? TypeAttributes.SequentialLayout : TypeAttributes.ExplicitLayout) | TypeAttributes.Sealed, typeof(ValueType));
+        if (packedShape)
+            tb.SetCustomAttribute(new CustomAttributeBuilder(
+                typeof(System.Runtime.InteropServices.StructLayoutAttribute).GetConstructor([typeof(System.Runtime.InteropServices.LayoutKind)])!,
+                new object[] { System.Runtime.InteropServices.LayoutKind.Sequential },
+                [typeof(System.Runtime.InteropServices.StructLayoutAttribute).GetField(nameof(System.Runtime.InteropServices.StructLayoutAttribute.Pack))!],
+                new object[] { 1 }));
         for (var i = 0; i < types.Length; i++)
         {
             var fb = tb.DefineField($"F{i}", ClrTypeOfFfiCode(types[i]), FieldAttributes.Public);
-            fb.SetCustomAttribute(new CustomAttributeBuilder(
-                typeof(System.Runtime.InteropServices.FieldOffsetAttribute).GetConstructor([typeof(int)])!,
-                new object[] { offsets[i] }));
+            if (!packedShape)
+                fb.SetCustomAttribute(new CustomAttributeBuilder(
+                    typeof(System.Runtime.InteropServices.FieldOffsetAttribute).GetConstructor([typeof(int)])!,
+                    new object[] { offsets[i] }));
         }
         var built = tb.CreateType()!;
         _staticShapeCache[key] = built;
@@ -896,6 +944,8 @@ public class FfiService : IFfiService
     /// esterna + lunghezza della prima riga non nulla, ricorsivamente; 1-D → [Length].</summary>
     internal static long[] ArrayExtents(object? a)
     {
+        if (a is CommonLib.MatrixValue mv)
+            return new long[] { mv.Rows, mv.Cols };
         if (a is not Array arr) return new long[] { 0 };
         if (arr.Rank >= 2)
         {
@@ -1066,6 +1116,9 @@ public class FfiService : IFfiService
         // Campi STRING di uno struct FFI (2026-11-06, S1): buffer UTF-8 da liberare a fine
         // chiamata (il nativo non li trattiene).
         List<IntPtr>? udtStrPtrs = null;
+        // Array di STRING (char**, 2026-11-11, solo INPUT): una stringa UTF-8 per elemento,
+        // liberata a fine chiamata come i campi STRING degli UDT.
+        List<IntPtr>? arrayStrPtrs = null;
         // Per gli slot object[] (PCodeVM): scratch buffer copy-in + riferimento all'array
         // originale per il copy-out dopo la chiamata.
         var scratchIsInt = new bool[n];
@@ -1075,7 +1128,7 @@ public class FfiService : IFfiService
         // quello dichiarato dal parametro FFI: copy-in/copy-out convertito (2026-11-04, AiWiki
         // Bugs/(solved) - FFI-Array-Tipizzato-LONG-IL.md).
         var typedScratch = new Array?[n];
-        var typedOrig = new Array?[n];
+        var typedOrig = new object?[n];
         // Array BYTE/SBYTE (2026-11-06): il puntatore FFI viaggia a 8 byte per elemento, quindi
         // un byte[] CLR NON puo' essere pinnato direttamente (l'elemento e' largo 1). Si usa uno
         // scratch long[] con i valori 0..255 e il copy-back dopo la chiamata.
@@ -1210,9 +1263,34 @@ public class FfiService : IFfiService
                     dArgs[i] = boxedIn;
                     continue;
                 }
+                if ((arrayMask & (1L << i)) != 0 && (stringMask & (1L << i)) != 0)
+                {
+                    /* Array di STRING (char**, solo INPUT): buffer contiguo di puntatori
+                     * `char*` alle stringhe UTF-8, pinnato per la durata della chiamata.
+                     * Il nativo NON può trattenere i puntatori (liberati nel finally). */
+                    var src = args[i] as Array;
+                    var nElem = src?.Length ?? 0;
+                    var ptrs = new IntPtr[nElem];
+                    for (var k = 0; k < nElem; k++)
+                    {
+                        var sp = Marshal.StringToCoTaskMemUTF8(Convert.ToString(src!.GetValue(k)) ?? "");
+                        (arrayStrPtrs ??= new List<IntPtr>()).Add(sp);
+                        ptrs[k] = sp;
+                    }
+                    handles[i] = GCHandle.Alloc(ptrs, GCHandleType.Pinned);
+                    dArgs[i] = handles[i].AddrOfPinnedObject();
+                    continue;
+                }
                 if ((stringMask & (1L << i)) != 0)
                 {
-                    stringPtrs[i] = Marshal.StringToCoTaskMemUTF8((string?)args[i] ?? "");
+                    /* COERCIZIONE, non cast: un argomento NUMERICO passato dove la DECLARE
+                     * dichiara STRING (es. `BND.CHARM(…, 0)` per il flag call/put) deve
+                     * diventare la sua forma testuale, come fanno C99Native/VM-C. Il vecchio
+                     * `(string?)args[i]` emetteva un castclass su un boxed Double →
+                     * InvalidProgram su IL e "Unable to cast Double to String" su PCode
+                     * (bug reale: trading/charm, trading/theta). */
+                    stringPtrs[i] = Marshal.StringToCoTaskMemUTF8(
+                        Convert.ToString(args[i], System.Globalization.CultureInfo.InvariantCulture) ?? "");
                     dArgs[i] = stringPtrs[i];
                     continue;
                 }
@@ -1354,6 +1432,29 @@ public class FfiService : IFfiService
                         dArgs[i] = handles[i].AddrOfPinnedObject();
                         break;
                     }
+                    /* Matrice a VALORE (DIM m(r,c) / MATRIX.* a valore): è un descrittore
+                     * CommonLib.MatrixValue, non un Array CLR. Un parametro FFI array
+                     * (`a() AS DOUBLE`) riceve il buffer flat row-major: prima cadeva nel
+                     * default e lanciava "atteso array (arrayMask), ricevuto MatrixValue"
+                     * (MiniTest ffi/ffi_dims_mixed_rank su IL; PCode/VM-C/C99 già ok). */
+                    case CommonLib.MatrixValue mvm:
+                    {
+                        var wantIntMv = (arrayElemIntMask & (1L << i)) != 0;
+                        var flatMvCount = mvm.Rows * mvm.Cols;
+                        var bufMv = wantIntMv ? (Array)new long[flatMvCount] : (Array)new double[flatMvCount];
+                        var kMv = 0;
+                        for (var rMv = 0; rMv < mvm.Rows; rMv++)
+                            for (var cMv = 0; cMv < mvm.Cols; cMv++)
+                            {
+                                if (wantIntMv) ((long[])bufMv)[kMv++] = Convert.ToInt64(mvm.Get(rMv, cMv));
+                                else ((double[])bufMv)[kMv++] = mvm.Get(rMv, cMv);
+                            }
+                        typedScratch[i] = bufMv;
+                        typedOrig[i] = mvm;
+                        handles[i] = GCHandle.Alloc(bufMv, GCHandleType.Pinned);
+                        dArgs[i] = handles[i].AddrOfPinnedObject();
+                        break;
+                    }
                     case object[] boxed:
                     {
                         /* PCode: una jagged e' object[] di object[] (non object[][] tipizzato).
@@ -1461,6 +1562,14 @@ public class FfiService : IFfiService
                                     umat[r0, c0] = Convert.ToUInt64(tbuf.GetValue(k++));
                             break;
                         }
+                        case CommonLib.MatrixValue mvd:
+                        {
+                            var k = 0;
+                            for (var r0 = 0; r0 < mvd.Rows; r0++)
+                                for (var c0 = 0; c0 < mvd.Cols; c0++)
+                                    mvd.Set(r0, c0, Convert.ToDouble(tbuf.GetValue(k++)));
+                            break;
+                        }
                         case double[][] djag:
                         {
                             var k = 0;
@@ -1549,14 +1658,13 @@ public class FfiService : IFfiService
                 }
                 else
                 {
-                    // IL: ricostruisce la struct-OMBRA aggiornata (il writeback la converte).
-                    var ffiTypeBr = byrefUdtShapeStr[i] != null
-                        ? BuildFfiTypeFromShape(ParseUdtShape(byrefUdtShapeStr[i]!).Fields)
-                        : GetOrBuildUdtShapeType(shpBr.FieldTypes, shpBr.FieldIsInt, shpBr.FieldOffsets);
-                    var boxedBr = Activator.CreateInstance(ffiTypeBr)!;
-                    for (var f = 0; f < shpBr.FieldNames.Length; f++)
-                        ffiTypeBr.GetField($"F{f}")!.SetValue(boxedBr, valsBr[f]);
-                    args[i] = boxedBr;
+                    // IL: al writeback arrivano i VALORI per foglia (object[]), non una
+                    // struct-ombra. Creare/riempire una struct con layout PACKED a runtime è
+                    // instabile: i campi sono disallineati e la reflection su di essi (o il
+                    // marshaler) fa crashare il processo in modo intermittente
+                    // (FieldDesc::*InstanceField, SIGBUS su ARM64). Il tipo del DIALETTO ha
+                    // layout naturale e viene aggiornato campo per campo dal writeback.
+                    args[i] = valsBr;
                 }
             }
             if (retIsString)
@@ -1656,6 +1764,10 @@ public class FfiService : IFfiService
             if (udtStrPtrs != null)
             {
                 foreach (var sp in udtStrPtrs) Marshal.FreeCoTaskMem(sp);
+            }
+            if (arrayStrPtrs != null)
+            {
+                foreach (var sp in arrayStrPtrs) Marshal.FreeCoTaskMem(sp);
             }
             for (var i = 0; i < n; i++)
                 if (udtArrRaw[i] != IntPtr.Zero) { Marshal.FreeHGlobal(udtArrRaw[i]); udtArrRaw[i] = IntPtr.Zero; }

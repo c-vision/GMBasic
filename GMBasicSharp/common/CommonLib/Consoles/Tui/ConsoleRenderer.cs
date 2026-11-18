@@ -9,6 +9,11 @@ public static class ConsoleRenderer
 
     public static void Write(ScreenBuffer buf)
     {
+        /* I frame TUI sono INTERFACCIA, non output del programma: se lo stdout del processo è
+         * REDIRETTO (file, pipe, harness) NON si scrivono sul canale dati. Stessa regola del
+         * runtime C (`gmb_tui_console_out`: terminale → frame; altrimenti /dev/tty o niente).
+         * Senza, `prog > out.txt` si ritrovava i bordi della finestra dentro out.txt. */
+        if (ActiveConsoleIO.Console is null && Console.IsOutputRedirected) return;
         // Console attiva (Sdl/Standard/System): copia le celle nel buffer della console e
         // presenta — NIENTE ANSI su System.Console (la console non è fissa).
         if (ActiveConsoleIO.Console is { } con)

@@ -48,7 +48,7 @@ gmb_expr_t* gmb_p_parse_power(gmb_parser_t* p);
  * parsabile come espressione (comandi PRINT/LET/...), o uguaglianza top-level
  * ("X = 99" in posizione espressione è un confronto valido ma l'utente intende
  * l'assegnazione — la re-interpreta il percorso runtime). */
-static gmb_expr_t* gmb_p_try_expand_const_macro(gmb_expr_t* target, int line)
+static gmb_expr_t* gmb_p_try_expand_const_macro(gmb_parser_t* ctx, gmb_expr_t* target, int line)
 {
     (void)line;
     if (!target || target->kind != GMB_EXPR_STR || !target->str || !target->str[0]) return NULL;
@@ -66,6 +66,11 @@ static gmb_expr_t* gmb_p_try_expand_const_macro(gmb_expr_t* target, int line)
     sp.toks = lx.tokens;
     sp.n = lx.count;
     sp.error = NULL;
+    /* Il testo è parte dello STESSO modulo: il sub-parse eredita il contesto del padre per il
+     * gate dei namespace (IMPORT/default, nomi dichiarati, procedure utente) — senza questo
+     * `EVAL("ANGLE2D(...)")` di un letterale veniva rifiutato qui (programma vuoto) e ricadeva
+     * sulla valutazione a runtime, che non ha il dispatcher dei builtin di libreria. */
+    sp.parent = ctx;
     gmb_expr_t* e = gmb_p_parse_expr(&sp);
     if (e && sp.error) { gmb_expr_free(e); e = NULL; }
     if (e) {
@@ -96,7 +101,7 @@ static gmb_expr_t* gmb_p_try_expand_const_var(gmb_parser_t* p, gmb_expr_t* targe
     memset(&tmp, 0, sizeof(tmp));
     tmp.kind = GMB_EXPR_STR;
     tmp.str = (char*)cv;
-    return gmb_p_try_expand_const_macro(&tmp, line);
+    return gmb_p_try_expand_const_macro(p, &tmp, line);
 }
 gmb_expr_t* gmb_p_parse_unary(gmb_parser_t* p);
 gmb_expr_t* gmb_p_parse_mul(gmb_parser_t* p);
@@ -800,7 +805,7 @@ gmb_expr_t* gmb_p_parse_primary(gmb_parser_t* p)
             }
             if (!gmb_p_match(p, GMB_TOK_RightParen)) gmb_p_set_err(p, "attesa ')'", line);
             if (na == 1) {
-                gmb_expr_t* expanded = gmb_p_try_expand_const_macro(src, line);
+                gmb_expr_t* expanded = gmb_p_try_expand_const_macro(p, src, line);
                 if (!expanded) expanded = gmb_p_try_expand_const_var(p, src, line);
                 if (expanded) { free(args); gmb_expr_free(src); return expanded; }
             }
@@ -809,7 +814,7 @@ gmb_expr_t* gmb_p_parse_primary(gmb_parser_t* p)
         src = gmb_p_parse_unary(p);
         /* Macro COSTANTE &("..."): compilata a compile-time (vedi l'helper). */
         {
-            gmb_expr_t* expanded = gmb_p_try_expand_const_macro(src, line);
+            gmb_expr_t* expanded = gmb_p_try_expand_const_macro(p, src, line);
             if (!expanded) expanded = gmb_p_try_expand_const_var(p, src, line);
             if (expanded) { gmb_expr_free(src); return expanded; }
         }
@@ -1954,6 +1959,14 @@ gmb_expr_t* gmb_p_parse_primary(gmb_parser_t* p)
              * era dispatchato per lexeme (tk=0) e l'emissione restava vuota. */
             if (ct2 < 0 && t->kind != GMB_TOK_Identifier && t->kind != GMB_TOK_Unknown)
                 ct2 = (int)t->kind;
+            /* GATE dei NAMESPACE (parità `KnownLibraryNotImported` del linker C#): un nome
+             * NUDO di funzione di libreria è lecito SOLO se il suo namespace è fra i default
+             * del linguaggio o è stato IMPORTato — `ANGLE2D(...)` richiede `IMPORT VECTOR`,
+             * altrimenti si usa `VECTOR.ANGLE2D(...)`. `ibns` non-NULL = risolto su un
+             * namespace IMPORTato (riga sopra) → già lecito. La forma qualificata non passa
+             * da qui (name contiene '.'). Su errore p->error è settato e gmb_parse abortisce. */
+            if (ct2 >= 0 && !ibns && name[0] && !strchr(name, '.'))
+                (void)gmb_p_check_bare_builtin(p, (gmb_tokenkind_t)ct2, name, line);
             gmb_expr_t* call = ct2 >= 0 ? gmb_expr_call_typed(name, (gmb_tokenkind_t)ct2, args, na, line)
                                         : gmb_expr_call(name, args, na, line);
             if (gmb_p_match(p, GMB_TOK_QuestionMark)) call->is_safe = 1;   /* arr(9)? */

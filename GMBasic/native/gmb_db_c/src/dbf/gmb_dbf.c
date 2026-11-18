@@ -1412,9 +1412,19 @@ int64_t gmb_db_dbf_find_handle_by_alias(const char* alias)
 /* INDEXORD: numero dell'ordine attivo (0 = fisico) — LongType in StdLib, NON una stringa. */
 gmb_double_t gmb_indexord_dbl(int area)
 {
-    gmb_handle_t* hh = gmb_db_get(gmb_db_current_dbf(), GMB_H_DBF);
-    (void)area;
-    return hh ? (gmb_double_t)hh->u.dbf.active_order : 0.0;
+    /* L'area CORRENTE può essere ISAM o DBF: prima si guardava solo il DBF, quindi con
+     * `ISAM OPEN … INDEXED BY ID` INDEXORD() rispondeva 0 anche avendo un ordine attivo
+     * (divergenza con IL/PCode trovata dallo sweep 2026-11-17, `isam/isam_gap_probe`). */
+    int64_t hisam = gmb_db_current_isam();
+    if (hisam > 0) {
+        int ord = gmb_db_isam_get_order(hisam);
+        if (ord > 0) return (gmb_double_t)ord;
+    }
+    {
+        gmb_handle_t* hh = gmb_db_get(gmb_db_current_dbf(), GMB_H_DBF);
+        (void)area;
+        return hh ? (gmb_double_t)hh->u.dbf.active_order : 0.0;
+    }
 }
 
 /* INDEXORD/INDEXKEY/NETERR/FIELDTYPE: REFERENZIATI dal transpiler C#

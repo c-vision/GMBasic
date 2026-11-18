@@ -313,9 +313,13 @@ int gmb_db_apply_syscall_known(int code)
          * dal case dedicato nel VM/C marshaller (gmb_syscall_db.c gmb_sys_GMB_SYS_SPEED_SELECT
          * → gmb_db_speed_select). */
         case GMB_SYS_SPEED_OPEN:
-        case GMB_SYS_LEDGER_OPEN: case GMB_SYS_LEDGER_DELETE:
-        case GMB_SYS_LEDGER_SAVE: case GMB_SYS_LEDGER_CLOSE: case GMB_SYS_LEDGER_PACK:
-        case GMB_SYS_LEDGER_VALIDATE:
+        /* LEDGER: DELETE/SAVE/CLOSE/PACK/VALIDATE NON passano più dal path generico
+         * (sarg/iarg): il modello generico raccoglie UN solo numero, quindi DELETE riceveva
+         * l'handle al posto del tx_id e non cancellava nulla (ledger/ledger_all: afterDelete
+         * restava 1), e SAVE/CLOSE/PACK ignoravano l'handle esplicito usando g_last_ledger.
+         * Sono gestiti dalla tabella del VM/C (gmb_sys_impl → gmb_sys_GMB_SYS_LEDGER_*), che
+         * usa l'handle esplicito come C99Native. OPEN resta qui (path generico). */
+        case GMB_SYS_LEDGER_OPEN:
             return 1;
         default:
             return 0;

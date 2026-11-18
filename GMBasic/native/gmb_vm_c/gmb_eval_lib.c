@@ -28,3 +28,9 @@ GMB_EVAL_EXPORT int gmb_eval_run_env(const char* src, int as_stmt,
 /* Versione/ABI: il runtime rifiuta una dylib con ABI diversa (mai semantica
  * silenziosamente diversa). */
 GMB_EVAL_EXPORT int gmb_eval_abi(void) { return 1; }
+
+/* ULTIMO ERRORE del frammento: senza questo il chiamante poteva solo dire "la libreria non
+ * è disponibile" — e lo diceva anche quando il frammento era stato valutato e aveva FALLITO
+ * (misurato: `builtin 666 non implementato` veniva mascherato da "libgmb_eval priva di
+ * gmb_eval_run_env"). Il runtime lo legge via dlsym (gmb_eval_hook.c). */
+GMB_EVAL_EXPORT const char* gmb_eval_run_error(void) { return gmb_vm_eval_last_error(); }

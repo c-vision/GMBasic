@@ -1,3 +1,4 @@
+' EXPECT: 65
 SUB Main()
   PRINT ASC("A")
 END SUB

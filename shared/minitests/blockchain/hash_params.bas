@@ -5,6 +5,7 @@
 ' da array di parametro e scrive nel buffer del chiamante (by-reference). `kn` e' il percorso
 ' parametro -> parametro: DoK riceve gli array che le sono stati inoltrati da HashKNested.
 REQUIRE "blockchain"
+REQUIRE "crypto"
 IMPORT BLOCKCHAIN
 IMPORT CRYPTOGRAPHY
 
@@ -14,26 +15,28 @@ END SUB
 
 SUB HashK(a() AS BYTE, o() AS BYTE)
   DoK(a, o)
-  PRINT "k="; TOHEX(o)
+  PRINT "k="; BYTESHEX(o)
 END SUB
 
 SUB HashKNested(a() AS BYTE, o() AS BYTE)
   DoK(a, o)
-  PRINT "kn="; TOHEX(o)
+  PRINT "kn="; BYTESHEX(o)
 END SUB
 
 SUB HashB(a() AS BYTE, o() AS BYTE)
   BLAKE2B256(a, o)
-  PRINT "b="; TOHEX(o)
+  PRINT "b="; BYTESHEX(o)
 END SUB
 
 SUB HashR(a() AS BYTE, o() AS BYTE)
   RIPEMD160(a, o)
-  PRINT "r="; TOHEX(o)
+  PRINT "r="; BYTESHEX(o)
 END SUB
 
 SUB Main()
-  DIM d() AS BYTE = FROMHEX("68656c6c6f")
+  DIM d(4) AS BYTE
+  DIM _n_d AS LONG
+  _n_d = FROMHEX("68656c6c6f", d)
   DIM k(31) AS BYTE
   DIM b(31) AS BYTE
   DIM r(19) AS BYTE

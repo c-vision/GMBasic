@@ -185,6 +185,7 @@ enum {
     OP_PRINT_LINE = 114,
     OP_PRINT_TAB_ZONE = 115,
     OP_PRINT_NEWLINE = 116,
+    OP_PRINT_FLUSH = 216,   /* PRINT senza newline: commette il parziale (vedi OpCode.cs) */
     OP_YIELD = 117,
     OP_NEW_WAITGROUP = 118,
     OP_NEW_CHANNEL = 119,
@@ -266,6 +267,8 @@ enum {
 };
 
 /* ---- Utilities ---- */
+static void vm_append_trace(gmb_task_t* task, char* out, size_t cap);
+static long current_source_line(gmb_task_t* task);
 void vm_error(gmb_task_t* task, const char* msg)
 {
     task->state = GMB_TS_FINISHED;
@@ -1968,7 +1971,9 @@ static void push_const(gmb_vm_t* vm, gmb_task_t* t, int idx)
             break;
         case GMB_CONST_STRING:
         {
-            gmb_obj_string_t* s = gmb_str_alloc(c->s, c->s ? (uint32_t)strlen(c->s) : 0);
+            /* s_len != 0: costante BINARIA (EMBEDFILE), può contenere NUL. */
+            uint32_t n = c->s_len ? c->s_len : (c->s ? (uint32_t)strlen(c->s) : 0);
+            gmb_obj_string_t* s = gmb_str_alloc(c->s, n);
             push_ref_new(t, (gmb_obj_t*)s, GMB_BT_STRING);
             break;
         }
@@ -1977,6 +1982,12 @@ static void push_const(gmb_vm_t* vm, gmb_task_t* t, int idx)
             break;
     }
 }
+
+/* Materializza una LISTA costante del chunk (ricorsiva: gli elementi possono essere liste o
+ * dict annidati — es. "Groups" di UNION/bitfield: lista di liste di numeri, o
+ * "FieldArrayDimensions": dict di array di bound). Prima i valori annidati dentro una lista
+ * diventavano NIL: la metadata arrivava vuota alla VM. */
+static gmb_obj_shared_val_t* gmb_vm_materialize_list(const gmb_chunk_list_t* src);
 
 /* Materializza una costante dict del chunk (descrittore UDT/class, ecc.) in un
  * gmb_obj_shared_val_t runtime. Ricorsivo per valori annidati (dict/list). */
@@ -2005,19 +2016,7 @@ static gmb_obj_shared_val_t* gmb_vm_materialize_dict(const gmb_chunk_dict_t* d)
             }
             case GMB_CONST_LIST:
             {
-                gmb_obj_shared_val_t* l = gmb_shared_list_new();
-                if (l && e->val_list)
-                {
-                    for (uint32_t j = 0; j < e->val_list->count; j++)
-                    {
-                        const gmb_chunk_dict_entry_t* le = &e->val_list->items[j];
-                        gmb_val_t lv;
-                        if (le->val_type == GMB_CONST_DOUBLE || le->val_type == GMB_CONST_INT) lv = gmb_make_val_double(le->val_double);
-                        else if (le->val_type == GMB_CONST_STRING) lv = gmb_make_val_string(le->val_str ? le->val_str : "");
-                        else lv = gmb_val_nil();
-                        gmb_list_add(l->list, lv);
-                    }
-                }
+                gmb_obj_shared_val_t* l = gmb_vm_materialize_list(e->val_list);
                 v = l ? gmb_make_val_obj((gmb_obj_t*)l) : gmb_val_nil();
                 break;
             }
@@ -2029,6 +2028,40 @@ static gmb_obj_shared_val_t* gmb_vm_materialize_dict(const gmb_chunk_dict_t* d)
             gmb_obj_release((gmb_obj_t*)v.v_ptr);
     }
     return out;
+}
+
+static gmb_obj_shared_val_t* gmb_vm_materialize_list(const gmb_chunk_list_t* src)
+{
+    gmb_obj_shared_val_t* l = gmb_shared_list_new();
+    if (!l || !src) return l;
+    for (uint32_t j = 0; j < src->count; j++)
+    {
+        const gmb_chunk_dict_entry_t* le = &src->items[j];
+        gmb_val_t lv;
+        switch (le->val_type)
+        {
+            case GMB_CONST_DOUBLE:
+            case GMB_CONST_INT: lv = gmb_make_val_double(le->val_double); break;
+            case GMB_CONST_STRING: lv = gmb_make_val_string(le->val_str ? le->val_str : ""); break;
+            case GMB_CONST_LIST:
+            {
+                gmb_obj_shared_val_t* sub = gmb_vm_materialize_list(le->val_list);
+                lv = sub ? gmb_make_val_obj((gmb_obj_t*)sub) : gmb_val_nil();
+                break;
+            }
+            case GMB_CONST_DICT:
+            {
+                gmb_obj_shared_val_t* sub = gmb_vm_materialize_dict(le->val_dict);
+                lv = sub ? gmb_make_val_obj((gmb_obj_t*)sub) : gmb_val_nil();
+                break;
+            }
+            default: lv = gmb_val_nil(); break;
+        }
+        gmb_list_add(l->list, lv);
+        if ((le->val_type == GMB_CONST_LIST || le->val_type == GMB_CONST_DICT) && lv.kind == GMB_TYPE_OBJECT && lv.v_ptr)
+            gmb_obj_release((gmb_obj_t*)lv.v_ptr);
+    }
+    return l;
 }
 
 /* Descrittore materializzato, CONDIVISO per costante (cache per-VM). Ritorna un riferimento POSSEDUTO (+1):
@@ -2138,6 +2171,66 @@ static gmb_obj_shared_val_t* vm_class_desc_of(gmb_obj_t* inst)
     return NULL;
 }
 
+/* Uguaglianza di VALORE per due gmb_val_t nel confronto (parità PCodeVM UdtValueEquals):
+ * le stringhe in VM/C sono oggetti (GMB_OBJ_STRING) e `gmb_val_equals` le confronterebbe per
+ * PUNTATORE; qui si confronta il contenuto. I nested UDT/CLASS ricorrono sull'uguaglianza
+ * per campo. Tutto il resto delega a gmb_val_equals (numerico cross-kind, ecc.). */
+static int vm_udt_value_equals(gmb_obj_t* a, gmb_obj_t* b);
+static int vm_cmp_val_equals(gmb_val_t a, gmb_val_t b)
+{
+    if (a.kind == GMB_TYPE_OBJECT && b.kind == GMB_TYPE_OBJECT && a.v_ptr && b.v_ptr)
+    {
+        gmb_obj_t* oa = (gmb_obj_t*)a.v_ptr;
+        gmb_obj_t* ob = (gmb_obj_t*)b.v_ptr;
+        if (oa->kind == GMB_OBJ_STRING && ob->kind == GMB_OBJ_STRING)
+        {
+            const char* sa = ((gmb_obj_string_t*)oa)->data;
+            const char* sb = ((gmb_obj_string_t*)ob)->data;
+            return strcmp(sa ? sa : "", sb ? sb : "") == 0;
+        }
+        if (oa->kind == GMB_OBJ_DICT && ob->kind == GMB_OBJ_DICT)
+            return vm_udt_value_equals(oa, ob);
+    }
+    return gmb_val_equals(a, b) != 0;
+}
+
+/* UDT/CLASS per VALORE (parità PCodeVM `UdtValueEquals`): stesso descrittore `__class__` e
+ * uguali TUTTI i campi dichiarati in FieldNames. Prima OP_CMP_EQ/NE confrontava due istanze
+ * per identità: `P2 = P1` (copia) risultava sempre diverso — samples/Types/TypesUdtGlobal,
+ * IL/PCode davano TRUE, VM/C FALSE. */
+static int vm_udt_value_equals(gmb_obj_t* a, gmb_obj_t* b)
+{
+    if (!a || !b) return a == b;
+    if (a->kind != GMB_OBJ_DICT || b->kind != GMB_OBJ_DICT) return a == b;
+    gmb_obj_shared_val_t* sa = (gmb_obj_shared_val_t*)a;
+    gmb_obj_shared_val_t* sb = (gmb_obj_shared_val_t*)b;
+    if (!sa->dict || !sb->dict) return a == b;
+    gmb_val_t ca = gmb_dict_get(*sa->dict, "__class__");
+    gmb_val_t cb = gmb_dict_get(*sb->dict, "__class__");
+    if (ca.kind != GMB_TYPE_OBJECT || cb.kind != GMB_TYPE_OBJECT) return a == b;
+    if (ca.v_ptr != cb.v_ptr) return 0;                 /* tipo diverso */
+    gmb_obj_t* desc_obj = (gmb_obj_t*)ca.v_ptr;
+    if (!desc_obj || desc_obj->kind != GMB_OBJ_DICT) return a == b;
+    gmb_obj_shared_val_t* desc = (gmb_obj_shared_val_t*)desc_obj;
+    if (!desc->dict) return a == b;
+    gmb_val_t fn = gmb_dict_get(*desc->dict, "FieldNames");
+    if (fn.kind != GMB_TYPE_OBJECT || !fn.v_ptr) return a == b;
+    gmb_obj_t* fn_obj = (gmb_obj_t*)fn.v_ptr;
+    if (fn_obj->kind != GMB_OBJ_DICT) return a == b;
+    gmb_obj_shared_val_t* fn_sv = (gmb_obj_shared_val_t*)fn_obj;
+    if (!fn_sv->dict) return a == b;
+    gmb_dict_t* fd = fn_sv->dict;
+    for (size_t i = 0; i < fd->count; i++)
+    {
+        gmb_val_t nm = fd->items[i].value;
+        if (nm.kind != GMB_TYPE_STRING || !nm.v_string.data) continue;
+        gmb_val_t av = vm_dict_get_ci(sa->dict, nm.v_string.data);
+        gmb_val_t bv = vm_dict_get_ci(sb->dict, nm.v_string.data);
+        if (!vm_cmp_val_equals(av, bv)) return 0;
+    }
+    return 1;
+}
+
 /* Lookup in un sotto-dict del descriptor (VTable/PropertyGetters/PropertySetters). */
 static int vm_desc_table_addr(gmb_obj_shared_val_t* cd, const char* table, const char* name)
 {
@@ -2184,6 +2277,163 @@ static const char* vm_field_name_from_offset(gmb_obj_shared_val_t* cd, int offse
         if (nameV.kind == GMB_TYPE_STRING && nameV.v_string.data) return nameV.v_string.data;
     }
     return NULL;
+}
+
+/* ── UNION / BITFIELD: gruppi di aliasing (2026-11-11) ────────────────────────────────
+ * PCodeVM/VM-C tengono i campi di una istanza UDT in un DIZIONARIO nome→valore: non c'è una
+ * struct in memoria, quindi l'aliasing C (scrivere `u.I` e leggere `u.F`) va EMULATO. Il
+ * compilatore emette nel descrittore `__class__` la voce "Groups": lista di gruppi, ognuno un
+ * blocco di byte condiviso:
+ *   UNION    → un gruppo con tutti i campi a offset 0 (size = taglia dell'unione)
+ *   BITFIELD → un gruppo per unità di storage (size = byte del tipo dichiarato)
+ * Formato: [size, n, (symId, byteOff, bitOff, bitWidth, typeCode) × n] — tutti numeri.
+ * Alla SCRITTURA di un campo membro si aggiornano i bit nel buffer del gruppo (lista di byte
+ * conservata nell'istanza sotto "__grp<i>") e si riscrivono TUTTI i fratelli nel dizionario. */
+static int vm_group_code_bytes(int code)
+{
+    switch (code) {
+    case 0: case 1: case 9: case 10: return 8;
+    case 6: case 7: case 8: return 4;
+    case 4: case 5: return 2;
+    default: return 1;
+    }
+}
+static int vm_group_code_signed(int code) { return code == 1 || code == 2 || code == 4 || code == 6; }
+
+static double vm_group_num(gmb_val_t v)
+{
+    if (v.kind == GMB_TYPE_INT) return (double)v.v_int;
+    if (v.kind == GMB_TYPE_DOUBLE) return v.v_double;
+    return 0.0;
+}
+
+static uint64_t vm_group_get_bits(gmb_obj_shared_val_t* buf, int byteOff, int bitOff, int count)
+{
+    uint64_t r = 0;
+    for (int b = 0; b < count; b++) {
+        int bit = bitOff + b;
+        int pos = byteOff + bit / 8;
+        if (!buf || !buf->list || (size_t)pos >= buf->list->count) break;
+        unsigned byte = (unsigned)vm_group_num(buf->list->items[pos]) & 0xFFu;
+        if ((byte >> (bit % 8)) & 1u) r |= (1ull << b);
+    }
+    return r;
+}
+
+static void vm_group_set_bits(gmb_obj_shared_val_t* buf, int byteOff, int bitOff, int count, uint64_t v)
+{
+    if (!buf || !buf->list) return;
+    for (int b = 0; b < count; b++) {
+        int bit = bitOff + b;
+        int pos = byteOff + bit / 8;
+        if ((size_t)pos >= buf->list->count) break;
+        unsigned byte = (unsigned)vm_group_num(buf->list->items[pos]) & 0xFFu;
+        if ((v >> b) & 1ull) byte |= (1u << (bit % 8));
+        else byte &= ~(1u << (bit % 8));
+        gmb_list_set(buf->list, pos, gmb_make_val_double((double)byte));
+    }
+}
+
+/* Valore BASIC → bit grezzi del tipo C (double/float per bit pattern, interi troncati). */
+static uint64_t vm_group_value_to_bits(gmb_val_t v, int code, int width)
+{
+    double d = vm_group_num(v);
+    uint64_t raw;
+    if (code == 0) { union { double d; uint64_t u; } cv; cv.d = d; raw = cv.u; }
+    else if (code == 8) { union { float f; uint32_t u; } cf; cf.f = (float)d; raw = cf.u; }
+    else raw = (uint64_t)(int64_t)d;
+    if (width > 0 && width < 64) raw &= ((1ull << width) - 1ull);
+    return raw;
+}
+
+/* Bit grezzi → valore BASIC (double), con estensione del segno per i tipi signed. */
+static double vm_group_bits_to_value(uint64_t bits, int code, int width)
+{
+    int w = width > 0 ? width : vm_group_code_bytes(code) * 8;
+    if (w < 64) bits &= ((1ull << w) - 1ull);
+    if (code == 0) { union { double d; uint64_t u; } cv; cv.u = bits; return cv.d; }
+    if (code == 8) { union { float f; uint32_t u; } cf; cf.u = (uint32_t)bits; return (double)cf.f; }
+    if (vm_group_code_signed(code) && w < 64 && ((bits >> (w - 1)) & 1ull))
+        return (double)(int64_t)(bits | (~0ull << w));
+    return (double)bits;
+}
+
+static void vm_udt_group_apply(gmb_obj_shared_val_t* inst, gmb_obj_shared_val_t* cd, int symId, gmb_val_t val)
+{
+    if (!inst || !inst->dict || !cd || !cd->dict) return;
+    gmb_val_t gv = vm_dict_get_ci(cd->dict, "Groups");
+    fprintf(stderr, "[DBG grp] sym=%d kind=%d ptr=%p\n", symId, (int)gv.kind, gv.v_ptr);
+    if (gv.kind != GMB_TYPE_OBJECT || !gv.v_ptr) return;
+    gmb_obj_t* gro = (gmb_obj_t*)gv.v_ptr;
+    fprintf(stderr, "[DBG grp] objkind=%d\n", (int)gro->kind);
+    if (gro->kind != GMB_OBJ_LIST) return;
+    gmb_obj_shared_val_t* groups = (gmb_obj_shared_val_t*)gro;
+    if (!groups->list) { fprintf(stderr, "[DBG grp] no list\n"); return; }
+    fprintf(stderr, "[DBG grp] ngroups=%zu\n", groups->list->count);
+
+    for (size_t gi = 0; gi < groups->list->count; gi++) {
+        gmb_val_t eg = groups->list->items[gi];
+        fprintf(stderr, "[DBG grp] egkind_val=%d\n", (int)eg.kind);
+        if (eg.kind != GMB_TYPE_OBJECT || !eg.v_ptr) continue;
+        gmb_obj_t* eo = (gmb_obj_t*)eg.v_ptr;
+        fprintf(stderr, "[DBG grp] egkind=%d\n", (int)eo->kind);
+        if (eo->kind != GMB_OBJ_LIST) continue;
+        gmb_obj_shared_val_t* g = (gmb_obj_shared_val_t*)eo;
+        if (!g->list || g->list->count < 2) continue;
+        int size = (int)vm_group_num(g->list->items[0]);
+        int n = (int)vm_group_num(g->list->items[1]);
+        int hit = -1;
+        for (int m = 0; m < n; m++) {
+            int k = 2 + m * 5;
+            if ((size_t)(k + 4) >= g->list->count) break;
+            if ((int)vm_group_num(g->list->items[k]) == symId) { hit = m; break; }
+        }
+        if (hit < 0) continue;
+
+        /* Buffer del gruppo: lista di `size` byte, creata alla prima scrittura. */
+        char bkey[32];
+        snprintf(bkey, sizeof(bkey), "__grp%zu", gi);
+        gmb_val_t bv = vm_dict_get_ci(inst->dict, bkey);
+        gmb_obj_shared_val_t* buf = NULL;
+        if (bv.kind == GMB_TYPE_OBJECT && bv.v_ptr && ((gmb_obj_t*)bv.v_ptr)->kind == GMB_OBJ_LIST) {
+            buf = (gmb_obj_shared_val_t*)bv.v_ptr;
+            if (buf->list && (int)buf->list->count != (size > 0 ? size : 1)) buf = NULL;
+        }
+        if (!buf) {
+            gmb_obj_shared_val_t* nb = gmb_shared_list_new();
+            if (!nb) return;
+            for (int b = 0; b < (size > 0 ? size : 1); b++) gmb_list_add(nb->list, gmb_make_val_double(0.0));
+            gmb_dict_set(inst->dict, bkey, gmb_make_val_obj((gmb_obj_t*)nb));
+            gmb_obj_release((gmb_obj_t*)nb);   /* l'istanza tiene un ref nel dict */
+            buf = nb;
+        }
+
+        int k = 2 + hit * 5;
+        int byteOff = (int)vm_group_num(g->list->items[k + 1]);
+        int bitOff = (int)vm_group_num(g->list->items[k + 2]);
+        int width = (int)vm_group_num(g->list->items[k + 3]);
+        int code = (int)vm_group_num(g->list->items[k + 4]);
+        int bitCount = width > 0 ? width : vm_group_code_bytes(code) * 8;
+        vm_group_set_bits(buf, byteOff, bitOff, bitCount, vm_group_value_to_bits(val, code, width));
+
+        /* Riscrive TUTTI i fratelli (compreso il campo scritto: è così che il bitfield riceve la
+         * maschera; per una union il valore riletto coincide con quello scritto). */
+        for (int m = 0; m < n; m++) {
+            int kk = 2 + m * 5;
+            if ((size_t)(kk + 4) >= g->list->count) break;
+            int sym = (int)vm_group_num(g->list->items[kk]);
+            const char* fname = vm_field_name_from_offset(cd, sym);
+            if (!fname) continue;
+            int bOff = (int)vm_group_num(g->list->items[kk + 1]);
+            int btOff = (int)vm_group_num(g->list->items[kk + 2]);
+            int wm = (int)vm_group_num(g->list->items[kk + 3]);
+            int cm = (int)vm_group_num(g->list->items[kk + 4]);
+            int cnt = wm > 0 ? wm : vm_group_code_bytes(cm) * 8;
+            double out = vm_group_bits_to_value(vm_group_get_bits(buf, bOff, btOff, cnt), cm, wm);
+            gmb_dict_set(inst->dict, fname, gmb_make_val_double(out));
+        }
+        return;
+    }
 }
 
 /* Truthiness di un operando (usata da OP_JUMP_IF_* / fast path): per una STRINGA si applica
@@ -3762,6 +4012,53 @@ double gmb_vm_call_closure_sync_n(gmb_vm_t* vm, gmb_task_t* task, gmb_obj_closur
  * FFI, mai dopo); un callback salvato dal nativo per un richiamo POSTERIORE alla chiamata FFI
  * romperebbe questo schema (slot liberato troppo presto) — fuori scope v1, vedi AiWiki
  * Bugs/(open) - FFI-Estensioni-Possibili-BYREF-Struct-Callback.md §3bis. */
+/* Callback FFI con firma PER-SLOT (2026-11-11): closure libffi. Il vecchio pool di
+ * trampolini pre-compilati copriva solo firme interne omogenee (tutti INT64 o tutti DOUBLE)
+ * e arità 0-8; la firma dichiarata in BASIC può essere MISTA e avere fino a 64 parametri,
+ * quindi il trampolino si costruisce a runtime (gmb_closure_create, gmb_call.c).
+ * Gli argomenti nativi viaggiano nel modello numerico della VM (double), come per il pool. */
+typedef struct {
+    gmb_vm_t* vm;
+    gmb_task_t* task;
+    gmb_obj_closure_t* closure;
+    int addr;
+    int n;
+    int ret_kind;          /* 0 = double, 1 = int64, 2 = void */
+    uint64_t kind_mask;    /* bit i = parametro i INT64 (0 = double) */
+} gmb_ffi_cb_closure_ctx_t;
+
+static void gmb_ffi_cb_closure_handler(void* user, void* ret, void** args)
+{
+    gmb_ffi_cb_closure_ctx_t* c = (gmb_ffi_cb_closure_ctx_t*)user;
+    double a[64];
+    int n = c->n > 64 ? 64 : (c->n < 0 ? 0 : c->n);
+    for (int i = 0; i < n; i++)
+        a[i] = ((c->kind_mask >> i) & 1ull) ? (double)*(int64_t*)args[i] : *(double*)args[i];
+    double r = gmb_vm_call_closure_sync_n(c->vm, c->task, c->closure, c->addr, n > 0 ? a : NULL, n);    if (c->ret_kind == 2) return;
+    if (c->ret_kind == 1) { if (ret) *(int64_t*)ret = (int64_t)r; return; }
+    if (ret) *(double*)ret = r;
+}
+
+/* Alloca la closure sulla firma per-slot. Ritorna il puntatore al codice nativo (da passare
+ * alla funzione FFI) e salva l'handle in *out_handle (da liberare con gmb_closure_free dopo
+ * la chiamata), oppure NULL se non preparabile. */
+static void* gmb_ffi_cb_make_closure(gmb_vm_t* vm, gmb_task_t* task, gmb_obj_closure_t* closure, int addr,
+                                     int n, uint64_t kind_mask, int ret_kind, void** out_handle)
+{
+    gmb_ffi_cb_closure_ctx_t* ctx = (gmb_ffi_cb_closure_ctx_t*)calloc(1, sizeof(*ctx));
+    if (!ctx) return NULL;
+    ctx->vm = vm; ctx->task = task; ctx->closure = closure; ctx->addr = addr;
+    ctx->n = n; ctx->kind_mask = kind_mask; ctx->ret_kind = ret_kind;
+    unsigned char kinds[64];
+    for (int i = 0; i < n && i < 64; i++) kinds[i] = (unsigned char)((kind_mask >> i) & 1ull);
+    void* handle = NULL;
+    void* code = gmb_closure_create(n, kinds, ret_kind, gmb_ffi_cb_closure_handler, ctx, &handle);
+    if (!code) { free(ctx); return NULL; }
+    if (out_handle) *out_handle = handle;
+    else gmb_closure_free(handle);
+    return code;
+}
+
 typedef struct {
     gmb_vm_t* vm;
     gmb_task_t* task;
@@ -4210,6 +4507,91 @@ static double vm_call_addr_sync_args(gmb_vm_t* vm, gmb_task_t* task, int addr, c
     return task->sync_result;
 }
 
+
+/* Chiamata sincrona a una PROCEDURA del chunk per NOME con N argomenti generici
+ * (`gmb_val_t`): serve al dispatcher OP_CALL_EXTERNAL dei frammenti EVAL/& eseguiti DENTRO
+ * una VM (host `gmb_vm_host`). Il risultato scalare torna come `gmb_val_t` numerico.
+ * Ritorna 0 se la procedura esiste ed è stata eseguita, -1 se il nome non è nel chunk. */
+int gmb_vm_call_proc_sync_vals(gmb_vm_t* vm, gmb_task_t* task, const char* name,
+                               const gmb_val_t* args, int n, gmb_val_t* out)
+{
+    int addr = gmb_vm_proc_addr(vm, name);
+    if (addr <= 0) return -1;
+    gmb_stack_entry_t se[16];
+    /* Gli argomenti OMESSI si completano con i DEFAULT dichiarati nella procedura (coda A1
+     * `ProcedureParamDefaults`): è ciò che il call-site C# fa per una chiamata normale, quindi
+     * una macro che scrive `EVAL("PMT(r, n, pv)")` deve ottenere lo stesso valore (prima il
+     * parametro omesso restava 0, o la procedura falliva se l'arità non combaciava). Senza
+     * default noti per un parametro obbligatorio → -1 (errore esplicito della macro). */
+    uint32_t arity = 0;
+    if (vm->chunk && vm->chunk->arity_count)
+        for (uint32_t i = 0; i < vm->chunk->arity_count; i++)
+            if ((int)vm->chunk->arity_addrs[i] == addr) { arity = vm->chunk->arity_vals[i]; break; }
+    const uint8_t* pkind = NULL; const double* pnum = NULL; char** pstr = NULL;
+    uint32_t pcount = 0;
+    if (vm->chunk && vm->chunk->pdef_count)
+        for (uint32_t i = 0; i < vm->chunk->pdef_count; i++)
+            if ((int)vm->chunk->pdef_addrs[i] == addr)
+            {
+                pkind = vm->chunk->pdef_kinds ? vm->chunk->pdef_kinds[i] : NULL;
+                pnum  = vm->chunk->pdef_nums ? vm->chunk->pdef_nums[i] : NULL;
+                pstr  = vm->chunk->pdef_strs ? vm->chunk->pdef_strs[i] : NULL;
+                pcount = vm->chunk->pdef_counts[i];
+                break;
+            }
+    int nn = n < 0 ? 0 : n;
+    int given = nn;
+    if (arity > (uint32_t)nn && arity <= 16 && pkind && pcount >= arity)
+    {
+        for (uint32_t k = (uint32_t)nn; k < arity; k++)
+            if (pkind[k] == 0) return -1;    /* parametro OBBLIGATORIO mancante: esplicito */
+        nn = (int)arity;
+    }
+    if (nn > 16) nn = 16;
+    for (int i = 0; i < nn; i++)
+    {
+        memset(&se[i], 0, sizeof se[i]);
+        if (i < given)
+        {
+            const gmb_val_t* v = &args[i];
+            if (v->kind == GMB_TYPE_STRING)
+            {
+                se[i].type = 2;
+                se[i].ref = (gmb_obj_t*)gmb_str_cstr(v->v_string.data ? v->v_string.data : "");
+                se[i].basic_type = GMB_BT_STRING;
+            }
+            else
+            {
+                se[i].type = 1;
+                se[i].num = gmb_val_to_double(*v);
+                se[i].basic_type = GMB_BT_NUMBER;
+            }
+            continue;
+        }
+        /* argomento OMESSO: default dichiarato (numero/stringa) */
+        if (pkind[i] == 2)
+        {
+            se[i].type = 2;
+            se[i].ref = (gmb_obj_t*)gmb_str_cstr(pstr && pstr[i] ? pstr[i] : "");
+            se[i].basic_type = GMB_BT_STRING;
+        }
+        else
+        {
+            se[i].type = 1;
+            se[i].num = pnum ? pnum[i] : 0.0;
+            se[i].basic_type = GMB_BT_NUMBER;
+        }
+    }
+    if (task->state == GMB_TS_FINISHED) task->state = GMB_TS_RUNNABLE;
+    double r = vm_call_addr_sync_args(vm, task, addr, se, nn);
+    for (int i = 0; i < nn; i++) if (se[i].type == 2 && se[i].ref) gmb_obj_release(se[i].ref);
+    /* Un errore della procedura invocata (es. arità diversa: il CHUNK non porta i default dei
+     * parametri OPTIONAL) NON deve diventare un errore FATALE del programma: si riporta -1 al
+     * valutatore, che lo rende come "MACRO ERROR: ..." sul frammento (mai un exit 6). */
+    if (task->pending_exception != NULL) { free(task->pending_exception); task->pending_exception = NULL; return -1; }
+    if (out) *out = gmb_make_val_double(r);
+    return 0;
+}
 
 /* Wrapper pubblico: chiama una procedura del chunk per NOME con UN argomento STRINGA,
  * in modo sincrono (stesso schema di vm_call_addr_sync_args usato da RAISE EVENT).
@@ -7661,7 +8043,12 @@ static void vm_pop_num(gmb_task_t* task, double* out)
 
 void vm_builtin_rstr(char* heap, int* is_num, gmb_obj_t** result_ref, uint8_t* result_ref_bt)
 {
-    if (!heap) return;
+    /* heap NULL (builtin di stringa FALLITO) -> stringa VUOTA, mai il ritorno anticipato:
+     * prima il registro del chiamante restava al valore precedente (0), quindi una funzione di
+     * stringa fallita restituiva un NUMERO (divergenza con IL/PCode/C99, e valore sbagliato in
+     * silenzio: `x$ = ASR.RECOGNIZE(...)` senza modello dava "0"). Chi vuole l'errore lo alza
+     * prima di chiamare questa funzione (vedi il builtin ASR). */
+    if (!heap) { *is_num = 0; *result_ref = (gmb_obj_t*)gmb_str_cstr(""); *result_ref_bt = GMB_BT_STRING; return; }
     *is_num = 0;
     *result_ref = (gmb_obj_t*)gmb_str_cstr(heap);
     free(heap);
@@ -8417,7 +8804,28 @@ static void deliver_exception_after_finally(gmb_task_t* task, gmb_stack_entry_t*
         else
         {
             char buf[1100];
-            snprintf(buf, sizeof(buf), "BASIC Runtime Error: %s", desc);
+            snprintf(buf, sizeof(buf), "BASIC Runtime Error: %s\n", desc);
+            size_t _tr_off = strlen(buf);
+            vm_append_trace(task, buf, sizeof buf);
+            /* Codice/riga/descrizione per i driver che devono RILANCIARE l'errore in un
+             * altro contesto (generatori): parità C99Native gmb_gen_next. */
+            int fcode = 256;   /* ErrorCode.UserDefined */
+            if (has && ev->type == 2 && ev->ref && ev->ref->kind == GMB_OBJ_DICT)
+            {
+                gmb_obj_shared_val_t* fd = (gmb_obj_shared_val_t*)ev->ref;
+                if (fd->dict)
+                {
+                    gmb_val_t nv = gmb_dict_get(*fd->dict, "Number");
+                    if (nv.kind == GMB_TYPE_DOUBLE) fcode = (int)nv.v_double;
+                    else if (nv.kind == GMB_TYPE_INT) fcode = (int)nv.v_int;
+                }
+            }
+            task->fatal_err_code = fcode;
+            task->fatal_err_line = current_source_line(task);
+            free(task->fatal_err_desc);
+            task->fatal_err_desc = strdup(desc);
+            free(task->fatal_err_trace);
+            task->fatal_err_trace = strdup(buf + _tr_off);
             vm_error(task, buf);
         }
     }
@@ -8425,10 +8833,148 @@ static void deliver_exception_after_finally(gmb_task_t* task, gmb_stack_entry_t*
     ev->ref = NULL;
 }
 
+/* STACK TRACE BASIC (parità C99Native): catena delle procedure dal frame della VM.
+ * Ogni `gmb_frame_t.return_ip` dice DOVE si torna, quindi appartiene alla procedura che
+ * CONTIENE quell'ip: nome dal `proc_names/proc_addrs` del chunk, riga da `chunk->lines`.
+ * Si accoda al messaggio d'errore fatale (il resto delle gambe stampa la stessa forma). */
+static void vm_append_trace(gmb_task_t* task, char* out, size_t cap)
+{
+    gmb_vm_t* vm = (gmb_vm_t*)task->vm_ctx;
+    size_t o = strlen(out);
+    /* PREFISSO: frame del CORPO di un generatore il cui errore sta per essere ri-lanciato nel
+     * contesto del chiamante (il corpo è un task separato: la sua catena non è in quella del
+     * chiamante). Si consuma una volta sola. */
+    if (task->trace_prefix)
+    {
+        if (task->trace_prefix[0] && o + 1 < cap)
+        {
+            int w = snprintf(out + o, cap - o, "%s", task->trace_prefix);
+            if (w > 0 && (size_t)w < cap - o) o += (size_t)w;
+        }
+        free(task->trace_prefix);
+        task->trace_prefix = NULL;
+    }
+    if (!vm || !vm->chunk) return;
+
+    /* Helper: nome della procedura che CONTIENE l'ip + riga di quell'ip. Si scartano le
+     * chiavi SINONIME del chunk (`@sym<id>` e `Nome#arità`, che il compilatore C# aggiunge
+     * accanto al nome nudo per lo stesso indirizzo): senza il filtro vinceva l'ultima
+     * inserita e il trace mostrava `@sym551` invece del nome BASIC. */
+    #define VM_TRACE_PUSH(_ip) do {                                                   \
+        int _p = (_ip);                                                              \
+        if (_p > 0 && o + 96 < (cap)) {                                              \
+            const char* _n = NULL;                                                   \
+            uint32_t _best = 0;                                                      \
+            for (uint32_t _i = 0; _i < vm->chunk->proc_count; _i++) {                 \
+                const char* _nm = vm->chunk->proc_names[_i];                          \
+                if (!_nm || !_nm[0] || _nm[0] == '@' || strchr(_nm, '#')) continue;   \
+                if ((int)vm->chunk->proc_addrs[_i] <= _p && vm->chunk->proc_addrs[_i] >= _best) { \
+                    _best = vm->chunk->proc_addrs[_i];                                \
+                    _n = _nm;                                                         \
+                }                                                                     \
+            }                                                                         \
+            /* pseudo-procedura del codice di modulo: non è una procedura BASIC (va  \
+             * scartata DOPO la scelta, altrimenti si ricade sul frame precedente) */\
+            if (_n && (strcmp(_n, "__main") == 0 || strcmp(_n, "__module") == 0)) _n = NULL; \
+            if (_n) {                                                                 \
+                long _line = 0;                                                       \
+                if (vm->chunk->lines && (uint32_t)_p < vm->chunk->code_len) {         \
+                    uint32_t _raw = vm->chunk->lines[_p];                             \
+                    if (_raw < 0xFFFFFFF0u) _line = (long)_raw + 1;                   \
+                }                                                                     \
+                int _w = snprintf(out + o, cap - o, "  in %s (riga %ld)\n", _n, _line);\
+                if (_w > 0 && (size_t)_w < cap - o) o += (size_t)_w;                  \
+            }                                                                         \
+        }                                                                             \
+    } while (0)
+
+    /* La procedura CORRENTE non è ancora nella catena dei frame (il frame porta il punto di
+     * RITORNO, cioè il chiamante): si parte dall'ip corrente. */
+    VM_TRACE_PUSH(task->current_ip);
+    for (gmb_frame_t* f = task->frame; f; f = f->prev) VM_TRACE_PUSH(f->return_ip);
+    #undef VM_TRACE_PUSH
+}
+
+/* Staging del PRINT — sospensione per i PRINT ANNIDATI (canone C99Native/IL/PCode).
+ * Lo staging appartiene al FRAME della procedura che l'ha iniziato: se il frame cambia
+ * (siamo dentro una procedura chiamata come argomento di PRINT), il livello esterno si
+ * SOSPENDE invece di accodarci il testo; `leave` lo riprende al commit della riga interna.
+ * Senza: `PRINT "b="; Dentro()` con un PRINT in Dentro dava `b=[dentro]` invece di
+ * `[dentro]` + `b= 5`. */
+static void print_stage_enter(gmb_task_t* task)
+{
+    if (!task) return;
+    if (task->print_staging_len > 0 && task->print_staging_frame != task->frame)
+    {
+        if (task->n_print_staging_saved < 8)
+        {
+            char* cp = (char*)malloc((size_t)task->print_staging_len + 1);
+            if (cp)
+            {
+                memcpy(cp, task->print_staging, (size_t)task->print_staging_len);
+                cp[task->print_staging_len] = 0;
+                int i = task->n_print_staging_saved++;
+                task->print_staging_saved[i].buf = cp;
+                task->print_staging_saved[i].len = task->print_staging_len;
+                task->print_staging_saved[i].frame = task->print_staging_frame;
+                task->print_staging_len = 0;
+            }
+        }
+        else
+        {
+            task->print_staging_len = 0;   /* troppi livelli: scarta il parziale */
+        }
+    }
+    if (task->print_staging_len == 0) task->print_staging_frame = task->frame;
+}
+
+static void print_stage_leave(gmb_task_t* task)
+{
+    if (!task) return;
+    while (task->n_print_staging_saved > 0)
+    {
+        int i = task->n_print_staging_saved - 1;
+        int len = task->print_staging_saved[i].len;
+        gmb_frame_t* fr = task->print_staging_saved[i].frame;
+        char* cp = task->print_staging_saved[i].buf;
+        task->print_staging_saved[i].buf = NULL;
+        task->print_staging_saved[i].len = 0;
+        task->n_print_staging_saved--;
+        if (fr != task->frame)
+        {
+            /* livello di un frame ESTERNO: il PRINT annidato è finito, si riprende */
+            if (cp && len > 0 && len < (int)sizeof(task->print_staging))
+            {
+                memcpy(task->print_staging, cp, (size_t)len);
+                task->print_staging_len = len;
+                task->print_staging_frame = fr;
+            }
+            free(cp);
+            return;
+        }
+        free(cp);   /* livello orfano (stesso frame): scartato */
+    }
+    task->print_staging_frame = NULL;
+}
+
+/* Errore: si scartano TUTTI i livelli di staging pendenti (il longjmp salta i commit). */
+static void print_stage_abort(gmb_task_t* task)
+{
+    if (!task) return;
+    for (int i = 0; i < task->n_print_staging_saved; i++)
+    {
+        free(task->print_staging_saved[i].buf);
+        task->print_staging_saved[i].buf = NULL;
+        task->print_staging_saved[i].len = 0;
+    }
+    task->n_print_staging_saved = 0;
+    task->print_staging_len = 0;
+    task->print_staging_frame = NULL;
+}
+
 static int continue_pending_unwind(gmb_task_t* task)
 {
-    if (!task->unwind_active) return 0;
-    gmb_unwind_t* uw = &task->unwind;
+    if (!task->unwind_active) return 0;    gmb_unwind_t* uw = &task->unwind;
 
     while (task->cleanup_count > 0)
     {
@@ -8732,7 +9278,7 @@ static void set_err_global_from_throw(gmb_task_t* task, gmb_stack_entry_t val)
     gmb_dict_set(err->dict, "Number", gmb_make_val_double(code));
     gmb_dict_set(err->dict, "Description", gmb_make_val_string_counted(desc));
     gmb_dict_set(err->dict, "LineNumber", gmb_make_val_double((double)current_source_line(task)));
-    gmb_dict_set(err->dict, "SourceLineText", gmb_make_val_string_counted(""));
+    gmb_dict_set(err->dict, "SourceLineText", gmb_make_val_string_counted(gmb_src_line_text(current_source_line(task))));
     gmb_dict_set(err->dict, "StackTrace", gmb_make_val_string_counted(""));
     set_err_global(task, err);
 }
@@ -8807,9 +9353,16 @@ static int raise_basic_error(gmb_task_t* task, double err_code, const char* msg)
 {
     task->error_line_ip = task->current_ip;
     task->error_resume_next_ip = statement_resume_ip(task, task->current_ip, task->ip);
-    task->print_staging_len = 0;   /* DiscardIncompletePrintStatement */
+    print_stage_abort(task);   /* DiscardIncompletePrintStatement: anche i livelli sospesi */
 
-    long err_line = current_source_line(task);
+    /* STACK TRACE: si cattura SUBITO, prima dell'unwind dei frame (dopo non esistono più).
+     * Lo usa il ramo fatale più sotto; `ERR.StackTrace` può riusare lo stesso testo. */
+    char tr[1024];
+    tr[0] = 0;
+    vm_append_trace(task, tr, sizeof tr);
+
+    long err_line = task->err_line_override > 0 ? task->err_line_override : current_source_line(task);
+    task->err_line_override = 0;
 
     /* Descrizione: se il raise non ne porta una (es. `ERROR 11`), usa il catalogo canonico
      * condiviso con C99Native/IL/PCode — `ERR.Description` non deve restare vuota. */
@@ -8822,8 +9375,8 @@ static int raise_basic_error(gmb_task_t* task, double err_code, const char* msg)
         gmb_dict_set(err->dict, "Number", gmb_make_val_double(err_code));
         gmb_dict_set(err->dict, "Description", gmb_make_val_string_counted(msg ? msg : ""));
         gmb_dict_set(err->dict, "LineNumber", gmb_make_val_double((double)err_line));
-        gmb_dict_set(err->dict, "SourceLineText", gmb_make_val_string_counted(""));
-        gmb_dict_set(err->dict, "StackTrace", gmb_make_val_string_counted(""));
+        gmb_dict_set(err->dict, "SourceLineText", gmb_make_val_string_counted(gmb_src_line_text(err_line)));
+        gmb_dict_set(err->dict, "StackTrace", gmb_make_val_string_counted(tr));
         ev.type = 2;
         ev.ref = (gmb_obj_t*)err;
         ev.basic_type = GMB_BT_OBJECT;
@@ -8858,7 +9411,20 @@ static int raise_basic_error(gmb_task_t* task, double err_code, const char* msg)
     }
 
     char buf[1024];
-    snprintf(buf, sizeof(buf), "BASIC Runtime Error: %s", msg ? msg : "");
+    snprintf(buf, sizeof(buf), "BASIC Runtime Error: %s\n", msg ? msg : "");
+    {
+        size_t _o = strlen(buf);
+        snprintf(buf + _o, sizeof(buf) - _o, "%s", tr);
+    }
+    /* Errore FATALE: si conservano codice/riga/descrizione sul task, così un driver che
+     * guida questo task da un ALTRO contesto (generatori) può RILANCIARE l'errore vero
+     * invece di trasformarlo in StopIteration (parità C99Native gmb_gen_next). */
+    task->fatal_err_code = (int)err_code;
+    task->fatal_err_line = err_line;
+    free(task->fatal_err_desc);
+    task->fatal_err_desc = strdup(msg ? msg : "");
+    free(task->fatal_err_trace);
+    task->fatal_err_trace = strdup(tr);
     vm_error(task, buf);
     return 0;
 }
@@ -9473,7 +10039,15 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                         eq = (an && bn) || (an && sb && !*sb) || (bn && sa && !*sa);
                     else if ((a.type == 2 && a.ref && (a.ref->kind == GMB_OBJ_DICT || a.ref->kind == GMB_OBJ_LIST)) ||
                              (b.type == 2 && b.ref && (b.ref->kind == GMB_OBJ_DICT || b.ref->kind == GMB_OBJ_LIST)))
-                        eq = (a.ref == b.ref);   /* UdtValueEquals: identità (approx) */
+                    {
+                        /* UDT/CLASS: confronto PER VALORE (stesso __class__ + campi);
+                         * dict/list generici: identità (come PCodeVM). */
+                        if (a.type == 2 && b.type == 2 && a.ref && b.ref &&
+                            a.ref->kind == GMB_OBJ_DICT && b.ref->kind == GMB_OBJ_DICT)
+                            eq = vm_udt_value_equals(a.ref, b.ref);
+                        else
+                            eq = (a.ref == b.ref);
+                    }
                     else if ((a.type == 2 && a.ref && a.ref->kind != GMB_OBJ_STRING && b.type == 1 && b.num == 0.0) ||
                              (b.type == 2 && b.ref && b.ref->kind != GMB_OBJ_STRING && a.type == 1 && a.num == 0.0))
                         /* HANDLE (channel/context/waitgroup/...) vs 0/NIL: il riferimento è
@@ -10181,7 +10755,8 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                         break;
                     case GMB_CONST_STRING:
                     {
-                        gmb_obj_string_t* s = gmb_str_alloc(d->s, d->s ? (uint32_t)strlen(d->s) : 0);
+                        uint32_t n = d->s_len ? d->s_len : (d->s ? (uint32_t)strlen(d->s) : 0);
+                        gmb_obj_string_t* s = gmb_str_alloc(d->s, n);
                         push_ref_new(task, (gmb_obj_t*)s, GMB_BT_STRING);
                         break;
                     }
@@ -11088,6 +11663,10 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                     else
                     {
                         gmb_dict_set(dict, key, gmb_adapter_stack_to_val_borrowed(valE));
+                        /* UNION/BITFIELD (2026-11-11): aggiorna il buffer del gruppo e riscrive
+                         * i fratelli (l'aliasing C non esiste nel modello a dizionario). */
+                        vm_udt_group_apply((gmb_obj_shared_val_t*)obj, cd, offset,
+                                           gmb_adapter_stack_to_val_borrowed(valE));
                     }
                     if (curS.type == 2 && curS.ref) gmb_obj_release(curS.ref);
                 }
@@ -13846,6 +14425,7 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                 char buf[8192];
                 gmb_format_value(buf, sizeof(buf), e);
                 int n = (int)strlen(buf);
+                print_stage_enter(task);   /* PRINT annidato: sospende lo staging esterno */
                 if (task->print_staging_len + n < 1024)
                 {
                     memcpy(task->print_staging + task->print_staging_len, buf, n);
@@ -13878,6 +14458,26 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                 if (e.type == 2 && e.ref) gmb_obj_release(e.ref);
                 break;
             }
+            case OP_PRINT_FLUSH:
+            {
+                /* Fine di una PRINT SENZA newline finale (`PRINT x;` / `PRINT x,`): il
+                 * parziale si COMMETTE come testo, senza a capo (parità C99Native
+                 * gmb_print_stage_end). Senza questo marcatore lo staging restava pendente e
+                 * il PRINT di una procedura chiamata DOPO (frame diverso) lo sospendeva →
+                 * ordine invertito (opt/opt_forward_array: "outer=" finiva in fondo). */
+                print_stage_enter(task);
+                if (task->print_staging_len > 0)
+                {
+                    task->print_staging[task->print_staging_len] = '\0';
+                    pthread_mutex_lock(&vm->print_lock);
+                    if (vm->print_str) vm->print_str(vm->print_ctx, task->print_staging, (uint32_t)task->print_staging_len);
+                    else fputs(task->print_staging, stdout);
+                    pthread_mutex_unlock(&vm->print_lock);
+                    task->print_staging_len = 0;
+                }
+                print_stage_leave(task);
+                break;
+            }
             case OP_PRINT_LINE:
             {
                 gmb_stack_entry_t e = gmb_task_pop(task);
@@ -13886,6 +14486,7 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                 /* completa la riga: staging + valore, emessi direttamente (righe
                  * lunghe oltre i vecchi buffer fissi non vengono più troncate). */
                 int n = (int)strlen(buf);
+                print_stage_enter(task);   /* PRINT annidato: sospende lo staging esterno */
                 pthread_mutex_lock(&vm->print_lock);
                 if (task->print_staging_len > 0)
                 {
@@ -13901,6 +14502,7 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                 }
                 if (vm->print_newline) vm->print_newline(vm->print_ctx); else fputc('\n', stdout);
                 pthread_mutex_unlock(&vm->print_lock);
+                print_stage_leave(task);   /* riprende il PRINT esterno sospeso */
                 if (e.type == 2 && e.ref) gmb_obj_release(e.ref);   /* vedi OP_PRINT_VALUE */
                 break;
             }
@@ -13916,6 +14518,7 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                 }
                 if (vm->print_newline) vm->print_newline(vm->print_ctx); else fputc('\n', stdout);
                 pthread_mutex_unlock(&vm->print_lock);
+                print_stage_leave(task);   /* riprende il PRINT esterno sospeso */
                 break;
             }
             case OP_PRINT_TAB_ZONE:
@@ -15365,7 +15968,7 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                  * a funzionare. */
                 int retUdtNew = (kindByte & 0x80) != 0;
                 int nativeAbi = (kindByte & 0x20) != 0;   /* 0x20 = DECLARE NATIVE: niente estensioni array */
-                int kind = kindByte & 0x5F;
+                int kind = kindByte & 0x1F;   /* 0x20 = NATIVE, 0x40 = tabella firme callback, 0x80 = ritorno UDT */
                 int retUdtFieldCount = retUdtNew ? (retUdtLo | (retUdtHi << 8)) : retUdtLo;
                 int retUdtFieldKindMask = retUdtNew ? 0 : retUdtHi;
                 if (argc > GMB_FFI_MAX_ARGS)
@@ -15533,9 +16136,33 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                         }
                     }
                 }
+                /* Tabella firme callback SCALARI (2026-11-11, bit 0x40 di `kind`): per ogni
+                 * parametro callback, in ordine di slot, u8 arità + u8 retKind (0=DOUBLE,
+                 * 1=INT64, 2=nessun ritorno) + arità × u8 kind. Sostituisce l'assunzione
+                 * storica di firma interna omogenea (callbackParamKindMask) e alza il limite
+                 * di arità da 8 a 64: il trampolino diventa una closure libffi costruita sulla
+                 * firma per-slot (vedi gmb_closure_create). */
+                uint64_t cbSigKindMask[narg];
+                int cbSigRetKind[narg];
+                int cbSigArity[narg];
+                memset(cbSigKindMask, 0, sizeof(uint64_t) * (size_t)narg);
+                memset(cbSigRetKind, 0, sizeof(int) * (size_t)narg);
+                memset(cbSigArity, 0, sizeof(int) * (size_t)narg);
+                int hasCbSigTable = (kindByte & 0x40) != 0;
+                if (hasCbSigTable)
+                {
+                    for (int i = 0; i < argc; i++)
+                    {
+                        if (callbackParamArity[i] == 255 || callbackParamArity[i] >= 128) continue;
+                        int ar = gmb_vm_read_u8(vm, task);
+                        cbSigRetKind[i] = gmb_vm_read_u8(vm, task);
+                        cbSigArity[i] = ar;
+                        for (int b = 0; b < ar && b < 64; b++)
+                            if (gmb_vm_read_u8(vm, task)) cbSigKindMask[i] |= (1ull << b);
+                    }
+                }
                 double args[narg];
-                gmb_obj_t* arrRefs[narg]; memset(arrRefs, 0, sizeof(gmb_obj_t*) * (size_t)narg);
-                for (int i = argc - 1; i >= 0 && task->sp > 0; i--)
+                gmb_obj_t* arrRefs[narg]; memset(arrRefs, 0, sizeof(gmb_obj_t*) * (size_t)narg);                for (int i = argc - 1; i >= 0 && task->sp > 0; i--)
                 {
                     gmb_stack_entry_t a = gmb_task_pop(task);
                     /* Callback (2026-09-29): come array/STRING/BYREF/UDT, il ref (una
@@ -15618,6 +16245,8 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                  * allocati vengono liberati subito dopo la chiamata nativa (vedi sotto, insieme
                  * al rilascio di arrRefs[]). */
                 int cbAllocKind[narg], cbAllocArity[narg], cbAllocSlot[narg], cbAllocCount = 0;
+                void* cbClosures[narg]; memset(cbClosures, 0, sizeof(void*) * (size_t)narg);
+                int cbClosureCount = 0;
                 int callbackError = 0;
                 for (int i = 0; i < argc; i++)
                 {
@@ -15635,7 +16264,25 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                     }
                     int cbKind = (callbackParamKindMask & (1ull << i)) != 0 ? 1 : 0;
                     int slot = -1;
-                    void* tramp = gmb_ffi_cb_alloc(cbKind, callbackParamArity[i], vm, task, cl, addr, &slot);
+                    void* tramp;
+                    if (hasCbSigTable && callbackParamArity[i] < 128)
+                    {
+                        /* Firma per-slot (2026-11-11): closure libffi — kind misto e arità 0-64,
+                         * nessun limite di 2 callback concorrenti della stessa forma.
+                         * SOLO per i callback che la tabella DESCRIVE: le forme VETTORIALI
+                         * (arità >= 128, es. `FUNCTION(t) AS ARRAY`) non hanno riga nella
+                         * tabella e devono continuare a usare il pool qui sotto. Prima
+                         * finivano anche loro nella closure, con arità 0 e ritorno double: la
+                         * funzione nativa le chiamava con un argomento e leggeva 0 come
+                         * puntatore (`VECCALC.LINESCALAR` dava 0 invece di 2π — sweep
+                         * 2026-11-17; `LINEWORK`, con DUE callback vettoriali, non aveva la
+                         * tabella e quindi funzionava). */
+                        void* handle = NULL;
+                        tramp = gmb_ffi_cb_make_closure(vm, task, cl, addr, cbSigArity[i],
+                                                        cbSigKindMask[i], cbSigRetKind[i], &handle);
+                        if (tramp && cbClosureCount < narg) cbClosures[cbClosureCount++] = handle;
+                    }
+                    else tramp = gmb_ffi_cb_alloc(cbKind, callbackParamArity[i], vm, task, cl, addr, &slot);
                     if (!tramp) { callbackError = 1; break; } /* pool esaurito: >2 callback concorrenti per (kind,arita'), limite v1 */
                     cbAllocKind[cbAllocCount] = cbKind;
                     cbAllocArity[cbAllocCount] = callbackParamArity[i];
@@ -15716,6 +16363,22 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                                 if (udtArrCount[i] > 0) continue;
                                 gmb_obj_shared_val_t* sv = (gmb_obj_shared_val_t*)arrRefs[i];
                                 gmb_int_t n = sv->list ? (gmb_int_t)sv->list->count : 0;
+                                /* Array di STRING (char**, 2026-11-11, SOLO INPUT): n puntatori
+                                 * alle stringhe della lista, validi durante la chiamata. */
+                                if ((stringMask & (1ull << i)) != 0)
+                                {
+                                    char** sbuf = (char**)malloc(sizeof(char*) * (size_t)(n > 0 ? n : 1));
+                                    if (!sbuf) continue;
+                                    for (gmb_int_t j = 0; j < n; j++)
+                                    {
+                                        gmb_val_t v = sv->list->items[j];
+                                        sbuf[j] = (v.kind == GMB_TYPE_STRING && v.v_string.data) ? v.v_string.data : "";
+                                    }
+                                    scratch[i] = sbuf;
+                                    scratchLen[i] = n;
+                                    scratchIsInt[i] = 1;
+                                    continue;
+                                }
                                 int isInt = (arrayElemIntMask & (1ull << i)) != 0;
                                 scratchIsInt[i] = isInt;
                                 scratchLen[i] = n;
@@ -15914,6 +16577,9 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                             for (int i = 0; i < argc; i++)
                             {
                                 if (!scratch[i]) continue;
+                                /* Array di STRING: solo INPUT, nessun copy-out (i puntatori
+                                 * non si riscrivono) — si libera e basta. */
+                                if ((stringMask & (1ull << i)) != 0) { free(scratch[i]); continue; }
                                 if (byrefScalarMask & (1ull << i))
                                 {
                                     gmb_stack_entry_t outv = {0};
@@ -16032,6 +16698,10 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                  * BYREF-Struct-Callback.md §3bis. */
                 for (int ci = 0; ci < cbAllocCount; ci++)
                     gmb_ffi_cb_free(cbAllocKind[ci], cbAllocArity[ci], cbAllocSlot[ci]);
+                /* Closure libffi (firma per-slot, 2026-11-11): stesso schema solo-sincrono del
+                 * pool — liberate a fine chiamata. */
+                for (int ci = 0; ci < cbClosureCount; ci++)
+                    gmb_closure_free(cbClosures[ci]);
                 if (callbackError)
                 {
                     vm_error(task, "[FFI] parametro callback (AS FUNCTION/AS SUB) non valido: il valore passato non e' una closure invocabile, oppure troppi callback concorrenti dello stesso kind/arita' (limite v1: 2).");
@@ -16076,11 +16746,32 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                 int func_code = gmb_vm_read_u16(vm, task);
                 int argc = gmb_vm_read_u8(vm, task);
                 task->stop_iteration = 0;
+                task->gen_err_pending = 0;
                 gmb_vm_exec_builtin(vm, task, func_code, argc);
                 /* V5b safepoint CPU: il builtin ha parcheggiato il task su un kernel
                  * lungo (thread dedicato); il tick si ferma — il thread del job pusha
                  * il risultato e riaccoda il task (specchio ParkCpuBuiltin/ParkAsync). */
                 if (task->state == GMB_TS_BLOCKED) return 0;
+                /* NEXT() su un generatore il cui corpo è uscito per ERRORE: si rilancia il
+                 * codice VERO nel contesto del chiamante (parità C99Native gmb_gen_next).
+                 * Prima l'errore diventava StopIteration (144). */
+                if (task->gen_err_pending)
+                {
+                    task->gen_err_pending = 0;
+                    int gc = task->gen_err_code;
+                    char* gd = task->gen_err_desc;
+                    task->gen_err_desc = NULL;
+                    /* Catena del CORPO del generatore: va anteposta a quella del chiamante
+                     * (vm_append_trace la consuma). */
+                    free(task->trace_prefix);
+                    task->trace_prefix = task->gen_err_trace;
+                    task->gen_err_trace = NULL;
+                    task->err_line_override = task->gen_err_line;   /* riga del CORPO */
+                    gmb_raise_basic_error(task, (double)gc, gd ? gd : "");
+                    free(gd);
+                    if (task->state == GMB_TS_FINISHED) return -1;
+                    break;   /* l'ip è già cambiato (CATCH): niente push */
+                }
                 /* NEXT() su generatore esaurito segnala StopIteration (ERR.Number=144):
                  * unwind V4 verso il CATCH più interno (attraversa i FINALLY). */
                 if (task->stop_iteration)
@@ -16092,6 +16783,7 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                     {
                         gmb_dict_set(err->dict, "Number", gmb_make_val_double(144.0));
                         gmb_dict_set(err->dict, "Description", gmb_make_val_string_counted("Stop iteration"));
+                        gmb_dict_set(err->dict, "StackTrace", gmb_make_val_string_counted(""));
                         ev.type = 2;
                         ev.ref = (gmb_obj_t*)err;
                         ev.basic_type = GMB_BT_OBJECT;
@@ -17620,12 +18312,46 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
             }
             case OP_CLONE_UDT:
             {
-                /* popa e ripusha lo stesso valore (clone superficiale dict non ancora
-                 * implementato a runtime — i test concorrenza non dipendono dalla copia) */
+                /* COPIA PER VALORE di un UDT (2026-11-11): prima era un NO-OP ("clone
+                 * superficiale non ancora implementato"), quindi `v = u` su VM/C condivideva il
+                 * dizionario e modificare la copia cambiava l'originale — divergenza dalle altre
+                 * 3 gambe (PCode fa una copia superficiale del dizionario, IL/C99 sono value type
+                 * veri). Qui: copia del dizionario + COPIA PROFONDA dei buffer dei gruppi
+                 * (union/bitfield), che sono storage proprio dell'istanza. */
                 gmb_stack_entry_t top = { 0 };
                 if (task->sp > 0) top = gmb_task_pop(task);
-                if (top.type == 1) push_num_entry(task, top.num, top.basic_type);
-                else push_ref_new(task, (gmb_obj_t*)top.ref, top.basic_type);   /* top e' posseduto (popped): lo stack lo riadotta */
+                if (top.type == 1) { push_num_entry(task, top.num, top.basic_type); break; }
+                gmb_obj_shared_val_t* srcInst = (top.type == 2 && top.ref && top.ref->kind == GMB_OBJ_DICT)
+                    ? (gmb_obj_shared_val_t*)top.ref : NULL;
+                if (srcInst && srcInst->dict)
+                {
+                    gmb_obj_shared_val_t* clone = vm_new_dict_copy(srcInst->dict);
+                    if (clone)
+                    {
+                        for (int gi = 0; gi < 64; gi++)
+                        {
+                            char gk[24];
+                            snprintf(gk, sizeof(gk), "__grp%d", gi);
+                            gmb_val_t bv = gmb_dict_get(*clone->dict, gk);
+                            if (bv.kind != GMB_TYPE_OBJECT || !bv.v_ptr) continue;
+                            gmb_obj_t* bo = (gmb_obj_t*)bv.v_ptr;
+                            if (bo->kind != GMB_OBJ_LIST) continue;
+                            gmb_obj_shared_val_t* bs = (gmb_obj_shared_val_t*)bo;
+                            gmb_obj_shared_val_t* dup = gmb_shared_list_new();
+                            if (!dup) continue;
+                            if (bs->list)
+                                for (size_t bi = 0; bi < bs->list->count; bi++)
+                                    gmb_list_add(dup->list, bs->list->items[bi]);
+                            gmb_dict_set(clone->dict, gk, gmb_make_val_obj((gmb_obj_t*)dup));
+                            gmb_obj_release((gmb_obj_t*)dup);   /* il dict ne trattiene uno */
+                        }
+                        push_ref_new(task, (gmb_obj_t*)clone, GMB_BT_OBJECT);
+                        gmb_obj_release(top.ref);   /* top e' posseduto (popped) */
+                        break;
+                    }
+                }
+                if (top.type == 2 && top.ref) push_ref_new(task, (gmb_obj_t*)top.ref, top.basic_type);
+                else push_nil(task);
                 break;
             }
             case OP_LOAD_STATIC_FIELD:
@@ -18043,6 +18769,19 @@ static int gmb_vm_generator_drive(gmb_vm_t* vm, gmb_obj_generator_t* gen)
         {
             t->state = GMB_TS_FINISHED;
             gen->done = 1;
+            /* Il corpo è uscito per un ERRORE (non per esaurimento): si conserva il codice
+             * vero, così NEXT lo rilancia nel contesto del chiamante invece di trasformarlo
+             * in StopIteration (parità C99Native gmb_gen_next). */
+            if (t->pending_exception && t->fatal_err_desc)
+            {
+                gen->has_err = 1;
+                gen->err_code = t->fatal_err_code;
+                gen->err_line = t->fatal_err_line;
+                free(gen->err_desc);
+                gen->err_desc = strdup(t->fatal_err_desc);
+                free(gen->err_trace);
+                gen->err_trace = strdup(t->fatal_err_trace ? t->fatal_err_trace : "");
+            }
             return 1;
         }
         int r = gmb_vm_tick(vm, t);
@@ -18052,6 +18791,16 @@ static int gmb_vm_generator_drive(gmb_vm_t* vm, gmb_obj_generator_t* gen)
         {
             t->state = GMB_TS_FINISHED;
             gen->done = 1;
+            if (t->pending_exception && t->fatal_err_desc)
+            {
+                gen->has_err = 1;
+                gen->err_code = t->fatal_err_code;
+                gen->err_line = t->fatal_err_line;
+                free(gen->err_desc);
+                gen->err_desc = strdup(t->fatal_err_desc);
+                free(gen->err_trace);
+                gen->err_trace = strdup(t->fatal_err_trace ? t->fatal_err_trace : "");
+            }
             return 1;
         }
         if (++guard > 100000000) { gen->done = 1; return 1; }

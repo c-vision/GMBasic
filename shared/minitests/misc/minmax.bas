@@ -1,3 +1,4 @@
+' EXPECT: 5|2|-1|-5|2.5|2.5|9
 SUB Main()
   PRINT MAX(5, 2)
   PRINT MIN(5, 2)

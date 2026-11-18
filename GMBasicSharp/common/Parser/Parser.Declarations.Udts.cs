@@ -60,6 +60,36 @@ public sealed partial class Parser
         // Parsa il tipo di dato base (es. STRING * 10, INTEGER)
         var baseDataType = ParseTypeClause(nameToken);
 
+        // BITFIELD (2026-11-11): clausola `WIDTH n` dopo il tipo — larghezza in bit (1..64) del
+        // campo dentro l'unità di storage del tipo dichiarato (regole C: LSB-first, nuove unità
+        // quando il campo non ci sta). Si riusa la keyword WIDTH: `BITS` non è disponibile
+        // (è il nome del namespace BITS).
+        var bitWidth = 0;
+        if (Match(TokenKind.Width))
+        {
+            var widthExpr = ParseExpression();
+            if (widthExpr is not NumberExpr ne || ne.Value < 1)
+                throw CreateError(Previous(), $"campo {nameToken.Lexeme}: WIDTH richiede un numero di bit >= 1.");
+            bitWidth = (int)ne.Value;
+            // Solo tipi INTERI: un bitfield C non può avere tipo double/float (e le altre gambe
+            // mascherano/estendono il segno solo su interi).
+            var sizeBits = baseDataType switch
+            {
+                ByteType or SByteType => 8,
+                IntegerType or UIntegerType => 16,
+                LongType or ULongType or QuadType or UQuadType => 64,
+                _ => 0
+            };
+            if (sizeBits == 0)
+                throw CreateError(nameToken,
+                    $"campo {nameToken.Lexeme}: WIDTH è ammesso solo su campi interi (BYTE/INTEGER/LONG/QUAD e varianti unsigned).");
+            if (bitWidth > sizeBits)
+                throw CreateError(nameToken,
+                    $"campo {nameToken.Lexeme}: WIDTH {bitWidth} supera la larghezza del tipo ({sizeBits} bit).");
+            if (!dimensions.IsEmpty)
+                throw CreateError(nameToken, $"campo {nameToken.Lexeme}: un campo array non può essere un bitfield (WIDTH).");
+        }
+
         // Se sono state specificate le dimensioni, il tipo finale è un array/matrice.
         // `ARRAY OF ARRAY` è rimosso: le matrici usano `MATRIX OF (…, T)` o lo zucchero
         // `DIM nome(n,m) AS T` (rank = numero di dimensioni).
@@ -91,17 +121,17 @@ public sealed partial class Parser
         }
 
         // Crea il nodo TypeField passando le dimensioni parsate.
-        return new TypeField(-1, nameToken, baseDataType, dimensions, defaultValue);
+        return new TypeField(-1, nameToken, baseDataType, dimensions, defaultValue, bitWidth);
     }
 
     /// <summary>
     /// [FASE 1] Parsa un blocco `TYPE...END TYPE` e i suoi membri, senza registrare alcun simbolo.
     /// VERSIONE CORRETTA: Assegna correttamente i flag di visibilità e popola la lista dei metodi.
     /// </summary>
-    private UserDefinedType ParseTypeDefinition()
+    private UserDefinedType ParseTypeDefinition(bool isUnion = false)
     {
         var flags = SymbolFlags.IsStruct;
-        var isPacked = Match(TokenKind.Packed);
+        var isPacked = !isUnion && Match(TokenKind.Packed);
 
         // Un TYPE a livello di modulo è pubblico nel suo modulo.
         // Solo la keyword PUBLIC lo rende esportabile.
@@ -121,7 +151,7 @@ public sealed partial class Parser
         }
 
 
-        Consume(TokenKind.Type, "Expected 'TYPE'.");
+        Consume(isUnion ? TokenKind.Union : TokenKind.Type, isUnion ? "Expected 'UNION'." : "Expected 'TYPE'.");
         var nameToken = ConsumeProcedureName();
 
         // --- TYPE PARAMETERS: <T1, T2, ...> ---
@@ -176,6 +206,8 @@ public sealed partial class Parser
             }
             else if (Check(TokenKind.Function))
             {
+                if (isUnion)
+                    throw CreateError(Peek(), "A UNION can only declare numeric fields (no SUB/FUNCTION members).");
                 if (At(1).Kind == TokenKind.New)
                 {
                     if (memberIsPublic || memberIsPrivate)
@@ -214,7 +246,26 @@ public sealed partial class Parser
             }
         }
 
-        Consume(TokenKind.EndType, "Expected 'END TYPE' to close the type block.");
+        Consume(TokenKind.EndType, isUnion ? "Expected 'END UNION' to close the union block." : "Expected 'END TYPE' to close the type block.");
+
+        // UNION v1 (2026-11-11): solo i tipi la cui larghezza in memoria è la STESSA su tutte e
+        // 4 le gambe (BYTE/SBYTE 1, LONG/ULONG/QUAD/UQUAD 8, DOUBLE 8). INTEGER/UINTEGER/SINGLE
+        // sono esclusi perché sulla gamba IL lo storage dei numerici è a 8 byte (Int64/double):
+        // l'aliasing byte-per-byte divergerebbe dalle altre gambe. Niente bitfield dentro una
+        // union (la vista mascherata di una storage condivisa non è supportata in v1).
+        if (isUnion)
+        {
+            foreach (var uf in fields)
+            {
+                if (!uf.Dimensions.IsEmpty || uf.DataType is not (ByteType or SByteType
+                        or LongType or ULongType or QuadType or UQuadType or DoubleType))
+                    throw CreateError(uf.Name,
+                        $"UNION '{nameToken.Lexeme}': il campo '{uf.Name.Lexeme}' non è ammesso (v1: BYTE, SBYTE, LONG, ULONG, QUAD, UQUAD, DOUBLE — i tipi la cui larghezza in memoria è identica sulle 4 gambe).");
+                if (uf.BitWidth > 0)
+                    throw CreateError(uf.Name,
+                        $"UNION '{nameToken.Lexeme}': il campo '{uf.Name.Lexeme}' usa WIDTH: i bitfield non sono ammessi dentro una UNION (v1).");
+            }
+        }
 
         // --- RESOLVE TYPE PARAMETERS in fields and methods ---
         if (typeParameters.Length > 0)
@@ -246,6 +297,7 @@ public sealed partial class Parser
         var udt = new UserDefinedType(-1, nameToken, fields.ToImmutable(), flags, typeParameters)
         {
             IsPacked = isPacked,
+            IsUnion = isUnion,
             ImplementedInterfaceNames = implementedInterfaces.ToImmutable(),
             Properties = properties.ToImmutable(),
             Operators = operators.ToImmutable(),

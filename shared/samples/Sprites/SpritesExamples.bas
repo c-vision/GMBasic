@@ -43,13 +43,25 @@ SUB Main()
   PRINT "║ SpritesExamples - Test di Rendering in Batch                                ║"
   PRINT "╚═════════════════════════════════════════════════════════════════════════════╝"
   
-  ' Imposta la modalità grafica e carica un font
-  SCREEN 12 ' 640x480, 16 colori
+  ' Imposta la modalità grafica e carica un font.
+  ' Finestra PIÙ GRANDE (1280×800, 32bpp). SW/SH sono le dimensioni LOGICHE usate dal
+  ' programma (bordi di rimbalzo e griglia): se cambi la SCREEN, aggiorna anche questi due.
+  CONST SW = 1280
+  CONST SH = 800
+  SCREEN 12, SW, SH, 32
   FONT "font.ttf", 16
   
   ' Carica l'immagine dello sprite.
-  ' Carica 60 sprite distinti (un handle per sprite).
-  CONST NumSprites = 150
+  ' 50 sprite distanziati su una griglia 10×5 nella finestra 1280×800: player.png è 32×32,
+  ' quindi c'è molto spazio fra loro e i contatti restano RADI e leggibili.
+  CONST NumSprites = 50
+  ' MANOPOLE: FrameDelay = pausa in MILLISECONDI a ogni frame (più alto = più lento);
+  '           VelBase   = velocità massima in px/frame (più alto = più veloce).
+  CONST FrameDelay = 6
+  CONST VelBase = 1.6
+  ' ACCELERAZIONE PROGRESSIVA: man mano che gli aerei esplodono gli altri accelerano.
+  ' Boost va da 1× (tutti vivi) a 1+BoostMax (quasi finiti): BoostMax = 3 → fino a 4×.
+  CONST BoostMax = 3.0
   DIM SprID(NumSprites) AS LONG
   FOR I = 0 TO NumSprites - 1
     SPRITE LOAD "player.png", SprID(I)
@@ -70,6 +82,12 @@ SUB Main()
   DIM ExplosionX = 0
   DIM ExplosionY = 0
   GLOBAL Alive = NumSprites
+  ' Vivo(handle) = 1 finché lo sprite è in scena: serve a contare esattamente le rimozioni
+  ' (un id può comparire in più eventi di collisione consecutivi finché non viene spento).
+  GLOBAL Vivo(300) AS INTEGER
+  FOR I = 0 TO NumSprites - 1
+    Vivo(SprID(I)) = 1
+  NEXT I
   
   ' --- EVENTI COLLISIONE (rilevate dal motore nel SYNC) ---
   ' ON SPRITE COLLISION: la callback riceve (x, y) della collisione
@@ -81,32 +99,47 @@ SUB Main()
   DIM PosX(NumSprites), PosY(NumSprites)
   DIM VelX(NumSprites), VelY(NumSprites)
   
-  ' Inizializza ogni sprite su una GRIGLIA (non sovrapposti: collisioni graduali) con
-  ' velocità casuali
+  ' Griglia 10×5 distribuita su tutta la finestra SW×SH.
   FOR I = 0 TO NumSprites - 1
-    PosX(I) = 24 + (I MOD 15) * 40
-    PosY(I) = 24 + (I \ 15) * 40
-    VelX(I) = (RND() * 2) - 1
-    VelY(I) = (RND() * 2) - 1
+    PosX(I) = 60 + (I MOD 10) * ((SW - 120) / 9)
+    PosY(I) = 80 + (I \ 10) * ((SH - 160) / 4)
+    VelX(I) = ((RND() * 2) - 1) * VelBase
+    VelY(I) = ((RND() * 2) - 1) * VelBase
   NEXT I
   
   ' --- GAME LOOP PRINCIPALE ---
+  DIM Boost AS DOUBLE
   DO
     ' 1. Pulisce lo schermo a ogni frame
     CLS 1 ' Sfondo blu
     
     ' 2. Fase di UPDATE (mosso dalla CPU)
+    ' ACCELERAZIONE PROGRESSIVA: ogni aereo esploso rende gli altri un po' più veloci
+    ' (Alive scende → Boost sale: 1× all'inizio, 1+BoostMax quando ne restano pochi).
+    Boost = 1 + (((NumSprites - Alive) / NumSprites) * BoostMax)
     ' Questo loop aggiorna la logica di gioco (le posizioni).
     FOR I = 0 TO NumSprites - 1
       ' Aggiorna posizione
-      PosX(I) = PosX(I) + VelX(I)
-      PosY(I) = PosY(I) + VelY(I)
+      PosX(I) = PosX(I) + VelX(I) * Boost
+      PosY(I) = PosY(I) + VelY(I) * Boost
       
-      ' Controllo dei bordi (wrapping)
-      IF PosX(I) < 0 THEN PosX(I) = 640
-      IF PosX(I) > 640 THEN PosX(I) = 0
-      IF PosY(I) < 0 THEN PosY(I) = 480
-      IF PosY(I) > 480 THEN PosY(I) = 0
+      ' Bordi: RIMBALZO (non wrapping) con cambio di direzione e velocità casuale.
+      ' Le coordinate dello sprite sono il CENTRO (il motore disegna a x-w/2): i bordi sono
+      ' a 16 px (metà sprite) e a SW/SH-16.
+      IF PosX(I) < 16 THEN
+        PosX(I) = 16
+        VelX(I) = ABS(VelX(I)) * (0.6 + RND() * 0.8)
+      ELSEIF PosX(I) > SW - 16 THEN
+        PosX(I) = SW - 16
+        VelX(I) = -ABS(VelX(I)) * (0.6 + RND() * 0.8)
+      END IF
+      IF PosY(I) < 16 THEN
+        PosY(I) = 16
+        VelY(I) = ABS(VelY(I)) * (0.6 + RND() * 0.8)
+      ELSEIF PosY(I) > SH - 16 THEN
+        PosY(I) = SH - 16
+        VelY(I) = -ABS(VelY(I)) * (0.6 + RND() * 0.8)
+      END IF
       
       ' Imposta la posizione dello sprite nel buffer di stato.
       ' Questa è un'operazione molto veloce che non disegna nulla.
@@ -124,10 +157,29 @@ SUB Main()
       IF ExplosionTimer = 0 THEN SPRITE OFF ExplosionID
     END IF
     
+    ' CADENZA: pausa breve per frame (FrameDelay ms, costante in testa al programma).
+    ' Senza, il loop gira a centinaia di frame/s e le collisioni "volano": non si capisce
+    ' chi si è toccato. 10 ms ≈ 60-80 frame/s, fluido e osservabile.
+    SLEEP FrameDelay
+
     ' Controlla se l'utente preme ESC per uscire
     INKEY K$
     IF K$ <> "" THEN EXIT DO
-    IF Alive <= 10 THEN EXIT DO ' ferma quando restano 10 o meno sprite attivi
+    ' FINE: quando resta UN solo sprite non può più collidere (una collisione richiede due
+    ' sprite). Prima si usciva lasciandolo a schermo ("il programma ha finito con ancora
+    ' sprite sullo schermo"): qui si spengono gli ultimi rimasti e la fiamma, così la scena
+    ' resta VUOTA e il ciclo non può diventare infinito.
+    IF Alive <= 1 THEN
+      FOR I = 0 TO NumSprites - 1
+        IF Vivo(SprID(I)) = 1 THEN
+          SPRITE OFF SprID(I)
+          Vivo(SprID(I)) = 0
+          Alive = Alive - 1
+        END IF
+      NEXT I
+      SPRITE OFF ExplosionID
+      EXIT DO
+    END IF
   LOOP
   ' Chiude la finestra grafica e torna alla modalità testo
   ' Attende un tasto REALE prima di chiudere (WAITKEY in headless non blocca:
@@ -150,14 +202,47 @@ END SUB
 
 ' ================================================================
 ' Handler evento ON SPRITE COLLISIONS: riceve l'array degli id degli
-' sprite in collisione e li elimina (SPRITE OFF).
+' sprite in collisione ed elimina la COPPIA che si è toccata.
 ' ================================================================
 SUB OnCollisions(ids() AS DOUBLE)
-  ' Elimina UNO sprite per collisione (le eliminazioni massicce svuotavano la
-  ' demo in pochi secondi). Gli altri della coppia restano per il prossimo evento.
-  DIM N = UBOUND(ids)
-  IF N > 0 THEN
-    SPRITE OFF ids(0)
-    Alive = Alive - 1
-  END IF
+  ' Si eliminano ENTRAMBI gli sprite della prima coppia in collisione: si vede subito chi
+  ' si è scontrato e chi resta (prima se ne toglieva uno solo, ogni 10 collisioni, e restava
+  ' un ultimo sprite solitario che non poteva più collidere → ciclo INFINITO).
+  ' `Vivo(handle)` rende `Alive` esatto: lo stesso id può ricomparire negli eventi
+  ' successivi finché lo sprite non è spento, e non va contato due volte.
+  '
+  ' ATTENZIONE: l'ESPLOSIONE è a sua volta uno sprite (48×48). Mentre è visibile entra
+  ' nell'elenco delle collisioni e "tocca" gli aerei vicini: se si ignorasse l'evento
+  ' intero si perderebbero anche le collisioni VERE aerei-aerei, se si contasse
+  ' l'esplosione si eliminerebbero aerei che non si sono scontrati. Quindi: si tiene
+  ' l'elenco dei soli AEREI e si elimina la coppia SOLO se ce ne sono almeno due
+  ' (un evento con l'esplosione contiene al più un aereo).
+  DIM n AS INTEGER
+  DIM k AS INTEGER
+  DIM h AS INTEGER
+  DIM rimossi AS INTEGER
+  DIM na AS INTEGER
+  DIM aerei(128) AS INTEGER
+  n = UBOUND(ids)
+  na = 0
+  FOR k = 0 TO n
+    h = ids(k)
+    IF h > 0 AND h <= 300 AND h <> ExplosionID THEN
+      aerei(na) = h
+      na = na + 1
+    END IF
+  NEXT k
+  IF na < 2 THEN EXIT SUB            ' solo un aereo (o nessuno): niente coppia reale
+  rimossi = 0
+  FOR k = 0 TO na - 1
+    h = aerei(k)
+    IF Vivo(h) = 1 THEN
+      SPRITE OFF h
+      Vivo(h) = 0
+      Alive = Alive - 1
+      rimossi = rimossi + 1
+      ' Una COPPIA per evento: le rimozioni restano leggibili (una alla volta).
+      IF rimossi >= 2 THEN EXIT FOR
+    END IF
+  NEXT k
 END SUB

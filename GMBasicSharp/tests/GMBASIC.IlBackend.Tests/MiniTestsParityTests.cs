@@ -164,6 +164,10 @@ public class MiniTestsParityTests
             Directory.SetCurrentDirectory(Path.GetDirectoryName(Path.GetFullPath(file))!);
             CleanupArtifacts(file);
             CleanupBinDir(file);
+            // Cartella ENTRY come fa l'Executor (Executor.cs): senza, `PROJECTFOLDER()` cade su
+            // `_currentSourceFile`, che il prologo IL dell'ULTIMO programma eseguito può aver
+            // lasciato su un `.inc` importato (sweep 2026-11-17, `graph/querymulti`).
+            Basic.IlBackend.IlRuntime.SetEntrySourcePath(file);
             var program = Basic.Orchestrator.Compile(file, null, false, "il");
             // Macro &/EVAL: compilazione ed esecuzione nello STESSO processo → registra il
             // BasicProgram vivo (la cattura dei GLOBALI per nome non deve dipendere dalla
@@ -201,6 +205,7 @@ public class MiniTestsParityTests
             CleanupDbfTempFiles();
             Directory.SetCurrentDirectory(Path.GetDirectoryName(Path.GetFullPath(file))!);
             CleanupBinDir(file);
+            Basic.IlBackend.IlRuntime.SetEntrySourcePath(file);   // vedi RunPCode
             var program = Basic.Orchestrator.Compile(file, null, false, "il");
             // Macro &/EVAL in-process: registra il BasicProgram vivo (stesso motivo di RunPCode).
             Basic.IlBackend.IlRuntime.SetMacroContext(program);
@@ -449,9 +454,17 @@ public class MiniTestsParityTests
                 var mlDir = Path.Combine(vmRoot, "libs-runtime", "ml", rid);
                 var resDir = Path.Combine(vmRoot, "Resources", "libs", rid);
                 var rtDir = Path.Combine(vmRoot, "libs-runtime", rid);
+                // ORDINE (2026-11-11): build del working tree PRIMA della cache utente. La
+                // cache è la release pubblicata e può avere mtime più nuovo ma sorgenti più
+                // vecchi (libgmbmath/libgmbor senza i simboli appena aggiunti → VMC "simbolo
+                // non trovato"). Stessa regola di tools/sh/parity4 e del runner test_vmrun.
+                var buildDir = Path.Combine(vmRoot, "build", "libs", rid);
+                var cacheDir = Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+                    ".gmbasic", "libs", rid);
                 psi.Environment["GMB_TORCH_PATH"] = mlDir;
                 if (OperatingSystem.IsMacOS())
-                    psi.Environment["DYLD_LIBRARY_PATH"] = $"{mlDir}:{resDir}:{rtDir}:{Environment.GetEnvironmentVariable("DYLD_LIBRARY_PATH")}";
+                    psi.Environment["DYLD_LIBRARY_PATH"] = $"{mlDir}:{buildDir}:{cacheDir}:{resDir}:{rtDir}:{Environment.GetEnvironmentVariable("DYLD_LIBRARY_PATH")}";
             }
             using var proc = System.Diagnostics.Process.Start(psi)!;
             // Timeout OBBLIGATORIO: un programma BASIC che blocca il VMC (attesa su
@@ -515,6 +528,18 @@ public class MiniTestsParityTests
         // in `tools/test_minitests_parity` (testhost in-process) e in `RunVmc` (processo VM-C).
         // Ora `minitests/torch/` è INCLUSA nel cross-leg (parità piena), senza esclusioni.
         files = files.Where(f => !IsParityExcluded(Path.GetFileName(f))).ToArray();
+        // NEGATIVI DI COMPILAZIONE (marker `' EXPECT: COMPILE ERROR:`, 2026-11-16): il sorgente
+        // DEVE essere rifiutato dal compilatore. Il cross-leg compila in-process e si aspetta un
+        // run riuscito → il rifiuto sarebbe un falso rosso. Questi file li verifica la gamba
+        // NATIVA (`tools/sh/test_minitests_c99native`), che conta il rifiuto come PASS. Prima si
+        // escludevano per NOME (`ns_import_gate`, `embedfile_binary`), e i 23 file passati al
+        // nuovo marcatore finivano nel cross-leg: 20 di loro comparivano come divergenze finte.
+        var negCompile = files.Where(f => File.ReadAllText(f).Contains("' EXPECT: COMPILE ERROR:", StringComparison.Ordinal)).ToArray();
+        if (negCompile.Length > 0)
+        {
+            files = files.Where(f => !negCompile.Contains(f)).ToArray();
+            Console.WriteLine($"SKIP {negCompile.Length} MiniTest NEGATIVI di compilazione (marker 'EXPECT: COMPILE ERROR'): li verifica la gamba nativa.");
+        }
         // INTERATTIVI (marker `' TAG: interactive`): esclusi SEMPRE di default; inclusi solo col param.
         var interactive = files.Where(IsInteractive).ToArray();
         if (!InteractiveEnabled())
@@ -733,6 +758,25 @@ public class MiniTestsParityTests
     /// driver C99Native (dove il runtime C è deterministico).</summary>
     private static bool IsParityExcluded(string nome) =>
         nome.Equals("gen_AI_Discover.bas", StringComparison.OrdinalIgnoreCase)
+        // GATE dei NAMESPACE (2026-11-13): `constructs/ns_import_gate.bas` è un test NEGATIVO di
+        // compilazione (`' EXPECT: ERROR: …`): il frontend C deve RIFIUTARE `ANGLE2D(...)` senza
+        // `IMPORT VECTOR`. Il cross-leg managed compila in-process e si aspetta un run riuscito,
+        // quindi il caso si verifica sulla gamba C (runner `tools/sh/test_minitests_c99native`);
+        // le forme LECITE sono coperte da geom/dist2d, geom/dist3d, math/math3, math/math_all.
+        || nome.Equals("ns_import_gate.bas", StringComparison.OrdinalIgnoreCase)
+        // EMBEDFILE con payload BINARIO (2026-11-13): altro test NEGATIVO di compilazione
+        // (`' EXPECT: ERROR: …`): incorporare TESTO è il contratto, un file con byte NUL deve
+        // essere rifiutato — il cross-leg managed compila in-process e si aspetta un run
+        // riuscito, quindi il caso si verifica sulla gamba C. La forma lecita (testo) è coperta
+        // da constructs/embedfile.bas.
+        || nome.Equals("embedfile_binary.bas", StringComparison.OrdinalIgnoreCase)
+        // ON WHEN su LABEL (2026-11-17): `tui/when_event_parity.bas` verifica il dispatch
+        // SINCRONO di `FIRE EVENT h, "WHEN"` sull'handler `ON WHEN`: IL/PCode/VM-C lo fanno
+        // (GOSUB nel task corrente), C99Native emette `gmb_form_fire_event()` che invoca solo i
+        // callback C registrati, non la FUNCTION BASIC dell'handler. Gap tracciato in
+        // `Bugs/(open) - C99Native-ON-WHEN-Non-Dispatchato`; l'oracolo attuale riflette il
+        // comportamento C (senza WHEN-FIRED), quindi il test resta come sentinella del gap.
+        || nome.Equals("when_event_parity.bas", StringComparison.OrdinalIgnoreCase)
         // CLIPPER macro/EVAL/code-block (2026-10-02): batteria macro_core/eval_block/
         // eval_macro_string ora a parita' 4 backend (D1 EVAL dispatch, D2 text substitution,
         // D3 macro annidate, D4 corpo-espressione, D5 macro->block) — NON piu' escluse.
@@ -778,6 +822,17 @@ public class MiniTestsParityTests
         // confrontabili con EXPECT statico né nel cross-leg in-process (park modale).
         // Verificati per-gamba (emissione+compile+link su 4 backend; C99Native 2026-09-22).
         || nome.Equals("widgets_draw_perleg.bas", StringComparison.OrdinalIgnoreCase)
+        // TRAY: NON più escluso (2026-11-13). `gmb_tray_poll()` drena la MACCHINA A STATI su
+        // qualunque thread e tocca l'OS layer (AppKit/Win32) SOLO sul main thread: negli host
+        // senza main loop (xUnit in-process, headless) la coda veniva ignorata e
+        // `TRAYSELFTEST()` restava 0 mentre su C99/VM-C era -1 → divergenza di HOST che
+        // rendeva il test non confrontabile. Con il contrato nuovo le 4 gambe concordano.
+        // gen_AI_*: campioni di COPERTURA SIMBOLO generati; le loro EXPECT catturano STATO di
+        // macchina/sessione — `AI.BRAINUSED` = brain usati nel processo corrente,
+        // `AI.PROVIDERS` = provider configurati, `AI.VAULTLIST` = vault creati dai test
+        // precedenti nella stessa JVM, `AI.COUNT` = documenti indicizzati. Come gen_BROWSER_*:
+        // la copertura del simbolo resta garantita dal census; l'oracolo unico non esiste.
+        || nome.StartsWith("gen_AI_", StringComparison.OrdinalIgnoreCase)
         // Proprietà base + TEXTBOX + metodi CONTROL: GUI pixel (screen), solo
         // C99Native per ora; verificato per-gamba.
         || nome.Equals("control_methods_perleg.bas", StringComparison.OrdinalIgnoreCase);

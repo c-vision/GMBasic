@@ -18,7 +18,8 @@ int gmbadmin_grep(int argc, char** argv);      /* argv[0]="grep" */
 int gmbadmin_doc(int argc, char** argv);       /* argv[0]="convert"|"convfmt" */
 int gmbadmin_web2md(int argc, char** argv);    /* web2md <url> [-o out.md] */
 int gmbadmin_batch(int argc, char** argv);     /* batch <dir> [-o outdir] [-r] */
-int gmbadmin_keygen(int argc, char** argv);    /* argv[0]="keygen" */
+int gmbadmin_keygen(int argc, char** argv);
+int gmbadmin_verify(int argc, char** argv);    /* verify: confronta i file col release-manifest */
 int gmbadmin_pack(int argc, char** argv);      /* pack <dir> [--out f.gmbpkg] */
 int gmbadmin_publish(int argc, char** argv);   /* publish <f.gmbpkg> [--registry u] [--token t] */
 int gmbadmin_publish_repo(int argc, char** argv); /* publish --repo <git|path> <nome@tag> */

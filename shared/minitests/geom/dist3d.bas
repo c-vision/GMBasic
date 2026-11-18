@@ -1,3 +1,6 @@
+' EXPECT: 5
+IMPORT VECTOR
+
 SUB Main()
   PRINT DIST3D(0, 0, 0, 3, 4, 0)
 END SUB

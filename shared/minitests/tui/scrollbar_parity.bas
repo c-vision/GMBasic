@@ -1,4 +1,5 @@
 ' Minitest TUI SCROLLBAR — parità 4 backend (statement widget TUI).
+' EXPECT: OK-scrollbar
 IMPORT CONTROLS
 SUB Main()
   DIM v AS INTEGER

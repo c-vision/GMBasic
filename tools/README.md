@@ -7,9 +7,9 @@ they were partial copies, and the canonical folder at the root stayed empty.
 
 ```
 tools/
-  basic/    gates and generators written in BASIC (48)   e.g. no_stub.bas, check_enum_ids.bas, gen_c_tokenkind.bas
-  c/        support tools written in C (14)              e.g. gmb_fixture_stats.c, brain_manifest.c
-  sh/       wrappers, harnesses and shell gates (68)     e.g. check_file_size.sh, parity4, test_minitests_c99native
+  basic/    gates and generators written in BASIC (49)   e.g. no_stub.bas, check_enum_ids.bas, gen_c_tokenkind.bas
+  c/        support tools written in C (16)              e.g. gmb_fixture_stats.c, brain_manifest.c
+  sh/       wrappers, harnesses and shell gates (88)     e.g. check_file_size.sh, parity4, test_minitests_c99native
   data/     data read by the tools (3)                   hf_causal_lm_models.txt, llm_arch_allowlist.tsv, base_commit.txt
   fixtures/ minimal fixtures for the parity tests (3)    *.bas + gmb_torch*.o
   audit/    gmb_audit: builtin coverage per backend      Program.cs (legacy project ref: see README)
@@ -54,6 +54,7 @@ directory. Verificato il 2026-11-01: build 0 errori, `audit --list-backends`/`--
 ```bash
 gmb tools/basic/no_stub.bas --quiet            # anti-stub gate
 bash tools/sh/check_file_size.sh --quiet       # 1200-line threshold + escape gate
+bash tools/sh/check_option_registry.sh         # OptionCoreTable == g_opt_core[] (nomi, ordine, descrizioni)
 tools/sh/parity4 <un-sample>.bas               # 4 legs on one sample
 tools/sh/test_minitests_c99native              # C99Native leg
 bash tools/sh/test_minitests_parity.sh --all   # 4 legs on all MiniTests

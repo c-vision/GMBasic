@@ -24,6 +24,10 @@ struct gmb_expr {
     int line;
     double num;
     char* str;
+    /* Lunghezza ESPLICITA del letterale stringa (0 = usa strlen). Serve ai letterali
+     * BINARI di EMBEDFILE: il contenuto di un file puo' contenere NUL, quindi
+     * `str` non e' terminabile e la lunghezza va portata con il nodo. */
+    long str_len;
     char* var;                 /* nome variabile */
     char* ns;                  /* namespace della call qualificata (NS.FUNZIONE), NULL se
                                 * non qualificata. Il nome canonico resta nudo in var; ns
@@ -94,6 +98,10 @@ struct gmb_expr {
 
 gmb_expr_t* gmb_expr_num(double v, int line);
 gmb_expr_t* gmb_expr_str(const char* s, int line);
+/* Letterale stringa BINARIO: `data` puo' contenere NUL, la lunghezza e' esplicita.
+ * Usato da EMBEDFILE (contenuto di un file); l'emitter C99 e il bytecode lo
+ * materializzano con la lunghezza, mai con strlen. */
+gmb_expr_t* gmb_expr_str_n(const char* data, long len, int line);
 gmb_expr_t* gmb_expr_var(const char* name, int line);
 gmb_expr_t* gmb_expr_clone(const gmb_expr_t* e);
 gmb_expr_t* gmb_expr_binary(const char* op, gmb_expr_t* l, gmb_expr_t* r, int line);
@@ -220,6 +228,11 @@ typedef enum {
                            * [type,symbol,value,asset,market,timeframe]; UNSUBSCRIBE: [id]; PING: - */
     GMB_STMT_ON_SIGNAL,   /* ON SIGNAL <id> CALL <handler>: id in net_args[0], handler in target_label,
                            * arità dell'handler (4/5) in flag */
+    /* ERRDEFER <stmt>: cleanup eseguito SOLO se la procedura esce per un errore (parità
+     * con `errdefer` di Zig). Marcatore di PARSER: il corpo della procedura viene avvolto
+     * in un TRY/CATCH che esegue i cleanup e RILANCIA (nessun backend lo vede). `go_comm`
+     * porta lo statement da eseguire. */
+    GMB_STMT_ERRDEFER,
 } gmb_stmt_kind_t;
 typedef struct gmb_window { const char* name; const char* action; const char* style; int flag; } gmb_window_t;
 
@@ -335,6 +348,9 @@ struct gmb_stmt {
                                 * modulo, condiviso da tutte le procedure. */
     int dim_is_local;          /* `LOCAL v ...`: lexical block-scope; se ombreggia una GLOBAL,
                                 * la dichiarazione locale ha effetto solo dal punto in poi. */
+    int dim_is_static;         /* `STATIC v ...` (dentro una procedura): la variabile C è
+                                * `static` (persiste fra le chiamate) e va inizializzata una
+                                * volta sola al sito DIM — parità PCode/VM-C/IL. */
     char* dim_type;            /* DIM v AS <tipo>: nome tipo (CHANNEL/WAITGROUP/MUTEX/...) */
     char* dim_type_args;       /* DIM v AS Base<A1,A2>: CSV degli argomenti generici ("A1,A2");
                                 * NULL se il tipo non è istanziato (parità C# `Pair_INTEGER_STRING_`). */
@@ -472,6 +488,12 @@ struct gmb_stmt {
     /* PACKED TYPE (canone SIZEOF): i campi stanno alla somma dei propri byte, senza padding
      * di allineamento — il flag deve giungere alla tabella classi dell'emitter (cls_info). */
     int class_is_packed;
+    /* UNION (2026-11-11): tutti i campi a offset 0 (semantica C). L'emitter C99 emette una
+     * union ANONIMA (C11) con i tipi C reali: l'aliasing lo fa il compilatore C. */
+    int class_is_union;
+    /* BITFIELD (`A AS LONG WIDTH 3`, 2026-11-11): larghezza in bit per campo (0 = normale).
+     * L'emitter emette veri bitfield C (`int64_t A : 3`) — LSB-first, come le altre gambe. */
+    int* cls_field_bits;
     char** cls_implements; int n_cls_implements;
     char** cls_field_names; char** cls_field_types; int n_cls_fields;
     char** cls_static_names; char** cls_static_types; gmb_expr_t** cls_static_inits; int n_cls_statics;

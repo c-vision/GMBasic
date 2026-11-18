@@ -548,6 +548,7 @@ public sealed partial class Parser
 
         _functionContextStack.Push(nameToken);
         _functionContextReturnsValue.Push(returnType is not VoidType);
+        _errDeferScopes.Push(new List<Stmt>());   // ERRDEFER della procedura (LIFO)
         try
         {
             // Crea una definizione di procedura fittizia per fornire il contesto ai metodi interni.
@@ -577,6 +578,14 @@ public sealed partial class Parser
             _functionContextStack.Pop();
             _functionContextReturnsValue.Pop();
         }        var endToken = Consume(TokenKind.EndFunction, "Expected 'END FUNCTION' or 'END SUB'.");
+        // ERRDEFER: il corpo (senza END) va avvolto in TRY/CATCH+RILANCIO; END PROCEDURE resta
+        // FUORI dal TRY (il `ret` non deve stare in un blocco protetto).
+        var errDefers = _errDeferScopes.Pop();
+        // Il token del binding/rilancio è quello della SIGNATURE (non END SUB): il rilancio
+        // sintetico riporta la riga della PROCEDURA, che è anche quella che usa il frontend C
+        // (`gmb_p_wrap_errdefers(&body, line)`). Il rilancio resta un'istruzione sintetica:
+        // la riga esatta può variare di poco fra le gambe, numero/descrizione no.
+        if (errDefers.Count > 0) bodyStmts = WrapErrDefers(bodyStmts, errDefers, nameToken);
         bodyStmts.Add(new EndProcedureStmt(endToken));
 
         // Il primo token della signature (es. 'PUBLIC' o 'SUB'/'FUNCTION') viene usato
@@ -615,6 +624,9 @@ public sealed partial class Parser
 
         _functionContextStack.Push(nameToken);
         _functionContextReturnsValue.Push(true);   // i generator restituiscono sempre un valore
+        // ERRDEFER anche nei generatori: il corpo è una coroutine compilata come procedura
+        // normale (vedi gmb_gen_* nel runtime), quindi il TRY/CATCH del desugaring è ammesso.
+        _errDeferScopes.Push(new List<Stmt>());
         try
         {
             // Crea una definizione di generatore fittizia per fornire il contesto.
@@ -645,6 +657,9 @@ public sealed partial class Parser
         }
 
         var endToken = Consume(TokenKind.EndGenerator, "Expected 'END GENERATOR'.");
+        // ERRDEFER del generatore: stesso desugaring della procedura (END resta FUORI dal TRY).
+        var genErrDefers = _errDeferScopes.Pop();
+        if (genErrDefers.Count > 0) bodyStmts = WrapErrDefers(bodyStmts, genErrDefers, nameToken);
         bodyStmts.Add(new EndProcedureStmt(endToken));
 
         // 'Name' deve avere il LEXEME del vero identificatore (nameToken, es. "Count"), non del

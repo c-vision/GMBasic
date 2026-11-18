@@ -1,4 +1,18 @@
 #!/bin/zsh
+# ── INTERPRETE (guardia, 2026-11-14). Questo script e' zsh: usa le espansioni proprie di zsh
+# (unione dei filtri, array indicizzati da 1). Invocato con bash muore alla prima di quelle
+# espansioni con `bad substitution`, senza dire perche'. Qui ci si ri-esegue con zsh — come fa
+# test_minitests_c99native con bash, nella direzione opposta — invece di lasciare un errore
+# incomprensibile; se zsh manca, si esce 2 dicendo il motivo.
+if [ -z "${ZSH_VERSION:-}" ]; then
+    command -v zsh >/dev/null 2>&1 || {
+        echo "ERRORE: questo script gira solo con zsh (usa le espansioni proprie di zsh: con bash la" >&2
+        echo "        prima muore con 'bad substitution'). Invocalo cosi': zsh $0 …" >&2
+        exit 2
+    }
+    exec zsh "$0" "$@"
+fi
+
 # test_minitests_parity — esecuzione MIRATA dei MiniTest su 4 gambe (IL, PCode, VM-C, C99Native).
 # ORDINE E RUOLI: prima la gamba NATIVA (C99Native, runner nativo) = RIFERIMENTO — il
 # compilatore principale del monorepo è quello nativo; poi le tre gambe gestite (IL, PCode,
@@ -9,6 +23,9 @@
 # che non corrisponde ad alcun file fa FALLIRE la gamba nativa (exit 1): prima la gamba
 # stampava `PASS=0 FAIL=0` con exit 0, cioè un falso verde.
 set -e
+# PID della RUN: proprietario del lease del broker (`msg_broker.sh`), preso una volta qui perché
+# dentro una sostituzione di comando sarebbe la subshell (lease morto mentre la run lavora).
+SELF_PID=$$
 ROOT="$(cd "$(dirname "$0")/../../GMBasicSharp" && pwd)"          # GMBasicSharp
 WS="$(cd "$ROOT/.." && pwd)"                       # GMBasicMonoRepo
 
@@ -53,7 +70,7 @@ BROKER_STARTED=()
 broker_cleanup() {
   local p
   for p in "${BROKER_STARTED[@]}"; do
-    [ -n "$p" ] && "$BROKER_SH" release "$p" >/dev/null 2>&1
+          [ -n "$p" ] && "$BROKER_SH" release "$p" "" "" "$SELF_PID" >/dev/null 2>&1
   done
 }
 trap broker_cleanup EXIT          # ferma il broker anche se un test fallisce
@@ -68,11 +85,16 @@ if [ -x "$BROKER_SH" ]; then
   fi
   for _bp in "${broker_ports[@]}"; do
     [ -n "$_bp" ] || continue
-    _bres="$("$BROKER_SH" ensure "$_bp" 2>/dev/null)" || _bres=failed
-    case "$_bres" in
-      started) BROKER_STARTED+=("$_bp"); echo "broker pub/sub avviato dal gate su :$_bp" ;;
-      already) echo "broker pub/sub già attivo su :$_bp (lo lascio a chi l'ha avviato)" ;;
-      *)       echo "attenzione: broker non avviabile su :$_bp" >&2 ;;
+          # `ensure` stampa già started|already|busy|failed: il `||` non deve CANCELLARE il motivo
+      # (un `busy` mascherato da failed mandava a cercare un broker rotto invece di una run
+      # concorrente che teneva la porta).
+      _bres="$("$BROKER_SH" ensure "$_bp" "" "" "$SELF_PID" 2>/dev/null)" || true
+      [ -n "$_bres" ] || _bres=failed
+      case "$_bres" in
+        started) BROKER_STARTED+=("$_bp"); echo "broker pub/sub avviato dal gate su :$_bp" ;;
+        already) echo "broker pub/sub già attivo su :$_bp (riuso quello della run)" ;;
+        busy)    echo "ERRORE: broker :$_bp occupato da un'altra run (lease non rilasciato in tempo): i test tcp di questa run non sono verificabili" >&2 ;;
+        *)       echo "attenzione: broker non avviabile su :$_bp" >&2 ;;
     esac
   done
 else

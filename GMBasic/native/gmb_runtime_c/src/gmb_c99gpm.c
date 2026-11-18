@@ -16,7 +16,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <setjmp.h>
+#include <time.h>   /* nanosleep/struct timespec: su mingw li dichiara <time.h>, non <unistd.h> */
 #include "gmb_c99gpm.h"
+#include "gmb_trace.h"
 #include "gmb_tray.h"
 #include "gmb_ui_gfx.h"
 #include "gmb_iconsole.h"
@@ -106,13 +108,22 @@
             "pop r12\n"
             "pop rbx\n"
             "pop rbp\n"
+            /* Sfilare anche lo slot dell'indirizzo di ritorno: si salta a `pc` come farebbe
+               una `ret`, quindi `rsp` deve puntare OLTRE quello slot. Senza questo `add`,
+               a ogni ripresa la coroutine ripartiva con `rsp` 8 byte piu' in basso (il
+               primo `ret` del codice ripreso leggeva lo slot sbagliato ~ indirizzo di
+               stack da eseguire, diagnosticato come "STACK OVERFLOW"). */
+            "add rsp, 8\n"
             "jmp rax\n"
             ".att_syntax prefix\n"
             : : : "memory");
     }
     static void gmb_ctx_make(gmb_ctx_t* ctx, void (*fn)(void), char* stack, size_t sz) {
         void** sp = (void**)(stack + sz);
-        sp -= 7;
+        /* 8 slot: 6 registri callee-saved, l'indirizzo di ritorno (fn) e lo slot che il
+           restore sfila con `add rsp, 8`. Cosi' all'ingresso del trampoline `rsp` vale
+           stack+sz-8 (allineato a 16 byte, come dopo una `call`). */
+        sp -= 8;
         sp[0]=0; sp[1]=0; sp[2]=0; sp[3]=0; sp[4]=0; sp[5]=0;
         sp[6]=(void*)fn;   /* return address = trampoline */
         ctx->sp = sp; ctx->pc = (void*)fn;
@@ -230,6 +241,19 @@ static size_t gmb_stack_default_size(void) {
    (indirizzi più bassi, verso cui cresce SP) è PROT_NONE. Un overflow tocca la
    guard page → SIGSEGV rilevabile (handler sotto) invece di corruzione muta.
    Layout: [GUARD PROT_NONE | stack RW (size byte)] — stack cresce in basso. */
+/* Stack ALTERNATIVO per l'handler di fault: in un VERO overflow lo stack della
+   coroutine ha pochi byte liberi, l'handler girerebbe su quello, fault-erebbe di
+   nuovo e il messaggio non uscirebbe mai (cascata: SIGSEGV secco, exit 139).
+   sigaltstack è PER-THREAD: serve solo dove girano i task (i worker). */
+static char g_altstack_mem[32 * 1024] __attribute__((aligned(16)));
+static void gmb_stack_install_altstack(void) {
+    stack_t ss;
+    memset(&ss, 0, sizeof ss);
+    ss.ss_sp = g_altstack_mem;
+    ss.ss_size = sizeof g_altstack_mem;
+    ss.ss_flags = 0;
+    sigaltstack(&ss, NULL);
+}
 static void gmb_stack_alloc(size_t size, char** stack_out, void** map_out, size_t* map_len_out) {
     long pg = sysconf(_SC_PAGESIZE);
     if (pg <= 0) pg = 4096;
@@ -253,30 +277,47 @@ static void gmb_stack_alloc(size_t size, char** stack_out, void** map_out, size_
     *map_out = base;             /* per munmap a fine task */
     *map_len_out = map_len;
 }
-/* Rilevatore overflow: SIGSEGV nella guard page → errore chiaro, non corruzione.
-   Solo la task corrente può toccare la propria guard page; l'handler valuta la
-   guard della task corrrente (g_current) e, se l'indirizzo del fault è dentro,
-   stampa e termina. Altrimenti ripristina il comportamento default. */
+/* Rilevatore di fault nella coroutine. Il mapping di ogni task è
+   [GUARD PROT_NONE (1 pagina) | stack RW (stack_size byte)] e la zona usabile
+   PARTE da stack_map + pagina, quindi basta l'indirizzo del fault:
+     - DENTRO la guard page → VERO overflow (SP è sceso fino in fondo): si può
+       solo aumentare lo stack;
+     - DENTRO la zona stack  → zona SCRIVIBILE, quindi non è esaurimento: è un
+       accesso/PC spurio (tipico un indirizzo di ritorno corrotto che fa
+       eseguire lo stack). Qui GMBASIC_GOROUTINE_STACK non aiuta.
+   Il fault può cadere ESATTAMENTE sul confine guard/stack: si confronta con
+   l'inizio della zona usabile, non col fondo del mapping. Un fault fuori dal
+   mapping della task corrente torna al comportamento di default. */
 static void gmb_stack_fault_handler(int sig, siginfo_t* si, void* uctx) {
-    (void)sig; (void)uctx;
+    (void)uctx;
     gmb_task_t* g = gmb_cur();
-    /* Il fault può cadere ESATTAMENTE sul confine guard/stack (SP scende fino al
-       primo byte PROT_NONE): il range copre l'intero mapping dello stack
-       (guard + zona usabile) — l'unica parte non accessibile è la guard, quindi
-       un SIGSEGV qui è per definizione overflow della coroutine. */
-    if (g && g->stack_map && si->si_addr >= g->stack_map
-        && (char*)si->si_addr <= (char*)g->stack_map + g->stack_map_len) {
-        fprintf(stderr, "[GMBASIC] STACK OVERFLOW coroutine: aumentare GMBASIC_GOROUTINE_STACK"
-            " (attuale %zu byte)\n", g->stack_size);
-        _Exit(2);
+    char* addr = (char*)si->si_addr;
+    if (g && g->stack_map) {
+        char* map = (char*)g->stack_map;
+        char* end = map + g->stack_map_len;
+        if (addr >= map && addr < end) {
+            if (addr < g->stack) {                    /* guard page */
+                fprintf(stderr, "[GMBASIC] STACK OVERFLOW coroutine: aumentare"
+                    " GMBASIC_GOROUTINE_STACK (attuale %zu byte)\n", g->stack_size);
+            } else {                                  /* zona stack scrivibile */
+                fprintf(stderr, "[GMBASIC] FAULT nella coroutine, NON stack overflow:"
+                    " indirizzo %p dentro la zona stack (offset %ld, scrivibile),"
+                    " stack %zu byte\n", (void*)addr, (long)(addr - map), g->stack_size);
+                fprintf(stderr, "[GMBASIC]   aumentare GMBASIC_GOROUTINE_STACK non risolve:"
+                    " il guasto non e' esaurimento di stack\n");
+            }
+            _Exit(2);
+        }
     }
-    signal(SIGSEGV, SIG_DFL);
-    raise(SIGSEGV);
+    signal(sig, SIG_DFL);
+    raise(sig);
 }
 static void gmb_stack_install_handler(void) {
     struct sigaction sa = { 0 };
     sa.sa_sigaction = gmb_stack_fault_handler;
-    sa.sa_flags = SA_SIGINFO;
+    /* SA_ONSTACK: l'handler gira sull'altstack, non sullo stack della coroutine
+       (in un vero overflow quello è esaurito). */
+    sa.sa_flags = SA_SIGINFO | SA_ONSTACK;
     /* su macOS una pagina PROT_NONE genera SIGBUS, non SIGSEGV — serve entrambi */
     sigaction(SIGSEGV, &sa, NULL);
     sigaction(SIGBUS, &sa, NULL);
@@ -506,6 +547,8 @@ static void gmb_sched_wake_expired_sleepers(int64_t now_ms) {
 static void* gmb_worker(void* arg) {
 #if defined(_WIN32) || defined(_WIN64)
     g_worker_fiber = ConvertThreadToFiber(NULL);
+#else
+    gmb_stack_install_altstack();   /* l'handler di fault deve avere stack proprio */
 #endif
     for (;;) {
         gmb_task_t* t = gmb_sched_find_runnable();
@@ -609,6 +652,8 @@ int gmb_gomaxprocs(int n) {
 void gmb_gpm_start(void (*main_entry)(void*)) {
     g_gpm_active = 1;
 #if !defined(_WIN32) && !defined(_WIN64)
+    /* Handler process-wide; l'altstack serve solo ai thread che eseguono task
+       (installato in gmb_worker), non al thread chiamante che qui aspetta. */
     gmb_stack_install_handler();
 #endif
     GMB_MUTEX_INIT(&g_sched.qlock);
@@ -1453,3 +1498,226 @@ gmb_string_t gmb_key_wait_park(int timeout_ms)
 }
 
 
+
+/* ═══════════════════════════════════════════════════════════════════════════════════════
+ * GENERATORI — coroutine stackful guidate SINCRONAMENTE da NEXT (parità VM/C)
+ *
+ * Un GENERATOR BASIC è una coroutine con stack proprio: il corpo è compilato come funzione
+ * C NORMALE (quindi TRY/CATCH, FOR EACH, DEFER, ERRDEFER… funzionano, perché non c'è un
+ * mini-emitter), e YIELD sospende cambiando contesto. Nessuno scheduler: chi chiama NEXT è
+ * l'unico che guida la coroutine (stessa semantica di gmb_vm_generator_drive in VM/C).
+ *
+ * ERRORI: un errore nel corpo NON deve fare longjmp attraverso gli stack (sarebbe UB).
+ * Il trampolino installa un proprio jmp_buf, cattura l'errore, lo registra e torna al
+ * chiamante; gmb_gen_next lo RILANCIA nel contesto del chiamante (numero/descrizione/riga/
+ * valore conservati), così il TRY/CATCH attorno a NEXT lo vede identico.
+ * ═══════════════════════════════════════════════════════════════════════════════════════ */
+
+struct gmb_gen {
+    void (*fn)(void*);
+    void* params;
+    double value;
+    int done;
+    int has_err;
+    int err_num;
+    char* err_desc;
+    long err_line;
+    gmb_val_t err_val;
+    jmp_buf* caller_err_jmp;   /* handler del chiamante, ripristinato al ritorno dal corpo */
+    /* STACK TRACE: profondità della catena nel corpo e nel chiamante. Il corpo pusha i suoi
+     * frame SOPRA quelli del chiamante, quindi a ogni switch la cima deve essere quella del
+     * contesto che gira (altrimenti il `gmb_trace_line` del chiamante scrive la riga nel frame
+     * del generatore). Vedi gmb_gen_next / gmb_gen_yield. */
+    int body_trace_n;
+    int caller_trace_n;
+    struct gmb_gen* next_all;
+#if defined(_WIN32) || defined(_WIN64)
+    LPVOID caller_fiber;
+    LPVOID body_fiber;
+#else
+    gmb_ctx_t caller_ctx;
+    gmb_ctx_t body_ctx;
+    char* stack;
+    void* stack_map;
+    size_t stack_map_len;
+    size_t stack_size;
+#endif
+};
+
+/* Generatore in esecuzione sul thread corrente (il corpo lo usa da gmb_gen_yield).
+ * Salvato/ripristinato da gmb_gen_next: due generatori annidati non si pestano i piedi. */
+static __thread gmb_gen_t* g_gen_cur;
+
+/* Registro dei generatori vivi: libera stack e memoria all'uscita del processo (un
+ * generatore ABBANDONATO non ha un distruttore: il suo struct è una variabile C). */
+static gmb_gen_t* g_gen_all;
+static gmb_lock_t g_gen_all_lock;   /* statico = azzerato = sbloccato */
+
+static void gmb_gen_registry_add(gmb_gen_t* g)
+{
+    gmb_lock(&g_gen_all_lock);
+    g->next_all = g_gen_all;
+    g_gen_all = g;
+    gmb_unlock(&g_gen_all_lock);
+}
+
+static void gmb_gen_free_mem(gmb_gen_t* g)
+{
+#if defined(_WIN32) || defined(_WIN64)
+    if (g->body_fiber) { DeleteFiber(g->body_fiber); g->body_fiber = NULL; }
+#else
+    if (g->stack_map) { munmap(g->stack_map, g->stack_map_len); g->stack_map = NULL; g->stack = NULL; }
+#endif
+    free(g->params); g->params = NULL;
+    free(g->err_desc); g->err_desc = NULL;
+}
+
+#if defined(__GNUC__) || defined(__clang__)
+__attribute__((destructor))
+#endif
+static void gmb_gen_free_all(void)
+{
+    gmb_gen_t* g = g_gen_all;
+    while (g) { gmb_gen_t* n = g->next_all; gmb_gen_free_mem(g); free(g); g = n; }
+    g_gen_all = NULL;
+}
+
+/* Corpo della coroutine: esegue la funzione generata, cattura l'errore e torna al
+ * chiamante marcando `done`. Non torna mai (il contesto del corpo non è più ripreso). */
+static void gmb_gen_trampoline(void)
+{
+    gmb_gen_t* g = g_gen_cur;
+    if (!g) return;
+    jmp_buf buf;
+    jmp_buf* prev = gmb_err_set_handler(&buf);
+    if (setjmp(buf) == 0)
+    {
+        g->fn(g->params);
+    }
+    else
+    {
+        g->has_err = 1;
+        g->err_num = gmb_err_number();
+        g->err_line = gmb_err_line();
+        g->err_val = gmb_err_take_value();
+        const char* d = gmb_err_description();
+        g->err_desc = strdup(d ? d : "");
+    }
+    gmb_err_set_handler(prev);
+    g->done = 1;
+#if defined(_WIN32) || defined(_WIN64)
+    SwitchToFiber(g->caller_fiber);
+#else
+    gmb_ctx_switch(&g->body_ctx, &g->caller_ctx);
+#endif
+}
+
+gmb_gen_t* gmb_gen_new(void (*fn)(void*), const void* params, size_t params_size)
+{
+    if (!fn) return NULL;
+    gmb_gen_t* g = (gmb_gen_t*)calloc(1, sizeof(gmb_gen_t));
+    if (!g) return NULL;
+    g->fn = fn;
+    if (params && params_size > 0)
+    {
+        g->params = malloc(params_size);
+        if (!g->params) { free(g); return NULL; }
+        memcpy(g->params, params, params_size);
+    }
+    g->value = 0.0;
+    g->done = 0;
+#if defined(_WIN32) || defined(_WIN64)
+    {
+        size_t sz = gmb_stack_default_size();
+        g->body_fiber = CreateFiber((SIZE_T)sz, (LPFIBER_START_ROUTINE)gmb_gen_trampoline, NULL);
+        if (!g->body_fiber) { free(g->params); free(g); return NULL; }
+        g->caller_fiber = ConvertThreadToFiber(NULL);
+        if (!g->caller_fiber) g->caller_fiber = GetCurrentFiber();
+    }
+#else
+    g->stack_size = gmb_stack_default_size();
+    gmb_stack_alloc(g->stack_size, &g->stack, &g->stack_map, &g->stack_map_len);
+    gmb_ctx_make(&g->body_ctx, gmb_gen_trampoline, g->stack, g->stack_size);
+#endif
+    gmb_gen_registry_add(g);
+    return g;
+}
+
+/* Riprende il generatore: 0 = valore prodotto (in *out), 1 = esaurito.
+ * Se il corpo è uscito per un errore, lo RILANCIA qui (contesto del chiamante). */
+int gmb_gen_next(gmb_gen_t* g, double* out)
+{
+    if (!g || g->done) return 1;
+    gmb_gen_t* prev = g_gen_cur;
+    g_gen_cur = g;
+    /* STACK TRACE: si riprende dal frame del CORPO (quello lasciato al YIELD). Al primo NEXT
+     * body_trace_n è 0 → il corpo pusha il proprio frame sopra quello del chiamante. */
+    g->caller_trace_n = gmb_trace_n;
+    if (g->body_trace_n > 0) gmb_trace_n = g->body_trace_n;
+    /* L'handler d'errore è __thread: mentre il corpo gira deve essere QUELLO DEL CORPO
+     * (installato dal trampolino sul suo stack). Se restasse attivo quello del chiamante
+     * (un jmp_buf nel suo frame) un raise nel corpo farebbe longjmp dentro il frame del
+     * chiamante dal contesto sbagliato. Si azzera qui e si ripristina al ritorno. */
+    g->caller_err_jmp = gmb_err_set_handler(NULL);
+#if defined(_WIN32) || defined(_WIN64)
+    SwitchToFiber(g->body_fiber);
+#else
+    gmb_ctx_switch(&g->caller_ctx, &g->body_ctx);
+#endif
+    gmb_err_set_handler(g->caller_err_jmp);
+    g_gen_cur = prev;
+    if (g->has_err)
+    {
+        int n = g->err_num;
+        long l = g->err_line;
+        char* d = g->err_desc;
+        gmb_val_t v = g->err_val;
+        g->has_err = 0;
+        g->err_desc = NULL;
+        g->err_val = gmb_val_nil();
+        if (out) *out = 0.0;
+        gmb_raise_user_error(v, n, d ? d : "", l);   /* non ritorna: TRY/CATCH del chiamante */
+        free(d);
+        return 1;
+    }
+    if (g->done) return 1;
+    if (out) *out = g->value;
+    return 0;
+}
+
+/* YIELD dal corpo: pubblica il valore e torna al chiamante di NEXT. */
+void gmb_gen_yield(double v)
+{
+    gmb_gen_t* g = g_gen_cur;
+    if (!g)
+    {
+        gmb_raise_error(1, "YIELD fuori da un generatore", 0);
+        return;
+    }
+    g->value = v;
+    /* STACK TRACE: mentre il corpo è sospeso la cima della catena deve tornare al frame del
+     * CHIAMANTE — il suo `gmb_trace_line` aggiorna la PROPRIA riga, non quella del generatore.
+     * La profondità del corpo si salva e si riprende al NEXT successivo. */
+    g->body_trace_n = gmb_trace_n;
+    gmb_trace_n = g->caller_trace_n;
+    /* Mentre il corpo è sospeso deve essere attivo l'handler del CHIAMANTE (un raise del
+     * chiamante non deve finire nel jmp_buf del corpo, che vive sul suo stack). */
+    jmp_buf* mine = gmb_err_set_handler(g->caller_err_jmp);
+#if defined(_WIN32) || defined(_WIN64)
+    SwitchToFiber(g->caller_fiber);
+#else
+    gmb_ctx_switch(&g->body_ctx, &g->caller_ctx);
+#endif
+    gmb_err_set_handler(mine);   /* ripreso: torna attivo l'handler del corpo */
+}
+
+/* Chiusura esplicita (abbandono): libera stack e memoria. Un generatore abbandonato senza
+ * close resta nel registro e viene liberato all'uscita del processo; i cleanup (DEFER)
+ * del corpo NON corrono su un abbandono (semantica documentata). */
+void gmb_gen_close(gmb_gen_t* g)
+{
+    if (!g) return;
+    g->done = 1;
+    gmb_gen_free_mem(g);
+    free(g);
+}

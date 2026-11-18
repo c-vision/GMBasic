@@ -5,7 +5,7 @@
 '   - `INSTR(hay, needle)` → posizione 1-based (0 se assente), case-insensitive.
 ' Senza provider il round produce un errore ESPLICITO che cita "provider" → i casi sono
 ' deterministici su tutte e 5 le gambe.
-' EXPECT: eq-zzz=|instr= 1|len5= 1
+' EXPECT: eq-zzz= 1|instr= 1|len5= 1
 IMPORT AI
 
 SUB Main()

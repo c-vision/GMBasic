@@ -909,6 +909,12 @@ public static class Orchestrator
         // "Call-Main-Esplicita-Entry-Doppia-VMC-Parita").
         Linker.ValidateNoExplicitMainCall(program, rewrittenMainModule);
 
+        // Passata 3.7: esegue il codice di modulo dei moduli IMPORTATI prima dell'entry point
+        // (IL e bytecode compilano solo il MainModule: senza questo, `PUBLIC DIM x` di un altro
+        // file restava al default). Dipendenze prima, entry per ultima — come C99Native.
+        Linker.InlineModuleInitializers(program);
+        Log("[Orchestrator] Passata 3.7 (Inizializzazione moduli importati) completata.", log);
+
         Log("[Orchestrator] === FINE PASSATA 3 ===", log);
 
         global::Basic.Linker.ApplySemanticPatches(program);   /* §4.10 write-side (post-link) */
@@ -1177,7 +1183,7 @@ public static class Orchestrator
             Span<byte> hdr = stackalloc byte[5];
             stream.ReadExactly(hdr);
             return hdr[0] == (byte)'G' && hdr[1] == (byte)'M' && hdr[2] == (byte)'B' && hdr[3] == (byte)'C'
-                && (hdr[4] == 1 || hdr[4] == 2); // GMB_CHUNK_VERSION (1 storico, 2 descrittore FFI)
+                && (hdr[4] == 1 || hdr[4] == 2 || hdr[4] == 3); // GMB_CHUNK_VERSION (1 storico, 2 descrittore FFI, 3 firme callback)
         }
         catch { return false; }
     }

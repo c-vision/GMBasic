@@ -1,5 +1,6 @@
 ' MiniTest DBF — JOIN WITH multi-match (fan-out: 1 ordine → 2 output righe).
-' Crea 1 ordine (IDCLI=C1) e 2 clienti con ID=C1 → 2 match. EXPECT: 2
+' Crea 1 ordine (IDCLI=C1) e 2 clienti con ID=C1 → 2 match.
+' EXPECT: 2
 IMPORT DBF
 
 TYPE TORD

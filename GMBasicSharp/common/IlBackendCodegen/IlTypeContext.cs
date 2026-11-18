@@ -2,6 +2,7 @@
 
 using System.Linq;
 using System.Reflection;
+using System.Reflection.Emit;
 
 namespace Basic.IlBackend;
 
@@ -33,6 +34,31 @@ namespace Basic.IlBackend;
 /// </summary>
 public sealed class IlTypeContext
 {
+    /// <summary>Modulo dell'assembly in compilazione (null in <see cref="ForRuntime"/>).
+    /// Serve a definire nello STESSO modulo i tipi che l'IL emesso deve referenziare —
+    /// oggi i delegate con arità &gt; 16 (limite del BCL): un tipo di un assembly dinamico
+    /// "Run" NON è risolvibile dal .dll salvato (PersistedAssemblyBuilder).</summary>
+    public ModuleBuilder? ModuleBuilder { get; set; }
+
+    /// <summary>TypeBuilder di delegate generati durante la compilazione, da
+    /// <c>CreateType()</c>-are alla fine (dopo i tipi utente, che possono comparire nei
+    /// loro parametri), con costruttore e Invoke già risolti (su un TypeBuilder non ancora
+    /// creato <c>GetConstructor</c>/<c>GetMethod</c> lanciano).</summary>
+    public List<TypeBuilder>? PendingDelegateTypes { get; set; }
+
+    /// <summary>Membri dei delegate di cui sopra, per tipo (chiave = il TypeBuilder).</summary>
+    public Dictionary<Type, (ConstructorInfo Ctor, MethodInfo Invoke)>? DynamicDelegateMembers { get; set; }
+
+    /// <summary>Copia shallow del contesto legata a un modulo di compilazione.</summary>
+    public IlTypeContext WithModule(ModuleBuilder module)
+    {
+        var copy = (IlTypeContext)MemberwiseClone();
+        copy.ModuleBuilder = module;
+        copy.PendingDelegateTypes ??= new List<TypeBuilder>();
+        copy.DynamicDelegateMembers ??= new Dictionary<Type, (ConstructorInfo, MethodInfo)>();
+        return copy;
+    }
+
     public required Type Object { get; init; }
     public required Type ValueType { get; init; }
     public required Type Void { get; init; }
@@ -237,6 +263,9 @@ public sealed class IlTypeContext
     public required MethodInfo ErrInstanceDescriptionGetter { get; init; }
     public required MethodInfo ErrInstanceLineNumberGetter { get; init; }
     public required MethodInfo ErrInstanceSourceLineTextGetter { get; init; }
+    /// <summary>Basic.ErrInstance.StackTrace — catena BASIC dell'errore (parità C99Native/VM-C/
+    /// PCode). Prima la gamba IL rifiutava il campo con NotSupportedException.</summary>
+    public required MethodInfo ErrInstanceStackTraceGetter { get; init; }
 
     /// <summary>Basic.SourcePosition — struct (FileId, Line, Column), embeddato per valore a ogni THROW/ERROR/costruzione di BasicException (posizione nota a compile-time, dal Token dello statement).</summary>
     public required ConstructorInfo SourcePositionConstructor { get; init; }
@@ -303,16 +332,14 @@ public sealed class IlTypeContext
         ArrayCopyWithOffsets = typeof(Array).GetMethod(nameof(Array.Copy),
             [typeof(Array), typeof(int), typeof(Array), typeof(int), typeof(int)])!,
         ArrayGetUpperBound = typeof(Array).GetMethod(nameof(Array.GetUpperBound), [typeof(int)])!,
-        FuncOpenGenericsByArity =
-        [
-            typeof(Func<>), typeof(Func<,>), typeof(Func<,,>), typeof(Func<,,,>), typeof(Func<,,,,>),
-            typeof(Func<,,,,,>), typeof(Func<,,,,,,>), typeof(Func<,,,,,,,>), typeof(Func<,,,,,,,,>)
-        ],
-        ActionOpenGenericsByArity =
-        [
-            typeof(Action), typeof(Action<>), typeof(Action<,>), typeof(Action<,,>), typeof(Action<,,,>),
-            typeof(Action<,,,,>), typeof(Action<,,,,,>), typeof(Action<,,,,,,>), typeof(Action<,,,,,,,>)
-        ],
+        // Func`N / Action`N risolti PER NOME (2026-11-11): l'indice dell'array è l'ARITÀ (0
+        // parametri → Func`1 = Func<TResult>; N parametri → Func`(N+1)). Scritti a mano si
+        // contano le virgole — un errore produce un open generic con l'arità sbagliata SENZA
+        // errore di compilazione. Fino a 16 parametri (limite di System.Func/Action).
+        FuncOpenGenericsByArity = Enumerable.Range(1, 17)
+            .Select(i => Type.GetType($"System.Func`{i}")!).ToArray(),
+        ActionOpenGenericsByArity = Enumerable.Range(0, 17)
+            .Select(i => i == 0 ? typeof(Action) : Type.GetType($"System.Action`{i}")!).ToArray(),
         BasicExceptionType = typeof(BasicException),
         BasicExceptionConstructor = typeof(BasicException).GetConstructor(
             [typeof(ErrorCode), typeof(SourcePosition), typeof(string), typeof(SourceLine), typeof(Exception)])!,
@@ -329,6 +356,7 @@ public sealed class IlTypeContext
         ErrInstanceDescriptionGetter = typeof(ErrInstance).GetProperty(nameof(ErrInstance.Description))!.GetGetMethod()!,
         ErrInstanceLineNumberGetter = typeof(ErrInstance).GetProperty(nameof(ErrInstance.LineNumber))!.GetGetMethod()!,
         ErrInstanceSourceLineTextGetter = typeof(ErrInstance).GetProperty(nameof(ErrInstance.SourceLineText))!.GetGetMethod()!,
+        ErrInstanceStackTraceGetter = typeof(ErrInstance).GetProperty(nameof(ErrInstance.StackTrace))!.GetGetMethod()!,
         SourcePositionConstructor = typeof(SourcePosition).GetConstructor([typeof(int), typeof(int), typeof(int)])!
     };
 
@@ -487,6 +515,7 @@ public sealed class IlTypeContext
             ErrInstanceDescriptionGetter = errInstanceType.GetProperty("Description")!.GetGetMethod()!,
             ErrInstanceLineNumberGetter = errInstanceType.GetProperty("LineNumber")!.GetGetMethod()!,
             ErrInstanceSourceLineTextGetter = errInstanceType.GetProperty("SourceLineText")!.GetGetMethod()!,
+            ErrInstanceStackTraceGetter = errInstanceType.GetProperty("StackTrace")!.GetGetMethod()!,
             SourcePositionConstructor = sourcePositionType.GetConstructor(
                 [Resolve("System.Int32"), Resolve("System.Int32"), Resolve("System.Int32")])!
         };

@@ -11,7 +11,14 @@ namespace Compiler;
 /// Addr = indirizzo Ip nel chunk ospite (PCodeVM), oppure -1 (host CLR su IL: la
 /// risoluzione avviene per nome nel registro IlRuntime). Mai serializzata in A1/GMBC.
 /// </summary>
-public sealed record MacroHostProc(string Name, int Addr, int Arity);
+public sealed record MacroHostProc(string Name, int Addr, int Arity,
+    // DEFAULT dichiarati dei parametri OPTIONAL (indice = posizione del parametro; null =
+    // obbligatorio o default non letterale). Servono al compilatore del frammento per
+    // completare l'arità quando la macro omette gli opzionali: senza, il chiamante
+    // OP_CALL_HOST passava meno argomenti e la procedura riceveva 0 al posto del default
+    // (misurato: `EVAL("Opt(5)")` con `OPTIONAL b = 10` → 5 su PCode, errore su IL, e
+    // "chiamata esterna non disponibile" su C99). Mai serializzato in A1/GMBC.
+    object?[]? Defaults = null);
 
 /// <summary>
 /// Compila un Abstract Syntax Tree (AST) in un <see cref="CompiledChunk"/> di P-Code.
@@ -64,6 +71,17 @@ public sealed partial class Compiler
     /// al suo indice (slot) nella tabella globale della VM.
     /// </summary>
     private readonly Dictionary<string, int> _globals = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// Variabili <c>STATIC</c> dichiarate nella procedura correntemente compilata: nome →
+    /// SymbolId. Vivono nello storage STATICO del runtime
+    /// (<c>OP_LOAD_STATIC_FIELD</c>/<c>OP_STORE_STATIC_FIELD</c>, la stessa area dei campi
+    /// statici di CLASS), non in uno slot di frame: è questo che le fa sopravvivere fra una
+    /// chiamata e l'altra. Il dizionario è per-istanza del compilatore, quindi è
+    /// naturalmente limitato alla procedura (un omonimo STATIC in un'altra procedura ha il
+    /// suo SymbolId). Vedi EmitStaticDeclarationOnce/VisitDeclarationStatement.
+    /// </summary>
+    private readonly Dictionary<string, int> _staticVars = new(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>
     /// Lista che contiene le informazioni dettagliate (incluso il tipo) per ogni variabile globale,
@@ -501,6 +519,19 @@ public sealed partial class Compiler
         // _procedureArities è ormai finale — copiato per intero (vedi CompiledChunk.ProcedureArities).
         foreach (var kv in _procedureArities) _chunk.ProcedureArities[kv.Key] = kv.Value;
 
+        // TESTO SORGENTE per ERR.SourceLineText: righe nell'ordine della SourceMap (indice 0 =
+        // riga 1, la stessa numerazione di chunk.Lines/ERR.LineNumber). Va nel chunk così la VM
+        // (PCode e VM/C) riporta il testo della riga anche su un eseguibile senza sorgenti.
+        {
+            var map = (_ctx as BasicProgram)?.SourceMap ?? default;
+            if (!map.IsDefaultOrEmpty)
+            {
+                var texts = new string[map.Length];
+                for (var i = 0; i < map.Length; i++) texts[i] = map[i].Text ?? string.Empty;
+                _chunk.SourceTexts = texts;
+            }
+        }
+
         return _chunk;
     }
 
@@ -919,8 +950,21 @@ public sealed partial class Compiler
                 // non hoistata; i GLOBAL senza inizializzatore (solo registrazione, già fatta
                 // da CompileDefinitions) restano skippati per non azzerare global già
                 // assegnati da righe precedenti.
+                /* GLOBAL a livello modulo: si salta lo statement solo se è già coperto.
+                 * - scalare SENZA inizializzatore: la sola registrazione basta (già fatta da
+                 *   CompileDefinitions) e rieseguirlo azzererebbe un global assegnato prima;
+                 * - con inizializzatore: se è nel prefisso hoistato, l'ha già eseguito
+                 *   __global_init.
+                 * Un `GLOBAL arr(n) AS <tipo>` NON è coperto da nessuno dei due: senza
+                 * eseguire lo statement l'array non viene mai allocato (restava NIL →
+                 * `arr(i).campo = v` era un no-op su PCode/VM-C: ScopesLocal/TypesUdtGlobal).
+                 * Quindi la condizione di skip richiede anche "nessuna dimensione". */
+                static bool GlobalDeclAlreadyHandled(VariableDeclaration d, HashSet<VariableDeclaration> hoisted)
+                    => d.InitialValue is not null
+                        ? hoisted.Contains(d)
+                        : d.Dimensions.IsDefaultOrEmpty;
                 if (stmt is DeclarationStmt { Keyword.Kind: TokenKind.Global } gGlobal
-                    && gGlobal.Declarations.All(d => d.InitialValue is null || hoistedDecls.Contains(d)))
+                    && gGlobal.Declarations.All(d => GlobalDeclAlreadyHandled(d, hoistedDecls)))
                     continue;
                 // DIM top-level CON inizializzatore: già compilata in __global_init (vedi
                 // CompileGlobalInitializers/GetHoistedGlobalInitDecls) — ricompilarla ANCHE
@@ -1287,6 +1331,25 @@ public sealed partial class Compiler
             // l'indirizzo per-Simbolo le disambigua (CallPatchToken porta il SymbolId).
             if (proc.SymbolId >= 0) _procedureAddresses[$"@sym{proc.SymbolId}"] = procStartAddr;
             _procedureArities[_chunk.Code.Count] = proc.Parameters.Length;
+            /* DEFAULT dei parametri OPTIONAL (coda A1): la VM/C invoca le procedure anche dal
+             * frammento EVAL/& e deve completare gli argomenti omessi come il call-site C#.
+             * Solo LETTERALI (numero/stringa/bool): un default calcolato resta esplicito. */
+            {
+                var pdefs = new object?[proc.Parameters.Length];
+                var any = false;
+                for (var pi = 0; pi < pdefs.Length; pi++)
+                {
+                    pdefs[pi] = proc.Parameters[pi].DefaultValue switch
+                    {
+                        NumberExpr dn => dn.Value,
+                        StringExpr ds => ds.Value,
+                        BooleanExpr db => db.Value ? -1.0 : 0.0,   // canone BASIC: TRUE = -1
+                        _ => null
+                    };
+                    if (pdefs[pi] is not null) any = true;
+                }
+                if (any) _chunk.ProcedureParamDefaults[_chunk.Code.Count] = pdefs;
+            }
             _locals.Clear();
             _scopeDepth = 0;
             _isReachable = true;
@@ -1360,6 +1423,12 @@ public sealed partial class Compiler
                 if (stmt is DeclarationStmt ds && ds.Keyword.Kind != TokenKind.Global)
                 {
                     bool needsInit = false;
+                    /* STATIC: serve SEMPRE passare da VisitDeclarationStatement (è lì che la
+                     * variabile entra in _staticVars e si emette l'inizializzazione
+                     * "una volta sola" nello storage statico). La scorciatoia !needsInit qui
+                     * sotto registrerebbe solo un locale di frame, perdendo la persistenza. */
+                    if (ds.Keyword.Kind == TokenKind.Static)
+                        needsInit = true;
                     foreach (var decl in ds.Declarations)
                     {
                         // UserDefinedType manca qui era il bug: senza inizializzatore esplicito,

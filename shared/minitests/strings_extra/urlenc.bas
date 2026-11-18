@@ -1,3 +1,4 @@
+' EXPECT: a%20b%26c
 IMPORT STRINGS
 SUB Main()
   PRINT URLENCODE("a b&c")

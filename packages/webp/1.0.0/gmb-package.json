@@ -1,6 +1,7 @@
 {
   "name": "webp",
   "version": "1.0.0",
+  "license": "PUL-1.1",
   "description": "WebP (decode/encode) via shim FFI gmbsuite libgmbwebp: libwebp e' linkata STATICAMENTE dentro lo shim (self-contained, nessuna lib di sistema a runtime).",
   "contentType": "c-ffi",
   "exports": ["webp.inc"],

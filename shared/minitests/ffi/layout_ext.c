@@ -287,3 +287,74 @@ typedef struct { double x; double y; } ByrefPt;
 double byref_pt_sum(const ByrefPt* p) { return p->x + p->y; }
 void byref_pt_scale(ByrefPt* p, double k) { p->x *= k; p->y *= k; }
 void byref_pt_set(ByrefPt* p, double x, double y) { p->x = x; p->y = y; }
+
+/* ── Callback multipli (2026-11-11) ────────────────────────────────────────────
+ * Due/Tre callback nella STESSA firma e con la STESSA forma (kind, arità): dal 2026-11-11
+ * non c'è più un pool a 2 trampolini per forma sui callback scalari (ffi_callback_two.bas,
+ * ffi_callback_three.bas). */
+double cb_apply2(double (*f)(double), double (*g)(double), double x)
+{
+    return f(x) + g(x);
+}
+
+double cb_apply3(double (*f)(double), double (*g)(double), double (*h)(double), double x)
+{
+    return f(x) + g(x) + h(x);
+}
+
+/* ── Array di STRING (char**), SOLO INPUT (2026-11-11) ────────────────────────
+ * `a() AS STRING` passa al nativo un `const char**` di n stringhe UTF-8, valide
+ * SOLO durante la chiamata (il nativo deve copiarle se vuole trattenerle). */
+int64_t strs_total(const char** a, int64_t n)
+{
+    int64_t t = 0;
+    for (int64_t i = 0; i < n; i++) t += a[i] ? (int64_t)strlen(a[i]) : 0;
+    return t;
+}
+
+/* ── Callback con firma interna MISTA e arità > 8 (2026-11-11) ─────────────────
+ * `int64_t (*)(int64_t, double)` e `double (*)(double ×9)`: il trampolino deve avere
+ * ESATTAMENTE questa firma (kind per slot), non una firma omogenea. */
+double cb_mixed(double (*f)(int64_t, double), int64_t n, double d)
+{
+    return f(n, d);
+}
+
+double cb_apply9(double (*f)(double, double, double, double, double, double, double, double, double), double x)
+{
+    return f(x, x, x, x, x, x, x, x, x);
+}
+
+/* Mixed callback DOUBLE/LONG/DOUBLE → DOUBLE (ordine dei registri FP/int alternato). */
+double cb_mixed_q(double (*f)(double, int64_t, double), int64_t n, double d)
+{
+    return f(d, n, d);
+}
+
+/* ── Callback con ARITÀ 17 (2026-11-11) ───────────────────────────────────────
+ * Oltre il limite dei delegate del BCL (System.Func arriva a 16 argomenti + ritorno):
+ * sulla gamba IL il tipo delegate viene generato a runtime. */
+double cb_apply17(double (*f)(double, double, double, double, double, double, double, double,
+                              double, double, double, double, double, double, double, double,
+                              double), double x)
+{
+    return f(x, x, x, x, x, x, x, x, x, x, x, x, x, x, x, x, x);
+}
+
+/* ── Struct PACKED per valore/puntatore (2026-11-11) ──────────────────────────
+ * `__attribute__((packed))`: nessun padding. int32@0, double@4, int8@12 → size 13. */
+typedef struct __attribute__((packed)) { int32_t a; double b; int8_t c; } PackedMix;
+
+double packed_sum(const PackedMix *p) { return (double)p->a + p->b + (double)p->c; }
+double packed_sum_val(PackedMix p) { return (double)p.a + p.b + (double)p.c; }
+PackedMix packed_make(int32_t a, double b, int8_t c) { PackedMix p; p.a = a; p.b = b; p.c = c; return p; }
+void packed_bump(PackedMix *p) { p->a += 1; p->b += 0.5; p->c += 1; }
+double packed_arr_sum(const PackedMix *p, int64_t n)
+{
+    double s = 0;
+    for (int64_t i = 0; i < n; i++) s += (double)p[i].a + p[i].b + (double)p[i].c;
+    return s;
+}
+
+/* BYREF della struct NON packed (per isolare un eventuale bug preesistente del BYREF UDT). */
+double mixed_sum_ref(const Mixed *p) { return (double)p->a + p->b + (double)p->c; }

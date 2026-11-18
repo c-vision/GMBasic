@@ -311,6 +311,15 @@ public sealed partial class IlProgramCompiler
             }
 
             var argType = InferType(arg.Expression);
+            /* `PRINT F()` con F che è una SUB (VOID): la chiamata si esegue, ma NON c'è un
+             * valore da stampare — l'argomento non produce output (parità PCode/VM-C).
+             * Prima si emetteva `box System.Void` → IL malformato: "stack underflow" su
+             * PrintFormatValue e InvalidProgramException all'esecuzione (anche dentro TRY). */
+            if (NormalizeInferredType(argType) is VoidType)
+            {
+                EmitExpression(arg.Expression);
+                continue;
+            }
             // GPM: un operando che legge un future-target (GO FUNCTION...INTO x / FETCH
             // espresso, vedi EmitLoadVariable) può PARKARE durante la valutazione
             // (implicit-await). Il park richiede stack VUOTO al punto di blocco, ma il
@@ -691,6 +700,13 @@ public sealed partial class IlProgramCompiler
             // GLOBALE senza inizializzatore deve materializzare l'istanza, non restare null
             // (come il percorso LOCALE in EmitScalarDeclaration).
             if (declaredType is StringBuilderType or RegexType)
+                EmitNewNativeCollection(declaredType);
+            // Collezioni BASIC "pronte all'uso" anche come GLOBALI: `DIM d AS DICT` a livello
+            // di modulo deve poter fare subito `d("k") = v`, come il percorso LOCALE qui sotto
+            // (EmitDefaultValue su un tipo reference dà null → NullReferenceException alla
+            // prima scrittura; bug osservato con `DIM d AS DICT` + `d("k") = 2`).
+            else if (declaredType is ListType or DictType or HashSetType or QueueType or StackType
+                     or SortedDictType or LinkedListType)
                 EmitNewNativeCollection(declaredType);
             // Collezioni avanzate (RINGBUFFER/TREE/BAG/GRAPH/...): un GLOBALE senza
             // inizializzatore deve materializzare l'istanza, non restare null —

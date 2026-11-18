@@ -1,4 +1,5 @@
 ' Minitest TUI TBROWSE con letterali array {..} come colonne/dati (prima: emitter C# `#error unsupported expression: ArrayLiteralExpr`).
+' EXPECT: OK-tbrowse-literal
 IMPORT CONTROLS
 SUB Main()
   DIM t AS STRING

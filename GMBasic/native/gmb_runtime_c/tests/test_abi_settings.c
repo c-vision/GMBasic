@@ -17,6 +17,16 @@ static void put(const char* path, const char* body) { FILE* f = fopen(path, "wb"
 static char* get(const char* path) { size_t n; return abi_slurp(path, &n); }
 static void reset(void) { g_abi_done = 0; g_abi_busy = 0; g_abi_dir[0] = 0; }
 
+/* Confronto di CARTELLE, non di stringhe: il percorso scritto nei settings è CANONICO (`realpath`)
+ * e sotto `$TMPDIR` la stessa cartella si chiama `/var/folders/...` oppure `/private/var/folders/...`. */
+static int same_dir(const char* a, const char* b)
+{
+    char ra[4096], rb[4096];
+    const char* pa = (a && *a && realpath(a, ra)) ? ra : a;
+    const char* pb = (b && *b && realpath(b, rb)) ? rb : b;
+    return pa && pb && strcmp(pa, pb) == 0;
+}
+
 /* La SCOPERTA della cartella ABI (dove sta LLMEnv: pkg, Homebrew, albero sorgente) e' di LLMEnv,
  * che ha il proprio selfcheck (`llmdesc_abi_selfcheck.c`). Qui si verifica la POLICY
  * dell'applicazione: settings `paths.abiDir`, persistenza alla prima esecuzione, fallimento
@@ -103,10 +113,10 @@ int main(void)
     char out[2048];
     snprintf(cmd, sizeof cmd, "{ \"paths\": { \"abiDir\": \"%s\" } }", good); put("app.settings.json", cmd);
     reset();
-    CHECK(gmb_abi_dir(out, sizeof out) == 1 && strcmp(out, good) == 0);
+    CHECK(gmb_abi_dir(out, sizeof out) == 1 && same_dir(out, good));
     /* registrata come risolutore: llmdesc_abi_dir passa da qui */
     reset();
-    CHECK(llmdesc_abi_dir(out, sizeof out) == 1 && strcmp(out, good) == 0);
+    CHECK(llmdesc_abi_dir(out, sizeof out) == 1 && same_dir(out, good));
 
     /* ---- 3. percorso obsoleto (altra macchina) -> localizza (finto brew) -> riscrive nei settings ---- */
     put("app.settings.json", "{ \"paths\": { \"abiDir\": \"/gone/elsewhere/ABI\" } }");
@@ -114,8 +124,8 @@ int main(void)
     locate_set(1, cmd);
     reset();
     CHECK(gmb_abi_dir(out, sizeof out) == 1);
-    CHECK(strcmp(out, cmd) == 0);
-    CHECK(abi_file_get("app.settings.json", v, sizeof v) == 1 && strcmp(v, cmd) == 0);
+    CHECK(same_dir(out, cmd));
+    CHECK(abi_file_get("app.settings.json", v, sizeof v) == 1 && same_dir(v, cmd));
 
     /* ---- 4. prima esecuzione, nessun file di settings -> lo crea ---- */
     remove("app.settings.json");

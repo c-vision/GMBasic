@@ -1,4 +1,5 @@
 ' MiniTest DATALIST — doppia sintassi (veloce posizionale | verbosa AT/SIZE/ITEMS).
+' EXPECT: OK-datalist-dual
 IMPORT CONTROLS
 
 SUB Main()

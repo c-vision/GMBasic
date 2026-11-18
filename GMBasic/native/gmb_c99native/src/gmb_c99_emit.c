@@ -395,6 +395,11 @@ void gmb_c99_set_source_anchors(const gmb_c99_anchor_t* anchors, int n) {
     g_c99_last_dir_file[0] = 0;
 }
 
+/* TESTO SORGENTE (ERR.SourceLineText): il driver passa il sorgente CONCATENATO (lo stesso
+ * dato al parser). I puntatori restano di proprietà del chiamante. */
+static const char* g_c99_src_text = NULL;
+void gmb_c99_set_source_text(const char* text) { g_c99_src_text = text; }
+
 void c99_fail(ctx_t* c, int line, const char* fmt, ...) {
     if (c->error[0]) return;
     va_list ap;
@@ -610,6 +615,33 @@ static int expr_value_is_str(ctx_t* c, gmb_expr_t* e) {
 /* Emette un operando numerico sballando un eventuale nullable (gmb_val_t). */
 void emit_expr(ctx_t* c, gmb_expr_t* e);
 void emit_ident(ctx_t* c, const char* name);
+static void sb_ident(sb_t* b, const char* name);   /* definita sotto */
+
+/* Costruzione dell'handle di un GENERATOR: `(gmb_gen_<id>_t){ gmb_gen_new(body, …) }`.
+ * gmb_gen_new COPIA il blob dei parametri, quindi il temporaneo del chiamante può morire
+ * subito. Usata sia in `DIM it = G(...)` sia in posizione espressione. */
+static void emit_gen_make(ctx_t* c, const char* gen_id, fn_info_t* gf,
+                          gmb_expr_t** args, int nargs) {
+    sb_put(&c->out, "(gmb_gen_"); sb_ident(&c->out, gen_id);
+    sb_put(&c->out, "_t){ gmb_gen_new(gmb_user_"); sb_ident(&c->out, gen_id);
+    sb_put(&c->out, "_genentry, ");
+    if (nargs > 0 && gf && gf->stmt && gf->stmt->n_params > 0) {
+        sb_put(&c->out, "&(gmb_gen_"); sb_ident(&c->out, gen_id); sb_put(&c->out, "_params_t){");
+        for (int ai = 0; ai < nargs; ai++) {
+            if (ai < gf->stmt->n_params && gf->stmt->func_params[ai]) {
+                sb_put(&c->out, "."); sb_ident(&c->out, gf->stmt->func_params[ai]);
+                sb_put(&c->out, " = ");
+            }
+            emit_expr(c, args[ai]);
+            sb_put(&c->out, ", ");
+        }
+        sb_put(&c->out, "}, sizeof(gmb_gen_"); sb_ident(&c->out, gen_id); sb_put(&c->out, "_params_t)");
+    } else {
+        sb_put(&c->out, "NULL, 0");
+    }
+    sb_put(&c->out, ") }");
+}
+
 static int is_json_path_member(ctx_t* c, gmb_expr_t* e, var_t** out_bv, const char** out_m);
 int is_json_index_member_call(ctx_t* c, gmb_expr_t* e);
 static void emit_num_from_json_member(ctx_t* c, gmb_expr_t* e);
@@ -987,6 +1019,9 @@ static void sb_var_ctype(sb_t* b, var_t* v) {
     if (gk_is_list(v->gkind)) { sb_put(b, "gmb_list_t"); return; }
     if (gk_is_dict(v->gkind)) { sb_put(b, "gmb_dict_t"); return; }
     if (gk) { sb_put(b, gk); return; }
+    /* Valore matrice (DIM rank-2 DOUBLE, MATRIX.* a valore): descrittore gmb_matrix_t.
+     * Deve precedere il ramo `is_array`, che emette un puntatore. */
+    if (v->matrix_value) { sb_put(b, "gmb_matrix_t"); if (v->byref) sb_put(b, "*"); return; }
     if (v->jagged) { sb_put(b, "gmb_double_t**"); return; }
     sb_put(b, ctype_name(v->type));
     if (v->byref) sb_put(b, "*");
@@ -1383,8 +1418,27 @@ static void emit_class_locals_dtors(ctx_t* c) {
         sb_put(&c->out, ");\n");
     }
 }
+/* STACK TRACE: riporta la catena al frame della procedura corrente. Emesso nei punti in
+ * cui si RIPRENDE dopo un longjmp (CATCH, fine del guard ON ERROR RESUME NEXT): il salto
+ * ha scavalcato i `cleanup` dei frame più interni, che quindi restano contati. A livello
+ * di modulo non c'è `__gmb_tf` (nessuna procedura): si azzera la profondità. */
+static void emit_trace_restore(ctx_t* c) {
+    ind(c);
+    if (c->cur_fn) sb_put(&c->out, "gmb_trace_restore_frame(&__gmb_tf);\n");
+    else sb_put(&c->out, "gmb_trace_restore_depth(0);\n");
+}
+
 static void emit_fn_return(ctx_t* c) {
     emit_arr_wb(c);
+    /* RIPRISTINO degli handler TRY attivi: un RETURN dentro `TRY ... END TRY` deve rimettere
+     * `gmb_err_set_handler` com'era, altrimenti resta installato il `jmp_buf` di un frame che
+     * sta per morire e il PRIMO errore non gestito successivo fa longjmp lì → SIGSEGV
+     * (bug misurato: `TRY ... RETURN ... END TRY` + `ERROR` fatale in un'altra SUB).
+     * Dal più interno al più esterno. */
+    for (int _ti = c->n_try_ids - 1; _ti >= 0; _ti--) {
+        ind(c);
+        sb_printf(&c->out, "gmb_err_set_handler(__tryprev_%d);\n", c->try_ids[_ti]);
+    }
     /* DESTRUCTOR locali di classe a ogni uscita della funzione — solo senza GOSUB
      * (con GOSUB un RETURN puo' tornare da una subroutine senza terminare la funzione). */
     if (c->cur_fn && !c->cur_fn->has_gosub)
@@ -1465,6 +1519,11 @@ static int catch_member_kind(ctx_t* c, const char* var) {
             int mk = gmb_member_tok(dot + 1);
             if (mk == GMB_TOK_Number || mk == GMB_TOK_LineNumber) return 1;
             if (mk == GMB_TOK_Description) return 2;
+            /* StackTrace: catena delle procedure catturata all'ultimo raise (gmb_err_trace).
+             * Prima cadeva nel fallback e `e.StackTrace` valeva 0. */
+            if (strcasecmp(dot + 1, "StackTrace") == 0) return 3;
+            /* SourceLineText: testo della riga dell'errore (gmb_err_source_line_text). */
+            if (strcasecmp(dot + 1, "SourceLineText") == 0) return 3;
             return 0;
         }
     return 0;
@@ -1803,15 +1862,16 @@ static void cls_emit_arr_alloc(ctx_t* c, struct cls_info* ci, const char* inst_e
     for (int k = 0; k < ci->nfields; k++) {
         int sz = cls_field_arr_size(ci->ftype[k]);
         if (sz < 0) continue;
-        const char* ec = cls_field_ctype(c, ci->ftype[k]);   /* "gmb_double_t*" */
-        char elem[80];
-        snprintf(elem, sizeof(elem), "%s", ec);
-        size_t el = strlen(elem);
-        if (el && elem[el - 1] == '*') elem[el - 1] = 0;
+        const char* ec = cls_field_ctype(c, ci->ftype[k]);   /* es. "gmb_double_t*" */
+        /* Cast e sizeof dell'ELEMENTO, senza il '*' finale: sul membro "gmb_double_t*" un
+         * "(gmb_double_t**)" e' warning per Apple clang ed ERRORE per clang>=22. `%.*s`
+         * evita il buffer temporaneo (e il suo troncamento a 80 byte). */
+        size_t el = strlen(ec);
+        if (el && ec[el - 1] == '*') el--;
         ind(c);
         sb_printf(&c->out, "%s->", inst_expr);
         sb_ident(&c->out, ci->fname[k]);
-        sb_printf(&c->out, " = (%s*)calloc((size_t)%d, sizeof(%s));\n", ec, sz, elem);
+        sb_printf(&c->out, " = (%.*s*)calloc((size_t)%d, sizeof(%.*s));\n", (int)el, ec, sz, (int)el, ec);
     }
 }
 /* stringa del tipo dichiarato di un campo della classe (NULL se assente) */
@@ -2127,16 +2187,41 @@ static int uc_prop_is_string(const char* p) {
         || !strcasecmp(p, "ForeColor") || !strcasecmp(p, "FG") || !strcasecmp(p, "Foreground")
         || !strcasecmp(p, "BackColor") || !strcasecmp(p, "BG") || !strcasecmp(p, "Background");
 }
+/* Tipo C di STORAGE di un campo quando serve il layout C reale (UNION/bitfield, 2026-11-11):
+ * un bitfield C non può essere di tipo double, e una union deve sovrapporre i tipi C veri per
+ * dare l'aliasing. Larghezze = canone del LINGUAGGIO (TypeLayout): BYTE 1, INTEGER 2,
+ * LONG/QUAD 8, SINGLE 4, DOUBLE 8. */
+static const char* cls_field_storage_ctype(struct cls_info* ci, int k) {
+    const char* t = ci->ftype[k] ? ci->ftype[k] : "DOUBLE";
+    if (strncasecmp(t, "SBYTE", 5) == 0) return "signed char";
+    if (strncasecmp(t, "BYTE", 4) == 0) return "unsigned char";
+    if (strncasecmp(t, "UINTEGER", 8) == 0) return "unsigned short";
+    if (strncasecmp(t, "INTEGER", 7) == 0) return "short";
+    if (strncasecmp(t, "ULONG", 5) == 0 || strncasecmp(t, "UQUAD", 5) == 0) return "unsigned long long";
+    if (strncasecmp(t, "LONG", 4) == 0 || strncasecmp(t, "QUAD", 4) == 0) return "long long";
+    if (strncasecmp(t, "SINGLE", 6) == 0) return "float";
+    return "double";
+}
 /* 2.7(c): campi FLATTENED base-first nella struct (parity oracolo FieldsWithBase:
- * i campi base sono il prefisso del layout, BASE.NEW è layout-compatibile) */
+ * i campi base sono il prefisso del layout, BASE.NEW è layout-compatibile).
+ * UNION (2026-11-11): i campi stanno in una `union` ANONIMA (C11) → tutti a offset 0 e
+ * accessibili come `obj.campo` (il codice di accesso esistente non cambia). BITFIELD:
+ * veri bitfield C con il tipo intero della larghezza dichiarata (LSB-first, come le
+ * altre gambe). */
 static void cls_emit_flat_fields(ctx_t* c, sb_t* b, struct cls_info* ci, int depth) {
     if (!ci || depth > 8) return;
     if (ci->base[0]) cls_emit_flat_fields(c, b, cls_find(c, ci->base), depth + 1);
+    if (ci->is_union) sb_put(b, "    union {\n");
     for (int k = 0; k < ci->nfields; k++) {
-        sb_printf(b, "    %s ", cls_field_ctype(c, ci->ftype[k]));
+        if (ci->is_union || ci->fbits[k] > 0)
+            sb_printf(b, "    %s ", cls_field_storage_ctype(ci, k));
+        else
+            sb_printf(b, "    %s ", cls_field_ctype(c, ci->ftype[k]));
         sb_ident(b, ci->fname[k]);
+        if (ci->fbits[k] > 0) sb_printf(b, " : %d", ci->fbits[k]);
         sb_put(b, ";\n");
     }
+    if (ci->is_union) sb_put(b, "    };   /* union anonima: campi sovrapposti */\n");
 }
 static int cls_flat_field_count(ctx_t* c, struct cls_info* ci, int depth) {
     if (!ci || depth > 8) return 0;
@@ -2337,6 +2422,27 @@ static int ci_istr(const char* s, const char* needle)
     return 0;
 }
 
+/* Il TokenKind NON basta a dire "il risultato è una MATRICE": QUAT.INVERSE porta
+ * GMB_TOK_Inverse, lo stesso di MATRIX.INVERSE (stesso verbo, namespace diverso). Se il
+ * namespace non è MATRIX/LINALG la chiamata rende un UDT: marcarla matrice rendeva
+ * `DIM r AS Quat` un ARRAY (`gmb_val_t* r = NULL;` + `r_len`/`r__b0`, poi assegnazione di un
+ * valore e `r.v_ptr` su un puntatore → quat/quat_core non compilava, 20 errori).
+ * Nome nudo o non qualificato: decide il chiamante (il linker lo ha già risolto). */
+static int call_ns_is_matrix(gmb_expr_t* e) {
+    if (!e) return 1;
+    if (e->ns && e->ns[0])
+        return !strcasecmp(e->ns, "MATRIX") || !strcasecmp(e->ns, "LINALG");
+    if (e->var && e->var[0]) {
+        const char* dot = strrchr(e->var, '.');
+        if (dot) {
+            size_t n = (size_t)(dot - e->var);
+            return (n == 6 && !strncasecmp(e->var, "MATRIX", 6))
+                || (n == 6 && !strncasecmp(e->var, "LINALG", 6));
+        }
+    }
+    return 1;
+}
+
 /* LINALG.FACTOR(decomp, name): handle matrice.
  * Il parser non conserva il namespace in e->ns (var = "LINALG.FACTOR"), e args[0] può
  * essere una VAR che contiene la decomposizione: il riconoscimento è sul nome completo. */
@@ -2375,6 +2481,20 @@ static int imap_type_of(ctx_t* c, const char* name) {
 }
 
 int etype(ctx_t* c, gmb_expr_t* e) {
+    /* Membro LISTA di un dict dinamico (`tb.rows`/`tb.headers` delle tabelle
+     * CONVERT.TABLES): DINAMICO. Va deciso PRESTO: nel pre-pass di registrazione il loop
+     * var del FOR EACH (`tb`) non è ancora in tabella (lookup NULL) e il typing cadeva su
+     * STRING → l'inizializzazione passava da emit_str_operand e serializzava la lista
+     * (UBOUND(rows) = 0, convert/md_tables). */
+    if (e && e->kind == GMB_EXPR_VAR && e->var) {
+        const char* _rd = strrchr(e->var, '.');
+        if (_rd && _rd[1] && (!strcasecmp(_rd + 1, "rows") || !strcasecmp(_rd + 1, "headers"))) {
+            char _rb[160]; size_t _rl = (size_t)(_rd - e->var);
+            var_t* _rv = NULL;
+            if (_rl > 0 && _rl < sizeof(_rb)) { memcpy(_rb, e->var, _rl); _rb[_rl] = 0; _rv = lookup_var(c, _rb); }
+            if (!_rv || (_rv->boxed_val && !_rv->gkind && !_rv->vclass[0])) return TY_VAL;
+        }
+    }
     /* ADR-MATRIX F4: membro/fattore di una DECOMPOSIZIONE (`lu.U`, `lu.U(i,j)`): valore
      * MATRICE → NUMERICO (mai valorizzato come gmb_val_to_double/dict). */
     if (e && e->var && decomp_factor_call(c, e, (char[8]){0})) return TY_NUM;
@@ -2836,8 +2956,13 @@ int etype(ctx_t* c, gmb_expr_t* e) {
          * GOTO + PRINT ERR.Description): il requisito ns==Err lasciava etype=TY_NUM e
          * PRINT emetteva gmb_print_double(gmb_string_alloc(...)) → errore C in compilazione.
          * Condizione allineata a emit_var (prefix "ERR.", strncasecmp). */
-        if (e->var && ((e->ns && e->ns_tk == GMB_TOK_Err) || strncasecmp(e->var, "ERR.", 4) == 0))
-            return gmb_member_tok(e->var + 4) == GMB_TOK_Description ? TY_STR : TY_NUM;
+        if (e->var && ((e->ns && e->ns_tk == GMB_TOK_Err) || strncasecmp(e->var, "ERR.", 4) == 0)) {
+            /* Description, StackTrace e SourceLineText sono STRINGHE; Number/LineNumber numerici. */
+            if (gmb_member_tok(e->var + 4) == GMB_TOK_Description) return TY_STR;
+            if (strcasecmp(e->var + 4, "StackTrace") == 0) return TY_STR;
+            if (strcasecmp(e->var + 4, "SourceLineText") == 0) return TY_STR;
+            return TY_NUM;
+        }
         /* COLLECTIONS: proprietà senza parentesi su var (list.Count/Peek/Dequeue/Pop/…, dict.Keys) */
         if (e->var) {
             const char* cdot = strchr(e->var, '.');
@@ -2859,7 +2984,7 @@ int etype(ctx_t* c, gmb_expr_t* e) {
             }
         }
         int cmk = catch_member_kind(c, e->var);
-        if (cmk) return cmk == 2 ? TY_STR : TY_NUM;
+        if (cmk) return (cmk == 2 || cmk == 3) ? TY_STR : TY_NUM;
         {   /* 2.6(p): membro nudo di dict boxed (FETCHRESULT) o req/res HTTP */
             const char* bmd = e->var ? strchr(e->var, '.') : NULL;
             if (bmd && bmd != e->var) {
@@ -2886,7 +3011,15 @@ int etype(ctx_t* c, gmb_expr_t* e) {
                          * come valori). Lettura grezza nel dispatch VAR sotto. */
                         if (bv->posted_val) return TY_VAL;
                         if (bv->rgba_obj) return TY_NUM;   /* .Red/.Green/.Blue/.Alpha numerici */
-                        if (bv->boxed_val && !bv->gkind && !bv->stats_val) return TY_STR;
+                        if (bv->boxed_val && !bv->gkind && !bv->stats_val) {
+                            /* Membri che per contratto sono LISTE (tabelle CONVERT.TABLES):
+                             * dinamicI. Tiparli STRING faceva serializzare il valore in
+                             * gmb_val_to_string e UBOUND leggeva una stringa → 0
+                             * (convert/md_tables: `DIM rs = tb.rows`). */
+                            if (strcasecmp(bmd + 1, "rows") == 0 || strcasecmp(bmd + 1, "headers") == 0)
+                                return TY_VAL;
+                            return TY_STR;
+                        }
                         /* req.BodyJson / req.Params: il membro è un DICT (val dinamico), non stringa/numero. */
                         /* SOLO lettura del MEMBRO (`req.Params` nudo = dict, TY_VAL): la forma
                          * CHIAMATA `req.Params("k")` (nargs>=1) ritorna una STRINGA → lascia
@@ -3560,8 +3693,30 @@ static void reg_let_assign(ctx_t* c, gmb_stmt_t* s, vars_t* scope) {
                 }
             }
         }
-        if (s->target && !use_global(c, scope, s->target)) {
+        /* LET su un nome che esiste SOLO come GLOBAL (2026-11-11): la specifica
+         * (Variables-Scope §3.1) vuole una LOCALE nello scope corrente che la ombreggia.
+         * Prima `use_global` rispondeva "è una globale" e la scrittura finiva sulla globale
+         * (divergenza da IL/PCode/VM-C: `LET g = 20` dentro una SUB cambiava il valore del
+         * globale). La locale viene creata e marcata late_local: la dichiarazione C è emessa
+         * al PUNTO D'USO (st_let_assign) perché le istruzioni precedenti devono continuare a
+         * vedere la globale. */
+        int let_shadow = s->target && s->is_let && scope != &c->globals
+                         && !vars_find(scope, s->target)
+                         && vars_find(&c->globals, s->target) != NULL;
+        /* OPTION STRICT ON: ogni nome deve essere DICHIARATO (DIM/GLOBAL/parametro). Una
+         * `LET`/assegnazione a un nome mai dichiarato è un errore di compilazione, come nel
+         * linker C# — la modalità esiste esattamente per questo. */
+        if (c->option_strict && s->target && !s->array_index && !strchr(s->target, '.')
+            && !vars_find(scope, s->target) && !vars_find(&c->globals, s->target)
+            && !gmb_c99_dyn_is(c, s->target)) {
+            c99_fail(c, s->line,
+                     "In OPTION STRICT mode, la variabile '%s' deve essere dichiarata esplicitamente.",
+                     s->target);
+            return;
+        }
+        if (s->target && (let_shadow || !use_global(c, scope, s->target))) {
             var_t* tv = vars_add(scope, s->target, suffix_type(s->target));
+            if (let_shadow && tv) { tv->late_local = 1; tv->decl_indent = 0; }
             /* F2: `x = MATRIX.TRANSPOSE/SLICE/RESHAPE/CLONEMATRIX(...)` su variabile
              * implicita → matrice rank-2 nativa (double* + __bK). */
             if (s->value && s->value->kind == GMB_EXPR_CALL
@@ -3575,7 +3730,7 @@ static void reg_let_assign(ctx_t* c, gmb_stmt_t* s, vars_t* scope) {
                     || s->value->tk == GMB_TOK_MatrixCirculant
                     || s->value->tk == GMB_TOK_MatrixAddRowVector || s->value->tk == GMB_TOK_MatrixAddColVector
                     || s->value->tk == GMB_TOK_MatrixLoadCsv || s->value->tk == GMB_TOK_MatrixLoadJson
-                    || s->value->tk == GMB_TOK_Inverse || s->value->tk == GMB_TOK_MatrixExp
+                    || (s->value->tk == GMB_TOK_Inverse && call_ns_is_matrix(s->value)) || s->value->tk == GMB_TOK_MatrixExp
                     || s->value->tk == GMB_TOK_MatrixSqrt || s->value->tk == GMB_TOK_MatrixLogm
                     || s->value->tk == GMB_TOK_MatrixPseudoInverse || s->value->tk == GMB_TOK_MatrixHessenberg
                     || s->value->tk == GMB_TOK_MatrixNullSpace || s->value->tk == GMB_TOK_MatrixCosm
@@ -3660,7 +3815,7 @@ static void reg_let_assign(ctx_t* c, gmb_stmt_t* s, vars_t* scope) {
              * riclassificata come array dinamico (altrimenti il global diventa M_len e le
              * letture M(i,j) usano il percorso dyn_len a indice singolo → valore sbagliato). */
             if (s->value && s->value->kind == GMB_EXPR_CALL && s->value->var
-                && strcmp(s->value->var, "_array_") == 0 && !tv->coll_handle) {
+                && strcmp(s->value->var, "_array_") == 0 && !tv->coll_handle && !tv->gkind) {
                 /* NON per i contenitori TIPIZZATI a handle (HEAP/MAXHEAP/BAG/TRIE: già
                  * registrati dal DIM come collezione del runtime condiviso, gmb_val_t):
                  * `vars_add` ritorna la var ESISTENTE, e riclassificarla qui come array
@@ -3994,7 +4149,7 @@ if (s->dim_var) {            int ty = suffix_type(s->dim_var);
                     || s->dim_init->tk == GMB_TOK_MatrixAddColVector
                     || s->dim_init->tk == GMB_TOK_MatrixLoadCsv
                     || s->dim_init->tk == GMB_TOK_MatrixLoadJson
-                    || s->dim_init->tk == GMB_TOK_Inverse
+                    || (s->dim_init->tk == GMB_TOK_Inverse && call_ns_is_matrix(s->dim_init))
                     || s->dim_init->tk == GMB_TOK_MatrixExp
                     || s->dim_init->tk == GMB_TOK_MatrixSqrt
                     || s->dim_init->tk == GMB_TOK_MatrixLogm
@@ -4016,7 +4171,7 @@ if (s->dim_var) {            int ty = suffix_type(s->dim_var);
                 /* MATRIX handle: `DIM h = MATRIX.<fn>(…)` con fn che ritorna un handle → int64_t. */
                 else if (s->dim_init->tk == GMB_TOK_LinAlgVectorCreateFunc
                     || s->dim_init->tk == GMB_TOK_MatrixSetValue
-                    || s->dim_init->tk == GMB_TOK_Inverse
+                    || (s->dim_init->tk == GMB_TOK_Inverse && call_ns_is_matrix(s->dim_init))
                     || s->dim_init->tk == GMB_TOK_Multiply
                     || s->dim_init->tk == GMB_TOK_MatrixEig
                     || s->dim_init->tk == GMB_TOK_MatrixSqrt
@@ -4495,6 +4650,14 @@ if (s->dim_var) {            int ty = suffix_type(s->dim_var);
                      * `gmb_array_resize((void**)&H, &H_len, …)` su un gmb_val_t, con H_len mai
                      * dichiarato (C invalido). Si azzera qui, dove coll_handle diventa noto. */
                     if (v->coll_handle) { v->is_array = 0; v->dyn_len = 0; v->ndims = 0; v->matrix = 0; }
+                    /* IDEM per i contenitori a VALORE (LIST/QUEUE/STACK/HASHSET/DICT/SORTED/…):
+                     * un contenitore non è MAI un array nativo — la rappresentazione C la decide
+                     * gkind (gmb_list_t / gmb_dict_t). Lasciare is_array=1 (residuo della
+                     * classificazione del letterale) faceva scegliere al dispatcher dello
+                     * statement `emit_arr_literal_assign` per `l = [1,2,3]` / `d = {"a":1}`,
+                     * che emetteva `gmb_array_resize((void**)&l, &l_len, …)` su una lista →
+                     * C che non compila (`l_len` mai dichiarata, `l[...]` su una struct). */
+                    v->is_array = 0; v->dyn_len = 0; v->ndims = 0; v->matrix = 0; v->jagged = 0;
                 }
             }
             /* DELEGATE: `DIM v AS <DelegateName>` → valore funzione di prima classe */
@@ -4628,6 +4791,14 @@ if (s->dim_var) {            int ty = suffix_type(s->dim_var);
             if (s->dim_type && strcmp(s->dim_type, "__VAL__") == 0) { v->boxed_val = 1; v->type = TY_NUM; }
             /* 2.8: DIM v AS STRING * N → lunghezza fissa (pad/truncate in assegnamento) */
             if (s->dim_fixed_len > 0) v->fixed_len = s->dim_fixed_len;
+            /* STATIC dentro una procedura (2026-11-11): la variabile C è dichiarata `static`
+             * nel prologo della funzione (persiste fra le chiamate) e il sito DIM emette
+             * l'inizializzazione "una volta sola" (vedi st_dim). Fuori da una procedura
+             * STATIC non ha senso e resta il comportamento di prima. */
+            if (s->dim_is_static && c->cur_fn) {
+                var_t* sv = vars_find(scope, s->dim_var);
+                if (sv) sv->is_static = 1;
+            }
         }
         return;
 }
@@ -5307,6 +5478,33 @@ void emit_arr_arg_len(ctx_t* c, gmb_expr_t* a);
 void emit_matrix_handle(ctx_t* c, const var_t* v);
 static int boxed_member_is_str(const char* m);
 
+/* LEAK STRINGHE (2026-11-13): l'espressione produce un gmb_string_t TEMPORANEO, cioè un
+ * buffer nuovo che nessun altro possiede (letterale, call, concat) — e che quindi si può
+ * liberare subito dopo l'uso. VAR/campo/elemento di array sono invece POSseduti altrove:
+ * no. Usato dalla concat (gmb_str_concat_owned) per non lasciare vivi i temporanei. */
+static int is_str_temp_expr(ctx_t* c, gmb_expr_t* e) {
+    if (!e) return 0;
+    switch (e->kind) {
+    case GMB_EXPR_STR: return 1;
+    case GMB_EXPR_BINARY:
+        /* concat: il risultato è un buffer nuovo */
+        return e->op && strcmp(e->op, "+") == 0 && etype(c, e) == TY_STR;
+    case GMB_EXPR_CALL:
+        /* ATTENZIONE: la stessa forma CALL è usata per la LETTURA di un elemento di array
+         * (`parts[i]` → CALL con var = nome dell'array) e per l'accesso a un campo
+         * (`p.name` → var con un punto): quelli restituiscono un valore POSSEDUTO dalla
+         * variabile, non un temporaneo — liberarli distruggerebbe l'array/campo.
+         * Sono temporanei solo le call a FUNZIONI/builtin (che costruiscono un buffer nuovo)
+         * e i ritorni FFI (il runtime li copia). */
+        if (etype(c, e) != TY_STR) return 0;
+        if (e->var && lookup_var(c, e->var)) return 0;                    /* elemento di array */
+        if (e->var && strchr(e->var, '.') && !find_fn(c, e->var)) return 0; /* campo/membro */
+        return 1;
+    default:
+        return 0;
+    }
+}
+
 static void emit_str_literal(ctx_t* c, const char* s) {
     sb_put(&c->out, "gmb_string_alloc(\"");
     for (const char* p = s ? s : ""; *p; p++) {
@@ -5322,6 +5520,19 @@ static void emit_str_literal(ctx_t* c, const char* s) {
         }
     }
     sb_put(&c->out, "\")");
+}
+
+/* Letterale STRINGA BINARIO (EMBEDFILE): la lunghezza è esplicita, i byte possono
+ * includere NUL. Stessa semantica del ramo C# (una stringa = N char, uno per byte):
+ * si materializza con gmb_string_from_bytes, mai con gmb_string_alloc (che troncherebbe
+ * al primo NUL — è esattamente il bug di C99-FROMBASE64-Payload-Grandi). */
+static void emit_str_literal_n(ctx_t* c, const char* s, long len) {
+    sb_put(&c->out, "gmb_string_from_bytes((const unsigned char[]){");
+    for (long i = 0; i < len; i++) {
+        if (i) sb_put(&c->out, ",");
+        sb_printf(&c->out, "%u", (unsigned)(unsigned char)s[i]);
+    }
+    sb_printf(&c->out, "},%ld)", len);
 }
 
 static fn_info_t* find_fn(ctx_t* c, const char* name) {
@@ -5711,6 +5922,14 @@ static int fn_needs_fv_adapter(const fn_info_t* fn) {
     int need = 0;
     for (int i = 0; i < fn->n_params; i++) {
         if (fn->stmt->param_byref && fn->stmt->param_byref[i]) return 0;
+        /* BYREF ARRAY (`BYREF D() AS STRING`): il target riceve `T**` + bound, ABI che il
+         * gmb_fn_t non sa fornire — l'adapter ctx-first dichiarava `gmb_string_t Dati` e
+         * chiamava il target con `gmb_string_t**` (C invalido: ArraysPassingLocal). Un
+         * parametro array byref non è un valore-callback: nessun adapter. */
+        {
+            var_t* pvb = vars_find(&fn->locals, fn->stmt->func_params[i]);
+            if (pvb && pvb->arr_byref) return 0;
+        }
         if (fn->stmt->param_variadic && fn->stmt->param_variadic[i]) return 0;
         /* Array (2026-11-02): un parametro array del target e' un PUNTATORE, ma il gmb_fn_t
          * viene invocato con `void* ctx` in testa: senza adapter il ctx finisce nel registro
@@ -6090,6 +6309,21 @@ static int fn_param_is_byref(fn_info_t* f, const char* name)
     return 0;
 }
 
+/* Vero se l'argomento `a` è un ELEMENTO DI ARRAY (`a(i)`, che nel parser C è un
+ * GMB_EXPR_CALL con `var` = nome della variabile array). Un argomento BYREF di questa forma
+ * riceve l'INDIRIZZO REALE dell'elemento: il vecchio percorso del temporaneo copy-in/copy-out
+ * non aveva write-back per gli elementi (la condizione del write-back è `kind == GMB_EXPR_VAR`)
+ * e il valore scritto dalla callee andava perso — `SetL(a(1))` non aggiornava niente su questa
+ * gamba, mentre PCode/VM-C/IL lo facevano (divergenza trovata dalla verifica BYREF 2026-11-11). */
+static int call_arg_is_index_lvalue(ctx_t* c, gmb_expr_t* a)
+{
+    if (!a || a->kind != GMB_EXPR_CALL || !a->var || !a->args || a->nargs < 1) return 0;
+    if (a->ns) return 0;                             /* NS.FUNZIONE: builtin, non un indice */
+    if (find_fn(c, a->var)) return 0;                /* chiamata a una SUB/FUNCTION utente */
+    var_t* av = lookup_var(c, a->var);
+    return av && av->is_array && !av->matrix;
+}
+
 /* Registra le funzioni nidificate dirette del genitore parent_idx (hoisting a livello
  * modulo, parity oracolo) con rilevazione delle variabili catturate. */
 static void hoist_nested_fns(ctx_t* c, int parent_idx) {
@@ -6237,11 +6471,13 @@ static void reg_class_from_stmt(ctx_t* c, gmb_stmt_t* s) {
     ci->is_interface = s->class_is_interface;
     ci->is_udt = s->class_is_udt;
     ci->is_packed = s->class_is_packed;
+    ci->is_union = s->class_is_union;
     for (int k = 0; k < s->n_cls_implements && ci->nimpl < 8; k++)
         snprintf(ci->impl[ci->nimpl++], 40, "%s", s->cls_implements[k]);
     for (int k = 0; k < s->n_cls_fields && ci->nfields < 128; k++) {
         snprintf(ci->fname[ci->nfields], 40, "%s", s->cls_field_names[k]);
         snprintf(ci->ftype[ci->nfields], 40, "%s", s->cls_field_types[k] ? s->cls_field_types[k] : "NUMERIC");
+        if (s->cls_field_bits) ci->fbits[ci->nfields] = s->cls_field_bits[k];
         ci->nfields++;
     }
     for (int k = 0; k < s->n_cls_statics && ci->nstatics < 8; k++) {
@@ -6718,6 +6954,15 @@ static int bf_m_len(ctx_t* c, gmb_expr_t** a, int n){
         var_t* lv = lookup_var(c, a[0]->var);
         if (lv && lv->gkind && gk_is_list(lv->gkind)) {
             sb_put(&c->out, "(gmb_double_t)gmb_list_count(");
+            emit_ident(c, lv->name);
+            sb_put(&c->out, ")");
+            return 1;
+        }
+        /* LEN(<var DICT/SORTED>) → numero di CHIAVI (parità IL/PCode/VM-C: `LEN(d)` = 2 con
+         * due chiavi). Senza questo ramo LEN cadeva nel percorso STRINGA
+         * (`gmb_str_t_len(<gmb_dict_t>)`) → C non compilabile. */
+        if (lv && lv->gkind && gk_is_dict(lv->gkind)) {
+            sb_put(&c->out, "(gmb_double_t)gmb_dict_count(");
             emit_ident(c, lv->name);
             sb_put(&c->out, ")");
             return 1;
@@ -10395,6 +10640,32 @@ static int emit_any_param_arg(ctx_t* c, gmb_expr_t* a) {
 static void emit_param_arg(ctx_t* c, fn_info_t* f, int pi, gmb_expr_t* a) {
     const char* pt = (f && f->stmt && f->stmt->param_types && pi >= 0 && pi < f->stmt->n_params) ? f->stmt->param_types[pi] : NULL;
     if (pt && gmb_keyword_tok(pt) == GMB_TOK_Any && emit_any_param_arg(c, a)) return;
+    /* Parametro BYREF di un METODO/COSTRUTTORE: il call-site deve passare l'INDIRIZZO.
+     * Prima emetteva il valore e il C generato non compilava ("passing 'gmb_double_t' to
+     * parameter of incompatible type 'gmb_double_t *'") per ogni metodo con un parametro
+     * BYREF. Per le SUB/FUNCTION esisteva già il percorso temporaneo+writeback; qui la
+     * variabile è passata per indirizzo reale (vera semantica BYREF), come per gli
+     * argomenti non catturati nel percorso delle funzioni. */
+    if (f && f->stmt && f->stmt->param_byref && pi >= 0 && pi < f->stmt->n_params
+        && f->stmt->param_byref[pi]) {
+        if (a && a->kind == GMB_EXPR_VAR && a->var) {
+            var_t* v = lookup_var(c, a->var);
+            if (!v) v = vars_add(cur_scope(c), a->var, suffix_type(a->var));
+            if (v->byref && !v->captured) { emit_ident(c, v->name); return; }   /* già un puntatore */
+            sb_put(&c->out, "&");
+            emit_ident(c, v->name);
+            return;
+        }
+        if (call_arg_is_index_lvalue(c, a)) {
+            sb_put(&c->out, "&(");
+            emit_expr(c, a);
+            sb_put(&c->out, ")");
+            return;
+        }
+        c99_fail(c, a ? a->line : 0, "BYREF %s: argomento %d non indirizzabile (serve una variabile o un elemento di array)",
+                 f->stmt->func_name, pi + 1);
+        return;
+    }
     emit_expr(c, a);
 }
 
@@ -10545,6 +10816,8 @@ static void emit_dict_key(ctx_t* c, gmb_expr_t* e) {
     }
 }
 static void emit_list_literal(ctx_t* c, gmb_expr_t* e);
+static void emit_set_literal(ctx_t* c, gmb_expr_t* e);
+static void emit_dict_literal(ctx_t* c, gmb_expr_t* e);
 /* Contenitori TIPIZZATI la cui semantica NON è quella di una lista e che quindi in C99Native
  * vivono come COLLEZIONE del runtime C condiviso (§0bis) — un gmb_val_t con handle — invece
  * che come gmb_list_t/gmb_dict_t dell'emitter:
@@ -12690,18 +12963,15 @@ static void emit_call(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_
             }
         }
     }
-    /* NEXT(generatore): fa avanzare la state-machine; se il generatore è esaurito solleva
-     * 144 (StopIteration, catturabile da TRY/CATCH e.Number=144) — mirror emitter C#. */
+    /* NEXT(generatore): riprende la coroutine; se il generatore è esaurito solleva
+     * 144 (StopIteration, catturabile da TRY/CATCH con e.Number=144) — mirror emitter C#.
+     * Un errore del corpo è RILANCIATO da gmb_gen_next nel contesto del chiamante. */
     if (tk == GMB_TOK_Next && nargs == 1 && args[0]
         && args[0]->kind == GMB_EXPR_VAR && args[0]->var) {
         var_t* gv = lookup_var(c, args[0]->var);
         if (gv && gv->gkind == GK_GEN) {
-            sb_put(&c->out, "({ if (");
-            emit_ident(c, gv->name); sb_put(&c->out, ".done) gmb_raise_error(144, \"StopIteration\", 0); gmb_user_");
-            sb_ident(&c->out, gv->gen_id); sb_put(&c->out, "_step(&");
-            emit_ident(c, gv->name); sb_put(&c->out, "); if (");
-            emit_ident(c, gv->name); sb_put(&c->out, ".done) gmb_raise_error(144, \"StopIteration\", 0); ");
-            emit_ident(c, gv->name); sb_put(&c->out, ".value; })");
+            sb_put(&c->out, "({ double __gv = 0; if (gmb_gen_next(");
+            emit_ident(c, gv->name); sb_put(&c->out, ".co, &__gv)) gmb_raise_error(144, \"StopIteration\", 0); __gv; })");
             return;
         }
     }
@@ -13994,12 +14264,10 @@ static void emit_call(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_
         }
     }
     if (fn) {
-        /* chiamata a GENERATOR (es. `Count(3)`): costruisce la struct di stato per valore
-         * (step=0,done=0,value=0, poi i parametri) — il corpo NON parte (mirror emitter C#). */
+        /* chiamata a GENERATOR (es. `Count(3)`): costruisce l'HANDLE della coroutine (il
+         * corpo parte al primo NEXT). */
         if (fn->stmt->is_generator) {
-            sb_put(&c->out, "(gmb_gen_"); sb_ident(&c->out, fn->stmt->func_name); sb_put(&c->out, "_t){0, 0, 0");
-            for (int i = 0; i < nargs && i < fn->n_params; i++) { sb_put(&c->out, ", "); emit_expr(c, args[i]); }
-            sb_put(&c->out, "}");
+            emit_gen_make(c, fn->stmt->func_name, fn, args, nargs);
             return;
         }
         /* ARGOMENTI NOMINALI (bug #4 — FunctionsParams.bas): il parser codifica ogni
@@ -14244,6 +14512,9 @@ static void emit_call(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_
             gmb_expr_t* a = EFF_ARG(i);
             direct_addr[i] = fn->stmt->param_byref[i] && a && a->kind == GMB_EXPR_VAR && a->var
                              && byref_param_captured_by_closure(c, fn, i);
+            /* Elemento di array `a(i)`: indirizzo REALE dell'elemento (vera semantica BYREF). */
+            if (fn->stmt->param_byref[i] && !direct_addr[i] && call_arg_is_index_lvalue(c, a))
+                direct_addr[i] = 1;
         }
         sb_put(&c->out, "({ ");
         for (int i = 0; i < fixed_count && !c->error[0]; i++) {
@@ -14331,6 +14602,13 @@ static void emit_call(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_
                 /* 2.6(r)/2.8: array → puntatore + bound (& se REDIMmato nella callee) */
                 emit_arr_call_arg(c, fn, i, a, line);
             } else if (i < 64 && direct_addr[i]) {
+                if (call_arg_is_index_lvalue(c, a)) {
+                    /* elemento di array: `&(A[i])` — indirizzo reale, nessun temporaneo */
+                    sb_put(&c->out, "&(");
+                    emit_expr(c, a);
+                    sb_put(&c->out, ")");
+                    continue;
+                }
                 var_t* tv = lookup_var(c, a->var);
                 if (!tv) tv = vars_add(cur_scope(c), a->var, suffix_type(a->var));
                 if (tv->byref && !tv->captured) emit_ident(c, tv->name);
@@ -14676,7 +14954,9 @@ void emit_expr(ctx_t* c, gmb_expr_t* e) {
         sb_printf(&c->out, "%.17g", e->num);
         break;
     case GMB_EXPR_STR:
-        emit_str_literal(c, e->str);   /* un letterale e' SEMPRE testo: `&` dentro le virgolette non e' una macro */
+        /* un letterale e' SEMPRE testo: `&` dentro le virgolette non e' una macro */
+        if (e->str_len > 0) emit_str_literal_n(c, e->str, e->str_len);
+        else emit_str_literal(c, e->str);
         break;
     case GMB_EXPR_VAR: {
         /* ADR-MATRIX F4: campo-fattore di una DECOMPOSIZIONE (`lu.U` come VAR puntata). */
@@ -14964,8 +15244,12 @@ void emit_expr(ctx_t* c, gmb_expr_t* e) {
             if (emk == GMB_TOK_Number) { sb_put(&c->out, "gmb_err_number()"); break; }
             if (emk == GMB_TOK_Description) { sb_put(&c->out, "gmb_string_alloc(gmb_err_description())"); break; }
             if (emk == GMB_TOK_LineNumber) { sb_put(&c->out, "(gmb_double_t)gmb_err_line()"); break; }
-            /* Altri campi (es. SOURCELINETEXT/STACKTRACE): il C# C99 emette "0" (fallback, non
-             * errore) → parity. Prima la gamba C falliva con "campo ERR non supportato". */
+            /* Catena delle procedure dell'ultimo errore (parità VM/C, PCode, IL). */
+            if (strcasecmp(m, "StackTrace") == 0) { sb_put(&c->out, "gmb_string_alloc(gmb_err_trace())"); break; }
+            /* Testo della riga che ha sollevato l'errore (parità VM/C/PCode/IL). */
+            if (strcasecmp(m, "SourceLineText") == 0) { sb_put(&c->out, "gmb_string_alloc(gmb_err_source_line_text())"); break; }
+            /* Altri campi (es. SOURCELINETEXT): fallback "0" (non errore), come il resto
+             * delle gambe. Prima la gamba C falliva con "campo ERR non supportato". */
             sb_put(&c->out, "0");
             break;
         }
@@ -14986,6 +15270,8 @@ void emit_expr(ctx_t* c, gmb_expr_t* e) {
             }
             else if (cmk == GMB_TOK_Description) sb_put(&c->out, "gmb_string_alloc(gmb_err_description())");
             else if (cmk == GMB_TOK_LineNumber) sb_put(&c->out, "(gmb_double_t)gmb_err_line()");
+            else if (strcasecmp(m, "StackTrace") == 0) sb_put(&c->out, "gmb_string_alloc(gmb_err_trace())");
+            else if (strcasecmp(m, "SourceLineText") == 0) sb_put(&c->out, "gmb_string_alloc(gmb_err_source_line_text())");
             else { c99_fail(c, e->line, "campo variabile CATCH non supportato: %s", m); return; }
             break;
         }
@@ -15023,15 +15309,20 @@ void emit_expr(ctx_t* c, gmb_expr_t* e) {
                             /* CONVERT.* Markdown AST: i campi sono chiavi del dict del blocco
                              * (text/url/language/...). Lettura come stringa (parity emitter C#
                              * gmb_val_to_string(gmb_dict_get(gmb_val_as_dict(h), "text"))).
+                             * ECCEZIONE: `rows`/`headers` sono LISTE (tabelle): si emette il
+                             * valore GREZZO (gmb_val_t), altrimenti la lista veniva serializzata
+                             * a stringa e `UBOUND(tb.rows)` leggeva 0 (convert/md_tables).
                              * emit_ident (non sb_ident) per onorare l'imap del FOR EACH. */
-                            sb_put(&c->out, "gmb_val_to_string(gmb_dict_get(gmb_val_as_dict(");
+                            int _md_list = (!strcasecmp(bmd + 1, "rows") || !strcasecmp(bmd + 1, "headers"));
+                            sb_put(&c->out, _md_list ? "gmb_dict_get(gmb_val_as_dict("
+                                                     : "gmb_val_to_string(gmb_dict_get(gmb_val_as_dict(");
                             emit_ident(c, bv->name);
                             sb_put(&c->out, "), \"");
                             for (const char* p = bmd + 1; *p; p++) {
                                 if (*p == '"' || *p == '\\') sb_put(&c->out, "\\");
                                 sb_putn(&c->out, p, 1);
                             }
-                            sb_put(&c->out, "\"))");
+                            sb_put(&c->out, _md_list ? "\")" : "\"))");
                             break;
                         }
                         if (bv->stats_val) {
@@ -15406,7 +15697,28 @@ void emit_expr(ctx_t* c, gmb_expr_t* e) {
         }
         var_t* v = ensure_dbf_field_var(c, e);
         if (!v) v = lookup_var(c, e->var ? e->var : "");
+        /* OPTION STRICT ON: un LOCAL il cui blocco di dichiarazione è CHIUSO (decl_block == 0:
+         * il prologo marca -1, un blocco attivo il suo id) è fuori scope → errore, come sulle
+         * altre gambe. Fuori da STRICT vale il default (la variabile di funzione, 0/""). */
+        if (v && c->option_strict && c->cur_fn && v->decl_block == 0 && !v->late_local) {
+            var_t* lv = vars_find(&c->cur_fn->locals, v->name);
+            if (lv == v) {
+                c99_fail(c, e->line,
+                         "In OPTION STRICT mode, la variabile '%s' deve essere dichiarata esplicitamente.",
+                         e->var ? e->var : "");
+                break;
+            }
+        }
         if (!v) {
+            /* OPTION STRICT ON: nessuna variabile implicita — un nome non dichiarato è un errore
+             * di compilazione (stesso testo del linker C#). Fuori da STRICT resta la variabile
+             * implicita (default del tipo), che è la regola del linguaggio (manuale II.5 §1). */
+            if (c->option_strict) {
+                c99_fail(c, e->line,
+                         "Il simbolo '%s' non è definito. Con OPTION STRICT ON, tutte le variabili devono essere dichiarate esplicitamente.",
+                         e->var ? e->var : "");
+                break;
+            }
             /* implicit declaration BASIC: tipo dal suffisso ($ = stringa) */
             v = vars_add(&c->globals, e->var ? e->var : "", suffix_type(e->var ? e->var : ""));
         }
@@ -15493,7 +15805,7 @@ void emit_expr(ctx_t* c, gmb_expr_t* e) {
                 struct cls_info* uci = cls_find(c, ucl);
                 if (uci && uci->is_udt && uci->nfields > 0) {
                     int neq = (strcmp(op, "<>") == 0 || strcmp(op, "!=") == 0);
-                    sb_put(&c->out, neq ? "(!(" : "(");
+                    sb_put(&c->out, neq ? "((!(" : "((");
                     for (int k = 0; k < uci->nfields; k++) {
                         if (k) sb_put(&c->out, " && ");
                         if (cls_field_is_str(uci, uci->fname[k])) {
@@ -15517,15 +15829,20 @@ void emit_expr(ctx_t* c, gmb_expr_t* e) {
                             sb_ident(&c->out, uci->fname[k]);
                         }
                     }
-                    sb_put(&c->out, neq ? "))" : ")");
+                    sb_put(&c->out, neq ? ")) ? -1.0 : 0.0)" : ") ? -1.0 : 0.0)");
                     return;
                 }
             }
         }
         if (strcmp(op, "+") == 0 && ls == TY_STR && rs == TY_STR) {
-            sb_put(&c->out, "gmb_string_concat(");
-            emit_expr(c, e->left); sb_put(&c->out, ", "); emit_expr(c, e->right);
-            sb_put(&c->out, ")");
+            /* LEAK STRINGHE: un operando TEMPORANEO (letterale, call, concat) è un buffer
+             * nuovo che nessun altro possiede → lo si libera subito dopo la concat. Un
+             * operando VAR/campo/indice è invece posseduto altrove: NON si tocca. Senza,
+             * ogni `+` dentro un ciclo lasciava vivi i temporanei (misurato: 1002 blocchi
+             * per 500 iterazioni con `debug.memory`). */
+            sb_put(&c->out, "gmb_str_concat_owned(");
+            emit_expr(c, e->left); sb_put(&c->out, is_str_temp_expr(c, e->left) ? ", 1, " : ", 0, ");
+            emit_expr(c, e->right); sb_put(&c->out, is_str_temp_expr(c, e->right) ? ", 1)" : ", 0)");
         } else if (strcmp(op, "+") == 0 && ls != rs
                    && (ls == TY_STR || rs == TY_STR)) {
             /* Concatenazione stringa+numero (semantica MQL): coerce il lato numerico a stringa.
@@ -15533,7 +15850,10 @@ void emit_expr(ctx_t* c, gmb_expr_t* e) {
              * Lato BOXED (gmb_val_t: dict/JSON/val dinamico, es. `DIM id = p("id")` di
              * HttpFullServer): gmb_double_to_string(gmb_val_t) NON compila — serve
              * gmb_val_to_string (stessa coercizione di emit_interp_segment). */
-            sb_put(&c->out, "gmb_string_concat(");
+            /* LEAK STRINGHE: il lato NUMERICO diventa un temporaneo (double_to_string /
+             * val_to_string) → va liberato dopo la concat. Il lato STRINGA segue la regola
+             * temporaneo/variabile di is_str_temp_expr. */
+            sb_put(&c->out, "gmb_str_concat_owned(");
             var_t* _lbx = (e->left->kind == GMB_EXPR_VAR && e->left->var) ? lookup_var(c, e->left->var) : NULL;
             var_t* _rbx = (e->right->kind == GMB_EXPR_VAR && e->right->var) ? lookup_var(c, e->right->var) : NULL;
             int _lbox = _lbx && _lbx->boxed_val && !_lbx->gkind && !_lbx->vclass[0]
@@ -15543,19 +15863,24 @@ void emit_expr(ctx_t* c, gmb_expr_t* e) {
             /* TY_VAL (json("k")/getter dinamico) conta come boxed: gmb_val_to_string, non
              * double_to_string (bug BspModelAuthDemo: `"user=" + gUser("name")`). */
             if (ls == TY_STR && (_rbox || rs == TY_VAL)) {
-                emit_expr(c, e->left); sb_put(&c->out, ", gmb_val_to_string(");
-                emit_expr(c, e->right); sb_put(&c->out, ")");
+                emit_expr(c, e->left);
+                sb_put(&c->out, is_str_temp_expr(c, e->left) ? ", 1, gmb_val_to_string(" : ", 0, gmb_val_to_string(");
+                emit_expr(c, e->right); sb_put(&c->out, "), 1)");
             } else if (ls == TY_STR) {
-                emit_expr(c, e->left); sb_put(&c->out, ", gmb_double_to_string(");
-                emit_expr(c, e->right); sb_put(&c->out, ")");
+                emit_expr(c, e->left);
+                sb_put(&c->out, is_str_temp_expr(c, e->left) ? ", 1, gmb_double_to_string(" : ", 0, gmb_double_to_string(");
+                emit_expr(c, e->right); sb_put(&c->out, "), 1)");
             } else if (_lbox || ls == TY_VAL) {
                 sb_put(&c->out, "gmb_val_to_string("); emit_expr(c, e->left);
-                sb_put(&c->out, "), "); emit_expr(c, e->right);
+                sb_put(&c->out, "), 1, ");
+                emit_expr(c, e->right);
+                sb_put(&c->out, is_str_temp_expr(c, e->right) ? ", 1)" : ", 0)");
             } else {
                 sb_put(&c->out, "gmb_double_to_string("); emit_expr(c, e->left);
-                sb_put(&c->out, "), "); emit_expr(c, e->right);
+                sb_put(&c->out, "), 1, ");
+                emit_expr(c, e->right);
+                sb_put(&c->out, is_str_temp_expr(c, e->right) ? ", 1)" : ", 0)");
             }
-            sb_put(&c->out, ")");
         } else if ((strcmp(op, "=") == 0 || strcmp(op, "<>") == 0)
                    && (ls == TY_STR || rs == TY_STR) && ls != TY_NUM && rs != TY_NUM) {
             /* confronto stringhe (TY_VAL incluso: getter RDD dinamico) → -1.0 (vero) / 0.0,
@@ -16219,6 +16544,39 @@ static void emit_list(ctx_t* c, gmb_stmt_t** list, int n) {
     }
 }
 
+/* Corpo di un COSTRUTTO (IF/ELSE, cicli, SELECT, TRY/CATCH/FINALLY): è uno scope di BLOCCO
+ * (spec Variables-Scope §2.1/§6). Oltre a emettere la lista, assegna un id al blocco così le
+ * DIM/LOCAL/LET al suo interno possono dichiarare la variabile DENTRO il blocco C (shadow) e,
+ * alla chiusura, invalidano quella dichiarazione (il nome torna a indicare quella esterna). */
+/* Vero se il nome ha una DIM al livello FUNZIONE (cioè un'istruzione DIM direttamente nel corpo
+ * della funzione, non dentro un blocco): serve a decidere se, alla chiusura di un blocco, il
+ * nome torna alla variabile di funzione o resta "non dichiarato" (OPTION STRICT). */
+static int c99_name_has_toplevel_dim(fn_info_t* fn, const char* name) {
+    if (!fn || !fn->stmt || !name) return 0;
+    for (int i = 0; i < fn->stmt->n_funcbody; i++) {
+        gmb_stmt_t* st = fn->stmt->func_body[i];
+        if (st && st->kind == GMB_STMT_DIM && st->dim_var && strcasecmp(st->dim_var, name) == 0) return 1;
+    }
+    return 0;
+}
+
+static void emit_block(ctx_t* c, gmb_stmt_t** list, int n) {
+    int prev = c->cur_blk;
+    c->cur_blk = ++c->blk_seq;
+    emit_list(c, list, n);
+    if (c->cur_fn) {
+        for (int i = 0; i < c->cur_fn->locals.n; i++) {
+            var_t* bv = &c->cur_fn->locals.v[i];
+            if (bv->decl_block == c->cur_blk)
+                /* La dichiarazione di blocco non è più in scope: se il nome ha ANCHE una DIM al
+                 * livello della funzione torna a quella (-1), altrimenti resta "non dichiarata"
+                 * (0) — è ciò che permette a OPTION STRICT di segnalare la lettura fuori blocco. */
+                bv->decl_block = c99_name_has_toplevel_dim(c->cur_fn, bv->name) ? -1 : 0;
+        }
+    }
+    c->cur_blk = prev;
+}
+
 /* 2.8: coercizione del valore di ritorno al tipo della funzione corrente
  * (parity oracolo CoerceReturnValue: gmb_double_to_string per ritorni stringa) */
 static void emit_ret_value(ctx_t* c, gmb_expr_t* value) {
@@ -16384,6 +16742,37 @@ static int is_matrix_value_call_tk(gmb_tokenkind_t tk) {
 
  static void emit_assignment(ctx_t* c, const char* target, gmb_expr_t* value, int line, int from_dim) {
       if (target && !strchr(target, '.') && gmb_c99_try_emit_dyn_write(c, target, value)) return;
+      /* LEAK STRINGHE (2026-11-13): assegnazione a una variabile stringa "pura" (nessun uso
+       * che possa trattenere il buffer: vedi str_escape_prepass) → il valore PRECEDENTE va
+       * liberato, altrimenti in un loop la memoria cresce senza limite. Il nuovo valore si
+       * valuta in un temporaneo PRIMA del free, così `s = s + x` resta corretto. */
+      if (target && value && !strchr(target, '.') && !from_dim) {
+          var_t* sv = lookup_var(c, target);
+          /* `NOMEFUNZIONE = <expr>` è l'assegnazione del VALORE DI RITORNO della FUNCTION in
+           * emissione (non una variabile): il percorso normale la gestisce con `__ret`/slot
+           * dedicato — liberare "il valore precedente" qui romperebbe il ritorno. */
+          int is_fn_ret = (c->cur_fn && c->cur_fn->stmt && c->cur_fn->stmt->func_name
+                           && (strcasecmp(c->cur_fn->stmt->func_name, target) == 0
+                               || strcasecmp(target, "FUNCTION") == 0
+                               || strcasecmp(target, "OPERATOR") == 0));
+          int bare_self = (value->kind == GMB_EXPR_VAR && value->var
+                           && strcasecmp(value->var, target) == 0 && value->nargs == 0);
+          if (!is_fn_ret && sv && sv->type == TY_STR && !sv->is_array && !sv->gkind && !sv->boxed_val
+              && !sv->vclass[0] && !sv->nullable && !sv->sb_builder && !sv->regex_obj
+              && !sv->is_static && !sv->byref && !sv->arr_byref
+              && !sv->str_escape && !bare_self
+              && etype(c, value) == TY_STR) {
+              ind(c);
+              sb_put(&c->out, "{ gmb_string_t __gmb_nv = ");
+              emit_expr(c, value);
+              sb_put(&c->out, "; gmb_string_free(&");
+              emit_ident(c, sv->name);
+              sb_put(&c->out, "); ");
+              emit_ident(c, sv->name);
+              sb_put(&c->out, " = __gmb_nv; }\n");
+              return;
+          }
+      }
       /* ADR-MATRIX F4 (C99): riassegnazione di una decomposizione (dizionario di valori). */
       if (target && value && !strchr(target, '.')) {
           var_t* tdv = lookup_var(c, target);
@@ -16549,6 +16938,44 @@ static int is_matrix_value_call_tk(gmb_tokenkind_t tk) {
        * (lista vs boxed) nel ramo non-UDT. Azzerato a fine assegnamento (sotto). */
       { var_t* _jt = target ? lookup_var(c, target) : NULL;
         c->cur_assign_target = (_jt && _jt->boxed_val && !_jt->gkind && !_jt->vclass[0] && !_jt->is_array) ? target : NULL; }
+      /* RIASSEGNAZIONE fuori dal DIM di una variabile LIST/DICT/SET con un LETTERALE:
+       * `l = [1,2,3]`, `d = {"a":1}`, `s = [1,2,2]`. Il DIM ha già i rami giusti
+       * (emit_list_literal / emit_dict_literal / emit_set_literal); l'assegnazione cadeva
+       * nel percorso ARRAY nativo ed emetteva `gmb_array_resize((void**)&l, &l_len, …)` su un
+       * `gmb_list_t` → C che non compila (`l_len` mai dichiarata, `l[...]` su una struct).
+       * Stessa forma dei rami handle qui sopra, ma per i contenitori a VALORE. */
+      if (target && value && !strchr(target, '.') && value->kind == GMB_EXPR_CALL && value->var) {
+          var_t* lcv = lookup_var(c, target);
+          if (lcv && !lcv->is_array && !lcv->coll_handle) {
+              if (strcmp(value->var, "_array_") == 0 && gk_is_list(lcv->gkind)) {
+                  ind(c); emit_ident(c, lcv->name); sb_put(&c->out, " = ");
+                  if (lcv->gkind == GK_SET) emit_set_literal(c, value);
+                  else emit_list_literal(c, value);
+                  sb_put(&c->out, ";\n");
+                  return;
+              }
+              if (strcmp(value->var, "_dict_") == 0 && (lcv->gkind == GK_DICT || lcv->gkind == GK_SORTED)) {
+                  ind(c); emit_ident(c, lcv->name); sb_put(&c->out, " = ");
+                  emit_dict_literal(c, value);
+                  sb_put(&c->out, ";\n");
+                  return;
+              }
+              /* `{}` (dict VUOTO) arriva dal parser come letterale array SENZA elementi
+               * (`_array_` con 0 argomenti): su un target DICT/SORTED il frontend C# RIFIUTA
+               * l'assegnazione ("Impossibile assegnare un valore di tipo 'ARRAY OF …' nella
+               * variabile 'd' (tipo dichiarato 'DICT OF …')"). Qui si emette lo stesso errore
+               * esplicito — mai un C invalido (`d = gmb_make_val_list(...)` su un gmb_dict_t).
+               * La forma canonica per svuotare/ricreare è `d.Clear()` o `NEW DICT OF …`. */
+              if (strcmp(value->var, "_array_") == 0 && value->nargs == 0
+                  && (lcv->gkind == GK_DICT || lcv->gkind == GK_SORTED)) {
+                  c99_fail(c, line,
+                           "assegnazione a '%s': il letterale '{}' e' un ARRAY VUOTO, non un DICT. "
+                           "Usare %s.Clear() oppure NEW DICT OF <tipo chiave, tipo valore>",
+                           target, target);
+                  return;
+              }
+          }
+      }
       /* Contenitore TIPIZZATO a handle (HEAP 14 / MAXHEAP 27 / BAG 15 / TRIE 11)
        * RIASSEGNATO con un letterale `H = [e1, …]` FUORI dal DIM: il letterale sono gli
        * ELEMENTI della collezione nuova (gmb_collection_new con l'heapify del ctor, come
@@ -16600,7 +17027,9 @@ static int is_matrix_value_call_tk(gmb_tokenkind_t tk) {
               var_t* xv = (xa && xa->kind == GMB_EXPR_VAR) ? lookup_var(c, xa->var) : NULL;
               var_t* yv = (ya && ya->kind == GMB_EXPR_VAR) ? lookup_var(c, ya->var) : NULL;
               if (xv && xv->is_array && yv && yv->is_array) {
-                  ind(c); emit_ident(c, pv->name);
+                  /* out_len di gmb_gfx_collide_batch e' `int*` (vedi gmb_graphics.h), non
+                   * gmb_int_t*: si scrive in un int temporaneo e poi in <nome>_len. */
+                  ind(c); sb_put(&c->out, "{ int _gfxn = 0; "); emit_ident(c, pv->name);
                   sb_put(&c->out, " = gmb_gfx_collide_batch(");
                   emit_ident(c, xv->name); sb_put(&c->out, ", (int)(");
                   emit_arr_len_of(c, xv); sb_put(&c->out, "), ");
@@ -16608,7 +17037,8 @@ static int is_matrix_value_call_tk(gmb_tokenkind_t tk) {
                   emit_arr_len_of(c, yv); sb_put(&c->out, "), (double)(");
                   emit_expr(c, value->args[2]); sb_put(&c->out, "), (double)(");
                   emit_expr(c, value->args[3]);
-                  sb_put(&c->out, "), &"); emit_ident(c, pv->name); sb_put(&c->out, "_len);\n");
+                  sb_put(&c->out, "), &_gfxn); "); emit_ident(c, pv->name);
+                  sb_put(&c->out, "_len = (gmb_int_t)_gfxn; }\n");
                   return;
               }
           }
@@ -18148,7 +18578,7 @@ static void emit_print_container(ctx_t* c, gmb_expr_t* e) {
     } else if (v->is_array) {
         if (v->matrix_value) {
             /* Stage C backend C: PRINT flat row-major del descrittore. */
-            sb_put(&c->out, "gmb_json_double_array(gmb_matrix_value_ensure_flat(&");
+            sb_put(&c->out, "gmb_display_double_array(gmb_matrix_value_ensure_flat(&");
             emit_var_ref(c, v);
             sb_put(&c->out, "), (gmb_int_t)(((");
             emit_ident(c, v->name);
@@ -18160,7 +18590,7 @@ static void emit_print_container(ctx_t* c, gmb_expr_t* e) {
         if (v->matrix || v->jagged) { sb_put(&c->out, "gmb_string_alloc(\"[..]\")"); return; }
         if (v->ndims > 1) {
             /* Matrice NATIVA rank-N (double* flat row-major): stampa piatta come IL/PCode. */
-            sb_put(&c->out, "gmb_json_double_array((const gmb_double_t*)");
+            sb_put(&c->out, "gmb_display_double_array((const gmb_double_t*)");
             emit_ident(c, v->name);
             sb_put(&c->out, ", (gmb_int_t)(");
             for (int k = 0; k < v->ndims; k++) {
@@ -18172,7 +18602,7 @@ static void emit_print_container(ctx_t* c, gmb_expr_t* e) {
             sb_put(&c->out, "))");
             return;
         }
-        sb_put(&c->out, v->type == TY_STR ? "gmb_json_string_array(" : "gmb_json_double_array(");
+        sb_put(&c->out, v->type == TY_STR ? "gmb_json_string_array(" : "gmb_display_double_array(");
         sb_ident(&c->out, v->name);
         sb_put(&c->out, ", ");
         if (v->dyn_len) emit_arr_len_of(c, v);
@@ -18360,6 +18790,20 @@ static int is_json_path_member(ctx_t* c, gmb_expr_t* e, var_t** out_bv, const ch
                  sb_put(&c->out, "); if (!isnan(_sv)) gmb_print_double(_sv); });\n");
                  if (s->print_comma && s->print_comma[i]) { ind(c); sb_put(&c->out, "gmb_print_tab_zone();\n"); }
                  continue;
+             }
+             /* `PRINT F()` con F che è una SUB (nessun tipo di ritorno): la chiamata si
+              * esegue, ma NON c'è un valore da stampare — l'argomento non produce output
+              * (parità IL/PCode/VM-C). Prima si stampava il `__ret` della SUB (0), quindi
+              * C99 diceva `a= 0` dove le altre gambe dicono `a=`. */
+             if (s->print_args[i] && s->print_args[i]->kind == GMB_EXPR_CALL && s->print_args[i]->var) {
+                 const char* _vn = strrchr(s->print_args[i]->var, '.');
+                 _vn = (_vn && _vn[1]) ? _vn + 1 : s->print_args[i]->var;
+                 fn_info_t* _vf = find_fn_arity(c, _vn, s->print_args[i]->nargs, NULL);
+                 if (_vf && _vf->stmt && !_vf->stmt->func_ret_type && !_vf->stmt->is_generator) {
+                     ind(c); emit_expr(c, s->print_args[i]); sb_put(&c->out, ";\n");
+                     if (s->print_comma && s->print_comma[i]) { ind(c); sb_put(&c->out, "gmb_print_tab_zone();\n"); }
+                     continue;
+                 }
              }
              /* F1-followup (2026-09-11): AI.EMBED ritorna double* (senza lunghezza) → in
               * PRINT costruisci la lista con la lunghezza e stampala come "[a, b]"
@@ -18565,7 +19009,10 @@ static int is_json_path_member(ctx_t* c, gmb_expr_t* e, var_t** out_bv, const ch
                        ? 0
                        : (print_class_field_str(c, s->print_args[i]) || expr_value_is_str(c, s->print_args[i]) || etype(c, s->print_args[i]) == TY_STR
                         || (s->print_args[i] && s->print_args[i]->kind == GMB_EXPR_CALL && s->print_args[i]->tk == GMB_TOK_AsrTranscribe))) {
-                sb_put(&c->out, "gmb_print_string(");
+                /* LEAK STRINGHE: se l'argomento è un TEMPORANEO (concat/call/letterale) lo si
+                 * stampa e lo si libera subito; una variabile/campo non si tocca. */
+                sb_put(&c->out, is_str_temp_expr(c, s->print_args[i]) ? "gmb_print_string_tmp("
+                                                                     : "gmb_print_string(");
                 emit_expr(c, s->print_args[i]);
             } else if (s->print_args[i]->kind == GMB_EXPR_VAR && s->print_args[i]->var
                        && (_pv = lookup_var(c, s->print_args[i]->var)) != NULL
@@ -18617,6 +19064,9 @@ static void res_guard_end(ctx_t* c, int res_guard) {
     if (!res_guard) return;
     ind(c); sb_printf(&c->out, "__resume_end_%d:;\n", res_guard);
     ind(c); sb_put(&c->out, "gmb_err_set_resume(NULL);\n");
+    /* STACK TRACE: la ripresa dopo il longjmp di RESUME NEXT è nella stessa procedura, ma i
+     * frame delle chiamate più interne sono morti (i loro cleanup non sono passati). */
+    emit_trace_restore(c);
 }
 
 static void st_let_assign(ctx_t* c, gmb_stmt_t* s) {
@@ -18655,12 +19105,53 @@ static void st_let_assign(ctx_t* c, gmb_stmt_t* s) {
         /* ON ERROR/RESUME attivo (parity oracolo C#): guard setjmp per-istruzione.
          * RESUME NEXT fa longjmp al jmp_buf di QUESTO guard → goto salta OLTRE
          * l'istruzione fallita (ripresa dopo, come il resume-ip della VM). */
-        int res_guard = 0;
-        if (c->uses_onerror) {
+        int res_guard = 0;        if (c->uses_onerror) {
             res_guard = ++c->res_uid;
             ind(c); sb_printf(&c->out, "jmp_buf __res%d;\n", res_guard);
             ind(c); sb_printf(&c->out, "gmb_err_set_resume(&__res%d);\n", res_guard);
             ind(c); sb_printf(&c->out, "if (setjmp(__res%d) != 0) goto __resume_end_%d;\n", res_guard, res_guard);
+        }
+        /* LET = variabile dello SCOPE CORRENTE (Variables-Scope §3.1/§6). Tre casi:
+         *  - nome già dichiarato in QUESTO blocco C → semplice assegnazione;
+         *  - nome dichiarato in un blocco ESTERNO (parametro, DIM di procedura, LET di un
+         *    blocco precedente) → qui si DICHIARA una variabile di blocco che lo ombreggia
+         *    (`gmb_double_t x = <valore>;`): C applica da sé lo scoping, e quando il blocco
+         *    chiude il nome torna a indicare quella esterna;
+         *  - nome che esiste solo come GLOBAL → il pass di registrazione ha già creato la
+         *    locale con late_local/decl_indent = 0: si dichiara al primo LET.
+         * Il flag late_local nasconde la locale alle letture PRIMA della dichiarazione. */
+        if (s->is_let && s->target && !s->array_index && !strchr(s->target, '.')) {
+            var_t* shv = NULL;
+            if (c->cur_fn) shv = vars_find(&c->cur_fn->locals, s->target);
+            if (shv) {
+                /* Si DICHIARA (shadow) quando la LET è dentro un blocco diverso da quello in cui
+                 * la variabile è già dichiarata, oppure quando la locale ombreggia una GLOBAL e
+                 * non è ancora stata dichiarata (late_local). Altrimenti è un'assegnazione. */
+                int need_decl = shv->late_local || (c->cur_blk && shv->decl_block != c->cur_blk);
+                if (need_decl) {
+                    int sh_str = shv->type == TY_STR;
+                    int sh_simple = !shv->is_array && !shv->gkind && !shv->vclass[0] && !shv->boxed_val
+                                    && !shv->matrix && !shv->matrix_value && !shv->jagged && !shv->dyn_len
+                                    && !shv->nullable && !shv->sb_builder && !shv->regex_obj
+                                    && !shv->coll_handle && !shv->matrix_handle && !shv->cell;
+                    if (!sh_simple) {
+                        c99_fail(c, s->line, "LET %s: l'ombreggiamento di una variabile con un tipo composto non è supportato dall'emitter C", s->target);
+                        res_guard_end(c, res_guard);
+                        return;
+                    }
+                    ind(c);
+                    sb_put(&c->out, sh_str ? "gmb_string_t " : "gmb_double_t ");
+                    emit_ident(c, shv->name);
+                    sb_put(&c->out, " = ");
+                    if (sh_str) emit_str_operand(c, s->value);
+                    else emit_num_operand(c, s->value);
+                    sb_put(&c->out, ";\n");
+                    shv->decl_block = c->cur_blk ? c->cur_blk : -1;
+                    shv->late_local = 0;
+                    res_guard_end(c, res_guard);
+                    return;
+                }
+            }
         }
         /* Suffisso tipo BASIC sulla SCRITTURA scalare (`S$ = …`, `n% = …`): il suffisso NON
          * fa parte del nome (S e S$ sono la stessa variabile), quindi se contraddice il tipo
@@ -19318,7 +19809,16 @@ static void st_let_assign(ctx_t* c, gmb_stmt_t* s) {
         } else if (s->value && s->value->kind == GMB_EXPR_CALL && s->value->var
                    && strcmp(s->value->var, "_array_") == 0
                    && s->target && !strchr(s->target, '.')
-                   && lookup_var(c, s->target) && lookup_var(c, s->target)->boxed_val) {
+                   && lookup_var(c, s->target) && lookup_var(c, s->target)->boxed_val
+                   /* un contenitore TIPIZZATO (LIST/QUEUE/STACK/HASHSET/DICT/…) non è un
+                    * valore boxed "any": la rappresentazione la decide gkind (gmb_list_t /
+                    * gmb_dict_t) e il letterale lo emette emit_assignment con
+                    * emit_list_literal/emit_dict_literal. Prima `DIM l AS LIST OF INTEGER =
+                    * NEW LIST OF INTEGER` + `l = []` finiva qui e produceva
+                    * `l = gmb_make_val_list(({ gmb_list_t … }))` (val → list, C invalido). */
+                   && !(lookup_var(c, s->target)->gkind
+                        && (gk_is_list(lookup_var(c, s->target)->gkind)
+                            || gk_is_dict(lookup_var(c, s->target)->gkind)))) {
             /* AS ANY: matrice annidata → lista di liste boxed (gmb_val_t), consumata da
              * TBROWSE con gmb_val_as_list (prima: matrice C di double/string → mismatch). */
             extern void gmb_c99_emit_nested_list(ctx_t*, gmb_expr_t*);
@@ -19946,6 +20446,83 @@ static void st_dim(ctx_t* c, gmb_stmt_t* s) {
          var_t* dv = NULL;
          if (c->cur_fn && s->dim_var) dv = vars_find(&c->cur_fn->locals, s->dim_var);
          if (!dv && s->dim_var) dv = lookup_var(c, s->dim_var);
+         /* DIM/LOCAL dentro un BLOCCO (spec Variables-Scope §2.1/§6): la variabile è di BLOCCO →
+          * dichiarazione C QUI (shadow dell'eventuale omonima di funzione), non una scrittura
+          * nella variabile esterna. Alla chiusura del blocco emit_block invalida la dichiarazione,
+          * quindi il nome torna a indicare quella esterna. Per i tipi composti (array/collezioni/
+          * matrici/classi) resta il percorso normale (limite noto, documentato). */
+         if (dv && c->cur_blk && dv->decl_block != c->cur_blk && !s->dim_is_static) {
+             int simple = !dv->is_array && !dv->gkind && !dv->vclass[0] && !dv->boxed_val
+                          && !dv->matrix && !dv->matrix_value && !dv->jagged && !dv->dyn_len
+                          && !dv->nullable && !dv->sb_builder && !dv->regex_obj
+                          && !dv->coll_handle && !dv->matrix_handle && !dv->cell;
+             if (simple) {
+                 ind(c);
+                 sb_put(&c->out, dv->type == TY_STR ? "gmb_string_t " : "gmb_double_t ");
+                 emit_ident(c, dv->name);
+                 sb_put(&c->out, " = ");
+                 if (dv->type == TY_STR) {
+                     if (s->dim_init) emit_str_operand(c, s->dim_init);
+                     else sb_put(&c->out, "gmb_string_alloc(\"\")");
+                 } else {
+                     if (s->dim_init) emit_num_operand(c, s->dim_init);
+                     else sb_put(&c->out, "0");
+                 }
+                 sb_put(&c->out, ";\n");
+                 dv->decl_block = c->cur_blk;
+                 dv->late_local = 0;
+                 return;
+             }
+         }
+         /* STATIC dentro una procedura: la variabile C è dichiarata `static` nel prologo
+          * (persiste fra le chiamate). Qui si esegue l'inizializzazione UNA volta sola:
+          * al primo ingresso con l'inizializzatore (o il default del tipo), poi mai più.
+          * Parità con IL (StaticInitOnce) e con il bytecode (blocco "inizializza una
+          * volta" su OP_LOAD/STORE_STATIC_FIELD). */
+         if (dv && dv->is_static) {
+             int staticSimple = (dv->type == TY_STR)
+                 || (!dv->is_array && !dv->gkind && !dv->vclass[0] && !dv->boxed_val && !dv->matrix
+                     && !dv->matrix_value && !dv->jagged && !dv->dyn_len && !dv->nullable
+                     && !dv->sb_builder && !dv->regex_obj && !dv->coll_handle && !dv->matrix_handle
+                     && !dv->cell);
+             if (staticSimple) {
+                 ind(c);
+                 sb_put(&c->out, "if (!");
+                 emit_ident(c, dv->name);
+                 sb_put(&c->out, "__inited) { ");
+                 emit_ident(c, dv->name);
+                 sb_put(&c->out, "__inited = 1; ");
+                 emit_ident(c, dv->name);
+                 sb_put(&c->out, " = ");
+                 if (dv->type == TY_STR) {
+                     if (s->dim_init) emit_str_operand(c, s->dim_init);
+                     else sb_put(&c->out, "gmb_string_alloc(\"\")");
+                 } else {
+                     if (s->dim_init) emit_num_operand(c, s->dim_init);
+                     else sb_put(&c->out, "0");
+                 }
+                 sb_put(&c->out, "; }\n");
+                 return;
+             }
+             /* STATIC di tipo COMPOSTO (array, collezione, matrice): l'inizializzazione è
+              * l'emissione normale della DIM (allocazione dell'array, OP_NEW della collezione,
+              * ...), che deve però girare UNA volta sola: la si racchiude nel guard e si
+              * richiama st_dim con il flag disattivato (la ricorsione non rientra qui). */
+             ind(c);
+             sb_printf(&c->out, "if (!");
+             emit_ident(c, dv->name);
+             sb_printf(&c->out, "__inited) { ");
+             emit_ident(c, dv->name);
+             sb_put(&c->out, "__inited = 1;\n");
+             c->indent++;
+             dv->is_static = 0;
+             st_dim(c, s);
+             dv->is_static = 1;
+             c->indent--;
+             ind(c);
+             sb_put(&c->out, "}\n");
+             return;
+         }
          /* LOCAL che ombreggia una GLOBAL: dichiarazione C emessa QUI, non nel prologo,
           * così le istruzioni precedenti continuano a vedere la globale. */
          if (dv && dv->late_local) {
@@ -20014,7 +20591,7 @@ static void st_dim(ctx_t* c, gmb_stmt_t* s) {
              || s->dim_init->tk == GMB_TOK_MatrixAddColVector
              || s->dim_init->tk == GMB_TOK_MatrixLoadCsv
              || s->dim_init->tk == GMB_TOK_MatrixLoadJson
-             || s->dim_init->tk == GMB_TOK_Inverse
+             || (s->dim_init->tk == GMB_TOK_Inverse && call_ns_is_matrix(s->dim_init))
              || s->dim_init->tk == GMB_TOK_MatrixExp
              || s->dim_init->tk == GMB_TOK_MatrixSqrt
              || s->dim_init->tk == GMB_TOK_MatrixLogm
@@ -20127,26 +20704,16 @@ static void st_dim(ctx_t* c, gmb_stmt_t* s) {
                 else sb_put(&c->out, " = (gmb_fn_t){0};\n");
                 break;
             case GK_GEN:
-                /* DIM it = Generatore(args): la struct `gmb_gen_<id>_t` si costruisce coi
-                 * PARAMETRI del generatore nei campi omonimi (il corpo NON parte: lo step 0
-                 * lo avvia il primo NEXT). Prima si emetteva una CALL al nome del
-                 * generatore in posizione di assegnazione → valore double. */
+                /* DIM it = Generatore(args): costruisce l'HANDLE della coroutine (il corpo
+                 * parte al primo NEXT); i parametri viaggiano in un blob copiato da
+                 * gmb_gen_new. */
                 if (s->dim_init && s->dim_init->kind == GMB_EXPR_CALL && s->dim_init->var
                     && s->dim_init->nargs <= 8) {
                     fn_info_t* gf = find_fn(c, s->dim_init->var);
                     if (gf && gf->stmt && gf->stmt->is_generator) {
-                        sb_put(&c->out, " = (gmb_gen_");
-                        sb_ident(&c->out, dv->gen_id);
-                        sb_put(&c->out, "_t){");
-                        for (int ai = 0; ai < s->dim_init->nargs; ai++) {
-                            if (ai < gf->stmt->n_params && gf->stmt->func_params[ai]) {
-                                sb_put(&c->out, "."); sb_ident(&c->out, gf->stmt->func_params[ai]);
-                                sb_put(&c->out, " = ");
-                            }
-                            emit_expr(c, s->dim_init->args[ai]);
-                            sb_put(&c->out, ", ");
-                        }
-                        sb_put(&c->out, "};\n");
+                        sb_put(&c->out, " = ");
+                        emit_gen_make(c, dv->gen_id, gf, s->dim_init->args, s->dim_init->nargs);
+                        sb_put(&c->out, ";\n");
                         break;
                     }
                 }
@@ -20488,12 +21055,12 @@ static void st_if(ctx_t* c, gmb_stmt_t* s) {
         } else emit_num_operand(c, s->cond);
         sb_put(&c->out, ") {\n");
         c->indent++;
-        emit_list(c, s->then_body, s->n_then);
+        emit_block(c, s->then_body, s->n_then);
         c->indent--;
         if (s->n_else > 0) {
             ind(c); sb_put(&c->out, "} else {\n");
             c->indent++;
-            emit_list(c, s->else_body, s->n_else);
+            emit_block(c, s->else_body, s->n_else);
             c->indent--;
         }
         ind(c); sb_put(&c->out, "}\n");
@@ -20525,7 +21092,7 @@ static void st_for(ctx_t* c, gmb_stmt_t* s) {
                 ind(c);
                 emit_ident(c, rfv->name);
                 sb_printf(&c->out, " = __rv%d;\n", id);
-                emit_list(c, s->for_body, s->n_for);
+                emit_block(c, s->for_body, s->n_for);
                 emit_num_label(c, s->for_next_bas);
                 c->indent--;
                 ind(c); sb_put(&c->out, "}\n");
@@ -20575,7 +21142,7 @@ static void st_for(ctx_t* c, gmb_stmt_t* s) {
                     c99_fail(c, s->line, "FOR EACH REVERSE: fonte non supportata");
                     return;
                 }
-                emit_list(c, s->for_body, s->n_for);
+                emit_block(c, s->for_body, s->n_for);
                 emit_num_label(c, s->for_next_bas);
                 c->indent--;
                 ind(c); sb_put(&c->out, "}\n");
@@ -20621,7 +21188,7 @@ static void st_for(ctx_t* c, gmb_stmt_t* s) {
                 ind(c);
                 emit_ident(c, fv->name);
                 sb_printf(&c->out, " = __feL%d[__fe%d];\n", id, id);
-                emit_list(c, s->for_body, s->n_for);
+                emit_block(c, s->for_body, s->n_for);
                 emit_num_label(c, s->for_next_bas);
                 c->indent--;
                 ind(c); sb_put(&c->out, "}\n");
@@ -20652,7 +21219,7 @@ static void st_for(ctx_t* c, gmb_stmt_t* s) {
                 ind(c);
                 emit_ident(c, kfv->name);
                 sb_printf(&c->out, " = gmb_val_to_string(gmb_list_get(__feK%d, __fekI%d));\n", id, id);
-                emit_list(c, s->for_body, s->n_for);
+                emit_block(c, s->for_body, s->n_for);
                 emit_num_label(c, s->for_next_bas);
                 c->indent--;
                 ind(c); sb_put(&c->out, "}\n");
@@ -20713,7 +21280,7 @@ static void st_for(ctx_t* c, gmb_stmt_t* s) {
                     ind(c);
                     emit_ident(c, fv->name);
                     sb_printf(&c->out, " = gmb_string_char_at(__feS%d, __fe%d);\n", id, id);
-                    emit_list(c, s->for_body, s->n_for);
+                    emit_block(c, s->for_body, s->n_for);
                     emit_num_label(c, s->for_next_bas);
                     c->indent--;
                     ind(c); sb_put(&c->out, "}\n");
@@ -20757,7 +21324,7 @@ static void st_for(ctx_t* c, gmb_stmt_t* s) {
                 sb_put(&c->out, " = ");
                 if (elem_is_str) sb_printf(&c->out, "gmb_string_alloc(__fecv%d.v_string.data);\n", id);
                 else sb_printf(&c->out, "__fecv%d.v_int;\n", id);
-                emit_list(c, s->for_body, s->n_for);
+                emit_block(c, s->for_body, s->n_for);
                 emit_num_label(c, s->for_next_bas);
                 c->indent--;
                 ind(c); sb_put(&c->out, "}\n");
@@ -20796,7 +21363,7 @@ static void st_for(ctx_t* c, gmb_stmt_t* s) {
                     sb_put(&c->out, ") + 1) + ((gmb_int_t)(");
                     sb_printf(&c->out, "%d))];\n", cv);
                 }
-                emit_list(c, s->for_body, s->n_for);
+                emit_block(c, s->for_body, s->n_for);
                 emit_num_label(c, s->for_next_bas);
                 c->indent--;
                 ind(c); sb_put(&c->out, "}\n");
@@ -20847,7 +21414,7 @@ static void st_for(ctx_t* c, gmb_stmt_t* s) {
                     emit_var_ref(c, av);
                     sb_printf(&c->out, "[__feiv%d];\n", id);
                 }
-                emit_list(c, s->for_body, s->n_for);
+                emit_block(c, s->for_body, s->n_for);
                 emit_num_label(c, s->for_next_bas);
                 c->indent--;
                 ind(c); sb_put(&c->out, "}\n");
@@ -20985,7 +21552,7 @@ static void st_for(ctx_t* c, gmb_stmt_t* s) {
                         if (av->elem_str) sb_put(&c->out, ").v_string.data);\n");
                         else sb_put(&c->out, ").v_double;\n");
                     }
-                    emit_list(c, s->for_body, s->n_for);
+                    emit_block(c, s->for_body, s->n_for);
                     emit_num_label(c, s->for_next_bas);
                     c->indent--;
                     ind(c); sb_put(&c->out, "}\n");
@@ -21035,7 +21602,7 @@ static void st_for(ctx_t* c, gmb_stmt_t* s) {
                 sb_put(&c->out, " = gmb_string_char_at(");
                 sb_ident(&c->out, av->name);
                 sb_printf(&c->out, ", __fcs%d);\n", id);
-                emit_list(c, s->for_body, s->n_for);
+                emit_block(c, s->for_body, s->n_for);
                 emit_num_label(c, s->for_next_bas);
                 c->indent--;
                 ind(c); sb_put(&c->out, "}\n");
@@ -21070,7 +21637,7 @@ static void st_for(ctx_t* c, gmb_stmt_t* s) {
                 ind(c);
                 emit_ident(c, vfv->name);
                 sb_printf(&c->out, " = __jd.items[__fejd%d].value;\n", id);
-                emit_list(c, s->for_body, s->n_for);
+                emit_block(c, s->for_body, s->n_for);
                 emit_num_label(c, s->for_next_bas);
                 c->indent--;
                 ind(c); sb_put(&c->out, "}\n");
@@ -21108,7 +21675,7 @@ static void st_for(ctx_t* c, gmb_stmt_t* s) {
                 ind(c);
                 emit_ident(c, jfv->name);
                 sb_printf(&c->out, " = gmb_make_val_dict(__kvd%d);\n", id);
-                emit_list(c, s->for_body, s->n_for);
+                emit_block(c, s->for_body, s->n_for);
                 emit_num_label(c, s->for_next_bas);
                 c->indent--;
                 ind(c); sb_put(&c->out, "}\n");
@@ -21120,7 +21687,7 @@ static void st_for(ctx_t* c, gmb_stmt_t* s) {
                 ind(c);
                 emit_ident(c, jfv->name);
                 sb_printf(&c->out, " = __jf.items[__fej%d];\n", id);
-                emit_list(c, s->for_body, s->n_for);
+                emit_block(c, s->for_body, s->n_for);
                 emit_num_label(c, s->for_next_bas);
                 c->indent--;
                 ind(c); sb_put(&c->out, "}\n");
@@ -21157,7 +21724,7 @@ static void st_for(ctx_t* c, gmb_stmt_t* s) {
                     sb_printf(&c->out, " = __fehv%d;\n", hid);
                 else
                     sb_printf(&c->out, " = __fehv%d.v_double;\n", hid);
-                emit_list(c, s->for_body, s->n_for);
+                emit_block(c, s->for_body, s->n_for);
                 emit_num_label(c, s->for_next_bas);
                 c->indent--;
                 ind(c); sb_put(&c->out, "}\n");
@@ -21193,7 +21760,7 @@ static void st_for(ctx_t* c, gmb_stmt_t* s) {
                         c->imap_type[c->n_imap] = -1;
                         c->n_imap++;
                     }
-                    emit_list(c, s->for_body, s->n_for);
+                    emit_block(c, s->for_body, s->n_for);
                     if (c->n_imap > 0 && c->imap_name[c->n_imap - 1] == s->for_var) {
                         free((void*)c->imap_expr[c->n_imap - 1]);
                         c->n_imap--;
@@ -21223,7 +21790,7 @@ static void st_for(ctx_t* c, gmb_stmt_t* s) {
                     sb_put(&c->out, " = gmb_list_get(");
                     sb_ident(&c->out, av->name);
                     sb_printf(&c->out, ", __feo%d);\n", id);
-                    emit_list(c, s->for_body, s->n_for);
+                    emit_block(c, s->for_body, s->n_for);
                     emit_num_label(c, s->for_next_bas);
                     c->indent--;
                     ind(c); sb_put(&c->out, "}\n");
@@ -21295,7 +21862,7 @@ static void st_for(ctx_t* c, gmb_stmt_t* s) {
                     else
                         sb_printf(&c->out, ", __fel%d).v_double;\n", id);
                 }
-                emit_list(c, s->for_body, s->n_for);
+                emit_block(c, s->for_body, s->n_for);
                 if (mismatch && c->n_imap > 0 && c->imap_name[c->n_imap - 1] == lfv2->name) {
                     free((void*)c->imap_expr[c->n_imap - 1]);
                     c->n_imap--;
@@ -21353,7 +21920,7 @@ static void st_for(ctx_t* c, gmb_stmt_t* s) {
                                     c->imap_type[c->n_imap] = -1;
                                     c->n_imap++;
                                 }
-                                emit_list(c, s->for_body, s->n_for);
+                                emit_block(c, s->for_body, s->n_for);
                                 if (c->n_imap > 0 && c->imap_name[c->n_imap - 1] == s->for_var) {
                                     free((void*)c->imap_expr[c->n_imap - 1]);
                                     c->n_imap--;
@@ -21405,7 +21972,7 @@ static void st_for(ctx_t* c, gmb_stmt_t* s) {
                             ind(c);
                             emit_ident(c, lfv->name);
                             sb_printf(&c->out, " = gmb_list_get(__feL%d, __fel%d);\n", id, id);
-                            emit_list(c, s->for_body, s->n_for);
+                            emit_block(c, s->for_body, s->n_for);
                             emit_num_label(c, s->for_next_bas);
                             c->indent--;
                             ind(c); sb_put(&c->out, "}\n");
@@ -21496,7 +22063,7 @@ static void st_for(ctx_t* c, gmb_stmt_t* s) {
                     sb_printf(&c->out, "[_fri%d] = (%s)gmb_list_get(__femrow%d, _fri%d).v_double; }\n",
                               mid, ctype_name(mfv->type), mid, mid);
                 }
-                emit_list(c, s->for_body, s->n_for);
+                emit_block(c, s->for_body, s->n_for);
                 emit_num_label(c, s->for_next_bas);
                 c->indent--;
                 ind(c); sb_put(&c->out, "}\n");
@@ -21568,7 +22135,7 @@ static void st_for(ctx_t* c, gmb_stmt_t* s) {
                 }
                 fv->type = av->type;
             }
-            emit_list(c, s->for_body, s->n_for);
+            emit_block(c, s->for_body, s->n_for);
             emit_num_label(c, s->for_next_bas);
             if (shadow) {
                 if (c->n_imap > 0 && c->imap_name[c->n_imap - 1] == fv->name) c->n_imap--;
@@ -21617,7 +22184,7 @@ static void st_for(ctx_t* c, gmb_stmt_t* s) {
         emit_ident(c, fv->name);
         sb_printf(&c->out, " += __step%d) {\n", id);
         c->indent++;
-        emit_list(c, s->for_body, s->n_for);
+        emit_block(c, s->for_body, s->n_for);
         emit_num_label(c, s->for_next_bas);
         /* Alias continue per `CONTINUE X` (canone 2026-09-30): qui cade nell'incremento
          * del for (snapshot forlab: cur cambia nei corpi annidati). Solo se etichettato. */
@@ -21649,7 +22216,7 @@ static void st_while(ctx_t* c, gmb_stmt_t* s) {
         emit_expr(c, s->cond);
         sb_put(&c->out, ") {\n");
         c->indent++;
-        emit_list(c, s->while_body, s->n_while);
+        emit_block(c, s->while_body, s->n_while);
         c->indent--;
         ind(c); sb_put(&c->out, "}\n");
         return;
@@ -21669,7 +22236,7 @@ static void st_do(ctx_t* c, gmb_stmt_t* s) {
             emit_expr(c, s->do_while);
             sb_put(&c->out, ")) {\n");
             c->indent++;
-            emit_list(c, s->do_body, s->n_do);
+            emit_block(c, s->do_body, s->n_do);
             if (s->flag == 2) {
                 /* TICK <rate>: frame limiter + present UNA volta per frame
                  * (prima il rate era ignorato → loop a migliaia di fps). */
@@ -21685,7 +22252,7 @@ static void st_do(ctx_t* c, gmb_stmt_t* s) {
              * in coda (salta al test, non al corpo). */
             ind(c); sb_put(&c->out, "do {\n");
             c->indent++;
-            emit_list(c, s->do_body, s->n_do);
+            emit_block(c, s->do_body, s->n_do);
             c->indent--;
             if (mylab[0]) { ind(c); sb_put(&c->out, "lbl_"); sb_put(&c->out, mylab); sb_put(&c->out, "_CONTINUE: ;\n"); }
             ind(c); sb_put(&c->out, "} while (");
@@ -21892,9 +22459,14 @@ static void st_on_error(ctx_t* c, gmb_stmt_t* s) {
             int id = ++c->err_uid;
             err_decl_record(c, id);   /* dichiarazione nel prologo (scope funzione) */
             ind(c); sb_printf(&c->out, "gmb_err_set_handler(&__err%d);\n", id);
-            ind(c); sb_printf(&c->out, "if (setjmp(__err%d) != 0) goto lbl_", id);
+            ind(c); sb_printf(&c->out, "if (setjmp(__err%d) != 0) {\n", id);
+            c->indent++;
+            emit_trace_restore(c);   /* il salto ha scavalcato i cleanup dei frame interni */
+            ind(c); sb_put(&c->out, "goto lbl_");
             emit_ident(c, s->target_label);
             sb_put(&c->out, ";\n");
+            c->indent--;
+            ind(c); sb_put(&c->out, "}\n");
             return;
         }
         if (strcmp(ok, "ERROR_RESUME_HANDLER") == 0) {
@@ -22131,7 +22703,12 @@ static void st_try(ctx_t* c, gmb_stmt_t* s) {
         ind(c); sb_printf(&c->out, "if (setjmp(__trybuf_%d) == 0) {\n", id);
         c->indent++;
         c->try_depth++;
-        emit_list(c, s->try_body, s->n_try);
+        /* registra il TRY attivo: un RETURN nel corpo deve ripristinare l'handler, altrimenti
+         * resta installato un jmp_buf di un frame morto (SIGSEGV al primo errore non gestito
+         * successivo — bug misurato, vedi emit_fn_return). */
+        if (c->n_try_ids < 16) c->try_ids[c->n_try_ids++] = id;
+        emit_block(c, s->try_body, s->n_try);
+        if (c->n_try_ids > 0) c->n_try_ids--;
         c->try_depth--;
         ind(c); sb_printf(&c->out, "gmb_err_set_handler(__tryprev_%d);\n", id);
         c->indent--;
@@ -22150,6 +22727,11 @@ static void st_try(ctx_t* c, gmb_stmt_t* s) {
          * corpo del TRY: il puntatore resterebbe su un jmp_buf di un frame morto e un successivo
          * `ON ERROR RESUME NEXT` (gmb_err_resume_next) vi farebbe longjmp (stack corrotto). */
         ind(c); sb_put(&c->out, "gmb_err_set_resume(NULL);\n");
+        /* STACK TRACE: il longjmp ha saltato i `cleanup` dei frame più interni (che non
+         * esistono più). Si riporta la catena al frame di QUESTA procedura: senza, il primo
+         * statement del CATCH aggiornerebbe la riga di un frame morto e un errore successivo
+         * riporterebbe una catena sbagliata. */
+        emit_trace_restore(c);
         if (s->n_catch == 0) {
             ind(c); sb_printf(&c->out, "__err_active_%d = 1; __err_num_%d = gmb_err_number(); __err_desc_%d = gmb_err_description(); __err_line_%d = gmb_err_line();\n",
                                id, id, id, id);
@@ -22274,7 +22856,7 @@ static void st_try(ctx_t* c, gmb_stmt_t* s) {
                         }
                     }
                 }
-                emit_list(c, cl->catch_body, cl->n_catch);
+                emit_block(c, cl->catch_body, cl->n_catch);
                 c->n_catch_names = saved_names;
                 if (is_class_clause) {
                     if (had_var) { var_t* now = vars_find(sc, cvar); if (now) *now = saved_var; }
@@ -22307,7 +22889,7 @@ static void st_try(ctx_t* c, gmb_stmt_t* s) {
             ind(c); sb_printf(&c->out, "gmb_err_set_handler(__tryprev_%d);\n", id);
             ind(c); sb_printf(&c->out, "{ gmb_task_t* __uft_%d = gmb_cur(); if (__uft_%d) __uft_%d->unwind_top = __uf_%d.prev; }\n",
                                id, id, id, id);
-            emit_list(c, s->finally_body, s->n_finally);
+            emit_block(c, s->finally_body, s->n_finally);
             if (s->n_catch == 0)
                 ind(c); sb_printf(&c->out, "if (__err_active_%d) gmb_raise_error(__err_num_%d, __err_desc_%d, __err_line_%d);\n",
                                    id, id, id, id);
@@ -22435,14 +23017,14 @@ static void st_select(ctx_t* c, gmb_stmt_t* s) {
             sb_put(&c->out, ")) {\n");
             c->indent++;
             ind(c); sb_printf(&c->out, "__selm%d = 1;\n", id);
-            emit_list(c, cs->case_body, cs->n_case_body);
+            emit_block(c, cs->case_body, cs->n_case_body);
             c->indent--;
             ind(c); sb_put(&c->out, "}\n");
         }
         if (else_case && !c->error[0]) {
             ind(c); sb_printf(&c->out, "if (!__selm%d) {\n", id);
             c->indent++;
-            emit_list(c, else_case->case_body, else_case->n_case_body);
+            emit_block(c, else_case->case_body, else_case->n_case_body);
             c->indent--;
             ind(c); sb_put(&c->out, "}\n");
         }
@@ -26304,6 +26886,38 @@ static void st_aiserver(ctx_t* c, gmb_stmt_t* s) {
  * gmb_moestream_stmt_* del runtime condiviso (dlopen libgmb_ai_moestream). Statement: esito
  * scartato; errore esplicito via gmb_raise_error. go_args = termini (nome, path/MB/topn/modo...).
  * (Ripristinati 2026-09-25: erano stati rimossi per errore insieme al formato .gmoe.) */
+/* Testo d'errore PER VERBO di `LLM MODEL …`, identico alla gamba VM/C (gmb_builtin.c:
+ * gmb_bf_aimodel*_c35xx). Prima qui ogni verbo finiva sul generico "AI MODEL: operazione
+ * fallita", quindi — a codice ormai uniforme — il testo non coincideva con nessuna gamba. */
+static const char* aimodel_err_msg(int kind) {
+    switch (kind) {
+    case GMB_STMT_AIMODEL_LOAD:       return "LLM MODEL LOAD: modello non valido o non trovato";
+    case GMB_STMT_AIMODEL_UNLOAD:     return "LLM MODEL UNLOAD fallito";
+    case GMB_STMT_AIMODEL_CACHE:      return "LLM MODEL CACHE fallito";
+    case GMB_STMT_AIMODEL_PREFETCH:   return "LLM MODEL PREFETCH fallito";
+    case GMB_STMT_AIMODEL_DEVICE:     return "LLM MODEL DEVICE non disponibile";
+    case GMB_STMT_AIMODEL_CONVERT:    return "LLM MODEL CONVERT: conversione fallita";
+    case GMB_STMT_AIMODEL_SAVE:       return "LLM MODEL SAVE fallito";
+    case GMB_STMT_AIMODEL_ABLATE:     return "LLM MODEL ABLATE fallito";
+    case GMB_STMT_AIMODEL_REMOVE:     return "LLM MODEL REMOVE fallito";
+    case GMB_STMT_AIMODEL_DIFF:       return "LLM MODEL DIFF fallito";
+    case GMB_STMT_AIMODEL_CHECKPOINT: return "LLM MODEL CHECKPOINT fallito";
+    case GMB_STMT_AIMODEL_ROLLBACK:   return "LLM MODEL ROLLBACK fallito";
+    case GMB_STMT_AIMODEL_ADD:        return "LLM MODEL ADD fallito";
+    case GMB_STMT_AIMODEL_ADAPTER:    return "LLM MODEL ADAPTER fallito";
+    case GMB_STMT_AIMODEL_MODULE:     return "LLM MODEL MODULE fallito";
+    case GMB_STMT_AIMODEL_MODALITY:   return "LLM MODEL MODALITY fallito";
+    case GMB_STMT_AIMODEL_VALIDATE:   return "LLM MODEL VALIDATE fallito";
+    case GMB_STMT_AIMODEL_TRACE:      return "LLM MODEL TRACE fallito";
+    case GMB_STMT_AIMODEL_PROMOTE:    return "LLM MODEL PROMOTE fallito";
+    case GMB_STMT_AIMODEL_DEMOTE:     return "LLM MODEL DEMOTE fallito";
+    /* INSPECT/QUANTIZE sono verbi `AI MODEL …` (non LLM) con il testo della VM/C. */
+    case GMB_STMT_AIMODEL_INSPECT:    return "AI MODEL INSPECT fallito";
+    case GMB_STMT_AIMODEL_QUANTIZE:   return "AI MODEL QUANTIZE fallito";
+    default:                          return "AI MODEL: operazione fallita";
+    }
+}
+
 static void st_aimodel(ctx_t* c, gmb_stmt_t* s) {
     gmb_expr_t** a = s->go_args;
     int na = s->n_go_args;
@@ -26314,7 +26928,10 @@ static void st_aimodel(ctx_t* c, gmb_stmt_t* s) {
         sb_put(&c->out, "gmb_moestream_stmt_load(");
         if (na >= 1) { emit_str_operand(c, a[0]); sb_put(&c->out, ".data"); } else sb_put(&c->out, "\"\"");
         sb_put(&c->out, ", ");
-        if (na >= 2) { emit_str_operand(c, a[1]); sb_put(&c->out, ".data"); } else sb_put(&c->out, "\"\"");
+        /* PATH del modello: passa dal risolutore del runtime (`path.models_root`, `~`, `%MODELS%`).
+         * Il PRIMO argomento di LOAD resta il nome registrato, e lo stesso vale per UNLOAD/CACHE/
+         * PREFETCH/DEVICE/PROMOTE/DEMOTE: quelli NON sono path e non si risolvono. */
+        if (na >= 2) { sb_put(&c->out, "gmb_paths_model_q("); emit_str_operand(c, a[1]); sb_put(&c->out, ".data)"); } else sb_put(&c->out, "\"\"");
         sb_printf(&c->out, ", %d)", na >= 3 ? 1 : 0);
         break;
     case GMB_STMT_AIMODEL_UNLOAD:
@@ -26349,13 +26966,14 @@ static void st_aimodel(ctx_t* c, gmb_stmt_t* s) {
             /* STATEMENT-EXPRESSION (GNU): il valore del comando viene assegnato a `int __ms_rc = …`
              * dal wrapper, quindi qui si DEVE produrre un'ESPRESSIONE, non un blocco-statement. */
             sb_put(&c->out, "({ int _cvrc = llmmodelio_model_convert(");
-            emit_str_operand(c, a[0]); sb_put(&c->out, ".data, ");
+            sb_put(&c->out, "gmb_paths_model_q("); emit_str_operand(c, a[0]); sb_put(&c->out, ".data)");
+            sb_put(&c->out, ", ");
             emit_str_operand(c, a[1]); sb_put(&c->out, ".data, ");
             emit_str_operand(c, a[2]); sb_put(&c->out, ".data);");
-            sb_printf(&c->out, " if (_cvrc != 0) gmb_raise_error(_cvrc, \"LLM MODEL CONVERT fallita\", %d); _cvrc; })", s->line);
+            sb_printf(&c->out, " if (_cvrc != 0) gmb_raise_error(5, \"LLM MODEL CONVERT: conversione fallita\", %d); _cvrc; })", s->line);
         } else {
             sb_put(&c->out, "llmmodelio_model_convert(");
-            if (na >= 1) { emit_str_operand(c, a[0]); sb_put(&c->out, ".data"); } else sb_put(&c->out, "\"\"");
+            if (na >= 1) { sb_put(&c->out, "gmb_paths_model_q("); emit_str_operand(c, a[0]); sb_put(&c->out, ".data)"); } else sb_put(&c->out, "\"\"");
             sb_put(&c->out, ", ");
             if (na >= 2) { emit_str_operand(c, a[1]); sb_put(&c->out, ".data"); } else sb_put(&c->out, "\"\"");
             sb_put(&c->out, ", \"GGUF\")");   /* il runtime richiede il 3o arg `fmt` (2 argomenti = GGUF) */
@@ -26363,19 +26981,19 @@ static void st_aimodel(ctx_t* c, gmb_stmt_t* s) {
         break;
     case GMB_STMT_AIMODEL_INSPECT:
         sb_put(&c->out, "gmb_moestream_stmt_inspect(");
-        if (na >= 1) { emit_str_operand(c, a[0]); sb_put(&c->out, ".data"); } else sb_put(&c->out, "\"\"");
+        if (na >= 1) { sb_put(&c->out, "gmb_paths_model_q("); emit_str_operand(c, a[0]); sb_put(&c->out, ".data)"); } else sb_put(&c->out, "\"\"");
             sb_put(&c->out, ")");
         break;
     case GMB_STMT_AIMODEL_SAVE:   /* LLM MODEL SAVE <in>, <out> — model compiler (round-trip GGUF) */
         sb_put(&c->out, "llmmodelio_model_save(");
-        if (na >= 1) { emit_str_operand(c, a[0]); sb_put(&c->out, ".data"); } else sb_put(&c->out, "\"\"");
+        if (na >= 1) { sb_put(&c->out, "gmb_paths_model_q("); emit_str_operand(c, a[0]); sb_put(&c->out, ".data)"); } else sb_put(&c->out, "\"\"");
         sb_put(&c->out, ", ");
         if (na >= 2) { emit_str_operand(c, a[1]); sb_put(&c->out, ".data"); } else sb_put(&c->out, "\"\"");
             sb_put(&c->out, ")");
         break;
     case GMB_STMT_AIMODEL_ABLATE:  /* LLM MODEL ABLATE <in>, <out>, <pattern> — model surgery MODIFICARE */
         sb_put(&c->out, "llmmodelio_model_ablate(");
-        if (na >= 1) { emit_str_operand(c, a[0]); sb_put(&c->out, ".data"); } else sb_put(&c->out, "\"\"");
+        if (na >= 1) { sb_put(&c->out, "gmb_paths_model_q("); emit_str_operand(c, a[0]); sb_put(&c->out, ".data)"); } else sb_put(&c->out, "\"\"");
         sb_put(&c->out, ", ");
         if (na >= 2) { emit_str_operand(c, a[1]); sb_put(&c->out, ".data"); } else sb_put(&c->out, "\"\"");
         sb_put(&c->out, ", ");
@@ -26384,7 +27002,7 @@ static void st_aimodel(ctx_t* c, gmb_stmt_t* s) {
         break;
     case GMB_STMT_AIMODEL_REMOVE:  /* LLM MODEL ABLATE <in>, <out>, <pattern> — model surgery MODIFICARE */
         sb_put(&c->out, "llmmodelio_model_remove_layer(");
-        if (na >= 1) { emit_str_operand(c, a[0]); sb_put(&c->out, ".data"); } else sb_put(&c->out, "\"\"");
+        if (na >= 1) { sb_put(&c->out, "gmb_paths_model_q("); emit_str_operand(c, a[0]); sb_put(&c->out, ".data)"); } else sb_put(&c->out, "\"\"");
         sb_put(&c->out, ", ");
         if (na >= 2) { emit_str_operand(c, a[1]); sb_put(&c->out, ".data"); } else sb_put(&c->out, "\"\"");
         sb_put(&c->out, ", ");
@@ -26393,7 +27011,7 @@ static void st_aimodel(ctx_t* c, gmb_stmt_t* s) {
         break;
     case GMB_STMT_AIMODEL_DIFF:   /* LLM MODEL DIFF <a>, <b>, <out> — checkpoint/rollback */
         sb_put(&c->out, "llmmodelio_model_diff(");
-        if (na >= 1) { emit_str_operand(c, a[0]); sb_put(&c->out, ".data"); } else sb_put(&c->out, "\"\"");
+        if (na >= 1) { sb_put(&c->out, "gmb_paths_model_q("); emit_str_operand(c, a[0]); sb_put(&c->out, ".data)"); } else sb_put(&c->out, "\"\"");
         sb_put(&c->out, ", ");
         if (na >= 2) { emit_str_operand(c, a[1]); sb_put(&c->out, ".data"); } else sb_put(&c->out, "\"\"");
         sb_put(&c->out, ", ");
@@ -26402,7 +27020,7 @@ static void st_aimodel(ctx_t* c, gmb_stmt_t* s) {
         break;
     case GMB_STMT_AIMODEL_CHECKPOINT:  /* LLM MODEL CHECKPOINT <src>, <store>, <name> */
         sb_put(&c->out, "llmmodelio_model_checkpoint(");
-        if (na >= 1) { emit_str_operand(c, a[0]); sb_put(&c->out, ".data"); } else sb_put(&c->out, "\"\"");
+        if (na >= 1) { sb_put(&c->out, "gmb_paths_model_q("); emit_str_operand(c, a[0]); sb_put(&c->out, ".data)"); } else sb_put(&c->out, "\"\"");
         sb_put(&c->out, ", ");
         if (na >= 2) { emit_str_operand(c, a[1]); sb_put(&c->out, ".data"); } else sb_put(&c->out, "\"\"");
         sb_put(&c->out, ", ");
@@ -26498,7 +27116,10 @@ static void st_aimodel(ctx_t* c, gmb_stmt_t* s) {
         break;
     }
     sb_put(&c->out, ";\n");
-    ind(c); sb_put(&c->out, "if (__ms_rc != 0) gmb_raise_error(0, \"AI MODEL: operazione fallita\", ");
+    /* Codice UNIFORME (5) e TESTO PER VERBO, entrambi presi dalla gamba VM/C: prima qui si
+     * alzava 0 (o l'rc grezzo della libreria) con un generico "AI MODEL: operazione fallita"
+     * per ogni verbo, mentre VM/C distingue LOAD/UNLOAD/SAVE/… */
+    ind(c); sb_printf(&c->out, "if (__ms_rc != 0) gmb_raise_error(5, \"%s\", ", aimodel_err_msg((int)s->kind));
     sb_printf(&c->out, "%d);\n", s->line);
     c->indent--; ind(c); sb_put(&c->out, "}\n");
 }
@@ -26623,7 +27244,10 @@ static void emit_llm_call_open(ctx_t* c) {
 }
 static void emit_llm_call_close(ctx_t* c, gmb_stmt_t* s, const char* cmd_label) {
     sb_put(&c->out, ";\n");
-    ind(c); sb_printf(&c->out, "if (_llmrc != 0) gmb_raise_error(_llmrc, \"LLM verbo fallito\", %d);\n", s->line);
+    /* Codice UNIFORME sulle quattro gambe: la libreria torna -1, ma ERR.Number deve essere 5
+     * (illegal function call) come su IL/PCode/VM/C. Prima `_llmrc` finiva in ERR.Number, per
+     * cui lo stesso verbo fallito dava -1 qui, 200 su IL/PCode e 0 su VM/C. */
+    ind(c); sb_printf(&c->out, "if (_llmrc != 0) gmb_raise_error(5, \"LLM verbo fallito\", %d);\n", s->line);
     ind(c); sb_put(&c->out, "}\n");
 }
 static void emit_ai_domain(ctx_t* c, gmb_stmt_t* s) {
@@ -26769,7 +27393,9 @@ static void emit_ai_domain(ctx_t* c, gmb_stmt_t* s) {
         else if (vk0 == GMB_TOK_LlmKernel) fam = 4;
         else if (vk0 == GMB_TOK_LlmKv) fam = 5;
         if (fam >= 0) {
-            const char* sub = (n >= 1 && a[0] && a[0]->var) ? a[0]->var : "";
+            /* Sotto-verbo letterale: parola nuda o stringa fra virgolette (stessa parità del
+             * blocco `LLM ARCH` qui sopra, 2026-11-11). */
+            const char* sub = (n >= 1 && a[0]) ? (a[0]->var ? a[0]->var : (a[0]->str ? a[0]->str : "")) : "";
             /* TOKENS/DETOKENIZE hanno il ritorno "pulito" (id / testo) dal dominio tokenizer. */
             if (fam == 0 && (strcasecmp(sub, "TOKENS") == 0 || strcasecmp(sub, "TOKENIZE") == 0 ||
                              strcasecmp(sub, "DETOKENIZE") == 0 || strcasecmp(sub, "DETOK") == 0)) {
@@ -26958,7 +27584,10 @@ static void emit_ai_domain(ctx_t* c, gmb_stmt_t* s) {
      * il compilatore risolve la descrizione del modello dal config; lo script non vede il file. */
     if (gmb_keyword_tok(verb) == GMB_TOK_LlmArch) {
         if (n == 0) { c99_fail(c, s->line, "LLM ARCH: atteso RESOLVE <dir> | SHOW | LIST | CHECK <dir>"); return; }
-        const char* sub = (a[0] && a[0]->var) ? a[0]->var : "";
+        /* Il sotto-verbo è un LETTERALE: parola nuda (`LLM ARCH CHECK "dir"`) oppure stringa fra
+         * virgolette (`LLM ARCH "CHECK" "dir"`) — quest'ultima forma è quella richiesta dal
+         * compilatore chunk/VM-C, quindi si accettano ENTRAMBE per parità (2026-11-11). */
+        const char* sub = (a[0] && a[0]->var) ? a[0]->var : ((a[0] && a[0]->str) ? a[0]->str : "");
         if (strcasecmp(sub, "RESOLVE") == 0) {
             if (n < 2) { c99_fail(c, s->line, "LLM ARCH RESOLVE: atteso <hf_dir>"); return; }
             emit_llm_call_open(c);
@@ -27040,7 +27669,17 @@ static void emit_ai_domain(ctx_t* c, gmb_stmt_t* s) {
         }
         emit_llm_call_open(c);
         sb_printf(&c->out, "%s(\"%s\", ", fn, sub);
-        if (n >= 2) { emit_str_operand(c, a[1]); sb_put(&c->out, ".data"); } else sb_put(&c->out, "gmb_string_alloc(\"\").data");
+        /* Il PRIMO argomento di TENSOR LOGITS/TOPK/QUALITY/USAGEEVAL è una DIR di modello: passa dal
+         * risolutore del runtime (`gmb_paths_model_q`), che applica l'opzione `path.models_root` ed
+         * espande `~`/`%MODELS%`. Gli altri sotto-verbi di TENSOR e quelli di KERNEL/MODULE/KV non
+         * ricevono un path (nomi di tensori, coefficienti, strutture), quindi restano com'erano. */
+        if (vk == GMB_TOK_LlmTensor &&
+            (strcasecmp(sub, "LOGITS") == 0 || strcasecmp(sub, "TOPK") == 0 ||
+             strcasecmp(sub, "QUALITY") == 0 || strcasecmp(sub, "USAGEEVAL") == 0)) {
+            if (n >= 2) { sb_put(&c->out, "gmb_paths_model_q("); emit_str_operand(c, a[1]); sb_put(&c->out, ".data)"); }
+            else        { sb_put(&c->out, "gmb_string_alloc(\"\").data"); }
+        }
+        else if (n >= 2) { emit_str_operand(c, a[1]); sb_put(&c->out, ".data"); } else sb_put(&c->out, "gmb_string_alloc(\"\").data");
         sb_put(&c->out, ", ");
         if (n >= 3) { emit_str_operand(c, a[2]); sb_put(&c->out, ".data"); } else sb_put(&c->out, "gmb_string_alloc(\"\").data");
         /* TENSOR ha un 4° argomento opzionale (es. bpw di AUTOGATE); KERNEL/MODULE/KV no. */
@@ -31017,7 +31656,7 @@ static void st_goselect(ctx_t* c, gmb_stmt_t* s) {
              * dell'int come double, garbage). */
             else sb_printf(&c->out, " = gmb_val_to_double(__sel_v%d);\n", k);
             if (ov) { ind(c); emit_net_lhs(c, ov); sb_printf(&c->out, " = __sel_ok%d;\n", k); }
-            emit_list(c, s->go_cases[k].body, s->go_cases[k].n_body);
+            emit_block(c, s->go_cases[k].body, s->go_cases[k].n_body);
             ind(c); sb_printf(&c->out, "goto %s;\n", doneL);
             c->indent--; ind(c); sb_put(&c->out, "}\n");
             c->indent--; ind(c); sb_put(&c->out, "}\n");
@@ -31029,7 +31668,7 @@ static void st_goselect(ctx_t* c, gmb_stmt_t* s) {
             ind(c); sb_put(&c->out, "{\n"); c->indent++;
             ind(c); sb_printf(&c->out, "if (gmb_chan_trysend(%s, %s)) {\n", chanT[k], valT[k]);
             c->indent++;
-            emit_list(c, s->go_cases[k].body, s->go_cases[k].n_body);
+            emit_block(c, s->go_cases[k].body, s->go_cases[k].n_body);
             ind(c); sb_printf(&c->out, "goto %s;\n", doneL);
             c->indent--; ind(c); sb_put(&c->out, "}\n");
             c->indent--; ind(c); sb_put(&c->out, "}\n");
@@ -31038,14 +31677,14 @@ static void st_goselect(ctx_t* c, gmb_stmt_t* s) {
         if (tc >= 0) {
             ind(c); sb_printf(&c->out, "if (gmb_c99_now_ms() >= __gs_%d_deadline) {\n", id);
             c->indent++;
-            emit_list(c, s->go_cases[tc].body, s->go_cases[tc].n_body);
+            emit_block(c, s->go_cases[tc].body, s->go_cases[tc].n_body);
             ind(c); sb_printf(&c->out, "goto %s;\n", doneL);
             c->indent--; ind(c); sb_put(&c->out, "}\n");
         }
         /* FASE 3: DEFAULT non bloccante */
         for (int k = 0; k < n; k++) {
             if (s->go_cases[k].comm) continue;
-            emit_list(c, s->go_cases[k].body, s->go_cases[k].n_body);
+            emit_block(c, s->go_cases[k].body, s->go_cases[k].n_body);
             ind(c); sb_printf(&c->out, "goto %s;\n", doneL);
         }
         /* FASE 4: park su tutti i canali + dispatch winner; altrimenti retry */
@@ -31085,7 +31724,7 @@ static void st_goselect(ctx_t* c, gmb_stmt_t* s) {
                     else sb_printf(&c->out, " = gmb_val_to_double(__gs_sel%d->winner_val);\n", id);
                     if (ov) { ind(c); emit_net_lhs(c, ov); sb_printf(&c->out, " = __gs_sel%d->winner_ok;\n", id); }
                 }
-                emit_list(c, s->go_cases[k].body, s->go_cases[k].n_body);
+                emit_block(c, s->go_cases[k].body, s->go_cases[k].n_body);
                 ind(c); sb_put(&c->out, "break;\n");
                 c->indent--;
             }
@@ -31137,12 +31776,18 @@ static void st_read(ctx_t* c, gmb_stmt_t* s) {
             else { ind(c); sb_put(&c->out, "gmb_read_run(gmb_read_active());\n"); }
             for (int k = 0; k < c->n_read_vars; k++) {
                 const char* vn = c->read_vars[k]; int is_str = c->read_is_str[k];
+                /* GET ... WHEN falso → campo saltato: la variabile resta INVARIATA (non va
+                 * riassegnata col testo del campo, che è vuoto). Parità IL/PCode/VM-C. */
+                ind(c); sb_printf(&c->out, "if (!gmb_read_field_skipped(%d)) {\n", k);
+                c->indent++;
                 if (gmb_c99_dyn_is(c, vn)) {
                     ind(c);
                     sb_printf(&c->out, "gmb_dscope_set(\"%s\", %s(gmb_read_value_at(%d)%s));\n",
                               vn, is_str ? "gmb_make_val_string" : "gmb_make_val_double(gmb_string_to_double(gmb_string_alloc",
                               k, is_str ? "" : "))");
                     if (!is_str) { /* parentesi extra già incluse sopra */ }
+                    c->indent--;
+                    ind(c); sb_put(&c->out, "}\n");
                     continue;
                 }
                 var_t* v = lookup_var(c, vn);
@@ -31151,6 +31796,8 @@ static void st_read(ctx_t* c, gmb_stmt_t* s) {
                 emit_ident(c, vn);
                 if (is_str) sb_printf(&c->out, " = gmb_string_alloc(gmb_read_value_at(%d));\n", k);
                 else sb_printf(&c->out, " = gmb_string_to_double(gmb_string_alloc(gmb_read_value_at(%d)));\n", k);
+                c->indent--;
+                ind(c); sb_put(&c->out, "}\n");
             }
             if (nv > 0) {
                 ind(c); sb_put(&c->out, "if (_gmb_rst != 1) break;\n");
@@ -31444,6 +32091,8 @@ static void st_print(ctx_t* c, gmb_stmt_t* s) {
     if (cp) { ind(c); sb_put(&c->out, "gmb_print_force_console(0);\n"); }
 }
 
+static void st_yield(ctx_t* c, gmb_stmt_t* s);   /* YIELD: coroutine del generatore (sotto) */
+
 static const ST_EMIT_TBL_row ST_EMIT_TBL[] = {
     { GMB_STMT_PRINT, st_print },
     { GMB_STMT_MMAP_POKE, st_mmap_poke },
@@ -31464,6 +32113,7 @@ static const ST_EMIT_TBL_row ST_EMIT_TBL[] = {
     { GMB_STMT_ON_WINDOW, st_on_window },
     { GMB_STMT_ERROR, st_error },
     { GMB_STMT_THROW, st_throw },
+    { GMB_STMT_YIELD, st_yield },
     { GMB_STMT_TRY, st_try },
     { GMB_STMT_USING, st_using },
     { GMB_STMT_SELECT, st_select },
@@ -31843,204 +32493,87 @@ static void emit_stmt(ctx_t* c, gmb_stmt_t* s) {
 
 
 /* ─────────────────────────── emissione funzioni ─────────────────────────── */
-
 /* ============================================================================
- * GENERATORI (2026-09-06) — mirror emitter C# EmitGenerator: struct di stato +
- * `void gmb_user_<id>_step(gmb_gen_<id>_t*)` con `switch(g->step)`. I loop che
- * contengono YIELD sono APPIATTITI (goto/label top-level, mai `{}` annidati) così
- * i `case K:` di resume restano legali a livello del switch. YIELD = writeback
- * locali + `g->step=K; return;`, resume da `case K:`.
+ * GENERATORI (2026-11-14) — COROUTINA dedicata, guidata sincronamente da NEXT.
+ *
+ * PRIMA: macchina a stati (`gmb_user_<id>_step` con `switch(g->step)`, loop appiattiti in
+ * goto/label). Quel design imponeva un SOTTOINSIEME di istruzioni:
+ *   - niente TRY/CATCH: i `case K:` di ripresa devono stare al livello dello `switch` e un
+ *     `setjmp` non sopravvive al `return` di YIELD (il jmp_buf punta a un frame morto);
+ *   - niente DEFER (serve un epilogo di uscita unico) né FOR EACH/SELECT (blocchi annidati);
+ *   - i locali andavano copiati a mano nella struct (solo DIM/FOR, solo scalari).
+ *
+ * ORA: il corpo è una funzione C NORMALE eseguita su uno stack PROPRIO (coroutine stackful
+ * del runtime: `gmb_gen_*` in gmb_runtime_c/src/gmb_c99gpm.c) e `YIELD` sospende cambiando
+ * contesto. Quindi TRY/CATCH, FOR EACH, DEFER, ERRDEFER, SELECT… funzionano senza codice
+ * dedicato e i locali vivono sullo stack della coroutine (nessun writeback). È lo stesso
+ * meccanismo di VM/C, che guida il task del generatore tick-per-tick da NEXT; qui nessuno
+ * scheduler: solo il chiamante di NEXT guida la coroutine.
+ *
+ *   typedef struct { gmb_double_t n; } gmb_gen_G_params_t;   -- parametri (blob)
+ *   typedef struct { gmb_gen_t* co; }  gmb_gen_G_t;          -- handle (per valore)
+ *   static void gmb_user_G_genentry(void* __arg) { ...; gmb_gen_yield(v); ... }
+ *   DIM it = G(3) → (gmb_gen_G_t){ gmb_gen_new(gmb_user_G_genentry, &(params){...}, sizeof) }
+ *   NEXT(it)      → gmb_gen_next(it.co, &v)   (esaurito → 144 StopIteration)
  * ============================================================================ */
 
-typedef struct gencollect { const char* names[64]; const char* types[64]; int n; } gencollect_t;
-static void gen_collect_list(gmb_stmt_t** list, int n, gencollect_t* col, fn_info_t* fn);
-static void gen_collect_stmt(gmb_stmt_t* s, gencollect_t* col, fn_info_t* fn) {
-    if (!s) return;
-    if (s->kind == GMB_STMT_DIM && s->dim_var) {
-        var_t* lv = vars_find(&fn->locals, s->dim_var);
-        col->names[col->n] = s->dim_var;
-        col->types[col->n] = (lv && lv->type == TY_STR) ? "gmb_string_t" : "gmb_double_t";
-        col->n++;
-    } else if (s->kind == GMB_STMT_FOR && s->for_var) {
-        var_t* lv = vars_find(&fn->locals, s->for_var);
-        col->names[col->n] = s->for_var;
-        col->types[col->n] = (lv && lv->type == TY_STR) ? "gmb_string_t" : "gmb_double_t";
-        col->n++;
-    }
-    gen_collect_list(s->then_body, s->n_then, col, fn);
-    gen_collect_list(s->else_body, s->n_else, col, fn);
-    gen_collect_list(s->for_body, s->n_for, col, fn);
-    gen_collect_list(s->while_body, s->n_while, col, fn);
-    gen_collect_list(s->do_body, s->n_do, col, fn);
-    gen_collect_list(s->try_body, s->n_try, col, fn);
-    gen_collect_list(s->catch_body && s->n_catch ? s->catch_body[0] ? s->catch_body[0]->catch_body : NULL : NULL, 0, col, fn);
-    gen_collect_list(s->finally_body, s->n_finally, col, fn);
-}
-static void gen_collect_list(gmb_stmt_t** list, int n, gencollect_t* col, fn_info_t* fn) {
-    for (int i = 0; i < n && col->n < 64; i++) gen_collect_stmt(list[i], col, fn);
+/* YIELD <espr>: sospende la coroutine e pubblica il valore (numerico, come prima). */
+static void st_yield(ctx_t* c, gmb_stmt_t* s) {
+    ind(c);
+    sb_put(&c->out, "gmb_gen_yield((gmb_double_t)(");
+    if (s->value) emit_expr(c, s->value);
+    else sb_put(&c->out, "0");
+    sb_put(&c->out, "));\n");
 }
 
-static void gen_writeback(ctx_t* c, gencollect_t* col) {
-    for (int i = 0; i < col->n; i++) {
-        ind(c); sb_put(&c->out, "g->"); sb_ident(&c->out, col->names[i]);
-        sb_put(&c->out, " = "); sb_ident(&c->out, col->names[i]); sb_put(&c->out, ";\n");
-    }
-}
-
-static void gen_stmt(ctx_t* c, gmb_stmt_t* s, gencollect_t* col, const char* gid, int* case_no, int* lu);
-static void gen_list(ctx_t* c, gmb_stmt_t** list, int n, gencollect_t* col, const char* gid, int* case_no, int* lu) {
-    for (int i = 0; i < n && !c->error[0]; i++) gen_stmt(c, list[i], col, gid, case_no, lu);
-}
-static void gen_stmt(ctx_t* c, gmb_stmt_t* s, gencollect_t* col, const char* gid, int* case_no, int* lu) {
-    (void)gid;
-    if (!s) return;
-    if (s->kind == GMB_STMT_REM) return;
-    if (s->kind == GMB_STMT_YIELD) {
-        int cur = (*case_no)++;
-        ind(c); sb_put(&c->out, "g->value = ");
-        if (s->value) emit_expr(c, s->value);
-        else sb_put(&c->out, "0");
-        sb_put(&c->out, ";\n");
-        gen_writeback(c, col);
-        ind(c); sb_printf(&c->out, "g->step = %d;\n", cur);
-        ind(c); sb_put(&c->out, "return;\n");
-        ind(c); sb_printf(&c->out, "case %d: ;\n", cur);
-        return;
-    }
-    if (s->kind == GMB_STMT_DIM) {
-        if (!s->array_size && s->dim_init) {
-            ind(c); emit_ident(c, s->dim_var);
-            sb_put(&c->out, " = "); emit_expr(c, s->dim_init); sb_put(&c->out, ";\n");
-        }
-        return;
-    }
-    if (s->kind == GMB_STMT_LET && s->target && s->value && !strchr(s->target, '.')) {
-        ind(c); emit_ident(c, s->target);
-        sb_put(&c->out, " = "); emit_expr(c, s->value); sb_put(&c->out, ";\n");
-        return;
-    }
-    if (s->kind == GMB_STMT_FOR) {
-        if (s->flag == 1) { c99_fail(c, s->line, "GENERATOR: FOR EACH non supportato"); return; }
-        int u = (*lu)++;
-        char cond[24], body[24], step[24], endd[24];
-        snprintf(cond, sizeof(cond), "__gen%d_c", u);
-        snprintf(body, sizeof(body), "__gen%d_b", u);
-        snprintf(step, sizeof(step), "__gen%d_s", u);
-        snprintf(endd, sizeof(endd), "__gen%d_e", u);
-        /* init */
-        ind(c); emit_ident(c, s->for_var); sb_put(&c->out, " = ");
-        emit_expr(c, s->for_from); sb_put(&c->out, ";\n");
-        /* cond */
-        ind(c); sb_printf(&c->out, "%s: if (", cond);
-        if (s->for_step) { sb_put(&c->out, "(gmb_double_t)("); emit_expr(c, s->for_step); sb_put(&c->out, ") >= 0"); }
-        else sb_put(&c->out, "(gmb_double_t)1 >= 0");
-        sb_put(&c->out, " ? ");
-        emit_ident(c, s->for_var); sb_put(&c->out, " <= (gmb_double_t)(");
-        emit_expr(c, s->for_to); sb_put(&c->out, ") : ");
-        emit_ident(c, s->for_var); sb_put(&c->out, " >= (gmb_double_t)(");
-        emit_expr(c, s->for_to); sb_put(&c->out, ")");
-        sb_printf(&c->out, ") goto %s; goto %s;\n", body, endd);
-        /* body */
-        ind(c); sb_printf(&c->out, "%s:\n", body);
-        gen_list(c, s->for_body, s->n_for, col, gid, case_no, lu);
-        /* step + loop */
-        ind(c); sb_printf(&c->out, "%s: ", step); emit_ident(c, s->for_var);
-        sb_put(&c->out, " = "); emit_ident(c, s->for_var); sb_put(&c->out, " + (gmb_double_t)(");
-        if (s->for_step) emit_expr(c, s->for_step); else sb_put(&c->out, "1");
-        sb_printf(&c->out, "); goto %s;\n", cond);
-        /* end */
-        ind(c); sb_printf(&c->out, "%s: ;\n", endd);
-        return;
-    }
-    c99_fail(c, s->line, "GENERATOR: statement (kind=%d) non supportato nel body", (int)s->kind);
-}
-
-/* Emette la definizione della step function di un generatore (mirror EmitGenerator). */
-static void emit_generator_def(ctx_t* c, fn_info_t* fn) {
+/* Entry della COROUTINA di un generatore: funzione void che spacchetta il blob dei
+ * parametri e chiama il corpo VERO (`gmb_user_<id>`, emesso da emit_function come una
+ * procedura normale: prologo dei locali, TRY/CATCH, DEFER, FOR EACH… tutto già supportato).
+ * `YIELD` sospende la coroutine (gmb_gen_yield) senza tornare da questa funzione. */
+static void emit_generator_entry(ctx_t* c, fn_info_t* fn) {
     gmb_stmt_t* s = fn->stmt;
     if (!s->is_generator || !s->func_name) return;
-    gencollect_t col; memset(&col, 0, sizeof(col));
-    gencollect_t params; memset(&params, 0, sizeof(params));
-    for (int k = 0; k < s->n_params; k++) {
-        var_t* pv = vars_find(&fn->locals, s->func_params[k]);
-        params.names[params.n] = s->func_params[k];
-        params.types[params.n] = (pv && pv->type == TY_STR) ? "gmb_string_t" : "gmb_double_t";
-        params.n++;
-    }
-    gen_collect_list(s->func_body, s->n_funcbody, &col, fn);
-    /* dedup locals vs params */
-    {
-        gencollect_t loc; memset(&loc, 0, sizeof(loc));
-        for (int i = 0; i < col.n; i++) {
-            int dup = 0;
-            for (int j = 0; j < params.n; j++)
-                if (strcasecmp(params.names[j], col.names[i]) == 0) { dup = 1; break; }
-            for (int j = 0; j < loc.n; j++)
-                if (strcasecmp(loc.names[j], col.names[i]) == 0) { dup = 1; break; }
-            if (!dup) { loc.names[loc.n] = col.names[i]; loc.types[loc.n] = col.types[i]; loc.n++; }
-        }
-        col = loc;
-    }
-    /* ordinamento struct: step,done,value,parametri,locali */
-    sb_put(&c->out, "static void gmb_user_"); sb_ident(&c->out, s->func_name); sb_put(&c->out, "_step(gmb_gen_");
-    sb_ident(&c->out, s->func_name); sb_put(&c->out, "_t* g) {\n");
+    sb_put(&c->out, "static void gmb_user_"); sb_ident(&c->out, s->func_name);
+    sb_put(&c->out, "_genentry(void* __arg) {\n");
     c->indent = 1;
-    int err_sv = c->n_err_decl;
-    size_t err_pos = c->out.len;
-    for (int i = 0; i < params.n; i++) {
-        ind(c); sb_put(&c->out, params.types[i]); sb_put(&c->out, " "); sb_ident(&c->out, params.names[i]);
-        sb_put(&c->out, " = g->"); sb_ident(&c->out, params.names[i]); sb_put(&c->out, ";\n");
+    if (s->n_params > 0) {
+        ind(c); sb_put(&c->out, "gmb_gen_"); sb_ident(&c->out, s->func_name);
+        sb_put(&c->out, "_params_t* __p = (gmb_gen_"); sb_ident(&c->out, s->func_name);
+        sb_put(&c->out, "_params_t*)__arg;\n");
+        ind(c); sb_put(&c->out, "gmb_user_"); sb_ident(&c->out, s->func_name); sb_put(&c->out, "(");
+        for (int i = 0; i < s->n_params; i++) {
+            if (i) sb_put(&c->out, ", ");
+            sb_put(&c->out, "__p->"); sb_ident(&c->out, s->func_params[i]);
+        }
+        sb_put(&c->out, ");\n");
+    } else {
+        ind(c); sb_put(&c->out, "(void)__arg;\n");
+        ind(c); sb_put(&c->out, "gmb_user_"); sb_ident(&c->out, s->func_name); sb_put(&c->out, "();\n");
     }
-    for (int i = 0; i < col.n; i++) {
-        ind(c); sb_put(&c->out, col.types[i]); sb_put(&c->out, " "); sb_ident(&c->out, col.names[i]);
-        sb_put(&c->out, " = g->"); sb_ident(&c->out, col.names[i]); sb_put(&c->out, ";\n");
-    }
-    ind(c); sb_put(&c->out, "switch (g->step) {\n");
-    c->indent++;
-    ind(c); sb_put(&c->out, "case 0:\n");
-    c->indent++;
-    /* unisco param+loc per writeback/struct (ordine struct = params poi locals) */
-    gencollect_t all; memset(&all, 0, sizeof(all));
-    for (int i = 0; i < params.n; i++) { all.names[all.n] = params.names[i]; all.types[all.n] = params.types[i]; all.n++; }
-    for (int i = 0; i < col.n; i++) { all.names[all.n] = col.names[i]; all.types[all.n] = col.types[i]; all.n++; }
-    int case_no = 1, lu = 1;
-    gen_list(c, s->func_body, s->n_funcbody, &all, s->func_name, &case_no, &lu);
-    c->indent--;
-    c->indent--;
-    ind(c); sb_put(&c->out, "}\n");
-    ind(c); sb_put(&c->out, "g->done = 1;\n");
-    gen_writeback(c, &all);
-    err_decl_insert(c, err_sv, err_pos);   /* jmp_buf ON ERROR (scope della funzione _step) */
     c->indent = 0;
     sb_put(&c->out, "}\n\n");
 }
 
-/* Emette (in un sb) la typedef della struct + il prototipo step di un generatore. */
+
+/* Typedef (blob parametri + handle) e prototipo del corpo di un generatore. */
 static void emit_generator_proto(sb_t* out, fn_info_t* fn) {
     gmb_stmt_t* s = fn->stmt;
     if (!s->is_generator || !s->func_name) return;
-    gencollect_t col; memset(&col, 0, sizeof(col));
-    gencollect_t params; memset(&params, 0, sizeof(params));
+    /* Blob dei PARAMETRI: gmb_gen_new ne copia una copia, quindi il temporaneo del
+     * chiamante (`DIM it = G(3)`) può morire subito dopo. */
+    sb_put(out, "typedef struct gmb_gen_"); sb_ident(out, s->func_name); sb_put(out, "_params {\n");
     for (int k = 0; k < s->n_params; k++) {
         var_t* pv = vars_find(&fn->locals, s->func_params[k]);
-        params.names[params.n] = s->func_params[k];
-        params.types[params.n] = (pv && pv->type == TY_STR) ? "gmb_string_t" : "gmb_double_t";
-        params.n++;
+        sb_put(out, "    ");
+        sb_put(out, (pv && pv->type == TY_STR) ? "gmb_string_t" : "gmb_double_t");
+        sb_put(out, " "); sb_ident(out, s->func_params[k]); sb_put(out, ";\n");
     }
-    gen_collect_list(s->func_body, s->n_funcbody, &col, fn);
-    sb_put(out, "typedef struct gmb_gen_"); sb_ident(out, s->func_name); sb_put(out, " {\n");
-    sb_put(out, "    gmb_int_t step;\n    gmb_int_t done;\n    gmb_double_t value;\n");
-    for (int i = 0; i < params.n; i++) { sb_put(out, "    "); sb_put(out, params.types[i]); sb_put(out, " "); sb_ident(out, params.names[i]); sb_put(out, ";\n"); }
-    for (int i = 0; i < col.n; i++) {
-        int dup = 0;
-        for (int j = 0; j < params.n; j++) if (strcasecmp(params.names[j], col.names[i]) == 0) { dup = 1; break; }
-        for (int j = 0; j < i; j++) if (strcasecmp(col.names[j], col.names[i]) == 0) { dup = 1; break; }
-        if (dup) continue;
-        sb_put(out, "    "); sb_put(out, col.types[i]); sb_put(out, " "); sb_ident(out, col.names[i]); sb_put(out, ";\n");
-    }
-    sb_put(out, "} gmb_gen_"); sb_ident(out, s->func_name); sb_put(out, "_t;\n");
-    sb_put(out, "static void gmb_user_"); sb_ident(out, s->func_name); sb_put(out, "_step(gmb_gen_");
-    sb_ident(out, s->func_name); sb_put(out, "_t* g);\n");
+    if (s->n_params == 0) sb_put(out, "    char __empty;\n");
+    sb_put(out, "} gmb_gen_"); sb_ident(out, s->func_name); sb_put(out, "_params_t;\n");
+    /* Handle del generatore (per valore, come prima): solo il puntatore alla coroutine. */
+    sb_put(out, "typedef struct gmb_gen_"); sb_ident(out, s->func_name);
+    sb_put(out, " { gmb_gen_t* co; } gmb_gen_"); sb_ident(out, s->func_name); sb_put(out, "_t;\n");
+    sb_put(out, "static void gmb_user_"); sb_ident(out, s->func_name); sb_put(out, "_genentry(void* __arg);\n");
 }
 
 /* Tipo NATIVO di un tipo dichiarato per FFI: gmb_int_t per gli interi (ABI nativa
@@ -32129,6 +32662,15 @@ static const char* ffi_code_ctype(int code) {
 static int ffi_layout_rec(ctx_t* c, struct cls_info* ci, const char* prefix, ffi_leaf_t* out,
                           int* n, int max, int* max_align, int depth) {
     if (depth > 8) return -1;
+    /* UNION/BITFIELD (2026-11-11): campi sovrapposti / impacchettati in bit → layout non
+     * riproducibile a foglie (parità Compiler.Expressions.cs / IlProgramCompiler). */
+    if (ci && ci->is_union) return -3;
+    if (ci)
+        for (int _b = 0; _b < ci->nfields; _b++)
+            if (ci->fbits[_b] > 0) return -3;
+    /* PACKED TYPE (2026-11-11): layout senza padding, come `__attribute__((packed))` — nessun
+     * allineamento tra i campi e nessuna taglia finale arrotondata. */
+    int packed = ci->is_packed;
     int off = 0, al = 1;
     for (int fi = 0; fi < ci->nfields; fi++) {
         char path[128];
@@ -32148,7 +32690,7 @@ static int ffi_layout_rec(ctx_t* c, struct cls_info* ci, const char* prefix, ffi
             if (code == 9) return -1;
             if (cls_find(c, base)) return -1;
             int sz = ffi_code_size(code);
-            off = (off + sz - 1) / sz * sz;
+            if (!packed) off = (off + sz - 1) / sz * sz;
             for (int k = 0; k < arrn; k++) {
                 if (*n >= max) return -1;
                 char apath[160];
@@ -32168,7 +32710,7 @@ static int ffi_layout_rec(ctx_t* c, struct cls_info* ci, const char* prefix, ffi
         if (code >= 0) {
             if (*n >= max) return -1;
             int sz = ffi_code_size(code);
-            off = (off + sz - 1) / sz * sz;
+            if (!packed) off = (off + sz - 1) / sz * sz;
             snprintf(out[*n].path, sizeof(out[*n].path), "%s", path);
             out[*n].is_int = (code != 0 && code != 8);
             out[*n].code = code;
@@ -32186,14 +32728,14 @@ static int ffi_layout_rec(ctx_t* c, struct cls_info* ci, const char* prefix, ffi
             if (sub_size < 0) return sub_size;
             int end = (start < *n) ? out[*n - 1].off + out[*n - 1].size : 0;
             if (sub_size != end) return -2;   /* padding interno: flattening non ABI-safe */
-            off = (off + sub_al - 1) / sub_al * sub_al;
+            if (!packed) off = (off + sub_al - 1) / sub_al * sub_al;
             for (int k = start; k < *n; k++) out[k].off += off;
             off += sub_size;
             if (sub_al > al) al = sub_al;
         }
     }
     if (al > *max_align) *max_align = al;
-    return (off + al - 1) / al * al;
+    return packed ? off : (off + al - 1) / al * al;
 }
 
 /* Raccoglie le foglie di ci in out (max maxOut), "silenziosa" (nessun c99_fail): usata SOLO
@@ -32247,6 +32789,21 @@ static const char* ffi_udt_shape_name_ptr(ctx_t* c, struct cls_info* ci) {
  * niente campi array, niente struct annidate con padding, 1..64 foglie. */
 static int ffi_validate_udt(ctx_t* c, struct cls_info* ci, const char* sym, const char* what, int line, int allow_mixed_kind) {
     (void)allow_mixed_kind;
+    /* UNION/BITFIELD (2026-11-11): campi sovrapposti o impacchettati in bit → il layout non è
+     * riproducibile a foglie (parità Compiler.Expressions.cs / IlProgramCompiler). */
+    if (ci && ci->is_union) {
+        c99_fail(c, line, "FFI '%s': lo UDT '%s' usato per %s è una UNION (campi sovrapposti): "
+                 "non ammesso dal marshalling FFI.", sym, ci->name, what);
+        return 0;
+    }
+    if (ci) {
+        for (int _k = 0; _k < ci->nfields; _k++)
+            if (ci->fbits[_k] > 0) {
+                c99_fail(c, line, "FFI '%s': lo UDT '%s' usato per %s contiene BITFIELD (WIDTH): "
+                         "non ammesso dal marshalling FFI.", sym, ci->name, what);
+                return 0;
+            }
+    }
     ffi_leaf_t leaves[64];
     int n = 0, al = 1;
     int rc = ffi_layout_rec(c, ci, "", leaves, &n, 64, &al, 0);
@@ -32328,6 +32885,24 @@ static const char* ffi_cb_native_type(int arity, int isInt, int hasRet) {
         strncat(params, ct, sizeof(params) - strlen(params) - 1);
     }
     snprintf(buf, 512, "%s (*)(%s)", retT, params);
+    return buf;
+}
+
+/* Firma nativa di una callback SCALARE con kind PER-SLOT (2026-11-11): il tipo del parametro i
+ * viene da kinds[i], il ritorno da retkind (0=double, 1=int64, 2=void). Sostituisce l'assunzione
+ * di firma omogenea usata da ffi_cb_native_type. */
+static const char* ffi_cb_native_type_sig(int arity, const unsigned char* kinds, int retkind) {
+    static char bufs[4][1024];
+    static int bi = 0;
+    char* buf = bufs[bi]; bi = (bi + 1) % 4;
+    char params[768] = "";
+    for (int i = 0; i < arity && i < 64; i++) {
+        if (i) strncat(params, ", ", sizeof(params) - strlen(params) - 1);
+        strncat(params, kinds && kinds[i] ? "gmb_int_t" : "gmb_double_t",
+                sizeof(params) - strlen(params) - 1);
+    }
+    if (arity <= 0) snprintf(params, sizeof params, "void");
+    snprintf(buf, 1024, "%s (*)(%s)", retkind == 2 ? "void" : retkind == 1 ? "gmb_int_t" : "gmb_double_t", params);
     return buf;
 }
 
@@ -32492,6 +33067,71 @@ static void emit_ffi_callback_pool(ctx_t* c) {
     sb_put(&c->out, "\n");
 }
 
+/* ── Callback FFI con firma PER-SLOT (2026-11-11) ───────────────────────────────────────
+ * Il pool storico (emit_ffi_callback_pool) ha un trampolino per ogni coppia (kind, arità)
+ * con firma interna OMOGENEA e arità 0-8. Una callback dichiarata in BASIC può però avere
+ * parametri di kind MISTO (`FUNCTION(a AS LONG, b AS DOUBLE)`) e arità fino a 64: qui il
+ * trampolino si genera con la firma ESATTA, uno per (wrapper FFI, parametro) — così due
+ * parametri callback con la stessa forma non si contendono gli slot e non serve alcun
+ * limite "2 per forma". Il codice va nel buffer c->ffi_cb_tramps, riversato nel preludio
+ * (prima dei corpi), e la convenzione interna resta quella di sempre: la lambda BASIC è
+ * `double (void*, double...)`, quindi i parametri interi si convertono in double e il
+ * ritorno si ricasta. */
+static int ffi_cb_uniq_id(ctx_t* c, const void* stmt, int param)
+{
+    char key[64];
+    snprintf(key, sizeof key, "%p:%d", stmt, param);
+    for (int i = 0; i < c->n_ffi_cb_uniq; i++)
+        if (strcmp(c->ffi_cb_uniq_key[i], key) == 0) return c->ffi_cb_uniq_id[i];
+    if (c->n_ffi_cb_uniq >= 128) return -1;
+    int id = c->n_ffi_cb_uniq++;
+    snprintf(c->ffi_cb_uniq_key[id], sizeof c->ffi_cb_uniq_key[id], "%s", key);
+    c->ffi_cb_uniq_id[id] = id;
+    return id;
+}
+
+static void emit_ffi_cb_tramp(ctx_t* c, int id, int n, const unsigned char* kinds, int retkind)
+{
+    if (id < 0 || id >= 128 || c->ffi_cb_uniq_emitted[id]) return;
+    c->ffi_cb_uniq_emitted[id] = 1;
+    sb_t* o = &c->ffi_cb_tramps;
+    const char* retC = retkind == 1 ? "gmb_int_t" : "gmb_double_t";
+    char params[1024] = ""; char ptypes[1024] = ""; char dtypes[1024] = ""; char dargs[1024] = "";
+    for (int i = 0; i < n && i < 64; i++) {
+        const char* ct = kinds[i] ? "gmb_int_t" : "gmb_double_t";
+        if (i) {
+            strncat(params, ", ", sizeof(params) - strlen(params) - 1);
+            strncat(ptypes, ", ", sizeof(ptypes) - strlen(ptypes) - 1);
+            strncat(dtypes, ", ", sizeof(dtypes) - strlen(dtypes) - 1);
+            strncat(dargs, ", ", sizeof(dargs) - strlen(dargs) - 1);
+        }
+        char pn[32]; snprintf(pn, sizeof pn, "%s a%d", ct, i);
+        strncat(params, pn, sizeof(params) - strlen(params) - 1);
+        strncat(ptypes, ct, sizeof(ptypes) - strlen(ptypes) - 1);
+        strncat(dtypes, "gmb_double_t", sizeof(dtypes) - strlen(dtypes) - 1);
+        char dan[40]; snprintf(dan, sizeof dan, "(gmb_double_t)a%d", i);
+        strncat(dargs, dan, sizeof(dargs) - strlen(dargs) - 1);
+    }
+    if (n == 0) { snprintf(params, sizeof params, "void"); snprintf(ptypes, sizeof ptypes, "void"); }
+    sb_printf(o, "static gmb_fn_t gmb_cbslot_%d[2];\n", id);
+    sb_printf(o, "static int gmb_cbinuse_%d[2];\n", id);
+    for (int s = 0; s < 2; s++) {
+        if (retkind == 2)
+            sb_printf(o, "static void gmb_cbtramp_%d_%d(%s) { gmb_fn_t f = gmb_cbslot_%d[%d]; ((gmb_double_t(*)(void*%s%s))f.fn)(f.ctx%s%s); }\n",
+                      id, s, params, id, s, n > 0 ? ", " : "", dtypes, n > 0 ? ", " : "", dargs);
+        else
+            sb_printf(o, "static %s gmb_cbtramp_%d_%d(%s) { gmb_fn_t f = gmb_cbslot_%d[%d]; return (%s)((gmb_double_t(*)(void*%s%s))f.fn)(f.ctx%s%s); }\n",
+                      retC, id, s, params, id, s, retC, n > 0 ? ", " : "", dtypes, n > 0 ? ", " : "", dargs);
+    }
+    if (retkind == 2)
+        sb_printf(o, "static void (*gmb_cbptr_%d[2])(%s) = { gmb_cbtramp_%d_0, gmb_cbtramp_%d_1 };\n", id, ptypes, id, id);
+    else
+        sb_printf(o, "static %s (*gmb_cbptr_%d[2])(%s) = { gmb_cbtramp_%d_0, gmb_cbtramp_%d_1 };\n", retC, id, ptypes, id, id);
+    sb_printf(o, "static int gmb_cbacq_%d(gmb_fn_t f) { for (int s = 0; s < 2; s++) if (!gmb_cbinuse_%d[s]) { gmb_cbinuse_%d[s] = 1; gmb_cbslot_%d[s] = f; return s; } return -1; }\n",
+              id, id, id, id);
+    sb_printf(o, "static void gmb_cbrel_%d(int s) { if (s >= 0) gmb_cbinuse_%d[s] = 0; }\n", id, id);
+}
+
 static void emit_ffi_wrapper(ctx_t* c, fn_info_t* fn, const char* vkey) {
     gmb_stmt_t* s = fn->stmt;
     /* Estensioni automatiche degli array (vedi ffi_variant_key): rango per parametro array
@@ -32515,6 +33155,9 @@ static void emit_ffi_wrapper(ctx_t* c, fn_info_t* fn, const char* vkey) {
      * Bugs/(solved) - FFI-Marshalling-Limitato-No-BYREF-Array-Struct.md punto (1). */
     int is_arr_param[C99_FFI_MAX_ARGS] = {0};
     int is_str_param[C99_FFI_MAX_ARGS] = {0};
+    /* Array di STRING (`a() AS STRING`, char**, 2026-11-11, SOLO INPUT): il wrapper riceve
+     * `gmb_string_t*` e costruisce un `const char**` di `.data` per la durata della chiamata. */
+    int is_strarr_param[C99_FFI_MAX_ARGS] = {0};
     /* BYREF scalare (2026-09-28): come un array/STRING, forza la firma a Int64 (e' un
      * puntatore). Questo backend emette C: il wrapper prende gia' un puntatore come parametro
      * per un BYREF (stessa convenzione del BYREF ordinario verso una FUNCTION/SUB utente),
@@ -32544,6 +33187,12 @@ static void emit_ffi_wrapper(ctx_t* c, fn_info_t* fn, const char* vkey) {
     int cb_arity[C99_FFI_MAX_ARGS] = {0};
     int cb_kind_int[C99_FFI_MAX_ARGS] = {0};  /* 1 = firma interna del callback e' INT64, 0 = DOUBLE */
     int cb_has_ret[C99_FFI_MAX_ARGS] = {0};
+    int cb_uniq[C99_FFI_MAX_ARGS];            /* id del trampolino per-slot (firma mista, 2026-11-11) */
+    for (int i = 0; i < C99_FFI_MAX_ARGS; i++) cb_uniq[i] = -1;
+    unsigned char cb_sigkinds[C99_FFI_MAX_ARGS][64];   /* kind PER SLOT della firma interna */
+    int cb_sigret[C99_FFI_MAX_ARGS];                  /* 0 double, 1 int64, 2 void */
+    memset(cb_sigkinds, 0, sizeof cb_sigkinds);
+    memset(cb_sigret, 0, sizeof cb_sigret);
     for (int i = 0; i < s->n_params; i++) {
         int isArr = s->param_is_array && s->param_is_array[i];
         if (i < C99_FFI_MAX_ARGS) is_arr_param[i] = isArr;
@@ -32551,9 +33200,9 @@ static void emit_ffi_wrapper(ctx_t* c, fn_info_t* fn, const char* vkey) {
             int arity = s->param_fn_arity[i];
             char what[96];
             snprintf(what, sizeof(what), "il parametro '%s'", s->func_params[i]);
-            if (arity > 8) {
+            if (arity > C99_FFI_MAX_ARGS) {
                 c99_fail(c, s->line, "FFI '%s': il callback usato per %s ha %d parametri "
-                         "(ammessi 0-8).", sym, what, arity);
+                         "(ammessi 0-%d).", sym, what, arity, C99_FFI_MAX_ARGS);
                 return;
             }
             int strmask = s->param_fn_str_mask ? s->param_fn_str_mask[i] : 0;
@@ -32621,22 +33270,26 @@ static void emit_ffi_wrapper(ctx_t* c, fn_info_t* fn, const char* vkey) {
                 cb_has_ret[i] = 1;
                 continue;
             }
-            /* Omogeneità della firma INTERNA del callback (2026-09-29, v1): tutti i parametri
-             * + l'eventuale ritorno dello stesso kind — stesso controllo di
-             * Compiler.Expressions.cs/ValidateCallbackForFfi. */
-            int sawInt = 0, sawDbl = 0;
-            for (int bi = 0; bi < arity; bi++) { if (kindmask & (1 << bi)) sawInt = 1; else sawDbl = 1; }
-            if (hasRet) { if (retInt) sawInt = 1; else sawDbl = 1; }
-            if (sawInt && sawDbl) {
-                c99_fail(c, s->line, "FFI '%s': il callback usato per %s ha una firma interna "
-                         "mista LONG/DOUBLE — non supportata nella v1 del supporto callback "
-                         "(tutti i parametri e l'eventuale ritorno dello stesso kind).", sym, what);
+            /* Firma interna PER-SLOT (2026-11-11): ogni parametro ha il proprio kind
+             * (INTEGER/… = gmb_int_t, DOUBLE/SINGLE = gmb_double_t) e l'arità può arrivare a
+             * C99_FFI_MAX_ARGS. Il trampolino viene generato con la firma ESATTA
+             * (emit_ffi_cb_tramp) invece di usare il pool omogeneo 0-8. */
+            unsigned char sigkinds[64];
+            for (int bi = 0; bi < arity && bi < 64; bi++) sigkinds[bi] = (kindmask & (1 << bi)) ? 1 : 0;
+            int sigret = hasRet ? (retInt ? 1 : 0) : 2;
+            int uniq = ffi_cb_uniq_id(c, s, i);
+            if (uniq < 0) {
+                c99_fail(c, s->line, "FFI '%s': troppi callback distinti nel programma (max 128).", sym);
                 return;
             }
+            emit_ffi_cb_tramp(c, uniq, arity, sigkinds, sigret);
             is_cb_param[i] = 1;
+            memcpy(cb_sigkinds[i], sigkinds, (size_t)(arity < 64 ? arity : 64));
+            cb_sigret[i] = sigret;
             cb_arity[i] = arity;
-            cb_kind_int[i] = sawInt;
+            cb_kind_int[i] = hasRet && retInt;
             cb_has_ret[i] = hasRet;
+            cb_uniq[i] = uniq;
             continue;
         }
         if (isArr) {
@@ -32647,6 +33300,12 @@ static void emit_ffi_wrapper(ctx_t* c, fn_info_t* fn, const char* vkey) {
              * letto con un passo a 8 byte da' garbage (bug osservato lato IL: AS BYTE pinnato
              * direttamente). Vedi Compiler.Expressions.cs per il dettaglio completo. */
             gmb_tokenkind_t ek = s->param_types && s->param_types[i] ? gmb_keyword_tok(s->param_types[i]) : GMB_TOK_Double;
+            /* Array di STRING (`a() AS STRING`, 2026-11-11): SOLO INPUT (char**), nessun
+             * copy-out: il wrapper costruisce un buffer di puntatori ogni chiamata. */
+            if (ek == GMB_TOK_StringType) {
+                if (i < C99_FFI_MAX_ARGS) is_strarr_param[i] = 1;
+                continue;
+            }
             /* BYTE/SBYTE (2026-11-06): ammessi come elemento-array — lo storage BASIC resta
              * gmb_double_t*, la conversione a gmb_int_t (8 byte per elemento, valori 0..255) e'
              * fatta da __ci_<param> sotto (n_intarr), con copy-back dopo la chiamata. */
@@ -32665,8 +33324,8 @@ static void emit_ffi_wrapper(ctx_t* c, fn_info_t* fn, const char* vkey) {
                 || ek == GMB_TOK_Byte || ek == GMB_TOK_SByte;
             if (!elemOk) {
                 c99_fail(c, s->line, "FFI '%s': tipo elemento non supportato per il parametro "
-                         "array '%s' (solo AS DOUBLE o LONG/QUAD, non INTEGER/BYTE/SINGLE — "
-                         "larghezza nativa a 8 byte).", sym, s->func_params[i]);
+                         "array '%s' (solo AS DOUBLE, LONG/QUAD, BYTE, STRING o un TYPE).",
+                         sym, s->func_params[i]);
                 return;
             }
             continue;
@@ -32714,6 +33373,15 @@ static void emit_ffi_wrapper(ctx_t* c, fn_info_t* fn, const char* vkey) {
                          "(solo TYPE semplici, senza operatori/costruttori/metodi/generici).", sym, uci->name, what);
                 return;
             }
+            /* PACKED per VALORE (2026-11-11): il layout senza padding non è rappresentabile
+             * nell'ABI (la VM/C usa la classificazione di libffi) → il trampolino naturale
+             * passerebbe registri/memoria diversi. Ammesso solo BYREF e array di UDT. */
+            if (uci->is_packed && !(s->param_byref && s->param_byref[i])) {
+                c99_fail(c, s->line, "FFI '%s': lo UDT PACKED '%s' non è ammesso per %s per VALORE "
+                         "(layout senza padding non rappresentabile nell'ABI: passa BYREF o come "
+                         "array di UDT).", sym, uci->name, what);
+                return;
+            }
             /* Kind misto come PARAMETRO (2026-09-29, era vietato — parità
              * Compiler.Expressions.cs): ammesso, il conteggio "al massimo uno" e' verificato
              * DOPO il loop (mixed_udt_param_count sotto). */
@@ -32738,6 +33406,28 @@ static void emit_ffi_wrapper(ctx_t* c, fn_info_t* fn, const char* vkey) {
             }
         }
     }
+    /* Più callback nella stessa DECLARE: ammessi. Dal 2026-11-11 i callback SCALARI hanno un
+     * trampolino per PARAMETRO (emit_ffi_cb_tramp), quindi nessun limite "2 per forma"; resta
+     * il pool a 2 slot solo per le forme VETTORIALI (128+/192+), dove il limite è ancora reale
+     * e va segnalato a COMPILE-TIME con lo stesso testo delle altre gambe. */
+    {
+        int cb_shape_count[2][256];
+        memset(cb_shape_count, 0, sizeof cb_shape_count);
+        for (int i = 0; i < s->n_params && i < C99_FFI_MAX_ARGS; i++) {
+            if (!is_cb_param[i] || cb_arity[i] < 128) continue;
+            int k = cb_kind_int[i] ? 1 : 0;
+            int a = cb_arity[i];
+            if (a >= 0 && a < 256) cb_shape_count[k][a]++;
+        }
+        for (int k = 0; k < 2; k++)
+            for (int a = 0; a < 256; a++)
+                if (cb_shape_count[k][a] > 2) {
+                    c99_fail(c, s->line, "FFI '%s': %d callback vettoriali con la stessa forma "
+                             "(kind, arità) nella stessa dichiarazione — il pool dei formati "
+                             "vettoriali ha 2 trampolini per forma (massimo 2).", sym, cb_shape_count[k][a]);
+                    return;
+                }
+    }
     /* Whitelist esplicita sul RITORNO (fix 2026-09-28, stesso motivo dei parametri sopra):
      * senza guardia, ret_is_int sotto trattava QUALUNQUE tipo non-STRING/SINGLE/DOUBLE come
      * intero per default (UDT incluso) invece di rifiutarlo. */
@@ -32752,6 +33442,11 @@ static void emit_ffi_wrapper(ctx_t* c, fn_info_t* fn, const char* vkey) {
                 return;
             }
             if (!ffi_validate_udt(c, rci, sym, "il ritorno", s->line, /*allow_mixed_kind=*/1)) return;
+            if (rci->is_packed) {
+                c99_fail(c, s->line, "FFI '%s': lo UDT PACKED '%s' non è ammesso come RITORNO "
+                         "(layout senza padding non rappresentabile nell'ABI).", sym, rci->name);
+                return;
+            }
             ret_udt_ci = rci;
         } else {
             gmb_tokenkind_t rk = gmb_keyword_tok(s->func_ret_type);
@@ -32864,7 +33559,8 @@ static void emit_ffi_wrapper(ctx_t* c, fn_info_t* fn, const char* vkey) {
      * `const char*` (NON gmb_string_t per valore — quella e' l'ABI SBAGLIATA che la guardia
      * preveniva: struct invece di puntatore). */
     #define FFI_INNER(k2) ((k2) < C99_FFI_MAX_ARGS && byref_udt_ci[k2] ? ffi_udt_shape_name_ptr(c, byref_udt_ci[k2]) \
-        : (k2) < C99_FFI_MAX_ARGS && is_cb_param[k2] ? ffi_cb_native_type(cb_arity[k2], cb_kind_int[k2], cb_has_ret[k2]) \
+        : (k2) < C99_FFI_MAX_ARGS && is_strarr_param[k2] ? "const char**" \
+        : (k2) < C99_FFI_MAX_ARGS && is_cb_param[k2] ? (cb_uniq[k2] >= 0 ? ffi_cb_native_type_sig(cb_arity[k2], cb_sigkinds[k2], cb_sigret[k2]) : ffi_cb_native_type(cb_arity[k2], cb_kind_int[k2], cb_has_ret[k2])) \
         : (k2) < C99_FFI_MAX_ARGS && udt_param_ci[k2] ? ffi_udt_shape_name(c, udt_param_ci[k2]) \
         : (k2) < C99_FFI_MAX_ARGS && arr_udt_ci[k2] ? arr_udt_tname[k2] \
         : (k2) < C99_FFI_MAX_ARGS && is_arr_param[k2] \
@@ -32880,7 +33576,14 @@ static void emit_ffi_wrapper(ctx_t* c, fn_info_t* fn, const char* vkey) {
      * usa — vedi emit_ffi_callback_pool sopra. */
     int any_cb_param = 0;
     for (int i = 0; i < s->n_params && i < C99_FFI_MAX_ARGS; i++) if (is_cb_param[i]) any_cb_param = 1;
-    if (any_cb_param) emit_ffi_callback_pool(c);
+    if (any_cb_param) {
+        /* Pool storico solo per le forme VETTORIALI (128+/192+), che usano ancora i codici
+         * pre-compilati; i callback scalari hanno il trampolino per-slot (emit_ffi_cb_tramp). */
+        int need_pool = 0;
+        for (int i = 0; i < s->n_params && i < C99_FFI_MAX_ARGS; i++)
+            if (is_cb_param[i] && cb_arity[i] >= 128) need_pool = 1;
+        if (need_pool) emit_ffi_callback_pool(c);
+    }
     /* Array a elemento INTERO: la memoria BASIC e' double* → serve copy-in/copy-back verso
      * un temporaneo gmb_int_t* (parità PCode/VM-C che fanno copy-in/copy-out per gli array
      * non blittable). Conta quanti per sapere se il corpo deve usare il percorso a temporanei. */
@@ -32918,6 +33621,9 @@ static void emit_ffi_wrapper(ctx_t* c, fn_info_t* fn, const char* vkey) {
             if (arr_udt_ci[i]) {
                 /* Array di UDT: la memoria BASIC e un array di gmb_val_t (istanze boxate). */
                 sb_put(&c->out, "gmb_val_t* ");
+            } else if (is_strarr_param[i]) {
+                /* Array di STRING: la memoria BASIC e' un array di gmb_string_t (struct). */
+                sb_put(&c->out, "gmb_string_t* ");
             } else {
                 sb_put(&c->out, "gmb_double_t* ");
             }
@@ -33031,6 +33737,17 @@ static void emit_ffi_wrapper(ctx_t* c, fn_info_t* fn, const char* vkey) {
         sb_put(&c->out, "for (gmb_int_t __k = 0; __k <= "); emit_ident(c, s->func_params[i]); sb_put(&c->out, "__bT; __k++) __ci_");
         emit_ident(c, s->func_params[i]); sb_put(&c->out, "[__k] = (gmb_int_t)"); emit_ident(c, s->func_params[i]); sb_put(&c->out, "[__k];\n");
     }
+    /* Array di STRING (char**, 2026-11-11, input-only): buffer di puntatori alle .data,
+     * liberato subito dopo la chiamata. */
+    for (int i = 0; i < s->n_params && i < C99_FFI_MAX_ARGS; i++) {
+        if (!is_strarr_param[i]) continue;
+        ind(c);
+        sb_put(&c->out, "const char** __ss_"); emit_ident(c, s->func_params[i]);
+        sb_put(&c->out, " = (const char**)malloc(sizeof(char*) * ((size_t)"); emit_ident(c, s->func_params[i]); sb_put(&c->out, "__bT + 1));\n");
+        ind(c);
+        sb_put(&c->out, "for (gmb_int_t __k = 0; __k <= "); emit_ident(c, s->func_params[i]); sb_put(&c->out, "__bT; __k++) __ss_");
+        emit_ident(c, s->func_params[i]); sb_put(&c->out, "[__k] = "); emit_ident(c, s->func_params[i]); sb_put(&c->out, "[__k].data;\n");
+    }
     /* Array di UDT (S3, 2026-11-06): buffer contiguo di struct nel layout C, riempito dagli
      * elementi (istanze boxate gmb_obj_<Tipo>) — il nativo vede `gmb_ffi_udt_<Tipo>_t*`. */
     for (int i = 0; i < s->n_params && i < C99_FFI_MAX_ARGS; i++) {
@@ -33101,15 +33818,44 @@ static void emit_ffi_wrapper(ctx_t* c, fn_info_t* fn, const char* vkey) {
         if (!is_cb_param[i]) continue;
         ind(c);
         sb_put(&c->out, "int __cbslot_"); emit_ident(c, s->func_params[i]);
-        sb_printf(&c->out, " = gmb_ffi_cb_acquire_%s%d(", cb_kind_int[i] ? "i" : "d", cb_arity[i]);
+        if (cb_uniq[i] >= 0) sb_printf(&c->out, " = gmb_cbacq_%d(", cb_uniq[i]);
+        else sb_printf(&c->out, " = gmb_ffi_cb_acquire_%s%d(", cb_kind_int[i] ? "i" : "d", cb_arity[i]);
         emit_ident(c, s->func_params[i]);
         sb_put(&c->out, ");\n");
+    }
+    /* Pool ESAURITO (>2 callback della stessa forma nella stessa chiamata): errore BASIC
+     * pulito. Prima l'indice -1 veniva usato per leggere `g_ffi_cb_ptr_*[-1]` → funzione
+     * spuria nel registro e SIGSEGV (riprodotto: 3 callback `(x AS DOUBLE)→DOUBLE`).
+     * L'ordine è "acquisisci tutti, poi verifica": così tutte le variabili slot sono
+     * dichiarate e le già acquisite vengono rilasciate prima di sollevare.
+     * Il limite è per forma (kind, arità, FUNCTION/SUB / codice vettoriale) — lo stesso
+     * del pool; VM/C dà già errore pulito, IL/PCodeVM non hanno pool. */
+    {
+        for (int i = 0; i < s->n_params && i < C99_FFI_MAX_ARGS; i++) {
+            if (!is_cb_param[i]) continue;
+            ind(c);
+            sb_put(&c->out, "if (__cbslot_"); emit_ident(c, s->func_params[i]); sb_put(&c->out, " < 0) { ");
+            for (int j = 0; j < s->n_params && j < C99_FFI_MAX_ARGS; j++) {
+                if (!is_cb_param[j]) continue;
+                if (cb_uniq[j] >= 0) sb_printf(&c->out, "gmb_cbrel_%d(__cbslot_", cb_uniq[j]);
+                else sb_printf(&c->out, "gmb_ffi_cb_release_%s%d(__cbslot_",
+                               cb_kind_int[j] ? "i" : "d", cb_arity[j]);
+                emit_ident(c, s->func_params[j]);
+                sb_put(&c->out, "); ");
+            }
+            sb_printf(&c->out, "gmb_raise_error(5, \"FFI '%s': troppi callback con la stessa forma "
+                      "(kind, arita) nella stessa chiamata (massimo 2 per forma sui backend C)\", 0L); ", sym);
+            if (strcmp(retC, "void") == 0) sb_put(&c->out, "return; }\n");
+            else if (ret_is_str) sb_put(&c->out, "return gmb_string_alloc(\"\"); }\n");
+            else sb_put(&c->out, "return 0; }\n");
+        }
     }
     /* Emette l'argomento i per la chiamata al simbolo nativo: uno STRING passa .data (il
      * puntatore, non lo struct per valore — l'ABI sbagliata che la guardia preveniva). */
     #define FFI_EMIT_ARG(i) do { \
         if ((i) < C99_FFI_MAX_ARGS && is_cb_param[i]) { \
-            sb_printf(&c->out, "%s%s%d[__cbslot_", cb_has_ret[i] ? "g_ffi_cb_ptr_" : "g_ffi_cb_ptr_sub_", cb_kind_int[i] ? "i" : "d", cb_arity[i]); \
+            if (cb_uniq[i] >= 0) sb_printf(&c->out, "gmb_cbptr_%d[__cbslot_", cb_uniq[i]); \
+            else sb_printf(&c->out, "%s%s%d[__cbslot_", cb_has_ret[i] ? "g_ffi_cb_ptr_" : "g_ffi_cb_ptr_sub_", cb_kind_int[i] ? "i" : "d", cb_arity[i]); \
             emit_ident(c, s->func_params[i]); \
             sb_put(&c->out, "]"); \
         } else if ((i) < C99_FFI_MAX_ARGS && udt_param_ci[i]) { \
@@ -33152,6 +33898,8 @@ static void emit_ffi_wrapper(ctx_t* c, fn_info_t* fn, const char* vkey) {
             sb_put(&c->out, "&__ub_"); emit_ident(c, s->func_params[i]);  \
         } else if ((i) < C99_FFI_MAX_ARGS && arr_udt_ci[i]) { \
             sb_put(&c->out, "__ua_"); emit_ident(c, s->func_params[i]); \
+        } else if ((i) < C99_FFI_MAX_ARGS && is_strarr_param[i]) { \
+            sb_put(&c->out, "__ss_"); emit_ident(c, s->func_params[i]); \
         } else if ((i) < C99_FFI_MAX_ARGS && is_arr_param[i] && strcmp(ffi_param_ctype(s, i), "gmb_int_t") == 0) { \
             sb_put(&c->out, "__ci_"); emit_ident(c, s->func_params[i]); \
         } else if ((i) < C99_FFI_MAX_ARGS && is_str_param[i]) { \
@@ -33170,10 +33918,13 @@ static void emit_ffi_wrapper(ctx_t* c, fn_info_t* fn, const char* vkey) {
     int cast_ret = strcmp(inner_ret, retC) != 0 && strcmp(retC, "void") != 0 && strcmp(inner_ret, "void") != 0;
     int any_arr_udt = 0;
     for (int i = 0; i < s->n_params && i < C99_FFI_MAX_ARGS; i++) if (arr_udt_ci[i]) any_arr_udt = 1;
+    /* Array di STRING: serve il path "esteso" (costruzione del char** + free dopo la chiamata). */
+    int any_strarr = 0;
+    for (int i = 0; i < s->n_params && i < C99_FFI_MAX_ARGS; i++) if (is_strarr_param[i]) any_strarr = 1;
     /* BYREF UDT: serve SEMPRE il path "esteso" (chiamata in una variabile + copy-back). */
     int any_byref_udt = 0;
     for (int i = 0; i < s->n_params && i < C99_FFI_MAX_ARGS; i++) if (byref_udt_ci[i]) any_byref_udt = 1;
-    if (n_intarr == 0 && !ret_is_udt && !any_cb_param && !any_arr_udt && !any_byref_udt) {
+    if (n_intarr == 0 && !ret_is_udt && !any_cb_param && !any_arr_udt && !any_byref_udt && !any_strarr) {
         ind(c);
         if (strcmp(retC, "void") == 0) sb_put(&c->out, "__ffi_fn(");
         else if (ret_is_str) sb_put(&c->out, "return gmb_string_alloc(__ffi_fn(");
@@ -33189,9 +33940,16 @@ static void emit_ffi_wrapper(ctx_t* c, fn_info_t* fn, const char* vkey) {
         for (int i = 0; i < s->n_params && i < C99_FFI_MAX_ARGS; i++) {
             if (!is_cb_param[i]) continue;
             ind(c);
-            sb_printf(&c->out, "gmb_ffi_cb_release_%s%d(__cbslot_", cb_kind_int[i] ? "i" : "d", cb_arity[i]);
+            if (cb_uniq[i] >= 0) sb_printf(&c->out, "gmb_cbrel_%d(__cbslot_", cb_uniq[i]);
+            else sb_printf(&c->out, "gmb_ffi_cb_release_%s%d(__cbslot_", cb_kind_int[i] ? "i" : "d", cb_arity[i]);
             emit_ident(c, s->func_params[i]);
             sb_put(&c->out, ");\n");
+        }
+        /* Array di STRING: i puntatori erano validi solo durante la chiamata. */
+        for (int i = 0; i < s->n_params && i < C99_FFI_MAX_ARGS; i++) {
+            if (!is_strarr_param[i]) continue;
+            ind(c);
+            sb_put(&c->out, "free(__ss_"); emit_ident(c, s->func_params[i]); sb_put(&c->out, ");\n");
         }
         for (int i = 0; i < s->n_params && i < C99_FFI_MAX_ARGS; i++) {
             if (!is_arr_param[i] || strcmp(ffi_param_ctype(s, i), "gmb_int_t") != 0) continue;
@@ -33430,6 +34188,16 @@ static void emit_function(ctx_t* c, fn_info_t* fn) {
     if (fn_ret_out_abi(fn)) sb_put(&c->out, (s->n_params || has_ctx || is_lctx || is_lamv || fn->cls_owner[0]) ? ", double* __out" : "double* __out");
     sb_put(&c->out, ") {\n");
     c->indent = 1;
+    /* STACK TRACE BASIC: frame della procedura nello stack delle chiamate, aggiornato a ogni
+     * statement da `gmb_trace_line`. `cleanup` garantisce l'uscita su OGNI percorso (RETURN
+     * multipli, GOTO, defer): un push/pop scritto a mano ne dimenticherebbe almeno uno.
+     * Il nome è quello BASIC (non il C) e la riga quella della dichiarazione. */
+    if (s->func_name && s->func_name[0]) {
+        ind(c);
+        sb_printf(&c->out,
+                  "gmb_trace_frame_t __gmb_tf __attribute__((cleanup(gmb_trace_leave))) = gmb_trace_enter(\"%s\", %d);\n",
+                  s->func_name, s->line > 0 ? s->line : 0);
+    }
     /* Lambda con parametro ARRAY (2026-11-02): il C99 le passa `double*` senza lunghezza.
      * Il chiamante (trampolino FFI vettoriale) pubblica il bound in
      * gmb_lambda_bound(); qui lo si materializza in `<param>__b0` (prima non dichiarata). */
@@ -33513,11 +34281,19 @@ static void emit_function(ctx_t* c, fn_info_t* fn) {
     }
     /* dichiarazioni locali (esclusi i parametri e le variabili catturate: queste
      * vivono nella struct __ctx della closure, FASE 2.6(j)) */
+    for (int i = 0; i < fn->locals.n; i++) {
+        var_t* pv0 = &fn->locals.v[i];
+        /* Tutto ciò che è dichiarato nel prologo (parametri compresi: gli argomenti sono
+         * copiati nello slot dal chiamante) vive al livello FUNZIONE: una DIM/LOCAL/LET dentro
+         * un blocco emette una dichiarazione di blocco che lo ombreggia. */
+        pv0->decl_block = c99_name_has_toplevel_dim(fn, pv0->name) ? -1 : 0;
+    }
     for (int i = s->n_params; i < fn->locals.n; i++) {
         var_t* v = &fn->locals.v[i];
         if (v->captured) continue;
         if (v->cell) continue;         /* vive in una cella heap: vedi blocco "celle" sotto */
         if (v->late_local) continue;   /* LOCAL che ombreggia GLOBAL: dichiarata al punto d'uso */
+        if (v->is_static) continue;    /* STATIC: vedi il blocco dedicato sotto */
         ind(c);
         if (v->nullable) {
             /* DIM v AS <scalare>?: local gmb_val_t boxed, init NIL (non 0). */
@@ -33701,6 +34477,58 @@ static void emit_function(ctx_t* c, fn_info_t* fn) {
             emit_ident(c, v->name);
             sb_put(&c->out, " = 0;\n");
         }
+    }
+    /* STATIC dentro una procedura: dichiarata `static` (storage persistente per l'intera
+     * esecuzione: è ciò che la fa sopravvivere fra le chiamate) + un flag d'inizializzazione
+     * per il sito DIM (che deve eseguire l'inizializzatore UNA volta sola, parità IL/PCode). */
+    for (int i = s->n_params; i < fn->locals.n; i++) {
+        var_t* v = &fn->locals.v[i];
+        if (!v->is_static) continue;
+        int cond = !v->gkind && !v->vclass[0] && !v->boxed_val && !v->matrix && !v->matrix_value
+                   && !v->jagged && !v->nullable && !v->sb_builder && !v->regex_obj
+                   && !v->coll_handle && !v->matrix_handle && !v->cell;
+        if (v->type == TY_STR && !v->is_array) {
+            ind(c); sb_put(&c->out, "static gmb_string_t "); emit_ident(c, v->name); sb_put(&c->out, ";\n");
+        } else if (!v->is_array && cond) {
+            ind(c); sb_put(&c->out, "static gmb_double_t "); emit_ident(c, v->name); sb_put(&c->out, " = 0;\n");
+        } else if (v->is_array && cond) {
+            /* array STATIC: puntatore + companion (len dei dyn_len, bound, lower bound) statici —
+             * li riempie la DIM (una volta sola), le letture successive li ritrovano. */
+            ind(c);
+            sb_printf(&c->out, "static %s* ", ctype_name(v->type));
+            emit_ident(c, v->name);
+            sb_put(&c->out, ";\n");
+            if (v->dyn_len) {
+                ind(c); sb_put(&c->out, "static gmb_int_t "); emit_ident(c, v->name);
+                sb_put(&c->out, "_len = 0;\n");
+            }
+            int nd_st = v->ndims > 0 ? v->ndims : 1;
+            for (int k = 0; k < nd_st; k++) {
+                ind(c); sb_put(&c->out, "static gmb_int_t ");
+                sb_bound_ident(&c->out, v->name, k);
+                sb_put(&c->out, " = -1;\n");
+            }
+            ind(c); sb_put(&c->out, "static gmb_int_t ");
+            sb_bound_lo(&c->out, v);
+            sb_put(&c->out, " = 0;\n");
+            if (v->has_blo) {
+                for (int kb = 1; kb < nd_st; kb++) {
+                    ind(c); sb_put(&c->out, "static gmb_int_t ");
+                    sb_bound_lo_k(&c->out, v, kb);
+                    sb_put(&c->out, " = 0;\n");
+                }
+            }
+        } else {
+            /* Altri tipi composti (collezioni, classi, matrici, boxed): non supportati — un
+             * `static` di questi richiederebbe l'inizializzazione al primo ingresso di un
+             * oggetto il cui costruttore ha semantica propria. Errore esplicito. */
+            c99_fail(c, 0, "STATIC '%s': tipo non supportato dall'emitter C (ammessi scalari, STRING e array)", v->name);
+            continue;
+        }
+        ind(c);
+        sb_put(&c->out, "static int ");
+        emit_ident(c, v->name);
+        sb_put(&c->out, "__inited = 0;\n");
     }
     /* FASE 2.6(j): remap identificatori per le catture.
      * - figlio con catture: nome → __ctx-><campo>
@@ -34053,17 +34881,51 @@ static void emit_host_env(ctx_t* c, sb_t* fin) {
          * è il `void* __ctx` — richiamarle per nome senza ctx non compila (bug latente
          * esposto da un sito macro &/EVAL con code block in scope). Si invocano via fn value. */
         if (fn->is_lambda || fn->is_lambda_cap) continue;
+        /* Parametri OBBLIGATORI = quelli prima del primo OPTIONAL/PARAMARRAY (regola del
+         * linguaggio: gli opzionali sono in coda). Prima il bridge accettava SOLO
+         * `nargs == n_params`: `EVAL("PMT(r, n, pv)")` (5 parametri di cui 2 OPTIONAL) finiva
+         * in "chiamata esterna non disponibile", mentre la chiamata diretta dava il valore. */
+        int req_n = 0;
+        for (int k = 0; k < s->n_params; k++) {
+            if ((s->param_optional && s->param_optional[k])
+                || (s->param_variadic && s->param_variadic[k])) break;
+            req_n++;
+        }
         sb_put(fin, "    if (strcasecmp(name, \"");
         sb_put(fin, s->func_name);
-        sb_printf(fin, "\") == 0 && nargs == %d) {\n", s->n_params);
+        if (req_n == s->n_params)
+            sb_printf(fin, "\") == 0 && nargs == %d) {\n", s->n_params);
+        else
+            sb_printf(fin, "\") == 0 && nargs >= %d && nargs <= %d) {\n", req_n, s->n_params);
         for (int k = 0; k < s->n_params; k++) {
             var_t* pv = vars_find(&fn->locals, s->func_params[k]);
+            /* Valore del parametro k: dall'argomento se fornito, altrimenti il DEFAULT
+             * dichiarato (`OPTIONAL x AS T = valore`), o il default di tipo se OPTIONAL senza
+             * `=`. I default NON letterali (espressione calcolata) non sono riproducibili nel
+             * bridge: si usa il default di tipo, mai un valore inventato. */
+            char dflt[256];
+            gmb_expr_t* de = s->param_defaults ? s->param_defaults[k] : NULL;
+            if (de && de->kind == GMB_EXPR_NUM)
+                snprintf(dflt, sizeof dflt, "(gmb_double_t)%.17g", de->num);
+            else if (de && de->kind == GMB_EXPR_STR && de->str) {
+                char esc[192]; int eo = 0;
+                for (const char* q = de->str; *q && eo < (int)sizeof esc - 3; q++) {
+                    if (*q == '"' || *q == '\\') esc[eo++] = '\\';
+                    esc[eo++] = *q;
+                }
+                esc[eo] = 0;
+                snprintf(dflt, sizeof dflt, "gmb_string_alloc(\"%s\")", esc);
+            }
+            else if (pv && pv->type == TY_STR) snprintf(dflt, sizeof dflt, "gmb_string_alloc(\"\")");
+            else snprintf(dflt, sizeof dflt, "(gmb_double_t)0");
             if (pv && pv->type == TY_STR) {
                 sb_put(fin, "        gmb_string_t __a");
-                sb_printf(fin, "%d = gmb_val_to_string(args[%d]);\n", k, k);
+                if (k < req_n) sb_printf(fin, "%d = gmb_val_to_string(args[%d]);\n", k, k);
+                else sb_printf(fin, "%d = nargs > %d ? gmb_val_to_string(args[%d]) : %s;\n", k, k, k, dflt);
             } else {
                 sb_put(fin, "        gmb_double_t __a");
-                sb_printf(fin, "%d = gmb_val_to_double(args[%d]);\n", k, k);
+                if (k < req_n) sb_printf(fin, "%d = gmb_val_to_double(args[%d]);\n", k, k);
+                else sb_printf(fin, "%d = nargs > %d ? gmb_val_to_double(args[%d]) : %s;\n", k, k, k, dflt);
             }
         }
         sb_printf(fin, "        %s __r = gmb_user_", fn_ret_ctype(c, fn));
@@ -35116,6 +35978,38 @@ static void emit_library_section(ctx_t* c, const gmb_program_t* prog)
     }
 }
 
+/* TESTO SORGENTE per ERR.SourceLineText: emette il blob (righe del sorgente concatenato
+ * separate da '\n', indice 0 = riga 1) come letterali adiacenti (ognuno < 900 caratteri:
+ * nessun limite di lunghezza di un singolo letterale) e lo registra all'avvio di main.
+ * Il testo viene TRIMATO a runtime da gmb_src_line_text (indentazione esclusa). */
+static void emit_src_blob(ctx_t* c) {
+    if (!c->src_text || !c->src_text[0]) return;
+    sb_put(&c->out, "/* TESTO SORGENTE (ERR.SourceLineText): righe del sorgente concatenato,\n"
+                    " * indice 0 = riga 1 — stessa numerazione di gmb_trace_line. */\n"
+                    "static const char __gmb_src_text[] =\n");
+    size_t col = 0;
+    sb_put(&c->out, "    \"");
+    for (const unsigned char* p = (const unsigned char*)c->src_text; *p; p++) {
+        char esc[8];
+        size_t n = 0;
+        switch (*p) {
+            case '\\': esc[0] = '\\'; esc[1] = '\\'; n = 2; break;
+            case '"':  esc[0] = '\\'; esc[1] = '"';  n = 2; break;
+            case '\n': esc[0] = '\\'; esc[1] = 'n';  n = 2; break;
+            case '\t': esc[0] = '\\'; esc[1] = 't';  n = 2; break;
+            case '\r': continue;                     /* CRLF → LF */
+            default:
+                if (*p < 0x20) { n = (size_t)snprintf(esc, sizeof esc, "\\%03o", *p); }
+                else { esc[0] = (char)*p; n = 1; }   /* >= 0x20 (UTF-8 compreso) così com'è */
+                break;
+        }
+        if (col + n > 900) { sb_put(&c->out, "\"\n    \""); col = 0; }
+        sb_putn(&c->out, esc, n);
+        col += n;
+    }
+    sb_put(&c->out, "\";\n\n");
+}
+
 void gmb_semfold_program(gmb_stmt_t** stmts, int n, const char* file);   /* gmb_semfold.c */
 
 /* §3.6 PARSEC: file sorgente corrente (per LLM.FILEOUTLINE). Settato dal driver. */
@@ -35146,6 +36040,11 @@ static void emit_src_line(ctx_t* c, int line) {
         sb_putn(&c->out, p, 1);
     }
     sb_put(&c->out, "\"\n");
+    /* STACK TRACE: la riga corrente del frame BASIC va aggiornata sullo STESSO punto in cui
+     * si emette l'anchor `#line` (uno per statement): è uno store inlined, e rende il trace
+     * preciso al momento dell'errore senza altre chiamate. */
+    ind(c);
+    sb_printf(&c->out, "gmb_trace_line(%d);\n", line);
 }
 
 
@@ -35270,6 +36169,255 @@ static void collect_global_decls(ctx_t* c, gmb_stmt_t** list, int n) {
     }
 }
 
+/* ── LEAK STRINGHE (2026-11-13) — analisi CONSERVATIVA di "escape" ────────────────────────
+ * L'emitter assegnava un nuovo gmb_string_t sopra il vecchio senza liberarlo: in un loop la
+ * memoria cresce senza limite (misurato con `debug.memory`: 500 iterazioni di
+ * `s$ = "riga " + STR$(i)` → 1501 blocchi vivi / 10 KB; 20000 iterazioni → ~317 KB).
+ *
+ * Perché non basta `gmb_string_free(&s)` prima dell'assegnazione: le stringhe C sono struct
+ * copiate PER VALORE (`a(i) = s$` → `a[...] = s`, stesso `s.data`; idem campi UDT, argomenti,
+ * RETURN, elementi di lista/dict, catture di closure). Liberare "sulla fiducia" il valore
+ * precedente rende PENDENTI tutte quelle copie: è corruzione di memoria, non un leak.
+ *
+ * Qui si marca ogni variabile stringa come ESCAPED (`str_escape = 1`) appena il suo valore
+ * può essere trattenuto altrove; solo le variabili che restano "pure letture" vengono
+ * liberate all'assegnazione. La regola è "in dubbio, NO": sbagliare per eccesso lascia il
+ * leak su quella variabile (nessun danno), sbagliare per difetto sarebbe un use-after-free.
+ *
+ * Sono considerati usi NON escaping (non trattengono il buffer):
+ *   • argomenti di PRINT (console/file)          • condizione di IF/WHILE/DO, limiti di FOR
+ *   • operandi di concat/confronto               • argomenti dei builtin PURO (whitelist sotto:
+ *     restituiscono un buffer NUOVO — len/lenb/asc/instr/ucase/lcase/trim/ltrim/rtrim/mid/
+ *     left/right/val)
+ * Tutto il resto (argomenti di altre call, RETURN, contenitori, campi, closure, indici,
+ * RHS "nudo" che condivide il buffer) → escape.
+ */
+static int str_pure_builtin(gmb_tokenkind_t tk) {
+    switch (tk) {
+    case GMB_TOK_Len: case GMB_TOK_LenB: case GMB_TOK_Asc: case GMB_TOK_Instr:
+    case GMB_TOK_Upper: case GMB_TOK_Lower: case GMB_TOK_Trim: case GMB_TOK_LTrim:
+    case GMB_TOK_RTrim: case GMB_TOK_Mid: case GMB_TOK_Left: case GMB_TOK_Right:
+    case GMB_TOK_Val:
+        return 1;
+    default:
+        return 0;
+    }
+}
+
+static void str_escape_name(ctx_t* c, const char* name) {
+    if (!name || !name[0]) return;
+    var_t* v = lookup_var(c, name);
+    if (v && v->type == TY_STR) v->str_escape = 1;
+}
+
+/* Marca escaped tutte le variabili nominate nell'espressione. `safe` = 1 → l'espressione è
+ * consumata da una lettura pura (PRINT/condizione/concat/argomento di builtin puro). */
+static void str_escape_expr(ctx_t* c, gmb_expr_t* e, int safe);
+static void str_escape_stmt(ctx_t* c, gmb_stmt_t* s);
+
+static void str_escape_expr_list(ctx_t* c, gmb_expr_t** list, int n, int safe) {
+    for (int i = 0; i < n; i++) str_escape_expr(c, list ? list[i] : NULL, safe);
+}
+
+static void str_escape_expr(ctx_t* c, gmb_expr_t* e, int safe) {
+    if (!e) return;
+    switch (e->kind) {
+    case GMB_EXPR_VAR:
+        if (!safe) str_escape_name(c, e->var);
+        break;
+    case GMB_EXPR_NUM:
+    case GMB_EXPR_STR:
+        break;
+    case GMB_EXPR_BINARY:
+    case GMB_EXPR_UNARY:
+        /* concat/confronto/aritmetica: il risultato è un valore NUOVO, gli operandi sono letti */
+        str_escape_expr(c, e->left, safe);
+        str_escape_expr(c, e->right, safe);
+        break;
+    case GMB_EXPR_CALL: {
+        /* builtin puro → gli argomenti sono sole letture; qualunque altra call può trattenere
+         * il valore (funzione utente, FFI, contenitore: list.Add(s) ecc.) → escape. */
+        int pure = str_pure_builtin(e->tk);
+        for (int i = 0; i < e->nargs; i++) str_escape_expr(c, e->args[i], pure ? safe : 0);
+        if (e->callee) str_escape_expr(c, e->callee, 0);
+        break;
+    }
+    case GMB_EXPR_LAMBDA:
+        /* closure: la cattura può trattenere la variabile oltre lo statement */
+        str_escape_expr_list(c, e->args, e->nargs, 0);
+        str_escape_expr(c, e->lambda_expr, 0);
+        for (int i = 0; i < e->n_lambda_body; i++) {
+            gmb_stmt_t* s = e->lambda_body[i];
+            if (s) str_escape_stmt(c, s);
+        }
+        break;
+    case GMB_EXPR_COMPREHENSION:
+        str_escape_expr(c, e->comp_src, 0);
+        str_escape_expr(c, e->comp_where, 0);
+        str_escape_expr(c, e->comp_order, 0);
+        str_escape_expr(c, e->comp_sel, 0);
+        str_escape_expr(c, e->comp_key, 0);
+        str_escape_expr_list(c, e->comp_more_src, e->n_comp_more, 0);
+        break;
+    default:
+        str_escape_expr_list(c, e->args, e->nargs, 0);
+        break;
+    }
+}
+
+/* Tutti i campi-espressione di uno statement, con l'escape conservativo. */
+static void str_escape_stmt_fields(ctx_t* c, gmb_stmt_t* s) {
+    str_escape_expr_list(c, s->print_args, s->nprint, 0);
+    str_escape_expr(c, s->value, 0);
+    str_escape_expr(c, s->expr, 0);
+    str_escape_expr(c, s->cond, 0);
+    str_escape_expr(c, s->array_index, 0);
+    str_escape_expr_list(c, s->array_idx_extra, s->n_array_idx_extra, 0);
+    str_escape_expr(c, s->for_from, 0); str_escape_expr(c, s->for_to, 0); str_escape_expr(c, s->for_step, 0);
+    str_escape_expr(c, s->do_until, 0); str_escape_expr(c, s->do_while, 0);
+    str_escape_expr(c, s->array_size, 0); str_escape_expr(c, s->dim_to_hi, 0);
+    str_escape_expr_list(c, s->dim_extra, s->n_dim_extra, 0);
+    str_escape_expr_list(c, s->dim_extra_lo, s->n_dim_extra, 0);
+    str_escape_expr(c, s->dim_init, 0);
+    str_escape_expr(c, s->ret_value, 0);
+    str_escape_expr_list(c, s->case_tests, s->n_case_tests, 0);
+    str_escape_expr_list(c, s->case_hi, s->n_case_tests, 0);
+    str_escape_expr(c, s->of_expr, 0);
+    str_escape_expr(c, s->on_expr, 0);
+    str_escape_expr(c, s->on_call, 0);
+    str_escape_expr(c, s->catch_when, 0);
+    str_escape_expr(c, s->error_code, 0);
+    str_escape_expr(c, s->throw_expr, 0);
+    str_escape_expr_list(c, s->data_values, s->n_data, 0);
+    str_escape_expr(c, s->run_expr, 0);
+    str_escape_expr(c, s->array_value, 0);
+    str_escape_expr(c, s->array_position, 0);
+    str_escape_expr(c, s->array_start, 0);
+    str_escape_expr(c, s->array_count, 0);
+    str_escape_expr(c, s->array_extra, 0);
+    str_escape_expr(c, s->row, 0);
+    str_escape_expr(c, s->col, 0);
+    str_escape_expr(c, s->fg, 0);
+    str_escape_expr(c, s->bg, 0);
+    str_escape_expr(c, s->input_prompt, 0);
+    str_escape_expr(c, s->file_path_expr, 0);
+    str_escape_expr(c, s->file_num, 0);
+    str_escape_expr(c, s->file_pos, 0);
+    str_escape_expr_list(c, s->control_args, s->n_control_args, 0);
+    str_escape_expr(c, s->channel, 0);
+    str_escape_expr(c, s->send_value, 0);
+    str_escape_expr(c, s->ok_flag, 0);
+    for (int i = 0; i < 4; i++) str_escape_expr(c, s->win_coords[i], 0);
+    str_escape_expr(c, s->cond_mutex, 0);
+    str_escape_expr(c, s->go_wait, 0);
+    str_escape_expr(c, s->proc_name, 0);
+    str_escape_expr_list(c, s->go_args, s->n_go_args, 0);
+    str_escape_expr_list(c, s->net_args, s->n_netargs, 0);
+    str_escape_expr_list(c, s->cls_static_inits, s->n_cls_statics, 0);
+    str_escape_expr_list(c, s->param_defaults, s->n_params, 0);
+}
+
+/* Corpi annidati (stessa procedura): NON cambiano lo scope → si scendono normalmente. */
+static void str_escape_stmt(ctx_t* c, gmb_stmt_t* s) {
+    if (!s) return;
+    switch (s->kind) {
+    case GMB_STMT_PRINT:
+        /* stampa: il buffer viene solo letto */
+        str_escape_expr_list(c, s->print_args, s->nprint, 1);
+        break;
+    case GMB_STMT_LET:
+    case GMB_STMT_ASSIGN: {
+        /* RHS "nudo" (VAR/campo/indice): la variabile bersaglio CONDIVIDE il buffer →
+         * né il target né la sorgente sono liberabili. */
+        gmb_expr_t* v = s->value;
+        int bare = v && (v->kind == GMB_EXPR_VAR) && v->nargs == 0;
+        if (bare) {
+            if (s->target) str_escape_name(c, s->target);
+            str_escape_expr(c, v, 0);
+        } else {
+            str_escape_expr(c, v, 1);
+        }
+        str_escape_expr(c, s->array_index, 0);
+        str_escape_expr_list(c, s->array_idx_extra, s->n_array_idx_extra, 0);
+        break;
+    }
+    case GMB_STMT_IF:
+        str_escape_expr(c, s->cond, 1);
+        for (int i = 0; i < s->n_then; i++) str_escape_stmt(c, s->then_body[i]);
+        for (int i = 0; i < s->n_else; i++) str_escape_stmt(c, s->else_body[i]);
+        break;
+    case GMB_STMT_FOR:
+        str_escape_expr(c, s->for_from, 1);
+        str_escape_expr(c, s->for_to, 1);
+        str_escape_expr(c, s->for_step, 1);
+        for (int i = 0; i < s->n_for; i++) str_escape_stmt(c, s->for_body[i]);
+        break;
+    case GMB_STMT_WHILE:
+        str_escape_expr(c, s->cond, 1);
+        for (int i = 0; i < s->n_while; i++) str_escape_stmt(c, s->while_body[i]);
+        break;
+    case GMB_STMT_DO:
+        str_escape_expr(c, s->do_until, 1);
+        str_escape_expr(c, s->do_while, 1);
+        for (int i = 0; i < s->n_do; i++) str_escape_stmt(c, s->do_body[i]);
+        break;
+    default:
+        str_escape_stmt_fields(c, s);
+        break;
+    }
+    /* corpi annidati comuni a tutti i kind */
+    for (int i = 0; i < s->n_then; i++) str_escape_stmt(c, s->then_body[i]);
+    for (int i = 0; i < s->n_else; i++) str_escape_stmt(c, s->else_body[i]);
+    for (int i = 0; i < s->n_for; i++) str_escape_stmt(c, s->for_body[i]);
+    for (int i = 0; i < s->n_while; i++) str_escape_stmt(c, s->while_body[i]);
+    for (int i = 0; i < s->n_do; i++) str_escape_stmt(c, s->do_body[i]);
+    for (int i = 0; i < s->n_try; i++) str_escape_stmt(c, s->try_body[i]);
+    for (int i = 0; i < s->n_catch; i++) str_escape_stmt(c, s->catch_body[i]);
+    for (int i = 0; i < s->n_finally; i++) str_escape_stmt(c, s->finally_body[i]);
+    for (int k = 0; k < s->n_select_cases; k++) {
+        gmb_stmt_t* cs = s->select_cases[k];
+        if (cs) str_escape_stmt(c, cs);
+    }
+    for (int k = 0; k < s->n_go_cases; k++)
+        if (s->go_cases[k].body) {
+            for (int j = 0; j < s->go_cases[k].n_body; j++) str_escape_stmt(c, s->go_cases[k].body[j]);
+            str_escape_stmt(c, s->go_cases[k].comm);
+        }
+    if (s->case_body) for (int i = 0; i < s->n_case_body; i++) str_escape_stmt(c, s->case_body[i]);
+}
+
+/* Pre-pass: per ogni PROCEDURA (e per il top level) marca le stringhe che possono essere
+ * condivise. I corpi di funzioni nidificate/λ sono trattati come "tutto escape" (catture). */
+static void str_escape_prepass(ctx_t* c, const gmb_program_t* prog) {
+    /* 1. top level (scope globale) */
+    {
+        int prv_fn_i = fn_index(c, c->cur_fn);
+        c->cur_fn = NULL;
+        for (int i = 0; i < prog->n; i++) {
+            gmb_stmt_t* s = prog->stmts[i];
+            if (!s || s->kind == GMB_STMT_FUNCTION || s->kind == GMB_STMT_CLASS) continue;
+            str_escape_stmt(c, s);
+        }
+        c->cur_fn = fn_at(c, prv_fn_i);
+    }
+    /* 2. corpi delle procedure: scope locale della funzione */
+    for (int i = 0; i < c->nfn; i++) {
+        fn_info_t* fn = &c->fns[i];
+        if (!fn->stmt || fn->stmt->is_ffi) continue;
+        c->cur_fn = fn;
+        for (int k = 0; k < fn->stmt->n_funcbody; k++) str_escape_stmt(c, fn->stmt->func_body[k]);
+        c->cur_fn = NULL;
+    }
+    /* 3. una variabile CATTURATA da una closure (cell) è condivisa per definizione */
+    for (int i = 0; i < c->nfn; i++) {
+        fn_info_t* fn = &c->fns[i];
+        for (int k = 0; k < fn->locals.n; k++)
+            if (fn->locals.v[k].captured || fn->locals.v[k].cell) fn->locals.v[k].str_escape = 1;
+    }
+    for (int k = 0; k < c->globals.n; k++)
+        if (c->globals.v[k].captured || c->globals.v[k].cell) c->globals.v[k].str_escape = 1;
+}
+
 static int gmb_c99_emit_once(const gmb_program_t* prog, char** out_src, char** error) {
     g_c99_last_dir_line = -1;   /* O8: la prima direttiva della nuova emissione */
     g_c99_last_dir_file[0] = 0;
@@ -35284,6 +36432,9 @@ static int gmb_c99_emit_once(const gmb_program_t* prog, char** out_src, char** e
     ctx_t ctx;
     memset(&ctx, 0, sizeof(ctx));
     ctx_t* c = &ctx;
+    c->option_strict = prog->option_strict;
+    /* TESTO SORGENTE per ERR.SourceLineText (vedi gmb_c99_set_source_text). */
+    c->src_text = g_c99_src_text;
     if (prog->library_name[0]) {
         ctx.lib_mode = 1;
         strncpy(ctx.lib_name, prog->library_name, sizeof(ctx.lib_name) - 1);
@@ -35469,6 +36620,11 @@ static int gmb_c99_emit_once(const gmb_program_t* prog, char** out_src, char** e
         if (!changed) break;
     }
 
+    /* 3-bis. LEAK STRINGHE: analisi conservativa di "escape" (vedi str_escape_prepass).
+     * Va DOPO il punto fisso dei tipi (serve sapere quali variabili sono TY_STR) e PRIMA
+     * dell'emissione (emit_assignment legge var->str_escape). */
+    str_escape_prepass(c, prog);
+
     /* 3b. FASE 2.6(b/c): il programma usa GPM? ON ERROR/RESUME? (pre-scan) */
     c->top_stmts = prog->stmts; c->n_top_stmts = prog->n;
     /* (dbf_clipper calcolato prima del lowering lambda: vedi sopra.) */
@@ -35646,6 +36802,32 @@ static int gmb_c99_emit_once(const gmb_program_t* prog, char** out_src, char** e
     for (int i = 0; i < c->n_classes; i++) {
         struct cls_info* ci = &c->classes[i];
         if (ci->is_interface) continue;   /* 2.7(d)p2b: interfaccia = solo contratto, no struct */
+        for (int k = 0; k < ci->nfields; k++) {
+            if (ci->fbits[k] < 0) {
+                c99_fail(c, 0, "campo '%s' di '%s': WIDTH è ammesso solo su campi interi "
+                         "(BYTE/INTEGER/LONG/QUAD e varianti unsigned).", ci->fname[k], ci->name);
+                return 1;
+            }
+            /* UNION v1 (parità col parser C#): solo tipi con la stessa larghezza in memoria su
+             * tutte le gambe, e niente bitfield dentro una union. */
+            if (ci->is_union) {
+                const char* ft = ci->ftype[k] ? ci->ftype[k] : "";
+                int okU = !strncasecmp(ft, "BYTE", 4) || !strncasecmp(ft, "SBYTE", 5)
+                       || !strncasecmp(ft, "LONG", 4) || !strncasecmp(ft, "ULONG", 5)
+                       || !strncasecmp(ft, "QUAD", 4) || !strncasecmp(ft, "UQUAD", 5)
+                       || !strncasecmp(ft, "DOUBLE", 6);
+                if (!okU) {
+                    c99_fail(c, 0, "UNION '%s': il campo '%s' non è ammesso (v1: BYTE, SBYTE, LONG, "
+                             "ULONG, QUAD, UQUAD, DOUBLE).", ci->name, ci->fname[k]);
+                    return 1;
+                }
+                if (ci->fbits[k] > 0) {
+                    c99_fail(c, 0, "UNION '%s': il campo '%s' usa WIDTH: i bitfield non sono ammessi "
+                             "dentro una UNION (v1).", ci->name, ci->fname[k]);
+                    return 1;
+                }
+            }
+        }
         sb_printf(&proto, "typedef struct gmb_obj_%s {\n", ci->name);
         if (cls_flat_field_count(c, ci, 0) == 0) sb_put(&proto, "    int __empty;\n");
         else cls_emit_flat_fields(c, &proto, ci, 0);
@@ -35678,6 +36860,16 @@ static int gmb_c99_emit_once(const gmb_program_t* prog, char** out_src, char** e
                 }
                 else if (strncasecmp(ft, "STRING", 6) == 0) code = 2;
                 else if (gmb_ctype_is_list(ft)) { code = 4; elem = gmb_list_elem_of(ft); }
+                /* UNION/BITFIELD (2026-11-11): `offsetof` su un bitfield è ILLEGALE in C
+                 * (clang: "cannot compute offset of bit-field") e in una union anonima
+                 * l'offset non è significativo: il registro di layout serve solo a DBF/ISAM,
+                 * dove questi tipi non sono ammessi (rifiutati a monte). Si emette 0. */
+                if (ci->is_union || ci->fbits[fi] > 0) {
+                    if (strncasecmp(ft, "DOUBLE", 6) == 0 || strncasecmp(ft, "SINGLE", 6) == 0) code = 1;
+                    else code = 0;   /* intero */
+                    sb_printf(&proto, "    gmb_type_udt_field(\"%s\", \"%s\", 0L, %d);\n", ci->name, ci->fname[fi], code);
+                    continue;
+                }
                 /* Il nome C del campo è SANITIZZATO (sb_ident: `for` → `gmb_kw_for`), come
                  * nella struct sopra; usare qui il nome BASIC crudo generava C invalido
                  * (`offsetof(..., for)`) per campi omonimi di keyword C — es. `TYPE loop`
@@ -35727,10 +36919,15 @@ static int gmb_c99_emit_once(const gmb_program_t* prog, char** out_src, char** e
         ffi_leaf_t __lv[64];
         int __n = collect_ffi_leaves_silent(c, __cu, "", __lv, 64);
         if (__n <= 0 || __n > 64) continue;
+        /* PACKED TYPE: il typedef-ombra deve essere packed come la struct C reale, altrimenti
+         * il compilatore C inserisce il padding e gli offset divergono (2026-11-11). */
         sb_printf(&proto, "typedef struct { ");
         for (int __f = 0; __f < __n; __f++)
             sb_printf(&proto, "%s f%d; ", ffi_code_ctype(__lv[__f].code), __f);
-        sb_printf(&proto, "} gmb_ffi_udt_%s_t;\n", __cu->name);
+        if (__cu->is_packed)
+            sb_printf(&proto, "} __attribute__((packed)) gmb_ffi_udt_%s_t;\n", __cu->name);
+        else
+            sb_printf(&proto, "} gmb_ffi_udt_%s_t;\n", __cu->name);
     }
     if (c->n_classes) sb_put(&proto, "\n");
     for (int i = 0; i < c->nfn; i++) {
@@ -35952,12 +37149,13 @@ static int gmb_c99_emit_once(const gmb_program_t* prog, char** out_src, char** e
      * corpi funzione, perché invoca le gmb_user_*). */
     sb_put(&c->out, "static char* __gmb_plugin_call(const char* __plugin, const char* __arg);\n\n");
 
-    /* 5. corpi funzione */
+    /* 5. corpi funzione — i GENERATORI sono procedure normali: il loro corpo è una
+     * coroutine (funzione void) che YIELD sospende, quindi passa dallo stesso emitter. */
     for (int i = 0; i < c->nfn && !c->error[0]; i++)
-        if (!c->fns[i].stmt->is_generator) emit_function(c, &c->fns[i]);
-    /* 5a. generatori: step function delle GENERATOR (mirror emitter C# EmitGenerator) */
+        emit_function(c, &c->fns[i]);
+    /* 5a. generatori: entry della coroutine (spacchetta i parametri e chiama il corpo) */
     for (int i = 0; i < c->nfn && !c->error[0]; i++)
-        if (c->fns[i].stmt->is_generator) emit_generator_def(c, &c->fns[i]);
+        if (c->fns[i].stmt->is_generator) emit_generator_entry(c, &c->fns[i]);
 
     /* 5a-bis. Handler evento con LABEL LOCALE: una funzione sintetica per (procedura, label)
      * che esegue il blocco del label con le locali FRESCHE della procedura (zero-init), come il
@@ -36156,7 +37354,9 @@ static int gmb_c99_emit_once(const gmb_program_t* prog, char** out_src, char** e
             else
                 sb_put(&c->out, "    gmb_user_Main();\n}\n\n");
         }
+        emit_src_blob(c);
         sb_put(&c->out, "int main(int argc, char** argv) {\n");
+        if (c->src_text && c->src_text[0]) sb_put(&c->out, "    gmb_src_text_register(__gmb_src_text);\n");
         sb_put(&c->out, "    gmb_set_command_args(argc, argv);\n");
         /* Boot UI/console SOLO se il programma usa grafica/controls/TUI (Eseguibili-C-Minimali):
          * un programma headless (PRINT/DBF/…) non deve inizializzare SDL/iconsole. */
@@ -36383,6 +37583,28 @@ static int gmb_c99_emit_once(const gmb_program_t* prog, char** out_src, char** e
             sb_put(&fin, "static gmb_val_t ");
             sb_ident(&fin, gv->name);
             sb_put(&fin, " = {0};\n");
+            continue;
+        }
+        if (gv->matrix_value) {
+            /* `DIM m(r,c)` rank-2 DOUBLE a livello di MODULO: a file scope è un descrittore
+             * gmb_matrix_t (stessa rappresentazione dei LOCALI, vedi prologo), NON un
+             * `double*` + bound: l'indicizzazione usa gmb_matrix_value_get/set(<nome>, …) e
+             * il DIM assegna gmb_matrix_value_zeros. Senza questo ramo il C generato
+             * dichiarava `static gmb_double_t*` e poi usava il descrittore → "assigning to
+             * 'gmb_double_t *' from incompatible type 'gmb_matrix_t'" (Arrays/ArraysDim,
+             * 2026-11-12). */
+            sb_put(&fin, "static gmb_matrix_t ");
+            sb_ident(&fin, gv->name);
+            sb_put(&fin, " = {0};\n");
+            if (gv->has_blo) {
+                int nd = gv->ndims > 0 ? gv->ndims : 2;
+                for (int k = 0; k < nd; k++) {
+                    sb_put(&fin, "static gmb_int_t ");
+                    if (k == 0) sb_bound_lo(&fin, gv);
+                    else sb_bound_lo_k(&fin, gv, k);
+                    sb_put(&fin, " = 0;\n");
+                }
+            }
             continue;
         }
         if (gv->matrix) {
@@ -36664,6 +37886,9 @@ static int gmb_c99_emit_once(const gmb_program_t* prog, char** out_src, char** e
             "    return NULL;\n"
             "}\n\n");
     }
+    /* Trampolini callback per-slot (firma mista/arità > 8): generati durante l'emissione dei
+     * wrapper, definiti qui nel preludio (file scope, PRIMA dei corpi che li usano). */
+    if (c->ffi_cb_tramps.s) { sb_put(&fin, c->ffi_cb_tramps.s); free(c->ffi_cb_tramps.s); c->ffi_cb_tramps.s = NULL; }
     sb_put(&fin, c->out.s);
     free(c->out.s);
     if (c->preds) { sb_t* pb = (sb_t*)c->preds; if (pb->s) sb_put(&fin, pb->s); }

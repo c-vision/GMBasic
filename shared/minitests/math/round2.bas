@@ -1,3 +1,4 @@
+' EXPECT: 2|4|-2|-4|2.34|-2.34
 SUB Main()
   PRINT ROUND(2.5)
   PRINT ROUND(3.5)

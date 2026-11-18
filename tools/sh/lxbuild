@@ -1,0 +1,193 @@
+#!/usr/bin/env bash
+# tools/sh/lxbuild — HARNESS CROSS-RID: compila UN MiniTest (driver .bas->C + link cross) e
+# registra la riga di manifest per l'esecuzione (vedi tools/sh/lxrun per linux-x64 in container).
+#
+# PERCHE' ESISTE. Il leg nativo gira su macOS: per misurare lo STESSO compilatore su un'altra
+# piattaforma serve un link cross (zig cc -target <triple>) e, per linux-x64, un container per
+# eseguire. Questo script fa solo il BUILD; l'esecuzione e il confronto sono in `lxrun`.
+#
+# IL RID E' UN ARGOMENTO (`--rid`), non una costante: lo stesso script compila osx-arm64,
+# linux-x64, linux-arm64, win-x64 con lo stesso zig. Triple/SDK/framework/librerie vengono da
+# `gmb_link_set.sh`, quindi un RID nuovo non richiede modifiche qui.
+#
+# COSA NON DUPLICA. Il set di link NON e' cablato qui: viene da `tools/sh/gmb_link_set.sh`
+# (l'unica fonte RID -> triple/framework/librerie, la stessa del runner ufficiale). Qui si
+# aggiungono solo gli archivi e gli include del caso.
+#
+# WORK DIR PERSISTENTE. Gli artefatti (C generato, binari, manifest) vivono in
+#   $HOME/.gmbasic/harness/<rid>/
+# e non in /tmp: sopravvivono allo svuotamento e non entrano nel repo.
+#
+# FORMATO MANIFEST. Campi separati da US (0x1f), 5 campi:
+#   case_path US slug US reldir US expect US tag
+# Il TAB non e' separatore: un EXPECT puo' contenerlo (es. llm/gmb_module) e verrebbe troncato.
+#
+# USO
+#   tools/sh/lxbuild <dominio>/<file>.bas [tag-manifest] [--rid <rid>]
+#     tag-manifest  nome dello shard (default: main) -> $LXW/manifest_<tag>.tsv
+#                   (lo usa `lxshard` per build in parallelo)
+#     --rid         RID di destinazione (default: linux-x64), uno dei sei di gmb_link_set.sh:
+#                   linux-x64 linux-arm64 osx-arm64 osx-x64 win-x64 win-arm64
+#
+# PRIMA VOLTA. Serve la cache del runtime per-RID (`librt.a`), che il runner ufficiale
+# costruisce; se manca, questo script lo dice e non inventa nulla:
+#   GMB_MINI_ONLY=http/roundtrip.bas bash tools/sh/test_minitests_c99native --rid linux-x64
+set -o pipefail
+
+LX_RID="linux-x64"          # default; `--rid` lo sostituisce (i sei RID di gmb_link_set.sh)
+REPO="$(cd "$(dirname "$0")/../.." && pwd)"
+LLMENV="$HOME/Documents/Projects/LLMEnv"
+# Toolchain: risolta da `zigcc.sh --print-zig` (ordine canonico del piano F1), MAI cablata.
+ZIG="$(bash "$REPO/tools/sh/zigcc.sh" --print-zig)" || {
+    echo "lxbuild: nessuna toolchain zig (gmbadmin first-use)" >&2; exit 2
+}
+DRV="$REPO/GMBasic/native/gmb_compiler_c/build/gmbnative"
+US=$(printf '\037')
+
+# Il RID e' un ARGOMENTO, non una costante: niente variabili d'ambiente.
+case_path=""; TAG="main"; _pos=()
+while [ $# -gt 0 ]; do
+    case "$1" in
+        --rid)     LX_RID="${2:-}"; shift 2 ;;
+        --rid=*)   LX_RID="${1#--rid=}"; shift ;;
+        -h|--help) sed -n '2,36p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+        *)         _pos[${#_pos[@]}]="$1"; shift ;;
+    esac
+done
+case_path="${_pos[0]:-}"
+[ "${#_pos[@]}" -ge 2 ] && TAG="${_pos[1]}"
+case "$LX_RID" in
+    linux-*|osx-*|win-*) ;;
+    *) echo "lxbuild: RID non valido '$LX_RID' (attesi: linux-x64 linux-arm64 osx-arm64 osx-x64 win-x64 win-arm64)" >&2; exit 2 ;;
+esac
+CACHE="$HOME/.gmbasic/libs/$LX_RID"
+LXW="$HOME/.gmbasic/harness/$LX_RID"
+if [ -z "$case_path" ]; then
+    echo "uso: tools/sh/lxbuild <dominio>/<file>.bas [tag-manifest] [--rid <rid>]" >&2
+    exit 2
+fi
+src="$REPO/shared/minitests/$case_path"
+[ -f "$src" ] || { echo "lxbuild: MiniTest non trovato: $src" >&2; exit 2; }
+
+slug="$(printf '%s' "${case_path%.bas}" | sed 's|/|__|g')"
+reldir="$(dirname "$case_path")"
+mkdir -p "$LXW/c" "$LXW/bin" "$LXW/log" "$LXW/tree"
+c="$LXW/c/$slug.c"
+bin="$LXW/bin/$slug"
+man="$LXW/manifest_$TAG.tsv"
+buildfail="$LXW/buildfail_$TAG.txt"
+tree="$LXW/tree/$reldir"
+
+# Copia di lavoro della dir del DOMINIO, una volta sola (e' la cwd di esecuzione di `lxrun`:
+# i MiniTest leggono/scrivono file accanto a se stessi). Copiarla per-slug duplicherebbe
+# l'intera dir per ogni caso dello stesso dominio.
+if [ ! -d "$tree" ]; then
+    cp -R "$(dirname "$src")" "$tree"
+fi
+
+emit_fail() {  # $1=tag-riga  $2=nota
+    printf '%s%s%s%s%s%s%s%s%s\n' "$case_path" "$US" "$slug" "$US" "$reldir" "$US" "" "$US" "$1" >> "$man"
+    printf 'BUILD %s %s\n' "$case_path" "$2" >> "$buildfail"
+}
+
+"$DRV" "$src" "$c" --no-exe > "$LXW/log/$slug.drv" 2>&1
+if [ ! -s "$c" ]; then
+    emit_fail "BUILD-DRIVER-FAIL" "driver-fail"
+    exit 0
+fi
+
+# ── Set di link: unica fonte tools/sh/gmb_link_set.sh ───────────────────────────
+eval "$(bash "$REPO/tools/sh/gmb_link_set.sh" --rid "$LX_RID" --cache "$CACHE")"
+
+# Runtime condiviso per-RID: cache ufficiale, con una copia persistente nel work dir cosi'
+# un giro di /tmp non azzera l'harness. Se non esiste, non si inventa: lo costruisce il runner.
+RT_CACHE="${TMPDIR:-/tmp}/gmb_c99native_rt_cache/$LX_RID/librt.a"
+if [ -f "$RT_CACHE" ]; then cp -f "$RT_CACHE" "$LXW/librt.a" 2>/dev/null; fi
+RTLIB="$LXW/librt.a"
+if [ ! -f "$RTLIB" ]; then
+    echo "lxbuild: manca $RTLIB (cache runtime $LX_RID). Costruiscila una volta con:" >&2
+    echo "  GMB_MINI_ONLY=http/roundtrip.bas bash tools/sh/test_minitests_c99native --rid $LX_RID" >&2
+    emit_fail "BUILD-NO-RUNTIME" "librt.a assente"
+    exit 0
+fi
+
+INC="-I$REPO/GMBasic/native/gmb_runtime_c/include -I$REPO/GMBasic/native/gmb_runtime_c/src"
+INC="$INC -I$REPO/GMBasic/native/gmb_db_c/include -I$REPO/GMBasic/native/gmb_torch/include"
+INC="$INC -I$REPO/GMBasic/native/gmb_doc_c/include -I$REPO/GMBasic/native/gmb_compiler_c/include"
+INC="$INC -I$REPO/GMBasic/native/gmb_agent_runtime"
+# Pila LLM del repo (il C emesso include gli header dei descrittori modello).
+for d in "$REPO/GMBasic/gmbllm/include" "$REPO/GMBasic/gmbllm/include/quant" \
+         "$REPO/GMBasic/gmbllm/include/train" "$REPO/GMBasic/gmbllm/include/lora"; do
+    [ -d "$d" ] && INC="$INC -I$d"
+done
+[ -d "$CACHE/include" ] && INC="$INC -I$CACHE/include"
+[ -d "$LLMENV" ] && INC="$INC -I$LLMENV/LLMToken -I$LLMENV/LLMJinja -I$LLMENV/LLMEngine/mlx -I$LLMENV/LLMEngine/moe/include -I$LLMENV/LLMCodec/include -I$LLMENV/LLMEngine/include -I$LLMENV/LLMEngine/asr/include -I$LLMENV/LLMDesc -I$LLMENV/LLMEngine/Options -I$LLMENV/LLMEngine/plugin"
+
+# Archivi extra per dominio (stessi condizionali del runner, sul C generato).
+EXTRA=""
+grep -qE 'gmb_verify_run|gmb_verify_require|gmb_observe_test' "$c" && \
+  EXTRA="$EXTRA $REPO/GMBasic/native/gmb_compiler_c/build/libgmb_compiler_c.a"
+grep -qE 'gmb_doc_|gmb_docfields_json|gmb_docextract_json|gmb_agent_ask_file' "$c" && \
+  EXTRA="$EXTRA $REPO/GMBasic/native/gmb_doc_c/src/gmb_doc.c $REPO/GMBasic/native/gmb_doc_c/src/gmb_doc_pdf.c $REPO/GMBasic/native/gmb_doc_c/src/gmb_doc_ocr.c"
+if grep -q 'gmb_ml_' "$c"; then
+    EXTRA="$EXTRA $REPO/GMBasic/native/gmb_torch/src/gmb_torch.c"
+    [ -f "$REPO/GMBasic/native/gmb_torch/src/gmb_torch_str.c" ] && EXTRA="$EXTRA $REPO/GMBasic/native/gmb_torch/src/gmb_torch_str.c"
+fi
+
+TF="-target $LS_TRIPLE"
+[ -n "${LS_SDK[*]:-}" ] && TF="$TF ${LS_SDK[*]}"
+# Windows: stesso force-include del build ufficiale (POSIX->Win32: gmtime_r/localtime_r, unistd,
+# sys/*). Senza, i TU del runtime che li usano non compilano in PE.
+case "$LX_RID" in
+    win-*) TF="$TF -include $REPO/GMBasic/native/win32shim/include/gmb_win32.h -I$REPO/GMBasic/native/win32shim/include -DCURL_STATICLIB -DPCRE2_STATIC -DSDL_STATIC" ;;
+esac
+
+# Compilatore: su osx-* si passa da `tools/sh/zcc`, che aggiunge i pezzi che zig non ricava da solo
+# (`-F` framework, `-isystem <SDK>/usr/include` per libDER, `-include mach-o/dyld.h`); senza,
+# `gmb_agent_runtime/gmb_ax_mac.c` non compila e `gmb_eval_hook.c` non dichiara _NSGetExecutablePath.
+CC_CMD="$ZIG cc"
+case "$LX_RID" in
+    osx-*) [ -x "$REPO/tools/sh/zcc" ] && CC_CMD="$REPO/tools/sh/zcc" ;;
+esac
+# Su Darwin `librt.a` referenzia llmcodec_*/gmbllm_*/llmengine_plugin/llmdesc (LS_LLM=1) e i
+# simboli di gmb_agent_runtime (LS_AGENT=1): sono archivi/sorgenti dell'HOST, il resolver li
+# dichiara 0 per gli altri RID.
+LLM_EXTRA=""
+if [ "${LS_LLM:-0}" = 1 ]; then
+    _codec="$LLMENV/LLMEngine/mlx/build-gmbasic"
+    for _a in "$_codec/llmcodec_mlx_build/libllmcodec.a" "$_codec/llmengine_moe_mlx_build/libllmengine_moe.a" \
+              "$REPO/GMBasic/native/gmb_runtime_c/build/gmbllm_build/libgmbllm_train.a" \
+              "$REPO/GMBasic/native/gmb_runtime_c/build/gmbllm_build/libgmbllm_core.a" \
+              "$REPO/GMBasic/native/gmb_runtime_c/build/llmengine_plugin_build/libllmengine_plugin.a" \
+              "$REPO/GMBasic/native/gmb_runtime_c/build/llmdesc_build/libllmdesc.a" \
+              "$CACHE/libllmtoken.dylib"; do
+        [ -f "$_a" ] && LLM_EXTRA="$LLM_EXTRA $_a"
+    done
+    LLM_EXTRA="$LLM_EXTRA -L$_codec -lllmcodec_ggml -lllmcodec_mlx_affine -lllmcodec_fp8 -Wl,-rpath,$_codec -Wl,-rpath,$CACHE"
+fi
+[ "${LS_AGENT:-0}" = 1 ] && {
+    EXTRA="$EXTRA $(echo "$REPO"/GMBasic/native/gmb_agent_runtime/*.c) $LLMENV/LLMJinja/llmjinja.c $LLMENV/LLMJinja/llmjinja_builtins.c"
+    INC="$INC -I$LLMENV/LLMJinja"
+}
+
+# `--export-dynamic` esiste solo su ELF (Mach-O lo rifiuta, PE non ne ha bisogno).
+EXPORT_FLAG=""
+case "$LX_RID" in linux-*) EXPORT_FLAG="-Wl,--export-dynamic" ;; esac
+# `libgmb_db.a` e' l'archivio dell'HOST: in PE non e' linkabile (Mach-O), quindi fuori.
+DB_LIB=""
+case "$LX_RID" in win-*) : ;; *) DB_LIB="$REPO/GMBasic/native/gmb_db_c/build/libgmb_db.a" ;; esac
+
+if $CC_CMD $TF "$c" "$RTLIB" ${DB_LIB:+"$DB_LIB"} $EXTRA $LLM_EXTRA \
+     $INC -w -ffp-contract=off -DGMB_WITH_UI=1 ${LS_SYS[*]:-} ${LS_THIRD[*]:-} ${LS_FRAMEWORKS[*]:-} \
+     ${EXPORT_FLAG:+$EXPORT_FLAG} -o "$bin" > "$LXW/log/$slug.cc" 2>&1; then
+    expect="$(grep -m1 "^' EXPECT: " "$src" | sed "s/^' EXPECT: //" \
+              | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' \
+              | grep -v '^$' | tr '\n' '|' | sed -e 's/|$//')"
+    tag="OK"
+    grep -q "^' TAG: expected-error" "$src" && tag="EXPECTED-ERROR"
+    printf '%s%s%s%s%s%s%s%s%s\n' "$case_path" "$US" "$slug" "$US" "$reldir" "$US" "$expect" "$US" "$tag" >> "$man"
+else
+    why="$(grep -oE 'undefined symbol: [A-Za-z0-9_]+' "$LXW/log/$slug.cc" | head -2 | tr '\n' ' ')"
+    [ -n "$why" ] || why="$(grep -E 'error' "$LXW/log/$slug.cc" | head -1 | cut -c1-90)"
+    emit_fail "BUILD-LINK-FAIL" "$why"
+fi

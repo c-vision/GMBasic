@@ -6100,9 +6100,42 @@ static void gmb_bf_3406(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int fun
     }
 }
 
+/* Uscita tipizzata di un valore JSON verso la VM/C (JSON.EXTRACT / walk del path):
+ * numeri → NUMERO (PRINT → " 42"), stringhe → STRINGA, bool → -1/0 (stessa convenzione di
+ * JSON.PARSE in gmb_bf_758). Prima TUTTO diventava testo: su VM/C `JSON.EXTRACT(d,"n")`
+ * stampava `42` invece di ` 42` (divergenza con IL/PCode/C99, json/extract_typed).
+ * Ritorna 1 se ha scritto l'uscita; 0 = valore non scalare (proseguire col walk). */
+static int bf_json_val_out(gmb_val_t v, gmb_builtin_out_t* bout)
+{
+    switch (v.kind)
+    {
+        case GMB_TYPE_INT:
+        case GMB_TYPE_DOUBLE:
+        case GMB_TYPE_CURRENCY:
+        case GMB_TYPE_DATETIME:
+            bout->is_num = 1;
+            bout->result = gmb_val_to_double(v);
+            return 1;
+        case GMB_TYPE_BOOL:
+            bout->is_num = 1;
+            bout->result = v.v_bool ? -1.0 : 0.0;
+            return 1;
+        case GMB_TYPE_STRING:
+        {
+            gmb_obj_string_t* st = gmb_str_cstr(v.v_string.data ? v.v_string.data : "");
+            bout->is_num = 0;
+            bout->result_ref = (gmb_obj_t*)st;
+            bout->result_ref_bt = GMB_BT_STRING;
+            return 1;
+        }
+        default:
+            return 0;
+    }
+}
+
 static void gmb_bf_3407(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
 {
-    /* JSON.EXTRACT(obj, "path[0].field") */
+    /* JSON.EXTRACT(obj, "path[0].field") — usa bf_json_val_out per la resa TIPIZZATA. */
     bout->is_num = 0; bout->result_ref = NULL; bout->result = 0;
     (void)vm; (void)func_code; (void)task;
     if (argc < 2 || args[0].type != 2 || !args[0].ref) return;
@@ -6121,10 +6154,7 @@ static void gmb_bf_3407(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int fun
         {
             gmb_val_t v = gmb_dict_get(*((gmb_obj_shared_val_t*)cur)->dict, seg);
             cur = (v.kind == GMB_TYPE_OBJECT) ? (gmb_obj_t*)v.v_ptr : NULL;
-            if (v.kind == GMB_TYPE_STRING) { gmb_obj_string_t* st = gmb_str_cstr(v.v_string.data ? v.v_string.data : ""); bout->result_ref = (gmb_obj_t*)st; bout->result_ref_bt = GMB_BT_STRING; return; }
-            if (v.kind == GMB_TYPE_DOUBLE) { gmb_string_t _ts = gmb_double_to_string(v.v_double); gmb_obj_string_t* _st = gmb_str_cstr(_ts.data ? _ts.data : ""); bout->result_ref = (gmb_obj_t*)_st; bout->result_ref_bt = GMB_BT_STRING; return; }
-            if (v.kind == GMB_TYPE_INT) { gmb_string_t _ts = gmb_double_to_string((double)v.v_int); gmb_obj_string_t* _st = gmb_str_cstr(_ts.data ? _ts.data : ""); bout->result_ref = (gmb_obj_t*)_st; bout->result_ref_bt = GMB_BT_STRING; return; }
-            if (v.kind == GMB_TYPE_BOOL) { gmb_obj_string_t* _st = gmb_str_cstr(v.v_bool ? "true" : "false"); bout->result_ref = (gmb_obj_t*)_st; bout->result_ref_bt = GMB_BT_STRING; return; }
+            if (bf_json_val_out(v, bout)) return;
         }
         while (*q == '[')
         {
@@ -6138,10 +6168,7 @@ static void gmb_bf_3407(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int fun
                 {
                     gmb_val_t v = l->items[idx];
                     cur = (v.kind == GMB_TYPE_OBJECT) ? (gmb_obj_t*)v.v_ptr : NULL;
-                    if (v.kind == GMB_TYPE_STRING) { gmb_obj_string_t* st = gmb_str_cstr(v.v_string.data ? v.v_string.data : ""); bout->result_ref = (gmb_obj_t*)st; bout->result_ref_bt = GMB_BT_STRING; return; }
-                    if (v.kind == GMB_TYPE_DOUBLE) { gmb_string_t _ts = gmb_double_to_string(v.v_double); gmb_obj_string_t* _st = gmb_str_cstr(_ts.data ? _ts.data : ""); bout->result_ref = (gmb_obj_t*)_st; bout->result_ref_bt = GMB_BT_STRING; return; }
-                    if (v.kind == GMB_TYPE_INT) { gmb_string_t _ts = gmb_double_to_string((double)v.v_int); gmb_obj_string_t* _st = gmb_str_cstr(_ts.data ? _ts.data : ""); bout->result_ref = (gmb_obj_t*)_st; bout->result_ref_bt = GMB_BT_STRING; return; }
-                    if (v.kind == GMB_TYPE_BOOL) { gmb_obj_string_t* _st = gmb_str_cstr(v.v_bool ? "true" : "false"); bout->result_ref = (gmb_obj_t*)_st; bout->result_ref_bt = GMB_BT_STRING; return; }
+                    if (bf_json_val_out(v, bout)) return;
                 }
                 else cur = NULL;
             }
@@ -6664,9 +6691,35 @@ static void gmb_bf_543(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func
 }
 static void gmb_bf_460(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
 {
+    /* COLLIDE(id1, id2) → -1/0 (AABB tra due sprite: dimensioni dalla texture, posizione
+     * dallo stato sprite) e COLLIDE(id) → lista degli id in collisione con `id`.
+     * Prima era `bout->result = 0`: sulla gamba VM/C `COLLIDE` rispondeva SEMPRE 0 (nessuna
+     * collisione, mentre C99/IL/PCode collidevano). Stessa funzione del runtime C usata da
+     * C99Native (gmb_gfx_collide), così il calcolo è UNO (§0bis). */
+    (void)vm; (void)func_code; (void)task;
+    if (argc >= 2)
+    {
+        bout->result = (double)gmb_gfx_collide((int)args[0].num, (int)args[1].num);
+        return;
+    }
+    if (argc == 1)
+    {
+        int id = (int)args[0].num;
+        gmb_obj_shared_val_t* out = gmb_shared_list_new();
+        if (out)
         {
-            bout->result = 0;
+            /* Gli id sprite non sono contigui: si scandisce un intervallo ampio e si tiene chi
+             * collide (gmb_gfx_collide ritorna 0 per id inesistenti, non serve conoscerli). */
+            for (int other = 1; other < 4096; other++)
+            {
+                if (other == id) continue;
+                if (gmb_gfx_collide(id, other)) gmb_list_add(out->list, gmb_make_val_double(other));
+            }
+            bout->is_num = 0; bout->result_ref = (gmb_obj_t*)out; bout->result_ref_bt = GMB_BT_OBJECT;
+            return;
         }
+    }
+    bout->result = 0;
 }
 static void gmb_bf_271(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
 {
@@ -7650,6 +7703,21 @@ static void gmb_bf_655(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func
                     else if (out.type == 1) { bout->result = out.num; }
                     else { bout->is_num = 0; bout->result_ref = NULL; }
                 }
+                else if (gen->has_err)
+                {
+                    /* Il corpo è uscito per un ERRORE (non per esaurimento): si porta il
+                     * codice VERO fino all'handler del chiamante — OP_CALL_BUILTIN lo
+                     * rilancia (parità C99Native gmb_gen_next). Prima diventava 144. */
+                    gen->has_err = 0;
+                    task->gen_err_pending = 1;
+                    task->gen_err_code = gen->err_code;
+                    free(task->gen_err_desc);
+                    task->gen_err_desc = strdup(gen->err_desc ? gen->err_desc : "");
+                    free(task->gen_err_trace);
+                    task->gen_err_trace = strdup(gen->err_trace ? gen->err_trace : "");
+                    task->gen_err_line = gen->err_line;
+                    bout->is_num = 0; bout->result_ref = NULL;
+                }
                 else
                 {
                     
@@ -8061,19 +8129,16 @@ static void gmb_bf_685(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func
 static void gmb_bf_686(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
 {
         {
-            char path[1024];
-            gmb_paths_providers_json(path, sizeof(path));
-            FILE* f = fopen(path, "r");
-            gmb_obj_string_t* s;
-            if (f)
-            {
-                char buf[8192];
-                size_t n = fread(buf, 1, sizeof(buf) - 1, f);
-                buf[n] = '\0';
-                fclose(f);
-                s = gmb_str_cstr(buf);
-            }
-            else s = gmb_str_cstr("(no providers)");
+            /* AI.PROVIDERS(): stessa funzione del runtime CONDIVISO usata da C99Native
+             * (gmb_ai_providers_json: config/providers.json → seed condiviso → registry
+             * serializzato). Prima il VM/C la re-implementava leggendo SOLO il file locale:
+             * nei MiniTest (provider fixture registrati in memoria, nessun providers.json)
+             * rispondeva "(no providers)" mentre IL/PCode/C99 davano il JSON del registry
+             * (divergenza trovata da misc/ai_ns_probe.bas). */
+            (void)vm; (void)args; (void)argc; (void)func_code; (void)task;
+            char* j = gmb_ai_providers_json();
+            gmb_obj_string_t* s = gmb_str_cstr(j ? j : "");
+            free(j);
             bout->is_num = 0; bout->result_ref = (gmb_obj_t*)s; bout->result_ref_bt = GMB_BT_STRING;
         }
 }
@@ -9863,8 +9928,37 @@ static void gmb_bf_2190(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int fun
 static void gmb_bf_2191(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
 {
         (void)vm; (void)func_code; (void)task;
-        gmb_obj_string_t* s = gmb_str_cstr(gmb_docextract_json(vm_image_str(args, argc, 0), vm_image_str(args, argc, 1)));
-        bout->is_num = 0; bout->result_ref = (gmb_obj_t*)s; bout->result_ref_bt = GMB_BT_STRING;
+        /* JSON.EXTRACT(doc, "campo") deve conservare il TIPO del valore estratto: un numero
+         * resta numerico (PRINT → " 42"), una stringa resta stringa. Prima si passava
+         * SEMPRE da gmb_docextract_json (testo JSON) → su VM/C `r1=42` invece di `r1= 42`
+         * (divergenza con IL/PCode/C99, che usano gmb_json_extract_val). */
+        {
+            gmb_val_t v = gmb_json_extract_val(vm_image_str(args, argc, 0), vm_image_str(args, argc, 1));
+            switch (v.kind)
+            {
+                case GMB_TYPE_INT:
+                case GMB_TYPE_DOUBLE:
+                case GMB_TYPE_BOOL:
+                case GMB_TYPE_CURRENCY:
+                case GMB_TYPE_DATETIME:
+                    bout->is_num = 1;
+                    bout->result = gmb_val_to_double(v);
+                    return;
+                case GMB_TYPE_STRING:
+                {
+                    gmb_obj_string_t* s = gmb_str_cstr(v.v_string.data ? v.v_string.data : "");
+                    bout->is_num = 0; bout->result_ref = (gmb_obj_t*)s; bout->result_ref_bt = GMB_BT_STRING;
+                    return;
+                }
+                default:
+                    /* NIL/array/oggetto: si ricade sulla resa JSON testuale (comportamento storico). */
+                    break;
+            }
+        }
+        {
+            gmb_obj_string_t* s = gmb_str_cstr(gmb_docextract_json(vm_image_str(args, argc, 0), vm_image_str(args, argc, 1)));
+            bout->is_num = 0; bout->result_ref = (gmb_obj_t*)s; bout->result_ref_bt = GMB_BT_STRING;
+        }
 }
 /* F4 multimodale (2026-09-11): AI.SYNTHESIZE(text, output) → TTS via motore di sistema
  * (runtime condiviso gmb_tts.c). Ritorna 1 (ok) / 0 (errore). */
@@ -14610,34 +14704,34 @@ void gmb_bf_aimodelload_c3521(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, i
     int resident = 0;
     if (argc >= 3) { const char* f = vm_builtin_sarg(args, argc, 2); if (f && strcasecmp(f, "RESIDENT") == 0) resident = 1; }
     if (gmb_moestream_stmt_load(name ? name : "", path ? path : "", resident) != 0)
-        gmb_raise_basic_error(task, 0, "LLM MODEL LOAD: modello non valido o non trovato");
+        gmb_raise_basic_error(task, 5.0, "LLM MODEL LOAD: modello non valido o non trovato");
 }
 void gmb_bf_aimodelunload_c3522(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task) {
     (void)vm; (void)func_code; (void)bout;
     const char* name = argc >= 1 ? vm_builtin_sarg(args, argc, 0) : "";
     if (gmb_moestream_stmt_unload(name ? name : "") != 0)
-        gmb_raise_basic_error(task, 0, "LLM MODEL UNLOAD fallito");
+        gmb_raise_basic_error(task, 5.0, "LLM MODEL UNLOAD fallito");
 }
 void gmb_bf_aimodelcache_c3523(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task) {
     (void)vm; (void)func_code; (void)bout;
     const char* name = argc >= 1 ? vm_builtin_sarg(args, argc, 0) : "";
     int mb = argc >= 2 ? (int)args[1].num : 0;
     if (gmb_moestream_stmt_cache(name ? name : "", mb) != 0)
-        gmb_raise_basic_error(task, 0, "LLM MODEL CACHE fallito");
+        gmb_raise_basic_error(task, 5.0, "LLM MODEL CACHE fallito");
 }
 void gmb_bf_aimodelprefetch_c3524(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task) {
     (void)vm; (void)func_code; (void)bout;
     const char* name = argc >= 1 ? vm_builtin_sarg(args, argc, 0) : "";
     int topn = argc >= 2 ? (int)args[1].num : 0;
     if (gmb_moestream_stmt_prefetch(name ? name : "", topn) != 0)
-        gmb_raise_basic_error(task, 0, "LLM MODEL PREFETCH fallito");
+        gmb_raise_basic_error(task, 5.0, "LLM MODEL PREFETCH fallito");
 }
 void gmb_bf_aimodeldevice_c3525(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task) {
     (void)vm; (void)func_code; (void)bout;
     const char* name = argc >= 1 ? vm_builtin_sarg(args, argc, 0) : "";
     const char* mode = argc >= 2 ? vm_builtin_sarg(args, argc, 1) : "";
     if (gmb_moestream_stmt_device(name ? name : "", mode ? mode : "") != 0)
-        gmb_raise_basic_error(task, 0, "LLM MODEL DEVICE non disponibile");
+        gmb_raise_basic_error(task, 5.0, "LLM MODEL DEVICE non disponibile");
 }
 void gmb_bf_aistreamstats_c3526(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task) {
     (void)vm; (void)func_code;
@@ -14652,13 +14746,13 @@ void gmb_bf_aimodelpromote_c3528(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc
     (void)vm; (void)func_code; (void)bout;
     const char* name = argc >= 1 ? vm_builtin_sarg(args, argc, 0) : "";
     if (gmb_moestream_stmt_promote(name ? name : "") != 0)
-        gmb_raise_basic_error(task, 0, "LLM MODEL PROMOTE fallito");
+        gmb_raise_basic_error(task, 5.0, "LLM MODEL PROMOTE fallito");
 }
 void gmb_bf_aimodeldemote_c3529(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task) {
     (void)vm; (void)func_code; (void)bout;
     const char* name = argc >= 1 ? vm_builtin_sarg(args, argc, 0) : "";
     if (gmb_moestream_stmt_demote(name ? name : "") != 0)
-        gmb_raise_basic_error(task, 0, "LLM MODEL DEMOTE fallito");
+        gmb_raise_basic_error(task, 5.0, "LLM MODEL DEMOTE fallito");
 }
 static void gmb_bf_aimodelconvert_c3527(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task) {
     (void)vm; (void)func_code; (void)bout;
@@ -14669,13 +14763,13 @@ static void gmb_bf_aimodelconvert_c3527(gmb_vm_t* vm, gmb_stack_entry_t* args, i
     const char* f2 = (fmt && *fmt) ? fmt : "GGUF";
     int rc = llmmodelio_model_convert(src ? src : "", dst ? dst : "", f2);
     if (rc != 0)
-        gmb_raise_basic_error(task, 0, "LLM MODEL CONVERT: conversione fallita");
+        gmb_raise_basic_error(task, 5.0, "LLM MODEL CONVERT: conversione fallita");
 }
 static void gmb_bf_aimodelinspect_c3543(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task) {
     (void)vm; (void)func_code; (void)bout;
     const char* dir = argc >= 1 ? vm_builtin_sarg(args, argc, 0) : "";
     if (gmb_model_io_inspect_print(dir ? dir : "") != 0)
-        gmb_raise_basic_error(task, 0, "AI MODEL INSPECT fallito");
+        gmb_raise_basic_error(task, 5.0, "AI MODEL INSPECT fallito");   /* codice UNIFORME 5 come C99/IL/PCode */
 }
 /* EMITTER (2026-09-30, codice 3702): LLM MODEL SAVE <in>, <out> — round-trip/emissione artefatto
  * (writer condiviso llmmodelio_model_save: metadata + byte tensori). Stessa logica di IL/C99. */
@@ -14684,7 +14778,7 @@ static void gmb_bf_aimodelsave_c3702(gmb_vm_t* vm, gmb_stack_entry_t* args, int 
     const char* a = argc >= 1 ? vm_builtin_sarg(args, argc, 0) : "";
     const char* b = argc >= 2 ? vm_builtin_sarg(args, argc, 1) : "";
     if (llmmodelio_model_save(a ? a : "", b ? b : "") != 0)
-        gmb_raise_basic_error(task, 0, "LLM MODEL SAVE fallito");   /* catchable (ON ERROR) */
+        gmb_raise_basic_error(task, 5.0, "LLM MODEL SAVE fallito");   /* catchable (ON ERROR) */
 }
 /* MODIFICARE (2026-09-30, codice 3703): LLM MODEL ABLATE <in>, <out>, <pattern> — azzera i tensori
  * che combaciano (llmmodelio_model_ablate). Stessa logica di IL/C99/PCode. */
@@ -14694,7 +14788,7 @@ static void gmb_bf_aimodelablate_c3703(gmb_vm_t* vm, gmb_stack_entry_t* args, in
     const char* b = argc >= 2 ? vm_builtin_sarg(args, argc, 1) : "";
     const char* c = argc >= 3 ? vm_builtin_sarg(args, argc, 2) : "";
     if (llmmodelio_model_ablate(a ? a : "", b ? b : "", c ? c : "") != 0)
-        gmb_raise_basic_error(task, 0, "LLM MODEL ABLATE fallito");   /* catchable (ON ERROR) */
+        gmb_raise_basic_error(task, 5.0, "LLM MODEL ABLATE fallito");   /* catchable (ON ERROR) */
 }
 /* RIMUOVERE (2026-10-01, codice 3712): LLM MODEL REMOVE <in>, <out>, <layer> — elimina un layer + rinumerazione. */
 static const char* vm_builtin_sarg_any(const gmb_stack_entry_t* a, int argc, int i, char* buf, size_t n);
@@ -14706,7 +14800,7 @@ static void gmb_bf_aimodelremove_c3712(gmb_vm_t* vm, gmb_stack_entry_t* args, in
      * usare _any che li formatta (altrimenti layer="" -> -1 -> "fallito"). */
     char cbuf[32]; const char* c = argc >= 3 ? vm_builtin_sarg_any(args, argc, 2, cbuf, sizeof cbuf) : "";
     if (llmmodelio_model_remove_layer(a ? a : "", b ? b : "", c ? c : "") != 0)
-        gmb_raise_basic_error(task, 0, "LLM MODEL REMOVE fallito");
+        gmb_raise_basic_error(task, 5.0, "LLM MODEL REMOVE fallito");
 }
 /* DIFF (2026-10-01, codice 3704): LLM MODEL DIFF <a>, <b>, <out> — report strutturale. */
 static void gmb_bf_aimodeldiff_c3704(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task) {
@@ -14715,7 +14809,7 @@ static void gmb_bf_aimodeldiff_c3704(gmb_vm_t* vm, gmb_stack_entry_t* args, int 
     const char* b = argc >= 2 ? vm_builtin_sarg(args, argc, 1) : "";
     const char* c = argc >= 3 ? vm_builtin_sarg(args, argc, 2) : "";
     if (llmmodelio_model_diff(a ? a : "", b ? b : "", c ? c : "") != 0)
-        gmb_raise_basic_error(task, 0, "LLM MODEL DIFF fallito");   /* catchable (ON ERROR) */
+        gmb_raise_basic_error(task, 5.0, "LLM MODEL DIFF fallito");   /* catchable (ON ERROR) */
 }
 /* CHECKPOINT/ROLLBACK (2026-10-01, codici 3705/3706) — checkpoint-store. */
 static void gmb_bf_aimodelcheckpoint_c3705(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task) {
@@ -14724,7 +14818,7 @@ static void gmb_bf_aimodelcheckpoint_c3705(gmb_vm_t* vm, gmb_stack_entry_t* args
     const char* b = argc >= 2 ? vm_builtin_sarg(args, argc, 1) : "";
     const char* c = argc >= 3 ? vm_builtin_sarg(args, argc, 2) : "";
     if (llmmodelio_model_checkpoint(a ? a : "", b ? b : "", c ? c : "") != 0)
-        gmb_raise_basic_error(task, 0, "LLM MODEL CHECKPOINT fallito");
+        gmb_raise_basic_error(task, 5.0, "LLM MODEL CHECKPOINT fallito");
 }
 static void gmb_bf_aimodelrollback_c3706(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task) {
     (void)vm; (void)func_code; (void)bout;
@@ -14732,7 +14826,7 @@ static void gmb_bf_aimodelrollback_c3706(gmb_vm_t* vm, gmb_stack_entry_t* args, 
     const char* b = argc >= 2 ? vm_builtin_sarg(args, argc, 1) : "";
     const char* c = argc >= 3 ? vm_builtin_sarg(args, argc, 2) : "";
     if (llmmodelio_model_rollback(a ? a : "", b ? b : "", c ? c : "") != 0)
-        gmb_raise_basic_error(task, 0, "LLM MODEL ROLLBACK fallito");
+        gmb_raise_basic_error(task, 5.0, "LLM MODEL ROLLBACK fallito");
 }
 /* ADD (2026-10-01, codice 3707): LLM MODEL ADD <base>, <module>, <out> — AGGIUNGERE (merge moduli). */
 static void gmb_bf_aimodeladd_c3707(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task) {
@@ -14741,7 +14835,7 @@ static void gmb_bf_aimodeladd_c3707(gmb_vm_t* vm, gmb_stack_entry_t* args, int a
     const char* b = argc >= 2 ? vm_builtin_sarg(args, argc, 1) : "";
     const char* c = argc >= 3 ? vm_builtin_sarg(args, argc, 2) : "";
     if (llmmodelio_model_add(a ? a : "", b ? b : "", c ? c : "") != 0)
-        gmb_raise_basic_error(task, 0, "LLM MODEL ADD fallito");
+        gmb_raise_basic_error(task, 5.0, "LLM MODEL ADD fallito");
 }
 /* ADAPTER (2026-10-01, codice 3708): LLM MODEL ADAPTER <base>, <adapter>, <out>[, <alpha>] — LoRA. */
 static void gmb_bf_aimodeladapter_c3708(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task) {
@@ -14751,7 +14845,7 @@ static void gmb_bf_aimodeladapter_c3708(gmb_vm_t* vm, gmb_stack_entry_t* args, i
     const char* c = argc >= 3 ? vm_builtin_sarg(args, argc, 2) : "";
     const char* d = argc >= 4 ? vm_builtin_sarg(args, argc, 3) : "1";
     if (llmmodelio_model_adapter(a ? a : "", b ? b : "", c ? c : "", d ? d : "1") != 0)
-        gmb_raise_basic_error(task, 0, "LLM MODEL ADAPTER fallito");
+        gmb_raise_basic_error(task, 5.0, "LLM MODEL ADAPTER fallito");
 }
 /* MODULE (2026-10-01, codice 3709): LLM MODEL MODULE <base>, <gmmod>, <module>, <out> — modulo dichiarato. */
 static void gmb_bf_aimodelmodule_c3709(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task) {
@@ -14761,7 +14855,7 @@ static void gmb_bf_aimodelmodule_c3709(gmb_vm_t* vm, gmb_stack_entry_t* args, in
     const char* c = argc >= 3 ? vm_builtin_sarg(args, argc, 2) : "";
     const char* d = argc >= 4 ? vm_builtin_sarg(args, argc, 3) : "";
     if (llmmodelio_model_module(a ? a : "", b ? b : "", c ? c : "", d ? d : "") != 0)
-        gmb_raise_basic_error(task, 0, "LLM MODEL MODULE fallito");
+        gmb_raise_basic_error(task, 5.0, "LLM MODEL MODULE fallito");
 }
 /* MODALITY (2026-10-01, codice 3710): LLM MODEL MODALITY <base>, <mmproj>, <out.gmmod>. */
 static void gmb_bf_aimodelmodality_c3710(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task) {
@@ -14770,7 +14864,7 @@ static void gmb_bf_aimodelmodality_c3710(gmb_vm_t* vm, gmb_stack_entry_t* args, 
     const char* b = argc >= 2 ? vm_builtin_sarg(args, argc, 1) : "";
     const char* c = argc >= 3 ? vm_builtin_sarg(args, argc, 2) : "";
     if (llmmodelio_model_modality(a ? a : "", b ? b : "", c ? c : "") != 0)
-        gmb_raise_basic_error(task, 0, "LLM MODEL MODALITY fallito");
+        gmb_raise_basic_error(task, 5.0, "LLM MODEL MODALITY fallito");
 }
 /* VALIDATE (2026-10-01, codice 3711): LLM MODEL VALIDATE <path>, <out>. */
 static void gmb_bf_aimodelvalidate_c3711(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task) {
@@ -14778,7 +14872,7 @@ static void gmb_bf_aimodelvalidate_c3711(gmb_vm_t* vm, gmb_stack_entry_t* args, 
     const char* a = argc >= 1 ? vm_builtin_sarg(args, argc, 0) : "";
     const char* b = argc >= 2 ? vm_builtin_sarg(args, argc, 1) : "";
     if (llmmodelio_model_validate(a ? a : "", b ? b : "") != 0)
-        gmb_raise_basic_error(task, 0, "LLM MODEL VALIDATE fallito");
+        gmb_raise_basic_error(task, 5.0, "LLM MODEL VALIDATE fallito");
 }
 /* K1: LLM MODEL TRACE nome, path|OFF — trace esperti `.moetrace` (replay offline moe_sim). */
 void gmb_bf_aimodeltrace_c3713(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task) {
@@ -14786,7 +14880,7 @@ void gmb_bf_aimodeltrace_c3713(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, 
     const char* name = argc >= 1 ? vm_builtin_sarg(args, argc, 0) : "";
     const char* path = argc >= 2 ? vm_builtin_sarg(args, argc, 1) : "OFF";
     if (gmb_moestream_stmt_trace(name ? name : "", path ? path : "OFF", 1) != 0)
-        gmb_raise_basic_error(task, 0, "LLM MODEL TRACE fallito");
+        gmb_raise_basic_error(task, 5.0, "LLM MODEL TRACE fallito");
 }
 static void gmb_bf_aimodelquantize_c3542(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task) {
     (void)vm; (void)func_code; (void)bout;
@@ -14797,7 +14891,7 @@ static void gmb_bf_aimodelquantize_c3542(gmb_vm_t* vm, gmb_stack_entry_t* args, 
     const char* imatrix = argc >= 5 ? vm_builtin_sarg(args, argc, 4) : NULL;
     int expert_bits = argc >= 6 ? (int)args[5].num : 0;
     if (gmb_model_io_quantize(src ? src : "", dst ? dst : "", bits, group, imatrix, expert_bits) != 0)
-        gmb_raise_basic_error(task, 0, "AI MODEL QUANTIZE fallito");
+        gmb_raise_basic_error(task, 5.0, "AI MODEL QUANTIZE fallito");   /* codice UNIFORME 5 come C99/IL/PCode */
 }
 
 /* MODEL COMPILER LLM (2026-09-23, codici 3604..3611) — verbi LLM (PLAN/POLICY/QUANT/MERGE/
@@ -14808,7 +14902,7 @@ static void gmb_bf_llmplan_c3615(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc
     (void)vm; (void)func_code; (void)bout;
     const char* a = argc >= 1 ? vm_builtin_sarg(args, argc, 0) : "";
     const char* b = argc >= 2 ? vm_builtin_sarg(args, argc, 1) : "";
-    if (llmmodelio_model_plan(a ? a : "", b ? b : "") != 0) gmb_raise_basic_error(task, 0, "LLM PLAN fallito");
+    if (llmmodelio_model_plan(a ? a : "", b ? b : "") != 0) gmb_raise_basic_error(task, 5.0, "LLM PLAN fallito");
 }
 /* vm_builtin_sarg ritorna "" se l'argomento e' NUMERICO (es. `LLM POLICY ITEM 0`): qui gli
  * argomenti del verbo possono essere numeri (indici) -> li stringifichiamo con un buffer locale
@@ -14841,7 +14935,7 @@ static void gmb_bf_llmpolicy_c3616(gmb_vm_t* vm, gmb_stack_entry_t* args, int ar
     if (s && strcasecmp(s, "CALLBACK") == 0) {
         gmb_obj_closure_t* cb = (argc >= 2 && args[1].type == 2 && args[1].ref && args[1].ref->kind == GMB_OBJ_CLOSURE)
             ? (gmb_obj_closure_t*)args[1].ref : NULL;
-        if (!cb) { gmb_raise_basic_error(task, 0, "LLM POLICY CALLBACK: callback non valido"); return; }
+        if (!cb) { gmb_raise_basic_error(task, 5.0, "LLM POLICY CALLBACK: callback non valido"); return; }
         int n = llmmodelio_policy_item_count(); int applied = 0;
         static char item[4096];
         for (int i = 0; i < n; i++) {
@@ -14864,7 +14958,7 @@ static void gmb_bf_llmpolicy_c3616(gmb_vm_t* vm, gmb_stack_entry_t* args, int ar
     const char* a = argc >= 2 ? vm_builtin_sarg_any(args, argc, 1, b1, sizeof b1) : "";
     const char* b = argc >= 3 ? vm_builtin_sarg_any(args, argc, 2, b2, sizeof b2) : "";
     const char* c = argc >= 4 ? vm_builtin_sarg_any(args, argc, 3, b3, sizeof b3) : "";
-    if (llmmodelio_policy_cmd(s ? s : "", a ? a : "", b ? b : "", c ? c : "") != 0) gmb_raise_basic_error(task, 0, "LLM verbo fallito");
+    if (llmmodelio_policy_cmd(s ? s : "", a ? a : "", b ? b : "", c ? c : "") != 0) gmb_raise_basic_error(task, 5.0, "LLM verbo fallito");
 }
 static void gmb_bf_llmquant_c3617(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task) {
     (void)vm; (void)func_code; (void)bout;
@@ -14875,21 +14969,21 @@ static void gmb_bf_llmquant_c3617(gmb_vm_t* vm, gmb_stack_entry_t* args, int arg
     double bpw = argc >= 3 ? args[2].num : 0.0;
     int rc = (bpw > 0.0) ? llmmodelio_model_quantize_auto(a ? a : "", b ? b : "", bpw)
                          : llmmodelio_model_quantize(a ? a : "", b ? b : "");
-    if (rc != 0) gmb_raise_basic_error(task, 0, "LLM QUANT fallito");
+    if (rc != 0) gmb_raise_basic_error(task, 5.0, "LLM QUANT fallito");
 }
 static void gmb_bf_llmmerge_c3618(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task) {
     (void)vm; (void)func_code; (void)bout;
     const char* a = argc >= 1 ? vm_builtin_sarg(args, argc, 0) : "";
     const char* b = argc >= 2 ? vm_builtin_sarg(args, argc, 1) : "";
     const char* c = argc >= 3 ? vm_builtin_sarg(args, argc, 2) : "";
-    if (llmmodelio_model_merge(a ? a : "", b ? b : "", c ? c : "") != 0) gmb_raise_basic_error(task, 0, "LLM MERGE fallito");
+    if (llmmodelio_model_merge(a ? a : "", b ? b : "", c ? c : "") != 0) gmb_raise_basic_error(task, 5.0, "LLM MERGE fallito");
 }
 static void gmb_bf_llmprune_c3619(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task) {
     (void)vm; (void)func_code; (void)bout;
     const char* a = argc >= 1 ? vm_builtin_sarg(args, argc, 0) : "";
     const char* b = argc >= 2 ? vm_builtin_sarg(args, argc, 1) : "";
     int keep = argc >= 3 ? (int)args[2].num : 0;
-    if (llmmodelio_model_prune(a ? a : "", b ? b : "", keep) != 0) gmb_raise_basic_error(task, 0, "LLM PRUNE fallito");
+    if (llmmodelio_model_prune(a ? a : "", b ? b : "", keep) != 0) gmb_raise_basic_error(task, 5.0, "LLM PRUNE fallito");
 }
 static void gmb_bf_llmextract_c3620(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task) {
     (void)vm; (void)func_code; (void)bout;
@@ -14897,20 +14991,20 @@ static void gmb_bf_llmextract_c3620(gmb_vm_t* vm, gmb_stack_entry_t* args, int a
     const char* b = argc >= 2 ? vm_builtin_sarg(args, argc, 1) : "";
     int layer = argc >= 3 ? (int)args[2].num : 0;
     int expert = argc >= 4 ? (int)args[3].num : 0;
-    if (llmmodelio_model_extract(a ? a : "", b ? b : "", layer, expert) != 0) gmb_raise_basic_error(task, 0, "LLM EXTRACT fallito");
+    if (llmmodelio_model_extract(a ? a : "", b ? b : "", layer, expert) != 0) gmb_raise_basic_error(task, 5.0, "LLM EXTRACT fallito");
 }
 static void gmb_bf_llmprofile_c3621(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task) {
     (void)vm; (void)func_code; (void)bout;
     const char* a = argc >= 1 ? vm_builtin_sarg(args, argc, 0) : "";
     const char* b = argc >= 2 ? vm_builtin_sarg(args, argc, 1) : "";
-    if (llmmodelio_model_profile(a ? a : "", b ? b : "") != 0) gmb_raise_basic_error(task, 0, "LLM PROFILE fallito");
+    if (llmmodelio_model_profile(a ? a : "", b ? b : "") != 0) gmb_raise_basic_error(task, 5.0, "LLM PROFILE fallito");
 }
 static void gmb_bf_llmarch_c3622(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task) {
     (void)vm; (void)func_code; (void)bout;
     const char* s = argc >= 1 ? vm_builtin_sarg(args, argc, 0) : "";
     const char* p = argc >= 2 ? vm_builtin_sarg(args, argc, 1) : "";
     const char* o = argc >= 3 ? vm_builtin_sarg(args, argc, 2) : "";
-    if (llmmodelio_arch_cmd(s ? s : "", p ? p : "", o ? o : "") != 0) gmb_raise_basic_error(task, 0, "LLM verbo fallito");
+    if (llmmodelio_arch_cmd(s ? s : "", p ? p : "", o ? o : "") != 0) gmb_raise_basic_error(task, 5.0, "LLM verbo fallito");
 }
 /* TENSOR/KERNEL/MODULE/KV (2026-09-24): stessa superficie .gmbarch dei verbi ARCH/POLICY, un solo
  * punto d'ingresso nel runtime C condiviso (gmb_llm_*_cmd). Sotto-verbo come primo argomento. */
@@ -14923,7 +15017,7 @@ static void gmb_bf_llmtensor_c3623(gmb_vm_t* vm, gmb_stack_entry_t* args, int ar
     const char* p = argc >= 2 ? vm_builtin_sarg_any(args, argc, 1, b1, sizeof b1) : "";
     const char* o = argc >= 3 ? vm_builtin_sarg_any(args, argc, 2, b2, sizeof b2) : "";
     const char* e = argc >= 4 ? vm_builtin_sarg_any(args, argc, 3, b3, sizeof b3) : "";
-    if (llmmodelio_tensor_cmd(s ? s : "", p ? p : "", o ? o : "", e ? e : "") != 0) gmb_raise_basic_error(task, 0, "LLM verbo fallito");
+    if (llmmodelio_tensor_cmd(s ? s : "", p ? p : "", o ? o : "", e ? e : "") != 0) gmb_raise_basic_error(task, 5.0, "LLM verbo fallito");
 }
 /* B2 — LLM.TOKENCOUNT(model, testo): numero di token (fonte unica llmtoken). */
 static void gmb_bf_llmtokencount_c3761(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task) {
@@ -14940,7 +15034,7 @@ static void gmb_bf_llmtokens_c3807(gmb_vm_t* vm, gmb_stack_entry_t* args, int ar
     const char* m = argc >= 1 ? vm_builtin_sarg(args, argc, 0) : "";
     const char* t = argc >= 2 ? vm_builtin_sarg(args, argc, 1) : "";
     char* r = gmb_llm_tokens(m ? m : "", t ? t : "");
-    if (r == NULL) { gmb_raise_basic_error(task, 0, "LLM.TOKENS: tokenizer non disponibile per il modello indicato"); return; }
+    if (r == NULL) { gmb_raise_basic_error(task, 5.0, "LLM.TOKENS: tokenizer non disponibile per il modello indicato"); return; }
     vm_builtin_rstr(r, &bout->is_num, &bout->result_ref, &bout->result_ref_bt);
 }
 static void gmb_bf_llmdetokenize_c3808(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task) {
@@ -14948,7 +15042,7 @@ static void gmb_bf_llmdetokenize_c3808(gmb_vm_t* vm, gmb_stack_entry_t* args, in
     const char* m = argc >= 1 ? vm_builtin_sarg(args, argc, 0) : "";
     const char* i = argc >= 2 ? vm_builtin_sarg(args, argc, 1) : "";
     char* r = gmb_llm_detokenize(m ? m : "", i ? i : "");
-    if (r == NULL) { gmb_raise_basic_error(task, 0, "LLM.DETOKENIZE: tokenizer non disponibile o id non validi"); return; }
+    if (r == NULL) { gmb_raise_basic_error(task, 5.0, "LLM.DETOKENIZE: tokenizer non disponibile o id non validi"); return; }
     vm_builtin_rstr(r, &bout->is_num, &bout->result_ref, &bout->result_ref_bt);
 }
 static void gmb_bf_llmtensorvalue_c3809(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task) {
@@ -14959,7 +15053,7 @@ static void gmb_bf_llmtensorvalue_c3809(gmb_vm_t* vm, gmb_stack_entry_t* args, i
     const char* b = argc >= 3 ? vm_builtin_sarg_any(args, argc, 2, b2, sizeof b2) : "";
     const char* c = argc >= 4 ? vm_builtin_sarg_any(args, argc, 3, b3, sizeof b3) : "";
     char* r = gmb_llm_tensor_out(s ? s : "", a ? a : "", b ? b : "", c ? c : "");
-    if (r == NULL) { gmb_raise_basic_error(task, 0, "LLM.TENSOR: verbo fallito"); return; }
+    if (r == NULL) { gmb_raise_basic_error(task, 5.0, "LLM.TENSOR: verbo fallito"); return; }
     vm_builtin_rstr(r, &bout->is_num, &bout->result_ref, &bout->result_ref_bt);
 }
 static void gmb_bf_llmpolicyout_c3810(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task) {
@@ -14970,7 +15064,7 @@ static void gmb_bf_llmpolicyout_c3810(gmb_vm_t* vm, gmb_stack_entry_t* args, int
     const char* b = argc >= 3 ? vm_builtin_sarg_any(args, argc, 2, b2, sizeof b2) : "";
     const char* c = argc >= 4 ? vm_builtin_sarg_any(args, argc, 3, b3, sizeof b3) : "";
     char* r = gmb_llm_cmd_out(GMB_LLM_FAM_POLICY, s ? s : "", a ? a : "", b ? b : "", c ? c : "");
-    if (r == NULL) { gmb_raise_basic_error(task, 0, "LLM.POLICY: verbo fallito"); return; }
+    if (r == NULL) { gmb_raise_basic_error(task, 5.0, "LLM.POLICY: verbo fallito"); return; }
     vm_builtin_rstr(r, &bout->is_num, &bout->result_ref, &bout->result_ref_bt);
 }
 static void gmb_bf_llmarchout_c3811(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task) {
@@ -14981,7 +15075,7 @@ static void gmb_bf_llmarchout_c3811(gmb_vm_t* vm, gmb_stack_entry_t* args, int a
     const char* b = argc >= 3 ? vm_builtin_sarg_any(args, argc, 2, b2, sizeof b2) : "";
     const char* c = argc >= 4 ? vm_builtin_sarg_any(args, argc, 3, b3, sizeof b3) : "";
     char* r = gmb_llm_cmd_out(GMB_LLM_FAM_ARCH, s ? s : "", a ? a : "", b ? b : "", c ? c : "");
-    if (r == NULL) { gmb_raise_basic_error(task, 0, "LLM.ARCH: verbo fallito"); return; }
+    if (r == NULL) { gmb_raise_basic_error(task, 5.0, "LLM.ARCH: verbo fallito"); return; }
     vm_builtin_rstr(r, &bout->is_num, &bout->result_ref, &bout->result_ref_bt);
 }
 static void gmb_bf_llmmoduleout_c3812(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task) {
@@ -14992,7 +15086,7 @@ static void gmb_bf_llmmoduleout_c3812(gmb_vm_t* vm, gmb_stack_entry_t* args, int
     const char* b = argc >= 3 ? vm_builtin_sarg_any(args, argc, 2, b2, sizeof b2) : "";
     const char* c = argc >= 4 ? vm_builtin_sarg_any(args, argc, 3, b3, sizeof b3) : "";
     char* r = gmb_llm_cmd_out(GMB_LLM_FAM_MODULE, s ? s : "", a ? a : "", b ? b : "", c ? c : "");
-    if (r == NULL) { gmb_raise_basic_error(task, 0, "LLM.MODULE: verbo fallito"); return; }
+    if (r == NULL) { gmb_raise_basic_error(task, 5.0, "LLM.MODULE: verbo fallito"); return; }
     vm_builtin_rstr(r, &bout->is_num, &bout->result_ref, &bout->result_ref_bt);
 }
 static void gmb_bf_llmkernelout_c3813(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task) {
@@ -15003,7 +15097,7 @@ static void gmb_bf_llmkernelout_c3813(gmb_vm_t* vm, gmb_stack_entry_t* args, int
     const char* b = argc >= 3 ? vm_builtin_sarg_any(args, argc, 2, b2, sizeof b2) : "";
     const char* c = argc >= 4 ? vm_builtin_sarg_any(args, argc, 3, b3, sizeof b3) : "";
     char* r = gmb_llm_cmd_out(GMB_LLM_FAM_KERNEL, s ? s : "", a ? a : "", b ? b : "", c ? c : "");
-    if (r == NULL) { gmb_raise_basic_error(task, 0, "LLM.KERNEL: verbo fallito"); return; }
+    if (r == NULL) { gmb_raise_basic_error(task, 5.0, "LLM.KERNEL: verbo fallito"); return; }
     vm_builtin_rstr(r, &bout->is_num, &bout->result_ref, &bout->result_ref_bt);
 }
 static void gmb_bf_llmkvout_c3814(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task) {
@@ -15014,16 +15108,20 @@ static void gmb_bf_llmkvout_c3814(gmb_vm_t* vm, gmb_stack_entry_t* args, int arg
     const char* b = argc >= 3 ? vm_builtin_sarg_any(args, argc, 2, b2, sizeof b2) : "";
     const char* c = argc >= 4 ? vm_builtin_sarg_any(args, argc, 3, b3, sizeof b3) : "";
     char* r = gmb_llm_cmd_out(GMB_LLM_FAM_KV, s ? s : "", a ? a : "", b ? b : "", c ? c : "");
-    if (r == NULL) { gmb_raise_basic_error(task, 0, "LLM.KV: verbo fallito"); return; }
+    if (r == NULL) { gmb_raise_basic_error(task, 5.0, "LLM.KV: verbo fallito"); return; }
     vm_builtin_rstr(r, &bout->is_num, &bout->result_ref, &bout->result_ref_bt);
 }
 /* ASR — ASR.TRANSCRIBE(model, wav): speech-to-text Qwen3-ASR (engine nativo in gmb_runtime). */
 void gmb_bf_asrtranscribe_c3805(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task) {
-    (void)vm; (void)func_code; (void)task;
+    (void)vm; (void)func_code;
     const char* m = argc >= 1 ? vm_builtin_sarg(args, argc, 0) : "";
     const char* w = argc >= 2 ? vm_builtin_sarg(args, argc, 1) : "";
     const char* o = argc >= 3 ? vm_builtin_sarg(args, argc, 2) : "";
     char* r = gmb_asr_cmd(m ? m : "", w ? w : "", o ? o : "");
+    /* Motore che FALLISCE (NULL) -> ERR 5 catturabile con ON ERROR/TRY, come le altre gambe.
+     * Prima il NULL finiva in vm_builtin_rstr che usciva SENZA toccare il registro: il
+     * chiamante leggeva il valore precedente (tipicamente 0) e il fallimento era invisibile. */
+    if (r == NULL) gmb_raise_basic_error(task, 5.0, "ASR.RECOGNIZE: trascrizione fallita");
     vm_builtin_rstr(r, &bout->is_num, &bout->result_ref, &bout->result_ref_bt);
 }
 static void gmb_bf_llmquality_c3628(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task) {
@@ -15032,34 +15130,34 @@ static void gmb_bf_llmquality_c3628(gmb_vm_t* vm, gmb_stack_entry_t* args, int a
     const char* b = argc >= 2 ? vm_builtin_sarg(args, argc, 1) : "";
     const char* c = argc >= 3 ? vm_builtin_sarg(args, argc, 2) : "";
     const char* d = argc >= 4 ? vm_builtin_sarg(args, argc, 3) : "";
-    if (llmmodelio_model_quality(a ? a : "", b ? b : "", c ? c : "", d ? d : "") != 0) gmb_raise_basic_error(task, 0, "LLM QUALITY fallito");
+    if (llmmodelio_model_quality(a ? a : "", b ? b : "", c ? c : "", d ? d : "") != 0) gmb_raise_basic_error(task, 5.0, "LLM QUALITY fallito");
 }
 static void gmb_bf_llmcompile_c3627(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task) {
     (void)vm; (void)func_code; (void)bout;
     const char* a = argc >= 1 ? vm_builtin_sarg(args, argc, 0) : "";
     const char* b = argc >= 2 ? vm_builtin_sarg(args, argc, 1) : "";
-    if (llmmodelio_model_compile(a ? a : "", b ? b : "") != 0) gmb_raise_basic_error(task, 0, "LLM COMPILE fallito");
+    if (llmmodelio_model_compile(a ? a : "", b ? b : "") != 0) gmb_raise_basic_error(task, 5.0, "LLM COMPILE fallito");
 }
 static void gmb_bf_llmkernel_c3624(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task) {
     (void)vm; (void)func_code; (void)bout;
     const char* s = argc >= 1 ? vm_builtin_sarg(args, argc, 0) : "";
     const char* p = argc >= 2 ? vm_builtin_sarg(args, argc, 1) : "";
     const char* o = argc >= 3 ? vm_builtin_sarg(args, argc, 2) : "";
-    if (llmmodelio_kernel_cmd(s ? s : "", p ? p : "", o ? o : "") != 0) gmb_raise_basic_error(task, 0, "LLM verbo fallito");
+    if (llmmodelio_kernel_cmd(s ? s : "", p ? p : "", o ? o : "") != 0) gmb_raise_basic_error(task, 5.0, "LLM verbo fallito");
 }
 static void gmb_bf_llmmodule_c3625(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task) {
     (void)vm; (void)func_code; (void)bout;
     const char* s = argc >= 1 ? vm_builtin_sarg(args, argc, 0) : "";
     const char* p = argc >= 2 ? vm_builtin_sarg(args, argc, 1) : "";
     const char* o = argc >= 3 ? vm_builtin_sarg(args, argc, 2) : "";
-    if (llmmodelio_module_cmd(s ? s : "", p ? p : "", o ? o : "") != 0) gmb_raise_basic_error(task, 0, "LLM verbo fallito");
+    if (llmmodelio_module_cmd(s ? s : "", p ? p : "", o ? o : "") != 0) gmb_raise_basic_error(task, 5.0, "LLM verbo fallito");
 }
 static void gmb_bf_llmkv_c3626(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task) {
     (void)vm; (void)func_code; (void)bout;
     const char* s = argc >= 1 ? vm_builtin_sarg(args, argc, 0) : "";
     const char* p = argc >= 2 ? vm_builtin_sarg(args, argc, 1) : "";
     const char* o = argc >= 3 ? vm_builtin_sarg(args, argc, 2) : "";
-    if (llmmodelio_kv_cmd(s ? s : "", p ? p : "", o ? o : "") != 0) gmb_raise_basic_error(task, 0, "LLM verbo fallito");
+    if (llmmodelio_kv_cmd(s ? s : "", p ? p : "", o ? o : "") != 0) gmb_raise_basic_error(task, 5.0, "LLM verbo fallito");
 }
 
 /* AI REGISTER alias, capability, source, param (1510 = AIREGISTERSOURCE) — registra un provider;
@@ -15650,12 +15748,12 @@ static void gmb_bf_2310(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int fun
 static void gmb_bf_2312(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task) {
     (void)vm; (void)func_code; (void)task;
     const char* a = vm_builtin_sarg(args, argc, 0); const char* b = argc >= 2 ? vm_builtin_sarg(args, argc, 1) : "";
-    if (llmmodelio_model_adapter_save(a ? a : "", b ? b : "") != 0) { gmb_raise_basic_error(task, 0, "LLM.LORASAVE: fallito"); return; }
+    if (llmmodelio_model_adapter_save(a ? a : "", b ? b : "") != 0) { gmb_raise_basic_error(task, 5.0, "LLM.LORASAVE: fallito"); return; }
 }
 static void gmb_bf_2313(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task) {
     (void)vm; (void)func_code; (void)task;
     const char* a = vm_builtin_sarg(args, argc, 0); const char* b = argc >= 2 ? vm_builtin_sarg(args, argc, 1) : "";
-    if (llmmodelio_model_adapter_load(a ? a : "", b ? b : "") != 0) { gmb_raise_basic_error(task, 0, "LLM.LORALOAD: fallito"); return; }
+    if (llmmodelio_model_adapter_load(a ? a : "", b ? b : "") != 0) { gmb_raise_basic_error(task, 5.0, "LLM.LORALOAD: fallito"); return; }
 }
 /* TRAIN EVAL GATE → LLM.EVALGATE(ref, cand): verdetto JSON dal runtime gmbllm (gate ppl). */
 static void gmb_bf_2311(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)

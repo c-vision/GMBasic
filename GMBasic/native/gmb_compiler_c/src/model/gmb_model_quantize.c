@@ -13,6 +13,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
+#include "gmb_compat_win.h"   /* mkdir a 2 argomenti (solo su Windows) */
 #if defined(__APPLE__)
 #include <dispatch/dispatch.h>
 #endif

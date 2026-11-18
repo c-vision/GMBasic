@@ -1,5 +1,6 @@
 ' Minitest §4 Coda — props stringa (CONTROL GETS "items"/"preset"/"barstyle"/"format")
-' + PROGRESS showpercent. 4 backend.  EXPECT: coda-props-ok
+' + PROGRESS showpercent. 4 backend.
+' EXPECT: coda-props-ok
 IMPORT CONTROLS
 SCREEN 0
 DIM v AS INTEGER

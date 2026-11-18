@@ -7,6 +7,7 @@
  */
 #include "gmb_cli_internal.h"
 #include "gmb_inc_resolve.h"
+#include "gmb_embed.h"         /* EMBEDFILE: cartella base dei percorsi relativi */
 #include "gmb_cc_defaults.h"   /* ricetta UNICA degli -I e delle statiche (la stessa del driver) */
 #include "gmb_lexer.h"   /* check: validazione sintattica (parità con gmbcs) */
 #include "gmb_parser.h"
@@ -28,6 +29,7 @@
  * `gmbcs check` (che compila) lo rifiutava — divergenza reale fra i due compilatori. */
 static void check_syntax(const char* path, DiagList* diags)
 {
+    gmb_embed_set_base_from_path(path);   /* EMBEDFILE: i path relativi sono al programma */
     char* src = read_all(path);
     if (!src) return;
     gmb_lex_result_t lx = gmb_lexer_scan(src, (long)strlen(src));
@@ -455,8 +457,16 @@ int build_project(const Options* o, const char* project, const char* entry,
 #endif
     {
         char cache_lib[CLI_PATH];
+        char cache_libsub[CLI_PATH];
         const int have_cache = gmb_cache_libdir(cache_lib, sizeof cache_lib);
-        const char* lcand[] = { have_cache ? cache_lib : "", "/usr/lib", "/usr/local/lib" };
+        /* Le STATICHE del bundle stanno in `<cache>/<rid>/lib/` (l'indice pubblica
+         * `lib/libcrypto.a`, non `<cache>/libcrypto.a`): senza questa `-L`, su una macchina
+         * pulita il download va a buon fine ma il link muore con «library 'crypto' not found»
+         * (trovato il 2026-11-16 provando l'avvio da uno zip con HOME vuota). La radice resta
+         * per le dylib del layout vecchio (`<cache>/<rid>/libSDL2.dylib`). */
+        snprintf(cache_libsub, sizeof cache_libsub, "%s/lib", cache_lib);
+        const char* lcand[] = { have_cache ? cache_lib : "", have_cache ? cache_libsub : "",
+                                "/usr/lib", "/usr/local/lib" };
         for (size_t i = 0; i < sizeof lcand / sizeof lcand[0] && nldirs < 4; i++) {
             char p[CLI_PATH];
             snprintf(p, sizeof p, "%s/%s", tc.install, lcand[i]);
@@ -499,7 +509,11 @@ int build_project(const Options* o, const char* project, const char* entry,
         /* bz2/curl(/libcompression): usati dal runtime anche nel percorso COMPLETO
          * (gmb_network.c chiama curl_easy_*). Prima erano solo nel ramo `use_min`. */
 #if defined(__APPLE__)
-        strncat(libs, " -lbz2 -lcurl -lcompression", sizeof libs - strlen(libs) - 1);
+        /* `libcurl.a` (statica, l'unica pubblicata) usa SCDynamicStore* per i proxy:
+         * senza il framework, su una macchina pulita il link muore con
+         * «_SCDynamicStoreCopyProxies … symbol(s) not found» (2026-11-16). */
+        strncat(libs, " -lbz2 -lcurl -lcompression -framework SystemConfiguration",
+                sizeof libs - strlen(libs) - 1);
 #else
         strncat(libs, " -lbz2 -lcurl", sizeof libs - strlen(libs) - 1);
 #endif
@@ -519,20 +533,33 @@ int build_project(const Options* o, const char* project, const char* entry,
         /* FULL runtime: DBF/ISAM/SPEED/RDD/SQL vivono nella statica `gmb_db_c` (fuori dal
          * runtime). Primail link completo la ometteva: un programma SPEED/DBF falliva con
          * "_gmb_db_speed_validate non definito". Solo per i programmi che la richiedono. */
-        if (need_full) {
-            /* Compressione (LZ4/LZMA/zstd/brotli/pcre2): `gmb_compress.c` e il runtime
-             * completo le referenziano; nella cache i nomi hanno la VERSIONE nel file
-             * (`libzstd.1.5.7.dylib`), quindi -l non basta: si linkano per path (come
-             * tools/sh/gmb_c99native_run.sh). Senza: "_LZ4F_compressFrame non definito". */
-            char cache3[CLI_PATH];
-            if (gmb_cache_libdir(cache3, sizeof cache3)) {
-                static const char* comp[] = {
-                    "libzstd.1.5.7.dylib", "liblz4.1.10.0.dylib", "liblzma.5.dylib",
-                    "libbrotlienc.1.dylib", "libbrotlidec.1.dylib", "libpcre2-8.0.dylib",
-                };
+        /* Compressione (LZ4/LZMA/zstd/brotli/pcre2): `gmb_compress.c` e il runtime completo le
+         * referenziano; nella cache i nomi hanno la VERSIONE nel file
+         * (`libzstd.1.5.7.dylib`), quindi -l non basta: si linkano per path (come
+         * tools/sh/gmb_c99native_run.sh). SEMPRE, non solo per il runtime completo: `-lcurl`
+         * punta a `lib/libcurl.a` (l'indice non pubblica una libcurl dinamica) e quella
+         * statica referenzia zstd/brotli — senza, su una macchina pulita il link di QUALUNQUE
+         * programma moriva con «_ZSTD_isError … symbol(s) not found» (2026-11-16).
+         * Se un file non c'è non si aggiunge nulla: il link resta quello di prima. */
+        {
+            /* Per ogni componente: prima la STATICA in `<cache>/lib/` (nessuna dipendenza a
+             * runtime: il programma resta autonomo), altrimenti la dylib versionata in
+             * `<cache>/<rid>/`. Ordine di link: dopo chi le usa (`-lcurl`). */
+            static const struct { const char* static_name; const char* dyn_name; } comp[] = {
+                { "libzstd.a", "libzstd.1.5.7.dylib" },
+                { "liblz4.a", "liblz4.1.10.0.dylib" },
+                { "liblzma.a", "liblzma.5.dylib" },
+                { "libbrotlienc.a", "libbrotlienc.1.dylib" },
+                { "libbrotlidec.a", "libbrotlidec.1.dylib" },
+                { "libbrotlicommon.a", "libbrotlicommon.1.dylib" },
+                { "libpcre2-8.a", "libpcre2-8.0.dylib" },
+            };
+            char cbase[CLI_PATH];
+            if (gmb_cache_libdir(cbase, sizeof cbase)) {
                 for (size_t i = 0; i < sizeof comp / sizeof comp[0]; i++) {
                     char cp[CLI_PATH];
-                    snprintf(cp, sizeof cp, "%s/%s", cache3, comp[i]);
+                    snprintf(cp, sizeof cp, "%s/lib/%s", cbase, comp[i].static_name);
+                    if (!is_file(cp)) snprintf(cp, sizeof cp, "%s/%s", cbase, comp[i].dyn_name);
                     if (!is_file(cp)) continue;
                     char cq[CLI_PATH + 8];
                     shell_quote(cp, cq, sizeof cq);
@@ -540,6 +567,10 @@ int build_project(const Options* o, const char* project, const char* entry,
                     strncat(libs, cq, sizeof libs - strlen(libs) - 1);
                 }
             }
+        }
+        if (need_full) {
+            /* (Le librerie di compressione sono linkate SOPRA, sempre: servono anche al solo
+             * `-lcurl` statico. Qui restano i pezzi del runtime completo.) */
             /* AI/LLM/agente: il runtime completo referenzia agent/doc/llm. Stesso set di
              * tools/sh/gmb_c99native_run.sh (ordine: chi USA precede chi DEFINISCE). */
             static const char* const more[] = {

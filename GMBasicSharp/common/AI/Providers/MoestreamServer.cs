@@ -101,6 +101,16 @@ public static partial class MoestreamNative
     public static partial int gmb_ai_moestream_trace_stop(IntPtr p, string name);
 }
 
+/// <summary>Errore BASIC CATTURABILE (ERR 5) per un verbo `LLM MODEL …` / `AI MODEL …` fallito:
+/// stesso codice delle gambe C (`gmb_raise_error(5, …)` nell'emitter C99, `gmb_raise_basic_error(task,
+/// 5.0, …)` in VM/C). Prima qui si lanciava `InvalidOperationException`, che le gambe gestite
+/// mappavano su ERR 200: lo stesso statement fallito dava 5 su C99Native/VM/C e 200 su IL/PCode.</summary>
+internal static class MoestreamErrors
+{
+    internal static Exception Verb(string message) =>
+        new BasicException(ErrorCode.IllegalFunctionCall, SourcePosition.Unknown, message);
+}
+
 /// <summary>Gestore dei modelli MoE out-of-core. Registro multi-modello; policy per modello.</summary>
 public sealed class MoestreamServer
 {
@@ -123,7 +133,7 @@ public sealed class MoestreamServer
             if (_prov == IntPtr.Zero)
             {
                 _prov = MoestreamNative.gmb_ai_moestream_create();
-                if (_prov == IntPtr.Zero) throw new InvalidOperationException("moestream: creazione del provider nativo fallita.");
+                if (_prov == IntPtr.Zero) throw MoestreamErrors.Verb("moestream: creazione del provider nativo fallita.");
             }
             return _prov;
         }
@@ -147,7 +157,7 @@ public sealed class MoestreamServer
     private MoestreamNative.Stats GetStats(string name)
     {
         int rc = MoestreamNative.gmb_ai_moestream_stats(Handle(), name, out var s);
-        if (rc != 0) throw new InvalidOperationException(StatusText(rc));
+        if (rc != 0) throw MoestreamErrors.Verb(StatusText(rc));
         return s;
     }
 
@@ -184,7 +194,7 @@ public sealed class MoestreamServer
         }
         int rc = ModelIoNative.gmb_model_convert_ex(src, dst, l0, l1, e0, e1, dense, ctx, ml, me);
         if (rc != 0)
-            throw new InvalidOperationException($"moestream: conversione fallita (rc {rc}): {src} -> {dst}");
+            throw MoestreamErrors.Verb($"moestream: conversione fallita (rc {rc}): {src} -> {dst}");
     }
 
     /// <summary>Quantizza un modello HF/MLX (F32/F16/BF16) in formato MLX affine RTN
@@ -198,7 +208,7 @@ public sealed class MoestreamServer
         // P/Invoke (AGENTS: C#→C ammesso) — NIENTE subprocess.
         int rc = ModelIoNative.gmb_modelio_quantize(src, dst, bits, group, null, 0);
         if (rc != 0)
-            throw new InvalidOperationException($"moestream: quantizzazione fallita (rc {rc}): {src} -> {dst}");
+            throw MoestreamErrors.Verb($"moestream: quantizzazione fallita (rc {rc}): {src} -> {dst}");
     }
 
     /// <summary>Ispeziona (read-only) un modello su disco: ritorna il report del discovery
@@ -209,7 +219,7 @@ public sealed class MoestreamServer
         // P/Invoke (AGENTS: C#→C ammesso) — NIENTE subprocess.
         var buf = new byte[16384];
         int n = ModelIoNative.gmb_modelio_inspect(dir, buf, buf.Length);
-        if (n < 0) throw new InvalidOperationException($"moestream: inspect fallita: {dir}");
+        if (n < 0) throw MoestreamErrors.Verb($"moestream: inspect fallita: {dir}");
         return System.Text.Encoding.UTF8.GetString(buf, 0, n);
     }
 
@@ -233,7 +243,7 @@ public sealed class MoestreamServer
         // M21: il provider C (condiviso) fa LRU demote/evict se la memoria non basta (load RESIDENT).
         InjectAvailableMemory();
         int rc = MoestreamNative.gmb_ai_moestream_load(Handle(), name, path, ref cfg);
-        if (rc != 0) throw new InvalidOperationException("{\"ok\":false,\"error\":\"" + Esc(StatusText(rc)) + "\"}");
+        if (rc != 0) throw MoestreamErrors.Verb("{\"ok\":false,\"error\":\"" + Esc(StatusText(rc)) + "\"}");
         RegisterDescriptor(name, path, mode, device, cacheMb, topn);
         var st = GetStats(name);
         ModelResidencyRegistry.Register(name, "moestream", (long)st.ExpertBytes,
@@ -248,7 +258,7 @@ public sealed class MoestreamServer
     {
         if (string.IsNullOrWhiteSpace(name)) return "{\"ok\":false,\"error\":\"nome modello vuoto\"}";
         int rc = MoestreamNative.gmb_ai_moestream_unload(Handle(), name);
-        if (rc != 0) throw new InvalidOperationException("{\"ok\":false,\"error\":\"" + Esc(StatusText(rc)) + "\"}");
+        if (rc != 0) throw MoestreamErrors.Verb("{\"ok\":false,\"error\":\"" + Esc(StatusText(rc)) + "\"}");
         ModelResidencyRegistry.Remove(name);
         return "{\"ok\":true,\"model\":\"" + Esc(name) + "\",\"unloaded\":true}";
     }
@@ -265,10 +275,10 @@ public sealed class MoestreamServer
     /// <summary>AI MODEL PROMOTE nome — porta il modello in ACTIVE (tutti gli esperti in RAM).</summary>
     public string Promote(string name)
     {
-        if (string.IsNullOrWhiteSpace(name)) throw new InvalidOperationException("nome modello vuoto");
+        if (string.IsNullOrWhiteSpace(name)) throw MoestreamErrors.Verb("nome modello vuoto");
         InjectAvailableMemory();   // M21 scheduler nel provider C (LRU demote/evict)
         int rc = MoestreamNative.gmb_ai_moestream_promote(Handle(), name);
-        if (rc != 0) throw new InvalidOperationException("{\"ok\":false,\"error\":\"" + Esc(StatusText(rc)) + "\"}");
+        if (rc != 0) throw MoestreamErrors.Verb("{\"ok\":false,\"error\":\"" + Esc(StatusText(rc)) + "\"}");
         ModelResidencyRegistry.SetResidency(name, ModelResidencyState.Active);
         return "{\"ok\":true,\"model\":\"" + Esc(name) + "\",\"residency\":\"active\"}";
     }
@@ -276,9 +286,9 @@ public sealed class MoestreamServer
     /// <summary>AI MODEL DEMOTE nome — riporta il modello in WARM (esperti on-demand).</summary>
     public string Demote(string name)
     {
-        if (string.IsNullOrWhiteSpace(name)) throw new InvalidOperationException("nome modello vuoto");
+        if (string.IsNullOrWhiteSpace(name)) throw MoestreamErrors.Verb("nome modello vuoto");
         int rc = MoestreamNative.gmb_ai_moestream_demote(Handle(), name);
-        if (rc != 0) throw new InvalidOperationException("{\"ok\":false,\"error\":\"" + Esc(StatusText(rc)) + "\"}");
+        if (rc != 0) throw MoestreamErrors.Verb("{\"ok\":false,\"error\":\"" + Esc(StatusText(rc)) + "\"}");
         ModelResidencyRegistry.SetResidency(name, ModelResidencyState.Warm);
         return "{\"ok\":true,\"model\":\"" + Esc(name) + "\",\"residency\":\"warm\"}";
     }
@@ -286,13 +296,13 @@ public sealed class MoestreamServer
     /// <summary>Generazione greedy: prompt (token-id) -> token-id generati (completer C#).</summary>
     public int[] Generate(string name, int[] promptIds, int maxOut)
     {
-        if (string.IsNullOrWhiteSpace(name)) throw new InvalidOperationException("nome modello vuoto");
-        if (promptIds is null || promptIds.Length == 0) throw new InvalidOperationException("prompt vuoto");
+        if (string.IsNullOrWhiteSpace(name)) throw MoestreamErrors.Verb("nome modello vuoto");
+        if (promptIds is null || promptIds.Length == 0) throw MoestreamErrors.Verb("prompt vuoto");
         if (maxOut <= 0) maxOut = 1;
         ModelResidencyRegistry.Touch(name);
         var outIds = new int[maxOut];
         int got = MoestreamNative.gmb_ai_moestream_generate(Handle(), name, promptIds, (uint)promptIds.Length, outIds, (uint)maxOut);
-        if (got < 0) throw new InvalidOperationException(StatusText(got));
+        if (got < 0) throw MoestreamErrors.Verb(StatusText(got));
         return outIds[..Math.Min(got, maxOut)];
     }
 
@@ -301,7 +311,7 @@ public sealed class MoestreamServer
         if (string.IsNullOrWhiteSpace(name)) return "{\"ok\":false,\"error\":\"nome modello vuoto\"}";
         var cfg = new MoestreamNative.Config { Mode = mode, Device = device, CacheMb = cacheMb, Workers = workers, TopN = topn, Cap = cap };
         int rc = MoestreamNative.gmb_ai_moestream_reconfigure(Handle(), name, ref cfg);
-        if (rc != 0) throw new InvalidOperationException("{\"ok\":false,\"error\":\"" + Esc(StatusText(rc)) + "\"}");
+        if (rc != 0) throw MoestreamErrors.Verb("{\"ok\":false,\"error\":\"" + Esc(StatusText(rc)) + "\"}");
         return "{\"ok\":true,\"model\":\"" + Esc(name) + "\"}";
     }
 
@@ -310,7 +320,7 @@ public sealed class MoestreamServer
     {
         if (string.IsNullOrWhiteSpace(name)) return "{\"ok\":false,\"error\":\"nome modello vuoto\"}";
         int rc = MoestreamNative.gmb_ai_moestream_set_cache(Handle(), name, cacheMb);
-        if (rc != 0) throw new InvalidOperationException("{\"ok\":false,\"error\":\"" + Esc(StatusText(rc)) + "\"}");
+        if (rc != 0) throw MoestreamErrors.Verb("{\"ok\":false,\"error\":\"" + Esc(StatusText(rc)) + "\"}");
         return "{\"ok\":true,\"model\":\"" + Esc(name) + "\",\"cacheMb\":" + cacheMb + "}";
     }
 
@@ -321,7 +331,7 @@ public sealed class MoestreamServer
         if (string.IsNullOrWhiteSpace(name)) return "{\"ok\":false,\"error\":\"nome modello vuoto\"}";
         if (string.IsNullOrWhiteSpace(path)) return "{\"ok\":false,\"error\":\"path trace vuoto\"}";
         int rc = MoestreamNative.gmb_ai_moestream_trace_start(Handle(), name, path);
-        if (rc != 0) throw new InvalidOperationException("{\"ok\":false,\"error\":\"" + Esc(StatusText(rc)) + "\"}");
+        if (rc != 0) throw MoestreamErrors.Verb("{\"ok\":false,\"error\":\"" + Esc(StatusText(rc)) + "\"}");
         return "{\"ok\":true,\"model\":\"" + Esc(name) + "\",\"trace\":\"" + Esc(path) + "\"}";
     }
 
@@ -330,7 +340,7 @@ public sealed class MoestreamServer
     {
         if (string.IsNullOrWhiteSpace(name)) return "{\"ok\":false,\"error\":\"nome modello vuoto\"}";
         int rc = MoestreamNative.gmb_ai_moestream_trace_stop(Handle(), name);
-        if (rc != 0) throw new InvalidOperationException("{\"ok\":false,\"error\":\"" + Esc(StatusText(rc)) + "\"}");
+        if (rc != 0) throw MoestreamErrors.Verb("{\"ok\":false,\"error\":\"" + Esc(StatusText(rc)) + "\"}");
         return "{\"ok\":true,\"model\":\"" + Esc(name) + "\",\"trace\":\"off\"}";
     }
 
@@ -339,7 +349,7 @@ public sealed class MoestreamServer
     {
         if (string.IsNullOrWhiteSpace(name)) return "{\"ok\":false,\"error\":\"nome modello vuoto\"}";
         int rc = MoestreamNative.gmb_ai_moestream_set_prefetch(Handle(), name, topn, cap);
-        if (rc != 0) throw new InvalidOperationException("{\"ok\":false,\"error\":\"" + Esc(StatusText(rc)) + "\"}");
+        if (rc != 0) throw MoestreamErrors.Verb("{\"ok\":false,\"error\":\"" + Esc(StatusText(rc)) + "\"}");
         return "{\"ok\":true,\"model\":\"" + Esc(name) + "\",\"prefetch\":" + (topn == 0 ? "false" : "true") + ",\"topN\":" + topn + "}";
     }
 
@@ -349,7 +359,7 @@ public sealed class MoestreamServer
         if (string.IsNullOrWhiteSpace(name)) return "{\"ok\":false,\"error\":\"nome modello vuoto\"}";
         int dev = mode?.Trim().ToUpperInvariant() switch { "METAL" => 2, "CPU" => 1, _ => 0 };
         int rc = MoestreamNative.gmb_ai_moestream_set_device(Handle(), name, dev);
-        if (rc != 0) throw new InvalidOperationException("{\"ok\":false,\"error\":\"" + Esc(StatusText(rc)) + "\"}");
+        if (rc != 0) throw MoestreamErrors.Verb("{\"ok\":false,\"error\":\"" + Esc(StatusText(rc)) + "\"}");
         string d = dev switch { 2 => "metal", 1 => "cpu", _ => "auto" };
         ModelResidencyRegistry.SetDevice(name, d);
         return "{\"ok\":true,\"model\":\"" + Esc(name) + "\",\"device\":\"" + d + "\"}";
@@ -359,7 +369,7 @@ public sealed class MoestreamServer
     {
         if (string.IsNullOrWhiteSpace(name)) return "{\"ok\":false,\"error\":\"nome modello vuoto\"}";
         int rc = MoestreamNative.gmb_ai_moestream_stats(Handle(), name, out var s);
-        if (rc != 0) throw new InvalidOperationException("{\"ok\":false,\"error\":\"" + Esc(StatusText(rc)) + "\"}");
+        if (rc != 0) throw MoestreamErrors.Verb("{\"ok\":false,\"error\":\"" + Esc(StatusText(rc)) + "\"}");
         string mode = s.Mode == 1 ? "resident" : "swap";
         string dev = s.Device switch { 2 => "metal", 1 => "cpu", _ => "auto" };
         ulong req = s.CacheHits + s.CacheMisses;

@@ -38,6 +38,9 @@ add_executable(gmbrepl
     cs_runner.c
     bridge.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../GMBasic/native/gmb_bytecode/src/gmb_disasm.c
+    # PRIMO USO: marker + delega a `gmbadmin first-use` (nessun link nuovo; la logica di
+    # download resta UNA, in gmb_first_use.c dietro `gmbadmin`).
+    ${CMAKE_CURRENT_SOURCE_DIR}/../GMBasic/native/gmb_runtime_c/src/gmb_first_use_spawn.c
 )
 # F2c (2026-11-01): la REPL NON linka più il front-end. Il LSP è il tool separato
 # `gmblsp` (native/lsp), avviato come processo dai client (IDE GMBasic, VS Code).

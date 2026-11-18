@@ -26,6 +26,7 @@ CACHE_DIR="${HOME}/.gmbasic/toolchains/zig-cache"
 TOOLCHAINS="${HOME}/.gmbasic/toolchains/zig"
 
 ZIG_ARG=""
+PRINT_ZIG=0
 _ARGS=()
 while [ "$#" -gt 0 ]; do
   case "$1" in
@@ -33,6 +34,10 @@ while [ "$#" -gt 0 ]; do
     --zig=*)        ZIG_ARG="${1#--zig=}"; shift; continue ;;
     --zig-version)  ZIG_VERSION="${2:-}"; shift 2; continue ;;
     --zig-version=*) ZIG_VERSION="${1#--zig-version=}"; shift; continue ;;
+    # `--print-zig`: stampa il PERCORSO risolto della toolchain ed esce. È il modo canonico
+    # per gli script che devono chiamare `zig` direttamente (es. `libs_cross_build.sh`,
+    # `zig ar`, `zig translate-c`): NESSUN percorso cablato nei tool, una sola risoluzione.
+    --print-zig)    PRINT_ZIG=1; shift; continue ;;
     --)             _ARGS+=("$@"); break ;;
     *)              _ARGS+=("$1"); shift ;;
   esac
@@ -70,13 +75,14 @@ resolve_zig() {
   cat >&2 <<EOF
 zigcc: nessuna toolchain zig ${ZIG_VERSION} trovata.
   cercata in: ${TOOLCHAINS}/${ZIG_VERSION}-<rid>/zig
-  rimedio:    gmb toolchain ensure            (scarica ${ZIG_VERSION} per il RID host)
+  rimedio:    gmbadmin first-use [--force]    (scarica ${ZIG_VERSION} per il RID host)
 oppure:       tools/sh/zigcc.sh --zig /percorso/del/binario/zig ...
 EOF
   return 1
 }
 
 ZIG="$(resolve_zig)" || exit 2
+if [ "$PRINT_ZIG" = 1 ]; then printf '%s\n' "$ZIG"; exit 0; fi
 
 # Cache di compilazione (D8): `zig cc --help` NON elenca `--cache-dir` (mostra l'help di clang),
 # quindi il supporto si verifica con una compilazione vera, una sola volta, e l'esito resta in un

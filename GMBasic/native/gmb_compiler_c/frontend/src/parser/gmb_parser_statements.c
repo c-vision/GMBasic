@@ -1150,6 +1150,16 @@ static gmb_stmt_t* gmb_p_parse_stmt_impl(gmb_parser_t* p, bool* multiline)
         if (c1 && c1->kind == GMB_TOK_Abstract && gmb_p_peek(p, cadv + 1)) { c1 = gmb_p_peek(p, cadv + 1); cadv++; }
         if (c1 && c1->kind == GMB_TOK_Class) { for (int i = 0; i < cadv; i++) gmb_p_adv(p); return gmb_p_parse_class(p, line, 0, 0); }
     }
+    /* UNION (2026-11-11): tipo a campi SOVRAPPOSTI (semantica C). Stesso corpo di un TYPE
+     * (solo campi), chiuso da END UNION (o END TYPE). La semantica di aliasing è realizzata
+     * dal runtime (PCodeVM/VM-C: buffer di byte + refresh dei fratelli) e — su C99Native —
+     * da una `union` anonima C11 con i tipi C reali: in entrambi i casi l'utente scrive un
+     * campo e ne legge un altro. */
+    if (t->kind == GMB_TOK_UnionType) {
+        gmb_stmt_t* u = gmb_p_parse_class(p, line, 1, 0);
+        if (u) u->class_is_union = 1;
+        return u;
+    }
     /* dichiarazioni a blocco: TYPE/PACKED TYPE/ENUM/INTERFACE ... END <word> — nessun codice */
     if (t->kind == GMB_TOK_Type || t->kind == GMB_TOK_Enum || t->kind == GMB_TOK_Interface
         || ((t->kind == GMB_TOK_Public || t->kind == GMB_TOK_Private) && gmb_p_peek(p, 1) && (gmb_p_peek(p, 1)->kind == GMB_TOK_Enum || gmb_p_peek(p, 1)->kind == GMB_TOK_Interface || gmb_p_tok_is_keyword(gmb_p_peek(p, 1), "Type")))
@@ -1549,8 +1559,18 @@ static gmb_stmt_t* gmb_p_parse_stmt_impl(gmb_parser_t* p, bool* multiline)
                     {
                         const gmb_token_t* mc = gmb_p_cur(p);
                         if (gmb_p_tok_is_keyword(mc, "In")) {
-                            param_mode = 0;
-                            gmb_p_adv(p);
+                            /* `IN` può essere anche il NOME del parametro (`in() AS DOUBLE`):
+                             * è un modificatore solo se seguito da un ALTRO nome. Prima veniva
+                             * consumato sempre, quindi `DECLARE ... (in() AS DOUBLE)` e
+                             * `SUB S(in() AS BYTE)` davano «statement non riconosciuto»
+                             * (graphicsffi/gfx2d_*). */
+                            const gmb_token_t* nx = gmb_p_peek(p, 1);
+                            if (nx && nx->kind != GMB_TOK_As && nx->kind != GMB_TOK_Comma
+                                && nx->kind != GMB_TOK_RightParen && nx->kind != GMB_TOK_LeftParen
+                                && nx->kind != GMB_TOK_Equal) {
+                                param_mode = 0;
+                                gmb_p_adv(p);
+                            }
                         } else if (mc && mc->kind == GMB_TOK_Identifier && mc->lexeme
                                    && (strncasecmp(mc->lexeme, "OUT", 3) == 0
                                        || strncasecmp(mc->lexeme, "INOUT", 5) == 0)) {
@@ -1754,12 +1774,30 @@ static gmb_stmt_t* gmb_p_parse_stmt_impl(gmb_parser_t* p, bool* multiline)
         }
         return s;
     }
-    /* OPTION [STRICT ON|OFF | ...]: direttiva di modulo, NESSUN bytecode (parità C#
-     * Parser.Statements — il C# consuma `OPTION STRICT ON|OFF` e prosegue; il default è
-     * STRICT OFF, quindi è un no-op). Salta la riga. Prima OPTION era nella lista rem_vari
-     * → "comando 'OPTION' non ancora supportato". */
+    /* OPTION [STRICT ON|OFF | ...]: direttiva di modulo. `OPTION STRICT ON` chiede che ogni
+     * nome usato sia dichiarato (nessuna variabile implicita): il flag viaggia fino all'emitter,
+     * che rifiuta i nomi non risolti con lo stesso messaggio del linker C#. Le altre forme
+     * restano no-op. Prima la riga veniva solo saltata (STRICT ignorato → su questa gamba un
+     * programma "strict" compilava e stampava 0 dove le altre gambe davano errore). */
     if (t->kind == GMB_TOK_Option) {
         gmb_p_adv(p);
+        /* STRICT ON|OFF */
+        int is_strict_tok = 0;
+        const gmb_token_t* nt = gmb_p_cur(p);
+        if (nt && (nt->kind == GMB_TOK_Strict
+                   || gmb_p_tok_is_keyword(nt, "Strict"))) {
+            is_strict_tok = 1;
+            gmb_p_adv(p);
+            const gmb_token_t* on = gmb_p_cur(p);
+            if (on && (on->kind == GMB_TOK_On || gmb_p_tok_is_keyword(on, "On"))) {
+                p->option_strict = 1;
+                gmb_p_adv(p);
+            } else if (on && (on->kind == GMB_TOK_Off || gmb_p_tok_is_keyword(on, "Off"))) {
+                p->option_strict = 0;
+                gmb_p_adv(p);
+            }
+        }
+        (void)is_strict_tok;
         while (!gmb_p_at_end(p) && !gmb_p_check(p, GMB_TOK_Newline) && !gmb_p_check(p, GMB_TOK_Colon)) gmb_p_adv(p);
         return gmb_stmt_new(GMB_STMT_REM, line);
     }
@@ -2084,8 +2122,32 @@ if (gmb_tk_rem_vari_in(t->kind)) {
      * come codice morto da rimuovere in una sessione dedicata. */
     if (t->kind == GMB_TOK_Swap) { gmb_p_adv(p); return gmb_p_parse_swap(p, line); }
     if (t->kind == GMB_TOK_Stop) { gmb_p_adv(p); return gmb_p_parse_stop(p, line); }
-    if (t->kind == GMB_TOK_Run) { gmb_p_adv(p); return gmb_p_parse_run(p, line); }
+    /* RUN [<file>] — RUN non è (ancora) una keyword del lexer C: arriva come Identifier,
+     * quindi si accetta anche per grafia. Il guard su `=` mantiene l'uso come variabile
+     * (`run = 1`), già presente in alcuni MiniTest TUI. */
+    if ((t->kind == GMB_TOK_Run || gmb_p_tok_is_soft_keyword(t, "RUN"))
+        && !(gmb_p_peek(p, 1) && (gmb_p_peek(p, 1)->kind == GMB_TOK_Equal
+                                  || gmb_p_peek(p, 1)->kind == GMB_TOK_InlineAssign))) {
+        gmb_p_adv(p); return gmb_p_parse_run(p, line);
+    }
     if (t->kind == GMB_TOK_Require) { gmb_p_adv(p); return gmb_p_parse_require(p, line); }
+    /* EMBEDFILE "file" AS nome — direttiva compile-time (equivalente di @embedFile).
+     * SOFT keyword: si attiva solo se la riga comincia con la parola E il token successivo
+     * è un letterale stringa, così `embedfile` resta un nome di variabile utilizzabile. */
+    if (gmb_p_tok_is_soft_keyword(t, "EMBEDFILE")
+        && gmb_p_peek(p, 1) && gmb_p_peek(p, 1)->kind == GMB_TOK_StringLiteral) {
+        gmb_p_adv(p);
+        return gmb_p_parse_embedfile(p, line);
+    }
+    /* ERRDEFER <stmt> — cleanup solo sul percorso d'errore (parità `errdefer` di Zig).
+     * SOFT keyword: si attiva solo se la riga comincia con la parola e il token successivo
+     * NON è un operatore di assegnazione (così `errdefer` resta un nome utilizzabile). */
+    if (gmb_p_tok_is_soft_keyword(t, "ERRDEFER")
+        && !(gmb_p_peek(p, 1) && (gmb_p_peek(p, 1)->kind == GMB_TOK_Equal
+                                  || gmb_p_peek(p, 1)->kind == GMB_TOK_InlineAssign))) {
+        gmb_p_adv(p);
+        return gmb_p_parse_errdefer(p, line);
+    }
     if (t->kind == GMB_TOK_Process) { gmb_p_adv(p); return gmb_p_parse_process(p, line); }
     if (t->kind == GMB_TOK_Yield) { gmb_p_adv(p); return gmb_p_parse_yield(p, line); }
     if (t->kind == GMB_TOK_AAdd) { gmb_p_adv(p); return gmb_p_parse_aadd(p, line); }
@@ -2256,8 +2318,18 @@ if (gmb_tk_rem_vari_in(t->kind)) {
                     {
                         const gmb_token_t* mc = gmb_p_cur(p);
                         if (gmb_p_tok_is_keyword(mc, "In")) {
-                            param_mode = 0;
-                            gmb_p_adv(p);
+                            /* `IN` può essere anche il NOME del parametro (`in() AS DOUBLE`):
+                             * è un modificatore solo se seguito da un ALTRO nome. Prima veniva
+                             * consumato sempre, quindi `DECLARE ... (in() AS DOUBLE)` e
+                             * `SUB S(in() AS BYTE)` davano «statement non riconosciuto»
+                             * (graphicsffi/gfx2d_*). */
+                            const gmb_token_t* nx = gmb_p_peek(p, 1);
+                            if (nx && nx->kind != GMB_TOK_As && nx->kind != GMB_TOK_Comma
+                                && nx->kind != GMB_TOK_RightParen && nx->kind != GMB_TOK_LeftParen
+                                && nx->kind != GMB_TOK_Equal) {
+                                param_mode = 0;
+                                gmb_p_adv(p);
+                            }
                         } else if (mc && mc->kind == GMB_TOK_Identifier && mc->lexeme
                                    && (strncasecmp(mc->lexeme, "OUT", 3) == 0
                                        || strncasecmp(mc->lexeme, "INOUT", 5) == 0)) {
@@ -2587,6 +2659,7 @@ if (gmb_tk_rem_vari_in(t->kind)) {
                 gmb_stmt_add(&body.items, &body.n, r, &body.cap);
             }
             while (!gmb_p_at_end(p) && !gmb_p_check(p, GMB_TOK_Newline)) gmb_p_adv(p);
+            (void)gmb_p_wrap_errdefers(&body, line);
             s->func_body = body.items; s->n_funcbody = body.n;
             return s;
         }
@@ -2607,6 +2680,10 @@ if (gmb_tk_rem_vari_in(t->kind)) {
             if (gmb_p_cur(p) && (gmb_p_cur(p)->kind == GMB_TOK_EndFunction || gmb_p_tok_is_keyword(gmb_p_cur(p), "EndFunction"))) gmb_p_adv(p);
             else if (gmb_p_at_end_compound(p, GMB_TOK_Function)) { gmb_p_adv(p); gmb_p_adv(p); }
         }
+        /* ERRDEFER anche nei GENERATORI: il corpo è una coroutine compilata come funzione
+         * normale, quindi il TRY/CATCH del desugaring è ammesso (prima il generatore era una
+         * macchina a stati che non lo supportava). */
+        (void)gmb_p_wrap_errdefers(&body, line);
         s->func_body = body.items; s->n_funcbody = body.n;
         return s;
     }
@@ -2753,6 +2830,7 @@ if (gmb_tk_rem_vari_in(t->kind)) {
     if (t->kind == GMB_TOK_Local || t->kind == GMB_TOK_Static || t->kind == GMB_TOK_Private) {
         gmb_stmt_t* ls = gmb_stmt_new(GMB_STMT_DIM, line);
         ls->dim_is_local = (t->kind == GMB_TOK_Local);
+        ls->dim_is_static = (t->kind == GMB_TOK_Static);
         gmb_p_adv(p);
         const gmb_token_t* lv = gmb_p_cur(p);
         if (lv) { ls->dim_var = (char*)malloc((size_t)lv->length + 1); memcpy(ls->dim_var, lv->lexeme, (size_t)lv->length); ls->dim_var[lv->length] = 0; gmb_p_adv(p); }

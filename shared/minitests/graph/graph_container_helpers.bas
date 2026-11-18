@@ -2,7 +2,7 @@
 ' Grafo non orientato a 5 nodi:
 '   0-1 (1), 1-2 (1), 2-3 (1), 0-4 (10), 4-3 (10)
 ' Il cammino minimo 0→3 è unico: 0-1-2-3 (costo 3, contro 20 via 4).
-' EXPECT: nb= 2|: 1 , 4||dij= 1|:3.0||path= 4|: 0 - 1 - 2 - 3||edges= 5|: 0 - 1 :1.0|: 3 - 4 :10.0||bad=-1|:-1||f=0
+' EXPECT: nb= 2|: 1 , 4||dij= 1|:3.0||path= 4|: 0 - 1 - 2 - 3||edges= 5|: 0 - 1 :1.0|: 3 - 4 :10.0||bad=-1|: 5||f=0
 IMPORT GRAPH
 
 SUB Main()
@@ -45,9 +45,11 @@ SUB Main()
   PRINT ":"; eu(0); "-"; ev(0); ":"; FORMAT(ew(0), "#.0")
   PRINT ":"; eu(4); "-"; ev(4); ":"; FORMAT(ew(4), "#.0")
 
-  ' ── errore: nodo fuori range / cap troppo piccolo ─────────────────────────
+  ' ── errore: nodo fuori range. NB: l'API del pacchetto (__nat) non riceve la capacita'
+  ' dei buffer, quindi il caso "cap troppo piccolo" non e' piu' esprimibile: i buffer
+  ' devono essere dimensionati per il massimo (n*(n-1)/2 archi).
   PRINT "|bad="; GRAPH.NEIGHBORLIST(adj, n, 9, nb)
-  DIM eu2(1) AS LONG, ev2(1) AS LONG, ew2(1) AS DOUBLE
+  DIM eu2(9) AS LONG, ev2(9) AS LONG, ew2(9) AS DOUBLE
   PRINT ":"; GRAPH.EDGELIST(w, n, eu2, ev2, ew2)
   PRINT "|f=0"
 END SUB

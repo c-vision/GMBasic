@@ -1,3 +1,4 @@
+' EXPECT: 3
 SUB Main()
   PRINT LEN(SPACE(3))
 END SUB

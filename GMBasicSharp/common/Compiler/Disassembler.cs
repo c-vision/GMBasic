@@ -639,76 +639,32 @@ public static class Disassembler
     /// </summary>
     private static int FfiCallInstruction(string name, CompiledChunk chunk, int offset, StringBuilder sb, bool typed = false)
     {
-        var instrLen = typed ? 42 : 6;   // T: + kind + scalar_kind_mask + array_mask + array_elem_int_mask + string_mask + ret_is_string + byref_scalar_mask + byref_scalar_elem_int_mask + udt_param_field_count[8] + udt_param_field_kind_mask[8] + ret_udt_field_count + ret_udt_field_kind_mask + callback_param_arity[8] + callback_param_kind_mask + callback_param_has_ret_mask (u8 each)
-        if (offset + instrLen - 1 >= chunk.Code.Count) return PrintTruncated(offset, sb, name);
+        if (!typed)
+        {
+            // [OP_CALL_FFI] [lib (u16)] [name (u16)] [argc (u8)]
+            if (offset + 5 >= chunk.Code.Count) return PrintTruncated(offset, sb, name);
+            var libIdx0 = (chunk.Code[offset + 1] << 8) | chunk.Code[offset + 2];
+            var nameIdx0 = (chunk.Code[offset + 3] << 8) | chunk.Code[offset + 4];
+            var argc0 = chunk.Code[offset + 5];
+            var lib0 = libIdx0 >= 0 && libIdx0 < chunk.Constants.Count ? chunk.Constants[libIdx0] : null;
+            var fn0 = nameIdx0 >= 0 && nameIdx0 < chunk.Constants.Count ? chunk.Constants[nameIdx0] : null;
+            sb.AppendLine($"{name,-20} Lib[{libIdx0:D4}] '{lib0}' Func[{nameIdx0:D4}] '{fn0}' ({argc0} args)");
+            return offset + 6;
+        }
+        // Formato completo (descrittore per-argomento + coda foglie UDT + tabella firme
+        // callback): Compiler/FfiCallFormat.cs — UNICA fonte della lunghezza, così il
+        // disassembler non può divergere dal bytecode emesso.
+        if (offset + 1 >= chunk.Code.Count) return PrintTruncated(offset, sb, name);
+        var lay = FfiCallFormat.Describe(chunk.Code, offset);
         var libIndex = (chunk.Code[offset + 1] << 8) | chunk.Code[offset + 2];
         var nameIndex = (chunk.Code[offset + 3] << 8) | chunk.Code[offset + 4];
-        var argCount = chunk.Code[offset + 5];
-        var kind = typed ? chunk.Code[offset + 6] : 0;
-        // scalarKindMask (2026-10, firma mista scalari semplici): vedi nota sopra FfiCallInstruction.
-        var scalarKindMask = typed ? chunk.Code[offset + 7] : 0;
-        var arrayMask = typed ? chunk.Code[offset + 8] : 0;
-        var arrayElemIntMask = typed ? chunk.Code[offset + 9] : 0;
-        var stringMask = typed ? chunk.Code[offset + 10] : 0;
-        var retIsString = typed ? chunk.Code[offset + 11] : 0;
-        var byrefScalarMask = typed ? chunk.Code[offset + 12] : 0;
-        var byrefScalarElemIntMask = typed ? chunk.Code[offset + 13] : 0;
-        var udtParamFieldCounts = new int[8];
-        for (var pi = 0; pi < 8; pi++)
-            udtParamFieldCounts[pi] = typed ? chunk.Code[offset + 14 + pi] : 0;
-        // udtParamFieldKindMask[8] (2026-09-29, kind misto come parametro): bit i = campo i del
-        // parametro UDT alla posizione pi è INTERO (0=DOUBLE) — vedi Compiler.Expressions.cs.
-        var udtParamFieldKindMasks = new int[8];
-        for (var pi = 0; pi < 8; pi++)
-            udtParamFieldKindMasks[pi] = typed ? chunk.Code[offset + 22 + pi] : 0;
-        var retUdtFieldCount = typed ? chunk.Code[offset + 30] : 0;
-        // retUdtFieldKindMask (2026-09-29, kind misto sul ritorno): bit i = campo i del ritorno
-        // UDT è INTERO (0=DOUBLE) — vedi Compiler.Expressions.cs.
-        var retUdtFieldKindMask = typed ? chunk.Code[offset + 31] : 0;
-        // callbackParamArity[8]/callbackParamKindMask/callbackParamHasRetMask (2026-09-29,
-        // callback come parametro FFI): un byte PER POSIZIONE parametro (255 = non è un
-        // callback, altrimenti l'arità 0-8), poi un bit-mask del kind interno e uno di
-        // presenza-ritorno — vedi Compiler.Expressions.cs.
-        var callbackParamArity = new int[8];
-        for (var pi = 0; pi < 8; pi++)
-            callbackParamArity[pi] = typed ? chunk.Code[offset + 32 + pi] : 255;
-        var callbackParamKindMask = typed ? chunk.Code[offset + 40] : 0;
-        var callbackParamHasRetMask = typed ? chunk.Code[offset + 41] : 0;
         var libPath = libIndex >= 0 && libIndex < chunk.Constants.Count ? chunk.Constants[libIndex] : null;
         var funcName = nameIndex >= 0 && nameIndex < chunk.Constants.Count ? chunk.Constants[nameIndex] : null;
-        var kindTxt = typed ? (kind == 1 ? " int64" : " double") : "";
-        var fullMaskForArgc = argCount >= 8 ? 0xFF : (1 << argCount) - 1;
-        var scalarKindMaskTxt = typed && scalarKindMask != (kind == 1 ? fullMaskForArgc : 0) ? $" scalarKindMask={scalarKindMask:X2}" : "";
-        var maskTxt = typed && (arrayMask != 0 || stringMask != 0 || retIsString != 0 || byrefScalarMask != 0)
-            ? $" arrayMask={arrayMask:X2} arrayElemIntMask={arrayElemIntMask:X2} stringMask={stringMask:X2} retIsString={retIsString} byrefScalarMask={byrefScalarMask:X2} byrefScalarElemIntMask={byrefScalarElemIntMask:X2}"
-            : "";
-        // Nomi campo + SymbolId UDT (2026-09-28): coda A LUNGHEZZA VARIABILE — DUE u16 (indice
-        // costante del nome, poi SymbolId) PER CAMPO, nell'ordine parametri (posizione 0..7,
-        // solo quelli con field count>0) poi ritorno — vedi Compiler.Expressions.cs. instrLen
-        // fisso (22) NON la include: va calcolata qui, altrimenti il resto del chunk disallinea
-        // (stesso bug-class della nota storica in cima a questo metodo sull'OP_CALL_FFI non typed).
-        var totalUdtFields = udtParamFieldCounts.Sum() + retUdtFieldCount;
-        var udtFieldNames = new List<string?>();
-        if (typed && totalUdtFields > 0)
-        {
-            var fieldsOffset = offset + instrLen;
-            for (var k = 0; k < totalUdtFields; k++)
-            {
-                var idxPos = fieldsOffset + k * 4;
-                if (idxPos + 1 >= chunk.Code.Count) break;
-                var fIdx = (chunk.Code[idxPos] << 8) | chunk.Code[idxPos + 1];
-                udtFieldNames.Add(fIdx >= 0 && fIdx < chunk.Constants.Count ? chunk.Constants[fIdx] as string : null);
-            }
-            instrLen += totalUdtFields * 4;
-        }
-        var udtTxt = typed && (udtParamFieldCounts.Any(c => c != 0) || retUdtFieldCount != 0)
-            ? $" udtParamFieldCounts=[{string.Join(",", udtParamFieldCounts)}] udtParamFieldKindMasks=[{string.Join(",", udtParamFieldKindMasks.Select(m => m.ToString("X2")))}] retUdtFieldCount={retUdtFieldCount} retUdtFieldKindMask={retUdtFieldKindMask:X2} udtFields=[{string.Join(",", udtFieldNames)}]"
-            : "";
-        var callbackTxt = typed && callbackParamArity.Any(a => a != 255)
-            ? $" callbackParamArity=[{string.Join(",", callbackParamArity)}] callbackParamKindMask={callbackParamKindMask:X2} callbackParamHasRetMask={callbackParamHasRetMask:X2}"
-            : "";
-        sb.AppendLine($"{name,-20} Lib[{libIndex:D4}] '{libPath}' Func[{nameIndex:D4}] '{funcName}' ({argCount} args){kindTxt}{scalarKindMaskTxt}{maskTxt}{udtTxt}{callbackTxt}");
-        return offset + instrLen;
+        var kindTxt = (lay.KindByte & 1) != 0 ? " int64" : " double";
+        var udtTxt = lay.HasUdtLeaves ? " udtLeaves" : "";
+        var cbTxt = lay.HasCallbackTable ? " callbackSigTable" : "";
+        sb.AppendLine($"{name,-20} Lib[{libIndex:D4}] '{libPath}' Func[{nameIndex:D4}] '{funcName}' ({lay.ArgCount} args){kindTxt}{udtTxt}{cbTxt}");
+        return offset + lay.Length;
     }
 
     /// <summary>

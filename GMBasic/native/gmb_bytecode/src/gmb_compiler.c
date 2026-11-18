@@ -5,6 +5,7 @@
  * base). I costrutti non ancora compilabili producono un errore esplicito (divergenza). */
 #include "gmb_compiler.h"
 #include "gmb_inc_resolve.h"   /* gmb_exe_dir: ancora di <exe>/packages (installazione locale) */
+#include "gmb_embed.h"         /* EMBEDFILE: lettura compile-time + cartella base */
 #include "gmb_semver.h"
 #include "gmb_linker.h"
 #include "gmb_lexer.h"
@@ -13,6 +14,7 @@
 #include "gmb_mcp_schema.h"
 #include "gmb_parser.h"
 #include "gen/gmb_registry.gen.h"
+#include "gmb_builtin_codes.h"   /* GENERATO: nome (o Ns.Nome) -> codice builtin della VM */
 #include <pthread.h>
 #include <stdlib.h>
 #include <string.h>
@@ -412,6 +414,27 @@ static int cc_builtin_code(const char* name)
     }
     for (size_t i = 0; i < sizeof(g_cc_builtins) / sizeof(g_cc_builtins[0]); i++)
         if (strcasecmp(g_cc_builtins[i].name, buf) == 0) return g_cc_builtins[i].code;
+    return -1;
+}
+
+/* Codice builtin dalla tabella GENERATA dal registry (`gmb_builtin_codes.h`, fonte unica:
+ * la StdLib / BuiltInFunction). Copre TUTTE le procedure di libreria, quindi anche i namespace
+ * (VECTOR, FINANCE, …): senza, un builtin di namespace compilato **a runtime** (frammento
+ * EVAL/&) finiva in OP_CALL_EXTERNAL e l'host di eval rispondeva
+ * "MACRO ERROR: chiamata esterna non disponibile" — mentre IL/PCode davano il valore.
+ * La tabella a mano sopra ha la PRECEDENZA (mappature core/alias storiche). */
+static int cc_builtin_code_gen(const char* name)
+{
+    if (!name || !*name) return -1;
+    char buf[256];
+    snprintf(buf, sizeof(buf), "%s", name);
+    size_t bl = strlen(buf);
+    if (bl > 1) {
+        char last = buf[bl - 1];
+        if (last == '$' || last == '%' || last == '!' || last == '#') buf[bl - 1] = 0;
+    }
+    for (int i = 0; i < GMB_BUILTIN_CODES_COUNT; i++)
+        if (strcasecmp(gmb_builtin_codes[i].name, buf) == 0) return gmb_builtin_codes[i].code;
     return -1;
 }
 
@@ -1014,6 +1037,31 @@ static int cc_add_const(gmb_cc_t* c, int type, double d, const char* s)
     ch->consts[idx].type = type;
     ch->consts[idx].d = d;
     ch->consts[idx].s = s ? strdup(s) : NULL;
+    ch->consts[idx].s_len = 0;
+    ch->consts[idx].tree = NULL;
+    ch->consts_len++;
+    return idx;
+}
+
+/* Costante STRINGA BINARIA (EMBEDFILE): lunghezza esplicita, il contenuto puo' avere NUL.
+ * Dedup solo fra costanti della stessa lunghezza e degli stessi byte. */
+static int cc_add_const_str_n(gmb_cc_t* c, const char* data, long len)
+{
+    gmb_compiled_chunk_t* ch = c->chunk;
+    if (len <= 0) return cc_add_const(c, GMB_CCONST_STRING, 0, "");
+    for (uint32_t i = 0; i < ch->consts_len; i++) {
+        if (ch->consts[i].type == GMB_CCONST_STRING && ch->consts[i].s_len == len
+            && ch->consts[i].s && memcmp(ch->consts[i].s, data, (size_t)len) == 0)
+            return (int)i;
+    }
+    if (ch->consts_len >= 65535) { cc_err(c, "constant pool piena"); return 0; }
+    ch->consts = realloc(ch->consts, (size_t)(ch->consts_len + 1) * sizeof(*ch->consts));
+    int idx = (int)ch->consts_len;
+    ch->consts[idx].type = GMB_CCONST_STRING;
+    ch->consts[idx].d = 0;
+    ch->consts[idx].s = (char*)malloc((size_t)len + 1);
+    if (ch->consts[idx].s) { memcpy(ch->consts[idx].s, data, (size_t)len); ch->consts[idx].s[len] = 0; }
+    ch->consts[idx].s_len = len;
     ch->consts[idx].tree = NULL;
     ch->consts_len++;
     return idx;
@@ -1651,6 +1699,14 @@ static void cc_emit_lambda(gmb_cc_t* c, const gmb_expr_t* e);
 static void cc_push_str_const(gmb_cc_t* c, const char* str)
 {
     int idx = cc_add_const(c, GMB_CCONST_STRING, 0, str ? str : "");
+    if (c->error) return;
+    cc_byte(c, GMB_OP_PUSH_CONST); cc_u16(c, idx);
+}
+
+/* PUSH di una stringa BINARIA (lunghezza esplicita, NUL ammessi) — EMBEDFILE. */
+static void cc_push_str_const_n(gmb_cc_t* c, const char* data, long len)
+{
+    int idx = cc_add_const_str_n(c, data, len);
     if (c->error) return;
     cc_byte(c, GMB_OP_PUSH_CONST); cc_u16(c, idx);
 }
@@ -2719,7 +2775,7 @@ static void cc_emit_ffi_call(gmb_cc_t* c, const gmb_expr_t* e, const gmb_stmt_t*
         else if (is_byref[i]) { byrefScalarMask |= (unsigned)(1u << i); if (p_int[i]) byrefScalarElemIntMask |= (unsigned)(1u << i); }
         else if (is_cb[i]) {
             int ar = pd->param_fn_arity[i];
-            cbArity[i] = (unsigned char)(ar > 8 ? 8 : ar);
+            cbArity[i] = (unsigned char)(ar > GMB_FFI_MAX_ARGS ? GMB_FFI_MAX_ARGS : ar);
             int cb_int = (ar > 0) ? ((pd->param_fn_kind_mask && (pd->param_fn_kind_mask[i] & 1)) ? 1 : 0)
                                   : ((pd->param_fn_ret_int && pd->param_fn_ret_int[i]) ? 1 : 0);
             if (cb_int) cbKindMask |= (unsigned)(1u << i);
@@ -2755,6 +2811,10 @@ static void cc_emit_ffi_call(gmb_cc_t* c, const gmb_expr_t* e, const gmb_stmt_t*
         cc_byte(c, (uint8_t)argc);
         return;
     }
+    /* Callback SCALARI (firma per-slot, 2026-11-11): tabella in coda all'istruzione (bit 0x40
+     * di `kind`). Il parser C non ha forme vettoriali, quindi ogni callback è scalare. */
+    int any_cb_sig = 0;
+    for (int i = 0; i < argc && i < GMB_FFI_MAX_ARGS; i++) if (is_cb[i]) any_cb_sig = 1;
 
     cc_byte(c, GMB_OP_CALL_FFI_T);
     cc_u16(c, (uint16_t)libIdx);
@@ -2771,7 +2831,7 @@ static void cc_emit_ffi_call(gmb_cc_t* c, const gmb_expr_t* e, const gmb_stmt_t*
      * struct (u16) e per ogni foglia (u8 tipo, u16 offset). Il formato vecchio (bit7=0:
      * aux1=campi, aux2=maschera kind a 8 bit) resta leggibile per i chunk esistenti. */
     cc_u16(c, (uint16_t)argc);
-    cc_byte(c, (uint8_t)(kind | (ret_udt_idx >= 0 ? 0x80 : 0) | (pd->ffi_native ? 0x20 : 0)));   /* 0x20 = DECLARE NATIVE */
+    cc_byte(c, (uint8_t)(kind | (ret_udt_idx >= 0 ? 0x80 : 0) | (pd->ffi_native ? 0x20 : 0) | (any_cb_sig ? 0x40 : 0)));   /* 0x20 = DECLARE NATIVE, 0x40 = tabella firme callback */
     cc_byte(c, (uint8_t)ret_is_string);
     /* Ritorno UDT (formato nuovo): il bit7 di `kind` lo segnala e questi due byte diventano
      * il conteggio foglie (u16) al posto di count+mask. */
@@ -2831,6 +2891,20 @@ static void cc_emit_ffi_call(gmb_cc_t* c, const gmb_expr_t* e, const gmb_stmt_t*
         for (int f = 0; f < n_ret_leaves; f++) {
             cc_byte(c, (uint8_t)ret_layout[f].code);
             cc_u16(c, (uint16_t)ret_layout[f].off);
+        }
+    }
+    /* Tabella firme callback scalari (2026-11-11): per ogni parametro callback, in ordine di
+     * slot: u8 arita', u8 retKind (0=DOUBLE 1=INT64 2=nessun ritorno), arita' × u8 kind. */
+    if (any_cb_sig) {
+        for (int i = 0; i < argc && i < GMB_FFI_MAX_ARGS; i++) {
+            if (!is_cb[i]) continue;
+            int ar = cbArity[i];
+            int mask = pd->param_fn_kind_mask ? pd->param_fn_kind_mask[i] : 0;
+            int has_ret = pd->param_fn_has_ret ? pd->param_fn_has_ret[i] : 0;
+            int ret_int = has_ret && pd->param_fn_ret_int ? pd->param_fn_ret_int[i] : 0;
+            cc_byte(c, (uint8_t)ar);
+            cc_byte(c, (uint8_t)(has_ret ? (ret_int ? 1 : 0) : 2));
+            for (int b = 0; b < ar; b++) cc_byte(c, (uint8_t)((mask & (1 << b)) ? 1 : 0));
         }
     }
 }
@@ -2937,7 +3011,9 @@ static void cc_expr(gmb_cc_t* c, const gmb_expr_t* e)
         break;
     }
     case GMB_EXPR_STR: {
-        int idx = cc_add_const(c, GMB_CCONST_STRING, 0, e->str ? e->str : "");
+        int idx = e->str_len > 0
+            ? cc_add_const_str_n(c, e->str ? e->str : "", e->str_len)
+            : cc_add_const(c, GMB_CCONST_STRING, 0, e->str ? e->str : "");
         if (c->error) return;
         cc_byte(c, GMB_OP_PUSH_CONST); cc_u16(c, idx);
         break;
@@ -2965,6 +3041,18 @@ static void cc_expr(gmb_cc_t* c, const gmb_expr_t* e)
         if (e->var && !strchr(e->var, '.') && e->nargs == 0
             && cc_dyn_is(c, e->var) && cc_local(c, e->var) < 0) {
             cc_push_str_const(c, e->var); cc_syscall(c, 473, 1); break;
+        }
+        /* PI / MATH.PI — costante di LINGUAGGIO (la stessa di `_constants["PI"]` nel compilatore
+         * C#). Il parser la produce come VAR col token Pi: senza questo ramo cadeva nel fallback
+         * "variabile" e la VM lasciava NIL — `EVAL("PI")` era vuoto sui due motori C mentre
+         * IL/PCode danno 3.14159, e il frammento EVAL lo compila proprio QUESTO compilatore.
+         * Una variabile locale omonima vince (cc_local). */
+        if (e->var && e->nargs == 0 && cc_local(c, e->var) < 0
+            && (strcasecmp(e->var, "PI") == 0 || strcasecmp(e->var, "MATH.PI") == 0)) {
+            int cpi = cc_add_const(c, GMB_CCONST_DOUBLE, 3.14159265358979323846, NULL);
+            if (c->error) return;
+            cc_byte(c, GMB_OP_PUSH_CONST); cc_u16(c, cpi);
+            break;
         }
         /* costante utente (CONST) dichiarata nel programma: risolta in compile-time */
         if (e->var && !strchr(e->var, '.') && e->nargs == 0) {
@@ -3438,7 +3526,11 @@ static void cc_expr(gmb_cc_t* c, const gmb_expr_t* e)
             char qualified[300];
             snprintf(qualified, sizeof(qualified), "%s.%s", e->ns, e->var);
             bcode = cc_builtin_code(qualified);
+            /* Tabella GENERATA dal registry: copre tutti i builtin di namespace
+             * (`VECTOR.Angle2d`, `FINANCE.PMT`, …), non solo quelli mappati a mano. */
+            if (bcode < 0) bcode = cc_builtin_code_gen(qualified);
         }
+        if (bcode < 0 && e->var) bcode = cc_builtin_code_gen(e->var);
         if (bcode >= 0
             && !(e->var && cc_user_accepts_arity(c, e->var, e->nargs)
                  && !cc_builtin_accepts_arity(e->ns, e->var, e->nargs))) {
@@ -4287,7 +4379,19 @@ static void cc_stmt(gmb_cc_t* c, const gmb_stmt_t* s)
         for (int i = 0; i < s->nprint; i++) {
             cc_expr(c, s->print_args[i]);
             if (c->error) return;
-            if (i == s->nprint - 1) cc_byte(c, GMB_OP_PRINT_LINE);
+            if (i == s->nprint - 1) {
+                /* `PRINT x;` / `PRINT x,` (separatore finale, print_hold): il valore si stampa
+                 * SENZA newline e poi si CHIUDE l'istruzione con OP_PRINT_FLUSH, che commette il
+                 * parziale (parità C99Native gmb_print_stage_end). Prima si emetteva sempre
+                 * OP_PRINT_LINE → il VM/C aggiungeva un a capo che C99/IL/PCode non danno. */
+                if (s->print_hold) {
+                    cc_byte(c, GMB_OP_PRINT_VALUE);
+                    if (s->print_comma && s->print_comma[i]) cc_byte(c, GMB_OP_PRINT_TAB_ZONE);
+                    cc_byte(c, GMB_OP_PRINT_FLUSH);
+                } else {
+                    cc_byte(c, GMB_OP_PRINT_LINE);
+                }
+            }
             else {
                 cc_byte(c, GMB_OP_PRINT_VALUE);
                 /* separatore ',' → zona di 14 colonne (parità IL/PCode/C99
@@ -6063,7 +6167,19 @@ static void cc_stmt(gmb_cc_t* c, const gmb_stmt_t* s)
             if (llm_code) {
                 int llm_max = (llm_code == 1993 || llm_code == 1994 || llm_code == 2308 || llm_code == 2314) ? 2 : (s->n_go_args - llm_first);
                 int pushed = 0;
-                for (int li = llm_first; li < s->n_go_args && pushed < llm_max; li++) { cc_expr(c, s->go_args[li]); if (c->error) return; pushed++; }
+                for (int li = llm_first; li < s->n_go_args && pushed < llm_max; li++) {
+                    /* SOTTO-VERBO LETTERALE (2026-11-11): in POLICY/ARCH il PRIMO argomento è il nome
+                     * del sotto-verbo (`LLM ARCH CHECK "dir"`, `LLM POLICY SHOW`), non un valore.
+                     * Con `cc_expr` un VAR nudo diventava il LOAD di una variabile inesistente →
+                     * stringa vuota → "LLM ARCH: sotto-verbo '' non supportato" sul VM/C, mentre
+                     * l'emitter C99 (che legge `a[0]->var`) funzionava: divergenza fra le gambe.
+                     * `cc_push_str_arg` fa esattamente la lettura del C99: VAR → costante col NOME,
+                     * STR → costante (forma fra virgolette ammessa), altro → espressione. */
+                    const gmb_expr_t* ga = s->go_args[li];
+                    if (li == llm_first && (llm_code == 3616 || llm_code == 3622)) cc_push_str_arg(c, ga);
+                    else cc_expr(c, ga);
+                    if (c->error) return; pushed++;
+                }
                 cc_byte(c, GMB_OP_CALL_BUILTIN); cc_u16(c, llm_code); cc_byte(c, (uint8_t)pushed);
                 cc_byte(c, llm_print ? GMB_OP_PRINT_LINE : GMB_OP_POP);
                 break;
@@ -7233,12 +7349,19 @@ static void cc_proc(gmb_cc_t* c, const gmb_stmt_t* s)
 /* §4.10(f): fold delle funzioni del semantic graph (AI.SYMBOL/IMPACT/CALLMAP) — def. in gmb_semfold.c */
 void gmb_semfold_program(gmb_stmt_t** stmts, int n, const char* file);
 
+/* TESTO SORGENTE per ERR.SourceLineText: il driver che ha il sorgente CONCATENATO (quello
+ * dato al parser, indice 0 = riga 1) lo passa qui prima di gmb_compile; il chunk ne porta
+ * una copia, così la VM/C riporta il testo della riga anche senza sorgenti accanto. */
+static const char* g_cc_src_text = NULL;
+void gmb_compiler_set_source_text(const char* src) { g_cc_src_text = src; }
+
 int gmb_compile(const gmb_program_t* prog, uint8_t** out_data, size_t* out_len, char** error)
 {
     if (prog && prog->stmts && prog->n > 0)
         gmb_semfold_program(prog->stmts, prog->n, "");   /* pre-pass: sostituisce le call sem. graph */
     if (!prog || !out_data || !out_len) { if (error) *error = strdup("gmb_compile: argomenti nulli"); return -1; }
     gmb_compiled_chunk_t ch = {0};
+    ch.src_text = g_cc_src_text;   /* ERR.SourceLineText: testo del sorgente (dal driver) */
     gmb_cc_t c = {0};
     c.cur_class = -1;
     c.chunk = &ch;
@@ -7612,6 +7735,14 @@ static void buf_str(buf_t* b, const char* s)
     buf_u32(b, len);
     for (uint32_t i = 0; i < len; i++) buf_byte(b, (uint8_t)s[i]);
 }
+
+/* Come buf_str ma con lunghezza ESPLICITA: il contenuto può contenere NUL. */
+static void buf_str_n(buf_t* b, const char* s, long len)
+{
+    uint32_t n = (len > 0) ? (uint32_t)len : 0;
+    buf_u32(b, n);
+    for (uint32_t i = 0; i < n; i++) buf_byte(b, (uint8_t)(s ? s[i] : 0));
+}
 static void buf_f64(buf_t* b, double d)
 {
     uint64_t bits;
@@ -7655,7 +7786,12 @@ static void buf_const(buf_t* b, const gmb_cconst_t* cc)
     buf_byte(b, (uint8_t)cc->type);
     switch (cc->type) {
     case GMB_CCONST_DOUBLE: buf_f64(b, cc->d); break;
-    case GMB_CCONST_STRING: buf_str(b, cc->s); break;
+    case GMB_CCONST_STRING:
+        /* lunghezza esplicita quando la costante è BINARIA (EMBEDFILE): il contenuto
+         * può avere NUL e strlen troncherebbe. 0 = stringa testuale normale. */
+        if (cc->s_len > 0) buf_str_n(b, cc->s ? cc->s : "", cc->s_len);
+        else buf_str(b, cc->s);
+        break;
     case GMB_CCONST_INT: buf_u32(b, (uint32_t)(int32_t)cc->d); break;
     case GMB_CCONST_DATATYPE: buf_byte(b, (uint8_t)cc->d); break;
     case GMB_CCONST_DICT: case GMB_CCONST_LIST: buf_dict_tree(b, cc->tree); break;
@@ -7664,8 +7800,7 @@ static void buf_const(buf_t* b, const gmb_cconst_t* cc)
 }
 
 int gmb_compiled_chunk_serialize(const gmb_compiled_chunk_t* c, uint8_t** out_data, size_t* out_len, char** error)
-{
-    (void)error;
+{    (void)error;
     buf_t b = {0};
     /* MAGIC + VERSION */
     buf_byte(&b, 'G'); buf_byte(&b, 'M'); buf_byte(&b, 'B'); buf_byte(&b, 'C');
@@ -7677,8 +7812,15 @@ int gmb_compiled_chunk_serialize(const gmb_compiled_chunk_t* c, uint8_t** out_da
     buf_u32(&b, c->consts_len);
     /* code */
     for (uint32_t i = 0; i < c->code_len; i++) buf_byte(&b, c->code[i]);
-    /* lines */
-    for (uint32_t i = 0; i < c->code_len; i++) buf_u32(&b, c->lines ? c->lines[i] : 0);
+    /* lines: il frontend C numera le righe da 1, il chunk A1 è 0-BASED (come
+     * SourceLineIndex del compilatore C#); la VM/C aggiunge +1 per ERR.LineNumber/stack
+     * trace. Scrivendo il valore 1-based si aveva un OFF-BY-ONE sul percorso chunk nativo
+     * (gmbchunk → gmb_vm_host): `line=` dava la riga successiva. 0/0xFFFFFFFx = "nessuna
+     * riga" → sentinella 0xFFFFFFFF (la VM la salta). */
+    for (uint32_t i = 0; i < c->code_len; i++) {
+        uint32_t ln = c->lines ? c->lines[i] : 0;
+        buf_u32(&b, (ln == 0 || ln >= 0xFFFFFFF0u) ? 0xFFFFFFFFu : ln - 1);
+    }
     /* constants */
     for (uint32_t i = 0; i < c->consts_len; i++) buf_const(&b, &c->consts[i]);
     /* data */
@@ -7709,6 +7851,34 @@ int gmb_compiled_chunk_serialize(const gmb_compiled_chunk_t* c, uint8_t** out_da
         buf_u32(&b, c->ploc_counts[i]);
         for (uint32_t j = 0; j < c->ploc_counts[i]; j++)
             buf_str(&b, (c->ploc_names[i] && c->ploc_names[i][j]) ? c->ploc_names[i][j] : "");
+    }
+
+    /* ── CODA OPZIONALE A1, nell'ORDINE del lettore (gmb_chunk_load) ─────────────────────
+     * Il compilatore C non traccia statement ranges / local numeric / tray / param defaults:
+     * si scrivono VUOTI, così il lettore arriva allineato alla sezione successiva (senza
+     * queste sezioni il conteggio dei SOURCE TEXTS verrebbe letto come "uses_tray"). */
+    buf_u32(&b, 0);          /* STATEMENT RANGES */
+    buf_u32(&b, 0);          /* LOCAL NUMERIC */
+    buf_byte(&b, 0);         /* USES TRAY */
+    buf_u32(&b, 0);          /* PROC PARAM DEFAULTS */
+    /* SOURCE TEXTS: righe del sorgente concatenato (indice 0 = riga 1) per
+     * ERR.SourceLineText. */
+    {
+        uint32_t n = 0;
+        if (c->src_text && c->src_text[0]) {
+            n = 1;
+            for (const char* p = c->src_text; *p; p++) if (*p == '\n') n++;
+        }
+        buf_u32(&b, n);
+        if (n > 0) {
+            const char* p = c->src_text;
+            for (uint32_t i = 0; i < n; i++) {
+                const char* e = p;
+                while (*e && *e != '\n') e++;
+                buf_str_n(&b, p, (long)(e - p));
+                p = (*e == '\n') ? e + 1 : e;
+            }
+        }
     }
 
     *out_data = b.b;
@@ -8381,6 +8551,7 @@ int gmb_compile_bas_file(const char* path, uint8_t** out_data, size_t* out_len, 
     if (out_len) *out_len = 0;
     if (diag) *diag = NULL;
     if (!path) { if (diag) *diag = strdup("gmb_compile_bas_file: path NULL"); return -1; }
+    gmb_embed_set_base_from_path(path);   /* EMBEDFILE: i path relativi sono al programma */
     FILE* f = fopen(path, "rb");
     if (!f) { if (diag) *diag = strdup("file non trovato"); return -1; }
     fseek(f, 0, SEEK_END); long alen = ftell(f); fseek(f, 0, SEEK_SET);
@@ -8420,6 +8591,7 @@ int gmb_compile_bas_file(const char* path, uint8_t** out_data, size_t* out_len, 
         free(perr);
     } else {
         uint8_t* data = NULL; size_t len = 0; char* cerr = NULL;
+        gmb_compiler_set_source_text(src);   /* ERR.SourceLineText: righe nel chunk */
         if (gmb_compile(&prog, &data, &len, &cerr) == 0) {
             if (out_data) *out_data = data; else if (data) free(data);
             if (out_len) *out_len = len;
@@ -8430,6 +8602,7 @@ int gmb_compile_bas_file(const char* path, uint8_t** out_data, size_t* out_len, 
             rc = -1;
         }
     }
+    gmb_compiler_set_source_text(NULL);   /* src sta per essere liberato */
     gmb_program_free(&prog);
     gmb_lex_result_free(&lx2); gmb_lex_result_free(&lx);
     free(src);

@@ -121,7 +121,7 @@ gmb_stmt_t* gmb_p_parse_team(gmb_parser_t* p, int line)
         s->channel = gmb_expr_str(gmb_p_ident(p, "Atteso nome agente", line), line);
         return s;
     }
-    if (t->kind == GMB_TOK_Run) {
+    if (t->kind == GMB_TOK_Run || gmb_p_tok_is_soft_keyword(t, "RUN")) {
         gmb_p_adv(p);
         gmb_stmt_t* s = gmb_stmt_new(GMB_STMT_TEAM_RUN, line);
         s->win_name = team;

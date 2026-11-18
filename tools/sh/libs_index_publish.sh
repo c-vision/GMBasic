@@ -9,6 +9,9 @@
 #
 # - `runtime`   ciò che serve a ESEGUIRE (boot/support/core/engine/llmmotor/plugins)
 # - `dev`       ciò che serve a COMPILARE (header, statiche nostre)
+# - `toolchain` il COMPILATORE (zig): non serve né a eseguire né a linkare, ma a compilare
+#               OVUNQUE. Scope proprio, così non entra nel bootstrap `runtime`/`dev` di serie:
+#               lo prende chi chiede TUTTO (`gmb libs ensure`, primo uso con `bootstrapScope`).
 # - `component:<nome>` torch / chromium / obscura / ocr (produttori esterni)
 # - senza tag   = runtime (compatibilità)
 #
@@ -54,6 +57,7 @@ for r in "${RIDS[@]}"; do
     | select(.value.url != null)
     | [ .key, .value.sha256, (.value.size|tostring), .value.url,
         (if (.value.group // "") == "dev" then "dev"
+         elif (.value.group // "") == "toolchain" then "toolchain"
          elif (.value.group // "") == "plugins" then "runtime"
          elif ((.value.group // "") | startswith("components:")) then .value.group
          else "runtime" end) ]

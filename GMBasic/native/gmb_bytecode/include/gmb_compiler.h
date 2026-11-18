@@ -73,6 +73,9 @@ enum {
     GMB_OP_FOR_PREPARE = 110, GMB_OP_FOR_LOOP = 111,
     GMB_OP_PRINT_VALUE = 113, GMB_OP_PRINT_LINE = 114, GMB_OP_PRINT_TAB_ZONE = 115,
     GMB_OP_PRINT_NEWLINE = 116,
+    /* Chiusura di una PRINT SENZA newline finale (`PRINT x;` / `PRINT x,`): commette il
+     * parziale senza a capo (parità C99Native gmb_print_stage_end). Vedi OpCode.cs. */
+    GMB_OP_PRINT_FLUSH = 216,
     GMB_OP_NEW_WAITGROUP = 118, GMB_OP_NEW_CHANNEL = 119,
     GMB_OP_GO_EXIT = 133, GMB_OP_CHANNEL_CLOSE = 135, GMB_OP_RECV_OK = 136,
     GMB_OP_NEW_MUTEX = 137, GMB_OP_LOCK = 138, GMB_OP_UNLOCK = 139,
@@ -178,7 +181,7 @@ typedef struct gmb_cconst_entry {
 struct gmb_cconst_node { gmb_cconst_entry_t* entries; int n, cap; };
 
 /* Chunk compilato in memoria (prima della serializzazione su file). */
-typedef struct gmb_cconst { int type; double d; char* s; gmb_cconst_node_t* tree; } gmb_cconst_t;
+typedef struct gmb_cconst { int type; double d; char* s; long s_len; gmb_cconst_node_t* tree; } gmb_cconst_t;
 
 typedef struct gmb_compiled_chunk {
     uint8_t* code; uint32_t code_len;
@@ -207,11 +210,19 @@ typedef struct gmb_compiled_chunk {
      * indirizzo inizio procedura + nomi normalizzati per slot (NULL = anonimo) */
     uint32_t* ploc_addrs; char*** ploc_names; uint32_t* ploc_counts;
     uint32_t ploc_count;
+    /* TESTO SORGENTE (coda opzionale, ERR.SourceLineText): righe del sorgente concatenato
+     * (indice 0 = riga 1). Riempito dal driver che ha il testo (`gmb_compile_bas_file`). */
+    const char* src_text;
 } gmb_compiled_chunk_t;
 
 /* Compila un programma AST in un chunk serializzato (formato A1/GMBC).
  * Ritorna 0 ok (out_data/out_len allocati da malloc), -1 errore (error allocato). */
 int gmb_compile(const gmb_program_t* prog, uint8_t** out_data, size_t* out_len, char** error);
+
+/* TESTO SORGENTE per ERR.SourceLineText: da chiamare PRIMA di gmb_compile con il sorgente
+ * CONCATENATO dato al parser (indice 0 = riga 1). Il puntatore deve vivere fino al ritorno
+ * di gmb_compile (il chunk ne copia le righe). NULL = nessun testo nel chunk. */
+void gmb_compiler_set_source_text(const char* src);
 
 /* ── Compilazione SNIPPET A RUNTIME (EVAL / & / filtri): simboli ESTERNI ────────
  * Compila un frammento BASIC contro le tabelle di simboli del chunk OSPITE (VM/C):

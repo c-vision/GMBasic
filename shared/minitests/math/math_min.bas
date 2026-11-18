@@ -1,1 +1,2 @@
+' EXPECT: 3
 PRINT MIN(3,7)

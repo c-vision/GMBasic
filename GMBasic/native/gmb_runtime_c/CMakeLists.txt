@@ -197,6 +197,8 @@ set(GMB_ALL_SRCS
     # Bus dei segnali (namespace SIGNAL): filtro strutturato + consegna agli handler.
     src/gmb_signal.c
     src/gmb_core.c
+    src/gmb_memstats.c   # diagnostica memoria viva per tipo (opzione debug.memory)
+    src/gmb_trace.c      # stack trace BASIC (catena di frame + testo)
     src/gmb_module.c
     src/gmb_eval_scope.c
     # Scope dinamico BASIC (DYNAMIC): catena di frame per-task, condivisa VM/C/C99Native
@@ -452,6 +454,14 @@ add_library(gmb_runtime_ui_obj OBJECT ${GMB_UI_SRCS})
 target_link_libraries(gmb_runtime_core_obj PRIVATE gmb_runtime_deps)
 # Il runtime COMPLETO include l'UI (FORM/READ con listbox/combobox/ombra/input).
 target_compile_definitions(gmb_runtime_core_obj PRIVATE GMB_WITH_UI=1)
+# Windows: `llmdesc` e' linkato nel core (blocco if(WIN32) sopra), quindi la cartella ABI dei
+# modelli resti AGGANCIATA: `gmb_abi.c` fa il bind diretto dei tre llmdesc_abi_* solo quando
+# questo macro e' definito (senza, il ramo e' no-op per i link runtime-only che llmdesc non lo
+# hanno). La call sta qui e non dentro il blocco perche' il target esiste solo da poche righe;
+# l'if(WIN32) la tiene comunque esclusiva di Windows.
+if(WIN32)
+  target_compile_definitions(gmb_runtime_core_obj PRIVATE GMB_WITH_LLMDESC)
+endif()
 # Path di BUILD della dylib AI: il gateway la trova anche senza install (dev/REPL build dir).
 target_compile_definitions(gmb_runtime_core_obj PRIVATE
     GMB_RUNTIME_AI_PATH="${GMB_LIBS_OUT}/${CMAKE_SHARED_LIBRARY_PREFIX}gmb_runtime_ai${CMAKE_SHARED_LIBRARY_SUFFIX}")
@@ -634,6 +644,29 @@ if(APPLE)
     target_link_options(gmbclm PRIVATE -Wl,-undefined,dynamic_lookup)
 else()
     target_link_options(gmbclm PRIVATE -Wl,--allow-shlib-undefined)
+endif()
+
+# ── MATRIX FLAT: kernel matriciali per i backend MANAGED (P/Invoke C#→C) ──────────────────────
+# IL/PCodeVM implementavano SINM/TANM/ORTH con MathNet, mentre VM/C e C99Native usano i kernel
+# del runtime C: due implementazioni indipendenti → differenze di pochi ulp visibili quando un
+# sample stampa 15 cifre (parity4 testo-esatto). Questa lib espone `gmb_matrix_flat_op` con
+# buffer piatti: il managed chiama la STESSA funzione delle gambe C (sorgente unica) e ricade
+# sul managed se la lib non è disponibile.
+add_library(gmb_matrix_flat SHARED
+    src/gmb_matrix_flat.c
+)
+target_include_directories(gmb_matrix_flat PUBLIC include)
+target_link_libraries(gmb_matrix_flat PRIVATE gmb_runtime)
+set_target_properties(gmb_matrix_flat PROPERTIES
+    OUTPUT_NAME gmb_matrix_flat
+    C_VISIBILITY_PRESET default
+    LIBRARY_OUTPUT_DIRECTORY "${GMB_LIBS_OUT}")
+# Stessa ricetta di gmb_fonts/gmb_grep: la static gmb_runtime trascina oggetti UI/TUI con
+# simboli forniti dall'host; i kernel matriciali non li usano → risolti a runtime.
+if(APPLE)
+    target_link_options(gmb_matrix_flat PRIVATE -Wl,-undefined,dynamic_lookup)
+else()
+    target_link_options(gmb_matrix_flat PRIVATE -Wl,--allow-shlib-undefined)
 endif()
 
 # COMPRESSION come libreria CONDIVISA per P/Invoke (REPL/backends C#): esporta
@@ -979,7 +1012,10 @@ set_target_properties(gmb_gfx PROPERTIES
 # (libSystem + libcurl). Non include gfx/AI/SDL.
 # gmb_paths.c porta il parser delle impostazioni (self-contained) e richiede l'anchor dell'ABI
 # (gmb_abi.c, 347 righe): entrambi nel target per restare sullo stesso comportamento del runtime.
-add_library(gmb_boot SHARED src/gmb_boot.c src/gmb_libs_fetch.c src/gmb_paths.c src/gmb_boot_abi_stub.c)
+# gmb_first_use.c: PRIMO USO (librerie di tutti i gruppi + toolchain zig), esposto come
+# `gmbadmin first-use`. Vive qui perché usa SOLO le API di questo target (indice, download,
+# settings, cache) e perché gmbadmin lo linka già: nessuna dipendenza nuova.
+add_library(gmb_boot SHARED src/gmb_boot.c src/gmb_libs_fetch.c src/gmb_paths.c src/gmb_boot_abi_stub.c src/gmb_first_use.c)
 target_include_directories(gmb_boot PRIVATE include src)
 target_link_libraries(gmb_boot PRIVATE ${CMAKE_DL_LIBS})
 if(GMB_CURL_LIB)
@@ -1492,3 +1528,24 @@ add_executable(test_abi_settings tests/test_abi_settings.c ${LLMENV}/LLMDesc/llm
 target_include_directories(test_abi_settings PRIVATE include ${LLMENV}/LLMDesc)
 target_compile_options(test_abi_settings PRIVATE -w)
 add_test(NAME test_abi_settings COMMAND test_abi_settings)
+
+# La cartella ABI presa dall'AMBIENTE (`$LLMDESC_ABI_DIR`) vince sulla scoperta interna e NON
+# finisce nei settings: la prova end-to-end manuale del 2026-11-11 resa permanente e ripetibile.
+add_executable(test_abi_env_precedence tests/test_abi_env_precedence.c ${LLMENV}/LLMDesc/llmdesc.c src/gmb_paths.c)
+target_include_directories(test_abi_env_precedence PRIVATE include ${LLMENV}/LLMDesc)
+target_compile_options(test_abi_env_precedence PRIVATE -w)
+add_test(NAME test_abi_env_precedence COMMAND test_abi_env_precedence)
+
+# `paths.abiDir` si scrive SOLO in `app.settings.json`: stesso sorgente, due contesti di
+# compilazione — APP (runtime: scrive il file dell'applicazione) e SYSTEM (`gmb_ai_modelio`,
+# `-DGMB_ABI_SCOPE_SYSTEM`: non scrive NULLA, i settings di sistema sono condivisi e versionati).
+add_executable(test_abi_per_app tests/test_abi_per_app.c ${LLMENV}/LLMDesc/llmdesc.c src/gmb_paths.c)
+target_include_directories(test_abi_per_app PRIVATE include ${LLMENV}/LLMDesc)
+target_compile_options(test_abi_per_app PRIVATE -w)
+add_test(NAME test_abi_per_app COMMAND test_abi_per_app)
+
+add_executable(test_abi_per_app_system tests/test_abi_per_app.c ${LLMENV}/LLMDesc/llmdesc.c src/gmb_paths.c)
+target_include_directories(test_abi_per_app_system PRIVATE include ${LLMENV}/LLMDesc)
+target_compile_options(test_abi_per_app_system PRIVATE -w)
+target_compile_definitions(test_abi_per_app_system PRIVATE GMB_ABI_SCOPE_SYSTEM)
+add_test(NAME test_abi_per_app_system COMMAND test_abi_per_app_system)

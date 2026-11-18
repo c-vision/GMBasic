@@ -185,6 +185,29 @@ public static class GmbBoot
         {
             if (_resolved.TryGetValue(name, out var h)) return h;
         }
+        // macOS: i FRAMEWORK di sistema non sono dylib e non stanno nei nostri percorsi.
+        // `[DllImport("ApplicationServices")]` (COMPUTER/CUA gestito: CGEvent, AXUIElement)
+        // falliva con "Unable to load shared library 'ApplicationServices'": il probing .NET
+        // non cerca dentro /System/Library/Frameworks. Se il framework esiste, si carica lì.
+        // Su altre piattaforme il ramo è inerte (nessun path).
+        if (!name.Contains('/') && !name.Contains('.'))
+        {
+            var fw = $"/System/Library/Frameworks/{name}.framework/{name}";
+            if (File.Exists(fw))
+            {
+                try
+                {
+                    var fh = NativeLibrary.Load(fw);
+                    lock (_resolved) _resolved[name] = fh;
+                    return fh;
+                }
+                catch (Exception ex)
+                {
+                    LastError = $"framework '{name}' trovato in {fw} ma non caricabile: {ex.GetBaseException().Message}";
+                    return IntPtr.Zero;
+                }
+            }
+        }
         if (!EnsureLoaded() || _libPathAny is null) return IntPtr.Zero;
         byte[] buf = new byte[2600];
         if (_libPathAny(name, buf, (nuint)buf.Length) != 1) return IntPtr.Zero;

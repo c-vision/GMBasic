@@ -78,6 +78,10 @@ int main(void)
     char dir[] = "/tmp/clm_selfcheck_XXXXXX";
     if (!mkdtemp(dir)) { printf("FAIL: mkdtemp\n"); return 1; }
     char hp[256], hj[256];
+    /* `h` è usata anche PRIMA del caricamento "head identità" (blocco score_texts): la
+     * dichiarazione va qui, in cima al blocco — usarla senza dichiararla è un errore C
+     * (`use of undeclared identifier`) che rompeva la build pulita di gmb_runtime_c. */
+    gmb_clm_head_t* h = NULL;
 
     /* ── prosa ── */
     char* t = gmb_clm_to_text("{\"ticket\":\"Login fails\",\"tags\":[\"a\",\"b\"],"
@@ -223,7 +227,7 @@ int main(void)
     snprintf(hp, sizeof hp, "%s/h1.safetensors", dir);
     write_head(hp, 0, (float)log(2.0));
     write_text((snprintf(hj, sizeof hj, "%s/h1.json", dir), hj), "{\"activation\":\"relu\"}");
-    gmb_clm_head_t* h = gmb_clm_head_load(hp, err, sizeof err);
+    h = gmb_clm_head_load(hp, err, sizeof err);
     CHECK(h != NULL, "caricamento head");
     if (h) {
         CHECK(gmb_clm_head_hidden_size(h) == 2 && gmb_clm_head_projection_dim(h) == 2, "dimensioni dedotte");

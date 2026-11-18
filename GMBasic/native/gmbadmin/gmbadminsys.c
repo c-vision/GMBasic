@@ -138,21 +138,81 @@ static void libs_index_path(char* out, size_t cap)
     else snprintf(out, cap, "libs.txt");
 }
 
-/* `libs ensure|install [--runtime-only|--dev|--components|--all]` — default: tutte.
+/* `libs ensure|install [--profile runtime|build|all] [--runtime-only|--dev|--components|--all]`
+ * — default: tutte. `--profile` è la forma che nomina il PERCHÉ del download:
+ *   runtime → solo ciò che serve a ESEGUIRE; build → runtime+dev (header e statiche per
+ *   COMPILARE); all → anche componenti/toolchain.
  * L'indice in cache viene rinfrescato: un indice vecchio farebbe risultare "tutto a posto"
  * e un gruppo nuovo non verrebbe mai scaricato (parità con il vecchio CLI). */
 static int libs_check(int argc, char** argv);   /* sotto */
+
+/* `first-use` — PRIMO USO dei compilatori/CLI/REPL: completa la cache (librerie di tutti i
+ * gruppi + toolchain zig) secondo `bootstrapScope` nei settings: "host" (default) | "all" |
+ * "off". È l'UNICA implementazione (gmb_runtime_c/src/gmb_first_use.c): `gmb`, `gmbnative` e
+ * `gmbcs` delegano qui. Non blocca mai l'avvio: ritorna 0 anche se resta qualcosa da scaricare,
+ * perché il compilatore deve poter partire con ciò che ha (il motivo è stampato). */
+int gmbadmin_first_use(int argc, char** argv)
+{
+    int dry = 0, force = 0, abi_only = 0, all = 0;
+    for (int i = 2; i < argc; i++)
+    {
+        if (!strcmp(argv[i], "--dry-run") || !strcmp(argv[i], "--dry")) dry = 1;
+        else if (!strcmp(argv[i], "--force") || !strcmp(argv[i], "--retry")) force = 1;
+        else if (!strcmp(argv[i], "--all")) all = 1;   /* tutti i RID: toolchain linux/win comprese */
+        else if (!strcmp(argv[i], "--abi-dir")) abi_only = 1;
+        else if (!strcmp(argv[i], "--help") || !strcmp(argv[i], "-h"))
+        {
+            printf("uso: gmbadmin first-use [--dry-run] [--force] [--all] [--abi-dir]\n"
+                   "  completo una volta sola librerie native e toolchain (zig) del RID host.\n"
+                   "  Ambito: bootstrapScope nei settings (host | all | off).\n"
+                   "  --all      TUTTI i RID (osx/linux/win): scarica anche le toolchain zig per\n"
+                   "             linux e win (cross). Attenzione: sono centinaia di MB per RID.\n"
+                   "  --dry-run  mostra il piano (indice, file, toolchain) senza scaricare\n"
+                   "  --force    ignora il marker di primo uso e riprova\n"
+                   "  --abi-dir  stampa solo la cartella ABI di LLMEnv (descrittori *.gmbarch)\n"
+                   "             e la fonte: niente download, exit 1 se non c'e'\n");
+            return 0;
+        }
+    }
+    if (abi_only)   /* modalità STRETTA per la shell: nessun download, nessuna scrittura */
+    {
+        char abi[2048], how[64];
+        if (!gmb_first_use_abi_dir(abi, sizeof abi, how, sizeof how)) return 1;
+        printf("%s\n", abi);
+        return 0;
+    }
+    if (force) gmb_first_use_forget();
+    int ok = gmb_first_use_ensure_scope(dry, all ? "all" : NULL);
+    if (!ok)
+        fprintf(stderr, "?first-use: cache INCOMPLETA (vedi i messaggi sopra). Rimedio: gmb libs ensure\n");
+    return 0;   /* mai bloccante: l'avvio del compilatore non dipende da questo */
+}
 
 static int libs_ensure(int argc, char** argv)
 {
     for (int i = 3; i < argc; i++)
         if (!strcmp(argv[i], "--verify")) return libs_check(argc, argv);   /* solo controllo sha */
     int scope = GMB_SCOPE_ALL;
+    const char* profile = NULL;   /* nome scelto con --profile, per il messaggio */
     for (int i = 3; i < argc; i++) {
         if (!strcmp(argv[i], "--runtime-only") || !strcmp(argv[i], "--runtime")) scope = GMB_SCOPE_RUNTIME;
         else if (!strcmp(argv[i], "--dev")) scope = GMB_SCOPE_DEV;
         else if (!strcmp(argv[i], "--components")) scope = GMB_SCOPE_COMPONENTS;
         else if (!strcmp(argv[i], "--all")) scope = GMB_SCOPE_ALL;
+        else if (!strcmp(argv[i], "--profile") && i + 1 < argc) profile = argv[++i];
+        else if (!strncmp(argv[i], "--profile=", 10)) profile = argv[i] + 10;
+    }
+    /* `--profile` vince sui flag di scope: chi lo scrive ha già scelto l'ambito.
+     * `build` = GMB_SCOPE_DEV, che in gmb_boot.c vale runtime+dev (i file senza tag sono
+     * runtime e restano sempre inclusi). */
+    if (profile) {
+        if (!strcmp(profile, "runtime")) scope = GMB_SCOPE_RUNTIME;
+        else if (!strcmp(profile, "build")) scope = GMB_SCOPE_DEV;
+        else if (!strcmp(profile, "all")) scope = GMB_SCOPE_ALL;
+        else {
+            fprintf(stderr, "?libs ensure: --profile '%s' non valido (runtime|build|all)\n", profile);
+            return 2;
+        }
     }
     const char* rid = gmb_libs_rid();
     char cache[2048], dir[2300], idx[2400];
@@ -160,9 +220,10 @@ static int libs_ensure(int argc, char** argv)
     snprintf(dir, sizeof dir, "%s/%s", cache, rid);
     snprintf(idx, sizeof idx, "%s/index.txt", dir);
     unlink(idx);   /* forza il refresh dell'indice (pochi KB) */
-    printf("libs ensure: RID %s, scope %s → %s\n", rid,
-           scope == GMB_SCOPE_ALL ? "tutte" : scope & GMB_SCOPE_DEV ? "runtime+dev" :
-           scope & GMB_SCOPE_COMPONENTS ? "componenti" : "runtime", dir);
+    const char* sco = scope == GMB_SCOPE_ALL ? "tutte" : scope & GMB_SCOPE_DEV ? "runtime+dev" :
+                      scope & GMB_SCOPE_COMPONENTS ? "componenti" : "runtime";
+    if (profile) printf("libs ensure: RID %s, profilo %s, scope %s → %s\n", rid, profile, sco, dir);
+    else printf("libs ensure: RID %s, scope %s → %s\n", rid, sco, dir);
     int r = gmb_bootstrap(scope);
     if (!r) { fprintf(stderr, "?libs ensure: bootstrap incompleto (indice di rete assente o rete non disponibile)\n"); return 1; }
     printf("libs ensure: completato\n");
@@ -177,17 +238,34 @@ static int libs_check(int argc, char** argv)
         if (!strcmp(argv[i], "--index") && i + 1 < argc) explicit = argv[++i];
     gmb_paths_libs_cache_dir(cache, sizeof cache);
     const char* rid = gmb_libs_rid();
+    /* Sorgenti dell'indice, in ordine di affidabilità:
+     *   1. `--index <file>` (esplicito);
+     *   2. `<exe>/libs.txt` (bundle di deploy: l'elenco viaggia accanto al programma);
+     *   3. `<cache>/<rid>/index.txt` (scaricato dal bootstrap del primo uso);
+     *   4. `<repo>/shared/settings/libs-index-<rid>.tsv` (versionato: c'è anche in uno ZIP).
+     * Il vecchio fallback `tools/basic/bin/libs.txt` era un artefatto di build del repo e in una
+     * distribuzione non esiste: spariva con «indice non trovato» anche quando l'indice c'era. */
     if (explicit && *explicit) snprintf(idx, sizeof idx, "%s", explicit);
     else {
         libs_index_path(idx, sizeof idx);
+        if (access(idx, R_OK) != 0) snprintf(idx, sizeof idx, "%s/%s/index.txt", cache, rid);
         if (access(idx, R_OK) != 0) {
-            /* indice della cache utente, poi il bundle dei tool */
-            snprintf(idx, sizeof idx, "%s/%s/index.txt", cache, rid);
-            if (access(idx, R_OK) != 0) snprintf(idx, sizeof idx, "tools/basic/bin/libs.txt");
+            char root[4096];
+            if (gmb_paths_repo_root(root, sizeof root) && root[0])
+                snprintf(idx, sizeof idx, "%s/shared/settings/libs-index-%s.tsv", root, rid);
+            else
+                snprintf(idx, sizeof idx, "shared/settings/libs-index-%s.tsv", rid);
         }
     }
     FILE* f = fopen(idx, "r");
-    if (!f) { fprintf(stderr, "?libs check: indice non trovato (%s)\n", idx); return 2; }
+    if (!f) {
+        fprintf(stderr,
+                "?libs check: nessun indice delle librerie (provati: <exe>/libs.txt, "
+                "<cache>/%s/index.txt, <repo>/shared/settings/libs-index-%s.tsv)\n"
+                "            per lo stato della cache usa `gmb libs status`; per scaricare "
+                "`gmb libs ensure`.\n", rid, rid);
+        return 2;
+    }
     char line[4096];
     int ok = 0, bad = 0, missing = 0;
     while (fgets(line, sizeof line, f)) {
@@ -216,7 +294,8 @@ int gmbadmin_libs(int argc, char** argv)
     if (!strcmp(sub, "check")) return libs_check(argc, argv);
     if (!strcmp(sub, "help") || !strcmp(sub, "--help")) {
         printf("uso: gmb libs <status|ensure|check|prune|index|publish>\n");
-        printf("  ensure|install [--runtime-only|--dev|--components|--all]: download dalla cache\n");
+        printf("  ensure|install [--profile runtime|build|all] [--runtime-only|--dev|--components|--all]:\n");
+        printf("      download dalla cache; build = runtime+dev (header e statiche per compilare)\n");
         printf("  status: cache ~/.gmbasic/libs/<rid>/\n  check [--index file]: sha256 vs indice\n");
         printf("  publish <support|engine|core> <rid> [--yes]: release su GMBasicModules\n");
         printf("  prune [--dry-run]: rimuove dalla cache i file non presenti nel manifest\n");

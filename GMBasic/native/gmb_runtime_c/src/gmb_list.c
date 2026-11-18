@@ -4,6 +4,7 @@
  * ============================================================================ */
 
 #include "gmb_runtime.h"
+#include "gmb_memstats.h"
 #include <math.h>
 
 /* Slice di una lista: NUOVA lista con gli elementi [start, min(end,count)) — canone
@@ -34,7 +35,7 @@ gmb_list_t gmb_list_new(void) {
 void gmb_list_free(gmb_list_t* l) {
     if (!l) return;
     for (size_t i = 0; i < l->count; i++) gmb_val_release(l->items[i]);
-    if (l->items) { free(l->items); l->items = NULL; l->count = 0; l->capacity = 0; }
+    if (l->items) { if (gmb_mem_on()) gmb_mem_untrack(l->items); free(l->items); l->items = NULL; l->count = 0; l->capacity = 0; }
 }
 
 gmb_int_t gmb_list_count(gmb_list_t l) { return (gmb_int_t)l.count; }
@@ -45,6 +46,7 @@ void gmb_list_add(gmb_list_t* l, gmb_val_t v) {
         size_t nc = l->capacity == 0 ? 4 : l->capacity * 2;
         gmb_val_t* ni = (gmb_val_t*)realloc(l->items, nc * sizeof(gmb_val_t));
         if (!ni) return;
+        if (gmb_mem_on()) gmb_mem_resize(l->items, ni, nc * sizeof(gmb_val_t), GMB_MEM_LIST);
         l->items = ni;
         l->capacity = nc;
     }
@@ -78,6 +80,7 @@ static void gmb_list_ensure(gmb_list_t* l, size_t need) {
     while (nc < need) nc *= 2;
     gmb_val_t* ni = (gmb_val_t*)realloc(l->items, nc * sizeof(gmb_val_t));
     if (!ni) return;
+    if (gmb_mem_on()) gmb_mem_resize(l->items, ni, nc * sizeof(gmb_val_t), GMB_MEM_LIST);
     l->items = ni;
     l->capacity = nc;
 }

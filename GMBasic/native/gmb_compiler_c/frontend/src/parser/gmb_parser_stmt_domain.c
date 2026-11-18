@@ -279,6 +279,23 @@ gmb_stmt_t* gmb_p_parse_domain_stmt_ov(gmb_parser_t* p, int line, const char* ov
     }
     /* termini fino a fine statement */
     int cap = 0;
+    /* AI WORKER RUN <nome>: nel lexer C `RUN` NON è keyword hard (soft keyword, come nella
+     * forma `RUN <sub>`), quindi il termine arrivava come VAR "RUN" e l'emitter cadeva sul
+     * ramo INVOKE: `AI WORKER RUN "w1"` emetteva `gmb_worker_invoke("RUN")` — nome del
+     * worker PERSO e contabilita' di un'invocazione (misurato: spend=251 rescued=1 su
+     * C99Native contro 0|0 sulle altre tre gambe). Il SUB-VERBO si normalizza qui nel
+     * TokenKind dedicato (a[0]->tk = GMB_TOK_Run), che e' cio' che l'emitter dispatcha:
+     * regola d'oro §12, mai per lessema. */
+    if (s->win_tk == GMB_TOK_Ai && s->act_tk == (int)GMB_TOK_AiSubWorker
+        && gmb_p_tok_is_soft_keyword(gmb_p_cur(p), "RUN")) {
+        gmb_p_adv(p);
+        gmb_expr_t* sub = gmb_expr_var("RUN", line);
+        if (sub) {
+            sub->tk = GMB_TOK_Run;
+            if (s->n_go_args >= cap) { cap = cap ? cap * 2 : 8; s->go_args = (gmb_expr_t**)realloc(s->go_args, (size_t)cap * sizeof(gmb_expr_t*)); }
+            s->go_args[s->n_go_args++] = sub;
+        }
+    }
     while (!gmb_p_check(p, GMB_TOK_Newline) && !gmb_p_at_end(p)) {
         if (gmb_p_check(p, GMB_TOK_Comma)) { gmb_p_adv(p); continue; }
         /* ':' = separatore di STATEMENT sulla stessa riga: termina gli argomenti.

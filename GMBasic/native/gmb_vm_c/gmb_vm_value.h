@@ -101,6 +101,13 @@ typedef struct gmb_obj_generator {
     int is_expr;             /* 1 = espressione generatore (lista materializzata) */
     gmb_obj_shared_val_t* expr_list; /* per is_expr: valori prodotti */
     gmb_int_t expr_pos;
+    /* Errore che ha fatto USCERE il corpo (parità C99Native: gmb_gen_next lo rilancia nel
+     * contesto del chiamante invece di trasformarlo in StopIteration). */
+    int has_err;
+    int err_code;
+    char* err_desc;
+    long err_line;
+    char* err_trace;   /* catena BASIC del corpo al momento dell'errore (frame interni) */
 } gmb_obj_generator_t;
 
 gmb_obj_generator_t* gmb_generator_new(struct gmb_task* task);

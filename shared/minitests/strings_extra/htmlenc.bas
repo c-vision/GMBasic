@@ -1,3 +1,4 @@
+' EXPECT: &lt;ciao&gt;
 IMPORT STRINGS
 SUB Main()
   PRINT HTMLENCODE("<ciao>")

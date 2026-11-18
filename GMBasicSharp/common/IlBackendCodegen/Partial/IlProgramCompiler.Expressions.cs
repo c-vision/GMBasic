@@ -29,6 +29,16 @@ public sealed partial class IlProgramCompiler
             case StringExpr s: _il.Emit(OpCodes.Ldstr, s.Value); break;
             case BooleanExpr b: _il.Emit(b.Value ? OpCodes.Ldc_I4_1 : OpCodes.Ldc_I4_0); break;
             case VariableExpr v:
+                /* Nome dichiarato in un BLOCCO ormai chiuso (linker → OutOfScopeSymbolId): non è
+                 * in scope → vale il DEFAULT del tipo (0 numerico, "" stringa). Non va cercato per
+                 * nome fra i locali (il fallback sotto lo "resusciterebbe": `DIM x` in un blocco,
+                 * `PRINT x` dopo stampava il valore del blocco). Vedi SymbolTable.OutOfScopeSymbolId. */
+                if (v.SymbolId == SymbolTable.OutOfScopeSymbolId)
+                {
+                    if (v.NameSuffixed.Lexeme.EndsWith('$')) _il.Emit(OpCodes.Ldstr, string.Empty);
+                    else _il.Emit(OpCodes.Ldc_R8, 0.0);
+                    break;
+                }
                 // Variabile di iterazione FOR con SymbolId NON risolto dal linker (gap:
                 // `LINE (i*40,...), i, BF` → SymbolId=-1 nel corpo) → risolvi per NOME
                 // contro il contatore FOR attivo e carica il suo local (aggiornato dal Next).
@@ -961,7 +971,8 @@ public sealed partial class IlProgramCompiler
                 : isLineNumber ? _types.ErrInstanceLineNumberGetter
                 : expr.Field.Lexeme.Equals("Description", StringComparison.OrdinalIgnoreCase) ? _types.ErrInstanceDescriptionGetter
                 : expr.Field.Lexeme.Equals("SourceLineText", StringComparison.OrdinalIgnoreCase) ? _types.ErrInstanceSourceLineTextGetter
-                : throw new NotSupportedException($"Backend IL: campo '{expr.Field.Lexeme}' non supportato su ERR (solo Number/Description/LineNumber/SourceLineText)."));
+                : expr.Field.Lexeme.Equals("StackTrace", StringComparison.OrdinalIgnoreCase) ? _types.ErrInstanceStackTraceGetter
+                : throw new NotSupportedException($"Backend IL: campo '{expr.Field.Lexeme}' non supportato su ERR (solo Number/Description/LineNumber/SourceLineText/StackTrace)."));
             // ErrInstance.Number/LineNumber sono int32 CLR puri (vedi Ast/Exceptions.cs),
             // ma questo backend tratta OGNI valore numerico BASIC come double per
             // convenzione (vedi InferType sotto, stesso caso ErrType) — conversione qui,
@@ -1194,6 +1205,13 @@ public sealed partial class IlProgramCompiler
         }
 
         var boxArgPositions = GetByRefCapturedParamPositions(_program).GetValueOrDefault(definition.SymbolId);
+        /* Argomenti BYREF che vivono nel bag globale/statico come reference type: EmitAddressOf
+         * lascia qui il temporaneo da ricopiare nel bag SUBITO dopo la call (vedi
+         * EmitByRefBagSlotWriteBacks). Il salvataggio/ripristino rende l'elenco annidabile:
+         * una call dentro un argomento ha il proprio elenco, svuotato subito dopo di lei. */
+        var bagSlotFixes = new System.Collections.Generic.List<ByRefBagSlotFix>();
+        var prevBagSlotFixes = _byRefBagSlotFixes;
+        _byRefBagSlotFixes = bagSlotFixes;
         /* Array con KIND dell'elemento diverso dal parametro (2026-11-04): si passa una copia
          * convertita e si ricopia indietro dopo la Call. Elenco riempito mentre si emettono gli
          * argomenti, consumato subito dopo la chiamata. */
@@ -1204,6 +1222,9 @@ public sealed partial class IlProgramCompiler
          * si passa una copia rettangolare e (per OUT/INOUT) si ricopia indietro nel
          * descrittore del chiamante dopo la Call. Elenco consumato subito dopo la chiamata. */
         var matrixArgFix = new System.Collections.Generic.List<(System.Reflection.Emit.LocalBuilder tmp, System.Reflection.Emit.LocalBuilder orig, System.Type tmpType, bool writeBack)>();
+        /* Elementi di array SINGLE passati BYREF (float[] → parametro `double&`):
+         * temporaneo float + ricopiatura nell'elemento dopo la Call. */
+        var singleElemFix = new System.Collections.Generic.List<(ArrayAccessExpr Elem, System.Reflection.Emit.LocalBuilder Tmp)>();
         for (var i = 0; i < expr.Args.Length; i++)
         {
             var paramDef = definition.Parameters[i];
@@ -1271,6 +1292,28 @@ public sealed partial class IlProgramCompiler
                     _il.Emit(OpCodes.Stloc, tmpArr);
                     _il.Emit(OpCodes.Ldloca, tmpArr);
                     matrixArgFix.Add((tmpArr, origObj, tmpClr, paramDef.Mode != ParameterMode.In));
+                }
+                else if (NormalizeInferredType(paramDef.DataType) is SingleType
+                         && expr.Args[i] is ArrayAccessExpr singleElem
+                         && TryGetArrayElementClrType(singleElem) is { } singleElemClr
+                         && singleElemClr == typeof(float))
+                {
+                    /* Elemento di un array SINGLE (float[], ABI FFI) verso un parametro BYREF
+                     * SINGLE: nello storage del dialetto il SINGLE è DOUBLE (variabile), ma
+                     * l'elemento è float → con l'indirizzo diretto il callee scrive 8 byte su 4
+                     * (corrompe l'elemento successivo: `SetV(a(1))` finiva su a(2)). Si passa
+                     * l'indirizzo di un temporaneo DOUBLE (il tipo del parametro), seminato dal
+                     * valore dell'elemento, e si ricopia nell'elemento SUBITO dopo la call
+                     * convertendo in float. Gli indici vengono rivalutati al write-back (stesso
+                     * compromesso di arrayKindFix: un indice con effetti collaterali non è
+                     * supportato). */
+                    var singleTmp = _il.DeclareLocal(_types.Double);
+                    EmitArrayElementAddress(singleElem);
+                    _il.Emit(OpCodes.Ldind_R4);
+                    _il.Emit(OpCodes.Conv_R8);
+                    _il.Emit(OpCodes.Stloc, singleTmp);
+                    _il.Emit(OpCodes.Ldloca, singleTmp);
+                    singleElemFix.Add((singleElem, singleTmp));
                 }
                 else
                 {
@@ -1357,6 +1400,16 @@ public sealed partial class IlProgramCompiler
                 // nessun coerce numerico (il delegate è già del tipo del parametro FUNCTION).
                 if (expr.Args[i] is LambdaExpr or FunctionReferenceExpr) continue;
                 var argType = NormalizeInferredType(InferType(expr.Args[i]));
+                /* NUMERO → STRING (parametro dichiarato STRING, argomento numerico): senza
+                 * conversione si emette `call Proc(double…)` su una firma `string` → IL
+                 * INVALIDO e InvalidProgramException al primo uso. Caso reale:
+                 * `BND.CHARM(S, K, T, r, vol, 0)` con `type AS STRING` (trading/charm,
+                 * trading/theta). C99Native/VM-C convertono implicitamente (0 → "0"). */
+                if (paramType is StringType && argType is not StringType)
+                {
+                    EmitCoerceTypes(argType, paramType);
+                    continue;
+                }
                 if (IlConversion.IsNumeric(paramType) && IlConversion.IsNumeric(argType)
                     // L'argomento è GIÀ stato coercedo dal Linker (avvolto in CINT/CBYTE/
                     // CLNG/CDBL per il tipo del parametro — RewriteSingleArgument): ri-coercere
@@ -1403,11 +1456,21 @@ public sealed partial class IlProgramCompiler
         if (methodBuilder.IsStatic) _il.Emit(OpCodes.Call, methodBuilder);
         else _il.Emit(OpCodes.Callvirt, methodBuilder);
 
-        if (arrayKindFix.Count > 0 || matrixArgFix.Count > 0)
+        _byRefBagSlotFixes = prevBagSlotFixes;
+        EmitByRefBagSlotWriteBacks(bagSlotFixes, methodBuilder.ReturnType);
+
+        if (arrayKindFix.Count > 0 || matrixArgFix.Count > 0 || singleElemFix.Count > 0)
         {
             var hasRet = methodBuilder.ReturnType != typeof(void);
             System.Reflection.Emit.LocalBuilder? res = hasRet ? _il.DeclareLocal(methodBuilder.ReturnType) : null;
             if (res != null) _il.Emit(OpCodes.Stloc, res);
+            foreach (var se in singleElemFix)
+            {
+                EmitArrayElementAddress(se.Elem);
+                _il.Emit(OpCodes.Ldloc, se.Tmp);
+                _il.Emit(OpCodes.Conv_R4);
+                _il.Emit(OpCodes.Stind_R4);
+            }
             foreach (var p in arrayKindFix)
             {
                 _il.Emit(OpCodes.Ldloc, p.orig);
@@ -1539,12 +1602,13 @@ public sealed partial class IlProgramCompiler
                 throw new NotSupportedException(
                     $"FFI '{symbolName}': callback con array usato per {what} non supportato " +
                     "(ammessi solo array di DOUBLE, con ritorno DOUBLE o ARRAY OF DOUBLE).");
-            if (fp.ParameterTypes.Length > 8)
+            if (fp.ParameterTypes.Length > global::Compiler.Compiler.FfiMaxArgs)
+            {
+                var maxCbArgs = global::Compiler.Compiler.FfiMaxArgs;
                 throw new NotSupportedException(
-                    $"FFI '{symbolName}': il callback usato per {what} ha {fp.ParameterTypes.Length} parametri (ammessi 0-8).");
+                    $"FFI '{symbolName}': il callback usato per {what} ha {fp.ParameterTypes.Length} parametri (ammessi 0-{maxCbArgs}).");
+            }
             var hasReturn = fp.ReturnType is not VoidType;
-            var kinds = fp.ParameterTypes.Select(t => IsI64(t)).ToList();
-            if (hasReturn) kinds.Add(IsI64(fp.ReturnType));
             foreach (var (pt, idx) in fp.ParameterTypes.Select((t, i) => (t, i)))
                 if (!IsI64(pt) && !IsFfiDoubleType(pt))
                     throw new NotSupportedException(
@@ -1552,15 +1616,15 @@ public sealed partial class IlProgramCompiler
             if (hasReturn && !IsI64(fp.ReturnType) && !IsFfiDoubleType(fp.ReturnType))
                 throw new NotSupportedException(
                     $"FFI '{symbolName}': tipo di ritorno del callback usato per {what} non supportato (ammessi: DOUBLE/SINGLE, interi LONG/INTEGER/QUAD/BYTE/..., o nessuno per un CALLBACK SUB).");
-            if (kinds.Distinct().Count() > 1)
-                throw new NotSupportedException(
-                    $"FFI '{symbolName}': il callback usato per {what} ha una firma interna mista LONG/DOUBLE — non supportata nella v1 del supporto callback (tutti i parametri e l'eventuale ritorno dello stesso kind).");
         }
         bool CallbackIsInt64(FunctionPointerType fp) => IsVecCallback(fp)
             ? IsI64(fp.ReturnType)
             : fp.ParameterTypes.Length > 0 ? IsI64(fp.ParameterTypes[0]) : fp.ReturnType is not VoidType && IsI64(fp.ReturnType);
         foreach (var p in epd.Parameters)
             if (IsCallbackParam(p)) ValidateCallbackForFfi((FunctionPointerType)p.DataType!, $"il parametro '{p.Name.Lexeme}'");
+        // Più callback nella stessa DECLARE: ammessi. Dal 2026-11-11 non c'è più il limite di
+        // 2 trampolini per forma (VM/C usa closure libffi, C99Native emette un trampolino per
+        // parametro, IL/PCode generano il delegate dinamicamente).
         // Struct/UDT per valore (2026-09-29, parità Compiler.Expressions.cs/PCodeVM/VM-C): un
         // UDT "semplice" (nessun operatore/costruttore/metodo/generico) con TUTTI i campi dello
         // stesso kind a 8 byte viaggia per valore. Il backend IL è "gratis" rispetto a PCodeVM:
@@ -1597,6 +1661,17 @@ public sealed partial class IlProgramCompiler
         };
         int LayoutUdt2(UserDefinedType udt, string what, string prefix, List<(string Path, int Code, int Off)> outLeaves)
         {
+            // UNION/BITFIELD (2026-11-11): layout non riproducibile a foglie (vedi
+            // Compiler.Expressions.cs) — vale anche per array di UDT / UDT annidati.
+            if (udt.IsUnion)
+                throw new NotSupportedException(
+                    $"FFI '{symbolName}': lo UDT '{udt.Name.Lexeme}' usato per {what} è una UNION (campi sovrapposti): non ammesso dal marshalling FFI.");
+            if (udt.Fields.Any(f => f.BitWidth > 0))
+                throw new NotSupportedException(
+                    $"FFI '{symbolName}': lo UDT '{udt.Name.Lexeme}' usato per {what} contiene BITFIELD (WIDTH): non ammesso dal marshalling FFI.");
+            // PACKED TYPE (2026-11-11): layout C senza padding, come `__attribute__((packed))`
+            // (parita Compiler.Expressions.cs) — gli offset devono coincidere con quelli del C.
+            var packed2 = udt.IsPacked;
             var off = 0; var align = 1;
             foreach (var f in udt.Fields)
             {
@@ -1616,7 +1691,7 @@ public sealed partial class IlProgramCompiler
                         else throw new NotSupportedException($"FFI '{symbolName}': il campo array '{path}' deve avere bound letterali ({what}).");
                     }
                     var szA = FfiSz2(codeArr);
-                    off = (off + szA - 1) / szA * szA;
+                    if (!packed2) off = (off + szA - 1) / szA * szA;
                     for (var k = 0; k < nArr; k++)
                     {
                         outLeaves.Add(($"{path}[{k}]", codeArr, off));
@@ -1638,7 +1713,7 @@ public sealed partial class IlProgramCompiler
                         throw new NotSupportedException($"FFI '{symbolName}': lo UDT '{udt.Name.Lexeme}' usato per {what} contiene la struttura annidata '{sub.Name.Lexeme}' con PADDING: il layout non è riproducibile — dichiara i campi nell'UDT esterno.");
                     var subAlign = 1;
                     foreach (var l in outLeaves.GetRange(start, outLeaves.Count - start)) subAlign = Math.Max(subAlign, FfiSz2(l.Code));
-                    off = (off + subAlign - 1) / subAlign * subAlign;
+                    if (!packed2) off = (off + subAlign - 1) / subAlign * subAlign;
                     for (var k = start; k < outLeaves.Count; k++)
                     {
                         var l = outLeaves[k];
@@ -1653,13 +1728,13 @@ public sealed partial class IlProgramCompiler
                     if (code < 0)
                         throw new NotSupportedException($"FFI '{symbolName}': tipo del campo '{path}' non supportato per {what}.");
                     var sz = FfiSz2(code);
-                    off = (off + sz - 1) / sz * sz;
+                    if (!packed2) off = (off + sz - 1) / sz * sz;
                     outLeaves.Add((path, code, off));
                     off += sz;
                     align = Math.Max(align, sz);
                 }
             }
-            return (off + align - 1) / align * align;
+            return packed2 ? off : (off + align - 1) / align * align;
         }
         string UdtShapeString(UserDefinedType udt, string what)
         {
@@ -1697,6 +1772,14 @@ public sealed partial class IlProgramCompiler
             if (!IsSimpleUdt(udt))
                 throw new NotSupportedException(
                     $"FFI '{symbolName}': lo UDT '{udt.Name.Lexeme}' usato per {what} non è ammesso dal marshalling FFI (solo TYPE semplici, senza operatori/costruttori/metodi/generici).");
+            // UNION/BITFIELD (2026-11-11): vedi Compiler.Expressions.cs — layout non
+            // riproducibile a foglie.
+            if (udt.IsUnion)
+                throw new NotSupportedException(
+                    $"FFI '{symbolName}': lo UDT '{udt.Name.Lexeme}' usato per {what} è una UNION (campi sovrapposti): non ammesso dal marshalling FFI.");
+            if (udt.Fields.Any(f => f.BitWidth > 0))
+                throw new NotSupportedException(
+                    $"FFI '{symbolName}': lo UDT '{udt.Name.Lexeme}' usato per {what} contiene BITFIELD (WIDTH): non ammesso dal marshalling FFI.");
             // Limite a 8 campi FOGLIA dopo flattening ricorsivo (S0 2026-11-06) — parità
             // Compiler.Expressions.cs. Il vecchio limite a 1-2 foglie (16 byte) valeva finché la
             // VM/C chiamava con un cast di funzione scritto a mano; ora la VM/C usa libffi
@@ -1726,8 +1809,23 @@ public sealed partial class IlProgramCompiler
         // IL non ne avrebbe bisogno, ma la guardia resta identica su tutti e 5 i backend per
         // parità cross-backend).
         foreach (var p in epd.Parameters)
-            if (IsUdtParam(p)) ValidateUdtForFfi((UserDefinedType)p.DataType!, $"il parametro '{p.Name.Lexeme}'", allowMixedKind: true);
-        if (udtReturn != null) ValidateUdtForFfi(udtReturn, "il ritorno", allowMixedKind: true);
+            if (IsUdtParam(p))
+            {
+                var udtP = (UserDefinedType)p.DataType!;
+                // PACKED per VALORE: vedi Compiler.Expressions.cs (la VM/C non può esprimere un
+                // layout packed nella classificazione ABI di libffi) — ammesso BYREF/array.
+                if (udtP.IsPacked && !IsByRefUdtParam(p))
+                    throw new NotSupportedException(
+                        $"FFI '{symbolName}': lo UDT PACKED '{udtP.Name.Lexeme}' non è ammesso per il parametro '{p.Name.Lexeme}' per VALORE (layout senza padding non rappresentabile nell'ABI: passa BYREF o come array di UDT).");
+                ValidateUdtForFfi(udtP, $"il parametro '{p.Name.Lexeme}'", allowMixedKind: true);
+            }
+        if (udtReturn != null)
+        {
+            if (udtReturn.IsPacked)
+                throw new NotSupportedException(
+                    $"FFI '{symbolName}': lo UDT PACKED '{udtReturn.Name.Lexeme}' non è ammesso come RITORNO (layout senza padding non rappresentabile nell'ABI).");
+            ValidateUdtForFfi(udtReturn, "il ritorno", allowMixedKind: true);
+        }
         // S0 (2026-11-06): il limite "un solo parametro UDT a kind misto" era del dispatch
         // per-cast della VM/C; con libffi (slot per argomento) non serve più.
         foreach (var p in epd.Parameters)
@@ -1766,7 +1864,7 @@ public sealed partial class IlProgramCompiler
          * FFI viaggia a 8): FfiService.CallFunctionTypedArr costruisce uno scratch long[] con i
          * valori 0..255 e fa copy-back dopo la chiamata. Senza questa ammissione la gamba IL
          * rifiutava in compilazione le firme `arr() AS BYTE` che C99Native/VM-C accettano. */
-        bool IsFfiArrayElem(DataType? t) => t is DoubleType || IsI64ArrayElem(t) || t is ByteType || t is SByteType;
+        bool IsFfiArrayElem(DataType? t) => t is DoubleType || IsI64ArrayElem(t) || t is ByteType || t is SByteType || t is StringType;
         foreach (var p in epd.Parameters)
         {
             if (IsArrayParam(p))
@@ -1776,7 +1874,7 @@ public sealed partial class IlProgramCompiler
                     UdtShapeString(ueA, $"il parametro '{p.Name.Lexeme}'");   // valida il layout
                 else if (!IsFfiArrayElem(elem))
                     throw new NotSupportedException(
-                        $"FFI '{symbolName}': tipo elemento non supportato per il parametro array '{p.Name.Lexeme}' (solo AS DOUBLE, LONG/QUAD, BYTE o un TYPE).");
+                        $"FFI '{symbolName}': tipo elemento non supportato per il parametro array '{p.Name.Lexeme}' (solo AS DOUBLE, LONG/QUAD, BYTE, STRING o un TYPE).");
             }
             else if (IsByRefUdtParam(p))
                 ValidateUdtForFfi((UserDefinedType)p.DataType!, $"il parametro BYREF '{p.Name.Lexeme}'", allowMixedKind: true);
@@ -1881,6 +1979,7 @@ public sealed partial class IlProgramCompiler
             arrayMask |= 1L << pi;
             var elem = (epd.Parameters[pi].DataType as ArrayType)?.ElementType;
             if (IsI64(elem)) arrayElemIntMask |= 1L << pi;
+            if (elem is StringType) stringMask |= 1L << pi;   /* array di STRING (char**, solo INPUT) */
         }
         // DECLARE NATIVE: ABI esatta, nessuna estensione automatica degli array (bit 0x100 nel kind;
         // FfiService.CallFunctionTypedArr lo toglie prima di marshallare).
@@ -1985,7 +2084,25 @@ public sealed partial class IlProgramCompiler
             _il.Emit(OpCodes.Ldloc, cbArityLocal);
             _il.Emit(OpCodes.Ldc_I4, callbackKindMask);
             _il.Emit(OpCodes.Ldc_I4, callbackHasRetMask);
-            _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.PrepareFfiCallbackArgs), typeof(object[]), typeof(int[]), typeof(int), typeof(int)));
+            /* Firma per-slot dei callback scalari (2026-11-11): "slot:kinds>ret;..." con
+             * kind I/D, ritorno I/D/V. La forma vettoriale (128+)/scalare-con-ritorno-array
+             * (192+) resta codificata nell'arità e non compare qui. */
+            {
+                var sigs = new List<string>();
+                for (var pi = 0; pi < epd.Parameters.Length && pi < global::Compiler.Compiler.FfiMaxArgs; pi++)
+                {
+                    if (!IsCallbackParam(epd.Parameters[pi])) continue;
+                    var fp = (FunctionPointerType)epd.Parameters[pi].DataType!;
+                    if (IsVecCallback(fp) || IsScalarArrayCallback(fp)) continue;
+                    var sb = new System.Text.StringBuilder();
+                    sb.Append(pi).Append(':');
+                    foreach (var pt in fp.ParameterTypes) sb.Append(IsI64(pt) ? 'I' : 'D');
+                    sb.Append('>').Append(fp.ReturnType is VoidType ? 'V' : IsI64(fp.ReturnType) ? 'I' : 'D');
+                    sigs.Add(sb.ToString());
+                }
+                _il.Emit(OpCodes.Ldstr, string.Join(";", sigs));
+            }
+            _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.PrepareFfiCallbackArgs), typeof(object[]), typeof(int[]), typeof(int), typeof(int), typeof(string)));
             cbKeepAliveLocal = _il.DeclareLocal(typeof(List<Delegate>));
             _il.Emit(OpCodes.Stloc, cbKeepAliveLocal);
         }

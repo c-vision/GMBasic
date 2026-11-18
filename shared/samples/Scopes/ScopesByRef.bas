@@ -38,18 +38,18 @@ END SUB
 4 PRINT "╚═════════════════════════════════════════════════════════════════════════╝"
 5 PRINT
 
-20 PRINT "--- 1. Test Numerico con Inizializzazione Esplicita (LET) ---"
+20 PRINT "--- 1. Test Numerico con Inizializzazione Esplicita ---"
 30 PRINT "Dichiaro esplicitamente A = 0..."
-35 LET A = 0
+35 A = 0
 40 PRINT "Chiamo TestByRef(A)..."
 45 TestByRef(A)
 50 PRINT "Valore di A dopo la chiamata:"; A; "(Atteso: 10)"
 60 IF A = 10 THEN PRINT "  -> ESITO: SUCCESSO" ELSE PRINT "  -> ESITO: FALLITO"
 70 PRINT
 
-80 PRINT "--- 2. Test Stringa con Inizializzazione Esplicita (LET) ---"
+80 PRINT "--- 2. Test Stringa con Inizializzazione Esplicita ---"
 90 PRINT "Dichiaro esplicitamente B$ = ''..."
-95 LET B$ = ""
+95 B$ = ""
 100 PRINT "Chiamo TestByRefString(B$)..."
 105 TestByRefString(B$)
 110 PRINT "Valore di B$ dopo la chiamata: '"; B$; "' (Atteso: CREATO)"

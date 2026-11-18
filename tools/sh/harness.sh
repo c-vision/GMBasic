@@ -9,7 +9,9 @@ ROOT="$(cd "$(dirname "$0")/../../GMBasicSharp" && pwd)"
 WS="$(cd "$ROOT/.." && pwd)"
 export GMBASIC_ROOT="$WS/GMBasic"
 if [ "$(uname)" = "Darwin" ]; then
-  export DYLD_LIBRARY_PATH="$HOME/.gmbasic/libs/ml/osx-arm64:$HOME/.gmbasic/libs/osx-arm64:${DYLD_LIBRARY_PATH:-}"
+  # build del working tree PRIMA della cache (vedi tools/sh/parity4): la cache può essere più
+  # nuova per mtime ma compilata da sorgenti vecchie.
+  export DYLD_LIBRARY_PATH="$HOME/.gmbasic/libs/ml/osx-arm64:$WS/GMBasic/build/libs/osx-arm64:$HOME/.gmbasic/libs/osx-arm64:${DYLD_LIBRARY_PATH:-}"
 fi
 case $MODE in
   il)    exec dotnet "$WS/tools/runners/test_ilrun/bin/Debug/net10.0/test_ilrun.dll" --engine=il "$FILE" ;;

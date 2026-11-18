@@ -110,6 +110,9 @@ void gmb_read_set_error(int idx, const char* text);
 void gmb_read_resume(gmb_read_ctx_t* ctx, int active);
 /* WHEN .F. deciso dal backend: il campo non riceve il fuoco (loop lo salta). */
 void gmb_read_skip_field(int idx);
+/* 1 se il campo idx è stato saltato (GET ... WHEN falso): il chiamante NON deve
+ * riassegnare la variabile con il testo del campo (resta invariata). */
+int  gmb_read_field_skipped(int idx);
 /* Testo corrente del campo (dal text-input CONTROLS). */
 const char* gmb_read_field_text(gmb_read_field_t* f);
 const char* gmb_read_value_at(int idx);

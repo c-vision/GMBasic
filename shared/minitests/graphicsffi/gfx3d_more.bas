@@ -81,7 +81,9 @@ SUB Main()
   t2(2) = 3 : t2(5) = 3 : t2(8) = 7
   PRINT GFX3D.TRIANGLETRIANGLE(tri(), t2())
 
-  DIM sg(2) AS DOUBLE, vr(8) AS DOUBLE, dt(2) AS DOUBLE, vout(2) AS DOUBLE, acc(0) AS DOUBLE
+  ' vout(): VOLUMERENDER scrive n*3 valori (n=3 → 9), non 3: con vout(2) scriveva 6
+  ' double oltre la fine dell'array (overflow silenzioso, ora errore esplicito).
+  DIM sg(2) AS DOUBLE, vr(8) AS DOUBLE, dt(2) AS DOUBLE, vout(8) AS DOUBLE, acc(0) AS DOUBLE
   sg(0) = 1 : sg(1) = 1 : sg(2) = 1
   vr(1) = 1 : vr(5) = 1 : vr(6) = 1
   dt(0) = 1 : dt(1) = 1 : dt(2) = 1

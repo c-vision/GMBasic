@@ -1,4 +1,5 @@
 ' Minitest TUI LOGVIEW — parità 4 backend (statement widget TUI).
+' EXPECT: OK-logview
 IMPORT CONTROLS
 SUB Main()
   DIM v AS INTEGER

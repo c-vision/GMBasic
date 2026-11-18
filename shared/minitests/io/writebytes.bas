@@ -38,7 +38,7 @@ PRINT "size1="; IO.LOF(H)
 IO.FCLOSE(H)
 
 ' percorso non scrivibile: errore esplicito, mai un falso successo
-PRINT "err="; IO.WRITEBYTES("work/no_such_dir/x.dat", ONE)
+PRINT "err="; IO.WRITEBYTES("work/writebytes.dat/x.dat", ONE)   ' ENOTDIR: il padre e' un FILE, mai una directory
 
 ON ERROR RESUME NEXT
 KILL "work/writebytes.dat"

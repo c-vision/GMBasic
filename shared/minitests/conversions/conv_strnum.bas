@@ -1,1 +1,2 @@
+' EXPECT: 42
 PRINT VAL("42")

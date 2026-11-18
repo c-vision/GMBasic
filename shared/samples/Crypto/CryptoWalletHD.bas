@@ -13,15 +13,15 @@
 ' =================================================================================================
 
 REQUIRE "blockchain"
+REQUIRE "crypto"
 IMPORT BLOCKCHAIN
 IMPORT CRYPTOGRAPHY
 
 SUB Show(label AS STRING, a() AS BYTE, n AS LONG)
-    PRINT label; LEFT(TOHEX(a), n * 2)
+    PRINT label; LEFT(BYTESHEX(a), n * 2)
 END SUB
 
 SUB Main()
-    CLS
     PRINT "=================================================================="
     PRINT " CryptoWalletHD - HD wallet Ethereum (BIP39/BIP44)"
     PRINT "=================================================================="
@@ -81,7 +81,7 @@ SUB Main()
     PRINT "--- 5. Verifica: GETPUBLICKEY(priv) == pub ---"
     DIM re(63) AS BYTE
     n = GETPUBLICKEY(priv, re)
-    IF LEFT(TOHEX(re), n * 2) = TOHEX(pub) THEN
+    IF LEFT(BYTESHEX(re), n * 2) = BYTESHEX(pub) THEN
         PRINT "VERIFICA OK"
     ELSE
         PRINT "ERRORE: chiavi pubbliche diverse"

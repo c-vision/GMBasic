@@ -139,6 +139,10 @@ public static class SourcePipeline
         if (program.LoadedModules.TryGetValue(entryPath, out var mainMod))
             program.MainModule = mainMod;
 
+        // Stessa regola dell'Orchestrator: gli statement di modulo dei moduli IMPORTATI
+        // eseguono prima dell'entry point (IL e bytecode compilano il solo MainModule).
+        global::Basic.Linker.InlineModuleInitializers(program);
+
         // Il bytecode-compile avviene nei wrapper (chi ha bisogno del Program per IL lo usa
         // senza eseguire il compile chunk).
         return (new global::Compiler.Compiler(), program);

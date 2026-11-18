@@ -8,7 +8,7 @@ IMPORT LLM
 
 SUB Main()
   ON ERROR GOTO H
-  LLM TENSOR LOGITS "/Volumes/Armor5TB/LocalLLM/ai/models/falcon-mamba-7b-4bit", "The capital of Italy is"
+  LLM TENSOR LOGITS "%MODELS%/falcon-mamba-7b-4bit", "The capital of Italy is"
   PRINT "OK"
   GOTO D
 H:

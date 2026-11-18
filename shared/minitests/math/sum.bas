@@ -1,3 +1,4 @@
+' EXPECT: 6
 SUB Main()
   PRINT SUM(1, 2, 3)
 END SUB

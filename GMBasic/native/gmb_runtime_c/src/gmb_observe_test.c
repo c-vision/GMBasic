@@ -14,6 +14,7 @@
 #include <string.h>
 #include <stdint.h>
 #include <sys/stat.h>
+#include "gmb_compat_win.h"   /* mkdir a 2 argomenti (solo su Windows) */
 
 #define GMD_OBS_TEST_ARTIFACT "work/ai_observe_test.json"
 

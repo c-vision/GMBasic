@@ -2,6 +2,7 @@
 ' MiniTest BLOCKCHAIN (pacchetto FFI): GETPUBLICKEY(priv = 1) = G compresso (33 byte).
 ' La chiave privata e' un array BYTE: priv(31)=1 -> big-endian 0x...01.
 REQUIRE "blockchain"
+REQUIRE "crypto"
 IMPORT BLOCKCHAIN
 IMPORT CRYPTOGRAPHY
 
@@ -12,5 +13,5 @@ SUB Main()
   DIM n AS LONG
   n = GETPUBLICKEY(priv, pub)
   PRINT "publen="; n
-  PRINT "pub="; LEFT(TOHEX(pub), n * 2)
+  PRINT "pub="; LEFT(BYTESHEX(pub), n * 2)
 END SUB

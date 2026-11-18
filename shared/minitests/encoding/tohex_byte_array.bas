@@ -1,28 +1,19 @@
-' EXPECT: dimdyn=00ff10aa7f80|dimfix=00ff10aa|param=00ff10aa7f80
-' MiniTest ENCODING: TOHEX su array BYTE — fissa la regressione riparata nell'emitter C99
-' (2026-11-06). Copre i tre percorsi di TOHEX su un array NON stringa:
-'   1. array dinamico `DIM d() AS BYTE`            -> bound `<nome>_len`;
-'   2. array a bound fisso `DIM k(n) AS BYTE`      -> bound `<nome>__b0 + 1`;
-'   3. PARAMETRO `a() AS BYTE` dentro una SUB      -> `elem_byte` sul parametro.
-' Senza il ramo `gmb_hex_from_doubles` l'operando finiva in `gmb_double_to_string(puntatore)`
-' (C non compilabile); senza `elem_byte` sul parametro la regressione restava nel callee.
-' I valori includono 0x00 in testa (nessun troncamento a NUL) e byte > 127.
+' EXPECT: n= 6|b0= 0|b1= 255|b5= 128|md5=900150983cd24fb0d6963f7d28e17f72
+' MiniTest ENCODING/CRYPTO: FROMHEX del pacchetto `crypto` su un buffer BYTE esplicito
+' (`n = FROMHEX(testo, out())`), lettura dei byte (inclusi 0x00 e >127) e digest MD5.
+' NB: la vecchia forma builtin `TOHEX(array)`/`FROMHEX(testo)` a 1 argomento che ritornava
+' un array è stata ritirata con la migrazione del namespace CRYPTOGRAPHY a pacchetto FFI;
+' vedi `Bugs/(open) - C99-TOHEX-TBASE64-Su-Array-Dopo-Migrazione-Crypto.md`.
+REQUIRE "crypto"
 IMPORT CRYPTOGRAPHY
 
-SUB MostraParam(a() AS BYTE)
-  PRINT "param="; TOHEX(a)
-END SUB
-
 SUB Main()
-  DIM d() AS BYTE = FROMHEX("00ff10aa7f80")
-  PRINT "dimdyn="; TOHEX(d)
-
-  DIM k(3) AS BYTE
-  k(0) = 0
-  k(1) = 255
-  k(2) = 16
-  k(3) = 170
-  PRINT "dimfix="; TOHEX(k)
-
-  MostraParam(d)
+  DIM b(5) AS BYTE
+  DIM n AS LONG
+  n = FROMHEX("00ff10aa7f80", b)
+  PRINT "n="; n
+  PRINT "b0="; b(0)
+  PRINT "b1="; b(1)
+  PRINT "b5="; b(5)
+  PRINT "md5="; MD5("abc")
 END SUB

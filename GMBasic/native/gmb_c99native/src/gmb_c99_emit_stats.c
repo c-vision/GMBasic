@@ -26,11 +26,30 @@ static void sd_vallist(ctx_t* c, var_t* v) {
 }
 
 /* array nativo double[N] → (const double* ptr, int n) per i runtime *_flat. */
-static void sd_flat(ctx_t* c, var_t* v) {
+static void sd_flat_ptr(ctx_t* c, var_t* v) {
+    if (v->matrix_value) {
+        /* Valore matrice (DIM m(r,c) rank-2 DOUBLE): descrittore gmb_matrix_t, non double*.
+         * ensure_flat materializza una copia contigua se serve e ritorna il buffer. */
+        sb_put(&c->out, "gmb_matrix_value_ensure_flat(&");
+        emit_var_ref(c, v);
+        sb_put(&c->out, ")");
+        return;
+    }
     sb_put(&c->out, "(const double*)");
     emit_var_ref(c, v);
+}
+static void sd_flat(ctx_t* c, var_t* v) {
+    sd_flat_ptr(c, v);
     sb_put(&c->out, ", (int)(");
-    emit_arr_len_of(c, v);
+    if (v->matrix_value) {
+        sb_put(&c->out, "(");
+        emit_var_ref(c, v);
+        sb_put(&c->out, ").rows * (");
+        emit_var_ref(c, v);
+        sb_put(&c->out, ").cols");
+    } else {
+        emit_arr_len_of(c, v);
+    }
     sb_put(&c->out, ")");
 }
 
@@ -110,7 +129,8 @@ int emit_bf_stats_dict(ctx_t* c, const char* name, const char* ns, gmb_tokenkind
                 sb_bound_var(&c->out, jv, 1);
                 sb_put(&c->out, " + 1); for (int __ai = 0; __ai < __an && __ai < 256; __ai++) __asz[__ai] = __nc; ");
                 sb_put(&c->out, tk == GMB_TOK_StatsKruskal ? "gmb_kruskal_flat" : "gmb_anova_flat");
-                sb_put(&c->out, "((const double*)"); emit_var_ref(c, jv);
+                sb_put(&c->out, "(");
+                sd_flat_ptr(c, jv);
                 sb_put(&c->out, ", __asz, __an); })");
                 return 1;
             }
@@ -204,8 +224,8 @@ int emit_bf_stats_dict(ctx_t* c, const char* name, const char* ns, gmb_tokenkind
         if (!x || !x->is_array || x->vclass[0]) return 0;
         if (x->ndims >= 2 && !x->jagged) {
             /* MATRIX (DIM t(r-1, c-1) AS DOUBLE), flat row-major. */
-            sb_put(&c->out, "gmb_chi2con_flat((const double*)");
-            emit_var_ref(c, x);
+            sb_put(&c->out, "gmb_chi2con_flat(");
+            sd_flat_ptr(c, x);
             sb_put(&c->out, ", (int)("); sb_bound_var(&c->out, x, 0); sb_put(&c->out, " + 1), (int)(");
             sb_bound_var(&c->out, x, 1); sb_put(&c->out, " + 1))");
             return 1;

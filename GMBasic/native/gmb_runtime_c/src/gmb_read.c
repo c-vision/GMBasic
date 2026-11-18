@@ -136,6 +136,12 @@ void gmb_read_skip_field(int idx)
     gmb_read_ctx_t* ctx = gmb_read_active();
     if (idx >= 0 && idx < ctx->n_fields) ctx->fields[idx].skip = 1;
 }
+int gmb_read_field_skipped(int idx)
+{
+    gmb_read_ctx_t* ctx = gmb_read_active();
+    if (idx < 0 || idx >= ctx->n_fields) return 1;   /* inesistente: niente da assegnare */
+    return ctx->fields[idx].skip ? 1 : 0;
+}
 /* Applica MESSAGE/ERROR al campo idx (-1 = ultimo). */
 static int read_last_field_idx(gmb_read_ctx_t* ctx, int idx)
 {
@@ -477,7 +483,13 @@ const char* gmb_read_value_at(int idx)
 {
     gmb_read_ctx_t* ctx = gmb_read_active();
     if (idx < 0 || idx >= ctx->n_fields) return "";
-    return gmb_read_field_text(&ctx->fields[idx]);
+    gmb_read_field_t* f = &ctx->fields[idx];
+    /* Campo SALTATO da WHEN (mai mostrato in questo READ): vale il valore INIZIALE, non il
+     * testo del buffer — per un numerico il buffer è vuoto e il chiamante lo convertirebbe
+     * in 0 (valore spurio). `gmb_read_apply_all` già non riscrive questi campi; qui si
+     * allinea anche la LETTURA usata dai backend gestiti (PCode/IL via ReadValue). */
+    if (!f->visited) return f->initial;
+    return gmb_read_field_text(f);
 }
 
 int         gmb_read_native_run(void)   { return gmb_read_run(gmb_read_active()); }

@@ -770,6 +770,12 @@ public sealed partial class GraphicsManager
     {
         if (!_sprites.TryGetValue(id1, out var a) || !_sprites.TryGetValue(id2, out var b)) return 0;
         if (!a.IsVisible || !b.IsVisible) return 0;
+        /* Bounding box AGGIORNATA QUI: `Collide` può essere chiamata fra due `SPRITE SET
+         * POSITION` e il SYNC successivo (COLLIDE è una funzione, non un evento di frame):
+         * senza l'update la box era quella dell'ultimo SYNC → COLLIDE rispondeva 0 su una
+         * coppia che si era appena sovrapposta. `CheckCollisionInternal` lo faceva già. */
+        UpdateBoundingBox(a);
+        UpdateBoundingBox(b);
         var ra = a.BoundingBox;
         var rb = b.BoundingBox;
         var hit = ra.x < rb.x + rb.w && ra.x + ra.w > rb.x &&

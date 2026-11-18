@@ -1,5 +1,6 @@
 ' MiniTest UserControl (CONTROL ADD / REMOVE): classe con metodo Paint registrata come controllo.
 ' Verifica dominio end-to-end del verbo CONTROL ADD (parsing/AST/emissione) + parità 4 backend.
+' EXPECT: OK-usercontrol
 IMPORT CONTROLS
 
 CLASS Sea

@@ -15,6 +15,7 @@
 #include "gm_gfx_raster.h"
 
 #include <math.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -24,6 +25,15 @@ static gm_mesh g_meshes[OFX_MAX_MESH];
 static gm_raster g_rasters[OFX_MAX_RASTER];
 
 static gm_vec3 v3(const double* p) { gm_vec3 v; v.x = p[0]; v.y = p[1]; v.z = p[2]; return v; }
+
+/* Validazione del buffer di uscita. Il contratto di `gfx3d.inc` dice QUANTI valori ogni
+ * funzione scrive in out(); prima non veniva controllato, quindi un buffer sottodimensionato
+ * produceva un overflow SILENZIOSO (sui leg managed corrompeva l'heap gestito: SIGSEGV nella
+ * GC, vedi Bugs/(open) - MiniTests-Sweep-4Backend §10.8; su C99 corrompeva l'heap nativo).
+ * Ora un buffer troppo piccolo è un errore esplicito (§0bis: mai un risultato silenzioso). */
+static int out_ok(const double* out, int64_t out_n, int64_t need)
+{ return out != NULL && out_n >= need; }
+
 static void v3_out(gm_vec3 v, double* out) { out[0] = v.x; out[1] = v.y; out[2] = v.z; }
 static gm_aabb box_in(const double* b)
 {
@@ -51,18 +61,18 @@ static gm_frustum frustum_in(const double* p)
 /* ── geometria ──────────────────────────────────────────────────────────── */
 
 int ofx_gfx_perspective(double fovy, double aspect, double zn, double zf, double* out, int64_t out_n)
-{ if (!out) return -1; mat4_out(gm_mat4_perspective(fovy, aspect, zn, zf), out); return 0; }
+{ if (!out_ok(out, out_n, 16)) return -1; mat4_out(gm_mat4_perspective(fovy, aspect, zn, zf), out); return 0; }
 
 int ofx_gfx_ortho(double l, double r, double b, double t, double zn, double zf, double* out, int64_t out_n)
-{ if (!out) return -1; mat4_out(gm_mat4_ortho(l, r, b, t, zn, zf), out); return 0; }
+{ if (!out_ok(out, out_n, 16)) return -1; mat4_out(gm_mat4_ortho(l, r, b, t, zn, zf), out); return 0; }
 
 int ofx_gfx_lookat(const double* eye, int64_t eye_n, const double* center, int64_t center_n, const double* up, int64_t up_n, double* out, int64_t out_n)
-{ if (!eye || !center || !up || !out) return -1; mat4_out(gm_mat4_look_at(v3(eye), v3(center), v3(up)), out); return 0; }
+{ if (!eye || !center || !up || !out_ok(out, out_n, 16)) return -1; mat4_out(gm_mat4_look_at(v3(eye), v3(center), v3(up)), out); return 0; }
 
 int ofx_gfx_aabb_from_points(const double* pts, int64_t pts_n, double* out, int64_t out_n)
 {
     /* il numero di valori e' l'estensione dell'array (n esplicito tolto dalla DECLARE) */
-    if (!pts || !out || pts_n < 3 || out_n < 6) return -1;
+    if (!pts || !out_ok(out, out_n, 6) || pts_n < 3) return -1;
     int n = (int)(pts_n / 3);
     gm_vec3* v = (gm_vec3*)malloc(sizeof(gm_vec3) * (size_t)n);
     if (!v) return -1;
@@ -74,13 +84,13 @@ int ofx_gfx_aabb_from_points(const double* pts, int64_t pts_n, double* out, int6
 }
 
 int ofx_gfx_aabb_merge(const double* a, int64_t a_n, const double* b, int64_t b_n, double* out, int64_t out_n)
-{ if (!a || !b || !out) return -1; box_out(gm_aabb_merge(box_in(a), box_in(b)), out); return 0; }
+{ if (!a || !b || !out_ok(out, out_n, 6)) return -1; box_out(gm_aabb_merge(box_in(a), box_in(b)), out); return 0; }
 
 int ofx_gfx_aabb_center(const double* a, int64_t a_n, double* out, int64_t out_n)
-{ if (!a || !out) return -1; v3_out(gm_aabb_center(box_in(a)), out); return 0; }
+{ if (!a || !out_ok(out, out_n, 3)) return -1; v3_out(gm_aabb_center(box_in(a)), out); return 0; }
 
 int ofx_gfx_aabb_extents(const double* a, int64_t a_n, double* out, int64_t out_n)
-{ if (!a || !out) return -1; v3_out(gm_aabb_extents(box_in(a)), out); return 0; }
+{ if (!a || !out_ok(out, out_n, 3)) return -1; v3_out(gm_aabb_extents(box_in(a)), out); return 0; }
 
 int ofx_gfx_aabb_test_point(const double* a, int64_t a_n, const double* p, int64_t p_n)
 { if (!a || !p) return 0; return gm_aabb_test_point(box_in(a), v3(p)); }
@@ -90,7 +100,7 @@ int ofx_gfx_aabb_intersect(const double* a, int64_t a_n, const double* b, int64_
 
 int ofx_gfx_frustum_from(const double* m, int64_t m_n, double* out, int64_t out_n)
 {
-    if (!m || !out) return -1;
+    if (!m || !out_ok(out, out_n, 24)) return -1;
     gm_frustum f = gm_frustum_from_matrix(mat4_in(m));
     for (int i = 0; i < 6; i++)
     {
@@ -108,7 +118,7 @@ int ofx_gfx_frustum_test_aabb(const double* planes, int64_t planes_n, const doub
 
 int ofx_gfx_decompose_srt(const double* m, int64_t m_n, double* scale, int64_t scale_n, double* rot, int64_t rot_n, double* pos, int64_t pos_n)
 {
-    if (!m || !scale || !rot || !pos) return -1;
+    if (!m || !out_ok(scale, scale_n, 3) || !out_ok(rot, rot_n, 4) || !out_ok(pos, pos_n, 3)) return -1;
     gm_vec3 s, t; gm_quat q;
     int rc = gm_mat4_decompose_srt(mat4_in(m), &s, &q, &t);
     v3_out(s, scale); v3_out(t, pos);
@@ -118,7 +128,7 @@ int ofx_gfx_decompose_srt(const double* m, int64_t m_n, double* scale, int64_t s
 
 int ofx_gfx_camera_view(const double* pos, int64_t pos_n, const double* target, int64_t target_n, const double* up, int64_t up_n, double* out, int64_t out_n)
 {
-    if (!pos || !target || !up || !out) return -1;
+    if (!pos || !target || !up || !out_ok(out, out_n, 16)) return -1;
     gm_camera c = gm_camera_make(v3(pos), v3(target), v3(up));
     mat4_out(gm_camera_view(&c), out);
     return 0;
@@ -126,7 +136,7 @@ int ofx_gfx_camera_view(const double* pos, int64_t pos_n, const double* target, 
 
 int ofx_gfx_camera_projection(double fov, double aspect, double zn, double zf, double* out, int64_t out_n)
 {
-    if (!out) return -1;
+    if (!out_ok(out, out_n, 16)) return -1;
     gm_camera c = gm_camera_perspective((gm_vec3){0, 0, 0}, (gm_vec3){0, 0, -1}, (gm_vec3){0, 1, 0}, fov, aspect, zn, zf);
     mat4_out(gm_camera_projection(&c), out);
     return 0;
@@ -135,7 +145,7 @@ int ofx_gfx_camera_projection(double fov, double aspect, double zn, double zf, d
 int ofx_gfx_camera_view_projection(const double* pos, int64_t pos_n, const double* target, int64_t target_n, const double* up, int64_t up_n,
                                    double fov, double aspect, double zn, double zf, double* out, int64_t out_n)
 {
-    if (!pos || !target || !up || !out) return -1;
+    if (!pos || !target || !up || !out_ok(out, out_n, 16)) return -1;
     gm_camera c = gm_camera_perspective(v3(pos), v3(target), v3(up), fov, aspect, zn, zf);
     mat4_out(gm_camera_view_projection(&c), out);
     return 0;
@@ -145,7 +155,7 @@ int ofx_gfx_camera_view_projection(const double* pos, int64_t pos_n, const doubl
 
 int ofx_gfx_ray_sphere(const double* r, int64_t r_n, const double* sphere, int64_t sphere_n, double* t, int64_t t_n)
 {
-    if (!r || !sphere || !t) return -1;
+    if (!r || !sphere || !out_ok(t, t_n, 1)) return -1;
     gm_real tt = 0;
     int hit = gm_ray_sphere(ray_in(r), v3(sphere), sphere[3], &tt);
     t[0] = tt;
@@ -154,7 +164,7 @@ int ofx_gfx_ray_sphere(const double* r, int64_t r_n, const double* sphere, int64
 
 int ofx_gfx_ray_plane(const double* r, int64_t r_n, const double* plane, int64_t plane_n, double* t, int64_t t_n)
 {
-    if (!r || !plane || !t) return -1;
+    if (!r || !plane || !out_ok(t, t_n, 1)) return -1;
     gm_real tt = 0;
     int hit = gm_ray_plane(ray_in(r), v3(plane), v3(plane + 3), &tt);
     t[0] = tt;
@@ -163,7 +173,7 @@ int ofx_gfx_ray_plane(const double* r, int64_t r_n, const double* plane, int64_t
 
 int ofx_gfx_ray_triangle(const double* r, int64_t r_n, const double* tri, int64_t tri_n, double* tuv, int64_t tuv_n)
 {
-    if (!r || !tri || !tuv) return -1;
+    if (!r || !tri || !out_ok(tuv, tuv_n, 3)) return -1;
     gm_real t = 0, u = 0, v = 0;
     int hit = gm_ray_triangle(ray_in(r), v3(tri), v3(tri + 3), v3(tri + 6), &t, &u, &v);
     tuv[0] = t; tuv[1] = u; tuv[2] = v;
@@ -172,7 +182,7 @@ int ofx_gfx_ray_triangle(const double* r, int64_t r_n, const double* tri, int64_
 
 int ofx_gfx_ray_aabb(const double* r, int64_t r_n, const double* box, int64_t box_n, double* t, int64_t t_n)
 {
-    if (!r || !box || !t) return -1;
+    if (!r || !box || !out_ok(t, t_n, 2)) return -1;
     gm_real tmin = 0, tmax = 0;
     int hit = gm_ray_aabb(ray_in(r), v3(box), v3(box + 3), &tmin, &tmax);
     t[0] = tmin; t[1] = tmax;
@@ -181,7 +191,7 @@ int ofx_gfx_ray_aabb(const double* r, int64_t r_n, const double* box, int64_t bo
 
 int ofx_gfx_ray_box(const double* r, int64_t r_n, const double* box, int64_t box_n, double* t, int64_t t_n)
 {
-    if (!r || !box || !t) return -1;
+    if (!r || !box || !out_ok(t, t_n, 1)) return -1;
     gm_real tt = 0;
     int hit = gm_ray_box(ray_in(r), v3(box), v3(box + 3), &tt);
     t[0] = tt;
@@ -189,11 +199,11 @@ int ofx_gfx_ray_box(const double* r, int64_t r_n, const double* box, int64_t box
 }
 
 int ofx_gfx_ray_reflect(const double* v, int64_t v_n, const double* n, int64_t n_n, double* out, int64_t out_n)
-{ if (!v || !n || !out) return -1; v3_out(gm_ray_reflect(v3(v), v3(n)), out); return 0; }
+{ if (!v || !n || !out_ok(out, out_n, 3)) return -1; v3_out(gm_ray_reflect(v3(v), v3(n)), out); return 0; }
 
 int ofx_gfx_ray_refract(const double* v, int64_t v_n, const double* n, int64_t n_n, double eta, double* out, int64_t out_n)
 {
-    if (!v || !n || !out) return -1;
+    if (!v || !n || !out_ok(out, out_n, 3)) return -1;
     gm_vec3 o;
     int rc = gm_ray_refract(v3(v), v3(n), eta, &o);
     v3_out(o, out);
@@ -205,7 +215,7 @@ int ofx_gfx_ray_refract(const double* v, int64_t v_n, const double* n, int64_t n
 int ofx_gfx_shade_phong(const double* p, int64_t p_n, const double* n, int64_t n_n, const double* view, int64_t view_n, const double* light, int64_t light_n,
                         const double* params, int64_t params_n, double* out, int64_t out_n)
 {
-    if (!p || !n || !view || !light || !params || !out) return -1;
+    if (!p || !n || !view || !light || !params || !out_ok(out, out_n, 3)) return -1;
     v3_out(gm_shade_phong(v3(p), v3(n), v3(view), v3(light), v3(params), v3(params + 3),
                           params[6], params[7], params[8], params[9]), out);
     return 0;
@@ -219,7 +229,7 @@ int ofx_gfx_sphere_box(const double* c, int64_t c_n, double r, const double* box
 
 int ofx_gfx_sphere_plane(const double* c, int64_t c_n, double r, const double* plane, int64_t plane_n, double* dist, int64_t dist_n)
 {
-    if (!c || !plane || !dist) return -1;
+    if (!c || !plane || !out_ok(dist, dist_n, 1)) return -1;
     gm_real d = 0;
     int hit = gm_intersect_sphere_plane(v3(c), r, v3(plane), v3(plane + 3), &d);
     dist[0] = d;
@@ -228,7 +238,7 @@ int ofx_gfx_sphere_plane(const double* c, int64_t c_n, double r, const double* p
 
 int ofx_gfx_segment_plane(const double* a, int64_t a_n, const double* b, int64_t b_n, const double* plane, int64_t plane_n, double* t, int64_t t_n)
 {
-    if (!a || !b || !plane || !t) return -1;
+    if (!a || !b || !plane || !out_ok(t, t_n, 1)) return -1;
     gm_real tt = 0;
     int hit = gm_intersect_segment_plane(v3(a), v3(b), v3(plane), v3(plane + 3), &tt);
     t[0] = tt;
@@ -237,7 +247,7 @@ int ofx_gfx_segment_plane(const double* a, int64_t a_n, const double* b, int64_t
 
 int ofx_gfx_segment_sphere(const double* a, int64_t a_n, const double* b, int64_t b_n, const double* c, int64_t c_n, double r, double* t, int64_t t_n)
 {
-    if (!a || !b || !c || !t) return -1;
+    if (!a || !b || !c || !out_ok(t, t_n, 1)) return -1;
     gm_real tt = 0;
     int hit = gm_intersect_segment_sphere(v3(a), v3(b), v3(c), r, &tt);
     t[0] = tt;
@@ -246,7 +256,7 @@ int ofx_gfx_segment_sphere(const double* a, int64_t a_n, const double* b, int64_
 
 int ofx_gfx_segment_triangle(const double* a, int64_t a_n, const double* b, int64_t b_n, const double* tri, int64_t tri_n, double* t, int64_t t_n)
 {
-    if (!a || !b || !tri || !t) return -1;
+    if (!a || !b || !tri || !out_ok(t, t_n, 1)) return -1;
     gm_real tt = 0;
     int hit = gm_intersect_segment_triangle(v3(a), v3(b), v3(tri), v3(tri + 3), v3(tri + 6), &tt);
     t[0] = tt;
@@ -264,7 +274,8 @@ int ofx_gfx_triangle_triangle(const double* t1, int64_t t1_n, const double* t2, 
 int ofx_gfx_volume_render(int n, const double* sigma, int64_t sigma_n, const double* rgb, int64_t rgb_n, const double* dt, int64_t dt_n,
                           double* out_rgb, int64_t out_rgb_n, double* out_acc, int64_t out_acc_n)
 {
-    if (n <= 0 || !sigma || !rgb || !dt || !out_rgb) return -1;
+    if (n <= 0 || !sigma || !rgb || !dt || !out_ok(out_rgb, out_rgb_n, (int64_t)n * 3)) return -1;
+    if (out_acc && out_acc_n < 1) return -1;
     gm_real acc = 0;
     gm_gfx_volume_render(n, sigma, rgb, dt, out_rgb, &acc);
     if (out_acc) out_acc[0] = acc;
@@ -311,7 +322,7 @@ int ofx_gfx_mesh_nt(int h) { gm_mesh* m = mesh_get(h); return m ? m->nt : -1; }
 int ofx_gfx_mesh_pos(int h, double* out, int64_t out_n)
 {
     gm_mesh* m = mesh_get(h);
-    if (!m || !out) return -1;
+    if (!m || !out_ok(out, out_n, (int64_t)m->nv * 3)) return -1;
     for (int i = 0; i < m->nv; i++) { out[3 * i] = m->pos[i].x; out[3 * i + 1] = m->pos[i].y; out[3 * i + 2] = m->pos[i].z; }
     return 0;
 }
@@ -319,7 +330,7 @@ int ofx_gfx_mesh_pos(int h, double* out, int64_t out_n)
 int ofx_gfx_mesh_tri(int h, double* out, int64_t out_n)
 {
     gm_mesh* m = mesh_get(h);
-    if (!m || !out) return -1;
+    if (!m || !out_ok(out, out_n, (int64_t)m->nt * 3)) return -1;
     for (int i = 0; i < m->nt * 3; i++) out[i] = (double)m->tri[i];
     return 0;
 }
@@ -377,7 +388,7 @@ int ofx_gfx_raster_clear(int h, double depth)
 int ofx_gfx_raster_get(int h, int x, int y, double* out, int64_t out_n)
 {
     gm_raster* r = raster_get(h);
-    if (!r || !out || x < 0 || y < 0 || x >= r->w || y >= r->h) return -1;
+    if (!r || !out_ok(out, out_n, 3) || x < 0 || y < 0 || x >= r->w || y >= r->h) return -1;
     gm_real rgb[3];
     gm_raster_get(r, x, y, rgb);
     out[0] = rgb[0]; out[1] = rgb[1]; out[2] = rgb[2];
@@ -394,7 +405,8 @@ int ofx_gfx_raster_tri(int h, const double* p, int64_t p_n, const double* c, int
 
 int ofx_gfx_raster_clip_near(const double* tri, int64_t tri_n, double znear, double* out, int64_t out_n)
 {
-    if (!tri || !out) return -1;
+    /* un triangolo clipato da un piano produce al massimo un quadrilatero (4 vertici xyz). */
+    if (!tri || !out_ok(out, out_n, 12)) return -1;
     return gm_raster_clip_near(tri, znear, out);
 }
 
@@ -413,9 +425,11 @@ int ofx_gfx_mesh_surface(const double* z, int64_t z_n, int nx, int ny, double sx
 /* Raycasting su griglia: hit() = [hit,map_x,map_y,side,perp_dist,wall_x].
  * `steps` <= 0 -> 256 (default storico); oltre il limite la cella non e' colpita. */
 static int raycast_dda_steps(const double* grid, int rows, int cols, double px, double py,
-                             double dx, double dy, int steps, double* out)
+                             double dx, double dy, int steps, double* out, int64_t out_n)
 {
-    if (!grid || !out || rows <= 0 || cols <= 0) return -1;
+    if (!grid || rows <= 0 || cols <= 0) return -1;
+    /* hit() = 6 valori: hit, map_x, map_y, side, perp_dist, wall_x */
+    if (!out_ok(out, out_n, 6)) return -1;
     if (steps <= 0) steps = 256;
     int* g = (int*)malloc(sizeof(int) * (size_t)rows * (size_t)cols);
     if (!g) return -1;
@@ -432,7 +446,7 @@ static int raycast_dda_steps(const double* grid, int rows, int cols, double px, 
 int ofx_gfx_raycast_dda(const double* grid, int64_t grid_n, int rows, int cols, double px, double py,
                         double dx, double dy, double* out, int64_t out_n)
 {
-    return raycast_dda_steps(grid, rows, cols, px, py, dx, dy, 256, out);
+    return raycast_dda_steps(grid, rows, cols, px, py, dx, dy, 256, out, out_n);
 }
 
 /* Variante con limite di passi configurabile (gfx3d.inc: RAYCASTDDAEX).
@@ -442,7 +456,7 @@ int ofx_gfx_raycast_dda_ex(const double* grid, int64_t grid_n, int rows, int col
 {
     if (!ray) return -1;
     int steps = (int)ray[4];
-    return raycast_dda_steps(grid, rows, cols, ray[0], ray[1], ray[2], ray[3], steps, out);
+    return raycast_dda_steps(grid, rows, cols, ray[0], ray[1], ray[2], ray[3], steps, out, out_n);
 }
 
 /* ── cilindro/cono + AABB transform (gfx3d.inc) ──────────────────────────── */
@@ -450,7 +464,7 @@ int ofx_gfx_raycast_dda_ex(const double* grid, int64_t grid_n, int rows, int col
 int ofx_gfx_ray_cylinder(const double* r, int64_t r_n, const double* base, int64_t base_n, const double* axis, int64_t axis_n,
                          double radius, double height, double* t, int64_t t_n)
 {
-    if (!r || !base || !axis || !t) return -1;
+    if (!r || !base || !axis || !out_ok(t, t_n, 1)) return -1;
     gm_real tt = 0;
     int hit = gm_ray_cylinder(ray_in(r), v3(base), v3(axis), radius, height, &tt);
     t[0] = tt;
@@ -460,7 +474,7 @@ int ofx_gfx_ray_cylinder(const double* r, int64_t r_n, const double* base, int64
 int ofx_gfx_ray_cone(const double* r, int64_t r_n, const double* apex, int64_t apex_n, const double* axis, int64_t axis_n,
                      double radius, double height, double* t, int64_t t_n)
 {
-    if (!r || !apex || !axis || !t) return -1;
+    if (!r || !apex || !axis || !out_ok(t, t_n, 1)) return -1;
     gm_real tt = 0;
     int hit = gm_ray_cone(ray_in(r), v3(apex), v3(axis), radius, height, &tt);
     t[0] = tt;
@@ -469,21 +483,21 @@ int ofx_gfx_ray_cone(const double* r, int64_t r_n, const double* apex, int64_t a
 
 int ofx_gfx_cylinder_normal(const double* base, int64_t base_n, const double* axis, int64_t axis_n, const double* p, int64_t p_n, double* out, int64_t out_n)
 {
-    if (!base || !axis || !p || !out) return -1;
+    if (!base || !axis || !p || !out_ok(out, out_n, 3)) return -1;
     v3_out(gm_cylinder_normal(v3(base), v3(axis), v3(p)), out);
     return 0;
 }
 
 int ofx_gfx_cone_normal(const double* apex, int64_t apex_n, const double* axis, int64_t axis_n, double k, const double* p, int64_t p_n, double* out, int64_t out_n)
 {
-    if (!apex || !axis || !p || !out) return -1;
+    if (!apex || !axis || !p || !out_ok(out, out_n, 3)) return -1;
     v3_out(gm_cone_normal(v3(apex), v3(axis), k, v3(p)), out);
     return 0;
 }
 
 int ofx_gfx_aabb_transform(const double* a, int64_t a_n, const double* m, int64_t m_n, double* out, int64_t out_n)
 {
-    if (!a || !m || !out) return -1;
+    if (!a || !m || !out_ok(out, out_n, 6)) return -1;
     box_out(gm_aabb_transform(box_in(a), mat4_in(m)), out);
     return 0;
 }
@@ -492,14 +506,14 @@ int ofx_gfx_aabb_transform(const double* a, int64_t a_n, const double* m, int64_
 
 int ofx_gfx_aabb_make(const double* mn, int64_t mn_n, const double* mx, int64_t mx_n, double* out, int64_t out_n)
 {
-    if (!mn || !mx || !out) return -1;
+    if (!mn || !mx || !out_ok(out, out_n, 6)) return -1;
     box_out(gm_aabb_make(v3(mn), v3(mx)), out);
     return 0;
 }
 
 int ofx_gfx_ray_at(const double* r, int64_t r_n, double t, double* out, int64_t out_n)
 {
-    if (!r || !out) return -1;
+    if (!r || !out_ok(out, out_n, 3)) return -1;
     v3_out(gm_ray_at(ray_in(r), t), out);
     return 0;
 }
@@ -507,7 +521,7 @@ int ofx_gfx_ray_at(const double* r, int64_t r_n, double t, double* out, int64_t 
 int ofx_gfx_camera_orbit(const double* eye, int64_t eye_n, const double* target, int64_t target_n, double yaw, double pitch,
                          double radius, double* out, int64_t out_n)
 {
-    if (!eye || !target || !out) return -1;
+    if (!eye || !target || !out_ok(out, out_n, 3)) return -1;
     gm_camera c = gm_camera_make(v3(eye), v3(target), (gm_vec3){0, 1, 0});
     gm_camera_orbit(&c, v3(target), yaw, pitch, radius);
     v3_out(c.position, out);
@@ -516,7 +530,7 @@ int ofx_gfx_camera_orbit(const double* eye, int64_t eye_n, const double* target,
 
 int ofx_gfx_camera_translate(const double* eye, int64_t eye_n, const double* target, int64_t target_n, const double* delta, int64_t delta_n, double* out, int64_t out_n)
 {
-    if (!eye || !target || !delta || !out) return -1;
+    if (!eye || !target || !delta || !out_ok(out, out_n, 3)) return -1;
     gm_camera c = gm_camera_make(v3(eye), v3(target), (gm_vec3){0, 1, 0});
     gm_camera_translate(&c, v3(delta));
     v3_out(c.position, out);
@@ -526,13 +540,12 @@ int ofx_gfx_camera_translate(const double* eye, int64_t eye_n, const double* tar
 int ofx_gfx_camera_ndc_ray(const double* pos, int64_t pos_n, const double* target, int64_t target_n, const double* up, int64_t up_n,
                            double fov, double aspect, double ndcx, double ndcy, double* out, int64_t out_n)
 {
-    if (!pos || !target || !up || !out) return -1;
+    if (!pos || !target || !up || !out_ok(out, out_n, 3)) return -1;
     gm_camera c = gm_camera_perspective(v3(pos), v3(target), v3(up), fov, aspect, 0.1, 100.0);
     v3_out(gm_camera_ndc_ray_dir(&c, ndcx, ndcy), out);
     return 0;
 }
 
-#include <stdint.h>
 /* Trampolini DECLARE NATIVE (ffi_ext_native.pl): firma originale, estensioni = INT64_MAX. */
 int ofx_gfx_mesh_pos__nat(int h, double* out) { return ofx_gfx_mesh_pos(h, out, INT64_MAX); }
 int ofx_gfx_mesh_surface__nat(const double* z, int nx, int ny, double sx, double sy, double zscale) { return ofx_gfx_mesh_surface(z, INT64_MAX, nx, ny, sx, sy, zscale); }

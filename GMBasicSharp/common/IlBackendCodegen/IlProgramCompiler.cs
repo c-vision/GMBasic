@@ -588,6 +588,55 @@ public sealed partial class IlProgramCompiler
     /// </summary>
     private readonly Dictionary<int, FieldBuilder> _capturedFields = new();
 
+    /// <summary>BITFIELD (2026-11-11): per SymbolId del campo, larghezza in bit e segno del
+    /// tipo dichiarato. In scrittura il valore viene mascherato e (se signed) esteso al segno,
+    /// così la lettura restituisce esattamente il valore C di un bitfield (es. `int a:3 = 5`
+    /// → -3). Costruita pigramente scorrendo i TYPE del programma.</summary>
+    private Dictionary<int, (int Width, bool Signed)>? _bitfields;
+
+    private Dictionary<int, (int Width, bool Signed)> Bitfields
+    {
+        get
+        {
+            if (_bitfields != null) return _bitfields;
+            var map = new Dictionary<int, (int, bool)>();
+            static bool IsSigned(DataType t) => t is SByteType or IntegerType or LongType or QuadType;
+            var decls = _program.LoadedModules.Values.SelectMany(m => m.Declarations)
+                .Concat(_program.MainModule?.Declarations ?? ImmutableArray<AstNode>.Empty);
+            foreach (var udt in decls.OfType<UserDefinedType>())
+                foreach (var f in udt.Fields)
+                    if (f.BitWidth > 0) map[f.SymbolId] = (f.BitWidth, IsSigned(f.DataType));
+            _bitfields = map;
+            return map;
+        }
+    }
+
+    /// <summary>Applica la maschera/sign-extension di un bitfield al valore in cima allo stack
+    /// (già convertito al tipo CLR del campo; lo lascia di quel tipo).</summary>
+    private void EmitBitfieldMask(int width, bool signed, Type fieldType)
+    {
+        // Larghezza 0 = campo normale; 64 = intero pieno, nessuna maschera (e `1UL << 64`
+        // avvolgerebbe a 1 → maschera 0, azzerando il valore).
+        if (width <= 0 || width >= 64) return;
+        _il.Emit(OpCodes.Conv_I8);
+        _il.Emit(OpCodes.Ldc_I8, (long)((1UL << width) - 1));
+        _il.Emit(OpCodes.And);
+        if (signed)
+        {
+            var sh = 64 - width;
+            _il.Emit(OpCodes.Ldc_I4, sh);
+            _il.Emit(OpCodes.Shl);
+            _il.Emit(OpCodes.Ldc_I4, sh);
+            _il.Emit(OpCodes.Shr);      // shr su int64 = aritmetico (estende il segno)
+        }
+        if (fieldType == typeof(sbyte)) _il.Emit(OpCodes.Conv_I1);
+        else if (fieldType == typeof(byte)) _il.Emit(OpCodes.Conv_U1);
+        else if (fieldType == typeof(short)) _il.Emit(OpCodes.Conv_I2);
+        else if (fieldType == typeof(ushort)) _il.Emit(OpCodes.Conv_U2);
+        else if (fieldType == typeof(int)) _il.Emit(OpCodes.Conv_I4);
+        else if (fieldType == typeof(uint)) _il.Emit(OpCodes.Conv_U4);
+    }
+
     /// <summary>
     /// True quando questa istanza compila il corpo di un METODO o COSTRUTTORE di classe
     /// (mai per Main/procedure top-level): l'argomento CIL 0 è l'istanza implicita
@@ -834,15 +883,51 @@ public sealed partial class IlProgramCompiler
     /// quel caso si ricade sulla riga statica dello statement.</summary>
     private LocalBuilder? _currentLineLocal;
 
-    internal void EmitStatement(Stmt stmt)
+    /// <summary>Profondità della catena di frame BASIC PRIMA di entrare nella procedura
+    /// corrente (ritorno di IlRuntime.TraceEnter). Nullo nei metodi senza procedura BASIC
+    /// (Main top-level, costruttori, lambda): lì non c'è un frame da aprire/chiudere.</summary>
+    private LocalBuilder? _traceDepthLocal;
+
+    /// <summary>STACK TRACE: chiude il frame della procedura corrente (uscita normale).</summary>
+    private void EmitTraceLeave()
     {
-        IlConversion.CurrentStatement = $"{stmt.Position.Line}:{stmt.Position.Column} {stmt.GetType().Name}";
+        if (_traceDepthLocal is not { } depth) return;
+        _il.Emit(OpCodes.Ldloc, depth);
+        _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.TraceLeaveTo), typeof(int)));
+    }
+
+    /// <summary>STACK TRACE: fotografia della catena + ritorno al frame corrente, all'ingresso
+    /// di un CATCH (i frame delle procedure attraversate dall'errore non sono stati chiusi:
+    /// nessun `ret` è passato). Va emesso PRIMA di qualunque statement del CATCH.</summary>
+    private void EmitTraceSnapshotRestore()
+    {
+        _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.TraceSnapshot)));
+        /* Errore: scarta i livelli di staging di stampa pendenti (un PRINT interrotto non
+         * emette la riga parziale) — parità C99Native/VM-C/PCode, dove il raise azzera lo
+         * staging. Senza, il prefisso dell'argomento che ha fallito veniva ripreso dopo. */
+        _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.PrintStageAbort)));
+        if (_traceDepthLocal is not { } depth) return;
+        _il.Emit(OpCodes.Ldloc, depth);
+        _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.TraceRestoreTo), typeof(int)));
+    }
+
+    internal void EmitStatement(Stmt stmt)
+    {        IlConversion.CurrentStatement = $"{stmt.Position.Line}:{stmt.Position.Column} {stmt.GetType().Name}";
         // Traccia la riga dello statement in esecuzione (2 istruzioni per statement, solo se la
         // riga cambia): è la fonte di ERR.LineNumber nel catch ON ERROR/TRY.
         if (_currentLineLocal is { } lineLocal && stmt.Position.Line > 0)
         {
             _il.Emit(OpCodes.Ldc_I4, stmt.Position.Line);
             _il.Emit(OpCodes.Stloc, lineLocal);
+        }
+        // STACK TRACE BASIC (parità C99Native/VM-C/PCode): riga corrente della procedura,
+        // letta da IlRuntime.ErrTraceOf per ogni frame presente nello StackTrace .NET.
+        // Solo dentro una procedura (in Main top-level/lambda/method non c'è un frame BASIC).
+        if (_currentReturnSymbolId >= 0 && stmt.Position.Line > 0)
+        {
+            _il.Emit(OpCodes.Ldc_I4, _currentReturnSymbolId);
+            _il.Emit(OpCodes.Ldc_I4, stmt.Position.Line);
+            _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.TraceLine), typeof(int), typeof(int)));
         }
         switch (stmt)
         {

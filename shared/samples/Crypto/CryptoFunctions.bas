@@ -2,189 +2,146 @@
 ' =================================================================================================
 '       GUIDA TEORICA: CRITTOGRAFIA, HASHING E GESTIONE CHIAVI
 ' =================================================================================================
+' Copre il namespace `CRYPTOGRAPHY` (pacchetto FFI `crypto`).
 '
-' Questo test copre le funzionalità del namespace `CRYPTOGRAPHY`, che fornisce primitive
-' sicure per la protezione dei dati, l'autenticazione e la gestione dell'integrità.
-'
-' 1. HASHING (MD5, SHA1, SHA256, SHA512)
-'    L'hashing trasforma dati di lunghezza arbitraria in una stringa di bit di lunghezza fissa
-'    (digest). È un processo unidirezionale (non reversibile).
-'    - Usi: Verifica integrità file, stoccaggio password, firme digitali.
-'    - Varianti: GM-BASIC offre versioni che accettano stringhe (`STRMD5`) e versioni che
-'      accettano array di byte (`MD5`).
-'
-' 2. CRITTOGRAFIA SIMMETRICA (AES)
-'    Usa la stessa chiave sia per cifrare che per decifrare.
-'    - `AESENCRYPT`/`AESDECRYPT`: Implementano lo standard AES.
-'    - Requisiti: Chiave (Key) e Vettore di Inizializzazione (IV) per garantire che lo stesso
-'      testo cifrato due volte produca output diversi.
-'
-' 3. CRITTOGRAFIA ASIMMETRICA (RSA)
-'    Usa una coppia di chiavi: Pubblica (per cifrare) e Privata (per decifrare).
-'    - `ENCRYPTASYM`: Cifra dati destinati al possessore della chiave privata.
-'    - `DECRYPTASYM`: Decifra dati ricevuti usando la propria chiave privata.
-'
-' 4. FIRMA DIGITALE (ECDSA)
-'    Garantisce autenticità e non ripudio.
-'    - `SIGN`: Usa la chiave PRIVATA per firmare un messaggio (o il suo hash).
-'    - `VERIFY`: Usa la chiave PUBBLICA per verificare che la firma appartenga al proprietario
-'      della chiave privata e che il messaggio non sia stato alterato.
-'
-' 5. GESTIONE CHIAVI (KEYGEN, EXPORT, IMPORT)
-'    GM-BASIC astrae la complessità delle chiavi crittografiche tramite "Handle" (numeri interi).
-'    - `KEYGEN`: Genera una nuova coppia di chiavi (RSA o ECDSA) e restituisce gli handle.
-'    - `KEYEXPORT`: Serializza una chiave in formato stringa (es. PEM) per lo storage.
-'    - `KEYIMPORT`: Carica una chiave da una stringa PEM in un nuovo handle.
-'    - `KEYCLOSE`: Libera le risorse associate all'handle della chiave (importante per evitare leak).
-'
-' 6. ENCODING BINARIO
-'    Poiché la crittografia lavora su byte, sono essenziali funzioni per convertire dati binari
-'    in formati testuali sicuri:
-'    - `Base64`: Standard per trasmettere binari su canali di testo.
-'    - `Hex`: Rappresentazione esadecimale (utile per debug e hash).
-'
+' NB (2026-11-13) — API del PACCHETTO (dopo la migrazione da builtin):
+'   • le operazioni su BYTE scrivono in un array `out() AS BYTE` e ritornano la LUNGHEZZA (n);
+'     non esistono più valori di ritorno "array";
+'   • i decodificatori sono `FROMHEX(testo, out())`, `FROMBASE64(testo, out())`;
+'   • l'esadecimale di un ARRAY si rende con `BYTESHEX(a())` (la FUNCTION `TOHEX` prende STRINGA);
+'   • `KEYGEN(algo, bits, h())` riempie `h(0)`=privata, `h(1)`=pubblica; `SIGN`/`ENCRYPTASYM`
+'     scrivono in `out()` e ritornano n, che `VERIFY`/`DECRYPTASYM` richiedono;
+'   • `KEYIMPORT(pem)` RITORNA l'handle.
+' Per questo il sample usa `REQUIRE "crypto"` prima di `IMPORT CRYPTOGRAPHY`.
 ' =================================================================================================
-
-IMPORT STRINGS
+REQUIRE "crypto"
 IMPORT CRYPTOGRAPHY
+IMPORT STRINGS
 
 SUB Main()
-    CLS
-    PRINT "╔══════════════════════════════════════════════════════════════════════════╗"
-    PRINT "║ CryptoFunctions - Test Suite Completa per le Funzionalità Crittografiche ║"
-    PRINT "╚══════════════════════════════════════════════════════════════════════════╝"
-    PRINT
+    DIM testo$ AS STRING
+    testo$ = "Gm-Basic"
+    ' I byte del testo, per le primitive che lavorano su array
+    DIM testoBytes(31) AS BYTE
+    DIM nTesto AS LONG = FROMHEX("474d2d4241534943", testoBytes)   ' "GM-BASIC"
 
-    DIM testo$ = "GM-BASIC"
-    ' Crea un array di byte dai valori esadecimali ASCII della stringa "GM-BASIC"
-    DIM testoBytes() = FROMHEX("474d2d4241534943") 
-    DIM hex_string$ = "616263" ' "abc" in hex
-
-    ' --- 1. Test di Hashing (CRYPTOGRAPHY) ---
+    ' --- 1. Test di Hashing ---
     PRINT "--- 1. Test di Hashing ---"
     PRINT "Testo Originale: "; testo$
-    ' Funzioni prefissate con STR accettano input stringa direttamente
+    ' Le funzioni prefissate STR* ritornano direttamente la stringa esadecimale
     PRINT "STRMD5(testo$):       "; STRMD5(testo$)
     PRINT "STRSHA1(testo$):      "; STRSHA1(testo$)
     PRINT "STRSHA256(testo$):    "; STRSHA256(testo$)
     PRINT "STRSHA512(testo$):    "; STRSHA512(testo$)
-    ' Funzioni standard accettano array di byte e restituiscono array di byte (convertiti qui in Hex per visualizzazione)
-    PRINT "MD5(bytes):     "; TOHEX(MD5(testoBytes()))
-    PRINT "SHA1(bytes):    "; TOHEX(SHA1(testoBytes()))
-    PRINT "SHA256(bytes):  "; TOHEX(SHA256(testoBytes()))
-    PRINT "SHA512(bytes):  "; TOHEX(SHA512(testoBytes()))
+    ' HASH(testo, algo, out()) scrive i BYTE del digest: si rendono con BYTESHEX
+    DIM dig(63) AS BYTE
+    DIM nDig AS LONG = HASH(testo$, "MD5", dig)
+    PRINT "MD5(bytes):     "; LEFT(BYTESHEX(dig), nDig * 2)
+    nDig = HASH(testo$, "SHA256", dig)
+    PRINT "SHA256(bytes):  "; LEFT(BYTESHEX(dig), nDig * 2)
     PRINT
 
-    ' --- 2. Test di Crittografia Simmetrica (AES - CRYPTOGRAPHY) ---
+    ' --- 2. Test di Crittografia Simmetrica (AES-GCM con password) ---
     PRINT "--- 2. Test di Crittografia Simmetrica (AES) ---"
-    ' Dati binari arbitrari da proteggere
-    DIM dati_originali() = FROMHEX("DEADBEEFCAFEBABE0102030405060708")
-    DIM password$ = "una password molto sicura!"
-    ' Initialization Vector (16 bytes per AES)
-    DIM iv() = FROMHEX("000102030405060708090A0B0C0D0E0F")
-    PRINT "Dati originali (HEX): "; TOHEX(dati_originali())
-    
-    ' Cifratura
-    DIM dati_cifrati() = AESENCRYPT(dati_originali(), password$, iv())
-    PRINT "Dati cifrati (Base64): "; TOBASE64(dati_cifrati())
-    
-    ' Decifratura
-    DIM dati_decrittati() = AESDECRYPT(dati_cifrati(), password$, iv())
-    PRINT "Dati decrittati (HEX): "; TOHEX(dati_decrittati())
-    
-    IF TOHEX(dati_originali()) = TOHEX(dati_decrittati()) THEN PRINT "Risultato AES: OK!" ELSE PRINT "Risultato AES: ERRORE!"
+    DIM password$ AS STRING
+    password$ = "una password molto sicura!"
+    DIM cifrato(255) AS BYTE
+    DIM nCif AS LONG = AESENCRYPT(testo$, password$, cifrato)
+    PRINT "Dati originali (HEX): "; TOHEX(testo$)
+    PRINT "Dati cifrati (HEX):   "; LEFT(BYTESHEX(cifrato), nCif * 2)
+    DIM chiaro(255) AS BYTE
+    DIM nChiaro AS LONG = AESDECRYPT(cifrato, nCif, password$, chiaro)
+    PRINT "Dati decrittati (HEX):"; LEFT(BYTESHEX(chiaro), nChiaro * 2)
+    IF LEFT(BYTESHEX(chiaro), nChiaro * 2) = TOHEX(testo$) THEN PRINT "Risultato AES: OK!" ELSE PRINT "Risultato AES: ERRORE!"
     PRINT
 
     ' --- 3. Test di Firma Digitale e Crittografia Asimmetrica ---
     PRINT "--- 3. Test di Firma Digitale (ECDSA) e Crittografia (RSA) ---"
-    
-    ' Generazione Chiavi per Firma (Elliptic Curve Digital Signature Algorithm)
-    DIM pvtHandle, pubHandle
-    KEYGEN "ECDSA", pvtHandle, pubHandle
-    PRINT "Coppia di chiavi ECDSA generata. Handle Privato: "; pvtHandle; ", Pubblico: "; pubHandle
-    
-    ' Firma
-    DIM messaggio$ = "Questo è un messaggio da firmare."
-    DIM signature_bytes() = SIGN(messaggio$, pvtHandle)
-    PRINT "Firma (HEX): "; TOHEX(signature_bytes())
-    
-    ' Verifica
-    DIM esito = VERIFY(messaggio$, signature_bytes(), pubHandle)
-    IF esito THEN PRINT "Verifica Firma: OK!" ELSE PRINT "Verifica Firma: ERRORE!"
-    
-    ' Generazione Chiavi per Cifratura (RSA 2048 bit)
-    DIM rsaPvt, rsaPub
-    KEYGEN "RSA", rsaPvt, rsaPub, 2048
-    
-    ' Cifratura Asimmetrica (con chiave Pubblica)
-    DIM encrypted_rsa() = ENCRYPTASYM("Top Secret", rsaPub)
-    
-    ' Decifratura Asimmetrica (con chiave Privata)
-    DIM decrypted_rsa_bytes() = DECRYPTASYM(encrypted_rsa(), rsaPvt)
-    
-    ' Trick per convertire array di byte UTF8 in stringa: Bytes -> Base64 -> String
-    DIM decrypted_rsa$ = FROMBASE64(TOBASE64(decrypted_rsa_bytes()))
-    IF decrypted_rsa$ = "Top Secret" THEN PRINT "Risultato RSA: OK!" ELSE PRINT "Risultato RSA: ERRORE!"
+    ' Chiavi per la firma: h(0)=privata, h(1)=pubblica
+    DIM ecdsa(2) AS LONG
+    DIM nK AS LONG = KEYGEN("ECDSA", 256, ecdsa)
+    PRINT "Coppia di chiavi ECDSA generata (handle privato "; ecdsa(0); ", pubblico "; ecdsa(1); ")"
 
-    ' Test Esportazione/Importazione Chiavi
-    DIM pubKeyPem$ = KEYEXPORT(pubHandle)
-    DIM newPubHandle
-    KEYIMPORT(pubKeyPem$, newPubHandle)
-    PRINT "Chiave pubblica esportata e re-importata. Nuovo Handle: "; newPubHandle
-    
-    ' Verifica firma con la chiave re-importata
-    esito = VERIFY(messaggio$, signature_bytes(), newPubHandle)
-    IF esito THEN PRINT "Verifica con Chiave Importata: OK!" ELSE PRINT "Verifica con Chiave Importata: ERRORE!"
-    
-    ' Pulizia risorse (handle non gestiti)
-    KEYCLOSE pvtHandle
-    KEYCLOSE pubHandle
-    KEYCLOSE newPubHandle
-    KEYCLOSE rsaPvt
-    KEYCLOSE rsaPub
+    DIM messaggio$ AS STRING
+    messaggio$ = "Questo e' un messaggio da firmare."
+    DIM firma(255) AS BYTE
+    DIM nFirma AS LONG = SIGN(messaggio$, ecdsa(0), firma)
+    PRINT "Firma (HEX): "; LEFT(BYTESHEX(firma), nFirma * 2)
+    IF VERIFY(firma, nFirma, messaggio$, ecdsa(1)) THEN PRINT "Verifica Firma: OK!" ELSE PRINT "Verifica Firma: ERRORE!"
+
+    ' RSA 2048: cifratura con la chiave PUBBLICA, decifratura con la PRIVATA
+    DIM rsa(2) AS LONG
+    DIM nKRsa AS LONG = KEYGEN("RSA", 2048, rsa)
+    DIM encRsa(511) AS BYTE
+    DIM nEncRsa AS LONG = ENCRYPTASYM("Top Secret", rsa(1), encRsa)
+    DIM decRsa(511) AS BYTE
+    DIM nDecRsa AS LONG = DECRYPTASYM(encRsa, nEncRsa, rsa(0), decRsa)
+    IF LEFT(BYTESHEX(decRsa), nDecRsa * 2) = TOHEX("Top Secret") THEN PRINT "Risultato RSA: OK!" ELSE PRINT "Risultato RSA: ERRORE!"
+
+    ' Export/Import della chiave pubblica: KEYIMPORT ritorna il nuovo handle
+    DIM pem$ AS STRING
+    pem$ = KEYEXPORT(ecdsa(1))
+    DIM hImport AS LONG = KEYIMPORT(pem$)
+    PRINT "Chiave pubblica esportata e re-importata (handle "; hImport; ")"
+    IF VERIFY(firma, nFirma, messaggio$, hImport) THEN PRINT "Verifica con Chiave Importata: OK!" ELSE PRINT "Verifica con Chiave Importata: ERRORE!"
+
+    ' Pulizia risorse (gli handle non sono garbage-collected)
+    DIM nC1 AS LONG = KEYCLOSE(ecdsa(0))
+    DIM nC2 AS LONG = KEYCLOSE(ecdsa(1))
+    DIM nC3 AS LONG = KEYCLOSE(hImport)
+    DIM nC4 AS LONG = KEYCLOSE(rsa(0))
+    DIM nC5 AS LONG = KEYCLOSE(rsa(1))
     PRINT
 
     ' --- 4. Test Utility e Funzioni Random ---
     PRINT "--- 4. Test Utility e Funzioni Random ---"
     PRINT "TOBASE64('abc'): "; TOBASE64("abc")
-    PRINT "FROMBASE64('YWJj'): "; FROMBASE64("YWJj")
+    DIM b64(31) AS BYTE
+    DIM nB64 AS LONG = FROMBASE64("YWJj", b64)
+    PRINT "FROMBASE64('YWJj'): "; LEFT(BYTESHEX(b64), nB64 * 2); " (hex dei byte)"
     PRINT "TOHEX('abc'):   "; TOHEX("abc")
-    ' Decodifica manuale dei primi 3 byte da Hex
-    PRINT "FROMHEX('616263'): "; CHR(FROMHEX(hex_string$)(0)); CHR(FROMHEX(hex_string$)(1)); CHR(FROMHEX(hex_string$)(2))
-    
-    ' Generazione numeri casuali crittograficamente sicuri
-    PRINT "RANDOMBYTES(4):  "; TOHEX(RANDOMBYTES(4))
-    PRINT "RANDOMINT(1, 10): "; RANDOMINT(1, 10)
-    PRINT "RANDOMDOUBLE:    "; RANDOMDOUBLE(1.0)
-    PRINT "RANDOMNORMAL:    "; RANDOMNORMAL()
-    PRINT "RANDOMCRYPTOBYTES(4): "; TOHEX(RANDOMCRYPTOBYTES(4))
+    DIM daHex(31) AS BYTE
+    DIM nHex AS LONG = FROMHEX("616263", daHex)
+    PRINT "FROMHEX('616263'): "; CHR$(daHex(0)); CHR$(daHex(1)); CHR$(daHex(2)); " ("; nHex; " byte)"
+    ' Numeri casuali: si verificano le PROPRIETA' (i valori cambiano a ogni run)
+    DIM rnd(7) AS BYTE
+    DIM nRnd AS LONG = RANDOMCRYPTOBYTES(4, rnd)
+    PRINT "RANDOMCRYPTOBYTES(4): "; LEN(LEFT(BYTESHEX(rnd), nRnd * 2)); " caratteri hex (attesi 8)"
+    DIM ri AS LONG
+    ri = RANDOMINT(1, 10)
+    IF ri >= 1 AND ri <= 10 THEN PRINT "RANDOMINT(1, 10): ok" ELSE PRINT "RANDOMINT(1, 10): ERRORE"
+    DIM rd AS DOUBLE
+    rd = RANDOMDOUBLE(1.0, 5.0)
+    IF rd >= 1.0 AND rd <= 5.0 THEN PRINT "RANDOMDOUBLE(1,5): ok" ELSE PRINT "RANDOMDOUBLE(1,5): ERRORE"
     PRINT
-    
-    ' --- NUOVA SEZIONE: 5. Test di Crittografia a Flusso (ChaCha20) ---
+
+    ' --- 5. Test di Crittografia a Flusso (ChaCha20 / ChaCha20-Poly1305) ---
     PRINT "--- 5. Test di Crittografia a Flusso (ChaCha20) ---"
-    DIM messaggio_chacha$ = "Questo è un messaggio segreto per la cifratura a flusso."
-    ' ChaCha20 richiede una chiave a 32 byte e un nonce a 12 byte.
-    DIM chacha_key() = RANDOMCRYPTOBYTES(32)
-    DIM chacha_nonce() = RANDOMCRYPTOBYTES(12)
-    ' Dati associati opzionali per il contesto di autenticazione (AEAD)
-    DIM associated_data() = FROMHEX("010203") 
+    DIM messaggio_chacha$ AS STRING
+    messaggio_chacha$ = "Questo e' un messaggio segreto per la cifratura a flusso."
+    ' ChaCha20: chiave 32 byte, nonce 12 byte (DIM n => n+1 elementi)
+    DIM chacha_key(31) AS BYTE
+    DIM nKey AS LONG = RANDOMCRYPTOBYTES(32, chacha_key)
+    DIM chacha_nonce(11) AS BYTE
+    DIM nNonce AS LONG = RANDOMCRYPTOBYTES(12, chacha_nonce)
     PRINT "Messaggio originale: '"; messaggio_chacha$; "'"
-    
+
     ' -- 5a. ChaCha20 semplice --
     PRINT "Cifratura/Decifratura con ChaCha20 semplice..."
-    DIM cifrato_chacha() = CHACHA20ENCRYPT(messaggio_chacha$, chacha_key(), chacha_nonce())
-    DIM decrittato_chacha_bytes() = CHACHA20DECRYPT(cifrato_chacha(), chacha_key(), chacha_nonce())
-    IF FROMBASE64(TOBASE64(decrittato_chacha_bytes())) = messaggio_chacha$ THEN PRINT "Risultato ChaCha20 Semplice: OK!" ELSE PRINT "Risultato ChaCha20 Semplice: ERRORE!"
+    DIM cifrato_chacha(511) AS BYTE
+    DIM nCifC AS LONG = CHACHA20ENCRYPT(messaggio_chacha$, chacha_key, chacha_nonce, cifrato_chacha)
+    DIM decrittato_chacha(511) AS BYTE
+    DIM nDecC AS LONG = CHACHA20DECRYPT(cifrato_chacha, nCifC, chacha_key, chacha_nonce, decrittato_chacha)
+    IF LEFT(BYTESHEX(decrittato_chacha), nDecC * 2) = TOHEX(messaggio_chacha$) THEN PRINT "Risultato ChaCha20 Semplice: OK!" ELSE PRINT "Risultato ChaCha20 Semplice: ERRORE!"
 
-    ' -- 5b. ChaCha20-Poly1305 con autenticazione (AEAD) --
+    ' -- 5b. ChaCha20-Poly1305 (AEAD): out = ciphertext || tag(16). AAD = STRINGA --
     PRINT "Cifratura/Decifratura con ChaCha20-Poly1305 (AEAD)..."
-    DIM aead_result AS DICT OF STRING, ARRAY OF BYTE
-    aead_result = CHACHA20POLY1305ENCRYPT(messaggio_chacha$, chacha_key(), chacha_nonce(), associated_data())
-    PRINT "Testo cifrato AEAD (Base64): "; TOBASE64(aead_result("ciphertext"))
-    PRINT "Tag di Autenticazione (HEX): "; TOHEX(aead_result("tag"))
-    
-    DIM decrittato_aead_bytes() = CHACHA20POLY1305DECRYPT(aead_result("ciphertext"), aead_result("tag"), chacha_key(), chacha_nonce(), associated_data())
-    IF FROMBASE64(TOBASE64(decrittato_aead_bytes())) = messaggio_chacha$ THEN PRINT "Risultato ChaCha20-Poly1305: OK!" ELSE PRINT "Risultato ChaCha20-Poly1305: ERRORE!"
-        
+    DIM aead(511) AS BYTE
+    DIM nAead AS LONG = CHACHA20POLY1305ENCRYPT(messaggio_chacha$, chacha_key, chacha_nonce, "010203", aead)
+    PRINT "Testo cifrato AEAD (HEX): "; LEFT(BYTESHEX(aead), nAead * 2)
+    DIM aeadPt(511) AS BYTE
+    DIM nAeadPt AS LONG = CHACHA20POLY1305DECRYPT(aead, nAead, chacha_key, chacha_nonce, "010203", aeadPt)
+    IF LEFT(BYTESHEX(aeadPt), nAeadPt * 2) = TOHEX(messaggio_chacha$) THEN PRINT "Risultato ChaCha20-Poly1305: OK!" ELSE PRINT "Risultato ChaCha20-Poly1305: ERRORE!"
+
     PRINT "--- TEST COMPLETATO ---"
 END SUB

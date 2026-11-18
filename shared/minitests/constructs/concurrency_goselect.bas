@@ -2,7 +2,8 @@
 ' Senza CASE DEFAULT il select parcheggia finche' il produttore non invia (semantica Go).
 ' Sintassi canone: samples/Concurrency/GoSelectSimple.bas
 ' Verificato 5/5 (IL/PCode/VM-C/C99 gate/C99Native — il valore garbage C99Native e'
-' stato corretto da sessioni successive). EXPECT: ricevuto= 42|fine
+' stato corretto da sessioni successive).
+' EXPECT: ricevuto= 42|fine
 
 SUB Produttore(C AS CHANNEL OF INTEGER, WG AS WAITGROUP)
     SEND 42 TO C

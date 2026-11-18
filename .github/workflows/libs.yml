@@ -78,6 +78,14 @@ jobs:
       - id: pick
         shell: bash
         run: |
+          # Gruppi che questo workflow sa davvero costruire. `dev` non ne fa parte: richiede le
+          # terze parti in ~/gmb-deps/<triple> (tools/c/build-deps.sh, non eseguibile su un runner
+          # pulito) e pubblica con `tools/sh/libs_publish_dev_bulk.sh`. Meglio dirlo subito che
+          # fallire a metà build con un errore di CMake.
+          case "${{ github.event.inputs.group }}" in
+            ''|core|engine|llmmotor|toolchain) ;;
+            *) echo "::error::gruppo '${{ github.event.inputs.group }}' non supportato da questo workflow: core | engine | llmmotor | toolchain (per dev: tools/sh/libs_publish_dev_bulk.sh)" >&2; exit 1;;
+          esac
           # `toolchain` è l'UNICO gruppo con i RID Windows in matrice: il packer non compila nulla,
           # quindi win-arm64 si ri-impacchetta dallo zip ufficiale anche su un runner x64 (nessuna
           # esecuzione del binario, solo bytes + notices + sha256).
@@ -162,10 +170,25 @@ jobs:
             exit 1
           fi
 
+      # I CMake cercano le terze parti SOLO nella cache del RID, con NO_DEFAULT_PATH: un runner
+      # pulito non ce l'ha e il configure si ferma ("GMB_CRYPTO_LIB non trovata", poi "zstd non
+      # trovata"). La destinazione è `$HOME/.gmbasic/libs/<rid>` e non `build/libs/<rid>` perché
+      # `gmb_sql_ext` hardcoda la cache utente: la cache soddisfa tutti i consumatori, mentre
+      # `build/libs` solo gmb_runtime_c.
+      - name: terze parti di sistema nella cache del RID
+        if: env.GROUP != 'toolchain'
+        shell: bash
+        run: bash tools/sh/libs_stage_system_deps.sh "${{ matrix.rid }}" "$HOME/.gmbasic/libs/${{ matrix.rid }}"
+
       - name: build + gate di caricabilità
         if: env.GROUP != 'toolchain'
         run: |
           args=( "$GROUP" --rid "${{ matrix.rid }}" )
+          # CI: il checkout è pulito, quindi NON esistono le build dir. Senza `--build-root`
+          # `build_core` si ferma con "build dir assente" (run 43116276267: 3 build rosse).
+          # Con la root il progetto viene CONFIGURATO lì; lo staging cerca già le statiche in
+          # <root>/build/cmake-<rid> (cross) e le shared in <root>/build/libs/<rid>.
+          args+=( --build-root "$GITHUB_WORKSPACE/GMBasic/build/cmake-${{ matrix.rid }}" )
           [ "$DO_PUBLISH" = "true" ] && args+=( --publish --yes --no-index )   # indice: job dedicato
           [ -n "$TAG" ] && args+=( --tag "$TAG" )
           bash tools/sh/libs_build_release.sh "${args[@]}"

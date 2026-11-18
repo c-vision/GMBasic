@@ -484,7 +484,9 @@ internal sealed partial class PCodeProcessor
         },
         [BuiltInFunction.ASRTRANSCRIBE] = (task, args) =>
         {
-                    return Basic.IlBackend.IlRuntime.AsrTranscribe(ArgOr(args, 0)?.ToString() ?? "", ArgOr(args, 1)?.ToString() ?? "", ArgOr(args, 2)?.ToString() ?? "");
+                    // Riga 0: su PCode la posizione dell'errore viene dall'IP dell'istruzione
+                    // (`RaiseBasicError` usa SourceLineForIp), non dall'eccezione.
+                    return Basic.IlBackend.IlRuntime.AsrTranscribe(ArgOr(args, 0)?.ToString() ?? "", ArgOr(args, 1)?.ToString() ?? "", ArgOr(args, 2)?.ToString() ?? "", 0);
         },
         [BuiltInFunction.LLMKERNEL] = (task, args) =>
         {

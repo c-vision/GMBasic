@@ -19,6 +19,8 @@ echo "== 1) gmb_runtime (+ gmbllm_core) =="
 cmake --build "$ROOT/native/gmb_runtime_c/build" --target gmb_runtime -j 6 >/dev/null
 echo "== 2) gmb_ai_llm =="
 cmake --build "$ROOT/native/gmb_runtime_c/build" --target gmb_ai_llm gmb_runtime_ai -j 6 >/dev/null
+echo "== 2b) gmb_matrix_flat (kernel matriciali P/Invoke dei backend managed) =="
+cmake --build "$ROOT/native/gmb_runtime_c/build" --target gmb_matrix_flat -j 6 >/dev/null
 echo "== 3) consumer VM/C (gmb_vm_host) =="
 cmake --build "$ROOT/native/gmb_vm_c/build" --target gmb_vm_host -j 6 >/dev/null
 for p in gmb_agent_runtime gmb_llm_server gmb_torch; do

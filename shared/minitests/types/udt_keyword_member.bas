@@ -1,5 +1,6 @@
 ' udt_keyword_member.bas — campo UDT con nome-keyword (volume): assegnazione semplice,
 ' su elemento di ARRAY di UDT e su elemento di LISTA di UDT. Parità sui backend.
+' EXPECT: 5   7|6   8   60|9   90
 TYPE P
   volume AS DOUBLE
   qty AS DOUBLE

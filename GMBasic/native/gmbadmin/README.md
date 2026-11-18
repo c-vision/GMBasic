@@ -58,11 +58,13 @@ gmb keygen [dir] [--pem]
 
 ### Librerie native (GMBasicModules)
 ```bash
-gmb install [--runtime-only|--dev|--components|--all]   # alias di `gmb libs ensure`
+gmb install [--profile runtime|build|all] [--runtime-only|--dev|--components|--all]   # alias di `gmb libs ensure`
 gmb install --verify                                     # alias di `gmb libs check`
-gmb libs status · gmb libs ensure|install [--runtime-only|--dev|--components|--all]
+gmb libs status · gmb libs ensure|install [--profile runtime|build|all] [--runtime-only|--dev|--components|--all]
 gmb libs check [--index file] · gmb libs publish <support|engine|core> <rid> [--yes]
 gmb libs prune [--dry-run]      # elimina dalla cache i file non presenti nel manifest
+# --profile: runtime = solo ciò che serve a ESEGUIRE · build = runtime+dev (header e statiche per
+# COMPILARE) · all = tutti i gruppi (default). Vince sui flag di scope; un valore diverso esce con 2.
 gmb libs index [--rid R]        # rigenera l'indice delle librerie (script di release)
 ```
 

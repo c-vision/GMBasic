@@ -1,6 +1,7 @@
 {
   "name": "duckdb",
   "version": "1.5.6",
+  "license": "PUL-1.1",
   "description": "DuckDB (OLAP colonnare embedded) via shim FFI GMTrading libgmbduckdb (self-contained).",
   "contentType": "c-ffi",
   "exports": ["duckdb.inc"],

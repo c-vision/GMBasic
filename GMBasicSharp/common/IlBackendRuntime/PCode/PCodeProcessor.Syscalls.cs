@@ -19,6 +19,20 @@ internal sealed partial class PCodeProcessor
 {
     private static readonly System.Collections.Generic.List<(int idx, System.Action<string> apply)> _nativeReadApply = new();
 
+    /// <summary>Azzerra lo stato READ del PROCESSO (registro dei campi `@GET` del runtime
+    /// condiviso + gli apply del PCode). Va chiamato all'AVVIO di ogni programma: i campi
+    /// `@GET` si accumulano fino al `READ`, e un programma che ne registra alcuni SENZA
+    /// leggere li lasciava nel registro statico per il programma successivo — che al suo
+    /// `READ` partiva da un campo altrui, con il `when_fn` legato a un task ormai morto
+    /// (in headless: attesa di un tasto che non arriva → timeout, come in
+    /// `console/get_when_clauses_parity` → `console/get_when_skip_parity`, 2026-11-17).
+    /// Gli apply, allo stesso modo, riscrivevano variabili del programma precedente.</summary>
+    internal static void ResetNativeReadState()
+    {
+        _nativeReadApply.Clear();
+        Basic.Runtime.Services.NativeTui.ReadReset();
+    }
+
     private static object? DynLoad(PCodeTask t, string n)
     {
         for (var fr = t.Frame; fr is not null; fr = fr.Previous)
@@ -1005,10 +1019,16 @@ internal sealed partial class PCodeProcessor
             }
             case SysCall.RMDIR:
             {
-                var path = PopString(task);
+                // Ordine di POP: l'emitter PCode pusha PRIMA il path e POI il flag ricorsivo
+                // (Compiler.FileSystem.VisitRmDirStatement) → il flag è in cima allo stack.
+                // Prima si poppava la stringa per prima (prendeva "0"/"-1") e si chiamava
+                // `File.Delete(path)` su una DIRECTORY (no-op): `RMDIR "dir", TRUE` non
+                // cancellava NULLA sulla gamba PCode (misurato: IL/VM-C rimuovono, PCode no).
                 var recursive = task.Sp > 0 ? PopNum(task) != 0 : false;
-                if (!string.IsNullOrEmpty(path))
-                    _runtime.File.Delete(path);
+                var path = PopString(task);
+                // Stessa semantica di IlRuntime.RemoveDirectory (parità IL/PCode).
+                if (!string.IsNullOrEmpty(path) && Directory.Exists(path))
+                    Directory.Delete(path, recursive);
                 break;
             }
             case SysCall.CHDIR:

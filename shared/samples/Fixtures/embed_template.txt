@@ -1,0 +1,2 @@
+Buongiorno {NOME}, il tuo ordine {ID} e' pronto.
+Ritiro previsto: {DATA}.

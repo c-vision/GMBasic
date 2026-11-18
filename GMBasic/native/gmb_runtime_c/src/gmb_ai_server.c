@@ -335,6 +335,8 @@ int gmb_ai_server_json_unload(char* out, size_t cap) {
 
 #else
 
+#include <stdio.h>   /* snprintf dei messaggi di errore del ramo "non supportato" (era implicito) */
+
 int gmb_ai_server_start(const char* model_dir, int port, int max_active,
                         int* pid_out, char* err, size_t errcap) {
     (void)model_dir; (void)port; (void)max_active; *pid_out = 0;

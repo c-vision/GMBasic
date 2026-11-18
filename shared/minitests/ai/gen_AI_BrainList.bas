@@ -1,4 +1,4 @@
-' EXPECT: airline,brainvault,finance
+' EXPECT: airline,brainvault,finance,trading
 IMPORT AI
 
 SUB Main()

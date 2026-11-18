@@ -420,12 +420,66 @@ void gmb_ffi_dl_set_quiet(int quiet) { g_ffi_quiet = quiet; }
  * (.dylib/.so/.dll native). dlopen/LoadLibrary NON possono caricare assembly .NET
  * (managed): falliscono con errore OS (es. ERROR_BAD_EXE_FORMAT su Windows). Il
  * runtime C non carica MAI codice gestito — nessun ponte C→C#. */
+/* Scoperta LOCALE di una libreria per NOME NUDO: bundle (<exe>/libs…), walk-up dal CWD
+ * (`<dir>/libs`, `<dir>/shared/libs`, `<dir>/build/libs/<rid>`), cache pacchetti e match per
+ * basename sulle pre-caricate. Restituisce l'handle o NULL.
+ * Va PRIMA di dlopen: un `libs/` accanto al programma (o `shared/libs` del checkout) deve
+ * vincere sulla cache utente che sta in DYLD (release) — è la priorità documentata
+ * ("locale al programma" prima di tutto). Caso reale 2026-11-11: `libgmbor` fresco in
+ * `shared/libs/or/` ma la cache (più nuova per mtime, sorgenti vecchi) vinceva via DYLD. */
+static void* ffi_dl_open_local(const char* path)
+{
+    char libsPath[8192];
+    if (gmb_ffi_dl_find_libs(path, libsPath, sizeof(libsPath)))
+    {
+        gmb_ffi_dl_preload(libsPath);
+        for (int i = 0; i < g_preloaded_count; i++)
+            if (strcmp(g_preloaded[i].path, libsPath) == 0)
+                return g_preloaded[i].handle;
+        /* Il preload può NON aver aggiunto la voce (tabella piena o dlopen fallito):
+         * apriamo il path trovato direttamente, così non si ricade sul match per basename
+         * di una copia STANTIA già pre-caricata (caso reale 2026-11-11: libgmbgraph in
+         * cache pre-caricato dall'autoensure e `shared/libs/graph` fresco ignorato). */
+        void* hl = GMB_DL_OPEN(libsPath);
+        if (hl != NULL) return hl;
+    }
+
+    /* auto-discovery cache pacchetti GMB (~/.gmbasic/packages): lib dei pacchetti REQUIRE */
+    char pkgPath[8192];
+    if (gmb_ffi_dl_find_pkgcache(path, pkgPath, sizeof(pkgPath)))
+    {
+        gmb_ffi_dl_preload(pkgPath);
+        for (int i = 0; i < g_preloaded_count; i++)
+            if (strcmp(g_preloaded[i].path, pkgPath) == 0)
+                return g_preloaded[i].handle;
+    }
+
+    /* match per basename sulle librerie pre-caricate dei pacchetti */
+    char want[128];
+    gmb_ffi_dl_basename(path, want, sizeof(want));
+    if (want[0] != '\0')
+        for (int i = 0; i < g_preloaded_count; i++)
+            if (strcmp(g_preloaded[i].base, want) == 0)
+                return g_preloaded[i].handle;
+    return NULL;
+}
+
 void* gmb_ffi_dl_open(const char* path)
 {
     if (path == NULL || *path == '\0') return NULL;
 
     void* cached = gmb_dl_cache_get(path);
     if (cached != NULL) return cached;
+
+    /* Un PATH ESPLICITO (con separatori) resta "vince così com'è": il dlopen diretto viene
+     * prima della scoperta locale. Un NOME NUDO invece va cercato prima in locale (vedi
+     * ffi_dl_open_local): bundle/programma/shared libs battono la cache in DYLD. */
+    const int explicit_path = (strchr(path, '/') != NULL) || (strchr(path, '\\') != NULL);
+    if (!explicit_path)
+    {
+        void* hl = ffi_dl_open_local(path);
+        if (hl != NULL) { gmb_dl_cache_put(path, hl); return hl; }
+    }
 
     void* h = GMB_DL_OPEN(path);
     if (h != NULL) { gmb_dl_cache_put(path, h); return h; }
@@ -439,33 +493,12 @@ void* gmb_ffi_dl_open(const char* path)
         if (h != NULL) { gmb_dl_cache_put(path, h); return h; }
     }
 
-    /* auto-discovery `libs/` (drop-in FFI, 2026-09-22): <dir>/libs/ risalendo dal CWD */
-    char libsPath[8192];
-    if (gmb_ffi_dl_find_libs(path, libsPath, sizeof(libsPath)))
+    /* Per un path ESPLICITO la scoperta locale resta il fallback (come prima). */
+    if (explicit_path)
     {
-        gmb_ffi_dl_preload(libsPath);   /* dlopen + registra per basename */
-        for (int i = 0; i < g_preloaded_count; i++)
-            if (strcmp(g_preloaded[i].path, libsPath) == 0)
-            { gmb_dl_cache_put(path, g_preloaded[i].handle); return g_preloaded[i].handle; }
+        void* hl = ffi_dl_open_local(path);
+        if (hl != NULL) { gmb_dl_cache_put(path, hl); return hl; }
     }
-
-    /* auto-discovery cache pacchetti GMB (~/.gmbasic/packages): lib dei pacchetti REQUIRE */
-    char pkgPath[8192];
-    if (gmb_ffi_dl_find_pkgcache(path, pkgPath, sizeof(pkgPath)))
-    {
-        gmb_ffi_dl_preload(pkgPath);
-        for (int i = 0; i < g_preloaded_count; i++)
-            if (strcmp(g_preloaded[i].path, pkgPath) == 0)
-            { gmb_dl_cache_put(path, g_preloaded[i].handle); return g_preloaded[i].handle; }
-    }
-
-    /* match per basename sulle librerie pre-caricate dei pacchetti */
-    char want[128];
-    gmb_ffi_dl_basename(path, want, sizeof(want));
-    if (want[0] != '\0')
-        for (int i = 0; i < g_preloaded_count; i++)
-            if (strcmp(g_preloaded[i].base, want) == 0)
-            { gmb_dl_cache_put(path, g_preloaded[i].handle); return g_preloaded[i].handle; }
 
     /* NON SILENZIOSO (direttiva: mai risultati silenziosi). Un DECLARE LIB che non trova la
      * libreria restituiva 0 come se la funzione fosse stata eseguita: il programma proseguiva

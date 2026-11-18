@@ -703,6 +703,17 @@ public sealed partial class Parser
     {
         var token = Peek();
 
+        // --- ERRDEFER &lt;stmt&gt;: cleanup solo sul percorso d'errore (equivalente di `errdefer`
+        // di Zig). SOFT keyword: si attiva solo se la parola non è seguita da '=' (così
+        // `errdefer` resta un nome di variabile utilizzabile). ---
+        if (AtErrDeferDirective(token) && At(1).Kind != TokenKind.Equal)
+            return ParseErrDeferStatement();
+
+        // --- EMBEDFILE "file" AS nome$ : direttiva compile-time (equivalente di @embedFile).
+        // SOFT keyword: solo se seguita da un letterale stringa (parità col parser C).
+        if (AtEmbedFileDirective())
+            return ParseEmbedFileStatement();
+
         // Gli attributes a livello di modulo sono gestiti nel loop principale di ParseModuleLevelStatements.
 
         // --- Gestione CALL (zucchero sintattico opzionale) ---
@@ -973,17 +984,17 @@ public sealed partial class Parser
             case TokenKind.Function: return [ParseFunctionDefinition()];
             case TokenKind.Generator: return [ParseGeneratorDefinition()];
             case TokenKind.Enum: return [ParseEnumDefinition()];
-            case TokenKind.Type or TokenKind.Packed:
+            case TokenKind.Type or TokenKind.Packed or TokenKind.Union:
             {
                 // Se siamo all'interno di una procedura (SUB, FUNCTION, etc.),
                 // una dichiarazione TYPE senza modificatore di visibilità è locale.
                 if (_functionContextStack.Count > 0)
                 {
-                    return [new LocalTypeStmt(ParseTypeDefinition())];
+                    return [new LocalTypeStmt(ParseTypeDefinition(Peek().Kind == TokenKind.Union))];
                 }
 
                 // Altrimenti, è una dichiarazione di tipo a livello di modulo.
-                return [ParseTypeDefinition()];
+                return [ParseTypeDefinition(Peek().Kind == TokenKind.Union)];
             }
             case TokenKind.Class: return [ParseClassDefinition()];
             case TokenKind.Unload: return [ParseUnloadStatement(this)];

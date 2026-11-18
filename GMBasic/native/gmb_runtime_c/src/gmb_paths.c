@@ -21,6 +21,7 @@
 #include <sys/stat.h>   /* stat/mkdir: migrazione ~/.gmb → ~/.gmbasic */
 #include <ctype.h>
 #include <dirent.h>   /* su Windows: GMBasic/native/win32shim/include/dirent.h */
+#include "gmb_compat_win.h"   /* mkdir a 2 argomenti (solo su Windows) */
 #if defined(_WIN32) || defined(_WIN64)
 #include <windows.h>
 #elif defined(__APPLE__)
@@ -482,6 +483,37 @@ int gmb_paths_settings_file(char* out, size_t cap)
     return g_pr_settings[0] ? 1 : 0;
 }
 
+/* Valore STRINGA di una chiave TOP-LEVEL (non dentro `paths`) di system.settings.json, con
+ * `app.settings.json` che vince — stessa precedenza di `pr_paths_value`.
+ *
+ * PERCHÉ QUI: serve al PRIMO USO (`bootstrapScope`), che gira nel target leggero `gmb_boot`
+ * (boot+paths, senza gfx/AI): lì `gmb_settings_str` di `gmb_settings.c` non c'è, perché quel file
+ * trascina graphics/console. Il testo è già letto e ripulito dai commenti da `pr_load`: UN solo
+ * parser, nessuna copia.
+ * Ritorna 1 se la chiave esiste con valore non vuoto. */
+int gmb_paths_settings_value(const char* key, char* out, size_t cap)
+{
+    if (!out || cap == 0 || !key || !*key) return 0;
+    out[0] = '\0';
+    if (!g_pr_loaded) pr_load();
+    const char* js = g_pr_app_json_len ? g_pr_app_json : g_pr_json;
+    if (!js[0]) return 0;
+    char pat[128];
+    snprintf(pat, sizeof(pat), "\"%s\"", key);
+    const char* p = strstr(js, pat);
+    if (!p) return 0;
+    p += strlen(pat);
+    while (*p && *p != ':') p++;
+    if (*p == ':') p++;
+    while (*p && isspace((unsigned char)*p)) p++;
+    if (*p != '"') return 0;   /* null o numero: non è una stringa */
+    p++;
+    size_t oi = 0;
+    while (*p && *p != '"' && oi + 1 < cap) out[oi++] = *p++;
+    out[oi] = '\0';
+    return oi > 0 ? 1 : 0;
+}
+
 /* Risolve una cartella dati: chiave paths se valorizzata, altrimenti default relativo root. */
 static void pr_dir(const char* key, const char* defrel, char* out, size_t cap)
 {
@@ -661,6 +693,82 @@ static void pr_user_root(const char* name, char* out, size_t cap)
     else snprintf(out, cap, "%s", "");
 }
 
+/* Radice dei pesi IMPOSTATA DAL REGISTRO OPZIONI (`path.models_root`).
+ * La freccia e' `gmb_opts.c` (registro) -> `gmb_paths.c` (risolutore), MAI il contrario:
+ * `gmb_opts.c` chiama gia' `gmb_paths_app_settings`, quindi un riferimento inverso chiude un
+ * CICLO e rompe il link dei target che compilano `gmb_paths.c` da solo senza il registro
+ * (`gmb_boot`, `gmb_ai_modelio`, `test_abi_*`) — era la regressione del 2026-11-12 con
+ * "undefined _gmb_opt_models_root". Il registro spinge qui il valore dopo aver caricato la
+ * gerarchia dei settings e a ogni `AI SET OPTION`. */
+static char g_models_root[1024];
+
+void gmb_paths_set_models_root(const char* v)
+{
+    snprintf(g_models_root, sizeof g_models_root, "%s", v ? v : "");
+}
+
+/* ── RADICE DEI MODELLI (2026-11-12) ────────────────────────────────────────────────────────
+ * I MiniTest `TAG: heavy` e i sample scrivono `"~/ai/Models/<modello>"`, ma la gamba C non
+ * espande `~`: il path arrivava LETTERALE al loader e il test falliva con "tokenizer assente".
+ * La radice dei pesi e' un parametro di FUNZIONAMENTO, quindi vive nel registro opzioni
+ * (`path.models_root`, superficie `AI SET OPTION` / sezione `engine`), mai in una env.
+ *
+ * Regola unica, usata da tutte le gambe C tramite `gmb_paths_model_path()`:
+ *   `%MODELS%/<x>`       -> `<root>/<x>`
+ *   `~/ai/Models/<x>`    -> `<root>/<x>`   (default storico della radice: ~/ai/Models)
+ *   `~/<x>`              -> `<HOME>/<x>`   (l'espansione di `~` che mancava)
+ *   relativo/assoluto    -> invariato
+ * Con la radice non impostata il comportamento e' identico a prima, quindi nessun sample cambia. */
+void gmb_paths_models_root(char* out, size_t cap)
+{
+    if (!out || cap == 0) return;
+    const char* v = g_models_root;   /* spinta dal registro; vuota = default */
+    if (*v) {
+        if (v[0] == '~' && (v[1] == '/' || v[1] == '\0')) {
+            const char* home = getenv("HOME");
+            if (home && *home) { snprintf(out, cap, "%s%s", home, v + 1); return; }
+        }
+        snprintf(out, cap, "%s", v);
+        return;
+    }
+    const char* home = getenv("HOME");
+    if (home && *home) snprintf(out, cap, "%s/ai/Models", home);
+    else snprintf(out, cap, "%s", "~/ai/Models");
+}
+
+const char* gmb_paths_model_path(const char* in, char* out, size_t cap)
+{
+    if (!out || cap == 0) return in;
+    if (!in || !*in) { snprintf(out, cap, "%s", ""); return out; }
+    const char* rest = NULL;
+    if (!strncmp(in, "%MODELS%/", 9))        rest = in + 9;
+    else if (!strncmp(in, "%MODELS%", 8))    rest = "";
+    else if (!strncmp(in, "~/ai/Models/", 12)) rest = in + 12;
+    else if (!strcmp(in, "~/ai/Models"))     rest = "";
+    if (rest) {
+        char root[2048];
+        gmb_paths_models_root(root, sizeof root);
+        if (*rest) snprintf(out, cap, "%s/%s", root, rest);
+        else       snprintf(out, cap, "%s", root);
+        return out;
+    }
+    if (in[0] == '~' && (in[1] == '/' || in[1] == '\0')) {
+        const char* home = getenv("HOME");
+        if (home && *home) { snprintf(out, cap, "%s%s", home, in + 1); return out; }
+    }
+    snprintf(out, cap, "%s", in);
+    return out;
+}
+
+/* Variante per il codice EMESSO: `gmb_paths_model_q(expr.data)` in una sola chiamata.
+ * Il buffer e' statico di proposito: l'argomento e' valutato una volta per chiamata e il valore
+ * serve solo al loader che parte subito dopo. */
+const char* gmb_paths_model_q(const char* in)
+{
+    static char buf[4096];
+    return gmb_paths_model_path(in, buf, sizeof buf);
+}
+
 /* Manifest dei cervelli distribuiti (schema di ml-manifest.json). Ordine di ricerca:
  *   1. `paths.brainsManifest` (esplicito)
  *   2. <exe>/settings/brains-manifest.json        (client/bundle)
@@ -762,6 +870,8 @@ static void pr_migrate_gmb_root(void)
     snprintf(new_root, sizeof new_root, "%s/.gmbasic", home);
     struct stat st;
     if (stat(old_root, &st) != 0) return;              /* niente da migrare */
+    /* 2 argomenti: il mingw "nudo" ne dichiara 1, ma la build Windows usa il win32shim
+     * (`#define mkdir(p, m) _mkdir(p)`), che è la forma portabile canonica del progetto (F2). */
     mkdir(new_root, 0755);
     static const char* box[] = { "libs", "packages", "daemons", "ml", "chromium", "ocr", "obscura",
                                  "config.json", "trusted-keys.json" };
@@ -899,7 +1009,11 @@ void gmb_paths_packages_dir(char* out, size_t cap)
         snprintf(alt, sizeof(alt), "%s/../packages", g_pr_root);
         if (gmb_pkgdir_looks_like_cache(alt)) {
             char rl[4096];
+#if defined(_WIN32) || defined(_WIN64)
+            snprintf(out, cap, "%s", _fullpath(rl, alt, sizeof rl) ? rl : alt);   /* mingw: niente realpath (F2) */
+#else
             snprintf(out, cap, "%s", realpath(alt, rl) ? rl : alt);
+#endif
         }
         return;   /* checkout senza cache popolata: <root>/packages (verrà creata) */
     }

@@ -2,6 +2,7 @@
 ' MiniTest BLOCKCHAIN (pacchetto FFI): MNEMONICTOSEED (vettore BIP39 11x abandon + about,
 ' passphrase TREZOR) scrive 64 byte nel buffer BYTE; GENERATEMNEMONIC(12) ha 12 parole.
 REQUIRE "blockchain"
+REQUIRE "crypto"
 IMPORT BLOCKCHAIN
 IMPORT CRYPTOGRAPHY
 IMPORT STRINGS
@@ -10,7 +11,7 @@ SUB Main()
   DIM seed(63) AS BYTE
   DIM n AS LONG
   n = MNEMONICTOSEED("abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about", "TREZOR", seed)
-  PRINT "seed="; TOHEX(seed)
+  PRINT "seed="; BYTESHEX(seed)
   DIM m$ AS STRING
   m$ = GENERATEMNEMONIC(12)
   DIM w AS LONG

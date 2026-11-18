@@ -1,3 +1,4 @@
+' EXPECT: Ciao mondo
 IMPORT STRINGS
 SUB Main()
   PRINT SENTENCE("ciao MONDO")

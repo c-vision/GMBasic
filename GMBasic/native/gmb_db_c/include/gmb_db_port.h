@@ -1561,6 +1561,10 @@ int Engine_Pack(Engine* self);
 int Engine_Reindex(Engine* self);
 int Engine_ApplyReplicatedSchema(Engine* self, const uint8_t* isch, int len);
 int Engine_SetOrder(Engine* self, const char* indexName);
+/* Ordine ATTIVO come ordinale 1-based (1 = primary, 2+i = secondaria i, 0 = nessuno).
+ * Serve a `INDEXORD()` quando l'area corrente è ISAM: il builtin leggeva solo l'area DBF
+ * (`gmb_indexord_dbl` → `gmb_db_current_dbf`), quindi con ISAM aperto rispondeva sempre 0. */
+int Engine_GetOrder(const Engine* self);
 int Engine_CreateIndex(Engine* self, const char* indexName, const char* keyExpression, int keyLength);
 int Engine_DropIndex(Engine* self, const char* indexName);
 int Engine_SetFilter(Engine* self, const char* expression);

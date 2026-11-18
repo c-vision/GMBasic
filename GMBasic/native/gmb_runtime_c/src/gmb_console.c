@@ -60,6 +60,20 @@ static __thread size_t s_stage_len = 0, s_stage_cap = 0;
 static __thread int    s_stage_active = 0;
 static __thread int    s_stage_col0 = 0;
 
+/* Livelli SOSPESI dello staging. Un PRINT ANNIDATO (es. un PRINT dentro un generatore
+ * valutato come argomento di un altro PRINT) non deve distruggere il parziale del PRINT
+ * esterno: `begin` SOSPENDE il livello corrente e ne apre uno nuovo, `end` lo chiude e
+ * riprende il precedente. Così `PRINT "pref="; NEXT(it)` con un PRINT nel generatore dà
+ * la riga del generatore e poi `pref= 7` — come IL/PCode/VM-C.
+ *
+ * Su ERRORE tutti i livelli si SCARTANO (gmb_print_stage_abort): il longjmp salta gli
+ * `end` dell'emitter, quindi i livelli pendenti non vanno ripresi né committati (canone
+ * "un PRINT interrotto non emette la riga parziale"). */
+#define GMB_STAGE_MAX 8
+typedef struct { char* buf; size_t len, cap; int col0; } gmb_stage_lvl_t;
+static __thread gmb_stage_lvl_t s_stage_saved[GMB_STAGE_MAX];
+static __thread int s_stage_depth = 0;
+
 /* Modalità SCREEN TUI (definizione sotto): dichiarazioni anticipate perché lo staging
  * di stampa (sopra la definizione) deve instradare il testo commesso allo screen. */
 static int  s_tui_on = 0;
@@ -68,7 +82,19 @@ void gmb_print_force_console(int on) { s_force_console = on ? 1 : 0; }
 static int  s_tui_row = 1, s_tui_col = 1;
 static void tui_screen_put(const char* text);
 
-void gmb_print_stage_begin(void) { s_stage_active = 1; s_stage_len = 0; s_stage_col0 = g_print_col; }
+void gmb_print_stage_begin(void)
+{
+    if (s_stage_active && s_stage_depth < GMB_STAGE_MAX)
+    {
+        s_stage_saved[s_stage_depth].buf = s_stage_buf;
+        s_stage_saved[s_stage_depth].len = s_stage_len;
+        s_stage_saved[s_stage_depth].cap = s_stage_cap;
+        s_stage_saved[s_stage_depth].col0 = s_stage_col0;
+        s_stage_depth++;
+        s_stage_buf = NULL; s_stage_len = 0; s_stage_cap = 0;
+    }
+    s_stage_active = 1; s_stage_len = 0; s_stage_col0 = g_print_col;
+}
 
 void gmb_print_stage_end(int commit)
 {
@@ -92,7 +118,40 @@ void gmb_print_stage_end(int commit)
         }
     }
     if (!commit) g_print_col = s_stage_col0;   /* scartato: ripristina la colonna di inizio */
-    s_stage_active = 0; s_stage_len = 0;
+    s_stage_len = 0;
+    if (s_stage_depth > 0)
+    {
+        /* riprende il livello esterno (il buffer del livello chiuso si libera) */
+        char* child = s_stage_buf;
+        s_stage_depth--;
+        s_stage_buf = s_stage_saved[s_stage_depth].buf;
+        s_stage_len = s_stage_saved[s_stage_depth].len;
+        s_stage_cap = s_stage_saved[s_stage_depth].cap;
+        s_stage_col0 = s_stage_saved[s_stage_depth].col0;
+        s_stage_saved[s_stage_depth].buf = NULL;
+        s_stage_active = 1;
+        if (child && child != s_stage_buf) free(child);
+    }
+    else
+    {
+        s_stage_active = 0;
+    }
+}
+
+/* ERRORE (gmb_raise_error): scarta TUTTI i livelli pendenti. Il longjmp salta gli `end`
+ * emessi dall'emitter, quindi i livelli aperti non verrebbero mai chiusi: qui si buttano. */
+void gmb_print_stage_abort(void)
+{
+    if (s_stage_depth > 0) g_print_col = s_stage_saved[0].col0;
+    for (int i = 0; i < s_stage_depth; i++)
+    {
+        free(s_stage_saved[i].buf);
+        s_stage_saved[i].buf = NULL;
+        s_stage_saved[i].len = s_stage_saved[i].cap = 0;
+    }
+    s_stage_depth = 0;
+    s_stage_active = 0;
+    s_stage_len = 0;
 }
 
 /* ============================================================================
@@ -104,6 +163,37 @@ void gmb_print_stage_end(int commit)
  * ========================================================================== */
 /* s_tui_on / s_tui_row / s_tui_col: definiti sopra (servono anche allo staging). */
 
+/* ============================================================================
+ * CONSOLE DI SISTEMA per i FRAME TUI (2026-11-12)
+ *
+ * I frame (clear + render ANSI del buffer TUI) NON sono output del programma: sono
+ * interfaccia. Vanno quindi sulla console di sistema, MAI sul canale dati del processo:
+ * prima si scriveva sempre su stdout, così con l'output rediretto (harness, `prog > f`,
+ * pipe, servizio) i frame finivano DENTRO l'output del programma — su VMC
+ * `controls/window_events` stampava i bordi `┌─[■]…` prima di `flags: …`, e sul VHS le
+ * gambe managed li mandavano al terminale dell'harness.
+ *
+ * Regola (una scelta per processo, il terminale non cambia):
+ *   1. stdout è un TERMINALE → è già la console: stdout (uso interattivo normale);
+ *   2. altrimenti il TERMINALE DI CONTROLLO (/dev/tty, su Windows CONOUT$);
+ *   3. nessun terminale (headless, servizio, CI) → NULL: i frame si SCARTANO.
+ * ========================================================================== */
+FILE* gmb_tui_console_out(void)
+{
+    static int done = 0;
+    static FILE* f = NULL;
+    if (done) return f;
+    done = 1;
+#if defined(_WIN32) || defined(_WIN64)
+    if (_isatty(_fileno(stdout))) { f = stdout; return f; }
+    f = fopen("CONOUT$", "w");
+#else
+    if (isatty(fileno(stdout))) { f = stdout; return f; }
+    f = fopen("/dev/tty", "w");
+#endif
+    return f;
+}
+
 void gmb_tui_screen_enable(void)
 {
     /* Settings: applica consoleConfiguration[0] (charGrid/logical) una volta. */
@@ -112,7 +202,8 @@ void gmb_tui_screen_enable(void)
      * banner/compilazione restano mescolati al frame). */
     { void gmb_console_apply_env_once(void); gmb_console_apply_env_once(); }
     if (!s_tui_on) {
-        fputs("\x1b[2J\x1b[H\x1b[?25l", stdout); fflush(stdout);
+        FILE* co = gmb_tui_console_out();   /* console di sistema, MAI il canale dati */
+        if (co) { fputs("\x1b[2J\x1b[H\x1b[?25l", co); fflush(co); }
         /* Desktop dal TEMA (default Turbo = blu Borland + ░): un'unica famiglia di
          * finestre/controlli, nessuna palette "Clipper" separata. */
         gmb_clipper_state_t* st = gmb_clipper_global_state();
@@ -152,7 +243,10 @@ void gmb_tui_screen_flush(void)
         fbuf = nb; fcap = need;
     }
     size_t n = gmb_render_screen(st->buffer, fbuf, fcap);
-    if (n) { fwrite(fbuf, 1, n, stdout); fflush(stdout); }
+    {   /* frame sulla CONSOLE DI SISTEMA (mai sul canale dati: vedi gmb_tui_console_out) */
+        FILE* co = gmb_tui_console_out();
+        if (n && co) { fwrite(fbuf, 1, n, co); fflush(co); }
+    }
 }
 
 /* Offset (0-based) del contenuto della finestra attiva: focalizzata, altrimenti la prima. */
@@ -230,6 +324,15 @@ static void console_or_gfx_text(const char* text)
 
 void gmb_print_string(gmb_string_t s) {
     console_or_gfx_text(s.data);
+}
+
+/* Stampa di un TEMPORANEO: stampa e libera il buffer (nessun altro lo possiede).
+ * Usata dall'emitter C99 per gli argomenti di PRINT che sono concat/call/letterali:
+ * senza, ogni `PRINT "x" + STR$(i)` dentro un ciclo lasciava vivo un buffer per giro
+ * (leak per iterazione, 2026-11-13). */
+void gmb_print_string_tmp(gmb_string_t s) {
+    console_or_gfx_text(s.data);
+    gmb_string_free(&s);
 }
 
 /* Stampa di un VALORE TESTO il cui tipo si decide dal contenuto (getter RDD su percorsi

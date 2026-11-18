@@ -18,6 +18,7 @@
 #include <math.h>
 #include <ctype.h>
 #include <time.h>
+#include "gmb_compat_win.h"   /* mkdir a 2 argomenti + timegm (solo su Windows) */
 #include <dirent.h>
 #include <unistd.h>
 #include <sys/stat.h>

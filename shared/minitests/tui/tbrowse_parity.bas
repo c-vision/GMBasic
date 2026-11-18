@@ -1,4 +1,5 @@
 ' Minitest TUI TBROWSE — parità 4 backend (statement widget TUI).
+' EXPECT: OK-tbrowse
 IMPORT CONTROLS
 SUB Main()
   DIM cl(2) AS STRING

@@ -1,4 +1,5 @@
 ' Minitest TUI REORDERLISTBOX — parità 4 backend (statement widget TUI).
+' EXPECT: OK-reorderlistbox
 IMPORT CONTROLS
 SUB Main()
   DIM v AS INTEGER

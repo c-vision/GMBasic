@@ -1,3 +1,4 @@
+' EXPECT: 3|-3|3|-3|0
 SUB Main()
   PRINT TRUNC(3.9)
   PRINT TRUNC(-3.9)

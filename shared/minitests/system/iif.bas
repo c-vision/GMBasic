@@ -1,3 +1,4 @@
+' EXPECT: 10|40|si|b
 SUB Main()
   PRINT SYSTEM.IIF(2 > 1, 10, 20)
   PRINT SYSTEM.IIF(1 > 2, 30, 40)

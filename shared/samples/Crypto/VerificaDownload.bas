@@ -10,11 +10,12 @@
 '   5) il token di download è protetto con un hash di password verificabile.
 '
 ' Domini: CRYPTOGRAPHY + IO + STRINGS. Tutto deterministico (segreti e testi fissi).
+REQUIRE "crypto"
 IMPORT CRYPTOGRAPHY
 IMPORT IO
 
 SUB Main()
-    MKDIR "work"
+    IF NOT IO.DIREXISTS("work") THEN MKDIR "work"
 
     ' ── 1. Il pacchetto scaricato ────────────────────────────────────────────
     DIM contenuto AS STRING
@@ -32,9 +33,10 @@ SUB Main()
     digestFile = STRHASHFILE("work/pacchetto.zip.txt", "SHA256")
     PRINT "== 2. Digest SHA-256 del file =="
     PRINT "sha256: "; digestFile
-    DIM byteDigest() AS BYTE
-    byteDigest() = HASHFILE("work/pacchetto.zip.txt", "SHA256")
-    PRINT "lunghezza digest: "; LEN(byteDigest()); " byte (attesi 32)"
+    ' HASHFILE ritorna il digest come STRINGA ESADECIMALE: 2 caratteri per byte.
+    DIM byteDigest AS STRING
+    byteDigest = HASHFILE("work/pacchetto.zip.txt", "SHA256")
+    PRINT "lunghezza digest: "; LEN(byteDigest); " caratteri hex (attesi 64 = 32 byte)"
 
     ' ── 3. Manifest + autenticazione con HMAC ────────────────────────────────
     ' Il manifest dichiara il digest; l'HMAC lo lega a un segreto condiviso, così

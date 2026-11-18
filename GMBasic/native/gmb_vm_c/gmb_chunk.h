@@ -17,10 +17,11 @@ extern "C" {
 #endif
 
 #define GMB_CHUNK_MAGIC "GMBC"
-/* 2 = descrittore FFI per argomento (2026-11-06). La 1 (formato storico a maschere) è ancora
- * letta: è valida per i chunk SENZA chiamate FFI (es. le pagine BSP); una chiamata FFI in un
- * chunk v1 produce un errore esplicito ("ricompilare"), mai un parse silenzioso. */
-#define GMB_CHUNK_VERSION 2
+/* 3 = tabella delle firme callback in coda a OP_CALL_FFI_T (2026-11-11: firma interna dei
+ * callback PER-SLOT, arità 0-64). La 2 (descrittore FFI per argomento, 2026-11-06) resta letta;
+ * la 1 (formato storico a maschere) è valida solo per chunk SENZA chiamate FFI, altrimenti
+ * errore esplicito ("ricompilare"), mai un parse silenzioso. */
+#define GMB_CHUNK_VERSION 3
 
 /* ---- Tipi di valore nel constant pool ---- */
 enum {
@@ -67,6 +68,10 @@ typedef struct {
     int type;               /* GMB_CONST_* */
     double d;
     char*  s;
+    /* Lunghezza ESPLICITA della stringa (0 = usa strlen). Le costanti binarie
+     * (EMBEDFILE) possono contenere NUL: il wire format porta già la lunghezza, qui
+     * la conserviamo per materializzare la stringa senza troncarla. */
+    uint32_t s_len;
     gmb_chunk_dict_t* dict;
     gmb_chunk_list_t* list;
     uint8_t dt_cat;
@@ -131,6 +136,20 @@ typedef struct {
     char***   ploc_names;
     uint32_t* ploc_counts;
     uint32_t  ploc_count;
+    /* DEFAULT dei parametri OPTIONAL per procedura (coda FINALE opzionale A1): per voce
+     * indirizzo di inizio procedura + nparams + per parametro kind {0=nessuno,1=f64,2=stringa}.
+     * Servono a `gmb_vm_call_proc_sync_vals` (macro che chiama una procedura: gli argomenti
+     * omessi prendono il default dichiarato). Specchio CompiledChunk.ProcedureParamDefaults. */
+    uint32_t* pdef_addrs;
+    uint32_t* pdef_counts;
+    uint8_t** pdef_kinds;
+    double**  pdef_nums;
+    char***   pdef_strs;
+    uint32_t  pdef_count;
+    /* TESTO SORGENTE (coda opzionale): testo delle righe, indice 0 = riga 1, per
+     * ERR.SourceLineText. Specchio CompiledChunk.SourceTexts. */
+    char**    src_texts;
+    uint32_t  src_text_count;
     /* pool di stringhe deserializzate (ownership) */
     char** _strings;
     uint32_t _strings_count;

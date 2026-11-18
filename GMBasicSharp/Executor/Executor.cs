@@ -49,6 +49,10 @@ public sealed class Executor
             catch (TargetInvocationException tie)
             {
                 Console.Error.WriteLine($"[RUN] {(tie.InnerException ?? tie).Message}");
+                // STACK TRACE BASIC (parità C99Native "[GMBASIC] ERROR … / in C (riga N)",
+                // VM/C e PCode): la catena è ancora intatta (nessun CATCH l'ha scartata).
+                var trace = Basic.IlBackend.IlRuntime.TraceText();
+                if (trace.Length > 0) Console.Error.Write(trace);
                 return 6;
             }
             catch (Exception ex)

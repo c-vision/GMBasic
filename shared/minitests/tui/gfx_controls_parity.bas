@@ -1,4 +1,5 @@
 ' Minitest controlli grafico-only (pixel-control path, no-op su TEXT) — parità 4 backend.
+' EXPECT: OK-gfx-controls
 IMPORT CONTROLS
 SUB Main()
   CANVAS 0, 0, 40, 20

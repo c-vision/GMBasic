@@ -2457,4 +2457,8 @@ public enum TokenKind
     MatrixRow,
     MatrixCol,
     MatrixIsContiguous,
+    // UNION (2026-11-11): dichiarazione di tipo con campi SOVRAPPOSTI (semantica C): tutti i
+    // campi partono dall'offset 0, taglia = massimo dei campi. In coda (ordinali canonici):
+    // mai inserire nel mezzo. La larghezza di un bitfield usa la keyword esistente WIDTH.
+    Union,
   }

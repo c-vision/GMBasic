@@ -61,6 +61,16 @@ endif()
 # qui dal refactor 2026-08-27 (prima viveva in executor-native/gmb_vm_c, archiviato).
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../gmb_runtime_c gmb_runtime_c_build)
 
+# Stesse `-U` di gmbadmin/CMakeLists.txt: `gmb_runtime` referenzia simboli opzionali di
+# `gmb_agent_runtime` e `gmb_doc_build` è un sottoprogetto FRATELLO (non eredita le
+# `add_link_options` di `gmb_runtime_c/CMakeLists.txt`) → senza, il suo selfcheck non linka.
+if(APPLE)
+    add_link_options("-Wl,-U,_gmb_brain_ask_sync")
+    add_link_options("-Wl,-U,_gmb_brain_mlx_set_system")
+    add_link_options("-Wl,-U,_gmb_brain_mlx_set_max_new")
+    add_link_options("-Wl,-U,_gmb_agent_ask_with_tools")
+endif()
+
 # Libreria documenti (gmb_doc_c): conversione CONVERT.* (md/html/text/docx/odt/epub/xlsx/pptx/web).
 # Fratello in native/, usata anche dal transpiler C99 (emitter C#) e dal modulo DB C#.
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../gmb_doc_c gmb_doc_c_build)

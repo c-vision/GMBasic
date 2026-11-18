@@ -173,6 +173,9 @@ public sealed partial class IlProgramCompiler
         _il.BeginCatchBlock(_types.ExceptionType);
         var clrCaughtLocal = _il.DeclareLocal(_types.ExceptionType);
         _il.Emit(OpCodes.Stloc, clrCaughtLocal);
+        // STACK TRACE: la catena va fotografata QUI (i frame delle procedure attraversate
+        // dall'errore sono ancora contati) e poi riportata al frame della procedura corrente.
+        EmitTraceSnapshotRestore();
 
         // Se l'eccezione è GIÀ una BasicException usala AS-IS (non rimappare il codice:
         // `ex.Number` deve restare quello originale); altrimenti avvolgila con
@@ -196,6 +199,14 @@ public sealed partial class IlProgramCompiler
         _il.Emit(OpCodes.Call, _types.BasicExceptionFromClrExceptionMethod);
         _il.Emit(OpCodes.Stloc, caughtLocal);
         _il.MarkLabel(wrapDoneLabel);
+
+        // ERR (pseudo-globale) va popolata anche quando l'errore arriva a un TRY/CATCH e non
+        // a un handler ON ERROR: sulle altre gambe (C99Native/VM-C/PCode) ERR è scritta al
+        // momento del raise, quindi `ERR.Number`/`ERR.StackTrace` sono leggibili anche dentro
+        // un CATCH. Senza questo, sul backend IL `ERR.Number` dopo un CATCH era
+        // NullReferenceException (divergenza pre-esistente, scoperta implementando
+        // ERR.StackTrace).
+        EmitCaptureErrorIntoGlobalErr(caughtLocal);
 
         // Corpi dei CATCH dentro la regione protetta: un GOTO/RETURN che ne esce deve usare
         // Leave (Br diretto attraverso il confine della protected region è IL invalido).
@@ -345,8 +356,16 @@ public sealed partial class IlProgramCompiler
         if (lineLocal is not null) _il.Emit(OpCodes.Ldloc, lineLocal);
         else _il.Emit(OpCodes.Ldc_I4, fallbackLine);
         _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.ErrLineOf), _types.BasicExceptionType, typeof(int)));
-        _il.Emit(OpCodes.Ldstr, string.Empty);
-        _il.Emit(OpCodes.Ldstr, string.Empty);
+        // SourceLineText: testo della STESSA riga, dal blob registrato all'avvio
+        // (IlRuntime.RegisterSourceText). Prima era sempre "": ora parità con C99Native/VM-C/PCode.
+        _il.Emit(OpCodes.Ldloc, caughtExceptionLocal);
+        if (lineLocal is not null) _il.Emit(OpCodes.Ldloc, lineLocal);
+        else _il.Emit(OpCodes.Ldc_I4, fallbackLine);
+        _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.ErrLineOf), _types.BasicExceptionType, typeof(int)));
+        _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.ErrSourceLineText), typeof(int)));
+        /* StackTrace: catena BASIC fotografata all'ingresso del CATCH (IlRuntime.TraceSnapshot),
+         * parità con C99Native/VM-C/PCode. */
+        _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.ErrTrace)));
         _il.Emit(OpCodes.Newobj, _types.ErrInstanceConstructor);
     }
 

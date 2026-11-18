@@ -15,6 +15,7 @@
 #include <string.h>
 #include <math.h>
 #include <setjmp.h>
+#include "gmb_trace.h"        /* stack trace BASIC: gmb_trace_line (inline) + frame */
 #include "gmb_llm_tok.h"      /* LLM.TOKENS / LLM.DETOKENIZE / LLM.TENSOROUT (ritorno come dato) */
 #include "gmb_ai_server.h"
 #include "gmb_finetune.h"
@@ -405,14 +406,10 @@ gmb_string_t gmb_string_from_bytes(const char* data, gmb_int_t len);
  * gmb_bytes_as_doubles: i byte di una stringa binaria come array numerico 0..255, in un
  * buffer a ROTAZIONE (8 slot, riallocati al bisogno; il chiamante non libera e non deve
  * conservare il puntatore oltre l'espressione corrente). len_out opzionale.
- * gmb_hex_from_doubles: hex minuscolo malloc'd/NUL-terminato dei primi n elementi di un
- * array numerico (elementi clampati a 0..255). */
+ * NB (2026-11-13): le conversioni inverse `gmb_hex_from_doubles`/`gmb_bytes_from_doubles`
+ * (forme `TOHEX(array)`/`TOBASE64(array)`) sono state RIMOSSE: ritirate con la migrazione
+ * CRYPTOGRAPHY a pacchetto FFI (per i byte: `BYTESHEX(a())`). */
 const gmb_double_t* gmb_bytes_as_doubles(gmb_string_t s, gmb_int_t* len_out);
-char* gmb_hex_from_doubles(const gmb_double_t* a, gmb_int_t n);
-/* gmb_bytes_from_doubles: array numerico 0..255 (`DIM x(n) AS BYTE`, parametro `a() AS BYTE`)
- * come STRINGA BINARIA (gmb_string_t, copia). Serve agli encoder (BASE58/BASE32/BASE64), che
- * consumano `.data`/`.length`: senza il ponte il puntatore finiva in gmb_double_to_string. */
-gmb_string_t gmb_bytes_from_doubles(const gmb_double_t* a, gmb_int_t n);
 
 /* SYSTEM.SYS(proprietà) per i backend C: OS/ARCH/UI/VERSION/RUNTIME/CPUCOUNT/MACHINE/USER/CWD +
  * memoria (MEMAVAILABLE/MEMFREE/MEMRECLAIMABLE/MEMTOTAL/MEMUSED, e …MB). Ritorna un buffer statico
@@ -421,6 +418,10 @@ const char* gmb_sys_info(const char* property);
 unsigned long long gmb_mem_available_bytes(void);
 unsigned long long gmb_mem_total_bytes(void);
 gmb_string_t gmb_string_concat(gmb_string_t s1, gmb_string_t s2);
+/* Concatena LIBERANDO gli operandi temporanei (free_a/free_b decisi dall'emitter: un
+ * letterale o il risultato di una call/concat è un buffer nuovo, una variabile no).
+ * Evita di lasciare vivo un temporaneo per ogni `+` dentro un ciclo (leak per iterazione). */
+gmb_string_t gmb_str_concat_owned(gmb_string_t a, int free_a, gmb_string_t b, int free_b);
 gmb_string_t gmb_bytes_dump(gmb_string_t b);
 void gmb_string_free(gmb_string_t* s);
 gmb_string_t gmb_int_to_string(gmb_int_t val);
@@ -437,6 +438,8 @@ gmb_string_t gmb_string_char_at(gmb_string_t s, gmb_int_t i);
  * ---------------------------------------------------------------------------- */
 
 void gmb_print_string(gmb_string_t s);
+/* Stampa un TEMPORANEO e lo libera (argomenti PRINT temporanei: nessun leak per ciclo). */
+void gmb_print_string_tmp(gmb_string_t s);
 void gmb_print_text_typed(const char* s);
 void gmb_print_int(gmb_int_t val);
 void gmb_print_double(gmb_double_t val);
@@ -447,6 +450,8 @@ void gmb_print_newline(void);
  * viene scartato (output parziale non emesso) — parità il/pcode/vmc/c99. */
 void gmb_print_stage_begin(void);
 void gmb_print_stage_end(int commit);
+/* ERRORE: scarta TUTTI i livelli di staging pendenti (il longjmp salta gli `end`). */
+void gmb_print_stage_abort(void);
 /* PRINT con separatore ',': avanza alla prossima zona di 14 colonne (parity oracolo
  * IlRuntime.PrintTabZone / VM-C OP_PRINT_TAB_ZONE) — stampa gli spazi di padding in base
  * alla colonna corrente tracciata internamente da gmb_console.c. */
@@ -501,6 +506,10 @@ gmb_string_t gmb_val_json_text(gmb_val_t v);
 gmb_string_t gmb_val_to_display(gmb_val_t v);
 gmb_string_t gmb_json_double_array(const gmb_double_t* items, gmb_int_t n);
 gmb_string_t gmb_json_string_array(const gmb_string_t* items, gmb_int_t n);
+/* Display di un array numerico per PRINT: "[1, 2, 3]" (separatore ", ", parità IL/PCode/VM-C).
+ * Diverso da gmb_json_double_array (JSON compatto, senza spazi: è ciò che stampa
+ * JSON.STRINGIFY): il PRINT di un array usa questo. */
+gmb_string_t gmb_display_double_array(const gmb_double_t* items, gmb_int_t n);
 gmb_string_t gmb_val_ledger_item(gmb_val_t v);
 int gmb_csv_value(char* out, int cap, int* pos, gmb_val_t v);
 int gmb_csv_field(const char* csv, int idx, char* out, int cap);
@@ -513,6 +522,10 @@ int gmb_csv_field(const char* csv, int idx, char* out, int cap);
 int gmb_err_number(void);
 const char* gmb_err_description(void);
 long gmb_err_line(void);
+/* ERR.SourceLineText / ex.SourceLineText: testo della riga dell'errore ("" se il sorgente non
+ * è incorporato nel binario). Implementata in gmb_core.c, legge il blob registrato con
+ * gmb_src_text_register (gmb_trace.h). */
+const char* gmb_err_source_line_text(void);
 jmp_buf* gmb_err_set_handler(jmp_buf* buf);
 void gmb_raise_error(int number, const char* description, long line);
 /* Eccezione UTENTE (`THROW NEW <Classe>`): il valore lanciato (istanza boxed) viaggia accanto
@@ -616,6 +629,10 @@ int  gmb_c64_is_vfill(int cp);
 void gmb_gfx_draw_glyph_vfill(int cp, int x, int y, int cw, int ch, uint32_t color);
 int  gmb_tui_screen_active(void);
 void gmb_tui_screen_flush(void);
+/* Console di SISTEMA per i frame TUI: terminale di stdout se è un tty, altrimenti il
+ * terminale di controllo (/dev/tty, Windows CONOUT$), altrimenti NULL (frame scartati).
+ * I frame TUI NON vanno mai sul canale dati del processo (stdout rediretto/pipe). */
+FILE* gmb_tui_console_out(void);
 
 /* CPRINT: forza la stampa su console (stdout), ignorando TUI/gfx. */
 void gmb_print_force_console(int on);
@@ -1214,7 +1231,7 @@ void gmb_fit_rsquared(const double* data, int n, double* r2, double* angle);
 double gmb_fit_rsquared_test(const double* data, int n);
 gmb_val_t gmb_fit_polyfit_dict(const double* x, const double* y, int n, int m);
 gmb_val_t gmb_fit_rsquared_dict(const double* data, int n);
-void gmb_sim_seed(unsigned long long seed);
+void gmb_sim_seed(uint64_t seed);   /* F2: uint64_t (su linux x86_64 `unsigned long long` ≠ uint64_t = unsigned long) */
 double gmb_sim_uniform(void);
 double gmb_sim_normal(void);
 double gmb_sim_exponential(double rate);
@@ -1223,7 +1240,7 @@ double gmb_sim_binomial(double n, double p);
 gmb_val_t gmb_sim_particle_filter(const double* obs, int T, double a, double q, double r, int N, double seed);
 double* gmb_mv_boost_fit_alloc(const double* X, int n, int p, const double* y, int engine, int n_est, double lr, int max_depth, int* outn);
 typedef double (*gmb_tpe_fn_t)(const double* x, void* ctx);
-double* gmb_sim_tpe_ctx(gmb_tpe_fn_t f, void* ctx, const double* lo, const double* hi, int d, int n_iter, int n_init, double seed, int* outn);
+double* gmb_sim_tpe_ctx(gmb_tpe_fn_t f, void* ctx, const double* lo, const double* hi, int d, int n_iter, int n_init, double seed, gmb_int_t* outn);
 double* gmb_sim_tpe_c99(gmb_fn_t fn, const double* lo, const double* hi, int d, int n_iter, int n_init, double seed, gmb_int_t* outn);
 double gmb_mv_boost_predict(const double* model, int mlen, const double* x);
 double gmb_mv_boost_score(const double* model, int mlen, const double* X, int n, int p, const double* y);
@@ -2800,6 +2817,19 @@ int   gmb_paths_settings_file(char* out, size_t cap);          /* 1 se system.se
  * gmb_paths.c per poter essere usata dai target leggeri (gmb_boot) che non linkano gfx. */
 int   gmb_paths_settings_value(const char* key, char* out, size_t cap);
 int   gmb_paths_app_settings(char* out, size_t cap);           /* app.settings.json: CWD → accanto all'eseguibile */
+/* RADICE DEI MODELLI (opzione `path.models_root`, 2026-11-12): la gamba C non espandeva `~`,
+ * quindi `"~/ai/Models/<x>"` arrivava letterale al loader. Regola unica per tutte le gambe C:
+ *   `%MODELS%/<x>` e `~/ai/Models/<x>` → `<root>/<x>`;  `~/<x>` → `<HOME>/<x>`;  altro invariato.
+ * Radice = registro opzioni (`AI SET OPTION`/sezione `engine`), vuoto = `~/ai/Models`.
+ * `gmb_paths_model_q()` è la variante a buffer statico per il codice EMESSO (una chiamata). */
+void        gmb_paths_models_root(char* out, size_t cap);
+const char* gmb_paths_model_path(const char* in, char* out, size_t cap);
+const char* gmb_paths_model_q(const char* in);
+/* Accessor del registro per la voce `path.models_root` (vuota se non impostata). */
+int         gmb_opt_models_root(char* out, int cap);
+/* Il REGISTRO spinge qui la radice dei pesi (mai il contrario: gmb_opts.c usa gmb_paths_*, e il
+ * riferimento inverso romperebbe i target che linkano solo gmb_paths.c). Vuota = default. */
+void        gmb_paths_set_models_root(const char* v);
 /* Settings (system.settings.json + app.settings.json override) — SettingsManager.cs. */
 int  gmb_settings_str(const char* file, const char* key, char* out, int cap);
 int  gmb_settings_int(const char* file, const char* key, int* out);
@@ -2859,7 +2889,15 @@ int  gmb_libs_ensure_file_for_rid(const char* index_path, const char* rid, const
  * `~/.gmbasic/.first-use-<rid>`: a cache completa non costa nulla. `dry` = solo il piano.
  * 1 = completo (o già completo), 0 = qualcosa manca (il chiamante NON deve bloccare). */
 int  gmb_first_use_ensure(int dry);
+/* Variante con SCOPE ESPLICITO (NULL = `bootstrapScope` dei settings): la usa
+ * `gmbadmin first-use --all` per prendere le toolchain degli altri RID senza modificare
+ * system.settings.json. "host" | "all" | "off". */
+int  gmb_first_use_ensure_scope(int dry, const char* scope_override);
 void gmb_first_use_forget(void);   /* --force: dimentica i marker (tutti i RID) */
+/* Cartella ABI di LLMEnv (descrittori `*.gmbarch`): scoperta SENZA percorsi cablati —
+ * `$LLMDESC_ABI_DIR` per prima, poi `gmb_paths_llm_root` + `ABI|lib/llmenv/ABI|share/llmenv/ABI`.
+ * 1 = trovata (`how` = fonte). La usa `gmbadmin first-use --abi-dir` e la stampa il primo uso. */
+int  gmb_first_use_abi_dir(char* out, size_t cap, char* how, size_t howcap);
 void gmb_progress(const char* label, double frac01);
 
 const char* gmb_libs_rid(void);
@@ -2896,6 +2934,10 @@ int   gmb_paths_get(const char* key, char* out, size_t cap);
  * BASIC); se manca o non e' piu' valida la localizza (prima esecuzione), la salva nei settings e, se LLMEnv non c'e', propone
  * l'installazione. Registrata come risolutore di llmdesc: chiamata quando serve. 1 = trovata. */
 int   gmb_abi_dir(char* out, size_t cap);
+/* Cartella dell'APPLICAZIONE quando non e' la CWD (REPL/VM-C: il `.bas` sta altrove). L'host la
+ * imposta da `--entry-source`: cosi' `app.settings.json` accanto al programma vale comunque.
+ * Vuota (default) = solo la CWD, come per un programma lanciato dalla sua cartella. */
+void  gmb_abi_set_app_dir(const char* dir);
 gmb_string_t gmb_str_padl_str(gmb_string_t s, gmb_int_t length, gmb_string_t pad);
 gmb_string_t gmb_str_padr_str(gmb_string_t s, gmb_int_t length, gmb_string_t pad);
 gmb_string_t gmb_str_padc_str(gmb_string_t s, gmb_int_t length, gmb_string_t pad);

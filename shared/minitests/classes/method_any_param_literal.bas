@@ -1,4 +1,5 @@
 ' Metodo di classe con parametro ANY: letterale numerico/stringa come argomento (IL: `ldc.r8` nudo -> InvalidProgram) e local INTEGER.
+' EXPECT: tag= 5  i= 2|tag=s i= 2|OK
 CLASS Tagger
   SUB Show(tag AS ANY)
     DIM i AS INTEGER

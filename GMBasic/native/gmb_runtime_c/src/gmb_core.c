@@ -4,6 +4,8 @@
  * ============================================================================ */
 
 #include "gmb_runtime.h"
+#include "gmb_memstats.h"
+#include "gmb_trace.h"
 #include <strings.h>
 
 /* Stringhe contate (VM/C): vedi gmb_make_val_string_counted in gmb_runtime.h. */
@@ -16,12 +18,14 @@ gmb_string_t gmb_string_alloc(const char* str) {
         s.data = (char*)calloc(1, 1);
         s.length = 0;
         s.ref_count = 1;
+        if (s.data && gmb_mem_on()) gmb_mem_track(s.data, 1, GMB_MEM_STRING);
         return s;
     }
     s.length = strlen(str);
     s.data = (char*)malloc(s.length + 1);
     memcpy(s.data, str, s.length + 1);
     s.ref_count = 1;
+    if (s.data && gmb_mem_on()) gmb_mem_track(s.data, s.length + 1, GMB_MEM_STRING);
     return s;
 }
 
@@ -29,13 +33,16 @@ gmb_string_t gmb_string_alloc(const char* str) {
  * "comoda": i simboli esportati prendono const char* + len invece del gmb_string_t struct. */
 gmb_string_t gmb_string_from_bytes(const char* data, gmb_int_t len) {
     gmb_string_t s;
-    if (!data) { s.data = (char*)calloc(1, 1); s.length = 0; s.ref_count = 1; return s; }
+    if (!data) { s.data = (char*)calloc(1, 1); s.length = 0; s.ref_count = 1;
+                 if (s.data && gmb_mem_on()) gmb_mem_track(s.data, 1, GMB_MEM_STRING);
+                 return s; }
     size_t n = (len < 0) ? strlen(data) : (size_t)len;
     s.data = (char*)malloc(n + 1);
     if (n) memcpy(s.data, data, n);
     s.data[n] = 0;
     s.length = n;
     s.ref_count = 1;
+    if (s.data && gmb_mem_on()) gmb_mem_track(s.data, n + 1, GMB_MEM_STRING);
     return s;
 }
 
@@ -47,7 +54,20 @@ gmb_string_t gmb_string_concat(gmb_string_t s1, gmb_string_t s2) {
     if (s2.data && s2.length > 0) memcpy(res.data + s1.length, s2.data, s2.length);
     res.data[res.length] = '\0';
     res.ref_count = 1;
+    if (res.data && gmb_mem_on()) gmb_mem_track(res.data, res.length + 1, GMB_MEM_STRING);
     return res;
+}
+
+/* Concatenazione che LIBERA gli operandi quando sono temporanei (nessun altro proprietario).
+ * `free_a`/`free_b` li decide l'emitter (C99) in base alla forma dell'espressione: un
+ * letterale o il risultato di una call/concat è un buffer nuovo e usa-e-getta, una variabile
+ * no. Serve a non lasciar vivo un temporaneo per ogni `+` dentro un ciclo: è la parte
+ * "leak per iterazione" delle stringhe (2026-11-13). */
+gmb_string_t gmb_str_concat_owned(gmb_string_t a, int free_a, gmb_string_t b, int free_b) {
+    gmb_string_t r = gmb_string_concat(a, b);
+    if (free_a) gmb_string_free(&a);
+    if (free_b) gmb_string_free(&b);
+    return r;
 }
 
 /* (2026-09-07) rappresentazione testo di un byte[] come lista decimale `[144, 1, ...]`
@@ -74,11 +94,12 @@ void gmb_string_free(gmb_string_t* s) {
         /* stringa contata: il creatore (rc 0, fluttuante) la libera; se e' trattenuta da un contenitore
          * (rc > 0) il contenitore ne e' il proprietario e questa chiamata non fa nulla. */
         int32_t* h = gmb_str_counted_hdr(s->data);
-        if (*h == 0) free((char*)h);
+        if (*h == 0) { if (gmb_mem_on()) gmb_mem_untrack((void*)h); free((char*)h); }
         s->data = NULL; s->length = 0;
         return;
     }
     if (s && s->data) {
+        if (gmb_mem_on()) gmb_mem_untrack(s->data);
         free(s->data);
         s->data = NULL;
         s->length = 0;
@@ -163,6 +184,7 @@ gmb_val_t gmb_make_val_string_counted_n(const char* s, size_t n) {
     if (s && n) memcpy(d, s, n);
     d[n] = '\0';
     v.v_string.data = d; v.v_string.length = n; v.v_string.ref_count = GMB_STR_COUNTED_MAGIC;
+    if (gmb_mem_on()) gmb_mem_track(base, 16 + n + 1, GMB_MEM_STRING);
     return v;
 }
 gmb_val_t gmb_make_val_string_counted(const char* s) { return gmb_make_val_string_counted_n(s, s ? strlen(s) : 0); }
@@ -172,7 +194,7 @@ void gmb_val_discard(gmb_val_t v) {
      * Qualunque altro valore (stringhe normali, oggetti, stringhe gia' trattenute da un contenitore) non e' toccato. */
     if (v.kind == GMB_TYPE_STRING && v.v_string.ref_count == GMB_STR_COUNTED_MAGIC && v.v_string.data) {
         int32_t* h = gmb_str_counted_hdr(v.v_string.data);
-        if (*h == 0) free((char*)h);
+        if (*h == 0) { if (gmb_mem_on()) gmb_mem_untrack((void*)h); free((char*)h); }
     }
 }
 
@@ -190,7 +212,7 @@ void gmb_val_release(gmb_val_t v) {
     if (v.kind == GMB_TYPE_STRING) {
         if (v.v_string.ref_count == GMB_STR_COUNTED_MAGIC && v.v_string.data) {
             int32_t* h = gmb_str_counted_hdr(v.v_string.data);
-            if (*h > 0 && --(*h) == 0) free((char*)h);
+            if (*h > 0 && --(*h) == 0) { if (gmb_mem_on()) gmb_mem_untrack((void*)h); free((char*)h); }
         }
         return;
     }
@@ -606,6 +628,11 @@ int gmb_err_number(void) { return g_err_number; }
 const char* gmb_err_description(void) { return g_err_description; }
 long gmb_err_line(void) { return g_err_line; }
 
+/* ERR.SourceLineText / ex.SourceLineText: testo della riga che ha sollevato l'errore, letto
+ * dal blob del sorgente registrato dal codice generato (gmb_src_text_register). "" quando il
+ * sorgente non è stato incorporato (es. eseguibile compilato senza il blob). */
+const char* gmb_err_source_line_text(void) { return gmb_src_line_text(g_err_line); }
+
 int gmb_err_has_value(void) { return g_err_has_value; }
 /* TRASFERISCE il valore dell'eccezione utente al chiamante: dopo la chiamata lo slot è vuoto
  * (il chiamante ne diventa l'unico detentore — nessun doppio free con i dtor delle classi). */
@@ -705,7 +732,7 @@ const char* gmb_err_default_message(int code) {
 /* Nucleo condiviso da gmb_raise_error (errore "numerico": azzera un eventuale valore utente
  * rimasto) e gmb_raise_user_error (keep_value=1: il valore è già nello slot). */
 static void gmb_raise_error_impl(int number, const char* description, long line, int keep_value) {
-    gmb_print_stage_end(0);   /* canone: scarta l'output PARZIALE del PRINT in corso */
+    gmb_print_stage_abort();   /* canone: scarta l'output PARZIALE del PRINT in corso (tutti i livelli) */
     /* Descrizione vuota (es. `ERROR 11` senza testo) → catalogo canonico: `ERR.Description`
      * deve riportare il testo dell'errore, non una stringa vuota (parità IL/PCode, dove
      * BasicException.GetDefaultMessage fa la stessa cosa). */
@@ -714,6 +741,10 @@ static void gmb_raise_error_impl(int number, const char* description, long line,
     g_err_description = description ? description : "";
     g_err_line = line;
     if (!keep_value) gmb_err_clear_value();
+    /* STACK TRACE: fotografia della catena PRIMA di qualunque longjmp (dopo il salto i frame
+     * delle procedure attraversate non esistono più). La leggono `ERR.StackTrace` e il
+     * messaggio fatale qui sotto. */
+    gmb_trace_snapshot();
     if (g_err_jmp) {
         longjmp(*g_err_jmp, number);
     }
@@ -724,6 +755,7 @@ static void gmb_raise_error_impl(int number, const char* description, long line,
     }
     fprintf(stderr, "[GMBASIC] ERROR %d: %s (line %ld)\n", number,
             g_err_description, line);
+    if (gmb_err_trace()[0]) fprintf(stderr, "%s", gmb_err_trace());
     /* Codice d'uscita canonico per un errore BASIC a runtime NON gestito: 6, allineato a
      * IL/PCode (test_ilrun) e VM/C (gmb_vm_host). Vedi
      * Bugs/(solved) - Semantica-Errore-Builtin-Tra-Backend.md. */

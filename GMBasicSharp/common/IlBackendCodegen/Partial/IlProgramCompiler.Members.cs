@@ -409,6 +409,11 @@ public sealed partial class IlProgramCompiler
                 : isByRefBoxField
                     ? fieldBuilder.FieldType.GetField("Value")!
                     : fieldBuilder;
+            // BITFIELD (2026-11-11): maschera + estensione del segno prima dello store, così il
+            // valore memorizzato è già quello "C" (es. `int a:3 = 5` → -3) e ogni lettura lo
+            // restituisce corretto.
+            if (!isByRefBoxField && Bitfields.TryGetValue(fieldSymbolId, out var bfInfo))
+                EmitBitfieldMask(bfInfo.Width, bfInfo.Signed, targetFieldForWrite.FieldType);
             _il.Emit(OpCodes.Stfld, targetFieldForWrite);
             return;
         }

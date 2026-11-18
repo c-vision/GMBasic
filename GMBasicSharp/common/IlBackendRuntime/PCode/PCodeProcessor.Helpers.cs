@@ -545,8 +545,8 @@ internal sealed partial class PCodeProcessor
             ["Number"] = 200.0, // ErrorCode.InternalError
             ["Description"] = msg,
             ["LineNumber"] = (double)SourceLineForIp(task.CurrentInstructionIp),
-            ["SourceLineText"] = string.Empty,
-            ["StackTrace"] = string.Empty
+            ["SourceLineText"] = SourceLineTextForIp(task.CurrentInstructionIp),
+            ["StackTrace"] = BuildBasicTrace(task)
         });
         var errInfo = new System.Collections.Generic.Dictionary<string, object?>
         {
@@ -588,6 +588,23 @@ internal sealed partial class PCodeProcessor
         task.ErrorLineIp = task.CurrentInstructionIp;
         task.ErrorResumeNextIp = StatementResumeIp(task.CurrentInstructionIp, task.Ip);
         DiscardIncompletePrintStatement(task);
+        // STACK TRACE: la catena va letta ORA — dopo UnwindProcedureFramesToErrorHandler i
+        // frame delle procedure attraversate non esistono più. Serve al messaggio fatale e a
+        // `ERR.StackTrace`.
+        var trace = BuildBasicTrace(task);
+        /* Conservata sul task: se questo è il CORPO di un generatore, il driver la riusa per
+         * anteporla alla catena del chiamante al re-raise (i frame qui stanno per sparire). */
+        task.LastErrorTrace = trace;
+        /* Riga dell'errore: quella del punto che ha fallito. Il re-raise di un errore di
+         * GENERATORE la porta con sé (il corpo gira in un task separato: altrimenti si
+         * riportava la riga del chiamante, dove sta la NEXT). */
+        var errLine = _pendingLineOverride > 0
+            ? _pendingLineOverride
+            : SourceLineForIp(ReferenceEquals(task, _generatorTraceTask) && _generatorTraceIp >= 0
+                ? _generatorTraceIp
+                : task.CurrentInstructionIp);
+        _pendingLineOverride = 0;
+        task.LastErrorLine = errLine;
         // Pseudo-variabile ERR del linguaggio (StdLib: ERR.Number/Description/LineNumber/…):
         // va popolata PRIMA del dispatch, così l'handler ON ERROR e il CATCH la vedono.
         // Prima non veniva mai scritta → `ERR.Number` restava vuoto/0 (divergenza con IL/C99).
@@ -600,9 +617,9 @@ internal sealed partial class PCodeProcessor
         {
             ["Number"] = errCode,
             ["Description"] = msg,
-            ["LineNumber"] = (double)SourceLineForIp(task.CurrentInstructionIp),
-            ["SourceLineText"] = string.Empty,
-            ["StackTrace"] = string.Empty
+            ["LineNumber"] = (double)errLine,
+            ["SourceLineText"] = SourceLineTextForLine(errLine),
+            ["StackTrace"] = trace
         };
         SetErrGlobal(task, errInfo);
         if (TryEnterExceptionHandler(task, errInfo))
@@ -631,7 +648,12 @@ internal sealed partial class PCodeProcessor
             task.Ip = task.ErrorHandlerIp.Value;
             return false;
         }
-        throw new InvalidOperationException("BASIC Runtime Error: " + msg);
+        // Errore FATALE: il messaggio porta la catena delle procedure (parità C99Native
+        // "[GMBASIC] ERROR … / in C (riga N)", VM/C "[VM ERROR] BASIC Runtime Error: …" e IL).
+        // La catena va catturata QUI, prima dell'unwind dei frame.
+        task.LastErrorCode = (int)errCode;
+        task.LastErrorDescription = msg;
+        throw new InvalidOperationException("BASIC Runtime Error: " + msg + "\n" + trace);
     }
 
     /// <summary>Intervalli [start,end) del bytecode emesso da ogni istruzione BASIC (per
@@ -661,6 +683,51 @@ internal sealed partial class PCodeProcessor
     }
 
     /// <summary>
+    /// STACK TRACE BASIC (parità C99Native/VM-C): catena delle procedure dell'errore, dalla
+    /// più interna alla più esterna, con la riga BASIC corrente di ciascuna.
+    /// Ogni <see cref="PCodeCallFrame.ReturnIp"/> appartiene alla procedura che CONTIENE
+    /// quell'ip (è il punto di ritorno nel chiamante), quindi il nome si risolve per
+    /// indirizzo di procedura e la riga con <see cref="SourceLineForIp"/>.
+    /// Va catturata PRIMA dell'unwind (dopo i frame non esistono più).
+    /// </summary>
+    private string BuildBasicTrace(PCodeTask task)
+    {
+        /* Frame del GENERATORE di cui si sta ri-lanciando l'errore: il corpo è un task
+         * separato, quindi la sua catena va anteposta a quella del chiamante (parità con
+         * C99Native, dove la catena è condivisa tra corpo e chiamante). Si consuma una volta. */
+        var prefix = _pendingTracePrefix;
+        _pendingTracePrefix = null;
+        if (_addrToProcedureName.Count == 0) return prefix ?? string.Empty;
+        var sb = new System.Text.StringBuilder();
+        if (!string.IsNullOrEmpty(prefix)) sb.Append(prefix);
+        void Push(int ip)
+        {
+            if (ip <= 0) return;
+            // Procedura con l'indirizzo più alto <= ip. Si scartano le chiavi SINONIME che il
+            // compilatore C# aggiunge per lo stesso indirizzo (`@sym<id>` e `Nome#arità`):
+            // senza il filtro il trace mostrava `@sym551` invece del nome BASIC.
+            var best = -1;
+            string? name = null;
+            foreach (var kv in _procedureAddresses)
+            {
+                if (kv.Key.Length == 0 || kv.Key[0] == '@' || kv.Key.Contains('#')) continue;
+                if (kv.Value <= ip && kv.Value > best) { best = kv.Value; name = kv.Key; }
+            }
+            // Pseudo-procedura del codice di modulo (`__main`): non è una procedura BASIC.
+            // Va scartata DOPO la scelta (non prima), altrimenti si ricadrebbe sulla
+            // procedura precedente per indirizzo e il trace mostrerebbe un frame falso.
+            if (string.IsNullOrEmpty(name) || name is "__main" or "__module") return;
+            sb.Append("  in ").Append(name).Append(" (riga ")
+              .Append(SourceLineForIp(ip)).Append(")\n");
+        }
+        Push(ReferenceEquals(task, _generatorTraceTask) && _generatorTraceIp >= 0
+            ? _generatorTraceIp
+            : task.CurrentInstructionIp);
+        for (var f = task.Frame; f is not null; f = f.Previous) Push(f.ReturnIp);
+        return sb.ToString();
+    }
+
+    /// <summary>
     /// Riga sorgente (1-based, come il sorgente BASIC) dell'ip indicato. La mappa
     /// <c>Chunk.Lines</c> ha una voce per OGNI byte, ma gli opcode sintetici (prologo, store
     /// impliciti, fine corpo) portano -1: si cerca all'indietro (poi in avanti) la prima voce
@@ -668,20 +735,43 @@ internal sealed partial class PCodeProcessor
     /// `currentTokenLine - 1`), quindi la riga del sorgente è <c>voce + 1</c> — l'equivalente
     /// del `s->line` (1-based) che C99Native passa a gmb_raise_error.
     /// </summary>
-    private int SourceLineForIp(int ip)
-    {
+    private int SourceLineForIp(int ip)    {
         var lines = _debugSourceLines;
         if (lines is null || lines.Length == 0) return 0;
         static int ToLine(int raw) => raw >= 0 ? raw + 1 : 0;
-        if (ip >= 0 && ip < lines.Length && lines[ip] > 0) return ToLine(lines[ip]);
+        /* ATTENZIONE: l'indice 0 è la RIGA 1 del sorgente (valido). Il sentinella degli opcode
+         * sintetici è -1: il test deve essere `>= 0`, non `> 0` — con `> 0` ogni istruzione in
+         * riga 1 veniva attribuita alla prima riga successiva con indice valido (il re-raise
+         * di un ERRDEFER dichiarato in riga 2 riportava la riga del cleanup invece della
+         * propria). */
+        if (ip >= 0 && ip < lines.Length && lines[ip] >= 0) return ToLine(lines[ip]);
         for (var d = 1; d < lines.Length; d++)
         {
             var back = ip - d;
-            if (back >= 0 && back < lines.Length && lines[back] > 0) return ToLine(lines[back]);
+            if (back >= 0 && back < lines.Length && lines[back] >= 0) return ToLine(lines[back]);
             var fwd = ip + d;
-            if (fwd >= 0 && fwd < lines.Length && lines[fwd] > 0) return ToLine(lines[fwd]);
+            if (fwd >= 0 && fwd < lines.Length && lines[fwd] >= 0) return ToLine(lines[fwd]);
         }
         return 0;
+    }
+
+    /// <summary>TESTO della riga dell'errore per ERR.SourceLineText (trimato, "" se il chunk
+    /// non porta il testo — chunk vecchi). Usa lo stesso ip della catena (override del
+    /// generatore compreso).</summary>
+    private string SourceLineTextForIp(int ip)
+    {
+        var texts = _debugSourceTexts;
+        if (texts is null) return string.Empty;
+        return SourceLineTextForLine(SourceLineForIp(ip));
+    }
+
+    /// <summary>Testo (trimato) della riga `line` (1-based) per ERR.SourceLineText; "" se il
+    /// chunk non porta il testo o la riga è fuori range.</summary>
+    private string SourceLineTextForLine(int line)
+    {
+        var texts = _debugSourceTexts;
+        if (texts is null || line < 1 || line > texts.Length) return string.Empty;
+        return (texts[line - 1] ?? string.Empty).Trim(' ', '\t', '\r');
     }
 
     /// <summary>
@@ -725,7 +815,45 @@ internal sealed partial class PCodeProcessor
         // soltanto su OP_PRINT_LINE/NEWLINE. Se la valutazione di un argomento solleva un
         // errore (tipicamente implicit-await di un future fallito), lo statement non è mai
         // completato: il prefisso parziale non deve sopravvivere al salto verso l'handler.
+        // Si scartano anche i LIVELLI SOSPESI (PRINT annidati): il longjmp non passa dai loro
+        // commit, quindi non vanno ripresi (canone "un PRINT interrotto non emette il parziale").
         task.PrintLineStaging = null;
+        task.PrintLineStagingSaved = null;
+        task.PrintLineStagingFrame = null;
+    }
+
+    /// <summary>Inizio di un pezzo di PRINT: se lo staging appartiene a un FRAME più esterno
+    /// (PRINT ANNIDATO dentro una procedura chiamata come argomento) lo SOSPENDE invece di
+    /// accodarci il testo. Canone delle 4 gambe: il PRINT interno emette la sua riga, l'esterno
+    /// riprende e committa la sua (`[dentro]` + `b= 5`, non `b=[dentro]`).</summary>
+    private static void PrintStageEnter(PCodeTask task)
+    {
+        if (task.PrintLineStaging is { Length: > 0 } && !ReferenceEquals(task.PrintLineStagingFrame, task.Frame))
+        {
+            (task.PrintLineStagingSaved ??= new()).Push((task.PrintLineStaging, task.PrintLineStagingFrame));
+            task.PrintLineStaging = null;
+        }
+        if (task.PrintLineStaging == null) task.PrintLineStagingFrame = task.Frame;
+    }
+
+    /// <summary>Riga interna committata: riprende il livello esterno sospeso (se c'era).
+    /// Si riprende SOLO un livello di un frame più ESTERNO (il PRINT annidato è finito); un
+    /// livello rimasto da uno statement abortito (stesso frame) viene scartato.</summary>
+    private static void PrintStageLeave(PCodeTask task)
+    {
+        if (task.PrintLineStagingSaved is { Count: > 0 })
+        {
+            var top = task.PrintLineStagingSaved.Peek();
+            if (!ReferenceEquals(top.Frame, task.Frame))
+            {
+                task.PrintLineStagingSaved.Pop();
+                task.PrintLineStaging = top.Buf;
+                task.PrintLineStagingFrame = top.Frame;
+                return;
+            }
+            task.PrintLineStagingSaved.Clear();   /* livello orfano: scartato */
+        }
+        task.PrintLineStagingFrame = null;
     }
 
     private static void RestoreCallerErrorScope(PCodeTask task, PCodeCallFrame frame)

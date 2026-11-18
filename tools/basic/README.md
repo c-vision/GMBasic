@@ -30,8 +30,29 @@ Il runner compila il `.bas` in `tools/basic/bin/` (gitignored) e lo esegue con C
 | `cellfont_from_bdf.bas` | rigenera la tabella ASCII 8x16 del font a celle del TUI da un BDF (Terminus OFL) | header C indicato |
 | `gen_hpack_huffman.bas` | rigenera le tabelle HPACK (RFC 7541) dai dati ufficiali; `--check` verifica l'allineamento | due header C |
 | `skills_attribution.bas` | rigenera l'attribuzione/licenza delle skill di terzi | `shared/skills/ATTRIBUTION.md` + `attribution.json` |
+| `ffi_bind.bas` | genera le `DECLARE NATIVE` da un header C (AST di `clang`), oppure `--check` verifica che un `.inc` scritto a mano combaci con l'header (drift = exit 1) | stdout / `--out <file.inc>` |
 | `bsp_engine_parity.bas` | parità di resa fra motore BSP managed e C sulla webapp (normalizza timestamp/uptime/pid) | stdout, exit 1 se differenze |
 | `webapp_ui_cdp.bas` | click-through della dashboard con browser headless via CDP (palette, rail, Inbox, scorciatoie, tema, creazione agente, filtri, SSE, WebSocket canvas, errori JS) | stdout, exit 1 se FAIL |
+
+### `ffi_bind.bas` — bindings FFI dall'header, non a mano
+
+```bash
+# genera le DECLARE del sottoinsieme ofx_fin_ (stdout)
+gmb run tools/basic/ffi_bind.bas -- --header shared/libs/finance/include/gmbfinance.h \
+    --lib gmbfinance --only ofx_fin_ --strip ofx_fin_ --prefix FINN_
+
+# gate: le dichiarazioni scritte a mano combaciano con l'header? (exit 1 = drift)
+gmb run tools/basic/ffi_bind.bas -- --header shared/libs/finance/include/gmbfinance.h \
+    --lib gmbfinance --only ofx_fin_ --strip ofx_fin_ --prefix FINN_ \
+    --check shared/include/finance.inc
+```
+
+Mappatura C→BASIC: `void`→`SUB`, `double|float`→`DOUBLE`, interi/`bool`→`LONG`,
+`char*`→`STRING`, `void*`→`QUAD`, `T*` con un parametro di lunghezza→`p() AS BYTE|DOUBLE`,
+`T**`→`BYREF`. Struct/union per valore, varargs e function pointer si **saltano con messaggio**
+(mai silenzioso). `--check` confronta per **ALIAS** e per **forma tipologica**: i nomi BASIC e i
+nomi dei parametri possono differire, arità/tipi/BYREF/array no.
+Casi verificati sul campo: `finance.inc` 20/20, `bits.inc` 21/21.
 
 ### Nota su `webapp_ui_cdp.bas`
 

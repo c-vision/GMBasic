@@ -10,14 +10,26 @@ namespace Basic.IlBackend.Tests;
 [Collection("GpmRuntimeState")]
 public class SciPySamplesParityTests
 {
+    // I sample SciPy vivono in `shared/samples/Math` (dal 2026-10 la cartella `samples/` è
+    // stata spostata sotto `shared/`). Il percorso vecchio (`samples/Community/Math`) faceva
+    // fallire TUTTA la classe con "sample mancante" prima di misurare qualunque numero.
     private static readonly string SamplesDir =
-        Path.Combine(FindRepoRoot(), "samples", "Community", "Math");
+        Path.Combine(FindRepoRoot(), "shared", "samples", "Math");
 
+    /// <summary>Radice del monorepo: la directory che contiene GMBasicSharp/ e shared/.
+    /// Non si usa un file marcatore (`GMBASIC.sln`/`AGENTS.md`): il primo non esiste più, il
+    /// secondo non è versionato. Le due directory sono stabili nel checkout.</summary>
     private static string FindRepoRoot()
     {
         var dir = new DirectoryInfo(AppContext.BaseDirectory);
-        while (dir != null && !File.Exists(Path.Combine(dir.FullName, "GMBASIC.sln"))) dir = dir.Parent;
-        return dir?.FullName ?? ".";
+        while (dir != null)
+        {
+            if (Directory.Exists(Path.Combine(dir.FullName, "GMBasicSharp"))
+                && Directory.Exists(Path.Combine(dir.FullName, "shared")))
+                return dir.FullName;
+            dir = dir.Parent;
+        }
+        return ".";
     }
 
     private static string RunSample(string name)
@@ -405,7 +417,10 @@ public class SciPySamplesParityTests
         AssertValue(pc, "tanm00", 0.707430590790312, 1e-6);
         AssertValue(pc, "signm01", 0.0, 1e-9);
         AssertValue(pc, "fp00", 1.36602540378444, 1e-9);
-        AssertValue(pc, "orth00", -0.5257311121191336, 1e-9);
+        // ORTH: il segno delle colonne è canonico POSITIVO (primo elemento di modulo massimo),
+        // convenzione condivisa col runtime C (`gmb_matrix_orth`/`CanonicalizeColumnSigns`).
+        // SciPy lascia il segno all'implementazione SVD: qui il valore atteso è il modulo.
+        AssertValue(pc, "orth00", 0.5257311121191336, 1e-9);
         AssertValue(pc, "anglen", 2.0, 1e-9);
         AssertValue(pc, "angle0", 0.0, 1e-9);
         AssertValue(pc, "polar00", -0.4472135954999579, 1e-9);
@@ -427,7 +442,8 @@ public class SciPySamplesParityTests
         AssertValue(il, "sinm01", -0.35017548837401463, 1e-9);
         AssertValue(il, "tanm00", 0.707430590790312, 1e-6);
         AssertValue(il, "fp00", 1.36602540378444, 1e-9);
-        AssertValue(il, "orth00", -0.5257311121191336, 1e-9);
+        // Segno canonico positivo condiviso (vedi nota sul leg PCode).
+        AssertValue(il, "orth00", 0.5257311121191336, 1e-9);
         AssertValue(il, "polar00", -0.4472135954999579, 1e-9);
         AssertValue(il, "cond", 17.94427190999916, 1e-9);
         AssertValue(il, "toep01", 4.0, 1e-9);

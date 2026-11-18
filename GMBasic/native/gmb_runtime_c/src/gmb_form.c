@@ -1663,24 +1663,29 @@ void gmb_form_apply_style_handle(int handle, const char* spec)
 
 void gmb_form_set_last_style(const char* spec)
 {
-    /* TUI (schermo grafico OFF): il controllo vive nel registry TUI, non nei form:
-     * l'"ultimo" è identificato dall'HANDLE (che parte da 0). Senza questo ramo la
-     * spec (colori, proprietà base, `metric`) andava persa in modalità testo. */
-    if (!GMB_GFX_SCREEN_ON()) {
-        if (g_last_handle >= 0) {
-            extern void gmb_control_apply_style_handle(int handle, const char* spec);
-            gmb_control_apply_style_handle(g_last_handle, spec);
+    /* Il controllo appena creato può vivere in DUE registri: i widget/button PIXEL
+     * (g_wid/g_btns, handle assegnato da form_add_widget) oppure il registry TUI.
+     * La ricerca è per HANDLE sul registro FORM e SOLO DOPO su quello TUI.
+     * Prima si decideva dal MODO schermo: con SCREEN OFF (TEXT) lo stile/le proprietà
+     * destinate a un widget pixel finivano solo nel registry TUI → NAME perso e
+     * `CONTROL GET "nome", …` falliva (controls/pixel_controls: px-no su IL/PCode/VM-C,
+     * px-ok su C99, che usa gmb_control_apply_props_handle). Idem TAG/TOOLTIP/VISIBLE/
+     * ENABLED/TABINDEX/TABSTOP, che viaggiano nella stessa spec. */
+    /* `g_last_is_tui` distingue i due registri: gli handle dei widget/button PIXEL e quelli
+     * TUI partono entrambi da 0, quindi un match per handle senza questo flag potrebbe
+     * applicare la spec al controllo SBAGLIATO. */
+    if (!g_last_is_tui) {
+        for (int i = 0; i < g_nwid; i++) if (g_wid[i].base.handle == g_last_handle) {
+            style_apply(&g_wid[i].style, spec); apply_base_props(&g_wid[i], spec, i); g_dirty = 1; return;
         }
-        return;
+        for (int i = 0; i < g_nbtn; i++) if (g_btns[i].base.handle == g_last_handle) {
+            style_apply(&g_btns[i].style, spec); apply_base_props_btn(&g_btns[i], spec); g_dirty = 1; return;
+        }
     }
-    /* Ultimo controllo puo essere un WIDGET (0..g_nwid-1) o un BUTTON (handle 1000+i):
-     * g_last_added indicizza solo i widget, quindi per i bottoni si usa g_last_handle. */
-    if (g_last_handle >= 1000) {
-        int bi = g_last_handle - 1000;
-        if (bi >= 0 && bi < g_nbtn) { style_apply(&g_btns[bi].style, spec); apply_base_props_btn(&g_btns[bi], spec); g_dirty = 1; }
-        return;
+    if (g_last_handle >= 0) {
+        extern void gmb_control_apply_style_handle(int handle, const char* spec);
+        gmb_control_apply_style_handle(g_last_handle, spec);
     }
-    if (g_last_added >= 0 && g_last_added < g_nwid) { style_apply(&g_wid[g_last_added].style, spec); apply_base_props(&g_wid[g_last_added], spec, g_last_added); g_dirty = 1; }
 }
 
 /* Proprieta' base VB (Name/Tag/ToolTip/Visible/Enabled/TabIndex/TabStop/Focus) passate

@@ -49,6 +49,22 @@ static char* rd_str(reader_t* r)
     return s;
 }
 
+/* Come rd_str ma restituisce anche la lunghezza (0 se `out_len` è NULL): le costanti
+ * binarie (EMBEDFILE) possono contenere NUL e vanno materializzate con gmb_str_alloc(s, n). */
+static char* rd_str_len(reader_t* r, uint32_t* out_len)
+{
+    uint32_t len = rd_u32(r);
+    if (out_len) *out_len = 0;
+    if (r->err || r->p + len > r->end) { r->err = 1; return NULL; }
+    char* s = (char*)malloc(len + 1);
+    if (!s) { r->err = 1; return NULL; }
+    memcpy(s, r->p, len);
+    s[len] = '\0';
+    r->p += len;
+    if (out_len) *out_len = len;
+    return s;
+}
+
 /* ---- Deserializzazione value (boxed) ---- */
 static gmb_chunk_dict_t* rd_dict(reader_t* r)
 {
@@ -93,7 +109,7 @@ static gmb_value_t rd_value(reader_t* r)
     {
         case GMB_CONST_NIL: break;
         case GMB_CONST_DOUBLE: v.d = rd_f64(r); break;
-        case GMB_CONST_STRING: v.s = rd_str(r); break;
+        case GMB_CONST_STRING: v.s = rd_str_len(r, &v.s_len); break;
         case GMB_CONST_INT: v.d = (double)(int32_t)rd_u32(r); break;
         case GMB_CONST_DICT: v.dict = rd_dict(r); break;
         case GMB_CONST_LIST: v.list = (gmb_chunk_list_t*)rd_dict(r); break;
@@ -109,11 +125,12 @@ gmb_chunk_t* gmb_chunk_load(const uint8_t* data, size_t len, bool load_lines)
     if (!data || len < 5 + 5 * 4) return NULL;
     reader_t r = { data, data + len, 0 };
 
-    /* MAGIC + VERSION (1 storico, 2 descrittore FFI; entrambe leggibili, vedi gmb_chunk.h) */
+    /* MAGIC + VERSION (1 storico, 2 descrittore FFI, 3 firme callback per-slot; tutte
+     * leggibili, vedi gmb_chunk.h) */
     for (int i = 0; i < 4; i++)
         if (rd_u8(&r) != (uint8_t)GMB_CHUNK_MAGIC[i]) return NULL;
     uint8_t version = rd_u8(&r);
-    if (version != 1 && version != GMB_CHUNK_VERSION) return NULL;
+    if (version < 1 || version > GMB_CHUNK_VERSION) return NULL;
 
     gmb_chunk_t* c = (gmb_chunk_t*)calloc(1, sizeof(gmb_chunk_t));
     if (!c) return NULL;
@@ -316,6 +333,61 @@ gmb_chunk_t* gmb_chunk_load(const uint8_t* data, size_t len, bool load_lines)
         }
         /* USES TRAY (coda FINALE opzionale): 1 byte 0/1. */
         if (!r.err && r.p < r.end) c->uses_tray = rd_u8(&r) != 0 ? 1 : 0;
+        /* PROC PARAM DEFAULTS (coda FINALE opzionale A1): per procedura i default LETTERALI dei
+         * parametri OPTIONAL. Servono a `gmb_vm_call_proc_sync_vals` per completare una chiamata
+         * fatta da una macro (EVAL/&) sul task corrente: il chunk non porta l'AST e il default
+         * altrimenti restava 0. Formato speculare a ChunkA1Serializer (u32 big-endian, stringa
+         * = u32 len + byte, default = u8 kind {0=nessuno,1=f64,2=stringa}). */
+        if (!r.err && r.p < r.end)
+        {
+            uint32_t pd_count = rd_u32(&r);
+            if (!r.err && pd_count > 0 && pd_count <= 65536)
+            {
+                c->pdef_addrs = (uint32_t*)calloc(pd_count, sizeof(uint32_t));
+                c->pdef_counts = (uint32_t*)calloc(pd_count, sizeof(uint32_t));
+                c->pdef_kinds = (uint8_t**)calloc(pd_count, sizeof(uint8_t*));
+                c->pdef_nums = (double**)calloc(pd_count, sizeof(double*));
+                c->pdef_strs = (char***)calloc(pd_count, sizeof(char**));
+                if (!c->pdef_addrs || !c->pdef_counts || !c->pdef_kinds || !c->pdef_nums || !c->pdef_strs)
+                    goto fail;
+                c->pdef_count = pd_count;
+                for (uint32_t i = 0; i < pd_count && !r.err; i++)
+                {
+                    c->pdef_addrs[i] = rd_u32(&r);
+                    uint32_t n = rd_u32(&r);
+                    if (r.err || n > 64) { r.err = 1; break; }
+                    c->pdef_counts[i] = n;
+                    if (n == 0) continue;
+                    c->pdef_kinds[i] = (uint8_t*)calloc(n, sizeof(uint8_t));
+                    c->pdef_nums[i] = (double*)calloc(n, sizeof(double));
+                    c->pdef_strs[i] = (char**)calloc(n, sizeof(char*));
+                    if (!c->pdef_kinds[i] || !c->pdef_nums[i] || !c->pdef_strs[i]) goto fail;
+                    for (uint32_t j = 0; j < n && !r.err; j++)
+                    {
+                        uint8_t kind = rd_u8(&r);
+                        c->pdef_kinds[i][j] = kind;
+                        if (kind == 1) c->pdef_nums[i][j] = rd_f64(&r);
+                        else if (kind == 2) c->pdef_strs[i][j] = rd_str(&r);
+                    }
+                }
+                if (r.err) { c->pdef_count = 0; goto fail; }
+            }
+        }
+        /* SOURCE TEXTS (coda FINALE opzionale): testo delle righe per ERR.SourceLineText.
+         * u32 count → count stringhe (u32 len + byte). Indice 0 = riga 1. */
+        if (!r.err && r.p < r.end)
+        {
+            uint32_t st_count = rd_u32(&r);
+            if (!r.err && st_count > 0 && st_count <= 1000000)
+            {
+                c->src_texts = (char**)calloc(st_count, sizeof(char*));
+                if (!c->src_texts) goto fail;
+                c->src_text_count = st_count;
+                for (uint32_t i = 0; i < st_count && !r.err; i++)
+                    c->src_texts[i] = rd_str(&r);
+                if (r.err) { c->src_text_count = 0; goto fail; }
+            }
+        }
     }
     if (r.err) goto fail;
 
@@ -348,6 +420,25 @@ void gmb_chunk_free(gmb_chunk_t* c)
     free(c->code);
     free(c->stmt_starts);
     free(c->stmt_ends);
+    if (c->pdef_count)
+    {
+        for (uint32_t i = 0; i < c->pdef_count; i++)
+        {
+            free(c->pdef_kinds ? c->pdef_kinds[i] : NULL);
+            free(c->pdef_nums ? c->pdef_nums[i] : NULL);
+            if (c->pdef_strs)
+            {
+                for (uint32_t j = 0; j < c->pdef_counts[i]; j++) free(c->pdef_strs[i] ? c->pdef_strs[i][j] : NULL);
+                free(c->pdef_strs[i]);
+            }
+        }
+    }
+    free(c->pdef_addrs); free(c->pdef_counts); free(c->pdef_kinds); free(c->pdef_nums); free(c->pdef_strs);
+    if (c->src_texts)
+    {
+        for (uint32_t i = 0; i < c->src_text_count; i++) free(c->src_texts[i]);
+        free(c->src_texts);
+    }
     if (c->plnum_flags)
     {
         for (uint32_t i = 0; i < c->plnum_count; i++) free(c->plnum_flags[i]);

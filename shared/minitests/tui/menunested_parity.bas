@@ -1,4 +1,5 @@
 ' Minitest TUI MENUNESTED — parità 4 backend (statement widget TUI).
+' EXPECT: OK-menunested
 IMPORT CONTROLS
 SUB Main()
   DIM v AS INTEGER

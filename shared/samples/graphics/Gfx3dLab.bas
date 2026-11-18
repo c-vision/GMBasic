@@ -40,7 +40,9 @@ SUB Main()
   PRINT r0; ","; r1; ","; r2
   PRINT "rfree="; GFX3D.RASTERFREE(rh)
 
-  DIM op(2) AS DOUBLE, tp(2) AS DOUBLE, dl(2) AS DOUBLE, amn(2) AS DOUBLE, amx(2) AS DOUBLE
+  ' tp: RAYAT scrive 3 valori, AABBMAKE 6 (min3+max3) → tp(2) faceva scrivere 3 double
+  ' oltre la fine dell'array (corruzione dell'heap gestito su IL/PCode).
+  DIM op(2) AS DOUBLE, tp(5) AS DOUBLE, dl(2) AS DOUBLE, amn(2) AS DOUBLE, amx(2) AS DOUBLE
   PRINT "orbit="; GFX3D.CAMERAORBIT(eye(), ctr(), 0, 0.5, 6, op()); ":";
   PRINT op(0); ","; op(1); ","; op(2)
   dl(0) = 1 : dl(1) = 0 : dl(2) = 0

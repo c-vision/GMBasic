@@ -299,6 +299,8 @@ public sealed partial class Lexer
         { "TYPE", TokenKind.Type },
         { "PROPERTY", TokenKind.Property },
         { "ENDTYPE", TokenKind.EndType },
+        // UNION (2026-11-11): chiusura fusa `ENDUNION` = stesso token di END TYPE.
+        { "ENDUNION", TokenKind.EndType },
         { "ENDPROPERTY", TokenKind.EndProperty },
         { "ENDGET", TokenKind.EndGet },
         { "ENDSET", TokenKind.EndSet },
@@ -1368,6 +1370,8 @@ public sealed partial class Lexer
         { "VARPTR", TokenKind.VarPtr },
         { "STRPTR", TokenKind.StrPtr },
         { "PACKED", TokenKind.Packed },
+        // UNION (2026-11-11): tipo a campi sovrapposti (semantica C).
+        { "UNION", TokenKind.Union },
         { "UDTPACKED", TokenKind.UdtPacked },
         { "UDTALIGNED", TokenKind.UdtAligned },
 

@@ -12,6 +12,7 @@
 #
 # USO
 #   tools/sh/libs_publish_files_gh.sh <gruppo> <rid> --source DIR [--tag TAG] [--yes] [--dry-run]
+#                                    [--prune | --prune-report]
 #
 # TAG DI VERSIONE (immutabili): `runtime-v1`, `dev-v1`, `llmmotor-v1`, `support-v1`, `ffi-v1`.
 # Su questi tag NON si sovrascrive MAI un asset con contenuto diverso: se serve un cambiamento si
@@ -22,6 +23,8 @@
 #     --tag TAG      release di destinazione (default: gmb-<gruppo>-<data>)
 #     --prune        rimuove dalla release gli asset per-file di questo RID che NON sono più
 #                    nella sorgente (default: off; usare quando si rimuove/rinomina una lib)
+#     --prune-report elenca su stderr gli asset che --prune rimuoverebbe, SENZA rimuoverli
+#                    (implica --prune: nessuna chiamata delete-asset)
 #     --yes          non chiede conferma
 #     --dry-run      stampa il piano
 #
@@ -33,12 +36,12 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 . "$SCRIPT_DIR/libs_groups.sh"
 
 GROUP="${1:-}"; RID="${2:-}"
-[ -n "$GROUP" ] && [ -n "$RID" ] || { sed -n '2,30p' "$0" | sed 's/^# \{0,1\}//'; exit 2; }
+[ -n "$GROUP" ] && [ -n "$RID" ] || { sed -n '2,33p' "$0" | sed 's/^# \{0,1\}//'; exit 2; }
 shift 2
 case "$GROUP" in boot|dev|support|core|engine|llmmotor|ffi|domain|runtime|runtime-core|toolchain) ;; *) echo "gruppo non valido: $GROUP" >&2; exit 2;; esac
 LIBS_RID="$RID"   # regole di gruppo per RID di DESTINAZIONE
 
-SRC=""; TAG=""; YES=0; DRY=0; PRUNE=0; TREE=0; REPO="c-vision/GMBasicModules"
+SRC=""; TAG=""; YES=0; DRY=0; PRUNE=0; PRUNE_REPORT=0; TREE=0; REPO="c-vision/GMBasicModules"
 while [ $# -gt 0 ]; do
   case "$1" in
     --source) SRC="${2:-}"; shift 2;;
@@ -46,9 +49,10 @@ while [ $# -gt 0 ]; do
     --tag) TAG="${2:-}"; shift 2;;
     --repo) REPO="${2:-}"; shift 2;;
     --prune) PRUNE=1; shift;;
+    --prune-report) PRUNE=1; PRUNE_REPORT=1; shift;;
     --yes) YES=1; shift;;
     --dry-run) DRY=1; shift;;
-    -h|--help) sed -n '2,30p' "$0" | sed 's/^# \{0,1\}//'; exit 0;;
+    -h|--help) sed -n '2,33p' "$0" | sed 's/^# \{0,1\}//'; exit 0;;
     *) echo "opzione sconosciuta: $1" >&2; exit 2;;
   esac
 done
@@ -58,6 +62,23 @@ done
 # Nome dell'asset: il RID va PRIMA dell'estensione (un file = una libreria, riconoscibile):
 #   libgmb_gfx.so → libgmb_gfx-linux-arm64.so      libllama.so.0 → libllama-linux-x64.so.0
 #   libgmb_gfx.dylib → libgmb_gfx-osx-arm64.dylib  mlx.metallib → mlx-osx-arm64.metallib
+# Separatore di path negli asset del gruppo `dev`: "/" → "__". Un SEGMENTO che inizia o finisce
+# con "_" (o che contiene "__") si scontrerebbe col separatore e il path ricostruito sarebbe
+# sbagliato (caso reale: include/openssl/__DECC_INCLUDE_PROLOGUE.H → include/openssl//DECC…).
+# In quei segmenti soltanto, ogni "_" diventa "-q-" (nessun nome reale contiene "-q-": "-", "q" sono caratteri ammessi da GitHub): tutti gli
+# altri nomi restano identici, quindi gli asset già pubblicati non vanno rinominati.
+tree_path() { # $1 = path relativo → segmenti uniti con "__", segmenti ambigui escapati
+  local out="" seg
+  local IFS=/
+  for seg in $1; do
+    case "$seg" in
+      _*|*_|*__*) seg="${seg//_/-q-}";;
+    esac
+    if [ -n "$out" ]; then out="${out}__$seg"; else out="$seg"; fi
+  done
+  printf '%s' "$out"
+}
+
 # Asset per alberi (dev): il nome porta il PATH RELATIVO con "/" → "__", così `include/SDL2/SDL.h`
 # diventa `include__SDL2__SDL-osx-arm64.h`. Il manifest ricostruisce il path invertendo la regola.
 asset_name_tree() {
@@ -69,10 +90,13 @@ asset_name_tree() {
     *.a)         stem="${rel%.a}";     ext=".a";;
     # header e file di configurazione: il RID va PRIMA dell'estensione finale
     # (include__SDL2__SDL-osx-arm64.h), altrimenti il manifest non ricostruisce il path.
-    *.h|*.hpp|*.inl|*.pc) stem="${rel%.*}"; ext=".${rel##*.}";;
+    # QUALUNQUE altra estensione (`include/*` porta .h .hpp .inl .pc .inc .cppm .H …) e le
+    # import/statiche di Windows (.lib): il RID va PRIMA dell'estensione finale, altrimenti il
+    # manifest non ricostruisce il path (o l'asset non viene indicizzato affatto).
+    *.*)         stem="${rel%.*}";     ext=".${rel##*.}";;
     *)           stem="${rel}";        ext="";;
   esac
-  printf '%s-%s%s' "${stem//\//__}" "$RID" "$ext"
+  printf '%s-%s%s' "$(tree_path "$stem")" "$RID" "$ext"
 }
 
 # dispatcher: modalità piatta (runtime) o albero (dev)
@@ -109,7 +133,7 @@ while IFS= read -r f; do
   if [ "$TREE" = "1" ]; then b="${f#"$SRC"/}"; else b="$(basename "$f")"; fi
   [ -n "$(libs_group_pick "$GROUP" "$b")" ] || continue
   FILES+=("$b")
-done < <(if [ "$TREE" = "1" ]; then find "$SRC" -type f \( -name "*.h" -o -name "*.hpp" -o -name "*.a" -o -name "*.dylib" -o -name "*.so" -o -name "*.so.*" -o -name "*.dll" -o -name "*.pc" \) | sort; else find "$SRC" -maxdepth 1 -type f \( -name "*.dylib" -o -name "*.so" -o -name "*.so.*" -o -name "*.dll" -o -name "*.metallib" -o -name "*.tar.xz" \) | sort; fi)
+done < <(if [ "$TREE" = "1" ]; then find "$SRC" -type f | sort; else find "$SRC" -maxdepth 1 -type f \( -name "*.dylib" -o -name "*.so" -o -name "*.so.*" -o -name "*.dll" -o -name "*.metallib" -o -name "*.tar.xz" \) | sort; fi)
 [ "${#FILES[@]}" -gt 0 ] || { echo "nessun file del gruppo '$GROUP' in $SRC" >&2; exit 1; }
 
 echo "== per-file: gruppo=$GROUP rid=$RID tag=$TAG file=${#FILES[@]} (repo=$REPO)" >&2
@@ -231,15 +255,37 @@ for f in "${FILES[@]}"; do
 done
 [ "$MISSING" = "0" ] || { echo "ERRORE: $MISSING asset non pubblicati col nome atteso" >&2; exit 1; }
 
-# --prune: asset per-file di QUESTO RID che non corrispondono più alla sorgente
+# --prune: asset per-file di QUESTO RID che non corrispondono più alla sorgente.
+# LINEARITÀ (2026-11-11). Prima, per OGNI asset si riscandiva FILES con una subshell
+# `$(A "$f")`: costo O(n²), e su un bundle `dev` (600-1000 asset) il comando non terminava in
+# tempi utili (misurato: oltre 290 s su 664 asset, sembrava appeso). Ora l'insieme atteso si
+# materializza UNA volta e il confronto è `comm` fra due file ordinati: nessuna subshell per asset.
 if [ "$PRUNE" = "1" ]; then
+  WANT="$(mktemp)"; HAVE="$(mktemp)"
+  for f in "${FILES[@]}"; do A "$f"; printf '\n'; done | sort > "$WANT"
+  : > "$HAVE"
   while IFS= read -r a; do
     [ -n "$a" ] || continue
     case "$a" in *"-$RID") ;; *"-$RID".*) ;; *) continue;; esac
-    found=0
-    for f in "${FILES[@]}"; do [ "$a" = "$(A "$f")" ] && { found=1; break; }; done
-    [ "$found" = "1" ] || { echo "  prune: $a" >&2; gh release delete-asset "$TAG" "$a" --repo "$REPO" --yes >/dev/null 2>&1; }
+    printf '%s\n' "$a" >> "$HAVE"
   done <<< "$NOW"
+  sort -o "$HAVE" "$HAVE"
+  CAND="$(mktemp)"; comm -13 "$WANT" "$HAVE" > "$CAND"
+  if [ "$PRUNE_REPORT" = "1" ]; then
+    # solo resoconto: elenca e NON chiama `gh release delete-asset`.
+    while IFS= read -r a; do
+      [ -n "$a" ] || continue
+      echo "  prune-report: $a" >&2
+    done < "$CAND"
+    echo "prune-report: $(grep -c . "$CAND") asset di $RID da rimuovere — nessuno rimosso" >&2
+  else
+    while IFS= read -r a; do
+      [ -n "$a" ] || continue
+      echo "  prune: $a" >&2
+      gh release delete-asset "$TAG" "$a" --repo "$REPO" --yes >/dev/null 2>&1
+    done < "$CAND"
+  fi
+  rm -f "$WANT" "$HAVE" "$CAND"
 fi
 
 # TSV per l'indice: name, sha256, size, url (sha ricalcolato sui byte caricati)

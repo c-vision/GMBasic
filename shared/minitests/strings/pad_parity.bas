@@ -1,4 +1,5 @@
 ' Minitest PADL/PADR/PADC — parità 4 backend: forma 2-arg (fill=spazio) e 3-arg.
+' EXPECT: [ab   ]|[   ab]|[  ab  ]|[ab---]|[...ab]|[abcde]
 IMPORT STRINGS
 SUB Main()
   PRINT "[" + PADR("ab", 5) + "]"

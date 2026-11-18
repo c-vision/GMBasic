@@ -108,6 +108,26 @@ typedef struct { char* name; int type; int is_array; int ndims; int byref; int g
                                    * gmb_list_t/gmb_dict_t dell'emitter. Serve ai contenitori
                                    * TIPIZZATI con semantica non-lista (HEAP/MAXHEAP/BAG/TRIE):
                                    * heapify su Add, Peek/Extract = radice, BAG multiset. */
+                 int is_static;   /* STATIC dentro una procedura: dichiarata `static` nel
+                                   * prologo della funzione (persiste fra le chiamate) e
+                                   * inizializzata una volta sola dal sito DIM. */
+                 int decl_indent; /* Profondità del blocco C in cui la variabile è stata
+                                   * DICHIARATA (1 = prologo/livello funzione, >1 = blocco).
+                                   * 0 = "da dichiarare al primo LET" (locale creata dal pass di
+                                   * registrazione per un LET che ombreggia una GLOBAL). Serve a
+                                   * decidere se una `LET` deve DICHIARARE una variabile di blocco
+                                   * (spec §3.1/§6) o è una semplice assegnazione. */
+                 int decl_block;  /* ID del blocco (ctx_t.cur_blk) in cui la variabile è stata
+                                   * dichiarata: `-1` = livello funzione (prologo), `0` = non
+                                   * dichiarata da nessun blocco. Una DIM/LOCAL/LET dentro un blocco
+                                   * emette una DICHIARAZIONE C nel blocco (shadowing) e segna
+                                   * l'ID; alla chiusura del blocco l'ID torna 0 (emit_block). */
+                 /* LEAK STRINGHE (2026-11-13): 1 = il valore della variabile stringa può essere
+                  * CONDIVISO (escape: argomento di una call, RETURN, elemento di contenitore,
+                  * campo UDT, cattura di closure, RHS nudo) → non si libera il vecchio valore.
+                  * 0 = l'analisi conservativa (str_escape_prepass) ha dimostrato che ogni uso è
+                  * una lettura pura: l'assegnazione libera il valore precedente. */
+                 int str_escape;
                } var_t;
 
 /* `vars_t` dipende da `var_t`: una sola definizione anche di questa. */

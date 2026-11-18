@@ -2,6 +2,7 @@
 ' MiniTest BLOCKCHAIN (pacchetto FFI): VARINT LEB128 su valori single-byte 0/1/127.
 ' Encode scrive nel buffer BYTE e ritorna la lunghezza; decode legge da un array BYTE.
 REQUIRE "blockchain"
+REQUIRE "crypto"
 IMPORT BLOCKCHAIN
 IMPORT CRYPTOGRAPHY
 
@@ -9,12 +10,14 @@ SUB Main()
   DIM o(9) AS BYTE
   DIM n AS LONG
   n = VARINTENCODE(0, o)
-  PRINT "e0="; LEFT(TOHEX(o), n * 2)
+  PRINT "e0="; LEFT(BYTESHEX(o), n * 2)
   n = VARINTENCODE(1, o)
-  PRINT "e1="; LEFT(TOHEX(o), n * 2)
+  PRINT "e1="; LEFT(BYTESHEX(o), n * 2)
   n = VARINTENCODE(127, o)
-  PRINT "e127="; LEFT(TOHEX(o), n * 2)
-  DIM b() AS BYTE = FROMHEX("7f")
+  PRINT "e127="; LEFT(BYTESHEX(o), n * 2)
+  DIM b(0) AS BYTE
+  DIM _n_b AS LONG
+  _n_b = FROMHEX("7f", b)
   PRINT "d127="; VARINTDECODE(b)
   PRINT "rt="; VARINTDECODE(o)
 END SUB

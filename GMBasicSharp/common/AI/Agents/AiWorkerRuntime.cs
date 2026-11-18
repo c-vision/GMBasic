@@ -70,15 +70,26 @@ public static class AiWorkerRuntime
     }
 
     /// <summary>AI WORKER name: esegue/round di lavoro sul worker (v1: tocca i contatori).</summary>
+    /// <summary>
+    /// `AI WORKER RUN &lt;NAME&gt;` — UN ROUND DI LAVORO sul worker indicato per nome: stessa
+    /// invocazione pulita di `AI WORKER "&lt;TASK&gt;"` (vista curata = solo stato del workspace,
+    /// Context Engine con la chiave worker:&lt;name&gt;, budget del worker, completer, contatori
+    /// rounds/spend e rescued sui fallimenti), senza testo di task. Ritorna 1 ok · 0 rifiutato dal
+    /// budget (policy error) · -1 nessun worker con quel nome · -2 errore provider.
+    /// Speculare a gmb_worker_run (C): una sola semantica di round fra le gambe.
+    /// </summary>
     public static double WorkerRun(string name)
     {
+        AiWorker w;
         lock (Gate)
         {
-            if (!Workers.TryGetValue(name, out var w)) return -1;
-            _rounds++;
-            // rescue/spend aggiornati dal loop superiore via WorkComplete; qui contatore base.
+            if (string.IsNullOrEmpty(name) || !Workers.TryGetValue(name, out var found)) return InvokeNoWorker;
+            w = found;
         }
-        return 1;
+        var key = ContextKey(w.Name);
+        var raw = BuildCuratedView(w, "");
+        if (w.Budget > 0) Basic.AI.Context.AiContextEngine.SetBudget(key, w.Budget);
+        return InvokeWithView(w, key, raw);
     }
 
     /// <summary>AI STATE SAVE key, value: salva stato nel worker/state del worker corrente.</summary>

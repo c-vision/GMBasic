@@ -869,8 +869,39 @@ static long gmb_cls_field_bytes(ctx_t* c, const char* t, int depth) {
 }
 static long gmb_cls_layout_size(ctx_t* c, struct cls_info* ci, int depth) {
     if (!ci || depth > 8) return 0;
+    /* UNION (2026-11-11): tutti i campi a offset 0 → taglia = massimo, allineamento = massimo.
+     * BITFIELD: i bit si impacchettano LSB-first nell'unità del tipo dichiarato (regole C:
+     * nuova unità quando il campo non ci sta). Parità con TypeLayout.ComputeLayout (C#). */
+    if (ci->is_union) {
+        long size = 0, maxAlignU = 1;
+        for (int i = 0; i < ci->nfields; i++) {
+            long sz = ci->fbits[i] > 0 ? gmb_scalar_bytes(ci->ftype[i]) : gmb_cls_field_bytes(c, ci->ftype[i], depth);
+            if (sz < 1) sz = 1;
+            if (sz > size) size = sz;
+            if (sz > maxAlignU) maxAlignU = sz;
+        }
+        return size > 0 ? (size + maxAlignU - 1) / maxAlignU * maxAlignU : 0;
+    }
     long offset = 0, maxAlign = 1;
+    long unitBytes = 0, usedBits = 0;
+    int inUnit = 0;
     for (int i = 0; i < ci->nfields; i++) {
+        if (ci->fbits[i] > 0) {
+            long unit = gmb_scalar_bytes(ci->ftype[i]);
+            if (unit < 1) unit = 1;
+            long unitBits = unit * 8;
+            if (!inUnit || unit != unitBytes || usedBits + ci->fbits[i] > unitBits) {
+                if (!ci->is_packed) offset = (offset + unit - 1) / unit * unit;
+                unitBytes = unit;
+                usedBits = 0;
+                inUnit = 1;
+                offset += unit;
+                if (unit > maxAlign) maxAlign = unit;
+            }
+            usedBits += ci->fbits[i];
+            continue;
+        }
+        inUnit = 0; unitBytes = 0; usedBits = 0;
         long sz = gmb_cls_field_bytes(c, ci->ftype[i], depth);
         if (sz < 1) sz = 1;
         if (ci->is_packed) { offset += sz; continue; }
@@ -2069,10 +2100,13 @@ static int gf_rgb(ctx_t* c, gmb_expr_t** a, int n, int line) {
 }
 static int gf_screeninfo(ctx_t* c, gmb_expr_t** a, int n) {
     (void)a; (void)n;
-    /* DisplayMode dict {ModeID,Width,Height,Bpp,Colors,Active} (canone StdLib).
+    /* DisplayMode dict {ModeID,Width,Height,Bpp,Colors,Active,Description} (canone StdLib).
      * Colors/Active mancavano: SCREENINFO().Colors dava 0 e .Active veniva
-     * risolto come il builtin AI ACTIVE (cc-error). */
-    sb_put(&c->out, "({ gmb_dict_t _dm = gmb_dict_new(); gmb_dict_set(&_dm, \"ModeID\", gmb_make_val_double(0.0)); gmb_dict_set(&_dm, \"Width\", gmb_make_val_double(80.0)); gmb_dict_set(&_dm, \"Height\", gmb_make_val_double(25.0)); gmb_dict_set(&_dm, \"Bpp\", gmb_make_val_double(0.0)); gmb_dict_set(&_dm, \"Colors\", gmb_make_val_double(16.0)); gmb_dict_set(&_dm, \"Active\", gmb_make_val_double(-1.0)); gmb_make_val_dict(_dm); })");
+     * risolto come il builtin AI ACTIVE (cc-error).
+     * Description (stringa) mancava del tutto: le gambe managed producono
+     * "Text 80x25" (IlRuntime.ScreenInfo / PCodeProcessor) e `PRINT SCREENINFO()`
+     * mostrava un dict SENZA quella chiave (graphics/collections su C99). */
+    sb_put(&c->out, "({ gmb_dict_t _dm = gmb_dict_new(); gmb_dict_set(&_dm, \"ModeID\", gmb_make_val_double(0.0)); gmb_dict_set(&_dm, \"Width\", gmb_make_val_double(80.0)); gmb_dict_set(&_dm, \"Height\", gmb_make_val_double(25.0)); gmb_dict_set(&_dm, \"Bpp\", gmb_make_val_double(0.0)); gmb_dict_set(&_dm, \"Colors\", gmb_make_val_double(16.0)); gmb_dict_set(&_dm, \"Active\", gmb_make_val_double(-1.0)); gmb_dict_set(&_dm, \"Description\", gmb_make_val_string(\"Text 80x25\")); gmb_make_val_dict(_dm); })");
     return 1;
 }
 static int gf_collidebatch(ctx_t* c, gmb_expr_t** a, int n) {
@@ -2105,6 +2139,13 @@ int emit_bf_graphics(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t
          * ns="SCREENINFO" e name="Active" (Active è keyword → dispatch per token,
          * prima diventava il builtin AI ACTIVE con 0 argomenti). */
         const char* m = (name && strncasecmp(name, "SCREENINFO.", 11) == 0 && name[11]) ? name + 11 : name;
+        /* `Description` è l'UNICO membro STRINGA del DisplayMode: gli altri sono numerici. */
+        if (strcasecmp(m, "Description") == 0) {
+            sb_put(&c->out, "gmb_val_to_string(gmb_dict_get(gmb_val_as_dict(");
+            gf_screeninfo(c, NULL, 0);
+            sb_put(&c->out, "), \"Description\"))");
+            return 1;
+        }
         sb_put(&c->out, "(gmb_double_t)gmb_val_to_double(gmb_dict_get(gmb_val_as_dict(");
         gf_screeninfo(c, NULL, 0);
         sb_printf(&c->out, "), \"%s\"))", m);
@@ -2743,7 +2784,20 @@ static int tg_zeros(ctx_t* c, gmb_expr_t** a, int n){ if(n<2)return 0; sb_put(&c
 static int tg_ones(ctx_t* c, gmb_expr_t** a, int n){ if(n<2)return 0; sb_put(&c->out,"gmb_ml_tensor_ones((int)("); emit_expr(c,a[0]); sb_put(&c->out,"), (int)("); emit_expr(c,a[1]); sb_put(&c->out,"), gmb_ml_active_device())"); return 1; }
 static int tg_eye(ctx_t* c, gmb_expr_t** a, int n){ if(n<1)return 0; sb_put(&c->out,"gmb_ml_tensor_eye((int)("); emit_expr(c,a[0]); sb_put(&c->out,"), gmb_ml_active_device())"); return 1; }
 static int tg_randn(ctx_t* c, gmb_expr_t** a, int n){ if(n<2)return 0; sb_put(&c->out,"gmb_ml_tensor_randn((int)("); emit_expr(c,a[0]); sb_put(&c->out,"), (int)("); emit_expr(c,a[1]); sb_put(&c->out,"), gmb_ml_active_device())"); return 1; }
-static int tg_from(ctx_t* c, gmb_expr_t** a, int n){ if(n<1||a[0]->kind!=GMB_EXPR_VAR)return 0; var_t* v=lookup_var(c,a[0]->var); if(!v||!v->is_array)return 0; sb_put(&c->out,"gmb_ml_tensor_from(1, (int)("); emit_arr_len_of(c,v); sb_put(&c->out,"), (gmb_double_t*)"); emit_var_ref(c,v); sb_put(&c->out,", gmb_ml_active_device())"); return 1; }
+static int tg_from(ctx_t* c, gmb_expr_t** a, int n){ if(n<1||a[0]->kind!=GMB_EXPR_VAR)return 0; var_t* v=lookup_var(c,a[0]->var); if(!v||!v->is_array)return 0;
+    /* Valore matrice (DIM m(r,c) rank-2 DOUBLE): descrittore gmb_matrix_t, non double*.
+     * ensure_flat materializza il buffer contiguo row-major e il conteggio sono rows*cols. */
+    if (v->matrix_value) {
+        sb_put(&c->out,"gmb_ml_tensor_from(1, (int)((");
+        emit_var_ref(c,v);
+        sb_put(&c->out,").rows * (");
+        emit_var_ref(c,v);
+        sb_put(&c->out,").cols), gmb_matrix_value_ensure_flat(&");
+        emit_var_ref(c,v);
+        sb_put(&c->out,"), gmb_ml_active_device())");
+        return 1;
+    }
+    sb_put(&c->out,"gmb_ml_tensor_from(1, (int)("); emit_arr_len_of(c,v); sb_put(&c->out,"), (gmb_double_t*)"); emit_var_ref(c,v); sb_put(&c->out,", gmb_ml_active_device())"); return 1; }
 static int tg_get(ctx_t* c, gmb_expr_t** a, int n){ if(n<3)return 0; sb_put(&c->out,"gmb_ml_tensor_get("); emit_expr(c,a[0]); sb_put(&c->out,", (int)("); emit_expr(c,a[1]); sb_put(&c->out,"), (int)("); emit_expr(c,a[2]); sb_put(&c->out,"))"); return 1; }
 static int tg_set(ctx_t* c, gmb_expr_t** a, int n){ if(n<4)return 0; sb_put(&c->out,"(gmb_ml_tensor_set("); emit_expr(c,a[0]); sb_put(&c->out,", (int)("); emit_expr(c,a[1]); sb_put(&c->out,"), (int)("); emit_expr(c,a[2]); sb_put(&c->out,"), "); emit_expr(c,a[3]); sb_put(&c->out,"), "); emit_expr(c,a[3]); sb_put(&c->out,")"); return 1; }
 static int tg_free(ctx_t* c, gmb_expr_t** a, int n){ if(n<1)return 0; sb_put(&c->out,"(gmb_ml_tensor_free("); emit_expr(c,a[0]); sb_put(&c->out,"), 0)"); return 1; }
@@ -5838,29 +5892,13 @@ int emit_bf_tool(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk,
 typedef struct { gmb_tokenkind_t tk; ma_sp sp; } en_row;
 /* (2026-09-07) operando "data" per encoder (TOHEX/TOBASE64/…): un digest MD5/SHA*
  * generico produce hex-text; qui va consumato come BYTE GREZZI (parity IL/PCodeVM/VM-C:
- * MD5 ritorna byte[], quindi TOHEX(MD5(x)) = hex del digest, non doppio hex). */
+ * MD5 ritorna byte[], quindi TOHEX(MD5(x)) = hex del digest, non doppio hex).
+ * NB (2026-11-13): il ramo ARRAY‑numerico è stato RITIRATO insieme alle forme array di
+ * TOHEX/TOBASE64 (migrazione CRYPTOGRAPHY a pacchetto FFI: le FUNZIONI del pacchetto
+ * accettano STRINGA e hanno la precedenza sul builtin omonimo, quindi quel ramo era
+ * irraggiungibile). Vedi Bugs/(solved) - C99-TOHEX-TBASE64-Su-Array*: le forme lecite
+ * sono `TOHEX(testo)`/`TOBASE64(s)` e, per i byte, `BYTESHEX(a())` del pacchetto. */
 static void emit_bytes_operand(ctx_t* c, gmb_expr_t* a) {
-    /* Array numerico/BYTE (`DIM x(n) AS BYTE` o PARAMETRO `a() AS BYTE`): in C è un
-     * `gmb_double_t*` con bound `<nome>__b0` (o `_len` se dinamico), quindi NON ha
-     * `.data`/`.length`. Va convertito in stringa binaria col ponte del runtime
-     * condiviso; senza, il puntatore finiva in `gmb_double_to_string`. */
-    if (a && a->kind == GMB_EXPR_VAR) {
-        var_t* tv = lookup_var(c, a->var);
-        if (tv && tv->is_array && !tv->matrix && !tv->jagged && !tv->is_bytes && tv->type != TY_STR) {
-            sb_put(&c->out, "gmb_bytes_from_doubles(");
-            emit_ident(c, tv->name);
-            sb_put(&c->out, ", (gmb_int_t)(");
-            if (tv->dyn_len) {
-                emit_ident(c, tv->name);
-                sb_put(&c->out, "_len)");
-            } else {
-                emit_ident(c, tv->name);
-                sb_put(&c->out, "__b0) + 1");
-            }
-            sb_put(&c->out, ")");
-            return;
-        }
-    }
     emit_str_operand(c, a);
 }
 static int en_encode(ctx_t* c, gmb_expr_t** a, int n, const char* fn) {
@@ -5889,30 +5927,11 @@ static int en_frombase64(ctx_t* c, gmb_expr_t** a, int n) { return en_decode(c, 
 static int en_frombase64url(ctx_t* c, gmb_expr_t** a, int n) { return en_decode(c, a, n, "gmb_base64url_decode"); }
 static int en_tohex(ctx_t* c, gmb_expr_t** a, int n) {
     if (n < 1) return 0;
-    /* Array numerico BYTE (DIM x(n) AS BYTE, buffer di digest): in C e' `gmb_double_t*`
-     * con bound `<nome>__b0`, NON una stringa. TOHEX deve produrre l'hex dei valori
-     * 0..255 col ponte del runtime condiviso (gmb_hex_from_doubles): senza questo ramo
-     * l'operando finiva in gmb_double_to_string(puntatore) => C non compilabile. */
-    if (a[0] && a[0]->kind == GMB_EXPR_VAR) {
-        var_t* tv = lookup_var(c, a[0]->var);
-        /* Array numerico/BYTE (DIM o PARAMETRO `a() AS BYTE`): la var e' `gmb_double_t*`
-         * + bound `<nome>__b0` (o `_len` per gli array dinamici). Un array di STRINGHE
-         * (type TY_STR, `gmb_string_t*`) non c'entra: si esclude esplicitamente. */
-        if (tv && tv->is_array && !tv->matrix && !tv->jagged && !tv->is_bytes && tv->type != TY_STR) {
-            sb_put(&c->out, "gmb_string_alloc(gmb_hex_from_doubles(");
-            emit_ident(c, tv->name);
-            sb_put(&c->out, ", (gmb_int_t)(");
-            if (tv->dyn_len) {
-                emit_ident(c, tv->name);
-                sb_put(&c->out, "_len)");
-            } else {
-                emit_ident(c, tv->name);
-                sb_put(&c->out, "__b0) + 1");
-            }
-            sb_put(&c->out, "))");
-            return 1;
-        }
-    }
+    /* NB (2026-11-13): RITIRATO il ramo "array numerico → hex" (gmb_hex_from_doubles).
+     * Con la migrazione CRYPTOGRAPHY a pacchetto FFI il nome TOHEX risolve alla FUNCTION
+     * `TOHEX(text AS STRING)` del pacchetto (che ha la precedenza sul builtin), quindi il
+     * ramo era codice morto; per i BYTE si usa `BYTESHEX(a())` del pacchetto.
+     * Vedi Bugs/(solved) - C99-TOHEX-TBASE64-Su-Array-Dopo-Migrazione-Crypto. */
     sb_put(&c->out, "gmb_string_alloc(gmb_hex_encode_string((const uint8_t*)");
     emit_bytes_operand(c, a[0]);
     sb_put(&c->out, ".data, ");
@@ -8388,7 +8407,7 @@ static int aimo_llm_tokens(ctx_t* c, gmb_expr_t** a, int n, int line) {
     if (n < 2) { c99_fail(c, line, "LLM.TOKENS richiede (model, testo)"); return 1; }
     sb_put(&c->out, "gmb_string_alloc(gmb_llm_out_or_raise(gmb_llm_tokens(");
     emit_str_operand(c, a[0]); sb_put(&c->out, ".data, ");
-    emit_str_operand(c, a[1]); sb_put(&c->out, ".data), \"LLM.TOKENS\", ");
+    emit_str_operand(c, a[1]); sb_put(&c->out, ".data), \"LLM.TOKENS: tokenizer non disponibile per il modello indicato\", ");
     { char lb[16]; snprintf(lb, sizeof lb, "%d", line); sb_put(&c->out, lb); }
     sb_put(&c->out, "))");
     return 1;
@@ -8397,7 +8416,7 @@ static int aimo_llm_detokenize(ctx_t* c, gmb_expr_t** a, int n, int line) {
     if (n < 2) { c99_fail(c, line, "LLM.DETOKENIZE richiede (model, ids)"); return 1; }
     sb_put(&c->out, "gmb_string_alloc(gmb_llm_out_or_raise(gmb_llm_detokenize(");
     emit_str_operand(c, a[0]); sb_put(&c->out, ".data, ");
-    emit_str_operand(c, a[1]); sb_put(&c->out, ".data), \"LLM.DETOKENIZE\", ");
+    emit_str_operand(c, a[1]); sb_put(&c->out, ".data), \"LLM.DETOKENIZE: tokenizer non disponibile o id non validi\", ");
     { char lb[16]; snprintf(lb, sizeof lb, "%d", line); sb_put(&c->out, lb); }
     sb_put(&c->out, "))");
     return 1;
@@ -8409,7 +8428,7 @@ static int aimo_llm_tensor_out(ctx_t* c, gmb_expr_t** a, int n, int line) {
     emit_str_operand(c, a[1]); sb_put(&c->out, ".data, ");
     if (n >= 3) { emit_str_operand(c, a[2]); sb_put(&c->out, ".data, "); } else sb_put(&c->out, "\"\", ");
     if (n >= 4) { emit_str_operand(c, a[3]); sb_put(&c->out, ".data)"); } else sb_put(&c->out, "\"\")");
-    sb_put(&c->out, ", \"LLM.TENSOR\", ");
+    sb_put(&c->out, ", \"LLM.TENSOR: verbo fallito\", ");
     { char lb[16]; snprintf(lb, sizeof lb, "%d", line); sb_put(&c->out, lb); }
     sb_put(&c->out, "))");
     return 1;
@@ -8417,12 +8436,12 @@ static int aimo_llm_tensor_out(ctx_t* c, gmb_expr_t** a, int n, int line) {
 static int aimo_llm_policy_out(ctx_t* c, gmb_expr_t** a, int n, int line) {
     /* LLM.POLICYOUT(sub[, a[, b[, c]]]) → gmb_llm_cmd_out (famiglia 1): output catturato. */
     if (n < 1) { c99_fail(c, line, "LLM.POLICY richiede almeno il sotto-verbo"); return 1; }
-    sb_put(&c->out, "gmb_string_alloc(gmb_llm_out_or_raise(gmb_llm_cmd_out(1, ");
+    sb_put(&c->out, "gmb_string_alloc(gmb_llm_out_or_raise(gmb_llm_cmd_out(1, ");   /* POLICY */
     emit_str_operand(c, a[0]); sb_put(&c->out, ".data, ");
     if (n >= 2) { emit_str_operand(c, a[1]); sb_put(&c->out, ".data, "); } else sb_put(&c->out, "\"\", ");
     if (n >= 3) { emit_str_operand(c, a[2]); sb_put(&c->out, ".data, "); } else sb_put(&c->out, "\"\", ");
     if (n >= 4) { emit_str_operand(c, a[3]); sb_put(&c->out, ".data)"); } else sb_put(&c->out, "\"\")");
-    sb_put(&c->out, ", \"LLM.POLICYOUT\", ");
+    sb_put(&c->out, ", \"LLM.POLICY: verbo fallito\", ");
     { char lb[16]; snprintf(lb, sizeof lb, "%d", line); sb_put(&c->out, lb); }
     sb_put(&c->out, "))");
     return 1;
@@ -8435,7 +8454,7 @@ static int aimo_llm_arch_out(ctx_t* c, gmb_expr_t** a, int n, int line) {
     if (n >= 2) { emit_str_operand(c, a[1]); sb_put(&c->out, ".data, "); } else sb_put(&c->out, "\"\", ");
     if (n >= 3) { emit_str_operand(c, a[2]); sb_put(&c->out, ".data, "); } else sb_put(&c->out, "\"\", ");
     if (n >= 4) { emit_str_operand(c, a[3]); sb_put(&c->out, ".data)"); } else sb_put(&c->out, "\"\")");
-    sb_put(&c->out, ", \"LLM.POLICYOUT\", ");
+    sb_put(&c->out, ", \"LLM.ARCH: verbo fallito\", ");
     { char lb[16]; snprintf(lb, sizeof lb, "%d", line); sb_put(&c->out, lb); }
     sb_put(&c->out, "))");
     return 1;
@@ -8448,7 +8467,7 @@ static int aimo_llm_module_out(ctx_t* c, gmb_expr_t** a, int n, int line) {
     if (n >= 2) { emit_str_operand(c, a[1]); sb_put(&c->out, ".data, "); } else sb_put(&c->out, "\"\", ");
     if (n >= 3) { emit_str_operand(c, a[2]); sb_put(&c->out, ".data, "); } else sb_put(&c->out, "\"\", ");
     if (n >= 4) { emit_str_operand(c, a[3]); sb_put(&c->out, ".data)"); } else sb_put(&c->out, "\"\")");
-    sb_put(&c->out, ", \"LLM.POLICYOUT\", ");
+    sb_put(&c->out, ", \"LLM.MODULE: verbo fallito\", ");
     { char lb[16]; snprintf(lb, sizeof lb, "%d", line); sb_put(&c->out, lb); }
     sb_put(&c->out, "))");
     return 1;
@@ -8461,7 +8480,7 @@ static int aimo_llm_kernel_out(ctx_t* c, gmb_expr_t** a, int n, int line) {
     if (n >= 2) { emit_str_operand(c, a[1]); sb_put(&c->out, ".data, "); } else sb_put(&c->out, "\"\", ");
     if (n >= 3) { emit_str_operand(c, a[2]); sb_put(&c->out, ".data, "); } else sb_put(&c->out, "\"\", ");
     if (n >= 4) { emit_str_operand(c, a[3]); sb_put(&c->out, ".data)"); } else sb_put(&c->out, "\"\")");
-    sb_put(&c->out, ", \"LLM.POLICYOUT\", ");
+    sb_put(&c->out, ", \"LLM.KERNEL: verbo fallito\", ");
     { char lb[16]; snprintf(lb, sizeof lb, "%d", line); sb_put(&c->out, lb); }
     sb_put(&c->out, "))");
     return 1;
@@ -8474,20 +8493,23 @@ static int aimo_llm_kv_out(ctx_t* c, gmb_expr_t** a, int n, int line) {
     if (n >= 2) { emit_str_operand(c, a[1]); sb_put(&c->out, ".data, "); } else sb_put(&c->out, "\"\", ");
     if (n >= 3) { emit_str_operand(c, a[2]); sb_put(&c->out, ".data, "); } else sb_put(&c->out, "\"\", ");
     if (n >= 4) { emit_str_operand(c, a[3]); sb_put(&c->out, ".data)"); } else sb_put(&c->out, "\"\")");
-    sb_put(&c->out, ", \"LLM.POLICYOUT\", ");
+    sb_put(&c->out, ", \"LLM.KV: verbo fallito\", ");
     { char lb[16]; snprintf(lb, sizeof lb, "%d", line); sb_put(&c->out, lb); }
     sb_put(&c->out, "))");
     return 1;
 }static int aasr_transcribe(ctx_t* c, gmb_expr_t** a, int n, int line) {
     /* ASR.RECOGNIZE(model, wav[, outPath]) → gmb_asr_cmd (engine ASR nativo in gmb_runtime). Ritorna stringa. */
     if (n < 2) { c99_fail(c, line, "ASR.RECOGNIZE richiede (model, wav[, outPath])"); return 1; }
-    sb_put(&c->out, "gmb_string_alloc(gmb_asr_cmd(");
+    /* Il motore restituisce NULL su FALLIMENTO (modello/WAV non caricabili): si alza ERR 5,
+     * catturabile con ON ERROR/TRY, come le altre tre gambe. Prima il NULL diventava una
+     * stringa vuota silenziosa e il programma proseguiva come se avesse trascritto niente. */
+    sb_put(&c->out, "({ char* _asr = gmb_asr_cmd(");
     emit_str_operand(c, a[0]); sb_put(&c->out, ".data, ");
     emit_str_operand(c, a[1]); sb_put(&c->out, ".data, ");
-    /* Due parentesi: chiude gmb_asr_cmd( e gmb_string_alloc( (prima ne mancava una
-     * → il C generato non compilava: "expected ')'" su ogni ASR.RECOGNIZE). */
-    if (n >= 3) { emit_str_operand(c, a[2]); sb_put(&c->out, ".data))"); }
-    else sb_put(&c->out, "\"\"))");
+    if (n >= 3) { emit_str_operand(c, a[2]); sb_put(&c->out, ".data"); }
+    else sb_put(&c->out, "\"\"");
+    sb_printf(&c->out, "); if (_asr == NULL) gmb_raise_error(5, \"ASR.RECOGNIZE: trascrizione fallita\", %d); ", line);
+    sb_put(&c->out, "gmb_string_alloc(_asr); })");
     return 1;
 }
 static int aimo_streamstats(ctx_t* c, gmb_expr_t** a, int n, int line) {    if (n != 1) return 0;

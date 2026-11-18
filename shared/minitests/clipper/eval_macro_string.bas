@@ -1,4 +1,5 @@
 ' GMBASIC (piu' flessibile) — EVAL("expr") macro di stringa coesiste con EVAL(block,args)
+' EXPECT: s1= 21|s2= 5|s3= 42|s4= 42
 GLOBAL Y AS INTEGER
 SUB Main()
   Y = 7

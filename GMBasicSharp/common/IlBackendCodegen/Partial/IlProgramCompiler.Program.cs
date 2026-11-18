@@ -138,6 +138,15 @@ public sealed partial class IlProgramCompiler
         _localByName.Clear();
         // Riga BASIC corrente per ERR.LineNumber / posizione delle eccezioni (vedi EmitStatement).
         _currentLineLocal = _il.DeclareLocal(_types.Int32);
+        // STACK TRACE BASIC: frame della procedura (parità C99Native/VM-C/PCode). Chiuso da
+        // EmitDynamicScopeExit su OGNI uscita; la profondità precedente serve ai CATCH.
+        if (_currentReturnSymbolId >= 0)
+        {
+            _traceDepthLocal = _il.DeclareLocal(_types.Int32);
+            _il.Emit(OpCodes.Ldc_I4, _currentReturnSymbolId);
+            _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.TraceEnter), typeof(int)));
+            _il.Emit(OpCodes.Stloc, _traceDepthLocal);
+        }
         // GOSUB dentro una PROCEDURA (SUB/FUNCTION): registra i siti di continuazione
         // runtime (lo stesso pattern dell'entry point) — necessario anche per i corpi
         // v2 (dead code) che contengono GOSUB verso target con FINALLY sospendibile.
@@ -228,6 +237,15 @@ public sealed partial class IlProgramCompiler
         // Riga BASIC corrente per ERR.LineNumber: in questo percorso i chunk hanno pseudo-riga 0
         // (stati sintetici), quindi la riga va tracciata per statement da EmitStatement.
         _currentLineLocal = _il.DeclareLocal(_types.Int32);
+        // STACK TRACE BASIC: frame della procedura (parità C99Native/VM-C/PCode). La profondità
+        // precedente va in un locale: le uscite normali e i CATCH la usano per chiudere i frame.
+        if (_currentReturnSymbolId >= 0)
+        {
+            _traceDepthLocal = _il.DeclareLocal(_types.Int32);
+            _il.Emit(OpCodes.Ldc_I4, _currentReturnSymbolId);
+            _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.TraceEnter), typeof(int)));
+            _il.Emit(OpCodes.Stloc, _traceDepthLocal);
+        }
         var dispatchLoopStart = _il.DefineLabel();
         var doneLabel = _il.DefineLabel();
         // Uscita dei `RETURN valore` emessi dentro i try dei chunk (EmitReturnStatement):
@@ -313,6 +331,9 @@ public sealed partial class IlProgramCompiler
 
             void EmitOnErrorDispatch()
             {
+                // STACK TRACE: fotografia PRIMA di toccare la catena (i frame interni sono
+                // ancora presenti) e ritorno al frame della procedura.
+                EmitTraceSnapshotRestore();
                 EmitCaptureErrorIntoGlobalErr(onErrorCaughtLocal);
                 _il.Emit(OpCodes.Ldc_I4, chunk.State);
                 _il.Emit(OpCodes.Stloc, errorLineLocal);

@@ -1,1 +1,2 @@
+' EXPECT: 5
 PRINT ABS(-5)

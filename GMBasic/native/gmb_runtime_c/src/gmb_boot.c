@@ -55,13 +55,14 @@ int gmb_libs_autoensure(const char* fileName, char* out_path, size_t cap);
 int gmb_cache(char* out, size_t cap)
 {
     if (!out || cap == 0) return 0;
-    /* NB: qui NON si legge system.settings.json (servirebbe il parser delle impostazioni e
-     * quindi mezza runtime): la cache è `~/.gmbasic/libs`, punto. L'override `paths.libsCacheDir`
-     * resta valido nel runtime completo, che condivide la stessa cartella di default. */
-    const char* home = getenv("HOME");
-    if (!home || !*home) { out[0] = '\0'; return 0; }
-    snprintf(out, cap, "%s/.gmbasic/libs", home);
-    return 1;
+    /* Stessa FONTE del resto del runtime: `paths.libsCacheDir` di system.settings.json
+     * (default `~/.gmbasic/libs`). Prima era hardcoded: con la chiave impostata il bootstrap
+     * scaricava in `~/.gmbasic/libs` mentre `libs`/loader/link leggevano la cache dei settings
+     * → due cache, download in una e link nell'altra (bug trovato il 2026-11-16).
+     * Questo modulo include già `gmb_paths.c`: nessuna dipendenza nuova. */
+    out[0] = '\0';
+    gmb_paths_libs_cache_dir(out, cap);
+    return out[0] != '\0';
 }
 
 /* ── progress bar (solo su TTY; rate-limited) ────────────────────────────────────────────── */
@@ -243,8 +244,9 @@ int gmb_component(const char* name, char* out, size_t cap)
 
 /* ── bootstrap: scarica l'indice piatto del RID e TUTTI i file dello scope ────────────────── */
 
-/* scarica `url` in `dest` (senza sha: serve solo per l'indice) con progress bar */
-static int boot_fetch_index(const char* url, const char* dest)
+/* scarica `url` in `dest` (senza sha: serve solo per l'indice). PUBBLICA perché il primo uso
+ * (`gmb_first_use.c`) scarica l'indice di RID che non sono quello host. */
+int gmb_fetch_url(const char* url, const char* dest)
 {
 #if !defined(GMB_BOOT_HAVE_CURL)
     (void)url; (void)dest;
@@ -293,7 +295,7 @@ static int boot_count_scope(const char* index_path, int scope)
 }
 
 /* garantisce i file dell'indice che rientrano nello scope (la barra è globale) */
-static int boot_ensure_scope(const char* index_path, int scope)
+static int boot_ensure_scope(const char* index_path, int scope, const char* rid)
 {
     FILE* f = fopen(index_path, "rb");
     if (!f) return 0;
@@ -315,8 +317,13 @@ static int boot_ensure_scope(const char* index_path, int scope)
                     || (scope & GMB_SCOPE_COMPONENTS && strncmp(tag, "component", 9) == 0)
                     || (scope & GMB_SCOPE_RUNTIME && strncmp(tag, "runtime", 7) == 0);
         if (!in_scope) continue;
+        /* macOS: gli archivi della toolchain zig per `osx-*` NON si scaricano — DECISIONE
+         * (2026-11-16): su macOS si usa `cc`, lo zig sull'host è la parte problematica
+         * (AGENTS §"DUE COMPILATORI"), e gli archivi `osx-*` sono in dismissione. Prima il
+         * primo uso scaricava ~50 MB di zig per poi non installarlo. */
+        if (strncmp(rid, "osx", 3) == 0 && strncmp(name, "zig-", 4) == 0) continue;
         gmb_progress(name, total ? (double)done / total : 0.0);
-        if (!gmb_libs_ensure_file_from(index_path, name, NULL, 0)) { fprintf(stderr, "[boot] FALLITO: %s\n", name); fail++; }
+        if (!gmb_libs_ensure_file_for_rid(index_path, rid, name, NULL, 0)) { fprintf(stderr, "[boot] FALLITO: %s\n", name); fail++; }
         done++;
         gmb_progress(name, total ? (double)done / total : 1.0);
     }
@@ -325,13 +332,16 @@ static int boot_ensure_scope(const char* index_path, int scope)
     return fail == 0;
 }
 
-int gmb_bootstrap(int scope)
+/* Bootstrap di un RID ESPLICITO: serve al primo uso con ambito "all" (tutti e 6 i RID),
+ * dove il RID non è quello della macchina. `gmb_bootstrap` resta il caso host. */
+int gmb_bootstrap_rid(const char* rid_explicit, int scope)
 {
+    const char* rid = (rid_explicit && *rid_explicit) ? rid_explicit : gmb_rid();
     if (scope == 0) scope = GMB_SCOPE_RUNTIME;
     char cache[2048];
     if (!gmb_cache(cache, sizeof cache)) return 0;
     char dir[2304], index[2400], url[2600];
-    snprintf(dir, sizeof dir, "%s/%s", cache, gmb_rid());
+    snprintf(dir, sizeof dir, "%s/%s", cache, rid);
     snprintf(index, sizeof index, "%s/index.txt", dir);
     /* mkdir -p della cache del RID */
     {
@@ -343,9 +353,9 @@ int gmb_bootstrap(int scope)
     struct stat st;
     if (stat(index, &st) != 0)
     {
-        snprintf(url, sizeof url, GMB_INDEX_URL_FMT, gmb_rid());
-        fprintf(stderr, "==> indice librerie per %s\n", gmb_rid());
-        if (!boot_fetch_index(url, index))
+        snprintf(url, sizeof url, GMB_INDEX_URL_FMT, rid);
+        fprintf(stderr, "==> indice librerie per %s\n", rid);
+        if (!gmb_fetch_url(url, index))
         {
             fprintf(stderr, "[boot] indice non scaricabile (%s)\n"
                             "       rete assente? `gmb install --from <cartella>` per l'offline.\n", url);
@@ -355,5 +365,7 @@ int gmb_bootstrap(int scope)
     fprintf(stderr, "==> scarico le librerie (%s)\n",
             scope == GMB_SCOPE_ALL ? "tutte" : (scope & GMB_SCOPE_DEV) ? "runtime+dev" :
             (scope & GMB_SCOPE_COMPONENTS) ? "componenti" : "runtime");
-    return boot_ensure_scope(index, scope);
+    return boot_ensure_scope(index, scope, rid);
 }
+
+int gmb_bootstrap(int scope) { return gmb_bootstrap_rid(gmb_rid(), scope); }

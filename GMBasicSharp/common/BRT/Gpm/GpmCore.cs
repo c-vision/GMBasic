@@ -445,6 +445,21 @@ public sealed class PCodeTask
         Interlocked.Exchange(ref _pendingWait, null);
     }
 
+    /// <summary>Codice/descrizione dell'ULTIMO errore BASIC sollevato su questo task. Serve ai
+    /// driver che devono RILANCIARE l'errore in un altro contesto (generatori): quando
+    /// RaiseBasicError non trova handler lancia una InvalidOperationException e il codice
+    /// andrebbe perso (il CATCH del chiamante vedeva 200).</summary>
+    public int LastErrorCode;
+    public string? LastErrorDescription;
+    /// <summary>Catena BASIC dell'ultimo errore, letta da <c>RaiseBasicError</c> PRIMA
+    /// dell'unwind (dopo i frame delle procedure attraversate non esistono più). Serve ai
+    /// generatori: il corpo è un task separato e la sua catena va anteposta a quella del
+    /// chiamante quando l'errore viene ri-lanciato.</summary>
+    public string? LastErrorTrace;
+    /// <summary>Riga (1-based) dell.ultimo errore: serve al re-raise del generatore, che
+    /// deve riportare la riga del CORPO e non quella del chiamante.</summary>
+    public int LastErrorLine;
+
     public string DebugPendingWait
     {
         get
@@ -665,6 +680,17 @@ public sealed class PCodeTask
     /// raggiunge il suo ultimo pezzo (OP_PRINT_LINE) o un OP_PRINT_NEWLINE la trova non vuota,
     /// tutto il contenuto qui accumulato viene spostato in PendingPrints in un solo colpo.</summary>
     public System.Text.StringBuilder? PrintLineStaging { get; set; }
+
+    /// <summary>Frame della PROCEDURA che ha iniziato lo staging corrente. Serve a riconoscere
+    /// un PRINT ANNIDATO (un PRINT dentro una procedura chiamata come argomento): lo staging
+    /// appartiene a un frame più esterno e va SOSPESO, non accodato — altrimenti il testo del
+    /// PRINT interno si fonde col prefisso dell'esterno (`b=[dentro]` invece di `[dentro]` +
+    /// `b= 5`). Stesso canone di C99Native/IL (PrintStageBegin/End).</summary>
+    public PCodeCallFrame? PrintLineStagingFrame { get; set; }
+
+    /// <summary>Livelli di staging SOSPESI (PRINT annidati), LIFO. Ripresi al commit della
+    /// riga interna. Sul percorso d'errore si scartano tutti (DiscardIncompletePrintStatement).</summary>
+    public System.Collections.Generic.Stack<(System.Text.StringBuilder Buf, PCodeCallFrame? Frame)>? PrintLineStagingSaved { get; set; }
 
     // === Stato ambient database, per-task (non più su PCodeProcessor condiviso) ===
     // "Area corrente" ISAM/DBF e "ultimo SEEK trovato" sono semanticamente "la MIA area

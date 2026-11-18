@@ -1,3 +1,4 @@
+' EXPECT: abc
 SUB Main()
   PRINT LOWER("ABC")
 END SUB

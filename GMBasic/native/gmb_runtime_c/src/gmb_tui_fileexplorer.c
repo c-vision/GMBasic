@@ -11,6 +11,7 @@
 #include <string.h>
 #include <strings.h>
 #include <dirent.h>
+#include "gmb_compat_win.h"   /* strcasestr (solo su Windows) */
 
 enum { GMB_FE_ACTION_NONE = 0, GMB_FE_ACTION_SELECTED = 1, GMB_FE_ACTION_CHANGEDIR = 2 };
 

@@ -1,1 +1,2 @@
+' EXPECT: -1
 PRINT ISREQUIRED("abc")

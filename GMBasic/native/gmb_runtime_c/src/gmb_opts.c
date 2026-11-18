@@ -28,6 +28,12 @@ static int     g_init  = 0;
 /* Voci disponibili in ogni backend C (host-agnostiche). */
 static const struct { const char* name; const char* desc; } g_opt_core[] = {
     { "moe_swap_dir", "dir modello per lo streaming esperti MoE (vuoto = off)" },
+    /* RADICE DEI MODELLI (2026-11-12). I MiniTest `TAG: heavy` e i sample scrivono
+     * "~/ai/Models/<modello>": la gamba C non espandeva `~` e il path arrivava letterale al
+     * loader. La voce e' il modo CANONICO (registro opzioni, non ambiente) per dire dove stanno
+     * i pesi: `gmb_paths_model_path()` risolve `%MODELS%/x` e `~/ai/Models/x` su questo valore.
+     * Vuoto = ~/ai/Models (il default storico), quindi nulla cambia per chi non la imposta. */
+    { "path.models_root", "radice dei modelli per `%MODELS%` e `~/ai/Models` (vuoto = ~/ai/Models)" },
     /* Nomi di origine env, dichiarati qui perche' compaiano nell'elenco del registro
      * (`gmb_opt_at`) e siano impostabili con `AI SET OPTION`. La CHIAVE e' la stessa che
      * usa il ponte `gmb_opt_env` (registro se impostato, altrimenti la variabile d'ambiente),
@@ -55,6 +61,11 @@ static const struct { const char* name; const char* desc; } g_opt_core[] = {
     { "GMB_FORM_SHOT",     "file PNG della cattura del form (test)" },
     { "GMB_FORM_SHOT_FRAME","frame in cui scattare GMB_FORM_SHOT (default 20)" },
     { "MAXXLIB_GRAPHICS",  "protocollo grafico del terminale: kitty o sixel (assente = dedotto da TERM)" },
+    /* ── DIAGNOSTICA (2026-11-13): contabilità della memoria viva del runtime C, per tipo.
+     * Attiva con `AI SET OPTION "debug.memory", "1"` o dalla sezione `engine` dei settings;
+     * a fine esecuzione stampa su stderr una riga per tipo (blocchi/byte vivi e picco).
+     * Spenta = costo nullo. Nessuna variabile d'ambiente. Vedi gmb_memstats.h. */
+    { "debug.memory",      "contabilità memoria del runtime C per tipo, report su stderr a fine run (1 = attiva)" },
 };
 #define GMB_OPT_CORE_N ((int)(sizeof g_opt_core / sizeof g_opt_core[0]))
 
@@ -62,6 +73,15 @@ static GmbOpt* gmb_opt_find(const char* n) {
     if (!n) return NULL;
     for (int i = 0; i < g_nopts; i++) if (!strcmp(n, g_opts[i].name)) return &g_opts[i];
     return NULL;
+}
+
+/* Spinge la radice dei pesi nel risolutore dei path (`gmb_paths_set_models_root`). Il registro e'
+ * l'unico proprietario del valore; `gmb_paths.c` lo riceve e non lo cerca (evita il ciclo
+ * opts<->paths: gmb_opts.c usa gmb_paths_app_settings). Chiamata dopo la gerarchia dei settings
+ * e a ogni `AI SET OPTION`. */
+static void sync_models_root(void) {
+    GmbOpt* o = gmb_opt_find("path.models_root");
+    gmb_paths_set_models_root((o && o->set) ? o->val : "");
 }
 
 static void ensure_init(void) {
@@ -75,6 +95,7 @@ static void ensure_init(void) {
         o->val[0] = '\0'; o->set = 0; o->on_set = NULL;
     }
     gmb_opts_load_hierarchy();   /* cache dai settings: globali (exe) → app (override) */
+    sync_models_root();
 }
 
 int gmb_opt_register(const char* name, const char* desc, const char* def, void (*on_set)(const char*)) {
@@ -110,6 +131,7 @@ int gmb_opt_set(const char* name, const char* value) {
     snprintf(o->val, sizeof o->val, "%s", value);
     o->set = 1;
     if (o->on_set) o->on_set(o->val);
+    if (!strcmp(o->name, "path.models_root")) gmb_paths_set_models_root(o->val);
     return 0;
 }
 
@@ -129,6 +151,16 @@ int gmb_opt_moe_swap_dir(char* out, int cap) {
     if (!out || cap <= 0) return -1;
     ensure_init();
     GmbOpt* o = gmb_opt_find("moe_swap_dir");
+    snprintf(out, (size_t)cap, "%s", (o && o->set) ? o->val : "");
+    return 0;
+}
+
+/* Opzione `path.models_root`: radice dei pesi. Vuota = il default `~/ai/Models`, che il
+ * risolutore dei path costruisce da HOME (non e' un parametro d'ambiente: e' la cartella utente). */
+int gmb_opt_models_root(char* out, int cap) {
+    if (!out || cap <= 0) return -1;
+    ensure_init();
+    GmbOpt* o = gmb_opt_find("path.models_root");
     snprintf(out, (size_t)cap, "%s", (o && o->set) ? o->val : "");
     return 0;
 }
@@ -265,7 +297,7 @@ static int load_engine_section(const char* path) {
 }
 
 /* Compat: carica la sezione engine da un singolo file. */
-int gmb_opts_load(const char* path) { ensure_init(); return load_engine_section(path); }
+int gmb_opts_load(const char* path) { ensure_init(); int rc = load_engine_section(path); sync_models_root(); return rc; }
 
 /* Gerarchia a DUE livelli di dir (nessun ~/.gmbasic):
  *   1. dir COMPILATORE: system.settings.json (default globali)

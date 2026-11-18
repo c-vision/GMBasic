@@ -1,3 +1,4 @@
+' EXPECT: -1|0|-1|0|-1
 SUB Main()
   PRINT EMPTY(0)
   PRINT EMPTY(5)

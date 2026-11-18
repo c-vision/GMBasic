@@ -287,6 +287,19 @@ static void gmb_p_queue_bas_rem(gmb_parser_t* p, int line)
     gmb_p_queue_stmt(p, rem);
 }
 
+/* Un MODULO non può avere numeri di riga: dentro `NAMESPACE` sono un errore di sintassi.
+ * Parità col parser C# (`Line numbers not allowed inside NAMESPACE '<nome>'`): il C99Native
+ * è monofile, quindi un numero di riga di un file importato non avrebbe un salto/etichetta
+ * attribuibile al file giusto. Prima il C li accettava (e li ignorava), divergendo dal C#. */
+static int gmb_p_reject_line_number_in_ns(gmb_parser_t* p, const gmb_token_t* t)
+{
+    if (!p->cur_ns[0]) return 0;
+    char msg[192];
+    snprintf(msg, sizeof(msg), "Line numbers not allowed inside NAMESPACE '%s'.", p->cur_ns);
+    gmb_p_set_err(p, msg, t->line);
+    return 1;
+}
+
 /* salta newline/commento/line number (riga di programma); registra in
  * last_bas_line il numero riga BASIC della riga logica corrente (2.8: lbl_N) */
 void gmb_p_skip_eol(gmb_parser_t* p)
@@ -294,6 +307,7 @@ void gmb_p_skip_eol(gmb_parser_t* p)
     while (gmb_p_at_end(p)) return;
     const gmb_token_t* t = gmb_p_cur(p);
     if (t->kind == GMB_TOK_LineNumber) {
+        if (gmb_p_reject_line_number_in_ns(p, t)) return;
         gmb_p_queue_bas_rem(p, t->line);
         p->last_bas_line = gmb_p_bas_of(t); p->bas_fresh = 1; gmb_p_adv(p);
     }
@@ -304,7 +318,10 @@ void gmb_p_skip_eol(gmb_parser_t* p)
             gmb_p_queue_bas_rem(p, c->line);
             gmb_p_adv(p); gmb_p_adv(p);
             p->last_bas_line = 0; p->bas_fresh = 0;
-            if (gmb_p_check(p, GMB_TOK_LineNumber)) { p->last_bas_line = gmb_p_bas_of(gmb_p_cur(p)); p->bas_fresh = 1; gmb_p_adv(p); }
+            if (gmb_p_check(p, GMB_TOK_LineNumber)) {
+                if (gmb_p_reject_line_number_in_ns(p, gmb_p_cur(p))) return;
+                p->last_bas_line = gmb_p_bas_of(gmb_p_cur(p)); p->bas_fresh = 1; gmb_p_adv(p);
+            }
             continue;
         }
         break;
@@ -315,6 +332,7 @@ void gmb_p_skip_eol(gmb_parser_t* p)
             p->last_bas_line = 0; p->bas_fresh = 0; gmb_p_adv(p); continue;
         }
         if (gmb_p_check(p, GMB_TOK_LineNumber)) {
+            if (gmb_p_reject_line_number_in_ns(p, gmb_p_cur(p))) return;
             gmb_p_queue_bas_rem(p, gmb_p_cur(p)->line);
             p->last_bas_line = gmb_p_bas_of(gmb_p_cur(p)); p->bas_fresh = 1; gmb_p_adv(p); continue;
         }

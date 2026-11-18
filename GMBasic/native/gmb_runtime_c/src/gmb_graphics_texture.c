@@ -270,7 +270,12 @@ static int load_png_as_texture(const char* path, int cell_w, int cell_h)
 int gmb_gfx_load_texture(const char* path)
 {
     gmb_gfx_init();
-    if (gmb_gfx_null_mode()) return 1;
+    /* NIENTE scorciatoia in null mode: la texture va DECODIFICATA anche senza SDL (il
+     * registro immagini è software). Serve alle COLLISIONI e a SPRITEIMAGE: tornare 1
+     * lasciava `textures[1]` non registrata → `gmb_gfx_collide()` ritornava SEMPRE 0
+     * (COLLIDE/ON SPRITE COLLISION mai rilevati su C99/VM-C headless, mentre IL/PCode
+     * — che decodificano lato gestito — collidevano). Vedi gmb_gfx_sprite_load, che
+     * dichiara esplicitamente di volere "id e rettangoli veri" anche in null mode. */
     if (!path) return -1;
     return load_png_as_texture(path, 0, 0);
 }
@@ -278,7 +283,6 @@ int gmb_gfx_load_texture(const char* path)
 int gmb_gfx_load_texture_sheet(const char* path, int cell_w, int cell_h)
 {
     gmb_gfx_init();
-    if (gmb_gfx_null_mode()) return 1;
     if (!path) return -1;
     if (cell_w <= 0 || cell_h <= 0) return load_png_as_texture(path, 0, 0);
 

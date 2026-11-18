@@ -140,6 +140,8 @@ static void generator_release_fn(struct gmb_obj* o)
     }
     if (g->expr_list)
         gmb_obj_release((gmb_obj_t*)g->expr_list);
+    free(g->err_desc);
+    free(g->err_trace);
     free(g);
 }
 

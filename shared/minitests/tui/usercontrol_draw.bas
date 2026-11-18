@@ -1,4 +1,5 @@
 ' MiniTest UserControl: Paint usa CONTROL DRAW (primitiva GraphicsContext).
+' EXPECT: OK-usercontrol-draw
 IMPORT CONTROLS
 
 CLASS Sea

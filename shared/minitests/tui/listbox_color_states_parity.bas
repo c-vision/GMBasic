@@ -1,4 +1,5 @@
 ' Minitest TUI LISTBOX + colori di stato Clipper (COLOR/COLORFOCUS/COLORSEL/COLORERROR) — 4 backend.
+' EXPECT: OK-listbox-color-states
 IMPORT CONTROLS
 SUB Main()
   DIM v AS INTEGER

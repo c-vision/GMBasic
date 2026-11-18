@@ -1,4 +1,5 @@
 ' Minitest TUI LISTBOX — parità 4 backend (statement widget TUI).
+' EXPECT: OK-listbox
 IMPORT CONTROLS
 SUB Main()
   DIM v AS INTEGER

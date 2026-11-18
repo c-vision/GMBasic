@@ -12,6 +12,7 @@ Single point of the configurations that the two worlds (C# and C) read in the sa
 | `ml-manifest.json` | `ModelDownload` / ML components | models and components (torch, mlx) |
 | `chromium-manifest.json` | `browser` plugin | Chromium builds per RID |
 | `obscura-manifest.json` | CUA agents | headless browser |
+| `system.settings.json` → `bootstrapScope` | `gmb_first_use_ensure` (C), `gmb`, `gmbnative`, `gmbrepl`, `gmbcs` | **primo uso**: cosa scaricare automaticamente la prima volta — `"host"` (default, solo il RID di questa macchina), `"all"` (tutti e 6 i RID) o `"off"` (nessun download automatico). Il primo uso lascia il marker `~/.gmbasic/.first-use-<rid>`: dagli avvii successivi costa una `stat`, nessuna rete. `gmbadmin first-use --force` riprova; `--no-bootstrap` salta il controllo per un singolo avvio. |
 | **`providers.json`** | `AI.PROVIDERS()` in **both** legs | provider **seed**: three code defaults (`fixture-embedding`, `fixture-completion`, `keyword-reranker`), `roleOrder`, `activeIndex`, `schemes` (hf/huggingface/ollama/openai/anthropic) |
 
 ## Rule

@@ -428,6 +428,27 @@ struct gmb_task {
      * fine task via go->waitgroup; il ref del genitore è rilasciato in gmb_task_free. */
     gmb_waitgroup_t* implicit_waitgroup;
     char* pending_exception;         /* messaggio o NULL */
+    /* Codice/riga/descrizione dell'errore che ha reso il task FATALE (pending_exception).
+     * Serve ai driver che devono RILANCIARE l'errore nel contesto di un altro task invece
+     * di trasformarlo in StopIteration (generatori, parità C99Native gmb_gen_next). */
+    int fatal_err_code;
+    long fatal_err_line;
+    char* fatal_err_desc;
+    /* Catena BASIC dell'errore fatale, letta PRIMA dell'unwind dei frame (i generatori la
+     * antepongono alla catena del chiamante al re-raise: il corpo è un task separato). */
+    char* fatal_err_trace;
+    /* NEXT() su un generatore il cui corpo è uscito per ERRORE: il codice vero viaggia fino
+     * all'handler del chiamante (parità C99Native gmb_gen_next, che rilancia subito). */
+    int gen_err_pending;
+    int gen_err_code;
+    char* gen_err_desc;
+    char* gen_err_trace;   /* catena del corpo del generatore (da anteporre a quella del chiamante) */
+    long gen_err_line;     /* riga dell.errato NEL corpo del generatore (il re-raise deve usarla, non
+                            * quella del chiamante dove sta la NEXT) */
+    long err_line_override; /* riga da usare per il PROSSIMO raise (consumata) */
+    /* Prefisso da anteporre alla PROSSIMA catena costruita da vm_append_trace (re-raise di un
+     * errore di generatore: i frame del corpo non esistono nel task del chiamante). */
+    char* trace_prefix;
     /* DATA pointer (OP_READ/OP_RESTORE): indice nel chunk->data */
     int data_index;
     /* Generatore (GENERATOR PROCEDURE): valore prodotto dall'ultimo YIELD
@@ -455,6 +476,12 @@ struct gmb_task {
     /* stampa bufferizzata per-riga (come PrintLineStaging/PendingPrints) */
     char print_staging[1024];
     int  print_staging_len;
+    /* Frame della PROCEDURA che ha iniziato lo staging: un PRINT ANNIDATO (dentro una
+     * procedura chiamata come argomento) ha un frame più interno e va SOSPESO, non accodato
+     * (canone C99Native/IL/PCode: `[dentro]` + `b= 5`, non `b=[dentro]`). */
+    gmb_frame_t* print_staging_frame;
+    struct { char* buf; int len; gmb_frame_t* frame; } print_staging_saved[8];
+    int n_print_staging_saved;
     char print_line[2048];
     int  print_line_len;
     /* chiamata sincrona di closure dai builtin (gmb_vm_call_closure_sync) */

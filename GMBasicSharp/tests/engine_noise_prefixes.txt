@@ -19,3 +19,14 @@
 [GMB
 [mlx
 [MLX
+# Diagnostica delle FAMIGLIE LLM (sotto-verbo inesistente): il layer comando C la scrive su
+# stderr (`llmmodelio_model.c`), i backend gestiti alzano l'errore SENZA stampare. Siccome
+# l'harness confronta stderr solo sulla gamba C99Native (le gambe gestite catturano lo stdout),
+# senza questo filtro un MiniTest che prova un sotto-verbo inesistente non sarebbe confrontabile.
+# Il CONTRATTO verificato resta l'errore catturabile (ERR.Number), non il testo diagnostico.
+LLM MODULE:
+LLM KV:
+LLM ARCH:
+LLM POLICY:
+LLM TENSOR:
+LLM KERNEL:

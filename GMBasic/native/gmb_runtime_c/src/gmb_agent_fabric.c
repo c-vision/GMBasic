@@ -2,6 +2,7 @@
 #include "gmb_runtime.h"
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>   /* F2: close() — arrivava implicita da un altro header */
 #include <pthread.h>
 #ifdef __linux__
 #include <sys/epoll.h>

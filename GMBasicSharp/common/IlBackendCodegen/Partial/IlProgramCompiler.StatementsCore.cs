@@ -125,6 +125,10 @@ public sealed partial class IlProgramCompiler
             if (fieldBuilder.DeclaringType!.IsValueType) EmitInstanceAddress(target.Structure);
             else EmitInstanceValue(target.Structure);
             emitValue();
+            // BITFIELD (2026-11-11): maschera + estensione del segno prima dello store, così il
+            // valore memorizzato è già quello "C" (e ogni lettura lo restituisce corretto).
+            if (Bitfields.TryGetValue(fieldSymbolId, out var bf))
+                EmitBitfieldMask(bf.Width, bf.Signed, fieldBuilder.FieldType);
             _il.Emit(OpCodes.Stfld, fieldBuilder);
             return;
         }

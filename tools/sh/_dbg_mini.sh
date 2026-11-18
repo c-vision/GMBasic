@@ -161,6 +161,28 @@ fi
 RID="$(li_rid)"
 li_init
 LIBS_CACHE="$HOME/.gmbasic/libs/$RID"
+# ── EXPORT dei simboli che le NOSTRE dylib cercano a load-time ─────────────────────────────────
+# Stessa regola dei runner ufficiali (`gmb_c99native_run.sh`, `test_minitests_c99native`): le dylib
+# AI risolvono il core CARICANDOSI (`-undefined dynamic_lookup`), quindi chi fornisce i simboli è la
+# tabella degli export dell'eseguibile. Darwin: ld64 li esporta, lld di `zig cc` li dead-strippa;
+# Linux: serve `--export-dynamic`. Si forzano SOLO i 4 simboli ABI (`libs_exports_file.sh abi`),
+# non gli import di tutte le dylib: `-u` trattiene l'oggetto che definisce il simbolo, e la lista
+# piena infilava oggetti AI/grafici in ogni eseguibile (misurato: 198 KB → 594 KB su un `PRINT`).
+EXPORT_FLAGS=()
+EXPORT_SYMS_FILE=""; EXPORT_SYMS_TMP=0; EXPORT_GATE=0
+case "$(uname -s)" in
+  Linux)
+    EXPORT_FLAGS=(-Wl,--export-dynamic) ;;
+  Darwin)
+    if command -v dyld_info >/dev/null 2>&1; then
+      EXPORT_SYMS_FILE="$(mktemp "${TMPDIR:-/tmp}/gmbexports.XXXXXX")"; EXPORT_SYMS_TMP=1
+      # SOLO l'ABI minima (4 simboli): la lista piena, forzata con `-u`, trascinava dentro
+      # oggetti AI/grafici mai usati dal BASIC (198 KB → 594 KB su un `PRINT`).
+      bash "$MONO/tools/sh/libs_exports_file.sh" abi > "$EXPORT_SYMS_FILE"
+      while IFS= read -r _s; do EXPORT_FLAGS+=("-Wl,-u,$_s"); done < "$EXPORT_SYMS_FILE"
+    fi
+    ;;
+esac
 ZSTD_INC="$LIBS_CACHE/include"; ZSTD_LIB="-L$LIBS_CACHE -lzstd"
 EXT=" -lcurl -lz -lbz2 -lsqlite3 $ZSTD_LIB"
 if [ -f "$LIBS_CACHE/libbrotlidec.dylib" ]; then EXT="$EXT -L$LIBS_CACHE -lbrotlidec -lbrotlienc"; fi
@@ -181,7 +203,7 @@ broker_cleanup() {
 }
 
 WORK="$(mktemp -d /tmp/minitests_c99native.XXXXXX)"
-trap 'broker_cleanup' EXIT
+trap '[ "$EXPORT_SYMS_TMP" = 1 ] && rm -f "$EXPORT_SYMS_FILE" "$EXPORT_SYMS_FILE.m"; broker_cleanup' EXIT
 pass=0; fail=0; skip=0
 # Il runtime C e' compilato UNA volta per invocazione in una static library, poi ogni
 # MiniTest linka solo il proprio out.c (prima il runtime veniva ricompilato per ogni test).
@@ -293,10 +315,16 @@ for f in "$MINI"/**/*.bas "$MINI"/*.bas; do
   [ -f "$f" ] || continue
   name="${f#$MINI/}"
   if ! "$DRV" "$f" "$WORK/out.c" --no-exe >/dev/null 2>"$WORK/derr.txt"; then
-    # MiniTest NEGATIVO di compilazione (`' EXPECT: ERROR: ...`): il driver DEVE rifiutare il sorgente. Il testo esatto del
-    # messaggio differisce fra parser C# e parser C, quindi qui conta che l'errore ci sia (e che il driver non vada in HANG).
-    if grep -m1 -q "^' EXPECT: ERROR:" "$f" 2>/dev/null; then
+    # Negativo di COMPILAZIONE (`' EXPECT: COMPILE ERROR: ...`): il driver DEVE rifiutare il
+    # sorgente. Il testo esatto del messaggio differisce fra parser C# e parser C, quindi qui
+    # conta che l'errore ci sia (e che il driver non vada in HANG).
+    if grep -m1 -q "^' EXPECT: COMPILE ERROR:" "$f" 2>/dev/null; then
       echo "PASS $name :: (errore di compilazione atteso) $(head -1 "$WORK/derr.txt" | head -c 100)"; pass=$((pass+1)); continue
+    fi
+    # Negativo di RUNTIME rifiutato dal driver: il test non arriva al runtime che doveva
+    # verificare (prima usciva come PASS "errore di compilazione atteso").
+    if grep -m1 -q "^' EXPECT: ERROR:" "$f" 2>/dev/null; then
+      echo "FAIL $name (EXPECT: ERROR e' di runtime, ma il driver rifiuta il sorgente: $(head -1 "$WORK/derr.txt" | head -c 100))"; fail=$((fail+1)); continue
     fi
     # DIPENDENZA ESTERNA ASSENTE, dichiarata nel file (`' TAG: unsupported-c99native`): i test
     # che fanno `REQUIRE "<pacchetto>"` non sono verificabili senza il pacchetto installato.
@@ -396,8 +424,20 @@ for f in "$MINI"/**/*.bas "$MINI"/*.bas; do
     echo "PASS $name :: .gmblib '$lib' → $(echo $procs | wc -w | tr -d ' ') export ($(for p in $procs; do printf '%s ' "${lib}_$p"; done))"
     pass=$((pass+1)); continue
   fi
-  if ! cc "$WORK/out.c" "${LINK_IN[@]}" "${LINK_FLAGS[@]}" -o "$WORK/bin" 2>"$WORK/ccerr.txt"; then
+  # `EXPORT_FLAGS` solo sull'eseguibile: su `-shared` una `-u` verso un simbolo non definito lì
+  # sarebbe un errore di link.
+  if ! cc "$WORK/out.c" "${LINK_IN[@]}" "${LINK_FLAGS[@]}" ${EXPORT_FLAGS[@]+"${EXPORT_FLAGS[@]}"} -o "$WORK/bin" 2>"$WORK/ccerr.txt"; then
     echo "FAIL $name (cc: $(tail -3 "$WORK/ccerr.txt" | tr '\n' ' '))"; fail=$((fail+1)); continue
+  fi
+  # GATE EXPORT (una volta sola): un link riuscito non basta — se un simbolo cercato a load-time non
+  # è esportato il binario muore nel costruttore della dylib, prima di `main`.
+  if [ "$EXPORT_GATE" = 0 ] && [ -n "$EXPORT_SYMS_FILE" ] && [ -s "$EXPORT_SYMS_FILE" ]; then
+    if ! bash "$MONO/tools/sh/libs_exports_file.sh" verify "$WORK/bin" "$EXPORT_SYMS_FILE"; then
+      echo "ERRORE: l'eseguibile non esporta i simboli cercati a load-time dalle dylib (elenco sopra):" >&2
+      echo "  il binario morirebbe in un inizializzatore. Rigenerare il bundle (tools/sh/libs_build_release.sh)." >&2
+      exit 1
+    fi
+    EXPORT_GATE=1
   fi
   # Il motore MLX (dlopen in LLM QUALITY/REGISTRY MEASURE) e' raggiungibile via loader path: senza,
   # le gambe C sono standalone e la PPL reale darebbe `ppl=na` (divergenza vs IL). I log engine
@@ -457,7 +497,8 @@ for f in "$MINI"/**/*.bas "$MINI"/*.bas; do
     fail=$((fail+1)); continue
   fi
   # Salva il codice C generato per ispezione (verifica reale, non solo verdetto).
-  CNAME="${name##*/}"; CNAME="${CNAME%.bas}"
+  # Nome UNICO per percorso (due test omonimi in domini diversi non si sovrascrivono).
+  CNAME="$(printf '%s' "${name%.bas}" | sed 's|/|__|g')"
   CDEST="$MONO/tools/out/c99native/$CNAME.c"
   mkdir -p "$(dirname "$CDEST")" 2>/dev/null; cp "$WORK/out.c" "$CDEST" 2>/dev/null || true
   echo "PASS $name :: $OUT|"

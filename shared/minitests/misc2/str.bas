@@ -1,3 +1,4 @@
+' EXPECT: 12
 SUB Main()
   PRINT STR(12)
 END SUB

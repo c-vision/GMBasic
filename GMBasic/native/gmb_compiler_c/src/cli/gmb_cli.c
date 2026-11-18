@@ -34,6 +34,9 @@
 #include "gmb_inc_resolve.h"
 #include "gmb_cli_internal.h"
 
+/* gmb_cli_bootstrap.c — primo uso: delega a `gmbadmin first-use` (nessun link nuovo). */
+int gmb_first_use_spawn_if_needed(int argc, char** argv);
+
 #include <ctype.h>
 #include <dirent.h>
 #include <stdio.h>
@@ -295,6 +298,24 @@ int path_under(const char* path, const char* root) {
     return strncmp(path, root, l) == 0 && (path[l] == '/' || path[l] == 0);
 }
 
+/* Voce di baseline → path come lo stampa il CLI, cioè RELATIVO alla radice della suite.
+ * Il baseline è versionato con path relativi, ma una voce può arrivare ASSOLUTA (baseline
+ * vecchi, o registro fatto da un altro checkout): senza normalizzarla ogni voce nota sembra
+ * una regressione e il gate diventa rosso su una macchina e verde su un'altra. Il confronto
+ * con la radice è case-insensitive (stesso file con case diverso: checkout su filesystem
+ * case-insensitive, path trascritto in maiuscolo) e richiede il separatore dopo la radice,
+ * così `/x/bad` non "assorbe" `/x/bad2`: un path fuori radice resta com'è e non combacia. */
+static void baseline_norm(const char* entry, const char* root, char* out, size_t cap) {
+    const char* p = entry;
+    size_t lr = root ? strlen(root) : 0;
+    if (lr > 1 && strncasecmp(entry, root, lr) == 0 &&
+        (entry[lr] == '/' || entry[lr] == 0)) {
+        p = entry + lr;
+        while (*p == '/') p++;
+    }
+    snprintf(out, cap, "%s", p);
+}
+
 /* ── opzioni ──────────────────────────────────────────────────────────────────────────── */
 
 
@@ -409,11 +430,27 @@ static char* pick_entry(const char* project, const char* explicit_entry, DiagLis
  * file e ricette -I diverse: i conteggi non erano confrontabili. Qui la scoperta è ricorsiva
  * e ordinata (readdir non lo è: senza sort due run darebbero diff inutili) e la ricetta degli
  * -I è la STESSA di `build` (build_inc).
+ *
+ * NEGATIVI: due marcatori, due verifiche diverse (2026-11-14).
+ *
+ *  - `' EXPECT: COMPILE ERROR: <testo>` — negativo di COMPILAZIONE: il driver DEVE rifiutare il
+ *    sorgente. Il rifiuto conta PASS e non entra nel baseline. Se il driver lo ACCETTA, la
+ *    verifica è SPARITA e il file diventa un FAIL (`EXPECT-NOT-REJECTED`): senza questo, un
+ *    check rimosso dal compilatore era un PASS silenzioso (il file «compila», quindi non era né
+ *    CC-FAIL né DRIVER-FAIL, e nessuno se ne accorgeva).
+ *  - `' EXPECT: ERROR: <testo>` — negativo a RUNTIME: il sorgente DEVE compilare e fallire
+ *    eseguendo. Qui (gate di sola compilazione) l'esito atteso è che compili; l'errore a runtime
+ *    lo verifica la gamba nativa, che lo esegue. Se il driver lo rifiuta, il test non arriva più
+ *    al runtime che doveva verificare → FAIL (`EXPECT-COMPILE-REJECTED`).
+ *
+ * Un crash del driver resta un DRIVER-FAIL, con qualunque marcatore (il segnale non è un verdetto).
  */
 
 typedef struct {
     int interactive;
     int heavy;
+    int expect_error;   /* `' EXPECT: ERROR:`: negativo a RUNTIME (compila, sbaglia eseguendo) */
+    int expect_compile; /* `' EXPECT: COMPILE ERROR:`: negativo di COMPILAZIONE (il driver rifiuta) */
 } MiniTags;
 
 /* Tutti i `.bas` sotto `dir`, ricorsivo. readdir non è ordinato: si ordina dopo. */
@@ -436,10 +473,13 @@ static int cmp_str(const void* a, const void* b) {
     return strcmp(*(const char* const*)a, *(const char* const*)b);
 }
 
-/* I TAG del MiniTest (' TAG: interactive / heavy, in colonna 1 come li scrive la suite). */
+/* I TAG del MiniTest (' TAG: interactive / heavy, in colonna 1 come li scrive la suite) e il
+ * marcatore dei negativi di compilazione (' EXPECT: ERROR: <testo atteso>). */
 static void mini_tags(const char* path, MiniTags* t) {
     t->interactive = 0;
     t->heavy = 0;
+    t->expect_error = 0;
+    t->expect_compile = 0;
     char* s = read_all(path);
     if (!s) return;
     for (char* p = s; *p; ) {
@@ -447,6 +487,10 @@ static void mini_tags(const char* path, MiniTags* t) {
             const char* v = p + 7;
             if (strncasecmp(v, "interactive", 11) == 0) t->interactive = 1;
             else if (strncasecmp(v, "heavy", 5) == 0) t->heavy = 1;
+        } else if (strncmp(p, "' EXPECT: COMPILE ERROR:", 24) == 0) {
+            t->expect_compile = 1;
+        } else if (strncmp(p, "' EXPECT: ERROR:", 16) == 0) {
+            t->expect_error = 1;
         }
         char* eol = strchr(p, '\n');
         if (!eol) break;
@@ -613,7 +657,7 @@ static void cc_category(const char* line, char* out, size_t cap) {
 
 typedef struct {
     char path[CLI_PATH];
-    char status[16];
+    char status[32];   /* DRIVER-FAIL/CC-FAIL/EXPECT-NOT-REJECTED/EXPECT-COMPILE-REJECTED */
     int rc;
     int errors;
     int crash;
@@ -727,6 +771,9 @@ static int run_minitests(const Options* o) {
     MiniCat cats[MINI_MAX_CATS];
     int ncats = 0;
     int total = files.n, run = 0, pass = 0, ccfail = 0, drvfail = 0, crash = 0;
+    int exprej = 0;   /* negativi di COMPILAZIONE rifiutati come atteso (`' EXPECT: COMPILE ERROR:`) */
+    int exprun = 0;   /* negativi di RUNTIME che compilano (`' EXPECT: ERROR:`), contati a parte */
+    int lost = 0;     /* verifiche PERSE: il marcatore non e' piu' rispettato (vedi sotto) */
     int skip_i = 0, skip_h = 0;
 
     for (int i = 0; i < files.n; i++) {
@@ -754,8 +801,50 @@ static int run_minitests(const Options* o) {
         detail[0] = 0;
         int errors = 0;
         int drv_stage = 0;
+        const char* fstatus = NULL;   /* stato del FAIL quando non è DRIVER-FAIL/CC-FAIL */
 
-        if (rc != 0) {
+        int failed = 1;
+        if (rc != 0 && rc < 128 && tags.expect_compile) {
+            /* Negativo di COMPILAZIONE (`' EXPECT: COMPILE ERROR:`): il rifiuto del driver è
+             * l'esito atteso, non un DRIVER-FAIL — e non deve finire nel baseline, altrimenti
+             * ogni nuovo test negativo è una finta regressione. Il testo dell'EXPECT non si
+             * confronta qui (i negativi di parsing hanno messaggi più precisi del marcatore):
+             * lo verifica l'harness `tools/sh/test_minitests_c99native`. */
+            exprej++;
+            pass++;
+            failed = 0;
+            fprintf(stderr, "NEGATIVO-OK %s (rifiuto in compilazione come atteso, rc=%d)\n", disp, rc);
+        } else if (rc == 0 && tags.expect_compile) {
+            /* Il driver ha ACCETTATO un sorgente che deve essere RIFIUTATO: la verifica di
+             * compilazione è sparita. Era il PASS silenzioso: il file «compila», quindi non era
+             * né CC-FAIL né DRIVER-FAIL, e un check rimosso dal compilatore non si vedeva. */
+            lost++;
+            fstatus = "EXPECT-NOT-REJECTED";
+            snprintf(detail, sizeof detail,
+                     "il driver ha ACCETTATO il sorgente: la verifica di compilazione non "
+                     "rifiuta piu' nulla (EXPECT: COMPILE ERROR non rispettato)");
+            fprintf(stderr, "EXPECT-NOT-REJECTED %s (compila: la verifica di compilazione e' "
+                            "sparita)\n", disp);
+        } else if (rc == 0 && tags.expect_error) {
+            /* Negativo a RUNTIME (`' EXPECT: ERROR:`): deve COMPILARE, altrimenti non arriva al
+             * runtime che doveva verificare. L'errore a runtime lo verifica la gamba nativa
+             * (`tools/sh/test_minitests_c99native`), che esegue il binario: qui si conta a parte,
+             * così il riepilogo dice quanti negativi di runtime esistono invece di confonderli
+             * con i positivi. */
+            exprun++;
+            pass++;
+            failed = 0;
+        } else if (rc != 0 && rc < 128 && tags.expect_error) {
+            /* Negativo a RUNTIME ma il driver lo rifiuta: il test non raggiunge piu' il runtime
+             * che doveva verificare (stessa classe di check perso del caso EXPECT-NOT-REJECTED). */
+            lost++;
+            fstatus = "EXPECT-COMPILE-REJECTED";
+            snprintf(detail, sizeof detail,
+                     "EXPECT: ERROR e' un negativo di RUNTIME ma il driver rifiuta il sorgente "
+                     "(rc=%d): il test non arriva al runtime che doveva verificare", rc);
+            fprintf(stderr, "EXPECT-COMPILE-REJECTED %s (negativo di runtime rifiutato in "
+                            "compilazione, rc=%d)\n", disp, rc);
+        } else if (rc != 0) {
             drvfail++;
             drv_stage = 1;
             int crashed = rc >= 128;
@@ -812,11 +901,12 @@ static int run_minitests(const Options* o) {
                 }
             } else {
                 pass++;
+                failed = 0;
             }
         }
         free(log);
 
-        if (rc != 0) {
+        if (failed) {
             if (nfails == capfails) {
                 int cap = capfails ? capfails * 2 : 64;
                 MiniFail* p = (MiniFail*)realloc(fails, (size_t)cap * sizeof *p);
@@ -826,7 +916,8 @@ static int run_minitests(const Options* o) {
             }
             MiniFail* mf = &fails[nfails++];
             snprintf(mf->path, sizeof mf->path, "%s", disp);
-            snprintf(mf->status, sizeof mf->status, "%s", drv_stage ? "DRIVER-FAIL" : "CC-FAIL");
+            snprintf(mf->status, sizeof mf->status, "%s",
+                     fstatus ? fstatus : (drv_stage ? "DRIVER-FAIL" : "CC-FAIL"));
             mf->rc = rc;
             mf->errors = errors;
             mf->crash = drv_stage && rc >= 128;
@@ -874,8 +965,13 @@ static int run_minitests(const Options* o) {
         if (o->filter && *o->filter)
             fprintf(stderr, "gmb minitests: avviso, --baseline con --filter: i file non "
                             "eseguiti risultano 'risolti'\n");
-        /* confronto case-insensitive: `base` resta com'è per stamparlo, `base_lc` serve al match */
-        for (int i = 0; i < base.n; i++) nameset_add_lower(&base_lc, base.items[i]);
+        /* confronto case-insensitive: `base` resta com'è per stamparlo, `base_lc` serve al match
+         * e contiene la voce NORMALIZZATA (relativa alla radice), la stessa forma di `cur`. */
+        for (int i = 0; i < base.n; i++) {
+            char norm[CLI_PATH];
+            baseline_norm(base.items[i], root, norm, sizeof norm);
+            nameset_add_lower(&base_lc, norm);
+        }
         for (int i = 0; i < nfails; i++) nameset_add_lower(&cur, fails[i].path);
         for (int i = 0; i < nfails; i++)
             if (!nameset_has_lower(&base_lc, fails[i].path)) newfails++;
@@ -883,15 +979,19 @@ static int run_minitests(const Options* o) {
             if (!nameset_has_lower(&cur, base.items[i])) fixed++;
     }
 
-    int ok = have_base ? (newfails == 0) : (ccfail == 0 && drvfail == 0);
+    /* Senza baseline "verde" significa zero FAIL di ogni classe: anche una verifica PERSA
+     * (`lost`) e' un FAIL, non un PASS mancato. */
+    int ok = have_base ? (newfails == 0) : (ccfail == 0 && drvfail == 0 && lost == 0);
 
     if (o->json) {
         printf("{\n  \"command\": \"minitests\",\n  \"root\": ");
         json_str(stdout, ".");   /* relativo alla radice: nessun path assoluto nel baseline */
         printf(",\n  \"total\": %d,\n  \"run\": %d,\n  \"skipped_interactive\": %d,"
                "\n  \"skipped_heavy\": %d,\n  \"pass\": %d,\n  \"cc_fail\": %d,"
-               "\n  \"driver_fail\": %d,\n  \"driver_crash\": %d,",
-               total, run, skip_i, skip_h, pass, ccfail, drvfail, crash);
+               "\n  \"driver_fail\": %d,\n  \"driver_crash\": %d,"
+               "\n  \"expected_reject\": %d,\n  \"expected_runtime\": %d,"
+               "\n  \"expect_lost\": %d,",
+               total, run, skip_i, skip_h, pass, ccfail, drvfail, crash, exprej, exprun, lost);
         if (have_base) printf("\n  \"new_failures\": %d,\n  \"fixed\": %d,", newfails, fixed);
         printf("\n  \"ok\": %s,\n", ok ? "true" : "false");
         printf("  \"cc_categories\": [");
@@ -952,6 +1052,15 @@ static int run_minitests(const Options* o) {
                 total, run, pass, ccfail, drvfail, crash);
         /* riga storica di tools/c99_compile_errors.sh, tenuta per chi la legge ancora */
         fprintf(stderr, "C99 compile-error: %d\n", ccfail);
+        if (exprej)
+            fprintf(stderr, "negativi di compilazione (EXPECT: COMPILE ERROR, rifiuto del driver): "
+                            "%d — contati PASS\n", exprej);
+        if (exprun)
+            fprintf(stderr, "negativi di runtime (EXPECT: ERROR, compilano): %d — l'errore lo "
+                            "verifica la gamba nativa eseguendoli\n", exprun);
+        if (lost)
+            fprintf(stderr, "VERIFICHE PERSE: %d (un EXPECT non e' piu' rispettato: vedi "
+                            "EXPECT-NOT-REJECTED / EXPECT-COMPILE-REJECTED sopra)\n", lost);
         if (have_base) {
             for (int i = 0; i < nfails; i++)
                 if (!nameset_has_lower(&base_lc, fails[i].path))
@@ -986,6 +1095,20 @@ int main(int argc, char** argv) {
     if (!strcmp(argv[1], "-v") || !strcmp(argv[1], "--version")) {
         printf("gmb 1.0.0 (GMBASIC C CLI)\n");
         return 0;
+    }
+    /* PRIMO USO: completa librerie native + toolchain (zig) prima di compilare. Delega a
+     * `gmbadmin first-use` — una sola implementazione (gmb_first_use.c), nessun link nuovo.
+     * A cache completa costa una `stat`; `--no-bootstrap` lo salta.
+     * NON si attiva per i comandi LOCALI che non compilano nulla: `doctor --verify` deve
+     * poter verificare un artefatto appena scompattato **senza rete** (e senza scaricare
+     * 443 MB prima di dire se i file combaciano). */
+    {
+        int local_only = 0;
+        if (argc > 2 && !strcmp(argv[1], "doctor")) {
+            for (int i = 2; i < argc; i++)
+                if (!strcmp(argv[i], "--verify")) local_only = 1;
+        }
+        if (!local_only) gmb_first_use_spawn_if_needed(argc, argv);
     }
     {
         int arc = gmb_cli_admin_maybe(argc, argv);   /* pkg/fixtures/setup/... → gmbadmin (C) */

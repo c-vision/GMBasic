@@ -16,6 +16,7 @@
 #include <unistd.h>
 #include <strings.h>
 #include <sys/stat.h>
+#include "gmb_compat_win.h"   /* lstat (solo su Windows) */
 
 #define FX_PATH 4096
 

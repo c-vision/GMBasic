@@ -1,4 +1,5 @@
 ' Minitest TUI RADIO — parità 4 backend (statement widget TUI).
+' EXPECT: OK-radio
 IMPORT CONTROLS
 SUB Main()
   DIM v AS INTEGER

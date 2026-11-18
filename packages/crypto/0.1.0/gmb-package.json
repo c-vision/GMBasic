@@ -1,6 +1,7 @@
 {
   "name": "crypto",
   "version": "0.1.0",
+  "license": "PUL-1.1",
   "description": "Dominio CRYPTOGRAPHY via FFI: hash (SHA-1/256/384/512, SHA-3, MD5, RIPEMD-160), HMAC, PBKDF2/HKDF, AES-GCM, ChaCha20-Poly1305, password hash, checksum (CRC32, CRC32C, CRC16, CRC64, Adler-32, Fletcher-32), encoding hex/base64/base64url. Sorgenti canonici in gmbsuite/gmbcrypto, copia self-contained qui.",
   "contentType": "c-ffi-source",
   "exports": ["crypto.inc"],

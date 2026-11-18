@@ -1,11 +1,19 @@
 #!/usr/bin/env bash
 # check_minitests.sh — GATE dei MiniTests contro il baseline REGISTRATO nel repo.
 #
-# PERCHÉ ESISTE: il pavimento di fallimenti C99Native non è 0 (83 file al 2026-10-24: 36
-# CC-FAIL + 47 DRIVER-FAIL), quindi un gate "verde se 0 FAIL" sarebbe rosso sempre e nessuno
-# lo guarderebbe. Questo script confronta il run corrente col baseline versionato e fallisce
-# solo per le REGRESSIONI (un FAIL che prima non c'era). Il pavimento che scende non è un
-# errore: appare come `RISOLTO <file>` e col tempo si rigenera il baseline.
+# PERCHÉ ESISTE: un gate "verde se 0 FAIL" non basta, perché il pavimento può non essere zero
+# (storicamente 83 file al 2026-10-24: 36 CC-FAIL + 47 DRIVER-FAIL; oggi 0 FAIL noti) e i
+# MiniTest negativi (`' EXPECT: ERROR:`) sono esiti, non guasti. Questo script confronta il run
+# corrente col baseline versionato e fallisce solo per le REGRESSIONI (un FAIL che prima non
+# c'era): il pavimento che scende non è un errore, appare come `RISOLTO <file>` e col tempo si
+# rigenera il baseline.
+#
+# I MiniTest NEGATIVI hanno DUE marcatori, perché sono due verifiche diverse: `COMPILE ERROR`
+# deve essere RIFIUTATO dal compilatore, `ERROR` deve compilare e fallire a runtime. Il CLI conta
+# PASS il rifiuto dei negativi di compilazione (non entrano nel baseline: aggiungerne uno non
+# richiede `--update`) e FAIL quando `COMPILE ERROR` non viene più rifiutato
+# (`EXPECT-NOT-REJECTED`) o quando un negativo di runtime non arriva più al runtime
+# (`EXPECT-COMPILE-REJECTED`): un check rimosso dal compilatore non è più un PASS silenzioso.
 #
 # Uso:
 #   tools/sh/check_minitests.sh               # verifica → exit 0 ok · 2 regressione · 1 setup

@@ -1,3 +1,4 @@
+' EXPECT: 4|GM|Basic|Basi|Basic|3|4|3|0|-1|0|65|A|[   ]|[ 123]|123.5
 IMPORT STRINGS
 SUB Main()
   PRINT LEN("ciao")

@@ -18,6 +18,7 @@
 #include <time.h>
 #include <errno.h>
 #include <unistd.h>
+#include "gmb_compat_win.h"   /* mkdir a 2 argomenti + strcasestr (solo su Windows) */
 
 static void sb_db_path(char* out, size_t cap)
 {

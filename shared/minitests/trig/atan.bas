@@ -1,3 +1,4 @@
+' EXPECT: 0
 SUB Main()
   PRINT ATN(0)
 END SUB

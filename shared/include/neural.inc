@@ -284,8 +284,8 @@ DECLARE NATIVE FUNCTION CRELUGRAD LIB "gmbneural" ALIAS "ofx_nn_act_crelu_grad__
 ' ── Strato denso addestrabile (gn_dense) — handle 5001+ ──────────────────
 ' W: out×in, b: out. FORWARD memorizza x per il BACKWARD; ZEROGRAD/STEP come le RNN.
 DECLARE FUNCTION DENSEINIT LIB "gmbneural" ALIAS "ofx_nn_dense_init" (in_ AS LONG, out_ AS LONG, seed AS LONG) AS LONG
-DECLARE NATIVE FUNCTION DENSEFORWARD LIB "gmbneural" ALIAS "ofx_nn_dense_forward" (h AS LONG, x() AS DOUBLE, batch AS LONG, y() AS DOUBLE) AS LONG
-DECLARE NATIVE FUNCTION DENSEBACKWARD LIB "gmbneural" ALIAS "ofx_nn_dense_backward" (h AS LONG, grad_y() AS DOUBLE, batch AS LONG, grad_x() AS DOUBLE) AS LONG
+DECLARE NATIVE FUNCTION DENSEFORWARD LIB "gmbneural" ALIAS "ofx_nn_dense_forward" (h AS LONG, x() AS DOUBLE, batch AS LONG, OUT y() AS DOUBLE) AS LONG
+DECLARE NATIVE FUNCTION DENSEBACKWARD LIB "gmbneural" ALIAS "ofx_nn_dense_backward" (h AS LONG, grad_y() AS DOUBLE, batch AS LONG, OUT grad_x() AS DOUBLE) AS LONG
 ' Lettura/scrittura dei parametri (W out×in, b out).
 DECLARE NATIVE FUNCTION DENSEPARAMS LIB "gmbneural" ALIAS "ofx_nn_dense_params" (h AS LONG, W() AS DOUBLE, b() AS DOUBLE) AS LONG
 DECLARE NATIVE FUNCTION DENSESETPARAMS LIB "gmbneural" ALIAS "ofx_nn_dense_setparams" (h AS LONG, W() AS DOUBLE, b() AS DOUBLE) AS LONG
@@ -296,10 +296,10 @@ DECLARE FUNCTION DENSEFREE LIB "gmbneural" ALIAS "ofx_nn_dense_free" (h AS LONG)
 
 ' ── Perdite con gradiente (gn_loss): y, t, grad sono rows×cols ────────────
 ' LOSS* scrive il gradiente in grad() e il valore della perdita in loss() (indice 0).
-DECLARE NATIVE FUNCTION LOSSMSE LIB "gmbneural" ALIAS "ofx_nn_loss_mse" (y() AS DOUBLE, t() AS DOUBLE, rows AS LONG, cols AS LONG, grad() AS DOUBLE, loss() AS DOUBLE) AS LONG
-DECLARE NATIVE FUNCTION LOSSMAE LIB "gmbneural" ALIAS "ofx_nn_loss_mae__nat" (y() AS DOUBLE, t() AS DOUBLE, rows AS LONG, cols AS LONG, grad() AS DOUBLE, loss() AS DOUBLE) AS LONG
-DECLARE NATIVE FUNCTION LOSSCROSSENTROPY LIB "gmbneural" ALIAS "ofx_nn_loss_cross_entropy__nat" (y() AS DOUBLE, t() AS DOUBLE, rows AS LONG, cols AS LONG, grad() AS DOUBLE, loss() AS DOUBLE) AS LONG
-DECLARE NATIVE FUNCTION LOSSBINARYCROSSENTROPY LIB "gmbneural" ALIAS "ofx_nn_loss_binary_cross_entropy__nat" (y() AS DOUBLE, t() AS DOUBLE, rows AS LONG, cols AS LONG, grad() AS DOUBLE, loss() AS DOUBLE) AS LONG
+DECLARE NATIVE FUNCTION LOSSMSE LIB "gmbneural" ALIAS "ofx_nn_loss_mse" (y() AS DOUBLE, t() AS DOUBLE, rows AS LONG, cols AS LONG, OUT grad() AS DOUBLE, OUT loss() AS DOUBLE) AS LONG
+DECLARE NATIVE FUNCTION LOSSMAE LIB "gmbneural" ALIAS "ofx_nn_loss_mae__nat" (y() AS DOUBLE, t() AS DOUBLE, rows AS LONG, cols AS LONG, OUT grad() AS DOUBLE, OUT loss() AS DOUBLE) AS LONG
+DECLARE NATIVE FUNCTION LOSSCROSSENTROPY LIB "gmbneural" ALIAS "ofx_nn_loss_cross_entropy__nat" (y() AS DOUBLE, t() AS DOUBLE, rows AS LONG, cols AS LONG, OUT grad() AS DOUBLE, OUT loss() AS DOUBLE) AS LONG
+DECLARE NATIVE FUNCTION LOSSBINARYCROSSENTROPY LIB "gmbneural" ALIAS "ofx_nn_loss_binary_cross_entropy__nat" (y() AS DOUBLE, t() AS DOUBLE, rows AS LONG, cols AS LONG, OUT grad() AS DOUBLE, OUT loss() AS DOUBLE) AS LONG
 
 ' ── Dropout — handle 6001+ (maschera interna, rigenerata dal FORWARD in train) ──
 DECLARE FUNCTION DROPOUTINIT LIB "gmbneural" ALIAS "ofx_nn_dropout_init" (n AS LONG, rate AS DOUBLE) AS LONG

@@ -120,6 +120,10 @@ public sealed partial class IlProgramCompiler
     {
         if (_currentProcDeclaresDynamic)
             _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.DynamicVarPop)));
+        // STACK TRACE BASIC: ogni uscita della procedura passa di qui (END SUB/FUNCTION,
+        // RETURN, fallthrough, punto di uscita dei RETURN dentro TRY/DEFER) → il frame va
+        // chiuso in un solo posto. No-op per i metodi senza procedura BASIC.
+        EmitTraceLeave();
     }
 
     /// <summary>Vero se il corpo (ricorsivamente) contiene una dichiarazione DYNAMIC.</summary>
@@ -1089,7 +1093,11 @@ public sealed partial class IlProgramCompiler
     private static (OpCode Load, OpCode Store) IndirectOpCodes(DataType type) => type switch
     {
         DoubleType => (OpCodes.Ldind_R8, OpCodes.Stind_R8),
-        SingleType => (OpCodes.Ldind_R4, OpCodes.Stind_R4),
+        // SINGLE: il dialetto memorizza la variabile come DOUBLE (DataTypeMapper.SingleType =>
+        // types.Double) e il parametro BYREF è `double&`: con Ldind_R4/Stind_R4 si scrivevano
+        // 4 byte nella metà bassa di uno storage da 8 e il valore non tornava al chiamante
+        // (`BYREF v AS SINGLE`, v = 0.5 → il chiamante leggeva 1.25000023469329).
+        SingleType => (OpCodes.Ldind_R8, OpCodes.Stind_R8),
         LongType => (OpCodes.Ldind_I8, OpCodes.Stind_I8),
         ULongType => (OpCodes.Ldind_I8, OpCodes.Stind_I8),
         // INTEGER/UINTEGER = 64 bit nel dialetto (parità C, vedi DataTypeMapper): il BYREF punta
@@ -1098,7 +1106,11 @@ public sealed partial class IlProgramCompiler
         IntegerType or UIntegerType => (OpCodes.Ldind_I8, OpCodes.Stind_I8),
         ByteType => (OpCodes.Ldind_U1, OpCodes.Stind_I1),
         SByteType => (OpCodes.Ldind_I1, OpCodes.Stind_I1),
-        BitType => (OpCodes.Ldind_I1, OpCodes.Stind_I1),
+        // BIT: lo storage è INT32 (GetOrDeclareLocal forza _types.Int32, GlobalClrType idem)
+        // e il parametro BYREF è `bool&`: scrivendo 1 byte (Stind_I1) i 3 byte alti restavano
+        // quelli di prima (`v = FALSE` su un TRUE dava -256). Lo store/load indiretto segue
+        // la larghezza dello STORAGE, non quella del tipo logico.
+        BitType => (OpCodes.Ldind_I4, OpCodes.Stind_I4),
         StringType => (OpCodes.Ldind_Ref, OpCodes.Stind_Ref),
         ArrayType => (OpCodes.Ldind_Ref, OpCodes.Stind_Ref), // un array è un reference type CLR, come una stringa
         // CLASS/INTERFACE: reference type CLR (TypeBuilder) — lettura/scrittura indiretta

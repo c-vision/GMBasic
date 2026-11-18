@@ -4,6 +4,7 @@
 ' ETHADDRFROMPUB, che con la compressa di GETPUBLICKEY produce un ALTRO indirizzo.
 ' Vettore noto: priv = 1 (generatore di secp256k1).
 REQUIRE "blockchain"
+REQUIRE "crypto"
 IMPORT BLOCKCHAIN
 IMPORT CRYPTOGRAPHY
 IMPORT STRINGS
@@ -12,14 +13,14 @@ SUB MostraFull(priv() AS BYTE, o() AS BYTE)
   DIM n AS LONG
   n = GETFULLPUBLICKEY(priv, o)
   PRINT "n="; n
-  PRINT "full="; TOHEX(o)
+  PRINT "full="; BYTESHEX(o)
   PRINT "eth="; ETHADDRFROMPUB(o)
 END SUB
 
 SUB Compressa(priv() AS BYTE, o() AS BYTE)
   DIM n AS LONG
   n = GETPUBLICKEY(priv, o)
-  PRINT "comp="; LEFT(TOHEX(o), n * 2)
+  PRINT "comp="; LEFT(BYTESHEX(o), n * 2)
 END SUB
 
 SUB Main()
@@ -29,12 +30,12 @@ SUB Main()
   MostraFull(priv, full)
   DIM comp(32) AS BYTE
   Compressa(priv, comp)
-  IF LEFT(TOHEX(full), 2) = "04" THEN
+  IF LEFT(BYTESHEX(full), 2) = "04" THEN
     PRINT "prefix04=SI"
   ELSE
     PRINT "prefix04=NO"
   END IF
-  IF MID(TOHEX(full), 3, 64) = MID(TOHEX(comp), 3, 64) THEN
+  IF MID(BYTESHEX(full), 3, 64) = MID(BYTESHEX(comp), 3, 64) THEN
     PRINT "xmatch=SI"
   ELSE
     PRINT "xmatch=NO"

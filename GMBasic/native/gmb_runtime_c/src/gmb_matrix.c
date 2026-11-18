@@ -1825,7 +1825,7 @@ static int64_t gmb_matrix_eigenwise(int64_t a, double (*f)(double))
     int64_t V = gmb_matrix_decomp_get_factor(decomp, 1); /* autovettori */
     int64_t D = gmb_matrix_decomp_get_factor(decomp, 0); /* autovalori (diag) */
     int64_t out = gmb_matrix_create(n, n);
-    if (V <= 0 || D <= 0 || out <= 0) return -1;
+    if (V <= 0 || D <= 0 || out <= 0) { gmb_matrix_decomp_free(decomp); return -1; }
     for (int i = 0; i < n; i++)
         for (int j = 0; j < n; j++)
         {
@@ -1834,6 +1834,9 @@ static int64_t gmb_matrix_eigenwise(int64_t a, double (*f)(double))
                 s += gmb_matrix_get(V, i, k) * f(gmb_matrix_get(D, k, k)) * gmb_matrix_get(V, j, k);
             gmb_matrix_set(out, i, j, s);
         }
+    /* I fattori sono gia' copiati in `out`: la decomposizione va liberata subito (niente
+     * crescita del registry: SINM/TANM/COSM/SIGNM in un ciclo la consumavano). */
+    gmb_matrix_decomp_free(decomp);
     return out;
 }
 
@@ -1852,7 +1855,7 @@ int64_t gmb_matrix_fractional_power(int64_t a, double p)
     int64_t V = gmb_matrix_decomp_get_factor(decomp, 1);
     int64_t D = gmb_matrix_decomp_get_factor(decomp, 0);
     int64_t out = gmb_matrix_create(n, n);
-    if (V <= 0 || D <= 0 || out <= 0) return -1;
+    if (V <= 0 || D <= 0 || out <= 0) { gmb_matrix_decomp_free(decomp); return -1; }
     for (int i = 0; i < n; i++)
         for (int j = 0; j < n; j++)
         {
@@ -1861,6 +1864,7 @@ int64_t gmb_matrix_fractional_power(int64_t a, double p)
                 s += gmb_matrix_get(V, i, k) * pow(gmb_matrix_get(D, k, k), p) * gmb_matrix_get(V, j, k);
             gmb_matrix_set(out, i, j, s);
         }
+    gmb_matrix_decomp_free(decomp);   /* fattori gia' copiati in `out` */
     return out;
 }
 
@@ -1875,10 +1879,10 @@ int64_t gmb_matrix_orth(int64_t a)
     if (d <= 0) return -1;
     int64_t U = gmb_matrix_decomp_get_factor(d, 0);
     int64_t S = gmb_matrix_decomp_get_factor(d, 1);
-    if (U <= 0 || S <= 0) return -1;
+    if (U <= 0 || S <= 0) { gmb_matrix_decomp_free(d); return -1; }
     double tol = (double)n * 2.220446049250313e-16 * fabs(gmb_matrix_get(S, 0, 0));
     double* sv = (double*)malloc(sizeof(double) * (size_t)n);
-    if (!sv) return -1;
+    if (!sv) { gmb_matrix_decomp_free(d); return -1; }
     for (int j = 0; j < n; j++) sv[j] = gmb_matrix_get(S, j, j);
     /* ordina per valore singolare DISCENDENTE (convenzione scipy), riordinando le colonne di U */
     for (int i = 0; i < n; i++)
@@ -1897,7 +1901,7 @@ int64_t gmb_matrix_orth(int64_t a)
     for (int j = 0; j < n; j++)
         if (sv[j] > tol) rank++;
     int64_t out = gmb_matrix_create(n, rank);
-    if (out <= 0) { free(sv); return -1; }
+    if (out <= 0) { free(sv); gmb_matrix_decomp_free(d); return -1; }
     for (int i = 0; i < n; i++)
         for (int j = 0; j < rank; j++)
             gmb_matrix_set(out, i, j, gmb_matrix_get(U, i, j) / sv[j]); /* normalizza */
@@ -1919,6 +1923,9 @@ int64_t gmb_matrix_orth(int64_t a)
                 gmb_matrix_set(out, i, j, -gmb_matrix_get(out, i, j));
     }
     free(sv);
+    /* U/S copiati in `out`: la sotto-decomposizione SVD va liberata (prima restava nel
+     * registry per sempre: ORTH/SUBSPACEANGLES in un ciclo lo consumavano). */
+    gmb_matrix_decomp_free(d);
     return out;
 }
 
@@ -1927,7 +1934,7 @@ double gmb_matrix_cond(int64_t a)
     int64_t d = gmb_matrix_svd(a);
     if (d <= 0) return -1;
     int64_t S = gmb_matrix_decomp_get_factor(d, 1);
-    if (S <= 0) return -1;
+    if (S <= 0) { gmb_matrix_decomp_free(d); return -1; }
     int n = gmb_matrix_rows(a);
     double smax = gmb_matrix_get(S, 0, 0), smin = gmb_matrix_get(S, 0, 0);
     for (int j = 1; j < n; j++)
@@ -1936,6 +1943,7 @@ double gmb_matrix_cond(int64_t a)
         if (v > smax) smax = v;
         if (v < smin) smin = v;
     }
+    gmb_matrix_decomp_free(d);
     if (smin < 1e-300) return 1.0 / 0.0;
     return smax / smin;
 }
@@ -1945,10 +1953,11 @@ double gmb_matrix_nuclear_norm(int64_t a)
     int64_t d = gmb_matrix_svd(a);
     if (d <= 0) return -1;
     int64_t S = gmb_matrix_decomp_get_factor(d, 1);
-    if (S <= 0) return -1;
+    if (S <= 0) { gmb_matrix_decomp_free(d); return -1; }
     int n = gmb_matrix_rows(a);
     double sum = 0;
     for (int j = 0; j < n; j++) sum += gmb_matrix_get(S, j, j);
+    gmb_matrix_decomp_free(d);
     return sum;
 }
 
@@ -2545,19 +2554,29 @@ int gmb_matrix_subspace_angles(int64_t a, int64_t b, double** out)
 {
     int64_t oa = gmb_matrix_orth(a);
     int64_t ob = gmb_matrix_orth(b);
-    if (oa <= 0 || ob <= 0) return -1;
+    if (oa <= 0 || ob <= 0)
+    {
+        if (oa > 0) gmb_matrix_free(oa);
+        if (ob > 0) gmb_matrix_free(ob);
+        return -1;
+    }
     int na = gmb_matrix_rows(oa), nb = gmb_matrix_rows(ob);
     int ca = gmb_matrix_cols(oa), cb = gmb_matrix_cols(ob);
-    if (ca != na) return -1;
+    if (ca != na) { gmb_matrix_free(oa); gmb_matrix_free(ob); return -1; }
     int64_t oat = gmb_matrix_transpose(oa);
+    gmb_matrix_free(oa);
+    if (oat <= 0) { gmb_matrix_free(ob); return -1; }
     int64_t c = gmb_matrix_multiply(oat, ob);   /* Qa^T · Qb */
+    gmb_matrix_free(oat);
+    gmb_matrix_free(ob);
     if (c <= 0) return -1;
     int64_t d = gmb_matrix_svd(c);
+    gmb_matrix_free(c);
     if (d <= 0) return -1;
     int64_t S = gmb_matrix_decomp_get_factor(d, 1);
     int len = ca < cb ? ca : cb;
     double* angles = (double*)malloc(sizeof(double) * (size_t)len);
-    if (!angles) return -1;
+    if (!angles) { gmb_matrix_decomp_free(d); return -1; }
     for (int i = 0; i < len; i++)
     {
         double sv = gmb_matrix_get(S, i, i);
@@ -2565,6 +2584,9 @@ int gmb_matrix_subspace_angles(int64_t a, int64_t b, double** out)
         if (sv < -1.0) sv = -1.0;
         angles[i] = acos(sv);
     }
+    /* Tutti i temporanei sono copiati: liberarli evita la crescita del registry (prima
+     * SUBSPACEANGLES in un ciclo lo esauriva: 4 matrici + 1 decomposizione per chiamata). */
+    gmb_matrix_decomp_free(d);
     *out = angles;
     return len;
 }

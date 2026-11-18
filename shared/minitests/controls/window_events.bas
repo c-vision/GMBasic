@@ -9,9 +9,9 @@
 ' incrementi consecutivi sulla stessa variabile possono sovrapporsi (lost update), mentre un
 ' flag idempotente resta deterministico.
 '
-' Niente riga EXPECT: creazione/render delle finestre scrivono frame sulla console e l'output
-' completo non è confrontabile fra backend. La verifica è l'EXIT CODE (FUNCTION Main AS INTEGER:
-' 1 = FAIL), come per tui/window_parity.bas.
+' Niente oracolo statico: creazione/render delle finestre scrivono frame sulla console e
+' l'output completo non è confrontabile fra backend. La verifica è l'EXIT CODE (FUNCTION
+' Main AS INTEGER: 1 = FAIL), come per tui/window_parity.bas.
 IMPORT WINDOWS
 SCREEN 0
 DIM a = 0
@@ -46,6 +46,9 @@ FUNCTION Main() AS INTEGER
 
     ' Fuori dalle finestre: i PRINT mentre una finestra è attiva finiscono nel suo buffer.
     WINDOW SELECT 0
+    ' Handler come task GPM: SLEEP 1 (park reale) prima di leggere i flag, altrimenti la
+    ' stampa puo' precedere il task dell'evento (uscita non deterministica su PCode).
+    SLEEP 1
     PRINT "flags:"; a; b; anyr; f1
     IF a <> 0 THEN fails = fails + 1         ' handle 1 non deve aver visto eventi di w2
     IF b <> 1 THEN fails = fails + 1

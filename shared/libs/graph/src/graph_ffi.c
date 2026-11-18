@@ -701,7 +701,12 @@ i64 gfx_path_reconstruct(const i64 *prev, int64_t prev_n, i64 n, i64 src, i64 ds
     ok = gor_path_reconstruct(p, (int)src, (int)n, (int)dst, o, &len);
     free(p);
     if (!ok || len <= 0) { free(o); return 0; }
-    m = (len < (int)cap) ? len : cap;
+    /* Cap: NON troncare `cap` a int. Con la variante __nat out_n = INT64_MAX e
+     * `(int)cap` diventava -1 → la condizione cadeva su m = cap = INT64_MAX → il loop
+     * scriveva miliardi di elementi in `out` (SIGSEGV/SIGBUS: graph_container_helpers
+     * su C99 e sulle gambe gestite). */
+    m = (i64)len;
+    if (cap < m) m = cap;
     for (i = 0; i < m; i++) out[i] = (i64)o[i];
     free(o);
     return m;

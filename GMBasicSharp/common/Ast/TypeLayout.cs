@@ -93,7 +93,7 @@ public static class TypeLayout
             case StringType { FixedLength: > 0 } fixedStr:
                 return fixedStr.FixedLength!.Value + 1;
             case UserDefinedType udt:
-                return UdtByteSize(ResolveNested(udt, resolve), visited, resolve);
+                return ComputeLayout(ResolveNested(udt, resolve), visited, resolve).Size;
             default:
                 return ReferenceFieldSize;
         }
@@ -102,33 +102,181 @@ public static class TypeLayout
     /// <summary>
     /// Dimensione in byte del layout di uno UDT: packed = somma dei campi, altrimenti
     /// allineamento naturale di ogni campo e taglia finale multipla del massimo allineamento.
+    /// UNION (2026-11-11): tutti i campi partono da 0 → taglia = massimo dei campi, allineamento
+    /// = massimo. BITFIELD (`... WIDTH n`): i bit si impacchettano LSB-first nell'unità di
+    /// storage del tipo dichiarato (regole C: nuova unità quando il campo non ci sta, il campo
+    /// successivo riparte dopo l'unità intera).
     /// </summary>
     public static long UdtByteSize(UserDefinedType udt, Func<UserDefinedType, UserDefinedType?>? resolve = null)
-        => UdtByteSize(udt, new HashSet<int>(), resolve);
+        => ComputeLayout(udt, new HashSet<int>(), resolve).Size;
 
-    public static long UdtByteSize(UserDefinedType udt, HashSet<int> visited, Func<UserDefinedType, UserDefinedType?>? resolve = null)
+    /// <summary>Posizione di un campo nel layout (offset in byte + posizione dei bit per i
+    /// bitfield). <see cref="BitWidth"/>=0 → campo normale.</summary>
+    public readonly record struct FieldPlacement(int Index, long Offset, int BitOffset, int BitWidth);
+
+    /// <summary>Layout completo di un UDT: taglia totale + posizione di ogni campo.</summary>
+    public readonly record struct UdtLayout(long Size, FieldPlacement[] Fields);
+
+    /// <summary>Calcola il layout C di un UDT (unione, bitfield, packed, allineamento
+    /// naturale). SORGENTE UNICA: la usano SIZEOF, il descrittore di classe (PCodeVM/VM-C),
+    /// il backend IL e l'emitter C99.</summary>
+    public static UdtLayout ComputeLayout(UserDefinedType udt, Func<UserDefinedType, UserDefinedType?>? resolve = null)
+        => ComputeLayout(udt, new HashSet<int>(), resolve);
+
+    public static UdtLayout ComputeLayout(UserDefinedType udt, HashSet<int> visited, Func<UserDefinedType, UserDefinedType?>? resolve = null)
     {
         udt = ResolveNested(udt, resolve);
-        if (udt.Fields.IsDefaultOrEmpty || !visited.Add(udt.SymbolId)) return 0;
-        long offset = 0, maxAlign = 1;
-        foreach (var field in udt.Fields)
+        var fields = udt.Fields.IsDefaultOrEmpty ? Array.Empty<TypeField>() : udt.Fields.ToArray();
+        var placements = new FieldPlacement[fields.Length];
+        if (fields.Length == 0 || !visited.Add(udt.SymbolId))
+            return new UdtLayout(0, placements);
+
+        // UNION: tutti i campi a offset 0; taglia = massimo, allineamento = massimo.
+        if (udt.IsUnion)
         {
-            // Campo array in un TYPE: gli elementi vivono sull'heap, il campo è un riferimento.
-            var size = field.Dimensions.IsDefaultOrEmpty || field.Dimensions.Length == 0
-                ? FieldByteSize(field.DataType, visited, resolve)
-                : ReferenceFieldSize;
-            if (udt.IsPacked)
+            long size = 0, maxAlignU = 1;
+            for (var i = 0; i < fields.Length; i++)
             {
-                offset += size;
+                var f = fields[i];
+                var isBit = f.BitWidth > 0;
+                var sz = isBit
+                    ? Math.Max(1, ScalarByteSize(f.DataType))
+                    : (f.Dimensions.IsDefaultOrEmpty || f.Dimensions.Length == 0
+                        ? FieldByteSize(f.DataType, visited, resolve)
+                        : ReferenceFieldSize);
+                if (sz < 1) sz = 1;
+                placements[i] = new FieldPlacement(i, 0, 0, f.BitWidth);
+                if (sz > size) size = sz;
+                if (sz > maxAlignU) maxAlignU = sz;
+            }
+            return new UdtLayout(Math.Max(size, (size + maxAlignU - 1) / maxAlignU * maxAlignU), placements);
+        }
+
+        long offset = 0, maxAlign = 1;
+        long unitStart = -1;      // inizio dell'unità di storage del run di bitfield corrente
+        long unitBytes = 0;       // dimensione dell'unità (byte)
+        long usedBits = 0;        // bit già occupati nell'unità
+        for (var i = 0; i < fields.Length; i++)
+        {
+            var f = fields[i];
+            if (f.BitWidth > 0)
+            {
+                var unit = ScalarByteSize(f.DataType);
+                if (unit < 1) unit = 1;
+                var unitBits = unit * 8;
+                // Nuova unità: primo bitfield, cambio di unità (tipo diverso), packed, o il
+                // campo non ci sta nei bit rimasti.
+                if (unitStart < 0 || unit != unitBytes || usedBits + f.BitWidth > unitBits)
+                {
+                    if (!udt.IsPacked) offset = (offset + unit - 1) / unit * unit;
+                    unitStart = offset;
+                    unitBytes = unit;
+                    usedBits = 0;
+                    offset += unit;
+                    if (unit > maxAlign) maxAlign = unit;
+                }
+                placements[i] = new FieldPlacement(i, unitStart, (int)usedBits, f.BitWidth);
+                usedBits += f.BitWidth;
                 continue;
             }
-            // Un campo da 0 byte (TYPE vuoto annidato) non è un allineamento: si conta 1,
-            // altrimenti la divisione sotto è per zero.
+
+            unitStart = -1; unitBytes = 0; usedBits = 0;
+            // Campo array in un TYPE: gli elementi vivono sull'heap, il campo è un riferimento.
+            var size = f.Dimensions.IsDefaultOrEmpty || f.Dimensions.Length == 0
+                ? FieldByteSize(f.DataType, visited, resolve)
+                : ReferenceFieldSize;
             if (size < 1) size = 1;
-            offset = (offset + size - 1) / size * size + size;
+            if (!udt.IsPacked) offset = (offset + size - 1) / size * size;
+            placements[i] = new FieldPlacement(i, offset, 0, 0);
+            offset += size;
             if (size > maxAlign) maxAlign = size;
         }
-        return udt.IsPacked ? offset : (offset + maxAlign - 1) / maxAlign * maxAlign;
+        return new UdtLayout(udt.IsPacked ? offset : (offset + maxAlign - 1) / maxAlign * maxAlign, placements);
+    }
+
+    /// <summary>Codice tipo FFI di un campo scalare (0=double 1=int64 2=int8 3=uint8 4=int16
+    /// 5=uint16 6=int32 7=uint32 8=float32 9=string 10=uint64), -1 se non è scalare.
+    /// ATTENZIONE: è il mapping del CONFINE FFI/C (dove LONG = int32). Per il layout del
+    /// LINGUAGGIO (SIZEOF, UNION/bitfield) si usa <see cref="RuntimeCode"/>.</summary>
+    public static int FfiCode(DataType t) => Normalize(t) switch
+    {
+        DoubleType => 0, SingleType => 8, SByteType => 2, ByteType => 3,
+        IntegerType => 4, UIntegerType => 5, LongType => 6, ULongType => 7,
+        QuadType => 1, UQuadType => 10, StringType => 9,
+        _ => -1,
+    };
+
+    /// <summary>Codice tipo per il layout del LINGUAGGIO (UNION/bitfield): stesse larghezze di
+    /// <see cref="ScalarByteSize"/> — LONG/QUAD/ULONG/UQUAD = intero a 8 byte, INTEGER = 2,
+    /// BYTE = 1, SINGLE = 4, DOUBLE = double. (Il confine FFI ha un mapping diverso: LONG =
+    /// int32 — vedi <see cref="FfiCode"/>.)</summary>
+    public static int RuntimeCode(DataType t) => Normalize(t) switch
+    {
+        DoubleType => 0, SingleType => 8, SByteType => 2, ByteType => 3,
+        IntegerType => 4, UIntegerType => 5, LongType or QuadType => 1, ULongType or UQuadType => 10,
+        _ => -1,
+    };
+
+    /// <summary>Byte occupati da un codice tipo FFI.</summary>
+    public static int FfiCodeBytes(int code) => code switch
+    {
+        0 or 1 or 9 or 10 => 8, 6 or 7 or 8 => 4, 4 or 5 => 2, _ => 1,
+    };
+
+    /// <summary>Gruppi di ALIASING per il runtime (PCodeVM/VM-C): un gruppo è un blocco di byte
+    /// condiviso da più campi.
+    /// <list type="bullet">
+    /// <item>UNION: un gruppo con TUTTI i campi a offset 0 (taglia = taglia dell'unione);</item>
+    /// <item>bitfield (`WIDTH n`): un gruppo per ogni unità di storage (taglia = byte del tipo
+    /// dichiarato), con i campi a (offset unità, bit offset, larghezza).</item>
+    /// </list>
+    /// Formato di ogni gruppo (lista di double, serializzabile nei chunk senza chiavi):
+    /// <c>[size, n, (symId, byteOff, bitOff, bitWidth, typeCode) × n]</c>.</summary>
+    public static List<double[]> AliasGroups(UserDefinedType udt, Func<UserDefinedType, UserDefinedType?>? resolve = null)
+    {
+        var groups = new List<double[]>();
+        var layout = ComputeLayout(udt, resolve);
+        var fields = udt.Fields.IsDefaultOrEmpty ? Array.Empty<TypeField>() : udt.Fields.ToArray();
+        if (fields.Length == 0) return groups;
+
+        if (udt.IsUnion)
+        {
+            var g = new List<double> { layout.Size, fields.Length };
+            foreach (var f in fields)
+            {
+                var code = RuntimeCode(f.DataType);
+                if (code < 0) continue;
+                g.Add(f.SymbolId); g.Add(0); g.Add(0); g.Add(f.BitWidth); g.Add(code);
+            }
+            if (g.Count > 2) groups.Add(g.ToArray());
+            return groups;
+        }
+
+        // Bitfield: raggruppa i campi che condividono la STESSA unità di storage.
+        var byUnit = new Dictionary<(long Off, int Unit), List<(int Sym, int BitOff, int Width, int Code)>>();
+        var order = new List<(long Off, int Unit)>();
+        for (var i = 0; i < fields.Length && i < layout.Fields.Length; i++)
+        {
+            var f = fields[i];
+            if (f.BitWidth <= 0) continue;
+            var code = RuntimeCode(f.DataType);
+            if (code < 0) continue;
+            var p = layout.Fields[i];
+            var key = (p.Offset, FfiCodeBytes(code));
+            if (!byUnit.TryGetValue(key, out var list)) { list = new(); byUnit[key] = list; order.Add(key); }
+            list.Add((f.SymbolId, p.BitOffset, p.BitWidth, code));
+        }
+        foreach (var key in order)
+        {
+            var list = byUnit[key];
+            // byteOff è RELATIVO all'unità (i membri del gruppo stanno tutti nell'unità, che è
+            // il buffer del gruppo): con l'offset assoluto una seconda unità (offset 2) scriveva
+            // fuori dal buffer → valore perso (trovato dal MiniTest bitfield_widths).
+            var g = new List<double> { key.Unit, list.Count };
+            foreach (var m in list) { g.Add(m.Sym); g.Add(0); g.Add(m.BitOff); g.Add(m.Width); g.Add(m.Code); }
+            groups.Add(g.ToArray());
+        }
+        return groups;
     }
 
     /// <summary>Se <paramref name="resolve"/> è fornito e il tipo annidato ha i campi vuoti

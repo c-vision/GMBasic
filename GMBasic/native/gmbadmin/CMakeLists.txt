@@ -11,6 +11,21 @@ set(CMAKE_C_STANDARD_REQUIRED ON)
 # RID + rpath rilocabile (una sola ricetta: native/cmake/GmbRid.cmake).
 include(${CMAKE_CURRENT_SOURCE_DIR}/../cmake/GmbRid.cmake)
 
+# `libgmb_runtime.a` referenzia simboli OPZIONALI che vivono in `gmb_agent_runtime`
+# (`gmb_brain_ask_sync`, `gmb_agent_ask_with_tools`, `gmb_brain_mlx_set_*`). Su Mach-O una
+# `__attribute__((weak))` NON rende debole una REFERENZA esterna: i target che linkano
+# `gmb_runtime` senza `gmb_agent_runtime` falliscono con «Undefined symbols». `-U` li lascia a 0
+# a runtime. Le stesse `-U` sono in `gmb_runtime_c/CMakeLists.txt`, ma valgono solo per il PROPRIO
+# albero: qui i sottoprogetti sono fratelli (es. `gmb_doc_build` → `gmb_doc_selfcheck`), quindi
+# vanno dichiarate anche qui — senza, `cmake --build gmbadmin` (target di default) era rosso
+# (trovato il 2026-11-16 provando la build pulita da zip).
+if(APPLE)
+    add_link_options("-Wl,-U,_gmb_brain_ask_sync")
+    add_link_options("-Wl,-U,_gmb_brain_mlx_set_system")
+    add_link_options("-Wl,-U,_gmb_brain_mlx_set_max_new")
+    add_link_options("-Wl,-U,_gmb_agent_ask_with_tools")
+endif()
+
 add_subdirectory(../executor executor)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../gmb_agent_runtime gmb_agent_runtime_build)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../gmb_doc_c gmb_doc_build)
@@ -18,6 +33,7 @@ add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../gmb_doc_c gmb_doc_build)
 add_executable(gmbadmin
     gmbadmin.c
     gmbadminpkg.c
+    gmbadminverify.c
     gmbadminpkg2.c
     gmbadminrag.c
     gmbadmindaemon.c

@@ -1,3 +1,4 @@
+' EXPECT: Sunday|March|2020|3|15
 SUB Main()
   d = DATETIME.CTOD("2020-03-15")
   PRINT DATETIME.CDOW(d)

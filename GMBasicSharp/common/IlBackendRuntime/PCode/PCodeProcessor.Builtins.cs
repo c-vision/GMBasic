@@ -4478,6 +4478,15 @@ if (args.Length >= 3) { var file = args[0]?.ToString() ?? ""; var section = args
         {
             throw;
         }
+        catch (BasicException bex)
+        {
+            /* BasicException porta il CODICE deciso dal runtime (es. ERR 5 "illegal function
+             * call" per una chiamata nativa fallita, ERR 11 per la divisione per zero dei
+             * helper IlRuntime.Safe*): va propagato, non mascherato su 200, altrimenti ERR.Number
+             * su PCode differisce dalle altre tre gambe per lo stesso errore. */
+            RaiseBasicError(task, (double)bex.Code, bex.Message);
+            return ParkedBuiltinResult;
+        }
         catch (Exception ex)
         {
             RaiseBasicError(task, 200.0, ex.Message);

@@ -393,6 +393,21 @@ internal sealed partial class PCodeProcessor
     private Dictionary<int, Basic.Runtime.Gpm.IslandRun> _islandByAddr = new();
     private int _islandCacheVersion = -1;
     private int[]? _debugSourceLines;
+    /// <summary>Testo delle righe sorgente (indice = riga 0-based) per ERR.SourceLineText;
+    /// arriva dalla coda opzionale del chunk (null = chunk vecchio → "").</summary>
+    private string[]? _debugSourceTexts;
+    /// <summary>Catena del corpo di un generatore il cui errore sta per essere ri-lanciato nel
+    /// chiamante: <see cref="BuildBasicTrace"/> la antepone e la consuma.</summary>
+    private string? _pendingTracePrefix;
+    /// <summary>Task e ip dell'istruzione in esecuzione quando si costruisce la catena per un
+    /// errore nato nel CORPO di un generatore (vedi DriveGeneratorTask): il corpo non aggiorna
+    /// <see cref="PCodeTask.CurrentInstructionIp"/> — farlo cambierebbe la semantica d'errore —
+    /// quindi l'ip giusto si fornisce qui, per la sola lettura della riga.</summary>
+    private PCodeTask? _generatorTraceTask;
+    private int _generatorTraceIp = -1;
+    /// <summary>Riga da usare per il PROSSIMO RaiseBasicError (re-raise di un errore di
+    /// GENERATORE: la riga del corpo, non quella del chiamante dove sta la NEXT).</summary>
+    private int _pendingLineOverride;
 
     public PCodeProcessor(IRuntimeHost runtime, CompiledChunk chunk, PCodeScheduler? scheduler = null, object? consoleLock = null, PCodeVm? vm = null)
     {
@@ -402,6 +417,7 @@ internal sealed partial class PCodeProcessor
         _chunkFormatVersion = chunk.FormatVersion;
         _code = chunk.Code.ToArray();
         _debugSourceLines = chunk.Lines.Count == chunk.Code.Count ? chunk.Lines.ToArray() : null;
+        _debugSourceTexts = chunk.SourceTexts.Length > 0 ? chunk.SourceTexts : null;
         _debugStatementRanges = chunk.StatementRanges.Count > 0 ? chunk.StatementRanges.ToArray() : null;
         _localNumericByAddr = chunk.ProcedureLocalNumeric.Count > 0 ? chunk.ProcedureLocalNumeric : null;
         _constants = chunk.Constants.ToList();
@@ -577,7 +593,11 @@ internal sealed partial class PCodeProcessor
         Func<int, object?[], object?>? hostInvoker = _vm?.MacroHostInvoker
             ?? ((idx, args) => hostTable == null || idx < 0 || idx >= hostTable.Count
                 ? throw new InvalidOperationException($"OP_CALL_HOST idx={idx}: tabella host assente.")
-                : CallHostProcedureSync(task, hostTable[idx].Addr, args));
+                /* Parametri OPTIONAL omessi: il percorso PCode invoca per INDIRIZZO (niente AST
+                 * nel compilatore del frammento) → i default letterali si applicano qui, così
+                 * `EVAL("Opt(5)")` dà lo stesso valore della chiamata diretta. */
+                : CallHostProcedureSync(task, hostTable[idx].Addr,
+                    Basic.IlBackend.IlRuntime.ExpandOmittedOptionals(hostTable[idx].Name, hostTable[idx].Arity, args)));
         return Basic.IlBackend.IlRuntime.MacroEvalWithProvider(code, asExpr, _runtime, Known, Get, Set,
             MacroParentKnown, MacroParentGet, MacroParentSet, hostTable, hostInvoker,
             // Macro-comando: i PRINT della VM figlia si accodano ai PendingPrints di QUESTO
@@ -610,7 +630,10 @@ internal sealed partial class PCodeProcessor
         foreach (var (name, addr) in _procedureAddresses)
         {
             if (!_procedureArities.TryGetValue(addr, out var ar)) continue;
-            table.Add(new Compiler.MacroHostProc(name, addr, ar));
+            /* Default letterali dei parametri OPTIONAL: il compilatore del frammento li
+             * pusha quando la macro li omette (altrimenti la procedura riceveva 0). */
+            table.Add(new Compiler.MacroHostProc(name, addr, ar,
+                Basic.IlBackend.IlRuntime.HostProcDefaults(name, ar)));
         }
         return table.Count > 0 ? table : null;
     }
@@ -1276,14 +1299,44 @@ internal sealed partial class PCodeProcessor
             {
                 var val = task.Sp > 0 ? task.PopRef() : null;
                 var formatted = FormatPrintValue(val);
+                PrintStageEnter(task);   /* PRINT annidato: sospende lo staging esterno */
                 (task.PrintLineStaging ??= new()).Append(formatted);
                 lock (_consoleLock) _printColumn += formatted.Length;
+                return true;
+            }
+            case OpCode.OP_PRINT_FLUSH:
+            {
+                /* Fine di una PRINT SENZA newline finale (`PRINT x;` / `PRINT x,`): il
+                 * parziale accumulato si COMMETTE come testo (kind 0 = senza a capo), come fa
+                 * C99Native chiudendo sempre lo staging a fine istruzione
+                 * (gmb_print_stage_end). Senza questo marcatore lo staging restava pendente e
+                 * il PRINT di una procedura chiamata DOPO (frame diverso) lo sospendeva →
+                 * l'ordine di stampa si invertiva (opt/opt_forward_array: "outer=" in fondo). */
+                PrintStageEnter(task);
+                var partial = task.PrintLineStaging?.ToString() ?? string.Empty;
+                task.PrintLineStaging = null;
+                PrintStageLeave(task);   /* riprende un eventuale PRINT esterno sospeso */
+                if (partial.Length > 0)
+                {
+                    if (PCodeGraphics.Instance.IsScreenOn)
+                    {
+                        PCodeGraphics.Instance.PRINT_GPM(partial, (_r, _e) => { });
+                    }
+                    else
+                    {
+                        (task.PendingPrints ??= new()).Add((0, partial,
+                            Basic.IlBackend.IlRuntime.Current.Graphics.ClipperPrinterOnly(),
+                            Basic.IlBackend.IlRuntime.Current.Graphics.ClipperPrinterRouting()));
+                        FlushPrintBuffer(task);
+                    }
+                }
                 return true;
             }
             case OpCode.OP_PRINT_LINE:
             {
                 var val = task.Sp > 0 ? task.PopRef() : null;
                 var formatted = FormatPrintValue(val);
+                PrintStageEnter(task);   /* PRINT annidato: sospende lo staging esterno */
                 string fullLine;
                 if (task.PrintLineStaging is { Length: > 0 } staging)
                 {
@@ -1295,6 +1348,7 @@ internal sealed partial class PCodeProcessor
                 {
                     fullLine = formatted;
                 }
+                PrintStageLeave(task);   /* riprende il PRINT esterno sospeso */
                 // PRINT GRAFICO: accoda SUBITO (al completamento della riga), NON a fine tick:
                 // il flush di fine tick arriverebbe DOPO i comandi successivi già accodati nel
                 // game loop (es. un COLOR 10 dopo il PRINT rendeva il testo verde — bug
@@ -1325,6 +1379,7 @@ internal sealed partial class PCodeProcessor
                 {
                     (task.PendingPrints ??= new()).Add((1, stagedAtNewline.ToString(), Basic.IlBackend.IlRuntime.Current.Graphics.ClipperPrinterOnly(), Basic.IlBackend.IlRuntime.Current.Graphics.ClipperPrinterRouting()));
                     task.PrintLineStaging = null;
+                    PrintStageLeave(task);   /* riprende il PRINT esterno sospeso */
                 }
                 else
                 {
@@ -1393,7 +1448,14 @@ internal sealed partial class PCodeProcessor
             {
                 var slot = ReadU16(task);
                 var locals = (task.Frame?.LocalVariables is { Length: > 0 } fLocals) ? fLocals : task.GetLocals();
-                task.PushRef(new ByRefBox(locals, slot));
+                /* Idempotente (specchio di OP_MAKE_BYREF in VM/C): se lo slot contiene già una
+                 * ByRefBox (parametro BYREF inoltrato a un'altra procedura, ora anche gli ARRAY
+                 * vengono passati per riferimento) si RIUSA quella cella — annidare un box in un
+                 * box faceva leggere al callee un box invece dell'array (UBOUND=0, bug 2026-11-03). */
+                if (slot < locals.Length && locals[slot] is ByRefBox existingBox)
+                    task.PushRef(existingBox);
+                else
+                    task.PushRef(new ByRefBox(locals, slot));
                 return true;
             }
             case OpCode.OP_MAKE_BYREF_GLOBAL:
@@ -2495,6 +2557,11 @@ internal sealed partial class PCodeProcessor
                     var clone = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase);
                     foreach (System.Collections.DictionaryEntry entry in srcDict)
                         clone[(string)entry.Key] = entry.Value;
+                    // I buffer dei gruppi (UNION/bitfield) sono storage PROPRIO dell'istanza:
+                    // copia profonda, altrimenti scrivere nella copia altererebbe l'originale.
+                    foreach (var key in clone.Keys.ToList())
+                        if (key.StartsWith("__grp", StringComparison.Ordinal) && clone[key] is byte[] buf)
+                            clone[key] = (byte[])buf.Clone();
                     task.PushRef(clone);
                 }
                 else
@@ -2567,8 +2634,8 @@ internal sealed partial class PCodeProcessor
                     ["Number"] = thrownCode,
                     ["Description"] = thrownDescription,
                     ["LineNumber"] = (double)SourceLineForIp(task.CurrentInstructionIp),
-                    ["SourceLineText"] = string.Empty,
-                    ["StackTrace"] = string.Empty
+                    ["SourceLineText"] = SourceLineTextForIp(ReferenceEquals(task, _generatorTraceTask) && _generatorTraceIp >= 0 ? _generatorTraceIp : task.CurrentInstructionIp),
+                    ["StackTrace"] = BuildBasicTrace(task)
                 });
                 if (TryEnterExceptionHandler(task, val))
                     return true;
@@ -2703,6 +2770,7 @@ internal sealed partial class PCodeProcessor
                         }
                         catch { }
                         if (!WriteThroughByRefChain(dict, fieldName, val)) dict[fieldName] = val;
+                        ApplyUdtGroupWrite(dict, smClassDesc, offset, val);
                     }
                     else
                     {
@@ -2980,11 +3048,36 @@ internal sealed partial class PCodeProcessor
                 // vecchio switch PCode SOLO se il metodo non è noto (NotSupportedException).
                 // Le due gambe condividono così la stessa semantica (Add/Remove/Keys/Min/Max/
                 // Trie/Bag/Graph/...), senza duplicare 76 casi.
-                if (instance is System.Collections.IList || instance is System.Collections.IDictionary
+                /* PRECEDENZA DEI METODI DI CLASSE (2026-11-12). L'istanza di una classe BASIC è
+                 * un Dictionary con "__class__" (descrittore con VTable/PropertyGetters): senza
+                 * questo controllo il bridge sotto RIVENDICAVA i nomi di collection e il metodo
+                 * utente non veniva mai chiamato — `f.Count()` (0 argomenti) tornava il numero
+                 * di CHIAVI dell'istanza invece del valore del metodo (controls/segmented_uc:
+                 * `n=9` invece di `4` su PCode, IL/C99 corretti). Se il membro è nella
+                 * VTable/PropertyGetters della classe, la risoluzione della classe ha la
+                 * precedenza; altrimenti (istanza "nuda", es. dict/JSON) il bridge resta. */
+                int? classMethodAddr = null;
+                if (instance is System.Collections.IDictionary cdInst && cdInst.Contains("__class__")
+                    && cdInst["__class__"] is System.Collections.IDictionary cdDesc)
+                {
+                    if (cdDesc["VTable"] is System.Collections.IDictionary cdVt)
+                    {
+                        var cdMa = cdVt[methodName ?? ""];
+                        if (cdMa is int cdIa) classMethodAddr = cdIa;
+                        else if (cdMa is double cdDa) classMethodAddr = (int)cdDa;
+                    }
+                    if (!classMethodAddr.HasValue && cdDesc["PropertyGetters"] is System.Collections.IDictionary cdPg)
+                    {
+                        var cdGa = cdPg[methodName ?? ""];
+                        if (cdGa is int cdGia) classMethodAddr = cdGia;
+                        else if (cdGa is double cdGda) classMethodAddr = (int)cdGda;
+                    }
+                }
+                if (!classMethodAddr.HasValue && (instance is System.Collections.IList || instance is System.Collections.IDictionary
                     // HLL: NON è IList/IDictionary (non conserva gli elementi) ma va dispatchato
                     // dal dispatcher condiviso (prima finiva nella reflection generica, che
                     // ingoiava le eccezioni: `Load("garbage")` non segnalava nulla).
-                    || instance is CommonLib.Collections.HyperLogLog)
+                    || instance is CommonLib.Collections.HyperLogLog))
                 {
                     try
                     {
@@ -3016,7 +3109,7 @@ internal sealed partial class PCodeProcessor
                         return true;
                     }
                 }
-                int? methodAddr = null;
+                int? methodAddr = classMethodAddr;
                 // Check IList FIRST (collections like List<T>)
                 if (instance is System.Collections.IList iList)
                 {
@@ -4587,7 +4680,7 @@ internal sealed partial class PCodeProcessor
                 var retUdtNew = (kindByte & 0x80) != 0;
                 // bit 0x20 di `kind` = DECLARE NATIVE (ABI esatta: nessuna estensione automatica degli array).
                 var nativeAbi = (kindByte & 0x20) != 0;
-                var kind = kindByte & 0x5F;
+                var kind = kindByte & 0x1F;   // 0x20 = NATIVE, 0x40 = tabella firme callback, 0x80 = ritorno UDT
                 var retUdtFieldCount = retUdtNew ? (retLo | (retHi << 8)) : retLo;
                 var retUdtFieldKindMask = retUdtNew ? 0 : retHi;
                 // Descrittore PER ARGOMENTO (2026-11-06, niente maschere nel formato):
@@ -4693,6 +4786,25 @@ internal sealed partial class PCodeProcessor
                         udtParamShapes[pi] = ReadUdtShape(udtArrCount[pi], 0, true);
                 }
                 var retUdtShape = retUdtFieldCount > 0 ? ReadUdtShape(retUdtFieldCount, (byte)retUdtFieldKindMask, retUdtNew) : null;
+                // Tabella firme callback SCALARI (2026-11-11, bit 0x40 di `kind`): per ogni
+                // parametro callback, in ordine di slot, u8 arità + u8 retKind (0 double,
+                // 1 int64, 2 void) + arità × u8 kind. Sostituisce l'assunzione storica di
+                // firma interna omogenea (a2 bit0) e alza il limite di arità da 8 a 64.
+                bool[][]? cbSigKinds = null;
+                var cbSigRet = new int[PCodeFfiMaxArgs];
+                if ((kindByte & 0x40) != 0)
+                {
+                    cbSigKinds = new bool[PCodeFfiMaxArgs][];
+                    for (var pi = 0; pi < argCount && pi < PCodeFfiMaxArgs; pi++)
+                    {
+                        if (callbackParamArity[pi] == 255 || callbackParamArity[pi] >= 128) continue;
+                        var ar = ReadU8(task);
+                        cbSigRet[pi] = ReadU8(task);
+                        var ks = new bool[ar];
+                        for (var b = 0; b < ar; b++) ks[b] = ReadU8(task) != 0;
+                        cbSigKinds[pi] = ks;
+                    }
+                }
                 var args = new object?[argCount];
                 var byrefBoxes = new Basic.Runtime.Gpm.ByRefBox?[argCount];
                 for (var i = argCount - 1; i >= 0; i--)
@@ -4733,7 +4845,8 @@ internal sealed partial class PCodeProcessor
                                 throw new InvalidOperationException($"il parametro {i + 1} atteso come callback (AS FUNCTION/AS SUB) non è una closure valida.");
                             var cbIsInt = (callbackParamKindMask & (1L << i)) != 0;
                             var cbHasRet = (callbackParamHasRetMask & (1L << i)) != 0;
-                            var (keepAlive, ptr) = BuildFfiCallbackTrampoline(task, cd, callbackParamArity[i], cbIsInt, cbHasRet);
+                            var (keepAlive, ptr) = BuildFfiCallbackTrampoline(task, cd, callbackParamArity[i], cbIsInt, cbHasRet,
+                                cbSigKinds?[i], cbSigKinds != null ? cbSigRet[i] : -1);
                             callbackKeepAlive.Add(keepAlive);
                             args[i] = ptr.ToInt64();
                         }

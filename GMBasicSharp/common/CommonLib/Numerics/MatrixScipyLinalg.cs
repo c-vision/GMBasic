@@ -40,10 +40,14 @@ public static partial class Numerics
     public static Matrix<double> MatrixCos(Matrix<double> a) => ApplyEigenwise(a, Math.Cos);
 
     /// <summary>scipy.linalg.sinm — seno di matrice (via EVD simmetrica).</summary>
-    public static Matrix<double> MatrixSin(Matrix<double> a) => ApplyEigenwise(a, Math.Sin);
+    public static Matrix<double> MatrixSin(Matrix<double> a)
+        => MatrixNativeKernels.TryApply(a, MatrixNativeKernels.Op.Sin, out var r)
+            ? r : ApplyEigenwise(a, Math.Sin);
 
     /// <summary>scipy.linalg.tanm — tangente di matrice (via EVD simmetrica).</summary>
-    public static Matrix<double> MatrixTan(Matrix<double> a) => ApplyEigenwise(a, Math.Tan);
+    public static Matrix<double> MatrixTan(Matrix<double> a)
+        => MatrixNativeKernels.TryApply(a, MatrixNativeKernels.Op.Tan, out var r)
+            ? r : ApplyEigenwise(a, Math.Tan);
 
     /// <summary>scipy.linalg.signm — segno di matrice (via EVD simmetrica).</summary>
     public static Matrix<double> MatrixSignm(Matrix<double> a) => ApplyEigenwise(a, x => x == 0 ? 0.0 : (x > 0 ? 1.0 : -1.0));
@@ -59,6 +63,12 @@ public static partial class Numerics
 
     /// <summary>scipy.linalg.orth — base ortonormale del range di A (SVD).</summary>
     public static Matrix<double> Orth(Matrix<double> a)
+        => MatrixNativeKernels.TryApply(a, MatrixNativeKernels.Op.Orth, out var r)
+            ? r : OrthManaged(a);
+
+    /// <summary>Implementazione gestita di ORTH (fallback quando `libgmb_matrix_flat` non è
+    /// disponibile). Stessa semantica e stessa convenzione di segno del runtime C.</summary>
+    internal static Matrix<double> OrthManaged(Matrix<double> a)
     {
         var svd = a.Svd();
         var tol = Math.Max(a.RowCount, a.ColumnCount) * MachineEps * svd.S[0];

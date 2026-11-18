@@ -1,3 +1,4 @@
+' EXPECT: 3
 SUB Main()
   PRINT FIX(3.9)
 END SUB

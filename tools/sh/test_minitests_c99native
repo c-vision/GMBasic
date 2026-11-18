@@ -1,4 +1,23 @@
 #!/usr/bin/env bash
+# test_minitests_c99native — runner dei MiniTest sulla gamba NATIVA: compila con cc o zcc, linka ed esegue.
+# ── INTERPRETE (guardia, 2026-11-14). Lo script e' bash: usa `read -a` e conta sul word-splitting
+# di `$INC`. Sotto zsh (nessun word-splitting implicito) il compilatore riceve ' -I… -I…' come UN
+# SOLO argomento e tutte le gambe C falliscono per include mancanti, sembrando un problema di
+# header. Se l'interprete non e' bash ci si ri-esegue con bash; se bash manca, exit 2 col motivo.
+[ -n "${BASH_VERSION:-}" ] || {
+    command -v bash >/dev/null 2>&1 || {
+        echo "ERRORE: serve bash (zsh non spezza \$INC: le gambe C fallirebbero per -I mancanti)." >&2
+        echo "        Invocalo con: bash $0 …" >&2
+        exit 2
+    }
+    exec bash "$0" "$@"
+}
+
+# PID della RUN: è il proprietario del lease del broker (`msg_broker.sh`). Deve essere preso qui,
+# una volta: dentro una sostituzione di comando `$$` sarebbe la subshell e il lease morirebbe con
+# lei, mentre la run sta ancora usando il broker.
+SELF_PID=$$
+
 # ── MUTEX di build: i comandi di build (cc/clang/cmake/make/dotnet) prendono un lock ──
 # esclusivo su mutex.txt SOLO per la durata del SINGOLO comando, poi lo rilasciano subito
 # (lo script puo proseguire a lungo senza tenere il lock). Scadenza 15 min con heartbeat:
@@ -11,11 +30,35 @@ if [ -z "${GMB_BUILDBIN_ON:-}" ]; then
 fi
 
 # test_minitests_c99native — esegue ogni MiniTest/ con il compilatore nativo C99
-# (C99Native): lex→parse→gmb_c99_emit (driver gmbnative) → cc col runtime
-# reale → esecuzione. PASS = genera C + cc ok + run exit 0. Complementare al gate C99
+# (C99Native): lex→parse→gmb_c99_emit (driver gmbnative) → compilazione col runtime
+# reale → esecuzione. PASS = genera C + compila + run exit 0. Complementare al gate C99
 # (C99Native) e al test di parità IL/PCode/VMC.
-# Uso: tools/sh/test_minitests_c99native
+#
+# COMPILATORE (AGENTS §0, accordo 2026-11-14 — DUE compilatori):
+#   • macOS  → `cc` (Apple clang): è il riferimento nativo, conosce l'SDK da sé e il suo
+#              linker registra TUTTE le dylib caricate (con `zig cc` su macOS lo stesso
+#              programma usciva con 4 dylib invece di 14 e moriva con SIGSEGV);
+#   • altrove / cross → `tools/sh/zcc` (`zig cc`, porta la libc del target).
+# Qui il default è `cc` (gamba nativa): `--cc tools/sh/zcc` è la gamba A/B. Quando si tocca
+# la gamba C il gate vuole ENTRAMBE: `--cc cc` e `--cc tools/sh/zcc` sullo stesso file.
+#
+# Uso: tools/sh/test_minitests_c99native [--cc <compilatore>] [--target <triple>] [--rid <rid>]
+#   F5: gli stessi argomenti del runner diretto. `--rid` prende triple, framework, sistema e terze
+#   parti da `tools/sh/gmb_link_set.sh` (stessa fonte di `gmb_c99native_run.sh`).
+#   Filtro dei file: GMB_MINI_ONLY="<dominio>/<file>[,<altro>]".
 set -u
+PRE_CC=""; PRE_TRIPLE=""; PRE_RID=""
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --cc)       PRE_CC="${2:-}"; shift 2 ;;
+    --cc=*)     PRE_CC="${1#--cc=}"; shift ;;
+    --target)   PRE_TRIPLE="${2:-}"; shift 2 ;;
+    --target=*) PRE_TRIPLE="${1#--target=}"; shift ;;
+    --rid)      PRE_RID="${2:-}"; shift 2 ;;
+    --rid=*)    PRE_RID="${1#--rid=}"; shift ;;
+    *) echo "test_minitests_c99native: argomento sconosciuto: $1 (--cc/--target/--rid)" >&2; exit 2 ;;
+  esac
+done
 ROOT="$(cd "$(dirname "$0")/../../GMBasic" && pwd)"; cd "$ROOT"
 # I TOOL vivono nella radice del MONOREPO (`tools/`), non più in GMBasic/tools.
 # NB: si ricava da ROOT (assoluto) e NON da `$0`: dopo il `cd` un `$0` relativo
@@ -72,9 +115,57 @@ MOE_LIB="$LLMENV/LLMEngine/mlx/build-gmbasic/llmengine_moe_mlx_build/libllmengin
 # CUA/browser: i backend C usano gmb_agent_runtime (C) — vedi CUA-Universal-Action-Runtime-Guida.
 # gmb_agent_runtime dipende dal motore Jinja C (gmb_chat_template.c -> gmb_jinja): va linkato.
 AGENT_SRCS="$(echo "$ROOT"/native/gmb_agent_runtime/*.c) $LLMENV/LLMJinja/llmjinja.c $LLMENV/LLMJinja/llmjinja_builtins.c"
-FRAMEWORKS=""
-if [ "$(uname)" = "Darwin" ]; then
-  FRAMEWORKS="-framework CoreGraphics -framework ApplicationServices -framework ImageIO -framework CoreServices -framework AppKit"
+# ZIG È IL COMPILATORE CANONICO (accordo 2026-11-13: un solo toolchain, artefatti uguali su
+# ogni piattaforma). Default = `tools/sh/zcc`, cioè `zig cc` + i flag che su macOS clang Apple
+# ricava da sé. `--cc cc` resta soltanto come gamba A/B di confronto, NON come default.
+# Se zig non è installato si ripiega su `cc` con un avviso: il runner non deve morire su una
+# macchina senza toolchain zig (la cache del runtime resta separata perché lo stamp include il
+# compilatore, vedi `cc=$FC`).
+if [ -z "$PRE_CC" ] && [ -x "$MONO/tools/sh/zcc" ]; then PRE_CC="tools/sh/zcc"; fi
+# `--cc "tools/sh/zcc"` è relativo al MONOREPO, ma qui la cwd è `$ROOT`: si risolve sotto `$MONO`.
+case "$PRE_CC" in ""|/*) : ;; *) [ -f "$MONO/$PRE_CC" ] && PRE_CC="$MONO/$PRE_CC" ;; esac
+[ -n "$PRE_CC" ] || echo "compilatore: cc (fallback: tools/sh/zcc non eseguibile, installa la toolchain zig)" >&2
+FC="${PRE_CC:-cc}"          # compilatore (F5: `--cc "<zig> cc"` come nel runner diretto)
+TF=""                        # -target del RID (F5)
+if [ -n "$PRE_RID" ] && [ -z "$PRE_TRIPLE" ]; then
+  PRE_TRIPLE="$(bash "$MONO/tools/sh/gmb_link_set.sh" --rid "$PRE_RID" --print triple)" || exit 2
+fi
+# (niente `case` dentro `$( )`: bash 3.2 di macOS non lo parsa — errore di sintassi a ogni run)
+_U="$(uname -s)-$(uname -m)"
+if   [ "$_U" = Darwin-arm64 ];  then HOST_RID=osx-arm64
+elif [ "$_U" = Darwin-x86_64 ]; then HOST_RID=osx-x64
+elif [ "$_U" = Linux-x86_64 ];  then HOST_RID=linux-x64
+elif [ "$_U" = Linux-aarch64 ] || [ "$_U" = Linux-arm64 ]; then HOST_RID=linux-arm64
+else HOST_RID=osx-arm64; fi
+TARGET_RID="${PRE_RID:-$HOST_RID}"
+# Framework/sistema/terze parti: dal resolver del RID (F5), non cablati su Darwin.
+eval "$(bash "$MONO/tools/sh/gmb_link_set.sh" --rid "$TARGET_RID" --cache "$HOME/.gmbasic/libs/$TARGET_RID")" || exit 2
+# `-target` DOPO il resolver (LS_SDK nasce lì): ordine sbagliato = `set -u` rosso su LS_SDK.
+  [ -n "$PRE_TRIPLE" ] && TF="-target $PRE_TRIPLE ${LS_SDK[*]+${LS_SDK[*]}}"   # + `-isysroot` (piano L13)
+  # Windows: force-include dello shim POSIX→Win32 (gmtime_r/localtime_r, unistd, sys/*) e i
+  # define *_STATIC, perché nella cache win curl/pcre2/SDL sono statici ma gli header usano dllimport.
+  case "$TARGET_RID" in
+    win-*) TF="$TF -include $ROOT/native/win32shim/include/gmb_win32.h -I$ROOT/native/win32shim/include -DCURL_STATICLIB -DPCRE2_STATIC -DSDL_STATIC" ;;
+  esac
+# ── Vulkan: backend OPZIONALE, aggiunto da CMake solo se il system header esiste. Il bundle del
+# RID non lo porta (`vulkan/vulkan.h` è un header di sistema, non un file scaricabile da lì):
+# senza questo filtro il cross si ferma sulla PRIMA riga di gmb_gfx_vulkan.c. Sull'host, dove
+# l'header c'è, il sorgente resta nel set come prima.
+if [ ! -f "$HOME/.gmbasic/libs/$TARGET_RID/include/vulkan/vulkan.h" ]; then
+  RT_SRCS="$(echo $RT_SRCS | tr ' ' '\n' | grep -v '/gmb_gfx_vulkan.c$' | tr '\n' ' ')"
+fi
+# ── AR: l'`ar` di Apple RIFIUTA oggetti non-Mach-O («archive member … not a mach-o file») e
+# scrive un archivio con ZERO membri: il link poi fallisce con «undefined symbol» su tutto il
+# runtime. Per un RID ELF da macOS serve `zig ar` (llvm-ar), ricavato dal primo campo di --cc.
+AR_CMD="ar"
+case "$PRE_CC" in
+  *zig*' cc') AR_CMD="${PRE_CC% cc} ar" ;;
+  *zcc)       ZIGBIN="$("$PRE_CC" --print 2>/dev/null | awk '{print $1}')"
+              [ -n "$ZIGBIN" ] && AR_CMD="$ZIGBIN ar" ;;   # ar di Apple rifiuta oggetti non-Mach-O
+             esac
+FRAMEWORKS="${LS_FRAMEWORKS[*]+${LS_FRAMEWORKS[*]}}"   # vuoto fuori da macOS; `set -u` + bash 3.2
+if [ "$TARGET_RID" != "$HOST_RID" ]; then
+  echo "cross $TARGET_RID da $HOST_RID: i binari vengono linkati ma NON eseguiti" >&2
 fi
 
 # Il driver va RICOMPILATO se manca OPPURE se è più vecchio della libreria del compilatore
@@ -143,16 +234,20 @@ ensure_static_lib "$ROOT/native/gmb_db_c/build/libgmb_db.a" "$ROOT/native/gmb_db
 # il link con simboli che non esistono più). Policy soft: vedi commento sopra.
 # `gmbllm` è un target INTERFACE (aggregato): gli archivi reali sono gmbllm_core e gmbllm_train
 # (link order: train prima di core), non esiste più un libgmbllm.a da ricostruire.
-ENSURE_POLICY=soft
-ensure_static_lib "$ROOT/native/gmb_runtime_c/build/gmbllm_build/libgmbllm_train.a" \
-  "$ROOT/native/gmb_runtime_c/build" gmbllm_train "$ROOT/gmbllm"
-ensure_static_lib "$ROOT/native/gmb_runtime_c/build/gmbllm_build/libgmbllm_core.a" \
-  "$ROOT/native/gmb_runtime_c/build" gmbllm_core "$ROOT/gmbllm"
-ensure_static_lib "$ROOT/native/gmb_runtime_c/build/llmengine_plugin_build/libllmengine_plugin.a" \
-  "$ROOT/native/gmb_runtime_c/build" llmengine_plugin "$LLMENV/LLMEngine/plugin"
-ensure_static_lib "$ROOT/native/gmb_runtime_c/build/llmdesc_build/libllmdesc.a" \
-  "$ROOT/native/gmb_runtime_c/build" llmdesc "$LLMENV/LLMDesc"
-ENSURE_POLICY=hard
+# Solo per il RID nativo: per un altro RID queste librerie NON si linkano (vedi LINK_IN/LS_LLM),
+# quindi non ha senso compilarle qui (per win-* non compilerebbero nemmeno).
+if [ "$LS_LLM" = 1 ]; then
+  ENSURE_POLICY=soft
+  ensure_static_lib "$ROOT/native/gmb_runtime_c/build/gmbllm_build/libgmbllm_train.a" \
+    "$ROOT/native/gmb_runtime_c/build" gmbllm_train "$ROOT/gmbllm"
+  ensure_static_lib "$ROOT/native/gmb_runtime_c/build/gmbllm_build/libgmbllm_core.a" \
+    "$ROOT/native/gmb_runtime_c/build" gmbllm_core "$ROOT/gmbllm"
+  ensure_static_lib "$ROOT/native/gmb_runtime_c/build/llmengine_plugin_build/libllmengine_plugin.a" \
+    "$ROOT/native/gmb_runtime_c/build" llmengine_plugin "$LLMENV/LLMEngine/plugin"
+  ensure_static_lib "$ROOT/native/gmb_runtime_c/build/llmdesc_build/libllmdesc.a" \
+    "$ROOT/native/gmb_runtime_c/build" llmdesc "$LLMENV/LLMDesc"
+  ENSURE_POLICY=hard
+fi
 
 if [ ! -x "$DRV" ] || [ "$DRV" -ot "$HOST_BUILD/libgmb_compiler_c.a" ] || \
    [ "$DRV" -ot "$DRIVER_SRC" ]; then
@@ -160,10 +255,14 @@ if [ ! -x "$DRV" ] || [ "$DRV" -ot "$HOST_BUILD/libgmb_compiler_c.a" ] || \
   # gmb_opt_env/gmb_paths/gmb_abi vivono nel runtime ma il driver li usa per il registro
   # opzioni: il target CMake `gmbnative` li compila DENTRO (vedi gmb_compiler_c/CMakeLists.txt);
   # il link manuale del gate deve fare lo stesso, altrimenti "_gmb_opt_env non definito".
+  # Stesso motivo per `gmb_first_use_spawn.c`: il driver chiama `gmb_first_use_spawn_if_needed`
+  # (primo uso delle librerie/toolchain) e senza quel sorgente il gate non linka
+  # (`_gmb_first_use_spawn_if_needed` undefined).
   cc "$DRIVER_SRC" \
      "$ROOT/native/gmb_runtime_c/src/gmb_opts.c" \
      "$ROOT/native/gmb_runtime_c/src/gmb_paths.c" \
      "$ROOT/native/gmb_runtime_c/src/gmb_abi.c" \
+     "$ROOT/native/gmb_runtime_c/src/gmb_first_use_spawn.c" \
      $INC_C $INC_RT "$HOST_BUILD/libgmb_compiler_c.a" -o "$DRV" || exit 1
 fi
 
@@ -173,16 +272,48 @@ fi
 # L'indice TSV (`<bin>.libs.txt`) è lo STESSO di `gmb_c99native_run.sh` (una sola implementazione):
 # serve al download on-demand delle lib che non stanno più nel repo (le nostre FFI, release `ffi-v1`).
 . "$MONO/tools/sh/libs_index_lib.sh"
-RID="$(li_rid)"
+RID="$TARGET_RID"
 li_init
 LIBS_CACHE="$HOME/.gmbasic/libs/$RID"
-ZSTD_INC="$LIBS_CACHE/include"; ZSTD_LIB="-L$LIBS_CACHE -lzstd"
-EXT=" -lcurl -lz -lbz2 -lsqlite3 $ZSTD_LIB"
-if [ -f "$LIBS_CACHE/libbrotlidec.dylib" ]; then EXT="$EXT -L$LIBS_CACHE -lbrotlidec -lbrotlienc"; fi
-if [ -f "$LIBS_CACHE/libpcre2-8.dylib" ]; then EXT="$EXT -L$LIBS_CACHE -lpcre2-8"; fi
+ZSTD_INC="$LIBS_CACHE/include"
+# Sistema + terze parti dal resolver (F5): prima `-lcurl -lz -lbz2 -lsqlite3` erano cablati e
+# brotli/pcre2/SDL/crypto si aggiungevano solo se esisteva il file `.dylib` (nome macOS nel test).
+EXT="${LS_SYS[*]} ${LS_THIRD[*]}"
 INC_EXTRA="-I$ROOT/native/gmb_runtime_c/src"
-if [ -d "$LIBS_CACHE/include/SDL2" ]; then INC_EXTRA="$INC_EXTRA -I$LIBS_CACHE/include"; EXT="$EXT -L$LIBS_CACHE -lSDL2 -lSDL2_ttf"; fi
-if [ -f "$LIBS_CACHE/libcrypto.dylib" ]; then EXT="$EXT -L$LIBS_CACHE -lcrypto -lssl -DHAVE_OPENSSL"; INC_EXTRA="$INC_EXTRA -I$LIBS_CACHE/include"; fi
+if [ -d "$LIBS_CACHE/include/SDL2" ] || [ -f "$LIBS_CACHE/libcrypto.$LS_DYLIBEXT" ]; then
+  INC_EXTRA="$INC_EXTRA -I$LIBS_CACHE/include"
+fi
+
+# ── EXPORT dei simboli che le NOSTRE dylib cercano a load-time ───────────────────────────────
+# Stessa regola di `tools/sh/gmb_c99native_run.sh` (una sola regola, due runner). Le dylib AI sono
+# linkate con `-undefined dynamic_lookup`: non importano il core, lo risolvono quando dyld le carica,
+# e chi glielo fornisce è la TABELLA DEGLI EXPORT dell'eseguibile. Su Darwin ld64 li esporta da sé
+# mentre lld di `zig cc` dead-strippa i simboli che nulla referenzia (stub NULL → crash in un
+# inizializzatore, prima di `main`); su LINUX senza `--export-dynamic` l'eseguibile non li esporta
+# affatto — qui mancava del tutto, quindi i MiniTest AI su linux-x64 linkavano e morivano all'avvio.
+# Si forzano SOLO i 4 simboli ABI (`libs_exports_file.sh abi`), non gli import di tutte le dylib:
+# `-u` trattiene l'oggetto che definisce il simbolo, e la lista piena infilava oggetti AI/grafici
+# in ogni eseguibile (misurato: 198 KB → 594 KB su un `PRINT`).
+EXPORT_FLAGS=()
+EXPORT_SYMS_FILE=""; EXPORT_SYMS_TMP=0; EXPORT_GATE=0
+# Il flag dipende dall'OS di DESTINAZIONE (F5: con `--rid linux-x64` da macOS serve
+# `--export-dynamic`, che su Darwin non esiste), non da `uname` dell'host.
+case "$LS_OS" in
+  Linux)
+    EXPORT_FLAGS=(-Wl,--export-dynamic) ;;
+  Darwin)
+    if command -v dyld_info >/dev/null 2>&1; then
+      EXPORT_SYMS_FILE="$(mktemp "${TMPDIR:-/tmp}/gmbexports.XXXXXX")"; EXPORT_SYMS_TMP=1
+      # SOLO l'ABI minima (4 simboli), non l'unione degli import di tutte le dylib: `-u`
+      # obbliga a TENERE l'oggetto che definisce il simbolo, quindi la lista piena ficcava
+      # oggetti AI (e grafici) in ogni eseguibile — misurato: 198 KB → 594 KB su `PRINT "ciao"`.
+      bash "$MONO/tools/sh/libs_exports_file.sh" abi > "$EXPORT_SYMS_FILE"
+      while IFS= read -r _s; do EXPORT_FLAGS+=("-Wl,-u,$_s"); done < "$EXPORT_SYMS_FILE"
+    else
+      echo "test_minitests_c99native: dyld_info assente — export dell'ABI minima (llmdesc) non forzato" >&2
+    fi
+    ;;
+esac
 
 # ── broker pub/sub: lo avvia e lo ferma il GATE (vedi tools/sh/msg_broker.sh) ──────────────
 # I MiniTest tcp aprono un broker esterno: senza, falliscono con "timeout" per un prerequisito
@@ -191,12 +322,100 @@ BROKER_STARTED=()
 broker_cleanup() {
   local p
   for p in ${BROKER_STARTED[@]+"${BROKER_STARTED[@]}"}; do
-    "$MONO/tools/sh/msg_broker.sh" release "$p" >/dev/null 2>&1
+          "$MONO/tools/sh/msg_broker.sh" release "$p" "" "" "$SELF_PID" >/dev/null 2>&1
   done
 }
 
 WORK="$(mktemp -d /tmp/minitests_c99native.XXXXXX)"
-trap 'rm -rf "$WORK"; broker_cleanup' EXIT
+# ── CWD PULITA PER CASO ────────────────────────────────────────────────────
+# Ogni MiniTest gira nella SUA directory (i path relativi "work/…" e
+# "../../samples/…" devono valere), ma i file che il caso CREA non devono finire
+# nei sorgenti: un artefatto lasciato da un caso (es. shared/minitests/ai/x)
+# faceva fallire i gen_AI_* al giro successivo. La cwd e' quindi uno SPECCHIO in
+# $WORK con la STESSA struttura di path — antenati come directory reali con i
+# fratelli symlinkati (cosi' ".." e "../.." restano identici), file dei test come
+# CLONI copy-on-write (contenuto identico, ma una scrittura del caso non tocca il
+# sorgente) e sottodirectory reali: tutto cio' che il caso scrive nasce in $WORK e
+# sparisce con il caso. Lo specchio si costruisce una volta per directory e fra un
+# caso e l'altro viene riportato allo stato iniziale (niente residui da un caso al
+# successivo). I sorgenti non si toccano.
+# Copia specchio della directory del caso: UN clone ricorsivo (`cp -cR`), non una `cp` per voce.
+# Misurato su `ai` (447 file): 0,86 s di ciclo per-voce → 0,076 s per copia; su `misc` 0,157 → 0,017.
+# `-c` è clonefile(2): il test legge il contenuto vero ma una sua SCRITTURA non tocca i sorgenti
+# (con un symlink la toccava: un test ha riscritto shared/minitests/ai/app.settings.json). Dove il
+# filesystem non clona, fallback `cp -Rp`: senza `-p` ogni file sembrerebbe toccato dal caso e il
+# ripristino ri-clonerebbe tutto a ogni test. Verificato con `diff -r` e `stat` su misc e ai:
+# contenuto identico al vecchio specchio e ai sorgenti, mtime dei FILE identiche a entrambi;
+# le sole mtime diverse sono quelle delle DIRECTORY, che anche il vecchio `mkdir -p` scriveva
+# all'ora della copia (e comunque prima del TIMBRO, quindi il cancello del ripristino non scatta).
+mirror_case_files() {   # $1 = dir reale da specchiare, $2 = dir reale di destinazione (deve esistere)
+    cp -cR "$1/." "$2/" 2>/dev/null || cp -Rp "$1/." "$2/"
+}
+# Riporta la copia specchio allo stato dei sorgenti fra un caso e il successivo.
+# "Toccato" = mtime più recente del TIMBRO, e `find -newer` lo vede al NANOSECONDO (a differenza
+# di `[ -nt ]`, che confronta al secondo e perderebbe una riscrittura nello stesso secondo).
+# Il primo `find` è un CANCELLO che esce al primo elemento nuovo (`-print -quit`): il caso quasi
+# mai tocca la sua directory, e allora si paga un solo `find` invece di due passate + elenco —
+# misurato 3,5 ms/caso su misc e 4,9 su ai, contro 8,2 e 19,0 della versione a tre passate.
+# Anche una CANCELLAZIONE passa il cancello: togliere un file aggiorna l'mtime della directory
+# che lo conteneva, e la directory è fra gli elementi visti da `-newer`.
+reset_case_dir() {      # $1 = dir del caso nei sorgenti, $2 = copia specchio, $3 = timbro, $4 = elenco relativo
+    local x rel
+    [ -d "$2" ] || return 0
+    [ -n "$(find "$2" -mindepth 1 -newer "$3" -print -quit 2>/dev/null)" ] || return 0
+    # una sola passata, in `-depth`: i figli prima della directory, che così è già vuota
+    find "$2" -depth -mindepth 1 -newer "$3" 2>/dev/null | while IFS= read -r x; do
+        if [ -d "$x" ] && [ ! -L "$x" ]; then rmdir "$x" 2>/dev/null; continue; fi
+        rel="${x#"$2"/}"
+        if [ -f "$1/$rel" ] && [ ! -L "$1/$rel" ]; then
+            rm -f "$x"; cp -c "$1/$rel" "$x" 2>/dev/null || cp -p "$1/$rel" "$x"
+        else
+            rm -f "$x"
+        fi
+    done
+    # cancellati dal caso: l'elenco dice cosa DEVE esistere nello specchio
+    while IFS= read -r rel; do
+        [ -n "$rel" ] || continue
+        [ -e "$2/$rel" ] && continue
+        case "$rel" in */*) mkdir -p "$2/${rel%/*}" ;; esac
+        cp -c "$1/$rel" "$2/$rel" 2>/dev/null || cp -p "$1/$rel" "$2/$rel"
+    done < "$4"
+}
+prepare_case_cwd() {    # $1 = dir assoluta del MiniTest; imposta CASE_CWD
+    local src="$1" rest cur dst comp e b
+    case "$src" in
+        "$MONO"/*) rest="${src#"$MONO"/}" ;;
+        *) CASE_CWD="$src"; return 0 ;;   # fuori dal monorepo: si gira dove si e'
+    esac
+    cur="$MONO"; dst="$WORK/casecwd"
+    # Stessa directory del caso precedente: lo specchio e' gia' pronto (ricostruirlo costa
+    # ~0,6 s/caso fra cloni e antenati) → basta riportarlo allo stato iniziale.
+    if [ "${PREP_SRC:-}" = "$src" ] && [ -d "$dst/$rest" ]; then
+        reset_case_dir "$MONO/$rest" "$dst/$rest" "$WORK/casecwd.stamp" "$WORK/casecwd.files"
+        CASE_CWD="$dst/$rest"; return 0
+    fi
+    PREP_SRC="$src"
+    rm -rf "$dst"; mkdir -p "$dst"
+    while [ -n "$rest" ]; do
+        comp="${rest%%/*}"
+        case "$rest" in */*) rest="${rest#*/}" ;; *) rest="" ;; esac
+        [ "$comp" = ".." ] && break
+        for e in "$cur"/* "$cur"/.[!.]*; do
+            [ -e "$e" ] || [ -L "$e" ] || continue
+            b="${e##*/}"
+            [ "$b" = "$comp" ] && continue
+            ln -sfn "$e" "$dst/$b"
+        done
+        cur="$cur/$comp"; dst="$dst/$comp"; mkdir -p "$dst"
+    done
+    mirror_case_files "$cur" "$dst"
+    # Stato del ripristino: il TIMBRO dice cosa il caso ha toccato, l'ELENCO cosa deve esistere
+    # (per ripristinare i file cancellati). Path relativi alla foglia dello specchio.
+    touch "$WORK/casecwd.stamp"
+    ( cd "$dst" && find . -mindepth 1 \( -type f -o -type l \) | sed 's|^\./||' ) > "$WORK/casecwd.files"
+    CASE_CWD="$dst"
+}
+trap 'rm -rf "$WORK"; [ "$EXPORT_SYMS_TMP" = 1 ] && rm -f "$EXPORT_SYMS_FILE" "$EXPORT_SYMS_FILE.m"; broker_cleanup' EXIT
 pass=0; fail=0; skip=0
 # Il runtime C e' compilato UNA volta per invocazione in una static library, poi ogni
 # MiniTest linka solo il proprio out.c (prima il runtime veniva ricompilato per ogni test).
@@ -204,9 +423,29 @@ pass=0; fail=0; skip=0
 # Prima il runtime (≈60 sorgenti C) veniva ricompilato a OGNI invocazione: con un sample alla
 # volta significava minuti per test. Ora la libreria è in una cache in /tmp, invalidata SOLO se
 # cambia un sorgente o gli header (hash di mtime+percorso). Il flag GMB_RT_REBUILD=1 la forza.
-RT_CACHE_DIR="${TMPDIR:-/tmp}/gmb_c99native_rt_cache"
-RT_CACHE="$RT_CACHE_DIR/librt.a"
-RT_STAMP="$RT_CACHE_DIR/src.stamp"
+# …e la CARTELLA è per-RID (2026-11-12). Prima era una sola per host e per cross: lo STAMP
+# distingueva i due mondi, ma lo stesso path no — un run host (o un'altra sessione) che partiva
+# mentre un cross era in corso SOVRASCRIVEVA `librt.a` con oggetti arm64 Mach-O. Sintomo: il
+# cross «linka» e il linker dichiara undefined OGNI simbolo del runtime (`gmb_print_stage_end`,
+# `gmb_ffi_dl_sym`, …), perché i nomi Mach-O hanno l'underscore iniziale e non corrispondono.
+# Con la cartella per RID i due build non si toccano più.
+RT_CACHE_DIR="${TMPDIR:-/tmp}/gmb_c99native_rt_cache/$TARGET_RID"
+# FILE per-COMPILATORE, con i nomi SENZA suffisso per il canonico (zig). Prima c'era un solo
+# `librt.a` con lo STAMP che includeva `cc=$FC`: alternare zig e cc (gamba A/B) invalidava e
+# SOVRASCRIVEVA la cache dell'altro — 395 sorgenti ricompilati a ogni cambio (~4 min).
+# Ora `librt.a` è l'archivio zig, e siccome è anche il nome cercato dal cross
+# (`gmb_c99native_run.sh`) non serve nessuna copia-alias; la gamba A/B usa `librt.<tag>.a` e
+# non tocca il canonico. Il tag è un hash della stringa di `--cc`: stabile fra invocazioni
+# identiche.
+# `RT_PUB` è il nome STABILE che leggono gli altri script (`lxbuild` fallisce senza `librt.a`,
+# `gmb_c99native_run.sh` lo usa se c'è): continua a essere pubblicato. `RT_CACHE` è invece
+# l'archivio che QUESTO processo linka, con lo stamp nel nome: nessun altro processo può
+# sostituirglielo con sorgenti diverse mentre la corsa è in corso.
+case "${FC%% *}" in
+  zcc|zig|*/zcc|*/zig) RT_PUB="$RT_CACHE_DIR/librt.a";            RT_CACHE_BASE="$RT_CACHE_DIR/librt" ;;
+  *)        RT_TAG="$(printf '%s' "$FC" | shasum | cut -c1-8)"
+            RT_PUB="$RT_CACHE_DIR/librt.$RT_TAG.a";             RT_CACHE_BASE="$RT_CACHE_DIR/librt.$RT_TAG" ;;
+esac
 # Gli HEADER contano: prima la cache era invalidata solo dai .c, quindi una modifica a un header
 # (es. gmb_runtime.h, dove vive ogni prototipo gmb_*) lasciava in cache un runtime compilato con
 # le vecchie dichiarazioni → simboli/ABI stantii in silenzio. Sono le -I usate qui sotto.
@@ -221,21 +460,86 @@ RT_HDRS="$(find $RT_HDR_DIRS -type f -name '*.h' 2>/dev/null | tr '\n' ' ')"
 # Con l'hash del contenuto, qualunque modifica (anche un revert nello stesso secondo) invalida la cache.
 # I FLAG di compilazione fanno parte della cache: senza, cambiare -DGMB_WITH_UI (o OpenSSL/ZSTD)
 # riuserebbe un archivio costruito con un'altra configurazione.
-STAMP="$( ( printf '%s\n' "GMB_WITH_UI=1 HAVE_OPENSSL GMB_PARQUET_HAVE_ZSTD"; for s in $RT_SRCS $RT_HDRS; do printf '%s\n' "$s"; shasum -a 1 "$s" 2>/dev/null | cut -d' ' -f1; done ) | shasum | cut -c1-16)"
+# La cache è PER-TARGET: gli stessi sorgenti compilati per un altro RID (`--rid`/`--target`) o con
+# un altro compilatore non sono riusabili (sarebbero oggetti dell'host dentro un link cross).
+# `zflags` = i flag INTERNI del wrapper (`zcc --print`): `cc=$FC` copre il percorso, non ciò che
+# il wrapper aggiunge. Senza, cambiare le flag di zcc (SDK, `-include`, pavimento) lasciava in
+# cache oggetti costruiti con le vecchie — misurato il 13/11: la build "verde" era con oggetti
+# vecchi, è servito GMB_RT_REBUILD=1 per accorgersene.
+# Identità del compilatore, UNA volta per entrambi gli usi: nello stamp (cambiare zcc o aggiornare
+# zig deve invalidare) e nella chiave della directory oggetti. `--print` dà il percorso di zig, che
+# porta la versione nella directory; per `cc` (che `--print` non ce l'ha) vale `--version`.
+RT_CC_ID="$("$FC" --print 2>/dev/null || { "$FC" --version 2>/dev/null | head -1; })"
+rt_stamp_hash() {       # hash del contenuto: un `shasum` per BLOCCO (xargs), non uno per file
+    ( printf '%s\n' "GMB_WITH_UI=1 HAVE_OPENSSL GMB_PARQUET_HAVE_ZSTD rid=$TARGET_RID tf=$TF cc=$FC zflags=$RT_CC_ID"
+      printf '%s\n' $RT_SRCS $RT_HDRS | xargs shasum -a 1 2>/dev/null ) | shasum | cut -c1-16
+}
+# La validità la decide l'HASH DEL CONTENUTO, senza cancello sull'mtime: in blocco (`xargs`) i
+# 552 sorgenti+header costano 0,04 s — meno di quanto rendeva il `find -newer` su 9 directory
+# (0,00 s) che questa versione aveva, e senza il suo punto debole: un file ripristinato con mtime
+# più vecchia del timbro non apriva il cancello e restava in cache. L'mtime non è mai l'autorità.
+# ── Cache PER-OGGETTO ─────────────────────────────────────────────────────────────────────────
+# Chiave di una unità = contenuto del SORGENTE (nome dell'oggetto) + flag + identità del
+# compilatore + contenuto degli HEADER (directory che porta la chiave). Così toccare un `.c`
+# ricompila UNA unità su 395, mentre un header toccato, un flag cambiato o un aggiornamento di zig
+# invalidano la directory intera — stessa sicurezza di prima, granularità più fine dove serve.
+# `RT_UNIT_FLAGS` è UNA stringa: la stessa va nella chiave e nella riga di compilazione, così non
+# possono divergere.
+RT_UNIT_FLAGS="$TF $INC_RT -I$INC_CHART -I$ROOT/native/gmb_runtime_c/build -I$ROOT/native/gmb_agent_runtime -I$ROOT/native/gmb_doc_c/include -I$ROOT/native/gmb_db_c/include -I$ROOT/native/gmb_torch/include $LLM_INC -I$ZSTD_INC $CODEC_INC $INC_EXTRA -O2 -ffunction-sections -fdata-sections -w -ffp-contract=off -DHAVE_OPENSSL -DGMB_PARQUET_HAVE_ZSTD -DGMB_WITH_UI=1"
 mkdir -p "$RT_CACHE_DIR"
-if [ "${GMB_RT_REBUILD:-}" != "1" ] && [ -f "$RT_CACHE" ] && [ -f "$RT_STAMP" ] && [ "$(cat "$RT_STAMP")" = "$STAMP" ]; then
+STAMP="$(rt_stamp_hash)"
+RT_CACHE="$RT_CACHE_BASE.$STAMP.a"
+# Numero di membri attesi: è il metro che distingue un archivio VERO da uno corrotto. Il 13/11
+# un `ar rcs` in corsa ha lasciato in cache un `librt.<tag>.a` da 96 byte e la cache restava
+# "valida" (lo stamp era quello giusto): da lì in poi OGNI link falliva con "symbol(s) not found".
+RT_N_EXPECTED="$(printf '%s\n' $RT_SRCS | wc -l | tr -d ' ')"
+# Membri = unità + la tabella dei simboli che `ar` aggiunge (`__.SYMDEF` su Mach-O, `/` o
+# `//` su ELF): contarla faceva rifiutare un archivio sano (misurato: 397 membri per 396 unità).
+archive_members() { $AR_CMD t "$1" 2>/dev/null | grep -v -e '^__\.SYMDEF' -e '^//$' -e '^/$' | wc -l | tr -d ' '; }
+cache_ok() { [ -f "$1" ] && [ "$(archive_members "$1")" = "$RT_N_EXPECTED" ]; }
+if [ "${GMB_RT_REBUILD:-}" != "1" ] && cache_ok "$RT_CACHE"; then
   echo "runtime C: cache valida ($RT_CACHE)"
   RT_LIB="$RT_CACHE"
 else
-  echo "runtime C: compilo ($(echo "$RT_SRCS" | wc -w | tr -d ' ') sorgenti)..."
-  RT_O=0; OBJS=""
-  for s in $RT_SRCS; do
-    RT_O=$((RT_O+1))
-    cc -c "$s" -o "$WORK/rt_$RT_O.o" $INC_RT -I"$INC_CHART" -I"$ROOT/native/gmb_runtime_c/build" -I"$ROOT/native/gmb_agent_runtime" -I"$ROOT/native/gmb_doc_c/include" -I"$ROOT/native/gmb_db_c/include" -I"$ROOT/native/gmb_torch/include" $LLM_INC -I"$ZSTD_INC" $CODEC_INC $INC_EXTRA -O2 -ffunction-sections -fdata-sections -w -ffp-contract=off -DHAVE_OPENSSL -DGMB_PARQUET_HAVE_ZSTD -DGMB_WITH_UI=1 || exit 1
-    OBJS="$OBJS $WORK/rt_$RT_O.o"
-  done
-  ar rcs "$RT_CACHE.tmp" $OBJS && mv "$RT_CACHE.tmp" "$RT_CACHE"
-  echo "$STAMP" > "$RT_STAMP"
+  # Identità del compilatore (già in $RT_CC_ID): la chiave cambia con zcc e con la versione di zig.
+  RT_OBJ_KEY="$( ( printf '%s\n%s\n' "$RT_UNIT_FLAGS" "$RT_CC_ID"; printf '%s\n' $RT_HDRS | xargs shasum -a 1 2>/dev/null ) | shasum | cut -c1-16 )"
+  RT_OBJ_DIR="$RT_CACHE_DIR/obj/$RT_OBJ_KEY"
+  mkdir -p "$RT_OBJ_DIR"
+  echo "runtime C: ricostruisco l'archivio (cache per-oggetto)..."
+  # Una sola passata di `shasum` per TUTTI i sorgenti (xargs): 395 fork in meno, e l'ordine
+  # delle righe è quello di $RT_SRCS, che è anche l'ordine dei membri nell'archivio.
+  printf '%s\n' $RT_SRCS | xargs shasum -a 1 2>/dev/null > "$WORK/rt_shasums"
+  RT_N=0; RT_COMPILED=0; OBJS=""
+  while read -r h s; do
+    RT_N=$((RT_N+1))
+    o="$RT_OBJ_DIR/$h.o"
+    if [ "${GMB_RT_REBUILD:-}" = "1" ] || [ ! -f "$o" ]; then
+      $FC -c "$s" -o "$o.$$.tmp" $RT_UNIT_FLAGS || { rm -f "$o.$$.tmp"; exit 1; }
+      mv "$o.$$.tmp" "$o"
+      RT_COMPILED=$((RT_COMPILED+1))
+    fi
+    OBJS="$OBJS $o"
+  done < "$WORK/rt_shasums"
+  echo "runtime C: compilate $RT_COMPILED di $RT_N unità"
+  # TEMPORANEO PER PID: era `$RT_CACHE.tmp` per tutti, così due `ar rcs` simultanei scrivevano
+  # lo stesso file e il `mv` pubblicava un archivio vuoto da 96 byte (misurato: due invocazioni
+  # in parallelo → 61 errori di link su 61 test, entrambe le run). Il file resta privato finché
+  # non è validato, e solo allora prende il nome definitivo.
+  AR_TMP="$RT_CACHE.$$.tmp"
+  if ! $AR_CMD rcs "$AR_TMP" $OBJS || ! cache_ok "$AR_TMP"; then
+    rm -f "$AR_TMP"
+    echo "runtime C: archivio non valido ($(archive_members "$AR_TMP") membri, $RT_N_EXPECTED attesi): non lo pubblico" >&2
+    exit 1
+  fi
+  mv -f "$AR_TMP" "$RT_CACHE"
+  # Nome stabile per chi lo legge da fuori: hard link (atomico, stesso filesystem) invece di
+  # una copia da 17 MB; `cp` solo se il link non è possibile.
+  if ! ln -f "$RT_CACHE" "$RT_PUB" 2>/dev/null; then
+    cp -f "$RT_CACHE" "$RT_PUB.$$.tmp" && mv -f "$RT_PUB.$$.tmp" "$RT_PUB"
+  fi
+  # Gli archivi legati allo stamp si accumulano (~17 MB l'uno): si tengono quelli delle ultime
+  # 3 ore, più di qualsiasi singola invocazione. `librt.a` non ha il punto e non viene toccato.
+  find "$RT_CACHE_DIR" -maxdepth 1 -name 'librt.*.a' -mmin +180 -delete 2>/dev/null || true
   RT_LIB="$RT_CACHE"
 fi
 # I MiniTest cambiano posto fra i due repository: nella radice di GMBasic in quello originale,
@@ -251,6 +555,7 @@ fi
   echo "MiniTest non trovati: attesi in $ROOT/MiniTests o $ROOT/../shared/minitests (o in GMB_MINI_ROOT)"; exit 1;
 }
 echo "MiniTest: $MINI"
+echo "Compilatore: $FC"
 # Rumore diagnostico del motore MLX: prefissi in UNA fonte di verità (`tests/engine_noise_prefixes.txt`
 # nel repo originale, `GMBasicSharp/tests/` nel monorepo — la stessa lista dell'xUnit).
 NOISE_FILE="${GMB_NOISE_FILE:-}"
@@ -285,11 +590,16 @@ if [ -x "$BROKER_SH" ]; then
     _bports="$("$BROKER_SH" ports 2>/dev/null)"
   fi
   for _bp in $_bports; do
-    _bres="$("$BROKER_SH" ensure "$_bp" 2>/dev/null)" || _bres=failed
-    case "$_bres" in
-      started) BROKER_STARTED+=("$_bp"); echo "broker pub/sub avviato dal gate su :$_bp" ;;
-      already) echo "broker pub/sub già attivo su :$_bp (lo lascio a chi l'ha avviato)" ;;
-      *)       echo "attenzione: broker non avviabile su :$_bp" >&2 ;;
+          # `ensure` stampa già started|already|busy|failed: il `||` non deve CANCELLARE il motivo
+      # (un `busy` mascherato da failed mandava a cercare un broker rotto invece di una run
+      # concorrente che teneva la porta).
+      _bres="$("$BROKER_SH" ensure "$_bp" "" "" "$SELF_PID" 2>/dev/null)" || true
+      [ -n "$_bres" ] || _bres=failed
+      case "$_bres" in
+        started) BROKER_STARTED+=("$_bp"); echo "broker pub/sub avviato dal gate su :$_bp" ;;
+        already) echo "broker pub/sub già attivo su :$_bp (riuso quello della run)" ;;
+        busy)    echo "ERRORE: broker :$_bp occupato da un'altra run (lease non rilasciato in tempo): i test tcp di questa run non sono verificabili" >&2 ;;
+        *)       echo "attenzione: broker non avviabile su :$_bp" >&2 ;;
     esac
   done
 fi
@@ -304,16 +614,34 @@ for f in "$MINI"/**/*.bas "$MINI"/*.bas; do
     ONLY_MATCHED=$((ONLY_MATCHED+1))
   fi
   # INTERATTIVI (marker header `' TAG: interactive`): esclusi di default; inclusi con GMB_RUN_INTERACTIVE=1.
-  if [ "${GMB_RUN_INTERACTIVE:-0}" != "1" ] && grep -q "^' TAG: interactive" "$f" 2>/dev/null; then skip=$((skip+1)); continue; fi
+  if [ "${GMB_RUN_INTERACTIVE:-0}" != "1" ] && grep -q "^' TAG: interactive" "$f" 2>/dev/null; then echo "SKIP ${f#$MINI/} (interattivo: escluso per progetto)"; skip=$((skip+1)); continue; fi
   # HEAVY (marker header `' TAG: heavy`): richiede modello reale + training; escluso di default.
-  if [ "${GMB_RUN_HEAVY:-0}" != "1" ] && grep -q "^' TAG: heavy" "$f" 2>/dev/null; then skip=$((skip+1)); continue; fi
+  if [ "${GMB_RUN_HEAVY:-0}" != "1" ] && grep -q "^' TAG: heavy" "$f" 2>/dev/null; then echo "SKIP ${f#$MINI/} (heavy: richiede modello reale, escluso per progetto)"; skip=$((skip+1)); continue; fi
+  # gen_AI_*: campioni di COPERTURA SIMBOLO generati; le loro EXPECT catturano STATO di
+  # macchina/sessione (`AI.BRAINUSED` = brain usati nel processo, `AI.PROVIDERS` = provider
+  # configurati, `AI.VAULTLIST` = vault creati dai test precedenti, `AI.COUNT` = documenti
+  # indicizzati). Non esiste un oracolo unico: si escludono come nel cross-leg xUnit
+  # (IsParityExcluded, stesso criterio di gen_BROWSER_*). La copertura del simbolo resta
+  # garantita dal census.
+  case "$(basename "$f")" in
+    # SKIP DICHIARATO e RIPORTATO (una riga per file): un salto muto non si distingue da una
+    # gamba che non ha eseguito nulla, e il gate A/B del pre-commit lo blocca come "gamba muta".
+    gen_AI_*) echo "SKIP ${f#$MINI/} (gen_AI_*: output dipende dallo stato di macchina/sessione)"; skip=$((skip+1)); continue ;;
+  esac
   [ -f "$f" ] || continue
   name="${f#$MINI/}"
   if ! "$DRV" "$f" "$WORK/out.c" --no-exe >/dev/null 2>"$WORK/derr.txt"; then
-    # MiniTest NEGATIVO di compilazione (`' EXPECT: ERROR: ...`): il driver DEVE rifiutare il sorgente. Il testo esatto del
-    # messaggio differisce fra parser C# e parser C, quindi qui conta che l'errore ci sia (e che il driver non vada in HANG).
-    if grep -m1 -q "^' EXPECT: ERROR:" "$f" 2>/dev/null; then
+    # Negativo di COMPILAZIONE (`' EXPECT: COMPILE ERROR: ...`): il driver DEVE rifiutare il
+    # sorgente. Il testo esatto del messaggio differisce fra parser C# e parser C, quindi qui
+    # conta che l'errore ci sia (e che il driver non vada in HANG).
+    if grep -m1 -q "^' EXPECT: COMPILE ERROR:" "$f" 2>/dev/null; then
       echo "PASS $name :: (errore di compilazione atteso) $(head -1 "$WORK/derr.txt" | head -c 100)"; pass=$((pass+1)); continue
+    fi
+    # Negativo di RUNTIME (`' EXPECT: ERROR: ...`) rifiutato dal driver: il test non arriva più
+    # al runtime che doveva verificare, e prima usciva come PASS ("errore di compilazione
+    # atteso") — un check perso travestito da esito.
+    if grep -m1 -q "^' EXPECT: ERROR:" "$f" 2>/dev/null; then
+      echo "FAIL $name (EXPECT: ERROR e' un negativo di RUNTIME ma il driver rifiuta il sorgente: $(head -1 "$WORK/derr.txt" | head -c 100))"; fail=$((fail+1)); continue
     fi
     # DIPENDENZA ESTERNA ASSENTE, dichiarata nel file (`' TAG: unsupported-c99native`): i test
     # che fanno `REQUIRE "<pacchetto>"` non sono verificabili senza il pacchetto installato.
@@ -325,6 +653,12 @@ for f in "$MINI"/**/*.bas "$MINI"/*.bas; do
     fi
     echo "FAIL $name (driver: $(head -1 "$WORK/derr.txt"))"; fail=$((fail+1)); continue
   fi
+  # Negativo di COMPILAZIONE che COMPILA: la verifica è SPARITA (il driver ha accettato un
+  # sorgente che doveva rifiutare) → FAIL subito, senza link né esecuzione. Prima era il caso
+  # peggiore: il file "compila", quindi PASS, e un check rimosso non si vedeva.
+  if grep -m1 -q "^' EXPECT: COMPILE ERROR:" "$f" 2>/dev/null; then
+    echo "FAIL $name (EXPECT: COMPILE ERROR non rispettato: il driver ha ACCETTATO il sorgente)"; fail=$((fail+1)); continue
+  fi
   # Solo i test CUA/browser/computer/agent_loop necessitano di gmb_agent_runtime: lo si linka
   # solo se il C generato referenzia quei simboli (evita ricompilare agent_runtime per tutti).
   # F2 multimodale (2026-09-11): AI.DOCEXTRACT chiama gmb_llm_complete -> gmb_agent_ask ->
@@ -334,9 +668,13 @@ for f in "$MINI"/**/*.bas "$MINI"/*.bas; do
   # gmb_agent_run_named (AI.AGENTRUN/AGENTRUNGRAPH/AGENTRUNRAG) vive in gmb_agent_runtime
   # (gmb_agent_loop.c) ma il C GENERATO lo nomina senza 'gmb_agent_loop' → senza questa voce
   # il link fallisce con 'call to undeclared function'.
-  if grep -qE 'gmb_cua_|gmb_browser_|gmb_computer_|gmb_ax_|gmb_agent_loop|gmb_agent_run_named|tool_search|gmb_cdp_|gmb_desktop_|screenshot|llm_|gmb_docextract_json' "$WORK/out.c" 2>/dev/null; then
+  if [ "$LS_AGENT" = 1 ] && grep -qE 'gmb_cua_|gmb_browser_|gmb_computer_|gmb_ax_|gmb_agent_loop|gmb_agent_run_named|tool_search|gmb_cdp_|gmb_desktop_|screenshot|llm_|gmb_docextract_json' "$WORK/out.c" 2>/dev/null; then
     AGENT="$AGENT_SRCS"
   fi
+  # Fuori da Darwin `gmb_agent_runtime` non compila affatto: `gmb_ax_mac.c` e
+  # `gmb_computer_provider_mac.c` includono `<ApplicationServices/…>` (CMake li mette solo
+  # nel ramo APPLE). `LS_AGENT` è 0 per linux-*/win-* e il resolver lo dice: senza questo
+  # gate il cross di un MiniTest qualunque moriva su quell'include, non sul codice in prova.
   # B2: AI VERIFY COMPILE nel mondo C → serve il compilatore C (gmb_compile_bas_file).
   COMPILER=""
   # gmb_observe_test (AI OBSERVE TEST) e gmb_verify_require usano gmb_compile_bas_file
@@ -369,6 +707,31 @@ for f in "$MINI"/**/*.bas "$MINI"/*.bas; do
     TORCH_SRCS="$ROOT/native/gmb_torch/src/gmb_torch.c"
     [ -f "$ROOT/native/gmb_torch/src/gmb_torch_str.c" ] && TORCH_SRCS="$TORCH_SRCS $ROOT/native/gmb_torch/src/gmb_torch_str.c"
   fi
+  # TRAY: le funzioni gmb_tray_* vere stanno nella dylib CONDIVISA (target CMake gmb_tray: Cocoa su
+  # macOS, Win32 su Windows). In librt.a c'è solo il `gmb_tray.c` compilato SENZA GMB_TRAY_COCOA
+  # (il glob di `src/*.c` qui sopra): risponde backend="none" e non fa nulla. La gamba nativa
+  # divergeva così da IL/VM-C (backend=macos) senza dirlo — l'oracolo del MiniTest è cross-leg, e
+  # con tutte le gambe a "none" non c'era niente da confrontare.
+  # La dylib va PRIMA di librt.a: MISURATO il 13/11, con zig/lld l'ordine è indifferente (risolve
+  # dalla dylib in entrambe le posizioni), ma con ld64 di Apple — la gamba A/B `--cc cc` — archivio
+  # prima estrae lo stub e il binario stampa "none". Davanti costa zero e vale per tutti e due.
+  # Cancello sul C generato: un test senza tray non paga la dipendenza, e i RID cross non hanno la
+  # dylib dell'host (linkarla sempre costerebbe 0,2 ms/test, misurati, ma qui romperebbe il link).
+  TRAY_IN=()
+  if grep -q 'gmb_tray_' "$WORK/out.c" 2>/dev/null; then
+    TRAY_DYLIB="$LIBS_CACHE/libgmb_tray.$LS_DYLIBEXT"
+    if [ ! -f "$TRAY_DYLIB" ]; then
+      # Solo se la cache non ce l'ha: `cmake --build` scrive in build/libs, non nella cache che
+      # questo blocco linka, quindi a cache piena costava 0,18 s per rigenerare un file inutilizzato.
+      cmake --build "$ROOT/native/gmb_runtime_c/build" --target gmb_tray -j4 >/dev/null 2>&1 || true
+      TRAY_DYLIB="$ROOT/build/libs/$RID/libgmb_tray.$LS_DYLIBEXT"
+    fi
+    if [ -f "$TRAY_DYLIB" ]; then
+      TRAY_IN=( "$TRAY_DYLIB" -Wl,-rpath,"${TRAY_DYLIB%/*}" )
+    else
+      echo "FAIL $name (tray: libgmb_tray.$LS_DYLIBEXT assente per $RID)"; fail=$((fail+1)); continue
+    fi
+  fi
   # MODEL I/O + plugin/model_desc + tokenizer: `gmb_llm_model_convert` (e il resto del namespace
   # LLM) vivono nel progetto separato gmb_model_io, che il C99Native deve linkare
   # (il C generato per `LLM MODEL CONVERT` li chiama). Prebuilt come db/moe/codec.
@@ -376,16 +739,46 @@ for f in "$MINI"/**/*.bas "$MINI"/*.bas; do
         "$ROOT/native/gmb_runtime_c/build/gmbllm_build/libgmbllm_core.a" )
   PLG="$ROOT/native/gmb_runtime_c/build/llmengine_plugin_build/libllmengine_plugin.a"
   MDS="$ROOT/native/gmb_runtime_c/build/llmdesc_build/libllmdesc.a"
-  TOK="$LLMENV/build/dist/osx-arm64/libllmtoken.dylib"
+  # Pila LLM dell'host: solo per il RID nativo (`LS_LLM`, da gmb_link_set.sh). Per un altro RID
+  # llmtoken/llmcodec_*/gmbllm* sono archivi dell'host e il loro errore di link nasconde quello
+  # vero: si omettono e si dichiara.
+  LLM_STATIC=(); LLM_CODEC_FLAGS=""
+  if [ "$LS_LLM" = 1 ]; then
+    LLM_STATIC=( "$MOE_LIB" "${MIO[@]}" "$PLG" "$MDS" )
+    TOK="$LIBS_CACHE/libllmtoken.$LS_DYLIBEXT"
+    [ -f "$TOK" ] || TOK="$LLMENV/build/dist/osx-arm64/libllmtoken.dylib"
+    LLM_CODEC_FLAGS="$CODEC_LIB $TOK -Wl,-rpath,$(dirname "$TOK")"
+  else
+    echo "test_minitests_c99native: llmtoken/llmcodec_* omesse per $TARGET_RID (pila LLM costruita per $LS_HOST_RID, LS_LLM=0)" >&2
+  fi
   # Input e flag di link CONDIVISI fra l'eseguibile e la libreria condivisa: la lista era
   # duplicata (due copie da tenere allineate) e la gamba LIBRARY linkava per forza un binario.
   # Array (non stringa) perché il path di rpath può contenere spazi e perché $AGENT/$DOC_SRCS
   # sono già liste: nello stringone i confini dei token dipendevano dallo split implicito.
-  LINK_IN=( "$RT_LIB" $AGENT $COMPILER "$DB_LIB" "$MOE_LIB" "${MIO[@]}" "$PLG" "$MDS" $DOC_SRCS $TORCH_SRCS )
+  LINK_IN=( ${TRAY_IN[@]+"${TRAY_IN[@]}"} "$RT_LIB" $AGENT $COMPILER "$DB_LIB" ${LLM_STATIC[@]+"${LLM_STATIC[@]}"} $DOC_SRCS $TORCH_SRCS )
+  # GATE ORDINE (misurato il 13/11): la dylib del tray deve stare PRIMA di librt.a. Con lld
+  # l'ordine è indifferente, con ld64 di Apple no: se l'archivio precede, il suo `gmb_tray.o` —
+  # lo stub che risponde backend="none" — viene estratto al posto della dylib, e il MiniTest
+  # passa lo stesso perché il suo oracolo è cross-leg. Un commento non ferma nessuno: chi sposta
+  # la dylib in fondo (o in LINK_FLAGS, che è accodato) non se ne accorgerebbe. Qui si contano le
+  # posizioni e il test che usa il tray fallisce. Il controllo costa un ciclo su ~8 elementi e
+  # gira solo quando TRAY_IN non è vuoto, cioè solo per i test che linkano la dylib.
+  if [ ${#TRAY_IN[@]} -gt 0 ]; then
+    tray_at=""; rt_at=""; pos=0
+    for a in "${LINK_IN[@]}"; do
+      if [ "$a" = "$TRAY_DYLIB" ] && [ -z "$tray_at" ]; then tray_at=$pos; fi
+      if [ "$a" = "$RT_LIB" ] && [ -z "$rt_at" ]; then rt_at=$pos; fi
+      pos=$((pos+1))
+    done
+    if [ -z "$tray_at" ] || [ -z "$rt_at" ] || [ "$tray_at" -ge "$rt_at" ]; then
+      echo "FAIL $name (ordine del link: libgmb_tray è alla posizione $tray_at, librt.a alla $rt_at — la dylib deve venire prima)"
+      fail=$((fail+1)); continue
+    fi
+  fi
   LINK_FLAGS=( $INC_RT -I"$ROOT/native/gmb_agent_runtime" -I"$LLMENV/LLMJinja" -I"$LLMENV/LLMEngine/mlx"
     -I"$ROOT/native/gmb_compiler_c/include" $CODEC_INC $DB_INC $LLM_INC $INC_EXTRA $FRAMEWORKS
-    -lm -w -ffp-contract=off -DGMB_WITH_UI=1 -Wl,-dead_strip $CODEC_LIB "$TOK" -Wl,-rpath,"$(dirname "$TOK")"
-    -lcompression -lz $EXT )
+    -lm -w -ffp-contract=off -DGMB_WITH_UI=1 $LS_STRIP $LLM_CODEC_FLAGS
+    $EXT )
   # LIBRARY (marker header `' TAG: library`): il prodotto e' una LIBRERIA condivisa, e per
   # contratto NON ha entry point (Guide/utente/LIBRARY-gmblib-Guide.md §1). Linkare `-o bin`
   # falliva con `undefined _main` su un file che, per l'ABI, era corretto: il test non poteva
@@ -393,13 +786,13 @@ for f in "$MINI"/**/*.bas "$MINI"/*.bas; do
   # esporti l'ABI documentata: `<lib>_init`/`<lib>_fini` (+ ctor/dtor) e `<lib>_<Proc>` per
   # ogni PUBLIC SUB/FUNCTION.
   if grep -q "^' TAG: library" "$f" 2>/dev/null; then
-    if ! cc "$WORK/out.c" "${LINK_IN[@]}" "${LINK_FLAGS[@]}" -shared -fPIC -o "$WORK/lib.dylib" 2>"$WORK/ccerr.txt"; then
+    if ! $FC $TF "$WORK/out.c" "${LINK_IN[@]}" "${LINK_FLAGS[@]}" -shared -fPIC -o "$WORK/lib.$LS_DYLIBEXT" 2>"$WORK/ccerr.txt"; then
       echo "FAIL $name (cc -shared: $(tail -3 "$WORK/ccerr.txt" | tr '\n' ' '))"; fail=$((fail+1)); continue
     fi
     lib="$(awk 'toupper($1)=="LIBRARY"{n=$2; gsub(/\"/,"",n); print n; exit}' "$f")"
     [ -n "$lib" ] || { echo "FAIL $name (ABI: nessun nome dopo LIBRARY)"; fail=$((fail+1)); continue; }
     procs="$(awk 'toupper($1)=="PUBLIC" && (toupper($2)=="FUNCTION" || toupper($2)=="SUB"){n=$3; sub(/\(.*/,"",n); print n}' "$f")"
-    SYMS="$(nm -gU "$WORK/lib.dylib" 2>/dev/null | awk '{print $NF}')"
+    SYMS="$(nm $LS_NM_GU "$WORK/lib.$LS_DYLIBEXT" 2>/dev/null | awk '{print $NF}')"
     missing=""
     for want in "_${lib}_init" "_${lib}_fini" $(for p in $procs; do echo "_${lib}_$p"; done); do
       printf '%s\n' "$SYMS" | grep -qx "$want" || missing="$missing $want"
@@ -413,8 +806,30 @@ for f in "$MINI"/**/*.bas "$MINI"/*.bas; do
     echo "PASS $name :: .gmblib '$lib' → $(echo $procs | wc -w | tr -d ' ') export ($(for p in $procs; do printf '%s ' "${lib}_$p"; done))"
     pass=$((pass+1)); continue
   fi
-  if ! cc "$WORK/out.c" "${LINK_IN[@]}" "${LINK_FLAGS[@]}" -o "$WORK/bin" 2>"$WORK/ccerr.txt"; then
+  # `EXPORT_FLAGS` SOLO sull'eseguibile: su `-shared` una `-u` verso un simbolo non definito lì
+  # sarebbe un errore di link (la gamba LIBRARY resta com'era).
+  if ! $FC $TF "$WORK/out.c" "${LINK_IN[@]}" "${LINK_FLAGS[@]}" ${EXPORT_FLAGS[@]+"${EXPORT_FLAGS[@]}"} -o "$WORK/bin" 2>"$WORK/ccerr.txt"; then
     echo "FAIL $name (cc: $(tail -3 "$WORK/ccerr.txt" | tr '\n' ' '))"; fail=$((fail+1)); continue
+  fi
+  # GATE EXPORT (una volta sola, al primo eseguibile): il link può riuscire e produrre un binario
+  # che muore all'avvio, perché per le dylib conta ciò che l'eseguibile ESPORTA. Qui si verifica
+  # PRIMA di eseguire, con i nomi dei simboli scoperti: un crash silenzioso in un inizializzatore
+  # diventerebbe un FAIL inspiegabile del MiniTest.
+  if [ "$EXPORT_GATE" = 0 ] && [ -n "$EXPORT_SYMS_FILE" ] && [ -s "$EXPORT_SYMS_FILE" ]; then
+    if ! bash "$MONO/tools/sh/libs_exports_file.sh" verify "$WORK/bin" "$EXPORT_SYMS_FILE"; then
+      echo "" >&2
+      echo "ERRORE: l'eseguibile non esporta i simboli che le dylib cercano a load-time (elenco sopra)." >&2
+      echo "  Un binario così muore nel costruttore della dylib, prima di \`main\`: si ferma il run invece" >&2
+      echo "  di riportare FAIL incomprensibili. Rigenerare il bundle: tools/sh/libs_build_release.sh" >&2
+      exit 1
+    fi
+    EXPORT_GATE=1
+  fi
+  # CROSS (F5): il binario per un altro RID si linka e si verifica, non si esegue — il loader
+  # dell'host rifiuterebbe un ELF con un errore che non dice nulla sul codice BASIC.
+  if [ "$TARGET_RID" != "$HOST_RID" ]; then
+    echo "PASS $name :: (cross $TARGET_RID: linkato, non eseguito)"
+    pass=$((pass+1)); continue
   fi
   # Il motore MLX (dlopen in LLM QUALITY/REGISTRY MEASURE) e' raggiungibile via loader path: senza,
   # le gambe C sono standalone e la PPL reale darebbe `ppl=na` (divergenza vs IL). I log engine
@@ -422,7 +837,12 @@ for f in "$MINI"/**/*.bas "$MINI"/*.bas; do
   # `<bin>.libs.txt` accanto all'eseguibile: le lib dell'indice da cui dipende + le FFI dichiarate
   # (`DECLARE … LIB`). Il runtime C lo legge se una lib manca e la scarica (sha verificato).
   emit_exe_libs "$WORK/bin" "$WORK/bin.libs.txt" "$WORK/out.c" 2>/dev/null || true
-  if ! (cd "$(dirname "$f")" && DYLD_LIBRARY_PATH="$ROOT/build/libs/$RID:$HOME/.gmbasic/libs/$RID${DYLD_LIBRARY_PATH:+:$DYLD_LIBRARY_PATH}" "$WORK/bin" >"$WORK/out.txt" 2>&1); then
+  # CWD PULITA PER CASO: il binario NON gira nella dir dei sorgenti ma in uno specchio
+  # dentro $WORK (prepare_case_cwd). I MiniTest si aspettano la loro directory (path
+  # relativi "work/…" e "../../samples/…"), ma i file che CREANO (es. `x`, che poi faceva
+  # fallire i gen_AI_*) restavano nei sorgenti e contaminavano i casi successivi.
+  prepare_case_cwd "$(cd "$(dirname "$f")" && pwd)"
+  if ! (cd "$CASE_CWD" && DYLD_LIBRARY_PATH="$ROOT/build/libs/$RID:$HOME/.gmbasic/libs/$RID${DYLD_LIBRARY_PATH:+:$DYLD_LIBRARY_PATH}" "$WORK/bin" >"$WORK/out.txt" 2>&1); then
     # TEST DI ERRORE ATTESO (marker header `' TAG: expected-error`): l'EXPECT descrive il
     # messaggio che DEVE comparire. Serve ai MiniTest che verificano un errore esplicito
     # (es. AI.DISCOVER su endpoint irraggiungibile): prima erano FAIL solo per l'exit != 0.
@@ -474,9 +894,15 @@ for f in "$MINI"/**/*.bas "$MINI"/*.bas; do
     fail=$((fail+1)); continue
   fi
   # Salva il codice C generato per ispezione (verifica reale, non solo verdetto).
-  CNAME="${name##*/}"; CNAME="${CNAME%.bas}"
+  # Nome UNICO per percorso: due test omonimi in domini diversi (`arrays/slice.bas` e
+  # `matrix/slice.bas`) sovrascrivevano lo stesso `tools/out/c99native/slice.c` e chi
+  # ispezionava il C poteva leggere quello dell'ALTRO test.
+  CNAME="$(printf '%s' "${name%.bas}" | sed 's|/|__|g')"
   CDEST="$MONO/tools/out/c99native/$CNAME.c"
-  mkdir -p "$(dirname "$CDEST")" 2>/dev/null; cp "$WORK/out.c" "$CDEST" 2>/dev/null || true
+  # Copia ATOMICA anche qui: la dir è condivisa fra processi, un `cp` diretto lasciava un file
+  # troncato a chi lo leggeva nello stesso istante.
+  mkdir -p "$(dirname "$CDEST")" 2>/dev/null
+  cp "$WORK/out.c" "$CDEST.$$.tmp" 2>/dev/null && mv -f "$CDEST.$$.tmp" "$CDEST" 2>/dev/null || rm -f "$CDEST.$$.tmp"
   echo "PASS $name :: $OUT|"
   echo "     C generato: tools/out/c99native/$CNAME.c"
   if [ "${GMB_C99NATIVE_SHOW_C:-0}" = "1" ]; then echo "  --- C generato ($CNAME) ---"; cat "$CDEST"; echo "  --- fine C ---"; fi

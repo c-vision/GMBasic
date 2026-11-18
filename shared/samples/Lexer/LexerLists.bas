@@ -31,7 +31,7 @@
 
 ' Definizione di un Array (o collezione generica) su più righe
 50 REM Array multi-riga con virgola finale
-60 LET B = {
+60 DIM B = {
     10,
     20,
 } : REM Commento su stessa riga

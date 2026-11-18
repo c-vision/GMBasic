@@ -180,3 +180,59 @@ int gmb_call_invoke_slots(void* fn, int n, const gmb_call_slot* slots,
     if (types != local_types) free(types);
     return rc == FFI_OK ? 0 : -1;
 }
+
+/* ── Closure per callback nativa → codice BASIC (2026-11-11) ────────────────────────────
+ * Vedi gmb_call.h. La firma è per-slot (int64_t/double) e il ritorno può essere double,
+ * int64_t o void: è ESATTAMENTE la firma dichiarata in BASIC, quindi funziona anche con
+ * kind misto e arità > 8 (il vecchio pool di trampolini pre-compilati copriva solo firme
+ * omogenee 0-8). */
+typedef struct gmb_closure_blob {
+    ffi_cif cif;
+    ffi_type* at[65];
+    ffi_closure* clo;
+    void* code;
+    void (*handler)(void* user, void* ret, void** args);
+    void* user;
+} gmb_closure_blob;
+
+static void gmb_closure_dispatch(ffi_cif* cif, void* ret, void** args, void* ud)
+{
+    gmb_closure_blob* b = (gmb_closure_blob*)ud;
+    (void)cif;
+    b->handler(b->user, ret, args);
+}
+
+void* gmb_closure_create(int n, const unsigned char* param_is_int, int ret_kind,
+                         void (*handler)(void* user, void* ret, void** args),
+                         void* user, void** out_handle)
+{
+    if (n < 0 || n > 64 || !handler) return NULL;
+    gmb_closure_blob* b = (gmb_closure_blob*)calloc(1, sizeof(*b));
+    if (!b) return NULL;
+    for (int i = 0; i < n; i++)
+        b->at[i] = (param_is_int && param_is_int[i]) ? &ffi_type_sint64 : &ffi_type_double;
+    b->at[n] = NULL;
+    ffi_type* rt = ret_kind == 2 ? &ffi_type_void
+                 : ret_kind == 1 ? &ffi_type_sint64 : &ffi_type_double;
+    b->handler = handler;
+    b->user = user;
+    if (ffi_prep_cif(&b->cif, FFI_DEFAULT_ABI, (unsigned)n, rt, b->at) != FFI_OK) { free(b); return NULL; }
+    b->clo = ffi_closure_alloc(sizeof(ffi_closure), &b->code);
+    if (!b->clo) { free(b); return NULL; }
+    if (ffi_prep_closure_loc(b->clo, &b->cif, gmb_closure_dispatch, b, b->code) != FFI_OK)
+    {
+        ffi_closure_free(b->clo);
+        free(b);
+        return NULL;
+    }
+    if (out_handle) *out_handle = b;
+    return b->code;
+}
+
+void gmb_closure_free(void* handle)
+{
+    gmb_closure_blob* b = (gmb_closure_blob*)handle;
+    if (!b) return;
+    if (b->clo) ffi_closure_free(b->clo);
+    free(b);
+}

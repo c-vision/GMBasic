@@ -1,5 +1,6 @@
 ' MiniTest CONVERT — funzioni documento su PDF reale (fixture samples/Fixtures/sample.pdf).
 ' Copre OPEN/PAGECOUNT/TEXT/MARKDOWN/HTML/METADATA/CLOSE.
+' EXPECT: pagecount= 1|textlen= 5022|mdlen= 41|htmllen= 111|metalen= 20|close= 0
 IMPORT CONVERT
 
 SUB Main()

@@ -1,4 +1,5 @@
 ' MiniTest LABEL — doppia sintassi: VELOCE (posizionale) e VERBOSA (AT/SIZE/TEXT).
+' EXPECT: OK-label-dual
 IMPORT CONTROLS
 
 SUB Main()

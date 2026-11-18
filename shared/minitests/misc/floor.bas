@@ -1,3 +1,4 @@
+' EXPECT: 3
 SUB Main()
   PRINT FLOOR(3.7)
 END SUB

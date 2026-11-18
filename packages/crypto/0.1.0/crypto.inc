@@ -146,6 +146,20 @@ END FUNCTION
 PUBLIC FUNCTION FROMHEX(text AS STRING, out() AS BYTE) AS LONG
     RETURN HEXDEC(text, out, LEN(out))
 END FUNCTION
+
+' Hex (minuscolo, 2 cifre per byte) di un array BYTE.
+' Sostituisce il vecchio builtin `TOHEX(array)`, ritirato insieme alle altre forme array del
+' namespace quando CRYPTOGRAPHY è diventato un pacchetto FFI (la FUNCTION omonima TOHEX
+' accetta una STRINGA). Usata dai MiniTest/sample del dominio blockchain.
+PUBLIC FUNCTION BYTESHEX(a() AS BYTE) AS STRING
+    DIM H AS STRING = "0123456789abcdef"
+    DIM s AS STRING = ""
+    DIM i AS LONG
+    FOR i = 0 TO UBOUND(a)
+        s = s + MID(H, CLNG(a(i)) \ 16 + 1, 1) + MID(H, CLNG(a(i)) MOD 16 + 1, 1)
+    NEXT i
+    RETURN s
+END FUNCTION
 PUBLIC FUNCTION TOBASE64(text AS STRING) AS STRING
     RETURN B64ENC(text)
 END FUNCTION

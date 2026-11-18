@@ -10,6 +10,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <sys/stat.h>
+#include "gmb_compat_win.h"   /* mkdir a 2 argomenti (solo su Windows) */
 #include <sqlite3.h>
 
 #define GMB_ORCH_NSCOPES 11

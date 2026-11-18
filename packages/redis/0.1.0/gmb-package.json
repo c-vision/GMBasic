@@ -1,6 +1,7 @@
 {
   "name": "redis",
   "version": "0.1.0",
+  "license": "PUL-1.1",
   "description": "Client Redis (RESP/2 su TCP) via shim nativo self-contained (nessun hiredis).",
   "contentType": "c-ffi",
   "exports": ["redis.inc"],

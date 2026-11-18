@@ -1,4 +1,5 @@
 ' MiniTest: AI.Ask senza provider embedding -> errore esplicito (non silenzio).
+' TAG: expected-error — il test verifica un errore ESPLICITO (messaggio = EXPECT).
 ' Stesso contratto di AI.SEARCH / BRAINVAULTQUERY (fix 86427f92e / e4e58df03).
 ' EXPECT: ERROR: Operazione AI RAG richiede un provider embedding attivo (AI SET ACTIVE %EMBEDDING, alias)
 IMPORT AI WITH ALIAS

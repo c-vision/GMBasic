@@ -87,5 +87,12 @@ int gmb_shell_code(const char* command) {
  * Implementazione unica per i backend C (§0bis): VM/C la chiama, mai inline. */
 int gmb_shell_run(const char* command) {
     if (!command || !*command) return 0;
+    /* Ordine dell'output: il figlio scrive DIRETTAMENTE sullo stdout del processo. Senza
+     * questo flush il buffer stdio del padre (i PRINT precedenti) verrebbe emesso DOPO
+     * l'output del comando, mentre IL (Console .NET, auto-flush) lo emette prima:
+     * divergenza visibile in samples/Commands/RunChainLoad.bas (IL/C99 "Eseguo..." poi
+     * "Ciao dal chain-load", PCode/VM-C invertiti). */
+    fflush(stdout);
+    fflush(stderr);
     return system(command);
 }

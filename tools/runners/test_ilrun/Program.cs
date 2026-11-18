@@ -261,6 +261,10 @@ catch (Exception ex)
 {
     var inner = ex is TargetInvocationException tie ? tie.InnerException ?? ex : ex;
     Console.Error.WriteLine($"[RUN] {inner.GetType().Name}: {inner.Message}");
+    // STACK TRACE BASIC (parità C99Native "[GMBASIC] ERROR … / in C (riga N)" e VM/C):
+    // la catena è ancora intatta (nessun CATCH l'ha scartata).
+    var __trace = Basic.IlBackend.IlRuntime.TraceText();
+    if (__trace.Length > 0) Console.Error.Write(__trace);
     return 6;
 }
 finally

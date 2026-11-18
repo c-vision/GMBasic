@@ -711,7 +711,7 @@ public sealed partial class IlProgramCompiler
                 _il.Emit(OpCodes.Call, IlRuntimeReadSequentialFieldMethod);
                 if (isStr) { var sLoc = _il.DeclareLocal(typeof(string)); _il.Emit(OpCodes.Stloc, sLoc);
                              EmitStoreVariable(vt.SymbolId, () => _il.Emit(OpCodes.Ldloc, sLoc)); }
-                else { _il.Emit(OpCodes.Call, IlRuntimeToDoubleMethod); EmitStoreVariable(vt.SymbolId, () => { }); }
+                else EmitStoreReadValue(vt.SymbolId, false);
                 /* VALID anche nel percorso sequenziale (blocchi con WHEN): la variabile e'
                  * gia' scritta, quindi il predicato la legge; .F. -> riproponi lo stesso campo. */
                 if (f.Valid is not null)
@@ -766,7 +766,7 @@ public sealed partial class IlProgramCompiler
             _il.Emit(OpCodes.Call, IlRuntimeReadNativeValueMethod);
             if (isStr) { var sLoc = _il.DeclareLocal(typeof(string)); _il.Emit(OpCodes.Stloc, sLoc);
                          EmitStoreVariable(vt.SymbolId, () => _il.Emit(OpCodes.Ldloc, sLoc)); }
-            else { _il.Emit(OpCodes.Call, IlRuntimeToDoubleMethod); EmitStoreVariable(vt.SymbolId, () => { }); }
+            else EmitStoreReadValue(vt.SymbolId, false);
         }
         for (var i = 0; i < _pendingReadFields.Count; i++)
         {
@@ -789,6 +789,25 @@ public sealed partial class IlProgramCompiler
     {
         EmitLoadVariable(symbolId);
         if (!isStr) { _il.Emit(OpCodes.Conv_R8); _il.Emit(OpCodes.Box, typeof(double)); }
+    }
+
+    /// <summary>Store del valore letto da un campo @GET/READ nella variabile. Il runtime
+    /// restituisce una STRINGA: per i numerici va convertita con ToDouble e poi COERCITA al
+    /// tipo CLR della variabile — un `INTEGER` è un `long`, e senza `Convert.ToInt64` il
+    /// double finiva in uno slot long con `stloc` (IL type-invalid): il valore veniva
+    /// reinterpretato come bit pattern (`5.0` → `4.617e18`). ILOptim riscriveva la sequenza e
+    /// mascherava il difetto (si vedeva solo senza ottimizzazione).</summary>
+    private void EmitStoreReadValue(int symbolId, bool isStr)
+    {
+        if (isStr) { EmitStoreVariable(symbolId, () => { }); return; }
+        _il.Emit(OpCodes.Call, IlRuntimeToDoubleMethod);
+        var dt = NormalizeInferredType(_program.Symbols.GetSymbol(symbolId).DataType);
+        if (dt is LongType or IntegerType or QuadType or ULongType or UIntegerType
+            or UQuadType or ByteType or SByteType)
+            _il.Emit(OpCodes.Call, _types.ConvertToInt64Double);
+        else if (dt is SingleType)
+            _il.Emit(OpCodes.Conv_R4);
+        EmitStoreVariable(symbolId, () => { });
     }
 
     private void EmitDoubleOrZero(Expr? e)

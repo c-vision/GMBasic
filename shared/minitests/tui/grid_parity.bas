@@ -1,4 +1,5 @@
 ' Minitest TUI GRID — parità 4 backend (statement widget TUI).
+' EXPECT: OK-grid
 IMPORT CONTROLS
 SUB Main()
   DIM hd(3) AS STRING

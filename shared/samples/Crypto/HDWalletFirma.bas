@@ -31,12 +31,13 @@
 ' (IL, PCodeVM, VM/C, C99Native).
 ' =================================================================================================
 REQUIRE "blockchain"
+REQUIRE "crypto"
 IMPORT BLOCKCHAIN
 IMPORT CRYPTOGRAPHY
 IMPORT STRINGS
 
 SUB Mostra(etichetta AS STRING, a() AS BYTE, quanti AS LONG)
-    PRINT etichetta; LEFT(TOHEX(a), quanti * 2)
+    PRINT etichetta; LEFT(BYTESHEX(a), quanti * 2)
 END SUB
 
 SUB SeedDaMnemonic(mnemonic AS STRING, passphrase AS STRING, seed() AS BYTE)
@@ -54,7 +55,7 @@ FUNCTION FirmaValida(digest() AS BYTE, priv() AS BYTE) AS LONG
     DIM sig(79) AS BYTE
     DIM n AS LONG
     n = SECP256K1SIGN(digest, priv, sig)
-    IF LEFT(TOHEX(sig), 2) = "30" AND n >= 68 AND n <= 72 THEN
+    IF LEFT(BYTESHEX(sig), 2) = "30" AND n >= 68 AND n <= 72 THEN
         RETURN 1
     END IF
     RETURN 0
@@ -100,7 +101,7 @@ SUB Main()
     DIM n AS LONG
     n = GETPUBLICKEY(priv, re)
     PRINT "pubblica ricavata: "; n; " byte"
-    IF LEFT(TOHEX(re), n * 2) = TOHEX(pub) THEN
+    IF LEFT(BYTESHEX(re), n * 2) = BYTESHEX(pub) THEN
         PRINT "identita': OK"
     ELSE
         PRINT "identita': ERRORE"
@@ -124,9 +125,12 @@ SUB Main()
     PRINT
 
     PRINT "--- 5. firma di tre digest distinti ---"
-    DIM lotto1() AS BYTE = FROMHEX("00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff")
-    DIM lotto2() AS BYTE = FROMHEX("1c8aff950685c2ed4bc3174f3472287b56d9517b9c948127319a09a7a36deac8")
-    DIM lotto3() AS BYTE = FROMHEX("ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff")
+    DIM lotto1(31) AS BYTE
+    DIM nL1 AS LONG = FROMHEX("00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff", lotto1)
+    DIM lotto2(31) AS BYTE
+    DIM nL2 AS LONG = FROMHEX("1c8aff950685c2ed4bc3174f3472287b56d9517b9c948127319a09a7a36deac8", lotto2)
+    DIM lotto3(31) AS BYTE
+    DIM nL3 AS LONG = FROMHEX("ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff", lotto3)
     DIM esito AS LONG
     DIM firme AS LONG
     firme = 0
@@ -151,7 +155,7 @@ SUB Main()
     PRINT "payload:   "; LEN(payload$); " caratteri hex"
     DIM o(63) AS BYTE
     n = VARINTENCODE(300, o)
-    PRINT "nonce:     "; LEFT(TOHEX(o), n * 2)
+    PRINT "nonce:     "; LEFT(BYTESHEX(o), n * 2)
     PRINT
     PRINT "lotto firmato e pronto alla trasmissione."
 END SUB

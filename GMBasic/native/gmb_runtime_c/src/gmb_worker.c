@@ -9,6 +9,7 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <dirent.h>
+#include "gmb_compat_win.h"   /* mkdir a 2 argomenti (solo su Windows) */
 
 #define GMB_WKR_MAX 64
 
@@ -100,13 +101,10 @@ double gmb_worker_new(const char* name, const char* opts)
     return 1;
 }
 
-/* AI WORKER RUN name */
-double gmb_worker_run(const char* name)
-{
-    if (!wkr_find(name)) return -1;
-    g_rounds++;
-    return 1;
-}
+/* `AI WORKER RUN <name>` = un ROUND DI LAVORO sul worker indicato per nome: stessa
+ * invocazione pulita di `AI WORKER "<TASK>"` (vista curata, completer, contatori
+ * rounds/spend e rescued sui fallimenti), con il task senza testo — la vista è il solo
+ * stato del workspace. Definizione dopo il round condiviso (v. gmb_worker_run più sotto). */
 
 /* AI STATE SAVE worker, key, value — scrive work/<worker>/state/<key>.txt */
 double gmb_state_save(const char* worker, const char* key, const char* value)
@@ -215,9 +213,13 @@ static void wkr_write_file(const char* dir, const char* name, const char* conten
     fclose(f);
 }
 
-double gmb_worker_invoke(const char* task)
+/* Un round di lavoro su un worker: vista curata (task → plan.md/notes.md/solution/best →
+ * state/*.txt), normalizzazione del Context Engine (policy error ⇒ rifiuto esplicito, il
+ * round conta come rescue), completer, contatori rounds/spend. UNICA implementazione del
+ * round: la usano `AI WORKER "<TASK>"` (worker corrente) e `AI WORKER RUN <name>` (per nome,
+ * senza testo di task: la vista è il solo stato del workspace). */
+static double wkr_round(gmb_worker_entry* e, const char* task)
 {
-    gmb_worker_entry* e = wkr_current();
     if (!e) return -1;
     char key[192];
     snprintf(key, sizeof(key), "worker:%s", e->name);
@@ -265,6 +267,23 @@ double gmb_worker_invoke(const char* task)
     free(answer);
     gmb_string_free(&view);
     return (double)rc;
+}
+
+/* `AI WORKER "<TASK>"` — invocazione pulita del worker CORRENTE (spec §2.1). */
+double gmb_worker_invoke(const char* task)
+{
+    return wkr_round(wkr_current(), task);
+}
+
+/* `AI WORKER RUN <name>` — un round di lavoro sul worker indicato per nome. Ricerca NON
+ * allocante (wkr_find allocherebbe): un nome sconosciuto è -1, non un worker fantasma. */
+double gmb_worker_run(const char* name)
+{
+    if (!name || !*name) return -1;
+    for (int i = 0; i < GMB_WKR_MAX; i++)
+        if (g_wkr[i].used && strcmp(g_wkr[i].name, name) == 0)
+            return wkr_round(&g_wkr[i], "");
+    return -1;
 }
 
 /* best-so-far del run: copia <ws>/solution → <ws>/best (+ state/best) se la soluzione è valida.

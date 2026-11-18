@@ -1,3 +1,4 @@
+' EXPECT: h1arg= 2|valid= 0|strip=Title|Sub
 IMPORT CONVERT
 SUB Main()
   DIM md$ = "# Title" + CHR(10) + CHR(10) + "## Sub" + CHR(10)

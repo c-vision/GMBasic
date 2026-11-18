@@ -3,6 +3,9 @@
 IMPORT AI
 
 SUB Main()
+    ' Workspace ERMETICO: la vista curata del worker include SOLUTION/STATE del run precedente,
+    ' quindi un residuo del checkout cambierebbe `spend` (e il sample non sarebbe piu' deterministico).
+    IF IO.DIREXISTS("work/solver") THEN RMDIR "work/solver", TRUE
     PRINT "=== AI WORKER demo ==="
     PRINT ""
 

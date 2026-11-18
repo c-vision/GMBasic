@@ -1,3 +1,4 @@
+' EXPECT: 5
 SUB Main()
   PRINT PYTHAGORAS(3, 4)
 END SUB

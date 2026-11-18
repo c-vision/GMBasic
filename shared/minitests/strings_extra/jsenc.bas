@@ -1,3 +1,4 @@
+' EXPECT: a<b|a&b|x\'y|x\"y
 IMPORT STRINGS
 SUB Main()
   PRINT JSENCODE("a<b")

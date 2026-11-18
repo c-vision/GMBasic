@@ -242,8 +242,15 @@ public sealed partial class Parser
             var mode = ParameterMode.In;
             if (!isParamArray)
             {
-                if (Match(TokenKind.In))
+                /* `IN` è un modificatore solo se seguito da un ALTRO nome: `in() AS DOUBLE`
+                 * è un NOME di parametro (firme FFI reali, es. gfx2d.inc). Prima veniva
+                 * consumato sempre e il parser falliva con «'(' è una keyword riservata …». */
+                if (Check(TokenKind.In)
+                    && At(1).Kind != TokenKind.As && At(1).Kind != TokenKind.Comma
+                    && At(1).Kind != TokenKind.RightParen && At(1).Kind != TokenKind.LeftParen
+                    && At(1).Kind != TokenKind.Equal)
                 {
+                    Advance();
                     mode = ParameterMode.In;
                 }
                 else if (Check(TokenKind.Identifier)
@@ -260,7 +267,9 @@ public sealed partial class Parser
             }
 
             // 3. Parsing del nome e normalizzazione.
-            var originalNameToken = ConsumeProcedureName();
+            /* Un parametro può chiamarsi `in` (parola riservata ma nome C reale nelle firme
+             * FFI, es. `in() AS DOUBLE` in gfx2d.inc): in posizione di nome è accettato. */
+            var originalNameToken = Check(TokenKind.In) ? Advance() : ConsumeProcedureName();
             var (baseName, _) = SplitNameAndSuffix(originalNameToken.Lexeme);
             var normalizedNameToken = originalNameToken with { Lexeme = baseName };
             _declaredParameterNames.Add(baseName);   // vedi ParsePrimaryAtom: shadowing delle keyword a 0 argomenti
