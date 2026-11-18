@@ -36,38 +36,6 @@
       ]
     },
     {
-      "name": "airline",
-      "description": "Dominio compagnie aeree: RAG (108 MB) + knowledge graph (83 MB).",
-      "latest": "1.1.0",
-      "versions": [
-        {
-          "version": "1.0.0",
-          "source": "github-asset",
-          "repo": "c-vision/GMBasicBrains",
-          "tag": "brains-v1",
-          "asset": "airline-1.0.0.gmbrain.zip",
-          "sha256": "fa88d9fb2fa3b643ceba4e60d3edac20d8bb12588e3ced156a9d82a4d4dc9b2c",
-          "size": 27744844,
-          "modes": [
-            "rag"
-          ]
-        },
-        {
-          "version": "1.1.0",
-          "source": "github-asset",
-          "repo": "c-vision/GMBasicBrains",
-          "tag": "brains-v2",
-          "asset": "airline-1.1.0.gmbrain.zip",
-          "sha256": "eb4e62bc72957c41718824b6d0c1f81a94ad63acd1b0714533210bb4c10931bd",
-          "size": 31385985,
-          "modes": [
-            "rag",
-            "graph"
-          ]
-        }
-      ]
-    },
-    {
       "name": "trading",
       "description": "Dominio trading: RAG (1,4 GB) + knowledge graph (40 MB).",
       "latest": "1.1.0",

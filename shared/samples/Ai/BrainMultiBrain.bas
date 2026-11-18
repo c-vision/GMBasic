@@ -8,7 +8,7 @@
 ' BRAINS.QUERYMULTI · AI AGENT CREATE/SET brains/GET/DELETE (livello AGENT dello scope) ·
 ' AI VAULT CREATE + AI NOTE CREATE/NOTEEXISTS (vault esplicito) · AI BRAIN DETACH.
 '
-' Richiede i cervelli costruiti (`gmb rag build` / `gmb graph build`): usa airline e trading se
+' Richiede i cervelli costruiti (`gmb rag build` / `gmb graph build`): usa brainvault e trading se
 ' presenti, altrimenti degrada senza crash (i blocchi di retrieval sono protetti da ON ERROR).
 ' Il marker finale `BRAIN-MULTI-OK` è deterministico: è quello che si verifica nei gate.
 '
@@ -37,12 +37,12 @@ SUB Main()
     PRINT "list:"; LEN(AI.BRAINLIST()) >= 0
     c.Usati = AI.BRAINUSED()
     PRINT "used:"; c.Usati
-    PRINT "has-airline:"; LEN(AI.BRAININFO("airline")) > 0     ' niente confronti fra stringhe
+    PRINT "has-brainvault:"; LEN(AI.BRAININFO("brainvault")) > 0   ' niente confronti fra stringhe
 
     ' ── 2. Attivazione MULTI-BRAIN (comando AI BRAIN USE a, b) ──
     ' I cervelli restano collegati per tutta la sessione: SEARCHMULTI li interroga TUTTI.
     ' (Il reset è già avvenuto in testa al Main.)
-    AI BRAIN USE "airline", "trading"
+    AI BRAIN USE "brainvault", "trading"
     c.Usati = AI.BRAINUSED()
     PRINT "used-after:"; c.Usati
 
@@ -63,9 +63,9 @@ no_graph:
 dopo_graph:
 
     ' ── 5. Livello AGENT dello scope: dichiarazione dei cervelli dell'agente ──
-    ' `brains` è una CSV con alias (`airline AS air, trading`): l'agente vede SOLO questi.
+    ' `brains` è una CSV con alias (`brainvault AS bv, trading`): l'agente vede SOLO questi.
     AI AGENT CREATE scopetest
-    AI AGENT SET "scopetest" "brains" "airline AS air, trading"
+    AI AGENT SET "scopetest" "brains" "brainvault AS bv, trading"
     PRINT "agent-brains:"; AI.AGENTGET("scopetest", "brains")
 
     ' ── 6. Note: `AI VAULT CREATE` rende 'demo' il vault ATTIVO della sessione; i comandi
