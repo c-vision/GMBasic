@@ -51,8 +51,7 @@ gambe IL/PCode/VM-C la caricano da lì (`gmb_lib.sh build` non lo fa).
 - La semantica (rendimenti in frazione, `DividendYield` in percentuale, input non
   valido → 0, date `BONDS` come OADate) è quella dei builtin; il riferimento di parità è
   `CommonLib.Trading`.
-- **C# usa il P/Invoke**: le vecchie formule C# (`General.cs`, `Metrics.cs`, `Bonds.cs`,
-  `Options.cs`) sono archiviate in `gmbasicmonorepo-deprecated/`; al loro posto ci sono
+- **C# usa il P/Invoke**: le vecchie formule C# non ci sono più; al loro posto ci sono
   facade che chiamano `gq_*` di questa lib. IL/PCodeVM passano da qui, VM/C e C99Native
   usano la stessa lib direttamente.
 - Nessuna dipendenza esterna oltre libm; monodirezionale `gmbquant -> gmbmaths`.

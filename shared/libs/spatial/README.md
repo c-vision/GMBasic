@@ -18,4 +18,3 @@ continua a funzionare).
   `pdist`, `spatial_all`).
 - Sample completo: `shared/samples/Spatial/SpatialDistances.bas` (usa tutte le funzioni).
 - Guida utente: `Guide/utente/SPATIAL-Guida-Utente.md` (vault).
-- Implementazione C# storica archiviata: `gmbasicmonorepo-deprecated/spatial/`.

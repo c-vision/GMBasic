@@ -16,4 +16,3 @@ Le date sono **OADate** (giorni dal 1899-12-30): il wrapper `.inc` converte i
 - MiniTest: `shared/minitests/finance/` (un file per funzione + `finance_all.bas`).
 - Sample completo: `shared/samples/Finance/FinanceGeneralTests.bas` (usa tutte le 23 funzioni).
 - Guida utente: `Guide/utente/FINANCE-Guida-Utente.md` (vault).
-- Implementazione C# storica archiviata: `gmbasicmonorepo-deprecated/finance/`.

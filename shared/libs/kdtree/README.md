@@ -16,4 +16,3 @@ distanze) e query_ball_point. Usata da IL, PCodeVM, VM/C e C99Native tramite
   `queryball`, `kdtree_all`).
 - Sample: `shared/samples/Math/KdTreeSciPyParity.bas`, `KdTreeAdvanced.bas`.
 - Guida utente: `Guide/utente/KdTree-Manual.md` (vault).
-- Implementazione C# storica archiviata: `gmbasicmonorepo-deprecated/kdtree/`.
