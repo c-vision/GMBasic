@@ -5,8 +5,8 @@ motore. Piano e storia delle decisioni: nota di piano "Weight-Space-Programming-
 
 **Stato (2026-11-05).** Libreria C completa per i modelli **densi** Qwen3/Llama (HF safetensors, anche MLX quantizzato in sola
 lettura) con **superficie BASIC `WSP.*`** via FFI: libreria `libgmbwsp` (`shared/libs/wsp`, sorgenti venduti da qui con `build.sh`),
-export `shared/include/wsp.inc`, 7 MiniTest in `shared/minitests/wsp/`, 4 sample in `shared/samples/Wsp/`, capitolo di manuale
-`docs/manual/capitoli/V.37-weight-space-programming.md`. Verificata a parità sulle 4 gambe (`tools/sh/parity4`). Restano fuori P/Invoke C# dedicato
+export `shared/include/wsp.inc`, 7 MiniTest in `shared/minitests/wsp/`, 4 sample in `shared/samples/Wsp/`.
+Verificata a parità sulle 4 gambe (`tools/sh/parity4`). Restano fuori P/Invoke C# dedicato
 (non serve: l'FFI è la via) e la registrazione degli strumenti per `AI AGENT`.
 
 ## Moduli (tutti in `gmbllm_core`, test in `tests/test_wsp_*.c`, registrati in `ctest`)

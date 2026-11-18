@@ -90,8 +90,7 @@ Tutto `shared/libs/<nome>/` è codice nostro e ricade nella **PUL** come il rest
   `resources/icons/LICENSE-AvaloniaVisualBasic6.txt` e `resources/icons/NOTICE.txt` (set di icone
   stile VB6). Se un giorno entrasse in un bundle o in una release, quei file vanno distribuiti con
   la loro licenza e il loro NOTICE.
-- `docs/manual/` (il manuale per KDP) è locale e git-ignored, non fa parte della distribuzione del
-  software.
+- il manuale per KDP è locale e git-ignored, non fa parte della distribuzione del software.
 
 ## External repositories consumed by this one
 
