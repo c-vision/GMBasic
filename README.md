@@ -621,8 +621,8 @@ CALL SleepAsync(1000)
 | WHILE/WEND | ✅ |
 | EXIT FOR/DO/WHILE | ✅ |
 | CONTINUE FOR/DO/WHILE | ✅ |
-| Labeled loops (`EXIT OuterLoop`, `CONTINUE Middle`) | 🔶 |
-| FOR EACH (on collections) | 🔶 |
+| Labeled loops (`EXIT OuterLoop`, `CONTINUE Middle`) | ✅ |
+| `FOR EACH` (arrays, lists, matrices, dictionaries) | ✅ |
 | GOTO/GOSUB/RETURN | ✅ |
 | ON ERROR GOTO/RESUME | ✅ |
 | TRY/CATCH | ✅ |
@@ -636,9 +636,13 @@ CALL SleepAsync(1000)
 | List/dict comprehensions | ✅ |
 | Macro system | ✅ |
 | Module system (`IMPORT`/`REQUIRE`) | ✅ |
-| `FOR EACH` (on arrays, lists) | 🔶 |
 
-✅ = working, 🔶 = partial/known issue
+✅ = working · 🔶 = partial/known issue
+
+The loop rows are covered by MiniTests that run green on all four backends:
+`shared/minitests/loops/loop_labeled_exit_continue.bas` (labeled `EXIT`/`CONTINUE`),
+`loops/foreach_matrix_2x3.bas`, `loops/foreach_dict_kvp.bas`, `loops/foreach_string_matrix.bas`,
+`collections/dict_foreach.bas`.
 
 ## TODO
 
