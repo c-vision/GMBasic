@@ -12,7 +12,7 @@
 #          per ogni RID elenca gli asset presenti nella release che NON sono più nella sorgente
 #          (cioè quello che un prune rimuoverebbe) e non fa null'altro: niente creazione della
 #          release, niente upload, niente manifest, push o indice.
-cd /Users/gaetano/Documents/Projects/GMBasicMonoRepo || exit 1
+cd "$(dirname "$0")/../.." || exit 1
 REPORT=0
 for arg in "$@"; do
   case "$arg" in
