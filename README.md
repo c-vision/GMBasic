@@ -223,24 +223,29 @@ zsh tools/sh/parity4 ../shared/samples/Ai/AiPlugins.bas
 
 ## Architecture
 
-Front-end (shared by three of the four engines, all C#):
+One **C# front end** produces P-Code; from there execution forks into **four independent
+backends**. C99Native is the exception on the left side: it has its own **C front end** and
+emits C, so it never touches the C# front end.
 
 ```
-Lexer → Parser → Linker → Compiler (AST/P-Code)
+C# front end:  Lexer → Parser → Linker → Compiler → P-Code
+                                                      ├─ PCodeVM    (C#, in-process)
+                                                      ├─ IL         (C#, .NET IL)
+                                                      └─ VM/C       (C, gmb_vm_host — same P-Code)
+
+C front end:   .bas → Lexer/Parser → C99 emitter → cc → native executable   (C99Native)
 ```
 
-From there, execution forks into **four independent backends**:
-
-| Backend | Language | Output |
-|---|---|---|
-| **PCodeVM** | pure C# | executes the P-Code in-process with a C# VM (`--pcode`): no C VM and no external process (native builtins still go through P/Invoke) |
-| **IL Backend** | pure C#, no bridge to C | .NET IL: managed JIT (`-m`) by default on that path, or a NativeAOT executable with `-n` |
-| **VM in C** | pure C | executes the **same P-Code** with a C virtual machine (`gmb_vm_host`, external process; Clipper-style: the bytecode ships with the executable). This is the CLI's default engine |
-| **C99Native** | pure C (own C frontend) | transpiles `.bas` → C99 source, compiles with `cc`, no VM and no bytecode at runtime |
+| Backend | Written in | How it runs | Invocation |
+|---|---|---|---|
+| **PCodeVM** | C# | P-Code executed in-process by a C# VM | `gmbcs run --engine pcode` |
+| **IL** | C# | .NET IL, managed JIT | `gmbcs run --engine il` |
+| **VM/C** | C | the **same P-Code** in a C VM, external process | `gmbrepl`, `gmbchunk` + `gmb_vm_host` |
+| **C99Native** | C | `.bas` → C99 → `cc`; no VM, no bytecode | `gmb` (default), `gmbnative` |
 
 PCodeVM and VM/C execute **the same P-Code**: that is the semantic contract the parity suite
-checks. C99Native has its own C frontend and emitter, so it does not go through the C# frontend at
-all. The VM in C and C99Native share the same C runtime library
+checks (`tools/sh/parity4`). C99Native has its own C front end and emitter, so it does not go
+through the C# front end at all. VM/C and C99Native share the same C runtime library
 (`GMBasic/native/gmb_runtime_c/`): no duplicated built-in implementations between them.
 
 ## Sample catalog
