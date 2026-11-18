@@ -1,100 +1,99 @@
 # GMBasic 1.0.0 — release notes
 
-**Data:** 2026-11-18 · **RID:** `osx-arm64` (Apple Silicon) · **Licenza:** vedi `LICENSING.md`
+**Date:** 2026-11-18 · **RID:** `osx-arm64` (Apple Silicon) · **License:** see `LICENSING.md`
 
-Prima release **compilata** di GMBasic: un solo archivio, nessun sorgente da compilare
-all'installazione, nessun requisito .NET.
+First **compiled** GMBasic release: one archive, no sources to build at install time, no .NET
+requirement.
 
-| pezzo | valore |
+| item | value |
 |---|---|
-| archivio | `gmbasic-1.0.0-osx-arm64.zip` |
-| dimensione | 59 MB (1343 file, scompattato ~155 MB) |
-| integrità | `gmbasic-1.0.0-osx-arm64.zip.sha256` + `release-manifest.json` (sha256 di **ogni** file) |
-| verifica | `gmb doctor --verify` → 1343 OK, 0 manomessi, 0 mancanti |
+| archive | `gmbasic-1.0.0-osx-arm64.zip` |
+| size | 59 MB (1343 files, ~155 MB unpacked) |
+| integrity | `gmbasic-1.0.0-osx-arm64.zip.sha256` + `release-manifest.json` (sha256 of **every** file) |
+| verification | `gmb doctor --verify` → 1343 OK, 0 tampered, 0 missing |
 
-## Installazione
+## Install
 
 ```sh
 unzip gmbasic-1.0.0-osx-arm64.zip
 cd gmbasic-1.0.0-osx-arm64
 export PATH="$PWD/bin:$PATH"
 
-gmb doctor              # ambiente: 18/18 ok
-gmb doctor --verify     # confronta OGNI file col manifest
+gmb doctor              # environment: 18/18 ok
+gmb doctor --verify     # checks EVERY file against the manifest
 gmb eval "PRINT 40+2"   # 42
 ```
 
-Per un programma:
+For a program:
 
 ```sh
-gmb hello.bas                      # build + run (scorciatoia)
+gmb hello.bas                      # build + run (shortcut)
 gmb build --project <dir> --entry <file.bas>
 ```
 
-## Cosa c'è dentro
+## What is inside
 
-- **`bin/`** — 14 eseguibili: `gmb` (compilatore/CLI), `gmbnative` (C99Native), `gmbchunk`
-  (bytecode A1/GMBC), `gmb_vm_host` (VM/C), `gmbadmin` (pkg/libs/brain/doctor), `gmbrepl`
-  (REPL C), `gmbnotebook`, `gmblsp`, `gmblibs`, `gmbfetch`, `gmbbrains`, `gmbfixtures`,
+- **`bin/`** — 14 executables: `gmb` (compiler/CLI), `gmbnative` (C99Native), `gmbchunk`
+  (A1/GMBC bytecode), `gmb_vm_host` (VM/C), `gmbadmin` (pkg/libs/brain/doctor), `gmbrepl`
+  (C REPL), `gmbnotebook`, `gmblsp`, `gmblibs`, `gmbfetch`, `gmbbrains`, `gmbfixtures`,
   `gmbtheme`, `gmbimgdiff`.
-- **`GMBasic/native/`** — header e librerie statiche/dinamiche del runtime condiviso,
-  del compilatore, del DB (ISAM/DBF/SPEED/LEDGER), di chart/doc/torch/agent.
-- **`shared/`** — `include/` (le `.inc` FFI), `Controls/`, `settings/` (manifest di download).
-- **`LLMEnv/`** — motore LLM locale (**Apache-2.0**): header dei codec/engine/desc/token,
-  descrittori `.gmbarch` in `ABI/`, `LICENSE` e `NOTICE`.
+- **`GMBasic/native/`** — headers and static/dynamic libraries for the shared runtime, the
+  compiler, the database engines (ISAM/DBF/SPEED/LEDGER), chart/doc/torch/agent.
+- **`shared/`** — `include/` (FFI `.inc` files), `Controls/`, `settings/` (download manifests).
+- **`LLMEnv/`** — local LLM engine (**Apache-2.0**): codec/engine/desc/token headers,
+  `.gmbarch` descriptors in `ABI/`, `LICENSE` and `NOTICE`.
 
-## Requisiti
+## Requirements
 
-- **macOS su Apple Silicon** (questo RID).
-- **`cc`** = Xcode Command Line Tools: serve a `gmb build` per compilare il C emesso.
-  `gmb doctor` lo verifica.
-- **Rete** solo per i download on demand (`gmb libs ensure`, `gmb fixtures ensure`,
-  `gmb brain install`) — verifica **sha256** prima di ogni estrazione.
-- **Nessun .NET**: i compilatori e i runtime sono C.
+- **macOS on Apple Silicon** (this RID).
+- **`cc`** = Xcode Command Line Tools: `gmb build` needs it to compile the emitted C.
+  `gmb doctor` verifies it.
+- **Network** only for on-demand downloads (`gmb libs ensure`, `gmb fixtures ensure`,
+  `gmb brain install`) — **sha256 verified** before extraction.
+- **No .NET**: compilers and runtimes are C.
 
-## Cosa NON è in questa release
+## What is NOT in this release
 
-- **`gmbcs` / `--engine csharp`** (compilatore C#): non è incluso nell'artefatto. Il motore
-  della release è il **ramo C** (`gmb`, C99Native, VM/C). `gmb doctor` lo riporta come
-  **facoltativo**, quindi 18/18 resta verde.
-- **RID `osx-x64`, `linux-x64`, `linux-arm64`, `win-*`**: l'artefatto è per `osx-arm64`.
-  La toolchain di cross-compilazione (`zig`) e i manifest esistono, ma questa release pubblica
-  **un solo RID**.
-- **Sample e MiniTest**: il corpus (`shared/minitests`, `shared/samples`) sta nel repository,
-  non nell'archivio; i feed di mercato si scaricano con `gmb fixtures ensure`.
+- **`gmbcs` / `--engine csharp`** (C# compiler): not included. The engine of this release is
+  the **C branch** (`gmb`, C99Native, VM/C). `gmb doctor` reports it as **optional**, so 18/18
+  stays green.
+- **RID `osx-x64`, `linux-x64`, `linux-arm64`, `win-*`**: this artifact is `osx-arm64` only.
+  The cross toolchain (`zig`) and the manifests exist, but this release publishes **one RID**.
+- **Samples and MiniTests**: the corpus (`shared/minitests`, `shared/samples`) lives in the
+  repository, not in the archive; market feeds are fetched with `gmb fixtures ensure`.
 
-## Verifiche eseguite sull'artefatto
+## Verifications run on the artifact
 
-Eseguite **sullo zip scompattato in una cartella temporanea**, con `LLMDESC_ABI_DIR`/`LLM_ROOT`
-rimossi dall'ambiente (nessun percorso del checkout di sviluppo usato):
+Executed on the **zip unpacked into a temporary directory**, with `LLMDESC_ABI_DIR`/`LLM_ROOT`
+removed from the environment (no path from the development checkout in use):
 
-| verifica | esito |
+| check | result |
 |---|---|
-| `sha256sum -c *.sha256` | OK |
+| `shasum -c *.sha256` | OK (also re-downloaded from the release) |
 | `gmb doctor` | **18/18 ok** |
-| `gmb doctor --verify` | **1343 OK**, 0 manomessi, 0 mancanti |
+| `gmb doctor --verify` | **1343 OK**, 0 tampered, 0 missing |
 | `gmb eval "PRINT 40+2"` | `42` |
-| `gmb Hello.bas` (programma testuale) | compila, linka, esegue (`hello 1.0`, `42`) |
-| `IMPORT AI` + `gmb build` | 2 sorgenti, **0 errori** (header LLMEnv completi) |
-| `otool -l bin/*` | **0** path assoluti (rpath `@loader_path`) |
+| `gmb Hello.bas` (textual program) | compiles, links, runs (`hello 1.0`, `42`) |
+| `IMPORT AI` + `gmb build` | 2 sources, **0 errors** (complete LLMEnv headers) |
+| `otool -l bin/*` | **0** absolute paths (`@loader_path` rpath) |
 
-## Stato del corpus di test su questa storia
+## Test corpus state at this tag
 
-Sweep completo della settimana sulla gamba **nativa** (C99Native, il riferimento):
+Full sweep on the **native** leg (C99Native, the reference):
 
 ```
 C99Native MiniTests: PASS=2128 FAIL=0 SKIP=264
 ```
 
-Gli SKIP sono tutti dichiarati: `gen_AI_*` che dipendono dallo stato della macchina (222),
-`TAG: heavy` con modello reale (30), `TAG: interactive` (12).
+Every SKIP is declared: `gen_AI_*` depending on machine state (222), `TAG: heavy` requiring a
+real model (30), `TAG: interactive` (12).
 
-Cross-leg sulle **tre gambe gestite** (IL, PCodeVM, VM-C), un processo per dominio:
-**122 domini su 125 verdi**. I 3 restanti richiedono dipendenze d'ambiente
-(`llm/` ×4 serve un modello, `train/` il registro di training, `tray/` il pump sul main thread).
+Cross-leg over the **three managed legs** (IL, PCodeVM, VM-C), one process per domain:
+**122 of 125 domains green**. The remaining 3 need environment dependencies
+(`llm/` ×4 requires a model, `train/` the training registry, `tray/` the main-thread pump).
 
-## Licenze
+## Licenses
 
-- Runtime, compilatori, tool: **PUL-1.1** (vedi `LICENSING.md`).
-- `LLMEnv/` (motore LLM): **Apache-2.0**, con `LICENSE` e `NOTICE` inclusi.
-- Componenti di terze parti: vedi `LICENSING.md` e i singoli `NOTICE`.
+- Runtime, compilers, tools: **PUL-1.1** (see `LICENSING.md`).
+- `LLMEnv/` (LLM engine): **Apache-2.0**, with `LICENSE` and `NOTICE` included.
+- Third-party components: see `LICENSING.md` and the individual `NOTICE` files.
