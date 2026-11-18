@@ -186,40 +186,40 @@ bash ../LLMEnv/tools/build_ai_libs.sh          # engine → ~/.gmbasic/libs/<rid
 dotnet build GMBasicSharp/GMBasicSharp.slnx
 ```
 
-Tre programmi separati, un compito ciascuno:
+Three separate programs, one job each:
 
-| programma | cos'è |
+| program | what it is |
 |---|---|
-| `REPL/build/gmbrepl` | **REPL interattiva** e runner del mondo C (canonica): `RUN`, `EVAL`, `AST`, `DASM`, `COMPILE`, `IDE`, package/fixtures. Nessuna dipendenza dal mondo C#. |
-| `GMBasicSharp/CompilerCli` → `gmbcs` | **CLI headless dell'engine C#**: `check`, `dump ast\|pcode\|il\|disasm`, `build --target il\|pcode`, `run`/`eval --engine il\|pcode`, `debug`. |
-| `GMBasic/native/gmbadmin` → `gmbadmin` | **CLI amministrativo in C** (front unico `gmb`): pacchetti, brain/toolchain, libs, setup, daemon, rag/graph, grep, hf/mlx. |
-| `Notebook/build/gmbnotebook` | **notebook server** (C): sessione BASIC con stato via HTTP su 127.0.0.1 (`/execute`, `/vars`, `/reset`). |
+| `REPL/build/gmbrepl` | **the REPL** and runner of the C world (canonical): `RUN`, `EVAL`, `AST`, `DASM`, `COMPILE`, `IDE`, packages/fixtures. No dependency on the C# world. |
+| `GMBasicSharp/CompilerCli` → `gmbcs` | **headless CLI of the C# engine**: `check`, `dump ast\|pcode\|il\|disasm`, `build --target il\|pcode`, `run`/`eval --engine il\|pcode`, `debug`. |
+| `GMBasic/native/gmbadmin` → `gmbadmin` | **administrative CLI in C** (front end: `gmb`): packages, brain/toolchain, libs, setup, daemon, rag/graph, grep, hf/mlx. |
+| `Notebook/build/gmbnotebook` | **notebook server** (C): a stateful BASIC session over HTTP on 127.0.0.1 (`/execute`, `/vars`, `/reset`). |
+
+One block per engine:
 
 ```sh
-# PCodeVM — P-Code virtual machine written in C# (in-process, no native code)
+# PCodeVM — P-Code executed in-process by a C# VM (no native code)
 dotnet run --project GMBasicSharp/CompilerCli -- run --engine pcode <file.bas>
 
-# IL backend — .NET IL managed (JIT)
+# IL — .NET IL, managed JIT
 dotnet run --project GMBasicSharp/CompilerCli -- run --engine il <file.bas>
 dotnet run --project GMBasicSharp/CompilerCli -- build --target il <file.bas>
 
-# VM/C — P-Code executed by the external gmb_vm_host (REPL C)
+# VM/C — the SAME P-Code in the C VM (external gmb_vm_host, driven by the C REPL)
 cmake -S GMBasic/native/gmb_vm_c -B GMBasic/native/gmb_vm_c/build && cmake --build GMBasic/native/gmb_vm_c/build
 REPL/build/gmbrepl <file.bas>
 dotnet run --project tools/runners/GMBASIC.Conformance -- vmtest <file.bas>
-```
 
-> Il build **NativeAOT** (`-n`) del vecchio runner C# non è ancora in `gmbcs`: il percorso
-> nativo canonico è il compilatore C (`gmb build --project <dir>`). La reintroduzione di `-n`
-> in `gmbcs` è tracciata in `TODO.md` §6 (F4c).
-
-# C99Native — C frontend + C emitter, `cc` against the shared C runtime, no VM
-# The script cds into GMBasic/ itself, so sample paths are relative to GMBasic/ (../shared/...)
+# C99Native — C front end + C emitter, `cc` against the shared C runtime, no VM.
+# The script cds into GMBasic/ itself, so sample paths are relative to GMBasic/ (../shared/...):
 bash tools/sh/gmb_c99native_run.sh ../shared/samples/Network/WebSocketEcho.bas
 
-# All four engines on the same sample, comparing the normalized output
+# All engines on the same sample, comparing the normalized output
 zsh tools/sh/parity4 ../shared/samples/Ai/AiPlugins.bas
 ```
+
+> NativeAOT (`-n`) is **not** in `gmbcs` yet: the canonical native path is the C compiler
+> (`gmb build --project <dir>`). Reintroducing `-n` in `gmbcs` is tracked in `TODO.md` §6 (F4c).
 
 ## Architecture
 
@@ -247,6 +247,76 @@ PCodeVM and VM/C execute **the same P-Code**: that is the semantic contract the 
 checks (`tools/sh/parity4`). C99Native has its own C front end and emitter, so it does not go
 through the C# front end at all. VM/C and C99Native share the same C runtime library
 (`GMBasic/native/gmb_runtime_c/`): no duplicated built-in implementations between them.
+
+## Clipper-style forms: `@ SAY` / `@ GET` / `READ`
+
+The Clipper screen model is intact: `@ row, col SAY` writes, `@ row, col GET` declares an input
+field, and a single `READ` activates **every field declared since the previous `READ`** (the
+Clipper "get list"), then applies the edited values back to the variables. Commands take **no
+parentheses**; the qualifiers are keywords.
+
+```basic
+IMPORT CONSOLE
+
+SUB Main()
+  DIM nameVal AS STRING
+  DIM ageVal AS INTEGER
+  DIM activeVal AS INTEGER
+
+  nameVal = "John" : ageVal = 30 : activeVal = 1
+  @ 3, 5 SAY "Name:"    @ 3, 15 GET nameVal   TYPE "C" PICTURE "@!"
+  @ 4, 5 SAY "Age:"     @ 4, 15 GET ageVal    TYPE "N" MIN 0 MAX 120 STEP 1
+  @ 5, 5 SAY "Active:"  @ 5, 15 GET activeVal TYPE "K" CAPTION "Active"
+  READ
+
+  PRINT "name="; nameVal; " age="; ageVal; " active="; activeVal
+END SUB
+```
+
+| clause | meaning |
+|---|---|
+| `TYPE "C"` / `"N"` / `"K"` / `"D"` | text, number, checkbox, date |
+| `PICTURE "@!"` | Clipper picture: `@!` uppercase, `999.99` numeric mask |
+| `MIN` / `MAX` / `STEP` | numeric bounds |
+| `CAPTION` | label of the widget |
+| `ITEMS {…}` / `ITEMS […]` | listbox / combobox choices |
+| `SIZE w[, h]` | field size |
+| `WHEN expr` | the field is **skipped** while false: no focus, no key wait |
+| `VALID expr` | re-prompts until the expression is true |
+
+The **same code** works in pixel graphics: `SCREEN 12` turns the get list into real widgets
+(text, spinner, checkbox, colorpicker, combobox) and `READ` drives them, while the window is
+pumped by `WINDOW PUMP` in the event loop.
+
+```basic
+IMPORT WINDOWS
+
+SCREEN 12
+DIM nome AS STRING
+DIM eta AS DOUBLE
+DIM attivo AS DOUBLE
+
+SUB Main()
+  WINDOW THEME "Turbo"
+  nome = "Mario Rossi" : eta = 30 : attivo = 1
+  @ 2, 2 SAY "Nome:"     @ 2, 12 GET nome   SIZE 22
+  @ 4, 2 SAY "Eta:"      @ 4, 12 GET eta    TYPE "spinner" MIN 0 MAX 120 STEP 1 SIZE 10
+  @ 6, 2 SAY "Attivo:"   @ 6, 12 GET attivo TYPE "checkbox" CAPTION "Abilita"
+  READ
+  GO SUB EventLoop()
+END SUB
+
+SUB EventLoop()
+  DO WHILE WINDOWCLOSED() = 0
+    WINDOW PUMP 16
+  LOOP
+END SUB
+```
+
+Samples: `shared/samples/Clipper/ClipperAdvanced.bas` (console) and
+`shared/samples/graphics/ClipperGraphics.bas` (pixel). The drawing primitives — `CLS`,
+`LINE (x,y)-(x,y), colour, "BF"`, `CIRCLE`, `PAINT`, `PSET`, `DRAW TEXT` — are covered in
+[Graphics](#graphics).
 
 ## Sample catalog
 
