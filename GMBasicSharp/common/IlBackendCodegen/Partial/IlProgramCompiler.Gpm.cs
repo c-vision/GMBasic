@@ -147,7 +147,7 @@ public sealed partial class IlProgramCompiler
         var dispatchLoopStart = _il.DefineLabel();
         var doneLabel = _il.DefineLabel();
 
-        // BuildDispatchChunks (porting da GMBasic, vedi AiWiki IL-OnError-Loop-Bug.md):
+        // BuildDispatchChunks (porting da GMBasic, vedi IL-OnError-Loop-Bug.md):
         // un chunk per riga NON basta quando una riga contiene un'etichetta A METÀ — il
         // Parser genera etichette sintetiche (FOR_START/FOR_CONTINUE/ecc.) che condividono
         // la riga fisica del FOR/NEXT con statement che NON vanno ri-eseguiti quando il
@@ -290,7 +290,7 @@ public sealed partial class IlProgramCompiler
 
             // Secondo catch: un'eccezione CLR nativa (IndexOutOfRangeException/
             // FileNotFoundException/...) mai avvolta in una BasicException — senza
-            // questo bypasserebbe del tutto ON ERROR (vedi AiWiki
+            // questo bypasserebbe del tutto ON ERROR (vedi 
             // IL-OnError-Loop-Bug.md, gap array-out-of-range/file mancante). Avvolta con
             // FromClrException usando OwnerLine (SEMPRE un vero numero di riga BASIC,
             // anche quando chunk.State è sintetico/negativo).
@@ -429,7 +429,7 @@ public sealed partial class IlProgramCompiler
     /// riga BASIC reale per il PRIMO sotto-segmento di una riga, altrimenti uno stato
     /// sintetico NEGATIVO — vedi <see cref="BuildDispatchChunks"/>); OwnerLine resta SEMPRE
     /// il numero di riga BASIC reale da cui il chunk proviene (mai negativo). Porting
-    /// identico da GMBasic (vedi AiWiki IL-OnError-Loop-Bug.md).
+    /// identico da GMBasic (vedi IL-OnError-Loop-Bug.md).
     /// </summary>
     private sealed record DispatchChunk(int State, int OwnerLine, List<Stmt> Statements);
 

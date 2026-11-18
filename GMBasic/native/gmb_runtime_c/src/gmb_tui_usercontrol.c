@@ -4,7 +4,7 @@
  * gmb_gfx_context_t che e' un SINK registratore: le primitive accumulate come draw-list
  * NON chiamano SDL. Il main thread replaya la lista (gmb_gfxctx_replay) durante il present.
  * Cosi' il thread SDL non esegue mai BASIC. Vedi
- * AiWiki/01-Projects/GMBasic/Decisions/ADR-Controlli-Utente-Modello-Classe-VB6.md (§7).
+ *  (§7).
  *
  * Coordinate del contesto = LOCALI al controllo (0..width / 0..height); il replay somma
  * l'origine del controllo sullo schermo. */

@@ -925,7 +925,7 @@ private bool TryInferNativeCollectionIndexType(IndexedAccessExpr expr, out DataT
         // check un campo DBF/ISAM nudo era SEMPRE inferito DoubleType, anche per campi
         // STRING, e il valore reale (letto a runtime da EmitFieldAccess via
         // IlRuntime.DbfLateBindField) veniva scartato — vedi
-        // ILBackend-DbfLateBinding-BareField-AlwaysZero (AiWiki).
+        // ILBackend-DbfLateBinding-BareField-AlwaysZero .
         if (fa.Structure is VariableExpr dbLateBindVar && dbLateBindVar.SymbolId == SymbolTable.DbfRecordBufferSymbolId)
             return new AnyType();
         // dict.Keys / dict.Values (senza parentesi): EmitFieldAccess li materializza come

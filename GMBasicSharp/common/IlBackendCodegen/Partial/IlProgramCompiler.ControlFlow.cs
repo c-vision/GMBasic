@@ -325,7 +325,7 @@ public sealed partial class IlProgramCompiler
     /// propria. Senza questo, ERR.Number/ERR.Description letti dentro l'handler leggono il
     /// local mai inizializzato del simbolo ERR (null) → NullReferenceException. No-op se il
     /// simbolo globale ERR non è nello scope (non dovrebbe mai accadere: registrato da StdLib
-    /// per ogni programma). Porting identico da GMBasic (vedi AiWiki IL-OnError-Loop-Bug.md).
+    /// per ogni programma). Porting identico da GMBasic (vedi IL-OnError-Loop-Bug.md).
     /// </summary>
     private void EmitCaptureErrorIntoGlobalErr(LocalBuilder caughtExceptionLocal)
     {

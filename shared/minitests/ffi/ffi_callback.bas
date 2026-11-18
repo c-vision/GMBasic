@@ -1,6 +1,6 @@
 ' EXPECT: apply= 42|combine2= 43|sum_transformed= 30|apply_i2d= 7
 ' Callback come parametro FFI (2026-09-29, v1: arita' 0-4, firma interna omogenea per kind,
-' BYVAL) — vedi AiWiki Bugs/(open) - FFI-Estensioni-Possibili-BYREF-Struct-Callback.md §3bis.
+' BYVAL) — vedi Bugs/(open) - FFI-Estensioni-Possibili-BYREF-Struct-Callback.md §3bis.
 ' Copre: callback a 1 argomento (VecCbApply), a 2 argomenti (VecCbCombine2), un callback
 ' COMBINATO con un parametro array nella stessa firma (VecCbSumTransformed), e un callback il
 ' cui kind INTERNO (DOUBLE) e' diverso dal kind ESTERNO forzato della dichiarazione (LONG,

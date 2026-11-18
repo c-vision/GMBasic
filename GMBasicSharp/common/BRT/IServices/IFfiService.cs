@@ -4,7 +4,7 @@ namespace Basic.Runtime;
 
 /// <summary>Struct/UDT per valore, incluse STRUTTURE ANNIDATE (2026-09-28, esteso al nesting
 /// 2026-09-29): la "forma" di un UDT semplice usato in una firma FFI, dopo il FLATTENING
-/// ricorsivo delle sue foglie scalari — vedi AiWiki Bugs/(solved) - FFI-Struct-Annidate-
+/// ricorsivo delle sue foglie scalari — vedi Bugs/(solved) - FFI-Struct-Annidate-
 /// Bloccato-Da-Bug-UDT-Nested.md. <paramref name="FieldNames"/> = path punteggiato per FOGLIA
 /// in ordine di dichiarazione ("X" per un campo diretto, "I.X" per un campo annidato — per
 /// leggere un'istanza PCodeVM, un <c>Dictionary&lt;string,object?&gt;</c> chiavato per nome,

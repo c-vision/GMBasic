@@ -1,6 +1,6 @@
 // FILE: Basic.Agents.ArtifactStore — Orchestrazione agenti (A6): Artifact Store.
 // Registro di artefatti REFERENZIABILI senza duplicarne il contenuto: ogni artefatto è
-// (nome, tipo, riferimento). PUT registra un file; LINK registra una URI (filesystem/Git/AiWiki);
+// (nome, tipo, riferimento). PUT registra un file; LINK registra una URI (filesystem/Git/);
 // GET risolve il riferimento; LIST elenca; REMOVE elimina. Non copia mai il contenuto.
 //
 // Parita' di comportamento con il runtime C (native/gmb_runtime_c/src/gmb_artifact.c):

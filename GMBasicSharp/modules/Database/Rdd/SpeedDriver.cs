@@ -56,7 +56,7 @@ public class SpeedDriver : BaseDriver
     /// (o ne creava una "KV" di default) invece della tabella richiesta, e senza schema
     /// registrato `BaseDriver.GetFieldValue` si fermava dopo pochissimi campi (o zero) — bug
     /// trovato dal vivo isolando un crash SIGSEGV in SPEED GET, causa radice distinta e più a
-    /// monte (vedi AiWiki Bugs/ILBackend-DbSpeedFullTests-Silent-Hang.md).
+    /// monte (vedi Bugs/ILBackend-DbSpeedFullTests-Silent-Hang.md).
     /// </summary>
     public void UseTable(int tableId)
     {

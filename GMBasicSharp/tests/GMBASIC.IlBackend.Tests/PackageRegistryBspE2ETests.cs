@@ -444,7 +444,7 @@ public class PackageRegistryBspFrontendTests
     {
         // Nuove funzionalità classi (distruttore SUB DESTRUCTOR, Z1-Z3): i sample dedicati
         // compilano. (L'esecuzione e i limiti PCodeVM sono documentati in
-        // AiWiki Bugs/Classi-Distruttore-Ereditarieta-CrossFile-Bugs.md)
+        // Bugs/Classi-Distruttore-Ereditarieta-CrossFile-Bugs.md)
         var root = FindRoot();
         var cases = new[]
         {

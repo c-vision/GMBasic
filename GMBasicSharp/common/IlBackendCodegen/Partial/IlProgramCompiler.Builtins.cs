@@ -1920,7 +1920,7 @@ case TokenKind.MemoryWatch: EmitStringUnaryBuiltinCall(expr, RuntimeMethod(nameo
             // CONVERT/AI: emitter mai stati committati con successo (esistevano solo
             // transitoriamente nel working tree di un'altra sessione concorrente durante una
             // race di build — persi in una ricostruzione di questo file dopo un incidente di
-            // sovrascrittura concorrente; vedi AiWiki/09-Errors/GMBasic/ConvertAi-QualifiedCall-Bug.md).
+            // sovrascrittura concorrente; vedi /09-Errors/GMBasic/ConvertAi-QualifiedCall-Bug.md).
             // IlRuntime ha già i wrapper (ConvertToMd/Html/Text/Batch/Web/Formats, AiOcr/
             // Transcribe/Providers/SetKey/SetModel, AiStub) — mancava solo questo dispatch.
             case TokenKind.ConvDoc: EmitConvDocCall(expr); break;

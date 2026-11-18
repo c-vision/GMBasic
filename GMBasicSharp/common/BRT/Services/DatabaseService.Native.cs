@@ -1072,7 +1072,7 @@ public sealed partial class DatabaseService
     /// restava 0 → `SpeedDriver.Open` sceglieva la prima tabella del manifest (o ne creava una
     /// "KV" di default), MAI la tabella richiesta, e senza schema `BaseDriver.GetFieldValue`
     /// si fermava dopo pochissimi campi — causa radice, trovata isolando un crash SIGSEGV in
-    /// SPEED GET (vedi AiWiki Bugs/ILBackend-DbSpeedFullTests-Silent-Hang.md), di un bug
+    /// SPEED GET (vedi Bugs/ILBackend-DbSpeedFullTests-Silent-Hang.md), di un bug
     /// distinto e più a monte di quel crash.
     ///
     /// Ora: risolve il driver del DATABASE già aperto tramite `dbHandle` (stesso `Database`

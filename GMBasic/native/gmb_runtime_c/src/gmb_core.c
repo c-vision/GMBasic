@@ -777,7 +777,7 @@ void gmb_raise_user_error(gmb_val_t value, int number, const char* description, 
 
 /* Guardia del dispatch di metodo: `DIM c AS Cls` senza NEW è un riferimento NIL;
  * invocare un metodo su nil è un errore BASIC CATTURABILE (parità IL/ON ERROR), mai
- * un SIGSEGV (C99Native) né un nil silenzioso (PCode/VM-C) — bug AiWiki
+ * un SIGSEGV (C99Native) né un nil silenzioso (PCode/VM-C) — bug 
  * CLASS-MethodCall-Su-Nil-Dispatch-Divergente. Ritorna self se è un oggetto valido. */
 gmb_val_t* gmb_obj_require(gmb_val_t* self, long line) {
     if (self == NULL || self->kind != GMB_TYPE_OBJECT || self->v_ptr == NULL)

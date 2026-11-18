@@ -2,7 +2,7 @@
 ' =================================================================================================
 '   CANARINO — macro & Clipper, entrambe le forme: STATEMENT (&(cmd)) ed ESPRESSIONE (&expr come
 '   valore), con cattura variabili globali. Vedi
-'   AiWiki/01-Projects/GMBASIC/Dynamic-Code-EVAL-Macro-Backends-Report.md per il contesto completo.
+'    per il contesto completo.
 '
 '   Prima dei fix (sessione 2026-08-21):
 '   - &(cmd) sotto NativeAOT (IL Backend, build reale) lanciava sempre un'eccezione

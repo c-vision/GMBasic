@@ -1,5 +1,5 @@
 // FILE: Basic.Agents.AgentBrains
-// Livello AGENT dello scope dei cervelli (F2 di AiWiki Knowledge/Brain-Scope-Modello.md):
+// Livello AGENT dello scope dei cervelli (F2 di Knowledge/Brain-Scope-Modello.md):
 // ogni agente può DICHIARARE i brain che può usare (`AI AGENT SET <agente>, brains, "finance AS fin"`).
 //
 // Regola di F2 (nessun cambio di default):

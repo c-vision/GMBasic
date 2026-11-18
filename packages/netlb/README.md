@@ -55,6 +55,6 @@ simulazione di coda vs P2C), **sticky soft** (affinità/fallback/TTL), **limite 
 **HRW skeleton** (O(log n): 23 hash/pick su N=400, disruption 0.20%).
 
 ## Riferimenti
-- Analisi: `AiWiki/01-Projects/GMBasicMonoRepo/Knowledge/Load-Balancing-Algoritmi.md`.
-- Piano: `AiWiki/01-Projects/GMBasicMonoRepo/Todo/(solved) - GMBSuite-Load-Balancing-Lib-C.md`.
+- Analisi: ``.
+- Piano: `(solved) - GMBSuite-Load-Balancing-Lib-C.md`.
 - Paper: Mitzenmacher (P2C), Karger (consistent hashing), Thaler-Ravishankar (HRW), Eisenbud (Maglev NSDI'16), Lu et al. (JIQ, NSDI'16).

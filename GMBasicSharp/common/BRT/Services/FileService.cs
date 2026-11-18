@@ -7,7 +7,7 @@ public sealed class FileService : IFileService
 {
     private readonly Dictionary<long, FileStream> _handles = new();
     private long _nextHandle = 1;
-    // Reader di riga PERSISTENTE per handle (2026-10-01, fix AiWiki Bugs/(solved) - PRINTFile-
+    // Reader di riga PERSISTENTE per handle (2026-10-01, fix Bugs/(solved) - PRINTFile-
     // Argomenti-Stringa-PCode-IL-Divergenza.md): ReadLine creava PRIMA un nuovo StreamReader
     // AD OGNI CHIAMATA — un reader bufferizza internamente (default 1KB) più byte di quanti
     // ReadLine() ne restituisca, e avanza lo STREAM sottostante di quanto ha BUFFERIZZATO (non

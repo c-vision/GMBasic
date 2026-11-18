@@ -140,7 +140,7 @@ engine is this port's verified engine; **IL** has a pre-existing and general bug
 array declared at module/GLOBAL level does not share state across SUBs (confirmed with
 a minimal repro unrelated to this app — every SUB sees its own stale/default copy) — this port's
 `g_prof*`/`g_query*`/`g_param*` global arrays hit it directly, so **IL is not currently usable for
-this app**. Tracked as a new AiWiki bug (see `TODO.md`).
+this app**. Tracked as a new bug (see `TODO.md`).
 
 ## Recorded verification
 

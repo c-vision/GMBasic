@@ -613,7 +613,7 @@ public static partial class Linker
             // più presenti come chiave in optimizedStatements, causando un
             // KeyNotFoundException nel backend IL (EmitInitializeDataPool e il
             // dispatcher ON ERROR indicizzano entrambi Statements per ogni riga in
-            // ExecutionOrder — vedi AiWiki IL-OnError-Loop-Bug.md). Filtra invece di
+            // ExecutionOrder — vedi IL-OnError-Loop-Bug.md). Filtra invece di
             // riordinare: preserva l'ordine di programma originale (che per righe
             // sintetiche NON è un semplice sort numerico, vedi il commento su
             // BasicModule.ExecutionOrder), rimuove solo le chiavi che non esistono più.

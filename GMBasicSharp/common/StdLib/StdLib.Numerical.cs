@@ -130,7 +130,7 @@ public sealed partial class StdLib
             // scipy.integrate.solve_ivp (RK45 adattivo): f(t, y[]) → y'[], traiettoria matrice.
             new NativeProcedureDefinition(-1, SymbolFlags.IsPublic, T(TokenKind.SolveIvp, "SolveIvp"),
             [
-                /* Bug trovato 2026-09-16 (Lambda-Param-Array-Indicizzato-Cross-Backend, AiWiki):
+                /* Bug trovato 2026-09-16 (Lambda-Param-Array-Indicizzato-Cross-Backend,):
                  * il primo parametro del callback (t, l'istante corrente) era dichiarato
                  * ArrayType(Double) come il secondo (y, il vettore di stato) — un lambda
                  * codeblock `{|t, y| ...}` ereditava quel tipo via RewriteSingleArgument/

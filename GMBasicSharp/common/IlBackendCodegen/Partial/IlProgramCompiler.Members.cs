@@ -524,7 +524,7 @@ public sealed partial class IlProgramCompiler
             // (indirizzo di tutt'altro tipo): Stfld ci scriveva sopra corrompendo il
             // riferimento — il local finiva col CONTENERE il valore assegnato invece del box
             // originale, e la lettura successiva (Unbox_Any) lanciava InvalidCastException sul
-            // tipo sbagliato ora contenuto nel box — bug AiWiki
+            // tipo sbagliato ora contenuto nel box — bug 
             // NullConditionalAccess-Nullable-UDT-Divergenza.
             case VariableTarget vt when NormalizeInferredType(_program.Symbols.GetSymbol(vt.SymbolId).DataType) is NullableType nvt:
                 // GLOBAL/STATIC: il valore vero vive nel bag (StoreGlobal/StoreStatic — vedi
@@ -777,7 +777,7 @@ public sealed partial class IlProgramCompiler
         // anziché un puntatore produce IL non verificabile
         // (System.InvalidProgramException A RUNTIME, mai un errore di compilazione C#, dato
         // che Reflection.Emit non verifica l'IL emesso finché non viene eseguito) — vedi
-        // AiWiki Bugs/(solved) - UDT-Campo-Annidato-Scrittura-Encadenata-Non-Persiste.md.
+        // Bugs/(solved) - UDT-Campo-Annidato-Scrittura-Encadenata-Non-Persiste.md.
         // TryGetStructureDataType già generalizza su TUTTI i tipi di Target (Variable/
         // ArrayElement/Field/Indexed) — riusato qui invece del controllo ristretto.
         // Il tipo da valutare è quello del CAMPO/struttura ESTERNA (`target.Structure`), NON

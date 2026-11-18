@@ -2,7 +2,7 @@
 namespace Basic.Agents;
 
 /// <summary>Livello di permesso di un agente (modello Sandbox/Supervised/YOLO — vedi
-/// AiWiki/01-Projects/GMBasic/Piani/Agent-Permessi-Piano.md).</summary>
+/// ).</summary>
 public enum AgentPermissionLevel
 {
     /// <summary>Solo tool a rischio 'safe' (letture + interazione core); i 'risky' → errore esplicito.</summary>

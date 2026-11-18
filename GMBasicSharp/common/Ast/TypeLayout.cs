@@ -9,7 +9,7 @@ namespace Basic;
 /// bytecode (fold di SIZEOF + chiave "Size" del descrittore di classe, quindi PCodeVM e VM/C
 /// leggono lo STESSO numero calcolato qui).
 ///
-/// CANONE (vedi AiWiki Guide/utente/System-Guida-Utente.md, sezione SIZEOF):
+/// CANONE (vedi Guide/utente/System-Guida-Utente.md, sezione SIZEOF):
 ///  - BIT/BYTE/SBYTE = 1, INTEGER/UINT = 2, SINGLE = 4,
 ///    LONG/QUAD/ULONG/UQUAD/DOUBLE/DATETIME/TIMESPAN = 8, CURRENCY = 16;
 ///    DATE/TIME valgono 8 SOLO come TIPO DICHIARATO (<c>DIM v AS DATE</c>): come nudi
@@ -44,7 +44,7 @@ namespace Basic;
 /// struct C o dell'oggetto CLR: le gambe C salvano ogni numerico in un double (8 byte) e il
 /// backend managed mappa INTEGER su Int64 e SINGLE scalare su double — la tabella logica
 /// (INTEGER = 2, SINGLE = 4) resta la STESSA su tutti e cinque i backend, perché descrive il
-/// layout di record/FFI, non lo storage del valore. Vedi la nota AiWiki
+/// layout di record/FFI, non lo storage del valore. Vedi la nota 
 /// `Knowledge/SizeOf-Forma-e-Folding.md`.
 /// C99Native (compilatore C puro, deliberatamente indipendente da C# e dal runtime) ha la
 /// stessa tabella replicata in native/gmb_compiler_c (gmb_cls_field_bytes): è l'unico posto

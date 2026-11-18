@@ -9,7 +9,7 @@
 ' Aree RDD pure (DBF via RDD USE): i campi sono celle testuali lette/toccate
 ' dal motore RDD; il buffer devia le scritture finché TABLEUPDATE non applica.
 ' Indici campo = ordinale Clipper 1-based (1..n); OLDVAL = snapshot.
-' Semantica canonica: AiWiki Decisions/ADR-RowBuffer-RDD-Canonica.md.
+' Semantica canonica: Decisions/ADR-RowBuffer-RDD-Canonica.md.
 ' Parità verificata: il, pcode, vmc, c99, c99n (tools/parity4 --legs all).
 ' =====================================================================
 IMPORT RDD

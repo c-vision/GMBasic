@@ -23,6 +23,6 @@ Material **shared by the two worlds** (`GMBasic/` in C, `GMBasicSharp/` in C#), 
 - **State** of the installation (active providers, MCP servers, brains, indexes) → `<configDir>`
   (`GMBasic/config`, or `<exe>/config` in a distributed program). **It does not go into git**: it
   contains machine paths.
-- The monorepo documentation lives in the **vault** (`AiWiki/01-Projects/GMBasicMonoRepo`);
+- The monorepo documentation lives in the **vault** (``);
   `docs/` at the root is reserved for the printed manual (currently empty), the reports of the tools
   are in `tools/reports/`.

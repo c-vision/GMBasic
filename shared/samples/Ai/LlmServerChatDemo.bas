@@ -10,7 +10,7 @@
 '
 ' Endpoint dimostrati: GET /v1/status, GET /v1/models, POST /v1/chat/completions,
 ' POST /v1/completions (con `stop` stringa), POST /v1/models/unload + /load (residenza).
-' Vedi guida: AiWiki Guide/utente/LLM-Server-OpenAI-Compatibile.md.
+' Vedi guida: Guide/utente/LLM-Server-OpenAI-Compatibile.md.
 ' NB: i letterali stringa NON iniziano/finiscono con `"` (tre virgolette consecutive =
 ' raw string): ogni body JSON e' un unico letterale per riga, che inizia con `{` e finisce
 ' con `}` (le virgolette interne sono raddoppiate `""`, come negli altri sample).

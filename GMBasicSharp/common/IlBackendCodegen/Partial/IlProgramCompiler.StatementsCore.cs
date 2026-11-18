@@ -487,7 +487,7 @@ public sealed partial class IlProgramCompiler
     /// realtà sono i bit grezzi di un double — AccessViolationException al primo uso reale
     /// (es. PRINT) quando il runtime prova a dereferenziarlo come se fosse un vero
     /// puntatore a un oggetto String. Porting identico da GMBasic (vedi
-    /// AiWiki IL-OnError-Loop-Bug.md, riprodotto con Types/TypesFixedLengthStrings.bas).
+    /// IL-OnError-Loop-Bug.md, riprodotto con Types/TypesFixedLengthStrings.bas).
     /// Fix: converti esplicitamente in stringa PRIMA di Coerce/Ret quando il tipo di
     /// ritorno è stringa ma il valore non lo è.
     /// </summary>

@@ -1,6 +1,6 @@
 /* FILE: native/gmb_runtime_c/src/gmb_rdd_rowbuf.c
  * Row-buffer RDD (table buffering Clipper) — UNICA implementazione (§0bis).
- * Spec: AiWiki/01-Projects/GMBasic/Decisions/ADR-RowBuffer-RDD-Canonica.md
+ * Spec: 
  *
  * Il buffer vive PER AREA (numero 1..GMB_RDD_MAX_AREA), snapshot del RECORD CORRENTE.
  * Motori: cell-store RDD del runtime (raw_* in gmb_rdd.c) oppure ISAM via hook

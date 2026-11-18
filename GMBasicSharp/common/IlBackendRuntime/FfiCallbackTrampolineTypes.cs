@@ -1,7 +1,7 @@
 // FILE: IlBackendRuntime/FfiCallbackTrampolineTypes.cs
 // Tipi di delegate CONDIVISI tra PCodeVM (PCodeProcessor.FfiCallback.cs) e IL
 // (IlRuntime.FfiCallback.cs) per il trampolino nativo del Callback come parametro FFI
-// (2026-09-29, v1: arità 0-4, firma interna omogenea per kind, BYVAL — vedi AiWiki
+// (2026-09-29, v1: arità 0-4, firma interna omogenea per kind, BYVAL — vedi 
 // Bugs/(open) - FFI-Estensioni-Possibili-BYREF-Struct-Callback.md §3bis). 19 tipi pre-
 // dichiarati (5 arità 0-4 × 2 kind INT/DOUBLE per le FUNCTION, + arità 0 condivisa e 4
 // arità 1-4 × 2 kind per le SUB) — ognuno taggato UnmanagedFunctionPointer(Cdecl): il CLR

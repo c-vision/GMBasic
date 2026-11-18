@@ -4164,7 +4164,7 @@ public static partial class Linker
     /// ENUM) — mai un valore leggibile/scrivibile. Usata da <see cref="FindSymbolIdInScopeChain"/>
     /// per preferire, tra candidati omonimi nello stesso scope, quello che rappresenta un
     /// riferimento-VALORE quando il nome collide case-insensitive con una dichiarazione di
-    /// modulo (es. `TYPE P` + `DIM p AS P` nello stesso scope — vedi AiWiki Bugs/(open) - TYPE-
+    /// modulo (es. `TYPE P` + `DIM p AS P` nello stesso scope — vedi Bugs/(open) - TYPE-
     /// TopLevel-NonRegistrato-Come-Tipo-Modulo.md).</summary>
     private static bool IsModuleTypeDeclarationNode(AstNode? node) =>
         node is UserDefinedType or ClassDefinition or ProcedureDefinition or InterfaceDefinition or EnumDefinition;
@@ -4227,7 +4227,7 @@ public static partial class Linker
                                            || currentScope.Name.StartsWith("GenClause", StringComparison.OrdinalIgnoreCase);
 
                     // Preferenza (2026-10-01, fix collisione nome TYPE/variabile a livello di
-                    // modulo — AiWiki Bugs/(open) - TYPE-TopLevel-NonRegistrato-Come-Tipo-
+                    // modulo — Bugs/(open) - TYPE-TopLevel-NonRegistrato-Come-Tipo-
                     // Modulo.md): questo metodo risolve SOLO riferimenti-VALORE (VariableExpr/
                     // ArrayAccessExpr/FieldAccessExpr/Target — mai un nome-di-tipo dopo AS, che
                     // si risolve altrove). Se un nome come "p" collide case-insensitive con un

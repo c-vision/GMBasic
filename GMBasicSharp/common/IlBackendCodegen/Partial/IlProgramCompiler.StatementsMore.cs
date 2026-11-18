@@ -420,7 +420,7 @@ public sealed partial class IlProgramCompiler
     /// </summary>
     /// <summary>
     /// Root cause del bug "ON ERROR GOTO come primissima riga + statement adiacente che
-    /// lancia" (vedi AiWiki IL-OnError-Loop-Bug.md/GMBasicAI_Errors.md): questi 6 loader
+    /// lancia" (vedi IL-OnError-Loop-Bug.md/GMBasicAI_Errors.md): questi 6 loader
     /// (Runtime/Console/File/Network/Database/Http) cachavano il valore in un local
     /// METODO-WIDE popolato pigramente alla prima chiamata — corretto SOLO se "primo
     /// compilato" coincide con "primo eseguito", vero nel percorso semplice ma FALSO

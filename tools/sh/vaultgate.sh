@@ -17,7 +17,7 @@
 # contenuto cambia, la versione precedente viene copiata in backup sotto
 # ${TMPDIR}/gmbasicmonorepo-backup/vaultgate/<data>/<cartella>/ prima di essere sostituita.
 #
-# Default del vault: ~/Documents/AiWiki/01-Projects/GMBasicMonoRepo (il vault è per-macchina:
+# Default del vault: ~/Documents/ (il vault è per-macchina:
 # non c'è un path relativo al repo che valga sempre). Nessuna variabile d'ambiente: i parametri
 # passano solo dai flag.
 #
@@ -46,7 +46,7 @@
 # Exit: 0 = nessuna orfana · 1 = almeno un'orfana · 2 = uso errato, vault assente, nessun indice.
 set -uo pipefail
 
-VAULT="$HOME/Documents/AiWiki/01-Projects/GMBasicMonoRepo"
+VAULT="$HOME/Documents/"
 DO_LIST=0
 QUIET=0
 SCOPES=()

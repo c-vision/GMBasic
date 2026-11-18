@@ -1,6 +1,6 @@
 /* FILE: native/gmb_runtime_c/include/gmb_rdd_rowbuf.h
  * Row-buffer RDD (table buffering Clipper) — unica implementazione condivisa (§0bis).
- * Spec canonica: AiWiki 01-Projects/GMBasic/Decisions/ADR-RowBuffer-RDD-Canonica.md
+ * Spec canonica: 01-Projects/GMBasic/Decisions/ADR-RowBuffer-RDD-Canonica.md
  *
  * Semantica (per area attiva, record corrente):
  *  - BUFFER(area, mode): mode 2 pessimistico / 3 ottimistico → snapshot del record corrente

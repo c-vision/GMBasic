@@ -93,7 +93,7 @@ public static partial class IlRuntime
     private static readonly System.Collections.Concurrent.ConcurrentDictionary<long, AsymmetricKeyParameter> CryptoKeys = new();
     private static long _nextFileHandle;
     private static readonly System.Collections.Concurrent.ConcurrentDictionary<long, FileStream> OpenFiles = new();
-    // Reader di riga PERSISTENTE per handle (2026-10-01, fix AiWiki Bugs/(solved) - PRINTFile-
+    // Reader di riga PERSISTENTE per handle (2026-10-01, fix Bugs/(solved) - PRINTFile-
     // Argomenti-Stringa-PCode-IL-Divergenza.md): FileReadLineNumber creava PRIMA un nuovo
     // StreamReader AD OGNI CHIAMATA — un reader bufferizza internamente (default 1KB) più byte
     // di quanti ReadLine() ne restituisca, e avanza lo STREAM sottostante di quanto ha

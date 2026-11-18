@@ -2410,7 +2410,7 @@ double llmmodelio_roundtrip_rel(int ty, const float* x, uint64_t numel, uint32_t
  * COMPLETA ΔWᵀΣΔW via Monte Carlo su campioni REALI di attivazione catturati durante il forward pass
  * (llmmodelio_infer.c, "<tensor>.samples" nell'imatrix) — cattura le correlazioni fra canali che la
  * diagonale ignora, senza mai materializzare la matrice cols×cols (intrattabile per i tensori esperti:
- * vedi AiWiki). samp: [n_samp*cols] (tensori condivisi) o [n_expert*n_samp*cols] (tensori per-esperto,
+ * vedi). samp: [n_samp*cols] (tensori condivisi) o [n_expert*n_samp*cols] (tensori per-esperto,
  * rows_per_expert>0 -> riga o appartiene all'esperto o/rows_per_expert). Nessun campione -> ricade sul
  * diagonale (llmmodelio_roundtrip_rel), esattamente come prima di questa estensione. */
 double llmmodelio_roundtrip_rel_cov(int ty, const float* x, uint64_t numel, uint32_t cols,

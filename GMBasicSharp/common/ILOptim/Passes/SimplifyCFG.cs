@@ -29,7 +29,7 @@ public class SimplifyCFG : IMethodPass
             case BranchInst { IsConditional: true } br: {
                 changed |= SimplifyCond(br);
                 // ConvertToBranchless(block) disattivato (bug GMBasic 2026-09-16, vedi
-                // Bugs/(solved) - IL-If-Then-Assegna-Variabile-In-Loop.md nel vault AiWiki):
+                // Bugs/(solved) - IL-If-Then-Assegna-Variabile-In-Loop.md nel vault):
                 // quando l'Else di un IF senza ELSE esplicito è il blocco di merge stesso
                 // (br.Else == endBlock, il caso comune "IF cond THEN target = expr" senza
                 // ELSE), il calcolo di keepF (poco sotto, "br.Else.NumPreds > 0") controlla

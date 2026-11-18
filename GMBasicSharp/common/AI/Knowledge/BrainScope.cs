@@ -1,7 +1,7 @@
 // FILE: Basic.AI.Knowledge.BrainScope
 // Scope dei cervelli (Second Brain) — i brain hanno uno SCOPE come le variabili.
-// Design: AiWiki/01-Projects/GMBasic/Knowledge/Brain-Scope-Modello.md
-// Impatto: AiWiki/01-Projects/GMBasic/Reports/Brain-Scope-Impatto-Agent.md (F1)
+// Design: 
+// Impatto:  (F1)
 //
 // Catena (dal più interno al più esterno):
 //     CALL  → TASK  → AGENT → SESSION → PROCESS

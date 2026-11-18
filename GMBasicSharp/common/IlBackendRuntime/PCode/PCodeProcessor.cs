@@ -821,7 +821,7 @@ internal sealed partial class PCodeProcessor
                     // (GpmCore.cs) — il task è stato risvegliato ma l'eccezione non è mai stata
                     // rilanciata nel suo contesto, quindi il tick riprendeva silenziosamente
                     // dall'istruzione successiva (ON ERROR non la vedeva mai; l'errore restava
-                    // "appeso" fino a fine run, dove usciva come crash non gestito — bug AiWiki
+                    // "appeso" fino a fine run, dove usciva come crash non gestito — bug 
                     // GPM-Park-Error-Non-Catturabile-PCode-VMC). La cancellazione cooperativa
                     // (CancellationUnwindStarted + OperationCanceledException) resta esclusa: non
                     // è un errore BASIC catturabile, deve continuare a propagarsi come prima.
@@ -874,7 +874,7 @@ internal sealed partial class PCodeProcessor
                     // TUTTI gli opcode del chunk in un colpo solo, quindi es. un PRINT dopo SCREEN
                     // veniva eseguito PRIMA che il game loop avesse processato SCREEN
                     // (IsScreenOn ancora false) e finiva sulla console invece che sulla finestra
-                    // grafica (race condition, vedi AiWiki IL-Graphics-Test-Bugs-Prompt-Claude.md).
+                    // grafica (race condition, vedi IL-Graphics-Test-Bugs-Prompt-Claude.md).
                     if (task.State == PCodeTaskState.Blocked)
                         return PCodeTickResult.Parked;
                 }

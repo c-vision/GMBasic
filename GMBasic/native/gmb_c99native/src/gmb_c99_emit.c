@@ -759,7 +759,7 @@ void emit_num_operand(ctx_t* c, gmb_expr_t* e) {
 }
 
 /* Keyword C (C11 + estensioni comuni) con cui un identificatore BASIC emesso tal quale può
- * collidere — bug Identificatore-BASIC-Come-Keyword-C (AiWiki, trovato 2026-09-16): un nome
+ * collidere — bug Identificatore-BASIC-Come-Keyword-C (trovato 2026-09-16): un nome
  * come "auto" (perfettamente lecito in BASIC: `DIM auto AS STRING`) produceva C non
  * compilabile perché "auto" è una storage-class C, con un errore del compilatore C
  * fuorviante e lontano dalla vera causa ("expected expression" sull'USO, non sulla
@@ -1553,7 +1553,7 @@ static int dim_arr_init_kind(ctx_t* c, const gmb_expr_t* e) {
      * di tipo esplicita — dict/set hanno gia' AS DICT/HASHSET OF... che li instrada al
      * ramo GK_DICT/GK_SET generico altrove): array nativo dinamico, stesso trattamento di
      * un builtin array-returning (kind 1 = 1D flat con out-len) — bug
-     * C99Native-Comprehension-DictParam-ChiaviNumeriche (AiWiki). */
+     * C99Native-Comprehension-DictParam-ChiaviNumeriche . */
     if (e && e->kind == GMB_EXPR_COMPREHENSION && e->comp_ctype == 0) return 1;
     if (!e || e->kind != GMB_EXPR_CALL || !e->var) return 0;
     /* Una FUNCTION UTENTE (anche un wrapper .inc in un namespace) che ritorna
@@ -2922,7 +2922,7 @@ int etype(ctx_t* c, gmb_expr_t* e) {
     case GMB_EXPR_LAMBDA: return TY_NUM;  /* riscritto a VAR dal pre-pass; mai raggiunto */
     case GMB_EXPR_COMPREHENSION: return TY_NUM;  /* lista/dict/set comprehension: sempre
         * numerica in questo emitter (nessun sample bersaglio usa elementi stringa —
-        * bug C99Native-Comprehension-DictParam-ChiaviNumeriche, AiWiki). */
+        * bug C99Native-Comprehension-DictParam-ChiaviNumeriche,). */
     case GMB_EXPR_VAR: {
         /* `x.VALUE` su nullable: il tipo è quello della variabile base (STRING? → TY_STR). */
         if (e->var) {
@@ -4063,7 +4063,7 @@ if (s->dim_var) {            int ty = suffix_type(s->dim_var);
              * comp_more_var[]) come locali numeriche nello dscope corrente — servono a
              * emit_expr quando valuta comp_sel/comp_where/comp_key più sotto, altrimenti
              * risulterebbero simboli sconosciuti (bug
-             * C99Native-Comprehension-DictParam-ChiaviNumeriche, AiWiki: comprehension del
+             * C99Native-Comprehension-DictParam-ChiaviNumeriche, : comprehension del
              * tutto non emesse dal C99Native). Una comprehension LISTA (ctype 0) senza
              * annotazione di tipo esplicita diventa un array nativo dinamico (dyn_len),
              * stesso schema di un builtin array-returning (AMAP/AFILTER/...). */
@@ -6159,7 +6159,7 @@ static void infer_aeval_expr(ctx_t* c, gmb_expr_t* e) {
          * (gmb_double_t, 3 parametri, nessun out) produce una call-through con firma
          * sbagliata: comportamento indefinito (osservato: integrazione che si ferma dopo un
          * solo passo, "rows=2" invece di 6 — bug Lambda-Param-Array-Indicizzato-Cross-Backend,
-         * AiWiki). La forma esplicita `FN(t AS DOUBLE, y() AS DOUBLE) AS ARRAY OF DOUBLE =>
+         *). La forma esplicita `FN(t AS DOUBLE, y() AS DOUBLE) AS ARRAY OF DOUBLE =>
          * {-1}` già funziona perché "AS ARRAY OF" imposta lambda_ret_arr esplicitamente
          * (gmb_parser_expressions.c); qui si forza lo stesso flag anche quando il body è
          * un'espressione SCALARE nuda (nessun letterale `{...}` da cui contare gli elementi)
@@ -8904,7 +8904,7 @@ static void emit_dict_key(ctx_t* c, gmb_expr_t* e);   /* definita più sotto in 
 /* ============================================================================
  * Comprehension `[sel FOR var IN src (FOR var2 IN src2)* (IF where)?]` (lista),
  * `{key:sel FOR ...}` (dict), `{sel FOR ...}` (set) — bug
- * C99Native-Comprehension-DictParam-ChiaviNumeriche (AiWiki): il C99Native non emetteva
+ * C99Native-Comprehension-DictParam-ChiaviNumeriche : il C99Native non emetteva
  * ALCUN caso per GMB_EXPR_COMPREHENSION (0 hit di grep prima di questo fix), quindi
  * qualunque comprehension letterale falliva a valle con errori fuorvianti ("l'argomento
  * non è un array"). Multi-FOR = prodotto cartesiano, cicli annidati uno per clausola.
@@ -12382,7 +12382,7 @@ static void emit_call(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_
                                 /* _typed: ricostruisce il tipo reale di ogni chiave (numero
                                  * o stringa) invece di restituire sempre stringhe — bug
                                  * C99Native-Comprehension-DictParam-ChiaviNumeriche
-                                 * (AiWiki). gmb_dict_keys(_sorted) "nudo" resta usato altrove
+                                 * . gmb_dict_keys(_sorted) "nudo" resta usato altrove
                                  * (es. gmb_dict_extreme) dove serve la rappresentazione
                                  * stringa per il confronto/storage, non il valore letto. */
                                 if (is_sorted) sb_put(&c->out, "gmb_dict_keys_typed_sorted(");
@@ -14548,7 +14548,7 @@ static void emit_call(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_
              * function-pointer nativo — il copy-in/copy-back attraverso gmb_double_t
              * (variabile del chiamante, invariata) resta una conversione NUMERICA implicita
              * in C (non un reinterpret di bit), quindi corretta senza altre modifiche. Vedi
-             * AiWiki Bugs/(open) - FFI-Estensioni-Possibili-BYREF-Struct-Callback.md §1. */
+             * Bugs/(open) - FFI-Estensioni-Possibili-BYREF-Struct-Callback.md §1. */
             const char* brCtype = ctype_name(pt);
             if (fn->stmt->is_ffi && fn->stmt->param_types && fn->stmt->param_types[i]
                 && gmb_keyword_tok(fn->stmt->param_types[i]) != GMB_TOK_Double
@@ -14945,7 +14945,7 @@ void emit_expr(ctx_t* c, gmb_expr_t* e) {
          * emit_comprehension_list_init, mai da qui) non è supportato: non c'è un target
          * array nativo su cui scrivere len/dati. `{k:sel FOR ...}` (ctype 1, dict) è
          * invece pienamente un'espressione (nessun target speciale, un gmb_dict_t è già
-         * un valore) — bug C99Native-Comprehension-DictParam-ChiaviNumeriche (AiWiki). */
+         * un valore) — bug C99Native-Comprehension-DictParam-ChiaviNumeriche . */
         if (e->comp_ctype == 1) { emit_comprehension_dict_expr(c, e); return; }
         if (e->comp_ctype == 2) { emit_comprehension_set_expr(c, e); return; }
         c99_fail(c, e->line, "comprehension LISTA non supportata in questo contesto dal C99Native (fuori da un DIM x = [...])");
@@ -16164,7 +16164,7 @@ void emit_expr(ctx_t* c, gmb_expr_t* e) {
             sb_printf(&c->out, "__la%d; }))", id);
             break;
         }
-        /* a[start:end] (ArraySliceExpr, sentinella `__slice__`, bug AiWiki
+        /* a[start:end] (ArraySliceExpr, sentinella `__slice__`, bug 
          * "C99Native-ArraySlice-Parse"): e->str = nome della variabile base (LIST),
          * args = {start[, end]}. end assente = "fino alla fine" -> gmb_list_count(base),
          * MAI -1 (gmb_list_slice non lo gestisce come sentinella — stesso canone del
@@ -27225,7 +27225,7 @@ static void emit_ai_name_operand(ctx_t* c, gmb_expr_t* e) {
     else
         emit_str_operand(c, e);
 }
-/* Involucro rc-checked per le CALL dei comandi LLM del model compiler (§AiWiki "C99Native-
+/* Involucro rc-checked per le CALL dei comandi LLM del model compiler (§"C99Native-
  * Comandi-LLM-Codice-Ritorno-Scartato-Void"): i 9 siti scartavano il codice di ritorno con un
  * (void), rendendo un fallimento invisibile al programma BASIC (nessun modo per ON ERROR GOTO
  * o TRY/CATCH di vederlo). Pattern IDENTICO al precedente gia' in produzione per AI OBSERVE
@@ -31720,7 +31720,7 @@ static void st_goselect(ctx_t* c, gmb_stmt_t* s) {
                     ind(c); emit_net_lhs(c, dv);
                     if (dv->type == TY_STR) sb_printf(&c->out, " = gmb_string_alloc(__gs_sel%d->winner_val.v_string.data);\n", id);
                     /* gmb_val_to_double, non .v_double grezzo: stesso bug/fix di st_receive
-                     * (bug AiWiki "GOSELECT-RECEIVE-C99Native-Valore-Garbage"). */
+                     * (bug "GOSELECT-RECEIVE-C99Native-Valore-Garbage"). */
                     else sb_printf(&c->out, " = gmb_val_to_double(__gs_sel%d->winner_val);\n", id);
                     if (ov) { ind(c); emit_net_lhs(c, ov); sb_printf(&c->out, " = __gs_sel%d->winner_ok;\n", id); }
                 }
@@ -32907,7 +32907,7 @@ static const char* ffi_cb_native_type_sig(int arity, const unsigned char* kinds,
 }
 
 /* Emette (UNA SOLA VOLTA per programma) il pool di trampolini nativi per Callback come
- * parametro FFI (2026-09-29, v1) — vedi AiWiki Bugs/(open) - FFI-Estensioni-Possibili-BYREF-
+ * parametro FFI (2026-09-29, v1) — vedi Bugs/(open) - FFI-Estensioni-Possibili-BYREF-
  * Struct-Callback.md §3bis. Stesso design di EmitFfiCallbackPool in emitter C#
  * (C99CodeEmitter.Legacy.cs): per ogni combinazione (kind DOUBLE/INT64 × arità 0-4) uno slot
  * globale a 2 celle CONCORRENTI (gmb_ffi_cb_acquire_* trova la prima libera A RUNTIME — non
@@ -33147,11 +33147,11 @@ static void emit_ffi_wrapper(ctx_t* c, fn_info_t* fn, const char* vkey) {
      * su BYREF, struct-vs-char* ABI su C99). */
     /* STRING (2026-09-28): un parametro/ritorno STRING è un puntatore (const char*) — stessa
      * classe di registri intera degli array. BYVAL solo; array-di-STRING resta fuori scope
-     * (rifiutato sotto, elemOk). Vedi AiWiki Bugs/(solved) - FFI-Marshalling-Limitato-...md. */
+     * (rifiutato sotto, elemOk). Vedi Bugs/(solved) - FFI-Marshalling-Limitato-...md. */
     int ret_is_str = s->func_ret_type && s->func_ret_type[0] && gmb_keyword_tok(s->func_ret_type) == GMB_TOK_StringType;
     /* Array BYREF (2026-09-28, parità PCodeVM/IL): il parametro viaggia come
      * puntatore nativo — vietato solo il BYREF SCALARE; tipo elemento ristretto a DOUBLE/
-     * SINGLE o famiglia intera (nessuna rappresentazione nativa per STRING/UDT). Vedi AiWiki
+     * SINGLE o famiglia intera (nessuna rappresentazione nativa per STRING/UDT). Vedi 
      * Bugs/(solved) - FFI-Marshalling-Limitato-No-BYREF-Array-Struct.md punto (1). */
     int is_arr_param[C99_FFI_MAX_ARGS] = {0};
     int is_str_param[C99_FFI_MAX_ARGS] = {0};
@@ -33162,7 +33162,7 @@ static void emit_ffi_wrapper(ctx_t* c, fn_info_t* fn, const char* vkey) {
      * puntatore). Questo backend emette C: il wrapper prende gia' un puntatore come parametro
      * per un BYREF (stessa convenzione del BYREF ordinario verso una FUNCTION/SUB utente),
      * quindi non serve nessuno scratch buffer copy-in/copy-out (a differenza di PCodeVM/VM-C,
-     * dove gli argomenti sono boxati/taggati) — "il compilatore C gestisce l'ABI". Vedi AiWiki
+     * dove gli argomenti sono boxati/taggati) — "il compilatore C gestisce l'ABI". Vedi 
      * Bugs/(open) - FFI-Estensioni-Possibili-BYREF-Struct-Callback.md paragrafo 1. */
     int is_byref_param[C99_FFI_MAX_ARGS] = {0};
     /* Struct/UDT per valore (2026-09-29): a differenza delle altre gambe, questo backend
@@ -33180,7 +33180,7 @@ static void emit_ffi_wrapper(ctx_t* c, fn_info_t* fn, const char* vkey) {
      * PUNTATORE nativo (un trampolino pre-dichiarato, pool emesso da emit_ffi_callback_pool
      * sotto) — stessa classe di registri intera di array/STRING/BYREF, indipendentemente dal
      * kind INTERNO del callback. v1: arità 0-4, firma interna omogenea per kind, BYVAL. Vedi
-     * AiWiki Bugs/(open) - FFI-Estensioni-Possibili-BYREF-Struct-Callback.md §3bis. */
+     * Bugs/(open) - FFI-Estensioni-Possibili-BYREF-Struct-Callback.md §3bis. */
     int is_cb_param[C99_FFI_MAX_ARGS] = {0};
     struct cls_info* arr_udt_ci[C99_FFI_MAX_ARGS] = {0};   /* array con elemento TYPE (S3) */
     char arr_udt_tname[C99_FFI_MAX_ARGS][72] = {{0}};
@@ -33391,7 +33391,7 @@ static void emit_ffi_wrapper(ctx_t* c, fn_info_t* fn, const char* vkey) {
             /* Whitelist esplicita (fix 2026-09-28, parità Compiler.Expressions.cs/IL/
              * emitter C#): un tipo non riconosciuto (UDT, FUNCTION/SUB come tipo, ...) NON deve
              * cadere nel default "gmb_double_t" di ffi_param_ctype — prima di questo fix ci
-             * cadeva silenziosamente. Vedi AiWiki Bugs/(open) - FFI-Estensioni-Possibili-BYREF-
+             * cadeva silenziosamente. Vedi Bugs/(open) - FFI-Estensioni-Possibili-BYREF-
              * Struct-Callback.md. */
             gmb_tokenkind_t pk = gmb_keyword_tok(s->param_types[i]);
             int scalarOk = pk == GMB_TOK_Double || pk == GMB_TOK_Single
@@ -36897,7 +36897,7 @@ static int gmb_c99_emit_once(const gmb_program_t* prog, char** out_src, char** e
      * compilatore C che compila QUESTO output classifica l'ABI da solo (byval struct
      * reale), nessun trucco di "flattening" manuale come in gmb_vm_core.c (che non ha un
      * compilatore C a disposizione a runtime). Emesse SEMPRE (costo zero se non usate) per
-     * evitare un flag di guardia sull'uso effettivo. Vedi AiWiki Bugs/(open) -
+     * evitare un flag di guardia sull'uso effettivo. Vedi Bugs/(open) -
      * FFI-Estensioni-Possibili-BYREF-Struct-Callback.md §2. */
     sb_put(&proto, "typedef struct { gmb_double_t f0; } gmb_ffi_udtd1_t;\n");
     sb_put(&proto, "typedef struct { gmb_double_t f0, f1; } gmb_ffi_udtd2_t;\n");
@@ -36980,7 +36980,7 @@ static int gmb_c99_emit_once(const gmb_program_t* prog, char** out_src, char** e
              * → sempre gmb_double_t*) non conosce la distinzione int64/double che il WRAPPER
              * FFI dichiara davvero (emit_ffi_wrapper, guardia solo LONG/QUAD/ULONG/UQUAD 8
              * byte) — senza questa correzione il prototipo diverge dalla definizione
-             * ("conflicting types for gmb_user_..."). Vedi AiWiki
+             * ("conflicting types for gmb_user_..."). Vedi 
              * Bugs/(open) - FFI-Estensioni-Possibili-BYREF-Struct-Callback.md §1. */
             /* BYREF UDT (2026-11-06): il wrapper riceve `gmb_val_t*` (istanza boxata passata
              * per indirizzo dal call-site). Prima il prototipo cadeva sul tipo scalare BYREF

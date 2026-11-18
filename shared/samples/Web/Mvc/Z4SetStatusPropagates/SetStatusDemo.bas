@@ -2,7 +2,7 @@
 ' =================================================================================================
 '       Z4 — res.SetStatus()/SetHeader() DA UN SUB DI CLASSE PROPAGANO (fix)
 ' =================================================================================================
-' Gap Z4 del piano MVC (AiWiki/01-Projects/GMBasic/Todo/Mvc-Implementation-Todo.md, Fase Z):
+' Gap Z4 del piano MVC (, Fase Z):
 ' un metodo di classe che chiamava res.SetStatus(404) NON modificava la risposta effettiva
 ' (status restava 200) mentre l'assegnazione proprietà res.StatusCode = 404 propagava.
 ' Causa radice: lo schema del tipo HttpResponseType dichiarava come METODI solo

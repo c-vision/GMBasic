@@ -853,7 +853,7 @@ internal sealed partial class PCodeProcessor
     /// <summary>
     /// Dopo che <paramref name="movedDriver"/> si è spostato (GO/SKIP/SEEK sull'ISAM.Engine
     /// sottostante, che bypassa IsamDriver.GoTop/Skip/GoTo e quindi non fa mai scattare
-    /// IsamDriver.SyncCursorState/SyncRelation da solo — vedi AiWiki
+    /// IsamDriver.SyncCursorState/SyncRelation da solo — vedi 
     /// DbIsamFullTests-Relazione-Cursore-TODO.md): (1) risincronizza Eof/Bof/Found/RecNo del
     /// driver stesso dall'engine (altrimenti ISAM.FOUND/EOF/BOF letti via IDatabaseDriver
     /// restano fermi allo stato dell'apertura — bug scoperto verificando che ISAM.FOUND()

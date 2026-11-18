@@ -3627,7 +3627,7 @@ public static partial class Linker
     /// implica una famiglia diversa da quella dichiarata sarebbe ambigua (stringa scritta in
     /// un contatore, numero scritto in una stringa): è un errore esplicito, non una
     /// conversione silenziosa. Su una LETTURA il suffisso resta decorativo (vince il tipo
-    /// della variabile). Decisione 2026-11-01 (vedi AiWiki
+    /// della variabile). Decisione 2026-11-01 (vedi 
     /// Bugs/(open) - Variabile-Con-Suffisso-E-Precisione-SINGLE.md).
     /// </summary>
     private static void CheckSuffixWriteCompatibility(BasicProgram program, Token? nameSuffixed, int symbolId)
@@ -3683,7 +3683,7 @@ public static partial class Linker
             // sovrascriverebbe il suo DeclarationNode, facendolo sparire dal registro UDT/
             // classi (bug: script top-level con `TYPE P` + `DIM p AS P` nello stesso scope di
             // modulo — dentro una procedura le variabili sono in uno scope separato, nessuna
-            // collisione — vedi AiWiki Bugs/(open) - TYPE-TopLevel-NonRegistrato-Come-Tipo-
+            // collisione — vedi Bugs/(open) - TYPE-TopLevel-NonRegistrato-Come-Tipo-
             // Modulo.md). In tal caso si registra un simbolo SEPARATO per la variabile; la
             // risoluzione dei riferimenti-valore successivi preferisce il simbolo non-modulo
             // (vedi IsModuleTypeDeclarationNode/FindSymbolIdInScopeChain in Linker.Resolver.cs).

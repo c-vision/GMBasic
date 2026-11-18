@@ -3,7 +3,7 @@
 '       Z1 — UPCAST DERIVATA→BASE + DISPATCH DINAMICO SU VARIABILE DIRETTA
 ' =================================================================================================
 ' Gap del linguaggio scoperto validando la Fase A del framework MVC (vedi
-' AiWiki/01-Projects/GMBasic/Todo/Mvc-Implementation-Todo.md, Fase Z — Z1):
+' , Fase Z — Z1):
 '   1. Assegnare una classe derivata a una variabile del tipo base (o ritornarla da una
 '      FUNCTION) falliva con "Impossibile assegnare un valore di tipo 'ClassType' a una
 '      variabile di tipo 'X'" — il polimorfismo funzionava solo via elementi di array.

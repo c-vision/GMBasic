@@ -605,7 +605,7 @@ public sealed partial class Parser
         Log($"[DEBUG] >>> ENTER ParseLambdaExpression. Current: {Peek()}", log);
 
         var parametersSyntax = Check(TokenKind.LeftParen) ? ParseParameters() : ImmutableArray<Parameter>.Empty;
-        // Bug Lambda-Arrow-ArrayLiteral-Indicizzato-IL (AiWiki, trovato 2026-09-16): ParseParameters
+        // Bug Lambda-Arrow-ArrayLiteral-Indicizzato-IL (trovato 2026-09-16): ParseParameters
         // è condivisa con SUB/FUNCTION nominate, dove un parametro senza "AS" deduce comunque un
         // tipo CONCRETO (DoubleType di default, DeduceTypeFromSuffix) — corretto per una procedura
         // nominata, ma per una lambda ARROW/blocco (FN(t, y) => ...) questo default concreto

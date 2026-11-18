@@ -300,7 +300,7 @@ static int gmb_vm_instruction_quantum(void)
  * (SysV eightbyte classification, AAPCS64, hidden-pointer-return per struct grandi, ecc.)
  * — stessa filosofia "il compilatore C gestisce l'ABI" già usata per C99Native
  * (che emettono C), applicata qui al codice SORGENTE dell'interprete invece che a codice
- * generato. Nessuna classificazione manuale dei registri, nessuna libffi — vedi AiWiki
+ * generato. Nessuna classificazione manuale dei registri, nessuna libffi — vedi 
  * Bugs/(open) - FFI-Estensioni-Possibili-BYREF-Struct-Callback.md §2. I parametri UDT
  * (in ingresso) NON hanno bisogno di forme pre-dichiarate: una firma tutta-dello-stesso-
  * kind permette di "appiattire" i campi di uno UDT in altrettanti argomenti scalari
@@ -312,7 +312,7 @@ static int gmb_vm_instruction_quantum(void)
  * "appiattire" i campi in argomenti scalari consecutivi (vedi il calcolo di nativeArgs[]
  * sotto OP_CALL_FFI_T) smette di essere equivalente a un vero passaggio per valore oltre
  * questa soglia. La guardia compile-time (Compiler.Expressions.cs) impone lo stesso limite
- * su tutti e 5 i backend — vedi AiWiki Bugs/(open) - FFI-Estensioni-Possibili-BYREF-Struct-
+ * su tutti e 5 i backend — vedi Bugs/(open) - FFI-Estensioni-Possibili-BYREF-Struct-
  * Callback.md §2. */
 GMB_FFI_UDT_SHAPE(d, double, 1) GMB_FFI_UDT_SHAPE(d, double, 2)
 GMB_FFI_UDT_SHAPE(i, int64_t, 1) GMB_FFI_UDT_SHAPE(i, int64_t, 2)
@@ -364,7 +364,7 @@ typedef struct { int64_t f0; double f1; } gmb_ffi_udtid2_t;
  * lasciando classificare l'ABI al VERO compilatore C che compila questo file (stessa
  * filosofia di GMB_FFI_UDT_SHAPE/GMB_FFI_DISPATCH per il ritorno, qui estesa ai parametri).
  * NB/NA vanno 0-6 (il parametro misto occupa sempre 2 degli 8 slot totali) — enumerati come
- * 28 casi (NB×NA con NB+NA<=6), nessuna assembly, nessuna libffi. Vedi AiWiki Bugs/(open) -
+ * 28 casi (NB×NA con NB+NA<=6), nessuna assembly, nessuna libffi. Vedi Bugs/(open) -
  * FFI-VMC-Dispatch-Non-Generico-Struct-Kind-Misto-Parametro.md per l'analisi delle
  * alternative scartate (bitmask generico, posizione fissa, libffi). */
 #define GMB_FFI_MIXED_DISPATCH(SCALAR_T, RET_T, UDT_T, NB, NA, PRE, U, POST, FN_PTR, DEST) do { \
@@ -2465,7 +2465,7 @@ static bool vm_truthy_entry(gmb_stack_entry_t e)
  * fix del 2026-09-02 per le istanze scalari). Ritorna NULL se il descrittore non è
  * risolvibile (chiamante: fallback al vecchio nil). */
 /* Popola i campi di 'inst' con i valori di default, leggendo FieldNames/FieldTypes da
- * descObj->dict (2026-09-29, bug UDT-Campo-Annidato — vedi AiWiki Bugs/(solved) - UDT-Campo-
+ * descObj->dict (2026-09-29, bug UDT-Campo-Annidato — vedi Bugs/(solved) - UDT-Campo-
  * Annidato-Scrittura-Encadenata-Non-Persiste.md). Un campo il cui FieldTypes[i] è un DICT
  * nidificato (non una stringa) è un UDT ANNIDATO — ChunkA1Serializer.cs (WriteValue, case
  * UserDefinedType) lo serializza come {FieldNames,FieldTypes} invece che come stringa (il
@@ -4010,7 +4010,7 @@ double gmb_vm_call_closure_sync_n(gmb_vm_t* vm, gmb_task_t* task, gmb_obj_closur
  * una per ogni combinazione (kind, arita', slot). Limite v1: 2 slot CONCORRENTI per (kind,
  * arita') — sufficiente per callback SINCRONI (qsort-style, richiamati DURANTE la chiamata
  * FFI, mai dopo); un callback salvato dal nativo per un richiamo POSTERIORE alla chiamata FFI
- * romperebbe questo schema (slot liberato troppo presto) — fuori scope v1, vedi AiWiki
+ * romperebbe questo schema (slot liberato troppo presto) — fuori scope v1, vedi 
  * Bugs/(open) - FFI-Estensioni-Possibili-BYREF-Struct-Callback.md §3bis. */
 /* Callback FFI con firma PER-SLOT (2026-11-11): closure libffi. Il vecchio pool di
  * trampolini pre-compilati copriva solo firme interne omogenee (tutti INT64 o tutti DOUBLE)
@@ -4762,7 +4762,7 @@ double* gmb_vm_jagged_to_flat(const gmb_stack_entry_t* a, int* nrows, int* ncols
          * questo ramo azzerava SEMPRE dydt qualunque fosse il ritorno della λ — con
          * dydt≡0 l'integratore RK45 non fa mai avanzare lo stato, fermando di fatto
          * l'integrazione al primo passo (bug Lambda-Param-Array-Indicizzato-Cross-Backend,
-         * AiWiki: sintomo osservato "rows=2, yend=1" invece di rows=6/yend≈0.36788 per
+         * : sintomo osservato "rows=2, yend=1" invece di rows=6/yend≈0.36788 per
          * dy/dt=-y, y(0)=1). Un ODE con più di una componente (yd>1) e una λ scalare resta
          * un caso ambiguo (quale componente rappresenta lo scalare?) — fuori scope, si
          * azzerano le componenti oltre la prima come prima. */
@@ -7575,7 +7575,7 @@ int vm_try_park_cpu(gmb_vm_t* vm, gmb_task_t* task, gmb_cpu_job_t* j)
  * nessun task "executing" — ma active_count ancora >0) seguito da un hang: il
  * `gmb_sched_request_cancellation` del watchdog non ha più nulla da cancellare (il
  * task è già FINISHED) e il main resta bloccato in attesa di active_count==0 — bug
- * AiWiki GPM-Park-Error-Non-Catturabile-PCode-VMC, parte VM/C. */
+ * GPM-Park-Error-Non-Catturabile-PCode-VMC, parte VM/C. */
 static void vm_finish_task_bookkeeping(gmb_vm_t* vm, gmb_task_t* task);
 
 /* F1 (parita' IL/PCodeVM, Strada C): AI.BLACKBOARDWAIT/AI.AGENTSWARM sono bloccanti
@@ -12819,7 +12819,7 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
 
                 if (inst == NULL) {
                     /* Dispatch su riferimento nil (`DIM c AS Cls` senza NEW): errore BASIC
-                     * catturabile (parità IL), mai nil silenzioso (bug AiWiki
+                     * catturabile (parità IL), mai nil silenzioso (bug 
                      * CLASS-MethodCall-Su-Nil-Dispatch-Divergente). */
                     for (int i = 0; i < argCount && i < 16; i++) gmb_obj_release(args[i].ref);
                     gmb_raise_basic_error(task, 91, "Object reference not set to an instance of an object");
@@ -16694,7 +16694,7 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                 /* Libera i trampolini callback allocati sopra — schema SOLO SINCRONO (v1): il
                  * nativo deve richiamare il callback DURANTE questa chiamata, mai dopo (un
                  * callback salvato per un richiamo posteriore troverebbe lo slot gia'
-                 * liberato/riassegnato) — vedi AiWiki Bugs/(open) - FFI-Estensioni-Possibili-
+                 * liberato/riassegnato) — vedi Bugs/(open) - FFI-Estensioni-Possibili-
                  * BYREF-Struct-Callback.md §3bis. */
                 for (int ci = 0; ci < cbAllocCount; ci++)
                     gmb_ffi_cb_free(cbAllocKind[ci], cbAllocArity[ci], cbAllocSlot[ci]);

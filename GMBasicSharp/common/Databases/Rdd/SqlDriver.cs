@@ -557,7 +557,7 @@ public class SqlDriver : BaseDriver
             // statement SEPARATI con park SEPARATI: senza questa registrazione anticipata,
             // lo statement successivo poteva essere classificato PRIMA che il park del CREATE
             // avesse avuto modo di marcare "t" come file-vtab, perdendo il coarse-park (bug
-            // AiWiki SQL-Parquet-CoarsePark-Race-Cross-Test — write non parcheggiata, corsa
+            // SQL-Parquet-CoarsePark-Race-Cross-Test — write non parcheggiata, corsa
             // con la CleanupWorkDir del file successivo nello stesso processo xUnit).
             if (isFileVtabCreate) _fileVtabs.Add(toks[3]);
             return isFileVtabCreate;

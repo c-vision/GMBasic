@@ -1,6 +1,6 @@
 // FILE: IlBackendRuntime/IlRuntime.FfiCallback.cs
 // Callback come parametro FFI per il backend IL (2026-09-29, v1: arità 0-4, firma interna
-// omogenea per kind, BYVAL — vedi AiWiki Bugs/(open) - FFI-Estensioni-Possibili-BYREF-Struct-
+// omogenea per kind, BYVAL — vedi Bugs/(open) - FFI-Estensioni-Possibili-BYREF-Struct-
 // Callback.md §3bis). A differenza di PCodeVM (dove un riferimento a funzione è una
 // ClosureData reinterpretata da CallFnSync) qui un parametro callback arriva GIÀ come un vero
 // delegate CLR (Func&lt;&gt;/Action&lt;&gt; — EmitFunctionReference in

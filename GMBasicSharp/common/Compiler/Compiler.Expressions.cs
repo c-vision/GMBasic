@@ -730,7 +730,7 @@ public sealed partial class Compiler
             // SEMPLICE (non un elemento di array, a differenza del BYREF ordinario — scelta
             // deliberata per restare uniforme sui 4 backend: IL/VM-C/C99* implementano solo
             // questo caso) — un'espressione qualunque cadrebbe silenziosamente nel ramo BYVAL
-            // sotto, disallineando il marshalling. Vedi AiWiki
+            // sotto, disallineando il marshalling. Vedi 
             // Bugs/(open) - FFI-Estensioni-Possibili-BYREF-Struct-Callback.md §1.
             var isFfiByRefScalar = foundFfi && i < ffiProc!.Parameters.Length &&
                 ffiProc.Parameters[i].Flags.HasFlag(SymbolFlags.IsByRef) &&
@@ -921,7 +921,7 @@ public sealed partial class Compiler
             const byte FfiDouble = 0, FfiInt64 = 1;
             // Array BYREF (2026-09-28): il parametro viaggia come PUNTATORE nativo → classe di
             // registri intera (kind Int64) indipendentemente dal tipo degli elementi — vedi
-            // AiWiki Bugs/(open) - FFI-Marshalling-Limitato-No-BYREF-Array-Struct.md punto (1).
+            // Bugs/(open) - FFI-Marshalling-Limitato-No-BYREF-Array-Struct.md punto (1).
             bool IsArrayParam(Parameter p) => p.Flags.HasFlag(SymbolFlags.IsArray) || p.DataType is ArrayType;
             // STRING (2026-09-28): un parametro/ritorno STRING è anch'esso un puntatore
             // (`const char*`) → stessa classe di registri intera degli array. BYVAL solo (BYREF
@@ -933,7 +933,7 @@ public sealed partial class Compiler
             // Qualunque tipo non riconosciuto (UDT, FUNCTION/SUB come tipo, collezioni List/
             // Dict/Graph/..., tuple) NON deve cadere nel default FfiDouble: prima di questo fix
             // ci cadeva silenziosamente, generando codice/marshalling errato invece di un
-            // errore compile-time chiaro — vedi AiWiki Bugs/(open) - FFI-Estensioni-Possibili-
+            // errore compile-time chiaro — vedi Bugs/(open) - FFI-Estensioni-Possibili-
             // BYREF-Struct-Callback.md.
             bool IsFfiDoubleType(DataType? t) => t is DoubleType or SingleType;
             // Nome leggibile per il messaggio d'errore: per un UDT usa il nome BASIC dichiarato
@@ -951,7 +951,7 @@ public sealed partial class Compiler
             // BYREF scalare (2026-09-28): come un array/STRING, un parametro BYREF scalare
             // viaggia come PUNTATORE nativo — stessa classe di registri intera, indipendente
             // dal tipo puntato. BYREF di STRING resta vietato (nessuna semantica in/out chiara
-            // per un puntatore-a-puntatore char**, fuori scope). Vedi AiWiki
+            // per un puntatore-a-puntatore char**, fuori scope). Vedi 
             // Bugs/(open) - FFI-Estensioni-Possibili-BYREF-Struct-Callback.md §1.
             bool IsByRefScalarParam(Parameter p) => p.Flags.HasFlag(SymbolFlags.IsByRef) && !IsArrayParam(p) && !IsStringParam(p) && p.DataType is not UserDefinedType;
             /* BYREF UDT (2026-11-06): `BYREF p AS <TYPE>` → `<Udt>_t*` (in/out struct). */
@@ -965,7 +965,7 @@ public sealed partial class Compiler
             // del supporto kind-misto) e arità 0-4 (non 0-8: il pool di trampolini
             // pre-dichiarati su VM/C cresce con arità×kind×slot — 8 è un limite pratica
             // documentato ed estendibile con lo stesso pattern, non un vincolo ABI). Vedi
-            // AiWiki Bugs/(open) - FFI-Estensioni-Possibili-BYREF-Struct-Callback.md §3.
+            // Bugs/(open) - FFI-Estensioni-Possibili-BYREF-Struct-Callback.md §3.
             bool IsCallbackParam(Parameter p) => !IsArrayParam(p) && !IsStringParam(p) && !IsByRefScalarParam(p) && p.DataType is FunctionPointerType;
             // Callback VETTORIALE (2026-11-02): 1-2 parametri ARRAY di DOUBLE seguiti da 0-1
             // scalare DOUBLE, ritorno DOUBLE o ARRAY OF DOUBLE. È un'ABI in virgola mobile:
@@ -1063,7 +1063,7 @@ public sealed partial class Compiler
             // combaciare con l'unico kind uniforme dell'intera dichiarazione (la regola "firma
             // omogenea" già esistente, semplicemente estesa): un UDT tutto-DOUBLE non può
             // coesistere con un array/STRING/BYREF (che forzano Int64) nella stessa
-            // dichiarazione. Vedi AiWiki Bugs/(open) - FFI-Estensioni-Possibili-BYREF-Struct-
+            // dichiarazione. Vedi Bugs/(open) - FFI-Estensioni-Possibili-BYREF-Struct-
             // Callback.md §2.
             bool IsUdtParam(Parameter p) => !IsArrayParam(p) && !IsStringParam(p) && p.DataType is UserDefinedType && !IsCallbackParam(p);
             // Array di UDT (S3, 2026-11-06): elemento = TYPE semplice; il layout dell elemento
@@ -1232,7 +1232,7 @@ public sealed partial class Compiler
             byte UdtKind(UserDefinedType udt) => LeafKinds(udt).First() ? FfiInt64 : FfiDouble;
             var anyUdtParam = ffiProc.Parameters.Any(IsUdtParam);
             var udtReturn = ffiProc.IsFunction && ffiProc.ReturnType is UserDefinedType ? (UserDefinedType)ffiProc.ReturnType : null;
-            // Kind misto come PARAMETRO (2026-09-29, era vietato — vedi AiWiki Bugs/(open) -
+            // Kind misto come PARAMETRO (2026-09-29, era vietato — vedi Bugs/(open) -
             // FFI-VMC-Dispatch-Non-Generico-Struct-Kind-Misto-Parametro.md): ammesso, ma AL
             // MASSIMO UNO per dichiarazione — VM/C lo passa come vero struct C-by-value alla
             // sua posizione (nessun flattening, nessuna assembly, lascia classificare l'ABI al
@@ -1363,7 +1363,7 @@ public sealed partial class Compiler
             // intero, o lo UDT ha un dispatch nativo kind-specifico). Con solo scalari
             // semplici, ogni parametro/ritorno usa il proprio kind individuale (paramKinds/
             // retKind sopra già lo calcolano per-posizione) — nessun vincolo di omogeneità.
-            // Vedi AiWiki Bugs/(solved) - FFI-Firma-Mista-Scalari-Semplici.md.
+            // Vedi Bugs/(solved) - FFI-Firma-Mista-Scalari-Semplici.md.
             var anyHardPtr = anyArray || anyByRefScalar || anyCallbackParam || retIsString;  /* STRING-param ammessa col misto */
         var mixedScalarsOnly = !anyHardPtr && !anyUdt && kindList.Distinct().Count() > 1;
             // 2026-11-02: firma MISTA ammessa in presenza di puntatori (array/STRING/BYREF),

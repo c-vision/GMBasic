@@ -16,7 +16,7 @@ public class DataSession
     private readonly Dictionary<string, int> _aliases = new(StringComparer.OrdinalIgnoreCase);
     private int _currentArea;
     // Lock di mutua-esclusione E visibilità di memoria per _areas/_aliases/_currentArea (bug
-    // AiWiki SQL-Parquet-CoarsePark-Race-Cross-Test): SQL OPEN/CLOSE (sul thread worker GPM
+    // SQL-Parquet-CoarsePark-Race-Cross-Test): SQL OPEN/CLOSE (sul thread worker GPM
     // che esegue lo statement) e le scritture pesanti coarse-park (ParkBlocking -> Task.Run,
     // un thread DIVERSO del pool .NET per ogni chiamata) leggono/scrivono questo stato da
     // thread diversi. Dictionary<TKey,TValue>/array NON sono thread-safe: senza un lock (che

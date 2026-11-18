@@ -136,7 +136,7 @@ gmb_list_t gmb_dict_keys_sorted(gmb_dict_t d) {
  * numerica: un DICT OF DOUBLE, ... converte la chiave alla sua rappresentazione decimale
  * PRIMA di scrivere, vedi emit_dict_key nel backend C99Native) — gmb_dict_keys/_sorted
  * restituiscono quindi SEMPRE gmb_val_t di kind stringa, anche per una mappa dichiarata a
- * chiave numerica: bug C99Native-Comprehension-DictParam-ChiaviNumeriche (AiWiki), .Keys()
+ * chiave numerica: bug C99Native-Comprehension-DictParam-ChiaviNumeriche , .Keys()
  * su una mappa a chiave numerica restituiva stringhe, "0" a valle di ogni conversione
  * numerica implicita. Queste varianti ricostruiscono il tipo REALE di ogni chiave dalla sua
  * rappresentazione stringa via gmb_dict_key_val (euristico: tutta cifre/decimale → numero,

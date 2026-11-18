@@ -32,7 +32,7 @@ counting rule fails the gate instead of passing silently.
 
 ## Documentation
 
-Index with one note per tool: `AiWiki/01-Projects/GMBasic/Guide/Tools/Tools-Indice.md`.
+Index with one note per tool: ``.
 The launchers of the C# harnesses (whose projects stay in `GMBasicSharp/`) are in `sh/`; their
 reference table is [`KIT-README.md`](KIT-README.md).
 
@@ -41,7 +41,7 @@ and is currently empty (the Clipper 5.3 / controls reference moved to the vault,
 The **reports produced by the tools** are in [`reports/`](reports/):
 `audit-backends.md`, `audit-stdlib.md`, `recon-stdlib.{md,json}`, `command_desc.tsv`, `manifests/`,
 `gmb_env_audit.tsv` (`GMB_*` env audit). The monorepo documentation and the sync log live in the
-vault (`AiWiki/01-Projects/GMBasicMonoRepo`); the sync watermark is
+vault (``); the sync watermark is
 [`data/base_commit.txt`](data/base_commit.txt).
 
 `audit/` e `registry-export/` sono progetti .NET **allineati al monorepo**: i `ProjectReference`

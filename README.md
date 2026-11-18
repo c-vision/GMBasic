@@ -69,7 +69,7 @@ in the **releases** of two companion repos and are downloaded **only when needed
 
 | repo | visibility | what you find there |
 |---|---|---|
-| **`c-vision/GMBasic`** | private | this monorepo: compilers, runtime, samples, tools |
+| **`c-vision/GMBasic`** | public | this monorepo: compilers, runtime, samples, tools |
 | **`c-vision/GMBasicModules`** | public | **binaries and data**: native libraries (one release per group), market feeds (`fixtures-v1`), ML/Chromium/OCR components |
 | **`c-vision/GMBasicBrains`** | private | **brains** (Second Brain): RAG and knowledge graph, shipped as release assets |
 

@@ -5,7 +5,7 @@
 ' convenzione di ritorno "bare-assignment NomeMetodo = espr" mai wired per i metodi di TYPE
 ' (mancava per IL l'argomento returnSymbolId del costruttore, per PCode/VM-C il contesto
 ' _currentFunctionReturnType/_currentProcedureName — stesso fix "Z1" già presente per i
-' metodi di CLASS, mai portato ai metodi di TYPE). Vedi AiWiki "(solved) -
+' metodi di CLASS, mai portato ai metodi di TYPE). Vedi "(solved) -
 ' UDT-Interface-Dispatch-Default-Su-Gambe-CSharp.md". emitter C#: gap SEPARATO e più
 ' profondo scoperto verificando questo fix (la chiamata r.Area() non viene proprio emessa,
 ' PRINT stampa l'intero oggetto r) — NON risolto, documentato in

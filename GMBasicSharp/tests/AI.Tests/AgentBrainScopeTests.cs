@@ -1,5 +1,5 @@
 // FILE: AI.Tests.AgentBrainScopeTests
-// F2 dello scope dei cervelli (AiWiki Knowledge/Brain-Scope-Modello.md): livello AGENT.
+// F2 dello scope dei cervelli (Knowledge/Brain-Scope-Modello.md): livello AGENT.
 // Copre: parsing della dichiarazione (`finance AS fin, airline`), risoluzione per i tool
 // (esplicito → agente → null = default invariato), restringimento effettivo dei tool rag.*/graph.*,
 // persistenza dell'agente (AgentPersistence), prompt di sistema.

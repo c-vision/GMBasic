@@ -326,7 +326,7 @@ gmb_list_t gmb_dict_keys(gmb_dict_t d);
 gmb_list_t gmb_dict_keys_sorted(gmb_dict_t d);
 /* Come sopra ma con ogni chiave ricostruita al suo tipo REALE (gmb_dict_key_val) invece di
  * sempre-stringa — backend C99Native, bug C99Native-Comprehension-DictParam-ChiaviNumeriche
- * (AiWiki), vedi il commento sopra gmb_dict_keys_typed in gmb_dict.c. */
+ * , vedi il commento sopra gmb_dict_keys_typed in gmb_dict.c. */
 gmb_list_t gmb_dict_keys_typed(gmb_dict_t d);
 gmb_list_t gmb_dict_keys_typed_sorted(gmb_dict_t d);
 gmb_list_t gmb_dict_values(gmb_dict_t d);

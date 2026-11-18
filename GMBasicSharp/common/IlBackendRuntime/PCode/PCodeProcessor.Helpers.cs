@@ -201,7 +201,7 @@ internal sealed partial class PCodeProcessor
         SingleType or DoubleType or CurrencyType or IntegerType or LongType or ByteType
             or QuadType or BitType or DateType or TimeType or DateTimeType => 0.0,
         StringType => "",
-        // UDT annidato (2026-09-29, bug reale — vedi AiWiki Bugs/(solved) - UDT-Campo-
+        // UDT annidato (2026-09-29, bug reale — vedi Bugs/(solved) - UDT-Campo-
         // Annidato-Scrittura-Encadenata-Non-Persiste.md): un campo il cui tipo è un ALTRO TYPE
         // cadeva nel fallback "" (stringa vuota) come qualunque tipo non riconosciuto — `o.I.X
         // = 3.5` (Outer.I AS Inner) falliva silenziosamente perché OP_STORE_MEMBER richiede

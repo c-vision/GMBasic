@@ -1,6 +1,6 @@
 // FILE: IlBackendRuntime/PCode/PCodeProcessor.FfiCallback.cs
 // PARTIAL — trampolino nativo per Callback come parametro FFI (2026-09-29; arità 0-8 dal
-// firma interna omogenea per kind, BYVAL — vedi AiWiki Bugs/(open) - FFI-Estensioni-Possibili-
+// firma interna omogenea per kind, BYVAL — vedi Bugs/(open) - FFI-Estensioni-Possibili-
 // BYREF-Struct-Callback.md §3bis e Compiler.Expressions.cs). Usato da OP_CALL_FFI_T
 // (PCodeProcessor.cs) per convertire una ClosureData BASIC in un puntatore nativo C-ABI reale
 // prima di passarla a una funzione FFI che si aspetta un function pointer (es. qsort-style

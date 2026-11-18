@@ -864,7 +864,7 @@ public class FfiService : IFfiService
     };
 
     /// <summary>Come <see cref="CallFunctionTyped"/>, per firme FFI con almeno un parametro
-    /// array BYREF (2026-09-28, AiWiki Bugs/(open) - FFI-Marshalling-Limitato...md punto 1):
+    /// array BYREF (2026-09-28, Bugs/(open) - FFI-Marshalling-Limitato...md punto 1):
     /// <paramref name="arrayMask"/> bit i settato → <c>args[i]</c> è un array da passare come
     /// puntatore. Due casi, a seconda di COME il chiamante rappresenta gli array BASIC:
     /// <list type="bullet">
@@ -1083,7 +1083,7 @@ public class FfiService : IFfiService
                     // costruito a runtime (campi kind-omogenei, layout sequenziale) — .NET
                     // marshalla il passaggio per valore da solo (stessa ABI di un parametro
                     // struct P/Invoke nativo, nessuna classificazione manuale dei registri).
-                    // Vedi AiWiki Bugs/(open) - FFI-Estensioni-Possibili-BYREF-Struct-Callback.md §2.
+                    // Vedi Bugs/(open) - FFI-Estensioni-Possibili-BYREF-Struct-Callback.md §2.
                     ? GetOrBuildUdtShapeType(udtP.FieldTypes, udtP.FieldIsInt, udtP.FieldOffsets)
                     : (byrefScalarMask & (1L << i)) != 0
                     // BYREF scalare (2026-09-28): un parametro CLR ref BLITTABLE — .NET
@@ -1125,7 +1125,7 @@ public class FfiService : IFfiService
         var scratchBuf = new Array?[n];
         var scratchOrig = new object[n][];
         // Array CLR TIPIZZATO (double[]/long[]/ulong[]) con kind dell'elemento DIVERSO da
-        // quello dichiarato dal parametro FFI: copy-in/copy-out convertito (2026-11-04, AiWiki
+        // quello dichiarato dal parametro FFI: copy-in/copy-out convertito (2026-11-04, 
         // Bugs/(solved) - FFI-Array-Tipizzato-LONG-IL.md).
         var typedScratch = new Array?[n];
         var typedOrig = new object?[n];

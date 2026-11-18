@@ -4,7 +4,7 @@
 ' =================================================================================================
 ' Modulo .inc in sottocartella con NAMESPACE MVC: importabile con `IMPORT MVC` e usato come
 ' base qualificata `INHERITS MVC.HttpController` da una classe definita nel file cliente.
-' Gap Z3 del piano MVC (AiWiki/01-Projects/GMBasic/Todo/Mvc-Implementation-Todo.md, Fase Z):
+' Gap Z3 del piano MVC (, Fase Z):
 ' INHERITS prendeva un singolo Token (nome nudo) e la base doveva stare nello stesso file di
 ' parsing — con la base in un .inc della sottocartella o qualificata il parse falliva
 ' ("Prevista una definizione di membro" / "Expected a newline after CLASS declaration").

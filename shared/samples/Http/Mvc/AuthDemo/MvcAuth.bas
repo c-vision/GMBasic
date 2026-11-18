@@ -13,7 +13,7 @@
 ' Get() fa da ROTTA PROTETTA: senza cookie valido risponde 401.
 '
 ' NB: il linker MVC supporta attualmente UN SOLO controller per programma (bug multi-controller,
-' vedi AiWiki Bugs/Classi-Distruttore-Ereditarieta-CrossFile-Bugs.md BUG-10).
+' vedi Bugs/Classi-Distruttore-Ereditarieta-CrossFile-Bugs.md BUG-10).
 '
 ' Test con curl:
 '   curl -c jar -X POST -H "Content-Type: application/json" -d '{"username":"mario","password":"segreta"}' http://localhost:8097/api/auth

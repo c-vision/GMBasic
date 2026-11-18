@@ -13,7 +13,7 @@
 #   bash tools/sh/tools_docs.sh                 # --check: elenca le schede divergenti (exit 1)
 #   bash tools/sh/tools_docs.sh --write         # riscrive le schede divergenti (backup prima)
 #   bash tools/sh/tools_docs.sh --only minitest # limita a un tool (sottostringa del nome file)
-#   bash tools/sh/tools_docs.sh --vault DIR     # altro vault (default: ~/Documents/AiWiki/01-Projects/GMBasicMonoRepo)
+#   bash tools/sh/tools_docs.sh --vault DIR     # altro vault (default: ~/Documents/)
 #   bash tools/sh/tools_docs.sh --quiet         # solo il riepilogo
 #
 # Copre `tools/basic/*.bas`, `tools/c/*.c`, `tools/sh/*.sh`, gli harness di `tools/sh` **senza
@@ -32,7 +32,7 @@
 set -uo pipefail
 
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
-VAULT="$HOME/Documents/AiWiki/01-Projects/GMBasicMonoRepo"
+VAULT="$HOME/Documents/"
 WRITE=0
 QUIET=0
 ONLY=""

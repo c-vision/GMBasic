@@ -188,7 +188,7 @@ gmb_stmt_t* gmb_p_parse_select_case(gmb_parser_t* p, int line, bool* multiline)
                         /* CASE IS <op> <val> — comparazione esplicita (=, <>, >, <, >=, <=).
                          * Prima di questo fix `IS > 20` veniva ingerito da gmb_p_parse_expr
                          * come espressione qualunque (case_cmp restava sempre NULL, mai
-                         * popolato) e il test cadeva sempre in CASE ELSE — vedi AiWiki
+                         * popolato) e il test cadeva sempre in CASE ELSE — vedi 
                          * "(open) - C99Native-Select-Case-IS-Comparison.md". */
                         gmb_p_adv(p);
                         const gmb_token_t* ot = gmb_p_cur(p);
@@ -227,7 +227,7 @@ gmb_stmt_t* gmb_p_parse_select_case(gmb_parser_t* p, int line, bool* multiline)
              * rifiutano `CASE IS > 20: r = "gt"` con un errore di parse dedicato. Prima di
              * questo fix il C99Native accettava silenziosamente quella sintassi (con
              * risultato CORRETTO, ma divergente: un programma valido su C99Native falliva
-             * la compilazione su IL/PCode) — vedi AiWiki
+             * la compilazione su IL/PCode) — vedi 
              * "(open) - C99Native-Select-Case-IS-Comparison.md", richiesta utente di
              * coerenza multi-backend. Non tocca `CASE ... => body` (Clipper, sopra).*/
             if (!clipper_arrow && gmb_p_cur(p) && gmb_p_cur(p)->kind == GMB_TOK_Colon) {

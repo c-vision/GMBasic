@@ -178,7 +178,7 @@ public sealed record ErrInstance(int Number, string Description, int LineNumber,
     /// l'ErrorCode più vicino al suo significato reale, così che ON ERROR/TRY-CATCH
     /// possano intercettarla come un qualunque altro errore BASIC. Senza questo, un
     /// IndexOutOfRangeException/FileNotFoundException/... nativo del CLR bypassa del
-    /// tutto la gestione errori del linguaggio (vedi AiWiki IL-OnError-Loop-Bug.md,
+    /// tutto la gestione errori del linguaggio (vedi IL-OnError-Loop-Bug.md,
     /// gap array-out-of-range/file mancante).
     /// </summary>
     public static BasicException FromClrException(Exception ex, SourcePosition position)

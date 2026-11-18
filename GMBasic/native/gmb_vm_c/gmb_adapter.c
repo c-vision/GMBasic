@@ -161,7 +161,7 @@ gmb_stack_entry_t gmb_adapter_val_to_stack(gmb_val_t v)
              * una stringa = dict vuoto) e l'elemento letto dalla lista era sempre vuoto.
              * Fix: solo retain, come CLOSURE/BYREF — la stringa è immutabile.
              * GUARDIA !o->type_name (bug Lambda-Param-Array-Indicizzato-Cross-Backend,
-             * AiWiki, trovato 2026-09-16): GMB_OBJ_STRING vale 0 (gmb_runtime.h), lo STESSO
+             * , trovato 2026-09-16): GMB_OBJ_STRING vale 0 (gmb_runtime.h), lo STESSO
              * valore di default lasciato da gmb_obj_new/gmb_obj_new_typed quando ->kind non
              * viene impostato esplicitamente (usato per "boxare" un valore del runtime
              * condiviso in un gmb_obj_t generico, es. gmb_make_val_list → gmb_obj_new_typed

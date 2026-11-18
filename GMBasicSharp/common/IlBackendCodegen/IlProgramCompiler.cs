@@ -132,7 +132,7 @@ public sealed partial class IlProgramCompiler
     /// (solo Leave può farlo, e lo fa correttamente anche attraverso più livelli
     /// annidati in una sola istruzione — non serve tracciare l'intera pila, solo lo
     /// scope più interno, per decidere Br/Leave), altrimenti InvalidProgramException al
-    /// caricamento dell'assembly (vedi AiWiki IL-OnError-Loop-Bug.md — bug trovato
+    /// caricamento dell'assembly (vedi IL-OnError-Loop-Bug.md — bug trovato
     /// tramite ExceptionsTryIfSelect.bas: un `GOTO` dal corpo del TRY a un'etichetta dopo
     /// `END TRY`, es. `IF N > 10 GOTO fine`).
     /// </summary>

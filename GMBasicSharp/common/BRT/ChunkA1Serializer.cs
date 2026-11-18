@@ -414,7 +414,7 @@ public static class ChunkA1Serializer
                 WriteString(w, ExprPlain.FromQualified(ex));
                 break;
             case UserDefinedType udt:
-                // Campo UDT ANNIDATO in FieldTypes (2026-09-29, bug reale — vedi AiWiki
+                // Campo UDT ANNIDATO in FieldTypes (2026-09-29, bug reale — vedi 
                 // Bugs/(solved) - UDT-Campo-Annidato-Scrittura-Encadenata-Non-Persiste.md): il
                 // fallback sotto (value.ToString()) produce per UserDefinedType un formato
                 // DEBUG ("TYPE Inner [...]", vedi DataTypes.UdtClasses.cs) inutilizzabile dalla

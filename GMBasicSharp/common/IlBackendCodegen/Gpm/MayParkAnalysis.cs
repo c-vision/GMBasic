@@ -1,5 +1,5 @@
 // FILE: Basic.IlBackend.Gpm.MayParkAnalysis.cs
-// MAY-PARK ANALYSIS — STEP 2a del piano IL-GPM (vedi AiWiki
+// MAY-PARK ANALYSIS — STEP 2a del piano IL-GPM (vedi 
 // GMBasic-ILBackend-GPM-Chunk-State-Machine §9.2, §13, §16, §26).
 //
 // Predicato *puro* (nessuna emissione IL, nessun runtime): decide a compile-time quali

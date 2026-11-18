@@ -26,7 +26,7 @@ quattro i backend (IL, PCodeVM, VM/C, C99Native).
 | **Algebra / LP** | `LEASTSQUARES`, `CHOLESKYSOLVE`, `SIMPLEX`, `LINPROG`/`LINPROGB`/`LINPROGEQ`/`LINPROGFULL` |
 
 Guida utente completa (34 funzioni, parametri, esempi, esito §4.1):
-`AiWiki/01-Projects/GMBasic/Guide/utente/Optimize-FFI-Guida-Utente.md`.
+``.
 
 Convenzioni:
 - `MINIMIZESCALAR(f,a,b)` è una dichiarazione diretta alla variante `_default` (brent);

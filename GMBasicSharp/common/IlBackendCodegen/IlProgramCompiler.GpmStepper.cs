@@ -1,5 +1,5 @@
 // FILE: Basic.IlBackend.IlProgramCompiler.GpmStepper.cs
-// IL GPM — GENERAZIONE STEPPER (STEP 2b del piano, vedi AiWiki
+// IL GPM — GENERAZIONE STEPPER (STEP 2b del piano, vedi 
 // GMBasic-ILBackend-GPM-Chunk-State-Machine §13-2, §16, §26).
 //
 // Per ogni procedura may-park FLAT (caso semplice §13-2: nessuna chiamata may-park

@@ -257,7 +257,7 @@ static gmb_stmt_t* gmb_p_parse_stmt_impl(gmb_parser_t* p, bool* multiline);
 /* Legge la firma `(p1 AS T1, p2 AS T2, ...)` di un tipo funzione (DIM v AS FUNCTION(...) /
  * parametro `x AS FUNCTION(...)`): ritorna l'ARIETÀ e setta in *strmask i bit dei parametri
  * AS STRING. Consuma fino alla ')' INCLUSa (se presente). *intmask (2026-09-29, Callback FFI
- * — vedi AiWiki Bugs/(open) - FFI-Estensioni-Possibili-BYREF-Struct-Callback.md §3bis), se
+ * — vedi Bugs/(open) - FFI-Estensioni-Possibili-BYREF-Struct-Callback.md §3bis), se
  * non NULL, riceve i bit dei parametri di tipo INTERO (LONG/INTEGER/QUAD/BYTE/SBYTE/UQUAD/
  * ULONG/UINTEGER) invece di DOUBLE/SINGLE — serve SOLO al marshalling FFI tipizzato (la firma
  * nativa del trampolino deve avere ESATTAMENTE gmb_int_t/gmb_double_t per campo, non il
@@ -1605,7 +1605,7 @@ static gmb_stmt_t* gmb_p_parse_stmt_impl(gmb_parser_t* p, bool* multiline)
                     gmb_p_adv(p);
                     /* Array BYREF (2026-09-28): `name()` — solo forma vuota (nessun
                      * ridimensionamento qui, e' un parametro FFI, non una DIM). Vedi
-                     * emit_ffi_wrapper/gmb_c99_emit.c e AiWiki Bugs/(open) -
+                     * emit_ffi_wrapper/gmb_c99_emit.c e Bugs/(open) -
                      * FFI-Marshalling-Limitato-No-BYREF-Array-Struct.md punto (1). */
                     if (gmb_p_check(p, GMB_TOK_LeftParen)) {
                         gmb_p_adv(p);
@@ -1649,7 +1649,7 @@ static gmb_stmt_t* gmb_p_parse_stmt_impl(gmb_parser_t* p, bool* multiline)
                             s->param_types[s->n_params - 1] = tb;
                         }
                         /* Callback FFI (2026-09-29): `AS FUNCTION(...) AS T`/`AS SUB(...)` come
-                         * parametro di una DECLARE ... LIB — vedi AiWiki Bugs/(open) - FFI-
+                         * parametro di una DECLARE ... LIB — vedi Bugs/(open) - FFI-
                          * Estensioni-Possibili-BYREF-Struct-Callback.md §3bis. Stessa logica del
                          * parser generico (parametro FUNCTION di una FUNCTION/SUB utente, sopra
                          * in questo stesso file), duplicata qui perché DECLARE ... LIB ha un
@@ -2514,7 +2514,7 @@ if (gmb_tk_rem_vari_in(t->kind)) {
                                  * successivo: il chiamante lo interpretava come un SECONDO
                                  * parametro — "numero argomenti errato per T: attesi 2, trovati
                                  * 1" (bug C99Native-Comprehension-DictParam-ChiaviNumeriche,
-                                 * AiWiki). Consuma esattamente i token-tipo attesi (1 per una
+                                 *). Consuma esattamente i token-tipo attesi (1 per una
                                  * collezione semplice, 2 per una mappa/dict — dim_map_kind,
                                  * stessa tabella di reg_dim), virgola fra loro inclusa. */
                                 gmb_p_adv(p);   /* OF */

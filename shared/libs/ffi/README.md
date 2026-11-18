@@ -9,7 +9,7 @@
 > - Consumo: `gmb_vm_host` (VM/C) la linka **staticamente**; non è distribuita come asset.
 > - Limiti FFI del linguaggio: **64 argomenti** (`GMB_FFI_MAX_ARGS`), UDT **64 campi-foglia**,
 >   callback **0-8**, `DECLARE NATIVE` per l'ABI esatta; **varargs fuori scope**.
-> - Piano e verifiche: `AiWiki/01-Projects/GMBasicMonoRepo/Piani/(solved) - FFI-Oltre-8-Slot.md`.
+> - Piano e verifiche: `(solved) - FFI-Oltre-8-Slot.md`.
 
 ---
 

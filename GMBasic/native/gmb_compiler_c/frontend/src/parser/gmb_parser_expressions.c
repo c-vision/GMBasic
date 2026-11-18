@@ -516,7 +516,7 @@ gmb_expr_t* gmb_p_parse_add(gmb_parser_t* p)
     return e;
 }
 /* x[e1, ..., en] (indice/i multipli, ridotto a una CALL x(e1,...)) OPPURE x[start:end]
- * (ArraySliceExpr, bug AiWiki "C99Native-ArraySlice-Parse"): la '[' e' gia' stata
+ * (ArraySliceExpr, bug "C99Native-ArraySlice-Parse"): la '[' e' gia' stata
  * verificata presente dal chiamante, `e` e' la VAR di base (consumata: il chiamante deve
  * scartare il vecchio `e` e usare quello ritornato). Fattorizzato fuori dai DUE loop
  * subscript quasi-duplicati (parse_mul/parse_power) per non doverli tenere sincronizzati
@@ -1631,7 +1631,7 @@ gmb_expr_t* gmb_p_parse_primary(gmb_parser_t* p)
         gmb_p_adv(p);
         char name[128]; int l = t->length < 127 ? t->length : 127;
         memcpy(name, t->lexeme, (size_t)l); name[l] = 0;
-        /* c?.Campo — null-conditional member access (bug AiWiki "C99Native-
+        /* c?.Campo — null-conditional member access (bug "C99Native-
          * NullConditionalAccess-Non-Parsato"): percorso PARALLELO alla catena dotted-string
          * sottostante, intercettato SOLO quando '?' è seguito da '.', senza toccare la
          * concatenazione esistente per '.' semplice. Produce il sentinel _nilprop_(base,
@@ -1837,7 +1837,7 @@ gmb_expr_t* gmb_p_parse_primary(gmb_parser_t* p)
             while (gmb_p_check(p, GMB_TOK_LeftBracket)) {
                 any_br = 1;
                 gmb_p_adv(p);
-                /* a[start:end] (ArraySliceExpr, bug AiWiki "C99Native-ArraySlice-Parse"): QUESTO
+                /* a[start:end] (ArraySliceExpr, bug "C99Native-ArraySlice-Parse"): QUESTO
                  * ramo (indice/i dopo un identificatore in posizione PRIMARY) e' quello che
                  * intercetta DAVVERO un `a[...]` che segue un identificatore — il postfix in
                  * parse_mul/parse_power (dove lo slice era stato aggiunto per primo) non vede mai

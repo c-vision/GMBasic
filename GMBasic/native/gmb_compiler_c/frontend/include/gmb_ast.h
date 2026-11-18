@@ -288,7 +288,7 @@ struct gmb_stmt {
      * firma nativa ESATTA gmb_int_t/gmb_double_t per campo (il contratto generico gmb_fn_t
      * usato per i delegate BASIC-a-BASIC passa invece sempre gmb_double_t uniformemente, non
      * basta per una libreria C esterna che si aspetta un long reale in un registro intero).
-     * Vedi AiWiki Bugs/(open) - FFI-Estensioni-Possibili-BYREF-Struct-Callback.md §3bis. */
+     * Vedi Bugs/(open) - FFI-Estensioni-Possibili-BYREF-Struct-Callback.md §3bis. */
     int* param_fn_kind_mask;
     /* Callback FFI (2026-11-02): bit i = 1 se il parametro i della FIRMA interna del callback
      * e' un ARRAY (`v() AS DOUBLE`) — forma "vettoriale" della callback FFI. Il nativo

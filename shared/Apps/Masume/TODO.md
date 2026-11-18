@@ -58,7 +58,7 @@ introduced by this port:
    `RegisterDynamicArrayLocal` — cross-SUB reads silently get a fresh/default array instead of the
    shared one. **PCode engine does not have this bug** (verified). **This port currently targets
    PCode**, not IL, for exactly this reason — see the README's "Known environment gaps".
-   Needs an AiWiki bug doc + a real fix in the IL codegen (out of scope for completing this app).
+   Needs an bug doc + a real fix in the IL codegen (out of scope for completing this app).
 3. **`rs(i)` (positional SQLRESULTSET index) and `rs.COLUMNS` do not work on PCode** (returns
    empty/0 even though the row count from `SQL.FETCH` is correct) — confirmed with a minimal
    `SQL QUERY`/`SQL.FETCH` repro outside this app, both with a literal and a variable SQL string.

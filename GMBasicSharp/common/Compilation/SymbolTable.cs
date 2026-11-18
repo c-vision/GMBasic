@@ -593,7 +593,7 @@ L'Executor riceve un'immagine del programma semanticamente valida e completament
         // Per i simboli non procedurali (variabili, tipi, costanti), il duplicato è un errore.
         //
         // ECCEZIONE (2026-10-01, fix collisione nome TYPE/variabile a livello di modulo — vedi
-        // AiWiki Bugs/(open) - TYPE-TopLevel-NonRegistrato-Come-Tipo-Modulo.md): una VARIABILE/
+        // Bugs/(open) - TYPE-TopLevel-NonRegistrato-Come-Tipo-Modulo.md): una VARIABILE/
         // COSTANTE può coesistere con un TYPE/CLASS/PROCEDURE/INTERFACE/ENUM dello stesso nome
         // case-insensitive nello STESSO scope — es. `TYPE P ... END TYPE` + `DIM p AS P` in uno
         // script top-level, dove entrambi vivono nello scope di modulo (dentro una procedura le

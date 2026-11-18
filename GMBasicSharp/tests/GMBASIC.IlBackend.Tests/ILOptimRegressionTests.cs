@@ -1,7 +1,7 @@
 // ILOptimRegressionTests: oracoli che esercitano la pipeline IL REALE (IlProgramCompiler.Compile,
 // ILOptim.Optimize ON di default) via subprocess — a differenza di RunIl/RunSample (usati altrove
 // in questo progetto), che chiamano CompileToAssembly direttamente e quindi NON eseguono mai
-// ILOptim. Vedi AiWiki "(open) - IL-NOT-Bool-ILOptim-Miscompila": un bug di const-folding in
+// ILOptim. Vedi "(open) - IL-NOT-Bool-ILOptim-Miscompila": un bug di const-folding in
 // common/ILOptim/IR/Utils/ConstFolding.cs (FoldUnary/Not) non era raggiungibile dai test esistenti
 // per questo motivo. Uno solo di questi test basta a bastonare la regressione se ILOptim la
 // reintroduce.

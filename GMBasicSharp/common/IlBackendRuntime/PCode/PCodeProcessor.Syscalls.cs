@@ -1536,7 +1536,7 @@ internal sealed partial class PCodeProcessor
                 // l'alias sul DataSession SBAGLIATO (quello host precedente), eseguendo la
                 // scrittura su una connessione estranea e lasciando quella vera (risolta più
                 // avanti via ResolveSqlDriver, che non passa da IlRuntime.Current) senza mai
-                // la tabella appena "creata" — bug AiWiki SQL-Parquet-CoarsePark-Race-Cross-
+                // la tabella appena "creata" — bug SQL-Parquet-CoarsePark-Race-Cross-
                 // Test ("no such table" sul SELECT dopo scritture apparentemente riuscite).
                 // Regola GPM (Knowledge/GPM-Implementazione-Attuale-5-Backend.md §header):
                 // "mai [ThreadStatic] ri-applicato al resume" — il contesto va catturato e
@@ -1928,7 +1928,7 @@ internal sealed partial class PCodeProcessor
                         // syscall si muove direttamente sull'ISAM.Engine sottostante,
                         // bypassando IsamDriver.GoTop/GoBottom — senza questa chiamata
                         // esplicita nessun figlio in relazione si riposiziona mai (vedi
-                        // AiWiki DbIsamFullTests-Relazione-Cursore-TODO.md).
+                        // DbIsamFullTests-Relazione-Cursore-TODO.md).
                         SyncChildRelations(ResolveIsamDriver(task, fileRef));
                     }
                     catch { }

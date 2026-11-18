@@ -325,7 +325,7 @@ public sealed partial class IlProgramCompiler
                     // OP_LOAD_FIELD produce un valore dinamico uniforme lì, mai un tipo CLR
                     // statico diverso a seconda del campo). Necessario perché il ramo NIL
                     // sotto pusha Ldnull (letto da PRINT/PrintFormatValue come stringa vuota,
-                    // canonico deciso 2026-09-21 — AiWiki
+                    // canonico deciso 2026-09-21 — 
                     // NullConditionalAccess-Nullable-UDT-Divergenza) invece del "default
                     // tipizzato" (0 per un campo numerico) che il ramo statico-per-tipo
                     // produceva prima: PCode/VM-C non hanno questa distinzione, lì ogni
@@ -842,7 +842,7 @@ public sealed partial class IlProgramCompiler
         // effettivo, non deducibile in generale a compile-time) — prima cadeva nel
         // fallback "campo non risolvibile, headless" (Ldc_R8 0.0 sempre), scartando
         // qualunque dato reale scritto dal record (vedi
-        // ILBackend-DbfLateBinding-BareField-AlwaysZero, AiWiki).
+        // ILBackend-DbfLateBinding-BareField-AlwaysZero,).
         if (expr.Structure is VariableExpr dbLateBindVar && dbLateBindVar.SymbolId == SymbolTable.DbfRecordBufferSymbolId)
         {
             _il.Emit(OpCodes.Ldstr, expr.Field.Lexeme);
@@ -1516,7 +1516,7 @@ public sealed partial class IlProgramCompiler
             or ULongType or QuadType or UQuadType or ByteType or SByteType or EnumType;
         // Array BYREF (2026-09-28, parità PCodeVM/Compiler.Expressions.cs): il parametro
         // viaggia come puntatore nativo → classe di registri intera, indipendentemente dal
-        // tipo elemento — vedi AiWiki Bugs/(open) - FFI-Marshalling-Limitato-...md punto (1).
+        // tipo elemento — vedi Bugs/(open) - FFI-Marshalling-Limitato-...md punto (1).
         bool IsArrayParam(Parameter p) => p.Flags.HasFlag(SymbolFlags.IsArray) || p.DataType is ArrayType;
         // STRING (2026-09-28): un parametro/ritorno STRING è un puntatore (const char*) come un
         // array — stessa classe di registri intera. BYVAL solo (BYREF scalare di STRING resta
@@ -1524,7 +1524,7 @@ public sealed partial class IlProgramCompiler
         bool IsStringParam(Parameter p) => !IsArrayParam(p) && p.DataType is StringType;
         // Whitelist esplicita (fix 2026-09-28, parità Compiler.Expressions.cs): un tipo non
         // riconosciuto (UDT, FUNCTION/SUB come tipo, collezioni, tuple, ...) NON deve cadere nel
-        // default "double" — prima di questo fix ci cadeva silenziosamente. Vedi AiWiki
+        // default "double" — prima di questo fix ci cadeva silenziosamente. Vedi 
         // Bugs/(open) - FFI-Estensioni-Possibili-BYREF-Struct-Callback.md.
         bool IsFfiDoubleType(DataType? t) => t is DoubleType or SingleType;
         // Nome leggibile per il messaggio d'errore: per un UDT usa il nome BASIC dichiarato
@@ -1540,7 +1540,7 @@ public sealed partial class IlProgramCompiler
         }
         // BYREF scalare (2026-09-28): come un array/STRING, forza la firma a Int64 (il
         // puntatore viaggia come intero indipendentemente da cosa punta). BYREF di STRING
-        // resta vietato (char**, fuori scope). Vedi AiWiki
+        // resta vietato (char**, fuori scope). Vedi 
         // Bugs/(open) - FFI-Estensioni-Possibili-BYREF-Struct-Callback.md §1.
         bool IsByRefScalarParam(Parameter p) => p.Flags.HasFlag(SymbolFlags.IsByRef) && !IsArrayParam(p) && !IsStringParam(p) && p.DataType is not UserDefinedType;
         /* BYREF UDT (2026-11-06): `BYREF p AS <TYPE>` → `<Udt>_t*` (in/out struct). */
@@ -1548,7 +1548,7 @@ public sealed partial class IlProgramCompiler
         // Callback (2026-09-29, parità Compiler.Expressions.cs): un parametro `AS FUNCTION(...)
         // AS T`/`AS SUB(...)` viaggia come PUNTATORE nativo — stessa classe di registri intera
         // di array/STRING/BYREF, indipendentemente dal kind INTERNO del callback. v1: arità
-        // 0-4, firma interna omogenea per kind, BYVAL. Vedi AiWiki Bugs/(open) - FFI-
+        // 0-4, firma interna omogenea per kind, BYVAL. Vedi Bugs/(open) - FFI-
         // Estensioni-Possibili-BYREF-Struct-Callback.md §3bis.
         bool IsCallbackParam(Parameter p) => !IsArrayParam(p) && !IsStringParam(p) && !IsByRefScalarParam(p) && p.DataType is FunctionPointerType;
         // Callback vettoriale (2026-11-02): 1-2 array di DOUBLE in testa, poi 0-1 scalare
@@ -1631,7 +1631,7 @@ public sealed partial class IlProgramCompiler
         // ogni UDT semplice compila già in un vero value type CLR a COMPILE TIME
         // (IlProgramCompiler.Host.Compile.cs, TypeBuilder) — nessuna forma-ombra da costruire a
         // runtime, il tipo reale (_classTypes[SymbolId]) si passa direttamente al delegate
-        // dinamico. Vedi AiWiki Bugs/(open) - FFI-Estensioni-Possibili-BYREF-Struct-Callback.md §2.
+        // dinamico. Vedi Bugs/(open) - FFI-Estensioni-Possibili-BYREF-Struct-Callback.md §2.
         bool IsUdtParam(Parameter p) => !IsArrayParam(p) && !IsStringParam(p) && p.DataType is UserDefinedType && !IsCallbackParam(p);
         bool IsSimpleUdt(UserDefinedType udt) => udt.TypeParameters.IsDefaultOrEmpty
             && udt.Operators.IsDefaultOrEmpty && udt.Constructors.IsDefaultOrEmpty && udt.Methods.IsDefaultOrEmpty;

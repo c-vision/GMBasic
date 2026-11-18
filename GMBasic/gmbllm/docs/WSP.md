@@ -1,7 +1,7 @@
 # WSP — Weight-Space Programming in `gmbllm` (C99)
 
 Strumenti per **leggere, sezionare, modificare e riscrivere i pesi** di un modello, senza Python e senza ricompilare il
-motore. Piano e storia delle decisioni: nota di piano "Weight-Space-Programming-LLVM-Pesi-Editabili" (vault AiWiki).
+motore. Piano e storia delle decisioni: nota di piano "Weight-Space-Programming-LLVM-Pesi-Editabili"
 
 **Stato (2026-11-05).** Libreria C completa per i modelli **densi** Qwen3/Llama (HF safetensors, anche MLX quantizzato in sola
 lettura) con **superficie BASIC `WSP.*`** via FFI: libreria `libgmbwsp` (`shared/libs/wsp`, sorgenti venduti da qui con `build.sh`),

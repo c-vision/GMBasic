@@ -2,7 +2,7 @@
  * gor_core.h — gmbortools: tipi, stato, versione.
  *
  * gmbortools è la libreria C99 di ricerca operativa (combinatoria/CP).
- * Vedi il piano: AiWiki/01-Projects/gmbortools/Piani/Piano-GmbOrTools-v1.md
+ * Vedi il piano: 
  *
  * C99 puro, sole dipendenze libc/libm. Prefisso API: gor_*.
  */
