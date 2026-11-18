@@ -8,9 +8,9 @@ all'installazione, nessun requisito .NET.
 | pezzo | valore |
 |---|---|
 | archivio | `gmbasic-1.0.0-osx-arm64.zip` |
-| dimensione | 60 MB (1344 file, scompattato ~155 MB) |
+| dimensione | 59 MB (1343 file, scompattato ~155 MB) |
 | integrità | `gmbasic-1.0.0-osx-arm64.zip.sha256` + `release-manifest.json` (sha256 di **ogni** file) |
-| verifica | `gmb doctor --verify` → 924 OK, 0 manomessi, 0 mancanti |
+| verifica | `gmb doctor --verify` → 1343 OK, 0 manomessi, 0 mancanti |
 
 ## Installazione
 
@@ -72,7 +72,7 @@ rimossi dall'ambiente (nessun percorso del checkout di sviluppo usato):
 |---|---|
 | `sha256sum -c *.sha256` | OK |
 | `gmb doctor` | **18/18 ok** |
-| `gmb doctor --verify` | **924 OK**, 0 manomessi, 0 mancanti |
+| `gmb doctor --verify` | **1343 OK**, 0 manomessi, 0 mancanti |
 | `gmb eval "PRINT 40+2"` | `42` |
 | `gmb Hello.bas` (programma testuale) | compila, linka, esegue (`hello 1.0`, `42`) |
 | `IMPORT AI` + `gmb build` | 2 sorgenti, **0 errori** (header LLMEnv completi) |
