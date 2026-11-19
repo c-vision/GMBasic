@@ -58,8 +58,28 @@ static int st_asc(ctx_t* c, gmb_expr_t** a, int n) {
 }
 static int st_str(ctx_t* c, gmb_expr_t** a, int n) {
     if (n != 1) return 0;
+    /* MEMBRO di un val DINAMICO (JSON/dict, markdown AST, result STATS, tupla): il tipo
+     * statico è testo (i membri si leggono come testo), ma STR vuole il NUMERO — " 1"
+     * (canone spazio-segno G15). Prima emetteva il testo grezzo ("1") → divergenza con
+     * IL/PCode/VM-C, emersa solo quando il C ha iniziato a emettere il sample
+     * Documents/MarkdownAstDemo (`STR(h.level)`). */
+    int _dynm = 0;
+    if (a[0] && a[0]->kind == GMB_EXPR_VAR && a[0]->var) {
+        const char* _dt = strchr(a[0]->var, '.');
+        if (_dt && _dt != a[0]->var && !strchr(_dt + 1, '.')) {
+            char _pre[160];
+            size_t _pl = (size_t)(_dt - a[0]->var);
+            if (_pl < sizeof(_pre)) {
+                memcpy(_pre, a[0]->var, _pl); _pre[_pl] = 0;
+                var_t* _bv = lookup_var(c, _pre);
+                _dynm = _bv && !_bv->vclass[0] && !_bv->gkind
+                        && (_bv->boxed_val || _bv->boxed_md || _bv->stats_val || _bv->tuple_fields);
+            }
+        }
+    }
     int _t = etype(c, a[0]);
-    if (_t == TY_STR) emit_expr(c, a[0]);
+    if (_t == TY_STR && !_dynm) emit_expr(c, a[0]);
+    else if (_dynm) { sb_put(&c->out, "gmb_str_basic("); emit_num_operand(c, a[0]); sb_put(&c->out, ")"); }
     /* Campo nudo DBF/RDD (TY_VAL): STR$ è per definizione numerico → coercizione a
      * double e gmb_str_basic (spazio-segno, G15). Con gmb_cstr_val un campo CURRENCY
      * rendeva "100.00" (scale) invece di " 100" — divergenza dal canone PCode/VM-C. */

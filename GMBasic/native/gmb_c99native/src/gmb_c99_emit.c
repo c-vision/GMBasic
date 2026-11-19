@@ -27201,7 +27201,7 @@ static void emit_ai_connector_domain(ctx_t* c, gmb_stmt_t* s) {
     if (n < 1 || !a[0]) { c99_fail(c, s->line, "AI CONNECTOR: atteso verbo"); return; }
     int vk = a[0]->tk ? a[0]->tk : gmb_keyword_tok(a[0]->var);
     const char* vs = a[0]->var;
-    if (vk == GMB_TOK_List) { ind(c); sb_put(&c->out, "(void)gmb_connector_list();\n"); return; }
+    if (vk == GMB_TOK_List || (vs && strcasecmp(vs, "LIST") == 0)) { ind(c); sb_put(&c->out, "(void)gmb_connector_list();\n"); return; }
     if (vk == GMB_TOK_Search && n >= 2) { ind(c); sb_put(&c->out, "(void)gmb_connector_search("); emit_str_operand(c, a[1]); sb_put(&c->out, ".data);\n"); return; }
     if (vk == GMB_TOK_AiSubMarketplace) {
         if (n >= 2 && (a[1]->tk == GMB_TOK_List || (a[1]->var && strcasecmp(a[1]->var, "LIST") == 0))) { ind(c); sb_put(&c->out, "(void)gmb_connector_marketplace_list();\n"); return; }

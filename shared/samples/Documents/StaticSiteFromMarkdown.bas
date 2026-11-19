@@ -27,6 +27,7 @@ SUB WritePage(title$, body$, outFile$)
 END SUB
 
 SUB Main
+    DIM d AS JSON
 DIM g_work AS STRING
 g_work = PROJECTFOLDER() + "/work"
 IF NOT IO.DIREXISTS(g_work) THEN MKDIR g_work

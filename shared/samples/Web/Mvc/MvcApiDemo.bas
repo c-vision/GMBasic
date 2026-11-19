@@ -92,7 +92,9 @@ PUBLIC CLASS ProductsController INHERITS HttpController
             links["self"] = "/api/products/" + key
             links["update"] = "/api/products/" + key
             links["delete"] = "/api/products/" + key
-            prods[key]["links"] = links
+            DIM rec AS JSON
+            rec = prods[key]
+            rec["links"] = links
             SELF.Negotiate(req, res, prods[key])
         END IF
     END SUB
@@ -129,8 +131,10 @@ PUBLIC CLASS ProductsController INHERITS HttpController
             SELF.NotFound(res)
         ELSE
             DIM body AS JSON = req.BodyJson
-            IF body.nome <> "" THEN prods[key]["nome"] = body.nome
-            IF VAL(body.prezzo) > 0 THEN prods[key]["prezzo"] = VAL(body.prezzo)
+            DIM rec AS JSON
+            rec = prods[key]
+            IF body.nome <> "" THEN rec["nome"] = body.nome
+            IF VAL(body.prezzo) > 0 THEN rec["prezzo"] = VAL(body.prezzo)
             SELF.Json(res, prods[key])
         END IF
     END SUB

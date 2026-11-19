@@ -14,6 +14,7 @@
 IMPORT CONVERT
 
 SUB Main
+    DIM d AS JSON
     NL = CHR(10)
     src$ = "# Titolo" + NL + NL + _
            "Paragrafo con **bold** e [link](https://example.com)." + NL + NL + _

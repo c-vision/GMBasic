@@ -100,8 +100,10 @@ PUBLIC CLASS ArticoliController INHERITS MVC.HttpController
             SELF.Response.Send("{" + CHR$(34) + "error" + CHR$(34) + ":" + CHR$(34) + "Articolo non trovato" + CHR$(34) + "}")
         ELSE
             DIM body AS JSON = SELF.Request.BodyJson
-            IF body.nome <> "" THEN articoli[key]["nome"] = body.nome
-            IF VAL(body.prezzo) > 0 THEN articoli[key]["prezzo"] = VAL(body.prezzo)
+            DIM rec AS JSON
+            rec = articoli[key]
+            IF body.nome <> "" THEN rec["nome"] = body.nome
+            IF VAL(body.prezzo) > 0 THEN rec["prezzo"] = VAL(body.prezzo)
             Salva()
             SELF.Response.SendJSON(articoli[key])
         END IF
