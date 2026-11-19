@@ -22165,10 +22165,16 @@ static void st_for(ctx_t* c, gmb_stmt_t* s) {
             emit_ident(c, shadow ? shname : fv->name);
             sb_put(&c->out, " = ");
             if (conv_arr && !shadow) sb_put(&c->out, "gmb_string_concat(gmb_string_alloc(\" \"), gmb_double_to_string(");
+            /* Iteratore PROMOSSO a gmb_val_t da un ALTRO FOR EACH sullo stesso nome (es. prima
+             * su un dict, poi su un array): l'elemento va BOXATO, altrimenti il C assegna
+             * gmb_string_t/gmb_double_t a un gmb_val_t e non compila (combinazione trovata dal
+             * MiniTest json/foreach_reuse_var). */
+            else if (fv->boxed_val && !shadow) sb_put(&c->out, av->type == TY_STR ? "gmb_make_val_string(((" : "gmb_make_val_double((");
             emit_var_ref(c, av);
             if (av->has_blo) { sb_printf(&c->out, "[__fe%d - ", id); sb_bound_lo(&c->out, av); sb_put(&c->out, "]"); }
             else sb_printf(&c->out, "[__fe%d]", id);
             if (conv_arr && !shadow) sb_put(&c->out, "))");
+            else if (fv->boxed_val && !shadow) sb_put(&c->out, av->type == TY_STR ? ").data))" : "))");
             sb_put(&c->out, ";\n");
             if (shadow) {
                 if (c->n_imap < GMB_IMAP_CAP) {

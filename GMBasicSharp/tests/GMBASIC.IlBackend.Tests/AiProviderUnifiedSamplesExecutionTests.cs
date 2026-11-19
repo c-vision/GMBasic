@@ -26,6 +26,7 @@ public class AiProviderUnifiedSamplesExecutionTests
 
     private static string RunSample(string sample)
     {
+        C99Emission.Require(sample);
         var program = Basic.Orchestrator.Compile(sample, null, false);
         var asmBuilder = IlProgramCompiler.CompileToAssembly(program, "AiProv_" + Guid.NewGuid().ToString("N"), out _);
         using var ms = new MemoryStream();

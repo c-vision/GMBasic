@@ -35,6 +35,7 @@ public class SciPySamplesParityTests
     private static string RunSample(string name)
     {
         var file = Path.Combine(SamplesDir, name);
+        C99Emission.Require(file);
         Assert.True(File.Exists(file), $"sample mancante: {file}");
         var program = Basic.Orchestrator.Compile(file, null, false, "il");
         var chunk = new global::Compiler.Compiler().Compile(program);
@@ -55,6 +56,7 @@ public class SciPySamplesParityTests
     private static string RunSampleIl(string name)
     {
         var file = Path.Combine(SamplesDir, name);
+        C99Emission.Require(file);
         Assert.True(File.Exists(file), $"sample mancante: {file}");
         var program = Basic.Orchestrator.Compile(file, null, false, "il");
         var asmBuilder = IlProgramCompiler.CompileToAssembly(program, "IlPar_" + name.Replace('.', '_'), out _);

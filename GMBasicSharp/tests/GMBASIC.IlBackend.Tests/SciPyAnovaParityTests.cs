@@ -90,6 +90,7 @@ public sealed class SciPyAnovaParityTests
 
     private static string RunSample(string sample)
     {
+        C99Emission.Require(sample);
         var program = Basic.Orchestrator.Compile(sample, null, false);
         var assemblyBuilder = IlProgramCompiler.CompileToAssembly(
             program,

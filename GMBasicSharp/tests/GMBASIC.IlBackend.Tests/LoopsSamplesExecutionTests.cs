@@ -101,6 +101,7 @@ public class LoopsSamplesExecutionTests
 
     private static string RunSample(string sample)
     {
+        C99Emission.Require(sample);
         var program = Basic.Orchestrator.Compile(sample, null, false);
         var asmBuilder = IlProgramCompiler.CompileToAssembly(program, "Loops_" + Guid.NewGuid().ToString("N"), out _);
         using var ms = new MemoryStream();

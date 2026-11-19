@@ -13,6 +13,8 @@ public class PackageServerCompileTest
         var root = FindRoot();
         var sample = Path.Combine(root, "shared", "samples", "PackageRegistry", "PackageServer.bas");
         Assert.True(File.Exists(sample));
+        // Gamba C PRIMA: il sample deve essere emettibile da C99Native (direttiva C-first).
+        C99Emission.Require(sample);
         var program = Basic.Orchestrator.Compile(sample, null, false);
         Assert.NotNull(program);
         Assert.NotNull(program.MainModule);
