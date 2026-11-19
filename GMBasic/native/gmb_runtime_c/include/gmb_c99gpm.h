@@ -154,6 +154,11 @@ void gmb_task_exit(void);
 void gmb_goexit(void);
 void gmb_unwind_continue(void);
 gmb_task_t* gmb_cur(void);
+/* 1 se il task t è FINITO (o NULL): non potrà più chiudere nulla. Usata dalle
+ * guardie di proprietà del renderer 3D (gmb_3d_frame.c) per non lasciare il
+ * renderer occupato da un task che è finito senza RENDER END. Valida finché lo
+ * scheduler è attivo: dopo lo shutdown i task vengono liberati. */
+int  gmb_task_finished(gmb_task_t* t);
 void gmb_block(void);
 
 /* --- Canali --- */

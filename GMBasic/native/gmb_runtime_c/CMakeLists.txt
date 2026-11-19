@@ -370,6 +370,8 @@ set(GMB_ALL_SRCS
     src/gmb_graphics_image.c
     src/gmb_graphics_screenshot.c
     src/gmb_graphics_palette.c
+    # P1 del piano 3D: target di rendering + cattura headless (nessun header SDL qui).
+    src/gmb_3d_frame.c
     # F3 multimodale (2026-09-11): dominio immagini (decode/resize/crop/encode PNG condivisi).
     src/gmb_image.c
     # F2 multimodale (2026-09-11): estrazione strutturata documenti (euristiche + LLM).
@@ -1346,6 +1348,18 @@ add_executable(gmbimgdiff tools/gmb_imgdiff.c)
 target_link_libraries(gmbimgdiff PRIVATE gmb_runtime)
 target_include_directories(gmbimgdiff PRIVATE include src)
 gmb_exe_relocatable(gmbimgdiff)
+
+# P1 del piano 3D (docs/Piano-Motore-3D.md §6): oracolo headless. Rende con il raster
+# vendored, consegna al TARGET 3D del runtime, cattura DAL TARGET e confronta le golden
+# per RID. Il raster della suite si compila SOLO in questo eseguibile: il runtime non
+# dipende ancora da gm_* (lo farà in P2/P3, con i sorgenti vendorizzati).
+set(GMB_3D_SUITE "${CMAKE_CURRENT_SOURCE_DIR}/../../../shared/libs/graphics")
+set(GMB_3D_MATH  "${CMAKE_CURRENT_SOURCE_DIR}/../../../shared/libs/math")
+set(GMB_3D_COMPUTE "${CMAKE_CURRENT_SOURCE_DIR}/../../../shared/libs/compute")
+add_executable(gmb_3d_oracle tools/gmb_3d_oracle.c "${GMB_3D_SUITE}/src/gm_gfx_raster.c")
+target_link_libraries(gmb_3d_oracle PRIVATE gmb_runtime)
+target_include_directories(gmb_3d_oracle PRIVATE include src
+    "${GMB_3D_SUITE}/include" "${GMB_3D_MATH}/include" "${GMB_3D_COMPUTE}/include")
 
 add_executable(gmb_audio_selfcheck tests/gmb_audio_selfcheck.c)
 target_link_libraries(gmb_audio_selfcheck PRIVATE gmb_runtime)

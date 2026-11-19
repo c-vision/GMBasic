@@ -190,6 +190,20 @@ static __thread gmb_task_t* g_current;
    una variabile locale inizializzata da gmb_cur(), mai il globale diretto. */
 __attribute__((noinline)) gmb_task_t* gmb_cur(void) { return g_current; }
 
+/* Liveness del task per le guardie di proprietà (renderer 3D): un task finito
+   non può più chiudere il proprio claim. Lo stato si legge sotto il lock del
+   task (sezione cortissima, nessuna attesa lunga). Il puntatore è valido solo
+   mentre lo scheduler è attivo: a shutdown i task vengono liberati, quindi i
+   chiamanti controllano gmb_c99gpm_active() prima di dereferenziarlo. */
+int gmb_task_finished(gmb_task_t* t) {
+    int fin;
+    if (!t) return 1;
+    gmb_lock(&t->lock);
+    fin = (t->state == GMB_TS_FINISHED);
+    gmb_unlock(&t->lock);
+    return fin;
+}
+
 #if defined(_WIN32) || defined(_WIN64)
 static void __stdcall gmb_task_trampoline(void* _p);
 #else
@@ -697,6 +711,9 @@ void gmb_gpm_start(void (*main_entry)(void*)) {
     GMB_COND_BROADCAST(&g_sched.qcond); GMB_MUTEX_UNLOCK(&g_sched.qlock);
     for (int i = 0; i < nw; i++) GMB_THREAD_JOIN(workers[i]);
     GMB_THREAD_JOIN(watcher);
+    /* Shutdown: le guardie che leggono i task (gmb_task_finished) devono
+     * smettere di dereferenziarli PRIMA che l'elenco venga liberato sotto. */
+    g_gpm_active = 0;
 #if !defined(_WIN32) && !defined(_WIN64)
     for (int i = 0; i < g_sched.all_count; i++) {
         if (g_sched.all[i]->stack_map) munmap(g_sched.all[i]->stack_map, g_sched.all[i]->stack_map_len);
