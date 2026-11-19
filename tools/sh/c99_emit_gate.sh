@@ -70,7 +70,11 @@ if [ "$WANT_SAMPLES" -eq 1 ]; then
   find shared/samples -type f -name '*.bas' -not -path '*/bin/*' -not -path '*/work/*' 2>/dev/null >> "$LIST"
 fi
 if [ -n "$ONLY_PREFIX" ]; then
-  grep -F "$ONLY_PREFIX" "$LIST" > "$TMPD/f2" || true
+  # Filtro per COMPONENTE di path: "io/" deve prendere `minitests/io/…` e NON
+  # `trading.portfolio/…` (che contiene la sottostringa "io/" — caso reale che ha fatto
+  # sembrare rosso un dominio mai toccato). `--only matrix/svd` → prefisso di path.
+  ESC=$(printf '%s' "$ONLY_PREFIX" | sed 's/[][\\.^$*+?(){}|]/\\&/g')
+  grep -E "(^|/)${ESC}" "$LIST" > "$TMPD/f2" || true
   mv "$TMPD/f2" "$LIST"
 fi
 sort -u "$LIST" -o "$LIST"
