@@ -23,6 +23,7 @@ IMPORT HTTP
 IMPORT IO
 IMPORT JSON
 IMPORT ARCHIVE
+REQUIRE "crypto"
 IMPORT CRYPTOGRAPHY
 
 ' --- Configurazione da file di settings (package-registry.json, accanto al server) ---
@@ -1327,14 +1328,21 @@ SUB HandleApiMaterialize(req AS HTTPREQUEST, res AS HTTPRESPONSE)
       ' nome file sicuro: backend-platform-<idx>.bin (evita / e spazi dal path URL)
       DIM safeKey AS STRING
       safeKey = AssetFileName(aKey)
-      DIM rawM() AS BYTE
-      rawM = CRYPTOGRAPHY.FROMBASE64(b64M)
-      DIM outFileM AS STRING
-      outFileM = binDir + "/" + safeKey + ".bin"
-      OPEN outFileM FOR BINARY AS #1
-      PUT #1, , rawM
-      CLOSE #1
-      savedM = savedM + 1
+      ' API del pacchetto `crypto`: FROMBASE64(testo, out()) riempie un array BYTE e
+      ' ritorna la lunghezza; si scrivono solo gli n byte decodificati.
+      DIM tmpM(LEN(b64M)) AS BYTE
+      DIM nRawM AS LONG = CRYPTOGRAPHY.FROMBASE64(b64M, tmpM)
+      IF nRawM > 0 THEN
+        DIM rawM(nRawM - 1) AS BYTE
+        DIM ci AS LONG
+        FOR ci = 0 TO nRawM - 1 : rawM(ci) = tmpM(ci) : NEXT ci
+        DIM outFileM AS STRING
+        outFileM = binDir + "/" + safeKey + ".bin"
+        OPEN outFileM FOR BINARY AS #1
+        PUT #1, , rawM
+        CLOSE #1
+        savedM = savedM + 1
+      END IF
     END IF
   NEXT
 
@@ -1777,8 +1785,12 @@ SUB HandleApiPublish(req AS HTTPREQUEST, res AS HTTPRESPONSE)
   DIM tmpZip AS STRING
   tmpZip = "./.publish-" + stamp + ".gmbpkg"
 
-  DIM raw() AS BYTE
-  raw = CRYPTOGRAPHY.FROMBASE64(b64)
+  ' API del pacchetto `crypto`: decodifica nell'array out-param, lunghezza in ritorno.
+  DIM tmpRaw(LEN(b64)) AS BYTE
+  DIM nRaw AS LONG = CRYPTOGRAPHY.FROMBASE64(b64, tmpRaw)
+  DIM raw(nRaw - 1) AS BYTE
+  DIM ri AS LONG
+  FOR ri = 0 TO nRaw - 1 : raw(ri) = tmpRaw(ri) : NEXT ri
   OPEN tmpZip FOR BINARY AS #1
   PUT #1, , raw
   CLOSE #1
@@ -1829,13 +1841,24 @@ SUB HandleApiPublish(req AS HTTPREQUEST, res AS HTTPRESPONSE)
     OPEN sigPath FOR INPUT AS #5
     INPUT #5, sigTxt
     CLOSE #5
-    DIM manifestBytes() AS BYTE
-    manifestBytes = READBYTES(manPath)
-    DIM sigBytes() AS BYTE
-    sigBytes = CRYPTOGRAPHY.FROMBASE64(LTRIM$(RTRIM$(sigTxt)))
+    ' Array a dimensione nota: gli argomenti `data() AS BYTE` dei wrapper FFI accettano un
+    ' array dimensionato (un buffer dinamico assegnato da READBYTES non è passabile come
+    ' argomento array nell'emitter C99). La dimensione arriva da READBYTES + LEN.
+    DIM manProbe() AS BYTE
+    manProbe = READBYTES(manPath)
+    DIM nMan AS LONG = LEN(manProbe)
+    DIM manifestBytes(nMan - 1) AS BYTE
+    OPEN manPath FOR BINARY AS #7
+    GET #7, , manifestBytes
+    CLOSE #7
+    DIM sigTmp(LEN(sigTxt)) AS BYTE
+    DIM nSig AS LONG = CRYPTOGRAPHY.FROMBASE64(LTRIM$(RTRIM$(sigTxt)), sigTmp)
+    DIM sigBytes(nSig - 1) AS BYTE
+    DIM si AS LONG
+    FOR si = 0 TO nSig - 1 : sigBytes(si) = sigTmp(si) : NEXT si
     DIM sigOk AS LONG
     sigOk = 0
-    IF CRYPTOGRAPHY.VERIFYRAW(sigBytes, manifestBytes, pkIn) THEN sigOk = 1
+    IF CRYPTOGRAPHY.VERIFYRAW(sigBytes, nSig, manifestBytes, LEN(manifestBytes), pkIn) THEN sigOk = 1
     IF sigOk = 0 THEN
       res.StatusCode = 403
       DIM eSig2 AS JSON

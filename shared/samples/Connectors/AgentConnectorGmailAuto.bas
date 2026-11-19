@@ -2,6 +2,7 @@
 ' Agente Gmail senza configurazione esplicita — OAuth + policy HIGH_RISK
 
 IMPORT AI
+REQUIRE "crypto"
 IMPORT CRYPTOGRAPHY
 IMPORT STRINGS
 IMPORT HTTP

@@ -14,6 +14,7 @@
 ' listener (limite d'ambiente noto: HttpListener-InProcess, vedi Obsidian) -> il test è compile-only.
 
 IMPORT OAUTH
+REQUIRE "crypto"
 IMPORT CRYPTOGRAPHY
 IMPORT STRINGS
 IMPORT HTTP

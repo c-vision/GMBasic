@@ -2,6 +2,7 @@ IMPORT AI WITH ALIAS
 IMPORT NET
 IMPORT HTTP
 IMPORT STRINGS
+REQUIRE "crypto"
 IMPORT CRYPTOGRAPHY
 DIM cDpResult AS STRING
 DIM cDpReady AS BIT
@@ -128,7 +129,12 @@ FUNCTION BrowserAuditStep(port AS INTEGER, action AS STRING, detail AS STRING, s
   b64 = CdpJsonStringValue(raw, "data")
   IF LEN(b64) > 0 THEN
     OPEN shot FOR BINARY AS #1
-    PUT #1, , FROMBASE64(b64)
+    DIM b64tmp(LEN(b64)) AS BYTE
+    DIM nB64dec AS LONG = FROMBASE64(b64, b64tmp)
+    DIM b64buf(nB64dec - 1) AS BYTE
+    DIM b64i AS LONG
+    FOR b64i = 0 TO nB64dec - 1 : b64buf(b64i) = b64tmp(b64i) : NEXT b64i
+    PUT #1, , b64buf
     CLOSE #1
   END IF
   cDpSessionLog = cDpSessionLog + action + "|" + detail + "|" + shot + CHR$(10)

@@ -2,6 +2,7 @@ IMPORT AI WITH ALIAS
 IMPORT NET
 IMPORT HTTP
 IMPORT STRINGS
+REQUIRE "crypto"
 IMPORT CRYPTOGRAPHY
 DIM cDpResult AS STRING
 DIM cDpReady AS BIT
@@ -141,7 +142,12 @@ FUNCTION BrowserAnalyze(port AS INTEGER, prompt AS STRING, outPath AS STRING) AS
     EXIT FUNCTION
   END IF
   OPEN outPath FOR BINARY AS #1
-  PUT #1, , FROMBASE64(b64)
+  DIM b64tmp(LEN(b64)) AS BYTE
+  DIM nB64dec AS LONG = FROMBASE64(b64, b64tmp)
+  DIM b64buf(nB64dec - 1) AS BYTE
+  DIM b64i AS LONG
+  FOR b64i = 0 TO nB64dec - 1 : b64buf(b64i) = b64tmp(b64i) : NEXT b64i
+  PUT #1, , b64buf
   CLOSE #1
   BrowserAnalyze = AI.ANALYZEIMAGE(outPath, prompt)
 END FUNCTION

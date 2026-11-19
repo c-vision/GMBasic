@@ -6,6 +6,7 @@
 ' con PKCE S256 e il body del token request. Eseguibile su IL, PCodeVM e VM/C.
 
 IMPORT OAUTH
+REQUIRE "crypto"
 IMPORT CRYPTOGRAPHY
 IMPORT STRINGS
 IMPORT HTTP

@@ -3,6 +3,7 @@
 ' Flusso: CreateVerifier -> CreateChallenge -> BuildAuthUrl -> RequestToken -> Stored Bearer
 
 IMPORT AI
+REQUIRE "crypto"
 IMPORT CRYPTOGRAPHY
 IMPORT STRINGS
 IMPORT HTTP

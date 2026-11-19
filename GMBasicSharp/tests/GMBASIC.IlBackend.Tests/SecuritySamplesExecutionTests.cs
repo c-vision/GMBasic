@@ -77,9 +77,11 @@ public class SecuritySamplesExecutionTests
     public void JwtDemo_Sample_Runs_And_Verifies()
     {
         var output = RunSample(Path.Combine(Root, "shared", "samples", "Security", "JwtDemo.bas"));
-        Assert.Contains("VERIFY OK", output);
-        Assert.Contains("TAMPER DETECTED", output);
-        Assert.Contains("PAYLOAD MATCH", output);
+        // Il sample stampa l'esito di AUTH.JWTVERIFY: -1 (BIT vero) col segreto giusto,
+        // 0 con la chiave sbagliata; poi il payload decodificato.
+        Assert.Contains("secret ok  = -1", output);
+        Assert.Contains("secret bad =  0", output);
+        Assert.Contains("\"role\":\"admin\"", output);
     }
 
     [Fact]

@@ -8,6 +8,7 @@
 ' Vettori attesi sul "The quick brown fox..." con chiave "key".
 ' Eseguibile su IL, PCodeVM e VM/C (C99Native: gap dichiarato 2026-09-02).
 
+REQUIRE "crypto"
 IMPORT CRYPTOGRAPHY
 
 PRINT "=== HMAC (RFC 4231) ==="
@@ -26,8 +27,11 @@ PRINT "=== Base64URL (RFC 4648 sez.5, no padding) ==="
 PRINT "TOBASE64URL(hello): "; CRYPTOGRAPHY.TOBASE64URL("hello")
 PRINT "TOBASE64URL(f):     "; CRYPTOGRAPHY.TOBASE64URL("f")
 
-DIM bytes() = CRYPTOGRAPHY.FROMBASE64URL("aGVsbG8")
-DIM roundtrip$ = CRYPTOGRAPHY.TOHEX(bytes())
+' API del PACCHETTO `crypto`: i decodificatori scrivono in un array BYTE out-param e
+' ritornano la LUNGHEZZA; l'esadecimale di un array si rende con BYTESHEX().
+DIM dec(63) AS BYTE
+DIM nDec AS LONG = CRYPTOGRAPHY.FROMBASE64URL("aGVsbG8", dec)
+DIM roundtrip$ = LEFT(CRYPTOGRAPHY.BYTESHEX(dec), nDec * 2)
 PRINT "FROMBASE64URL roundtrip hex: "; roundtrip$
 IF roundtrip$ = "68656c6c6f" THEN
     PRINT "B64URL ROUNDTRIP OK"

@@ -2,6 +2,7 @@
 ' Calendar (google-calendar, T0) — OAuth + events, auto-discovery
 
 IMPORT AI
+REQUIRE "crypto"
 IMPORT CRYPTOGRAPHY
 IMPORT STRINGS
 IMPORT HTTP

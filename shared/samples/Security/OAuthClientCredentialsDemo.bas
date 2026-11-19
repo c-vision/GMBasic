@@ -7,6 +7,7 @@
 ' senza rete (il token request reale è un commento).
 
 IMPORT OAUTH
+REQUIRE "crypto"
 IMPORT CRYPTOGRAPHY
 IMPORT STRINGS
 IMPORT HTTP

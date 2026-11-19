@@ -7,6 +7,7 @@
 IMPORT AI WITH ALIAS
 IMPORT SQL WITH ALIAS
 IMPORT CONVERT
+REQUIRE "crypto"
 IMPORT CRYPTOGRAPHY
 
 FUNCTION BrowserDownloadPdf(port AS INTEGER, url AS STRING, destDir AS STRING, fileName AS STRING) AS STRING
@@ -21,7 +22,12 @@ FUNCTION BrowserDownloadPdf(port AS INTEGER, url AS STRING, destDir AS STRING, f
   END IF
   path = destDir + "/" + fileName
   OPEN path FOR BINARY AS #1
-  PUT #1, , FROMBASE64(b64)
+  DIM b64tmp(LEN(b64)) AS BYTE
+  DIM nB64dec AS LONG = FROMBASE64(b64, b64tmp)
+  DIM b64buf(nB64dec - 1) AS BYTE
+  DIM b64i AS LONG
+  FOR b64i = 0 TO nB64dec - 1 : b64buf(b64i) = b64tmp(b64i) : NEXT b64i
+  PUT #1, , b64buf
   CLOSE #1
   text = CONVERT.ToText(path)
   IF LEN(text) = 0 THEN

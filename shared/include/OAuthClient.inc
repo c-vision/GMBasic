@@ -16,7 +16,9 @@ NAMESPACE OAUTH
 PUBLIC FUNCTION CreateVerifier(length AS LONG) AS STRING
     IF length < 43 OR length > 128 THEN length = 43
     DIM charset$ = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~"
-    DIM bytes() = CRYPTOGRAPHY.RANDOMCRYPTOBYTES(length)
+    ' API del pacchetto `crypto`: il generatore riempie un array BYTE out-param e ritorna n.
+    DIM bytes(127) AS BYTE
+    DIM nBytes AS LONG = CRYPTOGRAPHY.RANDOMCRYPTOBYTES(length, bytes)
     DIM out$ = ""
     DIM i AS LONG
     FOR i = 0 TO length - 1
