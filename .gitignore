@@ -283,3 +283,9 @@ shared/skills/working-capital/
 
 # Artefatti di release (tools/sh/release.sh): staging + zip, MAI versionati
 dist/
+
+# Report/log locali (percorsi della macchina): mai versionati
+tools/reports/
+
+# Backup dell editor
+*~
