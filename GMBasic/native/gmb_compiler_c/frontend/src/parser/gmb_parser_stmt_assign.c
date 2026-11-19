@@ -319,15 +319,33 @@ gmb_stmt_t* gmb_p_parse_assign_or_call(gmb_parser_t* p, const char* target, int 
             }
         }
         if (gmb_p_match(p, GMB_TOK_LeftBracket)) {
-            /* a[expr] = value — indice a quadre come target */
+            /* a[expr] = value — indice a quadre come target.
+             * QUI arrivano gli indici ANNIDATI (`a[i][j] = v`): il primo `[...]` è già
+             * stato consumato dal ramo sopra, questo è il secondo. Il backend C99Native non
+             * ha l'assegnamento a catena di indici (servirebbe risolvere la catena e
+             * scrivere nel dict interno); prima gli indici venivano SCARTATI e si assegnava
+             * a un nome artificiale "a[]" → SCRITTURA SILENZIOSAMENTE PERSA (viola §0bis:
+             * errore esplicito, mai risultato sbagliato in silenzio). */
+            int nested = (es->expr && es->expr->kind == GMB_EXPR_CALL
+                          && es->expr->nargs >= 1) ? 1 : 0;   /* un indice era già stato consumato */
             while (!gmb_p_at_end(p) && !gmb_p_check(p, GMB_TOK_RightBracket)) gmb_p_adv(p);
             gmb_p_match(p, GMB_TOK_RightBracket);
             while (gmb_p_check(p, GMB_TOK_LeftBracket)) {
+                nested = 1;
                 gmb_p_adv(p);
                 while (!gmb_p_at_end(p) && !gmb_p_check(p, GMB_TOK_RightBracket)) gmb_p_adv(p);
                 gmb_p_match(p, GMB_TOK_RightBracket);
             }
             if (gmb_p_match(p, GMB_TOK_Equal)) {
+                if (nested) {
+                    gmb_p_set_err(p,
+                        "assegnamento a indici ANNIDATI a[i][j] = v non supportato dal "
+                        "backend C99Native (prima la scrittura andava persa in silenzio: "
+                        "portare il dict interno in una variabile, `DIM t = a[i]` poi "
+                        "`t[j] = v`)", line);
+                    gmb_expr_free(es->expr); free(es);
+                    return gmb_stmt_new(GMB_STMT_REM, line);
+                }
                 gmb_stmt_t* a = gmb_stmt_new(GMB_STMT_ASSIGN, line);
                 char buf[300]; snprintf(buf, sizeof(buf), "%s[]", target);
                 a->target = strdup(buf);

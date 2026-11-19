@@ -841,7 +841,9 @@ SUB AddOwned(uname AS STRING, pkgName AS STRING)
     owned = NEW JSON
     owned[pkgName] = "1"
   END IF
-  gUsers[uname]["ownedPackages"] = owned
+  DIM uRec AS JSON
+  uRec = gUsers[uname]
+  uRec["ownedPackages"] = owned
 END SUB
 
 ' Rate-limit per client (IP): permette rateLimitPerMinute richieste mutate al minuto.
@@ -879,7 +881,9 @@ SUB RemoveOwned(uname AS STRING, pkgName AS STRING)
   owned = gUsers[uname].ownedPackages
   IF owned.name <> "" THEN
     owned[pkgName] = ""
-    gUsers[uname]["ownedPackages"] = owned
+    DIM uRec AS JSON
+    uRec = gUsers[uname]
+    uRec["ownedPackages"] = owned
   END IF
 END SUB
 
@@ -1331,7 +1335,8 @@ SUB HandleApiMaterialize(req AS HTTPREQUEST, res AS HTTPRESPONSE)
       ' API del pacchetto `crypto`: FROMBASE64(testo, out()) riempie un array BYTE e
       ' ritorna la lunghezza; si scrivono solo gli n byte decodificati.
       DIM tmpM(LEN(b64M)) AS BYTE
-      DIM nRawM AS LONG = CRYPTOGRAPHY.FROMBASE64(b64M, tmpM)
+      DIM nRawM AS LONG
+      nRawM = CRYPTOGRAPHY.FROMBASE64("" + b64M, tmpM)
       IF nRawM > 0 THEN
         DIM rawM(nRawM - 1) AS BYTE
         DIM ci AS LONG
