@@ -54,6 +54,8 @@ shared/samples/Fixtures/markets/
 shared/samples/Fixtures/option_chains/
 shared/samples/Fixtures/rates/
 shared/samples/Fixtures/darkpool/
+# NCM (Next-Concept Modeling): checkpoint HazyResearch/ncm per samples/AiLLM/NcmGenerate.bas (~1 GB), da scaricare a mano.
+shared/samples/Fixtures/ncm/
 
 # Lock del motore di download (gmbfetch) accanto ai file scaricati: stato transitorio.
 **/.locks/

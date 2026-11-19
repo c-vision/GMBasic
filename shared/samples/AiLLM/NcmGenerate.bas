@@ -7,17 +7,15 @@
 ' ogni livello in UN solo forward del transformer, e un decoder VQ-VAE riporta i codici ai token.
 ' Questo sample usa il modello LM1B small (97M parametri, frasi da 128 token tipo notizie, non condizionato).
 '
-' PREREQUISITI
-'   1) checkpoint, da https://huggingface.co/hazyresearch/ncm-checkpoints :
-'        lm1b/small/generator.pt (390 MB) e lm1b/tokenizer.pt (598 MB)
-'   2) il vocabolario di bert-base-uncased (vocab.txt)
-'   3) libgmb_torch (host libtorch) aggiornato con le funzioni gmb_ml_ncm_*
-' Cambia i tre percorsi qui sotto.
+' PREREQUISITI: la cartella samples/Fixtures/ncm/ (non e' in git: ~1 GB) con
+'     lm1b/small/generator.pt (390 MB) e lm1b/tokenizer.pt (598 MB), da https://huggingface.co/hazyresearch/ncm-checkpoints
+'     vocab.txt   = il vocabolario di bert-base-uncased (https://huggingface.co/bert-base-uncased)
+'   e libgmb_torch (host libtorch) aggiornato con le funzioni gmb_ml_ncm_*.
 IMPORT NCM
 
-CONST GENERATOR = "~/ai/ncm/lm1b/small/generator.pt"
-CONST TOKENIZER = "~/ai/ncm/lm1b/tokenizer.pt"
-CONST VOCAB     = "~/ai/hf-cache/hub/models--bert-base-uncased/snapshots/86b5e0934494bd15c9632b12f734a8a67f723594/vocab.txt"
+CONST GENERATOR = "../Fixtures/ncm/lm1b/small/generator.pt"
+CONST TOKENIZER = "../Fixtures/ncm/lm1b/tokenizer.pt"
+CONST VOCAB     = "../Fixtures/ncm/vocab.txt"
 
 SUB Main()
     DIM h AS LONG
