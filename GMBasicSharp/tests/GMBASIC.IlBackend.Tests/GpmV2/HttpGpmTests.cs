@@ -20,7 +20,7 @@ public class HttpGpmTests
         var dir = new DirectoryInfo(Directory.GetCurrentDirectory());
         while (dir != null)
         {
-            if (File.Exists(Path.Combine(dir.FullName, "GMBASIC.sln"))) return dir.FullName;
+            if (File.Exists(Path.Combine(dir.FullName, "GMBasicSharp", "GMBasicSharp.slnx"))) return dir.FullName;
             dir = dir.Parent;
         }
         return Directory.GetCurrentDirectory();
@@ -29,7 +29,7 @@ public class HttpGpmTests
     [Fact]
     public void HttpServer_MayParkHandler_RespondsUnderGpm()
     {
-        var sample = Path.Combine(Root, "samples", "Community", "Network", "HttpGpmHandler.bas");
+        var sample = Path.Combine(Root, "shared", "samples", "Network", "HttpGpmHandler.bas");
         Assert.True(File.Exists(sample), $"Sample mancante: {sample}");
         var program = Basic.Orchestrator.Compile(sample, null, false);
         var asmBuilder = IlProgramCompiler.CompileToAssembly(program, "HttpGpm_" + Guid.NewGuid().ToString("N"), out _);
@@ -79,7 +79,7 @@ public class HttpGpmTests
     {
         // Stesso sample sulla PCodeVM: l'handler gira come task GPM sullo scheduler condiviso
         // (SpawnHttpHandlerTask) e risponde "GPM-OK-from-goroutine".
-        var sample = Path.Combine(Root, "samples", "Community", "Network", "HttpGpmHandler.bas");
+        var sample = Path.Combine(Root, "shared", "samples", "Network", "HttpGpmHandler.bas");
         Assert.True(File.Exists(sample), $"Sample mancante: {sample}");
         var program = Basic.Orchestrator.Compile(sample, null, false);
         var chunk = new global::Compiler.Compiler().Compile(program);

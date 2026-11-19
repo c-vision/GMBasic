@@ -84,9 +84,9 @@ public sealed class PCodeDebugDriverTests
         var root = FindRepoRoot();
         var candidates = new[]
         {
-            System.IO.Path.Combine(root, "samples", "Community", "Clipper", "ClipperSayTest.bas"),
-            System.IO.Path.Combine(root, "samples", "Community", "Collections", "CollectionsLinked.bas"),
-            System.IO.Path.Combine(root, "samples", "Community", "Console", "ConsoleBasics.bas"),
+            System.IO.Path.Combine(root, "shared", "samples", "Clipper", "ClipperSayTest.bas"),
+            System.IO.Path.Combine(root, "shared", "samples", "Collections", "CollectionsLinked.bas"),
+            System.IO.Path.Combine(root, "shared", "samples", "Console", "ConsoleBasics.bas"),
             System.IO.Path.Combine(root, "samples", "Native", "HelloNative.bas"),
         };
         foreach (var c in candidates)
@@ -99,7 +99,7 @@ public sealed class PCodeDebugDriverTests
         var dir = new System.IO.DirectoryInfo(System.IO.Directory.GetCurrentDirectory());
         while (dir != null)
         {
-            if (System.IO.File.Exists(System.IO.Path.Combine(dir.FullName, "GMBASIC.sln")))
+            if (System.IO.File.Exists(System.IO.Path.Combine(dir.FullName, "GMBasicSharp", "GMBasicSharp.slnx")))
                 return dir.FullName;
             dir = dir.Parent;
         }

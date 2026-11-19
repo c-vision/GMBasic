@@ -20,7 +20,7 @@ public class BlackboardWorkersE2ETests
         var dir = new DirectoryInfo(Directory.GetCurrentDirectory());
         while (dir != null)
         {
-            if (File.Exists(Path.Combine(dir.FullName, "GMBASIC.sln"))) return dir.FullName;
+            if (File.Exists(Path.Combine(dir.FullName, "GMBasicSharp", "GMBasicSharp.slnx"))) return dir.FullName;
             dir = dir.Parent;
         }
         return Directory.GetCurrentDirectory();
@@ -29,7 +29,7 @@ public class BlackboardWorkersE2ETests
     [Fact]
     public void Blackboard_ConcurrentWorkers_Synth_Reads_All()
     {
-        var sample = Path.Combine(FindRepoRoot(), "samples", "Community", "Ai", "BlackboardWorkersE2E.bas");
+        var sample = Path.Combine(FindRepoRoot(), "shared", "samples", "Ai", "BlackboardWorkersE2E.bas");
         Assert.True(File.Exists(sample), $"sample mancante: {sample}");
 
         var program = Basic.Orchestrator.Compile(sample, null, false);

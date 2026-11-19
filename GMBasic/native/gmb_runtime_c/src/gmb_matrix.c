@@ -914,6 +914,17 @@ int64_t gmb_matrix_svd(int64_t a)
                 }
             }
         }
+    /* NORMALIZZA U: il Jacobi one-sided produce colonne U_j di norma σ_j (U = Û·S).
+     * La convenzione standard (scipy/Math.NET, A = U·S·Vᵀ con U ORTOGONALE) vuole U_j
+     * di norma 1: senza questa divisione la gamba IL (Math.NET) e le gambe C
+     * esponevano `FACTOR(svd,"U")` diversi (2026-11-19). */
+    for (int j = 0; j < n; j++)
+    {
+        double s = gmb_matrix_get(S, j, j);
+        if (s > 0.0)
+            for (int i = 0; i < n; i++)
+                gmb_matrix_set(U, i, j, gmb_matrix_get(U, i, j) / s);
+    }
     int64_t d = dalloc(2, a, n);
     if (d <= 0) return -1;
     gmb_decomp_t* dd = dget(d);
@@ -1014,7 +1025,13 @@ int64_t gmb_matrix_cholesky(int64_t a)
             double s = gmb_matrix_get(a, i, j);
             for (int k = 0; k < j; k++)
                 s -= gmb_matrix_get(L,i,k)*gmb_matrix_get(L,j,k);
-            if (i == j) gmb_matrix_set(L, i, j, sqrt(s < 0 ? 0 : s));
+            if (i == j)
+            {
+                /* Definita positiva: un pivot nullo/negativo NON è una Cholesky valida.
+                 * Prima si faceva sqrt(s<0?0:s) → L silenziosamente sbagliata (2026-11-19). */
+                if (!(s > 0.0)) { gmb_matrix_free(L); return -1; }
+                gmb_matrix_set(L, i, j, sqrt(s));
+            }
             else gmb_matrix_set(L, i, j, s / gmb_matrix_get(L,j,j));
         }
     int64_t d = dalloc(4, a, n);
@@ -1119,13 +1136,45 @@ int64_t gmb_matrix_decomp_get_factor_named_ex(int64_t decomp, const char* name, 
     {
         if (strcmp(name, "U") == 0) return d->b;
         if (strcmp(name, "S") == 0) return d->c;
-        if (strcmp(name, "V") == 0 || strcmp(name, "VT") == 0) return d->a;
+        if (strcmp(name, "V") == 0) return d->a;
+        if (strcmp(name, "VT") == 0)
+        {
+            /* Vᵀ VERO (prima si restituiva V: per matrici non simmetriche il fattore
+             * chiamato "VT" non era la trasposta — divergenza con la gamba managed). */
+            int64_t out = gmb_matrix_transpose(d->a);
+            if (out > 0 && owned) *owned = 1;
+            return out;
+        }
+        if (strcmp(name, "SVECTOR") == 0)
+        {
+            /* valori singolari come VETTORE N×1 (S è diagonale) */
+            int n = d->n;
+            int64_t out = gmb_matrix_create(n, 1);
+            if (out <= 0) return -1;
+            for (int i = 0; i < n; i++)
+                gmb_matrix_set(out, i, 0, gmb_matrix_get(d->c, i, i));
+            if (owned) *owned = 1;
+            return out;
+        }
         return -1;
     }
     if (d->type == 3)   /* EVD: b=autovalori, c=autovettori */
     {
         if (strcmp(name, "D") == 0 || strcmp(name, "S") == 0) return d->b;
         if (strcmp(name, "V") == 0) return d->c;
+        if (strcmp(name, "DREAL") == 0 || strcmp(name, "DIMAG") == 0)
+        {
+            /* La EVD C è Jacobi su matrice simmetrica: autovalori REALI.
+             * DREAL = diagonale di D; DIMAG = zeri (handle NUOVI). */
+            int n = d->n;
+            int imag = strcmp(name, "DIMAG") == 0;
+            int64_t out = gmb_matrix_create(n, 1);
+            if (out <= 0) return -1;
+            for (int i = 0; i < n; i++)
+                gmb_matrix_set(out, i, 0, imag ? 0.0 : gmb_matrix_get(d->b, i, i));
+            if (owned) *owned = 1;
+            return out;
+        }
         return -1;
     }
     if (d->type == 4)   /* Cholesky */
@@ -1322,8 +1371,7 @@ int64_t gmb_matrix_pseudo_inverse(int64_t a)
             int64_t inv = gmb_matrix_inverse(a);
             if (inv > 0) return inv;
         }
-        /* quadrata SINGOLARE: A⁺ = V·S⁺·Uᵀ via SVD. U del Jacobi one-sided NON è
-         * normalizzata (le colonne hanno norma = valore singolare) → U_ortho = U/σ. */
+        /* quadrata SINGOLARE: A⁺ = V·S⁺·Uᵀ via SVD (U è ortonormale: SVD normalizzata). */
         int64_t d = gmb_matrix_svd(a);
         if (d <= 0) return -1;
         gmb_decomp_t* dd = dget(d);
@@ -1347,7 +1395,7 @@ int64_t gmb_matrix_pseudo_inverse(int64_t a)
             double s = gmb_matrix_get(Sh, j, j);
             if (s > tol)
             {
-                for (int i = 0; i < n; i++) mUo->data[i * n + j] = gmb_matrix_get(Uh, i, j) / s;
+                for (int i = 0; i < n; i++) mUo->data[i * n + j] = gmb_matrix_get(Uh, i, j);
                 mSp->data[j * n + j] = 1.0 / s;
             }
         }
@@ -1904,7 +1952,7 @@ int64_t gmb_matrix_orth(int64_t a)
     if (out <= 0) { free(sv); gmb_matrix_decomp_free(d); return -1; }
     for (int i = 0; i < n; i++)
         for (int j = 0; j < rank; j++)
-            gmb_matrix_set(out, i, j, gmb_matrix_get(U, i, j) / sv[j]); /* normalizza */
+            gmb_matrix_set(out, i, j, gmb_matrix_get(U, i, j)); /* U è già ortonormale (SVD normalizzata) */
     /* Convenzione di SEGNO condivisa col managed (CommonLib.Numerics.Orth): il primo
      * elemento di modulo massimo di ogni colonna e' POSITIVO. Senza, il segno delle colonne
      * di U dipende dall'implementazione SVD (Jacobi qui, LAPACK/MathNet nel managed) e le
@@ -1974,17 +2022,13 @@ int64_t gmb_matrix_polar(int64_t a)
     if (U <= 0 || S <= 0 || V <= 0) return -1;
     int64_t Vt = gmb_matrix_transpose(V);
     if (Vt <= 0) return -1;
-    /* U dell'SVD C è SCALATO per colonna (U_col·s_j): normalizza con S^{-1} */
-    int64_t Sinv = gmb_matrix_create(n, n);
-    for (int j = 0; j < n; j++)
-        gmb_matrix_set(Sinv, j, j, 1.0 / gmb_matrix_get(S, j, j));
-    int64_t Un = gmb_matrix_multiply(U, Sinv);   /* U ortogonale */
-    int64_t Uu = gmb_matrix_multiply(Un, Vt);    /* U·V^T */
+    /* U è ortonormale (SVD normalizzata): Uu = U·Vᵀ è già la parte ortogonale. */
+    int64_t Uu = gmb_matrix_multiply(U, Vt);     /* U·V^T */
     int64_t VS = gmb_matrix_multiply(V, S);      /* V·S */
     int64_t P = gmb_matrix_multiply(VS, Vt);     /* V·S·V^T */
     if (Uu <= 0 || VS <= 0 || P <= 0) return -1;
     int64_t dec = dalloc(5, a, n);
-    if (dec <= 0) { gmb_matrix_free(Vt); gmb_matrix_free(Sinv); gmb_matrix_free(Un); gmb_matrix_free(Uu); gmb_matrix_free(VS); gmb_matrix_free(P); gmb_matrix_decomp_free(d); return -1; }
+    if (dec <= 0) { gmb_matrix_free(Vt); gmb_matrix_free(Uu); gmb_matrix_free(VS); gmb_matrix_free(P); gmb_matrix_decomp_free(d); return -1; }
     gmb_decomp_t* dd = dget(dec);
     dd->b = Uu;   /* U */
     dd->c = P;    /* P */
@@ -1992,8 +2036,6 @@ int64_t gmb_matrix_polar(int64_t a)
      * ciclo di LINALG.POLAR lo esauriva dopo ~30 giri (poi l'eviction poteva liberare la
      * decomposizione in uso → valore 0). La sotto-decomposizione SVD possiede U/S/V. */
     gmb_matrix_free(Vt);
-    gmb_matrix_free(Sinv);
-    gmb_matrix_free(Un);
     gmb_matrix_free(VS);
     gmb_matrix_decomp_free(d);
     return dec;

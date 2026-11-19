@@ -20,7 +20,7 @@ public class V2FlatDifferentialTests
         var dir = new DirectoryInfo(Directory.GetCurrentDirectory());
         while (dir != null)
         {
-            if (File.Exists(Path.Combine(dir.FullName, "GMBASIC.sln"))) return dir.FullName;
+            if (File.Exists(Path.Combine(dir.FullName, "GMBasicSharp", "GMBasicSharp.slnx"))) return dir.FullName;
             dir = dir.Parent;
         }
         return Directory.GetCurrentDirectory();
@@ -30,7 +30,7 @@ public class V2FlatDifferentialTests
 
     private static string RunFlat(string sampleName)
     {
-        var sample = Path.Combine(Root, "samples", "Community", "Concurrency", sampleName);
+        var sample = Path.Combine(Root, "shared", "samples", "Concurrency", sampleName);
         Assert.True(File.Exists(sample), $"Sample mancante: {sample}");
         var program = Basic.Orchestrator.Compile(sample, null, false);
         var asmBuilder = IlProgramCompiler.CompileToAssembly(program, "DiffFlat_" + Guid.NewGuid().ToString("N"), out _);
@@ -66,7 +66,7 @@ public class V2FlatDifferentialTests
 
     private static string RunV2(string sampleName)
     {
-        var sample = Path.Combine(Root, "samples", "Community", "Concurrency", sampleName);
+        var sample = Path.Combine(Root, "shared", "samples", "Concurrency", sampleName);
         var program = Basic.Orchestrator.Compile(sample, null, false);
         var mainDef = program.LoadedModules.Values.SelectMany(m => m.Declarations)
             .OfType<FunctionDefinition>()

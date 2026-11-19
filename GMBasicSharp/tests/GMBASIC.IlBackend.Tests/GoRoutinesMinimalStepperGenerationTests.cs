@@ -22,13 +22,13 @@ public class GoRoutinesMinimalStepperGenerationTests
         var dir = new DirectoryInfo(Directory.GetCurrentDirectory());
         while (dir != null)
         {
-            if (File.Exists(Path.Combine(dir.FullName, "GMBASIC.sln"))) return dir.FullName;
+            if (File.Exists(Path.Combine(dir.FullName, "GMBasicSharp", "GMBasicSharp.slnx"))) return dir.FullName;
             dir = dir.Parent;
         }
         return Directory.GetCurrentDirectory();
     }
 
-    private static string SamplePath => Path.Combine(Root, "samples", "Community", "Concurrency", "GoRoutinesMinimal.bas");
+    private static string SamplePath => Path.Combine(Root, "shared", "samples", "Concurrency", "GoRoutinesMinimal.bas");
 
     private static Assembly CompileAssembly(BasicProgram program)
     {

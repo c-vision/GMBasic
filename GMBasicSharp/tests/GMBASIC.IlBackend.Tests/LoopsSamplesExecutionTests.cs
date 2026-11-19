@@ -18,7 +18,7 @@ public class LoopsSamplesExecutionTests
         var dir = new DirectoryInfo(Directory.GetCurrentDirectory());
         while (dir != null)
         {
-            if (File.Exists(Path.Combine(dir.FullName, "GMBASIC.sln"))) return dir.FullName;
+            if (File.Exists(Path.Combine(dir.FullName, "GMBasicSharp", "GMBasicSharp.slnx"))) return dir.FullName;
             dir = dir.Parent;
         }
         return Directory.GetCurrentDirectory();
@@ -27,7 +27,7 @@ public class LoopsSamplesExecutionTests
     [Fact]
     public void LoopsForSequentialSameLexeme_Produces_Sum55()
     {
-        var sample = Path.Combine(Root, "samples", "Community", "Loops", "LoopsForSequentialSameLexeme.bas");
+        var sample = Path.Combine(Root, "shared", "samples", "Loops", "LoopsForSequentialSameLexeme.bas");
         var output = RunSample(sample);
         Assert.Contains("SUCCESSO", output);
         Assert.Matches(@"Somma=\s*55", output);
@@ -44,7 +44,7 @@ public class LoopsSamplesExecutionTests
         // attivo ora rispettano rispettivamente ArrayInfo.LoadRef e _forLoopState invece di
         // leggere sempre dal bag/default (vedi IlProgramCompiler.Collections.cs/Operators.cs).
         var knownIlGaps = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        var dir = Path.Combine(Root, "samples", "Community", "Loops");
+        var dir = Path.Combine(Root, "shared", "samples", "Loops");
         var samples = Directory.GetFiles(dir, "*.bas", SearchOption.TopDirectoryOnly).OrderBy(f => f).ToArray();
         var failures = new List<string>();
         foreach (var sample in samples)
@@ -80,7 +80,7 @@ public class LoopsSamplesExecutionTests
     [Fact]
     public void LoopsBasics_Completes_With_Expected_Markers()
     {
-        var sample = Path.Combine(Root, "samples", "Community", "Loops", "LoopsBasics.bas");
+        var sample = Path.Combine(Root, "shared", "samples", "Loops", "LoopsBasics.bas");
         var output = RunSample(sample);
         foreach (var marker in new[]
                  {

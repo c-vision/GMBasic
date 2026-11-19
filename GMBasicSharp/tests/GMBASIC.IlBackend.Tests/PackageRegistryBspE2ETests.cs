@@ -17,24 +17,15 @@ namespace Basic.IlBackend.Tests;
 
 public class PackageRegistryBspFrontendTests
 {
+    /// <summary>Radice del monorepo: la directory che contiene GMBasicSharp/ e shared/.</summary>
     private static string FindRoot()
     {
         var dir = new DirectoryInfo(Directory.GetCurrentDirectory());
         while (dir != null)
         {
-            if (File.Exists(Path.Combine(dir.FullName, "GMBASIC.sln"))) return dir.FullName;
-            // MONOREPO: nessuna GMBASIC.sln; la root del repo C e GMBasic/ accanto a GMBasicSharp/
-            if (File.Exists(Path.Combine(dir.FullName, "GMBasicSharp", "GMBasicSharp.slnx")))
-            {
-                // MONOREPO: i sample stanno in <repo>/shared/samples (accanto a GMBasic/).
-                // Si restituisce la base che CONTIENE davvero samples/PackageRegistry.
-                var sharedBase = Path.Combine(dir.FullName, "shared");
-                if (Directory.Exists(Path.Combine(sharedBase, "samples", "Community", "PackageRegistry")))
-                    return sharedBase;
-                var gm = Path.Combine(dir.FullName, "GMBasic");
-                if (Directory.Exists(Path.Combine(gm, "samples", "Community", "PackageRegistry"))) return gm;
-                return gm;
-            }
+            if (Directory.Exists(Path.Combine(dir.FullName, "GMBasicSharp"))
+                && Directory.Exists(Path.Combine(dir.FullName, "shared")))
+                return dir.FullName;
             dir = dir.Parent;
         }
         return Directory.GetCurrentDirectory();
@@ -44,7 +35,7 @@ public class PackageRegistryBspFrontendTests
     public void PackageServer_Compiles()
     {
         var root = FindRoot();
-        var sample = Path.Combine(root, "samples", "Community", "PackageRegistry", "PackageServer.bas");
+        var sample = Path.Combine(root, "shared", "samples", "PackageRegistry", "PackageServer.bas");
         Assert.True(File.Exists(sample));
         var program = Basic.Orchestrator.Compile(sample, null, false);
         Assert.NotNull(program);
@@ -55,7 +46,7 @@ public class PackageRegistryBspFrontendTests
     public void RegistryBsp_Pages_Compile_And_Use_Lowercase_Schema()
     {
         var root = FindRoot();
-        var pages = Path.Combine(root, "samples", "Community", "Web", "RegistryBsp");
+        var pages = Path.Combine(root, "shared", "samples", "Web", "RegistryBsp");
         var index = Path.Combine(pages, "index.bsp");
         var detail = Path.Combine(pages, "package.bsp");
         Assert.True(File.Exists(index));
@@ -103,7 +94,7 @@ public class PackageRegistryBspFrontendTests
     public void PackageServer_Mounts_Frontend_And_Index_Route()
     {
         var root = FindRoot();
-        var sample = Path.Combine(root, "samples", "Community", "PackageRegistry", "PackageServer.bas");
+        var sample = Path.Combine(root, "shared", "samples", "PackageRegistry", "PackageServer.bas");
         var src = File.ReadAllText(sample);
 
         // il registry reale serve le pagine BSP alla radice (route / + HTTP STATIC "/")
@@ -122,7 +113,7 @@ public class PackageRegistryBspFrontendTests
     public void PackageServer_FaseA_Account_Claim_Immutabilita()
     {
         var root = FindRoot();
-        var sample = Path.Combine(root, "samples", "Community", "PackageRegistry", "PackageServer.bas");
+        var sample = Path.Combine(root, "shared", "samples", "PackageRegistry", "PackageServer.bas");
         var src = File.ReadAllText(sample);
 
         // Fase A1: utenti autorizzati gestiti SOLO dall'admin (niente self-register);
@@ -228,7 +219,7 @@ public class PackageRegistryBspFrontendTests
     public void PackageServer_Advisories_Endpoint()
     {
         var root = FindRoot();
-        var sample = Path.Combine(root, "samples", "Community", "PackageRegistry", "PackageServer.bas");
+        var sample = Path.Combine(root, "shared", "samples", "PackageRegistry", "PackageServer.bas");
         var src = File.ReadAllText(sample);
 
         // GET /api/advisories — DB advisory di sicurezza interrogato da `gmb pkg audit`.
@@ -378,14 +369,14 @@ public class PackageRegistryBspFrontendTests
         var root = FindRoot();
         foreach (var name in new[] { "MvcBasicDemo.bas", "MvcFormDemo.bas", "MvcAdvancedDemo.bas", "MvcApiDemo.bas" })
         {
-            var f = Path.Combine(root, "samples", "Community", "Web", "Mvc", name);
+            var f = Path.Combine(root, "shared", "samples", "Web", "Mvc", name);
             Assert.True(File.Exists(f), $"{name} mancante");
             var program = Basic.Orchestrator.Compile(f, null, false);
             Assert.NotNull(program);
             Assert.NotNull(program.MainModule);
         }
         // A4 (azioni senza req/res, iniezione contesto): demo isolata con il framework accanto
-        var a4 = Path.Combine(root, "samples", "Community", "Web", "Mvc", "A4InjectionDemo");
+        var a4 = Path.Combine(root, "shared", "samples", "Web", "Mvc", "A4InjectionDemo");
         Assert.True(File.Exists(Path.Combine(a4, "HttpController.inc")), "HttpController.inc (A4) mancante");
         var a4Program = Basic.Orchestrator.Compile(Path.Combine(a4, "MvcA4Demo.bas"), null, false);
         Assert.NotNull(a4Program);
@@ -394,7 +385,7 @@ public class PackageRegistryBspFrontendTests
         // Esempi MVC aggiuntivi in samples/Http/Mvc (auth + CRUD persistente)
         foreach (var rel in new[] { "AuthDemo", "CrudDemo" })
         {
-            var dir = Path.Combine(root, "samples", "Community", "Http", "Mvc", rel);
+            var dir = Path.Combine(root, "shared", "samples", "Http", "Mvc", rel);
             Assert.True(File.Exists(Path.Combine(dir, "HttpController.inc")), $"HttpController.inc ({rel}) mancante");
             var name = rel == "AuthDemo" ? "MvcAuth.bas" : "MvcCrud.bas";
             var prog = Basic.Orchestrator.Compile(Path.Combine(dir, name), null, false);
@@ -403,7 +394,7 @@ public class PackageRegistryBspFrontendTests
         }
         foreach (var page in new[] { "_Layout.bsp", "_Header.bsp", "form.bsp" })
         {
-            var p = Path.Combine(root, "samples", "Community", "Web", "Mvc", "pages", page);
+            var p = Path.Combine(root, "shared", "samples", "Web", "Mvc", "pages", page);
             Assert.True(File.Exists(p), $"{page} mancante");
             Assert.True(global::Basic.Pipeline.SourcePipeline.CompileBspPage(p, out _),
                 $"{page} non precompila");
@@ -448,10 +439,10 @@ public class PackageRegistryBspFrontendTests
         var root = FindRoot();
         var cases = new[]
         {
-            Path.Combine("samples", "Community", "Classes", "ClassesDestructor.bas"),
-            Path.Combine("samples", "Community", "Classes", "ClassesUpcastReturn.bas"),
-            Path.Combine("samples", "Community", "Classes", "ClassesInterfacesNamespace", "ClassesInterfacesNamespace.bas"),
-            Path.Combine("samples", "Community", "Classes", "ClassesInheritsCrossFile", "MezziDemo.bas"),
+            Path.Combine("shared", "samples", "Classes", "ClassesDestructor.bas"),
+            Path.Combine("shared", "samples", "Classes", "ClassesUpcastReturn.bas"),
+            Path.Combine("shared", "samples", "Classes", "ClassesInterfacesNamespace", "ClassesInterfacesNamespace.bas"),
+            Path.Combine("shared", "samples", "Classes", "ClassesInheritsCrossFile", "MezziDemo.bas"),
         };
         foreach (var rel in cases)
         {

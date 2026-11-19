@@ -137,6 +137,18 @@ internal static class MatrixNativeKernels
     private static extern long NativeEig(long a);
     [DllImport(Lib, EntryPoint = "gmb_matrix_schur", CallingConvention = CallingConvention.Cdecl)]
     private static extern long NativeSchur(long a);
+    [DllImport(Lib, EntryPoint = "gmb_matrix_lu", CallingConvention = CallingConvention.Cdecl)]
+    private static extern long NativeLu(long a);
+    [DllImport(Lib, EntryPoint = "gmb_matrix_qr", CallingConvention = CallingConvention.Cdecl)]
+    private static extern long NativeQr(long a);
+    [DllImport(Lib, EntryPoint = "gmb_matrix_svd", CallingConvention = CallingConvention.Cdecl)]
+    private static extern long NativeSvd(long a);
+    [DllImport(Lib, EntryPoint = "gmb_matrix_evd", CallingConvention = CallingConvention.Cdecl)]
+    private static extern long NativeEvd(long a);
+    [DllImport(Lib, EntryPoint = "gmb_matrix_cholesky", CallingConvention = CallingConvention.Cdecl)]
+    private static extern long NativeCholesky(long a);
+    [DllImport(Lib, EntryPoint = "gmb_matrix_decomp_get_factor_named_ex", CallingConvention = CallingConvention.Cdecl)]
+    private static extern long NativeDecompGetFactorNamedEx(long decomp, string name, out int owned);
     [DllImport(Lib, EntryPoint = "gmb_matrix_decomp_free", CallingConvention = CallingConvention.Cdecl)]
     private static extern void NativeDecompFree(long decomp);
 
@@ -445,6 +457,86 @@ internal static class MatrixNativeKernels
                 }
             }
             finally { NativeDecompFree(edec); }
+        }
+        catch (DllNotFoundException) { MarkUnavailable(); return false; }
+        catch (EntryPointNotFoundException) { MarkUnavailable(); return false; }
+        catch (BadImageFormatException) { MarkUnavailable(); return false; }
+        finally { MatrixFree(h); }
+    }
+
+    /// <summary>Legge un fattore per NOME (liberando l'handle se il kernel ne ha creato uno nuovo).</summary>
+    private static bool CopyFactorMatrix(long dec, string name, NativeDecomposition nd)
+    {
+        var fh = NativeDecompGetFactorNamedEx(dec, name, out var owned);
+        try
+        {
+            if (fh <= 0) return false;
+            var m = ReadDense(fh);
+            if (m is null) return false;
+            nd.AddMatrix(name, m);
+            return true;
+        }
+        finally { if (owned != 0 && fh > 0) MatrixFree(fh); }
+    }
+
+    /// <summary>Come <see cref="CopyFactorMatrix"/> ma per i fattori che sono VETTORI (N×1).</summary>
+    private static bool CopyFactorVector(long dec, string name, NativeDecomposition nd)
+    {
+        var fh = NativeDecompGetFactorNamedEx(dec, name, out var owned);
+        try
+        {
+            if (fh <= 0) return false;
+            var m = ReadDense(fh);
+            if (m is null) return false;
+            var v = Vector<double>.Build.Dense(m.RowCount * m.ColumnCount);
+            var k = 0;
+            for (var i = 0; i < m.RowCount; i++)
+                for (var j = 0; j < m.ColumnCount; j++) v[k++] = m[i, j];
+            nd.AddVector(name, v);
+            return true;
+        }
+        finally { if (owned != 0 && fh > 0) MatrixFree(fh); }
+    }
+
+    /// <summary>
+    /// LU/QR/SVD/EVD/Cholesky con i kernel C: i fattori sono materializzati subito e
+    /// l'handle della decomposizione viene rilasciato (nessun handle C resta vivo).
+    /// `false` = lib non caricabile oppure decomposizione impossibile (es. Cholesky su
+    /// matrice non definita positiva, che il kernel rifiuta esplicitamente).
+    /// </summary>
+    internal static bool TryDecompose(Matrix<double> a, NativeDecompKind kind, out NativeDecomposition result)
+    {
+        result = null!;
+        if (!TryToNative(a, out var h)) return false;
+        try
+        {
+            var dec = kind switch
+            {
+                NativeDecompKind.Lu => NativeLu(h),
+                NativeDecompKind.Qr => NativeQr(h),
+                NativeDecompKind.Svd => NativeSvd(h),
+                NativeDecompKind.Evd => NativeEvd(h),
+                _ => NativeCholesky(h)
+            };
+            if (dec <= 0) return false;
+            try
+            {
+                var nd = new NativeDecomposition();
+                var ok = kind switch
+                {
+                    NativeDecompKind.Lu => CopyFactorMatrix(dec, "L", nd) && CopyFactorMatrix(dec, "U", nd),
+                    NativeDecompKind.Qr => CopyFactorMatrix(dec, "Q", nd) && CopyFactorMatrix(dec, "R", nd),
+                    NativeDecompKind.Svd => CopyFactorMatrix(dec, "U", nd) && CopyFactorMatrix(dec, "S", nd)
+                                            && CopyFactorMatrix(dec, "VT", nd) && CopyFactorVector(dec, "SVECTOR", nd),
+                    NativeDecompKind.Evd => CopyFactorMatrix(dec, "D", nd) && CopyFactorMatrix(dec, "V", nd)
+                                            && CopyFactorVector(dec, "DREAL", nd) && CopyFactorVector(dec, "DIMAG", nd),
+                    _ => CopyFactorMatrix(dec, "L", nd)
+                };
+                if (!ok) return false;
+                result = nd;
+                return true;
+            }
+            finally { NativeDecompFree(dec); }
         }
         catch (DllNotFoundException) { MarkUnavailable(); return false; }
         catch (EntryPointNotFoundException) { MarkUnavailable(); return false; }

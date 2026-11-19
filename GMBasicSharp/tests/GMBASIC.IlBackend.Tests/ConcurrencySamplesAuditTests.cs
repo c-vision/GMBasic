@@ -20,7 +20,7 @@ public class ConcurrencySamplesAuditTests
         var dir = new DirectoryInfo(Directory.GetCurrentDirectory());
         while (dir != null)
         {
-            if (File.Exists(Path.Combine(dir.FullName, "GMBASIC.sln"))) return dir.FullName;
+            if (File.Exists(Path.Combine(dir.FullName, "GMBasicSharp", "GMBasicSharp.slnx"))) return dir.FullName;
             dir = dir.Parent;
         }
         return Directory.GetCurrentDirectory();
@@ -38,7 +38,7 @@ public class ConcurrencySamplesAuditTests
     [InlineData("GoSelectSimple.bas")]
     public void Compile_Concurrency_Sample(string sampleName)
     {
-        var sample = Path.Combine(Root, "samples", "Community", "Concurrency", sampleName);
+        var sample = Path.Combine(Root, "shared", "samples", "Concurrency", sampleName);
         if (!File.Exists(sample))
         {
             Console.WriteLine($"[audit] {sampleName}: MANCANTE");
@@ -87,7 +87,7 @@ public class ConcurrencySamplesAuditTests
     [InlineData("GoRoutinesWorkers.bas")]
     public void Execute_Concurrency_Sample_Via_Gpm(string sampleName)
     {
-        var sample = Path.Combine(Root, "samples", "Community", "Concurrency", sampleName);
+        var sample = Path.Combine(Root, "shared", "samples", "Concurrency", sampleName);
         Assert.True(File.Exists(sample), $"Sample mancante: {sample}");
         var program = Basic.Orchestrator.Compile(sample, null, false);
         var assembly = CompileAssembly(program);

@@ -42,13 +42,13 @@ public sealed class RecursiveMasGateTests : IDisposable
         var dir = new DirectoryInfo(Directory.GetCurrentDirectory());
         while (dir is not null)
         {
-            if (File.Exists(Path.Combine(dir.FullName, "GMBASIC.sln"))) return dir.FullName;
+            if (File.Exists(Path.Combine(dir.FullName, "GMBasicSharp", "GMBasicSharp.slnx"))) return dir.FullName;
             dir = dir.Parent;
         }
         return Directory.GetCurrentDirectory();
     }
 
-    private static string Dataset(string name) => Path.Combine(RepoRoot(), "samples", "Fixtures", "ai", name);
+    private static string Dataset(string name) => Path.Combine(RepoRoot(), "shared", "samples", "Fixtures", "ai", name);
 
     [Fact(DisplayName = "Gate §7: il benchmark gira end-to-end su math500.jsonl (fixture) — acc/token/time per text/embed/native")]
     public void Benchmark_RunAllModes_OnMath500Fixture_Completes()

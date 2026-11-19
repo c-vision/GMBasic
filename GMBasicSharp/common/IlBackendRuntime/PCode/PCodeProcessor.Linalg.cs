@@ -682,26 +682,26 @@ internal sealed partial class PCodeProcessor
         if (m.RowCount * m.ColumnCount >= 1024) // soglia piano §20.2: decomposizioni O(n³) sul pool
             return ParkCpuBuiltin(task, () =>
             {
-                switch (kind)
-                {
-                    case "lu": _linDecompositions[newId] = m.LU(); break;
-                    case "qr": _linDecompositions[newId] = m.QR(); break;
-                    case "svd": _linDecompositions[newId] = m.Svd(); break;
-                    case "evd": _linDecompositions[newId] = m.Evd(); break;
-                    default: _linDecompositions[newId] = m.Cholesky(); break;
-                }
+                _linDecompositions[newId] = NativeDecomp(m, kind);
                 return Value();
             });
-        switch (kind)
-        {
-            case "lu": _linDecompositions[newId] = m.LU(); break;
-            case "qr": _linDecompositions[newId] = m.QR(); break;
-            case "svd": _linDecompositions[newId] = m.Svd(); break;
-            case "evd": _linDecompositions[newId] = m.Evd(); break;
-            default: _linDecompositions[newId] = m.Cholesky(); break;
-        }
+        _linDecompositions[newId] = NativeDecomp(m, kind);
         return Value();
     }
+
+    /// <summary>Decomposizione eseguita dal runtime C (unica fonte: kernel condivisi con VM/C e
+    /// C99Native). `null` solo se la lib non è caricabile o l'operazione è impossibile.</summary>
+    private static object? NativeDecomp(
+        global::MathNet.Numerics.LinearAlgebra.Matrix<double> m, string kind)
+        => global::CommonLib.NativeDecomposition.Create(
+            m, kind switch
+            {
+                "lu" => global::CommonLib.NativeDecompKind.Lu,
+                "qr" => global::CommonLib.NativeDecompKind.Qr,
+                "svd" => global::CommonLib.NativeDecompKind.Svd,
+                "evd" => global::CommonLib.NativeDecompKind.Evd,
+                _ => global::CommonLib.NativeDecompKind.Cholesky
+            });
 
     private object? LuDecompGetFactor(object?[] args)
     {
@@ -730,6 +730,14 @@ internal sealed partial class PCodeProcessor
         global::MathNet.Numerics.LinearAlgebra.Vector<double>? vectorFactor = null;
         switch (decomp)
         {
+            case global::CommonLib.NativeDecomposition native:
+                if (native.TryVector(factorName, out var nvec))
+                {
+                    vectorFactor = nvec;
+                    break;
+                }
+                if (native.TryMatrix(factorName, out var nmat)) matrixFactor = nmat;
+                break;
             case LU<double> lu:
                 matrixFactor = factorName.ToUpperInvariant() switch
                 {

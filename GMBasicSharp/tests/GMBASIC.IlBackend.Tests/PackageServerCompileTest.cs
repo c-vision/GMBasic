@@ -11,31 +11,22 @@ public class PackageServerCompileTest
     public void PackageServer_Compiles()
     {
         var root = FindRoot();
-        var sample = Path.Combine(root, "samples", "Community", "PackageRegistry", "PackageServer.bas");
+        var sample = Path.Combine(root, "shared", "samples", "PackageRegistry", "PackageServer.bas");
         Assert.True(File.Exists(sample));
         var program = Basic.Orchestrator.Compile(sample, null, false);
         Assert.NotNull(program);
         Assert.NotNull(program.MainModule);
         Assert.NotEmpty(program.PreprocessedFiles);
     }
+    /// <summary>Radice del monorepo: la directory che contiene GMBasicSharp/ e shared/.</summary>
     private static string FindRoot()
     {
         var dir = new DirectoryInfo(Directory.GetCurrentDirectory());
         while (dir != null)
         {
-            if (File.Exists(Path.Combine(dir.FullName, "GMBASIC.sln"))) return dir.FullName;
-            // MONOREPO: nessuna GMBASIC.sln; la root del repo C e GMBasic/ (accanto a GMBasicSharp/)
-            if (File.Exists(Path.Combine(dir.FullName, "GMBasicSharp", "GMBasicSharp.slnx")))
-            {
-                // MONOREPO: i sample stanno in <repo>/shared/samples (accanto a GMBasic/).
-                // Si restituisce la base che CONTIENE davvero samples/PackageRegistry.
-                var sharedBase = Path.Combine(dir.FullName, "shared");
-                if (Directory.Exists(Path.Combine(sharedBase, "samples", "Community", "PackageRegistry")))
-                    return sharedBase;
-                var gm = Path.Combine(dir.FullName, "GMBasic");
-                if (Directory.Exists(Path.Combine(gm, "samples", "Community", "PackageRegistry"))) return gm;
-                return gm;
-            }
+            if (Directory.Exists(Path.Combine(dir.FullName, "GMBasicSharp"))
+                && Directory.Exists(Path.Combine(dir.FullName, "shared")))
+                return dir.FullName;
             dir = dir.Parent;
         }
         return Directory.GetCurrentDirectory();

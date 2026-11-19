@@ -18,7 +18,7 @@ public class AiProviderUnifiedSamplesExecutionTests
         var dir = new DirectoryInfo(Directory.GetCurrentDirectory());
         while (dir != null)
         {
-            if (File.Exists(Path.Combine(dir.FullName, "GMBASIC.sln"))) return dir.FullName;
+            if (File.Exists(Path.Combine(dir.FullName, "GMBasicSharp", "GMBasicSharp.slnx"))) return dir.FullName;
             dir = dir.Parent;
         }
         return Directory.GetCurrentDirectory();
@@ -56,7 +56,7 @@ public class AiProviderUnifiedSamplesExecutionTests
     [Fact]
     public void ProviderFailover_AiNamespace_Runs()
     {
-        var output = RunSample(Path.Combine(Root, "samples", "Community", "Ai", "ProviderFailover.bas"));
+        var output = RunSample(Path.Combine(Root, "shared", "samples", "Ai", "ProviderFailover.bas"));
         Assert.Contains("Registrato primary-emb", output);
         Assert.Contains("Test Completato", output);
     }
@@ -64,14 +64,14 @@ public class AiProviderUnifiedSamplesExecutionTests
     [Fact]
     public void ProviderConfigure_AiNamespace_Runs()
     {
-        var output = RunSample(Path.Combine(Root, "samples", "Community", "Ai", "ProviderConfigure.bas"));
+        var output = RunSample(Path.Combine(Root, "shared", "samples", "Ai", "ProviderConfigure.bas"));
         Assert.Contains("Attivo finale", output);
     }
 
     [Fact]
     public void ProviderStatus_AiNamespace_Runs()
     {
-        var output = RunSample(Path.Combine(Root, "samples", "Community", "Ai", "ProviderStatus.bas"));
+        var output = RunSample(Path.Combine(Root, "shared", "samples", "Ai", "ProviderStatus.bas"));
         Assert.Contains("Test Completato", output);
     }
 }

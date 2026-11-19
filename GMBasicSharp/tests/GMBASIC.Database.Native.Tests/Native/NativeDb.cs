@@ -21,7 +21,7 @@ internal static class NativeDb
             var dir = new DirectoryInfo(Directory.GetCurrentDirectory());
             while (dir != null)
             {
-                if (File.Exists(Path.Combine(dir.FullName, "GMBASIC.sln")))
+                if (File.Exists(Path.Combine(dir.FullName, "GMBasicSharp", "GMBasicSharp.slnx")))
                     return dir.FullName;
                 dir = dir.Parent;
             }
@@ -36,14 +36,14 @@ internal static class NativeDb
         {
             if (_ready) return;
             var root = RepoRoot;
-            var srcDir = Path.Combine(root, "native", "gmb_db_c");
+            var srcDir = Path.Combine(root, "GMBasic", "native", "gmb_db_c");
             var outDir = Path.Combine(Path.GetTempPath(), "gmb_db_native");
             Directory.CreateDirectory(outDir);
             var libName = OperatingSystem.IsWindows() ? "gmb_db.dll"
                 : OperatingSystem.IsMacOS() ? "libgmb_db.dylib" : "libgmb_db.so";
             var libPath = Path.Combine(outDir, libName);
             var inc = Path.Combine(srcDir, "include");
-            var rtInc = Path.Combine(root, "native", "gmb_runtime_c", "include");
+            var rtInc = Path.Combine(root, "GMBasic", "native", "gmb_runtime_c", "include");
             var sharedFlag = OperatingSystem.IsMacOS() ? "-dynamiclib" : "-shared";
             // Preferisce le lib statiche pre-buildate (cmake build, aggiornate e veloci);
             // se mancano, compila i sorgenti gmb_db_c (fallback lento per bootstrap).

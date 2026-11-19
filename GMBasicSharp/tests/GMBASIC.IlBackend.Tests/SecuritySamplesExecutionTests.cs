@@ -18,7 +18,7 @@ public class SecuritySamplesExecutionTests
         var dir = new DirectoryInfo(Directory.GetCurrentDirectory());
         while (dir != null)
         {
-            if (File.Exists(Path.Combine(dir.FullName, "GMBASIC.sln"))) return dir.FullName;
+            if (File.Exists(Path.Combine(dir.FullName, "GMBasicSharp", "GMBasicSharp.slnx"))) return dir.FullName;
             dir = dir.Parent;
         }
         return Directory.GetCurrentDirectory();
@@ -56,7 +56,7 @@ public class SecuritySamplesExecutionTests
     [Fact]
     public void HmacAndBase64Url_Sample_Runs_And_Verifies()
     {
-        var output = RunSample(Path.Combine(Root, "samples", "Community", "Security", "HmacAndBase64Url.bas"));
+        var output = RunSample(Path.Combine(Root, "shared", "samples", "Security", "HmacAndBase64Url.bas"));
         Assert.Contains("HMAC256 VECTOR OK", output);
         Assert.Contains("B64URL ROUNDTRIP OK", output);
         Assert.Contains("HMAC-SHA384", output);
@@ -66,7 +66,7 @@ public class SecuritySamplesExecutionTests
     [Fact]
     public void EncodingDemo_Sample_Runs_And_Verifies()
     {
-        var output = RunSample(Path.Combine(Root, "samples", "Community", "Security", "EncodingDemo.bas"));
+        var output = RunSample(Path.Combine(Root, "shared", "samples", "Security", "EncodingDemo.bas"));
         Assert.Contains("HTML ENCODE OK", output);
         Assert.Contains("URL ENCODE OK", output);
         Assert.Contains("a\\\"b", output);   // JSENCODE("a"b) -> a\"b
@@ -76,7 +76,7 @@ public class SecuritySamplesExecutionTests
     [Fact]
     public void JwtDemo_Sample_Runs_And_Verifies()
     {
-        var output = RunSample(Path.Combine(Root, "samples", "Community", "Security", "JwtDemo.bas"));
+        var output = RunSample(Path.Combine(Root, "shared", "samples", "Security", "JwtDemo.bas"));
         Assert.Contains("VERIFY OK", output);
         Assert.Contains("TAMPER DETECTED", output);
         Assert.Contains("PAYLOAD MATCH", output);
@@ -85,7 +85,7 @@ public class SecuritySamplesExecutionTests
     [Fact]
     public void SecureTokens_Sample_Runs_And_Verifies()
     {
-        var output = RunSample(Path.Combine(Root, "samples", "Community", "Security", "SecureTokens.bas"));
+        var output = RunSample(Path.Combine(Root, "shared", "samples", "Security", "SecureTokens.bas"));
         Assert.Contains("PWHASH OK", output);
         Assert.Contains("PWV NEG OK", output);
         Assert.Contains("SIG:", output);
@@ -94,7 +94,7 @@ public class SecuritySamplesExecutionTests
     [Fact]
     public void HttpConfigSecurity_Sample_Runs_And_Verifies()
     {
-        var output = RunSample(Path.Combine(Root, "samples", "Community", "Security", "HttpConfigSecurity.bas"));
+        var output = RunSample(Path.Combine(Root, "shared", "samples", "Security", "HttpConfigSecurity.bas"));
         Assert.Contains("SEC_HEADERS OK", output);
         Assert.Contains("ALLOW OK", output);
         Assert.Contains("BLOCK OK", output);
@@ -104,7 +104,7 @@ public class SecuritySamplesExecutionTests
     [Fact]
     public void XssSafeOutput_Sample_Runs_And_Verifies()
     {
-        var output = RunSample(Path.Combine(Root, "samples", "Community", "Security", "XssSafeOutput.bas"));
+        var output = RunSample(Path.Combine(Root, "shared", "samples", "Security", "XssSafeOutput.bas"));
         Assert.Contains("XSS SAFE OK", output);
         Assert.Contains("URL SAFE OK", output);
         Assert.Contains("demo done", output);
@@ -113,7 +113,7 @@ public class SecuritySamplesExecutionTests
     [Fact]
     public void AuthFlowDemo_Sample_Runs_And_Verifies()
     {
-        var output = RunSample(Path.Combine(Root, "samples", "Community", "Security", "AuthFlowDemo.bas"));
+        var output = RunSample(Path.Combine(Root, "shared", "samples", "Security", "AuthFlowDemo.bas"));
         Assert.Contains("AUTH OK (admin)", output);
         Assert.Contains("AUTH OK (user)", output);
         Assert.Contains("WRONG PASSWORD", output);
@@ -123,7 +123,7 @@ public class SecuritySamplesExecutionTests
     [Fact]
     public void HttpSessionsDemo_Sample_Runs_And_Verifies()
     {
-        var output = RunSample(Path.Combine(Root, "samples", "Community", "Security", "HttpSessionsDemo.bas"));
+        var output = RunSample(Path.Combine(Root, "shared", "samples", "Security", "HttpSessionsDemo.bas"));
         Assert.Contains("SESSIONS OK", output);
         Assert.Contains("demo done", output);
     }
@@ -131,7 +131,7 @@ public class SecuritySamplesExecutionTests
     [Fact]
     public void HttpSessionsFileDemo_Sample_Runs_And_Verifies()
     {
-        var output = RunSample(Path.Combine(Root, "samples", "Community", "Security", "HttpSessionsFileDemo.bas"));
+        var output = RunSample(Path.Combine(Root, "shared", "samples", "Security", "HttpSessionsFileDemo.bas"));
         Assert.Contains("SESSIONFILE OK", output);
         Assert.Contains("demo done", output);
     }
@@ -139,7 +139,7 @@ public class SecuritySamplesExecutionTests
     [Fact]
     public void SessionsChooseBackend_Sample_Runs_And_Verifies()
     {
-        var output = RunSample(Path.Combine(Root, "samples", "Community", "Security", "SessionsChooseBackend.bas"));
+        var output = RunSample(Path.Combine(Root, "shared", "samples", "Security", "SessionsChooseBackend.bas"));
         Assert.Contains("BACKEND FILE OK", output);
         Assert.Contains("demo done", output);
     }
@@ -147,7 +147,7 @@ public class SecuritySamplesExecutionTests
     [Fact]
     public void BspEscapingPage_Compiles_With_AutoEscape_And_Raw()
     {
-        var path = Path.Combine(Root, "samples", "Community", "Security", "pages", "EscapingDemo.bsp");
+        var path = Path.Combine(Root, "shared", "samples", "Security", "pages", "EscapingDemo.bsp");
         var code = CommonLib.Http.BspCompiler.Compile(File.ReadAllText(path), path);
         Assert.Contains("IMPORT STRINGS", code);
         Assert.Contains("HTMLENCODE(userInput$)", code);   // <%= %> escaped di default
@@ -158,7 +158,7 @@ public class SecuritySamplesExecutionTests
     [Fact]
     public void UploadValidationDemo_Sample_Runs_And_Verifies()
     {
-        var output = RunSample(Path.Combine(Root, "samples", "Community", "Security", "UploadValidationDemo.bas"));
+        var output = RunSample(Path.Combine(Root, "shared", "samples", "Security", "UploadValidationDemo.bas"));
         Assert.Contains("SAFE NAME OK", output);
         Assert.Contains("demo done", output);
     }
@@ -166,7 +166,7 @@ public class SecuritySamplesExecutionTests
     [Fact]
     public void ServerAuthDemo_Compiles()
     {
-        var sample = Path.Combine(Root, "samples", "Community", "Security", "ServerAuthDemo.bas");
+        var sample = Path.Combine(Root, "shared", "samples", "Security", "ServerAuthDemo.bas");
         Assert.True(File.Exists(sample));
         var program = Basic.Orchestrator.Compile(sample, null, false);
         Assert.NotNull(program);
@@ -176,7 +176,7 @@ public class SecuritySamplesExecutionTests
     [Fact]
     public void AdminBsp_AUTHORIZE_Compiles_With_SessionGuards()
     {
-        var path = Path.Combine(Root, "samples", "Community", "Security", "pages", "admin.bsp");
+        var path = Path.Combine(Root, "shared", "samples", "Security", "pages", "admin.bsp");
         var code = CommonLib.Http.BspCompiler.Compile(File.ReadAllText(path), path);
         Assert.Contains("401", code);
         Assert.Contains("403", code);
@@ -186,7 +186,7 @@ public class SecuritySamplesExecutionTests
     [Fact]
     public void HeadersProtectionDemo_Compiles()
     {
-        var sample = Path.Combine(Root, "samples", "Community", "Security", "HeadersProtectionDemo.bas");
+        var sample = Path.Combine(Root, "shared", "samples", "Security", "HeadersProtectionDemo.bas");
         Assert.True(File.Exists(sample));
         var program = Basic.Orchestrator.Compile(sample, null, false);
         Assert.NotNull(program);
@@ -196,7 +196,7 @@ public class SecuritySamplesExecutionTests
     [Fact]
     public void ValidationDemo_Sample_Runs_And_Verifies()
     {
-        var output = RunSample(Path.Combine(Root, "samples", "Community", "Security", "ValidationDemo.bas"));
+        var output = RunSample(Path.Combine(Root, "shared", "samples", "Security", "ValidationDemo.bas"));
         Assert.Contains("REQ OK", output);
         Assert.Contains("EMAIL OK", output);
         Assert.Contains("URL OK", output);
@@ -208,7 +208,7 @@ public class SecuritySamplesExecutionTests
     [Fact]
     public void ValidationFluentDemo_Sample_Runs_And_Verifies()
     {
-        var output = RunSample(Path.Combine(Root, "samples", "Community", "Security", "ValidationFluentDemo.bas"));
+        var output = RunSample(Path.Combine(Root, "shared", "samples", "Security", "ValidationFluentDemo.bas"));
         Assert.Contains("INVALID OK", output);
         Assert.Contains("VALID OK", output);
         Assert.Contains("done", output);
@@ -217,7 +217,7 @@ public class SecuritySamplesExecutionTests
     [Fact]
     public void OAuthMockIdpServer_Subprocess_E2E()
     {
-        var source = Path.Combine(Root, "samples", "Community", "Security", "OAuthMockIdpServer.bas");
+        var source = Path.Combine(Root, "shared", "samples", "Security", "OAuthMockIdpServer.bas");
         var program = Basic.Orchestrator.Compile(source, null, false);
         var sampleDir = Path.Combine(Path.GetTempPath(), "gm_oauthidp_" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(sampleDir);
@@ -280,7 +280,7 @@ public class SecuritySamplesExecutionTests
     [Fact]
     public void OAuthDemo_Sample_Runs_And_Verifies()
     {
-        var output = RunSample(Path.Combine(Root, "samples", "Community", "Security", "OAuthDemo.bas"));
+        var output = RunSample(Path.Combine(Root, "shared", "samples", "Security", "OAuthDemo.bas"));
         Assert.Contains("AUTHURL OK", output);
         Assert.Contains("PKCE OK", output);
         Assert.Contains("CC OK", output);
@@ -291,7 +291,7 @@ public class SecuritySamplesExecutionTests
     [Fact]
     public void OAuthPKCEFlowDemo_Sample_Runs_And_Verifies()
     {
-        var output = RunSample(Path.Combine(Root, "samples", "Community", "Security", "OAuthPKCEFlowDemo.bas"));
+        var output = RunSample(Path.Combine(Root, "shared", "samples", "Security", "OAuthPKCEFlowDemo.bas"));
         Assert.Contains("AUTH URL OK", output);
         Assert.Contains("STATE OK", output);
         Assert.Contains("CALLBACK TOKEN BODY OK", output);
@@ -301,7 +301,7 @@ public class SecuritySamplesExecutionTests
     [Fact]
     public void OAuthClientCredentialsDemo_Sample_Runs_And_Verifies()
     {
-        var output = RunSample(Path.Combine(Root, "samples", "Community", "Security", "OAuthClientCredentialsDemo.bas"));
+        var output = RunSample(Path.Combine(Root, "shared", "samples", "Security", "OAuthClientCredentialsDemo.bas"));
         Assert.Contains("ENDPOINT OK", output);
         Assert.Contains("CC BODY OK", output);
         Assert.Contains("done", output);
@@ -312,7 +312,7 @@ public class SecuritySamplesExecutionTests
     {
         foreach (var name in new[] { "oauth-login.bsp", "oauth-callback.bsp" })
         {
-            var path = Path.Combine(Root, "samples", "Community", "Security", "pages", name);
+            var path = Path.Combine(Root, "shared", "samples", "Security", "pages", name);
             var code = CommonLib.Http.BspCompiler.Compile(File.ReadAllText(path), path);
             Assert.Contains("IMPORT", code);
             Assert.Contains("OAUTH", code);
@@ -322,7 +322,7 @@ public class SecuritySamplesExecutionTests
     [Fact]
     public void AuthMvcDemo_Compiles()
     {
-        var sample = Path.Combine(Root, "samples", "Community", "Security", "AuthMvcDemo.bas");
+        var sample = Path.Combine(Root, "shared", "samples", "Security", "AuthMvcDemo.bas");
         Assert.True(File.Exists(sample));
         var program = Basic.Orchestrator.Compile(sample, null, false);
         Assert.NotNull(program);
@@ -332,7 +332,7 @@ public class SecuritySamplesExecutionTests
     [Fact]
     public void RbacUnitDemo_Sample_Runs_And_Verifies()
     {
-        var output = RunSample(Path.Combine(Root, "samples", "Community", "Security", "RbacUnitDemo.bas"));
+        var output = RunSample(Path.Combine(Root, "shared", "samples", "Security", "RbacUnitDemo.bas"));
         Assert.Contains("ADMIN OK", output);
         Assert.Contains("ROLE DENY OK", output);
         Assert.Contains("NOTAUTH OK", output);

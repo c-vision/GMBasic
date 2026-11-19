@@ -25,13 +25,13 @@ public class RddRealFileDriversTests
         get
         {
             var dir = new DirectoryInfo(Directory.GetCurrentDirectory());
-            while (dir != null && !File.Exists(Path.Combine(dir.FullName, "GMBASIC.sln"))) dir = dir.Parent;
+            while (dir != null && !File.Exists(Path.Combine(dir.FullName, "GMBasicSharp", "GMBasicSharp.slnx"))) dir = dir.Parent;
             return dir?.FullName ?? Directory.GetCurrentDirectory();
         }
     }
 
-    private static string FixturesDir => Path.Combine(RepoRoot, "samples", "Fixtures");
-    private static string WorkDir => Path.Combine(RepoRoot, "samples", "database", "work");
+    private static string FixturesDir => Path.Combine(RepoRoot, "shared", "samples", "Fixtures");
+    private static string WorkDir => Path.Combine(RepoRoot, "shared", "samples", "database", "work");
     private static string Fixture(string name) => Path.Combine(FixturesDir, name);
     private static string Work(string name) => Path.Combine(WorkDir, name);
 

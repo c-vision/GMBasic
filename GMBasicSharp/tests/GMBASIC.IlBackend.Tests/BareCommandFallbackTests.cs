@@ -21,7 +21,7 @@ public class BareCommandFallbackTests
         get
         {
             var dir = new DirectoryInfo(Directory.GetCurrentDirectory());
-            while (dir != null && !File.Exists(Path.Combine(dir.FullName, "GMBASIC.sln"))) dir = dir.Parent;
+            while (dir != null && !File.Exists(Path.Combine(dir.FullName, "GMBasicSharp", "GMBasicSharp.slnx"))) dir = dir.Parent;
             return dir?.FullName ?? Directory.GetCurrentDirectory();
         }
     }
@@ -29,7 +29,7 @@ public class BareCommandFallbackTests
     [Fact]
     public void BareCommandFallback_Sample_Runs_Via_Il()
     {
-        var sample = Path.Combine(Root, "samples", "Community", "Databases", "BareCommandFallback.bas");
+        var sample = Path.Combine(Root, "shared", "samples", "Databases", "BareCommandFallback.bas");
         var output = RunSample(sample);
         Assert.Contains("1. USE bare (VIA -> RDD) -> OK", output);
         Assert.Contains("2. REPLACE bare ALL -> OK", output);
@@ -44,7 +44,7 @@ public class BareCommandFallbackTests
     public void RddScopedStatements_EmitValidIl()
     {
         var program = Basic.Orchestrator.Compile(
-            Path.Combine(Root, "samples", "Community", "Databases", "BareCommandFallback.bas"), null, false);
+            Path.Combine(Root, "shared", "samples", "Databases", "BareCommandFallback.bas"), null, false);
         var asmBuilder = IlProgramCompiler.CompileToAssembly(program, "Bare_" + Guid.NewGuid().ToString("N"), out _);
         using var ms = new MemoryStream();
         asmBuilder.Save(ms);

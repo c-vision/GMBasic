@@ -1478,34 +1478,24 @@ public static partial class IlRuntime
     }
 
     public static long MatrixLu(long handle)
-    {
-        var matrix = Matrix(handle);
-        return StoreDecomposition(MathNet.Numerics.LinearAlgebra.Double.DenseMatrix.OfArray(matrix).LU());
-    }
+        => StoreDecomposition(global::CommonLib.NativeDecomposition.Create(ToMathNet(Matrix(handle)), NativeDecompKind.Lu)
+           ?? throw new NotSupportedException("LINALG.LU: kernel C `gmb_matrix_lu` non disponibile (libgmb_matrix_flat)."));
 
     public static long MatrixQr(long handle)
-    {
-        var matrix = Matrix(handle);
-        return StoreDecomposition(MathNet.Numerics.LinearAlgebra.Double.DenseMatrix.OfArray(matrix).QR());
-    }
+        => StoreDecomposition(global::CommonLib.NativeDecomposition.Create(ToMathNet(Matrix(handle)), NativeDecompKind.Qr)
+           ?? throw new NotSupportedException("LINALG.QR: kernel C `gmb_matrix_qr` non disponibile (libgmb_matrix_flat)."));
 
     public static long MatrixSvd(long handle)
-    {
-        var matrix = Matrix(handle);
-        return StoreDecomposition(MathNet.Numerics.LinearAlgebra.Double.DenseMatrix.OfArray(matrix).Svd());
-    }
+        => StoreDecomposition(global::CommonLib.NativeDecomposition.Create(ToMathNet(Matrix(handle)), NativeDecompKind.Svd)
+           ?? throw new NotSupportedException("LINALG.SVD: kernel C `gmb_matrix_svd` non disponibile (libgmb_matrix_flat)."));
 
     public static long MatrixEvd(long handle)
-    {
-        var matrix = Matrix(handle);
-        return StoreDecomposition(MathNet.Numerics.LinearAlgebra.Double.DenseMatrix.OfArray(matrix).Evd());
-    }
+        => StoreDecomposition(global::CommonLib.NativeDecomposition.Create(ToMathNet(Matrix(handle)), NativeDecompKind.Evd)
+           ?? throw new NotSupportedException("LINALG.EVD: kernel C `gmb_matrix_evd` non disponibile (libgmb_matrix_flat)."));
 
     public static long MatrixCholesky(long handle)
-    {
-        var matrix = Matrix(handle);
-        return StoreDecomposition(MathNet.Numerics.LinearAlgebra.Double.DenseMatrix.OfArray(matrix).Cholesky());
-    }
+        => StoreDecomposition(global::CommonLib.NativeDecomposition.Create(ToMathNet(Matrix(handle)), NativeDecompKind.Cholesky)
+           ?? throw new NotSupportedException("LINALG.CHOLESKY: matrice non definita positiva o kernel C `gmb_matrix_cholesky` non disponibile."));
 
     // ---- scipy.linalg completato: funzioni matriciali e SVD-based ----
     private static global::MathNet.Numerics.LinearAlgebra.Matrix<double> ToMathNet(double[,] m)
@@ -1547,6 +1537,10 @@ public static partial class IlRuntime
 
         switch (decomposition)
         {
+            case global::CommonLib.NativeDecomposition native:
+                if (native.TryVector(factorName, out var nvec)) { vectorFactor = nvec; break; }
+                if (native.TryMatrix(factorName, out var nmat)) { matrixFactor = nmat; break; }
+                throw new ArgumentException($"Fattore '{factorName}' non valido per la decomposizione.");
             case MathNet.Numerics.LinearAlgebra.Factorization.LU<double> lu:
                 matrixFactor = factorName.ToUpperInvariant() switch
                 {

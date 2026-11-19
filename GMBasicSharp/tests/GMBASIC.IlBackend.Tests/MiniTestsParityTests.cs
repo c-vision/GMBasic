@@ -17,7 +17,7 @@ public class MiniTestsParityTests
             // Monorepo: workspace = parent di GMBasicSharp (contiene shared/ e GMBasic/).
             if (File.Exists(Path.Combine(dir.FullName, "GMBasicSharp.slnx")))
                 return dir.Parent?.FullName ?? dir.FullName;
-            if (File.Exists(Path.Combine(dir.FullName, "GMBASIC.sln"))) return dir.FullName;
+            if (File.Exists(Path.Combine(dir.FullName, "GMBasicSharp", "GMBasicSharp.slnx"))) return dir.FullName;
             dir = dir.Parent;
         }
         return ".";

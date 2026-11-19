@@ -19,7 +19,7 @@ public class AgentObjectSamplesExecutionTests
         var dir = new DirectoryInfo(Directory.GetCurrentDirectory());
         while (dir != null)
         {
-            if (File.Exists(Path.Combine(dir.FullName, "GMBASIC.sln"))) return dir.FullName;
+            if (File.Exists(Path.Combine(dir.FullName, "GMBasicSharp", "GMBasicSharp.slnx"))) return dir.FullName;
             dir = dir.Parent;
         }
         return Directory.GetCurrentDirectory();
@@ -57,7 +57,7 @@ public class AgentObjectSamplesExecutionTests
     [Fact]
     public void AgentObject_Class_Wrapper_PropertyAccess_Runs()
     {
-        var output = RunSample(Path.Combine(Root, "samples", "Community", "Ai", "AgentObject.bas"));
+        var output = RunSample(Path.Combine(Root, "shared", "samples", "Ai", "AgentObject.bas"));
         // SET via property (write-through) + GET via property
         Assert.Contains("Model=qwen3.5-probe", output);
         Assert.Contains("Temp= 0.42", output);

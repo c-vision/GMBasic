@@ -20,8 +20,8 @@ public sealed class RegistryCanonicalTests
     private static JsonDocument Load()
     {
         var dir = new DirectoryInfo(AppContext.BaseDirectory);
-        while (dir != null && !File.Exists(Path.Combine(dir.FullName, "GMBASIC.sln"))) dir = dir.Parent;
-        var p = Path.Combine(dir!.FullName, "common", "Registry", "canonical.registry.json");
+        while (dir != null && !File.Exists(Path.Combine(dir.FullName, "GMBasicSharp", "GMBasicSharp.slnx"))) dir = dir.Parent;
+        var p = Path.Combine(dir!.FullName, "GMBasicSharp", "common", "Registry", "canonical.registry.json");
         Assert.True(File.Exists(p), "canonical.registry.json mancante: " + p);
         return JsonDocument.Parse(File.ReadAllText(p));
     }
@@ -78,8 +78,8 @@ public sealed class RegistryCanonicalTests
         // Blocca il fix (c9a40cd70): 0 gruppi di codici duplicati in BuiltInFunction.cs
         // (misura in comparison-existing.json, rigenerato da compare_existing.py).
         var dir = new DirectoryInfo(AppContext.BaseDirectory);
-        while (dir != null && !File.Exists(Path.Combine(dir.FullName, "GMBASIC.sln"))) dir = dir.Parent;
-        var p = Path.Combine(dir!.FullName, "common", "Registry", "comparison-existing.json");
+        while (dir != null && !File.Exists(Path.Combine(dir.FullName, "GMBasicSharp", "GMBasicSharp.slnx"))) dir = dir.Parent;
+        var p = Path.Combine(dir!.FullName, "GMBasicSharp", "common", "Registry", "comparison-existing.json");
         using var doc = JsonDocument.Parse(File.ReadAllText(p));
         Assert.Equal(0, doc.RootElement.GetProperty("enum_cs")
             .GetProperty("builtinfunction_dup_code_groups").GetInt32());
@@ -91,8 +91,8 @@ public sealed class RegistryCanonicalTests
         // Parità cross-mondo (P0): l'include C delle costanti (gmb_pconst_gen.inc, wired nei
         // compilatori) deve avere ESATTAMENTE le stesse costanti del manifest canonico.
         var dir = new DirectoryInfo(AppContext.BaseDirectory);
-        while (dir != null && !File.Exists(Path.Combine(dir.FullName, "GMBASIC.sln"))) dir = dir.Parent;
-        var inc = Path.Combine(dir!.FullName, "native", "gmb_compiler_c", "include", "gen", "gmb_pconst_gen.inc");
+        while (dir != null && !File.Exists(Path.Combine(dir.FullName, "GMBasicSharp", "GMBasicSharp.slnx"))) dir = dir.Parent;
+        var inc = Path.Combine(dir!.FullName, "GMBasic", "native", "gmb_compiler_c", "frontend", "include", "gen", "gmb_pconst_gen.inc");
         Assert.True(File.Exists(inc), "gmb_pconst_gen.inc mancante: " + inc);
         var lines = File.ReadAllLines(inc);
         var incRows = new List<(string Name, double Value)>();
@@ -121,8 +121,8 @@ public sealed class RegistryCanonicalTests
         // Parità cross-mondo (P0): CanonicalLookup.g.cs (generato) deve contenere ESATTAMENTE
         // una riga per ogni procedura/comando/costante del manifest canonico.
         var dir = new DirectoryInfo(AppContext.BaseDirectory);
-        while (dir != null && !File.Exists(Path.Combine(dir.FullName, "GMBASIC.sln"))) dir = dir.Parent;
-        var g = Path.Combine(dir!.FullName, "common", "Registry", "generated", "CanonicalLookup.g.cs");
+        while (dir != null && !File.Exists(Path.Combine(dir.FullName, "GMBasicSharp", "GMBasicSharp.slnx"))) dir = dir.Parent;
+        var g = Path.Combine(dir!.FullName, "GMBasicSharp", "common", "Registry", "generated", "CanonicalLookup.g.cs");
         Assert.True(File.Exists(g), "CanonicalLookup.g.cs mancante: " + g);
         var text = File.ReadAllText(g);
         var root = Doc.RootElement;

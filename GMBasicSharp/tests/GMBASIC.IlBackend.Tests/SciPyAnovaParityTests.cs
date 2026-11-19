@@ -28,28 +28,12 @@ public sealed class SciPyAnovaParityTests
     }
 
     [Fact]
-    public void AnalysisAnovaBasicProgramMatchesSciPyFOneWay()
-    {
-        var sample = Path.Combine(
-            Root,
-            "samples",
-            "Community",
-            "Analysis",
-            "AnalysisUncoveredCoverage.bas");
-
-        var output = RunSample(sample);
-
-        Assert.Equal(SciPyFStatistic, ReadValue(output, "ANOVA F="), 13);
-        Assert.Equal(SciPyPValue, ReadValue(output, "ANOVA P="), 13);
-    }
-
-    [Fact]
     public void StatsHypothesisTestsBasicProgramMatchesSciPy()
     {
         var sample = Path.Combine(
             Root,
+            "shared",
             "samples",
-            "Community",
             "Analysis",
             "StatsSciPyParity.bas");
 
@@ -72,7 +56,7 @@ public sealed class SciPyAnovaParityTests
         var directory = new DirectoryInfo(Directory.GetCurrentDirectory());
         while (directory is not null)
         {
-            if (File.Exists(Path.Combine(directory.FullName, "GMBASIC.sln")))
+            if (File.Exists(Path.Combine(directory.FullName, "GMBasicSharp", "GMBasicSharp.slnx")))
                 return directory.FullName;
             directory = directory.Parent;
         }

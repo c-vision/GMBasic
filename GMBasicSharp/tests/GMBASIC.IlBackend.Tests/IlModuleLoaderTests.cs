@@ -29,7 +29,7 @@ public class IlModuleLoaderTests
         {
             if (File.Exists(Path.Combine(dir.FullName, "GMBasicSharp.slnx")))
                 return dir.Parent?.FullName ?? dir.FullName;
-            if (File.Exists(Path.Combine(dir.FullName, "GMBASIC.sln"))) return dir.FullName;
+            if (File.Exists(Path.Combine(dir.FullName, "GMBasicSharp", "GMBasicSharp.slnx"))) return dir.FullName;
             dir = dir.Parent;
         }
         throw new DirectoryNotFoundException("GMBasicSharp.slnx non trovato risalendo da " + AppContext.BaseDirectory);

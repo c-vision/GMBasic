@@ -12,7 +12,7 @@ public class ForLoopScopeTests
         var dir = new DirectoryInfo(Directory.GetCurrentDirectory());
         while (dir != null)
         {
-            if (File.Exists(Path.Combine(dir.FullName, "GMBASIC.sln"))) return dir.FullName;
+            if (File.Exists(Path.Combine(dir.FullName, "GMBasicSharp", "GMBasicSharp.slnx"))) return dir.FullName;
             dir = dir.Parent;
         }
         return Directory.GetCurrentDirectory();
@@ -22,7 +22,7 @@ public class ForLoopScopeTests
     public async Task DimM_ForM1to3_PostLoop_Restores_DimValue()
     {
         var root = FindRepoRoot();
-        var source = Path.Combine(root, "samples", "Community", "Loops", "LoopsForNextOptimized.bas");
+        var source = Path.Combine(root, "shared", "samples", "Loops", "LoopsForNextOptimized.bas");
 
         var program = Basic.Orchestrator.Compile(source, null, false);
         var asmBuilder = IlProgramCompiler.CompileToAssembly(program, "ForPost_" + Guid.NewGuid().ToString("N"), out _);

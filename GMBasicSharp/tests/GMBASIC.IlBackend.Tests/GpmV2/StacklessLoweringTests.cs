@@ -23,7 +23,7 @@ public class StacklessLoweringTests
         var dir = new DirectoryInfo(Directory.GetCurrentDirectory());
         while (dir != null)
         {
-            if (File.Exists(Path.Combine(dir.FullName, "GMBASIC.sln"))) return dir.FullName;
+            if (File.Exists(Path.Combine(dir.FullName, "GMBasicSharp", "GMBasicSharp.slnx"))) return dir.FullName;
             dir = dir.Parent;
         }
         return Directory.GetCurrentDirectory();
@@ -46,7 +46,7 @@ public class StacklessLoweringTests
     [Fact]
     public void AllMayParkProcedures_LowerTo_ValidIr()
     {
-        var (procedures, mayPark, byId) = Compile(Path.Combine("samples", "Community", "Concurrency", "GoRoutinesWorkers.bas"));
+        var (procedures, mayPark, byId) = Compile(Path.Combine("shared", "samples", "Concurrency", "GoRoutinesWorkers.bas"));
         Assert.True(mayPark.Count >= 3, $"Attese ≥3 procedure may-park, trovate {mayPark.Count}");
 
         foreach (var proc in procedures.Where(p => mayPark.Contains(p.SymbolId)))
@@ -60,7 +60,7 @@ public class StacklessLoweringTests
     [Fact]
     public void Manager_ForLoop_IsCabledCheckNextBackEdge()
     {
-        var (procedures, mayPark, byId) = Compile(Path.Combine("samples", "Community", "Concurrency", "GoRoutinesWorkers.bas"));
+        var (procedures, mayPark, byId) = Compile(Path.Combine("shared", "samples", "Concurrency", "GoRoutinesWorkers.bas"));
         var manager = procedures.First(p => p.OriginalName.Lexeme.Equals("Manager", StringComparison.OrdinalIgnoreCase));
         var ir = StacklessLowering.Lower(manager, mayPark, byId);
 
@@ -87,7 +87,7 @@ public class StacklessLoweringTests
     [Fact]
     public void Lavoratore_IfAndParks_AreLowered()
     {
-        var (procedures, mayPark, byId) = Compile(Path.Combine("samples", "Community", "Concurrency", "GoRoutinesWorkers.bas"));
+        var (procedures, mayPark, byId) = Compile(Path.Combine("shared", "samples", "Concurrency", "GoRoutinesWorkers.bas"));
         var lavoratore = procedures.First(p => p.OriginalName.Lexeme.Equals("Lavoratore", StringComparison.OrdinalIgnoreCase));
         var ir = StacklessLowering.Lower(lavoratore, mayPark, byId);
 

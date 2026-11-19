@@ -18,7 +18,7 @@ public class ClipperSamplesExecutionTests
         var dir = new DirectoryInfo(Directory.GetCurrentDirectory());
         while (dir != null)
         {
-            if (File.Exists(Path.Combine(dir.FullName, "GMBASIC.sln"))) return dir.FullName;
+            if (File.Exists(Path.Combine(dir.FullName, "GMBasicSharp", "GMBasicSharp.slnx"))) return dir.FullName;
             dir = dir.Parent;
         }
         return Directory.GetCurrentDirectory();
@@ -63,7 +63,7 @@ public class ClipperSamplesExecutionTests
     [Fact]
     public void ClipperSayTest_All_Steps_Ok()
     {
-        var sample = Path.Combine(Root, "samples", "Community", "Clipper", "ClipperSayTest.bas");
+        var sample = Path.Combine(Root, "shared", "samples", "Clipper", "ClipperSayTest.bas");
         var output = RunSample(sample);
         Assert.Contains("ALL_SAY_TESTS_PASSED", output);
         Assert.Contains("T1_OK", output);
@@ -77,7 +77,7 @@ public class ClipperSamplesExecutionTests
     [Fact]
     public void All_Clipper_Samples_Complete_Via_Il_And_Match_Reference()
     {
-        var dir = Path.Combine(Root, "samples", "Community", "Clipper");
+        var dir = Path.Combine(Root, "shared", "samples", "Clipper");
         var samples = Directory.GetFiles(dir, "*.bas", SearchOption.TopDirectoryOnly).OrderBy(f => f).ToArray();
         var failures = new List<string>();
         var ok = new List<string>();

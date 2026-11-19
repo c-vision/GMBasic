@@ -18,7 +18,7 @@ public class GoRoutinesMinimalAnalysisTests
     private static FunctionDefinition[] LoadProcedures()
     {
         var root = FindRepoRoot();
-        var sample = Path.Combine(root, "samples", "Community", "Concurrency", "GoRoutinesMinimal.bas");
+        var sample = Path.Combine(root, "shared", "samples", "Concurrency", "GoRoutinesMinimal.bas");
         Assert.True(File.Exists(sample), $"Sample mancante: {sample}");
         var program = Basic.Orchestrator.Compile(sample, null, false);
         return program.LoadedModules.Values
@@ -32,7 +32,7 @@ public class GoRoutinesMinimalAnalysisTests
         var dir = new DirectoryInfo(Directory.GetCurrentDirectory());
         while (dir != null)
         {
-            if (File.Exists(Path.Combine(dir.FullName, "GMBASIC.sln"))) return dir.FullName;
+            if (File.Exists(Path.Combine(dir.FullName, "GMBasicSharp", "GMBasicSharp.slnx"))) return dir.FullName;
             dir = dir.Parent;
         }
         return Directory.GetCurrentDirectory();

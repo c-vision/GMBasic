@@ -22,7 +22,7 @@ public class IlCoroutineEmitterTests
         var dir = new DirectoryInfo(Directory.GetCurrentDirectory());
         while (dir != null)
         {
-            if (File.Exists(Path.Combine(dir.FullName, "GMBASIC.sln"))) return dir.FullName;
+            if (File.Exists(Path.Combine(dir.FullName, "GMBasicSharp", "GMBasicSharp.slnx"))) return dir.FullName;
             dir = dir.Parent;
         }
         return Directory.GetCurrentDirectory();
@@ -138,7 +138,7 @@ public class IlCoroutineEmitterTests
     [Fact]
     public void GeneratedAssembly_Contains_StepV2_For_MayPark_Procedures()
     {
-        var (program, procedures, mayPark, _) = CompileSample(Path.Combine("samples", "Community", "Concurrency", "GpmV2ControlFlow.bas"));
+        var (program, procedures, mayPark, _) = CompileSample(Path.Combine("shared", "samples", "Concurrency", "GpmV2ControlFlow.bas"));
         Assert.True(mayPark.Count >= 3, $"Attese ≥3 procedure may-park, trovate {mayPark.Count}");
 
         var assembly = CompileAssembly(program);
@@ -160,7 +160,7 @@ public class IlCoroutineEmitterTests
     [Fact]
     public void V2Driver_Runs_ControlFlow_Sample_With_ExpectedOutput()
     {
-        var output = RunV2Sample(Path.Combine("samples", "Community", "Concurrency", "GpmV2ControlFlow.bas"));
+        var output = RunV2Sample(Path.Combine("shared", "samples", "Concurrency", "GpmV2ControlFlow.bas"));
         var lines = output.Split('\n', StringSplitOptions.RemoveEmptyEntries);
         Assert.Equal(new[] { "UNO", "DUE", "ALTRO  3 ", "ALTRO  4 ", "FINE" }, lines);
     }
@@ -168,7 +168,7 @@ public class IlCoroutineEmitterTests
     [Fact]
     public void V2Driver_Runs_TryFinally_WithParkInFinally()
     {
-        var output = RunV2Sample(Path.Combine("samples", "Community", "Concurrency", "GpmV2TryFinally.bas"));
+        var output = RunV2Sample(Path.Combine("shared", "samples", "Concurrency", "GpmV2TryFinally.bas"));
         var lines = output.Split('\n', StringSplitOptions.RemoveEmptyEntries);
         Assert.Equal(new[] { "TRY  1 ", "FINALLY  11 ", "DOPO  11 ", "MAIN-DONE" }, lines);
     }
@@ -176,7 +176,7 @@ public class IlCoroutineEmitterTests
     [Fact]
     public void V2Driver_Runs_TryCatch_Exception()
     {
-        var output = RunV2Sample(Path.Combine("samples", "Community", "Concurrency", "GpmV2TryCatch.bas"));
+        var output = RunV2Sample(Path.Combine("shared", "samples", "Concurrency", "GpmV2TryCatch.bas"));
         var lines = output.Split('\n', StringSplitOptions.RemoveEmptyEntries);
         Assert.Equal(new[] { "CATCH 5", "DOPO-CATCH", "MAIN-DONE" }, lines);
     }
@@ -184,7 +184,7 @@ public class IlCoroutineEmitterTests
     [Fact]
     public void V2Driver_Runs_ChannelClose_WithOkFlag_AndCapacity()
     {
-        var output = RunV2Sample(Path.Combine("samples", "Community", "Concurrency", "GpmV2ChannelClose.bas"));
+        var output = RunV2Sample(Path.Combine("shared", "samples", "Concurrency", "GpmV2ChannelClose.bas"));
         var lines = output.Split('\n', StringSplitOptions.RemoveEmptyEntries);
         Assert.Equal(new[] { "OK  1   1 ", "OK  2   1 ", "OK -1   1 ", "FINE  0 ", "MAIN-DONE" }, lines);
     }
@@ -192,7 +192,7 @@ public class IlCoroutineEmitterTests
     [Fact]
     public void V2Driver_Runs_GoExit_CrossesFinally()
     {
-        var output = RunV2Sample(Path.Combine("samples", "Community", "Concurrency", "GpmV2GoExit.bas"));
+        var output = RunV2Sample(Path.Combine("shared", "samples", "Concurrency", "GpmV2GoExit.bas"));
         var lines = output.Split('\n', StringSplitOptions.RemoveEmptyEntries);
         Assert.Equal(new[] { "TRY", "FINALLY" }, lines);
     }
@@ -200,7 +200,7 @@ public class IlCoroutineEmitterTests
     [Fact]
     public void V2Driver_Runs_OnError_Goto_ResumeNext()
     {
-        var output = RunV2Sample(Path.Combine("samples", "Community", "Concurrency", "GpmV2OnError.bas"));
+        var output = RunV2Sample(Path.Combine("shared", "samples", "Concurrency", "GpmV2OnError.bas"));
         var lines = output.Split('\n', StringSplitOptions.RemoveEmptyEntries);
         Assert.Equal(new[] { "HANDLER", "DOPO-ERRORE" }, lines);
     }
@@ -208,7 +208,7 @@ public class IlCoroutineEmitterTests
     [Fact]
     public void V2Driver_Runs_Mutex_LockUnlock_Serializes()
     {
-        var output = RunV2Sample(Path.Combine("samples", "Community", "Concurrency", "GpmV2Mutex.bas"));
+        var output = RunV2Sample(Path.Combine("shared", "samples", "Concurrency", "GpmV2Mutex.bas"));
         var lines = output.Split('\n', StringSplitOptions.RemoveEmptyEntries).ToHashSet();
         Assert.Contains("CRIT  1   1 ", lines);
         Assert.Contains("CRIT  1   2 ", lines);
@@ -220,7 +220,7 @@ public class IlCoroutineEmitterTests
     [Fact]
     public void V2Driver_Runs_Function_ReturnValue_ToLocal()
     {
-        var output = RunV2Sample(Path.Combine("samples", "Community", "Concurrency", "GpmV2Function.bas"));
+        var output = RunV2Sample(Path.Combine("shared", "samples", "Concurrency", "GpmV2Function.bas"));
         var lines = output.Split('\n', StringSplitOptions.RemoveEmptyEntries);
         Assert.Equal(new[] { "X- 42 ", "MAIN-DONE" }, lines);
     }
@@ -228,7 +228,7 @@ public class IlCoroutineEmitterTests
     [Fact]
     public void V2Driver_Runs_ByRef_ModifiesCaller()
     {
-        var output = RunV2Sample(Path.Combine("samples", "Community", "Concurrency", "GpmV2ByRef.bas"));
+        var output = RunV2Sample(Path.Combine("shared", "samples", "Concurrency", "GpmV2ByRef.bas"));
         var lines = output.Split('\n', StringSplitOptions.RemoveEmptyEntries);
         Assert.Equal(new[] { "N- 12 ", "MAIN-DONE" }, lines);
     }
@@ -236,7 +236,7 @@ public class IlCoroutineEmitterTests
     [Fact]
     public void V2Driver_Runs_Recursion_Factorial()
     {
-        var output = RunV2Sample(Path.Combine("samples", "Community", "Concurrency", "GpmV2Recursion.bas"));
+        var output = RunV2Sample(Path.Combine("shared", "samples", "Concurrency", "GpmV2Recursion.bas"));
         var lines = output.Split('\n', StringSplitOptions.RemoveEmptyEntries);
         Assert.Equal(new[] { "FACT- 24 ", "MAIN-DONE" }, lines);
     }
@@ -244,7 +244,7 @@ public class IlCoroutineEmitterTests
     [Fact]
     public void V2Driver_Runs_GoFunction_Future()
     {
-        var output = RunV2Sample(Path.Combine("samples", "Community", "Concurrency", "GpmV2GoFunction.bas"));
+        var output = RunV2Sample(Path.Combine("shared", "samples", "Concurrency", "GpmV2GoFunction.bas"));
         var lines = output.Split('\n', StringSplitOptions.RemoveEmptyEntries);
         Assert.Equal(new[] { "X- 42 ", "MAIN-DONE" }, lines);
     }
@@ -252,7 +252,7 @@ public class IlCoroutineEmitterTests
     [Fact]
     public void V2Driver_Runs_LocalProcedure_NoCapture()
     {
-        var output = RunV2Sample(Path.Combine("samples", "Community", "Concurrency", "GpmV2Closure.bas"));
+        var output = RunV2Sample(Path.Combine("shared", "samples", "Concurrency", "GpmV2Closure.bas"));
         var lines = output.Split('\n', StringSplitOptions.RemoveEmptyEntries);
         Assert.Equal(new[] { "IN 5 ", "MAIN-DONE" }, lines);
     }
@@ -264,7 +264,7 @@ public class IlCoroutineEmitterTests
         // sintetico __ClosureCtx_* e riscrive la variabile catturata in `__context.fattore`.
         // Per la v2 serve la macchina __ClosureCtx (tipo classe + field access + passaggio del
         // contesto alla locale) — follow-up G4. Qui si verifica il rewrite del linker.
-        var (program, procedures, _, _) = CompileSample(Path.Combine("samples", "Community", "Concurrency", "GpmV2ClosureCapture.bas"));
+        var (program, procedures, _, _) = CompileSample(Path.Combine("shared", "samples", "Concurrency", "GpmV2ClosureCapture.bas"));
         var main = procedures.First(p => p.OriginalName.Lexeme == "Main");
         Assert.Contains(main.Body, s =>
             s is DeclarationStmt d && d.Declarations.Any(decl => decl.NameCleaned.Lexeme == "__context"));
@@ -277,7 +277,7 @@ public class IlCoroutineEmitterTests
         // parcheggia (SLEEP) → Main è may-park → entrambe girano su StepV2. La cattura vive
         // nel __ClosureCtx heap-promotato dal Linker: la modifica a `fattore` nel chiamante
         // si riflette nella closure (parità Go).
-        var output = RunV2Sample(Path.Combine("samples", "Community", "Concurrency", "GpmV2ClosureCapture.bas"));
+        var output = RunV2Sample(Path.Combine("shared", "samples", "Concurrency", "GpmV2ClosureCapture.bas"));
         var lines = output.Split('\n', StringSplitOptions.RemoveEmptyEntries);
         Assert.Equal(new[] { "M- 50 ", "M- 100 ", "MAIN-DONE" }, lines);
     }
@@ -291,7 +291,7 @@ public class IlCoroutineEmitterTests
         var runTask = Task.Run(() =>
         {
             Task.Delay(600).ContinueWith(_ => Basic.IlBackend.IlRuntime.QueueInkey("X"));
-            output = RunV2Sample(Path.Combine("samples", "Community", "Concurrency", "GpmV2WaitKey.bas"));
+            output = RunV2Sample(Path.Combine("shared", "samples", "Concurrency", "GpmV2WaitKey.bas"));
             return output;
         });
         output = runTask.GetAwaiter().GetResult();
@@ -318,7 +318,7 @@ public class IlCoroutineEmitterTests
         });
         try
         {
-            var output = RunV2Sample(Path.Combine("samples", "Community", "Concurrency", "GpmV2TcpConnect.bas"));
+            var output = RunV2Sample(Path.Combine("shared", "samples", "Concurrency", "GpmV2TcpConnect.bas"));
             var lines = output.Split('\n', StringSplitOptions.RemoveEmptyEntries);
             var cLine = lines.FirstOrDefault(l => l.StartsWith("C-", StringComparison.Ordinal));
             Assert.NotNull(cLine);
@@ -358,7 +358,7 @@ public class IlCoroutineEmitterTests
         });
         try
         {
-            var output = RunV2Sample(Path.Combine("samples", "Community", "Concurrency", "GpmV2TcpEcho.bas"));
+            var output = RunV2Sample(Path.Combine("shared", "samples", "Concurrency", "GpmV2TcpEcho.bas"));
             var lines = output.Split('\n', StringSplitOptions.RemoveEmptyEntries);
             Assert.Contains("N- 5 ", lines);
             Assert.Contains("MAIN-DONE", lines);
@@ -398,7 +398,7 @@ public class IlCoroutineEmitterTests
                     System.Threading.Thread.Sleep(100);
                 }
             });
-            output = RunV2Sample(Path.Combine("samples", "Community", "Concurrency", "GpmV2UdpRecv.bas"));
+            output = RunV2Sample(Path.Combine("shared", "samples", "Concurrency", "GpmV2UdpRecv.bas"));
             cts.Cancel();
             senderTask.GetAwaiter().GetResult();
             sender.Dispose();
@@ -414,7 +414,7 @@ public class IlCoroutineEmitterTests
     {
         // G6: SCREEN/SYNC/POINT/LOAD TEXTURE come park grafici v2. In headless
         // (NullGraphicsService) completano subito: POINT=0, LOAD TEXTURE=-1.
-        var output = RunV2Sample(Path.Combine("samples", "Community", "Concurrency", "GpmV2Graphics.bas"));
+        var output = RunV2Sample(Path.Combine("shared", "samples", "Concurrency", "GpmV2Graphics.bas"));
         var lines = output.Split('\n', StringSplitOptions.RemoveEmptyEntries);
         Assert.Contains("P- 0 ", lines);
         Assert.Contains("T- 1 ", lines);
@@ -428,7 +428,7 @@ public class IlCoroutineEmitterTests
     {
         // G6: LOAD TEXTURE (park) dentro FOR + IF + TRY/FINALLY + call chain (SUB callee):
         // il park deve essere sospendibile e riprendere in ogni contesto.
-        var output = RunV2Sample(Path.Combine("samples", "Community", "Concurrency", "GpmV2GraphicsNested.bas"));
+        var output = RunV2Sample(Path.Combine("shared", "samples", "Concurrency", "GpmV2GraphicsNested.bas"));
         var lines = output.Split('\n', StringSplitOptions.RemoveEmptyEntries);
         // FOR i=1 TO 2: i=1 → IF TRUE → TRY (T-0, FIN); i=2 → ELSE → CALL LoadAndReport (L-0).
         Assert.Equal(new[] { "T- 1 ", "FIN", "L- 1 ", "MAIN-DONE" }, lines);
@@ -437,7 +437,7 @@ public class IlCoroutineEmitterTests
     [Fact]
     public void V2Driver_Runs_SleepGoroutine_WakesAndCompletes()
     {
-        var output = RunV2Sample(Path.Combine("samples", "Community", "Concurrency", "GpmV2SleepGoroutine.bas"));
+        var output = RunV2Sample(Path.Combine("shared", "samples", "Concurrency", "GpmV2SleepGoroutine.bas"));
         var lines = output.Split('\n', StringSplitOptions.RemoveEmptyEntries);
         Assert.Contains("WOKE", lines);
         Assert.Contains("MAIN-DONE", lines);
@@ -446,7 +446,7 @@ public class IlCoroutineEmitterTests
     [Fact]
     public void V2Driver_Runs_SendSleepSend()
     {
-        var output = RunV2Sample(Path.Combine("samples", "Community", "Concurrency", "GpmV2SendSleepSend.bas"));
+        var output = RunV2Sample(Path.Combine("shared", "samples", "Concurrency", "GpmV2SendSleepSend.bas"));
         var lines = output.Split('\n', StringSplitOptions.RemoveEmptyEntries);
         Assert.Contains("V1- 1 ", lines);
         Assert.Contains("V2- 2 ", lines);
@@ -477,7 +477,7 @@ public class IlCoroutineEmitterTests
         });
         try
         {
-            var output = RunV2Sample(Path.Combine("samples", "Community", "Concurrency", "GpmV2HttpFetch.bas"));
+            var output = RunV2Sample(Path.Combine("shared", "samples", "Concurrency", "GpmV2HttpFetch.bas"));
             var lines = output.Split('\n', StringSplitOptions.RemoveEmptyEntries);
             Assert.Contains("S- 200 ", lines);
             Assert.Contains("MAIN-DONE", lines);
@@ -492,7 +492,7 @@ public class IlCoroutineEmitterTests
     [Fact]
     public void V2Driver_Runs_GoSelect_ReceiveCase()
     {
-        var output = RunV2Sample(Path.Combine("samples", "Community", "Concurrency", "GpmV2GoSelect.bas"));
+        var output = RunV2Sample(Path.Combine("shared", "samples", "Concurrency", "GpmV2GoSelect.bas"));
         var lines = output.Split('\n', StringSplitOptions.RemoveEmptyEntries);
         Assert.Equal(new[] { "SEL- 42 ", "MAIN-DONE" }, lines);
     }
@@ -573,7 +573,7 @@ public class IlCoroutineEmitterTests
         // G8-bis: COND WAIT/SIGNAL (parità Go sync.Cond) — il Consumatore parcheggia sul cond
         // (rilasciando il mutex), Main imposta Ready=1 e fa SIGNAL → il Consumatore si sveglia,
         // riacquisisce il mutex e completa. Usa il GLOBALE `Ready` condiviso tra i task.
-        var output = RunSample(Path.Combine("samples", "Community", "Concurrency", "GpmV2Cond.bas"));
+        var output = RunSample(Path.Combine("shared", "samples", "Concurrency", "GpmV2Cond.bas"));
         var lines = output.Split('\n', StringSplitOptions.RemoveEmptyEntries);
         Assert.Contains("CONSUMATORE-SVEGLIATO", lines);
         Assert.Contains("COND-DONE", lines);
@@ -583,7 +583,7 @@ public class IlCoroutineEmitterTests
     public void V2Driver_Runs_Pool_GetPut()
     {
         // G8-bis: POOL (parità Go sync.Pool) — Get dopo Put riusa l'oggetto; il secondo Get è vuoto.
-        var output = RunSample(Path.Combine("samples", "Community", "Concurrency", "GpmV2Pool.bas"));
+        var output = RunSample(Path.Combine("shared", "samples", "Concurrency", "GpmV2Pool.bas"));
         Assert.Contains("POOL-OK", output);
     }
 
@@ -591,7 +591,7 @@ public class IlCoroutineEmitterTests
     public void V2Driver_Runs_SyncMap_StoreLoadDelete()
     {
         // G8-bis: SYNCMAP (parità Go sync.Map) — Store/Load/Delete/LoadOrStore flat.
-        var output = RunSample(Path.Combine("samples", "Community", "Concurrency", "GpmV2SyncMap.bas"));
+        var output = RunSample(Path.Combine("shared", "samples", "Concurrency", "GpmV2SyncMap.bas"));
         Assert.Contains("SYNCMAP-STORE-LOAD-OK", output);
     }
 
@@ -599,7 +599,7 @@ public class IlCoroutineEmitterTests
     public void V2Driver_Runs_AtomicSwap_ReturnsPrevious()
     {
         // G8-bis: ATOMIC.SWAP (parità Go atomic.SwapInt64) — ritorna il valore PRECEDENTE.
-        var output = RunSample(Path.Combine("samples", "Community", "Concurrency", "GpmV2AtomicSwap.bas"));
+        var output = RunSample(Path.Combine("shared", "samples", "Concurrency", "GpmV2AtomicSwap.bas"));
         Assert.Contains("ATOMIC-SWAP-OK", output);
     }
 
@@ -608,7 +608,7 @@ public class IlCoroutineEmitterTests
     {
         // G8-bis: SYSTEM.NUMGOROUTINE/NUMCPU (parità Go runtime.NumGoroutine/NumCPU) — con 2
         // goroutine attive (Main + 1), NUMGOROUTINE >= 3 al momento della lettura.
-        var output = RunSample(Path.Combine("samples", "Community", "Concurrency", "GpmV2NumGoroutine.bas"));
+        var output = RunSample(Path.Combine("shared", "samples", "Concurrency", "GpmV2NumGoroutine.bas"));
         Assert.Contains("NUMGOROUTINE-OK", output);
     }
 
@@ -617,7 +617,7 @@ public class IlCoroutineEmitterTests
     {
         // G8-bis: FOR EACH su canale (parità Go for v := range ch) — itera finché il canale
         // non è chiuso e svuotato; la RECEIVE parcheggia quando il canale è vuoto ma aperto.
-        var output = RunSample(Path.Combine("samples", "Community", "Concurrency", "GpmV2ForEachChannel.bas"));
+        var output = RunSample(Path.Combine("shared", "samples", "Concurrency", "GpmV2ForEachChannel.bas"));
         Assert.Contains("FOR-EACH-CH-OK", output);
     }
 
@@ -627,7 +627,7 @@ public class IlCoroutineEmitterTests
         // G8-bis: canali direzionali (parità Go chan<- T / <-chan T) — il canale bidirezionale
         // viene passato ai worker col tipo direzionale (SEND/OF, RECEIVE/OF); il runtime è
         // invariato. Totale deterministico 1+2+3 = 6.
-        var output = RunSample(Path.Combine("samples", "Community", "Concurrency", "GpmV2ChannelDirection.bas"));
+        var output = RunSample(Path.Combine("shared", "samples", "Concurrency", "GpmV2ChannelDirection.bas"));
         Assert.Contains("GPM-V2-CHAN-DIR-OK", output);
         Assert.Contains("GPM-V2-CHAN-DIR-DONE", output);
     }
@@ -674,7 +674,7 @@ public class IlCoroutineEmitterTests
         // G8: confronto STRINGHE in condizione IF sotto la v2 (IF s$ = "x" / AND con stringa) —
         // prima EmitExprDouble(StringExpr) lanciava a metà emissione → StepV2 parziale →
         // "Label not marked" al Save (lezione 7f2ac888, riemersa in NetUdpAdvanced).
-        var output = RunSample(Path.Combine("samples", "Community", "Concurrency", "GpmV2StringCmp.bas"));
+        var output = RunSample(Path.Combine("shared", "samples", "Concurrency", "GpmV2StringCmp.bas"));
         Assert.Contains("EQ-OK", output);
         Assert.Contains("NE-OK", output);
         Assert.Contains("AND-STR-OK", output);

@@ -305,16 +305,16 @@ public sealed class NativeParityTests
         var root = NativeDb.RepoRoot;
         // L'emissione .bas→C vive nel mondo C (native/gmb_c99native/src): cerca i
         // riferimenti al motore DB C in tutti i file dell'emitter.
-        var c99Dir = Path.Combine(root, "native", "gmb_c99native", "src");
+        var c99Dir = Path.Combine(root, "GMBasic", "native", "gmb_c99native", "src");
         var emitterText = string.Join("\n",
             Directory.EnumerateFiles(c99Dir, "*.c", SearchOption.AllDirectories)
                 .Select(File.ReadAllText));
         Assert.Contains("gmb_db.h", emitterText);
         Assert.Contains("gmb_db_dbf_open", emitterText);
-        var vm = File.ReadAllText(Path.Combine(root, "native", "gmb_vm_c", "gmb_vm_core.c"));
+        var vm = File.ReadAllText(Path.Combine(root, "GMBasic", "native", "gmb_vm_c", "gmb_vm_core.c"));
         Assert.Contains("GMB_NATIVE_DB", vm);
         Assert.Contains("gmb_db_apply_syscall", vm);
-        var svc = File.ReadAllText(Path.Combine(root, "common", "BRT", "Services", "NativeDb.cs"));
+        var svc = File.ReadAllText(Path.Combine(root, "GMBasicSharp", "common", "BRT", "Services", "NativeDb.cs"));
         Assert.Contains("class NativeDb", svc);
         Assert.Contains("gmb_db", svc);
     }
