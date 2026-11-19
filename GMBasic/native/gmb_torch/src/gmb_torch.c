@@ -58,6 +58,12 @@ typedef struct {
     int64_t (*text_encode)(const char*);
     int     (*text_decode)(int64_t, char*, int);
     int64_t (*dataset_load_text)(const char*, const char*);
+    /* NCM (Next-Concept Modeling): generazione testo, vedi gmb_host_ml.cpp */
+    int64_t     (*ncm_load)(const char*, const char*, const char*, int);
+    void        (*ncm_free)(int64_t);
+    int         (*ncm_generate)(int64_t, int, int64_t, char*, int);
+    const char* (*ncm_text)(int64_t, int, int64_t);
+    const char* (*host_last_error)(void);
     int (*imatrix_layer_energy)(const char*, double*, int);
     int (*imatrix_rank_map)(const char*, int, int, int*, int);
     int64_t (*tensor_zeros)(int, int, int);
@@ -266,6 +272,11 @@ static int gml_load(void)
     GML_RESOLVE(text_encode, "gmb_ml_text_encode");
     GML_RESOLVE(text_decode, "gmb_ml_text_decode");
     GML_RESOLVE(dataset_load_text, "gmb_ml_dataset_load_text");
+    GML_RESOLVE(ncm_load, "gmb_ml_ncm_load");
+    GML_RESOLVE(ncm_free, "gmb_ml_ncm_free");
+    GML_RESOLVE(ncm_generate, "gmb_ml_ncm_generate");
+    GML_RESOLVE(ncm_text, "gmb_ml_ncm_text");
+    GML_RESOLVE(host_last_error, "gmb_ml_last_error");
     GML_RESOLVE(imatrix_layer_energy, "gmb_ml_imatrix_layer_energy");
     GML_RESOLVE(imatrix_rank_map, "gmb_ml_imatrix_rank_map");
     GML_RESOLVE(tensor_zeros, "gmb_ml_tensor_zeros");
@@ -500,6 +511,27 @@ GMB_ML_API int gmb_ml_text_decode(int64_t h, char* out, int cap)
 { if (gml_load() != GMB_ML_OK || !g_vt.text_decode) return GMB_ML_ERR; return g_vt.text_decode(h, out, cap); }
 GMB_ML_API int64_t gmb_ml_dataset_load_text(const char* path, const char* opts)
 { if (gml_load() != GMB_ML_OK || !g_vt.dataset_load_text) { gml_set_err("%s", "dataset_load_text: host senza supporto (aggiorna libgmb_torch)", NULL); return -1; } return g_vt.dataset_load_text(path, opts); }
+/* Le funzioni NCM sono raggiunte SOLO via FFI (LIB "gmb_torch" risolto sul processo stesso in VM/C): senza `used` il linker
+ * (-dead_strip) le elimina dall'eseguibile, perche' nessun altro codice le chiama. */
+#if defined(__GNUC__) || defined(__clang__)
+#  define GML_KEEP __attribute__((used))
+#else
+#  define GML_KEEP
+#endif
+/* NCM: l'errore dell'host (messaggio dell'eccezione C++) viene copiato nel last_error del loader. */
+static void gml_copy_host_err(void)
+{ if (g_vt.host_last_error) { const char* m = g_vt.host_last_error(); if (m && *m) snprintf(g_ml_err, sizeof(g_ml_err), "%s", m); } }
+GML_KEEP GMB_ML_API int64_t gmb_ml_ncm_load(const char* gen, const char* tok, const char* vocab, int device)
+{ if (gml_load() != GMB_ML_OK || !g_vt.ncm_load) { gml_set_err("%s", "ncm_load: host senza supporto (aggiorna libgmb_torch)", NULL); return 0; }
+  int64_t h = g_vt.ncm_load(gen, tok, vocab, device); if (!h) gml_copy_host_err(); return h; }
+GML_KEEP GMB_ML_API void gmb_ml_ncm_free(int64_t h)
+{ if (gml_load() == GMB_ML_OK && g_vt.ncm_free) g_vt.ncm_free(h); }
+GML_KEEP GMB_ML_API int gmb_ml_ncm_generate(int64_t h, int n, int64_t seed, char* out, int cap)
+{ if (gml_load() != GMB_ML_OK || !g_vt.ncm_generate) { gml_set_err("%s", "ncm_generate: host senza supporto (aggiorna libgmb_torch)", NULL); return -1; }
+  int r = g_vt.ncm_generate(h, n, seed, out, cap); if (r < 0) gml_copy_host_err(); return r; }
+GML_KEEP GMB_ML_API const char* gmb_ml_ncm_text(int64_t h, int n, int64_t seed)
+{ if (gml_load() != GMB_ML_OK || !g_vt.ncm_text) { gml_set_err("%s", "ncm_text: host senza supporto (aggiorna libgmb_torch)", NULL); return ""; }
+  const char* r = g_vt.ncm_text(h, n, seed); if (!r || !*r) gml_copy_host_err(); return r ? r : ""; }
 GMB_ML_API int gmb_ml_imatrix_layer_energy(const char* path, double* out, int cap)
 { if (gml_load() != GMB_ML_OK || !g_vt.imatrix_layer_energy) return GMB_ML_ERR; return g_vt.imatrix_layer_energy(path, out, cap); }
 GMB_ML_API int gmb_ml_imatrix_rank_map(const char* path, int lo, int hi, int* out, int cap)

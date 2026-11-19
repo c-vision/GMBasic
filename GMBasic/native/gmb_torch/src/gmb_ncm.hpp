@@ -98,6 +98,34 @@ public:
         return at::cat(gen, 1);
     }
 
+    /* Codifica token di testo [B,128] in codici VQ [B, sum(levels)] (encoder.wte -> GroupNorm(4) -> quantizzazione
+     * residuale multiscala, argmin sui codebook). Serve a verificare la ricostruzione del tokenizer. */
+    at::Tensor encode_codes(const at::Tensor& tokens) const
+    {
+        at::NoGradGuard ng;
+        at::Tensor z = at::embedding(t_.at("encoder.wte.weight"), tokens.to(dev_));                      /* [B,L,D] */
+        z = at::group_norm(z.transpose(1, 2), 4, at::Tensor(), at::Tensor(), 1e-5).transpose(1, 2).contiguous();
+        const int64_t L = levels_.back();
+        at::Tensor z_rest = z.clone();
+        std::vector<at::Tensor> idxs;
+        for (size_t li = 0; li < levels_.size(); li++)
+        {
+            at::Tensor flat;
+            if (li == 0) flat = at::conv1d(z_rest.transpose(1, 2), t_.at("vq.learned_down_l1.weight"), t_.at("vq.learned_down_l1.bias"), 128).transpose(1, 2);
+            else if (li + 1 == levels_.size()) flat = z_rest;
+            else flat = area_pool(z_rest, levels_[li]);
+            at::Tensor E = t_.at("vq.embeddings." + std::to_string(li) + ".weight");
+            at::Tensor d = (flat * flat).sum(-1, true) + (E * E).sum(-1).view({1, 1, -1}) - 2 * at::matmul(flat, E.t());
+            at::Tensor idx = d.argmin(-1);
+            at::Tensor q = at::embedding(E, idx);
+            at::Tensor qf = (li + 1 != levels_.size()) ? up_to_full(q, (int)li, L) : q;
+            qf = apply_quant_resi(qf, (int)li);
+            z_rest = z_rest - qf;
+            idxs.push_back(idx);
+        }
+        return at::cat(idxs, 1);
+    }
+
     /* idx_to_zhats(...)[-1]: z_hat finale [B,128,D] dai codici. */
     at::Tensor codes_to_zhat(const at::Tensor& idx) const
     {
@@ -160,6 +188,12 @@ public:
             cnt.scatter_add_(1, p.unsqueeze(1), at::ones({B, 1}, cnt.options()));
         }
         return out;
+    }
+
+    /* Genera B sequenze di token del tokenizer di testo (BERT): [B, 128] (long, CPU). */
+    at::Tensor generate_ids(int B, const NcmOptions& o) const
+    {
+        return pick_tokens(decode_logits(codes_to_zhat(generate_codes(B, o))), o);
     }
 
     /* Genera B testi (richiede il vocabolario). */

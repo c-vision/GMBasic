@@ -1928,12 +1928,20 @@ GMB_ML_API double gmb_ml_accuracy(int64_t y, int64_t yhat)
 /* ── NCM ─────────────────────────────────────────────────────────────────── */
 static std::map<int64_t, std::unique_ptr<gmb::Ncm>> g_ncm;
 
+/* "~/..." -> $HOME/... (le funzioni di libgmb_torch ricevono percorsi dal BASIC, dove ~ e' d'uso). */
+static std::string ncm_path(const char* p)
+{
+    std::string s = p ? p : "";
+    if (s.size() >= 2 && s[0] == '~' && s[1] == '/') { const char* h = std::getenv("HOME"); if (h) return std::string(h) + s.substr(1); }
+    return s;
+}
+
 GMB_ML_API int64_t gmb_ml_ncm_load(const char* generator_pt, const char* tokenizer_pt, const char* vocab_txt, int device)
 {
     try
     {
         auto m = std::make_unique<gmb::Ncm>();
-        m->load(generator_pt ? generator_pt : "", tokenizer_pt ? tokenizer_pt : "", vocab_txt ? vocab_txt : "", g_dev(device));
+        m->load(ncm_path(generator_pt), ncm_path(tokenizer_pt), ncm_path(vocab_txt), g_dev(device));
         std::lock_guard<std::mutex> lk(g_lock);
         int64_t h = g_next_handle++;
         g_ncm[h] = std::move(m);
@@ -1968,6 +1976,15 @@ GMB_ML_API int gmb_ml_ncm_generate(int64_t h, int n, int64_t seed, char* out, in
         return len;
     }
     catch (const std::exception& e) { gml_err(std::string("ncm_generate: ") + e.what()); return -1; }
+}
+
+GMB_ML_API const char* gmb_ml_ncm_text(int64_t h, int n, int64_t seed)
+{
+    static thread_local std::string buf;
+    std::vector<char> tmp(1 << 20);
+    int len = gmb_ml_ncm_generate(h, n, seed, tmp.data(), (int)tmp.size());
+    buf.assign(len > 0 ? tmp.data() : "", len > 0 ? (size_t)len : 0);
+    return buf.c_str();
 }
 
 } /* extern "C" */
