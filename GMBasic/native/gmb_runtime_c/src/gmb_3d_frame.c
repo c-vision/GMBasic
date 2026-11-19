@@ -12,11 +12,10 @@
  * gira senza scheduler (oracolo, tool, selfcheck — T3) linka comunque il
  * runtime, che contiene gmb_c99gpm.c: la guardia c'è sempre.
  */
-#include "gmb_3d.h"
+#include "gmb_3d_internal.h"
 
 #include <stdio.h>
 #include <stdlib.h>
-
 #include "gmb_c99gpm.h"
 /* Scrittore PNG del runtime (gmb_graphics_screenshot.c): stessa implementazione
  * dello screenshot 2D, nessuna seconda copia (§0bis). */
@@ -41,6 +40,11 @@ static void set_err(const char* msg)
 {
     g_last_error[0] = '\0';
     if (msg && *msg) snprintf(g_last_error, sizeof(g_last_error), "%s", msg);
+}
+
+void gmb_3d_set_error(const char* msg)
+{
+    set_err(msg);
 }
 
 static gmb_task_t* claim_get(void)

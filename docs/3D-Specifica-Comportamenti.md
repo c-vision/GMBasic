@@ -203,7 +203,7 @@ Queste non sono regole del renderer: sono **condizioni che l'autore del mondo de
 | Dominio / file | Funzioni da aggiungere | Oracolo |
 |---|---|---|
 | `gm_gfx_raster` (estensione) | target **ARGB `0x00RRGGBB`** + depth; blending traslucido con alpha della texture; mip-lite; blit/clip per layer | `M-PALALPHA`, `W-TRANS`, `C-INDEX0` |
-| `gm_gfx_sector` (nuovo) | settore/parete/portale: creazione, validazione, risoluzione punto→settore (con quota), portali per raggio, quote con pendenza | `W-MODEL`, `W-INV-*`, `W-SECTORZ` |
+| `gm_gfx_sector` **(esiste, P2)** | settore/parete/portale: risoluzione punto→settore (con quota), portali per raggio (≤64), piani per pixel, shear del pitch, cielo per angolo, fog | `W-MODEL`, `W-INV-*`, `W-SECTORZ` |
 | `gm_gfx_light` (nuovo) | livelli di luce in fixed point (rampa `COLORMAP`), lampada point (falloff lineare), lampada cono, fog lineare | `W-LIGHT`, `M-LIGHT`, `M-FOG` |
 | `gm_gfx_scene` (nuovo) | ordinamento (opachi/things/traslucidi), culling per oggetto/frustum, zone | `M-ORDER`, `M-CULL`, `M-ZONE` |
 | `gm_gfx_anim` (nuovo) | keyframe TRS, skinning (oltre il riferimento), interpolazione a tempo simulato | `T-FIXED` |
@@ -218,7 +218,9 @@ Queste non sono regole del renderer: sono **condizioni che l'autore del mondo de
 | `gmb_3d_move.c` | corpo, movimento con scivolamento/gradini/portali, `HIT` | `W-MOVE`, `M-COLLIDE` |
 | `gmb_3d_ray.c` | `SHOOT`/`USE`/`SEES` sui due modelli, con flag 2/4/8 | `W-SHOOT`, `M-RAYS` |
 | `gmb_3d_time.c` | passo fisso, `TICK`, mover, animazioni, scroll, lightfx | `T-*` |
-| `gmb_3d_io.c` | schema `gmb-3d`, errori per elemento, migrazione, round-trip; **usabile anche fuori dal GPM** (park se `gmb_cur()!=NULL`, sincrono altrimenti), così il tool `world_check.c` e l'oracolo P1 non avviano lo scheduler (`R11`) | `F-*`, `C-GPM` |
+| `gmb_3d_io.c` | **esiste dal 2026-11-19 (P2)**: schema `gmb-3d` v1 `kind:"sectors"`, errori per elemento (`W-INV-FLOOR`/`W-INV-HEIGHT`/`W-INV-CCW`), load atomico; **usabile anche fuori dal GPM** (park se `gmb_cur()!=NULL`, sincrono altrimenti), così l'oracolo non avvia lo scheduler (`R11`) | `F-*`, `C-GPM` |
+| `gmb_3d_sector.c` | **esiste dal 2026-11-19 (P2)**: binding `gmb_3d_world_render` su `gm_sector_render`, null mode rispettato, nessuna allocazione per frame | `W-*`, `T-NULL` |
+| `gmb_3d_move.c` | **esiste dal 2026-11-19 (P2)**: corpo `W-PLAYER` (raggio 14, altezza 56, occhio 46, step 24), `MOVE` relativo alla vista con scivolamento (spinta a un raggio dal segmento), gradini ≤ `step`, portali alti `height` e larghi `2×raggio`, `HIT` a bit (1 parete, 2 fermo, 4 settore); sotto-passi ≤ raggio/2, nessuna allocazione, `gmb_3d_player_place/view` con `W-EYE-CLAMP` | `W-MOVE`, `W-PLAYER`, `W-EYE-CLAMP` |
 | `gmb_3d_check.c` | validatore `W-INV-*` con messaggi che nominano l'elemento, chiamato **dal `gmb_3d_io` durante il load** (violazioni fatali) e dal tool `tools/c/world_check.c`; **nessun comando BASIC** (§12.2) | `W-INV-*` |
 
 **Regola di confine**: la matematica e le primitive restano in `gm_gfx_*` (suite, testabile da sola); lo **stato** e la semantica dei comandi stanno nel runtime, perché le due istanze della dylib non condividono memoria (vedi piano §3.1.3 e spike P0). Nessuna funzione nuova nasce in `gmb_runtime_c` se è pura matematica, e nessuna logica di gioco nasce nella suite.

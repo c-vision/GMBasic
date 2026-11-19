@@ -283,6 +283,18 @@ Senza oracolo, P2–P4 non si possono verificare: si fa prima di scrivere un ren
 * Invarianti di authoring (`W-INV-*`) come validatore: è il momento in cui servono, prima che le mappe si moltiplichino.
 * **Accettazione**: mappa demo (3 stanze + porta + ascensore + finestra traslucida) a ≤4 ms/frame a 640×300; 20 MiniTest; 6 golden; 10 casi di collisione headless.
 
+**Stato al 2026-11-19 (aperta, primo pezzo in piedi).**
+
+| Pezzo | Dove | Cosa fa |
+|---|---|---|
+| renderer | `shared/libs/graphics/{include,src}/gm_gfx_sector.*` (82 + 282 righe) | un raggio 2D per colonna, portali ricorsivi (≤64), piani per pixel ancorati alle x,y del mondo, pareti 1 unità = 1 texel, shear del pitch, cielo per angolo, fog lineare; scrive `unsigned int*` `0x00RRGGBB` + `float*` depth del target P1 |
+| load | `src/gmb_3d_io.c` (362) | schema `gmb-3d` v1 `kind:"sectors"`, invarianti fatali e nominate (`W-INV-FLOOR`, `W-INV-HEIGHT`, `W-INV-CCW`), `R11`: file su thread esterno + task parcheggiato (`gmb_3d_load_park_count`), load atomico |
+| binding | `src/gmb_3d_sector.c` (42) + `include/gmb_3d.h` | `gmb_3d_world_load/free/render`, `gmb_3d_camera_t`; in null mode non disegna |
+| movimento | `src/gmb_3d_move.c` (332) + `include/gmb_3d.h` | `gmb_3d_player_t` (`W-PLAYER`), `MOVE` relativo alla vista: scivolamento, gradini ≤ `step`, portali alti `height` e larghi `2×raggio`, `HIT` a bit (1/2/4), sotto-passi ≤ raggio/2; `place`/`view` con `W-EYE-CLAMP` |
+| oracolo | `tools/gmb_3d_oracle{,_world}.c` (433 per il mondo), `tools/sh/check_3d_oracle.sh` | 6 scene (3 P1 + `sector_room`/`sector_door`/`sector_pitch`), 6 golden per RID, selftest **79** check: `E_BUSY` a due task (P1), `R11` dentro e fuori da un task, **10 casi `W-MOVE`** (muro frontale/obliquo/angolo, gradini 24/40, portale basso/stretto/alto, `W-EYE-CLAMP`) più la vista del giocatore dopo il `MOVE` |
+
+Difetto trovato e corretto dall'oracolo: il pavimento non veniva disegnato quando l'occhio è sopra di esso (profondità negativa nel piano), visibile come fondo nero in `sector_door`/`sector_pitch`. **Collisione e `MOVE` chiusi** (2026-11-19): il sotto-passo applica lo spostamento prima della spinta (senza, il corpo restava fermo) e la spinta riporta il centro dal lato in cui si trova già — orientarla all'esterno del settore lo espelleva. Restano di P2: tempo (`TICK`/`SECMOVE`/`ANIM`), mappa demo e misura ≤4 ms.
+
 ### P3 — Rasterizzatore mesh, target e present (6–9 gg)
 
 **Prerequisito**: [`Nota-Tecnica-Thread-Present-3D.md`](Nota-Tecnica-Thread-Present-3D.md) — invarianti `R2`–`R5`, `R8`, ciclo del frame, `RENDER` negli handler. Qui il frame si consuma su **T0** (`frame_acquire`), il cap del present diventa configurabile — **deciso**: una sola opzione `engine.present.max_fps`, default `auto` (60 col 3D, 30 col solo 2D; nota §8) — e il formato del buffer pubblicato è **deciso**: `0x00RRGGBB` come le pagine 2D (specifica §11).

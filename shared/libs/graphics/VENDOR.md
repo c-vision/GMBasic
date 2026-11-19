@@ -15,6 +15,7 @@ nessuna copia dei sorgenti comuni: esiste una sola copia in `shared/libs/`.
 | `src/gm_gfx_ray.c`, `include/gm_gfx_ray.h` | `gmbsuite/gmbgfx-3d` |
 | `src/gm_gfx_mesh.c`, `include/gm_gfx_mesh.h` | `gmbsuite/gmbgfx-3d` |
 | `src/gm_gfx_raster.c`, `include/gm_gfx_raster.h` | `gmbsuite/gmbgfx-3d` |
+| `src/gm_gfx_sector.c`, `include/gm_gfx_sector.h` | scritto qui (P2 del piano 3D: motore di riferimento riscritto, non copiato) |
 | `src/gm_gfx_bitmap.c`, `include/gm_gfx_bitmap.h` | `gmbsuite/gmbgfx-2d` |
 | `src/gm_gfx_surface.c`, `include/gm_gfx_surface.h` | `gmbsuite/gmbgfx-surface` |
 | `src/gm_bc1.c`, `include/gm_bc1.h` | `gmbsuite/gmbgfx-codec` |

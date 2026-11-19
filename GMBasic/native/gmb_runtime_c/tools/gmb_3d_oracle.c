@@ -25,6 +25,7 @@
 #include "gmb_c99gpm.h"              /* R3/R5 con due task veri (scheduler GPM) */
 #include "gmb_graphics_internal.h"   /* png_decode */
 #include "gm_gfx_raster.h"
+#include "gmb_3d_oracle_world.h"      /* P2: scene a settori + prove R11 */
 
 #define W 160
 #define H 120
@@ -152,8 +153,16 @@ static int scene_tri_depth(gmb_3d_target_t* t)
     return rc;
 }
 
-static const char* const SCENE_NAMES[3] = { "tri_tex", "tri_mask", "tri_depth" };
-static const scene_fn SCENE_FNS[3] = { scene_tri_tex, scene_tri_mask, scene_tri_depth };
+/* P1: triangoli. P2: settori (room/door/pitch) dallo stesso binario. */
+#define NSCENES 6
+static const char* const SCENE_NAMES[NSCENES] = {
+    "tri_tex", "tri_mask", "tri_depth",
+    "sector_room", "sector_door", "sector_pitch"
+};
+static const scene_fn SCENE_FNS[NSCENES] = {
+    scene_tri_tex, scene_tri_mask, scene_tri_depth,
+    w_scene_room, w_scene_door, w_scene_pitch
+};
 
 /* --- golden -------------------------------------------------------------- */
 
@@ -214,7 +223,7 @@ static int run_bless(const char* dir, const char* rid, gmb_3d_target_t* t)
     size_t npix = (size_t)t->w * (size_t)t->h;
     uint32_t* shot = (uint32_t*)malloc(npix * sizeof(uint32_t));
     if (!shot) { printf("FAIL memoria\n"); return 2; }
-    for (int i = 0; i < 3; i++)
+    for (int i = 0; i < NSCENES; i++)
     {
         if (shoot(i, t, shot) != 0) continue;
         snprintf(path, sizeof(path), "%s/%s.%s.png", dir, SCENE_NAMES[i], rid);
@@ -228,7 +237,7 @@ static int run_bless(const char* dir, const char* rid, gmb_3d_target_t* t)
     }
     free(shot);
     printf("P1-ORACLE blessed=%d\n", ok);
-    return ok == 3 ? 0 : 1;
+    return ok == NSCENES ? 0 : 1;
 }
 
 /* Prova dell'oracolo: altera N pixel del fotogramma catturato. Serve a dimostrare
@@ -244,7 +253,7 @@ static int run_compare(const char* dir, const char* rid, double tol, gmb_3d_targ
     uint32_t* shot = (uint32_t*)malloc(npix * sizeof(uint32_t));
     if (!shot) { printf("FAIL memoria\n"); return 2; }
 
-    for (int i = 0; i < 3; i++)
+    for (int i = 0; i < NSCENES; i++)
     {
         if (shoot(i, t, shot) != 0) { diff++; continue; }
         for (int p = 0; p < g_perturb && (size_t)p < npix; p++) shot[npix / 2 + (size_t)p] ^= 0x00FF00u;
@@ -355,6 +364,10 @@ static void sched_main(void* arg)
     SCHED_CHECK(gmb_3d_render_depth() == 0, "chiusura da non-proprietario libera il claim orfano");
     SCHED_CHECK(gmb_3d_render_begin() == GMB_3D_OK, "il renderer NON resta occupato per sempre");
     gmb_3d_render_end();
+
+    /* (3) R11: il LOAD di un mondo dentro un task legge su thread esterno,
+     *     parca e resta atomico sul fallimento. */
+    w_world_checks(&g_sched_ok, &g_sched_fail);
 }
 
 static void run_sched_guard_test(int* ok, int* fail)
@@ -373,9 +386,10 @@ static void run_sched_guard_test(int* ok, int* fail)
 
 /* --- selftest: guardie e null mode (P1 accettazione) ---------------------- */
 
-static int run_selftest(void)
+static int run_selftest(const char* dir)
 {
     int ok = 0, fail = 0;
+    w_prepare(dir);   /* documenti di prova del load, scritti fuori dallo scheduler */
 #define CHECK(cond, what) do { if (cond) { ok++; } else { fail++; printf("FAIL %s (riga %d)\n", (what), __LINE__); } } while (0)
 
     gmb_3d_target_t t;
@@ -440,6 +454,12 @@ static int run_selftest(void)
      * stato né corrompe il claim di un proprietario vivo. */
     run_sched_guard_test(&ok, &fail);
 
+    /* R11 fuori da un task: stessa strada del tool, nessun park. */
+    w_world_t3_checks(&ok, &fail);
+
+    /* W-MOVE / W-PLAYER / W-EYE-CLAMP: 10 casi di collisione, sul loader vero. */
+    w_collision_checks(&ok, &fail);
+
     printf("P1-SELFTEST ok=%d fail=%d\n", ok, fail);
 #undef CHECK
     return fail == 0 ? 0 : 1;
@@ -451,7 +471,7 @@ static void usage(void)
 {
     printf("uso: gmb_3d_oracle --check DIR [--rid RID] [--tol PCT] [--perturb N]\n"
            "     gmb_3d_oracle --bless DIR [--rid RID]\n"
-           "     gmb_3d_oracle --selftest\n"
+           "     gmb_3d_oracle --selftest DIR\n"
            "  DIR = cartella delle golden (<scena>.<rid>.png)\n");
 }
 
@@ -469,7 +489,11 @@ int main(int argc, char** argv)
             mode = argv[i];
             if (i + 1 < argc) dir = argv[++i];
         }
-        else if (!strcmp(argv[i], "--selftest")) mode = argv[i];
+        else if (!strcmp(argv[i], "--selftest"))
+        {
+            mode = argv[i];
+            if (i + 1 < argc) dir = argv[++i];   /* cartella dei documenti di prova */
+        }
         else if (!strcmp(argv[i], "--rid") && i + 1 < argc) rid = argv[++i];
         else if (!strcmp(argv[i], "--tol") && i + 1 < argc) tol = atof(argv[++i]);
         else if (!strcmp(argv[i], "--perturb") && i + 1 < argc) g_perturb = atoi(argv[++i]);
@@ -477,9 +501,9 @@ int main(int argc, char** argv)
         else { printf("argomento non riconosciuto: %s\n", argv[i]); usage(); return 2; }
     }
     if (!mode) { usage(); return 2; }
-    if (strcmp(mode, "--selftest") != 0 && !dir) { usage(); return 2; }
+    if (!dir) { usage(); return 2; }
 
-    if (!strcmp(mode, "--selftest")) return run_selftest();
+    if (!strcmp(mode, "--selftest")) return run_selftest(dir);
 
     gmb_3d_target_t t;
     memset(&t, 0, sizeof(t));

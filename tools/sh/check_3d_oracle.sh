@@ -30,18 +30,22 @@ say() { [ "$QUIET" = "1" ] || echo "$@"; }
 
 mkdir -p "$BUILD" || exit 1
 
-# 1) Gate A/B sul file C toccato (regola di casa: stesso file, cc E tools/sh/zcc).
-if ! cc -O2 -c -I "$SRC/include" "$SRC/src/gmb_3d_frame.c" -o "$BUILD/frame_cc.o" 2>"$BUILD/gate_cc.log"; then
-  echo "check_3d_oracle: gmb_3d_frame.c NON compila con cc" >&2
-  sed -n '1,20p' "$BUILD/gate_cc.log" >&2
-  exit 1
-fi
-if ! bash "$REPO/tools/sh/zcc" -O2 -c -I "$SRC/include" "$SRC/src/gmb_3d_frame.c" -o "$BUILD/frame_zcc.o" 2>"$BUILD/gate_zcc.log"; then
-  echo "check_3d_oracle: gmb_3d_frame.c NON compila con tools/sh/zcc" >&2
-  sed -n '1,20p' "$BUILD/gate_zcc.log" >&2
-  exit 1
-fi
-say "gate C: gmb_3d_frame.c compila con cc e tools/sh/zcc"
+# 1) Gate A/B sui file C toccati (regola di casa: stesso file, cc E tools/sh/zcc).
+GFX="$REPO/shared/libs/graphics"
+GFXINC="-I $GFX/include -I $REPO/shared/libs/math/include -I $REPO/shared/libs/compute/include"
+for f in gmb_3d_frame.c gmb_3d_io.c gmb_3d_sector.c gmb_3d_move.c; do
+  if ! cc -O2 -c -I "$SRC/include" $GFXINC "$SRC/src/$f" -o "$BUILD/${f%.c}_cc.o" 2>"$BUILD/gate_cc.log"; then
+    echo "check_3d_oracle: $f NON compila con cc" >&2
+    sed -n '1,20p' "$BUILD/gate_cc.log" >&2
+    exit 1
+  fi
+  if ! bash "$REPO/tools/sh/zcc" -O2 -c -I "$SRC/include" $GFXINC "$SRC/src/$f" -o "$BUILD/${f%.c}_zcc.o" 2>"$BUILD/gate_zcc.log"; then
+    echo "check_3d_oracle: $f NON compila con tools/sh/zcc" >&2
+    sed -n '1,20p' "$BUILD/gate_zcc.log" >&2
+    exit 1
+  fi
+done
+say "gate C: gmb_3d_{frame,io,sector,move}.c compilano con cc e tools/sh/zcc"
 
 # 2) Build dell'oracolo (target dedicato; il runtime statico è una sua dipendenza).
 if [ ! -f "$BUILD/CMakeCache.txt" ]; then
@@ -60,8 +64,9 @@ fi
 BIN="$BUILD/gmb_3d_oracle"
 [ -x "$BIN" ] || { echo "check_3d_oracle: binario non trovato: $BIN" >&2; exit 1; }
 
-# 3) Guardie e null mode: prima di guardare i pixel.
-if ! "$BIN" --selftest; then
+# 3) Guardie, null mode e load R11: prima di guardare i pixel. I documenti di
+# prova del load si scrivono in $BUILD (mai nel repo).
+if ! "$BIN" --selftest "$BUILD"; then
   echo "check_3d_oracle: selftest FALLITO" >&2
   exit 1
 fi

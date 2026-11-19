@@ -39,7 +39,9 @@ enum {
     GMB_3D_E_IO        = -3,  /* scrittura/lettura file fallita */
     GMB_3D_E_NO_TASK   = -4,  /* fuori dal task GPM con scheduler attivo */
     GMB_3D_E_BUSY      = -5,  /* il renderer è di un altro task */
-    GMB_3D_E_RECURSIVE = -6   /* RENDER dentro RENDER */
+    GMB_3D_E_RECURSIVE = -6,  /* RENDER dentro RENDER */
+    GMB_3D_E_SCHEMA    = -7,  /* documento fuori schema gmb-3d v1 */
+    GMB_3D_E_INVARIANT = -8   /* invariante W-INV-* violata (load fallito) */
 };
 
 /* Present: disegna nel target (software) oppure non disegna (null mode). */
@@ -95,6 +97,78 @@ int  gmb_3d_render_depth(void);   /* 1 se un claim è aperto, 0 se libero */
 /* Buffer allocati dal modulo dall'avvio: un ciclo non deve incrementarlo
  * (equivale a SCENE.STATS("allocs") = 0 per frame). */
 unsigned long gmb_3d_alloc_count(void);
+
+/* --- mondi a settori (P2, specifica §2) ---------------------------------- */
+
+/* Handle OPACO: lo stato del mondo vive nel runtime, la matematica nelle
+ * funzioni gm_sector_* della suite (piano §3.1.3). */
+typedef struct gmb_3d_world gmb_3d_world_t;
+
+typedef struct gmb_3d_camera {
+    float x, y, z;          /* occhio */
+    float angle, pitch;     /* radianti: angolo di vista e shear dell'orizzonte */
+    float fov;              /* radianti, orizzontale */
+    float far;
+} gmb_3d_camera_t;
+
+/* Carica un mondo a settori da un documento gmb-3d v1 (`kind:"sectors"`).
+ * R11: dentro un task il file si legge su un thread esterno e il task PARCA;
+ * fuori da un task (tool, oracolo — T3) la lettura è sincrona. Parsing e
+ * validazione girano sempre nel chiamante; il load è ATOMICO: su errore il
+ * mondo precedente resta valido e *out non viene toccato. */
+int  gmb_3d_world_load(const char* path, gmb_3d_world_t** out);
+void gmb_3d_world_free(gmb_3d_world_t* w);
+
+/* Rende il mondo nel target. In null mode non disegna (T-NULL). */
+int  gmb_3d_world_render(const gmb_3d_world_t* w, const gmb_3d_camera_t* cam,
+                         gmb_3d_target_t* t);
+
+/* --- corpo e movimento (P2, specifica §2.3) ------------------------------ */
+
+/* Bit di HIT (W-MOVE): 1 una parete ha spinto, 2 non ci si è mossi affatto,
+ * 4 cambio di settore. Accorpabili nello stesso MOVE. */
+enum {
+    GMB_3D_HIT_WALL   = 1,
+    GMB_3D_HIT_STUCK  = 2,
+    GMB_3D_HIT_SECTOR = 4
+};
+
+/* Corpo del giocatore: cilindro verticale con i piedi in (x,y,z). I default
+ * sono quelli di W-PLAYER (raggio 14, altezza 56, occhio 46, step 24);
+ * `angle`/`pitch` sono la vista, `sector` il settore corrente (-1 = da
+ * collocare). `hit` è il bitmask dell'ultimo MOVE. */
+typedef struct gmb_3d_player {
+    float x, y, z;          /* piedi nel mondo */
+    float angle, pitch;     /* radianti: 0 = +x */
+    float radius, height;   /* cilindro di collisione */
+    float eye, step;        /* occhio dal pavimento, gradino massimo */
+    float fov, far;         /* vista usata da gmb_3d_player_view */
+    int   sector;           /* settore corrente, -1 = nessuno */
+    int   hit;              /* GMB_3D_HIT_* dell'ultimo MOVE */
+} gmb_3d_player_t;
+
+/* Default W-PLAYER; azzera `hit` e mette `sector` a -1. */
+void gmb_3d_player_defaults(gmb_3d_player_t* p);
+
+/* Colloca i piedi in (x,y) sul pavimento del settore che contiene il punto
+ * (quello con il pavimento più alto, se i settori si sovrappongono). Fuori da
+ * ogni settore è un errore esplicito (W-CAMERA), non una posizione di ripiego. */
+int  gmb_3d_player_place(const gmb_3d_world_t* w, gmb_3d_player_t* p, float x, float y);
+
+/* MOVE relativo alla vista: `forward` lungo il fronte, `right` verso la destra
+ * di chi guarda. Scivola lungo le pareti, sale gradini fino a `step`, entra nei
+ * portali in cui il corpo sta, e lascia in p->hit i bit W-MOVE. */
+int  gmb_3d_player_move(const gmb_3d_world_t* w, gmb_3d_player_t* p,
+                        float forward, float right);
+
+/* Camera dell'occhio del giocatore: z = piedi + eye, limitato a 2 unità sotto
+ * il soffitto del settore (W-EYE-CLAMP). */
+int  gmb_3d_player_view(const gmb_3d_world_t* w, const gmb_3d_player_t* p,
+                        gmb_3d_camera_t* cam);
+
+/* Load che hanno parcheggiato il task (R11): 0 in T3, +1 per ogni load dentro
+ * un task. Osservabile come alloc_count per R4. */
+unsigned long gmb_3d_load_park_count(void);
 
 const char* gmb_3d_last_error(void);
 

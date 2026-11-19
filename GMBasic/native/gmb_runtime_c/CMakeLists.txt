@@ -89,6 +89,16 @@ include_directories(src)
 include_directories(${LLMENV}/LLMEngine/moe/include)
 include_directories(${LLMENV}/LLMEngine/asr/include)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../gmb_compiler_c/include)
+# Suite grafica condivisa: la usano SOLO i moduli 3D del runtime (gmb_3d_io.c /
+# gmb_3d_sector.c / gmb_3d_move.c, via gmb_3d_internal.h -> gm_gfx_sector.h). Prima erano
+# include_directories() GLOBALI: entravano in OGNI unità di compilazione del
+# progetto (e nelle sottocartelle aggiunte dopo). Le applica, per-target, il
+# blocco sugli OBJECT lib core/min più sotto; l'oracolo ha già le sue.
+set(GMB_GFX_SUITE "${CMAKE_CURRENT_SOURCE_DIR}/../../../shared/libs/graphics")
+set(GMB_GFX_SUITE_INCLUDES
+    "${GMB_GFX_SUITE}/include"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../../../shared/libs/math/include"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../../../shared/libs/compute/include")
 
 # AMOS: sorgenti Bessel (f2c) in src/amos/ — vedi gmb_bessely/gmb_besselk in gmb_math.c.
 file(GLOB AMOS_SRCS CONFIGURE_DEPENDS src/amos/*.c)
@@ -372,6 +382,12 @@ set(GMB_ALL_SRCS
     src/gmb_graphics_palette.c
     # P1 del piano 3D: target di rendering + cattura headless (nessun header SDL qui).
     src/gmb_3d_frame.c
+    # P2: mondi a settori — load (stato nel runtime), binding del renderer e
+    # corpo/MOVE con collisione. Nell'archivio statico i simboli gm_* della
+    # suite restano da risolvere solo per chi li usa (come gmb_3d_frame.o).
+    src/gmb_3d_io.c
+    src/gmb_3d_sector.c
+    src/gmb_3d_move.c
     # F3 multimodale (2026-09-11): dominio immagini (decode/resize/crop/encode PNG condivisi).
     src/gmb_image.c
     # F2 multimodale (2026-09-11): estrazione strutturata documenti (euristiche + LLM).
@@ -453,6 +469,11 @@ add_library(gmb_runtime_sql STATIC $<TARGET_OBJECTS:gmb_runtime_sql_obj>)
 target_link_libraries(gmb_runtime_sql PUBLIC gmb_runtime_deps)
 add_library(gmb_runtime_core_obj OBJECT ${GMB_CORE_SRCS})
 add_library(gmb_runtime_ui_obj OBJECT ${GMB_UI_SRCS})
+# Header della suite grafica solo dove servono davvero: SOLO gmb_3d_io.c,
+# gmb_3d_sector.c e gmb_3d_move.c li usano (via gmb_3d_internal.h -> gm_gfx_sector.h) e finiscono
+# entrambi in GMB_CORE_SRCS, quindi bastano core e min. Nessun sorgente UI include
+# un header gm_*: là le include non avrebbero acquirenti.
+target_include_directories(gmb_runtime_core_obj PRIVATE ${GMB_GFX_SUITE_INCLUDES})
 target_link_libraries(gmb_runtime_core_obj PRIVATE gmb_runtime_deps)
 # Il runtime COMPLETO include l'UI (FORM/READ con listbox/combobox/ombra/input).
 target_compile_definitions(gmb_runtime_core_obj PRIVATE GMB_WITH_UI=1)
@@ -479,6 +500,7 @@ add_library(gmb_runtime_core STATIC $<TARGET_OBJECTS:gmb_runtime_core_obj>)
 # input/ombra → un eseguibile testuale linka questa e porta con sé ZERO librerie esterne
 # (niente SDL2/SDL2_ttf/MoltenVK). Il runtime completo (gmb_runtime) resta quello con l'UI.
 add_library(gmb_runtime_min_obj OBJECT ${GMB_CORE_SRCS})
+target_include_directories(gmb_runtime_min_obj PRIVATE ${GMB_GFX_SUITE_INCLUDES})
 target_link_libraries(gmb_runtime_min_obj PRIVATE gmb_runtime_deps)
 # IMBUTO INPUT: il lettore del terminale (termios, ZERO SDL) e la coda eventi condivisa
 # sono core, non UI. Senza queste due la variante minima ripiegava sugli stub di
@@ -1356,7 +1378,8 @@ gmb_exe_relocatable(gmbimgdiff)
 set(GMB_3D_SUITE "${CMAKE_CURRENT_SOURCE_DIR}/../../../shared/libs/graphics")
 set(GMB_3D_MATH  "${CMAKE_CURRENT_SOURCE_DIR}/../../../shared/libs/math")
 set(GMB_3D_COMPUTE "${CMAKE_CURRENT_SOURCE_DIR}/../../../shared/libs/compute")
-add_executable(gmb_3d_oracle tools/gmb_3d_oracle.c "${GMB_3D_SUITE}/src/gm_gfx_raster.c")
+add_executable(gmb_3d_oracle tools/gmb_3d_oracle.c tools/gmb_3d_oracle_world.c
+    "${GMB_3D_SUITE}/src/gm_gfx_raster.c" "${GMB_3D_SUITE}/src/gm_gfx_sector.c")
 target_link_libraries(gmb_3d_oracle PRIVATE gmb_runtime)
 target_include_directories(gmb_3d_oracle PRIVATE include src
     "${GMB_3D_SUITE}/include" "${GMB_3D_MATH}/include" "${GMB_3D_COMPUTE}/include")
