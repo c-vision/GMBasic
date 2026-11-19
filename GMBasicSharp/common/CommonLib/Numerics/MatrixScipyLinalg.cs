@@ -50,10 +50,14 @@ public static partial class Numerics
             ? r : ApplyEigenwise(a, Math.Tan);
 
     /// <summary>scipy.linalg.signm — segno di matrice (via EVD simmetrica).</summary>
-    public static Matrix<double> MatrixSignm(Matrix<double> a) => ApplyEigenwise(a, x => x == 0 ? 0.0 : (x > 0 ? 1.0 : -1.0));
+    public static Matrix<double> MatrixSignm(Matrix<double> a)
+        => MatrixNativeKernels.TrySignm(a, out var r) ? r
+           : throw new NotSupportedException("LINALG.SIGNM: kernel C `gmb_matrix_signm` non disponibile (libgmb_matrix_flat). L'implementazione gestita è stata rimossa: la fonte è una sola (C).");
 
     /// <summary>scipy.linalg.fractional_matrix_power — potenza frazionaria di matrice.</summary>
-    public static Matrix<double> MatrixFractionalPower(Matrix<double> a, double p) => ApplyEigenwise(a, x => Math.Pow(x, p));
+    public static Matrix<double> MatrixFractionalPower(Matrix<double> a, double p)
+        => MatrixNativeKernels.TryFractionalPower(a, p, out var r) ? r
+           : throw new NotSupportedException("LINALG.FRACTIONALPOWER: kernel C `gmb_matrix_fractional_power` non disponibile (libgmb_matrix_flat).");
 
     // ========================================================================
     // SVD-based: orth, subspace_angles, polar, cond, nuclear norm
@@ -105,20 +109,8 @@ public static partial class Numerics
 
     /// <summary>scipy.linalg.subspace_angles — angoli tra due sottospazi.</summary>
     public static double[] SubspaceAngles(Matrix<double> a, Matrix<double> b)
-    {
-        var qa = Orth(a);
-        var qb = Orth(b);
-        var c = qa.TransposeThisAndMultiply(qb);
-        var s = c.Svd().S;
-        var len = Math.Min(a.ColumnCount, b.ColumnCount);
-        var angles = new double[len];
-        for (var i = 0; i < len; i++)
-        {
-            var cosv = Math.Min(1.0, Math.Max(-1.0, s[i]));
-            angles[i] = Math.Acos(cosv);
-        }
-        return angles;
-    }
+        => MatrixNativeKernels.TrySubspaceAngles(a, b, out var r) ? r
+           : throw new NotSupportedException("LINALG.SUBSPACEANGLES: kernel C `gmb_matrix_subspace_angles` non disponibile (libgmb_matrix_flat).");
 
     /// <summary>Risultato della decomposizione polare (A = U·P).</summary>
     public sealed class PolarDecomposition
@@ -145,14 +137,13 @@ public static partial class Numerics
 
     /// <summary>scipy.linalg.cond — numero di condizionamento (norma 2: s_max/s_min).</summary>
     public static double ConditionNumber(Matrix<double> a)
-    {
-        var s = a.Svd().S;
-        if (s.Count == 0 || s[^1] < 1e-300) return double.PositiveInfinity;
-        return s[0] / s[^1];
-    }
+        => MatrixNativeKernels.TryCond(a, out var r) ? r
+           : throw new NotSupportedException("LINALG.COND: kernel C `gmb_matrix_cond` non disponibile (libgmb_matrix_flat).");
 
     /// <summary>scipy.linalg.norm(ord='nuc') — norma nucleare (somma dei valori singolari).</summary>
-    public static double NuclearNorm(Matrix<double> a) => a.Svd().S.Sum();
+    public static double NuclearNorm(Matrix<double> a)
+        => MatrixNativeKernels.TryNuclearNorm(a, out var r) ? r
+           : throw new NotSupportedException("LINALG.NUCLEARNORM: kernel C `gmb_matrix_nuclear_norm` non disponibile (libgmb_matrix_flat).");
 
     // ========================================================================
     // Costruttori: toeplitz, hankel, circulant
@@ -161,39 +152,22 @@ public static partial class Numerics
     /// <summary>scipy.linalg.toeplitz — matrice di Toeplitz (c su/di sotto la diagonale, r sopra).</summary>
     public static Matrix<double> Toeplitz(double[] c, double[] r)
     {
-        var rows = c.Length;
-        var cols = r.Length;
-        var t = DenseMatrix.Create(rows, cols, 0.0);
-        for (var i = 0; i < rows; i++)
-            for (var j = 0; j < cols; j++)
-                t[i, j] = i >= j ? c[i - j] : r[j - i];
-        return t;
+        if (MatrixNativeKernels.TryToeplitz(c, r, out var k)) return k;
+        throw new NotSupportedException("LINALG.TOEPLITZ: kernel C `gmb_matrix_toeplitz` non disponibile (libgmb_matrix_flat).");
     }
 
     /// <summary>scipy.linalg.hankel — matrice di Hankel (costanti lungo le anti-diagonali).</summary>
     public static Matrix<double> Hankel(double[] c, double[] r)
     {
-        var rows = c.Length;
-        var cols = r.Length;
-        var h = DenseMatrix.Create(rows, cols, 0.0);
-        for (var i = 0; i < rows; i++)
-            for (var j = 0; j < cols; j++)
-            {
-                var k = i + j;
-                h[i, j] = k < rows ? c[k] : r[k - rows + 1];
-            }
-        return h;
+        if (MatrixNativeKernels.TryHankel(c, r, out var k)) return k;
+        throw new NotSupportedException("LINALG.HANKEL: kernel C `gmb_matrix_hankel` non disponibile (libgmb_matrix_flat).");
     }
 
     /// <summary>scipy.linalg.circulant — matrice circolante (riga i = c shiftato a destra di i).</summary>
     public static Matrix<double> Circulant(double[] c)
     {
-        var n = c.Length;
-        var m = DenseMatrix.Create(n, n, 0.0);
-        for (var i = 0; i < n; i++)
-            for (var j = 0; j < n; j++)
-                m[i, j] = c[(i - j + n) % n];
-        return m;
+        if (MatrixNativeKernels.TryCirculant(c, out var k)) return k;
+        throw new NotSupportedException("LINALG.CIRCULANT: kernel C `gmb_matrix_circulant` non disponibile (libgmb_matrix_flat).");
     }
 
     // ========================================================================
