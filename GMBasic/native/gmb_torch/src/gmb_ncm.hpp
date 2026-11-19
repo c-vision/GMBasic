@@ -40,6 +40,7 @@ struct NcmOptions {
     double adj_decay = 0.5;
     int    eos_id = 101;                 /* [CLS] di bert-base-uncased */
     int    pad_id = 0;                   /* [PAD] */
+    bool   skip_special = true;          /* false = decode con i token speciali in chiaro (protocollo genppl_flm del paper) */
     bool   cut_at_eos = false;   /* il riferimento taglia al primo EOS (default true), ma qui ogni campione inizia con [CLS]: tagliarebbe tutto */
 };
 
@@ -61,11 +62,11 @@ public:
     int total_codes() const { int s = 0; for (int l : levels_) s += l; return s; }
 
     /* Genera B sequenze di codici VQ: [B, sum(levels)] (long). */
-    at::Tensor generate_codes(int B, const NcmOptions& o) const
+    at::Tensor generate_codes(int B, const NcmOptions& o, const at::Tensor* l0_fixed = nullptr) const
     {
         at::NoGradGuard ng;
         const int64_t D = vq_dim_, n = n_embd_;
-        at::Tensor l0 = at::multinomial(inf_.at("level0_unigram").to(at::kFloat).cpu(), (int64_t)B * levels_[0], true)
+        at::Tensor l0 = l0_fixed ? l0_fixed->to(dev_) : at::multinomial(inf_.at("level0_unigram").to(at::kFloat).cpu(), (int64_t)B * levels_[0], true)
                             .view({B, levels_[0]}).to(dev_);
         at::Tensor prefix = at::full({B, 1}, (int64_t)o.eos_id, at::TensorOptions().dtype(at::kLong)).to(dev_);
         at::Tensor z_prefix = at::embedding(t_.at("encoder.wte.weight"), prefix);                  /* [B,1,D] */
@@ -212,14 +213,15 @@ public:
 
     std::string decode_ids(std::vector<int64_t> ids, const NcmOptions& o) const
     {
+        const bool skip_sp = o.skip_special;
         if (o.cut_at_eos) { auto it = std::find(ids.begin(), ids.end(), (int64_t)o.eos_id); if (it != ids.end()) ids.erase(it, ids.end()); }
         std::string text; bool first = true;
         for (int64_t id : ids)
         {
-            if (id == o.eos_id || id == o.pad_id) continue;
+            if (skip_sp && (id == o.eos_id || id == o.pad_id)) continue;
             if (id < 0 || id >= (int64_t)vocab_.size()) continue;
             const std::string& tk = vocab_[id];
-            if (tk == "[PAD]" || tk == "[UNK]" || tk == "[CLS]" || tk == "[SEP]" || tk == "[MASK]") continue;   /* skip_special_tokens */
+            if (skip_sp && (tk == "[PAD]" || tk == "[UNK]" || tk == "[CLS]" || tk == "[SEP]" || tk == "[MASK]")) continue;   /* skip_special_tokens */
             if (tk.rfind("##", 0) == 0) text += tk.substr(2);
             else { if (!first) text += " "; text += tk; }
             first = false;
