@@ -3636,6 +3636,18 @@ dim_type_done:
         gmb_p_adv(p);
         gmb_stmt_t* s = gmb_stmt_new(GMB_STMT_CONTINUE, line);
         const gmb_token_t* tg = gmb_p_cur(p);
+        /* CONTINUE FOR/WHILE/DO: il tipo deve coincidere col ciclo PIU' INTERNO (canone
+         * 2026-09-30, parity col parser C# che rifiuta il disallineamento). Resta la
+         * keyword come target: l'emitter emette `continue;` (il ciclo C corrente). */
+        if (tg && (tg->kind == GMB_TOK_For || tg->kind == GMB_TOK_While || tg->kind == GMB_TOK_Do)) {
+            if (p->n_loop_stack > 0 && p->loop_stack[p->n_loop_stack - 1] != (int)tg->kind)
+                gmb_p_set_err(p, "CONTINUE <tipo> non corrisponde al tipo del ciclo piu' interno", line);
+            s->exit_target = (char*)malloc((size_t)tg->length + 1);
+            memcpy(s->exit_target, tg->lexeme, (size_t)tg->length);
+            s->exit_target[tg->length] = 0;
+            gmb_p_adv(p);
+            return s;
+        }
         if (tg && tg->kind != GMB_TOK_Newline && tg->kind != GMB_TOK_Eof && tg->kind != GMB_TOK_Colon) { s->exit_target = (char*)malloc((size_t)tg->length + 1); memcpy(s->exit_target, tg->lexeme, (size_t)tg->length); s->exit_target[tg->length] = 0; gmb_p_adv(p); }
         return s;
     }

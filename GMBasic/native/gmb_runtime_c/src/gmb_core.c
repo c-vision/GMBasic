@@ -450,6 +450,18 @@ gmb_string_t gmb_val_to_string_or_empty(gmb_val_t v) {
     return gmb_val_to_string(v);
 }
 
+/* Testo di un gmb_val_t in un CONTESTO STRINGA (concatenazione, confronto, operando di
+ * funzione stringa): scalari → testo semplice (NIL → ""), contenitori (dict/lista) → JSON.
+ * Prima gli emitter usavano sempre gmb_val_to_json, che QUOTA le stringhe ("abc"): un
+ * `IF e = ""` su una variabile boxed non era mai vero e una concatenazione aggiungeva le
+ * virgolette (bug emerso sul FOR EACH di una lista quando la stessa variabile è boxed da un
+ * altro FOR EACH sullo stesso nome). */
+gmb_string_t gmb_val_to_text(gmb_val_t v) {
+    if (v.kind == GMB_TYPE_NIL) return gmb_string_alloc("");
+    if (v.kind == GMB_TYPE_OBJECT || v.kind == GMB_TYPE_ARRAY) return gmb_val_to_json(v);
+    return gmb_val_to_string(v);
+}
+
 /* CSTR/CONVERSIONS.CSTR di un gmb_val_t (campo JSON/ANY dinamico): replica
  * CommonLib.ConversionUtils.CStr — numerico → gmb_str_basic (spazio iniziale se >= 0,
  * per gestire il segno), booleano → "True"/"False", altro (stringa/oggetto) →

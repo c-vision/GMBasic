@@ -6559,11 +6559,13 @@ void emit_str_operand(ctx_t* c, gmb_expr_t* a) {
         sb_put(&c->out, ")");
         return;
     }
-    /* val boxed (JSON.Parse/Load/ReadSection, dict): stringifica il val. */
+    /* val boxed (JSON.Parse/Load/ReadSection, dict): testo del val. `gmb_val_to_text`
+     * rende gli scalari come testo semplice (una stringa NON viene quotata: `IF e = ""`
+     * deve poter essere vero) e i contenitori come JSON. */
     if (a && a->kind == GMB_EXPR_VAR && a->var) {
         var_t* bv = lookup_var(c, a->var);
         if (bv && bv->boxed_val) {
-            sb_put(&c->out, "gmb_val_to_json(");
+            sb_put(&c->out, "gmb_val_to_text(");
             emit_ident(c, bv->name);
             sb_put(&c->out, ")");
             return;
@@ -15860,9 +15862,19 @@ void emit_expr(ctx_t* c, gmb_expr_t* e) {
              * operando VAR/campo/indice è invece posseduto altrove: NON si tocca. Senza,
              * ogni `+` dentro un ciclo lasciava vivi i temporanei (misurato: 1002 blocchi
              * per 500 iterazioni con `debug.memory`). */
+            /* Lato BOXED (gmb_val_t: FOR EACH di una lista su una var promossa da un altro
+             * FOR EACH, dict/JSON): emit_expr darebbe il val grezzo → C invalido. Il testo
+             * si ricava con gmb_val_to_text (scalari semplici, contenitori JSON) e il
+             * risultato è un temporaneo da liberare. */
+            var_t* _cb_l = (e->left->kind == GMB_EXPR_VAR && e->left->var) ? lookup_var(c, e->left->var) : NULL;
+            var_t* _cb_r = (e->right->kind == GMB_EXPR_VAR && e->right->var) ? lookup_var(c, e->right->var) : NULL;
+            int _cbx_l = _cb_l && _cb_l->boxed_val && !_cb_l->gkind && !_cb_l->vclass[0] && !_cb_l->boxed_md;
+            int _cbx_r = _cb_r && _cb_r->boxed_val && !_cb_r->gkind && !_cb_r->vclass[0] && !_cb_r->boxed_md;
             sb_put(&c->out, "gmb_str_concat_owned(");
-            emit_expr(c, e->left); sb_put(&c->out, is_str_temp_expr(c, e->left) ? ", 1, " : ", 0, ");
-            emit_expr(c, e->right); sb_put(&c->out, is_str_temp_expr(c, e->right) ? ", 1)" : ", 0)");
+            if (_cbx_l) { sb_put(&c->out, "gmb_val_to_text("); emit_expr(c, e->left); sb_put(&c->out, "), 1, "); }
+            else { emit_expr(c, e->left); sb_put(&c->out, is_str_temp_expr(c, e->left) ? ", 1, " : ", 0, "); }
+            if (_cbx_r) { sb_put(&c->out, "gmb_val_to_text("); emit_expr(c, e->right); sb_put(&c->out, "), 1)"); }
+            else { emit_expr(c, e->right); sb_put(&c->out, is_str_temp_expr(c, e->right) ? ", 1)" : ", 0)"); }
         } else if (strcmp(op, "+") == 0 && ls != rs
                    && (ls == TY_STR || rs == TY_STR)) {
             /* Concatenazione stringa+numero (semantica MQL): coerce il lato numerico a stringa.
@@ -21863,7 +21875,9 @@ static void st_for(ctx_t* c, gmb_stmt_t* s) {
                     sb_put(&c->out, target);
                     sb_put(&c->out, " = ");
                     if (et == TY_STR)
-                        sb_printf(&c->out, "gmb_string_alloc(gmb_list_get(");
+                        sb_printf(&c->out, lfv2->boxed_val
+                                  ? "gmb_make_val_string(gmb_list_get("
+                                  : "gmb_string_alloc(gmb_list_get(");
                     else if (conv_str && !mismatch)
                         sb_printf(&c->out, "gmb_string_alloc(gmb_double_to_string(gmb_list_get(");
                     else if (lfv2->boxed_val && !mismatch)
@@ -23087,6 +23101,14 @@ static void st_continue(ctx_t* c, gmb_stmt_t* s) {
      * etichettato: WHILE/DO in testa, FOR numerico a fine corpo). Senza: `continue;`.
      * Su etichetta non di loop il C non compila — parità col C# che rifiuta. */
     if (s->exit_target && s->exit_target[0]) {
+        /* CONTINUE FOR/WHILE/DO: è sempre il ciclo PIU' INTERNO (il parser ha già
+         * verificato che il tipo coincida) → `continue;` C. Prima si emetteva
+         * `goto lbl_FOR_CONTINUE` verso un'etichetta mai emessa (C invalido). */
+        int etk = gmb_keyword_tok(s->exit_target);
+        if (gmb_tk_in(etk, gmb_tk_loopkw, (unsigned)(sizeof(gmb_tk_loopkw)/sizeof(gmb_tk_loopkw[0])))) {
+            ind(c); sb_put(&c->out, "continue;\n");
+            return;
+        }
         ind(c); sb_put(&c->out, "goto lbl_");
         sb_put(&c->out, s->exit_target);
         sb_put(&c->out, "_CONTINUE;\n");

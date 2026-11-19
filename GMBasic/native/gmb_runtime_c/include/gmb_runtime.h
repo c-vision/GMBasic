@@ -462,6 +462,8 @@ void gmb_print_tab_zone(void);
 gmb_string_t gmb_val_to_string(gmb_val_t v);
 /* Come gmb_val_to_string ma NIL → "" (assegnazione a un campo STRING). */
 gmb_string_t gmb_val_to_string_or_empty(gmb_val_t v);
+/* Contesto STRINGA (concat/confronto): scalari → testo semplice, contenitori → JSON. */
+gmb_string_t gmb_val_to_text(gmb_val_t v);
 gmb_string_t gmb_cstr_val(gmb_val_t v);   /* CSTR di un val dinamico: spazio se >= 0, bool True/False */
 
 /* ── STRINGBUILDER (builder mutabile di stringhe) ──
