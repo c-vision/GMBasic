@@ -186,7 +186,10 @@ int gmb_3d_secmove_ceil(gmb_3d_world_t* w, int sector, float speed,
 /* MOVING: -1 mentre il settore si muove, 0 quando è fermo (T-SECMOVE). */
 int gmb_3d_moving(const gmb_3d_world_t* w, int sector);
 
-/* HEIGHT: quote attuali del settore; ferma il mover (T-SECMOVE). */
+/* Quote attuali del settore, in SOLA LETTURA (non tocca il mover). */
+int gmb_3d_sector_z(const gmb_3d_world_t* w, int sector, float* floor_z, float* ceil_z);
+
+/* HEIGHT: come `sector_z`, e in più ferma il mover (T-SECMOVE). */
 int gmb_3d_sector_height(gmb_3d_world_t* w, int sector, float* floor_z, float* ceil_z);
 
 /* ANIM: cicla le picture del settore su `first…first+count−1` a `fps`. */
@@ -205,6 +208,31 @@ float gmb_3d_light_now(const gmb_3d_world_t* w, int sector);
 /* LAMP: lampada puntiforme che schiarisce con falloff lineare fino a `radius`
  * (W-LIGHT: mai colorata, niente ombre). Fino a GM_SECTOR_MAX_LAMPS per mondo. */
 int gmb_3d_lamp(gmb_3d_world_t* w, float x, float y, float z, float radius, float level);
+
+/* --- comandi BASIC del dominio WORLD (specifica §2.4) -------------------- */
+
+/* Il BASIC non maneggia handle: c'è UN mondo corrente per processo, come gli
+ * altri domini a stato globale. Ogni funzione è solo la faccia C di una
+ * `gmb_3d_*` (nessuna logica qui, §0bis): le usano gli emitter dei comandi.
+ *
+ * Comandi: WORLD LOAD | CLOSE | TICK, SECMOVE, HEIGHT, ANIM, SCROLL, LIGHTFX,
+ *          LAMP. Letture: WORLD.MOVING | LIGHTNOW | TIME | FLOORZ | CEILZ
+ *          (funzioni: leggono e basta — non fermano un mover: quello è HEIGHT). */
+int    gmb_world_load(const char* path);     /* WORLD LOAD: 0 = OK, <0 errore */
+void   gmb_world_free(void);                 /* WORLD CLOSE */
+int    gmb_world_tick(double seconds);       /* WORLD TICK */
+int    gmb_world_secmove(int sector, double speed, double floor_z);
+int    gmb_world_secmove_ceil(int sector, double speed, double floor_z, double ceil_z);
+int    gmb_world_height(int sector);         /* WORLD HEIGHT: ferma il mover */
+int    gmb_world_anim(int sector, int first, int count, double fps);
+int    gmb_world_scroll(int sector, int what, double u_per_s, double v_per_s);
+int    gmb_world_lightfx(int sector, int mode, double amount, double rate);
+int    gmb_world_lamp(double x, double y, double z, double radius, double level);
+double gmb_world_moving(int sector);         /* -1 in moto, 0 fermo */
+double gmb_world_lightnow(int sector);
+double gmb_world_time(void);
+double gmb_world_floor(int sector);
+double gmb_world_ceil(int sector);
 
 /* Load che hanno parcheggiato il task (R11): 0 in T3, +1 per ogni load dentro
  * un task. Osservabile come alloc_count per R4. */

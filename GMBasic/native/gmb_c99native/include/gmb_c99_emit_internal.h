@@ -96,6 +96,10 @@ typedef struct { char** names; int n, cap; } namelist_t;
 const char* dom_ident(gmb_expr_t* e);
 void dom_schema_defs(ctx_t* c, const char* typeName, char* out, int cap);
 void emit_speed_domain(ctx_t* c, gmb_stmt_t* s);
+/* Motore 3D (P2): dominio WORLD (comandi) e letture WORLD.MOVING/LIGHTNOW/… */
+void emit_world_domain(ctx_t* c, gmb_stmt_t* s);
+int  emit_bf_world(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk,
+                   gmb_expr_t** args, int nargs, int line);
 void sb_putn(sb_t* b, const char* s, size_t n);
 void sb_put(sb_t* b, const char* s);
 void sb_printf(sb_t* b, const char* fmt, ...);

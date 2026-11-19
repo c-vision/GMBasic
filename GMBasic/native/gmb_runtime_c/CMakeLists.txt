@@ -389,6 +389,7 @@ set(GMB_ALL_SRCS
     src/gmb_3d_sector.c
     src/gmb_3d_move.c
     src/gmb_3d_time.c
+    src/gmb_3d_cmd.c
     # F3 multimodale (2026-09-11): dominio immagini (decode/resize/crop/encode PNG condivisi).
     src/gmb_image.c
     # F2 multimodale (2026-09-11): estrazione strutturata documenti (euristiche + LLM).

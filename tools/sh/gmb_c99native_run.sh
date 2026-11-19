@@ -284,6 +284,23 @@ if [ -f "$ROOT/native/gmb_torch/src/gmb_torch.c" ]; then
     TORCH_OBJS="$TORCH_OBJS $TMPOBJ/gmb_torch_str.o"
   fi
 fi
+# MOTORE 3D (P2): i moduli gmb_3d_* del runtime chiedono la suite grafica minima
+# (gm_gfx_raster + gm_gfx_sector), esattamente come il target gmb_3d_oracle; nell'archivio
+# statico quei simboli restano VOLUTAMENTE non risolti finché qualcuno non li usa. Si
+# compilano qui, e SOLO per i programmi che chiamano la facciata gmb_world_ o il motore
+# gmb_3d_*: gli altri restano con il link di sempre.
+GFX_OBJS=""
+if grep -q "gmb_world_\|gmb_3d_" "$DIR/$CASE.c"; then
+  GFX_SUITE="$ROOT/../shared/libs/graphics"
+  GFX_INC="-I $GFX_SUITE/include -I $ROOT/../shared/libs/math/include -I $ROOT/../shared/libs/compute/include"
+  for _g in gm_gfx_raster gm_gfx_sector; do
+    if ! $CC_BIN $TARGETFLAG $CF $INC $GFX_INC -c "$GFX_SUITE/src/$_g.c" -o "$TMPOBJ/$_g.o"; then
+      echo "[c99native] suite 3D: compilazione di $_g.c fallita" >&2
+      exit 5
+    fi
+    GFX_OBJS="$GFX_OBJS $TMPOBJ/$_g.o"
+  done
+fi
 # `-w` sul .c GENERATO (convenzione gate C99 + test_minitests_c99native): i warning
 # (es. -Wunused-value delle statement-expression) inquinerebbero lo stdout catturato
 # dagli harness (falso DIFF di parity4). Gli errori restano fatali (exit!=0).
@@ -503,7 +520,7 @@ if [ "$STATIC_ARG" = 1 ]; then
   fi
   if ! $CC_BIN $CF $TARGETFLAG -static -O2 -w "$DIR/$CASE.o" \
        "$TOOLS_DIR/../c/musl_fortify_compat.c" -o "$OUTBIN" \
-       ${STATIC_RT[@]+"${STATIC_RT[@]}"} ${STATIC_OWN[@]+"${STATIC_OWN[@]}"} \
+       ${STATIC_RT[@]+"${STATIC_RT[@]}"} ${STATIC_OWN[@]+"${STATIC_OWN[@]}"} $GFX_OBJS \
        -L"$CACHE_LIB" ${STATIC_THIRD[@]+"${STATIC_THIRD[@]}"} -lm -lpthread 2>"$DIR/static_link.err"; then
     echo "[c99native] --static: link fallito (vedi $DIR/static_link.err)." >&2
     echo "  Il link statico usa SOLO gli archivi di $CACHE_LIB: un simbolo che vive in una" >&2
@@ -519,7 +536,7 @@ if [ "$STATIC_ARG" = 1 ]; then
   fi
   echo "[c99native] link STATICO ($TARGET_TRIPLE, musl): $(basename "$OUTBIN")" >&2
 else
-$CC_BIN $CF $CCFIRST $STRIPDYLIB $EXPORTDYN $RPATH_LOADER "$DIR/$CASE.o" $TORCH_OBJS $JINJA_OBJ -o "$OUTBIN" \
+$CC_BIN $CF $CCFIRST $STRIPDYLIB $EXPORTDYN $RPATH_LOADER "$DIR/$CASE.o" $TORCH_OBJS $JINJA_OBJ $GFX_OBJS -o "$OUTBIN" \
   "$L/libgmb_vm.a" "$RUNTIME_LIB" $TRAY_LINK \
   ${LLM_LINK[@]+"${LLM_LINK[@]}"} \
   "$ROOT/native/gmb_runtime_c/build/gmb_chart_build/libgmb_chart.a" \

@@ -45,7 +45,9 @@ static const gmb_tokenkind_t g_domain_ns[] = {
     GMB_TOK_Dbf, GMB_TOK_Isam, GMB_TOK_Sql, GMB_TOK_Ledger, GMB_TOK_Rdd, GMB_TOK_Speed,
     GMB_TOK_Matrix, GMB_TOK_Vector, GMB_TOK_Torch, GMB_TOK_Ai, GMB_TOK_Llm, GMB_TOK_Gmb, GMB_TOK_Train,
     GMB_TOK_WorkflowStatement,
-    GMB_TOK_Http, GMB_TOK_WebSocket, GMB_TOK_Plot, GMB_TOK_Sprite, GMB_TOK_Shape, GMB_TOK_VectorDb
+    GMB_TOK_Http, GMB_TOK_WebSocket, GMB_TOK_Plot, GMB_TOK_Sprite, GMB_TOK_Shape, GMB_TOK_VectorDb,
+    GMB_TOK_World   /* motore 3D (P2): WORLD LOAD|FREE|TICK, SECMOVE, HEIGHT, ANIM,
+                     * SCROLL, LIGHTFX, LAMP — verbo per TokenKind, mai per lessema */
 };
 #define G_DOMAIN_NS_COUNT ((int)(sizeof(g_domain_ns) / sizeof(g_domain_ns[0])))
 

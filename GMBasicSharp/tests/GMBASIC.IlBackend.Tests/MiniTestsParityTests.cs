@@ -552,6 +552,17 @@ public class MiniTestsParityTests
             files = files.Where(f => !IsHeavy(f)).ToArray();
         if (heavy.Length > 0 && !HeavyEnabled())
             Console.WriteLine($"SKIP {heavy.Length} MiniTest HEAVY (marker 'TAG: heavy'); usa GMB_RUN_HEAVY=1 per includerli.");
+        // NATIVE-ONLY (marker `' TAG: native-only`, 2026-11-19): il test usa il dominio WORLD
+        // (motore 3D), che esiste SOLO nella gamba nativa finché il ponte C# non è disponibile
+        // (docs/Piano-Motore-3D.md §7.2). IL/PCode/VM-C non hanno alcun accesso allo stato 3D:
+        // il cross-leg non può produrre un oracolo e produrrebbe solo divergenze finte. Li
+        // verifica la gamba nativa (`tools/sh/test_minitests_c99native`), che li esegue davvero.
+        var nativeOnly = files.Where(f => File.ReadAllText(f).Contains("' TAG: native-only", StringComparison.Ordinal)).ToArray();
+        if (nativeOnly.Length > 0)
+        {
+            files = files.Where(f => !File.ReadAllText(f).Contains("' TAG: native-only", StringComparison.Ordinal)).ToArray();
+            Console.WriteLine($"SKIP {nativeOnly.Length} MiniTest NATIVE-ONLY (marker 'TAG: native-only': dominio WORLD/3D, ponte C# non ancora disponibile — piano §7.2): li verifica la gamba nativa.");
+        }
         if (files.Length == 0)
         {
             // Due casi MOLTO diversi, prima confusi in un unico "verde" (`Assert.True(true, ...)`),

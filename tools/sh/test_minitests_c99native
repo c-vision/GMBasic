@@ -761,7 +761,16 @@ for f in "$MINI"/**/*.bas "$MINI"/*.bas; do
   # duplicata (due copie da tenere allineate) e la gamba LIBRARY linkava per forza un binario.
   # Array (non stringa) perché il path di rpath può contenere spazi e perché $AGENT/$DOC_SRCS
   # sono già liste: nello stringone i confini dei token dipendevano dallo split implicito.
-  LINK_IN=( ${TRAY_IN[@]+"${TRAY_IN[@]}"} "$RT_LIB" $AGENT $COMPILER "$DB_LIB" ${LLM_STATIC[@]+"${LLM_STATIC[@]}"} $DOC_SRCS $TORCH_SRCS )
+  # MOTORE 3D (P2): i moduli gmb_3d_* del runtime chiedono la suite grafica minima
+  # (gm_gfx_raster + gm_gfx_sector), esattamente come il target gmb_3d_oracle; nell'archivio
+  # statico quei simboli restano VOLUTAMENTE non risolti finché qualcuno non li usa. Gli
+  # include della suite sono già in $INC_RT (compute/graphics/math), quindi i due sorgenti si
+  # compilano nella stessa riga di link. Condizionale: chi non usa il 3D non li paga.
+  GFX_SRCS=""
+  if grep -qE 'gmb_world_|gmb_3d_' "$WORK/out.c" 2>/dev/null; then
+    GFX_SRCS="$MONO/shared/libs/graphics/src/gm_gfx_raster.c $MONO/shared/libs/graphics/src/gm_gfx_sector.c"
+  fi
+  LINK_IN=( ${TRAY_IN[@]+"${TRAY_IN[@]}"} "$RT_LIB" $AGENT $COMPILER "$DB_LIB" ${LLM_STATIC[@]+"${LLM_STATIC[@]}"} $DOC_SRCS $TORCH_SRCS $GFX_SRCS )
   # GATE ORDINE (misurato il 13/11): la dylib del tray deve stare PRIMA di librt.a. Con lld
   # l'ordine è indifferente, con ld64 di Apple no: se l'archivio precede, il suo `gmb_tray.o` —
   # lo stub che risponde backend="none" — viene estratto al posto della dylib, e il MiniTest

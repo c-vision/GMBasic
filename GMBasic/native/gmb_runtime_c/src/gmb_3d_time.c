@@ -182,15 +182,22 @@ int gmb_3d_moving(const gmb_3d_world_t* w, int sec)
     return w->rt[sec].moving ? -1 : 0;
 }
 
-int gmb_3d_sector_height(gmb_3d_world_t* w, int sec, float* floor_z, float* ceil_z)
+int gmb_3d_sector_z(const gmb_3d_world_t* w, int sec, float* floor_z, float* ceil_z)
 {
-    if (!w) return bad("height: mondo mancante");
-    if (sec < 0 || sec >= w->sw.nsectors) return bad("height: settore inesistente");
+    if (!w) return bad("sector_z: mondo mancante");
+    if (sec < 0 || sec >= w->sw.nsectors) return bad("sector_z: settore inesistente");
     const gm_sector* s = &w->sw.sectors[sec];
     if (floor_z) *floor_z = (float)s->floor_z;
     if (ceil_z) *ceil_z = (float)s->ceil_z;
-    w->rt[sec].moving = 0;      /* HEIGHT ferma un mover (T-SECMOVE) */
     gmb_3d_set_error("");
+    return GMB_3D_OK;
+}
+
+int gmb_3d_sector_height(gmb_3d_world_t* w, int sec, float* floor_z, float* ceil_z)
+{
+    int rc = gmb_3d_sector_z(w, sec, floor_z, ceil_z);
+    if (rc != GMB_3D_OK) return rc;
+    w->rt[sec].moving = 0;      /* HEIGHT ferma un mover (T-SECMOVE) */
     return GMB_3D_OK;
 }
 

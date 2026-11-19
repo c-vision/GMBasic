@@ -606,6 +606,16 @@ static const gmb_keyword_t gmb_keywords[] = {
     GMB_KEYWORD_ENTRY("PUSH", Push),
     GMB_KEYWORD_ENTRY("POP", Pop),
     GMB_KEYWORD_ENTRY("WORLD", World),
+    /* Motore 3D (2026-11-19, P2): verbi del dominio WORLD. Keyword dedicati, così il
+     * dispatch a valle è per TokenKind (§12) e mai per lessema. */
+    GMB_KEYWORD_ENTRY("SECMOVE", SecMove),
+    GMB_KEYWORD_ENTRY("MOVING", Moving),
+    GMB_KEYWORD_ENTRY("ANIM", Anim),
+    GMB_KEYWORD_ENTRY("LAMP", Lamp),
+    GMB_KEYWORD_ENTRY("LIGHTFX", LightFx),
+    GMB_KEYWORD_ENTRY("LIGHTNOW", LightNow),
+    GMB_KEYWORD_ENTRY("FLOORZ", FloorZ),
+    GMB_KEYWORD_ENTRY("CEILZ", CeilZ),
     GMB_KEYWORD_ENTRY("PROJECTION", Projection),
     GMB_KEYWORD_ENTRY("ADD", Add),
     GMB_KEYWORD_ENTRY("MUL", Mul),

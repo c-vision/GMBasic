@@ -2699,9 +2699,20 @@ typedef enum gmb_tokenkind {
     GMB_TOK_MatrixCol,
     GMB_TOK_MatrixIsContiguous,
     GMB_TOK_UnionType,   /* UNION ... END UNION — campi sovrapposti (semantica C) */
+    /* Motore 3D (2026-11-19, P2): verbi del dominio WORLD (specifica §2.4).
+     * In coda, come in common/Ast/TokenKind.cs: `World`, `Scroll` e `Height`
+     * esistevano già (MATRIX WORLD, SCROLL, altezze dei controlli). */
+    GMB_TOK_SecMove,
+    GMB_TOK_Moving,
+    GMB_TOK_Anim,
+    GMB_TOK_Lamp,
+    GMB_TOK_LightFx,
+    GMB_TOK_LightNow,
+    GMB_TOK_FloorZ,
+    GMB_TOK_CeilZ,
 } gmb_tokenkind_t;
   
-  #define GMB_TOK_COUNT 2677
+  #define GMB_TOK_COUNT 2685
 
 /* 2026-09-09 (direttiva 2026-09-08): gmb_tokenkind_name()/gmb_tokenkind_from_name() e la
  * tabella gmb_token_names[] sono state RIMOSSE — dispatch solo per TokenKind; la risoluzione

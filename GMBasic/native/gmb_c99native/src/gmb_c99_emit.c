@@ -6628,6 +6628,10 @@ int emit_bf_analysis(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t
 int emit_bf_vector(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk, gmb_expr_t** args, int nargs, int line);
 int emit_bf_finance_defaults(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk, gmb_expr_t** args, int nargs, int line);
 int emit_bf_matrix(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk, gmb_expr_t** args, int nargs, int line);
+/* Motore 3D (P2): dominio WORLD e letture WORLD.* — definiti in gmb_c99_emit_3d.c
+ * (questo TU non include l'header interno: le dichiarazioni stanno qui). */
+void emit_world_domain(ctx_t* c, gmb_stmt_t* s);
+int emit_bf_world(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk, gmb_expr_t** args, int nargs, int line);
 int emit_bf_rdd(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk, gmb_expr_t** args, int nargs, int line);
 int emit_bf_dbf(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk, gmb_expr_t** args, int nargs, int line);
 int emit_bf_ledger(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk, gmb_expr_t** args, int nargs, int line);
@@ -7818,6 +7822,12 @@ static const gmb_bf_row_t gmb_bf_composite[] = {
     { NULL, GMB_TOK_MatrixMaxValue, emit_bf_matrix },
     { NULL, GMB_TOK_MatrixMinValue, emit_bf_matrix },
     { NULL, GMB_TOK_MatrixRowCount, emit_bf_matrix },
+    /* Motore 3D (P2): letture del mondo — WORLD.MOVING/LIGHTNOW/TIME/FLOORZ/CEILZ. */
+    { NULL, GMB_TOK_Moving,   emit_bf_world },
+    { NULL, GMB_TOK_LightNow, emit_bf_world },
+    { NULL, GMB_TOK_Time,     emit_bf_world },
+    { NULL, GMB_TOK_FloorZ,   emit_bf_world },
+    { NULL, GMB_TOK_CeilZ,    emit_bf_world },
     { NULL, GMB_TOK_MatrixColumnCount, emit_bf_matrix },
     { NULL, GMB_TOK_MatrixIsLowerTriangular, emit_bf_matrix },
     { NULL, GMB_TOK_MatrixIsUpperTriangular, emit_bf_matrix },
@@ -18802,7 +18812,7 @@ static int is_json_path_member(ctx_t* c, gmb_expr_t* e, var_t** out_bv, const ch
     if (out_m) *out_m = dot + 1;
     return 1;
 }
- static void st_print_core(ctx_t* c, gmb_stmt_t* s) {
+static void st_print_core(ctx_t* c, gmb_stmt_t* s) {
  {
          /* Staging per-statement: se un argomento di PRINT fallisce, l'output parziale è
           * scartato (parità il/pcode/vmc/c99). gmb_raise_error fa stage_end(0). */
@@ -31333,6 +31343,7 @@ static void st_domain(ctx_t* c, gmb_stmt_t* s) {
         if (wnk == GMB_TOK_VectorDb) { emit_vectordb_domain(c, s); return; }
         if (wnk == GMB_TOK_Vector) { emit_lin_vector_domain(c, s); return; }
         if (wnk == GMB_TOK_Matrix) { emit_lin_matrix_domain(c, s); return; }
+        if (wnk == GMB_TOK_World) { emit_world_domain(c, s); return; }   /* motore 3D (P2) */
         c99_fail(c, s->line, "statement di dominio '%s' non ancora supportato dall'emitter nativo", s->win_name ? s->win_name : "?");
         return;
     /* ── FASE 2.6(b): GPM (parity Partial/C99CodeEmitter.Gpm.cs + casi C99CodeEmitter.cs:4032+) ── */
@@ -37548,6 +37559,8 @@ static int gmb_c99_emit_once(const gmb_program_t* prog, char** out_src, char** e
                     "#include \"gmb_context.h\"\n#include \"gmb_observation.h\"\n#include \"gmb_worker.h\"\n");
     /* TRAY (2026-10-02): header dichiarativo (sempre incluso; il flag non era propagato). */
     sb_put(&fin, "#include \"gmb_tray.h\"\n");
+    /* Motore 3D (P2): dichiarazioni della facciata `gmb_world_*` (gmb_3d_cmd.c). */
+    sb_put(&fin, "#include \"gmb_3d.h\"\n");
     sb_put(&fin, "#include \"gmb_module.h\"\n");
     /* CONVERT/DOCUMENT: header di dominio emessi SOLO se il programma usa il namespace
      * (gmb_doc.h è in gmb_doc_c/include; gmb_md.h in gmb_runtime_c/include). */

@@ -229,6 +229,23 @@ static gmb_tokenkind_t gmb_p_class_static_lookup(const char* ns, const char* nam
     if (strcasecmp(ns, "KEY") == 0 && strcasecmp(name, "MAKE") == 0) return GMB_TOK_Make;
     return GMB_TOK_Unknown;
 }
+/* Motore 3D (P2): superficie nativa DICHIARATA, non ancora nella StdLib C# (il C# non
+ * conosce lo stato 3D: il ponte è una fase separata, piano §7.2). La tabella generata da
+ * tools/stdlib_tokens.csv non ha righe WORLD, quindi le letture qualificate del dominio
+ * (`WORLD.MOVING(1)`, …) si risolvono qui — DOPO la tabella generata, che ha sempre la
+ * precedenza. Alla fase ponte le righe WORLD arriveranno da StdLib.World.cs e questa
+ * tabella va rimossa. Si fissano i TokenKind dei membri, mai i lexemi: il verbo resta la
+ * chiave di dispatch (§12). */
+static gmb_tokenkind_t gmb_p_native_ns_lookup(const char* ns, const char* name)
+{
+    if (strcasecmp(ns, "WORLD") != 0) return GMB_TOK_Unknown;
+    if (strcasecmp(name, "MOVING") == 0)   return GMB_TOK_Moving;
+    if (strcasecmp(name, "LIGHTNOW") == 0) return GMB_TOK_LightNow;
+    if (strcasecmp(name, "TIME") == 0)     return GMB_TOK_Time;
+    if (strcasecmp(name, "FLOORZ") == 0)   return GMB_TOK_FloorZ;
+    if (strcasecmp(name, "CEILZ") == 0)    return GMB_TOK_CeilZ;
+    return GMB_TOK_Unknown;
+}
 static gmb_tokenkind_t gmb_p_ns_lookup(const char* ns, const char* name)
 {
     /* Suffisso tipo BASIC ($ % ! #) sul membro qualificato (es. `AI.CONSISTENCYDETAIL$`):
@@ -247,7 +264,7 @@ static gmb_tokenkind_t gmb_p_ns_lookup(const char* ns, const char* name)
         if (strcasecmp(r->ns, ns) == 0 && strcasecmp(r->name, bare) == 0)
             return r->tk; /* valore enum emesso a compile-time (tabella generata), mai from_name */
     }
-    return GMB_TOK_Unknown;
+    return gmb_p_native_ns_lookup(ns, bare);   /* motore 3D (P2): vedi sopra */
 }
 
 /* comprehension LINQ `FROM <v> IN <src> [WHERE <c>] [ORDER BY <o> [DESC|ASC]] SELECT <sel>`

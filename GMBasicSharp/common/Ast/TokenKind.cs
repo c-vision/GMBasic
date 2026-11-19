@@ -2461,4 +2461,15 @@ public enum TokenKind
     // campi partono dall'offset 0, taglia = massimo dei campi. In coda (ordinali canonici):
     // mai inserire nel mezzo. La larghezza di un bitfield usa la keyword esistente WIDTH.
     Union,
+    // MOTORE 3D (2026-11-19, P2): verbi del dominio `WORLD` (specifica §2.4). In coda
+    // (ordinali canonici): mai inserire nel mezzo. `World` esiste già (MATRIX WORLD),
+    // `Scroll` e `Height` pure: qui solo i verbi che non avevano un token.
+    SecMove,
+    Moving,
+    Anim,
+    Lamp,
+    LightFx,
+    LightNow,
+    FloorZ,
+    CeilZ,
   }

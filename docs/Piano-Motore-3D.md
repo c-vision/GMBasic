@@ -299,6 +299,34 @@ Senza oracolo, P2–P4 non si possono verificare: si fa prima di scrivere un ren
 
 Difetti trovati e corretti dall'oracolo: il pavimento non veniva disegnato quando l'occhio è sopra di esso (profondità negativa nel piano), visibile come fondo nero in `sector_door`/`sector_pitch`; la fascia solida sopra il portale mancava (condizione su `y` invertita, il raggio si allargava al soffitto dietro) e il pavimento non veniva disegnato una volta sola; la collisione applica lo spostamento prima della spinta e la spinta riporta il centro dal lato in cui si trova già (il sotto-passo senza spostamento lasciava il corpo fermo, la spinta orientata all'esterno lo espelleva). **P2 chiuso**: settori, portali, collisione, tempo e mappa demo sono verificati dallo stesso gate che resterà la rete di P3.
 
+**Aggancio al linguaggio (2026-11-19).** I comandi del tempo sono ora raggiungibili dal BASIC sulla gamba **nativa** (C99Native), con TokenKind canonici e senza un solo dispatch per lessema:
+
+```basic
+WORLD LOAD "worlds/demo.gmbscene"   ' un mondo corrente per processo (come DBF/ISAM: il BASIC non maneggia handle)
+WORLD TICK 0.5                      ' orologio a passo fisso 1/60, accumulatore, catch-up ≤ 10 s
+WORLD SECMOVE 1, 56, 28             ' pavimento a 28 a 56 u/s; con il quarto argomento anche il soffitto
+PRINT WORLD.FLOORZ(1), WORLD.MOVING(1)
+WORLD HEIGHT 1                      ' ferma il mover (le letture FLOORZ/CEILZ NON lo fermano)
+WORLD ANIM 0, 6, 2, 4               ' picture del settore a 4 fps
+WORLD SCROLL 0, 0, 8, 0             ' 0 = piani, 1 = pareti
+WORLD LIGHTFX 0, 3, 0.5, 1          ' 1 flicker / 2 pulse / 3 strobe, 0 spegne; si legge in WORLD.LIGHTNOW
+WORLD LAMP 40, 40, 50, 90, 0.6
+WORLD CLOSE
+```
+
+| Pezzo | Dove |
+|---|---|
+| TokenKind | `common/Ast/TokenKind.cs` + `frontend/include/gmb_tokenkind.h` in coda (`SecMove`, `Moving`, `Anim`, `Lamp`, `LightFx`, `LightNow`, `FloorZ`, `CeilZ`; `World`/`Scroll`/`Height`/`Time` esistevano già), `GMB_TOK_COUNT` 2677 → 2685 |
+| lessico | `gmb_lexer.c`: keyword `SECMOVE/MOVING/ANIM/LAMP/LIGHTFX/LIGHTNOW/FLOORZ/CEILZ` |
+| comandi (statement) | `gmb_parser_stmt_domain.c` (`GMB_TOK_World` in `g_domain_ns`) + `native/gmb_c99native/src/gmb_c99_emit_3d.c` (`emit_world_domain`) |
+| letture (funzioni) | stesso emitter (`emit_bf_world`, tabella builtin) + `gmb_parser_expressions.c` (`gmb_p_native_ns_lookup` per `WORLD.MOVING/LIGHTNOW/TIME/FLOORZ/CEILZ`) |
+| facciata C | `native/gmb_runtime_c/src/gmb_3d_cmd.c` (`gmb_world_*`): solo chiamate alle `gmb_3d_*`, nessuna logica duplicata (§0bis) |
+| MiniTest | `shared/minitests/3d/*.bas`, **20 file**, tutti con oracolo `' EXPECT:` e marcatore `' TAG: native-only` |
+
+`WORLD.FLOORZ`/`CEILZ` sono letture pure (`gmb_3d_sector_z`), separate da `HEIGHT` che invece ferma il mover: un HUD che mostra la quota di un ascensore non lo blocca. I comandi non hanno valore di ritorno leggibile dal BASIC (§1): gli errori si verificano **dallo stato** (un `SECMOVE` con soffitto sotto il pavimento non avvia nessun mover), e questo è quello che fanno i MiniTest.
+
+**Perché sono `native-only`.** IL, PCode e VM-C non hanno alcun accesso allo stato 3D: il mondo vive nel runtime C, e quei backend non lo linkano. Il marcatore `' TAG: native-only` (letto da `tools/sh/parity4`, dall'harness xUnit e dai runner nativi) esegue il file sulla gamba C99Native e dichiara le altre tre **non applicabili** — nessuna esclusione silenziosa. Il ponte C# (registrazione `StdLib.World.cs` + P/Invoke alle stesse `gmb_world_*`) è la fase separata: quando ci sarà, il marcatore sparisce e i 20 MiniTest girano su tutte e quattro le gambe. Le tabelle dichiarate in attesa del ponte sono due, entrambe commentate: le righe `Moving/LightNow/FloorZ/CeilZ` in `frontend/include/gmb_members.h` e `gmb_p_native_ns_lookup` in `gmb_parser_expressions.c`.
+
 ### P3 — Rasterizzatore mesh, target e present (6–9 gg)
 
 **Prerequisito**: [`Nota-Tecnica-Thread-Present-3D.md`](Nota-Tecnica-Thread-Present-3D.md) — invarianti `R2`–`R5`, `R8`, ciclo del frame, `RENDER` negli handler. Qui il frame si consuma su **T0** (`frame_acquire`), il cap del present diventa configurabile — **deciso**: una sola opzione `engine.present.max_fps`, default `auto` (60 col 3D, 30 col solo 2D; nota §8) — e il formato del buffer pubblicato è **deciso**: `0x00RRGGBB` come le pagine 2D (specifica §11).
@@ -488,5 +516,6 @@ Con P0+P1 (≈1 settimana) si ha la pipeline di verifica; con P2 (≈3–4 setti
 | 12 | Sentinella di `SEES` | **Deciso: `1`/`0`/`−1`** (thing inesistente), divergenza dichiarata `C-DIVERGE-SEES` | specifica §12.3 |
 | 13 | `MOVING(s)` = `−1` mentre si muove | **Chiuso in P2 (2026-11-19) con deroga scritta**: `−1` in moto, `0` fermo — è la sentinella che gli script BASIC del riferimento già usano, e la deroga alla regola "`−1` = assente" sta accanto alla riga `T-SECMOVE` della specifica | specifica `T-SECMOVE` |
 | 14 | **Compatibilità GPM di tutto il motore 3D** | **Fatto e chiuso**: comandi/`RENDER` solo in un task, I/O che parca con ripiego sincrono fuori, ciclo park-based (`R10`), load atomico con validazione nel task (`R11`), stato 3D verso T0 solo per atomi, nessuna seconda via di dispatch | piano §3.1.11; nota §2, §3, §8.1, §8.3, §10, §14; specifica `C-GPM` |
+| 15 | **Ponte C# dei comandi 3D (IL/PCode/VM-C)** | **Aperto, fase separata**: le gambe native sono fatte (20 MiniTest, `' TAG: native-only`); il C# non ha alcun accesso allo stato 3D. Serve `StdLib.World.cs` con `RegisterCommand`/`RegisterFunction` + P/Invoke alle stesse `gmb_world_*` di `gmb_3d_cmd.c`, il linker dei tre backend e i due nodi AST (`WorldCommandStmt`), poi si tolgono `gmb_p_native_ns_lookup` e le righe `Moving/LightNow/FloorZ/CeilZ` di `gmb_members.h` e si ritira il marcatore `native-only` | piano §6 P2 (aggancio al linguaggio), §7.2 |
 
 **I tre che valgono più di tutti**, nell'ordine: (1) provenienza — fatto; (2) oracolo headless — è la fase P1; (3) handle fra istanze — deciso. La **nota di thread/present** (3) e la **decisione palette/ARGB** (5, → ARGB) sono fatte. Dal 2026-11-19 sono chiuse anche le sei domande che P2 ereditava: le tre di formato/semantica — schema JSON unico (§3.1.8), `WORLD CHECK` come tool con validazione nel load (§3.1.9), `SEES` 1/0/−1 (§3.1.10) — e le tre della nota tecnica (cap `auto`, triple buffer solo dietro misura, identità del **task** invece del thread). Resta aperto il solo **kernel di comandi** (riga 6). Dal 2026-11-19 c'è anche l'obbligazione trasversale della **compatibilità GPM** (riga 14, §3.1.11): non è una scelta, è un vincolo che ogni fase verifica in accettazione. Il prossimo passo è **P1** (oracolo headless), che non richiede scelte aperte.
