@@ -154,32 +154,13 @@ internal sealed partial class PCodeProcessor
         {
                 return Basic.IlBackend.IlRuntime.Describe(ToDoubleArr(ArgOr(args, 0)));
         },
-        [BuiltInFunction.STATS_NORMALSF] = (task, args) =>
-        {
-                var x = SafeDouble(ArgOr(args, 0));
-                var mu = SafeDouble(ArgOr(args, 1, 0.0));
-                var sd = SafeDouble(ArgOr(args, 2, 1.0));
-                return 1.0 - CommonLib.Numerics.NormalCdf(mu, sd, x);
-        },
         [BuiltInFunction.STATS_KENDALLTAU] = (task, args) =>
         {
                 return HypothesisResult(CommonLib.Numerics.KendallTau(ToDoubleArr(ArgOr(args, 0)), ToDoubleArr(ArgOr(args, 1))));
         },
-        [BuiltInFunction.STATS_LOGISTICCDF] = (task, args) =>
-        {
-                return CommonLib.Numerics.LogisticCdf(SafeDouble(ArgOr(args, 1, 0.0)), SafeDouble(ArgOr(args, 2, 1.0)), SafeDouble(ArgOr(args, 0)));
-        },
-        [BuiltInFunction.STATS_TRIANGULARCDF] = (task, args) =>
-        {
-                return CommonLib.Numerics.TriangularCdf(SafeDouble(ArgOr(args, 1, 0.0)), SafeDouble(ArgOr(args, 2, 0.5)), SafeDouble(ArgOr(args, 3, 1.0)), SafeDouble(ArgOr(args, 0)));
-        },
         [BuiltInFunction.STATS_WEIBULLISF] = (task, args) =>
         {
                 return CommonLib.Numerics.WeibullIsf(SafeDouble(ArgOr(args, 0)), SafeDouble(ArgOr(args, 1)), SafeDouble(ArgOr(args, 2)));
-        },
-        [BuiltInFunction.STATS_UNIFORMISF] = (task, args) =>
-        {
-                return CommonLib.Numerics.UniformIsf(SafeDouble(ArgOr(args, 0)), SafeDouble(ArgOr(args, 1, 0.0)), SafeDouble(ArgOr(args, 2, 1.0)));
         },
         [BuiltInFunction.STATS_BETAISF] = (task, args) =>
         {
@@ -189,36 +170,13 @@ internal sealed partial class PCodeProcessor
         {
                 return CommonLib.Numerics.LogisticIsf(SafeDouble(ArgOr(args, 0)), SafeDouble(ArgOr(args, 1, 0.0)), SafeDouble(ArgOr(args, 2, 1.0)));
         },
-        [BuiltInFunction.STATS_LOGNORMALISF] = (task, args) =>
-        {
-                return CommonLib.Numerics.LognormalIsf(SafeDouble(ArgOr(args, 0)), SafeDouble(ArgOr(args, 1, 0.0)), SafeDouble(ArgOr(args, 2, 1.0)));
-        },
-        [BuiltInFunction.STATS_TRIANGULARISF] = (task, args) =>
-        {
-                return CommonLib.Numerics.TriangularIsf(SafeDouble(ArgOr(args, 0)), SafeDouble(ArgOr(args, 1, 0.0)), SafeDouble(ArgOr(args, 2, 0.5)), SafeDouble(ArgOr(args, 3, 1.0)));
-        },
         [BuiltInFunction.STATS_PARETOISF] = (task, args) =>
         {
                 return CommonLib.Numerics.ParetoIsf(SafeDouble(ArgOr(args, 0)), SafeDouble(ArgOr(args, 1)), SafeDouble(ArgOr(args, 2)));
         },
-        [BuiltInFunction.STATS_TRIANGULARSF] = (task, args) =>
-        {
-                return CommonLib.Numerics.TriangularSf(SafeDouble(ArgOr(args, 1, 0.0)), SafeDouble(ArgOr(args, 2, 0.5)), SafeDouble(ArgOr(args, 3, 1.0)), SafeDouble(ArgOr(args, 0)));
-        },
-        [BuiltInFunction.STATS_LOGISTICSF] = (task, args) =>
-        {
-                return CommonLib.Numerics.LogisticSf(SafeDouble(ArgOr(args, 1, 0.0)), SafeDouble(ArgOr(args, 2, 1.0)), SafeDouble(ArgOr(args, 0)));
-        },
         [BuiltInFunction.STATS_FTEST] = (task, args) =>
         {
                 return HypothesisResult(CommonLib.Numerics.FTest(ToDoubleArr(ArgOr(args, 0)), ToDoubleArr(ArgOr(args, 1))));
-        },
-        [BuiltInFunction.STATS_LOGNORMALSF] = (task, args) =>
-        {
-                var x = SafeDouble(ArgOr(args, 0));
-                var mu = SafeDouble(ArgOr(args, 1, 0.0));
-                var sd = SafeDouble(ArgOr(args, 2, 1.0));
-                return 1.0 - CommonLib.Numerics.LognormalCdf(mu, sd, x);
         },
         [BuiltInFunction.STATS_MODE] = (task, args) =>
         {

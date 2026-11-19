@@ -62,3 +62,27 @@ double gs_basic_chi2_cdf(double x, double df) { return gs_dist_chi2_cdf(df, x); 
 double gs_basic_chi2_sf(double x, double df) { return gs_dist_chi2_sf(df, x); }
 double gs_basic_chi2_ppf(double p, double df) { return gs_dist_chi2_ppf(df, p); }
 double gs_basic_chi2_isf(double p, double df) { return gs_dist_chi2_isf(df, p); }
+
+/* ── famiglie con parametri OPTIONAL (2026-11-19): firma BASIC, x/p primo ── */
+double gs_basic_normal_pdf(double x, double mu, double sigma) { return gs_dist_normal_pdf(mu, sigma, x); }
+double gs_basic_normal_cdf(double x, double mu, double sigma) { return gs_dist_normal_cdf(mu, sigma, x); }
+double gs_basic_normal_sf(double x, double mu, double sigma) { return gs_dist_normal_sf(mu, sigma, x); }
+double gs_basic_normal_ppf(double p, double mu, double sigma) { return gs_dist_normal_ppf(mu, sigma, p); }
+double gs_basic_normal_isf(double p, double mu, double sigma) { return gs_dist_normal_isf(mu, sigma, p); }
+double gs_basic_lognormal_pdf(double x, double mu, double sigma) { return gs_dist_lognormal_pdf(mu, sigma, x); }
+double gs_basic_lognormal_cdf(double x, double mu, double sigma) { return gs_dist_lognormal_cdf(mu, sigma, x); }
+double gs_basic_lognormal_sf(double x, double mu, double sigma) { return gs_dist_lognormal_sf(mu, sigma, x); }
+double gs_basic_lognormal_ppf(double p, double mu, double sigma) { return gs_dist_lognormal_ppf(mu, sigma, p); }
+double gs_basic_logistic_cdf(double x, double location, double scale) { return gs_dist_logistic_cdf(location, scale, x); }
+double gs_basic_logistic_sf(double x, double location, double scale) { return gs_dist_logistic_sf(location, scale, x); }
+double gs_basic_uniform_pdf(double x, double a, double b) { return gs_dist_uniform_pdf(a, b, x); }
+double gs_basic_uniform_ppf(double p, double a, double b) { return gs_dist_uniform_ppf(a, b, p); }
+double gs_basic_triangular_pdf(double x, double min, double mode, double max) { return gs_dist_triangular_pdf(min, max, mode, x); }
+double gs_basic_triangular_ppf(double p, double min, double mode, double max) { return gs_dist_triangular_ppf(min, max, mode, p); }
+
+/* ── completamenti (gs_dist_extra.c): firma BASIC, x/p primo ── */
+double gs_basic_lognormal_isf(double p, double mu, double sigma) { return gs_dist_lognormal_isf(mu, sigma, p); }
+double gs_basic_uniform_isf(double p, double a, double b) { return gs_dist_uniform_isf(a, b, p); }
+double gs_basic_triangular_cdf(double x, double min, double mode, double max) { return gs_dist_triangular_cdf(min, max, mode, x); }
+double gs_basic_triangular_sf(double x, double min, double mode, double max) { return gs_dist_triangular_sf(min, max, mode, x); }
+double gs_basic_triangular_isf(double p, double min, double mode, double max) { return gs_dist_triangular_isf(min, max, mode, p); }

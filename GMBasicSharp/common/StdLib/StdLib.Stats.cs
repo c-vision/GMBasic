@@ -123,36 +123,6 @@ public sealed partial class StdLib
             // Descrittive
 
             // Distribuzioni Continue
-            new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.NormalPdf, "NormalPdf"),
-            [
-                xParam, new Parameter(-1, T(TokenKind.Identifier, "mu"), new DoubleType(), SymbolFlags.IsOptional, null, false),
-                new Parameter(-1, T(TokenKind.Identifier, "sigma"), new DoubleType(), SymbolFlags.IsOptional, null, false)
-            ], new DoubleType(), TokenKind.NormalPdf, ExecutionKind: NativeExecutionKind.Pure),
-            new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.NormalCdf, "NormalCdf"),
-            [
-                xParam, new Parameter(-1, T(TokenKind.Identifier, "mu"), new DoubleType(), SymbolFlags.IsOptional, null, false),
-                new Parameter(-1, T(TokenKind.Identifier, "sigma"), new DoubleType(), SymbolFlags.IsOptional, null, false)
-            ], new DoubleType(), TokenKind.NormalCdf, ExecutionKind: NativeExecutionKind.Pure),
-            new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.StatsNormalSf, "NormalSf"),
-            [
-                xParam, new Parameter(-1, T(TokenKind.Identifier, "mu"), new DoubleType(), SymbolFlags.IsOptional, null, false),
-                new Parameter(-1, T(TokenKind.Identifier, "sigma"), new DoubleType(), SymbolFlags.IsOptional, null, false)
-            ], new DoubleType(), TokenKind.StatsNormalSf, ExecutionKind: NativeExecutionKind.Pure),
-            new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.LognormalPdf, "LognormalPdf"),
-            [
-                xParam, new Parameter(-1, T(TokenKind.Identifier, "mu"), new DoubleType(), SymbolFlags.IsOptional, null, false),
-                new Parameter(-1, T(TokenKind.Identifier, "sigma"), new DoubleType(), SymbolFlags.IsOptional, null, false)
-            ], new DoubleType(), TokenKind.LognormalPdf, ExecutionKind: NativeExecutionKind.Pure),
-            new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.LognormalCdf, "LognormalCdf"),
-            [
-                xParam, new Parameter(-1, T(TokenKind.Identifier, "mu"), new DoubleType(), SymbolFlags.IsOptional, null, false),
-                new Parameter(-1, T(TokenKind.Identifier, "sigma"), new DoubleType(), SymbolFlags.IsOptional, null, false)
-            ], new DoubleType(), TokenKind.LognormalCdf, ExecutionKind: NativeExecutionKind.Pure),
-            new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.StatsLognormalSf, "LognormalSf"),
-            [
-                xParam, new Parameter(-1, T(TokenKind.Identifier, "mu"), new DoubleType(), SymbolFlags.IsOptional, null, false),
-                new Parameter(-1, T(TokenKind.Identifier, "sigma"), new DoubleType(), SymbolFlags.IsOptional, null, false)
-            ], new DoubleType(), TokenKind.StatsLognormalSf, ExecutionKind: NativeExecutionKind.Pure),
             new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.StatsNcBetaSf, "NcBetaSf"),
                 [xParam, new Parameter(-1, T(TokenKind.Identifier, "a"), new DoubleType(), noFlags, null, false),
                  new Parameter(-1, T(TokenKind.Identifier, "b"), new DoubleType(), noFlags, null, false),
@@ -202,59 +172,8 @@ public sealed partial class StdLib
                 [xParam, new Parameter(-1, T(TokenKind.Identifier, "df"), new DoubleType(), noFlags, null, false),
                  new Parameter(-1, T(TokenKind.Identifier, "nc"), new DoubleType(), noFlags, null, false)],
                 new DoubleType(), TokenKind.StatsNcChi2Sf, ExecutionKind: NativeExecutionKind.Pure),
-            new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.StatsLogisticCdf, "LogisticCdf"),
-            [
-                xParam, new Parameter(-1, T(TokenKind.Identifier, "location"), new DoubleType(), SymbolFlags.IsOptional, null, false),
-                new Parameter(-1, T(TokenKind.Identifier, "scale"), new DoubleType(), SymbolFlags.IsOptional, null, false)
-            ], new DoubleType(), TokenKind.StatsLogisticCdf, ExecutionKind: NativeExecutionKind.Pure),
-            new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.StatsLogisticSf, "LogisticSf"),
-            [
-                xParam, new Parameter(-1, T(TokenKind.Identifier, "location"), new DoubleType(), SymbolFlags.IsOptional, null, false),
-                new Parameter(-1, T(TokenKind.Identifier, "scale"), new DoubleType(), SymbolFlags.IsOptional, null, false)
-            ], new DoubleType(), TokenKind.StatsLogisticSf, ExecutionKind: NativeExecutionKind.Pure),
-            new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.TriangularPdf, "TriangularPdf"),
-            [
-                xParam, new Parameter(-1, T(TokenKind.Identifier, "a"), new DoubleType(), SymbolFlags.IsOptional, null, false),
-                new Parameter(-1, T(TokenKind.Identifier, "b"), new DoubleType(), SymbolFlags.IsOptional, null, false),
-                new Parameter(-1, T(TokenKind.Identifier, "c"), new DoubleType(), SymbolFlags.IsOptional, null, false)
-            ], new DoubleType(), TokenKind.TriangularPdf, ExecutionKind: NativeExecutionKind.Pure),
-            new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.StatsTriangularCdf, "TriangularCdf"),
-            [
-                xParam, new Parameter(-1, T(TokenKind.Identifier, "min"), new DoubleType(), SymbolFlags.IsOptional, null, false),
-                new Parameter(-1, T(TokenKind.Identifier, "mode"), new DoubleType(), SymbolFlags.IsOptional, null, false),
-                new Parameter(-1, T(TokenKind.Identifier, "max"), new DoubleType(), SymbolFlags.IsOptional, null, false)
-            ], new DoubleType(), TokenKind.StatsTriangularCdf, ExecutionKind: NativeExecutionKind.Pure),
-            new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.StatsTriangularSf, "TriangularSf"),
-            [
-                xParam, new Parameter(-1, T(TokenKind.Identifier, "min"), new DoubleType(), SymbolFlags.IsOptional, null, false),
-                new Parameter(-1, T(TokenKind.Identifier, "mode"), new DoubleType(), SymbolFlags.IsOptional, null, false),
-                new Parameter(-1, T(TokenKind.Identifier, "max"), new DoubleType(), SymbolFlags.IsOptional, null, false)
-            ], new DoubleType(), TokenKind.StatsTriangularSf, ExecutionKind: NativeExecutionKind.Pure),
-            new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.UniformPdf, "UniformPdf"),
-            [
-                xParam, new Parameter(-1, T(TokenKind.Identifier, "a"), new DoubleType(), SymbolFlags.IsOptional, null, false),
-                new Parameter(-1, T(TokenKind.Identifier, "b"), new DoubleType(), SymbolFlags.IsOptional, null, false)
-            ], new DoubleType(), TokenKind.UniformPdf, ExecutionKind: NativeExecutionKind.Pure),
-            new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.SkewedNormalPdf, "SkewedNormalPdf"),
-            [
-                xParam, new Parameter(-1, T(TokenKind.Identifier, "location"), new DoubleType(), SymbolFlags.IsOptional, null, false),
-                new Parameter(-1, T(TokenKind.Identifier, "scale"), new DoubleType(), SymbolFlags.IsOptional, null, false),
-                new Parameter(-1, T(TokenKind.Identifier, "alpha"), new DoubleType(), SymbolFlags.IsOptional, null, false)
-            ], new DoubleType(), TokenKind.SkewedNormalPdf, ExecutionKind: NativeExecutionKind.Pure),
 
             // Inverse CDF (ppf) e ISF — quantili e valori critici (scipy.stats)
-            new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.NormalPpf, "NormalPpf"),
-                [pParam, new Parameter(-1, T(TokenKind.Identifier, "mu"), new DoubleType(), SymbolFlags.IsOptional, null, false),
-                 new Parameter(-1, T(TokenKind.Identifier, "sigma"), new DoubleType(), SymbolFlags.IsOptional, null, false)],
-                new DoubleType(), TokenKind.NormalPpf, ExecutionKind: NativeExecutionKind.Pure),
-            new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.NormalIsf, "NormalIsf"),
-                [pParam, new Parameter(-1, T(TokenKind.Identifier, "mu"), new DoubleType(), SymbolFlags.IsOptional, null, false),
-                 new Parameter(-1, T(TokenKind.Identifier, "sigma"), new DoubleType(), SymbolFlags.IsOptional, null, false)],
-                new DoubleType(), TokenKind.NormalIsf, ExecutionKind: NativeExecutionKind.Pure),
-            new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.LognormalPpf, "LognormalPpf"),
-                [pParam, new Parameter(-1, T(TokenKind.Identifier, "mu"), new DoubleType(), SymbolFlags.IsOptional, null, false),
-                 new Parameter(-1, T(TokenKind.Identifier, "sigma"), new DoubleType(), SymbolFlags.IsOptional, null, false)],
-                new DoubleType(), TokenKind.LognormalPpf, ExecutionKind: NativeExecutionKind.Pure),
             new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.StatsChiIsf, "ChiIsf"),
                 [pParam, new Parameter(-1, T(TokenKind.Identifier, "k"), new DoubleType(), noFlags, null, false)],
                 new DoubleType(), TokenKind.StatsChiIsf, ExecutionKind: NativeExecutionKind.Pure),
@@ -266,36 +185,14 @@ public sealed partial class StdLib
                 [pParam, new Parameter(-1, T(TokenKind.Identifier, "location"), new DoubleType(), noFlags, null, false),
                  new Parameter(-1, T(TokenKind.Identifier, "scale"), new DoubleType(), noFlags, null, false)],
                 new DoubleType(), TokenKind.StatsLogisticIsf, ExecutionKind: NativeExecutionKind.Pure),
-            new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.StatsLognormalIsf, "LognormalIsf"),
-                [pParam, new Parameter(-1, T(TokenKind.Identifier, "mu"), new DoubleType(), SymbolFlags.IsOptional, null, false),
-                 new Parameter(-1, T(TokenKind.Identifier, "sigma"), new DoubleType(), SymbolFlags.IsOptional, null, false)],
-                new DoubleType(), TokenKind.StatsLognormalIsf, ExecutionKind: NativeExecutionKind.Pure),
-            new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.StatsTriangularIsf, "TriangularIsf"),
-                [pParam, new Parameter(-1, T(TokenKind.Identifier, "min"), new DoubleType(), SymbolFlags.IsOptional, null, false),
-                 new Parameter(-1, T(TokenKind.Identifier, "mode"), new DoubleType(), SymbolFlags.IsOptional, null, false),
-                 new Parameter(-1, T(TokenKind.Identifier, "max"), new DoubleType(), SymbolFlags.IsOptional, null, false)],
-                new DoubleType(), TokenKind.StatsTriangularIsf, ExecutionKind: NativeExecutionKind.Pure),
             new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.StatsWeibullIsf, "WeibullIsf"),
                 [pParam, new Parameter(-1, T(TokenKind.Identifier, "shape"), new DoubleType(), noFlags, null, false),
                  new Parameter(-1, T(TokenKind.Identifier, "scale"), new DoubleType(), noFlags, null, false)],
                 new DoubleType(), TokenKind.StatsWeibullIsf, ExecutionKind: NativeExecutionKind.Pure),
-            new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.UniformPpf, "UniformPpf"),
-                [pParam, new Parameter(-1, T(TokenKind.Identifier, "a"), new DoubleType(), SymbolFlags.IsOptional, null, false),
-                 new Parameter(-1, T(TokenKind.Identifier, "b"), new DoubleType(), SymbolFlags.IsOptional, null, false)],
-                new DoubleType(), TokenKind.UniformPpf, ExecutionKind: NativeExecutionKind.Pure),
-            new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.StatsUniformIsf, "UniformIsf"),
-                [pParam, new Parameter(-1, T(TokenKind.Identifier, "a"), new DoubleType(), SymbolFlags.IsOptional, null, false),
-                 new Parameter(-1, T(TokenKind.Identifier, "b"), new DoubleType(), SymbolFlags.IsOptional, null, false)],
-                new DoubleType(), TokenKind.StatsUniformIsf, ExecutionKind: NativeExecutionKind.Pure),
             new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.StatsParetoIsf, "ParetoIsf"),
                 [pParam, new Parameter(-1, T(TokenKind.Identifier, "scale"), new DoubleType(), noFlags, null, false),
                  new Parameter(-1, T(TokenKind.Identifier, "shape"), new DoubleType(), noFlags, null, false)],
                 new DoubleType(), TokenKind.StatsParetoIsf, ExecutionKind: NativeExecutionKind.Pure),
-            new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.TriangularPpf, "TriangularPpf"),
-                [pParam, new Parameter(-1, T(TokenKind.Identifier, "a"), new DoubleType(), SymbolFlags.IsOptional, null, false),
-                 new Parameter(-1, T(TokenKind.Identifier, "b"), new DoubleType(), SymbolFlags.IsOptional, null, false),
-                 new Parameter(-1, T(TokenKind.Identifier, "c"), new DoubleType(), SymbolFlags.IsOptional, null, false)],
-                new DoubleType(), TokenKind.TriangularPpf, ExecutionKind: NativeExecutionKind.Pure),
 
             // Distribuzioni Discrete
             new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.BernoulliPmf, "BernoulliPmf"),

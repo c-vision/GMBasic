@@ -146,3 +146,10 @@ double gs_bvn_cdf(double h, double k, double rho);
 
 /* Chi-quadro non centrale: P(X<=x) con df gradi e ncp noncentralita'. */
 double gs_ncx2_cdf(double x, double df, double ncp);
+
+/* ── completamenti (gs_dist_extra.c, 2026-11-19): esistevano solo nel builtin ── */
+gc_real gs_dist_lognormal_isf(gc_real mu, gc_real sigma, gc_real p);
+gc_real gs_dist_uniform_isf(gc_real a, gc_real b, gc_real p);
+gc_real gs_dist_triangular_cdf(gc_real a, gc_real b, gc_real c, gc_real x);
+gc_real gs_dist_triangular_sf(gc_real a, gc_real b, gc_real c, gc_real x);
+gc_real gs_dist_triangular_isf(gc_real a, gc_real b, gc_real c, gc_real p);

@@ -3226,14 +3226,6 @@ if (args.Length >= 3) { var file = args[0]?.ToString() ?? ""; var section = args
                 return 0.0;
             }
         },
-        [BuiltInFunction.LOGNORMALCDF] = (task, args) =>
-        {
-                return Basic.StdLibRuntime.MathFunctions.LognormalCdf(SafeDouble(args.Length > 1 ? args[1] : 0.0), SafeDouble(args.Length > 2 ? args[2] : 1.0), SafeDouble(args[0]));
-        },
-        [BuiltInFunction.LOGNORMALPDF] = (task, args) =>
-        {
-                return Basic.StdLibRuntime.MathFunctions.LognormalPdf(SafeDouble(args.Length > 1 ? args[1] : 0.0), SafeDouble(args.Length > 2 ? args[2] : 1.0), SafeDouble(args[0]));
-        },
         [BuiltInFunction.MOVINGAVERAGE] = (task, args) =>
         {
                 return Basic.StdLibRuntime.TimeSeriesFunctions.MovingAverage(ToDoubleArr(ArgOr(args, 0)), (int)SafeDouble(ArgOr(args, 1)));
@@ -3294,35 +3286,6 @@ if (args.Length >= 3) { var file = args[0]?.ToString() ?? ""; var section = args
                 // NegativeBinomialPmf(k=3,r=5,p=0.5) = 0.13671875 via test_pcode.
                 return Basic.StdLibRuntime.MathFunctions.NegativeBinomialPmf(SafeDouble(args.Length > 1 ? args[1] : null), SafeDouble(args.Length > 2 ? args[2] : null), (int)SafeDouble(args.Length > 0 ? args[0] : null));
         },
-        [BuiltInFunction.NORMALCDF] = (task, args) =>
-        {
-                return Basic.StdLibRuntime.MathFunctions.NormalCdf(SafeDouble(args.Length > 1 ? args[1] : 0.0), SafeDouble(args.Length > 2 ? args[2] : 1.0), SafeDouble(args[0]));
-            // Inverse CDF (ppf) e ISF — BASIC (p, params) → C# (params..., p)
-        },
-        [BuiltInFunction.NORMALPPF] = (task, args) =>
-        {
-                return Basic.StdLibRuntime.MathFunctions.NormalPpf(SafeDouble(args.Length > 1 ? args[1] : 0.0), SafeDouble(args.Length > 2 ? args[2] : 1.0), SafeDouble(args[0]));
-        },
-        [BuiltInFunction.NORMALISF] = (task, args) =>
-        {
-                return Basic.StdLibRuntime.MathFunctions.NormalIsf(SafeDouble(args.Length > 1 ? args[1] : 0.0), SafeDouble(args.Length > 2 ? args[2] : 1.0), SafeDouble(args[0]));
-        },
-        [BuiltInFunction.LOGNORMALPPF] = (task, args) =>
-        {
-                return Basic.StdLibRuntime.MathFunctions.LognormalPpf(SafeDouble(args.Length > 1 ? args[1] : 0.0), SafeDouble(args.Length > 2 ? args[2] : 1.0), SafeDouble(args[0]));
-        },
-        [BuiltInFunction.UNIFORMPPF] = (task, args) =>
-        {
-                return Basic.StdLibRuntime.MathFunctions.UniformPpf(SafeDouble(args.Length > 1 ? args[1] : 0.0), SafeDouble(args.Length > 2 ? args[2] : 1.0), SafeDouble(args[0]));
-        },
-        [BuiltInFunction.TRIANGULARPPF] = (task, args) =>
-        {
-                return Basic.StdLibRuntime.MathFunctions.TriangularPpf(SafeDouble(args.Length > 1 ? args[1] : 0.0), SafeDouble(args.Length > 2 ? args[2] : 0.5), SafeDouble(args.Length > 3 ? args[3] : 1.0), SafeDouble(args[0]));
-        },
-        [BuiltInFunction.NORMALPDF] = (task, args) =>
-        {
-                return Basic.StdLibRuntime.MathFunctions.NormalPdf(SafeDouble(args.Length > 1 ? args[1] : 0.0), SafeDouble(args.Length > 2 ? args[2] : 1.0), SafeDouble(args[0]));
-        },
         [BuiltInFunction.POISSONPMF] = (task, args) =>
         {
                 return Basic.StdLibRuntime.MathFunctions.PoissonPmf(SafeDouble(args.Length > 1 ? args[1] : null), (int)SafeDouble(args.Length > 0 ? args[0] : null));
@@ -3358,10 +3321,6 @@ if (args.Length >= 3) { var file = args[0]?.ToString() ?? ""; var section = args
         [BuiltInFunction.ROLLINGZSCORE] = (task, args) =>
         {
                 return Basic.StdLibRuntime.TimeSeriesFunctions.RollingZScore(ToDoubleArr(ArgOr(args, 0)), (int)SafeDouble(ArgOr(args, 1)));
-        },
-        [BuiltInFunction.SKEWEDNORMALPDF] = (task, args) =>
-        {
-                return Basic.StdLibRuntime.MathFunctions.SkewedNormalPdf(SafeDouble(args.Length > 1 ? args[1] : 0.0), SafeDouble(args.Length > 2 ? args[2] : 1.0), SafeDouble(args.Length > 3 ? args[3] : 0.0), SafeDouble(args[0]));
         },
         [BuiltInFunction.STOD] = (task, args) =>
         {
@@ -3524,21 +3483,6 @@ if (args.Length >= 3) { var file = args[0]?.ToString() ?? ""; var section = args
                 double _max = args.Length > 2 && ArgOr(args, 2) is double maxD ? maxD : 0;
                 return Basic.IlBackend.IlRuntime.IsValidLength(ArgOr(args, 0)?.ToString() ?? "", _min, _max);
             }
-        },
-        [BuiltInFunction.TRIANGULARPDF] = (task, args) =>
-        {
-                // BASIC: TRIANGULARPDF(x, min, mode, max) — args[0] è x, va spostato per ultimo
-                // per la firma StdLib.Runtime (min, mode, max, x), come ogni altro case PDF/CDF in
-                // questo blocco. Stesso bug e stesso fix di GMBasic (scoperto verificando la
-                // migrazione IlBackend→StdLib.Runtime, Fase 9 del piano): passava args[0..3] senza
-                // riordino, mappando silenziosamente x→min, min→mode, mode→max, max→x —
-                // parametrizzazione quasi sempre invalida, eccezione interna a Triangular.PDF che
-                // terminava l'intero task VM senza alcun output, anche per statement precedenti.
-                return Basic.StdLibRuntime.MathFunctions.TriangularPdf(SafeDouble(args.Length > 1 ? args[1] : 0.0), SafeDouble(args.Length > 2 ? args[2] : 0.5), SafeDouble(args.Length > 3 ? args[3] : 1.0), SafeDouble(args[0]));
-        },
-        [BuiltInFunction.UNIFORMPDF] = (task, args) =>
-        {
-                return Basic.StdLibRuntime.MathFunctions.UniformPdf(SafeDouble(args.Length > 1 ? args[1] : 0.0), SafeDouble(args.Length > 2 ? args[2] : 1.0), SafeDouble(args[0]));
         },
         [BuiltInFunction.VOLATILITY] = (task, args) =>
         {

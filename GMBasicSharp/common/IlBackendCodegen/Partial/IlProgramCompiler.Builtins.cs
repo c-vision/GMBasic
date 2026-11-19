@@ -444,19 +444,7 @@ public sealed partial class IlProgramCompiler
             case TokenKind.AMax: EmitStatsArrayCall(expr, RuntimeMethod(nameof(IlRuntime.AMax))); break;
             case TokenKind.AMin: EmitStatsArrayCall(expr, RuntimeMethod(nameof(IlRuntime.AMin))); break;
             case TokenKind.ASum: EmitStatsArrayCall(expr, RuntimeMethod(nameof(IlRuntime.ASum))); break;
-            case TokenKind.NormalPdf: EmitOptionalParamsCall(expr, IlRuntimeNormalPdfMethod, 3, 0.0, 1.0); break;
-            case TokenKind.NormalCdf: EmitOptionalParamsCall(expr, IlRuntimeNormalCdfMethod, 3, 0.0, 1.0); break;
             // Inverse CDF (ppf) e ISF — quantili e valori critici.
-            case TokenKind.NormalPpf: EmitOptionalParamsCall(expr, IlRuntimeNormalPpfMethod, 3, 0.0, 1.0); break;
-            case TokenKind.NormalIsf: EmitOptionalParamsCall(expr, IlRuntimeNormalIsfMethod, 3, 0.0, 1.0); break;
-            case TokenKind.LognormalPpf: EmitOptionalParamsCall(expr, IlRuntimeLognormalPpfMethod, 3, 0.0, 1.0); break;
-            case TokenKind.UniformPpf: EmitOptionalParamsCall(expr, IlRuntimeUniformPpfMethod, 3, 0.0, 1.0); break;
-            case TokenKind.TriangularPpf: EmitOptionalParamsCall(expr, IlRuntimeTriangularPpfMethod, 4, 0.0, 0.5, 1.0); break;
-            case TokenKind.LognormalPdf: EmitOptionalParamsCall(expr, IlRuntimeLognormalPdfMethod, 3, 0.0, 1.0); break;
-            case TokenKind.LognormalCdf: EmitOptionalParamsCall(expr, IlRuntimeLognormalCdfMethod, 3, 0.0, 1.0); break;
-            case TokenKind.TriangularPdf: EmitOptionalParamsCall(expr, IlRuntimeTriangularPdfMethod, 4, 0.0, 0.5, 1.0); break;
-            case TokenKind.UniformPdf: EmitOptionalParamsCall(expr, IlRuntimeUniformPdfMethod, 3, 0.0, 1.0); break;
-            case TokenKind.SkewedNormalPdf: EmitOptionalParamsCall(expr, IlRuntimeSkewedNormalPdfMethod, 4, 0.0, 1.0, 0.0); break;
             // BASIC: BernoulliPmf(x, p) -> StdLib.Runtime.BernoulliPmf(p, k=x)
             case TokenKind.BernoulliPmf: EmitPmfBuiltinCall(expr, IlRuntimeBernoulliPmfMethod, 2, [(1, false), (0, true)]); break;
             // BASIC: BinomialPmf(x, n, p) -> StdLib.Runtime.BinomialPmf(p, n, k=x) — permutazione
