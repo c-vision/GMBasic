@@ -24,7 +24,7 @@
 
 IMPORT AI WITH ALIAS
 IMPORT STATS
-IMPORT STATSX
+IMPORT STATS
 IMPORT STRINGS
 
 ' --- DATA LAYER: fonti interne (calcolo puro, come MCP-001 genera/consulta dati) ---
@@ -49,7 +49,7 @@ FUNCTION GmbStats(id AS INTEGER) AS STRING
     n[0] = VAL(parts[0])
     n[1] = VAL(parts[1])
     n[2] = VAL(parts[2])
-    GmbStats = "mean=" + STR$(STATSX.MEAN(n)) + " max=" + STR$(MATH.MAX(n[0], n[1], n[2])) + " min=" + STR$(MATH.MIN(n[0], n[1], n[2]))
+    GmbStats = "mean=" + STR$(STATS.MEAN(n)) + " max=" + STR$(MATH.MAX(n[0], n[1], n[2])) + " min=" + STR$(MATH.MIN(n[0], n[1], n[2]))
 END FUNCTION
 
 FUNCTION GmbSavings(id AS INTEGER, monthlyCents AS LONG, months AS INTEGER) AS STRING

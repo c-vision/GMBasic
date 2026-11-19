@@ -6,7 +6,7 @@
 ' 4 backend, non un'applicazione.
 ' EXPECT: n= 5|min= 1|max= 5|mean= 3|var= 2.5|skew= 0|kurt=-1.2|f= 4.8|p= 0.070988|df= 6|chi2= 0.5|p= 0.992123|chi2= 0.793651|p= 0.372998|df= 1|r= 1|p= 0|rho= 1|p= 0|slope= 1.99|intercept= 0.05|r= 0.998652|p= 5.9E-05|se= 0.059722|k2= 3.992116|p= 0.13587|w= 0.986339|p= 0.990059|z= 1.040349|p= 0.298178|z=-1.70581|p= 0.088043|jb= 4.848241|p= 0.088556|d= 0.2|p= 1|u= 0|p= 0.020921|w= 6|p= 0.68583|z= 0.447214|p= 0.654721|t=-0.098533|p= 0.923933|t= 0.331042|p= 0.757228|t= 1.5|p= 0.208|oddsratio= 20|p= 0.034965|4.8|5|3.3466401061363|11.2|-1.49386160714286|3|0.05905996194|-0.058600903867|5|9|gcdf= 0.800852|gpdf= 0.149361|gppf= 1.678347|gisf= 1.678347|iqr= 2|mode= 1|moment= 2|normcdf= 0.5|normpdf= 0.398942|bern= 0.5|betaCdf= 0.5|betaPdf= 1.5|betaPpf= 0.5|binom= 0.246094|chiCdf= 0.393469|chiPdf= 0.606531|chiPpf= 1.17741|chi2Cdf= 0.393469|chi2Isf= 1.386294|chi2Pdf= 0.303265|chi2Ppf= 1.386294|expCdf= 0.632121|expIsf= 0.693147|expPdf= 0.367879|expPpf= 0.693147|fCdf= 0.534881|fIsf= 0.931933|fPdf= 0.49548|fPpf= 0.931933|gammaCdf= 0.800852|gammaIsf= 1.678347|gammaPdf= 0.149361|gammaPpf= 1.678347|geom= 0.125|hyper= 0.22593|logisticPdf= 0.25|logisticPpf= 0|lognormCdf= 0.5|lognormPdf= 0.398942|lognormPpf= 1|normCdf= 0.5|normIsf= 0|normPdf= 0.398942|normPpf= 0|paretoPdf= 2|paretoPpf= 1.414214|poisson= 0.270671|studCdf= 0.5|studIsf= 0|studPdf= 0.389108|studPpf= 0|triPdf= 1|triPpf= 0.5|uniPdf= 1|uniPpf= 0.5|weiCdf= 0.632121|weiPdf= 0.735759|weiPpf= 0.832555|skewnorm= 0.398942|negbin= 0.15625
 IMPORT STATS
-IMPORT STATSX
+IMPORT STATS
 
 
 SUB S_describe()
@@ -191,27 +191,27 @@ END SUB
 
 SUB S_desc()
   DIM d(4) AS DOUBLE = {5, 2, 9, 1, 7}
-  PRINT STATSX.MEAN(d)
-  PRINT STATSX.MEDIAN(d)
-  PRINT STATSX.STDDEV(d, 1)
-  PRINT STATSX.VARIANCE(d, 1)
+  PRINT STATS.MEAN(d)
+  PRINT STATS.MEDIAN(d)
+  PRINT STATS.STDDEV(d, 1)
+  PRINT STATS.VARIANCE(d, 1)
 END SUB
 
 
 SUB S_desc2()
   DIM d(4) AS DOUBLE = {5, 2, 9, 1, 7}
-  PRINT STATSX.KURTOSIS(d)
-  PRINT STATSX.MAD(d)
+  PRINT STATS.KURTOSIS(d)
+  PRINT STATS.MAD(d)
 END SUB
 
 
 SUB S_desc3()
   DIM d(4) AS DOUBLE = {5, 2, 9, 1, 7}
   DIM e(4) AS DOUBLE = {9, 4, 3, 6, 8}
-  PRINT ROUND(STATSX.SKEWNESS(d), 12)
-  PRINT ROUND(STATSX.CORRELATION(d, e), 12)
-  PRINT STATSX.PERCENTILE(d, 50)
-  PRINT STATSX.PERCENTILE(d, 100)
+  PRINT ROUND(STATS.SKEWNESS(d), 12)
+  PRINT ROUND(STATS.CORRELATION(d, e), 12)
+  PRINT STATS.PERCENTILE(d, 50)
+  PRINT STATS.PERCENTILE(d, 100)
 END SUB
 
 

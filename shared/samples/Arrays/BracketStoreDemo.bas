@@ -5,7 +5,7 @@
 ' C99 (bug C99-IndexedTarget-Bracket-Store-Scartati, 2026-09-15): ora parità 5/5.
 ' Combina store bracket su fisso + dinamico da SPLIT + MEAN + UBOUND + JOIN.
 ' ============================================================================
-IMPORT STATSX
+IMPORT STATS
 IMPORT STRINGS
 
 SUB Main()
@@ -14,7 +14,7 @@ SUB Main()
     n[0] = 10
     n[1] = 20
     n[2] = 30
-    PRINT "mean="; STR$(STATSX.MEAN(n))
+    PRINT "mean="; STR$(STATS.MEAN(n))
     PRINT "ubound="; STR$(UBOUND(n) + 1)
 
     ' Array dinamico da SPLIT con store bracket
@@ -30,5 +30,5 @@ SUB Main()
     m[0] = VAL(parts[1])
     m[1] = VAL(parts[2])
     m[2] = 5
-    PRINT "sum="; STR$(STATSX.MEAN(m) * 3)
+    PRINT "sum="; STR$(STATS.MEAN(m) * 3)
 END SUB
