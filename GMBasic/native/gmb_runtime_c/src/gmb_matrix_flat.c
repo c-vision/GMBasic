@@ -16,7 +16,8 @@
 enum {
     GMB_MATRIX_FLAT_SINM = 1,
     GMB_MATRIX_FLAT_TANM = 2,
-    GMB_MATRIX_FLAT_ORTH = 3
+    GMB_MATRIX_FLAT_ORTH = 3,
+    GMB_MATRIX_FLAT_COSM = 4     /* matrix cosine (V·cos(Λ)·V^T), come sinm/tanm */
 };
 
 int gmb_matrix_flat_op(const double* a, int64_t rows, int64_t cols, int op,
@@ -35,6 +36,7 @@ int gmb_matrix_flat_op(const double* a, int64_t rows, int64_t cols, int op,
     case GMB_MATRIX_FLAT_SINM: r = gmb_matrix_sinm(h); break;
     case GMB_MATRIX_FLAT_TANM: r = gmb_matrix_tanm(h); break;
     case GMB_MATRIX_FLAT_ORTH: r = gmb_matrix_orth(h); break;
+    case GMB_MATRIX_FLAT_COSM: r = gmb_matrix_cosm(h); break;
     default: break;
     }
     gmb_matrix_free(h);

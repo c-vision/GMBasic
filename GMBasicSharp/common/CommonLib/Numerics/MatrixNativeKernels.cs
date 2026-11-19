@@ -28,6 +28,7 @@ internal static class MatrixNativeKernels
         Sin = 1,
         Tan = 2,
         Orth = 3,
+        Cos = 4,   /* matrix cosine, kernel `gmb_matrix_cosm` (2026-11-19) */
     }
 
     private const string Lib = "gmb_matrix_flat";
@@ -124,6 +125,20 @@ internal static class MatrixNativeKernels
 
     [DllImport(Lib, EntryPoint = "gmb_matrix_subspace_angles", CallingConvention = CallingConvention.Cdecl)]
     private static extern int NativeSubspaceAngles(long a, long b, out IntPtr outBuf);
+    [DllImport(Lib, EntryPoint = "gmb_matrix_solve_triangular", CallingConvention = CallingConvention.Cdecl)]
+    private static extern long NativeSolveTriangular(long a, double[] b, int nb, int lower);
+    [DllImport(Lib, EntryPoint = "gmb_matrix_polar", CallingConvention = CallingConvention.Cdecl)]
+    private static extern long NativePolar(long a);
+    [DllImport(Lib, EntryPoint = "gmb_matrix_decomp_get_factor", CallingConvention = CallingConvention.Cdecl)]
+    private static extern long NativeDecompGetFactor(long decomp, int idx);
+    [DllImport(Lib, EntryPoint = "gmb_matrix_decomp_get_factor_ex", CallingConvention = CallingConvention.Cdecl)]
+    private static extern long NativeDecompGetFactorEx(long decomp, int idx, out int owned);
+    [DllImport(Lib, EntryPoint = "gmb_matrix_eig", CallingConvention = CallingConvention.Cdecl)]
+    private static extern long NativeEig(long a);
+    [DllImport(Lib, EntryPoint = "gmb_matrix_schur", CallingConvention = CallingConvention.Cdecl)]
+    private static extern long NativeSchur(long a);
+    [DllImport(Lib, EntryPoint = "gmb_matrix_decomp_free", CallingConvention = CallingConvention.Cdecl)]
+    private static extern void NativeDecompFree(long decomp);
 
     /// <summary>Matrice gestita → handle del runtime. false se la lib non è caricabile.</summary>
     private static bool TryToNative(Matrix<double> a, out long h)
@@ -146,19 +161,23 @@ internal static class MatrixNativeKernels
     }
 
     /// <summary>Handle del runtime → matrice gestita (poi libera l'handle).</summary>
+    /// <summary>Legge un handle del runtime SENZA liberarlo (fattori posseduti da una decomposizione).</summary>
+    private static Matrix<double>? ReadDense(long h)
+    {
+        if (h <= 0) return null;
+        var rows = MatrixRows(h); var cols = MatrixCols(h);
+        if (rows <= 0 || cols <= 0) return null;
+        var m = new double[rows, cols];
+        for (var i = 0; i < rows; i++)
+            for (var j = 0; j < cols; j++)
+                m[i, j] = MatrixGet(h, i, j);
+        return Matrix<double>.Build.DenseOfArray(m);
+    }
+
     private static Matrix<double>? FromNative(long h)
     {
         if (h <= 0) return null;
-        try
-        {
-            var rows = MatrixRows(h); var cols = MatrixCols(h);
-            if (rows <= 0 || cols <= 0) return null;
-            var m = new double[rows, cols];
-            for (var i = 0; i < rows; i++)
-                for (var j = 0; j < cols; j++)
-                    m[i, j] = MatrixGet(h, i, j);
-            return Matrix<double>.Build.DenseOfArray(m);
-        }
+        try { return ReadDense(h); }
         finally { MatrixFree(h); }
     }
 
@@ -292,6 +311,145 @@ internal static class MatrixNativeKernels
         catch (EntryPointNotFoundException) { MarkUnavailable(); return false; }
         catch (BadImageFormatException) { MarkUnavailable(); return false; }
         finally { MatrixFree(ha); }
+    }
+
+    /// <summary>scipy.linalg.solve_triangular — sostituzione in avanti/indietro (kernel C N×1).</summary>
+    internal static bool TrySolveTriangular(Matrix<double> a, double[] b, bool lower, out double[] result)
+    {
+        result = [];
+        if (!TryToNative(a, out var h)) return false;
+        try
+        {
+            var m = FromNative(NativeSolveTriangular(h, b, b.Length, lower ? 1 : 0));
+            if (m is null) return false;
+            if (m.ColumnCount == 1)
+            {
+                var v = new double[m.RowCount];
+                for (var i = 0; i < v.Length; i++) v[i] = m[i, 0];
+                result = v;
+            }
+            else
+            {
+                var v = new double[m.RowCount * m.ColumnCount];
+                for (var i = 0; i < m.RowCount; i++)
+                    for (var j = 0; j < m.ColumnCount; j++) v[i * m.ColumnCount + j] = m[i, j];
+                result = v;
+            }
+            return true;
+        }
+        catch (DllNotFoundException) { MarkUnavailable(); return false; }
+        catch (EntryPointNotFoundException) { MarkUnavailable(); return false; }
+        catch (BadImageFormatException) { MarkUnavailable(); return false; }
+        finally { MatrixFree(h); }
+    }
+
+    /// <summary>
+    /// scipy.linalg.polar — A = U·P. Il kernel C ritorna una DECOMPOSIZIONE (tipo 5: fattori
+    /// U = idx 0, P = idx 1); i fattori sono posseduti dalla decomposizione (non vanno liberati
+    /// separatamente: si libera solo l'handle della decomposizione).
+    /// </summary>
+    internal static bool TryPolar(Matrix<double> a, out Matrix<double> u, out Matrix<double> p)
+    {
+        u = null!; p = null!;
+        if (!TryToNative(a, out var h)) return false;
+        try
+        {
+            var dec = NativePolar(h);
+            if (dec <= 0) return false;
+            try
+            {
+                var um = ReadDense(NativeDecompGetFactor(dec, 0));
+                var pm = ReadDense(NativeDecompGetFactor(dec, 1));
+                if (um is null || pm is null) return false;
+                u = um; p = pm;
+                return true;
+            }
+            finally { NativeDecompFree(dec); }
+        }
+        catch (DllNotFoundException) { MarkUnavailable(); return false; }
+        catch (EntryPointNotFoundException) { MarkUnavailable(); return false; }
+        catch (BadImageFormatException) { MarkUnavailable(); return false; }
+        finally { MatrixFree(h); }
+    }
+
+    /// <summary>Fattori di EIG/SCHUR restituiti dal runtime C (matrici già materializzate).</summary>
+    internal sealed class EigResult
+    {
+        internal double[,] T = null!;   // forma di Schur reale (quasi-triangolare)
+        internal double[,] Z = null!;   // trasformazione ortogonale (T = Z^T A Z)
+        internal double[] D = [];       // parti reali degli autovalori
+        internal double[] E = [];       // parti immaginarie degli autovalori
+        internal double[,]? VR;         // autovettori reali (null se non richiesti)
+        internal double[,]? VI;         // autovettori immaginari (null se non richiesti)
+    }
+
+    /// <summary>
+    /// EIG/SCHUR: forma di Schur (T, Z) + autovalori e, se richiesti, autovettori destri.
+    /// Il runtime C espone due decomposizioni: `gmb_matrix_schur` (tipo 7: T, Z) e
+    /// `gmb_matrix_eig` (tipo 6: DREAL, DIMAG, VRREAL, VRIMAG). I fattori DREAL/DIMAG
+    /// sono handle NUOVI (vanno liberati), gli altri sono posseduti dalla decomposizione.
+    /// </summary>
+    internal static bool TryEig(Matrix<double> a, bool withVectors, out EigResult result)
+    {
+        result = null!;
+        if (!TryToNative(a, out var h)) return false;
+        try
+        {
+            var sdec = NativeSchur(h);
+            if (sdec <= 0) return false;
+            double[,] t;
+            double[,] z;
+            try
+            {
+                var tm = ReadDense(NativeDecompGetFactor(sdec, 0));
+                var zm = ReadDense(NativeDecompGetFactor(sdec, 1));
+                if (tm is null || zm is null) return false;
+                t = tm.ToArray();
+                z = zm.ToArray();
+            }
+            finally { NativeDecompFree(sdec); }
+
+            var edec = NativeEig(h);
+            if (edec <= 0) return false;
+            try
+            {
+                var dh = NativeDecompGetFactorEx(edec, 0, out var ownedD);
+                var ih = NativeDecompGetFactorEx(edec, 1, out var ownedI);
+                try
+                {
+                    var dm = ReadDense(dh);
+                    var im = ReadDense(ih);
+                    if (dm is null || im is null) return false;
+                    var n = dm.RowCount;
+                    var d = new double[n];
+                    var e = new double[n];
+                    for (var i = 0; i < n; i++) { d[i] = dm[i, 0]; e[i] = im[i, 0]; }
+
+                    double[,]? vr = null, vi = null;
+                    if (withVectors)
+                    {
+                        var vrm = ReadDense(NativeDecompGetFactor(edec, 2));
+                        var vim = ReadDense(NativeDecompGetFactor(edec, 3));
+                        if (vrm is null || vim is null) return false;
+                        vr = vrm.ToArray();
+                        vi = vim.ToArray();
+                    }
+
+                    result = new EigResult { T = t, Z = z, D = d, E = e, VR = vr, VI = vi };
+                    return true;
+                }
+                finally
+                {
+                    if (ownedD != 0 && dh > 0) MatrixFree(dh);
+                    if (ownedI != 0 && ih > 0) MatrixFree(ih);
+                }
+            }
+            finally { NativeDecompFree(edec); }
+        }
+        catch (DllNotFoundException) { MarkUnavailable(); return false; }
+        catch (EntryPointNotFoundException) { MarkUnavailable(); return false; }
+        catch (BadImageFormatException) { MarkUnavailable(); return false; }
+        finally { MatrixFree(h); }
     }
 
 }

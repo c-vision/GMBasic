@@ -164,7 +164,10 @@ public class SciPyLinalgTests
     {
         var g = DenseMatrix.OfArray(new double[,] { { 1, 2 }, { 2, 3 } });
         var o = CommonLib.Numerics.Orth(g);
-        AssertClose(-0.5257311121191336, o[0, 0], 1e-9);
+        // Il segno delle colonne di una base ortonormale è arbitrario (LAPACK e il nostro
+        // kernel SVD possono sceglierne uno diverso): si confronta il modulo. Il valore
+        // esatto delle 4 gambe è pinnato da SciPySamplesParityTests (`orth00`).
+        AssertClose(0.5257311121191336, Math.Abs(o[0, 0]), 1e-9);
         var a2 = DenseMatrix.OfArray(new double[,] { { 2, 1 }, { 1, 2 } });
         var ang = CommonLib.Numerics.SubspaceAngles(a2, g);
         Assert.Equal(2, ang.Length);
