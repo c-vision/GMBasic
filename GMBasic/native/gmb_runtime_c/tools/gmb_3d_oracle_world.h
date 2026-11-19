@@ -31,6 +31,16 @@ void w_world_t3_checks(int* ok, int* fail);
  * w_prepare: va chiamata dopo. */
 void w_collision_checks(int* ok, int* fail);
 
+/* Mappa demo (--demo): 3 stanze, porta, ascensore, finestra traslucida.
+ * La scena la carica e la anima; il bench ne misura il frame time. */
+void w_set_demo_path(const char* path);
+int  w_scene_demo(gmb_3d_target_t* t);
+int  w_bench_demo(int w_px, int h_px, int frames, double limit_ms);
+
+/* T-*: orologio a passo fisso, SECMOVE, ANIM, SCROLL, LIGHTFX, LAMP, LIGHTNOW.
+ * Usa la mappa demo (va impostata con w_set_demo_path). */
+void w_time_checks(int* ok, int* fail);
+
 #ifdef __cplusplus
 }
 #endif

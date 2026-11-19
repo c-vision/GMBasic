@@ -153,15 +153,16 @@ static int scene_tri_depth(gmb_3d_target_t* t)
     return rc;
 }
 
-/* P1: triangoli. P2: settori (room/door/pitch) dallo stesso binario. */
-#define NSCENES 6
+/* P1: triangoli. P2: settori (room/door/pitch) e mappa demo, dallo stesso
+ * binario: la demo passa da loader, tempo e bridge del runtime. */
+#define NSCENES 7
 static const char* const SCENE_NAMES[NSCENES] = {
     "tri_tex", "tri_mask", "tri_depth",
-    "sector_room", "sector_door", "sector_pitch"
+    "sector_room", "sector_door", "sector_pitch", "demo"
 };
 static const scene_fn SCENE_FNS[NSCENES] = {
     scene_tri_tex, scene_tri_mask, scene_tri_depth,
-    w_scene_room, w_scene_door, w_scene_pitch
+    w_scene_room, w_scene_door, w_scene_pitch, w_scene_demo
 };
 
 /* --- golden -------------------------------------------------------------- */
@@ -197,8 +198,7 @@ static unsigned char* read_file(const char* path, size_t* len)
     return buf;
 }
 
-/* Rende la scena i e ne cattura i pixel dal target. Una scena vuota (meno di 3
- * colori distinti) non è un oracolo: vale sia al bless sia al confronto. */
+/* Rende la scena i e ne cattura i pixel dal target. */
 static int shoot(int i, gmb_3d_target_t* t, uint32_t* shot)
 {
     size_t npix = (size_t)t->w * (size_t)t->h;
@@ -460,6 +460,10 @@ static int run_selftest(const char* dir)
     /* W-MOVE / W-PLAYER / W-EYE-CLAMP: 10 casi di collisione, sul loader vero. */
     w_collision_checks(&ok, &fail);
 
+    /* T-* e mappa demo: orologio a passo fisso, mover, animazioni, scroll,
+     * luce, lampade, traslucenza. */
+    w_time_checks(&ok, &fail);
+
     printf("P1-SELFTEST ok=%d fail=%d\n", ok, fail);
 #undef CHECK
     return fail == 0 ? 0 : 1;
@@ -472,7 +476,10 @@ static void usage(void)
     printf("uso: gmb_3d_oracle --check DIR [--rid RID] [--tol PCT] [--perturb N]\n"
            "     gmb_3d_oracle --bless DIR [--rid RID]\n"
            "     gmb_3d_oracle --selftest DIR\n"
-           "  DIR = cartella delle golden (<scena>.<rid>.png)\n");
+           "     gmb_3d_oracle --bench [--frames N]\n"
+           "  DIR   = cartella delle golden (<scena>.<rid>.png)\n"
+           "  --demo MAPPA = mappa demo (.gmbscene): scena `demo`, T-* e bench\n"
+           "  --bench = frame time della demo a 640x300 (limite 4 ms)\n");
 }
 
 int main(int argc, char** argv)
@@ -480,7 +487,9 @@ int main(int argc, char** argv)
     const char* mode = NULL;
     const char* dir = NULL;
     const char* rid = GMB_ORACLE_RID;
+    const char* demo = NULL;
     double tol = 0.0;
+    int bench = 0, frames = 120;
 
     for (int i = 1; i < argc; i++)
     {
@@ -497,9 +506,14 @@ int main(int argc, char** argv)
         else if (!strcmp(argv[i], "--rid") && i + 1 < argc) rid = argv[++i];
         else if (!strcmp(argv[i], "--tol") && i + 1 < argc) tol = atof(argv[++i]);
         else if (!strcmp(argv[i], "--perturb") && i + 1 < argc) g_perturb = atoi(argv[++i]);
+        else if (!strcmp(argv[i], "--demo") && i + 1 < argc) demo = argv[++i];
+        else if (!strcmp(argv[i], "--bench")) bench = 1;
+        else if (!strcmp(argv[i], "--frames") && i + 1 < argc) frames = atoi(argv[++i]);
         else if (!strcmp(argv[i], "--help") || !strcmp(argv[i], "-h")) { usage(); return 0; }
         else { printf("argomento non riconosciuto: %s\n", argv[i]); usage(); return 2; }
     }
+    if (demo) w_set_demo_path(demo);
+    if (bench) return w_bench_demo(640, 300, frames, 4.0);
     if (!mode) { usage(); return 2; }
     if (!dir) { usage(); return 2; }
 

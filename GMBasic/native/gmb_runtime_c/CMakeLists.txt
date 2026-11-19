@@ -388,6 +388,7 @@ set(GMB_ALL_SRCS
     src/gmb_3d_io.c
     src/gmb_3d_sector.c
     src/gmb_3d_move.c
+    src/gmb_3d_time.c
     # F3 multimodale (2026-09-11): dominio immagini (decode/resize/crop/encode PNG condivisi).
     src/gmb_image.c
     # F2 multimodale (2026-09-11): estrazione strutturata documenti (euristiche + LLM).
@@ -1375,14 +1376,12 @@ gmb_exe_relocatable(gmbimgdiff)
 # vendored, consegna al TARGET 3D del runtime, cattura DAL TARGET e confronta le golden
 # per RID. Il raster della suite si compila SOLO in questo eseguibile: il runtime non
 # dipende ancora da gm_* (lo farà in P2/P3, con i sorgenti vendorizzati).
-set(GMB_3D_SUITE "${CMAKE_CURRENT_SOURCE_DIR}/../../../shared/libs/graphics")
-set(GMB_3D_MATH  "${CMAKE_CURRENT_SOURCE_DIR}/../../../shared/libs/math")
-set(GMB_3D_COMPUTE "${CMAKE_CURRENT_SOURCE_DIR}/../../../shared/libs/compute")
+# Stessi percorsi della suite già definiti per core/min (GMB_GFX_SUITE*), non
+# una seconda copia da tenere allineata.
 add_executable(gmb_3d_oracle tools/gmb_3d_oracle.c tools/gmb_3d_oracle_world.c
-    "${GMB_3D_SUITE}/src/gm_gfx_raster.c" "${GMB_3D_SUITE}/src/gm_gfx_sector.c")
+    "${GMB_GFX_SUITE}/src/gm_gfx_raster.c" "${GMB_GFX_SUITE}/src/gm_gfx_sector.c")
 target_link_libraries(gmb_3d_oracle PRIVATE gmb_runtime)
-target_include_directories(gmb_3d_oracle PRIVATE include src
-    "${GMB_3D_SUITE}/include" "${GMB_3D_MATH}/include" "${GMB_3D_COMPUTE}/include")
+target_include_directories(gmb_3d_oracle PRIVATE include src ${GMB_GFX_SUITE_INCLUDES})
 
 add_executable(gmb_audio_selfcheck tests/gmb_audio_selfcheck.c)
 target_link_libraries(gmb_audio_selfcheck PRIVATE gmb_runtime)

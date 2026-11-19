@@ -1,9 +1,9 @@
 /* ============================================================================
  * gmb_3d.h — motore 3D: target di rendering, cattura headless e guardie.
  *
- * P1 del piano 3D (docs/Piano-Motore-3D.md §6). Non c'è ancora un renderer in
- * questo modulo: ci sono il TARGET e la sua cattura, cioè la pipeline che rende
- * verificabile ogni fase successiva.
+ * P1 del piano 3D (docs/Piano-Motore-3D.md §6) e i mondi a settori di P2. Il
+ * TARGET e la sua cattura sono la pipeline che rende verificabile ogni fase;
+ * il renderer vero sta nella suite (gm_gfx_sector), qui c'è solo il ponte.
  *
  * Contratto:
  *  - il fotogramma si legge dal TARGET 3D, mai da gmb_gfx_present_capture():
@@ -165,6 +165,46 @@ int  gmb_3d_player_move(const gmb_3d_world_t* w, gmb_3d_player_t* p,
  * il soffitto del settore (W-EYE-CLAMP). */
 int  gmb_3d_player_view(const gmb_3d_world_t* w, const gmb_3d_player_t* p,
                         gmb_3d_camera_t* cam);
+
+/* --- tempo e animazioni (P2, specifica §2.4) ----------------------------- */
+
+/* TICK: orologio a PASSO FISSO (T-FIXED). `seconds` si accoda e il mondo
+ * avanza a passi di `step` (default 1/60); un solo TICK non accoda più di 10 s,
+ * l'eccesso si scarta, così un hitch non fa spirale. Tempo e tick sono simulati:
+ * stesso seed e stessi input danno la stessa sequenza di frame (T-CLOCK). */
+int           gmb_3d_tick(gmb_3d_world_t* w, double seconds);
+
+double        gmb_3d_time(const gmb_3d_world_t* w);
+unsigned long gmb_3d_ticks(const gmb_3d_world_t* w);
+
+/* SECMOVE: porta il pavimento — e con la variante `_ceil` anche il soffitto —
+ * alla quota data, a `speed` unità/secondo. */
+int gmb_3d_secmove(gmb_3d_world_t* w, int sector, float speed, float floor_z);
+int gmb_3d_secmove_ceil(gmb_3d_world_t* w, int sector, float speed,
+                        float floor_z, float ceil_z);
+
+/* MOVING: -1 mentre il settore si muove, 0 quando è fermo (T-SECMOVE). */
+int gmb_3d_moving(const gmb_3d_world_t* w, int sector);
+
+/* HEIGHT: quote attuali del settore; ferma il mover (T-SECMOVE). */
+int gmb_3d_sector_height(gmb_3d_world_t* w, int sector, float* floor_z, float* ceil_z);
+
+/* ANIM: cicla le picture del settore su `first…first+count−1` a `fps`. */
+int gmb_3d_anim(gmb_3d_world_t* w, int sector, int first, int count, float fps);
+
+/* SCROLL: `what` 0 = piani (pavimento e soffitto), 1 = pareti del settore;
+ * rate in unità/secondo, integrate dal passo fisso. */
+int gmb_3d_scroll(gmb_3d_world_t* w, int sector, int what, float u_per_s, float v_per_s);
+
+/* LIGHTFX: 1 flicker casuale fra `luce−amount` e `luce`, 2 pulse sinusoidale
+ * ±amount, 3 strobe a mezzo periodo; 0 spegne l'effetto. `amount` 0..1, `rate`
+ * in Hz. Il valore vive in LIGHTNOW. */
+int   gmb_3d_lightfx(gmb_3d_world_t* w, int sector, int mode, float amount, float rate);
+float gmb_3d_light_now(const gmb_3d_world_t* w, int sector);
+
+/* LAMP: lampada puntiforme che schiarisce con falloff lineare fino a `radius`
+ * (W-LIGHT: mai colorata, niente ombre). Fino a GM_SECTOR_MAX_LAMPS per mondo. */
+int gmb_3d_lamp(gmb_3d_world_t* w, float x, float y, float z, float radius, float level);
 
 /* Load che hanno parcheggiato il task (R11): 0 in T3, +1 per ogni load dentro
  * un task. Osservabile come alloc_count per R4. */

@@ -49,7 +49,7 @@
 
 | ID | Comportamento | Oracolo |
 |---|---|---|
-| `W-COLUMN` | **Un raggio 2D per colonna di schermo**, tracciato dentro i settori. Si trova la parete più vicina del settore corrente, si disegnano le righe di soffitto e pavimento fino a lì; parete solida → la colonna finisce; portale → si disegnano i gradini superiore/inferiore, si **restringe la finestra di righe ancora aperte** e il raggio prosegue nel settore dietro. Nessun BSP, nessun ordinamento delle pareti; forme concave e buchi funzionano. | 8 direzioni da un punto noto: immagine identica alla golden, pixel per pixel. |
+| `W-COLUMN` | **Un raggio 2D per colonna di schermo**, tracciato dentro i settori. Si trova la parete più vicina del settore corrente, si disegnano le righe di soffitto e pavimento fino a lì; parete solida → la colonna finisce; portale → la parete resta **solida fuori dall'apertura** (fascia sopra il varco fino al soffitto, fascia sotto fino al pavimento, più il frontone se il pavimento dietro è più alto), la **finestra di righe si restringe all'apertura** e il raggio prosegue nel settore dietro. Nessun BSP, nessun ordinamento delle pareti; forme concave e buchi funzionano. | 8 direzioni da un punto noto: immagine identica alla golden, pixel per pixel. |
 | `W-DEPTH` | Il parametro del raggio è la **profondità lungo la direzione di vista**: niente correzione fish-eye. I piani sono mappati **per pixel** (prospettici), le pareti **per colonna**. | Muro a 45°: altezza costante lungo la colonna, nessun incurvamento. |
 | `W-SHEAR` | Guardare su/giù muove l'orizzonte: è uno **shear** dell'immagine, non un tilt vero. | Pitch ±30°: l'orizzonte si sposta linearmente, le verticali restano verticali. |
 | `W-DBUFFER` | Un **depth buffer float per pixel** permette di disegnare thing e pareti masked in qualunque ordine. | Un thing dietro una parete bassa non compare sopra il cielo (`W-THINGVIS`). |
@@ -83,6 +83,17 @@
 | `T-SECMOVE` | `SECMOVE s, velocità, pavimento[, soffitto]` porta le quote a quei valori; `MOVING(s)` è `−1` mentre si muovono; `HEIGHT` ferma un mover. Porte/ascensori/trituratori: il programma avvia e interroga. |
 | `T-FIXED` | **Diverso dal riferimento**: noi usiamo un **passo fisso** (default 1/60) con accumulatore e limite di catch-up, e l'interpolazione dell'occhio è funzione del tempo simulato, non del frame rate. Motivo: determinismo e golden image riproducibili. |
 | `T-CLOCK` | Il tempo si legge in **tick interi** (oltre ai secondi), così animazioni e porte sono riproducibili: stesso seed + stessi input → stessa sequenza di frame. |
+
+**Scelte nostre (P2, 2026-11-19).** Il documento dice *cosa* il motore deve fare; queste sono le forme concrete con cui lo fa, e l'oracolo le verifica una per una.
+
+* **Catch-up**: un solo `TICK` accoda al massimo **10 s** (601 passi da 1/60) e l'eccedenza si scarta. Motivo: un frame lungo non deve produrre una spirale di passi che ne genera altri.
+* **`SECMOVE`**: con il soffitto il settore trasla **rigido** (ascensore, pavimento e soffitto insieme); **senza** il soffitto si muove solo il pavimento (porta che sale) e il soffitto resta dov'è.
+* **`ANIM`** anima **le picture del settore**: `tex_floor` sempre, `tex_ceil` solo se il settore ne aveva già una; le picture sono `first…first+count−1`, il frame è `int(phase × fps) % count`.
+* **`SCROLL`**: `what` **0** = piani (pavimento e soffitto), **1** = pareti del settore; gli offset sono cumulativi e possono superare la dimensione della texture (si avvolgono nel campionamento).
+* **`LIGHTFX`**: `kind` **0** = nessun effetto (la luce torna alla base), **1** flicker, **2** pulse, **3** strobe. Il flicker usa un **xorshift32 a seed fisso per settore**: casuale all'occhio, identico al bit fra due esecuzioni.
+* **`LIGHTNOW(s)`** legge la luce dell'ultimo passo; **`LAMP x,y,z,radius,level`** aggiunge una lampada a runtime (stesso tetto di 8 del `WORLD`).
+* **`MOVING`** è **`−1` in moto** e `0` fermo: deroga consapevole alla regola «`−1` = assente», perché è la sentinella che gli script BASIC del riferimento già usano (follow-up 13 del piano). `HEIGHT` ferma un mover e riporta `MOVING` a `0`.
+* **Movers, animazioni, scroll e `LIGHTFX` non stanno nel documento mondo**: li avvia il programma via API. Il `.gmbscene` porta solo geometria, texture, `light` di settore, `flags` di parete e `lamps` — così un file resta un *mondo*, non un programma.
 
 ### 2.5 Invarianti di authoring (scoperte a proprie spese dal riferimento)
 

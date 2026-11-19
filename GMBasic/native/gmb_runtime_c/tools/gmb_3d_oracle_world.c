@@ -15,9 +15,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 
 #include "gmb_c99gpm.h"
-#include "gm_gfx_sector.h"
+#include "gmb_3d_internal.h"   /* oracolo white-box: le T-* leggono le picture */
 
 #define W_ROOM 128.0
 
@@ -39,19 +40,16 @@ static void mk_tex(gm_tex* t, unsigned int a, unsigned int b, int checker)
         }
 }
 
-/* Le scene sono due: quella di rendering scrive in g_walls, quella di
- * collisione in c_walls. `g_wdst` evita di duplicare l'helper per trenta
- * chiamate. */
-static gm_sector_wall* g_wdst = g_walls;
-
+/* Una parete del mondo di scena: g_walls è l'unico elenco, condiviso dalle due
+ * stanze come nel formato (ogni settore ne indica gli indici). */
 static void wall(int i, double x0, double y0, double x1, double y1, int to, int tex,
                  double bottom, double top)
 {
-    g_wdst[i].x0 = (gm_real)x0; g_wdst[i].y0 = (gm_real)y0;
-    g_wdst[i].x1 = (gm_real)x1; g_wdst[i].y1 = (gm_real)y1;
-    g_wdst[i].to = to;
-    g_wdst[i].tex = tex;
-    g_wdst[i].bottom = (gm_real)bottom; g_wdst[i].top = (gm_real)top;
+    g_walls[i].x0 = (gm_real)x0; g_walls[i].y0 = (gm_real)y0;
+    g_walls[i].x1 = (gm_real)x1; g_walls[i].y1 = (gm_real)y1;
+    g_walls[i].to = to;
+    g_walls[i].tex = tex;
+    g_walls[i].bottom = (gm_real)bottom; g_walls[i].top = (gm_real)top;
 }
 
 /* Una stanza chiusa (door = 0) o due stanze con una porta nella parete x=128
@@ -68,11 +66,7 @@ static void ensure_textures(void)
 
 static void build_world(int door)
 {
-    static int built_door = -1;
-    if (built_door == door) return;
-    ensure_textures();
-    g_wdst = g_walls;
-    built_door = door;
+    ensure_textures();   /* idempotente: le texture si allocano una volta */
 
     int nw = 0;
     int* a = g_awalls;
@@ -87,7 +81,8 @@ static void build_world(int door)
 
     g_sectors[0].floor_z = 0; g_sectors[0].ceil_z = 64;
     g_sectors[0].tex_floor = 1; g_sectors[0].tex_ceil = 0;
-    g_sectors[0].flags = 0; g_sectors[0].walls = a; g_sectors[0].nwalls = 6;
+    g_sectors[0].flags = 0; g_sectors[0].light = 1;
+    g_sectors[0].walls = a; g_sectors[0].nwalls = 6;
 
     int ns = 1;
     if (door)
@@ -102,7 +97,8 @@ static void build_world(int door)
 
         g_sectors[1].floor_z = 0; g_sectors[1].ceil_z = 64;
         g_sectors[1].tex_floor = 1; g_sectors[1].tex_ceil = 1;
-        g_sectors[1].flags = 0; g_sectors[1].walls = b; g_sectors[1].nwalls = 6;
+        g_sectors[1].flags = 0; g_sectors[1].light = 1;
+        g_sectors[1].walls = b; g_sectors[1].nwalls = 6;
         ns = 2;
     }
 
@@ -119,7 +115,7 @@ static int shoot_world(gmb_3d_target_t* t, int door, double x, double y, double 
     gm_sector_camera cam;
     cam.x = (gm_real)x; cam.y = (gm_real)y; cam.z = 46;
     cam.angle = (gm_real)angle; cam.pitch = (gm_real)pitch;
-    cam.fov = (gm_real)1.5707963; cam.far = 4096;
+    cam.fov = (gm_real)1.5707963;
     return gm_sector_render(&g_world, &cam, t->argb, t->depth, t->w, t->h) == GM_OK ? 0 : -1;
 }
 
@@ -232,7 +228,7 @@ void w_prepare(const char* dir)
 }
 
 #define WCHECK(cond, what) do { \
-    if (cond) { (*ok)++; } else { (*fail)++; printf("FAIL %s (world)\n", (what)); } } while (0)
+    if (cond) { (*ok)++; } else { (*fail)++; printf("FAIL %s\n", (what)); } } while (0)
 
 /* Dentro un task GPM (chiamata da sched_main, dopo la prova R3). */
 void w_world_checks(int* ok, int* fail)
@@ -268,9 +264,6 @@ void w_world_checks(int* ok, int* fail)
 
 /* --- W-MOVE: 10 casi headless di collisione ------------------------------ */
 
-#define MOVE_CHECK(cond, what) do { \
-    if (cond) { (*ok)++; } else { (*fail)++; printf("FAIL %s (move)\n", (what)); } } while (0)
-
 static int nearf(float a, float b, float tol) { return fabsf(a - b) <= tol; }
 
 static gmb_3d_world_t* load_rooms(const char* path)
@@ -280,113 +273,100 @@ static gmb_3d_world_t* load_rooms(const char* path)
     return w;
 }
 
+/* Una variante dei due mondi: MOVE in avanti dal centro della stanza A, sul
+ * loader vero. Il mondo si libera subito e lo stato che serve ai controlli
+ * resta in *p; 0 = documenti o MOVE falliti. */
+static int forward_into(const char* path, gmb_3d_player_t* p)
+{
+    gmb_3d_world_t* w = load_rooms(path);
+    if (!w) return 0;
+    gmb_3d_player_defaults(p);
+    int ok = gmb_3d_player_place(w, p, 64, 64) == GMB_3D_OK &&
+             gmb_3d_player_move(w, p, 100, 0) == GMB_3D_OK;
+    gmb_3d_world_free(w);
+    return ok;
+}
+
 /* Tutti i casi partono dai documenti scritti da w_prepare e passano dal loader
  * vero: se il movimento e il formato divergessero, si vedrebbe qui. */
 void w_collision_checks(int* ok, int* fail)
 {
     gmb_3d_player_t p;
     gmb_3d_world_t* base = load_rooms(g_rooms[0]);
-    MOVE_CHECK(base != NULL, "W-MOVE: mondo a due stanze caricato");
+    WCHECK(base != NULL, "W-MOVE: mondo a due stanze caricato");
     if (!base) return;
 
     /* (1) muro frontale: si ferma a un raggio dalla parete. Il punto è fuori
      *     dall'apertura del portale (y 32..96), altrimenti attraverserebbe. */
     gmb_3d_player_defaults(&p);
-    MOVE_CHECK(gmb_3d_player_place(base, &p, 64, 112) == GMB_3D_OK, "W-MOVE: collocazione in stanza A");
-    MOVE_CHECK(gmb_3d_player_move(base, &p, 200, 0) == GMB_3D_OK, "W-MOVE: frontale eseguito");
-    MOVE_CHECK(!(p.hit & GMB_3D_HIT_SECTOR) && nearf(p.x, 114, 0.2f) && nearf(p.y, 112, 0.2f),
-               "W-MOVE: muro frontale, fermata a un raggio");
-    MOVE_CHECK((p.hit & GMB_3D_HIT_WALL) != 0, "W-MOVE: HIT bit 1 sul muro frontale");
+    WCHECK(gmb_3d_player_place(base, &p, 64, 112) == GMB_3D_OK, "W-MOVE: collocazione in stanza A");
+    WCHECK(gmb_3d_player_move(base, &p, 200, 0) == GMB_3D_OK, "W-MOVE: frontale eseguito");
+    WCHECK(!(p.hit & GMB_3D_HIT_SECTOR) && nearf(p.x, 114, 0.2f) && nearf(p.y, 112, 0.2f),
+           "W-MOVE: muro frontale, fermata a un raggio");
+    WCHECK((p.hit & GMB_3D_HIT_WALL) != 0, "W-MOVE: HIT bit 1 sul muro frontale");
 
     /* (2) addosso al muro: la richiesta di moto non sposta nulla (HIT bit 2). */
     gmb_3d_player_defaults(&p);
-    MOVE_CHECK(gmb_3d_player_place(base, &p, 114, 112) == GMB_3D_OK, "W-MOVE: collocazione addosso");
-    MOVE_CHECK(gmb_3d_player_move(base, &p, 5, 0) == GMB_3D_OK, "W-MOVE: spinta contro il muro");
-    MOVE_CHECK(nearf(p.x, 114, 0.01f) && (p.hit & GMB_3D_HIT_STUCK) != 0,
-               "W-MOVE: HIT bit 2 quando non ci si muove");
+    WCHECK(gmb_3d_player_place(base, &p, 114, 112) == GMB_3D_OK, "W-MOVE: collocazione addosso");
+    WCHECK(gmb_3d_player_move(base, &p, 5, 0) == GMB_3D_OK, "W-MOVE: spinta contro il muro");
+    WCHECK(nearf(p.x, 114, 0.01f) && (p.hit & GMB_3D_HIT_STUCK) != 0,
+           "W-MOVE: HIT bit 2 quando non ci si muove");
 
     /* (3) muro obliquo: scivola lungo il muro y=128, la componente
      *     tangenziale resta (forward 40, right -40 → +x,+y). */
     gmb_3d_player_defaults(&p);
-    MOVE_CHECK(gmb_3d_player_place(base, &p, 64, 100) == GMB_3D_OK, "W-MOVE: collocazione obliqua");
-    MOVE_CHECK(gmb_3d_player_move(base, &p, 40, -40) == GMB_3D_OK, "W-MOVE: diagonale eseguita");
-    MOVE_CHECK(nearf(p.x, 104, 0.3f) && nearf(p.y, 114, 0.2f) && !(p.hit & GMB_3D_HIT_STUCK) &&
-               (p.hit & GMB_3D_HIT_WALL) != 0, "W-MOVE: scivolamento lungo la parete");
+    WCHECK(gmb_3d_player_place(base, &p, 64, 100) == GMB_3D_OK, "W-MOVE: collocazione obliqua");
+    WCHECK(gmb_3d_player_move(base, &p, 40, -40) == GMB_3D_OK, "W-MOVE: diagonale eseguita");
+    WCHECK(nearf(p.x, 104, 0.3f) && nearf(p.y, 114, 0.2f) && !(p.hit & GMB_3D_HIT_STUCK) &&
+           (p.hit & GMB_3D_HIT_WALL) != 0, "W-MOVE: scivolamento lungo la parete");
 
     /* (4) portale alto: cambio di settore (HIT bit 4). */
     gmb_3d_player_defaults(&p);
-    MOVE_CHECK(gmb_3d_player_place(base, &p, 64, 64) == GMB_3D_OK, "W-MOVE: collocazione davanti al portale");
-    MOVE_CHECK(gmb_3d_player_move(base, &p, 100, 0) == GMB_3D_OK, "W-MOVE: attraversamento eseguito");
-    MOVE_CHECK(p.sector == 1 && (p.hit & GMB_3D_HIT_SECTOR) != 0 && nearf(p.z, 0, 0.01f),
-               "W-MOVE: portale alto, cambio di settore");
-    MOVE_CHECK(nearf(p.x, 164, 0.5f) && nearf(p.y, 64, 0.3f), "W-MOVE: posizione oltre il portale");
+    WCHECK(gmb_3d_player_place(base, &p, 64, 64) == GMB_3D_OK, "W-MOVE: collocazione davanti al portale");
+    WCHECK(gmb_3d_player_move(base, &p, 100, 0) == GMB_3D_OK, "W-MOVE: attraversamento eseguito");
+    WCHECK(p.sector == 1 && (p.hit & GMB_3D_HIT_SECTOR) != 0 && nearf(p.z, 0, 0.01f),
+           "W-MOVE: portale alto, cambio di settore");
+    WCHECK(nearf(p.x, 164, 0.5f) && nearf(p.y, 64, 0.3f), "W-MOVE: posizione oltre il portale");
 
     /* (5) gradino 24: si sale (pavimento del settore dietro = 24). */
-    gmb_3d_world_t* w24 = load_rooms(g_rooms[1]);
-    MOVE_CHECK(w24 != NULL, "W-MOVE: mondo con gradino 24 caricato");
-    if (w24)
-    {
-        gmb_3d_player_defaults(&p);
-        gmb_3d_player_place(w24, &p, 64, 64);
-        gmb_3d_player_move(w24, &p, 100, 0);
-        MOVE_CHECK(p.sector == 1 && nearf(p.z, 24, 0.01f) && (p.hit & GMB_3D_HIT_SECTOR) != 0,
-                   "W-MOVE: gradino 24 salito");
-    }
+    WCHECK(forward_into(g_rooms[1], &p), "W-MOVE: mondo con gradino 24 caricato");
+    WCHECK(p.sector == 1 && nearf(p.z, 24, 0.01f) && (p.hit & GMB_3D_HIT_SECTOR) != 0,
+           "W-MOVE: gradino 24 salito");
 
     /* (6) gradino 40: più alto dello step, il corpo resta di qua. */
-    gmb_3d_world_t* w40 = load_rooms(g_rooms[2]);
-    MOVE_CHECK(w40 != NULL, "W-MOVE: mondo con gradino 40 caricato");
-    if (w40)
-    {
-        gmb_3d_player_defaults(&p);
-        gmb_3d_player_place(w40, &p, 64, 64);
-        gmb_3d_player_move(w40, &p, 100, 0);
-        MOVE_CHECK(p.sector == 0 && nearf(p.x, 114, 0.2f) && nearf(p.z, 0, 0.01f) &&
-                   !(p.hit & GMB_3D_HIT_SECTOR), "W-MOVE: gradino 40 rifiutato");
-    }
+    WCHECK(forward_into(g_rooms[2], &p), "W-MOVE: mondo con gradino 40 caricato");
+    WCHECK(p.sector == 0 && nearf(p.x, 114, 0.2f) && nearf(p.z, 0, 0.01f) &&
+           !(p.hit & GMB_3D_HIT_SECTOR), "W-MOVE: gradino 40 rifiutato");
 
     /* (7) apertura bassa (48 < altezza 56): il portale è un muro. */
-    gmb_3d_world_t* wlow = load_rooms(g_rooms[3]);
-    MOVE_CHECK(wlow != NULL, "W-MOVE: mondo con apertura bassa caricato");
-    if (wlow)
-    {
-        gmb_3d_player_defaults(&p);
-        gmb_3d_player_place(wlow, &p, 64, 64);
-        gmb_3d_player_move(wlow, &p, 100, 0);
-        MOVE_CHECK(p.sector == 0 && nearf(p.x, 114, 0.2f) && !(p.hit & GMB_3D_HIT_SECTOR),
-                   "W-MOVE: portale basso non attraversato");
-    }
+    WCHECK(forward_into(g_rooms[3], &p), "W-MOVE: mondo con apertura bassa caricato");
+    WCHECK(p.sector == 0 && nearf(p.x, 114, 0.2f) && !(p.hit & GMB_3D_HIT_SECTOR),
+           "W-MOVE: portale basso non attraversato");
 
     /* (8) apertura stretta (24 < 2×raggio 28): non ci passa il corpo. */
-    gmb_3d_world_t* wnar = load_rooms(g_rooms[4]);
-    MOVE_CHECK(wnar != NULL, "W-MOVE: mondo con apertura stretta caricato");
-    if (wnar)
-    {
-        gmb_3d_player_defaults(&p);
-        gmb_3d_player_place(wnar, &p, 64, 64);
-        gmb_3d_player_move(wnar, &p, 100, 0);
-        MOVE_CHECK(p.sector == 0 && nearf(p.x, 114, 0.2f) && !(p.hit & GMB_3D_HIT_SECTOR),
-                   "W-MOVE: portale più stretto del corpo non attraversato");
-    }
+    WCHECK(forward_into(g_rooms[4], &p), "W-MOVE: mondo con apertura stretta caricato");
+    WCHECK(p.sector == 0 && nearf(p.x, 114, 0.2f) && !(p.hit & GMB_3D_HIT_SECTOR),
+           "W-MOVE: portale più stretto del corpo non attraversato");
 
     /* (9) angolo: due pareti insieme, nessuno spostamento (bit 1 e 2). */
     gmb_3d_player_defaults(&p);
-    MOVE_CHECK(gmb_3d_player_place(base, &p, 114, 114) == GMB_3D_OK, "W-MOVE: collocazione nell'angolo");
-    MOVE_CHECK(gmb_3d_player_move(base, &p, 20, -20) == GMB_3D_OK, "W-MOVE: spinta nell'angolo");
-    MOVE_CHECK(nearf(p.x, 114, 0.01f) && nearf(p.y, 114, 0.01f) &&
-               (p.hit & GMB_3D_HIT_STUCK) != 0 && (p.hit & GMB_3D_HIT_WALL) != 0,
-               "W-MOVE: angolo blocca su entrambi gli assi");
+    WCHECK(gmb_3d_player_place(base, &p, 114, 114) == GMB_3D_OK, "W-MOVE: collocazione nell'angolo");
+    WCHECK(gmb_3d_player_move(base, &p, 20, -20) == GMB_3D_OK, "W-MOVE: spinta nell'angolo");
+    WCHECK(nearf(p.x, 114, 0.01f) && nearf(p.y, 114, 0.01f) &&
+           (p.hit & GMB_3D_HIT_STUCK) != 0 && (p.hit & GMB_3D_HIT_WALL) != 0,
+           "W-MOVE: angolo blocca su entrambi gli assi");
 
     /* (10) W-EYE-CLAMP: soffitto a 40, occhio non oltre 38. */
     gmb_3d_world_t* wceil = load_rooms(g_rooms[5]);
-    MOVE_CHECK(wceil != NULL, "W-EYE-CLAMP: mondo col soffitto basso caricato");
+    WCHECK(wceil != NULL, "W-EYE-CLAMP: mondo col soffitto basso caricato");
     if (wceil)
     {
         gmb_3d_camera_t cam;
         gmb_3d_player_defaults(&p);
         gmb_3d_player_place(wceil, &p, 64, 64);
-        MOVE_CHECK(gmb_3d_player_view(wceil, &p, &cam) == GMB_3D_OK && nearf(cam.z, 38, 0.01f),
-                   "W-EYE-CLAMP: occhio fermo a 2 unità dal soffitto");
+        WCHECK(gmb_3d_player_view(wceil, &p, &cam) == GMB_3D_OK && nearf(cam.z, 38, 0.01f),
+               "W-EYE-CLAMP: occhio fermo a 2 unità dal soffitto");
+        gmb_3d_world_free(wceil);
     }
 
     /* Integrazione: dopo un MOVE la vista del giocatore rende il mondo vero
@@ -395,31 +375,24 @@ void w_collision_checks(int* ok, int* fail)
         gmb_3d_target_t t;
         gmb_3d_camera_t cam;
         memset(&t, 0, sizeof(t));
-        MOVE_CHECK(gmb_3d_target_alloc(&t, 160, 120) == GMB_3D_OK, "W-MOVE: target per la vista");
+        WCHECK(gmb_3d_target_alloc(&t, 160, 120) == GMB_3D_OK, "W-MOVE: target per la vista");
         gmb_3d_player_defaults(&p);
         gmb_3d_player_place(base, &p, 48, 64);
         gmb_3d_player_move(base, &p, 120, 0);
         p.angle = 3.1415927f;                 /* di là dal portale, si guarda indietro */
         gmb_3d_present_mode_set(GMB_3D_MODE_TARGET);
-        MOVE_CHECK(gmb_3d_player_view(base, &p, &cam) == GMB_3D_OK,
-                   "W-MOVE: camera dal giocatore dopo il movimento");
-        MOVE_CHECK(gmb_3d_world_render(base, &cam, &t) == GMB_3D_OK,
-                   "W-MOVE: render dalla vista del giocatore");
+        WCHECK(gmb_3d_player_view(base, &p, &cam) == GMB_3D_OK,
+               "W-MOVE: camera dal giocatore dopo il movimento");
+        WCHECK(gmb_3d_world_render(base, &cam, &t) == GMB_3D_OK,
+               "W-MOVE: render dalla vista del giocatore");
         int lit = 0;
         for (int i = 0; i < t.w * t.h; i++) if (t.depth[i] > 0.0f) lit++;
-        MOVE_CHECK(lit > (t.w * t.h) / 2, "W-MOVE: il mondo è coperto dalla vista (depth)");
+        WCHECK(lit > (t.w * t.h) / 2, "W-MOVE: il mondo è coperto dalla vista (depth)");
         gmb_3d_target_free(&t);
     }
 
     gmb_3d_world_free(base);
-    if (w24) gmb_3d_world_free(w24);
-    if (w40) gmb_3d_world_free(w40);
-    if (wlow) gmb_3d_world_free(wlow);
-    if (wnar) gmb_3d_world_free(wnar);
-    if (wceil) gmb_3d_world_free(wceil);
 }
-
-#undef MOVE_CHECK
 
 /* Fuori da un task: stesso loader, strada sincrona (tool e oracolo, T3). */
 void w_world_t3_checks(int* ok, int* fail)
@@ -429,5 +402,266 @@ void w_world_t3_checks(int* ok, int* fail)
     int rc = gmb_3d_world_load(g_good, &w);
     WCHECK(rc == GMB_3D_OK && w != NULL, "R11/T3: load sincrono fuori da un task");
     WCHECK(gmb_3d_load_park_count() == p0, "R11/T3: nessun park senza scheduler");
+    gmb_3d_world_free(w);
+}
+
+/* --- mappa demo e tempo (P2, specifica §2.4) ----------------------------- */
+
+/* Ordine dei settori in demo.gmbscene: stanza A, porta, stanza B, ascensore,
+ * stanza C (dietro la finestra). */
+enum { DEMO_A = 0, DEMO_DOOR = 1, DEMO_B = 2, DEMO_LIFT = 3, DEMO_C = 4 };
+
+static const char* g_demo_path = NULL;
+
+void w_set_demo_path(const char* path)
+{
+    g_demo_path = path;
+}
+
+/* La mappa demo si comporta come un programma: porta che sale, ascensore che
+ * parte, piani animati e in scroll, luce pulsante. `seconds` di simulazione a
+ * passo fisso prima del fotogramma. */
+static gmb_3d_world_t* demo_setup(double seconds)
+{
+    if (!g_demo_path)
+    {
+        printf("FAIL demo: manca --demo <mappa>\n");
+        return NULL;
+    }
+    gmb_3d_world_t* w = NULL;
+    if (gmb_3d_world_load(g_demo_path, &w) != GMB_3D_OK)
+    {
+        printf("FAIL demo: %s (%s)\n", gmb_3d_last_error(), g_demo_path);
+        return NULL;
+    }
+    gmb_3d_secmove(w, DEMO_DOOR, 56.0f, 28.0f);              /* porta socchiusa */
+    gmb_3d_secmove_ceil(w, DEMO_LIFT, 16.0f, 16.0f, 80.0f);  /* ascensore in salita */
+    gmb_3d_anim(w, DEMO_LIFT, 6, 2, 4.0f);                   /* piani dell'ascensore animati */
+    gmb_3d_scroll(w, DEMO_C, 0, 4.0f, 0.0f);                 /* pavimento in scroll */
+    gmb_3d_lightfx(w, DEMO_A, 2, 0.12f, 0.4f);               /* luce pulsante */
+    if (seconds > 0.0) gmb_3d_tick(w, seconds);
+    return w;
+}
+
+static void demo_camera(gmb_3d_camera_t* cam)
+{
+    cam->x = 20.0f; cam->y = 30.0f; cam->z = 46.0f;
+    cam->angle = 0.6f; cam->pitch = 0.0f;
+    cam->fov = 1.5707963f; cam->far = 4096.0f;
+}
+
+int w_scene_demo(gmb_3d_target_t* t)
+{
+    gmb_3d_world_t* w = demo_setup(0.5);
+    if (!w) return -1;
+    gmb_3d_camera_t cam;
+    demo_camera(&cam);
+    int rc = gmb_3d_world_render(w, &cam, t) == GMB_3D_OK ? 0 : -1;
+    gmb_3d_world_free(w);
+    return rc;
+}
+
+static double now_ms(void)
+{
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    return (double)ts.tv_sec * 1000.0 + (double)ts.tv_nsec / 1.0e6;
+}
+
+/* Misura del frame time sulla mappa demo: tick + render, come in un ciclo
+ * vero. Riporta minimo, mediana e media; il gate è la mediana entro il limite
+ * (accettazione P2: 4 ms a 640×300). */
+int w_bench_demo(int w_px, int h_px, int frames, double limit_ms)
+{
+    enum { MAX_FRAMES = 600 };
+    double ms[MAX_FRAMES], sorted[MAX_FRAMES];
+    if (frames < 1) frames = 1;
+    if (frames > MAX_FRAMES) frames = MAX_FRAMES;
+
+    gmb_3d_world_t* w = demo_setup(0.0);
+    if (!w) return 2;
+
+    gmb_3d_target_t t;
+    memset(&t, 0, sizeof(t));
+    if (gmb_3d_target_alloc(&t, w_px, h_px) != GMB_3D_OK)
+    {
+        printf("FAIL bench: target %s\n", gmb_3d_last_error());
+        gmb_3d_world_free(w);
+        return 2;
+    }
+    gmb_3d_camera_t cam;
+    demo_camera(&cam);
+    gmb_3d_present_mode_set(GMB_3D_MODE_TARGET);
+
+    for (int i = 0; i < 5; i++)   /* warm-up: buffer e cache già toccati */
+    {
+        gmb_3d_tick(w, 1.0 / 60.0);
+        gmb_3d_world_render(w, &cam, &t);
+    }
+    for (int i = 0; i < frames; i++)
+    {
+        gmb_3d_tick(w, 1.0 / 60.0);   /* dinamica vera: porta, ascensore, luce */
+        double t0 = now_ms();
+        int rc = gmb_3d_world_render(w, &cam, &t);
+        double t1 = now_ms();
+        if (rc != GMB_3D_OK)
+        {
+            printf("FAIL bench: render\n");
+            gmb_3d_target_free(&t);
+            gmb_3d_world_free(w);
+            return 2;
+        }
+        ms[i] = t1 - t0;
+    }
+
+    memcpy(sorted, ms, sizeof(double) * (size_t)frames);
+    for (int i = 1; i < frames; i++)   /* insertion sort: N piccolo */
+    {
+        double v = sorted[i];
+        int j = i - 1;
+        while (j >= 0 && sorted[j] > v) { sorted[j + 1] = sorted[j]; j--; }
+        sorted[j + 1] = v;
+    }
+    double med = sorted[frames / 2];
+    int ok = med <= limit_ms;
+    printf("BENCH %dx%d frames=%d min=%.2fms med=%.2fms limite=%.2fms %s\n",
+           w_px, h_px, frames, sorted[0], med, limit_ms, ok ? "OK" : "LENTO");
+
+    gmb_3d_target_free(&t);
+    gmb_3d_world_free(w);
+    return ok ? 0 : 1;
+}
+
+void w_time_checks(int* ok, int* fail)
+{
+    gmb_3d_world_t* w = NULL;
+    if (g_demo_path) gmb_3d_world_load(g_demo_path, &w);
+    WCHECK(w != NULL, "mappa demo: 3 stanze + porta + ascensore + finestra caricate");
+    if (!w) return;
+
+    /* T-FIXED / T-CLOCK: un secondo sono 60 passi, il tempo è simulato */
+    WCHECK(gmb_3d_tick(w, 1.0) == GMB_3D_OK && gmb_3d_ticks(w) == 60,
+           "T-FIXED: 1 s vale 60 passi da 1/60");
+    WCHECK(fabs(gmb_3d_time(w) - 1.0) < 1.0e-6, "T-FIXED: tempo simulato 1.000 s");
+
+    /* catch-up: un TICK enorme non fa spirale (tetto 10 s) */
+    unsigned long t0 = gmb_3d_ticks(w);
+    gmb_3d_tick(w, 1000.0);
+    unsigned long burst = gmb_3d_ticks(w) - t0;
+    WCHECK(burst > 0 && burst <= 601, "T-FIXED: catch-up limitato a 10 s per TICK");
+
+    /* T-SECMOVE: porta a metà altezza in mezzo secondo */
+    gmb_3d_secmove(w, DEMO_DOOR, 56.0f, 28.0f);   /* porta: pavimento a 28, 56 u/s */
+    WCHECK(gmb_3d_moving(w, DEMO_DOOR) == -1, "T-SECMOVE: MOVING -1 mentre si muove");
+    gmb_3d_tick(w, 0.5);
+    float f = 0.0f, c = 0.0f;
+    gmb_3d_sector_height(w, DEMO_DOOR, &f, &c);
+    WCHECK(fabsf(f - 28.0f) <= 0.01f && gmb_3d_moving(w, DEMO_DOOR) == 0,
+           "T-SECMOVE: a 0.5 s il pavimento è a 28 e il mover è fermo");
+
+    /* HEIGHT ferma un mover a metà corsa */
+    gmb_3d_secmove(w, DEMO_DOOR, 10.0f, 56.0f);
+    gmb_3d_tick(w, 0.1);
+    gmb_3d_sector_height(w, DEMO_DOOR, &f, &c);
+    float stopped = f;
+    gmb_3d_tick(w, 0.5);
+    gmb_3d_sector_height(w, DEMO_DOOR, &f, &c);
+    WCHECK(fabsf(f - stopped) <= 0.001f && gmb_3d_moving(w, DEMO_DOOR) == 0,
+           "T-SECMOVE: HEIGHT ferma il mover");
+
+    /* ascensore: pavimento e soffitto salgono insieme */
+    gmb_3d_secmove_ceil(w, DEMO_LIFT, 16.0f, 16.0f, 80.0f);   /* ascensore: 0->16, 64->80 */
+    gmb_3d_tick(w, 0.5);
+    gmb_3d_sector_height(w, DEMO_LIFT, &f, &c);
+    WCHECK(fabsf(f - 8.0f) <= 0.01f && fabsf(c - 72.0f) <= 0.01f,
+           "T-SECMOVE: l'ascensore sale con il soffitto");
+
+    /* T-ANIM: 2 picture a 4 fps (cambio ogni 0.25 s) */
+    gmb_3d_anim(w, DEMO_A, 6, 2, 4.0f);   /* 2 picture, cambio ogni 0.25 s */
+    gmb_3d_tick(w, 0.3);
+    WCHECK(w->sw.sectors[DEMO_A].tex_floor == 7, "T-ANIM: a 0.3 s la picture è la seconda");
+    gmb_3d_tick(w, 0.25);
+    WCHECK(w->sw.sectors[DEMO_A].tex_floor == 6, "T-ANIM: a 0.55 s è tornata alla prima");
+
+    /* T-SCROLL: 4 u/s sui piani, 2 u/s sulle pareti */
+    gmb_3d_scroll(w, DEMO_C, 0, 4.0f, 0.0f);   /* piani */
+    gmb_3d_scroll(w, DEMO_B, 1, 0.0f, 2.0f);   /* pareti */
+    double sx0 = w->sw.sectors[DEMO_C].scroll_x;
+    int wb = w->sw.sectors[DEMO_B].walls[0];
+    double su0 = w->sw.walls[wb].scroll_u, sv0 = w->sw.walls[wb].scroll_v;
+    gmb_3d_tick(w, 0.5);
+    WCHECK(fabs((w->sw.sectors[DEMO_C].scroll_x - sx0) - 2.0) < 0.01,
+           "T-SCROLL: 4 u/s per 0.5 s = 2 unità sul pavimento");
+    WCHECK(fabs(w->sw.walls[wb].scroll_u - su0) < 0.001 &&
+           fabs((w->sw.walls[wb].scroll_v - sv0) - 1.0) < 0.01,
+           "T-SCROLL: 2 u/s per 0.5 s = 1 unità sulle pareti");
+
+    /* T-LIGHTFX strobe: acceso il primo mezzo periodo, spento il secondo */
+    gmb_3d_lightfx(w, DEMO_A, 3, 0.5f, 1.0f);   /* strobe 1 Hz */
+    gmb_3d_tick(w, 0.25);
+    float l1 = gmb_3d_light_now(w, DEMO_A);
+    gmb_3d_tick(w, 0.5);
+    float l2 = gmb_3d_light_now(w, DEMO_A);
+    WCHECK(fabsf(l1 - 1.0f) < 0.001f && fabsf(l2 - 0.5f) < 0.001f,
+           "T-LIGHTFX: strobe (1.0 acceso, 0.5 spento)");
+
+    /* flicker: casuale all'occhio, ripetibile al bit (stesso seed) */
+    gmb_3d_world_t* w2 = NULL;
+    if (gmb_3d_world_load(g_demo_path, &w2) == GMB_3D_OK && w2)
+    {
+        gmb_3d_lightfx(w, DEMO_B, 1, 0.6f, 20.0f);
+        gmb_3d_lightfx(w2, DEMO_B, 1, 0.6f, 20.0f);
+        gmb_3d_tick(w, 0.5);
+        gmb_3d_tick(w2, 0.5);
+        float fl1 = gmb_3d_light_now(w, DEMO_B), fl2 = gmb_3d_light_now(w2, DEMO_B);
+        WCHECK(fabsf(fl1 - fl2) < 1.0e-6f && fl1 < 0.999f,
+               "T-LIGHTFX: flicker ripetibile e non a luce piena");
+        gmb_3d_world_free(w2);
+    }
+    else WCHECK(0, "T-LIGHTFX: secondo esemplare della mappa");
+
+    /* W-LIGHT: la lampada schiarisce (stessa scena, prima e dopo) */
+    {
+        gmb_3d_target_t t;
+        gmb_3d_camera_t cam;
+        unsigned long before = 0, after = 0;
+        memset(&t, 0, sizeof(t));
+        if (gmb_3d_target_alloc(&t, 96, 72) == GMB_3D_OK)
+        {
+            gmb_3d_present_mode_set(GMB_3D_MODE_TARGET);
+            gmb_3d_lightfx(w, DEMO_A, 0, 0.0f, 0.0f);   /* solo lampade */
+            cam.x = 24.0f; cam.y = 24.0f; cam.z = 46.0f;
+            cam.angle = 0.5f; cam.pitch = 0.0f; cam.fov = 1.5707963f; cam.far = 4096.0f;
+            gmb_3d_world_render(w, &cam, &t);
+            for (int i = 0; i < t.w * t.h; i++)
+                before += (t.argb[i] & 0xFFu) + ((t.argb[i] >> 8) & 0xFFu) + ((t.argb[i] >> 16) & 0xFFu);
+            gmb_3d_lamp(w, 40.0f, 40.0f, 50.0f, 90.0f, 0.6f);   /* sopra la stanza A */
+            gmb_3d_world_render(w, &cam, &t);
+            for (int i = 0; i < t.w * t.h; i++)
+                after += (t.argb[i] & 0xFFu) + ((t.argb[i] >> 8) & 0xFFu) + ((t.argb[i] >> 16) & 0xFFu);
+            WCHECK(after > before, "W-LIGHT: la lampada schiarisce la scena");
+            gmb_3d_target_free(&t);
+        }
+        else WCHECK(0, "W-LIGHT: target del test");
+    }
+
+    /* la mappa demo si vede: quasi tutto il target ha geometria */
+    {
+        gmb_3d_target_t t;
+        gmb_3d_camera_t cam;
+        memset(&t, 0, sizeof(t));
+        if (gmb_3d_target_alloc(&t, 160, 120) == GMB_3D_OK)
+        {
+            demo_camera(&cam);
+            int rc = gmb_3d_world_render(w, &cam, &t);
+            int lit = 0;
+            for (int i = 0; i < t.w * t.h; i++) if (t.depth[i] > 0.0f) lit++;
+            WCHECK(rc == GMB_3D_OK && lit > (t.w * t.h) / 2,
+                   "mappa demo: il fotogramma è coperto dalla geometria");
+            gmb_3d_target_free(&t);
+        }
+        else WCHECK(0, "mappa demo: target del test");
+    }
+
     gmb_3d_world_free(w);
 }

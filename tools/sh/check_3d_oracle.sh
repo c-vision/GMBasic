@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# check_3d_oracle.sh — gate P1 (piano 3D): oracolo headless.
+# check_3d_oracle.sh — gate del motore 3D (P1 e P2): oracolo headless.
 #
 # Pipeline: raster della suite -> TARGET 3D del runtime -> cattura DAL TARGET -> PNG
 # -> golden per RID. Non usa gmb_gfx_present_capture (headless = -1).
@@ -12,6 +12,7 @@ set -u
 REPO="$(cd "$(dirname "$0")/../.." && pwd)"
 SRC="$REPO/GMBasic/native/gmb_runtime_c"
 GOLDEN="$REPO/shared/minitests/3d/golden"
+DEMO="$REPO/shared/minitests/3d/worlds/demo.gmbscene"
 BUILD="${TMPDIR:-/tmp}/gmb-3d-oracle-build"
 
 BLESS=0
@@ -33,19 +34,20 @@ mkdir -p "$BUILD" || exit 1
 # 1) Gate A/B sui file C toccati (regola di casa: stesso file, cc E tools/sh/zcc).
 GFX="$REPO/shared/libs/graphics"
 GFXINC="-I $GFX/include -I $REPO/shared/libs/math/include -I $REPO/shared/libs/compute/include"
-for f in gmb_3d_frame.c gmb_3d_io.c gmb_3d_sector.c gmb_3d_move.c; do
-  if ! cc -O2 -c -I "$SRC/include" $GFXINC "$SRC/src/$f" -o "$BUILD/${f%.c}_cc.o" 2>"$BUILD/gate_cc.log"; then
-    echo "check_3d_oracle: $f NON compila con cc" >&2
-    sed -n '1,20p' "$BUILD/gate_cc.log" >&2
-    exit 1
-  fi
-  if ! bash "$REPO/tools/sh/zcc" -O2 -c -I "$SRC/include" $GFXINC "$SRC/src/$f" -o "$BUILD/${f%.c}_zcc.o" 2>"$BUILD/gate_zcc.log"; then
-    echo "check_3d_oracle: $f NON compila con tools/sh/zcc" >&2
-    sed -n '1,20p' "$BUILD/gate_zcc.log" >&2
-    exit 1
-  fi
-done
-say "gate C: gmb_3d_{frame,io,sector,move}.c compilano con cc e tools/sh/zcc"
+gate() {   # $1 = sorgente: lo stesso file con cc e con tools/sh/zcc
+  local f="$1" k log obj
+  for k in cc zcc; do
+    log="$BUILD/gate_$k.log"
+    obj="$BUILD/${f%.c}_$k.o"
+    if [ "$k" = cc ]; then
+      cc -O2 -c -I "$SRC/include" $GFXINC "$SRC/src/$f" -o "$obj" 2>"$log"
+    else
+      bash "$REPO/tools/sh/zcc" -O2 -c -I "$SRC/include" $GFXINC "$SRC/src/$f" -o "$obj" 2>"$log"
+    fi || { echo "check_3d_oracle: $f NON compila con $k" >&2; sed -n '1,20p' "$log" >&2; exit 1; }
+  done
+}
+for f in gmb_3d_frame.c gmb_3d_io.c gmb_3d_sector.c gmb_3d_move.c gmb_3d_time.c; do gate "$f"; done
+say "gate C: gmb_3d_{frame,io,sector,move,time}.c compilano con cc e tools/sh/zcc"
 
 # 2) Build dell'oracolo (target dedicato; il runtime statico è una sua dipendenza).
 if [ ! -f "$BUILD/CMakeCache.txt" ]; then
@@ -66,8 +68,14 @@ BIN="$BUILD/gmb_3d_oracle"
 
 # 3) Guardie, null mode e load R11: prima di guardare i pixel. I documenti di
 # prova del load si scrivono in $BUILD (mai nel repo).
-if ! "$BIN" --selftest "$BUILD"; then
+if ! "$BIN" --selftest "$BUILD" --demo "$DEMO"; then
   echo "check_3d_oracle: selftest FALLITO" >&2
+  exit 1
+fi
+
+# 3bis) Frame time della mappa demo a 640x300: accettazione P2 (<= 4 ms).
+if ! "$BIN" --bench --demo "$DEMO" --frames 120; then
+  echo "check_3d_oracle: la mappa demo supera il limite di frame time" >&2
   exit 1
 fi
 
@@ -75,11 +83,11 @@ fi
 # nessuna seconda derivazione con uname da tenere allineata a mano.
 if [ "$BLESS" = "1" ]; then
   mkdir -p "$GOLDEN" || exit 1
-  "$BIN" --bless "$GOLDEN"
+  "$BIN" --bless "$GOLDEN" --demo "$DEMO"
   exit $?
 fi
 if [ ! -d "$GOLDEN" ]; then
   echo "GOLDEN SKIP: manca la cartella $GOLDEN (generala con --bless)" >&2
   exit 0
 fi
-"$BIN" --check "$GOLDEN" --tol "$TOL"
+"$BIN" --check "$GOLDEN" --tol "$TOL" --demo "$DEMO"

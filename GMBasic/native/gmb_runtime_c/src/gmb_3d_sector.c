@@ -30,7 +30,6 @@ int gmb_3d_world_render(const gmb_3d_world_t* w, const gmb_3d_camera_t* cam,
     c.angle = (gm_real)cam->angle;
     c.pitch = (gm_real)cam->pitch;
     c.fov = (gm_real)(cam->fov > 0.0f ? cam->fov : 1.5707964f);
-    c.far = (gm_real)(cam->far > 0.0f ? cam->far : 4096.0f);
 
     if (gm_sector_render(&w->sw, &c, t->argb, t->depth, t->w, t->h) != GM_OK)
     {

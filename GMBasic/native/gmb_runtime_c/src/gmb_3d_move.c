@@ -6,7 +6,9 @@
  * stato e la semantica del comando.
  *
  *  - corpo = cilindro verticale: (x,y) sono i piedi, `radius` e `height` il
- *    volume; niente fisica generale, solo il volume contro le pareti;
+ *    volume; niente fisica generale, solo il volume contro le pareti. Quale
+ *    settore contiene un punto lo dice la suite (gm_sector_contains): qui non
+ *    c'è una seconda copia della geometria;
  *  - MOVE è relativo alla vista: angolo 0 = +x, 90° = +y, la destra di chi
  *    guarda è (sin a, -cos a) — la stessa convenzione del renderer;
  *  - una parete che non si può attraversare SPINGE (HIT bit 1): il centro
@@ -33,44 +35,28 @@
 #define MV_MAX_SUBSTEPS 32
 #define MV_PUSH_PASSES  4      /* pareti consecutive in un angolo */
 
-/* Punto dentro il poligono del settore, ignorando la quota: le pareti sono il
- * bordo di un settore CONVESSO, quindi basta la coerenza dei segni (stessa
- * regola di gm_sector_at, che però filtra anche su z). */
-static int in_sector(const gm_sector_world* w, const gm_sector* s, gm_real x, gm_real y)
+/* Direzione verso l'interno del settore a partire da un punto sul suo bordo:
+ * media degli estremi delle pareti (il settore è convesso, quindi la media sta
+ * dentro), senza dipendere dal verso di elenco. Serve solo quando il centro
+ * del corpo cade esattamente sulla parete. */
+static int inward_dir(const gm_sector_world* w, const gm_sector* s,
+                      gm_real x, gm_real y, gm_real* nx, gm_real* ny)
 {
-    if (!s || s->nwalls < 3) return 0;
-    int sign = 0;
-    for (int i = 0; i < s->nwalls; i++)
-    {
-        const gm_sector_wall* wl = &w->walls[s->walls[i]];
-        gm_real ex = wl->x1 - wl->x0, ey = wl->y1 - wl->y0;
-        gm_real cr = ex * (y - wl->y0) - ey * (x - wl->x0);
-        if (cr > MV_EPS || cr < -MV_EPS)
-        {
-            int sg = (cr > 0.0) ? 1 : -1;
-            if (sign == 0) sign = sg;
-            else if (sg != sign) return 0;
-        }
-    }
-    return sign != 0;
-}
-
-/* Punto di riferimento interno al settore: media dei primi estremi delle
- * pareti (un vertice per parete, il settore è chiuso). Serve a orientare la
- * spinta verso l'ESTERNO, senza dipendere dal verso di elenco. */
-static void sector_inside_point(const gm_sector_world* w, const gm_sector* s,
-                                gm_real* cx, gm_real* cy)
-{
+    if (!s || s->nwalls <= 0) return 0;
     gm_real sx = 0.0, sy = 0.0;
-    int n = s->nwalls > 0 ? s->nwalls : 1;
     for (int i = 0; i < s->nwalls; i++)
     {
         const gm_sector_wall* wl = &w->walls[s->walls[i]];
         sx += wl->x0;
         sy += wl->y0;
     }
-    *cx = sx / (gm_real)n;
-    *cy = sy / (gm_real)n;
+    sx = sx / (gm_real)s->nwalls - x;
+    sy = sy / (gm_real)s->nwalls - y;
+    gm_real l = sqrt(sx * sx + sy * sy);
+    if (!(l > MV_EPS)) return 0;
+    *nx = sx / l;
+    *ny = sy / l;
+    return 1;
 }
 
 /* Un portale è attraversabile dal corpo che sta a quota `z`? Se sì scrive il
@@ -80,15 +66,15 @@ static int portal_passable(const gm_sector_world* w, const gm_sector_wall* wl,
                            gm_real* next_z)
 {
     if (wl->to < 0 || wl->to >= w->nsectors) return 0;
+    if (wl->flags & GM_SECTOR_W_MOVE_BLOCK) return 0;   /* finestra, ringhiera (W-FLAGS) */
     const gm_sector* n = &w->sectors[wl->to];
 
     gm_real ex = wl->x1 - wl->x0, ey = wl->y1 - wl->y0;
     gm_real len = sqrt(ex * ex + ey * ey);
     if (len < 2.0 * radius - MV_EPS) return 0;              /* apertura più stretta del corpo */
     if (n->floor_z > z + step + MV_EPS) return 0;           /* gradino troppo alto */
-    if (n->floor_z + height > n->ceil_z + MV_EPS) return 0; /* non ci sta in piedi */
-    if (n->floor_z < wl->bottom - MV_EPS) return 0;         /* apertura sotto il pavimento */
     if (n->floor_z + height > wl->top + MV_EPS) return 0;   /* apertura più bassa del corpo */
+    if (n->floor_z < wl->bottom - MV_EPS) return 0;         /* il varco parte sopra il pavimento dietro */
     *next_z = n->floor_z;
     return 1;
 }
@@ -114,9 +100,6 @@ static int push_out(const gm_sector_world* w, const gm_sector* s, gm_real z,
                     gm_real radius, gm_real height, gm_real step,
                     gm_real* x, gm_real* y)
 {
-    gm_real cx, cy;
-    sector_inside_point(w, s, &cx, &cy);
-
     int pushed = 0;
     for (int pass = 0; pass < MV_PUSH_PASSES; pass++)
     {
@@ -135,20 +118,9 @@ static int push_out(const gm_sector_world* w, const gm_sector* s, gm_real z,
              * dentro il settore lo tiene dentro, se è fuori non lo tira
              * attraverso il muro (l'uscita la decide substep). */
             gm_real nx, ny;
-            if (d > MV_EPS)
-            {
-                nx = (*x - qx) / d;
-                ny = (*y - qy) / d;
-            }
-            else
-            {
-                /* centro esattamente sulla parete: si va verso l'interno */
-                gm_real ix = cx - qx, iy = cy - qy;
-                gm_real l = sqrt(ix * ix + iy * iy);
-                if (!(l > MV_EPS)) continue;
-                nx = ix / l;
-                ny = iy / l;
-            }
+            if (d > MV_EPS) { nx = (*x - qx) / d; ny = (*y - qy) / d; }
+            /* centro esattamente sulla parete: si va verso l'interno */
+            else if (!inward_dir(w, s, qx, qy, &nx, &ny)) continue;
 
             *x = qx + nx * radius;
             *y = qy + ny * radius;
@@ -174,7 +146,7 @@ static int substep(const gm_sector_world* w, gm_real* x, gm_real* y, gm_real* z,
     int pushed = push_out(w, s, *z, radius, height, step, x, y);
     *blocked = 0;
 
-    if (in_sector(w, s, *x, *y))
+    if (gm_sector_contains(w, *sec, *x, *y))
         return pushed ? GMB_3D_HIT_WALL : 0;
 
     /* Uscito dal settore: può farlo solo attraverso un portale del settore
@@ -184,8 +156,7 @@ static int substep(const gm_sector_world* w, gm_real* x, gm_real* y, gm_real* z,
         const gm_sector_wall* wl = &w->walls[s->walls[i]];
         gm_real nz;
         if (!portal_passable(w, wl, *z, radius, height, step, &nz)) continue;
-        const gm_sector* n = &w->sectors[wl->to];
-        if (!in_sector(w, n, *x, *y)) continue;
+        if (!gm_sector_contains(w, wl->to, *x, *y)) continue;
 
         *sec = wl->to;
         *z = nz;
@@ -223,9 +194,8 @@ int gmb_3d_player_place(const gmb_3d_world_t* w, gmb_3d_player_t* p, float x, fl
     int best = -1;
     for (int i = 0; i < w->sw.nsectors; i++)
     {
-        const gm_sector* s = &w->sw.sectors[i];
-        if (!in_sector(&w->sw, s, (gm_real)x, (gm_real)y)) continue;
-        if (best < 0 || s->floor_z > w->sw.sectors[best].floor_z) best = i;
+        if (!gm_sector_contains(&w->sw, i, (gm_real)x, (gm_real)y)) continue;
+        if (best < 0 || w->sw.sectors[i].floor_z > w->sw.sectors[best].floor_z) best = i;
     }
     if (best < 0)
     {
