@@ -9,9 +9,9 @@
 '   3) a che frequenza vibra il macchinario?                   -> FFT
 '
 ' Domini: ANALYSIS + MATH. Input fissi: l'output è riproducibile.
+IMPORT STATS
 
 IMPORT MULTIVARIATE
-IMPORT STATS
 SUB Main()
     ' ── 1. ANOVA: tre linee, quattro pezzi ciascuna ──────────────────────────
     ' Se le medie delle linee fossero uguali, F sarebbe vicino a 0 e P alto.

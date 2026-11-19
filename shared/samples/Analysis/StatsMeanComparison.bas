@@ -1,7 +1,7 @@
+IMPORT STATS
 REM FILE: StatsMeanComparison.bas
 REM Confronto tra medie con test indipendente, appaiato, a un campione e ANOVA.
 
-IMPORT STATS
 
 SUB PrintResult(label$, result)
     PRINT label$; ": statistic="; result.Statistic; ", p="; result.PValue; ", df="; result.DegreesOfFreedom

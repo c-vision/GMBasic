@@ -1,4 +1,5 @@
 ' EXPECT: weib= 0.367879|f= 0.465119
+IMPORT STATS
 SUB Main()
   PRINT "weib="; MATH.ROUND(STATS.WeibullSf(1.0, 2, 1), 6)
   PRINT "f="; MATH.ROUND(STATS.FSf(1.0, 5, 10), 6)

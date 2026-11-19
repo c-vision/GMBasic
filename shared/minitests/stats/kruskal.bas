@@ -1,4 +1,5 @@
 ' EXPECT: h= 3.857143|p= 0.049535|df= 1
+IMPORT STATS
 SUB Main()
   DIM g(1, 2) AS DOUBLE
   g = {{1, 2, 3}, {4, 5, 6}}

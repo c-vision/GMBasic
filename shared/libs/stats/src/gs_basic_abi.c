@@ -1,16 +1,62 @@
 /* gs_basic_abi.c — wrapper con la FIRMA BASIC dei nomi storici `STATS.*`.
  *
- * Perché esiste (2026-11-18): la migrazione a FFI richiede che la libreria sia la sola fonte.
- * La lib `gmbstats` espone le distribuzioni nell'ordine C (`gs_dist_chi2_cdf(df, x)`), mentre il
- * namespace BASIC storico `STATS.ChiSquaredCdf(x, df)` ha `x` per primo. Un `.inc` dichiara i
- * parametri NELL'ORDINE in cui vanno passati alla funzione C: quindi per conservare la firma
- * BASIC senza duplicare la matematica serve un wrapper di una riga per funzione.
- *
- * Regola: qui NON c'è logica, solo inversione/alias di parametri verso `gs_*`.
+ * GENERATO dai prototipi `gs_dist*` e dalle firme BASIC (2026-11-18). Qui NON c'è logica: solo
+ * l'inversione dei parametri dove la BASIC vuole `x`/`p` PRIMO e la C lo vuole ULTIMO.
+ * Un `.inc` dichiara i parametri nell'ordine in cui vengono passati alla C: senza questo strato
+ * la firma BASIC si romperebbe.
  */
 #include "gs_dist.h"
+#include "gs_dist2.h"
 
-/* ── chi-quadro ───────────────────────────────────────────────────────────── */
+double gs_basic_beta_cdf(double x, double alpha, double beta) { return gs_dist_beta_cdf(alpha, beta, x); }
+double gs_basic_beta_pdf(double x, double alpha, double beta) { return gs_dist_beta_pdf(alpha, beta, x); }
+double gs_basic_beta_ppf(double p, double alpha, double beta) { return gs_dist_beta_ppf(alpha, beta, p); }
+double gs_basic_beta_sf(double x, double alpha, double beta) { return gs_dist_beta_sf(alpha, beta, x); }
+double gs_basic_chi_cdf(double x, double k) { return gs_dist_chi_cdf(k, x); }
+double gs_basic_chi_pdf(double x, double k) { return gs_dist_chi_pdf(k, x); }
+double gs_basic_chi_ppf(double p, double k) { return gs_dist_chi_ppf(k, p); }
+double gs_basic_chi_sf(double x, double k) { return gs_dist_chi_sf(k, x); }
+double gs_basic_exp_cdf(double x, double rate) { return gs_dist_exp_cdf(rate, x); }
+double gs_basic_exp_isf(double p, double rate) { return gs_dist_exp_isf(rate, p); }
+double gs_basic_exp_pdf(double x, double rate) { return gs_dist_exp_pdf(rate, x); }
+double gs_basic_exp_ppf(double p, double rate) { return gs_dist_exp_ppf(rate, p); }
+double gs_basic_exp_sf(double x, double rate) { return gs_dist_exp_sf(rate, x); }
+double gs_basic_f_cdf(double x, double d1, double d2) { return gs_dist_f_cdf(d1, d2, x); }
+double gs_basic_f_isf(double p, double d1, double d2) { return gs_dist_f_isf(d1, d2, p); }
+double gs_basic_f_pdf(double x, double d1, double d2) { return gs_dist_f_pdf(d1, d2, x); }
+double gs_basic_f_ppf(double p, double d1, double d2) { return gs_dist_f_ppf(d1, d2, p); }
+double gs_basic_f_sf(double x, double d1, double d2) { return gs_dist_f_sf(d1, d2, x); }
+double gs_basic_logistic_pdf(double x, double location, double scale) { return gs_dist_logistic_pdf(location, scale, x); }
+double gs_basic_logistic_ppf(double p, double location, double scale) { return gs_dist_logistic_ppf(location, scale, p); }
+double gs_basic_nc_beta_cdf(double x, double a, double b, double nc) { return gs_dist_nc_beta_cdf(a, b, nc, x); }
+double gs_basic_nc_beta_isf(double p, double a, double b, double nc) { return gs_dist_nc_beta_isf(a, b, nc, p); }
+double gs_basic_nc_beta_pdf(double x, double a, double b, double nc) { return gs_dist_nc_beta_pdf(a, b, nc, x); }
+double gs_basic_nc_beta_ppf(double p, double a, double b, double nc) { return gs_dist_nc_beta_ppf(a, b, nc, p); }
+double gs_basic_nc_chi2_cdf(double x, double df, double nc) { return gs_dist_nc_chi2_cdf(df, nc, x); }
+double gs_basic_nc_chi2_isf(double p, double df, double nc) { return gs_dist_nc_chi2_isf(df, nc, p); }
+double gs_basic_nc_chi2_pdf(double x, double df, double nc) { return gs_dist_nc_chi2_pdf(df, nc, x); }
+double gs_basic_nc_chi2_ppf(double p, double df, double nc) { return gs_dist_nc_chi2_ppf(df, nc, p); }
+double gs_basic_nc_gamma_cdf(double x, double shape, double nc) { return gs_dist_nc_gamma_cdf(shape, nc, x); }
+double gs_basic_nc_gamma_isf(double p, double shape, double nc) { return gs_dist_nc_gamma_isf(shape, nc, p); }
+double gs_basic_nc_gamma_pdf(double x, double shape, double nc) { return gs_dist_nc_gamma_pdf(shape, nc, x); }
+double gs_basic_nc_gamma_ppf(double p, double shape, double nc) { return gs_dist_nc_gamma_ppf(shape, nc, p); }
+double gs_basic_pareto_cdf(double x, double scale, double shape) { return gs_dist_pareto_cdf(scale, shape, x); }
+double gs_basic_pareto_pdf(double x, double scale, double shape) { return gs_dist_pareto_pdf(scale, shape, x); }
+double gs_basic_pareto_ppf(double p, double scale, double shape) { return gs_dist_pareto_ppf(scale, shape, p); }
+double gs_basic_pareto_sf(double x, double scale, double shape) { return gs_dist_pareto_sf(scale, shape, x); }
+double gs_basic_student_t_cdf(double x, double nu) { return gs_dist_student_t_cdf(nu, x); }
+double gs_basic_student_t_isf(double p, double nu) { return gs_dist_student_t_isf(nu, p); }
+double gs_basic_student_t_pdf(double x, double nu) { return gs_dist_student_t_pdf(nu, x); }
+double gs_basic_student_t_ppf(double p, double nu) { return gs_dist_student_t_ppf(nu, p); }
+double gs_basic_student_t_sf(double x, double nu) { return gs_dist_student_t_sf(nu, x); }
+double gs_basic_uniform_cdf(double x, double a, double b) { return gs_dist_uniform_cdf(a, b, x); }
+double gs_basic_uniform_sf(double x, double a, double b) { return gs_dist_uniform_sf(a, b, x); }
+double gs_basic_weibull_cdf(double x, double shape, double scale) { return gs_dist_weibull_cdf(shape, scale, x); }
+double gs_basic_weibull_pdf(double x, double shape, double scale) { return gs_dist_weibull_pdf(shape, scale, x); }
+double gs_basic_weibull_ppf(double p, double shape, double scale) { return gs_dist_weibull_ppf(shape, scale, p); }
+double gs_basic_weibull_sf(double x, double shape, double scale) { return gs_dist_weibull_sf(shape, scale, x); }
+
+/* ── chi-quadro (prima ondata, 2026-11-18) ─────────────────────────────────── */
 double gs_basic_chi2_pdf(double x, double df) { return gs_dist_chi2_pdf(df, x); }
 double gs_basic_chi2_cdf(double x, double df) { return gs_dist_chi2_cdf(df, x); }
 double gs_basic_chi2_sf(double x, double df) { return gs_dist_chi2_sf(df, x); }

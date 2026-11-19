@@ -1,4 +1,5 @@
 ' EXPECT: ktau= 1|kp= 0.014306|f= 0.061224|fp= 0.115385
+IMPORT STATS
 SUB Main()
   DIM x() = {1, 2, 3, 4, 5}
   DIM y() = {1, 2, 3, 4, 5}

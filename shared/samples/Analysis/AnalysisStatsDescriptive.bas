@@ -1,3 +1,4 @@
+IMPORT STATS
 REM FILE: AnalysisStatsDescriptive.bas
 IMPORT STATSX
 
@@ -17,7 +18,6 @@ IMPORT STATSX
 ' =================================================================================================
 
 ' NOTA: ANALYSIS contiene le funzioni statistiche avanzate, STATS quelle descrittive di base.
-IMPORT STATS
 IMPORT JSON
 
 SUB Main()

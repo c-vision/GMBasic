@@ -154,22 +154,6 @@ internal sealed partial class PCodeProcessor
         {
                 return Basic.IlBackend.IlRuntime.Describe(ToDoubleArr(ArgOr(args, 0)));
         },
-        [BuiltInFunction.STATS_GAMMAPDF] = (task, args) =>
-        {
-                return CommonLib.Numerics.GammaPdf(SafeDouble(ArgOr(args, 0)), SafeDouble(ArgOr(args, 1)), SafeDouble(ArgOr(args, 2)));
-        },
-        [BuiltInFunction.STATS_EXPSF] = (task, args) =>
-        {
-                return 1.0 - CommonLib.Numerics.ExponentialCdf(SafeDouble(ArgOr(args, 1)), SafeDouble(ArgOr(args, 0)));
-        },
-        [BuiltInFunction.STATS_STUDENTSF] = (task, args) =>
-        {
-                return 1.0 - CommonLib.Numerics.StudentTCdf(SafeDouble(ArgOr(args, 1)), SafeDouble(ArgOr(args, 0)));
-        },
-        [BuiltInFunction.STATS_WEIBULLSF] = (task, args) =>
-        {
-                return 1.0 - CommonLib.Numerics.WeibullCdf(SafeDouble(ArgOr(args, 1)), SafeDouble(ArgOr(args, 2)), SafeDouble(ArgOr(args, 0)));
-        },
         [BuiltInFunction.STATS_NORMALSF] = (task, args) =>
         {
                 var x = SafeDouble(ArgOr(args, 0));
@@ -177,21 +161,9 @@ internal sealed partial class PCodeProcessor
                 var sd = SafeDouble(ArgOr(args, 2, 1.0));
                 return 1.0 - CommonLib.Numerics.NormalCdf(mu, sd, x);
         },
-        [BuiltInFunction.STATS_PARETOCDF] = (task, args) =>
-        {
-                return CommonLib.Numerics.ParetoCdf(SafeDouble(ArgOr(args, 1)), SafeDouble(ArgOr(args, 2)), SafeDouble(ArgOr(args, 0)));
-        },
-        [BuiltInFunction.STATS_UNIFORMCDF] = (task, args) =>
-        {
-                return CommonLib.Numerics.UniformCdf(SafeDouble(ArgOr(args, 1, 0.0)), SafeDouble(ArgOr(args, 2, 1.0)), SafeDouble(ArgOr(args, 0)));
-        },
         [BuiltInFunction.STATS_KENDALLTAU] = (task, args) =>
         {
                 return HypothesisResult(CommonLib.Numerics.KendallTau(ToDoubleArr(ArgOr(args, 0)), ToDoubleArr(ArgOr(args, 1))));
-        },
-        [BuiltInFunction.STATS_BETASF] = (task, args) =>
-        {
-                return 1.0 - CommonLib.Numerics.BetaCdf(SafeDouble(ArgOr(args, 1)), SafeDouble(ArgOr(args, 2)), SafeDouble(ArgOr(args, 0)));
         },
         [BuiltInFunction.STATS_LOGISTICCDF] = (task, args) =>
         {
@@ -237,21 +209,9 @@ internal sealed partial class PCodeProcessor
         {
                 return CommonLib.Numerics.LogisticSf(SafeDouble(ArgOr(args, 1, 0.0)), SafeDouble(ArgOr(args, 2, 1.0)), SafeDouble(ArgOr(args, 0)));
         },
-        [BuiltInFunction.STATS_CHISF] = (task, args) =>
-        {
-                return 1.0 - CommonLib.Numerics.ChiCdf(SafeDouble(ArgOr(args, 1)), SafeDouble(ArgOr(args, 0)));
-        },
         [BuiltInFunction.STATS_FTEST] = (task, args) =>
         {
                 return HypothesisResult(CommonLib.Numerics.FTest(ToDoubleArr(ArgOr(args, 0)), ToDoubleArr(ArgOr(args, 1))));
-        },
-        [BuiltInFunction.STATS_UNIFORMSF] = (task, args) =>
-        {
-                return CommonLib.Numerics.UniformSf(SafeDouble(ArgOr(args, 1, 0.0)), SafeDouble(ArgOr(args, 2, 1.0)), SafeDouble(ArgOr(args, 0)));
-        },
-        [BuiltInFunction.STATS_PARETOSF] = (task, args) =>
-        {
-                return 1.0 - CommonLib.Numerics.ParetoCdf(SafeDouble(ArgOr(args, 1)), SafeDouble(ArgOr(args, 2)), SafeDouble(ArgOr(args, 0)));
         },
         [BuiltInFunction.STATS_LOGNORMALSF] = (task, args) =>
         {
@@ -259,26 +219,6 @@ internal sealed partial class PCodeProcessor
                 var mu = SafeDouble(ArgOr(args, 1, 0.0));
                 var sd = SafeDouble(ArgOr(args, 2, 1.0));
                 return 1.0 - CommonLib.Numerics.LognormalCdf(mu, sd, x);
-        },
-        [BuiltInFunction.STATS_FSF] = (task, args) =>
-        {
-                return 1.0 - CommonLib.Numerics.FCdf(SafeDouble(ArgOr(args, 1)), SafeDouble(ArgOr(args, 2)), SafeDouble(ArgOr(args, 0)));
-        },
-        [BuiltInFunction.STATS_GAMMASF] = (task, args) =>
-        {
-                return 1.0 - CommonLib.Numerics.GammaCdf(SafeDouble(ArgOr(args, 0)), SafeDouble(ArgOr(args, 1)), SafeDouble(ArgOr(args, 2)));
-        },
-        [BuiltInFunction.STATS_GAMMACDF] = (task, args) =>
-        {
-                return CommonLib.Numerics.GammaCdf(SafeDouble(ArgOr(args, 0)), SafeDouble(ArgOr(args, 1)), SafeDouble(ArgOr(args, 2)));
-        },
-        [BuiltInFunction.STATS_GAMMAPPF] = (task, args) =>
-        {
-                return CommonLib.Numerics.GammaPpf(SafeDouble(ArgOr(args, 0)), SafeDouble(ArgOr(args, 1)), SafeDouble(ArgOr(args, 2)));
-        },
-        [BuiltInFunction.STATS_GAMMAISF] = (task, args) =>
-        {
-                return CommonLib.Numerics.GammaIsf(SafeDouble(ArgOr(args, 0)), SafeDouble(ArgOr(args, 1)), SafeDouble(ArgOr(args, 2)));
         },
         [BuiltInFunction.STATS_MODE] = (task, args) =>
         {
@@ -373,30 +313,6 @@ internal sealed partial class PCodeProcessor
         {
                 return CommonLib.Numerics.ZTPoissonCdf(SafeDouble(ArgOr(args, 1, 1.0)), (int)SafeDouble(ArgOr(args, 0)));
         },
-        [BuiltInFunction.STATS_NCCHI2PPF] = (task, args) =>
-        {
-                return CommonLib.Numerics.NcChi2Ppf(SafeDouble(ArgOr(args, 1, 1.0)), SafeDouble(ArgOr(args, 2, 0.0)), SafeDouble(ArgOr(args, 0)));
-        },
-        [BuiltInFunction.STATS_NCCHI2ISF] = (task, args) =>
-        {
-                return CommonLib.Numerics.NcChi2Isf(SafeDouble(ArgOr(args, 1, 1.0)), SafeDouble(ArgOr(args, 2, 0.0)), SafeDouble(ArgOr(args, 0)));
-        },
-        [BuiltInFunction.STATS_NCBETAPPF] = (task, args) =>
-        {
-                return CommonLib.Numerics.NcBetaPpf(SafeDouble(ArgOr(args, 1, 1.0)), SafeDouble(ArgOr(args, 2, 1.0)), SafeDouble(ArgOr(args, 3, 0.0)), SafeDouble(ArgOr(args, 0)));
-        },
-        [BuiltInFunction.STATS_NCBETAISF] = (task, args) =>
-        {
-                return CommonLib.Numerics.NcBetaIsf(SafeDouble(ArgOr(args, 1, 1.0)), SafeDouble(ArgOr(args, 2, 1.0)), SafeDouble(ArgOr(args, 3, 0.0)), SafeDouble(ArgOr(args, 0)));
-        },
-        [BuiltInFunction.STATS_NCGAMMAPPF] = (task, args) =>
-        {
-                return CommonLib.Numerics.NcGammaPpf(SafeDouble(ArgOr(args, 1, 1.0)), SafeDouble(ArgOr(args, 2, 0.0)), SafeDouble(ArgOr(args, 0)));
-        },
-        [BuiltInFunction.STATS_NCGAMMAISF] = (task, args) =>
-        {
-                return CommonLib.Numerics.NcGammaIsf(SafeDouble(ArgOr(args, 1, 1.0)), SafeDouble(ArgOr(args, 2, 0.0)), SafeDouble(ArgOr(args, 0)));
-        },
         [BuiltInFunction.STATS_NCFPPF] = (task, args) =>
         {
                 return CommonLib.Numerics.NcFPpf(SafeDouble(ArgOr(args, 1, 1.0)), SafeDouble(ArgOr(args, 2, 1.0)), SafeDouble(ArgOr(args, 3, 0.0)), SafeDouble(ArgOr(args, 0)));
@@ -413,33 +329,9 @@ internal sealed partial class PCodeProcessor
         {
                 return CommonLib.Numerics.NcTIsf(SafeDouble(ArgOr(args, 1, 1.0)), SafeDouble(ArgOr(args, 2, 0.0)), SafeDouble(ArgOr(args, 0)));
         },
-        [BuiltInFunction.STATS_NCCHI2PDF] = (task, args) =>
-        {
-                return CommonLib.Numerics.NcChi2Pdf(SafeDouble(ArgOr(args, 1, 1.0)), SafeDouble(ArgOr(args, 2, 0.0)), SafeDouble(ArgOr(args, 0)));
-        },
-        [BuiltInFunction.STATS_NCCHI2CDF] = (task, args) =>
-        {
-                return CommonLib.Numerics.NcChi2Cdf(SafeDouble(ArgOr(args, 1, 1.0)), SafeDouble(ArgOr(args, 2, 0.0)), SafeDouble(ArgOr(args, 0)));
-        },
-        [BuiltInFunction.STATS_NCBETAPDF] = (task, args) =>
-        {
-                return CommonLib.Numerics.NcBetaPdf(SafeDouble(ArgOr(args, 1, 1.0)), SafeDouble(ArgOr(args, 2, 1.0)), SafeDouble(ArgOr(args, 3, 0.0)), SafeDouble(ArgOr(args, 0)));
-        },
-        [BuiltInFunction.STATS_NCBETACDF] = (task, args) =>
-        {
-                return CommonLib.Numerics.NcBetaCdf(SafeDouble(ArgOr(args, 1, 1.0)), SafeDouble(ArgOr(args, 2, 1.0)), SafeDouble(ArgOr(args, 3, 0.0)), SafeDouble(ArgOr(args, 0)));
-        },
         [BuiltInFunction.STATS_NCBETASF] = (task, args) =>
         {
                 return CommonLib.Numerics.NcBetaSf(SafeDouble(ArgOr(args, 1, 1.0)), SafeDouble(ArgOr(args, 2, 1.0)), SafeDouble(ArgOr(args, 3, 0.0)), SafeDouble(ArgOr(args, 0)));
-        },
-        [BuiltInFunction.STATS_NCGAMMAPDF] = (task, args) =>
-        {
-                return CommonLib.Numerics.NcGammaPdf(SafeDouble(ArgOr(args, 1, 1.0)), SafeDouble(ArgOr(args, 2, 0.0)), SafeDouble(ArgOr(args, 0)));
-        },
-        [BuiltInFunction.STATS_NCGAMMACDF] = (task, args) =>
-        {
-                return CommonLib.Numerics.NcGammaCdf(SafeDouble(ArgOr(args, 1, 1.0)), SafeDouble(ArgOr(args, 2, 0.0)), SafeDouble(ArgOr(args, 0)));
         },
         [BuiltInFunction.STATS_NCGAMMASF] = (task, args) =>
         {

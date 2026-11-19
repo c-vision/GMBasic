@@ -3127,25 +3127,9 @@ if (args.Length >= 3) { var file = args[0]?.ToString() ?? ""; var section = args
         {
                 return Basic.StdLibRuntime.MathFunctions.BernoulliPmf(SafeDouble(args.Length > 1 ? args[1] : null), (int)SafeDouble(args.Length > 0 ? args[0] : null));
         },
-        [BuiltInFunction.BETACDF] = (task, args) =>
-        {
-                return Basic.StdLibRuntime.MathFunctions.BetaCdf(SafeDouble(args.Length > 2 ? args[1] : null), SafeDouble(args.Length > 2 ? args[2] : null), SafeDouble(args.Length > 0 ? args[0] : null));
-        },
-        [BuiltInFunction.BETAPDF] = (task, args) =>
-        {
-                return Basic.StdLibRuntime.MathFunctions.BetaPdf(SafeDouble(args.Length > 2 ? args[1] : null), SafeDouble(args.Length > 2 ? args[2] : null), SafeDouble(args.Length > 0 ? args[0] : null));
-        },
         [BuiltInFunction.BINOMIALPMF] = (task, args) =>
         {
                 return Basic.StdLibRuntime.MathFunctions.BinomialPmf(SafeDouble(args.Length > 2 ? args[2] : null), (int)SafeDouble(args.Length > 1 ? args[1] : null), (int)SafeDouble(args.Length > 0 ? args[0] : null));
-        },
-        [BuiltInFunction.CHICDF] = (task, args) =>
-        {
-                return Basic.StdLibRuntime.MathFunctions.ChiCdf(SafeDouble(args.Length > 1 ? args[1] : null), SafeDouble(args.Length > 0 ? args[0] : null));
-        },
-        [BuiltInFunction.CHIPDF] = (task, args) =>
-        {
-                return Basic.StdLibRuntime.MathFunctions.ChiPdf(SafeDouble(args.Length > 1 ? args[1] : null), SafeDouble(args.Length > 0 ? args[0] : null));
         },
         [BuiltInFunction.COMMAND] = (task, args) =>
         {
@@ -3224,22 +3208,6 @@ if (args.Length >= 3) { var file = args[0]?.ToString() ?? ""; var section = args
                     ArgOr(args, 0)?.ToString() ?? "",
                     args.Length > 1 ? ArgOr(args, 1)?.ToString() : null);
         },
-        [BuiltInFunction.EXPONENTIALCDF] = (task, args) =>
-        {
-                return Basic.StdLibRuntime.MathFunctions.ExponentialCdf(SafeDouble(args.Length > 1 ? args[1] : null), SafeDouble(args.Length > 0 ? args[0] : null));
-        },
-        [BuiltInFunction.EXPONENTIALPDF] = (task, args) =>
-        {
-                return Basic.StdLibRuntime.MathFunctions.ExponentialPdf(SafeDouble(args.Length > 1 ? args[1] : null), SafeDouble(args.Length > 0 ? args[0] : null));
-        },
-        [BuiltInFunction.FCDF] = (task, args) =>
-        {
-                return Basic.StdLibRuntime.MathFunctions.FCdf(SafeDouble(args.Length > 2 ? args[1] : null), SafeDouble(args.Length > 2 ? args[2] : null), SafeDouble(args.Length > 0 ? args[0] : null));
-        },
-        [BuiltInFunction.FPDF] = (task, args) =>
-        {
-                return Basic.StdLibRuntime.MathFunctions.FPdf(SafeDouble(args.Length > 2 ? args[1] : null), SafeDouble(args.Length > 2 ? args[2] : null), SafeDouble(args.Length > 0 ? args[0] : null));
-        },
         [BuiltInFunction.GEOMETRICPMF] = (task, args) =>
         {
                 return Basic.StdLibRuntime.MathFunctions.GeometricPmf(SafeDouble(args.Length > 1 ? args[1] : null), (int)SafeDouble(args.Length > 0 ? args[0] : null));
@@ -3257,10 +3225,6 @@ if (args.Length >= 3) { var file = args[0]?.ToString() ?? ""; var section = args
                 if (args.Length >= 2) return (double)(int)Convert.ToInt64(args[0]);
                 return 0.0;
             }
-        },
-        [BuiltInFunction.LOGISTICPDF] = (task, args) =>
-        {
-                return Basic.StdLibRuntime.MathFunctions.LogisticPdf(SafeDouble(args.Length > 2 ? args[1] : null), SafeDouble(args.Length > 2 ? args[2] : null), SafeDouble(args.Length > 0 ? args[0] : null));
         },
         [BuiltInFunction.LOGNORMALCDF] = (task, args) =>
         {
@@ -3347,53 +3311,9 @@ if (args.Length >= 3) { var file = args[0]?.ToString() ?? ""; var section = args
         {
                 return Basic.StdLibRuntime.MathFunctions.LognormalPpf(SafeDouble(args.Length > 1 ? args[1] : 0.0), SafeDouble(args.Length > 2 ? args[2] : 1.0), SafeDouble(args[0]));
         },
-        [BuiltInFunction.CHIPPF] = (task, args) =>
-        {
-                return Basic.StdLibRuntime.MathFunctions.ChiPpf(SafeDouble(ArgOr(args, 1)), SafeDouble(args[0]));
-        },
-        [BuiltInFunction.BETAPPF] = (task, args) =>
-        {
-                return Basic.StdLibRuntime.MathFunctions.BetaPpf(SafeDouble(ArgOr(args, 1)), SafeDouble(ArgOr(args, 2)), SafeDouble(args[0]));
-        },
-        [BuiltInFunction.FPPF] = (task, args) =>
-        {
-                return Basic.StdLibRuntime.MathFunctions.FPpf(SafeDouble(ArgOr(args, 1)), SafeDouble(ArgOr(args, 2)), SafeDouble(args[0]));
-        },
-        [BuiltInFunction.FISF] = (task, args) =>
-        {
-                return Basic.StdLibRuntime.MathFunctions.FIsf(SafeDouble(ArgOr(args, 1)), SafeDouble(ArgOr(args, 2)), SafeDouble(args[0]));
-        },
-        [BuiltInFunction.STUDENTTPPF] = (task, args) =>
-        {
-                return Basic.StdLibRuntime.MathFunctions.StudentTPpf(SafeDouble(ArgOr(args, 1)), SafeDouble(args[0]));
-        },
-        [BuiltInFunction.STUDENTTISF] = (task, args) =>
-        {
-                return Basic.StdLibRuntime.MathFunctions.StudentTIsf(SafeDouble(ArgOr(args, 1)), SafeDouble(args[0]));
-        },
-        [BuiltInFunction.EXPONENTIALPPF] = (task, args) =>
-        {
-                return Basic.StdLibRuntime.MathFunctions.ExponentialPpf(SafeDouble(ArgOr(args, 1)), SafeDouble(args[0]));
-        },
-        [BuiltInFunction.EXPONENTIALISF] = (task, args) =>
-        {
-                return Basic.StdLibRuntime.MathFunctions.ExponentialIsf(SafeDouble(ArgOr(args, 1)), SafeDouble(args[0]));
-        },
-        [BuiltInFunction.WEIBULLPPF] = (task, args) =>
-        {
-                return Basic.StdLibRuntime.MathFunctions.WeibullPpf(SafeDouble(ArgOr(args, 1)), SafeDouble(ArgOr(args, 2)), SafeDouble(args[0]));
-        },
-        [BuiltInFunction.LOGISTICPPF] = (task, args) =>
-        {
-                return Basic.StdLibRuntime.MathFunctions.LogisticPpf(SafeDouble(ArgOr(args, 1)), SafeDouble(ArgOr(args, 2)), SafeDouble(args[0]));
-        },
         [BuiltInFunction.UNIFORMPPF] = (task, args) =>
         {
                 return Basic.StdLibRuntime.MathFunctions.UniformPpf(SafeDouble(args.Length > 1 ? args[1] : 0.0), SafeDouble(args.Length > 2 ? args[2] : 1.0), SafeDouble(args[0]));
-        },
-        [BuiltInFunction.PARETOPPF] = (task, args) =>
-        {
-                return Basic.StdLibRuntime.MathFunctions.ParetoPpf(SafeDouble(ArgOr(args, 1)), SafeDouble(ArgOr(args, 2)), SafeDouble(args[0]));
         },
         [BuiltInFunction.TRIANGULARPPF] = (task, args) =>
         {
@@ -3402,10 +3322,6 @@ if (args.Length >= 3) { var file = args[0]?.ToString() ?? ""; var section = args
         [BuiltInFunction.NORMALPDF] = (task, args) =>
         {
                 return Basic.StdLibRuntime.MathFunctions.NormalPdf(SafeDouble(args.Length > 1 ? args[1] : 0.0), SafeDouble(args.Length > 2 ? args[2] : 1.0), SafeDouble(args[0]));
-        },
-        [BuiltInFunction.PARETOPDF] = (task, args) =>
-        {
-                return Basic.StdLibRuntime.MathFunctions.ParetoPdf(SafeDouble(args.Length > 2 ? args[1] : null), SafeDouble(args.Length > 2 ? args[2] : null), SafeDouble(args.Length > 0 ? args[0] : null));
         },
         [BuiltInFunction.POISSONPMF] = (task, args) =>
         {
@@ -3450,14 +3366,6 @@ if (args.Length >= 3) { var file = args[0]?.ToString() ?? ""; var section = args
         [BuiltInFunction.STOD] = (task, args) =>
         {
                 return new DateValue(CommonLib.DateUtils.CoreStod((ArgOr(args, 0) ?? "").ToString() ?? "").ToDateTime(TimeOnly.MinValue).ToOADate());
-        },
-        [BuiltInFunction.STUDENTTCDF] = (task, args) =>
-        {
-                return Basic.StdLibRuntime.MathFunctions.StudentTCdf(SafeDouble(args.Length > 1 ? args[1] : null), SafeDouble(args.Length > 0 ? args[0] : null));
-        },
-        [BuiltInFunction.STUDENTTPDF] = (task, args) =>
-        {
-                return Basic.StdLibRuntime.MathFunctions.StudentTPdf(SafeDouble(args.Length > 1 ? args[1] : null), SafeDouble(args.Length > 0 ? args[0] : null));
         },
         [BuiltInFunction.SYS] = (task, args) =>
         {
@@ -3868,14 +3776,6 @@ if (args.Length >= 3) { var file = args[0]?.ToString() ?? ""; var section = args
         [BuiltInFunction.TS_LYAPUNOV] = (task, args) =>
         {
                 return Basic.IlBackend.IlRuntime.Lyapunov(ToDoubleArr(ArgOr(args, 0)), (long)SafeDouble(ArgOr(args, 1)), (long)SafeDouble(ArgOr(args, 2)));
-        },
-        [BuiltInFunction.WEIBULLCDF] = (task, args) =>
-        {
-                return Basic.StdLibRuntime.MathFunctions.WeibullCdf(SafeDouble(args.Length > 2 ? args[1] : null), SafeDouble(args.Length > 2 ? args[2] : null), SafeDouble(args.Length > 0 ? args[0] : null));
-        },
-        [BuiltInFunction.WEIBULLPDF] = (task, args) =>
-        {
-                return Basic.StdLibRuntime.MathFunctions.WeibullPdf(SafeDouble(args.Length > 2 ? args[1] : null), SafeDouble(args.Length > 2 ? args[2] : null), SafeDouble(args.Length > 0 ? args[0] : null));
         },
         [BuiltInFunction.CONVDOC] = (task, args) =>
         {

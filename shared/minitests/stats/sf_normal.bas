@@ -1,4 +1,5 @@
 ' EXPECT: n= 0.025|ln= 0.5
+IMPORT STATS
 SUB Main()
   PRINT "n="; MATH.ROUND(STATS.NormalSf(1.959964, 0, 1), 6)
   PRINT "ln="; MATH.ROUND(STATS.LognormalSf(1.0, 0, 1), 6)

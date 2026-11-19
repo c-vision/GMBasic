@@ -15,9 +15,9 @@
 ' - Interpolazione: Linear, Spline, Polynomial.
 ' - Calcolo: Integrate, Differentiate.
 ' =================================================================================================
+IMPORT STATS
 IMPORT MULTIVARIATE
 IMPORT TIMESERIES
-IMPORT STATS
 IMPORT JSON
 
 SUB Main()

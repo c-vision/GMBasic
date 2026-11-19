@@ -1,4 +1,5 @@
 ' EXPECT: pdf= 0.128765|cdf= 0.620644|sf= 0.379356
+IMPORT STATS
 SUB Main()
   PRINT "pdf="; MATH.ROUND(STATS.NcChi2Pdf(3.0, 2, 1), 6)
   PRINT "cdf="; MATH.ROUND(STATS.NcChi2Cdf(3.0, 2, 1), 6)

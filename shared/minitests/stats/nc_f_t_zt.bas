@@ -1,4 +1,5 @@
 ' EXPECT: fpdf= 0.359694|fcdf= 0.347511|fsf= 0.652489|tpdf= 0.318481|tcdf= 0.300408|tsf= 0.699592|ztpmf= 0.232879|ztcdf= 0.735897
+IMPORT STATS
 SUB Main()
   PRINT "fpdf="; MATH.ROUND(STATS.NcFPdf(1, 3, 10, 2), 6)
   PRINT "fcdf="; MATH.ROUND(STATS.NcFCdf(1, 3, 10, 2), 6)

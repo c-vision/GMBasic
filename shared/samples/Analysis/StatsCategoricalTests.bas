@@ -1,7 +1,7 @@
+IMPORT STATS
 REM FILE: StatsCategoricalTests.bas
 REM Test per frequenze osservate e tabelle di contingenza 2x2.
 
-IMPORT STATS
 
 SUB Main()
     DIM observed() = {26.0, 19.0, 15.0}

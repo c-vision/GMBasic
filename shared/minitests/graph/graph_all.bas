@@ -9,6 +9,7 @@
 ' Scopo: verificare che i 4 backend supportino la STESSA versione del namespace,
 ' non un'applicazione. Si asseriscono FATTI (status e campi), non il JSON intero.
 ' EXPECT: built=-1|neighbors=-1|path=-1|stats=-1|dot=-1|bytag=-1|byfolder=-1|isvalid=-1|querymulti=-1
+IMPORT STATS
 IMPORT BRAINS
 IMPORT IO
 

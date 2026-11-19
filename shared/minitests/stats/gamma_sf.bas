@@ -1,4 +1,5 @@
 ' EXPECT: sf= 0.199148|cdf+sf= 1
+IMPORT STATS
 SUB Main()
   DIM x = 3.0
   DIM sf = STATS.GammaSf(2, 1, x)
