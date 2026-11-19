@@ -933,11 +933,6 @@ procedure,STATS,ChiIsf,StatsChiIsf
 procedure,STATS,ChiPdf,ChiPdf
 procedure,STATS,ChiPpf,ChiPpf
 procedure,STATS,ChiSf,StatsChiSf
-procedure,STATS,ChiSquaredCdf,ChiSquaredCdf
-procedure,STATS,ChiSquaredIsf,ChiSquaredIsf
-procedure,STATS,ChiSquaredPdf,ChiSquaredPdf
-procedure,STATS,ChiSquaredPpf,ChiSquaredPpf
-procedure,STATS,ChiSquaredSf,StatsChiSquaredSf
 procedure,STATS,Describe,StatsDescribe
 procedure,STATS,ExponentialCdf,ExponentialCdf
 procedure,STATS,ExponentialIsf,ExponentialIsf

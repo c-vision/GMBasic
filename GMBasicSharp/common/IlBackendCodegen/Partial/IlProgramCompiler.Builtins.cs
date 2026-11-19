@@ -390,7 +390,6 @@ public sealed partial class IlProgramCompiler
             case TokenKind.StatsGammaSf: EmitTripleScalarCall(expr, nameof(IlRuntime.GammaSf)); break;
             case TokenKind.StatsExpSf: EmitOptionalParamsCall(expr, IlRuntimeExponentialSfMethod, 2, 1.0); break;
             case TokenKind.StatsStudentTSf: EmitOptionalParamsCall(expr, IlRuntimeStudentTSfMethod, 2, 1.0); break;
-            case TokenKind.StatsChiSquaredSf: EmitOptionalParamsCall(expr, IlRuntimeChiSquaredSfMethod, 2, 1.0); break;
             case TokenKind.StatsWeibullSf: EmitOptionalParamsCall(expr, IlRuntimeWeibullSfMethod, 3, 1.0, 1.0); break;
             case TokenKind.StatsFSf: EmitOptionalParamsCall(expr, IlRuntimeFSfMethod, 3, 1.0, 1.0); break;
             case TokenKind.StatsNormalSf: EmitOptionalParamsCall(expr, IlRuntimeNormalSfMethod, 3, 0.0, 1.0); break;
@@ -451,8 +450,6 @@ public sealed partial class IlProgramCompiler
             case TokenKind.NormalPpf: EmitOptionalParamsCall(expr, IlRuntimeNormalPpfMethod, 3, 0.0, 1.0); break;
             case TokenKind.NormalIsf: EmitOptionalParamsCall(expr, IlRuntimeNormalIsfMethod, 3, 0.0, 1.0); break;
             case TokenKind.LognormalPpf: EmitOptionalParamsCall(expr, IlRuntimeLognormalPpfMethod, 3, 0.0, 1.0); break;
-            case TokenKind.ChiSquaredPpf: EmitOptionalParamsCall(expr, IlRuntimeChiSquaredPpfMethod, 2, 1.0); break;
-            case TokenKind.ChiSquaredIsf: EmitOptionalParamsCall(expr, IlRuntimeChiSquaredIsfMethod, 2, 1.0); break;
             case TokenKind.ChiPpf: EmitOptionalParamsCall(expr, IlRuntimeChiPpfMethod, 2, 1.0); break;
             case TokenKind.BetaPpf: EmitOptionalParamsCall(expr, IlRuntimeBetaPpfMethod, 3, 1.0, 1.0); break;
             case TokenKind.FPpf: EmitOptionalParamsCall(expr, IlRuntimeFPpfMethod, 3, 1.0, 1.0); break;
@@ -470,8 +467,6 @@ public sealed partial class IlProgramCompiler
             case TokenKind.LognormalCdf: EmitOptionalParamsCall(expr, IlRuntimeLognormalCdfMethod, 3, 0.0, 1.0); break;
             case TokenKind.ChiPdf: EmitOptionalParamsCall(expr, IlRuntimeChiPdfMethod, 2, 1.0); break;
             case TokenKind.ChiCdf: EmitOptionalParamsCall(expr, IlRuntimeChiCdfMethod, 2, 1.0); break;
-            case TokenKind.ChiSquaredPdf: EmitOptionalParamsCall(expr, IlRuntimeChiSquaredPdfMethod, 2, 1.0); break;
-            case TokenKind.ChiSquaredCdf: EmitOptionalParamsCall(expr, IlRuntimeChiSquaredCdfMethod, 2, 1.0); break;
             case TokenKind.BetaPdf: EmitOptionalParamsCall(expr, IlRuntimeBetaPdfMethod, 3, 1.0, 1.0); break;
             case TokenKind.BetaCdf: EmitOptionalParamsCall(expr, IlRuntimeBetaCdfMethod, 3, 1.0, 1.0); break;
             case TokenKind.StudentTPdf: EmitOptionalParamsCall(expr, IlRuntimeStudentTPdfMethod, 2, 1.0); break;

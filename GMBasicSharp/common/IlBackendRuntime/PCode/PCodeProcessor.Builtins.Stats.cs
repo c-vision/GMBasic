@@ -264,10 +264,6 @@ internal sealed partial class PCodeProcessor
         {
                 return 1.0 - CommonLib.Numerics.FCdf(SafeDouble(ArgOr(args, 1)), SafeDouble(ArgOr(args, 2)), SafeDouble(ArgOr(args, 0)));
         },
-        [BuiltInFunction.STATS_CHISQUAREDSF] = (task, args) =>
-        {
-                return 1.0 - CommonLib.Numerics.ChiSquaredCdf(SafeDouble(ArgOr(args, 1)), SafeDouble(ArgOr(args, 0)));
-        },
         [BuiltInFunction.STATS_GAMMASF] = (task, args) =>
         {
                 return 1.0 - CommonLib.Numerics.GammaCdf(SafeDouble(ArgOr(args, 0)), SafeDouble(ArgOr(args, 1)), SafeDouble(ArgOr(args, 2)));

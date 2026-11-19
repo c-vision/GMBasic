@@ -3147,15 +3147,6 @@ if (args.Length >= 3) { var file = args[0]?.ToString() ?? ""; var section = args
         {
                 return Basic.StdLibRuntime.MathFunctions.ChiPdf(SafeDouble(args.Length > 1 ? args[1] : null), SafeDouble(args.Length > 0 ? args[0] : null));
         },
-        [BuiltInFunction.CHISQUAREDCDF] = (task, args) =>
-        {
-                return Basic.StdLibRuntime.MathFunctions.ChiSquaredCdf(SafeDouble(args.Length > 1 ? args[1] : null), SafeDouble(args.Length > 0 ? args[0] : null));
-        },
-        [BuiltInFunction.CHISQUAREDPDF] = (task, args) =>
-        {
-                return Basic.StdLibRuntime.MathFunctions.ChiSquaredPdf(SafeDouble(args.Length > 1 ? args[1] : null), SafeDouble(args.Length > 0 ? args[0] : null));
-            // --- STATS: delegato a ExecuteBuiltInStats (PCodeProcessor.Builtins.Stats.cs) ---
-        },
         [BuiltInFunction.COMMAND] = (task, args) =>
         {
                 // Runtime comune (IlRuntime): stessa logica — unica implementazione.
@@ -3355,14 +3346,6 @@ if (args.Length >= 3) { var file = args[0]?.ToString() ?? ""; var section = args
         [BuiltInFunction.LOGNORMALPPF] = (task, args) =>
         {
                 return Basic.StdLibRuntime.MathFunctions.LognormalPpf(SafeDouble(args.Length > 1 ? args[1] : 0.0), SafeDouble(args.Length > 2 ? args[2] : 1.0), SafeDouble(args[0]));
-        },
-        [BuiltInFunction.CHISQUAREDPPF] = (task, args) =>
-        {
-                return Basic.StdLibRuntime.MathFunctions.ChiSquaredPpf(SafeDouble(ArgOr(args, 1)), SafeDouble(args[0]));
-        },
-        [BuiltInFunction.CHISQUAREDISF] = (task, args) =>
-        {
-                return Basic.StdLibRuntime.MathFunctions.ChiSquaredIsf(SafeDouble(ArgOr(args, 1)), SafeDouble(args[0]));
         },
         [BuiltInFunction.CHIPPF] = (task, args) =>
         {

@@ -11393,7 +11393,7 @@
       "ns": "LINALG",
       "name": "COSM",
       "fn": true,
-      "return": "double[]",
+      "return": "MATRIX VALUE",
       "params": [
         {
           "name": "handle",
@@ -11423,7 +11423,7 @@
       "ns": "LINALG",
       "name": "EIG",
       "fn": true,
-      "return": "long",
+      "return": "EIGDECOMPOSITION",
       "params": [
         {
           "name": "handle",
@@ -11453,7 +11453,7 @@
       "ns": "LINALG",
       "name": "EXPM",
       "fn": true,
-      "return": "double[]",
+      "return": "MATRIX VALUE",
       "params": [
         {
           "name": "handle",
@@ -11468,7 +11468,7 @@
       "ns": "LINALG",
       "name": "FACTOR",
       "fn": true,
-      "return": "double[]",
+      "return": "MATRIX VALUE",
       "params": [
         {
           "name": "decompositionObject",
@@ -11490,7 +11490,7 @@
       "ns": "LINALG",
       "name": "FRACTIONALPOWER",
       "fn": true,
-      "return": "double[]",
+      "return": "MATRIX VALUE",
       "params": [
         {
           "name": "handle",
@@ -11527,7 +11527,7 @@
       "ns": "LINALG",
       "name": "HESSENBERG",
       "fn": true,
-      "return": "double[]",
+      "return": "MATRIX VALUE",
       "params": [
         {
           "name": "handle",
@@ -11557,7 +11557,7 @@
       "ns": "LINALG",
       "name": "INVERSE",
       "fn": true,
-      "return": "double[]",
+      "return": "MATRIX VALUE",
       "params": [
         {
           "name": "handle",
@@ -11572,7 +11572,7 @@
       "ns": "LINALG",
       "name": "LOGM",
       "fn": true,
-      "return": "double[]",
+      "return": "MATRIX VALUE",
       "params": [
         {
           "name": "handle",
@@ -11632,7 +11632,7 @@
       "ns": "LINALG",
       "name": "NULLSPACE",
       "fn": true,
-      "return": "double[]",
+      "return": "MATRIX VALUE",
       "params": [
         {
           "name": "handle",
@@ -11662,7 +11662,7 @@
       "ns": "LINALG",
       "name": "ORTH",
       "fn": true,
-      "return": "double[]",
+      "return": "MATRIX VALUE",
       "params": [
         {
           "name": "handle",
@@ -11677,7 +11677,7 @@
       "ns": "LINALG",
       "name": "PINVERSE",
       "fn": true,
-      "return": "double[]",
+      "return": "MATRIX VALUE",
       "params": [
         {
           "name": "handle",
@@ -11692,7 +11692,7 @@
       "ns": "LINALG",
       "name": "POLAR",
       "fn": true,
-      "return": "long",
+      "return": "POLARDECOMPOSITION",
       "params": [
         {
           "name": "handle",
@@ -11737,7 +11737,7 @@
       "ns": "LINALG",
       "name": "SCHUR",
       "fn": true,
-      "return": "long",
+      "return": "SCHURDECOMPOSITION",
       "params": [
         {
           "name": "handle",
@@ -11752,7 +11752,7 @@
       "ns": "LINALG",
       "name": "SIGNM",
       "fn": true,
-      "return": "double[]",
+      "return": "MATRIX VALUE",
       "params": [
         {
           "name": "handle",
@@ -11767,7 +11767,7 @@
       "ns": "LINALG",
       "name": "SINM",
       "fn": true,
-      "return": "double[]",
+      "return": "MATRIX VALUE",
       "params": [
         {
           "name": "handle",
@@ -11833,7 +11833,7 @@
       "ns": "LINALG",
       "name": "SQRTM",
       "fn": true,
-      "return": "double[]",
+      "return": "MATRIX VALUE",
       "params": [
         {
           "name": "handle",
@@ -11885,7 +11885,7 @@
       "ns": "LINALG",
       "name": "TANM",
       "fn": true,
-      "return": "double[]",
+      "return": "MATRIX VALUE",
       "params": [
         {
           "name": "handle",
@@ -13449,7 +13449,7 @@
       "ns": "MATRIX",
       "name": "ADDCOLVECTOR",
       "fn": true,
-      "return": "double[]",
+      "return": "MATRIX VALUE",
       "params": [
         {
           "name": "data",
@@ -13471,7 +13471,7 @@
       "ns": "MATRIX",
       "name": "ADDROWVECTOR",
       "fn": true,
-      "return": "double[]",
+      "return": "MATRIX VALUE",
       "params": [
         {
           "name": "data",
@@ -13553,7 +13553,7 @@
       "ns": "MATRIX",
       "name": "BLOCKDIAG",
       "fn": true,
-      "return": "double[]",
+      "return": "MATRIX VALUE",
       "params": [
         {
           "name": "handle1",
@@ -13575,7 +13575,7 @@
       "ns": "MATRIX",
       "name": "CIRCULANT",
       "fn": true,
-      "return": "double[]",
+      "return": "MATRIX VALUE",
       "params": [
         {
           "name": "c",
@@ -13590,7 +13590,7 @@
       "ns": "MATRIX",
       "name": "CLONEMATRIX",
       "fn": true,
-      "return": "double[]",
+      "return": "MATRIX VALUE",
       "params": [
         {
           "name": "data",
@@ -13605,7 +13605,7 @@
       "ns": "MATRIX",
       "name": "COL",
       "fn": true,
-      "return": "double[]",
+      "return": "MATRIX VALUE",
       "params": [
         {
           "name": "data",
@@ -13687,7 +13687,7 @@
       "ns": "MATRIX",
       "name": "CONCATCOLS",
       "fn": true,
-      "return": "double[]",
+      "return": "MATRIX VALUE",
       "params": [
         {
           "name": "data",
@@ -13709,7 +13709,7 @@
       "ns": "MATRIX",
       "name": "CONCATROWS",
       "fn": true,
-      "return": "double[]",
+      "return": "MATRIX VALUE",
       "params": [
         {
           "name": "data",
@@ -13731,7 +13731,7 @@
       "ns": "MATRIX",
       "name": "CREATE",
       "fn": true,
-      "return": "double[]",
+      "return": "MATRIX VALUE",
       "params": [
         {
           "name": "rows",
@@ -13782,7 +13782,7 @@
       "ns": "MATRIX",
       "name": "HANKEL",
       "fn": true,
-      "return": "double[]",
+      "return": "MATRIX VALUE",
       "params": [
         {
           "name": "c",
@@ -13879,7 +13879,7 @@
       "ns": "MATRIX",
       "name": "KRONECKER",
       "fn": true,
-      "return": "double[]",
+      "return": "MATRIX VALUE",
       "params": [
         {
           "name": "handle1",
@@ -13901,7 +13901,7 @@
       "ns": "MATRIX",
       "name": "LOADCSV",
       "fn": true,
-      "return": "double[]",
+      "return": "MATRIX VALUE",
       "params": [
         {
           "name": "path",
@@ -13916,7 +13916,7 @@
       "ns": "MATRIX",
       "name": "LOADJSON",
       "fn": true,
-      "return": "double[]",
+      "return": "MATRIX VALUE",
       "params": [
         {
           "name": "path",
@@ -13961,7 +13961,7 @@
       "ns": "MATRIX",
       "name": "MULTIPLY",
       "fn": true,
-      "return": "double[]",
+      "return": "MATRIX VALUE",
       "params": [
         {
           "name": "handle1",
@@ -14027,7 +14027,7 @@
       "ns": "MATRIX",
       "name": "RESHAPE",
       "fn": true,
-      "return": "double[]",
+      "return": "MATRIX VALUE",
       "params": [
         {
           "name": "data",
@@ -14056,7 +14056,7 @@
       "ns": "MATRIX",
       "name": "ROW",
       "fn": true,
-      "return": "double[]",
+      "return": "MATRIX VALUE",
       "params": [
         {
           "name": "data",
@@ -14138,7 +14138,7 @@
       "ns": "MATRIX",
       "name": "SETVALUE",
       "fn": true,
-      "return": "double[]",
+      "return": "MATRIX VALUE",
       "params": [
         {
           "name": "handle",
@@ -14174,7 +14174,7 @@
       "ns": "MATRIX",
       "name": "SLICE",
       "fn": true,
-      "return": "double[]",
+      "return": "MATRIX VALUE",
       "params": [
         {
           "name": "data",
@@ -14217,7 +14217,7 @@
       "ns": "MATRIX",
       "name": "TOEPLITZ",
       "fn": true,
-      "return": "double[]",
+      "return": "MATRIX VALUE",
       "params": [
         {
           "name": "c",
@@ -14254,7 +14254,7 @@
       "ns": "MATRIX",
       "name": "TRANSPOSE",
       "fn": true,
-      "return": "double[]",
+      "return": "MATRIX VALUE",
       "params": [
         {
           "name": "handle",
@@ -16442,116 +16442,6 @@
     {
       "ns": "STATS",
       "name": "ChiSf",
-      "fn": true,
-      "return": "double",
-      "params": [
-        {
-          "name": "x",
-          "type": "double",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        },
-        {
-          "name": "k",
-          "type": "double",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        }
-      ]
-    },
-    {
-      "ns": "STATS",
-      "name": "ChiSquaredCdf",
-      "fn": true,
-      "return": "double",
-      "params": [
-        {
-          "name": "x",
-          "type": "double",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        },
-        {
-          "name": "k",
-          "type": "double",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        }
-      ]
-    },
-    {
-      "ns": "STATS",
-      "name": "ChiSquaredIsf",
-      "fn": true,
-      "return": "double",
-      "params": [
-        {
-          "name": "p",
-          "type": "double",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        },
-        {
-          "name": "k",
-          "type": "double",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        }
-      ]
-    },
-    {
-      "ns": "STATS",
-      "name": "ChiSquaredPdf",
-      "fn": true,
-      "return": "double",
-      "params": [
-        {
-          "name": "x",
-          "type": "double",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        },
-        {
-          "name": "k",
-          "type": "double",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        }
-      ]
-    },
-    {
-      "ns": "STATS",
-      "name": "ChiSquaredPpf",
-      "fn": true,
-      "return": "double",
-      "params": [
-        {
-          "name": "p",
-          "type": "double",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        },
-        {
-          "name": "k",
-          "type": "double",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        }
-      ]
-    },
-    {
-      "ns": "STATS",
-      "name": "ChiSquaredSf",
       "fn": true,
       "return": "double",
       "params": [
