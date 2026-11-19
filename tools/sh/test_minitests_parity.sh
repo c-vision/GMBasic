@@ -133,9 +133,15 @@ fi
 # processo il runtime può terminare (crash del GC dopo ~6 file: ognuno pinna decine di array
 # e crea tipi-delegate): i risultati sono identici, è l'host che muore. Un `dotnet test` per
 # file isola il processo e rende il gate deterministico (~2 s di startup per file).
-if [ "${GMB_MINI_SPLIT:-1}" = "1" ] && [ -n "${GMB_MINI_ONLY:-}" ]; then
+if [ "${GMB_MINI_SPLIT:-1}" = "1" ] && { [ -n "${GMB_MINI_ONLY:-}" ] || [ "${GMB_RUN_ALL:-0}" = "1" ]; }; then
   SPLIT_FAIL=0; SPLIT_N=0
+  TMO="${GMB_PARITY_TIMEOUT:-180}"   # secondi per FILE: un MiniTest che si blocca non ferma il gate
   LIST="$(mktemp "${TMPDIR:-/tmp}/gmb_split.XXXXXX")"
+  if [ "${GMB_RUN_ALL:-0}" = "1" ]; then
+    # `--all`: TUTTI i file, uno per processo (prima era un solo processo: un file bloccato
+    # fermava l'intera parità senza dire quale — misurato 2026-11-20, run fermo 8 minuti).
+    find "$WS/shared/minitests" -name '*.bas' -type f | sort | sed "s|^$WS/shared/minitests/||" > "$LIST"
+  else
   NEEDLES="$(mktemp "${TMPDIR:-/tmp}/gmb_needles.XXXXXX")"
   printf '%s\n' "$GMB_MINI_ONLY" | tr ',' '\n' | sed '/^$/d' > "$NEEDLES"
   while IFS= read -r f; do
@@ -151,17 +157,23 @@ if [ "${GMB_MINI_SPLIT:-1}" = "1" ] && [ -n "${GMB_MINI_ONLY:-}" ]; then
 $(find "$WS/shared/minitests" -name '*.bas' -type f | sort)
 EOF
   rm -f "$NEEDLES"
+  fi
   while IFS= read -r rel; do
     [ -n "$rel" ] || continue
     SPLIT_N=$((SPLIT_N+1))
     echo "  [split] $rel"
-    if ! GMB_MINI_ONLY="$rel" dotnet test "$ROOT/tests/GMBASIC.IlBackend.Tests" \
-        --no-build --filter "FullyQualifiedName~MiniTests_IL_PCode_Parity" $flags; then
+    GMB_MINI_ONLY="$rel" timeout "$TMO" dotnet test "$ROOT/tests/GMBASIC.IlBackend.Tests" \
+        --no-build --filter "FullyQualifiedName~MiniTests_IL_PCode_Parity" $flags
+    rc=$?
+    if [ "$rc" -eq 124 ]; then
+      echo "  TIMEOUT $rel (${TMO}s): MiniTest bloccato — escluso dal conteggio, gate ROSSO"
+      SPLIT_FAIL=1
+    elif [ "$rc" -ne 0 ]; then
       SPLIT_FAIL=1
     fi
   done < "$LIST"
   rm -f "$LIST"
-  echo "parità gestita: $SPLIT_N file (un processo per file)"
+  echo "parità gestita: $SPLIT_N file (un processo per file, timeout ${TMO}s)"
   [ "$SPLIT_FAIL" = 0 ] || exit 1
 else
   dotnet test "$ROOT/tests/GMBASIC.IlBackend.Tests" \
