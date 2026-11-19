@@ -1305,7 +1305,7 @@ public sealed partial class Parser
                                 candidates.Count > 1
                                     ? UnresolvedReason.AmbiguousBuiltinFunctions
                                     : UnresolvedReason.FunctionNotFound,
-                                [..candidates]);
+                                [..candidates], namespaceName);
                             Log(
                                 $"[ParsePrimary]     -> Created UnresolvedCallExpr for ambiguous/unfound qualified call: '{expr}'",
                                 log);

@@ -3937,7 +3937,7 @@ public static partial class Linker
                     .ToImmutableArray();
 
                 // Creiamo una nuova istanza con gli argomenti risolti, mantenendo gli altri campi inalterati.
-                return new UnresolvedCallExpr(uce.Name, uceArgs, uce.ReturnType, uce.Reason, uce.Candidates)
+                return new UnresolvedCallExpr(uce.Name, uceArgs, uce.ReturnType, uce.Reason, uce.Candidates, uce.QualifiedNamespace)
                 {
                     ScopeId = uce.ScopeId
                 };

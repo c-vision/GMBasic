@@ -1411,31 +1411,33 @@ L'Executor riceve un'immagine del programma semanticamente valida e completament
     /// <returns>Un elenco di <see cref="ProcedureDefinition"/> definite nello scope richiesto, o un elenco vuoto se non trovato.</returns>
     public IEnumerable<ProcedureDefinition> GetProceduresForNamespace(string namespaceName)
     {
-        Scope? targetScope;
-
-        // Gestisce il caso speciale dello scope globale.
-        if (namespaceName.Equals(GlobalScopeName, StringComparison.OrdinalIgnoreCase))
+        /* 2026-11-19: prima si cercava SOLO tra i figli DIRETTI della root
+         * (`rootScope.ChildrenIds`). Se lo scope del namespace finiva annidato — cosa che
+         * succede quando il binder processa più `.inc` con namespace diversi — il namespace
+         * esisteva (e `RegisterSymbol` lo trovava risalendo la gerarchia) ma questo metodo
+         * restituiva 0 procedure. Sintomo: `STATS.GammaCdf(...)` con un secondo `.inc` che
+         * dichiara `GAMMACDF` diventava "simbolo non trovato" (il parser non aveva candidati).
+         * Ora si usa lo stesso indice per-nome che popola `RegisterSymbol`, quindi la risposta
+         * è coerente con `GetNamespaceNameForSymbol` qualunque sia l'annidamento. */
+        var ids = GetSymbolIdsByNamespace(namespaceName);
+        if (ids == null)
         {
-            targetScope = _scopes[0];
-        }
-        else
-        {
-            // Logica esistente per i namespace nominati.
+            // Scope globale (o namespace senza indice): comportamento storico.
             var rootScope = _scopes[0];
-            targetScope = rootScope.ChildrenIds
-                .Select(id => _scopes[id])
-                .FirstOrDefault(s =>
-                    s.Type == ScopeType.Namespace && s.Name.Equals(namespaceName, StringComparison.OrdinalIgnoreCase));
+            var fallbackScope = namespaceName.Equals(GlobalScopeName, StringComparison.OrdinalIgnoreCase)
+                ? rootScope
+                : rootScope.ChildrenIds
+                    .Select(id => _scopes[id])
+                    .FirstOrDefault(s => s.Type == ScopeType.Namespace && s.Name.Equals(namespaceName, StringComparison.OrdinalIgnoreCase));
+            if (fallbackScope == null) return [];
+            return fallbackScope.SymbolsByName.Values
+                .SelectMany(idList => idList)
+                .Select(symbolId => _symbols[symbolId])
+                .Select(symbol => symbol.DeclarationNode)
+                .OfType<ProcedureDefinition>();
         }
 
-        if (targetScope == null)
-        {
-            return [];
-        }
-
-        // La logica di estrazione dei simboli è corretta e rimane invariata.
-        return targetScope.SymbolsByName.Values
-            .SelectMany(idList => idList) // Appiattisce la lista di liste di ID in una singola lista di ID.
+        return ids
             .Select(symbolId => _symbols[symbolId])
             .Select(symbol => symbol.DeclarationNode)
             .OfType<ProcedureDefinition>();

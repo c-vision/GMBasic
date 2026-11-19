@@ -955,7 +955,12 @@ public sealed record UnresolvedCallExpr(
     ImmutableArray<Expr> Arguments,
     DataType ReturnType,
     UnresolvedReason Reason,
-    ImmutableArray<object> Candidates
+    ImmutableArray<object> Candidates,
+    /* Qualificatore della chiamata (`NS.NOME(...)`): il parser risolve le chiamate PRIMA che
+     * gli `.inc` importati siano registrati, quindi `Candidates` può essere vuoto; senza questo
+     * campo il Linker cercava per NOME NUDO e un omonimo in un altro namespace rendeva la
+     * chiamata ambigua ("simbolo non trovato", 2026-11-19). Opzionale per i chiamanti storici. */
+    string? QualifiedNamespace = null
 ) : Expr(Name.Position)
 {
     /// <summary>

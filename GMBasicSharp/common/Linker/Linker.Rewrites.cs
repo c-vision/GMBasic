@@ -3660,7 +3660,20 @@ public static partial class Linker
         var functionName = uce.Name.Lexeme;
         var argsCount = uce.Arguments.Length;
 
-        var candidates = FindProcedureCandidatesInScope(functionName, context, program);
+        var candidates = FindProcedureCandidatesInScope(functionName, context, program).ToList();
+        /* Chiamata QUALIFICATA (`NS.NOME(...)`): il parser ha già perso il namespace (risolve
+         * prima che gli `.inc` siano registrati), quindi qui si filtra per qualificatore. Senza,
+         * un omonimo case-insensitive in un altro namespace rendeva la chiamata ambigua
+         * ("simbolo non trovato", repro 2026-11-19: STATS.GammaCdf + ZZCOLL.GAMMACDF). */
+        if (uce.QualifiedNamespace is { Length: > 0 } qualifiedNs)
+        {
+            var inQualifiedNs = candidates
+                .Where(p => string.Equals(p.DeclaredNamespace, qualifiedNs, StringComparison.OrdinalIgnoreCase)
+                         || string.Equals(program.Symbols.GetNamespaceNameForSymbol(p.SymbolId), qualifiedNs,
+                                          StringComparison.OrdinalIgnoreCase))
+                .ToList();
+            if (inQualifiedNs.Count > 0) candidates = inQualifiedNs;
+        }
         var compatibleCandidates =
             candidates.Where(p => SymbolTable.IsProcedureSignatureCompatible(p, argsCount)).ToList();
 
@@ -3760,7 +3773,7 @@ public static partial class Linker
         if (uce.Reason is not UnresolvedReason.FunctionNotFound and not UnresolvedReason.BuiltinNamespaceNotImported
             and not UnresolvedReason.AmbiguousBuiltinFunctions and not UnresolvedReason.AmbiguousUserFunctions
             and not UnresolvedReason.AmbiguousUserAndBuiltinFunction)
-            return new UnresolvedCallExpr(uce.Name, standardRewrittenArgs, uce.ReturnType, uce.Reason, uce.Candidates)
+            return new UnresolvedCallExpr(uce.Name, standardRewrittenArgs, uce.ReturnType, uce.Reason, uce.Candidates, uce.QualifiedNamespace)
                 { ScopeId = uce.ScopeId };
 
         throw CreateError(uce.Name, UnresolvedCallDiagnostics.Build(uce, CandidateNamespaces(uce, program)));
