@@ -16,6 +16,7 @@
  * ============================================================================ */
 
 #include "gmb_ml.h"
+#include "gmb_ncm.hpp"
 
 #include <torch/torch.h>
 #include <ATen/ops/svd.h>   /* L3c PiSSA: at::linalg_svd (torch::linalg non esposto in questa build) */
@@ -1922,6 +1923,51 @@ GMB_ML_API double gmb_ml_accuracy(int64_t y, int64_t yhat)
         return torch::sum(pred.eq(truth).to(torch::kDouble)).item<double>() / (double)truth.numel();
     }
     catch (...) { return 0.0; }
+}
+
+/* ── NCM ─────────────────────────────────────────────────────────────────── */
+static std::map<int64_t, std::unique_ptr<gmb::Ncm>> g_ncm;
+
+GMB_ML_API int64_t gmb_ml_ncm_load(const char* generator_pt, const char* tokenizer_pt, const char* vocab_txt, int device)
+{
+    try
+    {
+        auto m = std::make_unique<gmb::Ncm>();
+        m->load(generator_pt ? generator_pt : "", tokenizer_pt ? tokenizer_pt : "", vocab_txt ? vocab_txt : "", g_dev(device));
+        std::lock_guard<std::mutex> lk(g_lock);
+        int64_t h = g_next_handle++;
+        g_ncm[h] = std::move(m);
+        return h;
+    }
+    catch (const std::exception& e) { gml_err(std::string("ncm_load: ") + e.what()); return 0; }
+}
+
+GMB_ML_API void gmb_ml_ncm_free(int64_t h)
+{
+    std::lock_guard<std::mutex> lk(g_lock);
+    g_ncm.erase(h);
+}
+
+GMB_ML_API int gmb_ml_ncm_generate(int64_t h, int n, int64_t seed, char* out, int cap)
+{
+    gmb::Ncm* m = nullptr;
+    { std::lock_guard<std::mutex> lk(g_lock); auto it = g_ncm.find(h); if (it != g_ncm.end()) m = it->second.get(); }
+    if (!m || n <= 0 || !out || cap <= 0) { gml_err("ncm_generate: argomenti non validi"); return -1; }
+    try
+    {
+        if (seed >= 0) torch::manual_seed((uint64_t)seed);
+        std::string all;
+        for (auto& s : m->generate_text(n, gmb::NcmOptions{}))
+        {
+            std::string t = s;
+            for (auto& c : t) if (c == '\n') c = ' ';
+            all += t; all += '\n';
+        }
+        int len = (int)std::min<size_t>(all.size(), (size_t)cap - 1);
+        std::memcpy(out, all.data(), (size_t)len); out[len] = 0;
+        return len;
+    }
+    catch (const std::exception& e) { gml_err(std::string("ncm_generate: ") + e.what()); return -1; }
 }
 
 } /* extern "C" */

@@ -157,6 +157,13 @@ GMB_ML_API int64_t gmb_ml_model_forward(int64_t model, int64_t input);
 GMB_ML_API int64_t gmb_ml_model_parameters(int64_t model);   /* conteggio parametri */
 GMB_ML_API int     gmb_ml_model_state(int64_t model, char* out, int cap); /* JSON */
 
+/* NCM (Next-Concept Modeling, arXiv 2610.14162): generazione di testo non condizionata con checkpoint HazyResearch/ncm
+ * (LM1B small). device: GMB_ML_DEV_*. Ritorna un handle (>0) o 0 (gmb_ml_last_error). */
+GMB_ML_API int64_t gmb_ml_ncm_load(const char* generator_pt, const char* tokenizer_pt, const char* vocab_txt, int device);
+GMB_ML_API void    gmb_ml_ncm_free(int64_t h);
+/* Genera n testi (seed >= 0 fissa il generatore casuale) e li scrive in out separati da '\n'. Ritorna i byte scritti, -1 su errore. */
+GMB_ML_API int     gmb_ml_ncm_generate(int64_t h, int n, int64_t seed, char* out, int cap);
+
 #ifdef __cplusplus
 }
 #endif
