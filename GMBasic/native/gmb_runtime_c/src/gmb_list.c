@@ -719,6 +719,33 @@ gmb_double_t* gmb_list_to_doubles_array(gmb_list_t l, gmb_int_t* len_out)
     return out;
 }
 
+/* Ponte LISTA -> ARRAY numerico per gli ARGOMENTI array dei SUB/FUNCTION (C99Native).
+ * In questo backend i byte "grezzi" possono vivere in una gmb_list_t (es.
+ * `DIM b() AS BYTE : b = IO.READBYTES(p)`): per passarli a un parametro `arr()` serve un
+ * `gmb_double_t*`. Come gmb_bytes_as_doubles: buffer a ROTAZIONE, nessuna allocazione da
+ * liberare dal chiamante (vita valida per l'espressione che lo usa). Prima l'argomento
+ * veniva rifiutato ("l'argomento N non è un array", 2026-11-19). */
+#define GMB_LIST_AS_DOUBLES_SLOTS 8
+const gmb_double_t* gmb_list_as_doubles(gmb_list_t l, gmb_int_t* len_out)
+{
+    static gmb_double_t* buf[GMB_LIST_AS_DOUBLES_SLOTS];
+    static size_t cap[GMB_LIST_AS_DOUBLES_SLOTS];
+    static int slot = 0;
+    int i = slot;
+    slot = (slot + 1) % GMB_LIST_AS_DOUBLES_SLOTS;
+    size_t n = l.count;
+    if (n + 1 > cap[i]) {
+        gmb_double_t* nb = (gmb_double_t*)realloc(buf[i], (n + 1) * sizeof(gmb_double_t));
+        if (!nb) { if (len_out) *len_out = 0; return buf[i]; }
+        buf[i] = nb;
+        cap[i] = n + 1;
+    }
+    for (size_t k = 0; k < n; k++)
+        buf[i][k] = (gmb_double_t)gmb_list_elem_to_int(l.items[k]);
+    if (len_out) *len_out = (gmb_int_t)n;
+    return buf[i];
+}
+
 gmb_string_t* gmb_list_to_strings_array(gmb_list_t l, gmb_int_t* len_out)
 {
     gmb_string_t* out = (gmb_string_t*)calloc(l.count ? l.count : 1, sizeof(gmb_string_t));

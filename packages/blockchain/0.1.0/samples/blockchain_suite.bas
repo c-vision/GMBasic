@@ -14,6 +14,7 @@
 
 REQUIRE "blockchain"
 IMPORT BLOCKCHAIN
+REQUIRE "crypto"
 IMPORT CRYPTOGRAPHY
 IMPORT STRINGS
 
@@ -23,16 +24,19 @@ SUB Main()
     ' dimensionato dal chiamante (32 byte Keccak/BLAKE2b, 20 byte RIPEMD-160).
     ' Input "hello" = 0x68656c6c6f.
     PRINT "== hashing =="
-    DIM msg() AS BYTE = FROMHEX("68656c6c6f")
+    ' Derivatori: FROMHEX(testo, out()) riempie un array BYTE e ritorna la lunghezza;
+    ' l'esadecimale di un array si rende con BYTESHEX(a()).
+    DIM msg(4) AS BYTE
+    DIM nMsg AS LONG = FROMHEX("68656c6c6f", msg)
     DIM hk(31) AS BYTE
     DIM hr(19) AS BYTE
     DIM hb(31) AS BYTE
     KECCAK256(msg, hk)          ' hash Ethereum/ABI (32 byte)
     RIPEMD160(msg, hr)          ' 20 byte, storicamente usato da Bitcoin
     BLAKE2B256(msg, hb)         ' 32 byte, alternativo veloce
-    PRINT "keccak256   = "; TOHEX(hk)
-    PRINT "ripemd160   = "; TOHEX(hr)
-    PRINT "blake2b256  = "; TOHEX(hb)
+    PRINT "keccak256   = "; BYTESHEX(hk)
+    PRINT "ripemd160   = "; BYTESHEX(hr)
+    PRINT "blake2b256  = "; BYTESHEX(hb)
 
     ' ── 2. ENCODING ────────────────────────────────────────────────────────────
     ' Base58 (Bitcoin) e Base32: encode ritorna STRING, decode riempie un buffer
@@ -40,17 +44,17 @@ SUB Main()
     PRINT "== encoding =="
     PRINT "base58      = "; BASE58ENCODE(msg)
     DIM dec(63) AS BYTE
-    PRINT "base58 dec  = "; TOHEX(dec); " -> "; BASE58DECODE(BASE58ENCODE(msg), dec); TOHEX(dec)
+    PRINT "base58 dec  = "; BYTESHEX(dec); " -> "; BASE58DECODE(BASE58ENCODE(msg), dec); BYTESHEX(dec)
     PRINT "base32      = "; BASE32ENCODE(msg)
-    PRINT "base32 dec  = "; BASE32DECODE(BASE32ENCODE(msg), dec); TOHEX(dec)
+    PRINT "base32 dec  = "; BASE32DECODE(BASE32ENCODE(msg), dec); BYTESHEX(dec)
 
     ' RLP (Ethereum): codifica una sequenza di byte con la lunghezza in prefisso.
     DIM rlp(63) AS BYTE
-    PRINT "rlp         = "; RLPENCODE(msg, rlp); TOHEX(rlp)
+    PRINT "rlp         = "; RLPENCODE(msg, rlp); BYTESHEX(rlp)
 
     ' VARINT (Bitcoin): interi a lunghezza variabile; decode ritorna il valore LONG.
     DIM vi(15) AS BYTE
-    PRINT "varint 150  = "; VARINTENCODE(150, vi); TOHEX(vi); " -> "; VARINTDECODE(vi)
+    PRINT "varint 150  = "; VARINTENCODE(150, vi); BYTESHEX(vi); " -> "; VARINTDECODE(vi)
 
     ' ── 3. CHIAVI E INDIRIZZI ──────────────────────────────────────────────────
     ' Chiave privata = 32 byte; 1 è la chiave del generatore G (facile da verificare).
@@ -78,10 +82,10 @@ SUB Main()
     PRINT "== HD wallet =="
     DIM seed(63) AS BYTE
     PRINT "seed bytes  = "; MNEMONICTOSEED("abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about", "TREZOR", seed)
-    PRINT "seed sha    = "; TOHEX(seed)
+    PRINT "seed sha    = "; BYTESHEX(seed)
     DIM hd(96) AS BYTE
     PRINT "hd bytes    = "; DERIVEKEY(seed, "", hd)
-    PRINT "master priv = "; TOHEX(hd)
+    PRINT "master priv = "; BYTESHEX(hd)
 
     ' GENERATEMNEMONIC è casuale: verifichiamo la FORMA (12 parole), non il testo.
     DIM m$ AS STRING
@@ -98,18 +102,20 @@ SUB Main()
     ' Firma DER di un hash SHA-256 già calcolato. ECDSA è randomizzata: sono
     ' deterministici solo il prefisso DER 0x30 e la lunghezza (68..72 byte).
     PRINT "== firma =="
-    DIM hash() AS BYTE = FROMHEX("00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff")
+    DIM hash(31) AS BYTE
+    DIM nHash AS LONG = FROMHEX("00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff", hash)
     DIM sig(79) AS BYTE
     DIM siglen AS LONG
     siglen = SECP256K1SIGN(hash, priv, sig)
-    PRINT "sig prefix  = 0x"; LEFT$(TOHEX(sig), 2)
+    PRINT "sig prefix  = 0x"; LEFT$(BYTESHEX(sig), 2)
     PRINT "sig len >=68= "; (siglen >= 68)
 
     ' ── 6. DIFFICOLTÀ DI BLOCCO ───────────────────────────────────────────────
     ' BLOCKDIFFICULTY(header, bits) = target / hash dell'header, dove `bits` è
     ' l'intero compatto nBits (0x20FFFFFF = 553648127). Header tutto a zero.
     PRINT "== difficoltà =="
-    DIM hdr() AS BYTE = FROMHEX("0000000000000000000000000000000000000000000000000000000000000000")
+    DIM hdr(31) AS BYTE
+    DIM nHdr AS LONG = FROMHEX("0000000000000000000000000000000000000000000000000000000000000000", hdr)
     PRINT "difficulty  = "; BLOCKDIFFICULTY(hdr, 553648127)
 
     ' ── 7. ABI EVM ────────────────────────────────────────────────────────────

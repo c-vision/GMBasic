@@ -10431,6 +10431,26 @@ static void emit_arr_call_arg(ctx_t* c, fn_info_t* fn, int i, gmb_expr_t* arg, i
         emit_arr_arg_lowers(c, fn, i, NULL);
         return;
     }
+    /* LISTA (gmb_list_t) passata a un parametro array: nel backend C i byte di
+     * IO.READBYTES vivono in una lista (`tk_returns_list`), quindi `DIM b() AS BYTE :
+     * b = READBYTES(p)` resta una lista. Senza questa conversione l'argomento veniva
+     * rifiutato ("l'argomento N non è un array") mentre IL/PCode/VM-C lo accettano. */
+    if (tv && tv->gkind == GK_LIST && !tv->boxed_val && !tv->vclass[0] && !tv->elem_str) {
+        var_t* pv_l = vars_find(&fn->locals, fn->stmt->func_params[i]);
+        if (pv_l && pv_l->arr_byref) {
+            c99_fail(c, line,
+                     "%s: una lista non puo' essere passata a un parametro array BYREF/REDIM",
+                     fn->stmt->func_name);
+            return;
+        }
+        sb_put(&c->out, "gmb_list_as_doubles(");
+        emit_ident(c, tv->name);
+        sb_put(&c->out, ", NULL), (gmb_int_t)(gmb_list_count(");
+        emit_ident(c, tv->name);
+        sb_put(&c->out, ") - 1)");
+        emit_arr_arg_lowers(c, fn, i, NULL);
+        return;
+    }
     if (!tv || !tv->is_array) {
         c99_fail(c, line, "%s: l'argomento %d non è un array", fn->stmt->func_name, i + 1);
         return;

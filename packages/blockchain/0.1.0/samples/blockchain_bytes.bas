@@ -2,6 +2,7 @@
 ' I buffer di uscita li dimensiona il chiamante; i wrapper deducono le lunghezze con UBOUND.
 REQUIRE "blockchain"
 IMPORT BLOCKCHAIN WITH ALIAS
+REQUIRE "crypto"
 IMPORT CRYPTOGRAPHY
 
 SUB Main()
@@ -10,18 +11,19 @@ SUB Main()
   d(0) = 97 : d(1) = 98 : d(2) = 99
   DIM h(31) AS BYTE
   BLOCKCHAIN.KECCAK256(d, h)
-  PRINT "keccak="; CRYPTOGRAPHY.TOHEX(h)
+  PRINT "keccak="; CRYPTOGRAPHY.BYTESHEX(h)
 
   ' chiave privata 1 -> G compresso (33 byte)
   DIM priv(31) AS BYTE
   priv(31) = 1
   DIM pub(32) AS BYTE
   PRINT "publen="; BLOCKCHAIN.GETPUBLICKEY(priv, pub)
-  PRINT "pub="; CRYPTOGRAPHY.TOHEX(pub)
+  PRINT "pub="; CRYPTOGRAPHY.BYTESHEX(pub)
 
   ' indirizzo ETH dalla chiave NON compressa (la funzione hasha i byte ricevuti)
-  DIM full() AS BYTE = CRYPTOGRAPHY.FROMHEX("0479be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798" + _
-                                             "483ada7726a3c4655da4fbfc0e1108a8fd17b448a68554199c47d08ffb10d4b8")
+  DIM full(64) AS BYTE
+  DIM nFull AS LONG = CRYPTOGRAPHY.FROMHEX("0479be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798" + _
+                                             "483ada7726a3c4655da4fbfc0e1108a8fd17b448a68554199c47d08ffb10d4b8", full)
   DIM addr$ AS STRING
   addr$ = BLOCKCHAIN.ETHADDRFROMPUB(full)
   PRINT "eth="; addr$
@@ -33,6 +35,6 @@ SUB Main()
   ' varint 300 = AC 02
   DIM v(1) AS BYTE
   PRINT "vlen="; BLOCKCHAIN.VARINTENCODE(300, v)
-  PRINT "vhex="; CRYPTOGRAPHY.TOHEX(v)
+  PRINT "vhex="; CRYPTOGRAPHY.BYTESHEX(v)
   PRINT "vback="; BLOCKCHAIN.VARINTDECODE(v)
 END SUB

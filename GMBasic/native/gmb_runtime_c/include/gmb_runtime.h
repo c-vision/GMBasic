@@ -276,6 +276,9 @@ gmb_list_t gmb_list_from_strings(const gmb_string_t* arr, gmb_int_t n);
  * risultato di AMAP/AFILTER a un array BASIC (DIM x() = AMAP(...)). */
 gmb_int_t* gmb_list_to_ints_array(gmb_list_t l, gmb_int_t* len_out);
 gmb_double_t* gmb_list_to_doubles_array(gmb_list_t l, gmb_int_t* len_out);
+/* Come sopra ma con buffer a ROTAZIONE (nessun free dal chiamante): serve agli argomenti
+ * array dei SUB/FUNCTION generati dal C99Native per una variabile gmb_list_t. */
+const gmb_double_t* gmb_list_as_doubles(gmb_list_t l, gmb_int_t* len_out);
 /* Lista di STRINGHE → array C di gmb_string_t (deep-copy dei buffer). Per le comprehension
  * lista con sorgente/elementi stringa (`DIM up = [ n FOR n IN names ]`). */
 gmb_string_t* gmb_list_to_strings_array(gmb_list_t l, gmb_int_t* len_out);
