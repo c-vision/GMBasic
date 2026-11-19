@@ -14,6 +14,8 @@ published when finished. The REPL's own `IDE` command (`REPL/ide.c`, shared logi
 
 | Area | What is missing |
 |---|---|
+| Test pipeline | **C first**: `tools/sh/c99_emit_gate.sh` (every `.bas` must emit on C99) and `tools/sh/test_c99_first.sh` (gate → native run → optional parity) are the entry points; the C# suite runs `C99Emission.Require` before every sample test. Full-corpus 4-leg parity is run by hand (`--all`), not yet in CI. |
+| C99Native gaps | Nested indexed assignment `a[i][j] = v` is rejected with an explicit error (workaround: `DIM t = a[i]` then `t[j] = v`). |
 | Single C REPL | The C REPL must drive the **C compiler** through its options and keep every function of the C world; `GMBasicSharp` must remain optional and removable. |
 | C# engine | Decide whether `GMBasicSharp` is deprecated. It is the **independent oracle** of the cross-leg parity suite, so deprecating it means rewriting that suite in C. |
 | Release | RIDs `osx-x64`, `linux-x64`, `linux-arm64` (the CI already builds and gates them); `win-*` wait for the POSIX port the compiled groups need. `gmbcs` is not shipped. |
