@@ -75,6 +75,12 @@ HOST_BUILD="$ROOT/native/gmb_compiler_c/build"
 INC_C="-I$ROOT/native/gmb_compiler_c/include -I$ROOT/native/gmb_compiler_c/frontend/include"
 INC_C="$INC_C -I$ROOT/native/gmb_bytecode/include -I$ROOT/native/gmb_c99native/include"
 INC_RT="-I$ROOT/native/gmb_runtime_c/include"
+# Dipendenze di HEADER del runtime introdotte dal motore 3D (2026-11-19): `gmb_3d_internal.h`
+# include `gm_gfx_sector.h` da shared/libs/graphics/include, e il runtime usa compute/include.
+# La build CMake le ha gia' nei target_include_directories; il runner compila il runtime con
+# flag propri e senza queste due -I ricostruiva un archivio FALLITO (poi ogni leg VMC/nativa
+# moriva con "rebuild FALLITO"). Stessa lista di `gmb_link_set.sh`.
+INC_RT="$INC_RT -I$ROOT/../shared/libs/compute/include -I$ROOT/../shared/libs/graphics/include -I$ROOT/../shared/libs/math/include"
 INC_CHART="$ROOT/native/gmb_chart/include"
 DRV="$HOST_BUILD/gmbnative"
 # gmb_chart = motore chart autonomo (native/gmb_chart): compilato insieme al runtime.
