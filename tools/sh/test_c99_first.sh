@@ -18,6 +18,10 @@
 #   tools/sh/test_c99_first.sh --samples          # gate sui sample (non solo minitest)
 #   tools/sh/test_c99_first.sh --jobs 8
 #
+# NB su `--only`: il GATE filtra per COMPONENTE di path ("io/" prende solo minitests/io/…),
+# il runner nativo per SOTTOSTRINGA (può eseguire qualche file in più: innocuo, sono comunque
+# MiniTest sulla gamba C).
+#
 # USCITA: 0 = tutte le fasi verdi; 1 = fallita una fase (il messaggio dice quale).
 set -u
 DIR="$(cd "$(dirname "$0")" && pwd)"
