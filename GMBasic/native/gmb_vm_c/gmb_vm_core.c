@@ -11291,7 +11291,13 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                     }
                     if (!isKeyStr) { snprintf(keybuf, sizeof(keybuf), "%.15g", indices[0]); keyStr = keybuf; }
                     gmb_val_t v = gmb_dict_get(*dod->dict, keyStr);
-                    gmb_stack_entry_t s = valToStack(v);
+                    /* Un valore DICT/LISTA dentro un dict è un RIFERIMENTO (IL/PCode/C:
+                     * `t = g["k"]` e una scrittura su `t` si vede nel padre). Prima
+                     * valToStack (non-REF) COPAVA il contenitore: `t["x"] = v` scriveva su
+                     * una copia e il dato andava perso in silenzio (MiniTest
+                     * json/dict_nested_write, che su VM/C rendeva vuoto). */
+                    gmb_stack_entry_t s = (op == OP_LOAD_ELEMENT_REF) ? valToStack(v)
+                                                                     : gmb_adapter_val_to_stack_ref(v);
                     if (s.type == 2 && s.ref) push_ref_new(task, s.ref, s.basic_type);
                     else if (s.type == 1) push_num_entry(task, s.num, s.basic_type);
                     else push_nil(task);

@@ -2804,7 +2804,17 @@ static int tg_zeros(ctx_t* c, gmb_expr_t** a, int n){ if(n<2)return 0; sb_put(&c
 static int tg_ones(ctx_t* c, gmb_expr_t** a, int n){ if(n<2)return 0; sb_put(&c->out,"gmb_ml_tensor_ones((int)("); emit_expr(c,a[0]); sb_put(&c->out,"), (int)("); emit_expr(c,a[1]); sb_put(&c->out,"), gmb_ml_active_device())"); return 1; }
 static int tg_eye(ctx_t* c, gmb_expr_t** a, int n){ if(n<1)return 0; sb_put(&c->out,"gmb_ml_tensor_eye((int)("); emit_expr(c,a[0]); sb_put(&c->out,"), gmb_ml_active_device())"); return 1; }
 static int tg_randn(ctx_t* c, gmb_expr_t** a, int n){ if(n<2)return 0; sb_put(&c->out,"gmb_ml_tensor_randn((int)("); emit_expr(c,a[0]); sb_put(&c->out,"), (int)("); emit_expr(c,a[1]); sb_put(&c->out,"), gmb_ml_active_device())"); return 1; }
-static int tg_from(ctx_t* c, gmb_expr_t** a, int n){ if(n<1||a[0]->kind!=GMB_EXPR_VAR)return 0; var_t* v=lookup_var(c,a[0]->var); if(!v||!v->is_array)return 0;
+static int tg_from(ctx_t* c, gmb_expr_t** a, int n){ if(n<1)return 0;
+    /* Letterale `{1, 2, 3, 4}` (parser: CALL "_array_"): tensore 1-D dal compound literal.
+     * Prima solo una VARIABILE array era accettata → `TORCH.FROM({...})` (usato in
+     * samples/Torch/TorchAll.bas) finiva in "funzione non definita". */
+    if (a[0] && a[0]->kind == GMB_EXPR_CALL && a[0]->var && strcmp(a[0]->var, "_array_") == 0) {
+        sb_printf(&c->out, "gmb_ml_tensor_from(1, %d, (gmb_double_t[]){ ", a[0]->nargs);
+        for (int i = 0; i < a[0]->nargs; i++) { if (i) sb_put(&c->out, ", "); emit_expr(c, a[0]->args[i]); }
+        sb_put(&c->out, " }, gmb_ml_active_device())");
+        return 1;
+    }
+    if(a[0]->kind!=GMB_EXPR_VAR)return 0; var_t* v=lookup_var(c,a[0]->var); if(!v||!v->is_array)return 0;
     /* Valore matrice (DIM m(r,c) rank-2 DOUBLE): descrittore gmb_matrix_t, non double*.
      * ensure_flat materializza il buffer contiguo row-major e il conteggio sono rows*cols. */
     if (v->matrix_value) {

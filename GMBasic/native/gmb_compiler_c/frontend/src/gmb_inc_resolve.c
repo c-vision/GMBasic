@@ -396,8 +396,9 @@ static void add_json_list(const char* json, const char* key, PathList* out) {
 /* Carica i settings che governano la RISOLUZIONE. Ordine e semantica di
  * SettingsManager.LoadSettings: l'unione per importFolders (system + app), app vince
  * sugli importFiles, `compiler.searchFolders` dell'app SOSTITUISCE quello di sistema. */
-static void settings_load(const char* project_dir, ResolveSettings* s) {
+static void settings_load(const char* project_dir, ResolveSettings* s, char* out_pbase, size_t pbase_cap) {
     memset(s, 0, sizeof *s);
+    if (out_pbase && pbase_cap) out_pbase[0] = 0;
     char proj[IR_PATH];
     if (project_dir && *project_dir) canon_path(project_dir, proj, sizeof proj);
     else proj[0] = 0;
@@ -436,11 +437,33 @@ static void settings_load(const char* project_dir, ResolveSettings* s) {
         free(sysjson);
     }
 
-    /* app.settings.json: accanto al programma. */
+    /* app.settings.json: ACCANTO AL PROGRAMMA o RISALENDO (project-file discovery, come
+     * l'Orchestrator C#). Prima si guardava solo la cartella del file: un programma in una
+     * sottocartella (es. samples/Modules/FolderResolution/chain/Chain.bas) non vedeva il
+     * progetto e perdeva importFiles/searchFolders. */
     char apppath[IR_PATH];
-    if (proj[0]) snprintf(apppath, sizeof apppath, "%s/app.settings.json", proj);
-    else snprintf(apppath, sizeof apppath, "app.settings.json");
+    apppath[0] = 0;
+    if (proj[0]) {
+        char cur[IR_PATH];
+        snprintf(cur, sizeof cur, "%s", proj);
+        for (;;) {
+            char cand[IR_PATH];
+            snprintf(cand, sizeof cand, "%s/app.settings.json", cur);
+            if (is_file(cand)) { snprintf(apppath, sizeof apppath, "%s", cand); break; }
+            char* slash = strrchr(cur, '/');
+            if (!slash || slash == cur) break;
+            *slash = 0;
+        }
+    } else {
+        snprintf(apppath, sizeof apppath, "app.settings.json");
+    }
     char* appjson = is_file(apppath) ? read_all(apppath, NULL) : NULL;
+    /* BASE DEL PROGETTO per `{project}` e per i path relativi: la cartella dove sta
+     * l'app.settings.json trovato (anche risalendo), non quella del singolo file. */
+    if (out_pbase && pbase_cap) {
+        if (appjson && apppath[0]) dir_of(apppath, out_pbase, pbase_cap);
+        else snprintf(out_pbase, pbase_cap, "%s", proj);
+    }
     if (appjson) {
         add_json_list(appjson, "importFolders", &s->import_folders);
         add_json_list(appjson, "importFiles", &s->import_files);
@@ -789,28 +812,35 @@ static void discovery_build_at(Discovery* d, const char* project_dir, const char
     char install[4096]; install[0] = 0;
     (void)ir_root(install, sizeof install);
     ResolveSettings st;
-    settings_load(proj, &st);
+    char pbase[IR_PATH]; pbase[0] = 0;
+    settings_load(proj, &st, pbase, sizeof pbase);
+    if (!pbase[0]) snprintf(pbase, sizeof pbase, "%s", proj);
 
     /* 1. radice del programma, ricorsiva */
     if (proj[0]) discover_dir(d, proj, 0, 0);
 
-    /* 2. importFolders (relative al progetto e alla root dell'install) + importFiles */
+    /* 2. importFolders (relative al progetto e alla root dell'install) + importFiles.
+     * PRIMA ESISTENTE VINCE (come resolve_search_dir): prima si scandivano ENTRAMBE, e una
+     * voce `../shared` relativa al progetto (es. samples/Modules/FolderResolution →
+     * samples/Modules/shared) esisteva anche rispetto all'install (<monorepo>/shared) →
+     * la discovery scandiva TUTTO l'albero shared (2048 candidati, cap raggiunto) e i
+     * namespace dei file del progetto non venivano più raggiunti. */
     for (int i = 0; i < st.import_folders.n; i++) {
         const char* f = st.import_folders.items[i];
         char buf[IR_PATH];
-        expand_placeholders(f, proj, install, buf, sizeof buf);
+        expand_placeholders(f, pbase, install, buf, sizeof buf);
         char dir[IR_PATH];
-        if (proj[0] && (snprintf(dir, sizeof dir, "%s/%s", proj, buf), is_dir(dir)))
+        if (pbase[0] && (snprintf(dir, sizeof dir, "%s/%s", pbase, buf), is_dir(dir)))
             discover_dir(d, dir, 0, 0);
-        if (install[0] && (snprintf(dir, sizeof dir, "%s/%s", install, buf), is_dir(dir)))
+        else if (install[0] && (snprintf(dir, sizeof dir, "%s/%s", install, buf), is_dir(dir)))
             discover_dir(d, dir, 0, 0);
     }
     for (int i = 0; i < st.import_files.n; i++) {
         const char* f = st.import_files.items[i];
         char buf[IR_PATH];
-        expand_placeholders(f, proj, install, buf, sizeof buf);
+        expand_placeholders(f, pbase, install, buf, sizeof buf);
         char file[IR_PATH];
-        if (proj[0] && (snprintf(file, sizeof file, "%s/%s", proj, buf), is_file(file)))
+        if (pbase[0] && (snprintf(file, sizeof file, "%s/%s", pbase, buf), is_file(file)))
             discovery_add(d, file, 0);
         else if (install[0] && (snprintf(file, sizeof file, "%s/%s", install, buf), is_file(file)))
             discovery_add(d, file, 0);
@@ -818,7 +848,7 @@ static void discovery_build_at(Discovery* d, const char* project_dir, const char
 
     /* 3. cartelle di ricerca del compilatore: shadowing per nome delle sorgenti locali */
     for (int i = 0; i < st.search_folders.n; i++)
-        add_search_entry(d, st.search_folders.items[i], proj, install, 1);
+        add_search_entry(d, st.search_folders.items[i], pbase, install, 1);
 
     /* La entry è sempre un candidato, anche se vive fuori dalla radice del programma. */
     if (entry_path && *entry_path && !discovery_has_path(d, entry_path))
@@ -875,6 +905,35 @@ char** gmb_resolve_module_files(const char* input_path, int* out_n) {
     visit_file(&d, input_path, &order, &done);
     pl_free(&done);
     discovery_free(&d);
+
+    /* PROJECT FILES (O7): gli `importFiles` dei settings sono SORGENTI DEL PROGRAMMA
+     * (compilate SEMPRE, come fa l'Orchestrator C#), non soltanto candidati per la discovery
+     * dei namespace. Prima venivano letti e usati solo come candidati: un programma che
+     * mette una funzione in un file elencato in importFiles non la risolveva
+     * ("DeepOrigin/PinnedOrigin non definite" — samples/Modules/FolderResolution). */
+    {
+        char proj[IR_PATH]; dir_of(input_path, proj, sizeof proj);
+        char install[4096]; install[0] = 0;
+        (void)ir_root(install, sizeof install);
+        ResolveSettings st;
+        char pbase[IR_PATH]; pbase[0] = 0;
+        settings_load(proj, &st, pbase, sizeof pbase);
+        if (!pbase[0]) snprintf(pbase, sizeof pbase, "%s", proj);
+        for (int i = 0; i < st.import_files.n; i++) {
+            char buf[IR_PATH];
+            expand_placeholders(st.import_files.items[i], pbase, install, buf, sizeof buf);
+            char file[IR_PATH];
+            int found = 0;
+            if (pbase[0] && (snprintf(file, sizeof file, "%s/%s", pbase, buf), is_file(file))) found = 1;
+            else if (install[0] && (snprintf(file, sizeof file, "%s/%s", install, buf), is_file(file))) found = 1;
+            if (found) {
+                char canon[IR_PATH];
+                canon_path(file, canon, sizeof canon);
+                if (strcmp(canon, entry) != 0) pl_add(&order, canon);
+            }
+        }
+        settings_free(&st);
+    }
 
     int n = 0;
     for (int i = 0; i < order.n; i++) if (strcmp(order.items[i], entry) != 0) n++;

@@ -8297,6 +8297,39 @@ static int emit_builtin(ctx_t* c, const char* name, const char* ns, gmb_tokenkin
      * al dominio graphics per TokenKind (regola d'oro: mai per lexeme del membro). */
     if (tk == GMB_TOK_Create && ns && strcasecmp(ns, "CHART") == 0)
         return emit_bf_graphics(c, name, ns, GMB_TOK_ChartCreate, args, nargs, line);
+    /* TORCH.<membro>: la MEMBER-TABLE è globale per GRAFIA, quindi alcuni nomi del dominio
+     * TORCH non producono il TokenKind TORCH (FROM/SUM/GET/SET collidono con RDD o con i
+     * metodi delle collezioni). Qui si risolve il membro DENTRO il namespace TORCH e si
+     * instrada a emit_bf_torch col TokenKind TORCH corretto. Eccezione circoscritta al
+     * namespace (§12: il nome vale solo dove il TokenKind non arriva). */
+    {
+        const char* tns = (ns && ns[0]) ? ns : NULL;
+        const char* memb = name;
+        if (!tns && name && strncasecmp(name, "TORCH.", 6) == 0) { tns = "TORCH"; memb = name + 6; }
+        if (tns && strcasecmp(tns, "TORCH") == 0 && memb && memb[0]) {
+        static const struct { const char* n; gmb_tokenkind_t tk; } tn[] = {
+            { "FROM", GMB_TOK_TorchFrom }, { "SUM", GMB_TOK_TorchSum }, { "MEAN", GMB_TOK_TorchMean },
+            { "GET", GMB_TOK_TorchGet }, { "SET", GMB_TOK_TorchSet }, { "ADD", GMB_TOK_TorchAdd },
+            { "SUB", GMB_TOK_TorchSub }, { "MUL", GMB_TOK_TorchMul }, { "DIV", GMB_TOK_TorchDiv },
+            { "MATMUL", GMB_TOK_TorchMatmul }, { "RELU", GMB_TOK_TorchRelu }, { "EXP", GMB_TOK_TorchExp },
+            { "LOG", GMB_TOK_TorchLog }, { "SQRT", GMB_TOK_TorchSqrt }, { "ABS", GMB_TOK_TorchAbs },
+            { "POW", GMB_TOK_TorchPow }, { "TANH", GMB_TOK_TorchTanh }, { "SIGMOID", GMB_TOK_TorchSigmoid },
+            { "SOFTMAX", GMB_TOK_TorchSoftmax }, { "ZEROS", GMB_TOK_TorchZeros }, { "ONES", GMB_TOK_TorchOnes },
+            { "EYE", GMB_TOK_TorchEye }, { "RANDN", GMB_TOK_TorchRandn }, { "SHAPE", GMB_TOK_TorchShape },
+            { "RESHAPE", GMB_TOK_TorchReshape }, { "TRANSPOSE", GMB_TOK_TorchTranspose },
+            { "TOARRAY", GMB_TOK_TorchToArray }, { "MAX", GMB_TOK_TorchMax }, { "MIN", GMB_TOK_TorchMin },
+            { "SLICE", GMB_TOK_TorchSlice }, { "STACK", GMB_TOK_TorchStack }, { "SPLIT", GMB_TOK_TorchSplit },
+            { "CONCAT", GMB_TOK_TorchConcat }, { "GELU", GMB_TOK_TorchGelu }, { "PERMUTE", GMB_TOK_TorchPermute },
+            { "ARGMAX", GMB_TOK_TorchArgmax }, { "DTYPE", GMB_TOK_TorchDtype },
+            { "DEVICEOF", GMB_TOK_TorchDeviceOf }, { "ALLCLOSE", GMB_TOK_TorchAllclose },
+            { "MODELLOSS", GMB_TOK_TorchModelLoss }, { "MODELTRAINSTEP", GMB_TOK_TorchModelTrainStep },
+            { NULL, 0 }
+        };
+        for (int i = 0; tn[i].n; i++)
+            if (strcasecmp(memb, tn[i].n) == 0)
+                return emit_bf_torch(c, memb, tns, tn[i].tk, args, nargs, line);
+        }
+    }
     /* _nilprop_(base, "Campo") — c?.Campo (null-conditional member access, parser
      * gmb_parser_expressions.c, subito prima della catena dotted-string): base è un
      * gmb_val_t (var NULLABLE, es. `DIM c AS Contatto?`). NIL → gmb_val_nil() (stampa
@@ -27212,6 +27245,61 @@ static void emit_ai_domain_role(ctx_t* c, gmb_expr_t* e) {
  * LIST | SEARCH cap | MARKETPLACE LIST/GET name | POLICY SET/GET | SECRET SET/GET | AUTH |
  * REGISTER | UNREGISTER | LOAD | ENABLE | DISABLE | STATUS | CALL | REFRESH | TOOLS |
  * RESOURCES | PROMPTS. Result scartato (statement); runtime condiviso gmb_connector_*. */
+/* TORCH <verbo> — statement di dominio. Parità con VM/C (vm_sys_torch_354..358):
+ *   TORCH SET DEVICE <nome>  → gmb_ml_set_active_device_name
+ *   TORCH LOAD LIB [<dir>]   → gmb_ml_set_lib_dir (se dir) + gmb_ml_load_lib
+ *   TORCH UNLOAD LIB         → gmb_ml_unload_lib
+ *   TORCH INFO               → le stesse 5 righe stampate da VM/C. */
+static void emit_torch_domain(ctx_t* c, gmb_stmt_t* s) {
+    /* Il VERBO del dominio sta in `mutex_action` (lessema) e `act_tk` (TokenKind), NON in
+     * go_args: gli argomenti cominciano DOPO il verbo (parser gmb_parser_stmt_domain.c). */
+    gmb_expr_t** a = s->go_args; int n = s->n_go_args;
+    const char* vs = s->mutex_action ? s->mutex_action : "";
+    int vk = s->act_tk;
+    if (vs && strcasecmp(vs, "INFO") == 0) {
+        ind(c); sb_put(&c->out, "{ char __tav[256]; char __tlp[1024]; gmb_ml_available(__tav, (int)sizeof(__tav)); gmb_ml_lib_path(__tlp, (int)sizeof(__tlp));\n");
+        c->indent++;
+        ind(c); sb_put(&c->out, "gmb_print_string(gmb_string_alloc(\"TORCH INFO\")); gmb_print_newline();\n");
+        ind(c); sb_put(&c->out, "gmb_print_string(gmb_string_alloc(\"  device attivo : \")); gmb_print_double((gmb_double_t)gmb_ml_active_device()); gmb_print_newline();\n");
+        ind(c); sb_put(&c->out, "gmb_print_string(gmb_string_alloc(\"  disponibili   : \")); gmb_print_string(gmb_string_alloc(__tav)); gmb_print_newline();\n");
+        ind(c); sb_put(&c->out, "gmb_print_string(gmb_string_alloc(\"  lib path      : \")); gmb_print_string(gmb_string_alloc(__tlp)); gmb_print_newline();\n");
+        ind(c); sb_put(&c->out, "gmb_print_string(gmb_string_alloc(\"  caricata      : \")); gmb_print_string(gmb_string_alloc(gmb_ml_loaded() ? \"si\" : \"no\")); gmb_print_newline();\n");
+        c->indent--;
+        ind(c); sb_put(&c->out, "}\n");
+        return;
+    }
+    if (vk == GMB_TOK_Set || (vs && strcasecmp(vs, "SET") == 0)) {
+        if (n >= 2 && a[0] && (a[0]->tk == GMB_TOK_Device
+                               || (a[0]->var && strcasecmp(a[0]->var, "DEVICE") == 0))) {
+            ind(c); sb_put(&c->out, "(void)gmb_ml_set_active_device_name((");
+            emit_str_operand(c, a[1]);
+            sb_put(&c->out, ").data);\n");
+            return;
+        }
+        c99_fail(c, s->line, "TORCH SET: atteso DEVICE <nome>");
+        return;
+    }
+    if (vk == GMB_TOK_Load || (vs && strcasecmp(vs, "LOAD") == 0)) {
+        if (n >= 1 && a[0] && (a[0]->tk == GMB_TOK_Lib
+                               || (a[0]->var && strcasecmp(a[0]->var, "LIB") == 0))) {
+            if (n >= 2 && a[1]) {
+                ind(c); sb_put(&c->out, "(void)gmb_ml_set_lib_dir((");
+                emit_str_operand(c, a[1]);
+                sb_put(&c->out, ").data);\n");
+            }
+            ind(c); sb_put(&c->out, "(void)gmb_ml_load_lib();\n");
+            return;
+        }
+        c99_fail(c, s->line, "TORCH LOAD: atteso LIB [<dir>]");
+        return;
+    }
+    if (vk == GMB_TOK_Unload || (vs && strcasecmp(vs, "UNLOAD") == 0)) {
+        ind(c); sb_put(&c->out, "(void)gmb_ml_unload_lib();\n");
+        return;
+    }
+    c99_fail(c, s->line, "TORCH: verbo '%s' non supportato dall'emitter nativo", vs ? vs : "?");
+}
+
 static void emit_ai_connector_domain(ctx_t* c, gmb_stmt_t* s) {
     gmb_expr_t** a = s->go_args; int n = s->n_go_args;
     if (n < 1 || !a[0]) { c99_fail(c, s->line, "AI CONNECTOR: atteso verbo"); return; }
@@ -31350,6 +31438,7 @@ static void st_domain(ctx_t* c, gmb_stmt_t* s) {
         if (wnk == GMB_TOK_Vector) { emit_lin_vector_domain(c, s); return; }
         if (wnk == GMB_TOK_Matrix) { emit_lin_matrix_domain(c, s); return; }
         if (wnk == GMB_TOK_World) { emit_world_domain(c, s); return; }   /* motore 3D (P2) */
+        if (wnk == GMB_TOK_Torch) { emit_torch_domain(c, s); return; }
         c99_fail(c, s->line, "statement di dominio '%s' non ancora supportato dall'emitter nativo", s->win_name ? s->win_name : "?");
         return;
     /* ── FASE 2.6(b): GPM (parity Partial/C99CodeEmitter.Gpm.cs + casi C99CodeEmitter.cs:4032+) ── */

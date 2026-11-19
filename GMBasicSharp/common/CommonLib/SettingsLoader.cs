@@ -42,8 +42,31 @@ public static class SettingsLoader
                                     ?? projectRootDirectory;
 
         var systemSettings = LoadSystem(projectRootDirectory, systemSettingsPath);
-        var appSettings = LoadApp(Path.Combine(projectRootDirectory, "app.settings.json"));
+        var appSettings = LoadApp(FindAppSettings(projectRootDirectory));
         return Merge(systemSettings, appSettings);
+    }
+
+    /// <summary>
+    /// `app.settings.json` del progetto: nella cartella indicata o RISALENDO (project-file
+    /// discovery). Allineato al resolver C (`gmb_inc_resolve.c`): un programma in una
+    /// sottocartella del progetto (es. samples/Modules/FolderResolution/chain/Chain.bas)
+    /// deve vedere le impostazioni del progetto, altrimenti importFolders/searchFolders/
+    /// importFiles dichiarati lì non valgono e l'IMPORT di un modulo locale fallisce solo
+    /// su IL/PCode/VM-C (divergenza trovata col gate C-first).
+    /// </summary>
+    private static string FindAppSettings(string projectRootDirectory)
+    {
+        string start;
+        try { start = Path.GetFullPath(projectRootDirectory); }
+        catch { return Path.Combine(projectRootDirectory, "app.settings.json"); }
+        var dir = new DirectoryInfo(start);
+        while (dir is not null)
+        {
+            var candidate = Path.Combine(dir.FullName, "app.settings.json");
+            if (File.Exists(candidate)) return candidate;
+            dir = dir.Parent;
+        }
+        return Path.Combine(projectRootDirectory, "app.settings.json");
     }
 
     /// <summary>Carica `system.settings.json` (esplicito → copia locale → dir dell'eseguibile).</summary>
