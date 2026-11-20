@@ -233,7 +233,7 @@ public static partial class Numerics
     /// <param name="z">Punteggio z (numero di deviazioni standard).</param>
     /// <returns>La probabilità cumulativa P(Z ≤ z).</returns>
     /// <example>double prob = Numerics.Cndf(1.96); // restituisce circa 0.975</example>
-    public static double Cndf(double z) => Normal.CDF(0, 1, z);
+    public static double Cndf(double z) => StatsDistNative.NormalCdf(0, 1, z);
 
     /// <summary>
     /// Calcola la funzione di densità di probabilità (PDF) della distribuzione normale standard N(0,1).
@@ -241,7 +241,7 @@ public static partial class Numerics
     /// <param name="z">Punteggio z.</param>
     /// <returns>Il valore della densità di probabilità in z.</returns>
     /// <example>double pdf = Numerics.Ndf(0); // restituisce circa 0.3989</example>
-    public static double Ndf(double z) => Normal.PDF(0, 1, z);
+    public static double Ndf(double z) => StatsDistNative.NormalPdf(0, 1, z);
 
     /// <summary>
     /// Calcola la funzione di densità di probabilità (PDF) della distribuzione normale.
@@ -255,7 +255,7 @@ public static partial class Numerics
     public static double NormalPdf(double mean, double stdDev, double x)
     {
         if (stdDev <= 0) throw new ArgumentOutOfRangeException(nameof(stdDev), "La deviazione standard deve essere positiva.");
-        return Normal.PDF(mean, stdDev, x);
+        return StatsDistNative.NormalPdf(mean, stdDev, x);
     }
 
     /// <summary>
@@ -270,7 +270,7 @@ public static partial class Numerics
     public static double NormalCdf(double mean, double stdDev, double x)
     {
         if (stdDev <= 0) throw new ArgumentOutOfRangeException(nameof(stdDev), "La deviazione standard deve essere positiva.");
-        return Normal.CDF(mean, stdDev, x);
+        return StatsDistNative.NormalCdf(mean, stdDev, x);
     }
 
     /// <summary>
@@ -284,7 +284,7 @@ public static partial class Numerics
     public static double LognormalPdf(double mu, double sigma, double x)
     {
         if (sigma <= 0 || x <= 0) return 0.0;
-        return LogNormal.PDF(mu, sigma, x);
+        return StatsDistNative.LognormalPdf(mu, sigma, x);
     }
 
     /// <summary>
@@ -298,7 +298,7 @@ public static partial class Numerics
     public static double LognormalCdf(double mu, double sigma, double x)
     {
         if (x <= 0) return 0.0;
-        return LogNormal.CDF(mu, sigma, x);
+        return StatsDistNative.LognormalCdf(mu, sigma, x);
     }
 
     /// <summary>
@@ -311,7 +311,7 @@ public static partial class Numerics
     public static double ChiPdf(double freedom, double x)
     {
         if (freedom <= 0 || x < 0) return 0.0;
-        return Chi.PDF(freedom, x);
+        return StatsDistNative.ChiPdf(freedom, x);
     }
 
     /// <summary>
@@ -325,7 +325,7 @@ public static partial class Numerics
     public static double ChiCdf(double freedom, double x)
     {
         if (freedom <= 0) throw new ArgumentOutOfRangeException(nameof(freedom));
-        return x < 0 ? 0.0 : Chi.CDF(freedom, x);
+        return x < 0 ? 0.0 : StatsDistNative.ChiCdf(freedom, x);
     }
     /// <summary>Funzione di sopravvivenza Chi (1 - CDF).</summary>
     public static double ChiSf(double k, double x) => 1.0 - ChiCdf(k, x);
@@ -341,7 +341,7 @@ public static partial class Numerics
     public static double ChiSquaredPdf(double freedom, double x)
     {
         if (freedom <= 0 || x < 0) return 0.0;
-        return ChiSquared.PDF(freedom, x);
+        return StatsDistNative.Chi2Pdf(freedom, x);
     }
 
     /// <summary>
@@ -355,7 +355,7 @@ public static partial class Numerics
     public static double ChiSquaredCdf(double freedom, double x)
     {
         if (freedom <= 0) throw new ArgumentOutOfRangeException(nameof(freedom));
-        return x < 0 ? 0.0 : ChiSquared.CDF(freedom, x);
+        return x < 0 ? 0.0 : StatsDistNative.Chi2Cdf(freedom, x);
     }
 
 
@@ -882,7 +882,7 @@ public static partial class Numerics
     {
         if (a <= 0 || b <= 0) return double.NaN;
         if (x is < 0 or > 1) return 0.0;
-        return Beta.PDF(a, b, x);
+        return StatsDistNative.BetaPdf(a, b, x);
     }
 
     /// <summary>
@@ -898,7 +898,7 @@ public static partial class Numerics
         if (a <= 0 || b <= 0) return double.NaN;
         if (x <= 0) return 0.0;
         if (x >= 1) return 1.0;
-        return Beta.CDF(a, b, x);
+        return StatsDistNative.BetaCdf(a, b, x);
     }
     /// <summary>Funzione di sopravvivenza Beta (1 - CDF).</summary>
     public static double BetaSf(double a, double b, double x) => 1.0 - BetaCdf(a, b, x);
@@ -915,7 +915,7 @@ public static partial class Numerics
     public static double StudentTPdf(double freedom, double x)
     {
         if (freedom <= 0) throw new ArgumentOutOfRangeException(nameof(freedom));
-        return StudentT.PDF(0, 1, freedom, x);
+        return StatsDistNative.StudentTPdf(freedom, x);
     }
 
     /// <summary>
@@ -929,7 +929,7 @@ public static partial class Numerics
     public static double StudentTCdf(double freedom, double x)
     {
         if (freedom <= 0) throw new ArgumentOutOfRangeException(nameof(freedom));
-        return StudentT.CDF(0, 1, freedom, x);
+        return StatsDistNative.StudentTCdf(freedom, x);
     }
 
     /// <summary>
@@ -943,7 +943,7 @@ public static partial class Numerics
     public static double WeibullPdf(double shape, double scale, double x)
     {
         if (shape <= 0 || scale <= 0) return double.NaN;
-        return x < 0 ? 0.0 : Weibull.PDF(shape, scale, x);
+        return x < 0 ? 0.0 : StatsDistNative.WeibullPdf(shape, scale, x);
     }
 
     /// <summary>
@@ -957,7 +957,7 @@ public static partial class Numerics
     public static double WeibullCdf(double shape, double scale, double x)
     {
         if (shape <= 0 || scale <= 0) return double.NaN;
-        return x < 0 ? 0.0 : Weibull.CDF(shape, scale, x);
+        return x < 0 ? 0.0 : StatsDistNative.WeibullCdf(shape, scale, x);
     }
 
     /// <summary>
@@ -971,7 +971,7 @@ public static partial class Numerics
     public static double FPdf(double d1, double d2, double x)
     {
         if (d1 <= 0 || d2 <= 0) return double.NaN;
-        return x < 0 ? 0.0 : FisherSnedecor.PDF(d1, d2, x);
+        return x < 0 ? 0.0 : StatsDistNative.FPdf(d1, d2, x);
     }
 
     /// <summary>
@@ -985,7 +985,7 @@ public static partial class Numerics
     public static double FCdf(double d1, double d2, double x)
     {
         if (d1 <= 0 || d2 <= 0) return double.NaN;
-        return x < 0 ? 0.0 : FisherSnedecor.CDF(d1, d2, x);
+        return x < 0 ? 0.0 : StatsDistNative.FCdf(d1, d2, x);
     }
 
     /// <summary>
@@ -998,7 +998,7 @@ public static partial class Numerics
     public static double ExponentialPdf(double rate, double x)
     {
         if (rate <= 0 || x < 0) return 0.0;
-        return Exponential.PDF(rate, x);
+        return StatsDistNative.ExpPdf(rate, x);
     }
 
     /// <summary>
@@ -1012,7 +1012,7 @@ public static partial class Numerics
     public static double ExponentialCdf(double rate, double x)
     {
         if (rate <= 0) throw new ArgumentOutOfRangeException(nameof(rate));
-        return x < 0 ? 0.0 : Exponential.CDF(rate, x);
+        return x < 0 ? 0.0 : StatsDistNative.ExpCdf(rate, x);
     }
 
     /// <summary>
@@ -1027,13 +1027,13 @@ public static partial class Numerics
     {
         if (scale <= 0 || shape <= 0) return double.NaN;
         if (x <= scale) return 0.0;
-        return 1.0 - Math.Pow(scale / x, shape);
+        return StatsDistNative.ParetoCdf(scale, shape, x);
     }
 
     public static double ParetoPdf(double scale, double shape, double x)
     {
         if (scale <= 0 || shape <= 0) return 0.0;
-        return x < scale ? 0.0 : Pareto.PDF(scale, shape, x);
+        return x < scale ? 0.0 : StatsDistNative.ParetoPdf(scale, shape, x);
     }
 
     /// <summary>
@@ -1048,7 +1048,7 @@ public static partial class Numerics
     public static double LogisticCdf(double mu, double s, double x)
     {
         if (s <= 0) return double.NaN;
-        return 1.0 / (1.0 + Math.Exp(-(x - mu) / s));
+        return StatsDistNative.LogisticCdf(mu, s, x);
     }
 
     public static double LogisticSf(double mu, double s, double x) => 1.0 - LogisticCdf(mu, s, x);
@@ -1056,7 +1056,7 @@ public static partial class Numerics
     public static double LogisticPdf(double mean, double scale, double x)
     {
         if (scale <= 0) throw new ArgumentOutOfRangeException(nameof(scale));
-        return Logistic.PDF(mean, scale, x);
+        return StatsDistNative.LogisticPdf(mean, scale, x);
     }
 
     /// <summary>
@@ -1073,8 +1073,7 @@ public static partial class Numerics
         if (max <= min || mode < min || mode > max) return double.NaN;
         if (x <= min) return 0.0;
         if (x >= max) return 1.0;
-        if (x <= mode) return (x - min) * (x - min) / ((max - min) * (mode - min));
-        return 1.0 - (max - x) * (max - x) / ((max - min) * (max - mode));
+        return StatsDistNative.TriangularCdf(min, max, mode, x);
     }
 
     public static double TriangularSf(double min, double mode, double max, double x) => 1.0 - TriangularCdf(min, mode, max, x);
@@ -1090,7 +1089,7 @@ public static partial class Numerics
         // anche l'esempio nel doc-comment sopra (TriangularPdf(0, 5, 10, 5)) lanciava con il
         // codice precedente — mai stato eseguito/verificato. Stesso fix in GMBasicAI (stesso
         // codice condiviso).
-        return Triangular.PDF(min, max, mode, x);
+        return StatsDistNative.TriangularPdf(min, max, mode, x);
     }
 
     /// <summary>
@@ -1105,7 +1104,7 @@ public static partial class Numerics
     public static double UniformPdf(double min, double max, double x)
     {
         if (max <= min) throw new ArgumentException("Il valore massimo deve essere maggiore del minimo.");
-        return ContinuousUniform.PDF(min, max, x);
+        return StatsDistNative.UniformPdf(min, max, x);
     }
 
     /// <summary>
@@ -1121,10 +1120,7 @@ public static partial class Numerics
     public static double SkewedNormalPdf(double mean, double stdDev, double skew, double x)
     {
         if (stdDev <= 0) throw new ArgumentOutOfRangeException(nameof(stdDev));
-        var y = (x - mean) / stdDev;
-        var pdfNormalStandard = Normal.PDF(0, 1, y);
-        var cdfNormalStandard = Normal.CDF(0, 1, skew * y);
-        return 2 * pdfNormalStandard * cdfNormalStandard;
+        return StatsDistNative.SkewNormalPdf(x, mean, stdDev, skew);
     }
 
     /// <summary>
@@ -1138,7 +1134,7 @@ public static partial class Numerics
     public static double BernoulliPmf(double p, int k)
     {
         if (p is < 0 or > 1) throw new ArgumentOutOfRangeException(nameof(p));
-        return Bernoulli.PMF(p, k);
+        return StatsDistNative.BernoulliPmf(p, k);
     }
 
     /// <summary>
@@ -1153,7 +1149,7 @@ public static partial class Numerics
     public static double BinomialPmf(double p, int n, int k)
     {
         if (p < 0 || p > 1 || n < 0) throw new ArgumentException("Parametri non validi.");
-        return Binomial.PMF(p, n, k);
+        return StatsDistNative.BinomialPmf(p, n, k);
     }
 
     /// <summary>
@@ -1166,7 +1162,7 @@ public static partial class Numerics
     public static double PoissonPmf(double lambda, int k)
     {
         if (lambda <= 0 || k < 0) return 0.0;
-        return Poisson.PMF(lambda, k);
+        return StatsDistNative.PoissonPmf(lambda, k);
     }
 
     /// <summary>
@@ -1180,7 +1176,7 @@ public static partial class Numerics
     public static double GeometricPmf(double p, int k)
     {
         if (p is < 0 or > 1) throw new ArgumentException("La probabilità p deve essere tra 0 e 1.");
-        return k <= 0 ? 0.0 : Geometric.PMF(p, k);
+        return k <= 0 ? 0.0 : StatsDistNative.GeometricPmf(p, k);
     }
 
     /// <summary>
@@ -1202,7 +1198,7 @@ public static partial class Numerics
         // il caso r>1 e p valido falliva SEMPRE dentro MathNet con un messaggio fuorviante,
         // mascherando che i due argomenti erano scambiati. Scoperto scrivendo il primo vero
         // programma di verifica per StdLib.Runtime.MathFunctions.NegativeBinomialPmf.
-        return k < 0 ? 0.0 : NegativeBinomial.PMF(r, p, k);
+        return k < 0 ? 0.0 : StatsDistNative.NegBinomPmf(r, p, k);
     }
 
     /// <summary>
@@ -1216,6 +1212,6 @@ public static partial class Numerics
     /// <example>double pmf = Numerics.HypergeometricPmf(50, 10, 5, 2);</example>
     public static double HypergeometricPmf(int N, int K, int n, int k)
     {
-        return Hypergeometric.PMF(N, K, n, k);
+        return StatsDistNative.HypergeomPmf(N, K, n, k);
     }
 }

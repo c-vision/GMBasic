@@ -811,6 +811,24 @@ else()
     target_link_options(gmb_filter_flat PRIVATE -Wl,--allow-shlib-undefined)
 endif()
 
+# ── DIST FLAT: distribuzioni di probabilità per i backend MANAGED (P/Invoke C#→C) ────────────
+# `CommonLib/Numerics/Stats.cs` calcolava pdf/cdf/pmf in C# (MathNet) mentre VM/C e C99Native
+# usano `gmb_dist_*` di `gmb_math.c`. Questa lib espone gli stessi kernel (inoltro puro).
+add_library(gmb_dist_flat SHARED
+    src/gmb_dist_flat.c
+)
+target_include_directories(gmb_dist_flat PUBLIC include)
+target_link_libraries(gmb_dist_flat PRIVATE gmb_runtime)
+set_target_properties(gmb_dist_flat PROPERTIES
+    OUTPUT_NAME gmb_dist_flat
+    C_VISIBILITY_PRESET default
+    LIBRARY_OUTPUT_DIRECTORY "${GMB_LIBS_OUT}")
+if(APPLE)
+    target_link_options(gmb_dist_flat PRIVATE -Wl,-undefined,dynamic_lookup)
+else()
+    target_link_options(gmb_dist_flat PRIVATE -Wl,--allow-shlib-undefined)
+endif()
+
 # ── 3D WORLD: facciata `gmb_world_*` per i backend MANAGED (P/Invoke C#→C) ────────────────────
 # Il mondo 3D vive SOLO nel runtime C (gmb_3d_*, §0bis): IL/PCodeVM/VM-C non ne hanno una
 # copia e non devono averla. Questa lib espone la facciata di gmb_3d_cmd.c agli host C# (dotnet)
