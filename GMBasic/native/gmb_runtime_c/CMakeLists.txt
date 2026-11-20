@@ -718,6 +718,25 @@ else()
     target_link_options(gmb_ts_flat PRIVATE -Wl,--allow-shlib-undefined)
 endif()
 
+# ── SPECIAL FLAT: funzioni speciali del runtime per i backend MANAGED (P/Invoke C#→C) ────────
+# `CommonLib/Numerics/Special.cs` implementava in C# (MathNet + serie) le stesse funzioni che
+# `gmb_math.c` implementa per VM/C e C99Native. Questa lib espone le STESSE funzioni (inoltro
+# puro, nessuna logica) così il managed chiama la sorgente unica.
+add_library(gmb_special_flat SHARED
+    src/gmb_special_flat.c
+)
+target_include_directories(gmb_special_flat PUBLIC include)
+target_link_libraries(gmb_special_flat PRIVATE gmb_runtime)
+set_target_properties(gmb_special_flat PROPERTIES
+    OUTPUT_NAME gmb_special_flat
+    C_VISIBILITY_PRESET default
+    LIBRARY_OUTPUT_DIRECTORY "${GMB_LIBS_OUT}")
+if(APPLE)
+    target_link_options(gmb_special_flat PRIVATE -Wl,-undefined,dynamic_lookup)
+else()
+    target_link_options(gmb_special_flat PRIVATE -Wl,--allow-shlib-undefined)
+endif()
+
 # ── 3D WORLD: facciata `gmb_world_*` per i backend MANAGED (P/Invoke C#→C) ────────────────────
 # Il mondo 3D vive SOLO nel runtime C (gmb_3d_*, §0bis): IL/PCodeVM/VM-C non ne hanno una
 # copia e non devono averla. Questa lib espone la facciata di gmb_3d_cmd.c agli host C# (dotnet)
