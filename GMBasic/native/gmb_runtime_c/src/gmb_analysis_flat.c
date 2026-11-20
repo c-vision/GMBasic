@@ -23,3 +23,17 @@ double* gmb_anf_ma_coefficients(const double* residuals, int n, int q, gmb_int_t
 double gmb_anf_min_semivariance(const double* returns, int n, double threshold) {
     return gmb_tm_min_semivariance(returns, n, threshold);
 }
+
+/* ── Descrittive ──────────────────────────────────────────────────────────────────────────── */
+
+double gmb_anf_mean(const double* a, int n) { return gmb_mean(a, n); }
+double gmb_anf_median(const double* a, int n) { return gmb_median(a, n); }
+double gmb_anf_variance(const double* a, int n) { return gmb_variance(a, n); }
+double gmb_anf_stddev(const double* a, int n) { return gmb_stddev(a, n); }
+double gmb_anf_skewness(const double* a, int n) { return gmb_skewness(a, n); }
+double gmb_anf_kurtosis(const double* a, int n) { return gmb_kurtosis(a, n); }
+double gmb_anf_correlation(const double* x, const double* y, int n) { return gmb_correlation(x, y, n); }
+double gmb_anf_min(const double* a, int n) { return gmb_min_arr(a, n); }
+double gmb_anf_max(const double* a, int n) { return gmb_max_arr(a, n); }
+double gmb_anf_percentile(const double* a, int n, double percent) { return gmb_percentile(a, n, percent); }
+double gmb_anf_mad(const double* a, int n) { return gmb_mad(a, n); }

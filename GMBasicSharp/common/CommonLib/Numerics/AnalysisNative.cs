@@ -30,6 +30,30 @@ internal static class AnalysisNative
     [DllImport(Lib, EntryPoint = "gmb_anf_min_semivariance", CallingConvention = CallingConvention.Cdecl)]
     private static extern double NativeMinSemiVariance(double[] returns, int n, double threshold);
 
+    // ── Descrittive (Stats.cs) ─────────────────────────────────────────────────────────────
+    [DllImport(Lib, EntryPoint = "gmb_anf_mean", CallingConvention = CallingConvention.Cdecl)]
+    private static extern double NativeMean(double[] a, int n);
+    [DllImport(Lib, EntryPoint = "gmb_anf_median", CallingConvention = CallingConvention.Cdecl)]
+    private static extern double NativeMedian(double[] a, int n);
+    [DllImport(Lib, EntryPoint = "gmb_anf_variance", CallingConvention = CallingConvention.Cdecl)]
+    private static extern double NativeVariance(double[] a, int n);
+    [DllImport(Lib, EntryPoint = "gmb_anf_stddev", CallingConvention = CallingConvention.Cdecl)]
+    private static extern double NativeStdDev(double[] a, int n);
+    [DllImport(Lib, EntryPoint = "gmb_anf_skewness", CallingConvention = CallingConvention.Cdecl)]
+    private static extern double NativeSkewness(double[] a, int n);
+    [DllImport(Lib, EntryPoint = "gmb_anf_kurtosis", CallingConvention = CallingConvention.Cdecl)]
+    private static extern double NativeKurtosis(double[] a, int n);
+    [DllImport(Lib, EntryPoint = "gmb_anf_correlation", CallingConvention = CallingConvention.Cdecl)]
+    private static extern double NativeCorrelation(double[] x, double[] y, int n);
+    [DllImport(Lib, EntryPoint = "gmb_anf_min", CallingConvention = CallingConvention.Cdecl)]
+    private static extern double NativeMin(double[] a, int n);
+    [DllImport(Lib, EntryPoint = "gmb_anf_max", CallingConvention = CallingConvention.Cdecl)]
+    private static extern double NativeMax(double[] a, int n);
+    [DllImport(Lib, EntryPoint = "gmb_anf_percentile", CallingConvention = CallingConvention.Cdecl)]
+    private static extern double NativePercentile(double[] a, int n, double percent);
+    [DllImport(Lib, EntryPoint = "gmb_anf_mad", CallingConvention = CallingConvention.Cdecl)]
+    private static extern double NativeMad(double[] a, int n);
+
     /* i buffer dei risultati sono allocati dal runtime: vanno liberati con `free` */
     [DllImport("libc", EntryPoint = "free", CallingConvention = CallingConvention.Cdecl)]
     private static extern void libc_free(IntPtr p);
@@ -71,4 +95,19 @@ internal static class AnalysisNative
 
     internal static double MinSemiVariance(double[] returns, double threshold)
         => NativeMinSemiVariance(returns, returns.Length, threshold);
+
+    // ── Descrittive (Stats.cs) ─────────────────────────────────────────────────────────────
+
+    internal static double Mean(double[] a) => NativeMean(a, a.Length);
+    internal static double Median(double[] a) => NativeMedian(a, a.Length);
+    internal static double Variance(double[] a) => NativeVariance(a, a.Length);
+    internal static double StdDev(double[] a) => NativeStdDev(a, a.Length);
+    internal static double Skewness(double[] a) => NativeSkewness(a, a.Length);
+    internal static double Kurtosis(double[] a) => NativeKurtosis(a, a.Length);
+    internal static double Correlation(double[] x, double[] y) => NativeCorrelation(x, y, x.Length);
+    internal static double Min(double[] a) => NativeMin(a, a.Length);
+    internal static double Max(double[] a) => NativeMax(a, a.Length);
+    /// <summary>`percent` è in percentuale 0..100 (il chiamante arrotonda la frazione come prima).</summary>
+    internal static double PercentilePercent(double[] a, double percent) => NativePercentile(a, a.Length, percent);
+    internal static double Mad(double[] a) => NativeMad(a, a.Length);
 }

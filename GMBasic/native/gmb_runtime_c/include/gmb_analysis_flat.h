@@ -22,6 +22,20 @@ double* gmb_anf_yule_walker(const double* acf, int n, int p, gmb_int_t* out_len)
 double* gmb_anf_ma_coefficients(const double* residuals, int n, int q, gmb_int_t* out_len);
 double  gmb_anf_min_semivariance(const double* returns, int n, double threshold);
 
+/* ── Descrittive (gmb_math.c) ─────────────────────────────────────────────────────────────── */
+double  gmb_anf_mean(const double* a, int n);
+double  gmb_anf_median(const double* a, int n);
+double  gmb_anf_variance(const double* a, int n);
+double  gmb_anf_stddev(const double* a, int n);
+double  gmb_anf_skewness(const double* a, int n);
+double  gmb_anf_kurtosis(const double* a, int n);
+double  gmb_anf_correlation(const double* x, const double* y, int n);
+double  gmb_anf_min(const double* a, int n);
+double  gmb_anf_max(const double* a, int n);
+/* `percent` è in PERCENTUALE 0..100 (come gmb_percentile), non in frazione. */
+double  gmb_anf_percentile(const double* a, int n, double percent);
+double  gmb_anf_mad(const double* a, int n);
+
 #ifdef __cplusplus
 }
 #endif

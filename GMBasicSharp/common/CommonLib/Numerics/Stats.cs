@@ -72,7 +72,7 @@ public static partial class Numerics
     {
         if (data == null || data.Length == 0)
             throw new ArgumentException("L'array di dati per MEAN non può essere vuoto.");
-        return data.Mean();
+        return AnalysisNative.Mean(data);
     }
 
     /// <summary>
@@ -86,7 +86,7 @@ public static partial class Numerics
     {
         if (data == null || data.Length == 0)
             throw new ArgumentException("L'array di dati per MEDIAN non può essere vuoto.");
-        return data.Median();
+        return AnalysisNative.Median(data);
     }
 
     /// <summary>
@@ -100,7 +100,7 @@ public static partial class Numerics
     {
         if (data == null || data.Length <= 1)
             throw new ArgumentException("L'array di dati per VARIANCE deve contenere almeno due elementi.");
-        return data.Variance();
+        return AnalysisNative.Variance(data);
     }
 
     /// <summary>
@@ -114,7 +114,7 @@ public static partial class Numerics
     {
         if (data == null || data.Length <= 1)
             throw new ArgumentException("L'array di dati per STDDEV deve contenere almeno due elementi.");
-        return data.StandardDeviation();
+        return AnalysisNative.StdDev(data);
     }
 
     /// <summary>
@@ -128,7 +128,7 @@ public static partial class Numerics
     {
         if (data == null || data.Length < 3)
             throw new ArgumentException("L'array di dati per SKEWNESS deve contenere almeno tre elementi.");
-        return data.Skewness();
+        return AnalysisNative.Skewness(data);
     }
 
     /// <summary>
@@ -142,7 +142,7 @@ public static partial class Numerics
     {
         if (data == null || data.Length < 4)
             throw new ArgumentException("L'array di dati per KURTOSIS deve contenere almeno quattro elementi.");
-        return data.Kurtosis();
+        return AnalysisNative.Kurtosis(data);
     }
 
     /// <summary>
@@ -159,7 +159,7 @@ public static partial class Numerics
             throw new ArgumentException("Gli array di dati per CORRELATION non possono essere vuoti.");
         if (dataA.Length != dataB.Length)
             throw new ArgumentException("Gli array di dati per CORRELATION devono avere la stessa lunghezza.");
-        return MathNet.Numerics.Statistics.Correlation.Pearson(dataA, dataB);
+        return AnalysisNative.Correlation(dataA, dataB);
     }
 
     /// <summary>
@@ -173,7 +173,7 @@ public static partial class Numerics
     {
         if (data == null || data.Length == 0)
             throw new ArgumentException("L'array di dati per MIN non può essere vuoto.");
-        return data.Minimum();
+        return AnalysisNative.Min(data);
     }
 
     /// <summary>
@@ -187,7 +187,7 @@ public static partial class Numerics
     {
         if (data == null || data.Length == 0)
             throw new ArgumentException("L'array di dati per MAX non può essere vuoto.");
-        return data.Maximum();
+        return AnalysisNative.Max(data);
     }
 
     /// <summary>
@@ -206,7 +206,7 @@ public static partial class Numerics
         if (fraction is < 0.0 or > 1.0)
             throw new ArgumentOutOfRangeException(nameof(fraction), "Il percentile deve essere tra 0 e 1");
         var perc = (int)Math.Round(fraction * 100);
-        return data.Percentile(perc);
+        return AnalysisNative.PercentilePercent(data, perc);
     }
 
     /// <summary>
@@ -220,11 +220,7 @@ public static partial class Numerics
     {
         if (data == null || data.Length == 0)
             throw new ArgumentException("L'array di dati per MAD non può essere vuoto.");
-        var median = data.Median();
-        var absDev = new double[data.Length];
-        for (var i = 0; i < data.Length; i++)
-            absDev[i] = Math.Abs(data[i] - median);
-        return absDev.Median();
+        return AnalysisNative.Mad(data);
     }
 
     // =====================================================================
