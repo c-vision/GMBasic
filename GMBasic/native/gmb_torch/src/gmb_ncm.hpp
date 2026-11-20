@@ -260,6 +260,8 @@ public:
         if (l0_fixed) l0 = l0_fixed->to(dev_);
         else if (inf_.count("level0_unigram"))
             l0 = at::multinomial(inf_.at("level0_unigram").to(at::kFloat).cpu(), (int64_t)B * levels_[0], true).view({B, levels_[0]}).to(dev_);
+        else if (pred_l0_)
+            l0 = pick(level0_logits(prefix_emb, pbias, prefix), 0);              /* predict_level0: lm_head_l0 sul prefisso */
         else
         {   /* query_level0: i token di livello 0 escono dal modello (una passata, nessuna dipendenza da livelli precedenti) */
             at::Tensor q = g_.at("l0_queries").expand({B, -1, -1});
@@ -287,7 +289,7 @@ public:
                 x = x + d;
             }
             x = at::linear(x, g_.at("transformer.wte.weight"), g_.at("transformer.wte.bias"));
-            x = x + g_.at("transformer.wle.weight")[hi].view({1, 1, n});                                          /* level encoding */
+            x = x + g_.at("transformer.wle.weight")[hi - (pred_l0_ ? 1 : 0)].view({1, 1, n});                                          /* level encoding */
             at::Tensor logits = decode_level(x, prefix_emb, hi, pbias);
             idx_next = pick(logits, hi);
             gen.push_back(idx_next);
@@ -475,7 +477,8 @@ public:
             pbias = at::zeros({B, 1, 1, P}, at::TensorOptions().device(dev_)).masked_fill(pm, -INFINITY);
         }
         std::vector<at::Tensor> out(levels_.size());
-        if (!inf_.count("level0_unigram"))
+        if (pred_l0_) out[0] = level0_logits(prefix_emb, pbias, prefix);
+        else if (!inf_.count("level0_unigram"))
         {
             at::Tensor q = g_.at("l0_queries").expand({B, -1, -1});
             q = at::linear(q, g_.at("transformer.wte.weight"), g_.at("transformer.wte.bias")) + g_.at("transformer.wle.weight")[0].view({1, 1, n});
@@ -496,7 +499,7 @@ public:
                 std::string k = "post_upsample_convs." + std::to_string(hi);
                 x = x + at::conv1d(x.transpose(-1, -2), g_.at(k + ".weight"), g_.at(k + ".bias"), 1, 1).transpose(-1, -2);
             }
-            x = at::linear(x, g_.at("transformer.wte.weight"), g_.at("transformer.wte.bias")) + g_.at("transformer.wle.weight")[hi].view({1, 1, n});
+            x = at::linear(x, g_.at("transformer.wte.weight"), g_.at("transformer.wte.bias")) + g_.at("transformer.wle.weight")[hi - (pred_l0_ ? 1 : 0)].view({1, 1, n});
             out[(size_t)hi] = decode_level(x, prefix_emb, hi, pbias);
         }
         return out;
@@ -551,6 +554,8 @@ private:
     Gpt2Tokenizer bpe_; bool bpe_ok_ = false;
     int64_t P_ = 1;                     /* lunghezza del prefisso (1 = solo [EOS]) */
     bool tied_ = false;                 /* head legate al codebook (lm_heads.i.proj) */
+    bool pred_l0_ = false;              /* predict_level0: livello 0 da lm_head_l0 sull ultima posizione non-pad del prefisso (WMT14) */
+    bool per_level_heads_ = false;      /* lm_heads.i.weight senza bias, una per livello 1..n */
     int n_qr_ = 0;                      /* numero di moduli quant_resi */
     bool casc_ = false;                 /* learned_up/down_l1 a cascata (learned_l1_cascade) */
     int gen_heads_ = 12, dec_heads_ = 6;
@@ -583,6 +588,9 @@ private:
             std::vector<int> cnt((size_t)nlev, 0);
             for (int64_t i = 0; i < lv.numel(); i++) cnt[(size_t)lv[i].item<int64_t>()]++;
             levels_ = cnt;
+            /* predict_level0 (WMT14): lvl_1L e wle coprono solo i livelli 1..n; il livello 0 (1 codice, letto dall'ultima posizione del prefisso
+             * con lm_head_l0) non ha posizioni bersaglio ne' riga in wle. */
+            if (g_.count("lm_head_l0.weight")) { levels_.insert(levels_.begin(), 1); pred_l0_ = true; nlev += 1; }
         }
         else
         {
@@ -592,12 +600,14 @@ private:
         if (nlev != (int64_t)levels_.size()) throw std::runtime_error("ncm: numero di livelli del checkpoint (" + std::to_string(nlev) + ") diverso dai livelli noti (" + std::to_string(levels_.size()) + "): manca inference.levels");
         if (levels_.back() % levels_[0] != 0) throw std::runtime_error("ncm: l'ultimo livello deve essere multiplo del primo (learned_up_l1)");
         up_stride_ = levels_.back() / levels_[0];
-        if (g_.count("l0_queries") == 0) throw std::runtime_error("ncm: checkpoint senza l0_queries (query_level0)");
+        if (g_.count("l0_queries") == 0 && !pred_l0_) throw std::runtime_error("ncm: checkpoint senza l0_queries (query_level0) ne' lm_head_l0 (predict_level0)");
         tied_ = g_.count("lm_heads.0.proj.weight") != 0;
+        per_level_heads_ = g_.count("lm_heads.0.weight") != 0;              /* head per livello, senza bias (WMT14): head i -> livello i+1 */
         casc_ = t_.count("vq.learned_up_l1.0.weight") != 0;
         for (n_qr_ = 0; t_.count("vq.quant_resi." + std::to_string(n_qr_) + ".weight"); n_qr_++) {}
         if (n_qr_ == 0) throw std::runtime_error("ncm: checkpoint senza vq.quant_resi");
         {   int64_t tot = 0; for (int l : levels_) tot += l;
+            if (pred_l0_) tot -= levels_[0];                                   /* il livello 0 non occupa posizioni nella maschera */
             P_ = cfg_.prefix_len > 0 ? cfg_.prefix_len : (g_.count("attn_mask_for_masking") ? g_.at("attn_mask_for_masking").size(-1) - tot : 1); }
         gen_heads_ = (int)(n_embd_ / g_.at("transformer.blocks.0.attn.q_norm.weight").size(0));
         dec_heads_ = (int)(vq_dim_ / t_.at("decoder.middle_block.attn.q_norm.weight").size(0));
@@ -654,6 +664,23 @@ private:
         return x + m;
     }
 
+    /* predict_level0 (WMT14): passata solo sul prefisso (bidirezionale, con il bias di padding), nessun token bersaglio; i logit del livello 0 sono
+     * lm_head_l0(stato dopo ln_f all'ultima posizione NON-pad del prefisso). Il prefisso non vede i bersagli, quindi dipende solo dal prefisso. */
+    at::Tensor level0_logits(const at::Tensor& prefix_emb, const at::Tensor& pbias, const at::Tensor& prefix) const
+    {
+        if (levels_[0] != 1) throw std::runtime_error("ncm: predict_level0 supporta solo un livello 0 di 1 codice");
+        const int64_t B = prefix_emb.size(0), P = prefix_emb.size(1), n = prefix_emb.size(2);
+        at::Tensor x = prefix_emb;
+        const at::Tensor cos = rope_[0].first.slice(0, 0, P), sin = rope_[0].second.slice(0, 0, P);
+        for (int i = 0; g_.count("transformer.blocks." + std::to_string(i) + ".ln_1.weight"); i++)
+            x = block(x, "transformer.blocks." + std::to_string(i), gen_heads_, pbias, &cos, &sin, g_);
+        x = at::layer_norm(x, {n}, g_.at("transformer.ln_f.weight"), g_.at("transformer.ln_f.bias"), 1e-5);
+        at::Tensor last = cfg_.prefix_pad_id >= 0 ? ((prefix.to(dev_) != (int64_t)cfg_.prefix_pad_id).sum(1) - 1).clamp_min(0)
+                                                  : at::full({B}, P - 1, at::TensorOptions().dtype(at::kLong).device(dev_));
+        at::Tensor h = x.gather(1, last.view({B, 1, 1}).expand({B, 1, n}));
+        return at::linear(h, g_.at("lm_head_l0.weight"));                                   /* [B,1,V0] */
+    }
+
     at::Tensor decode_level(const at::Tensor& x_level, const at::Tensor& prefix_emb, int hi, const at::Tensor& pbias = at::Tensor()) const
     {
         const int64_t P = prefix_emb.size(1), L = x_level.size(1);
@@ -673,6 +700,7 @@ private:
     at::Tensor head(const at::Tensor& t, int hi) const
     {
         const std::string s = std::to_string(hi);
+        if (per_level_heads_) return at::linear(t, g_.at("lm_heads." + std::to_string(hi - 1) + ".weight"));
         if (!tied_) return at::linear(t, g_.at("lm_heads.head.weight")) + g_.at("lm_heads.biases." + s);
         at::Tensor z = at::linear(t, g_.at("lm_heads." + s + ".proj.weight"));
         at::Tensor E = t_.at("vq.embeddings." + s + ".weight");
