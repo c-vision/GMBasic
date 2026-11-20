@@ -4287,6 +4287,7 @@ if (args.Length >= 3) { var file = args[0]?.ToString() ?? ""; var section = args
         (WORKFLOWBuiltInFunctions, (self, t, fn, a) => self.ExecuteBuiltInWorkflow(t, fn, a)),
         (TOOLBuiltInFunctions, (self, t, fn, a) => self.ExecuteBuiltInTool(t, fn, a)),
         (CoreLinalgBuiltInFunctions, (self, t, fn, a) => self.ExecuteLinAlgBuiltIn(t, fn, a)),
+        (WorldBuiltInFunctions, (self, t, fn, a) => self.ExecuteBuiltInWorld(t, fn, a)),   // motore 3D
         });
 
     /// <summary>Chiama <see cref="ExecuteBuiltIn"/> instradando un'eccezione del builtin nello

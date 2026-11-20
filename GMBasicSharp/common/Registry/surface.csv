@@ -1210,6 +1210,11 @@ procedure,WINDOWS,WIDTH,WindowWidth
 procedure,WINDOWS,WINDOWCLOSED,Identifier
 procedure,WINDOWS,X,WindowX
 procedure,WINDOWS,Y,WindowY
+procedure,WORLD,CEILZ,CeilZ
+procedure,WORLD,FLOORZ,FloorZ
+procedure,WORLD,LIGHTNOW,LightNow
+procedure,WORLD,MOVING,Moving
+procedure,WORLD,TIME,WorldTime
 command,,AADD,AAdd
 command,,ACOPY,ACopy
 command,,ADEL,ADel
@@ -1322,6 +1327,7 @@ command,,WAITKEY,WaitKey
 command,,WATCH,Watch
 command,,WEB2MD,WebToMd
 command,,WINDOW,Window
+command,,WORLD,World
 command,,WRITE,Write
 command,,XCOPY,XCopy
 command,,ZIP,Zip

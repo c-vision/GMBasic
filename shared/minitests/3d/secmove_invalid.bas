@@ -1,9 +1,9 @@
 ' EXPECT: f1= 0|m1= 0|f2= 0|m2= 0
-' TAG: native-only
 ' MOTORE 3D — WORLD SECMOVE rifiuta gli argomenti non validi SENZA muovere niente.
 ' Il comando non ha un valore di ritorno leggibile dal BASIC (§1: i comandi sono statement),
 ' quindi la prova è lo STATO: con il soffitto sotto il pavimento, o con un settore inesistente,
 ' il pavimento resta a 0 e nessun mover parte (WORLD.MOVING resta 0).
+IMPORT WORLD
 SUB Main()
   WORLD LOAD "worlds/demo.gmbscene"
   WORLD SECMOVE 1, 100, 50, 40

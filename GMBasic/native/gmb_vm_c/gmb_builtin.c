@@ -17,6 +17,7 @@
 #include <stdlib.h>   /* atof per gli argomenti numerici di FONTS */
 #include "gmb_fonts.h"  /* namespace FONTS: runtime condiviso, nessuna logica qui */
 #include "gmb_runtime.h"
+#include "gmb_3d.h"   /* motore 3D: letture WORLD.* → facciata gmb_world_* (gmb_3d_cmd.c) */
 #include "gmb_llm_tok.h"
 #include "gmb_builtin_registry.h"
 #include "gmb_grep.h"
@@ -11370,6 +11371,35 @@ static void gmb_bf_3901(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int fun
     vm_matrix_set_value_result(__v, bout);
     gmb_matrix_free(__v);
 }
+/* ── MOTORE 3D / WORLD (2026-11-19, ponte C#): letture del mondo ──────────────────────────
+ * Come le gambe C99Native: nessuno stato 3D qui, si chiama la facciata `gmb_world_*` del
+ * runtime condiviso (gmb_3d_cmd.c). FLOORZ/CEILZ sono letture PURE: non fermano il mover. */
+static void gmb_bf_world_moving(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
+{
+    (void)vm; (void)task; (void)func_code;
+    bout->result = gmb_world_moving(argc >= 1 ? (int)vm_num(&args[0]) : 0);
+}
+static void gmb_bf_world_lightnow(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
+{
+    (void)vm; (void)task; (void)func_code;
+    bout->result = gmb_world_lightnow(argc >= 1 ? (int)vm_num(&args[0]) : 0);
+}
+static void gmb_bf_world_time(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
+{
+    (void)vm; (void)task; (void)func_code; (void)args; (void)argc;
+    bout->result = gmb_world_time();
+}
+static void gmb_bf_world_floorz(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
+{
+    (void)vm; (void)task; (void)func_code;
+    bout->result = gmb_world_floor(argc >= 1 ? (int)vm_num(&args[0]) : 0);
+}
+static void gmb_bf_world_ceilz(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
+{
+    (void)vm; (void)task; (void)func_code;
+    bout->result = gmb_world_ceil(argc >= 1 ? (int)vm_num(&args[0]) : 0);
+}
+
 static void gmb_bf_3902(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
 {
     (void)vm; (void)task; (void)func_code;
@@ -16833,6 +16863,12 @@ static const gmb_bf_impl_t gmb_bf_impl_core[] = {
     { 3900, gmb_bf_3900 },
     { 3901, gmb_bf_3901 },
     { 3902, gmb_bf_3902 },
+    /* MOTORE 3D / WORLD (2026-11-19, ponte C#): codici di BuiltInFunction (WORLD_MOVING..WORLD_CEILZ) */
+    { 3903, gmb_bf_world_moving },
+    { 3904, gmb_bf_world_lightnow },
+    { 3905, gmb_bf_world_time },
+    { 3906, gmb_bf_world_floorz },
+    { 3907, gmb_bf_world_ceilz },
     { 826, gmb_bf_796_c826 },
     { 827, gmb_bf_796_c827 },
     { 828, gmb_bf_796_c828 },

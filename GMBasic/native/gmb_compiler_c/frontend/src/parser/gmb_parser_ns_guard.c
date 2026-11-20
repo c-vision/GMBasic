@@ -61,6 +61,24 @@ static void ns_add_import(gmb_parser_t* p, char* name, int len)
     p->n_imports++;
 }
 
+/* Namespace NON implicito: senza IMPORT non è raggiungibile, né come comando né come lettura
+ * qualificata. Oggi l'unico dominio così è WORLD (motore 3D, parità con le gambe gestite, dove
+ * `_program.Namespaces` fa lo stesso lavoro in ParseStatement).
+ *
+ * Unica sede del messaggio e della regola: "caricato" è la STESSA definizione del gate dei nomi
+ * nudi (`ns_is_loaded`: default del linguaggio + `p->imports`, riempito dal pre-scan), non una
+ * seconda tabella. Gli IMPORT stanno nel root del modulo (un frammento EVAL punta al padre). */
+bool gmb_p_require_import(gmb_parser_t* p, const char* ns, int line)
+{
+    if (!p || !ns) return true;   /* senza parser o senza nome non c'è nulla da verificare */
+    const gmb_parser_t* root = ns_root(p);
+    if (ns_is_loaded(root, ns)) return true;
+    char msg[160];
+    snprintf(msg, sizeof msg, "namespace non importato: %s (aggiungi IMPORT %s).", ns, ns);
+    gmb_p_set_err(p, msg, line);
+    return false;
+}
+
 void gmb_p_collect_imports(gmb_parser_t* p)
 {
     p->n_imports = 0;

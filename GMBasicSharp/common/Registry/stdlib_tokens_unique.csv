@@ -1165,3 +1165,8 @@
 1164,WINDOWS,WINDOWCLOSED,Identifier,TokenKind.Identifier
 1165,WINDOWS,X,WindowX,TokenKind.WindowX
 1166,WINDOWS,Y,WindowY,TokenKind.WindowY
+1167,WORLD,CEILZ,CeilZ,TokenKind.CeilZ
+1168,WORLD,FLOORZ,FloorZ,TokenKind.FloorZ
+1169,WORLD,LIGHTNOW,LightNow,TokenKind.LightNow
+1170,WORLD,MOVING,Moving,TokenKind.Moving
+1171,WORLD,TIME,WorldTime,TokenKind.WorldTime

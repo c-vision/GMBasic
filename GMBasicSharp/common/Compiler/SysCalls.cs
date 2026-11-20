@@ -521,6 +521,20 @@ public enum SysCall : ushort
     SCREEN_COORDS = 461,        // SCREEN ... USE CELLS|PIXELS: (mode) -> spazio coordinate DICHIARATO dei controlli
                                 //   -1 = AUTO (nessuna clausola), 1 = CELLE, 0 = PIXEL. Il motore e' il runtime C
                                 //   (gmb_gfx_set_coord_mode): stessa fonte per TUTTI i backend.
+
+    // --- MOTORE 3D / WORLD (2026-11-19, ponte C#): comandi del dominio WORLD. Stato solo nel
+    // runtime C: PCodeProcessor e gmb_vm_core.c inoltrano alla facciata gmb_world_* (§0bis). ---
+    WORLD_LOAD = 462,       // (path)            → gmb_world_load
+    WORLD_CLOSE = 463,      // ()                → gmb_world_free
+    WORLD_TICK = 464,       // (secondi)         → gmb_world_tick
+    WORLD_SECMOVE = 465,    // (settore, v, pavimento[, soffitto])
+    WORLD_HEIGHT = 466,     // (settore)         → ferma il mover
+    WORLD_ANIM = 467,       // (settore, prima, quante, fps)
+    WORLD_SCROLL = 468,     // (settore, what, u/s, v/s)
+    WORLD_LIGHTFX = 469,    // (settore, modo, amount, rate)
+    WORLD_LAMP = 470,       // (x, y, z, raggio, livello)
+    WORLD_SECMOVE_CEIL = 471, // (settore, v, pavimento, soffitto): arità diversa da SECMOVE,
+                              // quindi syscall separata — l'esecutore non riceve l'argc.
 }
 
 /// <summary>

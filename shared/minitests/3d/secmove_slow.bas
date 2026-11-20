@@ -1,8 +1,8 @@
 ' EXPECT: z1= 2.5|m=-1|z2= 5|m2= 0
-' TAG: native-only
 ' MOTORE 3D — WORLD SECMOVE con velocità bassa: 10 unità/s per 0,25 s sono 2,5.
 ' Serve mezzo secondo per arrivare a 5: il test fissa il legame velocità/tempo (non un
 ' "arrivo immediato") e il passaggio in moto → fermo alla quota esatta.
+IMPORT WORLD
 SUB Main()
   WORLD LOAD "worlds/demo.gmbscene"
   WORLD SECMOVE 1, 10, 5

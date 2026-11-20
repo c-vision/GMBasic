@@ -1066,6 +1066,9 @@ static gmb_stmt_t* gmb_p_parse_stmt_impl(gmb_parser_t* p, bool* multiline)
         gmb_p_set_err(p, "LLM FINETUNE/LORA/QUALITY non piu' validi: spostati nel namespace TRAIN.", line);
         return NULL;
     }
+    /* `WORLD` non è implicito: il comando richiede IMPORT WORLD (le altre gambe lo impongono
+     * con il gate dei namespace in ParseStatement). Gli altri domini legacy restano com'erano. */
+    if (t->kind == GMB_TOK_World && p && !gmb_p_require_import(p, "WORLD", line)) return NULL;
     if (gmb_p_is_domain_ns(t->kind) && !http_cmd && !ws_cmd && !ai_next_dot && !ns_var_use) { gmb_stmt_t* dm = gmb_p_parse_domain_stmt(p, line); if (dm) return dm; }
     /* BARE COMMAND FALLBACK: comandi RDD usati SENZA prefisso `RDD` (es. `USE ":memory:" VIA
      * "ARRAY" ALIAS T1`), quando RDD è importato/attivo (parity Parser bare-command fallback). */

@@ -1,10 +1,10 @@
 ' EXPECT: t= 30|f= 0|c= 64|m= 0
-' TAG: native-only
 ' MOTORE 3D — WORLD SCROLL what 0 = piani, what 1 = pareti del settore.
 ' Gli offset integrati non sono leggibili dal BASIC: qui si verifica che il comando sia
 ' accettato su entrambi i bersagli e che non sposti quote né avvii mover; l'aspetto visivo
 ' resta alle golden del motore. Il TICK dopo lo scroll prova che l'integrazione non ferma
 ' l'orologio né il passo fisso.
+IMPORT WORLD
 SUB Main()
   WORLD LOAD "worlds/demo.gmbscene"
   WORLD SCROLL 0, 0, 8, 0

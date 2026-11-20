@@ -1218,6 +1218,11 @@ public static partial class CanonicalLookup
         new("WINDOWS", "WINDOWCLOSED", 1209),
         new("WINDOWS", "X", 1210),
         new("WINDOWS", "Y", 1211),
+        new("WORLD", "CEILZ", 1212),
+        new("WORLD", "FLOORZ", 1213),
+        new("WORLD", "LIGHTNOW", 1214),
+        new("WORLD", "MOVING", 1215),
+        new("WORLD", "TIME", 1216),
     ];
     public readonly record struct Cmd(string Name, int Id);
     public static readonly Cmd[] Commands =
@@ -1334,9 +1339,10 @@ public static partial class CanonicalLookup
         new("WATCH", 1000110),
         new("WEB2MD", 1000111),
         new("WINDOW", 1000112),
-        new("WRITE", 1000113),
-        new("XCOPY", 1000114),
-        new("ZIP", 1000115),
+        new("WORLD", 1000113),
+        new("WRITE", 1000114),
+        new("XCOPY", 1000115),
+        new("ZIP", 1000116),
     ];
     public readonly record struct Const(string Name, int Id, double Value);
     public static readonly Const[] Constants =

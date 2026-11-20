@@ -1591,6 +1591,13 @@ public static partial class Linker
                     s.Token
                 ) { ScopeId = s.ScopeId };
 
+            case WorldCommandStmt s:
+                return new WorldCommandStmt(
+                    s.Command,
+                    [..s.Arguments.Select(a => ResolveExpression(a, program))],
+                    s.Token
+                ) { ScopeId = s.ScopeId, CommandSymbolId = s.CommandSymbolId };
+
             case GraphicsPrintExprStmt s:
                 return new GraphicsPrintExprStmt(ResolveExpression(s.Expression, program)) { ScopeId = s.ScopeId };
 

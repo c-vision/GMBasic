@@ -140,6 +140,12 @@ add_library(gmb_vm STATIC
     gmb_vm_bsp.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../gmb_torch/src/gmb_torch.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../gmb_torch/src/gmb_torch_str.c
+    # Motore 3D (dominio WORLD): i syscall/builtin di gmb_vm_core.c e gmb_builtin.c
+    # inoltrano a gmb_world_*, che vive in gmb_runtime (gmb_3d_cmd.c → gmb_3d_io.c).
+    # gmb_3d_io.o usa il raster della suite (gm_tex_*): le stesse sorgenti che compila
+    # l'oracolo runtime, qui dentro la static lib così ogni host della VM le ha.
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../../shared/libs/graphics/src/gm_gfx_raster.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../../shared/libs/graphics/src/gm_gfx_sector.c
 )
 # SPLIT 2026-11-02: il runtime non propaga più gmbllm/LLMEnv. La VM dispatcha i comandi
 # LLM (LLM TENSOR/ARCH/KERNEL…) e usa direttamente llmmodelio_* → linka gmbllm_core (che a sua
@@ -155,6 +161,7 @@ add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../gmb_db_c gmb_db_c_build)
 target_compile_definitions(gmb_vm PRIVATE GMB_NATIVE_DB)
 target_include_directories(gmb_vm PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../gmb_db_c/include)
 target_link_libraries(gmb_vm PRIVATE gmb_db)
+target_include_directories(gmb_vm PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../../../shared/libs/graphics/include ${CMAKE_CURRENT_SOURCE_DIR}/../../../shared/libs/math/include ${CMAKE_CURRENT_SOURCE_DIR}/../../../shared/libs/compute/include)
 
 # ── Valutatore a runtime come libreria CONDIVISA (libgmb_eval) ──────────────
 # Compilatore C + VM minima, caricata ON DEMAND (dlopen) dai contesti senza VM

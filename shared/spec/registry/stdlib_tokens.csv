@@ -1210,3 +1210,8 @@
 1209,WINDOWS,WINDOWCLOSED,Identifier,TokenKind.Identifier
 1210,WINDOWS,X,WindowX,TokenKind.WindowX
 1211,WINDOWS,Y,WindowY,TokenKind.WindowY
+1212,WORLD,CEILZ,CeilZ,TokenKind.CeilZ
+1213,WORLD,FLOORZ,FloorZ,TokenKind.FloorZ
+1214,WORLD,LIGHTNOW,LightNow,TokenKind.LightNow
+1215,WORLD,MOVING,Moving,TokenKind.Moving
+1216,WORLD,TIME,WorldTime,TokenKind.WorldTime

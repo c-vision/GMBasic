@@ -1177,6 +1177,11 @@ static const gmb_ns_lookup_row_t gmb_ns_lookup[] = {
     { "WINDOWS", "WINDOWCLOSED", GMB_TOK_Identifier },
     { "WINDOWS", "X", GMB_TOK_WindowX },
     { "WINDOWS", "Y", GMB_TOK_WindowY },
+    { "WORLD", "CEILZ", GMB_TOK_CeilZ },
+    { "WORLD", "FLOORZ", GMB_TOK_FloorZ },
+    { "WORLD", "LIGHTNOW", GMB_TOK_LightNow },
+    { "WORLD", "MOVING", GMB_TOK_Moving },
+    { "WORLD", "TIME", GMB_TOK_WorldTime },
 };
 #define GMB_NS_LOOKUP_COUNT ((int)(sizeof(gmb_ns_lookup)/sizeof(gmb_ns_lookup[0])))
 #endif

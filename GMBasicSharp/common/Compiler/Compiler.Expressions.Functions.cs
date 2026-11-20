@@ -932,6 +932,10 @@ public sealed partial class Compiler
         // SETWINDOWTITLE rimosso come funzione: ora è il comando WINDOW.SET TITLE (Compiler.Statements).
         { TokenKind.GetCursorPos, BuiltInFunction.GETCURSORPOS },
         { TokenKind.GetTextMetrics, BuiltInFunction.GETTEXTMETRICS }, { TokenKind.GetPaletteColor, BuiltInFunction.GETPALETTECOLOR },
+        // WORLD (motore 3D): letture del mondo — TokenKind canonici, stato solo nel runtime C.
+        { TokenKind.Moving, BuiltInFunction.WORLD_MOVING }, { TokenKind.LightNow, BuiltInFunction.WORLD_LIGHTNOW },
+        { TokenKind.WorldTime, BuiltInFunction.WORLD_TIME },
+        { TokenKind.FloorZ, BuiltInFunction.WORLD_FLOORZ }, { TokenKind.CeilZ, BuiltInFunction.WORLD_CEILZ },
         // FINANCE varianti (2026-08-06). YIELD riusa TokenKind.Yield (comando task YIELD e'
         // statement-only via ParseYieldStatement, nessun conflitto con la funzione qualificata).
         { TokenKind.Yield, BuiltInFunction.YIELD },         // MESSAGE() — TokenKind.Message riusato: il comando TEAM.MESSAGE e' statement-only

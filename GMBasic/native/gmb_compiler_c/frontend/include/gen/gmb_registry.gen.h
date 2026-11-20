@@ -1219,6 +1219,11 @@ static const gmb_reg_proc_t gmb_reg_procs[] = {
     {"WINDOWS", "WINDOWCLOSED", 1209, 0, 0},
     {"WINDOWS", "X", 1210, 0, 0},
     {"WINDOWS", "Y", 1211, 0, 0},
+    {"WORLD", "CEILZ", 1212, 1, 1},
+    {"WORLD", "FLOORZ", 1213, 1, 1},
+    {"WORLD", "LIGHTNOW", 1214, 1, 1},
+    {"WORLD", "MOVING", 1215, 1, 1},
+    {"WORLD", "TIME", 1216, 0, 0},
 };
 typedef struct { const char* name; int id; } gmb_reg_cmd_t;
 static const gmb_reg_cmd_t gmb_reg_cmds[] = {
@@ -1334,9 +1339,10 @@ static const gmb_reg_cmd_t gmb_reg_cmds[] = {
     {"WATCH", 1000110},
     {"WEB2MD", 1000111},
     {"WINDOW", 1000112},
-    {"WRITE", 1000113},
-    {"XCOPY", 1000114},
-    {"ZIP", 1000115},
+    {"WORLD", 1000113},
+    {"WRITE", 1000114},
+    {"XCOPY", 1000115},
+    {"ZIP", 1000116},
 };
 typedef struct { const char* name; int id; double v; } gmb_reg_const_t;
 static const gmb_reg_const_t gmb_reg_consts[] = {

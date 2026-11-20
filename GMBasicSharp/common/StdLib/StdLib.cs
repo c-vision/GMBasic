@@ -140,6 +140,7 @@ public sealed partial class StdLib : IParserRegistry
         CreateDateTimeNamespace();
         CreateMathNamespace();
         CreateMatrixNamespace();
+        CreateWorldNamespace();   // motore 3D: WORLD (comando) + MOVING/LIGHTNOW/TIME/FLOORZ/CEILZ
         CreateLinalgNamespace();
         // SPECIAL: namespace LIBERATO — ri-esposto via FFI (shared/include/special.inc, libgmbmath).
         CreateSignalNamespace();

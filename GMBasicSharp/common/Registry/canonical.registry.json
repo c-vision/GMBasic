@@ -13323,6 +13323,61 @@
       "arityMin": 0,
       "arityMax": 0,
       "pure": false
+    },
+    {
+      "ns": "WORLD",
+      "name": "CEILZ",
+      "id": 1212,
+      "tokenKind": 2518,
+      "kindName": "CeilZ",
+      "fn": true,
+      "arityMin": 1,
+      "arityMax": 1,
+      "pure": false
+    },
+    {
+      "ns": "WORLD",
+      "name": "FLOORZ",
+      "id": 1213,
+      "tokenKind": 2517,
+      "kindName": "FloorZ",
+      "fn": true,
+      "arityMin": 1,
+      "arityMax": 1,
+      "pure": false
+    },
+    {
+      "ns": "WORLD",
+      "name": "LIGHTNOW",
+      "id": 1214,
+      "tokenKind": 2516,
+      "kindName": "LightNow",
+      "fn": true,
+      "arityMin": 1,
+      "arityMax": 1,
+      "pure": false
+    },
+    {
+      "ns": "WORLD",
+      "name": "MOVING",
+      "id": 1215,
+      "tokenKind": 2512,
+      "kindName": "Moving",
+      "fn": true,
+      "arityMin": 1,
+      "arityMax": 1,
+      "pure": false
+    },
+    {
+      "ns": "WORLD",
+      "name": "TIME",
+      "id": 1216,
+      "tokenKind": 2519,
+      "kindName": "WorldTime",
+      "fn": true,
+      "arityMin": 0,
+      "arityMax": 0,
+      "pure": false
     }
   ],
   "commands": [
@@ -13999,20 +14054,26 @@
       "kindName": "Window"
     },
     {
-      "name": "WRITE",
+      "name": "WORLD",
       "id": 1000113,
+      "tokenKind": 406,
+      "kindName": "World"
+    },
+    {
+      "name": "WRITE",
+      "id": 1000114,
       "tokenKind": 439,
       "kindName": "Write"
     },
     {
       "name": "XCOPY",
-      "id": 1000114,
+      "id": 1000115,
       "tokenKind": 559,
       "kindName": "XCopy"
     },
     {
       "name": "ZIP",
-      "id": 1000115,
+      "id": 1000116,
       "tokenKind": 1548,
       "kindName": "Zip"
     }
@@ -15729,7 +15790,7 @@
       "value": 103
     }
   ],
-  "count": 1211,
-  "commandsCount": 115,
+  "count": 1216,
+  "commandsCount": 116,
   "constantsCount": 285
 }

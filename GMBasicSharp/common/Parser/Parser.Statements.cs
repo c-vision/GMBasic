@@ -771,6 +771,10 @@ public sealed partial class Parser
 
                     case TokenKind.Chart: return [DispatchChartStatement(this, "CHART")];
                     case TokenKind.Matrix: return [DispatchMatrixStatement(this, "MATRIX")];
+                    // Motore 3D (P2). Nessun gate dedicato: `WORLD` non è fra i namespace sempre
+                    // disponibili, quindi vale il controllo generico qui sopra (`_program.Namespaces`)
+                    // — senza IMPORT WORLD il comando non arriva a questo case.
+                    case TokenKind.World: return [DispatchWorldStatement(this, "WORLD")];
                     case TokenKind.Vector: return [DispatchVectorStatement(this, "VECTOR")];
                     case TokenKind.VectorDb: return [ParseVectorDbStatement(this, "VECTORDB")];
                     case TokenKind.Ai: return [ParseAiStatement(this, "AI")];

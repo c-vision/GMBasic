@@ -126,11 +126,11 @@ int emit_bf_world(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk
         case GMB_TOK_LightNow: fn = "gmb_world_lightnow"; break;
         case GMB_TOK_FloorZ:   fn = "gmb_world_floor"; break;
         case GMB_TOK_CeilZ:    fn = "gmb_world_ceil"; break;
-        case GMB_TOK_Time:     fn = "gmb_world_time"; break;
+        case GMB_TOK_WorldTime: fn = "gmb_world_time"; break;
         default: return 0;
     }
     sb_printf(&c->out, "%s(", fn);
-    if (tk != GMB_TOK_Time)
+    if (tk != GMB_TOK_WorldTime)
     {
         if (nargs < 1) return 0;
         emit_expr(c, args[0]);

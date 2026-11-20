@@ -1,8 +1,8 @@
 ' EXPECT: m3=-1|m0= 0|m2= 0|z2= 0
-' TAG: native-only
 ' MOTORE 3D — WORLD.MOVING è PER SETTORE: avviare il 3 non muove gli altri.
 ' Ascensori indipendenti sono questo: SECMOVE 3 lascia fermi 0 e 2, e il pavimento del 2
 ' resta a quota 0 anche dopo un secondo di simulazione.
+IMPORT WORLD
 SUB Main()
   WORLD LOAD "worlds/demo.gmbscene"
   WORLD SECMOVE 3, 20, 4

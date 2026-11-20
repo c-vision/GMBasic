@@ -1292,6 +1292,21 @@ public static partial class Linker
                     ScopeId = currentScopeId
                 };
 
+            // WORLD (motore 3D): stesso trattamento di MATRIX — il comando si risolve nel
+            // namespace WORLD e gli argomenti si bindano. Il dispatch nei backend è per TokenKind
+            // del verbo, quindi l'ID del simbolo non entra nella semantica.
+            case WorldCommandStmt s:
+                var wSyms = program.Symbols.GetSymbolIdsByNamespace("WORLD");
+                var wId = wSyms?.Select(id => program.Symbols.GetSymbol(id))
+                    .FirstOrDefault(sym =>
+                        sym.OriginalName.Equals(s.Command.Lexeme, StringComparison.OrdinalIgnoreCase))?.Id ?? -1;
+                return s with
+                {
+                    Arguments = [..s.Arguments.Select(a => BindExpression(a, program, isStrict))],
+                    CommandSymbolId = wId,
+                    ScopeId = currentScopeId
+                };
+
             case SaveScreenStmt s:
                 return s with { Name = BindExpression(s.Name, program, isStrict) };
 

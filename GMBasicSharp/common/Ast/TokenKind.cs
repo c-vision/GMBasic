@@ -2472,4 +2472,7 @@ public enum TokenKind
     LightNow,
     FloorZ,
     CeilZ,
+    // WORLD.TIME() (2026-11-19, ponte C#): orologio del mondo. Token DEDICATO — `Time` è già
+    // TIME() del linguaggio e un solo TokenKind non può significare due cose (§12).
+    WorldTime,
   }

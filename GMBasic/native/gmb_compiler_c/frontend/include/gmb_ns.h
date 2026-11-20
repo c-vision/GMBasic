@@ -76,6 +76,10 @@ static const char* const gmb_ns_names[] = {
     "VECTOR",
     "VECTORDB",
     "WINDOWS",
+    /* Motore 3D: namespace BUILTIN (StdLib.World.cs), non implicito — serve a riconoscere
+     * `IMPORT WORLD` senza cercarlo su disco e a scomporre `WORLD.TIME()` in (ns, membro).
+     * Senza IMPORT il dominio è chiuso dal gate `gmb_p_require_import`. */
+    "WORLD",
     /* Second Brain (2026-09-01): namespace autonomi AI/GRAPH/VAULT/NOTE/INGEST. */
     "GRAPH",
     "BRAINS",

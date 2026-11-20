@@ -777,6 +777,16 @@ public sealed partial class Lexer
         { "PUSH", TokenKind.Push },
         { "POP", TokenKind.Pop },
         { "WORLD", TokenKind.World },
+        // Motore 3D (2026-11-19): verbi del dominio WORLD. Keyword dedicate, così il parser
+        // dispatcha per TokenKind (§12) e mai per lessema.
+        { "SECMOVE", TokenKind.SecMove },
+        { "MOVING", TokenKind.Moving },
+        { "ANIM", TokenKind.Anim },
+        { "LAMP", TokenKind.Lamp },
+        { "LIGHTFX", TokenKind.LightFx },
+        { "LIGHTNOW", TokenKind.LightNow },
+        { "FLOORZ", TokenKind.FloorZ },
+        { "CEILZ", TokenKind.CeilZ },
         { "PROJECTION", TokenKind.Projection },
         { "ADD", TokenKind.Add },
         { "MUL", TokenKind.Mul },

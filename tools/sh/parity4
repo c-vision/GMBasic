@@ -91,16 +91,6 @@ if [ ! -f "$FILE" ] && [ -f "$CALLER_PWD/$FILE" ]; then FILE="$CALLER_PWD/$FILE"
 # percorso relativo (risolto dalla shell di parity4) si romperebbe DENTRO la gamba.
 FILE="$(cd "$(dirname "$FILE")" && pwd)/$(basename "$FILE")"
 
-# NATIVE-ONLY (marker header `' TAG: native-only`): il sample usa il dominio WORLD (motore 3D),
-# che esiste SOLO nella gamba nativa finché il ponte C# non è disponibile (piano §7.2). Le tre
-# gambe gestite non hanno alcun accesso allo stato 3D: si esegue la gamba C99Native e le altre si
-# dichiarano NON APPLICABILI — nessuna esclusione silenziosa, e il test gira davvero.
-# Va DOPO la risoluzione di $FILE (il path può arrivare relativo alla CWD del chiamante).
-if grep -q "^' TAG: native-only" "$FILE" 2>/dev/null; then
-  echo "parity4: $FILE è 'TAG: native-only' (WORLD/3D: ponte C# non ancora disponibile, piano §7.2) → sola gamba C99Native"
-  LEGS="c99n"
-fi
-
 # ── broker pub/sub: se il sample apre un `tcp://` loopback, parity4 lo avvia e lo ferma da sé ──
 # È un prerequisito del test, non del codice in prova: un broker morto fa fallire (o rende
 # ambiguo) un campione tcp che invece è corretto. `ensure` non tocca un broker già attivo.

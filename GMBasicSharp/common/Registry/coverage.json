@@ -1,52 +1,52 @@
 {
-  "total_canonical": 1326,
+  "total_canonical": 1332,
   "scope": "DECLARED by BackendSupport/Registry (name-match; NON misurato su dispatch reali)",
   "declared_per_backend": {
-    "IL": 1239,
-    "PCodeVM": 1239,
-    "VMC": 1239,
-    "C99Native": 1239
+    "IL": 1240,
+    "PCodeVM": 1240,
+    "VMC": 1240,
+    "C99Native": 1240
   },
   "declared_not_present_sample": {
     "IL": [
+      "WORLD.CEILZ",
+      "WORLD.FLOORZ",
+      "WORLD.LIGHTNOW",
+      "WORLD.MOVING",
       "BLOAD",
       "BSAVE",
       "CANVAS",
-      "CAPTION",
-      "CCLS",
-      "CHANNEL",
-      "CHART",
-      "CHDIR"
+      "CAPTION"
     ],
     "PCodeVM": [
+      "WORLD.CEILZ",
+      "WORLD.FLOORZ",
+      "WORLD.LIGHTNOW",
+      "WORLD.MOVING",
       "BLOAD",
       "BSAVE",
       "CANVAS",
-      "CAPTION",
-      "CCLS",
-      "CHANNEL",
-      "CHART",
-      "CHDIR"
+      "CAPTION"
     ],
     "VMC": [
+      "WORLD.CEILZ",
+      "WORLD.FLOORZ",
+      "WORLD.LIGHTNOW",
+      "WORLD.MOVING",
       "BLOAD",
       "BSAVE",
       "CANVAS",
-      "CAPTION",
-      "CCLS",
-      "CHANNEL",
-      "CHART",
-      "CHDIR"
+      "CAPTION"
     ],
     "C99Native": [
+      "WORLD.CEILZ",
+      "WORLD.FLOORZ",
+      "WORLD.LIGHTNOW",
+      "WORLD.MOVING",
       "BLOAD",
       "BSAVE",
       "CANVAS",
-      "CAPTION",
-      "CCLS",
-      "CHANNEL",
-      "CHART",
-      "CHDIR"
+      "CAPTION"
     ]
   },
   "rows": [
@@ -12161,6 +12161,56 @@
       "C99Native": true
     },
     {
+      "id": 1212,
+      "ns": "WORLD",
+      "name": "CEILZ",
+      "kind": "CeilZ",
+      "IL": false,
+      "PCodeVM": false,
+      "VMC": false,
+      "C99Native": false
+    },
+    {
+      "id": 1213,
+      "ns": "WORLD",
+      "name": "FLOORZ",
+      "kind": "FloorZ",
+      "IL": false,
+      "PCodeVM": false,
+      "VMC": false,
+      "C99Native": false
+    },
+    {
+      "id": 1214,
+      "ns": "WORLD",
+      "name": "LIGHTNOW",
+      "kind": "LightNow",
+      "IL": false,
+      "PCodeVM": false,
+      "VMC": false,
+      "C99Native": false
+    },
+    {
+      "id": 1215,
+      "ns": "WORLD",
+      "name": "MOVING",
+      "kind": "Moving",
+      "IL": false,
+      "PCodeVM": false,
+      "VMC": false,
+      "C99Native": false
+    },
+    {
+      "id": 1216,
+      "ns": "WORLD",
+      "name": "TIME",
+      "kind": "WorldTime",
+      "IL": true,
+      "PCodeVM": true,
+      "VMC": true,
+      "C99Native": true
+    },
+    {
       "id": 1000001,
       "ns": "",
       "name": "AADD",
@@ -13283,6 +13333,16 @@
     {
       "id": 1000113,
       "ns": "",
+      "name": "WORLD",
+      "kind": "World",
+      "IL": false,
+      "PCodeVM": false,
+      "VMC": false,
+      "C99Native": false
+    },
+    {
+      "id": 1000114,
+      "ns": "",
       "name": "WRITE",
       "kind": "Write",
       "IL": false,
@@ -13291,7 +13351,7 @@
       "C99Native": false
     },
     {
-      "id": 1000114,
+      "id": 1000115,
       "ns": "",
       "name": "XCOPY",
       "kind": "XCopy",
@@ -13301,7 +13361,7 @@
       "C99Native": false
     },
     {
-      "id": 1000115,
+      "id": 1000116,
       "ns": "",
       "name": "ZIP",
       "kind": "Zip",

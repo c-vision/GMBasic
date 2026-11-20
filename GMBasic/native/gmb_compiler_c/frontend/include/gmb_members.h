@@ -14,14 +14,6 @@
 typedef struct { const char* k; gmb_tokenkind_t tk; } gmb_member_row_t;
 static const gmb_member_row_t gmb_members[] = {
 
-    /* Motore 3D (P2): letture del namespace WORLD (funzioni: leggono e basta).
-     * `World`, `Time` e `Scroll` hanno già il loro token; questi sono i verbi
-     * che il dominio usa solo come membri qualificati. */
-    { "Moving", GMB_TOK_Moving },
-    { "LightNow", GMB_TOK_LightNow },
-    { "FloorZ", GMB_TOK_FloorZ },
-    { "CeilZ", GMB_TOK_CeilZ },
-
     { "Add", GMB_TOK_Add },
     { "AddAfter", GMB_TOK_CollAddAfter },
     { "AddBefore", GMB_TOK_CollAddBefore },

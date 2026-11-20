@@ -1037,6 +1037,7 @@ public sealed partial class IlProgramCompiler
             case TupleAssignmentStmt tupleAssignment: EmitTupleAssignmentStatement(tupleAssignment.VariableNames, tupleAssignment.TupleExpression, tupleAssignment); break;
             case TupleDestructuringStmt tupleDestructuring: EmitTupleAssignmentStatement(tupleDestructuring.VariableNames, tupleDestructuring.TupleExpression, tupleDestructuring); break;
             case MatrixCommandStmt matrixCommand: EmitMatrixCommandStatement(matrixCommand); break;
+            case WorldCommandStmt worldCommand: EmitWorldCommandStatement(worldCommand); break;   // motore 3D (P2)
             case VectorCommandStmt vectorCommand: EmitVectorCommandStatement(vectorCommand); break;
             case ExpressionStmt e: EmitExpressionStatement(e); break;
             case SemanticPatchStmt: break;   // §4.10 write-side: applicato nel linker (no-op)

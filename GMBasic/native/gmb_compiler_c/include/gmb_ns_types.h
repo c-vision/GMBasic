@@ -1110,6 +1110,11 @@ static const gmb_ns_type_row_t gmb_ns_types[] = {
     { GMB_TOK_WindowHeight, 0 },
     { GMB_TOK_WindowTheme, 1 },
     { GMB_TOK_WindowDesktop, 0 },
+    { GMB_TOK_Moving, 0 },
+    { GMB_TOK_LightNow, 0 },
+    { GMB_TOK_WorldTime, 0 },
+    { GMB_TOK_FloorZ, 0 },
+    { GMB_TOK_CeilZ, 0 },
 };
 #define GMB_NS_TYPES_COUNT ((int)(sizeof(gmb_ns_types)/sizeof(gmb_ns_types[0])))
 #endif

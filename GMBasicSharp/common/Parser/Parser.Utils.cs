@@ -86,6 +86,7 @@ public sealed partial class Parser
             TokenKind.Ssl => true,
             TokenKind.Chart => true,
             TokenKind.Matrix => true,
+            TokenKind.World => true,   // motore 3D (P2)
             TokenKind.Vector => true,
             TokenKind.VectorDb => true,
             TokenKind.Ai => true,
@@ -130,6 +131,7 @@ public sealed partial class Parser
             TokenKind.Ssl => "NET",
             TokenKind.Chart => "CHART",
             TokenKind.Matrix => "MATRIX",
+            TokenKind.World => "WORLD",   // motore 3D (P2)
             TokenKind.Vector => "VECTOR",
             TokenKind.VectorDb => "VECTORDB",
             TokenKind.Ai => "AI",

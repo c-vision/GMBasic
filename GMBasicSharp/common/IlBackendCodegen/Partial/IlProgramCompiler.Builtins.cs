@@ -501,6 +501,13 @@ public sealed partial class IlProgramCompiler
             case TokenKind.MatrixAsCsv: EmitLinAlgUnaryHandleCall(expr, RuntimeMethod(nameof(IlRuntime.MatrixAsCsv)), vector: false); break;
             case TokenKind.MatrixAsJson: EmitLinAlgUnaryHandleCall(expr, RuntimeMethod(nameof(IlRuntime.MatrixAsJson)), vector: false); break;
             case TokenKind.MatrixRowCount: EmitMatrixValueOrHandleUnary(expr, nameof(IlRuntime.MatrixValueRowCount), RuntimeMethod(nameof(IlRuntime.MatrixRowCount))); break;
+            // WORLD (motore 3D): letture del mondo. Lo stato vive SOLO nel runtime C: la chiamata
+            // inoltra a `gmb_world_*` (nessuna copia managed).
+            case TokenKind.Moving: EmitWorldReadSector(expr, nameof(IlRuntime.WorldMoving)); break;
+            case TokenKind.LightNow: EmitWorldReadSector(expr, nameof(IlRuntime.WorldLightNow)); break;
+            case TokenKind.WorldTime: EmitWorldReadNoArg(expr, nameof(IlRuntime.WorldTime)); break;
+            case TokenKind.FloorZ: EmitWorldReadSector(expr, nameof(IlRuntime.WorldFloorZ)); break;
+            case TokenKind.CeilZ: EmitWorldReadSector(expr, nameof(IlRuntime.WorldCeilZ)); break;
             case TokenKind.MatrixColumnCount: EmitMatrixValueOrHandleUnary(expr, nameof(IlRuntime.MatrixValueColumnCount), RuntimeMethod(nameof(IlRuntime.MatrixColumnCount))); break;
             case TokenKind.MatrixClone: EmitMatrixUnaryValue(expr, RuntimeMethod(nameof(IlRuntime.MatrixCloneValue)), nameof(IlRuntime.MatrixValueClone)); break;
             // MATRIX F2b (2026-11-09): ROW/COL/ISCONTIGUOUS.

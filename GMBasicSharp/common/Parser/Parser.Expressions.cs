@@ -1121,6 +1121,15 @@ public sealed partial class Parser
                     {
                         var namespaceToken = qne.Parts[0];
                         var memberToken = qne.Parts.Last();
+                        // `WORLD` non è implicito: le letture qualificate (`WORLD.TIME()`,
+                        // `WORLD.MOVING(1)`, …) richiedono IMPORT WORLD come i comandi. Gli altri
+                        // namespace restano risolvibili dal registro senza IMPORT (TRADING.PORTFOLIO.*).
+                        if (string.Equals(namespaceToken.Lexeme, "WORLD", StringComparison.OrdinalIgnoreCase)
+                            && !IsNamespaceLoaded("WORLD"))
+                        {
+                            throw CreateError(namespaceToken,
+                                "namespace non importato: WORLD (aggiungi IMPORT WORLD).");
+                        }
                         var memberName = memberToken.Lexeme;
 
                         // Namespace COMPOSTI (es. TRADING.OPTIONS.ZOMMA): il namespace è il PREFISSO

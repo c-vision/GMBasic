@@ -695,6 +695,34 @@ else()
     target_link_options(gmb_matrix_flat PRIVATE -Wl,--allow-shlib-undefined)
 endif()
 
+# ── 3D WORLD: facciata `gmb_world_*` per i backend MANAGED (P/Invoke C#→C) ────────────────────
+# Il mondo 3D vive SOLO nel runtime C (gmb_3d_*, §0bis): IL/PCodeVM/VM-C non ne hanno una
+# copia e non devono averla. Questa lib espone la facciata di gmb_3d_cmd.c agli host C# (dotnet)
+# che non linkano l'archivio statico; il file è lo STESSO delle gambe C — nessuna seconda
+# implementazione, nessun doppio stato.
+add_library(gmb_3d SHARED
+    src/gmb_3d_cmd.c
+    # gmb_3d_io.o (dentro gmb_runtime) usa gm_tex_* e il raster della suite: le stesse
+    # sorgenti che compila l'oracolo, così la dylib non resta con simboli irrisolti e
+    # un dlopen dal C# non muore al primo WORLD LOAD.
+    "${GMB_GFX_SUITE}/src/gm_gfx_raster.c"
+    "${GMB_GFX_SUITE}/src/gm_gfx_sector.c"
+)
+target_include_directories(gmb_3d PUBLIC include
+    PRIVATE "${GMB_GFX_SUITE}/include" "${GMB_GFX_SUITE}/../math/include" "${GMB_GFX_SUITE}/../compute/include")
+target_link_libraries(gmb_3d PRIVATE gmb_runtime)
+set_target_properties(gmb_3d PROPERTIES
+    OUTPUT_NAME gmb_3d
+    C_VISIBILITY_PRESET default
+    LIBRARY_OUTPUT_DIRECTORY "${GMB_LIBS_OUT}")
+# Stessa ricetta di gmb_matrix_flat: la static gmb_runtime trascina oggetti UI/TUI con simboli
+# forniti dall'host; la facciata 3D non li usa → risolti a runtime.
+if(APPLE)
+    target_link_options(gmb_3d PRIVATE -Wl,-undefined,dynamic_lookup)
+else()
+    target_link_options(gmb_3d PRIVATE -Wl,--allow-shlib-undefined)
+endif()
+
 # COMPRESSION come libreria CONDIVISA per P/Invoke (REPL/backends C#): esporta
 # gmb_compress_b64/decompress_b64/free (zstd/lz4/xz + zlib/bz2/brotli).
 add_library(gmb_compress SHARED

@@ -5328,6 +5328,10 @@ public static partial class Linker
             {
                 Arguments = [..s.Arguments.Select(a => RewriteExpression(a, context, program))]
             },
+            WorldCommandStmt s => s with
+            {
+                Arguments = [..s.Arguments.Select(a => RewriteExpression(a, context, program))]
+            },
 
             // --- FILE I/O ---
             OpenStmt s => s with

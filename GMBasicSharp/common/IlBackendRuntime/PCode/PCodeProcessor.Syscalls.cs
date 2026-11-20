@@ -820,6 +820,68 @@ internal sealed partial class PCodeProcessor
                 }
                 break;
             }
+            // --- MOTORE 3D / WORLD (2026-11-19, ponte C#): comandi. Lo stato vive SOLO nel
+            // runtime C: qui si inoltra alla facciata gmb_world_* (CommonLib.World3DNative).
+            // Gli argomenti sono sullo stack nell'ordine della sorgente → si estraggono al
+            // contrario. Il rc della facciata non è leggibile da un comando (§1).
+            case SysCall.WORLD_LOAD:
+            {
+                var path = PopString(task) ?? "";
+                CommonLib.World3DNative.Load(path);
+                break;
+            }
+            case SysCall.WORLD_CLOSE:
+                CommonLib.World3DNative.Free();
+                break;
+            case SysCall.WORLD_TICK:
+            {
+                var seconds = PopNum(task);
+                CommonLib.World3DNative.Tick(seconds);
+                break;
+            }
+            case SysCall.WORLD_SECMOVE:
+            {
+                var floorZ = PopNum(task); var speed = PopNum(task); var sector = PopInt(task);
+                CommonLib.World3DNative.SecMove(sector, speed, floorZ);
+                break;
+            }
+            case SysCall.WORLD_SECMOVE_CEIL:
+            {
+                var ceilZ = PopNum(task); var floorZ = PopNum(task); var speed = PopNum(task); var sector = PopInt(task);
+                CommonLib.World3DNative.SecMoveCeil(sector, speed, floorZ, ceilZ);
+                break;
+            }
+            case SysCall.WORLD_HEIGHT:
+            {
+                var sector = PopInt(task);
+                CommonLib.World3DNative.Height(sector);
+                break;
+            }
+            case SysCall.WORLD_ANIM:
+            {
+                var fps = PopNum(task); var count = PopInt(task); var first = PopInt(task); var sector = PopInt(task);
+                CommonLib.World3DNative.Anim(sector, first, count, fps);
+                break;
+            }
+            case SysCall.WORLD_SCROLL:
+            {
+                var vPerS = PopNum(task); var uPerS = PopNum(task); var what = PopInt(task); var sector = PopInt(task);
+                CommonLib.World3DNative.Scroll(sector, what, uPerS, vPerS);
+                break;
+            }
+            case SysCall.WORLD_LIGHTFX:
+            {
+                var rate = PopNum(task); var amount = PopNum(task); var mode = PopInt(task); var sector = PopInt(task);
+                CommonLib.World3DNative.LightFx(sector, mode, amount, rate);
+                break;
+            }
+            case SysCall.WORLD_LAMP:
+            {
+                var level = PopNum(task); var radius = PopNum(task); var z = PopNum(task);
+                var y = PopNum(task); var x = PopNum(task);
+                CommonLib.World3DNative.Lamp(x, y, z, radius, level);
+                break;
+            }
             case SysCall.PALETTE_USE:
             {
                 var name = PopString(task) ?? "";

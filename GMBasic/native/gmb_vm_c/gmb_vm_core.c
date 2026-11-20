@@ -25,6 +25,7 @@
 #include "gmb_graphics.h"
 #include "gmb_network.h"
 #include "gmb_matrix.h"
+#include "gmb_3d.h"   /* motore 3D: facciata gmb_world_* (gmb_3d_cmd.c) — stesso runtime delle altre gambe */
 #include "gmb_ml.h"
 #include "gmb_torch.h"
 #include "gmb_graph.h"
@@ -5795,6 +5796,96 @@ static void vm_sys_palette_339(gmb_vm_t* vm, gmb_task_t* task, int code, int arg
         if (n == 4) gmb_gfx_palette((int)v[0], (int)v[1], (int)v[2], (int)v[3]);
     }
 }
+/* ── MOTORE 3D / WORLD (2026-11-19, ponte C#) ──────────────────────────────────────────────
+ * Comandi del dominio WORLD. La VM/C non ha stato 3D proprio: il mondo vive nel runtime C
+ * condiviso (gmb_3d_cmd.c) e qui si chiama la STESSA facciata delle altre gambe (§0bis).
+ * Statement: nessun push (un comando non ritorna un valore, §1). */
+static double vm_world_num(gmb_stack_entry_t* a) { return a->type == 1 ? a->num : 0.0; }
+
+static void vm_sys_world_load(gmb_vm_t* vm, gmb_task_t* task, int code, int argc) {
+    (void)vm; (void)code;
+    gmb_stack_entry_t a[1];
+    int n = argc > 1 ? 1 : argc;
+    vm_pop_args_ordered(task, a, n);
+    if (n >= 1) {
+        const char* path = (a[0].type == 2 && a[0].ref && a[0].ref->kind == GMB_OBJ_STRING)
+            ? ((gmb_obj_string_t*)a[0].ref)->data : NULL;
+        if (path) (void)gmb_world_load(path);
+        gmb_obj_release(a[0].ref);
+    }
+}
+static void vm_sys_world_close(gmb_vm_t* vm, gmb_task_t* task, int code, int argc) {
+    (void)vm; (void)task; (void)code; (void)argc;
+    gmb_world_free();
+}
+static void vm_sys_world_tick(gmb_vm_t* vm, gmb_task_t* task, int code, int argc) {
+    (void)vm; (void)code;
+    gmb_stack_entry_t a[1];
+    int n = argc > 1 ? 1 : argc;
+    vm_pop_args_ordered(task, a, n);
+    if (n >= 1) (void)gmb_world_tick(vm_world_num(&a[0]));
+}
+static void vm_sys_world_secmove(gmb_vm_t* vm, gmb_task_t* task, int code, int argc) {
+    (void)vm; (void)code;
+    gmb_stack_entry_t a[3];
+    int n = argc > 3 ? 3 : argc;
+    vm_pop_args_ordered(task, a, n);
+    if (n >= 3)
+        (void)gmb_world_secmove((int)vm_world_num(&a[0]), vm_world_num(&a[1]), vm_world_num(&a[2]));
+}
+static void vm_sys_world_secmove_ceil(gmb_vm_t* vm, gmb_task_t* task, int code, int argc) {
+    (void)vm; (void)code;
+    gmb_stack_entry_t a[4];
+    int n = argc > 4 ? 4 : argc;
+    vm_pop_args_ordered(task, a, n);
+    if (n >= 4)
+        (void)gmb_world_secmove_ceil((int)vm_world_num(&a[0]), vm_world_num(&a[1]),
+                                     vm_world_num(&a[2]), vm_world_num(&a[3]));
+}
+static void vm_sys_world_height(gmb_vm_t* vm, gmb_task_t* task, int code, int argc) {
+    (void)vm; (void)code;
+    gmb_stack_entry_t a[1];
+    int n = argc > 1 ? 1 : argc;
+    vm_pop_args_ordered(task, a, n);
+    if (n >= 1) (void)gmb_world_height((int)vm_world_num(&a[0]));
+}
+static void vm_sys_world_anim(gmb_vm_t* vm, gmb_task_t* task, int code, int argc) {
+    (void)vm; (void)code;
+    gmb_stack_entry_t a[4];
+    int n = argc > 4 ? 4 : argc;
+    vm_pop_args_ordered(task, a, n);
+    if (n >= 4)
+        (void)gmb_world_anim((int)vm_world_num(&a[0]), (int)vm_world_num(&a[1]),
+                             (int)vm_world_num(&a[2]), vm_world_num(&a[3]));
+}
+static void vm_sys_world_scroll(gmb_vm_t* vm, gmb_task_t* task, int code, int argc) {
+    (void)vm; (void)code;
+    gmb_stack_entry_t a[4];
+    int n = argc > 4 ? 4 : argc;
+    vm_pop_args_ordered(task, a, n);
+    if (n >= 4)
+        (void)gmb_world_scroll((int)vm_world_num(&a[0]), (int)vm_world_num(&a[1]),
+                               vm_world_num(&a[2]), vm_world_num(&a[3]));
+}
+static void vm_sys_world_lightfx(gmb_vm_t* vm, gmb_task_t* task, int code, int argc) {
+    (void)vm; (void)code;
+    gmb_stack_entry_t a[4];
+    int n = argc > 4 ? 4 : argc;
+    vm_pop_args_ordered(task, a, n);
+    if (n >= 4)
+        (void)gmb_world_lightfx((int)vm_world_num(&a[0]), (int)vm_world_num(&a[1]),
+                                vm_world_num(&a[2]), vm_world_num(&a[3]));
+}
+static void vm_sys_world_lamp(gmb_vm_t* vm, gmb_task_t* task, int code, int argc) {
+    (void)vm; (void)code;
+    gmb_stack_entry_t a[5];
+    int n = argc > 5 ? 5 : argc;
+    vm_pop_args_ordered(task, a, n);
+    if (n >= 5)
+        (void)gmb_world_lamp(vm_world_num(&a[0]), vm_world_num(&a[1]), vm_world_num(&a[2]),
+                             vm_world_num(&a[3]), vm_world_num(&a[4]));
+}
+
 static void vm_sys_headless_big(gmb_vm_t* vm, gmb_task_t* task, int code, int argc) {
     (void)vm;
     gmb_stack_entry_t a[4];
@@ -6735,7 +6826,12 @@ static const vm_sys_row VM_SYS_TBL[] = {
     /* 273..275 (AT_SAY/AT_GET/CLIPPER_READ) vivono nel delegate CONSOLE: instradarli
      * al TUI li faceva cadere nel default "consuma argomenti" -> READ no-op. */
     { 273, vm_sys_delegate_console }, { 274, vm_sys_delegate_console }, { 275, vm_sys_delegate_console },
-    { 470, vm_sys_delegate_console }, { 471, vm_sys_delegate_console }, { 472, vm_sys_delegate_console },
+    /* 470/471 RITIRATI dal delegate CONSOLE (motore 3D, 2026-11-19): quei due numeri sono
+     * WORLD_LAMP e WORLD_SECMOVE_CEIL nell'enum SysCall C#. La tabella si scandisce in
+     * ordine e questa riga veniva PRIMA delle voci WORLD → il SECMOVE a 4 argomenti finiva
+     * nel delegate console (nessun movimento, quota invariata) e la gamba VM/C divergeva da
+     * IL/PCode/C99Native. 472..475 restano: nessun codice C# li usa. */
+    { 472, vm_sys_delegate_console },
     { 473, vm_sys_delegate_console }, { 474, vm_sys_delegate_console }, { 475, vm_sys_delegate_console },
     { 276, vm_sys_delegate_tui }, { 277, vm_sys_delegate_tui }, { 278, vm_sys_delegate_tui },
     { 279, vm_sys_delegate_tui }, { 280, vm_sys_delegate_tui }, { 281, vm_sys_delegate_tui },
@@ -6911,6 +7007,17 @@ static const vm_sys_row VM_SYS_TBL[] = {
     { GMB_SC_WINDOW_VIEWPORT, vm_sys_headless_big },
     { GMB_SC_PALETTE_SAVE, vm_sys_headless_big },
     { GMB_SC_PALETTE_LOAD, vm_sys_headless_big },
+    /* motore 3D (2026-11-19): comandi WORLD → facciata gmb_world_* del runtime condiviso */
+    { GMB_SC_WORLD_LOAD, vm_sys_world_load },
+    { GMB_SC_WORLD_CLOSE, vm_sys_world_close },
+    { GMB_SC_WORLD_TICK, vm_sys_world_tick },
+    { GMB_SC_WORLD_SECMOVE, vm_sys_world_secmove },
+    { GMB_SC_WORLD_SECMOVE_CEIL, vm_sys_world_secmove_ceil },
+    { GMB_SC_WORLD_HEIGHT, vm_sys_world_height },
+    { GMB_SC_WORLD_ANIM, vm_sys_world_anim },
+    { GMB_SC_WORLD_SCROLL, vm_sys_world_scroll },
+    { GMB_SC_WORLD_LIGHTFX, vm_sys_world_lightfx },
+    { GMB_SC_WORLD_LAMP, vm_sys_world_lamp },
     { GMB_SC_DRAW_TEXT, vm_sys_headless_big },
 
     /* passo 4: event/memmap/lock/iowatch/json/team_distill/goskip/workflow/torch */

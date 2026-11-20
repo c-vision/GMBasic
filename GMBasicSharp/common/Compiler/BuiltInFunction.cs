@@ -1577,4 +1577,12 @@ MCPSERVERMARKETPLACELIST = 730, MCPSERVERMARKETPLACEGET = 731, MCPLISTTOOLSSERVE
     MATRIXROW = 3900,
     MATRIXCOL = 3901,
     MATRIXISCONTIGUOUS = 3902,
+    // MOTORE 3D / WORLD (2026-11-19, ponte C#): letture del mondo. Stato solo nel runtime C:
+    // ogni backend inoltra a `gmb_world_*` (IL/PCode via P/Invoke, VM/C e C99Native diretti).
+    // In coda: mirror in gmb_builtin.c.
+    WORLD_MOVING = 3903,
+    WORLD_LIGHTNOW = 3904,
+    WORLD_TIME = 3905,
+    WORLD_FLOORZ = 3906,
+    WORLD_CEILZ = 3907,
 }

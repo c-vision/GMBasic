@@ -128,6 +128,8 @@ void gmb_p_capture_namespace(gmb_parser_t* p);
  * NESSUNO è caricato (import esplicito o default del linguaggio) → errore esplicito, come
  * il linker C#. Ritorna 1 se la chiamata è lecita, 0 se ha settato p->error. */
 void gmb_p_collect_imports(gmb_parser_t* p);
+/* Gate dei domini non impliciti: false (con errore impostato) se `ns` non è caricato. */
+bool gmb_p_require_import(gmb_parser_t* p, const char* ns, int line);
 int  gmb_p_check_bare_builtin(gmb_parser_t* p, gmb_tokenkind_t tk, const char* name, int line);
 const gmb_token_t* gmb_p_cur(gmb_parser_t* p);
 bool gmb_p_at_end(gmb_parser_t* p);
