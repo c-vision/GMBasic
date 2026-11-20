@@ -5113,11 +5113,23 @@ for (int k = 0; k < s->n_go_cases; k++) {
 }
 
 typedef struct { gmb_stmt_kind_t kind; void (*fn)(ctx_t* c, gmb_stmt_t* s, vars_t* scope); } REG_STMT_TBL_row;
+/* 1 se l'inizializzatore di una CONST e' una stringa: letterale o concatenazione (`"a" + "b"`) di stringhe. Il parser scarta
+ * il `AS STRING` della dichiarazione, quindi il tipo si ricava dal valore: senza, `CONST P = "x/"` veniva registrata come
+ * numero e `P + "y"` valeva "0y" (divergenza da IL/PCode/VM-C). */
+static int const_value_is_str(const gmb_expr_t* e) {
+    if (!e) return 0;
+    if (e->kind == GMB_EXPR_STR) return 1;
+    if (e->kind == GMB_EXPR_BINARY && e->op && e->op[0] == '+' && e->op[1] == 0)
+        return const_value_is_str(e->left) || const_value_is_str(e->right);
+    return 0;
+}
 static void reg_const(ctx_t* c, gmb_stmt_t* s, vars_t* scope) {
     /* CONST/ENUM: registra il nome (anche combinato "Enum.Membro") come variabile globale
      * — prima la mancanza di reg faceva risolvere `StatoOrdine.Nuovo` a 0 (gap C99Native
-     * trovato da minitests/constructs/types_enum.bas). */
-    if (s->target && !use_global(c, scope, s->target)) vars_add(scope, s->target, suffix_type(s->target));
+     * trovato da minitests/constructs/types_enum.bas). Il tipo e' stringa se il nome ha il suffisso $
+     * o se il valore e' una stringa. */
+    if (s->target && !use_global(c, scope, s->target))
+        vars_add(scope, s->target, const_value_is_str(s->value) ? TY_STR : suffix_type(s->target));
 }
 static void reg_inkey(ctx_t* c, gmb_stmt_t* s, vars_t* scope) {
     /* INKEY K$ senza DIM: il target va dichiarato (prima K compariva come
@@ -7825,7 +7837,7 @@ static const gmb_bf_row_t gmb_bf_composite[] = {
     /* Motore 3D (P2): letture del mondo — WORLD.MOVING/LIGHTNOW/TIME/FLOORZ/CEILZ. */
     { NULL, GMB_TOK_Moving,   emit_bf_world },
     { NULL, GMB_TOK_LightNow, emit_bf_world },
-    { NULL, GMB_TOK_Time,     emit_bf_world },
+    { NULL, GMB_TOK_WorldTime, emit_bf_world },
     { NULL, GMB_TOK_FloorZ,   emit_bf_world },
     { NULL, GMB_TOK_CeilZ,    emit_bf_world },
     { NULL, GMB_TOK_MatrixColumnCount, emit_bf_matrix },
