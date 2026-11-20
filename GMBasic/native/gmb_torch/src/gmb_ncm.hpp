@@ -437,8 +437,107 @@ public:
         return text;
     }
 
-private:
+    /* ── ADDESTRAMENTO (F3 del piano NCM) ───────────────────────────────────────────────────────────────────────────────────
+     * Il forward di training e' lo STESSO dell'inferenza (generate_codes) con i codici veri al posto di quelli campionati
+     * (teacher forcing): ogni livello vede prefisso + il proprio livello, e il suo ingresso e' l'area-pool di z_hat dei livelli
+     * precedenti. Loss: CE media per livello, pesata w_k = l_k^-a / sum_j l_j^(1-a) per posizione (a = 1). Il tokenizer (t_) e' congelato. */
     using Map = std::map<std::string, at::Tensor>;
+
+    /* Cambia la lunghezza del prefisso (e l'id di padding) di un modello gia' caricato: serve a dare a LM1B (P=1) un prefisso di condizionamento. */
+    void set_prefix(int P, int pad_id) { P_ = P; cfg_.prefix_pad_id = pad_id; build_rope(); }
+
+    /* Abilita il gradiente su tutti i pesi float del generatore; ritorna i parametri (foglie). */
+    std::vector<at::Tensor> enable_training()
+    {
+        std::vector<at::Tensor> ps;
+        for (auto& kv : g_)
+            if (kv.second.is_floating_point() && kv.first != "attn_mask_for_masking")
+            { kv.second = kv.second.detach().clone().set_requires_grad(true); ps.push_back(kv.second); }
+        return ps;
+    }
+    const Map& generator_weights() const { return g_; }
+    const Map& inference_weights() const { return inf_; }
+
+    /* Logit di ogni livello con teacher forcing. codes [B,sum(levels)] (long), prefix [B,P] (long).
+     * Ritorna un vettore per livello assoluto; il livello 0 e' vuoto se il modello lo campiona da level0_unigram. */
+    std::vector<at::Tensor> teacher_logits(const at::Tensor& codes, const at::Tensor& prefix_in) const
+    {
+        const int64_t B = codes.size(0), D = vq_dim_, n = n_embd_, P = prefix_in.size(1);
+        if (P != P_) throw std::runtime_error("ncm: prefisso di " + std::to_string(P) + " token, il modello ne richiede " + std::to_string(P_));
+        at::Tensor prefix = prefix_in.to(dev_);
+        at::Tensor z_prefix = at::embedding(t_.at("encoder.wte.weight"), prefix);
+        at::Tensor prefix_emb = at::linear(z_prefix, g_.at("transformer.wte.weight"), g_.at("transformer.wte.bias"));
+        at::Tensor pbias;
+        if (cfg_.prefix_pad_id >= 0)
+        {
+            at::Tensor pm = (prefix == (int64_t)cfg_.prefix_pad_id).view({B, 1, 1, P});
+            pbias = at::zeros({B, 1, 1, P}, at::TensorOptions().device(dev_)).masked_fill(pm, -INFINITY);
+        }
+        std::vector<at::Tensor> out(levels_.size());
+        if (!inf_.count("level0_unigram"))
+        {
+            at::Tensor q = g_.at("l0_queries").expand({B, -1, -1});
+            q = at::linear(q, g_.at("transformer.wte.weight"), g_.at("transformer.wte.bias")) + g_.at("transformer.wle.weight")[0].view({1, 1, n});
+            out[0] = decode_level(q, prefix_emb, 0, pbias);
+        }
+        at::Tensor z_hat = at::zeros({B, levels_.back(), D}, at::TensorOptions().device(dev_));
+        const at::Tensor cd = codes.to(dev_);
+        int64_t acc = 0;
+        for (size_t li = 0; li + 1 < levels_.size(); li++)
+        {
+            at::Tensor zq = at::embedding(t_.at("vq.embeddings." + std::to_string(li) + ".weight"), cd.slice(1, acc, acc + levels_[li]));
+            acc += levels_[li];
+            z_hat = z_hat + apply_quant_resi(up_to_full(zq, (int)li, levels_.back()), (int)li);
+            at::Tensor x = area_pool(z_hat, levels_[li + 1]);
+            const int hi = (int)li + 1;
+            if (g_.count("post_upsample_convs." + std::to_string(hi) + ".weight"))
+            {
+                std::string k = "post_upsample_convs." + std::to_string(hi);
+                x = x + at::conv1d(x.transpose(-1, -2), g_.at(k + ".weight"), g_.at(k + ".bias"), 1, 1).transpose(-1, -2);
+            }
+            x = at::linear(x, g_.at("transformer.wte.weight"), g_.at("transformer.wte.bias")) + g_.at("transformer.wle.weight")[hi].view({1, 1, n});
+            out[(size_t)hi] = decode_level(x, prefix_emb, hi, pbias);
+        }
+        return out;
+    }
+
+    /* Loss di un batch: tokens [B,128] del tokenizer di testo (i codici si ottengono col VQ-VAE congelato), prefix [B,P].
+     * null_p > 0: con questa probabilita' (per riga) il prefisso diventa nullo (CFG training): pad ovunque, null_first alla posizione 0.
+     * per_level (opzionale) riceve la CE media di ogni livello (0 se il livello non e' predetto). */
+    at::Tensor train_loss(const at::Tensor& tokens, const at::Tensor& prefix_in, double null_p = 0.0, int null_first = 101,
+                          std::vector<double>* per_level = nullptr) const
+    {
+        at::Tensor codes = encode_codes(tokens);
+        at::Tensor prefix = prefix_in.to(dev_);
+        if (null_p > 0 && cfg_.prefix_pad_id >= 0)
+        {
+            at::Tensor drop = (at::rand({prefix.size(0), 1}, at::TensorOptions().device(dev_)) < null_p);
+            at::Tensor nul = at::full_like(prefix, (int64_t)cfg_.prefix_pad_id); nul.select(1, 0).fill_((int64_t)null_first);
+            prefix = at::where(drop, nul, prefix);
+        }
+        auto lg = teacher_logits(codes, prefix);
+        const double w = 1.0 / (double)levels_.size();                           /* a = 1: ogni livello pesa 1/K sulla propria CE media */
+        at::Tensor loss = at::zeros({}, at::TensorOptions().device(dev_));
+        int64_t acc = 0;
+        if (per_level) per_level->assign(levels_.size(), 0.0);
+        for (size_t k = 0; k < levels_.size(); k++)
+        {
+            if (lg[k].defined())
+            {
+                at::Tensor tgt = codes.slice(1, acc, acc + levels_[k]);
+                at::Tensor ce = at::cross_entropy_loss(lg[k].reshape({-1, lg[k].size(-1)}), tgt.reshape({-1}));
+                loss = loss + ce * w;
+                if (per_level) (*per_level)[k] = ce.item<double>();
+            }
+            acc += levels_[k];
+        }
+        return loss;
+    }
+
+    /* codici VQ di token (senza gradiente), per i test. */
+    at::Tensor codes_of(const at::Tensor& tokens) const { return encode_codes(tokens); }
+
+private:
     c10::Device dev_{c10::kCPU};
     Map g_, t_, inf_;
     std::vector<int> levels_;
@@ -501,7 +600,13 @@ private:
             P_ = cfg_.prefix_len > 0 ? cfg_.prefix_len : (g_.count("attn_mask_for_masking") ? g_.at("attn_mask_for_masking").size(-1) - tot : 1); }
         gen_heads_ = (int)(n_embd_ / g_.at("transformer.blocks.0.attn.q_norm.weight").size(0));
         dec_heads_ = (int)(vq_dim_ / t_.at("decoder.middle_block.attn.q_norm.weight").size(0));
+        build_rope();
+    }
+
+    void build_rope()
+    {
         const int64_t hd = n_embd_ / gen_heads_;
+        rope_.clear();
         for (size_t k = 0; k < levels_.size(); k++)
         {
             at::Tensor pos = at::cat({at::arange(P_, at::kLong), at::arange(levels_[k], at::kLong)});
