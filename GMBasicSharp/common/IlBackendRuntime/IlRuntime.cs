@@ -18124,10 +18124,23 @@ public static double TextWidth(string s)
     public static void TeamTrainActorCritic(string team, string dataset) { Basic.Agents.Recursive.DpsdpTrainer.TrainTeam(team, dataset); }
     public static void TeamDistillThinking(string team, string dataset) { Basic.Agents.Recursive.RecursiveTrainer.DistillThinking(team, dataset); }
     public static string AiSetHfToken(string value) { Basic.AI.AiConfig.HfToken = value; return value; }
+    /// <summary>Opzioni impostate ESPLICITAMENTE dal programma (`AI SET OPTION`). Serve a
+    /// `AI LIST OPTIONS`: un set a stringa vuota DEVE mostrare "(vuoto)" e NON ricadere sui
+    /// settings, altrimenti l'elenco riflette la configurazione della macchina (bug trovato
+    /// dalla parità 4 gambe: `GMB_CONSOLE_SIZE`/`GMB_CONSOLE_FONT` mostravano "80,25"/"Monaco,14"
+    /// su IL/PCode mentre il C — `gmb_opt_get` — rendeva vuoto). Separato da `MlxOptions.Set`
+    /// perché quello è usato anche internamente (LLM_NO_PRETOUCH_WEIGHTS).</summary>
+    private static readonly ConcurrentDictionary<string, byte> _optionsSetByLanguage =
+        new(StringComparer.OrdinalIgnoreCase);
+
     public static string AiSetOption(string name, string value)
     {
         var rc = Basic.Providers.MlxOptions.Set(name, value);
-        if (rc == 0) NotifyOptionAcceptedWithoutReport(name, value);
+        if (rc == 0)
+        {
+            if (!string.IsNullOrEmpty(name)) _optionsSetByLanguage.TryAdd(name, 1);
+            NotifyOptionAcceptedWithoutReport(name, value);
+        }
         return rc == 0 ? value : "";
     }
     public static string AiOption(string name) => Basic.Providers.MlxOptions.Get(name);
@@ -18211,8 +18224,12 @@ public static double TextWidth(string s)
             // registro dell'engine (la stessa porta che scrive `AI SET OPTION`), poi il registro
             // condiviso (sezione `engine` dei settings). NIENTE ricaduta sull'ambiente: le voci
             // elencate sono OPZIONI, non i valori che l'harness esporta nel processo.
+            // Se il programma l'ha impostata (anche a ""), il valore è QUELLO: niente ricaduta
+            // sui settings — altrimenti un azzeramento esplicito veniva sovrascritto dalla
+            // configurazione della macchina (divergenza con `gmb_opt_get` sulle gambe C).
             var v = Basic.Providers.MlxOptions.Get(name);
-            if (string.IsNullOrEmpty(v)) v = Basic.Providers.GmbEnv.GetRegistry(name) ?? "";
+            if (!_optionsSetByLanguage.ContainsKey(name) && string.IsNullOrEmpty(v))
+                v = Basic.Providers.GmbEnv.GetRegistry(name) ?? "";
             sb.Append(name).Append(" | ").Append(desc).Append(" | = ")
               .Append(string.IsNullOrEmpty(v) ? "(vuoto)" : v).Append('\n');
         }
