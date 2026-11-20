@@ -49,6 +49,35 @@ double gmb_dstf_geometric_pmf(double p, int k);
 double gmb_dstf_negbinom_pmf(double r, double p, int k);
 double gmb_dstf_hypergeom_pmf(int N, int K, int n, int k);
 
+/* ── Inverse (ppf/isf) e CDF uniforme — argomenti nell'ordine dei KERNEL ───────────────────── */
+double gmb_dstf_normal_ppf(double mean, double sd, double p);
+double gmb_dstf_normal_isf(double mean, double sd, double p);
+double gmb_dstf_lognormal_ppf(double mu, double sigma, double p);
+double gmb_dstf_lognormal_isf(double mu, double sigma, double p);
+double gmb_dstf_chi_ppf(double df, double p);
+double gmb_dstf_chi_isf(double df, double p);
+double gmb_dstf_chi2_ppf(double df, double p);
+double gmb_dstf_chi2_isf(double df, double p);
+double gmb_dstf_beta_ppf(double a, double b, double p);
+double gmb_dstf_beta_isf(double a, double b, double p);
+double gmb_dstf_student_t_ppf(double df, double p);
+double gmb_dstf_student_t_isf(double df, double p);
+double gmb_dstf_f_ppf(double d1, double d2, double p);
+double gmb_dstf_f_isf(double d1, double d2, double p);
+double gmb_dstf_exp_ppf(double rate, double p);
+double gmb_dstf_exp_isf(double rate, double p);
+double gmb_dstf_weibull_ppf(double shape, double scale, double p);
+double gmb_dstf_weibull_isf(double shape, double scale, double p);
+double gmb_dstf_logistic_ppf(double loc, double scale, double p);
+double gmb_dstf_logistic_isf(double loc, double scale, double p);
+double gmb_dstf_uniform_ppf(double a, double b, double p);
+double gmb_dstf_uniform_isf(double a, double b, double p);
+double gmb_dstf_uniform_cdf(double a, double b, double x);
+double gmb_dstf_pareto_ppf(double scale, double shape, double p);
+double gmb_dstf_pareto_isf(double scale, double shape, double p);
+double gmb_dstf_triangular_ppf(double min, double max, double mode, double p);
+double gmb_dstf_triangular_isf(double min, double max, double mode, double p);
+
 #ifdef __cplusplus
 }
 #endif

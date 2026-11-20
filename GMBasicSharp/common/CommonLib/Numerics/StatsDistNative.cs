@@ -84,4 +84,60 @@ internal static class StatsDistNative
     internal static extern double NegBinomPmf(double r, double p, int k);
     [DllImport(Lib, EntryPoint = "gmb_dstf_hypergeom_pmf", CallingConvention = CallingConvention.Cdecl)]
     internal static extern double HypergeomPmf(int n, int k, int draws, int hits);
+
+    // ── Inverse (ppf/isf) e CDF uniforme — ordine dei kernel ──────────────────────────────
+    [DllImport(Lib, EntryPoint = "gmb_dstf_normal_ppf", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern double NormalPpf(double mean, double sd, double p);
+    [DllImport(Lib, EntryPoint = "gmb_dstf_normal_isf", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern double NormalIsf(double mean, double sd, double p);
+    [DllImport(Lib, EntryPoint = "gmb_dstf_lognormal_ppf", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern double LognormalPpf(double mu, double sigma, double p);
+    [DllImport(Lib, EntryPoint = "gmb_dstf_lognormal_isf", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern double LognormalIsf(double mu, double sigma, double p);
+    [DllImport(Lib, EntryPoint = "gmb_dstf_chi_ppf", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern double ChiPpf(double df, double p);
+    [DllImport(Lib, EntryPoint = "gmb_dstf_chi_isf", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern double ChiIsf(double df, double p);
+    [DllImport(Lib, EntryPoint = "gmb_dstf_chi2_ppf", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern double Chi2Ppf(double df, double p);
+    [DllImport(Lib, EntryPoint = "gmb_dstf_chi2_isf", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern double Chi2Isf(double df, double p);
+    [DllImport(Lib, EntryPoint = "gmb_dstf_beta_ppf", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern double BetaPpf(double a, double b, double p);
+    [DllImport(Lib, EntryPoint = "gmb_dstf_beta_isf", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern double BetaIsf(double a, double b, double p);
+    [DllImport(Lib, EntryPoint = "gmb_dstf_student_t_ppf", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern double StudentTPpf(double df, double p);
+    [DllImport(Lib, EntryPoint = "gmb_dstf_student_t_isf", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern double StudentTIsf(double df, double p);
+    [DllImport(Lib, EntryPoint = "gmb_dstf_f_ppf", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern double FPpf(double d1, double d2, double p);
+    [DllImport(Lib, EntryPoint = "gmb_dstf_f_isf", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern double FIsf(double d1, double d2, double p);
+    [DllImport(Lib, EntryPoint = "gmb_dstf_exp_ppf", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern double ExpPpf(double rate, double p);
+    [DllImport(Lib, EntryPoint = "gmb_dstf_exp_isf", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern double ExpIsf(double rate, double p);
+    [DllImport(Lib, EntryPoint = "gmb_dstf_weibull_ppf", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern double WeibullPpf(double shape, double scale, double p);
+    [DllImport(Lib, EntryPoint = "gmb_dstf_weibull_isf", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern double WeibullIsf(double shape, double scale, double p);
+    [DllImport(Lib, EntryPoint = "gmb_dstf_logistic_ppf", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern double LogisticPpf(double loc, double scale, double p);
+    [DllImport(Lib, EntryPoint = "gmb_dstf_logistic_isf", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern double LogisticIsf(double loc, double scale, double p);
+    [DllImport(Lib, EntryPoint = "gmb_dstf_uniform_ppf", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern double UniformPpf(double a, double b, double p);
+    [DllImport(Lib, EntryPoint = "gmb_dstf_uniform_isf", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern double UniformIsf(double a, double b, double p);
+    [DllImport(Lib, EntryPoint = "gmb_dstf_uniform_cdf", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern double UniformCdf(double a, double b, double x);
+    [DllImport(Lib, EntryPoint = "gmb_dstf_pareto_ppf", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern double ParetoPpf(double scale, double shape, double p);
+    [DllImport(Lib, EntryPoint = "gmb_dstf_pareto_isf", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern double ParetoIsf(double scale, double shape, double p);
+    [DllImport(Lib, EntryPoint = "gmb_dstf_triangular_ppf", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern double TriangularPpf(double min, double max, double mode, double p);
+    [DllImport(Lib, EntryPoint = "gmb_dstf_triangular_isf", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern double TriangularIsf(double min, double max, double mode, double p);
 }

@@ -36,3 +36,33 @@ double gmb_dstf_poisson_pmf(double lambda, int k) { return gmb_dist_poisson_pmf(
 double gmb_dstf_geometric_pmf(double p, int k) { return gmb_dist_geometric_pmf(p, k); }
 double gmb_dstf_negbinom_pmf(double r, double p, int k) { return gmb_dist_negbinom_pmf(r, p, k); }
 double gmb_dstf_hypergeom_pmf(int N, int K, int n, int k) { return gmb_dist_hypergeom_pmf(N, K, n, k); }
+
+/* ── Inverse (ppf/isf) e CDF uniforme ─────────────────────────────────────────────────────── */
+
+double gmb_dstf_normal_ppf(double mean, double sd, double p) { return gmb_dist_normal_ppf(mean, sd, p); }
+double gmb_dstf_normal_isf(double mean, double sd, double p) { return gmb_dist_normal_isf(mean, sd, p); }
+double gmb_dstf_lognormal_ppf(double mu, double sigma, double p) { return gmb_dist_lognormal_ppf(mu, sigma, p); }
+double gmb_dstf_lognormal_isf(double mu, double sigma, double p) { return gmb_dist_lognormal_isf(mu, sigma, p); }
+double gmb_dstf_chi_ppf(double df, double p) { return gmb_dist_chi_ppf(df, p); }
+double gmb_dstf_chi_isf(double df, double p) { return gmb_dist_chi_isf(df, p); }
+double gmb_dstf_chi2_ppf(double df, double p) { return gmb_dist_chi2_ppf(df, p); }
+double gmb_dstf_chi2_isf(double df, double p) { return gmb_dist_chi2_isf(df, p); }
+double gmb_dstf_beta_ppf(double a, double b, double p) { return gmb_dist_beta_ppf(a, b, p); }
+double gmb_dstf_beta_isf(double a, double b, double p) { return gmb_dist_beta_isf(a, b, p); }
+double gmb_dstf_student_t_ppf(double df, double p) { return gmb_dist_student_t_ppf(df, p); }
+double gmb_dstf_student_t_isf(double df, double p) { return gmb_dist_student_t_isf(df, p); }
+double gmb_dstf_f_ppf(double d1, double d2, double p) { return gmb_dist_f_ppf(d1, d2, p); }
+double gmb_dstf_f_isf(double d1, double d2, double p) { return gmb_dist_f_isf(d1, d2, p); }
+double gmb_dstf_exp_ppf(double rate, double p) { return gmb_dist_exp_ppf(rate, p); }
+double gmb_dstf_exp_isf(double rate, double p) { return gmb_dist_exp_isf(rate, p); }
+double gmb_dstf_weibull_ppf(double shape, double scale, double p) { return gmb_dist_weibull_ppf(shape, scale, p); }
+double gmb_dstf_weibull_isf(double shape, double scale, double p) { return gmb_dist_weibull_isf(shape, scale, p); }
+double gmb_dstf_logistic_ppf(double loc, double scale, double p) { return gmb_dist_logistic_ppf(loc, scale, p); }
+double gmb_dstf_logistic_isf(double loc, double scale, double p) { return gmb_dist_logistic_isf(loc, scale, p); }
+double gmb_dstf_uniform_ppf(double a, double b, double p) { return gmb_dist_uniform_ppf(a, b, p); }
+double gmb_dstf_uniform_isf(double a, double b, double p) { return gmb_dist_uniform_isf(a, b, p); }
+double gmb_dstf_uniform_cdf(double a, double b, double x) { return gmb_dist_uniform_cdf(a, b, x); }
+double gmb_dstf_pareto_ppf(double scale, double shape, double p) { return gmb_dist_pareto_ppf(scale, shape, p); }
+double gmb_dstf_pareto_isf(double scale, double shape, double p) { return gmb_dist_pareto_isf(scale, shape, p); }
+double gmb_dstf_triangular_ppf(double min, double max, double mode, double p) { return gmb_dist_triangular_ppf(min, max, mode, p); }
+double gmb_dstf_triangular_isf(double min, double max, double mode, double p) { return gmb_dist_triangular_isf(min, max, mode, p); }
