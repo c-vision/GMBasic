@@ -457,6 +457,7 @@ public:
     }
     const Map& generator_weights() const { return g_; }
     const Map& inference_weights() const { return inf_; }
+    const Map& tokenizer_weights() const { return t_; }
 
     /* Logit di ogni livello con teacher forcing. codes [B,sum(levels)] (long), prefix [B,P] (long).
      * Ritorna un vettore per livello assoluto; il livello 0 e' vuoto se il modello lo campiona da level0_unigram. */

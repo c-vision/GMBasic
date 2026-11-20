@@ -1,3 +1,4 @@
+/* NOTA: l AR di questo benchmark usa una cache K/V a `cat` (rialloca a ogni passo): sostituito da tests/ar_gpt2.hpp + ncm_vs_ar.cpp, con cache preallocata, che danno i numeri corretti. */
 /* ncm_speed_bench.cpp — F5 del piano NCM: confronto ONESTO di velocita' fra NCM (LM1B small, 128 token per campione) e un modello
  * autoregressivo di taglia simile (GPT-2 small 124M, KV cache, 128 token), sulla stessa macchina e con lo stesso numero di token.
  * Il paper non fa questo confronto: senza, non si puo' dire che NCM sia piu' veloce di un AR.
