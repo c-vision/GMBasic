@@ -46,6 +46,41 @@ static int64_t gmb_filter_store(const double* b, int nb, const double* a, int na
     return 0;
 }
 
+/* Handle da coefficienti già calcolati (usato dai backend MANAGED via P/Invoke: il managed
+ * conserva B/A per compatibilità, ma l'applicazione del filtro passa da qui). */
+gmb_int_t gmb_filter_from_ba(const double* b, int nb, const double* a, int na)
+{
+    if (!b || !a || nb < 1 || na < 1) return 0;
+    return (gmb_int_t)gmb_filter_store(b, nb, a, na);
+}
+
+int gmb_filter_taps(gmb_int_t h, int* nb, int* na)
+{
+    gmb_filter_t* f = gmb_filter_by_handle(h);
+    if (!f) return 0;
+    if (nb) *nb = f->nb;
+    if (na) *na = f->na;
+    return 1;
+}
+
+int gmb_filter_coeffs(gmb_int_t h, double* b, int nb, double* a, int na)
+{
+    gmb_filter_t* f = gmb_filter_by_handle(h);
+    if (!f || !b || !a || nb != f->nb || na != f->na) return 0;
+    for (int i = 0; i < nb; i++) b[i] = f->b[i];
+    for (int i = 0; i < na; i++) a[i] = f->a[i];
+    return 1;
+}
+
+/* Libera uno slot della tabella. Le wrapper FILTER.* lo chiamano dopo l'uso: prima ogni
+ * chiamata consumava uno dei 256 slot per sempre (dopo 255 filtri il design falliva). */
+void gmb_filter_free(gmb_int_t h)
+{
+    if (h <= 0 || h >= GMB_FILTER_MAX) return;
+    g_filters[h].in_use = 0;
+    memset(&g_filters[h], 0, sizeof(g_filters[h]));
+}
+
 /* ── helper numerici ── */
 static double gmb_asinh(double x) { return log(x + sqrt(x * x + 1.0)); }
 static double gmb_atanh(double x) { return 0.5 * log((1.0 + x) / (1.0 - x)); }
@@ -65,7 +100,7 @@ static double complex gmb_cprod_neg(double complex* v, int n)
 }
 
 /* ── funzioni ellittiche ── */
-static double gmb_ellipk(double m)
+double gmb_ellipk(double m)
 {
     if (m >= 1.0) return INFINITY;
     if (m <= 0.0) return 3.14159265358979323846 / 2.0;
@@ -81,7 +116,7 @@ static double gmb_ellipk(double m)
 }
 
 /* sn di Jacobi via Landen discendente + relazioni per cn/dn (u reale in [0,K]) */
-static void gmb_ellip_scndn(double u, double m, double* sn, double* cn, double* dn)
+void gmb_ellip_scndn(double u, double m, double* sn, double* cn, double* dn)
 {
     if (m <= 0.0) { *sn = sin(u); *cn = cos(u); *dn = 1.0; return; }
     if (m >= 1.0) { *sn = tanh(u); double ch = cosh(u); *cn = 1.0 / ch; *dn = 1.0 / ch; return; }
@@ -110,7 +145,7 @@ static void gmb_ellip_scndn(double u, double m, double* sn, double* cn, double* 
     *dn = sqrt(fmax(0.0, 1.0 - m * s * s));
 }
 
-static double gmb_ellip_sn(double u, double m)
+double gmb_ellip_sn(double u, double m)
 {
     double sn, cn, dn;
     gmb_ellip_scndn(u, m, &sn, &cn, &dn);
@@ -633,27 +668,35 @@ double* gmb_filter_freqz(gmb_int_t h, int npts, gmb_int_t* outn)
 double* gmb_filter_lowpass(const double* x, int nx, double wn, gmb_int_t n, gmb_int_t* outn)
 {
     gmb_int_t h = gmb_filter_butter(n, &wn, 1, "low");
-    return gmb_filter_lfilter(h, x, nx, outn);
+    double* r = gmb_filter_lfilter(h, x, nx, outn);
+    gmb_filter_free(h);
+    return r;
 }
 
 double* gmb_filter_highpass(const double* x, int nx, double wn, gmb_int_t n, gmb_int_t* outn)
 {
     gmb_int_t h = gmb_filter_butter(n, &wn, 1, "high");
-    return gmb_filter_lfilter(h, x, nx, outn);
+    double* r = gmb_filter_lfilter(h, x, nx, outn);
+    gmb_filter_free(h);
+    return r;
 }
 
 double* gmb_filter_bandpass(const double* x, int nx, double w1, double w2, gmb_int_t n, gmb_int_t* outn)
 {
     double wn[2] = { w1, w2 };
     gmb_int_t h = gmb_filter_butter(n, wn, 2, "bandpass");
-    return gmb_filter_lfilter(h, x, nx, outn);
+    double* r = gmb_filter_lfilter(h, x, nx, outn);
+    gmb_filter_free(h);
+    return r;
 }
 
 double* gmb_filter_bandstop(const double* x, int nx, double w1, double w2, gmb_int_t n, gmb_int_t* outn)
 {
     double wn[2] = { w1, w2 };
     gmb_int_t h = gmb_filter_butter(n, wn, 2, "bandstop");
-    return gmb_filter_lfilter(h, x, nx, outn);
+    double* r = gmb_filter_lfilter(h, x, nx, outn);
+    gmb_filter_free(h);
+    return r;
 }
 
 /* ════════════════════════════════════════════════════════════════════════════

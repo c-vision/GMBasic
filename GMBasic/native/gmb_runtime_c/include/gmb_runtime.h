@@ -1165,6 +1165,15 @@ double* gmb_filter_lowpass(const double* x, int nx, double wn, gmb_int_t n, gmb_
 double* gmb_filter_highpass(const double* x, int nx, double wn, gmb_int_t n, gmb_int_t* outn);
 double* gmb_filter_bandpass(const double* x, int nx, double w1, double w2, gmb_int_t n, gmb_int_t* outn);
 double* gmb_filter_bandstop(const double* x, int nx, double w1, double w2, gmb_int_t n, gmb_int_t* outn);
+/* Registro handle: creazione da coefficienti già calcolati, lettura, rilascio (P/Invoke managed). */
+gmb_int_t gmb_filter_from_ba(const double* b, int nb, const double* a, int na);
+int gmb_filter_taps(gmb_int_t h, int* nb, int* na);
+int gmb_filter_coeffs(gmb_int_t h, double* b, int nb, double* a, int na);
+void gmb_filter_free(gmb_int_t h);
+/* Funzioni ellittiche (usate dal design e dai backend managed). */
+double gmb_ellipk(double m);
+double gmb_ellip_sn(double u, double m);
+void gmb_ellip_scndn(double u, double m, double* sn, double* cn, double* dn);
 /* --- Distribuzioni statistiche (gmb_math.c) --- */
 double gmb_dist_normal_pdf(double mean, double sd, double x);
 double gmb_dist_normal_cdf(double mean, double sd, double x);
