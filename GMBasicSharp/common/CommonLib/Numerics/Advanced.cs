@@ -26,12 +26,7 @@ public static partial class Numerics
     {
         if (p1.Length != p2.Length)
             throw new ArgumentException("I punti devono avere la stessa dimensionalità.");
-        var sum = 0.0;
-        for (var i = 0; i < p1.Length; i++)
-        {
-            sum += Math.Pow(p1[i] - p2[i], 2);
-        }
-        return sum;
+        return AnalysisNative.EuclideanDistanceSquared(p1, p2);
     }
 
     /// <summary>
@@ -149,26 +144,7 @@ public static partial class Numerics
         if (acf == null || acf.Length < p + 1)
             throw new ArgumentException("ACF troppo corto per l'ordine AR specificato.");
 
-        var R = Matrix<double>.Build.Dense(p, p);
-        var r = Vector<double>.Build.Dense(p);
-
-        for (var i = 0; i < p; i++)
-        {
-            r[i] = acf[i + 1];
-            for (var j = 0; j < p; j++)
-            {
-                R[i, j] = acf[Math.Abs(i - j)];
-            }
-        }
-
-        try
-        {
-            return R.Solve(r).ToArray();
-        }
-        catch (InvalidOperationException ex)
-        {
-            throw new InvalidOperationException($"Impossibile risolvere le equazioni di Yule-Walker: {ex.Message}");
-        }
+        return AnalysisNative.YuleWalker(acf, p);
     }
 
     /// <summary>
@@ -184,13 +160,7 @@ public static partial class Numerics
     public static double[] MaCoefficients(double[] residuals, int q)
     {
         if (q == 0 || residuals.Length <= q) return [];
-        var acfRes = MathNet.Numerics.Statistics.Correlation.Auto(residuals, q);
-        var maCoeffs = new double[q];
-        for (var i = 0; i < q; i++)
-        {
-            maCoeffs[i] = acfRes[i + 1];
-        }
-        return maCoeffs;
+        return AnalysisNative.MaCoefficients(residuals, q);
     }
 
     /// <summary>
@@ -239,10 +209,7 @@ public static partial class Numerics
 
     public static double MinSemiVariance(double[] returns, double threshold = 0)
     {
-        double sum = 0; int count = 0;
-        for (int i = 0; i < returns.Length; i++)
-            if (returns[i] < threshold) { double d = threshold - returns[i]; sum += d * d; count++; }
-        return count > 0 ? sum / count : 0;
+        return AnalysisNative.MinSemiVariance(returns, threshold);
     }
 
     // ── Outliers (Z-score method) ──
@@ -260,15 +227,7 @@ public static partial class Numerics
     public static (double slope, double intercept, double rSquared) LinearRegression(double[] x, double[] y)
     {
         int n = Math.Min(x.Length, y.Length);
-        double sx = 0, sy = 0, sxy = 0, sx2 = 0, sy2 = 0;
-        for (int i = 0; i < n; i++) {
-            sx += x[i]; sy += y[i];
-            sxy += x[i] * y[i]; sx2 += x[i] * x[i]; sy2 += y[i] * y[i];
-        }
-        double slope = (n * sxy - sx * sy) / (n * sx2 - sx * sx);
-        double intercept = (sy - slope * sx) / n;
-        double rSquared = Math.Pow((n * sxy - sx * sy) / Math.Sqrt((n * sx2 - sx * sx) * (n * sy2 - sy * sy)), 2);
-        return (slope, intercept, rSquared);
+        return AnalysisNative.LinearRegression(x, y, n);
     }
 
     // ── Rolling Regression ──
