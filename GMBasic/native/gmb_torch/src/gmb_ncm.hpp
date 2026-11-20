@@ -19,6 +19,7 @@
 #include "gmb_pt_load.hpp"
 
 #include <algorithm>
+#include <dlfcn.h>
 #include <chrono>
 #include <cmath>
 #include <fstream>
@@ -28,6 +29,68 @@
 #include <vector>
 
 namespace gmb {
+
+/* Tokenizer BERT WordPiece (uncased, strip accents) tramite LLMToken (libllmtoken, C): BasicTokenizer HF + WordPiece greedy, verificato
+ * id per id contro l'oracolo HuggingFace (LLMEnv/LLMToken/llmtoken_wordpiece_selfcheck.c). Si carica con dlopen: nessuna dipendenza di link.
+ * Cerca libllmtoken accanto alla libreria che contiene questo codice, poi in ~/.gmbasic/libs/<rid>[/ml]. */
+class WordPiece {
+public:
+    WordPiece() = default;
+    WordPiece(const WordPiece&) = delete;
+    WordPiece& operator=(const WordPiece&) = delete;
+    ~WordPiece() { if (tok_ && free_) free_(tok_); }
+
+    void load(const std::string& vocab_txt)
+    {
+        void* h = open_lib();
+        if (!h) throw std::runtime_error("wordpiece: libllmtoken non trovata (cercata accanto a libgmb_torch e in ~/.gmbasic/libs)");
+        load_ = (void* (*)(const char*))dlsym(h, "llmtoken_wp_tok_load");
+        free_ = (void (*)(void*))dlsym(h, "llmtoken_wp_tok_free");
+        enc_  = (int (*)(const void*, const char*, int, int32_t*, int32_t*, int32_t*))dlsym(h, "llmtoken_wp_encode");
+        if (!load_ || !free_ || !enc_) throw std::runtime_error("wordpiece: libllmtoken senza le funzioni llmtoken_wp_*");
+        tok_ = load_(vocab_txt.c_str());
+        if (!tok_) throw std::runtime_error("wordpiece: vocabolario non caricabile: " + vocab_txt);
+    }
+    bool loaded() const { return tok_ != nullptr; }
+
+    /* [CLS] ... [SEP] paddata a max_len con 0; il troncamento preserva [CLS] e [SEP]. */
+    std::vector<int> encode(const std::string& text, int max_len) const
+    {
+        if (!tok_) throw std::runtime_error("wordpiece: tokenizer non caricato");
+        std::vector<int32_t> ids((size_t)max_len), mask((size_t)max_len);
+        int n = enc_(tok_, text.c_str(), max_len, ids.data(), mask.data(), nullptr);
+        if (n < 0) throw std::runtime_error("wordpiece: max_len non valido");
+        return std::vector<int>(ids.begin(), ids.end());
+    }
+
+private:
+    void* tok_ = nullptr;
+    void* (*load_)(const char*) = nullptr;
+    void (*free_)(void*) = nullptr;
+    int (*enc_)(const void*, const char*, int, int32_t*, int32_t*, int32_t*) = nullptr;
+
+    static void* open_lib()
+    {
+        std::vector<std::string> dirs;
+        Dl_info di;
+        if (dladdr((void*)&WordPiece::open_lib, &di) && di.dli_fname)
+        {
+            std::string p = di.dli_fname; size_t sl = p.find_last_of('/');
+            if (sl != std::string::npos) dirs.push_back(p.substr(0, sl));
+        }
+        if (const char* e = std::getenv("GMB_LIBS")) dirs.push_back(e);
+        if (const char* h = std::getenv("HOME"))
+        {
+            dirs.push_back(std::string(h) + "/.gmbasic/libs/osx-arm64");
+            dirs.push_back(std::string(h) + "/.gmbasic/libs/ml/osx-arm64");
+            dirs.push_back(std::string(h) + "/.gmbasic/libs/linux-x64");
+        }
+        for (auto& d : dirs)
+            for (const char* n : {"libllmtoken.dylib", "libllmtoken.so"})
+                if (void* h = dlopen((d + "/" + n).c_str(), RTLD_NOW | RTLD_LOCAL)) return h;
+        return nullptr;
+    }
+};
 
 struct NcmOptions {
     double temperature = 1.0;
@@ -55,10 +118,18 @@ public:
         inf_ = to_dev(pt_load(gen_path, "inference"));
         t_ = to_dev(pt_load(tok_path, "model"));
         derive_config();
-        if (!vocab_txt.empty()) load_vocab(vocab_txt);
+        if (!vocab_txt.empty()) { load_vocab(vocab_txt); try { wp_.load(vocab_txt); } catch (const std::exception&) { /* encode_text non disponibile senza libllmtoken */ } }
     }
 
     const std::vector<int>& levels() const { return levels_; }
+
+    /* Testo -> id dei token (BERT WordPiece uncased): [CLS] ... [SEP] paddata a max_len (default: la finestra del modello = ultimo livello).
+     * Richiede il vocabolario passato a load(). */
+    std::vector<int> encode_text(const std::string& text, int max_len = 0) const
+    {
+        if (!wp_.loaded()) throw std::runtime_error("ncm: encode_text richiede il vocabolario (load con vocab.txt)");
+        return wp_.encode(text, max_len > 0 ? max_len : levels_.back());
+    }
     int total_codes() const { int s = 0; for (int l : levels_) s += l; return s; }
 
     /* Genera B sequenze di codici VQ: [B, sum(levels)] (long). */
@@ -238,6 +309,7 @@ private:
     Map g_, t_, inf_;
     std::vector<int> levels_;
     std::vector<std::string> vocab_;
+    WordPiece wp_;
     int64_t vq_dim_ = 0, n_embd_ = 0;
     int64_t up_stride_ = 128;   /* stride di learned_up_l1 / learned_down_l1 = ultimo livello / primo */
     int gen_heads_ = 12, dec_heads_ = 6;
