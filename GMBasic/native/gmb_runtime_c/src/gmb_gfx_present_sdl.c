@@ -352,24 +352,32 @@ void gmb_gfx_window_set_visible(int on) { g_vis_req = on ? 1 : 0; }
  * schermo (il loop misurava 60 fps, la resa visiva era 30). Il tetto ora è il PASSO del
  * clock globale (`gmb_clock.h`, lo stesso che parcheggia DOEVENTS) e la voce del registro
  * opzioni `engine.present.max_fps` (sezione `engine` dei settings, oppure `AI SET OPTION`)
- * lo può imporre diverso: 0/vuota = segue il clock.
+ * lo può imporre diverso: 0/vuota = segue il clock, un numero = quel tetto. Il registro si
+ * rilegge a ogni frame, non una volta sola all'avvio: è così che una `AI SET OPTION` in mezzo
+ * al ciclo vale subito. Costa una ricerca su 23 voci (una strcmp + snprintf), niente al ritmo
+ * di un frame.
  *
- * La tolleranza del 15% non è un abbuono: il parcheggio del clock arrotonda al millisecondo,
- * quindi un frame da 16 ms contro un tetto di 16,67 ms verrebbe scartato e si tornerebbe a
- * presentare uno su due — il difetto che questo cap doveva togliere. Il cap serve solo a non
- * presentare a ~1000 fps quando il ciclo non passa dal clock (nessun DOEVENTS): il ritmo del
- * present non anticipa mai quello del clock, al più lo segue a meno di un frame. */
+ * Tolleranza: 3 ms ASSOLUTI, non una percentuale del passo. DOEVENTS parcheggia un resto
+ * arrotondato al millisecondo (`gmb_form_frame`: `(int)(rest * 1000 + 0.5)`) e riprende su tick
+ * da 1 ms: un frame arriva qualche ms PRIMA del confine del passo, e senza margine si torna a
+ * scartare frame che il clock aveva già atteso — il difetto che questo cap doveva togliere.
+ * Misurato con presentcount.dylib (SDL_RenderPresent reali, intervallo minimo fra due present):
+ * 2 ms a 60 Hz perdono 2 frame su 120, i 2,5 ms del vecchio 15% ne perdono 8 su 240 a 120 Hz,
+ * 3 ms non ne perdono nessuno né a 60 né a 120 Hz. La percentuale non è la forma giusta perché
+ * la granularità del parcheggio è assoluta e il passo no.
+ *
+ * Il cap serve solo quando il ciclo NON passa dal clock (nessun DOEVENTS): lì i frame distano
+ * pochi decimi di ms e il cap li tiene al ritmo del clock invece di presentare a ~1000 fps.
+ * Sopra i ~330 fps il margine di 3 ms copre già il passo intero, cioè il cap non morde più: è
+ * lo stesso che chiedere "nessun tetto", e nessun display presenta a quel ritmo. */
 static int present_cap_elapsed(void)
 {
     static int64_t last_ns = 0;
-    double fps = 0.0;
     char v[64];
-    if (gmb_opt_get("engine.present.max_fps", v, (int)sizeof v) == 0 && v[0]) fps = atof(v);
-    if (!(fps > 0.0)) fps = gmb_clock_frame_fps();      /* default: il ritmo del clock */
-    if (!(fps > 0.0)) return 1;                       /* clock non inizializzato: nessun cap */
-    if (fps > 1000.0) fps = 1000.0;
+    double fps = (gmb_opt_get("engine.present.max_fps", v, (int)sizeof v) == 0 && v[0]) ? atof(v) : 0.0;
+    if (!(fps > 0.0)) fps = gmb_clock_frame_fps();   /* 0/vuota: il passo del clock (sempre 1..1000) */
     int64_t now = gmb_clock_now_ns();
-    if (last_ns && (double)(now - last_ns) < 0.85e9 / fps) return 0;
+    if (last_ns && (double)(now - last_ns) < 1e9 / fps - 3.0e6) return 0;
     last_ns = now;
     return 1;
 }

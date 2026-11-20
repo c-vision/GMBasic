@@ -118,9 +118,14 @@ SUB Personaggio(px AS INTEGER, py AS INTEGER, passo AS INTEGER)
 END SUB
 
 ' --- un fotogramma: cielo, sole, nuvole, colline, terreno, personaggio ---
-SUB DisegnaFrame(cam AS LONG, pos AS DOUBLE)
+SUB DisegnaFrame(camd AS DOUBLE)
+  DIM cam AS LONG
   DIM x AS INTEGER, y AS INTEGER, dy AS INTEGER, dx AS INTEGER, y0 AS INTEGER
   DIM t AS DOUBLE, col AS LONG, passo AS INTEGER, py AS INTEGER
+
+  ' La posizione arriva FRAZIONARIA: la colonna di mondo sotto il bordo sinistro è la sua
+  ' parte intera, il resto resta in camd e si accumula nei frame successivi.
+  cam = INT(camd)
 
   ' 1. cielo a fasce orizzontali, colore interpolato (due righe per fascia)
   ' Le fasce sono alte due righe logiche ma la `BF` ne copre una in più: quella riga
@@ -170,12 +175,11 @@ SUB DisegnaFrame(cam AS LONG, pos AS DOUBLE)
   ' numero del fotogramma: così il ritmo dei piedi resta lo stesso anche se il clock cambia Hz
   ' (`CLOCK FPS 120` = passi da 1,25 px) o se un frame salta.
   py = Suolo(cam + EROE_X)
-  passo = INT(pos / 20) MOD 2
+  passo = (cam \ 20) MOD 2
   CALL Personaggio(EROE_X, py, passo)
 END SUB
 
 SUB Main()
-  DIM cam AS LONG
   DIM camd AS DOUBLE
   DIM Key$ AS STRING
 
@@ -190,13 +194,12 @@ SUB Main()
   ' stessa distanza al secondo qualunque sia il ritmo dei fotogrammi.
   camd = 0
   DO
-    CALL DisegnaFrame(cam, camd)
+    CALL DisegnaFrame(camd)
     SYNC
     DOEVENTS
     Key$ = INKEY$
     IF Key$ = CHR$(27) THEN EXIT DO
     camd = camd + VELOCITA * CLOCK.DT()
-    cam = INT(camd)
   LOOP
 
   SCREEN 0
