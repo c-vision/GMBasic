@@ -1,8 +1,6 @@
 // FILE: StdLib.Numerics.Interpolation.cs
 // ReSharper disable CheckNamespace
 
-using MathNet.Numerics.Interpolation;
-
 namespace CommonLib;
 
 public static partial class Numerics
@@ -31,8 +29,7 @@ public static partial class Numerics
             throw new ArgumentException("L'array xPoints deve essere ordinato in modo crescente.");
         if (HasDuplicates(xPoints))
             throw new ArgumentException("L'array xPoints non deve contenere duplicati.");
-        var interpolation = LinearSpline.InterpolateSorted(xPoints, yPoints);
-        return interpolation.Interpolate(targetX);
+        return InterpolationNative.Linear(xPoints, yPoints, xPoints.Length, targetX);
     }
 
     /// <summary>
@@ -58,8 +55,7 @@ public static partial class Numerics
             throw new ArgumentException("L'array xPoints deve essere ordinato in modo crescente.");
         if (HasDuplicates(xPoints))
             throw new ArgumentException("L'array xPoints non deve contenere duplicati.");
-        var interpolation = CubicSpline.InterpolateAkimaSorted(xPoints, yPoints);
-        return interpolation.Interpolate(targetX);
+        return InterpolationNative.Akima(xPoints, yPoints, xPoints.Length, targetX);
     }
 
     /// <summary>
@@ -78,28 +74,9 @@ public static partial class Numerics
     /// </example>
     public static double InterpolatePolynomial(double[] x, double[] y, double targetX)
     {
-        var n = x.Length;
-        var w = new double[n];
-        for (var j = 0; j < n; j++)
-        {
-            w[j] = 1.0;
-            for (var k = 0; k < n; k++)
-            {
-                if (k != j)
-                    w[j] /= (x[j] - x[k]);
-            }
-        }
-        for (var j = 0; j < n; j++)
-            if (Math.Abs(targetX - x[j]) < 1e-14)
-                return y[j];
-        double num = 0.0, den = 0.0;
-        for (var j = 0; j < n; j++)
-        {
-            var temp = w[j] / (targetX - x[j]);
-            num += temp * y[j];
-            den += temp;
-        }
-        return num / den;
+        // n == 0 dava NaN (0/0) nel calcolo barycentric: mantenuto esplicitamente.
+        if (x.Length == 0) return double.NaN;
+        return InterpolationNative.Polynomial(x, y, x.Length, targetX);
     }
 
     /// <summary>
@@ -123,8 +100,7 @@ public static partial class Numerics
             throw new ArgumentException("L'array xPoints deve essere ordinato in modo crescente.");
         if (HasDuplicates(xPoints))
             throw new ArgumentException("L'array xPoints non deve contenere duplicati.");
-        var interpolation = CubicSpline.InterpolatePchipSorted(xPoints, yPoints);
-        return interpolation.Interpolate(targetX);
+        return InterpolationNative.Pchip(xPoints, yPoints, xPoints.Length, targetX);
     }
 
     /// <summary>
@@ -151,15 +127,7 @@ public static partial class Numerics
             throw new ArgumentException("L'array xPoints deve essere ordinato in modo crescente.");
         if (HasDuplicates(xPoints))
             throw new ArgumentException("L'array xPoints non deve contenere duplicati.");
-        var n = xPoints.Length;
-        if (targetX <= xPoints[0]) return yPoints[0];
-        if (targetX >= xPoints[n - 1]) return yPoints[n - 1];
-        for (var i = 1; i < n; i++)
-        {
-            if (targetX < xPoints[i])
-                return yPoints[i - 1];
-        }
-        return yPoints[n - 1];
+        return InterpolationNative.Step(xPoints, yPoints, xPoints.Length, targetX);
     }
 
     /// <summary>
@@ -226,87 +194,11 @@ public static partial class Numerics
             throw new ArgumentException("L'array xPoints deve essere ordinato in modo crescente.");
         if (HasDuplicates(x))
             throw new ArgumentException("L'array xPoints non deve contenere duplicati.");
-        var n = x.Length;
-        var h = new double[n - 1];
-        for (var i = 0; i < n - 1; i++) h[i] = x[i + 1] - x[i];
-
-        // Sistema per le derivate seconde M (not-a-knot, scipy CubicSpline default). Il
-        // vincolo di continuità della derivata terza coinvolge tre coefficienti fuori banda
-        // (M0,M1,M2 a sinistra; M_{n-3},M_{n-2},M_{n-1} a destra) → risolviamo il sistema
-        // denso n×n con eliminazione di Gauss a pivot parziale (n è piccolo).
-        var mat = new double[n, n];
-        var rhs = new double[n];
-        for (var i = 1; i < n - 1; i++)
-        {
-            mat[i, i - 1] = h[i - 1];
-            mat[i, i] = 2.0 * (h[i - 1] + h[i]);
-            mat[i, i + 1] = h[i];
-            var dPrev = (y[i] - y[i - 1]) / h[i - 1];
-            var dCur = (y[i + 1] - y[i]) / h[i];
-            rhs[i] = 6.0 * (dCur - dPrev);
-        }
-        mat[0, 0] = -h[1];
-        mat[0, 1] = h[0] + h[1];
-        mat[0, 2] = -h[0];
-        mat[n - 1, n - 3] = -h[n - 2];
-        mat[n - 1, n - 2] = h[n - 2] + h[n - 3];
-        mat[n - 1, n - 1] = -h[n - 3];
-        var m = DenseSolve(mat, rhs);
-        return EvaluateCubicSpline(x, y, h, m, targetX);
+        return InterpolationNative.CubicSpline(x, y, x.Length, targetX);
     }
 
     /// <summary>Eliminazione di Gauss con pivot parziale per un sistema denso n×n.</summary>
-    private static double[] DenseSolve(double[,] a, double[] d)
-    {
-        var n = d.Length;
-        var a2 = (double[,])a.Clone();
-        var d2 = (double[])d.Clone();
-        for (var col = 0; col < n; col++)
-        {
-            var piv = col;
-            for (var r = col + 1; r < n; r++)
-                if (Math.Abs(a2[r, col]) > Math.Abs(a2[piv, col])) piv = r;
-            if (piv != col)
-            {
-                for (var j = col; j < n; j++) (a2[col, j], a2[piv, j]) = (a2[piv, j], a2[col, j]);
-                (d2[col], d2[piv]) = (d2[piv], d2[col]);
-            }
-            for (var r = col + 1; r < n; r++)
-            {
-                var f = a2[r, col] / a2[col, col];
-                for (var j = col; j < n; j++) a2[r, j] -= f * a2[col, j];
-                d2[r] -= f * d2[col];
-            }
-        }
-        var m = new double[n];
-        for (var r = n - 1; r >= 0; r--)
-        {
-            var s = d2[r];
-            for (var j = r + 1; j < n; j++) s -= a2[r, j] * m[j];
-            m[r] = s / a2[r, r];
-        }
-        return m;
-    }
 
-    private static double EvaluateCubicSpline(double[] x, double[] y, double[] h, double[] m, double tx)
-    {
-        var n = x.Length;
-        int k;
-        if (tx <= x[0]) k = 0;
-        else if (tx >= x[n - 1]) k = n - 2;
-        else
-        {
-            k = 0;
-            while (k < n - 2 && tx > x[k + 1]) k++;
-        }
-        var hk = h[k];
-        var t = tx - x[k];
-        var u = x[k + 1] - tx;
-        return m[k] * u * u * u / (6.0 * hk)
-               + m[k + 1] * t * t * t / (6.0 * hk)
-               + (y[k] - m[k] * hk * hk / 6.0) * (u / hk)
-               + (y[k + 1] - m[k + 1] * hk * hk / 6.0) * (t / hk);
-    }
 
     /// <summary>
     /// Valida gli input per le funzioni di interpolazione.

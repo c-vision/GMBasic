@@ -1373,8 +1373,17 @@ static int gmb_interp_find_segment(const double* x, int n, double tx)
 
 double gmb_interp_linear(const double* x, const double* y, int n, double tx)
 {
-    if (tx <= x[0]) return y[0];
-    if (tx >= x[n-1]) return y[n-1];
+    /* Estrapolazione lineare ai bordi, come MathNet LinearSpline (e come il nome
+     * INTERPOLATELINEAR: il clamping è un'altra funzione, gmb_interp_clamp). Prima si
+     * restituiva y[0]/y[n-1] fuori range → le gambe managed (MathNet) e C divergevano. */
+    if (tx <= x[0]) {
+        if (n < 2 || x[1] == x[0]) return y[0];
+        return y[0] + (tx - x[0]) * (y[1] - y[0]) / (x[1] - x[0]);
+    }
+    if (tx >= x[n-1]) {
+        if (n < 2 || x[n-1] == x[n-2]) return y[n-1];
+        return y[n-1] + (tx - x[n-1]) * (y[n-1] - y[n-2]) / (x[n-1] - x[n-2]);
+    }
     int i = gmb_interp_find_segment(x, n, tx);
     double t = (tx - x[i]) / (x[i+1] - x[i]);
     return y[i] + t * (y[i+1] - y[i]);
@@ -1461,12 +1470,17 @@ double gmb_interp_akima(const double* x, const double* y, int n, double tx)
 /* PCHIP (Fritsch–Carlson) */
 double gmb_interp_pchip(const double* x, const double* y, int n, double tx)
 {
+    if (n < 2) return y[0];
     if (tx <= x[0]) return y[0];
     if (tx >= x[n-1]) return y[n-1];
     int i = gmb_interp_find_segment(x, n, tx);
-    double h[64], del[64];
+    /* Buffer dinamici: prima erano h[64]/del[64]/d[64] → con n > 64 si scriveva FUORI
+     * dallo stack (il managed accetta qualsiasi n). */
+    double* h = (double*)malloc((size_t)n * sizeof(double));
+    double* del = (double*)malloc((size_t)n * sizeof(double));
+    double* d = (double*)calloc((size_t)n, sizeof(double));
+    if (!h || !del || !d) { free(h); free(del); free(d); return y[0]; }
     for (int j = 0; j < n-1; j++) { h[j] = x[j+1] - x[j]; del[j] = (y[j+1] - y[j]) / h[j]; }
-    double d[64];
     if (n < 3) { d[0] = del[0]; if (n == 2) d[1] = del[0]; }
     else {
     /* PCHIP (scipy/MathNet canone): derivata al bordo con formula Fritsch-Carlson
@@ -1497,7 +1511,9 @@ double gmb_interp_pchip(const double* x, const double* y, int n, double tx)
     double hh = h[i], t = (tx - x[i]) / hh;
     double y0 = y[i], y1 = y[i+1], d0 = d[i], d1 = d[i+1];
     double c0 = y0, c1 = d0*hh, c2 = 3*(y1-y0) - (2*d0 + d1)*hh, c3 = 2*(y0-y1) + (d0 + d1)*hh;
-    return ((c3*t + c2)*t + c1)*t + c0;
+    double res = ((c3*t + c2)*t + c1)*t + c0;
+    free(h); free(del); free(d);
+    return res;
 }
 
 /* FFT radix-2 iterativa in-place su array complessi (re, im separati). n deve essere potenza di 2. */
