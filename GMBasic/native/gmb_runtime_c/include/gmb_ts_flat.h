@@ -67,6 +67,33 @@ gmb_double_t* gmb_tsf_rolling_regression(gmb_double_t* x, gmb_double_t* y, gmb_i
 gmb_double_t* gmb_tsf_rolling_regression_single(gmb_double_t* data, gmb_int_t n, gmb_int_t window, gmb_int_t* out_len);
 gmb_double_t* gmb_tsf_rolldelta(gmb_double_t* series, gmb_int_t n, gmb_int_t period, gmb_int_t* out_len);
 
+/* ── Onda 4: kernel che ritornano `gmb_val_t` (dict) ─────────────────────────────────────────
+ * Il runtime costruisce un dict con chiavi fisse; qui si fa solo l'estrazione (marshalling).
+ * Ritorno 1 = dict valido, 0 = il kernel ha segnalato input non valido; le chiavi assenti
+ * diventano NaN (o lista vuota). Capacità degli array: `k`/`K` come documentato a fianco. */
+int gmb_tsf_garch11(const double* r, int n, double* omega, double* alpha, double* beta);
+int gmb_tsf_qlr(const double* l_beta, int n_beta, double l0, double kappa_hat,
+                double* qlr_t, double* qlr_tilde, int* best_index);
+int gmb_tsf_ou_fit(const double* x, int n, double dt,
+                   double* theta, double* mu, double* sigma, double* phi, double* half_life);
+int gmb_tsf_granger(const double* x, int nx, const double* y, int ny, int p,
+                    double* stat, double* pvalue, double* df);
+int gmb_tsf_kpss(const double* series, int n, int bandwidth, int deterministic,
+                 double* stat, int* bw, int* observations, int* det, double* lrv,
+                 double* c10, double* c5, double* c25, double* c1);
+int gmb_tsf_dfgls(const double* series, int n, int lags, int deterministic,
+                  double* stat, int* lags_out, int* observations, int* det, double* alpha_bar);
+int gmb_tsf_engle_granger(const double* y_flat, int n, int k, int dependent, int lags,
+                          int with_constant, double* stat, int* lags_out, int* observations,
+                          int* n_regressors, int* wc);
+/* `eigen_values`/`trace_statistic`/`max_statistic`: k elementi. */
+int gmb_tsf_johansen(const double* y_flat, int n_obs, int k, int lags,
+                     double* eigen_values, double* trace_statistic, double* max_statistic,
+                     int* observations);
+/* `pi`: k; `a`: k*k; `means`: k*d; `covs`: k*d*d. */
+int gmb_tsf_hmm_fit(const double* x_flat, int n, int d, int k, int n_iter,
+                    double* pi, double* a, double* means, double* covs, double* log_likelihood);
+
 /* Errore dell'ultima chiamata (stringa nel runtime; valida finché non viene sovrascritta). */
 const char*   gmb_tsf_last_error(void);
 void          gmb_tsf_clear_error(void);

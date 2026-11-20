@@ -643,105 +643,9 @@ public static partial class Numerics
 
     // ── Johansen (parità gs_infer.c, eigensolver Jacobi) ────────────────────────────
 
-    private static bool JohCholesky(int n, double[] A, double[] L)
-    {
-        int i, j, k;
-        Array.Clear(L);
-        for (i = 0; i < n; i++)
-            for (j = 0; j <= i; j++)
-            {
-                var s = A[i * n + j];
-                for (k = 0; k < j; k++) s -= L[i * n + k] * L[j * n + k];
-                if (i == j) { if (s <= 0) return false; L[i * n + j] = Math.Sqrt(s); }
-                else L[i * n + j] = s / L[j * n + j];
-            }
-        return true;
-    }
 
-    private static void JohLowerSolve(int n, int ncol, double[] L, double[] B, double[] X)
-    {
-        int i, j, c;
-        for (c = 0; c < ncol; c++)
-            for (i = 0; i < n; i++)
-            {
-                var s = B[i * ncol + c];
-                for (j = 0; j < i; j++) s -= L[i * n + j] * X[j * ncol + c];
-                X[i * ncol + c] = s / L[i * n + i];
-            }
-    }
 
-    private static void JohEigSym(int n, double[] A, double[] eval)
-    {
-        int i, j, k, sweep;
-        for (sweep = 0; sweep < 100; sweep++)
-        {
-            double off = 0.0, diag = 0.0;
-            for (i = 0; i < n; i++)
-            {
-                diag += A[i * n + i] * A[i * n + i];
-                for (j = i + 1; j < n; j++) off += A[i * n + j] * A[i * n + j];
-            }
-            if (off <= 1e-30 * (diag + 1e-300)) break;
-            for (i = 0; i < n; i++)
-                for (j = i + 1; j < n; j++)
-                {
-                    var apq = A[i * n + j];
-                    if (Math.Abs(apq) < 1e-300) continue;
-                    var app = A[i * n + i];
-                    var aqq = A[j * n + j];
-                    var tau = (aqq - app) / (2.0 * apq);
-                    var t = (tau >= 0 ? 1.0 : -1.0) / (Math.Abs(tau) + Math.Sqrt(1.0 + tau * tau));
-                    var c = 1.0 / Math.Sqrt(1.0 + t * t);
-                    var sn = t * c;
-                    for (k = 0; k < n; k++)
-                    {
-                        var aik = A[i * n + k];
-                        var ajk = A[j * n + k];
-                        A[i * n + k] = c * aik - sn * ajk;
-                        A[j * n + k] = sn * aik + c * ajk;
-                    }
-                    for (k = 0; k < n; k++)
-                    {
-                        var aki = A[k * n + i];
-                        var akj = A[k * n + j];
-                        A[k * n + i] = c * aki - sn * akj;
-                        A[k * n + j] = sn * aki + c * akj;
-                    }
-                    A[i * n + j] = 0.0; A[j * n + i] = 0.0;
-                }
-        }
-        for (i = 0; i < n; i++) eval[i] = A[i * n + i];
-        for (i = 1; i < n; i++)
-        {
-            var v = eval[i];
-            j = i - 1;
-            while (j >= 0 && eval[j] > v) { eval[j + 1] = eval[j]; j--; }
-            eval[j + 1] = v;
-        }
-    }
 
-    private static void JohResidualize(int rows, int ncol, int nreg, double[] Y, double[] X, double[] R)
-    {
-        int c, i, j;
-        var beta = new double[nreg];
-        var Xc = new double[rows * nreg];
-        var yc = new double[rows];
-        for (c = 0; c < ncol; c++)
-        {
-            for (i = 0; i < rows; i++)
-            {
-                for (j = 0; j < nreg; j++) Xc[i * nreg + j] = X[i * nreg + j];
-                yc[i] = Y[i * ncol + c];
-            }
-            if (!InferOls(rows, nreg, Xc, yc, beta, out _, -1, out _)) { for (i = 0; i < rows; i++) R[i * ncol + c] = 0; continue; }
-            for (i = 0; i < rows; i++)
-            {
-                double f = 0.0;
-                for (j = 0; j < nreg; j++) f += X[i * nreg + j] * beta[j];
-                R[i * ncol + c] = Y[i * ncol + c] - f;
-            }
-        }
-    }
 
     public static (double[] EigenValues, double[] TraceStatistic, double[] MaxStatistic, int Observations, int Lags)
         Johansen(double[][] Y, int lags)
@@ -752,225 +656,22 @@ public static partial class Numerics
         var cc = k * lags + 1;
         if (k < 1 || k > 32 || lags < 0 || rows <= k + cc)
             return (Array.Empty<double>(), Array.Empty<double>(), Array.Empty<double>(), 0, lags);
-        var D = new double[rows * k];
-        var Lv = new double[rows * k];
-        var COV = new double[rows * cc];
-        var Dr = new double[rows * k];
-        var Lr = new double[rows * k];
-        var S00 = new double[k * k];
-        var S01 = new double[k * k];
-        var S11 = new double[k * k];
-        var W = new double[k * k];
-        var P = new double[k * k];
-        var Lc = new double[k * k];
-        var half = new double[k * k];
-        var halfT = new double[k * k];
-        var sym = new double[k * k];
-        var eval = new double[k];
-        int i, j, r, row, l, v;
-        for (row = 0; row < rows; row++)
-        {
-            var t = lags + 1 + row;
-            for (v = 0; v < k; v++)
-            {
-                D[row * k + v] = Y[t][v] - Y[t - 1][v];
-                Lv[row * k + v] = Y[t - 1][v];
-            }
-            for (l = 1; l <= lags; l++)
-                for (v = 0; v < k; v++)
-                    COV[row * cc + (l - 1) * k + v] = Y[t - l][v] - Y[t - l - 1][v];
-            COV[row * cc + cc - 1] = 1.0;
-        }
-        JohResidualize(rows, k, cc, D, COV, Dr);
-        JohResidualize(rows, k, cc, Lv, COV, Lr);
-        for (i = 0; i < k; i++)
-            for (j = 0; j < k; j++)
-            {
-                double s00 = 0, s01 = 0, s11 = 0;
-                for (row = 0; row < rows; row++)
-                {
-                    s00 += Dr[row * k + i] * Dr[row * k + j];
-                    s01 += Dr[row * k + i] * Lr[row * k + j];
-                    s11 += Lr[row * k + i] * Lr[row * k + j];
-                }
-                S00[i * k + j] = s00 / rows;
-                S01[i * k + j] = s01 / rows;
-                S11[i * k + j] = s11 / rows;
-            }
-        var col = new double[k];
-        var sol = new double[k];
-        for (j = 0; j < k; j++)
-        {
-            var cm = (double[])S00.Clone();
-            for (i = 0; i < k; i++) col[i] = S01[i * k + j];
-            if (!InferSolve(k, cm, col, sol))
-                return (Array.Empty<double>(), Array.Empty<double>(), Array.Empty<double>(), 0, lags);
-            for (i = 0; i < k; i++) W[i * k + j] = sol[i];
-        }
-        for (i = 0; i < k; i++)
-            for (j = 0; j < k; j++)
-            {
-                double s = 0.0;
-                for (v = 0; v < k; v++) s += S01[v * k + i] * W[v * k + j];
-                P[i * k + j] = s;
-            }
-        Array.Copy(S11, Lc, k * k);
-        if (!JohCholesky(k, S11, Lc))
-            return (Array.Empty<double>(), Array.Empty<double>(), Array.Empty<double>(), 0, lags);
-        JohLowerSolve(k, k, Lc, P, half);
-        for (i = 0; i < k; i++) for (j = 0; j < k; j++) halfT[i * k + j] = half[j * k + i];
-        JohLowerSolve(k, k, Lc, halfT, sym);
-        JohEigSym(k, sym, eval);
-        for (i = 0; i < k; i++)
-        {
-            var lam = eval[i];
-            if (lam < 0.0) lam = 0.0;
-            if (lam > 1.0 - 1e-15) lam = 1.0 - 1e-15;
-            eval[i] = lam;
-        }
-        var traceS = new double[k];
-        var maxS = new double[k];
-        for (r = 0; r < k; r++)
-        {
-            double tot = 0.0;
-            for (i = r; i < k; i++) tot += -Math.Log(1.0 - eval[i]);
-            traceS[r] = rows * tot;
-            maxS[r] = rows * -Math.Log(1.0 - eval[r]);
-        }
-        return (eval, traceS, maxS, rows, lags);
+        return TimeSeriesNative.Johansen(Y, lags);
     }
 
     // ── nucleo ADF + OLS (parità gs_infer.c) ────────────────────────────────────────
 
-    private static bool InferSolve(int n, double[] A, double[] b, double[] x)
-    {
-        int i, j, k, piv;
-        for (i = 0; i < n; i++)
-        {
-            piv = i;
-            for (j = i + 1; j < n; j++) if (Math.Abs(A[j * n + i]) > Math.Abs(A[piv * n + i])) piv = j;
-            if (Math.Abs(A[piv * n + i]) < 1e-300) return false;
-            if (piv != i)
-            {
-                for (k = 0; k < n; k++) { (A[i * n + k], A[piv * n + k]) = (A[piv * n + k], A[i * n + k]); }
-                (b[i], b[piv]) = (b[piv], b[i]);
-            }
-            for (j = i + 1; j < n; j++)
-            {
-                var f = A[j * n + i] / A[i * n + i];
-                for (k = i; k < n; k++) A[j * n + k] -= f * A[i * n + k];
-                b[j] -= f * b[i];
-            }
-        }
-        for (i = n - 1; i >= 0; i--)
-        {
-            var s = b[i];
-            for (j = i + 1; j < n; j++) s -= A[i * n + j] * x[j];
-            x[i] = s / A[i * n + i];
-        }
-        return true;
-    }
 
-    private static bool InferOls(int rows, int cols, double[] X, double[] y,
-        double[] beta, out double ssr, int leverageCol, out double leverageOut)
-    {
-        ssr = 0.0;
-        leverageOut = 0.0;
-        if (rows <= cols || cols > 64) return false;
-        var XtX = new double[64 * 64];
-        var Xty = new double[64];
-        var z = new double[64];
-        var e = new double[64];
-        int i, j, k;
-        for (i = 0; i < rows; i++)
-            for (j = 0; j < cols; j++)
-            {
-                Xty[j] += X[i * cols + j] * y[i];
-                for (k = 0; k < cols; k++) XtX[j * cols + k] += X[i * cols + j] * X[i * cols + k];
-            }
-        var XtX0 = (double[])XtX.Clone();
-        if (!InferSolve(cols, XtX, Xty, beta)) return false;
-        for (i = 0; i < rows; i++)
-        {
-            double f = 0.0;
-            for (j = 0; j < cols; j++) f += X[i * cols + j] * beta[j];
-            var r = y[i] - f;
-            ssr += r * r;
-        }
-        if (leverageCol >= 0)
-        {
-            for (j = 0; j < cols; j++) e[j] = j == leverageCol ? 1.0 : 0.0;
-            Array.Copy(XtX0, XtX, cols * cols);
-            if (!InferSolve(cols, XtX, e, z)) return false;
-            leverageOut = z[leverageCol];
-        }
-        return true;
-    }
 
-    private static (double Statistic, int Lags, int Observations)? InferAdfCore(
-        int n, double[] series, int lags, int firstObs, int deterministic)
-    {
-        var nd = deterministic;
-        var cols = nd + 1 + lags;
-        var levelCol = nd;
-        var rows = n - firstObs;
-        if (rows <= cols || firstObs < 1 + lags) return null;
-        var X = new double[rows * cols];
-        var y = new double[rows];
-        var beta = new double[cols];
-        for (var row = 0; row < rows; row++)
-        {
-            var t = firstObs + row;
-            y[row] = series[t] - series[t - 1];
-            if (nd >= 1) X[row * cols + 0] = 1.0;
-            if (nd >= 2) X[row * cols + 1] = t + 1;
-            X[row * cols + levelCol] = series[t - 1];
-            for (var l = 1; l <= lags; l++)
-                X[row * cols + levelCol + l] = series[t - l] - series[t - l - 1];
-        }
-        if (!InferOls(rows, cols, X, y, beta, out var ssr, levelCol, out var lev)) return null;
-        var varr = ssr / (rows - cols);
-        var se = Math.Sqrt(varr * lev);
-        return (beta[levelCol] / se, lags, rows);
-    }
 
     public static (double Statistic, int Lags, int Observations, int Deterministic, double AlphaBar)
         Dfgls(double[] series, int lags, int deterministic)
     {
         var n = series.Length;
         var nd = deterministic == 1 ? 2 : 1;
-        var cBar = nd == 2 ? 13.5 : 7.0;
-        var alphaBar = 1.0 - cBar / n;
         if (n <= nd + lags + 4)
             return (double.NaN, lags, 0, deterministic, double.NaN);
-        var qdDet = new double[n * nd];
-        var qdSer = new double[n];
-        var det = new double[n * nd];
-        var psi = new double[nd];
-        var detrended = new double[n];
-        int t, j;
-        for (t = 0; t < n; t++)
-        {
-            det[t * nd + 0] = 1.0;
-            if (nd == 2) det[t * nd + 1] = t + 1;
-        }
-        for (t = 0; t < n; t++)
-        {
-            for (j = 0; j < nd; j++)
-                qdDet[t * nd + j] = t == 0 ? det[j] : det[t * nd + j] - alphaBar * det[(t - 1) * nd + j];
-            qdSer[t] = t == 0 ? series[0] : series[t] - alphaBar * series[t - 1];
-        }
-        if (!InferOls(n, nd, qdDet, qdSer, psi, out _, -1, out _))
-            return (double.NaN, lags, 0, deterministic, double.NaN);
-        for (t = 0; t < n; t++)
-        {
-            double fit = 0.0;
-            for (j = 0; j < nd; j++) fit += psi[j] * det[t * nd + j];
-            detrended[t] = series[t] - fit;
-        }
-        var ar = InferAdfCore(n, detrended, lags, 1 + lags, 0);
-        if (ar is null) return (double.NaN, lags, 0, deterministic, double.NaN);
-        return (ar.Value.Statistic, ar.Value.Lags, ar.Value.Observations, deterministic, alphaBar);
+        return TimeSeriesNative.Dfgls(series, lags, deterministic);
     }
 
     public static (double Statistic, int Lags, int Observations, int NRegressors, int WithConstant)
@@ -981,29 +682,7 @@ public static partial class Numerics
         var cols = (k - 1) + (withConstant != 0 ? 1 : 0);
         if (n <= cols + lags + 2 || k < 2 || dependent < 0 || dependent >= k)
             return (double.NaN, lags, 0, cols, withConstant);
-        var X = new double[n * cols];
-        var resid = new double[n];
-        var beta = new double[cols];
-        var yc = new double[n];
-        int i, j, row;
-        for (i = 0; i < n; i++)
-        {
-            var c = 0;
-            if (withConstant != 0) X[i * cols + c++] = 1.0;
-            for (j = 0; j < k; j++) if (j != dependent) X[i * cols + c++] = Y[i][j];
-            yc[i] = Y[i][dependent];
-        }
-        if (!InferOls(n, cols, X, yc, beta, out _, -1, out _))
-            return (double.NaN, lags, 0, cols, withConstant);
-        for (row = 0; row < n; row++)
-        {
-            double f = 0.0;
-            for (j = 0; j < cols; j++) f += X[row * cols + j] * beta[j];
-            resid[row] = Y[row][dependent] - f;
-        }
-        var ar = InferAdfCore(n, resid, lags, 1 + lags, withConstant != 0 ? 1 : 0);
-        if (ar is null) return (double.NaN, lags, 0, cols, withConstant);
-        return (ar.Value.Statistic, ar.Value.Lags, ar.Value.Observations, cols, withConstant);
+        return TimeSeriesNative.EngleGranger(Y, dependent, lags, withConstant);
     }
 
     // ── KPSS e QLR (parità gs_infer.c) ─────────────────────────────────────────────
@@ -1028,45 +707,16 @@ public static partial class Numerics
         double LongRunVariance, double Critical10, double Critical5, double Critical25, double Critical1)
         Kpss(double[] series, int bandwidth, int deterministic)
     {
-        int n = series.Length, t;
+        var n = series.Length;
         if (n <= 1)
             return (double.NaN, 0, n, deterministic, double.NaN, double.NaN, double.NaN, double.NaN, double.NaN);
-        if (bandwidth < 0) bandwidth = (int)Math.Floor(4.0 * Math.Pow((double)n / 100.0, 0.25));
-        if (bandwidth >= n) bandwidth = n - 1;
-        var e = new double[n];
-        if (deterministic == 1)
-        {
-            double st = 0, sy = 0, stt = 0, sty = 0;
-            for (t = 0; t < n; t++) { double tt = t + 1; st += tt; sy += series[t]; stt += tt * tt; sty += tt * series[t]; }
-            var b = (n * sty - st * sy) / (n * stt - st * st);
-            var a = (sy - b * st) / n;
-            for (t = 0; t < n; t++) e[t] = series[t] - a - b * (t + 1);
-        }
-        else
-        {
-            double mean = 0;
-            for (t = 0; t < n; t++) mean += series[t];
-            mean /= n;
-            for (t = 0; t < n; t++) e[t] = series[t] - mean;
-        }
-        double partial = 0, ss = 0;
-        for (t = 0; t < n; t++) { partial += e[t]; ss += partial * partial; }
-        var lrv = BartlettLrv(e, n, bandwidth);
-        var stat = lrv > 0.0 ? ss / ((double)n * n * lrv) : double.NaN;
-        if (deterministic == 1)
-            return (stat, bandwidth, n, deterministic, lrv, 0.119, 0.146, 0.176, 0.216);
-        return (stat, bandwidth, n, deterministic, lrv, 0.347, 0.463, 0.574, 0.739);
+        return TimeSeriesNative.Kpss(series, bandwidth, deterministic);
     }
 
     public static (double QlrT, double QlrTilde, int BestIndex) Qlr(double l0, double[] lBeta, double kappaHat)
     {
         if (lBeta == null || lBeta.Length == 0) return (double.NaN, double.NaN, -1);
-        var best = 0;
-        for (var i = 1; i < lBeta.Length; i++)
-            if (lBeta[i] > lBeta[best]) best = i;
-        var qlrT = 2.0 * (lBeta[best] - l0);
-        var qlrTilde = kappaHat != 0.0 ? qlrT / kappaHat : qlrT;
-        return (qlrT, qlrTilde, best);
+        return TimeSeriesNative.Qlr(l0, lBeta, kappaHat);
     }
 
     // ── Hidden Markov Model gaussiano (parità gs_hmm.c) ────────────────────────────
@@ -1106,157 +756,9 @@ public static partial class Numerics
         if (X == null || n < K || d < 1 || K < 1 || K > 32 || d > 32)
             return (Array.Empty<double>(), Array.Empty<double>(), Array.Empty<double>(), Array.Empty<double>(), double.NaN);
         if (nIter < 1) nIter = 100;
-        var logE = new double[n * K];
-        var lpi = new double[K];
-        var lA = new double[K * K];
-        var al = new double[n * K];
-        var be = new double[n * K];
-        var gam = new double[n * K];
-        var xi = new double[n * K * K];
-        var pi = new double[K];
-        var A = new double[K * K];
-        var means = new double[K * d];
-        var covs = new double[K * d * d];
-        var gmean = new double[d];
-        var gcov = new double[d * d];
-        int t, i, j, it, k;
-
-        for (i = 0; i < K; i++) { pi[i] = 1.0 / K; for (j = 0; j < K; j++) A[i * K + j] = 1.0 / K; }
-        for (k = 0; k < d; k++) { double s = 0; for (t = 0; t < n; t++) s += X[t][k]; gmean[k] = s / n; }
-        for (k = 0; k < d; k++)
-            for (j = 0; j < d; j++)
-            {
-                double s = 0;
-                for (t = 0; t < n; t++) s += (X[t][k] - gmean[k]) * (X[t][j] - gmean[j]);
-                gcov[k * d + j] = s / n;
-            }
-        for (i = 0; i < K; i++)
-        {
-            var t0 = (int)((long)i * n / K);
-            var t1 = (int)((long)(i + 1) * n / K);
-            if (t1 <= t0) t1 = t0 + 1;
-            if (t1 > n) t1 = n;
-            for (k = 0; k < d; k++)
-            {
-                double s = 0;
-                for (t = t0; t < t1; t++) s += X[t][k];
-                means[i * d + k] = s / (t1 - t0);
-            }
-            for (k = 0; k < d * d; k++) covs[i * d * d + k] = gcov[k];
-            for (k = 0; k < d; k++) covs[i * d * d + k * d + k] += 1e-6;
-        }
-
-        for (t = 0; t < n; t++)
-            for (i = 0; i < K; i++)
-                logE[t * K + i] = MvGaussLogPdf(X[t], Slice(means, i * d, d), Slice(covs, i * d * d, d * d));
-
-        for (it = 0; it < nIter; it++)
-        {
-            for (i = 0; i < K; i++) lpi[i] = Math.Log(pi[i] > 0 ? pi[i] : 1e-300);
-            for (i = 0; i < K; i++)
-                for (j = 0; j < K; j++)
-                    lA[i * K + j] = Math.Log(A[i * K + j] > 0 ? A[i * K + j] : 1e-300);
-            for (i = 0; i < K; i++) al[i] = lpi[i] + logE[i];
-            for (t = 1; t < n; t++)
-                for (j = 0; j < K; j++)
-                {
-                    var bj = double.NegativeInfinity;
-                    for (i = 0; i < K; i++) bj = HmmLogAdd(bj, al[(t - 1) * K + i] + lA[i * K + j]);
-                    al[t * K + j] = bj + logE[t * K + j];
-                }
-            for (i = 0; i < K; i++) be[(n - 1) * K + i] = 0;
-            for (t = n - 2; t >= 0; t--)
-                for (i = 0; i < K; i++)
-                {
-                    var bj = double.NegativeInfinity;
-                    for (j = 0; j < K; j++)
-                        bj = HmmLogAdd(bj, lA[i * K + j] + logE[(t + 1) * K + j] + be[(t + 1) * K + j]);
-                    be[t * K + i] = bj;
-                }
-            for (t = 0; t < n; t++)
-            {
-                var s = double.NegativeInfinity;
-                for (i = 0; i < K; i++) s = HmmLogAdd(s, al[t * K + i] + be[t * K + i]);
-                for (i = 0; i < K; i++) gam[t * K + i] = Math.Exp(al[t * K + i] + be[t * K + i] - s);
-            }
-            for (t = 0; t < n - 1; t++)
-            {
-                var s = double.NegativeInfinity;
-                for (i = 0; i < K; i++)
-                    for (j = 0; j < K; j++)
-                    {
-                        xi[(t * K + i) * K + j] = al[t * K + i] + lA[i * K + j] + logE[(t + 1) * K + j] + be[(t + 1) * K + j];
-                        s = HmmLogAdd(s, xi[(t * K + i) * K + j]);
-                    }
-                for (i = 0; i < K; i++)
-                    for (j = 0; j < K; j++)
-                        xi[(t * K + i) * K + j] = Math.Exp(xi[(t * K + i) * K + j] - s);
-            }
-            var newpi = new double[K];
-            var newA = new double[K * K];
-            var newmeans = new double[K * d];
-            var newcovs = new double[K * d * d];
-            for (i = 0; i < K; i++)
-            {
-                double g0 = 0;
-                for (t = 0; t < n; t++) g0 += gam[t * K + i];
-                newpi[i] = gam[i];
-                for (j = 0; j < K; j++)
-                {
-                    double s = 0;
-                    for (t = 0; t < n - 1; t++) s += xi[(t * K + i) * K + j];
-                    newA[i * K + j] = s;
-                }
-                for (k = 0; k < d; k++)
-                {
-                    double s = 0;
-                    for (t = 0; t < n; t++) s += gam[t * K + i] * X[t][k];
-                    newmeans[i * d + k] = g0 > 0 ? s / g0 : 0;
-                }
-                for (k = 0; k < d * d; k++)
-                {
-                    double s = 0;
-                    var kk = k / d;
-                    var ll = k % d;
-                    for (t = 0; t < n; t++)
-                        s += gam[t * K + i] * (X[t][kk] - newmeans[i * d + kk]) * (X[t][ll] - newmeans[i * d + ll]);
-                    newcovs[i * d * d + k] = g0 > 0 ? s / g0 + 1e-6 : 1e-6;
-                }
-            }
-            {
-                double s = 0;
-                for (i = 0; i < K; i++) s += newpi[i];
-                for (i = 0; i < K; i++) newpi[i] = s > 0 ? newpi[i] / s : 1.0 / K;
-                for (i = 0; i < K; i++)
-                {
-                    double s2 = 0;
-                    for (j = 0; j < K; j++) s2 += newA[i * K + j];
-                    for (j = 0; j < K; j++) newA[i * K + j] = s2 > 0 ? newA[i * K + j] / s2 : 1.0 / K;
-                }
-            }
-            Array.Copy(newpi, pi, K);
-            Array.Copy(newA, A, K * K);
-            Array.Copy(newmeans, means, K * d);
-            Array.Copy(newcovs, covs, K * d * d);
-            for (t = 0; t < n; t++)
-                for (i = 0; i < K; i++)
-                    logE[t * K + i] = MvGaussLogPdf(X[t], Slice(means, i * d, d), Slice(covs, i * d * d, d * d));
-        }
-
-        for (i = 0; i < K; i++) lpi[i] = Math.Log(pi[i] > 0 ? pi[i] : 1e-300);
-        for (i = 0; i < K; i++)
-            for (j = 0; j < K; j++)
-                lA[i * K + j] = Math.Log(A[i * K + j] > 0 ? A[i * K + j] : 1e-300);
-        var loglik = HmmForward(lpi, lA, logE);
-        return (pi, A, means, covs, loglik);
+        return TimeSeriesNative.HmmFit(X, K, nIter);
     }
 
-    private static double[] Slice(double[] src, int start, int len)
-    {
-        var r = new double[len];
-        Array.Copy(src, start, r, 0, len);
-        return r;
-    }
 
     public static double[] BmaWeights(double[] ic)
     {
@@ -1274,28 +776,7 @@ public static partial class Numerics
     {
         var n = x.Length;
         if (n < 3 || dt <= 0) return (double.NaN, double.NaN, double.NaN, double.NaN, double.NaN);
-        double meanX = 0, meanY = 0, sxx = 0, sxy = 0, sse = 0;
-        var cnt = 0;
-        for (var i = 1; i < n; i++)
-        {
-            double xv = x[i - 1], yv = x[i];
-            cnt++;
-            var dx = xv - meanX;
-            var dy = yv - meanY;
-            var inv = 1.0 / cnt;
-            meanX += dx * inv; meanY += dy * inv;
-            sxx += dx * (xv - meanX); sxy += dx * (yv - meanY);
-        }
-        var phi = sxx > 0 ? sxy / sxx : double.NaN;
-        var alpha = meanY - phi * meanX;
-        var logphi = phi > 0 && phi < 1 ? Math.Log(phi) : double.NaN;
-        var omphi = -(Math.Exp(logphi) - 1.0);
-        var mu = alpha / omphi;
-        var theta = -logphi / dt;
-        for (var i = 1; i < n; i++) { var r = x[i] - alpha - phi * x[i - 1]; sse += r * r; }
-        var vf = -(Math.Exp(2 * logphi) - 1.0) / (2 * theta);
-        var sigma = Math.Sqrt(sse / cnt / vf);
-        return (theta, mu, sigma, phi, Math.Log(2.0) / theta);
+        return TimeSeriesNative.OuFit(x, dt);
     }
 
     public static double[] StationaryBootstrap(double[] x, int window, int seed)
@@ -1316,50 +797,61 @@ public static partial class Numerics
     {
         var n = r.Length;
         if (n < 5) return (double.NaN, double.NaN, double.NaN);
-        double Nll(double[] p)
-        {
-            double w = p[0], al = p[1], be = p[2], s2 = r[0] * r[0], ll = 0;
-            if (s2 <= 0) s2 = 1e-6;
-            for (var t = 1; t < n; t++)
-            {
-                s2 = w + al * r[t - 1] * r[t - 1] + be * s2;
-                if (s2 < 1e-12) s2 = 1e-12;
-                ll += Math.Log(s2) + r[t] * r[t] / s2;
-            }
-            return 0.5 * ll;
-        }
-        var p = new double[3];
-        var v = r.Sum(x => x * x) / n;
-        p[0] = 0.1 * v; p[1] = 0.1; p[2] = 0.8;
-        const double h = 1e-5;
-        var step = 0.05;
-        for (var it = 0; it < 2000; it++)
-        {
-            var f0 = Nll(p);
-            var grad = new double[3];
-            double gn = 0;
-            for (var i = 0; i < 3; i++)
-            {
-                var save = p[i];
-                p[i] = save + h;
-                grad[i] = (Nll(p) - f0) / h;
-                p[i] = save;
-                gn += grad[i] * grad[i];
-            }
-            gn = Math.Sqrt(gn);
-            if (gn < 1e-10) break;
-            var np = new double[3];
-            for (var i = 0; i < 3; i++) np[i] = p[i] - step * grad[i] / gn;
-            if (np[0] < 1e-8) np[0] = 1e-8;
-            if (np[1] < 0) np[1] = 0;
-            if (np[2] < 0) np[2] = 0;
-            if (np[1] + np[2] > 0.999) { var ss = 0.999 / (np[1] + np[2]); np[1] *= ss; np[2] *= ss; }
-            if (Nll(np) < f0) { p[0] = np[0]; p[1] = np[1]; p[2] = np[2]; step *= 1.05; }
-            else step *= 0.5;
-            if (step < 1e-12) break;
-        }
-        return (p[0], p[1], p[2]);
+        return TimeSeriesNative.Garch11(r);
     }
+
+
+    public static StatisticalTestResult Granger(double[] x, double[] y, int p)
+    {
+        var n = Math.Min(x.Length, y.Length);
+        if (p < 1 || n < 3 * p + 2)
+            return new StatisticalTestResult(double.NaN, double.NaN, double.NaN);
+        var (stat, pv, df) = TimeSeriesNative.Granger(x, y, p);
+        return new StatisticalTestResult(stat, pv, df);
+    }
+
+    public static double[] FracDiff(double[] x, double d)
+    {
+        if (d < 0) return Array.Empty<double>();
+        return TimeSeriesNative.FracDiff(x, d);
+    }
+
+    public static double HurstDfa(double[] x, int minBox = 4)
+    {
+        var n = x.Length;
+        if (n < 20 || minBox < 2) return double.NaN;
+        return TimeSeriesNative.HurstDfa(x, minBox);
+    }
+    // Condivisi con gli altri file della classe partial (Stats.cs, Fitting.cs, SciPyP1.cs).
+    private static bool InferSolve(int n, double[] A, double[] b, double[] x)
+    {
+        int i, j, k, piv;
+        for (i = 0; i < n; i++)
+        {
+            piv = i;
+            for (j = i + 1; j < n; j++) if (Math.Abs(A[j * n + i]) > Math.Abs(A[piv * n + i])) piv = j;
+            if (Math.Abs(A[piv * n + i]) < 1e-300) return false;
+            if (piv != i)
+            {
+                for (k = 0; k < n; k++) { (A[i * n + k], A[piv * n + k]) = (A[piv * n + k], A[i * n + k]); }
+                (b[i], b[piv]) = (b[piv], b[i]);
+            }
+            for (j = i + 1; j < n; j++)
+            {
+                var f = A[j * n + i] / A[i * n + i];
+                for (k = i; k < n; k++) A[j * n + k] -= f * A[i * n + k];
+                b[j] -= f * b[i];
+            }
+        }
+        for (i = n - 1; i >= 0; i--)
+        {
+            var s = b[i];
+            for (j = i + 1; j < n; j++) s -= A[i * n + j] * x[j];
+            x[i] = s / A[i * n + i];
+        }
+        return true;
+    }
+
 
     private static double[] SolveLinear(int n, double[] a, double[] b)
     {
@@ -1392,69 +884,4 @@ public static partial class Numerics
         return x;
     }
 
-    public static StatisticalTestResult Granger(double[] x, double[] y, int p)
-    {
-        var n = Math.Min(x.Length, y.Length);
-        if (p < 1 || n < 3 * p + 2)
-            return new StatisticalTestResult(double.NaN, double.NaN, double.NaN);
-        var m = n - p;
-        var nr = p + 1;
-        var nu = 2 * p + 1;
-        var xr = new double[m * nr];
-        var xu = new double[m * nu];
-        for (var i = p; i < n; i++)
-        {
-            var r = i - p;
-            xr[r * nr] = 1;
-            xu[r * nu] = 1;
-            for (var j = 1; j <= p; j++)
-            {
-                xr[r * nr + j] = x[i - j];
-                xu[r * nu + j] = x[i - j];
-                xu[r * nu + p + j] = y[i - j];
-            }
-        }
-        double[] Rss(double[] xm, int cols)
-        {
-            var ata = new double[cols * cols];
-            var atb = new double[cols];
-            for (var i = 0; i < m; i++)
-                for (var j = 0; j < cols; j++)
-                {
-                    for (var k = 0; k < cols; k++) ata[j * cols + k] += xm[i * cols + j] * xm[i * cols + k];
-                    atb[j] += xm[i * cols + j] * x[i + p];
-                }
-            var coef = SolveLinear(cols, ata, atb);
-            var rss = 0.0;
-            for (var i = 0; i < m; i++)
-            {
-                var r = x[i + p];
-                for (var j = 0; j < cols; j++) r -= coef[j] * xm[i * cols + j];
-                rss += r * r;
-            }
-            return [rss];
-        }
-        var rssR = Rss(xr, nr)[0];
-        var rssU = Rss(xu, nu)[0];
-        if (rssU <= 0) return new StatisticalTestResult(double.NaN, double.NaN, double.NaN);
-        var df1 = (double)p;
-        var df2 = m - nu;
-        var f = ((rssR - rssU) / df1) / (rssU / df2);
-        var xb = df1 * f / (df1 * f + df2);
-        var pv = 1.0 - BetaCdf(df1 / 2.0, df2 / 2.0, xb);
-        return new StatisticalTestResult(f, pv, df1);
-    }
-
-    public static double[] FracDiff(double[] x, double d)
-    {
-        if (d < 0) return Array.Empty<double>();
-        return TimeSeriesNative.FracDiff(x, d);
-    }
-
-    public static double HurstDfa(double[] x, int minBox = 4)
-    {
-        var n = x.Length;
-        if (n < 20 || minBox < 2) return double.NaN;
-        return TimeSeriesNative.HurstDfa(x, minBox);
-    }
 }

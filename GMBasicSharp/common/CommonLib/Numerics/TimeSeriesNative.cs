@@ -103,6 +103,36 @@ internal static class TimeSeriesNative
     [DllImport(Lib, EntryPoint = "gmb_tsf_rolldelta", CallingConvention = CallingConvention.Cdecl)]
     private static extern IntPtr NativeRollingDelta(double[] data, long n, long window, out long outLen);
 
+    // ── Onda 4: kernel che ritornano gmb_val_t (dict) ──────────────────────────────────────
+    [DllImport(Lib, EntryPoint = "gmb_tsf_garch11", CallingConvention = CallingConvention.Cdecl)]
+    private static extern int NativeGarch11(double[] r, int n, out double omega, out double alpha, out double beta);
+    [DllImport(Lib, EntryPoint = "gmb_tsf_qlr", CallingConvention = CallingConvention.Cdecl)]
+    private static extern int NativeQlr(double[] lBeta, int nBeta, double l0, double kappaHat,
+        out double qlrT, out double qlrTilde, out int bestIndex);
+    [DllImport(Lib, EntryPoint = "gmb_tsf_ou_fit", CallingConvention = CallingConvention.Cdecl)]
+    private static extern int NativeOuFit(double[] x, int n, double dt,
+        out double theta, out double mu, out double sigma, out double phi, out double halfLife);
+    [DllImport(Lib, EntryPoint = "gmb_tsf_granger", CallingConvention = CallingConvention.Cdecl)]
+    private static extern int NativeGranger(double[] x, int nx, double[] y, int ny, int p,
+        out double stat, out double pvalue, out double df);
+    [DllImport(Lib, EntryPoint = "gmb_tsf_kpss", CallingConvention = CallingConvention.Cdecl)]
+    private static extern int NativeKpss(double[] series, int n, int bandwidth, int deterministic,
+        out double stat, out int bw, out int observations, out int det, out double lrv,
+        out double c10, out double c5, out double c25, out double c1);
+    [DllImport(Lib, EntryPoint = "gmb_tsf_dfgls", CallingConvention = CallingConvention.Cdecl)]
+    private static extern int NativeDfgls(double[] series, int n, int lags, int deterministic,
+        out double stat, out int lagsOut, out int observations, out int det, out double alphaBar);
+    [DllImport(Lib, EntryPoint = "gmb_tsf_engle_granger", CallingConvention = CallingConvention.Cdecl)]
+    private static extern int NativeEngleGranger(double[] yFlat, int n, int k, int dependent, int lags,
+        int withConstant, out double stat, out int lagsOut, out int observations, out int nRegressors,
+        out int wc);
+    [DllImport(Lib, EntryPoint = "gmb_tsf_johansen", CallingConvention = CallingConvention.Cdecl)]
+    private static extern int NativeJohansen(double[] yFlat, int nObs, int k, int lags,
+        double[] eigenValues, double[] traceStatistic, double[] maxStatistic, out int observations);
+    [DllImport(Lib, EntryPoint = "gmb_tsf_hmm_fit", CallingConvention = CallingConvention.Cdecl)]
+    private static extern int NativeHmmFit(double[] xFlat, int n, int d, int k, int nIter,
+        double[] pi, double[] a, double[] means, double[] covs, out double logLikelihood);
+
     [DllImport(Lib, EntryPoint = "gmb_tsf_last_error", CallingConvention = CallingConvention.Cdecl)]
     private static extern IntPtr NativeLastError();
     [DllImport(Lib, EntryPoint = "gmb_tsf_clear_error", CallingConvention = CallingConvention.Cdecl)]
@@ -428,5 +458,117 @@ internal static class TimeSeriesNative
     {
         Begin();
         return Take(NativeRollingDelta(data, data.Length, window, out var n), n);
+    }
+
+    // ── Onda 4: dict → tuple/array ──────────────────────────────────────────────────────────
+
+    private static void Require(int ok, string what)
+    {
+        if (ok == 0) throw new InvalidOperationException("TIMESERIES: il kernel C ha rifiutato l'input di " + what + ".");
+    }
+
+    /// <summary>Appiattisce righe jagged (n × cols) nel layout row-major atteso dai kernel C.</summary>
+    private static double[] Flatten(double[][] rows, int n, int cols)
+    {
+        var flat = new double[(long)n * cols];
+        for (var i = 0; i < n; i++)
+            for (var j = 0; j < cols; j++) flat[i * cols + j] = rows[i][j];
+        return flat;
+    }
+
+    internal static (double Omega, double Alpha, double Beta) Garch11(double[] r)
+    {
+        Begin();
+        var ok = NativeGarch11(r, r.Length, out var omega, out var alpha, out var beta);
+        Require(ok, "GARCH11");
+        return (omega, alpha, beta);
+    }
+
+    internal static (double QlrT, double QlrTilde, int BestIndex) Qlr(double l0, double[] lBeta, double kappaHat)
+    {
+        Begin();
+        var ok = NativeQlr(lBeta, lBeta.Length, l0, kappaHat, out var t, out var tilde, out var best);
+        Require(ok, "QLR");
+        return (t, tilde, best);
+    }
+
+    internal static (double Theta, double Mu, double Sigma, double Phi, double HalfLife) OuFit(double[] x, double dt)
+    {
+        Begin();
+        var ok = NativeOuFit(x, x.Length, dt, out var theta, out var mu, out var sigma, out var phi, out var hl);
+        Require(ok, "OUFIT");
+        return (theta, mu, sigma, phi, hl);
+    }
+
+    internal static (double Statistic, double PValue, double DegreesOfFreedom) Granger(double[] x, double[] y, int p)
+    {
+        Begin();
+        var ok = NativeGranger(x, x.Length, y, y.Length, p, out var stat, out var pv, out var df);
+        Require(ok, "GRANGER");
+        return (stat, pv, df);
+    }
+
+    internal static (double Statistic, int Bandwidth, int Observations, int Deterministic,
+        double LongRunVariance, double Critical10, double Critical5, double Critical25, double Critical1)
+        Kpss(double[] series, int bandwidth, int deterministic)
+    {
+        Begin();
+        var ok = NativeKpss(series, series.Length, bandwidth, deterministic,
+            out var stat, out var bw, out var obs, out var det, out var lrv,
+            out var c10, out var c5, out var c25, out var c1);
+        Require(ok, "KPSS");
+        return (stat, bw, obs, det, lrv, c10, c5, c25, c1);
+    }
+
+    internal static (double Statistic, int Lags, int Observations, int Deterministic, double AlphaBar)
+        Dfgls(double[] series, int lags, int deterministic)
+    {
+        Begin();
+        var ok = NativeDfgls(series, series.Length, lags, deterministic,
+            out var stat, out var lagsOut, out var obs, out var det, out var alphaBar);
+        Require(ok, "DFGLS");
+        return (stat, lagsOut, obs, det, alphaBar);
+    }
+
+    internal static (double Statistic, int Lags, int Observations, int NRegressors, int WithConstant)
+        EngleGranger(double[][] y, int dependent, int lags, int withConstant)
+    {
+        var n = y.Length;
+        var k = n > 0 ? y[0].Length : 0;
+        Begin();
+        var ok = NativeEngleGranger(Flatten(y, n, k), n, k, dependent, lags, withConstant,
+            out var stat, out var lagsOut, out var obs, out var nreg, out var wc);
+        Require(ok, "ENGLEGRANGER");
+        return (stat, lagsOut, obs, nreg, wc);
+    }
+
+    internal static (double[] EigenValues, double[] TraceStatistic, double[] MaxStatistic, int Observations, int Lags)
+        Johansen(double[][] y, int lags)
+    {
+        var nObs = y.Length;
+        var k = nObs > 0 ? y[0].Length : 0;
+        var eval = new double[k];
+        var trace = new double[k];
+        var maxs = new double[k];
+        Begin();
+        var ok = NativeJohansen(Flatten(y, nObs, k), nObs, k, lags, eval, trace, maxs, out var obs);
+        Require(ok, "JOHANSEN");
+        return (eval, trace, maxs, obs, lags);
+    }
+
+    internal static (double[] Pi, double[] A, double[] Means, double[] Covs, double LogLikelihood)
+        HmmFit(double[][] x, int nStates, int nIter)
+    {
+        var n = x.Length;
+        var d = n > 0 ? x[0].Length : 0;
+        var k = nStates;
+        var pi = new double[k];
+        var a = new double[k * k];
+        var means = new double[k * d];
+        var covs = new double[k * d * d];
+        Begin();
+        var ok = NativeHmmFit(Flatten(x, n, d), n, d, k, nIter, pi, a, means, covs, out var ll);
+        Require(ok, "HMMFIT");
+        return (pi, a, means, covs, ll);
     }
 }
