@@ -1,10 +1,10 @@
 # NCM — Guida utente (generazione di testo "dal grossolano al fine")
 
-> **Stato**: namespace `NCM`, 4 funzioni (`LOADMODEL`, `GENERATE`, `FREEMODEL`, `LASTERROR`), disponibili e identiche
+> **Stato**: namespace `NCM`, 9 funzioni (`LOADMODEL`, `GENERATE`, `FREEMODEL`, `LASTERROR`, `LOADCONDITIONAL`, `GENERATEFROM`, `ROUGE1`, `ROUGE2`, `ROUGEL`), disponibili e identiche
 > sulle **quattro gambe** (C99Native, IL, PCodeVM, VM/C). Implementazione: FFI su `libgmb_torch` (host libtorch C++).
-> Mini test: `shared/minitests/ncm/` (`ncm_errors`, `ncm_generate`, `ncm_lifecycle`). Sample completo:
+> Mini test: `shared/minitests/ncm/` (`ncm_errors`, `ncm_generate`, `ncm_lifecycle`, `ncm_conditional`, `ncm_rouge`). Sample completo:
 > `shared/samples/Ncm/NcmWorkbench.bas` (modello minuscolo, esegue tutto) e `shared/samples/AiLLM/NcmGenerate.bas`
-> (modello reale LM1B, ~1 GB di pesi). Manuale: capitolo V.31d. Piano di sviluppo (condizionamento, addestramento): vault
+> (modello reale LM1B, ~1 GB di pesi), `shared/samples/AiLLM/NcmSummarize.bas` (riassunto condizionato + ROUGE, modello minuscolo). Manuale: capitolo V.31d. Piano di sviluppo (condizionamento, addestramento): vault
 > `Piani/(open) - Piano-NCM-Modelli-Guidabili-Condizionamento-e-Addestramento.md`.
 
 `NCM` (Next-Concept Modeling, arXiv 2610.14162, Stanford / Together AI) genera testo con un'idea diversa dai modelli
@@ -111,12 +111,61 @@ Ritorna il messaggio dell'**ultimo errore** del motore torch (`""` se non ce ne 
 chiamata che ha fallito (`LOADMODEL` che ritorna 0, `GENERATE` che ritorna `""`): il messaggio non viene cancellato da
 una chiamata riuscita successiva, quindi non è un indicatore di successo — il successo si vede dal valore di ritorno.
 
+### 3.5 `NCM.LOADCONDITIONAL(generatorPt, tokenizerPt, configYaml, vocabJson, mergesTxt, device)` → LONG
+
+Carica un modello **condizionato dal testo** (checkpoint XSum del paper: riassunto di un documento). Il documento è il
+**prefisso** che il generatore vede; i parametri che non stanno nei pesi (RoPE, lunghezza del prefisso, cascata del
+tokenizer, penalità di generazione) si leggono dal `config.yaml` del checkpoint.
+
+| Parametro | Tipo | Significato |
+|---|---|---|
+| `generatorPt`, `tokenizerPt` | STRING | `generator.pt` e `tokenizer.pt` del checkpoint (cartella `xsum` di `hazyresearch/ncm-checkpoints`). |
+| `configYaml` | STRING | `config.yaml` dello stesso checkpoint. |
+| `vocabJson`, `mergesTxt` | STRING | Il BPE di GPT-2 (`vocab.json`, `merges.txt` di `openai-community/gpt2`). |
+| `device` | LONG | 0 = CPU, 1 = CUDA, 3 = METAL (GPU Apple); se il dispositivo non c'è ritorna 0. |
+
+Ritorna un handle (> 0) oppure `0` (motivo in `NCM.LASTERROR()`): per esempio un percorso inesistente. L'handle si libera
+con `NCM.FREEMODEL`. Un modello condizionato **non** serve a `GENERATE` (che non ha prompt): darebbe `""` con l'errore
+"prefisso di 1 token, il modello ne richiede N".
+
+### 3.6 `NCM.GENERATEFROM(handle, prompt, seed, cfgScale)` → STRING
+
+Genera **un** testo condizionato dal `prompt`, tagliato al primo fine-testo.
+
+| Parametro | Tipo | Significato |
+|---|---|---|
+| `handle` | LONG | Modello caricato con `LOADCONDITIONAL`. |
+| `prompt` | STRING | Il documento (UTF-8). Contano solo i primi P token BPE (512 nel checkpoint XSum); il resto è ignorato, e un documento più corto è completato con padding mascherato. |
+| `seed` | LONG | Seme del campionamento, `>= 0` per riprodurlo. Il config XSum è greedy (`top_k = 1`): il seed non cambia il risultato. |
+| `cfgScale` | DOUBLE | Guidance senza classificatore: `0` = spenta, `> 0` = guidata (costo doppio), valore **negativo** = quello del config (0 in XSum). |
+
+Ritorna `""` su errore (handle non valido, modello non condizionato): il motivo è in `NCM.LASTERROR()`. L'uscita è sempre
+UTF-8 valida (i byte BPE incompleti diventano U+FFFD).
+
+**Quanto è buono?** Sui primi 1000 documenti del test set XSum il checkpoint pubblicato dà ROUGE-1/2/L = **34,60 / 12,82 / 27,77**
+(paper: 35,0 / 12,8 / 28,0), circa 0,12 s a riassunto su Apple M5 Max. La guidance (`cfgScale` 1) non migliora in modo
+misurabile e costa 2,4 volte; a 3 peggiora (R-1 31,8): il valore di default del paper, 0, resta il migliore.
+
+```basic
+h = NCM.LOADCONDITIONAL("xsum/generator.pt", "xsum/tokenizer.pt", "xsum/config.yaml", "gpt2/vocab.json", "gpt2/merges.txt", 3)
+summary = NCM.GENERATEFROM(h, document, 0, -1)
+PRINT summary; "  ROUGE-L="; FORMAT(NCM.ROUGEL(reference, summary), "0.000")
+```
+
+### 3.7 `NCM.ROUGE1(reference, hypothesis)`, `NCM.ROUGE2(...)`, `NCM.ROUGEL(...)` → DOUBLE
+
+F-measure ROUGE (0..1) fra un testo di riferimento e uno generato; **non richiedono nessun modello**. Stessa
+tokenizzazione di `rouge_score` con lo stemmer: minuscolo, solo `[a-z0-9]`, stemming di Porter per i token oltre 3 lettere;
+ROUGE-1/2 = sovrapposizione di unigrammi/bigrammi con conteggi, ROUGE-L = sottosequenza comune più lunga. Il testo vuoto vale 0. Lo
+stemmer è il Porter classico: su poche parole irregolari si discosta da quello di NLTK (scarti di pochi centesimi di punto sul
+punteggio medio). Esempio: `NCM.ROUGE1("the cat sat", "the cat sat on the mat")` = 0,667.
+
 ## 4. Riproducibilità e parità
 
 - **Stesso seed, stesso testo** sulla stessa macchina e con lo stesso dispositivo. Fra macchine o fra CPU e GPU i testi
   possono differire (aritmetica in virgola mobile diversa).
 - Le **quattro gambe danno lo stesso testo** perché passano tutte dalla stessa libreria nativa: i test di parità
-  (`tools/sh/parity4`) lo verificano su `ncm_generate`, `ncm_lifecycle`, `ncm_errors` e sul sample `NcmWorkbench`.
+  (`tools/sh/parity4`) lo verificano su `ncm_generate`, `ncm_lifecycle`, `ncm_errors`, `ncm_conditional`, `ncm_rouge` e sui sample `NcmWorkbench` e `NcmSummarize`.
 - **Fedeltà al riferimento** (modello LM1B small): con temperatura 0 i codici generati coincidono con quelli del
   codice PyTorch degli autori (0 differenze su 2564); la perplexity generativa misurata con GPT-2 large (protocollo
   `genppl_flm` del paper) è **93,26** contro **93,05** dichiarata.
@@ -126,12 +175,13 @@ una chiamata riuscita successiva, quindi non è un indicatore di successo — il
 
 ## 5. Limiti attuali
 
-- **Solo generazione non condizionata**: nessun prompt. Il piano per il condizionamento e l'addestramento è nel vault
-  (Piani).
+- **Condizionamento solo in inferenza**, con i checkpoint pubblicati (XSum). Un prompt = un testo per chiamata. Mancano
+  MBR, WMT14 (BLEU) e Sudoku. L'addestramento e il fine-tuning del condizionamento sono nel piano (vault, Piani).
 - Un solo tipo di modello: generatore + tokenizer VQ-VAE multiscala nel formato HazyResearch, vocabolario BERT.
 - Finestra fissa (128 token nel modello reale): niente testi più lunghi in una chiamata.
 - Serve la libreria `libgmb_torch` con libtorch: se manca, `LOADMODEL` ritorna 0 con l'errore della libreria.
 - Nessun addestramento in BASIC.
+- ROUGE: lo stemmer è il Porter classico (non quello di NLTK), vedi 3.7.
 
 ## 6. Diagnostica
 
@@ -141,9 +191,11 @@ una chiamata riuscita successiva, quindi non è un indicatore di successo — il
 | `LOADMODEL` ritorna 0, `LASTERROR` parla di `open file failed` | percorso sbagliato (relativo alla cartella corrente del programma). |
 | `LASTERROR`: `numero di livelli del checkpoint ... diverso dai livelli noti` | checkpoint con una struttura non LM1B e senza `inference.levels`. |
 | `GENERATE` ritorna `""` | handle non valido o `n <= 0`: guarda `NCM.LASTERROR()`. |
+| `GENERATEFROM` ritorna `""` | handle non valido, oppure modello non condizionato (caricato con `LOADMODEL`): guarda `NCM.LASTERROR()`. |
+| `LOADCONDITIONAL` ritorna 0 con `config non leggibile` | manca `config.yaml` (o il percorso è sbagliato): senza di lui i parametri di RoPE, prefisso e cascata sono quelli di LM1B. |
 
 ## 7. Riferimenti
 
-- Mini test: `shared/minitests/ncm/ncm_errors.bas`, `ncm_generate.bas`, `ncm_lifecycle.bas`.
-- Sample: `shared/samples/Ncm/NcmWorkbench.bas` (completo, usa le 4 funzioni), `shared/samples/AiLLM/NcmGenerate.bas`.
-- Include: `shared/include/ncm.inc`. Codice: `GMBasic/native/gmb_torch/src/gmb_ncm.hpp`, `gmb_pt_load.hpp`, `gmb_host_ml.cpp`.
+- Mini test: `shared/minitests/ncm/ncm_errors.bas`, `ncm_generate.bas`, `ncm_lifecycle.bas`, `ncm_conditional.bas`, `ncm_rouge.bas`.
+- Sample: `shared/samples/Ncm/NcmWorkbench.bas` (completo, usa le 4 funzioni), `shared/samples/AiLLM/NcmGenerate.bas`, `shared/samples/AiLLM/NcmSummarize.bas` (condizionato + ROUGE).
+- Include: `shared/include/ncm.inc`. Codice: `GMBasic/native/gmb_torch/src/gmb_ncm.hpp`, `gmb_pt_load.hpp`, `gmb_gpt2.hpp` (BPE), `gmb_rouge.hpp`, `gmb_host_ml.cpp`. Fixture condizionata: `shared/samples/Fixtures/ncm_tiny_cond/` (`ncm_make_tiny <dir> cond`); valutazione XSum: `GMBasic/native/gmb_torch/tests/ncm_xsum_eval.cpp`.

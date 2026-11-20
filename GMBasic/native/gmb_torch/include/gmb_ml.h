@@ -166,6 +166,12 @@ GMB_ML_API int     gmb_ml_ncm_generate(int64_t h, int n, int64_t seed, char* out
 /* Come gmb_ml_ncm_generate ma ritorna i testi (separati da '\n') come stringa C valida fino alla chiamata successiva sullo stesso thread:
  * forma adatta all'FFI di GMBasic (namespace NCM, shared/include/ncm.inc). "" su errore (gmb_ml_last_error). Nessun limite di lunghezza. */
 GMB_ML_API const char* gmb_ml_ncm_text(int64_t h, int n, int64_t seed);
+/* Modelli condizionati (checkpoint XSum): config.yaml del riferimento + BPE GPT-2 (vocab.json, merges.txt). Ritorna handle > 0 o 0.
+ * gmb_ml_ncm_complete: testo generato dal prompt (riassunto), tagliato al primo EOS; cfg_scale < 0 = valore del config. "" su errore.
+ * gmb_ml_rouge: F-measure in [0,1] fra riferimento e ipotesi; kind 1 = ROUGE-1, 2 = ROUGE-2, 3 = ROUGE-L (-1 se kind non valido). */
+GMB_ML_API int64_t gmb_ml_ncm_load_cond(const char* generator_pt, const char* tokenizer_pt, const char* config_yaml, const char* vocab_json, const char* merges_txt, int device);
+GMB_ML_API const char* gmb_ml_ncm_complete(int64_t h, const char* prompt, int64_t seed, double cfg_scale);
+GMB_ML_API double gmb_ml_rouge(const char* reference, const char* hypothesis, int kind);
 
 #ifdef __cplusplus
 }

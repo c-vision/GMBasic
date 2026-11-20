@@ -167,11 +167,50 @@ public:
         return ids;
     }
 
+    /* Inverso di encode: id -> byte-level BPE -> testo UTF-8. Gli id senza token (specials, id oltre il vocabolario) sono saltati,
+     * come fa tokenizers con skip_special_tokens. */
+    std::string decode(const std::vector<int>& ids) const
+    {
+        if (id2tok_.empty())
+        {
+            int mx = 0; for (auto& kv : vocab_) mx = std::max(mx, kv.second);
+            id2tok_.assign((size_t)mx + 1, std::string());
+            for (auto& kv : vocab_) id2tok_[(size_t)kv.second] = kv.first;
+            for (int b = 0; b < 256; b++) { size_t i = 0; u2b_[next_cp(b2u_[b], i)] = (unsigned char)b; }
+        }
+        std::string bytes;
+        for (int id : ids)
+        {
+            if (id < 0 || (size_t)id >= id2tok_.size()) continue;
+            const std::string& tk = id2tok_[(size_t)id];
+            for (size_t i = 0; i < tk.size();) { uint32_t cp = next_cp(tk, i); auto it = u2b_.find(cp); if (it != u2b_.end()) bytes += (char)it->second; }
+        }
+        return utf8_replace(bytes);
+    }
+
+
 private:
     std::unordered_map<std::string, int> vocab_;
     std::unordered_map<std::string, int> ranks_;
     std::string b2u_[256];
     mutable std::unordered_map<std::string, std::vector<std::string>> cache_;
+    /* Byte non UTF-8 valide -> U+FFFD (come decode(errors="replace") di HF). */
+    static std::string utf8_replace(const std::string& s)
+    {
+        std::string o; size_t i = 0, n = s.size();
+        while (i < n)
+        {
+            unsigned char c = (unsigned char)s[i]; size_t len = c < 0x80 ? 1 : (c >> 5) == 6 ? 2 : (c >> 4) == 14 ? 3 : (c >> 3) == 30 ? 4 : 0;
+            bool ok = len > 0 && i + len <= n && !(c == 0xC0 || c == 0xC1 || c > 0xF4);
+            for (size_t k = 1; ok && k < len; k++) if (((unsigned char)s[i + k] & 0xC0) != 0x80) ok = false;
+            if (ok && len == 3) { unsigned char c1 = (unsigned char)s[i + 1]; if ((c == 0xE0 && c1 < 0xA0) || (c == 0xED && c1 > 0x9F)) ok = false; }
+            if (ok && len == 4) { unsigned char c1 = (unsigned char)s[i + 1]; if ((c == 0xF0 && c1 < 0x90) || (c == 0xF4 && c1 > 0x8F)) ok = false; }
+            if (ok) { o.append(s, i, len); i += len; } else { o += "\xEF\xBF\xBD"; i++; }
+        }
+        return o;
+    }
+    mutable std::vector<std::string> id2tok_;
+    mutable std::unordered_map<uint32_t, unsigned char> u2b_;
 
     static uint32_t next_cp(const std::string& s, size_t& i)
     {

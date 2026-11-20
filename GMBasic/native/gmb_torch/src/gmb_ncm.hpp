@@ -17,6 +17,7 @@
 #pragma once
 
 #include "gmb_pt_load.hpp"
+#include "gmb_gpt2.hpp"
 
 #include <algorithm>
 #include <dlfcn.h>
@@ -105,23 +106,112 @@ struct NcmOptions {
     int    pad_id = 0;                   /* [PAD] */
     bool   skip_special = true;          /* false = decode con i token speciali in chiaro (protocollo genppl_flm del paper) */
     bool   cut_at_eos = false;   /* il riferimento taglia al primo EOS (default true), ma qui ogni campione inizia con [CLS]: tagliarebbe tutto */
+    double cfg_scale = 0.0;      /* classifier-free guidance (solo con prefisso): logits = (1+t)*cond - t*null, t = scale*livello/(nlev-1) */
+    int    cfg_null_eos = 50256; /* primo token del prefisso nullo (il resto e' prefix_pad_id) */
+};
+
+/* Lettura "piatta" di un config.yaml (HazyResearch): ultima occorrenza di ogni chiave foglia `nome: valore`, senza indentazione
+ * significativa. Basta per le chiavi uniche che servono (rope_base, prefix_len, ratio, learned_l1_cascade_*...). */
+inline std::map<std::string, std::string> yaml_flat(const std::string& path)
+{
+    std::map<std::string, std::string> m;
+    std::ifstream f(path); std::string line;
+    if (!f) throw std::runtime_error("ncm: config non leggibile: " + path);
+    while (std::getline(f, line))
+    {
+        size_t i = line.find_first_not_of(" \t"); if (i == std::string::npos || line[i] == '#' || line[i] == '-') continue;
+        size_t c = line.find(':', i); if (c == std::string::npos) continue;
+        std::string k = line.substr(i, c - i), v = line.substr(c + 1);
+        size_t a = v.find_first_not_of(" \t"); if (a == std::string::npos) continue;
+        v = v.substr(a); while (!v.empty() && (v.back() == ' ' || v.back() == '\r' || v.back() == '\t')) v.pop_back();
+        m[k] = v;
+    }
+    return m;
+}
+
+/* Parametri non ricavabili dai pesi (default = LM1B small). */
+struct NcmConfig {
+    double rope_base = 10000.0;
+    int    prefix_len = 0;              /* 0 = da attn_mask_for_masking, altrimenti 1 */
+    int    prefix_pad_id = -1;          /* >=0: i token del prefisso uguali a questo id sono mascherati */
+    double qr_ratio = 0.5;              /* quant_resi.ratio */
+    int    cascade_base = 4;
+    bool   cascade_norm = false;        /* GroupNorm(8) tra gli stadi della cascata learned_l1 */
+    bool   cascade_norm_final = false;
+    int    pre_quant_groups = 4;
 };
 
 class Ncm {
 public:
-    /* gen_path/tok_path: checkpoint NCM; vocab_txt: vocab.txt di bert-base-uncased (per decodificare in testo, opzionale). */
+    /* gen_path/tok_path: checkpoint NCM; vocab_txt: vocab.txt di bert-base-uncased (per decodificare in testo, opzionale).
+     * config_yaml: config del riferimento (necessario per i checkpoint condizionati, es. XSum: rope_base, prefisso, cascata). */
     void load(const std::string& gen_path, const std::string& tok_path, const std::string& vocab_txt = "",
-              c10::Device device = c10::Device(c10::kCPU))
+              c10::Device device = c10::Device(c10::kCPU), const std::string& config_yaml = "")
     {
         dev_ = device;
         g_ = to_dev(pt_load(gen_path, "model"));
         inf_ = to_dev(pt_load(gen_path, "inference"));
         t_ = to_dev(pt_load(tok_path, "model"));
+        if (!config_yaml.empty())
+        {
+            auto y = yaml_flat(config_yaml);
+            auto num = [&](const char* k, double d) { auto it = y.find(k); return it == y.end() ? d : std::stod(it->second); };
+            auto flag = [&](const char* k, bool d) { auto it = y.find(k); return it == y.end() ? d : (it->second == "true"); };
+            cfg_.rope_base = num("rope_base", cfg_.rope_base);
+            cfg_.prefix_len = (int)num("prefix_len", cfg_.prefix_len);
+            cfg_.prefix_pad_id = (int)num("prefix_pad_token_id", cfg_.prefix_pad_id);
+            cfg_.qr_ratio = num("ratio", cfg_.qr_ratio);
+            cfg_.cascade_base = (int)num("learned_l1_cascade_base", cfg_.cascade_base);
+            cfg_.cascade_norm = flag("learned_l1_cascade_norm", cfg_.cascade_norm);
+            cfg_.cascade_norm_final = flag("learned_l1_cascade_norm_final", cfg_.cascade_norm_final);
+            cfg_.pre_quant_groups = (int)num("pre_quant_groupnorm", cfg_.pre_quant_groups);
+            gen_defaults_ = NcmOptions{};
+            gen_defaults_.temperature = num("temperature", 1.0); gen_defaults_.top_k = (int)num("top_k", 1); gen_defaults_.top_p = num("top_p", 0.0);
+            gen_defaults_.frequency_penalty = num("frequency_penalty", 0.0); gen_defaults_.frequency_deficit = num("frequency_deficit", 0.0);
+            gen_defaults_.adj_penalty = 0.0; gen_defaults_.adj_window = 1; gen_defaults_.adj_decay = 1.0;
+            if (y.count("adjacency_penalty"))
+            {   const std::string a = y.at("adjacency_penalty"); double v[3] = {0, 1, 1}; size_t pos = 0;
+                for (int k = 0; k < 3 && pos < a.size(); k++) { size_t c = a.find(',', pos); v[k] = std::stod(a.substr(pos, c == std::string::npos ? c : c - pos)); if (c == std::string::npos) break; pos = c + 1; }
+                gen_defaults_.adj_penalty = v[0]; gen_defaults_.adj_window = (int)v[1]; gen_defaults_.adj_decay = v[2]; }
+            gen_defaults_.cfg_scale = num("cfg_scale", 0.0);
+            gen_defaults_.eos_id = (int)num("eos_token_id", 50256); gen_defaults_.pad_id = cfg_.prefix_pad_id >= 0 ? cfg_.prefix_pad_id : 0;
+            gen_defaults_.cfg_null_eos = gen_defaults_.eos_id; gen_defaults_.cut_at_eos = true;
+        }
         derive_config();
         if (!vocab_txt.empty()) { load_vocab(vocab_txt); try { wp_.load(vocab_txt); } catch (const std::exception&) { /* encode_text non disponibile senza libllmtoken */ } }
     }
 
     const std::vector<int>& levels() const { return levels_; }
+
+    /* Opzioni di generazione del config.yaml (checkpoint condizionati; senza config: i default di NcmOptions). */
+    const NcmOptions& defaults() const { return gen_defaults_; }
+
+    /* BPE GPT-2 (vocab.json + merges.txt) per complete(). */
+    void load_bpe(const std::string& vocab_json, const std::string& merges_txt) { bpe_.load(vocab_json, merges_txt); bpe_ok_ = true; }
+
+    /* Modello condizionato: ogni prompt (UTF-8) diventa il prefisso (primi P token BPE, padding a destra), il modello genera il testo
+     * (riassunto, nel caso XSum), tagliato al primo EOS. Una stringa per prompt. */
+    std::vector<std::string> complete(const std::vector<std::string>& prompts, const NcmOptions& o) const
+    {
+        if (!bpe_ok_) throw std::runtime_error("ncm: complete richiede il BPE (load_bpe con vocab.json e merges.txt)");
+        if (prompts.empty()) return {};
+        const int B = (int)prompts.size();
+        at::Tensor pre = at::full({B, (int64_t)P_}, (int64_t)o.pad_id, at::TensorOptions().dtype(at::kLong));
+        for (int b = 0; b < B; b++)
+        {
+            std::vector<int> ids = bpe_.encode(prompts[(size_t)b]);
+            for (int t = 0; t < (int)P_ && t < (int)ids.size(); t++) pre[b][t] = (int64_t)ids[(size_t)t];
+        }
+        at::Tensor ids = generate_ids_cond(pre, o).cpu();
+        std::vector<std::string> out;
+        for (int b = 0; b < B; b++)
+        {
+            std::vector<int> v; const int64_t* r = ids[b].data_ptr<int64_t>();
+            for (int64_t t = 0; t < ids.size(1); t++) { if (r[t] == o.eos_id) { if (o.cut_at_eos) break; continue; } if (r[t] != o.pad_id) v.push_back((int)r[t]); }
+            out.push_back(bpe_.decode(v));
+        }
+        return out;
+    }
 
     /* Testo -> id dei token (BERT WordPiece uncased): [CLS] ... [SEP] paddata a max_len (default: la finestra del modello = ultimo livello).
      * Richiede il vocabolario passato a load(). */
@@ -132,16 +222,50 @@ public:
     }
     int total_codes() const { int s = 0; for (int l : levels_) s += l; return s; }
 
-    /* Genera B sequenze di codici VQ: [B, sum(levels)] (long). */
-    at::Tensor generate_codes(int B, const NcmOptions& o, const at::Tensor* l0_fixed = nullptr) const
+    /* Genera B sequenze di codici VQ: [B, sum(levels)] (long).
+     * - non condizionato (LM1B): prefisso = [EOS], livello 0 estratto da level0_unigram (o `l0_fixed`);
+     * - condizionato (XSum): `prefix_tokens` [B,P] (token GPT-2, padding = prefix_pad_id) e livello 0 generato dalle query l0_queries. */
+    at::Tensor generate_codes(int B, const NcmOptions& o, const at::Tensor* l0_fixed = nullptr, const at::Tensor* prefix_tokens = nullptr) const
     {
         at::NoGradGuard ng;
         const int64_t D = vq_dim_, n = n_embd_;
-        at::Tensor l0 = l0_fixed ? l0_fixed->to(dev_) : at::multinomial(inf_.at("level0_unigram").to(at::kFloat).cpu(), (int64_t)B * levels_[0], true)
-                            .view({B, levels_[0]}).to(dev_);
-        at::Tensor prefix = at::full({B, 1}, (int64_t)o.eos_id, at::TensorOptions().dtype(at::kLong)).to(dev_);
-        at::Tensor z_prefix = at::embedding(t_.at("encoder.wte.weight"), prefix);                  /* [B,1,D] */
-        at::Tensor prefix_emb = at::linear(z_prefix, g_.at("transformer.wte.weight"), g_.at("transformer.wte.bias"));  /* [B,1,n] */
+        at::Tensor prefix = prefix_tokens ? prefix_tokens->to(dev_) : at::full({B, 1}, (int64_t)o.eos_id, at::TensorOptions().dtype(at::kLong)).to(dev_);
+        const int B0 = B;
+        const bool cfg = o.cfg_scale > 0 && prefix_tokens;
+        if (cfg)
+        {
+            if (cfg_.prefix_pad_id < 0) throw std::runtime_error("ncm: cfg_scale richiede prefix_pad_token_id");
+            at::Tensor nul = at::full_like(prefix, (int64_t)cfg_.prefix_pad_id);
+            nul.select(1, 0).fill_((int64_t)o.cfg_null_eos);
+            prefix = at::cat({prefix, nul}, 0); B = 2 * B0;
+        }
+        auto pick = [&](const at::Tensor& lg, int level) {
+            if (!cfg) return sample_level(lg, o);
+            const double t = o.cfg_scale * level / std::max((int)levels_.size() - 1, 1);
+            at::Tensor mix = (1.0 + t) * lg.slice(0, 0, B0) - t * lg.slice(0, B0, B);
+            at::Tensor pr = sample_level(mix, o);
+            return at::cat({pr, pr}, 0);
+        };
+        const int64_t P = prefix.size(1);
+        if (P != P_) throw std::runtime_error("ncm: prefisso di " + std::to_string(P) + " token, il modello ne richiede " + std::to_string(P_));
+        at::Tensor z_prefix = at::embedding(t_.at("encoder.wte.weight"), prefix);                  /* [B,P,D] */
+        at::Tensor prefix_emb = at::linear(z_prefix, g_.at("transformer.wte.weight"), g_.at("transformer.wte.bias"));  /* [B,P,n] */
+        at::Tensor pbias;                                                                           /* [B,1,1,P]: -inf sui token di padding */
+        if (cfg_.prefix_pad_id >= 0)
+        {
+            at::Tensor pm = (prefix == (int64_t)cfg_.prefix_pad_id).view({B, 1, 1, P});
+            pbias = at::zeros({B, 1, 1, P}, at::TensorOptions().device(dev_)).masked_fill(pm, -INFINITY);
+        }
+        at::Tensor l0;
+        if (l0_fixed) l0 = l0_fixed->to(dev_);
+        else if (inf_.count("level0_unigram"))
+            l0 = at::multinomial(inf_.at("level0_unigram").to(at::kFloat).cpu(), (int64_t)B * levels_[0], true).view({B, levels_[0]}).to(dev_);
+        else
+        {   /* query_level0: i token di livello 0 escono dal modello (una passata, nessuna dipendenza da livelli precedenti) */
+            at::Tensor q = g_.at("l0_queries").expand({B, -1, -1});
+            q = at::linear(q, g_.at("transformer.wte.weight"), g_.at("transformer.wte.bias")) + g_.at("transformer.wle.weight")[0].view({1, 1, n});
+            l0 = pick(decode_level(q, prefix_emb, 0, pbias), 0);
+        }
         at::Tensor z_hat = at::zeros({B, levels_.back(), D}, at::TensorOptions().device(dev_));
         std::vector<at::Tensor> gen{l0};
         at::Tensor idx_next = l0;
@@ -156,19 +280,29 @@ public:
                 x = area_pool(z_hat, levels_[li + 1]);                                                              /* area */
             }
             const int hi = (int)li + 1;                                                                           /* livello assoluto */
-            { /* post_upsample_conv residuale */
+            if (g_.count("post_upsample_convs." + std::to_string(hi) + ".weight"))
+            { /* post_upsample_conv residuale (assente nei checkpoint XSum) */
                 std::string k = "post_upsample_convs." + std::to_string(hi);
                 at::Tensor d = at::conv1d(x.transpose(-1, -2), g_.at(k + ".weight"), g_.at(k + ".bias"), 1, 1).transpose(-1, -2);
                 x = x + d;
             }
             x = at::linear(x, g_.at("transformer.wte.weight"), g_.at("transformer.wte.bias"));
             x = x + g_.at("transformer.wle.weight")[hi].view({1, 1, n});                                          /* level encoding */
-            at::Tensor logits = decode_level(x, prefix_emb, hi);
-            idx_next = sample_level(logits, o);
+            at::Tensor logits = decode_level(x, prefix_emb, hi, pbias);
+            idx_next = pick(logits, hi);
             gen.push_back(idx_next);
         }
-        return at::cat(gen, 1);
+        at::Tensor all = at::cat(gen, 1);
+        return cfg ? all.slice(0, 0, B0) : all;
     }
+
+    /* Prefisso di P token (long [B,P]) -> sequenze di token del tokenizer di testo [B, ultimo livello] (greedy con penalita'), CPU. */
+    at::Tensor generate_ids_cond(const at::Tensor& prefix_tokens, const NcmOptions& o) const
+    {
+        const int B = (int)prefix_tokens.size(0);
+        return pick_tokens(decode_logits(codes_to_zhat(generate_codes(B, o, nullptr, &prefix_tokens))), o);
+    }
+    int prefix_len() const { return (int)P_; }
 
     /* Codifica token di testo [B,128] in codici VQ [B, sum(levels)] (encoder.wte -> GroupNorm(4) -> quantizzazione
      * residuale multiscala, argmin sui codebook). Serve a verificare la ricostruzione del tokenizer. */
@@ -176,14 +310,14 @@ public:
     {
         at::NoGradGuard ng;
         at::Tensor z = at::embedding(t_.at("encoder.wte.weight"), tokens.to(dev_));                      /* [B,L,D] */
-        z = at::group_norm(z.transpose(1, 2), 4, at::Tensor(), at::Tensor(), 1e-5).transpose(1, 2).contiguous();
+        z = at::group_norm(z.transpose(1, 2), cfg_.pre_quant_groups, at::Tensor(), at::Tensor(), 1e-5).transpose(1, 2).contiguous();
         const int64_t L = levels_.back();
         at::Tensor z_rest = z.clone();
         std::vector<at::Tensor> idxs;
         for (size_t li = 0; li < levels_.size(); li++)
         {
             at::Tensor flat;
-            if (li == 0) flat = at::conv1d(z_rest.transpose(1, 2), t_.at("vq.learned_down_l1.weight"), t_.at("vq.learned_down_l1.bias"), up_stride_).transpose(1, 2);
+            if (li == 0) flat = down_l1(z_rest);
             else if (li + 1 == levels_.size()) flat = z_rest;
             else flat = area_pool(z_rest, levels_[li]);
             at::Tensor E = t_.at("vq.embeddings." + std::to_string(li) + ".weight");
@@ -220,7 +354,7 @@ public:
     at::Tensor decode_logits(const at::Tensor& z) const
     {
         at::NoGradGuard ng;
-        at::Tensor x = z + t_.at("decoder.wpe.weight").slice(0, 0, z.size(1)).unsqueeze(0);
+        at::Tensor x = t_.count("decoder.wpe.weight") ? z + t_.at("decoder.wpe.weight").slice(0, 0, z.size(1)).unsqueeze(0) : z;
         x = block(x, "decoder.middle_block", dec_heads_, /*mask*/ at::Tensor(), nullptr, nullptr, t_);
         for (int i = 0; t_.count("decoder.extra_blocks." + std::to_string(i) + ".ln_1.weight"); i++)
             x = block(x, "decoder.extra_blocks." + std::to_string(i), dec_heads_, at::Tensor(), nullptr, nullptr, t_);
@@ -312,6 +446,13 @@ private:
     WordPiece wp_;
     int64_t vq_dim_ = 0, n_embd_ = 0;
     int64_t up_stride_ = 128;   /* stride di learned_up_l1 / learned_down_l1 = ultimo livello / primo */
+    NcmConfig cfg_;
+    NcmOptions gen_defaults_;
+    Gpt2Tokenizer bpe_; bool bpe_ok_ = false;
+    int64_t P_ = 1;                     /* lunghezza del prefisso (1 = solo [EOS]) */
+    bool tied_ = false;                 /* head legate al codebook (lm_heads.i.proj) */
+    int n_qr_ = 0;                      /* numero di moduli quant_resi */
+    bool casc_ = false;                 /* learned_up/down_l1 a cascata (learned_l1_cascade) */
     int gen_heads_ = 12, dec_heads_ = 6;
     std::vector<std::pair<at::Tensor, at::Tensor>> rope_;   /* per livello assoluto: cos, sin [1+l, hd] */
 
@@ -336,6 +477,13 @@ private:
             at::Tensor lv = inf_.at("levels").to(at::kLong).cpu();
             for (int64_t i = 0; i < lv.numel(); i++) levels_.push_back((int)lv[i].item<int64_t>());
         }
+        else if (g_.count("lvl_1L") && g_.at("lvl_1L").max().item<int64_t>() + 1 == nlev)
+        {   /* query_level0: lvl_1L assegna a ogni posizione bersaglio il suo livello -> le lunghezze sono i conteggi */
+            at::Tensor lv = g_.at("lvl_1L").cpu().to(at::kLong).view({-1});
+            std::vector<int> cnt((size_t)nlev, 0);
+            for (int64_t i = 0; i < lv.numel(); i++) cnt[(size_t)lv[i].item<int64_t>()]++;
+            levels_ = cnt;
+        }
         else
         {
             const int lm1b[] = {1, 8, 16, 24, 32, 40, 52, 64, 76, 92, 108, 128};
@@ -344,15 +492,21 @@ private:
         if (nlev != (int64_t)levels_.size()) throw std::runtime_error("ncm: numero di livelli del checkpoint (" + std::to_string(nlev) + ") diverso dai livelli noti (" + std::to_string(levels_.size()) + "): manca inference.levels");
         if (levels_.back() % levels_[0] != 0) throw std::runtime_error("ncm: l'ultimo livello deve essere multiplo del primo (learned_up_l1)");
         up_stride_ = levels_.back() / levels_[0];
-        if (g_.count("l0_queries") == 0 || inf_.count("level0_unigram") == 0) throw std::runtime_error("ncm: checkpoint senza level0_unigram");
+        if (g_.count("l0_queries") == 0) throw std::runtime_error("ncm: checkpoint senza l0_queries (query_level0)");
+        tied_ = g_.count("lm_heads.0.proj.weight") != 0;
+        casc_ = t_.count("vq.learned_up_l1.0.weight") != 0;
+        for (n_qr_ = 0; t_.count("vq.quant_resi." + std::to_string(n_qr_) + ".weight"); n_qr_++) {}
+        if (n_qr_ == 0) throw std::runtime_error("ncm: checkpoint senza vq.quant_resi");
+        {   int64_t tot = 0; for (int l : levels_) tot += l;
+            P_ = cfg_.prefix_len > 0 ? cfg_.prefix_len : (g_.count("attn_mask_for_masking") ? g_.at("attn_mask_for_masking").size(-1) - tot : 1); }
         gen_heads_ = (int)(n_embd_ / g_.at("transformer.blocks.0.attn.q_norm.weight").size(0));
         dec_heads_ = (int)(vq_dim_ / t_.at("decoder.middle_block.attn.q_norm.weight").size(0));
         const int64_t hd = n_embd_ / gen_heads_;
         for (size_t k = 0; k < levels_.size(); k++)
         {
-            at::Tensor pos = at::cat({at::zeros({1}, at::kLong), at::arange(levels_[k], at::kLong)});
+            at::Tensor pos = at::cat({at::arange(P_, at::kLong), at::arange(levels_[k], at::kLong)});
             const int64_t half = hd / 2;
-            at::Tensor inv = 1.0 / at::pow(10000.0, at::arange(half, at::kFloat) / (double)half);
+            at::Tensor inv = 1.0 / at::pow(cfg_.rope_base, at::arange(half, at::kFloat) / (double)half);
             at::Tensor fr = pos.to(at::kFloat).unsqueeze(1) * inv.unsqueeze(0);
             rope_.emplace_back(at::cat({fr.cos(), fr.cos()}, -1).to(dev_), at::cat({fr.sin(), fr.sin()}, -1).to(dev_));
         }
@@ -394,18 +548,31 @@ private:
         return x + m;
     }
 
-    at::Tensor decode_level(const at::Tensor& x_level, const at::Tensor& prefix_emb, int hi) const
+    at::Tensor decode_level(const at::Tensor& x_level, const at::Tensor& prefix_emb, int hi, const at::Tensor& pbias = at::Tensor()) const
     {
-        const int64_t P = 1, L = x_level.size(1);
+        const int64_t P = prefix_emb.size(1), L = x_level.size(1);
         at::Tensor x = at::cat({prefix_emb, x_level}, 1);
         at::Tensor mask = at::zeros({1, 1, P + L, P + L}, x.options());
-        mask.slice(2, 0, P).slice(3, P, P + L).fill_(-INFINITY);
+        mask.slice(2, 0, P).slice(3, P, P + L).fill_(-INFINITY);                       /* il prefisso non vede i bersagli */
+        if (pbias.defined()) mask = mask + at::constant_pad_nd(pbias, {0, L});        /* i token di padding non si vedono da nessuno */
         const at::Tensor& cos = rope_[hi].first; const at::Tensor& sin = rope_[hi].second;
         for (int i = 0; g_.count("transformer.blocks." + std::to_string(i) + ".ln_1.weight"); i++)
             x = block(x, "transformer.blocks." + std::to_string(i), gen_heads_, mask, &cos, &sin, g_);
         x = at::layer_norm(x, {x.size(-1)}, g_.at("transformer.ln_f.weight"), g_.at("transformer.ln_f.bias"), 1e-5);
-        at::Tensor t = x.slice(1, P, P + L);
-        return at::linear(t, g_.at("lm_heads.head.weight")) + g_.at("lm_heads.biases." + std::to_string(hi));
+        return head(x.slice(1, P, P + L), hi);
+    }
+
+    /* Testa del livello `hi`: condivisa (+ bias per livello) oppure legata al codebook (_TiedCodebookHead del riferimento:
+     * (2 z.E - ||E||^2) / mean(||E||^2) * exp(log_inv_T), z = proj(x)). */
+    at::Tensor head(const at::Tensor& t, int hi) const
+    {
+        const std::string s = std::to_string(hi);
+        if (!tied_) return at::linear(t, g_.at("lm_heads.head.weight")) + g_.at("lm_heads.biases." + s);
+        at::Tensor z = at::linear(t, g_.at("lm_heads." + s + ".proj.weight"));
+        at::Tensor E = t_.at("vq.embeddings." + s + ".weight");
+        at::Tensor Esq = (E * E).sum(-1);
+        at::Tensor neg_d2 = (2.0 * at::matmul(z, E.t()) - Esq) / Esq.mean().clamp_min(1e-12);
+        return neg_d2 * g_.at("lm_heads." + s + ".log_inv_T").exp();
     }
 
     at::Tensor sample_level(const at::Tensor& logits, const NcmOptions& o) const
@@ -439,25 +606,71 @@ private:
         return at::matmul(P.to(x.device()), x);
     }
 
+    static std::vector<int> plan_strides(int total, int base)           /* _plan_cascade_strides */
+    {
+        std::vector<int> st; int S = total;
+        while (S > 1)
+        {
+            int f = std::min(base, S);
+            while (f > 1 && S % f != 0) f--;
+            if (f <= 1) { st.push_back(S); S = 1; } else { st.push_back(f); S /= f; }
+        }
+        if (st.empty()) st.push_back(1);
+        return st;
+    }
+    static at::Tensor gn8(const at::Tensor& x) { return at::group_norm(x, 8, at::Tensor(), at::Tensor(), 1e-5); }
+
+    /* learned_up_l1 (livello 0 -> piena risoluzione), singola ConvTranspose1d oppure cascata con GroupNorm(8) tra gli stadi. */
+    at::Tensor up_l1(const at::Tensor& q_bcl) const
+    {
+        if (!casc_) return at::conv_transpose1d(q_bcl, t_.at("vq.learned_up_l1.weight"), t_.at("vq.learned_up_l1.bias"), up_stride_);
+        std::vector<int> st = plan_strides((int)up_stride_, cfg_.cascade_base);
+        std::reverse(st.begin(), st.end());
+        at::Tensor x = q_bcl;
+        for (size_t i = 0; i < st.size(); i++)
+        {
+            if (cfg_.cascade_norm && i > 0) x = gn8(x);
+            std::string p = "vq.learned_up_l1." + std::to_string(cfg_.cascade_norm ? 2 * i : i);
+            x = at::conv_transpose1d(x, t_.at(p + ".weight"), t_.at(p + ".bias"), st[i]);
+        }
+        return x;
+    }
+
+    /* learned_down_l1: [B,L,C] -> [B,l0,C]. */
+    at::Tensor down_l1(const at::Tensor& z_blc) const
+    {
+        at::Tensor x = z_blc.transpose(1, 2);
+        if (!casc_) return at::conv1d(x, t_.at("vq.learned_down_l1.weight"), t_.at("vq.learned_down_l1.bias"), up_stride_).transpose(1, 2);
+        std::vector<int> st = plan_strides((int)up_stride_, cfg_.cascade_base);
+        for (size_t i = 0; i < st.size(); i++)
+        {
+            if (cfg_.cascade_norm && i > 0) x = gn8(x);
+            std::string p = "vq.learned_down_l1." + std::to_string(cfg_.cascade_norm ? 2 * i : i);
+            x = at::conv1d(x, t_.at(p + ".weight"), t_.at(p + ".bias"), st[i]);
+        }
+        if (cfg_.cascade_norm_final) x = gn8(x);
+        return x.transpose(1, 2);
+    }
+
     /* ── quantizzatore ──────────────────────────────────────────────────────── */
     at::Tensor up_to_full(const at::Tensor& q_blc, int level_idx, int64_t target_len) const
     {
         at::Tensor q = q_blc.transpose(-1, -2);                                   /* [B,C,L] */
-        if (level_idx == 0)
-            return at::conv_transpose1d(q, t_.at("vq.learned_up_l1.weight"), t_.at("vq.learned_up_l1.bias"), up_stride_).transpose(-1, -2).contiguous();
+        if (level_idx == 0) return up_l1(q).transpose(-1, -2).contiguous();
         return at::upsample_linear1d(q, {target_len}, false).transpose(-1, -2).contiguous();
     }
 
     at::Tensor apply_quant_resi(const at::Tensor& h_blc, int level_idx) const
     {
-        const int K = (int)levels_.size();
-        /* modulo piu' vicino al tick: linspace(1/2/K, 1-1/2/K, K) */
-        double at_ = (double)level_idx / std::max(K - 1, 1);
+        const int K = n_qr_, NL = (int)levels_.size();
+        /* PhiNonShared: modulo piu' vicino al tick; ticks = linspace(1/3/K, 1-1/3/K, K) se K==4, altrimenti linspace(1/2/K, 1-1/2/K, K) */
+        double at_ = (double)level_idx / std::max(NL - 1, 1);
+        double lo = K == 4 ? 1.0 / 3.0 / K : 1.0 / 2.0 / K;
         int best = 0; double bd = 1e9;
-        for (int j = 0; j < K; j++) { double tick = (j + 0.5) / K; double d = std::fabs(at_ - tick); if (d < bd) { bd = d; best = j; } }
+        for (int j = 0; j < K; j++) { double tick = K > 1 ? lo + (1.0 - 2.0 * lo) * j / (K - 1) : 0.5; double d = std::fabs(at_ - tick); if (d < bd) { bd = d; best = j; } }
         std::string p = "vq.quant_resi." + std::to_string(best);
         at::Tensor h = h_blc.transpose(-1, -2);
-        const double r = 0.5;
+        const double r = cfg_.qr_ratio;
         at::Tensor out = h * (1 - r) + at::conv1d(h, t_.at(p + ".weight"), t_.at(p + ".bias"), 1, 1) * r;
         return out.transpose(-1, -2).contiguous();
     }

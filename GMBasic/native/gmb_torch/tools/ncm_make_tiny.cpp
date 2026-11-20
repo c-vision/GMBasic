@@ -14,6 +14,7 @@
 #include <torch/torch.h>
 #include <caffe2/serialize/inline_container.h>
 #include <cstdio>
+#include <algorithm>
 #include <fstream>
 #include <map>
 #include <string>
@@ -75,10 +76,93 @@ static void save(const std::string& path, const std::vector<std::pair<std::strin
     w.writeEndOfFile();
 }
 
+/* ── variante CONDIZIONATA (stessa architettura del checkpoint XSum, in piccolo) ──────────────────────────────────────────
+ * prefisso P=4 token, livelli {2,4,8}, head legate al codebook, cascata learned_l1 (base 2, GroupNorm(8)), nessun level0_unigram
+ * (il livello 0 esce dalle query), nessun decoder.wpe, BPE byte-level con due merge ("t h" -> "th", "th e" -> "the"). */
+static at::Tensor Rn(std::vector<int64_t> s, double sd = 0.15) { return at::randn(s) * sd; }
+static void blockc(Dict& d, const std::string& p, int64_t dim, int64_t hd)
+{
+    auto ones = [&](int64_t k) { return at::ones({k}); }; auto zeros = [&](int64_t k) { return at::zeros({k}); };
+    d.push_back({p + ".ln_1.weight", ones(dim)}); d.push_back({p + ".ln_1.bias", zeros(dim)});
+    d.push_back({p + ".attn.c_attn.weight", Rn({3 * dim, dim})}); d.push_back({p + ".attn.c_attn.bias", zeros(3 * dim)});
+    d.push_back({p + ".attn.c_proj.weight", Rn({dim, dim})}); d.push_back({p + ".attn.c_proj.bias", zeros(dim)});
+    d.push_back({p + ".attn.q_norm.weight", ones(hd)}); d.push_back({p + ".attn.k_norm.weight", ones(hd)});
+    d.push_back({p + ".ln_2.weight", ones(dim)}); d.push_back({p + ".ln_2.bias", zeros(dim)});
+    d.push_back({p + ".mlp.c_fc.weight", Rn({4 * dim, dim})}); d.push_back({p + ".mlp.c_fc.bias", zeros(4 * dim)});
+    d.push_back({p + ".mlp.c_proj.weight", Rn({dim, 4 * dim})}); d.push_back({p + ".mlp.c_proj.bias", zeros(dim)});
+}
+
+static int make_cond(const std::string& out)
+{
+    torch::manual_seed(20261121);
+    const int64_t D = 16, n = 32, V = 32, VIN = 320, K = 3, P = 4, hdG = 16, hdD = 8;
+    const std::vector<int64_t> levels = {2, 4, 8};
+    const int64_t T = 14, L = 8;
+    auto ones = [&](int64_t k) { return at::ones({k}); }; auto zeros = [&](int64_t k) { return at::zeros({k}); };
+    Dict gen;
+    gen.push_back({"attn_mask_for_masking", at::zeros({1, 1, P + T, P + T})});
+    gen.push_back({"l0_queries", Rn({1, levels[0], D})});
+    gen.push_back({"lm_heads.0.log_inv_T", at::zeros({})}); gen.push_back({"lm_heads.0.proj.weight", Rn({D, n})});
+    gen.push_back({"lm_heads.1.log_inv_T", at::zeros({})}); gen.push_back({"lm_heads.1.proj.weight", Rn({D, n})});
+    gen.push_back({"lm_heads.2.log_inv_T", at::zeros({})}); gen.push_back({"lm_heads.2.proj.weight", Rn({D, n})});
+    { std::vector<int64_t> lv; for (int k = 0; k < K; k++) for (int64_t i = 0; i < levels[k]; i++) lv.push_back(k); gen.push_back({"lvl_1L", at::tensor(lv, at::kLong).view({1, T})}); }
+    gen.push_back({"transformer.wte.weight", Rn({n, D})}); gen.push_back({"transformer.wte.bias", zeros(n)});
+    gen.push_back({"transformer.wle.weight", Rn({K, n})});
+    for (int i = 0; i < 2; i++) blockc(gen, "transformer.blocks." + std::to_string(i), n, hdG);
+    gen.push_back({"transformer.ln_f.weight", ones(n)}); gen.push_back({"transformer.ln_f.bias", zeros(n)});
+    Dict inf; inf.push_back({"token_unigram", at::softmax(at::randn({VIN}), 0)});
+
+    Dict tok;
+    tok.push_back({"encoder.wte.weight", Rn({VIN, D})});
+    for (int k = 0; k < K; k++) tok.push_back({"vq.embeddings." + std::to_string(k) + ".weight", Rn({V, D}, 0.6)});
+    for (int k = 0; k < K; k++) { tok.push_back({"vq.quant_resi." + std::to_string(k) + ".weight", Rn({D, D, 3}, 0.05)}); tok.push_back({"vq.quant_resi." + std::to_string(k) + ".bias", zeros(D)}); }
+    for (int s : {0, 2})
+    {   /* cascata 4 = 2 x 2: indici 0 e 2 (la GroupNorm sta in mezzo) */
+        at::Tensor w = at::zeros({D, D, 2}); for (int64_t c = 0; c < D; c++) w[c][c].fill_(1.0);
+        tok.push_back({"vq.learned_up_l1." + std::to_string(s) + ".weight", w}); tok.push_back({"vq.learned_up_l1." + std::to_string(s) + ".bias", zeros(D)});
+    }
+    for (int s : {0, 2})
+    {
+        at::Tensor w = at::zeros({D, D, 2}); for (int64_t c = 0; c < D; c++) w[c][c].fill_(0.5);
+        tok.push_back({"vq.learned_down_l1." + std::to_string(s) + ".weight", w}); tok.push_back({"vq.learned_down_l1." + std::to_string(s) + ".bias", zeros(D)});
+    }
+    blockc(tok, "decoder.middle_block", D, hdD);
+    tok.push_back({"decoder.ln_f.weight", ones(D)});
+    {   /* solo ASCII stampabile (32..126) puo' uscire: le altre righe sono nulle (logit 0, mai il massimo) -> testo valido e identico fra i backend */
+        at::Tensor w = Rn({VIN, D});
+        for (int64_t i = 0; i < VIN; i++) if (i < 32 || i > 126) w[i].zero_();
+        tok.push_back({"decoder.output_layer.weight", w});
+    }
+    (void)L;
+    save(out + "/generator.pt", {{"model", gen}, {"inference", inf}});
+    save(out + "/tokenizer.pt", {{"model", tok}});
+
+    { std::ofstream c(out + "/config.yaml");
+      c << "task: tiny_cond\nmodel:\n  prefix_len: 4\n  prefix_pad_token_id: 300\n  rope_base: 10000\n"
+           "tokenizer:\n  vqvae:\n    pre_quant_groupnorm: 8\n    vector_quantizer_config:\n      learned_l1_cascade_base: 2\n      learned_l1_cascade_norm: true\n"
+           "      learned_l1_cascade_norm_final: true\n      quant_resi:\n        ratio: 0.5\n"
+           "generation:\n  temperature: 1.0\n  top_k: 1\n  top_p: 0.0\n  cfg_scale: 0.0\n  frequency_penalty: 2.0\n  frequency_deficit: 1.0\n"
+           "  adjacency_penalty: 5,4,0.5\n  eos_token_id: 256\n"; }
+    /* vocab.json: i 256 byte -> caratteri unicode del BPE di GPT-2, poi <|endoftext|> (256), "th" (257), "the" (258) */
+    { std::vector<int> bs; for (int b = '!'; b <= '~'; b++) bs.push_back(b); for (int b = 0xA1; b <= 0xAC; b++) bs.push_back(b); for (int b = 0xAE; b <= 0xFF; b++) bs.push_back(b);
+      std::vector<int> cs(bs); int k = 0; for (int b = 0; b < 256; b++) if (std::find(bs.begin(), bs.end(), b) == bs.end()) { bs.push_back(b); cs.push_back(256 + k++); }
+      auto u8 = [](int cp) { std::string s; if (cp < 0x80) s += (char)cp; else if (cp < 0x800) { s += (char)(0xC0 | (cp >> 6)); s += (char)(0x80 | (cp & 0x3F)); } else { s += (char)(0xE0 | (cp >> 12)); s += (char)(0x80 | ((cp >> 6) & 0x3F)); s += (char)(0x80 | (cp & 0x3F)); } return s; };
+      std::vector<std::string> tk(256); for (size_t i = 0; i < bs.size(); i++) tk[(size_t)i] = u8(cs[i]);
+      /* id = posizione in ordine di byte */
+      std::map<int, std::string> by; for (size_t i = 0; i < bs.size(); i++) by[bs[i]] = u8(cs[i]);
+      std::ofstream v(out + "/vocab.json"); v << "{"; bool first = true;
+      for (int b = 0; b < 256; b++) { if (!first) v << ","; first = false; const std::string& s = by[b]; v << "\""; if (s == "\"") v << "\\\""; else if (s == "\\") v << "\\\\"; else v << s; v << "\":" << b; }
+      v << ",\"<|endoftext|>\":256,\"th\":257,\"the\":258}\n";
+      std::ofstream m(out + "/merges.txt"); m << "#version: 0.2\nt h\nth e\n"; }
+    std::printf("fixture NCM condizionate minuscole in %s\n", out.c_str());
+    return 0;
+}
+
 int main(int argc, char** argv)
 {
-    if (argc < 2) { std::printf("uso: ncm_make_tiny <cartella>\n"); return 2; }
+    if (argc < 2) { std::printf("uso: ncm_make_tiny <cartella> [cond]\n"); return 2; }
     const std::string out = argv[1];
+    if (argc > 2 && std::string(argv[2]) == "cond") return make_cond(out);
     torch::manual_seed(20261120);
     const int64_t D = 16, n = 32, V = 32, VIN = 128, K = 4, L = 8, hdG = 16, hdD = 8;
     const std::vector<int64_t> levels = {1, 2, 4, 8};

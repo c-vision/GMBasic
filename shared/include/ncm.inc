@@ -31,3 +31,31 @@ DECLARE FUNCTION GENERATE LIB "gmb_torch" ALIAS "gmb_ml_ncm_text" (handle AS LON
 ' Ultimo messaggio d'errore dell'host torch ("" se nessuno).
 DECLARE FUNCTION LASTERROR LIB "gmb_torch" ALIAS "gmb_ml_last_error" () AS STRING
 
+
+' ── Modelli CONDIZIONATI dal prompt (checkpoint XSum: riassunto di un documento) ─────────────────────────────────────────
+' Il documento e' il prefisso che il generatore vede: i primi P token (512 nel checkpoint XSum) del BPE di GPT-2, padding a destra.
+' Servono i file del repo HF hazyresearch/ncm-checkpoints/xsum: generator.pt, tokenizer.pt, config.yaml (parametri che non stanno nei pesi:
+' rope, prefisso, cascata, penalita' di generazione) e il BPE di GPT-2 (vocab.json, merges.txt).
+'
+'   h = NCM.LOADCONDITIONAL("xsum/generator.pt", "xsum/tokenizer.pt", "xsum/config.yaml", "gpt2/vocab.json", "gpt2/merges.txt", 3)
+'   PRINT NCM.GENERATEFROM(h, documento, 0, -1)       ' riassunto (un solo testo)
+'
+' Carica un modello condizionato. Ritorna un handle (> 0) oppure 0 (motivo in LASTERROR). FREEMODEL lo libera come gli altri.
+DECLARE FUNCTION LOADCONDITIONAL LIB "gmb_torch" ALIAS "gmb_ml_ncm_load_cond" (generatorPt AS STRING, tokenizerPt AS STRING, configYaml AS STRING, vocabJson AS STRING, mergesTxt AS STRING, device AS LONG) AS LONG
+' Testo generato dal prompt, tagliato al primo fine-testo. Il campionamento del config XSum e' greedy (top_k = 1): il seed conta solo se il
+' config campiona. cfgScale = guidance senza classificatore (0 = spenta, costo doppio se > 0); un valore negativo usa quello del config.
+' Ritorna "" su errore (handle non valido, modello non condizionato: vedi LASTERROR).
+DECLARE FUNCTION GENERATEFROM LIB "gmb_torch" ALIAS "gmb_ml_ncm_complete" (handle AS LONG, prompt AS STRING, seed AS LONG, cfgScale AS DOUBLE) AS STRING
+
+' ── Metrica ROUGE (stessa tokenizzazione di rouge_score con stemmer: minuscolo, solo [a-z0-9], Porter oltre 3 lettere) ───────
+' F-measure in [0, 1] fra un testo di riferimento e uno generato. Non richiede nessun modello.
+DECLARE FUNCTION ROUGE_N LIB "gmb_torch" ALIAS "gmb_ml_rouge" (reference AS STRING, hypothesis AS STRING, kind AS LONG) AS DOUBLE
+FUNCTION ROUGE1(reference AS STRING, hypothesis AS STRING) AS DOUBLE
+    RETURN ROUGE_N(reference, hypothesis, 1)
+END FUNCTION
+FUNCTION ROUGE2(reference AS STRING, hypothesis AS STRING) AS DOUBLE
+    RETURN ROUGE_N(reference, hypothesis, 2)
+END FUNCTION
+FUNCTION ROUGEL(reference AS STRING, hypothesis AS STRING) AS DOUBLE
+    RETURN ROUGE_N(reference, hypothesis, 3)
+END FUNCTION

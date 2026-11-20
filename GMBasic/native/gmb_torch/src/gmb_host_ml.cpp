@@ -17,6 +17,7 @@
 
 #include "gmb_ml.h"
 #include "gmb_ncm.hpp"
+#include "gmb_rouge.hpp"
 
 #include <torch/torch.h>
 #include <ATen/ops/svd.h>   /* L3c PiSSA: at::linalg_svd (torch::linalg non esposto in questa build) */
@@ -1995,6 +1996,49 @@ GMB_ML_API const char* gmb_ml_ncm_text(int64_t h, int n, int64_t seed)
     static thread_local std::string buf;
     if (!ncm_generate_all(h, n, seed, buf)) buf.clear();
     return buf.c_str();
+}
+
+
+/* Modello condizionato: stesso registro di handle, in piu' config.yaml (parametri non nei pesi) e BPE GPT-2. */
+GMB_ML_API int64_t gmb_ml_ncm_load_cond(const char* generator_pt, const char* tokenizer_pt, const char* config_yaml,
+                                        const char* vocab_json, const char* merges_txt, int device)
+{
+    try
+    {
+        auto m = std::make_unique<gmb::Ncm>();
+        m->load(ncm_path(generator_pt), ncm_path(tokenizer_pt), "", g_dev(device), ncm_path(config_yaml));
+        m->load_bpe(ncm_path(vocab_json), ncm_path(merges_txt));
+        std::lock_guard<std::mutex> lk(g_lock);
+        int64_t h = g_next_handle++;
+        g_ncm[h] = std::move(m);
+        return h;
+    }
+    catch (const std::exception& e) { gml_err(std::string("ncm_load_cond: ") + e.what()); return 0; }
+}
+
+GMB_ML_API const char* gmb_ml_ncm_complete(int64_t h, const char* prompt, int64_t seed, double cfg_scale)
+{
+    static thread_local std::string buf;
+    buf.clear();
+    gmb::Ncm* m = nullptr;
+    { std::lock_guard<std::mutex> lk(g_lock); auto it = g_ncm.find(h); if (it != g_ncm.end()) m = it->second.get(); }
+    if (!m) { gml_err("ncm_complete: handle non valido (modello non caricato o gia' liberato)"); return buf.c_str(); }
+    try
+    {
+        if (seed >= 0) torch::manual_seed((uint64_t)seed);
+        gmb::NcmOptions o = m->defaults();
+        if (cfg_scale >= 0) o.cfg_scale = cfg_scale;
+        auto r = m->complete({prompt ? prompt : ""}, o);
+        buf = r.empty() ? std::string() : r[0];
+    }
+    catch (const std::exception& e) { gml_err(std::string("ncm_complete: ") + e.what()); buf.clear(); }
+    return buf.c_str();
+}
+
+GMB_ML_API double gmb_ml_rouge(const char* reference, const char* hypothesis, int kind)
+{
+    auto s = gmb::rouge_score(reference ? reference : "", hypothesis ? hypothesis : "");
+    return kind == 1 ? s.r1 : kind == 2 ? s.r2 : kind == 3 ? s.rl : -1.0;
 }
 
 } /* extern "C" */

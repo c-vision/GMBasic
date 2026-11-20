@@ -1,0 +1,23 @@
+task: tiny_cond
+model:
+  prefix_len: 4
+  prefix_pad_token_id: 300
+  rope_base: 10000
+tokenizer:
+  vqvae:
+    pre_quant_groupnorm: 8
+    vector_quantizer_config:
+      learned_l1_cascade_base: 2
+      learned_l1_cascade_norm: true
+      learned_l1_cascade_norm_final: true
+      quant_resi:
+        ratio: 0.5
+generation:
+  temperature: 1.0
+  top_k: 1
+  top_p: 0.0
+  cfg_scale: 0.0
+  frequency_penalty: 2.0
+  frequency_deficit: 1.0
+  adjacency_penalty: 5,4,0.5
+  eos_token_id: 256
