@@ -37,9 +37,9 @@ fi
 #     managed (IL/PCode → stessa sorgente di VM/C e C99Native). Comando SEPARATO: su un albero
 #     di build non ancora riconfigurato il target non esiste e `make` fallirebbe in fase di
 #     parsing; se manca, si riconfigura una volta (riusa la cache).
-if ! cmake --build "$RT" --target gmb_matrix_flat gmb_ts_flat gmb_special_flat -j 6 >/dev/null 2>&1; then
+if ! cmake --build "$RT" --target gmb_matrix_flat gmb_ts_flat gmb_special_flat gmb_stats_flat -j 6 >/dev/null 2>&1; then
   cmake -S "$ROOT/native/gmb_runtime_c" -B "$RT" >/dev/null
-  cmake --build "$RT" --target gmb_matrix_flat gmb_ts_flat gmb_special_flat -j 6 >/dev/null
+  cmake --build "$RT" --target gmb_matrix_flat gmb_ts_flat gmb_special_flat gmb_stats_flat -j 6 >/dev/null
 fi
 # 2) dylib gmb_ai_modelio (model compiler, P/Invoke) — albero separato (gmb_compiler_c).
 #    Se il build fallisce -> ERRORE (prima c'era `|| true` che lasciava una dylib STALE).

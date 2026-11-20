@@ -30,16 +30,7 @@ public static partial class Numerics
     {
         ValidateSample(first, nameof(first), 2);
         ValidateSample(second, nameof(second), 2);
-
-        var firstMean = first.Average();
-        var secondMean = second.Average();
-        var firstVariance = SampleVariance(first, firstMean);
-        var secondVariance = SampleVariance(second, secondMean);
-        var degreesOfFreedom = first.Length + second.Length - 2d;
-        var pooledVariance = ((first.Length - 1d) * firstVariance + (second.Length - 1d) * secondVariance) /
-                             degreesOfFreedom;
-        var standardError = Math.Sqrt(pooledVariance * (1d / first.Length + 1d / second.Length));
-        return StudentResult(firstMean - secondMean, standardError, degreesOfFreedom);
+        return HypothesisNative.TTestIndependent(first, second);
     }
 
     /// <summary>
@@ -57,10 +48,7 @@ public static partial class Numerics
         if (first.Length != second.Length)
             throw new ArgumentException("Il t-test appaiato richiede campioni della stessa lunghezza.", nameof(second));
 
-        var differences = new double[first.Length];
-        for (var index = 0; index < differences.Length; index++)
-            differences[index] = first[index] - second[index];
-        return TTestOneSample(differences, 0d);
+        return HypothesisNative.TTestPaired(first, second);
     }
 
     /// <summary>
@@ -74,9 +62,7 @@ public static partial class Numerics
     public static StatisticalTestResult TTestOneSample(double[] sample, double populationMean)
     {
         ValidateSample(sample, nameof(sample), 2);
-        var mean = sample.Average();
-        var standardError = Math.Sqrt(SampleVariance(sample, mean) / sample.Length);
-        return StudentResult(mean - populationMean, standardError, sample.Length - 1d);
+        return HypothesisNative.TTestOneSample(sample, populationMean);
     }
 
     /// <summary>
@@ -103,18 +89,7 @@ public static partial class Numerics
         if (Math.Abs(observedSum - expectedSum) > 1e-12 * Math.Max(1d, scale))
             throw new ArgumentException("Le frequenze osservate e attese devono avere la stessa somma.");
 
-        var statistic = 0d;
-        for (var index = 0; index < observed.Length; index++)
-        {
-            var difference = observed[index] - expected[index];
-            statistic += difference * difference / expected[index];
-        }
-
-        var degreesOfFreedom = observed.Length - 1d;
-        return new StatisticalTestResult(
-            statistic,
-            1d - ChiSquared.CDF(degreesOfFreedom, statistic),
-            degreesOfFreedom);
+        return HypothesisNative.Chi2(observed, expected);
     }
 
     /// <summary>
@@ -131,26 +106,7 @@ public static partial class Numerics
         if (a < 0 || b < 0 || c < 0 || d < 0)
             throw new ArgumentOutOfRangeException(nameof(a), "FISHER richiede conteggi non negativi.");
 
-        var firstRow = a + b;
-        var secondRow = c + d;
-        var firstColumn = a + c;
-        var total = firstRow + secondRow;
-        if (total == 0)
-            return new StatisticalTestResult(double.NaN, 1d, double.NaN);
-
-        var lower = Math.Max(0, firstColumn - secondRow);
-        var upper = Math.Min(firstColumn, firstRow);
-        var observedProbability = HypergeometricProbability(a, firstRow, firstColumn, total);
-        var pValue = 0d;
-        for (var value = lower; value <= upper; value++)
-        {
-            var probability = HypergeometricProbability(value, firstRow, firstColumn, total);
-            if (probability <= observedProbability * (1d + 1e-12))
-                pValue += probability;
-        }
-
-        var oddsRatio = b == 0 || c == 0 ? double.PositiveInfinity : (double)a * d / ((double)b * c);
-        return new StatisticalTestResult(oddsRatio, Math.Min(1d, pValue), double.NaN);
+        return HypothesisNative.Fisher(a, b, c, d);
     }
 
     /// <summary>
@@ -192,32 +148,7 @@ public static partial class Numerics
     {
         ValidateSample(first, nameof(first), 1);
         ValidateSample(second, nameof(second), 1);
-        var sortedFirst = (double[])first.Clone();
-        var sortedSecond = (double[])second.Clone();
-        Array.Sort(sortedFirst);
-        Array.Sort(sortedSecond);
-        var firstIndex = 0;
-        var secondIndex = 0;
-        var statistic = 0d;
-
-        while (firstIndex < sortedFirst.Length || secondIndex < sortedSecond.Length)
-        {
-            var value = secondIndex >= sortedSecond.Length ||
-                        firstIndex < sortedFirst.Length && sortedFirst[firstIndex] <= sortedSecond[secondIndex]
-                ? sortedFirst[firstIndex]
-                : sortedSecond[secondIndex];
-            while (firstIndex < sortedFirst.Length && sortedFirst[firstIndex] <= value) firstIndex++;
-            while (secondIndex < sortedSecond.Length && sortedSecond[secondIndex] <= value) secondIndex++;
-            statistic = Math.Max(
-                statistic,
-                Math.Abs((double)firstIndex / sortedFirst.Length - (double)secondIndex / sortedSecond.Length));
-        }
-
-        var insideProbability = KolmogorovSmirnovInsideProbability(
-            sortedFirst.Length,
-            sortedSecond.Length,
-            statistic);
-        return new StatisticalTestResult(statistic, Math.Clamp(1d - insideProbability, 0d, 1d), double.NaN);
+        return HypothesisNative.KolmogorovSmirnov(first, second);
     }
 
     /// <summary>
@@ -232,84 +163,7 @@ public static partial class Numerics
         if (sample.Length > 5000)
             throw new ArgumentException("SHAPIRO supporta al massimo 5000 osservazioni.", nameof(sample));
 
-        var sorted = (double[])sample.Clone();
-        Array.Sort(sorted);
-        if (sorted[0] == sorted[^1])
-            return new StatisticalTestResult(1d, 1d, double.NaN);
-
-        var count = sorted.Length;
-        var half = count / 2;
-        var normalScores = new double[half];
-        var scoreSquares = 0d;
-        for (var index = 0; index < half; index++)
-        {
-            var probability = (index + 1d - 0.375d) / (count + 0.25d);
-            normalScores[index] = Normal.InvCDF(0d, 1d, probability);
-            scoreSquares += normalScores[index] * normalScores[index];
-        }
-        scoreSquares *= 2d;
-
-        var reciprocalRoot = 1d / Math.Sqrt(count);
-        var firstWeight = EvaluatePolynomial(
-            [0d, 0.221157d, -0.147981d, -2.07119d, 4.434685d, -2.706056d], reciprocalRoot) -
-                          normalScores[0] / Math.Sqrt(scoreSquares);
-        var secondWeight = count > 5
-            ? EvaluatePolynomial(
-                [0d, 0.042981d, -0.293762d, -1.752461d, 5.682633d, -3.582633d], reciprocalRoot) -
-              normalScores[1] / Math.Sqrt(scoreSquares)
-            : 0d;
-        var removedScoreSquares = count > 5
-            ? 2d * (normalScores[0] * normalScores[0] + normalScores[1] * normalScores[1])
-            : 2d * normalScores[0] * normalScores[0];
-        var removedWeightSquares = count > 5
-            ? 2d * (firstWeight * firstWeight + secondWeight * secondWeight)
-            : 2d * firstWeight * firstWeight;
-        var scale = Math.Sqrt((scoreSquares - removedScoreSquares) / (1d - removedWeightSquares));
-
-        var weightedRange = 0d;
-        for (var index = 0; index < half; index++)
-        {
-            var weight = index switch
-            {
-                0 => firstWeight,
-                1 when count > 5 => secondWeight,
-                _ => -normalScores[index] / scale
-            };
-            weightedRange += weight * (sorted[^(index + 1)] - sorted[index]);
-        }
-
-        var mean = sorted.Average();
-        var totalSquares = sorted.Sum(value => (value - mean) * (value - mean));
-        var statistic = Math.Clamp(weightedRange * weightedRange / totalSquares, 0d, 1d);
-        if (count == 3)
-        {
-            var pValue = 6d / Math.PI *
-                         (Math.Asin(Math.Sqrt(statistic)) - Math.Asin(Math.Sqrt(0.75d)));
-            return new StatisticalTestResult(statistic, Math.Clamp(pValue, 0d, 1d), double.NaN);
-        }
-
-        var transformed = Math.Log(1d - statistic);
-        double location;
-        double scaleParameter;
-        if (count <= 11)
-        {
-            var gamma = EvaluatePolynomial([-2.273d, 0.459d], count);
-            if (transformed >= gamma)
-                return new StatisticalTestResult(statistic, double.Epsilon, double.NaN);
-            transformed = -Math.Log(gamma - transformed);
-            location = EvaluatePolynomial([0.544d, -0.39978d, 0.025054d, -0.0006714d], count);
-            scaleParameter = Math.Exp(
-                EvaluatePolynomial([1.3822d, -0.77857d, 0.062767d, -0.0020322d], count));
-        }
-        else
-        {
-            var logarithm = Math.Log(count);
-            location = EvaluatePolynomial([-1.5861d, -0.31082d, -0.083751d, 0.0038915d], logarithm);
-            scaleParameter = Math.Exp(EvaluatePolynomial([-0.4803d, -0.082676d, 0.0030302d], logarithm));
-        }
-
-        var zScore = (transformed - location) / scaleParameter;
-        return new StatisticalTestResult(statistic, 1d - Normal.CDF(0d, 1d, zScore), double.NaN);
+        return HypothesisNative.ShapiroWilk(sample);
     }
 
     /// <summary>

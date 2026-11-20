@@ -737,6 +737,25 @@ else()
     target_link_options(gmb_special_flat PRIVATE -Wl,--allow-shlib-undefined)
 endif()
 
+# ── STATS FLAT: test di ipotesi del runtime per i backend MANAGED (P/Invoke C#→C) ─────────────
+# `CommonLib/Numerics/HypothesisTests.cs` calcolava in C# (MathNet) gli stessi test che
+# `gmb_stats.c` implementa per VM/C e C99Native. I kernel parlano `gmb_val_t`: questa lib fa solo
+# il marshalling lista↔buffer e l'estrazione delle chiavi del dict, così la formula resta una.
+add_library(gmb_stats_flat SHARED
+    src/gmb_stats_flat.c
+)
+target_include_directories(gmb_stats_flat PUBLIC include)
+target_link_libraries(gmb_stats_flat PRIVATE gmb_runtime)
+set_target_properties(gmb_stats_flat PROPERTIES
+    OUTPUT_NAME gmb_stats_flat
+    C_VISIBILITY_PRESET default
+    LIBRARY_OUTPUT_DIRECTORY "${GMB_LIBS_OUT}")
+if(APPLE)
+    target_link_options(gmb_stats_flat PRIVATE -Wl,-undefined,dynamic_lookup)
+else()
+    target_link_options(gmb_stats_flat PRIVATE -Wl,--allow-shlib-undefined)
+endif()
+
 # ── 3D WORLD: facciata `gmb_world_*` per i backend MANAGED (P/Invoke C#→C) ────────────────────
 # Il mondo 3D vive SOLO nel runtime C (gmb_3d_*, §0bis): IL/PCodeVM/VM-C non ne hanno una
 # copia e non devono averla. Questa lib espone la facciata di gmb_3d_cmd.c agli host C# (dotnet)
