@@ -320,39 +320,80 @@ gmb_stmt_t* gmb_p_parse_assign_or_call(gmb_parser_t* p, const char* target, int 
         }
         if (gmb_p_match(p, GMB_TOK_LeftBracket)) {
             /* a[expr] = value — indice a quadre come target.
-             * QUI arrivano gli indici ANNIDATI (`a[i][j] = v`): il primo `[...]` è già
-             * stato consumato dal ramo sopra, questo è il secondo. Il backend C99Native non
-             * ha l'assegnamento a catena di indici (servirebbe risolvere la catena e
-             * scrivere nel dict interno); prima gli indici venivano SCARTATI e si assegnava
-             * a un nome artificiale "a[]" → SCRITTURA SILENZIOSAMENTE PERSA (viola §0bis:
-             * errore esplicito, mai risultato sbagliato in silenzio). */
+             * Gli indici ANNIDATI (`a[i][j] = v`) arrivano qui col primo `[...]` già
+             * consumato dal ramo sopra. Prima si SCARTAVANO gli indici e si assegnava a un
+             * nome artificiale "a[]" → scrittura persa in silenzio. Ora si DESUGARA nella
+             * forma portabile (la stessa che tutte le gambe eseguono già):
+             *     DIM __nst_N AS JSON
+             *     __nst_N = a[i]        ' un solo valutamento di a[i]
+             *     __nst_N[j] = v        ' un solo valutamento di v
+             * Il valore estratto è un RIFERIMENTO al dict interno su tutte le gambe
+             * (IL/PCode/VM/C/C99), quindi la scrittura resta visibile dal padre. */
+            gmb_expr_t* first_idx = NULL;
             int nested = (es->expr && es->expr->kind == GMB_EXPR_CALL
                           && es->expr->nargs >= 1) ? 1 : 0;   /* un indice era già stato consumato */
+            if (nested && es->expr->args && es->expr->args[0]) {
+                first_idx = gmb_expr_clone(es->expr->args[0]);
+            }
+            gmb_expr_t* idxs[8]; int nidx = 0;
+            if (nested && es->expr && es->expr->nargs >= 1 && es->expr->args[0])
+                idxs[nidx++] = gmb_expr_clone(es->expr->args[0]);
+            /* L'indice del gruppo appena aperto dal `match(LeftBracket)` qui sopra va
+             * SEMPRE letto (prima veniva saltato quando c'era già un indice precedente:
+             * `g[u]["owned"] = o` finiva nel ramo mangled `g[]`). */
+            if (!gmb_p_check(p, GMB_TOK_RightBracket) && !gmb_p_at_end(p))
+                idxs[nidx++] = gmb_p_parse_expr(p);
             while (!gmb_p_at_end(p) && !gmb_p_check(p, GMB_TOK_RightBracket)) gmb_p_adv(p);
             gmb_p_match(p, GMB_TOK_RightBracket);
-            while (gmb_p_check(p, GMB_TOK_LeftBracket)) {
+            /* altri gruppi `[..]`: ognuno è un livello della catena */
+            while (gmb_p_check(p, GMB_TOK_LeftBracket) && nidx < 8) {
                 nested = 1;
                 gmb_p_adv(p);
+                if (!gmb_p_check(p, GMB_TOK_RightBracket) && !gmb_p_at_end(p))
+                    idxs[nidx++] = gmb_p_parse_expr(p);
                 while (!gmb_p_at_end(p) && !gmb_p_check(p, GMB_TOK_RightBracket)) gmb_p_adv(p);
                 gmb_p_match(p, GMB_TOK_RightBracket);
             }
             if (gmb_p_match(p, GMB_TOK_Equal)) {
-                if (nested) {
-                    gmb_p_set_err(p,
-                        "assegnamento a indici ANNIDATI a[i][j] = v non supportato dal "
-                        "backend C99Native (prima la scrittura andava persa in silenzio: "
-                        "portare il dict interno in una variabile, `DIM t = a[i]` poi "
-                        "`t[j] = v`)", line);
+                if (nested && nidx >= 2) {
+                    /* Catena a N livelli:  __t0 = a[i0] ; __t1 = __t0[i1] ; __t1[iN] = v.
+                     * Il DIM del primo temp è lo statement restituito; gli altri vanno in coda
+                     * (gmb_p_queue_stmt conserva l'ordine). */
+                    static int nest_uid = 0;
+                    int uid = ++nest_uid;
+                    char names[8][64];
+                    gmb_stmt_t* first = NULL;
+                    for (int k = 0; k < nidx - 1; k++) {
+                        snprintf(names[k], sizeof(names[k]), "__gmbnest_%d_%d_%d", line, uid, k);
+                        gmb_stmt_t* d = gmb_stmt_new(GMB_STMT_DIM, line);
+                        d->dim_var = strdup(names[k]);
+                        d->dim_type = strdup("JSON");
+                        d->dim_type_tk = (int)GMB_TOK_Json;
+                        gmb_expr_t** cargs = (gmb_expr_t**)malloc(sizeof(gmb_expr_t*));
+                        cargs[0] = idxs[k];
+                        gmb_stmt_t* as = gmb_stmt_new(GMB_STMT_ASSIGN, line);
+                        as->target = strdup(names[k]);
+                        as->value = gmb_expr_call(strdup(k == 0 ? target : names[k - 1]), cargs, 1, line);
+                        if (k == 0) first = d; else gmb_p_queue_stmt(p, d);
+                        gmb_p_queue_stmt(p, as);
+                    }
+                    gmb_stmt_t* last = gmb_stmt_new(GMB_STMT_ASSIGN, line);
+                    last->target = strdup(names[nidx - 2]);
+                    last->array_index = idxs[nidx - 1];
+                    last->value = gmb_p_parse_expr(p);
+                    gmb_p_queue_stmt(p, last);
                     gmb_expr_free(es->expr); free(es);
-                    return gmb_stmt_new(GMB_STMT_REM, line);
+                    return first;
                 }
                 gmb_stmt_t* a = gmb_stmt_new(GMB_STMT_ASSIGN, line);
                 char buf[300]; snprintf(buf, sizeof(buf), "%s[]", target);
                 a->target = strdup(buf);
                 a->value = gmb_p_parse_expr(p);
+                for (int k = 0; k < nidx; k++) gmb_expr_free(idxs[k]);
                 gmb_expr_free(es->expr); free(es);
                 return a;
             }
+            for (int k = 0; k < nidx; k++) gmb_expr_free(idxs[k]);
         }
         /* t++ / t-- (postfix) su una forma GIÀ costruita (`SELF.x`, `a(0)`, `v.Membro(i)`):
          * t = t ± 1 (valore di ritorno scartato in forma statement). */

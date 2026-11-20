@@ -1,8 +1,8 @@
-' Scrittura in un dict INTERNO portando il sotto-oggetto in una variabile (workaround
-' documentato per `a[i][j] = v`, non supportato dal backend C99).
-' Il valore estratto e' un RIFERIMENTO al dict interno (IL/PCode/C99/VM/C): la mutazione
-' deve restare visibile dal PADRE (`g["bob"][...]`). VM/C copiava il contenitore in
-' gmb_adapter_val_to_stack → scrittura su una copia, dato perso in silenzio.
+' Scrittura in un dict INTERNO portando il sotto-oggetto in una variabile.
+' Storia: `a[i][j] = v` sul C99 prima perdeva la scrittura in silenzio (nome artificiale
+' "a[]"), poi è stata rifiutata con errore esplicito, ora è SUPPORTATA (il parser la desugara
+' in `DIM t = a[i]` + `t[j] = v` con un riferimento al dict interno). Questo test verifica la
+' forma esplicita con la variabile; la forma nativa è in json/nested_index_assign.bas.
 ' EXPECT: k=1|child=yes
 IMPORT JSON
 SUB Main()
