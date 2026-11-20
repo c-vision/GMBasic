@@ -162,9 +162,12 @@ EOF
     [ -n "$rel" ] || continue
     SPLIT_N=$((SPLIT_N+1))
     echo "  [split] $rel"
+    rc=0
     GMB_MINI_ONLY="$rel" timeout "$TMO" dotnet test "$ROOT/tests/GMBASIC.IlBackend.Tests" \
-        --no-build --filter "FullyQualifiedName~MiniTests_IL_PCode_Parity" $flags
-    rc=$?
+        --no-build --filter "FullyQualifiedName~MiniTests_IL_PCode_Parity" $flags || rc=$?
+    # NOTA: `|| rc=$?` e non `cmd; rc=$?` — lo script ha `set -e`, e un comando che fallisce
+    # ABORTIREBBE la run al primo rosso (misurato 2026-11-20: la sweep si è fermata al 55°
+    # file e sembrava aver coperto tutto).
     if [ "$rc" -eq 124 ]; then
       echo "  TIMEOUT $rel (${TMO}s): MiniTest bloccato — escluso dal conteggio, gate ROSSO"
       SPLIT_FAIL=1
