@@ -19,10 +19,14 @@
 
 NAMESPACE NCM
 
-' Carica generatore, tokenizer e vocabolario. device: 0 = CPU, 1 = CUDA, 3 = METAL. Ritorna un handle (> 0) o 0.
+' Parametri comuni: i percorsi che iniziano con "~/" sono espansi nella cartella utente; i relativi lo sono alla cartella del programma.
+
+' Carica generatore, tokenizer e vocabolario. device: 0 = CPU, 1 = CUDA, 3 = METAL (GPU Apple); se il dispositivo non c'e' ritorna 0.
+' Ritorna un handle (> 0) oppure 0 (motivo in LASTERROR). Si possono tenere piu' modelli vivi insieme.
 DECLARE FUNCTION LOADMODEL LIB "gmb_torch" ALIAS "gmb_ml_ncm_load" (generatorPt AS STRING, tokenizerPt AS STRING, vocabTxt AS STRING, device AS LONG) AS LONG
 DECLARE SUB FREEMODEL LIB "gmb_torch" ALIAS "gmb_ml_ncm_free" (handle AS LONG)
-' n testi separati da newline. seed >= 0 rende la generazione riproducibile.
+' n testi (n > 0), uno per riga, con un newline anche dopo l'ultimo. seed >= 0 rende la generazione riproducibile, seed < 0 la rende casuale.
+' Ritorna "" su errore (handle non valido, n <= 0).
 DECLARE FUNCTION GENERATE LIB "gmb_torch" ALIAS "gmb_ml_ncm_text" (handle AS LONG, n AS LONG, seed AS LONG) AS STRING
 ' Ultimo messaggio d'errore dell'host torch ("" se nessuno).
 DECLARE FUNCTION LASTERROR LIB "gmb_torch" ALIAS "gmb_ml_last_error" () AS STRING

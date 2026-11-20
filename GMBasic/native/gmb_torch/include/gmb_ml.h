@@ -161,10 +161,10 @@ GMB_ML_API int     gmb_ml_model_state(int64_t model, char* out, int cap); /* JSO
  * (LM1B small). device: GMB_ML_DEV_*. Ritorna un handle (>0) o 0 (gmb_ml_last_error). */
 GMB_ML_API int64_t gmb_ml_ncm_load(const char* generator_pt, const char* tokenizer_pt, const char* vocab_txt, int device);
 GMB_ML_API void    gmb_ml_ncm_free(int64_t h);
-/* Genera n testi (seed >= 0 fissa il generatore casuale) e li scrive in out separati da '\n'. Ritorna i byte scritti, -1 su errore. */
+/* Genera n testi (seed >= 0 fissa il generatore casuale) e li scrive in out separati da '\n'. Ritorna i byte scritti; -1 su errore (handle non valido, n <= 0, buffer troppo piccolo: mai troncato in silenzio). */
 GMB_ML_API int     gmb_ml_ncm_generate(int64_t h, int n, int64_t seed, char* out, int cap);
 /* Come gmb_ml_ncm_generate ma ritorna i testi (separati da '\n') come stringa C valida fino alla chiamata successiva sullo stesso thread:
- * forma adatta all'FFI di GMBasic (namespace NCM, shared/include/ncm.inc). "" su errore (gmb_ml_last_error). */
+ * forma adatta all'FFI di GMBasic (namespace NCM, shared/include/ncm.inc). "" su errore (gmb_ml_last_error). Nessun limite di lunghezza. */
 GMB_ML_API const char* gmb_ml_ncm_text(int64_t h, int n, int64_t seed);
 
 #ifdef __cplusplus

@@ -112,7 +112,7 @@ public:
         for (size_t li = 0; li < levels_.size(); li++)
         {
             at::Tensor flat;
-            if (li == 0) flat = at::conv1d(z_rest.transpose(1, 2), t_.at("vq.learned_down_l1.weight"), t_.at("vq.learned_down_l1.bias"), 128).transpose(1, 2);
+            if (li == 0) flat = at::conv1d(z_rest.transpose(1, 2), t_.at("vq.learned_down_l1.weight"), t_.at("vq.learned_down_l1.bias"), up_stride_).transpose(1, 2);
             else if (li + 1 == levels_.size()) flat = z_rest;
             else flat = area_pool(z_rest, levels_[li]);
             at::Tensor E = t_.at("vq.embeddings." + std::to_string(li) + ".weight");
@@ -239,6 +239,7 @@ private:
     std::vector<int> levels_;
     std::vector<std::string> vocab_;
     int64_t vq_dim_ = 0, n_embd_ = 0;
+    int64_t up_stride_ = 128;   /* stride di learned_up_l1 / learned_down_l1 = ultimo livello / primo */
     int gen_heads_ = 12, dec_heads_ = 6;
     std::vector<std::pair<at::Tensor, at::Tensor>> rope_;   /* per livello assoluto: cos, sin [1+l, hd] */
 
@@ -255,11 +256,22 @@ private:
     {
         n_embd_ = g_.at("transformer.wte.weight").size(0);
         vq_dim_ = g_.at("transformer.wte.weight").size(1);
-        /* livelli: lunghezze dai ConvTranspose/embedding non sono nei pesi: le fissa la config LM1B (12 livelli). */
-        const int lm1b[] = {1, 8, 16, 24, 32, 40, 52, 64, 76, 92, 108, 128};
-        levels_.assign(std::begin(lm1b), std::end(lm1b));
+        /* Livelli (lunghezza di ogni scala): non sono nei pesi del riferimento. Un checkpoint nostro li porta in inference.levels
+         * (int64 [K]); i checkpoint HazyResearch LM1B small (12 livelli) usano quelli del config lm1b-small.yaml. */
         int64_t nlev = g_.at("transformer.wle.weight").size(0);
-        if (nlev != (int64_t)levels_.size()) throw std::runtime_error("ncm: numero di livelli diverso da LM1B (12): config non supportata");
+        if (inf_.count("levels"))
+        {
+            at::Tensor lv = inf_.at("levels").to(at::kLong).cpu();
+            for (int64_t i = 0; i < lv.numel(); i++) levels_.push_back((int)lv[i].item<int64_t>());
+        }
+        else
+        {
+            const int lm1b[] = {1, 8, 16, 24, 32, 40, 52, 64, 76, 92, 108, 128};
+            levels_.assign(std::begin(lm1b), std::end(lm1b));
+        }
+        if (nlev != (int64_t)levels_.size()) throw std::runtime_error("ncm: numero di livelli del checkpoint (" + std::to_string(nlev) + ") diverso dai livelli noti (" + std::to_string(levels_.size()) + "): manca inference.levels");
+        if (levels_.back() % levels_[0] != 0) throw std::runtime_error("ncm: l'ultimo livello deve essere multiplo del primo (learned_up_l1)");
+        up_stride_ = levels_.back() / levels_[0];
         if (g_.count("l0_queries") == 0 || inf_.count("level0_unigram") == 0) throw std::runtime_error("ncm: checkpoint senza level0_unigram");
         gen_heads_ = (int)(n_embd_ / g_.at("transformer.blocks.0.attn.q_norm.weight").size(0));
         dec_heads_ = (int)(vq_dim_ / t_.at("decoder.middle_block.attn.q_norm.weight").size(0));
@@ -360,7 +372,7 @@ private:
     {
         at::Tensor q = q_blc.transpose(-1, -2);                                   /* [B,C,L] */
         if (level_idx == 0)
-            return at::conv_transpose1d(q, t_.at("vq.learned_up_l1.weight"), t_.at("vq.learned_up_l1.bias"), 128).transpose(-1, -2).contiguous();
+            return at::conv_transpose1d(q, t_.at("vq.learned_up_l1.weight"), t_.at("vq.learned_up_l1.bias"), up_stride_).transpose(-1, -2).contiguous();
         return at::upsample_linear1d(q, {target_len}, false).transpose(-1, -2).contiguous();
     }
 

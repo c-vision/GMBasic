@@ -1956,34 +1956,44 @@ GMB_ML_API void gmb_ml_ncm_free(int64_t h)
     g_ncm.erase(h);
 }
 
-GMB_ML_API int gmb_ml_ncm_generate(int64_t h, int n, int64_t seed, char* out, int cap)
+/* Nucleo: n testi (uno per riga, senza newline interni) in `all`. false + gml_err su errore (handle non valido, n <= 0, eccezione). */
+static bool ncm_generate_all(int64_t h, int n, int64_t seed, std::string& all)
 {
     gmb::Ncm* m = nullptr;
     { std::lock_guard<std::mutex> lk(g_lock); auto it = g_ncm.find(h); if (it != g_ncm.end()) m = it->second.get(); }
-    if (!m || n <= 0 || !out || cap <= 0) { gml_err("ncm_generate: argomenti non validi"); return -1; }
+    if (!m) { gml_err("ncm_generate: handle non valido (modello non caricato o gia' liberato)"); return false; }
+    if (n <= 0) { gml_err("ncm_generate: il numero di campioni deve essere positivo"); return false; }
     try
     {
         if (seed >= 0) torch::manual_seed((uint64_t)seed);
-        std::string all;
+        all.clear();
         for (auto& s : m->generate_text(n, gmb::NcmOptions{}))
         {
             std::string t = s;
             for (auto& c : t) if (c == '\n') c = ' ';
             all += t; all += '\n';
         }
-        int len = (int)std::min<size_t>(all.size(), (size_t)cap - 1);
-        std::memcpy(out, all.data(), (size_t)len); out[len] = 0;
-        return len;
+        return true;
     }
-    catch (const std::exception& e) { gml_err(std::string("ncm_generate: ") + e.what()); return -1; }
+    catch (const std::exception& e) { gml_err(std::string("ncm_generate: ") + e.what()); return false; }
 }
 
+GMB_ML_API int gmb_ml_ncm_generate(int64_t h, int n, int64_t seed, char* out, int cap)
+{
+    if (!out || cap <= 0) { gml_err("ncm_generate: buffer non valido"); return -1; }
+    std::string all;
+    if (!ncm_generate_all(h, n, seed, all)) return -1;
+    if (all.size() + 1 > (size_t)cap) { gml_err("ncm_generate: il testo (" + std::to_string(all.size()) + " byte) non sta nel buffer (" + std::to_string(cap) + "): ridurre n"); return -1; }
+    std::memcpy(out, all.data(), all.size()); out[all.size()] = 0;
+    return (int)all.size();
+}
+
+/* Forma per l'FFI di GMBasic: la stringa vive in un buffer thread_local (valida fino alla chiamata successiva sullo stesso thread), senza limite di
+ * lunghezza. "" su errore (vedi gmb_ml_last_error). */
 GMB_ML_API const char* gmb_ml_ncm_text(int64_t h, int n, int64_t seed)
 {
     static thread_local std::string buf;
-    std::vector<char> tmp(1 << 20);
-    int len = gmb_ml_ncm_generate(h, n, seed, tmp.data(), (int)tmp.size());
-    buf.assign(len > 0 ? tmp.data() : "", len > 0 ? (size_t)len : 0);
+    if (!ncm_generate_all(h, n, seed, buf)) buf.clear();
     return buf.c_str();
 }
 
