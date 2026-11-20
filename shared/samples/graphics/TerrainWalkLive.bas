@@ -3,42 +3,32 @@
 '       TERRENO E PERSONAGGIO, IN MOVIMENTO — finestra grafica
 ' =================================================================================================
 '
-' La versione che si vede muoversi: `SCREEN 12` apre una finestra 640x480, il ciclo ridisegna il
-' mondo a ogni fotogramma e `SYNC` lo mostra. Il personaggio cammina sempre al centro (x = 300):
-' a scorrere è il terreno, come in un platform a scorrimento orizzontale. Con `REGISTRA = 0` il
-' ciclo anima a schermo finché non premi ESC (o chiudi la finestra) e a metà salva una
-' fotografia in `work/terreno_finestra.png`; con `REGISTRA = 1` salva un PNG per fotogramma in
-' `work/frames`, che è la materia prima del video.
+' `SCREEN 12` apre una finestra 640x480; il ciclo ridisegna il mondo a ogni fotogramma e `SYNC`
+' lo mostra. Il personaggio cammina sempre al centro (x = 300): a scorrere è il terreno, come in
+' un platform a scorrimento orizzontale. Si esce con ESC o chiudendo la finestra.
 '
-' Differenza con TerrainWalk.bas: là il disegno finiva in un canvas offscreen e diventava un PNG
-' (deterministico, verificabile, adatto alle quattro gambe); qui il disegno va su una finestra e
-' serve un display. Il codice del mondo è lo stesso: profili a sinusoidi, riempimento per colonne,
-' personaggio a rettangoli con le gambe alternate.
+' Il mondo non esiste da nessuna parte: ogni quota è calcolata da CAM + x, dove CAM è il pixel di
+' mondo sotto il bordo sinistro della finestra. Si può quindi scorrere all'infinito senza memoria
+' e senza fine del terreno.
 '
-' La camera è la variabile CAM: il pixel di mondo sotto il bordo sinistro della finestra. Il mondo
-' non esiste da nessuna parte — ogni quota è calcolata da CAM + x, quindi si può scorrere
-' all'infinito senza memoria e senza fine del terreno.
+' Le forme sono disegnate con `LINE ... BF` (un rettangolo pieno per colonna o per fascia): una
+' chiamata per forma, non un `PSET` per pixel. Su schermi Retina il renderer lavora su una pagina
+' grande il doppio (qui 1280x960) e scala le coordinate: con linee da 1 pixel resterebbe scoperto
+' il pixel nativo accanto, e il disegno apparirebbe a righe sottili. `BF` riempie l'area, quindi
+' il risultato è pieno a qualunque renderScale.
 '
-' Le forme sono disegnate con `LINE ... BF` (un rettangolo pieno per colonna o per fascia):
-' una chiamata per forma, non un `PSET` per pixel. Su schermi Retina il renderer lavora su una
-' pagina grande il doppio (qui 1280x960) e scala le coordinate: con linee da 1 pixel resterebbe
-' scoperto il pixel nativo accanto, e il disegno apparirebbe a righe sottili. `BF` riempie
-' l'area, quindi il risultato è pieno a qualunque renderScale.
+' Per ricavarne un video: un PNG per fotogramma con `CANVAS SAVE 0, <file>` (handle 0 = pagina
+' visibile) e montaggio con `swift tools/swift/pngs2mp4.swift <cartella> <file.mp4> 30`.
 '
 ' Uso:  tools/sh/gmb_c99native_run.sh "$PWD/shared/samples/graphics/TerrainWalkLive.bas" chk ""
 IMPORT GRAPHICS
 
 CONST W = 640                 ' larghezza della finestra (SCREEN 12 = 640x480)
 CONST H = 480
-CONST NFRAME = 450            ' fotogrammi registrati con REGISTRA = 1 (15 s a 30 fps)
 CONST VELOCE = 5              ' pixel di mondo percorsi a ogni fotogramma
-' 0 = animazione a schermo; 1 = salva un PNG per fotogramma in work/frames, da montare in
-' video con `swift tools/swift/pngs2mp4.swift <cartella> <file.mp4> 30`. Per un video di 15
-' secondi a 30 fps: `NFRAME = 450` e `REGISTRA = 1`; registrando non c'è `SLEEP`, perché i
-' tempi del video vengono dal numero di fotogrammi e dagli fps, non dall'orologio.
-CONST REGISTRA = 0
 CONST EROE_X = 300            ' il personaggio resta a questa colonna
 CONST RITARDO = 33            ' millisecondi fra un fotogramma e l'altro (30 fps)
+CONST ORIZZONTE = 300         ' ultima riga di cielo puro
 
 ' --- colori: RGB impacchettato, non indici di tavolozza ---
 CONST C_SOLE = 0x40FFE7A3
@@ -53,7 +43,6 @@ CONST C_CAPELLI = 0x40503A2E
 CONST C_TESTA = 0x40E9C08C
 CONST C_MAGLIA = 0x40C1503C
 CONST C_GAMBE = 0x4028323C
-CONST ORIZZONTE = 300         ' ultima riga di cielo puro
 
 FUNCTION RGBc(r AS INTEGER, g AS INTEGER, b AS INTEGER) AS LONG
   RGBc = 0x40000000 + r * 65536 + g * 256 + b
@@ -163,46 +152,25 @@ SUB DisegnaFrame(cam AS LONG, frame AS INTEGER)
 END SUB
 
 SUB Main()
-  DIM f AS INTEGER, cam AS LONG, ok AS LONG
-  DIM WK$ AS STRING, P$ AS STRING, DR$ AS STRING, Key$ AS STRING
-
-  WK$ = PROJECTFOLDER() + "/work"
-  IF IO.DirExists(WK$) = 0 THEN MKDIR WK$
-  P$ = WK$ + "/terreno_finestra.png"
-  DR$ = WK$ + "/frames"
-  IF REGISTRA = 1 THEN
-    IF IO.DirExists(DR$) = 0 THEN MKDIR DR$
-  END IF
+  DIM f AS INTEGER, cam AS LONG
+  DIM Key$ AS STRING
 
   SCREEN 12
   COLOR 15, 0
   CLS
 
-  IF REGISTRA = 1 THEN
-    ' Registrazione: un PNG per fotogramma (handle 0 = pagina visibile), senza pausa: i tempi
-    ' del video vengono dal numero di fotogrammi e dagli fps del montaggio.
-    FOR f = 0 TO NFRAME - 1
-      CALL DisegnaFrame(cam, f)
-      SYNC
-      CANVAS SAVE 0, DR$ + "/f_" + TRIM(STR$(f)) + ".png" INTO ok
-      cam = cam + VELOCE
-    NEXT f
-  ELSE
-    ' Animazione: si esce con ESC o chiudendo la finestra. `INKEY$` non aspetta il tasto e fa
-    ' girare gli eventi della finestra; quando la finestra viene chiusa restituisce ESC, cioè
-    ' la stessa via d'uscita del tasto — non serve altro per accorgersene.
-    f = 0
-    DO
-      CALL DisegnaFrame(cam, f)
-      SYNC
-      IF f = 240 THEN CANVAS SAVE 0, P$ INTO ok
-      Key$ = INKEY$
-      IF Key$ = CHR$(27) THEN EXIT DO
-      SLEEP RITARDO
-      cam = cam + VELOCE
-      f = f + 1
-    LOOP
-  END IF
+  ' Una sola via d'uscita, la stessa per ESC e per la chiusura della finestra: quando l'utente
+  ' chiude la finestra il runtime lo segnala come ESC, quindi `INKEY$` basta e non serve altro.
+  f = 0
+  DO
+    CALL DisegnaFrame(cam, f)
+    SYNC
+    Key$ = INKEY$
+    IF Key$ = CHR$(27) THEN EXIT DO
+    SLEEP RITARDO
+    cam = cam + VELOCE
+    f = f + 1
+  LOOP
 
   SCREEN 0
 END SUB
