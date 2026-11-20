@@ -63,6 +63,46 @@ internal static class TimeSeriesNative
     [DllImport(Lib, EntryPoint = "gmb_tsf_covariance_obs", CallingConvention = CallingConvention.Cdecl)]
     private static extern IntPtr NativeCovarianceObs(IntPtr[] obs, int nObs, int nVars);
 
+    // ── Onda 3: destagionalizzazione, outlier, Hurst, ROLLING* ──────────────────────────────
+    [DllImport(Lib, EntryPoint = "gmb_tsf_deseasonalize", CallingConvention = CallingConvention.Cdecl)]
+    private static extern IntPtr NativeDeseasonalize(double[] data, long n, long season, out long outLen);
+    [DllImport(Lib, EntryPoint = "gmb_tsf_outliers", CallingConvention = CallingConvention.Cdecl)]
+    private static extern IntPtr NativeOutliers(double[] data, long n, double threshold, out long outLen);
+    [DllImport(Lib, EntryPoint = "gmb_tsf_hurst_dfa", CallingConvention = CallingConvention.Cdecl)]
+    private static extern double NativeHurstDfa(double[] x, int n, int minBox);
+    [DllImport(Lib, EntryPoint = "gmb_tsf_rolling_mean", CallingConvention = CallingConvention.Cdecl)]
+    private static extern IntPtr NativeRollingMean(double[] data, long n, long window, out long outLen);
+    [DllImport(Lib, EntryPoint = "gmb_tsf_rolling_stddev", CallingConvention = CallingConvention.Cdecl)]
+    private static extern IntPtr NativeRollingStdDev(double[] data, long n, long window, out long outLen);
+    [DllImport(Lib, EntryPoint = "gmb_tsf_rolling_skewness", CallingConvention = CallingConvention.Cdecl)]
+    private static extern IntPtr NativeRollingSkewness(double[] data, long n, long window, out long outLen);
+    [DllImport(Lib, EntryPoint = "gmb_tsf_rolling_kurtosis", CallingConvention = CallingConvention.Cdecl)]
+    private static extern IntPtr NativeRollingKurtosis(double[] data, long n, long window, out long outLen);
+    [DllImport(Lib, EntryPoint = "gmb_tsf_rolling_median", CallingConvention = CallingConvention.Cdecl)]
+    private static extern IntPtr NativeRollingMedian(double[] data, long n, long window, out long outLen);
+    [DllImport(Lib, EntryPoint = "gmb_tsf_rolling_quantile", CallingConvention = CallingConvention.Cdecl)]
+    private static extern IntPtr NativeRollingQuantile(double[] data, long n, long window, double q, out long outLen);
+    [DllImport(Lib, EntryPoint = "gmb_tsf_rolling_sharpe", CallingConvention = CallingConvention.Cdecl)]
+    private static extern IntPtr NativeRollingSharpe(double[] data, long n, long window, double rf, out long outLen);
+    [DllImport(Lib, EntryPoint = "gmb_tsf_rolling_mad", CallingConvention = CallingConvention.Cdecl)]
+    private static extern IntPtr NativeRollingMad(double[] data, long n, long window, out long outLen);
+    [DllImport(Lib, EntryPoint = "gmb_tsf_rolling_zscore", CallingConvention = CallingConvention.Cdecl)]
+    private static extern IntPtr NativeRollingZScore(double[] data, long n, long window, out long outLen);
+    [DllImport(Lib, EntryPoint = "gmb_tsf_rolling_autocorr", CallingConvention = CallingConvention.Cdecl)]
+    private static extern IntPtr NativeRollingAutocorrelation(double[] data, long n, long window, long lag, out long outLen);
+    [DllImport(Lib, EntryPoint = "gmb_tsf_rolling_cov", CallingConvention = CallingConvention.Cdecl)]
+    private static extern IntPtr NativeRollingCovariance(double[] x, double[] y, long n, long window, out long outLen);
+    [DllImport(Lib, EntryPoint = "gmb_tsf_rolling_corr", CallingConvention = CallingConvention.Cdecl)]
+    private static extern IntPtr NativeRollingCorrelation(double[] x, double[] y, long n, long window, out long outLen);
+    [DllImport(Lib, EntryPoint = "gmb_tsf_rolling_minmax", CallingConvention = CallingConvention.Cdecl)]
+    private static extern IntPtr NativeRollingMinMax(double[] data, long n, long window, out long outLen);
+    [DllImport(Lib, EntryPoint = "gmb_tsf_rolling_regression", CallingConvention = CallingConvention.Cdecl)]
+    private static extern IntPtr NativeRollingRegressionPairs(double[] x, double[] y, long n, long window, out long outLen);
+    [DllImport(Lib, EntryPoint = "gmb_tsf_rolling_regression_single", CallingConvention = CallingConvention.Cdecl)]
+    private static extern IntPtr NativeRollingRegressionSingle(double[] data, long n, long window, out long outLen);
+    [DllImport(Lib, EntryPoint = "gmb_tsf_rolldelta", CallingConvention = CallingConvention.Cdecl)]
+    private static extern IntPtr NativeRollingDelta(double[] data, long n, long window, out long outLen);
+
     [DllImport(Lib, EntryPoint = "gmb_tsf_last_error", CallingConvention = CallingConvention.Cdecl)]
     private static extern IntPtr NativeLastError();
     [DllImport(Lib, EntryPoint = "gmb_tsf_clear_error", CallingConvention = CallingConvention.Cdecl)]
@@ -257,5 +297,136 @@ internal static class TimeSeriesNative
             for (var i = 0; i < nObs; i++)
                 if (handles[i].IsAllocated) handles[i].Free();
         }
+    }
+
+    // ── Onda 3 ──────────────────────────────────────────────────────────────────────────────
+
+    internal static double[] Deseasonalize(double[] data, int season)
+    {
+        Begin();
+        return Take(NativeDeseasonalize(data, data.Length, season, out var n), n);
+    }
+
+    /// <summary>Indici (metodo Z) come interi. Il kernel ritorna NULL quando non ci sono
+    /// outlier o la serie è troppo corta: qui significa lista vuota, non errore.</summary>
+    internal static int[] OutliersZ(double[] data, double threshold)
+    {
+        Begin();
+        var p = NativeOutliers(data, data.Length, threshold, out var len);
+        if (p == IntPtr.Zero) return [];
+        var buf = Take(p, len);
+        var res = new int[buf.Length];
+        for (var i = 0; i < buf.Length; i++) res[i] = (int)buf[i];
+        return res;
+    }
+
+    internal static double HurstDfa(double[] x, int minBox) => NativeHurstDfa(x, x.Length, minBox);
+
+    internal static double[] RollingMean(double[] data, int window)
+    {
+        Begin();
+        return Take(NativeRollingMean(data, data.Length, window, out var n), n);
+    }
+
+    internal static double[] RollingStdDev(double[] data, int window)
+    {
+        Begin();
+        return Take(NativeRollingStdDev(data, data.Length, window, out var n), n);
+    }
+
+    internal static double[] RollingSkewness(double[] data, int window)
+    {
+        Begin();
+        return Take(NativeRollingSkewness(data, data.Length, window, out var n), n);
+    }
+
+    internal static double[] RollingKurtosis(double[] data, int window)
+    {
+        Begin();
+        return Take(NativeRollingKurtosis(data, data.Length, window, out var n), n);
+    }
+
+    internal static double[] RollingMedian(double[] data, int window)
+    {
+        Begin();
+        return Take(NativeRollingMedian(data, data.Length, window, out var n), n);
+    }
+
+    internal static double[] RollingQuantile(double[] data, int window, double quantile)
+    {
+        Begin();
+        return Take(NativeRollingQuantile(data, data.Length, window, quantile, out var n), n);
+    }
+
+    internal static double[] RollingSharpe(double[] data, int window, double riskFreeRate)
+    {
+        Begin();
+        return Take(NativeRollingSharpe(data, data.Length, window, riskFreeRate, out var n), n);
+    }
+
+    internal static double[] RollingMad(double[] data, int window)
+    {
+        Begin();
+        return Take(NativeRollingMad(data, data.Length, window, out var n), n);
+    }
+
+    internal static double[] RollingZScore(double[] data, int window)
+    {
+        Begin();
+        return Take(NativeRollingZScore(data, data.Length, window, out var n), n);
+    }
+
+    internal static double[] RollingAutocorrelation(double[] data, int window, int lag)
+    {
+        Begin();
+        return Take(NativeRollingAutocorrelation(data, data.Length, window, lag, out var n), n);
+    }
+
+    internal static double[] RollingCovariance(double[] x, double[] y, int window)
+    {
+        Begin();
+        return Take(NativeRollingCovariance(x, y, Math.Min(x.Length, y.Length), window, out var n), n);
+    }
+
+    internal static double[] RollingCorrelation(double[] x, double[] y, int window)
+    {
+        Begin();
+        return Take(NativeRollingCorrelation(x, y, Math.Min(x.Length, y.Length), window, out var n), n);
+    }
+
+    /// <summary>Kernel piatto [min,max] per finestra → array di tuple.</summary>
+    internal static (double min, double max)[] RollingMinMax(double[] data, int window)
+    {
+        Begin();
+        var flat = Take(NativeRollingMinMax(data, data.Length, window, out var n), n);
+        var res = new (double min, double max)[flat.Length / 2];
+        for (var i = 0; i < res.Length; i++) res[i] = (flat[2 * i], flat[2 * i + 1]);
+        return res;
+    }
+
+    /// <summary>Kernel piatto [slope,intercept] per finestra → array di tuple.</summary>
+    internal static (double slope, double intercept)[] RollingRegression(double[] y, int window)
+    {
+        Begin();
+        var flat = Take(NativeRollingRegressionSingle(y, y.Length, window, out var n), n);
+        var res = new (double slope, double intercept)[flat.Length / 2];
+        for (var i = 0; i < res.Length; i++) res[i] = (flat[2 * i], flat[2 * i + 1]);
+        return res;
+    }
+
+    /// <summary>Kernel piatto [slope,intercept] per finestra → array di tuple.</summary>
+    internal static (double slope, double intercept)[] RollingRegressionPairs(double[] x, double[] y, int window)
+    {
+        Begin();
+        var flat = Take(NativeRollingRegressionPairs(x, y, Math.Min(x.Length, y.Length), window, out var n), n);
+        var res = new (double slope, double intercept)[flat.Length / 2];
+        for (var i = 0; i < res.Length; i++) res[i] = (flat[2 * i], flat[2 * i + 1]);
+        return res;
+    }
+
+    internal static double[] RollingDelta(double[] data, int window)
+    {
+        Begin();
+        return Take(NativeRollingDelta(data, data.Length, window, out var n), n);
     }
 }

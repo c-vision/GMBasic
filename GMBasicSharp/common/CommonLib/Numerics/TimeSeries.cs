@@ -79,36 +79,23 @@ public static partial class Numerics
         if (data == null) throw new ArgumentNullException(nameof(data));
         if (data.Length < 3) return [];
         method = method.ToUpperInvariant();
-        var outlierIdx = new List<int>();
         if (method == "Z")
-        {
-            var th = threshold ?? 3.0;
-            var mean = data.Average();
-            var std = Math.Sqrt(data.Average(v => (v - mean) * (v - mean)));
-            for (var i = 0; i < data.Length; i++)
-            {
-                var z = std > 0 ? Math.Abs((data[i] - mean) / std) : 0.0;
-                if (z > th) outlierIdx.Add(i);
-            }
-        }
-        else if (method == "IQR")
-        {
-            var th = threshold ?? 1.5;
-            var sorted = data.OrderBy(x => x).ToArray();
-            var n = sorted.Length;
-            var Q1 = sorted[n / 4];
-            var Q3 = sorted[(3 * n) / 4];
-            var iqr = Q3 - Q1;
-            var low = Q1 - th * iqr;
-            var high = Q3 + th * iqr;
-            for (var i = 0; i < data.Length; i++)
-                if (data[i] < low || data[i] > high)
-                    outlierIdx.Add(i);
-        }
-        else
-        {
+            return TimeSeriesNative.OutliersZ(data, threshold ?? 3.0);
+        if (method != "IQR")
             throw new ArgumentException("Metodo non supportato: " + method);
-        }
+        // IQR: nessun kernel C equivalente (`gmb_ts_outliers` copre solo il metodo Z) → managed.
+        var th = threshold ?? 1.5;
+        var sorted = data.OrderBy(x => x).ToArray();
+        var n = sorted.Length;
+        var Q1 = sorted[n / 4];
+        var Q3 = sorted[(3 * n) / 4];
+        var iqr = Q3 - Q1;
+        var low = Q1 - th * iqr;
+        var high = Q3 + th * iqr;
+        var outlierIdx = new List<int>();
+        for (var i = 0; i < data.Length; i++)
+            if (data[i] < low || data[i] > high)
+                outlierIdx.Add(i);
         return outlierIdx.ToArray();
     }
 
@@ -201,25 +188,7 @@ public static partial class Numerics
         ArgumentNullException.ThrowIfNull(data);
         if (seasonLength < 2 || seasonLength > data.Length / 2)
             throw new ArgumentException("Periodo non valido per la destagionalizzazione.");
-        var season = new double[data.Length];
-        var half = seasonLength / 2;
-        for (var i = 0; i < data.Length; i++)
-        {
-            var left = Math.Max(0, i - half);
-            var right = Math.Min(data.Length - 1, i + half);
-            double sum = 0;
-            var count = 0;
-            for (var j = left; j <= right; j++)
-            {
-                sum += data[j];
-                count++;
-            }
-            season[i] = sum / count;
-        }
-        var destag = new double[data.Length];
-        for (var i = 0; i < data.Length; i++)
-            destag[i] = data[i] - season[i];
-        return destag;
+        return TimeSeriesNative.Deseasonalize(data, seasonLength);
     }
 
     /// <summary>
@@ -338,16 +307,7 @@ public static partial class Numerics
     {
         if (data == null) throw new ArgumentNullException(nameof(data));
         if (window < 1 || data.Length < window) throw new ArgumentException("Finestra non valida.");
-        var result = new double[data.Length - window + 1];
-        var sum = 0.0;
-        for (var i = 0; i < window; i++) sum += data[i];
-        result[0] = sum / window;
-        for (var i = window; i < data.Length; i++)
-        {
-            sum += data[i] - data[i - window];
-            result[i - window + 1] = sum / window;
-        }
-        return result;
+        return TimeSeriesNative.RollingMean(data, window);
     }
 
     /// <summary>
@@ -365,18 +325,7 @@ public static partial class Numerics
     {
         if (data == null) throw new ArgumentNullException(nameof(data));
         if (window < 1 || data.Length < window) throw new ArgumentException("Finestra non valida.");
-        var result = new double[data.Length - window + 1];
-        for (var i = 0; i <= data.Length - window; i++)
-        {
-            var mean = 0.0;
-            for (var j = 0; j < window; j++) mean += data[i + j];
-            mean /= window;
-            var var = 0.0;
-            for (var j = 0; j < window; j++) var += (data[i + j] - mean) * (data[i + j] - mean);
-            var /= window;
-            result[i] = Math.Sqrt(var);
-        }
-        return result;
+        return TimeSeriesNative.RollingStdDev(data, window);
     }
 
     /// <summary>
@@ -393,22 +342,7 @@ public static partial class Numerics
     {
         if (data == null || data.Length < window || window < 3)
             throw new ArgumentException("Dati o finestra non validi.");
-        var result = new double[data.Length - window + 1];
-        for (var i = 0; i < result.Length; i++)
-        {
-            var slice = new ArraySegment<double>(data, i, window).ToArray();
-            var mean = slice.Average();
-            double n = slice.Length;
-            var std = Math.Sqrt(slice.Sum(x => (x - mean) * (x - mean)) / (n - 1));
-            if (std < 1e-12)
-            {
-                result[i] = 0.0;
-                continue;
-            }
-            var sum3 = slice.Sum(x => Math.Pow(x - mean, 3));
-            result[i] = (n / ((n - 1) * (n - 2))) * (sum3 / Math.Pow(std, 3));
-        }
-        return result;
+        return TimeSeriesNative.RollingSkewness(data, window);
     }
 
     /// <summary>
@@ -425,24 +359,7 @@ public static partial class Numerics
     {
         if (data == null || data.Length < window || window < 4)
             throw new ArgumentException("Dati o finestra non validi.");
-        var result = new double[data.Length - window + 1];
-        for (var i = 0; i < result.Length; i++)
-        {
-            var slice = new ArraySegment<double>(data, i, window).ToArray();
-            var mean = slice.Average();
-            double n = slice.Length;
-            var std2 = slice.Sum(x => (x - mean) * (x - mean)) / (n - 1);
-            if (std2 < 1e-12)
-            {
-                result[i] = 0.0;
-                continue;
-            }
-            var sum4 = slice.Sum(x => Math.Pow(x - mean, 4));
-            var kurtosis = (n * (n + 1) * sum4) / ((n - 1) * (n - 2) * (n - 3) * Math.Pow(std2, 2))
-                           - (3 * Math.Pow(n - 1, 2)) / ((n - 2) * (n - 3));
-            result[i] = kurtosis;
-        }
-        return result;
+        return TimeSeriesNative.RollingKurtosis(data, window);
     }
 
     /// <summary>
@@ -459,15 +376,7 @@ public static partial class Numerics
     {
         if (data == null || data.Length < window || window < 1)
             throw new ArgumentException("Dati o finestra non validi.");
-        var result = new double[data.Length - window + 1];
-        for (var i = 0; i < result.Length; i++)
-        {
-            var slice = new ArraySegment<double>(data, i, window).ToArray();
-            Array.Sort(slice);
-            var mid = window / 2;
-            result[i] = (window % 2 == 0) ? (slice[mid - 1] + slice[mid]) / 2.0 : slice[mid];
-        }
-        return result;
+        return TimeSeriesNative.RollingMedian(data, window);
     }
 
     /// <summary>
@@ -487,18 +396,7 @@ public static partial class Numerics
         if (data == null || data.Length < window || window < 1)
             throw new ArgumentException("Dati o finestra non validi.");
         if (quantile is < 0 or > 1) throw new ArgumentException("Quantile fuori intervallo [0,1]");
-        var result = new double[data.Length - window + 1];
-        for (var i = 0; i < result.Length; i++)
-        {
-            var slice = new ArraySegment<double>(data, i, window).ToArray();
-            Array.Sort(slice);
-            var idx = quantile * (window - 1);
-            var idxLow = (int)Math.Floor(idx);
-            var idxHigh = (int)Math.Ceiling(idx);
-            if (idxLow == idxHigh) result[i] = slice[idxLow];
-            else result[i] = slice[idxLow] + (slice[idxHigh] - slice[idxLow]) * (idx - idxLow);
-        }
-        return result;
+        return TimeSeriesNative.RollingQuantile(data, window, quantile);
     }
 
     /// <summary>
@@ -516,15 +414,7 @@ public static partial class Numerics
     {
         if (returns == null || returns.Length < window || window < 2)
             throw new ArgumentException("Dati o finestra non validi.");
-        var result = new double[returns.Length - window + 1];
-        for (var i = 0; i < result.Length; i++)
-        {
-            var slice = new ArraySegment<double>(returns, i, window).ToArray();
-            var mean = slice.Average() - riskFreeRate;
-            var std = Math.Sqrt(slice.Average(r => Math.Pow(r - slice.Average(), 2)));
-            result[i] = std != 0.0 ? mean / std : 0.0;
-        }
-        return result;
+        return TimeSeriesNative.RollingSharpe(returns, window, riskFreeRate);
     }
 
     /// <summary>
@@ -542,23 +432,7 @@ public static partial class Numerics
     {
         if (data == null || data.Length < window || window < 1)
             throw new ArgumentException("Dati o finestra non validi.");
-        var result = new double[data.Length - window + 1];
-        for (var i = 0; i < result.Length; i++)
-        {
-            var slice = new ArraySegment<double>(data, i, window).ToArray();
-            var median = GetMedian(slice);
-            var absDev = slice.Select(x => Math.Abs(x - median)).ToArray();
-            result[i] = GetMedian(absDev);
-        }
-        return result;
-        static double GetMedian(double[] arr)
-        {
-            Array.Sort(arr);
-            var mid = arr.Length / 2;
-            if (arr.Length % 2 == 0)
-                return (arr[mid - 1] + arr[mid]) / 2.0;
-            return arr[mid];
-        }
+        return TimeSeriesNative.RollingMad(data, window);
     }
 
     /// <summary>
@@ -576,15 +450,7 @@ public static partial class Numerics
     {
         if (data == null || data.Length < window || window < 2)
             throw new ArgumentException("Dati o finestra non validi.");
-        var result = new double[data.Length - window + 1];
-        for (var i = 0; i < result.Length; i++)
-        {
-            var slice = new ArraySegment<double>(data, i, window).ToArray();
-            var mean = slice.Average();
-            var std = Math.Sqrt(slice.Average(x => (x - mean) * (x - mean)));
-            result[i] = std < 1e-12 ? 0.0 : (slice.Last() - mean) / std;
-        }
-        return result;
+        return TimeSeriesNative.RollingZScore(data, window);
     }
 
     /// <summary>
@@ -602,19 +468,7 @@ public static partial class Numerics
     {
         if (data == null || data.Length < window || window < lag + 1 || lag < 1)
             throw new ArgumentException("Dati, finestra o lag non validi.");
-        var result = new double[data.Length - window + 1];
-        for (var i = 0; i < result.Length; i++)
-        {
-            var slice = new ArraySegment<double>(data, i, window).ToArray();
-            var mean = slice.Average();
-            double num = 0.0, den = 0.0;
-            for (var j = lag; j < window; j++)
-                num += (slice[j] - mean) * (slice[j - lag] - mean);
-            for (var j = 0; j < window; j++)
-                den += (slice[j] - mean) * (slice[j] - mean);
-            result[i] = den != 0.0 ? num / den : 0.0;
-        }
-        return result;
+        return TimeSeriesNative.RollingAutocorrelation(data, window, lag);
     }
 
     /// <summary>
@@ -632,19 +486,7 @@ public static partial class Numerics
     {
         if (x == null || y == null || x.Length != y.Length || x.Length < window || window < 2)
             throw new ArgumentException("Dati o finestra non validi.");
-        var result = new double[x.Length - window + 1];
-        for (var i = 0; i < result.Length; i++)
-        {
-            var xw = new ArraySegment<double>(x, i, window).ToArray();
-            var yw = new ArraySegment<double>(y, i, window).ToArray();
-            var xm = xw.Average();
-            var ym = yw.Average();
-            var sum = 0.0;
-            for (var j = 0; j < window; j++)
-                sum += (xw[j] - xm) * (yw[j] - ym);
-            result[i] = sum / (window - 1);
-        }
-        return result;
+        return TimeSeriesNative.RollingCovariance(x, y, window);
     }
 
     /// <summary>
@@ -663,24 +505,7 @@ public static partial class Numerics
     {
         if (y == null || y.Length < window || window < 2)
             throw new ArgumentException("Dati o finestra non validi.");
-        var result = new (double slope, double intercept)[y.Length - window + 1];
-        for (var i = 0; i < result.Length; i++)
-        {
-            var slice = new ArraySegment<double>(y, i, window).ToArray();
-            double sx = 0, sy = 0, sxx = 0, sxy = 0;
-            for (var j = 0; j < window; j++)
-            {
-                sx += j;
-                sy += slice[j];
-                sxx += j * j;
-                sxy += j * slice[j];
-            }
-            var denom = window * sxx - sx * sx;
-            var slope = denom == 0 ? 0.0 : (window * sxy - sx * sy) / denom;
-            var intercept = window == 0 ? 0.0 : (sy - slope * sx) / window;
-            result[i] = (slope, intercept);
-        }
-        return result;
+        return TimeSeriesNative.RollingRegression(y, window);
     }
 
     /// <summary>Regressione lineare mobile su DUE serie (y in funzione di x) — stesso contratto
@@ -692,22 +517,7 @@ public static partial class Numerics
     {
         if (x == null || y == null || x.Length < window || y.Length < window || window < 2)
             throw new ArgumentException("Dati o finestra non validi.");
-        var n = Math.Min(x.Length, y.Length);
-        var result = new (double slope, double intercept)[n - window + 1];
-        for (var i = 0; i < result.Length; i++)
-        {
-            double sx = 0, sy = 0, sxx = 0, sxy = 0;
-            for (var j = 0; j < window; j++)
-            {
-                double xv = x[i + j], yv = y[i + j];
-                sx += xv; sy += yv; sxx += xv * xv; sxy += xv * yv;
-            }
-            var denom = window * sxx - sx * sx;
-            var slope = denom == 0 ? 0.0 : (window * sxy - sx * sy) / denom;
-            var intercept = window == 0 ? 0.0 : (sy - slope * sx) / window;
-            result[i] = (slope, intercept);
-        }
-        return result;
+        return TimeSeriesNative.RollingRegressionPairs(x, y, window);
     }
 
     /// <summary>
@@ -725,6 +535,8 @@ public static partial class Numerics
     {
         if (data == null || data.Length < window || window < 2 || order < 1)
             throw new ArgumentException("Dati, finestra o ordine non validi.");
+        // Il kernel C copre l'ordine 1 (`gmb_ts_rolldelta`); ordini superiori → managed.
+        if (order == 1) return TimeSeriesNative.RollingDelta(data, window);
         var result = new double[data.Length - window + 1];
         for (var i = 0; i < result.Length; i++)
         {
@@ -785,19 +597,7 @@ public static partial class Numerics
     {
         if (data == null || data.Length < window || window < 1)
             throw new ArgumentException("Dati o finestra non validi.");
-        var result = new (double min, double max)[data.Length - window + 1];
-        for (var i = 0; i < result.Length; i++)
-        {
-            double min = double.MaxValue, max = double.MinValue;
-            for (var j = 0; j < window; j++)
-            {
-                var v = data[i + j];
-                if (v < min) min = v;
-                if (v > max) max = v;
-            }
-            result[i] = (min, max);
-        }
-        return result;
+        return TimeSeriesNative.RollingMinMax(data, window);
     }
 
     /// <summary>
@@ -817,15 +617,7 @@ public static partial class Numerics
             throw new ArgumentException("Le serie devono avere la stessa lunghezza.");
         if (window < 2 || window > x.Length)
             throw new ArgumentException("Finestra non valida.");
-        var n = x.Length - window + 1;
-        var result = new double[n];
-        for (var i = 0; i < n; i++)
-        {
-            var xw = new ArraySegment<double>(x, i, window).ToArray();
-            var yw = new ArraySegment<double>(y, i, window).ToArray();
-            result[i] = MathNet.Numerics.Statistics.Correlation.Pearson(xw, yw);
-        }
-        return result;
+        return TimeSeriesNative.RollingCorrelation(x, y, window);
     }
 
     /// <summary>Entropia campionaria (gmbstats gs_entropy_sample).</summary>
@@ -1663,47 +1455,6 @@ public static partial class Numerics
     {
         var n = x.Length;
         if (n < 20 || minBox < 2) return double.NaN;
-        var y = new double[n];
-        var mean = x.Average();
-        y[0] = x[0] - mean;
-        for (var i = 1; i < n; i++) y[i] = y[i - 1] + (x[i] - mean);
-        var ls = new List<double>();
-        var lx = new List<double>();
-        for (var t = minBox; t <= n / 2; t *= 2)
-        {
-            var nboxes = n / t;
-            double f = 0;
-            for (var j = 0; j < nboxes; j++)
-            {
-                double mx = 0, my = 0, sxy = 0, sxx = 0;
-                for (var k = 0; k < t; k++) { mx += k; my += y[j * t + k]; }
-                mx /= t; my /= t;
-                for (var k = 0; k < t; k++)
-                {
-                    var dx = k - mx;
-                    var dy = y[j * t + k] - my;
-                    sxy += dx * dy; sxx += dx * dx;
-                }
-                var slope = sxx > 0 ? sxy / sxx : 0;
-                var inter = my - slope * mx;
-                for (var k = 0; k < t; k++)
-                {
-                    var r = y[j * t + k] - (slope * k + inter);
-                    f += r * r;
-                }
-            }
-            f = Math.Sqrt(f / (nboxes * t));
-            ls.Add(Math.Log(t));
-            lx.Add(Math.Log(f));
-        }
-        var m1 = ls.Average();
-        var m2 = lx.Average();
-        double cov = 0, var1 = 0;
-        for (var i = 0; i < ls.Count; i++)
-        {
-            cov += (ls[i] - m1) * (lx[i] - m2);
-            var1 += (ls[i] - m1) * (ls[i] - m1);
-        }
-        return var1 > 0 ? cov / var1 : double.NaN;
+        return TimeSeriesNative.HurstDfa(x, minBox);
     }
 }

@@ -452,11 +452,17 @@ gmb_double_t* gmb_ts_rolling_skewness(gmb_double_t* data, gmb_int_t n, gmb_int_t
     *out_len = len;
     for (gmb_int_t i = 0; i < len; i++) {
         double s = 0; for (gmb_int_t j = 0; j < window; j++) s += data[i + j];
-        double m = s / window, m2 = 0, m3 = 0;
-        for (gmb_int_t j = 0; j < window; j++) { double d = data[i + j] - m; m2 += d * d; m3 += d * d * d; }
-        m2 /= window; m3 /= window;
-        double sd = sqrt(m2);
-        out[i] = (sd > 1e-12) ? (m3 / (sd * sd * sd)) : 0.0;
+        double m = s / window, s2 = 0, s3 = 0;
+        for (gmb_int_t j = 0; j < window; j++) { double d = data[i + j] - m; s2 += d * d; s3 += d * d * d; }
+        /* Skewness con CORREZIONE DI BIAS, parity Numerics.TimeSeries.RollingSkewness
+         * (oracolo IL): deviazione standard CAMPIONARIA sqrt(Σd²/(n-1)) e formula
+         *   n/((n-1)(n-2)) · Σd³ / s³.
+         * Prima si usava la skewness grezza (m3/m2^1.5): valori diversi su ogni input non
+         * degenere (es. n=5: fattore 3.333 vs 2.236), quindi le gambe divergevano. */
+        double nn = (double)window;
+        double var = s2 / (nn - 1.0);
+        double sd = sqrt(var);
+        out[i] = (sd < 1e-12) ? 0.0 : (nn / ((nn - 1.0) * (nn - 2.0))) * (s3 / (sd * sd * sd));
     }
     return out;
 }

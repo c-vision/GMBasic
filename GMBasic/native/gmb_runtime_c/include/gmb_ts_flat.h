@@ -44,6 +44,29 @@ double*       gmb_tsf_hmm_viterbi(const double* lpi, const double* lA, const dou
  * jagged `row[i][j]`. Il chiamante libera OGNI riga e poi il vettore dei puntatori con free(). */
 gmb_double_t** gmb_tsf_covariance_obs(const double* const* obs, int n_obs, int n_vars);
 
+/* ── Onda 3: destagionalizzazione, outlier, Hurst e famiglia ROLLING* ────────────────────────
+ * Stesse firme dei kernel; `*out_len` = 0 quando il kernel rifiuta l'input. */
+gmb_double_t* gmb_tsf_deseasonalize(gmb_double_t* data, gmb_int_t n, gmb_int_t season, gmb_int_t* out_len);
+gmb_double_t* gmb_tsf_outliers(gmb_double_t* data, gmb_int_t n, double threshold, gmb_int_t* out_len);
+double        gmb_tsf_hurst_dfa(const double* x, int n, int min_box);
+
+gmb_double_t* gmb_tsf_rolling_mean(gmb_double_t* data, gmb_int_t n, gmb_int_t window, gmb_int_t* out_len);
+gmb_double_t* gmb_tsf_rolling_stddev(gmb_double_t* data, gmb_int_t n, gmb_int_t window, gmb_int_t* out_len);
+gmb_double_t* gmb_tsf_rolling_skewness(gmb_double_t* data, gmb_int_t n, gmb_int_t window, gmb_int_t* out_len);
+gmb_double_t* gmb_tsf_rolling_kurtosis(gmb_double_t* data, gmb_int_t n, gmb_int_t window, gmb_int_t* out_len);
+gmb_double_t* gmb_tsf_rolling_median(gmb_double_t* data, gmb_int_t n, gmb_int_t window, gmb_int_t* out_len);
+gmb_double_t* gmb_tsf_rolling_quantile(gmb_double_t* data, gmb_int_t n, gmb_int_t window, double q, gmb_int_t* out_len);
+gmb_double_t* gmb_tsf_rolling_sharpe(gmb_double_t* data, gmb_int_t n, gmb_int_t window, double rf, gmb_int_t* out_len);
+gmb_double_t* gmb_tsf_rolling_mad(gmb_double_t* data, gmb_int_t n, gmb_int_t window, gmb_int_t* out_len);
+gmb_double_t* gmb_tsf_rolling_zscore(gmb_double_t* data, gmb_int_t n, gmb_int_t window, gmb_int_t* out_len);
+gmb_double_t* gmb_tsf_rolling_autocorr(gmb_double_t* data, gmb_int_t n, gmb_int_t window, gmb_int_t lag, gmb_int_t* out_len);
+gmb_double_t* gmb_tsf_rolling_cov(gmb_double_t* x, gmb_double_t* y, gmb_int_t n, gmb_int_t window, gmb_int_t* out_len);
+gmb_double_t* gmb_tsf_rolling_corr(gmb_double_t* x, gmb_double_t* y, gmb_int_t n, gmb_int_t window, gmb_int_t* out_len);
+gmb_double_t* gmb_tsf_rolling_minmax(gmb_double_t* data, gmb_int_t n, gmb_int_t window, gmb_int_t* out_len);
+gmb_double_t* gmb_tsf_rolling_regression(gmb_double_t* x, gmb_double_t* y, gmb_int_t n, gmb_int_t window, gmb_int_t* out_len);
+gmb_double_t* gmb_tsf_rolling_regression_single(gmb_double_t* data, gmb_int_t n, gmb_int_t window, gmb_int_t* out_len);
+gmb_double_t* gmb_tsf_rolldelta(gmb_double_t* series, gmb_int_t n, gmb_int_t period, gmb_int_t* out_len);
+
 /* Errore dell'ultima chiamata (stringa nel runtime; valida finché non viene sovrascritta). */
 const char*   gmb_tsf_last_error(void);
 void          gmb_tsf_clear_error(void);
