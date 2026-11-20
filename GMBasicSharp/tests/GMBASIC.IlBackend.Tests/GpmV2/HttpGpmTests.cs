@@ -30,6 +30,7 @@ public class HttpGpmTests
     public void HttpServer_MayParkHandler_RespondsUnderGpm()
     {
         var sample = Path.Combine(Root, "shared", "samples", "Network", "HttpGpmHandler.bas");
+        C99Emission.Require(sample);
         Assert.True(File.Exists(sample), $"Sample mancante: {sample}");
         var program = Basic.Orchestrator.Compile(sample, null, false);
         var asmBuilder = IlProgramCompiler.CompileToAssembly(program, "HttpGpm_" + Guid.NewGuid().ToString("N"), out _);
@@ -80,6 +81,7 @@ public class HttpGpmTests
         // Stesso sample sulla PCodeVM: l'handler gira come task GPM sullo scheduler condiviso
         // (SpawnHttpHandlerTask) e risponde "GPM-OK-from-goroutine".
         var sample = Path.Combine(Root, "shared", "samples", "Network", "HttpGpmHandler.bas");
+        C99Emission.Require(sample);
         Assert.True(File.Exists(sample), $"Sample mancante: {sample}");
         var program = Basic.Orchestrator.Compile(sample, null, false);
         var chunk = new global::Compiler.Compiler().Compile(program);

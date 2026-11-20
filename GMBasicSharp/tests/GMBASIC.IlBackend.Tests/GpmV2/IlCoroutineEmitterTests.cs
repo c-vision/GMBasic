@@ -32,6 +32,7 @@ public class IlCoroutineEmitterTests
         ImmutableHashSet<int> mayPark, Func<int, FunctionDefinition?> byId) CompileSample(string sampleRel)
     {
         var sample = Path.Combine(Root, sampleRel);
+        C99Emission.Require(sample);
         Assert.True(File.Exists(sample), $"Sample mancante: {sample}");
         var program = Basic.Orchestrator.Compile(sample, null, false);
         var procedures = program.LoadedModules.Values

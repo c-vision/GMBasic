@@ -20,6 +20,7 @@ public class GoRoutinesMinimalAnalysisTests
         var root = FindRepoRoot();
         var sample = Path.Combine(root, "shared", "samples", "Concurrency", "GoRoutinesMinimal.bas");
         Assert.True(File.Exists(sample), $"Sample mancante: {sample}");
+        C99Emission.Require(sample);
         var program = Basic.Orchestrator.Compile(sample, null, false);
         return program.LoadedModules.Values
             .SelectMany(m => m.Declarations)

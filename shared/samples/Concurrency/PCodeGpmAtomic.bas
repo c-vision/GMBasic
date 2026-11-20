@@ -24,7 +24,8 @@ SUB Main()
   v = ATOMIC.FETCHVALUE(c)
   ATOMIC.STORE(c, 42)
   sw = ATOMIC.COMPARESWAP(c, 42, 7)
-  IF v = 400 AND sw = -1 AND ATOMIC.FETCHVALUE(c) = 7 THEN
+  ' BIT: nonzero = riuscito (convenzione attuale 1/0, come i MiniTest atomic)
+  IF v = 400 AND sw <> 0 AND ATOMIC.FETCHVALUE(c) = 7 THEN
     PRINT "PCODE-GPM-ATOMIC-OK"
   ELSE
     PRINT "FAIL:v="; v; " sw="; sw

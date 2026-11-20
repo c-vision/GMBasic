@@ -78,12 +78,12 @@ public sealed class PCodeComplexConcurrencySampleTests
             root,
             "shared",
             "samples",
-            "Community",
             "Concurrency",
             "PCodeGpmExtremeUnwind.bas");
         var previousGoMaxProcs = Environment.GetEnvironmentVariable("GMBASIC_GOMAXPROCS");
         try
         {
+            C99Emission.Require(sample);
             var program = Basic.Orchestrator.Compile(sample, null, false);
             var chunk = new global::Compiler.Compiler().Compile(program);
             Environment.SetEnvironmentVariable("GMBASIC_GOMAXPROCS", "1");
@@ -213,6 +213,7 @@ public sealed class PCodeComplexConcurrencySampleTests
     {
         var root = FindRepositoryRoot();
         var sample = Path.Combine(root, "shared", "samples", "Concurrency", "PCodeGpmCancellationFinally.bas");
+        C99Emission.Require(sample);
         var program = Basic.Orchestrator.Compile(sample, null, false);
         var chunk = new global::Compiler.Compiler().Compile(program);
         var previousGoMaxProcs = Environment.GetEnvironmentVariable("GMBASIC_GOMAXPROCS");
@@ -252,6 +253,7 @@ public sealed class PCodeComplexConcurrencySampleTests
     {
         var root = FindRepositoryRoot();
         var sample = Path.Combine(root, "shared", "samples", "Concurrency", "PCodeGpmWaitKeyPark.bas");
+        C99Emission.Require(sample);
         var program = Basic.Orchestrator.Compile(sample, null, false);
         var chunk = new global::Compiler.Compiler().Compile(program);
         var previousGoMaxProcs = Environment.GetEnvironmentVariable("GMBASIC_GOMAXPROCS");
@@ -376,6 +378,7 @@ public sealed class PCodeComplexConcurrencySampleTests
     {
         var root = FindRepositoryRoot();
         var sample = Path.Combine(root, "shared", "samples", "Concurrency", fileName);
+        C99Emission.Require(sample);
         var program = Basic.Orchestrator.Compile(sample, null, false);
         var chunk = new global::Compiler.Compiler().Compile(program);
         var previousGoMaxProcs = Environment.GetEnvironmentVariable("GMBASIC_GOMAXPROCS");
@@ -404,6 +407,7 @@ public sealed class PCodeComplexConcurrencySampleTests
     {
         var root = FindRepositoryRoot();
         var sample = Path.Combine(root, "shared", "samples", "Concurrency", "PCodeGpmStressMix.bas");
+        C99Emission.Require(sample);
         var program = Basic.Orchestrator.Compile(sample, null, false);
         var chunk = new global::Compiler.Compiler().Compile(program);
         var previousGoMaxProcs = Environment.GetEnvironmentVariable("GMBASIC_GOMAXPROCS");
@@ -434,6 +438,7 @@ public sealed class PCodeComplexConcurrencySampleTests
     {
         var root = FindRepositoryRoot();
         var sample = Path.Combine(root, "shared", "samples", "Network", fileName);
+        C99Emission.Require(sample);
         var program = Basic.Orchestrator.Compile(sample, null, false);
         var chunk = new global::Compiler.Compiler().Compile(program);
         var previousGoMaxProcs = Environment.GetEnvironmentVariable("GMBASIC_GOMAXPROCS");
@@ -461,6 +466,7 @@ public sealed class PCodeComplexConcurrencySampleTests
     {
         var root = FindRepositoryRoot();
         var sample = Path.Combine(root, "shared", "samples", "Network", "WebSocketEcho.bas");
+        C99Emission.Require(sample);
         var program = Basic.Orchestrator.Compile(sample, null, false);
         var chunk = new global::Compiler.Compiler().Compile(program);
         var previousGoMaxProcs = Environment.GetEnvironmentVariable("GMBASIC_GOMAXPROCS");
@@ -573,6 +579,7 @@ public sealed class PCodeComplexConcurrencySampleTests
         try
         {
             Directory.SetCurrentDirectory(directory);
+            C99Emission.Require(sourcePath);
             var program = Basic.Orchestrator.Compile(sourcePath, null, false);
             var chunk = new global::Compiler.Compiler().Compile(program);
             Environment.SetEnvironmentVariable("GMBASIC_GOMAXPROCS", "1");
@@ -787,6 +794,7 @@ public sealed class PCodeComplexConcurrencySampleTests
     {
         var root = FindRepositoryRoot();
         var sample = Path.Combine(root, "shared", "samples", "Concurrency", fileName);
+        C99Emission.Require(sample);
         var program = Basic.Orchestrator.Compile(sample, null, false);
         var chunk = new global::Compiler.Compiler().Compile(program);
         var previousGoMaxProcs = Environment.GetEnvironmentVariable("GMBASIC_GOMAXPROCS");

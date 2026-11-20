@@ -32,6 +32,7 @@ public class BlackboardWorkersE2ETests
         var sample = Path.Combine(FindRepoRoot(), "shared", "samples", "Ai", "BlackboardWorkersE2E.bas");
         Assert.True(File.Exists(sample), $"sample mancante: {sample}");
 
+        C99Emission.Require(sample);
         var program = Basic.Orchestrator.Compile(sample, null, false);
         var asmBuilder = IlProgramCompiler.CompileToAssembly(program, "BBE2E_" + Guid.NewGuid().ToString("N"), out _);
         using var ms = new MemoryStream();

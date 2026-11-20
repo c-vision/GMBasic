@@ -24,6 +24,7 @@ public class ForLoopScopeTests
         var root = FindRepoRoot();
         var source = Path.Combine(root, "shared", "samples", "Loops", "LoopsForNextOptimized.bas");
 
+        C99Emission.Require(source);
         var program = Basic.Orchestrator.Compile(source, null, false);
         var asmBuilder = IlProgramCompiler.CompileToAssembly(program, "ForPost_" + Guid.NewGuid().ToString("N"), out _);
         var dumpDir = Path.Combine(Path.GetTempPath(), "gmb_forpost");
@@ -82,6 +83,7 @@ public class ForLoopScopeTests
         try
         {
             Directory.SetCurrentDirectory(directory);
+            C99Emission.Require(sourcePath);
             var program = Basic.Orchestrator.Compile(sourcePath, null, false);
             var chunk = new global::Compiler.Compiler().Compile(program);
             using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));

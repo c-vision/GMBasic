@@ -42,6 +42,7 @@ public class GoRoutinesMinimalStepperGenerationTests
     public void Compile_Generates_StepV2_Methods_For_MayPark_Procedures()
     {
         Assert.True(File.Exists(SamplePath), $"Sample mancante: {SamplePath}");
+        C99Emission.Require(SamplePath);
         var program = Basic.Orchestrator.Compile(SamplePath, null, false);
         var procedures = program.LoadedModules.Values
             .SelectMany(m => m.Declarations)
@@ -83,6 +84,7 @@ public class GoRoutinesMinimalStepperGenerationTests
     [Fact]
     public void EntryPoint_Uses_GpmV2_When_Main_Is_MayPark()
     {
+        C99Emission.Require(SamplePath);
         var program = Basic.Orchestrator.Compile(SamplePath, null, false);
         var procedures = program.LoadedModules.Values
             .SelectMany(m => m.Declarations)
@@ -101,6 +103,7 @@ public class GoRoutinesMinimalStepperGenerationTests
     [Fact]
     public void Execute_GoRoutinesMinimal_Via_Gpm_Produces_Golden_Sequence()
     {
+        C99Emission.Require(SamplePath);
         var program = Basic.Orchestrator.Compile(SamplePath, null, false);
         var assembly = CompileAssembly(program);
         var programType = assembly.GetType("GeneratedProgram")
@@ -148,6 +151,7 @@ public class GoRoutinesMinimalStepperGenerationTests
     [Fact]
     public void DriverV2_Runs_Steppers_To_Completion()
     {
+        C99Emission.Require(SamplePath);
         var program = Basic.Orchestrator.Compile(SamplePath, null, false);
         var assembly = CompileAssembly(program);
         var dispatcher = IlGpmV2.CreateV2Dispatcher(assembly);

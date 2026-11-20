@@ -46,6 +46,7 @@ public class ConcurrencySamplesAuditTests
         }
         try
         {
+            C99Emission.Require(sample);
             var program = Basic.Orchestrator.Compile(sample, null, false);
             var procedures = program.LoadedModules.Values
                 .SelectMany(m => m.Declarations)
@@ -89,6 +90,7 @@ public class ConcurrencySamplesAuditTests
     {
         var sample = Path.Combine(Root, "shared", "samples", "Concurrency", sampleName);
         Assert.True(File.Exists(sample), $"Sample mancante: {sample}");
+        C99Emission.Require(sample);
         var program = Basic.Orchestrator.Compile(sample, null, false);
         var assembly = CompileAssembly(program);
         var programType = assembly.GetType("GeneratedProgram")

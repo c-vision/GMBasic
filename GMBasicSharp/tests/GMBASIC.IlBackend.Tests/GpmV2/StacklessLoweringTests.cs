@@ -32,6 +32,7 @@ public class StacklessLoweringTests
     private static (ImmutableArray<FunctionDefinition> procedures, ImmutableHashSet<int> mayPark, Func<int, FunctionDefinition?> byId) Compile(string rel)
     {
         var sample = Path.Combine(Root, rel);
+        C99Emission.Require(sample);
         Assert.True(File.Exists(sample), $"Sample mancante: {sample}");
         var program = Basic.Orchestrator.Compile(sample, null, false);
         var procedures = program.LoadedModules.Values

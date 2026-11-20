@@ -19,6 +19,7 @@ public sealed class PCodeDebugDriverTests
     public void Breakpoint_Step_And_Output_Work()
     {
         var bas = PickSample();
+        C99Emission.Require(bas);
         var program = Basic.Orchestrator.Compile(bas, null, false);
         Assert.NotNull(program?.MainModule);
         var chunk = new global::Compiler.Compiler().Compile(program!);
@@ -57,6 +58,7 @@ public sealed class PCodeDebugDriverTests
     public void StepIn_Produces_Pauses()
     {
         var bas = PickSample();
+        C99Emission.Require(bas);
         var program = Basic.Orchestrator.Compile(bas, null, false);
         Assert.NotNull(program?.MainModule);
         var chunk = new global::Compiler.Compiler().Compile(program!);

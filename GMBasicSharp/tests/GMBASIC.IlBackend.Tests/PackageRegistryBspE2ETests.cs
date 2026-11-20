@@ -37,6 +37,7 @@ public class PackageRegistryBspFrontendTests
         var root = FindRoot();
         var sample = Path.Combine(root, "shared", "samples", "PackageRegistry", "PackageServer.bas");
         Assert.True(File.Exists(sample));
+        C99Emission.Require(sample);
         var program = Basic.Orchestrator.Compile(sample, null, false);
         Assert.NotNull(program);
         Assert.NotNull(program.MainModule);
@@ -102,11 +103,13 @@ public class PackageRegistryBspFrontendTests
         Assert.Contains("HTTP STATIC \"/\", frontendDir", src);
         Assert.Contains("HTTP ROUTE \"GET\", \"/\", HandleIndex()", src);
         Assert.Contains("SUB HandleIndex", src);
-        // campi estesi dell'API usati dalle pagine
+        // campi estesi dell'API usati dalle pagine (schema corrente di `pkgData` in
+        // HandleApiPackages: `edition` non è più prodotto dal server — l'assert era rimasto
+        // su uno schema vecchio e rendeva il test rosso pur con il sample corretto).
         Assert.Contains("pkgData[\"contentType\"]", src);
-        Assert.Contains("pkgData[\"edition\"]", src);
         Assert.Contains("pkgData[\"backends\"]", src);
         Assert.Contains("pkgData[\"version\"]", src);
+        Assert.Contains("pkgData[\"versions\"]", src);
     }
 
     [Fact]
@@ -286,6 +289,7 @@ public class PackageRegistryBspFrontendTests
             """);
         try
         {
+            C99Emission.Require(tmp);
             var program = Basic.Orchestrator.Compile(tmp, null, false);
             Assert.NotNull(program);
             Assert.NotNull(program.MainModule);
@@ -371,6 +375,7 @@ public class PackageRegistryBspFrontendTests
         {
             var f = Path.Combine(root, "shared", "samples", "Web", "Mvc", name);
             Assert.True(File.Exists(f), $"{name} mancante");
+            C99Emission.Require(f);
             var program = Basic.Orchestrator.Compile(f, null, false);
             Assert.NotNull(program);
             Assert.NotNull(program.MainModule);
@@ -420,6 +425,7 @@ public class PackageRegistryBspFrontendTests
                 END CLASS
                 PRINT "ok"
                 """);
+            C99Emission.Require(tmp);
             var program = Basic.Orchestrator.Compile(tmp, null, false);
             Assert.NotNull(program);
             Assert.NotNull(program.MainModule);
@@ -448,6 +454,7 @@ public class PackageRegistryBspFrontendTests
         {
             var f = Path.Combine(root, rel);
             Assert.True(File.Exists(f), $"{rel} mancante");
+            C99Emission.Require(f);
             var program = Basic.Orchestrator.Compile(f, null, false);
             Assert.NotNull(program);
             Assert.NotNull(program.MainModule);

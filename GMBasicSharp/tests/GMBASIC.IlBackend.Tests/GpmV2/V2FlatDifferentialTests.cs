@@ -31,6 +31,7 @@ public class V2FlatDifferentialTests
     private static string RunFlat(string sampleName)
     {
         var sample = Path.Combine(Root, "shared", "samples", "Concurrency", sampleName);
+        C99Emission.Require(sample);
         Assert.True(File.Exists(sample), $"Sample mancante: {sample}");
         var program = Basic.Orchestrator.Compile(sample, null, false);
         var asmBuilder = IlProgramCompiler.CompileToAssembly(program, "DiffFlat_" + Guid.NewGuid().ToString("N"), out _);
@@ -67,6 +68,7 @@ public class V2FlatDifferentialTests
     private static string RunV2(string sampleName)
     {
         var sample = Path.Combine(Root, "shared", "samples", "Concurrency", sampleName);
+        C99Emission.Require(sample);
         var program = Basic.Orchestrator.Compile(sample, null, false);
         var mainDef = program.LoadedModules.Values.SelectMany(m => m.Declarations)
             .OfType<FunctionDefinition>()

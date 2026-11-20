@@ -7,7 +7,7 @@
 '   ATOMIC.INCREMENT(x, n)     ritorna il valore PRECEDENTE (AddInt64)
 '   ATOMIC.FETCHVALUE(x)       ritorna il valore corrente  (LoadInt64)
 '   ATOMIC.STORE(x, n)         imposta il valore           (StoreInt64)
-'   ATOMIC.COMPARESWAP(x,o,n)  CAS: BIT -1 se riuscito, 0 altrimenti (CompareAndSwapInt64)
+'   ATOMIC.COMPARESWAP(x,o,n)  CAS: BIT non-zero se riuscito, 0 altrimenti (CompareAndSwapInt64)
 '   ATOMIC.SWAP(x, n)          ritorna il valore PRECEDENTE (SwapInt64)
 '
 ' Scenario (deterministico, niente rete/timing): un contatore condiviso viene
