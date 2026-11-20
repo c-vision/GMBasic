@@ -695,6 +695,26 @@ else()
     target_link_options(gmb_matrix_flat PRIVATE -Wl,--allow-shlib-undefined)
 endif()
 
+# ── TIMESERIES FLAT: funzioni del runtime per i backend MANAGED (P/Invoke C#→C) ──────────────
+# Le gambe managed calcolavano MOVINGAVERAGE/EMA/DIFFERENCE/RETURNS/VOLATILITY/AUTOCORRELATION
+# in C# (CommonLib/Numerics/TimeSeries.cs), mentre VM/C e C99Native usano gmb_timeseries.c: due
+# implementazioni indipendenti. Questa lib espone le STESSE funzioni (inoltro puro, nessuna
+# logica) così il managed chiama la sorgente unica.
+add_library(gmb_ts_flat SHARED
+    src/gmb_ts_flat.c
+)
+target_include_directories(gmb_ts_flat PUBLIC include)
+target_link_libraries(gmb_ts_flat PRIVATE gmb_runtime)
+set_target_properties(gmb_ts_flat PROPERTIES
+    OUTPUT_NAME gmb_ts_flat
+    C_VISIBILITY_PRESET default
+    LIBRARY_OUTPUT_DIRECTORY "${GMB_LIBS_OUT}")
+if(APPLE)
+    target_link_options(gmb_ts_flat PRIVATE -Wl,-undefined,dynamic_lookup)
+else()
+    target_link_options(gmb_ts_flat PRIVATE -Wl,--allow-shlib-undefined)
+endif()
+
 # ── 3D WORLD: facciata `gmb_world_*` per i backend MANAGED (P/Invoke C#→C) ────────────────────
 # Il mondo 3D vive SOLO nel runtime C (gmb_3d_*, §0bis): IL/PCodeVM/VM-C non ne hanno una
 # copia e non devono averla. Questa lib espone la facciata di gmb_3d_cmd.c agli host C# (dotnet)

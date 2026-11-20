@@ -39,16 +39,7 @@ public static partial class Numerics
         ArgumentNullException.ThrowIfNull(data);
         if (window < 1) throw new ArgumentException("La finestra deve essere almeno 1.", nameof(window));
         if (data.Length < window) throw new ArgumentException("La serie è troppo corta per la finestra richiesta.");
-        var result = new double[data.Length - window + 1];
-        var sum = 0.0;
-        for (var i = 0; i < window; i++) sum += data[i];
-        result[0] = sum / window;
-        for (var i = window; i < data.Length; i++)
-        {
-            sum += data[i] - data[i - window];
-            result[i - window + 1] = sum / window;
-        }
-        return result;
+        return TimeSeriesNative.MovingAverage(data, window);
     }
 
     /// <summary>
@@ -67,11 +58,7 @@ public static partial class Numerics
     {
         if (data == null || data.Length == 0) throw new ArgumentException("Dati vuoti.");
         if (alpha is <= 0 or > 1) throw new ArgumentException("Alpha deve essere in (0,1].");
-        var ema = new double[data.Length];
-        ema[0] = data[0];
-        for (var i = 1; i < data.Length; i++)
-            ema[i] = alpha * data[i] + (1 - alpha) * ema[i - 1];
-        return ema;
+        return TimeSeriesNative.Ema(data, alpha);
     }
 
     /// <summary>
@@ -142,16 +129,7 @@ public static partial class Numerics
     {
         if (data == null) throw new ArgumentNullException(nameof(data));
         if (order < 1) throw new ArgumentException("L'ordine deve essere >= 1.");
-        var result = data.ToArray();
-        for (var k = 0; k < order; k++)
-        {
-            if (result.Length < 2) return [];
-            var diff = new double[result.Length - 1];
-            for (var i = 1; i < result.Length; i++)
-                diff[i - 1] = result[i] - result[i - 1];
-            result = diff;
-        }
-        return result;
+        return TimeSeriesNative.Difference(data, order);
     }
 
     /// <summary>
@@ -170,15 +148,7 @@ public static partial class Numerics
         if (data == null) throw new ArgumentNullException(nameof(data));
         if (data.Length < 2) return [];
         var log = type.Equals("LOG", StringComparison.InvariantCultureIgnoreCase);
-        var result = new double[data.Length - 1];
-        for (var i = 1; i < data.Length; i++)
-        {
-            if (log)
-                result[i - 1] = Math.Log(data[i] / data[i - 1]);
-            else
-                result[i - 1] = (data[i] - data[i - 1]) / data[i - 1];
-        }
-        return result;
+        return TimeSeriesNative.Returns(data, log);
     }
 
     /// <summary>
@@ -192,11 +162,9 @@ public static partial class Numerics
     /// </example>
     public static double Volatility(double[] data, string type = "SIMPLE")
     {
-        var returns = Returns(data, type);
-        if (returns.Length == 0) return 0.0;
-        var mean = returns.Average();
-        var var = returns.Average(x => (x - mean) * (x - mean));
-        return Math.Sqrt(var);
+        if (data == null || data.Length < 2) return 0.0;
+        var log = type.Equals("LOG", StringComparison.InvariantCultureIgnoreCase);
+        return TimeSeriesNative.Volatility(data, log);
     }
 
     /// <summary>
@@ -214,13 +182,7 @@ public static partial class Numerics
     {
         if (data == null) throw new ArgumentNullException(nameof(data));
         if (lag < 1 || lag >= data.Length) throw new ArgumentException("Lag non valido.");
-        var mean = data.Average();
-        double num = 0.0, den = 0.0;
-        for (var i = lag; i < data.Length; i++)
-            num += (data[i] - mean) * (data[i - lag] - mean);
-        foreach (var t in data)
-            den += (t - mean) * (t - mean);
-        return den != 0.0 ? num / den : 0.0;
+        return TimeSeriesNative.Autocorrelation(data, lag);
     }
 
     /// <summary>
