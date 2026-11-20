@@ -25,6 +25,25 @@ gmb_double_t* gmb_tsf_difference(gmb_double_t* data, gmb_int_t n, gmb_int_t orde
 double        gmb_tsf_volatility(gmb_double_t* data, gmb_int_t n, int log_returns);
 double        gmb_tsf_autocorrelation(gmb_double_t* data, gmb_int_t n, gmb_int_t lag);
 
+/* ── Onda 2: firme IDENTICHE ai kernel di gmb_timeseries.c (int, non gmb_int_t) ──────────────
+ * Qui non serve la larghezza di gmb_int_t: gli argomenti sono lunghezze/ordini/indici che il
+ * kernel stesso riceve come `int`. `*out_len` vale 0 quando il kernel rifiuta l'input. */
+double*       gmb_tsf_fracdiff(const double* x, int n, double d, int* out_len);
+double*       gmb_tsf_kalman1d(const double* z, int n, double a, double h, double q, double r, int* out_len);
+double*       gmb_tsf_stationary_bootstrap(const double* x, int n, int window, int seed, int* out_len);
+double        gmb_tsf_sample_entropy(const double* x, int n, int m, double r);
+double        gmb_tsf_approx_entropy(const double* x, int n, int m, double r);
+double        gmb_tsf_perm_entropy(const double* x, int n, int m, int lag);
+double        gmb_tsf_lz_complexity(const double* x, int n);
+double        gmb_tsf_lyapunov(const double* x, int n, int m, int tau);
+double*       gmb_tsf_bma_weights(const double* ic, int n, int* out_len);
+double        gmb_tsf_hmm_forward(const double* lpi, const double* lA, const double* lE, int K, int n);
+double*       gmb_tsf_hmm_viterbi(const double* lpi, const double* lA, const double* lE, int K, int n, int* outn);
+
+/* Covarianza di n_obs osservazioni × n_vars variabili (Bessel, n_obs-1): il kernel ritorna un
+ * jagged `row[i][j]`. Il chiamante libera OGNI riga e poi il vettore dei puntatori con free(). */
+gmb_double_t** gmb_tsf_covariance_obs(const double* const* obs, int n_obs, int n_vars);
+
 /* Errore dell'ultima chiamata (stringa nel runtime; valida finché non viene sovrascritta). */
 const char*   gmb_tsf_last_error(void);
 void          gmb_tsf_clear_error(void);

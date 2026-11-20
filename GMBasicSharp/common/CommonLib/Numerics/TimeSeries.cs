@@ -297,21 +297,7 @@ public static partial class Numerics
     {
         if (data == null || data.Length < 2)
             throw new ArgumentException("Dati insufficienti");
-        var n = data.Length;
-        var m = data[0].Length;
-        var means = new double[m];
-        for (var j = 0; j < m; j++)
-            means[j] = data.Average(row => row[j]);
-        var cov = new double[m, m];
-        for (var i = 0; i < m; i++)
-        for (var j = 0; j < m; j++)
-        {
-            double sum = 0;
-            for (var k = 0; k < n; k++)
-                sum += (data[k][i] - means[i]) * (data[k][j] - means[j]);
-            cov[i, j] = sum / (n - 1);
-        }
-        return cov;
+        return TimeSeriesNative.CovarianceMatrix(data);
     }
 
     /// <summary>
@@ -842,118 +828,25 @@ public static partial class Numerics
         return result;
     }
 
-    /// <summary>Hurst exponent via DFA (gmbstats gs_hurst_dfa).</summary>
+    /// <summary>Entropia campionaria (gmbstats gs_entropy_sample).</summary>
     public static double SampleEntropy(double[] x, int m, double r)
     {
-        var n = x.Length;
-        if (n < m + 1 || m < 1 || r <= 0) return double.NaN;
-        double Dist(int i, int j, int mm)
-        {
-            double d = 0;
-            for (var k = 0; k < mm; k++) d = Math.Max(d, Math.Abs(x[i + k] - x[j + k]));
-            return d;
-        }
-        double b = 0, a = 0;
-        for (var i = 0; i < n - m; i++)
-            for (var j = 0; j < n - m; j++)
-                if (i != j && Dist(i, j, m) <= r) b++;
-        for (var i = 0; i < n - m - 1; i++)
-            for (var j = 0; j < n - m - 1; j++)
-                if (i != j && Dist(i, j, m + 1) <= r) a++;
-        if (b == 0 || a == 0) return double.NaN;
-        return -Math.Log(a / b);
+        return TimeSeriesNative.SampleEntropy(x, m, r);
     }
 
     public static double ApproxEntropy(double[] x, int m, double r)
     {
-        var n = x.Length;
-        if (n < m + 1 || m < 1 || r <= 0) return double.NaN;
-        double Dist(int i, int j, int mm)
-        {
-            double d = 0;
-            for (var k = 0; k < mm; k++) d = Math.Max(d, Math.Abs(x[i + k] - x[j + k]));
-            return d;
-        }
-        double b = 0, a = 0;
-        for (var i = 0; i <= n - m; i++)
-            for (var j = 0; j <= n - m; j++)
-                if (Dist(i, j, m) <= r) b++;
-        for (var i = 0; i <= n - m - 1; i++)
-            for (var j = 0; j <= n - m - 1; j++)
-                if (Dist(i, j, m + 1) <= r) a++;
-        if (b == 0 || a == 0) return double.NaN;
-        return Math.Log(b / (n - m + 1.0)) - Math.Log(a / (n - m));
+        return TimeSeriesNative.ApproxEntropy(x, m, r);
     }
 
     public static double PermEntropy(double[] x, int m, int lag)
     {
-        var n = x.Length;
-        if (m < 2 || lag < 1 || n < m * lag) return double.NaN;
-        var patterns = new List<int[]>();
-        for (var i = 0; i <= n - m * lag; i++)
-        {
-            var order = Enumerable.Range(0, m).ToArray();
-            for (var j = 0; j < m; j++)
-                for (var k = j + 1; k < m; k++)
-                    if (x[i + order[k] * lag] < x[i + order[j] * lag])
-                        (order[j], order[k]) = (order[k], order[j]);
-            if (!patterns.Any(p => p.SequenceEqual(order))) patterns.Add((int[])order.Clone());
-        }
-        if (patterns.Count <= 1) return 0;
-        var npat = 1.0;
-        for (var q = 2; q <= m; q++) npat *= q;
-        return Math.Log(patterns.Count) / Math.Log(npat);
+        return TimeSeriesNative.PermEntropy(x, m, lag);
     }
 
     public static double Lyapunov(double[] x, int m, int tau)
     {
-        var n = x.Length;
-        if (n < m * tau + 8 || m < 2 || tau < 1) return double.NaN;
-        var M = n - (m - 1) * tau;
-        var theiler = Math.Max(m * tau, 10);
-        var d0 = new double[M];
-        var nbr = new int[M];
-        var lambdas = new double[M / 2 + 1];
-        for (var i = 0; i < M; i++)
-        {
-            double best = 1e300; var bj = -1;
-            for (var j = 0; j < M; j++)
-            {
-                if (Math.Abs(i - j) < theiler) continue;
-                double d2 = 0;
-                for (var q = 0; q < m; q++) { var dd = x[i + q * tau] - x[j + q * tau]; d2 += dd * dd; }
-                if (d2 > 0 && d2 < best) { best = d2; bj = j; }
-            }
-            d0[i] = best > 0 ? Math.Sqrt(best) : 1e-9;
-            nbr[i] = bj;
-        }
-        for (var k = 1; k < M / 2; k++)
-        {
-            double sum = 0; var cnt = 0;
-            for (var i = 0; i < M - k; i++)
-            {
-                var jj = nbr[i];
-                if (jj >= 0 && jj + k < M)
-                {
-                    double d2 = 0;
-                    for (var q = 0; q < m; q++) { var dd = x[i + k + q * tau] - x[jj + k + q * tau]; d2 += dd * dd; }
-                    if (d2 > 0) { sum += 0.5 * Math.Log(d2 / (d0[i] * d0[i])); cnt++; }
-                }
-            }
-            lambdas[k] = cnt > 0 ? sum / cnt : 0;
-        }
-        var k0 = 1;
-        var k1 = Math.Min(8, M / 2);
-        if (k1 > M / 2 - 1) k1 = M / 2 - 1;
-        if (k1 <= k0) k1 = k0 + 1;
-        double mx = 0, my = 0;
-        var cc = 0;
-        for (var k = k0; k < k1; k++) { mx += k; my += lambdas[k]; cc++; }
-        if (cc == 0) return 0;
-        mx /= cc; my /= cc;
-        double sxy = 0, sxx = 0;
-        for (var k = k0; k < k1; k++) { var dx = k - mx; var dy = lambdas[k] - my; sxy += dx * dy; sxx += dx * dx; }
-        return sxx > 0 ? sxy / sxx : 0;
+        return TimeSeriesNative.Lyapunov(x, m, tau);
     }
 
     // ── Johansen (parità gs_infer.c, eigensolver Jacobi) ────────────────────────────
@@ -1400,28 +1293,7 @@ public static partial class Numerics
         if (K < 1 || lE.Length % K != 0 || lA.Length < K * K) return double.NaN;
         var n = lE.Length / K;
         if (n < 1) return double.NaN;
-        var alpha = new double[n * K];
-        var scale = new double[n];
-        double loglik = 0;
-        for (var i = 0; i < K; i++) { alpha[i] = lpi[i] + lE[i]; scale[0] += alpha[i]; }
-        if (scale[0] < -1e300) return double.NegativeInfinity;
-        for (var i = 0; i < K; i++) alpha[i] -= scale[0];
-        loglik += scale[0];
-        for (var t = 1; t < n; t++)
-        {
-            scale[t] = 0;
-            for (var j = 0; j < K; j++)
-            {
-                var best = double.NegativeInfinity;
-                for (var i = 0; i < K; i++) { var v = alpha[(t - 1) * K + i] + lA[i * K + j]; if (v > best) best = v; }
-                alpha[t * K + j] = best + lE[t * K + j];
-                scale[t] += alpha[t * K + j];
-            }
-            if (scale[t] < -1e300) return double.NegativeInfinity;
-            for (var j = 0; j < K; j++) alpha[t * K + j] -= scale[t];
-            loglik += scale[t];
-        }
-        return loglik;
+        return TimeSeriesNative.HmmForward(lpi, lA, lE, K, n);
     }
 
     public static double[] HmmViterbi(double[] lpi, double[] lA, double[] lE)
@@ -1430,28 +1302,7 @@ public static partial class Numerics
         if (K < 1 || lE.Length % K != 0 || lA.Length < K * K) return Array.Empty<double>();
         var n = lE.Length / K;
         if (n < 1) return Array.Empty<double>();
-        var delta = new double[n * K];
-        var psi = new int[n * K];
-        var path = new double[n];
-        for (var i = 0; i < K; i++) delta[i] = lpi[i] + lE[i];
-        for (var t = 1; t < n; t++)
-            for (var j = 0; j < K; j++)
-            {
-                var bj = double.NegativeInfinity;
-                var bi = 0;
-                for (var i = 0; i < K; i++)
-                {
-                    var v = delta[(t - 1) * K + i] + lA[i * K + j];
-                    if (v > bj) { bj = v; bi = i; }
-                }
-                delta[t * K + j] = bj + lE[t * K + j];
-                psi[t * K + j] = bi;
-            }
-        var best = double.NegativeInfinity;
-        for (var j = 0; j < K; j++)
-            if (delta[(n - 1) * K + j] > best) { best = delta[(n - 1) * K + j]; path[n - 1] = j; }
-        for (var t = n - 2; t >= 0; t--) path[t] = psi[(t + 1) * K + (int)path[t + 1]];
-        return path;
+        return TimeSeriesNative.HmmViterbi(lpi, lA, lE, K, n);
     }
 
     public static (double[] Pi, double[] A, double[] Means, double[] Covs, double LogLikelihood)
@@ -1619,37 +1470,12 @@ public static partial class Numerics
     {
         var n = ic.Length;
         if (n == 0) return Array.Empty<double>();
-        var minic = ic.Min();
-        var w = new double[n];
-        double sum = 0;
-        for (var i = 0; i < n; i++) { w[i] = Math.Exp(-0.5 * (ic[i] - minic)); sum += w[i]; }
-        if (sum > 0) for (var i = 0; i < n; i++) w[i] /= sum;
-        return w;
+        return TimeSeriesNative.BmaWeights(ic);
     }
 
     public static double LzComplexity(double[] x)
     {
-        var n = x.Length;
-        if (n < 2) return double.NaN;
-        var sorted = (double[])x.Clone();
-        Array.Sort(sorted);
-        var med = sorted[n / 2];
-        var b = new int[n];
-        for (var i = 0; i < n; i++) b[i] = x[i] >= med ? 1 : 0;
-        var c = 0;
-        var ii = 0;
-        while (ii < n)
-        {
-            var maxlen = 0;
-            for (var start = 0; start < ii; start++)
-            {
-                var m = 0;
-                while (ii + m < n && start + m < ii && b[start + m] == b[ii + m]) m++;
-                if (m > maxlen) maxlen = m;
-            }
-            c++; ii += maxlen + 1;
-        }
-        return c;
+        return TimeSeriesNative.LzComplexity(x);
     }
 
     public static (double Theta, double Mu, double Sigma, double Phi, double HalfLife) OuFit(double[] x, double dt)
@@ -1684,42 +1510,14 @@ public static partial class Numerics
     {
         var n = x.Length;
         if (n == 0 || window < 1) return Array.Empty<double>();
-        var outv = new double[n];
-        var p = 1.0 / window;
-        var s = seed != 0 ? (uint)seed : 12345u;
-        var idx = (int)((s = s * 1103515245u + 12345u) % (uint)n);
-        outv[0] = x[idx];
-        for (var i = 1; i < n; i++)
-        {
-            var u = (double)((s = s * 1103515245u + 12345u) % 100000u) / 100000.0;
-            if (u > p)
-            {
-                var u2 = (double)((s = s * 1103515245u + 12345u) % 100000u) / 100000.0;
-                idx = (int)(u2 * n) % n;
-            }
-            else idx = (idx + 1) % n;
-            outv[i] = x[idx];
-        }
-        return outv;
+        return TimeSeriesNative.StationaryBootstrap(x, window, seed);
     }
 
     public static double[] Kalman1D(double[] z, double a, double h, double q, double r)
     {
         var n = z.Length;
         if (n == 0) return Array.Empty<double>();
-        var outv = new double[n];
-        var x = z[0];
-        var p = 1.0;
-        for (var k = 0; k < n; k++)
-        {
-            var xp = a * x;
-            var pp = a * p * a + q;
-            var gain = pp * h / (h * pp * h + r);
-            x = xp + gain * (z[k] - h * xp);
-            p = (1.0 - gain * h) * pp;
-            outv[k] = x;
-        }
-        return outv;
+        return TimeSeriesNative.Kalman1D(z, a, h, q, r);
     }
 
     public static (double Omega, double Alpha, double Beta) Garch11(double[] r)
@@ -1858,18 +1656,7 @@ public static partial class Numerics
     public static double[] FracDiff(double[] x, double d)
     {
         if (d < 0) return Array.Empty<double>();
-        var n = x.Length;
-        var w = new double[n];
-        var outv = new double[n];
-        w[0] = 1.0;
-        for (var k = 1; k < n; k++) w[k] = -w[k - 1] * (d - k + 1) / k;
-        for (var i = 0; i < n; i++)
-        {
-            double sum = 0;
-            for (var k = 0; k <= i; k++) sum += w[k] * x[i - k];
-            outv[i] = sum;
-        }
-        return outv;
+        return TimeSeriesNative.FracDiff(x, d);
     }
 
     public static double HurstDfa(double[] x, int minBox = 4)
