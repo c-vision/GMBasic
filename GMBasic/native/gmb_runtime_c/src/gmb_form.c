@@ -7,6 +7,7 @@
 #include "gmb_ui_gfx.h"
 #include "gmb_mouse_input.h"
 #include "gmb_c99gpm.h"
+#include "gmb_clock.h"
 #include <stdint.h>
 #include <time.h>
 static long long form_now_ms(void){ struct timespec ts; clock_gettime(CLOCK_MONOTONIC,&ts); return (long long)ts.tv_sec*1000 + ts.tv_nsec/1000000; }
@@ -3673,11 +3674,24 @@ void gmb_form_frame(int frame_ms)
 {
     gmb_form_autokey_tick();
     gmb_form_poll();
-    /* DOEVENTS (= frame 0) e. UN FRAME VERO: con una finestra reale si attende il
-     * refresh (~16 ms), cosi. il ciclo BASIC `DO WHILE ... : DOEVENTS : LOOP` non
-     * brucia la CPU (prima girava al 100%%). In headless resta non bloccante. */
-    if (frame_ms <= 0 && GMB_GFX_VIDEO_REAL()) frame_ms = 16;
-    form_park(frame_ms);
+    /* WINDOW PUMP n: attesa esplicita, semantica invariata. */
+    if (frame_ms > 0) { form_park(frame_ms); return; }
+    /* DOEVENTS (= frame 0): un frame del CLOCK a passo fisso (gmb_clock.h).
+     * Il clock misura il tempo reale trascorso dall'ultimo frame, lo converte in
+     * passi INTERI (clamp del blocco lungo + tetto al recupero) e dice quanto
+     * manca al confine del passo: si parcheggia solo quel resto, cosi' il ciclo
+     * BASIC `DO WHILE ... : DOEVENTS : LOOP` non brucia la CPU e il ritmo e'
+     * quello del passo, non quello del disegno. In headless non si aspetta
+     * nulla: il frame avanza di un passo e l'esecuzione resta deterministica. */
+    {
+        gmb_clock_t* ck = gmb_clock_frame_clock();
+        gmb_clock_begin_frame(ck);
+        if (GMB_GFX_VIDEO_REAL())
+        {
+            double rest = gmb_clock_rest(ck);
+            if (rest > 0.0005) form_park((int)(rest * 1000.0 + 0.5));
+        }
+    }
 }
 
 /* ---- WindowBase (analogo della Form di VB): base di TUTTE le finestre/dialog ---- */

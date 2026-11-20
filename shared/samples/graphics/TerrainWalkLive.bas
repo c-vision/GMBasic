@@ -7,6 +7,15 @@
 ' lo mostra. Il personaggio cammina sempre al centro (x = 300): a scorrere è il terreno, come in
 ' un platform a scorrimento orizzontale. Si esce con ESC o chiudendo la finestra.
 '
+' IL RITMO LO DETTA IL CLOCK, non il disegno: `DOEVENTS` chiude il frame e parcheggia fino al
+' confine del passo fisso (60 Hz di default), quindi nel ciclo non c'è nessun `SLEEP` e la velocità
+' non dipende da quanto è veloce la macchina. Il movimento è espresso in pixel di mondo al
+' SECONDO (`VELOCITA * CLOCK.DT()`): con `CLOCK FPS 120` i fotogrammi raddoppiano e ogni fotogramma
+' avanza metà strada, con `CLOCK SCALE` il mondo rallenta, con `CLOCK PAUSE` si ferma — senza
+' toccare una riga del disegno. `camd` tiene la posizione frazionaria perché a 120 Hz un passo
+' vale 2,5 pixel: arrotondando a ogni frame si perderebbe il resto. `CLOCK.DT()` è il passo
+' NOMINALE (1/FPS) e non misura il tempo reale, quindi il campione resta riproducibile.
+'
 ' Il mondo non esiste da nessuna parte: ogni quota è calcolata da CAM + x, dove CAM è il pixel di
 ' mondo sotto il bordo sinistro della finestra. Si può quindi scorrere all'infinito senza memoria
 ' e senza fine del terreno.
@@ -18,16 +27,17 @@
 ' il risultato è pieno a qualunque renderScale.
 '
 ' Per ricavarne un video: un PNG per fotogramma con `CANVAS SAVE 0, <file>` (handle 0 = pagina
-' visibile) e montaggio con `swift tools/swift/pngs2mp4.swift <cartella> <file.mp4> 30`.
+' visibile) e montaggio con `swift tools/swift/pngs2mp4.swift <cartella> <file.mp4> 60` (il
+' ciclo gira a 60 Hz: montare a 30 darebbe un filmato al doppio della velocità).
 '
 ' Uso:  tools/sh/gmb_c99native_run.sh "$PWD/shared/samples/graphics/TerrainWalkLive.bas" chk ""
 IMPORT GRAPHICS
+IMPORT CLOCK
 
 CONST W = 640                 ' larghezza della finestra (SCREEN 12 = 640x480)
 CONST H = 480
-CONST VELOCE = 5              ' pixel di mondo percorsi a ogni fotogramma
+CONST VELOCITA = 150          ' pixel di mondo al secondo (= i 5 per frame della versione a 30 fps)
 CONST EROE_X = 300            ' il personaggio resta a questa colonna
-CONST RITARDO = 33            ' millisecondi fra un fotogramma e l'altro (30 fps)
 CONST ORIZZONTE = 300         ' ultima riga di cielo puro
 
 ' --- colori: RGB impacchettato, non indici di tavolozza ---
@@ -83,22 +93,32 @@ SUB Personaggio(px AS INTEGER, py AS INTEGER, passo AS INTEGER)
   CALL Rett(px + 6, py - 40, px + 7, py - 28, C_GAMBE)
   CALL Rett(px + 22, py - 40, px + 23, py - 28, C_GAMBE)
 
-  ' gambe e piedi: si alternano ogni quattro fotogrammi
+  ' GAMBE: FALCATA, non passo laterale. Le due pose non devono differire per i piedi che si
+  ' aprono a destra e a sinistra (a 60 Hz si legge come un granchio che si sposta di fianco):
+  ' in ognuna una gamba è PIANTATA (distesa fino a terra, piede in avanti) e l'altra è SOLLEVATA
+  ' DIETRO (corta, piegata, piede più in alto e arretrato). Alternando quale delle due è
+  ' piantata, il personaggio cammina verso destra. La gamba sollevata sta sempre dietro (px+4..11)
+  ' e quella piantata sempre avanti (px+17..24): è la differenza di altezza dei piedi che dà la
+  ' falcata, non uno scorrimento orizzontale.
   IF passo MOD 2 = 0 THEN
-    CALL Rett(px + 8, py - 23, px + 11, py - 6, C_GAMBE)
-    CALL Rett(px + 8, py - 5, px + 13, py - 1, C_GAMBE)
-    CALL Rett(px + 18, py - 23, px + 21, py - 6, C_GAMBE)
-    CALL Rett(px + 16, py - 5, px + 21, py - 1, C_GAMBE)
+    ' sinistra dietro, sollevata (piede a mezz'aria, arretrato)
+    CALL Rett(px + 7, py - 23, px + 10, py - 13, C_GAMBE)
+    CALL Rett(px + 4, py - 12, px + 11, py - 9, C_GAMBE)
+    ' destra avanti, piantata a terra (piede che punta avanti)
+    CALL Rett(px + 18, py - 23, px + 21, py - 2, C_GAMBE)
+    CALL Rett(px + 17, py - 5, px + 24, py - 1, C_GAMBE)
   ELSE
-    CALL Rett(px + 6, py - 23, px + 9, py - 8, C_GAMBE)
-    CALL Rett(px + 3, py - 7, px + 9, py - 1, C_GAMBE)
-    CALL Rett(px + 18, py - 23, px + 21, py - 10, C_GAMBE)
-    CALL Rett(px + 18, py - 9, px + 23, py - 1, C_GAMBE)
+    ' sinistra avanti, piantata a terra (piede che punta avanti)
+    CALL Rett(px + 8, py - 23, px + 11, py - 2, C_GAMBE)
+    CALL Rett(px + 5, py - 5, px + 12, py - 1, C_GAMBE)
+    ' destra dietro, sollevata (piede a mezz'aria, arretrato)
+    CALL Rett(px + 18, py - 23, px + 21, py - 13, C_GAMBE)
+    CALL Rett(px + 18, py - 12, px + 25, py - 9, C_GAMBE)
   END IF
 END SUB
 
 ' --- un fotogramma: cielo, sole, nuvole, colline, terreno, personaggio ---
-SUB DisegnaFrame(cam AS LONG, frame AS INTEGER)
+SUB DisegnaFrame(cam AS LONG, pos AS DOUBLE)
   DIM x AS INTEGER, y AS INTEGER, dy AS INTEGER, dx AS INTEGER, y0 AS INTEGER
   DIM t AS DOUBLE, col AS LONG, passo AS INTEGER, py AS INTEGER
 
@@ -145,14 +165,18 @@ SUB DisegnaFrame(cam AS LONG, frame AS INTEGER)
     LINE (x, y0 + 7)-(x + 1, H - 1), C_TERRA, BF
   NEXT x
 
-  ' 6. il personaggio, sempre al centro, con i piedi sulla quota del mondo sotto di lui
+  ' 6. il personaggio, sempre al centro, con i piedi sulla quota del mondo sotto di lui.
+  ' La fase del passo viene dalla DISTANZA percorsa (una falcata ogni 20 px di mondo), non dal
+  ' numero del fotogramma: così il ritmo dei piedi resta lo stesso anche se il clock cambia Hz
+  ' (`CLOCK FPS 120` = passi da 1,25 px) o se un frame salta.
   py = Suolo(cam + EROE_X)
-  passo = frame \ 4
+  passo = INT(pos / 20) MOD 2
   CALL Personaggio(EROE_X, py, passo)
 END SUB
 
 SUB Main()
-  DIM f AS INTEGER, cam AS LONG
+  DIM cam AS LONG
+  DIM camd AS DOUBLE
   DIM Key$ AS STRING
 
   SCREEN 12
@@ -161,15 +185,18 @@ SUB Main()
 
   ' Una sola via d'uscita, la stessa per ESC e per la chiusura della finestra: quando l'utente
   ' chiude la finestra il runtime lo segnala come ESC, quindi `INKEY$` basta e non serve altro.
-  f = 0
+  ' Frame a passo fisso: `SYNC` mostra, `DOEVENTS` pompa gli eventi E ASPETTA il confine del
+  ' passo dell'orologio. Il mondo avanza di `VELOCITA * CLOCK.DT()` pixel di mondo, cioè della
+  ' stessa distanza al secondo qualunque sia il ritmo dei fotogrammi.
+  camd = 0
   DO
-    CALL DisegnaFrame(cam, f)
+    CALL DisegnaFrame(cam, camd)
     SYNC
+    DOEVENTS
     Key$ = INKEY$
     IF Key$ = CHR$(27) THEN EXIT DO
-    SLEEP RITARDO
-    cam = cam + VELOCE
-    f = f + 1
+    camd = camd + VELOCITA * CLOCK.DT()
+    cam = INT(camd)
   LOOP
 
   SCREEN 0

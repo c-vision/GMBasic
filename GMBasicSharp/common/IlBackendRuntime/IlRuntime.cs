@@ -18209,6 +18209,12 @@ public static double TextWidth(string s)
          * ma la voce va DICHIARATA lo stesso: l'elenco è la superficie del registro, non
          * l'inventario di ciò che ogni gamba sa fare. */
         ("debug.memory", "contabilità memoria del runtime C per tipo, report su stderr a fine run (1 = attiva)"),
+        /* Cap del present grafico (voce di `g_opt_core[]` dal 2026-11-20). La APPLICA il present
+         * C (`gmb_gfx_present_sdl.c`): qui è superficie del registro, perché le gambe managed
+         * non hanno quel cap — disegnano su SYNC, senza un loop che scarta frame. Dichiararla
+         * è obbligatorio come per `debug.memory`: `AI LIST OPTIONS` è l'elenco delle voci del
+         * registro, non l'inventario di ciò che ogni gamba sa fare. */
+        ("engine.present.max_fps", "cap del present grafico in fps (0 = segue il clock)"),
     ];
 
     /// <summary>AI LIST OPTIONS — comando-query (§1): stampa nome, descrizione e valore

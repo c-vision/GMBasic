@@ -1069,6 +1069,10 @@ static gmb_stmt_t* gmb_p_parse_stmt_impl(gmb_parser_t* p, bool* multiline)
     /* `WORLD` non è implicito: il comando richiede IMPORT WORLD (le altre gambe lo impongono
      * con il gate dei namespace in ParseStatement). Gli altri domini legacy restano com'erano. */
     if (t->kind == GMB_TOK_World && p && !gmb_p_require_import(p, "WORLD", line)) return NULL;
+    /* CLOCK (tempo a passo fisso, 2026-11-20): come WORLD il dominio non è implicito —
+     * il comando richiede IMPORT CLOCK (le letture qualificate sono gated nel parser delle
+     * espressioni, stesso messaggio). */
+    if (t->kind == GMB_TOK_Clock && p && !gmb_p_require_import(p, "CLOCK", line)) return NULL;
     if (gmb_p_is_domain_ns(t->kind) && !http_cmd && !ws_cmd && !ai_next_dot && !ns_var_use) { gmb_stmt_t* dm = gmb_p_parse_domain_stmt(p, line); if (dm) return dm; }
     /* BARE COMMAND FALLBACK: comandi RDD usati SENZA prefisso `RDD` (es. `USE ":memory:" VIA
      * "ARRAY" ALIAS T1`), quando RDD è importato/attivo (parity Parser bare-command fallback). */

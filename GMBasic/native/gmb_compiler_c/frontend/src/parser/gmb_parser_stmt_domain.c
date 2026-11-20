@@ -46,8 +46,9 @@ static const gmb_tokenkind_t g_domain_ns[] = {
     GMB_TOK_Matrix, GMB_TOK_Vector, GMB_TOK_Torch, GMB_TOK_Ai, GMB_TOK_Llm, GMB_TOK_Gmb, GMB_TOK_Train,
     GMB_TOK_WorkflowStatement,
     GMB_TOK_Http, GMB_TOK_WebSocket, GMB_TOK_Plot, GMB_TOK_Sprite, GMB_TOK_Shape, GMB_TOK_VectorDb,
-    GMB_TOK_World   /* motore 3D (P2): WORLD LOAD|FREE|TICK, SECMOVE, HEIGHT, ANIM,
+    GMB_TOK_World,  /* motore 3D (P2): WORLD LOAD|FREE|TICK, SECMOVE, HEIGHT, ANIM,
                      * SCROLL, LIGHTFX, LAMP — verbo per TokenKind, mai per lessema */
+    GMB_TOK_Clock   /* tempo a passo fisso (2026-11-20): CLOCK PAUSE|RESUME|SCALE|FPS */
 };
 #define G_DOMAIN_NS_COUNT ((int)(sizeof(g_domain_ns) / sizeof(g_domain_ns[0])))
 
@@ -257,6 +258,14 @@ gmb_stmt_t* gmb_p_parse_domain_stmt_ov(gmb_parser_t* p, int line, const char* ov
                     gmb_p_adv(p);
                     s->act_tk = GMB_TOK_AiListOptions;
                 }
+            }
+            /* CLOCK FPS: `FPS` NON è una keyword del lessico (i programmi esistenti usano `fps`
+             * come nome di variabile), quindi il verbo arriva come GMB_TOK_Identifier. Si
+             * normalizza QUI, una volta sola, nel TokenKind dedicato: a valle (emitter C99) il
+             * dispatch è per TokenKind, mai per lessema (§12). */
+            if (s->win_tk == GMB_TOK_Clock && v->kind == GMB_TOK_Identifier && s->mutex_action
+                && strcasecmp(s->mutex_action, "FPS") == 0) {
+                s->act_tk = GMB_TOK_Fps;
             }
             /* VECTOR ADD WRAP dest, src, min, max — verbo su DUE parole (canone C#
              * LinAlgVectorAddWrapCommand). Il lettore generico prende una sola parola:

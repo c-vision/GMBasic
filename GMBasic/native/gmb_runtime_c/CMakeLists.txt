@@ -389,6 +389,9 @@ set(GMB_ALL_SRCS
     src/gmb_3d_sector.c
     src/gmb_3d_move.c
     src/gmb_3d_time.c
+    # Base di tempo a passo fisso (include/gmb_clock.h): clock del ciclo grafico
+    # (DOEVENTS) e, insieme, punto unico dove si decide quanto tempo e' passato.
+    src/gmb_clock.c
     src/gmb_3d_cmd.c
     # F3 multimodale (2026-09-11): dominio immagini (decode/resize/crop/encode PNG condivisi).
     src/gmb_image.c
@@ -753,6 +756,19 @@ target_link_libraries(gmb_compress PRIVATE gmb_runtime)
 set_target_properties(gmb_compress PROPERTIES
     OUTPUT_NAME gmb_compress
     C_VISIBILITY_PRESET default)
+
+# CLOCK come libreria CONDIVISA per P/Invoke (gambe gestite IL/PCodeVM): esporta la
+# facciata gmb_clock_frame_* (include/gmb_clock.h). Compila LO STESSO sorgente del runtime
+# statico — nessuna logica duplicata — e non dipende da altro: l'orologio e' un accumulatore
+# di tempo, non un servizio del runtime.
+add_library(gmb_clock SHARED
+    src/gmb_clock.c
+)
+target_include_directories(gmb_clock PUBLIC include)
+set_target_properties(gmb_clock PROPERTIES
+    OUTPUT_NAME gmb_clock
+    C_VISIBILITY_PRESET default
+    LIBRARY_OUTPUT_DIRECTORY "${GMB_LIBS_OUT}")
 # Tray (icona barra SO): libreria CONDIVISA unica. Prima era compilata DENTRO gmb_runtime
 # (statica) → la classe objc GmbTrayTarget finiva in OGNI lib che linkava gmb_runtime
 # (gmb_gfx, gmb_pkg) + nel dylib caricato dal C# → "Class implemented in both" + copie
@@ -1478,6 +1494,11 @@ add_executable(gmb_gaps_selfcheck tests/gmb_gaps_selfcheck.c)
 target_link_libraries(gmb_gaps_selfcheck PRIVATE gmb_runtime)
 target_include_directories(gmb_gaps_selfcheck PRIVATE include)
 add_test(NAME gmb_gaps_selfcheck COMMAND gmb_gaps_selfcheck)
+
+add_executable(gmb_clock_selfcheck tests/gmb_clock_selfcheck.c)
+target_link_libraries(gmb_clock_selfcheck PRIVATE gmb_runtime)
+target_include_directories(gmb_clock_selfcheck PRIVATE include)
+add_test(NAME gmb_clock_selfcheck COMMAND gmb_clock_selfcheck)
 
 add_executable(gmb_sb_selfcheck tests/gmb_sb_selfcheck.c)
 target_link_libraries(gmb_sb_selfcheck PRIVATE gmb_runtime)

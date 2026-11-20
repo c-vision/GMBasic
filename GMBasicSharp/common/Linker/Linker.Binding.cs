@@ -1307,6 +1307,21 @@ public static partial class Linker
                     ScopeId = currentScopeId
                 };
 
+            // CLOCK (tempo a passo fisso): stesso trattamento di WORLD — il comando si risolve nel
+            // namespace CLOCK e gli argomenti si bindano; il dispatch nei backend è per TokenKind
+            // del verbo, quindi l'ID del simbolo non entra nella semantica.
+            case ClockCommandStmt c:
+                var cSyms = program.Symbols.GetSymbolIdsByNamespace("CLOCK");
+                var cId = cSyms?.Select(id => program.Symbols.GetSymbol(id))
+                    .FirstOrDefault(sym =>
+                        sym.OriginalName.Equals(c.Command.Lexeme, StringComparison.OrdinalIgnoreCase))?.Id ?? -1;
+                return c with
+                {
+                    Arguments = [..c.Arguments.Select(a => BindExpression(a, program, isStrict))],
+                    CommandSymbolId = cId,
+                    ScopeId = currentScopeId
+                };
+
             case SaveScreenStmt s:
                 return s with { Name = BindExpression(s.Name, program, isStrict) };
 

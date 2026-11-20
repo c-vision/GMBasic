@@ -6644,6 +6644,10 @@ int emit_bf_matrix(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t t
  * (questo TU non include l'header interno: le dichiarazioni stanno qui). */
 void emit_world_domain(ctx_t* c, gmb_stmt_t* s);
 int emit_bf_world(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk, gmb_expr_t** args, int nargs, int line);
+/* Tempo a passo fisso (2026-11-20): dominio CLOCK e letture CLOCK.* — definiti in
+ * gmb_c99_emit_clock.c (questo TU non include l'header interno: le dichiarazioni stanno qui). */
+void emit_clock_domain(ctx_t* c, gmb_stmt_t* s);
+int emit_bf_clock(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk, gmb_expr_t** args, int nargs, int line);
 int emit_bf_rdd(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk, gmb_expr_t** args, int nargs, int line);
 int emit_bf_dbf(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk, gmb_expr_t** args, int nargs, int line);
 int emit_bf_ledger(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk, gmb_expr_t** args, int nargs, int line);
@@ -7840,6 +7844,11 @@ static const gmb_bf_row_t gmb_bf_composite[] = {
     { NULL, GMB_TOK_WorldTime, emit_bf_world },
     { NULL, GMB_TOK_FloorZ,   emit_bf_world },
     { NULL, GMB_TOK_CeilZ,    emit_bf_world },
+    /* Tempo a passo fisso (2026-11-20): letture dell'orologio — CLOCK.DT/ALPHA/FPS/SCALE. */
+    { NULL, GMB_TOK_ClockDt,    emit_bf_clock },
+    { NULL, GMB_TOK_ClockAlpha, emit_bf_clock },
+    { NULL, GMB_TOK_ClockFps,   emit_bf_clock },
+    { NULL, GMB_TOK_ClockScale, emit_bf_clock },
     { NULL, GMB_TOK_MatrixColumnCount, emit_bf_matrix },
     { NULL, GMB_TOK_MatrixIsLowerTriangular, emit_bf_matrix },
     { NULL, GMB_TOK_MatrixIsUpperTriangular, emit_bf_matrix },
@@ -31450,6 +31459,7 @@ static void st_domain(ctx_t* c, gmb_stmt_t* s) {
         if (wnk == GMB_TOK_Vector) { emit_lin_vector_domain(c, s); return; }
         if (wnk == GMB_TOK_Matrix) { emit_lin_matrix_domain(c, s); return; }
         if (wnk == GMB_TOK_World) { emit_world_domain(c, s); return; }   /* motore 3D (P2) */
+        if (wnk == GMB_TOK_Clock) { emit_clock_domain(c, s); return; }   /* tempo a passo fisso (2026-11-20) */
         if (wnk == GMB_TOK_Torch) { emit_torch_domain(c, s); return; }
         c99_fail(c, s->line, "statement di dominio '%s' non ancora supportato dall'emitter nativo", s->win_name ? s->win_name : "?");
         return;
@@ -37668,6 +37678,9 @@ static int gmb_c99_emit_once(const gmb_program_t* prog, char** out_src, char** e
     sb_put(&fin, "#include \"gmb_tray.h\"\n");
     /* Motore 3D (P2): dichiarazioni della facciata `gmb_world_*` (gmb_3d_cmd.c). */
     sb_put(&fin, "#include \"gmb_3d.h\"\n");
+    /* Tempo a passo fisso (2026-11-20): facciata gmb_clock_frame_dt/alpha/fps/scale/pause/set_*
+     * chiamata dall'emissione del dominio CLOCK (gmb_c99_emit_clock.c). */
+    sb_put(&fin, "#include \"gmb_clock.h\"\n");
     sb_put(&fin, "#include \"gmb_module.h\"\n");
     /* CONVERT/DOCUMENT: header di dominio emessi SOLO se il programma usa il namespace
      * (gmb_doc.h è in gmb_doc_c/include; gmb_md.h in gmb_runtime_c/include). */

@@ -26,6 +26,7 @@
 #include "gmb_network.h"
 #include "gmb_matrix.h"
 #include "gmb_3d.h"   /* motore 3D: facciata gmb_world_* (gmb_3d_cmd.c) — stesso runtime delle altre gambe */
+#include "gmb_clock.h" /* tempo a passo fisso: facciata gmb_clock_frame_* (gmb_clock.c) */
 #include "gmb_ml.h"
 #include "gmb_torch.h"
 #include "gmb_graph.h"
@@ -5886,6 +5887,33 @@ static void vm_sys_world_lamp(gmb_vm_t* vm, gmb_task_t* task, int code, int argc
                              vm_world_num(&a[3]), vm_world_num(&a[4]));
 }
 
+/* ── TEMPO A PASSO FISSO / CLOCK (2026-11-20) ────────────────────────────────────────────
+ * Comandi del dominio CLOCK. Come per WORLD, la VM/C non ha stato proprio: l'orologio vive nel
+ * runtime condiviso (gmb_clock.c) e qui si chiama la STESSA facciata delle altre gambe (§0bis).
+ * Statement: nessun push (un comando non ritorna un valore, §1). */
+static void vm_sys_clock_pause(gmb_vm_t* vm, gmb_task_t* task, int code, int argc) {
+    (void)vm; (void)task; (void)code; (void)argc;
+    gmb_clock_frame_pause(1);
+}
+static void vm_sys_clock_resume(gmb_vm_t* vm, gmb_task_t* task, int code, int argc) {
+    (void)vm; (void)task; (void)code; (void)argc;
+    gmb_clock_frame_pause(0);
+}
+static void vm_sys_clock_scale(gmb_vm_t* vm, gmb_task_t* task, int code, int argc) {
+    (void)vm; (void)code;
+    gmb_stack_entry_t a[1];
+    int n = argc > 1 ? 1 : argc;
+    vm_pop_args_ordered(task, a, n);
+    if (n >= 1) gmb_clock_frame_set_scale(vm_world_num(&a[0]));
+}
+static void vm_sys_clock_fps(gmb_vm_t* vm, gmb_task_t* task, int code, int argc) {
+    (void)vm; (void)code;
+    gmb_stack_entry_t a[1];
+    int n = argc > 1 ? 1 : argc;
+    vm_pop_args_ordered(task, a, n);
+    if (n >= 1) gmb_clock_frame_set_fps(vm_world_num(&a[0]));
+}
+
 static void vm_sys_headless_big(gmb_vm_t* vm, gmb_task_t* task, int code, int argc) {
     (void)vm;
     gmb_stack_entry_t a[4];
@@ -7018,6 +7046,11 @@ static const vm_sys_row VM_SYS_TBL[] = {
     { GMB_SC_WORLD_SCROLL, vm_sys_world_scroll },
     { GMB_SC_WORLD_LIGHTFX, vm_sys_world_lightfx },
     { GMB_SC_WORLD_LAMP, vm_sys_world_lamp },
+    /* tempo a passo fisso (2026-11-20): comandi CLOCK → facciata gmb_clock_frame_* */
+    { GMB_SC_CLOCK_PAUSE, vm_sys_clock_pause },
+    { GMB_SC_CLOCK_RESUME, vm_sys_clock_resume },
+    { GMB_SC_CLOCK_SCALE, vm_sys_clock_scale },
+    { GMB_SC_CLOCK_FPS, vm_sys_clock_fps },
     { GMB_SC_DRAW_TEXT, vm_sys_headless_big },
 
     /* passo 4: event/memmap/lock/iowatch/json/team_distill/goskip/workflow/torch */
@@ -16576,7 +16609,7 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                             /* Estensioni array automatiche: serve il percorso a slot (arita' nativa
                              * variabile con il rango dell'array). */
                             const int extSlots = arrayMask != 0;   // percorso a slot (libffi) anche per NATIVE: nativeAbi sopprime solo le estensioni
-                            if (!hasAnyUdt && !extSlots && retUdtFieldCount == 0 && !retIsString &&
+                            if (!hasAnyUdt && !extSlots && retUdtFieldCount == 0 &&
                                 (unsigned)scalarKindMask != (unsigned)(kind == 1 ? fullMaskForArgc : 0))
                             {
                                 /* 2026-11-02: firma mista anche con slot puntatore. Gli
@@ -16679,7 +16712,7 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                                  * riusato, es. vec_label) -> copia IMMEDIATA in una nuova
                                  * stringa BASIC via gmb_str_cstr (malloc+memcpy+NUL), mai
                                  * tenuto vivo oltre questo punto. */
-                                retStr = gmb_str_cstr((const char*)(intptr_t)r);
+                                retStr = gmb_str_cstr((const char*)(intptr_t)(mixedDispatch ? (int64_t)result : r));
                             }
                             /* copy-out: ricopia lo scratch (eventualmente scritto dalla
                              * funzione nativa) dentro gli item della lista, poi libera. Per i

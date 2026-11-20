@@ -2475,4 +2475,14 @@ public enum TokenKind
     // WORLD.TIME() (2026-11-19, ponte C#): orologio del mondo. Token DEDICATO — `Time` è già
     // TIME() del linguaggio e un solo TokenKind non può significare due cose (§12).
     WorldTime,
+    // CLOCK (2026-11-20): dominio del TEMPO A PASSO FISSO. In coda (ordinali canonici): mai
+    // inserire nel mezzo. `Pause`, `Resume` e `Scale` esistono già e sono i verbi riusati;
+    // `Fps` è il verbo FPS, che resta una SOFT keyword (i programmi esistenti usano `fps`
+    // come nome di variabile): il parser lo normalizza nel TokenKind dedicato.
+    Clock,
+    Fps,
+    ClockDt,
+    ClockAlpha,
+    ClockFps,
+    ClockScale,
   }

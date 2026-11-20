@@ -100,6 +100,10 @@ void emit_speed_domain(ctx_t* c, gmb_stmt_t* s);
 void emit_world_domain(ctx_t* c, gmb_stmt_t* s);
 int  emit_bf_world(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk,
                    gmb_expr_t** args, int nargs, int line);
+/* Tempo a passo fisso (2026-11-20): dominio CLOCK (comandi) e letture CLOCK.DT/ALPHA/FPS/SCALE */
+void emit_clock_domain(ctx_t* c, gmb_stmt_t* s);
+int  emit_bf_clock(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk,
+                   gmb_expr_t** args, int nargs, int line);
 void sb_putn(sb_t* b, const char* s, size_t n);
 void sb_put(sb_t* b, const char* s);
 void sb_printf(sb_t* b, const char* fmt, ...);

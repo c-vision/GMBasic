@@ -508,6 +508,12 @@ public sealed partial class IlProgramCompiler
             case TokenKind.WorldTime: EmitWorldReadNoArg(expr, nameof(IlRuntime.WorldTime)); break;
             case TokenKind.FloorZ: EmitWorldReadSector(expr, nameof(IlRuntime.WorldFloorZ)); break;
             case TokenKind.CeilZ: EmitWorldReadSector(expr, nameof(IlRuntime.WorldCeilZ)); break;
+            // CLOCK (tempo a passo fisso): quattro letture senza argomenti, tutte inoltrate al
+            // runtime C. Il tempo vive là: nessuna copia managed (§0bis).
+            case TokenKind.ClockDt: EmitWorldReadNoArg(expr, nameof(IlRuntime.ClockDt)); break;
+            case TokenKind.ClockAlpha: EmitWorldReadNoArg(expr, nameof(IlRuntime.ClockAlpha)); break;
+            case TokenKind.ClockFps: EmitWorldReadNoArg(expr, nameof(IlRuntime.ClockFpsValue)); break;
+            case TokenKind.ClockScale: EmitWorldReadNoArg(expr, nameof(IlRuntime.ClockScaleValue)); break;
             case TokenKind.MatrixColumnCount: EmitMatrixValueOrHandleUnary(expr, nameof(IlRuntime.MatrixValueColumnCount), RuntimeMethod(nameof(IlRuntime.MatrixColumnCount))); break;
             case TokenKind.MatrixClone: EmitMatrixUnaryValue(expr, RuntimeMethod(nameof(IlRuntime.MatrixCloneValue)), nameof(IlRuntime.MatrixValueClone)); break;
             // MATRIX F2b (2026-11-09): ROW/COL/ISCONTIGUOUS.

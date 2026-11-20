@@ -340,6 +340,10 @@ procedure,BROWSER,Snapshot,BrowserSnapshot
 procedure,BROWSER,Start,BrowserStart
 procedure,CHART,CREATE,Create
 procedure,CLIP,GET,Get
+procedure,CLOCK,ALPHA,ClockAlpha
+procedure,CLOCK,DT,ClockDt
+procedure,CLOCK,FPS,ClockFps
+procedure,CLOCK,SCALE,ClockScale
 procedure,COMPUTER,Click,ComputerClick
 procedure,COMPUTER,DoubleClick,ComputerDoubleClick
 procedure,COMPUTER,HotKey,ComputerHotKey
@@ -1235,6 +1239,7 @@ command,,CIRCLE,Circle
 command,,CLEAR,Clear
 command,,CLIP,Clip
 command,,CLOCATE,CLocate
+command,,CLOCK,Clock
 command,,CLOSE,Close
 command,,CLS,Cls
 command,,COLOR,Color

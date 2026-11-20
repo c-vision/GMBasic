@@ -4288,6 +4288,7 @@ if (args.Length >= 3) { var file = args[0]?.ToString() ?? ""; var section = args
         (TOOLBuiltInFunctions, (self, t, fn, a) => self.ExecuteBuiltInTool(t, fn, a)),
         (CoreLinalgBuiltInFunctions, (self, t, fn, a) => self.ExecuteLinAlgBuiltIn(t, fn, a)),
         (WorldBuiltInFunctions, (self, t, fn, a) => self.ExecuteBuiltInWorld(t, fn, a)),   // motore 3D
+        (ClockBuiltInFunctions, (self, t, fn, a) => self.ExecuteBuiltInClock(t, fn, a)),   // tempo a passo fisso
         });
 
     /// <summary>Chiama <see cref="ExecuteBuiltIn"/> instradando un'eccezione del builtin nello

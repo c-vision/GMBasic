@@ -6306,6 +6306,34 @@
       "params": []
     },
     {
+      "ns": "CLOCK",
+      "name": "ALPHA",
+      "fn": true,
+      "return": "double",
+      "params": []
+    },
+    {
+      "ns": "CLOCK",
+      "name": "DT",
+      "fn": true,
+      "return": "double",
+      "params": []
+    },
+    {
+      "ns": "CLOCK",
+      "name": "FPS",
+      "fn": true,
+      "return": "double",
+      "params": []
+    },
+    {
+      "ns": "CLOCK",
+      "name": "SCALE",
+      "fn": true,
+      "return": "double",
+      "params": []
+    },
+    {
       "ns": "COMPUTER",
       "name": "Click",
       "fn": true,

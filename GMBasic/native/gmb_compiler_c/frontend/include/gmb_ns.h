@@ -80,6 +80,10 @@ static const char* const gmb_ns_names[] = {
      * `IMPORT WORLD` senza cercarlo su disco e a scomporre `WORLD.TIME()` in (ns, membro).
      * Senza IMPORT il dominio è chiuso dal gate `gmb_p_require_import`. */
     "WORLD",
+    /* Tempo a passo fisso (2026-11-20): namespace BUILTIN (StdLib.Clock.cs), non implicito —
+     * riconosce `IMPORT CLOCK` e scompone `CLOCK.DT()` in (ns, membro). Come WORLD, senza
+     * IMPORT sia il comando sia le letture sono chiuse dal gate. */
+    "CLOCK",
     /* Second Brain (2026-09-01): namespace autonomi AI/GRAPH/VAULT/NOTE/INGEST. */
     "GRAPH",
     "BRAINS",

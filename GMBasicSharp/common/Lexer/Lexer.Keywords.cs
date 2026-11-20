@@ -776,6 +776,9 @@ public sealed partial class Lexer
         { "SCALE", TokenKind.Scale },
         { "PUSH", TokenKind.Push },
         { "POP", TokenKind.Pop },
+        // Tempo a passo fisso (2026-11-20): namespace del dominio CLOCK. I verbi PAUSE/RESUME/
+        // SCALE sono keyword già esistenti; FPS resta una soft keyword (dichiarata nel parser).
+        { "CLOCK", TokenKind.Clock },
         { "WORLD", TokenKind.World },
         // Motore 3D (2026-11-19): verbi del dominio WORLD. Keyword dedicate, così il parser
         // dispatcha per TokenKind (§12) e mai per lessema.

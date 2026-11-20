@@ -882,6 +882,26 @@ internal sealed partial class PCodeProcessor
                 CommonLib.World3DNative.Lamp(x, y, z, radius, level);
                 break;
             }
+            // --- TEMPO A PASSO FISSO / CLOCK (2026-11-20): comandi. L'orologio vive SOLO nel
+            // runtime C: qui si inoltra alla facciata gmb_clock_frame_* (CommonLib.ClockNative).
+            case SysCall.CLOCK_PAUSE:
+                CommonLib.ClockNative.Pause(1);
+                break;
+            case SysCall.CLOCK_RESUME:
+                CommonLib.ClockNative.Pause(0);
+                break;
+            case SysCall.CLOCK_SCALE:
+            {
+                var scale = PopNum(task);
+                CommonLib.ClockNative.SetScale(scale);
+                break;
+            }
+            case SysCall.CLOCK_FPS:
+            {
+                var fps = PopNum(task);
+                CommonLib.ClockNative.SetFps(fps);
+                break;
+            }
             case SysCall.PALETTE_USE:
             {
                 var name = PopString(task) ?? "";

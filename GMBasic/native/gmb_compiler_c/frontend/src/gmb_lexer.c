@@ -243,6 +243,9 @@ static const gmb_keyword_t gmb_keywords[] = {
     GMB_KEYWORD_ENTRY("WAITKEY", WaitKey),
     GMB_KEYWORD_ENTRY("SWAP", Swap),
     GMB_KEYWORD_ENTRY("OPEN", Open),
+    /* Tempo a passo fisso (2026-11-20): namespace del dominio CLOCK. I verbi PAUSE/RESUME/
+     * SCALE sono keyword gia' presenti; FPS resta una soft keyword normalizzata dal parser. */
+    GMB_KEYWORD_ENTRY("CLOCK", Clock),
     GMB_KEYWORD_ENTRY("CLOSE", Close),
     GMB_KEYWORD_ENTRY("FOCUS", Focus),
     GMB_KEYWORD_ENTRY("PASTE", Paste),

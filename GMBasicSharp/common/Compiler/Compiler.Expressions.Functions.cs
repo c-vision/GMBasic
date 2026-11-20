@@ -936,6 +936,9 @@ public sealed partial class Compiler
         { TokenKind.Moving, BuiltInFunction.WORLD_MOVING }, { TokenKind.LightNow, BuiltInFunction.WORLD_LIGHTNOW },
         { TokenKind.WorldTime, BuiltInFunction.WORLD_TIME },
         { TokenKind.FloorZ, BuiltInFunction.WORLD_FLOORZ }, { TokenKind.CeilZ, BuiltInFunction.WORLD_CEILZ },
+        // CLOCK (tempo a passo fisso): letture dell'orologio — stato solo nel runtime C.
+        { TokenKind.ClockDt, BuiltInFunction.CLOCK_DT }, { TokenKind.ClockAlpha, BuiltInFunction.CLOCK_ALPHA },
+        { TokenKind.ClockFps, BuiltInFunction.CLOCK_FPS }, { TokenKind.ClockScale, BuiltInFunction.CLOCK_SCALE },
         // FINANCE varianti (2026-08-06). YIELD riusa TokenKind.Yield (comando task YIELD e'
         // statement-only via ParseYieldStatement, nessun conflitto con la funzione qualificata).
         { TokenKind.Yield, BuiltInFunction.YIELD },         // MESSAGE() — TokenKind.Message riusato: il comando TEAM.MESSAGE e' statement-only

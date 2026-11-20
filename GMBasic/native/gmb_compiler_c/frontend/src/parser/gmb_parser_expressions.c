@@ -1711,9 +1711,11 @@ gmb_expr_t* gmb_p_parse_primary(gmb_parser_t* p)
                  * gestisce i conflitti per namespace (SHARPERATIO in METRICS vs PORTFOLIO)
                  * e i lexeme ≠ nome enum (EXPECTEDRETURN → PortfolioExpectedReturn).
                  * Fallback SOLO su nomi enum (chiavi canoniche) — mai keyword del lexer. */
-                /* `WORLD` non è implicito: anche le LETTURE qualificate (`WORLD.TIME()`,
-                 * `WORLD.MOVING(1)`, `WORLD.FLOORZ/CEILZ/LIGHTNOW`) richiedono IMPORT WORLD. */
-                if (nsbuf[0] && strcasecmp(nsbuf, "WORLD") == 0 && !gmb_p_require_import(p, "WORLD", line))
+                /* `WORLD` e `CLOCK` non sono impliciti: anche le LETTURE qualificate
+                 * (`WORLD.TIME()`, `WORLD.MOVING(1)`, `CLOCK.DT()`, `CLOCK.ALPHA()`, …) richiedono
+                 * il loro IMPORT, come i comandi (stessa regola e stesso messaggio). */
+                if (nsbuf[0] && (strcasecmp(nsbuf, "WORLD") == 0 || strcasecmp(nsbuf, "CLOCK") == 0)
+                    && !gmb_p_require_import(p, nsbuf, line))
                     return gmb_expr_num(0, line);
                 int ct = -1;
                 if (nsbuf[0]) {

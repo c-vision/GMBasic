@@ -356,6 +356,7 @@ public sealed partial class Compiler
             case VectorCommandStmt vcs: VisitVectorCommandStatement(vcs); break;
             case MatrixCommandStmt mcs: VisitMatrixCommandStatement(mcs); break;
             case WorldCommandStmt wcs: VisitWorldCommandStatement(wcs); break;   // motore 3D (P2)
+            case ClockCommandStmt ccs: VisitClockCommandStatement(ccs); break;   // tempo a passo fisso
 
             // --- PALETTE COMMANDS (console/graphics, handled by GPM at runtime) ---
             case PaletteStmt ps: EmitPaletteStatement(ps); break;

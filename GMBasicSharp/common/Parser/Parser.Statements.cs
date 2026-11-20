@@ -775,6 +775,9 @@ public sealed partial class Parser
                     // disponibili, quindi vale il controllo generico qui sopra (`_program.Namespaces`)
                     // — senza IMPORT WORLD il comando non arriva a questo case.
                     case TokenKind.World: return [DispatchWorldStatement(this, "WORLD")];
+                    // Tempo a passo fisso (2026-11-20). Come WORLD: nessun gate dedicato —
+                    // senza IMPORT CLOCK il comando non arriva a questo case.
+                    case TokenKind.Clock: return [DispatchClockStatement(this, "CLOCK")];
                     case TokenKind.Vector: return [DispatchVectorStatement(this, "VECTOR")];
                     case TokenKind.VectorDb: return [ParseVectorDbStatement(this, "VECTORDB")];
                     case TokenKind.Ai: return [ParseAiStatement(this, "AI")];

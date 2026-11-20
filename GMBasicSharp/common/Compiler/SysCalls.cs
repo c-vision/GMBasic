@@ -535,6 +535,14 @@ public enum SysCall : ushort
     WORLD_LAMP = 470,       // (x, y, z, raggio, livello)
     WORLD_SECMOVE_CEIL = 471, // (settore, v, pavimento, soffitto): arità diversa da SECMOVE,
                               // quindi syscall separata — l'esecutore non riceve l'argc.
+
+    // --- TEMPO A PASSO FISSO / CLOCK (2026-11-20): comandi del dominio CLOCK. Stato solo nel
+    // runtime C: PCodeProcessor e gmb_vm_core.c inoltrano alla facciata gmb_clock_frame_* (§0bis).
+    // 472..475 restano al delegate CONSOLE (nessun codice C# li usa): si parte da 476. ---
+    CLOCK_PAUSE = 476,      // ()        → gmb_clock_frame_pause(1)
+    CLOCK_RESUME = 477,     // ()        → gmb_clock_frame_pause(0)
+    CLOCK_SCALE = 478,      // (secondi) → gmb_clock_frame_set_scale
+    CLOCK_FPS = 479,        // (freq)    → gmb_clock_frame_set_fps
 }
 
 /// <summary>

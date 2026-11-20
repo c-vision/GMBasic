@@ -1121,14 +1121,17 @@ public sealed partial class Parser
                     {
                         var namespaceToken = qne.Parts[0];
                         var memberToken = qne.Parts.Last();
-                        // `WORLD` non è implicito: le letture qualificate (`WORLD.TIME()`,
-                        // `WORLD.MOVING(1)`, …) richiedono IMPORT WORLD come i comandi. Gli altri
-                        // namespace restano risolvibili dal registro senza IMPORT (TRADING.PORTFOLIO.*).
-                        if (string.Equals(namespaceToken.Lexeme, "WORLD", StringComparison.OrdinalIgnoreCase)
-                            && !IsNamespaceLoaded("WORLD"))
+                        // `WORLD` e `CLOCK` non sono impliciti: le letture qualificate
+                        // (`WORLD.TIME()`, `CLOCK.DT()`, …) richiedono il loro IMPORT come i
+                        // comandi. Gli altri namespace restano risolvibili dal registro senza
+                        // IMPORT (TRADING.PORTFOLIO.*).
+                        if ((string.Equals(namespaceToken.Lexeme, "WORLD", StringComparison.OrdinalIgnoreCase)
+                             || string.Equals(namespaceToken.Lexeme, "CLOCK", StringComparison.OrdinalIgnoreCase))
+                            && !IsNamespaceLoaded(namespaceToken.Lexeme))
                         {
+                            var nsi = namespaceToken.Lexeme.ToUpperInvariant();
                             throw CreateError(namespaceToken,
-                                "namespace non importato: WORLD (aggiungi IMPORT WORLD).");
+                                $"namespace non importato: {nsi} (aggiungi IMPORT {nsi}).");
                         }
                         var memberName = memberToken.Lexeme;
 

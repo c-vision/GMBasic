@@ -18,6 +18,7 @@
 #include "gmb_fonts.h"  /* namespace FONTS: runtime condiviso, nessuna logica qui */
 #include "gmb_runtime.h"
 #include "gmb_3d.h"   /* motore 3D: letture WORLD.* → facciata gmb_world_* (gmb_3d_cmd.c) */
+#include "gmb_clock.h" /* tempo a passo fisso: letture CLOCK.* → facciata gmb_clock_frame_* */
 #include "gmb_llm_tok.h"
 #include "gmb_builtin_registry.h"
 #include "gmb_grep.h"
@@ -11400,6 +11401,30 @@ static void gmb_bf_world_ceilz(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, 
     bout->result = gmb_world_ceil(argc >= 1 ? (int)vm_num(&args[0]) : 0);
 }
 
+/* ── TEMPO A PASSO FISSO / CLOCK (2026-11-20) ────────────────────────────────────────────
+ * Letture del dominio CLOCK. Come le altre gambe: nessuno stato qui, si chiama la facciata
+ * `gmb_clock_frame_*` del runtime condiviso (gmb_clock.c). Nessuna accetta argomenti. */
+static void gmb_bf_clock_dt(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
+{
+    (void)vm; (void)task; (void)func_code; (void)args; (void)argc;
+    bout->result = gmb_clock_frame_dt();
+}
+static void gmb_bf_clock_alpha(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
+{
+    (void)vm; (void)task; (void)func_code; (void)args; (void)argc;
+    bout->result = gmb_clock_frame_alpha();
+}
+static void gmb_bf_clock_fps(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
+{
+    (void)vm; (void)task; (void)func_code; (void)args; (void)argc;
+    bout->result = gmb_clock_frame_fps();
+}
+static void gmb_bf_clock_scale(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
+{
+    (void)vm; (void)task; (void)func_code; (void)args; (void)argc;
+    bout->result = gmb_clock_frame_scale();
+}
+
 static void gmb_bf_3902(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
 {
     (void)vm; (void)task; (void)func_code;
@@ -16869,6 +16894,11 @@ static const gmb_bf_impl_t gmb_bf_impl_core[] = {
     { 3905, gmb_bf_world_time },
     { 3906, gmb_bf_world_floorz },
     { 3907, gmb_bf_world_ceilz },
+    /* TEMPO A PASSO FISSO / CLOCK (2026-11-20): codici di BuiltInFunction (CLOCK_DT..CLOCK_SCALE) */
+    { 3908, gmb_bf_clock_dt },
+    { 3909, gmb_bf_clock_alpha },
+    { 3910, gmb_bf_clock_fps },
+    { 3911, gmb_bf_clock_scale },
     { 826, gmb_bf_796_c826 },
     { 827, gmb_bf_796_c827 },
     { 828, gmb_bf_796_c828 },

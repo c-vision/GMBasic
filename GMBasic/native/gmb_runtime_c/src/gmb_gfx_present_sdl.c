@@ -21,6 +21,7 @@
 #include "gmb_gfx_present.h"
 #include "gmb_graphics.h"
 #include "gmb_gfx_input.h"
+#include "gmb_clock.h"   /* il cap del present segue il passo del clock (present_cap_elapsed) */
 #include <stdlib.h>
 
 #ifdef GMB_GFX_VULKAN
@@ -346,6 +347,33 @@ void gmb_gfx_present_start(void)
 void gmb_gfx_present_request_quit(void) { g_quit_requested = 1; }
 void gmb_gfx_window_set_visible(int on) { g_vis_req = on ? 1 : 0; }
 
+/* ── CAP DEL PRESENT = ritmo del CLOCK (2026-11-20) ────────────────────────────────────
+ * Era un `33` fisso: con il ciclo logico a 60 Hz un frame su due non arrivava mai allo
+ * schermo (il loop misurava 60 fps, la resa visiva era 30). Il tetto ora è il PASSO del
+ * clock globale (`gmb_clock.h`, lo stesso che parcheggia DOEVENTS) e la voce del registro
+ * opzioni `engine.present.max_fps` (sezione `engine` dei settings, oppure `AI SET OPTION`)
+ * lo può imporre diverso: 0/vuota = segue il clock.
+ *
+ * La tolleranza del 15% non è un abbuono: il parcheggio del clock arrotonda al millisecondo,
+ * quindi un frame da 16 ms contro un tetto di 16,67 ms verrebbe scartato e si tornerebbe a
+ * presentare uno su due — il difetto che questo cap doveva togliere. Il cap serve solo a non
+ * presentare a ~1000 fps quando il ciclo non passa dal clock (nessun DOEVENTS): il ritmo del
+ * present non anticipa mai quello del clock, al più lo segue a meno di un frame. */
+static int present_cap_elapsed(void)
+{
+    static int64_t last_ns = 0;
+    double fps = 0.0;
+    char v[64];
+    if (gmb_opt_get("engine.present.max_fps", v, (int)sizeof v) == 0 && v[0]) fps = atof(v);
+    if (!(fps > 0.0)) fps = gmb_clock_frame_fps();      /* default: il ritmo del clock */
+    if (!(fps > 0.0)) return 1;                       /* clock non inizializzato: nessun cap */
+    if (fps > 1000.0) fps = 1000.0;
+    int64_t now = gmb_clock_now_ns();
+    if (last_ns && (double)(now - last_ns) < 0.85e9 / fps) return 0;
+    last_ns = now;
+    return 1;
+}
+
 void gmb_gfx_present_tick(void)
 {
     /* Hook di test FORM (main thread = unico scrittore delle code input): dopo
@@ -389,12 +417,10 @@ void gmb_gfx_present_tick(void)
     const uint32_t* pixels = gmb_gfx_visible_pixels(&w, &h);
     if (!pixels || w <= 0 || h <= 0) return;
 
-    /* Cap del present (~30 fps): il main loop gira a ~1ms; senza cap si presenta
-     * a ~1000 fps -> tearing/repaint continui anche su contenuto statico. Gli
-     * eventi SDL restano pompati ogni giro (sopra); qui si limita solo il blit. */
-    { Uint32 now = SDL_GetTicks(); static Uint32 last = 0;
-      if (last && (now - last) < 33) return;
-      last = now; }
+    /* Il blit lo limita il CAP del present, che segue il clock (present_cap_elapsed):
+     * un 33 ms fisso scartava metà dei frame anche quando il ciclo girava a 60 Hz. Gli
+     * eventi SDL restano pompati ogni giro (sopra); qui si limita solo il present. */
+    if (!present_cap_elapsed()) return;
 
     /* Present SOLO se il framebuffer e' cambiato: hash a 32 bit sulle WORD (prima
      * era byte-per-byte: 17 MB × 60/s = ~1 GB/s di FNV → 100% CPU su Retina).

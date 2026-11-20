@@ -1585,4 +1585,11 @@ MCPSERVERMARKETPLACELIST = 730, MCPSERVERMARKETPLACEGET = 731, MCPLISTTOOLSSERVE
     WORLD_TIME = 3905,
     WORLD_FLOORZ = 3906,
     WORLD_CEILZ = 3907,
+    // TEMPO A PASSO FISSO / CLOCK (2026-11-20): letture dell'orologio. Lo stato vive solo nel
+    // runtime C: ogni backend inoltra a `gmb_clock_frame_*` (IL/PCode via P/Invoke, VM/C e
+    // C99Native diretti). In coda: mirror in gmb_builtin.c.
+    CLOCK_DT = 3908,
+    CLOCK_ALPHA = 3909,
+    CLOCK_FPS = 3910,
+    CLOCK_SCALE = 3911,
 }

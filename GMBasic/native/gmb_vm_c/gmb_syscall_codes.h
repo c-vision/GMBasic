@@ -463,6 +463,13 @@
 #define GMB_SC_WORLD_LIGHTFX 469
 #define GMB_SC_WORLD_LAMP 470
 #define GMB_SC_WORLD_SECMOVE_CEIL 471
+/* Tempo a passo fisso (2026-11-20): comandi CLOCK. La facciata e' gmb_clock_frame_* del
+ * runtime condiviso (gmb_clock.c). 472..475 restano al delegate CONSOLE: qui si parte da 476,
+ * come nell'enum SysCall C#. */
+#define GMB_SC_CLOCK_PAUSE 476
+#define GMB_SC_CLOCK_RESUME 477
+#define GMB_SC_CLOCK_SCALE 478
+#define GMB_SC_CLOCK_FPS 479
 #define GMB_SC_Default 0
 #define GMB_SC_Json 1
 

@@ -66,6 +66,13 @@ static const struct { const char* name; const char* desc; } g_opt_core[] = {
      * a fine esecuzione stampa su stderr una riga per tipo (blocchi/byte vivi e picco).
      * Spenta = costo nullo. Nessuna variabile d'ambiente. Vedi gmb_memstats.h. */
     { "debug.memory",      "contabilità memoria del runtime C per tipo, report su stderr a fine run (1 = attiva)" },
+    /* ── CAP DEL PRESENT GRAFICO (2026-11-20): il ritmo della resa. Era un `33` fisso dentro
+     * `gmb_gfx_present_sdl.c`: con il ciclo logico a 60 Hz un frame su due non arrivava allo
+     * schermo (loop a 60 fps, resa visiva a 30). La voce rende il tetto configurabile e il
+     * DEFAULT è il ritmo del clock: 0/vuota = segue `gmb_clock_frame_fps()`, che è il passo
+     * con cui DOEVENTS parcheggia. Si imposta solo per forzare un tetto diverso (es. 30 su
+     * una macchina lenta: si presenta la metà dei frame, ma il ciclo logico resta a 60 Hz). */
+    { "engine.present.max_fps", "cap del present grafico in fps (0 = segue il clock)" },
 };
 #define GMB_OPT_CORE_N ((int)(sizeof g_opt_core / sizeof g_opt_core[0]))
 
