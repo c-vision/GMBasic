@@ -148,3 +148,38 @@ int gmb_stf_normaltest(const double* x, int n, double* stat, double* p, double* 
     gmb_val_t xv = stf_list(x, n);
     return stf_take(gmb_normaltest(xv), stat, p, df);
 }
+
+/* Copia una lista del dict in un buffer C (capacità `cap`); ritorna gli elementi copiati. */
+static int stf_copy_list(gmb_dict_t d, const char* key, double* out, int cap) {
+    gmb_list_t l = gmb_val_as_list(gmb_dict_get(d, key));
+    int n = (int)gmb_list_count(l);
+    if (n > cap) n = cap;
+    for (int i = 0; i < n; i++) out[i] = gmb_val_to_double(gmb_list_get(l, i));
+    return n;
+}
+
+int gmb_stf_gp_regress(const double* x, const double* y, int n, const double* xs, int m,
+                       double l2, double noise, double* mean, double* var) {
+    gmb_val_t v = gmb_mv_gp_regress(x, y, n, xs, m, l2, noise);
+    gmb_dict_t d = gmb_val_as_dict(v);
+    int ok = gmb_dict_count(d) > 0;
+    if (ok) {
+        stf_copy_list(d, "Mean", mean, m);
+        stf_copy_list(d, "Variance", var, m);
+    }
+    gmb_val_free_temp_dict(v);
+    return ok;
+}
+
+int gmb_stf_gmm_em1d(const double* x, int n, int k, int iters, double* mu, double* var, double* weight) {
+    gmb_val_t v = gmb_mv_gmm_em_1d(x, n, k, iters);
+    gmb_dict_t d = gmb_val_as_dict(v);
+    int ok = gmb_dict_count(d) > 0;
+    if (ok) {
+        stf_copy_list(d, "Mu", mu, k);
+        stf_copy_list(d, "Variance", var, k);
+        stf_copy_list(d, "Weight", weight, k);
+    }
+    gmb_val_free_temp_dict(v);
+    return ok;
+}

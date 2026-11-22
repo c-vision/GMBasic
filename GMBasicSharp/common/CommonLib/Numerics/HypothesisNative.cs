@@ -81,6 +81,13 @@ internal static class HypothesisNative
     [DllImport(Lib, EntryPoint = "gmb_stf_normaltest", CallingConvention = CallingConvention.Cdecl)]
     private static extern int NativeNormalityTest(double[] x, int n,
         out double stat, out double p, out double df);
+    [DllImport(Lib, EntryPoint = "gmb_stf_gp_regress", CallingConvention = CallingConvention.Cdecl)]
+    private static extern int NativeGpRegress(double[] x, double[] y, int n, double[] xs, int m,
+        double l2, double noise, double[] mean, double[] var);
+    [DllImport(Lib, EntryPoint = "gmb_stf_gmm_em1d", CallingConvention = CallingConvention.Cdecl)]
+    private static extern int NativeGmmEm1d(double[] x, int n, int k, int iters,
+        double[] mu, double[] var, double[] weight);
+
     [DllImport(Lib, EntryPoint = "gmb_stf_describe", CallingConvention = CallingConvention.Cdecl)]
     private static extern int NativeDescribe(double[] a, int n,
         out double nobs, out double vmin, out double vmax, out double mean,
@@ -155,7 +162,27 @@ internal static class HypothesisNative
         return Result(ok, stat, p, df);
     }
 
+    internal static (double[] Mean, double[] Variance) GpRegress(double[] x, double[] y, double[] xs, double l2, double noise)
+    {
+        var mean = new double[xs.Length];
+        var variance = new double[xs.Length];
+        var ok = NativeGpRegress(x, y, x.Length, xs, xs.Length, l2, noise, mean, variance);
+        if (ok == 0) throw new InvalidOperationException("STATS: il kernel C ha rifiutato l'input di GP regression.");
+        return (mean, variance);
+    }
+
+    internal static (double[] Mu, double[] Variance, double[] Weight) GmmEm1D(double[] x, int k, int iters)
+    {
+        var mu = new double[k];
+        var variance = new double[k];
+        var weight = new double[k];
+        var ok = NativeGmmEm1d(x, x.Length, k, iters, mu, variance, weight);
+        if (ok == 0) throw new InvalidOperationException("STATS: il kernel C ha rifiutato l'input di GMM EM 1D.");
+        return (mu, variance, weight);
+    }
+
     internal static StatisticalTestResult NormalityTest(double[] x)
+
     {
         var ok = NativeNormalityTest(x, x.Length, out var stat, out var p, out var df);
         return Result(ok, stat, p, df);

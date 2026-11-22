@@ -83,20 +83,7 @@ public static partial class Numerics
             return TimeSeriesNative.OutliersZ(data, threshold ?? 3.0);
         if (method != "IQR")
             throw new ArgumentException("Metodo non supportato: " + method);
-        // IQR: nessun kernel C equivalente (`gmb_ts_outliers` copre solo il metodo Z) → managed.
-        var th = threshold ?? 1.5;
-        var sorted = data.OrderBy(x => x).ToArray();
-        var n = sorted.Length;
-        var Q1 = sorted[n / 4];
-        var Q3 = sorted[(3 * n) / 4];
-        var iqr = Q3 - Q1;
-        var low = Q1 - th * iqr;
-        var high = Q3 + th * iqr;
-        var outlierIdx = new List<int>();
-        for (var i = 0; i < data.Length; i++)
-            if (data[i] < low || data[i] > high)
-                outlierIdx.Add(i);
-        return outlierIdx.ToArray();
+        return TimeSeriesNative.OutliersIqr(data, threshold ?? 1.5);
     }
 
     /// <summary>
@@ -211,44 +198,13 @@ public static partial class Numerics
         if (seasonLength < 2 || seasonLength > data.Length / 2)
             throw new ArgumentException("Periodo non valido per la decomposizione.");
         var n = data.Length;
-        var trend = new double[n];
-        var season = new double[n];
-        var resid = new double[n];
-        var half = seasonLength / 2;
-        for (var i = 0; i < n; i++)
-        {
-            var left = Math.Max(0, i - half);
-            var right = Math.Min(n - 1, i + half);
-            double sum = 0;
-            var count = 0;
-            for (var j = left; j <= right; j++)
-            {
-                sum += data[j];
-                count++;
-            }
-            trend[i] = sum / count;
-        }
-        var seasonMeans = new double[seasonLength];
-        var seasonCounts = new int[seasonLength];
-        for (var i = 0; i < n; i++)
-        {
-            var idx = i % seasonLength;
-            seasonMeans[idx] += data[i] - trend[i];
-            seasonCounts[idx]++;
-        }
-        for (var i = 0; i < seasonLength; i++)
-            if (seasonCounts[i] > 0)
-                seasonMeans[i] /= seasonCounts[i];
-        for (var i = 0; i < n; i++)
-            season[i] = seasonMeans[i % seasonLength];
-        for (var i = 0; i < n; i++)
-            resid[i] = data[i] - trend[i] - season[i];
+        var flat = TimeSeriesNative.DecomposeMatrix(data, seasonLength);
         var result = new double[3, n];
         for (var j = 0; j < n; j++)
         {
-            result[0, j] = trend[j];
-            result[1, j] = season[j];
-            result[2, j] = resid[j];
+            result[0, j] = flat[j];
+            result[1, j] = flat[n + j];
+            result[2, j] = flat[2 * n + j];
         }
         return result;
     }
@@ -535,22 +491,7 @@ public static partial class Numerics
     {
         if (data == null || data.Length < window || window < 2 || order < 1)
             throw new ArgumentException("Dati, finestra o ordine non validi.");
-        // Il kernel C copre l'ordine 1 (`gmb_ts_rolldelta`); ordini superiori → managed.
-        if (order == 1) return TimeSeriesNative.RollingDelta(data, window);
-        var result = new double[data.Length - window + 1];
-        for (var i = 0; i < result.Length; i++)
-        {
-            var slice = new ArraySegment<double>(data, i, window).ToArray();
-            var value = slice.Last() - slice.First();
-            for (var o = 1; o < order; o++)
-            {
-                for (var j = 1; j < slice.Length; j++)
-                    slice[j - 1] = slice[j] - slice[j - 1];
-                value = slice[^order];
-            }
-            result[i] = value;
-        }
-        return result;
+        return TimeSeriesNative.RollingDelta(data, window, order);
     }
 
     /// <summary>
@@ -570,17 +511,7 @@ public static partial class Numerics
     {
         if (returns == null || returns.Length < window || window < 2)
             throw new ArgumentException("Dati o finestra non validi.");
-        var result = new double[returns.Length - window + 1];
-        for (var i = 0; i < result.Length; i++)
-        {
-            var slice = new ArraySegment<double>(returns, i, window).ToArray();
-            var mean = slice.Average() - riskFreeRate;
-            var downside = slice.Where(r => r < targetReturn).Select(r => Math.Pow(r - targetReturn, 2));
-            var enumerable = downside.ToList();
-            var downsideDeviation = enumerable.Count != 0 ? Math.Sqrt(enumerable.Average()) : 0.0;
-            result[i] = downsideDeviation > 0.0 ? mean / downsideDeviation : double.PositiveInfinity;
-        }
-        return result;
+        return TimeSeriesNative.RollingSortino(returns, window, riskFreeRate, targetReturn);
     }
 
     /// <summary>

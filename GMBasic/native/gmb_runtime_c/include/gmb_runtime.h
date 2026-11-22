@@ -1375,6 +1375,7 @@ const char* gmb_ts_last_error(void);
 void gmb_ts_clear_error(void);
 gmb_double_t* gmb_ts_rollautocorr(gmb_double_t* series, gmb_int_t n, gmb_int_t period, gmb_int_t lag, gmb_int_t* out_len);
 gmb_double_t* gmb_ts_rolldelta(gmb_double_t* series, gmb_int_t n, gmb_int_t period, gmb_int_t* out_len);
+gmb_double_t* gmb_ts_rolldelta_order(gmb_double_t* series, gmb_int_t n, gmb_int_t window, gmb_int_t order, gmb_int_t* out_len);
 gmb_double_t* gmb_ts_moving_average(gmb_double_t* data, gmb_int_t n, gmb_int_t window, gmb_int_t* out_len);
 gmb_double_t* gmb_ts_ema(gmb_double_t* data, gmb_int_t n, double alpha, gmb_int_t* out_len);
 gmb_double_t* gmb_ts_returns(gmb_double_t* data, gmb_int_t n, int log_returns, gmb_int_t* out_len);
@@ -1388,6 +1389,7 @@ gmb_double_t* gmb_ts_rolling_zscore(gmb_double_t* data, gmb_int_t n, gmb_int_t w
 gmb_double_t* gmb_ts_rolling_cov(gmb_double_t* x, gmb_double_t* y, gmb_int_t n, gmb_int_t window, gmb_int_t* out_len);
 gmb_double_t* gmb_ts_rolling_corr(gmb_double_t* x, gmb_double_t* y, gmb_int_t n, gmb_int_t window, gmb_int_t* out_len);
 gmb_double_t* gmb_ts_outliers(gmb_double_t* data, gmb_int_t n, double threshold, gmb_int_t* out_len);
+gmb_double_t* gmb_ts_outliers_iqr(gmb_double_t* data, gmb_int_t n, double threshold, gmb_int_t* out_len);
 
 /* ----------------------------------------------------------------------------
  * Array dinamici (REDIM / JOIN)

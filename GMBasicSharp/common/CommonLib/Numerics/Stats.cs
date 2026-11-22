@@ -491,39 +491,7 @@ public static partial class Numerics
         var m = xs.Length;
         if (n < 1 || m < 1 || l2 <= 0.0 || y.Length < n)
             return (new[] { double.NaN }, new[] { double.NaN });
-        var K = new double[n * n];
-        var alpha = new double[n];
-        var kx = new double[n];
-        var v = new double[n];
-        var sol = new double[n];
-        var A = new double[n * n];
-        var mean = new double[m];
-        var varArr = new double[m];
-        int i, j, q;
-        for (i = 0; i < n; i++)
-            for (j = 0; j < n; j++)
-            {
-                var dd = x[i] - x[j];
-                K[i * n + j] = Math.Exp(-0.5 * dd * dd / l2) + (i == j ? noise : 0.0);
-            }
-        for (i = 0; i < n; i++) alpha[i] = y[i];
-        Array.Copy(K, A, n * n);
-        if (!InferSolve(n, A, alpha, v))
-            return (new[] { double.NaN }, new[] { double.NaN });
-        Array.Copy(v, alpha, n);
-        for (q = 0; q < m; q++)
-        {
-            double mu = 0.0, kv;
-            for (i = 0; i < n; i++) { var dd = xs[q] - x[i]; kx[i] = Math.Exp(-0.5 * dd * dd / l2); mu += kx[i] * alpha[i]; }
-            for (i = 0; i < n; i++) v[i] = kx[i];
-            Array.Copy(K, A, n * n);
-            if (!InferSolve(n, A, v, sol)) { mean[q] = mu; varArr[q] = noise; continue; }
-            kv = 1.0 + noise;
-            for (i = 0; i < n; i++) kv -= kx[i] * sol[i];
-            mean[q] = mu;
-            varArr[q] = kv > 0.0 ? kv : 0.0;
-        }
-        return (mean, varArr);
+        return HypothesisNative.GpRegress(x, y, xs, l2, noise);
     }
 
     // ── GMM EM 1D (parità gs_gmm_em_1d) ──────────────────────────────────────────────
@@ -532,48 +500,7 @@ public static partial class Numerics
     {
         var n = x.Length;
         if (n < 2 || k < 1) return (Array.Empty<double>(), Array.Empty<double>(), Array.Empty<double>());
-        var mu = new double[k];
-        var varArr = new double[k];
-        var w = new double[k];
-        var gam = new double[n * k];
-        int i, j, it;
-        var gmin = x[0];
-        var gmax = x[0];
-        double gmean = 0.0;
-        for (i = 0; i < n; i++) { gmean += x[i]; if (x[i] < gmin) gmin = x[i]; if (x[i] > gmax) gmax = x[i]; }
-        gmean /= n;
-        double gvar = 0.0;
-        for (i = 0; i < n; i++) gvar += (x[i] - gmean) * (x[i] - gmean);
-        gvar /= n;
-        if (gvar <= 0.0) gvar = 1e-6;
-        for (j = 0; j < k; j++) { mu[j] = gmin + (gmax - gmin) * (j + 0.5) / k; varArr[j] = gvar; w[j] = 1.0 / k; }
-        for (it = 0; it < iters; it++)
-        {
-            for (i = 0; i < n; i++)
-            {
-                double tot = 0.0;
-                for (j = 0; j < k; j++)
-                {
-                    var dd = x[i] - mu[j];
-                    var g = w[j] / Math.Sqrt(2.0 * Math.PI * varArr[j]) * Math.Exp(-0.5 * dd * dd / varArr[j]);
-                    gam[i * k + j] = g; tot += g;
-                }
-                if (tot <= 0.0) tot = 1e-300;
-                for (j = 0; j < k; j++) gam[i * k + j] /= tot;
-            }
-            for (j = 0; j < k; j++)
-            {
-                double nk = 0, mk = 0, vk = 0;
-                for (i = 0; i < n; i++) nk += gam[i * k + j];
-                if (nk < 1e-12) { w[j] = 1e-12; continue; }
-                for (i = 0; i < n; i++) mk += gam[i * k + j] * x[i];
-                mk /= nk;
-                for (i = 0; i < n; i++) { var dd = x[i] - mk; vk += gam[i * k + j] * dd * dd; }
-                vk /= nk;
-                mu[j] = mk; varArr[j] = vk > 1e-12 ? vk : 1e-12; w[j] = nk / n;
-            }
-        }
-        return (mu, varArr, w);
+        return HypothesisNative.GmmEm1D(x, k, iters);
     }
 
     // ── SVM multiclasse (parità gs_svm_multiclass) ──────────────────────────────────

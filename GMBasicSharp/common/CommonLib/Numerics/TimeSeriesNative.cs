@@ -102,6 +102,14 @@ internal static class TimeSeriesNative
     private static extern IntPtr NativeRollingRegressionSingle(double[] data, long n, long window, out long outLen);
     [DllImport(Lib, EntryPoint = "gmb_tsf_rolldelta", CallingConvention = CallingConvention.Cdecl)]
     private static extern IntPtr NativeRollingDelta(double[] data, long n, long window, out long outLen);
+    [DllImport(Lib, EntryPoint = "gmb_tsf_rolldelta_order", CallingConvention = CallingConvention.Cdecl)]
+    private static extern IntPtr NativeRollingDeltaOrder(double[] data, long n, long window, long order, out long outLen);
+    [DllImport(Lib, EntryPoint = "gmb_tsf_outliers_iqr", CallingConvention = CallingConvention.Cdecl)]
+    private static extern IntPtr NativeOutliersIqr(double[] data, long n, double threshold, out long outLen);
+    [DllImport(Lib, EntryPoint = "gmb_tsf_decompose_matrix", CallingConvention = CallingConvention.Cdecl)]
+    private static extern IntPtr NativeDecomposeMatrix(double[] data, long n, long period, out long outLen);
+    [DllImport(Lib, EntryPoint = "gmb_tsf_rolling_sortino", CallingConvention = CallingConvention.Cdecl)]
+    private static extern IntPtr NativeRollingSortino(double[] data, long n, long window, double rf, double target, out long outLen);
 
     // ── Onda 4: kernel che ritornano gmb_val_t (dict) ──────────────────────────────────────
     [DllImport(Lib, EntryPoint = "gmb_tsf_garch11", CallingConvention = CallingConvention.Cdecl)]
@@ -458,6 +466,37 @@ internal static class TimeSeriesNative
     {
         Begin();
         return Take(NativeRollingDelta(data, data.Length, window, out var n), n);
+    }
+
+    internal static double[] RollingDelta(double[] data, int window, int order)
+    {
+        Begin();
+        return Take(NativeRollingDeltaOrder(data, data.Length, window, order, out var n), n);
+    }
+
+    /// <summary>Indici (metodo IQR) come interi; kernel NULL = nessun outlier, non errore.</summary>
+    internal static int[] OutliersIqr(double[] data, double threshold)
+    {
+        Begin();
+        var p = NativeOutliersIqr(data, data.Length, threshold, out var len);
+        if (p == IntPtr.Zero) return [];
+        var buf = Take(p, len);
+        var res = new int[buf.Length];
+        for (var i = 0; i < buf.Length; i++) res[i] = (int)buf[i];
+        return res;
+    }
+
+    /// <summary>Decomposizione additiva: matrice 3×n appiattita in [trend, seasonal, residual].</summary>
+    internal static double[] DecomposeMatrix(double[] data, int period)
+    {
+        Begin();
+        return Take(NativeDecomposeMatrix(data, data.Length, period, out var n), n);
+    }
+
+    internal static double[] RollingSortino(double[] data, int window, double rf, double target)
+    {
+        Begin();
+        return Take(NativeRollingSortino(data, data.Length, window, rf, target, out var n), n);
     }
 
     // ── Onda 4: dict → tuple/array ──────────────────────────────────────────────────────────

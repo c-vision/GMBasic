@@ -318,20 +318,22 @@ gmb_double_t* gmb_ts_rolling_regression(gmb_double_t* x, gmb_double_t* y, gmb_in
     return out;
 }
 
-/* DECOMPOSE: trend (media mobile) e stagionalita' (differenza dal trend per periodo). */
+/* DECOMPOSE: trend = media mobile CENTRATA di ±period/2 (estremi clampati, include il punto i),
+ * stagionalità = media per fase di (data - trend). È la definizione di
+ * CommonLib.Numerics.Decompose (oracolo IL): prima il trend usava una finestra di periodo
+ * intero e la stagionalità era "deviazione dalla media globale", quindi le gambe divergevano. */
 gmb_double_t* gmb_ts_decompose_trend(gmb_double_t* data, gmb_int_t n, gmb_int_t period, gmb_int_t* out_len) {
     if (n <= 0) { *out_len = 0; return NULL; }
     if (period <= 0) period = 1;
-    if (period > n) period = n;
     gmb_double_t* out = (gmb_double_t*)malloc(n * sizeof(gmb_double_t));
     if (!out) { *out_len = 0; return NULL; }
+    gmb_int_t half = period / 2;
     for (gmb_int_t i = 0; i < n; i++) {
-        gmb_int_t start = i - period/2;
-        gmb_int_t cnt = 0;
+        gmb_int_t left = (i - half > 0) ? i - half : 0;
+        gmb_int_t right = (i + half < n - 1) ? i + half : n - 1;
         double sum = 0;
-        for (gmb_int_t j = start; j < start + period; j++)
-            if (j >= 0 && j < n) { sum += data[j]; cnt++; }
-        out[i] = cnt > 0 ? sum / cnt : data[i];
+        for (gmb_int_t j = left; j <= right; j++) sum += data[j];
+        out[i] = sum / (double)(right - left + 1);
     }
     *out_len = n;
     return out;
@@ -342,17 +344,19 @@ gmb_double_t* gmb_ts_decompose_seasonal(gmb_double_t* data, gmb_int_t n, gmb_int
     if (period <= 0) period = 1;
     gmb_double_t* out = (gmb_double_t*)malloc(n * sizeof(gmb_double_t));
     if (!out) { *out_len = 0; return NULL; }
-    /* media del trend per ogni fase del periodo, poi sottrai dalla media globale */
-    double* trend = gmb_ts_decompose_trend(data, n, period, out_len);
-    double global = 0;
-    for (gmb_int_t i = 0; i < n; i++) global += data[i];
-    global /= n;
-    if (trend) {
-        for (gmb_int_t i = 0; i < n; i++) out[i] = (data[i] - trend[i]) - global;
-        free(trend);
-    } else {
-        for (gmb_int_t i = 0; i < n; i++) out[i] = 0;
+    gmb_int_t tlen = 0;
+    double* trend = gmb_ts_decompose_trend(data, n, period, &tlen);
+    double* means = (double*)calloc((size_t)period, sizeof(double));
+    int* counts = (int*)calloc((size_t)period, sizeof(int));
+    if (!means || !counts) { free(trend); free(means); free(counts); *out_len = 0; return NULL; }
+    for (gmb_int_t i = 0; i < n; i++) {
+        gmb_int_t idx = i % period;
+        means[idx] += data[i] - (trend ? trend[i] : data[i]);
+        counts[idx]++;
     }
+    for (gmb_int_t i = 0; i < period; i++) if (counts[i] > 0) means[i] /= counts[i];
+    for (gmb_int_t i = 0; i < n; i++) out[i] = means[i % period];
+    free(trend); free(means); free(counts);
     *out_len = n;
     return out;
 }
@@ -550,11 +554,17 @@ gmb_double_t* gmb_ts_rolling_sortino(gmb_double_t* data, gmb_int_t n, gmb_int_t 
     *out_len = len;
     for (gmb_int_t i = 0; i < len; i++) {
         double s = 0; for (gmb_int_t j = 0; j < window; j++) s += data[i + j];
-        double m = s / window, dd = 0;
-        for (gmb_int_t j = 0; j < window; j++) { double d = data[i + j] - target; if (d < 0) dd += d * d; }
-        dd /= window;
-        double ds = sqrt(dd);
-        out[i] = (ds > 1e-12) ? (m - rf) / ds : 0.0;
+        double mean = s / window - rf, dd = 0;
+        gmb_int_t cnt = 0;
+        for (gmb_int_t j = 0; j < window; j++) {
+            double d = data[i + j] - target;
+            if (d < 0) { dd += d * d; cnt++; }
+        }
+        /* Parity Numerics.RollingSortino (oracolo IL): la downside deviation è la media sui
+         * SOLI rendimenti negativi (non su tutta la finestra) e senza downside il risultato è
+         * +∞, non 0. Prima si divideva per `window` e si restituiva 0 → valori diversi. */
+        double ds = cnt > 0 ? sqrt(dd / (double)cnt) : 0.0;
+        out[i] = (ds > 0.0) ? mean / ds : INFINITY;
     }
     return out;
 }
@@ -1806,4 +1816,57 @@ fail:
     free(W); free(P); free(Lc); free(half); free(halfT); free(sym); free(eval);
     free(trace_s); free(max_s);
     return gmb_hmm_nan_dict();
+}
+
+/* OUTLIERS metodo IQR (CommonLib.Numerics.Outliers, method="IQR"): Q1=sorted[n/4],
+ * Q3=sorted[3n/4], fuori da [Q1-th*IQR, Q3+th*IQR] → indice (come double, come il metodo Z). */
+gmb_double_t* gmb_ts_outliers_iqr(gmb_double_t* data, gmb_int_t n, double threshold, gmb_int_t* out_len) {
+    *out_len = 0;
+    if (!data || n < 3) return NULL;
+    double* s = (double*)malloc((size_t)n * sizeof(double));
+    if (!s) return NULL;
+    for (gmb_int_t i = 0; i < n; i++) s[i] = data[i];
+    qsort(s, (size_t)n, sizeof(double), gmb_dcmp_dbl);
+    double q1 = s[n / 4];
+    double q3 = s[(3 * n) / 4];
+    double iqr = q3 - q1;
+    double low = q1 - threshold * iqr;
+    double high = q3 + threshold * iqr;
+    free(s);
+    gmb_double_t* out = (gmb_double_t*)calloc((size_t)n, sizeof(gmb_double_t));
+    if (!out) return NULL;
+    gmb_int_t cnt = 0;
+    for (gmb_int_t i = 0; i < n; i++)
+        if (data[i] < low || data[i] > high) out[cnt++] = (double)i;
+    *out_len = cnt;
+    return out;
+}
+
+/* ROLLINGDELTA con ORDINE (CommonLib.Numerics.RollingDelta): differenza ultima-prima della
+ * finestra per order=1; per order>1 differenzia ripetutamente la copia della finestra e prende
+ * slice[window-order]. Il kernel storico gmb_ts_rolldelta copre solo order=1. */
+gmb_double_t* gmb_ts_rolldelta_order(gmb_double_t* series, gmb_int_t n, gmb_int_t window,
+                                     gmb_int_t order, gmb_int_t* out_len) {
+    *out_len = 0;
+    if (!series || window < 2 || order < 1 || order > window) {
+        ts_err("Dati, finestra o ordine non validi.");
+        return NULL;
+    }
+    gmb_int_t len = n - window + 1;
+    if (len <= 0) return NULL;
+    gmb_double_t* out = (gmb_double_t*)calloc((size_t)len, sizeof(gmb_double_t));
+    double* slice = (double*)malloc((size_t)window * sizeof(double));
+    if (!out || !slice) { free(out); free(slice); return NULL; }
+    for (gmb_int_t i = 0; i < len; i++) {
+        for (gmb_int_t j = 0; j < window; j++) slice[j] = series[i + j];
+        double value = slice[window - 1] - slice[0];
+        for (gmb_int_t o = 1; o < order; o++) {
+            for (gmb_int_t j = 1; j < window; j++) slice[j - 1] = slice[j] - slice[j - 1];
+            value = slice[window - order];
+        }
+        out[i] = value;
+    }
+    free(slice);
+    *out_len = len;
+    return out;
 }

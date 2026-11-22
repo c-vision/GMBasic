@@ -95,6 +95,22 @@ double gmb_tsf_hurst_dfa(const double* x, int n, int min_box) {
     return gmb_hurst_dfa(x, n, min_box);
 }
 
+gmb_double_t* gmb_tsf_outliers_iqr(gmb_double_t* data, gmb_int_t n, double threshold, gmb_int_t* out_len) {
+    return gmb_ts_outliers_iqr(data, n, threshold, out_len);
+}
+
+gmb_double_t* gmb_tsf_rolldelta_order(gmb_double_t* series, gmb_int_t n, gmb_int_t window, gmb_int_t order, gmb_int_t* out_len) {
+    return gmb_ts_rolldelta_order(series, n, window, order, out_len);
+}
+
+gmb_double_t* gmb_tsf_decompose_matrix(gmb_double_t* data, gmb_int_t n, gmb_int_t period, gmb_int_t* out_len) {
+    return gmb_ts_decompose_matrix(data, n, period, out_len);
+}
+
+gmb_double_t* gmb_tsf_rolling_sortino(gmb_double_t* data, gmb_int_t n, gmb_int_t window, double rf, double target, gmb_int_t* out_len) {
+    return gmb_ts_rolling_sortino(data, n, window, rf, target, out_len);
+}
+
 gmb_double_t* gmb_tsf_rolling_mean(gmb_double_t* data, gmb_int_t n, gmb_int_t window, gmb_int_t* out_len) {
     return gmb_ts_rolling_mean(data, n, window, out_len);
 }
