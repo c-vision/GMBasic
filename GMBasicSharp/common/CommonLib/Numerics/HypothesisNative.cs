@@ -53,6 +53,36 @@ internal static class HypothesisNative
     private static extern int NativeJarqueBera(double[] x, int n,
         out double stat, out double p, out double df);
 
+    // ── Test inferenziali ─────────────────────────────────────────────────────────────────
+    [DllImport(Lib, EntryPoint = "gmb_stf_pearsonr", CallingConvention = CallingConvention.Cdecl)]
+    private static extern int NativePearsonR(double[] x, int nx, double[] y, int ny,
+        out double stat, out double p, out double df);
+    [DllImport(Lib, EntryPoint = "gmb_stf_spearmanr", CallingConvention = CallingConvention.Cdecl)]
+    private static extern int NativeSpearmanR(double[] x, int nx, double[] y, int ny,
+        out double stat, out double p, out double df);
+    [DllImport(Lib, EntryPoint = "gmb_stf_kendalltau", CallingConvention = CallingConvention.Cdecl)]
+    private static extern int NativeKendallTau(double[] x, int nx, double[] y, int ny,
+        out double stat, out double p, out double df);
+    [DllImport(Lib, EntryPoint = "gmb_stf_ftest", CallingConvention = CallingConvention.Cdecl)]
+    private static extern int NativeFTest(double[] x, int nx, double[] y, int ny,
+        out double stat, out double p, out double df);
+    [DllImport(Lib, EntryPoint = "gmb_stf_mannwhitney", CallingConvention = CallingConvention.Cdecl)]
+    private static extern int NativeMannWhitney(double[] x, int nx, double[] y, int ny,
+        out double stat, out double p, out double df);
+    [DllImport(Lib, EntryPoint = "gmb_stf_wilcoxon", CallingConvention = CallingConvention.Cdecl)]
+    private static extern int NativeWilcoxon(double[] x, int nx, double[] y, int ny,
+        out double stat, out double p, out double df);
+    [DllImport(Lib, EntryPoint = "gmb_stf_kruskal", CallingConvention = CallingConvention.Cdecl)]
+    private static extern int NativeKruskal(double[] data, int[] sizes, int k,
+        out double stat, out double p, out double df);
+    [DllImport(Lib, EntryPoint = "gmb_stf_linregress", CallingConvention = CallingConvention.Cdecl)]
+    private static extern int NativeLinRegress(double[] x, int nx, double[] y, int ny,
+        out double slope, out double intercept, out double r, out double pvalue, out double stderr);
+    [DllImport(Lib, EntryPoint = "gmb_stf_describe", CallingConvention = CallingConvention.Cdecl)]
+    private static extern int NativeDescribe(double[] a, int n,
+        out double nobs, out double vmin, out double vmax, out double mean,
+        out double variance, out double skewness, out double kurtosis);
+
     private static StatisticalTestResult Result(int ok, double stat, double p, double df)
     {
         if (ok == 0)
@@ -126,5 +156,66 @@ internal static class HypothesisNative
     {
         var ok = NativeJarqueBera(x, x.Length, out var stat, out var p, out var df);
         return Result(ok, stat, p, df);
+    }
+
+    internal static StatisticalTestResult PearsonR(double[] x, double[] y)
+    {
+        var ok = NativePearsonR(x, x.Length, y, y.Length, out var stat, out var p, out var df);
+        return Result(ok, stat, p, df);
+    }
+
+    internal static StatisticalTestResult SpearmanR(double[] x, double[] y)
+    {
+        var ok = NativeSpearmanR(x, x.Length, y, y.Length, out var stat, out var p, out var df);
+        return Result(ok, stat, p, df);
+    }
+
+    internal static StatisticalTestResult KendallTau(double[] x, double[] y)
+    {
+        var ok = NativeKendallTau(x, x.Length, y, y.Length, out var stat, out var p, out var df);
+        return Result(ok, stat, p, df);
+    }
+
+    internal static StatisticalTestResult FTest(double[] x, double[] y)
+    {
+        var ok = NativeFTest(x, x.Length, y, y.Length, out var stat, out var p, out var df);
+        return Result(ok, stat, p, df);
+    }
+
+    internal static StatisticalTestResult MannWhitney(double[] x, double[] y)
+    {
+        var ok = NativeMannWhitney(x, x.Length, y, y.Length, out var stat, out var p, out var df);
+        return Result(ok, stat, p, df);
+    }
+
+    internal static StatisticalTestResult Wilcoxon(double[] x, double[] y)
+    {
+        var ok = NativeWilcoxon(x, x.Length, y, y.Length, out var stat, out var p, out var df);
+        return Result(ok, stat, p, df);
+    }
+
+    internal static StatisticalTestResult Kruskal(double[] flat, int[] sizes)
+    {
+        var ok = NativeKruskal(flat, sizes, sizes.Length, out var stat, out var p, out var df);
+        return Result(ok, stat, p, df);
+    }
+
+    internal static (double Slope, double Intercept, double R, double PValue, double Stderr) LinRegress(double[] x, double[] y)
+    {
+        var ok = NativeLinRegress(x, x.Length, y, y.Length,
+            out var slope, out var intercept, out var r, out var p, out var stderr);
+        if (ok == 0)
+            throw new InvalidOperationException("STATS: il kernel C ha rifiutato l'input di LINREGRESS.");
+        return (slope, intercept, r, p, stderr);
+    }
+
+    internal static (double Nobs, double Min, double Max, double Mean, double Variance, double Skewness, double Kurtosis)
+        Describe(double[] a)
+    {
+        var ok = NativeDescribe(a, a.Length, out var nobs, out var vmin, out var vmax,
+            out var mean, out var variance, out var skewness, out var kurtosis);
+        if (ok == 0)
+            throw new InvalidOperationException("STATS: il kernel C ha rifiutato l'input di DESCRIBE.");
+        return (nobs, vmin, vmax, mean, variance, skewness, kurtosis);
     }
 }

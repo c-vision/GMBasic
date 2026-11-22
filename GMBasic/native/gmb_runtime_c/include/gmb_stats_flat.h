@@ -33,6 +33,15 @@ int gmb_stf_chi2con(const double* table, int rows, int cols, double* stat, doubl
 int gmb_stf_skewtest(const double* x, int n, double* stat, double* p, double* df);
 int gmb_stf_kurtosistest(const double* x, int n, double* stat, double* p, double* df);
 int gmb_stf_jarquebera(const double* x, int n, double* stat, double* p, double* df);
+int gmb_stf_pearsonr(const double* x, int nx, const double* y, int ny, double* stat, double* p, double* df);
+int gmb_stf_spearmanr(const double* x, int nx, const double* y, int ny, double* stat, double* p, double* df);
+int gmb_stf_kendalltau(const double* x, int nx, const double* y, int ny, double* stat, double* p, double* df);
+int gmb_stf_ftest(const double* x, int nx, const double* y, int ny, double* stat, double* p, double* df);
+int gmb_stf_mannwhitney(const double* x, int nx, const double* y, int ny, double* stat, double* p, double* df);
+int gmb_stf_wilcoxon(const double* x, int nx, const double* y, int ny, double* stat, double* p, double* df);
+int gmb_stf_kruskal(const double* data, const int* sizes, int k, double* stat, double* p, double* df);
+int gmb_stf_linregress(const double* x, int nx, const double* y, int ny, double* slope, double* intercept, double* r, double* pvalue, double* stderr);
+int gmb_stf_describe(const double* a, int n, double* nobs, double* vmin, double* vmax, double* mean, double* variance, double* skewness, double* kurtosis);
 
 #ifdef __cplusplus
 }

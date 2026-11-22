@@ -83,3 +83,63 @@ int gmb_stf_kurtosistest(const double* x, int n, double* stat, double* p, double
 int gmb_stf_jarquebera(const double* x, int n, double* stat, double* p, double* df) {
     return stf_take(gmb_jarquebera_flat(x, n), stat, p, df);
 }
+
+/* ── Test inferenziali: stesso dict Statistic/PValue/DegreesOfFreedom ─────────────────────── */
+
+int gmb_stf_pearsonr(const double* x, int nx, const double* y, int ny, double* stat, double* p, double* df) {
+    return stf_take(gmb_pearsonr_flat(x, nx, y, ny), stat, p, df);
+}
+
+int gmb_stf_spearmanr(const double* x, int nx, const double* y, int ny, double* stat, double* p, double* df) {
+    return stf_take(gmb_spearmanr_flat(x, nx, y, ny), stat, p, df);
+}
+
+int gmb_stf_kendalltau(const double* x, int nx, const double* y, int ny, double* stat, double* p, double* df) {
+    return stf_take(gmb_kendalltau_flat(x, nx, y, ny), stat, p, df);
+}
+
+int gmb_stf_ftest(const double* x, int nx, const double* y, int ny, double* stat, double* p, double* df) {
+    return stf_take(gmb_ftest_flat(x, nx, y, ny), stat, p, df);
+}
+
+int gmb_stf_mannwhitney(const double* x, int nx, const double* y, int ny, double* stat, double* p, double* df) {
+    return stf_take(gmb_mannwhitney_flat(x, nx, y, ny), stat, p, df);
+}
+
+int gmb_stf_wilcoxon(const double* x, int nx, const double* y, int ny, double* stat, double* p, double* df) {
+    return stf_take(gmb_wilcoxon_flat(x, nx, y, ny), stat, p, df);
+}
+
+int gmb_stf_kruskal(const double* data, const int* sizes, int k, double* stat, double* p, double* df) {
+    return stf_take(gmb_kruskal_flat(data, sizes, k), stat, p, df);
+}
+
+int gmb_stf_linregress(const double* x, int nx, const double* y, int ny,
+                       double* slope, double* intercept, double* r, double* pvalue, double* stderr) {
+    gmb_val_t v = gmb_linregress_flat(x, nx, y, ny);
+    gmb_dict_t d = gmb_val_as_dict(v);
+    int ok = gmb_dict_count(d) > 0;
+    if (slope)     *slope     = gmb_dict_get_or_nan(d, "Slope");
+    if (intercept) *intercept = gmb_dict_get_or_nan(d, "Intercept");
+    if (r)         *r         = gmb_dict_get_or_nan(d, "R");
+    if (pvalue)    *pvalue    = gmb_dict_get_or_nan(d, "PValue");
+    if (stderr)    *stderr    = gmb_dict_get_or_nan(d, "Stderr");
+    gmb_val_free_temp_dict(v);
+    return ok;
+}
+
+int gmb_stf_describe(const double* a, int n, double* nobs, double* vmin, double* vmax, double* mean,
+                     double* variance, double* skewness, double* kurtosis) {
+    gmb_val_t v = gmb_describe_flat(a, n);
+    gmb_dict_t d = gmb_val_as_dict(v);
+    int ok = gmb_dict_count(d) > 0;
+    if (nobs)     *nobs     = gmb_dict_get_or_nan(d, "Nobs");
+    if (vmin)     *vmin     = gmb_dict_get_or_nan(d, "Min");
+    if (vmax)     *vmax     = gmb_dict_get_or_nan(d, "Max");
+    if (mean)     *mean     = gmb_dict_get_or_nan(d, "Mean");
+    if (variance) *variance = gmb_dict_get_or_nan(d, "Variance");
+    if (skewness) *skewness = gmb_dict_get_or_nan(d, "Skewness");
+    if (kurtosis) *kurtosis = gmb_dict_get_or_nan(d, "Kurtosis");
+    gmb_val_free_temp_dict(v);
+    return ok;
+}
