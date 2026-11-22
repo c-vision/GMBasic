@@ -42,6 +42,7 @@ int gmb_stf_wilcoxon(const double* x, int nx, const double* y, int ny, double* s
 int gmb_stf_kruskal(const double* data, const int* sizes, int k, double* stat, double* p, double* df);
 int gmb_stf_linregress(const double* x, int nx, const double* y, int ny, double* slope, double* intercept, double* r, double* pvalue, double* stderr);
 int gmb_stf_describe(const double* a, int n, double* nobs, double* vmin, double* vmax, double* mean, double* variance, double* skewness, double* kurtosis);
+int gmb_stf_normaltest(const double* x, int n, double* stat, double* p, double* df);
 
 #ifdef __cplusplus
 }

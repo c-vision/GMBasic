@@ -37,3 +37,17 @@ double gmb_anf_min(const double* a, int n) { return gmb_min_arr(a, n); }
 double gmb_anf_max(const double* a, int n) { return gmb_max_arr(a, n); }
 double gmb_anf_percentile(const double* a, int n, double percent) { return gmb_percentile(a, n, percent); }
 double gmb_anf_mad(const double* a, int n) { return gmb_mad(a, n); }
+
+/* ── RMT e SVM ────────────────────────────────────────────────────────────────────────────── */
+
+double gmb_anf_rmt_lambda_plus(int n, int T, double sigma2) { return gmb_mv_rmt_lambda_plus(n, T, sigma2); }
+double gmb_anf_rmt_lambda_minus(int n, int T, double sigma2) { return gmb_mv_rmt_lambda_minus(n, T, sigma2); }
+double gmb_anf_rmt_coherence(const double* v, int n) { return gmb_mv_rmt_coherence(v, n); }
+double gmb_anf_rmt_spectral_norm(const double* a, int n) { return gmb_mv_rmt_spectral_norm(a, n); }
+double gmb_anf_rmt_davis_kahan(double e_norm, double gap) { return gmb_mv_rmt_davis_kahan(e_norm, gap); }
+double gmb_anf_rmt_principal_angle(const double* u, const double* v, int n) { return gmb_mv_rmt_principal_angle(u, v, n); }
+double gmb_anf_rmt_tightness(double observed, double bound) { return gmb_mv_rmt_tightness(observed, bound); }
+void gmb_anf_svm_fit(const double* x, const double* y, int n, int d, int k, double c, int max_iter, double* w) {
+    gmb_mv_svm_fit(x, y, n, d, k, c, max_iter, w);
+}
+int gmb_anf_svm_predict(const double* w, const double* x, int d, int k) { return gmb_mv_svm_predict(w, x, d, k); }

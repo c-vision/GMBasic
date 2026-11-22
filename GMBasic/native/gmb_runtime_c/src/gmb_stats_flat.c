@@ -143,3 +143,8 @@ int gmb_stf_describe(const double* a, int n, double* nobs, double* vmin, double*
     gmb_val_free_temp_dict(v);
     return ok;
 }
+
+int gmb_stf_normaltest(const double* x, int n, double* stat, double* p, double* df) {
+    gmb_val_t xv = stf_list(x, n);
+    return stf_take(gmb_normaltest(xv), stat, p, df);
+}

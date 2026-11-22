@@ -78,6 +78,9 @@ internal static class HypothesisNative
     [DllImport(Lib, EntryPoint = "gmb_stf_linregress", CallingConvention = CallingConvention.Cdecl)]
     private static extern int NativeLinRegress(double[] x, int nx, double[] y, int ny,
         out double slope, out double intercept, out double r, out double pvalue, out double stderr);
+    [DllImport(Lib, EntryPoint = "gmb_stf_normaltest", CallingConvention = CallingConvention.Cdecl)]
+    private static extern int NativeNormalityTest(double[] x, int n,
+        out double stat, out double p, out double df);
     [DllImport(Lib, EntryPoint = "gmb_stf_describe", CallingConvention = CallingConvention.Cdecl)]
     private static extern int NativeDescribe(double[] a, int n,
         out double nobs, out double vmin, out double vmax, out double mean,
@@ -149,6 +152,12 @@ internal static class HypothesisNative
     internal static StatisticalTestResult KurtosisTest(double[] x)
     {
         var ok = NativeKurtosisTest(x, x.Length, out var stat, out var p, out var df);
+        return Result(ok, stat, p, df);
+    }
+
+    internal static StatisticalTestResult NormalityTest(double[] x)
+    {
+        var ok = NativeNormalityTest(x, x.Length, out var stat, out var p, out var df);
         return Result(ok, stat, p, df);
     }
 

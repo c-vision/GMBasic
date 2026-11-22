@@ -175,10 +175,7 @@ public static partial class Numerics
     public static StatisticalTestResult NormalityTest(double[] sample)
     {
         ValidateSample(sample, nameof(sample), 20);
-        var skewZ = SkewTestZ(sample);
-        var kurtosisZ = KurtosisTestZ(sample);
-        var statistic = skewZ * skewZ + kurtosisZ * kurtosisZ;
-        return new StatisticalTestResult(statistic, 1d - ChiSquared.CDF(2d, statistic), 2d);
+        return HypothesisNative.NormalityTest(sample);
     }
 
     /// <summary>

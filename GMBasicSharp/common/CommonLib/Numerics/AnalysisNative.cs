@@ -54,6 +54,27 @@ internal static class AnalysisNative
     [DllImport(Lib, EntryPoint = "gmb_anf_mad", CallingConvention = CallingConvention.Cdecl)]
     private static extern double NativeMad(double[] a, int n);
 
+    // ── RMT e SVM ──────────────────────────────────────────────────────────────────────────
+    [DllImport(Lib, EntryPoint = "gmb_anf_rmt_lambda_plus", CallingConvention = CallingConvention.Cdecl)]
+    private static extern double NativeRmtLambdaPlus(int n, int T, double sigma2);
+    [DllImport(Lib, EntryPoint = "gmb_anf_rmt_lambda_minus", CallingConvention = CallingConvention.Cdecl)]
+    private static extern double NativeRmtLambdaMinus(int n, int T, double sigma2);
+    [DllImport(Lib, EntryPoint = "gmb_anf_rmt_coherence", CallingConvention = CallingConvention.Cdecl)]
+    private static extern double NativeRmtCoherence(double[] v, int n);
+    [DllImport(Lib, EntryPoint = "gmb_anf_rmt_spectral_norm", CallingConvention = CallingConvention.Cdecl)]
+    private static extern double NativeRmtSpectralNorm(double[] a, int n);
+    [DllImport(Lib, EntryPoint = "gmb_anf_rmt_davis_kahan", CallingConvention = CallingConvention.Cdecl)]
+    private static extern double NativeRmtDavisKahan(double eNorm, double gap);
+    [DllImport(Lib, EntryPoint = "gmb_anf_rmt_principal_angle", CallingConvention = CallingConvention.Cdecl)]
+    private static extern double NativeRmtPrincipalAngle(double[] u, double[] v, int n);
+    [DllImport(Lib, EntryPoint = "gmb_anf_rmt_tightness", CallingConvention = CallingConvention.Cdecl)]
+    private static extern double NativeRmtTightness(double observed, double bound);
+    [DllImport(Lib, EntryPoint = "gmb_anf_svm_fit", CallingConvention = CallingConvention.Cdecl)]
+    private static extern void NativeSvmFit(double[] x, double[] y, int n, int d, int k,
+        double c, int maxIter, double[] w);
+    [DllImport(Lib, EntryPoint = "gmb_anf_svm_predict", CallingConvention = CallingConvention.Cdecl)]
+    private static extern int NativeSvmPredict(double[] w, double[] x, int d, int k);
+
     /* i buffer dei risultati sono allocati dal runtime: vanno liberati con `free` */
     [DllImport("libc", EntryPoint = "free", CallingConvention = CallingConvention.Cdecl)]
     private static extern void libc_free(IntPtr p);
@@ -110,4 +131,19 @@ internal static class AnalysisNative
     /// <summary>`percent` è in percentuale 0..100 (il chiamante arrotonda la frazione come prima).</summary>
     internal static double PercentilePercent(double[] a, double percent) => NativePercentile(a, a.Length, percent);
     internal static double Mad(double[] a) => NativeMad(a, a.Length);
+
+    // ── RMT e SVM ──────────────────────────────────────────────────────────────────────────
+    internal static double RmtLambdaPlus(int n, int t, double sigma2) => NativeRmtLambdaPlus(n, t, sigma2);
+    internal static double RmtLambdaMinus(int n, int t, double sigma2) => NativeRmtLambdaMinus(n, t, sigma2);
+    internal static double RmtCoherence(double[] v) => NativeRmtCoherence(v, v.Length);
+    internal static double RmtSpectralNorm(double[] a, int n) => NativeRmtSpectralNorm(a, n);
+    internal static double RmtDavisKahan(double eNorm, double gap) => NativeRmtDavisKahan(eNorm, gap);
+    internal static double RmtPrincipalAngle(double[] u, double[] v) => NativeRmtPrincipalAngle(u, v, Math.Min(u.Length, v.Length));
+    internal static double RmtTightness(double observed, double bound) => NativeRmtTightness(observed, bound);
+
+    /// <summary>Perceptron multi-classe: `w` (k·d) è preallocato dal chiamante.</summary>
+    internal static void SvmFit(double[] xFlat, double[] y, int n, int d, int k, double c, int maxIter, double[] w)
+        => NativeSvmFit(xFlat, y, n, d, k, c, maxIter, w);
+
+    internal static int SvmPredict(double[] w, double[] x, int d, int k) => NativeSvmPredict(w, x, d, k);
 }

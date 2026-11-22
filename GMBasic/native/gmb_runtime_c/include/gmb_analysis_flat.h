@@ -36,6 +36,17 @@ double  gmb_anf_max(const double* a, int n);
 double  gmb_anf_percentile(const double* a, int n, double percent);
 double  gmb_anf_mad(const double* a, int n);
 
+/* ── RMT e SVM (MULTIVARIATE) ─────────────────────────────────────────────────────────────── */
+double gmb_anf_rmt_lambda_plus(int n, int T, double sigma2);
+double gmb_anf_rmt_lambda_minus(int n, int T, double sigma2);
+double gmb_anf_rmt_coherence(const double* v, int n);
+double gmb_anf_rmt_spectral_norm(const double* a, int n);
+double gmb_anf_rmt_davis_kahan(double e_norm, double gap);
+double gmb_anf_rmt_principal_angle(const double* u, const double* v, int n);
+double gmb_anf_rmt_tightness(double observed, double bound);
+void   gmb_anf_svm_fit(const double* x, const double* y, int n, int d, int k, double c, int max_iter, double* w);
+int    gmb_anf_svm_predict(const double* w, const double* x, int d, int k);
+
 #ifdef __cplusplus
 }
 #endif
