@@ -160,6 +160,58 @@ internal static class StatsDistNative
     internal static extern double Mode(double[] a, int n);
     [DllImport(Lib, EntryPoint = "gmb_dstf_moment", CallingConvention = CallingConvention.Cdecl)]
     internal static extern double Moment(double[] a, int n, int order);
+    // ── Non-centrali ───────────────────────────────────────────────────────────────────────
+    [DllImport(Lib, EntryPoint = "gmb_dstf_nc_chi2_pdf", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern double NcChi2Pdf(double df, double nc, double x);
+    [DllImport(Lib, EntryPoint = "gmb_dstf_nc_chi2_cdf", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern double NcChi2Cdf(double df, double nc, double x);
+    [DllImport(Lib, EntryPoint = "gmb_dstf_nc_chi2_sf", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern double NcChi2Sf(double df, double nc, double x);
+    [DllImport(Lib, EntryPoint = "gmb_dstf_nc_chi2_ppf", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern double NcChi2Ppf(double df, double nc, double p);
+    [DllImport(Lib, EntryPoint = "gmb_dstf_nc_chi2_isf", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern double NcChi2Isf(double df, double nc, double p);
+    [DllImport(Lib, EntryPoint = "gmb_dstf_nc_beta_pdf", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern double NcBetaPdf(double a, double b, double nc, double x);
+    [DllImport(Lib, EntryPoint = "gmb_dstf_nc_beta_cdf", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern double NcBetaCdf(double a, double b, double nc, double x);
+    [DllImport(Lib, EntryPoint = "gmb_dstf_nc_beta_sf", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern double NcBetaSf(double a, double b, double nc, double x);
+    [DllImport(Lib, EntryPoint = "gmb_dstf_nc_beta_ppf", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern double NcBetaPpf(double a, double b, double nc, double p);
+    [DllImport(Lib, EntryPoint = "gmb_dstf_nc_beta_isf", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern double NcBetaIsf(double a, double b, double nc, double p);
+    [DllImport(Lib, EntryPoint = "gmb_dstf_nc_gamma_pdf", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern double NcGammaPdf(double shape, double nc, double x);
+    [DllImport(Lib, EntryPoint = "gmb_dstf_nc_gamma_cdf", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern double NcGammaCdf(double shape, double nc, double x);
+    [DllImport(Lib, EntryPoint = "gmb_dstf_nc_gamma_sf", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern double NcGammaSf(double shape, double nc, double x);
+    [DllImport(Lib, EntryPoint = "gmb_dstf_nc_gamma_ppf", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern double NcGammaPpf(double shape, double nc, double p);
+    [DllImport(Lib, EntryPoint = "gmb_dstf_nc_gamma_isf", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern double NcGammaIsf(double shape, double nc, double p);
+    [DllImport(Lib, EntryPoint = "gmb_dstf_nc_f_pdf", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern double NcFPdf(double d1, double d2, double nc, double x);
+    [DllImport(Lib, EntryPoint = "gmb_dstf_nc_f_cdf", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern double NcFCdf(double d1, double d2, double nc, double x);
+    [DllImport(Lib, EntryPoint = "gmb_dstf_nc_f_sf", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern double NcFSf(double d1, double d2, double nc, double x);
+    [DllImport(Lib, EntryPoint = "gmb_dstf_nc_f_ppf", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern double NcFPpf(double d1, double d2, double nc, double p);
+    [DllImport(Lib, EntryPoint = "gmb_dstf_nc_f_isf", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern double NcFIsf(double d1, double d2, double nc, double p);
+    [DllImport(Lib, EntryPoint = "gmb_dstf_nc_t_pdf", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern double NcTPdf(double df, double nc, double x);
+    [DllImport(Lib, EntryPoint = "gmb_dstf_nc_t_cdf", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern double NcTCdf(double df, double nc, double x);
+    [DllImport(Lib, EntryPoint = "gmb_dstf_nc_t_sf", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern double NcTSf(double df, double nc, double x);
+    [DllImport(Lib, EntryPoint = "gmb_dstf_nc_t_ppf", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern double NcTPpf(double df, double nc, double p);
+    [DllImport(Lib, EntryPoint = "gmb_dstf_nc_t_isf", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern double NcTIsf(double df, double nc, double p);
+
     [DllImport(Lib, EntryPoint = "gmb_dstf_iqr", CallingConvention = CallingConvention.Cdecl)]
     internal static extern double Iqr(double[] a, int n);
 }

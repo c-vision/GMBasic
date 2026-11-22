@@ -89,6 +89,34 @@ double gmb_dstf_mode(const double* a, int n);
 double gmb_dstf_moment(const double* a, int n, int order);
 double gmb_dstf_iqr(const double* a, int n);
 
+
+/* ── Non-centrali (argomenti nell'ordine dei kernel, come i metodi C#) ─────────────────────── */
+double gmb_dstf_nc_chi2_pdf(double df, double nc, double x);
+double gmb_dstf_nc_chi2_cdf(double df, double nc, double x);
+double gmb_dstf_nc_chi2_sf(double df, double nc, double x);
+double gmb_dstf_nc_beta_pdf(double a, double b, double nc, double x);
+double gmb_dstf_nc_beta_cdf(double a, double b, double nc, double x);
+double gmb_dstf_nc_beta_sf(double a, double b, double nc, double x);
+double gmb_dstf_nc_gamma_pdf(double shape, double nc, double x);
+double gmb_dstf_nc_gamma_cdf(double shape, double nc, double x);
+double gmb_dstf_nc_gamma_sf(double shape, double nc, double x);
+double gmb_dstf_nc_f_pdf(double d1, double d2, double nc, double x);
+double gmb_dstf_nc_f_cdf(double d1, double d2, double nc, double x);
+double gmb_dstf_nc_f_sf(double d1, double d2, double nc, double x);
+double gmb_dstf_nc_t_pdf(double df, double nc, double x);
+double gmb_dstf_nc_t_cdf(double df, double nc, double x);
+double gmb_dstf_nc_t_sf(double df, double nc, double x);
+double gmb_dstf_nc_chi2_ppf(double df, double nc, double p);
+double gmb_dstf_nc_chi2_isf(double df, double nc, double p);
+double gmb_dstf_nc_beta_ppf(double a, double b, double nc, double p);
+double gmb_dstf_nc_beta_isf(double a, double b, double nc, double p);
+double gmb_dstf_nc_gamma_ppf(double shape, double nc, double p);
+double gmb_dstf_nc_gamma_isf(double shape, double nc, double p);
+double gmb_dstf_nc_f_ppf(double d1, double d2, double nc, double p);
+double gmb_dstf_nc_f_isf(double d1, double d2, double nc, double p);
+double gmb_dstf_nc_t_ppf(double df, double nc, double p);
+double gmb_dstf_nc_t_isf(double df, double nc, double p);
+
 #ifdef __cplusplus
 }
 #endif

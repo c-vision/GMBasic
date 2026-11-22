@@ -77,3 +77,30 @@ double gmb_dstf_ztpoisson_cdf(double lambda, int k) { return gmb_dist_ztpoisson_
 double gmb_dstf_mode(const double* a, int n) { return gmb_mode(a, n); }
 double gmb_dstf_moment(const double* a, int n, int order) { return gmb_moment(a, n, order); }
 double gmb_dstf_iqr(const double* a, int n) { return gmb_iqr(a, n); }
+
+/* ── Non-centrali ─────────────────────────────────────────────────────────────────────────── */
+double gmb_dstf_nc_chi2_pdf(double df, double nc, double x) { return gmb_dist_nc_chi2_pdf(df, nc, x); }
+double gmb_dstf_nc_chi2_cdf(double df, double nc, double x) { return gmb_dist_nc_chi2_cdf(df, nc, x); }
+double gmb_dstf_nc_chi2_sf(double df, double nc, double x) { return gmb_dist_nc_chi2_sf(df, nc, x); }
+double gmb_dstf_nc_chi2_ppf(double df, double nc, double p) { return gmb_dist_nc_chi2_ppf(df, nc, p); }
+double gmb_dstf_nc_chi2_isf(double df, double nc, double p) { return gmb_dist_nc_chi2_isf(df, nc, p); }
+double gmb_dstf_nc_beta_pdf(double a, double b, double nc, double x) { return gmb_dist_nc_beta_pdf(a, b, nc, x); }
+double gmb_dstf_nc_beta_cdf(double a, double b, double nc, double x) { return gmb_dist_nc_beta_cdf(a, b, nc, x); }
+double gmb_dstf_nc_beta_sf(double a, double b, double nc, double x) { return gmb_dist_nc_beta_sf(a, b, nc, x); }
+double gmb_dstf_nc_beta_ppf(double a, double b, double nc, double p) { return gmb_dist_nc_beta_ppf(a, b, nc, p); }
+double gmb_dstf_nc_beta_isf(double a, double b, double nc, double p) { return gmb_dist_nc_beta_isf(a, b, nc, p); }
+double gmb_dstf_nc_gamma_pdf(double shape, double nc, double x) { return gmb_dist_nc_gamma_pdf(shape, nc, x); }
+double gmb_dstf_nc_gamma_cdf(double shape, double nc, double x) { return gmb_dist_nc_gamma_cdf(shape, nc, x); }
+double gmb_dstf_nc_gamma_sf(double shape, double nc, double x) { return gmb_dist_nc_gamma_sf(shape, nc, x); }
+double gmb_dstf_nc_gamma_ppf(double shape, double nc, double p) { return gmb_dist_nc_gamma_ppf(shape, nc, p); }
+double gmb_dstf_nc_gamma_isf(double shape, double nc, double p) { return gmb_dist_nc_gamma_isf(shape, nc, p); }
+double gmb_dstf_nc_f_pdf(double d1, double d2, double nc, double x) { return gmb_dist_nc_f_pdf(d1, d2, nc, x); }
+double gmb_dstf_nc_f_cdf(double d1, double d2, double nc, double x) { return gmb_dist_nc_f_cdf(d1, d2, nc, x); }
+double gmb_dstf_nc_f_sf(double d1, double d2, double nc, double x) { return gmb_dist_nc_f_sf(d1, d2, nc, x); }
+double gmb_dstf_nc_f_ppf(double d1, double d2, double nc, double p) { return gmb_dist_nc_f_ppf(d1, d2, nc, p); }
+double gmb_dstf_nc_f_isf(double d1, double d2, double nc, double p) { return gmb_dist_nc_f_isf(d1, d2, nc, p); }
+double gmb_dstf_nc_t_pdf(double df, double nc, double x) { return gmb_dist_nc_t_pdf(df, nc, x); }
+double gmb_dstf_nc_t_cdf(double df, double nc, double x) { return gmb_dist_nc_t_cdf(df, nc, x); }
+double gmb_dstf_nc_t_sf(double df, double nc, double x) { return gmb_dist_nc_t_sf(df, nc, x); }
+double gmb_dstf_nc_t_ppf(double df, double nc, double p) { return gmb_dist_nc_t_ppf(df, nc, p); }
+double gmb_dstf_nc_t_isf(double df, double nc, double p) { return gmb_dist_nc_t_isf(df, nc, p); }
