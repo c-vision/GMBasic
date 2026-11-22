@@ -140,4 +140,26 @@ internal static class StatsDistNative
     internal static extern double TriangularPpf(double min, double max, double mode, double p);
     [DllImport(Lib, EntryPoint = "gmb_dstf_triangular_isf", CallingConvention = CallingConvention.Cdecl)]
     internal static extern double TriangularIsf(double min, double max, double mode, double p);
+
+    // ── Gamma, ZTPoisson e descrittive residue ─────────────────────────────────────────────
+    [DllImport(Lib, EntryPoint = "gmb_dstf_gamma_pdf", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern double GammaPdf(double shape, double scale, double x);
+    [DllImport(Lib, EntryPoint = "gmb_dstf_gamma_cdf", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern double GammaCdf(double shape, double scale, double x);
+    [DllImport(Lib, EntryPoint = "gmb_dstf_gamma_sf", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern double GammaSf(double shape, double scale, double x);
+    [DllImport(Lib, EntryPoint = "gmb_dstf_gamma_ppf", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern double GammaPpf(double shape, double scale, double p);
+    [DllImport(Lib, EntryPoint = "gmb_dstf_gamma_isf", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern double GammaIsf(double shape, double scale, double p);
+    [DllImport(Lib, EntryPoint = "gmb_dstf_ztpoisson_pmf", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern double ZTPoissonPmf(double lambda, int k);
+    [DllImport(Lib, EntryPoint = "gmb_dstf_ztpoisson_cdf", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern double ZTPoissonCdf(double lambda, int k);
+    [DllImport(Lib, EntryPoint = "gmb_dstf_mode", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern double Mode(double[] a, int n);
+    [DllImport(Lib, EntryPoint = "gmb_dstf_moment", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern double Moment(double[] a, int n, int order);
+    [DllImport(Lib, EntryPoint = "gmb_dstf_iqr", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern double Iqr(double[] a, int n);
 }

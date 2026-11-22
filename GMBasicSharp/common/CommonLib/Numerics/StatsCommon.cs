@@ -200,31 +200,14 @@ public static partial class Numerics
         var rows = table.Length;
         if (rows == 0) return new StatisticalTestResult(double.NaN, double.NaN, double.NaN);
         var cols = table[0].Length;
-        var rowSum = new double[rows];
-        var colSum = new double[cols];
         double total = 0;
         for (var i = 0; i < rows; i++)
-            for (var j = 0; j < cols; j++)
-            {
-                rowSum[i] += table[i][j];
-                colSum[j] += table[i][j];
-                total += table[i][j];
-            }
+            for (var j = 0; j < cols; j++) total += table[i][j];
         if (total == 0) return new StatisticalTestResult(double.NaN, double.NaN, double.NaN);
-        double chi2 = 0;
+        var flat = new double[rows * cols];
         for (var i = 0; i < rows; i++)
-            for (var j = 0; j < cols; j++)
-            {
-                var expected = rowSum[i] * colSum[j] / total;
-                if (expected > 0)
-                {
-                    var d = table[i][j] - expected;
-                    chi2 += d * d / expected;
-                }
-            }
-        var dof = (rows - 1.0) * (cols - 1.0);
-        var p = 1.0 - ChiSquared.CDF(dof, chi2);
-        return new StatisticalTestResult(chi2, p, dof);
+            for (var j = 0; j < cols; j++) flat[i * cols + j] = table[i][j];
+        return HypothesisNative.Chi2Contingency(flat, rows, cols);
     }
 
     /// <summary>scipy.stats.mannwhitneyu — test U di Mann-Whitney (approssimazione normale).</summary>
@@ -292,38 +275,28 @@ public static partial class Numerics
     public static double GammaPdf(double shape, double scale, double x)
     {
         if (x < 0 || shape <= 0 || scale <= 0) return 0;
-        return Math.Pow(x / scale, shape - 1) * Math.Exp(-x / scale) / (scale * SpecialFunctions.Gamma(shape));
+        return StatsDistNative.GammaPdf(shape, scale, x);
     }
 
     /// <summary>scipy.stats.gamma.cdf — incomplete gamma regolarizzata P(a, x/s).</summary>
     public static double GammaCdf(double shape, double scale, double x)
     {
         if (x < 0) return 0;
-        return SpecialFunctions.GammaLowerRegularized(shape, x / scale);
+        return StatsDistNative.GammaCdf(shape, scale, x);
     }
     /// <summary>Funzione di sopravvivenza Gamma (1 - CDF).</summary>
-    public static double GammaSf(double shape, double scale, double x) => 1.0 - GammaCdf(shape, scale, x);
+    public static double GammaSf(double shape, double scale, double x) => StatsDistNative.GammaSf(shape, scale, x);
 
-    /// <summary>scipy.stats.gamma.ppf — inversa della CDF via bisezione robusta.</summary>
+    /// <summary>scipy.stats.gamma.ppf — inversa della CDF (kernel C, gammaincinv).</summary>
     public static double GammaPpf(double shape, double scale, double p)
     {
         if (p <= 0) return 0;
         if (p >= 1) return double.PositiveInfinity;
-        var lo = 0.0;
-        var hi = 1.0;
-        while (GammaCdf(shape, scale, hi) < p) hi *= 2;
-        for (var it = 0; it < 200; it++)
-        {
-            var mid = 0.5 * (lo + hi);
-            if (GammaCdf(shape, scale, mid) < p) lo = mid;
-            else hi = mid;
-            if (hi - lo < 1e-10 * Math.Max(1, hi)) break;
-        }
-        return 0.5 * (lo + hi);
+        return StatsDistNative.GammaPpf(shape, scale, p);
     }
 
     /// <summary>scipy.stats.gamma.isf — 1 − ppf(p).</summary>
-    public static double GammaIsf(double shape, double scale, double p) => GammaPpf(shape, scale, 1.0 - p);
+    public static double GammaIsf(double shape, double scale, double p) => StatsDistNative.GammaIsf(shape, scale, p);
 
     // ========================================================================
     // Test di normalità: skewtest, kurtosistest, jarque_bera
@@ -338,9 +311,7 @@ public static partial class Numerics
     {
         var n = data.Length;
         if (n < 3) return new StatisticalTestResult(double.NaN, double.NaN, double.NaN);
-        var z = SkewTestZ(data);
-        var p = 2.0 * Normal.CDF(0.0, 1.0, -Math.Abs(z));
-        return new StatisticalTestResult(z, p, double.NaN);
+        return HypothesisNative.SkewTest(data);
     }
 
     /// <summary>scipy.stats.kurtosistest — test sulla curtosi. Riusa la stessa trasformata Z
@@ -350,9 +321,7 @@ public static partial class Numerics
     {
         var n = data.Length;
         if (n < 4) return new StatisticalTestResult(double.NaN, double.NaN, double.NaN);
-        var z = KurtosisTestZ(data);
-        var p = 2.0 * Normal.CDF(0.0, 1.0, -Math.Abs(z));
-        return new StatisticalTestResult(z, p, double.NaN);
+        return HypothesisNative.KurtosisTest(data);
     }
 
     /// <summary>scipy.stats.jarque_bera — JB = n/6·(S² + (K−3)²/4), p da chi²(2).</summary>
@@ -360,21 +329,7 @@ public static partial class Numerics
     {
         var n = data.Length;
         if (n < 3) return new StatisticalTestResult(double.NaN, double.NaN, double.NaN);
-        // scipy.stats.jarque_bera: S = m3/m2^1.5 (skew grezza), K = m4/m2^2 (kurtosi grezza),
-        // JB = n/6·(S² + (K−3)²), p = chi2.sf(JB, 2).
-        var mean = Mean(data);
-        double m2 = 0, m3 = 0, m4 = 0;
-        for (var i = 0; i < n; i++)
-        {
-            var d = data[i] - mean;
-            m2 += d * d; m3 += d * d * d; m4 += d * d * d * d;
-        }
-        m2 /= n; m3 /= n; m4 /= n;
-        var s = m2 > 0 ? m3 / Math.Pow(m2, 1.5) : 0;
-        var k = m2 > 0 ? m4 / (m2 * m2) : 0;
-        var jb = (n / 6.0) * (s * s + (k - 3.0) * (k - 3.0));
-        var p = 1.0 - ChiSquared.CDF(2.0, jb);
-        return new StatisticalTestResult(jb, p, double.NaN);
+        return HypothesisNative.JarqueBera(data);
     }
 
     // ========================================================================
@@ -385,7 +340,7 @@ public static partial class Numerics
     public static double Mode(double[] data)
     {
         if (data.Length == 0) return double.NaN;
-        return data.GroupBy(v => v).OrderByDescending(g => g.Count()).ThenBy(g => g.Key).First().Key;
+        return StatsDistNative.Mode(data, data.Length);
     }
 
     /// <summary>scipy.stats.moment — momento centrale di ordine k (attorno alla media).</summary>
@@ -393,30 +348,11 @@ public static partial class Numerics
     {
         var n = data.Length;
         if (n == 0) return double.NaN;
-        var m = Mean(data);
-        double s = 0;
-        for (var i = 0; i < n; i++) s += Math.Pow(data[i] - m, order);
-        return s / n;
+        return StatsDistNative.Moment(data, n, order);
     }
 
     /// <summary>scipy.stats.iqr — Q3 − Q1 (numpy.percentile, interpolazione lineare).</summary>
-    public static double Iqr(double[] data)
-    {
-        var q1 = NumpyPercentile(data, 0.25);
-        var q3 = NumpyPercentile(data, 0.75);
-        return q3 - q1;
-    }
-
-    private static double NumpyPercentile(double[] data, double q)
-    {
-        var sorted = (double[])data.Clone();
-        Array.Sort(sorted);
-        var pos = q * (sorted.Length - 1);
-        var lo = (int)Math.Floor(pos);
-        var frac = pos - lo;
-        if (lo + 1 >= sorted.Length) return sorted[^1];
-        return sorted[lo] + frac * (sorted[lo + 1] - sorted[lo]);
-    }
+    public static double Iqr(double[] data) => StatsDistNative.Iqr(data, data.Length);
 
     /// <summary>scipy.stats.describe — statistiche descrittive complete.</summary>
     public static DescribeResult Describe(double[] data)

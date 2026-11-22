@@ -78,6 +78,17 @@ double gmb_dstf_pareto_isf(double scale, double shape, double p);
 double gmb_dstf_triangular_ppf(double min, double max, double mode, double p);
 double gmb_dstf_triangular_isf(double min, double max, double mode, double p);
 
+double gmb_dstf_gamma_pdf(double shape, double scale, double x);
+double gmb_dstf_gamma_cdf(double shape, double scale, double x);
+double gmb_dstf_gamma_sf(double shape, double scale, double x);
+double gmb_dstf_gamma_ppf(double shape, double scale, double p);
+double gmb_dstf_gamma_isf(double shape, double scale, double p);
+double gmb_dstf_ztpoisson_pmf(double lambda, int k);
+double gmb_dstf_ztpoisson_cdf(double lambda, int k);
+double gmb_dstf_mode(const double* a, int n);
+double gmb_dstf_moment(const double* a, int n, int order);
+double gmb_dstf_iqr(const double* a, int n);
+
 #ifdef __cplusplus
 }
 #endif

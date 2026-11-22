@@ -533,24 +533,14 @@ public static partial class Numerics
     {
         if (lambda <= 0) return double.NaN;
         if (k < 1) return 0.0;
-        var denom = lambda < 1e-6 ? lambda * (1.0 - lambda * 0.5) : 1.0 - Math.Exp(-lambda);
-        return Math.Exp(k * Math.Log(lambda) - SpecialLGamma(k + 1.0) - lambda - Math.Log(denom));
+        return StatsDistNative.ZTPoissonPmf(lambda, k);
     }
 
     public static double ZTPoissonCdf(double lambda, int k)
     {
         if (lambda <= 0) return double.NaN;
         if (k < 1) return 0.0;
-        var denom = lambda < 1e-6 ? lambda * (1.0 - lambda * 0.5) : 1.0 - Math.Exp(-lambda);
-        var p = lambda * Math.Exp(-lambda) / denom;
-        var s = p;
-        for (var j = 2; j <= k; j++)
-        {
-            p *= lambda / j;
-            s += p;
-            if (p < 1e-15 * s) break;
-        }
-        return Math.Min(1.0, s);
+        return StatsDistNative.ZTPoissonCdf(lambda, k);
     }
 
 

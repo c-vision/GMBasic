@@ -65,3 +65,21 @@ int gmb_stf_shapiro(const double* x, int n, double* stat, double* p, double* df)
     gmb_val_t xv = stf_list(x, n);
     return stf_take(gmb_shapiro(xv), stat, p, df);
 }
+
+int gmb_stf_chi2con(const double* table, int rows, int cols, double* stat, double* p, double* df) {
+    return stf_take(gmb_chi2con_flat(table, rows, cols), stat, p, df);
+}
+
+int gmb_stf_skewtest(const double* x, int n, double* stat, double* p, double* df) {
+    gmb_val_t xv = stf_list(x, n);
+    return stf_take(gmb_skewtest(xv), stat, p, df);
+}
+
+int gmb_stf_kurtosistest(const double* x, int n, double* stat, double* p, double* df) {
+    gmb_val_t xv = stf_list(x, n);
+    return stf_take(gmb_kurtosistest(xv), stat, p, df);
+}
+
+int gmb_stf_jarquebera(const double* x, int n, double* stat, double* p, double* df) {
+    return stf_take(gmb_jarquebera_flat(x, n), stat, p, df);
+}

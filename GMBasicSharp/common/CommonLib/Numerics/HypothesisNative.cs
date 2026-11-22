@@ -39,6 +39,20 @@ internal static class HypothesisNative
     private static extern int NativeShapiro(double[] x, int n,
         out double stat, out double p, out double df);
 
+    // ── Test compositi (dict) ──────────────────────────────────────────────────────────────
+    [DllImport(Lib, EntryPoint = "gmb_stf_chi2con", CallingConvention = CallingConvention.Cdecl)]
+    private static extern int NativeChi2Con(double[] table, int rows, int cols,
+        out double stat, out double p, out double df);
+    [DllImport(Lib, EntryPoint = "gmb_stf_skewtest", CallingConvention = CallingConvention.Cdecl)]
+    private static extern int NativeSkewTest(double[] x, int n,
+        out double stat, out double p, out double df);
+    [DllImport(Lib, EntryPoint = "gmb_stf_kurtosistest", CallingConvention = CallingConvention.Cdecl)]
+    private static extern int NativeKurtosisTest(double[] x, int n,
+        out double stat, out double p, out double df);
+    [DllImport(Lib, EntryPoint = "gmb_stf_jarquebera", CallingConvention = CallingConvention.Cdecl)]
+    private static extern int NativeJarqueBera(double[] x, int n,
+        out double stat, out double p, out double df);
+
     private static StatisticalTestResult Result(int ok, double stat, double p, double df)
     {
         if (ok == 0)
@@ -86,6 +100,31 @@ internal static class HypothesisNative
     internal static StatisticalTestResult ShapiroWilk(double[] x)
     {
         var ok = NativeShapiro(x, x.Length, out var stat, out var p, out var df);
+        return Result(ok, stat, p, df);
+    }
+
+    /// <summary>`table` è appiattita row-major (rows × cols).</summary>
+    internal static StatisticalTestResult Chi2Contingency(double[] table, int rows, int cols)
+    {
+        var ok = NativeChi2Con(table, rows, cols, out var stat, out var p, out var df);
+        return Result(ok, stat, p, df);
+    }
+
+    internal static StatisticalTestResult SkewTest(double[] x)
+    {
+        var ok = NativeSkewTest(x, x.Length, out var stat, out var p, out var df);
+        return Result(ok, stat, p, df);
+    }
+
+    internal static StatisticalTestResult KurtosisTest(double[] x)
+    {
+        var ok = NativeKurtosisTest(x, x.Length, out var stat, out var p, out var df);
+        return Result(ok, stat, p, df);
+    }
+
+    internal static StatisticalTestResult JarqueBera(double[] x)
+    {
+        var ok = NativeJarqueBera(x, x.Length, out var stat, out var p, out var df);
         return Result(ok, stat, p, df);
     }
 }

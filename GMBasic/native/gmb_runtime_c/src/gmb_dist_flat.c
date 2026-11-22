@@ -66,3 +66,14 @@ double gmb_dstf_pareto_ppf(double scale, double shape, double p) { return gmb_di
 double gmb_dstf_pareto_isf(double scale, double shape, double p) { return gmb_dist_pareto_isf(scale, shape, p); }
 double gmb_dstf_triangular_ppf(double min, double max, double mode, double p) { return gmb_dist_triangular_ppf(min, max, mode, p); }
 double gmb_dstf_triangular_isf(double min, double max, double mode, double p) { return gmb_dist_triangular_isf(min, max, mode, p); }
+
+double gmb_dstf_gamma_pdf(double shape, double scale, double x) { return gmb_gamma_pdf(shape, scale, x); }
+double gmb_dstf_gamma_cdf(double shape, double scale, double x) { return gmb_gamma_cdf(shape, scale, x); }
+double gmb_dstf_gamma_sf(double shape, double scale, double x) { return gmb_gamma_sf(shape, scale, x); }
+double gmb_dstf_gamma_ppf(double shape, double scale, double p) { return gmb_gamma_ppf(shape, scale, p); }
+double gmb_dstf_gamma_isf(double shape, double scale, double p) { return gmb_gamma_isf(shape, scale, p); }
+double gmb_dstf_ztpoisson_pmf(double lambda, int k) { return gmb_dist_ztpoisson_pmf(lambda, k); }
+double gmb_dstf_ztpoisson_cdf(double lambda, int k) { return gmb_dist_ztpoisson_cdf(lambda, k); }
+double gmb_dstf_mode(const double* a, int n) { return gmb_mode(a, n); }
+double gmb_dstf_moment(const double* a, int n, int order) { return gmb_moment(a, n, order); }
+double gmb_dstf_iqr(const double* a, int n) { return gmb_iqr(a, n); }

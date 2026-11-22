@@ -29,6 +29,10 @@ int gmb_stf_fisher(long a, long b, long c, long d,
 int gmb_stf_ks(const double* x, int nx, const double* y, int ny,
                double* stat, double* p, double* df);
 int gmb_stf_shapiro(const double* x, int n, double* stat, double* p, double* df);
+int gmb_stf_chi2con(const double* table, int rows, int cols, double* stat, double* p, double* df);
+int gmb_stf_skewtest(const double* x, int n, double* stat, double* p, double* df);
+int gmb_stf_kurtosistest(const double* x, int n, double* stat, double* p, double* df);
+int gmb_stf_jarquebera(const double* x, int n, double* stat, double* p, double* df);
 
 #ifdef __cplusplus
 }
