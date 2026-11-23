@@ -13,6 +13,8 @@ IMPORT MULTIVARIATE
 
 IMPORT MULTIVARIATE
 IMPORT TIMESERIES
+IMPORT SIGNAL
+IMPORT INTERP
 SUB A_analysis_interp_real()
     DIM x() = {0, 1, 2, 3, 4}
     DIM y() = {0, 2, 4, 6, 8}
@@ -156,9 +158,9 @@ END SUB
 SUB A_splev()
   DIM xs(4) AS DOUBLE = {0, 1, 2, 3, 4}
   DIM ys(4) AS DOUBLE = {1, 4, 9, 16, 25}
-  DIM sp = NUMERICAL.Splrep(xs, ys)
+  DIM sp() = INTERP.SPLREP(xs, ys)
   DIM xq(0) AS DOUBLE = {2.5}
-  DIM sv() = NUMERICAL.Splev(sp, xq)
+  DIM sv() = INTERP.SPLEV(sp, xq)
   PRINT "splev="; ROUND(sv(0), 6)
 END SUB
 
@@ -166,8 +168,8 @@ END SUB
 SUB A_splrep()
   DIM xs(4) AS DOUBLE = {0, 1, 2, 3, 4}
   DIM ys(4) AS DOUBLE = {1, 4, 9, 16, 25}
-  DIM sp = NUMERICAL.Splrep(xs, ys)
-  PRINT "splrep_ok="; IIF(sp <> 0, 1, 0)
+  DIM sp() = INTERP.SPLREP(xs, ys)
+  PRINT "splrep_ok="; IIF(LEN(sp) > 0, 1, 0)
 END SUB
 
 
@@ -193,15 +195,15 @@ END SUB
 SUB A_rfft()
   DIM x(7) AS DOUBLE
   FOR i = 0 TO 7: x(i) = COS(2 * 3.141592653589793 * i / 8): NEXT
-  DIM rf = NUMERICAL.Rfft(x)
-  PRINT "rfft_ok="; IIF(rf <> 0, 1, 0)
+  DIM rf() = SIGNAL.RFFT(x)
+  PRINT "rfft_ok="; IIF(LEN(rf) > 0, 1, 0)
 END SUB
 
 
 SUB A_irfft()
   DIM re(4) AS DOUBLE = {1, 0.5, 0, 0, 0}
   DIM im(4) AS DOUBLE = {0, 0, 0, 0, 0}
-  DIM ir() = NUMERICAL.Irfft(re, im)
+  DIM ir() = SIGNAL.IRFFT(re, im)
   PRINT "irfft0="; ROUND(ir(0), 6)
 END SUB
 
