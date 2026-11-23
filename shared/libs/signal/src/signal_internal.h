@@ -23,6 +23,8 @@ double* gs_signal_convolve(const double* x, long nx, const double* k, long nk, l
 double* gs_signal_correlate(const double* x, long nx, const double* k, long nk, long* outn);
 double* gs_signal_window(long n, int kind, long* outn);
 double* gs_welch(const double* x, int n, int nperseg, double fs, int* out_rows);
+double* gs_rfft(const double* x, int n, long* outn);
+double* gs_irfft(const double* re, const double* im, int m, long* outn);
 double* gs_resample(const double* x, int n, int num, long* outn);
 
 /* signal_filters.c */

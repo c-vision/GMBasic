@@ -1,23 +1,24 @@
-' signal.inc — namespace SIGNAL via FFI (pacchetto `signal`, lib libgmbsignal).
-' Uso: REQUIRE "signal"  →  IMPORT SIGNAL
+' signal.inc — namespace SIGNAL via FFI (lib `signal`, libgmbsignal).
 '
-' FORME (vincolo dell'emettitore: una DECLARE non puo' ritornare un array):
+' 19 funzioni pure di elaborazione dei segnali (scipy.signal/fft): finestre,
+' convoluzione/correlazione, design e applicazione di filtri IIR
+' (butter/cheby1/cheby2/ellip + lfilter/filtfilt/freqz), FIR (firwin), picchi
+' (findpeaks), ricampionamento (resample/decimate) e smoothing Savitzky-Golay.
+'
+' Uso: IMPORT SIGNAL   (shared/libs: nessun REQUIRE; export in shared/include)
+'
+' FORME (vincolo dell'emettitore: una DECLARE non può ritornare un array):
 '   - le primitive SXF_* scrivono in un buffer del chiamante e ritornano il
 '     numero di elementi scritti (<0 = errore: -1 generico, -2 buffer piccolo);
 '   - i wrapper PUBLIC allocano il buffer della dimensione giusta e ritornano
 '     AS ARRAY OF DOUBLE, quindi la firma pubblica resta quella storica:
-'     SIGNAL.HANN(5), SIGNAL.LFILTER(h, x), SIGNAL.CONVOLVE(x, k), ...
+'     SIGNAL.HANN(5), SIGNAL.LFILTER(h, x), SIGNAL.CONVOLVE(x, k), …
 '   - il design IIR (BUTTER/CHEBY1/CHEBY2/ELLIP) ritorna un handle LONG nel
 '     registro interno della lib, da passare a LFILTER/FILTFILT/FREQZ.
 '
-' ECCEZIONE — WELCH: il builtin ritorna un handle di matrice; qui la lib
-' produce il buffer piatto [freq0, psd0, freq1, psd1, ...] e il wrapper
-' ritorna l'array piatto (2*nfreq valori). Convertirlo in handle matrice
-' richiede il registro del runtime, che vive nel compilatore (F3).
-'
-' NOTA DI ATTIVAZIONE: le 18 procedure sono ancora builtin del linguaggio,
-' quindi `REQUIRE "signal"` viene respinto dal linker finche' la superficie
-' builtin non viene rimossa (stessa condizione del pacchetto `crypto`).
+' NON è qui WELCH: resta builtin, perché ritorna un handle di matrice e il
+' registro delle matrici vive nel runtime. Il comando SIGNAL / ON SIGNAL
+' (bus eventi con dispatch GPM) resta anch'esso builtin.
 
 NAMESPACE SIGNAL
 
@@ -39,8 +40,6 @@ DECLARE NATIVE FUNCTION SXF_FREQZ LIB "gmbsignal" ALIAS "ofx_signal_freqz" (h AS
 DECLARE NATIVE FUNCTION SXF_FIRWIN LIB "gmbsignal" ALIAS "ofx_signal_firwin" (numtaps AS LONG, cutoff() AS DOUBLE, ncut AS LONG, btype AS STRING, window AS STRING, out() AS DOUBLE, cap AS LONG) AS LONG
 DECLARE NATIVE FUNCTION SXF_FINDPEAKS LIB "gmbsignal" ALIAS "ofx_signal_find_peaks" (x() AS DOUBLE, n AS LONG, distance AS DOUBLE, out() AS DOUBLE, cap AS LONG) AS LONG
 DECLARE NATIVE FUNCTION SXF_SAVGOL LIB "gmbsignal" ALIAS "ofx_signal_savgol" (x() AS DOUBLE, n AS LONG, window AS LONG, polyorder AS LONG, out() AS DOUBLE, cap AS LONG) AS LONG
-DECLARE NATIVE FUNCTION SXF_WELCH LIB "gmbsignal" ALIAS "ofx_signal_welch" (x() AS DOUBLE, n AS LONG, nperseg AS LONG, fs AS DOUBLE, out() AS DOUBLE, cap AS LONG) AS LONG
-DECLARE NATIVE FUNCTION SXF_FILTERCOUNT LIB "gmbsignal" ALIAS "ofx_signal_filter_count" () AS LONG
 
 ' ── finestre ────────────────────────────────────────────────────────────────
 ' n = numero di campioni (>=1); torna la finestra simmetrica di n valori.
@@ -156,7 +155,7 @@ PUBLIC FUNCTION FIRWIN(numtaps AS LONG, cutoff() AS DOUBLE, btype AS STRING, win
 END FUNCTION
 
 ' FINDPEAKS: indici dei massimi locali; distance = distanza minima (campioni).
-' Senza picchi ritorna un array di 1 elemento a 0 (il builtin ritorna vuoto).
+' Senza picchi ritorna un array di 1 elemento a 0 (il builtin ritornava vuoto).
 PUBLIC FUNCTION FINDPEAKS(x() AS DOUBLE, distance AS DOUBLE) AS ARRAY OF DOUBLE
     DIM n AS LONG = UBOUND(x) + 1
     DIM buf(n - 1) AS DOUBLE
@@ -180,21 +179,24 @@ PUBLIC FUNCTION SAVGOLFILTER(x() AS DOUBLE, window_length AS LONG, polyorder AS 
     RETURN o
 END FUNCTION
 
-' ── densità spettrale di potenza (Welch) ────────────────────────────────────
-' Ritorna l'array piatto [freq0, psd0, freq1, psd1, ...] con nfreq = nperseg/2+1
-' righe (nperseg viene ridotto a n se piu' grande), quindi 2*nfreq valori.
-PUBLIC FUNCTION WELCH(x() AS DOUBLE, nperseg AS LONG, fs AS DOUBLE) AS ARRAY OF DOUBLE
+' ── FFT reale (scipy.fft) ────────────────────────────────────────────────────
+' RFFT: componenti a frequenza non negativa INTERLEAVED [re0, im0, re1, im1, …]
+'       (2*(n\2+1) valori). IRFFT: ricostruisce il segnale reale (2*(m-1) valori).
+DECLARE NATIVE FUNCTION SXF_RFFT LIB "gmbsignal" ALIAS "ofx_signal_rfft" (x() AS DOUBLE, n AS LONG, out() AS DOUBLE, cap AS LONG) AS LONG
+DECLARE NATIVE FUNCTION SXF_IRFFT LIB "gmbsignal" ALIAS "ofx_signal_irfft" (re() AS DOUBLE, im() AS DOUBLE, m AS LONG, out() AS DOUBLE, cap AS LONG) AS LONG
+
+PUBLIC FUNCTION RFFT(x() AS DOUBLE) AS ARRAY OF DOUBLE
     DIM n AS LONG = UBOUND(x) + 1
-    DIM ps AS LONG = nperseg
-    IF ps > n THEN ps = n
-    DIM nfreq AS LONG = CLNG(ps / 2) + 1
-    DIM o((nfreq * 2) - 1) AS DOUBLE
-    CALL SXF_WELCH(x, n, nperseg, fs, o, nfreq * 2)
+    DIM m AS LONG = n \ 2 + 1
+    DIM o(2 * m - 1) AS DOUBLE
+    CALL SXF_RFFT(x, n, o, 2 * m)
     RETURN o
 END FUNCTION
 
-' ── diagnostica ─────────────────────────────────────────────────────────────
-' Handle di filtro attualmente allocati (test/diagnostica).
-PUBLIC FUNCTION FILTERCOUNT() AS LONG
-    RETURN SXF_FILTERCOUNT()
+PUBLIC FUNCTION IRFFT(re() AS DOUBLE, im() AS DOUBLE) AS ARRAY OF DOUBLE
+    DIM m AS LONG = UBOUND(re) + 1
+    DIM n AS LONG = 2 * (m - 1)
+    DIM o(n - 1) AS DOUBLE
+    CALL SXF_IRFFT(re, im, m, o, n)
+    RETURN o
 END FUNCTION

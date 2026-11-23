@@ -69,6 +69,13 @@ long ofx_signal_decimate(const double* x, long n, long q, double* out, long cap)
 long ofx_signal_welch(const double* x, long n, long nperseg, double fs,
                       double* out, long cap);
 
+/* ── FFT reale (scipy.fft) ──────────────────────────────────────────────────── */
+/* Buffer del chiamante: ritorno = elementi scritti (<0 = errore).
+ * RFFT scrive le componenti non negative interleaved [re0, im0, …] (2*(n/2+1) valori);
+ * IRFFT ricostruisce il segnale reale (2*(m-1) valori, già diviso per n). */
+long ofx_signal_rfft(const double* x, long n, double* out, long cap);
+long ofx_signal_irfft(const double* re, const double* im, long m, double* out, long cap);
+
 /* ── diagnostica ────────────────────────────────────────────────────────────── */
 /* Numero di handle filtro attualmente allocati (test/diagnostica). */
 long ofx_signal_filter_count(void);

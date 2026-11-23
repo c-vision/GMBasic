@@ -1,6 +1,6 @@
 ' signal.inc — namespace SIGNAL via FFI (lib `signal`, libgmbsignal).
 '
-' 17 funzioni pure di elaborazione dei segnali (scipy.signal): finestre,
+' 19 funzioni pure di elaborazione dei segnali (scipy.signal/fft): finestre,
 ' convoluzione/correlazione, design e applicazione di filtri IIR
 ' (butter/cheby1/cheby2/ellip + lfilter/filtfilt/freqz), FIR (firwin), picchi
 ' (findpeaks), ricampionamento (resample/decimate) e smoothing Savitzky-Golay.
@@ -176,5 +176,27 @@ PUBLIC FUNCTION SAVGOLFILTER(x() AS DOUBLE, window_length AS LONG, polyorder AS 
     DIM n AS LONG = UBOUND(x) + 1
     DIM o(n - 1) AS DOUBLE
     CALL SXF_SAVGOL(x, n, window_length, polyorder, o, n)
+    RETURN o
+END FUNCTION
+
+' ── FFT reale (scipy.fft) ────────────────────────────────────────────────────
+' RFFT: componenti a frequenza non negativa INTERLEAVED [re0, im0, re1, im1, …]
+'       (2*(n\2+1) valori). IRFFT: ricostruisce il segnale reale (2*(m-1) valori).
+DECLARE NATIVE FUNCTION SXF_RFFT LIB "gmbsignal" ALIAS "ofx_signal_rfft" (x() AS DOUBLE, n AS LONG, out() AS DOUBLE, cap AS LONG) AS LONG
+DECLARE NATIVE FUNCTION SXF_IRFFT LIB "gmbsignal" ALIAS "ofx_signal_irfft" (re() AS DOUBLE, im() AS DOUBLE, m AS LONG, out() AS DOUBLE, cap AS LONG) AS LONG
+
+PUBLIC FUNCTION RFFT(x() AS DOUBLE) AS ARRAY OF DOUBLE
+    DIM n AS LONG = UBOUND(x) + 1
+    DIM m AS LONG = n \ 2 + 1
+    DIM o(2 * m - 1) AS DOUBLE
+    CALL SXF_RFFT(x, n, o, 2 * m)
+    RETURN o
+END FUNCTION
+
+PUBLIC FUNCTION IRFFT(re() AS DOUBLE, im() AS DOUBLE) AS ARRAY OF DOUBLE
+    DIM m AS LONG = UBOUND(re) + 1
+    DIM n AS LONG = 2 * (m - 1)
+    DIM o(n - 1) AS DOUBLE
+    CALL SXF_IRFFT(re, im, m, o, n)
     RETURN o
 END FUNCTION

@@ -164,3 +164,21 @@ long ofx_signal_welch(const double* x, long n, long nperseg, double fs,
 /* ── diagnostica ───────────────────────────────────────────────────────────── */
 
 long ofx_signal_filter_count(void) { return gs_filter_count(); }
+
+/* ── FFT reale (scipy.fft.rfft/irfft) ──────────────────────────────────────── */
+
+long ofx_signal_rfft(const double* x, long n, double* out, long cap)
+{
+    if (!x || n <= 0) return OFX_SIGNAL_ERR;
+    long on = 0;
+    double* r = gs_rfft(x, (int)n, &on);
+    return gs_emit(r, on, out, cap);
+}
+
+long ofx_signal_irfft(const double* re, const double* im, long m, double* out, long cap)
+{
+    if (!re || !im || m < 2) return OFX_SIGNAL_ERR;
+    long on = 0;
+    double* r = gs_irfft(re, im, (int)m, &on);
+    return gs_emit(r, on, out, cap);
+}

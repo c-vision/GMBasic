@@ -216,3 +216,40 @@ double* gs_resample(const double* x, int n, int num, long* outn)
     free(re); free(im); free(sre); free(sim);
     return result;
 }
+
+/* RFFT: componenti a frequenza non negativa (scipy.fft.rfft), FFT NON scalata.
+ * Output interleaved [re0, im0, re1, im1, …], *outn = 2*(n/2+1). */
+double* gs_rfft(const double* x, int n, long* outn)
+{
+    *outn = 0;
+    if (!x || n <= 0) return NULL;
+    double* re = (double*)calloc((size_t)n, sizeof(double));
+    double* im = (double*)calloc((size_t)n, sizeof(double));
+    if (!re || !im) { free(re); free(im); return NULL; }
+    for (int i = 0; i < n; i++) re[i] = x[i];
+    gs_fft(re, im, n, 0);
+    int m = n / 2 + 1;
+    double* out = (double*)malloc(sizeof(double) * (size_t)m * 2);
+    if (!out) { free(re); free(im); return NULL; }
+    for (int k = 0; k < m; k++) { out[2 * k] = re[k]; out[2 * k + 1] = im[k]; }
+    *outn = (long)m * 2;
+    free(re); free(im);
+    return out;
+}
+
+/* IRFFT: ricostruisce il segnale reale (scipy.fft.irfft). gs_fft inverse divide già per n. */
+double* gs_irfft(const double* re, const double* im, int m, long* outn)
+{
+    *outn = 0;
+    if (!re || !im || m < 2) return NULL;
+    int n = 2 * (m - 1);
+    double* cre = (double*)calloc((size_t)n, sizeof(double));
+    double* cim = (double*)calloc((size_t)n, sizeof(double));
+    if (!cre || !cim) { free(cre); free(cim); return NULL; }
+    for (int k = 0; k < m; k++) { cre[k] = re[k]; cim[k] = im[k]; }
+    for (int k = 1; k < m - 1; k++) { cre[n - k] = re[k]; cim[n - k] = -im[k]; }
+    gs_fft(cre, cim, n, 1);
+    free(cim);
+    *outn = n;
+    return cre;
+}
