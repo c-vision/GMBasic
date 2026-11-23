@@ -90,6 +90,17 @@ public class NumericsPortedKernelsTests
     }
 
     [Fact]
+    public void SolveLinear_Is_Shared_By_PolyLs()
+    {
+        // PolyLs risolve le equazioni normali: con y = 2 + 3x i coefficienti tornano esatti.
+        var coef = new double[2];
+        var ssq = Numerics.PolyLs(new double[] { 0, 1, 2, 3 }, new double[] { 2, 5, 8, 11 }, 1, coef);
+        AssertClose(2.0, coef[0], 1e-10);
+        AssertClose(3.0, coef[1], 1e-10);
+        Assert.True(ssq < 1e-20, $"ssq={ssq}");
+    }
+
+    [Fact]
     public void GpRegress_And_GmmEm1D_Use_The_Runtime()
     {
         // GP su dati lineari y=2x con rumore 0: la previsione ai nodi deve tornare y.

@@ -992,38 +992,68 @@ double* gmb_solve_ode_ctx(double (*f)(double, double, void*), void* ctx, double 
     return ys;
 }
 
+/* ── SOLVER LINEARE UNICO (Gauss con pivot parziale) ──────────────────────────────────────────
+ * Risolve A·x = b per un sistema denso n×n (A row-major, b, x di n elementi).
+ * `tol` è la soglia di singolarità: |pivot| < tol → 0 (singolare). Ritorna 1 se risolto.
+ * A e b sono MODIFICATI in place: chi non vuole li copia prima.
+ * Questa è l'UNICA implementazione dell'eliminazione del runtime: le varianti sparse nei file
+ * (infer/mv/ts/interp/savgol/dense) sono wrapper sottili con la loro tolleranza e convenzione
+ * di ritorno. */
+int gmb_solve_lin_tol(int n, double* a, double* b, double* x, double tol)
+{
+    if (n <= 0 || !a || !b || !x) return 0;
+    for (int i = 0; i < n; i++)
+    {
+        int piv = i;
+        for (int r = i + 1; r < n; r++) if (fabs(a[r*n+i]) > fabs(a[piv*n+i])) piv = r;
+        if (fabs(a[piv*n+i]) < tol) return 0;
+        if (piv != i)
+        {
+            for (int c = i; c < n; c++) { double t = a[i*n+c]; a[i*n+c] = a[piv*n+c]; a[piv*n+c] = t; }
+            double t = b[i]; b[i] = b[piv]; b[piv] = t;
+        }
+        double d = a[i*n+i];
+        for (int r = i + 1; r < n; r++)
+        {
+            double f = a[r*n+i] / d;
+            for (int c = i; c < n; c++) a[r*n+c] -= f * a[i*n+c];
+            b[r] -= f * b[i];
+        }
+    }
+    for (int i = n - 1; i >= 0; i--)
+    {
+        double s = b[i];
+        for (int c = i + 1; c < n; c++) s -= a[i*n+c] * x[c];
+        x[i] = s / a[i*n+i];
+    }
+    return 1;
+}
+
+int gmb_solve_lin(int n, double* a, double* b, double* x)
+{
+    return gmb_solve_lin_tol(n, a, b, x, 1e-300);
+}
+
 static double* gmb_dense_solve(double* a, int n)
 {
-    /* a è la matrice n×n seguita dal rhs: risolvi a x = rhs (ultima colonna). */
-    double* m = (double*)malloc(sizeof(double) * (size_t)n);
-    if (!m) return NULL;
-    for (int col = 0; col < n; col++)
+    /* `a` è la matrice AUMENTATA n×(n+1): si compatta in n×n + colonna b e si usa il solver
+     * unico (prima c'era una sesta copia dell'eliminazione). */
+    if (!a || n <= 0) return NULL;
+    double* ac = (double*)malloc(sizeof(double) * (size_t)n * (size_t)n);
+    double* bc = (double*)malloc(sizeof(double) * (size_t)n);
+    double* m = (double*)calloc((size_t)n, sizeof(double));
+    if (!ac || !bc || !m) { free(ac); free(bc); free(m); return NULL; }
+    for (int i = 0; i < n; i++)
     {
-        int piv = col;
-        for (int r = col + 1; r < n; r++)
-            if (fabs(a[r * (n + 1) + col]) > fabs(a[piv * (n + 1) + col])) piv = r;
-        if (piv != col)
-        {
-            for (int j = col; j <= n; j++)
-            {
-                double t = a[col * (n + 1) + j]; a[col * (n + 1) + j] = a[piv * (n + 1) + j]; a[piv * (n + 1) + j] = t;
-            }
-        }
-        for (int r = col + 1; r < n; r++)
-        {
-            double f = a[r * (n + 1) + col] / a[col * (n + 1) + col];
-            for (int j = col; j <= n; j++) a[r * (n + 1) + j] -= f * a[col * (n + 1) + j];
-        }
+        for (int j = 0; j < n; j++) ac[i * n + j] = a[i * (n + 1) + j];
+        bc[i] = a[i * (n + 1) + n];
     }
-    for (int r = n - 1; r >= 0; r--)
-    {
-        double s = a[r * (n + 1) + n];
-        for (int j = r + 1; j < n; j++) s -= a[r * (n + 1) + j] * m[j];
-        m[r] = s / a[r * (n + 1) + r];
-    }
-    free(a);
+    int ok = gmb_solve_lin(n, ac, bc, m);
+    free(ac); free(bc);
+    if (!ok) { free(m); return NULL; }
     return m;
 }
+
 
 double gmb_cubic_spline(const double* x, const double* y, int n, double tx)
 {
@@ -3093,28 +3123,9 @@ double gmb_mv_rmt_tightness(double observed, double bound)
 /* --- Gaussian Process regression (MULTIVARIATE), port di gs_gp_regression --- */
 static int gmb_mv_solve(int n, double* A, double* b, double* x)
 {
-    int i, j, k, piv;
-    for (i = 0; i < n; i++) {
-        piv = i;
-        for (j = i + 1; j < n; j++) if (fabs(A[j*n+i]) > fabs(A[piv*n+i])) piv = j;
-        if (fabs(A[piv*n+i]) < 1e-300) return 0;
-        if (piv != i) {
-            for (k = 0; k < n; k++) { double t = A[i*n+k]; A[i*n+k] = A[piv*n+k]; A[piv*n+k] = t; }
-            { double t = b[i]; b[i] = b[piv]; b[piv] = t; }
-        }
-        for (j = i + 1; j < n; j++) {
-            double f = A[j*n+i] / A[i*n+i];
-            for (k = i; k < n; k++) A[j*n+k] -= f * A[i*n+k];
-            b[j] -= f * b[i];
-        }
-    }
-    for (i = n - 1; i >= 0; i--) {
-        double s = b[i];
-        for (j = i + 1; j < n; j++) s -= A[i*n+j] * x[j];
-        x[i] = s / A[i*n+i];
-    }
-    return 1;
+    return gmb_solve_lin(n, A, b, x);
 }
+
 static gmb_val_t gmb_mv_nan_dict(void)
 {
     gmb_dict_t d = gmb_dict_new();

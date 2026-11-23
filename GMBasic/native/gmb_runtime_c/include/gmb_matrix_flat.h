@@ -27,6 +27,7 @@
 extern "C" {
 #endif
 
+int gmb_matrix_solve_lin(int64_t n, const double* a, const double* b, double* x, double tol);
 int gmb_matrix_flat_op(const double* a, int64_t rows, int64_t cols, int op,
                        double* out, int64_t out_cap,
                        int64_t* out_rows, int64_t* out_cols);

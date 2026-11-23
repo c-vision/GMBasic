@@ -1154,6 +1154,8 @@ double* gmb_fftfreq(int n, double d, gmb_int_t* outn);
 double* gmb_fftshift(const double* arr, int n, gmb_int_t* outn);
 double* gmb_ifftshift(const double* arr, int n, gmb_int_t* outn);
 /* --- Filtri IIR (gmb_filters.c): design → handle; LFILTER/FILTFILT/FREQZ applicano --- */
+int gmb_solve_lin_tol(int n, double* a, double* b, double* x, double tol);
+int gmb_solve_lin(int n, double* a, double* b, double* x);
 gmb_int_t gmb_filter_butter(gmb_int_t n, const double* wn, int nwn, const char* btype);
 gmb_int_t gmb_filter_cheby1(gmb_int_t n, double rp, const double* wn, int nwn, const char* btype);
 gmb_int_t gmb_filter_cheby2(gmb_int_t n, double rs, const double* wn, int nwn, const char* btype);

@@ -33,6 +33,17 @@ internal static class MatrixNativeKernels
 
     private const string Lib = "gmb_matrix_flat";
 
+    [DllImport(Lib, EntryPoint = "gmb_matrix_solve_lin", CallingConvention = CallingConvention.Cdecl)]
+    private static extern int MatrixSolveLin(long n, double[] a, double[] b, double[] x, double tol);
+
+    /// <summary>
+    /// Risolve A·x = b (A n×n row-major) con l'UNICO solver del runtime (`gmb_solve_lin_tol`,
+    /// eliminazione di Gauss a pivot parziale). `tol` è la soglia di singolarità.
+    /// A e b non vengono modificati (il kernel ne fa una copia).
+    /// </summary>
+    internal static bool SolveLinear(double[] a, double[] b, double[] x, double tol)
+        => MatrixSolveLin(x.Length, a, b, x, tol) != 0;
+
     [DllImport(Lib, EntryPoint = "gmb_matrix_flat_op", CallingConvention = CallingConvention.Cdecl)]
     private static extern int FlatOp(double[] a, long rows, long cols, int op,
                                      double[] outBuf, long outCap,

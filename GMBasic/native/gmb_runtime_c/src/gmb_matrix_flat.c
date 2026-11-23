@@ -11,6 +11,7 @@
  * ============================================================================ */
 #include "gmb_matrix.h"
 #include "gmb_matrix_flat.h"
+#include "gmb_runtime.h"   /* gmb_solve_lin_tol (solver unico del runtime) */
 #include <stddef.h>
 
 enum {
@@ -55,4 +56,20 @@ int gmb_matrix_flat_op(const double* a, int64_t rows, int64_t cols, int op,
     *out_cols = rc;
     gmb_matrix_free(r);
     return 1;
+}
+
+/* Solver lineare denso (P/Invoke dei backend managed): copia A/b e usa l'UNICO solver del
+ * runtime `gmb_solve_lin_tol`. `tol` è la soglia di singolarità; ritorna 1 se risolto. */
+int gmb_matrix_solve_lin(int64_t n, const double* a, const double* b, double* x, double tol)
+{
+    if (n <= 0 || !a || !b || !x) return 0;
+    size_t nn = (size_t)n * (size_t)n;
+    double* ac = (double*)malloc(sizeof(double) * nn);
+    double* bc = (double*)malloc(sizeof(double) * (size_t)n);
+    if (!ac || !bc) { free(ac); free(bc); return 0; }
+    for (size_t i = 0; i < nn; i++) ac[i] = a[i];
+    for (int64_t i = 0; i < n; i++) bc[i] = b[i];
+    int ok = gmb_solve_lin_tol((int)n, ac, bc, x, tol);
+    free(ac); free(bc);
+    return ok;
 }

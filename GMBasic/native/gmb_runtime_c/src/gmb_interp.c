@@ -10,34 +10,17 @@
 
 static int gmb_interp_solve(double* a, double* b, int n, double* x)
 {
-    double* m = (double*)malloc(sizeof(double) * (size_t)n * (size_t)(n + 1));
-    if (!m) return -1;
-    for (int i = 0; i < n; i++)
-    {
-        for (int j = 0; j < n; j++) m[i * (n + 1) + j] = a[i * n + j];
-        m[i * (n + 1) + n] = b[i];
-    }
-    for (int col = 0; col < n; col++)
-    {
-        int piv = col;
-        for (int r = col + 1; r < n; r++) if (fabs(m[r * (n + 1) + col]) > fabs(m[piv * (n + 1) + col])) piv = r;
-        if (fabs(m[piv * (n + 1) + col]) < 1e-14) { free(m); return -1; }
-        if (piv != col) for (int j = 0; j <= n; j++) { double t = m[col * (n + 1) + j]; m[col * (n + 1) + j] = m[piv * (n + 1) + j]; m[piv * (n + 1) + j] = t; }
-        for (int r = col + 1; r < n; r++)
-        {
-            double f = m[r * (n + 1) + col] / m[col * (n + 1) + col];
-            for (int j = col; j <= n; j++) m[r * (n + 1) + j] -= f * m[col * (n + 1) + j];
-        }
-    }
-    for (int i = n - 1; i >= 0; i--)
-    {
-        double s = m[i * (n + 1) + n];
-        for (int j = i + 1; j < n; j++) s -= m[i * (n + 1) + j] * x[j];
-        x[i] = s / m[i * (n + 1) + i];
-    }
-    free(m);
-    return 0;
+    /* Non modifica a/b (contratto storico): copia e usa il solver unico. */
+    double* ac = (double*)malloc(sizeof(double) * (size_t)n * (size_t)n);
+    double* bc = (double*)malloc(sizeof(double) * (size_t)n);
+    if (!ac || !bc) { free(ac); free(bc); return -1; }
+    for (int i = 0; i < n * n; i++) ac[i] = a[i];
+    for (int i = 0; i < n; i++) bc[i] = b[i];
+    int ok = gmb_solve_lin_tol(n, ac, bc, x, 1e-14);
+    free(ac); free(bc);
+    return ok ? 0 : -1;
 }
+
 
 /* Ritorna array combinato allocato; *out_len = 1 + n + 4(n-1). */
 double* gmb_splrep(const double* x, const double* y, int n, gmb_int_t* out_len)

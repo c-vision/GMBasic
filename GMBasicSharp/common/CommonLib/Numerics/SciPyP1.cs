@@ -295,38 +295,15 @@ public static partial class Numerics
     }
 
 
-    /// <summary>Risolve <c>a·x = b</c> con eliminazione di Gauss e pivot parziale.
+    /// <summary>Risolve <c>a·x = b</c> con il solver del runtime (Gauss a pivot parziale).
     /// Ritorna <c>null</c> se la matrice è singolare (|pivot| &lt; 1e-14).</summary>
     private static double[]? SolveLinear(double[,] a, double[] b)
     {
         var n = b.Length;
-        var m = new double[n, n + 1];
+        var flat = new double[n * n];
         for (var i = 0; i < n; i++)
-        {
-            for (var j = 0; j < n; j++) m[i, j] = a[i, j];
-            m[i, n] = b[i];
-        }
-        for (var col = 0; col < n; col++)
-        {
-            var piv = col;
-            for (var r = col + 1; r < n; r++)
-                if (Math.Abs(m[r, col]) > Math.Abs(m[piv, col])) piv = r;
-            if (Math.Abs(m[piv, col]) < 1e-14) return null;
-            if (piv != col)
-                for (var j = 0; j <= n; j++) (m[col, j], m[piv, j]) = (m[piv, j], m[col, j]);
-            for (var r = col + 1; r < n; r++)
-            {
-                var f = m[r, col] / m[col, col];
-                for (var j = col; j <= n; j++) m[r, j] -= f * m[col, j];
-            }
-        }
+            for (var j = 0; j < n; j++) flat[i * n + j] = a[i, j];
         var x = new double[n];
-        for (var i = n - 1; i >= 0; i--)
-        {
-            double s = m[i, n];
-            for (var j = i + 1; j < n; j++) s -= m[i, j] * x[j];
-            x[i] = s / m[i, i];
-        }
-        return x;
+        return MatrixNativeKernels.SolveLinear(flat, b, x, 1e-14) ? x : null;
     }
 }

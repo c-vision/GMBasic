@@ -663,28 +663,9 @@ double* gmb_ts_fracdiff(const double* x, int n, double d, int* out_len)
 /* Gaussian elimination with partial pivoting for small dense systems. */
 static int gmb_ts_solve_lin(int n, double* A, double* b, double* x)
 {
-    for (int i = 0; i < n; i++) {
-        int piv = i;
-        for (int r = i + 1; r < n; r++) if (fabs(A[r*n+i]) > fabs(A[piv*n+i])) piv = r;
-        if (fabs(A[piv*n+i]) < 1e-14) return -1;
-        if (piv != i) {
-            for (int c = i; c < n; c++) { double t = A[i*n+c]; A[i*n+c] = A[piv*n+c]; A[piv*n+c] = t; }
-            double t = b[i]; b[i] = b[piv]; b[piv] = t;
-        }
-        double d = A[i*n+i];
-        for (int r = i + 1; r < n; r++) {
-            double f = A[r*n+i] / d;
-            for (int c = i; c < n; c++) A[r*n+c] -= f * A[i*n+c];
-            b[r] -= f * b[i];
-        }
-    }
-    for (int i = n - 1; i >= 0; i--) {
-        double sum = b[i];
-        for (int c = i + 1; c < n; c++) sum -= A[i*n+c] * x[c];
-        x[i] = sum / A[i*n+i];
-    }
-    return 0;
+    return gmb_solve_lin_tol(n, A, b, x, 1e-14) ? 0 : -1;
 }
+
 static gmb_val_t gmb_ts_nan_dict(void)
 {
     gmb_dict_t d = gmb_dict_new();
@@ -1414,28 +1395,9 @@ typedef struct { double statistic, coefficient, standard_error, aic, bic;
 
 static int gmb_infer_solve(int n, double* A, double* b, double* x)
 {
-    int i, j, k, piv;
-    for (i = 0; i < n; i++) {
-        piv = i;
-        for (j = i + 1; j < n; j++) if (fabs(A[j*n+i]) > fabs(A[piv*n+i])) piv = j;
-        if (fabs(A[piv*n+i]) < 1e-300) return 0;
-        if (piv != i) {
-            for (k = 0; k < n; k++) { double t = A[i*n+k]; A[i*n+k] = A[piv*n+k]; A[piv*n+k] = t; }
-            { double t = b[i]; b[i] = b[piv]; b[piv] = t; }
-        }
-        for (j = i + 1; j < n; j++) {
-            double f = A[j*n+i] / A[i*n+i];
-            for (k = i; k < n; k++) A[j*n+k] -= f * A[i*n+k];
-            b[j] -= f * b[i];
-        }
-    }
-    for (i = n - 1; i >= 0; i--) {
-        double s = b[i];
-        for (j = i + 1; j < n; j++) s -= A[i*n+j] * x[j];
-        x[i] = s / A[i*n+i];
-    }
-    return 1;
+    return gmb_solve_lin(n, A, b, x);
 }
+
 
 static int gmb_infer_ols(int rows, int cols, const double* X, const double* y,
                          double* beta, double* ssr, int leverage_col, double* leverage_out)

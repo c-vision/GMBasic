@@ -724,64 +724,19 @@ public static partial class Numerics
         return TimeSeriesNative.HurstDfa(x, minBox);
     }
     // Condivisi con gli altri file della classe partial (Stats.cs, Fitting.cs, SciPyP1.cs).
+    /// <summary>Risolve A·x = b con il solver del runtime (soglia 1e-300). A/b non sono modificati.</summary>
     private static bool InferSolve(int n, double[] A, double[] b, double[] x)
     {
-        int i, j, k, piv;
-        for (i = 0; i < n; i++)
-        {
-            piv = i;
-            for (j = i + 1; j < n; j++) if (Math.Abs(A[j * n + i]) > Math.Abs(A[piv * n + i])) piv = j;
-            if (Math.Abs(A[piv * n + i]) < 1e-300) return false;
-            if (piv != i)
-            {
-                for (k = 0; k < n; k++) { (A[i * n + k], A[piv * n + k]) = (A[piv * n + k], A[i * n + k]); }
-                (b[i], b[piv]) = (b[piv], b[i]);
-            }
-            for (j = i + 1; j < n; j++)
-            {
-                var f = A[j * n + i] / A[i * n + i];
-                for (k = i; k < n; k++) A[j * n + k] -= f * A[i * n + k];
-                b[j] -= f * b[i];
-            }
-        }
-        for (i = n - 1; i >= 0; i--)
-        {
-            var s = b[i];
-            for (j = i + 1; j < n; j++) s -= A[i * n + j] * x[j];
-            x[i] = s / A[i * n + i];
-        }
-        return true;
+        return MatrixNativeKernels.SolveLinear(A, b, x, 1e-300);
     }
 
 
+    /// <summary>Risolve A·x = b con il solver del runtime (soglia 1e-14); singolare → eccezione.</summary>
     private static double[] SolveLinear(int n, double[] a, double[] b)
     {
-        for (var i = 0; i < n; i++)
-        {
-            var piv = i;
-            for (var r = i + 1; r < n; r++)
-                if (Math.Abs(a[r * n + i]) > Math.Abs(a[piv * n + i])) piv = r;
-            if (Math.Abs(a[piv * n + i]) < 1e-14) throw new InvalidOperationException("singolare");
-            if (piv != i)
-            {
-                for (var c = i; c < n; c++) (a[i * n + c], a[piv * n + c]) = (a[piv * n + c], a[i * n + c]);
-                (b[i], b[piv]) = (b[piv], b[i]);
-            }
-            var d = a[i * n + i];
-            for (var r = i + 1; r < n; r++)
-            {
-                var f = a[r * n + i] / d;
-                for (var c = i; c < n; c++) a[r * n + c] -= f * a[i * n + c];
-                b[r] -= f * b[i];
-            }
-        }
         var x = new double[n];
-        for (var i = n - 1; i >= 0; i--)
-        {
-            var sum = b[i];
-            for (var c = i + 1; c < n; c++) sum -= a[i * n + c] * x[c];
-            x[i] = sum / a[i * n + i];
-        }
+        if (!MatrixNativeKernels.SolveLinear(a, b, x, 1e-14))
+            throw new InvalidOperationException("singolare");
         return x;
     }
 
