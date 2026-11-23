@@ -569,7 +569,6 @@ public sealed partial class BackendImplementationRegistry
         r.Register(Backend.VMC, "NUMERICAL.InterpolateStep");
         r.Register(Backend.VMC, "LINALG.INVERSE");
         r.Register(Backend.VMC, "STATS.Iqr");
-        r.Register(Backend.VMC, "NUMERICAL.Irfft");
         r.Register(Backend.VMC, "MATRIX.ISCONTIGUOUS");
         r.Register(Backend.VMC, "STRINGS.ISCREDITCARD");
         r.Register(Backend.VMC, "DATETIME.ISDATE");
@@ -929,7 +928,6 @@ public sealed partial class BackendImplementationRegistry
         r.Register(Backend.VMC, "AI.Resume");
         r.Register(Backend.VMC, "STRINGS.Reverse");
         r.Register(Backend.VMC, "LLM.Revision");
-        r.Register(Backend.VMC, "NUMERICAL.Rfft");
         r.Register(Backend.VMC, "GRAPHICS.RGB");
         r.Register(Backend.VMC, "STRINGS.Right");
         r.Register(Backend.VMC, "MOUSE.RIGHT");
@@ -1033,10 +1031,8 @@ public sealed partial class BackendImplementationRegistry
         r.Register(Backend.VMC, "LINALG.SOLVETRIANGULAR");
         r.Register(Backend.VMC, "STRINGS.Space");
         r.Register(Backend.VMC, "STATS.SpearmanR");
-        r.Register(Backend.VMC, "NUMERICAL.Splev");
         r.Register(Backend.VMC, "STRINGS.Split");
         r.Register(Backend.VMC, "TORCH.SPLIT");
-        r.Register(Backend.VMC, "NUMERICAL.Splrep");
         r.Register(Backend.VMC, "MATH.Sqr");
         r.Register(Backend.VMC, "TORCH.SQRT");
         r.Register(Backend.VMC, "LINALG.SQRTM");

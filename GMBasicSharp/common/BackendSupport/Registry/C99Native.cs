@@ -569,7 +569,6 @@ public sealed partial class BackendImplementationRegistry
         r.Register(Backend.C99Native, "NUMERICAL.InterpolateStep");
         r.Register(Backend.C99Native, "LINALG.INVERSE");
         r.Register(Backend.C99Native, "STATS.Iqr");
-        r.Register(Backend.C99Native, "NUMERICAL.Irfft");
         r.Register(Backend.C99Native, "MATRIX.ISCONTIGUOUS");
         r.Register(Backend.C99Native, "STRINGS.ISCREDITCARD");
         r.Register(Backend.C99Native, "DATETIME.ISDATE");
@@ -929,7 +928,6 @@ public sealed partial class BackendImplementationRegistry
         r.Register(Backend.C99Native, "AI.Resume");
         r.Register(Backend.C99Native, "STRINGS.Reverse");
         r.Register(Backend.C99Native, "LLM.Revision");
-        r.Register(Backend.C99Native, "NUMERICAL.Rfft");
         r.Register(Backend.C99Native, "GRAPHICS.RGB");
         r.Register(Backend.C99Native, "STRINGS.Right");
         r.Register(Backend.C99Native, "MOUSE.RIGHT");
@@ -1033,10 +1031,8 @@ public sealed partial class BackendImplementationRegistry
         r.Register(Backend.C99Native, "LINALG.SOLVETRIANGULAR");
         r.Register(Backend.C99Native, "STRINGS.Space");
         r.Register(Backend.C99Native, "STATS.SpearmanR");
-        r.Register(Backend.C99Native, "NUMERICAL.Splev");
         r.Register(Backend.C99Native, "STRINGS.Split");
         r.Register(Backend.C99Native, "TORCH.SPLIT");
-        r.Register(Backend.C99Native, "NUMERICAL.Splrep");
         r.Register(Backend.C99Native, "MATH.Sqr");
         r.Register(Backend.C99Native, "TORCH.SQRT");
         r.Register(Backend.C99Native, "LINALG.SQRTM");

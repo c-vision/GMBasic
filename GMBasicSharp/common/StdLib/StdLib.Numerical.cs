@@ -145,18 +145,6 @@ public sealed partial class StdLib
                 new Parameter(-1, T(TokenKind.Identifier, "t1"), new DoubleType(), SymbolFlags.None, null, false)
             ], new LongType(), TokenKind.SolveIvp),
 
-            // scipy.interpolate P1: splrep/splev; scipy.fft P1: rfft/irfft.
-            new NativeProcedureDefinition(-1, SymbolFlags.IsPublic, T(TokenKind.InterpSplrep, "Splrep"),
-                [xDataParam, yDataParam], new LongType(), TokenKind.InterpSplrep),
-            new NativeProcedureDefinition(-1, SymbolFlags.IsPublic, T(TokenKind.InterpSplev, "Splev"),
-                [
-                    new Parameter(-1, T(TokenKind.Identifier, "spline"), new LongType(), SymbolFlags.None, null, false),
-                    new Parameter(-1, T(TokenKind.Identifier, "xq"), new ArrayType(new DoubleType()), SymbolFlags.None, null, false)
-                ], new ArrayType(new DoubleType()), TokenKind.InterpSplev),
-            new NativeProcedureDefinition(-1, SymbolFlags.IsPublic, T(TokenKind.FftRfft, "Rfft"),
-                [xDataParam], new LongType(), TokenKind.FftRfft),
-            new NativeProcedureDefinition(-1, SymbolFlags.IsPublic, T(TokenKind.FftIrfft, "Irfft"),
-                [xDataParam, yDataParam], new ArrayType(new DoubleType()), TokenKind.FftIrfft),
             new NativeProcedureDefinition(-1, SymbolFlags.IsPublic,
                 T(TokenKind.CubicSpline, "CubicSpline"),
                 [

@@ -15069,43 +15069,6 @@
     },
     {
       "ns": "NUMERICAL",
-      "name": "Irfft",
-      "fn": true,
-      "return": "double[]",
-      "params": [
-        {
-          "name": "x_data",
-          "type": "double",
-          "optional": false,
-          "byRef": false,
-          "array": true
-        },
-        {
-          "name": "y_data",
-          "type": "double",
-          "optional": false,
-          "byRef": false,
-          "array": true
-        }
-      ]
-    },
-    {
-      "ns": "NUMERICAL",
-      "name": "Rfft",
-      "fn": true,
-      "return": "long",
-      "params": [
-        {
-          "name": "x_data",
-          "type": "double",
-          "optional": false,
-          "byRef": false,
-          "array": true
-        }
-      ]
-    },
-    {
-      "ns": "NUMERICAL",
       "name": "Simpson",
       "fn": true,
       "return": "double",
@@ -15216,50 +15179,6 @@
           "optional": false,
           "byRef": false,
           "array": false
-        }
-      ]
-    },
-    {
-      "ns": "NUMERICAL",
-      "name": "Splev",
-      "fn": true,
-      "return": "double[]",
-      "params": [
-        {
-          "name": "spline",
-          "type": "long",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        },
-        {
-          "name": "xq",
-          "type": "double[]",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        }
-      ]
-    },
-    {
-      "ns": "NUMERICAL",
-      "name": "Splrep",
-      "fn": true,
-      "return": "long",
-      "params": [
-        {
-          "name": "x_data",
-          "type": "double",
-          "optional": false,
-          "byRef": false,
-          "array": true
-        },
-        {
-          "name": "y_data",
-          "type": "double",
-          "optional": false,
-          "byRef": false,
-          "array": true
         }
       ]
     },
