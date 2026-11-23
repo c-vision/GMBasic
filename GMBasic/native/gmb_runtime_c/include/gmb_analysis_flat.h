@@ -30,6 +30,11 @@ double  gmb_anf_poly_ls(const double* x, const double* y, int n, int m, double* 
 void    gmb_anf_rsquared(const double* data, int n, double* r2, double* angle);
 double  gmb_anf_rsquared_test(const double* data, int n);
 
+/* ── signal/fft (gmb_welch, gmb_rfft, gmb_irfft) ──────────────────────────────────────────── */
+double* gmb_anf_welch(const double* x, int n, int nperseg, double fs, int* out_rows);
+double* gmb_anf_rfft(const double* x, int n, gmb_int_t* outn);
+double* gmb_anf_irfft(const double* re, const double* im, int m, gmb_int_t* outn);
+
 /* ── Descrittive (gmb_math.c) ─────────────────────────────────────────────────────────────── */
 double  gmb_anf_mean(const double* a, int n);
 double  gmb_anf_median(const double* a, int n);

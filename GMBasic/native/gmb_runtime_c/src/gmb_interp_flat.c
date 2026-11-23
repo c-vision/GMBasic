@@ -26,3 +26,7 @@ double gmb_ipf_pchip(const double* x, const double* y, int n, double tx) {
 double gmb_ipf_cubic_spline(const double* x, const double* y, int n, double tx) {
     return gmb_cubic_spline(x, y, n, tx);
 }
+
+gmb_double_t* gmb_ipf_splev(const gmb_double_t* spline, int slen, const gmb_double_t* xq, int nq, gmb_int_t* outn) {
+    return gmb_splev(spline, slen, xq, nq, outn);
+}

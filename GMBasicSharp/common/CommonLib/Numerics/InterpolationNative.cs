@@ -29,4 +29,23 @@ internal static class InterpolationNative
     internal static extern double Pchip(double[] x, double[] y, int n, double targetX);
     [DllImport(Lib, EntryPoint = "gmb_ipf_cubic_spline", CallingConvention = CallingConvention.Cdecl)]
     internal static extern double CubicSpline(double[] x, double[] y, int n, double targetX);
+    [DllImport(Lib, EntryPoint = "gmb_ipf_splev", CallingConvention = CallingConvention.Cdecl)]
+    private static extern IntPtr NativeSplev(double[] spline, int slen, double[] xq, int nq, out long outn);
+    [DllImport("libc", EntryPoint = "free", CallingConvention = CallingConvention.Cdecl)]
+    private static extern void libc_free(IntPtr p);
+
+    /// <summary>SPLEV: valuta la spline (array combinato [n, x..., coeff...]) sui punti xq.</summary>
+    internal static double[] Splev(double[] spline, double[] xq)
+    {
+        var p = NativeSplev(spline, spline.Length, xq, xq.Length, out var n);
+        try
+        {
+            if (p == IntPtr.Zero) throw new InvalidOperationException("INTERP: il kernel C non ha prodotto SPLEV.");
+            if (n <= 0) return [];
+            var res = new double[n];
+            Marshal.Copy(p, res, 0, (int)n);
+            return res;
+        }
+        finally { if (p != IntPtr.Zero) { try { libc_free(p); } catch { } } }
+    }
 }

@@ -20,6 +20,7 @@ double gmb_ipf_polynomial(const double* x, const double* y, int n, double tx);
 double gmb_ipf_akima(const double* x, const double* y, int n, double tx);
 double gmb_ipf_pchip(const double* x, const double* y, int n, double tx);
 double gmb_ipf_cubic_spline(const double* x, const double* y, int n, double tx);
+gmb_double_t* gmb_ipf_splev(const gmb_double_t* spline, int slen, const gmb_double_t* xq, int nq, gmb_int_t* outn);
 
 #ifdef __cplusplus
 }

@@ -60,3 +60,9 @@ double gmb_anf_poly_eval(double x, const double* coef, int m) { return gmb_fit_p
 double gmb_anf_poly_ls(const double* x, const double* y, int n, int m, double* coef) { return gmb_fit_poly_ls(x, y, n, m, coef); }
 void gmb_anf_rsquared(const double* data, int n, double* r2, double* angle) { gmb_fit_rsquared(data, n, r2, angle); }
 double gmb_anf_rsquared_test(const double* data, int n) { return gmb_fit_rsquared_test(data, n); }
+
+/* ── signal/fft ───────────────────────────────────────────────────────────────────────────── */
+
+double* gmb_anf_welch(const double* x, int n, int nperseg, double fs, int* out_rows) { return gmb_welch(x, n, nperseg, fs, out_rows); }
+double* gmb_anf_rfft(const double* x, int n, gmb_int_t* outn) { return gmb_rfft(x, n, outn); }
+double* gmb_anf_irfft(const double* re, const double* im, int m, gmb_int_t* outn) { return gmb_irfft(re, im, m, outn); }

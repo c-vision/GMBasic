@@ -3,11 +3,6 @@
 // (splrep/splev), fft (rfft/irfft). Reference: scipy 1.18.
 // NOTA: spatial.distance/ConvexHull sono migrati a shared/libs/spatial (FFI).
 
-using System.Numerics;
-using MathNet.Numerics;
-using MathNet.Numerics.IntegralTransforms;
-using MathNet.Numerics.LinearAlgebra;
-
 namespace CommonLib;
 
 public static partial class Numerics
@@ -28,42 +23,14 @@ public static partial class Numerics
     }
 
     /// <summary>scipy.signal.welch — densità spettrale (periodogramma di Welch).
-    /// Ritorna matrice [nfreqs, 2]: col0 = frequenze, col1 = PSD.</summary>
+    /// Ritorna matrice [nfreqs, 2]: col0 = frequenze, col1 = PSD.
+    /// Il kernel C (`gmb_welch`) usa la STESSA finestra di Hann e la stessa FFT (nessuna perdita).</summary>
     public static double[,] Welch(double[] x, int nperseg, double fs)
     {
         var n = x.Length;
         if (nperseg <= 0) nperseg = Math.Min(256, Math.Max(8, n));
         if (nperseg > n) nperseg = n;
-        var noverlap = nperseg / 2;
-        var step = nperseg - noverlap;
-        var nSeg = Math.Max(1, (n - noverlap) / step);
-        var win = WelchWindow(nperseg);
-        var winSum2 = 0.0;
-        foreach (var w in win) winSum2 += w * w;
-        var nfreqs = nperseg / 2 + 1;
-        var psd = new double[nfreqs];
-        var scale = 1.0 / (fs * (winSum2 > 0 ? winSum2 : 1.0));
-        for (var s = 0; s < nSeg; s++)
-        {
-            var start = s * step;
-            var c = new Complex[nperseg];
-            for (var i = 0; i < nperseg; i++)
-                c[i] = new Complex(x[start + i] * win[i], 0);
-            Fourier.Forward(c, FourierOptions.Default);
-            for (var k = 0; k < nfreqs; k++)
-            {
-                var m = c[k].Magnitude;
-                psd[k] += m * m * scale;
-            }
-        }
-        for (var k = 0; k < nfreqs; k++) psd[k] /= nSeg;
-        var result = new double[nfreqs, 2];
-        for (var k = 0; k < nfreqs; k++)
-        {
-            result[k, 0] = k * fs / nperseg;
-            result[k, 1] = psd[k];
-        }
-        return result;
+        return AnalysisNative.Welch(x, nperseg, fs);
     }
 
     /// <summary>scipy.signal.savgol_filter — smoothing Savitzky-Golay (polinomio least-squares locale).</summary>
@@ -136,10 +103,32 @@ public static partial class Numerics
     {
         public double[] X { get; }
         public double[] Coeff { get; }
-        internal CubicSplineRep(double[] x, double[] c) { X = x; Coeff = c; }
+        /// <summary>Array combinato del runtime: [n, x…, coeff…] (usato da SPLEV).</summary>
+        internal double[] Flat { get; }
+        internal CubicSplineRep(double[] x, double[] c)
+            : this(x, c, BuildFlat(x, c)) { }
+        private CubicSplineRep(double[] x, double[] c, double[] flat)
+        {
+            X = x;
+            Coeff = c;
+            Flat = flat;
+        }
+
+        private static double[] BuildFlat(double[] x, double[] c)
+        {
+            var n = x.Length;
+            var flat = new double[1 + n + c.Length];
+            flat[0] = n;
+            for (var i = 0; i < n; i++) flat[1 + i] = x[i];
+            for (var i = 0; i < c.Length; i++) flat[1 + n + i] = c[i];
+            return flat;
+        }
     }
 
-    /// <summary>scipy.interpolate.splrep — spline cubica interpolante (naturale, k=3).</summary>
+    /// <summary>scipy.interpolate.splrep — spline cubica interpolante (naturale, k=3).
+    /// RESTA MANAGED: il kernel C `gmb_splrep` costruisce un sistema DENSE n×n, mentre qui il
+    /// not-a-knot è risolto con Thomas O(n) (un input da 200k punti in C richiederebbe 320 GB).
+    /// Migrarlo sarebbe una PERDITA computazionale: prima va portato il Thomas nel kernel.</summary>
     public static CubicSplineRep Splrep(double[] x, double[] y)
     {
         var n = x.Length;
@@ -236,8 +225,16 @@ public static partial class Numerics
         return result;
     }
 
-    /// <summary>scipy.interpolate.splev — valuta la spline sui punti xq.</summary>
+    /// <summary>scipy.interpolate.splev — valuta la spline sui punti xq (kernel C `gmb_splev`).</summary>
     public static double[] Splev(CubicSplineRep spline, double[] xq)
+    {
+        // n < 3 è una rappresentazione degenere che il kernel non copre (assume n >= 3):
+        // stessa formula inline, così il comportamento resta identico a prima.
+        if (spline.X.Length < 3) return SplevSmall(spline, xq);
+        return InterpolationNative.Splev(spline.Flat, xq);
+    }
+
+    private static double[] SplevSmall(CubicSplineRep spline, double[] xq)
     {
         var x = spline.X;
         var c = spline.Coeff;
@@ -249,7 +246,6 @@ public static partial class Numerics
             if (t <= x[0]) { result[k] = c[0]; continue; }
             if (t >= x[n - 1]) { result[k] = c[4 * (n - 2)]; continue; }
             var i = 0;
-            while (i < n - 2 && t > x[i + 1]) i++;
             var dx = t - x[i];
             result[k] = c[4 * i] + dx * (c[4 * i + 1] + dx * (c[4 * i + 2] + dx * c[4 * i + 3]));
         }
@@ -261,37 +257,26 @@ public static partial class Numerics
     // scipy.fft: rfft / irfft
     // ========================================================================
 
-    /// <summary>scipy.fft.rfft — FFT reale (componenti a frequenza non negativa).</summary>
+    /// <summary>scipy.fft.rfft — FFT reale (componenti a frequenza non negativa).
+    /// Il kernel C (`gmb_rfft`) fa la FFT NON scalata come scipy (nessuna perdita).</summary>
     public static object[,] Rfft(double[] x)
     {
-        var n = x.Length;
-        var c = new Complex[n];
-        for (var i = 0; i < n; i++) c[i] = new Complex(x[i], 0);
-        // scipy.fft.rfft: FFT NON scalata (X[k]=Σx[j]e^{-...}); MathNet Default usa 1/√N.
-        Fourier.Forward(c, FourierOptions.NoScaling);
-        var m = n / 2 + 1;
+        var interleaved = AnalysisNative.Rfft(x);
+        var m = interleaved.Length / 2;
         var result = new object[m, 2];
         for (var k = 0; k < m; k++)
         {
-            result[k, 0] = c[k].Real;
-            result[k, 1] = c[k].Imaginary;
+            result[k, 0] = interleaved[2 * k];
+            result[k, 1] = interleaved[2 * k + 1];
         }
         return result;
     }
 
-    /// <summary>scipy.fft.irfft — inversa reale: ricostruisce il segnale reale dalle componenti non negative.</summary>
+    /// <summary>scipy.fft.irfft — inversa reale: il kernel C (`gmb_irfft`) fa l'inversa NON
+    /// scalata e divide per n, quindi il round-trip è esatto come in scipy.</summary>
     public static double[] Irfft(double[] re, double[] im)
     {
-        var m = re.Length;
-        var n = 2 * (m - 1);
-        var c = new Complex[n];
-        for (var k = 0; k < m; k++) c[k] = new Complex(re[k], im[k]);
-        for (var k = 1; k < m - 1; k++) c[n - k] = new Complex(re[k], -im[k]);
-        // scipy.fft.irfft: inversa NON scalata con divisione per n (round-trip esatto).
-        Fourier.Inverse(c, FourierOptions.NoScaling);
-        var result = new double[n];
-        for (var i = 0; i < n; i++) result[i] = c[i].Real / n;
-        return result;
+        return AnalysisNative.Irfft(re, im);
     }
 
 

@@ -827,7 +827,8 @@ double* gmb_welch(const double* x, int n, int nperseg, double fs, int* out_rows)
     int nseg = (n - noverlap) / step; if (nseg < 1) nseg = 1;
     double* win = (double*)malloc(sizeof(double) * (size_t)nperseg);
     if (!win) { *out_rows = 0; return NULL; }
-    for (int i = 0; i < nperseg; i++) win[i] = 0.5 - 0.5 * cos(2.0 * 3.141592653589793 * i / (nperseg - 1));
+    /* nperseg == 1: finestra degenere → 1.0 (parità con Numerics.WelchWindow, che evita 0/0) */
+    for (int i = 0; i < nperseg; i++) win[i] = (nperseg <= 1) ? 1.0 : 0.5 - 0.5 * cos(2.0 * 3.141592653589793 * i / (nperseg - 1));
     double win2 = 0;
     for (int i = 0; i < nperseg; i++) win2 += win[i] * win[i];
     int nfreqs = nperseg / 2 + 1;
