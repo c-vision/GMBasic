@@ -2,6 +2,7 @@
 ' distance_matrix, rfft/irfft, ConvexHull. Oracoli: scipy 1.18.
 IMPORT SIGNAL
 IMPORT SPATIAL
+IMPORT INTERP
 
 SUB Main()
   DIM n(255) AS DOUBLE
@@ -30,9 +31,9 @@ SUB Main()
   ' splrep/splev: (x+1)^2 → a 2.5 = 12.25
   DIM xs(4) AS DOUBLE = {0, 1, 2, 3, 4}
   DIM ys(4) AS DOUBLE = {1, 4, 9, 16, 25}
-  sp = NUMERICAL.Splrep(xs, ys)
+  DIM sp() = INTERP.SPLREP(xs, ys)
   DIM xq(0) AS DOUBLE = {2.5}
-  DIM sv() = NUMERICAL.Splev(sp, xq)
+  DIM sv() = INTERP.SPLEV(sp, xq)
   PRINT "splev     ="; sv(0)
 
   ' pdist/cdist/distance_matrix
@@ -47,17 +48,17 @@ SUB Main()
   DIM dm = SPATIAL.DISTANCEMATRIX(X, Y)
   PRINT "distmat10 ="; MATRIX.GETVALUE(dm, 1, 0)
 
-  ' rfft/irfft: cos(2πi/8), ricostruzione
+  ' rfft/irfft: cos(2πi/8), ricostruzione — RFFT ritorna [re0, im0, re1, im1, …]
   DIM x2(7) AS DOUBLE
   FOR i = 0 TO 7 : x2(i) = COS(2 * 3.141592653589793 * i / 8) : NEXT
-  rf = NUMERICAL.Rfft(x2)
-  PRINT "rfft10    ="; MATRIX.GETVALUE(rf, 1, 0)
+  DIM rf() = SIGNAL.RFFT(x2)
+  PRINT "rfft10    ="; rf(2)
   DIM re(4) AS DOUBLE
   DIM im(4) AS DOUBLE
   FOR k = 0 TO 4
-    re(k) = MATRIX.GETVALUE(rf, k, 0) : im(k) = MATRIX.GETVALUE(rf, k, 1)
+    re(k) = rf(2 * k) : im(k) = rf(2 * k + 1)
   NEXT
-  DIM ir() = NUMERICAL.Irfft(re, im)
+  DIM ir() = SIGNAL.IRFFT(re, im)
   PRINT "irfft0    ="; ir(0)
 
   ' ConvexHull quadrato

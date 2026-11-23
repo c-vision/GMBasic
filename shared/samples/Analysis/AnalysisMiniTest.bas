@@ -4,6 +4,8 @@
 
 IMPORT MULTIVARIATE
 IMPORT TIMESERIES
+IMPORT SIGNAL
+IMPORT INTERP
 FUNCTION Dy(t AS DOUBLE, y() AS DOUBLE) AS ARRAY OF DOUBLE
   RETURN {-y(0)}
 END FUNCTION
@@ -13,14 +15,14 @@ SUB Main()
   FOR i = 0 TO 49: d(i) = i: NEXT
   DIM adf() AS DOUBLE = TIMESERIES.ADFTEST(d)
   PRINT "adf_stat="; ROUND(adf(0), 4); " p="; ROUND(adf(1), 4)
-  ' Rfft/Irfft: cos(2pi*i/8)
+  ' Rfft/Irfft: cos(2pi*i/8) — RFFT ritorna [re0, im0, re1, im1, …]
   DIM x(7) AS DOUBLE
   FOR i = 0 TO 7: x(i) = COS(2 * 3.141592653589793 * i / 8): NEXT
-  DIM rf = NUMERICAL.Rfft(x)
-  PRINT "rfft_handle="; rf
+  DIM rf() = SIGNAL.RFFT(x)
+  PRINT "rfft_len="; LEN(rf)
   DIM re(4) AS DOUBLE: DIM im(4) AS DOUBLE
-  FOR k = 0 TO 4: re(k) = MATRIX.GETVALUE(rf, k, 0): im(k) = MATRIX.GETVALUE(rf, k, 1): NEXT
-  DIM ir() = NUMERICAL.Irfft(re, im)
+  FOR k = 0 TO 4: re(k) = rf(2 * k): im(k) = rf(2 * k + 1): NEXT
+  DIM ir() = SIGNAL.IRFFT(re, im)
   PRINT "irfft0="; ROUND(ir(0), 4)
   ' Pca
   DIM data(3, 1) AS DOUBLE
@@ -31,9 +33,9 @@ SUB Main()
   ' Splrep/Splev: (x+1)^2
   DIM xs(4) AS DOUBLE = {0, 1, 2, 3, 4}
   DIM ys(4) AS DOUBLE = {1, 4, 9, 16, 25}
-  DIM sp = NUMERICAL.Splrep(xs, ys)
+  DIM sp() = INTERP.SPLREP(xs, ys)
   DIM xq(0) AS DOUBLE = {2.5}
-  DIM sv() = NUMERICAL.Splev(sp, xq)
+  DIM sv() = INTERP.SPLEV(sp, xq)
   PRINT "splev="; ROUND(sv(0), 4)
   ' SolveIvp: dy/dt = -y, y(0)=1
   DIM y0(0) AS DOUBLE = {1}
