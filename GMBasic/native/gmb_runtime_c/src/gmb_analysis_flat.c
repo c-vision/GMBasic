@@ -51,3 +51,12 @@ void gmb_anf_svm_fit(const double* x, const double* y, int n, int d, int k, doub
     gmb_mv_svm_fit(x, y, n, d, k, c, max_iter, w);
 }
 int gmb_anf_svm_predict(const double* w, const double* x, int d, int k) { return gmb_mv_svm_predict(w, x, d, k); }
+
+/* ── Fitting (gmb_fit_*) ───────────────────────────────────────────────────────────────────── */
+
+double gmb_anf_cheb_eval(double x, const double* coef, int m) { return gmb_fit_cheb_eval(x, coef, m); }
+double gmb_anf_pade_eval(double x, const double* a, int na, const double* b, int nb) { return gmb_fit_pade_eval(x, a, na, b, nb); }
+double gmb_anf_poly_eval(double x, const double* coef, int m) { return gmb_fit_poly_eval(x, coef, m); }
+double gmb_anf_poly_ls(const double* x, const double* y, int n, int m, double* coef) { return gmb_fit_poly_ls(x, y, n, m, coef); }
+void gmb_anf_rsquared(const double* data, int n, double* r2, double* angle) { gmb_fit_rsquared(data, n, r2, angle); }
+double gmb_anf_rsquared_test(const double* data, int n) { return gmb_fit_rsquared_test(data, n); }

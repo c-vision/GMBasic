@@ -54,7 +54,32 @@ internal static class AnalysisNative
     [DllImport(Lib, EntryPoint = "gmb_anf_mad", CallingConvention = CallingConvention.Cdecl)]
     private static extern double NativeMad(double[] a, int n);
 
+    // ── Fitting ────────────────────────────────────────────────────────────────────────────
+    internal static double ChebEval(double x, double[] coef) => NativeChebEval(x, coef, coef.Length);
+    internal static double PadeEval(double x, double[] a, double[] b) => NativePadeEval(x, a, a.Length, b, b.Length);
+    internal static double PolyEval(double x, double[] coef) => NativePolyEval(x, coef, coef.Length - 1);
+    internal static double PolyLs(double[] x, double[] y, int m, double[] coef)
+        => NativePolyLs(x, y, Math.Min(x.Length, y.Length), m, coef);
+    internal static (double R2, double Angle) RSquared(double[] data)
+    {
+        NativeRSquared(data, data.Length, out var r2, out var angle);
+        return (r2, angle);
+    }
+    internal static double RSquaredTest(double[] data) => NativeRSquaredTest(data, data.Length);
+
     // ── RMT e SVM ──────────────────────────────────────────────────────────────────────────
+    [DllImport(Lib, EntryPoint = "gmb_anf_cheb_eval", CallingConvention = CallingConvention.Cdecl)]
+    private static extern double NativeChebEval(double x, double[] coef, int m);
+    [DllImport(Lib, EntryPoint = "gmb_anf_pade_eval", CallingConvention = CallingConvention.Cdecl)]
+    private static extern double NativePadeEval(double x, double[] a, int na, double[] b, int nb);
+    [DllImport(Lib, EntryPoint = "gmb_anf_poly_eval", CallingConvention = CallingConvention.Cdecl)]
+    private static extern double NativePolyEval(double x, double[] coef, int m);
+    [DllImport(Lib, EntryPoint = "gmb_anf_poly_ls", CallingConvention = CallingConvention.Cdecl)]
+    private static extern double NativePolyLs(double[] x, double[] y, int n, int m, double[] coef);
+    [DllImport(Lib, EntryPoint = "gmb_anf_rsquared", CallingConvention = CallingConvention.Cdecl)]
+    private static extern void NativeRSquared(double[] data, int n, out double r2, out double angle);
+    [DllImport(Lib, EntryPoint = "gmb_anf_rsquared_test", CallingConvention = CallingConvention.Cdecl)]
+    private static extern double NativeRSquaredTest(double[] data, int n);
     [DllImport(Lib, EntryPoint = "gmb_anf_rmt_lambda_plus", CallingConvention = CallingConvention.Cdecl)]
     private static extern double NativeRmtLambdaPlus(int n, int T, double sigma2);
     [DllImport(Lib, EntryPoint = "gmb_anf_rmt_lambda_minus", CallingConvention = CallingConvention.Cdecl)]

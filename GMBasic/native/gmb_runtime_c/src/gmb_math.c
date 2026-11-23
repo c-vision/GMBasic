@@ -3418,7 +3418,7 @@ double gmb_fit_pade_eval(double x, const double* a, int na, const double* b, int
     int i;
     for (i = 0; i < na; i++) { num += a[i] * xp; xp *= x; }
     xp = 1.0;
-    for (i = 0; i <= nb; i++) { den += b[i] * xp; xp *= x; }
+    for (i = 0; i < nb; i++) { den += b[i] * xp; xp *= x; }   /* < nb: il C# passa b.Length */
     return den != 0.0 ? num / den : 0.0;
 }
 double gmb_fit_poly_eval(double x, const double* coef, int m)

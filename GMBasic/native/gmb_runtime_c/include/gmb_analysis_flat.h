@@ -22,6 +22,14 @@ double* gmb_anf_yule_walker(const double* acf, int n, int p, gmb_int_t* out_len)
 double* gmb_anf_ma_coefficients(const double* residuals, int n, int q, gmb_int_t* out_len);
 double  gmb_anf_min_semivariance(const double* returns, int n, double threshold);
 
+/* ── Fitting (gmb_fit_*) ──────────────────────────────────────────────────────────────────── */
+double  gmb_anf_cheb_eval(double x, const double* coef, int m);
+double  gmb_anf_pade_eval(double x, const double* a, int na, const double* b, int nb);
+double  gmb_anf_poly_eval(double x, const double* coef, int m);
+double  gmb_anf_poly_ls(const double* x, const double* y, int n, int m, double* coef);
+void    gmb_anf_rsquared(const double* data, int n, double* r2, double* angle);
+double  gmb_anf_rsquared_test(const double* data, int n);
+
 /* ── Descrittive (gmb_math.c) ─────────────────────────────────────────────────────────────── */
 double  gmb_anf_mean(const double* a, int n);
 double  gmb_anf_median(const double* a, int n);

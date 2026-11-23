@@ -101,6 +101,27 @@ public class NumericsPortedKernelsTests
     }
 
     [Fact]
+    public void Fitting_Conventions_Match_The_Kernels()
+    {
+        // PolyEval passa il GRADO (len-1) al kernel: 1 + 2x + 3x² in x=2 → 17.
+        AssertClose(17.0, Numerics.PolyEval(2.0, new double[] { 1, 2, 3 }));
+        // PadeEval passa b.Length (il kernel usa < nb): (1+x)/(1-0.5x) in x=0.5 → 2.
+        AssertClose(2.0, Numerics.PadeEval(0.5, new double[] { 1, 1 }, new double[] { 1, -0.5 }));
+        // ChebEval con un solo coefficiente è costante; array vuoto → NaN.
+        AssertClose(1.0, Numerics.ChebEval(0.42, new double[] { 1.0 }));
+        Assert.True(double.IsNaN(Numerics.ChebEval(0.42, Array.Empty<double>())));
+    }
+
+    [Fact]
+    public void RSquared_On_A_Perfect_Line()
+    {
+        var (r2, angle) = Numerics.RSquared(new double[] { 5, 8, 11, 14 });
+        AssertClose(1.0, r2, 1e-12);
+        AssertClose(3.0, angle, 1e-12);
+        AssertClose(1.0 - 1.0 / Math.Sqrt(5.0), Numerics.RSquaredTest(new double[] { 5, 8, 11, 14 }), 1e-12);
+    }
+
+    [Fact]
     public void GpRegress_And_GmmEm1D_Use_The_Runtime()
     {
         // GP su dati lineari y=2x con rumore 0: la previsione ai nodi deve tornare y.
