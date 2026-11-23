@@ -8599,24 +8599,7 @@ public static double TextWidth(string s)
     public static long Welch(double[] x, int nperseg, double fs)
         => StoreMatrix(CommonLib.Numerics.Welch(x, nperseg, fs));
     // SIGNAL.SAVGOLFILTER/RESAMPLE/DECIMATE: nella lib FFI `signal` (niente più wrapper IL).
-    public static long Splrep(double[] x, double[] y)
-        => StoreDecomposition(CommonLib.Numerics.Splrep(x, y));
-    public static double[] Splev(long splineHandle, double[] xq)
-    {
-        if (!LinAlgDecompositions.TryGetValue(splineHandle, out var d) || d is not CommonLib.Numerics.CubicSplineRep sp)
-            return Array.Empty<double>();
-        return CommonLib.Numerics.Splev(sp, xq);
-    }
-    public static long Rfft(double[] x)
-    {
-        var r = CommonLib.Numerics.Rfft(x);
-        var m = r.GetLength(0);
-        var dm = new double[m, 2];
-        for (var i = 0; i < m; i++) { dm[i, 0] = Convert.ToDouble(r[i, 0]); dm[i, 1] = Convert.ToDouble(r[i, 1]); }
-        return StoreMatrix(dm);
-    }
-    public static double[] Irfft(double[] re, double[] im)
-        => CommonLib.Numerics.Irfft(re, im);
+    // SPLREP/SPLEV → pacchetto `math` (namespace INTERP), RFFT/IRFFT → pacchetto `signal`.
     // ---- scipy.signal P0 / scipy.integrate P0 ----
     public static long SolveIvp(Func<double, double[], double[]> f, double[] y0, double t0, double t1)
         => StoreMatrix(CommonLib.Numerics.SolveIvpk45(f ?? ((_, _) => new[] { 0.0 }), y0 ?? new[] { 0.0 }, t0, t1));

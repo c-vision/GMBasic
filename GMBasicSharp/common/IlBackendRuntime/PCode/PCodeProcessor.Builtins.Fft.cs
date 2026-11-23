@@ -19,8 +19,6 @@ internal sealed partial class PCodeProcessor
     private static readonly HashSet<BuiltInFunction> FFTBuiltInFunctions = new HashSet<BuiltInFunction>
             {
         BuiltInFunction.FFTCOMPLEX,
-        BuiltInFunction.FFT_RFFT,
-        BuiltInFunction.FFT_IRFFT,
         BuiltInFunction.FFT,
         BuiltInFunction.FFTFREQ,
         BuiltInFunction.FFTSHIFT,
@@ -51,33 +49,6 @@ internal sealed partial class PCodeProcessor
                     return fftInput.Length >= 4096
                         ? ParkCpuBuiltin(task, () => Basic.IlBackend.IlRuntime.Fft(fftInput))
                         : Basic.IlBackend.IlRuntime.Fft(fftInput);
-        },
-        [BuiltInFunction.FFT_RFFT] = (task, args) =>
-        {
-                {
-                    var x = ToDoubleArr(ArgOr(args, 0));
-                    object? ComputeRfft()
-                {
-                    var r = CommonLib.Numerics.Rfft(x);
-                    var m = r.GetLength(0);
-                    var dm = new double[m, 2];
-                for (var i = 0; i < m; i++) { dm[i, 0] = Convert.ToDouble(r[i, 0]); dm[i, 1] = Convert.ToDouble(r[i, 1]); }
-                    return LuStoreMatrix(dm);
-                }
-                    return x.Length >= 4096
-                        ? ParkCpuBuiltin(task, ComputeRfft)
-                        : ComputeRfft();
-                }
-        },
-        [BuiltInFunction.FFT_IRFFT] = (task, args) =>
-        {
-                {
-                    var re = ToDoubleArr(ArgOr(args, 0));
-                    var im = ToDoubleArr(ArgOr(args, 1));
-                    return re.Length >= 4096
-                        ? ParkCpuBuiltin(task, () => CommonLib.Numerics.Irfft(re, im))
-                        : CommonLib.Numerics.Irfft(re, im);
-                }
         },
         [BuiltInFunction.FFT] = (task, args) =>
         {

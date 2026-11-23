@@ -1401,13 +1401,6 @@ internal sealed partial class PCodeProcessor
         return HandleOf(newId);
     }
 
-    internal object? LuStoreSpline(CommonLib.Numerics.CubicSplineRep sp)
-    {
-        var newId = Interlocked.Increment(ref _nextLinearDecompositionId);
-        _linDecompositions[newId] = sp;
-        return HandleOf(newId);
-    }
-
     // scipy.integrate.solve_ivp (RK45 adattivo): traiettoria matrice registrata qui.
     internal object? LuSolveIvp(Func<double, double[], double[]> f, double[] y0, double t0, double t1)
     {

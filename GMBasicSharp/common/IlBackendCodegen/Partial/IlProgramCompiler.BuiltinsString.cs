@@ -1218,13 +1218,6 @@ public sealed partial class IlProgramCompiler
         EmitInt32Argument(expr.Args[1]);
         _il.Emit(OpCodes.Call, RuntimeMethod(methodName));
     }
-    private void EmitSplevCall(BuiltinFunctionCallExpr expr)
-    {
-        if (expr.Args.Length != 2) throw new NotSupportedException("Backend IL: SPLEV richiede (spline, xq[]).");
-        EmitInt64Argument(expr.Args[0]);
-        EmitDoubleArrayArgument(expr.Args[1]);
-        _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.Splev)));
-    }
     private void EmitAnalysisIntDoubleCall(BuiltinFunctionCallExpr expr, string methodName)
     { if (expr.Args.Length != 2) throw new NotSupportedException($"Backend IL: {expr.OriginalToken.Lexeme} richiede 2 argomenti (n, d)."); EmitDoubleArgument(expr.Args[0]); EmitDoubleArgument(expr.Args[1]); _il.Emit(OpCodes.Call, RuntimeMethod(methodName)); }
     private void EmitSignalDesignCall(BuiltinFunctionCallExpr expr, string methodName, int nArgs)

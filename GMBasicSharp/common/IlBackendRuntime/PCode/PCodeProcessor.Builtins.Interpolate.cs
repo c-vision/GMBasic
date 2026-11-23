@@ -22,8 +22,7 @@ internal sealed partial class PCodeProcessor
         BuiltInFunction.INTERPOLATEPCHIP,
         BuiltInFunction.INTERPOLATEPOLYNOMIAL,
         BuiltInFunction.INTERPOLATESPLINE,
-        BuiltInFunction.INTERPOLATESTEP,        BuiltInFunction.INTERP_SPLREP,
-        BuiltInFunction.INTERP_SPLEV,
+        BuiltInFunction.INTERPOLATESTEP,
         BuiltInFunction.INTERPOLATECLAMP,
         BuiltInFunction.INTERPOLATEGENERIC,
 
@@ -57,28 +56,6 @@ internal sealed partial class PCodeProcessor
         [BuiltInFunction.INTERPOLATESTEP] = (task, args) =>
         {
                     return Basic.IlBackend.IlRuntime.InterpolateStep(ToDoubleArr(ArgOr(args, 0)), ToDoubleArr(ArgOr(args, 1)), SafeDouble(ArgOr(args, 2)));
-        },
-        [BuiltInFunction.INTERP_SPLREP] = (task, args) =>
-        {
-                {
-                    var x = ToDoubleArr(ArgOr(args, 0));
-                    var y = ToDoubleArr(ArgOr(args, 1));
-                    return x.Length >= 200_000
-                        ? ParkCpuBuiltin(task, () => LuStoreSpline(CommonLib.Numerics.Splrep(x, y)))
-                        : LuStoreSpline(CommonLib.Numerics.Splrep(x, y));
-                }
-        },
-        [BuiltInFunction.INTERP_SPLEV] = (task, args) =>
-        {
-                {
-                    var h = ToLongHandle(args, 0);
-                    if (!_linDecompositions.TryGetValue(h, out var d) || d is not CommonLib.Numerics.CubicSplineRep sp)
-                    return Array.Empty<double>();
-                    var xq = ToDoubleArr(ArgOr(args, 1));
-                    return xq.Length >= 200_000
-                        ? ParkCpuBuiltin(task, () => CommonLib.Numerics.Splev(sp, xq))
-                        : CommonLib.Numerics.Splev(sp, xq);
-                }
         },
         [BuiltInFunction.INTERPOLATECLAMP] = (task, args) =>
         {

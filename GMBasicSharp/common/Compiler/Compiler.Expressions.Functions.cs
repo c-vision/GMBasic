@@ -152,8 +152,6 @@ public sealed partial class Compiler
         { TokenKind.StatsDescribe, BuiltInFunction.STATS_DESCRIBE },
         { TokenKind.SolveIvp, BuiltInFunction.SOLVE_IVP },
         { TokenKind.SignalWelch, BuiltInFunction.SIGNAL_WELCH },
-        { TokenKind.InterpSplrep, BuiltInFunction.INTERP_SPLREP }, { TokenKind.InterpSplev, BuiltInFunction.INTERP_SPLEV },
-        { TokenKind.FftRfft, BuiltInFunction.FFT_RFFT }, { TokenKind.FftIrfft, BuiltInFunction.FFT_IRFFT },
         { TokenKind.TorchDevice, BuiltInFunction.TORCH_DEVICE }, { TokenKind.TorchLibPath, BuiltInFunction.TORCH_LIBPATH },
         { TokenKind.TorchLoaded, BuiltInFunction.TORCH_LOADED }, { TokenKind.TorchCreate, BuiltInFunction.TORCH_CREATE },
         { TokenKind.TorchFrom, BuiltInFunction.TORCH_FROM }, { TokenKind.TorchAdd, BuiltInFunction.TORCH_ADD },
