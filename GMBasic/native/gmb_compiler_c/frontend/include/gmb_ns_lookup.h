@@ -868,7 +868,6 @@ static const gmb_ns_lookup_row_t gmb_ns_lookup[] = {
     { "RDD", "TABLEUPDATE", GMB_TOK_RddTableUpdate },
     { "RDD", "TODAY", GMB_TOK_RddToday },
     { "RDD", "VALTYPE", GMB_TOK_RddValType },
-    { "SIGNAL", "WELCH", GMB_TOK_SignalWelch },
     { "SPEED", "BEGINGROUPCOMMIT", GMB_TOK_SpeedBeginGroupCommit },
     { "SPEED", "ENDGROUPCOMMIT", GMB_TOK_SpeedEndGroupCommit },
     { "SPEED", "EOF", GMB_TOK_EofFunc },

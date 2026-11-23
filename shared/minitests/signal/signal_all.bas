@@ -76,6 +76,6 @@ SUB Main()
   PRINT "savgol="; ROUND(ys(0), 6); ","; ROUND(ys(3), 6); ","; ROUND(ys(6), 6)
 
   DIM wx(7) AS DOUBLE = {1, 2, 3, 4, 5, 4, 3, 2}
-  DIM wh = SIGNAL.WELCH(wx, 4, 1.0)
-  PRINT "welch="; (wh > 0)
+  DIM wh() = SIGNAL.WELCH(wx, 4, 1.0)
+  PRINT "welch="; (LEN(wh) > 0)
 END SUB

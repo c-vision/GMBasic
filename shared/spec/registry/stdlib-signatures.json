@@ -15602,35 +15602,6 @@
       ]
     },
     {
-      "ns": "SIGNAL",
-      "name": "WELCH",
-      "fn": true,
-      "return": "long",
-      "params": [
-        {
-          "name": "x",
-          "type": "double[]",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        },
-        {
-          "name": "nperseg",
-          "type": "long",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        },
-        {
-          "name": "fs",
-          "type": "double",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        }
-      ]
-    },
-    {
       "ns": "SPEED",
       "name": "BEGINGROUPCOMMIT",
       "fn": true,

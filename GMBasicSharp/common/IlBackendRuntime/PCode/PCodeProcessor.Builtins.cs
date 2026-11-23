@@ -4271,7 +4271,6 @@ if (args.Length >= 3) { var file = args[0]?.ToString() ?? ""; var section = args
         (MOUSEBuiltInFunctions, (self, t, fn, a) => self.ExecuteBuiltInMouse(t, fn, a)),
         (PROVIDERBuiltInFunctions, (self, t, fn, a) => self.ExecuteBuiltInProvider(t, fn, a)),
         (RDDBuiltInFunctions, (self, t, fn, a) => self.ExecuteBuiltInRdd(t, fn, a)),
-        (SIGNALBuiltInFunctions, (self, t, fn, a) => self.ExecuteBuiltInSignal(t, fn, a)),
         (SOLVEBuiltInFunctions, (self, t, fn, a) => self.ExecuteBuiltInSolve(t, fn, a)),
         (SPECIALBuiltInFunctions, (self, t, fn, a) => self.ExecuteBuiltInSpecial(t, fn, a)),
         (SPEEDBuiltInFunctions, (self, t, fn, a) => self.ExecuteBuiltInSpeed(t, fn, a)),

@@ -1195,14 +1195,6 @@ public sealed partial class IlProgramCompiler
         EmitDoubleArgument(expr.Args[3]);
         _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.SolveIvp)));
     }
-    private void EmitSignalWelchCall(BuiltinFunctionCallExpr expr)
-    {
-        if (expr.Args.Length != 3) throw new NotSupportedException("Backend IL: WELCH richiede (x[], nperseg, fs).");
-        EmitDoubleArrayArgument(expr.Args[0]);
-        EmitInt32Argument(expr.Args[1]);
-        EmitDoubleArgument(expr.Args[2]);
-        _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.Welch)));
-    }
     private void EmitSignalIntIntCall(BuiltinFunctionCallExpr expr, string methodName)
     {
         if (expr.Args.Length != 3) throw new NotSupportedException($"Backend IL: {expr.OriginalToken.Lexeme} richiede (x[], int, int).");

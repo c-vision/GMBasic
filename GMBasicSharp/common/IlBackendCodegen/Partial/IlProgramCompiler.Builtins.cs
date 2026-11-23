@@ -652,7 +652,6 @@ public sealed partial class IlProgramCompiler
             case TokenKind.Simpson: EmitAnalysisClosureTwoCall2(expr, nameof(IlRuntime.Simpson)); break;
             case TokenKind.SolveOde: EmitAnalysisOdeCall(expr, nameof(IlRuntime.SolveOde)); break;
             case TokenKind.SolveIvp: EmitSolveIvpCall(expr); break;
-            case TokenKind.SignalWelch: EmitSignalWelchCall(expr); break;
             case TokenKind.Trapezoid: EmitAnalysisTwoArrayCall(expr, nameof(IlRuntime.Trapezoid)); break;
             case TokenKind.CumTrapezoid: EmitAnalysisTwoArrayCall(expr, nameof(IlRuntime.CumTrapezoid)); break;
             case TokenKind.CubicSpline: EmitAnalysisInterpCall(expr, nameof(IlRuntime.CubicSpline)); break;

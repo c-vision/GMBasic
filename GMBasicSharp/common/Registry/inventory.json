@@ -1,7 +1,7 @@
 {
-  "count": 1216,
+  "count": 1215,
   "namespaces": 60,
-  "distinctTokenKinds": 1112,
+  "distinctTokenKinds": 1111,
   "namesInMultipleNamespaces": 87,
   "namesInMultipleNamespacesSample": [
     "Count",

@@ -2763,27 +2763,8 @@ int emit_bf_stats_arr(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_
         if (SA_TBL[i].tk == tk) return SA_TBL[i].sp(c, args, nargs);
     return 0;
 }
-/* ── dominio: signal — resta solo WELCH (handle matrice, parità emitter C#).
- * Le altre 17 funzioni del dominio sono nella lib FFI `signal`
- * (shared/libs/signal + shared/include/signal.inc), non più builtin. */
-static int sg_wn(ctx_t* c, gmb_expr_t* e, var_t** out) {
-    if (!e || e->kind != GMB_EXPR_VAR || !e->var) return 0;
-    var_t* v = lookup_var(c, e->var);
-    if (!v || !v->is_array) return 0;
-    *out = v; return 1;
-}
-static int sg_welch(ctx_t* c, gmb_expr_t** a, int n) {
-    if (n < 3) return 0;
-    var_t* xv = NULL; if (!sg_wn(c, a[0], &xv)) return 0;
-    sb_put(&c->out, "gmb_welch_c99((const double*)"); emit_var_ref(c, xv);
-    sb_put(&c->out, ", (int)("); emit_arr_len_of(c, xv); sb_put(&c->out, "), (int)(");
-    emit_expr(c, a[1]); sb_put(&c->out, "), "); emit_expr(c, a[2]); sb_put(&c->out, ")");
-    return 1;
-}
-typedef struct { gmb_tokenkind_t tk; int (*sp)(ctx_t*, gmb_expr_t**, int); } sg_row;
-static const sg_row SG_TBL[] = {
-    { GMB_TOK_SignalWelch, sg_welch },
-};
+/* ── dominio: signal — VUOTO dal 2026-11-23: WELCH è nel pacchetto FFI `signal`
+ * (shared/libs/signal + shared/include/signal.inc), come le altre 17 funzioni del dominio. */
 /* ── dominio: torch (tensor ops + model, delegazione §0quater) ── */
 #define TG_UN(nm, fn) static int nm(ctx_t* c, gmb_expr_t** a, int n){ if(n<1)return 0; sb_put(&c->out, fn "("); emit_expr(c,a[0]); sb_put(&c->out, ")"); return 1; }
 #define TG_BIN(nm, fn) static int nm(ctx_t* c, gmb_expr_t** a, int n){ if(n<2)return 0; sb_put(&c->out, fn "("); emit_expr(c,a[0]); sb_put(&c->out, ", "); emit_expr(c,a[1]); sb_put(&c->out, ")"); return 1; }
@@ -2902,12 +2883,6 @@ int emit_bf_torch(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk
     return 0;
 }
 
-int emit_bf_signal(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk, gmb_expr_t** args, int nargs, int line) {
-    (void)name; (void)ns; (void)line;
-    for (size_t i = 0; i < sizeof(SG_TBL) / sizeof(SG_TBL[0]); i++)
-        if (SG_TBL[i].tk == tk) return SG_TBL[i].sp(c, args, nargs);
-    return 0;
-}
 /* ── dominio: analysis (delegazione §0quater) ──
  * Nuclei ANALYSIS (scipy integrate/interpolate/fft): le funzioni emettono chiamate
  * alle gmb_* del runtime CONdiviso (mai inline, §0bis). I TokenKind ANALYSIS-specifici

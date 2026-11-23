@@ -2,9 +2,7 @@
 
 void gmb_bf_1019(gmb_vm_t*, gmb_stack_entry_t*, int, int, gmb_builtin_out_t*, gmb_task_t*);
 void gmb_bf_823(gmb_vm_t*, gmb_stack_entry_t*, int, int, gmb_builtin_out_t*, gmb_task_t*);
-void gmb_bf_1020(gmb_vm_t*, gmb_stack_entry_t*, int, int, gmb_builtin_out_t*, gmb_task_t*);
 void gmb_bf_1027(gmb_vm_t*, gmb_stack_entry_t*, int, int, gmb_builtin_out_t*, gmb_task_t*);
-void gmb_bf_1029(gmb_vm_t*, gmb_stack_entry_t*, int, int, gmb_builtin_out_t*, gmb_task_t*);
 void gmb_bf_928(gmb_vm_t*, gmb_stack_entry_t*, int, int, gmb_builtin_out_t*, gmb_task_t*);
 void gmb_bf_938(gmb_vm_t*, gmb_stack_entry_t*, int, int, gmb_builtin_out_t*, gmb_task_t*);
 void gmb_bf_894(gmb_vm_t*, gmb_stack_entry_t*, int, int, gmb_builtin_out_t*, gmb_task_t*);

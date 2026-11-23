@@ -1,6 +1,6 @@
 ' signal.inc — namespace SIGNAL via FFI (lib `signal`, libgmbsignal).
 '
-' 19 funzioni pure di elaborazione dei segnali (scipy.signal/fft): finestre,
+' 23 funzioni pure di elaborazione dei segnali (scipy.signal/fft): finestre,
 ' convoluzione/correlazione, design e applicazione di filtri IIR
 ' (butter/cheby1/cheby2/ellip + lfilter/filtfilt/freqz), FIR (firwin), picchi
 ' (findpeaks), ricampionamento (resample/decimate) e smoothing Savitzky-Golay.
@@ -16,8 +16,8 @@
 '   - il design IIR (BUTTER/CHEBY1/CHEBY2/ELLIP) ritorna un handle LONG nel
 '     registro interno della lib, da passare a LFILTER/FILTFILT/FREQZ.
 '
-' NON è qui WELCH: resta builtin, perché ritorna un handle di matrice e il
-' registro delle matrici vive nel runtime. Il comando SIGNAL / ON SIGNAL
+' WELCH è qui, come array interleaved [f0, psd0, …]: non ritorna più un handle di matrice.
+' Il comando SIGNAL / ON SIGNAL
 ' (bus eventi con dispatch GPM) resta anch'esso builtin.
 
 NAMESPACE SIGNAL
@@ -198,5 +198,41 @@ PUBLIC FUNCTION IRFFT(re() AS DOUBLE, im() AS DOUBLE) AS ARRAY OF DOUBLE
     DIM n AS LONG = 2 * (m - 1)
     DIM o(n - 1) AS DOUBLE
     CALL SXF_IRFFT(re, im, m, o, n)
+    RETURN o
+END FUNCTION
+
+' ── densità spettrale (scipy.signal.welch) ───────────────────────────────────
+' WELCH ritorna l'array INTERLEAVED [f0, psd0, f1, psd1, …] (2*(nfreqs) valori,
+' nfreqs = nperseg\2+1): le frequenze sono in `w(2k)`, la PSD in `w(2k+1)`.
+' nperseg <= 0 → default storico min(256, max(8, n)); nperseg > n → n.
+DECLARE NATIVE FUNCTION SXF_WELCH LIB "gmbsignal" ALIAS "ofx_signal_welch" (x() AS DOUBLE, n AS LONG, nperseg AS LONG, fs AS DOUBLE, out() AS DOUBLE, cap AS LONG) AS LONG
+
+PUBLIC FUNCTION WELCH(x() AS DOUBLE, nperseg AS LONG, fs AS DOUBLE) AS ARRAY OF DOUBLE
+    DIM n AS LONG = UBOUND(x) + 1
+    DIM ns AS LONG = nperseg
+    IF ns <= 0 THEN
+        ns = 256
+        IF n < 256 THEN ns = n
+        IF ns < 8 THEN ns = 8
+    END IF
+    IF ns > n THEN ns = n
+    DIM nf AS LONG = ns \ 2 + 1
+    DIM o(2 * nf - 1) AS DOUBLE
+    CALL SXF_WELCH(x, n, ns, fs, o, 2 * nf)
+    RETURN o
+END FUNCTION
+
+' WELCHFREQS / WELCHPSD: le due colonne di WELCH come array separati.
+PUBLIC FUNCTION WELCHFREQS(w() AS DOUBLE) AS ARRAY OF DOUBLE
+    DIM nf AS LONG = (UBOUND(w) + 1) \ 2
+    DIM o(nf - 1) AS DOUBLE
+    FOR k = 0 TO nf - 1: o(k) = w(2 * k): NEXT k
+    RETURN o
+END FUNCTION
+
+PUBLIC FUNCTION WELCHPSD(w() AS DOUBLE) AS ARRAY OF DOUBLE
+    DIM nf AS LONG = (UBOUND(w) + 1) \ 2
+    DIM o(nf - 1) AS DOUBLE
+    FOR k = 0 TO nf - 1: o(k) = w(2 * k + 1): NEXT k
     RETURN o
 END FUNCTION

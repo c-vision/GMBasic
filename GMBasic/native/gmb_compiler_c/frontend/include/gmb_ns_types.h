@@ -820,7 +820,6 @@ static const gmb_ns_type_row_t gmb_ns_types[] = {
     { GMB_TOK_RddDeleteScoped, 0 },
     { GMB_TOK_RddRecallScoped, 0 },
     { GMB_TOK_RddReplaceScoped, 0 },
-    { GMB_TOK_SignalWelch, 0 },
     { GMB_TOK_SpeedSetDurability, 1 },
     { GMB_TOK_SpeedFlushDurability, 0 },
     { GMB_TOK_SpeedBeginGroupCommit, 0 },

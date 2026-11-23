@@ -1224,7 +1224,6 @@ public sealed partial class BackendImplementationRegistry
         r.Register(Backend.C99Native, "STATS.WeibullPpf");
         r.Register(Backend.C99Native, "STATS.WeibullSf");
         r.Register(Backend.C99Native, "AI.Weight");
-        r.Register(Backend.C99Native, "SIGNAL.WELCH");
         r.Register(Backend.C99Native, "MOUSE.WHEEL");
         r.Register(Backend.C99Native, "WINDOWS.WIDTH");
         r.Register(Backend.C99Native, "STATS.Wilcoxon");

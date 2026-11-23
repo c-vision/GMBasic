@@ -6634,7 +6634,6 @@ int emit_bf_rageval(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t 
  * forward declaration nel TU di gmb_c99_emit.c → `emit_bf_uncertainty` undeclared e
  * `gmb_bf_composite[]` incompleta (build di gmb_compiler_c rossa, quindi VM/C rotta). */
 int emit_bf_uncertainty(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk, gmb_expr_t** args, int nargs, int line);
-int emit_bf_signal(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk, gmb_expr_t** args, int nargs, int line);
 int emit_bf_torch(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk, gmb_expr_t** args, int nargs, int line);
 int emit_bf_analysis(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk, gmb_expr_t** args, int nargs, int line);
 int emit_bf_vector(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk, gmb_expr_t** args, int nargs, int line);
@@ -7521,7 +7520,6 @@ static const gmb_bf_row_t gmb_bf_composite[] = {
     { NULL, GMB_TOK_TorchModelLoss, emit_bf_torch },
     { NULL, GMB_TOK_TorchModelState, emit_bf_torch },
     { NULL, GMB_TOK_TorchModelTrainStep, emit_bf_torch },
-    { NULL, GMB_TOK_SignalWelch, emit_bf_signal },
     /* TRAY (2026-10-02): tabella nel file di dominio gmb_c99_emit_tray.c (§0quater). */
     { NULL, GMB_TOK_TrayCreate, emit_bf_tray },
     { NULL, GMB_TOK_TrayItem, emit_bf_tray },

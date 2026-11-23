@@ -890,7 +890,6 @@ procedure,RDD,TABLEREVERT,RddTableRevert
 procedure,RDD,TABLEUPDATE,RddTableUpdate
 procedure,RDD,TODAY,RddToday
 procedure,RDD,VALTYPE,RddValType
-procedure,SIGNAL,WELCH,SignalWelch
 procedure,SPEED,BEGINGROUPCOMMIT,SpeedBeginGroupCommit
 procedure,SPEED,BEGINGROUPCOMMIT,SpeedBeginGroupCommit
 procedure,SPEED,ENDGROUPCOMMIT,SpeedEndGroupCommit

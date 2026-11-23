@@ -1224,7 +1224,6 @@ public sealed partial class BackendImplementationRegistry
         r.Register(Backend.IL, "STATS.WeibullPpf");
         r.Register(Backend.IL, "STATS.WeibullSf");
         r.Register(Backend.IL, "AI.Weight");
-        r.Register(Backend.IL, "SIGNAL.WELCH");
         r.Register(Backend.IL, "MOUSE.WHEEL");
         r.Register(Backend.IL, "WINDOWS.WIDTH");
         r.Register(Backend.IL, "STATS.Wilcoxon");

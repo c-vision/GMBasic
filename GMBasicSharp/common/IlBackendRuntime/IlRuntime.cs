@@ -8596,9 +8596,8 @@ public static double TextWidth(string s)
     public static double Moment(double[] data, double order) => CommonLib.Numerics.Moment(data, (int)order);
     public static double Iqr(double[] data) => CommonLib.Numerics.Iqr(data);
     // ---- scipy.signal P1 / interpolate P1 / spatial P1 / fft P1 ----
-    public static long Welch(double[] x, int nperseg, double fs)
-        => StoreMatrix(CommonLib.Numerics.Welch(x, nperseg, fs));
-    // SIGNAL.SAVGOLFILTER/RESAMPLE/DECIMATE: nella lib FFI `signal` (niente più wrapper IL).
+    // WELCH/SAVGOLFILTER/RESAMPLE/DECIMATE/RFFT/IRFFT/SPLREP/SPLEV: pacchetti FFI
+    // (`signal`, `math`) — niente più wrapper IL.
     // SPLREP/SPLEV → pacchetto `math` (namespace INTERP), RFFT/IRFFT → pacchetto `signal`.
     // ---- scipy.signal P0 / scipy.integrate P0 ----
     public static long SolveIvp(Func<double, double[], double[]> f, double[] y0, double t0, double t1)

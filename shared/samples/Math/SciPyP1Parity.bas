@@ -8,10 +8,10 @@ SUB Main()
   DIM n(255) AS DOUBLE
   FOR i = 0 TO 255 : n(i) = SIN(2 * 3.141592653589793 * 0.1 * i) : NEXT
 
-  ' welch: picco PSD vicino a f=0.1
-  w = SIGNAL.WELCH(n, 64, 1.0)
-  PRINT "welchrows ="; MATRIX.ROWCOUNT(w)
-  PRINT "welch00   ="; MATRIX.GETVALUE(w, 0, 0)
+  ' welch: picco PSD vicino a f=0.1 (array interleaved [freq, psd, …] dal pacchetto)
+  DIM w() = SIGNAL.WELCH(n, 64, 1.0)
+  PRINT "welchrows ="; LEN(w) \ 2
+  PRINT "welch00   ="; w(0)
 
   ' savgol su una parabola → esatto
   DIM q(19) AS DOUBLE

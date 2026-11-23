@@ -67,52 +67,7 @@ internal static class AnalysisNative
     }
     internal static double RSquaredTest(double[] data) => NativeRSquaredTest(data, data.Length);
 
-    // ── signal/fft ─────────────────────────────────────────────────────────────────────────
-    /// <summary>Welch: matrice [nfreqs, 2] (frequenza, PSD).</summary>
-    internal static double[,] Welch(double[] x, int nperseg, double fs)
-    {
-        var p = NativeWelch(x, x.Length, nperseg, fs, out var rows);
-        try
-        {
-            if (p == IntPtr.Zero || rows <= 0)
-                throw new InvalidOperationException("SIGNAL: il kernel C non ha prodotto WELCH.");
-            var flat = new double[rows * 2];
-            Marshal.Copy(p, flat, 0, rows * 2);
-            var res = new double[rows, 2];
-            for (var k = 0; k < rows; k++) { res[k, 0] = flat[2 * k]; res[k, 1] = flat[2 * k + 1]; }
-            return res;
-        }
-        finally { if (p != IntPtr.Zero) { try { libc_free(p); } catch { } } }
-    }
-
-    /// <summary>RFFT: componenti a frequenza non negativa, interleaved [re0, im0, re1, im1, …].</summary>
-    internal static double[] Rfft(double[] x)
-    {
-        var p = NativeRfft(x, x.Length, out var len);
-        try
-        {
-            if (p == IntPtr.Zero) throw new InvalidOperationException("FFT: il kernel C non ha prodotto RFFT.");
-            if (len <= 0) return [];
-            var res = new double[len * 2];
-            Marshal.Copy(p, res, 0, (int)(len * 2));
-            return res;
-        }
-        finally { if (p != IntPtr.Zero) { try { libc_free(p); } catch { } } }
-    }
-
-    internal static double[] Irfft(double[] re, double[] im)
-    {
-        var p = NativeIrfft(re, im, re.Length, out var len);
-        try
-        {
-            if (p == IntPtr.Zero) throw new InvalidOperationException("FFT: il kernel C non ha prodotto IRFFT.");
-            if (len <= 0) return [];
-            var res = new double[len];
-            Marshal.Copy(p, res, 0, (int)len);
-            return res;
-        }
-        finally { if (p != IntPtr.Zero) { try { libc_free(p); } catch { } } }
-    }
+    // ── signal/fft: spostati nel pacchetto `signal` (SIGNAL.WELCH/RFFT/IRFFT), 2026-11-23 ────
 
     // ── Import delle funzioni native (Fitting, signal/fft, RMT/SVM) ────────────────────────
     [DllImport(Lib, EntryPoint = "gmb_anf_cheb_eval", CallingConvention = CallingConvention.Cdecl)]
@@ -127,12 +82,6 @@ internal static class AnalysisNative
     private static extern void NativeRSquared(double[] data, int n, out double r2, out double angle);
     [DllImport(Lib, EntryPoint = "gmb_anf_rsquared_test", CallingConvention = CallingConvention.Cdecl)]
     private static extern double NativeRSquaredTest(double[] data, int n);
-    [DllImport(Lib, EntryPoint = "gmb_anf_welch", CallingConvention = CallingConvention.Cdecl)]
-    private static extern IntPtr NativeWelch(double[] x, int n, int nperseg, double fs, out int outRows);
-    [DllImport(Lib, EntryPoint = "gmb_anf_rfft", CallingConvention = CallingConvention.Cdecl)]
-    private static extern IntPtr NativeRfft(double[] x, int n, out long outn);
-    [DllImport(Lib, EntryPoint = "gmb_anf_irfft", CallingConvention = CallingConvention.Cdecl)]
-    private static extern IntPtr NativeIrfft(double[] re, double[] im, int m, out long outn);
     [DllImport(Lib, EntryPoint = "gmb_anf_rmt_lambda_plus", CallingConvention = CallingConvention.Cdecl)]
     private static extern double NativeRmtLambdaPlus(int n, int T, double sigma2);
     [DllImport(Lib, EntryPoint = "gmb_anf_rmt_lambda_minus", CallingConvention = CallingConvention.Cdecl)]

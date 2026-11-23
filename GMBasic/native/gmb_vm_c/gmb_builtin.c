@@ -1555,77 +1555,6 @@ static void gmb_bf_823(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func
         }
         
 }
-static void gmb_bf_1020(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
-{
-        {
-            int n = 0;
-            double* x = argc >= 1 ? gmb_vm_list_to_dbl(&args[0], &n) : NULL;
-            int np = (int)(argc >= 2 ? args[1].num : 256);
-            double fs = argc >= 3 ? args[2].num : 1.0;
-            int rows = 0;
-            double* w = x ? gmb_welch(x, n, np, fs, &rows) : NULL;
-            free(x);
-            if (!w || rows <= 0) { free(w); bout->is_num = 0; bout->result_ref = NULL; }
-            int64_t mh = gmb_matrix_create(rows, 2);
-            for (int r = 0; r < rows; r++) { gmb_matrix_set(mh, r, 0, w[r * 2]); gmb_matrix_set(mh, r, 1, w[r * 2 + 1]); }
-            free(w);
-            bout->result = (double)mh;
-        }
-}
-static void gmb_bf_1024(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
-{
-        {
-            int nx = 0, ny = 0;
-            double* xs = argc >= 1 ? gmb_vm_list_to_dbl(&args[0], &nx) : NULL;
-            double* ys = argc >= 2 ? gmb_vm_list_to_dbl(&args[1], &ny) : NULL;
-            int n = nx < ny ? nx : ny;
-            gmb_int_t outn = 0;
-            double* r = xs && ys ? gmb_splrep(xs, ys, n, &outn) : NULL;
-            free(xs); free(ys);
-            gmb_vm_set_result_list(r, (int)outn, &bout->is_num, &bout->result_ref);
-        }
-}
-static void gmb_bf_1025(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
-{
-        {
-            int sn = 0, nq = 0;
-            double* sp = argc >= 1 ? gmb_vm_list_to_dbl(&args[0], &sn) : NULL;
-            double* xq = argc >= 2 ? gmb_vm_list_to_dbl(&args[1], &nq) : NULL;
-            gmb_int_t outn = 0;
-            double* r = sp && xq ? gmb_splev(sp, sn, xq, nq, &outn) : NULL;
-            free(sp); free(xq);
-            gmb_vm_set_result_list(r, (int)outn, &bout->is_num, &bout->result_ref);
-        }
-}
-static void gmb_bf_1029(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
-{
-        {
-            int n = 0;
-            double* x = argc >= 1 ? gmb_vm_list_to_dbl(&args[0], &n) : NULL;
-            gmb_int_t m = 0;
-            double* r = x ? gmb_rfft(x, n, &m) : NULL;
-            free(x);
-            if (!r || m <= 0) { free(r); bout->is_num = 0; bout->result_ref = NULL; }
-            int64_t mh = gmb_matrix_create(m, 2);
-            for (int k = 0; k < m; k++) { gmb_matrix_set(mh, k, 0, r[k * 2]); gmb_matrix_set(mh, k, 1, r[k * 2 + 1]); }
-            free(r);
-            bout->result = (double)mh;
-        }
-}
-static void gmb_bf_1030(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
-{
-        {
-            int nr = 0, ni = 0;
-            double* re = argc >= 1 ? gmb_vm_list_to_dbl(&args[0], &nr) : NULL;
-            double* im = argc >= 2 ? gmb_vm_list_to_dbl(&args[1], &ni) : NULL;
-            int m = nr < ni ? nr : ni;
-            gmb_int_t outn = 0;
-            double* r = re && im ? gmb_irfft(re, im, m, &outn) : NULL;
-            free(re); free(im);
-            gmb_vm_set_result_list(r, (int)outn, &bout->is_num, &bout->result_ref);
-        }
-        
-}
 static void gmb_bf_91(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
 {
         {
@@ -16182,11 +16111,6 @@ static const gmb_bf_impl_t gmb_bf_impl_core[] = {
     { 1015, gmb_bf_1013 },
     { 823, gmb_bf_823 },
     { 824, gmb_bf_823 },
-    { 1020, gmb_bf_1020 },
-    { 1024, gmb_bf_1024 },
-    { 1025, gmb_bf_1025 },
-    { 1029, gmb_bf_1029 },
-    { 1030, gmb_bf_1030 },
     { 91, gmb_bf_91 },
     { 92, gmb_bf_92 },
     { 105, gmb_bf_105 },

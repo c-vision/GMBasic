@@ -862,13 +862,9 @@ procedure,NUMERICAL,InterpolatePchip,InterpolatePchip
 procedure,NUMERICAL,InterpolatePolynomial,InterpolatePolynomial
 procedure,NUMERICAL,InterpolateSpline,InterpolateSpline
 procedure,NUMERICAL,InterpolateStep,InterpolateStep
-procedure,NUMERICAL,Irfft,FftIrfft
-procedure,NUMERICAL,Rfft,FftRfft
 procedure,NUMERICAL,Simpson,Simpson
 procedure,NUMERICAL,SolveIvp,SolveIvp
 procedure,NUMERICAL,SolveOde,SolveOde
-procedure,NUMERICAL,Splev,InterpSplev
-procedure,NUMERICAL,Splrep,InterpSplrep
 procedure,NUMERICAL,Trapezoid,Trapezoid
 procedure,POOL,GET,PoolGet
 procedure,POOL,PUT,PoolPut
@@ -894,7 +890,6 @@ procedure,RDD,TABLEREVERT,RddTableRevert
 procedure,RDD,TABLEUPDATE,RddTableUpdate
 procedure,RDD,TODAY,RddToday
 procedure,RDD,VALTYPE,RddValType
-procedure,SIGNAL,WELCH,SignalWelch
 procedure,SPEED,BEGINGROUPCOMMIT,SpeedBeginGroupCommit
 procedure,SPEED,BEGINGROUPCOMMIT,SpeedBeginGroupCommit
 procedure,SPEED,ENDGROUPCOMMIT,SpeedEndGroupCommit

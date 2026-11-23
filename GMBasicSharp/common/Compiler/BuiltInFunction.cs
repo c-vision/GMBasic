@@ -361,10 +361,9 @@ public enum BuiltInFunction : ushort
     MULTIVARIATE_MVATEIPW = 3882,
     MULTIVARIATE_MVATEMATCHING = 3883,
     // 1017/1018/1021/1022/1023: SIGNAL migrato alla lib FFI `signal`.
-    // 1024/1025/1029/1030 (INTERP_SPLREP/SPLEV, FFT_RFFT/IRFFT): spostati nei pacchetti FFI
-    // (`INTERP` in `math`, `SIGNAL` in `signal`) — la superficie canonica non li espone più.
+    // 1020/1024/1025/1029/1030 (SIGNAL_WELCH, INTERP_SPLREP/SPLEV, FFT_RFFT/IRFFT): spostati nei
+    // pacchetti FFI (`SIGNAL`/`INTERP` in `signal`/`math`) — la superficie canonica non li espone più.
     SOLVE_IVP = 1019,
-    SIGNAL_WELCH = 1020,
     // --- Runtime ML (TORCH): device/loader 1100+, tensor 1103+; TRAIN riservato 1200+ ---
     TORCH_DEVICE = 1100,
     TORCH_LIBPATH = 1101,
