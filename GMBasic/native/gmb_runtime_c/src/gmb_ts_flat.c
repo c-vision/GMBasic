@@ -300,3 +300,8 @@ int gmb_tsf_hmm_fit(const double* x_flat, int n, int d, int k, int n_iter,
 
 const char* gmb_tsf_last_error(void) { return gmb_ts_last_error(); }
 void gmb_tsf_clear_error(void) { gmb_ts_clear_error(); }
+
+void gmb_tsf_minmax(const gmb_double_t* data, gmb_int_t n, double* out_min, double* out_max) {
+    if (out_min) *out_min = gmb_min_arr(data, n);
+    if (out_max) *out_max = gmb_max_arr(data, n);
+}

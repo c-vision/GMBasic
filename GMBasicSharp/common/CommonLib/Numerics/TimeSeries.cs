@@ -239,13 +239,7 @@ public static partial class Numerics
     {
         if (series == null || series.Length == 0)
             throw new ArgumentException("Serie vuota.");
-        double min = double.MaxValue, max = double.MinValue;
-        foreach (var v in series)
-        {
-            if (v < min) min = v;
-            if (v > max) max = v;
-        }
-        return (min, max);
+        return TimeSeriesNative.MinMax(series);
     }
 
     /// <summary>
@@ -618,22 +612,6 @@ public static partial class Numerics
 
     // ── KPSS e QLR (parità gs_infer.c) ─────────────────────────────────────────────
 
-    private static double BartlettLrv(double[] e, int n, int bw)
-    {
-        double total = 0.0;
-        int t, lag;
-        for (t = 0; t < n; t++) total += e[t] * e[t];
-        total /= n;
-        for (lag = 1; lag <= bw; lag++)
-        {
-            double cov = 0.0;
-            for (t = lag; t < n; t++) cov += e[t] * e[t - lag];
-            cov /= n;
-            total += 2.0 * (1.0 - (double)lag / (bw + 1.0)) * cov;
-        }
-        return total;
-    }
-
     public static (double Statistic, int Bandwidth, int Observations, int Deterministic,
         double LongRunVariance, double Critical10, double Critical5, double Critical25, double Critical1)
         Kpss(double[] series, int bandwidth, int deterministic)
@@ -651,14 +629,6 @@ public static partial class Numerics
     }
 
     // ── Hidden Markov Model gaussiano (parità gs_hmm.c) ────────────────────────────
-
-    private static double HmmLogAdd(double a, double b)
-    {
-        if (double.IsNegativeInfinity(a)) return b;
-        if (double.IsNegativeInfinity(b)) return a;
-        var m = a > b ? a : b;
-        return m + Math.Log(Math.Exp(a - m) + Math.Exp(b - m));
-    }
 
     public static double HmmForward(double[] lpi, double[] lA, double[] lE)
     {

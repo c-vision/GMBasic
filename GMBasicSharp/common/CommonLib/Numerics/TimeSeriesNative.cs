@@ -108,6 +108,8 @@ internal static class TimeSeriesNative
     private static extern IntPtr NativeOutliersIqr(double[] data, long n, double threshold, out long outLen);
     [DllImport(Lib, EntryPoint = "gmb_tsf_decompose_matrix", CallingConvention = CallingConvention.Cdecl)]
     private static extern IntPtr NativeDecomposeMatrix(double[] data, long n, long period, out long outLen);
+    [DllImport(Lib, EntryPoint = "gmb_tsf_minmax", CallingConvention = CallingConvention.Cdecl)]
+    private static extern void NativeMinMax(double[] data, long n, out double min, out double max);
     [DllImport(Lib, EntryPoint = "gmb_tsf_rolling_sortino", CallingConvention = CallingConvention.Cdecl)]
     private static extern IntPtr NativeRollingSortino(double[] data, long n, long window, double rf, double target, out long outLen);
 
@@ -491,6 +493,13 @@ internal static class TimeSeriesNative
     {
         Begin();
         return Take(NativeDecomposeMatrix(data, data.Length, period, out var n), n);
+    }
+
+    internal static (double min, double max) MinMax(double[] data)
+    {
+        Begin();
+        NativeMinMax(data, data.Length, out var mn, out var mx);
+        return (mn, mx);
     }
 
     internal static double[] RollingSortino(double[] data, int window, double rf, double target)

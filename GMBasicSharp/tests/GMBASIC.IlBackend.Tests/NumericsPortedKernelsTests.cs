@@ -79,6 +79,17 @@ public class NumericsPortedKernelsTests
     }
 
     [Fact]
+    public void MinMax_Uses_The_Runtime_Kernel()
+    {
+        var (mn, mx) = Numerics.MinMax(new[] { 3.0, -1.0, 7.0, 2.0 });
+        AssertClose(-1.0, mn);
+        AssertClose(7.0, mx);
+        var (neg, negMax) = Numerics.MinMax(new[] { -5.0, -2.0, -9.0 });
+        AssertClose(-9.0, neg);
+        AssertClose(-2.0, negMax);
+    }
+
+    [Fact]
     public void GpRegress_And_GmmEm1D_Use_The_Runtime()
     {
         // GP su dati lineari y=2x con rumore 0: la previsione ai nodi deve tornare y.

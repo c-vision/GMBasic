@@ -53,6 +53,7 @@ gmb_double_t* gmb_tsf_outliers_iqr(gmb_double_t* data, gmb_int_t n, double thres
 gmb_double_t* gmb_tsf_rolldelta_order(gmb_double_t* series, gmb_int_t n, gmb_int_t window, gmb_int_t order, gmb_int_t* out_len);
 gmb_double_t* gmb_tsf_decompose_matrix(gmb_double_t* data, gmb_int_t n, gmb_int_t period, gmb_int_t* out_len);
 gmb_double_t* gmb_tsf_rolling_sortino(gmb_double_t* data, gmb_int_t n, gmb_int_t window, double rf, double target, gmb_int_t* out_len);
+void          gmb_tsf_minmax(const gmb_double_t* data, gmb_int_t n, double* out_min, double* out_max);
 
 gmb_double_t* gmb_tsf_rolling_mean(gmb_double_t* data, gmb_int_t n, gmb_int_t window, gmb_int_t* out_len);
 gmb_double_t* gmb_tsf_rolling_stddev(gmb_double_t* data, gmb_int_t n, gmb_int_t window, gmb_int_t* out_len);
