@@ -24,33 +24,27 @@ published when finished. The REPL's own `IDE` command (`REPL/ide.c`, shared logi
 | Graphics | The GFX domain work is open. |
 | Libraries | GMBSuite: migrate the remaining builtins to FFI libraries, or decide where the boundary is. |
 
-### scipy → FFI: funzioni da pacchetto, NON builtin (deciso 2026-11-23)
+### scipy → FFI: funzioni da pacchetto, NON builtin (deciso/applicato 2026-11-23)
 
 Principio: le builtin **base** del dialetto restano; le funzioni `scipy.*` (fft/interpolate/signal)
 sono tipiche da **FFI** e non appartengono alla dotazione standard.
 
-Fatto: `RFFT`/`IRFFT` nel pacchetto `signal` (`ofx_signal_rfft/irfft` + `signal.inc`) e
-`SPLREP`/`SPLEV` nel pacchetto `math` (namespace `INTERP`, `interp.inc`), con `gmi_splrep` portato
-a **Thomas O(n)** (prima era denso n×n). I MiniTest (`analysis/{rfft,irfft,splrep,splev,
-analysis_all}.bas`) usano già `IMPORT` e sono verdi sulle 4 gambe.
+**Fatto.** `RFFT`/`IRFFT` nel pacchetto `signal` (`ofx_signal_rfft/irfft` + `signal.inc`);
+`SPLREP`/`SPLEV` nel pacchetto `math` (namespace `INTERP`, `interp.inc`) con `gmi_splrep` portato a
+**Thomas O(n)**. I MiniTest usano `IMPORT` e sono verdi sulle 4 gambe. I 4 builtin sono **usciti
+dalla superficie canonica** (982 → 978, `registry-export --all`); un programma con
+`NUMERICAL.Rfft` non compila più.
 
-Resta il **passo 3 — rimozione dalla superficie** (builtin ancora attivi):
+**Resta (pulizia, non superficie):**
 
-- [ ] `shared/spec/registry/surface.csv` (righe `NUMERICAL.{Irfft,Rfft,Splev,Splrep}`): file
-      **generato** da `tools/registry-export` → rigenerare, non editare a mano;
-- [ ] `BackendSupport/Registry/{IL,PCodeVM,VMC,C99Native}.cs`: 4 voci ciascuno;
-- [ ] `IlProgramCompiler.Builtins.cs`: 4 case (`InterpSplrep/Splev`, `FftRfft/Irfft`);
-- [ ] PCode `PCodeProcessor.Builtins.Fft.cs`: `FFT_RFFT`/`FFT_IRFFT` nella dictionary (+ mapping
-      TokenKind→BuiltInFunction); `SPLREP/SPLEV` dove sono mappati;
-- [ ] C99 `gmb_c99_emit.c` + `gmb_c99_emit_builtin.c`: 10 punti;
-- [ ] VM/C `gmb_builtin.c`: i case di `gmb_splrep/gmb_rfft/gmb_irfft` (+ `splev`);
-- [ ] `IlRuntime` e `CommonLib.Numerics` (`SciPyP1`: `Rfft`, `Irfft`, `Splrep`, `Splev`,
-      `CubicSplineRep`, `SolveNotAKnotDense/Tridiagonal`) → archivio in Deprecated;
-- [ ] rigenerare manifest/audit (`tools/registry-export --all`, `tools/audit -- --all`):
-      baseline superficie 982 → 978.
-
-Stesso trattamento (ma serve prima il wrapper nel `.inc`): `SIGNAL.WELCH` (builtin che ritorna un
-handle di matrice; `signal.inc` oggi non lo espone) e `SAVGOL` (wrapper già presente).
+- [ ] rimuovere le implementazioni ora irraggiungibili: case in `IlProgramCompiler.Builtins.cs`,
+      dictionary PCode (`FFT_RFFT`/`FFT_IRFFT`, `INTERP_*`), 10 punti in `gmb_c99_emit*.c`,
+      case VM/C (`gmb_builtin.c`), e i metodi `IlRuntime`/`SciPyP1` (`Rfft`, `Irfft`, `Splrep`,
+      `Splev`, `CubicSplineRep`, `SolveNotAKnot*`) → archivio in Deprecated;
+- [ ] `SIGNAL.WELCH` (builtin che ritorna un handle di matrice) e `SAVGOL`: prima esporre
+      `WELCH` in `signal.inc` come array, poi spegnere il builtin;
+- [ ] il gate `check_enum_ids` ha un DRIFT **pre-esistente** (`gmb_vm_c/gmb_syscall_codes.h` vs
+      `SysCalls.cs`, dal commit `aea3d3f5` clock): rigenerare con `tools/check_enum_ids --gen`.
 
 | Local AI | CPU-only MoE streaming engine (no GPU, no MLX). |
 | Namespaces | Math / Stats / TimeSeries taxonomy. |
