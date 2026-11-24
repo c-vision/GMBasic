@@ -171,7 +171,10 @@ FUNCTION BodyAtLine(lineNo AS LONG, name AS STRING, col AS LONG) AS STRING
   DIM s AS STRING, body AS STRING, ln AS STRING, c AS STRING
   DIM p AS LONG, q AS LONG, depth AS LONG, k AS LONG, start AS LONG, first AS LONG
   IF lineNo < 1 OR lineNo > g_nlines OR col < 1 THEN RETURN ""
-  s = g_lines$(lineNo - 1)
+  ' copia ESPLICITA: un alias dell'elemento (assegnazione diretta) resta condiviso con
+  ' l'array e il runtime, riassegnando una seconda variabile allo stesso elemento, libera il
+  ' buffer ancora referenziato → corpo vuoto o SIGTRAP (osservato su gmb_builtin.c).
+  s = MID$(g_lines$(lineNo - 1), 1, LEN(g_lines$(lineNo - 1)))
   IF LEN(s) = 0 THEN RETURN ""
   IF MID$(s, col, LEN(name)) <> name THEN RETURN ""
   ' parentesi della firma (sulla stessa riga: e' lo stile dei file C del repo)
@@ -200,7 +203,7 @@ FUNCTION BodyAtLine(lineNo AS LONG, name AS STRING, col AS LONG) AS STRING
   END IF
   start = 0
   DO WHILE k <= g_nlines AND start = 0
-    ln = g_lines$(k - 1) + ""
+    ln = MID$(g_lines$(k - 1), 1, LEN(g_lines$(k - 1)))
     p = q
     IF p < 1 THEN p = 1
     DO WHILE p <= LEN(ln)
@@ -225,7 +228,7 @@ FUNCTION BodyAtLine(lineNo AS LONG, name AS STRING, col AS LONG) AS STRING
   body = ""
   first = -1
   DO WHILE k <= g_nlines
-    ln = g_lines$(k - 1) + ""
+    ln = MID$(g_lines$(k - 1), 1, LEN(g_lines$(k - 1)))
     p = start
     DO WHILE p <= LEN(ln)
       c = MID$(ln, p, 1)
