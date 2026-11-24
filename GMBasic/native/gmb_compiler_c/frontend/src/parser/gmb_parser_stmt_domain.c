@@ -391,13 +391,26 @@ gmb_stmt_t* gmb_p_parse_domain_stmt_ov(gmb_parser_t* p, int line, const char* ov
                 }
             }
         }
-        /* NUMERO CON SEGNO (`-2`, `+5`) come termine: il lettore generico vedeva il '-' come
-         * variabile (sanitizzata "_2D") → `VECTOR FILL RANDOM DX, -2, 2` generava velocità
-         * tutte positive (bug noto). */
+        /* TERMINE CON SEGNO (`-2`, `+5`, `-var`, `-f(x)`) come argomento: il lettore generico
+         * vedeva il '-' come variabile (sanitizzata "_2D") → `VECTOR FILL RANDOM DX, -2, 2`
+         * generava velocità tutte positive, e `SCENE BOX -dw, …` diventava
+         * `gmb_scene_box(_2D, dw, 0, _2D, dw, dw)` (argomento spurio + shift, gamba C).
+         * Numero: si piega subito nel letterale (comportamento storico). Qualunque altro
+         * operando: si riavvolge e si parsa l'ESPRESSIONE intera, unaria compresa. */
         {
             const gmb_token_t* st = gmb_p_cur(p);
             if (st && (st->kind == GMB_TOK_Minus || st->kind == GMB_TOK_Plus)) {
                 const gmb_token_t* nt = gmb_p_peek(p, 1);
+                if (nt && nt->kind != GMB_TOK_Number && nt->kind != GMB_TOK_Newline
+                    && nt->kind != GMB_TOK_Comma && nt->kind != GMB_TOK_Eof
+                    && nt->kind != GMB_TOK_Colon) {
+                    p->pos = term_pos;
+                    gmb_expr_t* se = gmb_p_parse_expr(p);
+                    if (!se) { gmb_p_adv(p); continue; }
+                    if (s->n_go_args >= cap) { cap = cap ? cap * 2 : 8; s->go_args = (gmb_expr_t**)realloc(s->go_args, (size_t)cap * sizeof(gmb_expr_t*)); }
+                    s->go_args[s->n_go_args++] = se;
+                    continue;
+                }
                 if (nt && nt->kind == GMB_TOK_Number) {
                     char nb[64]; int l = nt->length < 63 ? nt->length : 63;
                     memcpy(nb, nt->lexeme, (size_t)l); nb[l] = 0;
