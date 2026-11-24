@@ -55,11 +55,13 @@ in `GMBasicMonoRepo-Deprecated/archive-2026-11-23-scipy-ffi-step3/` e
 
 **Resta (non superficie):**
 
-- [ ] `gmb_rfft_c99`/`gmb_irfft_c99`/`gmb_splrep_c99`/`gmb_splev_c99`/`gmb_welch_c99` sono nel
-      runtime C (`gmb_runtime.h`) ma non più chiamati dagli emitter: decidere se toglierli
-      dall'API o documentarli come API C-only (i kernel senza suffisso servono a `*_flat`).
-- [ ] il gate `check_enum_ids` ha un DRIFT **pre-esistente** (`gmb_vm_c/gmb_syscall_codes.h` vs
-      `SysCalls.cs`, dal commit `aea3d3f5` clock): rigenerare con `tools/check_enum_ids --gen`.
+- [x] ~~`gmb_rfft_c99`/`gmb_irfft_c99`/`gmb_splrep_c99`/`gmb_splev_c99`/`gmb_welch_c99` nel
+      runtime C~~ → **rimossi** con gli altri bridge C99 di signal/fft/interpolate
+      (`gmb_savgol_c99`, `gmb_resample_c99`, `gmb_decimate_c99`, `gmb_firwin_c99`,
+      `gmb_find_peaks_alloc`): erano senza chiamanti. Restano i kernel senza suffisso (`*_flat`)
+      e `gmb_matrix_from_flat` (usato dall'emitter). Commit `2fa54283`.
+- [x] ~~gate `check_enum_ids` con DRIFT~~ → **verde**: il drift era il WIP dell'altra sessione su
+      `SysCalls.cs` + `gmb_syscall_codes.h`, rigenerato da loro; HEAD era già consistente.
 
 | Local AI | CPU-only MoE streaming engine (no GPU, no MLX). |
 | Namespaces | Math / Stats / TimeSeries taxonomy. |
