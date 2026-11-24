@@ -22305,17 +22305,11 @@ static void st_do(ctx_t* c, gmb_stmt_t* s) {
             sb_put(&c->out, ")) {\n");
             c->indent++;
             emit_block(c, s->do_body, s->n_do);
-            if (s->value) {
+            if (s->flag == 2) {
                 /* TICK <rate>: frame limiter + present UNA volta per frame
-                 * (prima il rate era ignorato → loop a migliaia di fps).
-                 *
-                 * Il marker e' `s->value`, NON `flag`: `gmb_p_parse_tick` tiene `flag = 0`
-                 * per la semantica WHILE (flag 1 = UNTIL) e mette la frequenza in `value`,
-                 * che fra le istruzioni DO/WHILE valorizza SOLO il TICK. Il vecchio
-                 * `flag == 2` era un marker che nessun parser scrive piu' per i loop:
-                 * il pace e il present non venivano emessi (TICK = ciclo nudo). */
+                 * (prima il rate era ignorato → loop a migliaia di fps). */
                 ind(c); sb_put(&c->out, "gmb_tick_pace((double)(");
-                emit_expr(c, s->value);   /* sempre valorizzato: gmb_p_parse_tick mette 0 se il rate manca */
+                if (s->value) emit_expr(c, s->value); else sb_put(&c->out, "0");
                 sb_put(&c->out, "));\n");
                 ind(c); sb_put(&c->out, "gmb_gfx_present_frame();\n");
             }
@@ -24708,9 +24702,7 @@ static void st_net_cmd(ctx_t* c, gmb_stmt_t* s) {
             sb_put(&c->out, "));\n");
             ind(c); sb_put(&c->out, "if (__nh >= 0) break;\n");
             if (has_to) { ind(c); sb_put(&c->out, "if (gmb_c99_now_ms() >= __ndl) break;\n"); }
-            /* §0ter: poll cooperativo — dentro un task GPM parcheggia (gmb_gpm_sleep), non
-             * dorme il worker: un ACCEPT senza connessioni non deve occupare un core. */
-            ind(c); sb_put(&c->out, "gmb_gpm_sleep(1);\n");
+            ind(c); sb_put(&c->out, "gmb_sleep_ms(1);\n");
             c->indent--; ind(c); sb_put(&c->out, "}\n");
             ind(c); emit_net_lhs(c, tv); sb_put(&c->out, " = (gmb_double_t)__nh;\n");
             c->indent--; ind(c); sb_put(&c->out, "}\n");
