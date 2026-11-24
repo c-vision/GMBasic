@@ -133,7 +133,123 @@ FUNCTION HitLine(hit AS STRING) AS STRING
   RETURN MID$(hit, p + 1)
 END FUNCTION
 
-' corpo { } della funzione `name` nel sorgente
+' ── estrazione del corpo PER RIGA (indice in cache) ────────────────────────────
+' `BodyOf` cerca il nome dall'inizio del file a ogni chiamata, e `MID$` su una stringa
+' da 1-2 MB costa O(resto) in questi interpreti: con ~1000 handler il gate diventava
+' O(n²) e non finiva piu' (misurato: >30 min sulla prima fase). Qui si spezza il file
+' UNA volta (SPLIT) e si lavora su righe corte: la scansione tocca solo la funzione.
+DIM g_nlines AS LONG
+DIM g_lines$() AS STRING
+
+SUB CacheLines(src AS STRING)
+  g_lines$ = SPLIT(src, CHR$(10))
+  g_nlines = UBOUND(g_lines$) + 1
+END SUB
+
+' Colonna (1-based) in cui INIZIA il nome della funzione, a partire dalla colonna
+' del match (`static void gmb_bf_x(...)` → colonna di `gmb_bf_x`).
+FUNCTION FuncNameColAt(line AS STRING, col AS LONG) AS LONG
+  DIM i AS LONG, e AS LONG, c AS STRING
+  i = INSTR(col, line, "(")
+  IF i = 0 THEN RETURN 0
+  e = i
+  DO WHILE e > 1
+    c = MID$(line, e - 1, 1)
+    IF (c >= "A" AND c <= "Z") OR (c >= "a" AND c <= "z") OR (c >= "0" AND c <= "9") OR c = "_" THEN
+      e = e - 1
+    ELSE
+      EXIT DO
+    END IF
+  LOOP
+  RETURN e
+END FUNCTION
+
+' Corpo { } della funzione `name` che inizia alla riga `lineNo` (1-based) nella
+' colonna `col`, lavorando SOLO sulle righe memorizzate da CacheLines.
+' "" se la forma non e' quella attesa (allora il chiamante usa BodyOf).
+FUNCTION BodyAtLine(lineNo AS LONG, name AS STRING, col AS LONG) AS STRING
+  DIM s AS STRING, body AS STRING, ln AS STRING, c AS STRING
+  DIM p AS LONG, q AS LONG, depth AS LONG, k AS LONG, start AS LONG, first AS LONG
+  IF lineNo < 1 OR lineNo > g_nlines OR col < 1 THEN RETURN ""
+  s = g_lines$(lineNo - 1)
+  IF LEN(s) = 0 THEN RETURN ""
+  IF MID$(s, col, LEN(name)) <> name THEN RETURN ""
+  ' parentesi della firma (sulla stessa riga: e' lo stile dei file C del repo)
+  q = col + LEN(name)
+  DO WHILE q <= LEN(s) AND (MID$(s, q, 1) = " " OR MID$(s, q, 1) = CHR$(9)) : q = q + 1 : LOOP
+  IF q > LEN(s) OR MID$(s, q, 1) <> "(" THEN RETURN ""
+  depth = 0
+  DO WHILE q <= LEN(s)
+    c = MID$(s, q, 1)
+    IF c = "(" THEN depth = depth + 1
+    IF c = ")" THEN
+      depth = depth - 1
+      IF depth = 0 THEN q = q + 1 : EXIT DO
+    END IF
+    q = q + 1
+  LOOP
+  IF depth <> 0 THEN RETURN ""
+  DO WHILE q <= LEN(s) AND (MID$(s, q, 1) = " " OR MID$(s, q, 1) = CHR$(9)) : q = q + 1 : LOOP
+  ' `...);` = prototipo/dichiarazione: non ha corpo (e non vale la pena cercarlo)
+  IF q <= LEN(s) AND MID$(s, q, 1) = ";" THEN RETURN ""
+  ' la '{' può stare sulla riga della firma oppure su una successiva (stile del repo)
+  k = lineNo
+  IF q > LEN(s) THEN
+    k = lineNo + 1
+    q = 0
+  END IF
+  start = 0
+  DO WHILE k <= g_nlines AND start = 0
+    ln = g_lines$(k - 1) + ""
+    p = q
+    IF p < 1 THEN p = 1
+    DO WHILE p <= LEN(ln)
+      c = MID$(ln, p, 1)
+      IF c = " " OR c = CHR$(9) OR c = CHR$(13) THEN
+        p = p + 1
+      ELSEIF c = "{" THEN
+        start = p + 1
+        EXIT DO
+      ELSE
+        EXIT DO
+      END IF
+    LOOP
+    IF start = 0 THEN
+      k = k + 1
+      q = 0
+    END IF
+  LOOP
+  IF start = 0 THEN RETURN ""
+  ' corpo: dalla '{' di apertura fino alla graffa che la chiude (anche su più righe)
+  depth = 1
+  body = ""
+  first = -1
+  DO WHILE k <= g_nlines
+    ln = g_lines$(k - 1) + ""
+    p = start
+    DO WHILE p <= LEN(ln)
+      c = MID$(ln, p, 1)
+      IF c = "{" THEN depth = depth + 1
+      IF c = "}" THEN
+        depth = depth - 1
+        IF depth = 0 THEN
+          IF first = 0 THEN body = body + CHR$(10)
+          IF p > start THEN body = body + MID$(ln, start, p - start)
+          RETURN body
+        END IF
+      END IF
+      p = p + 1
+    LOOP
+    IF first = 0 THEN body = body + CHR$(10)
+    IF start <= LEN(ln) THEN body = body + MID$(ln, start)
+    first = 0
+    k = k + 1
+    start = 1
+  LOOP
+  RETURN ""
+END FUNCTION
+
+' corpo { } della funzione `name` nel sorgente (fallback: scansione dall'inizio)
 FUNCTION BodyOf(src AS STRING, name AS STRING) AS STRING
   DIM p AS LONG, q AS LONG, r AS LONG, depth AS LONG, c AS STRING
   p = 1
@@ -183,16 +299,27 @@ END SUB
 
 SUB CheckCFile(path AS STRING, pattern AS STRING, backend AS STRING)
   DIM src AS STRING, h AS LONG, line AS STRING, name AS STRING, body AS STRING
-  DIM hits$() AS STRING
+  DIM hits$() AS STRING, col AS LONG, ln AS LONG
   src = IO.READFILE(path)
   IF LEN(src) = 0 THEN EXIT SUB
   hits$ = GREP.MATCHES(pattern, path)
   IF UBOUND(hits$) < 0 THEN EXIT SUB
+  CacheLines(src)
   FOR h = 0 TO UBOUND(hits$)
     line = HitLine(hits$(h))
     name = FuncNameAt(line, ColOf(hits$(h)))
+    col = FuncNameColAt(line, ColOf(hits$(h)))
     IF LEN(name) > 0 THEN
-      body = BodyOf(src, name)
+      body = ""
+      IF col > 0 THEN
+        ln = LineOf(hits$(h))
+        IF ln >= 1 AND ln <= g_nlines THEN
+          IF LEFT$(LTRIM$(g_lines$(ln - 1)), LEN(name)) = name THEN
+            body = BodyAtLine(ln, name, col)
+          END IF
+        END IF
+      END IF
+      IF LEN(body) = 0 AND LEN(src) < 200000 THEN body = BodyOf(src, name)
       IF LEN(body) > 0 THEN ClassifyBody(body, name, backend, path)
     END IF
   NEXT h
@@ -334,6 +461,20 @@ SUB CheckCSharpDir(dir AS STRING, prefix AS STRING, marker AS STRING, backend AS
   NEXT i
 END SUB
 
+' Corpo della funzione `name` cercandola per nome nel file (usato dai controlli che
+' partono da una tabella di nomi, non da un hit). Usa BodyAtLine quando possibile.
+FUNCTION BodyByName(path AS STRING, name AS STRING) AS STRING
+  DIM hits$() AS STRING, b AS STRING, col AS LONG, ln AS LONG
+  IF LEN(name) = 0 THEN RETURN ""
+  hits$ = GREP.MATCHES("(?:static\s+)?(?:void|int|gmb_val_t)\s+" + name + "\s*\([^)]*\)", path)
+  IF UBOUND(hits$) >= 0 THEN
+    col = FuncNameColAt(HitLine(hits$(0)), ColOf(hits$(0)))
+    ln = LineOf(hits$(0))
+    IF col > 0 AND ln >= 1 AND ln <= g_nlines THEN b = BodyAtLine(ln, name, col)
+  END IF
+  RETURN b
+END FUNCTION
+
 FUNCTION ElseZero(body AS STRING) AS INTEGER
   DIM n AS STRING
   n = Norm(StripC(body))
@@ -356,6 +497,7 @@ SUB CheckVmcTable()
   path = g_root + "/GMBasic/native/gmb_vm_c/gmb_builtin.c"
   src = IO.READFILE(path)
   IF LEN(src) = 0 THEN EXIT SUB
+  CacheLines(src)
   lines$ = SPLIT(src, CHR$(10))
   nh = 0
   FOR i = 0 TO UBOUND(lines$)
@@ -387,7 +529,7 @@ SUB CheckVmcTable()
   NEXT i
   FOR h = 1 TO nh
     IF INSTR(codes(h), ",") > 0 THEN
-      body = BodyOf(src, handlers(h))
+      body = BodyByName(path, handlers(h))
       IF LEN(body) > 0 THEN
         n = Norm(StripC(body))
         IF INSTR(n, "func_code==") > 0 OR INSTR(n, "func_code!=") > 0 OR INSTR(n, "case") > 0 THEN
@@ -432,11 +574,16 @@ SUB CheckVmcPush()
     IF INSTR(f, "gmb_syscall_") > 0 AND RIGHT$(f, 2) = ".c" THEN
       src = IO.READFILE(f)
       hits$ = GREP.MATCHES("(?:static\s+)?int\s+(gmb_\w+)\s*\([^)]*\)", f)
+      CacheLines(src)
       FOR h = 0 TO UBOUND(hits$)
         line = HitLine(hits$(h))
         name = FuncNameAt(line, ColOf(hits$(h)))
         IF LEN(name) > 0 THEN
-          body = BodyOf(src, name)
+          body = ""
+          IF FuncNameColAt(line, ColOf(hits$(h))) > 0 THEN
+            body = BodyAtLine(LineOf(hits$(h)), name, FuncNameColAt(line, ColOf(hits$(h))))
+          END IF
+          IF LEN(body) = 0 AND LEN(src) < 200000 THEN body = BodyOf(src, name)
           IF LEN(body) > 0 THEN
             n = Norm(StripC(body))
             IF (INSTR(n, "push_num_entry(task,0,") > 0 OR INSTR(n, "push_num_entry(task,1,") > 0 OR INSTR(n, "push_str_entry(task," + CHR$(34) + CHR$(34)) > 0 OR INSTR(n, "push_nil_entry(task") > 0) THEN
@@ -472,18 +619,73 @@ SUB CheckVmcPush()
   NEXT i
 END SUB
 
+' Validazione dell'indice: per OGNI hit verifica che la posizione calcolata cada sul
+' Validazione dell'estrattore: su un file sintetico con le forme tipiche del repo
+' (graffa sulla stessa riga, graffa sulla riga dopo, prototipo) confronta BodyAtLine
+' con BodyOf. Il confronto NON si fa sui sorgenti veri: BodyOf su una stringa da 1-2 MB
+' costa O(n²) (MID$ copia il resto) e manda il processo in OOM. `--bodytest`.
+FUNCTION BodyEquivTest(repo AS STRING) AS INTEGER
+  DIM path AS STRING, src AS STRING
+  DIM hits$() AS STRING
+  DIM h AS LONG, chk AS LONG, bad AS LONG, col AS LONG, ln AS LONG
+  DIM a AS STRING, b AS STRING, name AS STRING, hf AS LONG
+  path = "/tmp/gmb_no_stub_bodytest.c"
+  hf = IO.FCREATE(path)
+  IO.FWRITE(hf, "static void gmb_x_one(void) {" + CHR$(10))
+  IO.FWRITE(hf, "    return;" + CHR$(10))
+  IO.FWRITE(hf, "}" + CHR$(10))
+  IO.FWRITE(hf, "static void gmb_x_two(void)" + CHR$(10))
+  IO.FWRITE(hf, "{" + CHR$(10))
+  IO.FWRITE(hf, "    if (a) { b(); }" + CHR$(10))
+  IO.FWRITE(hf, "}" + CHR$(10))
+  IO.FWRITE(hf, "static void gmb_x_three(void) { }" + CHR$(10))
+  IO.FWRITE(hf, "int gmb_x_proto(void);" + CHR$(10))
+  IO.FWRITE(hf, "int gmb_x_four(void) { return 0; }" + CHR$(10))
+  IO.FCLOSE(hf)
+  src = IO.READFILE(path)
+  hits$ = GREP.MATCHES("(?:static\s+)?(?:void|int)\s+(gmb_x_\w+)\s*\([^)]*\)", path)
+  IF UBOUND(hits$) < 0 THEN
+    PRINT "bodytest: nessun match"
+    KILL path
+    RETURN 1
+  END IF
+  CacheLines(src)
+  FOR h = 0 TO UBOUND(hits$)
+    name = FuncNameAt(HitLine(hits$(h)), ColOf(hits$(h)))
+    col = FuncNameColAt(HitLine(hits$(h)), ColOf(hits$(h)))
+    ln = LineOf(hits$(h))
+    IF LEN(name) > 0 AND col > 0 THEN
+      a = BodyAtLine(ln, name, col)
+      b = BodyOf(src, name)
+      chk = chk + 1
+      IF a <> b THEN
+        bad = bad + 1
+        PRINT "MISMATCH "; name; " (A="; LEN(a); " B="; LEN(b); ")"
+        PRINT "A=["; a; "]"
+        PRINT "B=["; b; "]"
+      END IF
+    END IF
+  NEXT h
+  KILL path
+  PRINT "bodytest: "; chk; " funzioni, "; bad; " mismatch"
+  IF bad = 0 THEN RETURN 0
+  RETURN 1
+END FUNCTION
+
 FUNCTION Main() AS INTEGER
   DIM repo AS STRING, arg AS STRING, quiet AS LONG, list AS LONG, selftest AS LONG
+  DIM bodytest AS LONG
   DIM i AS LONG, up AS LONG, nb AS LONG, nr AS LONG, h AS LONG
   DIM bdir AS STRING
   DIM files$() AS STRING
-  quiet = 0 : list = 0 : selftest = 0 : i = 0
+  quiet = 0 : list = 0 : selftest = 0 : bodytest = 0 : i = 0
   DO WHILE i < COMMANDCOUNT()
     i = i + 1
     arg = COMMAND$(i)
     IF arg = "--quiet" THEN quiet = -1
     IF arg = "--list" THEN list = -1
     IF arg = "--selftest" THEN selftest = -1
+    IF arg = "--bodytest" THEN bodytest = -1
     IF arg = "--json" THEN
       PRINT "--json non supportato (usare --list)"
       RETURN 2
@@ -495,6 +697,7 @@ FUNCTION Main() AS INTEGER
     repo = IO.PARENTDIR(repo)
   NEXT up
   g_root = repo
+  IF bodytest <> 0 THEN RETURN BodyEquivTest(repo)
   IF selftest <> 0 THEN
     h = IO.FCREATE("/tmp/gmb_no_stub_selftest.c")
     IO.FWRITE(h, "static void gmb_bf_empty(void) { }" + CHR$(10))

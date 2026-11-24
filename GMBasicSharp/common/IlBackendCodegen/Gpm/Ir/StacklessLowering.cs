@@ -309,6 +309,12 @@ public static class StacklessLowering
                     LowerForEachChannelPark(pc, fea, path, succ);
                     break;
                 case ExpressionStmt { Expression: FunctionExpr fe }: LowerCall(pc, stmt, fe, path, succ, IlReturnDestination.Discard, -1); break;
+                case ExpressionStmt { Expression: BuiltinFunctionCallExpr bfa } when bfa.Name.Kind == TokenKind.Sleep:
+                    LowerSleepFnPark(pc, stmt, bfa, path, succ, -1);
+                    break;
+                case ExpressionStmt { Expression: AwaitExpr { Target: BuiltinFunctionCallExpr bfaw } } when bfaw.Name.Kind == TokenKind.Sleep:
+                    LowerSleepFnPark(pc, stmt, bfaw, path, succ, -1);
+                    break;
             case ExpressionStmt { Expression: BuiltinFunctionCallExpr bfe }: LowerCall(pc, stmt, bfe, path, succ, IlReturnDestination.Discard, -1); break;
                 case GotoStmt g: LowerGoto(pc, g.Target.Lexeme, g, path, succ); break;
                 case JumpStmt j: LowerGoto(pc, j.TargetLabel.Lexeme, j, path, succ); break;
@@ -731,6 +737,16 @@ public static class StacklessLowering
             _pendingLinks.Add((b, stmt.ExitLabel.Lexeme, -1));
         }
 
+        /// <summary>Park della forma FUNZIONE CONCURRENCY.SLEEPASYNC(ms): blocco con terminator
+        /// Park e Aux SleepFnPark (l'emitter chiama IlGpmRuntime.SleepStep e scrive "" nello slot).</summary>
+        private void LowerSleepFnPark(int pc, Stmt stmt, BuiltinFunctionCallExpr call, IlIrRegionPath path, int succ, int targetSlot)
+        {
+            var b = Block(pc, stmt, path);
+            b.Instructions.Add(new IlIrInst(IlIrInstKind.Await));
+            b.Terminator = new IlIrTerminator(IlIrTermKind.Park, ResumePc: succ);
+            b.Aux = new SleepFnPark(call.Args.Length > 0 ? call.Args[0] : null, targetSlot);
+        }
+
         /// <summary>Chiamata: il callValue può essere un FunctionExpr (SymbolId diretto) o un
         /// BuiltinFunctionCallExpr col nome della procedura utente (risolto via nameToId — il
         /// linker rappresenta così le call in espressione). Callee may-park → terminator Call
@@ -739,6 +755,15 @@ public static class StacklessLowering
             IlReturnDestination dest = IlReturnDestination.Discard, int returnSlot = -1)
         {
             var unwrapped = UnwrapConversions(callValue);
+            // AWAIT CONCURRENCY.SLEEPASYNC(ms) (forma funzione del timer await) → park, non call
+            // flat bloccante: stessa struttura di SQL.EXEC forma funzione, ma con SleepStep.
+            var sleepCall = unwrapped is AwaitExpr { Target: BuiltinFunctionCallExpr slpW } ? slpW
+                : unwrapped as BuiltinFunctionCallExpr;
+            if (sleepCall is not null && sleepCall.Name.Kind == TokenKind.Sleep)
+            {
+                LowerSleepFnPark(pc, stmt, sleepCall, path, succ, dest == IlReturnDestination.Local ? returnSlot : -1);
+                return;
+            }
             // SQL.EXEC forma FUNZIONE → park coarse (come la forma comando), col valore a slot.
             if (unwrapped is BuiltinFunctionCallExpr sbf && sbf.Name.Kind == TokenKind.SqlExec)
             {

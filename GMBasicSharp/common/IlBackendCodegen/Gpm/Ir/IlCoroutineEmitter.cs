@@ -508,6 +508,8 @@ public static class IlCoroutineEmitter
                     // qui faceva ricadere l'intera Main nel percorso lineare anche quando
                     // conteneva GO/SEND/RECEIVE (es. SYSTEM.GOMAXPROCS nello stress GPM).
                     BuiltinFunctionCallExpr bfc => ExprIsV2(bfc),
+                    // AWAIT <espr>: l'await è una proprietà dello statement, non del target.
+                    AwaitExpr ae => ExprIsV2(ae.Target),
                     _ => false
                 };
             default:
@@ -578,6 +580,12 @@ public static class IlCoroutineEmitter
             && bfc.Args.All(ExprIsV2) => true,
         // SYSTEM.GOMAXPROCS(n) (parità Go runtime.GOMAXPROCS): lettura/configurazione P — flat.
         BuiltinFunctionCallExpr bfc when bfc.Name.Kind == TokenKind.GoMaxProcs && bfc.Args.All(ExprIsV2) => true,
+        // CONCURRENCY.SLEEPASYNC(ms) (SLEEP come funzione, con o senza AWAIT): park del task
+        // (SleepFnPark → SleepStep). Trattarla come flat la fa dormire sul WORKER (Task.Delay,
+        // §0ter violato).
+        BuiltinFunctionCallExpr bSl when bSl.Name.Kind == TokenKind.Sleep && bSl.Args.All(ExprIsV2) => true,
+        AwaitExpr { Target: BuiltinFunctionCallExpr bSla } when bSla.Name.Kind == TokenKind.Sleep
+            && bSla.Args.All(ExprIsV2) => true,
         // G8-bis: NET.LOCALHOST() (TokenKind.Host, 0 arg) / NET.GETHOSTIP$ / LEN / ABS — veloci,
         // non park. Senza queste braccia la Main di NetTcpAdvanced (e il repro ABS del bug IL
         // 2026-10-06) ricadeva nel flat sincrono: GO SUB inline + TCP ACCEPT senza timeout → hang.
