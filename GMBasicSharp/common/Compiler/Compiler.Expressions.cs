@@ -3805,6 +3805,16 @@ public sealed partial class Compiler
             else if (segment is InterpolatedStringExprSegment eseg)
             {
                 VisitExpression(eseg.Expression);
+                /* `{expr:fmt}`: la spec .NET va APPLICATA (era ignorata: il bytecode
+                 * concatenava il valore grezzo, quindi PCodeVM/VM-C stampavano "1234.5678"
+                 * dove IL dava " 1,234.57"). Stesso FORMAT del runtime condiviso. */
+                if (!string.IsNullOrEmpty(eseg.Format))
+                {
+                    EmitConstant(eseg.Format);
+                    EmitByte((byte)OpCode.OP_CALL_BUILTIN);
+                    EmitShort((ushort)BuiltInFunction.FORMAT);
+                    EmitByte((byte)2);
+                }
             }
         }
         for (var i = 1; i < expr.Segments.Length; i++)

@@ -2925,14 +2925,31 @@ internal sealed partial class PCodeProcessor
                 if (instance is System.Text.StringBuilder sbInst)
                 {
                     string SArg(int i) => i < args.Length && args[i] is not null ? args[i]!.ToString()! : "";
+                    /* I VALORI si convertono in CULTURA INVARIANTE: `sb.Append(3.14159)`
+                     * usava StringBuilder.Append(object) → ToString() dipendente dalla
+                     * cultura ("3,141592653589793" su un host italiano) mentre IL/VM-C/C99
+                     * danno "3.14159" (parità StringsStringBuilder). */
+                    string SVal(int i)
+                    {
+                        if (i >= args.Length || args[i] is null) return "";
+                        var a = args[i];
+                        return a switch
+                        {
+                            double d => d.ToString(CultureInfo.InvariantCulture),
+                            float f => f.ToString(CultureInfo.InvariantCulture),
+                            _ => a.ToString()!
+                        };
+                    }
                     switch (methodName.ToUpperInvariant())
                     {
-                        case "APPEND": sbInst.Append(args.Length > 0 ? args[0] : null); task.PushRef(sbInst); return true;
+                        case "APPEND":
+                            if (args.Length > 0) sbInst.Append(SVal(0));
+                            task.PushRef(sbInst); return true;
                         case "APPENDLINE":
-                            if (args.Length > 0) sbInst.AppendLine(SArg(0)); else sbInst.AppendLine();
+                            if (args.Length > 0) sbInst.AppendLine(SVal(0)); else sbInst.AppendLine();
                             task.PushRef(sbInst); return true;
                         case "APPENDFORMAT":
-                            if (args.Length >= 1) sbInst.AppendFormat(SArg(0), args.Skip(1).Cast<object?>().ToArray());
+                            if (args.Length >= 1) sbInst.AppendFormat(CultureInfo.InvariantCulture, SArg(0), args.Skip(1).Cast<object?>().ToArray());
                             task.PushRef(sbInst); return true;
                         case "INSERT":
                             if (args.Length >= 2) sbInst.Insert((int)Convert.ToDouble(args[0] ?? 0.0), SArg(1));

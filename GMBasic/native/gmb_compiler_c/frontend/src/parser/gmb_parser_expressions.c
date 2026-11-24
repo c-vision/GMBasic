@@ -1229,13 +1229,17 @@ gmb_expr_t* gmb_p_parse_primary(gmb_parser_t* p)
                 j++;
             }
             /* Format specifier opzionale `:fmt` a profondità 0 (fuori da eventuali
-             * sotto-espressioni annidate): tronca alla sola espressione, il resto si
-             * ignora (vedi nota sopra). */
+             * sotto-espressioni annidate): la parte prima dei due punti è l'espressione, il
+             * resto è la spec di formato .NET (`##,##0.00`, `0.0%`, …) che si applica con il
+             * builtin FORMAT (gmb_format nel runtime condiviso: percentuale, sezioni,
+             * custom numeric). Prima la spec veniva IGNORATA e il segmento usciva col valore
+             * grezzo (StringsInterpolation: `{value:##,##0.00}` → "1234.5678"). */
             size_t exprend = j;
+            size_t fmtstart = 0;
             { int fdepth = 0; for (size_t k = start; k < j; k++) {
                 if (p1[k] == '{' || p1[k] == '(' || p1[k] == '[') fdepth++;
                 else if (p1[k] == '}' || p1[k] == ')' || p1[k] == ']') fdepth--;
-                else if (p1[k] == ':' && fdepth == 0) { exprend = k; break; }
+                else if (p1[k] == ':' && fdepth == 0) { exprend = k; fmtstart = k + 1; break; }
               } }
             size_t exprlen = (exprend > start) ? exprend - start : 0;
             if (exprlen > 0) {
@@ -1246,6 +1250,22 @@ gmb_expr_t* gmb_p_parse_primary(gmb_parser_t* p)
                     gmb_parser_t sub; memset(&sub, 0, sizeof(sub));
                     sub.toks = lx.tokens; sub.n = lx.count; sub.pos = 0;
                     gmb_expr_t* se = gmb_p_parse_expr(&sub);
+                    if (se && fmtstart > 0 && fmtstart < j) {
+                        size_t fmllen = j - fmtstart;
+                        char* fmtsrc = (char*)malloc(fmllen + 1);
+                        memcpy(fmtsrc, p1 + fmtstart, fmllen);
+                        fmtsrc[fmllen] = 0;
+                        if (fmtsrc[0]) {
+                            gmb_expr_t** fa = (gmb_expr_t**)malloc(2 * sizeof(gmb_expr_t*));
+                            if (fa) {
+                                fa[0] = se;
+                                fa[1] = gmb_expr_str(fmtsrc, line);
+                                gmb_expr_t* fc = gmb_expr_call("FORMAT", fa, 2, line);
+                                if (fc) { fc->tk = GMB_TOK_Format; se = fc; }
+                            }
+                        }
+                        free(fmtsrc);
+                    }
                     if (se) {
                         if (capseg <= nseg) { capseg = capseg ? capseg * 2 : 4; segs = (gmb_expr_t**)realloc(segs, sizeof(gmb_expr_t*) * (size_t)capseg); }
                         segs[nseg++] = se;

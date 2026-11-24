@@ -141,10 +141,33 @@ public static class FormatUtils
             return FormatNumeric(percentValue, numFormat) + "%";
         }
 
+        /* SPECIFICATORE STANDARD .NET (`X`, `x`, `D`, `d`, `F`, `f`, con precisione opzionale):
+         * `255:X` → "FF", `1.5:F3` → "1.500". Senza questo ramo il carattere finiva nel
+         * gestore CUSTOM come LETTERALE (`{255:X}` stampava "X": IL contro "FF" di PCode/
+         * VM-C/C99, che usano gmb_format → gmb_fmt_standard). Solo gli specificatori in cui le
+         * due implementazioni coincidono: C/c e P/p dipendono dalla cultura (.NET usa il
+         * simbolo ¤ e lo spazio prima di %), G/g differiscono per le cifre significative. */
+        if (IsStandardIntegerOrFixedSpec(format))
+            return format[0] is 'X' or 'x' or 'D' or 'd'
+                ? ((long)Math.Truncate(number)).ToString(format, CultureInfo.InvariantCulture)
+                : number.ToString(format, CultureInfo.InvariantCulture);
+
         if (format.Contains("E+", StringComparison.OrdinalIgnoreCase) || format.Contains("E-", StringComparison.OrdinalIgnoreCase))
             return FormatScientificDirect(number, format);
 
         return FormatNumericDirect(number, format);
+    }
+
+    /// <summary>Vero per uno specificatore standard .NET a una lettera con precisione
+    /// numerica opzionale, limitato a quelli con semantica identica al runtime C
+    /// (<c>X x D d F f</c>).</summary>
+    private static bool IsStandardIntegerOrFixedSpec(string format)
+    {
+        if (string.IsNullOrEmpty(format) || format.Length > 5) return false;
+        if (!"XxDdFf".Contains(format[0])) return false;
+        for (var i = 1; i < format.Length; i++)
+            if (!char.IsDigit(format[i])) return false;
+        return true;
     }
     
     /// <summary>
