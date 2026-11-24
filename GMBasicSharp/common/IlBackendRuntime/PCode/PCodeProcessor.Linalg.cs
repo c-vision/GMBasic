@@ -18,8 +18,8 @@ namespace Basic.IlBackend.PCode;
 internal sealed partial class PCodeProcessor
 {
     // ==== Registry opachi (handle -> entita' algebriche MathNet) ====
-    // ConcurrentDictionary + Interlocked sugli id: i builtin CPU parcheggiati (Welch,
-    // Splrep, Cdist, DistanceMatrix, Rfft) scrivono dal thread del blocking pool mentre i
+    // ConcurrentDictionary + Interlocked sugli id: i builtin CPU parcheggiati (Cdist,
+    // DistanceMatrix, KMeans, …) scrivono dal thread del blocking pool mentre i
     // worker eseguono altri task — nessun accesso ai registry puo' correre in parallelo.
     private readonly ConcurrentDictionary<long, global::MathNet.Numerics.LinearAlgebra.Matrix<double>> _linMatrices = new();
     private readonly ConcurrentDictionary<long, global::MathNet.Numerics.LinearAlgebra.Vector<double>> _linVectors = new();

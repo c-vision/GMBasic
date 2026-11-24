@@ -1611,8 +1611,6 @@ static int dim_arr_init_kind(ctx_t* c, const gmb_expr_t* e) {
         { GMB_TOK_MatrixArgMax, 1, 1 }, { GMB_TOK_MatrixArgMin, 1, 1 },
         { GMB_TOK_MatrixAboveMask, 1, 2 }, { GMB_TOK_MatrixAboveMatrix, 1, 2 },
         { GMB_TOK_MatrixMultiplyVector, 1, 2 }, { GMB_TOK_MatrixMultiplyLeftVector, 1, 2 },
-        /* ANALYSIS array-returning (2026-09-13): IRFFT/SPLREP/SPLEV → double* + out-len */
-        { GMB_TOK_FftIrfft, 1, 2 }, { GMB_TOK_InterpSplrep, 1, 2 }, { GMB_TOK_InterpSplev, 1, 2 },
     };
     for (size_t i = 0; i < sizeof(k) / sizeof(k[0]); i++)
         if (k[i].tk == e->tk && e->nargs >= k[i].minargs) return k[i].kind;
@@ -3804,8 +3802,7 @@ static void reg_let_assign(ctx_t* c, gmb_stmt_t* s, vars_t* scope) {
                 gmb_tokenkind_t rtk = s->value->tk;
                 if (rtk == GMB_TOK_FftFreq || rtk == GMB_TOK_FftShift || rtk == GMB_TOK_IfftShift
                     || rtk == GMB_TOK_CumTrapezoid || rtk == GMB_TOK_YuleWalker || rtk == GMB_TOK_MaCoefficients
-                    || rtk == GMB_TOK_SolveOde || rtk == GMB_TOK_FftIrfft || rtk == GMB_TOK_InterpSplrep
-                    || rtk == GMB_TOK_InterpSplev) {
+                    || rtk == GMB_TOK_SolveOde) {
                     tv->is_array = 1; tv->dyn_len = 1; tv->ndims = 1;
                 }
             }
@@ -7677,7 +7674,6 @@ static const gmb_bf_row_t gmb_bf_composite[] = {
     { NULL, GMB_TOK_StatsGammaIsf, emit_bf_dist },
     /* ANALYSIS nuclei (2026-09-07): double-return con array (runtime condiviso gmb_*) */
     { NULL, GMB_TOK_Trapezoid, emit_bf_analysis },
-    { NULL, GMB_TOK_FftRfft, emit_bf_analysis },
     { NULL, GMB_TOK_SolveIvp, emit_bf_analysis },
     { NULL, GMB_TOK_CumTrapezoid, emit_bf_analysis },
     { NULL, GMB_TOK_CubicSpline, emit_bf_analysis },
@@ -9729,9 +9725,6 @@ static int dim_arr_analysis1d(ctx_t* c, gmb_stmt_t* s, gmb_expr_t* init) {
     else if (init->tk == GMB_TOK_IfftShift) fn = "gmb_ifftshift";
     else if (init->tk == GMB_TOK_CumTrapezoid) fn = "gmb_cumtrapezoid";
     else if (init->tk == GMB_TOK_SolveOde) fn = "gmb_solve_ode_c99";
-    else if (init->tk == GMB_TOK_FftIrfft) fn = "gmb_irfft_c99";
-    else if (init->tk == GMB_TOK_InterpSplrep) fn = "gmb_splrep_c99";
-    else if (init->tk == GMB_TOK_InterpSplev) fn = "gmb_splev_c99";
     if (!fn) return 0;
     ind(c);
     emit_ident(c, v->name);
@@ -9764,32 +9757,6 @@ static int dim_arr_analysis1d(ctx_t* c, gmb_stmt_t* s, gmb_expr_t* init) {
         emit_var_ref(c, va); sb_put(&c->out, ", (int)("); emit_arr_len_of(c, va); sb_put(&c->out, ")");
         sb_put(&c->out, ", (int)("); emit_expr(c, init->args[1]); sb_put(&c->out, ")");
         sb_put(&c->out, ", &"); emit_ident(c, v->name); sb_put(&c->out, "_len"); need = 1;
-    } else if (!strcmp(fn, "gmb_irfft_c99")) {
-        /* gmb_irfft_c99(re, im, m, &outn): m = lunghezza re (im stessa taglia). */
-        if (init->nargs < 2) return 0;
-        var_t *re = NULL, *im = NULL;
-        if (!an1d_arr(c, init->args[0], &re) || !an1d_arr(c, init->args[1], &im)) return 0;
-        emit_var_ref(c, re); sb_put(&c->out, ", "); emit_var_ref(c, im);
-        sb_put(&c->out, ", (int)("); emit_arr_len_of(c, re); sb_put(&c->out, ")");
-        sb_put(&c->out, ", &"); emit_ident(c, v->name); sb_put(&c->out, "_len"); need = 1;
-    } else if (!strcmp(fn, "gmb_splrep_c99")) {
-        /* gmb_splrep_c99(x, y, n, &outn): n = min(len x, len y). */
-        if (init->nargs < 2) return 0;
-        var_t *sx = NULL, *sy = NULL;
-        if (!an1d_arr(c, init->args[0], &sx) || !an1d_arr(c, init->args[1], &sy)) return 0;
-        emit_var_ref(c, sx); sb_put(&c->out, ", "); emit_var_ref(c, sy);
-        sb_put(&c->out, ", (int)(("); emit_arr_len_of(c, sx); sb_put(&c->out, ") < (");
-        emit_arr_len_of(c, sy); sb_put(&c->out, ") ? ("); emit_arr_len_of(c, sx);
-        sb_put(&c->out, ") : ("); emit_arr_len_of(c, sy); sb_put(&c->out, "))");
-        sb_put(&c->out, ", &"); emit_ident(c, v->name); sb_put(&c->out, "_len"); need = 1;
-    } else if (!strcmp(fn, "gmb_splev_c99")) {
-        /* gmb_splev_c99(spline, slen, xq, nq, &outn). */
-        if (init->nargs < 2) return 0;
-        var_t *sp = NULL, *xq = NULL;
-        if (!an1d_arr(c, init->args[0], &sp) || !an1d_arr(c, init->args[1], &xq)) return 0;
-        emit_var_ref(c, sp); sb_put(&c->out, ", (int)("); emit_arr_len_of(c, sp); sb_put(&c->out, "), ");
-        emit_var_ref(c, xq); sb_put(&c->out, ", (int)("); emit_arr_len_of(c, xq); sb_put(&c->out, ")");
-        sb_put(&c->out, ", &"); emit_ident(c, v->name); sb_put(&c->out, "_len"); need = 1;
     } else {
         if (init->nargs < 1) return 0;
         var_t* va = NULL;
@@ -9800,16 +9767,15 @@ static int dim_arr_analysis1d(ctx_t* c, gmb_stmt_t* s, gmb_expr_t* init) {
     if (need) { sb_put(&c->out, ");\n"); return 1; }
     return 0;
 }
-/* `x = NUMERICAL.Splrep(...)` con `x` IMPLICITO (non DIM'd): il C# auto-dichiara
+/* `x = <ANALYSIS array-returning>(...)` con `x` IMPLICITO (non DIM'd): il C# auto-dichiara
  * `gmb_double_t* x` + `x_len` + `x__b0`. Riusa dim_arr_analysis1d dopo aver dichiarato e
- * registrato `x` come array dinamico (parità: `sp = NUMERICAL.Splrep(xs, ys)`, SciPyP1Parity). */
+ * registrato `x` come array dinamico. */
 static int implicit_analysis_assign(ctx_t* c, const char* target, gmb_expr_t* value) {
     if (!target || !target[0] || strchr(target, '.') || !value || value->kind != GMB_EXPR_CALL) return 0;
     gmb_tokenkind_t tk = value->tk;
     if (!(tk == GMB_TOK_FftFreq || tk == GMB_TOK_FftShift || tk == GMB_TOK_IfftShift
           || tk == GMB_TOK_CumTrapezoid || tk == GMB_TOK_YuleWalker || tk == GMB_TOK_MaCoefficients
-          || tk == GMB_TOK_SolveOde || tk == GMB_TOK_FftIrfft || tk == GMB_TOK_InterpSplrep
-          || tk == GMB_TOK_InterpSplev)) return 0;
+          || tk == GMB_TOK_SolveOde)) return 0;
     /* la dichiarazione `gmb_double_t* x` + `x_len` + `x__b0` è emessa dal decl loop (la var è
      * già registrata come array/dyn_len dal pre-pass prop_let_assign): qui si emette SOLO la
      * chiamata (dim_arr_analysis1d). */
@@ -22339,11 +22305,17 @@ static void st_do(ctx_t* c, gmb_stmt_t* s) {
             sb_put(&c->out, ")) {\n");
             c->indent++;
             emit_block(c, s->do_body, s->n_do);
-            if (s->flag == 2) {
+            if (s->value) {
                 /* TICK <rate>: frame limiter + present UNA volta per frame
-                 * (prima il rate era ignorato → loop a migliaia di fps). */
+                 * (prima il rate era ignorato → loop a migliaia di fps).
+                 *
+                 * Il marker e' `s->value`, NON `flag`: `gmb_p_parse_tick` tiene `flag = 0`
+                 * per la semantica WHILE (flag 1 = UNTIL) e mette la frequenza in `value`,
+                 * che fra le istruzioni DO/WHILE valorizza SOLO il TICK. Il vecchio
+                 * `flag == 2` era un marker che nessun parser scrive piu' per i loop:
+                 * il pace e il present non venivano emessi (TICK = ciclo nudo). */
                 ind(c); sb_put(&c->out, "gmb_tick_pace((double)(");
-                if (s->value) emit_expr(c, s->value); else sb_put(&c->out, "0");
+                emit_expr(c, s->value);   /* sempre valorizzato: gmb_p_parse_tick mette 0 se il rate manca */
                 sb_put(&c->out, "));\n");
                 ind(c); sb_put(&c->out, "gmb_gfx_present_frame();\n");
             }
@@ -24736,7 +24708,9 @@ static void st_net_cmd(ctx_t* c, gmb_stmt_t* s) {
             sb_put(&c->out, "));\n");
             ind(c); sb_put(&c->out, "if (__nh >= 0) break;\n");
             if (has_to) { ind(c); sb_put(&c->out, "if (gmb_c99_now_ms() >= __ndl) break;\n"); }
-            ind(c); sb_put(&c->out, "gmb_sleep_ms(1);\n");
+            /* §0ter: poll cooperativo — dentro un task GPM parcheggia (gmb_gpm_sleep), non
+             * dorme il worker: un ACCEPT senza connessioni non deve occupare un core. */
+            ind(c); sb_put(&c->out, "gmb_gpm_sleep(1);\n");
             c->indent--; ind(c); sb_put(&c->out, "}\n");
             ind(c); emit_net_lhs(c, tv); sb_put(&c->out, " = (gmb_double_t)__nh;\n");
             c->indent--; ind(c); sb_put(&c->out, "}\n");

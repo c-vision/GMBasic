@@ -2973,15 +2973,6 @@ static int an_differentiate(ctx_t* c, gmb_expr_t** a, int n) {
     sb_put(&c->out, "; gmb_double_t _dh = 1e-6; (((gmb_double_t(*)(void*, gmb_double_t))_df.fn)(_df.ctx, _dx + _dh) - ((gmb_double_t(*)(void*, gmb_double_t))_df.fn)(_df.ctx, _dx - _dh)) / (2 * _dh); })");
     return 1;
 }
-/* RFFT: gmb_rfft_c99(x, n) → gmb_int_t (handle/indice del risultato; parity emitter C#). */
-static int an_rfft(ctx_t* c, gmb_expr_t** a, int n) {
-    if (n != 1) return 0;
-    var_t* x = NULL;
-    if (!an_arr_is(c, a[0], &x)) return 0;
-    sb_put(&c->out, "gmb_rfft_c99("); emit_var_ref(c, x);
-    sb_put(&c->out, ", (int)("); emit_arr_len_of(c, x); sb_put(&c->out, "))");
-    return 1;
-}
 /* SOLVEIVP: gmb_solve_ivp_c99(fn, y0, n, t0, t1) → gmb_int_t (n° punti; parity emitter C#). */
 static int an_solveivp(ctx_t* c, gmb_expr_t** a, int n) {
     if (n < 4) return 0;
@@ -2998,7 +2989,6 @@ static const sa_row AN_TBL[] = {
     
     
     { GMB_TOK_Trapezoid, an_trapezoid },
-    { GMB_TOK_FftRfft, an_rfft },
     { GMB_TOK_SolveIvp, an_solveivp },
     { GMB_TOK_CubicSpline, an_cubicspline },
     { GMB_TOK_InterpolateLinear, an_interp_linear },
