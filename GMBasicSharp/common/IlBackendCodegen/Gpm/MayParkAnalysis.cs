@@ -95,27 +95,8 @@ public static class MayParkAnalysis
         LetStmt { Assignments: { Length: 1 } lsaS } when IsSqlExecFn(lsaS[0].Value) => true,
         DeclarationStmt dsS when dsS.Declarations.Any(d => IsSqlExecFn(d.InitialValue)) => true,
         ExpressionStmt { Expression: BuiltinFunctionCallExpr bfS } when IsSqlExecFn(bfS) => true,
-        // AWAIT CONCURRENCY.SLEEPASYNC(ms): park (IlTimerAwait) — la forma FUNZIONE deve aprire
-        // un chunk come lo statement SLEEP, altrimenti la procedura resta FLAT e la call gira sul
-        // worker con Task.Delay bloccante (§0ter violato: due ondate di sleeper, misurato
-        // 2026-11-23 con 32×600 ms → 1.17 s invece di 0.6 s).
-        ExpressionStmt esSleep when IsAwaitSleep(esSleep.Expression) => true,
-        LetStmt { Assignments: { Length: 1 } lsaSleep } when IsAwaitSleep(lsaSleep[0].Value) => true,
-        DeclarationStmt dsSleep when dsSleep.Declarations.Any(d => IsAwaitSleep(d.InitialValue)) => true,
         _ => false,
     };
-
-    /// <summary>CONCURRENCY.SLEEPASYNC(ms) — la SLEEP come FUNZIONE (timer await). Il wrapper
-    /// <c>AWAIT</c> è già stato scartato prima di qui (lo statement arriva come
-    /// BuiltinFunctionCallExpr nudo): si accettano entrambe le forme. La forma funzione deve
-    /// aprire un chunk come lo statement SLEEP — altrimenti la procedura resta FLAT e la call
-    /// gira sul worker con Task.Delay bloccante (§0ter violato: 32 sleeper × 600 ms in due
-    /// ondate invece di una, misurato 2026-11-23).</summary>
-    private static bool IsAwaitSleep(Expr? e)
-    {
-        if (e is AwaitExpr ae) e = ae.Target;
-        return e is BuiltinFunctionCallExpr b && b.Name.Kind == TokenKind.Sleep;
-    }
 
     /// <summary>True se lo statement è un park grafico (non SEND/SLEEP/…). Usato per
     /// ammettere stepper con LOAD/SYNC nidificati in IF: il retry è sul chunk del

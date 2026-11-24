@@ -254,7 +254,6 @@ internal sealed partial class MethodEmitter
                 return;
             }
             if (b.Aux is SqlExecFnPark sef) { EmitSqlExecFnParkValue(b, sef); return; }
-            if (b.Aux is SleepFnPark sfp) { EmitSleepFnParkValue(b, sfp); return; }
             var stmt = b.AstNode as Stmt;
             switch (stmt)
             {
@@ -414,30 +413,6 @@ internal sealed partial class MethodEmitter
             if (e is VariableExpr ve) { _il.Emit(OpCodes.Ldstr, ve.NameCleaned.Lexeme); return; }
             if (e is QualifiedNameExpr qn && qn.Parts.Length == 1) { _il.Emit(OpCodes.Ldstr, qn.Parts[0].Lexeme); return; }
             EmitStringArg(e);
-        }
-
-        /// <summary>Park della forma FUNZIONE AWAIT CONCURRENCY.SLEEPASYNC(ms): SleepStep
-        /// (IlTimerAwait, generation-safe) — parcheggia il TASK, non il worker; al wake lo slot
-        /// riceve "" (la funzione ritorna stringa vuota, come sulla gamba flat).</summary>
-        private void EmitSleepFnParkValue(IlCoroutineBlock b, SleepFnPark sfp)
-        {
-            EmitLdarg(_taskArg);
-            EmitLdarg(_frameArg);
-            if (sfp.Ms is not null) EmitExprDouble(sfp.Ms);
-            else _il.Emit(OpCodes.Ldc_R8, 0.0);
-            _il.Emit(OpCodes.Call, SleepStepMethod);
-            var ok = DefineLabel();
-            _il.Emit(OpCodes.Brtrue, ok);
-            EmitSetPc(b.Pc);
-            EmitTransition(IlStepKind.Park, b.Pc, 0, null, IlReturnDestination.Discard, null);
-            EmitReturnTransition();
-            MarkLabel(ok);
-            if (sfp.TargetSlot >= 0)
-            {
-                _il.Emit(OpCodes.Ldstr, "");
-                StoreSlotObject(SlotOf(sfp.TargetSlot));
-            }
-            EmitContinueTo(b.Terminator.ResumePc);
         }
 
         /// <summary>Park SQL.EXEC forma FUNZIONE (con valore): TrySqlExecFnPark(task, frame,
