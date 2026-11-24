@@ -25,6 +25,7 @@
 #include "gmb_graphics.h"
 #include "gmb_network.h"
 #include "gmb_matrix.h"
+#include "gmb_audio.h"   /* SOUND/PLAY: varianti asincrone + park del task (OP_AUDIO_CMD, §0ter) */
 #include "gmb_3d.h"   /* motore 3D: facciata gmb_world_* (gmb_3d_cmd.c) — stesso runtime delle altre gambe */
 #include "gmb_clock.h" /* tempo a passo fisso: facciata gmb_clock_frame_* (gmb_clock.c) */
 #include "gmb_ml.h"
@@ -5803,6 +5804,38 @@ static void vm_sys_palette_339(gmb_vm_t* vm, gmb_task_t* task, int code, int arg
  * Statement: nessun push (un comando non ritorna un valore, §1). */
 static double vm_world_num(gmb_stack_entry_t* a) { return a->type == 1 ? a->num : 0.0; }
 
+/* §0ter — PARK DEL TASK AL CONFINE DI UNA SYSCALL. La VM/C non ha coroutine per il frame C di
+ * un syscall: non può parcheggiare a metà C. Il park lo fa la syscall che deve attendere:
+ * stato e deadline sotto il task lock (lo stesso che usa il fire dei timer) e nodo armato nel
+ * min-heap, quindi il worker torna subito a eseguire gli altri task (nel runner single-thread
+ * il driver dorme fino alla deadline). L'ip NON si riavvolge: al risveglio il task riprende
+ * dall'istruzione dopo la syscall. */
+static void vm_park_task_ms(gmb_vm_t* vm, gmb_task_t* task, int64_t wait_ms)
+{
+    gmb_task_park_ms(task, vm ? vm->scheduler : NULL, wait_ms);
+}
+
+/* TICK (301) — frame limiter del ciclo TICK, parità C99Native.
+ * TICK (argc 0) = inizio frame: nessun effetto. END TICK (argc 1) = rate sul top (0 = nessun
+ * limiter) → attesa a SCADENZA calcolata da `gmb_tick_advance` (la STESSA formula del
+ * C99Native, §0bis) e PARCHEGGIO del task: `sleep_until_ms` + `GMB_TS_BLOCKED` + timer nello
+ * scheduler. Mai `gmb_tick_pace`/`gmb_sleep_ms` qui: sono attese REALI e dormivano il worker
+ * GPM (§0ter), esattamente come SLEEP prima del park cooperativo (vedi OP_SLEEP e
+ * vm_console_7). L'ip NON si riavvolge: al risveglio il task riprende dall'istruzione dopo, cioè
+ * dal SYNC_PROCESS che il compiler emette subito dopo TICK_PROCESS (VisitTickEndStmtC, come
+ * PCodeVM) → il present avviene DOPO l'attesa. */
+static void vm_sys_tick_process(gmb_vm_t* vm, gmb_task_t* task, int code, int argc) {
+    (void)code;
+    if (argc <= 0) return;                       /* TICK: inizio frame, nessun effetto */
+    gmb_stack_entry_t a[1];
+    vm_pop_args_ordered(task, a, 1);
+    double fps = vm_world_num(&a[0]);
+    gmb_obj_release(a[0].ref);
+    long long wait = gmb_tick_advance(&task->tick_deadline_ms, fps);
+    if (wait <= 0) return;                       /* rate assente o confine già raggiunto */
+    vm_park_task_ms(vm, task, wait);
+}
+
 static void vm_sys_world_load(gmb_vm_t* vm, gmb_task_t* task, int code, int argc) {
     (void)vm; (void)code;
     gmb_stack_entry_t a[1];
@@ -5904,12 +5937,21 @@ static void vm_sys_scene_view(gmb_vm_t* vm, gmb_task_t* task, int code, int argc
         (void)gmb_scene_view((int64_t)vm_world_num(&a[0]), (int64_t)vm_world_num(&a[1]),
                              vm_world_num(&a[2]));
 }
+/* SCENE TEXTURE: due forme, un verbo. Numero = scacchiera procedurale, stringa = PNG
+ * su disco; decide il TIPO del valore, come sulle altre tre gambe (stessa semantica,
+ * nessun lessema). */
 static void vm_sys_scene_texture(gmb_vm_t* vm, gmb_task_t* task, int code, int argc) {
     (void)vm; (void)code;
     gmb_stack_entry_t a[1];
     int n = argc > 1 ? 1 : argc;
     vm_pop_args_ordered(task, a, n);
-    if (n >= 1) (void)gmb_scene_checker((int64_t)vm_world_num(&a[0]));
+    if (n >= 1) {
+        const char* path = (a[0].type == 2 && a[0].ref && a[0].ref->kind == GMB_OBJ_STRING)
+            ? ((gmb_obj_string_t*)a[0].ref)->data : NULL;
+        if (path != NULL) (void)gmb_scene_texture_file(path);
+        else (void)gmb_scene_checker((int64_t)vm_world_num(&a[0]));
+        gmb_obj_release(a[0].ref);
+    }
 }
 static void vm_sys_scene_object(gmb_vm_t* vm, gmb_task_t* task, int code, int argc) {
     (void)vm; (void)code;
@@ -5968,6 +6010,37 @@ static void vm_sys_scene_camera(gmb_vm_t* vm, gmb_task_t* task, int code, int ar
 static void vm_sys_scene_render(gmb_vm_t* vm, gmb_task_t* task, int code, int argc) {
     (void)vm; (void)task; (void)code; (void)argc;
     (void)gmb_scene_render();
+}
+/* SCENE LIGHT dx, dy, dz, livello: luce direzionale per faccia. La normale e la miscela
+ * stanno nella facciata C (`gmb_scene_light`), qui solo lo scarto in ordine di stack. */
+/* SCENE SMOOTH|ALPHA|TWOSIDED on|off (idea #5): un argomento 0/1, nessuna logica qui —
+ * lo stato e il significato stanno nella facciata C. */
+static void vm_sys_scene_flag(gmb_vm_t* vm, gmb_task_t* task, int code, int argc, int which) {
+    (void)vm; (void)code;
+    gmb_stack_entry_t a[1];
+    int n = argc > 1 ? 1 : argc;
+    vm_pop_args_ordered(task, a, n);
+    if (n < 1) return;
+    int64_t on = (int64_t)vm_world_num(&a[0]);
+    if (which == 0) (void)gmb_scene_smooth(on);
+    else if (which == 1) (void)gmb_scene_alpha(on);
+    else (void)gmb_scene_twosided(on);
+}
+static void vm_sys_scene_smooth(gmb_vm_t* vm, gmb_task_t* task, int code, int argc)
+{ vm_sys_scene_flag(vm, task, code, argc, 0); }
+static void vm_sys_scene_alpha(gmb_vm_t* vm, gmb_task_t* task, int code, int argc)
+{ vm_sys_scene_flag(vm, task, code, argc, 1); }
+static void vm_sys_scene_twosided(gmb_vm_t* vm, gmb_task_t* task, int code, int argc)
+{ vm_sys_scene_flag(vm, task, code, argc, 2); }
+
+static void vm_sys_scene_light(gmb_vm_t* vm, gmb_task_t* task, int code, int argc) {
+    (void)vm; (void)code;
+    gmb_stack_entry_t a[4];
+    int n = argc > 4 ? 4 : argc;
+    vm_pop_args_ordered(task, a, n);
+    if (n >= 4)
+        (void)gmb_scene_light(vm_world_num(&a[0]), vm_world_num(&a[1]),
+                              vm_world_num(&a[2]), (int64_t)vm_world_num(&a[3]));
 }
 static void vm_sys_scene_save(gmb_vm_t* vm, gmb_task_t* task, int code, int argc) {
     (void)vm; (void)code;
@@ -6198,6 +6271,11 @@ static void vm_sys_sync_process(gmb_vm_t* vm, gmb_task_t* task, int code, int ar
         }
     }
     gmb_gfx_sync();
+    /* Present del frame: il TICK emette SYNC subito dopo l'attesa parcheggiante
+     * (VisitTickEndStmtC), quindi il present cade DOPO il risveglio — era la coda di
+     * vm_sys_tick_process quando quel syscall dormiva il worker. Fuori dal main thread è
+     * no-op: il pump SDL presenta sul main (gmb_vm_host). */
+    gmb_gfx_present_frame();
     { int i1[VM_COL_MAX], i2[VM_COL_MAX]; float px[VM_COL_MAX], py[VM_COL_MAX];
       int got = gmb_gfx_take_collisions(i1, i2, px, py, VM_COL_MAX);
       for (int k = 0; k < got; k++) { g_vm_col_a[k] = i1[k]; g_vm_col_b[k] = i2[k]; g_vm_col_x[k] = px[k]; g_vm_col_y[k] = py[k]; }
@@ -7087,7 +7165,7 @@ static const vm_sys_row VM_SYS_TBL[] = {
      * console). Headless come gli altri codici grafica (il runtime grafico non è nel VM/C). */
     { GMB_SC_SPRITE_CMD, vm_sys_sprite_cmd },
     { GMB_SC_TILEMAP_CMD, vm_sys_headless_big },
-    { GMB_SC_TICK_PROCESS, vm_sys_headless_big },
+    { GMB_SC_TICK_PROCESS, vm_sys_tick_process },   /* TICK/END TICK: frame limiter + present */
     { GMB_SC_SYNC_PROCESS, vm_sys_sync_process },
     { GMB_SC_ON_WINDOW_EVENT, vm_sys_delegate_tui },
     /* WINDOW 304-316 (WINDOW_ACTION..WINDOW_SHADOW, enum C#): i handler `vm_winstmt_*`
@@ -7154,6 +7232,10 @@ static const vm_sys_row VM_SYS_TBL[] = {
     { GMB_SC_SCENE_CAMERA, vm_sys_scene_camera },
     { GMB_SC_SCENE_RENDER, vm_sys_scene_render },
     { GMB_SC_SCENE_SAVE, vm_sys_scene_save },
+    { GMB_SC_SCENE_LIGHT, vm_sys_scene_light },
+    { GMB_SC_SCENE_SMOOTH, vm_sys_scene_smooth },
+    { GMB_SC_SCENE_ALPHA, vm_sys_scene_alpha },
+    { GMB_SC_SCENE_TWOSIDED, vm_sys_scene_twosided },
     { GMB_SC_CLOCK_PAUSE, vm_sys_clock_pause },
     { GMB_SC_CLOCK_RESUME, vm_sys_clock_resume },
     { GMB_SC_CLOCK_SCALE, vm_sys_clock_scale },
@@ -8887,9 +8969,10 @@ static int gmb_vm_http_handler_ex(void* ctx, const gmb_http_request_t* req_c,
 
     /* attende la fine dell'handler: il task handler può eseguire res.Send / uscire. Il runtime
        HTTP gira su un thread dedicato (http_server_loop) — l'attesa qui è breve (poll). */
-    int guard = 0;
-    while (guard++ < 300000 && task->state != GMB_TS_FINISHED)
-        nanosleep(&(struct timespec){ 0, 500000 }, NULL);
+    /* §0ter: attesa SULL'EVENTO, non un ciclo di nanosleep (era 300000 × 500µs = 150s di poll).
+     * Il chiamante è il thread HTTP dedicato, che deve comunque consegnare la risposta: non è il
+     * park di un task verde, ma la sveglia arriva dal completamento dell'handler (deadline 150s). */
+    (void)gmb_sched_wait_task_event(task, GMB_TASK_WAIT_FINISHED, 150000);
 
     /* WebSocket: se il BASIC ha registrato OnMessage/OnClose, avvia il receive loop che
        dispatcha i frame alle SUB (parità managed) e segnala il takeover (ritorno 1: il
@@ -9983,6 +10066,16 @@ static long gmb_multidim_target(gmb_obj_shared_val_t* sv, const double* indices,
 static __thread gmb_task_t* g_tls_cur_task = NULL;
 gmb_task_t* gmb_vm_tls_task(void) { return g_tls_cur_task; }
 
+/* §0ter: predicato della guardia del percorso TICK (gmb_runtime_c). La VM/C esegue il task su
+ * un worker GPM: qui una gmb_sleep_ms/gmb_tick_pace (attesa REALE) dormirebbe il worker. Serve
+ * perché `gmb_cur()` del runtime C è NULL sui task della VM/C — senza questa query la guardia
+ * non vedrebbe il caso che è stato reale (vm_sys_tick_process che dormiva nel gmb_tick_pace). */
+static int vm_on_gpm_worker(void)
+{
+    gmb_task_t* t = g_tls_cur_task;
+    return t != NULL && t->scheduler != NULL;
+}
+
 int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
 {
     g_tls_cur_task = task;
@@ -10956,6 +11049,7 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                     /* rv e' posseduto: sync_result_ref ADOTTA il riferimento (nessun retain in piu') */
                     task->sync_active = 0;
                     task->ip = -2;
+                    gmb_task_signal_event(task);   /* waiter (thread MCP) sull'evento, non in poll */
                     return 0;
                 }
                 if (rv.type == 1) push_num_entry(task, rv.num, rv.basic_type);
@@ -12773,14 +12867,30 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                 }
                 else if (obj && obj->kind == GMB_OBJ_DICT && ((gmb_obj_shared_val_t*)obj)->dict)
                 {
-                    /* membri dei dict: Count/Length (STRINGBUILDER → lunghezza del __str) */
+                    /* membri dei dict: Count/Length (STRINGBUILDER → lunghezza del __str) e
+                     * Capacity (emulata come .NET: parte da 16 e raddoppia — il VM/C teneva la
+                     * lunghezza del testo, quindi `sb.Capacity` dava 8 dove IL/PCode/C99 danno
+                     * 16: StringsStringBuilder). */
                     if (strcmp(fieldName, "Count") == 0 || strcmp(fieldName, "Length") == 0
                         || strcmp(fieldName, "Capacity") == 0)
                     {
                         gmb_val_t bcur = gmb_dict_get(*((gmb_obj_shared_val_t*)obj)->dict, "__str");
-                        double n = (bcur.kind == GMB_TYPE_STRING && bcur.v_string.data)
-                                   ? (double)strlen(bcur.v_string.data)
-                                   : (double)gmb_dict_count(*((gmb_obj_shared_val_t*)obj)->dict);
+                        size_t blen = (bcur.kind == GMB_TYPE_STRING && bcur.v_string.data)
+                                      ? strlen(bcur.v_string.data) : 0;
+                        double n;
+                        if (strcmp(fieldName, "Capacity") == 0
+                            && bcur.kind == GMB_TYPE_STRING && bcur.v_string.data)
+                        {
+                            size_t cap = 16;
+                            while (cap < blen) cap <<= 1;
+                            n = (double)cap;
+                        }
+                        else
+                        {
+                            n = (bcur.kind == GMB_TYPE_STRING && bcur.v_string.data)
+                                ? (double)blen
+                                : (double)gmb_dict_count(*((gmb_obj_shared_val_t*)obj)->dict);
+                        }
                         gmb_obj_release(objE.ref);
                         push_num_entry(task, n, GMB_BT_NUMBER);
                         break;
@@ -13690,7 +13800,12 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                     else if (strcasecmp(methodName, "Capacity") == 0)
                     {
                         gmb_val_t cur = gmb_dict_get(*sv->dict, "__str");
-                        push_num_entry(task, (double)((cur.kind == GMB_TYPE_STRING && cur.v_string.data) ? strlen(cur.v_string.data) : 0), GMB_BT_NUMBER);
+                        size_t blen = (cur.kind == GMB_TYPE_STRING && cur.v_string.data) ? strlen(cur.v_string.data) : 0;
+                        /* Capacità emulata come .NET (16 e raddoppio), non la lunghezza del
+                         * testo: parity IL/PCode/C99 (StringsStringBuilder). */
+                        size_t cap = 16;
+                        while (cap < blen) cap <<= 1;
+                        push_num_entry(task, (double)cap, GMB_BT_NUMBER);
                     }
                     else if (strcasecmp(methodName, "Insert") == 0 && argCount >= 2)
                     {
@@ -15141,16 +15256,79 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
             }
             case OP_AUDIO_CMD:
             {
-                /* Audio: senza backend audio nativo, consuma subcode+argomenti come no-op
-                   (i test audio compilano ed eseguono senza errore). */
+                /* Audio (parità PCodeVM/AudioManager, §0ter). Sottocomandi:
+                 *   0 SOUND  [voice, freq, dur, vol?, wave?, att?, dec?, sus?, rel?, pw?]
+                 *   1 PLAY   [action, ...] — 0 standard · 1 concurrent · 2 queue · 3 loop ·
+                 *                            4 named · 5 control (PAUSE/RESUME/STOP)
+                 *   2 FILTER [voice, type, cutoff, resonance]
+                 * Prima era un no-op che consumava gli argomenti: la VM/C non aveva audio.
+                 * Ora SOUND e PLAY usano le varianti ASINCRONE del runtime condiviso e
+                 * PARCHEGGIANO il task per la durata: il suono vive sul thread audio
+                 * (SDL_mixer, che non esegue BASIC) e il worker resta libero. `gmb_sleep_ms`
+                 * qui sarebbe un'attesa reale su un worker — con `park_at_syscall` attivo la
+                 * guardia §0ter la uccide. */
                 int subCode = gmb_vm_read_u8(vm, task);
                 int argCount = gmb_vm_read_u8(vm, task);
-                (void)subCode;
+                gmb_stack_entry_t args[16];
+                int n = argCount > 16 ? 16 : argCount;
                 for (int i = 0; i < argCount && task->sp > 0; i++)
                 {
                     gmb_stack_entry_t a = gmb_task_pop(task);
-                    gmb_obj_release(a.ref);
+                    if (i < n) args[i] = a; else gmb_obj_release(a.ref);
                 }
+                /* ord: ordine di push (gli argomenti escono dallo stack al contrario). */
+                gmb_stack_entry_t ord[16];
+                for (int i = 0; i < n; i++) ord[i] = args[n - 1 - i];
+                int wait_ms = 0;
+                if (subCode == 0 && n >= 3)
+                {
+                    /* SOUND voice, freq, dur [, vol]: waveform/ADSR non hanno una resa
+                     * equivalente nel motore C condiviso (usa il preset di gmb_audio_sound). */
+                    double freq = vm_world_num(&ord[1]);
+                    double dur = vm_world_num(&ord[2]);
+                    int vol = (n >= 4 && ord[3].type == 1) ? (int)ord[3].num : 100;
+                    wait_ms = gmb_audio_sound_async((int)freq, dur, vol);
+                }
+                else if (subCode == 1 && n >= 2)
+                {
+                    int action = (int)vm_world_num(&ord[0]);
+                    if (action == 5)
+                    {
+                        /* PAUSE/RESUME/STOP: l'azione arriva come TokenKind numerico (non come
+                         * verbo) e il motore C condiviso non ha canali nominati: nessun effetto,
+                         * nessuna attesa. Non è una regressione — prima OP_AUDIO_CMD era un
+                         * no-op totale. */
+                    }
+                    else if (action == 1 && n >= 3)
+                    {
+                        /* CONCURRENT: action, N stringhe, conteggio → partono insieme, si
+                         * attende la sequenza più lunga. */
+                        for (int i = 1; i < n - 1; i++)
+                        {
+                            const char* mu = (ord[i].type == 2 && ord[i].ref && ord[i].ref->kind == GMB_OBJ_STRING)
+                                           ? ((gmb_obj_string_t*)ord[i].ref)->data : NULL;
+                            int ms = mu ? gmb_audio_mml_async(mu) : 0;
+                            if (ms > wait_ms) wait_ms = ms;
+                        }
+                    }
+                    else
+                    {
+                        /* STANDARD/QUEUE/LOOP/NAMED: la sequenza parte (una volta — il motore
+                         * C non ha code nominate né loop multipli) e il task attende la fine. */
+                        const char* mu = (ord[1].type == 2 && ord[1].ref && ord[1].ref->kind == GMB_OBJ_STRING)
+                                       ? ((gmb_obj_string_t*)ord[1].ref)->data : NULL;
+                        if (mu) wait_ms = gmb_audio_mml_async(mu);
+                    }
+                }
+                else if (subCode == 2 && n >= 4)
+                {
+                    gmb_audio_set_filter((int)vm_world_num(&ord[0]), (int)vm_world_num(&ord[1]),
+                                         vm_world_num(&ord[2]), vm_world_num(&ord[3]));
+                }
+                for (int i = 0; i < n; i++) gmb_obj_release(args[i].ref);
+                /* Park DOPO il rilascio degli argomenti: il task è fermo al confine della
+                 * syscall e al risveglio riprende dall'istruzione successiva. */
+                vm_park_task_ms(vm, task, wait_ms);
                 break;
             }
             case OP_CLIP_CMD:
@@ -18798,6 +18976,8 @@ static void vm_flush_print_staging(gmb_vm_t* vm, gmb_task_t* task)
 /* Single-task run (no GPM) — per programmi lineari. */
 int gmb_vm_run(gmb_vm_t* vm)
 {
+    gmb_gpm_set_on_worker_query(vm_on_gpm_worker);   /* §0ter: guardia attese bloccanti TICK */
+    gmb_gpm_set_park_at_syscall(1);   /* §0ter: il park è del syscall (timer), mai gmb_sleep_ms */
     /* V7a-net (§12): wake hook del net-watcher condiviso (block=NULL: wait_fd
      * conserva il suo path poll per i chiamanti interni del runtime). */
     gmb_net_set_block_hooks(NULL, vm_net_wake, vm->scheduler);
@@ -19124,6 +19304,7 @@ static void vm_iowatch_poll_dispatch(gmb_vm_t* vm, gmb_task_t* src)
  * deve ricevere la STESSA bookkeeping, altrimenti resta FINISHED ma mai "reaped". */
 static void vm_finish_task_bookkeeping(gmb_vm_t* vm, gmb_task_t* task)
 {
+    gmb_task_signal_event(task);   /* sveglia i waiter su FINISHED (handler HTTP/WS) */
     vm_flush_print_staging(vm, task);
     if (task->future_to_resolve && task->pending_exception == NULL)
     {
@@ -19274,6 +19455,8 @@ int gmb_vm_spawn_worker(gmb_vm_t* vm)
 
 int gmb_vm_run_mt(gmb_vm_t* vm)
 {
+    gmb_gpm_set_on_worker_query(vm_on_gpm_worker);   /* §0ter: guardia attese bloccanti TICK */
+    gmb_gpm_set_park_at_syscall(1);   /* §0ter: il park è del syscall (timer), mai gmb_sleep_ms */
     /* V7a-net (§12): wake hook del net-watcher condiviso — i syscall di rete
      * parcheggiati (TCP ACCEPT/RECV, UDP RECV) vengono riaccodati da lì. */
     gmb_net_set_block_hooks(NULL, vm_net_wake, vm->scheduler);
