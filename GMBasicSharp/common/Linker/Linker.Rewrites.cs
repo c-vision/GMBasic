@@ -5332,6 +5332,10 @@ public static partial class Linker
             {
                 Arguments = [..s.Arguments.Select(a => RewriteExpression(a, context, program))]
             },
+            SceneCommandStmt sn => sn with
+            {
+                Arguments = [..sn.Arguments.Select(a => RewriteExpression(a, context, program))]
+            },
             ClockCommandStmt s => s with
             {
                 Arguments = [..s.Arguments.Select(a => RewriteExpression(a, context, program))]

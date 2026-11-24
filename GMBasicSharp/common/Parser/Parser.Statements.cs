@@ -775,6 +775,10 @@ public sealed partial class Parser
                     // disponibili, quindi vale il controllo generico qui sopra (`_program.Namespaces`)
                     // — senza IMPORT WORLD il comando non arriva a questo case.
                     case TokenKind.World: return [DispatchWorldStatement(this, "WORLD")];
+                    // Motore 3D — renderer mesh (P3). Come WORLD: nessun gate dedicato, vale il
+                    // controllo `_program.Namespaces` qui sopra → senza IMPORT SCENE il comando
+                    // non arriva a questo case.
+                    case TokenKind.Scene: return [DispatchSceneStatement(this, "SCENE")];
                     // Tempo a passo fisso (2026-11-20). Come WORLD: nessun gate dedicato —
                     // senza IMPORT CLOCK il comando non arriva a questo case.
                     case TokenKind.Clock: return [DispatchClockStatement(this, "CLOCK")];

@@ -2485,4 +2485,32 @@ public enum TokenKind
     ClockAlpha,
     ClockFps,
     ClockScale,
+    // MOTORE 3D (2026-11-24, P3): dominio `SCENE` (mesh). In coda (ordinali canonici): mai
+    // inserire nel mezzo. `Scene` è il namespace (keyword). I VERBI NON sono keyword: `VIEW`,
+    // `TEXTURE`, `QUAD`, `BOX` e `SAVE` esistono già come parole del linguaggio, e `RESET`,
+    // `OBJECT`, `VERTEX`, `OBJPOS`, `CAMERA`, `RENDER` sono nomi che i programmi usano come
+    // variabili — riservarli romperebbe il codice esistente. Il parser li normalizza QUI nei
+    // TokenKind `Scene*` dedicati (stesso schema di `CLOCK FPS`), così il dispatch nei backend
+    // resta per TokenKind e mai per lessema (§12).
+    Scene,
+    SceneReset,
+    SceneView,
+    SceneTexture,
+    SceneObject,
+    SceneVertex,
+    SceneQuad,
+    SceneBox,
+    SceneObjPos,
+    SceneCamera,
+    SceneRender,
+    SceneSave,
+    // Letture `SCENE.VERTS()` … `SCENE.PIXEL(x, y)`: TokenKind dedicati (i nomi nudi restano
+    // liberi: `HASH`, `TRIS`, `DRAWN` non sono keyword).
+    SceneVerts,
+    SceneTris,
+    SceneDrawn,
+    SceneCulled,
+    ScenePixels,
+    SceneHash,
+    ScenePixel,
   }

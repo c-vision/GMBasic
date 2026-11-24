@@ -514,6 +514,14 @@ public sealed partial class IlProgramCompiler
             case TokenKind.ClockAlpha: EmitWorldReadNoArg(expr, nameof(IlRuntime.ClockAlpha)); break;
             case TokenKind.ClockFps: EmitWorldReadNoArg(expr, nameof(IlRuntime.ClockFpsValue)); break;
             case TokenKind.ClockScale: EmitWorldReadNoArg(expr, nameof(IlRuntime.ClockScaleValue)); break;
+            // SCENE (motore 3D, renderer mesh): letture della scena — stato solo nel runtime C.
+            case TokenKind.SceneVerts: EmitSceneReadNoArg(expr, nameof(IlRuntime.SceneVerts)); break;
+            case TokenKind.SceneTris: EmitSceneReadNoArg(expr, nameof(IlRuntime.SceneTris)); break;
+            case TokenKind.SceneDrawn: EmitSceneReadNoArg(expr, nameof(IlRuntime.SceneDrawn)); break;
+            case TokenKind.SceneCulled: EmitSceneReadNoArg(expr, nameof(IlRuntime.SceneCulled)); break;
+            case TokenKind.ScenePixels: EmitSceneReadNoArg(expr, nameof(IlRuntime.ScenePixels)); break;
+            case TokenKind.SceneHash: EmitSceneReadNoArg(expr, nameof(IlRuntime.SceneHash)); break;
+            case TokenKind.ScenePixel: EmitSceneReadPixel(expr, nameof(IlRuntime.ScenePixel)); break;
             case TokenKind.MatrixColumnCount: EmitMatrixValueOrHandleUnary(expr, nameof(IlRuntime.MatrixValueColumnCount), RuntimeMethod(nameof(IlRuntime.MatrixColumnCount))); break;
             case TokenKind.MatrixClone: EmitMatrixUnaryValue(expr, RuntimeMethod(nameof(IlRuntime.MatrixCloneValue)), nameof(IlRuntime.MatrixValueClone)); break;
             // MATRIX F2b (2026-11-09): ROW/COL/ISCONTIGUOUS.

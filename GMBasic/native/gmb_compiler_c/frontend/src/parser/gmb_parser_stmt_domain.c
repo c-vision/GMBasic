@@ -48,6 +48,8 @@ static const gmb_tokenkind_t g_domain_ns[] = {
     GMB_TOK_Http, GMB_TOK_WebSocket, GMB_TOK_Plot, GMB_TOK_Sprite, GMB_TOK_Shape, GMB_TOK_VectorDb,
     GMB_TOK_World,  /* motore 3D (P2): WORLD LOAD|FREE|TICK, SECMOVE, HEIGHT, ANIM,
                      * SCROLL, LIGHTFX, LAMP — verbo per TokenKind, mai per lessema */
+    GMB_TOK_Scene,  /* motore 3D (P3, renderer mesh): SCENE RESET|VIEW|TEXTURE|OBJECT|VERTEX|
+                     * QUAD|BOX|OBJPOS|CAMERA|RENDER|SAVE — verbo normalizzato in GMB_TOK_Scene* */
     GMB_TOK_Clock   /* tempo a passo fisso (2026-11-20): CLOCK PAUSE|RESUME|SCALE|FPS */
 };
 #define G_DOMAIN_NS_COUNT ((int)(sizeof(g_domain_ns) / sizeof(g_domain_ns[0])))
@@ -201,6 +203,27 @@ static int gmb_p_llm_tensor_alias(const char* v)
         || strcasecmp(v, "MAKEPATCH") == 0 || strcasecmp(v, "APPLYPATCH") == 0);
 }
 
+/* SCENE (motore 3D, renderer mesh — P3): i verbi NON sono keyword hard. `VIEW`, `TEXTURE`,
+ * `QUAD`, `BOX` e `SAVE` esistono già come parole del linguaggio; `RESET`, `OBJECT`, `VERTEX`,
+ * `OBJPOS`, `CAMERA` e `RENDER` sono nomi che i programmi usano come variabili, e riservarli
+ * romperebbe il codice esistente. Il lessema si traduce QUI, una volta sola, nei TokenKind
+ * GMB_TOK_Scene*: a valle (emitter C99) il dispatch è per TokenKind, mai per lessema (§12),
+ * esattamente come per `CLOCK FPS`. Il parser C# fa la stessa cosa in Parser.Stmt.Scene.cs. */
+static int gmb_p_scene_verb_tk(const char* v)
+{
+    static const struct { const char* word; gmb_tokenkind_t tk; } map[] = {
+        { "RESET",   GMB_TOK_SceneReset  }, { "VIEW",    GMB_TOK_SceneView    },
+        { "TEXTURE", GMB_TOK_SceneTexture}, { "OBJECT",  GMB_TOK_SceneObject  },
+        { "VERTEX",  GMB_TOK_SceneVertex }, { "QUAD",    GMB_TOK_SceneQuad    },
+        { "BOX",     GMB_TOK_SceneBox    }, { "OBJPOS",  GMB_TOK_SceneObjPos  },
+        { "CAMERA",  GMB_TOK_SceneCamera }, { "RENDER",  GMB_TOK_SceneRender  },
+        { "SAVE",    GMB_TOK_SceneSave   },
+    };
+    for (size_t i = 0; i < sizeof(map) / sizeof(map[0]); i++)
+        if (strcasecmp(v, map[i].word) == 0) return (int)map[i].tk;
+    return 0;
+}
+
 gmb_stmt_t* gmb_p_parse_domain_stmt(gmb_parser_t* p, int line)
 {
     return gmb_p_parse_domain_stmt_ov(p, line, NULL, 0);
@@ -246,6 +269,13 @@ gmb_stmt_t* gmb_p_parse_domain_stmt_ov(gmb_parser_t* p, int line, const char* ov
              * kind: nessun confronto per lessema. Un verbo che non e' keyword resta
              * GMB_TOK_Identifier e non ha act_tk (il dispatch a valle usa mutex_action). */
             if (v->kind != GMB_TOK_Identifier) s->act_tk = (int)v->kind;
+            /* SCENE: verbo → TokenKind dedicato, una volta sola, qui (vedi gmb_p_scene_verb_tk). */
+            if (s->win_tk == GMB_TOK_Scene) {
+                char sv[16]; int sl = v->length < 15 ? v->length : 15;
+                memcpy(sv, v->lexeme, (size_t)sl); sv[sl] = 0;
+                int stk = gmb_p_scene_verb_tk(sv);
+                if (stk) s->act_tk = stk;
+            }
             gmb_p_adv(p);
             /* AI LIST OPTIONS: il verbo `LIST` e' keyword, la parola `OPTIONS` NO (l'unica
              * keyword e' OPTION, che serve a `AI SET OPTION`). La si riconosce UNA volta qui,

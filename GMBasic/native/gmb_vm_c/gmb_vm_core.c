@@ -5887,6 +5887,101 @@ static void vm_sys_world_lamp(gmb_vm_t* vm, gmb_task_t* task, int code, int argc
                              vm_world_num(&a[3]), vm_world_num(&a[4]));
 }
 
+/* ── MOTORE 3D / SCENE (2026-11-24, P3) — renderer mesh ──────────────────────────────────
+ * Comandi del dominio SCENE. Come per WORLD, la VM/C non ha stato proprio: la scena vive nel
+ * runtime C condiviso (gmb_3d_cmd.c) e qui si chiama la STESSA facciata delle altre gambe
+ * (§0bis). Statement: nessun push (un comando non ritorna un valore, §1). */
+static void vm_sys_scene_reset(gmb_vm_t* vm, gmb_task_t* task, int code, int argc) {
+    (void)vm; (void)task; (void)code; (void)argc;
+    (void)gmb_scene_reset();
+}
+static void vm_sys_scene_view(gmb_vm_t* vm, gmb_task_t* task, int code, int argc) {
+    (void)vm; (void)code;
+    gmb_stack_entry_t a[3];
+    int n = argc > 3 ? 3 : argc;
+    vm_pop_args_ordered(task, a, n);
+    if (n >= 3)
+        (void)gmb_scene_view((int64_t)vm_world_num(&a[0]), (int64_t)vm_world_num(&a[1]),
+                             vm_world_num(&a[2]));
+}
+static void vm_sys_scene_texture(gmb_vm_t* vm, gmb_task_t* task, int code, int argc) {
+    (void)vm; (void)code;
+    gmb_stack_entry_t a[1];
+    int n = argc > 1 ? 1 : argc;
+    vm_pop_args_ordered(task, a, n);
+    if (n >= 1) (void)gmb_scene_checker((int64_t)vm_world_num(&a[0]));
+}
+static void vm_sys_scene_object(gmb_vm_t* vm, gmb_task_t* task, int code, int argc) {
+    (void)vm; (void)code;
+    gmb_stack_entry_t a[3];
+    int n = argc > 3 ? 3 : argc;
+    vm_pop_args_ordered(task, a, n);
+    if (n >= 3)
+        (void)gmb_scene_object((int64_t)vm_world_num(&a[0]), (int64_t)vm_world_num(&a[1]),
+                               (int64_t)vm_world_num(&a[2]));
+}
+static void vm_sys_scene_vertex(gmb_vm_t* vm, gmb_task_t* task, int code, int argc) {
+    (void)vm; (void)code;
+    gmb_stack_entry_t a[5];
+    int n = argc > 5 ? 5 : argc;
+    vm_pop_args_ordered(task, a, n);
+    if (n >= 5)
+        (void)gmb_scene_vertex(vm_world_num(&a[0]), vm_world_num(&a[1]), vm_world_num(&a[2]),
+                               vm_world_num(&a[3]), vm_world_num(&a[4]));
+}
+static void vm_sys_scene_quad(gmb_vm_t* vm, gmb_task_t* task, int code, int argc) {
+    (void)vm; (void)code;
+    gmb_stack_entry_t a[4];
+    int n = argc > 4 ? 4 : argc;
+    vm_pop_args_ordered(task, a, n);
+    if (n >= 4)
+        (void)gmb_scene_quad((int64_t)vm_world_num(&a[0]), (int64_t)vm_world_num(&a[1]),
+                             (int64_t)vm_world_num(&a[2]), (int64_t)vm_world_num(&a[3]));
+}
+static void vm_sys_scene_box(gmb_vm_t* vm, gmb_task_t* task, int code, int argc) {
+    (void)vm; (void)code;
+    gmb_stack_entry_t a[6];
+    int n = argc > 6 ? 6 : argc;
+    vm_pop_args_ordered(task, a, n);
+    if (n >= 6)
+        (void)gmb_scene_box(vm_world_num(&a[0]), vm_world_num(&a[1]), vm_world_num(&a[2]),
+                            vm_world_num(&a[3]), vm_world_num(&a[4]), vm_world_num(&a[5]));
+}
+static void vm_sys_scene_objpos(gmb_vm_t* vm, gmb_task_t* task, int code, int argc) {
+    (void)vm; (void)code;
+    gmb_stack_entry_t a[4];
+    int n = argc > 4 ? 4 : argc;
+    vm_pop_args_ordered(task, a, n);
+    if (n >= 4)
+        (void)gmb_scene_objpos(vm_world_num(&a[0]), vm_world_num(&a[1]), vm_world_num(&a[2]),
+                               vm_world_num(&a[3]));
+}
+static void vm_sys_scene_camera(gmb_vm_t* vm, gmb_task_t* task, int code, int argc) {
+    (void)vm; (void)code;
+    gmb_stack_entry_t a[5];
+    int n = argc > 5 ? 5 : argc;
+    vm_pop_args_ordered(task, a, n);
+    if (n >= 5)
+        (void)gmb_scene_camera(vm_world_num(&a[0]), vm_world_num(&a[1]), vm_world_num(&a[2]),
+                               vm_world_num(&a[3]), vm_world_num(&a[4]));
+}
+static void vm_sys_scene_render(gmb_vm_t* vm, gmb_task_t* task, int code, int argc) {
+    (void)vm; (void)task; (void)code; (void)argc;
+    (void)gmb_scene_render();
+}
+static void vm_sys_scene_save(gmb_vm_t* vm, gmb_task_t* task, int code, int argc) {
+    (void)vm; (void)code;
+    gmb_stack_entry_t a[1];
+    int n = argc > 1 ? 1 : argc;
+    vm_pop_args_ordered(task, a, n);
+    if (n >= 1) {
+        const char* path = (a[0].type == 2 && a[0].ref && a[0].ref->kind == GMB_OBJ_STRING)
+            ? ((gmb_obj_string_t*)a[0].ref)->data : NULL;
+        if (path) (void)gmb_scene_save(path);
+        gmb_obj_release(a[0].ref);
+    }
+}
+
 /* ── TEMPO A PASSO FISSO / CLOCK (2026-11-20) ────────────────────────────────────────────
  * Comandi del dominio CLOCK. Come per WORLD, la VM/C non ha stato proprio: l'orologio vive nel
  * runtime condiviso (gmb_clock.c) e qui si chiama la STESSA facciata delle altre gambe (§0bis).
@@ -7047,6 +7142,18 @@ static const vm_sys_row VM_SYS_TBL[] = {
     { GMB_SC_WORLD_LIGHTFX, vm_sys_world_lightfx },
     { GMB_SC_WORLD_LAMP, vm_sys_world_lamp },
     /* tempo a passo fisso (2026-11-20): comandi CLOCK → facciata gmb_clock_frame_* */
+    /* motore 3D — renderer mesh (2026-11-24, P3): comandi SCENE → facciata gmb_scene_* */
+    { GMB_SC_SCENE_RESET, vm_sys_scene_reset },
+    { GMB_SC_SCENE_VIEW, vm_sys_scene_view },
+    { GMB_SC_SCENE_TEXTURE, vm_sys_scene_texture },
+    { GMB_SC_SCENE_OBJECT, vm_sys_scene_object },
+    { GMB_SC_SCENE_VERTEX, vm_sys_scene_vertex },
+    { GMB_SC_SCENE_QUAD, vm_sys_scene_quad },
+    { GMB_SC_SCENE_BOX, vm_sys_scene_box },
+    { GMB_SC_SCENE_OBJPOS, vm_sys_scene_objpos },
+    { GMB_SC_SCENE_CAMERA, vm_sys_scene_camera },
+    { GMB_SC_SCENE_RENDER, vm_sys_scene_render },
+    { GMB_SC_SCENE_SAVE, vm_sys_scene_save },
     { GMB_SC_CLOCK_PAUSE, vm_sys_clock_pause },
     { GMB_SC_CLOCK_RESUME, vm_sys_clock_resume },
     { GMB_SC_CLOCK_SCALE, vm_sys_clock_scale },

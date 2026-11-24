@@ -87,6 +87,7 @@ public sealed partial class Parser
             TokenKind.Chart => true,
             TokenKind.Matrix => true,
             TokenKind.World => true,   // motore 3D (P2)
+            TokenKind.Scene => true,   // motore 3D — renderer mesh (P3)
             TokenKind.Clock => true,   // tempo a passo fisso (2026-11-20)
             TokenKind.Vector => true,
             TokenKind.VectorDb => true,
@@ -133,6 +134,7 @@ public sealed partial class Parser
             TokenKind.Chart => "CHART",
             TokenKind.Matrix => "MATRIX",
             TokenKind.World => "WORLD",   // motore 3D (P2)
+            TokenKind.Scene => "SCENE",   // motore 3D — renderer mesh (P3)
             TokenKind.Clock => "CLOCK",   // tempo a passo fisso (2026-11-20)
             TokenKind.Vector => "VECTOR",
             TokenKind.VectorDb => "VECTORDB",

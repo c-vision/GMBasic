@@ -1126,7 +1126,8 @@ public sealed partial class Parser
                         // comandi. Gli altri namespace restano risolvibili dal registro senza
                         // IMPORT (TRADING.PORTFOLIO.*).
                         if ((string.Equals(namespaceToken.Lexeme, "WORLD", StringComparison.OrdinalIgnoreCase)
-                             || string.Equals(namespaceToken.Lexeme, "CLOCK", StringComparison.OrdinalIgnoreCase))
+                             || string.Equals(namespaceToken.Lexeme, "CLOCK", StringComparison.OrdinalIgnoreCase)
+                             || string.Equals(namespaceToken.Lexeme, "SCENE", StringComparison.OrdinalIgnoreCase))
                             && !IsNamespaceLoaded(namespaceToken.Lexeme))
                         {
                             var nsi = namespaceToken.Lexeme.ToUpperInvariant();

@@ -780,6 +780,10 @@ public sealed partial class Lexer
         // SCALE sono keyword già esistenti; FPS resta una soft keyword (dichiarata nel parser).
         { "CLOCK", TokenKind.Clock },
         { "WORLD", TokenKind.World },
+        // Motore 3D (2026-11-24, P3): namespace del renderer mesh. SOLO il namespace è una
+        // keyword: i verbi (RESET/VIEW/TEXTURE/OBJECT/VERTEX/QUAD/BOX/OBJPOS/CAMERA/RENDER/SAVE)
+        // restano nomi normali e il parser li normalizza nei TokenKind `Scene*` dedicati.
+        { "SCENE", TokenKind.Scene },
         // Motore 3D (2026-11-19): verbi del dominio WORLD. Keyword dedicate, così il parser
         // dispatcha per TokenKind (§12) e mai per lessema.
         { "SECMOVE", TokenKind.SecMove },

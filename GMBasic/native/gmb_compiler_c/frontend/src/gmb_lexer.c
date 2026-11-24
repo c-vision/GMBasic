@@ -609,6 +609,9 @@ static const gmb_keyword_t gmb_keywords[] = {
     GMB_KEYWORD_ENTRY("PUSH", Push),
     GMB_KEYWORD_ENTRY("POP", Pop),
     GMB_KEYWORD_ENTRY("WORLD", World),
+    /* Motore 3D (2026-11-24, P3): namespace del renderer mesh. Solo il namespace è keyword:
+     * i verbi restano nomi normali e il parser li normalizza nei GMB_TOK_Scene* dedicati. */
+    GMB_KEYWORD_ENTRY("SCENE", Scene),
     /* Motore 3D (2026-11-19, P2): verbi del dominio WORLD. Keyword dedicati, così il
      * dispatch a valle è per TokenKind (§12) e mai per lessema. */
     GMB_KEYWORD_ENTRY("SECMOVE", SecMove),

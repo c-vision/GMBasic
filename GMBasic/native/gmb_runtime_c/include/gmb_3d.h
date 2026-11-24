@@ -98,6 +98,71 @@ int  gmb_3d_render_depth(void);   /* 1 se un claim è aperto, 0 se libero */
  * (equivale a SCENE.STATS("allocs") = 0 per frame). */
 unsigned long gmb_3d_alloc_count(void);
 
+/* --- mesh sul target (P3, piano §6) -------------------------------------- */
+
+/* Materiale di un draw. La texture è RGBA8 con la riga 0 in ALTO (convenzione
+ * delle immagini, la stessa di gm_tex): il campionamento passa da gm_tex_sample,
+ * unica sede del wrap e del filtro. Senza texture (rgba = NULL) il colore del
+ * triangolo è `tint`. `light` è il livello 0..255 (255 = pieno): in P3 arriva dal
+ * chiamante, in P4 dalle lampade. L'RGB finale è texel x tint x light in
+ * aritmetica INTERA (clamp 255): stessi byte su tutti i RID. */
+typedef struct gmb_3d_material {
+    const unsigned char* rgba;             /* tw*th*4, riga 0 in alto; NULL = piatto */
+    int tw, th;
+    unsigned char tint_r, tint_g, tint_b;  /* 255 = nessun tint */
+    unsigned char light;                   /* 255 = luce piena */
+    int bilinear;                          /* 1 = bilineare, 0 = nearest */
+    int masked;                            /* 1 = alpha 0 scartato (alpha-test) */
+    int two_sided;                         /* 1 = niente back-face cull */
+} gmb_3d_material_t;
+
+/* Mesh indicizzata, vertici in coordinate MONDO: pos nv*3, uv nv*2 (NULL quando
+ * il materiale non ha texture), idx nt*3. La mesh è del chiamante: qui non si
+ * copia nulla e non si alloca nulla per frame (R4). */
+typedef struct gmb_3d_mesh {
+    const float* pos;
+    const float* uv;
+    int nv;
+    const int* idx;
+    int nt;
+} gmb_3d_mesh_t;
+
+/* Contatori del pass: `tris_drawn` è ciò che SCENE.DRAWN espone, `tris_culled`
+ * conta i triangoli fuori dal frustum o rivolti altrove, `tris_clipped` quelli
+ * che il clip ha dovuto tagliare, `pixels` i pixel passati dal depth test. Il
+ * costo di un ciclo si legge da qui, non da un cronometro sotto contesa
+ * (piano §0septies). */
+typedef struct gmb_3d_draw_stats {
+    unsigned long tris_drawn;
+    unsigned long tris_culled;
+    unsigned long tris_clipped;
+    unsigned long pixels;
+} gmb_3d_draw_stats_t;
+
+/* Rasterizza la mesh nel target (0x00RRGGBB + depth).
+ *
+ * `mvp` = model-view-projection 4x4 column-major, la stessa convenzione di
+ * gm_mat4_perspective/gm_mat4_look_at (clip z in [-1,1], w = distanza di vista).
+ * Il clip è fatto in CLIP SPACE contro i sei piani del frustum (|x| <= w,
+ * |y| <= w, |z| <= w): near e far non si passano a parte perché stanno già nella
+ * matrice, quindi non possono andare fuori sincrono con lei. L'UV è corretto in
+ * prospettiva (si interpolano u/w, v/w, 1/w) e la profondità scritta è la
+ * DISTANZA DI VISTA con la convenzione di gm_sector_render: 0 = niente
+ * disegnato, altrimenti vince la distanza PIU' PICCOLA (più vicino). Così un
+ * pass di mesh dopo un pass di settori testa contro la stessa profondità senza
+ * conversioni e l'ordine di disegno non conta.
+ *
+ * Winding: una faccia FRONTALE è CCW vista da fuori (come i generatori di
+ * gm_gfx_mesh); con two_sided = 0 le facce inverse sono scartate e contate in
+ * tris_culled.
+ *
+ * In null mode non disegna e azzera i contatori (R8, T-NULL). Errori espliciti,
+ * mai un risultato silenzioso: target non allocato, indici fuori range, texture
+ * senza UV. */
+int gmb_3d_mesh_draw(gmb_3d_target_t* t, const float* mvp,
+                     const gmb_3d_mesh_t* m, const gmb_3d_material_t* mat,
+                     gmb_3d_draw_stats_t* stats);
+
 /* --- mondi a settori (P2, specifica §2) ---------------------------------- */
 
 /* Handle OPACO: lo stato del mondo vive nel runtime, la matematica nelle
@@ -233,6 +298,42 @@ double gmb_world_lightnow(int sector);
 double gmb_world_time(void);
 double gmb_world_floor(int sector);
 double gmb_world_ceil(int sector);
+
+/* --- SCENE: superficie del renderer mesh (P3) ---------------------------
+ *
+ * Un solo stato di scena per processo, come WORLD, e nessun handle da
+ * maneggiare. Non è una seconda implementazione: la geometria si accumula in
+ * gmb_3d_cmd.c e il disegno è `gmb_3d_mesh_draw`, la stessa del kernel. È la
+ * faccia unica dei comandi `SCENE` (piano §4.2) e delle `DECLARE NATIVE ...
+ * LIB "gmb_3d"`: una implementazione, due modi di chiamarla.
+ *
+ * Convenzioni: y è l'altezza; i vertici si dichiarano in senso antiorario VISTO
+ * DA FUORI (il winding del kernel); la camera ha yaw in gradi (0 = sguardo verso
+ * +z) e pitch in gradi (negativo = verso il basso); `fov` è il campo visivo
+ * VERTICALE in gradi. Tipo `int64_t`/`double`/`const char*`: è l'ABI di
+ * `DECLARE NATIVE` (LONG, DOUBLE, STRING), non un tipo nuovo.
+ */
+int64_t gmb_scene_reset(void);                       /* azzera geometria e camera */
+int64_t gmb_scene_view(int64_t w, int64_t h, double fov_deg);   /* target + fov */
+int64_t gmb_scene_checker(int64_t cells);            /* texture a scacchi in scala di grigi */
+int64_t gmb_scene_object(int64_t r, int64_t g, int64_t b);      /* apre un oggetto (0..255, clampato) */
+int64_t gmb_scene_vertex(double x, double y, double z, double u, double v);
+int64_t gmb_scene_tri(int64_t a, int64_t b, int64_t c);
+int64_t gmb_scene_quad(int64_t a, int64_t b, int64_t c, int64_t d);
+int64_t gmb_scene_box(double x0, double y0, double z0,
+                      double x1, double y1, double z1);         /* 24 vertici, 12 triangoli */
+int64_t gmb_scene_objpos(double x, double y, double z, double yaw_deg);
+int64_t gmb_scene_camera(double x, double y, double z,
+                         double yaw_deg, double pitch_deg);
+int64_t gmb_scene_render(void);                      /* rasterizza nel target */
+int64_t gmb_scene_save(const char* path);            /* PNG del frame corrente */
+int64_t gmb_scene_verts(void);                       /* geometria dichiarata */
+int64_t gmb_scene_tris(void);
+int64_t gmb_scene_drawn(void);                       /* triangoli rasterizzati */
+int64_t gmb_scene_culled(void);
+int64_t gmb_scene_pixels(void);
+int64_t gmb_scene_hash(void);                        /* FNV-1a del frame (0..2^32-1) */
+int64_t gmb_scene_pixel(int64_t x, int64_t y);       /* 0x00RRGGBB, -1 fuori target */
 
 /* Load che hanno parcheggiato il task (R11): 0 in T3, +1 per ogni load dentro
  * un task. Osservabile come alloc_count per R4. */

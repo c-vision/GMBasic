@@ -1589,4 +1589,14 @@ MCPSERVERMARKETPLACELIST = 730, MCPSERVERMARKETPLACEGET = 731, MCPLISTTOOLSSERVE
     CLOCK_ALPHA = 3909,
     CLOCK_FPS = 3910,
     CLOCK_SCALE = 3911,
+    // MOTORE 3D / SCENE (2026-11-24, P3): letture del renderer mesh. Stato solo nel runtime C:
+    // ogni backend inoltra a `gmb_scene_*` (IL/PCode via P/Invoke, VM/C e C99Native diretti).
+    // In coda: mirror in gmb_builtin.c.
+    SCENE_VERTS = 3912,
+    SCENE_TRIS = 3913,
+    SCENE_DRAWN = 3914,
+    SCENE_CULLED = 3915,
+    SCENE_PIXELS = 3916,
+    SCENE_HASH = 3917,
+    SCENE_PIXEL = 3918,
 }

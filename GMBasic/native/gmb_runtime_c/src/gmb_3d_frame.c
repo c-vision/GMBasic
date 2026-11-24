@@ -16,7 +16,14 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <math.h>
+#include <string.h>
 #include "gmb_c99gpm.h"
+/* Campionamento delle texture (wrap + nearest/bilineare): UNA sola sede, la
+ * suite. Il ciclo del framebuffer invece sta qui perché il target del runtime è
+ * ARGB+depth, non il framebuffer RGB float di gm_raster (§0bis: si condivide il
+ * campionatore e la matematica, non si duplica la stessa funzione). */
+#include "gm_gfx_raster.h"
 /* Scrittore PNG del runtime (gmb_graphics_screenshot.c): stessa implementazione
  * dello screenshot 2D, nessuna seconda copia (§0bis). */
 extern int save_png_rgb24(const char* path, const uint32_t* px, int w, int h);
@@ -261,4 +268,264 @@ unsigned long gmb_3d_alloc_count(void)
 const char* gmb_3d_last_error(void)
 {
     return g_last_error;
+}
+
+/* ═══ P3 — rasterizzatore mesh sul target ARGB+depth ══════════════════════
+ *
+ * Il ciclo caldo è quello deciso in specifica §11: test depth → campiona texel
+ * → salta alpha 0 → texel x tint x luce (interi) → scrivi la word. Niente
+ * palette, niente tabelle: il target È il framebuffer, in 0x00RRGGBB.
+ *
+ * Il clip è in CLIP SPACE contro i sei piani del frustum (|x|,|y|,|z| <= w),
+ * non contro un near/far passato a parte: i piani sono quelli della matrice,
+ * quindi non possono divergere da lei. L'UV si interpola corretto in
+ * prospettiva (u/w, v/w, 1/w) e la profondità scritta è la distanza di vista —
+ * la STESSA convenzione di gm_sector_render (0 = niente, vince il più grande),
+ * così i due renderer condividono il buffer senza conversioni.
+ *
+ * Il campionamento delle texture NON è reimplementato qui: si usa gm_tex_sample
+ * (wrap + nearest/bilineare della suite), unica sede di quella logica.
+ */
+
+typedef struct gmb_3d_vclip { float x, y, z, w, u, v; } gmb_3d_vclip;
+
+#define GMB3D_CLIP_MAX 12
+
+static float gmb3d_plane_d(const gmb_3d_vclip* v, int plane)
+{
+    switch (plane)
+    {
+        case 0:  return v->w + v->x;   /* x >= -w */
+        case 1:  return v->w - v->x;   /* x <=  w */
+        case 2:  return v->w + v->y;   /* y >= -w */
+        case 3:  return v->w - v->y;   /* y <=  w */
+        case 4:  return v->w + v->z;   /* near: z >= -w (clip z in [-1,1]) */
+        default: return v->w - v->z;   /* far:  z <=  w */
+    }
+}
+
+/* Sutherland-Hodgman su un piano del frustum: interpola anche u,v (lineari in
+ * clip space), così il taglio non introduce cuciture nelle coordinate. */
+static int gmb3d_clip_plane(const gmb_3d_vclip* in, int n, int plane, gmb_3d_vclip* out)
+{
+    int on = 0;
+    for (int i = 0; i < n; i++)
+    {
+        const gmb_3d_vclip* a = &in[i];
+        const gmb_3d_vclip* b = &in[(i + 1) % n];
+        float da = gmb3d_plane_d(a, plane);
+        float db = gmb3d_plane_d(b, plane);
+        int ina = da >= 0.0f;
+        int inb = db >= 0.0f;
+        if (ina) out[on++] = *a;
+        if (ina != inb)
+        {
+            float k = da / (da - db);
+            gmb_3d_vclip m;
+            m.x = a->x + k * (b->x - a->x);
+            m.y = a->y + k * (b->y - a->y);
+            m.z = a->z + k * (b->z - a->z);
+            m.w = a->w + k * (b->w - a->w);
+            m.u = a->u + k * (b->u - a->u);
+            m.v = a->v + k * (b->v - a->v);
+            out[on++] = m;
+        }
+    }
+    return on;
+}
+
+static float gmb3d_edge(float ax, float ay, float bx, float by, float px, float py)
+{
+    return (px - ax) * (by - ay) - (py - ay) * (bx - ax);
+}
+
+static unsigned gmb3d_clamp255(int v)
+{
+    return (v < 0) ? 0u : (v > 255 ? 255u : (unsigned)v);
+}
+
+/* Un triangolo già in screen space (y verso il basso), con 1/w e UV per vertice.
+ * Winding: una faccia frontale è CCW vista da fuori, e con y verso il basso la sua
+ * area calcolata da gmb3d_edge resta POSITIVA (verificato dai check dell'oracolo:
+ * «pixel centrale = tint» sul quad frontale e «back-face non scrive pixel» su
+ * quello invertito). Il cull lo decide il chiamante sul segno dell'area. */
+static void gmb3d_tri(gmb_3d_target_t* t, const gmb_3d_material_t* mat,
+                      const float s[3][2], const float iw[3], const float uv[3][2],
+                      gmb_3d_draw_stats_t* st)
+{
+    float area = gmb3d_edge(s[0][0], s[0][1], s[1][0], s[1][1], s[2][0], s[2][1]);
+    if (area == 0.0f) return;
+
+    int minx = (int)floorf(fminf(fminf(s[0][0], s[1][0]), s[2][0]));
+    int maxx = (int)ceilf (fmaxf(fmaxf(s[0][0], s[1][0]), s[2][0]));
+    int miny = (int)floorf(fminf(fminf(s[0][1], s[1][1]), s[2][1]));
+    int maxy = (int)ceilf (fmaxf(fmaxf(s[0][1], s[1][1]), s[2][1]));
+    if (minx < 0) minx = 0;
+    if (miny < 0) miny = 0;
+    if (maxx > t->w - 1) maxx = t->w - 1;
+    if (maxy > t->h - 1) maxy = t->h - 1;
+    if (minx > maxx || miny > maxy) return;
+
+    gm_tex tx;
+    tx.w = mat->tw;
+    tx.h = mat->th;
+    tx.rgba = (unsigned char*)mat->rgba;   /* sola lettura: il campionatore non scrive */
+
+    for (int y = miny; y <= maxy; y++)
+    {
+        float py = (float)y + 0.5f;
+        for (int x = minx; x <= maxx; x++)
+        {
+            float px = (float)x + 0.5f;
+            float b0 = gmb3d_edge(s[1][0], s[1][1], s[2][0], s[2][1], px, py) / area;
+            float b1 = gmb3d_edge(s[2][0], s[2][1], s[0][0], s[0][1], px, py) / area;
+            float b2 = gmb3d_edge(s[0][0], s[0][1], s[1][0], s[1][1], px, py) / area;
+            if (b0 < 0.0f || b1 < 0.0f || b2 < 0.0f) continue;
+
+            float iws = b0 * iw[0] + b1 * iw[1] + b2 * iw[2];
+            if (iws <= 0.0f) continue;
+            float d = 1.0f / iws;                       /* distanza di vista */
+            size_t idx = (size_t)y * (size_t)t->w + (size_t)x;
+            /* Depth = distanza (convenzione di gm_sector_render): 0 = niente
+             * disegnato, altrimenti vince la distanza PIU' PICCOLA (più vicino).
+             * Così un pass di mesh dopo i settori testa contro i loro valori
+             * senza conversioni, e l'ordine di disegno non conta. */
+            if (t->depth[idx] != 0.0f && d >= t->depth[idx]) continue;
+
+            int cr, cg, cb;
+            if (mat->rgba != NULL)
+            {
+                float u = (b0 * uv[0][0] * iw[0] + b1 * uv[1][0] * iw[1] + b2 * uv[2][0] * iw[2]) / iws;
+                float v = (b0 * uv[0][1] * iw[0] + b1 * uv[1][1] * iw[1] + b2 * uv[2][1] * iw[2]) / iws;
+                gm_real rgb[3];
+                gm_real a = 1.0;
+                gm_tex_sample(&tx, (gm_real)u, (gm_real)v, mat->bilinear, rgb, &a);
+                if (mat->masked && a <= 0.0) continue;  /* alpha-test */
+                cr = (int)((gmb3d_clamp255((int)(rgb[0] * 255.0 + 0.5)) * mat->tint_r) / 255u);
+                cg = (int)((gmb3d_clamp255((int)(rgb[1] * 255.0 + 0.5)) * mat->tint_g) / 255u);
+                cb = (int)((gmb3d_clamp255((int)(rgb[2] * 255.0 + 0.5)) * mat->tint_b) / 255u);
+            }
+            else
+            {
+                cr = mat->tint_r;
+                cg = mat->tint_g;
+                cb = mat->tint_b;
+            }
+            if (mat->light != 255)
+            {
+                cr = (cr * mat->light) / 255;
+                cg = (cg * mat->light) / 255;
+                cb = (cb * mat->light) / 255;
+            }
+            t->argb[idx] = ((uint32_t)cr << 16) | ((uint32_t)cg << 8) | (uint32_t)cb;
+            t->depth[idx] = d;
+            st->pixels++;
+        }
+    }
+}
+
+int gmb_3d_mesh_draw(gmb_3d_target_t* t, const float* mvp,
+                     const gmb_3d_mesh_t* m, const gmb_3d_material_t* mat,
+                     gmb_3d_draw_stats_t* stats)
+{
+    gmb_3d_draw_stats_t local;
+    if (stats == NULL) stats = &local;
+    memset(stats, 0, sizeof(*stats));
+
+    if (t == NULL || t->argb == NULL || t->depth == NULL || t->w <= 0 || t->h <= 0)
+    {
+        set_err("mesh: target non allocato");
+        return GMB_3D_E_ARG;
+    }
+    if (mvp == NULL || m == NULL || mat == NULL)
+    {
+        set_err("mesh: matrice, mesh o materiale mancanti");
+        return GMB_3D_E_ARG;
+    }
+    if (m->pos == NULL || m->idx == NULL || m->nv <= 0 || m->nt <= 0)
+    {
+        set_err("mesh: geometria non valida");
+        return GMB_3D_E_ARG;
+    }
+    if (mat->rgba != NULL && (mat->tw <= 0 || mat->th <= 0))
+    {
+        set_err("mesh: texture senza dimensioni");
+        return GMB_3D_E_ARG;
+    }
+    if (mat->rgba != NULL && m->uv == NULL)
+    {
+        set_err("mesh: texture senza coordinate uv");
+        return GMB_3D_E_ARG;
+    }
+
+    /* NULL mode: lo stato avanza, il disegno no (R8, T-NULL). */
+    if (g_present_mode == GMB_3D_MODE_NULL)
+    {
+        set_err("");
+        return GMB_3D_OK;
+    }
+
+    const int has_uv = (m->uv != NULL);
+
+    for (int i = 0; i < m->nt; i++)
+    {
+        int ia = m->idx[i * 3 + 0];
+        int ib = m->idx[i * 3 + 1];
+        int ic = m->idx[i * 3 + 2];
+        if (ia < 0 || ia >= m->nv || ib < 0 || ib >= m->nv || ic < 0 || ic >= m->nv)
+        {
+            set_err("mesh: indice fuori range");
+            return GMB_3D_E_ARG;
+        }
+
+        gmb_3d_vclip poly[GMB3D_CLIP_MAX], tmp[GMB3D_CLIP_MAX];
+        const int ii[3] = { ia, ib, ic };
+        for (int k = 0; k < 3; k++)
+        {
+            const float* p = m->pos + (size_t)ii[k] * 3;
+            gmb_3d_vclip* o = &poly[k];
+            o->x = mvp[0] * p[0] + mvp[4] * p[1] + mvp[8]  * p[2] + mvp[12];
+            o->y = mvp[1] * p[0] + mvp[5] * p[1] + mvp[9]  * p[2] + mvp[13];
+            o->z = mvp[2] * p[0] + mvp[6] * p[1] + mvp[10] * p[2] + mvp[14];
+            o->w = mvp[3] * p[0] + mvp[7] * p[1] + mvp[11] * p[2] + mvp[15];
+            o->u = has_uv ? m->uv[(size_t)ii[k] * 2 + 0] : 0.0f;
+            o->v = has_uv ? m->uv[(size_t)ii[k] * 2 + 1] : 0.0f;
+        }
+
+        int n = 3;
+        for (int plane = 0; plane < 6 && n >= 3; plane++)
+        {
+            n = gmb3d_clip_plane(poly, n, plane, tmp);
+            for (int k = 0; k < n; k++) poly[k] = tmp[k];
+        }
+        if (n < 3) { stats->tris_culled++; continue; }   /* fuori dal frustum */
+        if (n > 3) stats->tris_clipped++;
+
+        float sx[GMB3D_CLIP_MAX], sy[GMB3D_CLIP_MAX];
+        float iw[GMB3D_CLIP_MAX], uv[GMB3D_CLIP_MAX][2];
+        for (int k = 0; k < n; k++)
+        {
+            float invw = 1.0f / poly[k].w;
+            sx[k] = (poly[k].x * invw * 0.5f + 0.5f) * (float)(t->w - 1);
+            sy[k] = (0.5f - poly[k].y * invw * 0.5f) * (float)(t->h - 1);
+            iw[k] = invw;
+            uv[k][0] = poly[k].u;
+            uv[k][1] = poly[k].v;
+        }
+
+        for (int k = 1; k + 1 < n; k++)
+        {
+            float s[3][2] = { { sx[0], sy[0] }, { sx[k], sy[k] }, { sx[k + 1], sy[k + 1] } };
+            float tuv[3][2] = { { uv[0][0], uv[0][1] }, { uv[k][0], uv[k][1] }, { uv[k + 1][0], uv[k + 1][1] } };
+            float tiw[3] = { iw[0], iw[k], iw[k + 1] };
+            float a2 = gmb3d_edge(s[0][0], s[0][1], s[1][0], s[1][1], s[2][0], s[2][1]);
+            if (a2 == 0.0f) continue;
+            if (!mat->two_sided && a2 < 0.0f) { stats->tris_culled++; continue; }  /* back-face */
+            gmb3d_tri(t, mat, s, tiw, tuv, stats);
+            stats->tris_drawn++;
+        }
+    }
+
+    set_err("");
+    return GMB_3D_OK;
 }

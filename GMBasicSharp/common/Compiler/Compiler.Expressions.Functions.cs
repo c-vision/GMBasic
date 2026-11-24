@@ -935,6 +935,11 @@ public sealed partial class Compiler
         { TokenKind.FloorZ, BuiltInFunction.WORLD_FLOORZ }, { TokenKind.CeilZ, BuiltInFunction.WORLD_CEILZ },
         // CLOCK (tempo a passo fisso): letture dell'orologio — stato solo nel runtime C.
         { TokenKind.ClockDt, BuiltInFunction.CLOCK_DT }, { TokenKind.ClockAlpha, BuiltInFunction.CLOCK_ALPHA },
+        // SCENE (motore 3D, renderer mesh): letture della scena — stato solo nel runtime C.
+        { TokenKind.SceneVerts, BuiltInFunction.SCENE_VERTS }, { TokenKind.SceneTris, BuiltInFunction.SCENE_TRIS },
+        { TokenKind.SceneDrawn, BuiltInFunction.SCENE_DRAWN }, { TokenKind.SceneCulled, BuiltInFunction.SCENE_CULLED },
+        { TokenKind.ScenePixels, BuiltInFunction.SCENE_PIXELS }, { TokenKind.SceneHash, BuiltInFunction.SCENE_HASH },
+        { TokenKind.ScenePixel, BuiltInFunction.SCENE_PIXEL },
         { TokenKind.ClockFps, BuiltInFunction.CLOCK_FPS }, { TokenKind.ClockScale, BuiltInFunction.CLOCK_SCALE },
         // FINANCE varianti (2026-08-06). YIELD riusa TokenKind.Yield (comando task YIELD e'
         // statement-only via ParseYieldStatement, nessun conflitto con la funzione qualificata).

@@ -1307,6 +1307,20 @@ public static partial class Linker
                     ScopeId = currentScopeId
                 };
 
+            // SCENE (motore 3D, renderer mesh — P3): stesso trattamento di WORLD. Il dispatch nei
+            // backend è per TokenKind del verbo, quindi l'ID del simbolo non entra nella semantica.
+            case SceneCommandStmt sn:
+                var sSyms = program.Symbols.GetSymbolIdsByNamespace("SCENE");
+                var sId = sSyms?.Select(id => program.Symbols.GetSymbol(id))
+                    .FirstOrDefault(sym =>
+                        sym.OriginalName.Equals(sn.Command.Lexeme, StringComparison.OrdinalIgnoreCase))?.Id ?? -1;
+                return sn with
+                {
+                    Arguments = [..sn.Arguments.Select(a => BindExpression(a, program, isStrict))],
+                    CommandSymbolId = sId,
+                    ScopeId = currentScopeId
+                };
+
             // CLOCK (tempo a passo fisso): stesso trattamento di WORLD — il comando si risolve nel
             // namespace CLOCK e gli argomenti si bindano; il dispatch nei backend è per TokenKind
             // del verbo, quindi l'ID del simbolo non entra nella semantica.

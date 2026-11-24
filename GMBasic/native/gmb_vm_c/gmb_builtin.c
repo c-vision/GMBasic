@@ -11330,6 +11330,47 @@ static void gmb_bf_world_ceilz(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, 
     bout->result = gmb_world_ceil(argc >= 1 ? (int)vm_num(&args[0]) : 0);
 }
 
+/* ── MOTORE 3D / SCENE (2026-11-24, P3) — letture del renderer mesh ─────────────────────────
+ * Come le gambe C99Native: nessuno stato della scena qui, si chiama la facciata `gmb_scene_*`
+ * del runtime condiviso (gmb_3d_cmd.c). HASH è il FNV-1a del frame (determinismo), PIXEL(x,y)
+ * il colore 0x00RRGGBB del target (−1 fuori dai limiti). */
+static void gmb_bf_scene_verts(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
+{
+    (void)vm; (void)task; (void)func_code; (void)args; (void)argc;
+    bout->result = (double)gmb_scene_verts();
+}
+static void gmb_bf_scene_tris(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
+{
+    (void)vm; (void)task; (void)func_code; (void)args; (void)argc;
+    bout->result = (double)gmb_scene_tris();
+}
+static void gmb_bf_scene_drawn(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
+{
+    (void)vm; (void)task; (void)func_code; (void)args; (void)argc;
+    bout->result = (double)gmb_scene_drawn();
+}
+static void gmb_bf_scene_culled(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
+{
+    (void)vm; (void)task; (void)func_code; (void)args; (void)argc;
+    bout->result = (double)gmb_scene_culled();
+}
+static void gmb_bf_scene_pixels(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
+{
+    (void)vm; (void)task; (void)func_code; (void)args; (void)argc;
+    bout->result = (double)gmb_scene_pixels();
+}
+static void gmb_bf_scene_hash(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
+{
+    (void)vm; (void)task; (void)func_code; (void)args; (void)argc;
+    bout->result = (double)gmb_scene_hash();
+}
+static void gmb_bf_scene_pixel(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
+{
+    (void)vm; (void)task; (void)func_code;
+    bout->result = (double)gmb_scene_pixel(argc >= 1 ? (int64_t)vm_num(&args[0]) : 0,
+                                          argc >= 2 ? (int64_t)vm_num(&args[1]) : 0);
+}
+
 /* ── TEMPO A PASSO FISSO / CLOCK (2026-11-20) ────────────────────────────────────────────
  * Letture del dominio CLOCK. Come le altre gambe: nessuno stato qui, si chiama la facciata
  * `gmb_clock_frame_*` del runtime condiviso (gmb_clock.c). Nessuna accetta argomenti. */
@@ -16823,6 +16864,14 @@ static const gmb_bf_impl_t gmb_bf_impl_core[] = {
     { 3909, gmb_bf_clock_alpha },
     { 3910, gmb_bf_clock_fps },
     { 3911, gmb_bf_clock_scale },
+    /* motore 3D — renderer mesh (2026-11-24, P3): letture SCENE.* → facciata gmb_scene_* */
+    { 3912, gmb_bf_scene_verts },
+    { 3913, gmb_bf_scene_tris },
+    { 3914, gmb_bf_scene_drawn },
+    { 3915, gmb_bf_scene_culled },
+    { 3916, gmb_bf_scene_pixels },
+    { 3917, gmb_bf_scene_hash },
+    { 3918, gmb_bf_scene_pixel },
     { 826, gmb_bf_796_c826 },
     { 827, gmb_bf_796_c827 },
     { 828, gmb_bf_796_c828 },

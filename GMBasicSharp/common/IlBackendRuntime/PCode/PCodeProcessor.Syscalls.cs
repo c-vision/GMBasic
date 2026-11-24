@@ -902,6 +902,73 @@ internal sealed partial class PCodeProcessor
                 CommonLib.ClockNative.SetFps(fps);
                 break;
             }
+            // --- MOTORE 3D / SCENE (2026-11-24, P3): comandi del renderer mesh. La scena vive
+            // SOLO nel runtime C: qui si inoltra alla facciata gmb_scene_* (CommonLib.Scene3DNative).
+            // Gli argomenti sono sullo stack nell'ordine della sorgente → si estraggono al
+            // contrario. Il rc della facciata non è leggibile da un comando (§1).
+            case SysCall.SCENE_RESET:
+                CommonLib.Scene3DNative.Reset();
+                break;
+            case SysCall.SCENE_VIEW:
+            {
+                var fov = PopNum(task); var h = PopInt(task); var w = PopInt(task);
+                CommonLib.Scene3DNative.View(w, h, fov);
+                break;
+            }
+            case SysCall.SCENE_TEXTURE:
+            {
+                var cells = PopInt(task);
+                CommonLib.Scene3DNative.Texture(cells);
+                break;
+            }
+            case SysCall.SCENE_OBJECT:
+            {
+                var b = PopInt(task); var g = PopInt(task); var r = PopInt(task);
+                CommonLib.Scene3DNative.Object(r, g, b);
+                break;
+            }
+            case SysCall.SCENE_VERTEX:
+            {
+                var v = PopNum(task); var u = PopNum(task); var z = PopNum(task);
+                var y = PopNum(task); var x = PopNum(task);
+                CommonLib.Scene3DNative.Vertex(x, y, z, u, v);
+                break;
+            }
+            case SysCall.SCENE_QUAD:
+            {
+                var d = PopInt(task); var c = PopInt(task); var b = PopInt(task); var a = PopInt(task);
+                CommonLib.Scene3DNative.Quad(a, b, c, d);
+                break;
+            }
+            case SysCall.SCENE_BOX:
+            {
+                var z1 = PopNum(task); var y1 = PopNum(task); var x1 = PopNum(task);
+                var z0 = PopNum(task); var y0 = PopNum(task); var x0 = PopNum(task);
+                CommonLib.Scene3DNative.Box(x0, y0, z0, x1, y1, z1);
+                break;
+            }
+            case SysCall.SCENE_OBJPOS:
+            {
+                var yaw = PopNum(task); var z = PopNum(task); var y = PopNum(task); var x = PopNum(task);
+                CommonLib.Scene3DNative.ObjPos(x, y, z, yaw);
+                break;
+            }
+            case SysCall.SCENE_CAMERA:
+            {
+                var pitch = PopNum(task); var yaw = PopNum(task); var z = PopNum(task);
+                var y = PopNum(task); var x = PopNum(task);
+                CommonLib.Scene3DNative.Camera(x, y, z, yaw, pitch);
+                break;
+            }
+            case SysCall.SCENE_RENDER:
+                CommonLib.Scene3DNative.Render();
+                break;
+            case SysCall.SCENE_SAVE:
+            {
+                var path = PopString(task) ?? "";
+                CommonLib.Scene3DNative.Save(path);
+                break;
+            }
             case SysCall.PALETTE_USE:
             {
                 var name = PopString(task) ?? "";

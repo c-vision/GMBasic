@@ -1073,6 +1073,10 @@ static gmb_stmt_t* gmb_p_parse_stmt_impl(gmb_parser_t* p, bool* multiline)
      * il comando richiede IMPORT CLOCK (le letture qualificate sono gated nel parser delle
      * espressioni, stesso messaggio). */
     if (t->kind == GMB_TOK_Clock && p && !gmb_p_require_import(p, "CLOCK", line)) return NULL;
+    /* SCENE (motore 3D, renderer mesh — P3): come WORLD/CLOCK il dominio non è implicito —
+     * il comando richiede IMPORT SCENE (le letture qualificate sono gated nel parser delle
+     * espressioni, stesso messaggio). */
+    if (t->kind == GMB_TOK_Scene && p && !gmb_p_require_import(p, "SCENE", line)) return NULL;
     if (gmb_p_is_domain_ns(t->kind) && !http_cmd && !ws_cmd && !ai_next_dot && !ns_var_use) { gmb_stmt_t* dm = gmb_p_parse_domain_stmt(p, line); if (dm) return dm; }
     /* BARE COMMAND FALLBACK: comandi RDD usati SENZA prefisso `RDD` (es. `USE ":memory:" VIA
      * "ARRAY" ALIAS T1`), quando RDD è importato/attivo (parity Parser bare-command fallback). */

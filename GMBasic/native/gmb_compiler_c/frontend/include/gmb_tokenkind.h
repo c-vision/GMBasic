@@ -2717,9 +2717,28 @@ typedef enum gmb_tokenkind {
     GMB_TOK_ClockAlpha,
     GMB_TOK_ClockFps,
     GMB_TOK_ClockScale,
+    GMB_TOK_Scene,
+    GMB_TOK_SceneReset,
+    GMB_TOK_SceneView,
+    GMB_TOK_SceneTexture,
+    GMB_TOK_SceneObject,
+    GMB_TOK_SceneVertex,
+    GMB_TOK_SceneQuad,
+    GMB_TOK_SceneBox,
+    GMB_TOK_SceneObjPos,
+    GMB_TOK_SceneCamera,
+    GMB_TOK_SceneRender,
+    GMB_TOK_SceneSave,
+    GMB_TOK_SceneVerts,
+    GMB_TOK_SceneTris,
+    GMB_TOK_SceneDrawn,
+    GMB_TOK_SceneCulled,
+    GMB_TOK_ScenePixels,
+    GMB_TOK_SceneHash,
+    GMB_TOK_ScenePixel,
 } gmb_tokenkind_t;
   
-  #define GMB_TOK_COUNT 2692
+  #define GMB_TOK_COUNT 2711
 
 /* 2026-09-09 (direttiva 2026-09-08): gmb_tokenkind_name()/gmb_tokenkind_from_name() e la
  * tabella gmb_token_names[] sono state RIMOSSE — dispatch solo per TokenKind; la risoluzione

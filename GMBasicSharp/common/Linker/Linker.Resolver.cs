@@ -1598,6 +1598,13 @@ public static partial class Linker
                     s.Token
                 ) { ScopeId = s.ScopeId, CommandSymbolId = s.CommandSymbolId };
 
+            case SceneCommandStmt sn:
+                return new SceneCommandStmt(
+                    sn.Command,
+                    [..sn.Arguments.Select(a => ResolveExpression(a, program))],
+                    sn.Token
+                ) { ScopeId = sn.ScopeId, CommandSymbolId = sn.CommandSymbolId };
+
             case ClockCommandStmt c:
                 return new ClockCommandStmt(
                     c.Command,

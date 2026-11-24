@@ -111,6 +111,143 @@ static int wns_is_world(const char* name, const char* ns)
     return n == 5 && strncasecmp(name, "WORLD", 5) == 0;
 }
 
+/* ═══ SCENE — renderer mesh (P3) ══════════════════════════════════════════════
+ *
+ * Sintassi (piano §4.2, ridotta a ciò che il kernel P3 espone):
+ *   SCENE RESET                              ' azzera geometria e camera
+ *   SCENE VIEW w, h, fov                     ' target + campo visivo VERTICALE in gradi
+ *   SCENE TEXTURE celle                      ' texture a scacchi procedurale (1..64)
+ *   SCENE OBJECT r, g, b                     ' apre un oggetto con la sua tinta
+ *   SCENE VERTEX x, y, z, u, v               ' vertice dell'oggetto corrente
+ *   SCENE QUAD a, b, c, d                    ' due triangoli sui vertici dichiarati
+ *   SCENE BOX x0, y0, z0, x1, y1, z1         ' 24 vertici, 12 triangoli, UV per faccia
+ *   SCENE OBJPOS x, y, z, yaw                ' posizione/rotazione dell'oggetto corrente
+ *   SCENE CAMERA x, y, z, yaw, pitch         ' yaw 0 = +z, pitch < 0 = in basso
+ *   SCENE RENDER                             ' rasterizza nel target
+ *   SCENE SAVE path$                         ' PNG del frame corrente
+ *
+ * Letture: SCENE.VERTS/TRIS/DRAWN/CULLED/PIXELS/HASH/PIXEL(x,y).
+ *
+ * Anche qui nessuna logica: ogni verbo è UNA chiamata alla facciata `gmb_scene_*` di
+ * gmb_3d_cmd.c, che a sua volta chiama il kernel `gmb_3d_mesh_draw` (§0bis).
+ */
+void emit_scene_domain(ctx_t* c, gmb_stmt_t* s)
+{
+    int tk = s->act_tk;
+    gmb_expr_t** a = s->go_args;
+    int n = s->n_go_args;
+
+    if (tk == GMB_TOK_SceneReset)
+    {
+        if (n > 0) { c99_fail(c, s->line, "SCENE RESET non accetta argomenti"); return; }
+        wcall(c, "gmb_scene_reset", a, 0);
+        return;
+    }
+    if (tk == GMB_TOK_SceneView)
+    {
+        if (n < 3) { c99_fail(c, s->line, "SCENE VIEW w, h, fov"); return; }
+        wcall(c, "gmb_scene_view", a, 3);
+        return;
+    }
+    if (tk == GMB_TOK_SceneTexture)
+    {
+        if (n < 1) { c99_fail(c, s->line, "SCENE TEXTURE celle"); return; }
+        wcall(c, "gmb_scene_checker", a, 1);
+        return;
+    }
+    if (tk == GMB_TOK_SceneObject)
+    {
+        if (n < 3) { c99_fail(c, s->line, "SCENE OBJECT r, g, b"); return; }
+        wcall(c, "gmb_scene_object", a, 3);
+        return;
+    }
+    if (tk == GMB_TOK_SceneVertex)
+    {
+        if (n < 5) { c99_fail(c, s->line, "SCENE VERTEX x, y, z, u, v"); return; }
+        wcall(c, "gmb_scene_vertex", a, 5);
+        return;
+    }
+    if (tk == GMB_TOK_SceneQuad)
+    {
+        if (n < 4) { c99_fail(c, s->line, "SCENE QUAD a, b, c, d"); return; }
+        wcall(c, "gmb_scene_quad", a, 4);
+        return;
+    }
+    if (tk == GMB_TOK_SceneBox)
+    {
+        if (n < 6) { c99_fail(c, s->line, "SCENE BOX x0, y0, z0, x1, y1, z1"); return; }
+        wcall(c, "gmb_scene_box", a, 6);
+        return;
+    }
+    if (tk == GMB_TOK_SceneObjPos)
+    {
+        if (n < 4) { c99_fail(c, s->line, "SCENE OBJPOS x, y, z, yaw"); return; }
+        wcall(c, "gmb_scene_objpos", a, 4);
+        return;
+    }
+    if (tk == GMB_TOK_SceneCamera)
+    {
+        if (n < 5) { c99_fail(c, s->line, "SCENE CAMERA x, y, z, yaw, pitch"); return; }
+        wcall(c, "gmb_scene_camera", a, 5);
+        return;
+    }
+    if (tk == GMB_TOK_SceneRender)
+    {
+        if (n > 0) { c99_fail(c, s->line, "SCENE RENDER non accetta argomenti"); return; }
+        wcall(c, "gmb_scene_render", a, 0);
+        return;
+    }
+    if (tk == GMB_TOK_SceneSave)
+    {
+        if (n < 1) { c99_fail(c, s->line, "SCENE SAVE: manca il percorso del PNG"); return; }
+        ind(c);
+        sb_put(&c->out, "(void)gmb_scene_save((");
+        emit_str_operand(c, a[0]);
+        sb_put(&c->out, ").data);\n");
+        return;
+    }
+    c99_fail(c, s->line, "SCENE: verbo non supportato dall'emitter nativo");
+}
+
+/* Namespace della call per SCENE, con la stessa doppia forma di WORLD: `ns` a parte oppure
+ * fuso nel nome (`var = "SCENE.VERTS"`). */
+static int sns_is_scene(const char* name, const char* ns)
+{
+    if (ns && ns[0]) return strcasecmp(ns, "SCENE") == 0;
+    if (!name) return 0;
+    const char* dot = strrchr(name, '.');
+    if (!dot || dot == name) return 0;
+    size_t n = (size_t)(dot - name);
+    return n == 5 && strncasecmp(name, "SCENE", 5) == 0;
+}
+
+/* Letture qualificate della scena: SCENE.VERTS() ecc. */
+int emit_bf_scene(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk,
+                  gmb_expr_t** args, int nargs, int line)
+{
+    (void)line;
+    if (!sns_is_scene(name, ns)) return 0;
+
+    switch (tk)
+    {
+        case GMB_TOK_SceneVerts:  sb_put(&c->out, "gmb_scene_verts()");  return 1;
+        case GMB_TOK_SceneTris:   sb_put(&c->out, "gmb_scene_tris()");   return 1;
+        case GMB_TOK_SceneDrawn:  sb_put(&c->out, "gmb_scene_drawn()");  return 1;
+        case GMB_TOK_SceneCulled: sb_put(&c->out, "gmb_scene_culled()"); return 1;
+        case GMB_TOK_ScenePixels: sb_put(&c->out, "gmb_scene_pixels()"); return 1;
+        case GMB_TOK_SceneHash:   sb_put(&c->out, "gmb_scene_hash()");   return 1;
+        case GMB_TOK_ScenePixel:
+            if (nargs < 2) return 0;
+            sb_put(&c->out, "gmb_scene_pixel(");
+            emit_expr(c, args[0]);
+            sb_put(&c->out, ", ");
+            emit_expr(c, args[1]);
+            sb_put(&c->out, ")");
+            return 1;
+        default: return 0;
+    }
+}
+
 /* Letture qualificate: WORLD.MOVING(…) ecc. Il filtro sul namespace serve a `TIME`,
  * che altrove è la funzione omonima: senza qualifica WORLD non è roba nostra. */
 int emit_bf_world(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk,

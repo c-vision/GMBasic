@@ -1714,7 +1714,8 @@ gmb_expr_t* gmb_p_parse_primary(gmb_parser_t* p)
                 /* `WORLD` e `CLOCK` non sono impliciti: anche le LETTURE qualificate
                  * (`WORLD.TIME()`, `WORLD.MOVING(1)`, `CLOCK.DT()`, `CLOCK.ALPHA()`, …) richiedono
                  * il loro IMPORT, come i comandi (stessa regola e stesso messaggio). */
-                if (nsbuf[0] && (strcasecmp(nsbuf, "WORLD") == 0 || strcasecmp(nsbuf, "CLOCK") == 0)
+                if (nsbuf[0] && (strcasecmp(nsbuf, "WORLD") == 0 || strcasecmp(nsbuf, "CLOCK") == 0
+                                 || strcasecmp(nsbuf, "SCENE") == 0)
                     && !gmb_p_require_import(p, nsbuf, line))
                     return gmb_expr_num(0, line);
                 int ct = -1;

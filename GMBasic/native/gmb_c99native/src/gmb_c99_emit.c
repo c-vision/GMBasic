@@ -6640,6 +6640,8 @@ int emit_bf_matrix(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t t
  * (questo TU non include l'header interno: le dichiarazioni stanno qui). */
 void emit_world_domain(ctx_t* c, gmb_stmt_t* s);
 int emit_bf_world(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk, gmb_expr_t** args, int nargs, int line);
+void emit_scene_domain(ctx_t* c, gmb_stmt_t* s);
+int emit_bf_scene(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk, gmb_expr_t** args, int nargs, int line);
 /* Tempo a passo fisso (2026-11-20): dominio CLOCK e letture CLOCK.* — definiti in
  * gmb_c99_emit_clock.c (questo TU non include l'header interno: le dichiarazioni stanno qui). */
 void emit_clock_domain(ctx_t* c, gmb_stmt_t* s);
@@ -7843,6 +7845,14 @@ static const gmb_bf_row_t gmb_bf_composite[] = {
     { NULL, GMB_TOK_ClockAlpha, emit_bf_clock },
     { NULL, GMB_TOK_ClockFps,   emit_bf_clock },
     { NULL, GMB_TOK_ClockScale, emit_bf_clock },
+    /* Motore 3D (P3): letture della scena mesh — SCENE.VERTS/TRIS/DRAWN/CULLED/PIXELS/HASH/PIXEL. */
+    { NULL, GMB_TOK_SceneVerts,  emit_bf_scene },
+    { NULL, GMB_TOK_SceneTris,   emit_bf_scene },
+    { NULL, GMB_TOK_SceneDrawn,  emit_bf_scene },
+    { NULL, GMB_TOK_SceneCulled, emit_bf_scene },
+    { NULL, GMB_TOK_ScenePixels, emit_bf_scene },
+    { NULL, GMB_TOK_SceneHash,   emit_bf_scene },
+    { NULL, GMB_TOK_ScenePixel,  emit_bf_scene },
     { NULL, GMB_TOK_MatrixColumnCount, emit_bf_matrix },
     { NULL, GMB_TOK_MatrixIsLowerTriangular, emit_bf_matrix },
     { NULL, GMB_TOK_MatrixIsUpperTriangular, emit_bf_matrix },
@@ -31424,6 +31434,7 @@ static void st_domain(ctx_t* c, gmb_stmt_t* s) {
         if (wnk == GMB_TOK_Matrix) { emit_lin_matrix_domain(c, s); return; }
         if (wnk == GMB_TOK_World) { emit_world_domain(c, s); return; }   /* motore 3D (P2) */
         if (wnk == GMB_TOK_Clock) { emit_clock_domain(c, s); return; }   /* tempo a passo fisso (2026-11-20) */
+        if (wnk == GMB_TOK_Scene) { emit_scene_domain(c, s); return; }   /* motore 3D — mesh (P3) */
         if (wnk == GMB_TOK_Torch) { emit_torch_domain(c, s); return; }
         c99_fail(c, s->line, "statement di dominio '%s' non ancora supportato dall'emitter nativo", s->win_name ? s->win_name : "?");
         return;

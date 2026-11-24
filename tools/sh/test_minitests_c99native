@@ -767,7 +767,7 @@ for f in "$MINI"/**/*.bas "$MINI"/*.bas; do
   # include della suite sono già in $INC_RT (compute/graphics/math), quindi i due sorgenti si
   # compilano nella stessa riga di link. Condizionale: chi non usa il 3D non li paga.
   GFX_SRCS=""
-  if grep -qE 'gmb_world_|gmb_3d_' "$WORK/out.c" 2>/dev/null; then
+  if grep -qE 'gmb_world_|gmb_3d_|gmb_scene_' "$WORK/out.c" 2>/dev/null; then
     GFX_SRCS="$MONO/shared/libs/graphics/src/gm_gfx_raster.c $MONO/shared/libs/graphics/src/gm_gfx_sector.c"
   fi
   LINK_IN=( ${TRAY_IN[@]+"${TRAY_IN[@]}"} "$RT_LIB" $AGENT $COMPILER "$DB_LIB" ${LLM_STATIC[@]+"${LLM_STATIC[@]}"} $DOC_SRCS $TORCH_SRCS $GFX_SRCS )

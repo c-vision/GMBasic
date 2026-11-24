@@ -543,6 +543,23 @@ public enum SysCall : ushort
     CLOCK_RESUME = 477,     // ()        → gmb_clock_frame_pause(0)
     CLOCK_SCALE = 478,      // (secondi) → gmb_clock_frame_set_scale
     CLOCK_FPS = 479,        // (freq)    → gmb_clock_frame_set_fps
+
+    // --- MOTORE 3D / SCENE (2026-11-24, P3): comandi del renderer mesh. Stato solo nel runtime C:
+    // PCodeProcessor e gmb_vm_core.c inoltrano alla facciata gmb_scene_* (§0bis). Un verbo, una
+    // syscall (l'esecutore non riceve l'arità, ma ogni verbo ha arità fissa). ---
+    // 480 libero; 481/482 sono SET_MESSAGE/SET_ERROR (console legacy, ordine storico): la
+    // numerazione SCENE parte da 483 per non rubare un codice a chi lo usa già.
+    SCENE_RESET = 483,      // ()                        → gmb_scene_reset
+    SCENE_VIEW = 484,       // (w, h, fov)               → gmb_scene_view
+    SCENE_TEXTURE = 485,    // (celle)                   → gmb_scene_checker
+    SCENE_OBJECT = 486,     // (r, g, b)                 → gmb_scene_object
+    SCENE_VERTEX = 487,     // (x, y, z, u, v)           → gmb_scene_vertex
+    SCENE_QUAD = 488,       // (a, b, c, d)              → gmb_scene_quad
+    SCENE_BOX = 489,        // (x0, y0, z0, x1, y1, z1)  → gmb_scene_box
+    SCENE_OBJPOS = 490,     // (x, y, z, yaw)            → gmb_scene_objpos
+    SCENE_CAMERA = 491,     // (x, y, z, yaw, pitch)     → gmb_scene_camera
+    SCENE_RENDER = 492,     // ()                        → gmb_scene_render
+    SCENE_SAVE = 493,       // (path)                    → gmb_scene_save
 }
 
 /// <summary>
