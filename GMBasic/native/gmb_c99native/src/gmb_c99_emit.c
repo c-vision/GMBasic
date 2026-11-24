@@ -3766,8 +3766,14 @@ static void reg_let_assign(ctx_t* c, gmb_stmt_t* s, vars_t* scope) {
             /* `DIM x$() AS STRING` + `x$ = IO.READLINES(...)`: l'array DICHIARATO resta un array
              * (ptr + _len), non viene riclassificato a gmb_list_t. L'assegnazione ha gia' la
              * conversione gmb_list_to_strings_array, e passare x$ a un parametro array esige
-             * is_array: senza, "l'argomento N non e' un array" (recon_stdlib.bas, FileNamespace). */
-            if (s->value && s->value->kind == GMB_EXPR_CALL
+             * is_array: senza, "l'argomento N non e' un array" (recon_stdlib.bas, FileNamespace).
+             * Stessa cosa per SPLIT/ATOKENS: sono array NATIVI di stringhe (ramo di emissione
+             * dedicato, gmb_str_split_strings). Classificarli lista qui lasciava la variabile
+             * dichiarata `gmb_string_t*` ma letta da UBOUND/JOIN come `gmb_list_t`
+             * (cc: incompatible type; StringsExamples.bas). */
+            int split_like = s->value && s->value->kind == GMB_EXPR_CALL
+                             && (s->value->tk == GMB_TOK_Split || s->value->tk == GMB_TOK_ATokens);
+            if (s->value && s->value->kind == GMB_EXPR_CALL && !split_like
                 && !(s->value->tk == GMB_TOK_ReadLinesFunc && tv->is_array && tv->dyn_len && tv->type == TY_STR)
                 && (!tv->is_array || (tv->dyn_len && !tv->gkind && !tv->matrix))) {
                 int es0 = 0;
@@ -4095,7 +4101,13 @@ if (s->dim_var) {            int ty = suffix_type(s->dim_var);
              * L'inferenza esisteva gia' per la forma assegnazione, ma non per DIM. */
             if (!s->array_size && s->dim_init && s->dim_init->kind == GMB_EXPR_CALL) {
                 int es = 0;
-                if (!call_q_user_fn(c, s->dim_init) && tk_returns_list(s->dim_init->tk, &es)) {
+                /* `LET x() = SPLIT(...)` / ATOKENS: array NATIVO di stringhe
+                 * (gmb_string_t* + _len, ramo di emissione dedicato). Classificarlo come
+                 * gmb_list_t qui rendeva UBOUND/JOIN chiamate su 'gmb_list_t' applicate a un
+                 * 'gmb_string_t*' (cc: incompatible type; StringsExamples.bas). */
+                int paren_arr_of_str = s->dim_empty_parens
+                    && (s->dim_init->tk == GMB_TOK_Split || s->dim_init->tk == GMB_TOK_ATokens);
+                if (!paren_arr_of_str && !call_q_user_fn(c, s->dim_init) && tk_returns_list(s->dim_init->tk, &es)) {
                     v->gkind = GK_LIST; v->elem_str = es; if (es) v->type = TY_STR;
                     if (tk_is_md_list(s->dim_init->tk)) v->elem_boxed = 1;
                 }
@@ -4519,6 +4531,21 @@ if (s->dim_var) {            int ty = suffix_type(s->dim_var);
                 } else {
                     v->is_array = 1; v->ndims = 1; v->dyn_len = 1;   /* AS STRING (con init) */
                 }
+            }
+            /* `LET x() = <call array-returning>` su un array a bound FISSO già dichiarato
+             * (`DIM L$(5)` + `L$() = SPLIT(...)`): l'assegnazione SOSTITUISCE l'array, quindi
+             * la variabile diventa dinamica (ptr + _len) — stessa semantica della forma senza
+             * parentesi. Prima restava "fissa" e l'emissione scriveva `L_len` MAI dichiarato
+             * (cc: use of undeclared identifier 'L_len'; StringsExamples.bas).
+             * Solo per le call che ritornano un ARRAY (SPLIT/ATOKENS/READLINES/funzione
+             * utente AS ARRAY): un `DIM M(r,c)` riempito da un letterale resta matrice. */
+            if (v->is_array && !v->dyn_len && !v->gkind && !v->matrix && !v->jagged && !v->boxed_val
+                && !v->vclass[0] && s->dim_empty_parens && s->dim_init
+                && s->dim_init->kind == GMB_EXPR_CALL
+                && (s->dim_init->tk == GMB_TOK_Split || s->dim_init->tk == GMB_TOK_ATokens
+                    || s->dim_init->tk == GMB_TOK_ReadLinesFunc
+                    || (s->dim_init->var && user_fn_ret_arr(c, s->dim_init->var, s->dim_init->nargs)))) {
+                v->dyn_len = 1;
             }
             /* DIM x() = <dict boxed>("chiave") → byte[] (gmb_string_t binaria): il val boxed
              * (gmb_make_val_bytes, es. BLOCKCHAIN.DERIVEKEY(...)("privateKey")) è estratto
@@ -12056,11 +12083,14 @@ static void emit_call(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_
         else sb_put(&c->out, "gmb_string_alloc(\"DOUBLE\")");
         return;
     }
-    /* UBOUND(lista) → count-1 (iterazione su collezioni) */
+    /* UBOUND(lista) → count-1 (iterazione su collezioni).
+     * Se la variabile è ANCHE un array nativo dinamico (`gmb_string_t* + _len`, es. dopo
+     * `LIST$() = SPLIT(...)`) vince l'array: il tipo C emesso è l'array, e gmb_list_count su
+     * di esso non compila (cc: incompatible type). */
     if (tk == GMB_TOK_UBound && nargs == 1 && args[0]
         && args[0]->kind == GMB_EXPR_VAR && args[0]->var) {
         var_t* uv = lookup_var(c, args[0]->var);
-        if (uv && uv->gkind && gk_is_list(uv->gkind)) {
+        if (uv && uv->gkind && gk_is_list(uv->gkind) && !(uv->is_array && uv->dyn_len)) {
             sb_put(&c->out, "(gmb_double_t)(gmb_list_count(");
             sb_ident(&c->out, uv->name);
             sb_put(&c->out, ") - 1)");
@@ -16833,13 +16863,29 @@ static int is_matrix_value_call_tk(gmb_tokenkind_t tk) {
               && !sv->str_escape && !bare_self
               && etype(c, value) == TY_STR) {
               ind(c);
-              sb_put(&c->out, "{ gmb_string_t __gmb_nv = ");
-              emit_expr(c, value);
-              sb_put(&c->out, "; gmb_string_free(&");
-              emit_ident(c, sv->name);
-              sb_put(&c->out, "); ");
-              emit_ident(c, sv->name);
-              sb_put(&c->out, " = __gmb_nv; }\n");
+              if (is_str_temp_expr(c, value)) {
+                  sb_put(&c->out, "{ gmb_string_t __gmb_nv = ");
+                  emit_expr(c, value);
+                  sb_put(&c->out, "; gmb_string_free(&");
+                  emit_ident(c, sv->name);
+                  sb_put(&c->out, "); ");
+                  emit_ident(c, sv->name);
+                  sb_put(&c->out, " = __gmb_nv; }\n");
+              } else {
+                  /* RHS IN PRESTITO (variabile, elemento di array, campo): il buffer non è
+                   * nostro. Assegnarlo e poi liberare il valore precedente del target libera
+                   * un buffer che un ALTRO proprietario usa ancora (caso osservato: `ln =
+                   * arr(k)` in un ciclo → gli elementi dell'array diventano stringhe vuote;
+                   * `b = a` poi `a = ...` lascia b appeso). Le stringhe C99 non sono
+                   * refcountate: qui si COPIA, che è l'unica assegnazione corretta. */
+                  sb_put(&c->out, "{ gmb_string_t __gmb_br = ");
+                  emit_expr(c, value);
+                  sb_put(&c->out, "; gmb_string_t __gmb_nv = gmb_string_from_bytes(__gmb_br.data ? __gmb_br.data : \"\", (gmb_int_t)__gmb_br.length); gmb_string_free(&");
+                  emit_ident(c, sv->name);
+                  sb_put(&c->out, "); ");
+                  emit_ident(c, sv->name);
+                  sb_put(&c->out, " = __gmb_nv; }\n");
+              }
               return;
           }
       }

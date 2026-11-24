@@ -171,9 +171,10 @@ FUNCTION BodyAtLine(lineNo AS LONG, name AS STRING, col AS LONG) AS STRING
   DIM s AS STRING, body AS STRING, ln AS STRING, c AS STRING
   DIM p AS LONG, q AS LONG, depth AS LONG, k AS LONG, start AS LONG, first AS LONG
   IF lineNo < 1 OR lineNo > g_nlines OR col < 1 THEN RETURN ""
-  ' copia ESPLICITA: un alias dell'elemento (assegnazione diretta) resta condiviso con
-  ' l'array e il runtime, riassegnando una seconda variabile allo stesso elemento, libera il
-  ' buffer ancora referenziato → corpo vuoto o SIGTRAP (osservato su gmb_builtin.c).
+  ' NOTA (2026-11-24): qui bastava `s = g_lines$(...)` — l'aliasing che corrompeva l'array
+  ' (corpo vuoto / SIGTRAP) era un bug dell'emitter C99 sull'assegnazione di stringhe "in
+  ' prestito", ora corretto: l'assegnazione copia. Questa copia esplicita resta come difesa
+  ' (costa una riga) e come promemoria del caso, vedi MiniTest strings/string_assign_copy.
   s = MID$(g_lines$(lineNo - 1), 1, LEN(g_lines$(lineNo - 1)))
   IF LEN(s) = 0 THEN RETURN ""
   IF MID$(s, col, LEN(name)) <> name THEN RETURN ""
