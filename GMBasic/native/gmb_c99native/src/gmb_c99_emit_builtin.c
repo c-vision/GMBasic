@@ -1748,7 +1748,9 @@ static int ma_yield(ctx_t* c, gmb_expr_t** a, int n) { (void)a; if (n != 0) retu
  * statement SLEEP; qui la forma funzione (usata con AWAIT) ritorna 0.0 dopo l'attesa. */
 static int ma_sleepasync(ctx_t* c, gmb_expr_t** a, int n) {
     if (n < 1) return 0;
-    sb_put(&c->out, "(gmb_sleep_ms((int)("); emit_expr(c, a[0]); sb_put(&c->out, ")), 0.0)");
+    /* §0ter: park-based anche nel codice emesso (gmb_gpm_sleep parcheggia il task GPM e
+     * lascia il worker libero; fuori da un task si comporta come gmb_sleep_ms). */
+    sb_put(&c->out, "(gmb_gpm_sleep((int)("); emit_expr(c, a[0]); sb_put(&c->out, ")), 0.0)");
     return 1;
 }
 static int ma_format(ctx_t* c, gmb_expr_t** a, int n) {
@@ -2563,8 +2565,10 @@ static int bd_ubound(ctx_t* c, gmb_expr_t** a, int n, int line) {
     if (!an0) return 0;
     var_t* av = lookup_var(c, an0);
     /* UBOUND(<lista/dict gmb_list_t>) — es. `DIM ids() = SQL.COL(...)` (la DIM lo classifica
-     * gkind=GK_LIST, NON is_array): gmb_list_count - 1. */
-    if (av && av->gkind == GK_LIST && !av->vclass[0]) {
+     * gkind=GK_LIST, NON is_array): gmb_list_count - 1.
+     * Se però la variabile è ANCHE un array nativo dinamico (`is_array && dyn_len`, tipo C
+     * `gmb_string_t* + _len`), vince l'array: gmb_list_count su quel tipo non compila. */
+    if (av && av->gkind == GK_LIST && !av->vclass[0] && !(av->is_array && av->dyn_len)) {
         sb_put(&c->out, "(gmb_double_t)(gmb_list_count(");
         emit_var_ref(c, av);
         sb_put(&c->out, ") - 1)");
