@@ -23,6 +23,16 @@ published when finished. The REPL's own `IDE` command (`REPL/ide.c`, shared logi
 | Backend benchmark | A four-backend benchmark with a regression gate. |
 | Graphics | The GFX domain work is open. |
 | Libraries | GMBSuite: migrate the remaining builtins to FFI libraries, or decide where the boundary is. |
+| String runtime | **Bug di aliasing sugli array dinamici di stringhe** (osservato 2026-11-24 col gate `no_stub`): prelevare un elemento in una variabile locale e poi riassegnare quella variabile a un altro elemento può liberare un buffer ancora referenziato → stringhe che diventano VUOTE o `SIGTRAP`. Workaround usato in `tools/basic/no_stub.bas`: copia esplicita `MID$(a(i), 1, LEN(a(i)))`. Serve una correzione vera nel runtime (refcount/ownership delle stringhe), con un caso minimo: `g_lines$ = SPLIT(...)` + due variabili locali che leggono elementi diversi in un ciclo. |
+
+### Gate `no_stub` — sistemato il 2026-11-24
+
+Il gate non finiva più (>30 min, prima fase mai stampata): estraeva il corpo di ogni handler con
+`BodyOf`, che cerca il nome dall'inizio del file e scorre il sorgente con `MID$` → O(n²) su
+`gmb_builtin.c` (930 KB, 1047 handler) e `gmb_c99_emit.c` (2,2 MB). Ora spezza il file una volta
+(`SPLIT`) ed estrae per riga/colonna del match (`BodyAtLine`): **2m52s**, `0 colpa / 0 reported`.
+Self-test: `--selftest` (3 issue attese su 4 handler) e `--bodytest` (5 forme di definizione,
+confronto con `BodyOf`). Restano O(n²) solo i file < 200 KB (fallback).
 
 ### scipy → FFI: funzioni da pacchetto, NON builtin (APPLICATO 2026-11-23/24)
 
