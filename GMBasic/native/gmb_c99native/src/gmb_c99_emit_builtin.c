@@ -2476,7 +2476,12 @@ static int bd_ubound(ctx_t* c, gmb_expr_t** a, int n, int line) {
          * gmb_list_count(<call>) - 1. Prima il call non era un nome di variabile →
          * "simbolo non trovato: UBOUND" (AgentOperatingCenter). */
         extern int gmb_c99_tk_returns_list(gmb_tokenkind_t tk);   /* gmb_c99_emit.c */
-        if (a[0]->kind == GMB_EXPR_CALL && gmb_c99_tk_returns_list(a[0]->tk)) {
+        /* Solo per le CHIAMATE che ritornano una lista: una VARIABILE array letta "come
+         * valore" (`UBOUND(LIST$)`) arriva qui come CALL 0-arg che porta il tk dell'ultima
+         * call che l'ha creata (es. AiList/Split) → `gmb_list_count(<array>)` non compila.
+         * Le variabili le risolvono i rami sotto: array → `_len`, liste → list_count. */
+        int b_known_var = (a[0]->var && lookup_var(c, a[0]->var) != NULL);
+        if (a[0]->kind == GMB_EXPR_CALL && gmb_c99_tk_returns_list(a[0]->tk) && !b_known_var) {
             sb_put(&c->out, "(gmb_double_t)(gmb_list_count(");
             emit_expr(c, a[0]);
             sb_put(&c->out, ") - 1)");
@@ -2484,7 +2489,12 @@ static int bd_ubound(ctx_t* c, gmb_expr_t** a, int n, int line) {
         }
         if (a[0]->kind == GMB_EXPR_CALL
             && (a[0]->tk == GMB_TOK_AiAgentList || a[0]->tk == GMB_TOK_AiAgentEvents
-                || a[0]->tk == GMB_TOK_AiList)) {
+                || a[0]->tk == GMB_TOK_AiList)
+            /* …ma non per una VARIABILE letta "come valore" (`UBOUND(LIST$)`): il nodo CALL
+             * 0-arg porta il tk dell'ultima call che l'ha creata, e per caso può essere
+             * AiList → `gmb_list_count` su un array `gmb_string_t*` (cc: incompatible type).
+             * Le variabili le risolvono i rami sotto (array → _len, liste → list_count). */
+            && !(a[0]->var && lookup_var(c, a[0]->var) != NULL)) {
             sb_put(&c->out, "(gmb_double_t)(gmb_list_count(");
             emit_expr(c, a[0]);
             sb_put(&c->out, ") - 1)");
@@ -2660,7 +2670,12 @@ static int bd_join(ctx_t* c, gmb_expr_t** a, int n, int line) {
      * "simbolo non trovato: JOIN" (AgentPermissions). */
     if (a[0] && a[0]->kind == GMB_EXPR_CALL
         && (a[0]->tk == GMB_TOK_AiAgentList || a[0]->tk == GMB_TOK_AiAgentEvents
-            || a[0]->tk == GMB_TOK_AiList)) {
+            || a[0]->tk == GMB_TOK_AiList)
+        /* …ma NON per una VARIABILE con lo stesso nome: `JOIN(LIST$, sep)` con una variabile
+         * LIST$ dichiarata è il JOIN di un array di stringhe (il lexer le dà il tk AiList
+         * perché "LIST" è un token). Senza la guardia si emetteva `gmb_list_join` su un
+         * `gmb_string_t*` (cc: incompatible type). */
+        && !lookup_var(c, a[0]->var)) {
         sb_put(&c->out, "gmb_list_join(");
         emit_expr(c, a[0]);
         sb_put(&c->out, ", (");

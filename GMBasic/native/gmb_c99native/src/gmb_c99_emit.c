@@ -492,7 +492,31 @@ var_t* lookup_var(ctx_t* c, const char* name) {
         var_t* v = vars_find(&c->cur_fn->locals, name);
         if (v && !v->late_local) return v;
     }
-    return vars_find(&c->globals, name);
+    var_t* g = vars_find(&c->globals, name);
+    if (g) return g;
+    /* Il SUFFISSO BASIC ($ % ! #) è grafia, non identità: `DIM LIST$(5)` e il riferimento
+     * `LIST` (il lexer toglie il suffisso quando il nome coincide con un TokenKind) devono
+     * trovare la STESSA variabile. Senza questo fallback `LIST$(0)` non risolveva la
+     * variabile e finiva sul builtin omonimo. */
+    if (!strchr(name, '.')) {
+        static const char sfx[] = "$%!#";
+        char alt[96];
+        size_t n = strlen(name);
+        if (n < sizeof(alt) - 2) {
+            memcpy(alt, name, n);
+            for (size_t i = 0; i < sizeof(sfx) - 1; i++) {
+                alt[n] = sfx[i];
+                alt[n + 1] = 0;
+                if (c->cur_fn) {
+                    var_t* v = vars_find(&c->cur_fn->locals, alt);
+                    if (v && !v->late_local) return v;
+                }
+                var_t* gv = vars_find(&c->globals, alt);
+                if (gv) return gv;
+            }
+        }
+    }
+    return NULL;
 }
 
 static void dbf_field_imap_ensure(ctx_t* c, const char* name);
@@ -12884,6 +12908,19 @@ static void emit_call(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_
                             sb_put(&c->out, ")); (void)0; })");
                             return;
                         }
+                        if (mk == GMB_TOK_Join && cv->is_array && cv->dyn_len && cv->type == TY_STR) {
+                            /* `JOIN(arr$, sep)` su un array di STRINGHE dinamico: gmb_array_join
+                             * (la variante per stringhe). Il ramo sotto emette gmb_list_join su
+                             * un `gmb_string_t*` → cc: incompatible type (StringsExamples.bas). */
+                            sb_put(&c->out, "gmb_array_join(");
+                            sb_ident(&c->out, cv->name);
+                            sb_put(&c->out, ", (gmb_int_t)(");
+                            sb_ident(&c->out, cv->name);
+                            sb_put(&c->out, "_len), (");
+                            emit_expr(c, args[0]);
+                            sb_put(&c->out, ").data)");
+                            return;
+                        }
                         if (mk == GMB_TOK_Join) {
                             sb_put(&c->out, "gmb_list_join(");
                             sb_ident(&c->out, cv->name);
@@ -19006,7 +19043,12 @@ static void st_print_core(ctx_t* c, gmb_stmt_t* s) {
               * via display (stessa forma dei blocchi AiVectorEmbed/AiImageEmbed sopra).
               * Il ruolo viaggia grezzo (%CHAT incluso): normalizza il runtime. */
              if (s->print_args[i] && s->print_args[i]->kind == GMB_EXPR_CALL
-                 && s->print_args[i]->tk == GMB_TOK_AiList && s->print_args[i]->nargs >= 1) {
+                 && s->print_args[i]->tk == GMB_TOK_AiList && s->print_args[i]->nargs >= 1
+                 /* …ma NON per una VARIABILE con lo stesso nome: `PRINT LIST$(0)` con una
+                  * variabile LIST$ dichiarata è un elemento di array (il lexer le dà il tk
+                  * AiList perché "LIST" è un token). Senza la guardia finiva su
+                  * gmb_provider_list_names(0) — bug reale, StringsExamples.bas. */
+                 && !lookup_var(c, s->print_args[i]->var)) {
                  sb_put(&c->out, "gmb_print_string(gmb_val_to_display(gmb_make_val_list(gmb_provider_list_names(");
                  emit_str_operand(c, s->print_args[i]->args[0]);
                  sb_put(&c->out, ".data))));\n");
