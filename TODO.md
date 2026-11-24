@@ -24,25 +24,29 @@ published when finished. The REPL's own `IDE` command (`REPL/ide.c`, shared logi
 | Graphics | The GFX domain work is open. |
 | Libraries | GMBSuite: migrate the remaining builtins to FFI libraries, or decide where the boundary is. |
 
-### scipy → FFI: funzioni da pacchetto, NON builtin (deciso/applicato 2026-11-23)
+### scipy → FFI: funzioni da pacchetto, NON builtin (APPLICATO 2026-11-23/24)
 
 Principio: le builtin **base** del dialetto restano; le funzioni `scipy.*` (fft/interpolate/signal)
 sono tipiche da **FFI** e non appartengono alla dotazione standard.
 
-**Fatto.** `RFFT`/`IRFFT` nel pacchetto `signal` (`ofx_signal_rfft/irfft` + `signal.inc`);
-`SPLREP`/`SPLEV` nel pacchetto `math` (namespace `INTERP`, `interp.inc`) con `gmi_splrep` portato a
-**Thomas O(n)**. I MiniTest usano `IMPORT` e sono verdi sulle 4 gambe. I 4 builtin sono **usciti
-dalla superficie canonica** (982 → 978, `registry-export --all`); un programma con
-`NUMERICAL.Rfft` non compila più.
+**Fatto — superficie 982 → 977.**
 
-**Resta (pulizia, non superficie):**
+| ex builtin | dove vive | commit |
+|---|---|---|
+| `NUMERICAL.Rfft` / `Irfft` | `SIGNAL.RFFT` / `SIGNAL.IRFFT` (pacchetto `signal`) | `47121097` + `537c6b6e` |
+| `NUMERICAL.Splrep` / `Splev` | `INTERP.SPLREP` / `INTERP.SPLEV` (pacchetto `math`, Thomas O(n)) | `ed0ecef8` + `537c6b6e` |
+| `SIGNAL.WELCH` | `SIGNAL.WELCH` array interleaved + `WELCHFREQS`/`WELCHPSD` | `72c14dd4` |
 
-- [ ] rimuovere le implementazioni ora irraggiungibili: case in `IlProgramCompiler.Builtins.cs`,
-      dictionary PCode (`FFT_RFFT`/`FFT_IRFFT`, `INTERP_*`), 10 punti in `gmb_c99_emit*.c`,
-      case VM/C (`gmb_builtin.c`), e i metodi `IlRuntime`/`SciPyP1` (`Rfft`, `Irfft`, `Splrep`,
-      `Splev`, `CubicSplineRep`, `SolveNotAKnot*`) → archivio in Deprecated;
-- [ ] `SIGNAL.WELCH` (builtin che ritorna un handle di matrice) e `SAVGOL`: prima esporre
-      `WELCH` in `signal.inc` come array, poi spegnere il builtin;
+I MiniTest/sample usano `IMPORT` e sono verdi sulle 4 gambe. Le implementazioni managed e i
+percorsi emitter/VM-C irraggiungibili sono stati **rimossi** (`0f7074a0`, `68e75680`) e archiviati
+in `GMBasicMonoRepo-Deprecated/archive-2026-11-23-scipy-ffi-step3/` e
+`.../archive-2026-11-24-welch-ffi/`.
+
+**Resta (non superficie):**
+
+- [ ] `gmb_rfft_c99`/`gmb_irfft_c99`/`gmb_splrep_c99`/`gmb_splev_c99`/`gmb_welch_c99` sono nel
+      runtime C (`gmb_runtime.h`) ma non più chiamati dagli emitter: decidere se toglierli
+      dall'API o documentarli come API C-only (i kernel senza suffisso servono a `*_flat`).
 - [ ] il gate `check_enum_ids` ha un DRIFT **pre-esistente** (`gmb_vm_c/gmb_syscall_codes.h` vs
       `SysCalls.cs`, dal commit `aea3d3f5` clock): rigenerare con `tools/check_enum_ids --gen`.
 

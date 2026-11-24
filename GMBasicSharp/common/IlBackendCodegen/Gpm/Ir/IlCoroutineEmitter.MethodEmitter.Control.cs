@@ -22,10 +22,10 @@ internal sealed partial class MethodEmitter
             for (var i = 0; i < ifs.IfClauses.Length; i++)
             {
                 EmitConditionBoolV2(ifs.IfClauses[i].Condition);
-                var next = _il.DefineLabel();
+                var next = DefineLabel();
                 _il.Emit(OpCodes.Brfalse, next);
                 EmitContinueTo(targets[i]);
-                _il.MarkLabel(next);
+                MarkLabel(next);
             }
             // else / successore
             EmitContinueTo(targets[targets.Length - 1]);
@@ -63,7 +63,7 @@ internal sealed partial class MethodEmitter
             // Un label per il body di ogni CASE: il match salta lì; il non-match cade al
             // test successivo; nessun match → else (targets[ultimo]).
             var bodyLabels = new Label[clauses.Length];
-            for (var i = 0; i < clauses.Length; i++) bodyLabels[i] = _il.DefineLabel();
+            for (var i = 0; i < clauses.Length; i++) bodyLabels[i] = DefineLabel();
 
             for (var i = 0; i < clauses.Length; i++)
             {
@@ -103,7 +103,7 @@ internal sealed partial class MethodEmitter
             // Body dei CASE.
             for (var i = 0; i < clauses.Length; i++)
             {
-                _il.MarkLabel(bodyLabels[i]);
+                MarkLabel(bodyLabels[i]);
                 EmitContinueTo(targets[i]);
             }
         }
@@ -117,11 +117,11 @@ internal sealed partial class MethodEmitter
             // cond = step >= 0 ? I <= End : I >= End
             LoadSlotDouble(varSlot);
             EmitExprDouble(forStmt.End);
-            var body = _il.DefineLabel();
-            var exit = _il.DefineLabel();
+            var body = DefineLabel();
+            var exit = DefineLabel();
             _il.Emit(stepPositive ? OpCodes.Ble : OpCodes.Bge, body);
             EmitContinueTo(b.Terminator.Targets[1]); // uscita
-            _il.MarkLabel(body);
+            MarkLabel(body);
             EmitContinueTo(b.Terminator.Targets[0]); // corpo
         }
 
@@ -137,11 +137,11 @@ internal sealed partial class MethodEmitter
         private void EmitCondJump(IlCoroutineBlock b, ConditionalJumpStmt cj)
         {
             EmitConditionBoolV2(cj.Condition);
-            var jump = _il.DefineLabel();
+            var jump = DefineLabel();
             // JumpWhenTrue ? brtrue : brfalse verso il target[0]
             _il.Emit(cj.JumpWhenTrue ? OpCodes.Brtrue : OpCodes.Brfalse, jump);
             EmitContinueTo(b.Terminator.Targets[1]); // successore
-            _il.MarkLabel(jump);
+            MarkLabel(jump);
             EmitContinueTo(b.Terminator.Targets[0]); // etichetta (pc risolto dal lowering)
         }
 
@@ -244,12 +244,12 @@ internal sealed partial class MethodEmitter
                 EmitLdarg(_frameArg);
                 _il.Emit(OpCodes.Ldc_I4, fs);
                 _il.Emit(OpCodes.Call, TryReadFutureParkMethod);
-                var ok = _il.DefineLabel();
+                var ok = DefineLabel();
                 _il.Emit(OpCodes.Brtrue, ok);
                 EmitSetPc(b.Pc);
                 EmitTransition(IlStepKind.Park, b.Pc, 0, null, IlReturnDestination.Discard, null);
                 EmitReturnTransition();
-                _il.MarkLabel(ok);
+                MarkLabel(ok);
                 EmitContinueTo(b.Terminator.ResumePc);
                 return;
             }
@@ -436,12 +436,12 @@ internal sealed partial class MethodEmitter
             }
             _il.Emit(OpCodes.Ldloca, local);
             _il.Emit(OpCodes.Call, TrySqlExecFnParkMethod);
-            var ok = _il.DefineLabel();
+            var ok = DefineLabel();
             _il.Emit(OpCodes.Brtrue, ok);
             EmitSetPc(b.Pc);
             EmitTransition(IlStepKind.Park, b.Pc, 0, null, IlReturnDestination.Discard, null);
             EmitReturnTransition();
-            _il.MarkLabel(ok);
+            MarkLabel(ok);
             if (sef.TargetSlot >= 0) { _il.Emit(OpCodes.Ldloc, local); StoreSlotDouble(SlotOf(sef.TargetSlot)); }
             EmitContinueTo(b.Terminator.ResumePc);
         }
@@ -477,13 +477,13 @@ internal sealed partial class MethodEmitter
             EmitLdarg(_frameArg);
             EmitExprDouble(sleep.Duration);
             _il.Emit(OpCodes.Call, SleepStepMethod);
-            var ok = _il.DefineLabel();
+            var ok = DefineLabel();
             _il.Emit(OpCodes.Brtrue, ok);
             // parcheggiato: retry sullo stesso block (il wake rientra qui → TryConsume).
             EmitSetPc(b.Pc);
             EmitTransition(IlStepKind.Park, b.Pc, 0, null, IlReturnDestination.Discard, null);
             EmitReturnTransition();
-            _il.MarkLabel(ok);
+            MarkLabel(ok);
             EmitContinueTo(b.Terminator.ResumePc);
         }
 
@@ -498,12 +498,12 @@ internal sealed partial class MethodEmitter
             EmitExprObject(cw.Mutex);
             _il.Emit(OpCodes.Castclass, typeof(PCodeMutex));
             _il.Emit(OpCodes.Call, CondWaitStepMethod);
-            var ok = _il.DefineLabel();
+            var ok = DefineLabel();
             _il.Emit(OpCodes.Brtrue, ok);
             EmitSetPc(b.Pc);
             EmitTransition(IlStepKind.Park, b.Pc, 0, null, IlReturnDestination.Discard, null);
             EmitReturnTransition();
-            _il.MarkLabel(ok);
+            MarkLabel(ok);
             EmitContinueTo(b.Terminator.ResumePc);
         }
 
@@ -521,15 +521,15 @@ internal sealed partial class MethodEmitter
             _il.Emit(OpCodes.Ldloca, _feValueLocal);
             _il.Emit(OpCodes.Ldloca, _feOkLocal);
             _il.Emit(OpCodes.Call, ForEachChannelStepMethod);
-            var ok = _il.DefineLabel();
+            var ok = DefineLabel();
             _il.Emit(OpCodes.Brtrue, ok);
             // Parcheggiato: retry sullo stesso block (il wake rientra qui → TryConsume).
             EmitSetPc(b.Pc);
             EmitTransition(IlStepKind.Park, b.Pc, 0, null, IlReturnDestination.Discard, null);
             EmitReturnTransition();
-            _il.MarkLabel(ok);
+            MarkLabel(ok);
             // ok flag → continua col corpo; !ok → EXIT (Targets[0] = pc dell'etichetta di exit).
-            var exit = _il.DefineLabel();
+            var exit = DefineLabel();
             _il.Emit(OpCodes.Ldloc, _feOkLocal!);
             _il.Emit(OpCodes.Brfalse, exit);
             var vt = fea.Variables[0];
@@ -537,7 +537,7 @@ internal sealed partial class MethodEmitter
             _il.Emit(OpCodes.Ldloc, _feValueLocal!);
             StoreSlotObject(varSlot);
             EmitContinueTo(b.Terminator.ResumePc);
-            _il.MarkLabel(exit);
+            MarkLabel(exit);
             EmitContinueTo(b.Terminator.Targets.Length > 0 ? b.Terminator.Targets[0] : b.Terminator.ResumePc);
         }
 
@@ -556,13 +556,13 @@ internal sealed partial class MethodEmitter
             _il.Emit(OpCodes.Castclass, typeof(ChannelInfo));
             EmitExprObject(send.Value);
             _il.Emit(OpCodes.Call, SendStepMethod);
-            var ok = _il.DefineLabel();
+            var ok = DefineLabel();
             _il.Emit(OpCodes.Brtrue, ok);
             // parcheggiato: retry sullo stesso block (ri-send sul wake)
             EmitSetPc(b.Pc);
             EmitTransition(IlStepKind.Park, b.Pc, 0, null, IlReturnDestination.Discard, null);
             EmitReturnTransition();
-            _il.MarkLabel(ok);
+            MarkLabel(ok);
             EmitContinueTo(b.Terminator.ResumePc);
         }
 
@@ -582,12 +582,12 @@ internal sealed partial class MethodEmitter
             _il.Emit(OpCodes.Castclass, typeof(ChannelInfo));
             _il.Emit(OpCodes.Ldloca, valueLocal);
             _il.Emit(OpCodes.Call, ReceiveStepMethod);
-            var ok = _il.DefineLabel();
+            var ok = DefineLabel();
             _il.Emit(OpCodes.Brtrue, ok);
             EmitSetPc(b.Pc);
             EmitTransition(IlStepKind.Park, b.Pc, 0, null, IlReturnDestination.Discard, null);
             EmitReturnTransition();
-            _il.MarkLabel(ok);
+            MarkLabel(ok);
             if (recv.Destination is VariableTarget vt)
             {
                 _il.Emit(OpCodes.Ldloc, valueLocal);
@@ -597,15 +597,15 @@ internal sealed partial class MethodEmitter
             // canale è chiuso (receive su chiuso vuoto ritorna true con value = null).
             if (recv.OkFlag is VariableTarget okVar)
             {
-                var isClosed = _il.DefineLabel();
-                var done = _il.DefineLabel();
+                var isClosed = DefineLabel();
+                var done = DefineLabel();
                 _il.Emit(OpCodes.Ldloc, valueLocal);
                 _il.Emit(OpCodes.Brfalse, isClosed);
                 _il.Emit(OpCodes.Ldc_R8, 1.0);
                 _il.Emit(OpCodes.Br, done);
-                _il.MarkLabel(isClosed);
+                MarkLabel(isClosed);
                 _il.Emit(OpCodes.Ldc_R8, 0.0);
-                _il.MarkLabel(done);
+                MarkLabel(done);
                 StoreSlotDouble(SlotOf(okVar.SymbolId));
             }
             EmitContinueTo(b.Terminator.ResumePc);
@@ -619,12 +619,12 @@ internal sealed partial class MethodEmitter
             EmitLdarg(_frameArg);
             EmitExprObject(wait.WaitGroup);
             _il.Emit(OpCodes.Call, WaitStepMethod); // WaitStep no-ops per WAIT <numero> (non-waitgroup)
-            var ok = _il.DefineLabel();
+            var ok = DefineLabel();
             _il.Emit(OpCodes.Brtrue, ok);
             EmitSetPc(b.Pc);
             EmitTransition(IlStepKind.Park, b.Pc, 0, null, IlReturnDestination.Discard, null);
             EmitReturnTransition();
-            _il.MarkLabel(ok);
+            MarkLabel(ok);
             EmitContinueTo(b.Terminator.ResumePc);
         }
 
@@ -647,12 +647,12 @@ internal sealed partial class MethodEmitter
             _il.Emit(OpCodes.Castclass, mutexClr);
             EmitLdarg(_taskArg);
             _il.Emit(OpCodes.Callvirt, tryLock);
-            var ok = _il.DefineLabel();
+            var ok = DefineLabel();
             _il.Emit(OpCodes.Brtrue, ok);
             EmitSetPc(b.Terminator.ResumePc); // handoff: al wake si prosegue senza ri-ritentare
             EmitTransition(IlStepKind.Park, b.Terminator.ResumePc, 0, null, IlReturnDestination.Discard, null);
             EmitReturnTransition();
-            _il.MarkLabel(ok);
+            MarkLabel(ok);
             EmitContinueTo(b.Terminator.ResumePc);
         }
 
@@ -664,12 +664,12 @@ internal sealed partial class MethodEmitter
             _il.Emit(OpCodes.Castclass, typeof(PCodeRwMutex));
             EmitLdarg(_taskArg);
             _il.Emit(OpCodes.Callvirt, RwMutexTryRLockMethod);
-            var ok = _il.DefineLabel();
+            var ok = DefineLabel();
             _il.Emit(OpCodes.Brtrue, ok);
             EmitSetPc(b.Terminator.ResumePc); // handoff: al wake si prosegue senza ri-ritentare
             EmitTransition(IlStepKind.Park, b.Terminator.ResumePc, 0, null, IlReturnDestination.Discard, null);
             EmitReturnTransition();
-            _il.MarkLabel(ok);
+            MarkLabel(ok);
             EmitContinueTo(b.Terminator.ResumePc);
         }
 
@@ -686,9 +686,9 @@ internal sealed partial class MethodEmitter
             _il.Emit(OpCodes.Castclass, typeof(PCodeOnce));
             _il.Emit(OpCodes.Call, OnceStepMethod); // OnceStepResult (int)
 
-            var run = _il.DefineLabel();
-            var park = _il.DefineLabel();
-            var done = _il.DefineLabel();
+            var run = DefineLabel();
+            var park = DefineLabel();
+            var done = DefineLabel();
             _il.Emit(OpCodes.Dup);
             _il.Emit(OpCodes.Ldc_I4, (int)IlGpmRuntime.OnceStepResult.Run);
             _il.Emit(OpCodes.Beq, run);
@@ -701,7 +701,7 @@ internal sealed partial class MethodEmitter
             _il.Emit(OpCodes.Br, done);
 
             // Park: un altro chiamante sta eseguendo DoInit → parcheggia (retry sul block).
-            _il.MarkLabel(park);
+            MarkLabel(park);
             _il.Emit(OpCodes.Pop);
             EmitSetPc(b.Pc);
             EmitTransition(IlStepKind.Park, b.Pc, 0, null, IlReturnDestination.Discard, null);
@@ -709,7 +709,7 @@ internal sealed partial class MethodEmitter
             _il.Emit(OpCodes.Br, done);
 
             // Run: questo chiamante esegue DoInit (flat) + Complete.
-            _il.MarkLabel(run);
+            MarkLabel(run);
             _il.Emit(OpCodes.Pop);
             EmitExprObject(once.Once);
             _il.Emit(OpCodes.Castclass, typeof(PCodeOnce));
@@ -717,7 +717,7 @@ internal sealed partial class MethodEmitter
             _il.Emit(OpCodes.Call, RunOnceBodyMethod);
             EmitContinueTo(b.Terminator.ResumePc);
 
-            _il.MarkLabel(done);
+            MarkLabel(done);
         }
 
         // ─── Accesso a locali/spill e espressioni ─────────────────────────────────────────
@@ -843,24 +843,22 @@ internal sealed partial class MethodEmitter
                 // inghiottita, lasciando label definite e mai marcate: il metodo non
                 // compilava ("Label 2 has not been marked"). Stessa semantica di
                 // EmitExprDouble per gli array numerici, con il box del tipo elemento.
+                // Elemento in contesto OBJECT — simmetrico allo store (EmitAssignment):
+                // IlRuntime.CollectionIndexGet legge col tipo elemento REALE dell'istanza. Prima
+                // si emetteva ldelem.i4/i8 dedotto dal tipo del SIMBOLO, ma gli array di modulo
+                // nascono long[]/double[] dal global-init flat mentre i DIM locali sono
+                // int[]/double[]: su un long[] un ldelem.i4 legge 4 byte di 8 (valore spazzatura)
+                // e su un double[] è addirittura IL del tipo sbagliato.
                 case ArrayAccessExpr aa:
-                {
-                    var elem = ArrayElementType(aa.SymbolId);
                     LoadSlotObject(SlotOf(aa.SymbolId));
-                    EmitExprDouble(aa.Indices[0]);
-                    _il.Emit(OpCodes.Conv_I4);
-                    EmitLoadArrayElementObject(elem);
+                    EmitExprObject(aa.Indices[0]);
+                    _il.Emit(OpCodes.Call, CollectionIndexGetMethod);
                     break;
-                }
                 case IndexedAccessExpr ia:
-                {
-                    var elem = ia.Base is VariableExpr iav ? ArrayElementType(iav.SymbolId) : null;
                     EmitExprObject(ia.Base);
-                    EmitExprDouble(ia.Indices[0]);
-                    _il.Emit(OpCodes.Conv_I4);
-                    EmitLoadArrayElementObject(elem);
+                    EmitExprObject(ia.Indices[0]);
+                    _il.Emit(OpCodes.Call, CollectionIndexGetMethod);
                     break;
-                }
                 case GroupingExpr g:
                     EmitExprObject(g.Expression);
                     break;
@@ -1063,39 +1061,11 @@ internal sealed partial class MethodEmitter
             }
         }
 
-        /// <summary>Tipo dell'ELEMENTO di un array fisso: il simbolo può essere tipizzato
-        /// ArrayType oppure direttamente col tipo elemento.</summary>
-        private Basic.DataType? ArrayElementType(int symbolId)
-        {
-            if (_program is null) return null;
-            var dt = _program.Symbols.GetSymbol(symbolId).DataType;
-            return dt is ArrayType at ? at.ElementType : dt;
-        }
-
-        /// <summary>Carica l'elemento puntato da (array, indice) sullo stack come object,
-        /// con il box del tipo elemento (parità flat/ArrayAccessExpr).</summary>
-        private void EmitLoadArrayElementObject(Basic.DataType? elem)
-        {
-            if (elem is LongType)
-            {
-                _il.Emit(OpCodes.Ldelem_I8);
-                _il.Emit(OpCodes.Box, typeof(long));
-            }
-            else if (elem is DoubleType)
-            {
-                _il.Emit(OpCodes.Ldelem_R8);
-                _il.Emit(OpCodes.Box, typeof(double));
-            }
-            else if (elem is StringType)
-            {
-                _il.Emit(OpCodes.Ldelem_Ref);
-            }
-            else
-            {
-                _il.Emit(OpCodes.Ldelem_I4);
-                _il.Emit(OpCodes.Box, typeof(int));
-            }
-        }
+        // Lettura di elemento: NON si emette più ldelem.* dedotto dal tipo del SIMBOLO (su un
+        // long[] di modulo un ldelem.i4 leggeva 4 byte di 8, su un double[] era IL del tipo
+        // sbagliato). Ora entrambi i versi passano dal runtime, che legge il tipo elemento REALE
+        // dell'istanza: IlRuntime.CollectionIndexGet / CollectionIndexSet (vedi EmitExprObject,
+        // EmitExprDouble e EmitAssignment).
 
         /// <summary>Spinge l'istanza di un FieldAccessExpr della closure (__context.cattura):
         /// local nel chiamante (ldloc) o `this` dentro il metodo di closure.</summary>
@@ -1218,38 +1188,18 @@ internal sealed partial class MethodEmitter
                     LoadSlotDouble(SlotOf(v.SymbolId));
                     break;
                 case IndexedAccessExpr ia:
-                    // px(1) su array fisso 1D numerico (int[]/long[]/double[]): elemento → double.
+                    // px(1) numerico: lettura type-safe dal runtime (vedi EmitExprObject).
                     EmitExprObject(ia.Base);
-                    EmitExprDouble(ia.Indices[0]);
-                    _il.Emit(OpCodes.Conv_I4);
-                    if (ia.Base is VariableExpr iaBase && _program is not null
-                        && _program.Symbols.GetSymbol(iaBase.SymbolId).DataType is LongType)
-                    {
-                        _il.Emit(OpCodes.Ldelem_I8);
-                        _il.Emit(OpCodes.Conv_R8);
-                    }
-                    else
-                    {
-                        _il.Emit(OpCodes.Ldelem_I4);
-                        _il.Emit(OpCodes.Conv_R8);
-                    }
+                    EmitExprObject(ia.Indices[0]);
+                    _il.Emit(OpCodes.Call, CollectionIndexGetMethod);
+                    _il.Emit(OpCodes.Call, AsDoubleMethod);
                     break;
                 case ArrayAccessExpr aa:
-                    // px(1) su array fisso 1D (variante ArrayAccessExpr del parser): elemento → double.
+                    // px(1) (variante ArrayAccessExpr del parser): stessa lettura type-safe.
                     LoadSlotObject(SlotOf(aa.SymbolId));
-                    EmitExprDouble(aa.Indices[0]);
-                    _il.Emit(OpCodes.Conv_I4);
-                    if (_program is not null
-                        && _program.Symbols.GetSymbol(aa.SymbolId).DataType is LongType)
-                    {
-                        _il.Emit(OpCodes.Ldelem_I8);
-                        _il.Emit(OpCodes.Conv_R8);
-                    }
-                    else
-                    {
-                        _il.Emit(OpCodes.Ldelem_I4);
-                        _il.Emit(OpCodes.Conv_R8);
-                    }
+                    EmitExprObject(aa.Indices[0]);
+                    _il.Emit(OpCodes.Call, CollectionIndexGetMethod);
+                    _il.Emit(OpCodes.Call, AsDoubleMethod);
                     break;
                 case BuiltinFunctionCallExpr bfc when bfc.Name.Kind == TokenKind.UBound:
                     // UBOUND(px) su array fisso: lunghezza (ldlen) → double.
@@ -1438,24 +1388,24 @@ internal sealed partial class MethodEmitter
                         _il.Emit(OpCodes.Ldc_I4_0);
                         _il.Emit(OpCodes.Ceq); // NOT equal
                     }
-                    var strLt = _il.DefineLabel();
-                    var strDone = _il.DefineLabel();
+                    var strLt = DefineLabel();
+                    var strDone = DefineLabel();
                     _il.Emit(OpCodes.Brtrue, strLt);
                     _il.Emit(OpCodes.Ldc_R8, 0.0);
                     _il.Emit(OpCodes.Br, strDone);
-                    _il.MarkLabel(strLt);
+                    MarkLabel(strLt);
                     // true canonico BASIC = -1 (non 1): il path FLAT ottiene lo stesso con
                     // OpCodes.Neg dopo il confronto (IlProgramCompiler.BuiltinsMath.cs:742).
                     // Con 1.0 i programmi GPM che stampano un confronto (x = a > b) davano 1
                     // su IL e -1 su P-Code/VM/C: divergenza di parita' silenziosa.
                     _il.Emit(OpCodes.Ldc_R8, -1.0);
-                    _il.MarkLabel(strDone);
+                    MarkLabel(strDone);
                     return;
                 }
                 EmitExprDouble(bin.Left);
                 EmitExprDouble(bin.Right);
-                var lt = _il.DefineLabel();
-                var done = _il.DefineLabel();
+                var lt = DefineLabel();
+                var done = DefineLabel();
                 switch (bin.Op.Kind)
                 {
                     case TokenKind.LessThan:
@@ -1473,10 +1423,10 @@ internal sealed partial class MethodEmitter
                 }
                 _il.Emit(OpCodes.Ldc_R8, 0.0);
                 _il.Emit(OpCodes.Br, done);
-                _il.MarkLabel(lt);
+                MarkLabel(lt);
                 // vedi ilcommento sul ramo stringa: true canonico = -1, non 1.
                 _il.Emit(OpCodes.Ldc_R8, -1.0);
-                _il.MarkLabel(done);
+                MarkLabel(done);
                 return;
             }
             EmitExprDouble(bin.Left);

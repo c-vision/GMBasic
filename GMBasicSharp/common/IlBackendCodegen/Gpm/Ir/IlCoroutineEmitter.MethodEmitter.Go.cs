@@ -135,7 +135,7 @@ internal sealed partial class MethodEmitter
             _il.Emit(OpCodes.Ldloca, closedLocal);
             _il.Emit(OpCodes.Call, TrySelectSetupMethod);
 
-            var ready = _il.DefineLabel();
+            var ready = DefineLabel();
             _il.Emit(OpCodes.Brtrue, ready);
 
             // Non pronto: DEFAULT (se c'è) o park (retry sul select block).
@@ -160,7 +160,7 @@ internal sealed partial class MethodEmitter
 
             // Pronto: switch(caseIndex) → label per case; ogni label memorizza il valore (se
             // RECEIVE) e salta al body del case.
-            _il.MarkLabel(ready);
+            MarkLabel(ready);
             // Un select VINTO non deve inquinare il SUCCESSIVO (es. due GO SELECT in un loop
             // FOR): il SelectContext riusato (frame.SelectCtx) ha già WinningCaseIndex set →
             // il receiver del select successivo non può reclamare il case (deadlock esposto dal
@@ -170,37 +170,37 @@ internal sealed partial class MethodEmitter
             _il.Emit(OpCodes.Ldnull);
             _il.Emit(OpCodes.Stfld, FrameSelectCtxField);
             var caseLabels = new Label[n];
-            for (var i = 0; i < n; i++) caseLabels[i] = _il.DefineLabel();
-            var invalid = _il.DefineLabel();
+            for (var i = 0; i < n; i++) caseLabels[i] = DefineLabel();
+            var invalid = DefineLabel();
             _il.Emit(OpCodes.Ldloc, caseIndexLocal);
             _il.Emit(OpCodes.Switch, caseLabels);
             _il.Emit(OpCodes.Br, invalid);
 
             for (var i = 0; i < n; i++)
             {
-                _il.MarkLabel(caseLabels[i]);
+                MarkLabel(caseLabels[i]);
                 if (gs.Cases[i].CommunicationStmt is ReceiveStmt winnerRcv && winnerRcv.Destination is VariableTarget wvt)
                 {
                     _il.Emit(OpCodes.Ldloc, valueLocal);
                     StoreSlotObject(SlotOf(wvt.SymbolId));
                     if (winnerRcv.OkFlag is VariableTarget okVar)
                     {
-                        var isClosed2 = _il.DefineLabel();
-                        var done2 = _il.DefineLabel();
+                        var isClosed2 = DefineLabel();
+                        var done2 = DefineLabel();
                         _il.Emit(OpCodes.Ldloc, valueLocal);
                         _il.Emit(OpCodes.Brfalse, isClosed2);
                         _il.Emit(OpCodes.Ldc_R8, 1.0);
                         _il.Emit(OpCodes.Br, done2);
-                        _il.MarkLabel(isClosed2);
+                        MarkLabel(isClosed2);
                         _il.Emit(OpCodes.Ldc_R8, 0.0);
-                        _il.MarkLabel(done2);
+                        MarkLabel(done2);
                         StoreSlotDouble(SlotOf(okVar.SymbolId));
                     }
                 }
                 EmitContinueTo(targets[i]);
             }
 
-            _il.MarkLabel(invalid);
+            MarkLabel(invalid);
             EmitTransition(IlStepKind.CompleteTask, 0, 0, null, IlReturnDestination.Discard, null);
             EmitReturnTransition();
         }

@@ -7805,6 +7805,11 @@ public static partial class IlRuntime
     /// runtime su IList/IDictionary (indice int o chiave).</summary>
     public static object? CollectionIndexGet(object? collection, object? index)
     {
+        // ARRAY esplicito PRIMA di IList: un SZARRAY È IList, ma solo il ramo Array dà
+        // l'elemento col tipo REALE (long[]/double[]/short[] — gli array di modulo nascono dal
+        // global-init flat, i locali da DIM) senza che il chiamante debba indovinare ldelem.*.
+        if (collection is Array array && index is not null)
+            return array.GetValue(Convert.ToInt32(index, System.Globalization.CultureInfo.InvariantCulture));
         if (collection is System.Collections.IList list && index is not null)
             return list[Convert.ToInt32(index, System.Globalization.CultureInfo.InvariantCulture)];
         if (collection is System.Collections.IDictionary dict)

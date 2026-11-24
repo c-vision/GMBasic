@@ -144,12 +144,15 @@ public static class IlCoroutineEmitter
         // (ws.OnMessage, res.StatusCode, cfg.Port): l'emissione parziale lascia label non
         // marcati → "Label N has not been marked" al Save dell'assembly. Fallback al flat.
         if (symbolType is not null && BodyAssignsRuntimeField(def, symbolType)) return false;
-        // Il v2 stepper NON sa emettere l'accesso a elementi di un array GLOBALE/STATIC
-        // (il global-init piatto lo crea short[]/double[], la lettura v2 userebbe ldelem del
-        // tipo sbagliato; l'emissione parziale lascia label non marcati — bug 2026-10-01:
-        // GO SUB/WAIT con store su array globale → "Label not marked"). Rifiutate la
-        // procedura → gira flat (corretto). Gli array LOCALI restano v2.
-        if (isGlobalSymbol is not null && BodyAccessesGlobalArray(def, isGlobalSymbol)) return false;
+        // EX GATE sugli array di modulo (rimosso 2026-11-24). Fino a ieri una procedura che
+        // LEGGEVA un elemento di un array GLOBALE/STATIC era rifiutata: lo stepper emetteva
+        // ldelem.i4/i8 dedotto dal tipo del simbolo ("il global-init piatto lo crea short[]/
+        // double[]"), quindi su un long[] leggeva 4 byte di 8 e su un double[] era IL del tipo
+        // sbagliato (bug 2026-10-01, "Label not marked"). Ora lettura e scrittura passano dal
+        // runtime (CollectionIndexGet/CollectionIndexSet, che leggono il tipo elemento REALE
+        // dell'istanza) e il gate non serve più: la procedura resta v2 e il valore è lo stesso.
+        // Nota: `isGlobalSymbol` resta nella firma perché i chiamanti (entry GPM, trampolino
+        // grafico) la passano già; non è più usato per decidere il subset.
         foreach (var s in def.Body)
             if (!StatementIsV2(s, mayPark, nameToId, symbolType)) return false;
         return true;
@@ -170,23 +173,6 @@ public static class IlCoroutineEmitter
                 if (node is FieldTarget ft && ft.Structure is VariableTarget fvt
                     && symbolType(fvt.SymbolId) is not ClassType)
                     return true;
-            }
-        return false;
-    }
-
-    /// <summary>Vero se il corpo legge/scrive un elemento di un array GLOBALE/STATIC
-    /// (pattern non emettibile dallo stepper v2, vedi <see cref="IsV2Subset"/>).</summary>
-    private static bool BodyAccessesGlobalArray(FunctionDefinition def, Func<int, bool> isGlobalSymbol)
-    {
-        foreach (var stmt in def.Body)
-            foreach (var node in WalkNodes(stmt))
-            {
-                switch (node)
-                {
-                    case ArrayAccessExpr aa when isGlobalSymbol(aa.SymbolId):
-                    case IndexedAccessExpr ia when ia.Base is VariableExpr iv && isGlobalSymbol(iv.SymbolId):
-                        return true;
-                }
             }
         return false;
     }
@@ -232,6 +218,16 @@ public static class IlCoroutineEmitter
         foreach (var prop in type.GetProperties(BindingFlags.Public | BindingFlags.Instance))
         {
             if (prop.Name == "Parent") continue;
+            // Il bordo di CHIAMATA non fa parte di questa procedura: FunctionExpr.ResolvedDefinition
+            // (popolato dal Linker) porta alla FunctionDefinition del callee, quindi senza questo skip
+            // i predicati "il corpo accede a …" (array globale / campo UDT / campo runtime) ASSORBONO
+            // il corpo delle procedure chiamate. Misurato 2026-11-23: un `GO SUB` verso una SUB che si
+            // limita a LEGGERE un array di modulo (ArrayAccessExpr) faceva uscire dal subset v2 anche il
+            // CHIAMANTE pulito. Sull'entry GPM è fatale, non solo lento: Main fuori subset → entry flat →
+            // EmitGoProcedureStatement inline ("GO SUB è INLINE in IL") → i figli girano uno alla volta
+            // (32 sleeper × 400 ms = 13.4 s invece di 1.5 s). Il callee è già valutato per conto suo:
+            // se non è v2 gira flat, e i suoi accessi li emette il percorso flat.
+            if (prop.Name == nameof(Basic.FunctionExpr.ResolvedDefinition)) continue;
             object? value;
             try { value = prop.GetValue(node); } catch { continue; }
             if (value is null || value is string || value is Basic.DataType) continue;
@@ -272,7 +268,8 @@ public static class IlCoroutineEmitter
                 return true;
             case LetStmt let:
                 return let.Assignments.All(a =>
-                    (a.Target is VariableTarget || a.Target is FieldTarget) && (
+                    (a.Target is VariableTarget || a.Target is FieldTarget
+                     || IsElementStoreTarget(a.Target, symbolType)) && (
                         a.Value is GoFunctionExpr gfe2 && gfe2.Args.All(ExprIsV2) && (gfe2.WaitGroup is null || ExprIsV2(gfe2.WaitGroup)) ||
                         ExprIsV2(a.Value) ||
                         (UnwrapConversions(a.Value) is FunctionExpr lfe &&
@@ -518,14 +515,43 @@ public static class IlCoroutineEmitter
         }
     }
 
+    /// <summary>Destinazione di uno store su ELEMENTO (`x(i) = v`, `x(0,0) = v`, `lst(i) = v`)
+    /// emettibile dallo stepper v2. Le forme del parser sono due: <c>ArrayElementTarget</c>
+    /// (risolta per SymbolId) e <c>IndexedTarget</c> (base espressione; qui solo variabile).
+    /// Si accettano SOLO un indice e solo contenitori che lo store runtime
+    /// <see cref="IlGpmRuntime"/>-side <c>IlRuntime.CollectionIndexSet</c> sa gestire (array 1D,
+    /// LIST, DICT): lo stepper non conosce il tipo CLR dell'array (gli array di modulo li crea
+    /// il global-init flat, es. long[]/short[]/double[], quelli locali nascono da DIM con
+    /// int[]/double[]), quindi delega la conversione al tipo elemento al runtime — vedi
+    /// <c>MethodEmitter.EmitAssignment</c>. Multi-indice e contenitori dinamici restano fuori
+    /// subset: la procedura gira flat, che li emette già.</summary>
+    private static bool IsElementStoreTarget(Target target, Func<int, Basic.DataType?>? symbolType)
+    {
+        if (symbolType is null) return false;
+        var (symbolId, indices) = target switch
+        {
+            ArrayElementTarget aet => (aet.SymbolId, aet.Indices),
+            IndexedTarget { Base: VariableExpr iv } it => (iv.SymbolId, it.Indices),
+            _ => (-1, default(ImmutableArray<Expr>))
+        };
+        if (symbolId < 0 || indices.Length != 1 || !ExprIsV2(indices[0])) return false;
+        var dt = symbolType(symbolId);
+        // ArrayType(1) = forma tipizzata; il tipo ELEMENTO nudo = array di modulo (il Linker
+        // tipizza così i DIM di modulo, es. `DIM v(4) AS INTEGER` → IntegerType).
+        return dt is ArrayType { Rank: 1 } or ListType or DictType
+            || dt is IntegerType or LongType or DoubleType or SingleType or StringType or BitType;
+    }
+
     /// <summary>Espressioni supportate dal subset G2: letterali, variabili, operatori binari/
     /// unari numerici, raggruppamento. Chiamate/flussi/array/oggetti fuori subset.</summary>
     public static bool ExprIsV2(Expr e) => e switch
     {
         NumberExpr or StringExpr or BooleanExpr or VariableExpr => true,
         // Indice di array fisso 1D numerico (DIM px(10) AS INTEGER — grafica in goroutine).
-        IndexedAccessExpr ia => ExprIsV2(ia.Base) && ia.Indices.All(ExprIsV2),
-        ArrayAccessExpr aa => aa.Indices.All(ExprIsV2),
+        // Un SOLO indice: lo stepper legge via IlRuntime.CollectionIndexGet (indice singolo).
+        // Multi-indice (`m(0,0)`) resta fuori subset → procedura flat, che lo emette già.
+        IndexedAccessExpr ia => ia.Indices.Length == 1 && ExprIsV2(ia.Base) && ExprIsV2(ia.Indices[0]),
+        ArrayAccessExpr aa => aa.Indices.Length == 1 && ExprIsV2(aa.Indices[0]),
         BuiltinFunctionCallExpr bfc when bfc.Name.Kind == TokenKind.UBound
             && bfc.Args.Length == 1 && ExprIsV2(bfc.Args[0]) => true,
         // Literal LIST (es. DIM x AS LIST<INTEGER> = [1,2,3] — pattern di CATCH in goroutine).

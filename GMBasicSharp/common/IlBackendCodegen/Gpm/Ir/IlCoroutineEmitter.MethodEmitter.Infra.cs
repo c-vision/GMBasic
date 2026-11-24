@@ -76,7 +76,24 @@ internal sealed partial class MethodEmitter
                 case LetStmt let:
                     foreach (var a in let.Assignments)
                     {
-                        if (a.Target is VariableTarget vt) use(vt.SymbolId, vt.NameCleaned?.Lexeme ?? vt.NameSuffixed?.Lexeme);
+                        switch (a.Target)
+                        {
+                            case VariableTarget vt:
+                                use(vt.SymbolId, vt.NameCleaned?.Lexeme ?? vt.NameSuffixed?.Lexeme);
+                                break;
+                            // x(i) = v / base(i) = v: l'array/collezione è un simbolo come gli altri
+                            // (se è GLOBALE finisce nello slot del bag globale, vedi _globalSlots) e
+                            // gli indici possono riferire variabili che senza registrazione non
+                            // avrebbero slot → "StepV2: variabile senza slot" a metà emissione.
+                            case ArrayElementTarget aet:
+                                use(aet.SymbolId, aet.NameCleaned?.Lexeme ?? aet.NameSuffixed?.Lexeme);
+                                foreach (var ix in aet.Indices) WalkExpr(ix, use);
+                                break;
+                            case IndexedTarget { Base: VariableExpr itv } idxTarget:
+                                use(itv.SymbolId, itv.NameCleaned?.Lexeme ?? itv.NameSuffixed?.Lexeme);
+                                foreach (var ix in idxTarget.Indices) WalkExpr(ix, use);
+                                break;
+                        }
                         WalkExpr(a.Value, use);
                     }
                     break;
@@ -216,11 +233,54 @@ internal sealed partial class MethodEmitter
                 case BuiltinFunctionCallExpr bfc:
                     foreach (var a in bfc.Args) WalkExpr(a, use);
                     break;
+                // Lettura di elemento: il simbolo dell'array/collezione va registrato (LoadSlotObject
+                // in EmitExprObject/EmitExprDouble usa SlotOf, che senza slot lancia a metà emissione).
+                case ArrayAccessExpr aa:
+                    use(aa.SymbolId, null);
+                    foreach (var ix in aa.Indices) WalkExpr(ix, use);
+                    break;
+                case IndexedAccessExpr ia:
+                    WalkExpr(ia.Base, use);
+                    foreach (var ix in ia.Indices) WalkExpr(ix, use);
+                    break;
             }
+        }
+
+        // ─── Tracciamento delle etichette (emissione fallita ≠ assembly rotta) ──────────────
+        // Un'eccezione a metà emissione lascia il metodo GIÀ registrato nel TypeBuilder: ogni
+        // etichetta definita e mai marcata a cui si è saltati farebbe fallire CreateType/Save con
+        // "Label N has not been marked" — e con essa l'INTERA assembly. Tenendo traccia di tutte le
+        // etichette create, il catch di Emit() può marcare le residue alla posizione corrente e
+        // chiudere con un THROW esplicito: l'assembly si salva e, se qualcuno invoca il metodo, il
+        // fallimento è rumoroso invece di eseguire un corpo monco.
+        private readonly List<Label> _labelsDefined = new();
+        private readonly HashSet<Label> _labelsMarked = new();
+
+        private Label DefineLabel()
+        {
+            var l = _il.DefineLabel();
+            _labelsDefined.Add(l);
+            return l;
+        }
+
+        /// <summary>MarkLabel idempotente (una seconda marcatura della stessa etichetta, che
+        /// ILGenerator rifiuta, è un no-op).</summary>
+        private void MarkLabel(Label l)
+        {
+            if (_labelsMarked.Add(l)) _il.MarkLabel(l);
+        }
+
+        /// <summary>Marca alla posizione corrente tutte le etichette definite e non ancora
+        /// marcate (percorso di recupero dopo un'eccezione di emissione).</summary>
+        private void MarkRemainingLabels()
+        {
+            foreach (var l in _labelsDefined) MarkLabel(l);
         }
 
         public void Emit(string methodName)
         {
+            _labelsDefined.Clear();
+            _labelsMarked.Clear();
             _storeTemp = null; // ogni metodo ha i propri locali (l'alias StepV2_Main riemette)
             _feValueLocal = null;
             _feOkLocal = null;
@@ -249,7 +309,7 @@ internal sealed partial class MethodEmitter
             // all'uscita comune — necessario per avvolgere i blocchi in regione protetta (TRY)
             // in un CIL try/catch (un `ret` dentro una protected region è IL invalido).
             _transitionLocal = _il.DeclareLocal(typeof(IlStepTransition));
-            _exitLabel = _il.DefineLabel();
+            _exitLabel = DefineLabel();
 
             // Assicura i locali del frame (i frame root da SpawnGoSub possono essere piccoli).
             EmitLdarg(_frameArg);
@@ -260,27 +320,25 @@ internal sealed partial class MethodEmitter
             // del pc (frame.Pc) sull'array — quindi labels[pc] = label del block con quel pc.
             // I pc IR possono NON essere contigui (gap tra costrutti): l'array è dimensionato
             // a maxPc+1 con i buchi → invalid (quei pc non capitano mai).
-            var invalid = _il.DefineLabel();
+            var invalid = DefineLabel();
             var blocks = _ir.Blocks;
             var maxPc = 0;
             foreach (var b in blocks) if (b.Pc > maxPc) maxPc = b.Pc;
             var labels = new Label[maxPc + 1];
             Array.Fill(labels, invalid);
-            foreach (var b in blocks) labels[b.Pc] = _il.DefineLabel();
+            foreach (var b in blocks) labels[b.Pc] = DefineLabel();
 
             EmitLdarg(_frameArg);
             _il.Emit(OpCodes.Ldfld, FramePcField);
             _il.Emit(OpCodes.Switch, labels);
             _il.Emit(OpCodes.Br, invalid);
 
-            var emittedBlocks = 0;
             try
             {
                 foreach (var b in blocks)
                 {
-                    _il.MarkLabel(labels[b.Pc]);
+                    MarkLabel(labels[b.Pc]);
                     EmitBlock(b);
-                    emittedBlocks++;
                 }
             }
             catch
@@ -291,8 +349,10 @@ internal sealed partial class MethodEmitter
                 // chiamante). Si marcano le etichette residue e si chiude con un THROW esplicito
                 // (mai un corpo silenziosamente "completato"): se invocato, il percorso fallisce
                 // forte invece di restituire un risultato sbagliato.
-                for (var i = emittedBlocks + 1; i < blocks.Count; i++) _il.MarkLabel(labels[blocks[i].Pc]);
-                _il.MarkLabel(_exitLabel);
+                // Le etichette rimaste non marcate NON sono solo quelle dei block non emessi:
+                // `invalid` (default dello switch), `_exitLabel` e ogni etichetta interna del blocco
+                // che stava fallendo. Il tracciamento DefineLabel/MarkLabel le copre tutte.
+                MarkRemainingLabels();
                 _il.Emit(OpCodes.Ldstr, "StepV2 non emesso (errore di codegen): percorso GPM v2 non disponibile");
                 _il.Emit(OpCodes.Newobj,
                     typeof(InvalidOperationException).GetConstructor([typeof(string)])!);
@@ -300,12 +360,12 @@ internal sealed partial class MethodEmitter
                 throw;
             }
 
-            _il.MarkLabel(invalid);
+            MarkLabel(invalid);
             EmitTransition(IlStepKind.CompleteTask, resumePc: 0, targetProc: 0, args: null, dest: IlReturnDestination.Discard, value: null);
             EmitReturnTransition();
 
             // Uscita comune del metodo: la transizione (già memorizzata) viene ritornata.
-            _il.MarkLabel(_exitLabel);
+            MarkLabel(_exitLabel);
             _il.Emit(OpCodes.Ldloc, _transitionLocal);
             _il.Emit(OpCodes.Ret);
         }

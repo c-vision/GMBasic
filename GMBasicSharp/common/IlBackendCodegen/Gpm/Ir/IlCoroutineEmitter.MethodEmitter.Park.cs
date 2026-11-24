@@ -24,12 +24,12 @@ internal sealed partial class MethodEmitter
             EmitLdarg(_frameArg);
             _il.Emit(OpCodes.Ldloca, keyLocal);
             _il.Emit(OpCodes.Call, TryWaitKeyParkMethod);
-            var ok = _il.DefineLabel();
+            var ok = DefineLabel();
             _il.Emit(OpCodes.Brtrue, ok);
             EmitSetPc(pc);
             EmitTransition(IlStepKind.Park, pc, 0, null, IlReturnDestination.Discard, null);
             EmitReturnTransition();
-            _il.MarkLabel(ok);
+            MarkLabel(ok);
             if (variable is VariableTarget vt)
             {
                 _il.Emit(OpCodes.Ldloc, keyLocal);
@@ -55,8 +55,8 @@ internal sealed partial class MethodEmitter
                 {
                     if (f.Variable is not VariableTarget vt) continue;
                     var isStr = _program.Symbols.GetSymbol(vt.SymbolId).DataType is StringType;
-                    var againField = _il.DefineLabel();
-                    _il.MarkLabel(againField);
+                    var againField = DefineLabel();
+                    MarkLabel(againField);
                     EmitExprDouble(f.Row); _il.Emit(OpCodes.Conv_R8);
                     EmitExprDouble(f.Col); _il.Emit(OpCodes.Conv_R8);
                     if (f.ControlWidth is not null) { EmitExprDouble(f.ControlWidth); _il.Emit(OpCodes.Conv_R8); }
@@ -89,8 +89,8 @@ internal sealed partial class MethodEmitter
                 EmitContinueTo(b.Terminator.ResumePc);
                 return;
             }
-            var again = _il.DefineLabel();
-            _il.MarkLabel(again);
+            var again = DefineLabel();
+            MarkLabel(again);
             // READ NATIVO (una sola implementazione): ri-prompt VALID = si azzera il contesto
             // e si riaggiungono i campi (il testo rifiutato torna come valore iniziale della
             // variabile). Senza reset i campi si duplicherebbero a ogni ri-prompt.
@@ -155,11 +155,11 @@ internal sealed partial class MethodEmitter
                 {
                     var f = fields[i];
                     if (f.Valid is null || f.Variable is not VariableTarget) continue;
-                    var okLbl = _il.DefineLabel();
+                    var okLbl = DefineLabel();
                     EmitConditionBoolV2(f.Valid);
                     _il.Emit(OpCodes.Brtrue, okLbl);
                     _il.Emit(OpCodes.Br, again);
-                    _il.MarkLabel(okLbl);
+                    MarkLabel(okLbl);
                 }
             EmitContinueTo(b.Terminator.ResumePc);
         }
@@ -196,12 +196,12 @@ internal sealed partial class MethodEmitter
             emitArgs();
             _il.Emit(OpCodes.Ldloca, valueLocal);
             _il.Emit(OpCodes.Call, stepMethod);
-            var ok = _il.DefineLabel();
+            var ok = DefineLabel();
             _il.Emit(OpCodes.Brtrue, ok);
             EmitSetPc(pc);
             EmitTransition(IlStepKind.Park, pc, 0, null, IlReturnDestination.Discard, null);
             EmitReturnTransition();
-            _il.MarkLabel(ok);
+            MarkLabel(ok);
             if (handleTarget is VariableTarget hvt)
             {
                 _il.Emit(OpCodes.Ldloc, valueLocal);
@@ -219,12 +219,12 @@ internal sealed partial class MethodEmitter
             EmitInt64Arg(recv.ClientHandle);
             _il.Emit(OpCodes.Ldloca, valueLocal);
             _il.Emit(OpCodes.Call, TcpRecvStepMethod);
-            var ok = _il.DefineLabel();
+            var ok = DefineLabel();
             _il.Emit(OpCodes.Brtrue, ok);
             EmitSetPc(b.Pc);
             EmitTransition(IlStepKind.Park, b.Pc, 0, null, IlReturnDestination.Discard, null);
             EmitReturnTransition();
-            _il.MarkLabel(ok);
+            MarkLabel(ok);
             if (recv.Buffer is VariableTarget bt)
             {
                 _il.Emit(OpCodes.Ldloc, valueLocal);
@@ -251,12 +251,12 @@ internal sealed partial class MethodEmitter
             EmitInt64Arg(recv.Handle);
             _il.Emit(OpCodes.Ldloca, valueLocal);
             _il.Emit(OpCodes.Call, UdpRecvStepMethod);
-            var ok = _il.DefineLabel();
+            var ok = DefineLabel();
             _il.Emit(OpCodes.Brtrue, ok);
             EmitSetPc(b.Pc);
             EmitTransition(IlStepKind.Park, b.Pc, 0, null, IlReturnDestination.Discard, null);
             EmitReturnTransition();
-            _il.MarkLabel(ok);
+            MarkLabel(ok);
             EmitArrayGetStore(valueLocal, 0, recv.Buffer);
             EmitArrayGetStore(valueLocal, 1, recv.RemoteIp);
             EmitArrayGetStore(valueLocal, 2, recv.RemotePort);
@@ -287,12 +287,12 @@ internal sealed partial class MethodEmitter
             EmitLdarg(_frameArg);
             emitArgs();
             _il.Emit(OpCodes.Call, parkMethod);
-            var ok = _il.DefineLabel();
+            var ok = DefineLabel();
             _il.Emit(OpCodes.Brtrue, ok);
             EmitSetPc(pc);
             EmitTransition(IlStepKind.Park, pc, 0, null, IlReturnDestination.Discard, null);
             EmitReturnTransition();
-            _il.MarkLabel(ok);
+            MarkLabel(ok);
             EmitContinueTo(resumePc);
         }
 
@@ -306,12 +306,12 @@ internal sealed partial class MethodEmitter
             emitArgs();
             _il.Emit(OpCodes.Ldloca, intLocal);
             _il.Emit(OpCodes.Call, parkMethod);
-            var ok = _il.DefineLabel();
+            var ok = DefineLabel();
             _il.Emit(OpCodes.Brtrue, ok);
             EmitSetPc(pc);
             EmitTransition(IlStepKind.Park, pc, 0, null, IlReturnDestination.Discard, null);
             EmitReturnTransition();
-            _il.MarkLabel(ok);
+            MarkLabel(ok);
             if (targetSymbolId is int tid)
             {
                 _il.Emit(OpCodes.Ldloc, intLocal);
@@ -331,12 +331,12 @@ internal sealed partial class MethodEmitter
             emitArgs();
             _il.Emit(OpCodes.Ldloca, objLocal);
             _il.Emit(OpCodes.Call, parkMethod);
-            var ok = _il.DefineLabel();
+            var ok = DefineLabel();
             _il.Emit(OpCodes.Brtrue, ok);
             EmitSetPc(pc);
             EmitTransition(IlStepKind.Park, pc, 0, null, IlReturnDestination.Discard, null);
             EmitReturnTransition();
-            _il.MarkLabel(ok);
+            MarkLabel(ok);
             if (targetSymbolId is int tid2)
             {
                 _il.Emit(OpCodes.Ldloc, objLocal);
@@ -360,6 +360,45 @@ internal sealed partial class MethodEmitter
             _il.Emit(OpCodes.Conv_I4);
         }
 
+        /// <summary>Store su elemento di array/collezione: `x(i) = v` (ArrayElementTarget) e
+        /// `base(i) = v` (IndexedTarget con base variabile). Il tipo CLR dell'array NON è noto a
+        /// compile-time: gli array di MODULO li crea il global-init del percorso flat (long[] per
+        /// INTEGER, double[] per DOUBLE — vedi il `newarr`/`StoreGlobal` del preambolo), quelli
+        /// LOCALI nascono da DIM con int[]/double[]. Perciò lo store passa da
+        /// IlRuntime.CollectionIndexSet, che legge il tipo elemento dall'istanza e converte il
+        /// valore con la stessa semantica degli store statici (cast/troncamento verso zero, come
+        /// conv.i2/conv.i8): un `stelem.i2` emesso a indovinare sarebbe IL non verificabile su un
+        /// long[] e convertirebbe in modo sbagliato su un double[]. Il runtime gestisce anche
+        /// LIST/DICT (IList/IDictionary), quindi la stessa call copre le tre forme.</summary>
+        private bool TryEmitElementStore(Assignment a)
+        {
+            var (symbolId, indices) = a.Target switch
+            {
+                ArrayElementTarget aet => (aet.SymbolId, aet.Indices),
+                IndexedTarget { Base: VariableExpr iv } it => (iv.SymbolId, it.Indices),
+                _ => (-1, default(ImmutableArray<Expr>))
+            };
+            if (symbolId < 0) return false;
+            if (indices.Length != 1)
+                throw new NotSupportedException("StepV2: store su elemento richiede 1 indice (G2).");
+            LoadSlotObject(SlotOf(symbolId));   // istanza array/lista/dizionario (anche dal bag globale)
+            EmitExprObject(indices[0]);         // indice boxed (double → Convert.ToInt32 nel runtime)
+            EmitExprObject(a.Value);            // valore boxed, coercito al tipo elemento dal runtime
+            _il.Emit(OpCodes.Call, CollectionIndexSetMethod);
+            return true;
+        }
+
+        private static readonly MethodInfo CollectionIndexSetMethod =
+            typeof(IlRuntime).GetMethod(nameof(IlRuntime.CollectionIndexSet),
+                [typeof(object), typeof(object), typeof(object)])!;
+
+        /// <summary>Lettura simmetrica (EmitExprObject/EmitExprDouble): l'elemento torna boxato
+        /// col tipo REALE dell'istanza (long[] di modulo, int[] locale, double[], string[]) — chi
+        /// consuma un numero passa da IlGpmRuntime.AsDouble, che accetta double/int/long.</summary>
+        private static readonly MethodInfo CollectionIndexGetMethod =
+            typeof(IlRuntime).GetMethod(nameof(IlRuntime.CollectionIndexGet),
+                [typeof(object), typeof(object)])!;
+
         private void EmitAssignment(Assignment a)
         {
             if (a.Target is VariableTarget vt)
@@ -382,7 +421,8 @@ internal sealed partial class MethodEmitter
                 _il.Emit(OpCodes.Stfld, fieldB);
                 return;
             }
-            throw new NotSupportedException($"StepV2: target non variabile non supportato (G2).");
+            if (TryEmitElementStore(a)) return;
+            throw new NotSupportedException($"StepV2: target non supportato (G2): {a.Target.GetType().Name}.");
         }
 
         /// <summary>Converte il valore (boxed double/stringa) sul top dello stack al tipo CLR
