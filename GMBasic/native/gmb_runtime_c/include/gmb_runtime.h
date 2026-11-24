@@ -2214,16 +2214,11 @@ double* gmb_splrep(const double* x, const double* y, int n, gmb_int_t* out_len);
 double* gmb_splev(const double* spline, int slen, const double* xq, int nq, gmb_int_t* outn);
 /* --- scipy.spatial P1: migrato a shared/libs/spatial (libgmbspatial, FFI) --- */
 /* --- Bridge C99 P0/P1 --- */
-gmb_int_t gmb_welch_c99(const double* x, int n, int nperseg, double fs);
-double* gmb_savgol_c99(const double* x, int n, int wl, int po, gmb_int_t* outn);
-double* gmb_resample_c99(const double* x, int n, int num, gmb_int_t* outn);
-double* gmb_decimate_c99(const double* x, int n, int q, gmb_int_t* outn);
-gmb_int_t gmb_rfft_c99(const double* x, int n);
-double* gmb_irfft_c99(const double* re, const double* im, int m, gmb_int_t* outn);
-double* gmb_firwin_c99(int numtaps, const double* cutoff, int ncut, const char* btype, const char* window, gmb_int_t* outn);
-double* gmb_splrep_c99(const double* x, const double* y, int n, gmb_int_t* outn);
-double* gmb_splev_c99(const double* spline, int slen, const double* xq, int nq, gmb_int_t* outn);
-double* gmb_find_peaks_alloc(const double* x, int n, double distance, gmb_int_t* outn);
+/* NOTA (2026-11-24): i bridge C99 di signal/fft/interpolate (`gmb_welch_c99`, `gmb_savgol_c99`,
+ * `gmb_resample_c99`, `gmb_decimate_c99`, `gmb_rfft_c99`, `gmb_irfft_c99`, `gmb_firwin_c99`,
+ * `gmb_splrep_c99`, `gmb_splev_c99`, `gmb_find_peaks_alloc`) sono stati RIMOSSI insieme ai
+ * builtin: quelle funzioni vivono nei pacchetti FFI (`signal`, `math`) e l'emitter non li chiama
+ * più. Restano qui solo i bridge ancora usati dall'emissione. */
 /* --- Bridge C99 vettore→vettore (fsolve/least_squares/solve_ivp) --- */
 gmb_int_t gmb_solve_ivp_c99(gmb_fn_t fn, double* y0, int n, double t0, double t1);
 gmb_val_t gmb_anova_flat(const double* data, const int* sizes, int k);

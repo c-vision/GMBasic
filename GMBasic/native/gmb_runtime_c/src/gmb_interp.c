@@ -88,8 +88,3 @@ double* gmb_splev(const double* spline, int slen, const double* xq, int nq, gmb_
     *outn = nq;
     return result;
 }
-
-double* gmb_splrep_c99(const double* x, const double* y, int n, gmb_int_t* outn)
-{ return gmb_splrep(x, y, n, outn); }
-double* gmb_splev_c99(const double* spline, int slen, const double* xq, int nq, gmb_int_t* outn)
-{ return gmb_splev(spline, slen, xq, nq, outn); }
