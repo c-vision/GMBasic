@@ -887,6 +887,10 @@ gmb_list_t gmb_json_keys_list(gmb_val_t v);
 const char* gmb_collection_type_name(int type_code);
 const char* gmb_collection_valtype_letter(int type_code);
 gmb_dict_t gmb_val_as_dict(gmb_val_t v);gmb_val_t gmb_make_val_dict(gmb_dict_t src);
+/* Sotto-dict `key` di un dict boxato, CREANDOLO se assente (stesso storage del padre):
+ * `o.Headers.Add(k,v)` non deve scrivere su una copia di NIL. Ritorna il VAL boxato del
+ * sotto-dict (NIL se il padre non è un dict). Vedi gmb_dict.c. */
+gmb_val_t gmb_val_dict_slot(gmb_val_t v, const char* key);
 gmb_val_t gmb_make_val_dict_take(gmb_dict_t* src);   /* adotta lo storage di *src (nessuna copia), lo lascia vuoto */
 
 /* ── valori MATRICE dentro un gmb_val_t (ADR-MATRIX F4: decomposizioni a dizionario) ──

@@ -21031,6 +21031,27 @@ public static double TextWidth(string s)
         {
             try { fld.SetValue(instance, value); return; } catch { /* readonly: si prosegue */ }
         }
+        // `res.StatusCode = 401` (HTTPRESPONSE): la proprietà ha il setter PRIVATO e si scrive
+        // SOLO via SetStatus(int), che rispetta il lock e ignora la scrittura dopo l'invio. Il
+        // SetValue sopra usa il setter pubblico e fallisce in silenzio → la risposta restava 200
+        // (gamba IL su Http/HttpRoutes: 200 invece di 401). Stesso mapping del PCode
+        // (OP_STORE_FIELD "StatusCode" → SetStatus), del VM/C e del C99 (res.StatusCode).
+        if (memberName.Equals("StatusCode", StringComparison.OrdinalIgnoreCase))
+        {
+            var setStatus = type.GetMethods(BF).FirstOrDefault(m =>
+                m.Name.Equals("SetStatus", StringComparison.OrdinalIgnoreCase)
+                && m.GetParameters().Length == 1);
+            if (setStatus is not null)
+            {
+                try
+                {
+                    setStatus.Invoke(instance,
+                        [Convert.ToInt32(value ?? 200.0, System.Globalization.CultureInfo.InvariantCulture)]);
+                    return;
+                }
+                catch { /* firma non compatibile: si prosegue */ }
+            }
+        }
         var setter = type.GetMethods(BF).FirstOrDefault(m =>
             m.Name.Equals("Set" + memberName, StringComparison.OrdinalIgnoreCase)
             && m.GetParameters().Length == 1);

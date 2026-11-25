@@ -12712,6 +12712,16 @@ static void emit_call(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_
             sb_put(&c->out, ")");
                             return;
                         }
+                        if (mk == GMB_TOK_ToJson) {
+                            /* `.ToJson()` su una LISTA: TESTO JSON (gmb_string_t) — stesso
+                             * contratto del ramo DICT e di IL/PCode/VM-C (TYPENAME STRING).
+                             * Senza questo ramo il nome cadeva nel default `0`: PRINT
+                             * stampava "0" e `JSON.STRINGIFY(l.ToJson())` non compilava. */
+                            sb_put(&c->out, "gmb_make_val_string(gmb_val_to_json(gmb_make_val_list(");
+                            sb_ident(&c->out, cv->name);
+                            sb_put(&c->out, ")).data)");
+                            return;
+                        }
                         /* F1: Front/Back/IsEmpty (0 arg) — parity IL/PCode/VMC. */
                         if (mk == GMB_TOK_CollFront || mk == GMB_TOK_CollBack) {
                             if (is_str_el) {
@@ -13976,9 +13986,12 @@ static void emit_call(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_
                         memcpy(hpre, name, hpl); hpre[hpl] = 0;
                         var_t* hbv = lookup_var(c, hpre);
                         if (hbv && hbv->boxed_val) {
-                            sb_put(&c->out, "gmb_val_dict_set(gmb_dict_get(gmb_val_as_dict(");
+                            /* `gmb_val_dict_slot` CREA il sotto-dict "Headers" se manca:
+                             * con `gmb_dict_get` il set cadeva su una copia di NIL e l'header
+                             * non veniva mai inviato (FETCH senza X-Auth-Token). */
+                            sb_put(&c->out, "gmb_val_dict_set(gmb_val_dict_slot(");
                             emit_ident(c, hbv->name);
-                            sb_put(&c->out, "), \"Headers\"), (");
+                            sb_put(&c->out, ", \"Headers\"), (");
                             emit_str_operand(c, args[0]); sb_put(&c->out, ").data, ");
                             if (etype(c, args[1]) == TY_STR) { sb_put(&c->out, "gmb_make_val_string(("); emit_expr(c, args[1]); sb_put(&c->out, ").data)"); }
                             else { sb_put(&c->out, "gmb_make_val_double((double)("); emit_expr(c, args[1]); sb_put(&c->out, "))"); }
@@ -14049,8 +14062,27 @@ static void emit_call(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_
                     if ((!strcasecmp(m2, "SendJSON") || !strcasecmp(m2, "SendJson")) && nargs >= 1) {
                         sb_put(&c->out, "(gmb_val_dict_set("); emit_ident(c, bv->name);
                         sb_put(&c->out, ", \"Body\", gmb_make_val_string(");
-                        if (etype(c, args[0]) == TY_STR) { sb_put(&c->out, "("); emit_str_operand(c, args[0]); sb_put(&c->out, ").data"); }
-                        else { sb_put(&c->out, "gmb_val_to_json("); emit_expr(c, args[0]); sb_put(&c->out, ").data"); }
+                        var_t* sav = (args[0] && args[0]->kind == GMB_EXPR_VAR && args[0]->var)
+                                     ? lookup_var(c, args[0]->var) : NULL;
+                        if (sav && (sav->boxed_val || sav->gkind)) {
+                            /* Valore DINAMICO (JSON/ANY) o collezione: si serializza il VALORE
+                             * (un `DIM o AS JSON` è un dict, non una stringa anche se etype()
+                             * lo classifica TY_STR per il display). */
+                            if (sav->gkind && gk_is_list(sav->gkind))
+                                sb_put(&c->out, "gmb_val_to_json(gmb_make_val_list(");
+                            else
+                                sb_put(&c->out, "gmb_val_to_json(");
+                            emit_expr(c, args[0]);
+                            sb_put(&c->out, sav->gkind && gk_is_list(sav->gkind) ? ")).data" : ").data");
+                        } else if (etype(c, args[0]) == TY_STR) {
+                            /* ARGOMENTO STRINGA: il managed (e VM/C) la INCAPSULA come stringa
+                             * JSON, non la manda grezza: `res.SendJSON("[]")` produce il body
+                             * `"[]"` (5 byte), non `[]`. Il sample HttpRoutes stampa
+                             * `listRes.Body` e prima il C99 divergeva (`[]` vs `"[]"`). */
+                            sb_put(&c->out, "gmb_val_to_json(gmb_make_val_string((");
+                            emit_str_operand(c, args[0]);
+                            sb_put(&c->out, ").data)).data");
+                        } else { sb_put(&c->out, "gmb_val_to_json("); emit_expr(c, args[0]); sb_put(&c->out, ").data"); }
                         sb_put(&c->out, ")), 0.0)"); return;
                     }
                     if (!strcasecmp(m2, "SetStatus") && nargs >= 1) {
@@ -14173,8 +14205,13 @@ static void emit_call(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_
                     sb_put(&c->out, "(gmb_val_dict_set(");
                     emit_ident(c, bv->name);
                     sb_put(&c->out, ", \"Body\", gmb_make_val_string(");
-                    if (etype(c, a0) == TY_STR) {
-                        sb_put(&c->out, "("); emit_str_operand(c, a0); sb_put(&c->out, ").data");
+                    if (etype(c, a0) == TY_STR && !(av0 && (av0->boxed_val || av0->gkind))) {
+                        /* Argomento STRINGA VERA (non un JSON/dict boxato, che etype()
+                         * classifica TY_STR per il display): incapsulato come stringa JSON
+                         * (parità managed/VM-C: `SendJSON("[]")` → body `"[]"`). */
+                        sb_put(&c->out, "gmb_val_to_json(gmb_make_val_string((");
+                        emit_str_operand(c, a0);
+                        sb_put(&c->out, ").data)).data");
                     } else if (av0 && av0->gkind == GK_LIST) {
                         sb_put(&c->out, "gmb_val_to_json(gmb_make_val_list(");
                         emit_expr(c, a0);

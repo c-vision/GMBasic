@@ -311,6 +311,30 @@ gmb_dict_t gmb_val_as_dict(gmb_val_t v) {
     return r;
 }
 
+/* Sotto-dict `key` di un dizionario BOXATO, CREANDOLO se assente (stesso storage del padre).
+ * Serve a `o.Headers.Add(k,v)` su HTTPOPTIONS: emetteva
+ *   gmb_val_dict_set(gmb_dict_get(gmb_val_as_dict(o), "Headers"), k, v)
+ * e quando la chiave "Headers" non c'era `gmb_dict_get` restituiva NIL per VALORE, quindi il
+ * set finiva su una copia vuota: l'header non veniva MAI inviato (richiesta senza
+ * X-Auth-Token; `o.Headers.Connection = "close"` funzionava perché passa da gmb_json_path_set,
+ * che il path lo crea). Valore NON valido → dict vuoto (set no-op, mai crash). */
+gmb_val_t gmb_val_dict_slot(gmb_val_t v, const char* key) {
+    if (v.kind != GMB_TYPE_OBJECT || !v.v_ptr || !key) return gmb_val_nil();
+    gmb_obj_t* o = (gmb_obj_t*)v.v_ptr;
+    if (!o->data || !o->type_name || !strstr(o->type_name, "dict")) return gmb_val_nil();
+    gmb_dict_t* d = (gmb_dict_t*)o->data;
+    gmb_val_t cur = gmb_dict_get(*d, key);
+    if (cur.kind == GMB_TYPE_OBJECT && cur.v_ptr) {
+        gmb_obj_t* co = (gmb_obj_t*)cur.v_ptr;
+        if (co->data && co->type_name && strstr(co->type_name, "dict")) return cur;
+    }
+    {
+        gmb_dict_t nd = gmb_dict_new();
+        gmb_dict_set(d, key, gmb_make_val_dict_take(&nd));
+    }
+    return gmb_dict_get(*d, key);
+}
+
 /* Scrittura in-place su un gmb_val_t boxed a dict (oggetto opaco): setta la coppia
    key/value direttamente nel dict contenuto nel gmb_obj_t (niente copia). */
 gmb_val_t gmb_val_dict_get(gmb_val_t v, const char* key) {

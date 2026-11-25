@@ -3,6 +3,7 @@
 #include "gmb_ns.h"
 #include "gmb_ns_lookup.h"
 #include "gmb_fn_lookup.h"
+#include "gmb_members.h"   /* gmb_member_tok: membro (non-keyword) → TokenKind canonico */
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -1781,6 +1782,8 @@ gmb_expr_t* gmb_p_parse_primary(gmb_parser_t* p)
                     gmb_p_adv(p);
                     const gmb_token_t* m2 = gmb_p_cur(p);
                     if (!m2) break;
+                    int m2len = m2->length < 127 ? m2->length : 127;
+                    char m2name[128]; memcpy(m2name, m2->lexeme, (size_t)m2len); m2name[m2len] = 0;
                     gmb_p_adv(p);
                     if (gmb_p_match(p, GMB_TOK_LeftParen)) {
                         int d = 1;
@@ -1789,6 +1792,21 @@ gmb_expr_t* gmb_p_parse_primary(gmb_parser_t* p)
                             else if (gmb_p_match(p, GMB_TOK_RightParen)) d--;
                             else if (gmb_p_at_end(p)) break;
                             else gmb_p_adv(p);
+                        }
+                        /* `expr.METODO(args)` concatenato. NON esiste un nodo generico
+                         * "receiver + metodo" nel frontend C, ma `.ToJson()`/`.TOJSON()` è
+                         * la serializzazione JSON PURA: si riscrive in JSON.STRINGIFY(expr),
+                         * che l'emitter già gestisce per qualunque espressione (lista, dict,
+                         * val, stringa). Prima la chiamata veniva semplicemente SALTATA, quindi
+                         * `d.Values().ToJson()` diventava `d.Values()` (una lista): su
+                         * `res.SendJSON(...)` il body usciva `[]` invece di `"[]"` — sample
+                         * Http/HttpRoutes, gamba C99 (IL/PCode/VM-C danno la stringa quotata). */
+                        if (gmb_member_tok(m2name) == GMB_TOK_ToJson) {
+                            gmb_expr_t** sargs = (gmb_expr_t**)malloc(sizeof(gmb_expr_t*));
+                            sargs[0] = mc;
+                            gmb_expr_t* wrap = gmb_expr_call_ns("STRINGIFY", "JSON", sargs, 1, m2->line);
+                            wrap->tk = GMB_TOK_Stringify;
+                            mc = wrap;
                         }
                     } else {
                         int plen = m2->length < 127 ? m2->length : 127;
