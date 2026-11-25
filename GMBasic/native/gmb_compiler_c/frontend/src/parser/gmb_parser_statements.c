@@ -587,6 +587,23 @@ static gmb_stmt_t* gmb_p_parse_stmt_impl(gmb_parser_t* p, bool* multiline)
         if (t->kind == GMB_TOK_Colon) gmb_p_adv(p);
         return gmb_stmt_new(GMB_STMT_REM, line);
     }
+    /* `NOME = espressione` dove NOME è una KEYWORD/CONTROLLO (PANEL, WINDOW, TAB, GRID, CHART,
+     * CANVAS, ...): è un ASSEGNAMENTO a una variabile omonima, non un controllo/comando. Va
+     * deciso QUI, prima dei rami dedicati (WINDOW→gmb_p_parse_window, PANEL→gmb_p_parse_panel,
+     * controlli→gmb_p_parse_control), che altrimenti consumano `= …` come argomenti del
+     * controllo (bug reale: `DIM panel : panel = 4` emetteva gmb_form_add_panel(...)).
+     * Un identifier normale non ha kind >= GMB_TOK_Define e segue il percorso assegnamento. */
+    if (t->kind >= GMB_TOK_Define) {
+        const gmb_token_t* nx_assign = gmb_p_peek(p, 1);
+        if (nx_assign && (nx_assign->kind == GMB_TOK_Equal || nx_assign->kind == GMB_TOK_InlineAssign)) {
+            gmb_stmt_t* kwa = gmb_stmt_new(GMB_STMT_ASSIGN, line);
+            kwa->target = gmb_p_tok_strdup(t);
+            gmb_p_adv(p);   /* nome */
+            gmb_p_adv(p);   /* '=' / ':=' */
+            kwa->value = gmb_p_parse_expr(p);
+            return kwa;
+        }
+    }
     if (t->kind == GMB_TOK_Number) {
         /* riferimento a numero di riga come statement (es. IF a<b THEN 220) — label */
         gmb_p_adv(p);
