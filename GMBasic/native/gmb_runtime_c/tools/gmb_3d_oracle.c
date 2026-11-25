@@ -414,20 +414,250 @@ static int scene_mesh_cull(gmb_3d_target_t* t)
     return (sr.tris_culled == 2 && sr.tris_drawn == 0) ? 0 : -1;
 }
 
-/* P1: triangoli. P2: settori (room/door/pitch) e mappa demo. P3: mesh sul
- * target ARGB+depth (cubo, piano, clip, z-buffer, back-face): l'accettazione
- * della fase passa da qui, non da un'impressione.
+/* --- P4: luce, fog, cielo, thing e ordine (specifica M-*) -----------------
+ *
+ * Le scene usano il kernel direttamente (gmb_3d_mesh_draw_env, sky_fill,
+ * thing_draw): sono le stesse funzioni che la superficie SCENE chiama, ma qui
+ * la geometria è nota e il fotogramma è l'oracolo.
  */
-#define NSCENES 12
+
+typedef struct p4_quad {
+    float pos[12];
+    float uv[8];
+    int idx[6];
+} p4_quad_t;
+
+/* Quad verticale rivolto alla camera (fronte = CCW visto da -z). */
+static void p4_quad_init(p4_quad_t* q, float x0, float y0, float x1, float y1, float z)
+{
+    static const float uv0[8] = { 0,1, 1,1, 1,0, 0,0 };
+    /* Con la camera di p4_camera (forward +z) la destra dello schermo e' -x:
+     * l'ordine BL,BR,TR visto dal mondo resta frontale solo se i triangoli sono
+     * 0,2,1 e 0,3,2. Senza questo il kernel scarta il quad come back-face. */
+    static const int idx0[6] = { 0, 2, 1, 0, 3, 2 };
+    q->pos[0] = x0; q->pos[1] = y0; q->pos[2] = z;
+    q->pos[3] = x1; q->pos[4] = y0; q->pos[5] = z;
+    q->pos[6] = x1; q->pos[7] = y1; q->pos[8] = z;
+    q->pos[9] = x0; q->pos[10] = y1; q->pos[11] = z;
+    memcpy(q->uv, uv0, sizeof(uv0));
+    memcpy(q->idx, idx0, sizeof(idx0));
+}
+
+static gmb_3d_mesh_t p4_mesh(const p4_quad_t* q)
+{
+    gmb_3d_mesh_t m;
+    m.pos = q->pos; m.uv = q->uv; m.nv = 4; m.idx = q->idx; m.nt = 2;
+    return m;
+}
+
+/* Texture tinta unita (per thing e traslucidi). */
+static void make_solid(gm_tex* tex, unsigned char r, unsigned char g, unsigned char b)
+{
+    gm_tex_alloc(tex, 8, 8);
+    for (int y = 0; y < 8; y++)
+        for (int x = 0; x < 8; x++) gm_tex_set(tex, x, y, r, g, b, 255);
+}
+
+static void p4_flat_material(gmb_3d_material_t* mat, unsigned char r, unsigned char g,
+                             unsigned char b, unsigned char light)
+{
+    memset(mat, 0, sizeof(*mat));
+    mat->tint_r = r; mat->tint_g = g; mat->tint_b = b;
+    mat->light = light;
+}
+
+static void p4_camera(float mvp[16], float fovy, float aspect)
+{
+    const float eye[3] = { 0.0f, 0.0f, 0.0f };
+    const float at[3]  = { 0.0f, 0.0f, 1.0f };
+    mvp_build(mvp, eye, at, fovy, aspect, 0.1f, 100.0f);
+}
+
+/* 9) lampada puntiforme: centro chiaro, bordi scuri (falloff lineare). */
+static int p4_scene_lamp_point(gmb_3d_target_t* t)
+{
+    if (gmb_3d_target_clear(t, 0x000000u, 0.0f) != GMB_3D_OK) return -1;
+    p4_quad_t q;
+    p4_quad_init(&q, -3.0f, -3.0f, 3.0f, 3.0f, 4.0f);
+    gmb_3d_mesh_t m = p4_mesh(&q);
+    gmb_3d_material_t mat;
+    p4_flat_material(&mat, 210, 210, 210, 20);
+    gmb_3d_env_t env;
+    gmb_3d_env_clear(&env);
+    env.nlamps = 1;
+    env.lamps[0].x = 0.0f; env.lamps[0].y = 0.0f; env.lamps[0].z = 2.5f;
+    env.lamps[0].radius = 3.0f;
+    env.lamps[0].amount = 235;
+    float mvp[16];
+    p4_camera(mvp, 60.0f * MESH_PI / 180.0f, (float)t->w / (float)t->h);
+    gmb_3d_draw_stats_t st;
+    return gmb_3d_mesh_draw_env(t, mvp, &m, &mat, &env, &st) == GMB_3D_OK ? 0 : -1;
+}
+
+/* 10) spot: il cono illumina solo il quad di sinistra, quello di destra resta buio. */
+static int p4_scene_lamp_spot(gmb_3d_target_t* t)
+{
+    if (gmb_3d_target_clear(t, 0x000000u, 0.0f) != GMB_3D_OK) return -1;
+    p4_quad_t ql, qr;
+    p4_quad_init(&ql, -3.2f, -1.5f, -0.4f, 1.5f, 4.0f);
+    p4_quad_init(&qr,  0.4f, -1.5f,  3.2f, 1.5f, 4.0f);
+    gmb_3d_mesh_t ml = p4_mesh(&ql), mr = p4_mesh(&qr);
+    gmb_3d_material_t mat;
+    p4_flat_material(&mat, 210, 210, 210, 15);
+    gmb_3d_env_t env;
+    gmb_3d_env_clear(&env);
+    env.nlamps = 1;
+    env.lamps[0].x = -1.8f; env.lamps[0].y = 0.0f; env.lamps[0].z = 2.0f;
+    env.lamps[0].radius = 6.0f;
+    env.lamps[0].dir[0] = 0.0f; env.lamps[0].dir[1] = 0.0f; env.lamps[0].dir[2] = 1.0f;
+    env.lamps[0].half_angle = 25.0f * MESH_PI / 180.0f;
+    env.lamps[0].amount = 235;
+    float mvp[16];
+    p4_camera(mvp, 60.0f * MESH_PI / 180.0f, (float)t->w / (float)t->h);
+    gmb_3d_draw_stats_t s1, s2;
+    if (gmb_3d_mesh_draw_env(t, mvp, &ml, &mat, &env, &s1) != GMB_3D_OK) return -1;
+    if (gmb_3d_mesh_draw_env(t, mvp, &mr, &mat, &env, &s2) != GMB_3D_OK) return -1;
+    return 0;
+}
+
+/* 11) fog: due quad a distanze note, il lontano si scurisce (M-FOG). */
+static int p4_scene_fog(gmb_3d_target_t* t)
+{
+    if (gmb_3d_target_clear(t, 0x000000u, 0.0f) != GMB_3D_OK) return -1;
+    p4_quad_t qn, qf;
+    p4_quad_init(&qn, -3.0f, -2.0f, -1.0f, 2.0f, 3.0f);
+    p4_quad_init(&qf,  1.0f, -2.0f,  3.0f, 2.0f, 8.0f);
+    gmb_3d_mesh_t mn = p4_mesh(&qn), mf = p4_mesh(&qf);
+    gmb_3d_material_t mat;
+    p4_flat_material(&mat, 220, 220, 220, 255);
+    gmb_3d_env_t env;
+    gmb_3d_env_clear(&env);
+    env.fog = 9.0f;
+    float mvp[16];
+    p4_camera(mvp, 60.0f * MESH_PI / 180.0f, (float)t->w / (float)t->h);
+    gmb_3d_draw_stats_t s1, s2;
+    if (gmb_3d_mesh_draw_env(t, mvp, &mn, &mat, &env, &s1) != GMB_3D_OK) return -1;
+    if (gmb_3d_mesh_draw_env(t, mvp, &mf, &mat, &env, &s2) != GMB_3D_OK) return -1;
+    return 0;
+}
+
+/* 12) cielo per angolo: due metà della picture finiscono a sinistra e a destra. */
+static int p4_scene_sky(gmb_3d_target_t* t)
+{
+    if (gmb_3d_target_clear(t, 0x000000u, 0.0f) != GMB_3D_OK) return -1;
+    gm_tex tex;
+    gm_tex_alloc(&tex, 32, 32);
+    /* Quattro bande: un fotogramma a due soli colori non è un oracolo (il gate
+     * vuole almeno 3 colori distinti), e l'avvolgimento si vede meglio. */
+    for (int y = 0; y < 32; y++)
+        for (int x = 0; x < 32; x++)
+        {
+            unsigned char r = 200, g = 40, b = 40;
+            if (x >= 8 && x < 16)  { r = 220; g = 140; b = 40; }
+            else if (x >= 16 && x < 24) { r = 60; g = 180; b = 80; }
+            else if (x >= 24)      { r = 30; g = 90; b = 200; }
+            /* Metà bassa più scura: la vista copre ~75° (2 bande orizzontali),
+             * la variazione verticale porta i colori distinti sopra la soglia e
+             * verifica anche la mappatura dell'elevazione. */
+            if (y >= 16) { r = (unsigned char)(r / 2); g = (unsigned char)(g / 2); b = (unsigned char)(b / 2); }
+            gm_tex_set(&tex, x, y, r, g, b, 255);
+        }
+    int rc = gmb_3d_sky_fill(t, tex.rgba, tex.w, tex.h, 0.0f, 0.0f, 60.0f, 1.0f, 0.0f);
+    gm_tex_free(&tex);
+    return rc == GMB_3D_OK ? 0 : -1;
+}
+
+/* 13) thing: il vicino copre il lontano (depth test, M-THINGS). */
+static int p4_scene_thing(gmb_3d_target_t* t)
+{
+    if (gmb_3d_target_clear(t, 0x000000u, 0.0f) != GMB_3D_OK) return -1;
+    const float eye[3] = { 0.0f, 0.0f, 0.0f };
+    const float at[3]  = { 0.0f, 0.0f, 1.0f };
+    const float up[3]  = { 0.0f, 1.0f, 0.0f };
+    float view[16], proj[16];
+    m4_look_at(view, eye, at, up);
+    m4_perspective(proj, 60.0f * MESH_PI / 180.0f, (float)t->w / (float)t->h, 0.1f, 100.0f);
+
+    gm_tex far_tex, near_tex;
+    make_solid(&far_tex, 200, 60, 60);
+    make_solid(&near_tex, 40, 190, 90);
+    gmb_3d_env_t env;
+    gmb_3d_env_clear(&env);
+
+    gmb_3d_thing_t th;
+    gmb_3d_draw_stats_t st;
+    memset(&th, 0, sizeof(th));
+    th.x = 0.0f; th.y = -1.0f; th.z = 6.0f; th.w = 2.5f; th.h = 2.5f;
+    th.rgba = far_tex.rgba; th.tw = far_tex.w; th.th = far_tex.h; th.light = 255;
+    if (gmb_3d_thing_draw(t, view, proj, &th, eye, &env, &st) != GMB_3D_OK) { gm_tex_free(&far_tex); gm_tex_free(&near_tex); return -1; }
+
+    th.z = 3.0f; th.w = 1.6f; th.h = 1.6f;
+    th.rgba = near_tex.rgba;
+    int rc = gmb_3d_thing_draw(t, view, proj, &th, eye, &env, &st);
+    gm_tex_free(&far_tex);
+    gm_tex_free(&near_tex);
+    return rc == GMB_3D_OK ? 0 : -1;
+}
+
+/* 14) ordine e traslucenza: opaco, thing sopra, vetro davanti che fonde (M-ORDER). */
+static int p4_scene_order(gmb_3d_target_t* t)
+{
+    if (gmb_3d_target_clear(t, 0x000000u, 0.0f) != GMB_3D_OK) return -1;
+    float mvp[16];
+    p4_camera(mvp, 60.0f * MESH_PI / 180.0f, (float)t->w / (float)t->h);
+
+    p4_quad_t qb;
+    p4_quad_init(&qb, -4.0f, -3.0f, 4.0f, 3.0f, 8.0f);
+    gmb_3d_mesh_t mb = p4_mesh(&qb);
+    gmb_3d_material_t matb;
+    p4_flat_material(&matb, 40, 60, 210, 255);
+    gmb_3d_draw_stats_t st;
+    if (gmb_3d_mesh_draw(t, mvp, &mb, &matb, &st) != GMB_3D_OK) return -1;
+
+    const float eye[3] = { 0.0f, 0.0f, 0.0f };
+    const float at[3]  = { 0.0f, 0.0f, 1.0f };
+    const float up[3]  = { 0.0f, 1.0f, 0.0f };
+    float view[16], proj[16];
+    m4_look_at(view, eye, at, up);
+    m4_perspective(proj, 60.0f * MESH_PI / 180.0f, (float)t->w / (float)t->h, 0.1f, 100.0f);
+    gm_tex thing_tex;
+    make_solid(&thing_tex, 40, 190, 90);
+    gmb_3d_env_t env;
+    gmb_3d_env_clear(&env);
+    gmb_3d_thing_t th;
+    memset(&th, 0, sizeof(th));
+    th.x = 0.0f; th.y = -1.5f; th.z = 4.0f; th.w = 2.0f; th.h = 2.0f;
+    th.rgba = thing_tex.rgba; th.tw = thing_tex.w; th.th = thing_tex.h; th.light = 255;
+    if (gmb_3d_thing_draw(t, view, proj, &th, eye, &env, &st) != GMB_3D_OK) { gm_tex_free(&thing_tex); return -1; }
+    gm_tex_free(&thing_tex);
+
+    p4_quad_t qg;
+    p4_quad_init(&qg, -3.0f, -2.0f, 3.0f, 2.0f, 2.0f);
+    gmb_3d_mesh_t mg = p4_mesh(&qg);
+    gmb_3d_material_t matg;
+    p4_flat_material(&matg, 210, 40, 40, 255);
+    matg.translucent = 1;
+    return gmb_3d_mesh_draw(t, mvp, &mg, &matg, &st) == GMB_3D_OK ? 0 : -1;
+}
+
+/* P1: triangoli. P2: settori (room/door/pitch) e mappa demo. P3: mesh sul
+ * target ARGB+depth (cubo, piano, clip, z-buffer, back-face). P4: luce, fog,
+ * cielo, thing e ordine. L'accettazione della fase passa da qui, non da
+ * un'impressione.
+ */
+#define NSCENES 18
 static const char* const SCENE_NAMES[NSCENES] = {
     "tri_tex", "tri_mask", "tri_depth",
     "sector_room", "sector_door", "sector_pitch", "demo",
-    "mesh_cube", "mesh_plane", "mesh_clip", "mesh_depth", "mesh_cull"
+    "mesh_cube", "mesh_plane", "mesh_clip", "mesh_depth", "mesh_cull",
+    "lamp_point", "lamp_spot", "fog", "sky", "thing", "order"
 };
 static const scene_fn SCENE_FNS[NSCENES] = {
     scene_tri_tex, scene_tri_mask, scene_tri_depth,
     w_scene_room, w_scene_door, w_scene_pitch, w_scene_demo,
-    scene_mesh_cube, scene_mesh_plane, scene_mesh_clip, scene_mesh_depth, scene_mesh_cull
+    scene_mesh_cube, scene_mesh_plane, scene_mesh_clip, scene_mesh_depth, scene_mesh_cull,
+    p4_scene_lamp_point, p4_scene_lamp_spot, p4_scene_fog, p4_scene_sky,
+    p4_scene_thing, p4_scene_order
 };
 
 /* --- golden -------------------------------------------------------------- */
@@ -776,6 +1006,132 @@ static void mesh_checks(int* ok, int* fail)
 #undef MCHECK
 }
 
+/* --- P4: check numerici di luce/fog/cielo/thing ------------------------- */
+
+static void p4_checks(int* ok, int* fail)
+{
+#define P4CHECK(cond, what) do { if (cond) { (*ok)++; } else { (*fail)++; printf("FAIL %s (p4)\n", (what)); } } while (0)
+
+    gmb_3d_env_t env;
+
+    /* M-LIGHT: falloff lineare, metà raggio = metà quantità. */
+    gmb_3d_env_clear(&env);
+    env.nlamps = 1;
+    env.lamps[0].radius = 10.0f;
+    env.lamps[0].amount = 255;
+    P4CHECK(gmb_3d_light_eval(&env, 5.0f, 0.0f, 0.0f, 0, 5.0f) == 128, "lampada: metà raggio = metà luce");
+    P4CHECK(gmb_3d_light_eval(&env, 10.0f, 0.0f, 0.0f, 0, 10.0f) == 0, "lampada: al bordo niente luce");
+
+    /* M-LIGHT: cono. Sull'asse pieno; a 60° con semiapertura 30° buio. */
+    env.lamps[0].radius = 100.0f;
+    env.lamps[0].dir[2] = 1.0f;
+    env.lamps[0].half_angle = 30.0f * MESH_PI / 180.0f;
+    P4CHECK(gmb_3d_light_eval(&env, 0.0f, 0.0f, 10.0f, 0, 10.0f) == 230, "spot: asse = falloff pieno (230)");
+    P4CHECK(gmb_3d_light_eval(&env, 8.660254f, 0.0f, 5.0f, 0, 10.0f) == 0, "spot: fuori cono = buio");
+
+    /* M-FOG: buio lineare alla distanza dichiarata. */
+    gmb_3d_env_clear(&env);
+    env.fog = 100.0f;
+    P4CHECK(gmb_3d_light_eval(&env, 0.0f, 0.0f, 0.0f, 255, 50.0f) == 128, "fog: metà distanza = metà luce");
+    P4CHECK(gmb_3d_light_eval(&env, 0.0f, 0.0f, 0.0f, 255, 100.0f) == 0, "fog: alla distanza = buio");
+
+    /* C-SAME-COLORMAP: 32 livelli (100 -> q12 -> 98). */
+    gmb_3d_env_clear(&env);
+    env.colormap = 1;
+    P4CHECK(gmb_3d_light_eval(&env, 0.0f, 0.0f, 0.0f, 100, 0.0f) == 98, "colormap: 100 -> 98 su 32 livelli");
+
+    gmb_3d_target_t t;
+    memset(&t, 0, sizeof(t));
+    if (gmb_3d_target_alloc(&t, W, H) != GMB_3D_OK) { (*fail)++; printf("FAIL p4: alloc\n"); return; }
+    gmb_3d_present_mode_set(GMB_3D_MODE_TARGET);
+
+    float mvp[16];
+    p4_camera(mvp, 60.0f * MESH_PI / 180.0f, (float)W / (float)H);
+    size_t center = (size_t)(H / 2) * (size_t)W + (size_t)(W / 2);
+
+    /* FAR: oltre la distanza il triangolo si salta. */
+    {
+        p4_quad_t q;
+        p4_quad_init(&q, -3.0f, -3.0f, 3.0f, 3.0f, 8.0f);
+        gmb_3d_mesh_t m = p4_mesh(&q);
+        gmb_3d_material_t mat;
+        p4_flat_material(&mat, 200, 200, 200, 255);
+        gmb_3d_env_t fe;
+        gmb_3d_env_clear(&fe);
+        fe.far = 5.0f;
+        gmb_3d_target_clear(&t, 0x000000u, 0.0f);
+        gmb_3d_draw_stats_t st;
+        P4CHECK(gmb_3d_mesh_draw_env(&t, mvp, &m, &mat, &fe, &st) == GMB_3D_OK, "FAR: draw ok");
+        P4CHECK(st.tris_culled == 2 && st.pixels == 0, "FAR: oltre la distanza = niente pixel");
+    }
+
+    /* M-PALALPHA: 50/50 esatto. Opaco (100,0,0), vetro (200,200,200). */
+    {
+        p4_quad_t qo, qt;
+        p4_quad_init(&qo, -3.0f, -3.0f, 3.0f, 3.0f, 4.0f);
+        p4_quad_init(&qt, -3.0f, -3.0f, 3.0f, 3.0f, 2.0f);
+        gmb_3d_mesh_t mo = p4_mesh(&qo), mt = p4_mesh(&qt);
+        gmb_3d_material_t mato, matt;
+        p4_flat_material(&mato, 100, 0, 0, 255);
+        p4_flat_material(&matt, 200, 200, 200, 255);
+        matt.translucent = 1;
+        gmb_3d_target_clear(&t, 0x000000u, 0.0f);
+        gmb_3d_draw_stats_t st;
+        P4CHECK(gmb_3d_mesh_draw(&t, mvp, &mo, &mato, &st) == GMB_3D_OK, "translucido: opaco ok");
+        P4CHECK(gmb_3d_mesh_draw(&t, mvp, &mt, &matt, &st) == GMB_3D_OK, "translucido: vetro ok");
+        P4CHECK(t.argb[center] == (((uint32_t)150 << 16) | ((uint32_t)100 << 8) | 100u),
+                "translucido: 50/50 esatto (150,100,100)");
+    }
+
+    /* M-SKY: la metà sinistra della picture cade a sinistra, la destra a destra. */
+    {
+        gm_tex tex;
+        gm_tex_alloc(&tex, 32, 32);
+        for (int y = 0; y < 32; y++)
+            for (int x = 0; x < 32; x++)
+                gm_tex_set(&tex, x, y, x < 16 ? 200 : 30, x < 16 ? 40 : 90, x < 16 ? 40 : 200, 255);
+        gmb_3d_target_clear(&t, 0x000000u, 0.0f);
+        P4CHECK(gmb_3d_sky_fill(&t, tex.rgba, tex.w, tex.h, 0.0f, 0.0f, 60.0f, 1.0f, 0.0f) == GMB_3D_OK,
+                "sky: fill ok");
+        P4CHECK(t.argb[(size_t)(H / 2) * (size_t)W + 2u] == (((uint32_t)200 << 16) | ((uint32_t)40 << 8) | 40u),
+                "sky: meta' sinistra rossa");
+        P4CHECK(t.argb[(size_t)(H / 2) * (size_t)W + (size_t)(W - 3)] == (((uint32_t)30 << 16) | ((uint32_t)90 << 8) | 200u),
+                "sky: meta' destra blu");
+        gm_tex_free(&tex);
+    }
+
+    /* M-THINGS: il thing vicino vince il depth test su quello lontano. */
+    {
+        const float eye[3] = { 0.0f, 0.0f, 0.0f };
+        const float at[3] = { 0.0f, 0.0f, 1.0f };
+        const float up[3] = { 0.0f, 1.0f, 0.0f };
+        float view[16], proj[16];
+        m4_look_at(view, eye, at, up);
+        m4_perspective(proj, 60.0f * MESH_PI / 180.0f, (float)W / (float)H, 0.1f, 100.0f);
+        gm_tex ft, nt;
+        make_solid(&ft, 200, 60, 60);
+        make_solid(&nt, 40, 190, 90);
+        gmb_3d_env_t e2;
+        gmb_3d_env_clear(&e2);
+        gmb_3d_thing_t th;
+        gmb_3d_draw_stats_t st;
+        gmb_3d_target_clear(&t, 0x000000u, 0.0f);
+        memset(&th, 0, sizeof(th));
+        th.x = 0.0f; th.y = -1.0f; th.z = 6.0f; th.w = 3.0f; th.h = 3.0f;
+        th.rgba = ft.rgba; th.tw = ft.w; th.th = ft.h; th.light = 255;
+        P4CHECK(gmb_3d_thing_draw(&t, view, proj, &th, eye, &e2, &st) == GMB_3D_OK, "thing: lontano ok");
+        th.z = 3.0f; th.w = 1.5f; th.h = 1.5f; th.rgba = nt.rgba;
+        P4CHECK(gmb_3d_thing_draw(&t, view, proj, &th, eye, &e2, &st) == GMB_3D_OK, "thing: vicino ok");
+        P4CHECK(t.argb[center] == (((uint32_t)40 << 16) | ((uint32_t)190 << 8) | 90u),
+                "thing: il vicino copre il lontano");
+        gm_tex_free(&ft);
+        gm_tex_free(&nt);
+    }
+
+    gmb_3d_target_free(&t);
+#undef P4CHECK
+}
+
 /* --- selftest: guardie e null mode (P1 accettazione) ---------------------- */
 
 static int run_selftest(const char* dir)
@@ -858,6 +1214,9 @@ static int run_selftest(const char* dir)
 
     /* P3: mesh sul target (clip/frustum, z-buffer, UV, back-face). */
     mesh_checks(&ok, &fail);
+
+    /* P4: luce, fog, colormap, FAR, traslucenza, cielo, thing. */
+    p4_checks(&ok, &fail);
 
     printf("P1-SELFTEST ok=%d fail=%d\n", ok, fail);
 #undef CHECK

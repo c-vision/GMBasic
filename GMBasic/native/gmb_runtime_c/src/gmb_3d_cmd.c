@@ -182,7 +182,17 @@ typedef struct gmb_scene_obj {
     int first_vert, nvert, first_tri, ntri;
     float x, y, z, yaw;
     unsigned char r, g, b;
+    unsigned char flags;   /* M-FLAGS: 1 masked, 2 traslucido, 16 due lati */
+    unsigned char light;   /* luce base dell'oggetto 0..255 */
 } gmb_scene_obj_t;
+
+#define GMB_SCENE_MAX_THINGS 256
+
+typedef struct gmb_scene_thing {
+    int used;
+    float x, y, z, w, h;
+    unsigned char light;
+} gmb_scene_thing_t;
 
 static gmb_3d_target_t g_scene_target;   /* argb != NULL = target allocato */
 static double  g_scene_fov = 60.0;
@@ -225,6 +235,17 @@ static unsigned char* g_scene_tex = NULL;
 static int     g_scene_tex_w = 0, g_scene_tex_h = 0;
 static gmb_3d_draw_stats_t g_scene_stats;
 static uint64_t g_scene_hash = 0;
+
+/* P4 — ambiente della scena: lampade (M-LIGHT), fog e FAR (M-FOG), colormap a
+ * 32 livelli (C-SAME-COLORMAP), cielo per angolo (M-SKY) e thing (M-THINGS).
+ * Sono stato della SCENA e sopravvivono a RESET? No: RESET azzera tutto tranne
+ * texture e flag di materiale, come gia' faceva per la geometria. */
+static gmb_3d_env_t g_scene_env;
+static int      g_scene_colormap = 0;
+static unsigned char* g_scene_sky = NULL;
+static int      g_scene_sky_w = 0, g_scene_sky_h = 0;
+static float    g_scene_sky_repeat = 1.0f, g_scene_sky_shift = 0.0f;
+static gmb_scene_thing_t g_scene_thing[GMB_SCENE_MAX_THINGS];
 
 /* --- matrici (column-major; clip z in [-1,1], come il kernel) ------------ */
 
@@ -326,6 +347,14 @@ int64_t gmb_scene_reset(void)
     g_scene_cur = -1;
     memset(&g_scene_stats, 0, sizeof(g_scene_stats));
     g_scene_hash = 0;
+    gmb_3d_env_clear(&g_scene_env);
+    g_scene_colormap = 0;
+    memset(g_scene_thing, 0, sizeof(g_scene_thing));
+    free(g_scene_sky);
+    g_scene_sky = NULL;
+    g_scene_sky_w = g_scene_sky_h = 0;
+    g_scene_sky_repeat = 1.0f;
+    g_scene_sky_shift = 0.0f;
     g_scene_eye[0] = 0.0f; g_scene_eye[1] = 1.5f; g_scene_eye[2] = 6.0f;
     g_scene_yaw = 0.0f;
     g_scene_pitch = 0.0f;
@@ -465,6 +494,121 @@ int64_t gmb_scene_twosided(int64_t on)
     return GMB_3D_OK;
 }
 
+/* --- P4: lampade, fog, FAR, colormap, cielo, thing (specifica M-*) -------- */
+
+/* SCENE LAMP n, x, y, z, raggio, quantità: lampada puntiforme 0..7 (M-LIGHT).
+ * Raggio <= 0 o quantità 0 la spengono; `amount` si clampa 0..255. Il falloff e
+ * l'eventuale cono si applicano nel kernel (`gmb_3d_light_eval`), non qui. */
+int64_t gmb_scene_lamp(int64_t n, double x, double y, double z, double radius, double amount)
+{
+    if (n < 0 || n >= GMB_3D_MAX_LAMPS) return GMB_3D_E_ARG;
+    if (!(radius >= 0.0)) return GMB_3D_E_ARG;
+    gmb_3d_lamp_t* L = &g_scene_env.lamps[n];
+    memset(L, 0, sizeof(*L));
+    L->x = (float)x;
+    L->y = (float)y;
+    L->z = (float)z;
+    L->radius = (float)radius;
+    L->amount = (unsigned char)g_scene_clampi((int64_t)(amount + 0.5));
+    if (g_scene_env.nlamps < (int)n + 1) g_scene_env.nlamps = (int)n + 1;
+    return GMB_3D_OK;
+}
+
+/* SCENE LAMP n, x, y, z, raggio, quantità, dx, dy, dz, angolo: spot. La
+ * direzione punta VERSO l'illuminato (si normalizza qui), `angolo` è il
+ * semiangolo del cono in gradi (0 < angolo < 90): pieno sull'asse, zero al bordo
+ * (M-LIGHT). Una direzione nulla è un errore esplicito, non un cono ignorato. */
+int64_t gmb_scene_lamp_spot(int64_t n, double x, double y, double z, double radius,
+                            double amount, double dx, double dy, double dz, double angle_deg)
+{
+    double len = sqrt(dx * dx + dy * dy + dz * dz);
+    if (!(len > 1e-9)) return GMB_3D_E_ARG;
+    if (!(angle_deg > 0.0) || !(angle_deg < 90.0)) return GMB_3D_E_ARG;
+    int64_t rc = gmb_scene_lamp(n, x, y, z, radius, amount);
+    if (rc != GMB_3D_OK) return rc;
+    gmb_3d_lamp_t* L = &g_scene_env.lamps[n];
+    L->dir[0] = (float)(dx / len);
+    L->dir[1] = (float)(dy / len);
+    L->dir[2] = (float)(dz / len);
+    L->half_angle = (float)(angle_deg * (GMB_SCENE_PI / 180.0));
+    return GMB_3D_OK;
+}
+
+/* SCENE FOG d: buio alla distanza d (0 = spento). SCENE FAR d: oltre d il
+ * triangolo si salta (0 = spento). Distanze negative = errore esplicito. */
+int64_t gmb_scene_fog(double d)
+{
+    if (!(d >= 0.0)) return GMB_3D_E_ARG;
+    g_scene_env.fog = (float)d;
+    return GMB_3D_OK;
+}
+
+int64_t gmb_scene_far(double d)
+{
+    if (!(d >= 0.0)) return GMB_3D_E_ARG;
+    g_scene_env.far = (float)d;
+    return GMB_3D_OK;
+}
+
+/* SCENE COLORMAP: la luce si quantizza a 32 livelli (C-SAME-COLORMAP). Senza,
+ * la miscela resta continua: le scene che non la chiamano non cambiano byte. */
+int64_t gmb_scene_colormap(void)
+{
+    g_scene_colormap = 1;
+    g_scene_env.colormap = 1;
+    return GMB_3D_OK;
+}
+
+/* SCENE SKY [repeat [, shift]]: il cielo per angolo (M-SKY) con la texture
+ * corrente, copiata qui perché TEXTURE può cambiare dopo. Senza texture è un
+ * errore esplicito: un cielo nero silenzioso sembrerebbe un bug di rendering. */
+int64_t gmb_scene_sky(double repeat, double shift)
+{
+    if (g_scene_tex == NULL || g_scene_tex_w <= 0 || g_scene_tex_h <= 0)
+    {
+        gmb_3d_set_error("SCENE SKY: nessuna texture (SCENE TEXTURE prima di SKY)");
+        return GMB_3D_E_ARG;
+    }
+    size_t np = (size_t)g_scene_tex_w * (size_t)g_scene_tex_h * 4u;
+    unsigned char* buf = (unsigned char*)malloc(np);
+    if (buf == NULL) return GMB_3D_E_NOMEM;
+    memcpy(buf, g_scene_tex, np);
+    free(g_scene_sky);
+    g_scene_sky = buf;
+    g_scene_sky_w = g_scene_tex_w;
+    g_scene_sky_h = g_scene_tex_h;
+    g_scene_sky_repeat = (repeat > 0.0) ? (float)repeat : 1.0f;
+    g_scene_sky_shift = (float)shift;
+    gmb_3d_set_error("");
+    return GMB_3D_OK;
+}
+
+/* SCENE THING n, x, y, z, w, h: billboard 0..255 con la texture corrente, base
+ * in (x,y,z) con y = altezza (la convenzione della superficie SCENE), luce piena
+ * salvo THINGLIGHT (M-THINGS). Il disegno lo fa il kernel, con depth test e
+ * ordinamento da lontano a vicino deciso da RENDER. */
+int64_t gmb_scene_thing(int64_t n, double x, double y, double z, double w, double h)
+{
+    if (n < 0 || n >= GMB_SCENE_MAX_THINGS) return GMB_3D_E_ARG;
+    if (!(w > 0.0) || !(h > 0.0)) return GMB_3D_E_ARG;
+    gmb_scene_thing_t* th = &g_scene_thing[n];
+    th->used = 1;
+    th->x = (float)x;
+    th->y = (float)y;
+    th->z = (float)z;
+    th->w = (float)w;
+    th->h = (float)h;
+    th->light = 255u;
+    return GMB_3D_OK;
+}
+
+int64_t gmb_scene_thing_light(int64_t n, int64_t level)
+{
+    if (n < 0 || n >= GMB_SCENE_MAX_THINGS || !g_scene_thing[n].used) return GMB_3D_E_ARG;
+    g_scene_thing[n].light = (unsigned char)g_scene_clampi(level);
+    return GMB_3D_OK;
+}
+
 int64_t gmb_scene_object(int64_t r, int64_t g, int64_t b)
 {
     if (g_scene_nobj >= GMB_SCENE_MAX_OBJS) return GMB_3D_E_ARG;
@@ -478,7 +622,21 @@ int64_t gmb_scene_object(int64_t r, int64_t g, int64_t b)
     o->r = (unsigned char)g_scene_clampi(r);
     o->g = (unsigned char)g_scene_clampi(g);
     o->b = (unsigned char)g_scene_clampi(b);
+    o->flags = 0;
+    o->light = 255u;
     g_scene_cur = g_scene_nobj++;
+    return GMB_3D_OK;
+}
+
+/* SCENE OBJECT r, g, b, flags, luce: come OBJECT, con i flag M-FLAGS (1 masked,
+ * 2 traslucido, 16 due lati; gli altri bit si ignorano) e la luce base
+ * dell'oggetto, a cui le lampade si sommano. */
+int64_t gmb_scene_object_flags(int64_t r, int64_t g, int64_t b, int64_t flags, int64_t light)
+{
+    int64_t rc = gmb_scene_object(r, g, b);
+    if (rc != GMB_3D_OK) return rc;
+    g_scene_obj[g_scene_cur].flags = (unsigned char)(flags & 0x13);   /* 1|2|16 */
+    g_scene_obj[g_scene_cur].light = (unsigned char)g_scene_clampi(light);
     return GMB_3D_OK;
 }
 
@@ -552,10 +710,123 @@ int64_t gmb_scene_camera(double x, double y, double z, double yaw_deg, double pi
 
 /* --- disegno -------------------------------------------------------------- */
 
+/* Disegna UN oggetto con il suo modello, la sua luce base e i suoi flag
+ * (M-FLAGS). Estratto da gmb_scene_render perché i pass sono due — opachi e
+ * traslucidi — e devono usare la stessa strada: una sola implementazione. */
+static int scene_draw_object(int oi, const float* vp, const gmb_3d_env_t* env)
+{
+    const gmb_scene_obj_t* o = &g_scene_obj[oi];
+    if (o->ntri <= 0 || o->nvert <= 0) return GMB_3D_OK;
+
+    float model[16], mvp[16];
+    g_scene_m4_model(model, o->x, o->y, o->z, o->yaw);
+    g_scene_m4_mul(mvp, vp, model);
+
+    /* Luce per faccia: una luce per triangolo, dalle posizioni MONDO. Un piano
+     * orizzontale illuminato dall'alto dà tutti i triangoli uguali (un run solo),
+     * un cubo dà 6 run: il batching sotto resta quello di prima. */
+    if (g_scene_lit)
+    {
+        for (int t = 0; t < o->ntri; t++)
+        {
+            const float* pa = g_scene_pos + (size_t)(o->first_vert + g_scene_idx[(size_t)(o->first_tri + t) * 3 + 0]) * 3;
+            const float* pb = g_scene_pos + (size_t)(o->first_vert + g_scene_idx[(size_t)(o->first_tri + t) * 3 + 1]) * 3;
+            const float* pc = g_scene_pos + (size_t)(o->first_vert + g_scene_idx[(size_t)(o->first_tri + t) * 3 + 2]) * 3;
+            double ax = (double)model[0] * pa[0] + (double)model[4] * pa[1] + (double)model[8]  * pa[2] + (double)model[12];
+            double ay = (double)model[1] * pa[0] + (double)model[5] * pa[1] + (double)model[9]  * pa[2] + (double)model[13];
+            double az = (double)model[2] * pa[0] + (double)model[6] * pa[1] + (double)model[10] * pa[2] + (double)model[14];
+            double bx = (double)model[0] * pb[0] + (double)model[4] * pb[1] + (double)model[8]  * pb[2] + (double)model[12];
+            double by = (double)model[1] * pb[0] + (double)model[5] * pb[1] + (double)model[9]  * pb[2] + (double)model[13];
+            double bz = (double)model[2] * pb[0] + (double)model[6] * pb[1] + (double)model[10] * pb[2] + (double)model[14];
+            double cx = (double)model[0] * pc[0] + (double)model[4] * pc[1] + (double)model[8]  * pc[2] + (double)model[12];
+            double cy = (double)model[1] * pc[0] + (double)model[5] * pc[1] + (double)model[9]  * pc[2] + (double)model[13];
+            double cz = (double)model[2] * pc[0] + (double)model[6] * pc[1] + (double)model[10] * pc[2] + (double)model[14];
+            double e1x = bx - ax, e1y = by - ay, e1z = bz - az;
+            double e2x = cx - ax, e2y = cy - ay, e2z = cz - az;
+            double nx = e1y * e2z - e1z * e2y;
+            double ny = e1z * e2x - e1x * e2z;
+            double nz = e1x * e2y - e1y * e2x;
+            double nl = sqrt(nx * nx + ny * ny + nz * nz);
+            int q = 0;                       /* coseno quantizzato 0..255 */
+            if (nl > 1e-12)
+            {
+                double dot = (nx * g_scene_light_dir[0] + ny * g_scene_light_dir[1]
+                              + nz * g_scene_light_dir[2]) / nl;
+                if (dot > 0.0)
+                {
+                    q = (int)(dot * 255.0 + 0.5);
+                    if (q > 255) q = 255;
+                }
+            }
+            int l = GMB_SCENE_AMBIENT + ((g_scene_light_level - GMB_SCENE_AMBIENT) * q) / 255;
+            if (l < 0) l = 0; else if (l > 255) l = 255;
+            g_scene_lit_tri[t] = (unsigned char)l;
+        }
+    }
+
+    gmb_3d_mesh_t m;
+    m.pos = g_scene_pos + (size_t)o->first_vert * 3;
+    m.uv = g_scene_uv + (size_t)o->first_vert * 2;
+    m.nv = o->nvert;
+
+    gmb_3d_material_t mat;
+    memset(&mat, 0, sizeof(mat));
+    if (g_scene_tex != NULL)
+    {
+        mat.rgba = g_scene_tex;
+        mat.tw = g_scene_tex_w;
+        mat.th = g_scene_tex_h;
+    }
+    /* Flag del materiale: il kernel li consuma, qui si passano soltanto. */
+    mat.bilinear = g_scene_smooth;
+    mat.masked = g_scene_alpha || ((o->flags & 1) != 0);
+    mat.two_sided = g_scene_two_sided || ((o->flags & 16) != 0);
+    mat.translucent = (o->flags & 2) != 0;
+    mat.light = o->light;
+    mat.tint_r = o->r;
+    mat.tint_g = o->g;
+    mat.tint_b = o->b;
+
+    /* Un draw per RUN di triangoli con la stessa luce: le 6 facce del cubo hanno
+     * luci diverse, il resto è un run solo. Con LIGHT attiva la luce è quella
+     * calcolata per faccia (g_scene_lit_tri); senza, vale la luce dell'oggetto
+     * (default 255, così le scene P3 che non usano OBJECT a 5 argomenti non
+     * cambiano byte). */
+    const unsigned char* lights = g_scene_lit ? g_scene_lit_tri : NULL;
+    int start = 0;
+    while (start < o->ntri)
+    {
+        unsigned char light = lights ? lights[start] : o->light;
+        int n = 1;
+        while (start + n < o->ntri && (lights ? lights[start + n] : o->light) == light) n++;
+
+        mat.light = light;
+        m.idx = g_scene_idx + (size_t)(o->first_tri + start) * 3;
+        m.nt = n;
+
+        gmb_3d_draw_stats_t s;
+        int rc = gmb_3d_mesh_draw_env(&g_scene_target, mvp, &m, &mat, env, &s);
+        if (rc != GMB_3D_OK) return rc;
+        g_scene_stats.tris_drawn += s.tris_drawn;
+        g_scene_stats.tris_culled += s.tris_culled;
+        g_scene_stats.pixels += s.pixels;
+        start += n;
+    }
+    return GMB_3D_OK;
+}
+
 int64_t gmb_scene_render(void)
 {
     if (g_scene_target.argb == NULL) return GMB_3D_E_ARG;
-    if (g_scene_nobj <= 0 || g_scene_nt <= 0) return GMB_3D_E_ARG;
+    /* Una scena può essere fatta di solo cielo o di soli thing: il render non
+     * deve pretendere una mesh (M-ORDER/M-SKY/M-THINGS). */
+    if (g_scene_nobj <= 0 && g_scene_nt <= 0 && g_scene_sky == NULL)
+    {
+        int have_thing = 0;
+        for (int i = 0; i < GMB_SCENE_MAX_THINGS; i++)
+            if (g_scene_thing[i].used) { have_thing = 1; break; }
+        if (!have_thing) return GMB_3D_E_ARG;
+    }
 
     int rc = gmb_3d_target_clear(&g_scene_target, GMB_SCENE_BG, 0.0f);
     if (rc != GMB_3D_OK) return rc;
@@ -573,102 +844,99 @@ int64_t gmb_scene_render(void)
     g_scene_m4_mul(vp, proj, view);
 
     memset(&g_scene_stats, 0, sizeof(g_scene_stats));
+    g_scene_env.colormap = g_scene_colormap;
+
+    /* M-ORDER: cielo -> opachi/masked -> thing da lontano a vicino ->
+     * traslucidi da lontano a vicino. */
+    if (g_scene_sky != NULL)
+    {
+        rc = gmb_3d_sky_fill(&g_scene_target, g_scene_sky, g_scene_sky_w, g_scene_sky_h,
+                             g_scene_yaw, g_scene_pitch, (float)g_scene_fov,
+                             g_scene_sky_repeat, g_scene_sky_shift);
+        if (rc != GMB_3D_OK) return rc;
+    }
 
     for (int oi = 0; oi < g_scene_nobj; oi++)
     {
-        const gmb_scene_obj_t* o = &g_scene_obj[oi];
-        if (o->ntri <= 0 || o->nvert <= 0) continue;
+        if ((g_scene_obj[oi].flags & 2) != 0) continue;   /* traslucido: dopo i thing */
+        rc = scene_draw_object(oi, vp, &g_scene_env);
+        if (rc != GMB_3D_OK) return rc;
+    }
 
-        float model[16], mvp[16];
-        g_scene_m4_model(model, o->x, o->y, o->z, o->yaw);
-        g_scene_m4_mul(mvp, vp, model);
-
-        /* Luce per faccia: una luce per triangolo, dalle posizioni MONDO. Un piano
-         * orizzontale illuminato dall'alto dà tutti i triangoli uguali (un run solo),
-         * un cubo dà 6 run: il batching sotto resta quello di prima. */
-        if (g_scene_lit)
+    /* Thing: da lontano a vicino, con depth test (M-THINGS). Usano la texture
+     * corrente; senza texture non c'è picture e si saltano. */
+    if (g_scene_tex != NULL && g_scene_tex_w > 0 && g_scene_tex_h > 0)
+    {
+        int order[GMB_SCENE_MAX_THINGS];
+        float dist[GMB_SCENE_MAX_THINGS];
+        int cnt = 0;
+        for (int i = 0; i < GMB_SCENE_MAX_THINGS; i++)
         {
-            for (int t = 0; t < o->ntri; t++)
-            {
-                const float* pa = g_scene_pos + (size_t)(o->first_vert + g_scene_idx[(size_t)(o->first_tri + t) * 3 + 0]) * 3;
-                const float* pb = g_scene_pos + (size_t)(o->first_vert + g_scene_idx[(size_t)(o->first_tri + t) * 3 + 1]) * 3;
-                const float* pc = g_scene_pos + (size_t)(o->first_vert + g_scene_idx[(size_t)(o->first_tri + t) * 3 + 2]) * 3;
-                double ax = (double)model[0] * pa[0] + (double)model[4] * pa[1] + (double)model[8]  * pa[2] + (double)model[12];
-                double ay = (double)model[1] * pa[0] + (double)model[5] * pa[1] + (double)model[9]  * pa[2] + (double)model[13];
-                double az = (double)model[2] * pa[0] + (double)model[6] * pa[1] + (double)model[10] * pa[2] + (double)model[14];
-                double bx = (double)model[0] * pb[0] + (double)model[4] * pb[1] + (double)model[8]  * pb[2] + (double)model[12];
-                double by = (double)model[1] * pb[0] + (double)model[5] * pb[1] + (double)model[9]  * pb[2] + (double)model[13];
-                double bz = (double)model[2] * pb[0] + (double)model[6] * pb[1] + (double)model[10] * pb[2] + (double)model[14];
-                double cx = (double)model[0] * pc[0] + (double)model[4] * pc[1] + (double)model[8]  * pc[2] + (double)model[12];
-                double cy = (double)model[1] * pc[0] + (double)model[5] * pc[1] + (double)model[9]  * pc[2] + (double)model[13];
-                double cz = (double)model[2] * pc[0] + (double)model[6] * pc[1] + (double)model[10] * pc[2] + (double)model[14];
-                double e1x = bx - ax, e1y = by - ay, e1z = bz - az;
-                double e2x = cx - ax, e2y = cy - ay, e2z = cz - az;
-                double nx = e1y * e2z - e1z * e2y;
-                double ny = e1z * e2x - e1x * e2z;
-                double nz = e1x * e2y - e1y * e2x;
-                double nl = sqrt(nx * nx + ny * ny + nz * nz);
-                int q = 0;                       /* coseno quantizzato 0..255 */
-                if (nl > 1e-12)
-                {
-                    double dot = (nx * g_scene_light_dir[0] + ny * g_scene_light_dir[1]
-                                  + nz * g_scene_light_dir[2]) / nl;
-                    if (dot > 0.0)
-                    {
-                        q = (int)(dot * 255.0 + 0.5);
-                        if (q > 255) q = 255;
-                    }
-                }
-                int l = GMB_SCENE_AMBIENT + ((g_scene_light_level - GMB_SCENE_AMBIENT) * q) / 255;
-                if (l < 0) l = 0; else if (l > 255) l = 255;
-                g_scene_lit_tri[t] = (unsigned char)l;
-            }
+            if (!g_scene_thing[i].used) continue;
+            float dx = g_scene_thing[i].x - g_scene_eye[0];
+            float dy = g_scene_thing[i].y - g_scene_eye[1];
+            float dz = g_scene_thing[i].z - g_scene_eye[2];
+            dist[cnt] = dx * dx + dy * dy + dz * dz;
+            order[cnt] = i;
+            cnt++;
         }
-
-        gmb_3d_mesh_t m;
-        m.pos = g_scene_pos + (size_t)o->first_vert * 3;
-        m.uv = g_scene_uv + (size_t)o->first_vert * 2;
-        m.nv = o->nvert;
-
-        gmb_3d_material_t mat;
-        memset(&mat, 0, sizeof(mat));
-        if (g_scene_tex != NULL)
+        for (int i = 1; i < cnt; i++)                     /* decrescente */
         {
-            mat.rgba = g_scene_tex;
-            mat.tw = g_scene_tex_w;
-            mat.th = g_scene_tex_h;
+            int oi = order[i];
+            float di = dist[i];
+            int j = i - 1;
+            while (j >= 0 && dist[j] < di) { dist[j + 1] = dist[j]; order[j + 1] = order[j]; j--; }
+            dist[j + 1] = di;
+            order[j + 1] = oi;
         }
-        /* Flag del materiale: il kernel li consuma, qui si passano soltanto. */
-        mat.bilinear = g_scene_smooth;
-        mat.masked = g_scene_alpha;
-        mat.two_sided = g_scene_two_sided;
-        mat.light = 255;
-        mat.tint_r = o->r;
-        mat.tint_g = o->g;
-        mat.tint_b = o->b;
-
-        /* Un draw per RUN di triangoli con la stessa luce: le 6 facce del cubo hanno
-         * luci diverse, il resto è un run solo. Con LIGHT attiva la luce è quella
-         * calcolata per faccia (g_scene_lit_tri), altrimenti quella dichiarata. */
-        const unsigned char* lights = g_scene_lit ? g_scene_lit_tri : (g_scene_light + o->first_tri);
-        int start = 0;
-        while (start < o->ntri)
+        for (int k = 0; k < cnt; k++)
         {
-            unsigned char light = lights[start];
-            int n = 1;
-            while (start + n < o->ntri && lights[start + n] == light) n++;
-
-            mat.light = light;
-            m.idx = g_scene_idx + (size_t)(o->first_tri + start) * 3;
-            m.nt = n;
-
+            const gmb_scene_thing_t* th = &g_scene_thing[order[k]];
+            gmb_3d_thing_t gt;
+            memset(&gt, 0, sizeof(gt));
+            gt.x = th->x; gt.y = th->y; gt.z = th->z;
+            gt.w = th->w; gt.h = th->h;
+            gt.rgba = g_scene_tex;
+            gt.tw = g_scene_tex_w;
+            gt.th = g_scene_tex_h;
+            gt.light = th->light;
             gmb_3d_draw_stats_t s;
-            rc = gmb_3d_mesh_draw(&g_scene_target, mvp, &m, &mat, &s);
+            rc = gmb_3d_thing_draw(&g_scene_target, view, proj, &gt, g_scene_eye, &g_scene_env, &s);
             if (rc != GMB_3D_OK) return rc;
             g_scene_stats.tris_drawn += s.tris_drawn;
             g_scene_stats.tris_culled += s.tris_culled;
             g_scene_stats.pixels += s.pixels;
-            start += n;
+        }
+    }
+
+    /* Traslucidi: da lontano a vicino, con fusione (M-PALALPHA). */
+    {
+        int order[GMB_SCENE_MAX_OBJS];
+        float dist[GMB_SCENE_MAX_OBJS];
+        int cnt = 0;
+        for (int oi = 0; oi < g_scene_nobj; oi++)
+        {
+            if ((g_scene_obj[oi].flags & 2) == 0) continue;
+            float dx = g_scene_obj[oi].x - g_scene_eye[0];
+            float dy = g_scene_obj[oi].y - g_scene_eye[1];
+            float dz = g_scene_obj[oi].z - g_scene_eye[2];
+            dist[cnt] = dx * dx + dy * dy + dz * dz;
+            order[cnt] = oi;
+            cnt++;
+        }
+        for (int i = 1; i < cnt; i++)
+        {
+            int oi = order[i];
+            float di = dist[i];
+            int j = i - 1;
+            while (j >= 0 && dist[j] < di) { dist[j + 1] = dist[j]; order[j + 1] = order[j]; j--; }
+            dist[j + 1] = di;
+            order[j + 1] = oi;
+        }
+        for (int k = 0; k < cnt; k++)
+        {
+            rc = scene_draw_object(order[k], vp, &g_scene_env);
+            if (rc != GMB_3D_OK) return rc;
         }
     }
 

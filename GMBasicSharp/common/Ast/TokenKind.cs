@@ -2522,4 +2522,12 @@ public enum TokenKind
     SceneTwoSided,
     // SCENE PRESENT — target 3D → pagina 2D corrente (idea #2, ponte verso la finestra).
     ScenePresent,
+    // P4: lampade (point/spot), fog, FAR, cielo, colormap a 32 livelli e thing.
+    // Verbi NON riservati: il lessema si normalizza nel parser (§12).
+    SceneLamp,
+    SceneFog,
+    SceneFar,
+    SceneSky,
+    SceneColormap,
+    SceneThing,
   }

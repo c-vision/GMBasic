@@ -9,12 +9,12 @@ namespace Compiler;
 public sealed partial class Compiler
 {
     /// <summary>Syscall del verbo SCENE. TokenKind come chiave, mai il lessema (§12).</summary>
-    private static SysCall SceneSysCall(TokenKind kind) => kind switch
+    private static SysCall SceneSysCall(TokenKind kind, int argc) => kind switch
     {
         TokenKind.SceneReset => SysCall.SCENE_RESET,
         TokenKind.SceneView => SysCall.SCENE_VIEW,
         TokenKind.SceneTexture => SysCall.SCENE_TEXTURE,
-        TokenKind.SceneObject => SysCall.SCENE_OBJECT,
+        TokenKind.SceneObject => argc == 5 ? SysCall.SCENE_OBJECT_FLAGS : SysCall.SCENE_OBJECT,
         TokenKind.SceneVertex => SysCall.SCENE_VERTEX,
         TokenKind.SceneQuad => SysCall.SCENE_QUAD,
         TokenKind.SceneBox => SysCall.SCENE_BOX,
@@ -27,6 +27,13 @@ public sealed partial class Compiler
         TokenKind.SceneAlpha => SysCall.SCENE_ALPHA,
         TokenKind.SceneTwoSided => SysCall.SCENE_TWOSIDED,
         TokenKind.ScenePresent => SysCall.SCENE_PRESENT,
+        // P4: stesso verbo, due forme distinte per numero di argomenti.
+        TokenKind.SceneLamp => argc == 10 ? SysCall.SCENE_LAMP_SPOT : SysCall.SCENE_LAMP,
+        TokenKind.SceneFog => SysCall.SCENE_FOG,
+        TokenKind.SceneFar => SysCall.SCENE_FAR,
+        TokenKind.SceneSky => SysCall.SCENE_SKY,
+        TokenKind.SceneColormap => SysCall.SCENE_COLORMAP,
+        TokenKind.SceneThing => SysCall.SCENE_THING,
         _ => throw new NotImplementedException($"SCENE: verbo '{kind}' non supportato dalla PCodeVM.")
     };
 
@@ -41,7 +48,7 @@ public sealed partial class Compiler
             VisitExpression(arg);
 
         EmitByte((byte)OpCode.OP_SYSCALL);
-        EmitSysCall(SceneSysCall(stmt.Command.Kind));
+        EmitSysCall(SceneSysCall(stmt.Command.Kind, stmt.Arguments.Length));
         EmitByte((byte)stmt.Arguments.Length);
     }
 }

@@ -177,7 +177,10 @@ void emit_scene_domain(ctx_t* c, gmb_stmt_t* s)
     }
     if (tk == GMB_TOK_SceneObject)
     {
-        if (n < 3) { c99_fail(c, s->line, "SCENE OBJECT r, g, b"); return; }
+        /* 3 argomenti = tinta; 5 = tinta + flag M-FLAGS + luce base dell'oggetto.
+         * Le forme intermedie non esistono nel kernel e non si accettano. */
+        if (n == 5) { wcall(c, "gmb_scene_object_flags", a, 5); return; }
+        if (n != 3) { c99_fail(c, s->line, "SCENE OBJECT r, g, b [, flags [, luce]]"); return; }
         wcall(c, "gmb_scene_object", a, 3);
         return;
     }
@@ -225,6 +228,52 @@ void emit_scene_domain(ctx_t* c, gmb_stmt_t* s)
     {
         if (n < 4) { c99_fail(c, s->line, "SCENE LIGHT dx, dy, dz, livello"); return; }
         wcall(c, "gmb_scene_light", a, 4);
+        return;
+    }
+    if (tk == GMB_TOK_SceneLamp)
+    {
+        /* 6 argomenti = lampada puntiforme; 10 = cono spot (direzione + semiangolo in
+         * gradi). La scelta sta nel NUMERO di argomenti, non nel lessema (§12). */
+        if (n == 10) { wcall(c, "gmb_scene_lamp_spot", a, 10); return; }
+        if (n != 6)
+        {
+            c99_fail(c, s->line, "SCENE LAMP n, x, y, z, raggio, quantità [, dx, dy, dz, angolo]");
+            return;
+        }
+        wcall(c, "gmb_scene_lamp", a, 6);
+        return;
+    }
+    if (tk == GMB_TOK_SceneFog)
+    {
+        if (n < 1) { c99_fail(c, s->line, "SCENE FOG distanza"); return; }
+        wcall(c, "gmb_scene_fog", a, 1);
+        return;
+    }
+    if (tk == GMB_TOK_SceneFar)
+    {
+        if (n < 1) { c99_fail(c, s->line, "SCENE FAR distanza"); return; }
+        wcall(c, "gmb_scene_far", a, 1);
+        return;
+    }
+    if (tk == GMB_TOK_SceneColormap)
+    {
+        if (n > 0) { c99_fail(c, s->line, "SCENE COLORMAP non accetta argomenti"); return; }
+        wcall(c, "gmb_scene_colormap", a, 0);
+        return;
+    }
+    if (tk == GMB_TOK_SceneSky)
+    {
+        /* Cielo per angolo con la texture corrente: repeat (giri della picture sui 360)
+         * e shift (sfasamento in giri). Due argomenti, nessun indice di texture: SCENE ha
+         * UNA texture alla volta (forma dichiarata in guida). */
+        if (n < 2) { c99_fail(c, s->line, "SCENE SKY repeat, shift"); return; }
+        wcall(c, "gmb_scene_sky", a, 2);
+        return;
+    }
+    if (tk == GMB_TOK_SceneThing)
+    {
+        if (n < 6) { c99_fail(c, s->line, "SCENE THING n, x, y, z, w, h"); return; }
+        wcall(c, "gmb_scene_thing", a, 6);
         return;
     }
     if (tk == GMB_TOK_ScenePresent)

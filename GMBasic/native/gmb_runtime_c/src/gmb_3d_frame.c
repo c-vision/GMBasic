@@ -287,7 +287,9 @@ const char* gmb_3d_last_error(void)
  * (wrap + nearest/bilineare della suite), unica sede di quella logica.
  */
 
-typedef struct gmb_3d_vclip { float x, y, z, w, u, v; } gmb_3d_vclip;
+/* wx,wy,wz = posizione MONDO del vertice: si interpolano come u,v e servono alla
+ * luce per pixel (lampade e fog dipendono dal punto, non dal triangolo). */
+typedef struct gmb_3d_vclip { float x, y, z, w, u, v, wx, wy, wz; } gmb_3d_vclip;
 
 #define GMB3D_CLIP_MAX 12
 
@@ -328,6 +330,9 @@ static int gmb3d_clip_plane(const gmb_3d_vclip* in, int n, int plane, gmb_3d_vcl
             m.w = a->w + k * (b->w - a->w);
             m.u = a->u + k * (b->u - a->u);
             m.v = a->v + k * (b->v - a->v);
+            m.wx = a->wx + k * (b->wx - a->wx);
+            m.wy = a->wy + k * (b->wy - a->wy);
+            m.wz = a->wz + k * (b->wz - a->wz);
             out[on++] = m;
         }
     }
@@ -350,8 +355,9 @@ static unsigned gmb3d_clamp255(int v)
  * «pixel centrale = tint» sul quad frontale e «back-face non scrive pixel» su
  * quello invertito). Il cull lo decide il chiamante sul segno dell'area. */
 static void gmb3d_tri(gmb_3d_target_t* t, const gmb_3d_material_t* mat,
+                      const gmb_3d_env_t* env,
                       const float s[3][2], const float iw[3], const float uv[3][2],
-                      gmb_3d_draw_stats_t* st)
+                      const float wp[3][3], gmb_3d_draw_stats_t* st)
 {
     float area = gmb3d_edge(s[0][0], s[0][1], s[1][0], s[1][1], s[2][0], s[2][1]);
     if (area == 0.0f) return;
@@ -393,6 +399,7 @@ static void gmb3d_tri(gmb_3d_target_t* t, const gmb_3d_material_t* mat,
             if (t->depth[idx] != 0.0f && d >= t->depth[idx]) continue;
 
             int cr, cg, cb;
+            float tex_a = 1.0f;                 /* alpha del texel (M-PALALPHA) */
             if (mat->rgba != NULL)
             {
                 float u = (b0 * uv[0][0] * iw[0] + b1 * uv[1][0] * iw[1] + b2 * uv[2][0] * iw[2]) / iws;
@@ -401,6 +408,7 @@ static void gmb3d_tri(gmb_3d_target_t* t, const gmb_3d_material_t* mat,
                 gm_real a = 1.0;
                 gm_tex_sample(&tx, (gm_real)u, (gm_real)v, mat->bilinear, rgb, &a);
                 if (mat->masked && a <= 0.0) continue;  /* alpha-test */
+                tex_a = (float)a;
                 cr = (int)((gmb3d_clamp255((int)(rgb[0] * 255.0 + 0.5)) * mat->tint_r) / 255u);
                 cg = (int)((gmb3d_clamp255((int)(rgb[1] * 255.0 + 0.5)) * mat->tint_g) / 255u);
                 cb = (int)((gmb3d_clamp255((int)(rgb[2] * 255.0 + 0.5)) * mat->tint_b) / 255u);
@@ -411,11 +419,33 @@ static void gmb3d_tri(gmb_3d_target_t* t, const gmb_3d_material_t* mat,
                 cg = mat->tint_g;
                 cb = mat->tint_b;
             }
-            if (mat->light != 255)
+            /* Luce per pixel: base dell'oggetto + lampade, poi fog (M-LIGHT/M-FOG).
+             * Senza ambiente la formula e' quella di P3, byte per byte. */
+            int lv = mat->light;
+            if (env != NULL)
             {
-                cr = (cr * mat->light) / 255;
-                cg = (cg * mat->light) / 255;
-                cb = (cb * mat->light) / 255;
+                float wx = (b0 * wp[0][0] * iw[0] + b1 * wp[1][0] * iw[1] + b2 * wp[2][0] * iw[2]) / iws;
+                float wy = (b0 * wp[0][1] * iw[0] + b1 * wp[1][1] * iw[1] + b2 * wp[2][1] * iw[2]) / iws;
+                float wz = (b0 * wp[0][2] * iw[0] + b1 * wp[1][2] * iw[1] + b2 * wp[2][2] * iw[2]) / iws;
+                lv = (int)gmb_3d_light_eval(env, wx, wy, wz, mat->light, d);
+            }
+            if (lv != 255)
+            {
+                cr = (cr * lv) / 255;
+                cg = (cg * lv) / 255;
+                cb = (cb * lv) / 255;
+            }
+            /* Traslucido (M-PALALPHA): alpha 255 = meta' e meta', alpha < 255 = quella
+             * frazione, alpha 0 = niente. Masked e opachi non arrivano qui col blend. */
+            if (mat->translucent)
+            {
+                float f = (mat->rgba != NULL) ? (tex_a >= 1.0f ? 0.5f : tex_a) : 0.5f;
+                if (f <= 0.0f) continue;
+                uint32_t old = t->argb[idx];
+                int orr = (int)((old >> 16) & 0xFFu), og = (int)((old >> 8) & 0xFFu), ob = (int)(old & 0xFFu);
+                cr = (int)((float)cr * f + (float)orr * (1.0f - f) + 0.5f);
+                cg = (int)((float)cg * f + (float)og * (1.0f - f) + 0.5f);
+                cb = (int)((float)cb * f + (float)ob * (1.0f - f) + 0.5f);
             }
             t->argb[idx] = ((uint32_t)cr << 16) | ((uint32_t)cg << 8) | (uint32_t)cb;
             t->depth[idx] = d;
@@ -427,6 +457,13 @@ static void gmb3d_tri(gmb_3d_target_t* t, const gmb_3d_material_t* mat,
 int gmb_3d_mesh_draw(gmb_3d_target_t* t, const float* mvp,
                      const gmb_3d_mesh_t* m, const gmb_3d_material_t* mat,
                      gmb_3d_draw_stats_t* stats)
+{
+    return gmb_3d_mesh_draw_env(t, mvp, m, mat, NULL, stats);
+}
+
+int gmb_3d_mesh_draw_env(gmb_3d_target_t* t, const float* mvp,
+                         const gmb_3d_mesh_t* m, const gmb_3d_material_t* mat,
+                         const gmb_3d_env_t* env, gmb_3d_draw_stats_t* stats)
 {
     gmb_3d_draw_stats_t local;
     if (stats == NULL) stats = &local;
@@ -490,6 +527,7 @@ int gmb_3d_mesh_draw(gmb_3d_target_t* t, const float* mvp,
             o->w = mvp[3] * p[0] + mvp[7] * p[1] + mvp[11] * p[2] + mvp[15];
             o->u = has_uv ? m->uv[(size_t)ii[k] * 2 + 0] : 0.0f;
             o->v = has_uv ? m->uv[(size_t)ii[k] * 2 + 1] : 0.0f;
+            o->wx = p[0]; o->wy = p[1]; o->wz = p[2];
         }
 
         int n = 3;
@@ -501,8 +539,17 @@ int gmb_3d_mesh_draw(gmb_3d_target_t* t, const float* mvp,
         if (n < 3) { stats->tris_culled++; continue; }   /* fuori dal frustum */
         if (n > 3) stats->tris_clipped++;
 
+        /* FAR (M-FOG): oltre la distanza dichiarata il triangolo si salta. La
+         * distanza e' il w medio (distanza di vista; il clip non altera il piano). */
+        if (env != NULL && env->far > 0.0f)
+        {
+            float wsum = 0.0f;
+            for (int k = 0; k < n; k++) wsum += poly[k].w;
+            if (wsum / (float)n > env->far) { stats->tris_culled++; continue; }
+        }
+
         float sx[GMB3D_CLIP_MAX], sy[GMB3D_CLIP_MAX];
-        float iw[GMB3D_CLIP_MAX], uv[GMB3D_CLIP_MAX][2];
+        float iw[GMB3D_CLIP_MAX], uv[GMB3D_CLIP_MAX][2], wp[GMB3D_CLIP_MAX][3];
         for (int k = 0; k < n; k++)
         {
             float invw = 1.0f / poly[k].w;
@@ -511,6 +558,9 @@ int gmb_3d_mesh_draw(gmb_3d_target_t* t, const float* mvp,
             iw[k] = invw;
             uv[k][0] = poly[k].u;
             uv[k][1] = poly[k].v;
+            wp[k][0] = poly[k].wx;
+            wp[k][1] = poly[k].wy;
+            wp[k][2] = poly[k].wz;
         }
 
         for (int k = 1; k + 1 < n; k++)
@@ -518,14 +568,220 @@ int gmb_3d_mesh_draw(gmb_3d_target_t* t, const float* mvp,
             float s[3][2] = { { sx[0], sy[0] }, { sx[k], sy[k] }, { sx[k + 1], sy[k + 1] } };
             float tuv[3][2] = { { uv[0][0], uv[0][1] }, { uv[k][0], uv[k][1] }, { uv[k + 1][0], uv[k + 1][1] } };
             float tiw[3] = { iw[0], iw[k], iw[k + 1] };
+            float twp[3][3] = { { wp[0][0], wp[0][1], wp[0][2] },
+                                { wp[k][0], wp[k][1], wp[k][2] },
+                                { wp[k + 1][0], wp[k + 1][1], wp[k + 1][2] } };
             float a2 = gmb3d_edge(s[0][0], s[0][1], s[1][0], s[1][1], s[2][0], s[2][1]);
             if (a2 == 0.0f) continue;
             if (!mat->two_sided && a2 < 0.0f) { stats->tris_culled++; continue; }  /* back-face */
-            gmb3d_tri(t, mat, s, tiw, tuv, stats);
+            gmb3d_tri(t, mat, env, s, tiw, tuv, twp, stats);
             stats->tris_drawn++;
         }
     }
 
     set_err("");
     return GMB_3D_OK;
+}
+
+/* ═══ P4 — luce, fog, cielo, thing (specifica M-LIGHT/M-FOG/M-SKY/M-THINGS) ══
+ *
+ * La luce si valuta nel PUNTO del mondo interpolato per pixel (non sul centro del
+ * triangolo): una lampada vicina a una faccia grande deve schiarire solo la parte
+ * vicina. `gmb_3d_light_eval` e' l'unica formula — la usano il rasterizzatore e i
+ * MiniTest, cosi' un numero atteso non dipende da una seconda implementazione.
+ */
+
+void gmb_3d_env_clear(gmb_3d_env_t* env)
+{
+    if (env != NULL) memset(env, 0, sizeof(*env));
+}
+
+unsigned char gmb_3d_light_eval(const gmb_3d_env_t* env, float x, float y, float z,
+                                unsigned char base, float dist)
+{
+    int lv = (int)base;
+    if (env == NULL) return (unsigned char)lv;
+
+    int nl = env->nlamps;
+    if (nl > GMB_3D_MAX_LAMPS) nl = GMB_3D_MAX_LAMPS;
+    for (int i = 0; i < nl; i++)
+    {
+        const gmb_3d_lamp_t* L = &env->lamps[i];
+        if (!(L->radius > 0.0f) || L->amount == 0) continue;
+        float dx = x - L->x, dy = y - L->y, dz = z - L->z;
+        float d2 = dx * dx + dy * dy + dz * dz;
+        if (d2 >= L->radius * L->radius) continue;     /* fuori dal raggio */
+        float d = sqrtf(d2);
+        float f = 1.0f - d / L->radius;                /* falloff lineare */
+        if (f < 0.0f) f = 0.0f;
+
+        float dl = sqrtf(L->dir[0] * L->dir[0] + L->dir[1] * L->dir[1] + L->dir[2] * L->dir[2]);
+        if (dl > 1e-6f && L->half_angle > 0.0f)         /* cono spot */
+        {
+            float cosT = (dx * L->dir[0] + dy * L->dir[1] + dz * L->dir[2]) / (d > 1e-6f ? d * dl : 1e-6f);
+            float ch = cosf(L->half_angle);
+            float s = (1.0f - ch > 1e-6f) ? (cosT - ch) / (1.0f - ch)
+                                          : (cosT >= 1.0f ? 1.0f : 0.0f);
+            if (s < 0.0f) s = 0.0f;
+            if (s > 1.0f) s = 1.0f;
+            f *= s;
+        }
+        lv += (int)((float)L->amount * f + 0.5f);
+    }
+    if (lv > 255) lv = 255;
+
+    if (env->fog > 0.0f)                              /* buio alla distanza fog */
+    {
+        float k = 1.0f - dist / env->fog;
+        if (k < 0.0f) k = 0.0f;
+        if (k > 1.0f) k = 1.0f;
+        lv = (int)((float)lv * k + 0.5f);
+    }
+    if (env->colormap)                                /* 32 livelli (C-SAME-COLORMAP) */
+    {
+        int q = (lv * 31 + 127) / 255;
+        if (q < 0) q = 0;
+        if (q > 31) q = 31;
+        lv = q * 255 / 31;
+    }
+    return (unsigned char)lv;
+}
+
+/* Cielo per angolo: ogni pixel non coperto (depth 0) prende il texel della
+ * direzione che gli corrisponde. L'angolo orizzontale si misura dallo yaw della
+ * camera, quello verticale dal pitch e dalla riga; `repeat`/`shift` fanno
+ * scorrere la picture attorno ai 360 (M-SKY). Non scrive la profondita': il cielo
+ * e' dietro tutto e non deve mai vincere un depth test. */
+int gmb_3d_sky_fill(gmb_3d_target_t* t, const unsigned char* rgba, int tw, int th,
+                    float yaw_deg, float pitch_deg, float fov_deg,
+                    float repeat, float shift)
+{
+    if (t == NULL || t->argb == NULL || t->depth == NULL || t->w <= 0 || t->h <= 0)
+    {
+        set_err("sky: target non allocato");
+        return GMB_3D_E_ARG;
+    }
+    if (rgba == NULL || tw <= 0 || th <= 0)
+    {
+        set_err("sky: texture mancante");
+        return GMB_3D_E_ARG;
+    }
+    if (!(fov_deg > 1.0f && fov_deg < 179.0f))
+    {
+        set_err("sky: fov fuori range");
+        return GMB_3D_E_ARG;
+    }
+    if (!(repeat > 0.0f)) repeat = 1.0f;
+    if (g_present_mode == GMB_3D_MODE_NULL)
+    {
+        set_err("");
+        return GMB_3D_OK;
+    }
+
+    const float pi = 3.14159265358979f;
+    float fov = fov_deg * (pi / 180.0f);
+    float tf = tanf(fov * 0.5f);
+    float aspect = (float)t->w / (float)t->h;
+    float yaw = yaw_deg * (pi / 180.0f);
+    float pitch = pitch_deg * (pi / 180.0f);
+
+    for (int y = 0; y < t->h; y++)
+    {
+        float v = ((float)y + 0.5f) / (float)t->h * 2.0f - 1.0f;
+        float elev = pitch - atanf(v * tf);
+        float sv = 0.5f - elev / pi;
+        int ty = (int)(sv * (float)th);
+        if (ty < 0) ty = 0;
+        if (ty >= th) ty = th - 1;
+        for (int x = 0; x < t->w; x++)
+        {
+            size_t idx = (size_t)y * (size_t)t->w + (size_t)x;
+            if (t->depth[idx] != 0.0f) continue;       /* gia' disegnato */
+            float u = ((float)x + 0.5f) / (float)t->w * 2.0f - 1.0f;
+            /* Con forward +z la destra dello schermo e' -x: l'angolo cresce verso
+             * sinistra, quindi il segno e' NEGATO (lo blocca il check dell'oracolo:
+             * la meta' sinistra della picture cade a sinistra). */
+            float ang = yaw - atanf(u * tf * aspect);
+            float su = (ang / (2.0f * pi)) * repeat + shift;
+            su = su - floorf(su);
+            int tx = (int)(su * (float)tw);
+            if (tx < 0) tx = 0;
+            if (tx >= tw) tx = tw - 1;
+            const unsigned char* p = rgba + ((size_t)ty * (size_t)tw + (size_t)tx) * 4u;
+            t->argb[idx] = ((uint32_t)p[0] << 16) | ((uint32_t)p[1] << 8) | (uint32_t)p[2];
+        }
+    }
+    set_err("");
+    return GMB_3D_OK;
+}
+
+static void gmb3d_m4_mul(float* out, const float* a, const float* b)   /* out = a*b */
+{
+    float r[16];
+    for (int c = 0; c < 4; c++)
+        for (int row = 0; row < 4; row++)
+        {
+            float sum = 0.0f;
+            for (int k = 0; k < 4; k++) sum += a[k * 4 + row] * b[c * 4 + k];
+            r[c * 4 + row] = sum;
+        }
+    memcpy(out, r, sizeof(r));
+}
+
+/* Thing: billboard verticale con la base in (x,y,z), y = altezza (la convenzione
+ * della superficie SCENE), sempre rivolto all'osservatore. Il quad si costruisce
+ * nello spazio mondo e passa da gmb_3d_mesh_draw_env: clip, depth, luce e fog sono
+ * gli stessi di ogni altra mesh, non una seconda pipeline (M-THINGS).
+ * two_sided: l'orientamento del billboard non deve mai scartarlo. */
+int gmb_3d_thing_draw(gmb_3d_target_t* t, const float* view, const float* proj,
+                      const gmb_3d_thing_t* th, const float eye[3],
+                      const gmb_3d_env_t* env, gmb_3d_draw_stats_t* stats)
+{
+    gmb_3d_draw_stats_t local;
+    if (stats == NULL) stats = &local;
+    memset(stats, 0, sizeof(*stats));
+
+    if (t == NULL || t->argb == NULL || view == NULL || proj == NULL || th == NULL || eye == NULL)
+    {
+        set_err("thing: argomenti mancanti");
+        return GMB_3D_E_ARG;
+    }
+    if (!(th->w > 0.0f) || !(th->h > 0.0f) || th->rgba == NULL || th->tw <= 0 || th->th <= 0)
+    {
+        set_err("thing: dimensioni o texture non valide");
+        return GMB_3D_E_ARG;
+    }
+
+    float fx = eye[0] - th->x, fz = eye[2] - th->z;
+    float fl = sqrtf(fx * fx + fz * fz);
+    float rx = 1.0f, rz = 0.0f;
+    if (fl > 1e-6f) { rx = fz / fl; rz = -fx / fl; }   /* right = up x forward */
+
+    float hw = th->w * 0.5f;
+    const float pos[12] = {
+        th->x - rx * hw, th->y,          th->z - rz * hw,   /* base sinistra */
+        th->x + rx * hw, th->y,          th->z + rz * hw,   /* base destra   */
+        th->x + rx * hw, th->y + th->h,  th->z + rz * hw,   /* alto destra   */
+        th->x - rx * hw, th->y + th->h,  th->z - rz * hw    /* alto sinistra */
+    };
+    const float uv[8] = { 0.0f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f, 0.0f };
+    const int idx[6] = { 0, 1, 2, 0, 2, 3 };
+
+    gmb_3d_mesh_t m;
+    m.pos = pos; m.uv = uv; m.nv = 4; m.idx = idx; m.nt = 2;
+
+    gmb_3d_material_t mat;
+    memset(&mat, 0, sizeof(mat));
+    mat.rgba = th->rgba;
+    mat.tw = th->tw;
+    mat.th = th->th;
+    mat.tint_r = mat.tint_g = mat.tint_b = 255;
+    mat.light = th->light;
+    mat.bilinear = 1;
+    mat.masked = 1;          /* alpha 0 = trasparente (C-INDEX0) */
+    mat.two_sided = 1;
+
+    float mvp[16];
+    gmb3d_m4_mul(mvp, proj, view);
+    return gmb_3d_mesh_draw_env(t, mvp, &m, &mat, env, stats);
 }

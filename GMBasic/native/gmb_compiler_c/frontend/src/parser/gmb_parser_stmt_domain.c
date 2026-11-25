@@ -220,6 +220,10 @@ static int gmb_p_scene_verb_tk(const char* v)
         { "SAVE",    GMB_TOK_SceneSave   }, { "LIGHT",   GMB_TOK_SceneLight },
         { "SMOOTH",  GMB_TOK_SceneSmooth }, { "ALPHA",   GMB_TOK_SceneAlpha },
         { "TWOSIDED", GMB_TOK_SceneTwoSided }, { "PRESENT", GMB_TOK_ScenePresent },
+        /* P4 */
+        { "LAMP", GMB_TOK_SceneLamp }, { "FOG", GMB_TOK_SceneFog },
+        { "FAR", GMB_TOK_SceneFar }, { "SKY", GMB_TOK_SceneSky },
+        { "COLORMAP", GMB_TOK_SceneColormap }, { "THING", GMB_TOK_SceneThing },
     };
     for (size_t i = 0; i < sizeof(map) / sizeof(map[0]); i++)
         if (strcasecmp(v, map[i].word) == 0) return (int)map[i].tk;

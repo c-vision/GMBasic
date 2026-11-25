@@ -483,6 +483,15 @@
 #define GMB_SC_SCENE_ALPHA 496
 #define GMB_SC_SCENE_TWOSIDED 497
 #define GMB_SC_SCENE_PRESENT 498
+/* P4: lampade, fog, FAR, cielo, colormap a 32 livelli, thing, flag di oggetto. */
+#define GMB_SC_SCENE_LAMP 499
+#define GMB_SC_SCENE_LAMP_SPOT 500
+#define GMB_SC_SCENE_FOG 501
+#define GMB_SC_SCENE_FAR 502
+#define GMB_SC_SCENE_SKY 503
+#define GMB_SC_SCENE_COLORMAP 504
+#define GMB_SC_SCENE_THING 505
+#define GMB_SC_SCENE_OBJECT_FLAGS 506
 #define GMB_SC_Default 0
 #define GMB_SC_Json 1
 

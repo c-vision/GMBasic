@@ -2745,9 +2745,15 @@ typedef enum gmb_tokenkind {
     GMB_TOK_SceneTwoSided,
     /* SCENE PRESENT — target 3D → pagina 2D corrente (idea #2, ponte verso la finestra). */
     GMB_TOK_ScenePresent,
+    GMB_TOK_SceneLamp,
+    GMB_TOK_SceneFog,
+    GMB_TOK_SceneFar,
+    GMB_TOK_SceneSky,
+    GMB_TOK_SceneColormap,
+    GMB_TOK_SceneThing,
 } gmb_tokenkind_t;
   
-  #define GMB_TOK_COUNT 2716
+  #define GMB_TOK_COUNT 2722
 
 /* 2026-09-09 (direttiva 2026-09-08): gmb_tokenkind_name()/gmb_tokenkind_from_name() e la
  * tabella gmb_token_names[] sono state RIMOSSE — dispatch solo per TokenKind; la risoluzione

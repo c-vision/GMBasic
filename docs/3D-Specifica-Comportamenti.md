@@ -122,6 +122,10 @@ Queste non sono regole del renderer: sono **condizioni che l'autore del mondo de
 | `M-FLAGS` | **1** masked, **2** translucido (miscela metà e metà, disegnato per ultimo, da lontano a vicino), **4** passabile (niente collisione, niente pavimento/soffitto), **8** see-through (passano colpi, `USE` e vista: vetro, ringhiera), **16** due lati. |
 | `M-LIMITS` | Oggetti `0…16383`, thing `0…1023`, lampade **8**, clip near **2**, zone per gioco. |
 
+**Stato P4 (2026-11-25)**: il BASIC espone i flag **1** (masked), **2** (traslucido) e **16** (due
+lati) con `SCENE OBJECT r, g, b, flags, luce`; i flag **4** (passabile) e **8** (see-through)
+riguardano collisione e raggi, che non sono ancora nella superficie `SCENE`.
+
 ### 3.2 Disegno
 
 | ID | Comportamento | Oracolo |
@@ -134,6 +138,32 @@ Queste non sono regole del renderer: sono **condizioni che l'autore del mondo de
 | `M-THINGS` | Thing disegnati **da lontano a vicino**, con depth test, base a `z`; contano per `SHOOT`/`SEES`. | Due thing sovrapposti: vince il vicino. |
 | `M-PALALPHA` | In un oggetto **translucido**, un texel con **alpha < 255** (canale alpha della texture) si miscela con quell'alpha (0 = niente); alpha 255 = metà e metà. Masked e opachi **ignorano** l'alpha del texel. | Valori esatti: `75 = 50×3/4 + 150/4`, e alpha 0 = nessun disegno. |
 | `M-NOPIC` | Numero di picture senza picture → `palette_rgb(numero)`: un vetro colorato non richiede picture. | Vetro con `palette_rgb` a cui è stato dato alpha 0: si vede attraverso, senza texture. |
+
+#### Stato P4 — comportamenti realmente implementati (2026-11-25)
+
+| ID | Superficie BASIC | Comportamento implementato |
+|---|---|---|
+| `M-LIGHT` | `SCENE LAMP n, x, y, z, raggio, quantità` e `…, dx, dy, dz, angolo`; `SCENE OBJECT r, g, b, flags, luce` | luce **per pixel** = luce base dell'oggetto (default `255`) + lampade, 8 slot; `amount × (1 − d/radius)`; cono `(cos θ − cos α)/(1 − cos α)` in `0…1`; somma clampata a `255`; nessuna luce colorata |
+| `M-FOG` | `SCENE FOG d`, `SCENE FAR d` | fog `1 − dist/d` applicato alla luce; `FAR` salta i triangoli con distanza media `> d` (contano in `CULLED()`) |
+| `M-SKY` | `SCENE SKY repeat, shift` | picture mappata per angolo; `repeat` giri sui 360°, `shift` in giri; riempie solo i pixel con depth `0` e **non scrive** profondità; copia la texture alla chiamata |
+| `M-THINGS` | `SCENE THING n, x, y, z, w, h` | billboard verticale con base in `(x, y, z)`, `y` = altezza; texture corrente; masked e due lati; depth test; da lontano a vicino |
+| `M-ORDER` | `SCENE RENDER` | cielo → opachi/masked → thing far→near → traslucidi far→near |
+| `M-PALALPHA` | flag `2` di `OBJECT` | alpha `255` = 50/50, alpha `< 255` = quella frazione, alpha `0` = niente; masked e opachi ignorano l'alpha |
+| `C-SAME-COLORMAP` | `SCENE COLORMAP` | `q = (lv·31 + 127)/255`, `lv = q·255/31`; default spento, `RESET` lo spegne |
+
+**Divergenze di superficie** (dichiarate, non dimenticanze):
+
+* `SKY` non prende l'indice della picture: usa la **texture corrente** (`SCENE TEXTURE`), e i due
+  argomenti sono **obbligatori** (`SKY repeat, shift` invece di `SKY tex [, repeat [, shift]]`).
+* `THING` usa la texture corrente e non ha un argomento texture; la luce del thing è piena, senza
+  verbo BASIC (`gmb_scene_thing_light` è solo facciata C).
+* `LAMP` è **un solo verbo con due arità** (6 = point, 10 = spot con direzione e semiangolo).
+* `SCENE VIEW w, h, fov` resta la forma di P3 (target e fov verticale), non `VIEW x, y, w, h, scale`.
+
+Verifica: 6 golden (`lamp_point`, `lamp_spot`, `fog`, `sky`, `thing`, `order`) e 6 MiniTest
+(`scene_lamp_point_spot`, `scene_fog`, `scene_far`, `scene_sky`, `scene_colormap`, `scene_thing`)
+con gli **stessi valori** su C99Native, IL, PCode e VM/C; `P1-SELFTEST ok=139 fail=0`, `P1-ORACLE
+ok=18 diff=0`.
 
 ### 3.3 Collisione, raggi, zone
 
@@ -156,6 +186,7 @@ Queste non sono regole del renderer: sono **condizioni che l'autore del mondo de
 | `C-DIVERGE-JSON` | Formato mondo | due dialetti: `world-model` (settori) e `e99-mesh-world` (mesh) | **un solo schema** `gmb-3d` v1: un documento per file, `kind: "sectors" \| "mesh"` **obbligatorio**, estensione convenzionale `.gmbscene` (`F-SCHEMA`, deciso in **§12.1**) |
 | `C-DIVERGE-SEES` | Sentinella di `SEES` | `−1` = **vede** (invertita rispetto a tutto il resto) | `1` = vede, `0` = non vede, `−1` = **thing inesistente**: `−1` significa "assente" in tutta la superficie (specifica §12.3; la conversione degli script presi dal riferimento va in guida, P9) |
 | `C-DIVERGE-HW` | Hardware | GL 2 caricato a runtime, con parità misurata (media < 1,2/255) | stesso approccio, **rinviato** e solo con parità misurata (fase `PH`) |
+| `C-DIVERGE-P4SURF` | Superficie `SCENE` di P4 | `SKY tex [, repeat [, shift]]`, `THING n,x,y,z,tex,w,h`, `OBJECT o,flags,light`, `VIEW x,y,w,h,scale` | `SKY repeat, shift` (texture corrente, argomenti obbligatori), `THING n,x,y,z,w,h` (texture corrente), `OBJECT r,g,b,flags,luce`, `VIEW w,h,fov`; `LAMP` è un verbo a 6/10 argomenti |
 | `C-SAME-COLORMAP` | Luce | **32 livelli** di luce in fixed point; traslucenza = media per canale | **stessa meccanica, non identico** (target ARGB, §11): il *banding* a 32 livelli resta, le tabelle `256×256` no |
 | `C-SAME-CONSOLE` | Test headless | l'host console esegue il mondo **ma non disegna** | identico: `RENDER` in **null mode** per i MiniTest (`T-NULL`) |
 | `T-NULL` | Modalità nulla | `RENDER` ritorna subito, lo stato avanza lo stesso | identico, ed è la base dell'oracolo headless |
@@ -183,7 +214,7 @@ Queste non sono regole del renderer: sono **condizioni che l'autore del mondo de
 | `W-DBUFFER`, `W-THINGVIS`, `W-TRANS` | Golden + MiniTest su `VISITED`/`DRAWN` | `world_depth.bas`, golden |
 | `W-MOVE`, `W-SHOOT`, `W-USE`, `W-SEES`, `W-FLAGS` | MiniTest headless: 10–20 casi con `HIT`, `SHOTKIND`, `SEES` | `world_move.bas`, `world_rays.bas` |
 | `W-INV-*` | 6 mappe rotte apposta: **il `LOAD` fallisce** e `ON ERROR` controlla l'elemento nominato (`F-ERRORS`); mappe buone: anche il tool `tools/sh/check_3d_world.sh` in CI (§12.2) | `world_invariants.bas` + fixture JSON |
-| `M-CULL`, `M-ORDER`, `M-LIGHT`, `M-FOG`, `M-SKY`, `M-THINGS`, `M-PALALPHA` | Golden image (10 scene) + MiniTest numerici su colore atteso | `scene_golden1..10` |
+| `M-CULL`, `M-ORDER`, `M-LIGHT`, `M-FOG`, `M-SKY`, `M-THINGS`, `M-PALALPHA` | Golden image (6 scene P4: `lamp_point`, `lamp_spot`, `fog`, `sky`, `thing`, `order`, più le 5 mesh) + MiniTest numerici su colore atteso | `scene_golden1..11`; `shared/minitests/3d/scene_lamp_point_spot.bas`, `scene_fog.bas`, `scene_far.bas`, `scene_sky.bas`, `scene_colormap.bas`, `scene_thing.bas` |
 | `M-BUILD`, `M-FLAGS`, `M-ZONE`, `M-FLOOR` | MiniTest: conteggi, maschera `faces`, zona "prima creata vince", `FLOORAT` su piani sovrapposti | `scene_model.bas` |
 | `T-*` | MiniTest di replay: stesso input + stesso seed → stessa sequenza di posizioni e di frame | `time_replay.bas` |
 | `F-*` | Round-trip `LOAD → SAVE → LOAD` identico + rifiuto di versioni future | `format_roundtrip.bas` |
@@ -224,6 +255,7 @@ Queste non sono regole del renderer: sono **condizioni che l'autore del mondo de
 | File | Contenuto | Oracolo |
 |---|---|---|
 | `gmb_3d_world.c` | settori, pareti, flag, thing, query `WORLD.*` | `W-*` |
+| `gmb_3d_cmd.c` | **esiste dal 2026-11-24 (P3), esteso in P4**: facciata `gmb_scene_*` (accumulo geometria, camera, materiale, 8 lampade, fog/FAR, sky, colormap, thing, `OBJECT` con flag e luce), render ordinato cielo→opachi→thing→traslucidi; nessuna formula duplicata (la luce è `gmb_3d_light_eval` in `gmb_3d_frame.c`) | `M-*`, `C-SAME-COLORMAP` |
 | `gmb_3d_frame.c` | vedere/clip, target (pagina o canvas), null mode, present; **esiste dal 2026-11-19 (P1)**: `gmb_3d_target_*`, cattura headless, guardie di render, `alloc_count` — nessun header SDL, nessuna dipendenza `gm_*` | `C-CAPTURE`, `C-LAYER`, `T-NULL`, `R3`, `R5` |
 | `gmb_3d_scene.c` | oggetti, thing, lampade, zone, query `SCENE.*` | `M-*` |
 | `gmb_3d_move.c` | corpo, movimento con scivolamento/gradini/portali, `HIT` | `W-MOVE`, `M-COLLIDE` |

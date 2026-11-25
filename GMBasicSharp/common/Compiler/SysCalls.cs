@@ -565,6 +565,15 @@ public enum SysCall : ushort
     SCENE_ALPHA = 496,      // (on)                      → gmb_scene_alpha
     SCENE_TWOSIDED = 497,   // (on)                      → gmb_scene_twosided
     SCENE_PRESENT = 498,    // ()                        → gmb_scene_present
+    // P4 (motore 3D): lampade, fog, FAR, cielo, colormap a 32 livelli, thing.
+    SCENE_LAMP = 499,       // (n, x, y, z, raggio, quantità)          → gmb_scene_lamp
+    SCENE_LAMP_SPOT = 500,  // (n, x, y, z, raggio, quantità, dx, dy, dz, angolo) → gmb_scene_lamp_spot
+    SCENE_FOG = 501,        // (distanza)                              → gmb_scene_fog
+    SCENE_FAR = 502,        // (distanza)                              → gmb_scene_far
+    SCENE_SKY = 503,        // (repeat, shift)                         → gmb_scene_sky
+    SCENE_COLORMAP = 504,   // ()                                      → gmb_scene_colormap
+    SCENE_THING = 505,      // (n, x, y, z, w, h)                      → gmb_scene_thing
+    SCENE_OBJECT_FLAGS = 506, // (r, g, b, flags, luce)                → gmb_scene_object_flags
 }
 
 /// <summary>

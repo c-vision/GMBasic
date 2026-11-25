@@ -62,7 +62,8 @@ public sealed partial class Parser
             TokenKind.SceneReset => SceneCmd(command, []),
             TokenKind.SceneView => SceneCmd(command, SceneArgs(parser, 3, 3, "SCENE VIEW w, h, fov")),
             TokenKind.SceneTexture => SceneCmd(command, SceneArgs(parser, 1, 1, "SCENE TEXTURE celle | \"file.png\"")),
-            TokenKind.SceneObject => SceneCmd(command, SceneArgs(parser, 3, 3, "SCENE OBJECT r, g, b")),
+            TokenKind.SceneObject => SceneCmd(command, SceneArgsOneOf(parser,
+                "SCENE OBJECT r, g, b [, flags [, luce]]", 3, 5)),
             TokenKind.SceneVertex => SceneCmd(command, SceneArgs(parser, 5, 5, "SCENE VERTEX x, y, z, u, v")),
             TokenKind.SceneQuad => SceneCmd(command, SceneArgs(parser, 4, 4, "SCENE QUAD a, b, c, d")),
             TokenKind.SceneBox => SceneCmd(command, SceneArgs(parser, 6, 6, "SCENE BOX x0, y0, z0, x1, y1, z1")),
@@ -72,6 +73,15 @@ public sealed partial class Parser
             // I tre flag di materiale hanno la stessa forma (un ON/OFF): una sola riga.
             TokenKind.SceneSmooth or TokenKind.SceneAlpha or TokenKind.SceneTwoSided
                 => SceneCmd(command, SceneFlagArg(parser, "SCENE SMOOTH|ALPHA|TWOSIDED on|off")),
+            // P4: lampada puntiforme (6 argomenti) o spot (10), fog, FAR, cielo,
+            // colormap a 32 livelli e thing.
+            TokenKind.SceneLamp => SceneCmd(command, SceneArgsOneOf(parser,
+                "SCENE LAMP n, x, y, z, raggio, quantità [, dx, dy, dz, angolo]", 6, 10)),
+            TokenKind.SceneFog => SceneCmd(command, SceneArgs(parser, 1, 1, "SCENE FOG distanza")),
+            TokenKind.SceneFar => SceneCmd(command, SceneArgs(parser, 1, 1, "SCENE FAR distanza")),
+            TokenKind.SceneSky => SceneCmd(command, SceneArgs(parser, 2, 2, "SCENE SKY repeat, shift")),
+            TokenKind.SceneColormap => SceneCmd(command, []),
+            TokenKind.SceneThing => SceneCmd(command, SceneArgs(parser, 6, 6, "SCENE THING n, x, y, z, w, h")),
             TokenKind.ScenePresent => SceneCmd(command, []),
             TokenKind.SceneRender => SceneCmd(command, []),
             TokenKind.SceneSave => SceneCmd(command, SceneArgs(parser, 1, 1, "SCENE SAVE path$")),
@@ -99,6 +109,12 @@ public sealed partial class Parser
         "ALPHA" => TokenKind.SceneAlpha,
         "TWOSIDED" => TokenKind.SceneTwoSided,
         "PRESENT" => TokenKind.ScenePresent,
+        "LAMP" => TokenKind.SceneLamp,
+        "FOG" => TokenKind.SceneFog,
+        "FAR" => TokenKind.SceneFar,
+        "SKY" => TokenKind.SceneSky,
+        "COLORMAP" => TokenKind.SceneColormap,
+        "THING" => TokenKind.SceneThing,
         "RENDER" => TokenKind.SceneRender,
         "SAVE" => TokenKind.SceneSave,
         _ => TokenKind.Unknown
@@ -125,6 +141,19 @@ public sealed partial class Parser
             throw CreateError(parser.Peek(), usage);
 
         return args.ToImmutable();
+    }
+
+    /// <summary>
+    /// Argomenti SCENE con arità ammesse <b>esatte</b> (`LAMP` 6 o 10, `OBJECT` 3 o 5): le forme
+    /// intermedie non esistono nel kernel, e accettarle lascerebbe argomenti non consumati dalle
+    /// gambe a stack fisso (PCode/VM-C).
+    /// </summary>
+    private static ImmutableArray<Expr> SceneArgsOneOf(Parser parser, string usage, params int[] allowed)
+    {
+        var args = SceneArgs(parser, allowed[0], allowed[allowed.Length - 1], usage);
+        foreach (var n in allowed)
+            if (args.Length == n) return args;
+        throw CreateError(parser.Peek(), usage);
     }
 
     /// <summary>

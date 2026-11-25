@@ -6036,6 +6036,66 @@ static void vm_sys_scene_alpha(gmb_vm_t* vm, gmb_task_t* task, int code, int arg
 static void vm_sys_scene_twosided(gmb_vm_t* vm, gmb_task_t* task, int code, int argc)
 { vm_sys_scene_flag(vm, task, code, argc, 2); }
 
+/* P4: lampade point/spot, fog, FAR, cielo, colormap, thing, flag di oggetto.
+ * Nessuna formula qui: solo prelievo argomenti e inoltro alla facciata gmb_scene_* (§0bis). */
+static void vm_sys_scene_lamp(gmb_vm_t* vm, gmb_task_t* task, int code, int argc) {
+    (void)vm;
+    gmb_stack_entry_t a[10];
+    int n = argc > 10 ? 10 : argc;
+    vm_pop_args_ordered(task, a, n);
+    if (code == GMB_SC_SCENE_LAMP_SPOT)   /* 10 argomenti: cono */
+    {
+        if (n >= 10)
+            (void)gmb_scene_lamp_spot((int64_t)vm_world_num(&a[0]), vm_world_num(&a[1]), vm_world_num(&a[2]),
+                                      vm_world_num(&a[3]), vm_world_num(&a[4]), vm_world_num(&a[5]),
+                                      vm_world_num(&a[6]), vm_world_num(&a[7]), vm_world_num(&a[8]),
+                                      vm_world_num(&a[9]));
+        return;
+    }
+    if (n >= 6)                            /* 6 argomenti: puntiforme */
+        (void)gmb_scene_lamp((int64_t)vm_world_num(&a[0]), vm_world_num(&a[1]), vm_world_num(&a[2]),
+                             vm_world_num(&a[3]), vm_world_num(&a[4]), vm_world_num(&a[5]));
+}
+static void vm_sys_scene_dist(gmb_vm_t* vm, gmb_task_t* task, int code, int argc) {
+    (void)vm;
+    gmb_stack_entry_t a[1];
+    int n = argc > 1 ? 1 : argc;
+    vm_pop_args_ordered(task, a, n);
+    if (n < 1) return;
+    if (code == GMB_SC_SCENE_FOG) (void)gmb_scene_fog(vm_world_num(&a[0]));
+    else                          (void)gmb_scene_far(vm_world_num(&a[0]));
+}
+static void vm_sys_scene_sky(gmb_vm_t* vm, gmb_task_t* task, int code, int argc) {
+    (void)vm; (void)code;
+    gmb_stack_entry_t a[2];
+    int n = argc > 2 ? 2 : argc;
+    vm_pop_args_ordered(task, a, n);
+    if (n >= 2) (void)gmb_scene_sky(vm_world_num(&a[0]), vm_world_num(&a[1]));
+}
+static void vm_sys_scene_colormap(gmb_vm_t* vm, gmb_task_t* task, int code, int argc) {
+    (void)vm; (void)task; (void)code; (void)argc;
+    (void)gmb_scene_colormap();
+}
+static void vm_sys_scene_thing(gmb_vm_t* vm, gmb_task_t* task, int code, int argc) {
+    (void)vm; (void)code;
+    gmb_stack_entry_t a[6];
+    int n = argc > 6 ? 6 : argc;
+    vm_pop_args_ordered(task, a, n);
+    if (n >= 6)
+        (void)gmb_scene_thing((int64_t)vm_world_num(&a[0]), vm_world_num(&a[1]), vm_world_num(&a[2]),
+                              vm_world_num(&a[3]), vm_world_num(&a[4]), vm_world_num(&a[5]));
+}
+static void vm_sys_scene_object_flags(gmb_vm_t* vm, gmb_task_t* task, int code, int argc) {
+    (void)vm; (void)code;
+    gmb_stack_entry_t a[5];
+    int n = argc > 5 ? 5 : argc;
+    vm_pop_args_ordered(task, a, n);
+    if (n >= 5)
+        (void)gmb_scene_object_flags((int64_t)vm_world_num(&a[0]), (int64_t)vm_world_num(&a[1]),
+                                     (int64_t)vm_world_num(&a[2]), (int64_t)vm_world_num(&a[3]),
+                                     (int64_t)vm_world_num(&a[4]));
+}
+
 static void vm_sys_scene_light(gmb_vm_t* vm, gmb_task_t* task, int code, int argc) {
     (void)vm; (void)code;
     gmb_stack_entry_t a[4];
@@ -7240,6 +7300,14 @@ static const vm_sys_row VM_SYS_TBL[] = {
     { GMB_SC_SCENE_ALPHA, vm_sys_scene_alpha },
     { GMB_SC_SCENE_TWOSIDED, vm_sys_scene_twosided },
     { GMB_SC_SCENE_PRESENT, vm_sys_scene_present },
+    { GMB_SC_SCENE_LAMP, vm_sys_scene_lamp },
+    { GMB_SC_SCENE_LAMP_SPOT, vm_sys_scene_lamp },
+    { GMB_SC_SCENE_FOG, vm_sys_scene_dist },
+    { GMB_SC_SCENE_FAR, vm_sys_scene_dist },
+    { GMB_SC_SCENE_SKY, vm_sys_scene_sky },
+    { GMB_SC_SCENE_COLORMAP, vm_sys_scene_colormap },
+    { GMB_SC_SCENE_THING, vm_sys_scene_thing },
+    { GMB_SC_SCENE_OBJECT_FLAGS, vm_sys_scene_object_flags },
     { GMB_SC_CLOCK_PAUSE, vm_sys_clock_pause },
     { GMB_SC_CLOCK_RESUME, vm_sys_clock_resume },
     { GMB_SC_CLOCK_SCALE, vm_sys_clock_scale },

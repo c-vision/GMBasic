@@ -114,6 +114,10 @@ typedef struct gmb_3d_material {
     int bilinear;                          /* 1 = bilineare, 0 = nearest */
     int masked;                            /* 1 = alpha 0 scartato (alpha-test) */
     int two_sided;                         /* 1 = niente back-face cull */
+    /* P4 (M-FLAGS, M-PALALPHA): oggetto traslucido. Il pixel si miscela con quello
+     * gia' scritto: alpha 255 del texel = meta' e meta', alpha < 255 = quella
+     * frazione; senza texture il blend e' 50/50. Masked e opachi ignorano l'alpha. */
+    int translucent;
 } gmb_3d_material_t;
 
 /* Mesh indicizzata, vertici in coordinate MONDO: pos nv*3, uv nv*2 (NULL quando
@@ -162,6 +166,73 @@ typedef struct gmb_3d_draw_stats {
 int gmb_3d_mesh_draw(gmb_3d_target_t* t, const float* mvp,
                      const gmb_3d_mesh_t* m, const gmb_3d_material_t* mat,
                      gmb_3d_draw_stats_t* stats);
+
+/* --- P4: luce, lampade, fog, cielo, thing (specifica §M-*) ---------------- */
+
+#define GMB_3D_MAX_LAMPS 8           /* M-LIMITS: otto lampade per scena */
+
+/* Lampada (M-LIGHT). Puntiforme quando `dir` e' nulla; con direzione e
+ * `half_angle` > 0 e' un cono: pieno sull'asse, zero al bordo. Solo schiarisce,
+ * mai colorata. `radius` <= 0 o `amount` = 0 = spenta. */
+typedef struct gmb_3d_lamp {
+    float x, y, z;
+    float radius;
+    float dir[3];        /* asse del cono (puntata); 0,0,0 = puntiforme */
+    float half_angle;    /* radianti, 0..pi/2; usato solo se dir non e' nulla */
+    unsigned char amount;/* 0..255: quanto schiarisce sull'asse */
+} gmb_3d_lamp_t;
+
+/* Ambiente di una scena (P4). `fog` = distanza a cui si arriva al buio (0 =
+ * spento, M-FOG), `far` = oltre questa distanza i triangoli si saltano (0 =
+ * spento), `colormap` = luce quantizzata a 32 livelli (C-SAME-COLORMAP). */
+typedef struct gmb_3d_env {
+    float fog;
+    float far;
+    int   colormap;
+    int   nlamps;
+    gmb_3d_lamp_t lamps[GMB_3D_MAX_LAMPS];
+} gmb_3d_env_t;
+
+/* Azzera l'ambiente (fog/far spenti, nessuna lampada, colormap continua). */
+void gmb_3d_env_clear(gmb_3d_env_t* env);
+
+/* Luce finale 0..255 in un punto del MONDO (M-LIGHT): `base` (luce dell'oggetto)
+ * + somma delle lampade, poi fog sulla distanza di vista `dist`, poi la
+ * quantizzazione a 32 livelli se `colormap`. Sola lettura: serve ai MiniTest e
+ * al rasterizzatore, che chiamano la stessa funzione (una sola formula). */
+unsigned char gmb_3d_light_eval(const gmb_3d_env_t* env, float x, float y, float z,
+                                unsigned char base, float dist);
+
+/* Come gmb_3d_mesh_draw, con l'ambiente: luce per pixel (M-LIGHT), fog (M-FOG)
+ * e FAR (i triangoli interamente oltre la distanza si scartano). Con env NULL o
+ * spento produce gli STESSI byte di gmb_3d_mesh_draw: nessuna regressione sulle
+ * golden di P3. `translucent` nel materiale miscela invece di copiare. */
+int gmb_3d_mesh_draw_env(gmb_3d_target_t* t, const float* mvp,
+                         const gmb_3d_mesh_t* m, const gmb_3d_material_t* mat,
+                         const gmb_3d_env_t* env, gmb_3d_draw_stats_t* stats);
+
+/* Cielo (M-SKY): riempie i pixel NON toccati (depth 0) mappando la picture per
+ * angolo orizzontale attorno all'osservatore. `repeat` = quante volte la picture
+ * copre i 360 (default 1), `shift` = sfasamento in giri. La riga 0 della texture
+ * resta in alto; `fov_deg` e' il campo visivo verticale della camera. */
+int gmb_3d_sky_fill(gmb_3d_target_t* t, const unsigned char* rgba, int tw, int th,
+                    float yaw_deg, float pitch_deg, float fov_deg,
+                    float repeat, float shift);
+
+/* Thing (M-THINGS): billboard verticale con la base in (x,y,z), sempre rivolto
+ * all'osservatore, disegnato con depth test. `eye` e' la posizione della camera.
+ * La picture e' RGBA8 (riga 0 in alto); alpha 0 = trasparente. */
+typedef struct gmb_3d_thing {
+    float x, y, z;          /* base del billboard */
+    float w, h;             /* dimensioni nel mondo */
+    const unsigned char* rgba;
+    int tw, th;
+    unsigned char light;    /* 0..255 */
+} gmb_3d_thing_t;
+
+int gmb_3d_thing_draw(gmb_3d_target_t* t, const float* view, const float* proj,
+                      const gmb_3d_thing_t* th, const float eye[3],
+                      const gmb_3d_env_t* env, gmb_3d_draw_stats_t* stats);
 
 /* --- mondi a settori (P2, specifica §2) ---------------------------------- */
 
@@ -322,7 +393,12 @@ int64_t gmb_scene_checker(int64_t cells);            /* texture a scacchi in sca
  * di SCENE TEXTURE restano atomiche: su errore vale quella precedente). Limite 4096
  * per lato; alpha 0 = trasparente, dal materiale la texture è masked. */
 int64_t gmb_scene_texture_file(const char* path);
-int64_t gmb_scene_object(int64_t r, int64_t g, int64_t b);      /* apre un oggetto (0..255, clampato) */
+/* SCENE OBJECT r, g, b [, flags [, luce]]: apre un oggetto (0..255, clampato).
+ * `flags` (M-FLAGS): 1 masked, 2 traslucido (disegnato per ultimo, da lontano a
+ * vicino), 16 due lati; default 0. `luce` 0..255 e' la luce base dell'oggetto,
+ * a cui si sommano le lampade (default 255). */
+int64_t gmb_scene_object(int64_t r, int64_t g, int64_t b);
+int64_t gmb_scene_object_flags(int64_t r, int64_t g, int64_t b, int64_t flags, int64_t light);
 int64_t gmb_scene_vertex(double x, double y, double z, double u, double v);
 int64_t gmb_scene_tri(int64_t a, int64_t b, int64_t c);
 int64_t gmb_scene_quad(int64_t a, int64_t b, int64_t c, int64_t d);
@@ -337,6 +413,28 @@ int64_t gmb_scene_camera(double x, double y, double z,
  * ambiente(40)→livello è intera: stessi byte su tutte le gambe. Con LIGHT attiva la
  * luce per faccia sostituisce la tabella fissa delle 6 facce del cubo. */
 int64_t gmb_scene_light(double dx, double dy, double dz, int64_t level);
+/* SCENE LAMP n, x, y, z, radius, amount [, dx, dy, dz, angle]: lampada 0..7.
+ * Senza direzione e' puntiforme; con la direzione (puntata) e `angle` in gradi
+ * (semiangolo del cono) e' uno spot: pieno sull'asse, zero al bordo (M-LIGHT).
+ * `amount` 0..255; raggio <= 0 o amount 0 spengono la lampada. */
+int64_t gmb_scene_lamp(int64_t n, double x, double y, double z, double radius,
+                       double amount);
+int64_t gmb_scene_lamp_spot(int64_t n, double x, double y, double z, double radius,
+                            double amount, double dx, double dy, double dz,
+                            double angle_deg);
+/* SCENE FOG d: buio alla distanza d (0 = spento). SCENE FAR d: oltre d i
+ * triangoli si saltano (0 = spento). SCENE COLORMAP: luce a 32 livelli. */
+int64_t gmb_scene_fog(double d);
+int64_t gmb_scene_far(double d);
+int64_t gmb_scene_colormap(void);
+/* SCENE SKY [repeat [, shift]]: cielo per angolo con la texture corrente (M-SKY).
+ * La forma §4.2 con l'indice di texture non si applica: SCENE ha UNA texture alla
+ * volta, quindi si imposta con TEXTURE e poi si chiama SKY. */
+int64_t gmb_scene_sky(double repeat, double shift);
+/* SCENE THING n, x, y, z, w, h [, luce]: billboard con la texture corrente
+ * (alpha 0 trasparente), base a z, sempre rivolto all'osservatore (M-THINGS). */
+int64_t gmb_scene_thing(int64_t n, double x, double y, double z, double w, double h);
+int64_t gmb_scene_thing_light(int64_t n, int64_t level);
 /* SCENE SMOOTH|ALPHA|TWOSIDED on|off (idea #5): espongono i flag già presenti in
  * `gmb_3d_material_t` del kernel — bilineare, alpha-test, niente back-face cull. `on` != 0
  * accende. I default (1, 1, 0) riproducono il comportamento storico, quindi le scene che

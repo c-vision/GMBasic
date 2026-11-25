@@ -71,6 +71,33 @@ public static class Scene3DNative
     [DllImport(Lib, EntryPoint = "gmb_scene_alpha", CallingConvention = CallingConvention.Cdecl)]
     public static extern long Alpha(long on);
 
+    // ── P4: lampade, fog, FAR, cielo, colormap, thing ───────────────────────────────
+    // Ogni voce è la facciata C omonima: il kernel resta l'unica implementazione (§0bis).
+    [DllImport(Lib, EntryPoint = "gmb_scene_lamp", CallingConvention = CallingConvention.Cdecl)]
+    public static extern long Lamp(long n, double x, double y, double z, double radius, double amount);
+
+    [DllImport(Lib, EntryPoint = "gmb_scene_lamp_spot", CallingConvention = CallingConvention.Cdecl)]
+    public static extern long LampSpot(long n, double x, double y, double z, double radius,
+                                       double amount, double dx, double dy, double dz, double angle);
+
+    [DllImport(Lib, EntryPoint = "gmb_scene_fog", CallingConvention = CallingConvention.Cdecl)]
+    public static extern long Fog(double d);
+
+    [DllImport(Lib, EntryPoint = "gmb_scene_far", CallingConvention = CallingConvention.Cdecl)]
+    public static extern long Far(double d);
+
+    [DllImport(Lib, EntryPoint = "gmb_scene_sky", CallingConvention = CallingConvention.Cdecl)]
+    public static extern long Sky(double repeat, double shift);
+
+    [DllImport(Lib, EntryPoint = "gmb_scene_colormap", CallingConvention = CallingConvention.Cdecl)]
+    public static extern long ColorMap();
+
+    [DllImport(Lib, EntryPoint = "gmb_scene_thing", CallingConvention = CallingConvention.Cdecl)]
+    public static extern long Thing(long n, double x, double y, double z, double w, double h);
+
+    [DllImport(Lib, EntryPoint = "gmb_scene_object_flags", CallingConvention = CallingConvention.Cdecl)]
+    public static extern long ObjectFlags(long r, long g, long b, long flags, long light);
+
     [DllImport(Lib, EntryPoint = "gmb_scene_twosided", CallingConvention = CallingConvention.Cdecl)]
     public static extern long TwoSided(long on);
 

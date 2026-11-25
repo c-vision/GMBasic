@@ -41,6 +41,21 @@ public static partial class IlRuntime
     public static void SceneAlpha(long on) => CommonLib.Scene3DNative.Alpha(on);
     public static void SceneTwoSided(long on) => CommonLib.Scene3DNative.TwoSided(on);
 
+    // P4: lampade point/spot, fog, FAR, cielo, colormap a 32 livelli, thing.
+    public static void SceneLamp(long n, double x, double y, double z, double radius, double amount)
+        => CommonLib.Scene3DNative.Lamp(n, x, y, z, radius, amount);
+    public static void SceneLampSpot(long n, double x, double y, double z, double radius, double amount,
+                                     double dx, double dy, double dz, double angle)
+        => CommonLib.Scene3DNative.LampSpot(n, x, y, z, radius, amount, dx, dy, dz, angle);
+    public static void SceneFog(double d) => CommonLib.Scene3DNative.Fog(d);
+    public static void SceneFar(double d) => CommonLib.Scene3DNative.Far(d);
+    public static void SceneSky(double repeat, double shift) => CommonLib.Scene3DNative.Sky(repeat, shift);
+    public static void SceneColorMap() => CommonLib.Scene3DNative.ColorMap();
+    public static void SceneThing(long n, double x, double y, double z, double w, double h)
+        => CommonLib.Scene3DNative.Thing(n, x, y, z, w, h);
+    public static void SceneObjectFlags(long r, long g, long b, long flags, long light)
+        => CommonLib.Scene3DNative.ObjectFlags(r, g, b, flags, light);
+
     // SCENE PRESENT: target 3D → pagina 2D corrente (il present vero resta al main thread).
     public static void ScenePresent() => CommonLib.Scene3DNative.Present();
 

@@ -49,7 +49,13 @@ public sealed partial class IlProgramCompiler
                 return;
 
             case TokenKind.SceneObject:
-                RequireSceneArgs(stmt, 3, "SCENE OBJECT r, g, b");
+                if (a.Length == 5)
+                {
+                    for (int i = 0; i < 5; i++) EmitInt64Argument(a[i]);
+                    _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.SceneObjectFlags)));
+                    return;
+                }
+                RequireSceneArgs(stmt, 3, "SCENE OBJECT r, g, b [, flags [, luce]]");
                 EmitInt64Argument(a[0]);
                 EmitInt64Argument(a[1]);
                 EmitInt64Argument(a[2]);
@@ -114,6 +120,52 @@ public sealed partial class IlProgramCompiler
             case TokenKind.ScenePresent:
                 RequireSceneArgs(stmt, 0, "SCENE PRESENT non accetta argomenti");
                 _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.ScenePresent)));
+                return;
+
+            // P4: lampade, fog, FAR, cielo, colormap, thing.
+            case TokenKind.SceneLamp:
+                if (a.Length == 10)
+                {
+                    EmitInt64Argument(a[0]);
+                    for (int i = 1; i < 10; i++) EmitDoubleArgument(a[i]);
+                    _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.SceneLampSpot)));
+                    return;
+                }
+                RequireSceneArgs(stmt, 6, "SCENE LAMP n, x, y, z, raggio, quantità");
+                EmitInt64Argument(a[0]);
+                for (int i = 1; i < 6; i++) EmitDoubleArgument(a[i]);
+                _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.SceneLamp)));
+                return;
+
+            case TokenKind.SceneFog:
+                RequireSceneArgs(stmt, 1, "SCENE FOG distanza");
+                EmitDoubleArgument(a[0]);
+                _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.SceneFog)));
+                return;
+
+            case TokenKind.SceneFar:
+                RequireSceneArgs(stmt, 1, "SCENE FAR distanza");
+                EmitDoubleArgument(a[0]);
+                _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.SceneFar)));
+                return;
+
+            case TokenKind.SceneSky:
+                RequireSceneArgs(stmt, 2, "SCENE SKY repeat, shift");
+                EmitDoubleArgument(a[0]);
+                EmitDoubleArgument(a[1]);
+                _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.SceneSky)));
+                return;
+
+            case TokenKind.SceneColormap:
+                RequireSceneArgs(stmt, 0, "SCENE COLORMAP non accetta argomenti");
+                _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.SceneColorMap)));
+                return;
+
+            case TokenKind.SceneThing:
+                RequireSceneArgs(stmt, 6, "SCENE THING n, x, y, z, w, h");
+                EmitInt64Argument(a[0]);
+                for (int i = 1; i < 6; i++) EmitDoubleArgument(a[i]);
+                _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.SceneThing)));
                 return;
 
             case TokenKind.SceneRender:

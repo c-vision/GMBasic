@@ -21,13 +21,20 @@ Il dominio segue la regola del linguaggio: **il comando scrive, la funzione legg
 | Comando | `SCENE VIEW w, h, fov` | crea il target `w×h` e imposta il campo visivo **verticale** |
 | Comando | `SCENE TEXTURE celle` | texture a scacchi procedurale (1…64 celle) |
 | Comando | `SCENE TEXTURE "file.png"` | texture da un PNG su disco (stesso verbo, argomento stringa) |
-| Comando | `SCENE OBJECT r, g, b` | apre un oggetto e ne fissa la tinta |
+| Comando | `SCENE OBJECT r, g, b [, flags [, luce]]` | apre un oggetto: tinta, flag di materiale e luce base |
 | Comando | `SCENE VERTEX x, y, z, u, v` | aggiunge un vertice all'oggetto corrente |
 | Comando | `SCENE QUAD a, b, c, d` | due triangoli sui quattro vertici indicati |
 | Comando | `SCENE BOX x0, y0, z0, x1, y1, z1` | parallelepipedo: 24 vertici, 12 triangoli, UV per faccia |
 | Comando | `SCENE OBJPOS x, y, z, yaw` | posizione e rotazione dell'oggetto corrente |
 | Comando | `SCENE CAMERA x, y, z, yaw, pitch` | posizione e orientamento dell'osservatore |
 | Comando | `SCENE LIGHT dx, dy, dz, livello` | luce direzionale: illumina per normale di faccia |
+| Comando | `SCENE LAMP n, x, y, z, raggio, quantità` | lampada puntiforme (point), attenuazione lineare nel raggio |
+| Comando | `SCENE LAMP n, x, y, z, raggio, quantità, dx, dy, dz, angolo` | lampada a cono (spot), semiangolo in gradi |
+| Comando | `SCENE FOG d` | buio lineare alla distanza `d` |
+| Comando | `SCENE FAR d` | oltre `d` la geometria si salta |
+| Comando | `SCENE SKY repeat, shift` | cielo per angolo, con la texture corrente |
+| Comando | `SCENE COLORMAP` | luce quantizzata a 32 livelli |
+| Comando | `SCENE THING n, x, y, z, w, h` | billboard con la texture corrente |
 | Comando | `SCENE SMOOTH on\|off` | filtro della texture: bilineare o nearest |
 | Comando | `SCENE ALPHA on\|off` | alpha-test: i texel trasparenti si scartano o si disegnano |
 | Comando | `SCENE TWOSIDED on\|off` | facce visibili da entrambi i lati (niente back-face cull) |
@@ -115,13 +122,27 @@ salvati da `SCENE SAVE`.
 MiniTest: `shared/minitests/3d/scene_texture_file.bas` (round-trip RENDER → SAVE → TEXTURE, con
 anche il caso del file inesistente). Sample: `Samples3D/TextureFile.bas`.
 
-### `SCENE OBJECT r, g, b`
+### `SCENE OBJECT r, g, b [, flags [, luce]]`
 
 Apre un **nuovo oggetto** e lo rende quello corrente: i `VERTEX`, `QUAD` e `BOX` successivi
 appartengono a lui. `r, g, b` sono `0…255` e valgono come **tinta** (moltiplicata per la texture e
 per la luce della faccia). Un oggetto senza vertici non disegna nulla. Il numero massimo di
 oggetti è 256, di vertici 32768 e di triangoli 16384: oltre, il comando è rifiutato e la scena
 resta quella di prima.
+
+Con **cinque** argomenti si impostano anche i **flag di materiale** e la **luce base**
+dell'oggetto:
+
+| argomento | significato |
+|---|---|
+| `flags` | maschera: **1** masked (alpha-test), **2** traslucido (blend, disegnato per ultimo), **16** due lati. Gli altri bit si ignorano |
+| `luce` | luce base `0…255` (default `255`), a cui le **lampade si sommano** |
+
+La forma a tre argomenti resta identica (base `255`), quindi i programmi P3 non cambiano byte.
+Flag e luce valgono per **quell'oggetto**, non per la scena: è la differenza rispetto a
+`SMOOTH`/`ALPHA`/`TWOSIDED`, che sono globali. `flags` con bit `1` forza il masked anche con
+`SCENE ALPHA OFF`; il bit `2` rende l'oggetto traslucido e lo sposta in fondo all'ordine di
+disegno.
 
 ### `SCENE VERTEX x, y, z, u, v`
 
@@ -191,6 +212,138 @@ SCENE RENDER
 MiniTest: `shared/minitests/3d/scene_light.bas` (piano in su illuminato, piano laterale
 illuminato e in ombra: `16777215`, `16777215`, `2631720`). Sample: `Samples3D/LightFaces.bas`
 (il sole gira attorno a torri e pilastri).
+
+### `SCENE LAMP n, x, y, z, raggio, quantità`
+
+Accende una **lampada puntiforme**. `n` è lo slot `0…7` (otto lampade per scena, come
+`M-LIMITS`): riaccendere lo stesso slot la sostituisce, senza dover spegnere le altre.
+
+| parametro | significato |
+|---|---|
+| `n` | slot della lampada, `0…7` |
+| `x, y, z` | posizione nel mondo (`y` è l'altezza) |
+| `raggio` | distanza entro cui illumina; `0` la spegne |
+| `quantità` | luce aggiunta sul punto più vicino, `0…255` (clampata); `0` la spegne |
+
+L'attenuazione è **lineare**: a distanza `d < raggio` la lampada aggiunge
+`quantità × (1 − d/raggio)`; oltre il raggio non arriva nulla. La luce si somma alla luce base
+dell'oggetto (quella di `OBJECT … , luce`) e si ferma a `255`: non si sovraespone oltre il
+bianco. Il calcolo è **per pixel**, nel punto del mondo interpolato, quindi una faccia grande si
+schiarisce solo dove la lampada è vicina.
+
+```basic
+SCENE OBJECT 255, 255, 255, 0, 40     ' base bassa: la lampada si vede
+SCENE LAMP 0, 0, 1.5, 0, 2.5, 255     ' torcia accesa al centro
+SCENE RENDER
+```
+
+MiniTest: `shared/minitests/3d/scene_lamp_point_spot.bas` (`13948116` al centro, `2631720`
+all'angolo, fuori dal raggio).
+
+### `SCENE LAMP n, x, y, z, raggio, quantità, dx, dy, dz, angolo`
+
+La **stessa** lampada con un **cono**: dieci argomenti invece di sei, e il verbo è lo stesso — la
+forma la decide il **numero di argomenti**, non un verbo diverso.
+
+| parametro | significato |
+|---|---|
+| `dx, dy, dz` | direzione **verso ciò che si illumina** (normalizzata dal runtime); una direzione nulla è un errore esplicito |
+| `angolo` | **semiangolo** del cono in gradi, `0 < angolo < 90`: pieno sull'asse, zero al bordo |
+
+Dentro il cono vale `spot = (cos θ − cos angolo) / (1 − cos angolo)`, limitato a `0…1`, e si
+moltiplica per l'attenuazione del raggio; fuori dal cono la lampada non aggiunge nulla. Un
+`angolo` fuori da `(0, 90)` è un errore esplicito: non esiste un cono degenere silenzioso.
+
+```basic
+SCENE LAMP 0, 0, 2, -1, 6, 255, 0, 0, 1, 25   ' riflettore dal davanti, cono stretto
+```
+
+MiniTest: `shared/minitests/3d/scene_lamp_point_spot.bas` — con lo stesso raggio la puntiforme
+illuminerebbe anche l'angolo; lo spot lo lascia a `2631720` (solo ambiente).
+
+### `SCENE FOG d` · `SCENE FAR d`
+
+Due limiti di distanza, entrambi **lineari** e indipendenti:
+
+| comando | effetto | `0` |
+|---|---|---|
+| `SCENE FOG d` | la luce si moltiplica per `1 − distanza/d`: alla distanza `d` il pixel è nero | spegne il fog |
+| `SCENE FAR d` | i triangoli la cui distanza media supera `d` sono **saltati** (contano in `CULLED()`) | spegne il limite |
+
+`d` negativa è un errore esplicito. Il fog agisce sulla **luce** (un oggetto in ombra resta nero),
+non è una nebbia colorata: il colore del fondo non viene miscelato.
+
+MiniTest: `shared/minitests/3d/scene_fog.bas` (`8421504` = `0x808080` a metà distanza, `0` oltre)
+e `shared/minitests/3d/scene_far.bas` (geometria oltre il limite: fondo `988969` e `DRAWN() = 0`,
+poi di nuovo `16711680` alzando `FAR`).
+
+### `SCENE SKY repeat, shift`
+
+Riempie i pixel **non coperti** con la texture corrente mappata **per angolo** attorno
+all'osservatore: il cielo non scrive la profondità e non vince mai un depth test, quindi la
+geometria resta davanti.
+
+| parametro | significato |
+|---|---|
+| `repeat` | quante volte la picture copre i 360°; `<= 0` vale `1` (un giro) |
+| `shift` | sfasamento in **giri** (`0.5` = mezzo giro) |
+
+**Entrambi obbligatori.** Il runtime **copia** la texture al momento della chiamata: un
+`SCENE TEXTURE` successivo non cambia il cielo già impostato. Senza texture il comando è un
+errore esplicito — un cielo nero silenzioso sembrerebbe un difetto del renderer. `RESET` spegne
+il cielo.
+
+```basic
+SCENE TEXTURE "sky.png"
+SCENE SKY 6, 0.25      ' sei giri e un quarto di sfasamento
+```
+
+MiniTest: `shared/minitests/3d/scene_sky.bas` (picture 8×8 a bordo verde e centro rosso: `65280`
+al centro, `16711680` spostandosi, e il centro che diventa rosso con `shift 0.5`).
+
+### `SCENE COLORMAP`
+
+Accende la **quantizzazione a 32 livelli** della luce (`C-SAME-COLORMAP`): dopo lampade e fog,
+`q = (luce × 31 + 127) / 255` e il livello diventa `q × 255 / 31`. Il default è **spento**, così
+le scene P3 che non lo chiamano danno gli stessi byte di sempre; `RESET` lo spegne.
+
+```basic
+SCENE LIGHT 0, 1, 0, 100
+SCENE COLORMAP        ' 100 → 98: la rampa a 32 livelli
+```
+
+MiniTest: `shared/minitests/3d/scene_colormap.bas` (`6579300` senza, `6447714` = `0x626262` con).
+
+### `SCENE THING n, x, y, z, w, h`
+
+Un **billboard**: un rettangolo texturizzato con la texture corrente, sempre rivolto
+all'osservatore, con la **base** in `(x, y, z)` e `y` = altezza (la convenzione della superficie
+`SCENE`). `w` e `h` sono larghezza e altezza in unità del mondo e devono essere `> 0`; `n` è lo
+slot `0…255`. Il disegno è `masked` (alpha `0` = trasparente) e **due lati**, con depth test, e
+usa la stessa pipeline delle mesh: niente seconda via di rasterizzazione. La luce del thing è
+piena (`255`), salvo la facciata C `gmb_scene_thing_light`, che il BASIC non espone ancora.
+
+I thing si disegnano **dopo** gli opachi e **prima** dei traslucidi, da lontano a vicino. Un thing
+senza texture viene saltato, e una scena di **soli thing** si disegna lo stesso.
+
+```basic
+SCENE TEXTURE "tree.png"
+SCENE THING 0, 0, 0, 3, 1, 2      ' un albero 1×2 in piedi a (0,0,3)
+```
+
+MiniTest: `shared/minitests/3d/scene_thing.bas` (`16711680` sul corpo, `8943360` sul bordo
+bilineare, `988969` sotto la base).
+
+### Ordine di disegno
+
+`SCENE RENDER` segue un ordine fisso (`M-ORDER`): **cielo** → oggetti **opachi e masked** →
+**thing** da lontano a vicino → **traslucidi** da lontano a vicino. I traslucidi si miscelano con
+il fondo: un texel con **alpha 255** vale **metà e metà** (`50/50`), uno con **alpha < 255** vale
+quella frazione (`M-PALALPHA`); masked e opachi ignorano l'alpha del texel e scrivono il pixel.
+Il blend usa la distanza del pixel, quindi due vetri sovrapposti si compongono nell'ordine
+corretto.
+
+La scena può essere fatta di **solo cielo** o di **soli thing**: `RENDER` non pretende una mesh.
 
 ### `SCENE SMOOTH on|off` · `SCENE ALPHA on|off` · `SCENE TWOSIDED on|off`
 
@@ -364,6 +517,10 @@ programma e non produce un numero da controllare. Gli errori si vedono **dallo s
 | il frame è tutto del colore di fondo | `RENDER` prima di dichiarare la geometria, oppure `RESET` dopo averla dichiarata |
 | `VERTS()`/`TRIS()` più bassi del previsto | il comando è stato rifiutato per limite (`256` oggetti, `32768` vertici, `16384` triangoli) |
 | `PIXEL()` sempre `−1` | `VIEW` mai chiamato, o coordinate fuori dal target |
+| un oggetto resta nero | luce base `0` e nessuna lampada, oppure `FOG` più corto della distanza della scena |
+| il cielo non compare | `SCENE SKY` senza `TEXTURE`, oppure `RESET` dopo `SKY` |
+| `THING` invisibile | texture mai impostata, `w`/`h` non positivi, o slot `> 255` |
+| una lampada non si vede | slot `> 7`, `raggio 0`, `quantità 0`, oppure oggetto già a luce `255` |
 | `SCENE SAVE` non scrive | percorso non scrivibile dalla cartella di esecuzione del programma |
 
 `IMPORT SCENE` dimenticata: il programma non compila (`namespace non importato: SCENE`). È un
@@ -433,25 +590,24 @@ geometria dichiarata. Per questo i contatori si leggono insieme, mai come somma.
 
 ## 6. Che cosa non c'è ancora
 
-Questa è la superficie di **P3**, il primo rasterizzatore mesh. Mancano, e arriveranno con le
+La superficie `SCENE` copre oggi **22 verbi e 7 letture** (P3 + P4). Mancano, e arriveranno con le
 fasi successive del piano:
 
-* i comandi che presuppongono uno stato che il kernel non ha: `CLEAR`, `FOG`, `FAR`, `SKY`,
-  `COLORMAP`, `THING`, `TURN`, `PLAYER`, `MOVE`, `LIFT`, `LAMP`, `ZONE`, `WORLD`,
-  `SOFTWARE`/`HARDWARE` (la luce direzionale invece c'è: `SCENE LIGHT`);
-* le letture della camera (`SCENE.X/Y/Z/EYE/YAW/PITCH/HIT/…`), perché la camera oggi è solo un
-  ingresso;
-* le forme con **id oggetto esplicito** (`VERTEX o, …`, `OBJECT o, flags, light`): oggi
-  l'oggetto corrente lo apre `OBJECT`; le texture da file ci sono (`TEXTURE "file.png"`), ma il
-  formato è solo PNG;
+* `CLEAR`, `TURN`, `PLAYER`, `MOVE`, `LIFT`, `ZONE`, `WORLD`, `SOFTWARE`/`HARDWARE`;
+* le forme a **id oggetto esplicito** (`VERTEX o, …`, `OBJECT o, flags, light`, `BOX o, …`), la
+  faccia singola (`FACE`) e le texture con handle numerico (`TEXTURE n, a$`); oggi l'oggetto
+  corrente lo apre `OBJECT` e la texture è una sola per scena (PNG o scacchiera);
+* i comandi per-thing (`THING POS/TEX/OFF/LIGHT/TRANS/MOVE`): il BASIC ha solo
+  `THING n, x, y, z, w, h`, con luce piena e la texture corrente;
+* le letture della camera e degli oggetti (`SCENE.X/Y/Z/EYE/YAW/PITCH/HIT/OBJ*`), perché camera e
+  oggetti oggi sono solo ingressi;
 * il present **a video** e il tetto dei frame: `SCENE PRESENT` porta il target nella pagina 2D
   (canvas o `SCREEN`), e la finestra la mostra il pump SDL al tick successivo; il controllo del
   frame rate resta fuori dal dominio.
 
-I sample di riferimento sono `Samples3D/MeshBasics.bas` (geometria), `Samples3D/TextureFile.bas`
-(texture da PNG), `Samples3D/LightFaces.bas` (luce per faccia) e `Samples3D/PresentLoop.bas`
-(3D dentro la pagina 2D); i MiniTest che bloccano i numeri sono
-`shared/minitests/3d/scene_mesh.bas`, `shared/minitests/3d/scene_texture_file.bas`,
-`shared/minitests/3d/scene_light.bas`, `shared/minitests/3d/scene_material_flags.bas` e
-`shared/minitests/3d/scene_present.bas`; i sample `Samples3D/MaterialFlags.bas` (flag di
-materiale) e `Samples3D/LightFaces.bas` (luce).
+MiniTest che bloccano i numeri: `shared/minitests/3d/scene_mesh.bas`,
+`scene_texture_file.bas`, `scene_light.bas`, `scene_material_flags.bas`, `scene_present.bas` per
+la P3, e `scene_lamp_point_spot.bas`, `scene_fog.bas`, `scene_far.bas`, `scene_sky.bas`,
+`scene_colormap.bas`, `scene_thing.bas` per la P4 — tutti con gli stessi valori su C99Native, IL,
+PCode e VM/C. Sample: `Samples3D/MeshBasics.bas`, `TextureFile.bas`, `LightFaces.bas`,
+`MaterialFlags.bas`, `PresentLoop.bas`.

@@ -969,6 +969,55 @@ internal sealed partial class PCodeProcessor
             case SysCall.SCENE_PRESENT:
                 CommonLib.Scene3DNative.Present();
                 break;
+            // P4: lampade, fog, FAR, cielo, colormap, thing, flag di oggetto.
+            case SysCall.SCENE_LAMP:
+            {
+                var amount = PopNum(task); var radius = PopNum(task);
+                var z = PopNum(task); var y = PopNum(task); var x = PopNum(task);
+                var n = (long)PopNum(task);
+                CommonLib.Scene3DNative.Lamp(n, x, y, z, radius, amount);
+                break;
+            }
+            case SysCall.SCENE_LAMP_SPOT:
+            {
+                var angle = PopNum(task);
+                var dz = PopNum(task); var dy = PopNum(task); var dx = PopNum(task);
+                var amount = PopNum(task); var radius = PopNum(task);
+                var z = PopNum(task); var y = PopNum(task); var x = PopNum(task);
+                var n = (long)PopNum(task);
+                CommonLib.Scene3DNative.LampSpot(n, x, y, z, radius, amount, dx, dy, dz, angle);
+                break;
+            }
+            case SysCall.SCENE_FOG:
+                CommonLib.Scene3DNative.Fog(PopNum(task));
+                break;
+            case SysCall.SCENE_FAR:
+                CommonLib.Scene3DNative.Far(PopNum(task));
+                break;
+            case SysCall.SCENE_SKY:
+            {
+                var shift = PopNum(task); var repeat = PopNum(task);
+                CommonLib.Scene3DNative.Sky(repeat, shift);
+                break;
+            }
+            case SysCall.SCENE_COLORMAP:
+                CommonLib.Scene3DNative.ColorMap();
+                break;
+            case SysCall.SCENE_THING:
+            {
+                var h = PopNum(task); var w = PopNum(task);
+                var z = PopNum(task); var y = PopNum(task); var x = PopNum(task);
+                var n = (long)PopNum(task);
+                CommonLib.Scene3DNative.Thing(n, x, y, z, w, h);
+                break;
+            }
+            case SysCall.SCENE_OBJECT_FLAGS:
+            {
+                var light = (long)PopNum(task); var flags = (long)PopNum(task);
+                var b = (long)PopNum(task); var g = (long)PopNum(task); var r = (long)PopNum(task);
+                CommonLib.Scene3DNative.ObjectFlags(r, g, b, flags, light);
+                break;
+            }
             case SysCall.SCENE_SMOOTH:
                 CommonLib.Scene3DNative.Smooth((long)PopNum(task));
                 break;

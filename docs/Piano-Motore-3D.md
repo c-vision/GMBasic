@@ -1,6 +1,6 @@
 # Piano — Motore 3D di GMBasic (parità Engine1999 e oltre)
 
-> **Stato**: piano di lavoro. **P1 e P2 hanno codice, e le quattro gambe lo eseguono**: target 3D e cattura headless nel runtime (`include/gmb_3d.h`, `src/gmb_3d_frame.c`), renderer a settori (`shared/libs/graphics/src/gm_gfx_sector.c`), tempo (`src/gmb_3d_time.c`), collisione, oracolo `tools/gmb_3d_oracle.c` con **7 golden** per RID e la mappa demo di P2. Il **rasterizzatore mesh** (P3) non è ancora scritto. Documento di riferimento per le fasi **P0–P9**, che si eseguono in quest'ordine, più `PH` (hardware) fuori numerazione. Il **ponte C#** dei comandi 3D è chiuso: i 20 MiniTest del dominio `WORLD` girano su C99Native, IL, PCode e VM/C.
+> **Stato**: piano di lavoro. **P0–P4 sono chiusi e le quattro gambe li eseguono**: target 3D e cattura headless nel runtime (`include/gmb_3d.h`, `src/gmb_3d_frame.c`), renderer a settori (`shared/libs/graphics/src/gm_gfx_sector.c`), tempo (`src/gmb_3d_time.c`), collisione, **rasterizzatore mesh** (`gmb_3d_mesh_draw`: clip, z-buffer, UV prospettici), oracolo `tools/gmb_3d_oracle.c` con **18 golden** per RID, la mappa demo di P2 e il dominio `SCENE` agganciato al linguaggio su tutte e quattro le gambe. **P4 è chiuso (2026-11-25)**: luce **per pixel** con **lampade point/spot**, **fog**, **FAR**, **SKY**, **COLORMAP** a 32 livelli e **THING**, con l'ordine sky → opachi → thing → traslucidi; 6 MiniTest e 6 golden nuove, stessi valori su tutte e quattro le gambe. Documento di riferimento per le fasi **P0–P9**, che si eseguono in quest'ordine, più `PH` (hardware) fuori numerazione. Il **ponte C#** dei comandi 3D è chiuso: i 20 MiniTest del dominio `WORLD` girano su C99Native, IL, PCode e VM/C.
 > **Base**: SDL2 (present di GMBasic) + `shared/libs/graphics` (vendored da `gmbsuite`) + `native/gmb_runtime_c`.
 > **Riferimento esterno**: [`ekkehard-morgenstern/Engine1999`](https://github.com/ekkehard-morgenstern/Engine1999) — engine SDL2 in C, **GPL-3.0**, con due renderer 3D.
 > **Regola di licenza**: di Engine1999 si replica il *comportamento*, mai il codice.
@@ -180,7 +180,18 @@ Funzioni: `WORLD.X/Y/Z/ANGLE/PITCH/SECTOR/SECTORAT(x,y)/FLOORAT/CEILAT/FLOOR/CEI
 
 Funzioni: `SCENE.X/Y/Z/EYE/YAW/PITCH/LIFT/HIT/FLOORZ/FLOORAT/CEILAT/TON/TX/TY/TZ/DIST/BEARING/SHOOT/SHOTKIND/SHOTOBJ/SHOTDIST/SHOTX/SHOTY/SHOTZ/USE/SEES/TEXW/TEXH/OBJON/OBJX/OBJY/OBJZ/OBJYAW/VERTS/TRIS/DRAWN/ZONE/ZONETAG/RENDERER/HWAVAIL`.
 
-> **Agganciate a P3 (2026-11-24)**: `RESET`, `VIEW w, h, fov`, `TEXTURE celle`, `OBJECT r, g, b`, `VERTEX x, y, z, u, v`, `QUAD a, b, c, d`, `BOX x0, y0, z0, x1, y1, z1`, `OBJPOS x, y, z, yaw`, `CAMERA x, y, z, yaw, pitch`, `RENDER`, `SAVE path$`; letture `SCENE.VERTS/TRIS/DRAWN/CULLED/PIXELS/HASH/PIXEL(x, y)`. Le forme con l'id oggetto esplicito (`VERTEX o, …`, `OBJECT o, flags, light`, `BOX o, …`) arrivano quando il kernel avrà materiali e handle: oggi l'oggetto corrente lo apre `OBJECT` e i vertici si aggiungono a quello. La superficie è documentata in `Guide/utente/SCENE-Guida-Utente.md`.
+> **Agganciate a P3 (2026-11-24) e P4 (2026-11-25)**: dalla superficie di §4.2 sono reali
+> `RESET`, `VIEW w, h, fov`, `TEXTURE celle | "file.png"`, `OBJECT r, g, b [, flags [, luce]]`,
+> `VERTEX x, y, z, u, v`, `QUAD a, b, c, d`, `BOX x0, y0, z0, x1, y1, z1`, `OBJPOS x, y, z, yaw`,
+> `CAMERA x, y, z, yaw, pitch`, `LIGHT dx, dy, dz, livello`, `SMOOTH|ALPHA|TWOSIDED on|off`,
+> `LAMP n, x, y, z, raggio, quantità [, dx, dy, dz, angolo]`, `FOG d`, `FAR d`,
+> `SKY repeat, shift`, `COLORMAP`, `THING n, x, y, z, w, h`, `RENDER`, `PRESENT`, `SAVE path$`;
+> letture `SCENE.VERTS/TRIS/DRAWN/CULLED/PIXELS/HASH/PIXEL(x, y)`. Le forme con l'id oggetto
+> esplicito (`VERTEX o, …`, `OBJECT o, …`, `BOX o, …`), `FACE`, `CLEAR`, `TURN`, `PLAYER`,
+> `MOVE`, `LIFT`, `ZONE`, `WORLD`, `SOFTWARE`/`HARDWARE` e le letture di camera/oggetti non ci
+> sono ancora. `SKY` richiede **entrambi** gli argomenti e usa la texture corrente; `THING` usa la
+> texture corrente. Divergenze e stato completo: §6 P4. La superficie è documentata in
+> `Guide/utente/SCENE-Guida-Utente.md`.
 
 ### 4.3 In più (oltre Engine1999)
 
@@ -351,7 +362,7 @@ Due dettagli che il ponte ha reso necessari, e che vanno ricordati se si tocca i
 * `WORLD.TIME()` ha un **TokenKind dedicato** (`WorldTime`): la keyword `TIME` esiste già e significa secondi dal giorno. Senza la voce in `gmb_ns.h` la qualifica non veniva scomposta e la gamba nativa ripiegava proprio su quella keyword — divergenza misurata e corretta.
 * `WORLD_SECMOVE_CEIL` è una syscall **separata** (471) perché l'esecutore non riceve l'arità; in VM/C il vecchio range console `470..475` la ombreggiava (la tabella si scandisce in ordine) e il `SECMOVE` a 4 argomenti non muoveva nulla — le voci `470/471` sono state ritirate dal delegate console.
 
-### P3 — Rasterizzatore mesh, target e present (6–9 gg)
+### P3 — Rasterizzatore mesh, target e present (6–9 gg) — **FATTO**
 
 **Prerequisito**: [`Nota-Tecnica-Thread-Present-3D.md`](Nota-Tecnica-Thread-Present-3D.md) — invarianti `R2`–`R5`, `R8`, ciclo del frame, `RENDER` negli handler. Qui il frame si consuma su **T0** (`frame_acquire`), il cap del present diventa configurabile — **deciso**: una sola opzione `engine.present.max_fps`, default `auto` (60 col 3D, 30 col solo 2D; nota §8) — e il formato del buffer pubblicato è **deciso**: `0x00RRGGBB` come le pagine 2D (specifica §11).
 
@@ -360,41 +371,81 @@ Due dettagli che il ponte ha reso necessari, e che vanno ricordati se si tocca i
 * `gmb_3d_frame.c`: target = pagina visibile o canvas; colore `0x00RRGGBB`; la palette entra solo per i colori *nominati* (`palette_rgb`), mai nel ciclo caldo.
 * **Accettazione**: sample `Samples3D/MeshBasics.bas` (cubo texturizzato, piano, 100 oggetti) 60 fps a 320×150; 8 golden scene (0 pixel di differenza in software); `SCENE.DRAWN` coerente con i tris rasterizzati; misura del tearing eseguita e riportata (`tools/sh/check_3d_present.sh`, **SKIP** dichiarato senza video) — il triple buffer si implementa **solo** se supera la soglia della nota §8.3.
 
-**Stato al 2026-11-24 — il rasterizzatore c'è e la superficie `SCENE` è agganciata alle quattro gambe.** Il kernel di P3 è scritto e misurato e i verbi che il kernel sa eseguire (11 comandi + 7 letture) passano dal linguaggio su C99Native, IL, PCode e VM/C; `Samples3D/MeshBasics.bas` usa quella sintassi, senza una sola `DECLARE`. Restano fuori i comandi di §4.2 che presuppongono uno stato che il kernel non ha ancora (thing, lampade, zone, fog, sky, player): arrivano con P4/P5.
+**Stato al 2026-11-25 — il rasterizzatore c'è e la superficie `SCENE` è agganciata alle quattro gambe.** Il kernel di P3 è scritto e misurato e i verbi che il kernel sa eseguire (16 comandi + 7 letture) passano dal linguaggio su C99Native, IL, PCode e VM/C; `Samples3D/MeshBasics.bas` usa quella sintassi, senza una sola `DECLARE`. Restano fuori i comandi di §4.2 che presuppongono uno stato che il kernel non ha ancora: `THING`, lampade, `FOG` e `SKY` sono arrivati con P4; zone e player restano a P5.
 
 * **Fatto — kernel**: `gmb_3d_mesh_draw` in `src/gmb_3d_frame.c` (con `gmb_3d_mesh_t`, `gmb_3d_material_t`, `gmb_3d_draw_stats_t` in `include/gmb_3d.h`): clip dei triangoli contro i 6 piani `|x|,|y|,|z| ≤ w` in **clip space** (fan `n ≤ 6`, i vertici nuovi interpolati su `w`), divisione prospettica, back-face sul segno dell'area in screen space, **z-buffer** alla distanza di vista (0 = niente, vince la più piccola — la stessa convenzione di `gm_sector_render`, quindi un pass di mesh dopo i settori testa i loro valori senza conversioni), **UV prospettici** (`u/w`, `v/w`, `1/w` interpolati), nearest e bilinear via `gm_tex_sample`, `masked`, `two_sided`, luce a 32 livelli, alpha della texture, null mode con contatori. Contatori: `tris_in/drawn/culled/clipped/pixels`.
 * **Perché il clip in clip space e non `gm_frustum_*`**: `gm_gfx_geom.c` **non è** fra i sorgenti del runtime, quindi `gm_mat4_perspective`/`gm_frustum_from_matrix` non sono linkabili da `gmb_3d_frame.c` senza toccare il CMake (che richiede permesso). Il clip contro i 6 piani in clip space fa lo stesso lavoro con zero dipendenze nuove, e il test è banale: `|x| ≤ w`, `|y| ≤ w`, `|z| ≤ w`.
 * **Due difetti reali trovati dai check, non a occhio**: il **winding** era invertito (una faccia frontale, CCW vista da fuori, con la y ribaltata dello schermo dà area **positiva**, non negativa) e il **confronto di depth** era al contrario (si scrive la distanza, quindi vince la più piccola). Entrambi fissati nel kernel e documentati in `gmb_3d.h`, entrambi sarebbero passati inosservati a una demo guardata a vista.
 * **Accettazione numerica — verde**: `bash tools/sh/check_3d_oracle.sh` → gate C `cc`+`zcc` sui 5 file 3D, `P1-SELFTEST ok=121 fail=0` (26 check nuovi: winding, two-sided, z-buffer nei **due** ordini di disegno, frustum con la geometria dietro la camera, clip near, UV distinti ai quattro angoli su texture 2×2, errori espliciti `GMB_3D_E_ARG` per matrice mancante / texture senza UV / indice fuori range, null mode che non scrive) e `P1-ORACLE ok=12 diff=0`: 5 scene nuove (`mesh_cube`, `mesh_plane`, `mesh_clip`, `mesh_depth`, `mesh_cull`) con golden per RID più le 7 di P1/P2 ancora a 0 pixel di differenza. Le matrici delle scene si costruiscono **dentro l'oracolo** (perspective + look-at indipendenti), non con il codice del kernel: il test non si autoconferma.
 * **Prestazioni misurate**: `--bench` 640×300, 120 frame → **med 0,65 ms** (limite della nota 4,00 ms), minimo 0,64. È il kernel, non il sample.
-* **Superficie `SCENE` agganciata (2026-11-24)** — sintassi di §4.2, stato solo nel runtime C, quattro gambe:
+* **Superficie `SCENE` agganciata (2026-11-24) ed estesa (2026-11-25)** — sintassi di §4.2, stato solo nel runtime C, quattro gambe:
 
 | Pezzo | Dove |
 |---|---|
-| TokenKind | `common/Ast/TokenKind.cs` + `gmb_tokenkind.h` rigenerato (`Scene`, 10 verbi `Scene*`, 7 letture `SceneVerts…ScenePixel`), `GMB_TOK_COUNT` 2692 → 2711 |
+| TokenKind | `common/Ast/TokenKind.cs` + `gmb_tokenkind.h` rigenerato (`Scene`, 16 verbi `Scene*`, 7 letture `SceneVerts…ScenePixel`), `GMB_TOK_COUNT` 2692 → 2711 il 2026-11-24, → **2716** con `e53cbfcc`, → **2722** con P4 |
 | lessico | `gmb_lexer.c` / `Lexer.Keywords.cs`: **solo** `SCENE` è keyword; i verbi no (vedi sotto), quindi nessun nome comune diventa riservato |
 | comandi (statement) | `gmb_parser_stmt_domain.c` (`GMB_TOK_Scene` in `g_domain_ns` + normalizzazione verbo→TokenKind) + `native/gmb_c99native/src/gmb_c99_emit_3d.c` (`emit_scene_domain`) |
 | letture (funzioni) | stesso emitter (`emit_bf_scene`) e tabelle **generate** `gmb_ns_lookup.h`/`gmb_fn_lookup.h`; richiedono `IMPORT SCENE` |
 | ponte C# — superficie | `common/StdLib/StdLib.Scene.cs` (`RegisterCommand(TokenKind.Scene, …)` + 7 letture), `common/Ast/Scene3D.cs` (`SceneCommandStmt`), `common/Parser/Parser.Stmt.Scene.cs`, case in `Linker.Binding/Resolver/Rewrites` |
 | ponte C# — P/Invoke | `common/CommonLib/Numerics/Scene3DNative.cs` → le STESSE `gmb_scene_*` di `gmb_3d_cmd.c`, via `libgmb_3d` |
-| ponte C# — backend | `Compiler/Compiler.Scene.cs` (11 `SysCall` `SCENE_*`, 483–493), `IlProgramCompiler.Scene.cs`/`IlRuntime.Scene.cs`, `PCodeProcessor.Syscalls.cs`/`PCodeProcessor.Builtins.Scene.cs` |
-| ponte C — VM/C | `gmb_vm_core.c` (11 handler), `gmb_builtin.c` (7 builtin 3912–3918), `gmb_syscall_codes.h` (`GMB_SC_SCENE_*`) |
+| ponte C# — backend | `Compiler/Compiler.Scene.cs` (16 `SysCall` `SCENE_*`), `IlProgramCompiler.Scene.cs`/`IlRuntime.Scene.cs`, `PCodeProcessor.Syscalls.cs`/`PCodeProcessor.Builtins.Scene.cs` |
+| ponte C — VM/C | `gmb_vm_core.c` (16 handler), `gmb_builtin.c` (7 builtin), `gmb_syscall_codes.h` (`GMB_SC_SCENE_*`) |
 | facciata C | `native/gmb_runtime_c/src/gmb_3d_cmd.c` (`gmb_scene_*`): accumulo + `gmb_3d_mesh_draw`, nessuna logica duplicata (§0bis) |
 | MiniTest | `shared/minitests/3d/scene_mesh.bas` — geometria, contatori (`DRAWN`/`CULLED`), determinismo dell'hash, `PIXEL` fuori target: **stessi valori su c99n, IL, PCode e vmc** |
 | Guida utente | `Guide/utente/SCENE-Guida-Utente.md` — sintassi, parametri, semantica, gate `IMPORT SCENE`, errori e diagnosi |
 | Sample | `Samples3D/MeshBasics.bas` — piano, cubo texturizzato, 100 oggetti, PNG e anteprima ASCII, **senza `DECLARE`** |
 
 * **Accettazione misurata (2026-11-24)**: `Samples3D/MeshBasics.bas` su **tutte e quattro le gambe** (`tools/sh/gmb_c99native_run.sh ../Samples3D/MeshBasics.bas`, `test_ilrun --engine=il|pcode|vmc`) produce lo **stesso** output: 2428 vertici, 1214 triangoli dichiarati, **601 disegnati**, 620 scartati, 23 683 pixel dal depth test, hash FNV-1a **957 827 934** identico fra due render consecutivi, PNG in `Samples3D/MeshBasics.png`. Il diff riga per riga delle sei misure è vuoto su IL, PCode e VM/C rispetto alla gamba nativa.
-* **Verbi e letture agganciati**: `SCENE RESET | VIEW | TEXTURE | OBJECT | VERTEX | QUAD | BOX | OBJPOS | CAMERA | RENDER | SAVE`; letture `SCENE.VERTS/TRIS/DRAWN/CULLED/PIXELS/HASH/PIXEL(x, y)`. `SAVE` è l'unica aggiunta rispetto a §4.2 (cattura PNG per l'accettazione); `TEXTURE` e `OBJECT` sono **ridotti** a ciò che il kernel P3 espone: `TEXTURE celle` è la texture a scacchi procedurale e `OBJECT r, g, b` la tinta dell'oggetto — `TEXTURE n, a$`, `OBJECT o, flags, light` e `VERTEX o, …` arrivano con P4, quando esistono materiali e handle di texture.
+* **Estensione del 2026-11-25 (`e53cbfcc`) — primo blocco di P4**: `SCENE LIGHT dx, dy, dz, livello` è luce **direzionale per faccia** (normale della faccia × direzione, ambiente 40, stessa quantizzazione intera su tutte le gambe); `SCENE SMOOTH|ALPHA|TWOSIDED on|off` espone i flag già presenti in `gmb_3d_material_t` (bilineare, alpha-test, niente back-face) e sopravvive a `RESET`; `SCENE TEXTURE "file.png"` carica un PNG con `png_decode`, l'unico decoder del runtime (limite 4096 px per lato, alpha 0 = trasparente, una texture sbagliata lascia la precedente); `SCENE PRESENT` porta il target nella pagina 2D corrente (la finestra la mostra il pump SDL sul main thread) e la guardia `gmb_scene_present_check` separa la copia dal gate GPM (`E_NO_TASK` fuori dal task). Con questi arrivano 4 MiniTest (`scene_light`, `scene_material_flags`, `scene_texture_file`, `scene_present`) e 3 sample (`LightFaces`, `MaterialFlags`, `TextureFile`); la guida cresce di 142 righe. Il dominio `SCENE` contava allora **16 verbi e 7 letture** (`GMB_TOK_COUNT` 2716) e `shared/minitests/3d` **25 MiniTest** (20 `WORLD` + 5 `SCENE`); il blocco successivo di P4 (2026-11-25) porta il dominio a **22 verbi e 7 letture** (`GMB_TOK_COUNT` 2722) e i MiniTest a **31**.
+* **Verbi e letture agganciati**: `SCENE RESET | VIEW | TEXTURE | OBJECT | VERTEX | QUAD | BOX | OBJPOS | CAMERA | LIGHT | SMOOTH | ALPHA | TWOSIDED | RENDER | PRESENT | SAVE`; letture `SCENE.VERTS/TRIS/DRAWN/CULLED/PIXELS/HASH/PIXEL(x, y)`. `SAVE` e `PRESENT` sono aggiunte rispetto a §4.2 (cattura PNG e passaggio nella pagina 2D per l'accettazione); `TEXTURE` ha due forme — `TEXTURE celle` (scacchi procedurale) e `TEXTURE "file.png"` — e `OBJECT r, g, b` resta la tinta dell'oggetto: `TEXTURE n, a$` con handle numerico, `OBJECT o, flags, light` e `VERTEX o, …` arrivano con P4/P5, quando esistono materiali per oggetto e handle di texture.
 * **Nessun verbo nuovo riservato.** `VIEW`, `TEXTURE`, `QUAD`, `BOX` e `SAVE` erano già parole del linguaggio; `RESET`, `OBJECT`, `VERTEX`, `OBJPOS`, `CAMERA` e `RENDER` sono nomi che i programmi usano come variabili. I due parser traducono il lessema del verbo **una volta sola** nei `TokenKind` `Scene*` (stesso schema di `CLOCK FPS`): AST, linker, compiler ed emitter dispatchano solo per TokenKind (§12), e nessun programma esistente perde un nome. Lato C la normalizzazione è `gmb_p_scene_verb_tk` in `gmb_parser_stmt_domain.c`, lato C# `SceneVerbKind` in `Parser.Stmt.Scene.cs`.
 * **`IMPORT SCENE` è obbligatoria**, come per WORLD: la voce in `gmb_ns.h` fa riconoscere l'import come namespace **builtin** (niente ricerca su disco), il gate chiude comandi e letture. Caso negativo verificato: senza IMPORT il programma esce `rc=2` su tutte e quattro le gambe (C: `namespace non importato: SCENE (aggiungi IMPORT SCENE).`; C#/IL/PCode/VM-C: il `Token 'SCENE' inatteso` — la stessa asimmetria che WORLD ha già).
 * **Non fatto, dichiarato**: i restanti comandi di §4.2 che presuppongono stato che il kernel non ha (`CLEAR`, `FOG`, `FAR`, `SKY`, `COLORMAP`, `THING`, `TURN`, `PLAYER`, `MOVE`, `LIFT`, `LAMP`, `ZONE`, `WORLD`, `SOFTWARE`/`HARDWARE`) e le letture della camera (`SCENE.X/Y/Z/EYE/YAW/PITCH/HIT/…`). Quindi restano non misurati: i **60 fps a 320×150** del ciclo completo, il **tearing** (`check_3d_present.sh` è SKIP senza video), il **batching per materiale** e lo **scissor al `VIEW`**. La convenzione «y è l'altezza» usata dal sample appartiene alla superficie (il kernel riceve la matrice ed è agnostico).
 
-### P4 — Luce, materiali, ordine (5–8 gg)
+### P4 — Luce, materiali, ordine (5–8 gg) — **FATTO** (2026-11-25)
 
-* `gm_gfx_light` / `gmb_3d_light`: luce per oggetto + 8 lampade (point/spot cono), fog, **32 livelli di luce** (rampa `COLORMAP`, fixed point), traslucenza = media per canale, masked, two-sided, alpha della texture.
-* Ordine: sky → opachi/masked → thing far→near (depth test) → traslucidi far→near.
-* **Accettazione**: 12 golden (fog, spot, masked, translucido, sky, two-sided) + MiniTest per comando.
+**Consegnato.** Luce **per pixel** (non per faccia), valutata nel punto del mondo interpolato:
+`gmb_3d_light_eval` è l'unica formula, usata dal rasterizzatore e dai check. Il punto di partenza
+era `e53cbfcc` (luce direzionale per faccia, flag di materiale, texture PNG, `PRESENT`); P4
+aggiunge:
+
+| Pezzo | Superficie BASIC | Dove |
+|---|---|---|
+| Lampada point (8 slot) | `SCENE LAMP n, x, y, z, raggio, quantità` | `gmb_scene_lamp` → `gmb_3d_env_t.lamps[]` |
+| Lampada spot (cono) | `SCENE LAMP n, x, y, z, raggio, quantità, dx, dy, dz, angolo` | `gmb_scene_lamp_spot` |
+| Fog lineare | `SCENE FOG d` | `gmb_scene_fog` → `env.fog` |
+| Taglio di distanza | `SCENE FAR d` | `gmb_scene_far` → `env.far` |
+| Cielo per angolo | `SCENE SKY repeat, shift` | `gmb_scene_sky` + `gmb_3d_sky_fill` |
+| Rampa a 32 livelli | `SCENE COLORMAP` | `gmb_scene_colormap` → `env.colormap` |
+| Billboard | `SCENE THING n, x, y, z, w, h` | `gmb_scene_thing` + `gmb_3d_thing_draw` |
+| Flag e luce per oggetto | `SCENE OBJECT r, g, b, flags, luce` | `gmb_scene_object_flags` |
+
+* **Formule, una sola sede** (`gmb_3d_frame.c`): lampada `amount × (1 − d/radius)`, cono
+  `spot = (cos θ − cos α)/(1 − cos α)` limitato a `0…1`, fog `1 − dist/d`, colormap
+  `q = (lv·31 + 127)/255` e `lv = q·255/31`, ambiente `40`, somma clampata a `255`.
+* **Ordine (`M-ORDER`)**: cielo (solo pixel con depth 0, non scrive profondità) → opachi e masked →
+  thing da lontano a vicino (depth test) → traslucidi da lontano a vicino con blend (alpha 255 =
+  50/50, alpha < 255 = quella frazione).
+* **Superficie su quattro gambe**: 6 `TokenKind` nuovi (`SceneLamp`, `SceneFog`, `SceneFar`,
+  `SceneSky`, `SceneColormap`, `SceneThing`), `GMB_TOK_COUNT` **2716 → 2722**; parser C
+  (`gmb_p_scene_verb_tk`) e C# (`SceneVerbKind`), emitter C99 (`emit_scene_domain`), syscall
+  **499–506** (`SCENE_LAMP`, `SCENE_LAMP_SPOT`, `SCENE_FOG`, `SCENE_FAR`, `SCENE_SKY`,
+  `SCENE_COLORMAP`, `SCENE_THING`, `SCENE_OBJECT_FLAGS`), P/Invoke `Scene3DNative`, IL/PCode,
+  VM/C (`gmb_vm_core.c` + `gmb_syscall_codes.h`). Dominio: **22 verbi e 7 letture**.
+* **Accettazione**: `bash tools/sh/check_3d_oracle.sh` → `P1-SELFTEST ok=139 fail=0` (18 check
+  nuovi: attenuazione, cono dentro/fuori, fog a metà e oltre, FAR, quantizzazione, cielo
+  avvolgente, thing, ordine di disegno), `P1-ORACLE ok=18 diff=0` con **6 golden nuove**
+  (`lamp_point`, `lamp_spot`, `fog`, `sky`, `thing`, `order`) per RID, gate A/B `cc`+`zcc` verde,
+  bench 640×300 med **0,65 ms**. I 6 MiniTest P4 danno gli **stessi valori** su C99Native, IL,
+  PCode e VM/C.
+* **Due difetti trovati dai MiniTest, non a occhio**: `gmb_scene_render` usciva se non c'era
+  nessuna mesh (una scena di **solo cielo** o di **soli thing** non disegnava nulla) e la luce base
+  dell'oggetto veniva sovrascritta dal livello per-triangolo anche **senza** `LIGHT`. Entrambi
+  corretti nel kernel (`gmb_3d_cmd.c`), con il default `255` che lascia identiche le scene P3.
+* **Divergenze dichiarate**: `SKY` richiede **entrambi** gli argomenti (`repeat, shift`) e usa la
+  **texture corrente** invece di un indice (`SKY tex [, repeat [, shift]]` in §4.2); `THING` usa la
+  texture corrente; `LAMP` è un solo verbo con due arità (6 e 10), non due comandi; la luce del
+  thing non ha ancora un verbo BASIC (`gmb_scene_thing_light` è solo facciata C).
 
 ### P5 — Scena, animazione, scalabilità (8–12 gg)
 
@@ -538,7 +589,7 @@ Nessuno dei due passi 1–5 si salta: la copia vendored è l'unica che il runtim
 ## 11. Cosa serve per partire (aggiornato)
 
 * ~~Autorizzazione a scrivere in `gmbsuite/gmbgfx-3d`~~ — **concessa**: P0 è stato eseguito (spike + estensioni additive).
-* ~~Un solo schema JSON, `WORLD CHECK`, semantica di `SEES`~~ — **chiuse il 2026-11-19** (specifica §10 e §12; qui §3.1.8–10). ~~Kernel di comandi~~ — **consegnato per P0–P2** il 2026-11-19 (9 comandi + 5 letture del dominio `WORLD`, 20 MiniTest su tutte e quattro le gambe); resta da consegnare il kernel di **P3–P4** (mesh, target/present, luci): ~25 comandi in tutto per P0–P4, il resto in superficie v2 (§12 riga 6).
+* ~~Un solo schema JSON, `WORLD CHECK`, semantica di `SEES`~~ — **chiuse il 2026-11-19** (specifica §10 e §12; qui §3.1.8–10). ~~Kernel di comandi~~ — **consegnato per P0–P2** il 2026-11-19 (9 comandi + 5 letture del dominio `WORLD`, 20 MiniTest su tutte e quattro le gambe); **P3** è consegnato (motore mesh + superficie `SCENE`, 16 verbi e 7 letture su quattro gambe) e **P4 è consegnato** per intero (luce direzionale e per pixel, lampade point/spot, fog, FAR, sky, `COLORMAP`, `THING`, ordine di disegno; §12 riga 6).
 * **Revisione indipendente** della specifica da parte di chi non ha letto il riferimento, se si vuole una garanzia di licenza più forte di quella del registro.
 * Permesso per i test di fase (singoli file) — implicito nelle regole di casa.
 
@@ -552,16 +603,16 @@ Con P0+P1 (≈1 settimana) si ha la pipeline di verifica; con P2 (≈3–4 setti
 
 ---
 
-## 12. Follow-up (stato al 2026-11-19)
+## 12. Follow-up (stato al 2026-11-25)
 
 | # | Follow-up | Stato | Dove |
 |---|---|---|---|
 | 1 | Licenza e provenienza (la "clean room" non reggeva) | **Fatto**: registro + regole + checklist; resta aperta la revisione indipendente | `Provenienza-3D.md` |
 | 2 | Handle fra le due istanze (dylib vs runtime) | **Deciso**: trasferimento **per dati**, mai per handle; da riflettere nella superficie | piano §3.1.3, specifica §8 |
 | 3 | Modello di thread e present (GPM + main thread SDL) | **Fatto e chiuso**: nota con attori, `R1`–`R9`, ciclo del frame, sincrono vs park, `RENDER` negli handler, headless, vincolo GL; le 3 domande finali sono decise (nota §13): cap unico `auto` (60 col 3D, 30 senza), triple buffer solo dietro misura (nota §8.3), identità **del task** (`gmb_cur()`) perché il GPM è multi-worker | `Nota-Tecnica-Thread-Present-3D.md` |
-| 4 | Oracolo headless prima dei renderer | **Fatto e chiuso in P1 (2026-11-19), esteso in P3 (2026-11-24)**: `tools/sh/check_3d_oracle.sh` con gate A/B `cc`+`zcc`, `--selftest` **121 check / 0 fail** (95 di P1/P2 + 26 nuovi di P3), **12 golden** per RID (`--check` → `diff=0`, incluse le 5 scene mesh), `--perturb 1` respinto con `exit 1` | piano §6 P1, P3 |
+| 4 | Oracolo headless prima dei renderer | **Fatto e chiuso in P1 (2026-11-19), esteso in P3 (2026-11-24) e P4 (2026-11-25)**: `tools/sh/check_3d_oracle.sh` con gate A/B `cc`+`zcc`, `--selftest` **139 check / 0 fail** (95 di P1/P2 + 26 di P3 + 18 di P4), **18 golden** per RID (`--check` → `diff=0`, incluse le 5 scene mesh e le 6 scene P4), `--perturb 1` respinto con `exit 1` | piano §6 P1, P3, P4 |
 | 5 | Palette vs ARGB | **Deciso: ARGB** — target `0x00RRGGBB` come le pagine, luce a 32 livelli fixed point, alpha dalle texture, palette solo per i colori nominati. Il fill indicizzato guadagna ~2–5 decimi di ms (stima) e costa un secondo modello di colore: non paga | specifica §11 (motivo) e §11.6 (confronto di costo) |
-| 6 | Budget di superficie (90 comandi × 4 backend) | **In corso**: kernel di ~25 comandi per P0–P4 (MVP + i due renderer + luci), resto in "superficie v2". Consegnato il kernel di **P0–P2** il 2026-11-19 — 9 comandi (`WORLD LOAD/CLOSE/TICK`, `SECMOVE`, `HEIGHT`, `ANIM`, `SCROLL`, `LIGHTFX`, `LAMP`) e 5 letture (`WORLD.MOVING/LIGHTNOW/TIME/FLOORZ/CEILZ`) con TokenKind canonici, agganciati **a tutte e quattro le gambe** (ponte C# via `libgmb_3d`) e coperti da 20 MiniTest. Per **P3** il 2026-11-24 è consegnato il **motore** (`gmb_3d_mesh_draw`: target ARGB+depth, clip/frustum, z-buffer, UV prospettici, back-face, nearest/bilinear, masked, two_sided) con 5 golden e 26 check, ma **non** la superficie BASIC: `SCENE` (RESET, VIEW, TEXTURE, OBJECT, VERTEX, QUAD, BOX, OBJPOS, CAMERA, RENDER, `VERTS/TRIS/DRAWN`) è ancora da agganciare alle quattro gambe. Il sample d'accettazione `Samples3D/MeshBasics.bas` **gira** sulla gamba nativa via FFI (`gmb_scene_*` in `libgmb_3d`, stesse funzioni che poi useranno i comandi). Manca anche il kernel di **P4** (luci) | specifica §7; piano §6 P2, P3 |
+| 6 | Budget di superficie (90 comandi × 4 backend) | **In corso**: kernel di ~25 comandi per P0–P4 (MVP + i due renderer + luci), resto in "superficie v2". Consegnato il kernel di **P0–P2** il 2026-11-19 — 9 comandi (`WORLD LOAD/CLOSE/TICK`, `SECMOVE`, `HEIGHT`, `ANIM`, `SCROLL`, `LIGHTFX`, `LAMP`) e 5 letture (`WORLD.MOVING/LIGHTNOW/TIME/FLOORZ/CEILZ`) con TokenKind canonici, agganciati **a tutte e quattro le gambe** (ponte C# via `libgmb_3d`) e coperti da 20 MiniTest. Per **P3** sono consegnati il **motore** (`gmb_3d_mesh_draw`: target ARGB+depth, clip/frustum, z-buffer, UV prospettici, back-face, nearest/bilinear, masked, two_sided) con 5 golden e 26 check, e la **superficie BASIC** `SCENE`: dal 2026-11-24 11 verbi + 7 letture su tutte e quattro le gambe, dal 2026-11-25 (`e53cbfcc`) `LIGHT`, `SMOOTH`/`ALPHA`/`TWOSIDED`, `TEXTURE "file.png"` e `PRESENT`, per **16 verbi e 7 letture**; P4 (2026-11-25) aggiunge `LAMP` (6/10 argomenti), `FOG`, `FAR`, `SKY`, `COLORMAP`, `THING` e `OBJECT` a 5 argomenti, per **22 verbi e 7 letture**. Copertura: 31 MiniTest in `shared/minitests/3d` (20 `WORLD` + 11 `SCENE`), 18 golden per RID, 139 check di selftest. Il sample d'accettazione `Samples3D/MeshBasics.bas` gira su tutte e quattro le gambe con lo stesso output. **P4 è consegnato** (lampade point/spot, fog, FAR, sky, `COLORMAP`, `THING`, ordine di disegno) con 6 MiniTest e 6 golden, stessi valori su quattro gambe; resta il kernel di **P5** | specifica §7; piano §6 P2, P3, P4 |
 | 7 | Ordine delle fasi | **Applicato come numerazione**: P0 → P1 oracolo → P2 settori → P3 mesh → P4 luce → P5 scena → P6–P9 → `PH` hardware fuori numerazione | piano §6 |
 | 8 | Formati versionati e passo fisso | **Deciso in v1**: un solo schema `gmb-3d` con `kind` obbligatorio e un documento per file (`.gmbscene`), migrazione dichiarata, `F-ROUNDTRIP` come test del formato; `T-FIXED`, `T-CLOCK` come da specifica | specifica §4, §7, §12.1 |
 | 9 | Inventario come oracolo (non prosa) | **Fatto**: specifica con ID e tabella ID→test | `3D-Specifica-Comportamenti.md` |
@@ -572,4 +623,4 @@ Con P0+P1 (≈1 settimana) si ha la pipeline di verifica; con P2 (≈3–4 setti
 | 14 | **Compatibilità GPM di tutto il motore 3D** | **Fatto e chiuso**: comandi/`RENDER` solo in un task, I/O che parca con ripiego sincrono fuori, ciclo park-based (`R10`), load atomico con validazione nel task (`R11`), stato 3D verso T0 solo per atomi, nessuna seconda via di dispatch | piano §3.1.11; nota §2, §3, §8.1, §8.3, §10, §14; specifica `C-GPM` |
 | 15 | **Ponte C# dei comandi 3D (IL/PCode/VM-C)** | **Chiuso (2026-11-19)**: `StdLib.World.cs` (`RegisterCommand`/`RegisterFunction`), nodo `WorldCommandStmt`, linker dei tre backend, P/Invoke `World3DNative` → le stesse `gmb_world_*` via `libgmb_3d`, syscall/builtin in VM/C. Ritirati il marcatore `native-only`, `gmb_p_native_ns_lookup` e le righe WORLD di `gmb_members.h`; i 20 MiniTest girano su tutte e quattro le gambe | piano §6 P2 (aggancio al linguaggio), §7.2 |
 
-**I tre che valgono più di tutti**, nell'ordine: (1) provenienza — fatto; (2) oracolo headless — fatto in P1; (3) handle fra istanze — deciso. La **nota di thread/present** (3) e la **decisione palette/ARGB** (5, → ARGB) sono fatte. Dal 2026-11-19 sono chiuse anche le sei domande che P2 ereditava: le tre di formato/semantica — schema JSON unico (§3.1.8), `WORLD CHECK` come tool con validazione nel load (§3.1.9), `SEES` 1/0/−1 (§3.1.10) — e le tre della nota tecnica (cap `auto`, triple buffer solo dietro misura, identità del **task** invece del thread). Restano aperti la **superficie `SCENE`** (il rasterizzatore di P3 c'è, i comandi no) con il kernel di **P4** (riga 6) e la **revisione indipendente** della provenienza (riga 1). Dal 2026-11-19 c'è anche l'obbligazione trasversale della **compatibilità GPM** (riga 14, §3.1.11): non è una scelta, è un vincolo che ogni fase verifica in accettazione. Il prossimo passo è la **superficie `SCENE`**: il rasterizzatore di P3 è fatto e verde, ma senza comandi il sample d'accettazione resta una dichiarazione d'intenti — l'aggancio costa i ~11 comandi e le 4 letture di §4.2 su quattro gambe (TokenKind, parser C# e C, emitter C99, ponti IL/PCode/VM-C) e non richiede scelte aperte.
+**I tre che valgono più di tutti**, nell'ordine: (1) provenienza — fatto; (2) oracolo headless — fatto in P1; (3) handle fra istanze — deciso. La **nota di thread/present** (3) e la **decisione palette/ARGB** (5, → ARGB) sono fatte. Dal 2026-11-19 sono chiuse anche le sei domande che P2 ereditava: le tre di formato/semantica — schema JSON unico (§3.1.8), `WORLD CHECK` come tool con validazione nel load (§3.1.9), `SEES` 1/0/−1 (§3.1.10) — e le tre della nota tecnica (cap `auto`, triple buffer solo dietro misura, identità del **task** invece del thread). Restano aperti la **revisione indipendente** della provenienza (riga 1) e il **kernel di P5** (culling spaziale, LOD, instancing, animazione; riga 6). Dal 2026-11-19 c'è anche l'obbligazione trasversale della **compatibilità GPM** (riga 14, §3.1.11): non è una scelta, è un vincolo che ogni fase verifica in accettazione. Il prossimo passo è **P5**: culling spaziale e frustum per oggetto, LOD, instancing per materiale, animazione TRS e skinning. La superficie `SCENE` di P3+P4 è agganciata e verde su quattro gambe; restano fuori `ZONE`, `PLAYER`/`MOVE`, `TURN`/`LIFT` e le letture della camera.
