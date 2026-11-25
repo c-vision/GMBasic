@@ -1941,8 +1941,16 @@ public static partial class Linker
             case CanvasStmt s:
                 return s with {
                     Args = [..s.Args.Select(a => BindExpression(a, program, isStrict))],
-                    // INTO va BINDATO: senza, SymbolId resta -1 e lo store non avviene.
-                    Into = s.Into != null ? BindTarget(s.Into, program, isStrict) : null };
+                    // INTO va BINDATO: senza, SymbolId resta -1 e lo store non avviene. E va
+                    // registrata la variabile IMPLICITA (mai dichiarata: `CANVAS NEW w, h INTO
+                    // page`), come per gli altri comandi di I/O (EnsureImplicitTarget): con
+                    // SymbolId -1 la gamba IL scriveva in un locale usa-e-getta e ogni lettura
+                    // restava 0 — `CANVAS USE page` con 0 puntava alla pagina visibile, e ogni
+                    // CANVAS GET/SAVE successivo falliva (PresentLoop.bas: corner/centro/bordo 0
+                    // solo su IL). PCode/VM-C risolvevano già per nome.
+                    Into = s.Into != null
+                        ? BindTarget(EnsureImplicitTarget(program, s.Into), program, isStrict)
+                        : null };
 
             // --- CASI BASE ---
             case StopStmt:
