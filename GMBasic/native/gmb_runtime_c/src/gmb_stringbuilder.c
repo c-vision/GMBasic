@@ -43,7 +43,14 @@ static int gmb_sb_reserve(gmb_stringbuilder_t* sb, size_t need)
 
     newcap = need;
     if (newcap < GMB_SB_LINEAR_GROW)
-        newcap *= 2;                            /* raddoppio: costo ammortizzato */
+    {
+        /* RADDOPPIO della capacità corrente, come StringBuilder.EnsureCapacity/ExpandByABlock
+         * .NET: `newCapacity = max(required, 2 * old)`. Prima si raddoppiava la RICHIESTA
+         * (`need * 2`): dopo un Append che portava 16 → 21 la capacità diventava 42 invece di
+         * 32, e `sb.Capacity` divergeva da IL/PCode/VM-C. */
+        size_t doubled = sb->cap * 2;
+        if (doubled > newcap) newcap = doubled;
+    }
     else
         newcap += GMB_SB_LINEAR_GROW;           /* buffer grandi: crescita a blocchi */
     if (newcap < need) newcap = need;           /* guardia overflow del raddoppio */
