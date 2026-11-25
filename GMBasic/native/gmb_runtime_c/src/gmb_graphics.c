@@ -937,6 +937,26 @@ double gmb_gfx_canvas_op(const char* op, const double* a, int nargs, const char*
 
 /* ================================ Sync / input ================================ */
 
+/* `SCENE PRESENT`: unico punto in cui un fotogramma 3D entra nella pagina 2D. Le pagine
+ * vivono qui, quindi la copia vive qui (§0bis): il 3D espone solo il proprio target
+ * (`gmb_scene_frame`) e le quattro gambe chiamano questa funzione. 1:1 dall'angolo in
+ * alto a sinistra, ritagliata alle due dimensioni: nessuna scalatura implicita. */
+int gmb_gfx_present_argb(const uint32_t* src, int w, int h)
+{
+    if (src == NULL || w <= 0 || h <= 0) return -1;
+    gmb_gfx_page_t* p = active_page();
+    if (p == NULL || !p->in_use || p->pixels == NULL) return -1;
+    int cw = (w < p->w) ? w : p->w;
+    int ch = (h < p->h) ? h : p->h;
+    for (int y = 0; y < ch; y++)
+    {
+        const uint32_t* s = src + (size_t)y * (size_t)w;
+        uint32_t* d = p->pixels + (size_t)y * (size_t)p->w;
+        for (int x = 0; x < cw; x++) d[x] = s[x] & 0xFFFFFFu;
+    }
+    return cw * ch;
+}
+
 const uint32_t* gmb_gfx_visible_pixels(int* out_w, int* out_h)
 {
     if (!g_gfx.screen_on) return NULL;

@@ -316,6 +316,12 @@ double gmb_world_ceil(int sector);
 int64_t gmb_scene_reset(void);                       /* azzera geometria e camera */
 int64_t gmb_scene_view(int64_t w, int64_t h, double fov_deg);   /* target + fov */
 int64_t gmb_scene_checker(int64_t cells);            /* texture a scacchi in scala di grigi */
+/* SCENE TEXTURE "file.png": texture da un PNG su disco (RGBA8, riga 0 in alto, la
+ * convenzione di gm_tex). Usa `png_decode`, l'unico decoder del runtime: il file si
+ * legge una volta e la texture si sostituisce SOLO se il decode riesce (le due forme
+ * di SCENE TEXTURE restano atomiche: su errore vale quella precedente). Limite 4096
+ * per lato; alpha 0 = trasparente, dal materiale la texture è masked. */
+int64_t gmb_scene_texture_file(const char* path);
 int64_t gmb_scene_object(int64_t r, int64_t g, int64_t b);      /* apre un oggetto (0..255, clampato) */
 int64_t gmb_scene_vertex(double x, double y, double z, double u, double v);
 int64_t gmb_scene_tri(int64_t a, int64_t b, int64_t c);
@@ -325,6 +331,35 @@ int64_t gmb_scene_box(double x0, double y0, double z0,
 int64_t gmb_scene_objpos(double x, double y, double z, double yaw_deg);
 int64_t gmb_scene_camera(double x, double y, double z,
                          double yaw_deg, double pitch_deg);
+/* SCENE LIGHT dx, dy, dz, livello: luce direzionale per faccia. (dx,dy,dz) punta VERSO
+ * la luce (normalizzata qui; nulla = errore), `livello` 0..255 è la luce sulle facce
+ * rivolte alla sorgente. Il coseno si quantizza in un intero 0..255 e la miscela
+ * ambiente(40)→livello è intera: stessi byte su tutte le gambe. Con LIGHT attiva la
+ * luce per faccia sostituisce la tabella fissa delle 6 facce del cubo. */
+int64_t gmb_scene_light(double dx, double dy, double dz, int64_t level);
+/* SCENE SMOOTH|ALPHA|TWOSIDED on|off (idea #5): espongono i flag già presenti in
+ * `gmb_3d_material_t` del kernel — bilineare, alpha-test, niente back-face cull. `on` != 0
+ * accende. I default (1, 1, 0) riproducono il comportamento storico, quindi le scene che
+ * non li chiamano danno gli stessi byte. Stato del materiale: sopravvive a RESET. */
+int64_t gmb_scene_smooth(int64_t on);
+int64_t gmb_scene_alpha(int64_t on);
+int64_t gmb_scene_twosided(int64_t on);
+/* SCENE PRESENT: porta il TARGET 3D nella pagina 2D corrente (canvas attivo, altrimenti
+ * pagina dello schermo), copia 1:1 dall'angolo in alto a sinistra senza scalatura. È
+ * l'unico ponte verso la finestra: il present vero (SDL) resta al pump sul MAIN thread,
+ * qui si scrive solo memoria. GPM: con lo scheduler attivo vale solo dentro un task,
+ * altrimenti E_NO_TASK; senza scheduler (tool/oracolo) è usabile sincronamente.
+ * Errori: nessun frame (E_ARG), nessuno schermo 2D attivo (E_ARG), nessuna pagina (E_ARG). */
+int64_t gmb_scene_present(void);
+/* Guardia GPM di PRESENT, separata dalla copia: serve alle gambe in cui il modulo 3D e il
+ * modulo grafico sono DUE immagini diverse (IL/PCode: dylib `gmb_3d` e `gmb_gfx`; VM/C):
+ * lì il frame si prende con `gmb_scene_frame` e la copia la fa `gmb_gfx_present_argb` nel
+ * modulo che possiede la pagina. OK = si può presentare, E_NO_TASK = fuori dal task GPM,
+ * E_ARG = nessun frame. */
+int64_t gmb_scene_present_check(void);
+/* Frame corrente del target 3D (0x00RRGGBB, riga 0 in alto) e sue dimensioni. NULL quando
+ * non c'è ancora un target (manca VIEW/RENDER). Sola lettura: nessuna copia, nessun lock. */
+const uint32_t* gmb_scene_frame(int* w, int* h);
 int64_t gmb_scene_render(void);                      /* rasterizza nel target */
 int64_t gmb_scene_save(const char* path);            /* PNG del frame corrente */
 int64_t gmb_scene_verts(void);                       /* geometria dichiarata */

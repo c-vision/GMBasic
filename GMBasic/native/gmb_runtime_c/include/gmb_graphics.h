@@ -221,6 +221,13 @@ void gmb_gfx_waitkey(void);
  * oltre un singolo ciclo di presentazione. */
 const uint32_t* gmb_gfx_visible_pixels(int* out_w, int* out_h);
 
+/* Copia un fotogramma ARGB (0x00RRGGBB, il formato del target 3D) nella pagina 2D
+ * ATTIVA — canvas attivo se c'è, altrimenti pagina dello schermo. È l'unica sede della
+ * copia `SCENE PRESENT` (le pagine vivono in questo modulo): 1:1 dall'angolo in alto a
+ * sinistra, ritagliata alle due dimensioni, nessuna scalatura. Ritorna i pixel copiati,
+ * -1 se non c'è una pagina (o argomenti non validi). Non tocca SDL. */
+int gmb_gfx_present_argb(const uint32_t* src, int w, int h);
+
 /* ---- Screenshot (verifica headless) ---- */
 /* Salva la pagina attiva come PNG. Ritorna 0 ok, -1 errore. */
 int  gmb_gfx_save_screen_png(const char* path);

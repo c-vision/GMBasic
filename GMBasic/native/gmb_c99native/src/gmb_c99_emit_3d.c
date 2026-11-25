@@ -117,14 +117,21 @@ static int wns_is_world(const char* name, const char* ns)
  *   SCENE RESET                              ' azzera geometria e camera
  *   SCENE VIEW w, h, fov                     ' target + campo visivo VERTICALE in gradi
  *   SCENE TEXTURE celle                      ' texture a scacchi procedurale (1..64)
+ *   SCENE TEXTURE "file.png"                 ' texture da PNG (stesso verbo, argomento stringa)
  *   SCENE OBJECT r, g, b                     ' apre un oggetto con la sua tinta
  *   SCENE VERTEX x, y, z, u, v               ' vertice dell'oggetto corrente
  *   SCENE QUAD a, b, c, d                    ' due triangoli sui vertici dichiarati
  *   SCENE BOX x0, y0, z0, x1, y1, z1         ' 24 vertici, 12 triangoli, UV per faccia
  *   SCENE OBJPOS x, y, z, yaw                ' posizione/rotazione dell'oggetto corrente
  *   SCENE CAMERA x, y, z, yaw, pitch         ' yaw 0 = +z, pitch < 0 = in basso
+ *   SCENE LIGHT dx, dy, dz, livello           ' luce direzionale, normale di faccia (idea #4)
+ *   SCENE SMOOTH|ALPHA|TWOSIDED on|off        ' flag di materiale del kernel (idea #5)
+ *   SCENE PRESENT                             ' target 3D → pagina 2D corrente (idea #2)
  *   SCENE RENDER                             ' rasterizza nel target
  *   SCENE SAVE path$                         ' PNG del frame corrente
+ *
+ * Due forme di TEXTURE: `celle` (numero) è la scacchiera procedurale, `"file.png"`
+ * (stringa) carica un PNG con l'unico decoder del runtime (`png_decode`, §0bis).
  *
  * Letture: SCENE.VERTS/TRIS/DRAWN/CULLED/PIXELS/HASH/PIXEL(x,y).
  *
@@ -151,7 +158,20 @@ void emit_scene_domain(ctx_t* c, gmb_stmt_t* s)
     }
     if (tk == GMB_TOK_SceneTexture)
     {
-        if (n < 1) { c99_fail(c, s->line, "SCENE TEXTURE celle"); return; }
+        if (n < 1) { c99_fail(c, s->line, "SCENE TEXTURE celle | \"file.png\""); return; }
+        /* Due forme, un verbo: numero = scacchiera procedurale, stringa = PNG su disco.
+         * La scelta sta nel TIPO dell'espressione (etype), non nel lessema (§12): una
+         * variabile stringa (`p$`) passa da `gmb_scene_texture_file`, un numero da
+         * `gmb_scene_checker`. TY_VAL (dinamico) resta sul ramo numerico, il suo valore
+         * a runtime non è una stringa in nessun programma del dominio. */
+        if (etype(c, a[0]) == TY_STR)
+        {
+            ind(c);
+            sb_put(&c->out, "(void)gmb_scene_texture_file((");
+            emit_str_operand(c, a[0]);
+            sb_put(&c->out, ").data);\n");
+            return;
+        }
         wcall(c, "gmb_scene_checker", a, 1);
         return;
     }
@@ -189,6 +209,30 @@ void emit_scene_domain(ctx_t* c, gmb_stmt_t* s)
     {
         if (n < 5) { c99_fail(c, s->line, "SCENE CAMERA x, y, z, yaw, pitch"); return; }
         wcall(c, "gmb_scene_camera", a, 5);
+        return;
+    }
+    if (tk == GMB_TOK_SceneSmooth || tk == GMB_TOK_SceneAlpha || tk == GMB_TOK_SceneTwoSided)
+    {
+        /* Flag di materiale (idea #5): un argomento numerico 0/1, che il parser ha già
+         * ricavato dalla parola ON/OFF. Stessa facciata C per tutte e quattro le gambe. */
+        const char* fn = tk == GMB_TOK_SceneSmooth ? "gmb_scene_smooth"
+                       : tk == GMB_TOK_SceneAlpha ? "gmb_scene_alpha" : "gmb_scene_twosided";
+        if (n < 1) { c99_fail(c, s->line, "SCENE SMOOTH|ALPHA|TWOSIDED on|off"); return; }
+        wcall(c, fn, a, 1);
+        return;
+    }
+    if (tk == GMB_TOK_SceneLight)
+    {
+        if (n < 4) { c99_fail(c, s->line, "SCENE LIGHT dx, dy, dz, livello"); return; }
+        wcall(c, "gmb_scene_light", a, 4);
+        return;
+    }
+    if (tk == GMB_TOK_ScenePresent)
+    {
+        /* Ponte target 3D → pagina 2D: nessuna scalatura, nessun argomento. La guardia
+         * GPM e il ritaglio stanno nella facciata C, unica sede per le quattro gambe. */
+        if (n > 0) { c99_fail(c, s->line, "SCENE PRESENT non accetta argomenti"); return; }
+        wcall(c, "gmb_scene_present", a, 0);
         return;
     }
     if (tk == GMB_TOK_SceneRender)

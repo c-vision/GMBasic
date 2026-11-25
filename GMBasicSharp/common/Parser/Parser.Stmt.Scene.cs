@@ -11,12 +11,18 @@ Forme (facciata `gmb_scene_*`, piano §4.2 ridotto a ciò che il kernel P3 espon
    SCENE RESET                                 ' azzera geometria e camera
    SCENE VIEW w, h, fov                        ' target + campo visivo VERTICALE in gradi
    SCENE TEXTURE celle                         ' texture a scacchi procedurale (1..64 celle)
+   SCENE TEXTURE "file.png"                    ' texture da PNG su disco (stesso verbo, argomento stringa)
    SCENE OBJECT r, g, b                        ' apre un oggetto e ne fissa la tinta
    SCENE VERTEX x, y, z, u, v                  ' vertice dell'oggetto corrente
    SCENE QUAD a, b, c, d                       ' due triangoli sui vertici dichiarati
    SCENE BOX x0, y0, z0, x1, y1, z1             ' 24 vertici, 12 triangoli, UV per faccia
    SCENE OBJPOS x, y, z, yaw                   ' posizione/rotazione dell'oggetto corrente
    SCENE CAMERA x, y, z, yaw, pitch            ' yaw 0 = sguardo verso +z, pitch < 0 = in basso
+   SCENE LIGHT dx, dy, dz, livello              ' luce direzionale per faccia (dx,dy,dz verso la luce)
+   SCENE SMOOTH on|off                         ' bilineare (default on) / nearest
+   SCENE ALPHA on|off                          ' alpha-test: alpha 0 scartato (default on)
+   SCENE TWOSIDED on|off                       ' niente back-face cull (default off)
+   SCENE PRESENT                               ' copia il target 3D nella pagina 2D corrente (GPM)
    SCENE RENDER                                ' rasterizza nel target
    SCENE SAVE path$                            ' PNG del frame corrente
 
@@ -55,13 +61,18 @@ public sealed partial class Parser
         {
             TokenKind.SceneReset => SceneCmd(command, []),
             TokenKind.SceneView => SceneCmd(command, SceneArgs(parser, 3, 3, "SCENE VIEW w, h, fov")),
-            TokenKind.SceneTexture => SceneCmd(command, SceneArgs(parser, 1, 1, "SCENE TEXTURE celle")),
+            TokenKind.SceneTexture => SceneCmd(command, SceneArgs(parser, 1, 1, "SCENE TEXTURE celle | \"file.png\"")),
             TokenKind.SceneObject => SceneCmd(command, SceneArgs(parser, 3, 3, "SCENE OBJECT r, g, b")),
             TokenKind.SceneVertex => SceneCmd(command, SceneArgs(parser, 5, 5, "SCENE VERTEX x, y, z, u, v")),
             TokenKind.SceneQuad => SceneCmd(command, SceneArgs(parser, 4, 4, "SCENE QUAD a, b, c, d")),
             TokenKind.SceneBox => SceneCmd(command, SceneArgs(parser, 6, 6, "SCENE BOX x0, y0, z0, x1, y1, z1")),
             TokenKind.SceneObjPos => SceneCmd(command, SceneArgs(parser, 4, 4, "SCENE OBJPOS x, y, z, yaw")),
             TokenKind.SceneCamera => SceneCmd(command, SceneArgs(parser, 5, 5, "SCENE CAMERA x, y, z, yaw, pitch")),
+            TokenKind.SceneLight => SceneCmd(command, SceneArgs(parser, 4, 4, "SCENE LIGHT dx, dy, dz, livello")),
+            TokenKind.SceneSmooth => SceneCmd(command, SceneFlagArg(parser, "SCENE SMOOTH on|off")),
+            TokenKind.SceneAlpha => SceneCmd(command, SceneFlagArg(parser, "SCENE ALPHA on|off")),
+            TokenKind.SceneTwoSided => SceneCmd(command, SceneFlagArg(parser, "SCENE TWOSIDED on|off")),
+            TokenKind.ScenePresent => SceneCmd(command, []),
             TokenKind.SceneRender => SceneCmd(command, []),
             TokenKind.SceneSave => SceneCmd(command, SceneArgs(parser, 1, 1, "SCENE SAVE path$")),
             _ => throw CreateError(verb, $"Sottocomando 'SCENE {verb.Lexeme}' non riconosciuto.")
@@ -83,6 +94,11 @@ public sealed partial class Parser
         "BOX" => TokenKind.SceneBox,
         "OBJPOS" => TokenKind.SceneObjPos,
         "CAMERA" => TokenKind.SceneCamera,
+        "LIGHT" => TokenKind.SceneLight,
+        "SMOOTH" => TokenKind.SceneSmooth,
+        "ALPHA" => TokenKind.SceneAlpha,
+        "TWOSIDED" => TokenKind.SceneTwoSided,
+        "PRESENT" => TokenKind.ScenePresent,
         "RENDER" => TokenKind.SceneRender,
         "SAVE" => TokenKind.SceneSave,
         _ => TokenKind.Unknown
@@ -109,5 +125,22 @@ public sealed partial class Parser
             throw CreateError(parser.Peek(), usage);
 
         return args.ToImmutable();
+    }
+
+    /// <summary>
+    /// Argomento ON/OFF di un flag SCENE (idea #5): <c>ON</c> e <c>OFF</c> sono keyword del
+    /// lessico, non espressioni, quindi qui si convertono nel letterale 1/0 — a valle il flag
+    /// resta un normale argomento numerico, identico sulle quattro gambe. Accetta anche un
+    /// numero esplicito: <c>SCENE SMOOTH 1</c>.
+    /// </summary>
+    private static ImmutableArray<Expr> SceneFlagArg(Parser parser, string usage)
+    {
+        var t = parser.Peek();
+        if (t.Kind is TokenKind.On or TokenKind.Off)
+        {
+            parser.Advance();
+            return ImmutableArray.Create<Expr>(new NumberExpr(t.Kind == TokenKind.On ? 1.0 : 0.0, t));
+        }
+        return SceneArgs(parser, 1, 1, usage);
     }
 }

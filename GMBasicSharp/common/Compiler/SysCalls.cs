@@ -560,6 +560,11 @@ public enum SysCall : ushort
     SCENE_CAMERA = 491,     // (x, y, z, yaw, pitch)     → gmb_scene_camera
     SCENE_RENDER = 492,     // ()                        → gmb_scene_render
     SCENE_SAVE = 493,       // (path)                    → gmb_scene_save
+    SCENE_LIGHT = 494,      // (dx, dy, dz, livello)     → gmb_scene_light
+    SCENE_SMOOTH = 495,     // (on)                      → gmb_scene_smooth
+    SCENE_ALPHA = 496,      // (on)                      → gmb_scene_alpha
+    SCENE_TWOSIDED = 497,   // (on)                      → gmb_scene_twosided
+    SCENE_PRESENT = 498,    // ()                        → gmb_scene_present
 }
 
 /// <summary>

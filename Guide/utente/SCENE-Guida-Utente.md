@@ -19,13 +19,18 @@ Il dominio segue la regola del linguaggio: **il comando scrive, la funzione legg
 |---|---|---|
 | Comando | `SCENE RESET` | azzera geometria, oggetti e camera |
 | Comando | `SCENE VIEW w, h, fov` | crea il target `w×h` e imposta il campo visivo **verticale** |
-| Comando | `SCENE TEXTURE celle` | definisce la texture a scacchi (1…64 celle) |
+| Comando | `SCENE TEXTURE celle` | texture a scacchi procedurale (1…64 celle) |
+| Comando | `SCENE TEXTURE "file.png"` | texture da un PNG su disco (stesso verbo, argomento stringa) |
 | Comando | `SCENE OBJECT r, g, b` | apre un oggetto e ne fissa la tinta |
 | Comando | `SCENE VERTEX x, y, z, u, v` | aggiunge un vertice all'oggetto corrente |
 | Comando | `SCENE QUAD a, b, c, d` | due triangoli sui quattro vertici indicati |
 | Comando | `SCENE BOX x0, y0, z0, x1, y1, z1` | parallelepipedo: 24 vertici, 12 triangoli, UV per faccia |
 | Comando | `SCENE OBJPOS x, y, z, yaw` | posizione e rotazione dell'oggetto corrente |
 | Comando | `SCENE CAMERA x, y, z, yaw, pitch` | posizione e orientamento dell'osservatore |
+| Comando | `SCENE LIGHT dx, dy, dz, livello` | luce direzionale: illumina per normale di faccia |
+| Comando | `SCENE SMOOTH on\|off` | filtro della texture: bilineare o nearest |
+| Comando | `SCENE ALPHA on\|off` | alpha-test: i texel trasparenti si scartano o si disegnano |
+| Comando | `SCENE TWOSIDED on\|off` | facce visibili da entrambi i lati (niente back-face cull) |
 | Comando | `SCENE RENDER` | rasterizza la scena nel target |
 | Comando | `SCENE SAVE path$` | salva il frame corrente in PNG |
 | Funzione | `SCENE.VERTS()` | vertici dichiarati |
@@ -59,13 +64,55 @@ Alloca (o rialloca) il target `w×h` e lo riempie col fondo della scena (`0x0F17
 campo visivo **verticale** in gradi: valori validi `1 < fov < 179`, altrimenti il comando è
 rifiutato e **il target precedente resta quello di prima**. Il rapporto d'aspetto è `w / h`.
 
-### `SCENE TEXTURE celle`
+### `SCENE TEXTURE celle` / `SCENE TEXTURE "file.png"`
 
-Definisce la texture della scena: una scacchiera in scala di grigi di `celle × celle` quadrati,
-`8` pixel per cella (`1…64` celle ⇒ 8…512 pixel di lato). Il colore finale di un texel è la
-texture moltiplicata per la tinta dell'oggetto, quindi la stessa texture serve oggetti diversi
-(`OBJECT 220, 90, 60` = rame, `OBJECT 90, 150, 220` = azzurro). Senza `TEXTURE` gli oggetti si
-disegnano col solo colore pieno della tinta: non è un errore.
+Definisce la texture della scena. È **un solo verbo con due forme**, distinte dal **tipo**
+dell'argomento: un numero costruisce la scacchiera procedurale, una stringa carica un'immagine.
+
+**Forma numerica — `SCENE TEXTURE celle`**
+
+Scacchiera in scala di grigi di `celle × celle` quadrati, `8` pixel per cella (`1…64` celle ⇒
+8…512 pixel di lato). Utile per le prove: non serve nessun file.
+
+**Forma stringa — `SCENE TEXTURE "file.png"`**
+
+Carica un **PNG** dal percorso indicato (relativo alla cwd del processo) e lo usa come materiale
+di **tutti** i draw successivi:
+
+```basic
+SCENE TEXTURE "foto.png"           ' letterale
+p$ = "tiles/granito.png"
+SCENE TEXTURE p$                   ' variabile stringa: stessa forma
+```
+
+Parametri e semantica:
+
+* **Formato**: solo PNG (RGB, RGBA, palette e trasparenza). Il decode è `png_decode`, l'unico del
+  runtime: niente formati diversi, niente improvvisazione per gamba.
+* **Dimensioni**: da 1 a **4096** pixel per lato; oltre, il comando è rifiutato.
+* **Pixel**: ogni texel è RGBA8; l'alpha **0 scarta il frammento** (alpha-test), quindi un PNG con
+  trasparenza ritaglia la geometria (foglie, grate, decal).
+* **Orientamento**: la riga 0 del PNG resta in **alto** (convenzione di `gm_tex`), la stessa che
+  usano le facce di `BOX` con UV `0…1`.
+* **Filtro**: bilineare con wrap ripetuto: `SCENE VERTEX … 0, 10` fa ripetere la texture 10 volte.
+* **Moltiplicazione**: il colore finale è texture × tinta dell'oggetto × luce di faccia. La tinta
+  quindi **colora** la texture (`OBJECT 255, 200, 120` = caldo), non la sostituisce né la cancella.
+* **Atomico**: se il file manca o non è un PNG valido, **la texture precedente resta** e la scena
+  continua a disegnare con quella. L'errore si legge da `gmb_3d_last_error()` (come `WORLD LOAD`).
+* **Durata**: la texture sopravvive a `SCENE RESET` (che azzera geometria e camera, non il
+  materiale); per tornare alla scacchiera basta un `SCENE TEXTURE <celle>`.
+
+Senza nessuna `TEXTURE` gli oggetti si disegnano col solo colore pieno della tinta: non è un
+errore. La forma stringa è disponibile su **tutte e quattro le gambe** (C99Native, IL, PCodeVM,
+VM/C) con gli stessi byte: la texture vive nel runtime C, le gambe gestite chiamano la stessa
+facciata `gmb_scene_texture_file`.
+
+Il PNG può essere RGB, RGBA (con trasparenza, utile con `SCENE ALPHA`) o a palette, con i
+filtri standard delle righe: si leggono anche i PNG scritti da altri programmi, non solo quelli
+salvati da `SCENE SAVE`.
+
+MiniTest: `shared/minitests/3d/scene_texture_file.bas` (round-trip RENDER → SAVE → TEXTURE, con
+anche il caso del file inesistente). Sample: `Samples3D/TextureFile.bas`.
 
 ### `SCENE OBJECT r, g, b`
 
@@ -106,6 +153,73 @@ Posizione dell'oggetto corrente nel mondo e rotazione attorno all'asse verticale
 `yaw` in **gradi**: `0` guarda verso `+z`, `90` verso `+x`. `pitch` in **gradi**, negativo =
 guarda in basso; il valore deve stare in `−89 … +89` (oltre, il comando è rifiutato e la camera
 resta quella di prima).
+
+### `SCENE LIGHT dx, dy, dz, livello`
+
+Accende una **luce direzionale** (un sole, una lampada all'infinito) e da quel momento ogni
+faccia è illuminata dal proprio orientamento: il motore calcola la **normale del triangolo** sulle
+posizioni MONDO (dopo posizione e rotazione dell'oggetto) e la confronta con la direzione della
+luce.
+
+| parametro | significato |
+|---|---|
+| `dx, dy, dz` | direzione **verso la luce** (il vettore `L` di Lambert). Viene normalizzata dal runtime; `0, 1, 0` = luce dall'alto, `0, -1, 0` = dal basso, `1, 0, 0` = da destra. Una direzione nulla è un errore esplicito. |
+| `livello` | luce `0…255` sulle facce **rivolte** alla sorgente (clampato). |
+
+Come si calcola: `cos = max(0, normale · direzione)`, il coseno è quantizzato una volta in un
+intero `0…255`, e la luce della faccia è una miscela **intera** fra un ambiente fisso di `40` e
+`livello`: `luce = 40 + (livello - 40) * cos / 255`. Niente virgola nell'ultimo passo, quindi le
+quattro gambe danno **gli stessi byte** (la sede del calcolo è una sola, il runtime C).
+
+Effetti sul resto della scena:
+
+* la luce della faccia si moltiplica con la **tinta** dell'oggetto e con la **texture**, come prima:
+  ombreggiare non cambia i colori, li scurisce;
+* con `LIGHT` attiva la luce calcolata **sostituisce** la tabella fissa delle sei facce del cubo
+  (`BOX`), che era una stilizzazione: i cubi diventano coerenti con l'orientamento reale;
+* `LIGHT` è **stato del materiale**, come `TEXTURE`: sopravvive a `SCENE RESET`. Un secondo
+  `SCENE LIGHT` sostituisce direzione e livello;
+* senza `LIGHT` la scena si disegna esattamente come prima: la tabella per faccia del cubo resta,
+  e gli hash dei frame non cambiano (è quello che blinda il MiniTest `scene_mesh`).
+
+```basic
+SCENE LIGHT 0.4, 0.9, 0.2, 235     ' sole alto a destra
+SCENE RENDER
+```
+
+MiniTest: `shared/minitests/3d/scene_light.bas` (piano in su illuminato, piano laterale
+illuminato e in ombra: `16777215`, `16777215`, `2631720`). Sample: `Samples3D/LightFaces.bas`
+(il sole gira attorno a torri e pilastri).
+
+### `SCENE SMOOTH on|off` · `SCENE ALPHA on|off` · `SCENE TWOSIDED on|off`
+
+Tre **flag di materiale** che il kernel aveva già (sono i campi `bilinear`, `masked` e
+`two_sided` di `gmb_3d_material_t`) e che il BASIC non raggiungeva. Sono interruttori: `on`
+oppure `off` (si accetta anche `1`/`0`), e valgono per **tutta la scena**, perché il materiale
+in `SCENE` è uno solo.
+
+| flag | `on` | `off` | default |
+|---|---|---|---|
+| `SMOOTH` | filtro **bilineare**: texture morbide, sfumate | **nearest**: texel netti, "pixel art" | `on` |
+| `ALPHA` | **alpha-test**: i texel con alpha `0` sono scartati e si vede il fondo | i texel trasparenti si disegnano col loro RGB (i buchi diventano quadrati pieni) | `on` |
+| `TWOSIDED` | le facce si vedono da **entrambi** i lati | **back-face cull**: le facce girate di schiena finiscono in `SCENE.CULLED()` | `off` |
+
+I default sono quelli storici, quindi una scena che non chiama questi verbi dà **esattamente**
+gli stessi byte di prima (i MiniTest `scene_mesh` e `scene_texture_file` restano verdi). I flag
+sono stato del materiale e **sopravvivono a `SCENE RESET`**, come `TEXTURE` e `LIGHT`:
+reimpostali esplicitamente se vuoi cambiarli a metà scena.
+
+```basic
+SCENE TEXTURE "FoliageAlpha.png"    ' PNG RGBA: i texel trasparenti sono buchi
+SCENE ALPHA ON                       ' i buchi si scartano
+SCENE TWOSIDED ON                    ' lastre visibili da dietro
+SCENE RENDER
+```
+
+`ALPHA` ha senso solo con una texture che porti trasparenza: la scacchiera procedurale di
+`SCENE TEXTURE n` è sempre opaca. MiniTest: `shared/minitests/3d/scene_material_flags.bas`
+(alpha-test, cull e hash bilineare/nearest). Sample: `Samples3D/MaterialFlags.bas` (fogliame
+con buchi attorno a un anello di lastre, tre fasi con i flag scambiati).
 
 ### `SCENE RENDER`
 
@@ -246,12 +360,16 @@ fasi successive del piano:
 
 * i comandi che presuppongono uno stato che il kernel non ha: `CLEAR`, `FOG`, `FAR`, `SKY`,
   `COLORMAP`, `THING`, `TURN`, `PLAYER`, `MOVE`, `LIFT`, `LAMP`, `ZONE`, `WORLD`,
-  `SOFTWARE`/`HARDWARE`;
+  `SOFTWARE`/`HARDWARE` (la luce direzionale invece c'è: `SCENE LIGHT`);
 * le letture della camera (`SCENE.X/Y/Z/EYE/YAW/PITCH/HIT/…`), perché la camera oggi è solo un
   ingresso;
-* le forme con **id oggetto esplicito** (`VERTEX o, …`, `OBJECT o, flags, light`) e le texture da
-  file (`TEXTURE n, a$`): oggi l'oggetto corrente lo apre `OBJECT` e la texture è procedurale;
+* le forme con **id oggetto esplicito** (`VERTEX o, …`, `OBJECT o, flags, light`): oggi
+  l'oggetto corrente lo apre `OBJECT`; le texture da file ci sono (`TEXTURE "file.png"`), ma il
+  formato è solo PNG;
 * il present a video e il tetto dei frame: `RENDER` scrive nel target, la cattura è `SAVE`.
 
-Il sample di riferimento è `Samples3D/MeshBasics.bas`; il MiniTest che blinda i numeri è
-`shared/minitests/3d/scene_mesh.bas`.
+I sample di riferimento sono `Samples3D/MeshBasics.bas` (geometria), `Samples3D/TextureFile.bas`
+(texture da PNG) e `Samples3D/LightFaces.bas` (luce per faccia); i MiniTest che bloccano i numeri
+sono `shared/minitests/3d/scene_mesh.bas`, `shared/minitests/3d/scene_texture_file.bas`,
+`shared/minitests/3d/scene_light.bas` e `shared/minitests/3d/scene_material_flags.bas`; i sample
+`Samples3D/MaterialFlags.bas` (flag di materiale) e `Samples3D/LightFaces.bas` (luce).

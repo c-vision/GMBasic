@@ -2513,4 +2513,13 @@ public enum TokenKind
     ScenePixels,
     SceneHash,
     ScenePixel,
+    // SCENE LIGHT dx, dy, dz, livello — luce direzionale per faccia (idea #4). In coda,
+    // come ogni TokenKind: gli ordinali sono canonici.
+    SceneLight,
+    // SCENE SMOOTH|ALPHA|TWOSIDED on|off — flag di materiale del kernel (idea #5).
+    SceneSmooth,
+    SceneAlpha,
+    SceneTwoSided,
+    // SCENE PRESENT — target 3D → pagina 2D corrente (idea #2, ponte verso la finestra).
+    ScenePresent,
   }

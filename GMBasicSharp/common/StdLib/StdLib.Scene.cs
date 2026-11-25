@@ -7,7 +7,8 @@
  * 7 funzioni | 1 comando | 0 tipi | 0 costanti
  *
  * FUNZIONI (7): VERTS, TRIS, DRAWN, CULLED, PIXELS, HASH, PIXEL
- * COMANDO (1): SCENE (RESET | VIEW | TEXTURE | OBJECT | VERTEX | QUAD | BOX | OBJPOS | CAMERA | RENDER | SAVE)
+ * COMANDO (1): SCENE (RESET | VIEW | TEXTURE | OBJECT | VERTEX | QUAD | BOX | OBJPOS | CAMERA |
+ *                    LIGHT | SMOOTH | ALPHA | TWOSIDED | RENDER | PRESENT | SAVE)
  * ==== GMB-STDLIB-AUDIT-END ==== */
 
 namespace Basic;

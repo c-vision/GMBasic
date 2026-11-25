@@ -2736,9 +2736,18 @@ typedef enum gmb_tokenkind {
     GMB_TOK_ScenePixels,
     GMB_TOK_SceneHash,
     GMB_TOK_ScenePixel,
+    /* SCENE LIGHT dx, dy, dz, livello — luce direzionale per faccia (idea #4). In coda
+     * come tutti i TokenKind: gli ordinali sono canonici, mai inserire nel mezzo. */
+    GMB_TOK_SceneLight,
+    /* SCENE SMOOTH|ALPHA|TWOSIDED on|off — flag di materiale del kernel (idea #5). */
+    GMB_TOK_SceneSmooth,
+    GMB_TOK_SceneAlpha,
+    GMB_TOK_SceneTwoSided,
+    /* SCENE PRESENT — target 3D → pagina 2D corrente (idea #2, ponte verso la finestra). */
+    GMB_TOK_ScenePresent,
 } gmb_tokenkind_t;
   
-  #define GMB_TOK_COUNT 2711
+  #define GMB_TOK_COUNT 2716
 
 /* 2026-09-09 (direttiva 2026-09-08): gmb_tokenkind_name()/gmb_tokenkind_from_name() e la
  * tabella gmb_token_names[] sono state RIMOSSE — dispatch solo per TokenKind; la risoluzione

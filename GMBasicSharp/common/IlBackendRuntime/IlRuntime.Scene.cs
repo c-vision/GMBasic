@@ -13,6 +13,9 @@ public static partial class IlRuntime
 
     public static void SceneTexture(long cells) => CommonLib.Scene3DNative.Texture(cells);
 
+    // SCENE TEXTURE "file.png" (argomento stringa): stesso verbo, texture da PNG.
+    public static void SceneTextureFile(string path) => CommonLib.Scene3DNative.TextureFile(path);
+
     public static void SceneObject(long r, long g, long b) => CommonLib.Scene3DNative.Object(r, g, b);
 
     public static void SceneVertex(double x, double y, double z, double u, double v)
@@ -28,6 +31,18 @@ public static partial class IlRuntime
 
     public static void SceneCamera(double x, double y, double z, double yawDeg, double pitchDeg)
         => CommonLib.Scene3DNative.Camera(x, y, z, yawDeg, pitchDeg);
+
+    // SCENE LIGHT dx, dy, dz, livello: luce direzionale per faccia.
+    public static void SceneLight(double dx, double dy, double dz, long level)
+        => CommonLib.Scene3DNative.Light(dx, dy, dz, level);
+
+    // Flag di materiale (idea #5).
+    public static void SceneSmooth(long on) => CommonLib.Scene3DNative.Smooth(on);
+    public static void SceneAlpha(long on) => CommonLib.Scene3DNative.Alpha(on);
+    public static void SceneTwoSided(long on) => CommonLib.Scene3DNative.TwoSided(on);
+
+    // SCENE PRESENT: target 3D → pagina 2D corrente (il present vero resta al main thread).
+    public static void ScenePresent() => CommonLib.Scene3DNative.Present();
 
     public static void SceneRender() => CommonLib.Scene3DNative.Render();
     public static void SceneSave(string path) => CommonLib.Scene3DNative.Save(path);

@@ -22,6 +22,11 @@ public sealed partial class Compiler
         TokenKind.SceneCamera => SysCall.SCENE_CAMERA,
         TokenKind.SceneRender => SysCall.SCENE_RENDER,
         TokenKind.SceneSave => SysCall.SCENE_SAVE,
+        TokenKind.SceneLight => SysCall.SCENE_LIGHT,
+        TokenKind.SceneSmooth => SysCall.SCENE_SMOOTH,
+        TokenKind.SceneAlpha => SysCall.SCENE_ALPHA,
+        TokenKind.SceneTwoSided => SysCall.SCENE_TWOSIDED,
+        TokenKind.ScenePresent => SysCall.SCENE_PRESENT,
         _ => throw new NotImplementedException($"SCENE: verbo '{kind}' non supportato dalla PCodeVM.")
     };
 

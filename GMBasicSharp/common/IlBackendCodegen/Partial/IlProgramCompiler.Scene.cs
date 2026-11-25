@@ -32,9 +32,20 @@ public sealed partial class IlProgramCompiler
                 return;
 
             case TokenKind.SceneTexture:
-                RequireSceneArgs(stmt, 1, "SCENE TEXTURE celle");
-                EmitInt64Argument(a[0]);
-                _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.SceneTexture)));
+                // Due forme, un verbo: numero = scacchiera procedurale, stringa = PNG su disco.
+                // La scelta e' nel TIPO dell'espressione (stessa regola del frontend C, che usa
+                // etype()): una variabile `p$` o un letterale stringa vanno al file.
+                RequireSceneArgs(stmt, 1, "SCENE TEXTURE celle | \"file.png\"");
+                if (Parser.IsStringExpression(a[0]))
+                {
+                    EmitStringArgument(a[0]);
+                    _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.SceneTextureFile)));
+                }
+                else
+                {
+                    EmitInt64Argument(a[0]);
+                    _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.SceneTexture)));
+                }
                 return;
 
             case TokenKind.SceneObject:
@@ -73,6 +84,38 @@ public sealed partial class IlProgramCompiler
                 RequireSceneArgs(stmt, 5, "SCENE CAMERA x, y, z, yaw, pitch");
                 for (int i = 0; i < 5; i++) EmitDoubleArgument(a[i]);
                 _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.SceneCamera)));
+                return;
+
+            // Flag di materiale (idea #5): un argomento numerico 0/1 (il parser ha già
+            // convertito la parola ON/OFF), stessa facciata C delle altre gambe.
+            case TokenKind.SceneSmooth:
+                RequireSceneArgs(stmt, 1, "SCENE SMOOTH on|off");
+                EmitInt64Argument(a[0]);
+                _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.SceneSmooth)));
+                return;
+
+            case TokenKind.SceneAlpha:
+                RequireSceneArgs(stmt, 1, "SCENE ALPHA on|off");
+                EmitInt64Argument(a[0]);
+                _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.SceneAlpha)));
+                return;
+
+            case TokenKind.SceneTwoSided:
+                RequireSceneArgs(stmt, 1, "SCENE TWOSIDED on|off");
+                EmitInt64Argument(a[0]);
+                _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.SceneTwoSided)));
+                return;
+
+            case TokenKind.SceneLight:
+                RequireSceneArgs(stmt, 4, "SCENE LIGHT dx, dy, dz, livello");
+                for (int i = 0; i < 3; i++) EmitDoubleArgument(a[i]);
+                EmitInt64Argument(a[3]);
+                _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.SceneLight)));
+                return;
+
+            case TokenKind.ScenePresent:
+                RequireSceneArgs(stmt, 0, "SCENE PRESENT non accetta argomenti");
+                _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.ScenePresent)));
                 return;
 
             case TokenKind.SceneRender:

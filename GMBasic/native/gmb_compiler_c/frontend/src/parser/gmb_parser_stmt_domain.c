@@ -217,7 +217,9 @@ static int gmb_p_scene_verb_tk(const char* v)
         { "VERTEX",  GMB_TOK_SceneVertex }, { "QUAD",    GMB_TOK_SceneQuad    },
         { "BOX",     GMB_TOK_SceneBox    }, { "OBJPOS",  GMB_TOK_SceneObjPos  },
         { "CAMERA",  GMB_TOK_SceneCamera }, { "RENDER",  GMB_TOK_SceneRender  },
-        { "SAVE",    GMB_TOK_SceneSave   },
+        { "SAVE",    GMB_TOK_SceneSave   }, { "LIGHT",   GMB_TOK_SceneLight },
+        { "SMOOTH",  GMB_TOK_SceneSmooth }, { "ALPHA",   GMB_TOK_SceneAlpha },
+        { "TWOSIDED", GMB_TOK_SceneTwoSided }, { "PRESENT", GMB_TOK_ScenePresent },
     };
     for (size_t i = 0; i < sizeof(map) / sizeof(map[0]); i++)
         if (strcasecmp(v, map[i].word) == 0) return (int)map[i].tk;
@@ -352,6 +354,25 @@ gmb_stmt_t* gmb_p_parse_domain_stmt_ov(gmb_parser_t* p, int line, const char* ov
             continue;
         }
         int term_pos = p->pos;
+        /* SCENE SMOOTH|ALPHA|TWOSIDED ON|OFF (idea #5): ON e OFF sono KEYWORD del lessico,
+         * non espressioni, quindi il lettore generico ne faceva una VAR "ON"/"OFF" → su
+         * tutte le gambe l'errore era "variabile non definita". Si convertono QUI, una
+         * volta sola, nel letterale 1/0: a valle resta un argomento numerico come gli altri,
+         * e il verbo è già l'unico dispatch (act_tk). */
+        if (s->win_tk == GMB_TOK_Scene
+            && (s->act_tk == (int)GMB_TOK_SceneSmooth || s->act_tk == (int)GMB_TOK_SceneAlpha
+                || s->act_tk == (int)GMB_TOK_SceneTwoSided)) {
+            const gmb_token_t* ft = gmb_p_cur(p);
+            if (ft && (ft->kind == GMB_TOK_On || ft->kind == GMB_TOK_Off)) {
+                gmb_expr_t* fe = gmb_expr_num(ft->kind == GMB_TOK_On ? 1.0 : 0.0, line);
+                gmb_p_adv(p);
+                if (fe) {
+                    if (s->n_go_args >= cap) { cap = cap ? cap * 2 : 8; s->go_args = (gmb_expr_t**)realloc(s->go_args, (size_t)cap * sizeof(gmb_expr_t*)); }
+                    s->go_args[s->n_go_args++] = fe;
+                }
+                continue;
+            }
+        }
         /* Macro `&(expr)` / `&var` in POSIZIONE DI TERMINE (es. `ISAM SET FILTER TO &(f) ON -1`, dopo la
          * clausola TO): si parsa come ESPRESSIONE (call sentinella "_macro_"), che l'emitter sa espandere. */
         if (gmb_p_check(p, GMB_TOK_Ampersand)) {

@@ -917,8 +917,11 @@ internal sealed partial class PCodeProcessor
             }
             case SysCall.SCENE_TEXTURE:
             {
-                var cells = PopInt(task);
-                CommonLib.Scene3DNative.Texture(cells);
+                // Due forme, un verbo: numero = scacchiera procedurale, stringa = PNG su disco.
+                // Il tipo del valore decide (stessa semantica delle altre gambe).
+                var arg = PopF(task);
+                if (arg is string path) CommonLib.Scene3DNative.TextureFile(path);
+                else CommonLib.Scene3DNative.Texture((long)NumOf(arg));
                 break;
             }
             case SysCall.SCENE_OBJECT:
@@ -963,6 +966,25 @@ internal sealed partial class PCodeProcessor
             case SysCall.SCENE_RENDER:
                 CommonLib.Scene3DNative.Render();
                 break;
+            case SysCall.SCENE_PRESENT:
+                CommonLib.Scene3DNative.Present();
+                break;
+            case SysCall.SCENE_SMOOTH:
+                CommonLib.Scene3DNative.Smooth((long)PopNum(task));
+                break;
+            case SysCall.SCENE_ALPHA:
+                CommonLib.Scene3DNative.Alpha((long)PopNum(task));
+                break;
+            case SysCall.SCENE_TWOSIDED:
+                CommonLib.Scene3DNative.TwoSided((long)PopNum(task));
+                break;
+            case SysCall.SCENE_LIGHT:
+            {
+                var level = PopNum(task); var dz = PopNum(task);
+                var dy = PopNum(task); var dx = PopNum(task);
+                CommonLib.Scene3DNative.Light(dx, dy, dz, (long)level);
+                break;
+            }
             case SysCall.SCENE_SAVE:
             {
                 var path = PopString(task) ?? "";
