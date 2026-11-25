@@ -153,16 +153,281 @@ static int scene_tri_depth(gmb_3d_target_t* t)
     return rc;
 }
 
-/* P1: triangoli. P2: settori (room/door/pitch) e mappa demo, dallo stesso
- * binario: la demo passa da loader, tempo e bridge del runtime. */
-#define NSCENES 7
+/* --- P3: mesh sul target (rasterizzatore ARGB+depth del runtime) ----------
+ *
+ * Le matrici si costruiscono QUI, non con gm_mat4_*: il kernel si prova contro
+ * un produttore indipendente (e gm_gfx_geom non è nel link dell'oracolo).
+ * Column-major, clip z in [-1,1] come la convenzione della suite.
+ */
+
+#define MESH_PI 3.14159265f
+
+static void m4_mul(float* out, const float* a, const float* b)   /* out = a*b */
+{
+    float r[16];
+    for (int c = 0; c < 4; c++)
+        for (int row = 0; row < 4; row++)
+        {
+            float s = 0.0f;
+            for (int k = 0; k < 4; k++) s += a[k * 4 + row] * b[c * 4 + k];
+            r[c * 4 + row] = s;
+        }
+    memcpy(out, r, sizeof(r));
+}
+
+static void m4_perspective(float* m, float fovy, float aspect, float zn, float zf)
+{
+    memset(m, 0, 16 * sizeof(float));
+    float f = 1.0f / tanf(fovy * 0.5f);
+    m[0] = f / aspect;
+    m[5] = f;
+    m[10] = (zf + zn) / (zn - zf);
+    m[11] = -1.0f;
+    m[14] = (2.0f * zf * zn) / (zn - zf);
+}
+
+static void m4_look_at(float* m, const float eye[3], const float at[3], const float up[3])
+{
+    float f[3] = { at[0] - eye[0], at[1] - eye[1], at[2] - eye[2] };
+    float fl = sqrtf(f[0] * f[0] + f[1] * f[1] + f[2] * f[2]);
+    f[0] /= fl; f[1] /= fl; f[2] /= fl;
+    float r[3] = { f[1] * up[2] - f[2] * up[1], f[2] * up[0] - f[0] * up[2], f[0] * up[1] - f[1] * up[0] };
+    float rl = sqrtf(r[0] * r[0] + r[1] * r[1] + r[2] * r[2]);
+    r[0] /= rl; r[1] /= rl; r[2] /= rl;
+    float u[3] = { r[1] * f[2] - r[2] * f[1], r[2] * f[0] - r[0] * f[2], r[0] * f[1] - r[1] * f[0] };
+    memset(m, 0, 16 * sizeof(float));
+    m[0] = r[0]; m[4] = r[1]; m[8]  = r[2]; m[12] = -(r[0] * eye[0] + r[1] * eye[1] + r[2] * eye[2]);
+    m[1] = u[0]; m[5] = u[1]; m[9]  = u[2]; m[13] = -(u[0] * eye[0] + u[1] * eye[1] + u[2] * eye[2]);
+    m[2] = -f[0]; m[6] = -f[1]; m[10] = -f[2]; m[14] = (f[0] * eye[0] + f[1] * eye[1] + f[2] * eye[2]);
+    m[15] = 1.0f;
+}
+
+static void mvp_build(float* mvp, const float eye[3], const float at[3],
+                      float fovy, float aspect, float zn, float zf)
+{
+    const float up[3] = { 0.0f, 1.0f, 0.0f };
+    float v[16], p[16];
+    m4_look_at(v, eye, at, up);
+    m4_perspective(p, fovy, aspect, zn, zf);
+    m4_mul(mvp, p, v);
+}
+
+/* Cubo [-1,1]^3 a 24 vertici (4 per faccia, UV per faccia): 6 facce x 2
+ * triangoli. Winding CCW visto da FUORI (il cull del kernel scarta il resto). */
+static const float CUBE_POS[24 * 3] = {
+    /* +X */  1,-1,-1,  1, 1,-1,  1, 1, 1,  1,-1, 1,
+    /* -X */ -1,-1, 1, -1, 1, 1, -1, 1,-1, -1,-1,-1,
+    /* +Y */ -1, 1,-1, -1, 1, 1,  1, 1, 1,  1, 1,-1,
+    /* -Y */ -1,-1, 1, -1,-1,-1,  1,-1,-1,  1,-1, 1,
+    /* +Z */ -1,-1, 1,  1,-1, 1,  1, 1, 1, -1, 1, 1,
+    /* -Z */  1,-1,-1, -1,-1,-1, -1, 1,-1,  1, 1,-1
+};
+static const float CUBE_UV[24 * 2] = {
+    0,1, 1,1, 1,0, 0,0,
+    0,1, 1,1, 1,0, 0,0,
+    0,1, 1,1, 1,0, 0,0,
+    0,1, 1,1, 1,0, 0,0,
+    0,1, 1,1, 1,0, 0,0,
+    0,1, 1,1, 1,0, 0,0
+};
+static const int CUBE_IDX[12 * 3] = {
+     0, 1, 2,  0, 2, 3,
+     4, 5, 6,  4, 6, 7,
+     8, 9,10,  8,10,11,
+    12,13,14, 12,14,15,
+    16,17,18, 16,18,19,
+    20,21,22, 20,22,23
+};
+
+/* Piano y = -1 su [-S,S]^2, griglia NxN, UV 0..1. Winding con la normale +Y. */
+#define PL_N 4
+#define PL_S 6.0f
+#define PL_V ((PL_N + 1) * (PL_N + 1))
+static float pl_pos[PL_V * 3];
+static float pl_uv[PL_V * 2];
+static int   pl_idx[PL_N * PL_N * 6];
+
+static void build_plane(void)
+{
+    int i = 0;
+    for (int z = 0; z <= PL_N; z++)
+        for (int x = 0; x <= PL_N; x++, i++)
+        {
+            pl_pos[i * 3 + 0] = -PL_S + 2.0f * PL_S * (float)x / (float)PL_N;
+            pl_pos[i * 3 + 1] = -1.0f;
+            pl_pos[i * 3 + 2] = -PL_S + 2.0f * PL_S * (float)z / (float)PL_N;
+            pl_uv[i * 2 + 0] = (float)x / (float)PL_N;
+            pl_uv[i * 2 + 1] = (float)z / (float)PL_N;
+        }
+    int k = 0;
+    for (int z = 0; z < PL_N; z++)
+        for (int x = 0; x < PL_N; x++)
+        {
+            int a = z * (PL_N + 1) + x, b = a + 1, c = a + PL_N + 1, d = c + 1;
+            pl_idx[k++] = a; pl_idx[k++] = c; pl_idx[k++] = b;   /* normale +Y */
+            pl_idx[k++] = b; pl_idx[k++] = c; pl_idx[k++] = d;
+        }
+}
+
+static void mesh_material(gmb_3d_material_t* mat, const gm_tex* tex, int bilinear)
+{
+    memset(mat, 0, sizeof(*mat));
+    if (tex != NULL)
+    {
+        mat->rgba = tex->rgba;
+        mat->tw = tex->w;
+        mat->th = tex->h;
+        mat->bilinear = bilinear;
+    }
+    mat->tint_r = mat->tint_g = mat->tint_b = 255;
+    mat->light = 255;
+}
+
+/* 4) cubo texturizzato in prospettiva: 3 facce visibili, 3 in back-face. */
+static int scene_mesh_cube(gmb_3d_target_t* t)
+{
+    gm_tex tex;
+    make_checker(&tex, 0);
+    gmb_3d_target_clear(t, 0x0F1729u, 0.0f);
+
+    const float eye[3] = { 3.2f, 2.6f, 4.0f }, at[3] = { 0.0f, 0.0f, 0.0f };
+    float mvp[16];
+    mvp_build(mvp, eye, at, 45.0f * MESH_PI / 180.0f, (float)t->w / (float)t->h, 0.1f, 100.0f);
+
+    gmb_3d_material_t mat;
+    mesh_material(&mat, &tex, 0);
+    gmb_3d_mesh_t m;
+    m.pos = CUBE_POS; m.uv = CUBE_UV; m.nv = 24; m.idx = CUBE_IDX; m.nt = 12;
+    gmb_3d_draw_stats_t st;
+    int rc = gmb_3d_mesh_draw(t, mvp, &m, &mat, &st);
+    gm_tex_free(&tex);
+    if (rc != GMB_3D_OK) return -1;
+    return (st.tris_drawn == 6 && st.tris_culled == 6) ? 0 : -1;
+}
+
+/* 5) piano texturizzato + cubo bilineare sopra: due draw, due filtri. */
+static int scene_mesh_plane(gmb_3d_target_t* t)
+{
+    gm_tex tex;
+    make_checker(&tex, 0);
+    build_plane();
+    gmb_3d_target_clear(t, 0x0A0E1Au, 0.0f);
+
+    const float eye[3] = { 5.0f, 3.0f, 7.0f }, at[3] = { 0.0f, -0.6f, 0.0f };
+    float mvp[16];
+    mvp_build(mvp, eye, at, 50.0f * MESH_PI / 180.0f, (float)t->w / (float)t->h, 0.1f, 100.0f);
+
+    gmb_3d_material_t mn, mb;
+    mesh_material(&mn, &tex, 0);
+    mesh_material(&mb, &tex, 1);
+    gmb_3d_mesh_t plane = { pl_pos, pl_uv, PL_V, pl_idx, PL_N * PL_N * 2 };
+    gmb_3d_mesh_t cube = { CUBE_POS, CUBE_UV, 24, CUBE_IDX, 12 };
+    gmb_3d_draw_stats_t s1, s2;
+    int rc = gmb_3d_mesh_draw(t, mvp, &plane, &mn, &s1);
+    if (rc == GMB_3D_OK) rc = gmb_3d_mesh_draw(t, mvp, &cube, &mb, &s2);
+    gm_tex_free(&tex);
+    return (rc == GMB_3D_OK && s1.tris_drawn > 0 && s2.tris_drawn > 0) ? 0 : -1;
+}
+
+/* 6) un quad che ATTRAVERSA il near plane: il clip deve tagliarlo, non
+ * spifferarlo sullo schermo (vertici a z = -0.05 e z = -2 con znear 0.1). */
+static int scene_mesh_clip(gmb_3d_target_t* t)
+{
+    gmb_3d_target_clear(t, 0x120C1Cu, 0.0f);
+    float mvp[16];
+    m4_perspective(mvp, 60.0f * MESH_PI / 180.0f, (float)t->w / (float)t->h, 0.1f, 100.0f);
+
+    const float pos[] = {
+        -2.5f, -2.5f, -0.05f,   2.5f, -2.5f, -2.0f,
+         2.5f,  2.5f, -2.0f,   -2.5f,  2.5f, -0.05f
+    };
+    const float uv[] = { 0,1, 1,1, 1,0, 0,0 };
+    const int idx[] = { 0,1,2, 0,2,3 };
+
+    gm_tex tex;
+    make_checker(&tex, 0);
+    gmb_3d_material_t mat;
+    mesh_material(&mat, &tex, 0);
+    mat.two_sided = 1;
+    gmb_3d_mesh_t m = { pos, uv, 4, idx, 2 };
+    gmb_3d_draw_stats_t st;
+    int rc = gmb_3d_mesh_draw(t, mvp, &m, &mat, &st);
+    gm_tex_free(&tex);
+    if (rc != GMB_3D_OK) return -1;
+    return (st.tris_clipped >= 1 && st.pixels > 0) ? 0 : -1;
+}
+
+/* 7) z-buffer: il lontano disegnato DOPO il vicino non lo deve coprire. */
+static int scene_mesh_depth(gmb_3d_target_t* t)
+{
+    gmb_3d_target_clear(t, 0x000000u, 0.0f);
+    float mvp[16];
+    m4_perspective(mvp, 60.0f * MESH_PI / 180.0f, (float)t->w / (float)t->h, 0.1f, 100.0f);
+
+    /* Il lontano deve RESTARE visibile attorno al vicino: a z=-4 la mezza altezza
+     * visibile è 2.31 (a z=-2 è 1.15), quindi il suo mezzo lato è 6 e non 2. */
+    const float near_pos[] = { -1.2f,-1.2f,-2.0f,  1.2f,-1.2f,-2.0f,  1.2f,1.2f,-2.0f, -1.2f,1.2f,-2.0f };
+    const float far_pos[]  = { -6.0f,-6.0f,-4.0f,  6.0f,-6.0f,-4.0f,  6.0f,6.0f,-4.0f, -6.0f,6.0f,-4.0f };
+    const int idx[] = { 0,1,2, 0,2,3 };
+
+    gmb_3d_material_t mn, mf;
+    memset(&mn, 0, sizeof(mn)); mn.tint_r = 214; mn.tint_g = 40;  mn.tint_b = 40;  mn.light = 255;
+    memset(&mf, 0, sizeof(mf)); mf.tint_r = 40;  mf.tint_g = 200; mf.tint_b = 70;  mf.light = 255;
+    gmb_3d_mesh_t fq = { far_pos, NULL, 4, idx, 2 };
+    gmb_3d_mesh_t nq = { near_pos, NULL, 4, idx, 2 };
+    gmb_3d_draw_stats_t s1, s2;
+    int rc = gmb_3d_mesh_draw(t, mvp, &nq, &mn, &s1);      /* vicino prima */
+    if (rc == GMB_3D_OK) rc = gmb_3d_mesh_draw(t, mvp, &fq, &mf, &s2);   /* poi il lontano */
+    if (rc != GMB_3D_OK) return -1;
+    uint32_t c = t->argb[(size_t)(t->h / 2) * (size_t)t->w + (size_t)(t->w / 2)];
+    return (c == (((uint32_t)214 << 16) | ((uint32_t)40 << 8) | 40u)) ? 0 : -1;
+}
+
+/* 8) back-face: il quad rivolto all'indietro (rosso) è scartato e lascia
+ * vedere quello frontale (blu) e quello giallo accanto. */
+static int scene_mesh_cull(gmb_3d_target_t* t)
+{
+    gmb_3d_target_clear(t, 0x0C0C0Cu, 0.0f);
+    float mvp[16];
+    m4_perspective(mvp, 60.0f * MESH_PI / 180.0f, (float)t->w / (float)t->h, 0.1f, 100.0f);
+
+    const float blu[]  = { -2.2f,-1.4f,-2.0f, -0.2f,-1.4f,-2.0f, -0.2f,1.4f,-2.0f, -2.2f,1.4f,-2.0f };
+    const float giallo[] = { 0.2f,-1.4f,-2.0f,  2.2f,-1.4f,-2.0f,  2.2f,1.4f,-2.0f,  0.2f,1.4f,-2.0f };
+    /* winding INVERTITO: back-face, non deve apparire. Vertici dentro il frustum
+     * (a z=-1.4 la mezza altezza visibile è 0.81), così è 1:1 due triangoli e
+     * non un fan da clipping. */
+    const float rosso[] = { -0.5f,-0.5f,-1.4f, -0.5f,0.5f,-1.4f,  0.5f,0.5f,-1.4f,  0.5f,-0.5f,-1.4f };
+    const int idx[] = { 0,1,2, 0,2,3 };
+
+    gmb_3d_material_t mb, mg, mr;
+    memset(&mb, 0, sizeof(mb)); mb.tint_r = 60;  mb.tint_g = 90;  mb.tint_b = 220; mb.light = 255;
+    memset(&mg, 0, sizeof(mg)); mg.tint_r = 220; mg.tint_g = 200; mg.tint_b = 60;  mg.light = 255;
+    memset(&mr, 0, sizeof(mr)); mr.tint_r = 220; mr.tint_g = 30;  mr.tint_b = 30;  mr.light = 255;
+    gmb_3d_mesh_t qb = { blu, NULL, 4, idx, 2 };
+    gmb_3d_mesh_t qg = { giallo, NULL, 4, idx, 2 };
+    gmb_3d_mesh_t qr = { rosso, NULL, 4, idx, 2 };
+    gmb_3d_draw_stats_t sb, sg, sr;
+    int rc = gmb_3d_mesh_draw(t, mvp, &qb, &mb, &sb);
+    if (rc == GMB_3D_OK) rc = gmb_3d_mesh_draw(t, mvp, &qg, &mg, &sg);
+    if (rc == GMB_3D_OK) rc = gmb_3d_mesh_draw(t, mvp, &qr, &mr, &sr);
+    if (rc != GMB_3D_OK) return -1;
+    return (sr.tris_culled == 2 && sr.tris_drawn == 0) ? 0 : -1;
+}
+
+/* P1: triangoli. P2: settori (room/door/pitch) e mappa demo. P3: mesh sul
+ * target ARGB+depth (cubo, piano, clip, z-buffer, back-face): l'accettazione
+ * della fase passa da qui, non da un'impressione.
+ */
+#define NSCENES 12
 static const char* const SCENE_NAMES[NSCENES] = {
     "tri_tex", "tri_mask", "tri_depth",
-    "sector_room", "sector_door", "sector_pitch", "demo"
+    "sector_room", "sector_door", "sector_pitch", "demo",
+    "mesh_cube", "mesh_plane", "mesh_clip", "mesh_depth", "mesh_cull"
 };
 static const scene_fn SCENE_FNS[NSCENES] = {
     scene_tri_tex, scene_tri_mask, scene_tri_depth,
-    w_scene_room, w_scene_door, w_scene_pitch, w_scene_demo
+    w_scene_room, w_scene_door, w_scene_pitch, w_scene_demo,
+    scene_mesh_cube, scene_mesh_plane, scene_mesh_clip, scene_mesh_depth, scene_mesh_cull
 };
 
 /* --- golden -------------------------------------------------------------- */
@@ -384,6 +649,133 @@ static void run_sched_guard_test(int* ok, int* fail)
 
 #undef SCHED_CHECK
 
+/* --- P3: check numerici del rasterizzatore mesh ------------------------- */
+
+static void mesh_checks(int* ok, int* fail)
+{
+#define MCHECK(cond, what) do { if (cond) { (*ok)++; } else { (*fail)++; printf("FAIL %s (mesh)\n", (what)); } } while (0)
+
+    gmb_3d_target_t t;
+    memset(&t, 0, sizeof(t));
+    if (gmb_3d_target_alloc(&t, W, H) != GMB_3D_OK) { (*fail)++; printf("FAIL mesh: alloc\n"); return; }
+    gmb_3d_present_mode_set(GMB_3D_MODE_TARGET);
+
+    float mvp[16];
+    m4_perspective(mvp, 60.0f * MESH_PI / 180.0f, (float)W / (float)H, 0.1f, 100.0f);
+
+    const int idx2[] = { 0, 1, 2, 0, 2, 3 };
+    /* 0.9: dentro il frustum a z=-2 (mezza altezza visibile 1.154), così i due
+     * triangoli NON vengono tagliati e i contatori sono esatti. */
+    const float front[]  = { -0.9f,-0.9f,-2.0f,  0.9f,-0.9f,-2.0f,  0.9f,0.9f,-2.0f, -0.9f,0.9f,-2.0f };
+    const float back[]   = { -0.9f,-0.9f,-2.0f, -0.9f,0.9f,-2.0f,  0.9f,0.9f,-2.0f,  0.9f,-0.9f,-2.0f };
+    const float behind[] = { -0.9f,-0.9f, 2.0f,  0.9f,-0.9f, 2.0f,  0.9f,0.9f, 2.0f, -0.9f,0.9f, 2.0f };
+    const float far_quad[] = { -2.0f,-2.0f,-4.0f, 2.0f,-2.0f,-4.0f, 2.0f,2.0f,-4.0f, -2.0f,2.0f,-4.0f };
+    const float cross_near[] = { -2.5f,-2.5f,-0.05f, 2.5f,-2.5f,-2.0f, 2.5f,2.5f,-2.0f, -2.5f,2.5f,-0.05f };
+
+    gmb_3d_material_t mat;
+    memset(&mat, 0, sizeof(mat));
+    mat.tint_r = 204; mat.tint_g = 34; mat.tint_b = 34; mat.light = 255;
+    const uint32_t RED = ((uint32_t)204 << 16) | ((uint32_t)34 << 8) | 34u;
+    size_t center = (size_t)(H / 2) * (size_t)W + (size_t)(W / 2);
+
+    gmb_3d_target_clear(&t, 0x000000u, 0.0f);
+    gmb_3d_mesh_t fq = { front, NULL, 4, idx2, 2 };
+    gmb_3d_draw_stats_t st;
+    MCHECK(gmb_3d_mesh_draw(&t, mvp, &fq, &mat, &st) == GMB_3D_OK, "draw ok");
+    MCHECK(st.tris_drawn == 2, "2 triangoli disegnati");
+    MCHECK(st.pixels > 0, "pixel scritti");
+    MCHECK(t.argb[center] == RED, "pixel centrale = tint");
+
+    /* back-face: stesso rettangolo, winding invertito */
+    gmb_3d_target_clear(&t, 0x000000u, 0.0f);
+    gmb_3d_mesh_t bq = { back, NULL, 4, idx2, 2 };
+    MCHECK(gmb_3d_mesh_draw(&t, mvp, &bq, &mat, &st) == GMB_3D_OK, "draw retro ok");
+    MCHECK(st.tris_drawn == 0 && st.tris_culled == 2, "back-face scartato");
+    MCHECK(t.argb[center] == 0u, "back-face non scrive pixel");
+    gmb_3d_material_t two = mat;
+    two.two_sided = 1;
+    MCHECK(gmb_3d_mesh_draw(&t, mvp, &bq, &two, &st) == GMB_3D_OK && st.tris_drawn == 2,
+           "two_sided disegna il retro");
+
+    /* z-buffer: il lontano disegnato dopo il vicino non lo copre, e vale
+     * comunque l'ordine inverso (profondità, non ordine di disegno). */
+    gmb_3d_material_t green;
+    memset(&green, 0, sizeof(green));
+    green.tint_g = 200; green.light = 255;
+    gmb_3d_mesh_t farq = { far_quad, NULL, 4, idx2, 2 };
+    gmb_3d_target_clear(&t, 0x000000u, 0.0f);
+    MCHECK(gmb_3d_mesh_draw(&t, mvp, &fq, &mat, &st) == GMB_3D_OK, "near prima");
+    MCHECK(gmb_3d_mesh_draw(&t, mvp, &farq, &green, &st) == GMB_3D_OK, "far dopo");
+    MCHECK(t.argb[center] == RED, "z-buffer: il lontano non copre il vicino");
+    gmb_3d_target_clear(&t, 0x000000u, 0.0f);
+    MCHECK(gmb_3d_mesh_draw(&t, mvp, &farq, &green, &st) == GMB_3D_OK, "far prima");
+    MCHECK(gmb_3d_mesh_draw(&t, mvp, &fq, &mat, &st) == GMB_3D_OK, "near dopo");
+    MCHECK(t.argb[center] == RED, "z-buffer indipendente dall'ordine");
+
+    /* frustum: quad dietro la camera */
+    gmb_3d_target_clear(&t, 0x000000u, 0.0f);
+    gmb_3d_mesh_t hq = { behind, NULL, 4, idx2, 2 };
+    MCHECK(gmb_3d_mesh_draw(&t, mvp, &hq, &mat, &st) == GMB_3D_OK, "draw dietro ok");
+    MCHECK(st.tris_drawn == 0 && st.pixels == 0, "dietro la camera: nessun pixel");
+
+    /* clip near: quad che attraversa il piano */
+    gmb_3d_target_clear(&t, 0x000000u, 0.0f);
+    gmb_3d_mesh_t cq = { cross_near, NULL, 4, idx2, 2 };
+    MCHECK(gmb_3d_mesh_draw(&t, mvp, &cq, &two, &st) == GMB_3D_OK, "draw clip ok");
+    MCHECK(st.tris_clipped >= 1 && st.tris_drawn >= 1 && st.pixels > 0,
+           "near clip: tagliato e disegnato");
+
+    /* UV: texture a 4 quadranti, quattro colori diversi ai quattro campioni */
+    {
+        gm_tex tex;
+        gm_tex_alloc(&tex, 2, 2);
+        gm_tex_set(&tex, 0, 0, 255, 0, 0, 255);
+        gm_tex_set(&tex, 1, 0, 0, 255, 0, 255);
+        gm_tex_set(&tex, 0, 1, 0, 0, 255, 255);
+        gm_tex_set(&tex, 1, 1, 255, 255, 255, 255);
+        gmb_3d_material_t mt;
+        mesh_material(&mt, &tex, 0);
+        const float uv4[] = { 0, 0, 1, 0, 1, 1, 0, 1 };
+        gmb_3d_mesh_t tq = { far_quad, uv4, 4, idx2, 2 };
+        gmb_3d_target_clear(&t, 0x000000u, 0.0f);
+        MCHECK(gmb_3d_mesh_draw(&t, mvp, &tq, &mt, &st) == GMB_3D_OK && st.tris_drawn == 2,
+               "texture: draw ok");
+        uint32_t q0 = t.argb[(size_t)(H / 4) * (size_t)W + (size_t)(W / 4)];
+        uint32_t q1 = t.argb[(size_t)(H / 4) * (size_t)W + (size_t)(3 * W / 4)];
+        uint32_t q2 = t.argb[(size_t)(3 * H / 4) * (size_t)W + (size_t)(W / 4)];
+        uint32_t q3 = t.argb[(size_t)(3 * H / 4) * (size_t)W + (size_t)(3 * W / 4)];
+        MCHECK(q0 != q1 && q0 != q2 && q1 != q3, "texture: UV diversi ai quattro angoli");
+        gm_tex_free(&tex);
+    }
+
+    /* errori espliciti, mai silenziosi */
+    MCHECK(gmb_3d_mesh_draw(&t, NULL, &fq, &mat, &st) == GMB_3D_E_ARG, "matrice mancante");
+    {
+        gm_tex tex;
+        gm_tex_alloc(&tex, 2, 2);
+        gmb_3d_material_t mt;
+        mesh_material(&mt, &tex, 0);
+        MCHECK(gmb_3d_mesh_draw(&t, mvp, &fq, &mt, &st) == GMB_3D_E_ARG, "texture senza uv");
+        gm_tex_free(&tex);
+    }
+    {
+        const int bad[] = { 0, 1, 99 };
+        gmb_3d_mesh_t bm = { front, NULL, 4, bad, 1 };
+        MCHECK(gmb_3d_mesh_draw(&t, mvp, &bm, &mat, &st) == GMB_3D_E_ARG, "indice fuori range");
+    }
+
+    /* null mode: stato avanza, disegno no */
+    gmb_3d_present_mode_set(GMB_3D_MODE_NULL);
+    gmb_3d_target_clear(&t, 0x112233u, 0.0f);
+    MCHECK(gmb_3d_mesh_draw(&t, mvp, &fq, &mat, &st) == GMB_3D_OK, "null mode ok");
+    MCHECK(st.tris_drawn == 0 && st.pixels == 0, "null mode: nessun triangolo");
+    MCHECK(t.argb[center] == 0x112233u, "null mode: target intatto");
+    gmb_3d_present_mode_set(GMB_3D_MODE_TARGET);
+
+    gmb_3d_target_free(&t);
+#undef MCHECK
+}
+
 /* --- selftest: guardie e null mode (P1 accettazione) ---------------------- */
 
 static int run_selftest(const char* dir)
@@ -463,6 +855,9 @@ static int run_selftest(const char* dir)
     /* T-* e mappa demo: orologio a passo fisso, mover, animazioni, scroll,
      * luce, lampade, traslucenza. */
     w_time_checks(&ok, &fail);
+
+    /* P3: mesh sul target (clip/frustum, z-buffer, UV, back-face). */
+    mesh_checks(&ok, &fail);
 
     printf("P1-SELFTEST ok=%d fail=%d\n", ok, fail);
 #undef CHECK
