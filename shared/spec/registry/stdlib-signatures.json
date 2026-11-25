@@ -15602,6 +15602,70 @@
       ]
     },
     {
+      "ns": "SCENE",
+      "name": "CULLED",
+      "fn": true,
+      "return": "double",
+      "params": []
+    },
+    {
+      "ns": "SCENE",
+      "name": "DRAWN",
+      "fn": true,
+      "return": "double",
+      "params": []
+    },
+    {
+      "ns": "SCENE",
+      "name": "HASH",
+      "fn": true,
+      "return": "double",
+      "params": []
+    },
+    {
+      "ns": "SCENE",
+      "name": "PIXEL",
+      "fn": true,
+      "return": "double",
+      "params": [
+        {
+          "name": "x",
+          "type": "long",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        },
+        {
+          "name": "y",
+          "type": "long",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        }
+      ]
+    },
+    {
+      "ns": "SCENE",
+      "name": "PIXELS",
+      "fn": true,
+      "return": "double",
+      "params": []
+    },
+    {
+      "ns": "SCENE",
+      "name": "TRIS",
+      "fn": true,
+      "return": "double",
+      "params": []
+    },
+    {
+      "ns": "SCENE",
+      "name": "VERTS",
+      "fn": true,
+      "return": "double",
+      "params": []
+    },
+    {
       "ns": "SPEED",
       "name": "BEGINGROUPCOMMIT",
       "fn": true,

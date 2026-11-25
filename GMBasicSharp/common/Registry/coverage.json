@@ -1,5 +1,5 @@
 {
-  "total_canonical": 1332,
+  "total_canonical": 1340,
   "scope": "DECLARED by BackendSupport/Registry (name-match; NON misurato su dispatch reali)",
   "declared_per_backend": {
     "IL": 1235,
@@ -13,40 +13,40 @@
       "CLOCK.DT",
       "CLOCK.FPS",
       "CLOCK.SCALE",
-      "WORLD.CEILZ",
-      "WORLD.FLOORZ",
-      "WORLD.LIGHTNOW",
-      "WORLD.MOVING"
+      "SCENE.CULLED",
+      "SCENE.DRAWN",
+      "SCENE.HASH",
+      "SCENE.PIXEL"
     ],
     "PCodeVM": [
       "CLOCK.ALPHA",
       "CLOCK.DT",
       "CLOCK.FPS",
       "CLOCK.SCALE",
-      "WORLD.CEILZ",
-      "WORLD.FLOORZ",
-      "WORLD.LIGHTNOW",
-      "WORLD.MOVING"
+      "SCENE.CULLED",
+      "SCENE.DRAWN",
+      "SCENE.HASH",
+      "SCENE.PIXEL"
     ],
     "VMC": [
       "CLOCK.ALPHA",
       "CLOCK.DT",
       "CLOCK.FPS",
       "CLOCK.SCALE",
-      "WORLD.CEILZ",
-      "WORLD.FLOORZ",
-      "WORLD.LIGHTNOW",
-      "WORLD.MOVING"
+      "SCENE.CULLED",
+      "SCENE.DRAWN",
+      "SCENE.HASH",
+      "SCENE.PIXEL"
     ],
     "C99Native": [
       "CLOCK.ALPHA",
       "CLOCK.DT",
       "CLOCK.FPS",
       "CLOCK.SCALE",
-      "WORLD.CEILZ",
-      "WORLD.FLOORZ",
-      "WORLD.LIGHTNOW",
-      "WORLD.MOVING"
+      "SCENE.CULLED",
+      "SCENE.DRAWN",
+      "SCENE.HASH",
+      "SCENE.PIXEL"
     ]
   },
   "rows": [
@@ -8962,16 +8962,76 @@
     },
     {
       "id": 892,
-      "ns": "SPEED",
-      "name": "BEGINGROUPCOMMIT",
-      "kind": "SpeedBeginGroupCommit",
-      "IL": true,
-      "PCodeVM": true,
-      "VMC": true,
-      "C99Native": true
+      "ns": "SCENE",
+      "name": "CULLED",
+      "kind": "SceneCulled",
+      "IL": false,
+      "PCodeVM": false,
+      "VMC": false,
+      "C99Native": false
     },
     {
       "id": 893,
+      "ns": "SCENE",
+      "name": "DRAWN",
+      "kind": "SceneDrawn",
+      "IL": false,
+      "PCodeVM": false,
+      "VMC": false,
+      "C99Native": false
+    },
+    {
+      "id": 894,
+      "ns": "SCENE",
+      "name": "HASH",
+      "kind": "SceneHash",
+      "IL": false,
+      "PCodeVM": false,
+      "VMC": false,
+      "C99Native": false
+    },
+    {
+      "id": 895,
+      "ns": "SCENE",
+      "name": "PIXEL",
+      "kind": "ScenePixel",
+      "IL": false,
+      "PCodeVM": false,
+      "VMC": false,
+      "C99Native": false
+    },
+    {
+      "id": 896,
+      "ns": "SCENE",
+      "name": "PIXELS",
+      "kind": "ScenePixels",
+      "IL": false,
+      "PCodeVM": false,
+      "VMC": false,
+      "C99Native": false
+    },
+    {
+      "id": 897,
+      "ns": "SCENE",
+      "name": "TRIS",
+      "kind": "SceneTris",
+      "IL": false,
+      "PCodeVM": false,
+      "VMC": false,
+      "C99Native": false
+    },
+    {
+      "id": 898,
+      "ns": "SCENE",
+      "name": "VERTS",
+      "kind": "SceneVerts",
+      "IL": false,
+      "PCodeVM": false,
+      "VMC": false,
+      "C99Native": false
+    },
+    {
+      "id": 899,
       "ns": "SPEED",
       "name": "BEGINGROUPCOMMIT",
       "kind": "SpeedBeginGroupCommit",
@@ -8981,7 +9041,17 @@
       "C99Native": true
     },
     {
-      "id": 894,
+      "id": 900,
+      "ns": "SPEED",
+      "name": "BEGINGROUPCOMMIT",
+      "kind": "SpeedBeginGroupCommit",
+      "IL": true,
+      "PCodeVM": true,
+      "VMC": true,
+      "C99Native": true
+    },
+    {
+      "id": 901,
       "ns": "SPEED",
       "name": "ENDGROUPCOMMIT",
       "kind": "SpeedEndGroupCommit",
@@ -8991,7 +9061,7 @@
       "C99Native": true
     },
     {
-      "id": 895,
+      "id": 902,
       "ns": "SPEED",
       "name": "ENDGROUPCOMMIT",
       "kind": "SpeedEndGroupCommit",
@@ -9001,7 +9071,7 @@
       "C99Native": true
     },
     {
-      "id": 896,
+      "id": 903,
       "ns": "SPEED",
       "name": "EOF",
       "kind": "EofFunc",
@@ -9011,80 +9081,10 @@
       "C99Native": true
     },
     {
-      "id": 897,
-      "ns": "SPEED",
-      "name": "FLUSHDURABILITY",
-      "kind": "SpeedFlushDurability",
-      "IL": true,
-      "PCodeVM": true,
-      "VMC": true,
-      "C99Native": true
-    },
-    {
-      "id": 898,
-      "ns": "SPEED",
-      "name": "FLUSHDURABILITY",
-      "kind": "SpeedFlushDurability",
-      "IL": true,
-      "PCodeVM": true,
-      "VMC": true,
-      "C99Native": true
-    },
-    {
-      "id": 899,
-      "ns": "SPEED",
-      "name": "INFO",
-      "kind": "SpeedInfo",
-      "IL": true,
-      "PCodeVM": true,
-      "VMC": true,
-      "C99Native": true
-    },
-    {
-      "id": 900,
-      "ns": "SPEED",
-      "name": "INFO",
-      "kind": "SpeedInfo",
-      "IL": true,
-      "PCodeVM": true,
-      "VMC": true,
-      "C99Native": true
-    },
-    {
-      "id": 901,
-      "ns": "SPEED",
-      "name": "SELECTED",
-      "kind": "Selected",
-      "IL": true,
-      "PCodeVM": true,
-      "VMC": true,
-      "C99Native": true
-    },
-    {
-      "id": 902,
-      "ns": "SPEED",
-      "name": "SELECTED",
-      "kind": "Selected",
-      "IL": true,
-      "PCodeVM": true,
-      "VMC": true,
-      "C99Native": true
-    },
-    {
-      "id": 903,
-      "ns": "SPEED",
-      "name": "SETDURABILITY",
-      "kind": "SpeedSetDurability",
-      "IL": true,
-      "PCodeVM": true,
-      "VMC": true,
-      "C99Native": true
-    },
-    {
       "id": 904,
       "ns": "SPEED",
-      "name": "SETDURABILITY",
-      "kind": "SpeedSetDurability",
+      "name": "FLUSHDURABILITY",
+      "kind": "SpeedFlushDurability",
       "IL": true,
       "PCodeVM": true,
       "VMC": true,
@@ -9093,8 +9093,8 @@
     {
       "id": 905,
       "ns": "SPEED",
-      "name": "SETMANY",
-      "kind": "SpeedSetMany",
+      "name": "FLUSHDURABILITY",
+      "kind": "SpeedFlushDurability",
       "IL": true,
       "PCodeVM": true,
       "VMC": true,
@@ -9103,8 +9103,8 @@
     {
       "id": 906,
       "ns": "SPEED",
-      "name": "SETMANY",
-      "kind": "SpeedSetMany",
+      "name": "INFO",
+      "kind": "SpeedInfo",
       "IL": true,
       "PCodeVM": true,
       "VMC": true,
@@ -9113,8 +9113,8 @@
     {
       "id": 907,
       "ns": "SPEED",
-      "name": "VALIDATE",
-      "kind": "SpeedValidate",
+      "name": "INFO",
+      "kind": "SpeedInfo",
       "IL": true,
       "PCodeVM": true,
       "VMC": true,
@@ -9123,8 +9123,8 @@
     {
       "id": 908,
       "ns": "SPEED",
-      "name": "VALIDATE",
-      "kind": "SpeedValidate",
+      "name": "SELECTED",
+      "kind": "Selected",
       "IL": true,
       "PCodeVM": true,
       "VMC": true,
@@ -9133,8 +9133,8 @@
     {
       "id": 909,
       "ns": "SPEED",
-      "name": "VALIDATE",
-      "kind": "SpeedValidate",
+      "name": "SELECTED",
+      "kind": "Selected",
       "IL": true,
       "PCodeVM": true,
       "VMC": true,
@@ -9142,6 +9142,46 @@
     },
     {
       "id": 910,
+      "ns": "SPEED",
+      "name": "SETDURABILITY",
+      "kind": "SpeedSetDurability",
+      "IL": true,
+      "PCodeVM": true,
+      "VMC": true,
+      "C99Native": true
+    },
+    {
+      "id": 911,
+      "ns": "SPEED",
+      "name": "SETDURABILITY",
+      "kind": "SpeedSetDurability",
+      "IL": true,
+      "PCodeVM": true,
+      "VMC": true,
+      "C99Native": true
+    },
+    {
+      "id": 912,
+      "ns": "SPEED",
+      "name": "SETMANY",
+      "kind": "SpeedSetMany",
+      "IL": true,
+      "PCodeVM": true,
+      "VMC": true,
+      "C99Native": true
+    },
+    {
+      "id": 913,
+      "ns": "SPEED",
+      "name": "SETMANY",
+      "kind": "SpeedSetMany",
+      "IL": true,
+      "PCodeVM": true,
+      "VMC": true,
+      "C99Native": true
+    },
+    {
+      "id": 914,
       "ns": "SPEED",
       "name": "VALIDATE",
       "kind": "SpeedValidate",
@@ -9151,7 +9191,37 @@
       "C99Native": true
     },
     {
-      "id": 911,
+      "id": 915,
+      "ns": "SPEED",
+      "name": "VALIDATE",
+      "kind": "SpeedValidate",
+      "IL": true,
+      "PCodeVM": true,
+      "VMC": true,
+      "C99Native": true
+    },
+    {
+      "id": 916,
+      "ns": "SPEED",
+      "name": "VALIDATE",
+      "kind": "SpeedValidate",
+      "IL": true,
+      "PCodeVM": true,
+      "VMC": true,
+      "C99Native": true
+    },
+    {
+      "id": 917,
+      "ns": "SPEED",
+      "name": "VALIDATE",
+      "kind": "SpeedValidate",
+      "IL": true,
+      "PCodeVM": true,
+      "VMC": true,
+      "C99Native": true
+    },
+    {
+      "id": 918,
       "ns": "SQL",
       "name": "CHANGES",
       "kind": "SqlChanges",
@@ -9161,7 +9231,7 @@
       "C99Native": true
     },
     {
-      "id": 912,
+      "id": 919,
       "ns": "SQL",
       "name": "COL",
       "kind": "SqlCol",
@@ -9171,7 +9241,7 @@
       "C99Native": true
     },
     {
-      "id": 913,
+      "id": 920,
       "ns": "SQL",
       "name": "DFSCHEMA",
       "kind": "SqlDfSchema",
@@ -9181,7 +9251,7 @@
       "C99Native": true
     },
     {
-      "id": 914,
+      "id": 921,
       "ns": "SQL",
       "name": "EXEC",
       "kind": "SqlExec",
@@ -9191,7 +9261,7 @@
       "C99Native": true
     },
     {
-      "id": 915,
+      "id": 922,
       "ns": "SQL",
       "name": "FETCH",
       "kind": "SqlFetch",
@@ -9201,7 +9271,7 @@
       "C99Native": true
     },
     {
-      "id": 916,
+      "id": 923,
       "ns": "SQL",
       "name": "FROMCSV",
       "kind": "SqlFromCsv",
@@ -9211,7 +9281,7 @@
       "C99Native": true
     },
     {
-      "id": 917,
+      "id": 924,
       "ns": "SQL",
       "name": "LASTINSERTROWID",
       "kind": "SqlLastInsertRowId",
@@ -9221,7 +9291,7 @@
       "C99Native": true
     },
     {
-      "id": 918,
+      "id": 925,
       "ns": "SQL",
       "name": "TOCSV",
       "kind": "SqlToCsv",
@@ -9231,7 +9301,7 @@
       "C99Native": true
     },
     {
-      "id": 919,
+      "id": 926,
       "ns": "STATS",
       "name": "Anova",
       "kind": "StatsAnova",
@@ -9241,7 +9311,7 @@
       "C99Native": true
     },
     {
-      "id": 920,
+      "id": 927,
       "ns": "STATS",
       "name": "BernoulliPmf",
       "kind": "BernoulliPmf",
@@ -9251,7 +9321,7 @@
       "C99Native": true
     },
     {
-      "id": 921,
+      "id": 928,
       "ns": "STATS",
       "name": "BetaIsf",
       "kind": "StatsBetaIsf",
@@ -9261,7 +9331,7 @@
       "C99Native": true
     },
     {
-      "id": 922,
+      "id": 929,
       "ns": "STATS",
       "name": "BinomialPmf",
       "kind": "BinomialPmf",
@@ -9271,7 +9341,7 @@
       "C99Native": true
     },
     {
-      "id": 923,
+      "id": 930,
       "ns": "STATS",
       "name": "Chi2",
       "kind": "Chi2Test",
@@ -9281,7 +9351,7 @@
       "C99Native": true
     },
     {
-      "id": 924,
+      "id": 931,
       "ns": "STATS",
       "name": "Chi2Con",
       "kind": "StatsChi2Contingency",
@@ -9291,7 +9361,7 @@
       "C99Native": true
     },
     {
-      "id": 925,
+      "id": 932,
       "ns": "STATS",
       "name": "ChiIsf",
       "kind": "StatsChiIsf",
@@ -9301,7 +9371,7 @@
       "C99Native": true
     },
     {
-      "id": 926,
+      "id": 933,
       "ns": "STATS",
       "name": "Describe",
       "kind": "StatsDescribe",
@@ -9311,7 +9381,7 @@
       "C99Native": true
     },
     {
-      "id": 927,
+      "id": 934,
       "ns": "STATS",
       "name": "FTest",
       "kind": "StatsFTest",
@@ -9321,7 +9391,7 @@
       "C99Native": true
     },
     {
-      "id": 928,
+      "id": 935,
       "ns": "STATS",
       "name": "Fisher",
       "kind": "FisherExact",
@@ -9331,7 +9401,7 @@
       "C99Native": true
     },
     {
-      "id": 929,
+      "id": 936,
       "ns": "STATS",
       "name": "GeometricPmf",
       "kind": "GeometricPmf",
@@ -9341,7 +9411,7 @@
       "C99Native": true
     },
     {
-      "id": 930,
+      "id": 937,
       "ns": "STATS",
       "name": "HypergeometricPmf",
       "kind": "HypergeometricPmf",
@@ -9351,7 +9421,7 @@
       "C99Native": true
     },
     {
-      "id": 931,
+      "id": 938,
       "ns": "STATS",
       "name": "Iqr",
       "kind": "StatsIqr",
@@ -9361,7 +9431,7 @@
       "C99Native": true
     },
     {
-      "id": 932,
+      "id": 939,
       "ns": "STATS",
       "name": "JarqueBera",
       "kind": "StatsJarqueBera",
@@ -9371,7 +9441,7 @@
       "C99Native": true
     },
     {
-      "id": 933,
+      "id": 940,
       "ns": "STATS",
       "name": "KendallTau",
       "kind": "StatsKendallTau",
@@ -9381,7 +9451,7 @@
       "C99Native": true
     },
     {
-      "id": 934,
+      "id": 941,
       "ns": "STATS",
       "name": "Kruskal",
       "kind": "StatsKruskal",
@@ -9391,7 +9461,7 @@
       "C99Native": true
     },
     {
-      "id": 935,
+      "id": 942,
       "ns": "STATS",
       "name": "Ks",
       "kind": "KolmogorovSmirnov",
@@ -9401,7 +9471,7 @@
       "C99Native": true
     },
     {
-      "id": 936,
+      "id": 943,
       "ns": "STATS",
       "name": "KurtosisTest",
       "kind": "StatsKurtosisTest",
@@ -9411,7 +9481,7 @@
       "C99Native": true
     },
     {
-      "id": 937,
+      "id": 944,
       "ns": "STATS",
       "name": "LinRegress",
       "kind": "StatsLinRegress",
@@ -9421,7 +9491,7 @@
       "C99Native": true
     },
     {
-      "id": 938,
+      "id": 945,
       "ns": "STATS",
       "name": "LogisticIsf",
       "kind": "StatsLogisticIsf",
@@ -9431,7 +9501,7 @@
       "C99Native": true
     },
     {
-      "id": 939,
+      "id": 946,
       "ns": "STATS",
       "name": "MannWhitney",
       "kind": "StatsMannWhitney",
@@ -9441,7 +9511,7 @@
       "C99Native": true
     },
     {
-      "id": 940,
+      "id": 947,
       "ns": "STATS",
       "name": "Mode",
       "kind": "StatsMode",
@@ -9451,7 +9521,7 @@
       "C99Native": true
     },
     {
-      "id": 941,
+      "id": 948,
       "ns": "STATS",
       "name": "Moment",
       "kind": "StatsMoment",
@@ -9461,7 +9531,7 @@
       "C99Native": true
     },
     {
-      "id": 942,
+      "id": 949,
       "ns": "STATS",
       "name": "NcBetaSf",
       "kind": "StatsNcBetaSf",
@@ -9471,7 +9541,7 @@
       "C99Native": true
     },
     {
-      "id": 943,
+      "id": 950,
       "ns": "STATS",
       "name": "NcChi2Sf",
       "kind": "StatsNcChi2Sf",
@@ -9481,7 +9551,7 @@
       "C99Native": true
     },
     {
-      "id": 944,
+      "id": 951,
       "ns": "STATS",
       "name": "NcFCdf",
       "kind": "StatsNcFCdf",
@@ -9491,7 +9561,7 @@
       "C99Native": true
     },
     {
-      "id": 945,
+      "id": 952,
       "ns": "STATS",
       "name": "NcFIsf",
       "kind": "StatsNcFIsf",
@@ -9501,7 +9571,7 @@
       "C99Native": true
     },
     {
-      "id": 946,
+      "id": 953,
       "ns": "STATS",
       "name": "NcFPdf",
       "kind": "StatsNcFPdf",
@@ -9511,7 +9581,7 @@
       "C99Native": true
     },
     {
-      "id": 947,
+      "id": 954,
       "ns": "STATS",
       "name": "NcFPpf",
       "kind": "StatsNcFPpf",
@@ -9521,7 +9591,7 @@
       "C99Native": true
     },
     {
-      "id": 948,
+      "id": 955,
       "ns": "STATS",
       "name": "NcFSf",
       "kind": "StatsNcFSf",
@@ -9531,7 +9601,7 @@
       "C99Native": true
     },
     {
-      "id": 949,
+      "id": 956,
       "ns": "STATS",
       "name": "NcGammaSf",
       "kind": "StatsNcGammaSf",
@@ -9541,7 +9611,7 @@
       "C99Native": true
     },
     {
-      "id": 950,
+      "id": 957,
       "ns": "STATS",
       "name": "NcTCdf",
       "kind": "StatsNcTCdf",
@@ -9551,7 +9621,7 @@
       "C99Native": true
     },
     {
-      "id": 951,
+      "id": 958,
       "ns": "STATS",
       "name": "NcTIsf",
       "kind": "StatsNcTIsf",
@@ -9561,7 +9631,7 @@
       "C99Native": true
     },
     {
-      "id": 952,
+      "id": 959,
       "ns": "STATS",
       "name": "NcTPdf",
       "kind": "StatsNcTPdf",
@@ -9571,7 +9641,7 @@
       "C99Native": true
     },
     {
-      "id": 953,
+      "id": 960,
       "ns": "STATS",
       "name": "NcTPpf",
       "kind": "StatsNcTPpf",
@@ -9581,7 +9651,7 @@
       "C99Native": true
     },
     {
-      "id": 954,
+      "id": 961,
       "ns": "STATS",
       "name": "NcTSf",
       "kind": "StatsNcTSf",
@@ -9591,7 +9661,7 @@
       "C99Native": true
     },
     {
-      "id": 955,
+      "id": 962,
       "ns": "STATS",
       "name": "NegativeBinomialPmf",
       "kind": "NegativeBinomialPmf",
@@ -9601,7 +9671,7 @@
       "C99Native": true
     },
     {
-      "id": 956,
+      "id": 963,
       "ns": "STATS",
       "name": "NormalTest",
       "kind": "NormalTest",
@@ -9611,7 +9681,7 @@
       "C99Native": true
     },
     {
-      "id": 957,
+      "id": 964,
       "ns": "STATS",
       "name": "ParetoIsf",
       "kind": "StatsParetoIsf",
@@ -9621,7 +9691,7 @@
       "C99Native": true
     },
     {
-      "id": 958,
+      "id": 965,
       "ns": "STATS",
       "name": "PearsonR",
       "kind": "StatsPearsonR",
@@ -9631,7 +9701,7 @@
       "C99Native": true
     },
     {
-      "id": 959,
+      "id": 966,
       "ns": "STATS",
       "name": "PoissonPmf",
       "kind": "PoissonPmf",
@@ -9641,7 +9711,7 @@
       "C99Native": true
     },
     {
-      "id": 960,
+      "id": 967,
       "ns": "STATS",
       "name": "Regress",
       "kind": "Regress",
@@ -9651,7 +9721,7 @@
       "C99Native": true
     },
     {
-      "id": 961,
+      "id": 968,
       "ns": "STATS",
       "name": "Shapiro",
       "kind": "ShapiroWilk",
@@ -9661,7 +9731,7 @@
       "C99Native": true
     },
     {
-      "id": 962,
+      "id": 969,
       "ns": "STATS",
       "name": "SkewTest",
       "kind": "StatsSkewTest",
@@ -9671,7 +9741,7 @@
       "C99Native": true
     },
     {
-      "id": 963,
+      "id": 970,
       "ns": "STATS",
       "name": "SpearmanR",
       "kind": "StatsSpearmanR",
@@ -9681,7 +9751,7 @@
       "C99Native": true
     },
     {
-      "id": 964,
+      "id": 971,
       "ns": "STATS",
       "name": "TTest",
       "kind": "TTest",
@@ -9691,7 +9761,7 @@
       "C99Native": true
     },
     {
-      "id": 965,
+      "id": 972,
       "ns": "STATS",
       "name": "TTestOneSample",
       "kind": "TTestOneSample",
@@ -9701,7 +9771,7 @@
       "C99Native": true
     },
     {
-      "id": 966,
+      "id": 973,
       "ns": "STATS",
       "name": "TTestPaired",
       "kind": "TTestPaired",
@@ -9711,7 +9781,7 @@
       "C99Native": true
     },
     {
-      "id": 967,
+      "id": 974,
       "ns": "STATS",
       "name": "WeibullIsf",
       "kind": "StatsWeibullIsf",
@@ -9721,7 +9791,7 @@
       "C99Native": true
     },
     {
-      "id": 968,
+      "id": 975,
       "ns": "STATS",
       "name": "Wilcoxon",
       "kind": "StatsWilcoxon",
@@ -9731,7 +9801,7 @@
       "C99Native": true
     },
     {
-      "id": 969,
+      "id": 976,
       "ns": "STATS",
       "name": "ZTPoissonCdf",
       "kind": "StatsZTPoissonCdf",
@@ -9741,7 +9811,7 @@
       "C99Native": true
     },
     {
-      "id": 970,
+      "id": 977,
       "ns": "STATS",
       "name": "ZTPoissonPmf",
       "kind": "StatsZTPoissonPmf",
@@ -9751,7 +9821,7 @@
       "C99Native": true
     },
     {
-      "id": 971,
+      "id": 978,
       "ns": "STATS",
       "name": "ZTest",
       "kind": "ZTest",
@@ -9761,7 +9831,7 @@
       "C99Native": true
     },
     {
-      "id": 972,
+      "id": 979,
       "ns": "STRINGS",
       "name": "Asc",
       "kind": "Asc",
@@ -9771,7 +9841,7 @@
       "C99Native": true
     },
     {
-      "id": 973,
+      "id": 980,
       "ns": "STRINGS",
       "name": "Camel",
       "kind": "Camel",
@@ -9781,7 +9851,7 @@
       "C99Native": true
     },
     {
-      "id": 974,
+      "id": 981,
       "ns": "STRINGS",
       "name": "Chr",
       "kind": "Chr",
@@ -9791,7 +9861,7 @@
       "C99Native": true
     },
     {
-      "id": 975,
+      "id": 982,
       "ns": "STRINGS",
       "name": "Contains",
       "kind": "Contains",
@@ -9801,7 +9871,7 @@
       "C99Native": true
     },
     {
-      "id": 976,
+      "id": 983,
       "ns": "STRINGS",
       "name": "Dup",
       "kind": "Dup",
@@ -9811,7 +9881,7 @@
       "C99Native": true
     },
     {
-      "id": 977,
+      "id": 984,
       "ns": "STRINGS",
       "name": "EndsWith",
       "kind": "EndsWith",
@@ -9821,7 +9891,7 @@
       "C99Native": true
     },
     {
-      "id": 978,
+      "id": 985,
       "ns": "STRINGS",
       "name": "Format",
       "kind": "Format",
@@ -9831,7 +9901,7 @@
       "C99Native": true
     },
     {
-      "id": 979,
+      "id": 986,
       "ns": "STRINGS",
       "name": "HTMLENCODE",
       "kind": "HtmlEncode",
@@ -9841,7 +9911,7 @@
       "C99Native": true
     },
     {
-      "id": 980,
+      "id": 987,
       "ns": "STRINGS",
       "name": "ISCREDITCARD",
       "kind": "IsCreditCard",
@@ -9851,7 +9921,7 @@
       "C99Native": true
     },
     {
-      "id": 981,
+      "id": 988,
       "ns": "STRINGS",
       "name": "ISEMAIL",
       "kind": "IsEmail",
@@ -9861,7 +9931,7 @@
       "C99Native": true
     },
     {
-      "id": 982,
+      "id": 989,
       "ns": "STRINGS",
       "name": "ISLENGTH",
       "kind": "IsLength",
@@ -9871,7 +9941,7 @@
       "C99Native": true
     },
     {
-      "id": 983,
+      "id": 990,
       "ns": "STRINGS",
       "name": "ISREQUIRED",
       "kind": "IsRequired",
@@ -9881,7 +9951,7 @@
       "C99Native": true
     },
     {
-      "id": 984,
+      "id": 991,
       "ns": "STRINGS",
       "name": "ISURL",
       "kind": "IsUrl",
@@ -9891,7 +9961,7 @@
       "C99Native": true
     },
     {
-      "id": 985,
+      "id": 992,
       "ns": "STRINGS",
       "name": "Instr",
       "kind": "Instr",
@@ -9901,7 +9971,7 @@
       "C99Native": true
     },
     {
-      "id": 986,
+      "id": 993,
       "ns": "STRINGS",
       "name": "Instr",
       "kind": "Instr",
@@ -9911,7 +9981,7 @@
       "C99Native": true
     },
     {
-      "id": 987,
+      "id": 994,
       "ns": "STRINGS",
       "name": "JSENCODE",
       "kind": "JsEncode",
@@ -9921,7 +9991,7 @@
       "C99Native": true
     },
     {
-      "id": 988,
+      "id": 995,
       "ns": "STRINGS",
       "name": "Join",
       "kind": "Join",
@@ -9931,7 +10001,7 @@
       "C99Native": true
     },
     {
-      "id": 989,
+      "id": 996,
       "ns": "STRINGS",
       "name": "Kebab",
       "kind": "Kebab",
@@ -9941,7 +10011,7 @@
       "C99Native": true
     },
     {
-      "id": 990,
+      "id": 997,
       "ns": "STRINGS",
       "name": "LCASE",
       "kind": "Lower",
@@ -9951,7 +10021,7 @@
       "C99Native": true
     },
     {
-      "id": 991,
+      "id": 998,
       "ns": "STRINGS",
       "name": "LTrim",
       "kind": "LTrim",
@@ -9961,7 +10031,7 @@
       "C99Native": true
     },
     {
-      "id": 992,
+      "id": 999,
       "ns": "STRINGS",
       "name": "Left",
       "kind": "Left",
@@ -9971,7 +10041,7 @@
       "C99Native": true
     },
     {
-      "id": 993,
+      "id": 1000,
       "ns": "STRINGS",
       "name": "Len",
       "kind": "Len",
@@ -9981,7 +10051,7 @@
       "C99Native": true
     },
     {
-      "id": 994,
+      "id": 1001,
       "ns": "STRINGS",
       "name": "LenB",
       "kind": "LenB",
@@ -9991,7 +10061,7 @@
       "C99Native": true
     },
     {
-      "id": 995,
+      "id": 1002,
       "ns": "STRINGS",
       "name": "Lower",
       "kind": "Lower",
@@ -10001,7 +10071,7 @@
       "C99Native": true
     },
     {
-      "id": 996,
+      "id": 1003,
       "ns": "STRINGS",
       "name": "Mid",
       "kind": "Mid",
@@ -10011,7 +10081,7 @@
       "C99Native": true
     },
     {
-      "id": 997,
+      "id": 1004,
       "ns": "STRINGS",
       "name": "PadC",
       "kind": "PadC",
@@ -10021,7 +10091,7 @@
       "C99Native": true
     },
     {
-      "id": 998,
+      "id": 1005,
       "ns": "STRINGS",
       "name": "PadL",
       "kind": "PadL",
@@ -10031,7 +10101,7 @@
       "C99Native": true
     },
     {
-      "id": 999,
+      "id": 1006,
       "ns": "STRINGS",
       "name": "PadR",
       "kind": "PadR",
@@ -10041,7 +10111,7 @@
       "C99Native": true
     },
     {
-      "id": 1000,
+      "id": 1007,
       "ns": "STRINGS",
       "name": "Pascal",
       "kind": "Pascal",
@@ -10051,7 +10121,7 @@
       "C99Native": true
     },
     {
-      "id": 1001,
+      "id": 1008,
       "ns": "STRINGS",
       "name": "Petscii",
       "kind": "Petscii",
@@ -10061,7 +10131,7 @@
       "C99Native": true
     },
     {
-      "id": 1002,
+      "id": 1009,
       "ns": "STRINGS",
       "name": "RTrim",
       "kind": "RTrim",
@@ -10071,7 +10141,7 @@
       "C99Native": true
     },
     {
-      "id": 1003,
+      "id": 1010,
       "ns": "STRINGS",
       "name": "Remove",
       "kind": "Remove",
@@ -10081,7 +10151,7 @@
       "C99Native": true
     },
     {
-      "id": 1004,
+      "id": 1011,
       "ns": "STRINGS",
       "name": "Repeat",
       "kind": "RepeatFunc",
@@ -10091,7 +10161,7 @@
       "C99Native": true
     },
     {
-      "id": 1005,
+      "id": 1012,
       "ns": "STRINGS",
       "name": "Replace",
       "kind": "Replace",
@@ -10101,7 +10171,7 @@
       "C99Native": true
     },
     {
-      "id": 1006,
+      "id": 1013,
       "ns": "STRINGS",
       "name": "Reverse",
       "kind": "Reverse",
@@ -10111,7 +10181,7 @@
       "C99Native": true
     },
     {
-      "id": 1007,
+      "id": 1014,
       "ns": "STRINGS",
       "name": "Right",
       "kind": "Right",
@@ -10121,7 +10191,7 @@
       "C99Native": true
     },
     {
-      "id": 1008,
+      "id": 1015,
       "ns": "STRINGS",
       "name": "Search",
       "kind": "Search",
@@ -10131,7 +10201,7 @@
       "C99Native": true
     },
     {
-      "id": 1009,
+      "id": 1016,
       "ns": "STRINGS",
       "name": "Sentence",
       "kind": "Sentence",
@@ -10141,7 +10211,7 @@
       "C99Native": true
     },
     {
-      "id": 1010,
+      "id": 1017,
       "ns": "STRINGS",
       "name": "Snake",
       "kind": "Snake",
@@ -10151,7 +10221,7 @@
       "C99Native": true
     },
     {
-      "id": 1011,
+      "id": 1018,
       "ns": "STRINGS",
       "name": "Space",
       "kind": "Space",
@@ -10161,7 +10231,7 @@
       "C99Native": true
     },
     {
-      "id": 1012,
+      "id": 1019,
       "ns": "STRINGS",
       "name": "Split",
       "kind": "Split",
@@ -10171,7 +10241,7 @@
       "C99Native": true
     },
     {
-      "id": 1013,
+      "id": 1020,
       "ns": "STRINGS",
       "name": "StartsWith",
       "kind": "StartsWith",
@@ -10181,7 +10251,7 @@
       "C99Native": true
     },
     {
-      "id": 1014,
+      "id": 1021,
       "ns": "STRINGS",
       "name": "Str",
       "kind": "Str",
@@ -10191,7 +10261,7 @@
       "C99Native": true
     },
     {
-      "id": 1015,
+      "id": 1022,
       "ns": "STRINGS",
       "name": "Title",
       "kind": "Title",
@@ -10201,7 +10271,7 @@
       "C99Native": true
     },
     {
-      "id": 1016,
+      "id": 1023,
       "ns": "STRINGS",
       "name": "Trim",
       "kind": "Trim",
@@ -10211,7 +10281,7 @@
       "C99Native": true
     },
     {
-      "id": 1017,
+      "id": 1024,
       "ns": "STRINGS",
       "name": "UCASE",
       "kind": "Upper",
@@ -10221,7 +10291,7 @@
       "C99Native": true
     },
     {
-      "id": 1018,
+      "id": 1025,
       "ns": "STRINGS",
       "name": "URLENCODE",
       "kind": "UrlEncode",
@@ -10231,7 +10301,7 @@
       "C99Native": true
     },
     {
-      "id": 1019,
+      "id": 1026,
       "ns": "STRINGS",
       "name": "Upper",
       "kind": "Upper",
@@ -10241,7 +10311,7 @@
       "C99Native": true
     },
     {
-      "id": 1020,
+      "id": 1027,
       "ns": "STRINGS",
       "name": "WRAP",
       "kind": "Wrap",
@@ -10251,7 +10321,7 @@
       "C99Native": true
     },
     {
-      "id": 1021,
+      "id": 1028,
       "ns": "SYNCMAP",
       "name": "DELETE",
       "kind": "SyncMapDelete",
@@ -10261,7 +10331,7 @@
       "C99Native": true
     },
     {
-      "id": 1022,
+      "id": 1029,
       "ns": "SYNCMAP",
       "name": "LOAD",
       "kind": "SyncMapLoad",
@@ -10271,7 +10341,7 @@
       "C99Native": true
     },
     {
-      "id": 1023,
+      "id": 1030,
       "ns": "SYNCMAP",
       "name": "LOADORSTORE",
       "kind": "SyncMapLoadOrStore",
@@ -10281,7 +10351,7 @@
       "C99Native": true
     },
     {
-      "id": 1024,
+      "id": 1031,
       "ns": "SYNCMAP",
       "name": "STORE",
       "kind": "SyncMapStore",
@@ -10291,7 +10361,7 @@
       "C99Native": true
     },
     {
-      "id": 1025,
+      "id": 1032,
       "ns": "SYSTEM",
       "name": "CHOOSE",
       "kind": "Choose",
@@ -10301,7 +10371,7 @@
       "C99Native": true
     },
     {
-      "id": 1026,
+      "id": 1033,
       "ns": "SYSTEM",
       "name": "COMMAND",
       "kind": "Command",
@@ -10311,7 +10381,7 @@
       "C99Native": true
     },
     {
-      "id": 1027,
+      "id": 1034,
       "ns": "SYSTEM",
       "name": "COMMANDCOUNT",
       "kind": "CommandCount",
@@ -10321,7 +10391,7 @@
       "C99Native": true
     },
     {
-      "id": 1028,
+      "id": 1035,
       "ns": "SYSTEM",
       "name": "CTYPE",
       "kind": "CType",
@@ -10331,7 +10401,7 @@
       "C99Native": true
     },
     {
-      "id": 1029,
+      "id": 1036,
       "ns": "SYSTEM",
       "name": "Count",
       "kind": "Count",
@@ -10341,7 +10411,7 @@
       "C99Native": true
     },
     {
-      "id": 1030,
+      "id": 1037,
       "ns": "SYSTEM",
       "name": "EMPTY",
       "kind": "Empty",
@@ -10351,7 +10421,7 @@
       "C99Native": true
     },
     {
-      "id": 1031,
+      "id": 1038,
       "ns": "SYSTEM",
       "name": "ENV",
       "kind": "EnvGet",
@@ -10361,7 +10431,7 @@
       "C99Native": true
     },
     {
-      "id": 1032,
+      "id": 1039,
       "ns": "SYSTEM",
       "name": "GOMAXPROCS",
       "kind": "GoMaxProcs",
@@ -10371,7 +10441,7 @@
       "C99Native": true
     },
     {
-      "id": 1033,
+      "id": 1040,
       "ns": "SYSTEM",
       "name": "HAS",
       "kind": "EnvHas",
@@ -10381,7 +10451,7 @@
       "C99Native": true
     },
     {
-      "id": 1034,
+      "id": 1041,
       "ns": "SYSTEM",
       "name": "IIF",
       "kind": "Iif",
@@ -10391,7 +10461,7 @@
       "C99Native": true
     },
     {
-      "id": 1035,
+      "id": 1042,
       "ns": "SYSTEM",
       "name": "LBOUND",
       "kind": "LBound",
@@ -10401,7 +10471,7 @@
       "C99Native": true
     },
     {
-      "id": 1036,
+      "id": 1043,
       "ns": "SYSTEM",
       "name": "NUMCPU",
       "kind": "NumCpu",
@@ -10411,7 +10481,7 @@
       "C99Native": true
     },
     {
-      "id": 1037,
+      "id": 1044,
       "ns": "SYSTEM",
       "name": "NUMGOROUTINE",
       "kind": "NumGoroutine",
@@ -10421,7 +10491,7 @@
       "C99Native": true
     },
     {
-      "id": 1038,
+      "id": 1045,
       "ns": "SYSTEM",
       "name": "Next",
       "kind": "Next",
@@ -10431,7 +10501,7 @@
       "C99Native": true
     },
     {
-      "id": 1039,
+      "id": 1046,
       "ns": "SYSTEM",
       "name": "SHELLCODE",
       "kind": "ShellCode",
@@ -10441,7 +10511,7 @@
       "C99Native": true
     },
     {
-      "id": 1040,
+      "id": 1047,
       "ns": "SYSTEM",
       "name": "SHELLOUT",
       "kind": "ShellOut",
@@ -10451,7 +10521,7 @@
       "C99Native": true
     },
     {
-      "id": 1041,
+      "id": 1048,
       "ns": "SYSTEM",
       "name": "SIZEOF",
       "kind": "SizeOf",
@@ -10461,7 +10531,7 @@
       "C99Native": true
     },
     {
-      "id": 1042,
+      "id": 1049,
       "ns": "SYSTEM",
       "name": "STRPTR",
       "kind": "StrPtr",
@@ -10471,7 +10541,7 @@
       "C99Native": true
     },
     {
-      "id": 1043,
+      "id": 1050,
       "ns": "SYSTEM",
       "name": "STRTI",
       "kind": "StrTi",
@@ -10481,7 +10551,7 @@
       "C99Native": true
     },
     {
-      "id": 1044,
+      "id": 1051,
       "ns": "SYSTEM",
       "name": "SYS",
       "kind": "Sys",
@@ -10491,7 +10561,7 @@
       "C99Native": true
     },
     {
-      "id": 1045,
+      "id": 1052,
       "ns": "SYSTEM",
       "name": "TAB",
       "kind": "Tab",
@@ -10501,7 +10571,7 @@
       "C99Native": true
     },
     {
-      "id": 1046,
+      "id": 1053,
       "ns": "SYSTEM",
       "name": "TI",
       "kind": "Ti",
@@ -10511,7 +10581,7 @@
       "C99Native": true
     },
     {
-      "id": 1047,
+      "id": 1054,
       "ns": "SYSTEM",
       "name": "TYPENAME",
       "kind": "TypeName",
@@ -10521,7 +10591,7 @@
       "C99Native": true
     },
     {
-      "id": 1048,
+      "id": 1055,
       "ns": "SYSTEM",
       "name": "UBOUND",
       "kind": "UBound",
@@ -10531,7 +10601,7 @@
       "C99Native": true
     },
     {
-      "id": 1049,
+      "id": 1056,
       "ns": "SYSTEM",
       "name": "UDTALIGNED",
       "kind": "UdtAligned",
@@ -10541,7 +10611,7 @@
       "C99Native": true
     },
     {
-      "id": 1050,
+      "id": 1057,
       "ns": "SYSTEM",
       "name": "UDTPACKED",
       "kind": "UdtPacked",
@@ -10551,7 +10621,7 @@
       "C99Native": true
     },
     {
-      "id": 1051,
+      "id": 1058,
       "ns": "SYSTEM",
       "name": "VALTYPE",
       "kind": "ValType",
@@ -10561,7 +10631,7 @@
       "C99Native": true
     },
     {
-      "id": 1052,
+      "id": 1059,
       "ns": "SYSTEM",
       "name": "VARPTR",
       "kind": "VarPtr",
@@ -10571,7 +10641,7 @@
       "C99Native": true
     },
     {
-      "id": 1053,
+      "id": 1060,
       "ns": "TOOL",
       "name": "Register",
       "kind": "ToolRegister",
@@ -10581,7 +10651,7 @@
       "C99Native": true
     },
     {
-      "id": 1054,
+      "id": 1061,
       "ns": "TOOL",
       "name": "Search",
       "kind": "ToolSearch",
@@ -10591,7 +10661,7 @@
       "C99Native": true
     },
     {
-      "id": 1055,
+      "id": 1062,
       "ns": "TORCH",
       "name": "ABS",
       "kind": "TorchAbs",
@@ -10601,7 +10671,7 @@
       "C99Native": true
     },
     {
-      "id": 1056,
+      "id": 1063,
       "ns": "TORCH",
       "name": "ACCURACY",
       "kind": "TorchAccuracy",
@@ -10611,7 +10681,7 @@
       "C99Native": true
     },
     {
-      "id": 1057,
+      "id": 1064,
       "ns": "TORCH",
       "name": "ADD",
       "kind": "TorchAdd",
@@ -10621,7 +10691,7 @@
       "C99Native": true
     },
     {
-      "id": 1058,
+      "id": 1065,
       "ns": "TORCH",
       "name": "ALLCLOSE",
       "kind": "TorchAllclose",
@@ -10631,7 +10701,7 @@
       "C99Native": true
     },
     {
-      "id": 1059,
+      "id": 1066,
       "ns": "TORCH",
       "name": "ARGMAX",
       "kind": "TorchArgmax",
@@ -10641,7 +10711,7 @@
       "C99Native": true
     },
     {
-      "id": 1060,
+      "id": 1067,
       "ns": "TORCH",
       "name": "ARGSORT",
       "kind": "TorchArgsort",
@@ -10651,7 +10721,7 @@
       "C99Native": true
     },
     {
-      "id": 1061,
+      "id": 1068,
       "ns": "TORCH",
       "name": "AVAILABLE",
       "kind": "TorchAvailable",
@@ -10661,7 +10731,7 @@
       "C99Native": true
     },
     {
-      "id": 1062,
+      "id": 1069,
       "ns": "TORCH",
       "name": "BLEU",
       "kind": "TorchBleu",
@@ -10671,7 +10741,7 @@
       "C99Native": true
     },
     {
-      "id": 1063,
+      "id": 1070,
       "ns": "TORCH",
       "name": "CLIP",
       "kind": "TorchClip",
@@ -10681,7 +10751,7 @@
       "C99Native": true
     },
     {
-      "id": 1064,
+      "id": 1071,
       "ns": "TORCH",
       "name": "CONCAT",
       "kind": "TorchConcat",
@@ -10691,7 +10761,7 @@
       "C99Native": true
     },
     {
-      "id": 1065,
+      "id": 1072,
       "ns": "TORCH",
       "name": "CREATE",
       "kind": "TorchCreate",
@@ -10701,7 +10771,7 @@
       "C99Native": true
     },
     {
-      "id": 1066,
+      "id": 1073,
       "ns": "TORCH",
       "name": "DATASETLOAD",
       "kind": "TorchDatasetLoad",
@@ -10711,7 +10781,7 @@
       "C99Native": true
     },
     {
-      "id": 1067,
+      "id": 1074,
       "ns": "TORCH",
       "name": "DEVICE",
       "kind": "TorchDevice",
@@ -10721,7 +10791,7 @@
       "C99Native": true
     },
     {
-      "id": 1068,
+      "id": 1075,
       "ns": "TORCH",
       "name": "DEVICEOF",
       "kind": "TorchDeviceOf",
@@ -10731,7 +10801,7 @@
       "C99Native": true
     },
     {
-      "id": 1069,
+      "id": 1076,
       "ns": "TORCH",
       "name": "DIV",
       "kind": "TorchDiv",
@@ -10741,7 +10811,7 @@
       "C99Native": true
     },
     {
-      "id": 1070,
+      "id": 1077,
       "ns": "TORCH",
       "name": "DTYPE",
       "kind": "TorchDtype",
@@ -10751,7 +10821,7 @@
       "C99Native": true
     },
     {
-      "id": 1071,
+      "id": 1078,
       "ns": "TORCH",
       "name": "EXP",
       "kind": "TorchExp",
@@ -10761,7 +10831,7 @@
       "C99Native": true
     },
     {
-      "id": 1072,
+      "id": 1079,
       "ns": "TORCH",
       "name": "EYE",
       "kind": "TorchEye",
@@ -10771,7 +10841,7 @@
       "C99Native": true
     },
     {
-      "id": 1073,
+      "id": 1080,
       "ns": "TORCH",
       "name": "FREE",
       "kind": "TorchFree",
@@ -10781,7 +10851,7 @@
       "C99Native": true
     },
     {
-      "id": 1074,
+      "id": 1081,
       "ns": "TORCH",
       "name": "FROM",
       "kind": "TorchFrom",
@@ -10791,7 +10861,7 @@
       "C99Native": true
     },
     {
-      "id": 1075,
+      "id": 1082,
       "ns": "TORCH",
       "name": "GELU",
       "kind": "TorchGelu",
@@ -10801,7 +10871,7 @@
       "C99Native": true
     },
     {
-      "id": 1076,
+      "id": 1083,
       "ns": "TORCH",
       "name": "GET",
       "kind": "TorchGet",
@@ -10811,7 +10881,7 @@
       "C99Native": true
     },
     {
-      "id": 1077,
+      "id": 1084,
       "ns": "TORCH",
       "name": "IMATRIXLOAD",
       "kind": "TorchImatrixLoad",
@@ -10821,7 +10891,7 @@
       "C99Native": true
     },
     {
-      "id": 1078,
+      "id": 1085,
       "ns": "TORCH",
       "name": "IMATRIXRANKS",
       "kind": "TorchImatrixRanks",
@@ -10831,7 +10901,7 @@
       "C99Native": true
     },
     {
-      "id": 1079,
+      "id": 1086,
       "ns": "TORCH",
       "name": "LIBPATH",
       "kind": "TorchLibPath",
@@ -10841,7 +10911,7 @@
       "C99Native": true
     },
     {
-      "id": 1080,
+      "id": 1087,
       "ns": "TORCH",
       "name": "LOADED",
       "kind": "TorchLoaded",
@@ -10851,7 +10921,7 @@
       "C99Native": true
     },
     {
-      "id": 1081,
+      "id": 1088,
       "ns": "TORCH",
       "name": "LOG",
       "kind": "TorchLog",
@@ -10861,7 +10931,7 @@
       "C99Native": true
     },
     {
-      "id": 1082,
+      "id": 1089,
       "ns": "TORCH",
       "name": "LOSSBINARY",
       "kind": "TorchLossBinary",
@@ -10871,7 +10941,7 @@
       "C99Native": true
     },
     {
-      "id": 1083,
+      "id": 1090,
       "ns": "TORCH",
       "name": "LOSSCROSSENTROPY",
       "kind": "TorchLossCrossEntropy",
@@ -10881,7 +10951,7 @@
       "C99Native": true
     },
     {
-      "id": 1084,
+      "id": 1091,
       "ns": "TORCH",
       "name": "LOSSMSE",
       "kind": "TorchLossMse",
@@ -10891,7 +10961,7 @@
       "C99Native": true
     },
     {
-      "id": 1085,
+      "id": 1092,
       "ns": "TORCH",
       "name": "MATMUL",
       "kind": "TorchMatmul",
@@ -10901,7 +10971,7 @@
       "C99Native": true
     },
     {
-      "id": 1086,
+      "id": 1093,
       "ns": "TORCH",
       "name": "MAX",
       "kind": "TorchMax",
@@ -10911,7 +10981,7 @@
       "C99Native": true
     },
     {
-      "id": 1087,
+      "id": 1094,
       "ns": "TORCH",
       "name": "MEAN",
       "kind": "TorchMean",
@@ -10921,7 +10991,7 @@
       "C99Native": true
     },
     {
-      "id": 1088,
+      "id": 1095,
       "ns": "TORCH",
       "name": "MIN",
       "kind": "TorchMin",
@@ -10931,7 +11001,7 @@
       "C99Native": true
     },
     {
-      "id": 1089,
+      "id": 1096,
       "ns": "TORCH",
       "name": "MODELCREATE",
       "kind": "TorchModelCreate",
@@ -10941,7 +11011,7 @@
       "C99Native": true
     },
     {
-      "id": 1090,
+      "id": 1097,
       "ns": "TORCH",
       "name": "MODELDPOSTEP",
       "kind": "TorchDpoStep",
@@ -10951,7 +11021,7 @@
       "C99Native": true
     },
     {
-      "id": 1091,
+      "id": 1098,
       "ns": "TORCH",
       "name": "MODELEXPORT",
       "kind": "TorchModelExport",
@@ -10961,7 +11031,7 @@
       "C99Native": true
     },
     {
-      "id": 1092,
+      "id": 1099,
       "ns": "TORCH",
       "name": "MODELFORWARD",
       "kind": "TorchModelForward",
@@ -10971,7 +11041,7 @@
       "C99Native": true
     },
     {
-      "id": 1093,
+      "id": 1100,
       "ns": "TORCH",
       "name": "MODELFREE",
       "kind": "TorchModelFree",
@@ -10981,7 +11051,7 @@
       "C99Native": true
     },
     {
-      "id": 1094,
+      "id": 1101,
       "ns": "TORCH",
       "name": "MODELINPUT",
       "kind": "TorchModelInput",
@@ -10991,7 +11061,7 @@
       "C99Native": true
     },
     {
-      "id": 1095,
+      "id": 1102,
       "ns": "TORCH",
       "name": "MODELLOAD",
       "kind": "TorchModelLoad",
@@ -11001,7 +11071,7 @@
       "C99Native": true
     },
     {
-      "id": 1096,
+      "id": 1103,
       "ns": "TORCH",
       "name": "MODELLOSS",
       "kind": "TorchModelLoss",
@@ -11011,7 +11081,7 @@
       "C99Native": true
     },
     {
-      "id": 1097,
+      "id": 1104,
       "ns": "TORCH",
       "name": "MODELOUTPUT",
       "kind": "TorchModelOutput",
@@ -11021,7 +11091,7 @@
       "C99Native": true
     },
     {
-      "id": 1098,
+      "id": 1105,
       "ns": "TORCH",
       "name": "MODELPARAMETERS",
       "kind": "TorchModelParameters",
@@ -11031,7 +11101,7 @@
       "C99Native": true
     },
     {
-      "id": 1099,
+      "id": 1106,
       "ns": "TORCH",
       "name": "MODELRESET",
       "kind": "TorchModelReset",
@@ -11041,7 +11111,7 @@
       "C99Native": true
     },
     {
-      "id": 1100,
+      "id": 1107,
       "ns": "TORCH",
       "name": "MODELSAVE",
       "kind": "TorchModelSave",
@@ -11051,7 +11121,7 @@
       "C99Native": true
     },
     {
-      "id": 1101,
+      "id": 1108,
       "ns": "TORCH",
       "name": "MODELSTATE",
       "kind": "TorchModelState",
@@ -11061,7 +11131,7 @@
       "C99Native": true
     },
     {
-      "id": 1102,
+      "id": 1109,
       "ns": "TORCH",
       "name": "MODELTRAINSTEP",
       "kind": "TorchModelTrainStep",
@@ -11071,7 +11141,7 @@
       "C99Native": true
     },
     {
-      "id": 1103,
+      "id": 1110,
       "ns": "TORCH",
       "name": "MUL",
       "kind": "TorchMul",
@@ -11081,7 +11151,7 @@
       "C99Native": true
     },
     {
-      "id": 1104,
+      "id": 1111,
       "ns": "TORCH",
       "name": "NORMALIZE",
       "kind": "TorchNormalize",
@@ -11091,7 +11161,7 @@
       "C99Native": true
     },
     {
-      "id": 1105,
+      "id": 1112,
       "ns": "TORCH",
       "name": "ONEHOT",
       "kind": "TorchOneHot",
@@ -11101,7 +11171,7 @@
       "C99Native": true
     },
     {
-      "id": 1106,
+      "id": 1113,
       "ns": "TORCH",
       "name": "ONES",
       "kind": "TorchOnes",
@@ -11111,7 +11181,7 @@
       "C99Native": true
     },
     {
-      "id": 1107,
+      "id": 1114,
       "ns": "TORCH",
       "name": "PERMUTE",
       "kind": "TorchPermute",
@@ -11121,7 +11191,7 @@
       "C99Native": true
     },
     {
-      "id": 1108,
+      "id": 1115,
       "ns": "TORCH",
       "name": "POW",
       "kind": "TorchPow",
@@ -11131,7 +11201,7 @@
       "C99Native": true
     },
     {
-      "id": 1109,
+      "id": 1116,
       "ns": "TORCH",
       "name": "RANDN",
       "kind": "TorchRandn",
@@ -11141,7 +11211,7 @@
       "C99Native": true
     },
     {
-      "id": 1110,
+      "id": 1117,
       "ns": "TORCH",
       "name": "RELU",
       "kind": "TorchRelu",
@@ -11151,7 +11221,7 @@
       "C99Native": true
     },
     {
-      "id": 1111,
+      "id": 1118,
       "ns": "TORCH",
       "name": "RESHAPE",
       "kind": "TorchReshape",
@@ -11161,7 +11231,7 @@
       "C99Native": true
     },
     {
-      "id": 1112,
+      "id": 1119,
       "ns": "TORCH",
       "name": "ROUGE",
       "kind": "TorchRouge",
@@ -11171,7 +11241,7 @@
       "C99Native": true
     },
     {
-      "id": 1113,
+      "id": 1120,
       "ns": "TORCH",
       "name": "SET",
       "kind": "TorchSet",
@@ -11181,7 +11251,7 @@
       "C99Native": true
     },
     {
-      "id": 1114,
+      "id": 1121,
       "ns": "TORCH",
       "name": "SHAPE",
       "kind": "TorchShape",
@@ -11191,7 +11261,7 @@
       "C99Native": true
     },
     {
-      "id": 1115,
+      "id": 1122,
       "ns": "TORCH",
       "name": "SIGMOID",
       "kind": "TorchSigmoid",
@@ -11201,7 +11271,7 @@
       "C99Native": true
     },
     {
-      "id": 1116,
+      "id": 1123,
       "ns": "TORCH",
       "name": "SIMILARITY",
       "kind": "TorchSimilarity",
@@ -11211,7 +11281,7 @@
       "C99Native": true
     },
     {
-      "id": 1117,
+      "id": 1124,
       "ns": "TORCH",
       "name": "SLICE",
       "kind": "TorchSlice",
@@ -11221,7 +11291,7 @@
       "C99Native": true
     },
     {
-      "id": 1118,
+      "id": 1125,
       "ns": "TORCH",
       "name": "SOFTMAX",
       "kind": "TorchSoftmax",
@@ -11231,7 +11301,7 @@
       "C99Native": true
     },
     {
-      "id": 1119,
+      "id": 1126,
       "ns": "TORCH",
       "name": "SPLIT",
       "kind": "TorchSplit",
@@ -11241,7 +11311,7 @@
       "C99Native": true
     },
     {
-      "id": 1120,
+      "id": 1127,
       "ns": "TORCH",
       "name": "SQRT",
       "kind": "TorchSqrt",
@@ -11251,7 +11321,7 @@
       "C99Native": true
     },
     {
-      "id": 1121,
+      "id": 1128,
       "ns": "TORCH",
       "name": "STACK",
       "kind": "TorchStack",
@@ -11261,7 +11331,7 @@
       "C99Native": true
     },
     {
-      "id": 1122,
+      "id": 1129,
       "ns": "TORCH",
       "name": "STANDARDIZE",
       "kind": "TorchStandardize",
@@ -11271,7 +11341,7 @@
       "C99Native": true
     },
     {
-      "id": 1123,
+      "id": 1130,
       "ns": "TORCH",
       "name": "SUB",
       "kind": "TorchSub",
@@ -11281,7 +11351,7 @@
       "C99Native": true
     },
     {
-      "id": 1124,
+      "id": 1131,
       "ns": "TORCH",
       "name": "SUM",
       "kind": "TorchSum",
@@ -11291,7 +11361,7 @@
       "C99Native": true
     },
     {
-      "id": 1125,
+      "id": 1132,
       "ns": "TORCH",
       "name": "TANH",
       "kind": "TorchTanh",
@@ -11301,7 +11371,7 @@
       "C99Native": true
     },
     {
-      "id": 1126,
+      "id": 1133,
       "ns": "TORCH",
       "name": "TEXTDECODE",
       "kind": "TorchTextDecode",
@@ -11311,7 +11381,7 @@
       "C99Native": true
     },
     {
-      "id": 1127,
+      "id": 1134,
       "ns": "TORCH",
       "name": "TEXTENCODE",
       "kind": "TorchTextEncode",
@@ -11321,7 +11391,7 @@
       "C99Native": true
     },
     {
-      "id": 1128,
+      "id": 1135,
       "ns": "TORCH",
       "name": "TOARRAY",
       "kind": "TorchToArray",
@@ -11331,7 +11401,7 @@
       "C99Native": true
     },
     {
-      "id": 1129,
+      "id": 1136,
       "ns": "TORCH",
       "name": "TOPK",
       "kind": "TorchTopK",
@@ -11341,7 +11411,7 @@
       "C99Native": true
     },
     {
-      "id": 1130,
+      "id": 1137,
       "ns": "TORCH",
       "name": "TRANSPOSE",
       "kind": "TorchTranspose",
@@ -11351,7 +11421,7 @@
       "C99Native": true
     },
     {
-      "id": 1131,
+      "id": 1138,
       "ns": "TORCH",
       "name": "ZEROS",
       "kind": "TorchZeros",
@@ -11361,7 +11431,7 @@
       "C99Native": true
     },
     {
-      "id": 1132,
+      "id": 1139,
       "ns": "TRAY",
       "name": "TRAYAVAILABLE",
       "kind": "TrayAvailable",
@@ -11371,7 +11441,7 @@
       "C99Native": true
     },
     {
-      "id": 1133,
+      "id": 1140,
       "ns": "TRAY",
       "name": "TRAYBACKEND",
       "kind": "TrayBackend",
@@ -11381,7 +11451,7 @@
       "C99Native": true
     },
     {
-      "id": 1134,
+      "id": 1141,
       "ns": "TRAY",
       "name": "TRAYCREATE",
       "kind": "TrayCreate",
@@ -11391,7 +11461,7 @@
       "C99Native": true
     },
     {
-      "id": 1135,
+      "id": 1142,
       "ns": "TRAY",
       "name": "TRAYITEM",
       "kind": "TrayItem",
@@ -11401,7 +11471,7 @@
       "C99Native": true
     },
     {
-      "id": 1136,
+      "id": 1143,
       "ns": "TRAY",
       "name": "TRAYLAST",
       "kind": "TrayLast",
@@ -11411,7 +11481,7 @@
       "C99Native": true
     },
     {
-      "id": 1137,
+      "id": 1144,
       "ns": "TRAY",
       "name": "TRAYPOLL",
       "kind": "TrayPoll",
@@ -11421,7 +11491,7 @@
       "C99Native": true
     },
     {
-      "id": 1138,
+      "id": 1145,
       "ns": "TRAY",
       "name": "TRAYREMOVE",
       "kind": "TrayRemove",
@@ -11431,7 +11501,7 @@
       "C99Native": true
     },
     {
-      "id": 1139,
+      "id": 1146,
       "ns": "TRAY",
       "name": "TRAYSELFTEST",
       "kind": "TraySelfTest",
@@ -11441,7 +11511,7 @@
       "C99Native": true
     },
     {
-      "id": 1140,
+      "id": 1147,
       "ns": "TRAY",
       "name": "TRAYSEP",
       "kind": "TraySep",
@@ -11451,7 +11521,7 @@
       "C99Native": true
     },
     {
-      "id": 1141,
+      "id": 1148,
       "ns": "TRAY",
       "name": "TRAYTOOLTIP",
       "kind": "TrayTooltip",
@@ -11461,7 +11531,7 @@
       "C99Native": true
     },
     {
-      "id": 1142,
+      "id": 1149,
       "ns": "TYPEINFO",
       "name": "HAS",
       "kind": "TypeInfoHas",
@@ -11471,7 +11541,7 @@
       "C99Native": true
     },
     {
-      "id": 1143,
+      "id": 1150,
       "ns": "TYPEINFO",
       "name": "METHODINFO",
       "kind": "MethodInfo",
@@ -11481,7 +11551,7 @@
       "C99Native": true
     },
     {
-      "id": 1144,
+      "id": 1151,
       "ns": "TYPEINFO",
       "name": "PROPERTYINFO",
       "kind": "PropertyInfo",
@@ -11491,7 +11561,7 @@
       "C99Native": true
     },
     {
-      "id": 1145,
+      "id": 1152,
       "ns": "TYPEINFO",
       "name": "TYPEINFO",
       "kind": "TypeInfo",
@@ -11501,7 +11571,7 @@
       "C99Native": true
     },
     {
-      "id": 1146,
+      "id": 1153,
       "ns": "UI",
       "name": "Click",
       "kind": "UiClick",
@@ -11511,7 +11581,7 @@
       "C99Native": true
     },
     {
-      "id": 1147,
+      "id": 1154,
       "ns": "UI",
       "name": "Find",
       "kind": "UiFind",
@@ -11521,7 +11591,7 @@
       "C99Native": true
     },
     {
-      "id": 1148,
+      "id": 1155,
       "ns": "UI",
       "name": "FindAll",
       "kind": "UiFindAll",
@@ -11531,7 +11601,7 @@
       "C99Native": true
     },
     {
-      "id": 1149,
+      "id": 1156,
       "ns": "UI",
       "name": "Type",
       "kind": "UiType",
@@ -11541,7 +11611,7 @@
       "C99Native": true
     },
     {
-      "id": 1150,
+      "id": 1157,
       "ns": "VECTOR",
       "name": "Angle2d",
       "kind": "Angle2d",
@@ -11551,7 +11621,7 @@
       "C99Native": true
     },
     {
-      "id": 1151,
+      "id": 1158,
       "ns": "VECTOR",
       "name": "CHEBYSHEV",
       "kind": "VectorChebyshev",
@@ -11561,7 +11631,7 @@
       "C99Native": true
     },
     {
-      "id": 1152,
+      "id": 1159,
       "ns": "VECTOR",
       "name": "COSINE",
       "kind": "VectorCosineDistance",
@@ -11571,7 +11641,7 @@
       "C99Native": true
     },
     {
-      "id": 1153,
+      "id": 1160,
       "ns": "VECTOR",
       "name": "CREATE",
       "kind": "LinAlgVectorCreateFunc",
@@ -11581,7 +11651,7 @@
       "C99Native": true
     },
     {
-      "id": 1154,
+      "id": 1161,
       "ns": "VECTOR",
       "name": "Dist2d",
       "kind": "Dist2d",
@@ -11591,7 +11661,7 @@
       "C99Native": true
     },
     {
-      "id": 1155,
+      "id": 1162,
       "ns": "VECTOR",
       "name": "Dist3d",
       "kind": "Dist3d",
@@ -11601,7 +11671,7 @@
       "C99Native": true
     },
     {
-      "id": 1156,
+      "id": 1163,
       "ns": "VECTOR",
       "name": "EUCLIDEA",
       "kind": "Norm",
@@ -11611,7 +11681,7 @@
       "C99Native": true
     },
     {
-      "id": 1157,
+      "id": 1164,
       "ns": "VECTOR",
       "name": "EuclideanDistanceSquared",
       "kind": "EuclideanDistanceSquared",
@@ -11621,7 +11691,7 @@
       "C99Native": true
     },
     {
-      "id": 1158,
+      "id": 1165,
       "ns": "VECTOR",
       "name": "MANHATTAN",
       "kind": "VectorManhattan",
@@ -11631,7 +11701,7 @@
       "C99Native": true
     },
     {
-      "id": 1159,
+      "id": 1166,
       "ns": "VECTOR",
       "name": "MINKOWSKI",
       "kind": "VectorMinkowski",
@@ -11641,7 +11711,7 @@
       "C99Native": true
     },
     {
-      "id": 1160,
+      "id": 1167,
       "ns": "VECTOR",
       "name": "POLAR_X",
       "kind": "PolarX",
@@ -11651,7 +11721,7 @@
       "C99Native": true
     },
     {
-      "id": 1161,
+      "id": 1168,
       "ns": "VECTOR",
       "name": "POLAR_Y",
       "kind": "PolarY",
@@ -11661,7 +11731,7 @@
       "C99Native": true
     },
     {
-      "id": 1162,
+      "id": 1169,
       "ns": "VECTOR",
       "name": "PRODUCT",
       "kind": "DotProduct",
@@ -11671,7 +11741,7 @@
       "C99Native": true
     },
     {
-      "id": 1163,
+      "id": 1170,
       "ns": "VECTOR",
       "name": "VADD",
       "kind": "VAdd",
@@ -11681,7 +11751,7 @@
       "C99Native": true
     },
     {
-      "id": 1164,
+      "id": 1171,
       "ns": "VECTOR",
       "name": "VANGLE",
       "kind": "VAngle",
@@ -11691,7 +11761,7 @@
       "C99Native": true
     },
     {
-      "id": 1165,
+      "id": 1172,
       "ns": "VECTOR",
       "name": "VCROSS",
       "kind": "VCross",
@@ -11701,7 +11771,7 @@
       "C99Native": true
     },
     {
-      "id": 1166,
+      "id": 1173,
       "ns": "VECTOR",
       "name": "VDIST",
       "kind": "VDist",
@@ -11711,7 +11781,7 @@
       "C99Native": true
     },
     {
-      "id": 1167,
+      "id": 1174,
       "ns": "VECTOR",
       "name": "VDIV",
       "kind": "VDiv",
@@ -11721,7 +11791,7 @@
       "C99Native": true
     },
     {
-      "id": 1168,
+      "id": 1175,
       "ns": "VECTOR",
       "name": "VGET",
       "kind": "VGet",
@@ -11731,7 +11801,7 @@
       "C99Native": true
     },
     {
-      "id": 1169,
+      "id": 1176,
       "ns": "VECTOR",
       "name": "VLERP",
       "kind": "VLerp",
@@ -11741,7 +11811,7 @@
       "C99Native": true
     },
     {
-      "id": 1170,
+      "id": 1177,
       "ns": "VECTOR",
       "name": "VMAX",
       "kind": "VMax",
@@ -11751,7 +11821,7 @@
       "C99Native": true
     },
     {
-      "id": 1171,
+      "id": 1178,
       "ns": "VECTOR",
       "name": "VMIN",
       "kind": "VMin",
@@ -11761,7 +11831,7 @@
       "C99Native": true
     },
     {
-      "id": 1172,
+      "id": 1179,
       "ns": "VECTOR",
       "name": "VMUL",
       "kind": "VMul",
@@ -11771,7 +11841,7 @@
       "C99Native": true
     },
     {
-      "id": 1173,
+      "id": 1180,
       "ns": "VECTOR",
       "name": "VNORM",
       "kind": "VNorm",
@@ -11781,7 +11851,7 @@
       "C99Native": true
     },
     {
-      "id": 1174,
+      "id": 1181,
       "ns": "VECTOR",
       "name": "VSCALE",
       "kind": "VScale",
@@ -11791,7 +11861,7 @@
       "C99Native": true
     },
     {
-      "id": 1175,
+      "id": 1182,
       "ns": "VECTOR",
       "name": "VSUB",
       "kind": "VSub",
@@ -11801,7 +11871,7 @@
       "C99Native": true
     },
     {
-      "id": 1176,
+      "id": 1183,
       "ns": "VECTORDB",
       "name": "AbTest",
       "kind": "VectorDbAbTest",
@@ -11811,7 +11881,7 @@
       "C99Native": true
     },
     {
-      "id": 1177,
+      "id": 1184,
       "ns": "VECTORDB",
       "name": "Baseline",
       "kind": "VectorDbBaseline",
@@ -11821,7 +11891,7 @@
       "C99Native": true
     },
     {
-      "id": 1178,
+      "id": 1185,
       "ns": "VECTORDB",
       "name": "Calibrate",
       "kind": "VectorDbCalibrate",
@@ -11831,7 +11901,7 @@
       "C99Native": true
     },
     {
-      "id": 1179,
+      "id": 1186,
       "ns": "VECTORDB",
       "name": "Compare",
       "kind": "VectorDbCompare",
@@ -11841,7 +11911,7 @@
       "C99Native": true
     },
     {
-      "id": 1180,
+      "id": 1187,
       "ns": "VECTORDB",
       "name": "Completeness",
       "kind": "VectorDbCompleteness",
@@ -11851,7 +11921,7 @@
       "C99Native": true
     },
     {
-      "id": 1181,
+      "id": 1188,
       "ns": "VECTORDB",
       "name": "Count",
       "kind": "AiVectorCountEmbeddings",
@@ -11861,7 +11931,7 @@
       "C99Native": true
     },
     {
-      "id": 1182,
+      "id": 1189,
       "ns": "VECTORDB",
       "name": "Diagnose",
       "kind": "VectorDbDiagnose",
@@ -11871,7 +11941,7 @@
       "C99Native": true
     },
     {
-      "id": 1183,
+      "id": 1190,
       "ns": "VECTORDB",
       "name": "DiagnoseReport",
       "kind": "VectorDbDiagnoseReport",
@@ -11881,7 +11951,7 @@
       "C99Native": true
     },
     {
-      "id": 1184,
+      "id": 1191,
       "ns": "VECTORDB",
       "name": "Drift",
       "kind": "VectorDbDrift",
@@ -11891,7 +11961,7 @@
       "C99Native": true
     },
     {
-      "id": 1185,
+      "id": 1192,
       "ns": "VECTORDB",
       "name": "Embed",
       "kind": "AiVectorEmbed",
@@ -11901,7 +11971,7 @@
       "C99Native": true
     },
     {
-      "id": 1186,
+      "id": 1193,
       "ns": "VECTORDB",
       "name": "EnsureCollection",
       "kind": "AiVectorEnsureCollection",
@@ -11911,7 +11981,7 @@
       "C99Native": true
     },
     {
-      "id": 1187,
+      "id": 1194,
       "ns": "VECTORDB",
       "name": "EvalDiff",
       "kind": "VectorDbEvalDiff",
@@ -11921,7 +11991,7 @@
       "C99Native": true
     },
     {
-      "id": 1188,
+      "id": 1195,
       "ns": "VECTORDB",
       "name": "EvalGate",
       "kind": "VectorDbEvalGate",
@@ -11931,7 +12001,7 @@
       "C99Native": true
     },
     {
-      "id": 1189,
+      "id": 1196,
       "ns": "VECTORDB",
       "name": "Faithfulness",
       "kind": "VectorDbFaithfulness",
@@ -11941,7 +12011,7 @@
       "C99Native": true
     },
     {
-      "id": 1190,
+      "id": 1197,
       "ns": "VECTORDB",
       "name": "GenTest",
       "kind": "AiVectorGenTest",
@@ -11951,7 +12021,7 @@
       "C99Native": true
     },
     {
-      "id": 1191,
+      "id": 1198,
       "ns": "VECTORDB",
       "name": "Hallucination",
       "kind": "VectorDbHallucination",
@@ -11961,7 +12031,7 @@
       "C99Native": true
     },
     {
-      "id": 1192,
+      "id": 1199,
       "ns": "VECTORDB",
       "name": "IndexMeta",
       "kind": "AiVectorIndexMeta",
@@ -11971,7 +12041,7 @@
       "C99Native": true
     },
     {
-      "id": 1193,
+      "id": 1200,
       "ns": "VECTORDB",
       "name": "IndexText",
       "kind": "AiVectorIndexText",
@@ -11981,7 +12051,7 @@
       "C99Native": true
     },
     {
-      "id": 1194,
+      "id": 1201,
       "ns": "VECTORDB",
       "name": "ListCollections",
       "kind": "AiVectorListCollections",
@@ -11991,7 +12061,7 @@
       "C99Native": true
     },
     {
-      "id": 1195,
+      "id": 1202,
       "ns": "VECTORDB",
       "name": "LoadDocuments",
       "kind": "AiVectorLoadDocuments",
@@ -12001,7 +12071,7 @@
       "C99Native": true
     },
     {
-      "id": 1196,
+      "id": 1203,
       "ns": "VECTORDB",
       "name": "Mrr",
       "kind": "VectorDbMrr",
@@ -12011,7 +12081,7 @@
       "C99Native": true
     },
     {
-      "id": 1197,
+      "id": 1204,
       "ns": "VECTORDB",
       "name": "NdcgAt",
       "kind": "VectorDbNdcgAt",
@@ -12021,7 +12091,7 @@
       "C99Native": true
     },
     {
-      "id": 1198,
+      "id": 1205,
       "ns": "VECTORDB",
       "name": "PrecisionAt",
       "kind": "VectorDbPrecisionAt",
@@ -12031,7 +12101,7 @@
       "C99Native": true
     },
     {
-      "id": 1199,
+      "id": 1206,
       "ns": "VECTORDB",
       "name": "PurgeDeprecated",
       "kind": "AiVectorPurgeDeprecated",
@@ -12041,7 +12111,7 @@
       "C99Native": true
     },
     {
-      "id": 1200,
+      "id": 1207,
       "ns": "VECTORDB",
       "name": "RecallAt",
       "kind": "VectorDbRecallAt",
@@ -12051,7 +12121,7 @@
       "C99Native": true
     },
     {
-      "id": 1201,
+      "id": 1208,
       "ns": "VECTORDB",
       "name": "Relevance",
       "kind": "VectorDbRelevance",
@@ -12061,7 +12131,7 @@
       "C99Native": true
     },
     {
-      "id": 1202,
+      "id": 1209,
       "ns": "VECTORDB",
       "name": "RemoveSource",
       "kind": "AiVectorRemoveSource",
@@ -12071,7 +12141,7 @@
       "C99Native": true
     },
     {
-      "id": 1203,
+      "id": 1210,
       "ns": "VECTORDB",
       "name": "Search",
       "kind": "AiVectorSearch",
@@ -12081,7 +12151,7 @@
       "C99Native": true
     },
     {
-      "id": 1204,
+      "id": 1211,
       "ns": "WINDOWS",
       "name": "DESKTOP",
       "kind": "WindowDesktop",
@@ -12091,7 +12161,7 @@
       "C99Native": true
     },
     {
-      "id": 1205,
+      "id": 1212,
       "ns": "WINDOWS",
       "name": "HEIGHT",
       "kind": "WindowHeight",
@@ -12101,7 +12171,7 @@
       "C99Native": true
     },
     {
-      "id": 1206,
+      "id": 1213,
       "ns": "WINDOWS",
       "name": "THEME",
       "kind": "WindowTheme",
@@ -12111,7 +12181,7 @@
       "C99Native": true
     },
     {
-      "id": 1207,
+      "id": 1214,
       "ns": "WINDOWS",
       "name": "WIDTH",
       "kind": "WindowWidth",
@@ -12121,7 +12191,7 @@
       "C99Native": true
     },
     {
-      "id": 1208,
+      "id": 1215,
       "ns": "WINDOWS",
       "name": "WINDOWCLOSED",
       "kind": "Identifier",
@@ -12131,7 +12201,7 @@
       "C99Native": true
     },
     {
-      "id": 1209,
+      "id": 1216,
       "ns": "WINDOWS",
       "name": "X",
       "kind": "WindowX",
@@ -12141,7 +12211,7 @@
       "C99Native": true
     },
     {
-      "id": 1210,
+      "id": 1217,
       "ns": "WINDOWS",
       "name": "Y",
       "kind": "WindowY",
@@ -12151,7 +12221,7 @@
       "C99Native": true
     },
     {
-      "id": 1211,
+      "id": 1218,
       "ns": "WORLD",
       "name": "CEILZ",
       "kind": "CeilZ",
@@ -12161,7 +12231,7 @@
       "C99Native": false
     },
     {
-      "id": 1212,
+      "id": 1219,
       "ns": "WORLD",
       "name": "FLOORZ",
       "kind": "FloorZ",
@@ -12171,7 +12241,7 @@
       "C99Native": false
     },
     {
-      "id": 1213,
+      "id": 1220,
       "ns": "WORLD",
       "name": "LIGHTNOW",
       "kind": "LightNow",
@@ -12181,7 +12251,7 @@
       "C99Native": false
     },
     {
-      "id": 1214,
+      "id": 1221,
       "ns": "WORLD",
       "name": "MOVING",
       "kind": "Moving",
@@ -12191,7 +12261,7 @@
       "C99Native": false
     },
     {
-      "id": 1215,
+      "id": 1222,
       "ns": "WORLD",
       "name": "TIME",
       "kind": "WorldTime",
@@ -13053,6 +13123,16 @@
     {
       "id": 1000086,
       "ns": "",
+      "name": "SCENE",
+      "kind": "Scene",
+      "IL": false,
+      "PCodeVM": false,
+      "VMC": false,
+      "C99Native": false
+    },
+    {
+      "id": 1000087,
+      "ns": "",
       "name": "SCREEN",
       "kind": "Screen",
       "IL": true,
@@ -13061,7 +13141,7 @@
       "C99Native": true
     },
     {
-      "id": 1000087,
+      "id": 1000088,
       "ns": "",
       "name": "SCREENSET",
       "kind": "ScreenSet",
@@ -13071,7 +13151,7 @@
       "C99Native": false
     },
     {
-      "id": 1000088,
+      "id": 1000089,
       "ns": "",
       "name": "SCROLLMODE",
       "kind": "ScrollMode",
@@ -13081,7 +13161,7 @@
       "C99Native": false
     },
     {
-      "id": 1000089,
+      "id": 1000090,
       "ns": "",
       "name": "SEEK",
       "kind": "Seek",
@@ -13091,7 +13171,7 @@
       "C99Native": true
     },
     {
-      "id": 1000090,
+      "id": 1000091,
       "ns": "",
       "name": "SEND",
       "kind": "Send",
@@ -13101,7 +13181,7 @@
       "C99Native": false
     },
     {
-      "id": 1000091,
+      "id": 1000092,
       "ns": "",
       "name": "SENDKEY",
       "kind": "SendKey",
@@ -13111,7 +13191,7 @@
       "C99Native": false
     },
     {
-      "id": 1000092,
+      "id": 1000093,
       "ns": "",
       "name": "SET",
       "kind": "Set",
@@ -13121,7 +13201,7 @@
       "C99Native": true
     },
     {
-      "id": 1000093,
+      "id": 1000094,
       "ns": "",
       "name": "SETOPTION",
       "kind": "SetOption",
@@ -13131,7 +13211,7 @@
       "C99Native": false
     },
     {
-      "id": 1000094,
+      "id": 1000095,
       "ns": "",
       "name": "SHELL",
       "kind": "Shell",
@@ -13141,7 +13221,7 @@
       "C99Native": false
     },
     {
-      "id": 1000095,
+      "id": 1000096,
       "ns": "",
       "name": "SHUTDOWN",
       "kind": "Shutdown",
@@ -13151,7 +13231,7 @@
       "C99Native": false
     },
     {
-      "id": 1000096,
+      "id": 1000097,
       "ns": "",
       "name": "SLEEP",
       "kind": "Sleep",
@@ -13161,7 +13241,7 @@
       "C99Native": false
     },
     {
-      "id": 1000097,
+      "id": 1000098,
       "ns": "",
       "name": "SOUND",
       "kind": "Sound",
@@ -13171,7 +13251,7 @@
       "C99Native": false
     },
     {
-      "id": 1000098,
+      "id": 1000099,
       "ns": "",
       "name": "SPRITE",
       "kind": "Sprite",
@@ -13181,7 +13261,7 @@
       "C99Native": false
     },
     {
-      "id": 1000099,
+      "id": 1000100,
       "ns": "",
       "name": "SPRITEDEF",
       "kind": "Spritedef",
@@ -13191,7 +13271,7 @@
       "C99Native": false
     },
     {
-      "id": 1000100,
+      "id": 1000101,
       "ns": "",
       "name": "SYNC",
       "kind": "Sync",
@@ -13201,7 +13281,7 @@
       "C99Native": false
     },
     {
-      "id": 1000101,
+      "id": 1000102,
       "ns": "",
       "name": "TEXTMODE",
       "kind": "TextMode",
@@ -13211,7 +13291,7 @@
       "C99Native": false
     },
     {
-      "id": 1000102,
+      "id": 1000103,
       "ns": "",
       "name": "TILEMAP",
       "kind": "Tilemap",
@@ -13221,7 +13301,7 @@
       "C99Native": false
     },
     {
-      "id": 1000103,
+      "id": 1000104,
       "ns": "",
       "name": "UNLOCK",
       "kind": "Unlock",
@@ -13231,7 +13311,7 @@
       "C99Native": false
     },
     {
-      "id": 1000104,
+      "id": 1000105,
       "ns": "",
       "name": "UNWATCH",
       "kind": "Unwatch",
@@ -13241,7 +13321,7 @@
       "C99Native": false
     },
     {
-      "id": 1000105,
+      "id": 1000106,
       "ns": "",
       "name": "UNZIP",
       "kind": "Unzip",
@@ -13251,7 +13331,7 @@
       "C99Native": true
     },
     {
-      "id": 1000106,
+      "id": 1000107,
       "ns": "",
       "name": "VECTOR",
       "kind": "Vector",
@@ -13261,7 +13341,7 @@
       "C99Native": false
     },
     {
-      "id": 1000107,
+      "id": 1000108,
       "ns": "",
       "name": "VIEW",
       "kind": "View",
@@ -13271,7 +13351,7 @@
       "C99Native": false
     },
     {
-      "id": 1000108,
+      "id": 1000109,
       "ns": "",
       "name": "VIEWPORT",
       "kind": "Viewport",
@@ -13281,7 +13361,7 @@
       "C99Native": false
     },
     {
-      "id": 1000109,
+      "id": 1000110,
       "ns": "",
       "name": "WAIT",
       "kind": "Wait",
@@ -13291,7 +13371,7 @@
       "C99Native": false
     },
     {
-      "id": 1000110,
+      "id": 1000111,
       "ns": "",
       "name": "WAITKEY",
       "kind": "WaitKey",
@@ -13301,7 +13381,7 @@
       "C99Native": false
     },
     {
-      "id": 1000111,
+      "id": 1000112,
       "ns": "",
       "name": "WATCH",
       "kind": "Watch",
@@ -13311,7 +13391,7 @@
       "C99Native": false
     },
     {
-      "id": 1000112,
+      "id": 1000113,
       "ns": "",
       "name": "WEB2MD",
       "kind": "WebToMd",
@@ -13321,7 +13401,7 @@
       "C99Native": false
     },
     {
-      "id": 1000113,
+      "id": 1000114,
       "ns": "",
       "name": "WINDOW",
       "kind": "Window",
@@ -13331,7 +13411,7 @@
       "C99Native": false
     },
     {
-      "id": 1000114,
+      "id": 1000115,
       "ns": "",
       "name": "WORLD",
       "kind": "World",
@@ -13341,7 +13421,7 @@
       "C99Native": false
     },
     {
-      "id": 1000115,
+      "id": 1000116,
       "ns": "",
       "name": "WRITE",
       "kind": "Write",
@@ -13351,7 +13431,7 @@
       "C99Native": false
     },
     {
-      "id": 1000116,
+      "id": 1000117,
       "ns": "",
       "name": "XCOPY",
       "kind": "XCopy",
@@ -13361,7 +13441,7 @@
       "C99Native": false
     },
     {
-      "id": 1000117,
+      "id": 1000118,
       "ns": "",
       "name": "ZIP",
       "kind": "Zip",

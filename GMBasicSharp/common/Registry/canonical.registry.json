@@ -9805,9 +9805,86 @@
       "pure": false
     },
     {
+      "ns": "SCENE",
+      "name": "CULLED",
+      "id": 892,
+      "tokenKind": 2541,
+      "kindName": "SceneCulled",
+      "fn": true,
+      "arityMin": 0,
+      "arityMax": 0,
+      "pure": false
+    },
+    {
+      "ns": "SCENE",
+      "name": "DRAWN",
+      "id": 893,
+      "tokenKind": 2540,
+      "kindName": "SceneDrawn",
+      "fn": true,
+      "arityMin": 0,
+      "arityMax": 0,
+      "pure": false
+    },
+    {
+      "ns": "SCENE",
+      "name": "HASH",
+      "id": 894,
+      "tokenKind": 2543,
+      "kindName": "SceneHash",
+      "fn": true,
+      "arityMin": 0,
+      "arityMax": 0,
+      "pure": false
+    },
+    {
+      "ns": "SCENE",
+      "name": "PIXEL",
+      "id": 895,
+      "tokenKind": 2544,
+      "kindName": "ScenePixel",
+      "fn": true,
+      "arityMin": 2,
+      "arityMax": 2,
+      "pure": false
+    },
+    {
+      "ns": "SCENE",
+      "name": "PIXELS",
+      "id": 896,
+      "tokenKind": 2542,
+      "kindName": "ScenePixels",
+      "fn": true,
+      "arityMin": 0,
+      "arityMax": 0,
+      "pure": false
+    },
+    {
+      "ns": "SCENE",
+      "name": "TRIS",
+      "id": 897,
+      "tokenKind": 2539,
+      "kindName": "SceneTris",
+      "fn": true,
+      "arityMin": 0,
+      "arityMax": 0,
+      "pure": false
+    },
+    {
+      "ns": "SCENE",
+      "name": "VERTS",
+      "id": 898,
+      "tokenKind": 2538,
+      "kindName": "SceneVerts",
+      "fn": true,
+      "arityMin": 0,
+      "arityMax": 0,
+      "pure": false
+    },
+    {
       "ns": "SPEED",
       "name": "BEGINGROUPCOMMIT",
-      "id": 892,
+      "id": 899,
       "tokenKind": 1023,
       "kindName": "SpeedBeginGroupCommit",
       "fn": true,
@@ -9818,7 +9895,7 @@
     {
       "ns": "SPEED",
       "name": "BEGINGROUPCOMMIT",
-      "id": 893,
+      "id": 900,
       "tokenKind": 1023,
       "kindName": "SpeedBeginGroupCommit",
       "fn": true,
@@ -9829,7 +9906,7 @@
     {
       "ns": "SPEED",
       "name": "ENDGROUPCOMMIT",
-      "id": 894,
+      "id": 901,
       "tokenKind": 1024,
       "kindName": "SpeedEndGroupCommit",
       "fn": true,
@@ -9840,7 +9917,7 @@
     {
       "ns": "SPEED",
       "name": "ENDGROUPCOMMIT",
-      "id": 895,
+      "id": 902,
       "tokenKind": 1024,
       "kindName": "SpeedEndGroupCommit",
       "fn": true,
@@ -9851,7 +9928,7 @@
     {
       "ns": "SPEED",
       "name": "EOF",
-      "id": 896,
+      "id": 903,
       "tokenKind": 979,
       "kindName": "EofFunc",
       "fn": true,
@@ -9862,7 +9939,7 @@
     {
       "ns": "SPEED",
       "name": "FLUSHDURABILITY",
-      "id": 897,
+      "id": 904,
       "tokenKind": 1022,
       "kindName": "SpeedFlushDurability",
       "fn": true,
@@ -9873,7 +9950,7 @@
     {
       "ns": "SPEED",
       "name": "FLUSHDURABILITY",
-      "id": 898,
+      "id": 905,
       "tokenKind": 1022,
       "kindName": "SpeedFlushDurability",
       "fn": true,
@@ -9884,7 +9961,7 @@
     {
       "ns": "SPEED",
       "name": "INFO",
-      "id": 899,
+      "id": 906,
       "tokenKind": 1026,
       "kindName": "SpeedInfo",
       "fn": true,
@@ -9895,7 +9972,7 @@
     {
       "ns": "SPEED",
       "name": "INFO",
-      "id": 900,
+      "id": 907,
       "tokenKind": 1026,
       "kindName": "SpeedInfo",
       "fn": true,
@@ -9906,7 +9983,7 @@
     {
       "ns": "SPEED",
       "name": "SELECTED",
-      "id": 901,
+      "id": 908,
       "tokenKind": 1001,
       "kindName": "Selected",
       "fn": true,
@@ -9917,7 +9994,7 @@
     {
       "ns": "SPEED",
       "name": "SELECTED",
-      "id": 902,
+      "id": 909,
       "tokenKind": 1001,
       "kindName": "Selected",
       "fn": true,
@@ -9928,7 +10005,7 @@
     {
       "ns": "SPEED",
       "name": "SETDURABILITY",
-      "id": 903,
+      "id": 910,
       "tokenKind": 1021,
       "kindName": "SpeedSetDurability",
       "fn": true,
@@ -9939,7 +10016,7 @@
     {
       "ns": "SPEED",
       "name": "SETDURABILITY",
-      "id": 904,
+      "id": 911,
       "tokenKind": 1021,
       "kindName": "SpeedSetDurability",
       "fn": true,
@@ -9950,7 +10027,7 @@
     {
       "ns": "SPEED",
       "name": "SETMANY",
-      "id": 905,
+      "id": 912,
       "tokenKind": 1025,
       "kindName": "SpeedSetMany",
       "fn": true,
@@ -9961,7 +10038,7 @@
     {
       "ns": "SPEED",
       "name": "SETMANY",
-      "id": 906,
+      "id": 913,
       "tokenKind": 1025,
       "kindName": "SpeedSetMany",
       "fn": true,
@@ -9972,7 +10049,7 @@
     {
       "ns": "SPEED",
       "name": "VALIDATE",
-      "id": 907,
+      "id": 914,
       "tokenKind": 1027,
       "kindName": "SpeedValidate",
       "fn": true,
@@ -9983,7 +10060,7 @@
     {
       "ns": "SPEED",
       "name": "VALIDATE",
-      "id": 908,
+      "id": 915,
       "tokenKind": 1027,
       "kindName": "SpeedValidate",
       "fn": true,
@@ -9994,7 +10071,7 @@
     {
       "ns": "SPEED",
       "name": "VALIDATE",
-      "id": 909,
+      "id": 916,
       "tokenKind": 1027,
       "kindName": "SpeedValidate",
       "fn": true,
@@ -10005,7 +10082,7 @@
     {
       "ns": "SPEED",
       "name": "VALIDATE",
-      "id": 910,
+      "id": 917,
       "tokenKind": 1027,
       "kindName": "SpeedValidate",
       "fn": true,
@@ -10016,7 +10093,7 @@
     {
       "ns": "SQL",
       "name": "CHANGES",
-      "id": 911,
+      "id": 918,
       "tokenKind": 1035,
       "kindName": "SqlChanges",
       "fn": true,
@@ -10027,7 +10104,7 @@
     {
       "ns": "SQL",
       "name": "COL",
-      "id": 912,
+      "id": 919,
       "tokenKind": 2475,
       "kindName": "SqlCol",
       "fn": true,
@@ -10038,7 +10115,7 @@
     {
       "ns": "SQL",
       "name": "DFSCHEMA",
-      "id": 913,
+      "id": 920,
       "tokenKind": 2474,
       "kindName": "SqlDfSchema",
       "fn": true,
@@ -10049,7 +10126,7 @@
     {
       "ns": "SQL",
       "name": "EXEC",
-      "id": 914,
+      "id": 921,
       "tokenKind": 1029,
       "kindName": "SqlExec",
       "fn": true,
@@ -10060,7 +10137,7 @@
     {
       "ns": "SQL",
       "name": "FETCH",
-      "id": 915,
+      "id": 922,
       "tokenKind": 1033,
       "kindName": "SqlFetch",
       "fn": true,
@@ -10071,7 +10148,7 @@
     {
       "ns": "SQL",
       "name": "FROMCSV",
-      "id": 916,
+      "id": 923,
       "tokenKind": 2477,
       "kindName": "SqlFromCsv",
       "fn": true,
@@ -10082,7 +10159,7 @@
     {
       "ns": "SQL",
       "name": "LASTINSERTROWID",
-      "id": 917,
+      "id": 924,
       "tokenKind": 1034,
       "kindName": "SqlLastInsertRowId",
       "fn": true,
@@ -10093,7 +10170,7 @@
     {
       "ns": "SQL",
       "name": "TOCSV",
-      "id": 918,
+      "id": 925,
       "tokenKind": 2476,
       "kindName": "SqlToCsv",
       "fn": true,
@@ -10104,7 +10181,7 @@
     {
       "ns": "STATS",
       "name": "Anova",
-      "id": 919,
+      "id": 926,
       "tokenKind": 1755,
       "kindName": "StatsAnova",
       "fn": true,
@@ -10115,7 +10192,7 @@
     {
       "ns": "STATS",
       "name": "BernoulliPmf",
-      "id": 920,
+      "id": 927,
       "tokenKind": 831,
       "kindName": "BernoulliPmf",
       "fn": true,
@@ -10126,7 +10203,7 @@
     {
       "ns": "STATS",
       "name": "BetaIsf",
-      "id": 921,
+      "id": 928,
       "tokenKind": 1792,
       "kindName": "StatsBetaIsf",
       "fn": true,
@@ -10137,7 +10214,7 @@
     {
       "ns": "STATS",
       "name": "BinomialPmf",
-      "id": 922,
+      "id": 929,
       "tokenKind": 832,
       "kindName": "BinomialPmf",
       "fn": true,
@@ -10148,7 +10225,7 @@
     {
       "ns": "STATS",
       "name": "Chi2",
-      "id": 923,
+      "id": 930,
       "tokenKind": 1756,
       "kindName": "Chi2Test",
       "fn": true,
@@ -10159,7 +10236,7 @@
     {
       "ns": "STATS",
       "name": "Chi2Con",
-      "id": 924,
+      "id": 931,
       "tokenKind": 1857,
       "kindName": "StatsChi2Contingency",
       "fn": true,
@@ -10170,7 +10247,7 @@
     {
       "ns": "STATS",
       "name": "ChiIsf",
-      "id": 925,
+      "id": 932,
       "tokenKind": 1797,
       "kindName": "StatsChiIsf",
       "fn": true,
@@ -10181,7 +10258,7 @@
     {
       "ns": "STATS",
       "name": "Describe",
-      "id": 926,
+      "id": 933,
       "tokenKind": 1870,
       "kindName": "StatsDescribe",
       "fn": true,
@@ -10192,7 +10269,7 @@
     {
       "ns": "STATS",
       "name": "FTest",
-      "id": 927,
+      "id": 934,
       "tokenKind": 1782,
       "kindName": "StatsFTest",
       "fn": true,
@@ -10203,7 +10280,7 @@
     {
       "ns": "STATS",
       "name": "Fisher",
-      "id": 928,
+      "id": 935,
       "tokenKind": 1757,
       "kindName": "FisherExact",
       "fn": true,
@@ -10214,7 +10291,7 @@
     {
       "ns": "STATS",
       "name": "GeometricPmf",
-      "id": 929,
+      "id": 936,
       "tokenKind": 834,
       "kindName": "GeometricPmf",
       "fn": true,
@@ -10225,7 +10302,7 @@
     {
       "ns": "STATS",
       "name": "HypergeometricPmf",
-      "id": 930,
+      "id": 937,
       "tokenKind": 836,
       "kindName": "HypergeometricPmf",
       "fn": true,
@@ -10236,7 +10313,7 @@
     {
       "ns": "STATS",
       "name": "Iqr",
-      "id": 931,
+      "id": 938,
       "tokenKind": 1869,
       "kindName": "StatsIqr",
       "fn": true,
@@ -10247,7 +10324,7 @@
     {
       "ns": "STATS",
       "name": "JarqueBera",
-      "id": 932,
+      "id": 939,
       "tokenKind": 1866,
       "kindName": "StatsJarqueBera",
       "fn": true,
@@ -10258,7 +10335,7 @@
     {
       "ns": "STATS",
       "name": "KendallTau",
-      "id": 933,
+      "id": 940,
       "tokenKind": 1781,
       "kindName": "StatsKendallTau",
       "fn": true,
@@ -10269,7 +10346,7 @@
     {
       "ns": "STATS",
       "name": "Kruskal",
-      "id": 934,
+      "id": 941,
       "tokenKind": 1796,
       "kindName": "StatsKruskal",
       "fn": true,
@@ -10280,7 +10357,7 @@
     {
       "ns": "STATS",
       "name": "Ks",
-      "id": 935,
+      "id": 942,
       "tokenKind": 1761,
       "kindName": "KolmogorovSmirnov",
       "fn": true,
@@ -10291,7 +10368,7 @@
     {
       "ns": "STATS",
       "name": "KurtosisTest",
-      "id": 936,
+      "id": 943,
       "tokenKind": 1865,
       "kindName": "StatsKurtosisTest",
       "fn": true,
@@ -10302,7 +10379,7 @@
     {
       "ns": "STATS",
       "name": "LinRegress",
-      "id": 937,
+      "id": 944,
       "tokenKind": 1764,
       "kindName": "StatsLinRegress",
       "fn": true,
@@ -10313,7 +10390,7 @@
     {
       "ns": "STATS",
       "name": "LogisticIsf",
-      "id": 938,
+      "id": 945,
       "tokenKind": 1793,
       "kindName": "StatsLogisticIsf",
       "fn": true,
@@ -10324,7 +10401,7 @@
     {
       "ns": "STATS",
       "name": "MannWhitney",
-      "id": 939,
+      "id": 946,
       "tokenKind": 1858,
       "kindName": "StatsMannWhitney",
       "fn": true,
@@ -10335,7 +10412,7 @@
     {
       "ns": "STATS",
       "name": "Mode",
-      "id": 940,
+      "id": 947,
       "tokenKind": 1867,
       "kindName": "StatsMode",
       "fn": true,
@@ -10346,7 +10423,7 @@
     {
       "ns": "STATS",
       "name": "Moment",
-      "id": 941,
+      "id": 948,
       "tokenKind": 1868,
       "kindName": "StatsMoment",
       "fn": true,
@@ -10357,7 +10434,7 @@
     {
       "ns": "STATS",
       "name": "NcBetaSf",
-      "id": 942,
+      "id": 949,
       "tokenKind": 1824,
       "kindName": "StatsNcBetaSf",
       "fn": true,
@@ -10368,7 +10445,7 @@
     {
       "ns": "STATS",
       "name": "NcChi2Sf",
-      "id": 943,
+      "id": 950,
       "tokenKind": 1821,
       "kindName": "StatsNcChi2Sf",
       "fn": true,
@@ -10379,7 +10456,7 @@
     {
       "ns": "STATS",
       "name": "NcFCdf",
-      "id": 944,
+      "id": 951,
       "tokenKind": 1839,
       "kindName": "StatsNcFCdf",
       "fn": true,
@@ -10390,7 +10467,7 @@
     {
       "ns": "STATS",
       "name": "NcFIsf",
-      "id": 945,
+      "id": 952,
       "tokenKind": 1835,
       "kindName": "StatsNcFIsf",
       "fn": true,
@@ -10401,7 +10478,7 @@
     {
       "ns": "STATS",
       "name": "NcFPdf",
-      "id": 946,
+      "id": 953,
       "tokenKind": 1838,
       "kindName": "StatsNcFPdf",
       "fn": true,
@@ -10412,7 +10489,7 @@
     {
       "ns": "STATS",
       "name": "NcFPpf",
-      "id": 947,
+      "id": 954,
       "tokenKind": 1834,
       "kindName": "StatsNcFPpf",
       "fn": true,
@@ -10423,7 +10500,7 @@
     {
       "ns": "STATS",
       "name": "NcFSf",
-      "id": 948,
+      "id": 955,
       "tokenKind": 1840,
       "kindName": "StatsNcFSf",
       "fn": true,
@@ -10434,7 +10511,7 @@
     {
       "ns": "STATS",
       "name": "NcGammaSf",
-      "id": 949,
+      "id": 956,
       "tokenKind": 1827,
       "kindName": "StatsNcGammaSf",
       "fn": true,
@@ -10445,7 +10522,7 @@
     {
       "ns": "STATS",
       "name": "NcTCdf",
-      "id": 950,
+      "id": 957,
       "tokenKind": 1842,
       "kindName": "StatsNcTCdf",
       "fn": true,
@@ -10456,7 +10533,7 @@
     {
       "ns": "STATS",
       "name": "NcTIsf",
-      "id": 951,
+      "id": 958,
       "tokenKind": 1837,
       "kindName": "StatsNcTIsf",
       "fn": true,
@@ -10467,7 +10544,7 @@
     {
       "ns": "STATS",
       "name": "NcTPdf",
-      "id": 952,
+      "id": 959,
       "tokenKind": 1841,
       "kindName": "StatsNcTPdf",
       "fn": true,
@@ -10478,7 +10555,7 @@
     {
       "ns": "STATS",
       "name": "NcTPpf",
-      "id": 953,
+      "id": 960,
       "tokenKind": 1836,
       "kindName": "StatsNcTPpf",
       "fn": true,
@@ -10489,7 +10566,7 @@
     {
       "ns": "STATS",
       "name": "NcTSf",
-      "id": 954,
+      "id": 961,
       "tokenKind": 1843,
       "kindName": "StatsNcTSf",
       "fn": true,
@@ -10500,7 +10577,7 @@
     {
       "ns": "STATS",
       "name": "NegativeBinomialPmf",
-      "id": 955,
+      "id": 962,
       "tokenKind": 835,
       "kindName": "NegativeBinomialPmf",
       "fn": true,
@@ -10511,7 +10588,7 @@
     {
       "ns": "STATS",
       "name": "NormalTest",
-      "id": 956,
+      "id": 963,
       "tokenKind": 1759,
       "kindName": "NormalTest",
       "fn": true,
@@ -10522,7 +10599,7 @@
     {
       "ns": "STATS",
       "name": "ParetoIsf",
-      "id": 957,
+      "id": 964,
       "tokenKind": 1791,
       "kindName": "StatsParetoIsf",
       "fn": true,
@@ -10533,7 +10610,7 @@
     {
       "ns": "STATS",
       "name": "PearsonR",
-      "id": 958,
+      "id": 965,
       "tokenKind": 1762,
       "kindName": "StatsPearsonR",
       "fn": true,
@@ -10544,7 +10621,7 @@
     {
       "ns": "STATS",
       "name": "PoissonPmf",
-      "id": 959,
+      "id": 966,
       "tokenKind": 833,
       "kindName": "PoissonPmf",
       "fn": true,
@@ -10555,7 +10632,7 @@
     {
       "ns": "STATS",
       "name": "Regress",
-      "id": 960,
+      "id": 967,
       "tokenKind": 723,
       "kindName": "Regress",
       "fn": true,
@@ -10566,7 +10643,7 @@
     {
       "ns": "STATS",
       "name": "Shapiro",
-      "id": 961,
+      "id": 968,
       "tokenKind": 1758,
       "kindName": "ShapiroWilk",
       "fn": true,
@@ -10577,7 +10654,7 @@
     {
       "ns": "STATS",
       "name": "SkewTest",
-      "id": 962,
+      "id": 969,
       "tokenKind": 1864,
       "kindName": "StatsSkewTest",
       "fn": true,
@@ -10588,7 +10665,7 @@
     {
       "ns": "STATS",
       "name": "SpearmanR",
-      "id": 963,
+      "id": 970,
       "tokenKind": 1763,
       "kindName": "StatsSpearmanR",
       "fn": true,
@@ -10599,7 +10676,7 @@
     {
       "ns": "STATS",
       "name": "TTest",
-      "id": 964,
+      "id": 971,
       "tokenKind": 1752,
       "kindName": "TTest",
       "fn": true,
@@ -10610,7 +10687,7 @@
     {
       "ns": "STATS",
       "name": "TTestOneSample",
-      "id": 965,
+      "id": 972,
       "tokenKind": 1754,
       "kindName": "TTestOneSample",
       "fn": true,
@@ -10621,7 +10698,7 @@
     {
       "ns": "STATS",
       "name": "TTestPaired",
-      "id": 966,
+      "id": 973,
       "tokenKind": 1753,
       "kindName": "TTestPaired",
       "fn": true,
@@ -10632,7 +10709,7 @@
     {
       "ns": "STATS",
       "name": "WeibullIsf",
-      "id": 967,
+      "id": 974,
       "tokenKind": 1789,
       "kindName": "StatsWeibullIsf",
       "fn": true,
@@ -10643,7 +10720,7 @@
     {
       "ns": "STATS",
       "name": "Wilcoxon",
-      "id": 968,
+      "id": 975,
       "tokenKind": 1859,
       "kindName": "StatsWilcoxon",
       "fn": true,
@@ -10654,7 +10731,7 @@
     {
       "ns": "STATS",
       "name": "ZTPoissonCdf",
-      "id": 969,
+      "id": 976,
       "tokenKind": 1845,
       "kindName": "StatsZTPoissonCdf",
       "fn": true,
@@ -10665,7 +10742,7 @@
     {
       "ns": "STATS",
       "name": "ZTPoissonPmf",
-      "id": 970,
+      "id": 977,
       "tokenKind": 1844,
       "kindName": "StatsZTPoissonPmf",
       "fn": true,
@@ -10676,7 +10753,7 @@
     {
       "ns": "STATS",
       "name": "ZTest",
-      "id": 971,
+      "id": 978,
       "tokenKind": 1760,
       "kindName": "ZTest",
       "fn": true,
@@ -10687,7 +10764,7 @@
     {
       "ns": "STRINGS",
       "name": "Asc",
-      "id": 972,
+      "id": 979,
       "tokenKind": 593,
       "kindName": "Asc",
       "fn": true,
@@ -10698,7 +10775,7 @@
     {
       "ns": "STRINGS",
       "name": "Camel",
-      "id": 973,
+      "id": 980,
       "tokenKind": 906,
       "kindName": "Camel",
       "fn": true,
@@ -10709,7 +10786,7 @@
     {
       "ns": "STRINGS",
       "name": "Chr",
-      "id": 974,
+      "id": 981,
       "tokenKind": 595,
       "kindName": "Chr",
       "fn": true,
@@ -10720,7 +10797,7 @@
     {
       "ns": "STRINGS",
       "name": "Contains",
-      "id": 975,
+      "id": 982,
       "tokenKind": 923,
       "kindName": "Contains",
       "fn": true,
@@ -10731,7 +10808,7 @@
     {
       "ns": "STRINGS",
       "name": "Dup",
-      "id": 976,
+      "id": 983,
       "tokenKind": 900,
       "kindName": "Dup",
       "fn": true,
@@ -10742,7 +10819,7 @@
     {
       "ns": "STRINGS",
       "name": "EndsWith",
-      "id": 977,
+      "id": 984,
       "tokenKind": 925,
       "kindName": "EndsWith",
       "fn": true,
@@ -10753,7 +10830,7 @@
     {
       "ns": "STRINGS",
       "name": "Format",
-      "id": 978,
+      "id": 985,
       "tokenKind": 895,
       "kindName": "Format",
       "fn": true,
@@ -10764,7 +10841,7 @@
     {
       "ns": "STRINGS",
       "name": "HTMLENCODE",
-      "id": 979,
+      "id": 986,
       "tokenKind": 932,
       "kindName": "HtmlEncode",
       "fn": true,
@@ -10775,7 +10852,7 @@
     {
       "ns": "STRINGS",
       "name": "ISCREDITCARD",
-      "id": 980,
+      "id": 987,
       "tokenKind": 938,
       "kindName": "IsCreditCard",
       "fn": true,
@@ -10786,7 +10863,7 @@
     {
       "ns": "STRINGS",
       "name": "ISEMAIL",
-      "id": 981,
+      "id": 988,
       "tokenKind": 936,
       "kindName": "IsEmail",
       "fn": true,
@@ -10797,7 +10874,7 @@
     {
       "ns": "STRINGS",
       "name": "ISLENGTH",
-      "id": 982,
+      "id": 989,
       "tokenKind": 939,
       "kindName": "IsLength",
       "fn": true,
@@ -10808,7 +10885,7 @@
     {
       "ns": "STRINGS",
       "name": "ISREQUIRED",
-      "id": 983,
+      "id": 990,
       "tokenKind": 935,
       "kindName": "IsRequired",
       "fn": true,
@@ -10819,7 +10896,7 @@
     {
       "ns": "STRINGS",
       "name": "ISURL",
-      "id": 984,
+      "id": 991,
       "tokenKind": 937,
       "kindName": "IsUrl",
       "fn": true,
@@ -10830,7 +10907,7 @@
     {
       "ns": "STRINGS",
       "name": "Instr",
-      "id": 985,
+      "id": 992,
       "tokenKind": 899,
       "kindName": "Instr",
       "fn": true,
@@ -10841,7 +10918,7 @@
     {
       "ns": "STRINGS",
       "name": "Instr",
-      "id": 986,
+      "id": 993,
       "tokenKind": 899,
       "kindName": "Instr",
       "fn": true,
@@ -10852,7 +10929,7 @@
     {
       "ns": "STRINGS",
       "name": "JSENCODE",
-      "id": 987,
+      "id": 994,
       "tokenKind": 934,
       "kindName": "JsEncode",
       "fn": true,
@@ -10863,7 +10940,7 @@
     {
       "ns": "STRINGS",
       "name": "Join",
-      "id": 988,
+      "id": 995,
       "tokenKind": 919,
       "kindName": "Join",
       "fn": true,
@@ -10874,7 +10951,7 @@
     {
       "ns": "STRINGS",
       "name": "Kebab",
-      "id": 989,
+      "id": 996,
       "tokenKind": 908,
       "kindName": "Kebab",
       "fn": true,
@@ -10885,7 +10962,7 @@
     {
       "ns": "STRINGS",
       "name": "LCASE",
-      "id": 990,
+      "id": 997,
       "tokenKind": 903,
       "kindName": "Lower",
       "fn": true,
@@ -10896,7 +10973,7 @@
     {
       "ns": "STRINGS",
       "name": "LTrim",
-      "id": 991,
+      "id": 998,
       "tokenKind": 912,
       "kindName": "LTrim",
       "fn": true,
@@ -10907,7 +10984,7 @@
     {
       "ns": "STRINGS",
       "name": "Left",
-      "id": 992,
+      "id": 999,
       "tokenKind": 896,
       "kindName": "Left",
       "fn": true,
@@ -10918,7 +10995,7 @@
     {
       "ns": "STRINGS",
       "name": "Len",
-      "id": 993,
+      "id": 1000,
       "tokenKind": 598,
       "kindName": "Len",
       "fn": true,
@@ -10929,7 +11006,7 @@
     {
       "ns": "STRINGS",
       "name": "LenB",
-      "id": 994,
+      "id": 1001,
       "tokenKind": 2485,
       "kindName": "LenB",
       "fn": true,
@@ -10940,7 +11017,7 @@
     {
       "ns": "STRINGS",
       "name": "Lower",
-      "id": 995,
+      "id": 1002,
       "tokenKind": 903,
       "kindName": "Lower",
       "fn": true,
@@ -10951,7 +11028,7 @@
     {
       "ns": "STRINGS",
       "name": "Mid",
-      "id": 996,
+      "id": 1003,
       "tokenKind": 898,
       "kindName": "Mid",
       "fn": true,
@@ -10962,7 +11039,7 @@
     {
       "ns": "STRINGS",
       "name": "PadC",
-      "id": 997,
+      "id": 1004,
       "tokenKind": 929,
       "kindName": "PadC",
       "fn": true,
@@ -10973,7 +11050,7 @@
     {
       "ns": "STRINGS",
       "name": "PadL",
-      "id": 998,
+      "id": 1005,
       "tokenKind": 927,
       "kindName": "PadL",
       "fn": true,
@@ -10984,7 +11061,7 @@
     {
       "ns": "STRINGS",
       "name": "PadR",
-      "id": 999,
+      "id": 1006,
       "tokenKind": 928,
       "kindName": "PadR",
       "fn": true,
@@ -10995,7 +11072,7 @@
     {
       "ns": "STRINGS",
       "name": "Pascal",
-      "id": 1000,
+      "id": 1007,
       "tokenKind": 905,
       "kindName": "Pascal",
       "fn": true,
@@ -11006,7 +11083,7 @@
     {
       "ns": "STRINGS",
       "name": "Petscii",
-      "id": 1001,
+      "id": 1008,
       "tokenKind": 926,
       "kindName": "Petscii",
       "fn": true,
@@ -11017,7 +11094,7 @@
     {
       "ns": "STRINGS",
       "name": "RTrim",
-      "id": 1002,
+      "id": 1009,
       "tokenKind": 913,
       "kindName": "RTrim",
       "fn": true,
@@ -11028,7 +11105,7 @@
     {
       "ns": "STRINGS",
       "name": "Remove",
-      "id": 1003,
+      "id": 1010,
       "tokenKind": 922,
       "kindName": "Remove",
       "fn": true,
@@ -11039,7 +11116,7 @@
     {
       "ns": "STRINGS",
       "name": "Repeat",
-      "id": 1004,
+      "id": 1011,
       "tokenKind": 902,
       "kindName": "RepeatFunc",
       "fn": true,
@@ -11050,7 +11127,7 @@
     {
       "ns": "STRINGS",
       "name": "Replace",
-      "id": 1005,
+      "id": 1012,
       "tokenKind": 914,
       "kindName": "Replace",
       "fn": true,
@@ -11061,7 +11138,7 @@
     {
       "ns": "STRINGS",
       "name": "Reverse",
-      "id": 1006,
+      "id": 1013,
       "tokenKind": 915,
       "kindName": "Reverse",
       "fn": true,
@@ -11072,7 +11149,7 @@
     {
       "ns": "STRINGS",
       "name": "Right",
-      "id": 1007,
+      "id": 1014,
       "tokenKind": 897,
       "kindName": "Right",
       "fn": true,
@@ -11083,7 +11160,7 @@
     {
       "ns": "STRINGS",
       "name": "Search",
-      "id": 1008,
+      "id": 1015,
       "tokenKind": 920,
       "kindName": "Search",
       "fn": true,
@@ -11094,7 +11171,7 @@
     {
       "ns": "STRINGS",
       "name": "Sentence",
-      "id": 1009,
+      "id": 1016,
       "tokenKind": 910,
       "kindName": "Sentence",
       "fn": true,
@@ -11105,7 +11182,7 @@
     {
       "ns": "STRINGS",
       "name": "Snake",
-      "id": 1010,
+      "id": 1017,
       "tokenKind": 907,
       "kindName": "Snake",
       "fn": true,
@@ -11116,7 +11193,7 @@
     {
       "ns": "STRINGS",
       "name": "Space",
-      "id": 1011,
+      "id": 1018,
       "tokenKind": 901,
       "kindName": "Space",
       "fn": true,
@@ -11127,7 +11204,7 @@
     {
       "ns": "STRINGS",
       "name": "Split",
-      "id": 1012,
+      "id": 1019,
       "tokenKind": 918,
       "kindName": "Split",
       "fn": true,
@@ -11138,7 +11215,7 @@
     {
       "ns": "STRINGS",
       "name": "StartsWith",
-      "id": 1013,
+      "id": 1020,
       "tokenKind": 924,
       "kindName": "StartsWith",
       "fn": true,
@@ -11149,7 +11226,7 @@
     {
       "ns": "STRINGS",
       "name": "Str",
-      "id": 1014,
+      "id": 1021,
       "tokenKind": 604,
       "kindName": "Str",
       "fn": true,
@@ -11160,7 +11237,7 @@
     {
       "ns": "STRINGS",
       "name": "Title",
-      "id": 1015,
+      "id": 1022,
       "tokenKind": 909,
       "kindName": "Title",
       "fn": true,
@@ -11171,7 +11248,7 @@
     {
       "ns": "STRINGS",
       "name": "Trim",
-      "id": 1016,
+      "id": 1023,
       "tokenKind": 911,
       "kindName": "Trim",
       "fn": true,
@@ -11182,7 +11259,7 @@
     {
       "ns": "STRINGS",
       "name": "UCASE",
-      "id": 1017,
+      "id": 1024,
       "tokenKind": 904,
       "kindName": "Upper",
       "fn": true,
@@ -11193,7 +11270,7 @@
     {
       "ns": "STRINGS",
       "name": "URLENCODE",
-      "id": 1018,
+      "id": 1025,
       "tokenKind": 933,
       "kindName": "UrlEncode",
       "fn": true,
@@ -11204,7 +11281,7 @@
     {
       "ns": "STRINGS",
       "name": "Upper",
-      "id": 1019,
+      "id": 1026,
       "tokenKind": 904,
       "kindName": "Upper",
       "fn": true,
@@ -11215,7 +11292,7 @@
     {
       "ns": "STRINGS",
       "name": "WRAP",
-      "id": 1020,
+      "id": 1027,
       "tokenKind": 917,
       "kindName": "Wrap",
       "fn": true,
@@ -11226,7 +11303,7 @@
     {
       "ns": "SYNCMAP",
       "name": "DELETE",
-      "id": 1021,
+      "id": 1028,
       "tokenKind": 2061,
       "kindName": "SyncMapDelete",
       "fn": false,
@@ -11237,7 +11314,7 @@
     {
       "ns": "SYNCMAP",
       "name": "LOAD",
-      "id": 1022,
+      "id": 1029,
       "tokenKind": 2060,
       "kindName": "SyncMapLoad",
       "fn": false,
@@ -11248,7 +11325,7 @@
     {
       "ns": "SYNCMAP",
       "name": "LOADORSTORE",
-      "id": 1023,
+      "id": 1030,
       "tokenKind": 2062,
       "kindName": "SyncMapLoadOrStore",
       "fn": false,
@@ -11259,7 +11336,7 @@
     {
       "ns": "SYNCMAP",
       "name": "STORE",
-      "id": 1024,
+      "id": 1031,
       "tokenKind": 2059,
       "kindName": "SyncMapStore",
       "fn": true,
@@ -11270,7 +11347,7 @@
     {
       "ns": "SYSTEM",
       "name": "CHOOSE",
-      "id": 1025,
+      "id": 1032,
       "tokenKind": 976,
       "kindName": "Choose",
       "fn": true,
@@ -11281,7 +11358,7 @@
     {
       "ns": "SYSTEM",
       "name": "COMMAND",
-      "id": 1026,
+      "id": 1033,
       "tokenKind": 1490,
       "kindName": "Command",
       "fn": true,
@@ -11292,7 +11369,7 @@
     {
       "ns": "SYSTEM",
       "name": "COMMANDCOUNT",
-      "id": 1027,
+      "id": 1034,
       "tokenKind": 1489,
       "kindName": "CommandCount",
       "fn": true,
@@ -11303,7 +11380,7 @@
     {
       "ns": "SYSTEM",
       "name": "CTYPE",
-      "id": 1028,
+      "id": 1035,
       "tokenKind": 590,
       "kindName": "CType",
       "fn": true,
@@ -11314,7 +11391,7 @@
     {
       "ns": "SYSTEM",
       "name": "Count",
-      "id": 1029,
+      "id": 1036,
       "tokenKind": 921,
       "kindName": "Count",
       "fn": true,
@@ -11325,7 +11402,7 @@
     {
       "ns": "SYSTEM",
       "name": "EMPTY",
-      "id": 1030,
+      "id": 1037,
       "tokenKind": 974,
       "kindName": "Empty",
       "fn": true,
@@ -11336,7 +11413,7 @@
     {
       "ns": "SYSTEM",
       "name": "ENV",
-      "id": 1031,
+      "id": 1038,
       "tokenKind": 2497,
       "kindName": "EnvGet",
       "fn": true,
@@ -11347,7 +11424,7 @@
     {
       "ns": "SYSTEM",
       "name": "GOMAXPROCS",
-      "id": 1032,
+      "id": 1039,
       "tokenKind": 2040,
       "kindName": "GoMaxProcs",
       "fn": true,
@@ -11358,7 +11435,7 @@
     {
       "ns": "SYSTEM",
       "name": "HAS",
-      "id": 1033,
+      "id": 1040,
       "tokenKind": 2498,
       "kindName": "EnvHas",
       "fn": true,
@@ -11369,7 +11446,7 @@
     {
       "ns": "SYSTEM",
       "name": "IIF",
-      "id": 1034,
+      "id": 1041,
       "tokenKind": 975,
       "kindName": "Iif",
       "fn": true,
@@ -11380,7 +11457,7 @@
     {
       "ns": "SYSTEM",
       "name": "LBOUND",
-      "id": 1035,
+      "id": 1042,
       "tokenKind": 650,
       "kindName": "LBound",
       "fn": true,
@@ -11391,7 +11468,7 @@
     {
       "ns": "SYSTEM",
       "name": "NUMCPU",
-      "id": 1036,
+      "id": 1043,
       "tokenKind": 2042,
       "kindName": "NumCpu",
       "fn": true,
@@ -11402,7 +11479,7 @@
     {
       "ns": "SYSTEM",
       "name": "NUMGOROUTINE",
-      "id": 1037,
+      "id": 1044,
       "tokenKind": 2041,
       "kindName": "NumGoroutine",
       "fn": true,
@@ -11413,7 +11490,7 @@
     {
       "ns": "SYSTEM",
       "name": "Next",
-      "id": 1038,
+      "id": 1045,
       "tokenKind": 172,
       "kindName": "Next",
       "fn": true,
@@ -11424,7 +11501,7 @@
     {
       "ns": "SYSTEM",
       "name": "SHELLCODE",
-      "id": 1039,
+      "id": 1046,
       "tokenKind": 224,
       "kindName": "ShellCode",
       "fn": true,
@@ -11435,7 +11512,7 @@
     {
       "ns": "SYSTEM",
       "name": "SHELLOUT",
-      "id": 1040,
+      "id": 1047,
       "tokenKind": 223,
       "kindName": "ShellOut",
       "fn": true,
@@ -11446,7 +11523,7 @@
     {
       "ns": "SYSTEM",
       "name": "SIZEOF",
-      "id": 1041,
+      "id": 1048,
       "tokenKind": 1428,
       "kindName": "SizeOf",
       "fn": true,
@@ -11457,7 +11534,7 @@
     {
       "ns": "SYSTEM",
       "name": "STRPTR",
-      "id": 1042,
+      "id": 1049,
       "tokenKind": 1430,
       "kindName": "StrPtr",
       "fn": true,
@@ -11468,7 +11545,7 @@
     {
       "ns": "SYSTEM",
       "name": "STRTI",
-      "id": 1043,
+      "id": 1050,
       "tokenKind": 1426,
       "kindName": "StrTi",
       "fn": true,
@@ -11479,7 +11556,7 @@
     {
       "ns": "SYSTEM",
       "name": "SYS",
-      "id": 1044,
+      "id": 1051,
       "tokenKind": 1427,
       "kindName": "Sys",
       "fn": true,
@@ -11490,7 +11567,7 @@
     {
       "ns": "SYSTEM",
       "name": "TAB",
-      "id": 1045,
+      "id": 1052,
       "tokenKind": 930,
       "kindName": "Tab",
       "fn": true,
@@ -11501,7 +11578,7 @@
     {
       "ns": "SYSTEM",
       "name": "TI",
-      "id": 1046,
+      "id": 1053,
       "tokenKind": 1425,
       "kindName": "Ti",
       "fn": true,
@@ -11512,7 +11589,7 @@
     {
       "ns": "SYSTEM",
       "name": "TYPENAME",
-      "id": 1047,
+      "id": 1054,
       "tokenKind": 1434,
       "kindName": "TypeName",
       "fn": true,
@@ -11523,7 +11600,7 @@
     {
       "ns": "SYSTEM",
       "name": "UBOUND",
-      "id": 1048,
+      "id": 1055,
       "tokenKind": 651,
       "kindName": "UBound",
       "fn": true,
@@ -11534,7 +11611,7 @@
     {
       "ns": "SYSTEM",
       "name": "UDTALIGNED",
-      "id": 1049,
+      "id": 1056,
       "tokenKind": 1433,
       "kindName": "UdtAligned",
       "fn": true,
@@ -11545,7 +11622,7 @@
     {
       "ns": "SYSTEM",
       "name": "UDTPACKED",
-      "id": 1050,
+      "id": 1057,
       "tokenKind": 1432,
       "kindName": "UdtPacked",
       "fn": true,
@@ -11556,7 +11633,7 @@
     {
       "ns": "SYSTEM",
       "name": "VALTYPE",
-      "id": 1051,
+      "id": 1058,
       "tokenKind": 1435,
       "kindName": "ValType",
       "fn": true,
@@ -11567,7 +11644,7 @@
     {
       "ns": "SYSTEM",
       "name": "VARPTR",
-      "id": 1052,
+      "id": 1059,
       "tokenKind": 1429,
       "kindName": "VarPtr",
       "fn": true,
@@ -11578,7 +11655,7 @@
     {
       "ns": "TOOL",
       "name": "Register",
-      "id": 1053,
+      "id": 1060,
       "tokenKind": 2122,
       "kindName": "ToolRegister",
       "fn": true,
@@ -11589,7 +11666,7 @@
     {
       "ns": "TOOL",
       "name": "Search",
-      "id": 1054,
+      "id": 1061,
       "tokenKind": 2121,
       "kindName": "ToolSearch",
       "fn": true,
@@ -11600,7 +11677,7 @@
     {
       "ns": "TORCH",
       "name": "ABS",
-      "id": 1055,
+      "id": 1062,
       "tokenKind": 1919,
       "kindName": "TorchAbs",
       "fn": true,
@@ -11611,7 +11688,7 @@
     {
       "ns": "TORCH",
       "name": "ACCURACY",
-      "id": 1056,
+      "id": 1063,
       "tokenKind": 1960,
       "kindName": "TorchAccuracy",
       "fn": true,
@@ -11622,7 +11699,7 @@
     {
       "ns": "TORCH",
       "name": "ADD",
-      "id": 1057,
+      "id": 1064,
       "tokenKind": 1892,
       "kindName": "TorchAdd",
       "fn": true,
@@ -11633,7 +11710,7 @@
     {
       "ns": "TORCH",
       "name": "ALLCLOSE",
-      "id": 1058,
+      "id": 1065,
       "tokenKind": 1903,
       "kindName": "TorchAllclose",
       "fn": true,
@@ -11644,7 +11721,7 @@
     {
       "ns": "TORCH",
       "name": "ARGMAX",
-      "id": 1059,
+      "id": 1066,
       "tokenKind": 1937,
       "kindName": "TorchArgmax",
       "fn": true,
@@ -11655,7 +11732,7 @@
     {
       "ns": "TORCH",
       "name": "ARGSORT",
-      "id": 1060,
+      "id": 1067,
       "tokenKind": 1936,
       "kindName": "TorchArgsort",
       "fn": true,
@@ -11666,7 +11743,7 @@
     {
       "ns": "TORCH",
       "name": "AVAILABLE",
-      "id": 1061,
+      "id": 1068,
       "tokenKind": 1953,
       "kindName": "TorchAvailable",
       "fn": true,
@@ -11677,7 +11754,7 @@
     {
       "ns": "TORCH",
       "name": "BLEU",
-      "id": 1062,
+      "id": 1069,
       "tokenKind": 1943,
       "kindName": "TorchBleu",
       "fn": true,
@@ -11688,7 +11765,7 @@
     {
       "ns": "TORCH",
       "name": "CLIP",
-      "id": 1063,
+      "id": 1070,
       "tokenKind": 1939,
       "kindName": "TorchClip",
       "fn": true,
@@ -11699,7 +11776,7 @@
     {
       "ns": "TORCH",
       "name": "CONCAT",
-      "id": 1064,
+      "id": 1071,
       "tokenKind": 1932,
       "kindName": "TorchConcat",
       "fn": true,
@@ -11710,7 +11787,7 @@
     {
       "ns": "TORCH",
       "name": "CREATE",
-      "id": 1065,
+      "id": 1072,
       "tokenKind": 1890,
       "kindName": "TorchCreate",
       "fn": true,
@@ -11721,7 +11798,7 @@
     {
       "ns": "TORCH",
       "name": "DATASETLOAD",
-      "id": 1066,
+      "id": 1073,
       "tokenKind": 1948,
       "kindName": "TorchDatasetLoad",
       "fn": true,
@@ -11732,7 +11809,7 @@
     {
       "ns": "TORCH",
       "name": "DEVICE",
-      "id": 1067,
+      "id": 1074,
       "tokenKind": 1887,
       "kindName": "TorchDevice",
       "fn": true,
@@ -11743,7 +11820,7 @@
     {
       "ns": "TORCH",
       "name": "DEVICEOF",
-      "id": 1068,
+      "id": 1075,
       "tokenKind": 1954,
       "kindName": "TorchDeviceOf",
       "fn": true,
@@ -11754,7 +11831,7 @@
     {
       "ns": "TORCH",
       "name": "DIV",
-      "id": 1069,
+      "id": 1076,
       "tokenKind": 1895,
       "kindName": "TorchDiv",
       "fn": true,
@@ -11765,7 +11842,7 @@
     {
       "ns": "TORCH",
       "name": "DTYPE",
-      "id": 1070,
+      "id": 1077,
       "tokenKind": 1952,
       "kindName": "TorchDtype",
       "fn": true,
@@ -11776,7 +11853,7 @@
     {
       "ns": "TORCH",
       "name": "EXP",
-      "id": 1071,
+      "id": 1078,
       "tokenKind": 1915,
       "kindName": "TorchExp",
       "fn": true,
@@ -11787,7 +11864,7 @@
     {
       "ns": "TORCH",
       "name": "EYE",
-      "id": 1072,
+      "id": 1079,
       "tokenKind": 1908,
       "kindName": "TorchEye",
       "fn": true,
@@ -11798,7 +11875,7 @@
     {
       "ns": "TORCH",
       "name": "FREE",
-      "id": 1073,
+      "id": 1080,
       "tokenKind": 1902,
       "kindName": "TorchFree",
       "fn": true,
@@ -11809,7 +11886,7 @@
     {
       "ns": "TORCH",
       "name": "FROM",
-      "id": 1074,
+      "id": 1081,
       "tokenKind": 1891,
       "kindName": "TorchFrom",
       "fn": true,
@@ -11820,7 +11897,7 @@
     {
       "ns": "TORCH",
       "name": "GELU",
-      "id": 1075,
+      "id": 1082,
       "tokenKind": 1929,
       "kindName": "TorchGelu",
       "fn": true,
@@ -11831,7 +11908,7 @@
     {
       "ns": "TORCH",
       "name": "GET",
-      "id": 1076,
+      "id": 1083,
       "tokenKind": 1898,
       "kindName": "TorchGet",
       "fn": true,
@@ -11842,7 +11919,7 @@
     {
       "ns": "TORCH",
       "name": "IMATRIXLOAD",
-      "id": 1077,
+      "id": 1084,
       "tokenKind": 1950,
       "kindName": "TorchImatrixLoad",
       "fn": true,
@@ -11853,7 +11930,7 @@
     {
       "ns": "TORCH",
       "name": "IMATRIXRANKS",
-      "id": 1078,
+      "id": 1085,
       "tokenKind": 1951,
       "kindName": "TorchImatrixRanks",
       "fn": true,
@@ -11864,7 +11941,7 @@
     {
       "ns": "TORCH",
       "name": "LIBPATH",
-      "id": 1079,
+      "id": 1086,
       "tokenKind": 1888,
       "kindName": "TorchLibPath",
       "fn": true,
@@ -11875,7 +11952,7 @@
     {
       "ns": "TORCH",
       "name": "LOADED",
-      "id": 1080,
+      "id": 1087,
       "tokenKind": 1889,
       "kindName": "TorchLoaded",
       "fn": true,
@@ -11886,7 +11963,7 @@
     {
       "ns": "TORCH",
       "name": "LOG",
-      "id": 1081,
+      "id": 1088,
       "tokenKind": 1916,
       "kindName": "TorchLog",
       "fn": true,
@@ -11897,7 +11974,7 @@
     {
       "ns": "TORCH",
       "name": "LOSSBINARY",
-      "id": 1082,
+      "id": 1089,
       "tokenKind": 1959,
       "kindName": "TorchLossBinary",
       "fn": true,
@@ -11908,7 +11985,7 @@
     {
       "ns": "TORCH",
       "name": "LOSSCROSSENTROPY",
-      "id": 1083,
+      "id": 1090,
       "tokenKind": 1958,
       "kindName": "TorchLossCrossEntropy",
       "fn": true,
@@ -11919,7 +11996,7 @@
     {
       "ns": "TORCH",
       "name": "LOSSMSE",
-      "id": 1084,
+      "id": 1091,
       "tokenKind": 1957,
       "kindName": "TorchLossMse",
       "fn": true,
@@ -11930,7 +12007,7 @@
     {
       "ns": "TORCH",
       "name": "MATMUL",
-      "id": 1085,
+      "id": 1092,
       "tokenKind": 1896,
       "kindName": "TorchMatmul",
       "fn": true,
@@ -11941,7 +12018,7 @@
     {
       "ns": "TORCH",
       "name": "MAX",
-      "id": 1086,
+      "id": 1093,
       "tokenKind": 1920,
       "kindName": "TorchMax",
       "fn": true,
@@ -11952,7 +12029,7 @@
     {
       "ns": "TORCH",
       "name": "MEAN",
-      "id": 1087,
+      "id": 1094,
       "tokenKind": 1905,
       "kindName": "TorchMean",
       "fn": true,
@@ -11963,7 +12040,7 @@
     {
       "ns": "TORCH",
       "name": "MIN",
-      "id": 1088,
+      "id": 1095,
       "tokenKind": 1921,
       "kindName": "TorchMin",
       "fn": true,
@@ -11974,7 +12051,7 @@
     {
       "ns": "TORCH",
       "name": "MODELCREATE",
-      "id": 1089,
+      "id": 1096,
       "tokenKind": 1922,
       "kindName": "TorchModelCreate",
       "fn": true,
@@ -11985,7 +12062,7 @@
     {
       "ns": "TORCH",
       "name": "MODELDPOSTEP",
-      "id": 1090,
+      "id": 1097,
       "tokenKind": 1945,
       "kindName": "TorchDpoStep",
       "fn": true,
@@ -11996,7 +12073,7 @@
     {
       "ns": "TORCH",
       "name": "MODELEXPORT",
-      "id": 1091,
+      "id": 1098,
       "tokenKind": 1949,
       "kindName": "TorchModelExport",
       "fn": true,
@@ -12007,7 +12084,7 @@
     {
       "ns": "TORCH",
       "name": "MODELFORWARD",
-      "id": 1092,
+      "id": 1099,
       "tokenKind": 1925,
       "kindName": "TorchModelForward",
       "fn": true,
@@ -12018,7 +12095,7 @@
     {
       "ns": "TORCH",
       "name": "MODELFREE",
-      "id": 1093,
+      "id": 1100,
       "tokenKind": 1928,
       "kindName": "TorchModelFree",
       "fn": true,
@@ -12029,7 +12106,7 @@
     {
       "ns": "TORCH",
       "name": "MODELINPUT",
-      "id": 1094,
+      "id": 1101,
       "tokenKind": 1961,
       "kindName": "TorchModelInput",
       "fn": true,
@@ -12040,7 +12117,7 @@
     {
       "ns": "TORCH",
       "name": "MODELLOAD",
-      "id": 1095,
+      "id": 1102,
       "tokenKind": 2503,
       "kindName": "TorchModelLoad",
       "fn": true,
@@ -12051,7 +12128,7 @@
     {
       "ns": "TORCH",
       "name": "MODELLOSS",
-      "id": 1096,
+      "id": 1103,
       "tokenKind": 1924,
       "kindName": "TorchModelLoss",
       "fn": true,
@@ -12062,7 +12139,7 @@
     {
       "ns": "TORCH",
       "name": "MODELOUTPUT",
-      "id": 1097,
+      "id": 1104,
       "tokenKind": 1962,
       "kindName": "TorchModelOutput",
       "fn": true,
@@ -12073,7 +12150,7 @@
     {
       "ns": "TORCH",
       "name": "MODELPARAMETERS",
-      "id": 1098,
+      "id": 1105,
       "tokenKind": 1926,
       "kindName": "TorchModelParameters",
       "fn": true,
@@ -12084,7 +12161,7 @@
     {
       "ns": "TORCH",
       "name": "MODELRESET",
-      "id": 1099,
+      "id": 1106,
       "tokenKind": 1956,
       "kindName": "TorchModelReset",
       "fn": true,
@@ -12095,7 +12172,7 @@
     {
       "ns": "TORCH",
       "name": "MODELSAVE",
-      "id": 1100,
+      "id": 1107,
       "tokenKind": 1955,
       "kindName": "TorchModelSave",
       "fn": true,
@@ -12106,7 +12183,7 @@
     {
       "ns": "TORCH",
       "name": "MODELSTATE",
-      "id": 1101,
+      "id": 1108,
       "tokenKind": 1927,
       "kindName": "TorchModelState",
       "fn": true,
@@ -12117,7 +12194,7 @@
     {
       "ns": "TORCH",
       "name": "MODELTRAINSTEP",
-      "id": 1102,
+      "id": 1109,
       "tokenKind": 1923,
       "kindName": "TorchModelTrainStep",
       "fn": true,
@@ -12128,7 +12205,7 @@
     {
       "ns": "TORCH",
       "name": "MUL",
-      "id": 1103,
+      "id": 1110,
       "tokenKind": 1894,
       "kindName": "TorchMul",
       "fn": true,
@@ -12139,7 +12216,7 @@
     {
       "ns": "TORCH",
       "name": "NORMALIZE",
-      "id": 1104,
+      "id": 1111,
       "tokenKind": 1940,
       "kindName": "TorchNormalize",
       "fn": true,
@@ -12150,7 +12227,7 @@
     {
       "ns": "TORCH",
       "name": "ONEHOT",
-      "id": 1105,
+      "id": 1112,
       "tokenKind": 1938,
       "kindName": "TorchOneHot",
       "fn": true,
@@ -12161,7 +12238,7 @@
     {
       "ns": "TORCH",
       "name": "ONES",
-      "id": 1106,
+      "id": 1113,
       "tokenKind": 1907,
       "kindName": "TorchOnes",
       "fn": true,
@@ -12172,7 +12249,7 @@
     {
       "ns": "TORCH",
       "name": "PERMUTE",
-      "id": 1107,
+      "id": 1114,
       "tokenKind": 1930,
       "kindName": "TorchPermute",
       "fn": true,
@@ -12183,7 +12260,7 @@
     {
       "ns": "TORCH",
       "name": "POW",
-      "id": 1108,
+      "id": 1115,
       "tokenKind": 1918,
       "kindName": "TorchPow",
       "fn": true,
@@ -12194,7 +12271,7 @@
     {
       "ns": "TORCH",
       "name": "RANDN",
-      "id": 1109,
+      "id": 1116,
       "tokenKind": 1909,
       "kindName": "TorchRandn",
       "fn": true,
@@ -12205,7 +12282,7 @@
     {
       "ns": "TORCH",
       "name": "RELU",
-      "id": 1110,
+      "id": 1117,
       "tokenKind": 1897,
       "kindName": "TorchRelu",
       "fn": true,
@@ -12216,7 +12293,7 @@
     {
       "ns": "TORCH",
       "name": "RESHAPE",
-      "id": 1111,
+      "id": 1118,
       "tokenKind": 1911,
       "kindName": "TorchReshape",
       "fn": true,
@@ -12227,7 +12304,7 @@
     {
       "ns": "TORCH",
       "name": "ROUGE",
-      "id": 1112,
+      "id": 1119,
       "tokenKind": 1944,
       "kindName": "TorchRouge",
       "fn": true,
@@ -12238,7 +12315,7 @@
     {
       "ns": "TORCH",
       "name": "SET",
-      "id": 1113,
+      "id": 1120,
       "tokenKind": 1899,
       "kindName": "TorchSet",
       "fn": true,
@@ -12249,7 +12326,7 @@
     {
       "ns": "TORCH",
       "name": "SHAPE",
-      "id": 1114,
+      "id": 1121,
       "tokenKind": 1901,
       "kindName": "TorchShape",
       "fn": true,
@@ -12260,7 +12337,7 @@
     {
       "ns": "TORCH",
       "name": "SIGMOID",
-      "id": 1115,
+      "id": 1122,
       "tokenKind": 1912,
       "kindName": "TorchSigmoid",
       "fn": true,
@@ -12271,7 +12348,7 @@
     {
       "ns": "TORCH",
       "name": "SIMILARITY",
-      "id": 1116,
+      "id": 1123,
       "tokenKind": 1942,
       "kindName": "TorchSimilarity",
       "fn": true,
@@ -12282,7 +12359,7 @@
     {
       "ns": "TORCH",
       "name": "SLICE",
-      "id": 1117,
+      "id": 1124,
       "tokenKind": 1931,
       "kindName": "TorchSlice",
       "fn": true,
@@ -12293,7 +12370,7 @@
     {
       "ns": "TORCH",
       "name": "SOFTMAX",
-      "id": 1118,
+      "id": 1125,
       "tokenKind": 1914,
       "kindName": "TorchSoftmax",
       "fn": true,
@@ -12304,7 +12381,7 @@
     {
       "ns": "TORCH",
       "name": "SPLIT",
-      "id": 1119,
+      "id": 1126,
       "tokenKind": 1934,
       "kindName": "TorchSplit",
       "fn": true,
@@ -12315,7 +12392,7 @@
     {
       "ns": "TORCH",
       "name": "SQRT",
-      "id": 1120,
+      "id": 1127,
       "tokenKind": 1917,
       "kindName": "TorchSqrt",
       "fn": true,
@@ -12326,7 +12403,7 @@
     {
       "ns": "TORCH",
       "name": "STACK",
-      "id": 1121,
+      "id": 1128,
       "tokenKind": 1933,
       "kindName": "TorchStack",
       "fn": true,
@@ -12337,7 +12414,7 @@
     {
       "ns": "TORCH",
       "name": "STANDARDIZE",
-      "id": 1122,
+      "id": 1129,
       "tokenKind": 1941,
       "kindName": "TorchStandardize",
       "fn": true,
@@ -12348,7 +12425,7 @@
     {
       "ns": "TORCH",
       "name": "SUB",
-      "id": 1123,
+      "id": 1130,
       "tokenKind": 1893,
       "kindName": "TorchSub",
       "fn": true,
@@ -12359,7 +12436,7 @@
     {
       "ns": "TORCH",
       "name": "SUM",
-      "id": 1124,
+      "id": 1131,
       "tokenKind": 1904,
       "kindName": "TorchSum",
       "fn": true,
@@ -12370,7 +12447,7 @@
     {
       "ns": "TORCH",
       "name": "TANH",
-      "id": 1125,
+      "id": 1132,
       "tokenKind": 1913,
       "kindName": "TorchTanh",
       "fn": true,
@@ -12381,7 +12458,7 @@
     {
       "ns": "TORCH",
       "name": "TEXTDECODE",
-      "id": 1126,
+      "id": 1133,
       "tokenKind": 1947,
       "kindName": "TorchTextDecode",
       "fn": true,
@@ -12392,7 +12469,7 @@
     {
       "ns": "TORCH",
       "name": "TEXTENCODE",
-      "id": 1127,
+      "id": 1134,
       "tokenKind": 1946,
       "kindName": "TorchTextEncode",
       "fn": true,
@@ -12403,7 +12480,7 @@
     {
       "ns": "TORCH",
       "name": "TOARRAY",
-      "id": 1128,
+      "id": 1135,
       "tokenKind": 1900,
       "kindName": "TorchToArray",
       "fn": true,
@@ -12414,7 +12491,7 @@
     {
       "ns": "TORCH",
       "name": "TOPK",
-      "id": 1129,
+      "id": 1136,
       "tokenKind": 1935,
       "kindName": "TorchTopK",
       "fn": true,
@@ -12425,7 +12502,7 @@
     {
       "ns": "TORCH",
       "name": "TRANSPOSE",
-      "id": 1130,
+      "id": 1137,
       "tokenKind": 1910,
       "kindName": "TorchTranspose",
       "fn": true,
@@ -12436,7 +12513,7 @@
     {
       "ns": "TORCH",
       "name": "ZEROS",
-      "id": 1131,
+      "id": 1138,
       "tokenKind": 1906,
       "kindName": "TorchZeros",
       "fn": true,
@@ -12447,7 +12524,7 @@
     {
       "ns": "TRAY",
       "name": "TRAYAVAILABLE",
-      "id": 1132,
+      "id": 1139,
       "tokenKind": 2437,
       "kindName": "TrayAvailable",
       "fn": true,
@@ -12458,7 +12535,7 @@
     {
       "ns": "TRAY",
       "name": "TRAYBACKEND",
-      "id": 1133,
+      "id": 1140,
       "tokenKind": 2435,
       "kindName": "TrayBackend",
       "fn": true,
@@ -12469,7 +12546,7 @@
     {
       "ns": "TRAY",
       "name": "TRAYCREATE",
-      "id": 1134,
+      "id": 1141,
       "tokenKind": 2429,
       "kindName": "TrayCreate",
       "fn": true,
@@ -12480,7 +12557,7 @@
     {
       "ns": "TRAY",
       "name": "TRAYITEM",
-      "id": 1135,
+      "id": 1142,
       "tokenKind": 2430,
       "kindName": "TrayItem",
       "fn": true,
@@ -12491,7 +12568,7 @@
     {
       "ns": "TRAY",
       "name": "TRAYLAST",
-      "id": 1136,
+      "id": 1143,
       "tokenKind": 2438,
       "kindName": "TrayLast",
       "fn": true,
@@ -12502,7 +12579,7 @@
     {
       "ns": "TRAY",
       "name": "TRAYPOLL",
-      "id": 1137,
+      "id": 1144,
       "tokenKind": 2433,
       "kindName": "TrayPoll",
       "fn": true,
@@ -12513,7 +12590,7 @@
     {
       "ns": "TRAY",
       "name": "TRAYREMOVE",
-      "id": 1138,
+      "id": 1145,
       "tokenKind": 2434,
       "kindName": "TrayRemove",
       "fn": true,
@@ -12524,7 +12601,7 @@
     {
       "ns": "TRAY",
       "name": "TRAYSELFTEST",
-      "id": 1139,
+      "id": 1146,
       "tokenKind": 2436,
       "kindName": "TraySelfTest",
       "fn": true,
@@ -12535,7 +12612,7 @@
     {
       "ns": "TRAY",
       "name": "TRAYSEP",
-      "id": 1140,
+      "id": 1147,
       "tokenKind": 2431,
       "kindName": "TraySep",
       "fn": true,
@@ -12546,7 +12623,7 @@
     {
       "ns": "TRAY",
       "name": "TRAYTOOLTIP",
-      "id": 1141,
+      "id": 1148,
       "tokenKind": 2432,
       "kindName": "TrayTooltip",
       "fn": true,
@@ -12557,7 +12634,7 @@
     {
       "ns": "TYPEINFO",
       "name": "HAS",
-      "id": 1142,
+      "id": 1149,
       "tokenKind": 1085,
       "kindName": "TypeInfoHas",
       "fn": true,
@@ -12568,7 +12645,7 @@
     {
       "ns": "TYPEINFO",
       "name": "METHODINFO",
-      "id": 1143,
+      "id": 1150,
       "tokenKind": 1086,
       "kindName": "MethodInfo",
       "fn": true,
@@ -12579,7 +12656,7 @@
     {
       "ns": "TYPEINFO",
       "name": "PROPERTYINFO",
-      "id": 1144,
+      "id": 1151,
       "tokenKind": 1087,
       "kindName": "PropertyInfo",
       "fn": true,
@@ -12590,7 +12667,7 @@
     {
       "ns": "TYPEINFO",
       "name": "TYPEINFO",
-      "id": 1145,
+      "id": 1152,
       "tokenKind": 1084,
       "kindName": "TypeInfo",
       "fn": true,
@@ -12601,7 +12678,7 @@
     {
       "ns": "UI",
       "name": "Click",
-      "id": 1146,
+      "id": 1153,
       "tokenKind": 2126,
       "kindName": "UiClick",
       "fn": true,
@@ -12612,7 +12689,7 @@
     {
       "ns": "UI",
       "name": "Find",
-      "id": 1147,
+      "id": 1154,
       "tokenKind": 2124,
       "kindName": "UiFind",
       "fn": true,
@@ -12623,7 +12700,7 @@
     {
       "ns": "UI",
       "name": "FindAll",
-      "id": 1148,
+      "id": 1155,
       "tokenKind": 2125,
       "kindName": "UiFindAll",
       "fn": true,
@@ -12634,7 +12711,7 @@
     {
       "ns": "UI",
       "name": "Type",
-      "id": 1149,
+      "id": 1156,
       "tokenKind": 2127,
       "kindName": "UiType",
       "fn": true,
@@ -12645,7 +12722,7 @@
     {
       "ns": "VECTOR",
       "name": "Angle2d",
-      "id": 1150,
+      "id": 1157,
       "tokenKind": 666,
       "kindName": "Angle2d",
       "fn": true,
@@ -12656,7 +12733,7 @@
     {
       "ns": "VECTOR",
       "name": "CHEBYSHEV",
-      "id": 1151,
+      "id": 1158,
       "tokenKind": 643,
       "kindName": "VectorChebyshev",
       "fn": true,
@@ -12667,7 +12744,7 @@
     {
       "ns": "VECTOR",
       "name": "COSINE",
-      "id": 1152,
+      "id": 1159,
       "tokenKind": 644,
       "kindName": "VectorCosineDistance",
       "fn": true,
@@ -12678,7 +12755,7 @@
     {
       "ns": "VECTOR",
       "name": "CREATE",
-      "id": 1153,
+      "id": 1160,
       "tokenKind": 369,
       "kindName": "LinAlgVectorCreateFunc",
       "fn": true,
@@ -12689,7 +12766,7 @@
     {
       "ns": "VECTOR",
       "name": "Dist2d",
-      "id": 1154,
+      "id": 1161,
       "tokenKind": 662,
       "kindName": "Dist2d",
       "fn": true,
@@ -12700,7 +12777,7 @@
     {
       "ns": "VECTOR",
       "name": "Dist3d",
-      "id": 1155,
+      "id": 1162,
       "tokenKind": 663,
       "kindName": "Dist3d",
       "fn": true,
@@ -12711,7 +12788,7 @@
     {
       "ns": "VECTOR",
       "name": "EUCLIDEA",
-      "id": 1156,
+      "id": 1163,
       "tokenKind": 864,
       "kindName": "Norm",
       "fn": true,
@@ -12722,7 +12799,7 @@
     {
       "ns": "VECTOR",
       "name": "EuclideanDistanceSquared",
-      "id": 1157,
+      "id": 1164,
       "tokenKind": 1976,
       "kindName": "EuclideanDistanceSquared",
       "fn": true,
@@ -12733,7 +12810,7 @@
     {
       "ns": "VECTOR",
       "name": "MANHATTAN",
-      "id": 1158,
+      "id": 1165,
       "tokenKind": 642,
       "kindName": "VectorManhattan",
       "fn": true,
@@ -12744,7 +12821,7 @@
     {
       "ns": "VECTOR",
       "name": "MINKOWSKI",
-      "id": 1159,
+      "id": 1166,
       "tokenKind": 645,
       "kindName": "VectorMinkowski",
       "fn": true,
@@ -12755,7 +12832,7 @@
     {
       "ns": "VECTOR",
       "name": "POLAR_X",
-      "id": 1160,
+      "id": 1167,
       "tokenKind": 664,
       "kindName": "PolarX",
       "fn": true,
@@ -12766,7 +12843,7 @@
     {
       "ns": "VECTOR",
       "name": "POLAR_Y",
-      "id": 1161,
+      "id": 1168,
       "tokenKind": 665,
       "kindName": "PolarY",
       "fn": true,
@@ -12777,7 +12854,7 @@
     {
       "ns": "VECTOR",
       "name": "PRODUCT",
-      "id": 1162,
+      "id": 1169,
       "tokenKind": 865,
       "kindName": "DotProduct",
       "fn": true,
@@ -12788,7 +12865,7 @@
     {
       "ns": "VECTOR",
       "name": "VADD",
-      "id": 1163,
+      "id": 1170,
       "tokenKind": 758,
       "kindName": "VAdd",
       "fn": true,
@@ -12799,7 +12876,7 @@
     {
       "ns": "VECTOR",
       "name": "VANGLE",
-      "id": 1164,
+      "id": 1171,
       "tokenKind": 766,
       "kindName": "VAngle",
       "fn": true,
@@ -12810,7 +12887,7 @@
     {
       "ns": "VECTOR",
       "name": "VCROSS",
-      "id": 1165,
+      "id": 1172,
       "tokenKind": 765,
       "kindName": "VCross",
       "fn": true,
@@ -12821,7 +12898,7 @@
     {
       "ns": "VECTOR",
       "name": "VDIST",
-      "id": 1166,
+      "id": 1173,
       "tokenKind": 767,
       "kindName": "VDist",
       "fn": true,
@@ -12832,7 +12909,7 @@
     {
       "ns": "VECTOR",
       "name": "VDIV",
-      "id": 1167,
+      "id": 1174,
       "tokenKind": 761,
       "kindName": "VDiv",
       "fn": true,
@@ -12843,7 +12920,7 @@
     {
       "ns": "VECTOR",
       "name": "VGET",
-      "id": 1168,
+      "id": 1175,
       "tokenKind": 757,
       "kindName": "VGet",
       "fn": true,
@@ -12854,7 +12931,7 @@
     {
       "ns": "VECTOR",
       "name": "VLERP",
-      "id": 1169,
+      "id": 1176,
       "tokenKind": 764,
       "kindName": "VLerp",
       "fn": true,
@@ -12865,7 +12942,7 @@
     {
       "ns": "VECTOR",
       "name": "VMAX",
-      "id": 1170,
+      "id": 1177,
       "tokenKind": 769,
       "kindName": "VMax",
       "fn": true,
@@ -12876,7 +12953,7 @@
     {
       "ns": "VECTOR",
       "name": "VMIN",
-      "id": 1171,
+      "id": 1178,
       "tokenKind": 768,
       "kindName": "VMin",
       "fn": true,
@@ -12887,7 +12964,7 @@
     {
       "ns": "VECTOR",
       "name": "VMUL",
-      "id": 1172,
+      "id": 1179,
       "tokenKind": 760,
       "kindName": "VMul",
       "fn": true,
@@ -12898,7 +12975,7 @@
     {
       "ns": "VECTOR",
       "name": "VNORM",
-      "id": 1173,
+      "id": 1180,
       "tokenKind": 763,
       "kindName": "VNorm",
       "fn": true,
@@ -12909,7 +12986,7 @@
     {
       "ns": "VECTOR",
       "name": "VSCALE",
-      "id": 1174,
+      "id": 1181,
       "tokenKind": 762,
       "kindName": "VScale",
       "fn": true,
@@ -12920,7 +12997,7 @@
     {
       "ns": "VECTOR",
       "name": "VSUB",
-      "id": 1175,
+      "id": 1182,
       "tokenKind": 759,
       "kindName": "VSub",
       "fn": true,
@@ -12931,7 +13008,7 @@
     {
       "ns": "VECTORDB",
       "name": "AbTest",
-      "id": 1176,
+      "id": 1183,
       "tokenKind": 2315,
       "kindName": "VectorDbAbTest",
       "fn": true,
@@ -12942,7 +13019,7 @@
     {
       "ns": "VECTORDB",
       "name": "Baseline",
-      "id": 1177,
+      "id": 1184,
       "tokenKind": 2313,
       "kindName": "VectorDbBaseline",
       "fn": true,
@@ -12953,7 +13030,7 @@
     {
       "ns": "VECTORDB",
       "name": "Calibrate",
-      "id": 1178,
+      "id": 1185,
       "tokenKind": 2310,
       "kindName": "VectorDbCalibrate",
       "fn": true,
@@ -12964,7 +13041,7 @@
     {
       "ns": "VECTORDB",
       "name": "Compare",
-      "id": 1179,
+      "id": 1186,
       "tokenKind": 2316,
       "kindName": "VectorDbCompare",
       "fn": true,
@@ -12975,7 +13052,7 @@
     {
       "ns": "VECTORDB",
       "name": "Completeness",
-      "id": 1180,
+      "id": 1187,
       "tokenKind": 2302,
       "kindName": "VectorDbCompleteness",
       "fn": true,
@@ -12986,7 +13063,7 @@
     {
       "ns": "VECTORDB",
       "name": "Count",
-      "id": 1181,
+      "id": 1188,
       "tokenKind": 1050,
       "kindName": "AiVectorCountEmbeddings",
       "fn": true,
@@ -12997,7 +13074,7 @@
     {
       "ns": "VECTORDB",
       "name": "Diagnose",
-      "id": 1182,
+      "id": 1189,
       "tokenKind": 2308,
       "kindName": "VectorDbDiagnose",
       "fn": true,
@@ -13008,7 +13085,7 @@
     {
       "ns": "VECTORDB",
       "name": "DiagnoseReport",
-      "id": 1183,
+      "id": 1190,
       "tokenKind": 2309,
       "kindName": "VectorDbDiagnoseReport",
       "fn": true,
@@ -13019,7 +13096,7 @@
     {
       "ns": "VECTORDB",
       "name": "Drift",
-      "id": 1184,
+      "id": 1191,
       "tokenKind": 2314,
       "kindName": "VectorDbDrift",
       "fn": true,
@@ -13030,7 +13107,7 @@
     {
       "ns": "VECTORDB",
       "name": "Embed",
-      "id": 1185,
+      "id": 1192,
       "tokenKind": 1042,
       "kindName": "AiVectorEmbed",
       "fn": true,
@@ -13041,7 +13118,7 @@
     {
       "ns": "VECTORDB",
       "name": "EnsureCollection",
-      "id": 1186,
+      "id": 1193,
       "tokenKind": 1046,
       "kindName": "AiVectorEnsureCollection",
       "fn": true,
@@ -13052,7 +13129,7 @@
     {
       "ns": "VECTORDB",
       "name": "EvalDiff",
-      "id": 1187,
+      "id": 1194,
       "tokenKind": 2312,
       "kindName": "VectorDbEvalDiff",
       "fn": true,
@@ -13063,7 +13140,7 @@
     {
       "ns": "VECTORDB",
       "name": "EvalGate",
-      "id": 1188,
+      "id": 1195,
       "tokenKind": 2311,
       "kindName": "VectorDbEvalGate",
       "fn": true,
@@ -13074,7 +13151,7 @@
     {
       "ns": "VECTORDB",
       "name": "Faithfulness",
-      "id": 1189,
+      "id": 1196,
       "tokenKind": 2299,
       "kindName": "VectorDbFaithfulness",
       "fn": true,
@@ -13085,7 +13162,7 @@
     {
       "ns": "VECTORDB",
       "name": "GenTest",
-      "id": 1190,
+      "id": 1197,
       "tokenKind": 1055,
       "kindName": "AiVectorGenTest",
       "fn": true,
@@ -13096,7 +13173,7 @@
     {
       "ns": "VECTORDB",
       "name": "Hallucination",
-      "id": 1191,
+      "id": 1198,
       "tokenKind": 2301,
       "kindName": "VectorDbHallucination",
       "fn": true,
@@ -13107,7 +13184,7 @@
     {
       "ns": "VECTORDB",
       "name": "IndexMeta",
-      "id": 1192,
+      "id": 1199,
       "tokenKind": 1047,
       "kindName": "AiVectorIndexMeta",
       "fn": true,
@@ -13118,7 +13195,7 @@
     {
       "ns": "VECTORDB",
       "name": "IndexText",
-      "id": 1193,
+      "id": 1200,
       "tokenKind": 1043,
       "kindName": "AiVectorIndexText",
       "fn": true,
@@ -13129,7 +13206,7 @@
     {
       "ns": "VECTORDB",
       "name": "ListCollections",
-      "id": 1194,
+      "id": 1201,
       "tokenKind": 1053,
       "kindName": "AiVectorListCollections",
       "fn": true,
@@ -13140,7 +13217,7 @@
     {
       "ns": "VECTORDB",
       "name": "LoadDocuments",
-      "id": 1195,
+      "id": 1202,
       "tokenKind": 1052,
       "kindName": "AiVectorLoadDocuments",
       "fn": true,
@@ -13151,7 +13228,7 @@
     {
       "ns": "VECTORDB",
       "name": "Mrr",
-      "id": 1196,
+      "id": 1203,
       "tokenKind": 2297,
       "kindName": "VectorDbMrr",
       "fn": true,
@@ -13162,7 +13239,7 @@
     {
       "ns": "VECTORDB",
       "name": "NdcgAt",
-      "id": 1197,
+      "id": 1204,
       "tokenKind": 2298,
       "kindName": "VectorDbNdcgAt",
       "fn": true,
@@ -13173,7 +13250,7 @@
     {
       "ns": "VECTORDB",
       "name": "PrecisionAt",
-      "id": 1198,
+      "id": 1205,
       "tokenKind": 2295,
       "kindName": "VectorDbPrecisionAt",
       "fn": true,
@@ -13184,7 +13261,7 @@
     {
       "ns": "VECTORDB",
       "name": "PurgeDeprecated",
-      "id": 1199,
+      "id": 1206,
       "tokenKind": 1049,
       "kindName": "AiVectorPurgeDeprecated",
       "fn": true,
@@ -13195,7 +13272,7 @@
     {
       "ns": "VECTORDB",
       "name": "RecallAt",
-      "id": 1200,
+      "id": 1207,
       "tokenKind": 2296,
       "kindName": "VectorDbRecallAt",
       "fn": true,
@@ -13206,7 +13283,7 @@
     {
       "ns": "VECTORDB",
       "name": "Relevance",
-      "id": 1201,
+      "id": 1208,
       "tokenKind": 2300,
       "kindName": "VectorDbRelevance",
       "fn": true,
@@ -13217,7 +13294,7 @@
     {
       "ns": "VECTORDB",
       "name": "RemoveSource",
-      "id": 1202,
+      "id": 1209,
       "tokenKind": 1048,
       "kindName": "AiVectorRemoveSource",
       "fn": true,
@@ -13228,7 +13305,7 @@
     {
       "ns": "VECTORDB",
       "name": "Search",
-      "id": 1203,
+      "id": 1210,
       "tokenKind": 1051,
       "kindName": "AiVectorSearch",
       "fn": true,
@@ -13239,7 +13316,7 @@
     {
       "ns": "WINDOWS",
       "name": "DESKTOP",
-      "id": 1204,
+      "id": 1211,
       "tokenKind": 1506,
       "kindName": "WindowDesktop",
       "fn": true,
@@ -13250,7 +13327,7 @@
     {
       "ns": "WINDOWS",
       "name": "HEIGHT",
-      "id": 1205,
+      "id": 1212,
       "tokenKind": 1504,
       "kindName": "WindowHeight",
       "fn": true,
@@ -13261,7 +13338,7 @@
     {
       "ns": "WINDOWS",
       "name": "THEME",
-      "id": 1206,
+      "id": 1213,
       "tokenKind": 1505,
       "kindName": "WindowTheme",
       "fn": true,
@@ -13272,7 +13349,7 @@
     {
       "ns": "WINDOWS",
       "name": "WIDTH",
-      "id": 1207,
+      "id": 1214,
       "tokenKind": 1503,
       "kindName": "WindowWidth",
       "fn": true,
@@ -13283,7 +13360,7 @@
     {
       "ns": "WINDOWS",
       "name": "WINDOWCLOSED",
-      "id": 1208,
+      "id": 1215,
       "tokenKind": 12,
       "kindName": "Identifier",
       "fn": true,
@@ -13294,7 +13371,7 @@
     {
       "ns": "WINDOWS",
       "name": "X",
-      "id": 1209,
+      "id": 1216,
       "tokenKind": 1501,
       "kindName": "WindowX",
       "fn": true,
@@ -13305,7 +13382,7 @@
     {
       "ns": "WINDOWS",
       "name": "Y",
-      "id": 1210,
+      "id": 1217,
       "tokenKind": 1502,
       "kindName": "WindowY",
       "fn": true,
@@ -13316,7 +13393,7 @@
     {
       "ns": "WORLD",
       "name": "CEILZ",
-      "id": 1211,
+      "id": 1218,
       "tokenKind": 2518,
       "kindName": "CeilZ",
       "fn": true,
@@ -13327,7 +13404,7 @@
     {
       "ns": "WORLD",
       "name": "FLOORZ",
-      "id": 1212,
+      "id": 1219,
       "tokenKind": 2517,
       "kindName": "FloorZ",
       "fn": true,
@@ -13338,7 +13415,7 @@
     {
       "ns": "WORLD",
       "name": "LIGHTNOW",
-      "id": 1213,
+      "id": 1220,
       "tokenKind": 2516,
       "kindName": "LightNow",
       "fn": true,
@@ -13349,7 +13426,7 @@
     {
       "ns": "WORLD",
       "name": "MOVING",
-      "id": 1214,
+      "id": 1221,
       "tokenKind": 2512,
       "kindName": "Moving",
       "fn": true,
@@ -13360,7 +13437,7 @@
     {
       "ns": "WORLD",
       "name": "TIME",
-      "id": 1215,
+      "id": 1222,
       "tokenKind": 2519,
       "kindName": "WorldTime",
       "fn": true,
@@ -13881,194 +13958,200 @@
       "kindName": "SaveScreen"
     },
     {
-      "name": "SCREEN",
+      "name": "SCENE",
       "id": 1000086,
+      "tokenKind": 2526,
+      "kindName": "Scene"
+    },
+    {
+      "name": "SCREEN",
+      "id": 1000087,
       "tokenKind": 251,
       "kindName": "Screen"
     },
     {
       "name": "SCREENSET",
-      "id": 1000087,
+      "id": 1000088,
       "tokenKind": 261,
       "kindName": "ScreenSet"
     },
     {
       "name": "SCROLLMODE",
-      "id": 1000088,
+      "id": 1000089,
       "tokenKind": 280,
       "kindName": "ScrollMode"
     },
     {
       "name": "SEEK",
-      "id": 1000089,
+      "id": 1000090,
       "tokenKind": 436,
       "kindName": "Seek"
     },
     {
       "name": "SEND",
-      "id": 1000090,
+      "id": 1000091,
       "tokenKind": 415,
       "kindName": "Send"
     },
     {
       "name": "SENDKEY",
-      "id": 1000091,
+      "id": 1000092,
       "tokenKind": 279,
       "kindName": "SendKey"
     },
     {
       "name": "SET",
-      "id": 1000092,
+      "id": 1000093,
       "tokenKind": 220,
       "kindName": "Set"
     },
     {
       "name": "SETOPTION",
-      "id": 1000093,
+      "id": 1000094,
       "tokenKind": 425,
       "kindName": "SetOption"
     },
     {
       "name": "SHELL",
-      "id": 1000094,
+      "id": 1000095,
       "tokenKind": 222,
       "kindName": "Shell"
     },
     {
       "name": "SHUTDOWN",
-      "id": 1000095,
+      "id": 1000096,
       "tokenKind": 424,
       "kindName": "Shutdown"
     },
     {
       "name": "SLEEP",
-      "id": 1000096,
+      "id": 1000097,
       "tokenKind": 248,
       "kindName": "Sleep"
     },
     {
       "name": "SOUND",
-      "id": 1000097,
+      "id": 1000098,
       "tokenKind": 409,
       "kindName": "Sound"
     },
     {
       "name": "SPRITE",
-      "id": 1000098,
+      "id": 1000099,
       "tokenKind": 281,
       "kindName": "Sprite"
     },
     {
       "name": "SPRITEDEF",
-      "id": 1000099,
+      "id": 1000100,
       "tokenKind": 307,
       "kindName": "Spritedef"
     },
     {
       "name": "SYNC",
-      "id": 1000100,
+      "id": 1000101,
       "tokenKind": 284,
       "kindName": "Sync"
     },
     {
       "name": "TEXTMODE",
-      "id": 1000101,
+      "id": 1000102,
       "tokenKind": 2441,
       "kindName": "TextMode"
     },
     {
       "name": "TILEMAP",
-      "id": 1000102,
+      "id": 1000103,
       "tokenKind": 287,
       "kindName": "Tilemap"
     },
     {
       "name": "UNLOCK",
-      "id": 1000103,
+      "id": 1000104,
       "tokenKind": 494,
       "kindName": "Unlock"
     },
     {
       "name": "UNWATCH",
-      "id": 1000104,
+      "id": 1000105,
       "tokenKind": 452,
       "kindName": "Unwatch"
     },
     {
       "name": "UNZIP",
-      "id": 1000105,
+      "id": 1000106,
       "tokenKind": 1549,
       "kindName": "Unzip"
     },
     {
       "name": "VECTOR",
-      "id": 1000106,
+      "id": 1000107,
       "tokenKind": 379,
       "kindName": "Vector"
     },
     {
       "name": "VIEW",
-      "id": 1000107,
+      "id": 1000108,
       "tokenKind": 407,
       "kindName": "View"
     },
     {
       "name": "VIEWPORT",
-      "id": 1000108,
+      "id": 1000109,
       "tokenKind": 312,
       "kindName": "Viewport"
     },
     {
       "name": "WAIT",
-      "id": 1000109,
+      "id": 1000110,
       "tokenKind": 214,
       "kindName": "Wait"
     },
     {
       "name": "WAITKEY",
-      "id": 1000110,
+      "id": 1000111,
       "tokenKind": 249,
       "kindName": "WaitKey"
     },
     {
       "name": "WATCH",
-      "id": 1000111,
+      "id": 1000112,
       "tokenKind": 449,
       "kindName": "Watch"
     },
     {
       "name": "WEB2MD",
-      "id": 1000112,
+      "id": 1000113,
       "tokenKind": 1599,
       "kindName": "WebToMd"
     },
     {
       "name": "WINDOW",
-      "id": 1000113,
+      "id": 1000114,
       "tokenKind": 310,
       "kindName": "Window"
     },
     {
       "name": "WORLD",
-      "id": 1000114,
+      "id": 1000115,
       "tokenKind": 406,
       "kindName": "World"
     },
     {
       "name": "WRITE",
-      "id": 1000115,
+      "id": 1000116,
       "tokenKind": 439,
       "kindName": "Write"
     },
     {
       "name": "XCOPY",
-      "id": 1000116,
+      "id": 1000117,
       "tokenKind": 559,
       "kindName": "XCopy"
     },
     {
       "name": "ZIP",
-      "id": 1000117,
+      "id": 1000118,
       "tokenKind": 1548,
       "kindName": "Zip"
     }
@@ -15785,7 +15868,7 @@
       "value": 103
     }
   ],
-  "count": 1215,
-  "commandsCount": 117,
+  "count": 1222,
+  "commandsCount": 118,
   "constantsCount": 285
 }

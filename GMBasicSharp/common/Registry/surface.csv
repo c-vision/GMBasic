@@ -890,6 +890,13 @@ procedure,RDD,TABLEREVERT,RddTableRevert
 procedure,RDD,TABLEUPDATE,RddTableUpdate
 procedure,RDD,TODAY,RddToday
 procedure,RDD,VALTYPE,RddValType
+procedure,SCENE,CULLED,SceneCulled
+procedure,SCENE,DRAWN,SceneDrawn
+procedure,SCENE,HASH,SceneHash
+procedure,SCENE,PIXEL,ScenePixel
+procedure,SCENE,PIXELS,ScenePixels
+procedure,SCENE,TRIS,SceneTris
+procedure,SCENE,VERTS,SceneVerts
 procedure,SPEED,BEGINGROUPCOMMIT,SpeedBeginGroupCommit
 procedure,SPEED,BEGINGROUPCOMMIT,SpeedBeginGroupCommit
 procedure,SPEED,ENDGROUPCOMMIT,SpeedEndGroupCommit
@@ -1299,6 +1306,7 @@ command,,RENAME,Rename
 command,,RESTORESCREEN,RestoreScreen
 command,,RMDIR,RmDir
 command,,SAVESCREEN,SaveScreen
+command,,SCENE,Scene
 command,,SCREEN,Screen
 command,,SCREENSET,ScreenSet
 command,,SCROLLMODE,ScrollMode
