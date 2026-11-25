@@ -67,6 +67,21 @@ gmb_int_t gmb_str_t_len(gmb_string_t s) {
     return gmb_chars_len(s.data);
 }
 
+/* LEN di un NUMERO = numero di "cifre" della sua rappresentazione, come IlRuntime.Len
+ * (formato "G17", senza il punto decimale e senza il segno meno iniziale): 123→3, 1.5→2,
+ * 1.25→3, -1.5→2, 100→3. Canone IL/PCode; prima C99 non compilava `LEN(123)` (passava un
+ * double a gmb_str_t_len) e la VM/C dava 0. */
+gmb_int_t gmb_len_number(gmb_double_t v) {
+    char b[64];
+    const char* p;
+    gmb_int_t n = 0;
+    snprintf(b, sizeof b, "%.17g", (double)v);
+    p = b;
+    if (*p == '-') p++;
+    for (; *p; p++) if (*p != '.') n++;
+    return n;
+}
+
 /* LENB di una stringa: BYTE UTF-8 (la lunghezza memorizzata). */
 gmb_int_t gmb_str_bytes(gmb_string_t s) {
     return s.data ? (gmb_int_t)s.length : 0;

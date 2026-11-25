@@ -2063,6 +2063,9 @@ static void gmb_bf_23(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_
                 else if (args[0].ref->kind == GMB_OBJ_DICT && ((gmb_obj_shared_val_t*)args[0].ref)->dict) bout->result = (double)((gmb_obj_shared_val_t*)args[0].ref)->dict->count;
                 else bout->result = 0;
             }
+            /* LEN di un NUMERO = numero di CIFRE (canone IlRuntime.Len, stessa formula del
+             * runtime condiviso: gmb_len_number). Prima dava 0 mentre IL/PCode davano 3/2/… */
+            else if (args[0].type == 1) bout->result = (double)gmb_len_number(args[0].num);
             else bout->result = 0;
         }
 }

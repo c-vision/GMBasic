@@ -4471,7 +4471,7 @@ static void http_send_static_file(gmb_net_sock_t client, SSL* ssl,
 
     if (http_file_plan(req, fpath, &p) != 0)
     {
-        const char* nf = "HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\nConnection: close\r\n\r\n";
+        const char* nf = "HTTP/1.1 404 Not Found\r\nContent-Type: text/plain; charset=utf-8\r\nContent-Length: 9\r\nConnection: close\r\n\r\nNot Found";
         http_stream_send_all(&out, nf, strlen(nf));
         return;
     }
@@ -4540,7 +4540,7 @@ static void http_h2_respond_file(gmb_h2_conn_t* c, const gmb_h2_io_t* io, void* 
 
     if (http_file_plan(req, fpath, &p) != 0)
     {
-        gmb_h2_respond(c, io, io_ctx, stream, 404, "Content-Type: text/plain\r\n", "", 0);
+        gmb_h2_respond(c, io, io_ctx, stream, 404, "Content-Type: text/plain\r\n", "Not Found", 9);
         return;
     }
     if (p.status == 200 || p.status == 206)
@@ -4931,7 +4931,7 @@ static void http_h2_dispatch(void* user, gmb_h2_conn_t* c, int32_t stream,
                 }
             }
         }
-        gmb_h2_respond(c, x->io, x->io_ctx, stream, 404, "Content-Type: text/plain\n", "", 0);
+        gmb_h2_respond(c, x->io, x->io_ctx, stream, 404, "Content-Type: text/plain\n", "Not Found", 9);
         return;
     }
 
@@ -5031,7 +5031,7 @@ static void http_h2_dispatch(void* user, gmb_h2_conn_t* c, int32_t stream,
             /* route finale "non gestita": 404 (semantica storica) */
             free(out_body);
             free(out_headers);
-            gmb_h2_respond(c, x->io, x->io_ctx, stream, 404, "Content-Type: text/plain\n", "", 0);
+            gmb_h2_respond(c, x->io, x->io_ctx, stream, 404, "Content-Type: text/plain\n", "Not Found", 9);
             free(acc);
             return;
         }
@@ -5686,9 +5686,10 @@ request_start:
     }
 
     {
-        char r404[128];
+        char r404[256];
         snprintf(r404, sizeof r404,
-                 "HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\nConnection: %s\r\n\r\n",
+                 "HTTP/1.1 404 Not Found\r\nContent-Type: text/plain; charset=utf-8\r\n"
+                 "Content-Length: 9\r\nConnection: %s\r\n\r\nNot Found",
                  client_keep ? "keep-alive" : "close");
         http_io_send(client, ssl, r404, strlen(r404));
         conn_keep = client_keep;

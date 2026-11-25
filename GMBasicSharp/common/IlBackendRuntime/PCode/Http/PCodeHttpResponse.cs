@@ -338,6 +338,8 @@ internal sealed class PCodeHttpResponse
 
     internal void CompleteAsNotFound()
     {
-        Complete(Encoding.UTF8.GetBytes("404 Not Found"), "text/plain; charset=utf-8", 404);
+        /* Corpo canonico = C# HttpService (404 => "Not Found"): prima "404 Not Found",
+         * divergente da IL/VM-C/C99 (e dallo stesso HttpService). */
+        Complete(Encoding.UTF8.GetBytes("Not Found"), "text/plain; charset=utf-8", 404);
     }
 }

@@ -930,6 +930,8 @@ gmb_int_t gmb_chars_len_n(const char* s, size_t maxbytes);
 size_t gmb_chars_to_byte(const char* s, gmb_int_t chars);
 /* LEN di una stringa: CARATTERI. */
 gmb_int_t gmb_str_t_len(gmb_string_t s);
+/* LEN di un NUMERO: numero di cifre della rappresentazione G17 (canone IlRuntime.Len). */
+gmb_int_t gmb_len_number(gmb_double_t v);
 /* LENB di una stringa: BYTE della codifica UTF-8 (la lunghezza memorizzata). */
 gmb_int_t gmb_str_bytes(gmb_string_t s);
 gmb_string_t gmb_str_left(gmb_string_t s, gmb_int_t n);

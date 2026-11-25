@@ -31,6 +31,7 @@ static const gmb_tokenkind_t gmb_tk_dictish[] = { GMB_TOK_Dict, GMB_TOK_Sorted, 
 #include "gmb_lexer.h"
 #include "gmb_tokenkind.h"
 #include "gmb_members.h"
+#include "gmb_fn_lookup.h"   /* gmb_fn_tok: nome nudo → TokenKind (TIME/DATE/NOW/TODAY nudi) */
 #include "gmb_resolver.h"
 
 #include <ctype.h>
@@ -2658,6 +2659,10 @@ int etype(ctx_t* c, gmb_expr_t* e) {
                         return TY_STR;
                     }
                     if (e->nargs == 0 && strcasecmp(_dot + 1, "Headers") == 0) return TY_VAL;
+                    /* `req.Headers("k")` / `res.Headers("k")` — INDICIZZAZIONE: una STRINGA
+                     * (gmb_dict_get_str), non il dict (che è la forma senza argomenti). */
+                    if (e->nargs >= 1 && strcasecmp(_dot + 1, "Headers") == 0
+                        && (_bv->gkind == GK_HTTPREQ || _bv->gkind == GK_HTTPRESP)) return TY_STR;
                 }
             }
         }
@@ -6664,6 +6669,15 @@ void emit_str_operand(ctx_t* c, gmb_expr_t* a) {
             return;
         }
     }
+    /* DATETIME in contesto STRINGA (`LEN(NOW)`, concatenazione): il managed rende il valore
+     * col formato "dd/MM/yyyy HH:mm:ss"; emettere il seriale OADate grezzo darebbe il NUMERO
+     * (o un errore di tipo). Il PRINT ha già il suo ramo dedicato. */
+    if (a && gmb_expr_is_datetime(c, a)) {
+        sb_put(&c->out, "gmb_dt_datetime_to_string((gmb_double_t)(");
+        emit_expr(c, a);
+        sb_put(&c->out, "))");
+        return;
+    }
     if (etype(c, a) == TY_STR) emit_expr(c, a);
     else { sb_put(&c->out, "gmb_double_to_string("); emit_expr(c, a); sb_put(&c->out, ")"); }
 }
@@ -7142,6 +7156,21 @@ static int bf_m_len(ctx_t* c, gmb_expr_t** a, int n){
      * reale). gmb_str_bytes legge .length (i byte memorizzati). */
     if (is_byte_expr(c, a[0])) {
         sb_put(&c->out,"((gmb_double_t)gmb_str_bytes("); emit_expr(c, a[0]); sb_put(&c->out,"))"); return 1;
+    }
+    /* LEN(DATETIME) — `NOW`/`TODAY`/una data: il managed conta i caratteri del formato
+     * "dd/MM/yyyy HH:mm:ss" (19). Il seriale OADate grezzo non compila (`gmb_str_t_len(double)`). */
+    if (gmb_expr_is_datetime(c, a[0])) {
+        sb_put(&c->out, "((gmb_double_t)gmb_str_t_len(gmb_dt_datetime_to_string((gmb_double_t)(");
+        emit_expr(c, a[0]);
+        sb_put(&c->out, "))))"); return 1;
+    }
+    /* LEN di un NUMERO = numero di CIFRE (canone IlRuntime.Len: G17 senza '.' e senza il
+     * segno). 123→3, 1.5→2. Prima il default emetteva gmb_str_t_len(double) → C non
+     * compilabile, mentre IL/PCode davano le cifre e la VM/C 0. */
+    if (a[0] && etype(c, a[0]) != TY_STR) {
+        sb_put(&c->out, "((gmb_double_t)gmb_len_number((gmb_double_t)(");
+        emit_expr(c, a[0]);
+        sb_put(&c->out, ")))"); return 1;
     }
     sb_put(&c->out,"((gmb_double_t)gmb_str_t_len("); emit_expr(c,a[0]); sb_put(&c->out,"))"); return 1; }
 /* LENB(<expr>) — BYTE UTF-8 (LEN conta i CARATTERI). Argomento non stringa → -1, come le
@@ -13754,8 +13783,27 @@ static void emit_call(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_
                                         sb_put(&c->out, "(gmb_val_dict_set(");
                                         sb_put(&c->out, R);
                                         sb_put(&c->out, ", \"Body\", gmb_make_val_string(");
-                                        if (etype(c, args[0]) == TY_STR) { sb_put(&c->out, "("); emit_str_operand(c, args[0]); sb_put(&c->out, ").data"); }
-                                        else { sb_put(&c->out, "gmb_val_to_json("); emit_expr(c, args[0]); sb_put(&c->out, ").data"); }
+                                        var_t* savC = (args[0] && args[0]->kind == GMB_EXPR_VAR && args[0]->var)
+                                                      ? lookup_var(c, args[0]->var) : NULL;
+                                        if (savC && (savC->boxed_val || savC->gkind)) {
+                                            /* Valore dinamico/collezione (un `DIM o AS JSON` è un
+                                             * dict, non una stringa anche se etype() lo dice
+                                             * TY_STR per il display): serializza il VALORE. */
+                                            if (savC->gkind && gk_is_list(savC->gkind))
+                                                sb_put(&c->out, "gmb_val_to_json(gmb_make_val_list(");
+                                            else
+                                                sb_put(&c->out, "gmb_val_to_json(");
+                                            emit_expr(c, args[0]);
+                                            sb_put(&c->out, savC->gkind && gk_is_list(savC->gkind) ? ")).data" : ").data");
+                                        } else if (etype(c, args[0]) == TY_STR) {
+                                            /* Stringa VERA: incapsulata come stringa JSON
+                                             * (parità managed: `SendJSON("[]")` → `"[]"`). */
+                                            sb_put(&c->out, "gmb_val_to_json(gmb_make_val_string((");
+                                            emit_str_operand(c, args[0]);
+                                            sb_put(&c->out, ").data)).data");
+                                        } else {
+                                            sb_put(&c->out, "gmb_val_to_json("); emit_expr(c, args[0]); sb_put(&c->out, ").data");
+                                        }
                                         sb_put(&c->out, ")), 0.0)");
                                         free(rb.s); return;
                                     }
@@ -14171,6 +14219,18 @@ static void emit_call(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_
                     sb_put(&c->out, "), \"Params\"), gmb_make_val_string((");
                     emit_str_operand(c, args[0]);
                     sb_put(&c->out, ").data)))");
+                    return;
+                }
+                /* req.Headers("k") — INDICIZZAZIONE dell'oggetto Headers (il managed ha
+                 * l'indexer, oltre a .Get): identica a `.Get(k)`, chiave assente → "".
+                 * Prima non emessa → "simbolo non trovato: req.Headers non definita". */
+                if (bv && (bv->gkind == GK_HTTPREQ || bv->gkind == GK_HTTPRESP) && nargs >= 1
+                    && strcasecmp(dot + 1, "Headers") == 0) {
+                    sb_put(&c->out, "gmb_dict_get_str(gmb_val_as_dict(gmb_dict_get(gmb_val_as_dict(");
+                    emit_ident(c, bv->name);
+                    sb_put(&c->out, "), \"Headers\")), (");
+                    emit_str_operand(c, args[0]);
+                    sb_put(&c->out, ").data)");
                     return;
                 }
                 /* req.ParseMultipartForm() → parser multipart del runtime condiviso
@@ -15313,6 +15373,27 @@ void emit_expr(ctx_t* c, gmb_expr_t* e) {
         if (tbk == GMB_TOK_Screen && e->kind == GMB_EXPR_VAR) {
             sb_put(&c->out, "((gmb_double_t)gmb_gfx_screens())");
             break;
+        }
+        /* DATETIME in forma NUDO-VALORE (`o("time") = TIME`, `PRINT NOW`): il parser produce
+         * una VAR senza parentesi, che finiva in una variabile implicita 0 — mentre
+         * IL/PCode/VM-C la valutano come la call omologa a 0 argomenti (sample Http/HttpServer:
+         * `info("time") = TIME` dava 0 invece del seriale). Il TokenKind arriva dalla tabella
+         * delle funzioni (TIME non è keyword del lexer); si applica solo se non esiste una
+         * variabile omonima dichiarata (regola: la variabile vince sulle letture nude) né una
+         * funzione UTENTE omonima. */
+        if (e->var) {
+            gmb_tokenkind_t dtk0 = gmb_fn_tok(e->var);
+            if (dtk0 == GMB_TOK_Time || dtk0 == GMB_TOK_Date
+                || dtk0 == GMB_TOK_Now || dtk0 == GMB_TOK_Today) {
+                var_t* dtv = lookup_var(c, e->var);
+                /* `is_dim_local`: la variabile è stata DICHIARATA (vince sulle letture nude). */
+                if (!(dtv && (dtv->is_dim_local || dtv->is_array || dtv->byref || dtv->vclass[0]
+                              || dtv->gkind || dtv->boxed_val || dtv->sb_builder || dtv->regex_obj
+                              || dtv->nullable || dtv->is_static))
+                    && !find_fn_arity(c, e->var, 0, NULL)) {
+                    if (emit_bf_datetime(c, e->var, NULL, dtk0, NULL, 0, e->line)) break;
+                }
+            }
         }
         /* 2.8: TRUE/FALSE come costanti letterali (parità PCodeVM) */
         if (tbk == GMB_TOK_True || tbk == GMB_TOK_False) {
