@@ -689,6 +689,39 @@ static int regex_list_member(ctx_t* c, const char* var, var_t** out_v, int* out_
     return 0;
 }
 
+/* `.Length` NON è una proprietà del linguaggio: esistono solo StringBuilder.Length e
+ * RegexMatch.Length (che qui hanno una var dedicata: `sb_builder`/`boxed` dinamico). Su
+ * stringhe, array, liste e dict è un errore di compilazione su TUTTE le gambe (prima il C99
+ * emetteva una variabile implicita `x_2ELength` = 0 in silenzio, mentre IL falliva, PCode
+ * stampava vuoto e VM/C dava il numero di chiavi: tre comportamenti diversi per la stessa
+ * scrittura). Sui valori DINAMICI (JSON/DICT boxed) `.Length` resta l'accesso alla CHIAVE
+ * omonima — non alla lunghezza. */
+static int reject_pseudo_length(ctx_t* c, gmb_expr_t* e) {
+    if (!e || e->kind != GMB_EXPR_VAR || !e->var) return 0;
+    const char* dot = strrchr(e->var, '.');
+    if (!dot || dot == e->var) return 0;
+    if (strcasecmp(dot + 1, "Length") != 0) return 0;
+    char base[192];
+    size_t bl = (size_t)(dot - e->var);
+    if (bl >= sizeof(base)) return 0;
+    memcpy(base, e->var, bl); base[bl] = 0;
+    var_t* bv = lookup_var(c, base);
+    if (!bv) return 0;
+    /* Membri REALI (StringBuilder) o dinamici (JSON/DICT boxed → chiave "Length"),
+     * classi/UDT, nullable, SQL result set, HTTP: lasciati al percorso dedicato. */
+    if (bv->sb_builder || bv->regex_obj || bv->vclass[0] || bv->nullable || bv->sql_rs
+        || bv->boxed_val || bv->boxed_md || bv->stats_val || bv->tuple_fields
+        || bv->posted_val || bv->rgba_obj
+        || bv->gkind == GK_HTTPREQ || bv->gkind == GK_HTTPRESP) return 0;
+    if (bv->type == TY_STR || bv->is_array
+        || (bv->gkind && (gk_is_list(bv->gkind) || gk_is_dict(bv->gkind)))) {
+        c99_fail(c, e->line,
+                 "'.Length' non è una proprietà: usa LEN(x) per le stringhe e .Count per le collezioni");
+        return 1;
+    }
+    return 0;
+}
+
 /* True se l'espressione è un MEMBRO di collezione che produce un `gmb_list_t`
  * (Keys/Values/ToArray/ToList e le operazioni insiemistiche di HASHSET): il PRINT non deve
  * avvolgerla in gmb_print_val (che vuole un gmb_val_t) ma stamparla come LISTA "[a, b]".
@@ -15109,6 +15142,9 @@ void emit_expr(ctx_t* c, gmb_expr_t* e) {
         else emit_str_literal(c, e->str);
         break;
     case GMB_EXPR_VAR: {
+        /* `.Length` su stringa/lista/array/dict: errore esplicito, identico alle gambe managed
+         * (prima finiva in una variabile implicita `x_2ELength` = 0). Vedi reject_pseudo_length. */
+        if (reject_pseudo_length(c, e)) break;
         /* ADR-MATRIX F4: campo-fattore di una DECOMPOSIZIONE (`lu.U` come VAR puntata). */
         {
             char __dfv[8];
@@ -15144,10 +15180,11 @@ void emit_expr(ctx_t* c, gmb_expr_t* e) {
                 }
             }
         }
-        /* `.Count`/`.Length` su un ARRAY che rappresenta una LISTA del linguaggio
-         * (`DIM a = [ ... ]` / generator expression, vedi list_semantics): è la proprietà
-         * di LIST → lunghezza dell'array. Senza, il nome dotted finiva come VARIABILE
-         * implicita `a_2ECount` = 0 (silenzioso: Count 0 su 4 elementi). */
+        /* `.Count` su un ARRAY che rappresenta una LISTA del linguaggio (`DIM a = [ ... ]` /
+         * generator expression, vedi list_semantics): è la proprietà di LIST → lunghezza
+         * dell'array. Senza, il nome dotted finiva come VARIABILE implicita `a_2ECount` = 0
+         * (silenzioso: Count 0 su 4 elementi). `.Length` non è una proprietà e viene rifiutata
+         * prima da reject_pseudo_length. */
         if (e->var) {
             const char* cdot = strchr(e->var, '.');
             if (cdot && cdot != e->var && !strchr(cdot + 1, '.')) {
@@ -15157,7 +15194,7 @@ void emit_expr(ctx_t* c, gmb_expr_t* e) {
                     memcpy(cbase, e->var, cbl); cbase[cbl] = 0;
                     var_t* cbv = lookup_var(c, cbase);
                     if (cbv && cbv->is_array && cbv->list_semantics
-                        && (!strcasecmp(cdot + 1, "Count") || !strcasecmp(cdot + 1, "Length"))) {
+                        && !strcasecmp(cdot + 1, "Count")) {
                         sb_put(&c->out, "(gmb_double_t)(");
                         emit_arr_len_of(c, cbv);
                         sb_put(&c->out, ")");
@@ -18953,6 +18990,10 @@ static void st_print_core(ctx_t* c, gmb_stmt_t* s) {
          ind(c); sb_put(&c->out, "gmb_print_stage_begin();\n");
          for (int i = 0; i < s->nprint; i++) {
                           ind(c);
+             /* `.Length` su stringa/lista/array/dict è un errore esplicito (vedi
+              * reject_pseudo_length): va deciso QUI, prima del ramo regex_list_member che
+              * per i valori boxed stampa direttamente senza passare da emit_expr. */
+             if (reject_pseudo_length(c, s->print_args[i])) continue;
              var_t* _bfv = NULL; int _bfi = 0;
              var_t* _jpv = NULL; const char* _jpm = NULL;
              var_t* _rlv = NULL; int _rlk = 0;
@@ -19160,9 +19201,19 @@ static void st_print_core(ctx_t* c, gmb_stmt_t* s) {
                  js_extract_emit(c, s->print_args[i]->args, s->print_args[i]->nargs, 1);
              } else if (s->print_args[i] && s->print_args[i]->kind == GMB_EXPR_VAR && s->print_args[i]->var
                         && regex_list_member(c, s->print_args[i]->var, &_rlv, &_rlk)) {
-                 /* r.Pattern (stringa) / lista.Count (numero). */
+                 /* r.Pattern (stringa) / .Count o .Length di un valore DINAMICO boxed. */
+                 int _is_len = !strcasecmp(strrchr(s->print_args[i]->var, '.') + 1, "Length");
                  if (_rlk == 1) { sb_put(&c->out, "gmb_print_val(gmb_regex_pattern_val("); emit_ident(c, _rlv->name); sb_put(&c->out, ")"); }
-                 else if (_rlv->gkind && gk_is_dict(_rlv->gkind)) {
+                 else if (_is_len) {
+                     /* `.Length` NON è una proprietà (stringhe/liste/dict TIPIZZATE sono già
+                      * rifiutate da reject_pseudo_length): su un valore dinamico è la CHIAVE
+                      * "Length" (MatchObject {Value,Index,Length,Success}) e, quando la chiave
+                      * non c'è (es. array JSON), NIL — come IL/PCode. Prima il C99 ripiegava
+                      * sulla lunghezza (3 su "[10,20,30]") e la VM/C sul numero di chiavi. */
+                     sb_put(&c->out, "gmb_print_val(gmb_dict_get(gmb_val_as_dict(");
+                     emit_ident(c, _rlv->name);
+                     sb_put(&c->out, "), \"Length\")");
+                 } else if (_rlv->gkind && gk_is_dict(_rlv->gkind)) {
                      sb_put(&c->out, "gmb_print_double((gmb_double_t)gmb_dict_count(");
                      emit_ident(c, _rlv->name);
                      sb_put(&c->out, ")");
@@ -19171,12 +19222,8 @@ static void st_print_core(ctx_t* c, gmb_stmt_t* s) {
                      emit_var_ref(c, _rlv);
                      sb_put(&c->out, ")");
                  } else {
-                     /* `.Length` di un valore boxed: se è un MatchObject (dict con chiave
-                      * "Length") vince la CHIAVE, non il numero di chiavi (gmb_val_length
-                      * dava 4 su {Value,Index,Length,Success}). `Count` resta val_length. */
-                     int _is_len = !strcasecmp(strrchr(s->print_args[i]->var, '.') + 1, "Length");
-                     sb_put(&c->out, _is_len ? "gmb_print_double((gmb_double_t)gmb_val_member_length("
-                                             : "gmb_print_double((gmb_double_t)gmb_val_length(");
+                     /* `.Count` di un valore boxed = cardinalità (gmb_val_length). */
+                     sb_put(&c->out, "gmb_print_double((gmb_double_t)gmb_val_length(");
                      emit_ident(c, _rlv->name);
                      sb_put(&c->out, ")");
                  }

@@ -21,6 +21,9 @@
  * sotto, il raddoppio dà O(1) ammortizzato senza sprecare troppo; sopra, raddoppiare
  * un buffer già grande sprecherebbe memoria, quindi si aggiunge una quota fissa. */
 #define GMB_SB_LINEAR_GROW  (1024u * 1024u)   /* 1 MiB */
+/* Capacità iniziale del builder senza capacità esplicita: 16 byte, come il
+ * StringBuilder() .NET (IL/PCode/VM-C). `sb.Capacity` deve coincidere sulle 4 gambe. */
+#define GMB_SB_DEFAULT_CAP  16u
 
 struct gmb_stringbuilder {
     char*  buf;   /* buffer NUL-terminato, allocato cap+1 byte */
@@ -61,10 +64,12 @@ gmb_stringbuilder_t* gmb_sb_new(size_t initial_cap)
         if (!sb->buf) { free(sb); return NULL; }
         sb->cap = initial_cap;
     } else {
-        /* buffer minimo, crescerà al primo Append (nessuna allocazione anticipata) */
-        sb->buf = (char*)malloc(1);
+        /* Capacità iniziale di DEFAULT 16 byte, come il StringBuilder .NET (IL/PCode/VM-C).
+         * Prima era 0 e cresceva al primo Append raddoppiando la dimensione richiesta:
+         * `DIM sb : sb.Append("abcd")` dava Capacity 8 su C99 e 16 sulle gambe managed. */
+        sb->buf = (char*)malloc(GMB_SB_DEFAULT_CAP + 1);
         if (!sb->buf) { free(sb); return NULL; }
-        sb->cap = 0;
+        sb->cap = GMB_SB_DEFAULT_CAP;
     }
     sb->buf[0] = '\0';
     sb->len = 0;

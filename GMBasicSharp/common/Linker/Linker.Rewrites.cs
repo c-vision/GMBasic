@@ -3291,6 +3291,20 @@ public static partial class Linker
             };
         }
 
+        // `.Length` NON è una proprietà del linguaggio: esistono solo StringBuilder.Length e
+        // RegexMatch.Length (risolti sopra dal TypeSchema). Su stringhe, array e collezioni è
+        // un errore di compilazione su TUTTE le gambe (prima: IL sollevava
+        // NotSupportedException, PCode stampava vuoto, VM/C restituiva il numero di chiavi e
+        // C99 silenziosamente 0). Le collezioni espongono `.Count`, le stringhe `LEN()`.
+        if (fieldSymbolId == -1
+            && fae.Field.Lexeme.Equals("Length", StringComparison.OrdinalIgnoreCase)
+            && resolvedStructureType is StringType or ArrayType or ListType or DictType
+                or SortedDictType or HashSetType or QueueType or StackType)
+        {
+            throw CreateError(fae.Field,
+                "'.Length' non è una proprietà: usa LEN(x) per le stringhe e .Count per le collezioni.");
+        }
+
         // '.VALUE' su una base che non è un UDT/Classe/tipo di sistema (es. `d.VALUE` con
         // `d AS DOUBLE?`) è l'unwrap del nullable, non un campo. Non possiamo distinguerlo da un
         // campo UDT/CLASS letteralmente chiamato "Value" guardando solo il tipo staticamente

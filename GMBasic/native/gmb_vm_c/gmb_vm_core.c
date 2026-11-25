@@ -12788,12 +12788,21 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                 gmb_obj_t* obj = objE.ref;
                 if (obj && obj->kind == GMB_OBJ_LIST && ((gmb_obj_shared_val_t*)obj)->list)
                 {
-                    /* membri delle liste: Count/Length */
-                    if (strcmp(fieldName, "Count") == 0 || strcmp(fieldName, "Length") == 0)
+                    /* membri delle liste: `.Count`. `.Length` NON è una proprietà del
+                     * linguaggio: su una lista dinamica (es. array JSON) è la CHIAVE omonima,
+                     * che non esiste → NIL (parità IL/PCode). Prima restituiva il numero di
+                     * elementi, quindi `.Length` dava 3 su "[10,20,30]" qui e vuoto altrove. */
+                    if (strcmp(fieldName, "Count") == 0)
                     {
                         double n = (double)gmb_list_count(*((gmb_obj_shared_val_t*)obj)->list);
                         gmb_obj_release(objE.ref);
                         push_num_entry(task, n, GMB_BT_NUMBER);
+                        break;
+                    }
+                    if (strcmp(fieldName, "Length") == 0)
+                    {
+                        gmb_obj_release(objE.ref);
+                        push_nil(task);
                         break;
                     }
                     /* METODI-ZERO-ARG in forma di PROPRIETÀ (`q.Peek`, `s.Pop`, `q.Dequeue`:
@@ -12871,10 +12880,11 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                 }
                 else if (obj && obj->kind == GMB_OBJ_DICT && ((gmb_obj_shared_val_t*)obj)->dict)
                 {
-                    /* membri dei dict: Count/Length (STRINGBUILDER → lunghezza del __str) e
-                     * Capacity (emulata come .NET: parte da 16 e raddoppia — il VM/C teneva la
-                     * lunghezza del testo, quindi `sb.Capacity` dava 8 dove IL/PCode/C99 danno
-                     * 16: StringsStringBuilder). */
+                    /* membri dei dict: `.Count`, `.Capacity` (STRINGBUILDER → lunghezza del
+                     * __str, emulata come .NET: parte da 16 e raddoppia) e `.Length`.
+                     * `.Length` NON è una proprietà del linguaggio: su un valore dinamico
+                     * (MatchObject/JSON) è la CHIAVE "Length" e, se manca, NIL (parità
+                     * IL/PCode). Prima senza chiave restituiva il numero di chiavi. */
                     if (strcmp(fieldName, "Count") == 0 || strcmp(fieldName, "Length") == 0
                         || strcmp(fieldName, "Capacity") == 0)
                     {
@@ -12882,6 +12892,7 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                         size_t blen = (bcur.kind == GMB_TYPE_STRING && bcur.v_string.data)
                                       ? strlen(bcur.v_string.data) : 0;
                         double n;
+                        int is_nil = 0;
                         if (strcmp(fieldName, "Capacity") == 0
                             && bcur.kind == GMB_TYPE_STRING && bcur.v_string.data)
                         {
@@ -12899,15 +12910,18 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                                 gmb_val_t lv = gmb_dict_get(*dd, "Length");
                                 /* MatchObject regex ({Value,Index,Length,Success}): `.Length` è
                                  * la CHIAVE (lunghezza del match), non il numero di chiavi
-                                 * (parità IL/PCode/C99: gmb_val_member_length). */
+                                 * (parità IL/PCode/C99). */
                                 if (strcmp(fieldName, "Length") == 0 && lv.kind != GMB_TYPE_NIL)
                                     n = (double)gmb_val_to_int(lv);
+                                else if (strcmp(fieldName, "Length") == 0)
+                                { is_nil = 1; n = 0; }
                                 else
                                     n = (double)gmb_dict_count(*dd);
                             }
                         }
                         gmb_obj_release(objE.ref);
-                        push_num_entry(task, n, GMB_BT_NUMBER);
+                        if (is_nil) push_nil(task);
+                        else push_num_entry(task, n, GMB_BT_NUMBER);
                         break;
                     }
                     /* `dict.Keys` / `dict.Values` in forma di PROPRIETÀ (guida Collezioni
@@ -13647,8 +13661,15 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                     {
                         /* DICT.Clear() (e COOKIEJAR.Clear(), stesso oggetto dict): svuota il
                          * dict — parità managed (CookieJar.Clear rimuove i cookie memorizzati;
-                         * prima cadeva nel fallthrough nil e il jar tratteneva i cookie). */
-                        gmb_dict_clear(sv->dict);
+                         * prima cadeva nel fallthrough nil e il jar tratteneva i cookie).
+                         * STRINGBUILDER (dict con campo interno __str): azzera SOLO il testo.
+                         * Svuotare il dict eliminava __str e `.Length`/`.Capacity` subito dopo
+                         * Clear tornavano vuoto/0 invece di 0/16 (IL/PCode). */
+                        gmb_val_t bcur = gmb_dict_get(*sv->dict, "__str");
+                        if (bcur.kind == GMB_TYPE_STRING)
+                            gmb_dict_set(sv->dict, "__str", gmb_make_val_string_counted(""));
+                        else
+                            gmb_dict_clear(sv->dict);
                         push_nil(task);
                     }
                     else if (strcmp(methodName, "ContainsKey") == 0 && argCount >= 1)
@@ -13795,11 +13816,6 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                     {
                         gmb_val_t cur = gmb_dict_get(*sv->dict, "__str");
                         push_num_entry(task, (double)((cur.kind == GMB_TYPE_STRING && cur.v_string.data) ? strlen(cur.v_string.data) : 0), GMB_BT_NUMBER);
-                    }
-                    else if (strcasecmp(methodName, "Clear") == 0)
-                    {
-                        gmb_dict_set(sv->dict, "__str", gmb_make_val_string_counted(""));
-                        push_ref_entry(task, inst, GMB_BT_OBJECT);
                     }
                     else if (strcasecmp(methodName, "AppendLine") == 0)
                     {

@@ -2145,9 +2145,6 @@ gmb_list_t gmb_fonts_tt_glyphs_list(const char* path);
 char** gmb_read_all_lines(const char* path, int* count_out);
 long gmb_count_lines(const char* path);
 gmb_int_t gmb_val_length(gmb_val_t v);
-/* `.Length` di un valore boxed: per un DICT con chiave "Length" (MatchObject regex) vince la
- * chiave, altrimenti è la lunghezza generica (lista → elementi, dict → chiavi). */
-gmb_int_t gmb_val_member_length(gmb_val_t v);
 
 /* --- FFI dl condiviso (gmb_ffi_dl.c): dlopen/dlsym usato da C99, VM/C e host IL --- */
 void* gmb_ffi_dl_open(const char* path);      /* dlopen + estensioni + match basename */
