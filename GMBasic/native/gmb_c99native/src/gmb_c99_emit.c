@@ -19148,7 +19148,12 @@ static void st_print_core(ctx_t* c, gmb_stmt_t* s) {
                      emit_var_ref(c, _rlv);
                      sb_put(&c->out, ")");
                  } else {
-                     sb_put(&c->out, "gmb_print_double((gmb_double_t)gmb_val_length(");
+                     /* `.Length` di un valore boxed: se è un MatchObject (dict con chiave
+                      * "Length") vince la CHIAVE, non il numero di chiavi (gmb_val_length
+                      * dava 4 su {Value,Index,Length,Success}). `Count` resta val_length. */
+                     int _is_len = !strcasecmp(strrchr(s->print_args[i]->var, '.') + 1, "Length");
+                     sb_put(&c->out, _is_len ? "gmb_print_double((gmb_double_t)gmb_val_member_length("
+                                             : "gmb_print_double((gmb_double_t)gmb_val_length(");
                      emit_ident(c, _rlv->name);
                      sb_put(&c->out, ")");
                  }

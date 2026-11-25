@@ -12887,9 +12887,20 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                         }
                         else
                         {
-                            n = (bcur.kind == GMB_TYPE_STRING && bcur.v_string.data)
-                                ? (double)blen
-                                : (double)gmb_dict_count(*((gmb_obj_shared_val_t*)obj)->dict);
+                            if (bcur.kind == GMB_TYPE_STRING && bcur.v_string.data)
+                                n = (double)blen;
+                            else
+                            {
+                                gmb_dict_t* dd = ((gmb_obj_shared_val_t*)obj)->dict;
+                                gmb_val_t lv = gmb_dict_get(*dd, "Length");
+                                /* MatchObject regex ({Value,Index,Length,Success}): `.Length` è
+                                 * la CHIAVE (lunghezza del match), non il numero di chiavi
+                                 * (parità IL/PCode/C99: gmb_val_member_length). */
+                                if (strcmp(fieldName, "Length") == 0 && lv.kind != GMB_TYPE_NIL)
+                                    n = (double)gmb_val_to_int(lv);
+                                else
+                                    n = (double)gmb_dict_count(*dd);
+                            }
                         }
                         gmb_obj_release(objE.ref);
                         push_num_entry(task, n, GMB_BT_NUMBER);
@@ -13719,15 +13730,19 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                     {
                         gmb_val_t cur = gmb_dict_get(*sv->dict, "__str");
                         const char* base = (cur.kind == GMB_TYPE_STRING && cur.v_string.data) ? cur.v_string.data : "";
-                        char tmp2[64]; const char* add = "";
+                        gmb_string_t numstr; memset(&numstr, 0, sizeof numstr);
+                        const char* add = "";
                         if (args[0].type == 2 && args[0].ref && args[0].ref->kind == GMB_OBJ_STRING) add = ((gmb_obj_string_t*)args[0].ref)->data;
-                        else if (args[0].type == 1) { snprintf(tmp2, sizeof(tmp2), "%.17g", args[0].num); add = tmp2; }
+                        else if (args[0].type == 1) { numstr = gmb_double_to_string(args[0].num); add = numstr.data ? numstr.data : ""; }
+                        /* Il numero passa dal canone del runtime (%.15g, come IL/C99/PCode):
+                         * prima `%.17g` stampava 3.1415899999999999 per un 3.14159. */
                         if (base && add)
                         {
                             size_t n1 = strlen(base), n2 = strlen(add);
                             char* nb2 = (char*)malloc(n1 + n2 + 1);
                             if (nb2) { memcpy(nb2, base, n1); memcpy(nb2 + n1, add, n2); nb2[n1 + n2] = 0; gmb_dict_set(sv->dict, "__str", gmb_make_val_string_counted(nb2)); free(nb2); }
                         }
+                        if (numstr.data) gmb_string_free(&numstr);
                         push_ref_entry(task, inst, GMB_BT_OBJECT);
                     }
                     else if (strcasecmp(methodName, "AppendFormat") == 0 && argCount >= 1)

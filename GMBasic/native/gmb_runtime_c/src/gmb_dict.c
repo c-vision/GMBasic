@@ -1448,6 +1448,26 @@ gmb_int_t gmb_val_length(gmb_val_t v)
     return 0;
 }
 
+/* `.Length` di un valore BOXED: se è un DIZIONARIO con la chiave "Length" (MatchObject regex:
+ * {Value,Index,Length,Success}) vince la CHIAVE (parità IL/PCode: `m.Length` = lunghezza del
+ * match). Altrimenti è la lunghezza generica (lista → elementi, dict senza chiave → chiavi).
+ * Prima il C99 usava sempre gmb_val_length e sul MatchObject stampava 4 (il numero di chiavi). */
+gmb_int_t gmb_val_member_length(gmb_val_t v)
+{
+    if (v.kind == GMB_TYPE_OBJECT && v.v_ptr)
+    {
+        gmb_obj_t* o = (gmb_obj_t*)v.v_ptr;
+        if (o->data && o->type_name && strstr(o->type_name, "dict"))
+        {
+            gmb_dict_t* d = (gmb_dict_t*)o->data;
+            for (size_t i = 0; i < d->count; i++)
+                if (d->items[i].key && strcmp(d->items[i].key, "Length") == 0)
+                    return gmb_val_to_int(d->items[i].value);
+        }
+    }
+    return gmb_val_length(v);
+}
+
 /* RGB(r,g,b[,a]) → dict RGBA {Red,Green,Blue,Alpha} — condivisa VM/C e C99. */
 static double rgb_clamp(double v) { return v < 0 ? 0 : v > 255 ? 255 : v; }
 

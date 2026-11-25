@@ -58,7 +58,12 @@ public sealed partial class Compiler
                     EmitByte((byte)OpCode.OP_LOAD_DYNAMIC_SCOPE);
                     EmitShort(dsIndex);
                 }
-                else if (_constants.TryGetValue(v.NameCleaned.Lexeme, out var constValue))
+                else if (_constants.TryGetValue(v.NameCleaned.Lexeme, out var constValue)
+                         /* La VARIABILE dichiarata VINCE sulla costante omonima: `DIM pi = 3.14159`
+                          * restava π (il dizionario _constants è OrdinalIgnoreCase e contiene "PI"),
+                          * quindi PCodeVM/VM-C stampavano 3.14159265358979 dove IL dava 3.14159
+                          * (StringsStringBuilder). Stessa guardia già usata sopra per FORM/QUERY. */
+                         && !IsRealVariableReference(v.NameCleaned.Lexeme))
                 {
                     EmitConstant(constValue);
                 }
