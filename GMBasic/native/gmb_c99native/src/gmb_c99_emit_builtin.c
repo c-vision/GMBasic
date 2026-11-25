@@ -1133,24 +1133,55 @@ static int js_extract(ctx_t* c, gmb_expr_t** a, int n) { return js_extract_emit(
  * Prima mancava del tutto sul C99Native ("simbolo non trovato: JSON.KEYS").
  * KEYS è un TokenKind CONDIVISO (dict.Keys/collections): il handler si attiva solo per
  * una val boxata o una stringa JSON, altrimenti lascia il dispatch generico. */
+/* L'argomento di JSON.KEYS può essere un OGGETTO a runtime? Solo un valore boxato (JSON/
+ * ANY) o un DICT tipizzato. Stringhe, array, numeri, NIL e UDT NON lo sono: per loro il
+ * canone IL/PCode/VM-C è null (e in contesto LISTA una lista vuota). */
+static int keys_arg_maybe_object(ctx_t* c, gmb_expr_t* a) {
+    if (!a) return 0;
+    if (a->kind == GMB_EXPR_VAR && a->var && !strchr(a->var, '.')) {
+        var_t* v = lookup_var(c, a->var);
+        if (!v) return 0;
+        if (v->is_array || v->matrix || v->vclass[0]) return 0;
+        if (v->gkind) return gk_is_dict(v->gkind);
+        return v->boxed_val != 0;
+    }
+    /* Call: JSON.PARSE/lettura dinamica rendono un gmb_val_t; le funzioni stringa no. */
+    if (a->kind == GMB_EXPR_CALL) return etype(c, a) == BF_TY_VAL;
+    return 0;
+}
+
+/* Emette l'argomento come gmb_val_t: un DICT tipizzato (gmb_dict_t) va boxato. */
+static void emit_keys_object_expr(ctx_t* c, gmb_expr_t* a) {
+    if (a->kind == GMB_EXPR_VAR && a->var) {
+        var_t* v = lookup_var(c, a->var);
+        if (v && v->gkind && gk_is_dict(v->gkind)) {
+            sb_put(&c->out, "gmb_make_val_dict(");
+            emit_expr(c, a);
+            sb_put(&c->out, ")");
+            return;
+        }
+    }
+    emit_expr(c, a);
+}
+
+/* JSON.KEYS in CONTESTO VALORE: NIL per i non-oggetti (stringa/numero/lista/array), lista di
+ * chiavi per gli oggetti. Prima il C99 parSAVA le stringhe e restituiva le chiavi, oppure
+ * ripiegava su una lista vuota, mentre IL/PCode/VM-C davano null: tre comportamenti diversi. */
+int gmb_c99_emit_json_keys_val(ctx_t* c, gmb_expr_t* arg) {
+    if (!keys_arg_maybe_object(c, arg)) { sb_put(&c->out, "gmb_val_nil()"); return 1; }
+    sb_put(&c->out, "gmb_json_keys_val(");
+    emit_keys_object_expr(c, arg);
+    sb_put(&c->out, ")");
+    return 1;
+}
+
+/* JSON.KEYS in CONTESTO LISTA (DIM x = JSON.KEYS(...), FOR EACH, UBOUND): le chiavi
+ * dell'oggetto, lista vuota altrimenti. Sempre gmb_list_t (la lista non può essere null). */
 static int js_keys(ctx_t* c, gmb_expr_t** a, int n) {
     if (n < 1 || !a[0]) return 0;
-    var_t* kv = (a[0]->kind == GMB_EXPR_VAR && a[0]->var) ? lookup_var(c, a[0]->var) : NULL;
-    int is_val = (kv && kv->boxed_val) || a[0]->kind == GMB_EXPR_CALL;
-    int is_str = (etype(c, a[0]) == TY_STR);
-    if (!is_val && !is_str) return 0;
-    sb_put(&c->out, "gmb_val_dict_keys(");
-    if (is_str && !(kv && kv->boxed_val)) {
-        /* Stringa JSON (var/letterale, non una call): emit_expr, NON emit_str_operand che
-         * ri-dispatcha la builtin (ricorsione: gmb_json_parse(gmb_val_dict_keys(...).data)).
-         * NOTA: la firma è `KEYS(jsonObject AS JSON)` e le altre 3 gambe danno null per una
-         * stringa (MiniTest json/keys_string); il C99 qui la PARSA. Allinearlo non è banale:
-         * in contesto VALORE serve un gmb_val_t (null), in contesto ASSEGNAZIONE A LISTA serve
-         * un gmb_list_t — due tipi diversi dalla stessa emissione. Vedi TODO.md. */
-        sb_put(&c->out, "gmb_json_parse(");
-        emit_expr(c, a[0]);
-        sb_put(&c->out, ".data)");
-    } else emit_expr(c, a[0]);
+    if (!keys_arg_maybe_object(c, a[0])) { sb_put(&c->out, "gmb_list_new()"); return 1; }
+    sb_put(&c->out, "gmb_json_keys_list(");
+    emit_keys_object_expr(c, a[0]);
     sb_put(&c->out, ")");
     return 1;
 }
@@ -1359,19 +1390,13 @@ int js_stringify(ctx_t* c, gmb_expr_t** a, int n) {   /* §0quater: usata anche 
         sb_put(&c->out, ")");
         return 1;
     }
-    /* JSON.STRINGIFY(JSON.KEYS(<stringa>)): KEYS su una stringa non è applicabile → "null"
-     * (parità IL/PCode; prima serializzava le chiavi del JSON parsato). */
-    if (arg && arg->kind == GMB_EXPR_CALL && arg->tk == GMB_TOK_Keys && arg->nargs >= 1
-        && arg->args[0] && etype(c, arg->args[0]) == TY_STR
-        && !(arg->args[0]->kind == GMB_EXPR_VAR && arg->args[0]->var
-             && lookup_var(c, arg->args[0]->var) && lookup_var(c, arg->args[0]->var)->boxed_val)) {
-        sb_put(&c->out, "gmb_string_alloc(\"null\")");
-        return 1;
-    }
+    /* JSON.STRINGIFY(JSON.KEYS(x)): semantica UNICA — chiavi per un oggetto, "null" per
+     * qualunque altro valore (stringa inclusa, che prima veniva PARSA­ta in list context).
+     * Vedi gmb_c99_emit_json_keys_val. */
     if (arg && arg->kind == GMB_EXPR_CALL && arg->tk == GMB_TOK_Keys && arg->nargs >= 1) {
-        sb_put(&c->out, "gmb_val_to_json(gmb_make_val_list(");
-        js_keys(c, arg->args, arg->nargs);   /* argomenti INTERNI della call, non la call */
-        sb_put(&c->out, "))");
+        sb_put(&c->out, "gmb_val_to_json(");
+        gmb_c99_emit_json_keys_val(c, arg->args[0]);
+        sb_put(&c->out, ")");
         return 1;
     }
     /* (0) X.Keys()/X.Values() (dict/sorted) e X.ToArray()/X.ToList() (list) /

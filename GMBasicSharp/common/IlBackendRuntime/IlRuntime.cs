@@ -13444,6 +13444,14 @@ public static double TextWidth(string s)
         uint ui => PrintFormatDouble(ui),
         ulong ul => PrintFormatDouble(ul),
         decimal dec => (dec >= 0.0m ? " " : "") + dec.ToString("G", System.Globalization.CultureInfo.InvariantCulture) + " ",
+        // DICT (JSON/oggetti): `[[chiave, valore], ...]` con i VALORI formattati dal canone
+        // (JsonValueToString: bool → -1/0, numeri G15). Prima cadeva nel ramo IEnumerable,
+        // che enumera le KeyValuePair e le stampa con KeyValuePair.ToString(): i bool
+        // uscivano "True"/"False" mentre PCode/VM-C/C99Native stampano -1/0 (divergenza
+        // trovata sul sample Json/JsonFiles: `[[attivo, True]]` vs `[[attivo, -1]]`).
+        System.Collections.IDictionary dict =>
+            "[" + string.Join(", ", dict.Keys.Cast<object?>().Select(k =>
+                "[" + JsonValueToString(k) + ", " + JsonValueToString(dict[k!]) + "]")) + "]",
         System.Collections.IEnumerable en => "[" + string.Join(", ", en.Cast<object?>().Select(JsonValueToString)) + "]",
         // DATA/ORA: "dd/MM/yyyy HH:mm:ss" SENZA lo spazio finale del caso generico.
         // Le gambe C (gmb_dt_datetime_to_string) e la PCodeVM non aggiungono padding; prima

@@ -426,6 +426,37 @@ gmb_list_t gmb_val_dict_keys(gmb_val_t v) {
     return l;
 }
 
+/* Chiavi di `v` SOLO se è un oggetto (dict boxato): nessun parse delle stringhe. */
+static gmb_list_t json_keys_list_strict(gmb_val_t v) {
+    gmb_list_t l = gmb_list_new();
+    if (v.kind != GMB_TYPE_OBJECT || !v.v_ptr) return l;
+    gmb_obj_t* o = (gmb_obj_t*)v.v_ptr;
+    if (!o->data || !o->type_name || !strstr(o->type_name, "dict")) return l;
+    gmb_dict_t* d = (gmb_dict_t*)o->data;
+    for (size_t i = 0; i < d->count; i++)
+        gmb_list_add(&l, gmb_make_val_string(d->items[i].key));
+    return l;
+}
+
+/* JSON.KEYS(<valore>) → gmb_val_t: lista di chiavi se `v` è un OGGETTO (dict boxato),
+ * NIL per tutto il resto — canone IL/PCode/VM-C (IlRuntime.JsonKeys su un non-IDictionary
+ * restituisce null). A differenza di gmb_val_dict_keys qui NON si passa da
+ * gmb_val_as_dict, che parsa le stringhe che iniziano con '{': una stringa JSON non è un
+ * oggetto e `JSON.KEYS(s)` deve valere null (MiniTest json/keys_string). */
+gmb_val_t gmb_json_keys_val(gmb_val_t v) {
+    if (v.kind != GMB_TYPE_OBJECT || !v.v_ptr) return gmb_val_nil();
+    gmb_obj_t* o = (gmb_obj_t*)v.v_ptr;
+    if (!o->data || !o->type_name || !strstr(o->type_name, "dict")) return gmb_val_nil();
+    gmb_list_t l = json_keys_list_strict(v);
+    return gmb_make_val_list_take(&l);
+}
+
+/* Stessa cosa come lista (contesto LISTA/array: DIM x = JSON.KEYS(...), FOR EACH, UBOUND):
+ * lista vuota quando il valore non è un oggetto. */
+gmb_list_t gmb_json_keys_list(gmb_val_t v) {
+    return json_keys_list_strict(v);
+}
+
 // KEYS come array C di gmb_string_t con lunghezza compagna (per `DIM x() AS STRING = KEYS(...)`).
 gmb_string_t* gmb_val_dict_keys_array(gmb_val_t v, gmb_int_t* len_out) {
     gmb_dict_t d = gmb_val_as_dict(v);

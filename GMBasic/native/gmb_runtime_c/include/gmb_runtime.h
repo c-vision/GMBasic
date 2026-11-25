@@ -874,6 +874,14 @@ gmb_int_t gmb_file_read_double(gmb_int_t handle, double* v);
 gmb_int_t gmb_file_read_bool(gmb_int_t handle, gmb_bool_t* v);
 gmb_int_t gmb_file_read_string_bin(gmb_int_t handle, gmb_string_t* out);
 gmb_list_t gmb_val_dict_keys(gmb_val_t v);
+/* JSON.KEYS(<valore>) come gmb_val_t: le chiavi (lista) se il valore è un OGGETTO,
+ * NIL per qualunque altro tipo (stringa/numero/lista/array). È il canone IL/PCode/VM-C
+ * (`IlRuntime.JsonKeys`: non-IDictionary → null). NON usa gmb_val_as_dict, che invece
+ * PARSA le stringhe che iniziano con '{': `JSON.KEYS("{\"a\":1}")` deve dare null. */
+gmb_val_t gmb_json_keys_val(gmb_val_t v);
+/* Stessa cosa come lista (contesto LISTA/array: `DIM x = JSON.KEYS(...)`, FOR EACH,
+ * UBOUND): lista vuota quando il valore non è un oggetto. */
+gmb_list_t gmb_json_keys_list(gmb_val_t v);
 /* Collezioni: nome canonico (TYPENAME) e lettera Clipper (VALTYPE) dal typeCode BASIC.
  * Implementate in gmb_collections.c; dichiarate qui perché il C generato include questo header. */
 const char* gmb_collection_type_name(int type_code);

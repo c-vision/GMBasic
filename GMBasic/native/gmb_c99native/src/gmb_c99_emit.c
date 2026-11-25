@@ -255,7 +255,7 @@ static int tk_is_md_list(gmb_tokenkind_t tk) {
     return tk == GMB_TOK_MdHeadings || tk == GMB_TOK_MdLinks || tk == GMB_TOK_MdImages
         || tk == GMB_TOK_MdTables || tk == GMB_TOK_MdCodeBlocks || tk == GMB_TOK_MdQuery;
 }
-static int gk_is_dict(int gk) { return gk == GK_DICT || gk == GK_SORTED; }
+int gk_is_dict(int gk) { return gk == GK_DICT || gk == GK_SORTED; }
 
 /* gkind → typeCode BASIC della collezione (stessa mappa del compilatore/VM-C:
  * gmb_collection_type_name/valtype_letter). 0 = non è una collezione. */
@@ -6692,6 +6692,8 @@ int emit_bf_io_files(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t
 int emit_bf_writebytes(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk, gmb_expr_t** args, int nargs, int line);
 int emit_bf_system(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk, gmb_expr_t** args, int nargs, int line);
 int emit_bf_json(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk, gmb_expr_t** args, int nargs, int line);
+/* JSON.KEYS in contesto valore (gmb_c99_emit_builtin.c): NIL per i non-oggetti. */
+int gmb_c99_emit_json_keys_val(ctx_t* c, gmb_expr_t* arg);
 int js_stringify(ctx_t* c, gmb_expr_t** a, int n);   /* JSON.STRINGIFY/TOJSON (gmb_c99_emit_builtin.c) */
 int js_extract_emit(ctx_t* c, gmb_expr_t** a, int n, int typed);   /* JSON.EXTRACT testuale/tipizzata */
 int emit_bf_conversions(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk, gmb_expr_t** args, int nargs, int line);
@@ -19127,9 +19129,12 @@ static void st_print_core(ctx_t* c, gmb_stmt_t* s) {
              if (s->print_args[i] && s->print_args[i]->kind == GMB_EXPR_CALL
                  && s->print_args[i]->tk == GMB_TOK_Keys && s->print_args[i]->nargs >= 1 && s->print_args[i]->args[0]
                  && (((s->print_args[i]->ns) && s->print_args[i]->ns[0]) || !lookup_var(c, s->print_args[i]->var))) {
-                 sb_put(&c->out, "gmb_print_string(gmb_val_to_display(gmb_make_val_list(");
-                 emit_expr(c, s->print_args[i]);
-                 sb_put(&c->out, ")));\n");
+                 /* JSON.KEYS in PRINT: semantica unica (chiavi se oggetto, null/"" altrimenti).
+                  * Prima un non-oggetto stampava "[[]]" (lista vuota dentro le parentesi del
+                  * chiamante) mentre IL/PCode/VM-C stampavano vuoto. */
+                 sb_put(&c->out, "gmb_print_string(gmb_val_to_display(");
+                 gmb_c99_emit_json_keys_val(c, s->print_args[i]->args[0]);
+                 sb_put(&c->out, "));\n");
                  if (s->print_comma && s->print_comma[i]) { ind(c); sb_put(&c->out, "gmb_print_tab_zone();\n"); }
                  continue;
              }

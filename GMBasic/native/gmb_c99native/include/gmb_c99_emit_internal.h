@@ -51,6 +51,10 @@ enum { GK_PLAIN = 0, GK_CHAN, GK_WG, GK_MUTEX, GK_RWMUTEX, GK_ONCE, GK_COND,
        GK_GRAPH,  /* GRAPH → handle int64_t gmb_graph_* */
        GK_MATRIX  /* MATRIX handle → int64_t gmb_matrix_* */ };
 
+/* gkind: true se è un dizionario (DICT/SORTED). Definita in gmb_c99_emit.c, condivisa con
+ * gmb_c99_emit_builtin.c (JSON.KEYS: solo un dict/valore boxato può essere un oggetto). */
+int gk_is_dict(int gk);
+
 /* `var_t`/`vars_t`: definizione UNICA condivisa con gmb_c99_emit.c (questo header ne aveva
  * una copia ridotta a 43 campi → accessi fuori offset e `vars_t.v[i]` con stride errato). */
 #include "gmb_c99_emit_vart.h"
@@ -269,6 +273,10 @@ int emit_bf_json(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk,
 int gmb_c99_coll_handle_method(ctx_t* c, const char* recv, const char* m, gmb_expr_t** args, int nargs, int line);
 int gmb_c99_coll_handle_supports(ctx_t* c, const char* recv, const char* m, int nargs);
 int js_stringify(ctx_t* c, gmb_expr_t** a, int n);
+/* JSON.KEYS in CONTESTO VALORE: emette `gmb_json_keys_val(<arg>)` — NIL se l'argomento non
+ * è un oggetto (canone IL/PCode/VM-C), lista di chiavi se lo è. Usata da js_stringify e dal
+ * PRINT (gmb_c99_emit.c) così la semantica vive in un solo punto. */
+int gmb_c99_emit_json_keys_val(ctx_t* c, gmb_expr_t* arg);
 int js_extract_emit(ctx_t* c, gmb_expr_t** a, int n, int typed);   /* JSON.STRINGIFY/TOJSON: emissione riusata dalle statement */
 int emit_bf_conversions(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk, gmb_expr_t** args, int nargs, int line);
 int emit_bf_math(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk, gmb_expr_t** args, int nargs, int line);
