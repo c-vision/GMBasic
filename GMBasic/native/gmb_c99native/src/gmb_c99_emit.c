@@ -11512,11 +11512,13 @@ static void emit_call(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_
      * una variabile `count()`/`LIST$` DICHIARATA sono letture di ELEMENTO, non le funzioni
      * omonime (il lexer assegna al nome il TokenKind corrispondente: LIST/KEYS/COUNT/VALUES
      * sono token). Azzerando tk si arriva al percorso generico di lettura variabile/array.
-     * Solo per nomi NON qualificati, senza punto, e quando non esiste una funzione utente
-     * omonima (le funzioni restano chiamabili). */
-    if ((!ns || !ns[0]) && name && name[0] && !strchr(name, '.')
-        && lookup_var(c, name) != NULL && !find_fn(c, name)) {
-        tk = GMB_TOK_Unknown;
+     * Vale SOLO per un riferimento nudo (`x`) o per l'INDICE di un array (`x(i)` con x array):
+     * NON per una chiamata con argomenti su una variabile scalare — la chiamata INSTR a tre
+     * argomenti con una locale `inStr` (tools/basic/settings_bundle.bas) deve restare INSTR. */
+    if ((!ns || !ns[0]) && name && name[0] && !strchr(name, '.') && !find_fn(c, name)) {
+        var_t* shv = lookup_var(c, name);
+        if (shv && ((nargs == 0 && !shv->is_array) || (nargs >= 1 && shv->is_array)))
+            tk = GMB_TOK_Unknown;
     }
     /* DIRECTCAST(expr, Tipo): il frontend lo lascia come call untyped; estrae il puntatore
      * grezzo da un val OBJECT (ANY) → target STRINGBUILDER (gmb_stringbuilder_t*). */
