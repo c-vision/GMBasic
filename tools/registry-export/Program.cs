@@ -721,21 +721,51 @@ static string BuildCoverage(string gs, List<ProcRow> procs, List<CmdRow> cmds)
         ("VMC", "common/BackendSupport/Registry/VMC.cs"),
         ("C99Native", "common/BackendSupport/Registry/C99Native.cs"),
     };
+    /* Diagnostica (NON cambia i booleani): i COMANDI sono elencati nella superficie canonica col
+     * nome nudo, mentre i registry li registrano qualificati. L'alias del nome nudo può quindi
+     * dichiararli per sola omonimia con un ALTRO TokenKind (es. comando PIXEL `Pixel` vs funzione
+     * SCENE.PIXEL `ScenePixel`). `kindOf` dà il TokenKind canonico di ogni nome registrato. */
+    var kindOf = new Dictionary<string, string>(StringComparer.Ordinal);
+    foreach (var p in procs)
+        kindOf.TryAdd((p.Ns + "." + p.Name).ToLowerInvariant(), p.KindName);
+
+    var registered = backends.ToDictionary(b => b.Name, b =>
+        Regex.Matches(File.ReadAllText(Path.Combine(gs, b.File)), "Register\\([^,]+,\\s*\"([^\"]+)\"")
+            .Select(m => m.Groups[1].Value).ToList());
+
     var sets = backends.ToDictionary(b => b.Name, b =>
     {
-        var full = Regex.Matches(File.ReadAllText(Path.Combine(gs, b.File)), "Register\\([^,]+,\\s*\"([^\"]+)\"")
-            .Select(m => m.Groups[1].Value.ToLowerInvariant()).ToList();
-        var s = new HashSet<string>(full);
+        var s = new HashSet<string>(registered[b.Name].Select(x => x.ToLowerInvariant()));
         /* Anche la forma NUDa (ultimo segmento dopo il namespace): i COMANDI sono registrati
          * qualificati (`ARRAYS.AADD`) ma la superficie canonica li elenca col nome nudo —
          * senza questo, 115 comandi risultavano "non implementati" su tutti i backend. */
-        foreach (var f in full)
+        foreach (var f in registered[b.Name])
         {
             var dot = f.LastIndexOf('.');
-            if (dot >= 0 && dot + 1 < f.Length) s.Add(f[(dot + 1)..]);
+            if (dot >= 0 && dot + 1 < f.Length) s.Add(f[(dot + 1)..].ToLowerInvariant());
         }
         return s;
     });
+
+    /* Comandi dichiarati SOLO dall'alias del nome nudo, senza che nessun fornitore abbia il loro
+     * TokenKind: il match è una coincidenza di nome, non un'implementazione. Il booleano resta
+     * quello del name-match (invariato); qui si espone il sospetto. */
+    var aliasOnly = new List<object>();
+    foreach (var c in cmds)
+    {
+        var nakedName = "." + c.Name.ToLowerInvariant();
+        var suppliers = registered.Values.SelectMany(x => x)
+            .Where(f => f.ToLowerInvariant().EndsWith(nakedName, StringComparison.Ordinal))
+            .Distinct().OrderBy(x => x, StringComparer.Ordinal).ToList();
+        if (suppliers.Count == 0) continue;
+        if (suppliers.Any(sp => kindOf.GetValueOrDefault(sp.ToLowerInvariant()) is not { } k || k == c.KindName)) continue;
+        aliasOnly.Add(new
+        {
+            name = c.Name,
+            kind = c.KindName,
+            suppliers = suppliers.Select(sp => new { name = sp, kind = kindOf[sp.ToLowerInvariant()] }).ToList()
+        });
+    }
 
     var rows = new List<Dictionary<string, object>>();
     for (int i = 0; i < procs.Count; i++)
@@ -775,6 +805,7 @@ static string BuildCoverage(string gs, List<ProcRow> procs, List<CmdRow> cmds)
         total_canonical = rows.Count,
         scope = "DECLARED by BackendSupport/Registry (name-match; NON misurato su dispatch reali)",
         declared_per_backend = counts,
+        alias_only_name_matches = aliasOnly,
         declared_not_present_sample = notImpl,
         rows
     };

@@ -2,51 +2,141 @@
   "total_canonical": 1340,
   "scope": "DECLARED by BackendSupport/Registry (name-match; NON misurato su dispatch reali)",
   "declared_per_backend": {
-    "IL": 1235,
-    "PCodeVM": 1235,
-    "VMC": 1235,
-    "C99Native": 1235
+    "IL": 1243,
+    "PCodeVM": 1243,
+    "VMC": 1243,
+    "C99Native": 1243
   },
+  "alias_only_name_matches": [
+    {
+      "name": "CLIP",
+      "kind": "Clip",
+      "suppliers": [
+        {
+          "name": "TORCH.CLIP",
+          "kind": "TorchClip"
+        }
+      ]
+    },
+    {
+      "name": "CLOSE",
+      "kind": "Close",
+      "suppliers": [
+        {
+          "name": "CONVERT.Close",
+          "kind": "DocClose"
+        }
+      ]
+    },
+    {
+      "name": "COND",
+      "kind": "Cond",
+      "suppliers": [
+        {
+          "name": "LINALG.COND",
+          "kind": "MatrixCond"
+        }
+      ]
+    },
+    {
+      "name": "DONE",
+      "kind": "Done",
+      "suppliers": [
+        {
+          "name": "CONTEXT.DONE",
+          "kind": "ContextDone"
+        }
+      ]
+    },
+    {
+      "name": "MOVE",
+      "kind": "Move",
+      "suppliers": [
+        {
+          "name": "COMPUTER.Move",
+          "kind": "ComputerMove"
+        },
+        {
+          "name": "MOUSE.MOVE",
+          "kind": "MouseMove"
+        }
+      ]
+    },
+    {
+      "name": "PIXEL",
+      "kind": "Pixel",
+      "suppliers": [
+        {
+          "name": "SCENE.PIXEL",
+          "kind": "ScenePixel"
+        }
+      ]
+    },
+    {
+      "name": "PUT",
+      "kind": "Put",
+      "suppliers": [
+        {
+          "name": "HTTP.PUT",
+          "kind": "HttpPut"
+        },
+        {
+          "name": "POOL.PUT",
+          "kind": "PoolPut"
+        }
+      ]
+    },
+    {
+      "name": "SET",
+      "kind": "Set",
+      "suppliers": [
+        {
+          "name": "TORCH.SET",
+          "kind": "TorchSet"
+        }
+      ]
+    }
+  ],
   "declared_not_present_sample": {
     "IL": [
       "CLOCK.ALPHA",
       "CLOCK.DT",
       "CLOCK.FPS",
       "CLOCK.SCALE",
-      "SCENE.CULLED",
-      "SCENE.DRAWN",
-      "SCENE.HASH",
-      "SCENE.PIXEL"
+      "WORLD.CEILZ",
+      "WORLD.FLOORZ",
+      "WORLD.LIGHTNOW",
+      "WORLD.MOVING"
     ],
     "PCodeVM": [
       "CLOCK.ALPHA",
       "CLOCK.DT",
       "CLOCK.FPS",
       "CLOCK.SCALE",
-      "SCENE.CULLED",
-      "SCENE.DRAWN",
-      "SCENE.HASH",
-      "SCENE.PIXEL"
+      "WORLD.CEILZ",
+      "WORLD.FLOORZ",
+      "WORLD.LIGHTNOW",
+      "WORLD.MOVING"
     ],
     "VMC": [
       "CLOCK.ALPHA",
       "CLOCK.DT",
       "CLOCK.FPS",
       "CLOCK.SCALE",
-      "SCENE.CULLED",
-      "SCENE.DRAWN",
-      "SCENE.HASH",
-      "SCENE.PIXEL"
+      "WORLD.CEILZ",
+      "WORLD.FLOORZ",
+      "WORLD.LIGHTNOW",
+      "WORLD.MOVING"
     ],
     "C99Native": [
       "CLOCK.ALPHA",
       "CLOCK.DT",
       "CLOCK.FPS",
       "CLOCK.SCALE",
-      "SCENE.CULLED",
-      "SCENE.DRAWN",
-      "SCENE.HASH",
-      "SCENE.PIXEL"
+      "WORLD.CEILZ",
+      "WORLD.FLOORZ",
+      "WORLD.LIGHTNOW",
+      "WORLD.MOVING"
     ]
   },
   "rows": [
@@ -8965,70 +9055,70 @@
       "ns": "SCENE",
       "name": "CULLED",
       "kind": "SceneCulled",
-      "IL": false,
-      "PCodeVM": false,
-      "VMC": false,
-      "C99Native": false
+      "IL": true,
+      "PCodeVM": true,
+      "VMC": true,
+      "C99Native": true
     },
     {
       "id": 893,
       "ns": "SCENE",
       "name": "DRAWN",
       "kind": "SceneDrawn",
-      "IL": false,
-      "PCodeVM": false,
-      "VMC": false,
-      "C99Native": false
+      "IL": true,
+      "PCodeVM": true,
+      "VMC": true,
+      "C99Native": true
     },
     {
       "id": 894,
       "ns": "SCENE",
       "name": "HASH",
       "kind": "SceneHash",
-      "IL": false,
-      "PCodeVM": false,
-      "VMC": false,
-      "C99Native": false
+      "IL": true,
+      "PCodeVM": true,
+      "VMC": true,
+      "C99Native": true
     },
     {
       "id": 895,
       "ns": "SCENE",
       "name": "PIXEL",
       "kind": "ScenePixel",
-      "IL": false,
-      "PCodeVM": false,
-      "VMC": false,
-      "C99Native": false
+      "IL": true,
+      "PCodeVM": true,
+      "VMC": true,
+      "C99Native": true
     },
     {
       "id": 896,
       "ns": "SCENE",
       "name": "PIXELS",
       "kind": "ScenePixels",
-      "IL": false,
-      "PCodeVM": false,
-      "VMC": false,
-      "C99Native": false
+      "IL": true,
+      "PCodeVM": true,
+      "VMC": true,
+      "C99Native": true
     },
     {
       "id": 897,
       "ns": "SCENE",
       "name": "TRIS",
       "kind": "SceneTris",
-      "IL": false,
-      "PCodeVM": false,
-      "VMC": false,
-      "C99Native": false
+      "IL": true,
+      "PCodeVM": true,
+      "VMC": true,
+      "C99Native": true
     },
     {
       "id": 898,
       "ns": "SCENE",
       "name": "VERTS",
       "kind": "SceneVerts",
-      "IL": false,
-      "PCodeVM": false,
-      "VMC": false,
-      "C99Native": false
+      "IL": true,
+      "PCodeVM": true,
+      "VMC": true,
+      "C99Native": true
     },
     {
       "id": 899,
@@ -12985,10 +13075,10 @@
       "ns": "",
       "name": "PIXEL",
       "kind": "Pixel",
-      "IL": false,
-      "PCodeVM": false,
-      "VMC": false,
-      "C99Native": false
+      "IL": true,
+      "PCodeVM": true,
+      "VMC": true,
+      "C99Native": true
     },
     {
       "id": 1000073,
