@@ -6986,12 +6986,16 @@ static int bf_m_len(ctx_t* c, gmb_expr_t** a, int n){
             return 1;
         }
     }
-    /* LEN(<call che ritorna gmb_list_t>) — AI.AGENTLIST/AGENTEVENTS/AI.LIST:
+    /* LEN(<call che ritorna gmb_list_t>) — AI.AGENTLIST/AGENTEVENTS/AI.LIST, JSON.KEYS/VALUES:
      * gmb_list_count(<call>). Prima emetteva `.length` su gmb_list_t → cc error
-     * (gen_AI_AgentLoad: LEN(AI.AGENTLIST())). */
+     * (gen_AI_AgentLoad: LEN(AI.AGENTLIST())).
+     * NON per una VARIABILE con lo stesso nome: `LEN(keys(0))` con un array `keys()` dichiarato
+     * è la lunghezza della STRINGA elemento (il lexer dà al nome il tk Keys perché "KEYS" è un
+     * token) — qui finiva su `gmb_list_count(keys[0])`, C non compilabile. */
     if (a[0] && a[0]->kind == GMB_EXPR_CALL
         && (a[0]->tk == GMB_TOK_AiAgentList || a[0]->tk == GMB_TOK_AiAgentEvents
-            || a[0]->tk == GMB_TOK_AiList || a[0]->tk == GMB_TOK_Keys || a[0]->tk == GMB_TOK_Values)) {
+            || a[0]->tk == GMB_TOK_AiList || a[0]->tk == GMB_TOK_Keys || a[0]->tk == GMB_TOK_Values)
+        && !(a[0]->var && lookup_var(c, a[0]->var) != NULL)) {
         sb_put(&c->out, "(gmb_double_t)gmb_list_count(");
         emit_expr(c, a[0]);
             sb_put(&c->out, ")");
@@ -11503,6 +11507,16 @@ static void emit_call(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_
         const char* ndot = strrchr(name, '.');
         const char* bare = ndot ? ndot + 1 : name;
         if (find_fn_arity(c, bare, nargs, NULL)) tk = GMB_TOK_Unknown;
+    }
+    /* PRECEDENZA della VARIABILE sul builtin omonimo (2026-11-24): `count(2)`/`LIST$(i)` con
+     * una variabile `count()`/`LIST$` DICHIARATA sono letture di ELEMENTO, non le funzioni
+     * omonime (il lexer assegna al nome il TokenKind corrispondente: LIST/KEYS/COUNT/VALUES
+     * sono token). Azzerando tk si arriva al percorso generico di lettura variabile/array.
+     * Solo per nomi NON qualificati, senza punto, e quando non esiste una funzione utente
+     * omonima (le funzioni restano chiamabili). */
+    if ((!ns || !ns[0]) && name && name[0] && !strchr(name, '.')
+        && lookup_var(c, name) != NULL && !find_fn(c, name)) {
+        tk = GMB_TOK_Unknown;
     }
     /* DIRECTCAST(expr, Tipo): il frontend lo lascia come call untyped; estrae il puntatore
      * grezzo da un val OBJECT (ANY) → target STRINGBUILDER (gmb_stringbuilder_t*). */
