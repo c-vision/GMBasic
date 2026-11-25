@@ -21497,6 +21497,49 @@ static void st_for(ctx_t* c, gmb_stmt_t* s) {
                     if (fdbl < sizeof(fdb) && (f_is_keys || f_is_vals)) {
                         memcpy(fdb, fe_from->var, fdbl); fdb[fdbl] = 0;
                         var_t* fdv = lookup_var(c, fdb);
+                        /* JSON (`DIM doc AS JSON`) con `.Keys`: il ramo DICT qui sotto lavora su
+                         * `gmb_dict_t` nativi, non su `gmb_val_t`. Si itera `gmb_val_as_dict(doc)`
+                         * (stesso schema del `FOR EACH k, v IN doc`). Solo KEYS: `.Values` non è
+                         * supportato nemmeno da IL/PCode/VM-C su JSON ("Membro 'Values' non
+                         * trovato"). Se la var di ciclo non è stringa (il prepass la crea NUM di
+                         * default) si usa un TEMP stringa + imap, come fa il ramo DICT. */
+                        if (fdv && fdv->boxed_val && !fdv->gkind && !fdv->vclass[0] && f_is_keys) {
+                            var_t* jfv = lookup_var(c, s->for_var);
+                            if (!jfv) jfv = vars_add(cur_scope(c), s->for_var ? s->for_var : "", TY_STR);
+                            int jneed_tmp = !(jfv->type == TY_STR && !jfv->is_array && !jfv->gkind && !jfv->vclass[0]);
+                            static int fejk_uid = 0;
+                            int jid = ++fejk_uid;
+                            ind(c); sb_put(&c->out, "{\n");
+                            c->indent++;
+                            ind(c); sb_printf(&c->out, "gmb_dict_t __fejk%d = gmb_val_as_dict(", jid);
+                            emit_ident(c, fdv->name);
+                            sb_put(&c->out, ");\n");
+                            if (jneed_tmp) { ind(c); sb_printf(&c->out, "gmb_string_t __fkj%d;\n", jid); }
+                            ind(c); sb_printf(&c->out, "for (gmb_int_t __feji%d = 0; __feji%d < (gmb_int_t)__fejk%d.count; __feji%d++) {\n",
+                                              jid, jid, jid, jid);
+                            c->indent++;
+                            ind(c);
+                            if (jneed_tmp) sb_printf(&c->out, "__fkj%d = gmb_string_alloc(__fejk%d.items[__feji%d].key);\n", jid, jid, jid);
+                            else { emit_ident(c, jfv->name); sb_printf(&c->out, " = gmb_string_alloc(__fejk%d.items[__feji%d].key);\n", jid, jid); }
+                            int jpushed = 0;
+                            if (jneed_tmp && c->n_imap < GMB_IMAP_CAP) {
+                                char* jex = (char*)malloc(24);
+                                snprintf(jex, 24, "__fkj%d", jid);
+                                c->imap_name[c->n_imap] = jfv->name;
+                                c->imap_expr[c->n_imap] = jex;
+                                c->imap_type[c->n_imap] = TY_STR;
+                                c->n_imap++;
+                                jpushed = 1;
+                            }
+                            emit_block(c, s->for_body, s->n_for);
+                            emit_num_label(c, s->for_next_bas);
+                            if (jpushed) { free((void*)c->imap_expr[c->n_imap - 1]); c->n_imap--; }
+                            c->indent--;
+                            ind(c); sb_put(&c->out, "}\n");
+                            c->indent--;
+                            ind(c); sb_put(&c->out, "}\n");
+                            return;
+                        }
                         if (fdv && fdv->gkind && gk_is_dict(fdv->gkind)) {
                             static gmb_expr_t __fe_dict_src;
                             memset(&__fe_dict_src, 0, sizeof __fe_dict_src);
@@ -22466,11 +22509,17 @@ static void st_do(ctx_t* c, gmb_stmt_t* s) {
             sb_put(&c->out, ")) {\n");
             c->indent++;
             emit_block(c, s->do_body, s->n_do);
-            if (s->flag == 2) {
+            if (s->value) {
                 /* TICK <rate>: frame limiter + present UNA volta per frame
-                 * (prima il rate era ignorato → loop a migliaia di fps). */
+                 * (prima il rate era ignorato → loop a migliaia di fps).
+                 *
+                 * Il marker e' `s->value`, NON `flag`: `gmb_p_parse_tick` tiene `flag = 0`
+                 * per la semantica WHILE (flag 1 = UNTIL) e mette la frequenza in `value`,
+                 * che fra le istruzioni DO/WHILE valorizza SOLO il TICK. Il vecchio
+                 * `flag == 2` era un marker che nessun parser scrive piu' per i loop:
+                 * il pace e il present non venivano emessi (TICK = ciclo nudo). */
                 ind(c); sb_put(&c->out, "gmb_tick_pace((double)(");
-                if (s->value) emit_expr(c, s->value); else sb_put(&c->out, "0");
+                emit_expr(c, s->value);   /* sempre valorizzato: gmb_p_parse_tick mette 0 se il rate manca */
                 sb_put(&c->out, "));\n");
                 ind(c); sb_put(&c->out, "gmb_gfx_present_frame();\n");
             }
@@ -24863,7 +24912,9 @@ static void st_net_cmd(ctx_t* c, gmb_stmt_t* s) {
             sb_put(&c->out, "));\n");
             ind(c); sb_put(&c->out, "if (__nh >= 0) break;\n");
             if (has_to) { ind(c); sb_put(&c->out, "if (gmb_c99_now_ms() >= __ndl) break;\n"); }
-            ind(c); sb_put(&c->out, "gmb_sleep_ms(1);\n");
+            /* §0ter: poll cooperativo — dentro un task GPM parcheggia (gmb_gpm_sleep), non
+             * dorme il worker: un ACCEPT senza connessioni non deve occupare un core. */
+            ind(c); sb_put(&c->out, "gmb_gpm_sleep(1);\n");
             c->indent--; ind(c); sb_put(&c->out, "}\n");
             ind(c); emit_net_lhs(c, tv); sb_put(&c->out, " = (gmb_double_t)__nh;\n");
             c->indent--; ind(c); sb_put(&c->out, "}\n");
@@ -24879,7 +24930,7 @@ static void st_net_cmd(ctx_t* c, gmb_stmt_t* s) {
             ind(c); sb_put(&c->out, "int __nw = gmb_ssl_is_active(__nh) ? gmb_ssl_send(__nh, (const uint8_t*)__nd.data + __no, __nd.length - __no) : gmb_net_tcp_send(__nh, (const uint8_t*)__nd.data + __no, __nd.length - __no);\n");
             ind(c); sb_put(&c->out, "if (__nw > 0) { __no += (size_t)__nw; continue; }\n");
             ind(c); sb_put(&c->out, "if (__nw <= -2) break;\n");
-            ind(c); sb_put(&c->out, "gmb_sleep_ms(1);\n");
+            ind(c); sb_put(&c->out, "gmb_gpm_sleep(1);\n");   /* §0ter: park, non worker bloccato */
             c->indent--; ind(c); sb_put(&c->out, "} }\n");
             break;
         }
@@ -24939,7 +24990,7 @@ static void st_net_cmd(ctx_t* c, gmb_stmt_t* s) {
             sb_put(&c->out, "), __nb, sizeof(__nb), __nip, (int)sizeof(__nip), &__nport);\n");
             ind(c); sb_put(&c->out, "if (__nn >= 0) break;\n");
             if (has_to) { ind(c); sb_put(&c->out, "if (gmb_c99_now_ms() >= __ndl) break;\n"); }
-            ind(c); sb_put(&c->out, "gmb_sleep_ms(1);\n");
+            ind(c); sb_put(&c->out, "gmb_gpm_sleep(1);\n");   /* §0ter: park, non worker bloccato */
             c->indent--; ind(c); sb_put(&c->out, "}\n");
             ind(c); sb_put(&c->out, "if (__nn < 0) { __nn = 0; __nip[0] = 0; __nport = 0; }\n");
             emit_net_buf_assign(c, bv, "__nb", "__nn");
@@ -26055,6 +26106,12 @@ static void st_gfx(ctx_t* c, gmb_stmt_t* s) {
         }
         case 2: /* SYNC */
             ind(c); sb_put(&c->out, "gmb_gfx_sync();\n");
+            /* SYNC = "mostra il frame": senza GPM nessuno presenta per lui (INKEY$/SLEEP/
+             * DOEVENTS/TICK presentano per conto loro), quindi il present va emesso qui —
+             * misurato con presentcount: un ciclo di sola SYNC dava 0 present in 2 s.
+             * Su un worker GPM resta no-op: gmb_gfx_present_frame passa da
+             * gmb_tui_present_gfx, che presenta solo sul main thread (SDL resta là). */
+            ind(c); sb_put(&c->out, "gmb_gfx_present_frame();\n");
             break;
         case 3: { /* POINT(x, y), c */
             if (!s->net_assign) { c99_fail(c, s->line, "POINT: manca la variabile target (POINT(x, y), c)"); return; }
