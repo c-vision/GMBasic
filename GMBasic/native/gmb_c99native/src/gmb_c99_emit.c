@@ -21245,8 +21245,17 @@ static void st_if(ctx_t* c, gmb_stmt_t* s) {
     }
 }
 
+/* Modalità di iterazione DICT per FOR EACH (0 = decisa dai marcatori _keys_/_values_):
+ * 1 = sole CHIAVI, 2 = soli VALORI. Serve alla forma `FOR EACH k IN d.Keys|d.Values`,
+ * che il parser consegna come CALL col membro nel nome. */
+int g_fe_dict_member = 0;
+
 static void st_for(ctx_t* c, gmb_stmt_t* s) {
 {
+        /* 1 = chiavi, 2 = valori: `FOR EACH k IN d.Keys|d.Values` (membro di un DICT)
+         * riscritto sul ramo DICT senza toccare l'AST. Azzerato per ogni FOR. */
+        extern int g_fe_dict_member;
+        g_fe_dict_member = 0;
         if (s->flag == 1) {
             /* FOR EACH n IN RANGE(a, b) — sequenza numerica inclusiva */
             if (s->for_from && s->for_from->kind == GMB_EXPR_CALL && s->for_from->var
@@ -21466,6 +21475,39 @@ static void st_for(ctx_t* c, gmb_stmt_t* s) {
                     return;
                 }
             }
+            /* `FOR EACH k IN d.Keys` / `d.Values` (d DICT): equivalente a `FOR EACH KEY k IN d`
+             * (chiavi) / `FOR EACH v IN d` (valori). Il parser produce una CALL `d.Keys` col
+             * membro nel nome: cadeva in "collezione non supportata (atteso nome di array)"
+             * mentre IL/PCode/VM-C iteravano le chiavi. La scelta viaggia in
+             * `g_fe_dict_member` (0 = nessuna), letta dal ramo DICT qui sotto: NON si tocca
+             * `s->for_to`, che punterebbe a storage statico e verrebbe liberato a fine
+             * compilazione con l'AST (SIGABRT). */
+            g_fe_dict_member = 0;
+            if (fe_from && (fe_from->kind == GMB_EXPR_CALL || fe_from->kind == GMB_EXPR_VAR)
+                && fe_from->var) {
+                const char* fdot = strchr(fe_from->var, '.');
+                if (fdot && fdot != fe_from->var && !strchr(fdot + 1, '.')) {
+                    char fdb[160];
+                    size_t fdbl = (size_t)(fdot - fe_from->var);
+                    const char* fm = fdot + 1;
+                    size_t fml = strlen(fm);
+                    if (fml > 2 && fm[fml - 1] == ')' && fm[fml - 2] == '(') fml -= 2;   /* Keys() */
+                    int f_is_keys = (fml == 4 && !strncasecmp(fm, "Keys", 4));
+                    int f_is_vals = (fml == 6 && !strncasecmp(fm, "Values", 6));
+                    if (fdbl < sizeof(fdb) && (f_is_keys || f_is_vals)) {
+                        memcpy(fdb, fe_from->var, fdbl); fdb[fdbl] = 0;
+                        var_t* fdv = lookup_var(c, fdb);
+                        if (fdv && fdv->gkind && gk_is_dict(fdv->gkind)) {
+                            static gmb_expr_t __fe_dict_src;
+                            memset(&__fe_dict_src, 0, sizeof __fe_dict_src);
+                            __fe_dict_src.kind = GMB_EXPR_VAR;
+                            __fe_dict_src.var = fdv->name;
+                            fe_from = &__fe_dict_src;
+                            g_fe_dict_member = f_is_keys ? 1 : 2;
+                        }
+                    }
+                }
+            }
             /* FOR EACH var IN arr: solo array 1-D in FASE 1 */
             if (!fe_from || fe_from->kind != GMB_EXPR_VAR) {
                 c99_fail(c, s->line, "FOR EACH: collezione non supportata (atteso nome di array)");
@@ -21605,14 +21647,16 @@ static void st_for(ctx_t* c, gmb_stmt_t* s) {
              *  - v IN dict     → soli valori (per ordine delle chiavi) */
             if (av && gk_is_dict(av->gkind)
                 && (s->for_to == NULL || (s->for_to->kind == GMB_EXPR_VAR && s->for_to->var))) {
-                int keys_only = s->for_to && s->for_to->kind == GMB_EXPR_VAR
-                                && s->for_to->var && strcmp(s->for_to->var, "_keys_") == 0;
-                int values_only = s->for_to && s->for_to->kind == GMB_EXPR_VAR
-                                  && s->for_to->var && strcmp(s->for_to->var, "_values_") == 0;
+                int keys_only = (s->for_to && s->for_to->kind == GMB_EXPR_VAR
+                                 && s->for_to->var && strcmp(s->for_to->var, "_keys_") == 0)
+                                || g_fe_dict_member == 1;
+                int values_only = (s->for_to && s->for_to->kind == GMB_EXPR_VAR
+                                  && s->for_to->var && strcmp(s->for_to->var, "_values_") == 0)
+                                  || g_fe_dict_member == 2;
                 /* for_to NULL = `FOR EACH e IN dict`: l'entry è un KeyValuePair (e.Key/e.Value),
                  * NON il solo valore (parità IL/PCode). Prima values_only includeva
                  * NULL → `e` prendeva il valore e `e.Value` dava 0. */
-                int entry_only = (s->for_to == NULL);
+                int entry_only = (s->for_to == NULL && g_fe_dict_member == 0);
                 int pair = (s->for_to && s->for_to->kind == GMB_EXPR_VAR && s->for_to->var
                             && !keys_only && !values_only);
                 if (keys_only || values_only || pair || entry_only) {
