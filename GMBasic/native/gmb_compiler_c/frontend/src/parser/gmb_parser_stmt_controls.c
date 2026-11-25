@@ -77,6 +77,22 @@ static void ctl_append_attr(gmb_stmt_t* s, const char* txt)
 
 gmb_stmt_t* gmb_p_parse_control(gmb_parser_t* p, int line)
 {
+    /* `NOME = espressione` dove NOME è ANCHE il nome di un CONTROLLO (es. `DIM tab AS LONG :
+     * tab = 42`): è un ASSEGNAMENTO a una variabile, non un controllo. Il dispatcher delle
+     * istruzioni instrada qui ogni keyword di controllo (TAB, GRID, PANEL, ...): senza questa
+     * guardia `tab = 42` diventava `CONTROL 'tab'` e l'emitter C falliva con "CONTROL 'tab' non
+     * supportato" mentre IL/PCode/VM-C lo trattano come assegnazione. */
+    {
+        const gmb_token_t* nx = gmb_p_peek(p, 1);
+        if (nx && (nx->kind == GMB_TOK_Equal || nx->kind == GMB_TOK_InlineAssign)) {
+            gmb_stmt_t* a = gmb_stmt_new(GMB_STMT_ASSIGN, line);
+            a->target = gmb_p_tok_strdup(gmb_p_cur(p));
+            gmb_p_adv(p);   /* nome */
+            gmb_p_adv(p);   /* '=' */
+            a->value = gmb_p_parse_expr(p);
+            return a;
+        }
+    }
     gmb_stmt_t* s = gmb_stmt_new(GMB_STMT_CONTROL, line);
     const gmb_token_t* n = gmb_p_cur(p);
     if (n) {
