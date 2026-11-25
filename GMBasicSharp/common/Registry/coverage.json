@@ -2,10 +2,10 @@
   "total_canonical": 1340,
   "scope": "DECLARED by BackendSupport/Registry (name-match; NON misurato su dispatch reali)",
   "declared_per_backend": {
-    "IL": 1243,
-    "PCodeVM": 1243,
-    "VMC": 1243,
-    "C99Native": 1243
+    "IL": 1242,
+    "PCodeVM": 1242,
+    "VMC": 1242,
+    "C99Native": 1242
   },
   "alias_only_name_matches": [
     {
@@ -12355,10 +12355,10 @@
       "ns": "WORLD",
       "name": "TIME",
       "kind": "WorldTime",
-      "IL": true,
-      "PCodeVM": true,
-      "VMC": true,
-      "C99Native": true
+      "IL": false,
+      "PCodeVM": false,
+      "VMC": false,
+      "C99Native": false
     },
     {
       "id": 1000001,

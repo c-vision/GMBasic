@@ -770,6 +770,14 @@ static string BuildCoverage(string gs, List<ProcRow> procs, List<CmdRow> cmds)
         })
         .ToList();
 
+    /* Parità di TokenKind anche per le PROCEDURE: un nome registrato dichiara la riga solo se il
+     * TokenKind del suo fornitore è quello della riga. L'alias nudo non basta: `Time` di
+     * DATETIME.Time (kind DateTimeTime) dichiarava WORLD.TIME (kind WorldTime). Un fornitore che
+     * non è una procedura canonica non ha TokenKind, quindi non dichiara (`kindOf` è null). */
+    var procProviders = backends.ToDictionary(b => b.Name, b => registered[b.Name]
+        .Select(f => (Full: f, Naked: f[(f.LastIndexOf('.') + 1)..], Kind: kindOf.GetValueOrDefault(f)))
+        .ToList());
+
     var rows = new List<Dictionary<string, object>>();
     for (int i = 0; i < procs.Count; i++)
     {
@@ -778,13 +786,17 @@ static string BuildCoverage(string gs, List<ProcRow> procs, List<CmdRow> cmds)
         {
             ["id"] = i + 1, ["ns"] = p.Ns, ["name"] = p.Name, ["kind"] = p.KindName
         };
+        /* I registry dei backend registrano il nome CANONICO QUALIFICATO (`ARRAYS.AADD`), la forma
+         * nuda o il TokenKind: tutte e tre valgono, ma solo col TokenKind giusto della riga
+         * (misurato 2026-11-13: senza la forma qualificata la coverage era tutta falsa).
+         * Senza la parità, l'alias nudo di un'altra procedura dichiarava la riga: `TIME` di
+         * `DATETIME.Time` (kind DateTimeTime) dichiarava `WORLD.TIME` (kind WorldTime), che
+         * nessun backend registra. */
         foreach (var b in backends)
-            row[b.Name] = sets[b.Name].Contains(p.Name.ToLowerInvariant())
-                       || sets[b.Name].Contains(p.KindName.ToLowerInvariant())
-                       /* I registry dei backend registrano il nome CANONICO QUALIFICATO
-                        * (`ARRAYS.AADD`, `MATH.Abs`): senza questa forma ogni riga risultava
-                        * "non implementata" (coverage tutto false, misurato 2026-11-13). */
-                       || sets[b.Name].Contains((p.Ns + "." + p.Name).ToLowerInvariant());
+            row[b.Name] = procProviders[b.Name].Any(f => f.Kind == p.KindName
+                && (f.Naked.Equals(p.Name, StringComparison.OrdinalIgnoreCase)
+                    || f.Naked.Equals(p.KindName, StringComparison.OrdinalIgnoreCase)
+                    || f.Full.Equals(p.Ns + "." + p.Name, StringComparison.OrdinalIgnoreCase)));
         rows.Add(row);
     }
     for (int i = 0; i < cmds.Count; i++)
