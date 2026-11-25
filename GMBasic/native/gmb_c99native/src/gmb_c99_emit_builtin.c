@@ -1141,8 +1141,12 @@ static int js_keys(ctx_t* c, gmb_expr_t** a, int n) {
     if (!is_val && !is_str) return 0;
     sb_put(&c->out, "gmb_val_dict_keys(");
     if (is_str && !(kv && kv->boxed_val)) {
-        /* stringa JSON (var/letterale, non una call): emit_expr, NON emit_str_operand che
-         * ri-dispatcha la builtin (ricorsione: gmb_json_parse(gmb_val_dict_keys(...).data)). */
+        /* Stringa JSON (var/letterale, non una call): emit_expr, NON emit_str_operand che
+         * ri-dispatcha la builtin (ricorsione: gmb_json_parse(gmb_val_dict_keys(...).data)).
+         * NOTA: la firma è `KEYS(jsonObject AS JSON)` e le altre 3 gambe danno null per una
+         * stringa (MiniTest json/keys_string); il C99 qui la PARSA. Allinearlo non è banale:
+         * in contesto VALORE serve un gmb_val_t (null), in contesto ASSEGNAZIONE A LISTA serve
+         * un gmb_list_t — due tipi diversi dalla stessa emissione. Vedi TODO.md. */
         sb_put(&c->out, "gmb_json_parse(");
         emit_expr(c, a[0]);
         sb_put(&c->out, ".data)");
