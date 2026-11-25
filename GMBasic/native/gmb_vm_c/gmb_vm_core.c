@@ -2365,21 +2365,15 @@ static void vm_udt_group_apply(gmb_obj_shared_val_t* inst, gmb_obj_shared_val_t*
 {
     if (!inst || !inst->dict || !cd || !cd->dict) return;
     gmb_val_t gv = vm_dict_get_ci(cd->dict, "Groups");
-    fprintf(stderr, "[DBG grp] sym=%d kind=%d ptr=%p\n", symId, (int)gv.kind, gv.v_ptr);
     if (gv.kind != GMB_TYPE_OBJECT || !gv.v_ptr) return;
     gmb_obj_t* gro = (gmb_obj_t*)gv.v_ptr;
-    fprintf(stderr, "[DBG grp] objkind=%d\n", (int)gro->kind);
     if (gro->kind != GMB_OBJ_LIST) return;
     gmb_obj_shared_val_t* groups = (gmb_obj_shared_val_t*)gro;
-    if (!groups->list) { fprintf(stderr, "[DBG grp] no list\n"); return; }
-    fprintf(stderr, "[DBG grp] ngroups=%zu\n", groups->list->count);
 
     for (size_t gi = 0; gi < groups->list->count; gi++) {
         gmb_val_t eg = groups->list->items[gi];
-        fprintf(stderr, "[DBG grp] egkind_val=%d\n", (int)eg.kind);
         if (eg.kind != GMB_TYPE_OBJECT || !eg.v_ptr) continue;
         gmb_obj_t* eo = (gmb_obj_t*)eg.v_ptr;
-        fprintf(stderr, "[DBG grp] egkind=%d\n", (int)eo->kind);
         if (eo->kind != GMB_OBJ_LIST) continue;
         gmb_obj_shared_val_t* g = (gmb_obj_shared_val_t*)eo;
         if (!g->list || g->list->count < 2) continue;
@@ -6013,6 +6007,15 @@ static void vm_sys_scene_render(gmb_vm_t* vm, gmb_task_t* task, int code, int ar
 }
 /* SCENE LIGHT dx, dy, dz, livello: luce direzionale per faccia. La normale e la miscela
  * stanno nella facciata C (`gmb_scene_light`), qui solo lo scarto in ordine di stack. */
+/* SCENE PRESENT: ponte target 3D → pagina 2D corrente. Nessun argomento; la guardia
+ * GPM (present solo dentro un task) e il ritaglio stanno nella facciata C. */
+static void vm_sys_scene_present(gmb_vm_t* vm, gmb_task_t* task, int code, int argc) {
+    (void)vm; (void)task; (void)code; (void)argc;
+    if (gmb_scene_present_check() != GMB_3D_OK) return;   /* guardia GPM + frame */
+    int w = 0, h = 0;
+    const uint32_t* px = gmb_scene_frame(&w, &h);
+    if (px != NULL) (void)gmb_gfx_present_argb(px, w, h);  /* copia nel modulo delle pagine */
+}
 /* SCENE SMOOTH|ALPHA|TWOSIDED on|off (idea #5): un argomento 0/1, nessuna logica qui —
  * lo stato e il significato stanno nella facciata C. */
 static void vm_sys_scene_flag(gmb_vm_t* vm, gmb_task_t* task, int code, int argc, int which) {
@@ -7236,6 +7239,7 @@ static const vm_sys_row VM_SYS_TBL[] = {
     { GMB_SC_SCENE_SMOOTH, vm_sys_scene_smooth },
     { GMB_SC_SCENE_ALPHA, vm_sys_scene_alpha },
     { GMB_SC_SCENE_TWOSIDED, vm_sys_scene_twosided },
+    { GMB_SC_SCENE_PRESENT, vm_sys_scene_present },
     { GMB_SC_CLOCK_PAUSE, vm_sys_clock_pause },
     { GMB_SC_CLOCK_RESUME, vm_sys_clock_resume },
     { GMB_SC_CLOCK_SCALE, vm_sys_clock_scale },
