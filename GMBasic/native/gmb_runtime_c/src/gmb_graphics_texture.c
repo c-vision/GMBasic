@@ -132,9 +132,15 @@ int png_decode(const unsigned char* data, size_t len, uint32_t** out_px, int* ou
         for (size_t i = 0; i < stride; i++)
         {
             int v = row[i];
-            int a = (i == 0) ? 0 : row[i - 1];
+            /* I predittori PNG distano `bpp` BYTE (filtro): "a sinistra" e "in alto a
+             * sinistra" si leggono a i-bpp, non a i-1. Con distanza fissa 1 la
+             * ricostruzione di Sub/Up/Average/Paeth è corretta solo con bpp == 1 (o con
+             * filtro 0, che è l'unico che scrive il nostro save_png_rgb24): un PNG esterno
+             * RGBA8 (bpp 4) decodificava spurio — misurato su un 8x8alpha8 di ImageIO:
+             * quasi tutto bianco e una colonna ciano invece di rosso/verde. */
+            int a = (i < (size_t)bpp) ? 0 : row[i - bpp];
             int b = (y == 0) ? 0 : prev[i];
-            int cc = (y == 0 || i == 0) ? 0 : prev[i - 1];
+            int cc = (y == 0 || i < (size_t)bpp) ? 0 : prev[i - bpp];
             switch (filter)
             {
                 case 1: v += a; break;
