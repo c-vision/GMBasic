@@ -32,6 +32,7 @@ Il dominio segue la regola del linguaggio: **il comando scrive, la funzione legg
 | Comando | `SCENE ALPHA on\|off` | alpha-test: i texel trasparenti si scartano o si disegnano |
 | Comando | `SCENE TWOSIDED on\|off` | facce visibili da entrambi i lati (niente back-face cull) |
 | Comando | `SCENE RENDER` | rasterizza la scena nel target |
+| Comando | `SCENE PRESENT` | copia il target 3D nella pagina 2D corrente |
 | Comando | `SCENE SAVE path$` | salva il frame corrente in PNG |
 | Funzione | `SCENE.VERTS()` | vertici dichiarati |
 | Funzione | `SCENE.TRIS()` | triangoli dichiarati |
@@ -232,6 +233,83 @@ stato da un render all'altro.
 `RENDER` non disegna nulla e restituisce un errore se manca il target (`VIEW` mai chiamato) o se
 la scena non ha oggetti/triangoli. **Non** è un errore chiamarlo più volte: è il ciclo normale.
 
+### `SCENE PRESENT`
+
+È il **ponte** fra il 3D e il 2D: copia il **target 3D** (quello di `SCENE VIEW`/`SCENE RENDER`)
+nella **pagina 2D corrente** — la stessa pagina in cui scrivono `PSET`, `LINE`, `PRINT` — e non
+tocca né la geometria né il frame 3D, che restano quelli dell'ultimo `RENDER`.
+
+```basic
+SCENE VIEW 320, 180, 55
+SCENE RENDER
+SCENE PRESENT              ' il 3D diventa lo sfondo della pagina
+LINE (1, 1)-(318, 1), 3    ' HUD 2D disegnato SOPRA
+```
+
+#### Ordine: `RENDER` → `PRESENT` → 2D sopra
+
+`PRESENT` non rasterizza: copia. L'ordine quindi conta, e nell'ordine sbagliato il risultato è
+vuoto senza nessun errore:
+
+1. `SCENE RENDER` scrive nel **target** del 3D;
+2. `SCENE PRESENT` copia il target nella pagina 2D (dall'angolo in alto a sinistra);
+3. i comandi 2D successivi disegnano **sopra** il 3D, sulla stessa pagina.
+
+Un `PRESENT` prima del primo `RENDER` è rifiutato: senza target non c'è niente da copiare. Un
+`RENDER` dopo `PRESENT` **non** aggiorna la pagina: la copia è un fotogramma, non un
+collegamento, quindi il ciclo corretto è `RENDER`, `PRESENT`, poi il 2D. Chiamare `PRESENT` due
+volte di fila dà lo stesso risultato della prima (il target non è cambiato).
+
+#### Copia 1:1, nessuna scalatura
+
+La copia è **pixel per pixel** con lo stesso formato (il target e le pagine contengono lo stesso
+valore `0x00RRGGBB`), **dall'angolo in alto a sinistra** e **ritagliata** alle due dimensioni più
+piccole: se il target è `8×8` in una pagina `16×16`, riempie solo l'angolo in alto a sinistra e
+il resto della pagina resta quello che c'era prima. Non c'è uno "stiramento" implicito: per
+occupare tutta la pagina il target deve avere le **stesse dimensioni** (`SCENE VIEW` con la
+larghezza e l'altezza della pagina, come fa `Samples3D/PresentLoop.bas` con `320×180`).
+
+`PRESENT` **non** azzera la pagina: sovrascrive la zona che il target copre, lascia il resto
+intatto. È per questo che la pagina va preparata prima (sfondo 2D, `CANVAS CLEAR` o `CLS`).
+
+#### Canvas o `SCREEN`: cambia solo la destinazione
+
+La destinazione è sempre `active_page()`, la pagina 2D attiva, e si sceglie con i comandi 2D già
+esistenti — `PRESENT` non ha varianti per l'uno o per l'altro:
+
+| destinazione | come si attiva | che cosa succede |
+|---|---|---|
+| **canvas offscreen** | `CANVAS NEW w, h INTO c` + `CANVAS USE c` | caso headless: la pagina non è visibile, ma è leggibile con `CANVAS GET`, salvabile in PNG con `CANVAS SAVE` e confrontabile con `SCENE.HASH()` |
+| **pagina dello schermo** | `SCREEN 12` (o `SCREEN 12, w, h, 32`) | la pagina è quella visibile: il **pump SDL** la mostra nella finestra al tick successivo |
+
+Se nessuna pagina 2D è attiva, il comando è rifiutato con l'errore
+`SCENE PRESENT: nessuna pagina 2D attiva (SCREEN o CANVAS USE prima)`: un canvas creato e mai
+selezionato con `CANVAS USE` non conta.
+
+#### Regola GPM
+
+`PRESENT` scrive **memoria** (target → pagina) e va eseguito **dentro un task GPM**, che è l'unico
+esecutore di codice BASIC (§0ter): è il task che esegue il ciclo di gioco a copiare, mai il
+thread di un evento o di rete. Fuori da un task, con lo scheduler GPM attivo, il comando è
+rifiutato in modo esplicito (`E_NO_TASK`, "fuori dal task GPM") invece di scrivere da un thread
+che non possiede la pagina; nei tool e negli oracoli, dove lo scheduler non è attivo, la stessa
+chiamata funziona in modo sincrono.
+
+`PRESENT` **non tocca SDL**: Cocoa/SDL si chiamano solo dal main thread, il BASIC gira sul worker.
+Con `SCREEN` la catena è: il worker copia nel buffer della pagina, il pump sul main thread la
+posta a video al tick successivo. È anche il motivo per cui non c'è un "present" di SDL dentro
+questo comando: lo fa già il pump della finestra.
+
+MiniTest: `shared/minitests/3d/scene_present.bas` — un quad rosso in un target `8×8`, una pagina
+`16×16` con sfondo palette 1: dentro il target si legge `1090453504` (`0xFF0000`), fuori resta
+`1073741994` (`0x400000AA`), e una seconda `PRESENT` lascia il valore identico. Sample:
+`Samples3D/PresentLoop.bas` — 24 fotogrammi `320×180` su canvas, con `RENDER` → `PRESENT` → HUD
+2D sopra e `CANVAS SAVE` per ogni frame; stampa `frame= 24  hash= 464449865  corner= 1074730793  centro= 1086957446  bordo= 1074730793` (identico sulle quattro gambe).
+
+Disponibile su **tutte e quattro le gambe** (C99Native, IL, PCodeVM, VM/C) con gli stessi byte:
+la copia vive una volta sola nel modulo grafico che possiede le pagine (`gmb_gfx_present_argb`),
+e il 3D fornisce solo il puntatore e le dimensioni del frame.
+
 ### `SCENE SAVE path$`
 
 Scrive il frame corrente in PNG (stessa risoluzione del target, nessuna scala). È l'unico comando
@@ -366,10 +444,14 @@ fasi successive del piano:
 * le forme con **id oggetto esplicito** (`VERTEX o, …`, `OBJECT o, flags, light`): oggi
   l'oggetto corrente lo apre `OBJECT`; le texture da file ci sono (`TEXTURE "file.png"`), ma il
   formato è solo PNG;
-* il present a video e il tetto dei frame: `RENDER` scrive nel target, la cattura è `SAVE`.
+* il present **a video** e il tetto dei frame: `SCENE PRESENT` porta il target nella pagina 2D
+  (canvas o `SCREEN`), e la finestra la mostra il pump SDL al tick successivo; il controllo del
+  frame rate resta fuori dal dominio.
 
 I sample di riferimento sono `Samples3D/MeshBasics.bas` (geometria), `Samples3D/TextureFile.bas`
-(texture da PNG) e `Samples3D/LightFaces.bas` (luce per faccia); i MiniTest che bloccano i numeri
-sono `shared/minitests/3d/scene_mesh.bas`, `shared/minitests/3d/scene_texture_file.bas`,
-`shared/minitests/3d/scene_light.bas` e `shared/minitests/3d/scene_material_flags.bas`; i sample
-`Samples3D/MaterialFlags.bas` (flag di materiale) e `Samples3D/LightFaces.bas` (luce).
+(texture da PNG), `Samples3D/LightFaces.bas` (luce per faccia) e `Samples3D/PresentLoop.bas`
+(3D dentro la pagina 2D); i MiniTest che bloccano i numeri sono
+`shared/minitests/3d/scene_mesh.bas`, `shared/minitests/3d/scene_texture_file.bas`,
+`shared/minitests/3d/scene_light.bas`, `shared/minitests/3d/scene_material_flags.bas` e
+`shared/minitests/3d/scene_present.bas`; i sample `Samples3D/MaterialFlags.bas` (flag di
+materiale) e `Samples3D/LightFaces.bas` (luce).
