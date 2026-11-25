@@ -11525,6 +11525,13 @@ static void emit_call(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_
     if (tk == GMB_TOK_DirectCast && nargs >= 1) {
         const char* tn = (nargs > 1 && args[1]->var) ? args[1]->var : "";
         int at = etype(c, args[0]);
+        /* `DIM obj AS ANY` è dichiarata `gmb_val_t` ma `etype()` la classifica TY_NUM (il
+         * "boxed" è un flag a parte): senza questo controllo `DIRECTCAST(obj, STRINGBUILDER)`
+         * finiva nel ramo "espressione già tipata" ed emetteva `sb2 = obj` (assegnazione
+         * gmb_val_t → gmb_stringbuilder_t*, C non compilabile). Vale per ogni target. */
+        var_t* dcv = (args[0]->kind == GMB_EXPR_VAR && args[0]->var) ? lookup_var(c, args[0]->var) : NULL;
+        int dcv_boxed = (dcv && (dcv->boxed_val || dcv->gkind) && !dcv->vclass[0] && !dcv->is_array);
+        int is_val = (at == TY_VAL) || dcv_boxed;
         if (!strcasecmp(tn, "REGEX")) { emit_expr(c, args[0]); return; }
         /* Il cast vale sia su un valore BOXED (gmb_val_t) sia su un'espressione già tipata
          * (letterale/variabile): prima assumeva sempre un val → `DIRECTCAST("42", LONG)`
@@ -11532,22 +11539,22 @@ static void emit_call(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_
         if (!strcasecmp(tn, "LONG") || !strcasecmp(tn, "INTEGER") || !strcasecmp(tn, "DOUBLE")
             || !strcasecmp(tn, "SINGLE") || !strcasecmp(tn, "CURRENCY")) {
             if (at == TY_STR) { sb_put(&c->out, "(gmb_double_t)gmb_string_to_double("); emit_expr(c, args[0]); sb_put(&c->out, ")"); }
-            else if (at == TY_VAL) { sb_put(&c->out, "(gmb_double_t)gmb_val_to_double("); emit_expr(c, args[0]); sb_put(&c->out, ")"); }
+            else if (is_val) { sb_put(&c->out, "(gmb_double_t)gmb_val_to_double("); emit_expr(c, args[0]); sb_put(&c->out, ")"); }
             else { sb_put(&c->out, "(gmb_double_t)("); emit_expr(c, args[0]); sb_put(&c->out, ")"); }
             return;
         }
         if (!strcasecmp(tn, "STRING")) {
-            if (at == TY_VAL) { sb_put(&c->out, "("); emit_expr(c, args[0]); sb_put(&c->out, ").v_string"); }
+            if (is_val) { sb_put(&c->out, "("); emit_expr(c, args[0]); sb_put(&c->out, ").v_string"); }
             else emit_expr(c, args[0]);
             return;
         }
         if (!strcasecmp(tn, "LIST") || !strcasecmp(tn, "DICT") || !strcasecmp(tn, "HASHSET")
             || !strcasecmp(tn, "QUEUE") || !strcasecmp(tn, "STACK")) {
-            if (at == TY_VAL) { sb_put(&c->out, "((gmb_list_t)gmb_val_as_list("); emit_expr(c, args[0]); sb_put(&c->out, "))"); }
+            if (is_val) { sb_put(&c->out, "((gmb_list_t)gmb_val_as_list("); emit_expr(c, args[0]); sb_put(&c->out, "))"); }
             else emit_expr(c, args[0]);
             return;
         }
-        if (at == TY_VAL) { sb_put(&c->out, "((gmb_stringbuilder_t*)gmb_val_as_ptr("); emit_expr(c, args[0]); sb_put(&c->out, "))"); }
+        if (is_val) { sb_put(&c->out, "((gmb_stringbuilder_t*)gmb_val_as_ptr("); emit_expr(c, args[0]); sb_put(&c->out, "))"); }
         else emit_expr(c, args[0]);
         return;
     }
