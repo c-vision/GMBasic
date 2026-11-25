@@ -713,7 +713,7 @@ static int reject_pseudo_length(ctx_t* c, gmb_expr_t* e) {
         || bv->boxed_val || bv->boxed_md || bv->stats_val || bv->tuple_fields
         || bv->posted_val || bv->rgba_obj
         || bv->gkind == GK_HTTPREQ || bv->gkind == GK_HTTPRESP) return 0;
-    if (bv->type == TY_STR || bv->is_array
+    if (bv->type == TY_STR || bv->is_array || bv->coll_handle
         || (bv->gkind && (gk_is_list(bv->gkind) || gk_is_dict(bv->gkind)))) {
         c99_fail(c, e->line,
                  "'.Length' non è una proprietà: usa LEN(x) per le stringhe e .Count per le collezioni");

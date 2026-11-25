@@ -3298,8 +3298,7 @@ public static partial class Linker
         // C99 silenziosamente 0). Le collezioni espongono `.Count`, le stringhe `LEN()`.
         if (fieldSymbolId == -1
             && fae.Field.Lexeme.Equals("Length", StringComparison.OrdinalIgnoreCase)
-            && resolvedStructureType is StringType or ArrayType or ListType or DictType
-                or SortedDictType or HashSetType or QueueType or StackType)
+            && IsLengthRejectedType(resolvedStructureType))
         {
             throw CreateError(fae.Field,
                 "'.Length' non è una proprietà: usa LEN(x) per le stringhe e .Count per le collezioni.");
@@ -3329,6 +3328,20 @@ public static partial class Linker
 
         return rewrittenFae with { FieldSymbolId = fieldSymbolId };
     }
+
+    /// <summary>
+    /// Tipi su cui `.Length` NON è un membro: stringhe, array e ogni collezione. Serve a
+    /// rifiutare la scrittura nel linker (una sola decisione per IL/PCode/VM-C) invece di
+    /// lasciarla arrivare ai backend, dove ogni gamba faceva una cosa diversa. I tipi con un
+    /// vero membro `Length` (StringBuilder, RegexMatch) sono già usciti prima dal TypeSchema.
+    /// </summary>
+    private static bool IsLengthRejectedType(DataType t) => t is
+        StringType or ArrayType or ListType or DictType or SortedDictType or HashSetType
+        or QueueType or StackType or TreeType or AVLTreeType or RedBlackTreeType
+        or BinaryIndexedTreeType or TrieType or LinkedListType or DoublyLinkedListType
+        or CircularLinkedListType or BinaryHeapType or BagType or HyperLogLogType
+        or CacheType or GraphType or TimelineType or HashRingType or RingBufferType
+        or SparseSetType or BPlusTreeType;
 
     /// <summary>
     /// Riscrive un nodo ArrayAccessExpr, gestendo l'ambiguità tra chiamata a funzione e accesso ad array,

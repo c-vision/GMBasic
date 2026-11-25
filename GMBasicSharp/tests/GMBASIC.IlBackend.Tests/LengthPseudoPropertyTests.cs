@@ -54,6 +54,26 @@ public sealed class LengthPseudoPropertyTests
         """);
 
     [Fact]
+    public void HyperLogLogLength_IsRejected() => AssertLengthRejected("""
+        IMPORT COLLECTIONS
+        SUB Main()
+          DIM h AS HLL
+          h.Add("a")
+          PRINT h.Length
+        END SUB
+        """);
+
+    [Fact]
+    public void BagLength_IsRejected() => AssertLengthRejected("""
+        IMPORT COLLECTIONS
+        SUB Main()
+          DIM b AS BAG
+          b.Add(1)
+          PRINT b.Length
+        END SUB
+        """);
+
+    [Fact]
     public void StringBuilderLength_StillCompiles()
     {
         var program = Basic.Orchestrator.CompileFromString("""
