@@ -358,10 +358,10 @@ gmb_stmt_t* gmb_p_parse_domain_stmt_ov(gmb_parser_t* p, int line, const char* ov
          * non espressioni, quindi il lettore generico ne faceva una VAR "ON"/"OFF" → su
          * tutte le gambe l'errore era "variabile non definita". Si convertono QUI, una
          * volta sola, nel letterale 1/0: a valle resta un argomento numerico come gli altri,
-         * e il verbo è già l'unico dispatch (act_tk). */
-        if (s->win_tk == GMB_TOK_Scene
-            && (s->act_tk == (int)GMB_TOK_SceneSmooth || s->act_tk == (int)GMB_TOK_SceneAlpha
-                || s->act_tk == (int)GMB_TOK_SceneTwoSided)) {
+         * e il verbo è già l'unico dispatch (act_tk). Il namespace non si ricontrolla:
+         * questi tre act_tk li assegna solo gmb_p_scene_verb_tk (verbi di SCENE). */
+        if (s->act_tk == (int)GMB_TOK_SceneSmooth || s->act_tk == (int)GMB_TOK_SceneAlpha
+            || s->act_tk == (int)GMB_TOK_SceneTwoSided) {
             const gmb_token_t* ft = gmb_p_cur(p);
             if (ft && (ft->kind == GMB_TOK_On || ft->kind == GMB_TOK_Off)) {
                 gmb_expr_t* fe = gmb_expr_num(ft->kind == GMB_TOK_On ? 1.0 : 0.0, line);

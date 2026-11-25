@@ -86,25 +86,23 @@ public sealed partial class IlProgramCompiler
                 _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.SceneCamera)));
                 return;
 
-            // Flag di materiale (idea #5): un argomento numerico 0/1 (il parser ha già
-            // convertito la parola ON/OFF), stessa facciata C delle altre gambe.
+            // Flag di materiale (idea #5): stessa forma per tutti e tre (un argomento numerico
+            // 0/1, il parser ha già convertito la parola ON/OFF), cambia solo la facciata C.
             case TokenKind.SceneSmooth:
-                RequireSceneArgs(stmt, 1, "SCENE SMOOTH on|off");
-                EmitInt64Argument(a[0]);
-                _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.SceneSmooth)));
-                return;
-
             case TokenKind.SceneAlpha:
-                RequireSceneArgs(stmt, 1, "SCENE ALPHA on|off");
-                EmitInt64Argument(a[0]);
-                _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.SceneAlpha)));
-                return;
-
             case TokenKind.SceneTwoSided:
-                RequireSceneArgs(stmt, 1, "SCENE TWOSIDED on|off");
+            {
+                RequireSceneArgs(stmt, 1, "SCENE SMOOTH|ALPHA|TWOSIDED on|off");
                 EmitInt64Argument(a[0]);
-                _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.SceneTwoSided)));
+                string method = stmt.Command.Kind switch
+                {
+                    TokenKind.SceneSmooth => nameof(IlRuntime.SceneSmooth),
+                    TokenKind.SceneAlpha => nameof(IlRuntime.SceneAlpha),
+                    _ => nameof(IlRuntime.SceneTwoSided)
+                };
+                _il.Emit(OpCodes.Call, RuntimeMethod(method));
                 return;
+            }
 
             case TokenKind.SceneLight:
                 RequireSceneArgs(stmt, 4, "SCENE LIGHT dx, dy, dz, livello");

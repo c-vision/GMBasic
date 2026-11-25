@@ -69,9 +69,9 @@ public sealed partial class Parser
             TokenKind.SceneObjPos => SceneCmd(command, SceneArgs(parser, 4, 4, "SCENE OBJPOS x, y, z, yaw")),
             TokenKind.SceneCamera => SceneCmd(command, SceneArgs(parser, 5, 5, "SCENE CAMERA x, y, z, yaw, pitch")),
             TokenKind.SceneLight => SceneCmd(command, SceneArgs(parser, 4, 4, "SCENE LIGHT dx, dy, dz, livello")),
-            TokenKind.SceneSmooth => SceneCmd(command, SceneFlagArg(parser, "SCENE SMOOTH on|off")),
-            TokenKind.SceneAlpha => SceneCmd(command, SceneFlagArg(parser, "SCENE ALPHA on|off")),
-            TokenKind.SceneTwoSided => SceneCmd(command, SceneFlagArg(parser, "SCENE TWOSIDED on|off")),
+            // I tre flag di materiale hanno la stessa forma (un ON/OFF): una sola riga.
+            TokenKind.SceneSmooth or TokenKind.SceneAlpha or TokenKind.SceneTwoSided
+                => SceneCmd(command, SceneFlagArg(parser, "SCENE SMOOTH|ALPHA|TWOSIDED on|off")),
             TokenKind.ScenePresent => SceneCmd(command, []),
             TokenKind.SceneRender => SceneCmd(command, []),
             TokenKind.SceneSave => SceneCmd(command, SceneArgs(parser, 1, 1, "SCENE SAVE path$")),
