@@ -275,6 +275,7 @@ public sealed partial class BackendImplementationRegistry
         r.Register(Backend.C99Native, "CONTROLS.CTRLGETPROPS");
         r.Register(Backend.C99Native, "SYSTEM.CTYPE");
         r.Register(Backend.C99Native, "NUMERICAL.CubicSpline");
+        r.Register(Backend.C99Native, "SCENE.CULLED");
         r.Register(Backend.C99Native, "NUMERICAL.CumTrapezoid");
         r.Register(Backend.C99Native, "RDD.CURVAL");
         r.Register(Backend.C99Native, "IO.Cwd");
@@ -336,6 +337,7 @@ public sealed partial class BackendImplementationRegistry
         r.Register(Backend.C99Native, "COMPUTER.DoubleClick");
         r.Register(Backend.C99Native, "CONTROLS.DOUBLECLICKED");
         r.Register(Backend.C99Native, "DATETIME.DOW");
+        r.Register(Backend.C99Native, "SCENE.DRAWN");
         r.Register(Backend.C99Native, "VECTORDB.Drift");
         r.Register(Backend.C99Native, "DATETIME.DTOC");
         r.Register(Backend.C99Native, "RDD.DTOC");
@@ -500,6 +502,7 @@ public sealed partial class BackendImplementationRegistry
         r.Register(Backend.C99Native, "MATRIX.HANKEL");
         r.Register(Backend.C99Native, "SYSTEM.HAS");
         r.Register(Backend.C99Native, "TYPEINFO.HAS");
+        r.Register(Backend.C99Native, "SCENE.HASH");
         r.Register(Backend.C99Native, "AI.HashEdit");
         r.Register(Backend.C99Native, "AI.HashLine");
         r.Register(Backend.C99Native, "AI.HashVerify");
@@ -826,6 +829,8 @@ public sealed partial class BackendImplementationRegistry
         r.Register(Backend.C99Native, "STRINGS.Petscii");
         r.Register(Backend.C99Native, "MATH.Pi");
         r.Register(Backend.C99Native, "LINALG.PINVERSE");
+        r.Register(Backend.C99Native, "SCENE.PIXEL");
+        r.Register(Backend.C99Native, "SCENE.PIXELS");
         r.Register(Backend.C99Native, "AI.PlanAdd");
         r.Register(Backend.C99Native, "AI.PlanApprove");
         r.Register(Backend.C99Native, "AI.PlanClear");
@@ -1153,6 +1158,7 @@ public sealed partial class BackendImplementationRegistry
         r.Register(Backend.C99Native, "STATS.TriangularPpf");
         r.Register(Backend.C99Native, "STATS.TriangularSf");
         r.Register(Backend.C99Native, "STRINGS.Trim");
+        r.Register(Backend.C99Native, "SCENE.TRIS");
         r.Register(Backend.C99Native, "MATH.Trunc");
         r.Register(Backend.C99Native, "MUTEX.TRYLOCK");
         r.Register(Backend.C99Native, "STATS.TTest");
@@ -1205,6 +1211,7 @@ public sealed partial class BackendImplementationRegistry
         r.Register(Backend.C99Native, "VECTOR.VDIV");
         r.Register(Backend.C99Native, "LLM.Verify");
         r.Register(Backend.C99Native, "AI.VerifyNote");
+        r.Register(Backend.C99Native, "SCENE.VERTS");
         r.Register(Backend.C99Native, "VECTOR.VGET");
         r.Register(Backend.C99Native, "AI.VideoFrame");
         r.Register(Backend.C99Native, "AI.VideoInfo");

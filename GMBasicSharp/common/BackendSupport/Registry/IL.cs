@@ -275,6 +275,7 @@ public sealed partial class BackendImplementationRegistry
         r.Register(Backend.IL, "CONTROLS.CTRLGETPROPS");
         r.Register(Backend.IL, "SYSTEM.CTYPE");
         r.Register(Backend.IL, "NUMERICAL.CubicSpline");
+        r.Register(Backend.IL, "SCENE.CULLED");
         r.Register(Backend.IL, "NUMERICAL.CumTrapezoid");
         r.Register(Backend.IL, "RDD.CURVAL");
         r.Register(Backend.IL, "IO.Cwd");
@@ -336,6 +337,7 @@ public sealed partial class BackendImplementationRegistry
         r.Register(Backend.IL, "COMPUTER.DoubleClick");
         r.Register(Backend.IL, "CONTROLS.DOUBLECLICKED");
         r.Register(Backend.IL, "DATETIME.DOW");
+        r.Register(Backend.IL, "SCENE.DRAWN");
         r.Register(Backend.IL, "VECTORDB.Drift");
         r.Register(Backend.IL, "DATETIME.DTOC");
         r.Register(Backend.IL, "RDD.DTOC");
@@ -500,6 +502,7 @@ public sealed partial class BackendImplementationRegistry
         r.Register(Backend.IL, "MATRIX.HANKEL");
         r.Register(Backend.IL, "SYSTEM.HAS");
         r.Register(Backend.IL, "TYPEINFO.HAS");
+        r.Register(Backend.IL, "SCENE.HASH");
         r.Register(Backend.IL, "AI.HashEdit");
         r.Register(Backend.IL, "AI.HashLine");
         r.Register(Backend.IL, "AI.HashVerify");
@@ -826,6 +829,8 @@ public sealed partial class BackendImplementationRegistry
         r.Register(Backend.IL, "STRINGS.Petscii");
         r.Register(Backend.IL, "MATH.Pi");
         r.Register(Backend.IL, "LINALG.PINVERSE");
+        r.Register(Backend.IL, "SCENE.PIXEL");
+        r.Register(Backend.IL, "SCENE.PIXELS");
         r.Register(Backend.IL, "AI.PlanAdd");
         r.Register(Backend.IL, "AI.PlanApprove");
         r.Register(Backend.IL, "AI.PlanClear");
@@ -1153,6 +1158,7 @@ public sealed partial class BackendImplementationRegistry
         r.Register(Backend.IL, "STATS.TriangularPpf");
         r.Register(Backend.IL, "STATS.TriangularSf");
         r.Register(Backend.IL, "STRINGS.Trim");
+        r.Register(Backend.IL, "SCENE.TRIS");
         r.Register(Backend.IL, "MATH.Trunc");
         r.Register(Backend.IL, "MUTEX.TRYLOCK");
         r.Register(Backend.IL, "STATS.TTest");
@@ -1205,6 +1211,7 @@ public sealed partial class BackendImplementationRegistry
         r.Register(Backend.IL, "VECTOR.VDIV");
         r.Register(Backend.IL, "LLM.Verify");
         r.Register(Backend.IL, "AI.VerifyNote");
+        r.Register(Backend.IL, "SCENE.VERTS");
         r.Register(Backend.IL, "VECTOR.VGET");
         r.Register(Backend.IL, "AI.VideoFrame");
         r.Register(Backend.IL, "AI.VideoInfo");
