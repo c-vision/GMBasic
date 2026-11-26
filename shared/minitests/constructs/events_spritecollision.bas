@@ -1,10 +1,11 @@
 ' TAG: interactive
 ' ON SPRITE COLLISION / COLLISIONS. Il SYNC N rileva gli sprite visibili con i rettangoli sovrapposti, il SYNC N+1
-' chiama gli handler: ON SPRITE COLLISION una volta con (x, y) della prima collisione (centro del rettangolo dello
-' sprite con id minore), ON SPRITE COLLISIONS una volta con l'array degli id coinvolti. Due SYNC => 1 chiamata a testa.
+' chiama gli handler: ON SPRITE COLLISION una volta con (x, y) del CENTRO dello sprite con id minore
+' (la posizione di SPRITE SET POSITION è il centro, canone del renderer nativo), ON SPRITE COLLISIONS
+' una volta con l'array degli id coinvolti. Due SYNC => 1 chiamata a testa.
 ' Il risultato viene stampato dopo SCREEN 0 (con lo schermo grafico attivo PRINT scrive sulla finestra, non su stdout).
 ' Ambiente: richiede un driver video (SDL_VIDEODRIVER=dummy va bene), per questo e' interactive.
-' EXPECT: hits= 1|x= 12|y= 12|calls= 1|n= 2|sum= 3
+' EXPECT: hits= 1|x= 10|y= 10|calls= 1|n= 2|sum= 3
 DIM Hits AS LONG = 0
 DIM Cx AS DOUBLE = 0
 DIM Cy AS DOUBLE = 0

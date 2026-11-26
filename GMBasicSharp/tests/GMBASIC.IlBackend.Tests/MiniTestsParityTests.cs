@@ -784,10 +784,13 @@ public class MiniTestsParityTests
         // spawn task handler = parita' FireKeyEvent IL/PCode); il minitest ora passa
         // 3/3 con EXPECT. C99Native resta gap (kind=26 non emesso) → verificato lì.
         // (events_onkey non più escluso.)
-        // ON SPRITE COLLISION: hitch PCode leg senza guardia (RunPCode senza timeout — il
-        // park grafico su SYNC blocca il scheduler in-process); collisioni headless mai
-        // calcolate (hits= 0 su tutte le gambe). Verifica per-gamba chirurgica.
-        || nome.Equals("events_spritecollision.bas", StringComparison.OrdinalIgnoreCase)
+        // ON SPRITE COLLISION: CHIUSO il 2026-11-26. La divergenza era in
+        // `NullGraphicsService.NullDetectCollisions`: trattava (X,Y) come vertice alto-sinistro
+        // e rendeva (X+W/2, Y+H/2) = 12, mentre il motore (runtime C e GraphicsManager) usa la
+        // posizione come CENTRO → 10; PCode/VM-C/C99 davano già 10. Corretto sul canone del
+        // motore (bounds X±W/2, punto = centro) e oracolo aggiornato a x=10|y=10. Resta
+        // `TAG: interactive` (richiede un driver video per la gamba C), quindi gira col
+        // parametro `--interactive`; non è più escluso dal confronto.
         // BROWSER CDP (2026-09-22, blocco BROWSER §0.20/§0.48): su IL/PCode è attivo il
         // browser MOCK (about:blank, [] ...) mentre gli oracoli dichiarano l'errore CDP
         // esplicito dei backend C — divergenza di CONTRATTO, non gap: nessuna EXPECT unica

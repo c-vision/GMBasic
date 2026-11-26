@@ -124,8 +124,14 @@ public class NullGraphicsService : IGraphicsService
             {
                 var b = _nullSprites[ids[j]];
                 if (!b.Vis) continue;
-                if (a.X < b.X + b.W && a.X + a.W > b.X && a.Y < b.Y + b.H && a.Y + a.H > b.Y)
-                    _nullHits.Add(new SpriteCollisionHit(ids[i], ids[j], a.X + a.W / 2f, a.Y + a.H / 2f));
+                /* Canone del motore (gmb_graphics.c / GraphicsManager.DetectCollisions):
+                 * (X,Y) è il CENTRO dello sprite, non il vertice alto-sinistro. Prima qui si
+                 * usava X come top-left → punto di collisione (X + W/2) = 12 con sprite 4x4
+                 * a 10, mentre PCode/VM-C/C99 davano 10 (posizione-centro). */
+                float ax = a.X - a.W / 2f, ay = a.Y - a.H / 2f;
+                float bx = b.X - b.W / 2f, by = b.Y - b.H / 2f;
+                if (ax < bx + b.W && ax + a.W > bx && ay < by + b.H && ay + a.H > by)
+                    _nullHits.Add(new SpriteCollisionHit(ids[i], ids[j], (a.X + b.X) / 2f, (a.Y + b.Y) / 2f));
             }
         }
     }
