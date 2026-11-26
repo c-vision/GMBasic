@@ -161,28 +161,28 @@ for c in "${CASES[@]}"; do
   d="$WORK/$name"; mkdir -p "$d"; f="$d/$name.bas"
   printf 'IMPORT SCENE\n%s\n' "$src" > "$f"
 
-  ( cd "$d" && bash "$C99RUN" "$f" >/tmp/gmb_scene_neg._1 2>&1 </dev/null ); c1=$?
-  ( cd "$d" && dotnet "$ILRUN" --engine=il "$f" >/tmp/gmb_scene_neg._2 2>&1 </dev/null ); c2=$?
-  ( cd "$d" && dotnet "$ILRUN" --engine=pcode "$f" >/tmp/gmb_scene_neg._3 2>&1 </dev/null ); c3=$?
-  ( cd "$d" && dotnet "$VMRUN" "$f" >/tmp/gmb_scene_neg._4 2>&1 </dev/null ); c4=$?
+  # Le quattro gambe in fila: LEG_NAME[i], il log LEG_LOG[i], l'exit LEG_RC[i], l'osservato
+  # LEG_MSG[i]. Aggiungere una gamba = una riga + una voce di nome, non otto confronti.
+  LEG_NAME=(c99 IL PCode "VM/C")
+  LEG_LOG=("$WORK/leg1.log" "$WORK/leg2.log" "$WORK/leg3.log" "$WORK/leg4.log")
+  LEG_RC=(); LEG_MSG=()
+  ( cd "$d" && bash "$C99RUN" "$f" >"${LEG_LOG[0]}" 2>&1 </dev/null ); LEG_RC+=("$?")
+  ( cd "$d" && dotnet "$ILRUN" --engine=il "$f" >"${LEG_LOG[1]}" 2>&1 </dev/null ); LEG_RC+=("$?")
+  ( cd "$d" && dotnet "$ILRUN" --engine=pcode "$f" >"${LEG_LOG[2]}" 2>&1 </dev/null ); LEG_RC+=("$?")
+  ( cd "$d" && dotnet "$VMRUN" "$f" >"${LEG_LOG[3]}" 2>&1 </dev/null ); LEG_RC+=("$?")
   # Un caso pick osserva il VALORE stampato; gli altri il messaggio core d'errore.
-  if [ "$kind" = pick ]; then
-    m1="$(pickval /tmp/gmb_scene_neg._1)"; m2="$(pickval /tmp/gmb_scene_neg._2)"
-    m3="$(pickval /tmp/gmb_scene_neg._3)"; m4="$(pickval /tmp/gmb_scene_neg._4)"
-  else
-    m1="$(norm /tmp/gmb_scene_neg._1)"; m2="$(norm /tmp/gmb_scene_neg._2)"
-    m3="$(norm /tmp/gmb_scene_neg._3)"; m4="$(norm /tmp/gmb_scene_neg._4)"
-  fi
+  for i in 0 1 2 3; do
+    if [ "$kind" = pick ]; then LEG_MSG+=("$(pickval "${LEG_LOG[$i]}")")
+    else LEG_MSG+=("$(norm "${LEG_LOG[$i]}")"); fi
+  done
 
+  # Confronto per gamba: l'exit code e l'osservato di OGNI gamba contro l'atteso, e il
+  # dettaglio di chi ha divergito finisce in `why`, con il nome della gamba.
   ok=1; why=""
-  [ "$c1" = "$exp_rc" ] || { ok=0; why+=" c99 exit=$c1(atteso $exp_rc)"; }
-  [ "$c2" = "$exp_rc" ] || { ok=0; why+=" IL exit=$c2(atteso $exp_rc)"; }
-  [ "$c3" = "$exp_rc" ] || { ok=0; why+=" PCode exit=$c3(atteso $exp_rc)"; }
-  [ "$c4" = "$exp_rc" ] || { ok=0; why+=" VM/C exit=$c4(atteso $exp_rc)"; }
-  [ "$m1" = "$msg" ] || { ok=0; why+=" c99 msg='$m1'"; }
-  [ "$m2" = "$msg" ] || { ok=0; why+=" IL msg='$m2'"; }
-  [ "$m3" = "$msg" ] || { ok=0; why+=" PCode msg='$m3'"; }
-  [ "$m4" = "$msg" ] || { ok=0; why+=" VM/C msg='$m4'"; }
+  for i in 0 1 2 3; do
+    [ "${LEG_RC[$i]}" = "$exp_rc" ] || { ok=0; why+=" ${LEG_NAME[$i]} exit=${LEG_RC[$i]}(atteso $exp_rc)"; }
+    [ "${LEG_MSG[$i]}" = "$msg" ] || { ok=0; why+=" ${LEG_NAME[$i]} msg='${LEG_MSG[$i]}'"; }
+  done
 
   if [ "$ok" = 1 ]; then
     echo "PASS $kind/$name :: exit=$exp_rc | $msg"
@@ -195,7 +195,6 @@ for c in "${CASES[@]}"; do
   fi
 done
 
-rm -f /tmp/gmb_scene_neg._1 /tmp/gmb_scene_neg._2 /tmp/gmb_scene_neg._3 /tmp/gmb_scene_neg._4
 echo "---------------------------------"
 echo "SCENE negative: PASS=$pass FAIL=$fail SKIP=$skip"
 [ "$fail" -eq 0 ]
