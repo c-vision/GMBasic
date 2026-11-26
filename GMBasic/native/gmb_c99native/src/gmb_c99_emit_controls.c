@@ -212,6 +212,9 @@ static const char* ev_const(const char* e)
     if (!strcasecmp(e, "COLLAPSE")) return "GMB_EV_COLLAPSE";
     if (!strcasecmp(e, "SELCHANGE")) return "GMB_EV_SELCHANGE";
     if (!strcasecmp(e, "ROWCOLCHANGE")) return "GMB_EV_ROWCOLCHANGE";
+    /* WHEN: evento "generico" del controllo (LABEL ... ON WHEN sub) — già mappato dal
+     * runtime in GMB_EV_WHEN e innalzato da FIRE EVENT h, "WHEN". */
+    if (!strcasecmp(e, "WHEN")) return "GMB_EV_WHEN";
     return NULL;
 }
 static void emit_ctrl_events(ctx_t* c, gmb_stmt_t* s)
@@ -882,6 +885,26 @@ int emit_control_stmt(ctx_t* c, gmb_stmt_t* s)
         ind(c); sb_put(&c->out, "{ static gmb_label_t _tui_lb; ");
         sb_printf(&c->out, "gmb_label_init(&_tui_lb, (int)("); emit_expr_dflt(c, a[0], "0"); sb_put(&c->out, "), (int)("); emit_expr_dflt(c, a[1], "0"); sb_put(&c->out, "), (int)("); emit_expr_dflt(c, a[2], "0"); sb_put(&c->out, "), "); emit_str_operand(c, a[3]); sb_put(&c->out, ".data); ");
         sb_put(&c->out, "gmb_tui_control_register(&_tui_lb.ctrl); ");
+        if (s->id_var && *s->id_var) { emit_ident(c, s->id_var); sb_put(&c->out, " = (gmb_double_t)gmb_form_last_handle(); "); }
+        /* ON <EVENTO> <handler> del LABEL (es. ON WHEN OnWhen): callback registrata
+         * per HANDLE (il LABEL vive nel registry TUI, gmb_form_set_event userebbe
+         * l'ultimo widget FORM) → FIRE EVENT dispatcha l'handler BASIC, parità
+         * IL/PCode/VM-C. */
+        for (int ei = 0; ei + 1 < s->n_ev; ei += 2) {
+            const char* ec = ev_const(s->ev_pairs[ei]);
+            if (!ec) continue;
+            const char* act = s->ev_pairs[ei + 1];
+            if (!act || !*act) {
+                sb_printf(&c->out, "gmb_form_set_event_id((int)_tui_lb.ctrl.handle, %s, NULL); ", ec);
+                continue;
+            }
+            /* GOSUB/GOTO label: non è una funzione C; solo le CALL (nome SUB) hanno
+             * gmb_user_<nome>. */
+            if ((act[0] == 'L' || act[0] == 'G') && act[1] == ':') continue;
+            sb_printf(&c->out, "gmb_form_set_event_id((int)_tui_lb.ctrl.handle, %s, (gmb_form_cb)gmb_user_", ec);
+            emit_ident(c, act);
+            sb_put(&c->out, "); ");
+        }
         if (_iv) { emit_net_lhs(c, _iv); if (_iv->type == TY_STR) sb_put(&c->out, " = gmb_string_alloc(\"\"); "); else sb_put(&c->out, " = (gmb_double_t)0; "); }
         sb_put(&c->out, "}\n");
     } else if (strcasecmp(cname, "DATALIST") == 0 && na >= 5) {

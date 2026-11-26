@@ -770,13 +770,10 @@ public class MiniTestsParityTests
         // riuscito, quindi il caso si verifica sulla gamba C. La forma lecita (testo) è coperta
         // da constructs/embedfile.bas.
         || nome.Equals("embedfile_binary.bas", StringComparison.OrdinalIgnoreCase)
-        // ON WHEN su LABEL (2026-11-17): `tui/when_event_parity.bas` verifica il dispatch
-        // SINCRONO di `FIRE EVENT h, "WHEN"` sull'handler `ON WHEN`: IL/PCode/VM-C lo fanno
-        // (GOSUB nel task corrente), C99Native emette `gmb_form_fire_event()` che invoca solo i
-        // callback C registrati, non la FUNCTION BASIC dell'handler. Gap tracciato in
-        // `Bugs/(open) - C99Native-ON-WHEN-Non-Dispatchato`; l'oracolo attuale riflette il
-        // comportamento C (senza WHEN-FIRED), quindi il test resta come sentinella del gap.
-        || nome.Equals("when_event_parity.bas", StringComparison.OrdinalIgnoreCase)
+        // ON WHEN su LABEL: CHIUSO il 2026-11-26 — `tui/when_event_parity.bas` ora passa su
+        // tutte e 4 le gambe (C99Native registra l'handler con
+        // `gmb_form_set_event_id(handle, GMB_EV_WHEN, …)` nell'emissione del LABEL e
+        // `FIRE EVENT` lo invoca). Non più escluso.
         // CLIPPER macro/EVAL/code-block (2026-10-02): batteria macro_core/eval_block/
         // eval_macro_string ora a parita' 4 backend (D1 EVAL dispatch, D2 text substitution,
         // D3 macro annidate, D4 corpo-espressione, D5 macro->block) — NON piu' escluse.
