@@ -13793,6 +13793,12 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                          * scoperta dal sample JsonApiComplete (catena di AND). */
                         push_num_entry(task, gmb_dict_contains_key(*sv->dict, k) ? -1 : 0, GMB_BT_BOOL);
                     }
+                    else if (strcasecmp(methodName, "ContainsValue") == 0 && argCount >= 1)
+                    {
+                        /* Canone .NET: esiste una voce con quel VALORE (O(n), uguaglianza
+                         * gmb_val_equals: numerico cross-tipo, stringhe ordinali). */
+                        push_num_entry(task, gmb_dict_contains_value(*sv->dict, gmb_adapter_stack_to_val(args[0])) ? -1 : 0, GMB_BT_BOOL);
+                    }
                     else if ((strcasecmp(methodName, "MaxPair") == 0 || strcasecmp(methodName, "MinPair") == 0) && argCount == 0
                              && gmb_dict_count(*sv->dict) > 0)
                     {
@@ -14541,6 +14547,9 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                     else if (isMap && (strcasecmp(methodName, "ContainsKey") == 0 || strcasecmp(methodName, "HasItem") == 0 ||
                                        strcasecmp(methodName, "Contains") == 0) && argCount >= 1)
                         push_num_entry(task, gmb_coll_kv_contains(ch, v0) ? 1 : 0, GMB_BT_BOOL);
+                    else if (isMap && strcasecmp(methodName, "ContainsValue") == 0 && argCount >= 1)
+                        /* ContainsValue di una mappa: esiste una voce con quel VALORE. */
+                        push_num_entry(task, gmb_coll_kv_contains_value(ch, v0) ? -1 : 0, GMB_BT_BOOL);
                     else if (isMap && strcasecmp(methodName, "Remove") == 0 && argCount >= 1)
                         push_num_entry(task, gmb_coll_kv_remove(ch, v0) ? 1 : 0, GMB_BT_BOOL);
                     else if (isMap && (strcasecmp(methodName, "Min") == 0 || strcasecmp(methodName, "Max") == 0 ||
@@ -14872,6 +14881,8 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                             push_num_entry(task, gmb_coll_cache_contains(ch, s0) ? 1 : 0, GMB_BT_BOOL);
                         else if (strcasecmp(methodName, "ContainsKey") == 0 && argCount >= 1)
                             push_num_entry(task, gmb_coll_cache_contains(ch, s0) ? 1 : 0, GMB_BT_BOOL);
+                        else if (strcasecmp(methodName, "ContainsValue") == 0 && argCount >= 1)
+                            push_num_entry(task, gmb_coll_cache_contains_value(ch, v0) ? -1 : 0, GMB_BT_BOOL);
                         else if (strcasecmp(methodName, "Keys") == 0)
                         {
                             int n = 0;

@@ -570,6 +570,13 @@ public sealed partial class IlProgramCompiler
             InferRegexMethodReturnType(mc),
         MethodCallExpr mc when NormalizeInferredType(InferType(mc.Instance)) is StringBuilderType =>
             mc.MethodName.Lexeme.Equals("ToString", StringComparison.OrdinalIgnoreCase) ? new StringType() : new AnyType(),
+        // `mappa.ContainsValue(x)` (membro fuori tabella Coll*, riconosciuto per nome):
+        // emesso come CollectionInvoke + ToDouble → double -1/0; inferenza coerente.
+        MethodCallExpr mcCV when mcCV.Args.Length == 1
+            && mcCV.MethodName.Lexeme.Equals("ContainsValue", StringComparison.OrdinalIgnoreCase)
+            && NormalizeInferredType(InferType(mcCV.Instance)) is DictType or SortedDictType or TreeType
+                or AVLTreeType or RedBlackTreeType or BPlusTreeType or CacheType or TimelineType
+            => new DoubleType(),
         MethodCallExpr mc when TryInferNativeCollectionMethodReturn(mc, out var collectionMethodReturn) => collectionMethodReturn,
         // BASE.metodo(): l'istanza è BaseExpr (InferType → AnyType) e la chiamata è risolta
         // STATICAMENTE al metodo della base (forceNonVirtual, vedi EmitMethodCall). Senza

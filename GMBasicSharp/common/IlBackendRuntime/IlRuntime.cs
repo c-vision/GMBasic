@@ -14775,6 +14775,40 @@ public static double TextWidth(string s)
         return false;
     }
 
+    /// <summary>Uguaglianza di VALORE per ContainsValue — stesso canone del runtime C
+    /// (gmb_val_equals): numerico cross-tipo (INT/DOUBLE/BOLL/DATETIME/CURRENCY, BOOL vero
+    /// = -1), stringhe ORDINALI (case-sensitive, come EqualityComparer&lt;string&gt;.Default),
+    /// oggetti per IDENTITÀ. Numero vs stringa = false.</summary>
+    public static bool BasicValueEquals(object? a, object? b)
+    {
+        if (a is null || b is null) return a is null && b is null;
+        var na = BasicNumber(a);
+        var nb = BasicNumber(b);
+        if (na.HasValue || nb.HasValue) return na.HasValue && nb.HasValue && na.Value == nb.Value;
+        if (a is string sa && b is string sb) return string.Equals(sa, sb, StringComparison.Ordinal);
+        if (a is string || b is string) return false;
+        return ReferenceEquals(a, b);
+    }
+
+    private static double? BasicNumber(object v) => v switch
+    {
+        double d => d,
+        float f => f,
+        decimal m => (double)m,
+        int i => i,
+        long l => l,
+        short s => s,
+        byte by => by,
+        sbyte sb => sb,
+        uint ui => ui,
+        ulong ul => ul,
+        ushort us => us,
+        bool bo => bo ? -1.0 : 0.0,
+        DateTime dt => dt.ToOADate(),
+        Basic.IlBackend.PCode.PCodeProcessor.DateValue dv => dv.OADate,
+        _ => null
+    };
+
     /// <summary>Entries di una IKeyValueIndexable in ordine CANONICO di chiave (nome) — lo
     /// stesso delle Keys: la Cache ha storage hash (ordine instabile), quindi Keys/Values/
     /// JSON/FOR EACH devono ordinare esplicitamente (parità IL/PCode/VM/C/C99).</summary>
@@ -15082,6 +15116,13 @@ public static double TextWidth(string s)
                     System.Globalization.CultureInfo.InvariantCulture);
             case "CONTAINSKEY" or "CONTAINS" when args.Length == 1 && IsTimelineInstance(instance):
                 return TimelineCallBool(instance!, "Contains", args[0]);
+            /* ContainsValue su TIMELINE: esiste una voce con quel VALORE (scansione). */
+            case "CONTAINSVALUE" when args.Length == 1 && IsTimelineInstance(instance):
+            {
+                foreach (var kvp in (System.Collections.IEnumerable)instance)
+                    if (BasicValueEquals(ReadKv(kvp, "Value"), args[0])) return -1.0;
+                return 0.0;
+            }
             case "REMOVE" when args.Length == 1 && IsTimelineInstance(instance):
                 return TimelineCallBool(instance!, "Remove", args[0]);
             case "GET" when args.Length == 1 && IsTimelineInstance(instance):
@@ -15236,6 +15277,14 @@ public static double TextWidth(string s)
                  * `d.Contains(k)` stampava 1 mentre C99/VM-C davano -1. */
                 try { return dc.Contains(args[0] ?? "") ? -1.0 : 0.0; }
                 catch (ArgumentException) { return 0.0; }
+            /* ContainsValue su IDictionary (DICT/TREE/AVL materializzati come
+             * Dictionary/SortedDictionary): scansione dei VALORI con l'uguaglianza canonica;
+             * il metodo CLR ContainsValue userebbe EqualityComparer<object>.Default
+             * (double 10 ≠ long 10), divergendo dalle altre gambe. */
+            case "CONTAINSVALUE" when args.Length == 1 && instance is System.Collections.IDictionary dcv:
+                foreach (System.Collections.DictionaryEntry e in dcv)
+                    if (BasicValueEquals(e.Value, args[0])) return -1.0;
+                return 0.0;
             // BAG.Remove(item): toglie UNA istanza (molteplicità -1, chiave rimossa a 0),
             // non l'intera chiave: ["a","b","a","c","a"].Remove("a") → "a" resta con 2.
             case "REMOVE" when args.Length >= 1 && instance is IBagMultiset brem:
@@ -15346,6 +15395,12 @@ public static double TextWidth(string s)
              * per le mappe Contains = ContainsKey (VM/C/C99), -1/0. */
             case "CONTAINS" when instance is CommonLib.Collections.IKeyValueIndexable ckC && args.Length >= 1:
                 return ckC.TryGetValue(args[0], out _) ? -1.0 : 0.0;
+            /* ContainsValue (canone .NET): una voce con quel VALORE — scansione O(n),
+             * uguaglianza di valore (BasicValueEquals == gmb_val_equals). */
+            case "CONTAINSVALUE" when instance is CommonLib.Collections.IKeyValueIndexable cvk && args.Length >= 1:
+                foreach (var kv in KviEntriesSorted(cvk))
+                    if (BasicValueEquals(kv.Value, args[0])) return -1.0;
+                return 0.0;
             case "GET" when instance is CommonLib.Collections.IKeyValueIndexable gk && args.Length >= 1:
                 return gk.TryGetValue(args[0], out var gkv) ? gkv : null;
             // GET(key) su IDictionary boxed (BPlusTree/RedBlack/...): lookup per chiave.

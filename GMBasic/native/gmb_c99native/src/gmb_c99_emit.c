@@ -2931,7 +2931,8 @@ int etype(ctx_t* c, gmb_expr_t* e) {
                     int _erx_dict_scalar = 0;
                     if (_erxv->gkind && gk_is_dict(_erxv->gkind) && !strchr(_erxdot + 1, '.')) {
                         gmb_tokenkind_t _erxt = gmb_member_tok(_erxdot + 1);
-                        if (_erxt == GMB_TOK_Count || _erxt == GMB_TOK_ContainsKey) _erx_dict_scalar = 1;
+                        if (_erxt == GMB_TOK_Count || _erxt == GMB_TOK_ContainsKey
+                            || strcasecmp(_erxdot + 1, "ContainsValue") == 0) _erx_dict_scalar = 1;
                         else if (_erxt == GMB_TOK_Get && !_erxv->elem_boxed) _erx_dict_scalar = 1;
                         /* Remove(k) è un PREDICATO numerico (bool -1/0) su ogni dict: senza
                          * questo il ramo generico tornava TY_VAL e `IF d.Remove(k) THEN`
@@ -11933,8 +11934,10 @@ static void emit_call(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_
                      * collections/addafter_before.bas e, in generale, ogni mutazione su LIST). */
                 } else if (bvv && !bvv->vclass[0] && bvv->gkind != GK_HTTPREQ && bvv->gkind != GK_HTTPRESP
                     && gk_is_dict(bvv->gkind)
-                    && gmb_tk_in(gmb_member_tok(bdot + 1), gmb_tk_coll_methods,
-                                 (unsigned)(sizeof(gmb_tk_coll_methods)/sizeof(gmb_tk_coll_methods[0])))) {
+                    && (gmb_tk_in(gmb_member_tok(bdot + 1), gmb_tk_coll_methods,
+                                 (unsigned)(sizeof(gmb_tk_coll_methods)/sizeof(gmb_tk_coll_methods[0])))
+                        /* membri .NET-style fuori tabella Coll* (by-name): ContainsValue */
+                        || (nargs == 1 && strcasecmp(bdot + 1, "ContainsValue") == 0))) {
                     /* nessuna emissione qui: prosegue verso il ramo COLLECTIONS */
                 } else if (bvv && !bvv->vclass[0] && bvv->gkind != GK_HTTPREQ && bvv->gkind != GK_HTTPRESP
                            && (bvv->boxed_val || bvv->gkind)) {
@@ -12745,6 +12748,28 @@ static void emit_call(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_
                             }
                         }
                         if (nargs == 1) {
+                            /* ContainsValue (membro .NET, fuori tabella Coll*): esiste una
+                             * voce con quel VALORE — scansione con gmb_val_equals. */
+                            if (args && args[0] && strcasecmp(m2, "ContainsValue") == 0) {
+                                /* Argomento di TIPO incompatibile con i valori della mappa
+                                 * (stringa su mappa numerica o viceversa): nessun valore può
+                                 * corrispondere → 0, come l'uguaglianza di valore delle altre
+                                 * gambe (numero ≠ stringa). */
+                                int _cvat = etype(c, args[0]);
+                                if (!cv->elem_boxed && _cvat != TY_VAL
+                                    && ((cv->elem_str && _cvat != TY_STR)
+                                        || (!cv->elem_str && _cvat == TY_STR))) {
+                                    sb_put(&c->out, "0");
+                                    return;
+                                }
+                                sb_put(&c->out, "(gmb_dict_contains_value(");
+                                sb_ident(&c->out, cv->name);
+                                sb_put(&c->out, ", ");
+                                if (cv->elem_boxed || _cvat == TY_VAL) emit_expr(c, args[0]);
+                                else emit_make_val(c, cv, args[0]);
+                                sb_put(&c->out, ") ? -1 : 0)");
+                                return;
+                            }
                             if (mk == GMB_TOK_ContainsKey || mk == GMB_TOK_Contains) {
                                 /* ContainsKey/Contains su DICT/SORTED (TIMELINE inclusa):
                                  * appartenenza per CHIAVE, -1/0. Prima `Contains` non era

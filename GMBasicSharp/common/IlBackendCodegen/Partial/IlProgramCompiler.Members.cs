@@ -1204,6 +1204,32 @@ public sealed partial class IlProgramCompiler
     private bool TryEmitNativeCollectionMethodCall(MethodCallExpr expr)
     {
         if (TryEmitCollectionTryGetValueOut(expr)) return true;
+        // ContainsValue su MAPPE: scansione dei valori con l'uguaglianza canonica del runtime
+        // (IlRuntime.BasicValueEquals == gmb_val_equals: numerico cross-tipo, stringhe
+        // ordinali). NON il metodo CLR ContainsValue (EqualityComparer<object> è
+        // type-sensitive: double 10 ≠ long 10) → divergenza con VM/C/C99.
+        if (expr.Args.Length == 1
+            && expr.MethodName.Lexeme.Equals("ContainsValue", StringComparison.OrdinalIgnoreCase))
+        {
+            var cvInst = NormalizeInferredType(InferType(expr.Instance));
+            if (cvInst is DictType or SortedDictType or TreeType or AVLTreeType or RedBlackTreeType
+                or BPlusTreeType or CacheType or TimelineType)
+            {
+                EmitExpression(expr.Instance);
+                _il.Emit(OpCodes.Ldstr, "ContainsValue");
+                _il.Emit(OpCodes.Ldc_I4_1);
+                _il.Emit(OpCodes.Newarr, _types.Object);
+                _il.Emit(OpCodes.Dup);
+                _il.Emit(OpCodes.Ldc_I4_0);
+                EmitExpression(expr.Args[0]);
+                var cvArgClr = DataTypeMapper.Map(NormalizeInferredType(InferType(expr.Args[0])), _types, _classTypes);
+                if (cvArgClr.IsValueType) _il.Emit(OpCodes.Box, cvArgClr);
+                _il.Emit(OpCodes.Stelem_Ref);
+                _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.CollectionInvoke), typeof(object), typeof(string), typeof(object[])));
+                _il.Emit(OpCodes.Call, _types.IlRuntimeToDoubleMethod);
+                return true;
+            }
+        }
         var instanceType = InferType(expr.Instance);
         // AnyType + tipi strutture avanzate (Tree/AVL/Trie/Heap/Bag/Cache/Timeline/Ring/
         // Graph/HashRing/SparseSet/BPlusTree — mappati a object nel DataTypeMapper): il

@@ -1143,6 +1143,17 @@ int gmb_coll_kv_contains(int64_t h, gmb_val_t key)
     return kv_find(c, kv_norm_key(key)) ? -1 : 0;
 }
 
+/* ContainsValue su mappe a handle (TREE/AVL/REDBLACK/BPLUS/TIMELINE): -1 se esiste una
+ * voce con quel VALORE (scansione O(n), uguaglianza canonica gmb_val_equals). */
+int gmb_coll_kv_contains_value(int64_t h, gmb_val_t v)
+{
+    gmb_collection_t* c = coll_get(h);
+    if (!c) return 0;
+    for (gmb_coll_item_t* it = c->head; it; it = it->next)
+        if (gmb_val_equals(it->v, v)) return -1;
+    return 0;
+}
+
 int gmb_coll_kv_remove(int64_t h, gmb_val_t key)
 {
     gmb_collection_t* c = coll_get(h);
@@ -1537,6 +1548,16 @@ int gmb_coll_cache_contains(int64_t h, const char* key)
     if (!c || c->type_code != 16 || !key) return 0;
     for (gmb_coll_cache_entry_t* e = c->cache; e; e = e->next)
         if (strcmp(e->key, key) == 0 && cache_entry_valid(e)) return -1;
+    return 0;
+}
+
+/* ContainsValue su CACHE: -1 se una voce VALIDA ha quel valore (scansione O(n)). */
+int gmb_coll_cache_contains_value(int64_t h, gmb_val_t v)
+{
+    gmb_collection_t* c = coll_get(h);
+    if (!c || c->type_code != 16) return 0;
+    for (gmb_coll_cache_entry_t* e = c->cache; e; e = e->next)
+        if (cache_entry_valid(e) && gmb_val_equals(e->value, v)) return -1;
     return 0;
 }
 

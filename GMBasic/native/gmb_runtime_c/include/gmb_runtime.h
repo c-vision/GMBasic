@@ -338,6 +338,8 @@ gmb_list_t gmb_dict_keys_typed_sorted(gmb_dict_t d);
 gmb_string_t gmb_dict_to_json_iso_keys(gmb_dict_t d);
 /* JSON di una mappa ORDINATA: voci nell'ordine delle chiavi (SORTED/TREE/AVL/REDBLACK/BPLUS). */
 gmb_string_t gmb_dict_to_json_sorted(gmb_dict_t d);
+/* ContainsValue su un DICT/SORTED: -1 se esiste una voce con quel valore (O(n)). */
+int gmb_dict_contains_value(gmb_dict_t d, gmb_val_t v);
 gmb_list_t gmb_dict_values(gmb_dict_t d);
 gmb_list_t gmb_dict_values_sorted(gmb_dict_t d);
 gmb_dict_t gmb_dict_copy(gmb_dict_t d);

@@ -107,6 +107,8 @@ int64_t gmb_coll_bag_unique_count(int64_t h);
 int gmb_coll_kv_set(int64_t h, gmb_val_t key, gmb_val_t v);
 gmb_val_t gmb_coll_kv_get(int64_t h, gmb_val_t key);
 int gmb_coll_kv_contains(int64_t h, gmb_val_t key);
+/* ContainsValue delle mappe a handle: -1 se esiste una voce con quel VALORE (O(n)). */
+int gmb_coll_kv_contains_value(int64_t h, gmb_val_t v);
 int gmb_coll_kv_remove(int64_t h, gmb_val_t key);
 gmb_val_t gmb_coll_kv_min_key(int64_t h);
 gmb_val_t gmb_coll_kv_min_value(int64_t h);
@@ -142,6 +144,8 @@ gmb_val_t gmb_coll_heap_extract(int64_t h);
 void gmb_coll_cache_set(int64_t h, const char* key, gmb_val_t v, double ttl_seconds);
 gmb_val_t gmb_coll_cache_get(int64_t h, const char* key);
 int gmb_coll_cache_contains(int64_t h, const char* key);
+/* ContainsValue su CACHE: -1 se una voce valida ha quel valore (O(n)). */
+int gmb_coll_cache_contains_value(int64_t h, gmb_val_t v);
 /* Chiavi valide (non scadute) come array di stringhe */
 char** gmb_coll_cache_keys(int64_t h, int* out_len);
 /* Valori validi (non scaduti) come array di gmb_val_t — stesso ORDINE delle chiavi. */

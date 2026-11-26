@@ -40,6 +40,10 @@ static gmb_tokenkind_t gmb_ast_member_seg_tok(const char* n)
     };
     for (int i = 0; http_members[i]; i++)
         if (strcasecmp(n, http_members[i]) == 0) return (gmb_tokenkind_t)0;
+    /* Membri .NET-style SENZA TokenKind dedicato (dispatch by-name come gli HTTP):
+     * ContainsValue sulle MAPPE (Dictionary.ContainsValue). Senza, `m.ContainsValue(x)`
+     * veniva letto come `m(x).ContainsValue` (indicizzazione) → C invalido. */
+    if (strcasecmp(n, "ContainsValue") == 0) return (gmb_tokenkind_t)0;
     return gmb_fn_tok(n);
 }
 

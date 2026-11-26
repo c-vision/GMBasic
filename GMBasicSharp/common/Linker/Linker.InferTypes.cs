@@ -1103,7 +1103,7 @@ public static partial class Linker
                     // SET/SETKEYVALUE: InferredType — parity DICT (vedi sopra).
                     "SET" or "SETKEYVALUE" => new InferredType(),
                     "GET" => sdt.ValueType,
-                    "REMOVE" or "CONTAINS" or "CONTAINSKEY" or "TRYGET" => new BitType(),
+                    "REMOVE" or "CONTAINS" or "CONTAINSKEY" or "CONTAINSVALUE" or "TRYGET" => new BitType(),
                     "ADD" or "CLEAR" => new VoidType(),
                     _ => null
                 };
@@ -1123,7 +1123,7 @@ public static partial class Linker
                 {
                     "MIN" or "MAX" or "EXTRACTMIN" or "EXTRACTMAX" => new KeyValuePairType(keyType, valueType),
                     "GET" => valueType,
-                    "TRYGETVALUE" or "TRYGET" or "REMOVE" or "CONTAINS" or "CONTAINSKEY" => new BitType(),
+                    "TRYGETVALUE" or "TRYGET" or "REMOVE" or "CONTAINS" or "CONTAINSKEY" or "CONTAINSVALUE" => new BitType(),
                     "COUNT" => new LongType(),
                     "KEYS" => new ListType(keyType),
                     "VALUES" => new ListType(valueType),
@@ -1208,7 +1208,7 @@ public static partial class Linker
                 return upperMethodName switch
                 {
                     "GET" => cache.ValueType,
-                    "TRYGETVALUE" or "TRYGET" or "REMOVE" or "CONTAINS" or "CONTAINSKEY" => new BitType(),
+                    "TRYGETVALUE" or "TRYGET" or "REMOVE" or "CONTAINS" or "CONTAINSKEY" or "CONTAINSVALUE" => new BitType(),
                     "COUNT" => new LongType(),
                     "KEYS" => new ListType(cache.KeyType),
                     "VALUES" => new ListType(cache.ValueType),
@@ -1238,7 +1238,7 @@ public static partial class Linker
             case TimelineType tlt:
                 return upperMethodName switch
                 {
-                    "REMOVE" or "CONTAINS" or "CONTAINSKEY" => new BitType(),
+                    "REMOVE" or "CONTAINS" or "CONTAINSKEY" or "CONTAINSVALUE" => new BitType(),
                     "GET" or "FIRST" or "LAST" => tlt.ValueType,
                     "GETRANGE" => tlt,
                     "COUNT" => new LongType(),

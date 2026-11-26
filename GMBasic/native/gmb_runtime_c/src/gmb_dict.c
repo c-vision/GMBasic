@@ -161,11 +161,19 @@ gmb_list_t gmb_dict_keys_typed_sorted(gmb_dict_t d) {
     return l;
 }
 
+/* ContainsValue (canone .NET): esiste una voce con quel VALORE — scansione O(n) con
+ * l'uguaglianza canonica del runtime (gmb_val_equals: numerico cross-tipo, stringhe
+ * ordinali, oggetti per identità). Usata da DICT/SORTED/TREE/AVL/REDBLACK/BPLUS/CACHE. */
+int gmb_dict_contains_value(gmb_dict_t d, gmb_val_t v) {
+    for (size_t i = 0; i < d.count; i++)
+        if (gmb_val_equals(d.items[i].value, v)) return -1;
+    return 0;
+}
+
 /* Timeline.ToJson()/JSON.STRINGIFY(TIMELINE) in C99Native: il timeline è un gmb_dict_t con
  * chiavi = seriale OADate in forma stringa. Il JSON canonico è un OGGETTO con chiavi
  * ISO-8601 (come le chiavi-data dei DICT e le altre gambe). */
-gmb_string_t gmb_dict_to_json_iso_keys(gmb_dict_t d) {
-    gmb_dict_t out = gmb_dict_new();
+gmb_string_t gmb_dict_to_json_iso_keys(gmb_dict_t d) {    gmb_dict_t out = gmb_dict_new();
     for (size_t i = 0; i < d.count; i++)
     {
         const char* k = d.items[i].key ? d.items[i].key : "";
