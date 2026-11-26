@@ -1063,6 +1063,8 @@ int gmb_expr_is_datetime(ctx_t* c, gmb_expr_t* e) {
         || e->tk == GMB_TOK_DateAdd || e->tk == GMB_TOK_Eomonth
         || e->tk == GMB_TOK_FirstDayOfMonth || e->tk == GMB_TOK_DateFromUnix) return 1;
     if (e->kind == GMB_EXPR_VAR && e->var) {
+        var_t* dv = lookup_var(c, e->var);
+        if (dv && dv->is_datetime) return 1;
         char ty[32];
         if (gmb_var_declared_type(c, e->var, ty, sizeof ty) && strcasecmp(ty, "DATETIME") == 0) return 1;
     }
@@ -3978,6 +3980,11 @@ if (s->dim_var) {            int ty = suffix_type(s->dim_var);
                     if (etype(c, s->dim_init->args[i]) == TY_STR) ty = TY_STR;
             var_t* v = vars_add(dscope, s->dim_var, ty);
             v->is_dim_local = 1;
+            /* `DIM u = NOW()` (senza AS): la variabile INFERISCE il tipo dall'inizializzatore.
+             * Se l'inizializzatore rende un DATETIME, PRINT/LEN/JSON devono usare il formato
+             * data/ora (IL/PCode/VM-C lo fanno; il C99 stampava il seriale e LEN=17). */
+            if (!s->array_size && s->dim_init && gmb_expr_is_datetime(c, s->dim_init))
+                v->is_datetime = 1;
             /* Il pre-pass di registrazione può ripassare sulla STESSA istruzione DIM
              * (registrazione idempotente): annotando l'istruzione che ha dichiarato la
              * variabile, il controllo di duplicato sotto distingue la ri-registrazione
