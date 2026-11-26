@@ -169,6 +169,12 @@ int64_t gmb_collections_create(int type_code)
         c->bit = (double*)calloc(17, sizeof(double));
         if (!c->bit) { free(c); return -1; }
     }
+    else if (type_code == 21) /* SparseSet: default (1_000_000, 64) come CommonLib/P-Code
+                                 (`DIM s AS SPARSESET` senza costruttore) — prima 0 su
+                                 VM-C e 8 su C99. */
+    {
+        c->capacity = 64;
+    }
     else if (type_code == 30) /* HLL (HyperLogLog) */
     {
         c->hll = gmb_hll_new(GMB_HLL_DEFAULT_PRECISION);
@@ -240,12 +246,12 @@ void gmb_coll_apply_ctor(int64_t h, gmb_val_t* args, int n_args)
     }
     else if (c->type_code == 21 && n_args >= 2) /* SparseSet: (maxValue, capacity) */
     {
-        /* Capacity() = capacity del costruttore (CommonLib: _dense.Length) — prima restava 8
-         * sul runtime/VM-C e 0 su C99 (divergenza su SPARSESET.Capacity). */
+        /* Capacity() = capacity del costruttore (CommonLib: _dense.Length); senza
+         * argomenti resta il default 64 impostato da gmb_collections_create. */
         int64_t cap = 0;
         if (args[1].kind == GMB_TYPE_DOUBLE) cap = (int64_t)args[1].v_double;
         else if (args[1].kind == GMB_TYPE_INT) cap = (int64_t)args[1].v_int;
-        c->capacity = cap > 0 ? (int)cap : 8;
+        if (cap > 0) c->capacity = (int)cap;
     }
     else if (c->type_code == 15) /* Bag: argomenti costruttore = elementi da aggiungere
                                     (bag-literal `= ["a","b"]` del transpiler C99, C99-01) */

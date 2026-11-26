@@ -4767,7 +4767,7 @@ if (s->dim_var) {            int ty = suffix_type(s->dim_var);
                             && s->dim_init->args[1]->num > 0)
                             v->sparse_cap = (int)s->dim_init->args[1]->num;
                         else
-                            v->sparse_cap = 8;   /* default CommonLib (capacity <= 0 → 8) */
+                            v->sparse_cap = 64;   /* default CommonLib/P-Code (1_000_000, 64) */
                         break;
                     }
                     case GMB_TOK_LinkedList: v->gkind = GK_LIST; v->coll_type_code = 12; break;
@@ -8077,6 +8077,15 @@ static const gmb_bf_row_t gmb_bf_composite[] = {
     { NULL, GMB_TOK_SceneFloorAt, emit_bf_scene },
     { NULL, GMB_TOK_SceneCeilAt,  emit_bf_scene },
     { NULL, GMB_TOK_SceneZone,    emit_bf_scene },
+    { NULL, GMB_TOK_SceneShoot,    emit_bf_scene },
+    { NULL, GMB_TOK_SceneShotKind, emit_bf_scene },
+    { NULL, GMB_TOK_SceneShotObj,  emit_bf_scene },
+    { NULL, GMB_TOK_SceneShotDist, emit_bf_scene },
+    { NULL, GMB_TOK_SceneShotX,    emit_bf_scene },
+    { NULL, GMB_TOK_SceneShotY,    emit_bf_scene },
+    { NULL, GMB_TOK_SceneShotZ,    emit_bf_scene },
+    { NULL, GMB_TOK_SceneUse,      emit_bf_scene },
+    { NULL, GMB_TOK_SceneSees,     emit_bf_scene },
     { NULL, GMB_TOK_SceneZoneTag, emit_bf_scene },
     { NULL, GMB_TOK_MatrixColumnCount, emit_bf_matrix },
     { NULL, GMB_TOK_MatrixIsLowerTriangular, emit_bf_matrix },
