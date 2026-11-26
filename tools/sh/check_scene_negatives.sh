@@ -24,6 +24,12 @@
 #
 # Prerequisiti: driver C99Native (`make gmbnative`), runner IL/PCode (`test_ilrun`) e
 # VM/C (`test_vmrun`) costruiti. Nessun permesso di sweep: il gate è mirato al dominio SCENE.
+#
+# Su FAIL il .bas del caso e i log GREZZI delle quattro gambe sono copiati in una directory
+# fuori da $WORK (che il trap cancella) e il percorso è stampato nel FAIL.
+#
+# Exit code: 0 = verde · 1 = divergenza reale delle aspettative · 3 = solo guasti
+# d'infrastruttura (gamba morta senza eseguire il programma). Con entrambi vince 1.
 set -uo pipefail
 
 MONO="$(cd "$(dirname "$0")/../.." && pwd)"
@@ -37,7 +43,7 @@ while [ $# -gt 0 ]; do
   case "$1" in
     --filter) FILTER="${2:-}"; shift 2 ;;
     --list) LIST=1; shift ;;
-    -h|--help) sed -n '2,26p' "$0"; exit 0 ;;
+    -h|--help) sed -n '2,32p' "$0"; exit 0 ;;
     *) echo "argomento sconosciuto: $1" >&2; exit 2 ;;
   esac
 done
@@ -151,7 +157,44 @@ pickval() {
   sed -nE 's/^pick=(-?[0-9]+) *$/\1/p' "$1" | tail -1
 }
 
-pass=0; fail=0; skip=0
+# Ultime righe non vuote del log di una gamba. Serve quando una gamba muore senza produrre un
+# messaggio BASIC: l'harness (`test_vmrun`) scrive il motivo SOLO su stderr e in forme che
+# `norm()` non riconosce (`[vm/c] rebuild FALLITO …`, `build GMBASIC.Conformance FALLITA:`, …).
+# Senza questo il FAIL direbbe soltanto "messaggio vuoto".
+rawtail() {
+  grep -v '^[[:space:]]*$' "$1" | tail -2 | tr '\n' ' ' | sed 's/ *$//'
+}
+
+# Firme dell'HARNESS (non del programma BASIC) nel log di una gamba. Quando compaiono e la
+# gamba non ha prodotto il messaggio atteso, la gamba è morta PRIMA di eseguire il caso:
+# è un guasto d'infrastruttura, non una divergenza delle aspettative. Fonti: `test_vmrun`
+# (`build GMBASIC.Conformance FALLITA:`, `GMBASIC.Conformance.dll non trovata…`, `file non
+# trovato:`, `root GMBasic non trovata`, `impossibile avviare il vmtest`) e `VmHostFreshness`
+# (`[vm/c] …`). Il TIMEOUT (exit 124) NON è qui: il programma è partito e non è finito, e un
+# blocco è un difetto del codice, non dell'harness.
+INFRA_RE='\[vm/c\] |build GMBASIC\.Conformance FALLITA|GMBASIC\.Conformance\.dll non trovata|build del conformance non avviata|impossibile avviare il vmtest|file non trovato:|root GMBasic non trovata'
+
+# Conserva una divergenza FUORI da $WORK: il trap cancella $WORK all'uscita, e un FAIL
+# transiente (gamba che muore per un rebuild dell'host in corso) senza i log grezzi non è
+# analizzabile a posteriori — né subito, né il giorno dopo. Si copiano il .bas del caso e i
+# log di TUTTE e quattro le gambe: senza i log delle gambe che hanno risposto correttamente
+# non si distingue "questa gamba è rotta" da "le altre hanno un comportamento diverso".
+FAILROOT=""
+keep_failure() {   # $1 nome caso, $2 riga BASIC, $3 exit atteso, $4 msg atteso, $5 ottenuto
+  if [ -z "$FAILROOT" ]; then
+    # TMPDIR su macOS termina con '/': senza toglierlo il path stampato conterrebbe '//'.
+    local base="${TMPDIR:-/tmp}"; base="${base%/}"
+    FAILROOT="$base/gmb_scene_neg_failures/$(date +%Y%m%d-%H%M%S)-$$"
+    mkdir -p "$FAILROOT" || { echo "!! impossibile creare $FAILROOT: i log resteranno solo in $WORK" >&2; FAILROOT=""; return 0; }
+  fi
+  mkdir -p "$FAILROOT/$1" || return 0
+  cp "$WORK/$1/$1.bas" "$FAILROOT/$1/" 2>/dev/null
+  for i in 0 1 2 3; do cp "${LEG_LOG[$i]}" "$FAILROOT/$1/${LEG_NAME[$i]//\//_}.log" 2>/dev/null; done
+  { echo "caso: $1"; echo "riga BASIC: $2"; echo "atteso: exit=$3 | $4"; echo "ottenuto:$5"; } \
+    > "$FAILROOT/$1/esito.txt" 2>/dev/null
+}
+
+pass=0; fail=0; skip=0; infra_fail=0; real_fail=0
 for c in "${CASES[@]}"; do
   IFS='~' read -r kind name src msg exp_rc <<<"$c"
   if [ -n "$FILTER" ] && [[ "$c" != *"$FILTER"* ]]; then skip=$((skip+1)); continue; fi
@@ -178,23 +221,57 @@ for c in "${CASES[@]}"; do
 
   # Confronto per gamba: l'exit code e l'osservato di OGNI gamba contro l'atteso, e il
   # dettaglio di chi ha divergito finisce in `why`, con il nome della gamba.
-  ok=1; why=""
+  ok=1; why=""; infra_leg=0; real_leg=0
   for i in 0 1 2 3; do
-    [ "${LEG_RC[$i]}" = "$exp_rc" ] || { ok=0; why+=" ${LEG_NAME[$i]} exit=${LEG_RC[$i]}(atteso $exp_rc)"; }
-    [ "${LEG_MSG[$i]}" = "$msg" ] || { ok=0; why+=" ${LEG_NAME[$i]} msg='${LEG_MSG[$i]}'"; }
+    leg_ok=1
+    [ "${LEG_RC[$i]}" = "$exp_rc" ] || leg_ok=0
+    [ "${LEG_MSG[$i]}" = "$msg" ] || leg_ok=0
+    [ "$leg_ok" = 1 ] && continue
+    ok=0
+    # Gamba morta PRIMA di eseguire il programma (rebuild di gmb_vm_host, build del
+    # conformance, runner non avviabile): il mismatch c'è, ma il log porta la firma
+    # dell'harness. Non è una divergenza delle aspettative.
+    if grep -qE "$INFRA_RE" "${LEG_LOG[$i]}"; then
+      infra_leg=1
+      why+=" ${LEG_NAME[$i]} GUASTO INFRASTRUTTURA exit=${LEG_RC[$i]}(atteso $exp_rc), gamba morta prima di eseguire: $(rawtail "${LEG_LOG[$i]}")"
+    else
+      real_leg=1
+      if [ "${LEG_RC[$i]}" = 124 ]; then why+=" ${LEG_NAME[$i]} TIMEOUT exit=124(atteso $exp_rc)"
+      elif [ "${LEG_RC[$i]}" != "$exp_rc" ]; then why+=" ${LEG_NAME[$i]} exit=${LEG_RC[$i]}(atteso $exp_rc)"; fi
+      if [ "${LEG_MSG[$i]}" != "$msg" ]; then
+        if [ -z "${LEG_MSG[$i]}" ]; then
+          # Nessun messaggio BASIC e nessuna firma d'harness: la gamba ha eseguito ma non ha
+          # parlato (una divergenza vera, non un guasto da build).
+          why+=" ${LEG_NAME[$i]} NESSUN MESSAGGIO (gamba senza output BASIC) → $(rawtail "${LEG_LOG[$i]}")"
+        else why+=" ${LEG_NAME[$i]} msg='${LEG_MSG[$i]}'"; fi
+      fi
+    fi
   done
 
   if [ "$ok" = 1 ]; then
     echo "PASS $kind/$name :: exit=$exp_rc | $msg"
     pass=$((pass+1))
   else
+    keep_failure "$name" "$src" "$exp_rc" "$msg" "$why"
     echo "FAIL $kind/$name ($src)"
     echo "     atteso: exit=$exp_rc | $msg"
     echo "     ottenuto:$why"
+    [ -n "$FAILROOT" ] && echo "     log completi: $FAILROOT/$name/"
+    if [ "$real_leg" = 1 ]; then real_fail=$((real_fail+1))
+    else
+      infra_fail=$((infra_fail+1))
+      echo "     ⚠ guasto d'infrastruttura: la gamba non ha eseguito il programma (non è una divergenza delle aspettative)"
+    fi
     fail=$((fail+1))
   fi
 done
 
 echo "---------------------------------"
 echo "SCENE negative: PASS=$pass FAIL=$fail SKIP=$skip"
-[ "$fail" -eq 0 ]
+[ -n "$FAILROOT" ] && echo "log dei fallimenti conservati: $FAILROOT"
+[ "$infra_fail" -gt 0 ] && echo "guasti d'infrastruttura: $infra_fail caso/i su $fail FAIL (la gamba non ha eseguito il programma)"
+# Contratto per la CI: 0 verde, 1 divergenza reale, 3 solo guasti d'infrastruttura.
+# Con entrambi vince 1: una regressione vera non va nascosta dietro un flake.
+if [ "$fail" -eq 0 ]; then exit 0; fi
+if [ "$real_fail" -eq 0 ]; then exit 3; fi
+exit 1
