@@ -14775,6 +14775,15 @@ public static double TextWidth(string s)
         return false;
     }
 
+    /// <summary>Entries di una IKeyValueIndexable in ordine CANONICO di chiave (nome) — lo
+    /// stesso delle Keys: la Cache ha storage hash (ordine instabile), quindi Keys/Values/
+    /// JSON/FOR EACH devono ordinare esplicitamente (parità IL/PCode/VM/C/C99).</summary>
+    public static System.Collections.Generic.List<System.Collections.Generic.KeyValuePair<object?, object?>>
+        KviEntriesSorted(CommonLib.Collections.IKeyValueIndexable kvi)
+        => kvi.Entries()
+            .OrderBy(kv => Convert.ToString(kv.Key, System.Globalization.CultureInfo.InvariantCulture), StringComparer.Ordinal)
+            .ToList();
+
     /// <summary>Istanza di CommonLib.Collections.Timeline&lt;T&gt;?</summary>
     private static bool IsTimelineInstance(object? o)
         => o is not null
@@ -15315,12 +15324,11 @@ public static double TextWidth(string s)
             case "KEYS" when instance is CommonLib.Collections.IKeyValueIndexable kc:
                 /* Ordine CANONICO per nome chiave (C99/VM/C ordinano; Cache ha un
                  * ConcurrentDictionary → ordine di hash instabile). */
-                return kc.Entries().Select(kv => kv.Key)
-                    .OrderBy(k => Convert.ToString(k, System.Globalization.CultureInfo.InvariantCulture),
-                             StringComparer.Ordinal)
-                    .ToArray();
+                return KviEntriesSorted(kc).Select(kv => kv.Key).ToArray();
             case "VALUES" when instance is CommonLib.Collections.IKeyValueIndexable vc:
-                return vc.Entries().Select(kv => kv.Value).ToArray();
+                /* Stesso ORDINE delle Keys (nome chiave): prima rendeva l'ordine interno
+                 * della Cache (hash), disallineato da Keys e dalle altre gambe. */
+                return KviEntriesSorted(vc).Select(kv => kv.Value).ToArray();
             case "CONTAINSKEY" when instance is CommonLib.Collections.IKeyValueIndexable ck && args.Length >= 1:
                 /* Convenzione BASIC -1/0 (parità PCode/VM-C/C99: prima IL stampava 1). */
                 return ck.TryGetValue(args[0], out _) ? -1.0 : 0.0;
@@ -15669,15 +15677,29 @@ public static double TextWidth(string s)
             // "__closure__") di bookkeeping — va ESCLUSO dal JSON utente, come fanno i backend
             // C (layout UDT → solo i campi). Senza questo, JSON.ToJson(udt) emetteva il
             // descriptor della classe (FieldOffsets/SourceToken/...) insieme ai campi.
-            bool isUdt = d.Contains("__class__");
+            // Il check si fa sulle CHIAVI enumerate, non con d.Contains("__class__"):
+            // su un SortedDictionary a chiavi NUMERICHE (TREE/AVL materializzati come
+            // SortedDictionary<object,object?>) Contains confronta la stringa con i numeri
+            // tramite Comparer<object> → String.CompareTo(int) → ArgumentException
+            // "Object must be of type String" (JSON.STRINGIFY di un AVL<INTEGER,...>).
             var dict = new Dictionary<string, object?>();
             foreach (System.Collections.DictionaryEntry kv in d)
             {
                 var k = kv.Key?.ToString() ?? "";
-                if (isUdt && (k == "__class__" || k == "__closure__")) continue;
+                if (k == "__class__" || k == "__closure__") continue;
                 dict[k] = NormalizeForJson(kv.Value);
             }
             return dict;
+        }
+        /* Collezioni chiave→valore CommonLib che NON sono IDictionary (RedBlack/BPlus/Cache/
+         * AVL materializzati come classi proprie): JSON oggetto dalle Entries() — prima il
+         * fallback serializzava l'istanza ({"Count":N}). */
+        if (value is CommonLib.Collections.IKeyValueIndexable kviJson)
+        {
+            var kvDict = new Dictionary<string, object?>();
+            foreach (var kv in KviEntriesSorted(kviJson))
+                kvDict[kv.Key?.ToString() ?? ""] = NormalizeForJson(kv.Value);
+            return kvDict;
         }
         if (value is System.Collections.IList list)
         {
@@ -20074,6 +20096,17 @@ public static double TextWidth(string s)
                 foreach (System.Collections.DictionaryEntry e in dict)
                     result.Add(new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase) { ["Key"] = e.Key, ["Value"] = e.Value });
                 break;
+            /* CACHE e collezioni chiave→valore CommonLib: entry {Key,Value} in ordine di
+             * CHIAVE (stesso ordine di Keys) — prima l'enumerazione grezza dava [k, v] e
+             * ordine hash. */
+            case CommonLib.Collections.IKeyValueIndexable kviFe:
+                foreach (var kv in KviEntriesSorted(kviFe))
+                    result.Add(new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase)
+                    {
+                        ["Key"] = kv.Key,
+                        ["Value"] = kv.Value
+                    });
+                break;
             /* TIMELINE: FOR EACH a UNA variabile lega la ENTRY {Key,Value} come per i DICT,
              * con Key = seriale OADate (stessa forma di First/ToArray/GetRange). Prima
              * l'enumerazione grezza dava [DateTimeOffset, valore]. */
@@ -20152,6 +20185,11 @@ public static double TextWidth(string s)
             case System.Collections.IDictionary dict:
                 foreach (System.Collections.DictionaryEntry e in dict)
                     result.Add(new Tuple<object?, object?>(e.Key, e.Value));
+                break;
+            /* CACHE (IKeyValueIndexable): (chiave, valore) in ordine di CHIAVE — parità Keys. */
+            case CommonLib.Collections.IKeyValueIndexable kviFe2:
+                foreach (var kv in KviEntriesSorted(kviFe2))
+                    result.Add(new Tuple<object?, object?>(kv.Key, kv.Value));
                 break;
             /* TIMELINE (due variabili): (chiave = seriale OADate, valore) — parità DICT. */
             case object tl2 when IsTimelineInstance(tl2):

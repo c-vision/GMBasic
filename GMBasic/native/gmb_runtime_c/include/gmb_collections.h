@@ -144,8 +144,11 @@ gmb_val_t gmb_coll_cache_get(int64_t h, const char* key);
 int gmb_coll_cache_contains(int64_t h, const char* key);
 /* Chiavi valide (non scadute) come array di stringhe */
 char** gmb_coll_cache_keys(int64_t h, int* out_len);
-/* Valori validi (non scaduti) come array di gmb_val_t */
+/* Valori validi (non scaduti) come array di gmb_val_t — stesso ORDINE delle chiavi. */
 gmb_val_t* gmb_coll_cache_values(int64_t h, int* out_len);
+/* Remove/Clear (parità DICT/TREE): Remove = -1 se la voce esisteva, 0 altrimenti. */
+int  gmb_coll_cache_remove(int64_t h, const char* key);
+void gmb_coll_cache_clear(int64_t h);
 
 #ifdef __cplusplus
 }
@@ -190,7 +193,10 @@ gmb_dict_t* gmb_coll_bag_counts_dict(int64_t h);            /* chiamante: gmb_di
 gmb_string_t gmb_coll_bag_to_json(int64_t h);
 /* Timeline.ToJson()/JSON.STRINGIFY(TIMELINE): oggetto {ISO-8601: valore} — stessa forma
  * delle chiavi-data nei DICT (gmb_dt_datetime_iso), non una lista di coppie. */
-gmb_string_t gmb_coll_timeline_to_json(int64_t h);/* Materializzazioni per il transpiler C99 (C99Native): FindAll(Trie) come
+gmb_string_t gmb_coll_timeline_to_json(int64_t h);
+/* ToJson()/JSON.STRINGIFY di una MAPPA ordinata (TREE/AVL/REDBLACK/BPLUS/CACHE): oggetto
+ * {"chiave":valore} nell'ordine della collezione (chiavi DATETIME → ISO). */
+gmb_string_t gmb_coll_map_to_json(int64_t h);/* Materializzazioni per il transpiler C99 (C99Native): FindAll(Trie) come
  * lista di stringhe; GetRange(Timeline) come lista di coppie {Key,Value} (chiave resa
  * come DATETIME boxato → JSON ISO-8601 come il resto del runtime). Entrambe vuote (mai
  * NULL) se il tipo non corrisponde o il range è vuoto. */

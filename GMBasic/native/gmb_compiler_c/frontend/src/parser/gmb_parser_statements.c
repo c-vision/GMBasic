@@ -3426,6 +3426,14 @@ dim_type_done:
                             if (gtk && gtk->lexeme && isalpha((unsigned char)gtk->lexeme[0])) {
                                 ntypes++;
                                 int want = dim_map_kind(dk0) ? 2 : 1;
+                                if (ntypes == 1 && dim_map_kind(dk0)) {
+                                    /* PRIMA type arg di una mappa = CHIAVE: tipo numerico
+                                     * esplicito (INTEGER/LONG/DOUBLE/…) → FOR EACH/Keys
+                                     * numerici come IL/PCode/VM/C. */
+                                    if (gtk->kind != GMB_TOK_StringType && gtk->kind != GMB_TOK_Any
+                                        && gm_parser_prim_len(gtk->lexeme, gtk->length))
+                                        s->dim_key_num = 1;
+                                }
                                 if (ntypes == want) {
                                     if (gtk->kind == GMB_TOK_StringType)
                                         s->dim_elem_str = 1;
@@ -3460,6 +3468,12 @@ dim_type_done:
                             if (otk->lexeme && isalpha((unsigned char)otk->lexeme[0])) {
                                 ntypes++;
                                 int want = dim_map_kind(dk0) ? 2 : 1;
+                                if (ntypes == 1 && dim_map_kind(dk0)) {
+                                    /* CHIAVE della mappa numerica (vedi ramo generico sopra). */
+                                    if (otk->kind != GMB_TOK_StringType && otk->kind != GMB_TOK_Any
+                                        && gm_parser_prim_len(otk->lexeme, otk->length))
+                                        s->dim_key_num = 1;
+                                }
                                 if (ntypes == want) {
                                     if (otk->kind == GMB_TOK_StringType)
                                         s->dim_elem_str = 1;

@@ -2400,8 +2400,8 @@ if (args.Length >= 3) { var file = args[0]?.ToString() ?? ""; var section = args
                 if (args.Length >= 1 && args[0] is CommonLib.Collections.IKeyValueIndexable kvi3)
                 {
                     var result = new System.Collections.Generic.List<object?>();
-                    foreach (var (k, v) in kvi3.Entries())
-                        result.Add(new System.Collections.Generic.Dictionary<object, object?> { ["Key"] = k, ["Value"] = v });
+                    foreach (var kv in IlRuntime.KviEntriesSorted(kvi3))
+                        result.Add(new System.Collections.Generic.Dictionary<object, object?> { ["Key"] = kv.Key, ["Value"] = kv.Value });
                     return result.ToArray();
                 }
                 return null;

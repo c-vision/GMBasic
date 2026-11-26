@@ -603,6 +603,23 @@ gmb_val_t gmb_coll_at(int64_t h, int64_t idx)
         return c->ring[(c->ring_head + idx) % c->capacity];
     }
     if (c->type_code == 30) return gmb_val_nil();   /* HLL: nessun elemento */
+    if (c->type_code == 16)   /* Cache: N-esima voce in ordine di CHIAVE (canone Keys) */
+    {
+        int n = 0;
+        char** ks = gmb_coll_cache_keys(h, &n);
+        if (!ks) return gmb_val_nil();
+        gmb_val_t v = gmb_val_nil();
+        if (idx >= 0 && idx < n)
+        {
+            gmb_dict_t e = gmb_dict_new();
+            gmb_dict_set(&e, "Key", gmb_make_val_string_counted(ks[idx] ? ks[idx] : ""));
+            gmb_dict_set(&e, "Value", gmb_coll_cache_get(h, ks[idx] ? ks[idx] : ""));
+            v = gmb_make_val_dict(e);
+        }
+        for (int i = 0; i < n; i++) free(ks[i]);
+        free(ks);
+        return v;
+    }
     if (idx < 0 || idx >= c->count) return gmb_val_nil();
     {
         gmb_coll_item_t* it = c->head;
@@ -1533,6 +1550,21 @@ char** gmb_coll_cache_keys(int64_t h, int* out_len)
     int k = 0;
     for (gmb_coll_cache_entry_t* e = c->cache; e; e = e->next)
         if (cache_entry_valid(e)) arr[k++] = strdup(e->key);
+    /* Ordine CANONICO per nome chiave (confronto numerico-aware come gmb_dict_keys_sorted):
+     * la Cache ha storage hash e IL/PCode/C99 presentano le chiavi ORDINATE — senza, Keys/
+     * Values/JSON/FOR EACH divergevano fra le gambe. */
+    for (int i = 0; i < k - 1; i++)
+        for (int j = 0; j < k - 1 - i; j++)
+        {
+            const char* a = arr[j] ? arr[j] : "";
+            const char* b = arr[j + 1] ? arr[j + 1] : "";
+            char* ea = NULL; char* eb = NULL;
+            double da = strtod(a, &ea), db = strtod(b, &eb);
+            int cmp;
+            if (ea != a && *ea == 0 && eb != b && *eb == 0) cmp = (da > db) - (da < db);
+            else cmp = strcmp(a, b);
+            if (cmp > 0) { char* t = arr[j]; arr[j] = arr[j + 1]; arr[j + 1] = t; }
+        }
     *out_len = k;
     return arr;
 }
@@ -1542,13 +1574,61 @@ gmb_val_t* gmb_coll_cache_values(int64_t h, int* out_len)
     *out_len = 0;
     gmb_collection_t* c = coll_get(h);
     if (!c || c->type_code != 16 || !c->cache) return NULL;
-    gmb_val_t* arr = (gmb_val_t*)malloc((size_t)c->count * sizeof(gmb_val_t));
-    if (!arr) return NULL;
+    /* Stesso ORDINE delle Keys (nome chiave): prima seguiva la lista interna (hash). */
+    int n = 0;
+    char** ks = gmb_coll_cache_keys(h, &n);
+    if (!ks) { *out_len = 0; return NULL; }
+    gmb_val_t* arr = (gmb_val_t*)malloc((size_t)(n > 0 ? n : 1) * sizeof(gmb_val_t));
+    if (!arr) { for (int i = 0; i < n; i++) free(ks[i]); free(ks); return NULL; }
     int k = 0;
-    for (gmb_coll_cache_entry_t* e = c->cache; e; e = e->next)
-        if (cache_entry_valid(e)) arr[k++] = e->value;
+    for (int i = 0; i < n; i++)
+    {
+        gmb_val_t v = gmb_coll_cache_get(h, ks[i]);
+        if (v.kind != GMB_TYPE_NIL) arr[k++] = v;
+    }
+    for (int i = 0; i < n; i++) free(ks[i]);
+    free(ks);
     *out_len = k;
     return arr;
+}
+
+/* Cache.Remove(key): -1 se la voce esisteva (rimossa), 0 altrimenti — convenzione dei map. */
+int gmb_coll_cache_remove(int64_t h, const char* key)
+{
+    gmb_collection_t* c = coll_get(h);
+    if (!c || c->type_code != 16 || !key) return 0;
+    gmb_coll_cache_entry_t* prev = NULL;
+    for (gmb_coll_cache_entry_t* e = c->cache; e; prev = e, e = e->next)
+    {
+        if (strcmp(e->key, key) == 0)
+        {
+            if (prev) prev->next = e->next; else c->cache = e->next;
+            free(e->key);
+            gmb_val_release(e->value);
+            free(e);
+            if (c->count > 0) c->count--;
+            return -1;
+        }
+    }
+    return 0;
+}
+
+/* Cache.Clear(): svuota (parità DICT/TREE). */
+void gmb_coll_cache_clear(int64_t h)
+{
+    gmb_collection_t* c = coll_get(h);
+    if (!c || c->type_code != 16) return;
+    gmb_coll_cache_entry_t* e = c->cache;
+    while (e)
+    {
+        gmb_coll_cache_entry_t* nx = e->next;
+        free(e->key);
+        gmb_val_release(e->value);
+        free(e);
+        e = nx;
+    }
+    c->cache = NULL;
+    c->count = 0;
 }
 
 /* ---- Incapsulamento transpiler: collezione boxed in gmb_val_t ----
@@ -1793,6 +1873,41 @@ gmb_string_t gmb_coll_timeline_to_json(int64_t h)
         gmb_string_t iso = gmb_dt_datetime_iso(serial);
         gmb_dict_set(&d, iso.data ? iso.data : "", it->v);
         gmb_string_free(&iso);
+    }
+    gmb_string_t js = gmb_val_to_json(gmb_make_val_dict(d));
+    gmb_dict_free(&d);
+    return js;
+}
+
+/* ToJson()/JSON.STRINGIFY di una MAPPA ordinata (TREE/AVL/REDBLACK/BPLUS/CACHE): oggetto
+ * {"chiave": valore} nell'ORDINE della collezione (kv_set inserisce ordinato), come IL/PCode
+ * e C99. Prima la VM/C rendeva "null" per ogni GMB_OBJ_COLLECTION diversa da BAG/Timeline.
+ * Una chiave DATETIME diventa ISO (canone delle chiavi-data); le altre usano la resa
+ * canonica del runtime (gmb_val_to_string: numeri senza formattazione di display). */
+gmb_string_t gmb_coll_map_to_json(int64_t h)
+{
+    gmb_collection_t* c = coll_get(h);
+    if (!c) return gmb_string_alloc("{}");
+    gmb_dict_t d = gmb_dict_new();
+    if (c->type_code == 16)   /* Cache: storage hash, voci in ordine di CHIAVE */
+    {
+        int n = 0;
+        char** ks = gmb_coll_cache_keys(h, &n);
+        for (int i = 0; ks && i < n; i++)
+        {
+            gmb_dict_set(&d, ks[i] ? ks[i] : "", gmb_coll_cache_get(h, ks[i] ? ks[i] : ""));
+            free(ks[i]);
+        }
+        free(ks);
+    }
+    else
+    for (gmb_coll_item_t* it = c->head; it; it = it->next)
+    {
+        gmb_string_t ks;
+        if (it->key.kind == GMB_TYPE_DATETIME) ks = gmb_dt_datetime_iso(it->key.v_double);
+        else ks = gmb_val_to_string(it->key);
+        gmb_dict_set(&d, ks.data ? ks.data : "", it->v);
+        gmb_string_free(&ks);
     }
     gmb_string_t js = gmb_val_to_json(gmb_make_val_dict(d));
     gmb_dict_free(&d);

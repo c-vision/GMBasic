@@ -14667,11 +14667,16 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                     else if (strcasecmp(methodName, "Capacity") == 0)
                         push_num_entry(task, (double)gmb_coll_capacity(ch), GMB_BT_NUMBER);
                     else if (strcasecmp(methodName, "Clear") == 0)
-                        gmb_coll_clear(ch);
+                    {
+                        if (tc == 16) gmb_coll_cache_clear(ch);
+                        else gmb_coll_clear(ch);
+                    }
                     else if (strcasecmp(methodName, "Contains") == 0 && argCount >= 1)
                     {
                         if (tc == 11)
                             push_num_entry(task, gmb_coll_trie_contains(ch, s0) ? 1 : 0, GMB_BT_BOOL);
+                        else if (tc == 16)
+                            push_num_entry(task, gmb_coll_cache_contains(ch, s0) ? -1 : 0, GMB_BT_BOOL);
                         else
                             push_num_entry(task, gmb_coll_contains(ch, v0) ? 1 : 0, GMB_BT_BOOL);
                     }
@@ -14679,6 +14684,9 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                     {
                         if (tc == 11)
                             push_num_entry(task, gmb_coll_trie_remove(ch, s0) ? 1 : 0, GMB_BT_BOOL);
+                        else if (tc == 16)
+                            /* CACHE: -1 se la voce esisteva (convenzione dei map). */
+                            push_num_entry(task, gmb_coll_cache_remove(ch, s0) ? -1 : 0, GMB_BT_BOOL);
                         else if (tc == 15)
                             /* BAG: rimuove UNA istanza (l'ULTIMA), non tutte e non la prima —
                              * così l'ordine di prima comparsa (ToJson/UniqueItems) resta quello
@@ -14896,6 +14904,13 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                             }
                             else push_nil(task);
                             free(vals);
+                        }
+                        else if (strcasecmp(methodName, "Remove") == 0 && argCount >= 1)
+                            push_num_entry(task, gmb_coll_cache_remove(ch, s0) ? -1 : 0, GMB_BT_BOOL);
+                        else if (strcasecmp(methodName, "Clear") == 0)
+                        {
+                            gmb_coll_cache_clear(ch);
+                            push_nil(task);
                         }
                     }
                     else if (tc == 19) /* HashRing */

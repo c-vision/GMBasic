@@ -1708,10 +1708,12 @@ internal sealed partial class PCodeProcessor
                 else if (arr is CommonLib.Collections.IKeyValueIndexable kviPos && numIndices == 1)
                 {
                     var kidxP = Convert.ToInt32(keys[0] ?? 0);
-                    object? kitemP = null;
-                    var kk = 0;
-                    foreach (var it in kviPos.Entries()) { if (kk++ == kidxP) { kitemP = it; break; } }
-                    task.PushRef(kitemP);
+                    /* Entries in ordine di CHIAVE (parità Keys/IL/C99; la Cache enumera
+                     * in ordine hash) e resa come DictionaryEntry — stessa forma dei DICT. */
+                    var klistP = IlRuntime.KviEntriesSorted(kviPos);
+                    if (kidxP >= 0 && kidxP < klistP.Count)
+                        task.PushRef(new System.Collections.DictionaryEntry(klistP[kidxP].Key, klistP[kidxP].Value));
+                    else task.PushRef(null);
                 }
                 else if (arr is System.Collections.IEnumerable genEnumP && numIndices == 1)
                 {
@@ -3732,6 +3734,15 @@ internal sealed partial class PCodeProcessor
                                 }
                             task.PushRef(lresN.ToArray());
                             return true;
+                        }
+                        // Collezioni chiave→valore CommonLib (RedBlack/BPlus/Cache/AVL...):
+                        // stesso dispatcher condiviso di IL per i membri che conosce
+                        // (Keys/Values/ContainsKey/Get/...). Prima la reflection non trovava
+                        // `Values` su RedBlackTree (non è una property) → null su PCode.
+                        if (instance is CommonLib.Collections.IKeyValueIndexable)
+                        {
+                            try { task.PushRef(IlRuntime.CollectionInvoke(instance, methodName!, args)); return true; }
+                            catch (NotSupportedException) { /* non gestito: reflection sotto */ }
                         }
                         var meth = instType.GetMethods()
                             .FirstOrDefault(m => m.Name.Equals(methodName, StringComparison.OrdinalIgnoreCase)

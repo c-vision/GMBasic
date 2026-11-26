@@ -281,6 +281,15 @@ gmb_obj_string_t* gmb_vm_json_stringify(gmb_obj_t* obj)
             gmb_string_free(&tj);
             return rt;
         }
+        /* MAPPE ordinate e CACHE: oggetto {"chiave":valore} nell'ordine delle chiavi
+         * (Cache in ordine di nome) — prima "null" (solo il BAG era serializzato). */
+        if (col->type_code == 6 || col->type_code == 7 || col->type_code == 8
+            || col->type_code == 9 || col->type_code == 26 || col->type_code == 16) {
+            gmb_string_t mj = gmb_coll_map_to_json(col->handle);
+            gmb_obj_string_t* rm = gmb_str_cstr(mj.data ? mj.data : "{}");
+            gmb_string_free(&mj);
+            return rm;
+        }
     }
     gmb_string_t s = gmb_val_to_json(gmb_make_val_obj(obj));
     gmb_obj_string_t* r = gmb_str_cstr(s.data ? s.data : "null");

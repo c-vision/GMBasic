@@ -907,6 +907,13 @@ int gmb_c99_emit_coll_json(ctx_t* c, const char* name) {
             sb_put(&c->out, ")");
             return 1;
         }
+        /* Mappa ORDINATA (SORTED/TREE/AVL/REDBLACK/BPLUS): voci in ordine di chiave. */
+        if (av->gkind == GK_SORTED) {
+            sb_put(&c->out, "gmb_dict_to_json_sorted(");
+            sb_ident(&c->out, av->name);
+            sb_put(&c->out, ")");
+            return 1;
+        }
         sb_put(&c->out, "gmb_val_to_json(gmb_make_val_dict(");
         sb_ident(&c->out, av->name);
         sb_put(&c->out, "))");
@@ -4767,6 +4774,7 @@ if (s->dim_var) {            int ty = suffix_type(s->dim_var);
                      * elementi sono gmb_val_t, non double — usa il percorso "dict di val"
                      * (elem_boxed: gmb_dict_get/_set raw val) invece di _or_nan/make_val_double. */
                     if (gk_is_dict(v->gkind) && (s->dim_elem_class || s->dim_elem_any)) v->elem_boxed = 1;
+                    if (gk_is_dict(v->gkind) && s->dim_key_num) v->key_num = 1;
                     if (s->dim_elem_class) snprintf(v->elem_class, sizeof(v->elem_class), "%s", s->dim_elem_class);
                     /* Contenitore a HANDLE (HEAP 14 / MAXHEAP 27 / BAG 15 / TRIE 11): è un
                      * gmb_val_t, NON un array nativo. Il ramo `dim_arr_init_kind` più sopra ha
@@ -4990,7 +4998,7 @@ if (s->for_var && !use_global(c, scope, s->for_var)) {
                         if (fav && fav->gkind && gk_is_list(fav->gkind) && fav->elem_class[0] && !fv->vclass[0])
                             snprintf(fv->vclass, sizeof(fv->vclass), "%s", fav->elem_class);
                         if (keys_single && fav && gk_is_dict(fav->gkind))
-                            fv->type = (fav->coll_type_code == 18) ? TY_NUM : TY_STR;
+                            fv->type = ((fav->coll_type_code == 18 || fav->key_num) ? TY_NUM : TY_STR);
                         else if (fav && fav->type == TY_STR
                                  && (fav->is_array || (fav->gkind && (gk_is_list(fav->gkind) || gk_is_dict(fav->gkind)))
                                      || (!fav->is_array && !fav->gkind)))
@@ -5034,8 +5042,8 @@ if (s->for_var && !use_global(c, scope, s->for_var)) {
                 var_t* dav = vars_find(scope, s->for_from->var);
                 if (!dav) dav = vars_find(&c->globals, s->for_from->var);
                 if (dav && gk_is_dict(dav->gkind)) {
-                    /* TIMELINE: la chiave è un SERIALE OADate (numero), non stringa. */
-                    fv->type = (dav->coll_type_code == 18) ? TY_NUM : TY_STR;
+                    /* TIMELINE o mappa con CHIAVE NUMERICA: la chiave è un numero, non stringa. */
+                    fv->type = ((dav->coll_type_code == 18 || dav->key_num) ? TY_NUM : TY_STR);
                     if (!vars_find(scope, s->for_to->var)
                         && !vars_find(&c->globals, s->for_to->var)
                         && !use_global(c, scope, s->for_to->var))
@@ -12676,6 +12684,13 @@ static void emit_call(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_
                                 if (cv->coll_type_code == 18)
                                 {
                                     sb_put(&c->out, "gmb_make_val_string(gmb_dict_to_json_iso_keys(");
+                                    sb_ident(&c->out, cv->name);
+                                    sb_put(&c->out, ").data)");
+                                    return;
+                                }
+                                if (cv->gkind == GK_SORTED)
+                                {
+                                    sb_put(&c->out, "gmb_make_val_string(gmb_dict_to_json_sorted(");
                                     sb_ident(&c->out, cv->name);
                                     sb_put(&c->out, ").data)");
                                     return;
@@ -22019,6 +22034,10 @@ static void st_for(ctx_t* c, gmb_stmt_t* s) {
                      * OADate (numero), come First/Keys/ToArray e le altre gambe — lo storage
                      * C99 è la stringa del seriale, quindi si riconverte a numero. */
                     int tl_sorted = (av->coll_type_code == 18);
+                    /* Chiave NUMERICA: TIMELINE (seriali) o mappa dichiarata con chiave numerica
+                     * (DICT/AVL/TREE<INTEGER,…>) — FOR EACH/Keys rendono il NUMERO come le
+                     * altre gambe; il resto resta a chiavi stringa. */
+                    int key_num = tl_sorted || av->key_num;
                     var_t* kv = lookup_var(c, s->for_var);
                     var_t* vv = NULL;
                     if (pair) vv = lookup_var(c, s->for_to->var);
@@ -22043,13 +22062,13 @@ static void st_for(ctx_t* c, gmb_stmt_t* s) {
                     int pushed_key = 0, pushed_val = 0;
                     {
                         if (key_tmp) {
-                            ind(c); sb_printf(&c->out, "%s __fek%d;\n", tl_sorted ? "gmb_double_t" : "gmb_string_t", id);
+                            ind(c); sb_printf(&c->out, "%s __fek%d;\n", key_num ? "gmb_double_t" : "gmb_string_t", id);
                             if (c->n_imap < GMB_IMAP_CAP) {
                                 char* tex0 = (char*)malloc(24);
                                 snprintf(tex0, 24, "__fek%d", id);
                                 c->imap_name[c->n_imap] = kv->name;
                                 c->imap_expr[c->n_imap] = tex0;
-                                c->imap_type[c->n_imap] = tl_sorted ? TY_NUM : TY_STR;
+                                c->imap_type[c->n_imap] = key_num ? TY_NUM : TY_STR;
                                 c->n_imap++;
                                 pushed_key = 1;
                             }
@@ -22078,7 +22097,7 @@ static void st_for(ctx_t* c, gmb_stmt_t* s) {
                             ind(c);
                             emit_ident(c, kv->name);
                             sb_printf(&c->out, " = gmb_string_alloc(gmb_list_get(__fkp, __fei%d).v_string.data);\n", id);
-                        } else if (tl_sorted) {
+                        } else if (key_num) {
                             ind(c); sb_printf(&c->out, "__fek%d = gmb_string_to_double(gmb_list_get(__fkp, __fei%d).v_string);\n", id, id);
                         } else {
                             ind(c); sb_printf(&c->out, "__fek%d = gmb_string_alloc(gmb_list_get(__fkp, __fei%d).v_string.data);\n", id, id);
@@ -22090,7 +22109,7 @@ static void st_for(ctx_t* c, gmb_stmt_t* s) {
                          * numerico (parità First/ToArray/altre gambe). */
                         ind(c); sb_printf(&c->out, "gmb_dict_t __kvd%d = gmb_dict_new();\n", id);
                         ind(c); sb_printf(&c->out, "gmb_dict_set(&__kvd%d, \"Key\", ", id);
-                        if (tl_sorted) sb_printf(&c->out, "gmb_make_val_double(gmb_string_to_double(gmb_list_get(__fkp, __fei%d).v_string)));\n", id);
+                        if (key_num) sb_printf(&c->out, "gmb_make_val_double(gmb_string_to_double(gmb_list_get(__fkp, __fei%d).v_string)));\n", id);
                         else sb_printf(&c->out, "gmb_make_val_string(gmb_list_get(__fkp, __fei%d).v_string.data));\n", id);
                         ind(c); sb_printf(&c->out, "gmb_dict_set(&__kvd%d, \"Value\", gmb_dict_get(", id);
                         emit_ident(c, av->name);
@@ -22161,7 +22180,7 @@ static void st_for(ctx_t* c, gmb_stmt_t* s) {
                         if (kv->type != TY_STR || kv->gkind || kv->vclass[0] || kv->is_array) {
                             ind(c);
                             emit_ident(c, kv->name);
-                            if (tl_sorted) sb_printf(&c->out, " = __fek%d;\n", id);
+                            if (key_num) sb_printf(&c->out, " = __fek%d;\n", id);
                             else sb_printf(&c->out, " = (gmb_double_t)atof(__fek%d.data ? __fek%d.data : \"\");\n", id, id);
                         }
                     }

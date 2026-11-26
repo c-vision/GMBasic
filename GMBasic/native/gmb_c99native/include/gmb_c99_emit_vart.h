@@ -103,6 +103,8 @@ typedef struct { char* name; int type; int is_array; int ndims; int byref; int g
                  int coll_type_code; /* typeCode BASIC della collezione dichiarata (1=LIST,2=DICT,
                                       * 3=HASHSET,...,17=GRAPH,20=RINGBUFFER,...). Disambigua
                                       * TYPENAME/VALTYPE fra tipi con la stessa rappresentazione C. */
+                 int key_num; /* mappa dichiarata con CHIAVE numerica (DICT<INTEGER,…>): FOR EACH
+                               * e Keys() rendono la chiave NUMERO come IL/PCode/VM/C. */
                  int coll_handle; /* 1 = la variabile è un gmb_val_t che PORTA UN HANDLE di
                                    * collezione del runtime condiviso (gmb_coll_*), non una
                                    * gmb_list_t/gmb_dict_t dell'emitter. Serve ai contenitori

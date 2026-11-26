@@ -180,6 +180,23 @@ gmb_string_t gmb_dict_to_json_iso_keys(gmb_dict_t d) {
     return js;
 }
 
+/* JSON di una mappa ORDINATA (SORTED/TREE/AVL/REDBLACK/BPLUS in C99 = gmb_dict_t): le voci
+ * nell'ordine delle CHIAVI (gmb_dict_keys_sorted, confronto numerico-aware), come IL/PCode
+ * e VM/C. Prima JSON.STRINGIFY/ToJson usavano l'ordine di inserimento ("b","a","c"). */
+gmb_string_t gmb_dict_to_json_sorted(gmb_dict_t d) {
+    gmb_list_t ks = gmb_dict_keys_sorted(d);
+    gmb_dict_t out = gmb_dict_new();
+    for (size_t i = 0; i < ks.count; i++)
+    {
+        const char* k = ks.items[i].v_string.data ? ks.items[i].v_string.data : "";
+        gmb_dict_set(&out, k, gmb_dict_get(d, k));
+    }
+    gmb_list_free(&ks);
+    gmb_string_t js = gmb_val_to_json(gmb_make_val_dict(out));
+    gmb_dict_free(&out);
+    return js;
+}
+
 /* Valori in ordine di inserimento (DICT) — lista di gmb_val_t. */
 gmb_list_t gmb_dict_values(gmb_dict_t d) {
     gmb_list_t l = gmb_list_new();
