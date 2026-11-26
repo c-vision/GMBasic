@@ -811,10 +811,10 @@ public class MiniTestsParityTests
         // bloccherebbero il runner. Verificati per-gamba su CLI (exit 0). (2026-09-22,
         // MiniTest-Oracolo §0.53: copertura dei comandi senza-namespace.)
         || nome.Equals("gfx_parked_perleg.bas", StringComparison.OrdinalIgnoreCase)
-        // Widget TUI senza-namespace: MODALI, appendono l'harness in-process (park su SYNC
-        // senza timeout). Verificati via gate emitter C# (GMB_TUI_SCRIPT) dove PASSANO
-        // (9 widget + fix gate 2026-09-22). C99Native non li emette ancora (gap noto).
-        || nome.Equals("widgets_gate.bas", StringComparison.OrdinalIgnoreCase)
+        // Widget TUI senza-namespace: CHIUSO il 2026-11-26 — i 10 widget (COMBOBOX/GRID/
+        // SLIDER/RADIO/TREEVIEW/COLORPICKER/DATEPICKER/FILEDIALOG/TAB/PRINTERDIALOG) sono
+        // emessi da C99Native e NON parcheggiano: `widgets-ok` su tutte e 4 le gambe.
+        // Non più escluso né marcato interactive.
         // SPINNER/STATUSBAR/TBROWSE: disegnano il framebuffer su stdout (render) — non
         // confrontabili con EXPECT statico né nel cross-leg in-process (park modale).
         // Verificati per-gamba (emissione+compile+link su 4 backend; C99Native 2026-09-22).

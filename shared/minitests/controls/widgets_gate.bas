@@ -1,12 +1,11 @@
-' TAG: interactive
 ' MiniTest: widget TUI senza-namespace NON modali (10): COMBOBOX/GRID/SLIDER/RADIO/
 ' TREEVIEW/COLORPICKER/DATEPICKER/FILEDIALOG/TAB/PRINTERDIALOG.
 ' Arità/sintassi dal parser (Parser.Stmt.Controls.cs), NON dalla guida (che è imprecisa).
-' Verificati via gate emitter C# (--file). Esclusi dal cross-leg in-process (park modal).
+' CHIUSO 2026-11-26: non parcheggia e C99Native emette i 10 widget → `widgets-ok` su
+' tutte e 4 le gambe (prima escluso dal cross-leg e marcato interactive).
 ' NOTA: TBROWSE/SPINNER/STATUSBAR esclusi (disegnano il framebuffer su stdout: — emitter C# emette il RENDER del framebuffer
 ' (gmb_tui_draw -> fwrite) mentre le gambe gestite renderizzano diversamente: divergenza
-' di output tracciata in "(open) - TUI-Widgets-C99-Emission-Gaps". C99Native non emette
-' ancora i widget (solo CHECKBOX/LISTBOX/MENU/TOGGLE).
+' di output in `widgets_draw_perleg.bas`, verificata per-gamba.
 ' EXPECT: widgets-ok
 IMPORT CONTROLS
 SUB Main()
