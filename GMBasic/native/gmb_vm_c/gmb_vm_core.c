@@ -14642,6 +14642,14 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                         gmb_coll_add_last(ch, v0);
                         push_ref_entry(task, inst, GMB_BT_OBJECT);
                     }
+                    else if ((strcasecmp(methodName, "AddAfter") == 0 || strcasecmp(methodName, "AddBefore") == 0) && argCount >= 2)
+                    {
+                        /* Liste concatenate: inserimento per INDICE (AddAfter(i,v) → i+1). */
+                        int64_t iidx = (int64_t)args[0].num;
+                        if (strcasecmp(methodName, "AddAfter") == 0) iidx += 1;
+                        gmb_coll_insert_at(ch, iidx, v1);
+                        push_ref_entry(task, inst, GMB_BT_OBJECT);
+                    }
                     else if (strcasecmp(methodName, "Enqueue") == 0 && argCount >= 1)
                     {
                         gmb_coll_enqueue(ch, v0);

@@ -27,6 +27,8 @@ void gmb_collections_free(int64_t h);
 int gmb_coll_add(int64_t h, gmb_val_t v);          /* Bag/LinkedList/Circular/Heap/SparseSet */
 int gmb_coll_add_first(int64_t h, gmb_val_t v);    /* LinkedList/Doubly */
 int gmb_coll_add_last(int64_t h, gmb_val_t v);     /* LinkedList/Doubly */
+/* Inserimento per INDICE (AddAfter/AddBefore delle liste concatenate). */
+int gmb_coll_insert_at(int64_t h, int64_t idx, gmb_val_t v);
 int gmb_coll_remove(int64_t h, gmb_val_t v);       /* contiene? rimuove */
 int gmb_coll_contains(int64_t h, gmb_val_t v);
 void gmb_coll_clear(int64_t h);

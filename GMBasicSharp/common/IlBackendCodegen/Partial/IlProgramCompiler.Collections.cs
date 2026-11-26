@@ -229,6 +229,12 @@ public sealed partial class IlProgramCompiler
                 // Timeline<object> = IL invalido (StackUnexpected a runtime).
                 _il.Emit(OpCodes.Newobj, DataTypeMapper.Map(dataType, _types, _classTypes).GetConstructor(Type.EmptyTypes)!);
                 return;
+            case DoublyLinkedListType or CircularLinkedListType:
+                /* LINKEDLIST doppia → LinkedList<T>; CIRCULAR → List<T> (DataTypeMapper):
+                 * prima cadevano nel default SortedDictionary → local di tipo sbagliato
+                 * (Count garbage / AccessViolation su DIM senza inizializzatore). */
+                _il.Emit(OpCodes.Newobj, DataTypeMapper.Map(dataType, _types, _classTypes).GetConstructor(Type.EmptyTypes)!);
+                return;
             case TrieType:
                 _il.Emit(OpCodes.Newobj, typeof(CommonLib.Collections.Trie).GetConstructor(Type.EmptyTypes)!);
                 return;

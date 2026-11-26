@@ -375,6 +375,37 @@ int gmb_coll_add_last(int64_t h, gmb_val_t v)
     return 0;
 }
 
+/* Inserimento per INDICE su una lista concatenata (LINKEDLIST/DOUBLY): AddAfter(i,v)
+ * inserisce dopo la posizione i (0-based), AddBefore prima. RingBuffer non supportato
+ * (uso Enqueue). Restituisce 0/-1. */
+int gmb_coll_insert_at(int64_t h, int64_t idx, gmb_val_t v)
+{
+    gmb_collection_t* c = coll_get(h);
+    if (!c) return -1;
+    if (c->type_code == 20) return -1;
+    if (idx < 0) idx = 0;
+    if (idx > c->count) idx = c->count;
+    gmb_coll_item_t* it = item_new(v);
+    if (!it) return -1;
+    if (idx == 0)
+    {
+        it->next = c->head;
+        c->head = it;
+        if (!c->tail) c->tail = it;
+    }
+    else
+    {
+        gmb_coll_item_t* prev = c->head;
+        for (int64_t i = 0; prev && i < idx - 1; i++) prev = prev->next;
+        if (!prev) { free(it); return -1; }
+        it->next = prev->next;
+        prev->next = it;
+        if (c->tail == prev) c->tail = it;
+    }
+    c->count++;
+    return 0;
+}
+
 int gmb_coll_add(int64_t h, gmb_val_t v)
 {
     /* Bag: conta duplicati (count++). LinkedList: AddLast. Heap: push. SparseSet: Add. */

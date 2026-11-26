@@ -1164,7 +1164,8 @@ public static partial class Linker
                     "TOARRAY" => new ArrayType(llt),
                     "TOLIST" => new ListType(llt),
                     "TOJSON" => new JsonType(),
-                    "ADD" or "ADDFIRST" or "ADDLAST" or "REMOVEFIRST" or "REMOVELAST" or "CLEAR" or "SORT" or "REVERSE" =>
+                    "ADD" or "ADDFIRST" or "ADDLAST" or "ADDAFTER" or "ADDBEFORE" or "ADDUNIQUE"
+                        or "REMOVEFIRST" or "REMOVELAST" or "CLEAR" or "SORT" or "REVERSE" =>
                         new VoidType(),
                     _ => null
                 };

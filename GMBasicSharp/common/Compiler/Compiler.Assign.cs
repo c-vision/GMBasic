@@ -487,7 +487,7 @@ public sealed partial class Compiler
                     EmitByte((byte)(0));
                 }
                 else if (finalVariableType is ListType or DictType or HashSetType or QueueType or StackType or
-                    LinkedListType or SortedDictType or TreeType or AVLTreeType or RedBlackTreeType or
+                    LinkedListType or DoublyLinkedListType or SortedDictType or TreeType or AVLTreeType or RedBlackTreeType or
                     BinaryIndexedTreeType or TrieType or CircularLinkedListType or BinaryHeapType or
                     BagType or CacheType or GraphType or TimelineType or HashRingType or RingBufferType or
                     SparseSetType or BPlusTreeType or StringBuilderType or RegexType or HyperLogLogType)

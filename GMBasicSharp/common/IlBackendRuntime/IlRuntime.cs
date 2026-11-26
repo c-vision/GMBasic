@@ -14809,6 +14809,53 @@ public static double TextWidth(string s)
         _ => null
     };
 
+    /* ── LINKEDLIST<T>: inserimento per INDICE (AddAfter/AddBefore/AddUnique) ────────────
+     * LinkedList<T> non è IList: si ricostruisce la catena via ICollection (Add = AddLast)
+     * convertendo il valore al tipo ELEMENTO (es. double → long). */
+    private static object? LinkedListConvert(object instance, object? value)
+    {
+        var t = instance.GetType();
+        var elem = t.IsGenericType ? t.GetGenericArguments()[0] : typeof(object);
+        if (value is null || elem.IsInstanceOfType(value)) return value;
+        try { return Convert.ChangeType(value, elem, System.Globalization.CultureInfo.InvariantCulture); }
+        catch { return value; }
+    }
+
+    private static void LinkedListInsertAt(object instance, object? index, object? value, bool after)
+    {
+        var items = new System.Collections.Generic.List<object?>();
+        foreach (var x in (System.Collections.IEnumerable)instance) items.Add(x);
+        var idx = Convert.ToInt32(SafeDouble(index));
+        if (after) idx += 1;
+        if (idx < 0) idx = 0;
+        if (idx > items.Count) idx = items.Count;
+        items.Insert(idx, LinkedListConvert(instance, value));
+        var clr = LinkedListCollectionMethod(instance, "Clear");
+        var add = LinkedListCollectionMethod(instance, "Add");
+        if (clr is null || add is null) return;
+        clr.Invoke(instance, null);
+        foreach (var x in items) add.Invoke(instance, [x]);
+    }
+
+    private static bool LinkedListAdd(object instance, object? value)
+    {
+        var add = LinkedListCollectionMethod(instance, "Add");
+        if (add is null) return false;
+        add.Invoke(instance, [LinkedListConvert(instance, value)]);
+        return true;
+    }
+
+    /// <summary>Metodo Add/Clear dell'ICollection&lt;T&gt; implementato ESPLICITAMENTE da
+    /// LinkedList&lt;T&gt; (non è IList: le sue Add/Clear non sono sulla faccia pubblica).</summary>
+    private static System.Reflection.MethodInfo? LinkedListCollectionMethod(object instance, string name)
+    {
+        foreach (var itf in instance.GetType().GetInterfaces())
+            if (itf.IsGenericType
+                && itf.GetGenericTypeDefinition() == typeof(System.Collections.Generic.ICollection<>))
+                return itf.GetMethod(name);
+        return null;
+    }
+
     /// <summary>Entries di una IKeyValueIndexable in ordine CANONICO di chiave (nome) — lo
     /// stesso delle Keys: la Cache ha storage hash (ordine instabile), quindi Keys/Values/
     /// JSON/FOR EACH devono ordinare esplicitamente (parità IL/PCode/VM/C/C99).</summary>
@@ -15345,6 +15392,28 @@ public static double TextWidth(string s)
                 if (idx < 0) idx = 0;
                 while (idx > iab.Count) iab.Add(null);
                 iab.Insert(Math.Min(idx, iab.Count), args[1]);
+                return null;
+            }
+            /* LINKEDLIST<T> (e liste concatenate): NON sono IList — AddAfter(i,v)/
+             * AddBefore(i,v) inseriscono per INDICE (0-based) ricostruendo la catena via
+             * ICollection (Add = AddLast). Prima erano no-op su PCode e campo non risolto
+             * su IL. */
+            case "ADDAFTER" or "ADDBEFORE" when args.Length >= 2
+                && instance is System.Collections.ICollection linkColl
+                && instance is not System.Collections.IList
+                && instance.GetType().Name.StartsWith("LinkedList", StringComparison.Ordinal):
+                LinkedListInsertAt(instance!, args[0], args[1],
+                    methodName.Equals("AddAfter", StringComparison.OrdinalIgnoreCase));
+                return null;
+            case "ADDUNIQUE" when args.Length >= 1
+                && instance is System.Collections.ICollection
+                && instance is not System.Collections.IList
+                && instance.GetType().Name.StartsWith("LinkedList", StringComparison.Ordinal):
+            {
+                bool present = false;
+                foreach (var x in (System.Collections.IEnumerable)instance)
+                    if (Equals(x, args[0])) { present = true; break; }
+                if (!present) LinkedListAdd(instance!, args[0]);
                 return null;
             }
             // F1: IsEmpty/Front/Back — parity VM/C (IsEmpty: count==0 → 1; Front/Back: peek

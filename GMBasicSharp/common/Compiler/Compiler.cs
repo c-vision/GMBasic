@@ -1455,7 +1455,7 @@ public sealed partial class Compiler
                         // (AddLocal + continue) → VisitStatement MAI chiamato → nessun OP_NEW →
                         // T restava undefined. Stesso bug già fixato per List/Dict, incompleto.
                         if (decl.DataType is Basic.WaitGroupType or Basic.ChannelType or Basic.MutexType or Basic.RwMutexType or Basic.OnceType or Basic.AtomicType or Basic.PoolType or Basic.CondType or Basic.ConcurrentMapType or ArrayType or UserDefinedType
-                            or ListType or DictType or HashSetType or QueueType or StackType or LinkedListType
+                            or ListType or DictType or HashSetType or QueueType or StackType or LinkedListType or DoublyLinkedListType
                             or SortedDictType or TreeType or AVLTreeType or RedBlackTreeType or BinaryIndexedTreeType
                             or TrieType or CircularLinkedListType or BinaryHeapType or BagType or CacheType or
                             GraphType or TimelineType or HashRingType or RingBufferType or SparseSetType or BPlusTreeType
