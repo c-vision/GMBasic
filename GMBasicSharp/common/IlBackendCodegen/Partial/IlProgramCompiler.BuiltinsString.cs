@@ -421,6 +421,15 @@ public sealed partial class IlProgramCompiler
     { if (expr.Args.Length != 1) throw new NotSupportedException($"Backend IL: {expr.OriginalToken.Lexeme} richiede 1 argomento."); EmitInt64Argument(expr.Args[0]); _il.Emit(OpCodes.Call, method); }
     private void EmitDateTimeUnaryBuiltinCall(BuiltinFunctionCallExpr expr, MethodInfo method)
     {
+        if (expr.Args.Length == 0)
+        {
+            /* YEAR()/MONTH()/DAY()/HOUR()/MINUTE()/SECOND()/WEEKDAY() SENZA argomento:
+             * componente della data/ora CORRENTI (UTC, come IlRuntime.Now) — parità con
+             * VM/C e C99Native, che usano gmb_dt_now(). */
+            _il.Emit(OpCodes.Call, IlRuntimeNowMethod);
+            _il.Emit(OpCodes.Call, method);
+            return;
+        }
         if (expr.Args.Length != 1) throw new NotSupportedException($"Backend IL: {expr.OriginalToken.Lexeme} richiede 1 argomento.");
         EmitExpression(expr.Args[0]);
         // Le builtin DateTime (YEAR/MONTH/ISLEAPYEAR/DAYSINMONTH/...) richiedono DateTime CLR.

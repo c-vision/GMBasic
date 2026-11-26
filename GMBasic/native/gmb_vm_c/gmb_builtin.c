@@ -6481,39 +6481,33 @@ static void gmb_bf_276(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func
 }
 static void gmb_bf_278(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
 {
-        {
-            bout->result = (double)gmb_dt_year(args[0].num);
-        }
+        /* 0 argomenti = data/ora CORRENTI (`YEAR()` = YEAR(NOW())), parità IL/PCode/C99. */
+        bout->result = (double)gmb_dt_year(argc >= 1 ? args[0].num : gmb_dt_now());
 }
 static void gmb_bf_279(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
 {
-        {
-            bout->result = (double)gmb_dt_month(args[0].num);
-        }
+        /* 0 argomenti = data/ora CORRENTI (parità IL/PCode/C99). */
+        bout->result = (double)gmb_dt_month(argc >= 1 ? args[0].num : gmb_dt_now());
 }
 static void gmb_bf_280(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
 {
-        {
-            bout->result = (double)gmb_dt_day(args[0].num);
-        }
+        /* 0 argomenti = data/ora CORRENTI (parità IL/PCode/C99). */
+        bout->result = (double)gmb_dt_day(argc >= 1 ? args[0].num : gmb_dt_now());
 }
 static void gmb_bf_281(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
 {
-        {
-            bout->result = (double)gmb_dt_hour(args[0].num);
-        }
+        /* 0 argomenti = data/ora CORRENTI (parità IL/PCode/C99). */
+        bout->result = (double)gmb_dt_hour(argc >= 1 ? args[0].num : gmb_dt_now());
 }
 static void gmb_bf_282(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
 {
-        {
-            bout->result = (double)gmb_dt_minute(args[0].num);
-        }
+        /* 0 argomenti = data/ora CORRENTI (parità IL/PCode/C99). */
+        bout->result = (double)gmb_dt_minute(argc >= 1 ? args[0].num : gmb_dt_now());
 }
 static void gmb_bf_283(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
 {
-        {
-            bout->result = (double)gmb_dt_second(args[0].num);
-        }
+        /* 0 argomenti = data/ora CORRENTI (parità IL/PCode/C99). */
+        bout->result = (double)gmb_dt_second(argc >= 1 ? args[0].num : gmb_dt_now());
 }
 static void gmb_bf_287(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
 {
@@ -6679,9 +6673,8 @@ static void gmb_bf_272(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func
 }
 static void gmb_bf_274(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
 {
-        {
-            bout->result = (double)gmb_dt_weekday(args[0].num);
-        }
+        /* 0 argomenti = data/ora CORRENTI (parità IL/PCode/C99). */
+        bout->result = (double)gmb_dt_weekday(argc >= 1 ? args[0].num : gmb_dt_now());
 }
 static void gmb_bf_284(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
 {

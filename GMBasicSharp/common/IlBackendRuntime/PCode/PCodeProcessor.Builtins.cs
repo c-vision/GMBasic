@@ -797,37 +797,37 @@ if (args.Length > 0) { try { var sizes = new List<int>(); foreach (var a in args
         [BuiltInFunction.YEAR] = (task, args) =>
         {
                 if (args.Length > 0) { try { return Basic.IlBackend.IlRuntime.Year(DateTime.FromOADate(SafeDouble(args[0]))); } catch { return 0.0; } }
-                return 0.0;
+                return Basic.IlBackend.IlRuntime.Year(Basic.IlBackend.IlRuntime.Now());   /* YEAR() = anno corrente */
         },
         [BuiltInFunction.MONTH] = (task, args) =>
         {
                 if (args.Length > 0) { try { return Basic.IlBackend.IlRuntime.Month(DateTime.FromOADate(SafeDouble(args[0]))); } catch { return 0.0; } }
-                return 0.0;
+                return Basic.IlBackend.IlRuntime.Month(Basic.IlBackend.IlRuntime.Now());
         },
         [BuiltInFunction.DAY] = (task, args) =>
         {
                 if (args.Length > 0) { try { return Basic.IlBackend.IlRuntime.Day(DateTime.FromOADate(SafeDouble(args[0]))); } catch { return 0.0; } }
-                return 0.0;
+                return Basic.IlBackend.IlRuntime.Day(Basic.IlBackend.IlRuntime.Now());
         },
         [BuiltInFunction.HOUR] = (task, args) =>
         {
                 if (args.Length > 0) { try { return Basic.IlBackend.IlRuntime.Hour(DateTime.FromOADate(SafeDouble(args[0]))); } catch { return 0.0; } }
-                return 0.0;
+                return Basic.IlBackend.IlRuntime.Hour(Basic.IlBackend.IlRuntime.Now());
         },
         [BuiltInFunction.MINUTE] = (task, args) =>
         {
                 if (args.Length > 0) { try { return Basic.IlBackend.IlRuntime.Minute(DateTime.FromOADate(SafeDouble(args[0]))); } catch { return 0.0; } }
-                return 0.0;
+                return Basic.IlBackend.IlRuntime.Minute(Basic.IlBackend.IlRuntime.Now());
         },
         [BuiltInFunction.SECOND] = (task, args) =>
         {
                 if (args.Length > 0) { try { return Basic.IlBackend.IlRuntime.Second(DateTime.FromOADate(SafeDouble(args[0]))); } catch { return 0.0; } }
-                return 0.0;
+                return Basic.IlBackend.IlRuntime.Second(Basic.IlBackend.IlRuntime.Now());
         },
         [BuiltInFunction.WEEKDAY] = (task, args) =>
         {
                 if (args.Length > 0) { try { return Basic.IlBackend.IlRuntime.Weekday(DateTime.FromOADate(SafeDouble(args[0]))); } catch { return 0.0; } }
-                return 0.0;
+                return Basic.IlBackend.IlRuntime.Weekday(Basic.IlBackend.IlRuntime.Now());
         },
         [BuiltInFunction.DOW] = (task, args) =>
         {

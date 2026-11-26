@@ -15384,7 +15384,10 @@ void emit_expr(ctx_t* c, gmb_expr_t* e) {
         if (e->var) {
             gmb_tokenkind_t dtk0 = gmb_fn_tok(e->var);
             if (dtk0 == GMB_TOK_Time || dtk0 == GMB_TOK_Date
-                || dtk0 == GMB_TOK_Now || dtk0 == GMB_TOK_Today) {
+                || dtk0 == GMB_TOK_Now || dtk0 == GMB_TOK_Today
+                || dtk0 == GMB_TOK_Year || dtk0 == GMB_TOK_Month || dtk0 == GMB_TOK_Day
+                || dtk0 == GMB_TOK_Hour || dtk0 == GMB_TOK_Minute || dtk0 == GMB_TOK_Second
+                || dtk0 == GMB_TOK_Weekday) {
                 var_t* dtv = lookup_var(c, e->var);
                 /* `is_dim_local`: la variabile è stata DICHIARATA (vince sulle letture nude). */
                 if (!(dtv && (dtv->is_dim_local || dtv->is_array || dtv->byref || dtv->vclass[0]

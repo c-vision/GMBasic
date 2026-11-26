@@ -65,6 +65,16 @@ public sealed partial class StdLib
         var publicFlag = SymbolFlags.IsPublic;
         var noFlags = SymbolFlags.None;
 
+        /* Default del parametro data/ora: la data/ora CORRENTI, così `YEAR()` ≡ `YEAR(NOW())`.
+         * Il parametro è OPTIONAL perché due overload omonimi non sono registrabili (il symbol
+         * table tiene UN simbolo per nome): PCode riempie l'argomento mancante col DefaultValue,
+         * mentre IL/VM/C/C99 ricevono 0 argomenti e usano la data/ora corrente. */
+        Expr nowDefault() => new BuiltinFunctionCallExpr(
+            new Token(TokenKind.Identifier, "DATETIME", null, SourcePosition.Unknown),
+            T(TokenKind.Now, "NOW"),
+            ImmutableArray<Expr>.Empty,
+            new DateTimeType());
+
         var procedures = new ProcedureDefinition[]
         {
             new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.Now, "NOW"), [], new DateTimeType(),
@@ -137,31 +147,31 @@ public sealed partial class StdLib
                     SymbolFlags.IsOptional, null, false)
             ], new DateType(), TokenKind.Eomonth),
             new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.Weekday, "WEEKDAY"),
-                [new Parameter(-1, T(TokenKind.Identifier, "dateValue"), new DateType(), noFlags, null, false)],
+                [new Parameter(-1, T(TokenKind.Identifier, "dateValue"), new DateType(), SymbolFlags.IsOptional, nowDefault(), false)],
                 new LongType(),
                 TokenKind.Weekday),
             new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.Year, "YEAR"),
-                [new Parameter(-1, T(TokenKind.Identifier, "dateValue"), new DateTimeType(), noFlags, null, false)],
+                [new Parameter(-1, T(TokenKind.Identifier, "dateValue"), new DateTimeType(), SymbolFlags.IsOptional, nowDefault(), false)],
                 new LongType(),
                 TokenKind.Year),
             new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.Month, "MONTH"),
-                [new Parameter(-1, T(TokenKind.Identifier, "dateValue"), new DateTimeType(), noFlags, null, false)],
+                [new Parameter(-1, T(TokenKind.Identifier, "dateValue"), new DateTimeType(), SymbolFlags.IsOptional, nowDefault(), false)],
                 new LongType(),
                 TokenKind.Month),
             new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.Day, "DAY"),
-                [new Parameter(-1, T(TokenKind.Identifier, "dateValue"), new DateTimeType(), noFlags, null, false)],
+                [new Parameter(-1, T(TokenKind.Identifier, "dateValue"), new DateTimeType(), SymbolFlags.IsOptional, nowDefault(), false)],
                 new LongType(),
                 TokenKind.Day),
             new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.Hour, "HOUR"),
-                [new Parameter(-1, T(TokenKind.Identifier, "timeValue"), new DateTimeType(), noFlags, null, false)],
+                [new Parameter(-1, T(TokenKind.Identifier, "timeValue"), new DateTimeType(), SymbolFlags.IsOptional, nowDefault(), false)],
                 new LongType(),
                 TokenKind.Hour),
             new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.Minute, "MINUTE"),
-                [new Parameter(-1, T(TokenKind.Identifier, "timeValue"), new DateTimeType(), noFlags, null, false)],
+                [new Parameter(-1, T(TokenKind.Identifier, "timeValue"), new DateTimeType(), SymbolFlags.IsOptional, nowDefault(), false)],
                 new LongType(),
                 TokenKind.Minute),
             new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.Second, "SECOND"),
-                [new Parameter(-1, T(TokenKind.Identifier, "timeValue"), new DateTimeType(), noFlags, null, false)],
+                [new Parameter(-1, T(TokenKind.Identifier, "timeValue"), new DateTimeType(), SymbolFlags.IsOptional, nowDefault(), false)],
                 new LongType(),
                 TokenKind.Second),
             new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.IsDate, "ISDATE"),

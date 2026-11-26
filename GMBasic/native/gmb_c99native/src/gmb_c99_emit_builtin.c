@@ -8544,7 +8544,14 @@ int emit_bf_ai_embedded(ctx_t* c, const char* name, const char* ns, gmb_tokenkin
 typedef struct { gmb_tokenkind_t tk; int (*h)(ctx_t*, gmb_expr_t**, int); } dt_row;
 static int dt_now(ctx_t* c, gmb_expr_t** a, int n) { (void)a; if (n != 0) return 0; sb_put(&c->out, "gmb_dt_now()"); return 1; }
 static int dt_today(ctx_t* c, gmb_expr_t** a, int n) { (void)a; if (n != 0) return 0; sb_put(&c->out, "gmb_dt_today()"); return 1; }
-#define DT_P1(NAME, FN) static int dt_##NAME(ctx_t* c, gmb_expr_t** a, int n) { if (n != 1) return 0; sb_put(&c->out, "(gmb_double_t)gmb_dt_" FN "("); emit_expr(c, a[0]); sb_put(&c->out, ")"); return 1; }
+/* Un solo argomento: la DATA/ORA indicata. ZERO argomenti = data/ora CORRENTI
+ * (`YEAR()` = YEAR(NOW())): prima `n != 1` faceva fallire il dispatch e la call
+ * finiva in "numero argomenti errato". */
+#define DT_P1(NAME, FN) static int dt_##NAME(ctx_t* c, gmb_expr_t** a, int n) { \
+    if (n > 1) return 0; \
+    sb_put(&c->out, "(gmb_double_t)gmb_dt_" FN "("); \
+    if (n == 1) emit_expr(c, a[0]); else sb_put(&c->out, "gmb_dt_now()"); \
+    sb_put(&c->out, ")"); return 1; }
 DT_P1(day, "day")
 DT_P1(month, "month")
 DT_P1(year, "year")
