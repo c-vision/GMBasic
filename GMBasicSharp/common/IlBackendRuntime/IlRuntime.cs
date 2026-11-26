@@ -3149,6 +3149,20 @@ public static partial class IlRuntime
         if (src != null) foreach (var x in src) l.Add(x);
         return l;
     }
+
+    /// <summary>Converte un valore DINAMICO (object) in <c>List&lt;object&gt;</c>: un
+    /// IEnumerable (array/lista) viene copiato, null o un valore non enumerabile → lista
+    /// vuota. Usato dallo store di un valore dinamico in una variabile LIST: `DIM k AS LIST`
+    /// + `k = t.Keys()` (TIMELINE: Keys ritorna object[] via CollectionInvoke, che senza
+    /// questa conversione finiva GREZZO in un local List<object> → null nell'uso successivo).</summary>
+    public static System.Collections.Generic.List<object?> DynamicToObjectList(object? src)
+    {
+        if (src is System.Collections.Generic.List<object?> already) return already;
+        var l = new System.Collections.Generic.List<object?>();
+        if (src is System.Collections.IEnumerable en && src is not string)
+            foreach (var x in en) l.Add(x);
+        return l;
+    }
     public static string[] Dir(string pathMask)
     {
         var mask = pathMask ?? "";
@@ -14952,6 +14966,18 @@ public static double TextWidth(string s)
                 return TimelineEdge(instance!, last: true);
             case "GETRANGE" when args.Length == 2 && IsTimelineInstance(instance):
                 return TimelineRange(instance!, args[0], args[1]);
+            /* TIMELINE.Keys(): lista dei SERIALI OADate delle chiavi — stessa forma
+             * canonica di First()/Last()/GetRange() ({"Key":<seriale>,...}) e delle gambe
+             * VM/C e C99 (chiave DATA → numero). Prima su IL il dispatch cadeva nella
+             * reflection ("metodo runtime 'Keys' non trovato su 'Timeline`1'") e su PCode
+             * rendeva null: unica implementazione qui, condivisa dalle due gambe gestite. */
+            case "KEYS" when args.Length == 0 && IsTimelineInstance(instance):
+            {
+                var tlKeys = new System.Collections.Generic.List<object?>();
+                foreach (var kvp in (System.Collections.IEnumerable)instance)
+                    tlKeys.Add(DateSerialOf(ReadKv(kvp, "Key")));
+                return tlKeys.ToArray();
+            }
             /* GRAPH.Dijkstra: nel CLR torna Dictionary<nodo,dist> (IL stampava una mappa
              * {"A":0,...}, PCode una lista di KeyValuePair, VM/C e C99 una lista di record).
              * Forma CANONICA unica: lista di {"node","dist"} ordinata per nome nodo. */

@@ -925,6 +925,21 @@ int gmb_c99_var_coll_sorted(ctx_t* c, const char* name) {
     return av && av->gkind == GK_SORTED;
 }
 
+/* `TIMELINE.Keys()` (coll_type_code 18) rende i SERIALI OADate delle chiavi (numeri):
+ * è la forma canonica di First()/Last()/GetRange() ({"Key":<seriale>}) e delle gambe
+ * IL/PCode/VM/C. Per DICT/SORTED a chiavi stringa resta la lista di stringhe.
+ * Usata dall'inferenza del tipo delle variabili DIM/LET. */
+static int keys_receiver_is_timeline(ctx_t* c, gmb_expr_t* e) {
+    if (!e || e->kind != GMB_EXPR_CALL || e->tk != GMB_TOK_Keys || !e->var) return 0;
+    const char* dot = strrchr(e->var, '.');
+    if (!dot || dot == e->var) return 0;
+    char base[160]; size_t bl = (size_t)(dot - e->var);
+    if (bl >= sizeof(base)) return 0;
+    memcpy(base, e->var, bl); base[bl] = 0;
+    var_t* bv = lookup_var(c, base);
+    return bv && bv->coll_type_code == 18;
+}
+
 /* Variabile bound della dimensione k di un array: <ident>__b<k> (tracciata al DIM). */
 static void sb_bound_ident(sb_t* b, const char* arr, int k) {
     sb_ident(b, arr);
@@ -3851,6 +3866,7 @@ static void reg_let_assign(ctx_t* c, gmb_stmt_t* s, vars_t* scope) {
                 && (!tv->is_array || (tv->dyn_len && !tv->gkind && !tv->matrix))) {
                 int es0 = 0;
                 if (tk_returns_list(s->value->tk, &es0)) {
+                    if (es0 && keys_receiver_is_timeline(c, s->value)) es0 = 0;
                     tv->gkind = GK_LIST; tv->elem_str = es0; if (es0) tv->type = TY_STR;
                     tv->is_array = 0; tv->dyn_len = 0; tv->ndims = 0; tv->is_bytes = 0;   /* da array dinamico a lista */
                     if (tk_is_md_list(s->value->tk)) tv->elem_boxed = 1;
@@ -4186,6 +4202,7 @@ if (s->dim_var) {            int ty = suffix_type(s->dim_var);
                 int paren_arr_of_str = s->dim_empty_parens
                     && (s->dim_init->tk == GMB_TOK_Split || s->dim_init->tk == GMB_TOK_ATokens);
                 if (!paren_arr_of_str && !call_q_user_fn(c, s->dim_init) && tk_returns_list(s->dim_init->tk, &es)) {
+                    if (es && keys_receiver_is_timeline(c, s->dim_init)) es = 0;
                     v->gkind = GK_LIST; v->elem_str = es; if (es) v->type = TY_STR;
                     if (tk_is_md_list(s->dim_init->tk)) v->elem_boxed = 1;
                 }
@@ -18443,6 +18460,15 @@ static int is_matrix_value_call_tk(gmb_tokenkind_t tk) {
         sb_put(&c->out, "gmb_val_to_string(");
         emit_macro_eval(c, value->args[0], line);
             sb_put(&c->out, ")");
+    } else if (v->gkind && (gk_is_list(v->gkind) || gk_is_dict(v->gkind))
+               && value && value->kind == GMB_EXPR_CALL && value->var
+               && expr_is_coll_list_value(c, value)) {
+        /* Target CONTENITORE (LIST/QUEUE/STACK/SET/DICT/SORTED) e RHS già `gmb_list_t`
+         * (`d.Keys()`, `d.Values()`, `t.Keys()`, `x.ToArray()`/`ToList()`): assegnazione
+         * DIRETTA. Senza, la coercizione scalare qui sotto (vt == TY_VAL) emetteva
+         * `gmb_val_to_double(<gmb_list_t>)`/`gmb_val_to_string(<gmb_list_t>)` → C che non
+         * compila (`DIM k AS LIST` + `k = d.Keys()`/`k = t.Keys()`). */
+        emit_expr(c, value);
     } else if (!v->boxed_val && vt == TY_VAL && v->type != TY_VAL) {
         /* RHS dinamico (TY_VAL) in una var tipizzata: coercizione al tipo del target. */
         if (v->type == TY_STR) { sb_put(&c->out, "gmb_val_to_string("); emit_expr(c, value); sb_put(&c->out, ")"); }

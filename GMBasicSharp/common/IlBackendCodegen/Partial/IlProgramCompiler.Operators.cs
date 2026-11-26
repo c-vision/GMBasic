@@ -824,6 +824,15 @@ public sealed partial class IlProgramCompiler
             _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.ArrayToObjectList), typeof(System.Collections.IEnumerable)));
             return;
         }
+        // Valore DINAMICO (es. `t.Keys()` su TIMELINE: CollectionInvoke ritorna object[])
+        // in una variabile LIST: converti in List<object> (senza, l'array restava grezzo
+        // nel local List<object> → null al primo `k(i)`).
+        if (targetType is ListType && NormalizeInferredType(InferType(value)) is AnyType
+            && DataTypeMapper.Map(targetType, _types, _classTypes) == typeof(System.Collections.Generic.List<object>))
+        {
+            _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.DynamicToObjectList), typeof(object)));
+            return;
+        }
         // Stepper mode — il valore è il RISULTATO di un future (GO FUNCTION ... INTO x,
         // §11.5): EmitLoadVariable ha lasciato un OBJECT (il valore boxed, non più il
         // future). Se il target è numerico/stringa, converti dall'object reale (dispatch

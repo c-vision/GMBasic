@@ -3680,7 +3680,7 @@ internal sealed partial class PCodeProcessor
                     {
                         /* Timeline/Graph: forme canoniche nel dispatcher condiviso
                          * ({"Key":seriale,"Value":...} e lista {"node","dist"} ordinata). */
-                        if (((upName is "FIRST" or "LAST" or "GETRANGE")
+                        if (((upName is "FIRST" or "LAST" or "GETRANGE" or "KEYS")
                              && instType.Name.StartsWith("Timeline", StringComparison.Ordinal))
                             || (upName == "DIJKSTRA"
                                 && instType.Name.StartsWith("Graph", StringComparison.Ordinal)))

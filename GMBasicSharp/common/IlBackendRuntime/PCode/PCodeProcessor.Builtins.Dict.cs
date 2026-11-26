@@ -35,6 +35,14 @@ internal sealed partial class PCodeProcessor
             // hash instabile) mentre C99/VM/C restituiscono le chiavi ordinate.
             if (args.Length >= 1 && args[0] is CommonLib.Collections.IKeyValueIndexable kvi)
                 return SortedEntries(kvi).Select(kv => kv.Key).ToArray();
+            // Altre collezioni non-IDictionary/non-IKeyValueIndexable (TIMELINE e le
+            // strutture CommonLib tipizzate): UNICO dispatcher condiviso con IL — prima
+            // `t.Keys()` su TIMELINE tornava null su PCode (IL/C99/VM-C davano le chiavi).
+            if (args.Length >= 1 && args[0] is not null)
+            {
+                try { return IlRuntime.CollectionInvoke(args[0], "Keys", []); }
+                catch (NotSupportedException) { /* tipo senza Keys: null come prima */ }
+            }
             return null;
         },
         [BuiltInFunction.DICT_VALUES] = (self, task, args) =>
