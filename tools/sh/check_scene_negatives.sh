@@ -54,7 +54,7 @@ CASES=(
   'arity~RESET-extra~SCENE RESET 1~SCENE RESET non accetta argomenti~2'
   'arity~VIEW-meno~SCENE VIEW 16, 16~SCENE VIEW w, h, fov~2'
   'arity~VIEW-piu~SCENE VIEW 16, 16, 60, 0~SCENE VIEW w, h, fov~2'
-  'arity~TEXTURE-zero~SCENE TEXTURE~SCENE TEXTURE celle | "file.png"~2'
+  'arity~TEXTURE-senza-argomenti~SCENE TEXTURE~SCENE TEXTURE celle | "file.png"~2'
   'arity~TEXTURE-piu~SCENE TEXTURE 8, 8~SCENE TEXTURE celle | "file.png"~2'
   'arity~OBJECT-4~SCENE OBJECT 1, 2, 3, 4~SCENE OBJECT r, g, b [, flags [, luce]]~2'
   'arity~OBJECT-6~SCENE OBJECT 1, 2, 3, 4, 5, 6~SCENE OBJECT r, g, b [, flags [, luce]]~2'
