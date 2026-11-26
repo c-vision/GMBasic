@@ -10,14 +10,24 @@ namespace Basic.IlBackend;
 
 public static partial class IlRuntime
 {
-    /// <summary>Vista `double[]` dell'array: copia convertita se l'elemento è intero.</summary>
+    /// <summary>Vista `double[]` dell'array: copia convertita se l'elemento è intero.
+    /// Accetta anche SEQUENZE (List/Queue/Stack/Set): AMAX/AMIN/ASUM su LIST&lt;INTEGER&gt;
+    /// ricevevano un long[] e la funzione leggeva i bit come double (garbage).</summary>
     public static double[] ToDoubleArray(object? a) => a switch
     {
         double[] d => d,
         long[] l => Array.ConvertAll(l, v => (double)v),
         ulong[] u => Array.ConvertAll(u, v => (double)v),
+        System.Collections.IEnumerable en when a is not string => ConvertToDoubles(en),
         _ => Array.Empty<double>()
     };
+
+    private static double[] ConvertToDoubles(System.Collections.IEnumerable en)
+    {
+        var list = new System.Collections.Generic.List<double>();
+        foreach (var x in en) list.Add(ToDouble(x));
+        return list.ToArray();
+    }
 
     /// <summary>Vista `long[]` dell'array: copia convertita se l'elemento è double.</summary>
     public static long[] ToLongArray(object? a) => a switch

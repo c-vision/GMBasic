@@ -200,7 +200,9 @@ gmb_string_t gmb_coll_bag_to_json(int64_t h);
 gmb_string_t gmb_coll_timeline_to_json(int64_t h);
 /* ToJson()/JSON.STRINGIFY di una MAPPA ordinata (TREE/AVL/REDBLACK/BPLUS/CACHE): oggetto
  * {"chiave":valore} nell'ordine della collezione (chiavi DATETIME → ISO). */
-gmb_string_t gmb_coll_map_to_json(int64_t h);/* Materializzazioni per il transpiler C99 (C99Native): FindAll(Trie) come
+gmb_string_t gmb_coll_map_to_json(int64_t h);
+/* ToJson()/JSON.STRINGIFY di una sequenza a handle (LIST/HASHSET/QUEUE/STACK/…): array. */
+gmb_string_t gmb_coll_to_json_array(int64_t h);/* Materializzazioni per il transpiler C99 (C99Native): FindAll(Trie) come
  * lista di stringhe; GetRange(Timeline) come lista di coppie {Key,Value} (chiave resa
  * come DATETIME boxato → JSON ISO-8601 come il resto del runtime). Entrambe vuote (mai
  * NULL) se il tipo non corrisponde o il range è vuoto. */

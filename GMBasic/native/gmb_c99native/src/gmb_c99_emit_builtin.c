@@ -1471,6 +1471,27 @@ int js_stringify(ctx_t* c, gmb_expr_t** a, int n) {   /* §0quater: usata anche 
             }
         }
     }
+    /* (0a2) JSON.STRINGIFY(<set>.Union/Intersect/Except/SymmetricExcept(<altro>)):
+     * il risultato è un gmb_list_t → boxa la lista (prima passava un gmb_list_t dove
+     * serve un gmb_val_t: C non compilabile). */
+    if (arg && arg->kind == GMB_EXPR_CALL && arg->var && arg->nargs == 1) {
+        const char* sd = strrchr(arg->var, '.');
+        if (sd && sd != arg->var) {
+            char sp[160]; size_t spl = (size_t)(sd - arg->var);
+            if (spl < sizeof(sp)) {
+                memcpy(sp, arg->var, spl); sp[spl] = 0;
+                int smk = (int)gmb_member_tok(sd + 1);
+                if (gmb_c99_var_coll_kind(c, sp) == 1
+                    && (smk == GMB_TOK_Union || smk == GMB_TOK_Intersect
+                        || smk == GMB_TOK_Except || smk == GMB_TOK_CollSymmetricExcept)) {
+                    sb_put(&c->out, "gmb_val_to_json(gmb_make_val_list(");
+                    emit_expr(c, arg);
+                    sb_put(&c->out, "))");
+                    return 1;
+                }
+            }
+        }
+    }
     /* (0b) X.FindAll(...) su lista-stringhe → JSON dell'elenco filtrato */
     if (arg && arg->kind == GMB_EXPR_CALL && arg->var && arg->nargs == 1) {
         const char* fd = strchr(arg->var, '.');

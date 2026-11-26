@@ -1900,8 +1900,24 @@ gmb_string_t gmb_coll_timeline_to_json(int64_t h)
     return js;
 }
 
-/* ToJson()/JSON.STRINGIFY di una MAPPA ordinata (TREE/AVL/REDBLACK/BPLUS/CACHE): oggetto
- * {"chiave": valore} nell'ORDINE della collezione (kv_set inserisce ordinato), come IL/PCode
+/* ToJson()/JSON.STRINGIFY di una sequenza a handle (LIST/HASHSET/QUEUE/STACK/…):
+ * array JSON dei valori nell'ordine di iterazione della collezione. Prima la VM/C rendeva
+ * "null" per ogni GMB_OBJ_COLLECTION che non fosse BAG/Timeline/mappa. */
+gmb_string_t gmb_coll_to_json_array(int64_t h)
+{
+    gmb_collection_t* c = coll_get(h);
+    if (!c) return gmb_string_alloc("[]");
+    int n = 0;
+    gmb_val_t* arr = gmb_coll_to_array(h, &n);
+    gmb_list_t l = gmb_list_new();
+    for (int i = 0; i < n; i++) gmb_list_add(&l, arr[i]);
+    free(arr);
+    gmb_string_t js = gmb_val_to_json(gmb_make_val_list(l));
+    gmb_list_free(&l);
+    return js;
+}
+
+/* ToJson()/JSON.STRINGIFY di una MAPPA ordinata (TREE/AVL/REDBLACK/BPLUS/CACHE): oggetto * {"chiave": valore} nell'ORDINE della collezione (kv_set inserisce ordinato), come IL/PCode
  * e C99. Prima la VM/C rendeva "null" per ogni GMB_OBJ_COLLECTION diversa da BAG/Timeline.
  * Una chiave DATETIME diventa ISO (canone delle chiavi-data); le altre usano la resa
  * canonica del runtime (gmb_val_to_string: numeri senza formattazione di display). */

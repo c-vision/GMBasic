@@ -653,6 +653,7 @@ if (args.Length > 0) { try { var sizes = new List<int>(); foreach (var a in args
                             return "HLL";   /* parità C99/VM-C (gmb_collection_type_name(30)) */
                         case "Trie": return "TRIE";
                         case "SparseSet": return "SPARSESET";
+                        case "OrderedSet": return "HASHSET`1";   /* set ordinato per inserimento */
                     }
                 }
                 return Basic.IlBackend.IlRuntime.TypeInfo(v!);

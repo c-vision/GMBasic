@@ -3603,6 +3603,15 @@ internal sealed partial class PCodeProcessor
                     if (upName == "PUSH" && argCount == 1) { stkInstS.Push(args[0]!); task.PushRef(null); return true; }
                     if (upName == "POP" && argCount == 0) { task.PushRef(stkInstS.Count > 0 ? stkInstS.Pop() : null); return true; }
                     if (upName == "PEEK" && argCount == 0) { task.PushRef(stkInstS.Count > 0 ? stkInstS.Peek() : null); return true; }
+                    /* Front = CIMA (prossima al Pop), Back = FONDO: Stack<T> enumera
+                     * top-first, come IL/VM/C/C99 (toArray/JSON top-first, .NET LIFO). */
+                    if (upName == "FRONT" && argCount == 0) { task.PushRef(stkInstS.Count > 0 ? stkInstS.Peek() : null); return true; }
+                    if (upName == "BACK" && argCount == 0)
+                    {
+                        object? bottom = null;
+                        foreach (var it in stkInstS) bottom = it;
+                        task.PushRef(bottom); return true;
+                    }
                     if (upName == "CONTAINS" && argCount == 1) { task.PushRef(stkInstS.Contains(args[0]!) ? -1.0 : 0.0); return true; }
                     if (upName == "ISEMPTY" && argCount == 0) { task.PushRef(stkInstS.Count == 0 ? -1.0 : 0.0); return true; }
                 }
@@ -3613,14 +3622,36 @@ internal sealed partial class PCodeProcessor
                     if (upName == "ADD" && argCount == 1) { hsInst.Add(args[0]!); task.PushRef(null); return true; }
                     if (upName == "CONTAINS" && argCount == 1) { task.PushRef(hsInst.Contains(args[0]!) ? -1.0 : 0.0); return true; }
                     if (upName == "REMOVE" && argCount == 1) { task.PushRef(hsInst.Remove(args[0]!) ? -1.0 : 0.0); return true; }
+                    /* Clear/Count: senza questo case la reflection non invocava Clear
+                     * (HASHSET.Clear() era un no-op su PCode: Count restava invariato). */
+                    if (upName == "CLEAR" && argCount == 0) { hsInst.Clear(); task.PushRef(null); return true; }
+                    if (upName == "COUNT" && argCount == 0) { task.PushRef((double)hsInst.Count); return true; }
                     if (upName == "UNION" && argCount == 1 && args[0] is System.Collections.Generic.HashSet<object?> u2)
-                    { var r = new System.Collections.Generic.HashSet<object?>(hsInst); r.UnionWith(u2); task.PushRef(r); return true; }
+                    { task.PushRef(OrderedSetOp(hsInst, u2, 0)); return true; }
                     if (upName == "INTERSECT" && argCount == 1 && args[0] is System.Collections.Generic.HashSet<object?> i2)
-                    { var r = new System.Collections.Generic.HashSet<object?>(hsInst); r.IntersectWith(i2); task.PushRef(r); return true; }
+                    { task.PushRef(OrderedSetOp(hsInst, i2, 1)); return true; }
                     if (upName == "EXCEPT" && argCount == 1 && args[0] is System.Collections.Generic.HashSet<object?> e2)
-                    { var r = new System.Collections.Generic.HashSet<object?>(hsInst); r.ExceptWith(e2); task.PushRef(r); return true; }
+                    { task.PushRef(OrderedSetOp(hsInst, e2, 2)); return true; }
                     if (upName == "SYMMETRICEXCEPT" && argCount == 1 && args[0] is System.Collections.Generic.HashSet<object?> x2)
-                    { var r = new System.Collections.Generic.HashSet<object?>(hsInst); r.SymmetricExceptWith(x2); task.PushRef(r); return true; }
+                    { task.PushRef(OrderedSetOp(hsInst, x2, 3)); return true; }
+                }
+                /* Risultato di Union/Intersect/Except/SymmetricExcept (OrderedSet, ordine di
+                 * inserimento come C99/VM/C): stesse operazioni del HASHSET; senza questo ramo
+                 * Add/Contains su un risultato assegnato a HASHSET erano no-op silenziosi. */
+                if (instance is CommonLib.Collections.OrderedSet osInst)
+                {
+                    if (upName == "ADD" && argCount == 1) { osInst.Add(args[0]); task.PushRef(null); return true; }
+                    if (upName == "CONTAINS" && argCount == 1) { task.PushRef(osInst.Contains(args[0]) ? -1.0 : 0.0); return true; }
+                    if (upName == "REMOVE" && argCount == 1) { task.PushRef(osInst.Remove(args[0]) ? -1.0 : 0.0); return true; }
+                    if (upName == "CLEAR" && argCount == 0) { osInst.Clear(); task.PushRef(null); return true; }
+                    if (upName == "COUNT" && argCount == 0) { task.PushRef((double)osInst.Count); return true; }
+                    if (argCount == 1 && upName is "UNION" or "INTERSECT" or "EXCEPT" or "SYMMETRICEXCEPT")
+                    {
+                        int sop = upName == "UNION" ? 0 : upName == "INTERSECT" ? 1 : upName == "EXCEPT" ? 2 : 3;
+                        if (args[0] is System.Collections.IEnumerable oth)
+                        { task.PushRef(OrderedSetOp(osInst, oth, sop)); return true; }
+                        task.PushRef(null); return true;
+                    }
                 }
                 // BAG.Add: il Bag BASIC è un Dictionary<object,long> — Add con 1 argomento
                 // incrementa il conteggio (prima: il case IDictionary.Add a 2 argomenti non
@@ -5363,5 +5394,28 @@ internal sealed partial class PCodeProcessor
                 System.Globalization.CultureInfo.InvariantCulture, out var d) ? d != 0.0 : true;
         }
         return numCond != 0.0;
+    }
+
+    /// <summary>Set algebra con ORDINE DI INSERIMENTO (canone HASHSET delle gambe C):
+    /// risultati = elementi di A nell'ordine di A, poi (Union/SymmetricExcept) quelli di B
+    /// non in A. 0=Union 1=Intersect 2=Except 3=SymmetricExcept.</summary>
+    private static CommonLib.Collections.OrderedSet OrderedSetOp(
+        System.Collections.IEnumerable a, System.Collections.IEnumerable b, int op)
+    {
+        var left = new System.Collections.Generic.List<object?>();
+        foreach (var x in a) left.Add(x);
+        var right = new System.Collections.Generic.List<object?>();
+        foreach (var x in b) right.Add(x);
+        var result = new CommonLib.Collections.OrderedSet();
+        foreach (var x in left)
+        {
+            bool inB = right.Contains(x);
+            if (op == 0 || (op == 1 && inB) || ((op == 2 || op == 3) && !inB)) result.Add(x);
+        }
+        if (op == 0)
+            foreach (var x in right) result.Add(x);
+        else if (op == 3)
+            foreach (var x in right) if (!left.Contains(x)) result.Add(x);
+        return result;
     }
 }

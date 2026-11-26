@@ -281,6 +281,17 @@ gmb_obj_string_t* gmb_vm_json_stringify(gmb_obj_t* obj)
             gmb_string_free(&tj);
             return rt;
         }
+        /* SEQUENZE a handle (LIST/HASHSET/QUEUE/STACK/LINKEDLIST/…): array JSON dei valori
+         * — prima "null". */
+        if (col->type_code == 1 || col->type_code == 3 || col->type_code == 4
+            || col->type_code == 5 || col->type_code == 12 || col->type_code == 13
+            || col->type_code == 14 || col->type_code == 20 || col->type_code == 21
+            || col->type_code == 27) {
+            gmb_string_t aj = gmb_coll_to_json_array(col->handle);
+            gmb_obj_string_t* ra = gmb_str_cstr(aj.data ? aj.data : "[]");
+            gmb_string_free(&aj);
+            return ra;
+        }
         /* MAPPE ordinate e CACHE: oggetto {"chiave":valore} nell'ordine delle chiavi
          * (Cache in ordine di nome) — prima "null" (solo il BAG era serializzato). */
         if (col->type_code == 6 || col->type_code == 7 || col->type_code == 8

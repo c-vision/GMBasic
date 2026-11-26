@@ -32,8 +32,9 @@ public sealed partial class IlProgramCompiler
             if (argType is ListType listTypeStats)
             {
                 EmitExpression(argument);
-                var elemClr = DataTypeMapper.Map(listTypeStats.ElementType, _types, _classTypes);
-                _il.Emit(OpCodes.Call, EnumerableToArrayMethod.MakeGenericMethod(elemClr));
+                /* Lista → double[] CONVERTENDO gli elementi: ToArray<T> rendeva un T[]
+                 * (es. long[]) e AMAX/AMIN/ASUM leggevano i bit come double (garbage). */
+                _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.ToDoubleArray), typeof(object)));
                 continue;
             }
             if (argType is not ArrayType)

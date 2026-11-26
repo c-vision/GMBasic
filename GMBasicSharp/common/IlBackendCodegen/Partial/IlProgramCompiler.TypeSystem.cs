@@ -578,6 +578,23 @@ public sealed partial class IlProgramCompiler
                 or AVLTreeType or RedBlackTreeType or BPlusTreeType or CacheType or TimelineType
             => new DoubleType(),
         MethodCallExpr mc when TryInferNativeCollectionMethodReturn(mc, out var collectionMethodReturn) => collectionMethodReturn,
+        // Membro di collection nativa SENZA equivalente CLR (First/Last/Min/Max/Sum):
+        // l'emissione passa dal dispatcher runtime (CollectionInvokeByKind) che ritorna
+        // OBJECT → tipo dinamico. Prima il fallback VoidType faceva SCARTARE il valore
+        // (`PRINT "first="; l.First()` stampava vuoto). SOLO i membri che RENDONO un valore:
+        // un insieme più ampio (Sort/Add/Insert VOID) emetteva `Pop` dopo una call void →
+        // IL malformato (stack underflow).
+        MethodCallExpr mcCollAny when
+            (CollMembers.Is(mcCollAny.MethodName, TokenKind.CollFirst)
+             || CollMembers.Is(mcCollAny.MethodName, TokenKind.CollLast)
+             || CollMembers.Is(mcCollAny.MethodName, TokenKind.CollMin)
+             || CollMembers.Is(mcCollAny.MethodName, TokenKind.CollMax)
+             || CollMembers.Is(mcCollAny.MethodName, TokenKind.CollSum)
+             || CollMembers.Is(mcCollAny.MethodName, TokenKind.CollUnion)
+             || CollMembers.Is(mcCollAny.MethodName, TokenKind.CollIntersect)
+             || CollMembers.Is(mcCollAny.MethodName, TokenKind.CollExcept)
+             || CollMembers.Is(mcCollAny.MethodName, TokenKind.CollSymmetricExcept))
+            && TryGetNativeCollectionType(InferType(mcCollAny.Instance), out _) => new AnyType(),
         // BASE.metodo(): l'istanza è BaseExpr (InferType → AnyType) e la chiamata è risolta
         // STATICAMENTE al metodo della base (forceNonVirtual, vedi EmitMethodCall). Senza
         // questo caso, il ramo AnyType sotto cattura la chiamata e restituisce AnyType →

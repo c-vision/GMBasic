@@ -12225,6 +12225,27 @@ static void emit_call(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_
             return;
         }
     }
+    /* TYPENAME(<set>.Union/Intersect/Except/SymmetricExcept(…)): il valore è un INSIEME
+     * (HASHSET`1 come IL/PCode/VM-C), non un gmb_list_t: senza questo ramo il C non
+     * compilava (`gmb_val_typename(<gmb_list_t>)`). */
+    if (tk == GMB_TOK_TypeName && nargs >= 1 && args[0]
+        && args[0]->kind == GMB_EXPR_CALL && args[0]->var && args[0]->nargs == 1) {
+        const char* sd = strrchr(args[0]->var, '.');
+        if (sd && sd != args[0]->var) {
+            char sp[160]; size_t spl = (size_t)(sd - args[0]->var);
+            if (spl < sizeof(sp)) {
+                memcpy(sp, args[0]->var, spl); sp[spl] = 0;
+                var_t* sv = lookup_var(c, sp);
+                gmb_tokenkind_t smk = gmb_member_tok(sd + 1);
+                if (sv && sv->gkind == GK_SET
+                    && (smk == GMB_TOK_Union || smk == GMB_TOK_Intersect
+                        || smk == GMB_TOK_Except || smk == GMB_TOK_CollSymmetricExcept)) {
+                    sb_put(&c->out, "gmb_string_alloc(\"HASHSET`1\")");
+                    return;
+                }
+            }
+        }
+    }
     /* TYPENAME(scalare/espressione): STRING per stringhe, DOUBLE per numerici
      * (parity IL/PCodeVM/VM-C; il VMC dava NUMBER/OBJECT per il fallthrough). */
     if (tk == GMB_TOK_TypeName && nargs >= 1 && args[0]) {
@@ -12930,9 +12951,11 @@ static void emit_call(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_
                             return;
                         }
                         if (mk == GMB_TOK_Peek) {
+                            /* STACK: la cima è l'elemento 0 (lo stack C99 tiene la cima in
+                             * TESTA — Push inserisce in testa, Pop rimuove in testa), così
+                             * ToArray/JSON/FOR EACH sono top-first come .NET e Front=top. */
                             sb_put(&c->out, is_str_el ? "gmb_string_alloc(gmb_list_" : "gmb_list_");
-                            if (cv->gkind == GK_STACK) sb_put(&c->out, "last");
-                            else sb_put(&c->out, "first");
+                            sb_put(&c->out, "first");
                             sb_put(&c->out, "(");
                             sb_ident(&c->out, cv->name);
                             if (is_str_el) sb_put(&c->out, ").v_string.data)");
@@ -12975,6 +12998,19 @@ static void emit_call(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_
                             return;
                         }
                         if (mk == GMB_TOK_Pop) {
+                            if (cv->gkind == GK_STACK) {
+                                /* STACK: rimuove la CIMA = elemento 0 (vedi Peek/Push). */
+                                sb_put(&c->out, "({ gmb_val_t __pv = gmb_list_get(");
+                                sb_ident(&c->out, cv->name);
+                                sb_put(&c->out, ", 0); if (gmb_list_count(");
+                                sb_ident(&c->out, cv->name);
+                                sb_put(&c->out, ") > 0) gmb_list_remove_at(&");
+                                sb_ident(&c->out, cv->name);
+                                sb_put(&c->out, ", 0); ");
+                                if (is_str_el) sb_put(&c->out, "gmb_string_alloc(__pv.v_string.data); })");
+                                else sb_put(&c->out, "__pv.v_double; })");
+                                return;
+                            }
                             sb_put(&c->out, is_str_el ? "gmb_string_alloc(gmb_list_pop(&" : "gmb_list_pop(&");
                             sb_ident(&c->out, cv->name);
                             if (is_str_el) sb_put(&c->out, ").v_string.data)");
@@ -13111,13 +13147,16 @@ static void emit_call(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_
                             return;
                         }
                         if (mk == GMB_TOK_Remove) {
+                            /* List.Remove(v) → PREDICATO -1/0 (parità IL/PCode/VM-C: .NET
+                             * List.Remove ritorna bool): prima era uno statement-expr VOID,
+                             * quindi `PRINT l.Remove(x)`/`IF l.Remove(x)` non compilavano. */
                             sb_put(&c->out, "({ gmb_int_t __ri = gmb_list_index_of(");
                             sb_ident(&c->out, cv->name);
                             sb_put(&c->out, ", ");
                             emit_make_val(c, cv, args[0]);
-                            sb_put(&c->out, "); if (__ri >= 0) gmb_list_remove_at(&");
+                            sb_put(&c->out, "); gmb_int_t __rr = 0; if (__ri >= 0) { gmb_list_remove_at(&");
                             sb_ident(&c->out, cv->name);
-                            sb_put(&c->out, ", __ri); (void)0; })");
+                            sb_put(&c->out, ", __ri); __rr = -1; } __rr; })");
                             return;
                         }
                         if (mk == GMB_TOK_RemoveAt) {
@@ -13276,6 +13315,17 @@ static void emit_call(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_
                             return;
                         }
                         if (gmb_tk_in(mk, gmb_tk_addq, (unsigned)(sizeof(gmb_tk_addq)/sizeof(gmb_tk_addq[0])))) {
+                            /* STACK: Push inserisce in TESTA (cima = elemento 0): ToArray/JSON/
+                             * FOR EACH top-first, Front=top, Back=bottom (come .NET
+                             * Stack<T> la cui enumerazione è LIFO). */
+                            if (mk == GMB_TOK_Push && cv->gkind == GK_STACK) {
+                                sb_put(&c->out, "({ gmb_list_insert(&");
+                                sb_ident(&c->out, cv->name);
+                                sb_put(&c->out, ", 0, ");
+                                emit_make_val(c, cv, args[0]);
+                                sb_put(&c->out, "); (void)0; })");
+                                return;
+                            }
                             /* RINGBUFFER: a buffer pieno Enqueue sovrascrive il più vecchio
                              * (coda circolare) — parity CircularQueue C#/VM/C.
                              * Resta su gmb_list_t: enqueue + drop dell'elemento 0 se si
@@ -15605,16 +15655,28 @@ void emit_expr(ctx_t* c, gmb_expr_t* e) {
                         if (pmk == GMB_TOK_Peek || pmk == GMB_TOK_First || pmk == GMB_TOK_Last
                             || pmk == GMB_TOK_Current || is_rm) {
                             if (is_rm) {
-                                sb_put(&c->out, pv->elem_str ? "gmb_string_alloc(gmb_list_" : "gmb_list_");
-                                sb_put(&c->out, pmk == GMB_TOK_Pop ? "pop(" : "dequeue(");
-                                sb_put(&c->out, "&");
-                                sb_ident(&c->out, pv->name);
-                                if (pv->elem_str) sb_put(&c->out, ").v_string.data)");
-                                else sb_put(&c->out, ").v_double");
+                                if (pmk == GMB_TOK_Pop && pv->gkind == GK_STACK) {
+                                    /* STACK: la CIMA è l'elemento 0 (Push in testa). */
+                                    sb_put(&c->out, "({ gmb_val_t __pv = gmb_list_get(");
+                                    sb_ident(&c->out, pv->name);
+                                    sb_put(&c->out, ", 0); if (gmb_list_count(");
+                                    sb_ident(&c->out, pv->name);
+                                    sb_put(&c->out, ") > 0) gmb_list_remove_at(&");
+                                    sb_ident(&c->out, pv->name);
+                                    sb_put(&c->out, ", 0); ");
+                                    if (pv->elem_str) sb_put(&c->out, "gmb_string_alloc(__pv.v_string.data); })");
+                                    else sb_put(&c->out, "__pv.v_double; })");
+                                } else {
+                                    sb_put(&c->out, pv->elem_str ? "gmb_string_alloc(gmb_list_" : "gmb_list_");
+                                    sb_put(&c->out, pmk == GMB_TOK_Pop ? "pop(" : "dequeue(");
+                                    sb_put(&c->out, "&");
+                                    sb_ident(&c->out, pv->name);
+                                    if (pv->elem_str) sb_put(&c->out, ").v_string.data)");
+                                    else sb_put(&c->out, ").v_double");
+                                }
                             } else {
                                 sb_put(&c->out, pv->elem_str ? "gmb_string_alloc(gmb_list_" : "gmb_list_");
                                 if (pmk == GMB_TOK_Last) sb_put(&c->out, "last");
-                                else if (pmk == GMB_TOK_Peek && pv->gkind == GK_STACK) sb_put(&c->out, "last");
                                 else sb_put(&c->out, "first");
                                 sb_put(&c->out, "(");
                                 sb_ident(&c->out, pv->name);
