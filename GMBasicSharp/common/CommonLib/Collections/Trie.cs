@@ -145,12 +145,19 @@ public class Trie
     /// <returns><c>true</c> se la stringa è stata trovata e rimossa con successo; altrimenti, <c>false</c>.</returns>
     public bool Remove(string word)
     {
-        if (string.IsNullOrEmpty(word))
+        if (string.IsNullOrEmpty(word) || !Contains(word))
         {
             return false;
         }
 
-        return RemoveRecursive(_root, word, 0);
+        /* BUG REALE (2026-11-26): il valore di ritorno era quello di RemoveRecursive, cioè
+         * "il nodo radice può essere eliminato" → FALSE per ogni parola tranne quando il
+         * trie resta VUOTO (con "car","cat","dog", Remove("dog") rendeva false pur avendo
+         * rimosso la parola). Ora il predicato dice se la parola esisteva (Contains sopra)
+         * e la lista delle parole (Words/ToArray/JSON) viene aggiornata. */
+        RemoveRecursive(_root, word, 0);
+        _insertion.Remove(word);
+        return true;
     }
 
     /// <summary>

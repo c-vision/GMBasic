@@ -898,6 +898,23 @@ static const char* ctype_name(int ty) { return ty == TY_STR ? "gmb_string_t" : (
 int gmb_c99_emit_coll_json(ctx_t* c, const char* name) {
     var_t* av = lookup_var(c, name);
     if (!av || !av->gkind) return 0;
+    /* Contenitori a HANDLE (BAG/HEAP/MAXHEAP/TRIE): il valore boxato non è una lista
+     * gmb_list_t → gmb_make_val_list(<handle>) non compila. JSON per TIPO, con le stesse
+     * materializzazioni del resto dell'emitter (§0bis). */
+    if (av->coll_handle) {
+        if (av->coll_type_code == 15) {
+            sb_put(&c->out, "gmb_coll_bag_to_json(gmb_val_collection_handle(");
+            sb_ident(&c->out, av->name);
+            sb_put(&c->out, "))");
+        } else {
+            sb_put(&c->out, av->coll_type_code == 11
+                ? "gmb_val_to_json(gmb_make_val_list(gmb_coll_trie_words_list(gmb_val_collection_handle("
+                : "gmb_val_to_json(gmb_make_val_list(gmb_coll_heap_array_list(gmb_val_collection_handle(");
+            sb_ident(&c->out, av->name);
+            sb_put(&c->out, "))))");
+        }
+        return 1;
+    }
     if (gk_is_dict(av->gkind)) {
         /* TIMELINE: oggetto con chiavi-date ISO-8601 (canone DATA come chiave), non un
          * oggetto con chiavi-seriali. */
@@ -2757,25 +2774,21 @@ int etype(ctx_t* c, gmb_expr_t* e) {
                         || !strcasecmp(_m, "HasEdge")
                         || !strcasecmp(_m, "Precision") || !strcasecmp(_m, "Error"))
                     {
-                        /* Eccezioni per i contenitori a HANDLE: UniqueCount/StartsWith sono
-                         * emessi come gmb_val_t (gmb_make_val_double) — TY_NUM faceva
-                         * avvolgere il valore in gmb_print_double(<val>) = C invalido
-                         * (typed_containers_parity). */
-                        if (_rv->coll_handle
-                            && (!strcasecmp(_m, "UniqueCount") || !strcasecmp(_m, "StartsWith")))
-                            return TY_VAL;
+                        /* Contenitori a HANDLE: UniqueCount/StartsWith sono emessi come
+                         * double (gmb_coll_bag_unique_count / predicato -1/0 del Trie):
+                         * dichiararli TY_VAL faceva emettere gmb_print_val(<double>) =
+                         * C non compilabile. */
                         return TY_NUM;
                     }
                     /* Peek/Front/Back/First/Last/Extract/Dequeue/Pop: sui contenitori a
-                     * HANDLE (HEAP/MAXHEAP/BAG/TRIE) il runtime ritorna un gmb_val_t
-                     * (gmb_print_val, non gmb_print_double: "passing 'gmb_val_t' to parameter
-                     * of incompatible type 'gmb_double_t'" su typed_containers_parity);
-                     * sulle LISTE/QUEUE/STACK il tipo è quello dell'ELEMENTO. */
+                     * HANDLE (HEAP/MAXHEAP/BAG/TRIE) l'emissione converte il gmb_val_t in
+                     * double (gmb_val_to_double) → TY_NUM; sulle LISTE/QUEUE/STACK il tipo
+                     * è quello dell'ELEMENTO. */
                     if (!strcasecmp(_m, "Peek") || !strcasecmp(_m, "Front") || !strcasecmp(_m, "Back")
                         || !strcasecmp(_m, "First") || !strcasecmp(_m, "Last")
                         || !strcasecmp(_m, "Extract") || !strcasecmp(_m, "Dequeue")
                         || !strcasecmp(_m, "Pop"))
-                        return _rv->coll_handle ? TY_VAL : (_rv->elem_str ? TY_STR : TY_NUM);
+                        return _rv->coll_handle ? TY_NUM : (_rv->elem_str ? TY_STR : TY_NUM);
                 }
             }
         }
@@ -2844,16 +2857,16 @@ int etype(ctx_t* c, gmb_expr_t* e) {
                     }
                     if (_erxmf && !fn_ret_is_tuple(_erxmf) && fn_ret_is_str(_erxmf)) return TY_STR;
                 }
-                /* Contenitori a HANDLE (HEAP/MAXHEAP/BAG/TRIE): Peek/Extract* passano da
-                 * gmb_coll_heap_* e ritornano un gmb_val_t (non double) → TY_VAL, altrimenti
-                 * PRINT emetteva gmb_print_double(<gmb_val_t>) (errore cc:
-                 * collections/typed_containers_parity.bas). */
+                /* Contenitori a HANDLE (HEAP/MAXHEAP/BAG/TRIE): Peek/Extract* e i conteggi
+                 * sono SCALARI (l'emissione di try_emit_var_method usa gmb_val_to_double /
+                 * double: doppio sarebbe gmb_print_val(<double>) = C invalido). Prima erano
+                 * dichiarati TY_VAL perché l'emissione rendeva un gmb_val_t nudo. */
                 if (_erxv && _erxv->coll_handle
                     && gmb_tk_in(gmb_member_tok(_erxdot + 1),
                                  (gmb_tokenkind_t[]){ GMB_TOK_Peek, GMB_TOK_Extract,
                                                       GMB_TOK_ExtractMin, GMB_TOK_ExtractMax,
                                                       GMB_TOK_Count, GMB_TOK_UniqueCount }, 6))
-                    return TY_VAL;
+                    return TY_NUM;
                 /* GRAPH: i metodi "di stato" ritornano scalari (int/double), non un gmb_val_t:
                  * AddNode/AddNodeConsistent/HasNode/HasEdge/RemoveNode/RemoveEdge/GetInDegree/
                  * GetEdgeWeight/NodeCount → TY_NUM. BFS/DFS/Dijkstra/Neighbors ritornano liste
@@ -3548,6 +3561,20 @@ int etype(ctx_t* c, gmb_expr_t* e) {
                 if (mpl < sizeof(mp)) {
                     memcpy(mp, e->var, mpl); mp[mpl] = 0;
                     var_t* cv = lookup_var(c, mp);
+                                        /* Contenitori a HANDLE (BAG/HEAP/MAXHEAP/TRIE): il tipo
+                                         * dell'espressione deve coincidere con l'emissione di
+                                         * try_emit_var_method, altrimenti PRINT usa
+                                         * gmb_print_val(double) = C non compilabile. */
+                                        if (cv && cv->coll_handle) {
+                        int cmtk = gmb_member_tok(mdot + 1);
+                        if (cmtk == GMB_TOK_Count || cmtk == GMB_TOK_UniqueCount
+                            || cmtk == GMB_TOK_Contains || cmtk == GMB_TOK_StartsWith
+                            || cmtk == GMB_TOK_Remove || cmtk == GMB_TOK_Peek
+                            || cmtk == GMB_TOK_Extract) return TY_NUM;
+                        if (cmtk == GMB_TOK_ToArray || cmtk == GMB_TOK_ToList
+                            || cmtk == GMB_TOK_ToJson || cmtk == GMB_TOK_UniqueItems
+                            || cmtk == GMB_TOK_FindAll) return TY_VAL;
+                    }
                                         if (cv && cv->gkind && gk_is_list(cv->gkind)) {
                         if (gmb_member_tok(mdot + 1) == GMB_TOK_Join) return TY_STR;
                         if (gmb_member_tok(mdot + 1) == GMB_TOK_Count) return TY_NUM;
@@ -11126,8 +11153,8 @@ static int coll_handle_supports(var_t* v, gmb_tokenkind_t mtk, int n) {
     case GMB_TOK_ToJson:
     case GMB_TOK_Clear: return 1;
     case GMB_TOK_StartsWith:
-    case GMB_TOK_FindAll:
-    case GMB_TOK_Contains: return v->coll_type_code == 11 && n >= 1;
+    case GMB_TOK_FindAll: return v->coll_type_code == 11 && n >= 1;
+    case GMB_TOK_Contains: return (v->coll_type_code == 11 || v->coll_type_code == 15) && n >= 1;
     default: return 0;
     }
 }
@@ -11218,10 +11245,12 @@ static int try_emit_var_method(ctx_t* c, const char* recv, const char* m, gmb_ex
             sb_put(&c->out, "), 0.0)");
             return 1;
         case GMB_TOK_Peek:
-            sb_put(&c->out, "gmb_coll_heap_peek("); emit_coll_handle_of(c, v); sb_put(&c->out, ")");
+            /* Peek/Extract rendono il VALORE della radice (gmb_val_t): PRINT/aritmetica
+             * vogliono un double → gmb_val_to_double (prima: gmb_print_double(<gmb_val_t>)). */
+            sb_put(&c->out, "gmb_val_to_double(gmb_coll_heap_peek("); emit_coll_handle_of(c, v); sb_put(&c->out, "))");
             return 1;
         case GMB_TOK_Extract:
-            sb_put(&c->out, "gmb_coll_heap_extract("); emit_coll_handle_of(c, v); sb_put(&c->out, ")");
+            sb_put(&c->out, "gmb_val_to_double(gmb_coll_heap_extract("); emit_coll_handle_of(c, v); sb_put(&c->out, "))");
             return 1;
         case GMB_TOK_Count:
             /* Count()/Count(item) sono NUMERI (gmb_double_t), non gmb_val_t: il wrapper
@@ -11239,8 +11268,9 @@ static int try_emit_var_method(ctx_t* c, const char* recv, const char* m, gmb_ex
             return 1;
         case GMB_TOK_Remove:
             if (v->coll_type_code == 11) {
-                sb_put(&c->out, "((void)gmb_coll_trie_remove("); emit_coll_handle_of(c, v);
-                sb_put(&c->out, ", ("); emit_str_operand(c, a[0]); sb_put(&c->out, ").data), 0.0)");
+                /* Trie.Remove(word): -1 se la parola esisteva (prima 0.0 costante). */
+                sb_put(&c->out, "(gmb_double_t)(gmb_coll_trie_remove("); emit_coll_handle_of(c, v);
+                sb_put(&c->out, ", ("); emit_str_operand(c, a[0]); sb_put(&c->out, ").data) ? -1.0 : 0.0)");
                 return 1;
             }
             sb_printf(&c->out, "(gmb_double_t)%s(", v->coll_type_code == 15 ? "gmb_coll_bag_remove" : "gmb_coll_remove");
@@ -11248,9 +11278,10 @@ static int try_emit_var_method(ctx_t* c, const char* recv, const char* m, gmb_ex
             sb_put(&c->out, ", "); emit_coll_handle_arg(c, a[0]); sb_put(&c->out, ")");
             return 1;
         case GMB_TOK_StartsWith:
-            sb_put(&c->out, "gmb_make_val_double((gmb_double_t)gmb_coll_trie_startswith(");
+            /* -1/0 (convenzione BASIC), non 1/0. */
+            sb_put(&c->out, "(gmb_double_t)(gmb_coll_trie_startswith(");
             emit_coll_handle_of(c, v);
-            sb_put(&c->out, ", ("); emit_str_operand(c, a[0]); sb_put(&c->out, ").data))");
+            sb_put(&c->out, ", ("); emit_str_operand(c, a[0]); sb_put(&c->out, ").data) ? -1.0 : 0.0)");
             return 1;
         case GMB_TOK_FindAll:
             sb_put(&c->out, "gmb_make_val_list(gmb_collection_trie_find_all_list(");
@@ -11258,13 +11289,24 @@ static int try_emit_var_method(ctx_t* c, const char* recv, const char* m, gmb_ex
             sb_put(&c->out, ", ("); emit_str_operand(c, a[0]); sb_put(&c->out, ").data))");
             return 1;
         case GMB_TOK_Contains:
-            sb_put(&c->out, "gmb_make_val_double((gmb_double_t)gmb_coll_trie_contains(");
-            emit_coll_handle_of(c, v);
-            sb_put(&c->out, ", ("); emit_str_operand(c, a[0]); sb_put(&c->out, ").data))");
+            if (v->coll_type_code == 11) {
+                /* -1/0 (convenzione BASIC), non 1/0. */
+                sb_put(&c->out, "(gmb_double_t)(gmb_coll_trie_contains(");
+                emit_coll_handle_of(c, v);
+                sb_put(&c->out, ", ("); emit_str_operand(c, a[0]); sb_put(&c->out, ").data) ? -1.0 : 0.0)");
+            } else {
+                /* BAG (15): Contains = molteplicità > 0 (era emesso gmb_list_contains su
+                 * un handle → C non compilabile). */
+                sb_put(&c->out, "(gmb_double_t)(gmb_coll_bag_count_of(");
+                emit_coll_handle_of(c, v);
+                sb_put(&c->out, ", "); emit_coll_handle_arg(c, a[0]);
+                sb_put(&c->out, ") > 0 ? -1.0 : 0.0)");
+            }
             return 1;
         case GMB_TOK_UniqueCount:
-            sb_put(&c->out, "gmb_make_val_double((gmb_double_t)gmb_coll_bag_unique_count(");
-            emit_coll_handle_of(c, v); sb_put(&c->out, "))");
+            /* Numero (double), non gmb_val_t. */
+            sb_put(&c->out, "(gmb_double_t)gmb_coll_bag_unique_count(");
+            emit_coll_handle_of(c, v); sb_put(&c->out, ")");
             return 1;
         case GMB_TOK_UniqueItems:
             sb_put(&c->out, "gmb_make_val_list(gmb_collection_bag_unique_list(");
@@ -11272,13 +11314,33 @@ static int try_emit_var_method(ctx_t* c, const char* recv, const char* m, gmb_ex
             return 1;
         case GMB_TOK_ToArray:
         case GMB_TOK_ToList:
-            sb_put(&c->out, "gmb_make_val_list(gmb_collection_to_list(");
-            sb_ident(&c->out, v->name); sb_put(&c->out, "))");
+            /* Per TIPO: BAG → coppie {Key,Value}; HEAP/MAXHEAP → ordine heap;
+             * TRIE → parole; gli altri → valori. (Prima BAG/HEAP/TRIE emettevano la
+             * lista grezza dei valori.) */
+            if (v->coll_type_code == 15) {
+                sb_put(&c->out, "gmb_make_val_list(gmb_coll_bag_pairs_list(");
+                emit_coll_handle_of(c, v); sb_put(&c->out, "))");
+            } else if (v->coll_type_code == 14 || v->coll_type_code == 27) {
+                sb_put(&c->out, "gmb_make_val_list(gmb_coll_heap_array_list(");
+                emit_coll_handle_of(c, v); sb_put(&c->out, "))");
+            } else if (v->coll_type_code == 11) {
+                sb_put(&c->out, "gmb_make_val_list(gmb_coll_trie_words_list(");
+                emit_coll_handle_of(c, v); sb_put(&c->out, "))");
+            } else {
+                sb_put(&c->out, "gmb_make_val_list(gmb_collection_to_list(");
+                sb_ident(&c->out, v->name); sb_put(&c->out, "))");
+            }
             return 1;
         case GMB_TOK_ToJson:
             if (v->coll_type_code == 15) {
                 sb_put(&c->out, "gmb_make_val_string(gmb_coll_bag_to_json(");
                 emit_coll_handle_of(c, v); sb_put(&c->out, ").data)");
+            } else if (v->coll_type_code == 11 || v->coll_type_code == 14 || v->coll_type_code == 27) {
+                /* TRIE → array di parole; HEAP/MAXHEAP → array in ordine heap (testo JSON). */
+                sb_put(&c->out, "gmb_make_val_string(");
+                if (v->coll_type_code == 11) sb_put(&c->out, "gmb_val_to_json(gmb_make_val_list(gmb_coll_trie_words_list(");
+                else sb_put(&c->out, "gmb_val_to_json(gmb_make_val_list(gmb_coll_heap_array_list(");
+                emit_coll_handle_of(c, v); sb_put(&c->out, "))).data)");
             } else {
                 sb_put(&c->out, "gmb_val_to_json("); sb_ident(&c->out, v->name); sb_put(&c->out, ")");
             }

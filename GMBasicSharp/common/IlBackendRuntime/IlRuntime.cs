@@ -15225,6 +15225,14 @@ public static double TextWidth(string s)
             case "COUNT": return CollectionCount(instance);
             // TOARRAY su collection boxed (RedBlack/Tree/AVL/... → IDictionary): array delle
             // coppie KeyValuePair boxed (parità VM per ToArray() su queste strutture).
+            /* TRIE: ToArray/ToList = parole (CommonLib Trie NON è IEnumerable). */
+            case "TOARRAY" or "TOLIST" when args.Length == 0 && instance is CommonLib.Collections.Trie trieArr:
+                return trieArr.Words.Cast<object?>().ToArray();
+            /* ToList sulle collezioni boxed: stesso materializzato di ToArray. */
+            case "TOLIST" when args.Length == 0 && instance is System.Collections.IDictionary dtl:
+                return dtl.Cast<object?>().ToArray();
+            case "TOLIST" when args.Length == 0 && instance is System.Collections.IEnumerable etl:
+                return etl.Cast<object?>().ToArray();
             case "TOARRAY" when instance is System.Collections.IDictionary dta:
                 return dta.Cast<object?>().ToArray();
             // TOARRAY generico (CircularQueue/RingBuffer/Timeline/... che implementano
@@ -15335,7 +15343,7 @@ public static double TextWidth(string s)
             // BAG.Remove(item): toglie UNA istanza (molteplicità -1, chiave rimossa a 0),
             // non l'intera chiave: ["a","b","a","c","a"].Remove("a") → "a" resta con 2.
             case "REMOVE" when args.Length >= 1 && instance is IBagMultiset brem:
-                brem.RemoveOne(args[0]); return 1.0;
+                brem.RemoveOne(args[0]); return -1.0;   /* predicato BASIC -1 (parità PCode/VM-C/C99) */
             case "REMOVE" when args.Length >= 1 && instance is System.Collections.IDictionary dr:
             {
                 /* BAG (Dictionary<elemento,long> = multiset): toglie UNA istanza —
@@ -15839,6 +15847,10 @@ public static double TextWidth(string s)
                 kvDict[kv.Key?.ToString() ?? ""] = NormalizeForJson(kv.Value);
             return kvDict;
         }
+        /* TRIE: JSON = ARRAY di parole (ordine di inserimento) — prima lo struct
+         * serializzava {"Count":N,"Words":[…]} su PCode e "null" altrove. */
+        if (value is CommonLib.Collections.Trie trieJson)
+            return trieJson.Words.Cast<object?>().Select(w => NormalizeForJson(w)).ToArray();
         if (value is System.Collections.IList list)
         {
             var arr = new object?[list.Count];

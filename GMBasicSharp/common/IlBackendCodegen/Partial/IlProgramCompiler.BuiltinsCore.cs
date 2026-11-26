@@ -1772,6 +1772,21 @@ private void EmitBrowserHumanScrollCall(BuiltinFunctionCallExpr expr)
     private void EmitNativeCollectionToListCall(BuiltinFunctionCallExpr expr)
     {
         if (expr.Args.Length != 1) throw new NotSupportedException("Backend IL: TOLIST richiede una collection.");
+        var toListArgType = NormalizeInferredType(InferType(expr.Args[0]));
+        // Strutture avanzate boxed (Tree/AVL/Bag/BagMultiset/Cache/Timeline/Heap/Trie…):
+        // Enumerable.ToList<T> è INVALIDO (il contenitore non è IEnumerable<T>) e sul BAG
+        // lanciava EntryPointNotFoundException a runtime. Dispatch condiviso CollectionInvoke.
+        if (toListArgType is RedBlackTreeType or TreeType or AVLTreeType or BinaryIndexedTreeType
+            or TrieType or BPlusTreeType or GraphType or HashRingType or SparseSetType
+            or BinaryHeapType or BagType or CacheType or TimelineType or RingBufferType)
+        {
+            EmitExpression(expr.Args[0]);
+            _il.Emit(OpCodes.Ldstr, "ToList");
+            _il.Emit(OpCodes.Ldc_I4_0);
+            _il.Emit(OpCodes.Newarr, _types.Object);
+            _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.CollectionInvoke), typeof(object), typeof(string), typeof(object[])));
+            return;
+        }
         var elementType = CollectionElementType(InferType(expr.Args[0]));
         var elementClr = DataTypeMapper.Map(elementType, _types, _classTypes);
         EmitExpression(expr.Args[0]);

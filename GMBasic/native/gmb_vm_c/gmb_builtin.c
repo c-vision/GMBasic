@@ -3501,6 +3501,25 @@ static void gmb_bf_632(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func
                     }
                 }
                 gmb_list_free(&kvl);
+                /* BAG (15): coppie {Key,Value=molteplicità}; HEAP/MAXHEAP (14/27): ordine
+                 * dell'array interno; TRIE (11): parole. Stesse materializzazioni del
+                 * ramo OP_CALL_MEMBER e delle altre gambe (§0bis). */
+                if (col->type_code == 15 || col->type_code == 14 || col->type_code == 27 || col->type_code == 11)
+                {
+                    gmb_list_t sl = (col->type_code == 15) ? gmb_coll_bag_pairs_list(col->handle)
+                                    : (col->type_code == 11) ? gmb_coll_trie_words_list(col->handle)
+                                                             : gmb_coll_heap_array_list(col->handle);
+                    gmb_obj_shared_val_t* sout = gmb_shared_list_new();
+                    if (sout)
+                    {
+                        for (size_t i = 0; i < sl.count; i++)
+                            gmb_list_add(sout->list, sl.items[i]);
+                        gmb_list_free(&sl);
+                        bout->is_num = 0; bout->result_ref = (gmb_obj_t*)sout; bout->result_ref_bt = GMB_BT_OBJECT;
+                        return;
+                    }
+                    gmb_list_free(&sl);
+                }
                 int n = 0;
                 gmb_val_t* arr = gmb_coll_to_array(col->handle, &n);
                 gmb_obj_shared_val_t* out = gmb_shared_list_new();

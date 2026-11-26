@@ -1409,7 +1409,7 @@ int js_stringify(ctx_t* c, gmb_expr_t** a, int n) {   /* §0quater: usata anche 
             if (kl < sizeof(kp)) {
                 memcpy(kp, arg->var, kl); kp[kl] = 0;
                 var_t* kv = lookup_var(c, kp);
-                if (kv && kv->gkind) {
+                if (kv && kv->gkind && !kv->coll_handle) {   /* i contenitori a HANDLE (BAG/HEAP/TRIE) hanno un loro emitter */
                     int ck = gmb_c99_var_coll_kind(c, kp);
                     int mk = (int)gmb_member_tok(kd + 1);
                     if (ck == 2 && (mk == GMB_TOK_Keys || mk == GMB_TOK_Values)) {
@@ -1501,6 +1501,14 @@ int js_stringify(ctx_t* c, gmb_expr_t** a, int n) {   /* §0quater: usata anche 
             if (fl < sizeof(fp)) {
                 memcpy(fp, arg->var, fl); fp[fl] = 0;
                 var_t* fv = lookup_var(c, fp);
+                if (fv && fv->coll_handle) {
+                    /* TRIE a handle: il membro FindAll emette già un gmb_val_t
+                     * (gmb_make_val_list(...)) → serializza il valore. */
+                    sb_put(&c->out, "gmb_val_to_json(");
+                    emit_expr(c, arg);
+                    sb_put(&c->out, ")");
+                    return 1;
+                }
                 if (fv && fv->gkind && gmb_c99_var_coll_kind(c, fp) == 1) {
                     sb_put(&c->out, "gmb_val_to_json(gmb_make_val_list(gmb_list_find_all(");
                     emit_ident(c, fv->name);

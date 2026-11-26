@@ -14730,6 +14730,26 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                         push_num_entry(task, gmb_coll_count(ch) == 0 ? 1 : 0, GMB_BT_BOOL);
                     else if (strcasecmp(methodName, "ToArray") == 0 || strcasecmp(methodName, "ToList") == 0)
                     {
+                        /* BAG (15): coppie {Key,Value=molteplicità} (parità IL/PCode);
+                         * HEAP/MAXHEAP (14/27): ordine dell'array interno (heapify);
+                         * TRIE (11): parole. Materializzazioni nel runtime condiviso. */
+                        if (tc == 15 || tc == 14 || tc == 27 || tc == 11)
+                        {
+                            gmb_list_t sl = (tc == 15) ? gmb_coll_bag_pairs_list(ch)
+                                            : (tc == 11) ? gmb_coll_trie_words_list(ch)
+                                                         : gmb_coll_heap_array_list(ch);
+                            gmb_obj_shared_val_t* sout = gmb_shared_list_new();
+                            if (!sout) { gmb_list_free(&sl); push_nil(task); }
+                            else
+                            {
+                                for (size_t i = 0; i < sl.count; i++)
+                                    gmb_list_add(sout->list, sl.items[i]);
+                                gmb_list_free(&sl);
+                                push_ref_new(task, (gmb_obj_t*)sout, GMB_BT_OBJECT);
+                            }
+                        }
+                        else
+                        {
                         /* Contenitore CHIAVE→VALORE: array di dict {Key,Value} (parità P-Code/IL:
                          * JSON [{"Key":"a","Value":true},…]). Prima usciva solo la lista dei
                          * VALORI ([true,false,false]). Per gli altri tipi resta gmb_coll_to_array. */
@@ -14758,6 +14778,7 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                                     gmb_list_add(out->list, arr[i]);
                             free(arr);
                             push_ref_new(task, (gmb_obj_t*)out, GMB_BT_OBJECT);
+                        }
                         }
                     }
                     else if (strcasecmp(methodName, "First") == 0)

@@ -2386,6 +2386,10 @@ if (args.Length >= 3) { var file = args[0]?.ToString() ?? ""; var section = args
         },
         [BuiltInFunction.TOARRAY] = (task, args) =>
         {
+                // TRIE: array delle parole (ordine di inserimento) — CommonLib Trie NON è
+                // IEnumerable, il ramo sotto rendeva null.
+                if (args.Length >= 1 && args[0] is CommonLib.Collections.Trie trieArr)
+                    return trieArr.Words.ToArray();
                 // TIMELINE: coppie {Key:<seriale>,Value:…} (stessa forma di First/GetRange
                 // e delle altre gambe) — il ramo IEnumerable sotto rendeva KeyValuePair col
                 // Key DateTimeOffset, che JSON.STRINGIFY serializzava come "Key":{}.
@@ -2552,6 +2556,8 @@ if (args.Length >= 3) { var file = args[0]?.ToString() ?? ""; var section = args
         },
         [BuiltInFunction.TOLIST] = (task, args) =>
         {
+                if (args.Length >= 1 && args[0] is CommonLib.Collections.Trie trieLst)
+                    return new System.Collections.Generic.List<object?>(trieLst.Words.Cast<object?>());
                 if (args.Length >= 1 && args[0] is System.Collections.IEnumerable en2) { return new System.Collections.Generic.List<object?>(en2.Cast<object?>()); }
                 return null;
         },

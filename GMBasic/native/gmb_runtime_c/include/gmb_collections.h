@@ -172,6 +172,11 @@ gmb_val_t gmb_collection_new(int type_code, gmb_val_t* args, int n_args);
 /* FOR EACH: chiavi/valori di una collezione boxed → gmb_list_t. */
 gmb_list_t gmb_collection_keys_to_list(gmb_val_t coll);
 gmb_list_t gmb_collection_to_list(gmb_val_t coll);
+/* Materializzazioni per tipo (handle): BAG ToArray/ToList = coppie {Key,Value=molteplicità};
+ * HEAP/MAXHEAP ToArray/ToList = ordine dell'array interno (heapify); TRIE = parole. */
+gmb_list_t gmb_coll_bag_pairs_list(int64_t h);
+gmb_list_t gmb_coll_heap_array_list(int64_t h);
+gmb_list_t gmb_coll_trie_words_list(int64_t h);
 
 /* Chiavi/coppie dei contenitori tipizzati (TREE/AVL/REDBLACK/BPlusTree/Timeline) e multiset
  * (BAG) — unica sorgente condivisa (§0bis). Semantica allineata al P-Code (oracolo):

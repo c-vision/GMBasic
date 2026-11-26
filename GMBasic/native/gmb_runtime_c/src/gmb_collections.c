@@ -375,8 +375,7 @@ int gmb_coll_add_last(int64_t h, gmb_val_t v)
     return 0;
 }
 
-/* Inserimento per INDICE su una lista concatenata (LINKEDLIST/DOUBLY): AddAfter(i,v)
- * inserisce dopo la posizione i (0-based), AddBefore prima. RingBuffer non supportato
+/* Inserimento per INDICE su una lista concatenata (LINKEDLIST/DOUBLY): AddAfter(i,v) * inserisce dopo la posizione i (0-based), AddBefore prima. RingBuffer non supportato
  * (uso Enqueue). Restituisce 0/-1. */
 int gmb_coll_insert_at(int64_t h, int64_t idx, gmb_val_t v)
 {
@@ -951,7 +950,17 @@ int gmb_coll_trie_remove(int64_t h, const char* s)
         n = trie_find_child(n, ch);
         if (!n) return 0;
     }
-    if (n->is_word) { n->is_word = 0; c->count--; return -1; }
+    if (n->is_word) {
+        n->is_word = 0;
+        /* La parola vive anche nella lista di inserimento usata da ToArray/JSON: va tolta
+         * da lì, altrimenti gmb_coll_to_array (che itera la LISTA ma dimensiona su count)
+         * scrive oltre il buffer → parole duplicate/spazzatura (CRM: t.final=[car,cat,car]).
+         * gmb_coll_remove decrementa count; se l'item non c'è si decrementa qui. */
+        gmb_val_t sv = gmb_make_val_string(s);
+        if (gmb_coll_remove(h, sv) == 0) c->count--;
+        gmb_val_release(sv);
+        return -1;
+    }
     return 0;
 }
 
@@ -1938,11 +1947,16 @@ gmb_string_t gmb_coll_to_json_array(int64_t h)
 {
     gmb_collection_t* c = coll_get(h);
     if (!c) return gmb_string_alloc("[]");
-    int n = 0;
-    gmb_val_t* arr = gmb_coll_to_array(h, &n);
-    gmb_list_t l = gmb_list_new();
-    for (int i = 0; i < n; i++) gmb_list_add(&l, arr[i]);
-    free(arr);
+    gmb_list_t l;
+    if (c->type_code == 14 || c->type_code == 27) l = gmb_coll_heap_array_list(h);   /* ordine heap */
+    else if (c->type_code == 11) l = gmb_coll_trie_words_list(h);                    /* parole */
+    else {
+        int n = 0;
+        gmb_val_t* arr = gmb_coll_to_array(h, &n);
+        l = gmb_list_new();
+        for (int i = 0; i < n; i++) gmb_list_add(&l, arr[i]);
+        free(arr);
+    }
     gmb_string_t js = gmb_val_to_json(gmb_make_val_list(l));
     gmb_list_free(&l);
     return js;
@@ -2041,6 +2055,64 @@ gmb_list_t gmb_collection_to_list(gmb_val_t coll) {
  * Trio.FindAll / Timeline.GetRange ritornano array C (char** / gmb_val_t*) che il
  * BASIC usa come LISTE (JSON.Stringify / PRINT): qui la conversione nell'unica
  * sorgente condivisa (§0bis), così i backend non duplicano la logica. */
+
+/* BAG (15): ToArray/ToList come COPPIE {Key:elemento, Value:molteplicità} nello stesso
+ * ordine di prima comparsa del JSON ({a:3,b:1,c:1}) — parità IL/PCode (dove il Bag è un
+ * Dictionary<item,long> e ToArray è la lista delle entry). */
+gmb_list_t gmb_coll_bag_pairs_list(int64_t h) {
+    gmb_list_t l = gmb_list_new();
+    gmb_dict_t* d = gmb_coll_bag_counts_dict(h);
+    if (!d) return l;
+    for (size_t i = 0; i < d->count; i++) {
+        gmb_dict_t e = gmb_dict_new();
+        gmb_dict_set(&e, "Key", gmb_make_val_string_counted(d->items[i].key ? d->items[i].key : ""));
+        gmb_dict_set(&e, "Value", d->items[i].value);
+        gmb_list_add(&l, gmb_make_val_dict(e));
+    }
+    gmb_dict_free(d);
+    free(d);
+    return l;
+}
+
+/* HEAP/MAXHEAP (14/27): ToArray/ToList nell'ordine dell'ARRAY interno dell'heap (ordine
+ * heapify), che è quello di CommonLib BinaryHeap usato da IL/PCode. La VM/C memorizza per
+ * inserimento: qui si ricostruisce l'array con lo stesso sift-up (min: figlio<padre; max:
+ * figlio>padre, confronto numerico come Comparer di PCode). */
+gmb_list_t gmb_coll_heap_array_list(int64_t h) {
+    gmb_list_t l = gmb_list_new();
+    gmb_collection_t* c = coll_get(h);
+    if (!c) return l;
+    int n = 0;
+    gmb_val_t* arr = gmb_coll_to_array(h, &n);
+    if (!arr) return l;
+    int is_max = (c->type_code == 27);
+    for (int i = 1; i < n; i++) {
+        int child = i;
+        while (child > 0) {
+            int parent = (child - 1) / 2;
+            double cv = gmb_val_to_double(arr[child]);
+            double pv = gmb_val_to_double(arr[parent]);
+            int needs_swap = is_max ? (cv > pv) : (cv < pv);
+            if (!needs_swap) break;
+            gmb_val_t t = arr[child]; arr[child] = arr[parent]; arr[parent] = t;
+            child = parent;
+        }
+    }
+    for (int i = 0; i < n; i++) gmb_list_add(&l, arr[i]);
+    free(arr);
+    return l;
+}
+
+/* Trie (11): tutte le parole (ordine di inserimento) come lista di stringhe. */
+gmb_list_t gmb_coll_trie_words_list(int64_t h) {
+    gmb_list_t l = gmb_list_new();
+    int n = 0;
+    gmb_val_t* arr = gmb_coll_to_array(h, &n);
+    if (!arr) return l;
+    for (int i = 0; i < n; i++) gmb_list_add(&l, arr[i]);
+    free(arr);
+    return l;
+}
 
 /* Trie (11): tutte le parole col prefisso dato, in una lista di stringhe (ordine DFS a-z). */
 gmb_list_t gmb_collection_trie_find_all_list(int64_t h, const char* prefix) {
