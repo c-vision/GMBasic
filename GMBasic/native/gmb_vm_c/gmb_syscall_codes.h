@@ -1,5 +1,8 @@
 /* gmb_syscall_codes.h — GENERATO da common/Compiler/SysCalls.cs (tools/basic/check_enum_ids.bas).
- * NON modificare a mano. Una riga di tabella VM/C si scrive per NOME: { GMB_SC_FILE_LOCK, handler },
+ * NON modificare a mano: ogni --gen riscrive questo file e i commenti scritti qui spariscono.
+ * La documentazione dei codici (P4, SCENE PICK, ...) si scrive in common/Compiler/SysCalls.cs,
+ * accanto al valore dell'enum: quello e' il sorgente e li' il commento sopravvive alla rigenerazione.
+ * Una riga di tabella VM/C si scrive per NOME: { GMB_SC_FILE_LOCK, handler },
  * cosi' il numero lo decide sempre l'enum e un inserimento a meta' non disallinea piu' la VM. */
 #ifndef GMB_SYSCALL_CODES_H
 #define GMB_SYSCALL_CODES_H

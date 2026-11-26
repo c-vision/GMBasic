@@ -418,7 +418,10 @@ FUNCTION GenSyscalls(pref AS STRING, croot AS STRING, checkOnly AS INTEGER, quie
   IF n = 0 THEN RETURN 1
   emdash = "—"
   hdr = "/* gmb_syscall_codes.h " + emdash + " GENERATO da common/Compiler/SysCalls.cs (tools/basic/check_enum_ids.bas)." + CHR$(10)
-  hdr = hdr + " * NON modificare a mano. Una riga di tabella VM/C si scrive per NOME: { GMB_SC_FILE_LOCK, handler }," + CHR$(10)
+  hdr = hdr + " * NON modificare a mano: ogni --gen riscrive questo file e i commenti scritti qui spariscono." + CHR$(10)
+  hdr = hdr + " * La documentazione dei codici (P4, SCENE PICK, ...) si scrive in common/Compiler/SysCalls.cs," + CHR$(10)
+  hdr = hdr + " * accanto al valore dell'enum: quello e' il sorgente e li' il commento sopravvive alla rigenerazione." + CHR$(10)
+  hdr = hdr + " * Una riga di tabella VM/C si scrive per NOME: { GMB_SC_FILE_LOCK, handler }," + CHR$(10)
   hdr = hdr + " * cosi' il numero lo decide sempre l'enum e un inserimento a meta' non disallinea piu' la VM. */" + CHR$(10)
   hdr = hdr + "#ifndef GMB_SYSCALL_CODES_H" + CHR$(10)
   hdr = hdr + "#define GMB_SYSCALL_CODES_H" + CHR$(10) + CHR$(10)
