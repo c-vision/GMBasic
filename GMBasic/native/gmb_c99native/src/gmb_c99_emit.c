@@ -1053,7 +1053,15 @@ int gmb_var_declared_type(ctx_t* c, const char* name, char* out, int cap) {
  * value-model C, cosi' JSON ISO-8601 e PRINT leggibile differiscono dal numero). */
 int gmb_expr_is_datetime(ctx_t* c, gmb_expr_t* e) {
     if (!e) return 0;
-    if (e->tk == GMB_TOK_Now || e->tk == GMB_TOK_Today) return 1;
+    /* DATETIME (IL: DateTime) — non i SERIALI: DATE()/TIME()/SECONDS()/TI() restano numerici
+     * (canone date_time_canon.bas). Queste funzioni rendono un DateTime anche nel managed:
+     * PRINT le formatta "dd/MM/yyyy HH:mm:ss" (19 caratteri) e LEN le conta 19, mentre prima
+     * il C99 stampava il seriale OADate. */
+    if (e->tk == GMB_TOK_Now || e->tk == GMB_TOK_Today
+        || e->tk == GMB_TOK_DateValue || e->tk == GMB_TOK_Ctod || e->tk == GMB_TOK_Stod
+        || e->tk == GMB_TOK_DateSerial || e->tk == GMB_TOK_TimeSerial
+        || e->tk == GMB_TOK_DateAdd || e->tk == GMB_TOK_Eomonth
+        || e->tk == GMB_TOK_FirstDayOfMonth || e->tk == GMB_TOK_DateFromUnix) return 1;
     if (e->kind == GMB_EXPR_VAR && e->var) {
         char ty[32];
         if (gmb_var_declared_type(c, e->var, ty, sizeof ty) && strcasecmp(ty, "DATETIME") == 0) return 1;

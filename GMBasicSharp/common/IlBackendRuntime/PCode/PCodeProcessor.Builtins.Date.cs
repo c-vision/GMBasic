@@ -37,15 +37,17 @@ internal sealed partial class PCodeProcessor
     {
         [BuiltInFunction.DATEVALUE] = (task, args) =>
         {
-                // Canone: serial OADate numerico (come IL e i backend C), non DateTime — altrimenti PRINT/FORMAT divergono.
-                if (args.Length > 0) return Basic.IlBackend.IlRuntime.DateValue(args[0]?.ToString() ?? "").ToOADate();
-                return Basic.IlBackend.IlRuntime.DateValue("").ToOADate();
+                /* DateTime (non il serial): come IL (IlRuntime.DateValue) e i backend C.
+                 * PRINT/STRINGIFY/LEN di un DateTime sono il formato data/ora (19). */
+                if (args.Length > 0) return Basic.IlBackend.IlRuntime.DateValue(args[0]?.ToString() ?? "");
+                return Basic.IlBackend.IlRuntime.DateValue("");
         },
         [BuiltInFunction.DATESERIAL] = (task, args) =>
         {
+                /* DateTime come IL: PRINT formatta la data, LEN(DATESERIAL(...)) = 19. */
                 if (args.Length >= 3) return Basic.IlBackend.IlRuntime.DateSerial(
-                (short)SafeDouble(args[0]), (short)SafeDouble(args[1]), (short)SafeDouble(args[2])).ToOADate();
-                return Basic.IlBackend.IlRuntime.DateSerial(0, 1, 1).ToOADate();
+                (short)SafeDouble(args[0]), (short)SafeDouble(args[1]), (short)SafeDouble(args[2]));
+                return Basic.IlBackend.IlRuntime.DateSerial(0, 1, 1);
         },
         [BuiltInFunction.DATE_FUNC] = (task, args) =>
         {

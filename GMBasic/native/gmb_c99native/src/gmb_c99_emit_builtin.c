@@ -1619,6 +1619,15 @@ int js_stringify(ctx_t* c, gmb_expr_t** a, int n) {   /* §0quater: usata anche 
         sb_put(&c->out, ")");
         return 1;
     }
+    /* DATETIME (NOW/DATEVALUE/DATESERIAL/DATEADD/...): in JSON è una STRINGA ISO-8601
+     * "yyyy-MM-ddTHH:mm:ss" (canone NormalizeForJson di IL/PCode). Prima il C99 serializzava
+     * il seriale numerico (43832) dove IL dà "2020-01-02T00:00:00". */
+    if (gmb_expr_is_datetime(c, arg)) {
+        sb_put(&c->out, "gmb_val_to_json(gmb_make_val_datetime((gmb_double_t)(");
+        emit_expr(c, arg);
+        sb_put(&c->out, ")))");
+        return 1;
+    }
     /* (3) numerico scalare → numero JSON (niente virgolette) */
     sb_put(&c->out, "gmb_double_to_string((gmb_double_t)(");
     emit_expr(c, arg);

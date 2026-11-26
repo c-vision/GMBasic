@@ -2065,7 +2065,19 @@ static void gmb_bf_23(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_
             }
             /* LEN di un NUMERO = numero di CIFRE (canone IlRuntime.Len, stessa formula del
              * runtime condiviso: gmb_len_number). Prima dava 0 mentre IL/PCode davano 3/2/… */
-            else if (args[0].type == 1) bout->result = (double)gmb_len_number(args[0].num);
+            else if (args[0].type == 1)
+            {
+                if (args[0].basic_type == GMB_BT_DATE)
+                {
+                    /* DATETIME (NOW()/TODAY() sono taggati GMB_BT_DATE): LEN = lunghezza del
+                     * formato "dd/MM/yyyy HH:mm:ss" = 19, come `IlRuntime.Len(DateTime)`
+                     * (ToString() → 19). Prima contava le cifre del seriale OADate (17). */
+                    gmb_string_t ds = gmb_dt_datetime_to_string(args[0].num);
+                    bout->result = (double)gmb_chars_len(ds.data);
+                    gmb_string_free(&ds);
+                }
+                else bout->result = (double)gmb_len_number(args[0].num);
+            }
             else bout->result = 0;
         }
 }
@@ -3753,10 +3765,14 @@ static void gmb_bf_760(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func
                  * rotta). Serializzazione dal runtime condiviso (§0bis).
                  * Il BOOL si distingue dal numero perché OP_PUSH_TRUE/FALSE pusha -1.0/0.0 con
                  * basic_type GMB_BT_BOOL: senza il flag `TRUE` diventerebbe `-1` invece di
-                 * `true` (IL/PCode rendono true). */
+                 * `true` (IL/PCode rendono true). DATE (GMB_BT_DATE, es. DATESERIAL/NOW):
+                 * JSON ISO-8601 "yyyy-MM-ddTHH:mm:ss" — parità IL/PCode; prima usciva il
+                 * seriale numerico (43832). */
                 gmb_val_t sv = (args[0].basic_type == GMB_BT_BOOL)
                     ? gmb_make_val_bool(args[0].num != 0.0 ? -1 : 0)
-                    : gmb_make_val_double(args[0].num);
+                    : (args[0].basic_type == GMB_BT_DATE)
+                      ? gmb_make_val_datetime(args[0].num)
+                      : gmb_make_val_double(args[0].num);
                 gmb_string_t js = gmb_val_to_json(sv);
                 gmb_obj_string_t* rs = gmb_str_cstr(js.data ? js.data : "null");
                 gmb_string_free(&js);
@@ -6470,13 +6486,13 @@ static void gmb_bf_275(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func
                 gmb_obj_string_t* src = (gmb_obj_string_t*)args[0].ref;
                 s.data = src->data; s.length = src->length;
             }
-            bout->result = gmb_dt_datevalue(s);
+            bout->result = gmb_dt_datevalue(s); bout->num_bt = GMB_BT_DATE;
         }
 }
 static void gmb_bf_276(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
 {
         {
-            bout->result = gmb_dt_dateserial((int)args[0].num, (int)args[1].num, (int)args[2].num);
+            bout->result = gmb_dt_dateserial((int)args[0].num, (int)args[1].num, (int)args[2].num); bout->num_bt = GMB_BT_DATE;
         }
 }
 static void gmb_bf_278(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
@@ -6524,7 +6540,7 @@ static void gmb_bf_288(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func
 static void gmb_bf_289(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
 {
         {
-            bout->result = gmb_dt_firstdayofmonth(args[0].num);
+            bout->result = gmb_dt_firstdayofmonth(args[0].num); bout->num_bt = GMB_BT_DATE;
         }
 }
 static void gmb_bf_290(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
@@ -6536,7 +6552,7 @@ static void gmb_bf_290(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func
 static void gmb_bf_291(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
 {
         {
-            bout->result = gmb_dt_datefromunix(args[0].num);
+            bout->result = gmb_dt_datefromunix(args[0].num); bout->num_bt = GMB_BT_DATE;
         }
 }
 static void gmb_bf_292(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
@@ -6606,7 +6622,7 @@ static void gmb_bf_542(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func
                 gmb_obj_string_t* src = (gmb_obj_string_t*)args[0].ref;
                 s.data = src->data; s.length = src->length;
             }
-            bout->result = func_code == 541 ? gmb_dt_ctod(s) : gmb_dt_stod(s);
+            bout->result = func_code == 541 ? gmb_dt_ctod(s) : gmb_dt_stod(s); bout->num_bt = GMB_BT_DATE;
         }
 }
 static void gmb_bf_543(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
@@ -6652,7 +6668,7 @@ static void gmb_bf_460(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func
 static void gmb_bf_271(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
 {
     const char* interval = (argc >= 1 && args[0].type == 2 && args[0].ref) ? ((gmb_obj_string_t*)args[0].ref)->data : "d";
-    bout->result = gmb_dt_dateadd(interval, argc >= 3 ? args[2].num : 0, args[1].num);
+    bout->result = gmb_dt_dateadd(interval, argc >= 3 ? args[2].num : 0, args[1].num); bout->num_bt = GMB_BT_DATE;
 }
 static void gmb_bf_273(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
 {
@@ -6661,7 +6677,7 @@ static void gmb_bf_273(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func
              * args[1] senza guardia: con UNA sola chiamata `gmb_dt_eomonth(46039, <spazzatura>)`
              * restituiva un mese arbitrario (EOMONTH(2026-01-15) → 46081 = 28/02 invece di
              * 46053 = 31/01). Divergenza trovata confrontando le 4 gambe. */
-            bout->result = gmb_dt_eomonth(args[0].num, argc >= 2 ? (int)args[1].num : 0);
+            bout->result = gmb_dt_eomonth(args[0].num, argc >= 2 ? (int)args[1].num : 0); bout->num_bt = GMB_BT_DATE;
         }
 }
 static void gmb_bf_272(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
@@ -6716,7 +6732,7 @@ static void gmb_bf_strdate_c3760(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc
 static void gmb_bf_277(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
 {
         {
-            bout->result = gmb_dt_timeserial((int)args[0].num, (int)args[1].num, (int)args[2].num);
+            bout->result = gmb_dt_timeserial((int)args[0].num, (int)args[1].num, (int)args[2].num); bout->num_bt = GMB_BT_DATE;
         }
 }
 static void gmb_bf_295(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)

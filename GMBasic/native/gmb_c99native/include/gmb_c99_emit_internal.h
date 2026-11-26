@@ -200,6 +200,9 @@ int cls_iface_impls(ctx_t* c, const char* ifname, const char* meth, fn_info_t** 
 const char* expr_class(ctx_t* c, gmb_expr_t* e);
 void emit_virt_call(ctx_t* c, fn_info_t** defs, int ndefs, void (*emit_inst)(ctx_t*, void*), void* ud, gmb_expr_t** margs, int nmargs);
 int etype(ctx_t* c, gmb_expr_t* e);
+/* True se l'espressione rende un DATETIME (NOW/TODAY/DATEVALUE/DATESERIAL/... o una var
+ * AS DATETIME): PRINT/LEN/JSON devono usare il formato data/ora, non il seriale. */
+int gmb_expr_is_datetime(ctx_t* c, gmb_expr_t* e);
 void register_list(ctx_t* c, gmb_stmt_t** list, int n, vars_t* scope);
 int use_global(ctx_t* c, vars_t* scope, const char* name);
 void register_stmt(ctx_t* c, gmb_stmt_t* s, vars_t* scope);

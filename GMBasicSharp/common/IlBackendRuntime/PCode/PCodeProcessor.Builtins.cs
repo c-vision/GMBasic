@@ -790,9 +790,10 @@ if (args.Length > 0) { try { var sizes = new List<int>(); foreach (var a in args
         },
         [BuiltInFunction.TIMESERIAL] = (task, args) =>
         {
+                /* DateTime come IL (TimeSerial): PRINT formatta "30/12/1899 HH:mm:ss". */
                 if (args.Length >= 3) return Basic.IlBackend.IlRuntime.TimeSerial(
-                    (short)SafeDouble(args[0]), (short)SafeDouble(args[1]), (short)SafeDouble(args[2])).ToOADate();
-                return Basic.IlBackend.IlRuntime.TimeSerial(0, 0, 0).ToOADate();
+                    (short)SafeDouble(args[0]), (short)SafeDouble(args[1]), (short)SafeDouble(args[2]));
+                return Basic.IlBackend.IlRuntime.TimeSerial(0, 0, 0);
         },
         [BuiltInFunction.YEAR] = (task, args) =>
         {
@@ -846,7 +847,8 @@ if (args.Length > 0) { try { var sizes = new List<int>(); foreach (var a in args
         },
         [BuiltInFunction.CTOD] = (task, args) =>
         {
-                if (args.Length > 0) return Basic.IlBackend.IlRuntime.CtOD(args[0]?.ToString() ?? "");
+                /* DateTime come IL (CtODDate): PRINT formatta, LEN = 19. */
+                if (args.Length > 0) return Basic.IlBackend.IlRuntime.CtODDate(args[0]?.ToString() ?? "");
                 return 0.0;
         },
         [BuiltInFunction.DTOC] = (task, args) =>
@@ -3324,7 +3326,9 @@ if (args.Length >= 3) { var file = args[0]?.ToString() ?? ""; var section = args
         },
         [BuiltInFunction.STOD] = (task, args) =>
         {
-                return new DateValue(CommonLib.DateUtils.CoreStod((ArgOr(args, 0) ?? "").ToString() ?? "").ToDateTime(TimeOnly.MinValue).ToOADate());
+                /* DateTime (come IL): PRINT stampa "31/12/1999 00:00:00", non una DateValue
+                 * con ToString solo-data (10 caratteri) — divergenza con IL/VM-C/C99. */
+                return Basic.IlBackend.IlRuntime.Stod((ArgOr(args, 0) ?? "").ToString() ?? "");
         },
         [BuiltInFunction.SYS] = (task, args) =>
         {
