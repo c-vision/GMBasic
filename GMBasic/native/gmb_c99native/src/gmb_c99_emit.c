@@ -3446,6 +3446,8 @@ int etype(ctx_t* c, gmb_expr_t* e) {
         /* TYPEINFO/METHODINFO/PROPERTYINFO ritornano gmb_string_t (namespace TypeInfo). */
         if (gmb_tk_in(e->tk, gmb_tk_info_ty, (unsigned)(sizeof(gmb_tk_info_ty)/sizeof(gmb_tk_info_ty[0])))) return TY_STR;
         if (gmb_tk_in(e->tk, gmb_tk_dbf_str, (unsigned)(sizeof(gmb_tk_dbf_str)/sizeof(gmb_tk_dbf_str[0])))) return TY_STR;
+        /* SCENE.ZONETAG(id): tag della zona, gmb_string_t ("" se l'id non esiste). */
+        if (e->tk == GMB_TOK_SceneZoneTag) return TY_STR;
         if (gmb_tk_in(e->tk, gmb_tk_dbf_num, (unsigned)(sizeof(gmb_tk_dbf_num)/sizeof(gmb_tk_dbf_num[0])))) return TY_NUM;
         if (gmb_tk_in(e->tk, gmb_tk_rdd_str, (unsigned)(sizeof(gmb_tk_rdd_str)/sizeof(gmb_tk_rdd_str[0])))) return TY_STR;
         /* chiamata INDIRETTA su variabile function-typed con ritorno STRING (es.
@@ -4754,7 +4756,20 @@ if (s->dim_var) {            int ty = suffix_type(s->dim_var);
                     case GMB_TOK_Bag: v->gkind = GK_LIST; v->coll_type_code = 15; v->coll_handle = 1; break;
                     case GMB_TOK_BITree: v->gkind = GK_LIST; v->coll_type_code = 10; break;
                     case GMB_TOK_HashRing: v->gkind = GK_LIST; v->coll_type_code = 19; break;
-                    case GMB_TOK_SparseSet: v->gkind = GK_LIST; v->coll_type_code = 21; break;
+                    case GMB_TOK_SparseSet: {
+                        v->gkind = GK_LIST; v->coll_type_code = 21;
+                        /* NEW SPARSESET(max, capacity): Capacity() = 2° argomento
+                         * (CommonLib: _dense.Length), prima C99 emetteva 0. */
+                        if (s->dim_init && s->dim_init->kind == GMB_EXPR_CALL && s->dim_init->var
+                            && strncmp(s->dim_init->var, "COLLNEWINIT:SPARSESET", 21) == 0
+                            && s->dim_init->nargs >= 2 && s->dim_init->args[1]
+                            && s->dim_init->args[1]->kind == GMB_EXPR_NUM
+                            && s->dim_init->args[1]->num > 0)
+                            v->sparse_cap = (int)s->dim_init->args[1]->num;
+                        else
+                            v->sparse_cap = 8;   /* default CommonLib (capacity <= 0 → 8) */
+                        break;
+                    }
                     case GMB_TOK_LinkedList: v->gkind = GK_LIST; v->coll_type_code = 12; break;
                     case GMB_TOK_DoublyLinkedList: v->gkind = GK_LIST; v->coll_type_code = 12; break;
                     case GMB_TOK_Circular: v->gkind = GK_LIST; v->coll_type_code = 13; break;
@@ -8051,6 +8066,18 @@ static const gmb_bf_row_t gmb_bf_composite[] = {
     { NULL, GMB_TOK_SceneHash,   emit_bf_scene },
     { NULL, GMB_TOK_ScenePixel,  emit_bf_scene },
     { NULL, GMB_TOK_ScenePick,   emit_bf_scene },
+    /* P5: superficie interattiva — camera/corpo, quote e zone. */
+    { NULL, GMB_TOK_SceneX,       emit_bf_scene },
+    { NULL, GMB_TOK_SceneY,       emit_bf_scene },
+    { NULL, GMB_TOK_SceneZ,       emit_bf_scene },
+    { NULL, GMB_TOK_SceneEye,     emit_bf_scene },
+    { NULL, GMB_TOK_SceneYaw,     emit_bf_scene },
+    { NULL, GMB_TOK_ScenePitch,   emit_bf_scene },
+    { NULL, GMB_TOK_SceneHit,     emit_bf_scene },
+    { NULL, GMB_TOK_SceneFloorAt, emit_bf_scene },
+    { NULL, GMB_TOK_SceneCeilAt,  emit_bf_scene },
+    { NULL, GMB_TOK_SceneZone,    emit_bf_scene },
+    { NULL, GMB_TOK_SceneZoneTag, emit_bf_scene },
     { NULL, GMB_TOK_MatrixColumnCount, emit_bf_matrix },
     { NULL, GMB_TOK_MatrixIsLowerTriangular, emit_bf_matrix },
     { NULL, GMB_TOK_MatrixIsUpperTriangular, emit_bf_matrix },
@@ -12937,6 +12964,11 @@ static void emit_call(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_
                          * (ringbuffer_capacity: cap= 0 invece di 64). */
                         if (mk == GMB_TOK_CollCapacity && cv->ring_cap > 0) {
                             sb_printf(&c->out, "(gmb_double_t)%d", cv->ring_cap);
+                            return;
+                        }
+                        /* SPARSESET: Capacity() = capacity del costruttore. */
+                        if (mk == GMB_TOK_CollCapacity && cv->sparse_cap > 0) {
+                            sb_printf(&c->out, "(gmb_double_t)%d", cv->sparse_cap);
                             return;
                         }
                         if (mk == GMB_TOK_ToArray || mk == GMB_TOK_ToList) {

@@ -3481,7 +3481,7 @@ internal sealed partial class PCodeProcessor
                  // CACHE/collection chiave→valore: Get/Keys/ContainsKey via interfaccia non
                  // generica (niente reflection per nome).
                  if (instance is CommonLib.Collections.IKeyValueIndexable kvi &&
-                     upName is "GET" or "KEYS" or "CONTAINSKEY")
+                     upName is "GET" or "KEYS" or "CONTAINSKEY" or "REMOVE")
                  {
                      if (upName == "GET" && argCount == 1)
                      {
@@ -3505,6 +3505,21 @@ internal sealed partial class PCodeProcessor
                      if (upName == "CONTAINSKEY" && argCount == 1)
                      {
                          task.PushRef(kvi.TryGetValue(args[0], out _) ? -1.0 : 0.0);
+                         return true;
+                     }
+                     /* REMOVE: RedBlack/Cache espongono Remove, BPlusTree Delete (entrambi
+                      * bool). Prima la riflessione cercava solo "Remove" → su BPlusTree
+                      * rendeva nil e NON eliminava (divergenza su bp.rem/bp.count2). */
+                     if (upName == "REMOVE" && argCount == 1)
+                     {
+                         var delm = instance!.GetType().GetMethod("Remove",
+                                        System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance)
+                                    ?? instance.GetType().GetMethod("Delete",
+                                        System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
+                         bool removed = false;
+                         if (delm != null)
+                             removed = delm.Invoke(instance, new[] { args[0] }) is bool bb && bb;
+                         task.PushRef(removed ? -1.0 : 0.0);
                          return true;
                      }
                      task.PushRef(null); return true;

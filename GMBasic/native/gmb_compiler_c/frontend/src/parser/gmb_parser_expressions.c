@@ -1429,23 +1429,26 @@ gmb_expr_t* gmb_p_parse_primary(gmb_parser_t* p)
         }
         if (gmb_p_check(p, GMB_TOK_LeftParen) && gmb_p_is_collection_ctor(nm)) {
             gmb_p_adv(p);
-            gmb_expr_t* init = NULL;
-            if (gmb_p_check(p, GMB_TOK_LeftBracket)) init = gmb_p_parse_expr(p);
-            /* NEW HASHRING<STRING>(Servers): argomento NON letterale (variabile/espressione).
-             * Prima veniva ignorato (col nuovo oggetto si perdeva la lista dei nodi). */
-            else if (!gmb_p_check(p, GMB_TOK_RightParen)) init = gmb_p_parse_expr(p);
-            { int depth = 1; while (!gmb_p_at_end(p) && depth > 0) {
-                if (gmb_p_check(p, GMB_TOK_LeftParen)) depth++;
-                else if (gmb_p_check(p, GMB_TOK_RightParen)) depth--;
-                if (depth > 0) gmb_p_adv(p); } }
+            /* Argomenti del costruttore: TUTTI, non solo il primo. `NEW SPARSESET(max, capacity)`
+             * ha la capacità nel 2° argomento (CommonLib: _dense.Length) e prima veniva
+             * scartata → Capacity()=0 su C99 contro 10 di IL/PCode. Gli emitter continuano a
+             * usare args[0] dove serve (HashRing nodi, RingBuffer capacità, BPlusTree order,
+             * Bag/BITree/HashRing letterale). */
+            gmb_expr_t** iargs = NULL; int ina = 0, ica = 0;
+            while (!gmb_p_check(p, GMB_TOK_RightParen) && !gmb_p_at_end(p)) {
+                if (gmb_p_check(p, GMB_TOK_Comma)) { gmb_p_adv(p); continue; }
+                if (ina >= ica) { ica = ica ? ica * 2 : 4; iargs = (gmb_expr_t**)realloc(iargs, (size_t)ica * sizeof(gmb_expr_t*)); }
+                iargs[ina++] = gmb_p_parse_expr(p);
+                if (!gmb_p_match(p, GMB_TOK_Comma)) break;
+                gmb_p_skip_eol(p);
+            }
             gmb_p_match(p, GMB_TOK_RightParen);
             char cnm2[96];
             /* Il nome del container è una keyword del lexer (tabella di frontiera,
              * direttiva 2026-09-08): il TokenKind si risolve QUI nel parser, mai a valle. */
             int ctk2 = gmb_keyword_tok(nm);
-            if (init) { snprintf(cnm2, sizeof(cnm2), "COLLNEWINIT:%s", nm);
-                gmb_expr_t** iargs = (gmb_expr_t**)malloc(sizeof(gmb_expr_t*)); iargs[0] = init;
-                return gmb_expr_call_typed(strdup(cnm2), (gmb_tokenkind_t)ctk2, iargs, 1, line); }
+            if (ina > 0) { snprintf(cnm2, sizeof(cnm2), "COLLNEWINIT:%s", nm);
+                return gmb_expr_call_typed(strdup(cnm2), (gmb_tokenkind_t)ctk2, iargs, ina, line); }
             snprintf(cnm2, sizeof(cnm2), "COLLNEW:%s", nm);
             return gmb_expr_call_typed(strdup(cnm2), (gmb_tokenkind_t)ctk2, NULL, 0, line);
         }

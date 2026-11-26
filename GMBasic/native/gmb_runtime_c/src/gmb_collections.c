@@ -240,7 +240,12 @@ void gmb_coll_apply_ctor(int64_t h, gmb_val_t* args, int n_args)
     }
     else if (c->type_code == 21 && n_args >= 2) /* SparseSet: (maxValue, capacity) */
     {
-        if (c->capacity <= 0) c->capacity = 8;
+        /* Capacity() = capacity del costruttore (CommonLib: _dense.Length) — prima restava 8
+         * sul runtime/VM-C e 0 su C99 (divergenza su SPARSESET.Capacity). */
+        int64_t cap = 0;
+        if (args[1].kind == GMB_TYPE_DOUBLE) cap = (int64_t)args[1].v_double;
+        else if (args[1].kind == GMB_TYPE_INT) cap = (int64_t)args[1].v_int;
+        c->capacity = cap > 0 ? (int)cap : 8;
     }
     else if (c->type_code == 15) /* Bag: argomenti costruttore = elementi da aggiungere
                                     (bag-literal `= ["a","b"]` del transpiler C99, C99-01) */
@@ -273,21 +278,17 @@ void gmb_coll_apply_ctor(int64_t h, gmb_val_t* args, int n_args)
         int n = (int)gmb_list_count(l);
         if (n > 0)
         {
-            if (c->bit) free(c->bit);
-            c->bit_n = n;
-            if (c->capacity < n + 1) c->capacity = n + 1;
-            c->bit = (double*)calloc((size_t)n + 1, sizeof(double));
-            if (c->bit)
+            double* vals = (double*)malloc((size_t)n * sizeof(double));
+            if (vals)
             {
-                for (int i = 1; i <= n; i++)
+                for (int i = 0; i < n; i++)
                 {
-                    gmb_val_t e = gmb_list_get(l, i - 1);
-                    double v = e.kind == GMB_TYPE_DOUBLE ? e.v_double
-                             : e.kind == GMB_TYPE_INT ? (double)e.v_int : 0;
-                    c->bit[i] += v;
-                    int k = i + (i & -i);
-                    if (k <= n) c->bit[k] += c->bit[i];
+                    gmb_val_t e = gmb_list_get(l, i);
+                    vals[i] = e.kind == GMB_TYPE_DOUBLE ? e.v_double
+                            : e.kind == GMB_TYPE_INT ? (double)e.v_int : 0;
                 }
+                gmb_coll_bitree_init(h, vals, n);
+                free(vals);
             }
         }
     }
@@ -1028,6 +1029,30 @@ char** gmb_coll_trie_find_all(int64_t h, const char* prefix, int* out_len)
  * Indici 0-BASED inclusivi (come la classe C#): Update(index, delta) somma delta
  * all'elemento index; Query(index) somma [0..index]; QueryRange(lo,hi) somma [lo..hi].
  * Internamente il fenwick è 1-based: ogni indice pubblico è tradotto con +1. */
+
+/* Inizializzazione dai valori sorgente (`NEW BITREE<T>([...])` e letterali): costruisce il
+ * fenwick 1-based e imposta Count() = n (CommonLib _size). Usata da apply_ctor e dalla VM/C,
+ * così le due strade non divergono (prima la VM/C lasciava Count()=0). */
+void gmb_coll_bitree_init(int64_t h, const double* vals, int n)
+{
+    gmb_collection_t* c = coll_get(h);
+    if (!c || c->type_code != 10) return;
+    if (n < 0) n = 0;
+    if (c->bit) free(c->bit);
+    c->bit_n = n > 0 ? n : 16;
+    c->count = n;
+    if (c->capacity < n + 1) c->capacity = n + 1;
+    c->bit = (double*)calloc((size_t)c->bit_n + 1, sizeof(double));
+    if (!c->bit) return;
+    for (int i = 1; i <= n; i++)
+    {
+        double v = vals ? vals[i - 1] : 0.0;
+        c->bit[i] += v;
+        int k = i + (i & -i);
+        if (k <= n) c->bit[k] += c->bit[i];
+    }
+}
+
 void gmb_coll_bitree_update(int64_t h, int idx, double delta)
 {
     gmb_collection_t* c = coll_get(h);

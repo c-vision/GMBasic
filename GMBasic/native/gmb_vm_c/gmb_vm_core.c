@@ -11437,7 +11437,7 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                     task->stack[task->sp - 1].ref->kind == GMB_OBJ_COLLECTION)
                 {
                     gmb_obj_collection_t* col = (gmb_obj_collection_t*)task->stack[task->sp - 1].ref;
-                    int idx = 0;
+                    double bvals[256]; int bn = 0;
                     for (int i = n - 1; i >= 0; i--)
                     {
                         gmb_val_t v = gmb_adapter_stack_to_val(elems[i]);
@@ -11447,14 +11447,17 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                         }
                         else if (col->type_code == 10 && (v.kind == GMB_TYPE_DOUBLE || v.kind == GMB_TYPE_INT))
                         {
-                            /* BITree: Update(index, val) 0-based (come CommonLib), in ordine di inserimento */
+                            /* BITree: valori iniziali in ordine (CommonLib _size = n) — si
+                             * accumulano e si inizializzano UNA volta dopo il ciclo; prima
+                             * Update lasciava Count()=0. */
                             double d = v.kind == GMB_TYPE_DOUBLE ? v.v_double : (double)v.v_int;
-                            gmb_coll_bitree_update(col->handle, idx++, d);
+                            if (bn < 256) bvals[bn++] = d;
                         }
                         else
                             gmb_coll_add(col->handle, v);
                         gmb_obj_release(elems[i].ref);
                     }
+                    if (col->type_code == 10) gmb_coll_bitree_init(col->handle, bvals, bn);
                     /* Il contenitore è GIÀ sullo stack (sotto gli elementi: creato da OP_NEW per
                      * `DIM x AS <Contenitore> = [...]`): va CONSUMATO e ripushàto UNA volta.
                      * Prima si faceva solo `push_ref_entry` (RETAIN) lasciando l'entry

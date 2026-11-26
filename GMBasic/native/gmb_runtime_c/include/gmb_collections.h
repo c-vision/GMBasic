@@ -97,6 +97,7 @@ int gmb_coll_trie_startswith(int64_t h, const char* prefix);
 char** gmb_coll_trie_find_all(int64_t h, const char* prefix, int* out_len);
 
 /* BITree (typeCode 10): Update(index, delta), Query(index) */
+void gmb_coll_bitree_init(int64_t h, const double* vals, int n);
 void gmb_coll_bitree_update(int64_t h, int idx, double delta);
 double gmb_coll_bitree_query(int64_t h, int idx);
 double gmb_coll_bitree_query_range(int64_t h, int lo, int hi);

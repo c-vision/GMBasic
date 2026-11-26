@@ -76,6 +76,9 @@ typedef struct { char* name; int type; int is_array; int ndims; int byref; int g
                                   * (0 = non è un ring buffer). Default 64 (parità
                                   * CircularQueue C#/P-Code). Enqueue sovrascrive il più
                                   * vecchio a buffer pieno; Capacity() ritorna questo valore. */
+                  int sparse_cap; /* DIM v AS SPARSESET = NEW SPARSESET(max, capacity):
+                                  * capacity del costruttore (CommonLib: _dense.Length);
+                                  * Capacity() la ritorna (prima 0 su C99). */
                   int sql_rs;    /* result set SQL (SQL QUERY alias, rs, ...): handle double;
                                   * rs("col")/rs(i) legge la riga corrente (gmb_sql_current_val). */
                  char* tuple_fields; /* CSV "x,y,z" (indice vuoto = anonimo) se boxed_val viene
